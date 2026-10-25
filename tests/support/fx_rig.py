@@ -47,7 +47,7 @@ ROW_WORDS = 24
 FREE_PC = 0xFFFFFFFF  # the pc of a free row (core/dynfx): the adapter skips it
 POISON = 0x7FC00001  # the initial word of every .PKBSS
 AUTO_STATES = 4  # a Row with `state=""` (a run-time effect has no state symbol: the runtime reserves it) gets `_fx_auto_state<row>`,
-AUTO_STATE_BYTES = 4096  # this many bytes of poisoned bss each
+AUTO_STATE_BYTES = 4096  # fallback for unspecified, free or explicitly named-state rows
 nw = dv.nw
 # the row words (core/fx module.toml)
 PC, DESC, STATE, ENABLED, P0, WAS, MIX, DIS, WSTART, WCOUNT, NFAULT, ROUTE, AMT0 = (
@@ -159,14 +159,44 @@ def _assemble(path: Path) -> pk_sharc.SharcObject:
     return pk_sharc.assemble(pk_sharc.expand_includes(path.read_text(), dirs))
 
 
-def build(sources: tuple[Path, ...] = (EFFECTS,), device: str = "dt2") -> _Built:
-    key = (ADAPTER, device, *sources)
+def build(
+    sources: tuple[Path, ...] = (EFFECTS,),
+    device: str = "dt2",
+    auto_descs: tuple[str | None, ...] = (),
+) -> _Built:
+    """Build for a positional auto-state descriptor layout; omitted slots retain the old 4 KiB reserve."""
+    if len(auto_descs) > AUTO_STATES:
+        raise ValueError(f"at most {AUTO_STATES} auto-state descriptors")
+    layout = auto_descs + (None,) * (AUTO_STATES - len(auto_descs))
+    key = (ADAPTER, device, tuple(sources), layout)
     if key not in _BUILT:
-        _BUILT[key] = _build(sources, device)
+        _BUILT[key] = _build(sources, device, layout)
     return _BUILT[key]
 
 
-def _build(sources: tuple[Path, ...], device: str) -> _Built:
+def _state_bytes(objs: list[pk_sharc.SharcObject], desc: str) -> int:
+    """Read the descriptor's state size before linking/allocating, as the run-time loader does."""
+    for obj in objs:
+        if desc not in obj.data_symbols:
+            continue
+        section, offset, _global = obj.data_symbols[desc]
+        raw, _align, is_bss = obj.data[section]
+        if is_bss or offset < 0 or offset % 4 or offset + 16 > len(raw):
+            raise ValueError(
+                f"{desc}: auto-state descriptor has no initialized state_bytes word"
+            )
+        size = struct.unpack_from("<I", raw, offset + 12)[0]
+        if size % 4 or size > DATA_END - DATA_BASE:
+            raise ValueError(
+                f"{desc}: state_bytes {size} must be a multiple of 4 within the rig's L2 region"
+            )
+        return size
+    raise ValueError(f"{desc}: auto-state descriptor was not found in the DSP data")
+
+
+def _build(
+    sources: tuple[Path, ...], device: str, auto_descs: tuple[str | None, ...]
+) -> _Built:
     send = SEND_DN2 if device == "dn2" else SEND
     objs = [_assemble(ADAPTER), _assemble(send)] + [_assemble(Path(s)) for s in sources]
     addr = DATA_BASE
@@ -183,13 +213,19 @@ def _build(sources: tuple[Path, ...], device: str) -> _Built:
             addr += (len(raw) + 3) & ~3
         for name, (sec, off, _g) in o.data_symbols.items():
             data[name] = where[sec] + off
-    for i in range(AUTO_STATES):
+    sizes = [
+        AUTO_STATE_BYTES if desc is None else _state_bytes(objs, desc)
+        for desc in auto_descs
+    ]
+    if addr + sum(sizes) > DATA_END:
+        raise RuntimeError(
+            f"data symbols need {addr + sum(sizes) - DATA_BASE:#x} bytes of L2"
+        )
+    for i, size in enumerate(sizes):
         data[f"_fx_auto_state{i}"] = addr
-        inits.append((addr, bytes(AUTO_STATE_BYTES), True))
-        own[-1].append((addr, AUTO_STATE_BYTES))
-        addr += AUTO_STATE_BYTES
-    if addr > DATA_END:
-        raise RuntimeError(f"data symbols need {addr - DATA_BASE:#x} bytes of L2")
+        inits.append((addr, bytes(size), True))
+        own[-1].append((addr, size))
+        addr += size
     externs = {
         "_fx_table": TABLE,
         "_fx_master": MASTER,
@@ -233,7 +269,11 @@ class FxRig:
     ) -> None:
         if len(rows) > 4:
             raise ValueError("a chain has at most 4 effects")
-        self.built = build(sources, device)
+        self.built = build(
+            sources,
+            device,
+            tuple(r.desc if r.pc and not r.state else None for r in rows),
+        )
         self.rows = rows
         self.ctx_rng = random.Random(seed)
         self.step_limit = step_limit
