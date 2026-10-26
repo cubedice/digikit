@@ -43,3 +43,7 @@ dyndsp_info:
     .asciz  "_loop_buffer_info"
     .space  28 - 18
     .long   _loop_buffer_info
+    | Optional per-frame transport snapshot. Missing provider fails an import before allocation.
+    .asciz  "_pattern_position_info"
+    .space  28 - 23
+    .long   _pattern_position_info

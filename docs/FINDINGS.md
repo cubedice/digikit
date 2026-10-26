@@ -1,4 +1,4 @@
-# Digitakt II / Digitone II — findings
+# Digitakt II / Digitone II â€” findings
 
 Current targets are **Digitakt II OS 1.16** and **Digitone II OS 1.11**. Older
 sections were written against DT2 1.15C and are kept for their history; where a
@@ -7,13 +7,13 @@ later section corrects one, it is marked **[C]**.
 This file is the entry point into the lab notes for the Digitakt II / Digitone
 II reverse-engineering work; the notes themselves live in `docs/findings/`,
 one file per topic, in the chronological order they were written (later
-sections often correct earlier ones — read a file top to bottom). Start with
+sections often correct earlier ones â€” read a file top to bottom). Start with
 the topic closest to what you're doing, or grep across all of them with
 `rg . docs/findings/`.
 
 Evidence classes used below:
-**[V]** verified by running it here · **[D]** documented by prior research, not
-re-checked · **[O]** open / nobody has established this · **[C]** corrects an
+**[V]** verified by running it here Â· **[D]** documented by prior research, not
+re-checked Â· **[O]** open / nobody has established this Â· **[C]** corrects an
 earlier claim.
 
 ## Contents
@@ -124,6 +124,7 @@ with one bounded support/session timing pair. Rust/runtime cache audits and merg
 | [`103-dsp-facts-on-a-digitakt-ii.md`](findings/103-dsp-facts-on-a-digitakt-ii.md) | SHARC+ instruction facts of a Digitakt II (OS 1.17, `test/dsp-facts`): float ALU invalid result `0xFFFFFFFF` with AN clear, AIS/AVS/AUS/AOS latch rules, ALUSAT saturation of the fixed adder operations, FIX integer flags, MIN(+0,+0), the multiplier's `0x7FFFFFFF` invalid result, MR reads keep the flags; register values read on silicon (non-cacheable ranges, IDs, IMASK, MODE2); cycle table (jump 6.8, call and return 13.9, divide 15, L2 conflict 58 per load, block 666582 +- 3459) for later cycle-model work; the core reproduces 59 of 59 value items (**[D] [C] [O]**: the manual's AN and MR-read flag rules corrected; open: AUS for TRUNC and other ops, ALUSAT in the short and multifunction forms). |
 | [`104-dsp-sdk-sampler-discovery.md`](findings/104-dsp-sdk-sampler-discovery.md) | DSP SDK and first-sampler discovery on DT2 1.17 and DN2 1.12: mono machine ABI, sample ownership gaps, DT2 slot/page listing, DN2 resident-memory and transport ceilings, both-device kernel candidates and SQLite/NetworkX evidence. Static [D]/[O], not hardware timing or a safe sample-lifetime proof. |
 | [`105-sample-loading-lifetime.md`](findings/105-sample-loading-lifetime.md) | Next sampler proof: strict DT2 1.17 filesystem mappings, private source snapshots, store-generation races, module-owned DSP bank, transfer-buffer quiescence and READY publication. Proposed bounded resident proof; static [D]/[O], no new runtime implementation. |
+| [`68-pattern-position.md`](findings/68-pattern-position.md) | DT2 1.17 sequencer-position bridge: current versus scheduled master step, hash-resolved CF hooks, per-audio-frame transport, early DSP receiver, optional SDK import and the limits of step-alignment evidence |
 | [`functions/README.md`](findings/functions/README.md) | Per-function SHARC notes, including Phase B wrapper and conditional-resampling-path entries |
 
 ## Other documents that hold results

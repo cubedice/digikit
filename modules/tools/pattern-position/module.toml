@@ -1,0 +1,104 @@
+[module]
+id = "michael/pattern-position"
+version = "0.1.0"
+name = "Pattern position transport"
+category = "tools"
+type = "framework"
+author = "Michael"
+status = "experimental"
+summary = "Carries a bounded DT2 1.17 sequencer snapshot in each audio frame and publishes it before DSP render."
+requires = ["core/dsp-link"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/pattern-position-cf.dko.json"
+sources = ["src/cf/pattern_position.s"]
+place = "cf.expansion"
+devices = ["dt2"]
+
+# Pinned DT2 1.17 MAIN SHA-256:
+# a1e7b657b705eba1a19d81c33c1e11ba9c409816447ad74005d7bbf36da6d964
+# Both sites store the countdown while SR is 0x2700. The hooks replay that
+# store, preserve the live registers, and return to the stock SR restoration.
+# Each named anchor is resolved by a unique instruction-window hash, with no
+# firmware bytes in the rule. The port also pins the whole firmware image.
+[[op]]
+op = "hook"
+cpu = "cf"
+anchor = "pp.cf.start"
+kind = "call"
+to = "pp_start_hook"
+displaced = "drop"
+
+[[op]]
+op = "hook"
+cpu = "cf"
+anchor = "pp.cf.tick"
+kind = "call"
+to = "pp_seq_hook"
+displaced = "drop"
+
+[[claim]]
+resource = "dt2.sequencer.start.countdown"
+
+[[claim]]
+resource = "dt2.sequencer.tick.countdown"
+
+[[anchor_rule]]
+name = "pp.cf.start"
+devices = ["dt2"]
+cpu = "cf"
+kind = "cf_window_hash"
+search_len = 14
+sha256 = "d8a5c70bbe0b0b3c1f2ad412df3e9e2467a63e20da03be34f8b30c3582f452d7"
+len = 6
+mark = "D"
+
+[[anchor_rule]]
+name = "pp.cf.tick"
+devices = ["dt2"]
+cpu = "cf"
+kind = "cf_window_hash"
+search_len = 18
+sha256 = "86ffd731f10d4e27b1dffa56bced77941933679a13926dfa24914f66800cf39f"
+len = 6
+mark = "D"
+
+[[object]]
+path = "build/pattern-position-dsp.dko.json"
+sources = ["src/dsp/pattern_position.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+
+[object.externs]
+_pp_block_back = "hook.pp.dsp.block_entry.tail"
+
+[[op]]
+op = "hook"
+cpu = "sharc"
+anchor = "pp.dsp.block_entry"
+to = "_pp_block_entry"
+displaced = "run"
+
+[[claim]]
+resource = "pp.dsp.block_entry"
+
+[[claim]]
+resource = "dt2.frame-tail.position"
+
+# In the stock DT2 1.17 handler, I3 has just been loaded from DM(I6-3),
+# the current receive ring. The displaced instruction sets I4 to a dispatch
+# table; command dispatch and audio rendering follow. This is before core/fx.
+[[anchor_rule]]
+name = "pp.dsp.block_entry"
+devices = ["dt2"]
+cpu = "sharc"
+kind = "sharc_func"
+reloc_hash = "64b66b0db31c9fe533e67c75374b1041e22aae334bc3cd8743a491ab2448ecde"
+offset = 0x34
+len = 6
+mark = "D"

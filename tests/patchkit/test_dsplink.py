@@ -4,6 +4,7 @@ coupled emulator: `uv run python -m tools.patchkit.pk_dsplink proof` (tools/patc
 
 Skips what needs a stock firmware or the m68k toolchain when they are absent."""
 
+import hashlib
 import re
 import struct
 import tomllib
@@ -164,14 +165,29 @@ def test_call_site_geometry_matches_the_dsp_constants(image):
 
 @pytest.mark.parametrize("image", sorted(IMAGES))
 def test_dsp_site_is_the_ring_toggle_store(image):
-    from tools.sharc_dev import sharc
+    from tools.patchkit import port_resolve
+    from tools.sharc_dev.sharc_disasm import decode_confident_loaded
+    from tools.sharc_dev.sharcldr import LoadedMemory
 
-    if not config.stock(IMAGES[image]).exists():
+    stock = config.stock(IMAGES[image])
+    if not stock.exists():
         pytest.skip("firmware not present")
-    pm = anchors(image)["dsp.link.site.block_tail"]["pm"]
-    img = sharc.load("dt2-1.17" if image[:3] == "dt2" else "dn2-1.12")
-    rows = dict(img.listing(pm - 1, 4))
-    assert re.fullmatch(r"DM\(0x[0-9a-f]+\) = R1", rows[hex(pm)]), rows
+    pinned = port(image)["port"]
+    assert hashlib.sha256(stock.read_bytes()).hexdigest() == pinned["syx_sha256"]
+    dsp = port_resolve.sections_of(stock)[7]
+    assert hashlib.sha256(dsp).hexdigest() == pinned["dsp_sha256"]
+    memory = LoadedMemory.from_stream(dsp)
+    anchor = anchors(image)["dsp.link.site.block_tail"]
+    assert anchor["addr"] == 0x28000000 + 2 * anchor["pm"]
+    raw = memory.read_sw(anchor["pm"], anchor["len"])
+    assert raw is not None and len(raw) == anchor["len"] == 6
+    assert hashlib.sha256(raw).hexdigest() == anchor["sha256"]
+    instruction = decode_confident_loaded(memory, anchor["pm"])
+    assert instruction.type_name == "14a" and instruction.length_bytes == 6
+    # Type14a: a direct absolute normal-word DM store, with R1 as its source.
+    fields = instruction.fields
+    assert (fields["g"], fields["d"], fields["l"], fields["ureg[6:0]"]) == (0, 1, 0, 1)
+    assert fields["addr[31:16]"] << 16 | fields["addr[15:0]"]
 
 
 # ---- the ColdFire half on the core -------------------------------------------------------------------------------
@@ -194,9 +210,42 @@ def built():
         "dl_tx_lit": TXLIT,
         "dl_rec_lit": RECLIT,
         "dl_stock_send": BASE + 0x100,
+        "pp_write_frame": 0,
     }
     return front_end.cf_link(
         [MOD / "src/cf/dsp-link.c"], BASE, syms, [MOD / "build/gen"]
+    )
+
+
+@pytest.fixture(scope="module")
+def built_position(tmp_path_factory):
+    """A bounded test writer marks all 32 data halfwords of the reserved suffix."""
+    if pk_toolchains.m68k_bin("gcc") is None:
+        pytest.skip("m68k toolchain not installed")
+    stub = tmp_path_factory.mktemp("position-writer") / "writer.s"
+    stub.write_text("""    .text
+    .globl pp_write_frame
+pp_write_frame:
+    move.l 8(%sp),%d0
+    lsl.l #2,%d0
+    move.l 4(%sp),%a0
+    adda.l %d0,%a0
+    moveq #31,%d0
+1:
+    move.w #0xa55a,2(%a0)
+    addq.l #4,%a0
+    subq.l #1,%d0
+    bpl 1b
+    rts
+""")
+    syms = {
+        "_dl_area": AREA,
+        "dl_tx_lit": TXLIT,
+        "dl_rec_lit": RECLIT,
+        "dl_stock_send": BASE + 0x100,
+    }
+    return front_end.cf_link(
+        [MOD / "src/cf/dsp-link.c", stub], BASE, syms, [MOD / "build/gen"]
     )
 
 
@@ -253,6 +302,65 @@ def check_word(words: list[int]) -> int:
         s1 = (s1 + w) & 0xFFFFFFFF
         s2 = (s2 + s1) & 0xFFFFFFFF
     return s1 ^ s2
+
+
+@needs_gcc
+def test_position_writer_runs_while_link_idle_and_stays_in_its_suffix(
+    machine, built_position
+):
+    built = built_position
+    original = bytes([0xCC]) * (0x55E * 4)
+    tick = call(built, "dl_tick", [0x802, 0, 0xABC, 0], [(TXQ, len(original))])
+    result = run(machine, built, {TXQ: original}, [tick])[0].reads[0]
+    expected = bytearray(original)
+    for entry in range(0xA7C // 2, 0xABC // 2):
+        expected[entry * 4 + 2 : entry * 4 + 4] = b"\xa5\x5a"
+    assert result == expected
+
+
+@needs_gcc
+def test_position_suffix_is_excluded_from_maximum_link_chunk(machine, built_position):
+    built = built_position
+    ln, src = built.symbols["dl_link"], DATA + 0x4000
+    data = bytes((i * 7 + 3) & 255 for i in range(1024))
+    tick = call(built, "dl_tick", [0x802, 0, 0xABC, 0], [(ln, 72), (TXQ, 0x55E * 4)])
+    result = run(
+        machine,
+        built,
+        {src: data, TXQ: bytes(0x55E * 4)},
+        [call(built, "dl_send", [AREA, src, len(data)]), tick],
+    )[1]
+    assert link_of(built, result)["cap"] == 155
+    words = tail_words(result.reads[1], 0x402, 174)
+    assert (words[1] >> 17) & 255 == 155
+    assert words[2:157] == list(struct.unpack("<155I", data[:620]))
+    assert words[157] == check_word(words[:157])
+    assert words[158:] == [0xA55AA55A] * 16
+
+
+@needs_gcc
+@pytest.mark.parametrize("geometry", [(0xA80, 0xABC), (0x802, 0xAB8), (0, 0xABC)])
+def test_position_provider_refuses_non_dt2_geometry_before_any_write(
+    machine, built_position, geometry
+):
+    built = built_position
+    ln, src = built.symbols["dl_link"], DATA + 0x4000
+    original = bytes([0xCC]) * (0x55E * 4)
+    tick = call(
+        built,
+        "dl_tick",
+        [geometry[0], 0, geometry[1], 0],
+        [(ln, 72), (TXQ, len(original))],
+    )
+    result = run(
+        machine,
+        built,
+        {src: bytes(4), TXQ: original},
+        [call(built, "dl_send", [AREA, src, 4]), tick],
+    )[1]
+    status = link_of(built, result)
+    assert status["state"] == 3 and status["err"] == 101
+    assert result.reads[1] == original
 
 
 @needs_gcc
