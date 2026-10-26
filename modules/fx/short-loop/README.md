@@ -40,7 +40,7 @@ For an A01 → A02 transition:
 4. Switch to A02. Its saved FADE=127 and MIX=127 are needed to keep hearing the loop.
 5. Lower FADE toward 0 to bring in A02's complete live mix.
 
-**Kit recall is still a limitation.** DigiKit recalls REC, START, FADE and framework MIX with each kit. The buffer lives outside the kit, but the controls are not global. A destination kit with FADE=0 immediately requests a fade to live; MIX=0 bypasses the loop. The preparation above is a workaround to test, not a fix for parameter persistence.
+**Kit recall is still a limitation.** DigiKit recalls REC, START, FADE and framework MIX with each kit. The buffer lives outside the kit, but the controls are not global. A destination kit with FADE=0 immediately requests a fade to live; MIX=0 bypasses the loop. Prepared kits retained the required settings in the firmware emulator with transport stopped. Switching during sequencer playback and transient-free control delivery still need validation.
 
 ## Scope and evidence
 
@@ -49,9 +49,39 @@ For an A01 → A02 transition:
 - Recording is manual and audio-block aligned. There is no beat/bar quantization, tempo following, time stretching, or automatic pattern switching.
 - START rotates a fixed-length loop. The proof does not yet expose length, a separate musical capture-start point, or a waveform editor.
 - Restart, disable/re-enable, or an FX guard fault clears capture state. This is not project or power-cycle persistence.
-- The tests execute assembled SHARC code behind DigiKit's FX adapter and compare it with a float32 reference model. Changing the live input while the loop plays is a **simulation of a source change**, not evidence of a real firmware pattern/kit switch.
-- Full firmware emulator and hardware tests require separate validation. Check analog/USB output, monitored inputs, FX tails, actual kit recall and heavy playback before treating this as a performance tool.
+- The unit tests execute assembled SHARC code behind DigiKit's FX adapter and compare it with a float32 reference model.
+- A full OS 1.17 firmware emulator run with transport stopped passed 35 behavioral checks across three actual kit switches. Both captured buffers remained unchanged and the cursor advanced by the exact audio-block count. START selected frame 3,117; prepared kits recalled it with FADE and MIX. Four complete 500 ms PCM captures confirmed audible loop playback over a silent destination, then exact silence after fading back to live.
+- That run used `SHARC_FAST_AUTO=256,64`. Its saved trace passed revalidation after correcting an idle-range endpoint check: the rejected endpoint was the idle loop's closing jump. The original failed verdict is retained alongside `out/runs/short-loop-firmware/report.rechecked.json`; details are in `docs/findings/54-module-cookbook.md`.
+- Running-sequencer transitions and hardware playback remain unverified. Analog/USB output, monitored inputs, FX tails, transition transients and heavy playback also need validation.
 
 Source: `src/dsp/short_loop.s`. Reference: `tools/patchkit/short_loop_ref.py`. Tests: `tests/patchkit/test_short_loop.py` and the standard FX conformance suite. The test rig now reserves each runtime effect's declared state size, rather than a fixed 4 KiB.
+
+The bounded firmware runner is `tools/patchkit/pk_short_loop_proof.py`. Run it from Linux/WSL with prepared binaries, your stock OS image, and the existing `DIGI_EMUD_DT2` and `DIGI_PK_READY_DT2_117` environment overrides:
+
+```sh
+python -m tools.patchkit.pk_short_loop_proof \
+  --work out/runs/short-loop-firmware \
+  --patchkit /path/to/patchkit --plusdrive /path/to/plusdrive \
+  --cf-script /path/to/cf_script --timeout 900
+```
+
+It drives real encoder and pattern-button events with transport stopped, writes a JSON verdict plus PCM captures and screenshots, and checks both audio buffers and exact cursor advancement across kit changes. `report.json` is the latest verdict; each run also gets a unique report. On WSL mounts that cannot create sparse card images, add `--card-directory /tmp/digikit-short-loop-proof`. The runner records the emulator configuration; an accelerated run is not automatically evidence of interpreter parity. Generated firmware, card images and audio stay out of version control.
+
+## Longer loops
+
+Increasing the buffer constant is not sufficient. The FX adapter clears all descriptor-owned state synchronously when an effect activates or faults. A test using identical passthrough code measured 25,114 instructions to activate with 250 ms equivalent storage, versus 49,114 with 500 ms. The current generic effect-plus-adapter conformance ceiling is 31,832 instructions. Subsequent blocks cost 691 instructions at either size. This measures initialization in the SHARC test rig, not a hardware deadline miss.
+
+Float32 stereo at 48 kHz needs 384,000 bytes per second:
+
+| Duration | Audio storage | Musical example |
+| --- | ---: | --- |
+| 250 ms | 96,000 bytes | Current proof |
+| 1 second | 384,000 bytes | Half a bar at 120 BPM |
+| 2 seconds | 768,000 bytes | One bar of 4/4 at 120 BPM |
+| 8 seconds | 3,072,000 bytes | Four bars of 4/4 at 120 BPM |
+
+The shared DSP module region is 524,288 bytes, including every loaded module's code and state. Multi-bar recording therefore needs a separately reserved audio buffer. DigiKit does not currently expose that reservation; its `Api.alloc` allocates ColdFire memory, not DSP sample memory.
+
+The next storage proof should introduce bounded metadata initialization, then validate a longer capture within the existing region. Audio must remain unreadable until capture has overwritten the entire buffer, including after a fault or re-enable. An owned external buffer comes after that, with explicit allocation failure, reset, sample-loading and release tests. See `tests/patchkit/test_short_loop_storage_budget.py` and `docs/findings/54-module-cookbook.md` for evidence and open questions.
 
 Built with **digikit by Em D — https://github.com/ElekLabs/digikit**. Distributed under the repository's AGPL-3.0-or-later license and NOTICE terms. This module is unofficial and is not endorsed by Elektron.
