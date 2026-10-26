@@ -2962,3 +2962,34 @@ mode = "retarget"
 name = "dsp.voice.hook.render_entry"
 site = "dsp.voice.fn.render_entry"
 mode = "replace"
+
+[[anchor]]
+name = "pp.cf.start"
+cpu = "cf"
+kind = "code"
+addr = 0x400d66d8
+len = 0x6
+sha256 = "a1b93eb1870f22fc4b72f3e7ceb0a5e95169fd08394878509249c2c58ef30aeb"
+mark = "D"
+rule = "michael/pattern-position:cf_window_hash"
+
+[[anchor]]
+name = "pp.cf.tick"
+cpu = "cf"
+kind = "code"
+addr = 0x400d8dca
+len = 0x6
+sha256 = "a1b93eb1870f22fc4b72f3e7ceb0a5e95169fd08394878509249c2c58ef30aeb"
+mark = "D"
+rule = "michael/pattern-position:cf_window_hash"
+
+[[anchor]]
+name = "pp.dsp.block_entry"
+cpu = "sharc"
+kind = "code"
+addr = 0x2838ea02
+pm = 0x1c7501
+len = 0x6
+sha256 = "f49335b880bf628686785987b1e4af0428d9449df3643fd96695c68ae48ec66c"
+mark = "D"
+rule = "michael/pattern-position:sharc_func"

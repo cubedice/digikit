@@ -71,6 +71,7 @@
 .EXTERN _dl_fcount;
 .EXTERN _dv_diag;
 .EXTERN _dv_rec;
+DL_POSITION_EXTERN
 
 _dl_hook:
     DM(_dl_sv0) = R0;
@@ -138,6 +139,7 @@ _dl_notend:
     R5 = FEXT R14 BY 17:8;                // n (zero extended)
     R6 = FEXT R14 BY 0:17;                // off
     R3 = DL_TAIL_WORDS - 3;
+    DL_POSITION_LIMIT
     COMP(R5, R3);
     IF GT JUMP _dl_range;
     R0 = FEXT R10 BY 30:2;                // the window

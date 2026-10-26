@@ -7,5 +7,8 @@
 //
 // The reserved area (window 0): see the Digitakt II file.
 #include "device-dn2.inc"
+// No position sideband on DN2; both macros expand to no instructions or symbols.
+#define DL_POSITION_EXTERN
+#define DL_POSITION_LIMIT
 #include "dsp-link.inc"
 .PKBSS _dl_area, DL_AREA_BYTES;

@@ -56,6 +56,10 @@ Rule kinds (SHARC rules use the image's sharcdb through tools/sharc_dev/sharc.py
                  negative for a secondary one>, offset = <bytes from the function entry; default 0>, len = <bytes>: a
                  code anchor on the function in that slot, for virtual functions whose hash is not unique. Exactly
                  one cfdb vtables row must match the class, offset_to_top and slot. Needs the image's cfdb.
+  cf_window_hash sha256 = <SHA-256 of a fixed instruction window>, search_len = <bytes>, offset = <bytes, default 0>,
+                 len = <anchor bytes>. Finds exactly one even-aligned window in MAIN without storing firmware bytes
+                 or requiring a Ghidra function (for naked ISR tails). This exact hash deliberately fails closed when
+                 the firmware changes; resolve a new rule after reviewing that version.
 
   cf_params_t1   the parameter descriptor table (60-byte rows), found by the 36-byte signature of its reader (finding 02,
                  exactly one match): a data anchor over all rows (the row count is the length / 60).
@@ -589,10 +593,46 @@ def cf_vtable_addr(cf: CfFacts, rule: dict) -> int:
         cf.name,
     )
     return target + int(rule.get("offset", 0))
+def resolve_cf_window_hash(main: bytes, base: int, rule: dict) -> dict:
+    """Locate one exact instruction window; never accept a guessed address."""
+    window = int(rule["search_len"])
+    offset, length = int(rule.get("offset", 0)), int(rule["len"])
+    digest = rule["sha256"]
+    if (
+        window < 6
+        or window > 4096
+        or window % 2
+        or offset < 0
+        or offset % 2
+        or length < 2
+        or length % 2
+        or offset + length > window
+        or not isinstance(digest, str)
+        or not re.fullmatch(r"[0-9a-f]{64}", digest)
+    ):
+        raise ResolveError(f"{rule['name']}: invalid instruction-window rule")
+    hits = [
+        i
+        for i in range(0, len(main) - window + 1, 2)
+        if sha(main[i : i + window]) == digest
+    ]
+    if len(hits) != 1:
+        raise ResolveError(
+            f"{rule['name']}: instruction window matches {len(hits)} sites"
+        )
+    index = hits[0] + offset
+    return {
+        "kind": "code",
+        "addr": base + index,
+        "len": length,
+        "sha256": sha(main[index : index + length]),
+    }
 
 
 def resolve_cf_anchor(cf: CfFacts, rule: dict) -> dict:
     kind = rule["kind"]
+    if kind == "cf_window_hash":
+        return resolve_cf_window_hash(cf.main, cf.base, rule)
     if kind == "cf_params_t1":
         t1, count = param_table(cf, rule)
         n = count * PARAM_ROW

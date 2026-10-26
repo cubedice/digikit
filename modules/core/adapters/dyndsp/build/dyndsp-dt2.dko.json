@@ -57,15 +57,22 @@
    "section": ".rodata",
    "symbol": "_loop_buffer_info",
    "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 196,
+   "section": ".rodata",
+   "symbol": "_pattern_position_info",
+   "type": "cf.32"
   }
  ],
  "sections": [
   {
    "align": 4,
-   "hex": "444453500000000100000001000000000008000000000000000000000000000800000000000000045f64765f657870320000000000000000000000000000000000000000000000005f64765f6672616d655f687700000000000000000000000000000000000000005f64765f6672616d655f737700000000000000000000000000000000000000005f6c6f6f705f6275666665725f696e666f000000000000000000000000000000",
+   "hex": "444453500000000100000001000000000008000000000000000000000000000800000000000000055f64765f657870320000000000000000000000000000000000000000000000005f64765f6672616d655f687700000000000000000000000000000000000000005f64765f6672616d655f737700000000000000000000000000000000000000005f6c6f6f705f6275666665725f696e666f0000000000000000000000000000005f7061747465726e5f706f736974696f6e5f696e666f00000000000000000000",
    "kind": "data",
    "name": ".rodata",
-   "size": 168
+   "size": 200
   }
  ],
  "source_sha256": "46516e750f79c79a861c6b3bfe069a7b4bc08153103b50a1b485135fa7a01566",
@@ -121,6 +128,12 @@
   },
   {
    "global": true,
+   "name": "_pattern_position_info",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "dyndsp_info",
    "section": ".rodata",
    "value": 0
@@ -131,7 +144,7 @@
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-linux-gnu-gcc-14 (Debian 14.2.0-19) 14.2.0",
   "instructions_redecoded": "0",
-  "isa_check": "14ee536c578c4bcaa82eee90ad0dc24426229e59d13a87e2b331d12cfa4c2169",
+  "isa_check": "5c316f7ae37cada6f13918c4b6a8b24a94bcd347de886af250d24c1f1d362926",
   "ld": "GNU ld (GNU Binutils for Debian) 2.44"
  }
 }

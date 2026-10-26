@@ -40,6 +40,7 @@ typedef unsigned char u8;
 #define DL_WINDOW 12u
 #define DL_STALL_FRAMES 900u /* 0.6 s without progress */
 #define DL_END_FRAMES 6u
+#define DL_POSITION_WORDS 16u /* optional DT2 per-frame sideband; never part of a code-channel chunk */
 
 #define DL_IDLE 0u
 #define DL_BUSY 1u
@@ -89,6 +90,9 @@ DlLink dl_link __attribute__((aligned(16)));
 extern char _dl_area[]; /* the DSP object's reserved area (a DSP address) */
 extern volatile u32 dl_tx_lit; /* the literal of the driver's `lea tx_queue,a0`: the queue's address */
 extern volatile u32 dl_rec_lit; /* the literal of the handler's first `pea`: the address of the reply record copy (dl_diag) */
+/* A direct optional patchkit symbol, zero without michael/pattern-position. Weak keeps the compiler's null check.
+ * The callback writes exactly DL_POSITION_WORDS at the supplied halfword entry; it cannot wait or allocate. */
+extern void pp_write_frame(u32 tx_queue, u32 suffix_entry) __attribute__((weak));
 
 static u32 word_at(const u8 *p)
 {
@@ -231,12 +235,25 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
     u32 st = l->state;
     u32 tx, e0, total, words;
     (void)src;
-    if (st != DL_START && st != DL_BUSY && !l->ending && !l->dirty)
+    if (!pp_write_frame && st != DL_START && st != DL_BUSY && !l->ending && !l->dirty)
         return;
     tx = dl_tx_lit;
     e0 = ((u32)len / 2u + 1u) & ~1u;
     total = (u32)reclen / 2u;
     words = (total > e0 + 2u && total < 0x600u) ? (total - e0) / 2u : 0u;
+    if (pp_write_frame) {
+        /* The provider is DT2 1.17 only. Reject another geometry before writing a single queue halfword. */
+        if (len != 0x802 || reclen != 0xabc || words != 174u || !tx || (tx & 3u)) {
+            if (st == DL_START || st == DL_BUSY)
+                finish(l, DL_ERROR, DL_E_GEOMETRY);
+            return;
+        }
+        words -= DL_POSITION_WORDS;
+        pp_write_frame(tx, total - 2u * DL_POSITION_WORDS);
+        /* Position snapshots are sent even while the acknowledged link is idle. */
+        if (st != DL_START && st != DL_BUSY && !l->ending && !l->dirty)
+            return;
+    }
     if (st == DL_START) {
         if (words < 4u) {
             l->cap = 0;

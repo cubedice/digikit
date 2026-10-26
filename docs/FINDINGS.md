@@ -1,4 +1,4 @@
-# Digitakt II / Digitone II — findings
+# Digitakt II / Digitone II â€” findings
 
 Current targets are **Digitakt II OS 1.16** and **Digitone II OS 1.11**. Older
 sections were written against DT2 1.15C and are kept for their history; where a
@@ -7,13 +7,13 @@ later section corrects one, it is marked **[C]**.
 This file is the entry point into the lab notes for the Digitakt II / Digitone
 II reverse-engineering work; the notes themselves live in `docs/findings/`,
 one file per topic, in the chronological order they were written (later
-sections often correct earlier ones — read a file top to bottom). Start with
+sections often correct earlier ones â€” read a file top to bottom). Start with
 the topic closest to what you're doing, or grep across all of them with
 `rg . docs/findings/`.
 
 Evidence classes used below:
-**[V]** verified by running it here · **[D]** documented by prior research, not
-re-checked · **[O]** open / nobody has established this · **[C]** corrects an
+**[V]** verified by running it here Â· **[D]** documented by prior research, not
+re-checked Â· **[O]** open / nobody has established this Â· **[C]** corrects an
 earlier claim.
 
 ## Contents
@@ -101,6 +101,7 @@ measured separately; no waits or test isolation were changed.
 | [`73-dnfw-coexistence.md`](findings/73-dnfw-coexistence.md) | One image with dnfw's mods and digikit's runtime (DN2 1.11): `dnfw mods overlap` against a patchkit plan. 380 collisions for one mod set; 361 are the same bytes, because dnfw's hook bus and `core/params` / `core/machines` raise the same bounds and hook the same machine sites, so one framework must own them (decided: `core/machines` and `core/params`, dnfw's machines port as modules, raw where they bypass the SDK); 10 are dnfw RAM in `cf.expansion` (fixable with `excludes`); Waverider's rebuilt DSP stream meets patchkit's 8 DSP writes. |
 | [`74-gcc-wasm-spike.md`](findings/74-gcc-wasm-spike.md) | gcc 16.2 `cc1` and binutils `as` for the ColdFire target built as wasm32-wasi: byte-identical objects on 32 module sources, sizes (cc1 4.8 MB brotli), times 2.5 to 4x native, the build recipe and its pitfalls (assembler probe), and the recommendation to ship gcc in wasm (**[D] [O]**; `ld`, browser run and Rust modules open). |
 | [`75-os-upgrade-receive.md`](findings/75-os-upgrade-receive.md) | The MAIN OS upgrade receive path on DT2 1.17 and DN2 1.12: the menu route (gated raw `.syx` stream on DIN and USB) and the MidiRpc OsUpgrade route share one RAM staging; no reply per message on the menu route; the validator (checksum, build floor `0060` on DT2 only, HMAC), no YES on stock, flash only after the last message; a cut stream leaves flash untouched; emulator run of both devices with `tools/emulator/os_upgrade_rig.py`; the emulated flash writes and the full `patchkit flash` run into the emulator (flash equals the image, the patched runtime boots, INFO reports the image id), with timings (**[D] [O]**). |
+| [`68-pattern-position.md`](findings/68-pattern-position.md) | DT2 1.17 sequencer-position bridge: current versus scheduled master step, hash-resolved CF hooks, per-audio-frame transport, early DSP receiver, optional SDK import and the limits of step-alignment evidence |
 | [`functions/README.md`](findings/functions/README.md) | Per-function SHARC notes, including Phase B wrapper and conditional-resampling-path entries |
 
 ## Other documents that hold results
