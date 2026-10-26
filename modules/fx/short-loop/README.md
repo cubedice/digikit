@@ -80,8 +80,8 @@ Float32 stereo at 48 kHz needs 384,000 bytes per second:
 | 2 seconds | 768,000 bytes | One bar of 4/4 at 120 BPM |
 | 8 seconds | 3,072,000 bytes | Four bars of 4/4 at 120 BPM |
 
-The shared DSP module region is 524,288 bytes, including every loaded module's code and state. Multi-bar recording therefore needs a separately reserved audio buffer. DigiKit does not currently expose that reservation; its `Api.alloc` allocates ColdFire memory, not DSP sample memory.
+The shared DSP module region is 524,288 bytes, including every loaded module's code and state. Multi-bar recording therefore needs a separately reserved audio buffer. The general `Api.alloc` still allocates ColdFire memory, not DSP sample memory.
 
-The next storage proof should introduce bounded metadata initialization, then validate a longer capture within the existing region. Audio must remain unreadable until capture has overwritten the entire buffer, including after a fault or re-enable. An owned external buffer comes after that, with explicit allocation failure, reset, sample-loading and release tests. See `tests/patchkit/test_short_loop_storage_budget.py` and `docs/findings/54-module-cookbook.md` for evidence and open questions.
+The follow-up [one-second proof](../long-loop/README.md) uses module-owned BSS and clears only 64 bytes of metadata, retaining the existing FX contract. The [eight-second proof](../bar-loop/README.md) consumes an explicit 8 MiB reservation supplied by `michael/loop-storage`, reducing the stock sample pool to 392 MiB. Both keep audio unreadable until capture has overwritten the entire buffer, including after a fault or re-enable. These are experimental storage proofs; full sample-loading lifecycle and hardware tests remain open. See `tests/patchkit/test_short_loop_storage_budget.py` and `docs/findings/54-module-cookbook.md` for evidence.
 
 Built with **digikit by Em D — https://github.com/ElekLabs/digikit**. Distributed under the repository's AGPL-3.0-or-later license and NOTICE terms. This module is unofficial and is not endorsed by Elektron.

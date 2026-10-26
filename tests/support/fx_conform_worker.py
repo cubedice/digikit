@@ -67,14 +67,24 @@ def describe(sp, case, k: int, words) -> str:
     return f"case {case.group}/{case.name} block {k}: signal {case.signal} words [{ws}]"
 
 
-def run_case(sp, case, bud: int, desc: tuple[int, ...], seed: int) -> dict:
-    t0 = time.time()
-    rig = FxRig(
+def make_rig(sp, *, seed: int = 0xD1617, record_stores: bool = False) -> FxRig:
+    """Supply only the explicitly registered provider; unknown imports still fail."""
+    rig_type = FxRig
+    if sp.module == "michael/bar-loop":
+        from support.bar_loop_provider import BarLoopRig
+
+        rig_type = BarLoopRig
+    return rig_type(
         [Row(sp.process, sp.state, desc=sp.desc)],
         sources=sp.sources,
         seed=seed,
-        record_stores=True,
+        record_stores=record_stores,
     )
+
+
+def run_case(sp, case, bud: int, desc: tuple[int, ...], seed: int) -> dict:
+    t0 = time.time()
+    rig = make_rig(sp, seed=seed, record_stores=True)
     rng = random.Random(seed)
     stack = desc[6]
     worst = 0
@@ -156,7 +166,7 @@ def main() -> int:
         print(json.dumps({"error": f"{a.module} is no effect with a DSP object"}))
         return 2
     t0 = time.time()
-    probe = FxRig([Row(sp.process, sp.state, desc=sp.desc)], sources=sp.sources)
+    probe = make_rig(sp, seed=a.seed)
     built = time.time() - t0
     desc = probe.desc_words(sp.desc)
     problems = []

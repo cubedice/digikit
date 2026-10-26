@@ -1,0 +1,60 @@
+[module]
+id = "michael/long-loop"
+version = "0.1.0"
+name = "Long loop proof"
+category = "fx"
+type = "fx"
+author = "Michael"
+status = "experimental"
+summary = "Captures one second of stereo master audio in owned storage and crossfades with the live mix."
+dynamic = true
+ports = ["dt2-1.17"]
+requires = []
+conflicts = []
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/long-loop-dsp.dko.json"
+sources = ["src/dsp/long_loop.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+
+[[fx]]
+id = "loop"
+process = "_ll_process"
+desc = "_ll_desc"
+tab = "LLP"
+title = "Long loop proof"
+mix = 127
+route = "master"
+routes = ["master"]
+devices = ["dt2"]
+
+[[fx.knob]]
+name = "Capture once"
+short = "REC"
+min = 0.0
+max = 1.0
+default = 0.0
+display = "percent"
+position = 0
+
+[[fx.knob]]
+name = "Loop start"
+short = "START"
+min = 0.0
+max = 1.0
+default = 0.0
+display = "percent"
+position = 1
+
+[[fx.knob]]
+name = "Loop crossfade"
+short = "FADE"
+min = 0.0
+max = 1.0
+default = 0.0
+display = "percent"
+position = 2
