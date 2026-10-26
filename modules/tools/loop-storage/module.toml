@@ -1,0 +1,83 @@
+[module]
+id = "michael/loop-storage"
+version = "0.1.0"
+name = "Loop storage reservation"
+category = "tools"
+type = "framework"
+author = "Michael"
+status = "experimental"
+summary = "Reserves 8 MiB of DT2 1.17 DSP sample memory by reducing the stock sample allocator capacity to 392 MiB."
+requires = []
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/loop-storage-dsp.dko.json"
+sources = ["src/dsp/loop_storage.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+
+# cf.main is the resolver's built-in anchor for a pinned firmware. Its full
+# SHA-256 is checked before any write. DT2 1.17 MAIN:
+# a1e7b657b705eba1a19d81c33c1e11ba9c409816447ad74005d7bbf36da6d964
+# Offsets below are from MAIN's load address, 0x40000400.
+# These six operands are allocator capacity/end operands. The preview region
+# begins at CF sample offset 0x19000400 and is deliberately left where stock
+# puts it. See README.md and pk_loop_storage_proof.py for coordinate mapping.
+
+# Nonempty free-space getter: end of allocatable sample offsets.
+[[op]]
+op = "write"
+anchor = "cf.main"
+offset = 0x1536e2
+value = 0x18800400
+width = 4
+
+# Empty free-space getter.
+[[op]]
+op = "write"
+anchor = "cf.main"
+offset = 0x1536f2
+value = 0x18800000
+width = 4
+
+# Total-capacity getter.
+[[op]]
+op = "write"
+anchor = "cf.main"
+offset = 0x1536fc
+value = 0x18800000
+width = 4
+
+# Allocation at the end of a nonempty pool (also used by preflight).
+[[op]]
+op = "write"
+anchor = "cf.main"
+offset = 0x15430c
+value = 0x18800400
+width = 4
+
+# Preflight for the first allocation.
+[[op]]
+op = "write"
+anchor = "cf.main"
+offset = 0x154364
+value = 0x18800000
+width = 4
+
+# The loader's first allocation.
+[[op]]
+op = "write"
+anchor = "cf.main"
+offset = 0x1546ec
+value = 0x18800000
+width = 4
+
+[[claim]]
+resource = "dt2.sample-pool.capacity"
+
+[[claim]]
+resource = "dt2.sample-pool.loop-buffer"

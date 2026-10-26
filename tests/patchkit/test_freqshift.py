@@ -15,12 +15,12 @@ import tomllib
 import numpy as np
 import pytest
 from support.freqshift_tone import FS, amplitude, sine_blocks
-from support.fx_rig import NFAULT, ONE, P0, FxRig, Row, f2w
+from support.fx_rig import DATA_END, NFAULT, ONE, P0, FxRig, Row, f2w, nw
 from support.paths import REPO_ROOT
 
 from tools import python_env
 from tools.patchkit import freqshift_ref as R
-from tools.patchkit import pk_conform, pk_toolchains
+from tools.patchkit import pk_conform, pk_sharc, pk_toolchains
 
 pytestmark = pytest.mark.skipif(
     pk_toolchains.selache_dir() is None,
@@ -164,13 +164,33 @@ def test_writes_stay_in_the_output_block_and_the_state_and_the_cost_matches_the_
 
 
 def test_the_state_is_the_description_state_and_nothing_else():
-    """Every word of the state that the routine writes lies in the first state_bytes (the rig reserves a poisoned 4 KiB; the adapter zeroes the declared size only)."""
+    """An explicit end guard and observed stores enforce the declared state size."""
     rig = rig_for(25.0)
+    state = rig.built.data[rig.state_symbol(0)]
+    state_end = state + rig.desc_words("_fs_desc")[3]
+    guards = tuple(0x7FC00001 + k for k in range(8))
+    assert state_end + 4 * len(guards) <= DATA_END
+    for k, word in enumerate(guards):
+        rig.sess.poke(nw(state_end) + k, word)
+
     rig.block([0.1] * 64, ctx="friendly")
-    nwords = rig.desc_words("_fs_desc")[3] // 4
-    poison = 0x7FC00001
-    beyond = [rig.state_word(0, k) for k in range(nwords, 1024)]
-    assert all(w == poison for w in beyond)
+    assert tuple(rig.sess.peek(nw(state_end) + k) for k in range(len(guards))) == guards
+
+    output = rig.built.data["_fx_scratch"]
+    stores = [
+        event
+        for event in rig.sess.stores
+        if event.access == "write"
+        and any(lo <= event.pc_sw < hi for lo, hi in rig.built.module_code)
+    ]
+    assert stores
+    for event in stores:
+        address = event.address
+        if address >= pk_sharc.SW_ALIAS_BASE:
+            address -= pk_sharc.SW_ALIAS_BASE
+        assert (state <= address and address + event.width <= state_end) or (
+            output <= address and address + event.width <= output + 64 * 4
+        ), event
 
 
 def _python() -> list[str]:

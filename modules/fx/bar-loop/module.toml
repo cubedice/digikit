@@ -1,0 +1,60 @@
+[module]
+id = "michael/bar-loop"
+version = "0.1.0"
+name = "Bar loop proof"
+category = "fx"
+type = "fx"
+author = "Michael"
+status = "experimental"
+summary = "Captures eight seconds of stereo master audio in explicitly reserved external storage."
+dynamic = true
+ports = ["dt2-1.17"]
+requires = []
+conflicts = []
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/bar-loop-dsp.dko.json"
+sources = ["src/dsp/bar_loop.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+
+[[fx]]
+id = "loop"
+process = "_bl_process"
+desc = "_bl_desc"
+tab = "BLP"
+title = "Bar loop proof"
+mix = 127
+route = "master"
+routes = ["master"]
+devices = ["dt2"]
+
+[[fx.knob]]
+name = "Capture once"
+short = "REC"
+min = 0.0
+max = 1.0
+default = 0.0
+display = "percent"
+position = 0
+
+[[fx.knob]]
+name = "Loop start"
+short = "START"
+min = 0.0
+max = 1.0
+default = 0.0
+display = "percent"
+position = 1
+
+[[fx.knob]]
+name = "Loop crossfade"
+short = "FADE"
+min = 0.0
+max = 1.0
+default = 0.0
+display = "percent"
+position = 2

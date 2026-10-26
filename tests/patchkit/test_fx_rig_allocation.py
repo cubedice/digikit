@@ -94,7 +94,7 @@ class FxRigAllocationTests(unittest.TestCase):
         self.assertEqual(other.row_word(1, rig.STATE) - other.row_word(0, rig.STATE), 4)
         self.assertIsNot(first.sess, again.sess)
 
-    def test_named_and_free_rows_keep_the_legacy_fallback(self):
+    def test_named_and_free_rows_keep_fallback_but_absent_rows_reserve_nothing(self):
         fx = rig.FxRig(
             [
                 rig.Row("", "", desc="unused_missing_descriptor"),
@@ -105,10 +105,20 @@ class FxRigAllocationTests(unittest.TestCase):
         addresses = [fx.built.data[f"_fx_auto_state{i}"] for i in range(4)]
         self.assertEqual(
             [b - a for a, b in zip(addresses, addresses[1:], strict=False)],
-            [rig.AUTO_STATE_BYTES] * 3,
+            [rig.AUTO_STATE_BYTES, rig.AUTO_STATE_BYTES, 0],
         )
         self.assertEqual(fx.row_word(1, rig.STATE), fx.built.data["_named_state"])
-        self.assertIs(fx.built, rig.build((SOURCE,)))
+        self.assertIs(fx.built, rig.build((SOURCE,), auto_descs=(None, None)))
+
+    def test_large_owned_bss_fits_without_allocating_absent_rows(self):
+        self.obj = object_with_states(64)
+        self.obj.data["audio"] = (bytes(384000), 4, True)
+        fx = self.make("_large_desc")
+        state = fx.row_word(0, rig.STATE)
+        self.assertLessEqual(state + 64, rig.DATA_END)
+        self.assertIn((state, 64), fx.built.module_data)
+        for index in range(1, 4):
+            self.assertEqual(fx.built.data[f"_fx_auto_state{index}"], state + 64)
 
     def test_invalid_or_unavailable_descriptor_fails_before_linking(self):
         for size in (3, 0xFFFFFFFF, rig.DATA_END - rig.DATA_BASE + 4):

@@ -1,0 +1,36 @@
+{
+ "arch": "sharc",
+ "format": 1,
+ "relocs": [],
+ "sections": [
+  {
+   "align": 8,
+   "hex": "0100",
+   "kind": "text",
+   "name": "seg_pmco",
+   "size": 2
+  },
+  {
+   "align": 8,
+   "hex": "4655424c01000000c8b9a29c00008000",
+   "kind": "data",
+   "name": "seg_dmda",
+   "size": 16
+  }
+ ],
+ "source_sha256": "c65cf4bd3cca7d535a718e0057e703fd1937b8a5eae0c6cc14c191f76c466923",
+ "symbols": [
+  {
+   "global": true,
+   "name": "_loop_buffer_info",
+   "section": "seg_dmda",
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "instructions_redecoded": "1",
+  "selache_rev": "2b26d3b75c53063575bc5c820fa0d38879335187",
+  "selas_sha256": "f9f226dcee05d2e4336bce6b0ee3db01f89347ab68af925189cb630fc22e843d",
+  "seldump_sha256": "4543a9e57530ba37e9424dadce3805dc7dfff6741e47f801b02b54b2868da969"
+ }
+}

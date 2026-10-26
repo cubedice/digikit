@@ -703,6 +703,43 @@ def test_module_leaf_selects_the_tests_that_name_it() -> None:
     assert verify.steps_for(["modules/core/runtime/README.md"]) == ()
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        '"michael/bar-loop"',
+        'ROOT / "michael" / "bar-loop"',
+        'Path("michael", "bar-loop")',
+        '"modules/fx/bar-loop/src/dsp/bar_loop.s"',
+        'ROOT / "modules" / "fx" / "bar-loop" / "src"',
+        'Path("modules", "fx", "bar-loop", "src")',
+    ],
+)
+def test_module_refs_accept_custom_authors_and_nested_paths(text: str) -> None:
+    assert verify_route.refs(text) == {"michael/bar-loop"}
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '"routingunknown/bar-loop"',
+        'ROOT / "routingunknown" / "bar-loop"',
+        'Path("routingunknown", "bar-loop")',
+        '"michael/unknown-routing-module"',
+        '"other-michael/bar-loop"',
+        '"michael/bar-loop_suffix"',
+    ],
+)
+def test_module_refs_still_ignore_unregistered_ids(text: str) -> None:
+    assert verify_route.refs(text) == set()
+
+
+@pytest.mark.parametrize("module", ["michael/long-loop", "michael/bar-loop"])
+def test_custom_author_module_selects_shared_proof_tests(module: str) -> None:
+    assert "tests/patchkit/test_short_loop_proof.py" in selected(
+        f"{mpath(module)}/module.toml"
+    )
+
+
 def test_module_scenario_modules_select_their_scenarios() -> None:
     got = selected("modules/machines/pluck/module.toml")
     for name in (

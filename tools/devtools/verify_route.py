@@ -91,11 +91,15 @@ ALL_SUITES = ("tests/patchkit", "tests/digikit")
 CONFORMANCE = "tests/modules/test_machine_conformance.py"
 CONFORMANCE_WRAPPERS = frozenset({"core/dsp-voice"})
 FX_CONFORMANCE = "tests/modules/test_fx_conformance.py"
-# a path built from parts: ROOT / "modules" / "machines" / "pluck"
+# Accept arbitrary authors/categories, then filter against manifests in refs().
+# Lookahead keeps overlapping pairs in paths such as modules/fx/master-gain or
+# ROOT / "modules" / "fx" / "master-gain".
 SPLIT_ID_RE = re.compile(
-    r"""["'](core|digikit|fx|machines|test)["']\s*[/,]\s*["']([a-z0-9][a-z0-9-]*)["']"""
+    r"""(?=["']([a-z0-9][a-z0-9-]*)["']\s*[/,]\s*["']([a-z0-9][a-z0-9-]*)["'])"""
 )
-ID_RE = re.compile(r"\b(?:core|digikit|fx|machines|test)/[a-z0-9][a-z0-9-]*")
+ID_RE = re.compile(
+    r"(?<![a-z0-9_-])(?=([a-z0-9][a-z0-9-]*/[a-z0-9][a-z0-9-]*)(?![a-z0-9_-]))"
+)
 
 
 @dataclass(frozen=True)

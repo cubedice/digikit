@@ -25,7 +25,7 @@ dyndsp_info:
     .long   _dd_vfirst
     .long   DYN_TYPES
     .long   _dd_vcount
-    .long   3
+    .long   4
     .asciz  "_dv_exp2"
     .space  28 - 9
     .long   _dv_exp2
@@ -35,3 +35,8 @@ dyndsp_info:
     .asciz  "_dv_frame_sw"
     .space  28 - 13
     .long   _dv_frame_sw
+    | Optional experimental storage provider. A missing provider resolves to 0:
+    | dsp_symbol then refuses an importing module with E_DSP_IMPORT.
+    .asciz  "_loop_buffer_info"
+    .space  28 - 18
+    .long   _loop_buffer_info

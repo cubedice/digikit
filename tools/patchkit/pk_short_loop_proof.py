@@ -1,4 +1,4 @@
-"""Bounded, one-boot DT2 1.17 firmware proof of michael/short-loop.
+"""Bounded, one-boot DT2 1.17 firmware proof of the master-loop modules.
 
 Run in the Linux emulator environment, with prepared tools and ready inputs::
 
@@ -15,6 +15,9 @@ the disposable card on a sparse-capable scratch filesystem.
 The actual firmware receives encoder events and PTN/TRIG presses. Test/sine is
 auditioned on A01; A02 is deliberately silent. Transport stays stopped: this
 proves a real pattern/kit replacement, not sequencer-boundary synchronization.
+Use ``--module michael/long-loop`` for one second of module-owned L2 audio or
+``--module michael/bar-loop --timeout 1800`` for eight seconds in the explicit
+sample-pool reservation. Longer captures retrigger the sine through the UI.
 No state, parameter, or kit memory is poked. No save, restart, or hardware access
 is performed. The JSON distinguishes immutable capture storage from metadata
 that must advance, and records the unprepared-kit FADE reset before testing the
@@ -55,10 +58,134 @@ SINE = "test/sine"
 CORE = "core/runtime,core/dynreg,core/dyndsp,core/dynfx,core/fxpages"
 RAW_MAX = 0x7F00
 ONE = 0x3F800000
+PROVIDER = "michael/loop-storage"
+PROVIDER_RECORD = (0x4C425546, 1, 0x9CA2B9C8, 0x00800000)
+CANARY_WORD = 0x5A17B00F
+DYNAMIC_AREA_BYTES = 524288  # DT2 devices/digitakt-ii.toml dsp_area_bytes
+
+
+@dataclass(frozen=True)
+class LoopSpec:
+    module: str
+    frames: int
+    state_bytes: int
+    separate_audio: bool = False
+    provider: bool = False
+
+    @property
+    def tag(self) -> str:
+        return self.module.rsplit("/", 1)[1]
+
+    @property
+    def duration_ms(self) -> int:
+        return (self.frames * 1000 + 47999) // 48000
+
+    @property
+    def core(self) -> str:
+        return CORE + ("," + PROVIDER if self.provider else "")
+
+
+SPECS = {
+    MODULE: LoopSpec(MODULE, FRAMES, STATE_BYTES),
+    "michael/long-loop": LoopSpec("michael/long-loop", 48000, 64, True),
+    "michael/bar-loop": LoopSpec("michael/bar-loop", 384000, 64, True, True),
+}
 
 
 class ProofFailure(RuntimeError):
     """A failed prerequisite or measured invariant, retained in the report."""
+
+
+def initial_metadata_ok(spec: LoopSpec, metadata: tuple[int, ...]) -> bool:
+    """Bar-loop initializes its tail canary; the remaining state starts clear."""
+    tail = (1, *([0] * 6)) if spec.provider else (0,) * 7
+    return (
+        len(metadata) == META_WORDS
+        and metadata[:7] == (0,) * 7
+        and metadata[9:] == tail
+    )
+
+
+def byte_range(address: int, length: int) -> tuple[int, int]:
+    """Validate a nonempty, word-aligned, nonwrapping DSP byte range."""
+    if (
+        type(address) is not int
+        or type(length) is not int
+        or address <= 0
+        or address % 4
+        or length <= 0
+        or length % 4
+        or address >= 1 << 32
+        or length > (1 << 32) - address
+    ):
+        raise ProofFailure("invalid DSP byte address or buffer length")
+    return address, address + length
+
+
+def module_bounds(
+    area: int, records: list[dict[str, Any]], module: str
+) -> tuple[int, int]:
+    """Use the runtime's allocation record, never an assumed spare L2 region."""
+    area_start, area_end = byte_range(area, DYNAMIC_AREA_BYTES)
+    if area_start < 0x20000000 or area_end > 0x20100000:
+        raise ProofFailure("dynamic DSP area is outside DT2 L2")
+    matches = [record for record in records if record.get("name") == module]
+    if len(matches) != 1:
+        raise ProofFailure("runtime must report exactly one selected loop module")
+    offset, length = matches[0].get("dsp_off"), matches[0].get("dsp_len")
+    if type(offset) is not int or offset < 0 or offset % 4:
+        raise ProofFailure("runtime module has an invalid DSP offset")
+    bounds = byte_range(area + offset, length)
+    if bounds[0] < area_start or bounds[1] > area_end:
+        raise ProofFailure("runtime module allocation exceeds the dynamic DSP area")
+    return bounds
+
+
+def audio_layout(
+    spec: LoopSpec,
+    state: int,
+    metadata: tuple[int, ...],
+    owned: tuple[int, int] | None = None,
+    provider: tuple[int, ...] | None = None,
+) -> tuple[int, tuple[tuple[int, int], ...]]:
+    """Resolve the actual buffer and guards, checking ownership before peeking."""
+    state_range = byte_range(state, spec.state_bytes)
+    if len(metadata) != META_WORDS:
+        raise ProofFailure("loop metadata has the wrong length")
+    if not spec.separate_audio:
+        audio = state + META_WORDS * 4
+        if byte_range(audio, spec.frames * 8)[1] != state_range[1]:
+            raise ProofFailure("inline loop audio does not match descriptor state")
+        return audio, ()
+    audio, frames = metadata[7:9]
+    if frames != spec.frames:
+        raise ProofFailure("loop metadata reports an unexpected frame count")
+    start, end = byte_range(audio, frames * 8)
+    if start < state_range[1] and state_range[0] < end:
+        raise ProofFailure("separate loop audio overlaps its metadata state")
+    if spec.provider:
+        if provider != PROVIDER_RECORD:
+            raise ProofFailure(
+                "storage provider record does not match DT2 1.17 reservation"
+            )
+        owned = byte_range(provider[2], provider[3])
+        if audio != provider[2]:
+            raise ProofFailure(
+                "bar-loop pointer differs from the storage provider base"
+            )
+    if owned is None or not (owned[0] <= start < end <= owned[1]):
+        raise ProofFailure("loop audio is outside its owned allocation")
+    if not spec.provider and not (
+        owned[0] <= state_range[0] < state_range[1] <= owned[1]
+    ):
+        raise ProofFailure("loop metadata is outside its module allocation")
+    guards = []
+    if spec.provider:
+        if start - 32 >= owned[0]:
+            guards.append((start - 32, 32))
+        if end + 32 <= owned[1]:
+            guards.append((end, 32))
+    return audio, tuple(guards)
 
 
 def sha256(data: bytes) -> str:
@@ -122,13 +249,15 @@ def pcm_payload(wav: bytes) -> bytes:
     return payload
 
 
-def pcm_count_ok(samples: int, milliseconds: int) -> bool:
+def pcm_count_ok(samples: int, milliseconds: int, minimum_frames: int = 0) -> bool:
     """Allow frame-boundary/timing slack, but reject empty or shortened captures."""
     expected = milliseconds * 96  # 48 stereo frames per millisecond
     return (
         milliseconds > 0
         and samples > 0
         and samples % 2 == 0
+        and minimum_frames >= 0
+        and samples >= minimum_frames * 2
         and expected * 9 // 10 <= samples <= expected * 11 // 10
     )
 
@@ -214,9 +343,14 @@ class Snapshot:
     left_sha256: str
     right_sha256: str
     metadata_sha256: str
+    audio_address: int = 0
+    frames: int = FRAMES
+    guards: tuple[tuple[int, str], ...] = ()
 
 
-def continuity(before: Snapshot, after: Snapshot) -> dict[str, bool]:
+def continuity(
+    before: Snapshot, after: Snapshot, frames: int = FRAMES
+) -> dict[str, bool]:
     """Storage stays fixed; phase advances by exactly one block per FX call.
 
     START, pending START, gain, and REC are deliberately not called immutable:
@@ -234,10 +368,13 @@ def continuity(before: Snapshot, after: Snapshot) -> dict[str, bool]:
         "left_unchanged": before.left_sha256 == after.left_sha256,
         "right_unchanged": before.right_sha256 == after.right_sha256,
         "still_frozen": before.metadata[0] == after.metadata[0] == FROZEN,
-        "capture_length_unchanged": before.metadata[1] == after.metadata[1] == FRAMES,
+        "capture_length_unchanged": before.metadata[1] == after.metadata[1] == frames
+        and before.frames == after.frames == frames,
+        "audio_address_unchanged": before.audio_address == after.audio_address,
+        "guards_unchanged": before.guards == after.guards,
         "reserved_unchanged": before.metadata[7:] == after.metadata[7:],
         "phase_continues": delta > 0
-        and after.metadata[2] == (before.metadata[2] + delta * BLOCK) % FRAMES,
+        and after.metadata[2] == (before.metadata[2] + delta * BLOCK) % frames,
         "enabled_without_fault": after.row[3] == 1
         and after.row[14] == 0
         and after.row[17] == 0,
@@ -276,18 +413,19 @@ def prepare(args: argparse.Namespace) -> tuple[Any, Any, Path]:
                 if not path.is_file():
                     raise ProofFailure(f"prepared binary is missing: {path}")
 
+    spec = SPECS[getattr(args, "module", MODULE)]
     env = B.Env("dt2-1.17", args.work, PreparedTools())
-    image = env.build_image(CORE, "short-loop")
+    image = env.build_image(spec.core, spec.tag)
     env.pack(SINE, "sine.dkm")
-    env.pack(MODULE, "short-loop.dkm")
-    selection = ["modules/sine.dkm", "modules/short-loop.dkm"]
+    env.pack(spec.module, f"{spec.tag}.dkm")
+    selection = ["modules/sine.dkm", f"modules/{spec.tag}.dkm"]
     if args.card_directory is None:
         card = env.card(selection, tag="proof")
     else:
         # The card has a large logical address space but little written data.
         # WSL-mounted NTFS may allocate its holes; Linux scratch avoids that.
         args.card_directory.mkdir(parents=True, exist_ok=True)
-        card = args.card_directory / f"short-loop-{uuid.uuid4().hex}.img"
+        card = args.card_directory / f"{spec.tag}-{uuid.uuid4().hex}.img"
         B.build_card(env.tools, env.folder, card, env.stock, env.device)
         record = B.make_record(selection)
         B.write_record_sectors(card, record, record, env.device)
@@ -299,10 +437,14 @@ class Proof:
         from tools.patchkit.pk_digikit_fxpage import Kit, Shots, profile
 
         self.rig, self.work, self.report = rig, work, report
+        self.spec = SPECS[report.get("module", MODULE)]
         self.cfg = profile("dt2")
         self.kit = Kit(rig, self.cfg)
-        self.shots = Shots(work, "short-loop")
+        self.shots = Shots(work, self.spec.tag)
         self.snapshots: dict[str, Snapshot] = {}
+        self.owned: tuple[int, int] | None = None
+        self.provider_address: int | None = None
+        self.initial_guards: tuple[tuple[int, str], ...] = ()
 
     def check(self, name: str, ok: bool, detail: Any = None) -> None:
         self.report["checks"].append({"name": name, "ok": bool(ok), "detail": detail})
@@ -331,6 +473,73 @@ class Proof:
         return struct.unpack(
             f"<{META_WORDS}I", self.dsp_bytes(self.row()[2], META_WORDS * 4)
         )
+
+    def storage_layout(
+        self, state: int, metadata: tuple[int, ...]
+    ) -> tuple[int, tuple[tuple[int, int], ...]]:
+        provider = (
+            struct.unpack("<4I", self.dsp_bytes(self.provider_address, 16))
+            if self.provider_address is not None
+            else None
+        )
+        return audio_layout(self.spec, state, metadata, self.owned, provider)
+
+    def guard_hashes(
+        self, guards: tuple[tuple[int, int], ...]
+    ) -> tuple[tuple[int, str], ...]:
+        hashes = []
+        for address, size in guards:
+            data = self.dsp_bytes(address, size)
+            if self.spec.provider and (
+                size != 32 or data != struct.pack("<8I", *([CANARY_WORD] * 8))
+            ):
+                raise ProofFailure(
+                    "bar-loop tail does not contain the initialized canary"
+                )
+            hashes.append((address, sha256(data)))
+        return tuple(hashes)
+
+    def initialize_storage(self) -> None:
+        """Read ownership and initial metadata before triggering any capture."""
+        from tools.patchkit import pk_digikit_debug as D
+        from tools.patchkit import pk_dkrt_machine as M
+
+        if not self.spec.separate_audio:
+            return
+        # Query the uploader before the DSP snapshot: its protocol can advance
+        # firmware frames. Subsequent layout checks use the recorded allocation.
+        records = D.uploader(self.rig).modules()["modules"]
+        area = M.sym(self.rig.plan, "core/dsp-link", "_dl_area")
+        self.owned = module_bounds(area, records, self.spec.module)
+        if self.spec.provider:
+            self.provider_address = M.sym(self.rig.plan, PROVIDER, "_loop_buffer_info")
+        row = self.row()
+        metadata = self.metadata()
+        state_start, state_end = byte_range(row[2], self.spec.state_bytes)
+        self.check(
+            "loop metadata belongs to the loaded module",
+            self.owned[0] <= state_start < state_end <= self.owned[1],
+            {"state": [state_start, state_end], "module": self.owned},
+        )
+        audio, guards = self.storage_layout(row[2], metadata)
+        self.check(
+            "separate buffer metadata initializes before capture",
+            initial_metadata_ok(self.spec, metadata)
+            and row[3] == 1
+            and row[14] == row[17] == 0,
+            list(metadata),
+        )
+        self.report["storage"] = {
+            "module_allocation": list(self.owned),
+            "provider_address": self.provider_address,
+            "provider_record": list(PROVIDER_RECORD) if self.spec.provider else None,
+            "audio_address": audio,
+            "audio_bytes": self.spec.frames * 8,
+            "guard_ranges": guards,
+            "guard_method": "read-only hashes; runner never initializes guard memory",
+        }
+        self.initial_guards = self.guard_hashes(guards)
+        self.report["storage"]["initial_guard_hashes"] = self.initial_guards
 
     def sound_address(self) -> int:
         # DT2 kit layout: docs/findings/02-machines-and-parameters.md,
@@ -366,21 +575,37 @@ class Proof:
         from tools.patchkit import pk_dkrt_machine as M
 
         row = self.row()
-        data = self.dsp_bytes(row[2], STATE_BYTES)
+        data = self.dsp_bytes(row[2], self.spec.state_bytes)
         metadata = data[: META_WORDS * 4]
-        left = data[META_WORDS * 4 : META_WORDS * 4 + FRAMES * 4]
-        right = data[META_WORDS * 4 + FRAMES * 4 :]
+        words = struct.unpack(f"<{META_WORDS}I", metadata)
+        audio_address, guards = self.storage_layout(row[2], words)
+        audio = (
+            self.dsp_bytes(audio_address, self.spec.frames * 8)
+            if self.spec.separate_audio
+            else data[META_WORDS * 4 :]
+        )
+        left, right = audio[: self.spec.frames * 4], audio[self.spec.frames * 4 :]
+        guard_hashes = self.guard_hashes(guards)
+        if self.spec.provider:
+            self.check(
+                f"{name}: unused reservation guard remains unchanged",
+                bool(guard_hashes) and guard_hashes == self.initial_guards,
+                guard_hashes,
+            )
         counter = M.sym(self.rig.plan, "core/fx", "_fx_blk")
         snap = Snapshot(
             row[2],
             row[0],
             row[1],
             struct.unpack("<I", self.dsp_bytes(counter, 4))[0],
-            struct.unpack(f"<{META_WORDS}I", metadata),
+            words,
             row,
             sha256(left),
             sha256(right),
             sha256(metadata),
+            audio_address,
+            self.spec.frames,
+            guard_hashes,
         )
         self.snapshots[name] = snap
         self.report["snapshots"][name] = {
@@ -389,10 +614,22 @@ class Proof:
             "right": sample_stats(right),
             "controls": self.controls(),
         }
+        if name == "captured" and self.spec.separate_audio:
+            # An audible first second alone cannot substantiate an eight-second
+            # recording. Retain per-second evidence that UI retriggering worked.
+            self.report["snapshots"][name]["capture_windows"] = {
+                channel: [
+                    sample_stats(samples[offset : offset + 48000 * 4])
+                    for offset in range(0, len(samples), 48000 * 4)
+                ]
+                for channel, samples in (("left", left), ("right", right))
+            }
         return snap
 
     def continued(self, first: str, last: str) -> None:
-        result = continuity(self.snapshots[first], self.snapshots[last])
+        result = continuity(
+            self.snapshots[first], self.snapshots[last], self.spec.frames
+        )
         self.check(
             f"capture and phase survive {first} -> {last}", all(result.values()), result
         )
@@ -449,36 +686,91 @@ class Proof:
 
     def pcm(self, name: str, milliseconds: int = 500) -> dict[str, Any]:
         path = self.work / f"{name}.wav"
+        # A complete measured period is required for the longer variants.
+        # Capture a little extra for period scheduling, then compare exactly
+        # one loop so START rotation cannot change the RMS comparison window.
+        minimum_frames = self.spec.frames if self.spec.separate_audio else 0
+        capture_ms = (
+            max(milliseconds, self.spec.duration_ms) + 50
+            if self.spec.separate_audio
+            else milliseconds
+        )
         self.rig.emu.call("pcm.tap", action="capture", path=str(path))
         try:
-            self.rig.s.run_ms(milliseconds)
+            self.rig.s.run_ms(capture_ms)
         finally:
             self.rig.emu.call("pcm.tap", action="capture_stop")
-        result = sample_stats(pcm_payload(path.read_bytes()))
-        self.report["pcm"][name] = {"file": path.name, **result}
+        payload = pcm_payload(path.read_bytes())
+        recorded_samples = len(payload) // 4
+        evidence = {
+            "file": path.name,
+            "requested_ms": capture_ms,
+            "minimum_frames": minimum_frames,
+            "recorded_frames": recorded_samples // 2,
+            "recorded_sha256": sha256(payload),
+        }
+        self.report["pcm"][name] = evidence
         self.check(
             f"{name}: PCM capture has a complete plausible duration",
-            pcm_count_ok(result["samples"], milliseconds),
-            {"samples": result["samples"], "requested_ms": milliseconds},
+            pcm_count_ok(recorded_samples, capture_ms, minimum_frames),
+            dict(evidence),
+        )
+        analyzed = payload[: minimum_frames * 8] if minimum_frames else payload
+        result = sample_stats(analyzed)
+        evidence.update(
+            {
+                "analysis_window": "first complete loop"
+                if minimum_frames
+                else "entire capture",
+                "analysis_frames": len(analyzed) // 8,
+                **result,
+            }
         )
         return result
 
+    def capture(self) -> None:
+        from tools.patchkit.pk_harness import button
+
+        # Preserve the original short proof's input sequence. For longer loops,
+        # audition a fresh two-second sine note about once a second through the
+        # real TRIG input; no voice or audio memory is modified by this runner.
+        self.rig.emu.button(button("TRIG 1"), True)
+        try:
+            self.rig.s.run_ms(100)
+            self.endpoint("ENC A", 0, True)
+            if not self.spec.separate_audio:
+                for _ in range(30):
+                    if self.metadata()[0] == FROZEN:
+                        break
+                    self.rig.s.run_ms(50)
+                return
+        finally:
+            self.rig.emu.button(button("TRIG 1"), False)
+        limit_ms = self.spec.duration_ms + 2000
+        for elapsed in range(0, limit_ms, 50):
+            if self.metadata()[0] == FROZEN:
+                return
+            if elapsed % 1000 == 0:
+                self.rig.s.run_ms(20)
+                self.tap("TRIG 1", 0)
+            self.rig.s.run_ms(50)
+        raise ProofFailure(f"capture did not freeze within {limit_ms} ms plus UI slack")
+
     def run(self) -> None:
         from tools.patchkit.pk_digikit_fxpage import bits, knob_float
-        from tools.patchkit.pk_harness import button
 
         boot = self.rig.boot_info()
         self.report["boot"] = boot
         self.check(
-            "sine and short-loop load without safe mode",
+            f"sine and {self.spec.tag} load without safe mode",
             boot["results"] == [0, 0] and boot["safe"] == 0,
             boot,
         )
         row = self.row()
         desc = struct.unpack("<7I", self.dsp_bytes(row[1], 28))
         self.check(
-            "loaded descriptor matches the 250 ms stereo proof",
-            desc[:4] == (0x444B4658, 1, 3, STATE_BYTES),
+            f"loaded descriptor matches the {self.spec.duration_ms} ms stereo proof",
+            desc[:4] == (0x444B4658, 1, 3, self.spec.state_bytes),
             list(desc),
         )
         self.tap("STOP", 300)
@@ -498,23 +790,12 @@ class Proof:
             self.controls()["raw"] == [0, 0, 0, RAW_MAX],
             self.controls(),
         )
-
-        # Trigger while the FX page is open; the note lasts two seconds. Even
-        # all bounded REC retries leave room for the 250 ms capture.
-        self.rig.emu.button(button("TRIG 1"), True)
-        try:
-            self.rig.s.run_ms(100)
-            self.endpoint("ENC A", 0, True)
-            for _ in range(30):
-                if self.metadata()[0] == FROZEN:
-                    break
-                self.rig.s.run_ms(50)
-        finally:
-            self.rig.emu.button(button("TRIG 1"), False)
+        self.initialize_storage()
+        self.capture()
         frozen = self.snapshot("captured")
         self.check(
-            "exactly 12000 stereo frames freeze",
-            frozen.metadata[:2] == (FROZEN, FRAMES),
+            f"exactly {self.spec.frames} stereo frames freeze",
+            frozen.metadata[:2] == (FROZEN, self.spec.frames),
             list(frozen.metadata),
         )
         for channel in ("left", "right"):
@@ -524,17 +805,30 @@ class Proof:
                 stat["finite"] and stat["peak"] > 0.001,
                 stat,
             )
+        if self.spec.separate_audio:
+            windows = self.report["snapshots"]["captured"]["capture_windows"]
+            self.check(
+                "every recorded second contains finite audible input on both channels",
+                all(
+                    window["finite"] and window["peak"] > 0.001
+                    for channel in windows.values()
+                    for window in channel
+                ),
+                windows,
+            )
 
         self.endpoint("ENC C", 2, True)
-        source = self.pcm("source-loop")
+        pcm_ms = max(500, self.spec.duration_ms)
+        settle_ms = max(300, self.spec.duration_ms + 50)
+        source = self.pcm("source-loop", pcm_ms)
         self.check(
             "FADE maximum produces audible loop PCM",
             source["finite"] and source["peak"] > 0.001,
             source,
         )
         raw_start = self.kit.set_raw("ENC B", 0, 1, 0x2000)
-        self.rig.s.run_ms(300)  # at least one full loop for the deferred latch
-        selected_start = start_frame(knob_float(0.0, 1.0, raw_start))
+        self.rig.s.run_ms(settle_ms)  # a full loop for the deferred START latch
+        selected_start = start_frame(knob_float(0.0, 1.0, raw_start), self.spec.frames)
         self.endpoint("ENC A", 0, False)
         self.shots.take(self.rig, "source-frozen")
         ready = self.snapshot("source-ready")
@@ -568,7 +862,7 @@ class Proof:
             {"source_type": sine_type, "target_type": self.track_machine()},
         )
         self.rig.s.run_ms(1200)
-        live = self.pcm("target-live")
+        live = self.pcm("target-live", pcm_ms)
         self.check(
             "target live output is quiet after the old note expires",
             live["finite"] and live["peak"] < source["peak"] * 0.01,
@@ -580,6 +874,8 @@ class Proof:
         self.page()
         target_start = self.kit.set_raw("ENC B", 0, 1, raw_start, tol=0)
         self.endpoint("ENC C", 2, True)
+        if self.spec.separate_audio:
+            self.rig.s.run_ms(settle_ms)
         self.snapshot("prepared-A02")
         self.continued("unprepared-A02", "prepared-A02")
         self.switch(1, "returned-A01")
@@ -600,7 +896,7 @@ class Proof:
             and final.row[13] == ONE,
             self.controls(),
         )
-        loop = self.pcm("target-loop")
+        loop = self.pcm("target-loop", pcm_ms)
         self.check(
             "frozen source remains audible over the silent target",
             loop["finite"]
@@ -610,7 +906,7 @@ class Proof:
         )
         self.page()
         self.endpoint("ENC C", 2, False)
-        faded = self.pcm("target-faded-live")
+        faded = self.pcm("target-faded-live", pcm_ms)
         self.check(
             "FADE encoder returns to the new live output",
             faded["finite"] and faded["peak"] < source["peak"] * 0.01,
@@ -619,7 +915,7 @@ class Proof:
         self.snapshot("finished")
         self.continued("captured", "finished")
         self.shots.take(self.rig, "target-live")
-        self.rig.s.health("short-loop proof complete")
+        self.rig.s.health(f"{self.spec.tag} proof complete")
         self.report["shots"] = self.shots.hashes
 
 
@@ -630,6 +926,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--plusdrive", type=Path, required=True)
     parser.add_argument("--cf-script", type=Path, required=True)
     parser.add_argument(
+        "--module",
+        choices=tuple(SPECS),
+        default=MODULE,
+        help="loop implementation to prove (default: michael/short-loop)",
+    )
+    parser.add_argument(
         "--card-directory",
         type=Path,
         help="optional sparse-capable scratch directory for the disposable card",
@@ -638,9 +940,10 @@ def main(argv: list[str] | None = None) -> int:
         "--timeout",
         type=int,
         default=900,
-        help="total wall-clock seconds, including fixture generation",
+        help="total wall-clock seconds, including fixture generation (use 1800 for bar-loop)",
     )
     args = parser.parse_args(argv)
+    spec = SPECS[args.module]
     args.work = args.work.resolve()
     if args.card_directory is not None:
         args.card_directory = args.card_directory.resolve()
@@ -650,10 +953,13 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--work must be under the ignored out/ directory")
     args.work.mkdir(parents=True, exist_ok=True)
     report: dict[str, Any] = {
-        "schema": 1,
+        "schema": 2,
         "status": "running",
         "image": "dt2-1.17",
-        "module": MODULE,
+        "module": spec.module,
+        "loop_frames": spec.frames,
+        "loop_ms": spec.duration_ms,
+        "state_bytes": spec.state_bytes,
         "execution": {
             name: os.environ.get(name)
             for name in (
@@ -677,14 +983,20 @@ def main(argv: list[str] | None = None) -> int:
             "not_proved": [
                 "running-sequencer timing",
                 "quantized capture",
-                "long-loop memory",
+                "sample loading, compaction, project reload, and runtime restart",
                 "global controls",
                 "transient-free cross-kit control delivery",
             ],
         },
     }
     started = time.monotonic()
-    run_tag = f"short-loop-{uuid.uuid4().hex}"
+    if not spec.separate_audio:
+        report["scope"]["not_proved"].append("long-loop memory")
+    if spec.provider:
+        report["scope"]["not_proved"].append(
+            "general protection from writes outside the stock allocator"
+        )
+    run_tag = f"{spec.tag}-{uuid.uuid4().hex}"
     report["run_tag"] = run_tag
     dsp_watch_path = args.work / f"{run_tag}.dspwatch.csv"
     dsp_counter: int | None = None
@@ -698,10 +1010,11 @@ def main(argv: list[str] | None = None) -> int:
                 "stock_sha256": sha256(env.stock.read_bytes()),
                 "patched_sha256": sha256(image.syx.read_bytes()),
                 "module_sha256": sha256(
-                    (env.folder / "digikit/modules/short-loop.dkm").read_bytes()
+                    (env.folder / f"digikit/modules/{spec.tag}.dkm").read_bytes()
                 ),
+                "module_file": f"{spec.tag}.dkm",
                 "card": str(card),
-                "modules": CORE,
+                "modules": spec.core,
             }
             with env.boot(
                 image,

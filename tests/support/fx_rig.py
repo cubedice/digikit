@@ -164,10 +164,14 @@ def build(
     device: str = "dt2",
     auto_descs: tuple[str | None, ...] = (),
 ) -> _Built:
-    """Build for a positional auto-state descriptor layout; omitted slots retain the old 4 KiB reserve."""
+    """Build positional auto states; absent rows need no allocation.
+
+    None retains the 4 KiB fallback for a present row with named/free state.
+    Empty strings mark absent rows, as the runtime reserves only loaded effects.
+    """
     if len(auto_descs) > AUTO_STATES:
         raise ValueError(f"at most {AUTO_STATES} auto-state descriptors")
-    layout = auto_descs + (None,) * (AUTO_STATES - len(auto_descs))
+    layout = auto_descs + ("",) * (AUTO_STATES - len(auto_descs))
     key = (ADAPTER, device, tuple(sources), layout)
     if key not in _BUILT:
         _BUILT[key] = _build(sources, device, layout)
@@ -214,7 +218,7 @@ def _build(
         for name, (sec, off, _g) in o.data_symbols.items():
             data[name] = where[sec] + off
     sizes = [
-        AUTO_STATE_BYTES if desc is None else _state_bytes(objs, desc)
+        AUTO_STATE_BYTES if desc is None else _state_bytes(objs, desc) if desc else 0
         for desc in auto_descs
     ]
     if addr + sum(sizes) > DATA_END:
