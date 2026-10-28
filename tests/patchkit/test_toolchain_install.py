@@ -5,6 +5,7 @@ import tarfile
 
 import pytest
 
+from tools.coldfire import isacheck
 from tools.patchkit import pk_toolchains as T
 
 
@@ -55,8 +56,22 @@ def test_proof_wrappers_do_not_skip_required_compiler_build(tmp_path, monkeypatc
 
 def test_complete_install_does_not_require_retained_build_tree(tmp_path, monkeypatch):
     configured = fake_install(tmp_path, monkeypatch, library=True)
+    checked = []
+    monkeypatch.setattr(isacheck, "check_file", lambda path: checked.append(path))
     T.build_m68k()
     assert not configured
+    assert checked == [T.M68K_PREFIX / "lib" / T.LIBGCC_CF_NAME]
+
+
+def test_existing_library_validation_failure_is_not_skipped(tmp_path, monkeypatch):
+    fake_install(tmp_path, monkeypatch, library=True)
+
+    def reject(path):
+        raise isacheck.IsaError("invalid instruction")
+
+    monkeypatch.setattr(isacheck, "check_file", reject)
+    with pytest.raises(isacheck.IsaError, match="invalid instruction"):
+        T.build_m68k()
 
 
 def test_existing_gcc_tree_can_finish_missing_coldfire_library(tmp_path, monkeypatch):

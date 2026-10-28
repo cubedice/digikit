@@ -245,6 +245,13 @@ def build_m68k() -> None:
         run(["make", "install-gcc", "install-target-libgcc"], cwd=g_obj, env=env)
     if not (M68K_PREFIX / "lib" / LIBGCC_CF_NAME).exists():
         build_libgcc_cf()
+    else:
+        # A prior invocation may have installed the archive and then failed
+        # to launch Patchkit's ISA checker (for example, an empty Cargo cache).
+        # Existing bytes alone must not bypass that validation on retry.
+        from tools.coldfire import isacheck
+
+        isacheck.check_file(M68K_PREFIX / "lib" / LIBGCC_CF_NAME)
 
 
 def build_libgcc_cf() -> None:
