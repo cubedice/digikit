@@ -305,6 +305,7 @@ description = "Developer loop: mise run module:dev -- --modules a,b [--device dt
 
 ["patch:toolchains"]
 run = [
+  "cargo fetch --locked",
   "uv run python -m tools.patchkit.pk_toolchains m68k",
   "uv run python -m tools.patchkit.pk_toolchains selache",
 ]
