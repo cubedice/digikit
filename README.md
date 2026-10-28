@@ -44,6 +44,15 @@ put them in `firmware/` (`Digitakt_II_OS1.17.syx`, `Digitone_II_OS1.12.syx`). De
 
 You need [mise](https://mise.jdx.dev/) and [uv](https://docs.astral.sh/uv/). Then, once:
 
+On Debian/Ubuntu (including WSL), first install the native compiler prerequisites:
+
+```sh
+sudo apt update
+sudo apt install build-essential git curl ca-certificates xz-utils bison flex texinfo libgmp-dev libmpfr-dev libmpc-dev libisl-dev libzstd-dev
+```
+
+The `patch:toolchains` task uses these system libraries on Linux; Homebrew is only needed for its macOS dependency lookup. The separate experimental `codegen-gcc` Rust backend builder still has macOS-specific setup.
+
 ```sh
 mise install
 mise run setup        # Python and web dependencies

@@ -148,10 +148,22 @@ def brew_prefix(formula: str) -> str:
     ).stdout.strip()
 
 
+def m68k_dependency_prefixes() -> dict[str, str]:
+    """Use distribution development libraries on Linux, Homebrew on macOS."""
+    libraries = ("gmp", "mpfr", "libmpc", "isl", "zstd")
+    if sys.platform.startswith("linux"):
+        # GCC's configure probes use the host compiler's default multiarch
+        # search paths. No Linuxbrew installation is needed.
+        return dict.fromkeys(libraries, "/usr")
+    if sys.platform == "darwin":
+        return {name: brew_prefix(name) for name in libraries}
+    sys.exit("Build the m68k toolchain on Linux/WSL or macOS.")
+
+
 def build_m68k() -> None:
     jobs = str(os.cpu_count() or 4)
     env = dict(os.environ)
-    deps = {f: brew_prefix(f) for f in ("gmp", "mpfr", "libmpc", "isl", "zstd")}
+    deps = m68k_dependency_prefixes()
     # binutils
     b_src = unpack(fetch(BINUTILS[1]))
     b_obj = TOOLS / "build" / "binutils"
