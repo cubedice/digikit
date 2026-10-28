@@ -135,10 +135,24 @@ def fetch(url: str) -> pathlib.Path:
 
 def unpack(archive: pathlib.Path) -> pathlib.Path:
     out = TOOLS / "src" / archive.name.removesuffix(".tar.xz")
-    if not out.exists():
-        (TOOLS / "src").mkdir(parents=True, exist_ok=True)
-        with tarfile.open(archive) as t:
-            t.extractall(TOOLS / "src", filter="data")
+    complete = out / ".digikit-extracted-sha256"
+    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+    if (
+        complete.is_file()
+        and complete.read_text().strip() == digest
+        and (out / "configure").is_file()
+    ):
+        return out
+    # An interrupted extraction leaves a directory behind. Its existence is
+    # not proof that all source files are present; retry from the archive.
+    complete.unlink(missing_ok=True)
+    (TOOLS / "src").mkdir(parents=True, exist_ok=True)
+    print(f"Extracting {archive.name} (no verified complete source tree)", flush=True)
+    with tarfile.open(archive) as t:
+        t.extractall(TOOLS / "src", filter="data")
+    if not (out / "configure").is_file():
+        sys.exit(f"{archive}: extraction did not produce {out / 'configure'}")
+    complete.write_text(digest + "\n")
     return out
 
 
