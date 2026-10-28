@@ -6,7 +6,7 @@ cpu = "sharc"
 devices = ["dt2"]
 rule = { kind = "sharc_func", reloc_hash = "64b66b0db31c9fe533e67c75374b1041e22aae334bc3cd8743a491ab2448ecde", offset = 52, len = 6 }
 mark = "D"
-users = ["michael/pattern-position"]
+users = ["core/pattern-position"]
 doc = "Hash-pinned DT2 1.17 boundary observation: pp.dsp.block_entry."
 
 [[hook]]
@@ -17,5 +17,5 @@ mode = "before"
 regs = { in = ["i3"], clobbers = [] }
 devices = ["dt2"]
 mark = "D"
-users = ["michael/pattern-position"]
+users = ["core/pattern-position"]
 doc = "Observe pp.dsp.block_entry; shim preserves live state and resumes the stock path."

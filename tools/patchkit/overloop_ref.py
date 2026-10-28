@@ -3,10 +3,10 @@
 These bounds do not establish RAM ownership; the patched provider does.
 """
 
-from tools.patchkit import short_loop_ref as short
+import struct
 
-FS = short.FS
-BLOCK = short.BLOCK
+FS = 48_000
+BLOCK = 32
 FRAMES = 1_048_544
 META_WORDS = 32
 STATE_BYTES = META_WORDS * 4
@@ -21,9 +21,15 @@ PROVIDER_MAGIC = 0x4C425546
 PROVIDER_VERSION = 1
 EXTERNAL_START = 0x80000000
 EXTERNAL_END = 0xA0000000
-IDLE, CAPTURING, FROZEN = short.IDLE, short.CAPTURING, short.FROZEN
-f32 = short.f32
-float_word = short.float_word
+IDLE, CAPTURING, FROZEN = 0, 1, 2
+
+
+def f32(value: float) -> float:
+    return struct.unpack("<f", struct.pack("<f", value))[0]
+
+
+def float_word(value: float) -> int:
+    return struct.unpack("<I", struct.pack("<f", value))[0]
 
 
 def provider_valid(magic: int, version: int, base: int, size: int) -> bool:

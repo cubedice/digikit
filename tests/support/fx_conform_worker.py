@@ -70,10 +70,10 @@ def describe(sp, case, k: int, words) -> str:
 def make_rig(sp, *, seed: int = 0xD1617, record_stores: bool = False) -> FxRig:
     """Supply only the explicitly registered provider; unknown imports still fail."""
     rig_type = FxRig
-    if sp.module == "michael/bar-loop":
-        from support.bar_loop_provider import BarLoopRig
+    if sp.module == "digikit/overloop":
+        from support.overloop_provider import OverloopRig
 
-        rig_type = BarLoopRig
+        rig_type = OverloopRig
     return rig_type(
         [Row(sp.process, sp.state, desc=sp.desc)],
         sources=sp.sources,

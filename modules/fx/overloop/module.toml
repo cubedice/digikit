@@ -1,10 +1,10 @@
 [module]
-id = "michael/bar-loop"
+id = "digikit/overloop"
 version = "0.2.0"
-name = "Bar loop proof"
+name = "Overloop"
 category = "fx"
 type = "fx"
-author = "Michael"
+author = "digikit"
 status = "experimental"
 summary = "Arms at a selected pattern step, records a chosen step count once, and crossfades the frozen stereo loop."
 dynamic = true
@@ -16,13 +16,13 @@ conflicts = []
 "dt2-1.17" = "experimental"
 
 [[object]]
-path = "build/bar-loop-dsp.dko.json"
-sources = ["src/dsp/bar_loop.s"]
+path = "build/overloop-dsp.dko.json"
+sources = ["src/dsp/overloop.s"]
 place = "dsp.l2"
 devices = ["dt2"]
 
 
 [[object]]
-path = "build/bar-loop-cf.dko.json"
+path = "build/overloop-cf.dko.json"
 sources = ["src/module.c"]
 place = "cf.expansion"

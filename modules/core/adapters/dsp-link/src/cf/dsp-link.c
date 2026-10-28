@@ -90,7 +90,7 @@ DlLink dl_link __attribute__((aligned(16)));
 extern char _dl_area[]; /* the DSP object's reserved area (a DSP address) */
 extern volatile u32 dl_tx_lit; /* the literal of the driver's `lea tx_queue,a0`: the queue's address */
 extern volatile u32 dl_rec_lit; /* the literal of the handler's first `pea`: the address of the reply record copy (dl_diag) */
-/* A direct optional patchkit symbol, zero without michael/pattern-position. Weak keeps the compiler's null check.
+/* A direct optional patchkit symbol, zero without core/pattern-position. Weak keeps the compiler's null check.
  * The callback writes exactly DL_POSITION_WORDS at the supplied halfword entry; it cannot wait or allocate. */
 extern void pp_write_frame(u32 tx_queue, u32 suffix_entry) __attribute__((weak));
 

@@ -7,7 +7,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 14, sha256 = "d8a5c70bbe0b0b3c1f2ad412df3e9e2467a63e20da03be34f8b30c3582f452d7", len = 6 }
 mark = "D"
-users = ["michael/pattern-position"]
+users = ["core/pattern-position"]
 doc = "Hash-pinned DT2 1.17 boundary observation: pp.cf.start."
 
 [[site]]
@@ -16,7 +16,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 18, sha256 = "86ffd731f10d4e27b1dffa56bced77941933679a13926dfa24914f66800cf39f", len = 6 }
 mark = "D"
-users = ["michael/pattern-position"]
+users = ["core/pattern-position"]
 doc = "Hash-pinned DT2 1.17 boundary observation: pp.cf.tick."
 
 [[site]]
@@ -25,7 +25,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 16, offset = 6, sha256 = "d6f4d08a359f74960cbdb12b267ad9a98981021bf8e0210bd2d5b658654c8c3b", len = 6 }
 mark = "D"
-users = ["michael/pattern-position"]
+users = ["core/pattern-position"]
 doc = "Hash-pinned DT2 1.17 boundary observation: pp.cf.step_due."
 
 [[site]]
@@ -34,7 +34,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 12, offset = 0, sha256 = "81bd1f3c8539d684e4d90581dfd5f412011c8c28c1e3aead3e19db1b173ee2b7", len = 6 }
 mark = "D"
-users = ["michael/pattern-position"]
+users = ["core/pattern-position"]
 doc = "Hash-pinned DT2 1.17 boundary observation: pp.cf.start_due."
 
 [[site]]
@@ -43,7 +43,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 16, offset = 0, sha256 = "008d141ad3983915b8dcbf8a2c9803e9246521b193d6de64c946c5400454cdaa", len = 6 }
 mark = "D"
-users = ["michael/pattern-position"]
+users = ["core/pattern-position"]
 doc = "Hash-pinned DT2 1.17 boundary observation: pp.cf.step_fn."
 
 [[hook]]
@@ -54,7 +54,7 @@ mode = "replace"
 regs = { in = ["d2"], clobbers = ["ccr"] }
 devices = ["dt2"]
 mark = "D"
-users = ["michael/pattern-position"]
+users = ["core/pattern-position"]
 doc = "Observe pp.cf.start; shim preserves live state and resumes the stock path."
 
 [[hook]]
@@ -65,7 +65,7 @@ mode = "replace"
 regs = { in = ["d2"], clobbers = ["ccr"] }
 devices = ["dt2"]
 mark = "D"
-users = ["michael/pattern-position"]
+users = ["core/pattern-position"]
 doc = "Observe pp.cf.tick; shim preserves live state and resumes the stock path."
 
 [[hook]]
@@ -76,7 +76,7 @@ mode = "retarget"
 regs = { in = ["a4"], clobbers = ["d0-d1", "a0-a1", "ccr"] }
 devices = ["dt2"]
 mark = "D"
-users = ["michael/pattern-position"]
+users = ["core/pattern-position"]
 doc = "Observe pp.cf.step_due; shim preserves live state and resumes the stock path."
 
 [[hook]]
@@ -87,5 +87,5 @@ mode = "replace"
 regs = { in = ["a4", "a6"], clobbers = ["d1", "ccr"] }
 devices = ["dt2"]
 mark = "D"
-users = ["michael/pattern-position"]
+users = ["core/pattern-position"]
 doc = "Observe pp.cf.start_due; shim preserves live state and resumes the stock path."

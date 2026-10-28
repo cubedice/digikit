@@ -1,4 +1,4 @@
-"""Explicit conformance fixture for michael/bar-loop's required storage import.
+"""Explicit conformance fixture for digikit/overloop's required storage import.
 
 This supplies test memory, not proof of firmware ownership. Unknown imports
 still fail resolution. The provider record is read-only; only the audio and its
@@ -9,13 +9,13 @@ from pathlib import Path
 
 from support.fx_rig import FxRig, Row
 from support.paths import REPO_ROOT
-from tools.patchkit import bar_loop_ref as R
+from tools.patchkit import overloop_ref as R
 from tools.patchkit.pk_sharc import SW_ALIAS_BASE
 from tools.sharc_dev.sharc_core.addressing import byte_to_normal_word
 from tools.sharc_dev.sharc_run import Watchpoint
 
-MODULE_ID = "michael/bar-loop"
-SOURCE = REPO_ROOT / "modules/fx/bar-loop/src/dsp/bar_loop.s"
+MODULE_ID = "digikit/overloop"
+SOURCE = REPO_ROOT / "modules/fx/overloop/src/dsp/overloop.s"
 PROVIDER_SOURCE = Path(__file__).with_suffix(".s")
 BASE = 0x9CA2B9C8
 CAPACITY = 0x00800000
@@ -29,7 +29,7 @@ def external_word(byte_address: int) -> int:
     return address
 
 
-class BarLoopRig(FxRig):
+class OverloopRig(FxRig):
     """Allow exactly the test lease, and keep the provider record read-only."""
 
     def __init__(

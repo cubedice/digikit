@@ -8480,7 +8480,7 @@
       "site": "cf.pattern.site.start",
       "subsystem": "pattern",
       "users": [
-        "michael/pattern-position"
+        "core/pattern-position"
       ],
       "was": []
     },
@@ -8515,7 +8515,7 @@
       "site": "cf.pattern.site.start_due",
       "subsystem": "pattern",
       "users": [
-        "michael/pattern-position"
+        "core/pattern-position"
       ],
       "was": []
     },
@@ -8550,7 +8550,7 @@
       "site": "cf.pattern.site.step_due",
       "subsystem": "pattern",
       "users": [
-        "michael/pattern-position"
+        "core/pattern-position"
       ],
       "was": []
     },
@@ -8583,7 +8583,7 @@
       "site": "cf.pattern.site.tick",
       "subsystem": "pattern",
       "users": [
-        "michael/pattern-position"
+        "core/pattern-position"
       ],
       "was": []
     },
@@ -8613,7 +8613,7 @@
       },
       "subsystem": "pattern",
       "users": [
-        "michael/pattern-position"
+        "core/pattern-position"
       ],
       "was": []
     },
@@ -8644,7 +8644,7 @@
       },
       "subsystem": "pattern",
       "users": [
-        "michael/pattern-position"
+        "core/pattern-position"
       ],
       "was": []
     },
@@ -8675,7 +8675,7 @@
       },
       "subsystem": "pattern",
       "users": [
-        "michael/pattern-position"
+        "core/pattern-position"
       ],
       "was": []
     },
@@ -8706,7 +8706,7 @@
       },
       "subsystem": "pattern",
       "users": [
-        "michael/pattern-position"
+        "core/pattern-position"
       ],
       "was": []
     },
@@ -8736,7 +8736,7 @@
       },
       "subsystem": "pattern",
       "users": [
-        "michael/pattern-position"
+        "core/pattern-position"
       ],
       "was": []
     },
@@ -12122,7 +12122,7 @@
       "site": "dsp.pattern.site.block_entry",
       "subsystem": "pattern",
       "users": [
-        "michael/pattern-position"
+        "core/pattern-position"
       ],
       "was": []
     },
@@ -12154,7 +12154,7 @@
       },
       "subsystem": "pattern",
       "users": [
-        "michael/pattern-position"
+        "core/pattern-position"
       ],
       "was": []
     },

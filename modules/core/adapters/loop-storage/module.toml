@@ -1,11 +1,11 @@
 [module]
-id = "michael/loop-storage"
+id = "core/loop-storage"
 version = "0.1.0"
 name = "Loop storage reservation"
 category = "core"
 role = "adapter"
 type = "framework"
-author = "Michael"
+author = "digikit"
 status = "experimental"
 summary = "Reserves 8 MiB of DT2 1.17 DSP sample memory by reducing the stock sample allocator capacity to 392 MiB."
 requires = []

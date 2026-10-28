@@ -1,4 +1,4 @@
-/* Experimental optional DT2 1.17 DSP import from michael/pattern-position.
+/* Experimental optional DT2 1.17 DSP import from core/pattern-position.
  * Version 2 publishes nominal master-grid boundaries committed by the stock
  * timed-event consumer, not each scheduling snapshot or microtimed note.
  * DSP words are little endian. The provider publishes before command dispatch.
