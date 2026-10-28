@@ -48,10 +48,12 @@ On Debian/Ubuntu (including WSL), first install the native compiler prerequisite
 
 ```sh
 sudo apt update
-sudo apt install build-essential git curl ca-certificates xz-utils bison flex texinfo libgmp-dev libmpfr-dev libmpc-dev libisl-dev libzstd-dev
+sudo apt install build-essential git curl ca-certificates xz-utils bison flex texinfo libgmp-dev libmpfr-dev libmpc-dev libisl-dev libzstd-dev pkg-config libasound2-dev
 ```
 
 The `patch:toolchains` task uses these system libraries on Linux; Homebrew is only needed for its macOS dependency lookup. The separate experimental `codegen-gcc` Rust backend builder still has macOS-specific setup.
+
+Patchkit's native MIDI support requires the ALSA development package even when building only to check compiler output. `pkg-config --modversion alsa` should succeed before running `patch:toolchains`.
 
 ```sh
 mise install
