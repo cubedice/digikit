@@ -61,7 +61,7 @@
    "size": 136
   }
  ],
- "source_sha256": "28afb89ca62f3ac6a981edfcfd9e23806d3e2f6cd4c3b0952569a1c23f8c9d30",
+ "source_sha256": "9988e411a84fe361e304acfbbd119e9975eb266ec1b78ecf7ad8797aca409613",
  "symbols": [
   {
    "global": true,
@@ -113,11 +113,11 @@
   }
  ],
  "toolchain": {
-  "as": "GNU assembler (GNU Binutils) 2.47.20260726",
+  "as": "GNU assembler (GNU Binutils for Debian) 2.44",
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
-  "gcc": "m68k-elf-gcc (GCC) 16.2.0",
+  "gcc": "m68k-linux-gnu-gcc-14 (Debian 14.2.0-19) 14.2.0",
   "instructions_redecoded": "0",
   "isa_check": "69f372b233662e86279b4da92a905388bd5458bb1af8a7035b1b3357cdbca87e",
-  "ld": "GNU ld (GNU Binutils) 2.47.20260726"
+  "ld": "GNU ld (GNU Binutils for Debian) 2.44"
  }
 }

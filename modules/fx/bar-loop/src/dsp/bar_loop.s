@@ -1,12 +1,4 @@
-// michael/bar-loop: eight-second stereo master-loop proof, DK_FX_V1.
-// Requires the explicit _loop_buffer_info import from the DT2 1.17 storage
-// provider. There is no fallback address and no module BSS audio allocation.
-// The provider owns one buffer for this single FX row. Only the 64-byte
-// metadata is cleared by core/fx. Audio is unreadable until fully captured.
-// State: mode, written, phase, start, pending_start, gain, previous_rec,
-// relocated audio byte address, frame count, canary initialized, six zero words.
-// Parameters: REC, START, FADE, all normalized. MIX must remain at 127.
-
+// Armed stereo loop: REC edge, next START boundary, N steps, then hold.
 #include "dk_fx.inc"
 #define BL_MODE 0
 #define BL_WRITTEN 1
@@ -18,15 +10,16 @@
 #define BL_AUDIO_ADDRESS 7
 #define BL_FRAME_COUNT 8
 #define BL_CANARY_INITIALIZED 9
-#define BL_FRAMES 384000
-#define BL_AUDIO_BYTES 3072000
-#define BL_STORAGE_BYTES 3072032
+#define BL_FRAMES 1048544
+#define BL_AUDIO_BYTES 8388352
+#define BL_STORAGE_BYTES 8388384
 #define BL_CANARY_WORD 0x5a17b00f
-#define BL_STATE_BYTES 64
+#define BL_STATE_BYTES 128
 
 .SECTION/PM seg_pmco;
 .GLOBAL _bl_process;
 .EXTERN _loop_buffer_info;
+.EXTERN _pattern_position_info;
 
 _bl_process:
     I5 = R4;
@@ -114,8 +107,6 @@ _bl_check_canary:
     IF NE JUMP _bl_invalid_provider;
 _bl_provider_ready:
     DM(BL_AUDIO_ADDRESS, I5) = R2;
-    R0 = BL_FRAMES;
-    DM(BL_FRAME_COUNT, I5) = R0;
     I4 = R8;
     I0 = DM(DK_FX_IN_W_IN, I4);
     I2 = DM(DK_FX_IN_W_OUT, I4);
@@ -128,19 +119,11 @@ _bl_provider_ready:
     I3 = R2;
     I4 = R12;
 
-    R7 = 0;
-    R11 = 0x3f800000;
-    R0 = DM(1, I4);
-    F1 = MAX(F0, F7);
-    F0 = MIN(F1, F11);
-    R2 = 0x48bb7fe0;                     // 383999.0f
-    F1 = F0 * F2;
-    R2 = TRUNC F1;
-    DM(BL_PENDING, I5) = R2;
-    R0 = DM(2, I4);
-    F1 = MAX(F0, F7);
-    F14 = MIN(F1, F11);
-
+    // State 10 TX, 11 boundary seq, 12 step, 13 generation, 14 pattern,
+    // 15 pattern length, 16 have header, 17 arm TX, 18 start TX, 19 end TX,
+    // 20 requested steps (0 = pattern), 21 latched steps, 22 progress,
+    // 23 error, 24 fresh boundary, 25 continuity, 31 parameter pointer.
+    DM(31, I5) = R12;
     R0 = DM(0, I4);
     R1 = 0x3f000000;
     R2 = 0;
@@ -150,22 +133,196 @@ _bl_provider_ready:
     R3 = DM(BL_REC, I5);
     DM(BL_REC, I5) = R2;
     R0 = DM(BL_MODE, I5);
-    R0 = PASS R0;
-    IF NE JUMP _bl_dispatch;
+    R1 = 1;
+    COMP(R0, R1);
+    IF EQ JUMP _bl_timing;
     R2 = PASS R2;
-    IF EQ JUMP _bl_live;
+    IF EQ JUMP _bl_timing;
     R3 = PASS R3;
-    IF NE JUMP _bl_live;
-    R0 = 1;
+    IF NE JUMP _bl_timing;
+    // REC edge arms; knobs use integer units despite the 0..127 UI.
+    R7 = 0;
+    R11 = 0x42fe0000;               // 127.0
+    R0 = DM(1, I4);
+    F1 = MAX(F0, F7);
+    F0 = MIN(F1, F11);
+    R2 = TRUNC F0;
+    DM(BL_START, I5) = R2;
+    R0 = DM(3, I4);
+    F1 = MAX(F0, F7);
+    F0 = MIN(F1, F11);
+    R2 = TRUNC F0;
+    DM(20, I5) = R2;
+    R0 = 3;
     DM(BL_MODE, I5) = R0;
-_bl_dispatch:
+    I4 = _pattern_position_info;
+    R0 = DM(2, I4);
+    DM(17, I5) = R0;
+    R0 = 0;
+    DM(23, I5) = R0;
+_bl_timing:
+    I4 = _pattern_position_info;
+    R0 = DM(0, I4);
+    R1 = 0x50504f53;
+    COMP(R0, R1);
+    IF NE JUMP _bl_no_header;
+    R0 = DM(1, I4);
     R1 = 2;
     COMP(R0, R1);
-    IF EQ JUMP _bl_play;
-
-    // Write both channels before making any audio readable. 384000 is a whole
-    // number of 32-frame blocks, so the final capture stays inside the lease.
+    IF NE JUMP _bl_no_header;
+    R0 = 0;
+    DM(24, I5) = R0;
+    DM(25, I5) = R0;
+    R0 = DM(16, I5);
+    R0 = PASS R0;
+    IF EQ JUMP _bl_save_timing;
+    R0 = DM(2, I4);
+    R1 = DM(10, I5);
+    R2 = R0 - R1;
+    R1 = 1;
+    COMP(R2, R1);
+    IF NE JUMP _bl_save_timing;
+    R0 = DM(3, I4);
+    R1 = DM(11, I5);
+    R2 = R0 - R1;
+    R1 = 1;
+    COMP(R2, R1);
+    IF GT JUMP _bl_save_timing;
+    R2 = PASS R2;
+    IF LT JUMP _bl_save_timing;
+    DM(24, I5) = R2;
+    R0 = DM(4, I4);
+    R1 = DM(13, I5);
+    COMP(R0, R1);
+    IF NE JUMP _bl_save_timing;
+    R0 = DM(6, I4);
+    R1 = DM(14, I5);
+    COMP(R0, R1);
+    IF NE JUMP _bl_save_timing;
+    R0 = DM(8, I4);
+    R1 = DM(15, I5);
+    COMP(R0, R1);
+    IF NE JUMP _bl_save_timing;
+    R3 = DM(12, I5);
+    R3 = R3 + R2;
+    R0 = 0;
+    COMP(R3, R1);
+    IF GE R3 = R0;
+    R0 = DM(7, I4);
+    COMP(R0, R3);
+    IF NE JUMP _bl_save_timing;
+    R0 = 1;
+    DM(25, I5) = R0;
+_bl_save_timing:
+    R0 = DM(2, I4);
+    DM(10, I5) = R0;
+    R0 = DM(3, I4);
+    DM(11, I5) = R0;
+    R0 = DM(7, I4);
+    DM(12, I5) = R0;
+    R0 = DM(4, I4);
+    DM(13, I5) = R0;
+    R0 = DM(6, I4);
+    DM(14, I5) = R0;
+    R0 = DM(8, I4);
+    DM(15, I5) = R0;
+    R0 = 1;
+    DM(16, I5) = R0;
+    R0 = DM(5, I4);
+    R1 = 3;
+    COMP(R0, R1);
+    IF NE JUMP _bl_bad_timing;
+    R0 = DM(8, I4);
+    R1 = 1;
+    COMP(R0, R1);
+    IF LE JUMP _bl_bad_timing;
+    R1 = DM(7, I4);
+    R1 = PASS R1;
+    IF LT JUMP _bl_bad_timing;
+    COMP(R1, R0);
+    IF GE JUMP _bl_bad_timing;
+    R0 = DM(BL_MODE, I5);
+    R1 = 1;
+    COMP(R0, R1);
+    IF EQ JUMP _bl_capturing;
+    R1 = 3;
+    COMP(R0, R1);
+    IF NE JUMP _bl_output;
+    R0 = DM(24, I5);
+    R0 = PASS R0;
+    IF EQ JUMP _bl_output;
+    R0 = DM(2, I4);
+    R1 = DM(17, I5);
+    COMP(R0, R1);
+    IF EQ JUMP _bl_output;
+    R0 = DM(7, I4);
+    R1 = DM(BL_START, I5);
+    COMP(R0, R1);
+    IF NE JUMP _bl_output;
+    R0 = DM(20, I5);
+    R1 = DM(8, I4);
+    R0 = PASS R0;
+    IF EQ R0 = R1;
+    DM(21, I5) = R0;
+    R0 = 0;
+    DM(BL_WRITTEN, I5) = R0;
+    DM(BL_FRAME_COUNT, I5) = R0;
+    DM(BL_PHASE, I5) = R0;
+    DM(BL_GAIN, I5) = R0;
+    DM(22, I5) = R0;
+    DM(19, I5) = R0;
+    R0 = DM(2, I4);
+    DM(18, I5) = R0;
+    R0 = 1;
+    DM(BL_MODE, I5) = R0;
+    JUMP _bl_record;
+_bl_capturing:
+    R0 = DM(25, I5);
+    R0 = PASS R0;
+    IF EQ JUMP _bl_bad_timing;
+    R0 = DM(24, I5);
+    R0 = PASS R0;
+    IF EQ JUMP _bl_record;
+    R0 = DM(22, I5);
+    R0 = R0 + 1;
+    DM(22, I5) = R0;
+    R1 = DM(21, I5);
+    COMP(R0, R1);
+    IF LT JUMP _bl_record;
+    // Close before copying this block: exactly N whole nominal steps.
     R0 = DM(BL_WRITTEN, I5);
+    DM(BL_FRAME_COUNT, I5) = R0;
+    R0 = DM(2, I4);
+    DM(19, I5) = R0;
+    R0 = 2;
+    DM(BL_MODE, I5) = R0;
+    JUMP _bl_output;
+_bl_no_header:
+    R0 = 0;
+    DM(16, I5) = R0;
+_bl_bad_timing:
+    R0 = DM(BL_MODE, I5);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _bl_output;
+    R0 = 1;
+    DM(23, I5) = R0;
+_bl_abort:
+    R0 = 0;
+    DM(BL_MODE, I5) = R0;
+    DM(BL_FRAME_COUNT, I5) = R0;
+    DM(BL_WRITTEN, I5) = R0;
+    DM(BL_GAIN, I5) = R0;
+    JUMP _bl_live;
+_bl_record:
+    R0 = DM(BL_WRITTEN, I5);
+    R1 = BL_FRAMES;
+    COMP(R0, R1);
+    IF LT JUMP _bl_record_room;
+    R0 = 3;
+    DM(23, I5) = R0;
+    JUMP _bl_abort;
+_bl_record_room:
     R1 = LSHIFT R0 BY 2;
     R4 = DM(BL_AUDIO_ADDRESS, I5);
     R2 = R4 + R1;
@@ -181,14 +338,18 @@ _bl_record_end: DM(I3, M6) = R8;
     R1 = DK_BLOCK;
     R2 = R0 + R1;
     DM(BL_WRITTEN, I5) = R2;
-    R1 = BL_FRAMES;
-    COMP(R2, R1);
-    IF LT JUMP _bl_done;
-    R0 = 2;
-    DM(BL_MODE, I5) = R0;
-    R0 = DM(BL_PENDING, I5);
-    DM(BL_START, I5) = R0;
     JUMP _bl_done;
+_bl_output:
+    R0 = DM(BL_FRAME_COUNT, I5);
+    R0 = PASS R0;
+    IF EQ JUMP _bl_live;
+    I4 = DM(31, I5);
+    R7 = 0;
+    R11 = 0x3f800000;
+    R0 = DM(2, I4);
+    F1 = MAX(F0, F7);
+    F14 = MIN(F1, F11);
+    JUMP _bl_play;
 
 _bl_live:
     LCNTR = DK_BLOCK, DO _bl_live_end UNTIL LCE;
@@ -200,9 +361,9 @@ _bl_live_end: DM(I3, M6) = R1;
 
 _bl_play:
     R5 = DM(BL_PHASE, I5);
-    R6 = DM(BL_START, I5);
+    R6 = 0;
     R15 = DM(BL_GAIN, I5);
-    R7 = BL_FRAMES;
+    R7 = DM(BL_FRAME_COUNT, I5);
     R13 = 0x3b800000;                    // gain step 1/256 per stereo frame
     M2 = BL_FRAMES;
     LCNTR = DK_BLOCK, DO _bl_play_end UNTIL LCE;
@@ -219,7 +380,7 @@ _bl_play:
         R10 = DM(M2, I4);
 
         // Smooth the phrase boundary and the rotated physical capture seam.
-        R1 = 383999;
+        R1 = R7 - 1;
         R0 = R1 - R5;
         R2 = MIN(R0, R5);
         R0 = R1 - R12;
@@ -263,12 +424,11 @@ _bl_sample_ready:
         COMP(R5, R7);
         IF LT JUMP _bl_phase_ready;
         R5 = 0;
-        R6 = DM(BL_PENDING, I5);
+        R6 = 0;
 _bl_phase_ready:
         DM(I2, M6) = R9;
 _bl_play_end: DM(I3, M6) = R10;
     DM(BL_PHASE, I5) = R5;
-    DM(BL_START, I5) = R6;
     DM(BL_GAIN, I5) = R15;
 _bl_done:
     R0 = DK_FX_OK;
@@ -282,8 +442,8 @@ _bl_invalid_provider:
 .GLOBAL _bl_desc;
 .VAR _bl_desc = DK_FX_MAGIC;
 .VAR _bl_desc1 = DK_FX_V1;
-.VAR _bl_desc2 = 3;
+.VAR _bl_desc2 = 4;
 .VAR _bl_desc3 = BL_STATE_BYTES;
-.VAR _bl_desc4 = 3500;
+.VAR _bl_desc4 = 5000;
 .VAR _bl_desc5 = 0;
 .VAR _bl_desc6 = 0;

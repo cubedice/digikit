@@ -2,6 +2,7 @@
 # Each subsystem has one file: devices/fw/<subsystem>.toml for ColdFire, devices/fw/dsp/<subsystem>.toml for the DSP.
 
 [cf]
+pattern = "master-pattern scheduling and timed step dispatch"
 rtos = "tasks, queues, mutexes, idle, interrupts, the reset and boot path"
 mem = "heap, operator new and free"
 storage = "block device reads and writes, the boot record"
@@ -23,6 +24,7 @@ test = "anchors used only by test fixtures"
 util = "anything that fits nowhere else"
 
 [dsp]
+pattern = "master-pattern position transport before rendering"
 frame = "the frame orchestrator"
 voice = "voice rendering"
 fx = "the effect chain: sends, returns, buses"

@@ -593,6 +593,8 @@ def cf_vtable_addr(cf: CfFacts, rule: dict) -> int:
         cf.name,
     )
     return target + int(rule.get("offset", 0))
+
+
 def resolve_cf_window_hash(main: bytes, base: int, rule: dict) -> dict:
     """Locate one exact instruction window; never accept a guessed address."""
     window = int(rule["search_len"])

@@ -683,7 +683,8 @@ plan.json {}",
         }
         "desc" => {
             let id = need(rest)?;
-            let lib = library(&a.root, rest)?;
+            // Like pack, describing one module must not compile unrelated content.
+            let lib = library_with(&a.root, rest, false, Some(&[id.to_string()]))?;
             let m = lib
                 .get(id)
                 .ok_or_else(|| Error(format!("no module {id}")))?;

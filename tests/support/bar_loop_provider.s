@@ -7,3 +7,5 @@
 .VAR _test_version = 1;
 .VAR _test_base = 0x9ca2b9c8;
 .VAR _test_bytes = 0x00800000;
+
+.PKDATA _pattern_position_info, 80;

@@ -2177,6 +2177,56 @@ mark = "D"
 rule = "fw/param:cf_params_refs"
 
 [[anchor]]
+name = "cf.pattern.site.start"
+cpu = "cf"
+kind = "code"
+addr = 0x400d66d8
+len = 6
+sha256 = "a1b93eb1870f22fc4b72f3e7ceb0a5e95169fd08394878509249c2c58ef30aeb"
+mark = "D"
+rule = "fw/pattern:cf_window_hash"
+
+[[anchor]]
+name = "cf.pattern.site.start_due"
+cpu = "cf"
+kind = "code"
+addr = 0x4002e6b4
+len = 6
+sha256 = "eebd38e75f040600f7aa975bb785b7dfae77151bd9e90d95df74f8a786fc93e0"
+mark = "D"
+rule = "fw/pattern:cf_window_hash"
+
+[[anchor]]
+name = "cf.pattern.site.step_due"
+cpu = "cf"
+kind = "code"
+addr = 0x4002e158
+len = 6
+sha256 = "d3ad67b05445a8ffb1dea8d74f31befc14264b9e7d3884f1f73891720777653b"
+mark = "D"
+rule = "fw/pattern:cf_window_hash"
+
+[[anchor]]
+name = "cf.pattern.site.step_fn"
+cpu = "cf"
+kind = "code"
+addr = 0x4012bff0
+len = 6
+sha256 = "f54938fe21c779ed7fc56e005a95664127cd0310bbcecd15d5f85fd74c1de534"
+mark = "D"
+rule = "fw/pattern:cf_window_hash"
+
+[[anchor]]
+name = "cf.pattern.site.tick"
+cpu = "cf"
+kind = "code"
+addr = 0x400d8dca
+len = 6
+sha256 = "a1b93eb1870f22fc4b72f3e7ceb0a5e95169fd08394878509249c2c58ef30aeb"
+mark = "D"
+rule = "fw/pattern:cf_window_hash"
+
+[[anchor]]
 name = "cf.project.fn.active_kit"
 cpu = "cf"
 kind = "code"
@@ -2739,6 +2789,17 @@ mark = "D"
 rule = "fw/dsp/master:sharc_literal"
 
 [[anchor]]
+name = "dsp.pattern.site.block_entry"
+cpu = "sharc"
+kind = "code"
+addr = 0x2838ea02
+pm = 0x1c7501
+len = 6
+sha256 = "f49335b880bf628686785987b1e4af0428d9449df3643fd96695c68ae48ec66c"
+mark = "D"
+rule = "fw/dsp/pattern:sharc_func"
+
+[[anchor]]
 name = "dsp.voice.fn.render_entry"
 cpu = "sharc"
 kind = "code"
@@ -2919,6 +2980,26 @@ offset = 4
 mode = "before"
 
 [[hook]]
+name = "cf.pattern.hook.start"
+site = "cf.pattern.site.start"
+mode = "replace"
+
+[[hook]]
+name = "cf.pattern.hook.start_due"
+site = "cf.pattern.site.start_due"
+mode = "replace"
+
+[[hook]]
+name = "cf.pattern.hook.step_due"
+site = "cf.pattern.site.step_due"
+mode = "retarget"
+
+[[hook]]
+name = "cf.pattern.hook.tick"
+site = "cf.pattern.site.tick"
+mode = "replace"
+
+[[hook]]
 name = "cf.rtos.hook.idle"
 site = "cf.rtos.site.idle"
 mode = "replace"
@@ -2959,37 +3040,11 @@ site = "dsp.master.site.q31_converter.call"
 mode = "retarget"
 
 [[hook]]
+name = "dsp.pattern.hook.block_entry"
+site = "dsp.pattern.site.block_entry"
+mode = "before"
+
+[[hook]]
 name = "dsp.voice.hook.render_entry"
 site = "dsp.voice.fn.render_entry"
 mode = "replace"
-
-[[anchor]]
-name = "pp.cf.start"
-cpu = "cf"
-kind = "code"
-addr = 0x400d66d8
-len = 0x6
-sha256 = "a1b93eb1870f22fc4b72f3e7ceb0a5e95169fd08394878509249c2c58ef30aeb"
-mark = "D"
-rule = "michael/pattern-position:cf_window_hash"
-
-[[anchor]]
-name = "pp.cf.tick"
-cpu = "cf"
-kind = "code"
-addr = 0x400d8dca
-len = 0x6
-sha256 = "a1b93eb1870f22fc4b72f3e7ceb0a5e95169fd08394878509249c2c58ef30aeb"
-mark = "D"
-rule = "michael/pattern-position:cf_window_hash"
-
-[[anchor]]
-name = "pp.dsp.block_entry"
-cpu = "sharc"
-kind = "code"
-addr = 0x2838ea02
-pm = 0x1c7501
-len = 0x6
-sha256 = "f49335b880bf628686785987b1e4af0428d9449df3643fd96695c68ae48ec66c"
-mark = "D"
-rule = "michael/pattern-position:sharc_func"

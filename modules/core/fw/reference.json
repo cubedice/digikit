@@ -8453,6 +8453,295 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d66d8"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Observe pp.cf.start; shim preserves live state and resumes the stock path.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.pattern.hook.start",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": [
+          "d2"
+        ]
+      },
+      "site": "cf.pattern.site.start",
+      "subsystem": "pattern",
+      "users": [
+        "michael/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e6b4"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Observe pp.cf.start_due; shim preserves live state and resumes the stock path.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.pattern.hook.start_due",
+      "regs": {
+        "clobbers": [
+          "d1",
+          "ccr"
+        ],
+        "in": [
+          "a4",
+          "a6"
+        ]
+      },
+      "site": "cf.pattern.site.start_due",
+      "subsystem": "pattern",
+      "users": [
+        "michael/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e158"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Observe pp.cf.step_due; shim preserves live state and resumes the stock path.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "retarget",
+      "name": "cf.pattern.hook.step_due",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": [
+          "a4"
+        ]
+      },
+      "site": "cf.pattern.site.step_due",
+      "subsystem": "pattern",
+      "users": [
+        "michael/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d8dca"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Observe pp.cf.tick; shim preserves live state and resumes the stock path.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.pattern.hook.tick",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": [
+          "d2"
+        ]
+      },
+      "site": "cf.pattern.site.tick",
+      "subsystem": "pattern",
+      "users": [
+        "michael/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d66d8",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.cf.start.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.start",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "michael/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e6b4",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.cf.start_due.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.start_due",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "michael/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e158",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.cf.step_due.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.step_due",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 6
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "michael/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012bff0",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.cf.step_fn.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.step_fn",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "michael/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d8dca",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.cf.tick.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.tick",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "michael/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x4003e41a",
@@ -11807,6 +12096,70 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838ea02",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Observe pp.dsp.block_entry; shim preserves live state and resumes the stock path.",
+      "file": "devices/fw/dsp/pattern.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "dsp.pattern.hook.block_entry",
+      "regs": {
+        "clobbers": [],
+        "in": [
+          "i3"
+        ]
+      },
+      "site": "dsp.pattern.site.block_entry",
+      "subsystem": "pattern",
+      "users": [
+        "michael/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838ea02",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.dsp.block_entry.",
+      "file": "devices/fw/dsp/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.pattern.site.block_entry",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 52
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "michael/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x20004a36",
@@ -12123,6 +12476,13 @@
       "name": "param"
     },
     {
+      "count": 9,
+      "cpu": "cf",
+      "file": "devices/fw/pattern.toml",
+      "meaning": "master-pattern scheduling and timed step dispatch",
+      "name": "pattern"
+    },
+    {
       "count": 4,
       "cpu": "cf",
       "file": "devices/fw/project.toml",
@@ -12205,6 +12565,13 @@
       "file": "devices/fw/dsp/master.toml",
       "meaning": "the master stage",
       "name": "master"
+    },
+    {
+      "count": 2,
+      "cpu": "sharc",
+      "file": "devices/fw/dsp/pattern.toml",
+      "meaning": "master-pattern position transport before rendering",
+      "name": "pattern"
     },
     {
       "count": 5,

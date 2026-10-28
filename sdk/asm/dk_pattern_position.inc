@@ -1,23 +1,25 @@
 // Optional _pattern_position_info import; word offsets for DM(n, Ix).
-// Experimental observation ABI, not a sample-accurate sequencer API.
+// Committed nominal master-grid boundaries; not microtimed note positions.
+// Requires the experimental michael/pattern-position framework provider.
+.EXTERN _pattern_position_info;
 #define DK_POSITION_MAGIC 0x50504f53
-#define DK_POSITION_VERSION 1
+#define DK_POSITION_VERSION 2
 #define DK_POSITION_VALID 1
 #define DK_POSITION_RUNNING 2
 #define DK_POSITION_W_MAGIC 0
 #define DK_POSITION_W_VERSION 1
 #define DK_POSITION_W_TRANSMIT_SEQUENCE 2
-#define DK_POSITION_W_EVENT_SEQUENCE 3
+#define DK_POSITION_W_BOUNDARY_SEQUENCE 3
 #define DK_POSITION_W_START_GENERATION 4
 #define DK_POSITION_W_FLAGS 5
 #define DK_POSITION_W_PATTERN_IDENTITY 6
 #define DK_POSITION_W_MASTER_STEP 7
 #define DK_POSITION_W_MASTER_LENGTH 8
-#define DK_POSITION_W_SUBSTEP 9
-#define DK_POSITION_W_SNAPSHOT_BLOCK 10
+#define DK_POSITION_W_RESERVED 9
+#define DK_POSITION_W_COMMIT_BLOCK 10
 #define DK_POSITION_W_SCHEDULER_CLOCK 11
 #define DK_POSITION_W_TRANSMIT_BLOCK 12
-#define DK_POSITION_W_NEXT_STEP 13
+#define DK_POSITION_W_NATIVE_STEP 13
 #define DK_POSITION_W_RAW_TRANSPORT 14
 #define DK_POSITION_W_WIRE_CHECK 15
 #define DK_POSITION_W_RECEIVED_FRAMES 16
