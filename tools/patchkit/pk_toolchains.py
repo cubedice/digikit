@@ -168,7 +168,8 @@ def build_m68k() -> None:
     b_src = unpack(fetch(BINUTILS[1]))
     b_obj = TOOLS / "build" / "binutils"
     b_obj.mkdir(parents=True, exist_ok=True)
-    if not (M68K_PREFIX / "bin" / "m68k-elf-as").exists():
+    required_binutils = ("as", "ld", "ar", "ranlib", "nm", "objcopy")
+    if any(m68k_bin(tool) is None for tool in required_binutils):
         run(
             [
                 str(b_src / "configure"),
@@ -191,7 +192,15 @@ def build_m68k() -> None:
     g_obj = TOOLS / "build" / "gcc"
     g_obj.mkdir(parents=True, exist_ok=True)
     env["PATH"] = f"{M68K_PREFIX / 'bin'}:{env['PATH']}"
-    if not (M68K_PREFIX / "bin" / "m68k-elf-gcc").exists():
+    need_cf_library = libgcc_cf() is None
+    need_gcc_tree = (
+        need_cf_library and not (g_obj / "m68k-elf" / "libgcc" / "Makefile").exists()
+    )
+    if m68k_bin("gcc") is None or need_gcc_tree:
+        if need_gcc_tree:
+            print(
+                "Rebuilding GCC: the ColdFire library and its build tree are missing."
+            )
         run(
             [
                 str(g_src / "configure"),
@@ -235,7 +244,10 @@ def build_libgcc_cf() -> None:
     gobj = TOOLS / "build" / "gcc" / "m68k-elf"
     src = gobj / "libgcc"
     if not (src / "Makefile").exists():
-        sys.exit("build the m68k toolchain first: pk_toolchains m68k")
+        sys.exit(
+            f"Missing GCC library build file: {src / 'Makefile'}. "
+            "Run pk_toolchains m68k to rebuild the incomplete installation."
+        )
     dst = gobj / "libgcc-cf"  # a sibling: the Makefile finds ../.././gcc relative to it
     if dst.exists():
         shutil.rmtree(dst)
