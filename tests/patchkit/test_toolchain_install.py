@@ -1,5 +1,10 @@
 """Resume partial compiler installs instead of mistaking wrappers for a toolchain."""
 
+import io
+import tarfile
+
+import pytest
+
 from tools.patchkit import pk_toolchains as T
 
 
@@ -58,3 +63,49 @@ def test_existing_gcc_tree_can_finish_missing_coldfire_library(tmp_path, monkeyp
     configured = fake_install(tmp_path, monkeypatch, tree=True)
     T.build_m68k()
     assert not configured
+
+
+def source_archive(tmp_path):
+    archive = tmp_path / "gcc-test.tar.xz"
+    with tarfile.open(archive, "w:xz") as tar:
+        for name in ("configure", "gcc/source.c"):
+            member = tarfile.TarInfo(f"gcc-test/{name}")
+            member.size = 4
+            tar.addfile(member, io.BytesIO(b"test"))
+    return archive
+
+
+def test_partial_extraction_is_repaired_and_complete_cache_reused(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(T, "TOOLS", tmp_path)
+    archive = source_archive(tmp_path)
+    source = tmp_path / "src/gcc-test"
+    source.mkdir(parents=True)
+    (source / "configure").touch()  # Even this file alone is not a full extraction.
+    assert T.unpack(archive) == source
+    assert (source / "gcc/source.c").read_bytes() == b"test"
+    with monkeypatch.context() as m:
+        m.setattr(tarfile, "open", lambda *a, **kw: pytest.fail("cache re-extracted"))
+        assert T.unpack(archive) == source
+    (source / "configure").unlink()
+    T.unpack(archive)
+    assert (source / "configure").read_bytes() == b"test"
+
+
+def test_interrupted_extraction_is_not_marked_complete(tmp_path, monkeypatch):
+    monkeypatch.setattr(T, "TOOLS", tmp_path)
+    archive = source_archive(tmp_path)
+
+    def interrupted(tar, path, **kwargs):
+        (path / "gcc-test").mkdir()
+        raise OSError("interrupted extraction")
+
+    with monkeypatch.context() as m:
+        m.setattr(tarfile.TarFile, "extractall", interrupted)
+        with pytest.raises(OSError, match="interrupted"):
+            T.unpack(archive)
+    assert not (tmp_path / "src/gcc-test/.digikit-extracted-sha256").exists()
+    source = T.unpack(archive)
+    assert (source / "configure").is_file()
+    assert (source / "gcc/source.c").is_file()
