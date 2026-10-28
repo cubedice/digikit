@@ -1,0 +1,28 @@
+[module]
+id = "digikit/overloop"
+version = "0.2.0"
+name = "Overloop"
+category = "fx"
+type = "fx"
+author = "digikit"
+status = "experimental"
+summary = "Arms at a selected pattern step, records a chosen step count once, and crossfades the frozen stereo loop."
+dynamic = true
+ports = ["dt2-1.17"]
+requires = []
+conflicts = []
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/overloop-dsp.dko.json"
+sources = ["src/dsp/overloop.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+
+
+[[object]]
+path = "build/overloop-cf.dko.json"
+sources = ["src/module.c"]
+place = "cf.expansion"
