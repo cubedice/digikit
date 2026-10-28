@@ -29,7 +29,7 @@ from tools.patchkit.pk_pattern_position_proof import (
     sequence_evidence,
     window_frames,
 )
-from tools.patchkit.pk_short_loop_proof import ProofFailure
+from tools.patchkit.proof_audio import ProofFailure
 
 
 def frame(index: int, mask: int = 0, note: int = 0x3C00) -> Frame:

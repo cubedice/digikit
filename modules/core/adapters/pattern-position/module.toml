@@ -1,11 +1,11 @@
 [module]
-id = "michael/pattern-position"
+id = "core/pattern-position"
 version = "0.2.0"
 name = "Pattern position transport"
 category = "core"
 role = "adapter"
 type = "framework"
-author = "Michael"
+author = "digikit"
 status = "experimental"
 summary = "Commits DT2 1.17 timed master-step events and publishes their position before DSP render."
 requires = ["core/dsp-link"]

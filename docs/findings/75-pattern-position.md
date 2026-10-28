@@ -2,9 +2,9 @@
 
 ## Scope
 
-**[D]** `michael/pattern-position` exposes sequencer scheduling state to DSP modules through the required optional
+**[D]** `core/pattern-position` exposes sequencer scheduling state to DSP modules through the required optional
 runtime import `_pattern_position_info`. It is a patch-time provider for OS 1.17, with no DN2 port. The bridge is a
-prerequisite for arming a loop at a selected pattern step. It does not change `michael/bar-loop` controls or implement
+prerequisite for arming a loop at a selected pattern step. It does not change `digikit/overloop` controls or implement
 quantized capture. Its record describes firmware state; sample-accurate alignment needs separate evidence.
 
 Implementation and ABI: `modules/core/adapters/pattern-position/README.md`, `sdk/include/dk/pattern_position.h`,
@@ -149,7 +149,7 @@ be inferred from this experimental observation ABI.
 
 [D] Actual-effect run `armed-f18302802b0242be9e21b24a1dce49d6` used UI knobs without guest-memory writes. Default LENGTH 0 captured exactly 96,000 stereo frames (one 16-step cycle at 120 BPM), with every captured sample matching actual effect input. Held REC preserved the buffer after STOP. LENGTH 1 and START 4 captured 5,984 frames from step 5 to step 6, also exactly matching input. FADE reached the effect correctly. The block-quantized one-step duration is 187 blocks; capture includes the opening block and excludes the closing block. Report: `out/runs/armed-v2/report.json`. The proof reported success; its outer shell subsequently returned a syntax error, so that shell exit is not a passing check.
 
-[D] Module conformance and consumer tests pass: 29 passed, one skipped. Separate bridge/anchor tests pass 36 cases; storage/link tests pass 27 with two missing-firmware skips. The packaged effect is 3,012 bytes. Providers now live under `modules/core/adapters`, retaining their `michael/` IDs, and SDK headers follow the rebased layout.
+[D] Module conformance and consumer tests pass: 29 passed, one skipped. Separate bridge/anchor tests pass 36 cases; storage/link tests pass 27 with two missing-firmware skips. The packaged effect is 3,012 bytes. Providers now live under `modules/core/adapters`, with neutral `core/` IDs after the Overloop rename, and SDK headers follow the rebased layout.
 
 [D] After that adapter migration, all 45 bridge/anchor/storage tests pass again. Regenerated declarations pass `gen --check`; changed Python files pass lint; the new provider, SDK and loop documentation paths resolve. Rebuilding the selected framework image produces the identical tested SHA-256 `67d3946c6653d0609f902013999c870b8e9c80a70c8e2a606a2c2461a8b75d6f`. Layer checking reports only five cached `test/c-demo` compiler-helper imports, outside these modules.
 

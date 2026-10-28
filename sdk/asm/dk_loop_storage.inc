@@ -1,4 +1,4 @@
-// Read-only descriptor exported by experimental michael/loop-storage (DT2 1.17).
+// Read-only descriptor exported by experimental core/loop-storage (DT2 1.17).
 // One shared lease: use one capture client. Validate magic/version/capacity
 // before accessing audio, and initialize every frame before publishing it.
 .EXTERN _loop_buffer_info;

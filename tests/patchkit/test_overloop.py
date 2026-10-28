@@ -4,17 +4,17 @@ separate integration proof. No arbitrary scheduler-to-audio offset is applied.
 """
 
 import pytest
-from support.bar_loop_provider import BASE, BarLoopRig, external_word
 from support.fx_rig import NFAULT, P0, f2w, nw
+from support.overloop_provider import BASE, OverloopRig, external_word
 
-from tools.patchkit import bar_loop_ref as R
+from tools.patchkit import overloop_ref as R
 
 LIVE = (0.625,) * 32 + (-0.375,) * 32
 
 
 class Player:
     def __init__(self, *, start=4, length=0):
-        self.rig = BarLoopRig(record_stores=True)
+        self.rig = OverloopRig(record_stores=True)
         self.tx, self.seq, self.step = 0, 1, 3
         self.generation, self.pattern, self.pattern_length = 1, 0x47100000, 16
         self.params = [0.0, float(start), 0.0, float(length)]
@@ -238,7 +238,7 @@ def test_corrupt_storage_fails_before_audio_access(kind):
 def test_current_sdk_declares_four_knobs_without_building_unrelated_modules():
     from tools.patchkit.pk_conform import fx_records
 
-    (fx,) = fx_records("michael/bar-loop")
+    (fx,) = fx_records("digikit/overloop")
     assert fx["id"] == "loop" and fx["route"] == "master"
     assert [(k["short"], k["position"]) for k in fx["knob"]] == [
         ("REC", 0),

@@ -1,6 +1,6 @@
 // Optional _pattern_position_info import; word offsets for DM(n, Ix).
 // Committed nominal master-grid boundaries; not microtimed note positions.
-// Requires the experimental michael/pattern-position framework provider.
+// Requires the experimental core/pattern-position framework provider.
 .EXTERN _pattern_position_info;
 #define DK_POSITION_MAGIC 0x50504f53
 #define DK_POSITION_VERSION 2

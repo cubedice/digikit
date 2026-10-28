@@ -1,8 +1,10 @@
-# Pattern loop crossfade proof
+# Overloop
 
-`michael/bar-loop` captures stereo master audio into the external buffer reserved by `michael/loop-storage`. It requires the version 2 `michael/pattern-position` firmware bridge on DT2 OS 1.17. This is an experimental emulator proof, not a hardware-validated release.
+`digikit/overloop` captures stereo master audio into the external buffer reserved by `core/loop-storage`. It requires the version 2 `core/pattern-position` firmware bridge on DT2 OS 1.17. Overloop remains experimental and has not been validated on hardware.
 
 Keep the framework MIX at 127 and use one instance on the master route.
+
+The device page is **OVL**. This module replaces the earlier loop prototypes; build and install it under the new ID, then select Overloop in the FX slot. Firmware patch selections should use the two `core/` provider IDs above.
 
 | Knob | Behaviour |
 | --- | --- |
@@ -17,6 +19,6 @@ A capture includes the audio block at its opening boundary and excludes the bloc
 
 The reservation remains 8 MiB; usable audio is 1,048,544 stereo float32 frames (about 21.84 seconds at 48 kHz), followed by a guard. At 120 BPM this holds 128 normal-speed steps. If a requested recording runs past capacity, it aborts to live audio; it never presents a truncated take as a complete loop. The length knob changes capture duration, not the allocator reservation.
 
-Build and package using `mise run module:build -- modules/fx/bar-loop` and `mise run module:pack -- michael/bar-loop --device dt2`. The capture consumer is exercised by `tests/patchkit/test_bar_loop.py`; the event bridge has separate ColdFire and DSP tests.
+Build and package using `mise run module:build -- modules/fx/overloop` and `mise run module:pack -- digikit/overloop --device dt2`. The capture consumer is exercised by `tests/patchkit/test_overloop.py`; the event bridge has separate ColdFire and DSP tests.
 
 Running-firmware emulator tests verified the UI knobs, a complete 96,000-frame stereo capture of a 16-step pattern at 120 BPM, and a one-step capture beginning at START 4 (step 5). Both complete captures matched the effect input byte for byte. Held REC preserved the buffer after STOP. Boundaries are quantized to 32-sample audio blocks. Non-default pattern lengths/scales, external clock, swing and hardware remain unverified; see `docs/findings/75-pattern-position.md` for evidence and scope.

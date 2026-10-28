@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from tools.emulator.dspi_log import Frame, read_log
-from tools.patchkit.pk_short_loop_proof import (
+from tools.patchkit.proof_audio import (
     ROOT,
     SINE,
     ProofFailure,
@@ -532,7 +532,7 @@ def run_image(
     provider_address, fx_counter = 0, 0
     if label == "hook":
         provider_address = M.sym(
-            image.plan, "michael/pattern-position", "_pattern_position_info"
+            image.plan, "core/pattern-position", "_pattern_position_info"
         )
         fx_counter = M.sym(image.plan, "core/fx", "_fx_blk")
         extra_env.update(

@@ -1,6 +1,6 @@
 """Bounded stock-versus-reserved DT2 1.17 sample allocator proof.
 
-Requires a provider-only image patched with michael/loop-storage and an existing
+Requires a provider-only image patched with core/loop-storage and an existing
 cf_script binary. Firmware bytes, generated scripts and reports stay under out/.
 The real firmware helper runs against synthetic pool records, not a loaded
 400 MiB sample set. This is an allocator boundary proof, not full integration.
