@@ -12,8 +12,8 @@ import pytest
 from tools.patchkit import pk_sharc, pk_toolchains
 
 ROOT = Path(__file__).resolve().parents[2]
-PROVIDER = ROOT / "modules/tools/pattern-position"
-LINK = ROOT / "modules/core/dsp-link"
+PROVIDER = ROOT / "modules/core/adapters/pattern-position"
+LINK = ROOT / "modules/core/adapters/dsp-link"
 MAGIC, SALT = 0x50504F53, 0x7B91D6E3
 RX, DATA, BASE, BACK = 0x200A0000, 0x20090000, 0xB90000, 0xB9F000
 SUFFIX = 0xA7C
@@ -39,7 +39,7 @@ SAVED = tuple(
 
 
 def wire(sequence=7):
-    words = [MAGIC, 1, sequence, 4, 2, 3, 0x47123456, 5, 0, 11, 0, 37, 50, 6, 1]
+    words = [MAGIC, 2, sequence, 4, 2, 3, 0x47123456, 5, 0, 11, 0, 37, 50, 6, 1]
     return words + [reduce(xor, words, SALT)]
 
 
@@ -61,18 +61,23 @@ def test_direct_optional_symbols_are_consistent():
     assert "pp_write_frame" not in cf.get("externs", {})
     assert "_pattern_position_info" in dt2["optional"]
     assert "_pattern_position_info" not in dn2["optional"]
-    dyndsp = tomllib.loads((ROOT / "modules/core/dyndsp/module.toml").read_text())
+    dyndsp = tomllib.loads(
+        (ROOT / "modules/core/adapters/dyndsp/module.toml").read_text()
+    )
     obj = next(o for o in dyndsp["object"] if o["devices"] == ["dt2"])
     assert "_pattern_position_info" in obj["optional"]
     assert "_pattern_position_info" not in obj.get("externs", {})
     provider = tomllib.loads((PROVIDER / "module.toml").read_text())
     assert provider["module"]["ports"] == ["dt2-1.17"]
-    rule = next(r for r in provider["anchor_rule"] if r["name"] == "pp.dsp.block_entry")
+    decls = tomllib.loads((ROOT / "devices/fw/dsp/pattern.toml").read_text())
+    rule = next(
+        r["rule"] for r in decls["site"] if r["name"] == "dsp.pattern.site.block_entry"
+    )
     assert rule["offset"] == 0x34 and rule["len"] == 6
 
 
 def test_built_import_uses_the_provider_name():
-    path = ROOT / "modules/core/dyndsp/build/dyndsp-dt2.dko.json"
+    path = ROOT / "modules/core/adapters/dyndsp/build/dyndsp-dt2.dko.json"
     obj = json.loads(path.read_text())
     data = bytes.fromhex(
         next(s["hex"] for s in obj["sections"] if s["name"] == ".rodata")

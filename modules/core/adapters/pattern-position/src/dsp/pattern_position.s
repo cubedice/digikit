@@ -20,7 +20,7 @@
 // An accepted wire with flags.valid=0 remains semantically invalid to clients.
 
 #define PP_MAGIC 0x50504f53
-#define PP_VERSION 1
+#define PP_VERSION 2
 #define PP_SUFFIX 0xa7c
 #define PP_CHECK_SALT 0x7b91d6e3
 

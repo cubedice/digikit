@@ -10,7 +10,7 @@ import pytest
 from tools.patchkit import pk_loop_storage_proof as proof
 
 ROOT = Path(__file__).resolve().parents[2]
-MODULE = ROOT / "modules/tools/loop-storage"
+MODULE = ROOT / "modules/core/adapters/loop-storage"
 
 
 @pytest.fixture(scope="module")
@@ -84,7 +84,7 @@ def test_preview_movement_and_wrong_stock_are_rejected(stock_main):
 
 
 def test_packed_provider_descriptor_matches_reserved_interval():
-    path = MODULE / "build/loop-storage-dsp.dko.json"
+    path = provider_object()
     if not path.exists():
         pytest.skip("Build the provider object first")
     obj = json.loads(path.read_text(encoding="utf-8"))
@@ -98,7 +98,7 @@ def test_optional_storage_export_uses_direct_global_name():
     # object.externs aliases resolve primitives/anchors, not another module's
     # global symbol. An optional alias silently became zero even with the
     # provider selected, causing the real runtime to return E_DSP_IMPORT.
-    folder = ROOT / "modules/core/dyndsp"
+    folder = ROOT / "modules/core/adapters/dyndsp"
     manifest = tomllib.loads((folder / "module.toml").read_text(encoding="utf-8"))
     obj = next(item for item in manifest["object"] if item["devices"] == ["dt2"])
     assert "_loop_buffer_info" in obj["optional"]
@@ -110,9 +110,9 @@ def test_optional_storage_export_uses_direct_global_name():
 
 
 def test_built_optional_export_relocates_the_actual_provider_symbol():
-    folder = ROOT / "modules/core/dyndsp"
+    folder = ROOT / "modules/core/adapters/dyndsp"
     path = folder / "build/dyndsp-dt2.dko.json"
-    provider_path = MODULE / "build/loop-storage-dsp.dko.json"
+    provider_path = provider_object()
     if not path.exists() or not provider_path.exists():
         pytest.skip("Build dyndsp and the provider object first")
     obj = json.loads(path.read_text(encoding="utf-8"))
@@ -175,3 +175,11 @@ def test_failed_missing_and_duplicate_probe_results_cannot_pass():
     ):
         with pytest.raises(ValueError):
             proof.validate_results(output(*rows), expected)
+
+
+def provider_object():
+    from tools.patchkit import modroots, patchkit
+
+    manifest = tomllib.loads((MODULE / "module.toml").read_text())
+    patchkit.build_module(MODULE)
+    return modroots.object_path(manifest, MODULE, manifest["object"][0])

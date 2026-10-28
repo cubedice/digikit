@@ -64,16 +64,19 @@ class BarLoopRig(FxRig):
             )
 
     def allowed(self, stack_bytes):
-        info = self.built.data["_loop_buffer_info"]
-        allowed = []
-        for a, n, name in super().allowed(stack_bytes):
-            if a <= info and info + 16 <= a + n:
-                if a < info:
-                    allowed.append((a, info - a, name))
-                if info + 16 < a + n:
-                    allowed.append((info + 16, a + n - info - 16, name))
-            else:
-                allowed.append((a, n, name))
+        allowed = super().allowed(stack_bytes)
+        for symbol, size in (("_loop_buffer_info", 16), ("_pattern_position_info", 80)):
+            info = self.built.data[symbol]
+            split = []
+            for a, n, name in allowed:
+                if a <= info and info + size <= a + n:
+                    if a < info:
+                        split.append((a, info - a, name))
+                    if info + size < a + n:
+                        split.append((info + size, a + n - info - size, name))
+                else:
+                    split.append((a, n, name))
+            allowed = split
         return allowed + [
             (self.lease_base, R.STORAGE_BYTES, "explicit test audio and canary lease")
         ]

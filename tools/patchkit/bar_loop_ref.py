@@ -1,17 +1,14 @@
-"""Eight-second capture model and explicit external-buffer provider contract.
+"""External-buffer contract for the step-counted capture proof.
 
-The reference shares the float32 loop algorithm with the shorter proofs. It
-does not establish ownership of RAM: the separately patched provider does.
+These bounds do not establish RAM ownership; the patched provider does.
 """
-
-from dataclasses import dataclass
 
 from tools.patchkit import short_loop_ref as short
 
 FS = short.FS
 BLOCK = short.BLOCK
-FRAMES = 384_000
-META_WORDS = short.META_WORDS
+FRAMES = 1_048_544
+META_WORDS = 32
 STATE_BYTES = META_WORDS * 4
 AUDIO_BYTES = FRAMES * 2 * 4
 CANARY_BYTES = 32
@@ -39,34 +36,3 @@ def provider_valid(magic: int, version: int, base: int, size: int) -> bool:
         and size % 4 == 0
         and STORAGE_BYTES <= size <= EXTERNAL_END - base
     )
-
-
-def start_frame(value: float) -> int:
-    return short.start_frame(value, FRAMES)
-
-
-def seam_gain(phase: int, at: int) -> float:
-    return short.seam_gain(phase, at, FRAMES)
-
-
-@dataclass
-class BarLoop(short.ShortLoop):
-    frames: int = FRAMES
-    canary_initialized: bool = False
-
-    def block(self, samples, rec=0.0, start=0.0, fade=0.0):
-        # The DSP initializes eight guard words before processing its first
-        # valid call. The model specifies metadata, not external memory access.
-        self.canary_initialized = True
-        return super().block(samples, rec=rec, start=start, fade=fade)
-
-    def state_words(self, audio_address: int = 0) -> list[int]:
-        words = self.metadata_words() + [
-            audio_address,
-            self.frames,
-            int(self.canary_initialized),
-        ]
-        return words + [0] * (META_WORDS - len(words))
-
-    def audio_words(self) -> list[int]:
-        return [float_word(x) for x in self.left + self.right]

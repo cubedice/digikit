@@ -7,8 +7,8 @@ runtime import `_pattern_position_info`. It is a patch-time provider for OS 1.17
 prerequisite for arming a loop at a selected pattern step. It does not change `michael/bar-loop` controls or implement
 quantized capture. Its record describes firmware state; sample-accurate alignment needs separate evidence.
 
-Implementation and ABI: `modules/tools/pattern-position/README.md`, `sdk/dk_pattern_position.h`,
-`sdk/dk_pattern_position.inc`. Firmware, extracted sections, emulator cards, traces and PCM remain under ignored
+Implementation and ABI: `modules/core/adapters/pattern-position/README.md`, `sdk/include/dk/pattern_position.h`,
+`sdk/asm/dk_pattern_position.inc`. Firmware, extracted sections, emulator cards, traces and PCM remain under ignored
 local paths. No instrument was flashed.
 
 ## Resolved stock state
@@ -138,3 +138,19 @@ identical source hash, sections, symbols and relocations. That original object i
 **[O]** Selected-step capture, pattern-change timing, pause/resume playback semantics, external clock, swing/microtiming,
 per-track scale/length, tempo changes and hardware load remain separate validation tasks. No quantization control should
 be inferred from this experimental observation ABI.
+
+## 2026-10-28: ABI 2 and armed capture integration
+
+[D] Rebased onto upstream `5e62a52`. The provider now queues frozen master-step markers and matches existing timed type-7 PLAY / type-5 step dispatch deadlines. The DSP consumer arms on REC, captures from the next selected START boundary for LENGTH steps (0 = current master cycle), closes before the next excluded block, and holds until rearmed. START and LENGTH latch on arming. Usable stereo storage is 1,048,544 frames within the unchanged 8 MiB lease.
+
+[D] The focused tests execute the new consumer on the SHARC core and the marker queue/packet writer on the ColdFire core. They cover ordered boundary progress, custom lengths across wraps, interrupts/context, packet rejection, incomplete-take invalidation and capacity bounds. These synthetic tests do not establish real firmware/audio alignment. The earlier paired results above describe ABI 1 only.
+
+[D] Paired running firmware run `position-e3e8e4d4c652494cbbdd2b5a9a60b1b2` preserved 241,184 stereo frames bit for bit, with zero PCM offset and zero drift across 11 note events. All 7,535 valid running records were accepted. Tested committed step boundaries coincide with note events, including first PLAY; boundary-to-transmit age is one block. STOP clears valid/running. Report: `out/runs/position-v2/report.json`.
+
+[D] Actual-effect run `armed-f18302802b0242be9e21b24a1dce49d6` used UI knobs without guest-memory writes. Default LENGTH 0 captured exactly 96,000 stereo frames (one 16-step cycle at 120 BPM), with every captured sample matching actual effect input. Held REC preserved the buffer after STOP. LENGTH 1 and START 4 captured 5,984 frames from step 5 to step 6, also exactly matching input. FADE reached the effect correctly. The block-quantized one-step duration is 187 blocks; capture includes the opening block and excludes the closing block. Report: `out/runs/armed-v2/report.json`. The proof reported success; its outer shell subsequently returned a syntax error, so that shell exit is not a passing check.
+
+[D] Module conformance and consumer tests pass: 29 passed, one skipped. Separate bridge/anchor tests pass 36 cases; storage/link tests pass 27 with two missing-firmware skips. The packaged effect is 3,012 bytes. Providers now live under `modules/core/adapters`, retaining their `michael/` IDs, and SDK headers follow the rebased layout.
+
+[D] After that adapter migration, all 45 bridge/anchor/storage tests pass again. Regenerated declarations pass `gen --check`; changed Python files pass lint; the new provider, SDK and loop documentation paths resolve. Rebuilding the selected framework image produces the identical tested SHA-256 `67d3946c6653d0609f902013999c870b8e9c80a70c8e2a606a2c2461a8b75d6f`. Layer checking reports only five cached `test/c-demo` compiler-helper imports, outside these modules.
+
+[O] These accelerated emulator proofs use the retained pre-rebase emulator binary and a 16-step, internal-clock 120 BPM pattern. They do not establish hardware behavior, current-emulator rebuild parity, non-default lengths/scales, swing or external clock. Variable tempo intervals and cross-wrap lengths are covered synthetically, not by live firmware. Broad changed-file preflight is not clean: it encountered repository path/layer findings, four devtools verify test failures, and unavailable pnpm. Focused checks are reported separately. No fixed 32-block correction is used.

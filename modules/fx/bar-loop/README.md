@@ -1,47 +1,22 @@
-# Eight-second loop proof
+# Pattern loop crossfade proof
 
-`michael/bar-loop` 0.1.0 is an experimental Digitakt II OS 1.17 master effect. It captures **eight seconds of stereo audio** at 48 kHz: four bars of 4/4 at 120 BPM. Length is fixed in seconds; it does not follow tempo or quantize recording to a beat.
+`michael/bar-loop` captures stereo master audio into the external buffer reserved by `michael/loop-storage`. It requires the version 2 `michael/pattern-position` firmware bridge on DT2 OS 1.17. This is an experimental emulator proof, not a hardware-validated release.
 
-## Controls
+Keep the framework MIX at 127 and use one instance on the master route.
 
-The BLP page appears after the stock effects in FUNC + FX.
-
-| Control | Behavior |
+| Knob | Behaviour |
 | --- | --- |
-| A / REC | Raise from below 64 to 64 or above to capture once, for exactly 384,000 stereo frames. |
-| B / START | Select frame 0–383,999; changes take effect at the next complete loop boundary. |
-| C / FADE | 0 selects the live mix; 127 selects the frozen loop. Full-range changes ramp over 256 frames. |
-| Framework MIX | Keep at **127** for the intended crossfade. |
+| REC (A) | Turn above halfway to arm. Recording starts on the next selected START boundary, ends automatically, and holds the captured loop. Turn below halfway before arming again. |
+| START (B) | Zero-based master step: 0 means step 1, 4 means step 5, 127 means step 128. A step outside the current pattern waits until it exists. |
+| FADE (C) | Crossfade between live master audio and the captured loop. |
+| LENGTH (D) | 0 captures one whole master-pattern cycle. 1–127 captures that many nominal master steps, continuing across pattern wraps when necessary. |
 
-Output remains live until all audio has been recorded. Capture reads the effect's input before its own crossfade; place it last to include preceding custom master effects. Playback continues at FADE=0. Short seam fades preserve the exact loop period but can produce an amplitude notch.
+START and LENGTH latch at the REC edge. Changes while armed or recording apply to the next recording. REC on a START boundary waits for its next occurrence. Holding REC does not retrigger; turning it down does not cancel an armed or active recording. A previously captured loop remains playable while waiting for the new capture to start.
 
-Audio storage is independent of kit data; its controls are kit-local. Prepare the destination kit's START, FADE and MIX to preserve the intended transition. REC does not overwrite a frozen loop. Reset, disable/re-enable or an FX guard fault invalidates capture; recording must finish again before playback. Audio is not saved with projects or across restarts.
+A capture includes the audio block at its opening boundary and excludes the block at its closing boundary. Tempo changes follow actual step events. A transport stop, pattern/generation change, changed master length, or broken timing stream during capture invalidates the incomplete take. Frozen playback does not depend on continued sequencer timing.
 
-## Explicit storage ownership
+The reservation remains 8 MiB; usable audio is 1,048,544 stereo float32 frames (about 21.84 seconds at 48 kHz), followed by a guard. At 120 BPM this holds 128 normal-speed steps. If a requested recording runs past capacity, it aborts to live audio; it never presents a truncated take as a complete loop. The length knob changes capture duration, not the allocator reservation.
 
-This effect requires the patch-time provider `michael/loop-storage` and its `_loop_buffer_info` DSP import. The provider reserves **8 MiB** by reducing the DT2 1.17 stock sample allocator from **400 MiB to 392 MiB**. The effect itself allocates only 64 bytes of metadata in the shared DSP module area. Its audio occupies **3,072,000 bytes** of the external reservation.
+Build and package using `mise run module:build -- modules/fx/bar-loop` and `mise run module:pack -- michael/bar-loop --device dt2`. The capture consumer is exercised by `tests/patchkit/test_bar_loop.py`; the event bridge has separate ColdFire and DSP tests.
 
-There is one reservation for **one consumer**. Do not load another effect that writes the same buffer. There is no guessed-address fallback: an absent provider prevents loading. Every call validates the provider's magic, version, alignment, capacity and address bounds before using its memory.
-
-The 32 bytes immediately after audio contain eight `0x5a17b00f` canary words. Activation initializes only those eight words; later calls check them before touching audio. Corruption returns an FX fault, plays dry and clears capture validity. The provider must therefore supply at least **3,072,032 bytes**. Metadata words 7, 8 and 9 report the audio address, frame count and canary-initialized flag. Audio is never cleared synchronously and remains unreadable until a complete capture overwrites it.
-
-The canary detects corruption at this boundary; it is not general memory protection. Full sample loading, deletion, compaction, project reload, recording, preview and hardware operation still need integration checks. The reservation design and allocator proof are documented in `modules/tools/loop-storage/README.md`.
-
-## Build and validation
-
-From the repository root:
-
-```sh
-mise run module:build -- modules/tools/loop-storage
-mise run module:build -- modules/fx/bar-loop
-mise run module:check -- michael/bar-loop --device dt2
-mise run module:pack -- michael/bar-loop --device dt2 -o out/patch/bar-loop-dt2.dkm
-```
-
-The provider is patched into a private firmware image; copying the effect's `.dkm` alone does not reserve memory. The bounded runner `tools/patchkit/pk_short_loop_proof.py` selects the provider automatically with `--module michael/bar-loop --timeout 1800`. It requires the prepared Linux/WSL binaries and ready inputs described in the [short-loop README](../short-loop/README.md), and exercises kit changes with transport stopped.
-
-`tests/patchkit/test_bar_loop.py` covers complete capture, playback, provider rejection, reset and canary faults. Standard FX conformance uses an explicitly registered test provider with a read-only descriptor and a narrowly allowed audio/canary range; this fixture does not prove stock allocator ownership. The separate `tools/patchkit/pk_loop_storage_proof.py` checks allocator boundaries. Record run results in `docs/findings/54-module-cookbook.md`; running-sequencer transitions, hardware deadlines and audible performance remain unverified.
-
-The OS 1.17 firmware emulator proof passes **45 checks**, including complete eight-second capture, three kit changes, START adjustment, unchanged capture/canary hashes, exact cursor advancement and fading back to a silent destination. Four recordings each cover a complete loop. A separate boot without the provider rejects the effect cleanly with `E_DSP_IMPORT (-32)`. These runs use accelerated DSP execution with transport stopped; details and the broader repository-check limitations are in `docs/findings/54-module-cookbook.md`.
-
-Built with **digikit by Em D — https://github.com/ElekLabs/digikit**. Distributed under the repository's AGPL-3.0-or-later license and NOTICE terms. This module is unofficial and is not endorsed by Elektron.
+Running-firmware emulator tests verified the UI knobs, a complete 96,000-frame stereo capture of a 16-step pattern at 120 BPM, and a one-step capture beginning at START 4 (step 5). Both complete captures matched the effect input byte for byte. Held REC preserved the buffer after STOP. Boundaries are quantized to 32-sample audio blocks. Non-default pattern lengths/scales, external clock, swing and hardware remain unverified; see `docs/findings/75-pattern-position.md` for evidence and scope.
