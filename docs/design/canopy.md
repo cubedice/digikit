@@ -97,7 +97,7 @@ Implement only claimed supported controllers; document the fallthrough policy fo
 
 ### PLAY
 
-Every accepted note-on starts its own voice immediately, subject to the fixed four-note foreground limit. Note-off starts only that voice's release unless pedal or latch holds it. Preserve the played pitches, octave spread and velocities. Generated-chord VOICING does not rearrange PLAY notes.
+Every accepted note-on starts its own voice immediately, subject to the fixed four-note foreground limit. Note-off starts only that voice's release unless pedal or latch holds it. Preserve the played pitches, octave spread and velocities. Generated-chord VOICING does not rearrange PLAY notes. The admitted set of at most four tones also supplies chord recognition and arp candidates; a stolen, still-held key stays in the ownership ledger but is excluded from all three until pressed again. Publish the excluded count so the display can show `+N` instead of implying unlimited keyboard polyphony.
 
 Chord recognition is display-only in this mode. After 35 ms without a note-set change, compare the pitch-class mask with a small dictionary of exact chord templates and their inversions. Prefer a root present in the played set and an exact template; use the previous equally valid interpretation to reduce flicker. Show the lowest sounding pitch as the bass in slash notation. If interpretation is ambiguous, show note names. Display updates do not delay notes, quantize them or retune them.
 
@@ -179,7 +179,7 @@ Define argument interpretation by event kind: NOTE uses note/velocity, CC uses c
 
 All packet kinds share one ordered message sequence and cumulative ACK, separate from runtime-loader ACK. Tagged CONFIG_CHUNK payloads carry target track, instance generation, configuration revision, chunk index and total byte length before bounded chunk data. Assemble into a second buffer; CONFIG_COMMIT validates the complete length/schema/checksum and swaps the revision atomically before acknowledgement. Chunk acknowledgements mean buffered, not applied. Dependent note batches wait behind the commit and declare its required revision. Retries of chunks/commits are idempotent. A mismatch requests resynchronization instead of rendering notes against the wrong shape. Priority reset aborts any incomplete transaction. A per-track reset advances that instance generation; whole-stream resynchronization advances the separate stream epoch.
 
-Reserve sixteen return words as a candidate: four for magic/version, stream epoch, accepted message sequence and DSP heartbeat; twelve for one track's status. Status includes publication block, track/mode/source flags, instance generation, applied configuration revision, chord revision, four packed pitches, per-note key/pedal/latch membership, arp pitch/gate/ordinal, applied blend, clock state, fault code and overrun count. Publish ACK every DSP block independently of UI work. Rotate status across track instances, one per block, so all sixteen are refreshed within sixteen blocks. The UI selects only matching track/generation snapshots and suppresses stale animation; track selection must never briefly display another track's notes.
+Reserve sixteen return words as a candidate: four for magic/version, stream epoch, accepted message sequence and DSP heartbeat; twelve for a typed status payload. The SRC interface section below assigns the fast-status fields and a bounded selected-track detail format. Publish ACK every DSP block independently of UI work. Without a detail transfer, rotate fast status across track instances once per block. During a detail transfer alternate fast status and detail fragments, so all sixteen fast records refresh within thirty-two blocks. The UI selects only matching track/generation snapshots and suppresses stale animation; track selection must never briefly display another track's notes.
 
 Allocate these return words only after proving unused space and full copy-path coverage. Rows after 20 are candidates: Overloop owns rows 13-20, and earlier rows contain ACK/diagnostics. A second mailbox cannot simply use those existing rows. Lack of verified return capacity blocks stage 0 just as lack of forward capacity does.
 
@@ -211,7 +211,7 @@ For unrestricted track assignment, prove the maximum 16-track case alongside sto
 
 ## Arpeggiator and transport behavior
 
-ARP MIX blends sustained pad and the separate arp group. Candidate notes come from physical/sustained/latched membership in PLAY and from the generated chord in the other modes. Audio release tails are excluded. The arp operates on a committed chord revision; a mid-step chord edit takes effect at the next scheduled note.
+ARP MIX blends sustained pad and the separate arp group. Candidate notes come from admitted physical/sustained/latched membership in PLAY and from the generated chord in the other modes. Audio release tails and stolen keys outside the admitted four are excluded. The arp operates on a committed chord revision; a mid-step chord edit takes effect at the next scheduled note.
 
 Support UP, DOWN, UP/DOWN without duplicate endpoints, AS PLAYED and seeded RANDOM; one to three octaves; and bounded gate duration. Each arp event has its own internal token. Gate changes release only arp ownership. Initially STRUM applies only to generated ROOT + TYPE, LEARN TO ROOT and SEQUENCER chords: it schedules their pad-tone onsets across a bounded interval and cancels pending old-chord onsets when the chord revision changes. PLAY always preserves immediate individual key onsets; adding a played note cannot cancel a still-held earlier note.
 
@@ -240,7 +240,7 @@ The release layout is:
 | G | ARP MIX | LATCH |
 | H | LEVEL | SOURCE |
 
-SOURCE is KEYBOARD or SEQUENCER. PLAY/ROOT + TYPE/LEARN TO ROOT is selected in setup. In PLAY, CHORD shows detected notes/name as read-only status and encoder B is visibly disabled; turning it does not edit a hidden value. The chord parameter retains its generated-mode selection until the player changes mode. During the initial stock-page prototype, retain the numeric CHORD control as a clearly documented generated-mode-only setting; the read-only named display belongs to the custom-page stage.
+SOURCE is KEYBOARD or SEQUENCER. PLAY/ROOT + TYPE/LEARN TO ROOT is selected in setup. In KEYBOARD PLAY, CHORD, VOICING and STRUM are visibly read-only; turning B, C or F does not edit their stored generated-mode values. In KEYBOARD LEARN TO ROOT, CHORD is USER and VOICING is AS LEARNED, both read-only; transposition preserves captured intervals and spacing, while STRUM remains active. The central status strip shows the recognized chord independently of these controls. During the initial stock-page prototype, retain the numeric controls as documented generated-mode-only settings; the no-op encoder handling and named display belong to the custom-page stage. SEQUENCER uses generated chords regardless of the stored keyboard mode, so these controls are active there. LATCH is read-only in SEQUENCER; retain its stored keyboard setting, but sequencer note lengths continue to own gates.
 
 Separate logical parameter IDs, storage backing and physical encoder positions. Reordering COLOR onto D must not repurpose the firmware's sample-slot storage: D has sample-specific semantics today. Route the new page's D encoder to the existing COLOR backing word instead. Stock TUNE/LEVEL keep their native handlers.
 
@@ -248,9 +248,136 @@ Four fields retain firmware backing. Extra fields use a versioned module configu
 
 Reserve logical IDs 0-3 for CHORD/VOICING/COLOR/DRIFT; 4 STRUM, 5 ARP MIX, 6 RATE, 7 ORDER, 8 OCTAVES, 9 GATE, 10 SWING, 11 RESTART, 12 LATCH, 13 SOURCE, 14 LOCAL ATTACK and 15 LOCAL RELEASE. Mode, selector routing, local BPM and learned-shape data are separately versioned setup fields. TUNE and LEVEL remain stock identities. These IDs describe control identity rather than an instruction to allocate native firmware parameter slots; publish explicit enum values/ranges with the implementation and never reorder released IDs.
 
-Add SRC paint/update/encoder hooks scoped to the resolved CANOPY machine, using an SDK-facing view adapter. Overloop's FX-specific draw hooks are a precedent, not a reusable SRC API. Repeated SRC selects SOUND/MOVEMENT. Other machines use stock handlers. Page changes never mutate control values.
+Add SRC paint/update/encoder hooks scoped to the resolved CANOPY machine, using an SDK-facing view adapter. Overloop's FX-specific draw hooks are a precedent, not a reusable SRC API. Compose the existing added-machine page hook as described below; simply painting a second screen is insufficient. Other machines use stock handlers. Page changes never mutate control values.
 
-Display mode/source, detected or generated chord, actual note names, pedal/latch state, active arp note, rate/sync state and a PAD-to-ARP blend indicator. Render only bounded snapshots, at at most 25 Hz for animation; input can redraw immediately. Retain no stale firmware view pointers. Recognition and animation never read oscillator buffers.
+## SRC interface specification
+
+### Reference screens and pixel layout
+
+![CANOPY SRC design showing PLAY, generated chords, arpeggiator, encoder focus, LEARN and clock wait](assets/canopy-src-ui.png)
+
+The [editable vector reference](assets/canopy-src-ui.svg) contains six original design frames, each drawn on a 128 by 64 one-bit grid and enlarged by an integer factor. These are interface mockups, not firmware captures. The top ten rows illustrate the native header; exact placement of the native track/title/transport content must be checked on the pinned firmware. The custom painter must not erase or replace existing transport or track information to imitate the illustration.
+
+Use white pixels on black with no antialiasing, grayscale, color coding or tiny musical-symbol font. Draw custom content within x=0..123, y=10..63. Reserve x=124..127 for native page dots and y=0..9 for the native header. The page titles are CANOPY SOUND and CANOPY MOVEMENT, shortened to SND/MOV where the native title formatter requires it; the native page indicator shows 1/2 or 2/2.
+
+| Region | Pixel bounds | Content |
+| --- | --- | --- |
+| A-D labels | y=11..15, four 31-pixel columns | Three-by-five bitmap font, four-pixel advance; at most seven characters |
+| A-D values | y=18..24, same columns | Five-by-seven font, six-pixel advance; at most five characters |
+| Performance heading | x=2..77, y=28..34 | Chord name on SOUND; current arp pitch or clock state on MOVEMENT |
+| Source and mode | x=80..99, y=29..33 | `K:PLY`, `K:RT`, `K:LRN` or `SEQ` |
+| Latch and pedal | x=102..120, y=28..35 | Fixed L/P badges; never move other text when they change |
+| Four note slots | x=0..123, y=37..45 | One pitch label per 31-pixel column, plus ownership marks |
+| E-H labels | y=48..52, four columns | Same label font and limits as A-D |
+| E-H values | y=55..61, same columns | Same value font and limits as A-D |
+
+Column origins are 0, 31, 62 and 93. Center values in their cell, with at least one pixel of horizontal margin. Font measurement must precede drawing. Clip each cell independently rather than letting a long string spill into a neighboring control. The custom bitmap alphabet must include lowercase chord suffixes, `#`, `b`, `:`, `%`, `/`, `+`, `-`, `*` and `>`; reuse existing project glyphs where suitable and add missing glyphs explicitly.
+
+Always prioritize actual note names over a guessed chord label. Format MIDI note zero as `C-1`, not as an empty slot; use an explicit validity mask. Use `--` only for an absent note. Four-character pitches such as `C#-1` fit the slot; MIDI 127 is `G9`. Keep an unambiguous MIDI-number readout available in setup. Abbreviate or omit a long chord name and preserve slash bass where possible; do not scroll the note strip or hide a pitch to fit a title.
+
+### Control labels and value formatting
+
+The physical ordering in the preceding control table is unchanged. The reference uses compact legends `VOICE`, `OCTS`, `RESTART` and `SOURCE`; full names appear in focus feedback. Encoder letters are conveyed by their fixed positions, not repeated on every pixel cell.
+
+| Control | Normal cell | Behavior and focus formatting |
+| --- | --- | --- |
+| TUNE / LEVEL | Native compact numeric value | Keep native range, adjustment and storage; show native precise value in focus |
+| CHORD | `MAJ`, `MIN7`, `SUS2`, `ADD9`, `USER` | Full chord type in focus; read-only `AUTO` in KEYBOARD PLAY, read-only `USER` in KEYBOARD LEARN TO ROOT |
+| VOICE | `CLOSE`, `OPEN`, `INV1`, `INV2`, `LEAD` | Full voicing name in focus; read-only `--` in KEYBOARD PLAY; read-only `ASLRN` in KEYBOARD LEARN TO ROOT, with AS LEARNED focus |
+| COLOR / DRIFT | 0..127 | Preserve exact macro value; optional qualitative endpoint legend without claiming a measured spectral value |
+| STRUM | `OFF` or e.g. `32ms` | Proposed 0..500 ms total spread; map the stored macro through a documented curve; `--` in KEYBOARD PLAY |
+| ARP MIX | `PAD`, `ARP` or rounded percent | Percent is the arp contribution; endpoints map exactly to 0/127; focus shows the continuous PAD-to-ARP marker |
+| RATE | `1/16`, `1/8T`, or `1STP` | Show only divisions supported by the active timing capability; step-only builds label master steps honestly |
+| ORDER | `UP`, `DOWN`, `UP/DN`, `PLAY`, `RAND` | `PLAY` means input order, not keyboard mode; focus says AS PLAYED |
+| OCTS | `1OCT`..`3OCT` | No octave animation or implicit chord transposition |
+| GATE | Percentage | Exact implemented range appears in the descriptor; round for the cell, retain stored precision |
+| SWING | `50%` straight to `75%` | Percentage of the event pair occupied by its first interval; unavailable timing shows `--` and consumes the turn |
+| RESTART | `TRIG`, `PATT`, `CONT` | Full descriptions in focus: phrase/trig, pattern, continuous |
+| LATCH | `OFF` or `ON` | This is the enabled keyboard setting; the separate L badge distinguishes an active retained phrase; read-only `--` in SEQUENCER |
+| SOURCE | `KEYS` or `SEQ` | Changing this starts the instance reset described above; it is not a live-input blend |
+
+Discrete enum controls advance one choice per detent, clamp at their endpoints and do not accelerate across multiple choices. Continuous controls retain verified native coarse/fine behavior where applicable. Do not introduce encoder-click or capacitive-touch gestures. Never write an unsupported value and merely draw it as unavailable.
+
+Arp settings remain editable while ARP MIX is PAD, so a performer can prepare the next movement. Their values remain normal, while the MOVEMENT heading says `ARP OFF`. Changing them does not silently turn the arp up. Disabled controls consume turn/reset gestures without changing saved values, sending a configuration revision or creating a p-lock. Brief focus feedback says `YOUR NOTES` for the three disabled PLAY controls, `AS LEARNED` for CHORD/VOICE in LEARN TO ROOT, and `KEYS ONLY` for LATCH in SEQUENCER; leave the mode badge visible. Setup explains the mode-specific controls and selects the learned shape slot explicitly.
+
+### Performance feedback
+
+On SOUND, show the detected/generated chord at left, such as `Cmaj7`, `Dm7` or `C/E`. A pending quantized chord uses a rightmost `>` marker beside the current name until the DSP commits the new chord revision; never replace the displayed note slots with the future chord early. With no admitted notes, show `NO NOTES`; if only release tails remain, show `RELEASE` and empty note slots. These are note/lifetime indicators, not audio meters: a shared AMP or mute can make held notes inaudible.
+
+The four slots show the admitted voicing, sorted by pitch for a stable visual order. Keep an explicit mapping from displayed slot to the underlying note token, so AS PLAYED arp order and repeated-pitch notes still highlight correctly. A solid underline means physical-key ownership; a dotted underline means pedal-only ownership; a short centered underline means latch-only ownership. Use physical > pedal > latch precedence when multiple flags apply. Generated chords inherit the ownership of their root phrase. Old release tails are counted separately and never enter the chord label or arp pool.
+
+A fifth eligible key can steal an admitted voice as specified above. Show `+N` beside the chord or a compact capacity message when eligible-but-excluded keys remain. Recognition and arp both follow the same admitted set of at most four notes; the display must not name a larger chord that the pad cannot play. Counts track unique eligible pitches for this indicator; repeated-note tokens retain their own release pairing.
+
+For KEYBOARD, L is plain when latch is off, outlined when enabled but no phrase is retained, and inverted while a latched phrase is active. P is plain when the routed pedal is up and inverted while down, even if no note is sounding. Both badges are plain in SEQUENCER because keyboard latch and pedal do not own sequencer gates. No flashing is needed for either badge.
+
+On MOVEMENT, show `ARP G4` for the actual current arp pitch, including octave expansion. Invert the source tone's note slot only while its arp gate is active, the applied arp contribution is nonzero and its source chord revision matches the displayed chord revision. If the chord changes before the next arp event, retain the actual arp-pitch heading but suppress slot inversion until the source-match-valid flag is set. The slot label remains the base chord tone (e.g. A3) while the heading can show A4; this makes the octave relationship explicit. A scheduled but inaudible arp does not pretend to be an audio cursor.
+
+| Condition | Heading or feedback | Animation |
+| --- | --- | --- |
+| Valid chord, arp mix at PAD | `ARP OFF` on MOVEMENT | Note ownership updates only |
+| Ready but synchronized transport stopped | `STOPPED` | No arp cursor |
+| External sync selected, no valid clock yet | `WAIT CLK` | No arp cursor; keyboard pad remains playable |
+| Previously running external clock is lost | `CLK LOST` | Release arp gate, freeze no stale active highlight |
+| Timing capability missing | `GRID ONLY` when a finer setting is attempted | Supported master-step choices remain usable |
+| DSP telemetry stale or wrong generation | `LINK LOST`, note slots `--` | Stop all note/arp animation; retain labeled control values as unconfirmed |
+| Instance fault | `VOICE ERR` | Clear note highlights; PANIC and setup remain reachable |
+| Pending configuration | Small `*` next to focused requested value | Show pending until applied revision is acknowledged |
+| Save failure | `NOT SAVED` after the save action | Current sound remains; retry through setup |
+
+Clock source (LOCAL/INTERNAL/EXTERNAL) and exact state are shown in RATE focus and setup. The normal heading reserves space for the actionable state or note. Fault/stale status has priority over knob focus; a pending save notice must not conceal a voice fault. A stale snapshot must not be presented as an empty, healthy instrument.
+
+### Encoder focus and input routing
+
+A real encoder turn opens a 750 ms focus view within y=27..45; each additional turn restarts the timer. It replaces the central chord/note area only, preserving both rows of knobs, native header, page dots, source/mode and L/P badges. Use x=2..77 for the full or measured-abbreviated parameter/value heading. A second line shows a useful value explanation or endpoint marker. For ARP MIX, draw PAD at x=2, ARP at x=110 and the marker between x=21..103, matching reference frame 4. Resume the ordinary note view when the timer expires.
+
+Show the requested value immediately after a turn. While its configuration revision is pending, add `*`; the blend marker and note/arp status continue to represent applied DSP state. Remove the marker only on matching applied revision, not merely a transport ACK. If focus expires while pending, retain a small pending marker in that cell's label area. Distinguish this from preset dirtiness: durability appears in setup/save feedback, not as the same star on all live controls.
+
+Plain SRC cycles SOUND/MOVEMENT; native UP/DOWN page navigation is retained. Store the selected page as temporary per-track UI state, not as a musical parameter. On returning to a CANOPY track restore its page, initially SOUND. Leaving for AMP/FLTR or switching tracks cancels focus. Consume the page-switch event once; repeated key-down/held SRC must not repeatedly flip pages unless native behavior deliberately supplies repeat events.
+
+Preserve FUNC+SRC for MACHINE selection. Preserve stock transport, trig keys, TRK selection and modifier combinations. Do not assign YES to setup or learning from the ordinary SRC page: added-machine YES/sample-picker handling remains an open firmware input question. Initial setup/LEARN access stays at DIGIKIT > MODULES > CANOPY > SETTINGS. Do not route a delayed turn captured for one page/generation into a different page or track after a mode switch.
+
+The existing `mf_srcpage` hook resets added machines to one page on each draw. Extend it with the explicit multiple-page capability for CANOPY, leaving existing machines on their current path. Then provide page-specific paint, encoder and formatter dispatch. See [SRC page analysis](../findings/50-dt2-src-second-page.md), [input routing](../findings/71-ui-components-1-17.md) and the [current machine hook](../../modules/core/adapters/machines/src/cf/dt2/machines.s). This is a required implementation dependency, not only a mockup detail.
+
+### LEARN dialog
+
+The setup LEARN action opens an opaque modal with its own native title. Show the destination shape slot, unique captured count `0/4`..`4/4`, four captured pitches, and the lowest-note anchor labeled ROOT. The dialog uses the complete y=10..63 content area; the background SRC page stops animation. It owns YES SAVE and NO CANCEL only while visible. Encoder movement must not change hidden SRC parameters.
+
+Capture is a separate session with a monotonic ID and revision. On entry, release the previous performance phrase and begin an isolated PLAY audition; selectors are ordinary notes here. Captured membership accumulates across key releases and is independent of pedal/audio release tails. Duplicate pitches do not consume another slot. A fifth unique pitch leaves the first four intact and shows FULL. Empty capture disables YES and shows `PLAY 1-4 NOTES` when attempted. NO discards the session without overwriting its previous saved shape.
+
+YES commits exactly the displayed capture revision to the selected slot; if a new note changed capture after that revision, refresh the dialog before accepting another YES. On commit show LEARNED/UNSAVED immediately; show SAVED only after durable completion. A failed write keeps the new working shape and offers retry in setup. Closing releases audition voices, restores the preceding SRC page/mode and requires fresh presses; it does not unexpectedly switch the input source or turn on latch. Preserve tombstones for keys still physically held. Mode-specific selection of the learned shape remains explicit.
+
+### Status payload and redraw contract
+
+Freeze the fast-status payload at twelve words, using the following proposed packing. The four transport ACK/heartbeat words remain independent. All identity/revision fields use wrapping unsigned comparisons; a flag is not a replacement for a generation check.
+
+| Word | Fast payload meaning |
+| --- | --- |
+| 0 | Publication DSP block |
+| 1 | Kind bits 30..31 (`0` fast); track 0..3; source 4..5; mode 6..7; pedal/latch-enabled/latch-active/pending-chord bits 8..11; quiet/ramp/fault/learn-active bits 12..15; pitch-valid mask 16..19; active foreground count 20..22; total releasing-group count 23..25 (foreground, shared tails and arp); arp gate/audible bits 26..27; bits 28..29 reserved |
+| 2 | Instance generation |
+| 3 | Applied effective-control revision, including firmware-backed values |
+| 4 | Applied chord revision |
+| 5 | Four admitted MIDI pitches, one byte each; validity comes from word 1 |
+| 6 | Four membership bytes: key, pedal, latch flags plus stable source-tone identity within the chord revision |
+| 7 | Actual arp pitch bits 0..7; pitch-valid bit 8; source-match-valid bit 9; source-tone index bits 10..11; reserved bits 12..15; bounded ordinal bits 16..31. Source-match-valid means the arp source revision equals word 4; generate packed masks in SDK |
+| 8 | Applied arp mix, unique physically held count, eligible-but-excluded count, and reserved byte |
+| 9 | Clock source, clock state, timing-capability flags and applied rate ID, one byte each |
+| 10 | Last fault code and saturating overrun count, sixteen bits each |
+| 11 | Selected-track detail revision |
+
+A separate typed DETAIL fragment uses the same twelve-word payload: publication block; kind/track; instance generation; detail revision; framing; associated applied-control revision; then six data words. Framing packs fragment index in bits 0..7, total fragments in 8..15, detail schema version in 16..23 and reserved zero in 24..31. Freeze schema 1 at exactly 64 snapshot words, with unused fields zeroed: eleven fragments indexed 0..10, the final fragment carrying four snapshot words and two zero padding words. It contains the full effective control bank, pending chord revision, LEARN session/capture revision, captured pitches/validity/count/anchor/full flag and shape revision. The CF side owns requested and durable-store revisions locally; do not pretend DSP ACK acknowledges card storage.
+
+Transmit details only for the selected track or active LEARN dialog, at most 25 completed snapshots per second. A source snapshot remains immutable until its fragments complete; coalesce intervening requests. Alternate fast/status detail frames during a transfer to retain the thirty-two-block fast refresh bound. CF publishes a completed detail snapshot only after every fragment matches track, instance, revision, schema and expected length; reject invalid indices, counts or padding. Validate LEARN session identity and capture revision against the current dialog before publishing its capture fields. Discard incomplete/stale fragments on track/mode/session changes. After 150 ms without completion, discard that assembly and request a fresh snapshot through the ordinary control stream, with at most one retry per 150 ms. Keep the last matching complete controls marked unconfirmed while recovering; missing details must not disable retry or invalidate fresh fast notes. No new reply rows are claimed by this multiplexing.
+
+Use a 150 ms initial freshness threshold for matching fast telemetry, measured on the UI clock. After it expires, stop animation and display LINK LOST; a paused UI loop does not infer a DSP fault until it can recheck fresh data. Detail freshness is checked separately and does not blank valid fast notes while a new detail snapshot is assembling. Paint only at most every 40 ms for animation, with immediate input/fault redraw permitted. Copy bounded data under a short lock/mask; format and draw after releasing it. Retain no firmware view pointers or DSP buffer pointers across updates.
+
+### UI acceptance
+
+Use a pure bitmap renderer with host fixtures for all six reference frames, plus NO NOTES, RELEASE, pedal down with no notes, latch enabled but empty, fifth key, pending chord, pending encoder value, LINK LOST and VOICE ERR. Check exact pixel bounds and independent field truncation at native resolution; the enlarged reference is not a substitute for native-font readability.
+
+Exercise every encoder on both pages and every disabled PLAY/LEARN/SEQUENCER control; assert storage values and DSP revisions as well as pixels. Verify source/mode badges and capture ownership, MIDI note zero, long accidental/octave names, missing-clock capabilities, and source/rate changes while notes are held. Check an arp gate spanning a chord change: the actual pitch remains visible, but no mismatched source slot is inverted. Separate requested/applied/saved states in delayed-ACK and failed-save scenarios. Drop, duplicate and reorder detail fragments; reject invalid framing and old LEARN sessions, and prove timeout recovery without blanking fresh fast notes.
+
+In running firmware, prove page persistence against `mf_srcpage`, SRC and UP/DOWN behavior, FUNC+SRC machine selection, focus expiry, return from AMP/FLTR, rapid switching between CANOPY and stock tracks, key repeat and modal ownership. A late status fragment or turn event must never show or modify the wrong track. Confirm the actual native header/page-dot geometry before accepting the layout, then check OLED readability and knob correspondence on hardware.
 
 ## Persistence and automation
 
