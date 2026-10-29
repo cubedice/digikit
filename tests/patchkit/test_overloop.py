@@ -218,6 +218,67 @@ def test_changed_tempo_counts_boundaries_instead_of_fixed_seconds():
     assert p.state(0) == 2 and p.state(8) == blocks * 32
 
 
+def test_live_window_uses_recorded_boundaries_and_rotates_without_recapture():
+    p = Player(length=3)
+    p.start()
+    for _ in range(2):
+        p.block()
+    second = (0.25,) * 32 + (-0.25,) * 32
+    third = (0.75,) * 32 + (-0.75,) * 32
+    p.block(step=5, samples=second)
+    for _ in range(4):
+        p.block(samples=second)
+    p.block(step=6, samples=third)
+    for _ in range(2):
+        p.block(samples=third)
+    p.block(step=7)
+    assert p.state(8) == 352
+    p.params = [0, 5, 1, 1]
+    at = nw(p.rig.built.data[p.rig.state_symbol(0)])
+    for start, offset, frames, expected in ((5, 96, 160, second), (6, 256, 96, third)):
+        p.params[1] = start
+        p.rig.sess.poke(at + 2, 32)  # interior, away from seam
+        p.rig.sess.poke(at + 5, f2w(1.0))
+        p.block(samples=(0.0,) * 64)
+        assert (p.state(29), p.state(30)) == (offset, frames)
+        assert tuple(p.rig.scratch()) == expected
+        assert not p.rig.audio_events()
+    p.params[3] = 2
+    p.block()
+    assert (p.state(29), p.state(30)) == (256, 192)  # wraps through capture origin
+    p.params[3] = 0
+    p.block()
+    assert p.state(30) == 352
+    p.params[3] = 127
+    p.block()
+    assert p.state(30) == 352  # no unrecorded samples exposed
+
+
+def test_complete_take_closes_on_destination_first_step():
+    p = Player(start=0, length=0)
+    p.arm()
+    p.block(step=0)
+    for step in range(1, 16):
+        p.block(step=step)
+    p.pattern += 16
+    p.pattern_length = 32
+    p.params[0] = 0
+    p.block(step=0)
+    assert p.state(0) == 2 and p.state(8) == 16 * 32
+    assert p.state(27) == 16  # playback retains source grid despite new length
+    assert not p.rig.audio_events()
+
+
+def test_switch_consumes_waiting_arm_without_starting_destination_capture():
+    p = Player(start=4)
+    p.arm()
+    p.pattern += 16
+    p.params[0] = 0
+    p.block(step=4)
+    assert p.state(0) == 0 and p.state(8) == 0
+    assert not p.rig.audio_events()
+
+
 @pytest.mark.parametrize("kind", ["magic", "capacity", "canary"])
 def test_corrupt_storage_fails_before_audio_access(kind):
     p = Player()

@@ -67,6 +67,8 @@ void pp_commit(u32 clock, u32 kind, u32 block) {
 }
 
 #ifndef PP_QUEUE_TEST
+u32 pp_current_pattern(void) { return U32(0x4316501c); }
+
 void pp_snapshot(u32 start) {
     u32 pattern = U32(0x4316501c), length = 0;
     if (pattern >= 0x40000000 && pattern <= 0x47fe248a && !(pattern & 1)) {

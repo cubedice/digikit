@@ -25,7 +25,7 @@ dyndsp_info:
     .long   _dd_vfirst
     .long   DYN_TYPES
     .long   _dd_vcount
-    .long   5
+    .long   6
     .asciz  "_dv_exp2"
     .space  28 - 9
     .long   _dv_exp2
@@ -44,3 +44,7 @@ dyndsp_info:
     .asciz  "_pattern_position_info"
     .space  28 - 23
     .long   _pattern_position_info
+    | Optional destination-kit handoff adapter, required by Overloop 0.3+.
+    .asciz  "_loop_controls_info"
+    .space  28 - 20
+    .long   _loop_controls_info

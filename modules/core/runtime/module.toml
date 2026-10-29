@@ -49,6 +49,7 @@ path = "build/gen/device-{dev}.inc"
 path = "build/tramp.dko.json"
 sources = ["src/cf/tramp.s"]
 place = "cf.expansion"
+optional = ["fx_controls_tick"]
 
 [object.externs]
 fw_queue_pop = "cf.rtos.fn.queue_pop"
