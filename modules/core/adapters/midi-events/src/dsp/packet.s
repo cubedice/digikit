@@ -42,6 +42,12 @@ _mi_skip_check:
     R1 = 2;
     COMP(R0, R1);
     IF EQ JUMP _mi_reset_packet;
+    R1 = 3;
+    COMP(R0, R1);
+    IF EQ JUMP _mi_config_packet;
+    R1 = 4;
+    COMP(R0, R1);
+    IF EQ JUMP _mi_config_packet;
     R5 = FEXT R0 BY 8:4; // count
     R1 = LSHIFT R5 BY 8;
     R1 = BSET R1 BY 0;
@@ -140,3 +146,74 @@ _mi_good:
 _mi_bad:
     R0 = 0;
     RTS;
+
+_mi_config_packet:
+    R10 = R0; // CHUNK or COMMIT
+    R0 = DM(4, I0);
+    R0 = PASS R0;
+    IF NE JUMP _mi_bad;
+    R0 = DM(8, I0);
+    R0 = LSHIFT R0 BY -4;
+    R0 = PASS R0;
+    IF NE JUMP _mi_bad;
+    R0 = DM(9, I0);
+    R0 = PASS R0;
+    IF EQ JUMP _mi_bad;
+    R0 = DM(10, I0);
+    R0 = PASS R0;
+    IF EQ JUMP _mi_bad;
+    R1 = DM(5, I0);
+    COMP(R0, R1);
+    IF NE JUMP _mi_bad;
+    R0 = DM(13, I0); // schema, interpreted by consumer
+    R0 = PASS R0;
+    IF EQ JUMP _mi_bad;
+    R5 = DM(12, I0); // bounded byte length, 4..256, whole words
+    R0 = 0x3;
+    R0 = R5 AND R0;
+    IF NE JUMP _mi_bad;
+    R0 = LSHIFT R5 BY -9;
+    R0 = PASS R0;
+    IF NE JUMP _mi_bad;
+    R0 = 4;
+    COMP(R5, R0);
+    IF LT JUMP _mi_bad;
+    R0 = 256;
+    COMP(R5, R0);
+    IF GT JUMP _mi_bad;
+    R5 = LSHIFT R5 BY -2;
+    R6 = DM(11, I0); // chunk ordinal
+    R0 = LSHIFT R6 BY -3;
+    R0 = PASS R0;
+    IF NE JUMP _mi_bad;
+    R7 = DM(15, I0); // payload words
+    R0 = 4;
+    COMP(R10, R0);
+    IF EQ JUMP _mi_config_commit;
+    R0 = LSHIFT R6 BY 4;
+    R8 = R5 - R0;
+    R0 = 1;
+    COMP(R8, R0);
+    IF LT JUMP _mi_bad;
+    R0 = 16;
+    COMP(R8, R0);
+    IF GT R8 = R0;
+    COMP(R7, R8);
+    IF NE JUMP _mi_bad;
+    JUMP _mi_config_padding;
+_mi_config_commit:
+    R7 = PASS R7;
+    IF NE JUMP _mi_bad;
+    R0 = 15;
+    R0 = R5 + R0;
+    R0 = LSHIFT R0 BY -4;
+    COMP(R6, R0);
+    IF NE JUMP _mi_bad;
+_mi_config_padding:
+    R0 = LSHIFT R7 BY 2;
+    R0 = R4 + R0;
+    I0 = R0;
+    MODIFY(I0, 16) (NW);
+    R0 = 16;
+    R8 = R0 - R7;
+    JUMP _mi_padding;

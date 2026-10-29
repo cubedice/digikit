@@ -36,6 +36,198 @@ def packet_check(words):
     return a ^ b
 
 
+def configuration_packets(values, revision=1):
+    a = b = 0
+    for value in values:
+        a = (a + value) & 0xFFFFFFFF
+        b = (b + a) & 0xFFFFFFFF
+    packets = []
+    chunks = (len(values) + 15) // 16
+    for index in range(chunks + 1):
+        data = values[index * 16 : (index + 1) * 16]
+        words = [0x494E0101, 3 if data else 4, 1, index + 1, 0, revision, 42, 0]
+        words += [0, 1, revision, index, len(values) * 4, 1, a ^ b, len(data)]
+        words += data + [0] * (16 - len(data))
+        words[7] = packet_check(words)
+        packets.append(words)
+    return packets
+
+
+@pytest.fixture(scope="module")
+def config_receiver():
+    source = (MOD / "src/dsp/packet.s").read_text()
+    source += "\n" + (MOD / "src/dsp/config.s").read_text()
+    source += """
+.SECTION/PM seg_pmco;
+.GLOBAL _test_config;
+.GLOBAL _test_publish;
+_test_config:
+    CALL _mi_packet_valid;
+    R0 = PASS R0;
+    IF EQ JUMP _test_done;
+    CALL _mi_config_apply;
+_test_done:
+    RTS;
+_test_publish:
+    R0 = DM(_test_allow);
+    R0 = PASS R0;
+    IF EQ JUMP _test_done;
+    I0 = R4;
+    I1 = R8;
+    R0 = DM(5, I1);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _test_no_schema;
+    R0 = DM(2, I1);
+    DM(_test_revision) = R0;
+    R5 = DM(4, I1);
+    R5 = LSHIFT R5 BY -2;
+    I1 = _test_bank;
+_test_copy:
+    R0 = DM(I0, M6);
+    DM(I1, M6) = R0;
+    R5 = R5 - 1;
+    IF NE JUMP _test_copy;
+    R0 = 1;
+    RTS;
+_test_no_schema:
+    R0 = 0;
+    RTS;
+.SECTION/DM seg_dmda;
+.GLOBAL _test_allow;
+.GLOBAL _test_revision;
+.EXTERN _test_bank;
+.VAR _test_allow = 1;
+.VAR _test_revision = 0;
+.PKBSS _test_bank, 256;
+"""
+    obj = pk_sharc.assemble(source)
+    sections, address, initial = {}, 0x20020000, {}
+    for name, (blob, align, _) in obj.data.items():
+        address = (address + align - 1) // align * align
+        sections[name] = address
+        initial.update(
+            {
+                address // 4 + i: int.from_bytes(blob[i * 4 : i * 4 + 4], "little")
+                for i in range(len(blob) // 4)
+            }
+        )
+        address += len(blob)
+    symbols = {
+        name: sections[sec] + off for name, (sec, off, _) in obj.data_symbols.items()
+    }
+    provisional = pk_sharc.link(obj, 0xB90000, {**symbols, "_mi_config_publish": 0})
+    linked = pk_sharc.link(
+        obj,
+        0xB90000,
+        {**symbols, "_mi_config_publish": provisional.symbols["_test_publish"]},
+    )
+
+    def factory():
+        dm = dict(initial)
+
+        def call(words, publish=1, abort=False):
+            packet = 0x20010000
+            dm.update({packet // 4 + i: value for i, value in enumerate(words)})
+            dm[symbols["_test_allow"] // 4] = publish
+            result = pk_sharc.run_call(
+                linked,
+                "_mi_config_abort" if abort else "_test_config",
+                regs={"R4": packet, "M5": 0, "M6": 1, "L0": 0, "L1": 0, "L2": 0},
+                dm_words=dm,
+                reads={
+                    **{
+                        name: (base // 4, len(obj.data[name][0]) // 4)
+                        for name, base in sections.items()
+                    },
+                    "bank": (symbols["_test_bank"] // 4, 64),
+                    "revision": (symbols["_test_revision"] // 4, 1),
+                },
+                max_steps=5000,
+            )
+            assert result["halt"]["reason"] == "breakpoint", result
+            for name, base in sections.items():
+                dm.update(
+                    {base // 4 + i: value for i, value in enumerate(result[name])}
+                )
+            return result
+
+        return call
+
+    return factory
+
+
+@pytest.mark.parametrize("length", [1, 16, 17, 64])
+def test_configuration_stages_then_publishes_atomically(config_receiver, length):
+    call = config_receiver()
+    values = [0xFFFFFFFF - i for i in range(length)]
+    packets = configuration_packets(values)
+    for packet in packets[:-1]:
+        result = call(packet)
+        assert result["regs"]["R0"] == 1
+        assert result["bank"] == [0] * 64 and result["revision"] == [0]
+    result = call(packets[-1], publish=0)
+    assert result["regs"]["R0"] == 0 and result["revision"] == [0]
+    assert result["bank"] == [0] * 64
+    result = call(packets[-1])
+    assert result["regs"]["R0"] == 1 and result["revision"] == [1]
+    assert result["bank"][:length] == values
+
+
+def test_configuration_rejects_gaps_mismatches_corruption_and_aborted_commit(
+    config_receiver,
+):
+    call = config_receiver()
+    packets = configuration_packets(list(range(17)))
+    assert call(packets[1])["regs"]["R0"] == 0
+    assert call(packets[0])["regs"]["R0"] == 1
+    changed = packets[1].copy()
+    changed[9] += 1
+    changed[7] = packet_check(changed)
+    assert call(changed)["regs"]["R0"] == 0
+    call([], abort=True)
+    assert call(packets[1])["regs"]["R0"] == 0
+    assert call(packets[-1])["regs"]["R0"] == 0
+    for packet in packets:
+        changed = packet.copy()
+        changed[14] ^= 1  # consistent metadata, incorrect whole-image checksum
+        changed[7] = packet_check(changed)
+        result = call(changed)
+    assert result["regs"]["R0"] == 0 and result["bank"] == [0] * 64
+    for packet in packets:
+        result = call(packet)
+    assert result["regs"]["R0"] == 1 and result["bank"][:17] == list(range(17))
+
+
+@pytest.mark.parametrize(
+    "index,value",
+    [
+        (1, 3 | 256),
+        (4, 1),
+        (5, 2),
+        (8, 16),
+        (9, 0),
+        (10, 0),
+        (11, 4),
+        (12, 0),
+        (12, 3),
+        (12, 260),
+        (12, 0xFFFFFFFC),
+        (13, 0),
+        (15, 0),
+        (15, 17),
+        (31, 1),
+    ],
+)
+def test_configuration_packet_bounds(config_receiver, index, value):
+    words = configuration_packets([42])[0]
+    words[index] = value
+    words[7] = packet_check(words)
+    result = config_receiver()(words)
+    assert result["regs"]["R0"] == 0
+    assert result["bank"] == [0] * 64 and result["revision"] == [0]
+
+
 @pytest.mark.parametrize("consumer", [False, True])
 def test_ordered_receiver_only_acknowledges_applied_packets(consumer):
     source = (MOD / "src/dsp/packet.s").read_text()
@@ -397,7 +589,9 @@ def test_din_hook_resolves_uniquely_on_pinned_image():
     )
 
 
-def test_ownership_and_dispatch_on_coldfire(tmp_path, packet_validator):
+def test_ownership_and_dispatch_on_coldfire(
+    tmp_path, packet_validator, config_receiver
+):
     runner = Path(
         os.environ.get("DIGIKIT_CF_SCRIPT", ROOT / "target/release/examples/cf_script")
     )
@@ -447,6 +641,8 @@ void *memset(void *d, int c, unsigned n) {
         "transport_timeout",
         "transport_wrap",
         "transport_wire",
+        "config_transaction",
+        "config_maximum",
     ]
     script = tmp_path / "calls.json"
     script.write_text(
@@ -472,6 +668,12 @@ void *memset(void *d, int c, unsigned n) {
                     "addr": linked.symbols["mi_test_wire_words"],
                     "len": 256,
                     "tag": "wire",
+                },
+                {
+                    "op": "peek",
+                    "addr": linked.symbols["mi_test_config_wire"],
+                    "len": 384,
+                    "tag": "config_wire",
                 },
             ]
         )
@@ -512,3 +714,16 @@ void *memset(void *d, int c, unsigned n) {
         assert result["halt"]["reason"] == "breakpoint" and result["regs"]["R0"] == 1, (
             result
         )
+    wire = bytes.fromhex(
+        next(row["hex"] for row in rows if row.get("tag") == "config_wire")
+    )
+    receive = config_receiver()
+    for offset in (0, 128, 256):
+        words = [
+            int.from_bytes(wire[i : i + 4], "big")
+            for i in range(offset, offset + 128, 4)
+        ]
+        result = receive(words)
+        assert result["regs"]["R0"] == 1
+        assert result["revision"] == [1 if offset == 256 else 0]
+    assert result["bank"][:17] == [i * 19 for i in range(17)]

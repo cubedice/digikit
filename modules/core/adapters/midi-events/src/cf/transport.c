@@ -18,12 +18,33 @@ uint32_t mt_check(const uint32_t w[MT_WORDS])
     return a ^ b;
 }
 
+int mt_config_begin(MiTransport *t, const MiLedger *m, uint32_t track,
+                    uint32_t revision, uint32_t schema,
+                    const uint32_t *words, uint32_t count)
+{
+    uint32_t i, a = 0, b = 0;
+    if (track >= MI_TRACKS || !revision || !schema || !words ||
+        !count || count > MT_CONFIG_WORDS || !m->generations[track]) return -1;
+    if (t->epoch != m->epoch) { mt_init(t); t->epoch = m->epoch; }
+    if (t->config_active || t->pending || t->faults || m->reset_mask) return -2;
+    if (revision <= t->applied[track]) return -1;
+    for (i = 0; i < count; ++i) {
+        t->config[i] = words[i]; a += words[i]; b += a;
+    }
+    t->config_track = track; t->config_generation = m->generations[track];
+    t->config_revision = revision; t->config_schema = schema;
+    t->config_words = count; t->config_chunk = 0; t->config_check = a ^ b;
+    t->config_active = 1;
+    return 0;
+}
+
 static void fault(MiTransport *t, MiLedger *m)
 {
     uint32_t i;
     if (t->faults != UINT32_MAX) ++t->faults;
     for (i = 0; i < MI_TRACKS; ++i) mi_reset_track(m, i);
     t->pending = 0;
+    t->config_active = 0;
 }
 
 const uint32_t *mt_prepare(MiTransport *t, MiLedger *m,
@@ -33,6 +54,16 @@ const uint32_t *mt_prepare(MiTransport *t, MiLedger *m,
     MiEvent first;
     if (t->epoch != m->epoch) {
         mt_init(t); t->epoch = m->epoch;
+    }
+    if (m->reset_mask) {
+        /* A commit may have applied while its ACK was lost. If another track
+         * requests reset, also reset this transaction's owner rather than
+         * resume notes against an uncertain DSP revision. */
+        if (t->config_active && t->pending == MT_CONFIG_COMMIT)
+            mi_reset_track(m, t->config_track);
+        t->config_active = 0;
+        for (i = 0; i < MI_TRACKS; ++i)
+            if (m->reset_mask & (1u << i)) t->applied[i] = 0;
     }
     /* A reset supersedes an unacknowledged note batch. The next reset may jump
      * the ordered sequence; an old note ACK can never clear this request. */
@@ -48,6 +79,14 @@ const uint32_t *mt_prepare(MiTransport *t, MiLedger *m,
     if (m->reset_mask) {
         for (track = 0; !(m->reset_mask & (1u << track)); ++track) {}
         kind = MT_RESET;
+    } else if (t->config_active && !t->faults) {
+        track = t->config_track;
+        if (t->config_generation != m->generations[track]) {
+            t->config_active = 0;
+            return 0;
+        }
+        kind = t->config_chunk * MT_CHUNK_WORDS < t->config_words ?
+               MT_CONFIG_CHUNK : MT_CONFIG_COMMIT;
     } else {
         if (t->faults || !mi_peek(m, &first) || !revisions[first.track]) return 0;
         track = first.track; kind = MT_EVENTS;
@@ -61,6 +100,22 @@ const uint32_t *mt_prepare(MiTransport *t, MiLedger *m,
     if (kind == MT_RESET) {
         t->words[8] = track;
         t->words[9] = t->generation;
+    } else if (kind == MT_CONFIG_CHUNK || kind == MT_CONFIG_COMMIT) {
+        t->words[5] = t->config_revision;
+        t->words[8] = track;
+        t->words[9] = t->config_generation;
+        t->words[10] = t->config_revision;
+        t->words[11] = t->config_chunk;
+        t->words[12] = t->config_words * 4;
+        t->words[13] = t->config_schema;
+        t->words[14] = t->config_check;
+        if (kind == MT_CONFIG_CHUNK) {
+            uint32_t offset = t->config_chunk * MT_CHUNK_WORDS;
+            uint32_t n = t->config_words - offset;
+            if (n > MT_CHUNK_WORDS) n = MT_CHUNK_WORDS;
+            t->words[15] = n;
+            for (i = 0; i < n; ++i) t->words[16+i] = t->config[offset+i];
+        }
     } else {
         t->words[4] = first.sequence;
         t->words[5] = revisions[track];
@@ -89,6 +144,15 @@ int mt_ack(MiTransport *t, MiLedger *m, uint32_t epoch, uint32_t message)
         message != t->words[3]) return 0;
     if (t->pending == MT_RESET) {
         if (!mi_reset_ack(m, epoch, t->track, t->generation)) return 0;
+        t->applied[t->track] = 0;
+    } else if (t->pending == MT_CONFIG_CHUNK || t->pending == MT_CONFIG_COMMIT) {
+        if (m->reset_mask || !t->config_active ||
+            m->generations[t->track] != t->config_generation) return 0;
+        if (t->pending == MT_CONFIG_CHUNK) ++t->config_chunk;
+        else {
+            t->applied[t->track] = t->config_revision;
+            t->config_active = 0;
+        }
     } else {
         if (m->reset_mask || m->count < t->count ||
             m->generations[t->track] != t->generation) return 0;

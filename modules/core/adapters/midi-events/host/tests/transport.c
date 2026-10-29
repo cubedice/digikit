@@ -1,5 +1,83 @@
 #include "transport.h"
 #define CHECK(c) do { if (!(c)) return __LINE__; } while (0)
+uint32_t mi_test_config_wire[3 * MT_WORDS];
+uint32_t mi_test_config_transaction(void)
+{
+    MiLedger m; MiTransport t;
+    uint32_t data[17], i, j, old;
+    uint8_t note_message[3] = {0x90, 60, 100};
+    const uint32_t *p;
+    mi_init(&m); mt_init(&t);
+    for (i = 0; i < 17; ++i) data[i] = i * 19;
+    CHECK(mt_config_begin(&t, &m, 0, 1, 1, data, 0) == -1);
+    CHECK(mt_config_begin(&t, &m, 0, 1, 1, data, 65) == -1);
+    CHECK(mt_config_begin(&t, &m, 0, 1, 1, data, 17) == 0);
+    CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
+    CHECK(mi_message(&m, 0, note_message, 3) == 1);
+    CHECK(mt_config_begin(&t, &m, 1, 1, 1, data, 17) == -2);
+    data[0] = 999; /* UI edits cannot mutate the queued snapshot */
+    for (i = 0; i < 3; ++i) {
+        p = mt_prepare(&t, &m, t.applied, i);
+        CHECK(p && p[1] == (i == 2 ? MT_CONFIG_COMMIT : MT_CONFIG_CHUNK));
+        CHECK(p[11] == i && p[12] == 68 && p[13] == 1 && !t.applied[0]);
+        CHECK(m.count == 1);
+        CHECK(p[15] == (i == 0 ? 16u : i == 1 ? 1u : 0u));
+        if (!i) CHECK(!p[16] && p[31] == 285);
+        if (i == 1) CHECK(p[16] == 304 && !p[17]);
+        for (j = 0; j < MT_WORDS; ++j) mi_test_config_wire[i*MT_WORDS+j] = p[j];
+        old = p[3];
+        CHECK(mt_prepare(&t, &m, t.applied, i+1)[3] == old);
+        CHECK(mt_ack(&t, &m, m.epoch, old));
+        CHECK(!mt_ack(&t, &m, m.epoch, old));
+    }
+    CHECK(t.applied[0] == 1 && !t.config_active);
+    p = mt_prepare(&t, &m, t.applied, 4);
+    CHECK(p && p[1] == (MT_EVENTS | 256u) && p[5] == 1);
+    CHECK(mt_ack(&t, &m, m.epoch, p[3]) && !m.count);
+    CHECK(mt_config_begin(&t, &m, 0, 1, 1, data, 17) == -1);
+    CHECK(mt_config_begin(&t, &m, 0, 2, 1, data, 17) == 0);
+    p = mt_prepare(&t, &m, t.applied, 20); old = p[3];
+    mi_reset_track(&m, 0);
+    CHECK(!mt_ack(&t, &m, m.epoch, old));
+    p = mt_prepare(&t, &m, t.applied, 21);
+    CHECK(p[1] == MT_RESET && !t.config_active && !t.applied[0]);
+    CHECK(mt_ack(&t, &m, m.epoch, p[3]));
+    CHECK(!mt_prepare(&t, &m, t.applied, 22));
+    CHECK(mt_config_begin(&t, &m, 0, 3, 1, data, 1) == 0);
+    p = mt_prepare(&t, &m, t.applied, 23);
+    CHECK(mt_ack(&t, &m, m.epoch, p[3]));
+    p = mt_prepare(&t, &m, t.applied, 24);
+    CHECK(p[1] == MT_CONFIG_COMMIT);
+    mi_reset_track(&m, 1); /* commit could have applied, but its ACK was lost */
+    CHECK(!mt_ack(&t, &m, m.epoch, p[3]));
+    p = mt_prepare(&t, &m, t.applied, 25);
+    CHECK(p[1] == MT_RESET && m.reset_mask == 3 && !t.applied[0]);
+    return 0;
+}
+uint32_t mi_test_config_maximum(void)
+{
+    MiLedger m; MiTransport t;
+    uint32_t data[MT_CONFIG_WORDS], i;
+    const uint32_t *p;
+    mi_init(&m); mt_init(&t);
+    for (i = 0; i < MT_CONFIG_WORDS; ++i) data[i] = UINT32_MAX-i;
+    CHECK(mt_config_begin(&t, &m, 15, UINT32_MAX, 1, data, MT_CONFIG_WORDS) == 0);
+    for (i = 0; i < 5; ++i) {
+        p = mt_prepare(&t, &m, t.applied, i);
+        CHECK(p && p[8] == 15 && p[10] == UINT32_MAX && p[12] == 256);
+        CHECK(p[1] == (i < 4 ? MT_CONFIG_CHUNK : MT_CONFIG_COMMIT));
+        CHECK(mt_ack(&t, &m, 1, p[3]));
+    }
+    CHECK(t.applied[15] == UINT32_MAX);
+    CHECK(mt_config_begin(&t, &m, 15, 1, 1, data, MT_CONFIG_WORDS) == -1);
+    mi_recover(&m);
+    CHECK(mt_config_begin(&t, &m, 15, 1, 1, data, MT_CONFIG_WORDS) == 0);
+    p = mt_prepare(&t, &m, t.applied, 100);
+    CHECK(p && p[2] == 2);
+    p = mt_prepare(&t, &m, t.applied, 1000);
+    CHECK(p && p[1] == MT_RESET && t.faults && !t.config_active);
+    return 0;
+}
 static void note(MiLedger *m, uint8_t channel, uint8_t key)
 {
     uint8_t msg[3] = {(uint8_t)(0x90 | channel), key, 100};

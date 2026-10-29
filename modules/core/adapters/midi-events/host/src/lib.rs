@@ -17,6 +17,8 @@ mod tests {
         fn mi_test_transport_timeout() -> u32;
         fn mi_test_transport_wrap() -> u32;
         fn mi_test_transport_wire() -> u32;
+        fn mi_test_config_transaction() -> u32;
+        fn mi_test_config_maximum() -> u32;
     }
     macro_rules! case {
         ($name:ident, $run:ident) => {
@@ -27,6 +29,11 @@ mod tests {
         };
     }
     case!(repeated_notes_pair_fifo_and_acks_are_idempotent, mi_test_fifo);
+    case!(
+        configuration_commits_only_after_final_ack,
+        mi_test_config_transaction
+    );
+    case!(configuration_bounds_wrap_and_timeout, mi_test_config_maximum);
     case!(
         transport_retains_batches_until_exact_ack,
         mi_test_transport_batch

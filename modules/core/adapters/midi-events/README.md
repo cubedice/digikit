@@ -37,9 +37,40 @@ configuration, apply the entire packet atomically, and return 1 only afterward;
 only then does the receiver advance its ACK. On a newer epoch, reset must clear
 all old instances. Missing or rejecting consumers produce no ACK.
 
+## Configuration transactions
+
+`mt_config_begin` copies one immutable snapshot of 1-64 words (at most 256 bytes).
+It refuses another request while a packet/transaction is pending; UI handoff must
+retry later, never spin in the audio task. Four full chunks is the maximum, followed
+by COMMIT. Revision zero is invalid; revisions increase within an instance and
+cannot wrap without reset. The sender's `applied[]` revision snapshot changes only
+on COMMIT ACK, and should supply the revisions passed to `mt_prepare`. Notes stay
+queued behind the transfer. Reset or timeout aborts the unfinished transaction.
+If COMMIT might have applied but its ACK is missing, an unrelated track reset
+also resets the transaction's owner; notes cannot resume with an uncertain revision.
+
+Packet kinds 3/4 are CONFIG_CHUNK/CONFIG_COMMIT, with count and word 4 zero.
+Words 8-15 contain track, generation, revision (also header word 5), chunk index,
+total byte length, schema, whole-image checksum, and payload word count. Words
+16-31 hold at most 16 data words, with zero padding. COMMIT has no data and its
+index equals the number of chunks. The image checksum uses the same wrapping
+sums over all configuration words, with no skipped word. Schema identifiers are
+opaque to transport; zero is invalid.
+
+`src/dsp/config.s` stages chunks in a separate fixed 64-word buffer, checks order
+and consistent metadata, and validates the complete image checksum on COMMIT.
+`_mi_config_publish` must validate the actual schema, track, generation and revision
+before atomically publishing into consumer-owned storage. It must not retain the
+staging pointer. A missing or rejecting publisher leaves applied settings untouched
+and produces no commit ACK. The V2 packet consumer must call this helper only after
+packet/order/ownership validation, and call `_mi_config_abort` on priority reset.
+Those integration callbacks are not implemented yet. Tests use a publisher fixture
+to verify that only a complete valid commit changes its bank; they also execute
+actual CF-generated chunk/commit packets on the SHARC staging code.
+
 These components are built but deliberately **not hooked into the live stream**.
-The V2 consumer, configuration chunk/commit transaction, reply framing/heartbeat,
-and composed early-block hook remain to be implemented. The current module still
+The V2 consumer/schema publisher, reply framing/heartbeat, and composed early-block
+hook remain to be implemented. The current module still
 does not claim keyboard routes. Target tests feed actual ColdFire-produced reset
 and eight-note packets to the SHARC validator, and exercise receiver retries,
 gaps, reset preemption, consumer rejection and stale epochs. They do not establish

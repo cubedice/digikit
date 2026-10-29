@@ -53,21 +53,21 @@
   },
   {
    "addend": 0,
-   "offset": 75,
+   "offset": 68,
    "section": "seg_pmco",
-   "symbol": "_mi_bad",
+   "symbol": "_mi_config_packet",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 79,
+   "offset": 74,
    "section": "seg_pmco",
-   "symbol": "_mi_bad",
+   "symbol": "_mi_config_packet",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 85,
+   "offset": 87,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
@@ -88,6 +88,13 @@
   },
   {
    "addend": 0,
+   "offset": 103,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
    "offset": 109,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
@@ -95,49 +102,42 @@
   },
   {
    "addend": 0,
-   "offset": 115,
+   "offset": 121,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 130,
+   "offset": 127,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 138,
+   "offset": 142,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 147,
+   "offset": 150,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 154,
+   "offset": 159,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 163,
-   "section": "seg_pmco",
-   "symbol": "_mi_bad",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 169,
+   "offset": 166,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
@@ -146,305 +146,781 @@
    "addend": 0,
    "offset": 175,
    "section": "seg_pmco",
-   "symbol": "_mi_controller",
+   "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 179,
+   "offset": 181,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 182,
+   "offset": 187,
+   "section": "seg_pmco",
+   "symbol": "_mi_controller",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 191,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 194,
    "section": "seg_pmco",
    "symbol": "_mi_next_event",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 186,
+   "offset": 198,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 190,
+   "offset": 202,
    "section": "seg_pmco",
    "symbol": "_mi_event",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 201,
+   "offset": 213,
    "section": "seg_pmco",
    "symbol": "_mi_padding",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 209,
+   "offset": 221,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 218,
+   "offset": 230,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 224,
+   "offset": 236,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 233,
+   "offset": 245,
    "section": "seg_pmco",
    "symbol": "_mi_good",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 238,
+   "offset": 250,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 242,
+   "offset": 254,
    "section": "seg_pmco",
    "symbol": "_mi_padding",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 255,
+   "offset": 271,
    "section": "seg_pmco",
-   "symbol": "_mi_packet",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 258,
-   "section": "seg_pmco",
-   "symbol": "_mi_packet_valid",
+   "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 262,
+   "offset": 280,
    "section": "seg_pmco",
-   "symbol": "_mi_rejected",
+   "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 265,
+   "offset": 286,
    "section": "seg_pmco",
-   "symbol": "_mi_packet",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 274,
-   "section": "seg_pmco",
-   "symbol": "_mi_epoch",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 277,
-   "section": "seg_pmco",
-   "symbol": "_mi_message",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 288,
-   "section": "seg_pmco",
-   "symbol": "_mi_stale",
+   "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 291,
+   "offset": 292,
    "section": "seg_pmco",
-   "symbol": "_mi_new_epoch",
+   "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 299,
+   "offset": 298,
    "section": "seg_pmco",
-   "symbol": "_mi_stale",
+   "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 302,
+   "offset": 304,
    "section": "seg_pmco",
-   "symbol": "_mi_duplicate",
+   "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 310,
+   "offset": 313,
    "section": "seg_pmco",
-   "symbol": "_mi_apply",
+   "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 315,
+   "offset": 320,
    "section": "seg_pmco",
-   "symbol": "_mi_gap",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 318,
-   "section": "seg_pmco",
-   "symbol": "_mi_apply",
+   "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
    "offset": 326,
    "section": "seg_pmco",
-   "symbol": "_mi_gap",
+   "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 329,
+   "offset": 332,
    "section": "seg_pmco",
-   "symbol": "_mi_apply_packet",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 333,
-   "section": "seg_pmco",
-   "symbol": "_mi_rejected",
+   "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 336,
+   "offset": 344,
    "section": "seg_pmco",
-   "symbol": "_mi_apply_packet",
+   "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 342,
+   "offset": 352,
    "section": "seg_pmco",
-   "symbol": "_mi_rejected",
+   "symbol": "_mi_config_commit",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 345,
+   "offset": 363,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 373,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 376,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_padding",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 380,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 391,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 408,
+   "section": "seg_pmco",
+   "symbol": "_mi_padding",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 411,
    "section": "seg_pmco",
    "symbol": "_mi_packet",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 352,
+   "offset": 414,
+   "section": "seg_pmco",
+   "symbol": "_mi_packet_valid",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 418,
+   "section": "seg_pmco",
+   "symbol": "_mi_rejected",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 421,
+   "section": "seg_pmco",
+   "symbol": "_mi_packet",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 430,
    "section": "seg_pmco",
    "symbol": "_mi_epoch",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 357,
+   "offset": 433,
    "section": "seg_pmco",
    "symbol": "_mi_message",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 444,
+   "section": "seg_pmco",
+   "symbol": "_mi_stale",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 447,
+   "section": "seg_pmco",
+   "symbol": "_mi_new_epoch",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 455,
+   "section": "seg_pmco",
+   "symbol": "_mi_stale",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 458,
+   "section": "seg_pmco",
+   "symbol": "_mi_duplicate",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 466,
+   "section": "seg_pmco",
+   "symbol": "_mi_apply",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 471,
+   "section": "seg_pmco",
+   "symbol": "_mi_gap",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 474,
+   "section": "seg_pmco",
+   "symbol": "_mi_apply",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 482,
+   "section": "seg_pmco",
+   "symbol": "_mi_gap",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 485,
+   "section": "seg_pmco",
+   "symbol": "_mi_apply_packet",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 489,
+   "section": "seg_pmco",
+   "symbol": "_mi_rejected",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 492,
+   "section": "seg_pmco",
+   "symbol": "_mi_apply_packet",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 498,
+   "section": "seg_pmco",
+   "symbol": "_mi_rejected",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 501,
+   "section": "seg_pmco",
+   "symbol": "_mi_packet",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 508,
+   "section": "seg_pmco",
+   "symbol": "_mi_epoch",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 513,
+   "section": "seg_pmco",
+   "symbol": "_mi_message",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 543,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_active",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 546,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_next",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 559,
+   "section": "seg_pmco",
+   "symbol": "_mc_chunk",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 565,
+   "section": "seg_pmco",
+   "symbol": "_mc_reject",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 568,
+   "section": "seg_pmco",
+   "symbol": "_mc_match",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 574,
+   "section": "seg_pmco",
+   "symbol": "_mc_match",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 577,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_meta",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 588,
+   "section": "seg_pmco",
+   "symbol": "_mc_meta_copy",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 593,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_active",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 598,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_next",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 603,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_active",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 607,
+   "section": "seg_pmco",
+   "symbol": "_mc_reject",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 612,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_next",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 616,
+   "section": "seg_pmco",
+   "symbol": "_mc_reject",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 619,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_meta",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 632,
+   "section": "seg_pmco",
+   "symbol": "_mc_meta_next",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 636,
+   "section": "seg_pmco",
+   "symbol": "_mc_reject",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 643,
+   "section": "seg_pmco",
+   "symbol": "_mc_meta_check",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 653,
+   "section": "seg_pmco",
+   "symbol": "_mc_commit",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 663,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_data",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 675,
+   "section": "seg_pmco",
+   "symbol": "_mc_data_copy",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 678,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_next",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 682,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_next",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 697,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_data",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 708,
+   "section": "seg_pmco",
+   "symbol": "_mc_sum",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 714,
+   "section": "seg_pmco",
+   "symbol": "_mc_reject",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 717,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_publish",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 721,
+   "section": "seg_pmco",
+   "symbol": "_mc_reject",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 724,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_data",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 727,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_meta",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 730,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_publish",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 736,
+   "section": "seg_pmco",
+   "symbol": "_mc_reject",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 741,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_active",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 744,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_next",
    "type": "sharc.abs32"
   }
  ],
  "sections": [
   {
    "align": 8,
-   "hex": "7e703f0808900000010f4e49010101c32006000000000890020000c20006000000000890030000c2000600000000810f0000820f0000830f0000800f070030c3000600000000509110c021c080150000010033c5800f200030c30206000000007e703f080890070012ce01c320060000000008900100810f020001c30006000000003e02100850083e02000015083e023000110001c320060000000055c2000600000000810f080051c32406000000000890050000c20006000000000890040000c200060000000015c680010111020f0080000012ce02ce10c30206000000000890090366c200060000000008908a033e021008770a80150000080085c29991909106c32006000000009a913e0210080a1c00c22006000000003e0210000a84810f010001c32406000000003e0210080a0a07c32006000000003e0210080a00810f010001c3020600000000810f040001c3240600000000810f020001c324060000000099c20006000000003e060000000099c220060000000088c62006000000003e020000050105c0810f1800800110283e0600000000089004000890850001cd200600000000089008003e02007800fc00c22006000000000890090000c2000600000000801500000a00880f160088c2000600000000909100c220060000000088c63e0600000000800f01003e0a00000000800f00003e0a00000000041100000000be060000000000c20006000000000410000000007e703f080890820208900303071000000000081000000000000f00800000840150218401702212c3020600000000240600000000840160218401802212c302060000000000060000000008900100810f020001c300060000000088c568c32006000000003e060000000008900100810f020001c3200600000000000f0000000000c2000600000000be0600000000810f010001c32006000000000410000000007e703f080890020000110000000008900300001100000000800f01003e0a00000000800f02003e0a00000000800f03003e0a00000000800f04003e0a00000000800f00003e0a00000000",
+   "hex": "7e703f0808900000010f4e49010101c32006000000000890020000c20006000000000890030000c2000600000000810f0000820f0000830f0000800f070030c3000600000000509110c021c080150000010033c5800f200030c30206000000007e703f080890070012ce01c320060000000008900100810f020001c3000600000000810f030001c3000600000000810f040001c30006000000003e02100850083e02000015083e023000110001c320060000000055c2000600000000810f080051c32406000000000890050000c20006000000000890040000c200060000000015c680010111020f0080000012ce02ce10c30206000000000890090366c200060000000008908a033e021008770a80150000080085c29991909106c32006000000009a913e0210080a1c00c22006000000003e0210000a84810f010001c32406000000003e0210080a0a07c32006000000003e0210080a00810f010001c3020600000000810f040001c3240600000000810f020001c324060000000099c20006000000003e060000000099c220060000000088c62006000000003e020000050105c0810f1800800110283e0600000000089004000890850001cd200600000000089008003e02007800fc00c22006000000000890090000c2000600000000801500000a00880f160088c2000600000000909100c220060000000088c63e0600000000800f01003e0a00000000800f00003e0a00000000a0c20890040000c2200600000000089008003e02007800fc00c22006000000000890090000c200060000000008900a0000c20006000000000890850001c320060000000008900d0000c200060000000008908c02800f0300840150002006000000003e02007805f700c2200600000000800f040050c3020600000000800f000150c32406000000003e02007855fe08900b033e02007806fd00c220060000000008908f03800f0400a0c30006000000003e020000060480015028800f010080c3020600000000800f100080c324700004000078c32006000000003e060000000077c2200600000000800f0f00800150103e02007800fc60c32006000000003e0200000702800140103e703f08801500001000800f1000800107283e0600000000041100000000be060000000000c20006000000000410000000007e703f080890820208900303071000000000081000000000000f00800000840150218401702212c3020600000000240600000000840160218401802212c302060000000000060000000008900100810f020001c300060000000088c568c32006000000003e060000000008900100810f020001c3200600000000000f0000000000c2000600000000be0600000000810f010001c32006000000000410000000007e703f080890020000110000000008900300001100000000800f01003e0a00000000800f02003e0a00000000800f03003e0a00000000800f04003e0a00000000800f00003e0a00000000800f00000011000000000011000000003e0a000000007e703f0808900100810f030001c3000600000000810f040001c32006000000003e060000000008900b0000c2200600000000110f00000000801500000800850f07009091b09355c6200600000000800f0100001100000000800f00000011000000007e703f0800100000000000c200060000000008900b0001100000000001c3200600000000110f00000000801500000800850f000090919193820f030052c300060000000001c320060000000055c5800f070050c30206000000007e703f0808900100810f040001c300060000000008908f0208900b003e0200000006010f0000000001c03e70bf088015000010009091b09355c620060000000000100000000000c5001100000000800f01003e0a0000000008908c023e02007855fe08900e03110f00000000810f0000820f0000909310c021c055c62006000000008401122006c3200600000000000f0000000000c2000600000000040f00000000080f00000000be0600000000810f010001c3200600000000800f0000001100000000001100000000800f01003e0a00000000800f00003e0a00000000",
    "kind": "text",
    "name": "seg_pmco",
-   "size": 770
+   "size": 1514
   },
   {
    "align": 8,
-   "hex": "000000000000000000000000",
+   "hex": "0000000000000000000000000000000000000000",
    "kind": "data",
    "name": "seg_dmda",
-   "size": 12
+   "size": 20
+  },
+  {
+   "align": 4,
+   "hex": "",
+   "kind": "bss",
+   "name": "pkbss__mi_config_meta",
+   "size": 28
+  },
+  {
+   "align": 4,
+   "hex": "",
+   "kind": "bss",
+   "name": "pkbss__mi_config_data",
+   "size": 256
   }
  ],
- "source_sha256": "56959c6dfe7420fffa4e46481a372051c5939e309f5ed1156e492a8f29793be9",
+ "source_sha256": "6c69bff08f5afaa5bdda1b4654deef2ba15329e3d9dd7ee44f618c3a6a9cc8a4",
  "symbols": [
+  {
+   "global": false,
+   "name": "_mc_chunk",
+   "section": "seg_pmco",
+   "value": 571
+  },
+  {
+   "global": false,
+   "name": "_mc_commit",
+   "section": "seg_pmco",
+   "value": 690
+  },
+  {
+   "global": false,
+   "name": "_mc_data_copy",
+   "section": "seg_pmco",
+   "value": 672
+  },
+  {
+   "global": false,
+   "name": "_mc_match",
+   "section": "seg_pmco",
+   "value": 603
+  },
+  {
+   "global": false,
+   "name": "_mc_meta_check",
+   "section": "seg_pmco",
+   "value": 627
+  },
+  {
+   "global": false,
+   "name": "_mc_meta_copy",
+   "section": "seg_pmco",
+   "value": 585
+  },
+  {
+   "global": false,
+   "name": "_mc_meta_next",
+   "section": "seg_pmco",
+   "value": 639
+  },
+  {
+   "global": false,
+   "name": "_mc_reject",
+   "section": "seg_pmco",
+   "value": 752
+  },
+  {
+   "global": false,
+   "name": "_mc_sum",
+   "section": "seg_pmco",
+   "value": 704
+  },
   {
    "global": false,
    "name": "_mi_apply",
    "section": "seg_pmco",
-   "value": 329
+   "value": 485
   },
   {
    "global": false,
    "name": "_mi_bad",
    "section": "seg_pmco",
-   "value": 250
+   "value": 262
+  },
+  {
+   "global": true,
+   "name": "_mi_config_abort",
+   "section": "seg_pmco",
+   "value": 541
+  },
+  {
+   "global": true,
+   "name": "_mi_config_apply",
+   "section": "seg_pmco",
+   "value": 552
+  },
+  {
+   "global": false,
+   "name": "_mi_config_commit",
+   "section": "seg_pmco",
+   "value": 379
+  },
+  {
+   "global": false,
+   "name": "_mi_config_packet",
+   "section": "seg_pmco",
+   "value": 267
+  },
+  {
+   "global": false,
+   "name": "_mi_config_padding",
+   "section": "seg_pmco",
+   "value": 394
   },
   {
    "global": false,
    "name": "_mi_controller",
    "section": "seg_pmco",
-   "value": 185
+   "value": 197
   },
   {
    "global": false,
    "name": "_mi_duplicate",
    "section": "seg_pmco",
-   "value": 365
+   "value": 521
   },
   {
    "global": false,
    "name": "_mi_event",
    "section": "seg_pmco",
-   "value": 127
+   "value": 139
   },
   {
    "global": false,
    "name": "_mi_gap",
    "section": "seg_pmco",
-   "value": 370
+   "value": 526
   },
   {
    "global": false,
    "name": "_mi_good",
    "section": "seg_pmco",
-   "value": 245
+   "value": 257
   },
   {
    "global": false,
    "name": "_mi_new_epoch",
    "section": "seg_pmco",
-   "value": 321
+   "value": 477
   },
   {
    "global": false,
    "name": "_mi_next_event",
    "section": "seg_pmco",
-   "value": 189
+   "value": 201
   },
   {
    "global": true,
@@ -456,25 +932,25 @@
    "global": false,
    "name": "_mi_padding",
    "section": "seg_pmco",
-   "value": 232
+   "value": 244
   },
   {
    "global": true,
    "name": "_mi_receive",
    "section": "seg_pmco",
-   "value": 255
+   "value": 411
   },
   {
    "global": false,
    "name": "_mi_rejected",
    "section": "seg_pmco",
-   "value": 380
+   "value": 536
   },
   {
    "global": false,
    "name": "_mi_reset_packet",
    "section": "seg_pmco",
-   "value": 204
+   "value": 216
   },
   {
    "global": false,
@@ -486,13 +962,37 @@
    "global": false,
    "name": "_mi_stale",
    "section": "seg_pmco",
-   "value": 375
+   "value": 531
   },
   {
    "global": false,
    "name": "_mi_sum",
    "section": "seg_pmco",
    "value": 29
+  },
+  {
+   "global": true,
+   "name": "_mi_config_active",
+   "section": "seg_dmda",
+   "value": 12
+  },
+  {
+   "global": true,
+   "name": "_mi_config_data",
+   "section": "pkbss__mi_config_data",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_mi_config_meta",
+   "section": "pkbss__mi_config_meta",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_mi_config_next",
+   "section": "seg_dmda",
+   "value": 16
   },
   {
    "global": true,
@@ -517,10 +1017,16 @@
    "name": "_mi_apply_packet",
    "section": null,
    "value": 0
+  },
+  {
+   "global": true,
+   "name": "_mi_config_publish",
+   "section": null,
+   "value": 0
   }
  ],
  "toolchain": {
-  "instructions_redecoded": "181",
+  "instructions_redecoded": "354",
   "selache_rev": "2b26d3b75c53063575bc5c820fa0d38879335187"
  }
 }
