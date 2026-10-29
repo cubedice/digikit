@@ -1,0 +1,28 @@
+[module]
+id = "core/loop-controls"
+version = "0.1.0"
+name = "Loop pattern controls"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Carries Overloop's window into the destination kit and consumes its record cue."
+requires = ["core/fxpages", "core/pattern-position"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/loop-controls-cf.dko.json"
+sources = ["src/controls.c"]
+place = "cf.expansion"
+devices = ["dt2"]
+
+[[object]]
+path = "build/loop-controls-dsp.dko.json"
+sources = ["src/dsp/controls.s"]
+place = "dsp.l2"
+devices = ["dt2"]

@@ -20,7 +20,16 @@
     .even
     .globl dkrt_loop_hook
 dkrt_loop_hook:
-    dk_fw_view_ui_loop_hook dkrt_tick, fw_queue_pop
+    dk_fw_view_ui_loop_hook dkrt_control_tick, fw_queue_pop
+
+/* Optional adapter policies run before the runtime reads destination knobs.
+ * Kept outside Rust so an adapter does not require rebuilding the runtime. */
+dkrt_control_tick:
+    move.l  #fx_controls_tick,%d0
+    beq.s   1f
+    move.l  %d0,%a0
+    jsr     (%a0)
+1:  jmp     dkrt_tick
 
 /* void dkrt_flush(u32 start, u32 len): CPUSHL BC for every 16-byte line of [start, start+len): write back dirty data
  * lines and invalidate the line in the data and instruction caches. Needed after code or data that will be fetched as

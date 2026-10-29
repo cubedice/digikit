@@ -1,0 +1,34 @@
+{
+ "arch": "sharc",
+ "format": 1,
+ "relocs": [],
+ "sections": [
+  {
+   "align": 8,
+   "hex": "0100",
+   "kind": "text",
+   "name": "seg_pmco",
+   "size": 2
+  },
+  {
+   "align": 8,
+   "hex": "3154434c",
+   "kind": "data",
+   "name": "seg_dmda",
+   "size": 4
+  }
+ ],
+ "source_sha256": "33adb08ac585f72345e47729a6e9a64ab452b0b24dbc8de98c0ddc52f7cb544e",
+ "symbols": [
+  {
+   "global": true,
+   "name": "_loop_controls_info",
+   "section": "seg_dmda",
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "instructions_redecoded": "1",
+  "selache_rev": "2b26d3b75c53063575bc5c820fa0d38879335187"
+ }
+}

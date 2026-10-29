@@ -65,7 +65,11 @@ class OverloopRig(FxRig):
 
     def allowed(self, stack_bytes):
         allowed = super().allowed(stack_bytes)
-        for symbol, size in (("_loop_buffer_info", 16), ("_pattern_position_info", 80)):
+        for symbol, size in (
+            ("_loop_buffer_info", 16),
+            ("_pattern_position_info", 80),
+            ("_loop_controls_info", 4),
+        ):
             info = self.built.data[symbol]
             split = []
             for a, n, name in allowed:

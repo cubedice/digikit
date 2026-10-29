@@ -1,5 +1,6 @@
 // Armed stereo loop: REC edge, next START boundary, N steps, then hold.
 #include "dk_fx.inc"
+#include "dk_loop_controls.inc"
 #define BL_MODE 0
 #define BL_WRITTEN 1
 #define BL_PHASE 2
@@ -14,7 +15,7 @@
 #define BL_AUDIO_BYTES 8388352
 #define BL_STORAGE_BYTES 8388384
 #define BL_CANARY_WORD 0x5a17b00f
-#define BL_STATE_BYTES 128
+#define BL_STATE_BYTES 644
 
 .SECTION/PM seg_pmco;
 .GLOBAL _bl_process;
@@ -23,6 +24,11 @@
 
 _bl_process:
     I5 = R4;
+    I4 = _loop_controls_info;
+    R0 = DM(0, I4);
+    R1 = DK_LOOP_CONTROLS_MAGIC;
+    COMP(R0, R1);
+    IF NE JUMP _bl_invalid_provider;
     // Validate the immutable provider record on every call, before any audio
     // access. Its address is a required runtime import, never a guessed RAM
     // location. Words: magic, version, DSP byte base, owned bytes.
@@ -198,7 +204,7 @@ _bl_timing:
     R0 = DM(6, I4);
     R1 = DM(14, I5);
     COMP(R0, R1);
-    IF NE JUMP _bl_save_timing;
+    IF NE JUMP _bl_switch_boundary;
     R0 = DM(8, I4);
     R1 = DM(15, I5);
     COMP(R0, R1);
@@ -213,7 +219,44 @@ _bl_timing:
     IF NE JUMP _bl_save_timing;
     R0 = 1;
     DM(25, I5) = R0;
+    JUMP _bl_save_timing;
+_bl_switch_boundary:
+    // A take ending exactly on a pattern switch is complete, not an abort.
+    // Only accept a contiguous final source step -> destination step zero.
+    R0 = DM(24, I5);
+    R0 = PASS R0;
+    IF EQ JUMP _bl_save_timing;
+    R0 = DM(12, I5);
+    R0 = R0 + 1;
+    R1 = DM(15, I5);
+    COMP(R0, R1);
+    IF NE JUMP _bl_save_timing;
+    R0 = DM(7, I4);
+    R0 = PASS R0;
+    IF NE JUMP _bl_save_timing;
+    R0 = DM(22, I5);
+    R0 = R0 + 1;
+    R1 = DM(21, I5);
+    COMP(R0, R1);
+    IF NE JUMP _bl_save_timing;
+    R0 = 1;
+    DM(25, I5) = R0;
 _bl_save_timing:
+    // A source cue cannot start an unwanted new take in the destination.
+    R0 = DM(16, I5);
+    R0 = PASS R0;
+    IF EQ JUMP _bl_store_timing;
+    R0 = DM(6, I4);
+    R1 = DM(14, I5);
+    COMP(R0, R1);
+    IF EQ JUMP _bl_store_timing;
+    R0 = DM(BL_MODE, I5);
+    R1 = 3;
+    COMP(R0, R1);
+    IF NE JUMP _bl_store_timing;
+    R0 = 0;
+    DM(BL_MODE, I5) = R0;
+_bl_store_timing:
     R0 = DM(2, I4);
     DM(10, I5) = R0;
     R0 = DM(3, I4);
@@ -264,7 +307,15 @@ _bl_save_timing:
     R0 = PASS R0;
     IF EQ R0 = R1;
     DM(21, I5) = R0;
+    R2 = 128;
+    COMP(R0, R2);
+    IF GT JUMP _bl_bad_timing;
+    DM(28, I5) = R0;              // recorded steps, independent of later arming
+    R0 = DM(BL_START, I5);
+    DM(26, I5) = R0;              // capture origin on the source pattern grid
+    DM(27, I5) = R1;              // source pattern length
     R0 = 0;
+    DM(32, I5) = R0;              // boundary offsets: 0..128, in audio frames
     DM(BL_WRITTEN, I5) = R0;
     DM(BL_FRAME_COUNT, I5) = R0;
     DM(BL_PHASE, I5) = R0;
@@ -286,6 +337,15 @@ _bl_capturing:
     R0 = DM(22, I5);
     R0 = R0 + 1;
     DM(22, I5) = R0;
+    R2 = 32;
+    R2 = R0 + R2;
+    R2 = LSHIFT R2 BY 2;
+    R3 = I5;
+    R2 = R2 + R3;
+    I4 = R2;
+    R2 = DM(BL_WRITTEN, I5);
+    DM(0, I4) = R2;
+    I4 = _pattern_position_info;
     R1 = DM(21, I5);
     COMP(R0, R1);
     IF LT JUMP _bl_record;
@@ -360,16 +420,86 @@ _bl_live_end: DM(I3, M6) = R1;
     JUMP _bl_done;
 
 _bl_play:
+    // Resolve the live START against the recorded source grid. Wrap inside
+    // the captured phrase; LENGTH=0 uses all captured steps. Exact offsets
+    // preserve unequal step durations (tempo changes during capture).
+    I4 = DM(31, I5);
+    R7 = 0;
+    R11 = 0x42fe0000;
+    R0 = DM(1, I4);
+    F1 = MAX(F0, F7);
+    F0 = MIN(F1, F11);
+    R0 = TRUNC F0;
+    R1 = DM(26, I5);
+    R0 = R0 - R1;
+    R1 = DM(27, I5);
+_bl_start_positive:
+    R0 = PASS R0;
+    IF GE JUMP _bl_start_grid;
+    R0 = R0 + R1;
+    JUMP _bl_start_positive;
+_bl_start_grid:
+    COMP(R0, R1);
+    IF LT JUMP _bl_start_capture;
+    R0 = R0 - R1;
+    JUMP _bl_start_grid;
+_bl_start_capture:
+    R1 = DM(28, I5);
+_bl_start_wrap:
+    COMP(R0, R1);
+    IF LT JUMP _bl_window;
+    R0 = R0 - R1;
+    JUMP _bl_start_wrap;
+_bl_window:
+    R4 = R0;
+    R2 = 32;
+    R2 = R0 + R2;
+    R2 = LSHIFT R2 BY 2;
+    R3 = I5;
+    R2 = R2 + R3;
+    I4 = R2;
+    R6 = DM(0, I4);
+    DM(29, I5) = R6;
+    I4 = DM(31, I5);
+    R0 = DM(3, I4);
+    F2 = MAX(F0, F7);
+    F0 = MIN(F2, F11);
+    R0 = TRUNC F0;
+    R0 = PASS R0;
+    IF EQ R0 = R1;
+    R0 = MIN(R0, R1);
+    R0 = R0 + R4;
+    R3 = 0;
+    COMP(R0, R1);
+    IF LE JUMP _bl_window_end;
+    R0 = R0 - R1;
+    R3 = DM(BL_FRAME_COUNT, I5);
+_bl_window_end:
+    R2 = 32;
+    R2 = R0 + R2;
+    R2 = LSHIFT R2 BY 2;
+    R8 = I5;
+    R2 = R2 + R8;
+    I4 = R2;
+    R7 = DM(0, I4);
+    R7 = R7 + R3;
+    R7 = R7 - R6;
+    DM(30, I5) = R7;
     R5 = DM(BL_PHASE, I5);
-    R6 = 0;
+    // A shorter window takes effect on this block, without stale reads.
+    COMP(R5, R7);
+    IF LT JUMP _bl_window_ready;
+    R5 = 0;
+_bl_window_ready:
     R15 = DM(BL_GAIN, I5);
-    R7 = DM(BL_FRAME_COUNT, I5);
+    R11 = 0x3f800000;
     R13 = 0x3b800000;                    // gain step 1/256 per stereo frame
     M2 = BL_FRAMES;
     LCNTR = DK_BLOCK, DO _bl_play_end UNTIL LCE;
         R0 = R5 + R6;
-        R1 = R0 - R7;
-        COMP(R0, R7);
+        R2 = DM(BL_FRAME_COUNT, I5);
+        R1 = R0 - R2;
+        COMP(R0, R2);
         IF GE R0 = R1;
         R12 = R0;
         R1 = LSHIFT R0 BY 2;
@@ -383,6 +513,8 @@ _bl_play:
         R1 = R7 - 1;
         R0 = R1 - R5;
         R2 = MIN(R0, R5);
+        R1 = DM(BL_FRAME_COUNT, I5);
+        R1 = R1 - 1;
         R0 = R1 - R12;
         R3 = MIN(R0, R12);
         R0 = MIN(R2, R3);
@@ -424,7 +556,6 @@ _bl_sample_ready:
         COMP(R5, R7);
         IF LT JUMP _bl_phase_ready;
         R5 = 0;
-        R6 = 0;
 _bl_phase_ready:
         DM(I2, M6) = R9;
 _bl_play_end: DM(I3, M6) = R10;
