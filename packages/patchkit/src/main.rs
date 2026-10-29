@@ -381,7 +381,7 @@ fn run(a: Args) -> Result<()> {
                 None => vec![],
             };
             let reg = registry(&a.root)?;
-            let (lib, ids) = if cmd == "apply" {
+            let (lib, ids) = if cmd == "apply" || !ids.is_empty() {
                 library_for_apply(&a.root, rest, ids)?
             } else {
                 let lib = library(&a.root, rest)?;
@@ -1757,5 +1757,33 @@ path = "build/gen/device-{dev}.inc"
         root.module("modules", "test/dependency", &["test/selected"], false);
         assert!(library_for_apply(&root.0, &[], vec!["test/selected".into()]).is_err());
         assert!(!cache_dir(&root.0).exists());
+    }
+}
+
+#[cfg(test)]
+mod selection_tests {
+    use super::*;
+
+    #[test]
+    fn selected_framework_resolves_dependencies_without_building_rust_fixture() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
+        let (lib, ids) = library_for_apply(root, &[], vec!["core/pattern-position".into()]).unwrap();
+        assert!(ids.iter().any(|id| id == "core/dsp-link"));
+        assert!(!lib.get("core/pattern-position").unwrap().objects.is_empty());
+        assert!(lib.get("test/dyn-demo").unwrap().objects.is_empty());
+    }
+
+    #[test]
+    fn unknown_selection_is_rejected_before_building_content() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
+        assert!(library_for_apply(root, &[], vec!["missing/module".into()]).is_err());
     }
 }
