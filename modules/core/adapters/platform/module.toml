@@ -30,6 +30,8 @@ uses = ["DDR_CACHED_BASE", "DDR_BYTES"]
 path = "build/platform.dko.json"
 sources = ["src/cf/platform.s"]
 place = "cf.expansion"
+# Optional adapter policies the UI-loop hook runs before the runtime tick (core/loop-controls, core/loop-display).
+optional = ["fx_controls_tick", "loop_ui_tick"]
 
 [object.externs]
 fw_queue_pop = "cf.rtos.fn.queue_pop"

@@ -71,12 +71,23 @@ export default defineConfig({
         test: {
           name: 'proofs',
           include: ['runtime/**/*.test.ts'],
+          exclude: ['runtime/overloop-display.test.ts'],
           // Backstops; see the runtime project.
           testTimeout: 1_800_000,
           hookTimeout: 600_000,
         },
       },
       {
+        test: {
+          name: 'overloop',
+          include: ['runtime/overloop-display.test.ts'],
+          pool: 'forks',
+          testTimeout: 360_000,
+          hookTimeout: 150_000,
+        },
+      },
+      {
+        extends: true,
         test: {
           name: 'conformance',
           include: ['../conformance/**/*.device.test.ts'],

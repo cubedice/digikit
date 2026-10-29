@@ -1,0 +1,23 @@
+# Overloop performance display (DTII 1.17)
+
+## 2026-10-28: firmware integration
+
+**[D]** Stock MAIN SHA-256 is `a1e7b657b705eba1a19d81c33c1e11ba9c409816447ad74005d7bbf36da6d964`. FxPageView's graph site at `0x40074ff8` has A2=view, D2=Bitmap and D0=page. The existing `core/fxpages` hook calls an optional painter. A handled page rejoins the register-restoring epilogue at `0x400754bc`; other pages retain the stock route. The containing view paints the native title afterwards. Rectangle coordinates use a bottom-left origin, confirmed by an initial inverted screen and the corrected emulator capture.
+
+**[D]** The view's primary vtable begins at `0x401f9988`. Update slot 11 at `0x401f99b4` points to `0x40069eb8`. The adapter substitutes a wrapper which calls that stock function first. The stock update calls its base then maintains the view's countdown. These sites resolve through image-window hashes in `devices/fw/page.toml`; no absolute firmware addresses appear in module code.
+
+**[D]** ViewController's update walker at `0x4011c93c` invokes this callback while holding its live-view list lock. The wrapper walks only the drawable suffix: view+0x2c is the manager; manager+0x1c is the first drawn node; manager+0x14 is the sentinel; nodes have next at +0 and View* at +8. Traversal is bounded to 64 nodes and retains no pointers. It invalidates a visible Overloop page after 60 new DSP blocks, or on freshness changes. This is a request-rate ceiling, not a measured hardware frame-rate claim.
+
+**[D]** The DTII DSP return is 0xabc bytes: 0x1c header, 32 rows of 0x54 bytes, 0x20 trailer. The mailbox uses entries 11/12 (byte offsets 0x44/0x48) of rows 13–20. ACK uses row 0 and existing diagnostics use rows 1–12. The mailbox is read on the same DSP core after effect processing. The CF task copies the driver's reply under a brief interrupt mask, converting low-half-first words. This extension is absent on DNII, whose reply layout carries audio.
+
+**[D]** The SDK contract is `sdk/asm/dk_loop_status.inc`; its ABI and ownership are documented in `modules/core/adapters/loop-display/README.md`. The module publishes actual mode, capture/window lengths, playhead and smoothed gain. The UI does not infer recorder state from REC or read the audio buffer. A missing or stalled heartbeat produces NO STATUS and a live-only fader.
+
+**[D]** Component checks execute compiled ColdFire and assembled SHARC code. They cover byte preservation outside all sixteen reply slots, absent provider, word ordering, freshness timeout, wrapped window pixels, audible fade fallback and visible-view invalidation. Module conformance passes 33 tests with one skip; the focused display/capture/transport suite passes 47 tests. The corrected empty-page screenshot is `out/runs/overloop-ui/dt2/overloop-idle.png`.
+
+**[O]** Hardware display timing and audio load remain unverified. Earlier capture/audio comparison evidence is in `76-pattern-position.md`; it predates this display adapter.
+
+**[D]** The dedicated Vitest `overloop` scenario passed on the current rebuilt daemon and a freshly generated shared core. It installed the DKM through the normal protocol, armed through encoder A, recorded a short phrase, changed LENGTH through C and START through B, reached loop gain through D, observed a moving cursor, and checked that leaving/reopening the page stops/resumes its paints. No guest-memory writes were used. The current interpreter is slow enough that the initial 128-step fixture exceeded the original wall-clock timeout; the acceptance case now sets a short phrase before arming. The test runner reported one passing test in 198.49 seconds. Its local shell wrapper, edited while the process was running, subsequently reported a shell error; this does not count as a clean outer-command result.
+
+**[D]** Generated bindings, module layering, changed Python lint, regression TypeScript types/lint/formatting, documentation paths, and firmware preflight pass. Module-loader checks include the new `_loop_ui_status` import. The firmware is `out/patch/overloop-dt2.syx`, SHA-256 `c87d18c4b0c19e3f36c54044d8c7d8964443d773be6b5aa92767e83a0e0c2ebb`. The complete DKM file is `out/patch/overloop-dt2.dkm`, SHA-256 `e388ebf2a4f0efb5298ec1a6bd40b3336357c8a1a3545dc184c2dd36442e5081`; it is byte-identical to the module used in the acceptance test. The DSP-link CF object was rebuilt with the installed GCC 16.2 toolchain; its source is unchanged.
+
+**[O]** This is not a full merge-gate pass. The broad changed-file check encountered existing repository-wide stale-path findings and initially lacked pnpm on PATH. The dedicated regression types/lint/format checks were subsequently run with the installed tool paths and passed.

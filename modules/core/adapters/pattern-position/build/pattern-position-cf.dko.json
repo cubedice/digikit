@@ -67,84 +67,84 @@
   },
   {
    "addend": 0,
-   "offset": 30,
+   "offset": 20,
    "section": ".text.pp_observe",
    "symbol": ".sec..bss.generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 36,
+   "offset": 26,
    "section": ".text.pp_observe",
    "symbol": ".sec..bss.valid",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 42,
+   "offset": 32,
    "section": ".text.pp_observe",
    "symbol": ".sec..bss.count",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 48,
+   "offset": 38,
    "section": ".text.pp_observe",
    "symbol": ".sec..bss.head",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 56,
+   "offset": 46,
    "section": ".text.pp_observe",
    "symbol": ".sec..bss.seen",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 62,
+   "offset": 52,
    "section": ".text.pp_observe",
    "symbol": ".sec..bss.last_step",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 68,
+   "offset": 62,
    "section": ".text.pp_observe",
    "symbol": ".sec..bss.last_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 80,
+   "offset": 74,
    "section": ".text.pp_observe",
    "symbol": ".sec..bss.count",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 90,
+   "offset": 86,
    "section": ".text.pp_observe",
    "symbol": ".sec..bss.valid",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 96,
+   "offset": 92,
    "section": ".text.pp_observe",
    "symbol": ".sec..bss.count",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 104,
+   "offset": 100,
    "section": ".text.pp_observe",
    "symbol": ".sec..bss.seen",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 112,
+   "offset": 108,
    "section": ".text.pp_observe",
    "symbol": ".sec..bss.last_step",
    "type": "cf.32"
@@ -172,261 +172,247 @@
   },
   {
    "addend": 0,
-   "offset": 158,
+   "offset": 154,
    "section": ".text.pp_observe",
    "symbol": ".sec..bss.generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 208,
+   "offset": 214,
    "section": ".text.pp_observe",
    "symbol": ".sec..bss.count",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 10,
+   "offset": 6,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.count",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 30,
+   "offset": 18,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.head",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 38,
+   "offset": 26,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.pending",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 78,
+   "offset": 72,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.valid",
    "type": "cf.32"
   },
   {
    "addend": 40,
-   "offset": 86,
+   "offset": 84,
    "section": ".text.pp_commit",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 96,
+   "offset": 94,
    "section": ".text.pp_commit",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
-   "addend": 12,
-   "offset": 104,
+   "addend": 16,
+   "offset": 106,
    "section": ".text.pp_commit",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 120,
+   "offset": 118,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.count",
    "type": "cf.32"
   },
   {
-   "addend": 16,
-   "offset": 126,
-   "section": ".text.pp_commit",
-   "symbol": "pp_position",
-   "type": "cf.32"
-  },
-  {
    "addend": 24,
-   "offset": 136,
+   "offset": 124,
    "section": ".text.pp_commit",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 28,
-   "offset": 150,
+   "offset": 134,
    "section": ".text.pp_commit",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 32,
-   "offset": 156,
+   "offset": 148,
    "section": ".text.pp_commit",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 36,
-   "offset": 162,
+   "offset": 154,
    "section": ".text.pp_commit",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 40,
-   "offset": 168,
+   "offset": 160,
    "section": ".text.pp_commit",
-   "symbol": "pp_position",
-   "type": "cf.32"
-  },
-  {
-   "addend": 44,
-   "offset": 174,
-   "section": ".text.pp_commit",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 186,
+   "offset": 172,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.valid",
    "type": "cf.32"
   },
   {
+   "addend": 44,
+   "offset": 182,
+   "section": ".text.pp_commit",
+   "symbol": ".sec..bss.pp_position",
+   "type": "cf.32"
+  },
+  {
    "addend": 0,
-   "offset": 192,
+   "offset": 188,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.head",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 200,
+   "offset": 196,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.valid",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 206,
+   "offset": 202,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.count",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 96,
+   "offset": 54,
    "section": ".text.pp_snapshot",
-   "symbol": "pp_observe",
+   "symbol": ".sec..text.pp_observe",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 18,
+   "offset": 16,
    "section": ".text.pp_due",
-   "symbol": "pp_commit",
+   "symbol": ".sec..text.pp_commit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 32,
+   "offset": 30,
    "section": ".text.pp_write_frame_impl",
    "symbol": ".sec..bss.seen",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 38,
+   "offset": 36,
    "section": ".text.pp_write_frame_impl",
    "symbol": ".sec..bss.count",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 44,
+   "offset": 42,
    "section": ".text.pp_write_frame_impl",
    "symbol": ".sec..bss.valid",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 58,
+   "offset": 56,
    "section": ".text.pp_write_frame_impl",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 66,
+   "offset": 64,
    "section": ".text.pp_write_frame_impl",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 8,
-   "offset": 72,
+   "offset": 70,
    "section": ".text.pp_write_frame_impl",
-   "symbol": "pp_position",
-   "type": "cf.32"
-  },
-  {
-   "addend": 8,
-   "offset": 80,
-   "section": ".text.pp_write_frame_impl",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 92,
+   "offset": 80,
    "section": ".text.pp_write_frame_impl",
    "symbol": ".sec..bss.valid",
    "type": "cf.32"
   },
   {
    "addend": 20,
+   "offset": 86,
+   "section": ".text.pp_write_frame_impl",
+   "symbol": ".sec..bss.pp_position",
+   "type": "cf.32"
+  },
+  {
+   "addend": 48,
    "offset": 98,
    "section": ".text.pp_write_frame_impl",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 110,
    "section": ".text.pp_write_frame_impl",
-   "symbol": "pp_position",
-   "type": "cf.32"
-  },
-  {
-   "addend": 48,
-   "offset": 116,
-   "section": ".text.pp_write_frame_impl",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 52,
-   "offset": 130,
+   "offset": 116,
    "section": ".text.pp_write_frame_impl",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 56,
-   "offset": 142,
+   "offset": 128,
    "section": ".text.pp_write_frame_impl",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 60,
-   "offset": 164,
+   "offset": 150,
    "section": ".text.pp_write_frame_impl",
-   "symbol": "pp_position",
+   "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   }
  ],
@@ -440,38 +426,45 @@
   },
   {
    "align": 2,
-   "hex": "4fefffe848d70c3c262f001c242f0024222f0028282f002c4a83674a52b90000000042b90000000042b90000000042b900000000700123c00000000023c10000000023c200000000b881630c7a10227900000000ba89663042b90000000042b90000000060184ab90000000067c6b2b90000000066beb4b90000000066b64cd70c3c4fef00184e7520097a0fd0b90000000045f90000000041ef002047f900000000c0857a184c0508002590080041f2080021530004214200082141000c214400104a836710720752892581081423c90000000060a8720560ee",
+   "hex": "4feffff448d70c04222f001c4aaf0010675052b90000000042b90000000042b90000000042b900000000740123c20000000023c100000000206f001823c800000000b2af0020640c2279000000007010b089663442b90000000042b900000000601c4ab90000000067c0b2b90000000066b8202f0018b0b90000000066ac4cd70c044fef000c4e752009740fd0b90000000045f90000000047f90000000041ef0014c08274184c020800242f001825930804266f002025900800258208082581080c258b08104aaf00106710720752892581081423c90000000060a2720560ee",
    "kind": "text",
    "name": ".text.pp_observe",
-   "size": 218
+   "size": 224
   },
   {
    "align": 2,
-   "hex": "4feffff048d7003c263900000000222f0014282f001c4a83670000b8203900000000741841f9000000002a014c002800227028009a896b00009ab28966000088226f0018b3f02814660000884ab900000000670a227900000000b8896768227900000000528923c900000000d1c2226800045280538323c30000000023c9000000002268000823c9000000002268000c2068001023c90000000023c80000000042b90000000023c40000000023c100000000720fc280700123c00000000023c100000000600c42b90000000042b9000000004cd7003c4fef00104e75",
+   "hex": "2f032f022439000000004a82670000c0203900000000721841f9000000004c001800224126318800222f000c92836b00009eb6af000c6600008a222f0010b2b098146600008a4ab900000000670c222f0014b2b9000000006768d1c952b90000000043e80004528023d10000000043e80008538223c20000000023d10000000043e8000c23d10000000041e80010222f001423d00000000042b90000000023c100000000720fc280700123c000000000226f000c23c90000000023c100000000600c42b90000000042b900000000241f261f4e75",
    "kind": "text",
    "name": ".text.pp_commit",
-   "size": 220
+   "size": 212
   },
   {
    "align": 2,
-   "hex": "2f0322394316501c20012f020680c00000000c8007fe248a62547401c48108010000664a30394316513076017140b6806d102041d1fc0001db7430107140b6806c022400307943164f9c203943158f7c2f023f0842672f012f002f2f001c4eb9000000004fef0014241f261f4e75428260d2",
+   "hex": "20394316501c4e75",
+   "kind": "text",
+   "name": ".text.pp_current_pattern",
+   "size": 8
+  },
+  {
+   "align": 2,
+   "hex": "20394316501c22002f020681c00000000c8107fe248a632a91c8327943164f9c223943158f7c2f083f0942672f002f012f2f00184eb9000000004fef0014241f4e757201c28020410800000066ca7379431651307401b4816d0e2240d3fc0001db747351b4816cb2204160ae",
    "kind": "text",
    "name": ".text.pp_snapshot",
-   "size": 114
+   "size": 108
   },
   {
    "align": 2,
-   "hex": "2039409668402f002f2f000c2f2f000c4eb9000000004fef000c4e75",
+   "hex": "2f39409668402f2f000c2f2f000c4eb9000000004fef000c4e75",
    "kind": "text",
    "name": ".text.pp_due",
-   "size": 28
+   "size": 26
   },
   {
    "align": 2,
-   "hex": "2f0a72012f02202f0010206f000c5488e588d1c0203943164f94b280671242b90000000042b90000000042b900000000243c50504f53720223c200000000740123c100000000223900000000528123c100000000b4806676720282b90000000023c10000000022394096684045f90000000023c100000000323943164f9c73c123c100000000223c7b91d6e323c000000000428024320c005280b581740fb48066f223c100000000428073c0e78943f0180022320c005280328142414841334100047210b28066e2241f245f4e754281608e",
+   "hex": "2f0a72012f02206f000c226f0010203943164f9445f09c02b280671242b90000000042b90000000042b900000000243c50504f53720223c200000000740123c10000000052b900000000b480667282b90000000023c100000000207c4096684023d00000000073f943164f9c43f90000000023c100000000223c7b91d6e323c000000000428024310c005280b581740fb48066f223c100000000428171c1e78841f2080020311c005281308042404840314000047010b08166e2241f245f4e7542816090",
    "kind": "text",
    "name": ".text.pp_write_frame_impl",
-   "size": 210
+   "size": 196
   },
   {
    "align": 2,
@@ -537,7 +530,7 @@
    "size": 384
   }
  ],
- "source_sha256": "79f90389e98b98bd5f4e5c09c0cc699ac63a27505d0705276bb2a70e83038d22",
+ "source_sha256": "10e95afbcf1efe40fa8357e1399363ad6853bbfa997b66bc59fc99d730efd39a",
  "symbols": [
   {
    "global": false,
@@ -577,6 +570,12 @@
   },
   {
    "global": false,
+   "name": ".sec..bss.pp_position",
+   "section": ".bss.pp_position",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..bss.seen",
    "section": ".bss.seen",
    "value": 0
@@ -585,6 +584,18 @@
    "global": false,
    "name": ".sec..bss.valid",
    "section": ".bss.valid",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.pp_commit",
+   "section": ".text.pp_commit",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.pp_observe",
+   "section": ".text.pp_observe",
    "value": 0
   },
   {
@@ -627,6 +638,12 @@
    "global": true,
    "name": "pp_commit",
    "section": ".text.pp_commit",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "pp_current_pattern",
+   "section": ".text.pp_current_pattern",
    "value": 0
   },
   {
@@ -727,11 +744,11 @@
   }
  ],
  "toolchain": {
-  "as": "GNU assembler (GNU Binutils for Debian) 2.44",
+  "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
-  "gcc": "m68k-linux-gnu-gcc-14 (Debian 14.2.0-19) 14.2.0",
-  "instructions_redecoded": "276",
-  "isa_check": "be310f791da1e01e336bbdac5cea16871ba9c11a69c92b2b4bcbbbe3495c5cfb",
-  "ld": "GNU ld (GNU Binutils for Debian) 2.44"
+  "gcc": "m68k-elf-gcc (GCC) 16.2.0",
+  "instructions_redecoded": "267",
+  "isa_check": "946cdf55439592f33187d1584978faf2e51ebf8178d87c6fc516b65c1e85fcd4",
+  "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }
