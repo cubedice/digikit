@@ -70,8 +70,19 @@ export default defineConfig({
         test: {
           name: 'proofs',
           include: ['runtime/**/*.test.ts'],
+          exclude: ['runtime/overloop-display.test.ts'],
           pool: 'forks',
           testTimeout: 300_000,
+          hookTimeout: 150_000,
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'overloop',
+          include: ['runtime/overloop-display.test.ts'],
+          pool: 'forks',
+          testTimeout: 360_000,
           hookTimeout: 150_000,
         },
       },

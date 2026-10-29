@@ -130,6 +130,23 @@ fxp_label:
 
     .globl fxp_graph
 fxp_graph:
+    | At this site A2 is FxPageView, D2 the Bitmap, D0 the page.
+    | Optional DTII performance page. Stock paint and all input handlers remain
+    | untouched for other effects. The handled path rejoins the common epilogue.
+    move.l  #loop_ui_paint,%d1
+    beq.s   3f
+    move.l  %d0,-(%sp)
+    move.l  %d2,-(%sp)
+    move.l  %a2,-(%sp)
+    move.l  %d1,%a0
+    jsr     (%a0)
+    lea     8(%sp),%sp
+    tst.l   %d0
+    beq.s   4f
+    addq.l  #4,%sp
+    jmp     _fp_graph + 0x4c4
+4:  move.l  (%sp)+,%d0
+3:
     cmp.l   %d0,%d5                     | the stock compare: page 15
     beq.s   1f
     cmpi.l  #FX_PAGE_FIRST,%d0

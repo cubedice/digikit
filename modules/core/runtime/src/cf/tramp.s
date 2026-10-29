@@ -29,7 +29,11 @@ dkrt_control_tick:
     beq.s   1f
     move.l  %d0,%a0
     jsr     (%a0)
-1:  jmp     dkrt_tick
+1:  move.l  #loop_ui_tick,%d0
+    beq.s   2f
+    move.l  %d0,%a0
+    jsr     (%a0)
+2:  jmp     dkrt_tick
 
 /* void dkrt_flush(u32 start, u32 len): CPUSHL BC for every 16-byte line of [start, start+len): write back dirty data
  * lines and invalidate the line in the data and instruction caches. Needed after code or data that will be fetched as

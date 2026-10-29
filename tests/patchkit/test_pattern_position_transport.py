@@ -76,7 +76,9 @@ def test_direct_optional_symbols_are_consistent():
     assert rule["offset"] == 0x34 and rule["len"] == 6
 
 
-@pytest.mark.parametrize("name", ["_pattern_position_info", "_loop_controls_info"])
+@pytest.mark.parametrize(
+    "name", ["_pattern_position_info", "_loop_controls_info", "_loop_ui_status"]
+)
 def test_built_import_uses_the_provider_name(name):
     path = ROOT / "modules/core/adapters/dyndsp/build/dyndsp-dt2.dko.json"
     obj = json.loads(path.read_text())

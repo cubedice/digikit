@@ -393,6 +393,7 @@ _dl_nofx:
     DM(340, I2) = R0;                     // word 29: this block's record
     DM(_dk_rec) = R0;
 _dl_nodiag:
+    DL_LOOP_RETURN
     R0 = DM(_dl_svm5);
     M5 = R0;
     R0 = DM(_dl_svm6);

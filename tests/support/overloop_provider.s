@@ -11,3 +11,4 @@
 .PKDATA _pattern_position_info, 80;
 .GLOBAL _loop_controls_info;
 .VAR _loop_controls_info = 0x4c435431;
+.PKDATA _loop_ui_status, 64;
