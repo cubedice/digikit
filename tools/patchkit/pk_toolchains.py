@@ -147,10 +147,24 @@ def fetch(url: str) -> pathlib.Path:
 
 def unpack(archive: pathlib.Path) -> pathlib.Path:
     out = TOOLS / "src" / archive.name.removesuffix(".tar.xz")
-    if not out.exists():
-        (TOOLS / "src").mkdir(parents=True, exist_ok=True)
-        with tarfile.open(archive) as t:
-            t.extractall(TOOLS / "src", filter="data")
+    complete = out / ".digikit-extracted-sha256"
+    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+    if (
+        complete.is_file()
+        and complete.read_text().strip() == digest
+        and (out / "configure").is_file()
+    ):
+        return out
+    # An interrupted extraction leaves a directory behind. Its existence is
+    # not proof that all source files are present; retry from the archive.
+    complete.unlink(missing_ok=True)
+    (TOOLS / "src").mkdir(parents=True, exist_ok=True)
+    print(f"Extracting {archive.name} (no verified complete source tree)", flush=True)
+    with tarfile.open(archive) as t:
+        t.extractall(TOOLS / "src", filter="data")
+    if not (out / "configure").is_file():
+        sys.exit(f"{archive}: extraction did not produce {out / 'configure'}")
+    complete.write_text(digest + "\n")
     return out
 
 
@@ -179,15 +193,28 @@ def brew_arch_env(env: dict[str, str]) -> dict[str, str]:
     return {**env, "CC": "clang -arch x86_64", "CXX": "clang++ -arch x86_64"}
 
 
+def m68k_dependency_prefixes() -> dict[str, str]:
+    """Use distribution development libraries on Linux, Homebrew on macOS."""
+    libraries = ("gmp", "mpfr", "libmpc", "isl", "zstd")
+    if sys.platform.startswith("linux"):
+        # GCC's configure probes use the host compiler's default multiarch
+        # search paths. No Linuxbrew installation is needed.
+        return dict.fromkeys(libraries, "/usr")
+    if sys.platform == "darwin":
+        return {name: brew_prefix(name) for name in libraries}
+    sys.exit("Build the m68k toolchain on Linux/WSL or macOS.")
+
+
 def build_m68k() -> None:
     jobs = str(os.cpu_count() or 4)
     env = brew_arch_env(dict(os.environ))
-    deps = {f: brew_prefix(f) for f in ("gmp", "mpfr", "libmpc", "isl", "zstd")}
+    deps = m68k_dependency_prefixes()
     # binutils
     b_src = unpack(fetch(BINUTILS[1]))
     b_obj = TOOLS / "build" / "binutils"
     b_obj.mkdir(parents=True, exist_ok=True)
-    if not (M68K_PREFIX / "bin" / "m68k-elf-as").exists():
+    required_binutils = ("as", "ld", "ar", "ranlib", "nm", "objcopy")
+    if any(m68k_bin(tool) is None for tool in required_binutils):
         run(
             [
                 str(b_src / "configure"),
@@ -210,7 +237,15 @@ def build_m68k() -> None:
     g_obj = TOOLS / "build" / "gcc"
     g_obj.mkdir(parents=True, exist_ok=True)
     env["PATH"] = f"{M68K_PREFIX / 'bin'}:{env['PATH']}"
-    if not (M68K_PREFIX / "bin" / "m68k-elf-gcc").exists():
+    need_cf_library = libgcc_cf() is None
+    need_gcc_tree = (
+        need_cf_library and not (g_obj / "m68k-elf" / "libgcc" / "Makefile").exists()
+    )
+    if m68k_bin("gcc") is None or need_gcc_tree:
+        if need_gcc_tree:
+            print(
+                "Rebuilding GCC: the ColdFire library and its build tree are missing."
+            )
         run(
             [
                 str(g_src / "configure"),
@@ -241,6 +276,13 @@ def build_m68k() -> None:
         run(["make", "install-gcc", "install-target-libgcc"], cwd=g_obj, env=env)
     if not (M68K_PREFIX / "lib" / LIBGCC_CF_NAME).exists():
         build_libgcc_cf()
+    else:
+        # A prior invocation may have installed the archive and then failed
+        # to launch Patchkit's ISA checker (for example, an empty Cargo cache).
+        # Existing bytes alone must not bypass that validation on retry.
+        from tools.coldfire import isacheck
+
+        isacheck.check_file(M68K_PREFIX / "lib" / LIBGCC_CF_NAME)
 
 
 def build_libgcc_cf() -> None:
@@ -254,7 +296,10 @@ def build_libgcc_cf() -> None:
     gobj = TOOLS / "build" / "gcc" / "m68k-elf"
     src = gobj / "libgcc"
     if not (src / "Makefile").exists():
-        sys.exit("build the m68k toolchain first: pk_toolchains m68k")
+        sys.exit(
+            f"Missing GCC library build file: {src / 'Makefile'}. "
+            "Run pk_toolchains m68k to rebuild the incomplete installation."
+        )
     dst = gobj / "libgcc-cf"  # a sibling: the Makefile finds ../.././gcc relative to it
     if dst.exists():
         shutil.rmtree(dst)

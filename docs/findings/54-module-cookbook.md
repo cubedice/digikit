@@ -118,7 +118,7 @@ frequency shifter (effect, after the run-time FX adapter of P3d-1).
 
 ## core/pattern-position (sequencer observation provider; Digitakt II 1.17)
 
-- **What [D]:** a patch-time bridge snapshots native master step, substep, effective wrap length, start/resume generation and transport, then publishes them in an 80-byte DSP record before stock command dispatch. It uses 16 words of the existing audio-frame tail and leaves 155 code-link payload words. Consumers require `_pattern_position_info`; missing providers fail import. See `modules/core/adapters/pattern-position/README.md` and [finding 68](75-pattern-position.md).
+- **What [D]:** a patch-time bridge snapshots native master step, substep, effective wrap length, start/resume generation and transport, then publishes them in an 80-byte DSP record before stock command dispatch. It uses 16 words of the existing audio-frame tail and leaves 155 code-link payload words. Consumers require `_pattern_position_info`; missing providers fail import. See `modules/core/adapters/pattern-position/README.md` and [finding 68](76-pattern-position.md).
 - **Trap [V]:** the scheduled next-step counter and pattern pointer can lead the reported current position. Distinct fields and snapshot/transmit timestamps preserve that distinction; they must not be silently relabeled as audible position.
 - **Open [O]:** this is the prerequisite for selected-step loop capture. The eight-second effect's REC/START/FADE behavior is unchanged; timing alignment and clock/transition cases need their own evidence before a step control is connected.
 
