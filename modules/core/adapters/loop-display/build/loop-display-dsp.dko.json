@@ -1,0 +1,34 @@
+{
+ "arch": "sharc",
+ "format": 1,
+ "relocs": [],
+ "sections": [
+  {
+   "align": 8,
+   "hex": "0100",
+   "kind": "text",
+   "name": "seg_pmco",
+   "size": 2
+  },
+  {
+   "align": 4,
+   "hex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "kind": "data",
+   "name": "pkdata__loop_ui_status",
+   "size": 64
+  }
+ ],
+ "source_sha256": "6f00ab9a6eefd90c5adf3e6ab6bd9b05a2ecb371ee99f4e0bfc2edddc1fe0491",
+ "symbols": [
+  {
+   "global": true,
+   "name": "_loop_ui_status",
+   "section": "pkdata__loop_ui_status",
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "instructions_redecoded": "1",
+  "selache_rev": "2b26d3b75c53063575bc5c820fa0d38879335187"
+ }
+}

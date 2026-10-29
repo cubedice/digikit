@@ -1,6 +1,24 @@
 # page: parameter and FX pages
 # Names follow <cpu>.<subsystem>.<kind>.<name>; was = former names, for reading older docs, never resolved (docs/design/firmware-decls.md).
 
+[[site]]
+name = "cf.page.site.fx_update_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 48, offset = 44, len = 4, sha256 = "a84a39fa0bda5afad7e5b264442861634978ab7d99c834dc1b1b12ecdcaaaabf" }
+mark = "D"
+users = ["core/loop-display"]
+doc = "DTII 1.17 FxPageView primary View vtable slot 11, per-view update. The window starts at slot 0; only this slot is replaced."
+
+[[site]]
+name = "cf.page.site.fx_update_entry"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, len = 6, sha256 = "d6f697145c61dc63b8d3e9c823f9d39b0fd724fe8dc89d149dcb24b1d079734f" }
+mark = "D"
+users = ["core/loop-display"]
+doc = "DTII 1.17 stock FxPageView per-view update entry, retained by the vtable adapter. Local ABI void(u8 *view); the wrapper calls it before its own invalidation policy."
+
 [[data]]
 name = "cf.page.data.fx_key_list"
 was = ["cf.fxpages.keystock", "cf.page.data.keystock"]

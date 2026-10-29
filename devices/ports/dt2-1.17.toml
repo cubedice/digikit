@@ -3048,3 +3048,23 @@ mode = "before"
 name = "dsp.voice.hook.render_entry"
 site = "dsp.voice.fn.render_entry"
 mode = "replace"
+
+[[anchor]]
+name = "cf.page.site.fx_update_slot"
+cpu = "cf"
+kind = "code"
+addr = 0x401f99b4
+len = 0x4
+sha256 = "aa87ab4861b65378d9917b3ab790c1762d7caa4b0f7ee2f3e84f35f47cdd970d"
+mark = "D"
+rule = "fw/page:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.fx_update_entry"
+cpu = "cf"
+kind = "code"
+addr = 0x40069eb8
+len = 0x6
+sha256 = "8d1503d38f264a9b0be0700a53c1e2e61354803cc529f54092a511ae826bca7f"
+mark = "D"
+rule = "fw/page:cf_window_hash"

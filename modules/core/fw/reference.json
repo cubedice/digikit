@@ -6672,6 +6672,67 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40069eb8",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 stock FxPageView per-view update entry, retained by the vtable adapter. Local ABI void(u8 *view); the wrapper calls it before its own invalidation policy.",
+      "file": "devices/fw/page.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.fx_update_entry",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/loop-display"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f99b4",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 FxPageView primary View vtable slot 11, per-view update. The window starts at slot 0; only this slot is replaced.",
+      "file": "devices/fw/page.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.fx_update_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 44
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/loop-display"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x40061616",
@@ -12462,7 +12523,7 @@
       "name": "midi"
     },
     {
-      "count": 21,
+      "count": 23,
       "cpu": "cf",
       "file": "devices/fw/page.toml",
       "meaning": "parameter and FX pages",

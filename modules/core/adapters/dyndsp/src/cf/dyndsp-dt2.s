@@ -25,7 +25,7 @@ dyndsp_info:
     .long   _dd_vfirst
     .long   DYN_TYPES
     .long   _dd_vcount
-    .long   6
+    .long   7
     .asciz  "_dv_exp2"
     .space  28 - 9
     .long   _dv_exp2
@@ -48,3 +48,6 @@ dyndsp_info:
     .asciz  "_loop_controls_info"
     .space  28 - 20
     .long   _loop_controls_info
+    .asciz  "_loop_ui_status"
+    .space  28 - 16
+    .long   _loop_ui_status

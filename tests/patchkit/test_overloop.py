@@ -304,7 +304,22 @@ def test_current_sdk_declares_four_knobs_without_building_unrelated_modules():
     assert [(k["short"], k["position"]) for k in fx["knob"]] == [
         ("REC", 0),
         ("START", 1),
-        ("FADE", 2),
-        ("LENGTH", 3),
+        ("FADE", 3),
+        ("LENGTH", 2),
     ]
     assert fx["knob"][3]["default"] == 0 and fx["knob"][3]["max"] == 127
+
+
+def test_ui_snapshot_reports_actual_capture_and_live_window():
+    p = Player(length=1)
+    p.start()
+    assert p.rig.symbol_word("_loop_ui_status", 2) == 1
+    assert p.rig.symbol_word("_loop_ui_status", 3) == 0
+    assert p.rig.symbol_word("_loop_ui_status", 4) == 32
+    p.block(step=5)
+    p.params[0], p.params[2] = 0, 1
+    p.block()
+    status = [p.rig.symbol_word("_loop_ui_status", i) for i in range(16)]
+    assert status[0] == 0x4F564C31 and status[1] > 0
+    assert status[2:7] == [2, 32, 32, p.state(2), p.state(5)]
+    assert status[11:16] == [1, p.state(29), p.state(30), 4, 1]

@@ -1,6 +1,7 @@
 // Armed stereo loop: REC edge, next START boundary, N steps, then hold.
 #include "dk_fx.inc"
 #include "dk_loop_controls.inc"
+#include "dk_loop_status.inc"
 #define BL_MODE 0
 #define BL_WRITTEN 1
 #define BL_PHASE 2
@@ -562,6 +563,45 @@ _bl_play_end: DM(I3, M6) = R10;
     DM(BL_PHASE, I5) = R5;
     DM(BL_GAIN, I5) = R15;
 _bl_done:
+    // Versioned UI snapshot. No audio copies, allocation or CF access here.
+    // The block-tail sender runs after this function on the same DSP core.
+    I4 = _loop_ui_status;
+    R0 = DK_LOOP_STATUS_MAGIC;
+    DM(0, I4) = R0;
+    R0 = DM(1, I4);
+    R0 = R0 + 1;
+    DM(1, I4) = R0;
+    R0 = DM(BL_MODE, I5);
+    DM(2, I4) = R0;
+    R0 = DM(BL_FRAME_COUNT, I5);
+    DM(3, I4) = R0;
+    R0 = DM(BL_WRITTEN, I5);
+    DM(4, I4) = R0;
+    R0 = DM(BL_PHASE, I5);
+    DM(5, I4) = R0;
+    R0 = DM(BL_GAIN, I5);
+    DM(6, I4) = R0;
+    R0 = DM(BL_START, I5);
+    DM(7, I4) = R0;
+    R0 = DM(21, I5);
+    DM(8, I4) = R0;
+    R0 = DM(22, I5);
+    DM(9, I4) = R0;
+    R0 = DM(23, I5);
+    DM(10, I4) = R0;
+    R0 = DM(28, I5);
+    DM(11, I4) = R0;
+    R0 = DM(29, I5);
+    DM(12, I4) = R0;
+    R0 = DM(30, I5);
+    DM(13, I4) = R0;
+    I0 = DM(31, I5);
+    R0 = DM(1, I0);
+    R0 = TRUNC F0;
+    DM(14, I4) = R0;
+    R0 = DM(3, I0);
+    R0 = TRUNC F0;
+    DM(15, I4) = R0;
     R0 = DK_FX_OK;
     JUMP (M13, I13);
 

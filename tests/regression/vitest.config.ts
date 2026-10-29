@@ -29,9 +29,21 @@ export default defineConfig({
         test: {
           name: 'runtime',
           include: ['runtime/**/*.test.ts'],
+          exclude: ['runtime/overloop-display.test.ts'],
           pool: 'forks',
           ...serial,
           testTimeout: 300_000,
+          hookTimeout: 150_000,
+        },
+      },
+      {
+        test: {
+          // Experimental firmware and a DTII-only DKM, prepared separately.
+          name: 'overloop',
+          include: ['runtime/overloop-display.test.ts'],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 360_000,
           hookTimeout: 150_000,
         },
       },

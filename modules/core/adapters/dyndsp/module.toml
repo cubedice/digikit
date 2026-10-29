@@ -37,7 +37,7 @@ path = "build/dyndsp-dt2.dko.json"
 sources = ["src/cf/dyndsp-dt2.s"]
 place = "cf.expansion"
 devices = ["dt2"]
-optional = ["_loop_buffer_info", "_pattern_position_info", "_loop_controls_info"]
+optional = ["_loop_buffer_info", "_pattern_position_info", "_loop_controls_info", "_loop_ui_status"]
 
 [object.externs]
 _dd_area = "_dl_area"

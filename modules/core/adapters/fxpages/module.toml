@@ -39,6 +39,7 @@ path = "build/gen/device-{dev}.inc"
 [[object]]
 path = "build/fxpages-dt2.dko.json"
 sources = ["src/cf/fxpages-dt2.s"]
+optional = ["loop_ui_paint"]
 place = "cf.expansion"
 devices = ["dt2"]
 

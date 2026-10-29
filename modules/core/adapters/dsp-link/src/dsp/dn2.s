@@ -10,5 +10,6 @@
 // No position sideband on DN2; both macros expand to no instructions or symbols.
 #define DL_POSITION_EXTERN
 #define DL_POSITION_LIMIT
+#define DL_LOOP_RETURN
 #include "dsp-link.inc"
 .PKBSS _dl_area, DL_AREA_BYTES;

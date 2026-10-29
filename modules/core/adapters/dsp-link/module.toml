@@ -44,7 +44,7 @@ sources = ["src/dsp/dt2.s"]
 place = "dsp.l2"
 devices = ["dt2"]
 # window 1 (the voices registry of core/dsp-voice) and window 2 (the effect rows of core/fx); 0 when that module is not in the image
-optional = ["_dl_vrows", "_dl_vcount", "_dl_frows", "_dl_fcount", "_dv_diag", "_dv_rec", "_pattern_position_info"]
+optional = ["_dl_vrows", "_dl_vcount", "_dl_frows", "_dl_fcount", "_dv_diag", "_dv_rec", "_pattern_position_info", "_loop_ui_status"]
 
 [object.externs]
 _dl_back = "hook.dsp.link.site.block_tail.tail"

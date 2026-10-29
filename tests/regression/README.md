@@ -1,7 +1,7 @@
 # @digi/regression
 
 Vitest suites that drive the emulator daemon (`emud`) through `@digi/test-support` and `@digi/control-client`.
-All device suites share one config, `vitest.config.ts`, with five projects. Device projects run one file at a
+All device suites share one config, `vitest.config.ts`, with six projects. Device projects run one file at a
 time (the stock project may run files in parallel, `REGRESSION_JOBS`, default 4).
 
 ## Layout
@@ -11,6 +11,7 @@ time (the stock project may run files in parallel, `REGRESSION_JOBS`, default 4)
 | `dt2/` | `stock` | Stock DT2 1.17 UI and transport goldens, zero DSP |
 | `scenarios/` | `fx-dn2`, `fx-dt2` | Stock FX oracles (see [scenarios/README.md](scenarios/README.md)) |
 | `runtime/` | `runtime` | Patched runtime workflows on DT2 1.17 and DN2 1.12 |
+| `runtime/overloop-display.test.ts` | `overloop` | Experimental DT2 Overloop display, capture and live playback window |
 | `modules/` | `modules` | Production module upload and load cells |
 | `host/` | none (root `regression-host`) | Mocked helper tests, no daemon or firmware |
 
@@ -25,6 +26,7 @@ Goldens are in `goldens/dt2-1.17.json`.
 | `mise run test:stock [-- FILTER]` | `stock` | `DIGI_EMUD` names a current DT2 daemon |
 | `REGRESSION_JOBS=1 pnpm --filter @digi/regression test:update` | `stock` | Rewrites goldens |
 | `mise run test:runtime [-- FILTER]` | `runtime` | Builds plusdrive first (`build:plusdrive`) |
+| `pnpm --filter @digi/regression test:overloop` | `overloop` | DT2 daemon with the `overloop` patch set; prepare `digikit/overloop` as `out/regression/modules/dt2/overloop.dkm` |
 | `mise run test:modules [-- FILTER]` | `modules` | |
 | `mise run test:fx` | `fx-dn2` | 61 quick; `DIGI_FX_SWEEP=1` for 191 |
 | `mise run test:fx:dt2` | `fx-dt2` | 135 quick; `DIGI_FX_SWEEP=1` for 146 |

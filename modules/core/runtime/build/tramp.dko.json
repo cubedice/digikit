@@ -11,6 +11,13 @@
   },
   {
    "addend": 0,
+   "offset": 40,
+   "section": ".text",
+   "symbol": "loop_ui_tick",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 22,
    "section": ".text",
    "symbol": "fw_queue_pop",
@@ -18,49 +25,49 @@
   },
   {
    "addend": 0,
-   "offset": 40,
+   "offset": 52,
    "section": ".text",
    "symbol": "dkrt_tick",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 104,
+   "offset": 116,
    "section": ".text",
    "symbol": "dkrt_boot",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 118,
+   "offset": 130,
    "section": ".text",
    "symbol": "dkrt_boot_next",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 254,
+   "offset": 266,
    "section": ".text",
    "symbol": "dkrt_midi_rx",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 276,
+   "offset": 288,
    "section": ".text",
    "symbol": "dkrt_midi_next",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 282,
+   "offset": 294,
    "section": ".text",
    "symbol": "dkrt_midi_ret",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 302,
+   "offset": 314,
    "section": ".text",
    "symbol": "dkrt_exc",
    "type": "cf.32"
@@ -69,13 +76,13 @@
  "sections": [
   {
    "align": 4,
-   "hex": "4feffff048d703034eba00104cd703034fef00104ef900000000203c00000000670420404e904ef900000000206f0004222f0008200802800000000fd28020080280fffffff0204006810000000fe889670af4e841e80010538166f64e754feffff048d703034eb9000000004cd703034fef00104ef900000000428040c046fc27004e75202f000446c04e7546fc2700223c00030d401039ec070004080000036604538166f042b9480000004e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e71708013c0ec09000060fe4feffff048d703032f2f00182f2f00182f2f00184eb9000000004fef000c4a804cd703034fef001066064ef9000000004ef9000000004fefffd448d77cfc2f0f2f2f00344eb90000000060fe",
+   "hex": "4feffff048d703034eba00104cd703034fef00104ef900000000203c00000000670420404e90203c00000000670420404e904ef900000000206f0004222f0008200802800000000fd28020080280fffffff0204006810000000fe889670af4e841e80010538166f64e754feffff048d703034eb9000000004cd703034fef00104ef900000000428040c046fc27004e75202f000446c04e7546fc2700223c00030d401039ec070004080000036604538166f042b9480000004e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e714e71708013c0ec09000060fe4feffff048d703032f2f00182f2f00182f2f00184eb9000000004fef000c4a804cd703034fef001066064ef9000000004ef9000000004fefffd448d77cfc2f0f2f2f00344eb90000000060fe",
    "kind": "text",
    "name": ".text",
-   "size": 308
+   "size": 320
   }
  ],
- "source_sha256": "d2352165a659ef6cf39618b5fc57d400aea78662c22bafca4acd5b58bd0eae8d",
+ "source_sha256": "943112ed5d3cb0783af70db69e00e0204c840d202a8861965519c69c50695371",
  "symbols": [
   {
    "global": true,
@@ -87,7 +94,7 @@
    "global": true,
    "name": "dkrt_boot_hook",
    "section": ".text",
-   "value": 94
+   "value": 106
   },
   {
    "global": true,
@@ -111,25 +118,25 @@
    "global": true,
    "name": "dkrt_exc_hook",
    "section": ".text",
-   "value": 286
+   "value": 298
   },
   {
    "global": true,
    "name": "dkrt_flush",
    "section": ".text",
-   "value": 44
+   "value": 56
   },
   {
    "global": true,
    "name": "dkrt_irq_mask",
    "section": ".text",
-   "value": 122
+   "value": 134
   },
   {
    "global": true,
    "name": "dkrt_irq_restore",
    "section": ".text",
-   "value": 132
+   "value": 144
   },
   {
    "global": true,
@@ -141,7 +148,7 @@
    "global": true,
    "name": "dkrt_midi_hook",
    "section": ".text",
-   "value": 232
+   "value": 244
   },
   {
    "global": true,
@@ -165,7 +172,7 @@
    "global": true,
    "name": "dkrt_soft_reset",
    "section": ".text",
-   "value": 140
+   "value": 152
   },
   {
    "global": true,
@@ -184,14 +191,20 @@
    "name": "fx_controls_tick",
    "section": null,
    "value": 0
+  },
+  {
+   "global": true,
+   "name": "loop_ui_tick",
+   "section": null,
+   "value": 0
   }
  ],
  "toolchain": {
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "95",
-  "isa_check": "5e24af24e487a1ca949ccaae7c769b549714495f820f42144ecf621d9277c429",
+  "instructions_redecoded": "99",
+  "isa_check": "1d6d9ec1ece36c3f927d8a6433b9d94db92ad4e76854a1dbfc521a77f699fc97",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }
