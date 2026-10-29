@@ -142,6 +142,19 @@ fn with_requires(lib: &Library, ids: Vec<String>) -> Result<Vec<String>> {
     Ok(all)
 }
 
+/// Resolve requirements from manifests before loading any content objects.
+/// An unrelated fixture must not require its compiler to apply this selection.
+fn selected_library(
+    root: &Path,
+    rest: &[String],
+    ids: Vec<String>,
+) -> Result<(Library, Vec<String>)> {
+    let catalog = library_with(root, rest, true, Some(&[]))?;
+    let ids = with_requires(&catalog, ids)?;
+    let lib = library_with(root, rest, false, Some(&ids))?;
+    Ok((lib, ids))
+}
+
 fn preflight_known(root: &Path) -> Result<Vec<patchkit::preflight::Known>> {
     let dir = root.join("devices");
     let rd = std::fs::read_dir(&dir).map_err(|e| Error(format!("{}: {e}", dir.display())))?;
@@ -250,8 +263,11 @@ fn run(a: Args) -> Result<()> {
                 None => vec![],
             };
             let reg = registry(&a.root)?;
-            let lib = library(&a.root, rest)?;
-            let ids = with_requires(&lib, ids)?;
+            let (lib, ids) = if cmd == "check" && ids.is_empty() {
+                (library(&a.root, rest)?, ids)
+            } else {
+                selected_library(&a.root, rest, ids)?
+            };
             if cmd == "check" {
                 let fw = Firmware::parse(&raw)?;
                 let port = reg
@@ -389,10 +405,17 @@ fn run(a: Args) -> Result<()> {
             let page = if rest.iter().any(|x| x == "--fragment") {
                 frag
             } else {
-                format!("<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n</head>\n<body>\n{frag}\n</body>\n</html>\n")
+                format!(
+                    "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n</head>\n<body>\n{frag}\n</body>\n</html>\n"
+                )
             };
-            let out = PathBuf::from(flag(rest, "-o").unwrap_or_else(|| "out/reference/fw.html".into()));
-            let out = if out.is_absolute() { out } else { a.root.join(out) };
+            let out =
+                PathBuf::from(flag(rest, "-o").unwrap_or_else(|| "out/reference/fw.html".into()));
+            let out = if out.is_absolute() {
+                out
+            } else {
+                a.root.join(out)
+            };
             if let Some(d) = out.parent() {
                 std::fs::create_dir_all(d).map_err(|e| Error(format!("{}: {e}", d.display())))?;
             }
@@ -570,7 +593,11 @@ plan.json {}",
                 })?;
                 // `ports` is the only device restriction of a module
                 let ports = &m.manifest.module.ports;
-                if !ports.is_empty() && !ports.iter().any(|p| p.split('-').next() == Some(dev.as_str())) {
+                if !ports.is_empty()
+                    && !ports
+                        .iter()
+                        .any(|p| p.split('-').next() == Some(dev.as_str()))
+                {
                     return Err(Error(format!(
                         "{id} is not built for {dev}: its ports are {}",
                         ports.join(", ")
@@ -911,5 +938,33 @@ fn main() {
     if let Err(e) = run(a) {
         eprintln!("patchkit: {e}");
         std::process::exit(1);
+    }
+}
+
+#[cfg(test)]
+mod selection_tests {
+    use super::*;
+
+    #[test]
+    fn selected_framework_resolves_dependencies_without_building_rust_fixture() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
+        let (lib, ids) = selected_library(root, &[], vec!["core/pattern-position".into()]).unwrap();
+        assert!(ids.iter().any(|id| id == "core/dsp-link"));
+        assert!(!lib.get("core/pattern-position").unwrap().objects.is_empty());
+        assert!(lib.get("test/dyn-demo").unwrap().objects.is_empty());
+    }
+
+    #[test]
+    fn unknown_selection_is_rejected_before_building_content() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
+        assert!(selected_library(root, &[], vec!["missing/module".into()]).is_err());
     }
 }
