@@ -925,6 +925,16 @@ mark = "D"
 rule = "fw/midi:cf_words"
 
 [[anchor]]
+name = "cf.midi.site.din_rx"
+cpu = "cf"
+kind = "code"
+addr = 0x4011f178
+len = 6
+sha256 = "f6e7a59609e064ba49feb211640fd68bfc3680cbcdac99bc7b57761562dd9f74"
+mark = "D"
+rule = "fw/midi:cf_window_hash"
+
+[[anchor]]
 name = "cf.midi.site.rx"
 cpu = "cf"
 kind = "code"
@@ -3224,6 +3234,11 @@ mode = "replace"
 [[hook]]
 name = "cf.menu.hook.settings_list.tail"
 site = "cf.menu.site.settings_list.tail"
+mode = "before"
+
+[[hook]]
+name = "cf.midi.hook.din_rx"
+site = "cf.midi.site.din_rx"
 mode = "before"
 
 [[hook]]

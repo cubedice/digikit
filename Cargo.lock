@@ -1142,6 +1142,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "dkmidi-host"
+version = "0.1.0"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "dkneeds"
 version = "0.1.0"
 

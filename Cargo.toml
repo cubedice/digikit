@@ -35,6 +35,7 @@ members = [
     "modules/core/runtime/fit",
     # host test harness for <dk/ui.h> (fake dk_ui_* calls, driver, C sample)
     "modules/core/adapters/ui/host",
+    "modules/core/adapters/midi-events/host",
     "modules/core/fw/rs",
     "packages/patchkit",
     "apps/desktop/src-tauri",

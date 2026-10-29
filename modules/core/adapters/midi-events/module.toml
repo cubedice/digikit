@@ -1,0 +1,35 @@
+[module]
+id = "core/midi-events"
+version = "0.1.0"
+name = "Instrument MIDI ownership"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Bounded USB/DIN ownership for persistent track instruments; routes require a ready V2 consumer."
+requires = ["core/runtime"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/midi-events-cf.dko.json"
+sources = ["src/cf/ownership.c", "src/cf/adapter.c", "src/cf/din.s"]
+place = "cf.expansion"
+devices = ["dt2"]
+optional = ["instrument_midi_ready"]
+
+[object.externs]
+mi_din_next = "hook.cf.midi.site.din_rx.tail"
+mi_din_return = "hook.cf.midi.site.din_rx.return"
+
+[[op]]
+op = "hook"
+hook = "cf.midi.hook.din_rx"
+to = "mi_din_hook"
+
+[[claim]]
+resource = "cf.midi.site.din_rx"

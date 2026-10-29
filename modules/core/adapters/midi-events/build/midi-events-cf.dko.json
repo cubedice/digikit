@@ -1,0 +1,510 @@
+{
+ "arch": "cf",
+ "format": 1,
+ "relocs": [
+  {
+   "addend": 0,
+   "offset": 22,
+   "section": ".text",
+   "symbol": "mi_channel_message",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 44,
+   "section": ".text",
+   "symbol": "mi_din_next",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 50,
+   "section": ".text",
+   "symbol": "mi_din_return",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 42,
+   "section": ".text.overflow",
+   "symbol": ".sec..text.mi_reset_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 94,
+   "section": ".text.emit.isra.0",
+   "symbol": ".sec..text.overflow",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 36,
+   "section": ".text.mi_recover",
+   "symbol": ".sec..text.overflow",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 88,
+   "section": ".text.mi_recover",
+   "symbol": ".sec..text.mi_init",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 166,
+   "section": ".text.mi_message",
+   "symbol": ".sec..text.overflow",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 336,
+   "section": ".text.mi_message",
+   "symbol": ".sec..text.emit.isra.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 482,
+   "section": ".text.mi_message",
+   "symbol": ".sec..text.emit.isra.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 688,
+   "section": ".text.mi_message",
+   "symbol": ".sec..text.emit.isra.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 46,
+   "section": ".text.mi_route_enable",
+   "symbol": "instrument_midi_ready",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 56,
+   "section": ".text.mi_route_enable",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 66,
+   "section": ".text.mi_route_enable",
+   "symbol": ".sec..bss.initialized",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 74,
+   "section": ".text.mi_route_enable",
+   "symbol": ".sec..bss.mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 80,
+   "section": ".text.mi_route_enable",
+   "symbol": "mi_init",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 90,
+   "section": ".text.mi_route_enable",
+   "symbol": ".sec..bss.initialized",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 96,
+   "section": ".text.mi_route_enable",
+   "symbol": ".sec..bss.mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4888,
+   "offset": 114,
+   "section": ".text.mi_route_enable",
+   "symbol": ".sec..bss.mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 152,
+   "section": ".text.mi_route_enable",
+   "symbol": "mi_route",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 168,
+   "section": ".text.mi_route_enable",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.mi_instance_reset",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 16,
+   "section": ".text.mi_instance_reset",
+   "symbol": ".sec..bss.initialized",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 28,
+   "section": ".text.mi_instance_reset",
+   "symbol": ".sec..bss.mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 38,
+   "section": ".text.mi_instance_reset",
+   "symbol": "mi_reset_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 54,
+   "section": ".text.mi_instance_reset",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.mi_channel_message",
+   "symbol": ".sec..bss.initialized",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 50,
+   "section": ".text.mi_channel_message",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 70,
+   "section": ".text.mi_channel_message",
+   "symbol": ".sec..bss.mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 76,
+   "section": ".text.mi_channel_message",
+   "symbol": "mi_message",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 88,
+   "section": ".text.mi_channel_message",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  }
+ ],
+ "sections": [
+  {
+   "align": 4,
+   "hex": "4feffff048d703032f2f00182f2f00182f2f00184eb9000000004fef000c4a804cd703034fef001066064ef9000000004ef900000000",
+   "kind": "text",
+   "name": ".text",
+   "size": 54
+  },
+  {
+   "align": 2,
+   "hex": "206f0004428042011181080052800c800000135c66f0200806800000010443e8000412bcffff5089b08966f6200806800000135c43e8131c720122c1b08966f87001214013182140130c214013084e75",
+   "kind": "text",
+   "name": ".text.mi_init",
+   "size": 80
+  },
+  {
+   "align": 2,
+   "hex": "2f0a720f2f02202f0010206f000cb28065607201e1a9226813102409c4814a82660845f00c0052aa131c24098481220806810000080843e80108214213104a11670e75a90004b480660674011342000543e9000eb28966e643e8000441e801047391b28066064201134100015089b1c966ee241f245f4e75",
+   "kind": "text",
+   "name": ".text.mi_reset_track",
+   "size": 120
+  },
+  {
+   "align": 2,
+   "hex": "4feffff072ff48d71c04246f0014202a1314b2806706528025401314240a06820000010447ea000449f900000000720f7193b280650e2f002f0a4e947001508f17400003508bb48b66e442aa130442aa13004cd71c044fef00104e75",
+   "kind": "text",
+   "name": ".text.overflow",
+   "size": 92
+  },
+  {
+   "align": 2,
+   "hex": "4feffff02f032f02226f001c1f6f002b0012222913041f6f002f00131f6f003300141f6f003700151f6f003b00161f6f003f00172f6f0020000a2f6f0024000e0c810000008067082429130c4a8266122f49001c241f261f4fef00104ef9000000002001767fd0a913005281c08376164c03080041f10800216913180800200252802340130c116f0012081321420804116f00130810116f00140811116f00150812116f00160814116f00170815216f000a0808216f000e080c23411304241f261f4fef00104e75",
+   "kind": "text",
+   "name": ".text.emit.isra.0",
+   "size": 200
+  },
+  {
+   "align": 2,
+   "hex": "2f02206f0008242f000c222f0010202f0014b4a8131867064280241f4e75740fb48165f44a8067f0224143e904c7b0b09c0066e47001e3a8226813102209c2804a8167d446802209c28070012141131060c8",
+   "kind": "text",
+   "name": ".text.mi_reset_ack",
+   "size": 82
+  },
+  {
+   "align": 2,
+   "hex": "4fefffec70ff48d7041c246f0018262a1318b08366122f4a00184cd7041c4fef00144ef900000000282a1314220a242a131006810000010441ea00042f4400107190780fb88065067801e1ac84845088b28866ec2f0a4eb90000000052832543131825421310256f001413144cef041c00044fef00184e75",
+   "kind": "text",
+   "name": ".text.mi_recover",
+   "size": 120
+  },
+  {
+   "align": 2,
+   "hex": "2f032f027401226f0010206f000c222f0014202f0018b489640870ff241f261f4e75760fb68165f2b680641e0c80000000ff66e62409e98ad282e78943f018004a290007671e70fe60d24aaf001c67ca262f001c24000682000004c7b6b02c0067d260b64a29000566dc760fb680650c7401e1aac4a813104a8266ca43f0180013400004262f001c0c80000000ff56c0218318004aaf002056c144801340000542804481134100066000ff72",
+   "kind": "text",
+   "name": ".text.mi_route",
+   "size": 172
+  },
+  {
+   "align": 2,
+   "hex": "4fefffd8206f003448d71cfc246f002c2a2f00304a8867067001b085640c42804cd71cfc4fef00284e757203b2af003866ec1c10746f20060680ffffff807180b48065da122800016bd4182800026bce77867e0fe88bcc872005e98824037f86d08622477e09be8366464a046776e78841f208004a280007660000e41e28000477871f47002426430c83000000ff678e7e09be826600010a262a13084a83660000dc2f0a4eb900000000588f600000b051837783e28b672c760bb682670a7e0ebe826600ff5a60a677817e79be8365107e77be8365987e40be8367926000ff407e7b60f477857d867f8141ea010097cb49ea08004a280008672275a80009b483661a75a8000ab486661275a8000bb487660a4a8b674e2413b490624841e8000eb9c866d04a8b67404a2b000d662a7b85798473812f042f012f092f054878000271ab000c2f002f2b00042f132f0a4eb9000000004fef002442031743000870016000febe264860b4e7881032080446804a0056c0710044806000fea641ea010842824a10670000b4528241e8000e0c820000008066ec6000ff0a7001600000e24a28000567b84a28000667000082760bb68266aa77817e78be8366a230457603798477832f04798132082f042f097f812f072f03760b2f0b2f32080042a72f0a4eb9000000004fef0024b6826600ff707e78be846708707bb0846600ff627d8641ea010845ea08084a10671671a80001ba80660e71a80002bc80660672011141000541e8000eb5c866de6000ff327e0bbe8257c33045588360862e035287254713087e0e4c0728002872080041f22800116f0024010c114501091146010a1141010b21430100214c010441f208004a2800056700ff264a28000656c07100448041f2280074011140010d114201084a806600fd8e7b85798473812f042f012f092f05487800012f0b2f0c2f032f0a4eb9000000004fef00246000fea4",
+   "kind": "text",
+   "name": ".text.mi_message",
+   "size": 700
+  },
+  {
+   "align": 2,
+   "hex": "4feffff048d71c04246f0014226f00184aaa131066044a89661c42804cd71c044fef00104e755281707f5382c0812542130425401300242a13044a8267dc222a130070164c01080041f2080071a8081347e8081349e8080c0680000004c720320c00b09466c022a808002368080400042368080800082354000c7001136808100010136808110011136808120012135300131368081400141368081500156000ff7c",
+   "kind": "text",
+   "name": ".text.mi_peek",
+   "size": 162
+  },
+  {
+   "align": 2,
+   "hex": "2f02206f0008202f000cb0a8131867064280241f4e754aa8131066f4242813044a8267ec2028130072164c00180043f01800222f0010b2a9080466d45280727f5382c2802142130470012141130060c2",
+   "kind": "text",
+   "name": ".text.mi_ack",
+   "size": 80
+  },
+  {
+   "align": 2,
+   "hex": "4fefffec700148d70c0c242f0020b0af0018640e74ff20024cd70c0c4fef00144e75202f001c8082e88866e847f9000000004a8b67de4eb9000000002f4000104ab90000000066164879000000004eb900000000588f700123c00000000045f90000000026020683000004c72f323c002f39000000002f024e934fef000c4a8067302f2f00242f323c002f022f2f00282f2f00282f0a4eb9000000004fef001824002f2f00104eb900000000588f6000ff6674fe60ec",
+   "kind": "text",
+   "name": ".text.mi_route_enable",
+   "size": 182
+  },
+  {
+   "align": 2,
+   "hex": "518f2f6f000c00044eb9000000004ab90000000067182f2f00044879000000002f4000084eb900000000508f20172f40000c508f4ef900000000",
+   "kind": "text",
+   "name": ".text.mi_instance_reset",
+   "size": 58
+  },
+  {
+   "align": 2,
+   "hex": "598f2f02202f00144ab90000000067087203b2af0010670a42822002241f588f4e754aaf000c67f07208b280663474014eb9000000002f400004487800032f2f00102f024879000000004eb9000000002f2f001424004eb9000000004fef001460b87208b28065107202b280670659804a8066a4428260b87210b28067b06098",
+   "kind": "text",
+   "name": ".text.mi_channel_message",
+   "size": 128
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.initialized",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.mi_ledger",
+   "size": 4956
+  }
+ ],
+ "source_sha256": "518180ebdc095205c7ccd32031ba3f5ed94834231ff0e4d06335c820e0a86748",
+ "symbols": [
+  {
+   "global": false,
+   "name": ".sec..bss.initialized",
+   "section": ".bss.initialized",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.mi_ledger",
+   "section": ".bss.mi_ledger",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.emit.isra.0",
+   "section": ".text.emit.isra.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.mi_init",
+   "section": ".text.mi_init",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.mi_reset_track",
+   "section": ".text.mi_reset_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.overflow",
+   "section": ".text.overflow",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_irq_mask",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_irq_restore",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "emit.isra.0",
+   "section": ".text.emit.isra.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "initialized",
+   "section": ".bss.initialized",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "instrument_midi_ready",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_ack",
+   "section": ".text.mi_ack",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_channel_message",
+   "section": ".text.mi_channel_message",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_din_hook",
+   "section": ".text",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_din_next",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_din_return",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_init",
+   "section": ".text.mi_init",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_instance_reset",
+   "section": ".text.mi_instance_reset",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_ledger",
+   "section": ".bss.mi_ledger",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_message",
+   "section": ".text.mi_message",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_peek",
+   "section": ".text.mi_peek",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_recover",
+   "section": ".text.mi_recover",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_reset_ack",
+   "section": ".text.mi_reset_ack",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_reset_track",
+   "section": ".text.mi_reset_track",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_route",
+   "section": ".text.mi_route",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_route_enable",
+   "section": ".text.mi_route_enable",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "overflow",
+   "section": ".text.overflow",
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "as": "GNU assembler (GNU Binutils) 2.47.20260726",
+  "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
+  "gcc": "m68k-elf-gcc (GCC) 16.2.0",
+  "instructions_redecoded": "735",
+  "isa_check": "16bec297a2923f1e0468b8bccfab2e218c42965e4e07f367a749425591668caa",
+  "ld": "GNU ld (GNU Binutils) 2.47.20260726"
+ }
+}

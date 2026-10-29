@@ -47,9 +47,9 @@ path = "build/gen/device-{dev}.inc"
 # The UI-loop hook trampoline and the cache flush (assembly).
 [[object]]
 path = "build/tramp.dko.json"
-sources = ["src/cf/tramp.s"]
+sources = ["src/cf/tramp.s", "src/cf/midi_dispatch.c"]
 place = "cf.expansion"
-optional = ["fx_controls_tick", "loop_ui_tick"]
+optional = ["fx_controls_tick", "loop_ui_tick", "mi_channel_message"]
 
 [object.externs]
 fw_queue_pop = "cf.rtos.fn.queue_pop"

@@ -2,6 +2,8 @@
 
 Status: proposed implementation, 2026-10-29. Target: Digitakt II OS 1.17. Source baseline: `9b168c21` on `codex/short-loop-proof`. This design specifies new capabilities; it does not claim that CANOPY or the proposed interfaces already exist.
 
+Implementation has started with [instrument MIDI ownership](../../modules/core/adapters/midi-events/README.md): bounded token/FIFO ownership, reset tombstones, queue acknowledgements, an optional USB dispatcher and a separately pinned DIN hook. Host and ColdFire component tests cover the production C logic. Routes remain inactive without a ready V2 consumer. Stage 0 is still open: DSP transport allocation/coexistence and live ingress observation remain; stage 1's final-output lifetime gate has not passed. There is no playable CANOPY DKM yet.
+
 CANOPY is a keyboard-playable pad instrument on one audio track, with four independently articulated chord tones and an arpeggiator blended over the pad. PLAY sounds the notes the player actually presses. ROOT + TYPE generates a chord from a root key and a silent chord-selector key. LEARN TO ROOT captures a voicing for later transposition. Sequencer mode plays a chord from a stock note trig.
 
 The enabling change is a versioned track-instrument interface with individual note events and persistent state. A MIDI queue attached to today's monophonic machine interface is insufficient: the firmware can restart or stop the entire track on each key event. Prove independent key release through the final audio output before building the full synthesizer or screen.
@@ -434,4 +436,4 @@ Timing tests cover keyboard input while stopped, repeated PLAY/STOP, pattern cha
 
 Audio checks inspect both the module output and final output: phase continuity of untouched notes, independent velocity/release, no NaNs or escaped writes, de-click transitions, unsupported-pitch handling and finite headroom. Test maximum simultaneous events plus rendering in one block. Keep V1 PLUCK and stock-machine fallthrough regression tests.
 
-Use the owner's module check and filtered runtime/module suites while implementing; inspect the routed merge gate before integration as required by [testing](../TESTING.md). Run actual hardware USB/DIN keyboard checks after emulator gates. The current change is this design only; its checks are repository path validation and the changed-file preflight.
+Use the owner's module check and filtered runtime/module suites while implementing; inspect the routed merge gate before integration as required by [testing](../TESTING.md). Run actual hardware USB/DIN keyboard checks after emulator gates. Keep component, running-firmware and hardware evidence distinct; the implementation status above records which gates remain open.
