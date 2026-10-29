@@ -3,6 +3,31 @@
 `core/dsp-link` is a framework module: it lets the digikit runtime send bytes (DSP code and data) to the DSP while
 the device runs. Nothing changes for the player. It ran on a Digitakt II (OS 1.17), where `fx/freqshift` loaded through it and ran (2026-10-30, finding 91); the Digitone II has run it in the emulator only.
 
+## Optional DTII instrument allocation
+
+An optional `instrument_write_frame(tx_queue, entry, rec)` provider reserves 32
+forward words at ring byte `0x9fc`, immediately before pattern position's 16-word
+suffix at `0xa7c`. It must require `core/pattern-position` and export the matching
+16-word DSP mailbox `_instrument_reply`. Without those providers the existing
+allocations remain unchanged. This is transport space for the proposed V2
+instrument interface, not an implemented event protocol or playable machine.
+
+The ColdFire sender rejects an instrument provider without pattern position or
+the exact DTII frame geometry before writing anything. Both sender and DSP loader
+limit upload payloads to 123 words with the instrument allocation, 155 with only
+pattern position, and 171 with neither. The callback runs even while uploads are
+idle, may touch only its 32 data words, and must not allocate or wait. `entry` is
+the first queue halfword entry; `rec` is the previous reply copy.
+
+The DTII block tail copies `_instrument_reply` into entries 11/12 of rows 21-28
+(record word offsets 465/466 through 612/613). This preserves loader ACK row 0,
+diagnostics rows 1-12 and Overloop rows 13-20. No such allocation exists on DNII.
+The pinned DTII driver passes the complete requested reply length to `memcpy`;
+the test checks its actual instruction bytes. This is static copy-path evidence,
+not a live DMA or hardware proof. Component tests execute the production CF
+sender and SHARC writer/loader, checking allocation bounds and unchanged words
+outside the reservation. Live coexistence and the event protocol remain open.
+
 - Firmware: Digitakt II 1.17 and Digitone II 1.12 (the same anchor rules on both).
 - What it adds: a hook on the ColdFire's per-block frame sender (to put a chunk in the unused end of the frame) and a hook
   at the end of the DSP's block handler (to take the chunk, copy it into a reserved area of free L2 (512 KiB on the Digitakt II, 320 KiB on the Digitone II), and

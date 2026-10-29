@@ -211,6 +211,7 @@ def built():
         "dl_rec_lit": RECLIT,
         "dl_stock_send": BASE + 0x100,
         "pp_write_frame": 0,
+        "instrument_write_frame": 0,
     }
     return front_end.cf_link(
         [MOD / "src/cf/dsp-link.c"], BASE, syms, [MOD / "build/gen"]
@@ -243,9 +244,40 @@ pp_write_frame:
         "dl_tx_lit": TXLIT,
         "dl_rec_lit": RECLIT,
         "dl_stock_send": BASE + 0x100,
+        "instrument_write_frame": 0,
     }
     return front_end.cf_link(
         [MOD / "src/cf/dsp-link.c", stub], BASE, syms, [MOD / "build/gen"]
+    )
+
+
+@pytest.fixture(scope="module", params=[False, True])
+def built_instrument(request, tmp_path_factory):
+    if pk_toolchains.m68k_bin("gcc") is None:
+        pytest.skip("m68k toolchain not installed")
+    position = request.param
+    stub = tmp_path_factory.mktemp("instrument-writer") / "writer.c"
+    source = """#include <stdint.h>
+static void mark(uint32_t tx, uint32_t entry, uint32_t count, uint16_t value) {
+    for (uint32_t i=0; i<count; ++i)
+        *(volatile uint16_t *)(tx + 4*(entry+i) + 2) = value;
+}
+void instrument_write_frame(uint32_t tx, uint32_t entry, const volatile uint16_t *rec) {
+    (void)rec;
+    mark(tx, entry, 64, 0xb66b);
+}
+"""
+    if position:
+        source += "void pp_write_frame(uint32_t tx, uint32_t entry) { mark(tx, entry, 32, 0xa55a); }\n"
+    stub.write_text(source)
+    syms = {"_dl_area": AREA, "dl_tx_lit": TXLIT, "dl_rec_lit": RECLIT}
+    if not position:
+        syms["pp_write_frame"] = 0
+    return (
+        front_end.cf_link(
+            [MOD / "src/cf/dsp-link.c", stub], BASE, syms, [MOD / "build/gen"]
+        ),
+        position,
     )
 
 
@@ -304,6 +336,24 @@ def check_word(words: list[int]) -> int:
     return s1 ^ s2
 
 
+def test_stock_driver_passes_the_full_reply_length_to_memcpy():
+    """Pin the copy arguments; hardware DMA and live ingress remain unproved."""
+    image = "dt2-1.17"
+    main = main_os(image)
+    entry = anchors(image)["cf.link.fn.frame"]["addr"]
+    off = entry - 0x40000400
+    # Extract the driver's ready flag and receive-buffer literal from this image.
+    assert main[off + 12 : off + 14] == b"\x4a\xb9"  # tst.l abs.l
+    assert main[off + 32 : off + 34] == b"\x48\x79"  # pea abs.l
+    # After saving A2/D2, arg3 (reclen) -> D1 and arg4 (dest) -> D0.
+    assert main[off : off + 12] == bytes.fromhex("2f0a2f02222f0014202f0018")
+    # Positive length and non-null destination: push length, fixed RX buffer,
+    # destination, then call memcpy. No mask, truncation or selected-row copy.
+    assert main[off + 22 : off + 50] == bytes.fromhex(
+        "4a8067184a816f142f014879800010002f004eb9401363884fef000c"
+    )
+
+
 @needs_gcc
 def test_position_writer_runs_while_link_idle_and_stays_in_its_suffix(
     machine, built_position
@@ -316,6 +366,58 @@ def test_position_writer_runs_while_link_idle_and_stays_in_its_suffix(
     for entry in range(0xA7C // 2, 0xABC // 2):
         expected[entry * 4 + 2 : entry * 4 + 4] = b"\xa5\x5a"
     assert result == expected
+
+
+@needs_gcc
+def test_instrument_writer_preserves_position_and_every_other_idle_byte(
+    machine, built_instrument
+):
+    built, position = built_instrument
+    original = bytes([0xCC]) * (0x55E * 4)
+    tick = call(built, "dl_tick", [0x802, 0, 0xABC, 0], [(TXQ, len(original))])
+    result = run(machine, built, {TXQ: original}, [tick])[0].reads[0]
+    expected = bytearray(original)
+    if position:
+        for entry in range(0x9FC // 2, 0xA7C // 2):
+            expected[entry * 4 + 2 : entry * 4 + 4] = b"\xb6\x6b"
+        for entry in range(0xA7C // 2, 0xABC // 2):
+            expected[entry * 4 + 2 : entry * 4 + 4] = b"\xa5\x5a"
+    assert result == expected
+
+
+@needs_gcc
+def test_instrument_allocation_reduces_loader_chunks_or_rejects_missing_position(
+    machine, built_instrument
+):
+    built, position = built_instrument
+    ln, src = built.symbols["dl_link"], DATA + 0x4000
+    data = bytes((i * 7 + 3) & 255 for i in range(1024))
+    original = bytes([0xCC]) * (0x55E * 4)
+    tick = call(
+        built, "dl_tick", [0x802, 0, 0xABC, 0], [(ln, 72), (TXQ, len(original))]
+    )
+    result = run(
+        machine,
+        built,
+        {src: data, TXQ: original},
+        [call(built, "dl_send", [AREA, src, len(data)]), tick],
+    )[1]
+    status = link_of(built, result)
+    if not position:
+        assert status["state"] == 3 and status["err"] == 101
+        assert result.reads[1] == original
+        return
+    assert status["cap"] == 123
+    words = tail_words(result.reads[1], 0x402, 174)
+    assert (words[1] >> 17) & 255 == 123
+    assert words[2:125] == list(struct.unpack("<123I", data[:492]))
+    assert words[125] == check_word(words[:125])
+    assert words[126:158] == [0xB66BB66B] * 32
+    assert words[158:] == [0xA55AA55A] * 16
+    # Loader and both providers only write data halves, never command halves.
+    assert result.reads[1][: 0x402 * 4] == original[: 0x402 * 4]
+    for entry in range(0x55E):
+        assert result.reads[1][entry * 4 : entry * 4 + 2] == b"\xcc\xcc"
 
 
 @needs_gcc
