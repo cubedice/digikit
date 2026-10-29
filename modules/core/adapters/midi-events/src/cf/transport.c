@@ -1,0 +1,105 @@
+#include "transport.h"
+
+void mt_init(MiTransport *t)
+{
+    uint32_t i;
+    uint8_t *p = (uint8_t *)t;
+    for (i = 0; i < sizeof(*t); ++i) p[i] = 0;
+    t->next_message = 1;
+}
+
+uint32_t mt_check(const uint32_t w[MT_WORDS])
+{
+    uint32_t i, a = 0, b = 0;
+    for (i = 0; i < MT_WORDS; ++i) {
+        if (i == 7) continue;
+        a += w[i]; b += a;
+    }
+    return a ^ b;
+}
+
+static void fault(MiTransport *t, MiLedger *m)
+{
+    uint32_t i;
+    if (t->faults != UINT32_MAX) ++t->faults;
+    for (i = 0; i < MI_TRACKS; ++i) mi_reset_track(m, i);
+    t->pending = 0;
+}
+
+const uint32_t *mt_prepare(MiTransport *t, MiLedger *m,
+                           const uint32_t revisions[MI_TRACKS], uint32_t block)
+{
+    uint32_t i, kind, track, count = 0;
+    MiEvent first;
+    if (t->epoch != m->epoch) {
+        mt_init(t); t->epoch = m->epoch;
+    }
+    /* A reset supersedes an unacknowledged note batch. The next reset may jump
+     * the ordered sequence; an old note ACK can never clear this request. */
+    if (t->pending && t->pending != MT_RESET && m->reset_mask) t->pending = 0;
+    if (t->pending) {
+        if (block - t->sent_block >= MT_STALL_BLOCKS && !t->faults) fault(t, m);
+        else return t->words;
+    }
+    if (!t->next_message) {
+        if (!t->faults) fault(t, m);
+        return 0; /* explicit stream recovery required; never reuse an identity */
+    }
+    if (m->reset_mask) {
+        for (track = 0; !(m->reset_mask & (1u << track)); ++track) {}
+        kind = MT_RESET;
+    } else {
+        if (t->faults || !mi_peek(m, &first) || !revisions[first.track]) return 0;
+        track = first.track; kind = MT_EVENTS;
+    }
+    for (i = 0; i < MT_WORDS; ++i) t->words[i] = 0;
+    t->words[0] = MT_MAGIC;
+    t->words[2] = m->epoch;
+    t->words[3] = t->next_message++;
+    t->words[6] = block;
+    t->track = track; t->generation = m->generations[track];
+    if (kind == MT_RESET) {
+        t->words[8] = track;
+        t->words[9] = t->generation;
+    } else {
+        t->words[4] = first.sequence;
+        t->words[5] = revisions[track];
+        for (i = 0; i < m->count && i < 8; ++i) {
+            const MiEvent *e = &m->events[(m->head + i) % MI_EVENTS];
+            if (e->epoch != m->epoch || e->track != track ||
+                e->generation != t->generation || e->sequence != first.sequence + i) break;
+            t->words[8 + 3*i] = e->token;
+            t->words[9 + 3*i] = e->generation;
+            t->words[10 + 3*i] = e->kind | ((uint32_t)e->port << 4) |
+                ((uint32_t)e->channel << 6) | ((uint32_t)e->track << 10) |
+                ((uint32_t)e->note << 14) | ((uint32_t)e->value << 21);
+            ++count;
+        }
+    }
+    t->words[1] = kind | (count << 8);
+    t->words[7] = mt_check(t->words);
+    t->pending = kind; t->count = count; t->sent_block = block;
+    return t->words;
+}
+
+int mt_ack(MiTransport *t, MiLedger *m, uint32_t epoch, uint32_t message)
+{
+    uint32_t i;
+    if (!t->pending || epoch != m->epoch || epoch != t->epoch ||
+        message != t->words[3]) return 0;
+    if (t->pending == MT_RESET) {
+        if (!mi_reset_ack(m, epoch, t->track, t->generation)) return 0;
+    } else {
+        if (m->reset_mask || m->count < t->count ||
+            m->generations[t->track] != t->generation) return 0;
+        /* Validate the entire retained batch before consuming any event. */
+        for (i = 0; i < t->count; ++i) {
+            const MiEvent *e = &m->events[(m->head + i) % MI_EVENTS];
+            if (e->epoch != epoch || e->sequence != t->words[4] + i ||
+                e->track != t->track || e->generation != t->generation) return 0;
+        }
+        for (i = 0; i < t->count; ++i) mi_ack(m, epoch, t->words[4] + i);
+    }
+    t->pending = 0;
+    return 1;
+}

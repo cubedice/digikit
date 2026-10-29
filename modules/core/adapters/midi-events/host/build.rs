@@ -3,6 +3,9 @@ fn main() {
     println!("cargo:rerun-if-changed=../src/cf/ownership.h");
     println!("cargo:rerun-if-changed=tests/ownership.c");
     println!("cargo:rerun-if-changed=tests/dispatch.c");
+    println!("cargo:rerun-if-changed=tests/transport.c");
+    println!("cargo:rerun-if-changed=../src/cf/transport.c");
+    println!("cargo:rerun-if-changed=../src/cf/transport.h");
     println!("cargo:rerun-if-changed=../src/cf/adapter.c");
     println!("cargo:rerun-if-changed=../../../runtime/src/cf/midi_dispatch.c");
     cc::Build::new()
@@ -15,6 +18,8 @@ fn main() {
         .file("../src/cf/ownership.c")
         .file("tests/ownership.c")
         .file("tests/dispatch.c")
+        .file("tests/transport.c")
+        .file("../src/cf/transport.c")
         .file("../src/cf/adapter.c")
         .file("../../../runtime/src/cf/midi_dispatch.c")
         .compile("dkmidi_ownership");

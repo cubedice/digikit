@@ -81,6 +81,62 @@
   },
   {
    "addend": 0,
+   "offset": 32,
+   "section": ".text.fault",
+   "symbol": "mi_reset_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 34,
+   "section": ".text.mt_prepare",
+   "symbol": ".sec..text.mt_init",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 92,
+   "section": ".text.mt_prepare",
+   "symbol": ".sec..text.fault",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 120,
+   "section": ".text.mt_prepare",
+   "symbol": ".sec..text.fault",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 178,
+   "section": ".text.mt_prepare",
+   "symbol": "mi_peek",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 306,
+   "section": ".text.mt_prepare",
+   "symbol": ".sec..text.mt_check",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 78,
+   "section": ".text.mt_ack",
+   "symbol": "mi_reset_ack",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 174,
+   "section": ".text.mt_ack",
+   "symbol": "mi_ack",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 46,
    "section": ".text.mi_route_enable",
    "symbol": "instrument_midi_ready",
@@ -300,6 +356,41 @@
   },
   {
    "align": 2,
+   "hex": "4feffff472ff48d70c04246f0010202a009cb280670652802540009c428247f9000000002f0252822f2f00184e93508f7010b08266ee42aa00884cd70c044fef000c4e75",
+   "kind": "text",
+   "name": ".text.fault",
+   "size": 68
+  },
+  {
+   "align": 2,
+   "hex": "206f0004428042011181080052800c80000000a066f07001214000844e75",
+   "kind": "text",
+   "name": ".text.mt_init",
+   "size": 30
+  },
+  {
+   "align": 2,
+   "hex": "2f02226f000891c8428042817407b48166027208d0b11c0074205281d1c0b48166ea2208b380241f4e75",
+   "kind": "text",
+   "name": ".text.mt_check",
+   "size": 42
+  },
+  {
+   "align": 2,
+   "hex": "4e56ffb848d71cfc246e000c286e0008202a1318266e0010b0ac008067102f0c4eb900000000296a13180080588f202c00884a80671455804a80670001cc4aaa1310670001c442ac00884aac008466304aac009c660c2f0a2f0c4eb900000000508f42aeffe0600001b64aac009c660001aa2f0a2f0c4eb900000000508f60ca222a13104a81671c7001c08108010000660000bc52807401e1aac4814a8267f4760260244aac009c66b8486effea2f0a4eb900000000508f4a8067a671aefffd4ab30c00679c7601220c204c0681000000804298b28866fa222c00842e012a2a1318528728bc494e01012941000c22000681000004c729450008294700842940008c296e0014001828321c00720229440090b283663e2940002029440024428220022d4cffe0e1888083294000042f0c4eb900000000588f2943008829420094296e001400982940001c600000d242806000ff4e47f30c002e00720ae3af2c2effee93c9242a1304294600102953001447ec00202d47ffe4b3c267a47e08be89672822097e7fd2aa1300c2877e164c07180041f21800baa80800660e73a80813b0816606b8a8080c670624096000ff722206d289b2a8080466f026a808082744000473a808117fa80812528947eb000ce989ed8f82877fa8081082877fa8081482aeffe42d41ffdc720ee3af72158eaeffdc2d47ffe07fa80815e3af8eaeffe02747fffc6000ff72202e001490ac00980c80000003836200fe522d4cffe04cee1cfcffb8202effe04e5e4e75",
+   "kind": "text",
+   "name": ".text.mt_prepare",
+   "size": 556
+  },
+  {
+   "align": 2,
+   "hex": "4fefffe448d70c7c246f0020266f0024262f0028202a00884a80670000d4b6ab1318660000ccb6aa0080660000c4222f002cb2aa000c660000b855804a80662a2f2a00902f2a008c2f032f0b4eb9000000004fef00104a80670642aa008870014cd70c7c4fef001c4e75242b13104a82667e226a0094b3eb130462742a2a0090282a008c20040680000004c7bab30c00665e4281b2896620b4aa009464bc20425282d1ea00102f082f032f0b4eb9000000004fef000c60e020017c7fd0ab1300c0867c164c06080041f30800b6a80800661e2001d0aa0010b0a80804661271a80813b084660abaa8080c6604528160a442806000ff6c",
+   "kind": "text",
+   "name": ".text.mt_ack",
+   "size": 246
+  },
+  {
+   "align": 2,
    "hex": "4fefffec700148d70c0c242f0020b0af0018640e74ff20024cd70c0c4fef00144e75202f001c8082e88866e847f9000000004a8b67de4eb9000000002f4000104ab90000000066164879000000004eb900000000588f700123c00000000045f90000000026020683000004c72f323c002f39000000002f024e934fef000c4a8067302f2f00242f323c002f022f2f00282f2f00282f0a4eb9000000004fef001824002f2f00104eb900000000588f6000ff6674fe60ec",
    "kind": "text",
    "name": ".text.mi_route_enable",
@@ -334,7 +425,7 @@
    "size": 4956
   }
  ],
- "source_sha256": "518180ebdc095205c7ccd32031ba3f5ed94834231ff0e4d06335c820e0a86748",
+ "source_sha256": "41832b4f5aa3fefac2269abd1b2721bf3154600bedccf36f97fc8a8cdd9d35b9",
  "symbols": [
   {
    "global": false,
@@ -356,6 +447,12 @@
   },
   {
    "global": false,
+   "name": ".sec..text.fault",
+   "section": ".text.fault",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..text.mi_init",
    "section": ".text.mi_init",
    "value": 0
@@ -364,6 +461,18 @@
    "global": false,
    "name": ".sec..text.mi_reset_track",
    "section": ".text.mi_reset_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.mt_check",
+   "section": ".text.mt_check",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.mt_init",
+   "section": ".text.mt_init",
    "value": 0
   },
   {
@@ -388,6 +497,12 @@
    "global": false,
    "name": "emit.isra.0",
    "section": ".text.emit.isra.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "fault",
+   "section": ".text.fault",
    "value": 0
   },
   {
@@ -493,6 +608,30 @@
    "value": 0
   },
   {
+   "global": true,
+   "name": "mt_ack",
+   "section": ".text.mt_ack",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mt_check",
+   "section": ".text.mt_check",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mt_init",
+   "section": ".text.mt_init",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mt_prepare",
+   "section": ".text.mt_prepare",
+   "value": 0
+  },
+  {
    "global": false,
    "name": "overflow",
    "section": ".text.overflow",
@@ -503,8 +642,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "735",
-  "isa_check": "16bec297a2923f1e0468b8bccfab2e218c42965e4e07f367a749425591668caa",
+  "instructions_redecoded": "1041",
+  "isa_check": "4a42abf8ee42fd0f79f43ae6cce44ccc2485072ffef7f977cd7a00413c893a6b",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

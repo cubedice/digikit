@@ -11,6 +11,12 @@ mod tests {
         fn mi_test_token_wrap() -> u32;
         fn mi_test_ring_wrap() -> u32;
         fn mi_test_dispatch() -> u32;
+        fn mi_test_transport_batch() -> u32;
+        fn mi_test_transport_reset() -> u32;
+        fn mi_test_transport_partition() -> u32;
+        fn mi_test_transport_timeout() -> u32;
+        fn mi_test_transport_wrap() -> u32;
+        fn mi_test_transport_wire() -> u32;
     }
     macro_rules! case {
         ($name:ident, $run:ident) => {
@@ -21,6 +27,18 @@ mod tests {
         };
     }
     case!(repeated_notes_pair_fifo_and_acks_are_idempotent, mi_test_fifo);
+    case!(
+        transport_retains_batches_until_exact_ack,
+        mi_test_transport_batch
+    );
+    case!(transport_reset_supersedes_old_notes, mi_test_transport_reset);
+    case!(
+        transport_groups_track_and_configuration,
+        mi_test_transport_partition
+    );
+    case!(transport_timeout_disables_routes, mi_test_transport_timeout);
+    case!(transport_never_reuses_message_identity, mi_test_transport_wrap);
+    case!(transport_emits_cross_target_wire_vectors, mi_test_transport_wire);
     case!(old_release_cannot_kill_rerouted_note, mi_test_reroute);
     case!(
         overflow_resets_and_quarantines_until_explicit_recovery,

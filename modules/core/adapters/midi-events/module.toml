@@ -17,7 +17,7 @@ ports = ["dt2-1.17"]
 
 [[object]]
 path = "build/midi-events-cf.dko.json"
-sources = ["src/cf/ownership.c", "src/cf/adapter.c", "src/cf/din.s"]
+sources = ["src/cf/ownership.c", "src/cf/transport.c", "src/cf/adapter.c", "src/cf/din.s"]
 place = "cf.expansion"
 devices = ["dt2"]
 optional = ["instrument_midi_ready"]
@@ -33,3 +33,12 @@ to = "mi_din_hook"
 
 [[claim]]
 resource = "cf.midi.site.din_rx"
+
+# Internal validator only. No block hook or routing provider until the ordered
+# receiver, configuration transaction and V2 lifetime consumer are ready.
+[[object]]
+path = "build/midi-packet-dsp.dko.json"
+sources = ["src/dsp/packet.s", "src/dsp/receiver.s"]
+optional = ["_mi_apply_packet"]
+place = "dsp.l2"
+devices = ["dt2"]

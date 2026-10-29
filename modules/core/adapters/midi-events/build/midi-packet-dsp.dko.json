@@ -1,0 +1,526 @@
+{
+ "arch": "sharc",
+ "format": 1,
+ "relocs": [
+  {
+   "addend": 0,
+   "offset": 8,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 14,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 32,
+   "section": "seg_pmco",
+   "symbol": "_mi_skip_check",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 45,
+   "section": "seg_pmco",
+   "symbol": "_mi_sum",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 54,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 62,
+   "section": "seg_pmco",
+   "symbol": "_mi_reset_packet",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 75,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 79,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 85,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 91,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 97,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 109,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 115,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 130,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 138,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 147,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 154,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 163,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 169,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 175,
+   "section": "seg_pmco",
+   "symbol": "_mi_controller",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 179,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 182,
+   "section": "seg_pmco",
+   "symbol": "_mi_next_event",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 186,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 190,
+   "section": "seg_pmco",
+   "symbol": "_mi_event",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 201,
+   "section": "seg_pmco",
+   "symbol": "_mi_padding",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 209,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 218,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 224,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 233,
+   "section": "seg_pmco",
+   "symbol": "_mi_good",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 238,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 242,
+   "section": "seg_pmco",
+   "symbol": "_mi_padding",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 255,
+   "section": "seg_pmco",
+   "symbol": "_mi_packet",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 258,
+   "section": "seg_pmco",
+   "symbol": "_mi_packet_valid",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 262,
+   "section": "seg_pmco",
+   "symbol": "_mi_rejected",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 265,
+   "section": "seg_pmco",
+   "symbol": "_mi_packet",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 274,
+   "section": "seg_pmco",
+   "symbol": "_mi_epoch",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 277,
+   "section": "seg_pmco",
+   "symbol": "_mi_message",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 288,
+   "section": "seg_pmco",
+   "symbol": "_mi_stale",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 291,
+   "section": "seg_pmco",
+   "symbol": "_mi_new_epoch",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 299,
+   "section": "seg_pmco",
+   "symbol": "_mi_stale",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 302,
+   "section": "seg_pmco",
+   "symbol": "_mi_duplicate",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 310,
+   "section": "seg_pmco",
+   "symbol": "_mi_apply",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 315,
+   "section": "seg_pmco",
+   "symbol": "_mi_gap",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 318,
+   "section": "seg_pmco",
+   "symbol": "_mi_apply",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 326,
+   "section": "seg_pmco",
+   "symbol": "_mi_gap",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 329,
+   "section": "seg_pmco",
+   "symbol": "_mi_apply_packet",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 333,
+   "section": "seg_pmco",
+   "symbol": "_mi_rejected",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 336,
+   "section": "seg_pmco",
+   "symbol": "_mi_apply_packet",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 342,
+   "section": "seg_pmco",
+   "symbol": "_mi_rejected",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 345,
+   "section": "seg_pmco",
+   "symbol": "_mi_packet",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 352,
+   "section": "seg_pmco",
+   "symbol": "_mi_epoch",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 357,
+   "section": "seg_pmco",
+   "symbol": "_mi_message",
+   "type": "sharc.abs32"
+  }
+ ],
+ "sections": [
+  {
+   "align": 8,
+   "hex": "7e703f0808900000010f4e49010101c32006000000000890020000c20006000000000890030000c2000600000000810f0000820f0000830f0000800f070030c3000600000000509110c021c080150000010033c5800f200030c30206000000007e703f080890070012ce01c320060000000008900100810f020001c30006000000003e02100850083e02000015083e023000110001c320060000000055c2000600000000810f080051c32406000000000890050000c20006000000000890040000c200060000000015c680010111020f0080000012ce02ce10c30206000000000890090366c200060000000008908a033e021008770a80150000080085c29991909106c32006000000009a913e0210080a1c00c22006000000003e0210000a84810f010001c32406000000003e0210080a0a07c32006000000003e0210080a00810f010001c3020600000000810f040001c3240600000000810f020001c324060000000099c20006000000003e060000000099c220060000000088c62006000000003e020000050105c0810f1800800110283e0600000000089004000890850001cd200600000000089008003e02007800fc00c22006000000000890090000c2000600000000801500000a00880f160088c2000600000000909100c220060000000088c63e0600000000800f01003e0a00000000800f00003e0a00000000041100000000be060000000000c20006000000000410000000007e703f080890820208900303071000000000081000000000000f00800000840150218401702212c3020600000000240600000000840160218401802212c302060000000000060000000008900100810f020001c300060000000088c568c32006000000003e060000000008900100810f020001c3200600000000000f0000000000c2000600000000be0600000000810f010001c32006000000000410000000007e703f080890020000110000000008900300001100000000800f01003e0a00000000800f02003e0a00000000800f03003e0a00000000800f04003e0a00000000800f00003e0a00000000",
+   "kind": "text",
+   "name": "seg_pmco",
+   "size": 770
+  },
+  {
+   "align": 8,
+   "hex": "000000000000000000000000",
+   "kind": "data",
+   "name": "seg_dmda",
+   "size": 12
+  }
+ ],
+ "source_sha256": "56959c6dfe7420fffa4e46481a372051c5939e309f5ed1156e492a8f29793be9",
+ "symbols": [
+  {
+   "global": false,
+   "name": "_mi_apply",
+   "section": "seg_pmco",
+   "value": 329
+  },
+  {
+   "global": false,
+   "name": "_mi_bad",
+   "section": "seg_pmco",
+   "value": 250
+  },
+  {
+   "global": false,
+   "name": "_mi_controller",
+   "section": "seg_pmco",
+   "value": 185
+  },
+  {
+   "global": false,
+   "name": "_mi_duplicate",
+   "section": "seg_pmco",
+   "value": 365
+  },
+  {
+   "global": false,
+   "name": "_mi_event",
+   "section": "seg_pmco",
+   "value": 127
+  },
+  {
+   "global": false,
+   "name": "_mi_gap",
+   "section": "seg_pmco",
+   "value": 370
+  },
+  {
+   "global": false,
+   "name": "_mi_good",
+   "section": "seg_pmco",
+   "value": 245
+  },
+  {
+   "global": false,
+   "name": "_mi_new_epoch",
+   "section": "seg_pmco",
+   "value": 321
+  },
+  {
+   "global": false,
+   "name": "_mi_next_event",
+   "section": "seg_pmco",
+   "value": 189
+  },
+  {
+   "global": true,
+   "name": "_mi_packet_valid",
+   "section": "seg_pmco",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "_mi_padding",
+   "section": "seg_pmco",
+   "value": 232
+  },
+  {
+   "global": true,
+   "name": "_mi_receive",
+   "section": "seg_pmco",
+   "value": 255
+  },
+  {
+   "global": false,
+   "name": "_mi_rejected",
+   "section": "seg_pmco",
+   "value": 380
+  },
+  {
+   "global": false,
+   "name": "_mi_reset_packet",
+   "section": "seg_pmco",
+   "value": 204
+  },
+  {
+   "global": false,
+   "name": "_mi_skip_check",
+   "section": "seg_pmco",
+   "value": 38
+  },
+  {
+   "global": false,
+   "name": "_mi_stale",
+   "section": "seg_pmco",
+   "value": 375
+  },
+  {
+   "global": false,
+   "name": "_mi_sum",
+   "section": "seg_pmco",
+   "value": 29
+  },
+  {
+   "global": true,
+   "name": "_mi_epoch",
+   "section": "seg_dmda",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_mi_message",
+   "section": "seg_dmda",
+   "value": 4
+  },
+  {
+   "global": false,
+   "name": "_mi_packet",
+   "section": "seg_dmda",
+   "value": 8
+  },
+  {
+   "global": true,
+   "name": "_mi_apply_packet",
+   "section": null,
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "instructions_redecoded": "181",
+  "selache_rev": "2b26d3b75c53063575bc5c820fa0d38879335187"
+ }
+}

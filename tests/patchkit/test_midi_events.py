@@ -21,6 +21,233 @@ FIRMWARE = ROOT / "firmware/Digitakt_II_OS1.17.syx"
 
 
 @pytest.fixture(scope="module")
+def packet_validator():
+    obj = pk_sharc.assemble((MOD / "src/dsp/packet.s").read_text())
+    return pk_sharc.link(obj, 0xB90000, {})
+
+
+def packet_check(words):
+    a = b = 0
+    for i, word in enumerate(words):
+        if i == 7:
+            continue
+        a = (a + word) & 0xFFFFFFFF
+        b = (b + a) & 0xFFFFFFFF
+    return a ^ b
+
+
+@pytest.mark.parametrize("consumer", [False, True])
+def test_ordered_receiver_only_acknowledges_applied_packets(consumer):
+    source = (MOD / "src/dsp/packet.s").read_text()
+    source += "\n" + (MOD / "src/dsp/receiver.s").read_text()
+    source += """
+.SECTION/PM seg_pmco;
+.GLOBAL _test_apply;
+_test_apply:
+    R0 = DM(_test_ready);
+    R0 = PASS R0;
+    IF EQ JUMP _test_return;
+    R0 = DM(_test_calls);
+    R0 = R0 + 1;
+    DM(_test_calls) = R0;
+    R0 = 1;
+_test_return:
+    RTS;
+.SECTION/DM seg_dmda;
+.GLOBAL _test_calls;
+.GLOBAL _test_ready;
+.VAR _test_calls = 0;
+.VAR _test_ready = 1;
+"""
+    obj = pk_sharc.assemble(source)
+    sections, address, initial = {}, 0x20020000, {}
+    for name, (blob, align, _) in obj.data.items():
+        address = (address + align - 1) // align * align
+        sections[name] = address
+        for i in range(len(blob) // 4):
+            initial[address // 4 + i] = int.from_bytes(
+                blob[i * 4 : i * 4 + 4], "little"
+            )
+        address += len(blob)
+    symbols = {
+        name: sections[sec] + off for name, (sec, off, _) in obj.data_symbols.items()
+    }
+    provisional = pk_sharc.link(obj, 0xB90000, {**symbols, "_mi_apply_packet": 0})
+    linked = pk_sharc.link(
+        obj,
+        0xB90000,
+        {
+            **symbols,
+            "_mi_apply_packet": provisional.symbols["_test_apply"] if consumer else 0,
+        },
+    )
+    packet = 0x20010000
+    dm = dict(initial)
+    accepted = epoch = sequence = 0
+
+    def receive(kind, ep, seq, expected, ready=1, corrupt=False):
+        nonlocal accepted, epoch, sequence
+        words = [0x494E0101, kind, ep, seq, 0, 0, 42, 0] + [0] * 24
+        if kind == 2:
+            words[8:10] = [0, 2]
+        else:
+            words[1] |= 256
+            words[4:6] = [1, 1]
+            words[8:11] = [1, 2, 1 | (60 << 14) | (100 << 21)]
+        words[7] = packet_check(words)
+        if corrupt:
+            words[7] ^= 1
+        dm.update({packet // 4 + i: value for i, value in enumerate(words)})
+        dm[symbols["_test_ready"] // 4] = ready
+        result = pk_sharc.run_call(
+            linked,
+            "_mi_receive",
+            regs={"R4": packet, "M5": 0, "M6": 1, "L0": 0},
+            dm_words=dm,
+            reads={
+                "state": (sections["seg_dmda"] // 4, len(obj.data["seg_dmda"][0]) // 4)
+            },
+            max_steps=2500,
+        )
+        assert result["halt"]["reason"] == "breakpoint", result
+        assert result["regs"]["R0"] == expected, result
+        dm.update(
+            {
+                sections["seg_dmda"] // 4 + i: value
+                for i, value in enumerate(result["state"])
+            }
+        )
+        if expected == 1:
+            accepted += 1
+            epoch, sequence = ep, seq
+        assert dm[symbols["_test_calls"] // 4] == accepted
+        assert dm[symbols["_mi_epoch"] // 4] == epoch
+        assert dm[symbols["_mi_message"] // 4] == sequence
+
+    if not consumer:
+        receive(2, 1, 1, 0)
+        receive(1, 1, 2, 3)
+        return
+    receive(1, 1, 1, 3)  # no notes before reset
+    receive(2, 1, 1, 1)
+    receive(2, 1, 1, 2)  # retry does not invoke consumer
+    receive(1, 1, 2, 0, ready=0)  # unapplied configuration: no ACK
+    receive(1, 1, 2, 1)
+    receive(1, 1, 2, 2)
+    receive(1, 1, 4, 3)
+    receive(2, 1, 5, 1)  # reset supersedes missing ordinary messages
+    receive(1, 1, 3, 4)
+    receive(1, 1, 6, 0, corrupt=True)
+    receive(1, 1, 6, 1)
+    receive(1, 2, 1, 3)
+    receive(2, 2, 1, 1)
+    receive(2, 1, 9, 4)
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "note",
+        "reset",
+        "eight",
+        "bend",
+        "signed_boundary",
+        "last_sequence",
+        "bad_check",
+        "magic",
+        "epoch",
+        "message",
+        "empty",
+        "count",
+        "revision",
+        "sequence_wrap",
+        "token",
+        "generation",
+        "mixed_generation",
+        "port",
+        "reserved",
+        "mixed_track",
+        "padding",
+        "reset_track",
+        "reset_padding",
+    ],
+)
+def test_packet_validation_on_sharc(packet_validator, case):
+    words = [0x494E0101, 1 | (1 << 8), 1, 1, 1, 3, 42, 0] + [0] * 24
+    words[8:11] = [1, 1, 1 | (60 << 14) | (100 << 21)]
+    valid = case in {
+        "note",
+        "reset",
+        "eight",
+        "bend",
+        "signed_boundary",
+        "last_sequence",
+    }
+    if case in {"reset", "reset_track", "reset_padding"}:
+        words[1] = 2
+        words[4] = words[5] = 0
+        words[8:] = [15, 2] + [0] * 22
+        if case == "reset_track":
+            words[8] = 16
+        if case == "reset_padding":
+            words[31] = 1
+    if case in {
+        "eight",
+        "signed_boundary",
+        "sequence_wrap",
+        "mixed_generation",
+        "mixed_track",
+    }:
+        words[1] = 1 | (8 << 8)
+        for i in range(8):
+            words[8 + i * 3 : 11 + i * 3] = [
+                i + 1,
+                1,
+                1 | ((60 + i) << 14) | (100 << 21),
+            ]
+    changes = {
+        "magic": (0, 0),
+        "epoch": (2, 0),
+        "message": (3, 0),
+        "empty": (1, 1),
+        "count": (1, 1 | (9 << 8)),
+        "revision": (5, 0),
+        "sequence_wrap": (4, 0xFFFFFFFE),
+        "signed_boundary": (4, 0x7FFFFFFE),
+        "last_sequence": (4, 0xFFFFFFFF),
+        "token": (8, 0),
+        "generation": (9, 0),
+        "mixed_generation": (12, 2),
+        "port": (10, words[10] | (2 << 4)),
+        "reserved": (10, words[10] | (1 << 28)),
+        "mixed_track": (13, words[13] | (1 << 10)),
+        "padding": (31, 1),
+        "reset_padding": (31, 1),
+    }
+    if case in changes:
+        at, value = changes[case]
+        words[at] = value
+    if case == "bend":
+        words[8] = 0
+        words[10] = 4 | (127 << 14) | (127 << 21)
+    words[7] = packet_check(words)
+    if case == "bad_check":
+        words[20] ^= 1
+    address = 0x20010000
+    result = pk_sharc.run_call(
+        packet_validator,
+        "_mi_packet_valid",
+        regs={"R4": address, "M5": 0, "M6": 1, "L0": 0},
+        dm_words={address // 4 + i: value for i, value in enumerate(words)},
+        reads={"packet": (address // 4, 32)},
+        max_steps=2500,
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    assert result["regs"]["R0"] == int(valid), (case, result)
+    assert result["packet"] == words
+
+
+@pytest.fixture(scope="module")
 def link_receiver_object():
     link = ROOT / "modules/core/adapters/dsp-link"
     source = pk_sharc.expand_includes(
@@ -170,7 +397,7 @@ def test_din_hook_resolves_uniquely_on_pinned_image():
     )
 
 
-def test_ownership_and_dispatch_on_coldfire(tmp_path):
+def test_ownership_and_dispatch_on_coldfire(tmp_path, packet_validator):
     runner = Path(
         os.environ.get("DIGIKIT_CF_SCRIPT", ROOT / "target/release/examples/cf_script")
     )
@@ -192,8 +419,10 @@ void *memset(void *d, int c, unsigned n) {
     linked = patchkit.cf_link(
         [
             MOD / "src/cf/ownership.c",
+            MOD / "src/cf/transport.c",
             MOD / "src/cf/adapter.c",
             MOD / "host/tests/ownership.c",
+            MOD / "host/tests/transport.c",
             MOD / "host/tests/dispatch.c",
             ROOT / "modules/core/runtime/src/cf/midi_dispatch.c",
             memory,
@@ -212,6 +441,12 @@ void *memset(void *d, int c, unsigned n) {
         "token_wrap",
         "ring_wrap",
         "dispatch",
+        "transport_batch",
+        "transport_reset",
+        "transport_partition",
+        "transport_timeout",
+        "transport_wrap",
+        "transport_wire",
     ]
     script = tmp_path / "calls.json"
     script.write_text(
@@ -232,6 +467,12 @@ void *memset(void *d, int c, unsigned n) {
                     }
                     for name in names
                 ],
+                {
+                    "op": "peek",
+                    "addr": linked.symbols["mi_test_wire_words"],
+                    "len": 256,
+                    "tag": "wire",
+                },
             ]
         )
     )
@@ -250,3 +491,24 @@ void *memset(void *d, int c, unsigned n) {
     assert [row["tag"] for row in calls] == names
     for row in calls:
         assert row["ok"] and not row["error"] and row["d0"] == 0, row
+    wire = bytes.fromhex(next(row["hex"] for row in rows if row.get("tag") == "wire"))
+    for offset in (0, 128):
+        # Actual ColdFire-produced words, converted from its big-endian RAM to
+        # the SHARC ring's word values. Physical SPI halfword ordering is tested
+        # by DSP-link; this checks the protocol across both instruction sets.
+        words = [
+            int.from_bytes(wire[i : i + 4], "big")
+            for i in range(offset, offset + 128, 4)
+        ]
+        assert words[7] == packet_check(words)
+        address = 0x20010000
+        result = pk_sharc.run_call(
+            packet_validator,
+            "_mi_packet_valid",
+            regs={"R4": address, "M5": 0, "M6": 1, "L0": 0},
+            dm_words={address // 4 + i: value for i, value in enumerate(words)},
+            max_steps=2500,
+        )
+        assert result["halt"]["reason"] == "breakpoint" and result["regs"]["R0"] == 1, (
+            result
+        )
