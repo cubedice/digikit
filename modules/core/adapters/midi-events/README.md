@@ -48,7 +48,7 @@ instrument-owned storage. No callback may retain staging pointers. The callbacks
 obey the scratch-register contract documented in `src/dsp/consumer.s`.
 
 These are internal lifecycle callbacks, not the public V2 module descriptor.
-The instrument engine and callbacks are not implemented yet. Missing or rejecting
+CANOPY supplies proof-only callbacks in its uninstalled source tree; normal firmware still has no instrument callbacks. Missing or rejecting
 callbacks produce no reset/event/commit ACK and cannot enable keyboard routes.
 
 Lifecycle component tests execute the production receiver, configuration staging
@@ -86,7 +86,7 @@ staging pointer. A missing or rejecting publisher leaves applied settings untouc
 and produces no commit ACK. The V2 packet consumer must call this helper only after
 packet/order/ownership validation, and call `_mi_config_abort` on priority reset.
 The lifecycle bridge now provides the ownership gate and publisher wrapper; the
-instrument-specific schema callback is not implemented yet. Tests use a publisher fixture
+release schema callback remains open; CANOPY currently accepts only its internal fixed-sine proof schema. Tests use a publisher fixture
 to verify that only a complete valid commit changes its bank; they also execute
 actual CF-generated chunk/commit packets on the SHARC staging code.
 
@@ -120,7 +120,7 @@ The frame hooks are connected: `instrument_write_frame` processes replies and wr
 only the instrument data halfwords; the pattern-position owner calls
 `_instrument_block` before stock dispatch/render, even when position is invalid.
 The wrapper preserves DSP registers and arithmetic state, including SIMD pairs.
-The V2 instrument engine/schema callback remains to be implemented. The current module
+The public V2 descriptor, release schema and live instrument integration remain open. The current module
 does not claim keyboard routes. Target tests feed actual ColdFire-produced reset
 and eight-note packets to the SHARC validator, and exercise receiver retries,
 gaps, reset preemption, consumer rejection and stale epochs. They do not establish
@@ -142,6 +142,62 @@ and its host step requires `pnpm`, unavailable in this WSL environment. Changed-
 link checks, Python lint/format and module layering passed. No device was flashed.
 
 Checks:
+
+The internal `src/dsp/carrier.s` implements a per-track carrier transition policy:
+owned tracks emit one wake on QUIET-to-ACTIVE, suppress stock key/sequencer edges,
+and emit one release on ACTIVE-to-QUIET. ACTIVE includes local release tails and
+pending replacements. Unowned tracks pass stock flags through and forget previous
+V2 history. Invalid track indexes pass through without accessing the state bank.
+Call once per track per block and use the returned flags for both stereo voices;
+calling separately for each voice would consume the edge on the first voice.
+`_mi_carrier_publish` now performs that single transition and stores a pair with
+the current block stamp. `_mi_carrier_flags` reads it without consuming it for
+voice 2t or 2t+1; stale, missing or unowned pairs pass that voice's stock flags
+through. Publish must finish before either envelope call. The caller must supply
+the same block stamp to publish and both reads, and must publish only once.
+The owner must complete retirement/reset before relinquishing ownership; this
+helper does not silence the kernel or configure the stock envelope.
+
+`src/dsp/envelope.s` now interposes the DT2 envelope entry. It derives the voice
+from the configured envelope-record base, substitutes only the two owned control
+arguments, restores touched registers/status (including SIMD pairs), executes the
+displaced stack adjustment and jumps back into stock code. Missing, stale,
+disabled or non-record inputs leave stock arguments unchanged. The frame owner
+must advance the block stamp before the call. `workspace.s` captures the bank
+from the dispatcher's live I1 pointer, executing the displaced byte-offset
+MODIFY before storing its result. It preserves R/S registers and arithmetic
+status, including with SIMD enabled. The envelope hook is non-reentrant.
+
+The normal block wrapper now calls optional `_mi_carrier_begin` before receiving
+events. When linked, `carrier-frame.s` advances the block stamp and clears all
+publication-valid bits, including at counter wrap. Transition history survives.
+CANOPY's internal raw render entry calls `_mi_carrier_rendered` after rendering;
+this publishes once for both stereo voices and retains ownership through reset
+tails and their final release edge. The kernel reports ACTIVE through the block
+containing its last tail samples, so the shared envelope cannot release early.
+
+The carrier sources remain absent from the normal object list; the optional call
+is skipped when absent. Instruction-core tests connect the actual block wrapper,
+raw voice adapter, render publisher and envelope interposer in one memory image.
+Their receive/reply callbacks are stubs; their workspace pointer is synthetic.
+The separate firmware probe patches both the workspace derivation and envelope
+entry in private memory. It executes the original dispatcher setup and checks
+that capture matches the stock computed pointer, including after relocation.
+Four hash-resolved firmware sites and two replace hooks now declare these
+boundaries. Normal manifest installation, stock envelope configuration and final
+mixer output remain unproved. Readiness and MIDI routes remain disabled.
+
+The block wrapper also calls optional `_instrument_carrier_prepare` after receive.
+The CANOPY proof provider snapshots admitted tracks and actual kernel tails/pending
+notes before stock gain construction. `velocity.s` selects stock curve 0's 127/128
+factor only for owned, current-frame stereo voices. `velocity-entry.s` interposes
+the scalar gain builder after its velocity read, preserving the stock latch and
+all other operands. Frame start expires these snapshots explicitly. The new gain
+interposer is tested in private firmware memory and has two hash-resolved sites
+and a replace-hook declaration. Its provider and helper sources remain outside
+the normal object list; no manifest installs it. The musical proof connects
+kernel, AMP and scalar gain while varying the shared velocity cache every block.
+It does not establish the live scheduler or final mixer output.
 
 ```sh
 cargo test -p dkmidi-host

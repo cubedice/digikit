@@ -47,6 +47,17 @@ export default defineConfig({
         test: {
           name: 'stock',
           include: ['dt2/**/*.test.ts'],
+          exclude: ['dt2/midi-ingress.test.ts'],
+          testTimeout: 120_000,
+          hookTimeout: 120_000,
+        },
+      },
+      {
+        test: {
+          name: 'midi-ingress',
+          include: ['dt2/midi-ingress.test.ts'],
+          pool: 'forks',
+          ...serial,
           testTimeout: 120_000,
           hookTimeout: 120_000,
         },
@@ -71,7 +82,15 @@ export default defineConfig({
         test: {
           name: 'proofs',
           include: ['runtime/**/*.test.ts'],
-          exclude: ['runtime/overloop-display.test.ts'],
+          exclude: [
+            'runtime/overloop-display.test.ts',
+            'runtime/canopy-transport.test.ts',
+            'runtime/canopy-carrier.test.ts',
+            'runtime/canopy-reload.test.ts',
+            'runtime/canopy-pattern.test.ts',
+            'runtime/canopy-panic.test.ts',
+            'runtime/canopy-bend.test.ts',
+          ],
           // Backstops; see the runtime project.
           testTimeout: 1_800_000,
           hookTimeout: 600_000,
@@ -79,6 +98,33 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'canopy-carrier',
+          include: [
+            'runtime/canopy-carrier.test.ts',
+            'runtime/canopy-reload.test.ts',
+            'runtime/canopy-pattern.test.ts',
+            'runtime/canopy-panic.test.ts',
+            'runtime/canopy-bend.test.ts',
+          ],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 120_000,
+          hookTimeout: 150_000,
+        },
+      },
+      {
+        test: {
+          name: 'canopy-transport',
+          include: ['runtime/canopy-transport.test.ts'],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 120_000,
+          hookTimeout: 150_000,
+        },
+      },
+      {
+        test: {
+          // Experimental firmware and a DTII-only DKM, prepared separately.
           name: 'overloop',
           include: ['runtime/overloop-display.test.ts'],
           pool: 'forks',

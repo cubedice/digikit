@@ -98,9 +98,11 @@ def packet_check(words):
 
 
 @pytest.mark.parametrize("mode", [0x1011800, 0x1013800, 0x1213800])
-@pytest.mark.parametrize("consumer", [False, True])
+@pytest.mark.parametrize(
+    "consumer,carrier", [(False, False), (True, False), (True, True)]
+)
 @pytest.mark.parametrize("valid_position", [False, True])
-def test_composed_frame_preserves_context(mode, consumer, valid_position):
+def test_composed_frame_preserves_context(mode, consumer, carrier, valid_position):
     position = (
         ROOT / "modules/core/adapters/pattern-position/src/dsp/pattern_position.s"
     )
@@ -108,7 +110,13 @@ def test_composed_frame_preserves_context(mode, consumer, valid_position):
     for name in ("packet", "receiver", "config", "consumer", "reply", "block"):
         source += "\n" + (MOD / f"src/dsp/{name}.s").read_text()
     if consumer:
-        source += "\n.SECTION/PM seg_pmco;\n.GLOBAL _instrument_reset;\n_instrument_reset:\n R0 = 1;\n RTS;\n"
+        canopy = ROOT / "modules/machines/canopy/src/dsp"
+        for name in ("voice", "tuning", "instrument"):
+            source += "\n" + (canopy / f"{name}.s").read_text()
+    if carrier:
+        for name in ("carrier", "carrier-frame", "velocity", "envelope", "workspace"):
+            source += "\n" + (MOD / f"src/dsp/{name}.s").read_text()
+        source += "\n" + (canopy / "carrier-prepare.s").read_text()
     obj = pk_sharc.assemble(source)
     sections, address, dm = {}, 0x20020000, {}
     for name, (blob, align, _) in obj.data.items():
@@ -124,14 +132,17 @@ def test_composed_frame_preserves_context(mode, consumer, valid_position):
     symbols = {
         name: sections[sec] + off for name, (sec, off, _) in obj.data_symbols.items()
     }
-    externs = {
-        **symbols,
-        "_pp_block_back": 0xB9F000,
-        "_instrument_events": 0,
-        "_instrument_configure": 0,
-    }
+    externs = {**symbols, "_pp_block_back": 0xB9F000}
+    if carrier:
+        externs["_mi_envelope_next"] = 0
+        externs["_mi_workspace_next"] = 0
+    if not carrier:
+        externs["_mi_carrier_begin"] = 0
+        externs["_instrument_carrier_prepare"] = 0
     if not consumer:
         externs["_instrument_reset"] = 0
+        externs["_instrument_events"] = 0
+        externs["_instrument_configure"] = 0
     linked = pk_sharc.link(obj, 0xB90000, externs)
     rx = 0x200A0000
     words = [0x494E0101, 2, 1, 1, 0, 0, 42, 0, 0, 2] + [0] * 22
@@ -176,6 +187,14 @@ def test_composed_frame_preserves_context(mode, consumer, valid_position):
             "reply": (symbols["_instrument_reply"] // 4, 16),
             "position": (symbols["_pattern_position_info"] // 4, 20),
             "frame": (rx // 4, len(frame)),
+            **(
+                {
+                    "stamp": (symbols["_mi_carrier_stamp"] // 4, 1),
+                    "owners": (symbols["_mi_velocity_owners"] // 4, 32),
+                }
+                if carrier
+                else {}
+            ),
         },
         read_regs=tuple(regs),
         max_steps=4000,
@@ -186,6 +205,9 @@ def test_composed_frame_preserves_context(mode, consumer, valid_position):
     assert result["frame"] == frame
     assert result["reply"][:4] == [0x494EA101, int(consumer), int(consumer), 1]
     assert result["position"][0] == (position_words[0] if valid_position else 0)
+    if carrier:
+        assert result["stamp"] == [1]
+        assert result["owners"] == [1, 0] * 16
 
 
 def configuration_packets(values, revision=1):
@@ -920,6 +942,151 @@ def test_din_hook_resolves_uniquely_on_pinned_image():
         hashlib.sha256(main[start : start + anchor["len"]]).hexdigest()
         == anchor["sha256"]
     )
+
+
+def test_stock_usb_parser_frames_channel_messages(tmp_path):
+    runner = Path(
+        os.environ.get("DIGIKIT_CF_SCRIPT", ROOT / "target/release/examples/cf_script")
+    )
+    if not FIRMWARE.exists() or not runner.exists() or not pk_toolchains.m68k_bin():
+        pytest.skip("DTII firmware, m68k compiler and cf_script required")
+    # Addresses below are measured on this exact image, not a cross-version API.
+    assert hashlib.sha256(FIRMWARE.read_bytes()).hexdigest() == (
+        "26c22f6652625ac2cfd47f7ee970d388ed8b6427dae3563c0a6a2f2d334350d5"
+    )
+    linked = patchkit.cf_link(
+        [ROOT / "tests/support/midi_parser_probe.c"],
+        0x47E00000,
+        {"mi_stock_usb_receive": 0x4011DA4C},
+    )
+    operations = [
+        {
+            "op": "poke",
+            "addr": linked.base,
+            "hex": (linked.image + bytes(linked.bss_size)).hex(),
+        }
+    ]
+    for address, symbol in (
+        (0x4011D956, "mi_parser_alloc"),
+        (0x40001896, "mi_parser_push"),
+        (0x4000155C, "mi_parser_wake"),
+    ):
+        operations.append(
+            {
+                "op": "poke",
+                "addr": address,
+                "hex": "4ef9" + linked.symbols[symbol].to_bytes(4, "big").hex(),
+            }
+        )
+    operations.extend(
+        [
+            {"op": "poke32", "addr": 0x44D4E930, "value": 0x12345678},
+            {"op": "poke32", "addr": 0x44D4E934, "value": 0x23456789},
+        ]
+    )
+    for case in range(5):
+        operations.extend(
+            [
+                {"op": "poke", "addr": 0x44D2E8C0, "hex": bytes(20).hex()},
+                {
+                    "op": "call",
+                    "tag": str(case),
+                    "pc": linked.symbols["mi_parser_case"],
+                    "args": [case],
+                    "max": 100_000,
+                },
+            ]
+        )
+    script = tmp_path / "parser.json"
+    script.write_text(json.dumps(operations))
+    result = subprocess.run(
+        [str(runner), str(FIRMWARE), str(script)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    rows = [
+        json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")
+    ]
+    calls = [row for row in rows if row.get("op") == "call"]
+    assert [row["tag"] for row in calls] == [str(case) for case in range(5)]
+    for row in calls:
+        assert row["ok"] and not row["error"] and row["d0"] == 0, row
+
+
+def test_usb_din_trampolines_consume_owned_notes(tmp_path):
+    runner = Path(
+        os.environ.get("DIGIKIT_CF_SCRIPT", ROOT / "target/release/examples/cf_script")
+    )
+    if not FIRMWARE.exists() or not runner.exists() or not pk_toolchains.m68k_bin():
+        pytest.skip("DTII firmware, m68k compiler and cf_script required")
+    runtime = ROOT / "modules/core/runtime"
+    linked = patchkit.cf_link(
+        [
+            *(
+                MOD / f"src/cf/{name}"
+                for name in ("ownership.c", "transport.c", "adapter.c", "din.s")
+            ),
+            runtime / "src/cf/tramp.s",
+            runtime / "src/cf/midi_dispatch.c",
+            ROOT / "tests/support/midi_ingress_probe.c",
+            ROOT / "tests/support/midi_ingress_probe.s",
+        ],
+        0x47E00000,
+        dict.fromkeys(
+            (
+                "fx_controls_tick",
+                "loop_ui_tick",
+                "dkrt_tick",
+                "fw_queue_pop",
+                "dkrt_boot",
+                "dkrt_boot_next",
+                "dkrt_exc",
+            ),
+            0,
+        ),
+        [MOD / "src/cf", runtime / "build/gen", ROOT / "modules/core/fw/inc"],
+    )
+    script = tmp_path / "ingress.json"
+    script.write_text(
+        json.dumps(
+            [
+                {
+                    "op": "poke",
+                    "addr": linked.base,
+                    "hex": (linked.image + bytes(linked.bss_size)).hex(),
+                },
+                *(
+                    {
+                        "op": "call",
+                        "tag": str(source),
+                        "pc": linked.symbols["mi_probe_ingress"],
+                        "args": [source],
+                        "max": 2_000_000,
+                    }
+                    for source in (2, 4, 8, 16)
+                ),
+            ]
+        )
+    )
+    result = subprocess.run(
+        [str(runner), str(FIRMWARE), str(script)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    calls = [
+        json.loads(line)
+        for line in result.stdout.splitlines()
+        if line.startswith("{") and json.loads(line).get("op") == "call"
+    ]
+    assert [row["tag"] for row in calls] == ["2", "4", "8", "16"]
+    for row in calls:
+        assert row["ok"] and not row["error"] and row["d0"] == 0, row
 
 
 def test_ownership_and_dispatch_on_coldfire(

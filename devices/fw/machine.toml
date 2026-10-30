@@ -1,6 +1,15 @@
 # machine: the machine framework: dispatch, names, per-type tables, the run-time registry
 # Names follow <cpu>.<subsystem>.<kind>.<name>; was = former names, for reading older docs, never resolved (docs/design/firmware-decls.md).
 
+[[fn]]
+name = "cf.machine.fn.refresh_track"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 172, sha256 = "73fa55909e763ea88f19b800ea655cb0e36fd5bae161120e37e9ea4228eba9a9", len = 172 }
+mark = "D"
+users = ["test/canopy-carrier"]
+doc = "DT2 1.17 stock Sound-to-track refresh: source pointer and track index on the C stack. Validates the type, caches the source, copies the parameter and machine rows, and refreshes modulation. Emulator admission proof only; caller must resolve a live Sound."
+
 [[data]]
 name = "cf.machine.data.list.table"
 was = ["cf.machine.data.list_table", "cf.machines.tab.list"]
@@ -812,3 +821,24 @@ devices = ["dn2"]
 mark = "D"
 users = ["core/dynreg"]
 doc = "The getter's `jsr (A3); move.l D0,(4,A2)` (6 bytes; a2 = the vector being returned); both are replaced by a routine that copies without unfilled reserved machine types."
+
+
+[[site]]
+name = "cf.machine.site.sound_deserialize"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 0, sha256 = "d42aafe29f461877d6fa51df675b00f520075819b566d00869ca4675baae5695", len = 8 }
+mark = "D"
+users = ["test/canopy-carrier"]
+doc = "DT2 1.17 Sound deserializer prologue. C ABI destination and serialized record; returns boolean in d0. Fixture wrapper replays the displaced stack allocation and register save before resuming at +8."
+
+[[hook]]
+name = "cf.machine.hook.sound_deserialize"
+site = "cf.machine.site.sound_deserialize"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["test/canopy-carrier"]
+doc = "Emulator-only Sound-load lifetime wrapper; preserves the C ABI and original result."

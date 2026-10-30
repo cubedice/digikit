@@ -6,6 +6,8 @@
 .GLOBAL _instrument_block;
 .EXTERN _mi_receive;
 .EXTERN _mi_reply_build;
+.EXTERN _mi_carrier_begin;
+.EXTERN _instrument_carrier_prepare;
 _instrument_block:
     DM(_mi_block_save + 0) = R0;
     DM(_mi_block_save + 8) = R1;
@@ -55,10 +57,20 @@ _instrument_block:
     L2 = 0;
     M5 = 0;
     M6 = 1;
+    R0 = _mi_carrier_begin;
+    R0 = PASS R0;
+    IF EQ JUMP _mi_block_receive;
+    CALL _mi_carrier_begin;
+_mi_block_receive:
     R0 = I3;
     R1 = 0x9fc;
     R4 = R0 + R1;
     CALL _mi_receive;
+    R0 = _instrument_carrier_prepare;
+    R0 = PASS R0;
+    IF EQ JUMP _mi_block_reply;
+    CALL _instrument_carrier_prepare;
+_mi_block_reply:
     CALL _mi_reply_build;
     R0 = DM(_mi_block_save + 128);
     I0 = R0;

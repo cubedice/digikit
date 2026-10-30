@@ -2,7 +2,7 @@
 
 Status: proposed implementation, 2026-10-29. Target: Digitakt II OS 1.17. Source baseline: `9b168c21` on `codex/short-loop-proof`. This design specifies new capabilities; it does not claim that CANOPY or the proposed interfaces already exist.
 
-Implementation has started with [instrument MIDI ownership](../../modules/core/adapters/midi-events/README.md): bounded token/FIFO ownership, reset tombstones, queue acknowledgements, an optional USB dispatcher and a separately pinned DIN hook. Host and ColdFire component tests cover the production C logic. [DSP-link](../../modules/core/adapters/dsp-link/README.md) owns the optional 32-word forward reservation, matching loader bounds and 16-word reply allocation, preserving Overloop's fields. The retained CF batch sender, SHARC packet validator, ordered receiver, configuration transaction helpers, bootstrap ACK reply writer and CF heartbeat watchdog are implemented and component-tested. Tests exchange actual processor-produced packets in both directions. The CF sender and DSP receiver now connect through DSP-link and the existing pattern-position frame hook; composed instruction-core tests cover register preservation and missing-consumer behavior. The DSP lifecycle bridge now gates atomic callbacks using per-track generations and committed revisions, including cross-track reset isolation and configuration aborts. Instrument callbacks and the public V2 descriptor are still absent. Running-firmware delivery is not yet proved. Routes remain inactive without a ready V2 consumer. Stage 0 is still open: schema publication, V2 capability, live ingress and coexistence remain; stage 1's final-output lifetime gate has not passed. There is no playable CANOPY DKM yet.
+Implementation has started with [instrument MIDI ownership](../../modules/core/adapters/midi-events/README.md): bounded token/FIFO ownership, reset tombstones, queue acknowledgements, an optional USB dispatcher and a separately pinned DIN hook. Host and ColdFire component tests cover the production C logic. [DSP-link](../../modules/core/adapters/dsp-link/README.md) owns the optional 32-word forward reservation, matching loader bounds and 16-word reply allocation, preserving Overloop's fields. The retained CF batch sender, SHARC packet validator, ordered receiver, configuration transaction helpers, bootstrap ACK reply writer and CF heartbeat watchdog are implemented and component-tested. Tests exchange actual processor-produced packets in both directions. The CF sender and DSP receiver now connect through DSP-link and the existing pattern-position frame hook; composed instruction-core tests cover register preservation and missing-consumer behavior. The DSP lifecycle bridge now gates atomic callbacks using per-track generations and committed revisions, including cross-track reset isolation and configuration aborts. Proof-only CANOPY callbacks now connect packets to isolated sine banks with atomic batch application and bounded reset ramps. They are not linked into normal firmware; the public V2 descriptor and live readiness are still absent. An emulator-only fixture now proves USB/DIN delivery into CANOPY banks through real reset, configuration and event ACKs; a separate carrier fixture now initializes the selected Sound without audition and reaches final PCM with independent note retirement and post-release quietness. The carrier fixture also resets and re-admits after a machine change and a stopped pattern change, preserving stale-release tombstones. A fixture-only Sound-deserializer wrapper now closes admission before in-place writes and blocks refresh until completion; ColdFire tests exercise same-pointer, same-type replacement through the real stock routine. A booted panel-driven temporary pattern reload now proves same-pointer Sound invalidation and fresh MIDI playback with stale-release protection. The fixture waits through scheduled-pattern lookahead before applying the committed destination; a booted internal-clock switch between two prepared WERP shadows proves the ownership ordering. The sine callback now implements per-port/channel CC64 sustain, CC121 pedal reset, CC123 sustain-aware All Notes Off and CC120 emergency All Sound Off, plus fixed +/-2-semitone 14-bit route bend with phase-preserving coefficient updates and CC121 centering, with atomic pedal/voice batches, bounded deferred-token storage and reset clearing. Booted final-audio pitch measurements now verify center, maximum upward bend, other-port isolation and CC121 centering. A booted route-panic scenario verifies USB/DIN isolation, stale physical release protection, unchanged instance generation and final quietness. The booted emulator verifies pedal-owned USB audio beyond the normal release time, independent DIN release, pedal-up preserving a physically held note, and final quietness. The booted carrier now also passes a low-first/high-second final-output RMS comparison against a fresh loud-note reference. Running-switch acceptance now checks retained ownership and the original physical release across compatible switches, measures source/destination PCM and settled release quietness, and captures the transition for discontinuity analysis. Other Sound-load paths, broader transport cases, public initialization and sample-aligned final-output continuity remain open. Routes remain inactive without a ready V2 consumer. Stage 0 is still open: schema publication, V2 capability, wider live routing/recovery and coexistence remain; stage 1's final-output lifetime gate has not passed. A [four-note sine kernel](../../modules/machines/canopy/README.md) now provides independent token gates, phase, velocity and attack/release for the stage-1 proof, with SHARC component tests. The kernel now steals within four foreground slots and two shared tails, with at-most-64-sample delayed replacements when both tails are busy; full eight-event bursts and stale releases are component-tested. The MIDI lifecycle-to-kernel connection is component-tested and the carrier now has a booted emulator proof; public V2 initialization and full audio acceptance remain open. There is no playable CANOPY DKM yet.
 
 CANOPY is a keyboard-playable pad instrument on one audio track, with four independently articulated chord tones and an arpeggiator blended over the pad. PLAY sounds the notes the player actually presses. ROOT + TYPE generates a chord from a root key and a silent chord-selector key. LEARN TO ROOT captures a voicing for later transposition. Sequencer mode plays a chord from a stock note trig.
 
@@ -11,6 +11,62 @@ The enabling change is a versioned track-instrument interface with individual no
 Implementation payoff is a playable harmonic instrument that coexists with Overloop. Confidence is high in chord generation and the bounded DSP engine, moderate in the required MIDI and track-lifecycle integration, and lower in automatic Sound/pattern persistence for extra settings. The complete implementation is multi-day work. The gates below keep uncertain firmware work ahead of expensive UI and synthesis work.
 
 ## Scope and decisions
+
+Admission must initialize the stock track configuration before consuming keyboard
+events. The cold-boot proof found no cached stock Sound source before the first
+audition; acknowledging the separate CPS1 configuration is insufficient. Resolve
+the selected Sound from the live project/kit, validate its track and instance,
+publish its stock configuration, and wait for matching DSP readiness. Do not
+dereference the empty cached source or directly force the DSP type mirror.
+The acceptance scenario must select CANOPY and play its first keyboard note
+without a panel audition or sequencer trig, then repeat after Sound/pattern
+replacement. Keep routes closed when initialization or confirmation fails.
+See the [measured admission boundary](../findings/78-canopy-carrier.md).
+
+The carrier integration now has an optional early-frame expiry callback and an
+internal CANOPY render entry that publishes shared stereo envelope controls.
+Connected instruction-core tests cover frame/render/envelope handoff and reset
+retirement. ACTIVE includes the final block of tail samples, with release on the
+next empty block. A dispatcher shim now captures the live workspace's envelope
+bank; the firmware probe checks it against the stock computation and relocation.
+Normal hook installation, shared envelope configuration and final mixer proof
+remain open; this checkpoint does not provide a playable machine or enable routes.
+
+The firmware probe now uses the original DSP configuration caller and executes a
+connected C/E/G note-and-release scenario through the real stock envelope in one
+memory image. This closes the component gap between synthesized audio and AMP,
+while live configuration delivery, neutral downstream velocity and final mixer
+output remain required. Stock AMP remains a master shape; sustained proof settings
+do not change the release design's treatment of user AMP controls.
+
+The carrier probe also measures stock downstream gain and all five shared
+velocity curves. Curve 0 produces a constant 127/128 factor across key velocities,
+making it a candidate for the required neutral shared velocity. The probe now
+follows the velocity latch into the gain coefficient builder, preserving separate
+control attenuation and silence. Updating only the incoming cache leaves the
+latched value unchanged. A proof hook now substitutes only the owned velocity
+operand before gain construction, using a post-receive snapshot of admitted
+instances and actual kernel tails/pending notes. Stereo/context component tests
+and the original scalar gain builder pass. The connected musical proof now runs
+through stock scalar audio gain as well, keeping the owned chord's gain stable
+while shared velocity changes. The hook has resolved firmware declarations but
+remains uninstalled. Preserve LEVEL and modulation, and prove final output
+separately; live scheduling and changing-control smoothing remain open.
+
+The musical proof also traverses the conditional ramp after gain. Controlled
+31/32-sample cases establish that it fades only when a transition byte and an
+envelope configuration flag are both set. The proof's zero configuration flag
+preserves chord audio. The live control/event meanings remain unresolved, so this
+does not yet establish arbitrary Sound compatibility or justify bypassing the ramp.
+
+The incoming DSP track-trigger mask sets that per-voice byte, and a machine-type
+change forces the fade configuration flag on. Preserve that machine-change fade.
+ColdFire component tests now execute the production USB/DIN trampolines and
+confirm that owned keys select the consumed continuation, including velocity-zero
+releases and reset tombstones, with arguments/registers preserved. Readiness is
+injected and the continuations are test observers; live parser-to-trigger-frame
+delivery remains open. These checks do not enable keyboard routes or satisfy the
+final-output gate.
 
 - Ship a DTII-only experimental module, proposed ID `digikit/canopy`, with an explicitly required new runtime capability. Keep existing V1 machines compatible.
 - Support four foreground pad notes. Additional fixed slots handle one arp note and two shared release tails. Voice count never grows with release time.
@@ -33,7 +89,16 @@ Implementation payoff is a playable harmonic instrument that coexists with Overl
 
 Source evidence: [machine ABI](../../sdk/include/dk/gen/machine.h), [DTII profile](../../devices/digitakt-ii.toml), [machine adapter](../../modules/core/adapters/dsp-voice/src/dsp/dsp-voice.s), [MIDI declarations](../../devices/fw/midi.toml), [upload analysis](../findings/43-digikit-upload.md), [typed descriptor validation](../../packages/patchkit/src/typed.rs), [module authoring](../MODULE-AUTHORING.md), [pattern-position ABI](../../sdk/include/dk/pattern_position.h), and [settings implementation](../../modules/core/runtime/src/rs/src/settings.rs).
 
-The USB hook's declaration describes SysEx, while the upload analysis describes a router for gathered cable-0 messages. Its channel-message reachability must be checked on the pinned 1.17 image; do not treat the documentation discrepancy as a proven new API. DIN/common-dispatch hook addresses from older firmware must be resolved again.
+The USB hook's declaration still describes SysEx. Pinned 1.17 component execution
+now confirms that the cable-0 byte parser also queues complete channel messages,
+including fragmented/running-status notes and interleaved clock. Static task
+inspection places the existing hook after the USB receive-enable and auto-channel
+tests. A separate zero-DSP Vitest scenario now observes both USB and DIN messages
+at the stock task hooks in booted firmware, checks ordinary/auto channels and
+receive-enable settings, and forwards every message to the stock router. This
+closes ingress reachability for those cases. A separate coupled CANOPY transport fixture now proves owned USB/DIN notes and
+independent releases through the actual DSP acknowledgements. It installs no
+renderer, so the final-output chain remains unproved; no new SDK API is published.
 
 ## Architecture and ownership
 
@@ -167,6 +232,54 @@ CANOPY needs local attack/release controls even with a shared stock envelope; ex
 
 Prove that the engine does not kill the custom renderer prematurely at its own envelope termination, and that stock shared velocity is neutral. A low-velocity first note must not reduce the volume of a later high-velocity note. Inspect both module output and final track output.
 
+The raw-adapter component probe in
+[test_canopy_carrier.py](../../tests/patchkit/test_canopy_carrier.py) now exercises
+the sine kernel through the production voice wrapper. It checks inactive-track
+rendering, stock retrigger independence, stereo-copy state preservation and
+restarting after local QUIET. This is pre-AMP evidence only: the test does not run
+the stock envelope, gain or mixer stages. The probe is not a V2 registration or a
+production carrier implementation.
+
+A [firmware component probe](../findings/78-canopy-carrier.md) now establishes a
+sustained path through the stock envelope for 48,000 samples with synthetic
+state, followed by release and retrigger. Sample activation and envelope state
+are separate; calling the sample arm routine alone does not establish AMP wakeup.
+Normal configuration, live flag ownership and final mixer output remain open.
+
+The internal adapter carrier policy now emits per-track wake/release edges from
+ACTIVE/QUIET and passes stock flags through for unowned tracks. Component tests
+connect it to the real kernel's release lifetime; the firmware probe separately
+feeds its output into the stock-configured envelope. Repeated stock trigger/release
+flags do not restart or cut off an owned hold. The eventual hook must evaluate
+the policy once per track and apply its result to both stereo voices. It remains
+unlinked in normal firmware until frame integration and final-output proof pass.
+The stereo handoff now has explicit publish/read entry points: a single track
+publication stores the edge pair with a block stamp, and both voice reads return
+that pair without consuming it. Missing or stale publications preserve stock flags.
+
+The envelope entry interposer is now component-tested, including register/status
+preservation and stock fallback. The firmware probe overlays its entry jump in
+memory and enters through the original stock address for 1,500 held blocks. The
+hook applies the actual published flags before resuming stock envelope code.
+The harness still copies publications between separate producer and firmware
+cores; live frame publication, manifest wiring and the full mixer remain open.
+
+Complete the carrier work in this order:
+
+1. Resolve the activation call and downstream envelope/gain initialization on the
+   supplied DT2 1.17 image. Trace the normal caller's required frame, modifier and
+   record state; setting ACTIVE alone is not an activation contract.
+2. Add an adapter-owned V2 transition path: wake once from QUIET, retain through
+   local releases and queued replacements, and retire both stereo records only
+   after QUIET. Keep ordinary note admission out of the stock retrigger path.
+3. Prove final output with a sustained stock AMP: quiet wake, a low-velocity note
+   followed by a high-velocity note, independent releases, held notes beyond a
+   stock sample lifetime, reset tails, and wake again after silence. Compare
+   pre-AMP and final output to identify any shared velocity scaling.
+4. Check LEVEL, mute, pan, filter and FX routing in the same running-firmware
+   proof, plus an adjacent stock track and Overloop coexistence. Publish readiness
+   only after the lifecycle works through the real frame and MIDI paths.
+
 If a sustained carrier cannot provide the required lifetime, investigate an explicit V2-only unity envelope multiplier. This requires a separate pinned firmware hook and proof that LEVEL, pan, mute, filter and FX remain effective. Do not bypass the whole gain chain or ship keyboard mode under a silent compromise. Failure of both approaches blocks the full instrument; a root-only prototype can remain experimental but is not completion of this design.
 
 ## Transport alongside Overloop
@@ -223,7 +336,7 @@ Restart choices are TRIG, PATTERN and CONTINUE. In KEYBOARD mode TRIG means the 
 
 While stopped, direct keyboard pads remain playable. A standalone arp can use an explicit local BPM in setup after the local-clock stage; external sync does not silently fall back to that BPM on clock loss. A stale clock releases the current arp gate and pauses scheduling. Transport STOP cancels sequencer notes, pending strums and synchronized arp events; keyboard held/pedal/latch notes retain their ownership. PANIC clears them all.
 
-On a pattern switch that keeps CANOPY on the same track, retain KEYBOARD tokens and oscillator state, then apply the destination's firmware-backed controls. Initially the extra module controls remain at the current CANOPY configuration/preset; they do not acquire destination-pattern values automatically. If the machine changes, reset that instance. In SEQUENCER mode the destination's committed trigs and lengths own the generated chord. Tie, retrig, microtiming and note-length behavior need event-source tests; root pitch alone cannot supply a complete gate lifecycle.
+On a pattern switch that keeps CANOPY on the same track, retain KEYBOARD tokens and oscillator state, then apply the destination's firmware-backed controls. The carrier fixture now retains its instance on a compatible pattern change within the same project and refreshes the destination stock carrier without resetting MIDI ownership. Same-pattern Sound replacement, machine changes, project changes and unknown running timing still invalidate admission. General production retention remains a release requirement; this fixture has one fixed sine configuration and shadows WERP on track 0. Initially the extra module controls remain at the current CANOPY configuration/preset; they do not acquire destination-pattern values automatically. If the machine changes, reset that instance. In SEQUENCER mode the destination's committed trigs and lengths own the generated chord. Tie, retrig, microtiming and note-length behavior need event-source tests; root pitch alone cannot supply a complete gate lifecycle.
 
 ## Controls and display
 

@@ -283,6 +283,16 @@ mark = "D"
 rule = "fw/machine:cf_func"
 
 [[anchor]]
+name = "cf.machine.fn.refresh_track"
+cpu = "cf"
+kind = "code"
+addr = 0x4002d438
+len = 172
+sha256 = "73fa55909e763ea88f19b800ea655cb0e36fd5bae161120e37e9ea4228eba9a9"
+mark = "D"
+rule = "fw/machine:cf_window_hash"
+
+[[anchor]]
 name = "cf.machine.site.clone.0"
 cpu = "cf"
 kind = "code"
@@ -561,6 +571,16 @@ len = 38
 sha256 = "9091da2b81f756f22816e744b8467a41380324e08014c858dba7d9b07bf233b0"
 mark = "D"
 rule = "fw/machine:cf_func"
+
+[[anchor]]
+name = "cf.machine.site.sound_deserialize"
+cpu = "cf"
+kind = "code"
+addr = 0x400db3b2
+len = 8
+sha256 = "534e5693c800e439722db3cb8a0b817470f23c204088f74f23049608ad80afa9"
+mark = "D"
+rule = "fw/machine:cf_window_hash"
 
 [[anchor]]
 name = "cf.machine.site.sound_load_type_bound"
@@ -3671,6 +3691,50 @@ mark = "D"
 rule = "fw/dsp/voice:sharc_func"
 
 [[anchor]]
+name = "dsp.voice.site.envelope_entry"
+cpu = "sharc"
+kind = "code"
+addr = 0x283976ae
+pm = 0x1cbb57
+len = 6
+sha256 = "0ad5c8265b09589e8868e2655f7dc35c9c80639b753938cdf1ccfc010795b937"
+mark = "D"
+rule = "fw/dsp/voice:sharc_func"
+
+[[anchor]]
+name = "dsp.voice.site.envelope_entry.next"
+cpu = "sharc"
+kind = "code"
+addr = 0x283976b4
+pm = 0x1cbb5a
+len = 6
+sha256 = "6874959281016b9a16e50a682b14d76c4457516ef501af237edf989b7ea4f3a3"
+mark = "D"
+rule = "fw/dsp/voice:sharc_func"
+
+[[anchor]]
+name = "dsp.voice.site.envelope_workspace"
+cpu = "sharc"
+kind = "code"
+addr = 0x2838c914
+pm = 0x1c648a
+len = 6
+sha256 = "bc0764caf9e166f51799bcefd96e153c5f2b890779d85cb67a4ca0b5ac0a78ee"
+mark = "D"
+rule = "fw/dsp/voice:sharc_func"
+
+[[anchor]]
+name = "dsp.voice.site.envelope_workspace.next"
+cpu = "sharc"
+kind = "code"
+addr = 0x2838c91a
+pm = 0x1c648d
+len = 6
+sha256 = "9471b3719c51919d5bbf7fe8fc621ab3a96bab3b67419098d742ec04f79d12a0"
+mark = "D"
+rule = "fw/dsp/voice:sharc_func"
+
+[[anchor]]
 name = "dsp.voice.fn.track_unpack"
 cpu = "sharc"
 kind = "code"
@@ -3711,6 +3775,28 @@ addr = 0x28389da4
 pm = 0x1c4ed2
 len = 6
 sha256 = "c3e4c7155ea3c176085b8fd32ac0dcc3ab051c07f3758d8b32cbdce15ad8d344"
+mark = "D"
+rule = "fw/dsp/voice:sharc_func"
+
+[[anchor]]
+name = "dsp.voice.site.velocity_operand"
+cpu = "sharc"
+kind = "code"
+addr = 0x2838d45c
+pm = 0x1c6a2e
+len = 6
+sha256 = "eb33e0cb074a6e42ae543abe331809da8e88e7c610e176a87a5b0e2214935055"
+mark = "D"
+rule = "fw/dsp/voice:sharc_func"
+
+[[anchor]]
+name = "dsp.voice.site.velocity_operand.next"
+cpu = "sharc"
+kind = "code"
+addr = 0x2838d462
+pm = 0x1c6a31
+len = 6
+sha256 = "ee0e52179f5636c72d5f05fbe6d74056b74bde96006c7f0422f8cc998e08ea91"
 mark = "D"
 rule = "fw/dsp/voice:sharc_func"
 
@@ -3849,6 +3935,11 @@ mode = "before"
 name = "cf.machine.hook.param_code.args"
 site = "cf.machine.site.param_code.args"
 mode = "before"
+
+[[hook]]
+name = "cf.machine.hook.sound_deserialize"
+site = "cf.machine.site.sound_deserialize"
+mode = "replace"
 
 [[hook]]
 name = "cf.machine.hook.srcpage"
@@ -4082,8 +4173,23 @@ site = "dsp.pattern.site.block_entry"
 mode = "before"
 
 [[hook]]
+name = "dsp.voice.hook.envelope_entry"
+site = "dsp.voice.site.envelope_entry"
+mode = "replace"
+
+[[hook]]
+name = "dsp.voice.hook.envelope_workspace"
+site = "dsp.voice.site.envelope_workspace"
+mode = "replace"
+
+[[hook]]
 name = "dsp.voice.hook.render_entry"
 site = "dsp.voice.fn.render_entry"
+mode = "replace"
+
+[[hook]]
+name = "dsp.voice.hook.velocity_operand"
+site = "dsp.voice.site.velocity_operand"
 mode = "replace"
 
 [[anchor]]
