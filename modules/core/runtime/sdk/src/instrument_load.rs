@@ -90,6 +90,10 @@ impl Loads {
         Ok(Command::SendImage(ticket))
     }
 
+    pub(crate) fn check_image_transfer(&self, ticket: Ticket) -> Result<(), Error> {
+        self.at(ticket, IMAGE).map(|_| ())
+    }
+
     pub fn image_acked(&mut self, ticket: Ticket) -> Result<Command, Error> {
         let slot = self.at(ticket, IMAGE)?;
         self.set_phase(slot, INITIALIZE);

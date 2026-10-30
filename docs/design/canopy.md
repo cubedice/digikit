@@ -585,6 +585,26 @@ lifecycle remain pending; no installable module or device proof is claimed.
 Focused docs and layering checks pass; the changed-file check fails only on the
 existing 256 stale references in 78 files (`out/canopy-relocation-changed.log`).
 
+A ticket-bound image transfer controller now sequences the relocated image,
+BSS zero-fill and alignment padding in at-most-256-byte writes. It validates the
+exact allocator-recorded image/state grant before starting, borrows the immutable
+image for stable retries, and binds each ACK to the ticket generation and exact
+destination span. Duplicate or mismatched ACKs do not advance. Instance states
+are not cleared by this transfer; their CREATE reset remains DSP-owned.
+Initialization is offered only after image/zero-fill ACKs and a caller-confirmed
+row-installation ACK. Transfer failure quarantines the load and requests detach;
+external cancellation stops further writes. The caller must still drive real
+SPI, prove write drainage before detach and retain the borrowed source until link
+reads have stopped. The controller does not establish those facts itself.
+Validation: 43 targeted SDK tests and the runtime host check pass
+(`out/canopy-image-sdk.log`, `out/canopy-image-runtime.log`). Tests verify exact
+image/zero contents, untouched state, retries, invalid grants, stale spans,
+row-install gating and retained allocation through failed-transfer cleanup.
+Firmware export lookup, row installation and actual SPI calls remain unconnected;
+CANOPY is not installable and no device build is claimed. Focused docs and layering
+checks pass; the changed-file check fails only on the existing 256 stale references
+in 78 files (`out/canopy-image-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

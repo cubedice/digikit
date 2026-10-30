@@ -26,6 +26,8 @@ pub(super) struct Allocation {
     bytes: u32,
     offset: u32,
     len: u32,
+    image: Range,
+    state: Range,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -107,8 +109,25 @@ impl Loads {
             bytes: ledger.bytes,
             offset,
             len,
+            image: grant.image,
+            state: grant.state,
         });
         Ok(grant)
+    }
+
+    pub(crate) fn check_memory_grant(&self, ticket: Ticket, grant: &Grant) -> Result<(), Error> {
+        let (slot, _) = self.find(ticket)?;
+        let allocation = self.pending[slot]
+            .unwrap()
+            .allocation
+            .ok_or(Error::Invalid)?;
+        if grant.ticket != ticket
+            || allocation.image != grant.image
+            || allocation.state != grant.state
+        {
+            return Err(Error::Invalid);
+        }
+        Ok(())
     }
 
     /// Finish a Release returned by cancel/detached. A forged Release, stale

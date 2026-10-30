@@ -12,6 +12,8 @@ pub mod dsp_memory;
 pub mod instrument_registry;
 /// V2 transfer sequencing; transport calls remain the runtime loader's responsibility.
 pub mod instrument_load;
+/// Ticket-bound image/BSS transfer sequencing for V2 loads.
+pub mod instrument_image;
 /// Experimental V2 mailbox transactions; no device capability is enabled.
 pub mod instrument_mailbox;
 /// Shared bounded V2 descriptor and record decoding; no loading capability.

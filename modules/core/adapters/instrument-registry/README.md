@@ -238,3 +238,10 @@ checks descriptor track counts against reservations, and keeps separate reset
 and process text bounds. The returned plan remains inert. The live loader must
 validate the whole section, resolve keys/imports and exclude builtin/V1 conflicts
 before using it; no row installation or SPI transfer is performed by this helper.
+
+The SDK `instrument_image::Transfer` controller binds the exact allocation grant
+to an image/BSS write sequence. Each ACK must match the load ticket and destination
+span; initialization also requires caller-confirmed row installation. Errors
+retain memory through quarantine and detach. This is component-tested sequencing,
+not a connected SPI driver: the loader still owns sending, ACK validation against
+the live link, transport drainage and row installation.
