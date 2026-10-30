@@ -3,6 +3,21 @@
 `core/dsp-link` is a framework module: it lets the digikit runtime send bytes (DSP code and data) to the DSP while
 the device runs. Nothing changes for the player. It ran on a Digitakt II (OS 1.17), where `fx/freqshift` loaded through it and ran (2026-10-30, finding 91); the Digitone II has run it in the emulator only.
 
+## Optional V2 registration window
+
+`dl_send_win(3, dst_word, buf, len)` now addresses a provider-owned registration
+region. The optional SHARC symbols `_dl_irows` (aligned byte address) and
+`_dl_iwords` (word count) define it. Both DTII and DNII receivers reject writes
+without a valid provider, beyond its declared size, or when its size exceeds the
+device's DSP-link area. The ordinary upload, voice and effect windows are unchanged.
+This uses the existing two window bits and ACK channel; it consumes no extra frame
+or reply words. A transfer ACK confirms bytes only, not reset/initialization.
+
+No production V2 registry provider is installed yet. This window is the transport
+foundation for its rows/mailbox; publication, reset completion, detachment and
+matching loader tickets still require the V2 adapter. Do not publish an instrument
+on a data-transfer ACK alone.
+
 ## Optional DTII instrument allocation
 
 An optional `instrument_write_frame(tx_queue, entry, rec)` provider reserves 32
@@ -32,7 +47,7 @@ outside the reservation. Live coexistence and the event protocol remain open.
 - What it adds: a hook on the ColdFire's per-block frame sender (to put a chunk in the unused end of the frame) and a hook
   at the end of the DSP's block handler (to take the chunk, copy it into a reserved area of free L2 (512 KiB on the Digitakt II, 320 KiB on the Digitone II), and
   acknowledge). The ColdFire interface is `dl_send(dst_l2, buf, len)`, `dl_send_win(win, dst_word, buf, len)` (window 1: the voices registry of
-  `core/dsp-voice`, window 2: the effect rows of `core/fx`, one word at a time) and `dl_poll(status)` (C ABI).
+  `core/dsp-voice`, window 2: the effect rows of `core/fx`, window 3: optional V2 registration data) and `dl_poll(status)` (C ABI).
 - Speed: about 960 KB/s on the Digitakt II and 72 KB/s on the Digitone II; with no transfer it costs the DSP about 90
   instructions per block (about 0.04 % of a block's cycles: 24 for the link itself, 23 to pin and restore M5, M6, L2 and L3, 43 for
   the diagnostic words below and the record addresses; findings 45 and 48).

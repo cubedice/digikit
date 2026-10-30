@@ -304,6 +304,22 @@ interleaved owners, cancellation at each transfer stage, stale completions and
 retained capacity after timeout. Logs: `out/canopy-v2-load.log` and
 `out/canopy-v2-load-fit.log`. These are host tests, not DSP transport acceptance.
 
+DSP-link now carries optional V2 registration data through window 3. The existing
+ColdFire sender encodes the fourth window, and both SHARC receivers use optional
+`_dl_irows`/`_dl_iwords` provider bounds. Absent, misaligned, zero-sized or oversized
+providers fail closed; each write must fit the declared region. Existing frame
+suffixes and reply allocations are unchanged. Component tests execute the actual
+sender and receiver. No production provider or initialization/reset dispatcher is
+present yet, so this is data transport, not completed instrument registration.
+Next: implement the DSP-owned registry/mailbox provider and initialization/reset
+acknowledgements, then connect the load controller to it.
+Validation: 13 SHARC component cases (seven V2-window and six existing suffix-bound
+cases) and the ColdFire window-encoding test pass. DSP-link rebuilds for DTII and
+DNII; its CF and both DSP objects re-decode and check current. Logs are under
+`out/canopy-v2-window-*.log`. This is processor-core execution, not hardware proof.
+The changed-file check also passes 193 host tests (16 skipped), formatting, types
+and layering; its remaining failure is the existing 256 stale references.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

@@ -681,9 +681,19 @@ def test_window_transfers_carry_the_window_and_refuse_bad_arguments(machine, bui
     w = tail_words(r[1].reads[1], 0x402, 174)
     assert w[0] == MAGIC | (0 << 16) | (2 << 30)
     assert (w[1] & 0x1FFFF, (w[1] >> 17) & 0xFF, (w[1] >> 25) & 1) == (5, 2, 1)
+    # V2 data window: the DSP still decides whether a provider exists.
+    r = run(
+        machine, built, {src: data}, [call(built, "dl_send_win", [3, 7, src, 8]), tick]
+    )
+    assert r[0].d0 == 0
+    w = tail_words(r[1].reads[1], 0x402, 174)
+    assert w[0] == MAGIC | (3 << 30)
+    assert w[1] & 0x1FFFF == 7
+    assert w[2:4] == [0x11223344, 0x55667788]
+    assert w[4] == check_word(w[:4])
     bad = [
         [0, 0, src, 8],  # window 0 is dl_send's
-        [3, 0, src, 8],  # no window 3
+        [4, 0, src, 8],  # only two window bits
         [1, 0, src, 0],
         [1, 0, src, 6],
         [1, 0x20000, src, 4],

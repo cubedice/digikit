@@ -840,6 +840,8 @@ def test_dsp_loader_enforces_each_optional_tail_boundary(
         "_dl_vcount": 0,
         "_dl_frows": 0,
         "_dl_fcount": 0,
+        "_dl_irows": 0,
+        "_dl_iwords": 0,
         "_dv_diag": 0,
         "_dv_rec": 0,
         "_loop_ui_status": 0,
@@ -1244,3 +1246,69 @@ void *memset(void *d, int c, unsigned n) {
         assert result["regs"]["R0"] == 1
         assert result["revision"] == [1 if offset == 256 else 0]
     assert result["bank"][:17] == [i * 19 for i in range(17)]
+
+
+@pytest.mark.parametrize(
+    "base,capacity,offset,accepted",
+    [
+        (0x20040000, 8, 6, True),  # last two words fit exactly
+        (0x20040000, 8, 7, False),
+        (0, 8, 0, False),
+        (0x20040000, 0, 0, False),
+        (0x20040001, 8, 0, False),
+        (0x20040000, 0xFFFFFFFF, 0, False),
+        (0x20040000, 0x20001, 0, False),
+    ],
+)
+def test_v2_registration_window_is_bounded(
+    link_receiver_object, base, capacity, offset, accepted
+):
+    obj, syms, initial = link_receiver_object
+    rx, reply, frame, target, back = (
+        0x20010000,
+        0x20020000,
+        0x20030000,
+        0x20040000,
+        0xB9F000,
+    )
+    externs = {
+        "_dl_back": back,
+        "_dl_vrows": 0,
+        "_dl_vcount": 0,
+        "_dl_frows": 0,
+        "_dl_fcount": 0,
+        "_dl_irows": base,
+        "_dl_iwords": capacity,
+        "_dv_diag": 0,
+        "_dv_rec": 0,
+        "_loop_ui_status": 0,
+        "_pattern_position_info": 0,
+        "_instrument_reply": 0,
+        **syms,
+    }
+    linked = pk_sharc.link(obj, 0xB90000, externs)
+    words = [0xD15C | (3 << 30), (1 << 27) | (2 << 17) | offset, 0x11223344, 0x55667788]
+    s1 = s2 = 0
+    for value in words:
+        s1 = (s1 + value) & 0xFFFFFFFF
+        s2 = (s2 + s1) & 0xFFFFFFFF
+    words.append(s1 ^ s2)
+    dm = dict(initial)
+    dm.update({(rx + 0x804) // 4 + i: v for i, v in enumerate(words)})
+    dm[frame // 4 - 3], dm[frame // 4 - 2] = rx, reply
+    dm.update({target // 4 - 1 + i: 0xDEADBEEF for i in range(10)})
+    result = pk_sharc.run_call(
+        linked,
+        "_dl_hook",
+        regs={"I4": reply, "I6": frame},
+        dm_words=dm,
+        reads={"target": (target // 4 - 1, 10), "status": (syms["_dl_status"] // 4, 1)},
+        return_sw=back,
+        max_steps=1000,
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    expected = [0xDEADBEEF] * 10
+    if accepted:
+        expected[offset + 1 : offset + 3] = words[2:4]
+    assert result["target"] == expected
+    assert result["status"] == [0 if accepted else 3]

@@ -25,7 +25,9 @@
 // Windows: 0 is _dl_area (DL_AREA_WORDS long); 1 is the voices registry (_dl_vrows, 24 * _dl_vcount words: a row is 24 words), which the digikit
 // runtime fills one word per transfer so that the render scan never sees a half-written row; 2 is the effect rows of core/fx (_dl_frows, 24 *
 // _dl_fcount words, all rows of the registry `fx`, free rows included), filled the same way (the pc word last). Windows 1 and 2 refuse every write
-// when their registry is not in the image (the externs are 0), window 3 does not exist.
+// when their registry is not in the image (the externs are 0). Window 3 is optional V2 registration data:
+// _dl_irows is its aligned byte address; _dl_iwords is its size in words (1..DL_AREA_WORDS).
+// An absent/invalid provider refuses writes. A transfer ACK only confirms data delivery, not V2 initialization.
 //   w2 ... w(n+1)  the payload
 //   w(n+2)  check = s1 XOR s2 over w0 ... w(n+1), where s1 += w and s2 += s1 for each word w (both start at 0)
 // A chunk is taken when xid and magic are right, idx equals the number of chunks taken so far (cum) and the check holds.
@@ -86,6 +88,8 @@
 .EXTERN _dl_vcount;
 .EXTERN _dl_frows;
 .EXTERN _dl_fcount;
+.EXTERN _dl_irows;
+.EXTERN _dl_iwords;
 .EXTERN _dv_diag;
 .EXTERN _dv_rec;
 .EXTERN _fx_diag;
@@ -180,12 +184,26 @@ _dl_win1:
 _dl_win2:
     R3 = 2;
     COMP(R0, R3);
-    IF NE JUMP _dl_range;                 // window 3 does not exist
+    IF NE JUMP _dl_win3;
     R3 = _dl_fcount;                      // window 2: the effect rows (24 words each, the terminator row excluded)
     R4 = LSHIFT R3 BY 4;
     R3 = LSHIFT R3 BY 3;
     R3 = R3 + R4;                         // count * 24
     R4 = _dl_frows;
+    JUMP _dl_wdone;
+_dl_win3:
+    R3 = _dl_iwords;
+    R3 = PASS R3;
+    IF LE JUMP _dl_range;
+    R0 = DL_AREA_WORDS;
+    COMP(R3, R0);
+    IF GT JUMP _dl_range;
+    R4 = _dl_irows;
+    R4 = PASS R4;
+    IF EQ JUMP _dl_range;
+    R0 = 3;
+    R0 = R4 AND R0;
+    IF NE JUMP _dl_range;
 _dl_wdone:
     DM(_dl_wbase) = R4;
     R4 = R5 + R6;
