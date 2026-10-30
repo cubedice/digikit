@@ -232,3 +232,71 @@ fn cancellation_between_row_acks_cannot_publish_or_schedule_another_row() {
     assert_eq!(loads.capacity().rows_used, 2);
     assert_eq!(mailbox.write(), None);
 }
+
+#[test]
+fn instrument_memory_waits_for_all_mailbox_detach_rows_before_freeing() {
+    use crate::instrument_load::{Ledger, MemoryError, MemoryRequest};
+    let mut loads = Loads::new(16);
+    let ticket = reserve(&mut loads, 0, &[20, 21]);
+    let mut offsets = [0];
+    let mut lengths = [0];
+    let mut ledger = Ledger {
+        base: 0x20010000,
+        bytes: 128,
+        offsets: &mut offsets,
+        lengths: &mut lengths,
+    };
+    loads
+        .reserve_memory(
+            ticket,
+            &mut ledger,
+            &MemoryRequest {
+                image_bytes: 32,
+                bss_bytes: 0,
+                state_bytes: 64,
+                align: 8,
+            },
+        )
+        .unwrap();
+    let mut mailbox = Mailbox::new();
+    let command = initialize(&mut loads, ticket);
+    mailbox.begin(command, &loads, true).unwrap();
+    for row in 0..2 {
+        transfer(&mut mailbox);
+        let reply = response(&mailbox, 0, 1);
+        let result = mailbox.reply(&reply, &mut loads).unwrap();
+        assert_eq!(
+            result,
+            if row == 1 {
+                Some(Command::Publish(ticket))
+            } else {
+                None
+            }
+        );
+    }
+    let detach = loads.cancel(ticket).unwrap();
+    mailbox.begin(detach, &loads, true).unwrap();
+    transfer(&mut mailbox);
+    let first = response(&mailbox, 0, 2);
+    assert_eq!(mailbox.reply(&first, &mut loads), Ok(None));
+    assert_eq!(
+        loads.release_memory(ticket, &mut ledger),
+        Err(MemoryError::Load(
+            crate::instrument_registry::Error::WrongPhase
+        ))
+    );
+    assert_eq!(ledger.lengths[0], 128);
+    transfer(&mut mailbox);
+    assert_eq!(
+        mailbox.reply(&first, &mut loads),
+        Err(Error::MismatchedReply)
+    );
+    let last = response(&mailbox, 0, 2);
+    assert_eq!(
+        mailbox.reply(&last, &mut loads),
+        Ok(Some(Command::Release(ticket)))
+    );
+    assert_eq!(ledger.lengths[0], 128);
+    loads.release_memory(ticket, &mut ledger).unwrap();
+    assert_eq!(ledger.lengths[0], 0);
+}

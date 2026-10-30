@@ -224,5 +224,10 @@ The planner does not discover ownership, allocate memory, install rows, enable t
 lifecycle gate, transfer images or publish dispatch. The trusted loader must obtain
 exclusive grants from its allocator, validate executable boundaries from parsed
 image metadata, exclude V1/builtin type conflicts, and retain memory through detach.
-The current tests supply synthetic grants; production allocator and SPI integration
-remain open. Failed planning leaves all reservations and DSP state unchanged.
+The load controller can now derive a grant by reserving image/BSS/state in a
+caller-borrowed shared allocation ledger. Its memory-backed tickets retain their
+owner slot until explicit release after pre-transfer cancellation or fully
+acknowledged detach; a stale ticket or changed ledger cannot clear the range.
+Component tests compose reservation, admission and mailbox-driven release.
+The production loader still needs to call these APIs with its real ledger and
+route all V2 teardown away from legacy unreserve; live SPI integration remains open. Failed planning leaves all reservations and DSP state unchanged.

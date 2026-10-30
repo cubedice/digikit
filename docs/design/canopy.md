@@ -469,6 +469,27 @@ row installation and live SPI sequencing remain disconnected. Focused documentat
 and layering checks pass; the changed-file check fails only on the existing 256
 stale path references in 78 files (`out/canopy-memory-changed.log`).
 
+The V2 load controller now supports ticket-bound memory reservations through a
+borrowed view of the shared DSP allocation ledger. It claims one range for image,
+BSS, alignment and instance states, derives image/state grants from that range,
+and leaves the ledger unchanged on rejection. Legacy allocations remain occupied.
+Memory-backed tickets enter a release-pending phase after pre-transfer cancellation
+or completed detach. The owner slot stays busy until `release_memory` verifies the
+exact generation and recorded range and clears the ledger entry. Timeouts, partial
+mailbox completion and stale releases cannot free the allocation. Calls without
+memory reservations retain the existing component behavior.
+Validation: 25 targeted SDK tests pass (`out/canopy-memory-lifetime-tests.log`),
+including derived-grant admission, other-module coexistence, rollback/retry,
+quarantine, changed-ledger rejection and a two-row mailbox detach. The integrated
+runtime passes a release host check (`out/canopy-memory-lifetime-runtime.log`).
+The live loader does not call these reservation APIs yet: it must pass its actual
+ledger, retain the CF record through release and bypass legacy unreserve on every
+V2 error path. DKDS5 parsing, row installation and live SPI integration remain
+open. The missing Rust-for-ColdFire toolchain still prevents a device build.
+Focused documentation and layering checks pass; the changed-file check fails only
+on the existing 256 stale references in 78 files
+(`out/canopy-memory-lifetime-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

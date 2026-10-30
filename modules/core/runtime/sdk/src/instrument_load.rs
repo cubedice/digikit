@@ -10,13 +10,18 @@ const INITIALIZE: u32 = 3;
 const LIVE: u32 = 4;
 const DETACH: u32 = 5;
 const QUARANTINED: u32 = 6;
+const RELEASE: u32 = 7;
+
+mod memory;
+pub use memory::{Ledger, MemoryError, MemoryRequest};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Command {
     SendImage(Ticket),
     Initialize(Ticket),
     Detach(Ticket),
-    /// The caller may now free the image/state storage and ColdFire module record.
+    /// The caller may now free image/state storage. For a memory-backed ticket,
+    /// call `release_memory` before freeing/reusing the ColdFire module record.
     Release(Ticket),
     /// The caller may now expose the module to MIDI and machine selection.
     Publish(Ticket),
@@ -26,6 +31,7 @@ pub enum Command {
 struct Pending {
     ticket: Ticket,
     phase: u32,
+    allocation: Option<memory::Allocation>,
 }
 
 /// The only owner of its registry, preventing a caller from bypassing transfer
@@ -51,6 +57,14 @@ impl Loads {
     }
 
     pub fn reserve(&mut self, owner: u32, requests: &[Request]) -> Result<Ticket, Error> {
+        if self
+            .pending
+            .iter()
+            .flatten()
+            .any(|p| p.ticket.owner() == owner)
+        {
+            return Err(Error::OwnerBusy);
+        }
         let mut free = None;
         for (i, p) in self.pending.iter().enumerate() {
             if p.is_none() {
@@ -63,6 +77,7 @@ impl Loads {
         self.pending[slot] = Some(Pending {
             ticket,
             phase: RESERVED,
+            allocation: None,
         });
         Ok(ticket)
     }
@@ -97,7 +112,7 @@ impl Loads {
         let (slot, phase) = self.find(ticket)?;
         if phase == RESERVED {
             self.registry.abort(ticket)?;
-            self.pending[slot] = None;
+            self.begin_release(slot);
             return Ok(Command::Release(ticket));
         }
         if phase == IMAGE || phase == INITIALIZE {
@@ -115,7 +130,7 @@ impl Loads {
     /// request, but do not expose or release the module while awaiting its ACK.
     pub fn timeout(&mut self, ticket: Ticket) -> Result<Command, Error> {
         let (slot, phase) = self.find(ticket)?;
-        if phase == RESERVED {
+        if phase == RESERVED || phase == RELEASE {
             return Err(Error::WrongPhase);
         }
         if phase == IMAGE || phase == INITIALIZE {
@@ -136,12 +151,21 @@ impl Loads {
             return Err(Error::WrongPhase);
         }
         self.registry.finish_retire(ticket)?;
-        self.pending[slot] = None;
+        self.begin_release(slot);
         Ok(Command::Release(ticket))
     }
 
+    fn begin_release(&mut self, slot: usize) {
+        if self.pending[slot].is_some_and(|p| p.allocation.is_some()) {
+            self.set_phase(slot, RELEASE);
+        } else {
+            self.pending[slot] = None;
+        }
+    }
+
     pub(crate) fn admission_entries(
-        &self, ticket: Ticket,
+        &self,
+        ticket: Ticket,
     ) -> Result<[Option<Entry>; MAX_ROWS], Error> {
         self.at(ticket, RESERVED)?;
         self.registry.reserved_entries(ticket)
