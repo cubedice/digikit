@@ -391,6 +391,23 @@ the existing 256 stale references and the recurring minimum-delay timer failure
 (192 host tests passed, 16 skipped); that timer test passes an isolated rerun in
 `out/canopy-row-lifecycle-timing.log`.
 
+A protected row-tick boundary is now implemented in
+`modules/core/adapters/instrument-registry/src/dsp/protected.s`. It preserves V2
+callback scratch context, both 80-bit multiplier accumulators, addressing lengths
+and arithmetic mode/status while pinning the callback ABI. B3 is restored before
+I3; accumulator guard words are restored after middle words. Entry must already be
+non-SIMD and callbacks must comply with the ABI. The boundary is non-reentrant.
+The actual row lifecycle component tests now execute through it. This supplies
+the context protection needed for mailbox integration, but mailbox scheduling,
+trusted admission and audio dispatch are still disconnected. Validation: four
+context-preservation cases and 20 protected row lifecycle cases pass
+(`out/canopy-protected-tests.log`); the adapter rebuilds, re-decodes 503 instructions
+and checks current (`out/canopy-protected-build.log`). The changed-file check
+passes 193 host tests (16 skipped), types and layering. Its import-format finding
+was fixed and both changed test files pass Ruff check/format on recheck; the
+existing 256 stale references remain. Changed documentation references pass.
+No hardware proof is claimed.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

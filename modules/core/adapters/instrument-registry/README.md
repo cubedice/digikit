@@ -101,8 +101,7 @@ quarantine, not immediate memory reuse.
 
 This is an internal primitive, currently unreachable from mailbox commands.
 Before connecting it, the adapter still needs validated row metadata, admission
-of reset budgets, protection of the full callback register context, and work
-scheduling across tracks. Clearing is bounded; a callback that fails to return
+of reset budgets, and connection to the protected row scheduler described below. Clearing is bounded; a callback that fails to return
 cannot be preempted by this worker. The caller must pin the documented registers
 and preserve callback clobbers. The older CANOPY event-reset hook uses a different
 ABI and must not be passed to this worker.
@@ -139,7 +138,33 @@ cancel before the first initialization tick needs no callback. Failed detachment
 retains the row and may be retried with the same owner/generation.
 
 The row worker inherits the reset worker's context requirements and is currently
-unreachable from mailbox commands. Callback register protection, admission,
-mailbox scheduling/acknowledgements, and audio dispatch remain to be connected.
+unreachable from mailbox commands. The protected boundary below now supplies
+callback register preservation. Admission, mailbox scheduling/acknowledgements,
+and audio dispatch remain to be connected.
 `tests/patchkit/test_instrument_rows.py` executes these transitions with synthetic
 V2 callbacks on the SHARC core; this is not device acceptance.
+
+## Protected callback boundary
+
+`src/dsp/protected.s` provides `_ir_row_tick_protected` for callers already in
+non-SIMD mode, such as the shared instrument block wrapper. It returns the row
+worker's result in R0 and restores R1..R15, the callback's DAG scratch registers,
+B3, pinned length/modify registers, MODE1 and arithmetic status. Both 80-bit
+foreground/background multiplier accumulators are saved and restored, including
+their guard words. Restoration writes each accumulator's middle word before its
+guard word because a middle-word write sign-extends into the guard word.
+
+The wrapper pins linear L0..L5, M5/M6/M7=0/1/-1, M13/M14/M15=0/1/-1, and the
+same non-SIMD, round-to-nearest arithmetic mode as the existing voice adapter.
+It restores B3 before I3 because setting a DAG base also updates its index.
+Callbacks must obey the V2 ABI, preserving registers outside the declared clobber
+set and leaving SIMD disabled. Static scratch makes this boundary non-reentrant;
+an interrupt must not enter it again. It is not a sandbox for arbitrary code.
+
+The row lifecycle component tests now execute through this boundary. Dedicated
+context tests also overwrite all permitted scratch registers and both accumulators,
+exercise nested CALL/RTS, and check preservation for success and negative fault
+results under different incoming arithmetic modes. The comparison happens after
+the wrapper returns, before the test harness empties its own hardware call stack.
+Mailbox scheduling and acknowledgements, trusted row admission and audio dispatch
+remain disconnected; the provider still reports lifecycle operations unsupported.

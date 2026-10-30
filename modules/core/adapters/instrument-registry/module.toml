@@ -17,6 +17,6 @@ ports = ["dt2-1.17"]
 
 [[object]]
 path = "build/registry-dsp.dko.json"
-sources = ["src/dsp/registry.s", "src/dsp/lifecycle.s", "src/dsp/rows.s"]
+sources = ["src/dsp/registry.s", "src/dsp/lifecycle.s", "src/dsp/rows.s", "src/dsp/protected.s"]
 place = "dsp.l2"
 devices = ["dt2"]

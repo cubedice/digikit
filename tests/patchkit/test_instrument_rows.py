@@ -9,9 +9,22 @@ from tools.patchkit import pk_sharc
 @pytest.fixture(scope="module")
 def row_object():
     root = REPO_ROOT / "modules/core/adapters/instrument-registry/src/dsp"
-    source = "\n".join((root / name).read_text() for name in ("lifecycle.s", "rows.s"))
+    source = "\n".join(
+        (root / name).read_text() for name in ("lifecycle.s", "rows.s", "protected.s")
+    )
     source += """
 .SECTION/PM seg_pmco;
+.GLOBAL _test_protected;
+_test_protected:
+    R0 = 0;
+    MR0F = R0;
+    MR1F = R0;
+    MR2F = R0;
+    MR0B = R0;
+    MR1B = R0;
+    MR2B = R0;
+    CALL _ir_row_tick_protected;
+    RTS;
 .GLOBAL _test_reset;
 _test_reset:
     I1 = 0x20040000;
@@ -85,7 +98,7 @@ def rows(row_object):
     }
 
     def call(
-        entry="_ir_row_tick",
+        entry="_test_protected",
         index=0,
         owner=3,
         generation=9,
