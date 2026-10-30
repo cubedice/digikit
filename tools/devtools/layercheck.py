@@ -64,6 +64,30 @@ FOLDER_ROLES = {
 FIRMWARE_PATCH_MODULES = {"test/registry-demo"}
 # Test fixtures that stand in for an app (they use core/ui like core/digikit-menu does): app include rights.
 APP_LIKE = {"test/ui-demo"}
+# Emulator-only lifecycle integration fixture: it deliberately connects private
+# providers before a public V2 SDK exists. Limit the exception to this path/id,
+# these source files and these symbols; never grant general adapter privileges.
+CANOPY_FIXTURE = "tests/fixtures/modules/canopy-transport"
+CANOPY_INCLUDES = {
+    "modules/core/adapters/midi-events/src/cf/bridge.h",
+    "modules/machines/canopy/src/dsp/voice.s",
+    "modules/machines/canopy/src/dsp/tuning.s",
+    "modules/machines/canopy/src/dsp/instrument.s",
+}
+CANOPY_IMPORTS = {
+    "mi_config_submit",
+    "mi_instance_reset",
+    "mi_ledger",
+    "mi_route_enable",
+    "mi_transport",
+    "_mi_epoch",
+}
+
+
+def canopy_fixture(root: Path, m: Module) -> bool:
+    return m.id == "test/canopy-transport" and rel(root, m.dir) == CANOPY_FIXTURE
+
+
 # Headers of the core layers an app may include.
 APP_HEADERS = {"dkrt.h", "dk_ui_core.h"}
 ANCHOR = re.compile(r"^(cf|dsp|hook|pk)\.")
@@ -277,6 +301,11 @@ def check_sources(root: Path, mods: list[Module]) -> list[Violation]:
                     continue
                 if sdk in target.parents:
                     continue
+                if (
+                    canopy_fixture(root, m)
+                    and rel(root.resolve(), target) in CANOPY_INCLUDES
+                ):
+                    continue
                 base = Path(name).name
                 if any(d in target.parents for d in fw_dirs):
                     out.append(
@@ -412,6 +441,7 @@ def check_objects(root: Path, mods: list[Module]) -> list[Violation]:
                 ok = (
                     name in imports
                     or name in sdk_externs
+                    or (canopy_fixture(root, m) and name in CANOPY_IMPORTS)
                     or name.startswith(("dkrt_", "dk_ui_", "dk_app_", "dkm_"))
                 )
                 if ANCHOR.match(name) or not ok:

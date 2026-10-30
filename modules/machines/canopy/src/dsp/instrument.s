@@ -1,5 +1,6 @@
 // Stage-1 integration only: notes and fixed sine settings. Not installed by a
-// manifest, and no CF readiness provider exists. No public V2 descriptor yet.
+// production manifest; a test-only CF readiness provider exercises live transport.
+// No public V2 descriptor yet.
 // Entry contracts: core/midi-events consumer.s. Never mutate a bank until the
 // ENTIRE event batch has succeeded in scratch. No reentrant calls or rendering.
 // One bank per track; pending reset tails finish before those slots can be reused.
@@ -172,6 +173,8 @@ _cp_render_track:
 .VAR _ci_bank = 0;
 .VAR _ci_event = 0;
 .VAR _ci_remaining = 0;
-.PKBSS _cp_banks, 4096;
-.PKBSS _cp_ready, 64;
+// These persist across events/resets, so the boot stream must initialize them.
+// PKBSS only reserves DSP memory; it does not establish empty tokens/readiness.
+.PKDATA _cp_banks, 4096;
+.PKDATA _cp_ready, 64;
 .PKBSS _cp_staging, 256;

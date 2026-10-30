@@ -1,0 +1,27 @@
+[module]
+id = "test/canopy-transport"
+version = "0.1.0"
+name = "CANOPY transport proof"
+category = "test"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Emulator-only reset/configuration/event ACK proof; no audio renderer or public V2 machine."
+requires = ["core/midi-events"]
+conflicts = ["core/loop-controls"]
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/proof-cf.dko.json"
+sources = ["src/control.c"]
+place = "cf.expansion"
+devices = ["dt2"]
+
+[[object]]
+path = "build/proof-dsp.dko.json"
+sources = ["src/dsp/consumer.s"]
+place = "dsp.l2"
+devices = ["dt2"]

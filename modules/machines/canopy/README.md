@@ -117,4 +117,14 @@ or device performance. The current V1 contract path skips inactive stock voices
 and clears configured state at stock note-on. The raw path avoids that contract
 but does not initialize or sustain the downstream stock AMP. CANOPY still needs
 the separate V2 lifecycle and carrier path described in the design before this
-kernel can receive live input.
+kernel can become an installable instrument.
+
+An emulator-only `test/canopy-transport` fixture now cold-boots the production MIDI
+bridge and these lifecycle callbacks together. USB/DIN notes and individual
+releases reach the sine banks after real reset/configuration ACKs; each event
+batch drains through a real DSP ACK. Persistent bank/readiness storage is loaded
+as zero-initialized data, fixing unknown boot state exposed by this test. The
+fixture installs no renderer and proves no audio. Its preflight currently flags
+tuning-table data as instructions; it must not be flashed. See the
+[carrier findings](../../../docs/findings/78-canopy-carrier.md) and
+[regression commands](../../../tests/regression/README.md).

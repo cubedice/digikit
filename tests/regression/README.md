@@ -13,6 +13,8 @@ time (the stock project may run files in parallel, `REGRESSION_JOBS`, set by the
 | `scenarios/` | `fx-dn2`, `fx-dt2` | Stock FX oracles (see [scenarios/README.md](scenarios/README.md)) |
 | `emulator/` | device | Emulator checks that belong to no module: stock-firmware reply record, SHARC instruction semantics |
 | `runtime/` | none | Helpers only (daemon, card, UI and module-install kits) |
+| `runtime/canopy-transport.test.ts` | `canopy-transport` | Emulator-only CANOPY MIDI/reset/configuration/event ACKs with real DSP |
+| `runtime/overloop-display.test.ts` | `overloop` | Experimental DT2 Overloop display, capture and live playback window |
 | `host/` | none (root `regression-host`) | Mocked helper tests, no daemon or firmware |
 
 Device tests for a module live in that module: `modules/**/tests/*.device.test.ts` (patched runtime on DT2 1.17
@@ -163,3 +165,25 @@ FX runs write reports and logs to `out/regression/{trackfx,sendfx,dt2-fx}/<times
 the file passed, the run directory is removed; on a failure the reports and logs stay (WAV files are deleted).
 `DIGI_FX_KEEP_RUNS=1` keeps the whole run directory including WAV files.
 Module cells write diagnostic JSON under `out/regression/module-load/<device>/<module>/`.
+
+## CANOPY transport proof
+
+This isolated project requires the existing DT2 daemon and ready inputs above.
+Prepare the explicit test fixture; it never builds implicitly:
+
+```sh
+uv run python -m tools.patchkit.patchkit build test/canopy-transport
+uv run python -m tools.patchkit.patchkit patch --firmware firmware/Digitakt_II_OS1.17.syx --modules test/canopy-transport -o out/patch/canopy-live-transport.syx --plan out/patch/canopy-live-transport.plan.json
+DIGI_EMUD_DT2=PATH_TO_DAEMON pnpm --filter @digi/regression exec vitest run --project canopy-transport
+```
+
+The test verifies the artifact hash against its plan, cold-boots with real DSP,
+waits for actual reset/configuration ACKs, then checks USB/DIN note tokens,
+independent releases and acknowledged queue drainage. It changes receive settings
+only in its disposable emulator. The fixture conflicts with `core/loop-controls`
+because it uses the optional controls tick for bootstrap. No renderer or public
+machine descriptor is installed. It is excluded from the normal runtime suite.
+
+This image is emulator-only: current firmware preflight reports two tuning-table
+data values as instructions. Keep the preflight failure visible; do not flash or
+bypass it. Details are in the [carrier findings](../../docs/findings/78-canopy-carrier.md).

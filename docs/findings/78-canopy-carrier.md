@@ -377,10 +377,51 @@ parser-to-hook reachability for these inputs, not live CANOPY ownership, DSP
 delivery, hardware timing or final sound. The preparation command pins the SYX
 hash; firmware tail bytes and the observer artifact remain ignored under `out/`.
 
-Resolve live configuration delivery and remaining event writers before adding
+**[D] Coupled MIDI lifecycle:** The standalone `canopy-transport` Vitest project
+cold-boots a patched DT2 1.17 image with the real SHARC core. Its test-only CF
+provider requests track-0 reset, submits CPS1 revision 1 after reset ACK, then
+admits USB and DIN channel 1 only after the DSP configuration ACK. The production
+MIDI hooks, CF ledger/frame sender, DSP receiver and CANOPY lifecycle callbacks
+carry C/E on USB and G on DIN. Individual note-off and velocity-zero releases
+change only the matching token's gate. Each batch advances the message sequence,
+drains the acknowledged ledger and leaves transport/guest faults clear. The test
+passes with three distinct tokens and all three gates released. No heartbeat or
+ACK is injected. The fixture has no renderer, carrier hooks or public descriptor;
+released tokens therefore remain in their slots. This proves live delivery and
+release ownership in the emulator, not final audio, hardware timing or recovery.
+
+**[D] Boot initialization correction:** The first coupled run found 168 unknown
+bytes in the 256-byte track bank after reset/configuration succeeded. SHARC
+`.PKBSS` reserves storage without loading zeroes; the component rigs had supplied
+zeroes themselves. CANOPY banks and readiness now use loaded `.PKDATA`, while
+fully overwritten transaction scratch remains `.PKBSS`. The coupled test requires
+all bank bytes to be known and no tokens before the first key. Reset still
+preserves existing release tails. The corrected live test and 65 instrument/carrier
+component tests pass.
+
+The emulator fixture's firmware preflight remains blocked by two data-as-code
+ISA hits. In patched SHA-256
+`00b9c31e8e66373714402af8d2a594e130859324df98a0364b9c95b0baf29e53`,
+reported PCs `0xbce66e` and `0xbce710` map to byte addresses `0x2009ccdc` and
+`0x2009ce20`: offsets `0x27c` and `0x3c0` in `_cp_tuning` at `0x2009ca60`.
+Both lie outside the plan's executable span `[0x2009c388, 0x2009ca60)`.
+The appended-block scanner in `packages/patchkit/src/dspscan.rs` scans these data
+bytes as code. Object build re-decoding passes. Do not flash the fixture or bypass
+preflight; resolving this scanner limitation is a remaining release prerequisite.
+
+Resolve remaining event writers before adding
 the hook to the production manifest. Use idle-to-active to start the envelope once; avoid
 rearming it for subsequent keys. Retain the carrier through local release tails
 and pending onsets, then retire both stereo voices on QUIET. Prove neutral shared
 velocity and downstream LEVEL, pan, mute, filter and FX in running firmware.
 The [CANOPY spec](../design/canopy.md) still requires that final-output gate before
 the pad engine and UI are enabled.
+
+Checkpoint validation: coupled transport 1/1 and instrument/carrier components
+65/65 pass; layer regression 20/20, repository layercheck, lint, formatting and
+TypeScript checks pass. Changed-document pathcheck is clean. The required broad
+changed-file check is not green: existing pathcheck reports 256 stale references
+in 78 files; devtools verification has one `patch:toolchains` routing assertion
+and four missing `dn2-1.11.sqlite` failures (222 tests pass). Host checks first
+passed 193/193 (16 skipped); the repeat had one unrelated firmware-pause timing
+failure (12 ms), with 192 passing. No firmware is approved for flashing here.

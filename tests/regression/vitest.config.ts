@@ -81,7 +81,7 @@ export default defineConfig({
         test: {
           name: 'proofs',
           include: ['runtime/**/*.test.ts'],
-          exclude: ['runtime/overloop-display.test.ts'],
+          exclude: ['runtime/overloop-display.test.ts', 'runtime/canopy-transport.test.ts'],
           pool: 'forks',
           testTimeout: 300_000,
           hookTimeout: 150_000,
@@ -90,6 +90,17 @@ export default defineConfig({
       {
         extends: true,
         test: {
+          name: 'canopy-transport',
+          include: ['runtime/canopy-transport.test.ts'],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 120_000,
+          hookTimeout: 150_000,
+        },
+      },
+      {
+        test: {
+          // Experimental firmware and a DTII-only DKM, prepared separately.
           name: 'overloop',
           include: ['runtime/overloop-display.test.ts'],
           pool: 'forks',

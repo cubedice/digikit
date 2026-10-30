@@ -340,3 +340,51 @@ def test_self_contained_a_host_module_is_exempt(tree: Path) -> None:
     module(tree, "modules/fx/gain", "digikit/gain", "fx", None, "host = true\n")
     # `host` must sit in [module]: the extra text lands there because the manifest has no later table
     assert sc(tree) == []
+@pytest.mark.parametrize(
+    ("directory", "mid", "allowed"),
+    [
+        ("tests/fixtures/modules/canopy-transport", "test/canopy-transport", True),
+        ("tests/fixtures/modules/other", "test/canopy-transport", False),
+        ("tests/fixtures/modules/canopy-transport", "test/other", False),
+    ],
+)
+def test_canopy_fixture_exception_is_narrow(
+    tree: Path, directory: str, mid: str, allowed: bool
+) -> None:
+    import os
+
+    module(
+        tree,
+        directory,
+        mid,
+        "test",
+        None,
+        '\n[[object]]\npath = "build/proof.dko.json"\nplace = "cf.expansion"\n',
+    )
+    source = tree / directory / "src/control.c"
+    bridge = write(
+        tree, "modules/core/adapters/midi-events/src/cf/bridge.h", "/* private */"
+    )
+    other = write(
+        tree, "modules/core/adapters/midi-events/src/cf/other.h", "/* private */"
+    )
+    write(
+        tree,
+        f"{directory}/src/control.c",
+        "\n".join(
+            f'#include "{os.path.relpath(p, source.parent).replace(chr(92), "/")}"'
+            for p in (bridge, other)
+        ),
+    )
+    dko(
+        tree,
+        f"out/cache/dko/{mid}/build/proof.dko.json",
+        ["mi_ledger", "_unrelated_private"],
+    )
+    mods = layercheck.load_modules(tree)
+    sources = layercheck.check_sources(tree, mods)
+    objects = layercheck.check_objects(tree, mods)
+    assert len(sources) == (1 if allowed else 2)
+    assert len(objects) == (1 if allowed else 2)
+    assert any("other.h" in v.message for v in sources)
+    assert any("_unrelated_private" in v.message for v in objects)
