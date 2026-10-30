@@ -13,6 +13,7 @@ time (the stock project may run files in parallel, `REGRESSION_JOBS`, set by the
 | `scenarios/` | `fx-dn2`, `fx-dt2` | Stock FX oracles (see [scenarios/README.md](scenarios/README.md)) |
 | `emulator/` | device | Emulator checks that belong to no module: stock-firmware reply record, SHARC instruction semantics |
 | `runtime/` | none | Helpers only (daemon, card, UI and module-install kits) |
+| `runtime/canopy-reload.test.ts` | `canopy-carrier` | Panel-driven temporary reload, same-pointer invalidation and fresh MIDI audio |
 | `runtime/canopy-carrier.test.ts` | `canopy-carrier` | Emulator-only initialization, machine/pattern re-admission and final PCM without audition |
 | `runtime/canopy-transport.test.ts` | `canopy-transport` | Emulator-only CANOPY MIDI/reset/configuration/event ACKs with real DSP |
 | `runtime/overloop-display.test.ts` | `overloop` | Experimental DT2 Overloop display, capture and live playback window |
@@ -218,10 +219,17 @@ remain closed until WERP is selected there; a fresh note then renders and retire
 The scenario checks three refreshes, two invalidations and generations 2 through 4.
 Reset quietness checks allow 24,000 scalar stereo samples (0.25 seconds) to settle
 before measuring a separate window against the unchanged -120 dBFS threshold.
-This booted scenario does not exercise same-pointer Sound replacement or
-running/queued pattern changes. The separate
+The companion `runtime/canopy-reload.test.ts` uses FUNC+YES then FUNC+NO while
+holding a MIDI C. It checks that the load hook fires, the same Sound pointer
+survives, the generation advances, the old voice retires, and preparation completes
+again. A new C survives the old C release; C/G then produce finite PCM above -80
+dBFS RMS. Their release retires both voices, followed by a quarter-second drain
+and a separate final-output window below -120 dBFS RMS and peak. This test has a
+three-minute body ceiling and can run alone by appending
+`runtime/canopy-reload.test.ts` to the command above. Running/queued pattern changes
+and other UI load paths are not covered. The separate
 `tests/patchkit/test_canopy_sound_load.py` component proof runs the real stock
-deserializer with synthetic records; it does not establish live browser coverage.
+deserializer with synthetic records, including unrelated and rejected loads.
 The test has a
 six-minute ceiling for the slower-than-real-time coupled engine. UI frames and
 PCM statistics remain under `out/`. No spectral continuity or hardware claim is

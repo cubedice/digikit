@@ -650,3 +650,36 @@ UI-triggered in-place load test. The fixture image SHA-256 is
 `705b33d2fc03155fb4101ba39e711824513f9d39a7cc66e6e908c1b0e5457447`.
 Logs are retained as `out/canopy-sound-component.log` and
 `out/canopy-sound-live.log`.
+
+
+## Panel-driven temporary reload [D]
+
+A new booted DT2 OS 1.17 acceptance test selects the fixture's WERP shadow,
+temporarily saves the pattern with FUNC+YES, holds USB MIDI C, then invokes
+FUNC+NO. It uses panel input for saving/loading and no direct Sound-loader call.
+The emulator has no sample card. The fixture image is unchanged from the Sound
+lifetime proof above.
+
+The first run passed in 114.28 seconds. The Sound pointer remained `0x426532ec`,
+the observed load count advanced from 0 to 1, the generation advanced from 2 to
+3, and the stock refresh count advanced from 1 to 2. The previous held voice
+retired; a fresh C survived its predecessor's delayed note-off, verified by a
+following G in the same ordered USB stream. The fresh voices produced finite
+final PCM above -80 dBFS RMS and both retired after their own note-offs. This
+supersedes the untested UI-triggered reload limitation for this specific command.
+It does not cover browser selection, kit reload, paste, running-pattern commits,
+sample-card operation or hardware.
+
+The scenario is `tests/regression/runtime/canopy-reload.test.ts`, included in the
+`canopy-carrier` Vitest project and excluded from the general runtime sweep.
+State, screenshots and PCM statistics are stored under `out/canopy-reload-*`.
+The temporary save/reload key combination is documented in Elektron's
+[Digitakt II manual](https://www.elektron.se/wp-content/uploads/2025/06/Digitakt-2-User-Manual_ENG_OS1.15_250625.pdf),
+section 10.8.6; the execution evidence here is from OS 1.17.
+
+The expanded final-output run passed in 122.18 seconds. After re-admission, the
+24,384-sample held-note window measured RMS 0.03756678 and peak 0.08387909, with
+no non-finite samples. After both note-offs and a quarter-second drain, a separate
+4,480-sample window had zero RMS and peak. The test requires only values below
+-120 dBFS, not bit-exact zero, and reports no transport or emulator faults. This
+proves settled output quietness; it does not establish click-free transitions.

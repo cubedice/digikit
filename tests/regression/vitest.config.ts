@@ -85,6 +85,7 @@ export default defineConfig({
             'runtime/overloop-display.test.ts',
             'runtime/canopy-transport.test.ts',
             'runtime/canopy-carrier.test.ts',
+            'runtime/canopy-reload.test.ts',
           ],
           pool: 'forks',
           testTimeout: 300_000,
@@ -95,7 +96,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'canopy-carrier',
-          include: ['runtime/canopy-carrier.test.ts'],
+          include: ['runtime/canopy-carrier.test.ts', 'runtime/canopy-reload.test.ts'],
           pool: 'forks',
           ...serial,
           testTimeout: 120_000,

@@ -139,7 +139,9 @@ audition. It also resets on observed identity changes and re-admits after a
 machine change or a stopped pattern change, preserving old-key tombstones.
 This remains a track-0 emulator proof, not a DKM or a supported keyboard workflow.
 A fixture-only deserializer hook now brackets same-pointer, same-type Sound loads;
-ColdFire tests cover the real stock routine with synthetic records. Live browser,
-kit and paste coverage, plus running pattern commit timing, remain unproven. Public V2 initialization, broader Sound/control behavior
+ColdFire tests cover the real stock routine with synthetic records. A booted
+panel-driven temporary pattern reload also proves same-pointer invalidation,
+re-admission and stale-release protection. Browser, kit and paste coverage, plus
+running pattern commit timing, remain unproven. Public V2 initialization, broader Sound/control behavior
 and final-output continuity remain open. See the
 [carrier findings](../../../docs/findings/78-canopy-carrier.md) for measured results.
