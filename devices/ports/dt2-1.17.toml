@@ -1097,6 +1097,26 @@ mark = "D"
 rule = "fw/page:cf_func"
 
 [[anchor]]
+name = "cf.page.site.fx_update_entry"
+cpu = "cf"
+kind = "code"
+addr = 0x40069eb8
+len = 6
+sha256 = "8d1503d38f264a9b0be0700a53c1e2e61354803cc529f54092a511ae826bca7f"
+mark = "D"
+rule = "fw/page:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.fx_update_slot"
+cpu = "cf"
+kind = "code"
+addr = 0x401f99b4
+len = 4
+sha256 = "aa87ab4861b65378d9917b3ab790c1762d7caa4b0f7ee2f3e84f35f47cdd970d"
+mark = "D"
+rule = "fw/page:cf_window_hash"
+
+[[anchor]]
 name = "cf.page.site.fx_view_list.count"
 cpu = "cf"
 kind = "code"
@@ -3091,6 +3111,50 @@ mark = "D"
 rule = "fw/dsp/voice:sharc_func"
 
 [[anchor]]
+name = "dsp.voice.site.envelope_entry"
+cpu = "sharc"
+kind = "code"
+addr = 0x283976ae
+pm = 0x1cbb57
+len = 6
+sha256 = "0ad5c8265b09589e8868e2655f7dc35c9c80639b753938cdf1ccfc010795b937"
+mark = "D"
+rule = "fw/dsp/voice:sharc_func"
+
+[[anchor]]
+name = "dsp.voice.site.envelope_entry.next"
+cpu = "sharc"
+kind = "code"
+addr = 0x283976b4
+pm = 0x1cbb5a
+len = 6
+sha256 = "6874959281016b9a16e50a682b14d76c4457516ef501af237edf989b7ea4f3a3"
+mark = "D"
+rule = "fw/dsp/voice:sharc_func"
+
+[[anchor]]
+name = "dsp.voice.site.envelope_workspace"
+cpu = "sharc"
+kind = "code"
+addr = 0x2838c914
+pm = 0x1c648a
+len = 6
+sha256 = "bc0764caf9e166f51799bcefd96e153c5f2b890779d85cb67a4ca0b5ac0a78ee"
+mark = "D"
+rule = "fw/dsp/voice:sharc_func"
+
+[[anchor]]
+name = "dsp.voice.site.envelope_workspace.next"
+cpu = "sharc"
+kind = "code"
+addr = 0x2838c91a
+pm = 0x1c648d
+len = 6
+sha256 = "9471b3719c51919d5bbf7fe8fc621ab3a96bab3b67419098d742ec04f79d12a0"
+mark = "D"
+rule = "fw/dsp/voice:sharc_func"
+
+[[anchor]]
 name = "dsp.voice.site.render_entry.next"
 cpu = "sharc"
 kind = "code"
@@ -3398,26 +3462,16 @@ site = "dsp.pattern.site.block_entry"
 mode = "before"
 
 [[hook]]
+name = "dsp.voice.hook.envelope_entry"
+site = "dsp.voice.site.envelope_entry"
+mode = "replace"
+
+[[hook]]
+name = "dsp.voice.hook.envelope_workspace"
+site = "dsp.voice.site.envelope_workspace"
+mode = "replace"
+
+[[hook]]
 name = "dsp.voice.hook.render_entry"
 site = "dsp.voice.fn.render_entry"
 mode = "replace"
-
-[[anchor]]
-name = "cf.page.site.fx_update_slot"
-cpu = "cf"
-kind = "code"
-addr = 0x401f99b4
-len = 0x4
-sha256 = "aa87ab4861b65378d9917b3ab790c1762d7caa4b0f7ee2f3e84f35f47cdd970d"
-mark = "D"
-rule = "fw/page:cf_window_hash"
-
-[[anchor]]
-name = "cf.page.site.fx_update_entry"
-cpu = "cf"
-kind = "code"
-addr = 0x40069eb8
-len = 0x6
-sha256 = "8d1503d38f264a9b0be0700a53c1e2e61354803cc529f54092a511ae826bca7f"
-mark = "D"
-rule = "fw/page:cf_window_hash"

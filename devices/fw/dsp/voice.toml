@@ -1,6 +1,65 @@
 # voice: voice rendering
 # Names follow <cpu>.<subsystem>.<kind>.<name>; was = former names, for reading older docs, never resolved (docs/design/firmware-decls.md).
 
+# CANOPY carrier investigation, DT2 OS 1.17. Declarations do not install hooks.
+[[site]]
+name = "dsp.voice.site.envelope_workspace"
+cpu = "sharc"
+devices = ["dt2"]
+rule = { kind = "sharc_func", reloc_hash = "47f65f5034040ec69829448cd833243cef4ad84cecabddae61f8849d3f70f7be", offset = 0x60, len = 6 }
+mark = "D"
+users = ["core/midi-events"]
+doc = "Dispatcher MODIFY(I1, 0xd604), deriving the envelope bank from the live workspace. See finding 78."
+
+[[site]]
+name = "dsp.voice.site.envelope_workspace.next"
+cpu = "sharc"
+devices = ["dt2"]
+rule = { kind = "sharc_func", reloc_hash = "47f65f5034040ec69829448cd833243cef4ad84cecabddae61f8849d3f70f7be", offset = 0x63, len = 6 }
+mark = "D"
+users = ["core/midi-events"]
+doc = "Resume after the envelope workspace derivation at DT2 1.17 PC 0x1c648d."
+
+[[hook]]
+name = "dsp.voice.hook.envelope_workspace"
+site = "dsp.voice.site.envelope_workspace"
+cpu = "sharc"
+mode = "replace"
+regs = { in = ["i1"], clobbers = ["i1"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/midi-events"]
+doc = "Capture the derived envelope-bank pointer; replacement must execute the displaced MODIFY exactly."
+
+[[site]]
+name = "dsp.voice.site.envelope_entry"
+cpu = "sharc"
+devices = ["dt2"]
+rule = { kind = "sharc_func", reloc_hash = "114679288698acb0c7c3106f77fc7afe6fee15a6d5f8eea0dc5f1e5b950489c8", offset = 0, len = 6 }
+mark = "D"
+users = ["core/midi-events"]
+doc = "Stock envelope entry, MODIFY(I7, -16) (NW), at DT2 1.17 PC 0x1cbb57. See finding 78."
+
+[[site]]
+name = "dsp.voice.site.envelope_entry.next"
+cpu = "sharc"
+devices = ["dt2"]
+rule = { kind = "sharc_func", reloc_hash = "114679288698acb0c7c3106f77fc7afe6fee15a6d5f8eea0dc5f1e5b950489c8", offset = 3, len = 6 }
+mark = "D"
+users = ["core/midi-events"]
+doc = "Resume after the envelope's stack reservation at DT2 1.17 PC 0x1cbb5a."
+
+[[hook]]
+name = "dsp.voice.hook.envelope_entry"
+site = "dsp.voice.site.envelope_entry"
+cpu = "sharc"
+mode = "replace"
+regs = { in = ["r4", "i6", "i7"], clobbers = ["i7"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/midi-events"]
+doc = "Interpose owned carrier flags in stack arguments +1/+2; preserve live state and execute the displaced stack reservation."
+
 # ---- Digitone II (FUN_b8251b: the helper the engine calls once per voice buffer after the FM synthesis, first
 # instruction `I7 = MODIFY(I7, -18)`, 48 bits, displaced; the DSP's frame copy is the literal `I4 = 0x25c48c` of the
 # per-block copy in FUN_1c2712).

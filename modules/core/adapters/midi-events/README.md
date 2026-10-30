@@ -163,8 +163,10 @@ from the configured envelope-record base, substitutes only the two owned control
 arguments, restores touched registers/status (including SIMD pairs), executes the
 displaced stack adjustment and jumps back into stock code. Missing, stale,
 disabled or non-record inputs leave stock arguments unchanged. The frame owner
-must set the record base and block stamp before the call; neither is inferred
-from a caller scratch register. This hook is non-reentrant.
+must advance the block stamp before the call. `workspace.s` captures the bank
+from the dispatcher's live I1 pointer, executing the displaced byte-offset
+MODIFY before storing its result. It preserves R/S registers and arithmetic
+status, including with SIMD enabled. The envelope hook is non-reentrant.
 
 The normal block wrapper now calls optional `_mi_carrier_begin` before receiving
 events. When linked, `carrier-frame.s` advances the block stamp and clears all
@@ -177,11 +179,13 @@ containing its last tail samples, so the shared envelope cannot release early.
 The carrier sources remain absent from the normal object list; the optional call
 is skipped when absent. Instruction-core tests connect the actual block wrapper,
 raw voice adapter, render publisher and envelope interposer in one memory image.
-Their receive/reply callbacks are stubs and the envelope-record base is supplied
-by the harness. The separate firmware probe installs the entry jump only in its
-private firmware memory view. Live workspace binding, firmware declarations and
-manifest wiring, and final mixer output remain unproved. Readiness and MIDI
-routes remain disabled.
+Their receive/reply callbacks are stubs; their workspace pointer is synthetic.
+The separate firmware probe patches both the workspace derivation and envelope
+entry in private memory. It executes the original dispatcher setup and checks
+that capture matches the stock computed pointer, including after relocation.
+Four hash-resolved firmware sites and two replace hooks now declare these
+boundaries. Normal manifest installation, stock envelope configuration and final
+mixer output remain unproved. Readiness and MIDI routes remain disabled.
 
 ```sh
 cargo test -p dkmidi-host

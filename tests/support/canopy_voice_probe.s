@@ -5,10 +5,14 @@
 #include "../../modules/machines/canopy/src/dsp/instrument.s"
 #include "../../modules/core/adapters/midi-events/src/dsp/carrier.s"
 #include "../../modules/core/adapters/midi-events/src/dsp/envelope.s"
+#include "../../modules/core/adapters/midi-events/src/dsp/workspace.s"
 #include "../../modules/core/adapters/midi-events/src/dsp/carrier-frame.s"
 #include "../../modules/core/adapters/midi-events/src/dsp/block.s"
 #include "../../modules/machines/canopy/src/dsp/render.s"
 .SECTION/PM seg_pmco;
+.GLOBAL _mi_workspace_next;
+_mi_workspace_next:
+    RTS;
 .GLOBAL _mi_receive;
 .GLOBAL _mi_reply_build;
 _mi_receive:

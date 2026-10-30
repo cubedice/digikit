@@ -16,8 +16,10 @@ The carrier integration now has an optional early-frame expiry callback and an
 internal CANOPY render entry that publishes shared stereo envelope controls.
 Connected instruction-core tests cover frame/render/envelope handoff and reset
 retirement. ACTIVE includes the final block of tail samples, with release on the
-next empty block. The firmware workspace binding and final mixer proof remain
-open; this checkpoint does not provide a playable machine or enable routes.
+next empty block. A dispatcher shim now captures the live workspace's envelope
+bank; the firmware probe checks it against the stock computation and relocation.
+Normal hook installation, shared envelope configuration and final mixer proof
+remain open; this checkpoint does not provide a playable machine or enable routes.
 
 - Ship a DTII-only experimental module, proposed ID `digikit/canopy`, with an explicitly required new runtime capability. Keep existing V1 machines compatible.
 - Support four foreground pad notes. Additional fixed slots handle one arp note and two shared release tails. Voice count never grows with release time.

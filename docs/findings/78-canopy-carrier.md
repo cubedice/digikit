@@ -124,7 +124,25 @@ Connected instruction-core tests now run frame, render and envelope entries in
 one memory image without copying flags or stamps. They supply the envelope-record
 base and stub packet receive/reply; this is not running-firmware delivery.
 
-Resolve the live workspace binding, normal envelope configuration and both flag writers before adding
+**[D] Workspace binding follow-up:** The dispatcher at `0x1c6479` saves its R4
+workspace argument; `0x1c647d` loads it into I1 and `0x1c648a` adds byte offset
+`0xd604`. The new workspace shim executes that exact displaced MODIFY, stores
+I1 as the envelope-bank base, and resumes at `0x1c648d`. It leaves general
+registers, SIMD partners and arithmetic status unchanged. Four component cases
+cover scalar/SIMD operation and two workspace addresses, guarding the adjacent
+stamp against an accidental SIMD double store.
+
+The firmware probe now patches both sites in memory and runs original dispatcher
+instructions from `0x1c6479` through its bank store at `0x1c649d`. The captured
+base equals the stock result at I6-25 and updates when the synthetic workspace
+moves. The probe no longer writes the envelope-bank pointer itself. Firmware
+declarations and the DT2 port now contain four hash-resolved sites and two replace
+hooks; none is installed by the normal manifest. Full port regeneration lacked
+the local ColdFire analysis database, so only these DSP sites were resolved with
+the standard resolver and rendered into the existing port; all existing anchors
+were preserved. Booted dispatcher execution remains unproved.
+
+Resolve normal envelope configuration and both flag writers before adding
 the hook to the production manifest. Use idle-to-active to start the envelope once; avoid
 rearming it for subsequent keys. Retain the carrier through local release tails
 and pending onsets, then retire both stereo voices on QUIET. Prove neutral shared

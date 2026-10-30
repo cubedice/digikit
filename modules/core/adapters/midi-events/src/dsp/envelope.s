@@ -1,6 +1,6 @@
 // DT2 envelope entry interposer, non-reentrant. Not enabled by module manifest.
 // R4 is the stock envelope record, I6 the stock call frame.
-// The frame owner must publish _mi_envelope_records and _mi_carrier_stamp.
+// workspace.s captures _mi_envelope_records; the frame owner advances the stamp.
 // A zero base, non-record pointer or missing/currently unowned pair falls through.
 // Save SIMD pairs in 8-byte slots; restore status and all touched input registers.
 .SECTION/PM seg_pmco;

@@ -327,6 +327,50 @@ def frame(rig):
     return rig.sess.peek(rig.built.data["_mi_carrier_stamp"] // 4)
 
 
+def bind_workspace(rig, base):
+    result = rig.sess.call(
+        "_mi_workspace_entry",
+        {"I1": base - 0xD604, "L1": 0, "MODE1": 0x1011800},
+        max_steps=30,
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    assert rig.sess.peek(rig.built.data["_mi_envelope_records"] // 4) == base
+
+
+@pytest.mark.parametrize("simd", [False, True])
+@pytest.mark.parametrize("workspace", [0x20080000, 0x200A0000])
+def test_workspace_hook_preserves_stock_context_and_adjacent_stamp(
+    spec, simd, workspace
+):
+    rig = make_rig(spec)
+    regs = {f"R{i}": 0x12340000 + i for i in range(16)}
+    regs.update({f"S{i}": 0x56780000 + i for i in range(16)})
+    regs.update(
+        I1=workspace,
+        L1=0,
+        MODE1=0x1011800 | (0x200000 if simd else 0),
+        ASTATX=0x1234,
+        ASTATY=0x4321,
+        STKYX=0x15,
+        STKYY=0x26,
+    )
+    stamp = rig.built.data["_mi_carrier_stamp"] // 4
+    rig.sess.poke(stamp, 0xDEADBEEF)
+    rig.sess.runner.breakpoints |= {rig.sess.symbols["_mi_workspace_next"]}
+    result = rig.sess.call(
+        "_mi_workspace_entry", regs, max_steps=30, read_regs=tuple(regs)
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    assert {name: result["regs"][name] for name in regs} == {
+        **regs,
+        "I1": workspace + 0xD604,
+    }
+    assert (
+        rig.sess.peek(rig.built.data["_mi_envelope_records"] // 4) == workspace + 0xD604
+    )
+    assert rig.sess.peek(stamp) == 0xDEADBEEF
+
+
 @pytest.mark.parametrize("track", [0, 15])
 @pytest.mark.parametrize("reset", [False, True])
 def test_render_publishes_once_for_both_voices_and_keeps_reset_tails(
@@ -348,7 +392,7 @@ def test_render_publishes_once_for_both_voices_and_keeps_reset_tails(
     # The real envelope interposer consumes the render's publication, with no
     # harness copying of carrier flags or stamps between these boundaries.
     base = 0x20096000
-    rig.sess.poke(rig.built.data["_mi_envelope_records"] // 4, base)
+    bind_workspace(rig, base)
     for voice in (track * 2, track * 2 + 1):
         rig.sess.poke(dv.STACK // 4 + 1, 7)
         rig.sess.poke(dv.STACK // 4 + 2, 9)

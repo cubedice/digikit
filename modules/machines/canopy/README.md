@@ -83,7 +83,8 @@ core adapter after each even-voice render. Connected component tests exercise
 frame expiry, stereo sharing, envelope argument substitution and retirement
 after configuration loss or reset. The final tail block remains ACTIVE; QUIET
 and shared release occur on the following empty block. These sources are still
-uninstalled, and the tests supply the stock envelope-record base explicitly.
+uninstalled. Connected tests now execute the workspace capture shim with a
+synthetic workspace pointer instead of writing the envelope-record base directly.
 
 These checks do not establish stock AMP lifetime, final track output, MIDI latency
 or device performance. The current V1 contract path skips inactive stock voices

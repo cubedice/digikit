@@ -24,6 +24,7 @@ FIRMWARE_SHA = "26c22f6652625ac2cfd47f7ee970d388ed8b6427dae3563c0a6a2f2d334350d5
 BLOB_SHA = "0f514a12a2255f5c081e292c47f1f29462003177658da4bbae0a22fd737fffa2"
 ARM, ENVELOPE = 0x1C4EAF, 0x1CBB57
 CONFIGURE = 0x1CBA9E
+WORKSPACE = 0x1C648A
 STACK, RECORD, BUFFER, SAMPLE_RECORD = (
     0x20090000,
     0x20091000,
@@ -40,7 +41,10 @@ def carrier_policy(blob):
         / "modules/core/adapters/midi-events/src/dsp/carrier.s"
     )
     obj = pk_sharc.assemble(
-        path.read_text() + "\n" + path.with_name("envelope.s").read_text()
+        "\n".join(
+            path.with_name(name).read_text()
+            for name in ("carrier.s", "envelope.s", "workspace.s")
+        )
     )
     address = 0x20094000
     sections, initial = {}, {}
@@ -55,7 +59,13 @@ def carrier_policy(blob):
         for name, (section, offset, _) in obj.data_symbols.items()
     }
     linked = pk_sharc.link(
-        obj, 0xB90000, {**symbols, "_mi_envelope_next": ENVELOPE + 3}
+        obj,
+        0xB90000,
+        {
+            **symbols,
+            "_mi_envelope_next": ENVELOPE + 3,
+            "_mi_workspace_next": WORKSPACE + 3,
+        },
     )
     jump = pk_sharc.link(
         pk_sharc.assemble(
@@ -64,9 +74,16 @@ def carrier_policy(blob):
         ENVELOPE,
         linked.symbols,
     )
+    workspace_jump = pk_sharc.link(
+        pk_sharc.assemble(
+            ".SECTION/PM seg_pmco;\n.EXTERN _mi_workspace_entry;\nJUMP _mi_workspace_entry;\n"
+        ),
+        WORKSPACE,
+        linked.symbols,
+    )
     blocks = list(parse_blocks(blob))
     image = blob
-    for code in (linked, jump):
+    for code in (linked, jump, workspace_jump):
         blocks.append(
             {
                 "target_address": 0x28000000 + 2 * code.base_sw,
@@ -130,12 +147,35 @@ def carrier_policy(blob):
             for i in range(count):
                 address = symbols[name] + 4 * i
                 put(runner, address, session.peek(address // 4))
-        put(runner, symbols["_mi_envelope_records"], RECORD)
         put(runner, symbols["_mi_carrier_stamp"], stamp)
         stamp += 1
         return pair
 
-    return step, memory, initial
+    return step, memory, initial, symbols
+
+
+def bind_workspace(runner, workspace):
+    """Run the original dispatcher's pointer setup, including our capture hook."""
+    stop = 0x1C649F  # after stock stores its computed bank at I6-25
+    runner = runner.fresh_call(
+        0x1C6479,
+        regs={
+            "R4": workspace,
+            "R8": BUFFER,
+            "I6": STACK,
+            "L1": 0,
+            "L2": 0,
+            "L3": 0,
+            "MODE1": 0x1011800,
+        },
+        return_address=END,
+    )
+    runner.breakpoints |= {stop}
+    result = runner.run(100)
+    if result.halt.reason != "breakpoint" or result.final_pc_sw != stop:
+        raise RuntimeError(f"workspace capture failed: {result.halt.to_json()}")
+    runner.breakpoints -= {stop}
+    return runner
 
 
 def put(runner, address, value):
@@ -202,13 +242,20 @@ def probe(firmware: Path, blocks: int):
     blob = sections_of(firmware)[7]
     if hashlib.sha256(blob).hexdigest() != BLOB_SHA:
         raise ValueError("unexpected DT2 1.17 DSP blob")
-    policy, memory, initial = carrier_policy(blob)
+    policy, memory, initial, symbols = carrier_policy(blob)
     runner = Runner(memory, ENVELOPE, breakpoints=[END])
     for address, value in initial.items():
         put(runner, address, value)
     for base, words in ((STACK - 256, 128), (RECORD, 11), (SAMPLE_RECORD, 118)):
         for i in range(words):
             put(runner, base + 4 * i, 0)
+    # Exercise relocation as well as initial capture; no direct write to the
+    # hook's envelope-bank pointer is allowed anywhere in this probe.
+    runner = bind_workspace(runner, RECORD - 0xD604 + 0x1000)
+    moved_base = get(runner, symbols["_mi_envelope_records"])
+    runner = bind_workspace(runner, RECORD - 0xD604)
+    captured_base = get(runner, symbols["_mi_envelope_records"])
+    stock_base = get(runner, STACK - 25 * 4)
     runner = call(runner, CONFIGURE)
     configured = record(runner)
     before_arm = record(runner)
@@ -247,6 +294,8 @@ def probe(firmware: Path, blocks: int):
     runner, settled = render(runner)
     recovered = retriggered[-1] == bits(0.25) and settled == [bits(0.25)] * 32
     checks = {
+        "workspace_capture_matches_stock_and_rebinds": moved_base == RECORD + 0x1000
+        and captured_base == stock_base == RECORD,
         "arm_sets_active_and_seed": arm_record == 0x00010001,
         "sample_arm_leaves_separate_envelope_unchanged": arm_preserves_envelope,
         "configured_envelope_wakes": onset[-1] == bits(0.25),
