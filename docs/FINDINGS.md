@@ -2,6 +2,8 @@
 
 Overloop: [performance display and DSP status return on DTII 1.17](findings/77-overloop-display.md) (**[D]**, emulator/component evidence; hardware unverified).
 
+CANOPY: [separate sample activation and sustained stock envelope](findings/78-canopy-carrier.md) (**[D]**, DT2 1.17 firmware component probe; live carrier integration open).
+
 Current targets are **Digitakt II OS 1.16** and **Digitone II OS 1.11**. Older
 sections were written against DT2 1.15C and are kept for their history; where a
 later section corrects one, it is marked **[C]**.

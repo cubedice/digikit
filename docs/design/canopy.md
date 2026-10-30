@@ -175,6 +175,12 @@ restarting after local QUIET. This is pre-AMP evidence only: the test does not r
 the stock envelope, gain or mixer stages. The probe is not a V2 registration or a
 production carrier implementation.
 
+A [firmware component probe](../findings/78-canopy-carrier.md) now establishes a
+sustained path through the stock envelope for 48,000 samples with synthetic
+state, followed by release and retrigger. Sample activation and envelope state
+are separate; calling the sample arm routine alone does not establish AMP wakeup.
+Normal configuration, live flag ownership and final mixer output remain open.
+
 Complete the carrier work in this order:
 
 1. Resolve the activation call and downstream envelope/gain initialization on the

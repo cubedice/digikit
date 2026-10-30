@@ -5554,6 +5554,10 @@ registered type costs +1,120 DSP instructions per block (+0.5 %) and its PCM is 
   also zeroes byte `+0x1b9`; stage A (selectors 0 to 5) clears `+0x1ba` before the render, so `+0x1ba` is not usable.
   The wrapper's contract: a routine marks a running voice by writing a non-zero byte to `+0x1b9`; `+0x1b8 != 0` and
   `+0x1b9 == 0` is a note-on in this block. The sine and the string both retrigger correctly on it (concrete core).
+- **[C] [D] 2026-10-29:** the function label in the following paragraph is superseded by
+  [CANOPY carrier investigation](78-canopy-carrier.md): `0x1cdd8b` has a quantization body;
+  the separate envelope candidate is `0x1cbb57`. The downstream audio measurements below
+  do not identify which particular function applies AMP gain.
 - What the later stages read: nothing in the record. `0x1cdd8b` (second loop of `FUN_1c642a`, 32 passes, a 5-word
   record stride `0x14`) takes each voice's output block and applies the level/envelope gain; the track mix, filter,
   FX and sends follow as for a sample. So the routine writes 32 floats to `R8` and nothing else: the 64-float work
