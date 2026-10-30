@@ -330,9 +330,82 @@ def velocity_lookup(memory):
             raise RuntimeError(f"velocity lookup failed: {result.halt.to_json()}")
         factor = struct.unpack("<f", struct.pack("<I", get(runner, 0x25242C)))[0]
         rows.append(
-            {"velocity": velocity, "curve_index": curve, "cached_factor": factor}
+            {
+                "velocity": velocity,
+                "curve_index": curve,
+                "cached_factor": factor,
+                **velocity_latch_gain(runner, factor),
+            }
         )
     return rows
+
+
+def velocity_latch_gain(runner, factor):
+    """Continue the lookup in the same memory through stock latch and gain.
+
+    The caller's first-voice I2 has advanced one word at 0x1c2d11; the
+    dispatcher's I1 likewise advances at 0x1c66a5. Both address 0x24f02c
+    with +31. We enter bounded slices explicitly, not the live scheduler.
+    """
+    cache, params, gain = 0x24EFB0, 0x200A0000, 0x200A2000
+    sentinel = 0xDEADBEEF
+    for address in (cache + 120, cache + 124, cache + 128):
+        put(runner, address, sentinel)
+    runner.breakpoints = frozenset({0x1C2D31})
+    runner = runner.fresh_call(
+        0x1C33B1,
+        regs={
+            "I1": 0x25242C,
+            "I2": cache,
+            "M4": 0,
+            "M5": 0,
+            "M13": 0,
+            "MODE1": 0x1011800,
+            **{f"L{i}": 0 for i in range(16)},
+        },
+    )
+    result = runner.run(20)
+    if result.halt.reason != "breakpoint" or result.final_pc_sw != 0x1C2D31:
+        raise RuntimeError(f"velocity latch failed: {result.halt.to_json()}")
+    latched = get(runner, cache + 124)
+    guards = all(get(runner, cache + offset) == sentinel for offset in (120, 128))
+    # A later input-cache change must not affect the latched value until the
+    # stock copy runs again. This distinguishes the two possible hook sites.
+    put(runner, 0x25242C, bits(0.125))
+    targets = []
+    for control in (1.0, 0.5, 0.0):
+        for address, value in (
+            (params - 128, bits(control)),
+            (params + 16, 0),
+            (cache + 444, 0),
+            (gain, 0),
+        ):
+            put(runner, address, value)
+        runner.breakpoints = frozenset({0x1C6A49})
+        runner = runner.fresh_call(
+            0x1C6A28,
+            regs={
+                "I5": params,
+                "I1": cache,
+                "I3": gain,
+                "I11": cache,
+                "R14": bits(1.0),
+                "M5": 0,
+                "M7": 0xFFFFFFFF,
+                "MODE1": 0x1011800,
+                **{f"L{i}": 0 for i in range(16)},
+            },
+        )
+        result = runner.run(100)
+        if result.halt.reason != "breakpoint" or result.final_pc_sw != 0x1C6A49:
+            raise RuntimeError(f"latched gain failed: {result.halt.to_json()}")
+        targets.append(struct.unpack("<f", struct.pack("<I", get(runner, gain)))[0])
+    return {
+        "latch_copies_lookup_with_guards": latched == bits(factor) and guards,
+        "latched_gain_targets": targets,
+        "latched_gain_preserves_control": targets == [2 * factor, 0.5 * factor, 0],
+        "input_change_does_not_rewrite_latch": get(runner, cache + 124) == latched,
+    }
 
 
 def configure_from_dispatcher(runner):
@@ -596,6 +669,12 @@ def probe(firmware: Path, blocks: int):
         velocity_measurements[5]["cached_factor"]
         < velocity_measurements[9]["cached_factor"]
     )
+    for key in (
+        "latch_copies_lookup_with_guards",
+        "latched_gain_preserves_control",
+        "input_change_does_not_rewrite_latch",
+    ):
+        checks[key] = all(row[key] for row in velocity_measurements)
     checks["stock_gain_formula_matches_controlled_inputs"] = all(
         row["target"] == row["expected_target"] for row in gain_measurements
     )

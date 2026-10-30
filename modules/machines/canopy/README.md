@@ -94,9 +94,12 @@ caller from synthetic sustained settings. It still bypasses live MIDI ingress,
 instance admission and the final filter/mixer path.
 
 The probe additionally checks the stock gain builder and 32-sample application,
-plus frame-velocity lookup across five curves. Curve 0 is constant across keys,
-a candidate for neutral shared velocity. This does not yet establish an owned
-velocity override or final mixer output.
+plus frame-velocity lookup across five curves. The lookup now continues through
+the stock velocity latch into the gain builder in the same memory; separate
+control attenuation and silence still work. Changing only the upstream cache
+leaves the latched gain unchanged. Curve 0 is constant across keys, a candidate
+for neutral shared velocity. This does not yet establish an owned velocity
+override or final mixer output.
 
 These checks do not establish stock AMP lifetime, final track output, MIDI latency
 or device performance. The current V1 contract path skips inactive stock voices

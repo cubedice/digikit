@@ -30,9 +30,12 @@ do not change the release design's treatment of user AMP controls.
 
 The carrier probe also measures stock downstream gain and all five shared
 velocity curves. Curve 0 produces a constant 127/128 factor across key velocities,
-making it a candidate for the required neutral shared velocity. Its ownership
-hook and connection to final gain remain open; no override is installed. Preserve
-LEVEL and modulation while resolving that connection.
+making it a candidate for the required neutral shared velocity. The probe now
+follows the velocity latch into the gain coefficient builder, preserving separate
+control attenuation and silence. Updating only the incoming cache leaves the
+latched value unchanged. The ownership hook must act before gain construction,
+earlier than current-block render publication; it remains uninstalled. Preserve
+LEVEL and modulation, and prove final output separately.
 
 - Ship a DTII-only experimental module, proposed ID `digikit/canopy`, with an explicitly required new runtime capability. Keep existing V1 machines compatible.
 - Support four foreground pad notes. Additional fixed slots handle one arp note and two shared release tails. Voice count never grows with release time.

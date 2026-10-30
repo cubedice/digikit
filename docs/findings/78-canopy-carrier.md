@@ -185,11 +185,37 @@ cover five velocities on each curve. Curve 0 yields 0.9921875 for every tested
 velocity; curve 2 follows velocity/128; the other curves vary nonlinearly.
 Curve 0 is therefore a candidate for neutral shared velocity while CANOPY keeps
 its local per-note velocity. This is neutral across key velocities, not unity
-gain. The cache's connection to the downstream a/b/c factors and the ownership
-hook still need proof; no velocity override is installed.
+gain. No velocity override is installed.
 
 All 21 report checks passed in the combined bounded run (eight constant-input
 hold blocks, 260 musical blocks, six gain cases and 25 velocity cases).
+
+**[D] Velocity latch reaches the gain builder:** The cache reader at `0x1c33b1`
+loads through I1, then the delayed branch at `0x1c33b5` stores that word into
+`DM(I2+31)` at `0x1c33b8`. For the first voice this is `0x24f02c`: the update
+loop starts I2 at `0x24efac` and advances it at `0x1c2d11`. The dispatcher starts
+its corresponding pointer at workspace +0xdce4 (`0x24efac` with the stock
+workspace), transfers it through M8 into I1, and advances I1 at `0x1c66a5`.
+Its gain read at `0x1c6a2b`, `DM(I1+31)`, therefore reads this latched velocity.
+This identifies factor b; the identities of a and c remain separate questions.
+
+The probe now continues all 25 velocity lookups through this original latch
+and the gain builder in the same memory. It seeds the slice registers explicitly;
+it does not execute the intervening scheduler. Adjacent latch sentinels survive.
+For each curve/velocity it checks gain targets with a=1, 0.5 and 0. With c=1,
+the results are 2*b, 0.5*b and zero. Changing the upstream cache to 0.125 after
+the copy leaves both the latch and these targets unchanged. All 24 aggregate
+checks pass, including the existing musical and audio gain scenarios.
+
+**[O] Ownership override placement:** An upstream cache override alone is
+insufficient: it needs the stock copy to run. Prefer replacing only the velocity
+operand at the coefficient-builder read, leaving the square-law control, clamp,
+machine multiplier and gain ramp intact. Establish ownership before this stage;
+the current-block carrier pair is published later by rendering and cannot serve
+as its admission check. The predicate must include admitted CANOPY instances
+and retiring local tails, reject stale/reset instances once quiet, and preserve
+the stock operand for every other voice. Prove both stereo members, ownership
+changes and DSP context preservation before declaring or installing this hook.
 
 Resolve live configuration delivery and both flag writers before adding
 the hook to the production manifest. Use idle-to-active to start the envelope once; avoid
