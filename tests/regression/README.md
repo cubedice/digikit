@@ -13,6 +13,7 @@ time (the stock project may run files in parallel, `REGRESSION_JOBS`, set by the
 | `scenarios/` | `fx-dn2`, `fx-dt2` | Stock FX oracles (see [scenarios/README.md](scenarios/README.md)) |
 | `emulator/` | device | Emulator checks that belong to no module: stock-firmware reply record, SHARC instruction semantics |
 | `runtime/` | none | Helpers only (daemon, card, UI and module-install kits) |
+| `runtime/canopy-panic.test.ts` | `canopy-carrier` | Route-scoped channel-mode controls, sustain, panic and stale physical releases |
 | `runtime/canopy-pattern.test.ts` | `canopy-carrier` | Running pattern lookahead, committed-boundary admission and stale-release ownership |
 | `runtime/canopy-reload.test.ts` | `canopy-carrier` | Panel-driven temporary reload, same-pointer invalidation and fresh MIDI audio |
 | `runtime/canopy-carrier.test.ts` | `canopy-carrier` | Emulator-only initialization, machine/pattern re-admission and final PCM without audition |
@@ -222,7 +223,7 @@ It then wakes the carrier with velocity-24 C before adding velocity-127 G,
 measures their mixed output, releases C and measures G alone, and compares that
 G with the same pitch/velocity started from silence. Held windows settle for
 0.25 seconds before measuring at least 24,000 scalar samples. The G-alone RMS
-ratio must be within 2%; the mixed ratio must be 0.95–1.10 to allow low C's energy
+ratio must be within 2%; the mixed ratio must be 0.95â€“1.10 to allow low C's energy
 and finite-window beating. These bounds detect shared gain inherited from the
 soft first key; they do not prove phase continuity or all velocity curves.
 The extended carrier test has an eight-minute body ceiling.
@@ -257,3 +258,12 @@ six-minute ceiling for the slower-than-real-time coupled engine. UI frames and
 PCM statistics remain under `out/`. No spectral continuity or hardware claim is
 made. Preflight and public V2 initialization remain blocked as described in the
 [carrier findings](../../docs/findings/78-canopy-carrier.md).
+
+The `canopy-carrier` project's `runtime/canopy-panic.test.ts` has a four-minute
+body ceiling. It sends USB CC123 under sustain, then USB CC120 while DIN holds a
+note, and verifies that fresh same-pitch USB notes survive old physical releases.
+After panic clears sustain, CC123 must release the fresh USB notes normally.
+The unaffected DIN note must remain audible (finite RMS above -80 dBFS); DIN panic
+then requires final RMS and peak below -120 dBFS after the usual 0.25-second drain.
+The instance generation must remain unchanged: this tests route-owned controls,
+not a whole-track reset. Artifacts use the `out/canopy-panic-*` prefix.

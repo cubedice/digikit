@@ -23,11 +23,11 @@ _instrument_reset:
     COMP(R0, R1);
     IF NE JUMP _ci_reset_all;
     R5 = DM(8, I0);
-    R0 = LSHIFT R5 BY 6;
+    R0 = LSHIFT R5 BY 7;
     R1 = _cp_pedals;
     R0 = R0 + R1;
     I2 = R0;
-    R2 = 16;
+    R2 = 32;
     CALL _ci_clear_pedals;
     R0 = LSHIFT R5 BY 8;
     R1 = _cp_banks;
@@ -43,7 +43,7 @@ _instrument_reset:
     JUMP _ci_reset_bank;
 _ci_reset_all:
     I2 = _cp_pedals;
-    R2 = 256;
+    R2 = 512;
     CALL _ci_clear_pedals;
     I0 = _cp_banks;
     I1 = _cp_ready;
@@ -107,13 +107,13 @@ _instrument_events:
     R0 = DM(0, I1);
     R0 = PASS R0;
     IF EQ JUMP _ci_reject;
-    R0 = LSHIFT R5 BY 6;
+    R0 = LSHIFT R5 BY 7;
     R1 = _cp_pedals;
     R0 = R0 + R1;
     DM(_ci_pedal_bank) = R0;
     I1 = R0;
     I2 = _ci_pedal_staging;
-    R2 = 16;
+    R2 = 32;
 _ci_snapshot_pedals:
     R0 = DM(I1, M6);
     DM(I2, M6) = R0;
@@ -173,6 +173,9 @@ _ci_on:
     CALL _cp_note_on;
     R0 = PASS R0;
     IF EQ JUMP _ci_reject;
+    CALL _ci_track_owner;
+    R0 = PASS R0;
+    IF EQ JUMP _ci_reject;
 _ci_next_event:
     R0 = DM(_ci_event);
     R1 = 12;
@@ -194,7 +197,7 @@ _ci_commit:
     R0 = DM(_ci_pedal_bank);
     I1 = R0;
     I2 = _ci_pedal_staging;
-    R2 = 16;
+    R2 = 32;
 _ci_commit_pedals:
     R0 = DM(I2, M6);
     DM(I1, M6) = R0;
@@ -240,6 +243,12 @@ _ci_controller:
     R2 = 3;
     COMP(R1, R2);
     IF NE JUMP _ci_reject;
+    R2 = 120;
+    COMP(R12, R2);
+    IF EQ JUMP _ci_all_sound_off;
+    R2 = 123;
+    COMP(R12, R2);
+    IF EQ JUMP _ci_all_notes_off;
     R2 = 121; // Reset All Controllers releases pedal ownership on this route.
     COMP(R12, R2);
     IF EQ JUMP _ci_pedal_up;
@@ -287,6 +296,168 @@ _ci_next_deferred:
     COMP(R0, R1);
     IF LT JUMP _ci_release_deferred;
     JUMP _ci_next_event;
+// Ten token/route entries cover six sounding slots plus four pending onsets.
+// Prune only after a successful onset, then remember its route. State is staged.
+_ci_owner_at:
+    R0 = DM(_ci_owner_index);
+    R0 = LSHIFT R0 BY 3;
+    R1 = _ci_pedal_staging;
+    R0 = R0 + R1;
+    I2 = R0;
+    MODIFY(I2, 9) (NW);
+    RTS;
+_ci_token_alive:
+    I0 = _cp_staging;
+    R2 = 6;
+_ci_alive_voice:
+    R0 = DM(0, I0);
+    COMP(R0, R8);
+    IF EQ JUMP _ci_alive;
+    MODIFY(I0, 8) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _ci_alive_voice;
+    R2 = 4;
+_ci_alive_pending:
+    R0 = DM(0, I0);
+    COMP(R0, R8);
+    IF EQ JUMP _ci_alive;
+    MODIFY(I0, 4) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _ci_alive_pending;
+    R0 = 0;
+    RTS;
+_ci_alive:
+    R0 = 1;
+    RTS;
+_ci_track_owner:
+    R0 = 0;
+    DM(_ci_owner_index) = R0;
+_ci_prune_owner:
+    CALL _ci_owner_at;
+    R8 = DM(0, I2);
+    R8 = PASS R8;
+    IF EQ JUMP _ci_prune_next;
+    CALL _ci_token_alive;
+    R0 = PASS R0;
+    IF NE JUMP _ci_prune_next;
+    DM(0, I2) = R0;
+    DM(1, I2) = R0;
+_ci_prune_next:
+    R0 = DM(_ci_owner_index);
+    R0 = R0 + 1;
+    DM(_ci_owner_index) = R0;
+    R1 = 10;
+    COMP(R0, R1);
+    IF LT JUMP _ci_prune_owner;
+    R0 = 0;
+    DM(_ci_owner_index) = R0;
+_ci_insert_owner:
+    CALL _ci_owner_at;
+    R0 = DM(0, I2);
+    R0 = PASS R0;
+    IF EQ JUMP _ci_insert_here;
+    R0 = DM(_ci_owner_index);
+    R0 = R0 + 1;
+    DM(_ci_owner_index) = R0;
+    R1 = 10;
+    COMP(R0, R1);
+    IF LT JUMP _ci_insert_owner;
+    R0 = 0; // Fail the batch closed if the bank/table invariant is violated.
+    RTS;
+_ci_insert_here:
+    R0 = DM(_ci_event);
+    I0 = R0;
+    R0 = DM(0, I0);
+    DM(0, I2) = R0;
+    R0 = DM(_ci_route_mask);
+    DM(1, I2) = R0;
+    R0 = 1;
+    RTS;
+_ci_all_sound_off:
+    R0 = 1;
+    DM(_ci_panic) = R0;
+    R0 = DM(_ci_pedal_staging);
+    R1 = DM(_ci_route_mask);
+    R1 = NOT R1;
+    R0 = R0 AND R1;
+    DM(_ci_pedal_staging) = R0;
+    // Clear route-owned deferred records without touching other routes.
+    I0 = _ci_pedal_staging;
+    MODIFY(I0, 1) (NW);
+    R2 = 4;
+_ci_panic_deferred:
+    R0 = DM(1, I0);
+    R1 = DM(_ci_route_mask);
+    COMP(R0, R1);
+    IF NE JUMP _ci_panic_deferred_next;
+    R0 = 0;
+    DM(0, I0) = R0;
+    DM(1, I0) = R0;
+_ci_panic_deferred_next:
+    MODIFY(I0, 2) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _ci_panic_deferred;
+    JUMP _ci_route_release;
+_ci_all_notes_off:
+    R0 = 0;
+    DM(_ci_panic) = R0;
+_ci_route_release:
+    R0 = 0;
+    DM(_ci_owner_index) = R0;
+_ci_route_release_next:
+    CALL _ci_owner_at;
+    R8 = DM(0, I2);
+    R8 = PASS R8;
+    IF EQ JUMP _ci_route_advance;
+    R0 = DM(1, I2);
+    R1 = DM(_ci_route_mask);
+    COMP(R0, R1);
+    IF NE JUMP _ci_route_advance;
+    R0 = DM(_ci_panic);
+    R0 = PASS R0;
+    IF NE JUMP _ci_route_panic;
+    R0 = DM(_ci_pedal_staging);
+    R0 = R0 AND R1;
+    IF EQ JUMP _ci_route_normal;
+    CALL _ci_defer_release;
+    JUMP _ci_route_advance;
+_ci_route_normal:
+    R4 = _cp_staging;
+    CALL _cp_note_off;
+    JUMP _ci_route_advance;
+_ci_route_panic:
+    // Cancel pending onsets and fast-ramp every matching sounding slot.
+    I0 = _cp_staging;
+    R2 = 6;
+_ci_panic_voice:
+    R0 = DM(0, I0);
+    COMP(R0, R8);
+    IF NE JUMP _ci_panic_voice_next;
+    R0 = 2;
+    DM(1, I0) = R0;
+_ci_panic_voice_next:
+    MODIFY(I0, 8) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _ci_panic_voice;
+    R2 = 4;
+_ci_panic_pending:
+    R0 = DM(0, I0);
+    COMP(R0, R8);
+    IF NE JUMP _ci_panic_pending_next;
+    R0 = 0;
+    DM(0, I0) = R0;
+_ci_panic_pending_next:
+    MODIFY(I0, 4) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _ci_panic_pending;
+_ci_route_advance:
+    R0 = DM(_ci_owner_index);
+    R0 = R0 + 1;
+    DM(_ci_owner_index) = R0;
+    R1 = 10;
+    COMP(R0, R1);
+    IF LT JUMP _ci_route_release_next;
+    JUMP _ci_next_event;
 _ci_clear_pedals:
     R0 = 0;
 _ci_clear_pedal_word:
@@ -313,9 +484,12 @@ _cp_render_track:
 .PKBSS _cp_staging, 256;
 
 // Per track: 32 route pedal bits, four {deferred token, route mask} records,
-// seven reserved words. Staged together with voices for all-or-nothing batches.
-.PKDATA _cp_pedals, 1024;
-.PKBSS _ci_pedal_staging, 64;
+// ten {live token, route mask} pairs and three reserved words. Staged with voices.
+.PKDATA _cp_pedals, 2048;
+.PKBSS _ci_pedal_staging, 128;
 .VAR _ci_pedal_bank = 0;
 .VAR _ci_route_mask = 0;
 .VAR _ci_release_index = 0;
+
+.VAR _ci_owner_index = 0;
+.VAR _ci_panic = 0;

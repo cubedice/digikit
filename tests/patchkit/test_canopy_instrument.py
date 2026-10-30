@@ -338,3 +338,71 @@ def test_new_epoch_clears_pedals_on_every_track(instrument):
         call("render", track=track)
         _, banks, _ = call(1, [(100 + track, 2, 67, 0)], track=track, epoch=2)
         assert gates(banks, track)[100 + track] == 0
+
+
+@pytest.mark.parametrize("sustain", [False, True])
+def test_all_notes_off_is_route_scoped_and_honors_sustain(instrument, sustain):
+    call = instrument()
+    call(2)
+    call(3)
+    call(4)
+    call(1, [(1, 1, 60, 100), (2, 1, 64, 100)], port=1, channel=15)
+    call(1, [(3, 1, 67, 100)])
+    call("render")
+    if sustain:
+        call(1, [(0, 3, 64, 127)], port=1, channel=15)
+    status, banks, _ = call(1, [(0, 3, 123, 0)], port=1, channel=15)
+    assert status == 1
+    assert gates(banks) == {1: int(sustain), 2: int(sustain), 3: 1}
+    if sustain:
+        _, banks, _ = call(1, [(0, 3, 64, 0)], port=1, channel=15)
+        assert gates(banks) == {1: 0, 2: 0, 3: 1}
+
+
+def test_panic_cancels_pending_and_tails_without_touching_other_routes(instrument):
+    call = instrument()
+    call(2)
+    call(3)
+    call(4)
+    call(1, [(t, 1, 60 + t, 100) for t in range(1, 5)])
+    call("render")
+    call(1, [(0, 3, 64, 127), (1, 2, 61, 0)])
+    call(1, [(t, 1, 60 + t, 100) for t in range(5, 8)])
+    # Add one DIN owner while USB has both tails and queued replacements.
+    call(1, [(8, 1, 72, 100)], port=1)
+    status, banks, _ = call(1, [(0, 3, 120, 0)])
+    assert status == 1
+    assert all(banks[0][i + 1] == 2 for i in range(0, 48, 8) if banks[0][i])
+    assert {banks[0][i] for i in range(48, 64, 4)} == {0, 8}
+    call("render")
+    _, banks, pcm = call("render")
+    assert gates(banks) == {8: 1}
+    assert any(abs(x) > 1e-5 for x in pcm)
+    # Panic cleared the USB pedal; a fresh physical release must not sustain.
+    call(1, [(9, 1, 60, 100)])
+    call("render")
+    assert gates(call(1, [(9, 2, 60, 0)])[1])[9] == 0
+    call(1, [(0, 3, 120, 0)], port=1)
+    call("render")
+    assert 8 not in gates(call("render")[1])
+
+
+def test_panic_and_owner_map_rollback_on_rejected_batch(instrument):
+    call = instrument()
+    call(2)
+    call(3)
+    call(4)
+    call(1, [(1, 1, 60, 100), (0, 3, 64, 127)])
+    call("render")
+    before = call(1, [(1, 2, 60, 0)])[1]
+    status, after, _ = call(1, [(0, 3, 120, 0), (1, 1, 60, 100)])
+    assert status == 0 and after == before
+    assert gates(call(1, [(0, 3, 64, 0)])[1])[1] == 0
+    # A rejected onset cannot leave route ownership that panics another route.
+    assert call(1, [(2, 1, 67, 100), (1, 1, 60, 100)], port=1)[0] == 0
+    assert call(1, [(2, 1, 67, 100)])[0] == 1
+    call("render")
+    assert gates(call(1, [(0, 3, 120, 0)], port=1)[1])[2] == 1
+    assert call(1, [(0, 3, 120, 0)])[0] == 1
+    call("render")
+    assert call("render")[0] == 0

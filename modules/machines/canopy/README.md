@@ -24,18 +24,25 @@ block is always written. Independent banks allow separate track state.
 This is deliberately the lifetime-test kernel, not the finished instrument. It has
 no bend, chord modes, arp or preset controls. These
 operations must not be advertised by a ready instrument yet. The callback layer
-now supports CC64 sustain and CC121 pedal reset, scoped to MIDI port/channel.
+now supports CC64 sustain, CC121 pedal reset, CC123 All Notes Off and CC120
+All Sound Off, scoped to MIDI port/channel.
 
 The callback layer owns sixteen separate voice banks and a 256-byte staging bank.
-Each track additionally has a 64-byte pedal record with 32 route pedal bits and
-four deferred-token/route pairs; a separate 64-byte staging record makes pedal and
+Each track additionally has a 128-byte controller record with 32 route pedal bits and
+four deferred-token/route pairs; a separate 128-byte staging record makes pedal and
 voice changes commit together. CC64 values 64–127 hold released keys; 0–63 release
 only deferred tokens from that route. CC121 clears that route's pedal ownership
 without releasing physically held keys. Reset clears pedal state for the affected
 track (all tracks on epoch reset). Deferred tokens match current foreground or
 pending-replacement ownership; stale stolen tokens cannot release a replacement.
+Ten additional token/route pairs cover six sounding slots and four pending onsets.
+Successful note-on prunes expired owners and records the new owner within the
+same transaction. CC123 releases that route's keys using normal sustain rules.
+CC120 clears its pedal/deferred ownership, cancels pending onsets and applies the
+at-most-64-sample emergency ramp to its sounding voices, including release tails.
+Other ports/channels keep their notes. No new voices or unbounded storage are added.
 It applies each batch to staging and copies back only if every event succeeds.
-Unknown releases are harmless; controllers other than CC64/CC121 and failed note allocation
+Unknown releases are harmless; controllers other than CC64/CC120/CC121/CC123 and failed note allocation
 reject the entire batch. The internal `CPS1` configuration schema accepts exactly
 one word, value 1, selecting the fixed sine proof. It is not the release preset ABI.
 Reset invalidates configuration and ramps affected voices down within 64 samples;

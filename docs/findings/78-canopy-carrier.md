@@ -829,3 +829,46 @@ The updated fixture has SHA-256
 This is still a WERP-shadow emulator fixture, not an installable CANOPY machine.
 Pitch bend, CC120/CC123 handling, public controller capability negotiation,
 compatible-pattern note retention and hardware sustain testing remain open.
+
+
+## Route-owned All Notes Off and All Sound Off [D]
+
+The callback now accepts CC123 and CC120. CC123 applies normal note release to
+its port/channel, deferring under that route's sustain pedal. CC120 clears that
+route's pedal/deferred records, cancels its pending onsets, and marks all its
+sounding voices (including tails) for the existing at-most-64-sample emergency
+ramp. Neither control resets the instance or changes other routes.
+
+The controller record grows from 64 to 128 bytes per track, plus one 128-byte
+scratch record. Ten token/route pairs cover the kernel's six sounding slots and
+four pending replacements. After a successful onset, expired entries are pruned
+against actual bank tokens and the new token is inserted. All metadata commits
+with the voice bank; exhaustion fails the batch closed. The event wire format,
+voice-bank layout and oscillator count are unchanged. Track/epoch resets clear
+the expanded metadata. The CF ledger's existing physical-release tombstones are
+retained; no new CF panic shortcut was added.
+
+All 13 callback component tests pass. New cases cover sustain-aware CC123,
+port 1/channel 15 isolation, panic with both tails and pending replacements,
+fresh release after pedal clearing, and rejected-batch rollback of panic and
+owner insertion. Existing eight-onset burst and reset tests still pass. All 62 carrier component
+checks also pass with the expanded controller state.
+
+The new booted `canopy-panic.test.ts` passes in 97.82 seconds (93.89-second body).
+USB CC123 under sustain preserves C; USB CC120 removes USB C/E while DIN G stays
+held. A fresh same-pitch C survives the old physical C/E releases, with an A
+onset as an ordered USB barrier. A second USB CC123 releases fresh C/A normally,
+proving panic cleared sustain. DIN G remains audible over 24,448 scalar samples:
+RMS 0.0295228973, peak 0.0419733338, all finite. DIN CC120 then retires the last
+voice; after a quarter-second drain, 4,416 scalar samples measure RMS 5.42948e-9
+and peak 9.77889e-9, below -120 dBFS. Generation is unchanged, readiness remains
+active, and no transport/emulator fault is reported.
+
+Fixture SHA-256 is
+`55534a01d0f66f57b7e3b9d3b3bf166c61db86757f8e4c012926e782f3ba4aa3`,
+1,935,008 bytes, 39 writes. Evidence is under `out/canopy-panic-*`.
+The 64-sample bound is a kernel/component property; the live test proves settled
+final quietness, not a sample-aligned final-output stop bound. Pitch bend,
+public V2 registration, compatible-pattern retention, latch/arp ownership and
+hardware testing remain open. The current sine fixture has no latch or arp to
+clear; those future owners must join the route panic transaction.
