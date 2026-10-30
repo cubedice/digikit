@@ -174,6 +174,30 @@ impl Registry {
         Ok(ticket)
     }
 
+    pub(crate) fn reserved_entries(
+        &self, ticket: Ticket,
+    ) -> Result<[Option<Entry>; MAX_ROWS], Error> {
+        let mut entries = [None; MAX_ROWS];
+        let mut found = false;
+        for (i, row) in self.rows.iter().enumerate() {
+            if row.phase != FREE
+                && row.entry.owner == ticket.owner
+                && row.entry.generation == ticket.generation
+            {
+                if row.phase != RESERVED {
+                    return Err(Error::WrongPhase);
+                }
+                entries[i] = Some(row.entry);
+                found = true;
+            }
+        }
+        if found {
+            Ok(entries)
+        } else {
+            Err(Error::StaleTicket)
+        }
+    }
+
     /// Physical row identities for one reservation, including retiring rows.
     pub(crate) fn row_mask(&self, ticket: Ticket) -> Result<u32, Error> {
         let mut mask = 0;

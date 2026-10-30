@@ -11,6 +11,8 @@ pub mod instrument_registry;
 pub mod instrument_load;
 /// Experimental V2 mailbox transactions; no device capability is enabled.
 pub mod instrument_mailbox;
+/// Experimental validation/planning of allocator-owned V2 row metadata.
+pub mod instrument_admission;
 
 /// Version of the `Api` table layout. A field is only ever appended; `Api::size` tells a module how much is there.
 pub const API_VERSION: u32 = 1;

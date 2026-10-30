@@ -430,6 +430,28 @@ references and recurring timer assertion (192 host tests passed, 16 skipped); th
 timer passes an isolated rerun (`out/canopy-mailbox-scheduler-timing.log`). No
 device or hardware acceptance is claimed.
 
+An internal admission planner in `modules/core/runtime/sdk/src/instrument_admission.rs`
+now validates ticket-bound allocator grants against reserved physical rows before
+transfer. It checks exact type coverage, L2/image/state bounds, non-overlap,
+executable callback extents, instance allocation and declared budgets. It produces
+inert fixed-size row metadata only after the whole batch succeeds. The trusted
+caller must still obtain exclusive grants, validate instruction boundaries and
+supply remaining resource ceilings; the planner neither allocates nor enables the
+DSP gate. Live allocator/SPI integration and V1/builtin type exclusion remain open.
+
+This exposed a stride mismatch: descriptor allocation rounds each state to eight
+bytes, while the row worker previously advanced by the raw state size. The worker
+now uses the same rounded stride and preserves padding. A processor regression
+covers three 12-byte states at 16-byte intervals through the protected lifecycle.
+Validation: 19 admission/registry/load/mailbox Rust tests pass
+(`out/canopy-admission.log`), and 29 protected row/mailbox DSP cases pass
+(`out/canopy-admission-dsp.log`). The registry adapter rebuilds and re-decodes
+560 instructions (`out/canopy-admission-build.log`). Focused documentation checks
+pass. The changed-file check passes 193 host tests (16 skipped), formatting,
+layering and types; it fails only on the existing pathcheck baseline of 256 stale
+references in 78 files (`out/canopy-admission-changed.log`). No live admission is
+claimed.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

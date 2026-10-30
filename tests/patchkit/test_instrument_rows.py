@@ -234,3 +234,13 @@ def test_cancel_before_first_tick_never_calls_reset(rows):
     rows("_ir_row_begin", operation=3)
     result = rows()
     assert result["rows"][0] == 6 and result["calls"][0] == 0
+
+
+def test_odd_word_states_keep_eight_byte_stride_and_padding(rows):
+    rows("_ir_row_begin", fields={5: 3})
+    for index in range(3):
+        result = rows()
+        assert result["calls"][:4] == [index + 1, 0x20050000 + index * 16, 1, 0]
+    assert result["state"][:12] == [1, 0, 0, 0xDEADBEEF] * 3
+    assert result["state"][12:] == [0xDEADBEEF] * 52
+    assert rows()["rows"][0] == 3

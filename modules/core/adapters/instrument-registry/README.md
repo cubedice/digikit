@@ -197,3 +197,32 @@ before sending detach; this DSP scheduler does not establish transport quiescenc
 protected row work and the shared checksummed reply together, with test-only
 admission and synthetic V2 callbacks. It covers delayed completion, replay,
 command-buffer mutation, stale identity, partial failure and the disabled gate.
+
+## Host admission planning
+
+The internal no-std `instrument_admission` component validates an entire reserved
+module before returning row metadata. It binds an allocator grant to the exact
+reservation ticket and physical rows, accepts only pre-transfer reservations,
+and requires an exact type match. Image/state grants must be disjoint, aligned,
+and inside the caller's available L2 range (within DTII's 512 KiB L2 bound).
+Every type's full state allocation must fit its grant without overlapping another
+type. Row arena bounds are narrowed to that type's allocation.
+
+Instances use the descriptor format's eight-byte stride: `align_up(state_bytes,
+8)`. The DSP row worker now advances by that stride while clearing only the declared
+state words, preserving padding. A 12-byte state therefore advances 16 bytes.
+Reset and process entries must fit a full six-byte instruction inside a supplied
+executable extent; a whole image including data is not an executable extent.
+
+Admission checks nonzero reset/process budgets, total per-track process cost,
+stack/call depth, event/control limits, and reset cost including the clear loop
+and caller-supplied wrapper/scheduler overhead. The caller must supply remaining
+process capacity and a conservative measured overhead bound. Declared callback
+budgets are not runtime enforcement or proof that code meets them.
+
+The planner does not discover ownership, allocate memory, install rows, enable the
+lifecycle gate, transfer images or publish dispatch. The trusted loader must obtain
+exclusive grants from its allocator, validate executable boundaries from parsed
+image metadata, exclude V1/builtin type conflicts, and retain memory through detach.
+The current tests supply synthetic grants; production allocator and SPI integration
+remain open. Failed planning leaves all reservations and DSP state unchanged.

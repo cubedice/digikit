@@ -140,6 +140,13 @@ impl Loads {
         Ok(Command::Release(ticket))
     }
 
+    pub(crate) fn admission_entries(
+        &self, ticket: Ticket,
+    ) -> Result<[Option<Entry>; MAX_ROWS], Error> {
+        self.at(ticket, RESERVED)?;
+        self.registry.reserved_entries(ticket)
+    }
+
     /// Bind a mailbox transaction to the current phase and exact physical rows.
     pub(crate) fn command_rows(&self, command: Command) -> Result<u32, Error> {
         let ticket = match command {

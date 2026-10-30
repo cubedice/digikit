@@ -136,7 +136,10 @@ _irr_cursor_valid:
     R12 = DM(8, I0);
     R9 = DM(9, I0);
     R10 = DM(10, I0);
-    R0 = LSHIFT R5 BY 2;
+    // Descriptor allocation uses eight-byte instance alignment.
+    R0 = R5 + 1;
+    R0 = LSHIFT R0 BY -1;
+    R0 = LSHIFT R0 BY 3;
     R2 = PASS R3;
     IF EQ JUMP _irr_offset_done;
 _irr_offset:
