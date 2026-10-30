@@ -38,7 +38,7 @@ def test_sound_loader_window_matches_image():
     assert all(actual[k] == pinned[k] for k in actual)
 
 
-def test_same_type_reload_closes_before_copy_and_balances_lifetime(tmp_path):
+def test_sound_load_and_pattern_admission_lifetimes(tmp_path):
     runner = Path(
         os.environ.get("DIGIKIT_CF_SCRIPT", ROOT / "target/release/examples/cf_script")
     )
@@ -74,6 +74,16 @@ def test_same_type_reload_closes_before_copy_and_balances_lifetime(tmp_path):
                 "tag": str(case),
             }
         )
+    for case in range(4):
+        ops.append(
+            {
+                "op": "call",
+                "pc": linked.symbols["cp_pattern_case"],
+                "args": [case],
+                "max": 100000,
+                "tag": f"pattern-{case}",
+            }
+        )
     script = tmp_path / "script.json"
     script.write_text(json.dumps(ops))
     result = subprocess.run(
@@ -84,6 +94,6 @@ def test_same_type_reload_closes_before_copy_and_balances_lifetime(tmp_path):
         json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")
     ]
     calls = [r for r in rows if r.get("op") == "call"]
-    assert len(calls) == 4
+    assert len(calls) == 8
     for row in calls:
         assert row["ok"] and not row.get("error") and row["d0"] == 0, json.dumps(calls)

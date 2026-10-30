@@ -6,6 +6,7 @@ extern uint32_t cp_project(void);
 extern uint32_t cp_kit(uint32_t project);
 extern void cp_refresh(uint32_t source, uint32_t track);
 extern uint32_t pp_current_pattern(void);
+extern volatile uint32_t pp_position[16];
 /* state, current source, refresh count, pattern, invalidations, machine type */
 volatile uint32_t cp_admission[8];
 extern uint32_t dkrt_irq_mask(void);
@@ -41,7 +42,26 @@ static uint32_t sound(uint32_t *project, uint32_t *kit)
 int canopy_carrier_prepare(int allow_refresh)
 {
     if (cp_admission[6]) return 0;
-    uint32_t project=0, kit=0, pattern=pp_current_pattern();
+    uint32_t sr=dkrt_irq_mask();
+    uint32_t pattern=pp_current_pattern(), running=pp_position[14] == 1;
+    uint32_t flags=pp_position[5], committed=pp_position[6];
+    dkrt_irq_restore(sr);
+    if (running) {
+        if ((flags & 3) != 3 || !committed) {
+            /* Unknown timing cannot authorize a new generation. */
+            if (cp_admission[0]) {
+                cp_admission[0]=0;
+                ++cp_admission[4];
+                return -1;
+            }
+            return 0;
+        }
+        /* The scheduler can expose destination Sound/kit data before playback.
+         * Keep the source ownership; never refresh from those early pointers.
+         * An in-place loader can still close admission first for safety. */
+        if (pattern != committed) return cp_admission[0] ? 1 : 0;
+    }
+    uint32_t project=0, kit=0;
     uint32_t source=sound(&project,&kit);
     uint32_t type=source ? *(const uint8_t *)(uintptr_t)(source+0xa2) : UINT32_MAX;
     uint32_t changed=project != last_project || kit != last_kit ||

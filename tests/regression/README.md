@@ -13,6 +13,7 @@ time (the stock project may run files in parallel, `REGRESSION_JOBS`, set by the
 | `scenarios/` | `fx-dn2`, `fx-dt2` | Stock FX oracles (see [scenarios/README.md](scenarios/README.md)) |
 | `emulator/` | device | Emulator checks that belong to no module: stock-firmware reply record, SHARC instruction semantics |
 | `runtime/` | none | Helpers only (daemon, card, UI and module-install kits) |
+| `runtime/canopy-pattern.test.ts` | `canopy-carrier` | Running pattern lookahead, committed-boundary admission and stale-release ownership |
 | `runtime/canopy-reload.test.ts` | `canopy-carrier` | Panel-driven temporary reload, same-pointer invalidation and fresh MIDI audio |
 | `runtime/canopy-carrier.test.ts` | `canopy-carrier` | Emulator-only initialization, machine/pattern re-admission and final PCM without audition |
 | `runtime/canopy-transport.test.ts` | `canopy-transport` | Emulator-only CANOPY MIDI/reset/configuration/event ACKs with real DSP |
@@ -226,8 +227,13 @@ again. A new C survives the old C release; C/G then produce finite PCM above -80
 dBFS RMS. Their release retires both voices, followed by a quarter-second drain
 and a separate final-output window below -120 dBFS RMS and peak. This test has a
 three-minute body ceiling and can run alone by appending
-`runtime/canopy-reload.test.ts` to the command above. Running/queued pattern changes
-and other UI load paths are not covered. The separate
+`runtime/canopy-reload.test.ts` to the command above. The `runtime/canopy-pattern.test.ts` companion prepares WERP on two patterns,
+starts playback, holds C and queues a switch. It requires observing scheduled
+lookahead, unchanged source generation until commitment, destination re-admission,
+and fresh C/G ownership despite an old C release. It has a four-minute body
+ceiling. Its trace rejects samples spanning a committed boundary; it does not
+measure PCM continuity. Other clock modes, pause/resume, rapid or cancelled
+switches, and other UI load paths are not covered. The separate
 `tests/patchkit/test_canopy_sound_load.py` component proof runs the real stock
 deserializer with synthetic records, including unrelated and rejected loads.
 The test has a

@@ -115,6 +115,7 @@ CARRIER_EXTERNS = {
     "_mi_velocity_next": "dsp.voice.site.velocity_operand.next",
 }
 CARRIER_IMPORTS = {
+    "pp_position",
     "canopy_carrier_suspend",
     "dkrt_irq_mask",
     "dkrt_irq_restore",

@@ -7,9 +7,11 @@ extern void cp_sound_end(uint32_t);
 extern int canopy_carrier_prepare(int);
 static uint32_t sound[1024], other[1024], record[280];
 static uint32_t resets, old_marker, blocked;
-uint32_t cp_project(void) { return 0; }
+volatile uint32_t pp_position[16];
+static uint32_t scheduled, project_reads;
+uint32_t cp_project(void) { ++project_reads; return 0; }
 uint32_t cp_kit(uint32_t p) { (void)p; return 0; }
-uint32_t pp_current_pattern(void) { return 0; }
+uint32_t pp_current_pattern(void) { return scheduled; }
 void cp_refresh(uint32_t s, uint32_t t) { (void)s; (void)t; }
 uint32_t dkrt_irq_mask(void) { return 0x2700; }
 void dkrt_irq_restore(uint32_t sr) { (void)sr; }
@@ -54,4 +56,25 @@ uint32_t cp_sound_case(uint32_t kind)
         if (kind==1 && other[0]!=record[2]) return 8;
     }
     return 0;
+}
+
+/* Exercise admission itself, including whether it touches early Sound pointers. */
+uint32_t cp_pattern_case(uint32_t kind)
+{
+    for (uint32_t i=0;i<8;++i) cp_admission[i]=0;
+    for (uint32_t i=0;i<16;++i) pp_position[i]=0;
+    project_reads=0;
+    scheduled=0x47000000;
+    pp_position[6]=0x47100000;
+    pp_position[14]=1;
+    pp_position[5]=3;
+    cp_admission[0]=1;
+    if (kind==1) cp_admission[0]=0; /* Load already invalidated the source. */
+    if (kind==2) pp_position[5]=2;  /* Running but no trustworthy boundary. */
+    if (kind==3) pp_position[6]=scheduled;
+    int result=canopy_carrier_prepare(1);
+    if (kind==0) return result!=1 || project_reads || cp_admission[0]!=1;
+    if (kind==1) return result!=0 || project_reads || cp_admission[0];
+    if (kind==2) return result!=-1 || project_reads || cp_admission[0] || cp_admission[4]!=1;
+    return result!=-1 || project_reads!=1 || cp_admission[0] || cp_admission[4]!=1;
 }

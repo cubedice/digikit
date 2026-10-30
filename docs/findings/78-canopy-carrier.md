@@ -683,3 +683,45 @@ no non-finite samples. After both note-offs and a quarter-second drain, a separa
 4,480-sample window had zero RMS and peak. The test requires only values below
 -120 dBFS, not bit-exact zero, and reports no transport or emulator faults. This
 proves settled output quietness; it does not establish click-free transitions.
+
+
+## Running pattern admission waits for commitment [D]
+
+The first booted running-switch test failed the source-ownership assertion:
+CANOPY advanced generation before the destination's timed boundary committed.
+The fixture had treated `pp_current_pattern()` as an immediately active pattern,
+even though finding 76 identifies that value as scheduled ahead of playback.
+
+Preparation now snapshots scheduled identity, committed identity, flags and
+transport together with interrupts masked. During valid running lookahead it
+retains an already-prepared source without reading destination Sound/kit data.
+If the source was already invalidated by a Sound load, it stays unprepared until
+scheduled and committed identities agree. Missing valid running-position data
+invalidates preparation and closes routes rather than authorizing a refresh.
+Stopped selection keeps its existing immediate behavior. The Sound deserializer
+still takes priority: mutating the tracked object can close ownership before a
+boundary, so this is not a promise to sustain notes through every load path.
+
+The expanded ColdFire component proof passes: four existing Sound-loader cases
+plus four preparation cases covering retained source, already-invalidated source,
+invalid running position, and resolution after commitment. The first two prove
+that preparation does not even consult the early project/Sound accessor.
+
+The booted `canopy-pattern.test.ts` passed in 137.81 seconds with fixture SHA-256
+`af6bb0f505ec3ed0a989a4de582ab7a8b78c4233bfdbca9916e4c45e761b9cbd`.
+It prepares WERP on two patterns, starts internal-clock playback, holds USB C,
+and queues a switch. The trace contains 144 coherent source samples, one
+scheduled-destination/committed-source sample, and one committed-destination
+sample, all still generation 5. The following polls confirm generation 6, empty
+old banks and ready configuration. After STOP, a new C survives its predecessor's
+release; a following G acts as the ordered USB barrier, and both fresh voices
+retire after their releases. No transport or emulator fault is reported.
+
+Trace samples spanning a changed boundary sequence are discarded. This is
+ownership-order evidence, not a sample-accurate reset timestamp or PCM continuity
+proof. UI polling and reset/configuration acknowledgements can delay re-admission
+past the boundary. Invalid position during initial PLAY may reset the previous
+instance; the test establishes its source generation after valid running
+position and readiness. Pause/resume, external clock, rapid/cancelled switches,
+other track layouts, in-place destination loads and hardware remain unproven.
+Logs and the trace remain under `out/canopy-pattern-*`.
