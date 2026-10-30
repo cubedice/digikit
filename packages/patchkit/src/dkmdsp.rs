@@ -1110,6 +1110,12 @@ mod tests {
         assert_eq!(crate::sdkgen::embedded().machine, (1, 0));
         // Until the runtime has V2 registration, its resource checker also refuses it.
         assert!(crate::dkm::needs(&file).is_err());
+        let needs = dkneeds::needs_of_v2(&mut file.as_slice()).unwrap();
+        assert_eq!(needs.base.dsp_area, section.range_len());
+        assert_eq!(needs.base.voice_rows, 0);
+        assert_eq!(needs.instruments.rows, 1);
+        assert_eq!(needs.instruments.tracks, 2);
+        assert_eq!(needs.instruments.state_bytes, 528);
     }
 
     #[test]

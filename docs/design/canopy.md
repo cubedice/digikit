@@ -215,7 +215,7 @@ this magic rather than interpreting it as a V1 voice. Existing V1 layouts and th
 advertised machine contract remain unchanged at 1.0.
 
 This is a serialization checkpoint, not completed V2 registration. Remaining:
-runtime resource accounting and validation/allocation; DSP callback dispatch and
+runtime registry/capacity integration and validation/allocation; DSP callback dispatch and
 lifecycle ownership; conversion of the sine fixture and conformance checks.
 The `DK_INSTRUMENT` C macro and `.dk.desc` record kind 6 now declare reset/process
 callbacks and their descriptor as distinct typed instruments. Reading a dynamic
@@ -236,10 +236,20 @@ descriptor to initialized data. Parsing checks bounded counts, descriptor budget
 aggregate allocation, duplicate types (including V1 collisions), table layout and
 reserved bytes. A V5 DKM requests machine contract 2.0, while the current runtime
 still advertises 1.0 and rejects that major version before allocation. This is a
-format/header proof, not an emulator load proof. The existing `dkneeds` resource
+format/header proof, not an emulator load proof. The normal `dkneeds::needs_of` resource
 checker also continues to reject V5; do not interpret host serialization as a
 loadable module. Public module packing remains guarded. Next: define the runtime
-instrument registry and resource accounting, then implement callback dispatch.
+instrument registry and capacity protocol, then implement callback dispatch.
+The experimental `dkneeds::needs_of_v2` API now computes V2 memory requirements
+without allocation: total DSP storage plus separate instrument rows, track
+instances and state bytes. Legacy scan/fit callers remain on `needs_of`, which
+rejects V5. This avoids losing an instrument requirement in the old capacity ABI.
+The parser checks descriptors, table layout, duplicate types and overflow;
+cycle/stack ceilings and full load validation remain the runtime's responsibility.
+Accounting validation: 14 `dkneeds` tests, ten DSP packer tests (including a real
+V2 file/accounting cross-check), and nine existing runtime-fit tests pass. Logs
+are under `out/canopy-v2-needs*.log`. The two edited design documents have no stale
+references. No emulator/device admission is claimed by this checkpoint.
 Validation: ten DSP serialization tests and seven DKM compatibility tests pass
 (`out/canopy-v5-tests.log` and `out/canopy-v5-dkm-tests.log`). The required
 changed-file check passes layering but still reports the existing 256 stale

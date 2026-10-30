@@ -201,8 +201,9 @@ type 0's (finding 30). A machine that clones SAMPLE, like `pluck`, is right alre
 
 ### Experimental persistent instruments (DKDS 5)
 
-The host packer can encode version 5 for V2 instruments. The shipped runtime and
-`dkneeds` do not yet support it. The outer DKM requests **machine contract 2.0**;
+The host packer can encode version 5 for V2 instruments. The shipped runtime
+does not yet support it. The experimental `dkneeds::needs_of_v2` entry point can
+account for its memory requirements. The outer DKM requests **machine contract 2.0**;
 the runtime still advertises 1.0, so its contract check rejects these files before
 allocation. Public module packing remains disabled pending registration/dispatch.
 
@@ -226,7 +227,13 @@ image/BSS, voice and effect storage; the total is rounded to 64 bytes. Descripto
 validation checks arithmetic overflow and caller-supplied admission ceilings,
 including aggregate instrument state. Host parsing checks format bounds only;
 real device admission must apply device-specific ceilings. No V2 records are
-counted as V1 voice rows. The runtime resource model is still to be implemented.
+counted as V1 voice rows. `needs_of_v2` returns existing resource totals plus
+separate instrument row, track-instance and aligned state-byte counts, using
+bounded stack storage and checked 32-bit arithmetic. It validates descriptor
+structure and table bounds, but does not check signatures, imports, relocation
+contents or device-specific cycle/stack admission limits. It is not a load check.
+The normal `needs_of` entry point still rejects V5, keeping the scan/fit ABI and
+capacity protocol unchanged until an instrument registry is implemented.
 
 ## What the loader checks, in order (nothing is written to the arena before the last one)
 

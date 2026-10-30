@@ -522,3 +522,162 @@ fn sample_bank_v5_counts_owned_bss_and_rejects_bad_records() {
     dsp[image_off] = 1;
     assert_eq!(of(&dkm(4, 0, &[], &dsp)), Err(Error::Dsp));
 }
+
+/// Canonical V5 section: two independent track states, no V1 voices.
+fn dsp_section_v5() -> Vec<u8> {
+    let mut s = vec![0u8; 160];
+    for (at, value) in [
+        (0, DSP_MAGIC),
+        (4, 5),
+        (8, 1),
+        (0x0c, 64),
+        (0x10, 8),
+        (0x14, 16),
+        (0x18, 96),
+        (0x1c, 80),
+        (0x24, 80),
+        (0x2c, 80),
+        (0x34, 80),
+        (0x40, 80),
+        (0x44, 1),
+        (80, 17),
+        (84, 0),
+        (88, 6),
+        (92, 16),
+    ] {
+        put(&mut s, at, value);
+    }
+    let d: [u32; 12] = [0x444b4954, 2, 48, 0, 2, 260, 8, 32, 20000, 2000, 4, 64];
+    for (i, w) in d.iter().enumerate() {
+        s[112 + i * 4..116 + i * 4].copy_from_slice(&w.to_le_bytes());
+    }
+    s
+}
+
+#[test]
+fn v2_accounting_is_explicit_and_keeps_instruments_out_of_voice_rows() {
+    let file = dkm(4, 0, &[], &dsp_section_v5());
+    assert_eq!(of(&file), Err(Error::Dsp));
+    let n = needs_of_v2(&mut file.as_slice()).unwrap();
+    assert_eq!(
+        n.instruments,
+        InstrumentNeeds {
+            rows: 1,
+            tracks: 2,
+            state_bytes: 528
+        }
+    );
+    assert_eq!(n.base.voice_rows, 0);
+    assert_eq!(n.base.dsp_area, 640); // align64(64 + 8 + 2 * align8(260))
+    assert_eq!(n.base.arena_xfer, 80);
+    let old = dkm(4, 0, &[], &dsp_section(3, 8, 100, &[(20, 3)]));
+    let v2 = needs_of_v2(&mut old.as_slice()).unwrap();
+    assert_eq!(v2.base, of(&old).unwrap());
+    assert_eq!(v2.instruments, InstrumentNeeds::default());
+}
+
+#[test]
+fn v2_rejects_bad_descriptors_tables_and_overflow() {
+    let good = dsp_section_v5();
+    for (at, value) in [
+        (0x40, 0),
+        (0x44, 0),
+        (0x44, 9),
+        (0x48, 1),
+        (0x4c, 1),
+        (0x3c, 1),
+        (0x18, 80),
+        (0x10, 0xffff_fffc),
+        (84, 1),
+        (88, 64),
+        (92, 20),
+        (92, 0xffff_fffc),
+    ] {
+        let mut s = good.clone();
+        put(&mut s, at, value);
+        let f = dkm(4, 0, &[], &s);
+        assert!(needs_of_v2(&mut f.as_slice()).is_err(), "field {at:x}");
+    }
+    for (index, value) in [
+        (0, 0),
+        (1, 1),
+        (2, 40),
+        (3, 1),
+        (4, 0),
+        (4, 17),
+        (5, 0),
+        (5, 261),
+        (5, 0xffff_fffc),
+        (5, 0x80000000),
+        (6, 9),
+        (7, 33),
+        (8, 0),
+        (9, 0),
+        (11, 3),
+    ] {
+        let mut s = good.clone();
+        s[112 + index * 4..116 + index * 4].copy_from_slice(&u32::to_le_bytes(value));
+        let f = dkm(4, 0, &[], &s);
+        assert!(
+            needs_of_v2(&mut f.as_slice()).is_err(),
+            "descriptor {index}"
+        );
+    }
+    for size in 0..good.len() {
+        let f = dkm(4, 0, &[], &good[..size]);
+        // An absent section is a valid ColdFire-only file.
+        if size != 0 {
+            assert!(needs_of_v2(&mut f.as_slice()).is_err(), "size {size}");
+        }
+    }
+}
+
+#[test]
+fn v2_accumulates_multiple_instruments_and_rejects_duplicate_types() {
+    let mut s = dsp_section_v5();
+    let second = s[80..96].to_vec();
+    s.splice(96..96, second);
+    put(&mut s, 0x18, 112);
+    put(&mut s, 0x44, 2);
+    let f = dkm(4, 0, &[], &s);
+    assert!(needs_of_v2(&mut f.as_slice()).is_err());
+    put(&mut s, 96, 18);
+    let f = dkm(4, 0, &[], &s);
+    let n = needs_of_v2(&mut f.as_slice()).unwrap();
+    assert_eq!(
+        n.instruments,
+        InstrumentNeeds {
+            rows: 2,
+            tracks: 4,
+            state_bytes: 1056
+        }
+    );
+    assert_eq!(n.base.dsp_area, 1152);
+}
+
+
+#[test]
+fn v2_reads_are_bounded_and_io_failures_propagate() {
+    struct Probe<'a> { bytes: &'a [u8], fail_at: Option<u32> }
+    impl Bytes for Probe<'_> {
+        fn size(&self) -> u32 { self.bytes.len() as u32 }
+        fn read(&mut self, at: u32, out: &mut [u8]) -> bool {
+            let end = at as usize + out.len();
+            assert!(end <= self.bytes.len(), "out-of-bounds read {at}");
+            if self.fail_at == Some(at) { return false; }
+            out.copy_from_slice(&self.bytes[at as usize..end]);
+            true
+        }
+    }
+    let good = dkm(4, 0, &[], &dsp_section_v5());
+    for cut in 0..good.len() {
+        let mut probe = Probe { bytes: &good[..cut], fail_at: None };
+        assert!(needs_of_v2(&mut probe).is_err());
+    }
+    for at in 0..good.len() {
+        let mut f = good.clone(); f[at] ^= 0xff;
+        let _ = needs_of_v2(&mut Probe { bytes: &f, fail_at: None });
+    }
+    let mut probe = Probe { bytes: &good, fail_at: Some(HEADER + 112) };
+    assert_eq!(needs_of_v2(&mut probe), Err(Error::Unreadable));
+}

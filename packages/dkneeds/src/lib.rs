@@ -18,6 +18,22 @@ mod gen_limits;
 /// The loader's format limits, from `[limits.format]` of sdk/sdk.toml (`HEADER`, `DSP_HEADER`, `MAX_RECORDS`, `MAX_RELOCS`, `MAX_IMPORTS`,
 /// `MAX_CF_IMPORTS`, `SLOTS`, `MAX_VOICES`, `MAX_FX`, `MAX_STATE_VOICES`, `MAX_STATE_BYTES`, `GRANULE`, `DSP_SLACK`, `ARENA_HDR`).
 pub use gen_limits::*;
+mod instrument;
+pub use instrument::InstrumentNeeds;
+
+/// Experimental accounting, not a runtime capability or a successful admission.
+/// Keep separate from `Needs`: current scan/fit protocol has no instrument rows.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct V2Needs {
+    pub base: Needs,
+    pub instruments: InstrumentNeeds,
+}
+
+/// Inspect legacy or V2 files without treating persistent instruments as voices.
+/// Current runtime callers must keep using `needs_of`, which refuses V2.
+pub fn needs_of_v2<B: Bytes>(src: &mut B) -> Result<V2Needs, Error> {
+    needs_impl(src, true)
+}
 
 /// Magic of a `.dkm`, "DKMF".
 pub const MAGIC: u32 = 0x444b_4d46;
@@ -192,6 +208,10 @@ fn inside(off: u32, len: u32, size: u32) -> bool {
 
 /// The needs of the file `src` reads: see the module's text. `Err` for a file the loader would refuse for its format, or one that cannot be read.
 pub fn needs_of<B: Bytes>(src: &mut B) -> Result<Needs, Error> {
+    needs_impl(src, false).map(|n| n.base)
+}
+
+fn needs_impl<B: Bytes>(src: &mut B, allow_v2: bool) -> Result<V2Needs, Error> {
     let size = src.size();
     if size < HEADER || word(src, 0)? != MAGIC || word(src, 4)? != FORMAT {
         return Err(Error::Header);
@@ -244,10 +264,24 @@ pub fn needs_of<B: Bytes>(src: &mut B) -> Result<Needs, Error> {
     if !inside(dsp_off, dsp_size, size) {
         return Err(Error::Sizes);
     }
+    let mut instruments = InstrumentNeeds::default();
     if dsp_size != 0 {
-        dsp(src, dsp_off, dsp_size, &mut n)?;
+        dsp(
+            src,
+            dsp_off,
+            dsp_size,
+            &mut n,
+            if allow_v2 {
+                Some(&mut instruments)
+            } else {
+                None
+            },
+        )?;
     }
-    Ok(n)
+    Ok(V2Needs {
+        base: n,
+        instruments,
+    })
 }
 
 /// The records of the `register` table at `off` (`size` bytes): the rows each kind takes. The walk is the loader's (`registry::check`): every
@@ -302,7 +336,13 @@ fn registry<B: Bytes>(src: &mut B, off: u32, size: u32, n: &mut Needs) -> Result
 
 /// The DSP section at `off` (`size` bytes): the arena block of its relocated image, the range it takes of the DSP area and its voice rows. The
 /// checks are those of `dsp::check` that decide what the section takes; the range is `extent` of `dsp.rs`, then the granule.
-fn dsp<B: Bytes>(src: &mut B, off: u32, size: u32, n: &mut Needs) -> Result<(), Error> {
+fn dsp<B: Bytes>(
+    src: &mut B,
+    off: u32,
+    size: u32,
+    n: &mut Needs,
+    instruments: Option<&mut InstrumentNeeds>,
+) -> Result<(), Error> {
     if size < DSP_HEADER || word(src, off)? != DSP_MAGIC {
         return Err(Error::Dsp);
     }
@@ -463,6 +503,13 @@ fn dsp<B: Bytes>(src: &mut B, off: u32, size: u32, n: &mut Needs) -> Result<(), 
         }
         total = total.checked_add((state + 7) & !7).ok_or(Error::Dsp)?;
         i += 1;
+    }
+    if version == 5 {
+        let allocation = instrument::read(src, off, size)?;
+        total = total
+            .checked_add(allocation.state_bytes)
+            .ok_or(Error::Dsp)?;
+        *instruments.ok_or(Error::Dsp)? = allocation;
     }
     n.fx_slots = nfx;
     n.arena_xfer = arena_block(image).ok_or(Error::Dsp)?;
