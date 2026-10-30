@@ -309,16 +309,36 @@ ColdFire sender encodes the fourth window, and both SHARC receivers use optional
 `_dl_irows`/`_dl_iwords` provider bounds. Absent, misaligned, zero-sized or oversized
 providers fail closed; each write must fit the declared region. Existing frame
 suffixes and reply allocations are unchanged. Component tests execute the actual
-sender and receiver. No production provider or initialization/reset dispatcher is
-present yet, so this is data transport, not completed instrument registration.
-Next: implement the DSP-owned registry/mailbox provider and initialization/reset
-acknowledgements, then connect the load controller to it.
+sender and receiver. The optional DTII `core/instrument-registry` provider now supplies a 16-word
+query-only command mailbox. `_dl_iwords` points to its word-count constant.
+Committed, checksummed commands carry a strictly increasing sequence plus owner,
+generation and row. Malformed or stale commands retain the previous reply.
+QUERY reports zero capabilities; INITIALIZE and DETACH return unsupported, never
+a successful lifecycle acknowledgement. The block wrapper invokes the provider
+and copies its eight-word reply into existing instrument reply words 4..11,
+covered by the existing reply checksum. No extra SPI reply rows are allocated.
+See [mailbox protocol](../../modules/core/adapters/instrument-registry/README.md).
+Next: implement bounded DSP initialization/reset and detachment, then connect the
+load controller to these acknowledgements. No instrument rows are published yet.
 Validation: 13 SHARC component cases (seven V2-window and six existing suffix-bound
 cases) and the ColdFire window-encoding test pass. DSP-link rebuilds for DTII and
 DNII; its CF and both DSP objects re-decode and check current. Logs are under
 `out/canopy-v2-window-*.log`. This is processor-core execution, not hardware proof.
 The changed-file check also passes 193 host tests (16 skipped), formatting, types
 and layering; its remaining failure is the existing 256 stale references.
+
+Mailbox checkpoint validation: 15 command/reply cases pass, including malformed
+input, checksum failure, unsupported operations, replay and sequence exhaustion.
+The 18 composed-frame cases pass with the optional provider present alongside the
+carrier or absent, preserving processor context. Three standalone reply cases and
+13 DSP-link window/suffix cases also pass. DTII/DNII DSP-link, DTII MIDI-events
+and the new DTII registry objects rebuild, re-decode and check current. Logs:
+`out/canopy-registry-final.log` (49 passing component cases) and
+`out/canopy-registry-build.log`. The changed-file check passes formatting, types
+and layering; it reports the existing 256 stale references and one unrelated
+minimum-delay timer assertion (192 host tests passed, 16 skipped). That timer
+test passes an isolated rerun in `out/canopy-registry-timing-recheck.log`. Changed
+document references pass. Hardware validation remains outstanding.
 
 Only after those pieces pass together may a build advertise V2 support.
 

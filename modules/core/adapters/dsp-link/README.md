@@ -7,15 +7,15 @@ the device runs. Nothing changes for the player. It ran on a Digitakt II (OS 1.1
 
 `dl_send_win(3, dst_word, buf, len)` now addresses a provider-owned registration
 region. The optional SHARC symbols `_dl_irows` (aligned byte address) and
-`_dl_iwords` (word count) define it. Both DTII and DNII receivers reject writes
+`_dl_iwords` (address of a word-count constant) define it. Both DTII and DNII receivers reject writes
 without a valid provider, beyond its declared size, or when its size exceeds the
 device's DSP-link area. The ordinary upload, voice and effect windows are unchanged.
 This uses the existing two window bits and ACK channel; it consumes no extra frame
 or reply words. A transfer ACK confirms bytes only, not reset/initialization.
 
-No production V2 registry provider is installed yet. This window is the transport
-foundation for its rows/mailbox; publication, reset completion, detachment and
-matching loader tickets still require the V2 adapter. Do not publish an instrument
+The experimental `core/instrument-registry` provider exposes a query-only mailbox
+on DTII. It is not enabled by default. Publication, reset completion, detachment
+and matching loader tickets still require the V2 lifecycle implementation. Do not publish an instrument
 on a data-transfer ACK alone.
 
 ## Optional DTII instrument allocation

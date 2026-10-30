@@ -5,6 +5,7 @@
 .SECTION/PM seg_pmco;
 .GLOBAL _instrument_block;
 .EXTERN _mi_receive;
+.EXTERN _instrument_registry_block;
 .EXTERN _mi_reply_build;
 .EXTERN _mi_carrier_begin;
 .EXTERN _instrument_carrier_prepare;
@@ -57,6 +58,11 @@ _instrument_block:
     L2 = 0;
     M5 = 0;
     M6 = 1;
+    R0 = _instrument_registry_block;
+    R0 = PASS R0;
+    IF EQ JUMP _mi_registry_done;
+    CALL _instrument_registry_block;
+_mi_registry_done:
     R0 = _mi_carrier_begin;
     R0 = PASS R0;
     IF EQ JUMP _mi_block_receive;

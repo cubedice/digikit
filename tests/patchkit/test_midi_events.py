@@ -39,7 +39,14 @@ def reply_builder():
     }
     epoch_at, message_at = 0x20040000, 0x20040004
     linked = pk_sharc.link(
-        obj, 0xB90000, {**symbols, "_mi_epoch": epoch_at, "_mi_message": message_at}
+        obj,
+        0xB90000,
+        {
+            **symbols,
+            "_mi_epoch": epoch_at,
+            "_mi_message": message_at,
+            "_instrument_registry_reply": 0,
+        },
     )
 
     def build(epoch, message, heartbeat):
@@ -117,6 +124,12 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
         for name in ("carrier", "carrier-frame", "velocity", "envelope", "workspace"):
             source += "\n" + (MOD / f"src/dsp/{name}.s").read_text()
         source += "\n" + (canopy / "carrier-prepare.s").read_text()
+        source += (
+            "\n"
+            + (
+                ROOT / "modules/core/adapters/instrument-registry/src/dsp/registry.s"
+            ).read_text()
+        )
     obj = pk_sharc.assemble(source)
     sections, address, dm = {}, 0x20020000, {}
     for name, (blob, align, _) in obj.data.items():
@@ -132,11 +145,16 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
     symbols = {
         name: sections[sec] + off for name, (sec, off, _) in obj.data_symbols.items()
     }
-    externs = {**symbols, "_pp_block_back": 0xB9F000}
+    externs = {
+        **symbols,
+        "_pp_block_back": 0xB9F000,
+    }
     if carrier:
         externs["_mi_envelope_next"] = 0
         externs["_mi_workspace_next"] = 0
     if not carrier:
+        externs["_instrument_registry_block"] = 0
+        externs["_instrument_registry_reply"] = 0
         externs["_mi_carrier_begin"] = 0
         externs["_instrument_carrier_prepare"] = 0
     if not consumer:
@@ -144,6 +162,13 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
         externs["_instrument_events"] = 0
         externs["_instrument_configure"] = 0
     linked = pk_sharc.link(obj, 0xB90000, externs)
+    if carrier:
+        command = [0x49524731, 1, 1, 3, 9, 1, 7] + [0] * 9
+        for value in command[:15]:
+            command[15] ^= value
+        dm.update(
+            {symbols["_dl_irows"] // 4 + i: value for i, value in enumerate(command)}
+        )
     rx = 0x200A0000
     words = [0x494E0101, 2, 1, 1, 0, 0, 42, 0, 0, 2] + [0] * 22
     words[7] = packet_check(words)
@@ -197,7 +222,7 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
             ),
         },
         read_regs=tuple(regs),
-        max_steps=4000,
+        max_steps=8000,
         return_sw=0xB9F000,
     )
     assert result["halt"]["reason"] == "breakpoint", result
@@ -206,6 +231,7 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
     assert result["reply"][:4] == [0x494EA101, int(consumer), int(consumer), 1]
     assert result["position"][0] == (position_words[0] if valid_position else 0)
     if carrier:
+        assert result["reply"][4:12] == [0x49525231, 1, 3, 9, 1, 7, 0, 0]
         assert result["stamp"] == [1]
         assert result["owners"] == [1, 0] * 16
 
@@ -1278,7 +1304,7 @@ def test_v2_registration_window_is_bounded(
         "_dl_frows": 0,
         "_dl_fcount": 0,
         "_dl_irows": base,
-        "_dl_iwords": capacity,
+        "_dl_iwords": target + 64,
         "_dv_diag": 0,
         "_dv_rec": 0,
         "_loop_ui_status": 0,
@@ -1294,6 +1320,7 @@ def test_v2_registration_window_is_bounded(
         s2 = (s2 + s1) & 0xFFFFFFFF
     words.append(s1 ^ s2)
     dm = dict(initial)
+    dm[(target + 64) // 4] = capacity
     dm.update({(rx + 0x804) // 4 + i: v for i, v in enumerate(words)})
     dm[frame // 4 - 3], dm[frame // 4 - 2] = rx, reply
     dm.update({target // 4 - 1 + i: 0xDEADBEEF for i in range(10)})

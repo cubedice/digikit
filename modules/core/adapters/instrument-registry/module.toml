@@ -1,0 +1,22 @@
+[module]
+id = "core/instrument-registry"
+version = "0.1.0"
+name = "Persistent instrument registry"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "V2 registration mailbox; capability queries only until DSP lifecycle callbacks are implemented."
+requires = ["core/midi-events", "core/dsp-link"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/registry-dsp.dko.json"
+sources = ["src/dsp/registry.s"]
+place = "dsp.l2"
+devices = ["dt2"]

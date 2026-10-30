@@ -26,7 +26,7 @@
 // runtime fills one word per transfer so that the render scan never sees a half-written row; 2 is the effect rows of core/fx (_dl_frows, 24 *
 // _dl_fcount words, all rows of the registry `fx`, free rows included), filled the same way (the pc word last). Windows 1 and 2 refuse every write
 // when their registry is not in the image (the externs are 0). Window 3 is optional V2 registration data:
-// _dl_irows is its aligned byte address; _dl_iwords is its size in words (1..DL_AREA_WORDS).
+// _dl_irows is its aligned byte address; _dl_iwords addresses its word-count constant (1..DL_AREA_WORDS).
 // An absent/invalid provider refuses writes. A transfer ACK only confirms data delivery, not V2 initialization.
 //   w2 ... w(n+1)  the payload
 //   w(n+2)  check = s1 XOR s2 over w0 ... w(n+1), where s1 += w and s2 += s1 for each word w (both start at 0)
@@ -193,6 +193,10 @@ _dl_win2:
     JUMP _dl_wdone;
 _dl_win3:
     R3 = _dl_iwords;
+    R3 = PASS R3;
+    IF EQ JUMP _dl_range;
+    I2 = R3;
+    R3 = DM(I2, M5);
     R3 = PASS R3;
     IF LE JUMP _dl_range;
     R0 = DL_AREA_WORDS;
