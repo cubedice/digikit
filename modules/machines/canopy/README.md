@@ -22,12 +22,20 @@ QUIET is returned only after every local release finishes, and the entire output
 block is always written. Independent banks allow separate track state.
 
 This is deliberately the lifetime-test kernel, not the finished instrument. It has
-no sustain pedal, bend, chord modes, arp or preset controls. These
-operations must not be advertised by a ready instrument yet.
+no bend, chord modes, arp or preset controls. These
+operations must not be advertised by a ready instrument yet. The callback layer
+now supports CC64 sustain and CC121 pedal reset, scoped to MIDI port/channel.
 
-The callback layer owns sixteen separate banks and a single 256-byte staging bank.
+The callback layer owns sixteen separate voice banks and a 256-byte staging bank.
+Each track additionally has a 64-byte pedal record with 32 route pedal bits and
+four deferred-token/route pairs; a separate 64-byte staging record makes pedal and
+voice changes commit together. CC64 values 64–127 hold released keys; 0–63 release
+only deferred tokens from that route. CC121 clears that route's pedal ownership
+without releasing physically held keys. Reset clears pedal state for the affected
+track (all tracks on epoch reset). Deferred tokens match current foreground or
+pending-replacement ownership; stale stolen tokens cannot release a replacement.
 It applies each batch to staging and copies back only if every event succeeds.
-Unknown releases are harmless; unsupported controllers and failed note allocation
+Unknown releases are harmless; controllers other than CC64/CC121 and failed note allocation
 reject the entire batch. The internal `CPS1` configuration schema accepts exactly
 one word, value 1, selecting the fixed sine proof. It is not the release preset ABI.
 Reset invalidates configuration and ramps affected voices down within 64 samples;
@@ -154,4 +162,9 @@ C with G started from silence. Their final-output RMS ratio is 0.9999787403;
 the C/G mixture is 1.0185269755 times the reference. Independent release and
 quiet re-wake pass. This is final-output evidence against shared first-note
 velocity suppression for the tested Sound, not phase-continuity or all-curve
-acceptance; sustain pedal and public V2 registration remain open.
+acceptance; public V2 registration remains open.
+
+The booted reload scenario also verifies pedal-owned USB C remains audible after
+1.25 seconds beyond physical release, while DIN G releases independently. Pedal-up
+retires C without cutting off a fresh physically held USB G; G's release returns
+the final output to zero in the measured window. This is emulator evidence only.

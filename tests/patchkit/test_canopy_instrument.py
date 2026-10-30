@@ -45,12 +45,22 @@ def instrument():
         dm.update({OUTPUT // 4 + i: 0 for i in range(32)})
         sequence = 1
 
-        def call(kind, data=(), track=0, generation=1, revision=1, schema=0x43505331):
+        def call(
+            kind,
+            data=(),
+            track=0,
+            generation=1,
+            revision=1,
+            schema=0x43505331,
+            port=0,
+            channel=0,
+            epoch=1,
+        ):
             nonlocal sequence
             if kind == "render":
                 entry, r4, r8 = "_cp_render_track", track, OUTPUT
             else:
-                words = [0x494E0101, kind, 1, sequence, 0, 0, 42, 0] + [0] * 24
+                words = [0x494E0101, kind, epoch, sequence, 0, 0, 42, 0] + [0] * 24
                 if kind == 2:
                     words[8:10] = [track, generation]
                 elif kind in (3, 4):
@@ -74,7 +84,12 @@ def instrument():
                         words[8 + 3 * i : 11 + 3 * i] = [
                             token,
                             generation,
-                            event | (track << 10) | (note << 14) | (velocity << 21),
+                            event
+                            | (port << 4)
+                            | (channel << 6)
+                            | (track << 10)
+                            | (note << 14)
+                            | (velocity << 21),
                         ]
                 a = b = 0
                 for i, word in enumerate(words):
@@ -162,7 +177,7 @@ def test_batch_failure_rolls_back_all_notes_and_schema_is_checked(instrument):
     status, after, _ = call(1, [(4, 1, 71, 100), (2, 1, 74, 100)])
     assert status == 0 and after == before
     # Unsupported controller after a release must not partly alter the bank.
-    status, after, _ = call(1, [(1, 2, 60, 0), (0, 3, 64, 127)])
+    status, after, _ = call(1, [(1, 2, 60, 0), (0, 3, 66, 127)])
     assert status == 0 and after == before
     assert call(1, [(4, 1, 71, 100)])[0] == 1
 
@@ -186,3 +201,140 @@ def test_eight_onset_burst_commits_newest_four_without_permanent_retry(instrumen
     assert {banks[0][i] for i in range(0, 32, 8)} == {9, 10, 11, 12}
     assert all(banks[0][i] == 0 for i in range(32, 48, 8))
     assert all(banks[0][i] == 0 for i in range(48, 64, 4))
+
+
+def gates(banks, track=0):
+    return {
+        banks[track][i]: banks[track][i + 1] for i in range(0, 32, 8) if banks[track][i]
+    }
+
+
+@pytest.mark.parametrize("port,channel", [(0, 0), (1, 15)])
+def test_sustain_threshold_route_isolation_and_controller_reset(
+    instrument, port, channel
+):
+    call = instrument()
+    call(2)
+    call(3)
+    call(4)
+
+    def events(data, **route):
+        return call(1, data, port=port, channel=channel, **route)
+
+    assert events([(101, 1, 60, 100), (102, 1, 67, 100)])[0] == 1
+    call("render")
+    assert events([(0, 3, 64, 64), (101, 2, 60, 0)])[0] == 1
+    _, banks, pcm = call("render")
+    assert gates(banks) == {101: 1, 102: 1}
+    assert any(abs(x) > 1e-5 for x in pcm)
+    # A different route's pedal-up cannot release this route's sustained C.
+    assert call(1, [(0, 3, 64, 0)], port=1 - port, channel=channel)[0] == 1
+    assert gates(call("render")[1])[101] == 1
+    assert call(1, [(0, 3, 64, 0)], port=port, channel=(channel + 1) % 16)[0] == 1
+    assert gates(call("render")[1])[101] == 1
+    # Below 64 releases only C; physically held G remains held.
+    _, banks, _ = events([(0, 3, 64, 63)])
+    assert gates(banks) == {101: 0, 102: 1}
+    events([(0, 3, 64, 127), (102, 2, 67, 0)])
+    assert gates(call("render")[1])[102] == 1
+    _, banks, _ = events([(0, 3, 121, 0)])
+    assert gates(banks)[102] == 0
+
+
+def test_pedal_and_deferred_release_rollback_with_invalid_batch(instrument):
+    call = instrument()
+    call(2)
+    call(3)
+    call(4)
+    call(1, [(1, 1, 60, 100)])
+    call("render")
+    # Rejected pedal-down must not affect a later note-off.
+    assert call(1, [(0, 3, 64, 127), (1, 1, 60, 100)])[0] == 0
+    assert gates(call(1, [(1, 2, 60, 0)])[1])[1] == 0
+    call(1, [(2, 1, 67, 100), (0, 3, 64, 127)])
+    call("render")
+    before = call(1, [(2, 2, 67, 0)])[1]
+    assert gates(before)[2] == 1
+    status, after, _ = call(1, [(0, 3, 64, 0), (2, 1, 67, 100)])
+    assert status == 0 and before == after
+    # Both the pedal bit and deferred token survived the rejected pedal-up.
+    assert gates(call(1, [(0, 3, 64, 0)])[1])[2] == 0
+
+
+def test_sustain_pending_steal_and_reset_do_not_resurrect_old_tokens(instrument):
+    call = instrument()
+    call(2)
+    call(3)
+    call(4)
+    call(1, [(t, 1, 60 + t, 100) for t in range(1, 5)])
+    call("render")
+    call(1, [(0, 3, 64, 127)] + [(t, 2, 60 + t, 0) for t in range(1, 5)])
+    # Force two tails and two pending replacements while every old key is pedal-held.
+    assert call(1, [(t, 1, 60 + t, 100) for t in range(5, 9)])[0] == 1
+    assert call(1, [(t, 2, 60 + t, 0) for t in range(5, 9)])[0] == 1
+    call("render")
+    _, banks, _ = call("render")
+    slots = {banks[0][i]: banks[0][i + 1] for i in range(0, 32, 8)}
+    assert slots == {t: 1 for t in range(5, 9)}
+    _, banks, _ = call(1, [(0, 3, 64, 0)])
+    assert all(banks[0][i + 1] == 0 for i in range(0, 32, 8))
+    call(1, [(0, 3, 64, 127)])
+    assert call(2, generation=2)[0] == 1
+    call("render")
+    assert call("render")[0] == 0
+    call(3, generation=2)
+    call(4, generation=2)
+    call(1, [(20, 1, 60, 100)], generation=2)
+    call("render")
+    # Reset cleared the old down pedal; the fresh generation releases normally.
+    _, banks, _ = call(1, [(20, 2, 60, 0)], generation=2)
+    assert next(banks[0][i + 1] for i in range(0, 32, 8) if banks[0][i] == 20) == 0
+
+
+def test_track_reset_isolates_pedal_and_stolen_release_keeps_fresh_key(instrument):
+    call = instrument()
+    for track in (0, 15):
+        call(2, track=track)
+        call(3, track=track)
+        call(4, track=track)
+        call(
+            1,
+            [(100 + track, 1, 60, 100), (0, 3, 64, 127), (100 + track, 2, 60, 0)],
+            track=track,
+        )
+        call("render", track=track)
+    call(2, generation=2)
+    assert gates(call("render", track=15)[1], 15)[115] == 1
+    # Fill all remaining slots, then steal the old sustained voice. Its stored
+    # pedal release must not kill the fresh same-pitch replacement.
+    call(1, [(t, 1, 60, 100) for t in (116, 117, 118, 119)], track=15)
+    call("render", track=15)
+    call("render", track=15)
+    _, banks, _ = call(1, [(0, 3, 64, 0)], track=15)
+    assert gates(banks, 15) == {t: 1 for t in (116, 117, 118, 119)}
+
+
+def test_new_epoch_clears_pedals_on_every_track(instrument):
+    call = instrument()
+    for track in (0, 15):
+        call(2, track=track)
+        call(3, track=track)
+        call(4, track=track)
+        call(
+            1,
+            [(1 + track, 1, 60, 100), (0, 3, 64, 127), (1 + track, 2, 60, 0)],
+            track=track,
+        )
+        call("render", track=track)
+    assert call(2, epoch=2)[0] == 1
+    for track in (0, 15):
+        call("render", track=track)
+        assert call("render", track=track)[0] == 0
+        if track:
+            assert call(2, track=track, epoch=2)[0] == 1
+        assert call(3, track=track, epoch=2)[0] == 1
+        assert call(4, track=track, epoch=2)[0] == 1
+        assert call(1, [(100 + track, 1, 67, 100)], track=track, epoch=2)[0] == 1
+        call("render", track=track)
+        _, banks, _ = call(1, [(100 + track, 2, 67, 0)], track=track, epoch=2)
+        assert gates(banks, track)[100 + track] == 0

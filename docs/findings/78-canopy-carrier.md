@@ -789,3 +789,43 @@ transport or emulator fault. Existing machine/stopped-pattern re-admission and
 stale-release checks also pass in this run. Evidence is saved as
 `out/canopy-carrier-{low-high-mixed,high-after-low,high-reference}-pcm.json`,
 `out/canopy-carrier-velocity-ratios.json` and `out/canopy-velocity-test.log`.
+
+
+## Sustain ownership in the sine callback [D]
+
+The CANOPY callback now handles CC64 and CC121 per MIDI port/channel. Each track
+has a 64-byte pedal record: 32 down bits and four deferred-token/route pairs,
+with reserved padding. Note-off under an active pedal records only the current
+logical foreground owner (a pending replacement takes precedence over its
+fading predecessor). Pedal-up releases matching deferred tokens; physically held
+notes are unaffected. Stolen tokens remain harmless because release matching is
+exact. A separate 64-byte scratch record commits with the voice bank only after
+the whole event batch succeeds. No voice-kernel layout or MIDI wire format changes.
+CC64 uses the standard 64 threshold; CC121 clears the matching route's pedal.
+Track resets clear their pedal record; a newer stream epoch clears every track.
+
+Nine SHARC instruction-core tests pass, including prior note/atomicity/burst
+coverage and new threshold, port/channel isolation (including port 1/channel 15),
+rejected pedal-up/down, pending replacement, stolen same-pitch note, track-local
+reset and whole-epoch reset cases. The first test iteration incorrectly assumed
+allocation started at slot zero; assertions now locate voices by token, matching
+the kernel's free-slot selection policy. All 62 carrier component checks also
+pass with the expanded callback state.
+
+The booted `canopy-reload.test.ts` now follows its reload proof with a physically
+released USB C under sustain. A DIN G releases normally while USB C remains held.
+After another 120,000 scalar samples (1.25 seconds), a fresh 4,480-sample window
+contains only sustained C: RMS 0.0295749351, peak 0.0419591852, no non-finite samples.
+It then adds a physically held USB G and lowers CC64 to 63; C retires while G
+remains held. G's physical release retires the last voice. The final 4,416-sample
+window has zero RMS and peak, with no non-finite samples. The regression passes
+in 211.12 seconds (207.33-second body), including the earlier in-place reload and
+stale-release checks, with no transport or emulator fault.
+
+The updated fixture has SHA-256
+`9d75c484c2aaa63180a0937a078e8f4346974e6893212d8763a05338e854c8d6`,
+1,934,624 bytes and 39 patch writes. Evidence remains under
+`out/canopy-pedal-*` and `out/canopy-reload-{sustained,pedal-quiet}-pcm.json`.
+This is still a WERP-shadow emulator fixture, not an installable CANOPY machine.
+Pitch bend, CC120/CC123 handling, public controller capability negotiation,
+compatible-pattern note retention and hardware sustain testing remain open.

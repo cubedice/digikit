@@ -23,6 +23,12 @@ _instrument_reset:
     COMP(R0, R1);
     IF NE JUMP _ci_reset_all;
     R5 = DM(8, I0);
+    R0 = LSHIFT R5 BY 6;
+    R1 = _cp_pedals;
+    R0 = R0 + R1;
+    I2 = R0;
+    R2 = 16;
+    CALL _ci_clear_pedals;
     R0 = LSHIFT R5 BY 8;
     R1 = _cp_banks;
     R0 = R0 + R1;
@@ -36,6 +42,9 @@ _instrument_reset:
     R3 = 1;
     JUMP _ci_reset_bank;
 _ci_reset_all:
+    I2 = _cp_pedals;
+    R2 = 256;
+    CALL _ci_clear_pedals;
     I0 = _cp_banks;
     I1 = _cp_ready;
     R2 = 16;
@@ -98,6 +107,18 @@ _instrument_events:
     R0 = DM(0, I1);
     R0 = PASS R0;
     IF EQ JUMP _ci_reject;
+    R0 = LSHIFT R5 BY 6;
+    R1 = _cp_pedals;
+    R0 = R0 + R1;
+    DM(_ci_pedal_bank) = R0;
+    I1 = R0;
+    I2 = _ci_pedal_staging;
+    R2 = 16;
+_ci_snapshot_pedals:
+    R0 = DM(I1, M6);
+    DM(I2, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _ci_snapshot_pedals;
     R0 = LSHIFT R5 BY 8;
     R1 = _cp_banks;
     R0 = R0 + R1;
@@ -121,6 +142,13 @@ _ci_event_loop:
     I0 = R0;
     R8 = DM(0, I0);
     R0 = DM(2, I0);
+    R2 = FEXT R0 BY 4:2; // route = port * 16 + channel
+    R2 = LSHIFT R2 BY 4;
+    R3 = FEXT R0 BY 6:4;
+    R2 = R2 + R3;
+    R3 = 1;
+    R3 = LSHIFT R3 BY R2;
+    DM(_ci_route_mask) = R3;
     R1 = FEXT R0 BY 0:4;
     R12 = FEXT R0 BY 14:7;
     R9 = FEXT R0 BY 21:7;
@@ -130,7 +158,14 @@ _ci_event_loop:
     IF EQ JUMP _ci_on;
     R2 = 2;
     COMP(R1, R2);
-    IF NE JUMP _ci_reject; // unsupported controller: do not ACK or partly apply
+    IF NE JUMP _ci_controller;
+    R0 = DM(_ci_pedal_staging);
+    R1 = DM(_ci_route_mask);
+    R0 = R0 AND R1;
+    IF EQ JUMP _ci_release_now;
+    CALL _ci_defer_release;
+    JUMP _ci_next_event;
+_ci_release_now:
     CALL _cp_note_off;
     // Unknown release is harmless: it may belong to a voice already quiet.
     JUMP _ci_next_event;
@@ -156,10 +191,108 @@ _ci_commit:
     DM(I1, M6) = R0;
     R2 = R2 - 1;
     IF NE JUMP _ci_commit;
+    R0 = DM(_ci_pedal_bank);
+    I1 = R0;
+    I2 = _ci_pedal_staging;
+    R2 = 16;
+_ci_commit_pedals:
+    R0 = DM(I2, M6);
+    DM(I1, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _ci_commit_pedals;
     R0 = 1;
     RTS;
 _ci_reject:
     R0 = 0;
+    RTS;
+// Sustain is scoped to port/channel. Only logical foreground owners can be
+// deferred: a pending replacement supersedes the fading foreground token.
+// Four records suffice for four admitted owners; stale stolen tokens cannot
+// release replacements because note_off always matches the exact token.
+_ci_defer_release:
+    I0 = _cp_staging;
+    R0 = _cp_staging;
+    R1 = 192;
+    R0 = R0 + R1;
+    I1 = R0;
+    I2 = _ci_pedal_staging;
+    MODIFY(I2, 1) (NW);
+    R2 = 4;
+_ci_find_deferred_slot:
+    R0 = DM(0, I0);
+    R1 = DM(0, I1);
+    R1 = PASS R1;
+    IF NE R0 = R1;
+    COMP(R0, R8);
+    IF EQ JUMP _ci_store_deferred;
+    MODIFY(I0, 8) (NW);
+    MODIFY(I1, 4) (NW);
+    MODIFY(I2, 2) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _ci_find_deferred_slot;
+    RTS;
+_ci_store_deferred:
+    DM(0, I2) = R8;
+    R0 = DM(_ci_route_mask);
+    DM(1, I2) = R0;
+    RTS;
+_ci_controller:
+    R2 = 3;
+    COMP(R1, R2);
+    IF NE JUMP _ci_reject;
+    R2 = 121; // Reset All Controllers releases pedal ownership on this route.
+    COMP(R12, R2);
+    IF EQ JUMP _ci_pedal_up;
+    R2 = 64;
+    COMP(R12, R2);
+    IF NE JUMP _ci_reject;
+    COMP(R9, R2);
+    IF LT JUMP _ci_pedal_up;
+    R0 = DM(_ci_pedal_staging);
+    R1 = DM(_ci_route_mask);
+    R0 = R0 OR R1;
+    DM(_ci_pedal_staging) = R0;
+    JUMP _ci_next_event;
+_ci_pedal_up:
+    R0 = DM(_ci_pedal_staging);
+    R1 = DM(_ci_route_mask);
+    R1 = NOT R1;
+    R0 = R0 AND R1;
+    DM(_ci_pedal_staging) = R0;
+    R0 = 0;
+    DM(_ci_release_index) = R0;
+_ci_release_deferred:
+    R0 = DM(_ci_release_index);
+    R0 = LSHIFT R0 BY 3;
+    R1 = _ci_pedal_staging;
+    R0 = R0 + R1;
+    I0 = R0;
+    R8 = DM(1, I0);
+    R8 = PASS R8;
+    IF EQ JUMP _ci_next_deferred;
+    R0 = DM(2, I0);
+    R1 = DM(_ci_route_mask);
+    COMP(R0, R1);
+    IF NE JUMP _ci_next_deferred;
+    R0 = 0;
+    DM(1, I0) = R0;
+    DM(2, I0) = R0;
+    R4 = _cp_staging;
+    CALL _cp_note_off;
+_ci_next_deferred:
+    R0 = DM(_ci_release_index);
+    R0 = R0 + 1;
+    DM(_ci_release_index) = R0;
+    R1 = 4;
+    COMP(R0, R1);
+    IF LT JUMP _ci_release_deferred;
+    JUMP _ci_next_event;
+_ci_clear_pedals:
+    R0 = 0;
+_ci_clear_pedal_word:
+    DM(I2, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _ci_clear_pedal_word;
     RTS;
 _cp_render_track:
     // Internal render entry: R4=track (0..15), R8=output. Tails render even
@@ -178,3 +311,11 @@ _cp_render_track:
 .PKDATA _cp_banks, 4096;
 .PKDATA _cp_ready, 64;
 .PKBSS _cp_staging, 256;
+
+// Per track: 32 route pedal bits, four {deferred token, route mask} records,
+// seven reserved words. Staged together with voices for all-or-nothing batches.
+.PKDATA _cp_pedals, 1024;
+.PKBSS _ci_pedal_staging, 64;
+.VAR _ci_pedal_bank = 0;
+.VAR _ci_route_mask = 0;
+.VAR _ci_release_index = 0;

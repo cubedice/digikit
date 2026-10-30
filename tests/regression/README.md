@@ -233,8 +233,11 @@ holding a MIDI C. It checks that the load hook fires, the same Sound pointer
 survives, the generation advances, the old voice retires, and preparation completes
 again. A new C survives the old C release; C/G then produce finite PCM above -80
 dBFS RMS. Their release retires both voices, followed by a quarter-second drain
-and a separate final-output window below -120 dBFS RMS and peak. This test has a
-three-minute body ceiling and can run alone by appending
+and a separate final-output window below -120 dBFS RMS and peak. It then holds a physically released USB C under CC64 while a DIN G releases
+normally, measures C alone after 1.25 seconds (longer than its local release),
+and verifies pedal-up releases C while a fresh physically held G stays active.
+Final G release must restore output below -120 dBFS RMS and peak. This test has a
+five-minute body ceiling and can run alone by appending
 `runtime/canopy-reload.test.ts` to the command above. The `runtime/canopy-pattern.test.ts` companion prepares WERP on two patterns,
 starts playback, holds C and queues a switch. It requires observing scheduled
 lookahead, unchanged source generation until commitment, destination re-admission,

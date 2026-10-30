@@ -140,6 +140,47 @@ test('temporary pattern reload invalidates the same Sound before fresh MIDI admi
   expect(quiet.non_finite).toBe(0);
   expect(quiet.rms).toBeLessThan(1e-6);
   expect(quiet.peak).toBeLessThan(1e-6);
+  // C is released physically under USB sustain. A DIN G must still release
+  // normally: its route has no pedal. Then measure the pedal-owned C alone.
+  await session.client.call('midi.usb.in', {
+    bytes: [0x90, 60, 100, 0xb0, 64, 127, 0x80, 60, 0, 0xb0, 64, 127],
+  });
+  await expect.poll(readVoices, { timeout: 10_000 }).toEqual([{ token: 4, gate: 1 }]);
+  await session.client.call('midi.in', { bytes: [0x90, 67, 100] });
+  await expect.poll(readVoices, { timeout: 10_000 }).toEqual([
+    { token: 4, gate: 1 },
+    { token: 5, gate: 1 },
+  ]);
+  await session.client.call('midi.in', { bytes: [0x80, 67, 0] });
+  await expect.poll(readVoices, { timeout: 60_000 }).toEqual([{ token: 4, gate: 1 }]);
+  await session.client.call('pcm.tap', { action: 'start' });
+  await expect.poll(async () => (await pcm()).samples, { timeout: 60_000 }).toBeGreaterThanOrEqual(120_000);
+  await session.client.call('pcm.tap', { action: 'start' });
+  await expect.poll(async () => (await pcm()).samples, { timeout: 15_000 }).toBeGreaterThanOrEqual(4096);
+  const sustained = await pcm();
+  fs.writeFileSync(path.join(root, 'out/canopy-reload-sustained-pcm.json'), JSON.stringify(sustained));
+  expect(sustained.non_finite).toBe(0);
+  expect(sustained.rms).toBeGreaterThan(1e-4);
+  expect(await readVoices()).toEqual([{ token: 4, gate: 1 }]);
+  // Pedal-up must release C without releasing a new physically held USB G.
+  await session.client.call('midi.usb.in', { bytes: [0x90, 67, 100] });
+  await expect.poll(readVoices, { timeout: 10_000 }).toEqual([
+    { token: 4, gate: 1 },
+    { token: 6, gate: 1 },
+  ]);
+  await session.client.call('midi.usb.in', { bytes: [0xb0, 64, 63] });
+  await expect.poll(readVoices, { timeout: 60_000 }).toEqual([{ token: 6, gate: 1 }]);
+  await session.client.call('midi.usb.in', { bytes: [0x80, 67, 0] });
+  await expect.poll(readVoices, { timeout: 60_000 }).toEqual([]);
+  await session.client.call('pcm.tap', { action: 'start' });
+  await expect.poll(async () => (await pcm()).samples, { timeout: 20_000 }).toBeGreaterThanOrEqual(24_000);
+  await session.client.call('pcm.tap', { action: 'start' });
+  await expect.poll(async () => (await pcm()).samples, { timeout: 15_000 }).toBeGreaterThanOrEqual(4096);
+  const pedalQuiet = await pcm();
+  fs.writeFileSync(path.join(root, 'out/canopy-reload-pedal-quiet-pcm.json'), JSON.stringify(pedalQuiet));
+  expect(pedalQuiet.non_finite).toBe(0);
+  expect(pedalQuiet.rms).toBeLessThan(1e-6);
+  expect(pedalQuiet.peak).toBeLessThan(1e-6);
   expect(await word(3)).toBe(0);
   await session.expectNoFault('CANOPY in-place reload');
-}, 180_000);
+}, 300_000);
