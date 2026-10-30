@@ -7,24 +7,25 @@ there is no machine manifest, V2 descriptor, firmware carrier integration or UI 
 kernel in instruction-core tests. Normal firmware builds do not link it or enable
 keyboard routes.
 
-`src/dsp/voice.s` implements four independent notes in a caller-owned 128-byte bank.
+`src/dsp/voice.s` implements four foreground notes, two short release tails and
+four pending-replacement records in a caller-owned 256-byte bank.
 Each note has its own token, gate, oscillator phase, velocity and linear envelope.
 Attack is fixed at 80 ms; release falls at full-scale per second (a note released
 during attack ends sooner). Output is mono, in 32-sample blocks at 48 kHz. The sine
 rotator normalizes its phase vector once per block to limit numerical drift.
 `src/dsp/tuning.s` supplies MIDI 0–127 coefficients at A4=440 Hz.
 
-Note-on rejects duplicate tokens, invalid notes/velocities and a full bank without
-changing existing notes. Note-off matches the exact token and releases only that
+Note-on rejects duplicate tokens and invalid notes/velocities without changing
+existing notes. Note-off matches the exact token and releases only that
 note. Zero-velocity Note On must already have been normalized by MIDI ingress.
 QUIET is returned only after every local release finishes, and the entire output
 block is always written. Independent banks allow separate track state.
 
-This is deliberately the lifetime-test kernel, not the finished allocator. It has
-no voice stealing, sustain pedal, bend, chord modes, arp or preset controls. These
+This is deliberately the lifetime-test kernel, not the finished instrument. It has
+no sustain pedal, bend, chord modes, arp or preset controls. These
 operations must not be advertised by a ready instrument yet.
 
-The callback layer owns sixteen separate banks and a single 128-byte staging bank.
+The callback layer owns sixteen separate banks and a single 256-byte staging bank.
 It applies each batch to staging and copies back only if every event succeeds.
 Unknown releases are harmless; unsupported controllers and failed note allocation
 reject the entire batch. The internal `CPS1` configuration schema accepts exactly
@@ -32,11 +33,20 @@ one word, value 1, selecting the fixed sine proof. It is not the release preset 
 Reset invalidates configuration and ramps affected voices down within 64 samples;
 tails still render after reset ACK. A newer stream epoch resets all tracks.
 
-A full bank currently rejects new notes. On the live acknowledged stream that
-could block later releases behind the rejected batch until the watchdog faults.
-This is another reason routes remain disabled: bounded stealing/tail handling or
-an explicit admitted-note policy must precede live readiness. Tests deliberately
-exercise rejection to prove that partial chords cannot leak into the active bank.
+When all four foreground slots are occupied, reclaim the quietest releasing note
+first (oldest token breaks ties), otherwise the oldest held note. Preserve its
+phase and gain in a free tail slot and fade it within 64 samples. If both tails
+are occupied, fade the displaced note in its foreground slot and queue the new
+onset there; it starts after at most two render blocks. Pending replacements can
+themselves be replaced or released without sounding. Never-rendered intermediate
+onsets need no audio tail. This allows an entire eight-event batch to commit
+without rejecting it merely because four notes are held.
+
+Token matching includes pending onsets. Releasing a stolen token cannot release
+its replacement or lengthen its forced ramp. At most six sine oscillators sound
+at once; the future arp group is not implemented. This fits the design's four
+foreground/two shared-tail limit without adding hidden voices. Live routing still
+requires the public V2 contract, carrier/AMP proof and supported controllers.
 
 Run its concrete SHARC instruction-core checks with:
 
@@ -47,12 +57,18 @@ uv run python -m pytest tests/patchkit/test_canopy_instrument.py -q
 
 The tests check independent phase/velocity/release, exact token handling, capacity,
 memory guards, silent idle output and pitch/envelopes across sustained renders.
-The five tests passed on the SHARC instruction core. Sustained checks cover one
+Sustained checks cover one
 second at MIDI notes 0, 69 and 127, then release to silence; waveform error against
 the ideal sine/envelope stayed below 0.0002 in sample amplitude. This is a numerical
 check, not a measured device CPU or latency claim.
 Packet-to-kernel tests additionally cover schema rejection, atomic batch rollback,
 independent track resets, note release, reset tails and stale generation rejection.
+Allocator tests cover same-block bursts, delayed onsets, cancellation before onset,
+reclaiming releases and stale note-offs after stealing.
+The allocator checkpoint passed all 23 selected kernel, packet-integration and
+frame-context tests, plus a focused quietest-release check. Lint, layering and
+edited-doc path checks passed. The broader changed-file preflight still reports
+256 existing stale references in 78 repository files.
 They do not establish stock AMP lifetime, final track output, MIDI latency or
 device performance. The current V1 adapter skips inactive stock voices and clears
 configured state at stock note-on; CANOPY needs the separate V2 lifecycle and

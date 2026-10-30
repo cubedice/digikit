@@ -1,11 +1,14 @@
 // CANOPY stage-1 sine kernel. Internal ABI, not a loadable V1 machine.
-// Bank: four 32-byte slots {token, gate, x, y, sin(w), cos(w), gain, envelope}.
-// Caller supplies a zeroed, isolated 128-byte bank. No firmware pointers.
+// Bank: four foreground + two tail slots, each 32 bytes:
+// {token, gate, x, y, sin(w), cos(w), gain, envelope}; then four 16-byte
+// pending replacements {token,note,velocity,reserved}. 256 bytes per track.
 // R4=bank for all calls; note_on: R8=nonzero token,R12=MIDI note,R9=velocity.
 // note_off: R8=token. render: R8=32-float output. Returns R0=1 accepted/active,
 // 0 rejected/quiet. Scratch R0..15,I0..2; L0..2=0,M5=0,M6=1, non-SIMD floats.
-// Gate 2 is the reset ramp (at most 64 samples). No stealing yet: a full bank
-// rejects without changing any voice. Pedal/bend follow the lifetime proof.
+// Gate 2 is the reset/steal ramp (at most 64 samples). Reclaim the quietest
+// release first, otherwise the oldest token (CF tokens increase per epoch).
+// A silent new onset needs no
+// tail. Both tails busy => queue a replacement behind its own 64-sample ramp.
 .SECTION/PM seg_pmco;
 .GLOBAL _cp_note_on;
 .GLOBAL _cp_note_off;
@@ -23,21 +26,130 @@ _cp_note_on:
     R9 = PASS R9;
     IF EQ JUMP _cp_reject;
     I0 = R4;
-    R2 = 4;
-    R3 = 0;
-_cp_find_slot:
+    R2 = 6;
+_cp_unique_token:
     R0 = DM(0, I0);
     COMP(R0, R8);
-    IF EQ JUMP _cp_reject; // duplicate token cannot restart its oscillator
+    IF EQ JUMP _cp_reject;
+    MODIFY(I0, 8) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _cp_unique_token;
+    R2 = 4;
+_cp_unique_pending:
+    R0 = DM(0, I0);
+    COMP(R0, R8);
+    IF EQ JUMP _cp_reject;
+    MODIFY(I0, 4) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _cp_unique_pending;
+    I0 = R4;
+    R0 = 192;
+    R0 = R4 + R0;
+    I1 = R0;
+    R2 = 4;
+    R3 = 0;
+    R6 = 0;
+    R5 = 0;
+_cp_find_slot:
+    R0 = DM(0, I0);
+    R1 = DM(0, I1);
+    R1 = PASS R1;
+    IF NE R0 = R1; // pending replacement is the current foreground owner
     R0 = PASS R0;
-    IF NE JUMP _cp_next_slot;
+    IF NE JUMP _cp_oldest;
     R3 = I0;
+    JUMP _cp_next_slot;
+_cp_oldest:
+    R1 = 0x80000000;
+    R10 = R0 XOR R1;
+    R15 = 0;
+    R1 = DM(0, I1);
+    R1 = PASS R1;
+    IF NE JUMP _cp_compare_candidate; // queued onset remains a held owner
+    R0 = DM(1, I0);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE R15 = R1;
+_cp_compare_candidate:
+    R14 = DM(7, I0); // nonnegative float bits sort by envelope magnitude
+    R6 = PASS R6;
+    IF EQ JUMP _cp_choose_oldest;
+    COMP(R15, R5);
+    IF GT JUMP _cp_choose_oldest; // releasing before held
+    IF LT JUMP _cp_next_slot;
+    R15 = PASS R15;
+    IF EQ JUMP _cp_compare_age;
+    COMP(R14, R13);
+    IF LT JUMP _cp_choose_oldest;
+    IF GT JUMP _cp_next_slot;
+_cp_compare_age:
+    COMP(R10, R7);
+    IF GE JUMP _cp_next_slot;
+_cp_choose_oldest:
+    R6 = I0;
+    R7 = R10;
+    R5 = R15;
+    R13 = R14;
 _cp_next_slot:
     MODIFY(I0, 8) (NW);
+    MODIFY(I1, 4) (NW);
     R2 = R2 - 1;
     IF NE JUMP _cp_find_slot;
     R3 = PASS R3;
-    IF EQ JUMP _cp_reject;
+    IF NE JUMP _cp_start;
+    R3 = R6;
+    R0 = R3 - R4;
+    R0 = LSHIFT R0 BY -1;
+    R1 = 192;
+    R0 = R0 + R1;
+    R0 = R4 + R0;
+    I2 = R0;
+    R0 = DM(0, I2);
+    R0 = PASS R0;
+    IF NE JUMP _cp_queue_replacement;
+    I0 = R3;
+    R0 = DM(7, I0);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_start; // an unrendered onset is silent; no tail required
+    R0 = 128;
+    R0 = R4 + R0;
+    I2 = R0;
+    R2 = 2;
+_cp_find_tail:
+    R0 = DM(0, I2);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_save_tail;
+    MODIFY(I2, 8) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _cp_find_tail;
+    R0 = R3 - R4;
+    R0 = LSHIFT R0 BY -1;
+    R1 = 192;
+    R0 = R0 + R1;
+    R0 = R4 + R0;
+    I2 = R0;
+_cp_queue_replacement:
+    DM(0, I2) = R8;
+    DM(1, I2) = R12;
+    DM(2, I2) = R9;
+    I0 = R3;
+    R0 = 2;
+    DM(1, I0) = R0;
+    R0 = 1;
+    RTS;
+_cp_save_tail:
+    R11 = I2;
+    I1 = R3;
+    R2 = 8;
+_cp_copy_tail:
+    R0 = DM(I1, M6);
+    DM(I2, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _cp_copy_tail;
+    I2 = R11;
+    R0 = 2;
+    DM(1, I2) = R0;
+_cp_start:
     I0 = R3;
     DM(0, I0) = R8;
     R0 = 1;
@@ -64,8 +176,19 @@ _cp_next_slot:
 _cp_note_off:
     R8 = PASS R8;
     IF EQ JUMP _cp_reject;
-    I0 = R4;
+    R0 = 192;
+    R0 = R4 + R0;
+    I0 = R0;
     R2 = 4;
+_cp_release_pending:
+    R0 = DM(0, I0);
+    COMP(R0, R8);
+    IF EQ JUMP _cp_cancel_pending;
+    MODIFY(I0, 4) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _cp_release_pending;
+    I0 = R4;
+    R2 = 6;
 _cp_find_release:
     R0 = DM(0, I0);
     COMP(R0, R8);
@@ -74,6 +197,11 @@ _cp_find_release:
     R2 = R2 - 1;
     IF NE JUMP _cp_find_release;
     JUMP _cp_reject;
+_cp_cancel_pending:
+    R0 = 0;
+    DM(0, I0) = R0;
+    R0 = 1;
+    RTS;
 _cp_release:
     R0 = DM(1, I0);
     R1 = 2;
@@ -96,7 +224,8 @@ _cp_clear_output:
     R1 = R1 - 1;
     IF NE JUMP _cp_clear_output;
     I0 = R4;
-    R14 = 4;
+    R11 = R4;
+    R14 = 6;
     R15 = 0;
 _cp_render_slot:
     R0 = DM(0, I0);
@@ -166,6 +295,32 @@ _cp_sample:
 _cp_active:
     R15 = 1;
 _cp_render_next:
+    R0 = 2;
+    COMP(R14, R0);
+    IF LE JUMP _cp_advance_slot;
+    R0 = DM(0, I0);
+    R0 = PASS R0;
+    IF NE JUMP _cp_advance_slot;
+    R3 = I0;
+    R0 = R3 - R11;
+    R0 = LSHIFT R0 BY -1;
+    R1 = 192;
+    R0 = R0 + R1;
+    R0 = R11 + R0;
+    I1 = R0;
+    R0 = DM(0, I1);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_advance_slot;
+    R13 = R8;
+    R8 = R0;
+    R12 = DM(1, I1);
+    R9 = DM(2, I1);
+    R0 = 0;
+    DM(0, I1) = R0;
+    CALL _cp_start;
+    R8 = R13;
+    R15 = 1;
+_cp_advance_slot:
     MODIFY(I0, 8) (NW);
     R14 = R14 - 1;
     IF NE JUMP _cp_render_slot;

@@ -22,7 +22,7 @@ _instrument_reset:
     COMP(R0, R1);
     IF NE JUMP _ci_reset_all;
     R5 = DM(8, I0);
-    R0 = LSHIFT R5 BY 7;
+    R0 = LSHIFT R5 BY 8;
     R1 = _cp_banks;
     R0 = R0 + R1;
     I0 = R0;
@@ -32,8 +32,8 @@ _instrument_reset:
     I1 = R0;
     R0 = 0;
     DM(0, I1) = R0;
-    R2 = 4;
-    JUMP _ci_reset_slots;
+    R3 = 1;
+    JUMP _ci_reset_bank;
 _ci_reset_all:
     I0 = _cp_banks;
     I1 = _cp_ready;
@@ -43,13 +43,23 @@ _ci_clear_ready:
     DM(I1, M6) = R0;
     R2 = R2 - 1;
     IF NE JUMP _ci_clear_ready;
-    R2 = 64;
+    R3 = 16;
+_ci_reset_bank:
+    R2 = 6;
 _ci_reset_slots:
     R0 = 2;
     DM(1, I0) = R0;
     MODIFY(I0, 8) (NW);
     R2 = R2 - 1;
     IF NE JUMP _ci_reset_slots;
+    R0 = 0;
+    R2 = 16;
+_ci_reset_pending:
+    DM(I0, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _ci_reset_pending;
+    R3 = R3 - 1;
+    IF NE JUMP _ci_reset_bank;
     R0 = 1;
     RTS;
 _instrument_configure:
@@ -87,13 +97,13 @@ _instrument_events:
     R0 = DM(0, I1);
     R0 = PASS R0;
     IF EQ JUMP _ci_reject;
-    R0 = LSHIFT R5 BY 7;
+    R0 = LSHIFT R5 BY 8;
     R1 = _cp_banks;
     R0 = R0 + R1;
     DM(_ci_bank) = R0;
     I1 = R0;
     I2 = _cp_staging;
-    R2 = 32;
+    R2 = 64;
 _ci_snapshot:
     R0 = DM(I1, M6);
     DM(I2, M6) = R0;
@@ -139,7 +149,7 @@ _ci_next_event:
     R0 = DM(_ci_bank);
     I1 = R0;
     I2 = _cp_staging;
-    R2 = 32;
+    R2 = 64;
 _ci_commit:
     R0 = DM(I2, M6);
     DM(I1, M6) = R0;
@@ -153,7 +163,7 @@ _ci_reject:
 _cp_render_track:
     // Internal render entry: R4=track (0..15), R8=output. Tails render even
     // after configuration was reset. Caller provides a valid track, no ISR race.
-    R0 = LSHIFT R4 BY 7;
+    R0 = LSHIFT R4 BY 8;
     R1 = _cp_banks;
     R4 = R0 + R1;
     CALL _cp_render;
@@ -162,6 +172,6 @@ _cp_render_track:
 .VAR _ci_bank = 0;
 .VAR _ci_event = 0;
 .VAR _ci_remaining = 0;
-.PKBSS _cp_banks, 2048;
+.PKBSS _cp_banks, 4096;
 .PKBSS _cp_ready, 64;
-.PKBSS _cp_staging, 128;
+.PKBSS _cp_staging, 256;

@@ -61,9 +61,9 @@ _cp_test_loop:
 
     def session():
         dm = dict(initial)
-        dm.update({BANK // 4 + i: 0 for i in range(32)})
+        dm.update({BANK // 4 + i: 0 for i in range(64)})
         dm.update({OUTPUT // 4 + i: 0 for i in range(32)})
-        for base, count in ((BANK, 32), (OUTPUT, 32)):
+        for base, count in ((BANK, 64), (OUTPUT, 32)):
             dm[base // 4 - 1] = dm[base // 4 + count] = 0xDEADBEEF
 
         def call(entry, token=0, note=60, velocity=100, blocks=1):
@@ -89,10 +89,10 @@ _cp_test_loop:
                 },
                 dm_words=dm,
                 reads={
-                    "bank": (BANK // 4 - 1, 34),
+                    "bank": (BANK // 4 - 1, 66),
                     "out": (OUTPUT // 4 - 1, count + 2),
                 },
-                max_steps=7000 * blocks,
+                max_steps=12000 * blocks,
             )
             assert result["halt"]["reason"] == "breakpoint", result
             for name, base in (("bank", BANK), ("out", OUTPUT)):
@@ -101,7 +101,7 @@ _cp_test_loop:
                     {base // 4 - 1 + i: word for i, word in enumerate(result[name])}
                 )
             bank = result["bank"][1:-1]
-            slots = {bank[i]: bank[i : i + 8] for i in range(0, 32, 8) if bank[i]}
+            slots = {bank[i]: bank[i : i + 8] for i in range(0, 48, 8) if bank[i]}
             return result["regs"]["R0"], slots, floats(result["out"][1:-1])
 
         return call
@@ -137,7 +137,6 @@ def test_tokens_capacity_and_quiet_output(engine):
         assert call("note_on", token, 60 + token)[0] == 1
     _, before, _ = call("render")
     for token, note, velocity in (
-        (5, 70, 100),
         (1, 60, 100),
         (0, 60, 100),
         (5, 128, 100),
@@ -154,6 +153,53 @@ def test_tokens_capacity_and_quiet_output(engine):
         status, slots, _ = call("render")
     assert status == 0 and slots == {}
     assert call("render")[2] == [0.0] * 32
+
+
+def test_stealing_preserves_tails_and_delayed_replacement_is_bounded(engine):
+    call = engine()
+    for token in range(1, 5):
+        assert call("note_on", token, 59 + token, 127)[0] == 1
+    call("render_many", blocks=120)
+    for token in range(5, 9):
+        assert call("note_on", token, 59 + token, 127)[0] == 1
+    _, voices, _ = call("render")
+    assert set(voices) == set(range(1, 7))
+    assert all(voices[t][1] == 2 for t in range(1, 5))
+    assert all(voices[t][1] == 1 for t in range(5, 7))
+    assert call("note_off", 1)[1] == voices  # stolen release cannot affect replacement
+    assert call("note_on", 9, 72, 127)[0] == 1  # queues behind its own ramp
+    call("note_off", 5)  # displaced physical release must not cancel pending 9
+    _, voices, pcm = call("render")
+    assert set(voices) == set(range(6, 10))
+    assert all(math.isfinite(x) and abs(x) <= 1.001 for x in pcm)
+    assert call("note_off", 1)[0] == 0
+
+
+def test_pending_note_can_be_released_before_it_sounds(engine):
+    call = engine()
+    for token in range(1, 5):
+        call("note_on", token, 60, 127)
+    call("render_many", blocks=120)
+    for token in range(5, 9):
+        call("note_on", token, 64, 127)
+    assert call("note_off", 7)[0] == 1
+    call("render")
+    _, voices, _ = call("render")
+    assert set(voices) == {5, 6, 8}
+
+
+def test_quietest_release_is_reclaimed_before_older_notes(engine):
+    call = engine()
+    for token in range(1, 5):
+        call("note_on", token, 60 + token, 127)
+    call("render_many", blocks=120)
+    call("note_off", 4)
+    call("render")
+    call("note_off", 3)
+    call("render")
+    _, voices, _ = call("note_on", 5, 72, 127)
+    assert voices[1][1] == 1 and voices[4][1] == 2 and voices[5][1] == 1
+    assert voices[3][1] == 0
 
 
 @pytest.mark.parametrize("note", [0, 69, 127])
