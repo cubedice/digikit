@@ -108,7 +108,9 @@ def test_composed_frame_preserves_context(mode, consumer, valid_position):
     for name in ("packet", "receiver", "config", "consumer", "reply", "block"):
         source += "\n" + (MOD / f"src/dsp/{name}.s").read_text()
     if consumer:
-        source += "\n.SECTION/PM seg_pmco;\n.GLOBAL _instrument_reset;\n_instrument_reset:\n R0 = 1;\n RTS;\n"
+        canopy = ROOT / "modules/machines/canopy/src/dsp"
+        for name in ("voice", "tuning", "instrument"):
+            source += "\n" + (canopy / f"{name}.s").read_text()
     obj = pk_sharc.assemble(source)
     sections, address, dm = {}, 0x20020000, {}
     for name, (blob, align, _) in obj.data.items():
@@ -124,14 +126,11 @@ def test_composed_frame_preserves_context(mode, consumer, valid_position):
     symbols = {
         name: sections[sec] + off for name, (sec, off, _) in obj.data_symbols.items()
     }
-    externs = {
-        **symbols,
-        "_pp_block_back": 0xB9F000,
-        "_instrument_events": 0,
-        "_instrument_configure": 0,
-    }
+    externs = {**symbols, "_pp_block_back": 0xB9F000}
     if not consumer:
         externs["_instrument_reset"] = 0
+        externs["_instrument_events"] = 0
+        externs["_instrument_configure"] = 0
     linked = pk_sharc.link(obj, 0xB90000, externs)
     rx = 0x200A0000
     words = [0x494E0101, 2, 1, 1, 0, 0, 42, 0, 0, 2] + [0] * 22

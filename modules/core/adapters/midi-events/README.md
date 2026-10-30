@@ -48,7 +48,7 @@ instrument-owned storage. No callback may retain staging pointers. The callbacks
 obey the scratch-register contract documented in `src/dsp/consumer.s`.
 
 These are internal lifecycle callbacks, not the public V2 module descriptor.
-The instrument engine and callbacks are not implemented yet. Missing or rejecting
+CANOPY supplies proof-only callbacks in its uninstalled source tree; normal firmware still has no instrument callbacks. Missing or rejecting
 callbacks produce no reset/event/commit ACK and cannot enable keyboard routes.
 
 Lifecycle component tests execute the production receiver, configuration staging
@@ -86,7 +86,7 @@ staging pointer. A missing or rejecting publisher leaves applied settings untouc
 and produces no commit ACK. The V2 packet consumer must call this helper only after
 packet/order/ownership validation, and call `_mi_config_abort` on priority reset.
 The lifecycle bridge now provides the ownership gate and publisher wrapper; the
-instrument-specific schema callback is not implemented yet. Tests use a publisher fixture
+release schema callback remains open; CANOPY currently accepts only its internal fixed-sine proof schema. Tests use a publisher fixture
 to verify that only a complete valid commit changes its bank; they also execute
 actual CF-generated chunk/commit packets on the SHARC staging code.
 
@@ -120,7 +120,7 @@ The frame hooks are connected: `instrument_write_frame` processes replies and wr
 only the instrument data halfwords; the pattern-position owner calls
 `_instrument_block` before stock dispatch/render, even when position is invalid.
 The wrapper preserves DSP registers and arithmetic state, including SIMD pairs.
-The V2 instrument engine/schema callback remains to be implemented. The current module
+The public V2 descriptor, release schema and live instrument integration remain open. The current module
 does not claim keyboard routes. Target tests feed actual ColdFire-produced reset
 and eight-note packets to the SHARC validator, and exercise receiver retries,
 gaps, reset preemption, consumer rejection and stale epochs. They do not establish

@@ -4,8 +4,8 @@
 // R4=bank for all calls; note_on: R8=nonzero token,R12=MIDI note,R9=velocity.
 // note_off: R8=token. render: R8=32-float output. Returns R0=1 accepted/active,
 // 0 rejected/quiet. Scratch R0..15,I0..2; L0..2=0,M5=0,M6=1, non-SIMD floats.
-// No stealing yet: a full bank rejects without changing any voice. Reset/steal
-// ramps, pedal, bend and instrument integration follow the lifetime proof.
+// Gate 2 is the reset ramp (at most 64 samples). No stealing yet: a full bank
+// rejects without changing any voice. Pedal/bend follow the lifetime proof.
 .SECTION/PM seg_pmco;
 .GLOBAL _cp_note_on;
 .GLOBAL _cp_note_off;
@@ -75,8 +75,13 @@ _cp_find_release:
     IF NE JUMP _cp_find_release;
     JUMP _cp_reject;
 _cp_release:
+    R0 = DM(1, I0);
+    R1 = 2;
+    COMP(R0, R1);
+    IF EQ JUMP _cp_release_done; // do not lengthen a reset ramp
     R0 = 0;
     DM(1, I0) = R0;
+_cp_release_done:
     R0 = 1;
     RTS;
 _cp_reject:
@@ -105,9 +110,15 @@ _cp_render_slot:
     F7 = DM(7, I0);
     R0 = DM(1, I0);
     F10 = 0.0002604166667; // 80 ms linear attack at 48 kHz
+    R1 = 2;
+    COMP(R0, R1);
+    IF EQ JUMP _cp_reset_ramp;
     R0 = PASS R0;
     IF NE JUMP _cp_render_samples;
     F10 = -0.00002083333333; // one second release from full amplitude
+    JUMP _cp_render_samples;
+_cp_reset_ramp:
+    F10 = -0.015625; // bounded de-click ramp on lifecycle reset
 _cp_render_samples:
     I2 = R8;
     R13 = 32;
