@@ -13,6 +13,7 @@
 .EXTERN _cp_note_on;
 .EXTERN _cp_note_off;
 .EXTERN _cp_render;
+.EXTERN _cp_retune;
 .EXTERN _cp_banks;
 .EXTERN _cp_ready;
 .EXTERN _cp_staging;
@@ -23,11 +24,11 @@ _instrument_reset:
     COMP(R0, R1);
     IF NE JUMP _ci_reset_all;
     R5 = DM(8, I0);
-    R0 = LSHIFT R5 BY 7;
+    R0 = LSHIFT R5 BY 8;
     R1 = _cp_pedals;
     R0 = R0 + R1;
     I2 = R0;
-    R2 = 32;
+    R2 = 64;
     CALL _ci_clear_pedals;
     R0 = LSHIFT R5 BY 8;
     R1 = _cp_banks;
@@ -43,7 +44,7 @@ _instrument_reset:
     JUMP _ci_reset_bank;
 _ci_reset_all:
     I2 = _cp_pedals;
-    R2 = 512;
+    R2 = 1024;
     CALL _ci_clear_pedals;
     I0 = _cp_banks;
     I1 = _cp_ready;
@@ -107,13 +108,13 @@ _instrument_events:
     R0 = DM(0, I1);
     R0 = PASS R0;
     IF EQ JUMP _ci_reject;
-    R0 = LSHIFT R5 BY 7;
+    R0 = LSHIFT R5 BY 8;
     R1 = _cp_pedals;
     R0 = R0 + R1;
     DM(_ci_pedal_bank) = R0;
     I1 = R0;
     I2 = _ci_pedal_staging;
-    R2 = 32;
+    R2 = 64;
 _ci_snapshot_pedals:
     R0 = DM(I1, M6);
     DM(I2, M6) = R0;
@@ -146,6 +147,7 @@ _ci_event_loop:
     R2 = LSHIFT R2 BY 4;
     R3 = FEXT R0 BY 6:4;
     R2 = R2 + R3;
+    DM(_ci_route_index) = R2;
     R3 = 1;
     R3 = LSHIFT R3 BY R2;
     DM(_ci_route_mask) = R3;
@@ -197,7 +199,7 @@ _ci_commit:
     R0 = DM(_ci_pedal_bank);
     I1 = R0;
     I2 = _ci_pedal_staging;
-    R2 = 32;
+    R2 = 64;
 _ci_commit_pedals:
     R0 = DM(I2, M6);
     DM(I1, M6) = R0;
@@ -240,6 +242,9 @@ _ci_store_deferred:
     DM(1, I2) = R0;
     RTS;
 _ci_controller:
+    R2 = 4;
+    COMP(R1, R2);
+    IF EQ JUMP _ci_bend_event;
     R2 = 3;
     COMP(R1, R2);
     IF NE JUMP _ci_reject;
@@ -251,7 +256,7 @@ _ci_controller:
     IF EQ JUMP _ci_all_notes_off;
     R2 = 121; // Reset All Controllers releases pedal ownership on this route.
     COMP(R12, R2);
-    IF EQ JUMP _ci_pedal_up;
+    IF EQ JUMP _ci_reset_controllers;
     R2 = 64;
     COMP(R12, R2);
     IF NE JUMP _ci_reject;
@@ -369,8 +374,13 @@ _ci_insert_here:
     I0 = R0;
     R0 = DM(0, I0);
     DM(0, I2) = R0;
-    R0 = DM(_ci_route_mask);
+    R0 = DM(2, I0);
+    R0 = FEXT R0 BY 14:7;
+    R0 = LSHIFT R0 BY 8;
+    R1 = DM(_ci_route_index);
+    R0 = R0 OR R1;
     DM(1, I2) = R0;
+    CALL _ci_retune_owner;
     R0 = 1;
     RTS;
 _ci_all_sound_off:
@@ -410,13 +420,15 @@ _ci_route_release_next:
     R8 = PASS R8;
     IF EQ JUMP _ci_route_advance;
     R0 = DM(1, I2);
-    R1 = DM(_ci_route_mask);
+    R0 = FEXT R0 BY 0:5;
+    R1 = DM(_ci_route_index);
     COMP(R0, R1);
     IF NE JUMP _ci_route_advance;
     R0 = DM(_ci_panic);
     R0 = PASS R0;
     IF NE JUMP _ci_route_panic;
     R0 = DM(_ci_pedal_staging);
+    R1 = DM(_ci_route_mask);
     R0 = R0 AND R1;
     IF EQ JUMP _ci_route_normal;
     CALL _ci_defer_release;
@@ -458,6 +470,102 @@ _ci_route_advance:
     COMP(R0, R1);
     IF LT JUMP _ci_route_release_next;
     JUMP _ci_next_event;
+// Signed per-route bend values live at word 29..60 of controller state.
+_ci_bend_address:
+    R0 = DM(_ci_route_index);
+    R0 = LSHIFT R0 BY 2;
+    R1 = _ci_pedal_staging;
+    R0 = R0 + R1;
+    I0 = R0;
+    MODIFY(I0, 29) (NW);
+    RTS;
+_ci_bend_event:
+    R9 = LSHIFT R9 BY 7;
+    R9 = R9 + R12;
+    R0 = 8192;
+    R9 = R9 - R0;
+    CALL _ci_bend_address;
+    DM(0, I0) = R9;
+    CALL _ci_apply_route_bend;
+    JUMP _ci_next_event;
+_ci_reset_controllers:
+    CALL _ci_bend_address;
+    R0 = 0;
+    DM(0, I0) = R0;
+    CALL _ci_apply_route_bend;
+    JUMP _ci_pedal_up;
+_ci_apply_route_bend:
+    R0 = 0;
+    DM(_ci_owner_index) = R0;
+_ci_bend_next_owner:
+    CALL _ci_owner_at;
+    R0 = DM(0, I2);
+    R0 = PASS R0;
+    IF EQ JUMP _ci_bend_advance;
+    R0 = DM(1, I2);
+    R0 = FEXT R0 BY 0:5;
+    R1 = DM(_ci_route_index);
+    COMP(R0, R1);
+    IF NE JUMP _ci_bend_advance;
+    CALL _ci_retune_owner;
+_ci_bend_advance:
+    R0 = DM(_ci_owner_index);
+    R0 = R0 + 1;
+    DM(_ci_owner_index) = R0;
+    R1 = 10;
+    COMP(R0, R1);
+    IF LT JUMP _ci_bend_next_owner;
+    RTS;
+_ci_retune_owner:
+    R0 = DM(0, I2);
+    DM(_ci_bend_token) = R0;
+    R0 = DM(1, I2);
+    R1 = FEXT R0 BY 8:7;
+    DM(_ci_bend_note) = R1;
+    R0 = FEXT R0 BY 0:5;
+    R0 = LSHIFT R0 BY 2;
+    R1 = _ci_pedal_staging;
+    R0 = R0 + R1;
+    I1 = R0;
+    R0 = DM(29, I1);
+    DM(_ci_bend_value) = R0;
+    R0 = 0;
+    DM(_ci_bend_slot) = R0;
+_ci_bend_voice:
+    R0 = DM(_ci_bend_slot);
+    R0 = LSHIFT R0 BY 5;
+    R1 = _cp_staging;
+    R0 = R0 + R1;
+    I0 = R0;
+    R0 = DM(0, I0);
+    R1 = DM(_ci_bend_token);
+    COMP(R0, R1);
+    IF NE JUMP _ci_bend_voice_next;
+    R12 = DM(_ci_bend_note);
+    R9 = DM(_ci_bend_value);
+    CALL _cp_retune;
+_ci_bend_voice_next:
+    R0 = DM(_ci_bend_slot);
+    R0 = R0 + 1;
+    DM(_ci_bend_slot) = R0;
+    R1 = 6;
+    COMP(R0, R1);
+    IF LT JUMP _ci_bend_voice;
+    I0 = _cp_staging;
+    MODIFY(I0, 48) (NW);
+    R2 = 4;
+_ci_bend_pending:
+    R0 = DM(0, I0);
+    R1 = DM(_ci_bend_token);
+    COMP(R0, R1);
+    IF NE JUMP _ci_bend_pending_next;
+    R0 = DM(_ci_bend_value);
+    DM(3, I0) = R0;
+_ci_bend_pending_next:
+    MODIFY(I0, 4) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _ci_bend_pending;
+    RTS;
 _ci_clear_pedals:
     R0 = 0;
 _ci_clear_pedal_word:
@@ -484,12 +592,18 @@ _cp_render_track:
 .PKBSS _cp_staging, 256;
 
 // Per track: 32 route pedal bits, four {deferred token, route mask} records,
-// ten {live token, route mask} pairs and three reserved words. Staged with voices.
-.PKDATA _cp_pedals, 2048;
-.PKBSS _ci_pedal_staging, 128;
+// ten {live token, route index | note<<8} pairs, 32 signed bends, three reserved.
+.PKDATA _cp_pedals, 4096;
+.PKBSS _ci_pedal_staging, 256;
 .VAR _ci_pedal_bank = 0;
 .VAR _ci_route_mask = 0;
 .VAR _ci_release_index = 0;
 
 .VAR _ci_owner_index = 0;
 .VAR _ci_panic = 0;
+
+.VAR _ci_route_index = 0;
+.VAR _ci_bend_token = 0;
+.VAR _ci_bend_note = 0;
+.VAR _ci_bend_value = 0;
+.VAR _ci_bend_slot = 0;

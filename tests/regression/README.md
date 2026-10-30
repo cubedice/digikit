@@ -13,6 +13,7 @@ time (the stock project may run files in parallel, `REGRESSION_JOBS`, set by the
 | `scenarios/` | `fx-dn2`, `fx-dt2` | Stock FX oracles (see [scenarios/README.md](scenarios/README.md)) |
 | `emulator/` | device | Emulator checks that belong to no module: stock-firmware reply record, SHARC instruction semantics |
 | `runtime/` | none | Helpers only (daemon, card, UI and module-install kits) |
+| `runtime/canopy-bend.test.ts` | `canopy-carrier` | Final-audio bend frequency, MIDI route isolation and CC121 centering |
 | `runtime/canopy-panic.test.ts` | `canopy-carrier` | Route-scoped channel-mode controls, sustain, panic and stale physical releases |
 | `runtime/canopy-pattern.test.ts` | `canopy-carrier` | Running pattern lookahead, committed-boundary admission and stale-release ownership |
 | `runtime/canopy-reload.test.ts` | `canopy-carrier` | Panel-driven temporary reload, same-pointer invalidation and fresh MIDI audio |
@@ -267,3 +268,13 @@ The unaffected DIN note must remain audible (finite RMS above -80 dBFS); DIN pan
 then requires final RMS and peak below -120 dBFS after the usual 0.25-second drain.
 The instance generation must remain unchanged: this tests route-owned controls,
 not a whole-track reset. Artifacts use the `out/canopy-panic-*` prefix.
+
+The `canopy-carrier` project's `runtime/canopy-bend.test.ts` measures final pitch
+from raw 48 kHz stereo captures of held USB A4. It checks center, maximum upward
+bend, an unrelated DIN downward bend, and USB CC121 centering. Each capture
+follows a quarter-second settle and covers at least a quarter-second of audio.
+Interpolated positive zero crossings on the left channel must yield pitch within
+0.2 Hz of the target; output must remain finite and audible. The four-minute
+scenario also checks the same note token survives throughout and retires on
+physical release. Artifacts use `out/canopy-bend-*`. This measures settled final
+pitch; sample-accurate phase preservation is covered by component tests.

@@ -872,3 +872,52 @@ final quietness, not a sample-aligned final-output stop bound. Pitch bend,
 public V2 registration, compatible-pattern retention, latch/arp ownership and
 hardware testing remain open. The current sine fixture has no latch or arp to
 clear; those future owners must join the route panic transaction.
+
+
+## Phase-preserving route pitch bend [D]
+
+The callback now accepts 14-bit pitch bend with a fixed two-semitone range:
+semitones = (value - 8192) / 4096. Center is exact; the maximum positive message
+is one 14-bit unit short of +2 semitones. Each port/channel retains its bend for
+future notes. CC121 centers bend and releases pedal-only notes on that route;
+CC120 leaves pitch bend unchanged. Track/epoch reset centers the stored bends.
+
+Controller state grows to 256 bytes per track plus one 256-byte staged copy.
+Owner metadata packs route index and base MIDI note beside each token; 32 signed
+bend words fill the added space. The voice bank remains 256 bytes. Its pending
+record's previously reserved fourth word now holds signed bend, initialized to
+zero on allocation and applied before the pending note's first sample.
+
+Bend recomputes oscillator rotation from the original note and current bend,
+without modifying phase, envelope, gate or gain. A float32 base-angle table and
+small-angle polynomial rotation avoid cumulative retuning drift. Center restores
+the original tuning coefficients exactly. Sounding tails and pending replacements
+are updated alongside foreground voices. Rejected batches publish neither bend
+state nor changed coefficients. This does not add smoothing or a configurable
+bend range, and it does not apply stock TUNE a second time.
+
+Component checks cover MIDI notes 0 and 127, 14-bit endpoints and one-unit bends,
+error below 0.02 cents in the sampled cases, exact phase/envelope/gain preservation,
+other-route isolation, CC121 restoration, bend before note-on, failed-batch
+rollback, late bends of queued replacements and emergency tails, and reset.
+All 23 callback tests pass, including a full eight-message bend batch with all
+ten sounding/pending token slots occupied. This stress case uses a 30,000-step
+instruction-harness ceiling; it is not a real-time CPU-budget acceptance result.
+All eight standalone voice tests and 62 carrier component tests also pass.
+
+The new booted `canopy-bend.test.ts` passed in 156.99 seconds (153.05-second body).
+Positive left-channel zero crossings, linearly interpolated in raw stereo f32le,
+measure held USB A4 at 440.000015 Hz, maximum bend at 493.876333 Hz (target
+493.876337), and 493.876334 Hz after an unrelated DIN downward bend. USB CC121
+restores 440.000006 Hz. Each capture follows 0.25 seconds of settling and includes
+at least 0.25 seconds of audio. All samples are finite and audible, the same
+note token survives the changes, and physical release retires it. No transport
+or emulator fault is reported. This measures settled final pitch; exact phase
+preservation is component evidence, not a final-output transition measurement.
+
+Fixture SHA-256 is
+`ae5f9a7fc9e5e8e50dbcb05475fcae25fdb7b4da06eeb2aeb9a12e3fc038a65e`,
+1,935,648 bytes, 39 writes. Captures and reports remain under `out/canopy-bend-*`.
+This remains an emulator-only sine fixture. Public V2 registration, compatible
+pattern retention, chord/pad/arp modes, CPU-budget acceptance and hardware tests
+remain open.

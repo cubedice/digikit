@@ -1,5 +1,6 @@
 """Production packet-to-CANOPY callback integration on the SHARC core."""
 
+import math
 import struct
 from pathlib import Path
 
@@ -55,6 +56,7 @@ def instrument():
             port=0,
             channel=0,
             epoch=1,
+            budget=12000,
         ):
             nonlocal sequence
             if kind == "render":
@@ -118,7 +120,7 @@ def instrument():
                 },
                 dm_words=dm,
                 reads={**reads, "output": (OUTPUT // 4, 32)},
-                max_steps=12000,
+                max_steps=budget,
             )
             assert result["halt"]["reason"] == "breakpoint", result
             for name in reads:
@@ -406,3 +408,121 @@ def test_panic_and_owner_map_rollback_on_rejected_batch(instrument):
     assert call(1, [(0, 3, 120, 0)])[0] == 1
     call("render")
     assert call("render")[0] == 0
+
+
+def voice(banks, token):
+    return next(banks[0][i : i + 8] for i in range(0, 48, 8) if banks[0][i] == token)
+
+
+def frequency(slot):
+    sine, cosine = (struct.unpack("<f", struct.pack("<I", w))[0] for w in slot[4:6])
+    return math.atan2(sine, cosine) * 48000 / (2 * math.pi)
+
+
+@pytest.mark.parametrize(
+    "note,bend", [(0, 0), (60, 8192), (69, 16383), (127, 16383), (127, 0), (60, 8193)]
+)
+def test_bend_retunes_without_changing_phase_or_other_route(instrument, note, bend):
+    call = instrument()
+    call(2)
+    call(3)
+    call(4)
+    call(1, [(1, 1, note, 100)], port=1, channel=15)
+    call(1, [(2, 1, 67, 100)])
+    _, before, _ = call("render")
+    status, after, _ = call(1, [(0, 4, bend & 127, bend >> 7)], port=1, channel=15)
+    assert status == 1
+    a, b = voice(before, 1), voice(after, 1)
+    assert a[:4] == b[:4] and a[6:] == b[6:]
+    assert voice(before, 2) == voice(after, 2)
+    expected = 440 * 2 ** ((note - 69 + (bend - 8192) / 4096) / 12)
+    assert abs(1200 * math.log2(frequency(b) / expected)) < 0.02
+    # Reset All Controllers restores exact center coefficients without phase reset.
+    _, centered, _ = call(1, [(0, 3, 121, 0)], port=1, channel=15)
+    assert voice(centered, 1) == a
+
+
+def test_bend_before_note_pending_onset_and_failed_batch(instrument):
+    call = instrument()
+    call(2)
+    call(3)
+    call(4)
+    call(1, [(0, 4, 127, 127)])
+    call(1, [(t, 1, 60, 100) for t in range(1, 5)])
+    call("render")
+    _, before, _ = call(1, [(t, 1, 60, 100) for t in range(5, 9)])
+    assert any(before[0][i] for i in range(48, 64, 4))
+    # Bend failure must roll back coefficients, per-route state and pending bend.
+    status, after, _ = call(1, [(0, 4, 0, 0), (8, 1, 60, 100)])
+    assert status == 0 and before == after
+    call("render")
+    _, banks, _ = call("render")
+    expected = 440 * 2 ** ((60 - 69 + 8191 / 4096) / 12)
+    for token in range(5, 9):
+        assert abs(1200 * math.log2(frequency(voice(banks, token)) / expected)) < 0.02
+    # A bend changes all current owners, including releases, without accumulation.
+    call(1, [(5, 2, 60, 0)])
+    for bend in (0, 8192, 16383, 8192):
+        _, banks, _ = call(1, [(0, 4, bend & 127, bend >> 7)])
+    for token in range(5, 9):
+        assert abs(frequency(voice(banks, token)) - 261.6255653) < 0.001
+
+
+def test_reset_clears_bend_and_panic_does_not_reset_controller_pitch(instrument):
+    call = instrument()
+    call(2)
+    call(3)
+    call(4)
+    call(1, [(0, 4, 0, 0), (0, 3, 120, 0), (1, 1, 69, 100)])
+    assert abs(frequency(voice(call("render")[1], 1)) - 440 * 2 ** (-2 / 12)) < 0.001
+    call(2, generation=2)
+    call("render")
+    call("render")
+    call(3, generation=2)
+    call(4, generation=2)
+    _, banks, _ = call(1, [(2, 1, 69, 100)], generation=2)
+    assert abs(frequency(voice(banks, 2)) - 440) < 0.001
+
+
+def test_late_bend_reaches_pending_onsets_and_emergency_tails(instrument):
+    call = instrument()
+    call(2)
+    call(3)
+    call(4)
+    call(1, [(t, 1, 69, 100) for t in range(1, 5)])
+    call("render")
+    call(1, [(t, 1, 69, 100) for t in range(5, 9)])
+    _, banks, _ = call(1, [(0, 4, 0, 0)])
+    low = 440 * 2 ** (-2 / 12)
+    for token in (1, 2):
+        assert abs(frequency(voice(banks, token)) - low) < 0.001
+    call("render")
+    _, banks, _ = call("render")
+    for token in range(5, 9):
+        assert abs(frequency(voice(banks, token)) - low) < 0.001
+
+
+def test_full_bend_batch_updates_ten_owned_tokens_atomically(instrument):
+    call = instrument()
+    call(2)
+    call(3)
+    call(4)
+    call(1, [(t, 1, 69, 100) for t in range(1, 5)])
+    # Give initial voices enough envelope to keep both stolen tails alive for
+    # one block, and render new 5/6 before stealing so they need pending slots.
+    for _ in range(64):
+        call("render")
+    assert call(1, [(t, 1, 69, 100) for t in (5, 6)])[0] == 1
+    call("render")
+    status, banks, _ = call(1, [(t, 1, 69, 100) for t in range(7, 11)])
+    assert status == 1
+    tokens = {banks[0][i] for i in range(0, 48, 8)} | {
+        banks[0][i] for i in range(48, 64, 4)
+    }
+    assert tokens == set(range(1, 11))
+    bends = [0, 16383, 8193, 8191, 0, 16383, 0, 8192]
+    status, banks, _ = call(1, [(0, 4, b & 127, b >> 7) for b in bends], budget=30000)
+    assert status == 1
+    for i in range(0, 48, 8):
+        assert abs(frequency(banks[0][i : i + 8]) - 440) < 0.001
+    assert all(banks[0][i + 3] == 0 for i in range(48, 64, 4))
