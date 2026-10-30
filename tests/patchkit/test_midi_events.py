@@ -105,10 +105,10 @@ def test_composed_frame_preserves_context(mode, consumer, valid_position):
         ROOT / "modules/core/adapters/pattern-position/src/dsp/pattern_position.s"
     )
     source = position.read_text()
-    for name in ("packet", "receiver", "reply", "block"):
+    for name in ("packet", "receiver", "config", "consumer", "reply", "block"):
         source += "\n" + (MOD / f"src/dsp/{name}.s").read_text()
     if consumer:
-        source += "\n.SECTION/PM seg_pmco;\n.GLOBAL _mi_apply_packet;\n_mi_apply_packet:\n R0 = 1;\n RTS;\n"
+        source += "\n.SECTION/PM seg_pmco;\n.GLOBAL _instrument_reset;\n_instrument_reset:\n R0 = 1;\n RTS;\n"
     obj = pk_sharc.assemble(source)
     sections, address, dm = {}, 0x20020000, {}
     for name, (blob, align, _) in obj.data.items():
@@ -124,9 +124,14 @@ def test_composed_frame_preserves_context(mode, consumer, valid_position):
     symbols = {
         name: sections[sec] + off for name, (sec, off, _) in obj.data_symbols.items()
     }
-    externs = {**symbols, "_pp_block_back": 0xB9F000}
+    externs = {
+        **symbols,
+        "_pp_block_back": 0xB9F000,
+        "_instrument_events": 0,
+        "_instrument_configure": 0,
+    }
     if not consumer:
-        externs["_mi_apply_packet"] = 0
+        externs["_instrument_reset"] = 0
     linked = pk_sharc.link(obj, 0xB90000, externs)
     rx = 0x200A0000
     words = [0x494E0101, 2, 1, 1, 0, 0, 42, 0, 0, 2] + [0] * 22
@@ -198,6 +203,187 @@ def configuration_packets(values, revision=1):
         words[7] = packet_check(words)
         packets.append(words)
     return packets
+
+
+@pytest.fixture(scope="module")
+def lifecycle_consumer():
+    source = "\n".join(
+        (MOD / f"src/dsp/{name}.s").read_text()
+        for name in ("packet", "receiver", "config", "consumer")
+    )
+    source += """
+.SECTION/PM seg_pmco;
+.GLOBAL _lifecycle_callback;
+_lifecycle_callback:
+    R0 = DM(_lifecycle_ready);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _lifecycle_return;
+    R1 = DM(_lifecycle_calls);
+    R1 = R1 + 1;
+    DM(_lifecycle_calls) = R1;
+_lifecycle_return:
+    RTS;
+.SECTION/DM seg_dmda;
+.GLOBAL _lifecycle_ready;
+.GLOBAL _lifecycle_calls;
+.VAR _lifecycle_ready = 1;
+.VAR _lifecycle_calls = 0;
+"""
+    obj = pk_sharc.assemble(source)
+    sections, address, initial = {}, 0x20020000, {}
+    for name, (blob, align, _) in obj.data.items():
+        address = (address + align - 1) // align * align
+        sections[name] = address
+        initial.update(
+            {
+                address // 4 + i: int.from_bytes(blob[i * 4 : i * 4 + 4], "little")
+                for i in range(len(blob) // 4)
+            }
+        )
+        address += len(blob) + 64
+    symbols = {
+        name: sections[sec] + off for name, (sec, off, _) in obj.data_symbols.items()
+    }
+    callbacks = ("_instrument_reset", "_instrument_events", "_instrument_configure")
+    provisional = pk_sharc.link(
+        obj, 0xB90000, {**symbols, **dict.fromkeys(callbacks, 0)}
+    )
+
+    def session(present=True):
+        callback = provisional.symbols["_lifecycle_callback"] if present else 0
+        linked = pk_sharc.link(
+            obj, 0xB90000, {**symbols, **dict.fromkeys(callbacks, callback)}
+        )
+        dm = dict(initial)
+
+        def call(words, ready=1):
+            words = words.copy()
+            words[7] = packet_check(words)
+            dm.update({0x20010000 // 4 + i: word for i, word in enumerate(words)})
+            dm[symbols["_lifecycle_ready"] // 4] = ready
+            reads = {
+                name: (sections[name] // 4, len(blob) // 4)
+                for name, (blob, _, _) in obj.data.items()
+            }
+            result = pk_sharc.run_call(
+                linked,
+                "_mi_receive",
+                regs={"R4": 0x20010000, "M5": 0, "M6": 1, "L0": 0, "L1": 0, "L2": 0},
+                dm_words=dm,
+                reads=reads,
+                max_steps=4000,
+            )
+            assert result["halt"]["reason"] == "breakpoint", result
+            for name in reads:
+                dm.update(
+                    {
+                        sections[name] // 4 + i: word
+                        for i, word in enumerate(result[name])
+                    }
+                )
+            bank = symbols["_mi_instances"] // 4
+            return (
+                result["regs"]["R0"],
+                [dm[bank + i] for i in range(32)],
+                dm[symbols["_lifecycle_calls"] // 4],
+            )
+
+        return call
+
+    return session
+
+
+def test_lifecycle_ownership_and_atomic_callback_failure(lifecycle_consumer):
+    call = lifecycle_consumer()
+    reset = [0x494E0101, 2, 1, 1, 0, 0, 42, 0, 0, 1] + [0] * 22
+    assert lifecycle_consumer(False)(reset)[0:3:2] == (0, 0)
+    assert call(reset, ready=0)[0:3:2] == (0, 0)
+    result, bank, calls = call(reset)
+    assert (result, bank[:2], calls) == (1, [1, 0], 1)
+    assert call(reset)[0:3:2] == (2, 1)  # duplicate never re-applies
+    reset[3] = 2
+    assert call(reset)[0:3:2] == (0, 1)  # fresh message, same generation
+    packets = configuration_packets([42])
+    for i, packet in enumerate(packets):
+        packet[3] = i + 2
+    assert call(packets[0])[1][:2] == [1, 0]
+    assert call(packets[1], ready=0)[1][:2] == [1, 0]
+    assert call(packets[1])[1][:2] == [1, 1]
+    event = [
+        0x494E0101,
+        257,
+        1,
+        4,
+        1,
+        1,
+        42,
+        0,
+        10,
+        1,
+        1 | (60 << 14) | (100 << 21),
+    ] + [0] * 21
+    bad = event.copy()
+    bad[9] = 2
+    assert call(bad)[0:3:2] == (0, 2)
+    bad = event.copy()
+    bad[5] = 2
+    assert call(bad)[0:3:2] == (0, 2)
+    assert call(event, ready=0)[0:3:2] == (0, 2)
+    assert call(event)[0:3:2] == (1, 3)
+    # New epoch clears every prior track's ownership only after reset succeeds.
+    reset[2:4] = [2, 1]
+    reset[8:10] = [15, 1]
+    assert call(reset, ready=0)[1][:2] == [1, 1]
+    result, bank, calls = call(reset)
+    assert result == 1 and bank == [0] * 30 + [1, 0] and calls == 4
+    assert call(event)[0] == 4  # old-epoch events cannot reach the consumer
+
+
+def test_lifecycle_reset_aborts_staging_and_isolates_tracks(lifecycle_consumer):
+    call = lifecycle_consumer()
+    reset = [0x494E0101, 2, 1, 1, 0, 0, 42, 0, 0, 1] + [0] * 22
+    assert call(reset)[0] == 1
+    packets = configuration_packets([42])
+    packets[0][3] = 2
+    assert call(packets[0])[0] == 1
+    # Another track's reset preempts staged configuration, but preserves track 0.
+    reset[3], reset[8] = 4, 15
+    result, bank, _ = call(reset)
+    assert result == 1 and bank[:2] == bank[30:] == [1, 0]
+    packets[1][3] = 5
+    assert call(packets[1])[0] == 0
+    packets[0][3], packets[1][3] = 5, 6
+    assert call(packets[0])[0] == call(packets[1])[0] == 1
+    # Wrong-generation config cannot disturb the active bank or reach publisher.
+    newer = configuration_packets([99], revision=2)
+    newer[0][3], newer[0][9] = 7, 2
+    result, bank, count = call(newer[0])
+    assert result == 0 and bank[:2] == [1, 1] and count == 3
+    # Invalid mixed-generation batches are rejected before any note application.
+    event = [
+        0x494E0101,
+        513,
+        1,
+        7,
+        1,
+        1,
+        42,
+        0,
+        10,
+        1,
+        1 | (60 << 14) | (100 << 21),
+        11,
+        2,
+        1 | (64 << 14) | (80 << 21),
+    ] + [0] * 18
+    assert call(event)[0:3:2] == (0, 3)
+    event[12] = 1
+    assert call(event)[0:3:2] == (1, 4)
+    reset[3], reset[8], reset[9] = 8, 0, 2
+    assert call(reset)[1][:2] == [2, 0]
+    event[3] = 9
+    assert call(event)[0:3:2] == (0, 5)
 
 
 @pytest.fixture(scope="module")

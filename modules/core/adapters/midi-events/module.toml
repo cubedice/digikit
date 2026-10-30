@@ -38,7 +38,7 @@ resource = "cf.midi.site.din_rx"
 # routes until the future V2 consumer acknowledges reset and configuration.
 [[object]]
 path = "build/midi-packet-dsp.dko.json"
-sources = ["src/dsp/packet.s", "src/dsp/receiver.s", "src/dsp/config.s", "src/dsp/reply.s", "src/dsp/block.s"]
-optional = ["_mi_apply_packet", "_mi_config_publish"]
+sources = ["src/dsp/packet.s", "src/dsp/receiver.s", "src/dsp/config.s", "src/dsp/reply.s", "src/dsp/block.s", "src/dsp/consumer.s"]
+optional = ["_instrument_reset", "_instrument_events", "_instrument_configure"]
 place = "dsp.l2"
 devices = ["dt2"]

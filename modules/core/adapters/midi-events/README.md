@@ -32,10 +32,31 @@ padding. This is an internal prototype contract, not a released SDK ABI.
 `src/dsp/packet.s` validates the complete packet before publishing anything.
 `receiver.s` orders accepted messages, rejects gaps and stale epochs, suppresses
 replays, and allows priority reset to jump a gap. A new epoch must begin with
-RESET. The optional `_mi_apply_packet` consumer must validate generation and
-configuration, apply the entire packet atomically, and return 1 only afterward;
-only then does the receiver advance its ACK. On a newer epoch, reset must clear
-all old instances. Missing or rejecting consumers produce no ACK.
+RESET. `consumer.s` implements `_mi_apply_packet` with a 16-track generation and
+committed-revision bank. Events must match both fields. Configuration must match
+the generation and advance the revision. The complete packet is validated before
+any callback, so a malformed later event cannot partially apply a batch.
+
+The optional `_instrument_reset`, `_instrument_events` and `_instrument_configure`
+callbacks return exactly 1 only after atomic application; rejection must have no
+effects. Reset receives the packet in R4 and must clear all sounding instances on
+a new stream epoch, or just the identified track within the current epoch. The
+bridge clears ownership only after callback success and aborts pending configuration.
+Events receive the complete packet in R4. Configuration receives copied staging
+values in R4 and metadata in R8, and must validate its schema and copy values into
+instrument-owned storage. No callback may retain staging pointers. The callbacks
+obey the scratch-register contract documented in `src/dsp/consumer.s`.
+
+These are internal lifecycle callbacks, not the public V2 module descriptor.
+The instrument engine and callbacks are not implemented yet. Missing or rejecting
+callbacks produce no reset/event/commit ACK and cannot enable keyboard routes.
+
+Lifecycle component tests execute the production receiver, configuration staging
+and consumer together on the SHARC instruction core. They cover reset before
+configuration, rejected callback retries, stale generations/revisions/epochs,
+duplicate suppression, malformed multi-event batches, cross-track reset isolation
+and aborted configuration commits. The composed frame tests also include this
+consumer under the existing SIMD and arithmetic-state preservation checks.
 
 ## Configuration transactions
 
@@ -64,7 +85,8 @@ before atomically publishing into consumer-owned storage. It must not retain the
 staging pointer. A missing or rejecting publisher leaves applied settings untouched
 and produces no commit ACK. The V2 packet consumer must call this helper only after
 packet/order/ownership validation, and call `_mi_config_abort` on priority reset.
-Those integration callbacks are not implemented yet. Tests use a publisher fixture
+The lifecycle bridge now provides the ownership gate and publisher wrapper; the
+instrument-specific schema callback is not implemented yet. Tests use a publisher fixture
 to verify that only a complete valid commit changes its bank; they also execute
 actual CF-generated chunk/commit packets on the SHARC staging code.
 
@@ -98,7 +120,7 @@ The frame hooks are connected: `instrument_write_frame` processes replies and wr
 only the instrument data halfwords; the pattern-position owner calls
 `_instrument_block` before stock dispatch/render, even when position is invalid.
 The wrapper preserves DSP registers and arithmetic state, including SIMD pairs.
-The V2 consumer/schema publisher remains to be implemented. The current module
+The V2 instrument engine/schema callback remains to be implemented. The current module
 does not claim keyboard routes. Target tests feed actual ColdFire-produced reset
 and eight-note packets to the SHARC validator, and exercise receiver retries,
 gaps, reset preemption, consumer rejection and stale epochs. They do not establish
@@ -109,7 +131,7 @@ first calls `mi_instance_reset`, waits for its acknowledged reset and a healthy
 heartbeat, then submits configuration with `mi_config_submit`. `mi_route_enable`
 requires both an acknowledged configuration and the V2 readiness provider.
 Recovery through `mi_transport_recover` is explicit and requires all keys up.
-Without a DSP consumer, reset cannot be acknowledged and routes stay disabled.
+Without an instrument reset callback, reset cannot be acknowledged and routes stay disabled.
 
 Frame-hook checkpoint: 20 host tests and 116 targeted transport, pattern-position
 and loop-display tests passed (two DNII firmware-dependent cases skipped).
