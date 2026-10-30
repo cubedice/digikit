@@ -15,6 +15,14 @@ int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
         !mi_ledger.reset_mask && !mi_transport.faults;
 }
 
+/* The Sound loader closes admission before mutating the current object. */
+void canopy_carrier_suspend(void)
+{
+    carrier_prepared=0;
+    mi_instance_reset(0);
+    phase=1;
+}
+
 void fx_controls_tick(void)
 {
     uint32_t sr, value=1;
@@ -22,9 +30,7 @@ void fx_controls_tick(void)
     else if (phase) {
         int prepared=canopy_carrier_prepare(phase == 1 && !mi_ledger.reset_mask);
         if (prepared < 0) {
-            carrier_prepared=0;
-            mi_instance_reset(0); /* Disables routes and preserves old-key tombstones. */
-            phase=1;
+            canopy_carrier_suspend();
         } else carrier_prepared=(uint32_t)prepared;
     }
     if (!phase) {

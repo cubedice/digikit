@@ -138,7 +138,8 @@ before CANOPY configuration acknowledgement and MIDI admission, without a stock
 audition. It also resets on observed identity changes and re-admits after a
 machine change or a stopped pattern change, preserving old-key tombstones.
 This remains a track-0 emulator proof, not a DKM or a supported keyboard workflow.
-Same-pointer, same-type Sound replacement and running pattern commit timing need
-firmware lifecycle hooks. Public V2 initialization, broader Sound/control behavior
+A fixture-only deserializer hook now brackets same-pointer, same-type Sound loads;
+ColdFire tests cover the real stock routine with synthetic records. Live browser,
+kit and paste coverage, plus running pattern commit timing, remain unproven. Public V2 initialization, broader Sound/control behavior
 and final-output continuity remain open. See the
 [carrier findings](../../../docs/findings/78-canopy-carrier.md) for measured results.

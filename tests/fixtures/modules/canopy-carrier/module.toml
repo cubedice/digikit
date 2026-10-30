@@ -16,7 +16,7 @@ ports = ["dt2-1.17"]
 
 [[object]]
 path = "build/admission-cf.dko.json"
-sources = ["src/admission.c"]
+sources = ["src/admission.c", "src/sound-load.s"]
 place = "cf.expansion"
 devices = ["dt2"]
 
@@ -24,6 +24,7 @@ devices = ["dt2"]
 cp_project = "cf.project.fn.singleton"
 cp_kit = "cf.project.fn.active_kit"
 cp_refresh = "cf.machine.fn.refresh_track"
+cp_sound_resume = "hook.cf.machine.site.sound_deserialize.return"
 
 [[object]]
 path = "build/carrier-dsp.dko.json"
@@ -56,3 +57,8 @@ to = "_mi_envelope_entry"
 op = "hook"
 hook = "dsp.voice.hook.velocity_operand"
 to = "_mi_velocity_entry"
+
+[[op]]
+op = "hook"
+hook = "cf.machine.hook.sound_deserialize"
+to = "cp_sound_entry"

@@ -218,7 +218,10 @@ remain closed until WERP is selected there; a fresh note then renders and retire
 The scenario checks three refreshes, two invalidations and generations 2 through 4.
 Reset quietness checks allow 24,000 scalar stereo samples (0.25 seconds) to settle
 before measuring a separate window against the unchanged -120 dBFS threshold.
-Same-pointer Sound replacement and running/queued pattern changes are not covered.
+This booted scenario does not exercise same-pointer Sound replacement or
+running/queued pattern changes. The separate
+`tests/patchkit/test_canopy_sound_load.py` component proof runs the real stock
+deserializer with synthetic records; it does not establish live browser coverage.
 The test has a
 six-minute ceiling for the slower-than-real-time coupled engine. UI frames and
 PCM statistics remain under `out/`. No spectral continuity or hardware claim is

@@ -7,7 +7,11 @@ extern uint32_t cp_kit(uint32_t project);
 extern void cp_refresh(uint32_t source, uint32_t track);
 extern uint32_t pp_current_pattern(void);
 /* state, current source, refresh count, pattern, invalidations, machine type */
-volatile uint32_t cp_admission[6];
+volatile uint32_t cp_admission[8];
+extern uint32_t dkrt_irq_mask(void);
+extern void dkrt_irq_restore(uint32_t);
+extern void canopy_carrier_suspend(void);
+/* [6] active in-place loads; [7] observed loads of the tracked Sound. */
 static uint32_t last_project, last_kit, last_source, last_pattern, last_type;
 
 static int ram(uint32_t p)
@@ -33,9 +37,10 @@ static uint32_t sound(uint32_t *project, uint32_t *kit)
 
 /* -1: close routes/reset before another refresh; 0: wait; 1: prepared.
  * Poll even while configuration is in flight. Never refresh in an old generation.
- * Same-pointer, same-type Sound replacement needs a separate firmware event. */
+ * The deserializer hook brackets in-place loads of the tracked Sound. */
 int canopy_carrier_prepare(int allow_refresh)
 {
+    if (cp_admission[6]) return 0;
     uint32_t project=0, kit=0, pattern=pp_current_pattern();
     uint32_t source=sound(&project,&kit);
     uint32_t type=source ? *(const uint8_t *)(uintptr_t)(source+0xa2) : UINT32_MAX;
@@ -58,4 +63,32 @@ int canopy_carrier_prepare(int allow_refresh)
     ++cp_admission[2];
     cp_admission[0]=1;
     return 1;
+}
+
+/* Called before the stock deserializer writes the destination. No Sound data is
+ * copied here. An unrelated destination cannot reset this track. The cookie
+ * pairs end with begin even if selected identity changes during the load. */
+uint32_t cp_sound_begin(uint32_t destination, uint32_t record)
+{
+    uint32_t sr=dkrt_irq_mask(), cookie=0;
+    if (destination && record && destination == cp_admission[1] &&
+        *(const uint32_t *)(uintptr_t)(record+4) == 3) {
+        ++cp_admission[6];
+        ++cp_admission[7];
+        cookie=1;
+        if (cp_admission[0]) {
+            cp_admission[0]=0;
+            ++cp_admission[4];
+            canopy_carrier_suspend();
+        }
+    }
+    dkrt_irq_restore(sr);
+    return cookie;
+}
+
+void cp_sound_end(uint32_t cookie)
+{
+    uint32_t sr=dkrt_irq_mask();
+    if (cookie && cp_admission[6]) --cp_admission[6];
+    dkrt_irq_restore(sr);
 }

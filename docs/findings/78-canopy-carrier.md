@@ -602,3 +602,51 @@ remain untested. Project/kit/source pointer changes are observed by the code but
 were not separately exercised live. Public V2 initialization, arbitrary tracks,
 sample-card operation and full audio acceptance remain open. No device image or
 installable CANOPY module is released by this proof.
+
+
+## In-place Sound deserializer lifetime [D]
+
+On DT2 OS 1.17 the Sound deserializer at `0x400db3b2` takes destination and
+serialized-record pointers on the C stack. It rejects null pointers and records
+whose word at +4 is not 3, then mutates the destination in place. The serialized
+machine byte at +0xd2 becomes destination +0xa2. The destination includes data
+beyond the parameter rows: the routine writes 64 twelve-byte records starting at
++0x140 and initializes additional state at +0x440. Tests therefore reserve a
+larger synthetic Sound object rather than assuming the parameter-row size.
+
+The fixture's new `cf.machine.hook.sound_deserialize` wraps this routine. Its
+32-byte lookup window and eight-byte displaced prologue are hash-pinned in the
+firmware declarations and DT2 port. The wrapper replays the prologue, preserves
+the C calling convention and original boolean result, and brackets the original
+call with begin/end notifications. Begin matches the tracked destination and
+stock record version, then closes admission and requests the existing generation
+reset before the first stock write. A depth counter prevents UI-tick preparation
+while a matching load is active. The completion cookie balances that counter even
+if selected identity changes; refreshing and configuration acknowledgement still
+happen later through the ordinary fixture policy. Unrelated destinations and
+rejected record versions do not invalidate the tracked instance.
+
+`tests/patchkit/test_canopy_sound_load.py` passed two tests: unique anchor
+resolution against the pinned MAIN image, and execution on the ColdFire core
+through the real stock deserializer. Four component cases cover same-pointer,
+same-type replacement, another destination, rejected record version, and nested
+begin/end notifications. The probe observes the old destination marker when
+suspension occurs and verifies preparation is blocked during the load. IRQ
+helpers and the reset callback are component substitutes; real queue/reset
+integration remains the responsibility of the booted fixture test.
+
+This adds a concrete hook for one stock load path. It does not prove that browser
+selection, kit reload, clipboard paste or every other Sound replacement goes
+through that routine. A live UI-triggered in-place reload still needs a dedicated
+acceptance scenario. No atomic multi-track or cross-task lifecycle guarantee is
+claimed. Running-pattern initialization remains open: the existing pattern
+finding identifies `0x4316501c` as a scheduled pointer that can lead playback, so
+polling that pointer is insufficient to establish committed-boundary timing.
+
+The existing booted carrier regression also passed with this hook installed
+(182.07 seconds). Its keyboard/release, machine-change and stopped-pattern
+re-admission assertions remain unchanged; this is coexistence evidence, not a
+UI-triggered in-place load test. The fixture image SHA-256 is
+`705b33d2fc03155fb4101ba39e711824513f9d39a7cc66e6e908c1b0e5457447`.
+Logs are retained as `out/canopy-sound-component.log` and
+`out/canopy-sound-live.log`.

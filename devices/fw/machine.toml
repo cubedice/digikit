@@ -821,3 +821,24 @@ devices = ["dn2"]
 mark = "D"
 users = ["core/dynreg"]
 doc = "The getter's `jsr (A3); move.l D0,(4,A2)` (6 bytes; a2 = the vector being returned); both are replaced by a routine that copies without unfilled reserved machine types."
+
+
+[[site]]
+name = "cf.machine.site.sound_deserialize"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 0, sha256 = "d42aafe29f461877d6fa51df675b00f520075819b566d00869ca4675baae5695", len = 8 }
+mark = "D"
+users = ["test/canopy-carrier"]
+doc = "DT2 1.17 Sound deserializer prologue. C ABI destination and serialized record; returns boolean in d0. Fixture wrapper replays the displaced stack allocation and register save before resuming at +8."
+
+[[hook]]
+name = "cf.machine.hook.sound_deserialize"
+site = "cf.machine.site.sound_deserialize"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["test/canopy-carrier"]
+doc = "Emulator-only Sound-load lifetime wrapper; preserves the C ABI and original result."

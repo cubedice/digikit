@@ -563,6 +563,16 @@ mark = "D"
 rule = "fw/machine:cf_func"
 
 [[anchor]]
+name = "cf.machine.site.sound_deserialize"
+cpu = "cf"
+kind = "code"
+addr = 0x400db3b2
+len = 8
+sha256 = "534e5693c800e439722db3cb8a0b817470f23c204088f74f23049608ad80afa9"
+mark = "D"
+rule = "fw/machine:cf_window_hash"
+
+[[anchor]]
 name = "cf.machine.site.sound_load_type_bound"
 cpu = "cf"
 kind = "code"
@@ -3321,6 +3331,11 @@ mode = "before"
 name = "cf.machine.hook.param_code.args"
 site = "cf.machine.site.param_code.args"
 mode = "before"
+
+[[hook]]
+name = "cf.machine.hook.sound_deserialize"
+site = "cf.machine.site.sound_deserialize"
+mode = "replace"
 
 [[hook]]
 name = "cf.machine.hook.srcpage"

@@ -109,11 +109,15 @@ CARRIER_EXTERNS = {
     "cp_project": "cf.project.fn.singleton",
     "cp_kit": "cf.project.fn.active_kit",
     "cp_refresh": "cf.machine.fn.refresh_track",
+    "cp_sound_resume": "hook.cf.machine.site.sound_deserialize.return",
     "_mi_workspace_next": "dsp.voice.site.envelope_workspace.next",
     "_mi_envelope_next": "dsp.voice.site.envelope_entry.next",
     "_mi_velocity_next": "dsp.voice.site.velocity_operand.next",
 }
 CARRIER_IMPORTS = {
+    "canopy_carrier_suspend",
+    "dkrt_irq_mask",
+    "dkrt_irq_restore",
     "pp_current_pattern",
     "_cp_render_track",
     "_cp_ready",
