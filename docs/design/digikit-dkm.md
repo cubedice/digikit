@@ -242,6 +242,11 @@ generation tickets prevent stale completions from affecting reused rows. The
 explicit V2 fit API rejects missing instrument capacity and updates planning
 snapshots only if both instrument and legacy resources fit. These library paths
 are not connected to loader transfers yet; they do not enable V2 capability.
+The V2 transfer controller requires image acknowledgement followed by a separate
+initialization acknowledgement before publication. Once sending starts, rollback
+requires confirmed detachment; a timeout retains rows and memory. Detachment must
+also drain earlier writes before memory can be reused. The existing V1 loader's
+early ColdFire publication ordering is not suitable for this V2 path.
 
 ## What the loader checks, in order (nothing is written to the arena before the last one)
 

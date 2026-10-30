@@ -113,7 +113,7 @@ mod tests {
     }
     #[test]
     fn tracks_and_rows_remain_reserved_during_retirement() {
-        let mut r = Registry::new(2);
+        let mut r = dkrt_sdk::instrument_load::Loads::new(2);
         let ticket = r
             .reserve(
                 0,
@@ -123,8 +123,11 @@ mod tests {
                 }],
             )
             .unwrap();
-        r.publish(ticket).unwrap();
-        r.begin_retire(ticket).unwrap();
+        r.start(ticket).unwrap();
+        r.image_acked(ticket).unwrap();
+        r.initialized(ticket).unwrap();
+        r.cancel(ticket).unwrap();
+        r.timeout(ticket).unwrap();
         let mut c = r.capacity();
         let mut caps = [dsp(0)];
         assert_eq!(
@@ -132,7 +135,7 @@ mod tests {
             Err(Failure::Tracks { need: 2, free: 0 })
         );
         assert_eq!(caps[0].used, 0);
-        r.finish_retire(ticket).unwrap();
+        r.detached(ticket).unwrap();
         assert_eq!(fits(&needs(), &caps, Some(&r.capacity())), Ok(()));
         let c = Capacity {
             rows_limit: 8,

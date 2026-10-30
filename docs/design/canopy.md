@@ -283,6 +283,27 @@ packing remain disabled. Five registry lifecycle tests and twelve fit tests
 references pass their focused path check. No ColdFire or emulator execution of
 these new lifecycle components has been claimed.
 
+`modules/core/runtime/sdk/src/instrument_load.rs` now owns the registry through a
+bounded transfer state machine. It emits commands for image transfer,
+initialization, publication, detachment and storage release. Image transfer and
+initialization require separate ordered acknowledgements carrying the reservation
+ticket. A pre-transfer cancellation releases immediately; after transfer starts,
+cancellation requires DSP detachment. Timeouts quarantine the reservation, and
+late image/initialization acknowledgements cannot publish it. A late matching
+detach completion may release it only after the transport has drained earlier
+writes and callbacks. Repeated/stale completions cannot release a replacement.
+
+The live loader's V1 path currently publishes ColdFire registrations before its
+DSP transfer completes. Do not reuse that ordering for V2. The new state machine
+is tested with the actual registry and capacity planner, but its commands are not
+yet connected to DSP-link. Next: implement V2 DSP row/reset transport, bind its
+acknowledgements to these commands, and then connect staged-file admission and
+memory ownership. Contract 2.0 remains disabled until those paths work together.
+Validation: nine transfer/registry tests and twelve fit tests pass, including
+interleaved owners, cancellation at each transfer stage, stale completions and
+retained capacity after timeout. Logs: `out/canopy-v2-load.log` and
+`out/canopy-v2-load-fit.log`. These are host tests, not DSP transport acceptance.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

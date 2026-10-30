@@ -185,6 +185,12 @@ impl Registry {
         self.transition(ticket, RESERVED, FREE)
     }
 
+    /// A reserved module has started DSP work and can no longer be rolled back
+    /// immediately. Retain its rows until a matching detach acknowledgement.
+    pub fn begin_cancel(&mut self, ticket: Ticket) -> Result<(), Error> {
+        self.transition(ticket, RESERVED, RETIRING)
+    }
+
     /// Hide the module from new admissions before requesting DSP detachment.
     pub fn begin_retire(&mut self, ticket: Ticket) -> Result<(), Error> {
         self.transition(ticket, PUBLISHED, RETIRING)
