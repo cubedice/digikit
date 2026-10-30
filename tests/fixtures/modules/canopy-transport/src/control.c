@@ -3,7 +3,7 @@
 #include "../../../../../modules/core/adapters/midi-events/src/cf/bridge.h"
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
-extern int canopy_carrier_prepare(void) __attribute__((weak));
+extern int canopy_carrier_prepare(int allow_refresh) __attribute__((weak));
 static uint32_t phase;
 static uint32_t carrier_prepared;
 volatile uint32_t cp_transport_proof[12];
@@ -19,7 +19,14 @@ void fx_controls_tick(void)
 {
     uint32_t sr, value=1;
     if (!canopy_carrier_prepare) carrier_prepared=1;
-    else if (phase == 1) carrier_prepared=canopy_carrier_prepare();
+    else if (phase) {
+        int prepared=canopy_carrier_prepare(phase == 1 && !mi_ledger.reset_mask);
+        if (prepared < 0) {
+            carrier_prepared=0;
+            mi_instance_reset(0); /* Disables routes and preserves old-key tombstones. */
+            phase=1;
+        } else carrier_prepared=(uint32_t)prepared;
+    }
     if (!phase) {
         /* Initializes the bridge, but cannot admit a route before a heartbeat. */
         (void)mi_route_enable(0,0,0,0);

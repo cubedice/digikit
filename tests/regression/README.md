@@ -13,7 +13,7 @@ time (the stock project may run files in parallel, `REGRESSION_JOBS`, set by the
 | `scenarios/` | `fx-dn2`, `fx-dt2` | Stock FX oracles (see [scenarios/README.md](scenarios/README.md)) |
 | `emulator/` | device | Emulator checks that belong to no module: stock-firmware reply record, SHARC instruction semantics |
 | `runtime/` | none | Helpers only (daemon, card, UI and module-install kits) |
-| `runtime/canopy-carrier.test.ts` | `canopy-carrier` | Emulator-only selection initialization, independent release and final PCM without audition |
+| `runtime/canopy-carrier.test.ts` | `canopy-carrier` | Emulator-only initialization, machine/pattern re-admission and final PCM without audition |
 | `runtime/canopy-transport.test.ts` | `canopy-transport` | Emulator-only CANOPY MIDI/reset/configuration/event ACKs with real DSP |
 | `runtime/overloop-display.test.ts` | `overloop` | Experimental DT2 Overloop display, capture and live playback window |
 | `host/` | none (root `regression-host`) | Mocked helper tests, no daemon or firmware |
@@ -211,9 +211,16 @@ E's release, and the final key release must retire the carrier. Idle and
 post-release PCM windows must each contain at least 4,096 scalar samples with
 finite RMS and peak below -120 dBFS; the stock output is not required to be
 bit-exact zero. The test also saves the stock cached source pointer, source type,
-outgoing row type and DSP mirror after admission, checking exactly one refresh.
+outgoing row type and DSP mirror after initial admission, checking one refresh.
+It then leaves and reselects WERP with a held key, proves an old same-pitch release
+cannot kill a fresh note, and changes to a stopped destination pattern. Routes
+remain closed until WERP is selected there; a fresh note then renders and retires.
+The scenario checks three refreshes, two invalidations and generations 2 through 4.
+Reset quietness checks allow 24,000 scalar stereo samples (0.25 seconds) to settle
+before measuring a separate window against the unchanged -120 dBFS threshold.
+Same-pointer Sound replacement and running/queued pattern changes are not covered.
 The test has a
-four-minute ceiling for the slower-than-real-time coupled engine. UI frames and
+six-minute ceiling for the slower-than-real-time coupled engine. UI frames and
 PCM statistics remain under `out/`. No spectral continuity or hardware claim is
 made. Preflight and public V2 initialization remain blocked as described in the
 [carrier findings](../../docs/findings/78-canopy-carrier.md).

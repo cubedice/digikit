@@ -83,6 +83,13 @@ test('live carrier renders held keys and retires each release independently', as
     expect(pcm.rms).toBeLessThan(1e-6);
     expect(pcm.peak).toBeLessThan(1e-6);
   };
+  const settleResetOutput = async () => {
+    // A 64-sample kernel reset can leave downstream residue. Drain a fixed
+    // quarter-second of stereo output, then apply the unchanged quiet bound.
+    await session.client.call('pcm.tap', { action: 'start' });
+    await expect.poll(async () => (await pcmReport()).samples, { timeout: 30_000 }).toBeGreaterThanOrEqual(24_000);
+    expect((await pcmReport()).non_finite).toBe(0);
+  };
   await settleUi(session);
   await quietWindow('idle');
   const shot = async (name: string) =>
@@ -97,17 +104,20 @@ test('live carrier renders held keys and retires each release independently', as
     await session.client.inputButton(button(name), false);
     await delay(1200);
   };
-  await session.client.inputButton(button('FUNC'), true);
-  try {
-    await key('SRC');
-  } finally {
-    await session.client.inputButton(button('FUNC'), false);
-  }
-  await shot('menu');
-  await key('DOWN');
-  await shot('choice');
-  await key('YES');
-  await key('YES');
+  const selectMachine = async (direction: 'UP' | 'DOWN') => {
+    await session.client.inputButton(button('FUNC'), true);
+    try {
+      await key('SRC');
+    } finally {
+      await session.client.inputButton(button('FUNC'), false);
+    }
+    await shot('menu');
+    await key(direction);
+    await shot('choice');
+    await key('YES');
+    await key('YES');
+  };
+  await selectMachine('DOWN');
   await shot('after');
   const admissionSnapshot = async () => {
     const byte = async (addr: number) => {
@@ -201,6 +211,77 @@ test('live carrier renders held keys and retires each release independently', as
   await session.client.call('pcm.tap', { action: 'start' });
   await expect.poll(async () => (await pcmReport()).samples, { timeout: 15_000 }).toBeGreaterThanOrEqual(4096);
   await quietWindow('silence');
+
+  // Replace the machine while a physical key is still down. Reset must close
+  // routing and retire that generation without erasing its release tombstone.
+  await session.client.call('midi.usb.in', { bytes: [0x90, 60, 100] });
+  await expect.poll(readVoices, { timeout: 10_000 }).toEqual([{ token: 4, gate: 1 }]);
+  await selectMachine('UP'); // WERP -> ONESHOT
+  await expect.poll(() => word(0), { timeout: 15_000 }).toBe(1);
+  await expect.poll(() => word(4), { timeout: 10_000 }).toBe(0);
+  expect(await word(10)).toBe(3);
+  expect(await word(5)).toBe(0);
+  await expect.poll(readVoices, { timeout: 15_000 }).toEqual([]);
+  expect(await session.client.memPeek(admission)).toBe(0);
+  expect(await session.client.memPeek(admission + 16)).toBe(1);
+  await settleResetOutput();
+  await quietWindow('machine-reset');
+
+  await selectMachine('DOWN'); // Re-admit the same track with a fresh generation.
+  await expect.poll(() => word(0), { timeout: 15_000 }).toBe(3);
+  expect(await word(10)).toBe(3);
+  expect(await word(5)).toBe(1);
+  expect(await session.client.memPeek(admission + 8)).toBe(2);
+  await session.client.call('midi.usb.in', { bytes: [0x90, 60, 100] });
+  await expect.poll(readVoices, { timeout: 10_000 }).toEqual([{ token: 5, gate: 1 }]);
+  // G is an ordered USB barrier: its arrival proves the preceding old C-off
+  // was consumed without releasing the newly pressed C of the same pitch.
+  await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0, 0x90, 67, 100] });
+  await expect.poll(readVoices, { timeout: 10_000 }).toEqual([
+    { token: 5, gate: 1 },
+    { token: 6, gate: 1 },
+  ]);
+
+  const previousPattern = await session.client.memPeek(admission + 12);
+  await session.client.inputButton(button('PTN'), true);
+  try {
+    await key('TRIG 2'); // Pattern selection, not a note audition.
+  } finally {
+    await session.client.inputButton(button('PTN'), false);
+  }
+  await expect.poll(() => session.client.memPeek(admission + 12), { timeout: 15_000 }).not.toBe(previousPattern);
+  await expect.poll(() => word(10), { timeout: 15_000 }).toBe(4);
+  await expect.poll(() => word(4), { timeout: 10_000 }).toBe(0);
+  await expect.poll(readVoices, { timeout: 15_000 }).toEqual([]);
+  expect(await session.client.memPeek(admission + 16)).toBe(2);
+  await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0, 0x80, 67, 0] });
+  await settleResetOutput();
+  await quietWindow('pattern-reset');
+  expect(await word(0)).toBe(1); // The empty destination pattern uses ONESHOT.
+  await selectMachine('DOWN');
+  await expect.poll(() => word(0), { timeout: 15_000 }).toBe(3);
+  expect(await word(10)).toBe(4);
+  expect(await word(5)).toBe(1);
+  expect(await session.client.memPeek(admission + 8)).toBe(3);
+  await session.client.call('pcm.tap', { action: 'start' });
+  await session.client.call('midi.usb.in', { bytes: [0x90, 60, 100] });
+  await expect.poll(readVoices, { timeout: 10_000 }).toEqual([{ token: 7, gate: 1 }]);
+  await expect.poll(async () => (await pcmReport()).nonzero, { timeout: 15_000 }).toBeGreaterThan(0);
+  expect((await pcmReport()).non_finite).toBe(0);
+  await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0] });
+  await expect.poll(readVoices, { timeout: 60_000 }).toEqual([]);
+  await settleResetOutput();
+  await quietWindow('readmitted');
+  fs.writeFileSync(
+    path.join(root, 'out/canopy-carrier-readmission.json'),
+    JSON.stringify({
+      generation: await word(10),
+      phase: await word(0),
+      pattern: await session.client.memPeek(admission + 12),
+      refreshes: await session.client.memPeek(admission + 8),
+      invalidations: await session.client.memPeek(admission + 16),
+    }),
+  );
   expect(await word(3)).toBe(0);
   await session.expectNoFault('CANOPY carrier lifecycle');
-}, 240_000);
+}, 360_000);

@@ -114,6 +114,7 @@ CARRIER_EXTERNS = {
     "_mi_velocity_next": "dsp.voice.site.velocity_operand.next",
 }
 CARRIER_IMPORTS = {
+    "pp_current_pattern",
     "_cp_render_track",
     "_cp_ready",
     "_cp_banks",

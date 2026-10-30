@@ -566,3 +566,39 @@ Changed-document links, lint, formatting and typing pass. The required
 changed-file check retains only the known 256 stale-link errors and five
 devtools verification failures (task routing and missing DN2 analysis data);
 222 other verification tests pass. No related host tests were selected.
+
+
+## Observed identity changes and re-admission [D]
+
+The track-0 emulator fixture now polls project, kit, Sound pointer, machine type
+and selected pattern identity, including while configuration is in flight. A
+change invalidates preparation, closes routes through `mi_instance_reset`, and
+waits for reset acknowledgement before refreshing stock rows and obtaining a
+fresh configuration acknowledgement. Old physical-key tombstones survive this
+reset. Ordinary knob edits do not invalidate the instance.
+
+The booted DT2 OS 1.17 regression passed in 180.65 seconds. It leaves WERP for
+ONESHOT with C held, verifies reset and empty voice banks, then selects WERP
+again. A fresh C remains held when the old C release arrives; a subsequent USB G
+provides an ordered event barrier for that assertion. A stopped PTN+TRIG2 change
+resets both held voices and closes routing on the destination's ONESHOT machine.
+Selecting WERP there admits a fresh note, produces finite nonzero PCM and retires
+on release. Final diagnostics report generation 4, ready phase 3, three stock
+refreshes and two invalidations. The patched fixture SHA-256 is
+`d8340a9ddc4212db58d77e4ca1398445274fbbd422d19508afce400353fbf772`.
+
+An immediate post-reset output window initially exceeded the quietness threshold
+(RMS about 3.04e-6) despite empty banks. Reset checks now drain a fixed quarter
+second of stereo output before measuring a separate window. The -120 dBFS RMS
+and peak limits remain unchanged. This proves settled quietness, not click-free
+transitions or spectral continuity. Diagnostics and PCM statistics are retained
+under `out/canopy-carrier-*`; the run log is `out/canopy-readmission-test.log`.
+
+This supersedes the one-shot limitation above only for the tested identity
+changes. UI-tick polling is not an atomic firmware lifecycle hook. In-place
+same-pointer, same-type Sound replacement is undetected; running or queued
+pattern changes may expose selected identity before the committed boundary and
+remain untested. Project/kit/source pointer changes are observed by the code but
+were not separately exercised live. Public V2 initialization, arbitrary tracks,
+sample-card operation and full audio acceptance remain open. No device image or
+installable CANOPY module is released by this proof.
