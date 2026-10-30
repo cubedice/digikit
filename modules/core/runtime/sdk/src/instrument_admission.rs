@@ -47,6 +47,8 @@ pub struct Spec {
     pub state_bytes: u32,
     /// Actual executable byte extent, not the whole image including data.
     pub text: Range,
+    /// Process may reside in a different text section from reset.
+    pub process_text: Range,
     pub reset_sw: u32,
     pub process_sw: u32,
     pub reset_instructions: u32,
@@ -65,6 +67,7 @@ pub enum Error {
     State,
     Executable,
     Budget,
+    Descriptor(crate::instrument_descriptor::Error),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -73,6 +76,7 @@ pub struct Row {
     pub words: [u32; 16],
     /// Retained for future dispatch admission; the reset row does not publish it.
     pub process_sw: u32,
+    pub process_text: Range,
 }
 
 pub struct Plan {
@@ -155,7 +159,10 @@ pub fn prepare(
             || spec.text.start % 2 != 0
             || spec.text.end % 2 != 0
             || !callback(spec.reset_sw, spec.text)
-            || !callback(spec.process_sw, spec.text)
+            || !grant.image.contains(spec.process_text)
+            || spec.process_text.start % 2 != 0
+            || spec.process_text.end % 2 != 0
+            || !callback(spec.process_sw, spec.process_text)
         {
             return Err(Error::Executable);
         }
@@ -205,11 +212,15 @@ pub fn prepare(
                 0,
             ],
             process_sw: spec.process_sw,
+            process_text: spec.process_text,
         });
         extents[index] = Some(state);
     }
     Ok(Plan { rows })
 }
+
+mod packed;
+pub use packed::{prepare_packed, Packed};
 
 #[cfg(test)]
 mod tests;

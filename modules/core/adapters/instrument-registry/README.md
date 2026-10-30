@@ -231,3 +231,10 @@ acknowledged detach; a stale ticket or changed ledger cannot clear the range.
 Component tests compose reservation, admission and mailbox-driven release.
 The production loader still needs to call these APIs with its real ledger and
 route all V2 teardown away from legacy unreserve; live SPI integration remains open. Failed planning leaves all reservations and DSP state unchanged.
+
+`prepare_packed` composes DKDS6 record and text-range decoding with the allocator
+grant and reserved ticket. It derives callback PCs and per-type state bases,
+checks descriptor track counts against reservations, and keeps separate reset
+and process text bounds. The returned plan remains inert. The live loader must
+validate the whole section, resolve keys/imports and exclude builtin/V1 conflicts
+before using it; no row installation or SPI transfer is performed by this helper.

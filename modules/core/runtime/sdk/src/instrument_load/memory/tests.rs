@@ -55,6 +55,7 @@ fn instrument_memory_grants_exclude_legacy_ranges_bss_and_padding() {
         state_base: grant.state.start,
         state_bytes: 12,
         text: grant.image,
+        process_text: grant.image,
         reset_sw: 0xb88020,
         process_sw: 0xb88023,
         reset_instructions: 10,

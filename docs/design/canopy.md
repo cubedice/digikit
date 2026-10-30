@@ -528,6 +528,25 @@ claimed while its toolchain and live dispatch remain unavailable. Focused docs
 and layering checks pass; the changed-file check fails only on the existing 256
 stale references in 78 files (`out/canopy-executable-changed.log`).
 
+Packed-metadata admission now composes the DKDS6 record/range decoders with the
+allocator grant and reserved load ticket. It checks exact image extent and
+resolved-type coverage, verifies descriptor track counts against reservations,
+places each type's state using descriptor allocation sizes, and derives SHARC
+callback PCs from the allocated image base. Reset and process may occupy separate
+text sections; reset rows retain only reset bounds, while the inert plan retains
+process bounds separately. No encompassing range spans a gap or data section.
+The caller still supplies header-bounded slices and resolved types, with builtin
+and V1 conflict checks, relocation/import validation and instruction-boundary
+proof required before live loading. The operation neither allocates nor writes
+DSP memory, and leaves failed reservations available for cancellation.
+Validation: 32 targeted SDK tests and the runtime release host check pass
+(`out/canopy-packed-sdk.log`, `out/canopy-packed-runtime.log`). Tests compose real
+memory reservations with mixed-endian records, split text sections, reversed
+physical-row order, aligned state layout and rejected metadata/type/phase changes.
+Live loader calls, row publication, SPI integration and device proof remain open.
+Focused docs and layering checks pass; the changed-file check fails only on the
+existing 256 stale references in 78 files (`out/canopy-packed-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

@@ -23,6 +23,10 @@ fn spec(type_no: u32, base: u32) -> Spec {
             start: 0x20010000,
             end: 0x20010100,
         },
+        process_text: Range {
+            start: 0x20010000,
+            end: 0x20010100,
+        },
         reset_sw: 0xb88000,
         process_sw: 0xb88003,
         reset_instructions: 100,
