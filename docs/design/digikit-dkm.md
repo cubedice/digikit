@@ -199,6 +199,35 @@ failed or timed out), `E_DSP_DEVICE` -36, `E_DSP_TYPE` -37 (a voice key that has
 The DSP's per-type **selector** word (which render path a track uses) is not set by this section: the selector of a run-time type is
 type 0's (finding 30). A machine that clones SAMPLE, like `pluck`, is right already.
 
+### Experimental persistent instruments (DKDS 5)
+
+The host packer can encode version 5 for V2 instruments. The shipped runtime and
+`dkneeds` do not yet support it. The outer DKM requests **machine contract 2.0**;
+the runtime still advertises 1.0, so its contract check rejects these files before
+allocation. Public module packing remains disabled pending registration/dispatch.
+
+V5 extends the header from 0x40 to 0x50 bytes: u32 instrument table offset at
+0x40, u32 count at 0x44, and zero reserved words at 0x48/0x4c. The count is 1..8.
+The existing voice and effect records retain their V4 layouts. Tables appear in
+canonical order: header, imports, relocations, voices, effects, instruments,
+zero padding to 16 bytes, image. The host parser rejects other layouts, trailing
+bytes, overlapping tables and nonzero reserved bytes. V1–V4 output is unchanged.
+
+Each instrument record is four big-endian words: machine type, reset callback
+image byte offset, process callback image byte offset, descriptor image byte
+offset. Zero is a valid callback offset. Both callbacks must have a full six-byte
+instruction within the image and be two-byte aligned; the packer requires global
+text symbols. The descriptor is 48 little-endian bytes of the separate DKIT V2
+layout, four-byte aligned, entirely in initialized data, without overlapping
+relocations. Types must be unique across instruments and V1 voices.
+
+State storage is `tracks * align8(state_bytes)` per instrument, after existing
+image/BSS, voice and effect storage; the total is rounded to 64 bytes. Descriptor
+validation checks arithmetic overflow and caller-supplied admission ceilings,
+including aggregate instrument state. Host parsing checks format bounds only;
+real device admission must apply device-specific ceilings. No V2 records are
+counted as V1 voice rows. The runtime resource model is still to be implemented.
+
 ## What the loader checks, in order (nothing is written to the arena before the last one)
 
 1. Store: header, table checksum, the path, the table's sha256 of the file (`E_NOT_FOUND`, `E_BAD_STORE`, `E_SHA`, `E_TOO_BIG`).

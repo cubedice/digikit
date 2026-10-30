@@ -214,9 +214,8 @@ admission bounds, not measured CPU performance. The V1 packer explicitly rejects
 this magic rather than interpreting it as a V1 voice. Existing V1 layouts and the
 advertised machine contract remain unchanged at 1.0.
 
-This is a schema/validation checkpoint, not completed V2 registration. Remaining:
-a distinct DKM record and old-runtime
-capability rejection; runtime validation/allocation; DSP callback dispatch and
+This is a serialization checkpoint, not completed V2 registration. Remaining:
+runtime resource accounting and validation/allocation; DSP callback dispatch and
 lifecycle ownership; conversion of the sine fixture and conformance checks.
 The `DK_INSTRUMENT` C macro and `.dk.desc` record kind 6 now declare reset/process
 callbacks and their descriptor as distinct typed instruments. Reading a dynamic
@@ -230,6 +229,21 @@ inspection plus pack refusal; it contains no playable DSP machine. Validation:
 14 descriptor-reader tests, nine SDK-generation tests, ten existing typed-machine
 tests and the ColdFire C-to-CLI integration test pass. Logs are under
 `out/canopy-v2-records-*`.
+
+The host DSP packer now serializes separate instrument records in experimental
+DKDS version 5. Reset/process callbacks must resolve to global text symbols, the
+descriptor to initialized data. Parsing checks bounded counts, descriptor budgets,
+aggregate allocation, duplicate types (including V1 collisions), table layout and
+reserved bytes. A V5 DKM requests machine contract 2.0, while the current runtime
+still advertises 1.0 and rejects that major version before allocation. This is a
+format/header proof, not an emulator load proof. The existing `dkneeds` resource
+checker also continues to reject V5; do not interpret host serialization as a
+loadable module. Public module packing remains guarded. Next: define the runtime
+instrument registry and resource accounting, then implement callback dispatch.
+Validation: ten DSP serialization tests and seven DKM compatibility tests pass
+(`out/canopy-v5-tests.log` and `out/canopy-v5-dkm-tests.log`). The required
+changed-file check passes layering but still reports the existing 256 stale
+references in 78 files.
 
 Only after those pieces pass together may a build advertise V2 support.
 

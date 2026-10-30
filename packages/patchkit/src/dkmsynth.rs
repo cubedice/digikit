@@ -247,6 +247,7 @@ pub fn synth(spec: &Spec, dev: &str, models: &Models) -> Result<Vec<u8>> {
                 relocs: vec![],
                 voices,
                 fxs: vec![],
+                instruments: vec![],
             }
             .encode()
         }
