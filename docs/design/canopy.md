@@ -167,6 +167,30 @@ CANOPY needs local attack/release controls even with a shared stock envelope; ex
 
 Prove that the engine does not kill the custom renderer prematurely at its own envelope termination, and that stock shared velocity is neutral. A low-velocity first note must not reduce the volume of a later high-velocity note. Inspect both module output and final track output.
 
+The raw-adapter component probe in
+[test_canopy_carrier.py](../../tests/patchkit/test_canopy_carrier.py) now exercises
+the sine kernel through the production voice wrapper. It checks inactive-track
+rendering, stock retrigger independence, stereo-copy state preservation and
+restarting after local QUIET. This is pre-AMP evidence only: the test does not run
+the stock envelope, gain or mixer stages. The probe is not a V2 registration or a
+production carrier implementation.
+
+Complete the carrier work in this order:
+
+1. Resolve the activation call and downstream envelope/gain initialization on the
+   supplied DT2 1.17 image. Trace the normal caller's required frame, modifier and
+   record state; setting ACTIVE alone is not an activation contract.
+2. Add an adapter-owned V2 transition path: wake once from QUIET, retain through
+   local releases and queued replacements, and retire both stereo records only
+   after QUIET. Keep ordinary note admission out of the stock retrigger path.
+3. Prove final output with a sustained stock AMP: quiet wake, a low-velocity note
+   followed by a high-velocity note, independent releases, held notes beyond a
+   stock sample lifetime, reset tails, and wake again after silence. Compare
+   pre-AMP and final output to identify any shared velocity scaling.
+4. Check LEVEL, mute, pan, filter and FX routing in the same running-firmware
+   proof, plus an adjacent stock track and Overloop coexistence. Publish readiness
+   only after the lifecycle works through the real frame and MIDI paths.
+
 If a sustained carrier cannot provide the required lifetime, investigate an explicit V2-only unity envelope multiplier. This requires a separate pinned firmware hook and proof that LEVEL, pan, mute, filter and FX remain effective. Do not bypass the whole gain chain or ship keyboard mode under a silent compromise. Failure of both approaches blocks the full instrument; a root-only prototype can remain experimental but is not completion of this design.
 
 ## Transport alongside Overloop

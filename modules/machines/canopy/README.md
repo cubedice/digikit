@@ -53,6 +53,7 @@ Run its concrete SHARC instruction-core checks with:
 ```sh
 uv run python -m pytest tests/patchkit/test_canopy_voice.py -q
 uv run python -m pytest tests/patchkit/test_canopy_instrument.py -q
+uv run python -m pytest tests/patchkit/test_canopy_carrier.py -q
 ```
 
 The tests check independent phase/velocity/release, exact token handling, capacity,
@@ -69,7 +70,17 @@ The allocator checkpoint passed all 23 selected kernel, packet-integration and
 frame-context tests, plus a focused quietest-release check. Lint, layering and
 edited-doc path checks passed. The broader changed-file preflight still reports
 256 existing stale references in 78 repository files.
-They do not establish stock AMP lifetime, final track output, MIDI latency or
-device performance. The current V1 adapter skips inactive stock voices and clears
-configured state at stock note-on; CANOPY needs the separate V2 lifecycle and
-carrier path described in the design before this kernel can receive live input.
+The test-only raw adapter probe additionally checks pre-AMP output on inactive
+tracks 0 and 15, preservation of note state across stock retriggers and velocity
+changes, stereo copying without a second oscillator advance, and restarting a
+quiet bank without a stock trigger. It checks register preservation and foreign
+stores through the production voice adapter. It deliberately leaves stock ACTIVE
+unchanged, including when the kernel becomes QUIET; this exposes the missing
+carrier handoff rather than implementing one.
+
+These checks do not establish stock AMP lifetime, final track output, MIDI latency
+or device performance. The current V1 contract path skips inactive stock voices
+and clears configured state at stock note-on. The raw path avoids that contract
+but does not initialize or sustain the downstream stock AMP. CANOPY still needs
+the separate V2 lifecycle and carrier path described in the design before this
+kernel can receive live input.
