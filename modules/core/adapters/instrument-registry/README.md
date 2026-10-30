@@ -1,8 +1,9 @@
 # Persistent instrument registration mailbox
 
 Experimental, optional DTII 1.17 adapter for the V2 instrument load protocol.
-It answers capability queries only. It does not publish instruments, call reset
-callbacks, dispatch audio, or make CANOPY installable. V2 remains disabled.
+By default it answers capability queries and rejects lifecycle work. A trusted
+admission flag enables the protected row scheduler described below. It does not
+publish audio dispatch or make CANOPY installable. V2 admission remains disabled.
 
 The provider exports `_dl_irows`, a 64-byte mailbox for DSP-link window 3, and
 `_dl_iwords`, the address of its 16-word capacity constant. The protected MIDI
@@ -33,8 +34,8 @@ Invalid, incomplete, duplicate or older commands retain the previous reply and
 do not advance the sequence. A valid command advances the sequence even when its
 operation is unsupported. Retrying a committed command with the same sequence
 therefore preserves its original reply. After sequence `0xffffffff`, a reboot
-is required before further commands. This protocol is bootstrap-only; lifecycle
-payloads and capability bits must be specified before enabling V2 loading.
+is required before further commands. This protocol is internal and experimental; row metadata is supplied by trusted
+admission rather than command payloads. Public V2 loading remains disabled.
 
 ## Reply
 
@@ -47,11 +48,11 @@ carry the result; there is no additional reply allocation.
 | --- | --- |
 | 0 | Commit magic `0x49525231` (`IRR1`), zero before the first accepted command |
 | 1..5 | Echoed sequence, owner, generation, operation, row |
-| 6 | Status: 0 query accepted, 1 unsupported lifecycle, 2 unknown operation |
-| 7 | Capabilities, currently zero |
+| 6 | Status: 0 completed, 1 unsupported lifecycle, 2 unknown operation, 3 row identity/phase rejected, 4 row callback/metadata fault |
+| 7 | Capabilities: 0 while disabled, 3 when trusted lifecycle admission is enabled |
 
-INITIALIZE and DETACH always return status 1. No successful reset or detach is
-implied. Callers must validate the outer checksum, reply magic and all echoed
+INITIALIZE and DETACH return status 1 while trusted admission is disabled.
+When enabled, success is returned only after row work completes. Callers must validate the outer checksum, reply magic and all echoed
 identifiers before interpreting status. A stale reply never authorizes freeing
 memory or publishing a row.
 
@@ -76,10 +77,10 @@ further row from being scheduled after its pending reply arrives.
 
 Reserved future capability bits are bit 0 for reset completion support and bit 1
 for detachment support. A successful lifecycle reply must include its respective
-bit. The bootstrap provider sets neither and rejects lifecycle commands, so it
-cannot complete these transactions. Successful lifecycle tests use synthetic
-replies. Reset payloads, callbacks, dispatch and live SPI scheduling remain open;
-this client does not enable V2 admission.
+bit. The provider sets neither until trusted admission enables its lifecycle scheduler.
+Host client tests use synthetic replies; DSP scheduler tests execute real row work
+with synthetic callbacks. Trusted admission, audio dispatch and live SPI scheduling
+remain open; this client does not enable V2 admission.
 
 ## Internal V2 reset worker
 
@@ -99,9 +100,9 @@ zero callback result succeeds; negative faults propagate and positive results
 are rejected. Failure after callback entry can leave modified state and requires
 quarantine, not immediate memory reuse.
 
-This is an internal primitive, currently unreachable from mailbox commands.
-Before connecting it, the adapter still needs validated row metadata, admission
-of reset budgets, and connection to the protected row scheduler described below. Clearing is bounded; a callback that fails to return
+The mailbox reaches this primitive through the protected row scheduler only when
+trusted admission is enabled. Production still needs validated row metadata and
+admission of reset budgets. Clearing is bounded; a callback that fails to return
 cannot be preempted by this worker. The caller must pin the documented registers
 and preserve callback clobbers. The older CANOPY event-reset hook uses a different
 ABI and must not be passed to this worker.
@@ -109,7 +110,7 @@ ABI and must not be passed to this worker.
 `tests/patchkit/test_instrument_reset.py` executes the worker and a synthetic V2
 callback on the SHARC processor core. It checks exact clearing bounds, retained
 state on non-CREATE resets, invalid ranges and callback failure propagation.
-No mailbox lifecycle success or live device admission is implied.
+These worker tests alone do not prove mailbox completion or live device admission.
 
 ## Internal DSP row lifecycle
 
@@ -137,10 +138,10 @@ writes on failure remain owned. Detachment resets only attempted instances; a
 cancel before the first initialization tick needs no callback. Failed detachment
 retains the row and may be retried with the same owner/generation.
 
-The row worker inherits the reset worker's context requirements and is currently
-unreachable from mailbox commands. The protected boundary below now supplies
-callback register preservation. Admission, mailbox scheduling/acknowledgements,
-and audio dispatch remain to be connected.
+The row worker inherits the reset worker's context requirements. The protected
+boundary below supplies callback register preservation, and the mailbox scheduler
+uses it when trusted admission is enabled. Production admission and audio dispatch
+remain to be connected.
 `tests/patchkit/test_instrument_rows.py` executes these transitions with synthetic
 V2 callbacks on the SHARC core; this is not device acceptance.
 
@@ -166,5 +167,33 @@ context tests also overwrite all permitted scratch registers and both accumulato
 exercise nested CALL/RTS, and check preservation for success and negative fault
 results under different incoming arithmetic modes. The comparison happens after
 the wrapper returns, before the test harness empties its own hardware call stack.
-Mailbox scheduling and acknowledgements, trusted row admission and audio dispatch
-remain disconnected; the provider still reports lifecycle operations unsupported.
+Mailbox scheduling now uses this boundary when trusted row admission is enabled.
+Production admission and audio dispatch remain disconnected.
+
+## Mailbox lifecycle scheduling
+
+`_ir_lifecycle_ready` is an internal, cold-boot-zero flag outside window 3. Only
+trusted admission may set it to exactly 1, after arranging valid owned rows and
+callback budgets. Keep it stable while work is pending. No production path sets
+it yet. When enabled, query and completion replies report capability bits 0/1.
+These bits describe reset/detach support, not audio dispatch or public V2 loading.
+
+On INITIALIZE/DETACH, the mailbox snapshots all five identifiers and consumes the
+sequence before starting row work. It invokes at most one protected row tick per
+frame. While work is pending, the previous reply stays visible and incoming command
+bytes are not interpreted. The active ticket survives a clear or overwrite of the
+command buffer. A later command may be handled on the frame after completion;
+clients must still obey the single-outstanding-command protocol.
+
+Success is emitted only at READY or DETACHED after every attempted callback has
+returned. A rejected row identity/phase reports status 3; a row fault reports 4
+and preserves owned metadata. The exact callback fault remains in row word 12.
+A retry needs a new sequence; repeating a completed command does not call reset
+again. Partial initialization and failed detachment retain ownership until a
+fresh, matching detach completes. The loader must still drain earlier SPI writes
+before sending detach; this DSP scheduler does not establish transport quiescence.
+
+`tests/patchkit/test_instrument_mailbox_lifecycle.py` executes mailbox reception,
+protected row work and the shared checksummed reply together, with test-only
+admission and synthetic V2 callbacks. It covers delayed completion, replay,
+command-buffer mutation, stale identity, partial failure and the disabled gate.

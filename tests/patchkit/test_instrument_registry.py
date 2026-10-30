@@ -12,7 +12,10 @@ from tools.patchkit import pk_sharc
 @pytest.fixture(scope="module")
 def registry_object():
     adapters = REPO_ROOT / "modules/core/adapters"
-    source = (adapters / "instrument-registry/src/dsp/registry.s").read_text()
+    source = "\n".join(
+        (adapters / f"instrument-registry/src/dsp/{name}.s").read_text()
+        for name in ("registry", "lifecycle", "rows", "protected")
+    )
     source += "\n" + (adapters / "midi-events/src/dsp/reply.s").read_text()
     obj = pk_sharc.assemble(source)
     sections, initial, address = {}, {}, 0x20050000

@@ -124,12 +124,13 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
         for name in ("carrier", "carrier-frame", "velocity", "envelope", "workspace"):
             source += "\n" + (MOD / f"src/dsp/{name}.s").read_text()
         source += "\n" + (canopy / "carrier-prepare.s").read_text()
-        source += (
-            "\n"
-            + (
-                ROOT / "modules/core/adapters/instrument-registry/src/dsp/registry.s"
-            ).read_text()
-        )
+        for name in ("registry", "lifecycle", "rows", "protected"):
+            source += (
+                "\n"
+                + (
+                    ROOT / f"modules/core/adapters/instrument-registry/src/dsp/{name}.s"
+                ).read_text()
+            )
     obj = pk_sharc.assemble(source)
     sections, address, dm = {}, 0x20020000, {}
     for name, (blob, align, _) in obj.data.items():

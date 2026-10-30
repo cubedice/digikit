@@ -408,6 +408,28 @@ was fixed and both changed test files pass Ruff check/format on recheck; the
 existing 256 stale references remain. Changed documentation references pass.
 No hardware proof is claimed.
 
+The mailbox now schedules protected row work and emits delayed lifecycle replies.
+It snapshots sequence/owner/generation/operation/row, consumes the sequence, and
+runs at most one protected row tick per frame. While pending it preserves the
+previous reply and ignores mutable command bytes. READY/DETACHED produce success;
+row identity/phase rejection produces status 3 and callback/metadata faults produce
+status 4, retaining owned rows. Replays do not rerun callbacks. An internal
+cold-boot-zero `_ir_lifecycle_ready` gate keeps production lifecycle work disabled;
+only future trusted admission may enable it after validating rows and budgets.
+No production admission path sets it, no audio dispatch is published, and the
+loader still rejects V2. Remaining work: owned image/state admission, live SPI
+client integration and dispatch. Processor tests seed admission only in fixtures.
+Validation: 40 mailbox/lifecycle/shared-frame component cases pass in
+`out/canopy-mailbox-scheduler.log`, including real protected row execution with
+synthetic callbacks. The expanded eight-case lifecycle suite also covers failed
+detach and new-sequence retry (`out/canopy-mailbox-lifecycle-final.log`). The adapter
+rebuilds, re-decodes 558 instructions and checks current
+(`out/canopy-mailbox-scheduler-build.log`). Changed documentation, formatting,
+types and layering pass. The changed-file check reports the existing 256 stale
+references and recurring timer assertion (192 host tests passed, 16 skipped); the
+timer passes an isolated rerun (`out/canopy-mailbox-scheduler-timing.log`). No
+device or hardware acceptance is claimed.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
