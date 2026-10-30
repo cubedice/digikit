@@ -1095,6 +1095,20 @@ mod tests {
         assert!(section.voices.is_empty());
         assert_eq!(section.instruments[0].reset, 0);
         assert_eq!(section.instruments[0].process, 6);
+        let table_at = get(&bytes, 0x40) as usize;
+        let reloc_at = get(&bytes, 0x1c) as usize;
+        let reloc_len = get(&bytes, 0x20) as usize * 8;
+        let decoded = dkrt_sdk::instrument_descriptor::records(
+            &bytes[table_at..table_at + INSTRUMENT_LEN],
+            &section.image,
+            &bytes[reloc_at..reloc_at + reloc_len],
+            FORMAT_LIMITS,
+        )
+        .unwrap();
+        let record = decoded[0].unwrap();
+        assert_eq!(record.key, section.instruments[0].type_no);
+        assert_eq!((record.reset_offset, record.process_offset), (0, 6));
+        assert_eq!(record.descriptor.allocation_bytes, 528);
         assert_eq!(
             section.range_len(),
             (section.image.len() as u32 + 64 + 2 * 264).div_ceil(64) * 64

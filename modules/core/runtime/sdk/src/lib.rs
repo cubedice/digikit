@@ -14,6 +14,8 @@ pub mod instrument_registry;
 pub mod instrument_load;
 /// Experimental V2 mailbox transactions; no device capability is enabled.
 pub mod instrument_mailbox;
+/// Shared bounded V2 descriptor and record decoding; no loading capability.
+pub mod instrument_descriptor;
 /// Experimental validation/planning of allocator-owned V2 row metadata.
 pub mod instrument_admission;
 

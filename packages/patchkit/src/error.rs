@@ -58,3 +58,9 @@ pub fn sha256_hex(b: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     hex(&Sha256::digest(b))
 }
+
+impl From<dkrt_sdk::instrument_descriptor::Error> for Error {
+    fn from(e: dkrt_sdk::instrument_descriptor::Error) -> Self {
+        Error(e.to_string())
+    }
+}

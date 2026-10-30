@@ -490,6 +490,25 @@ Focused documentation and layering checks pass; the changed-file check fails onl
 on the existing 256 stale references in 78 files
 (`out/canopy-memory-lifetime-changed.log`).
 
+Descriptor decoding is now shared no-std code in the runtime SDK; the host
+packer uses that same implementation for the 48-byte V2 descriptor, admission
+ceilings and eight-byte instance allocation. A bounded DKDS5 instrument-record
+reader decodes BE records and LE descriptors into eight fixed slots. It rejects
+truncation, duplicate/invalid keys, unaligned or out-of-image callbacks,
+descriptor relocation overlap, and excessive aggregate state. It takes separately
+bounded table/image/relocation slices; it does not validate the complete DKDS5
+header, resolve keys/imports, relocate code or reserve memory.
+The existing DKDS5 records do not preserve executable-section boundaries.
+Image-range validation alone cannot establish that a callback belongs to code;
+the loader still needs validated executable metadata before admission. The new
+reader deliberately returns image offsets and does not manufacture a code grant.
+Validation: 28 SDK tests and ten selected packer/schema tests pass, including
+actual packed DKDS5 bytes read by the SDK decoder (`out/canopy-decoder-sdk.log`,
+`out/canopy-decoder-packer.log`). The runtime passes a release host check
+(`out/canopy-decoder-runtime.log`). Device admission remains disabled.
+Focused documentation and layering checks pass; the changed-file check fails only
+on the existing 256 stale references in 78 files (`out/canopy-decoder-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
