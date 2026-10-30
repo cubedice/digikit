@@ -44,6 +44,10 @@ pub struct Manifest {
     pub native_page: Vec<crate::typed::NativePageDef>,
     #[serde(skip)]
     pub voice: Vec<crate::typed::VoiceDef>,
+    #[serde(skip)]
+    pub instrument: Vec<crate::typed::InstrumentDef>,
+    #[serde(default, rename = "instrument")]
+    instrument_old: Option<toml::Value>,
     /// Removed forms (`[[fx]]`, `[[machine]]`, `[[param]]`, `[[page]]`, `[[voice]]`): kept only to refuse them with a clear error.
     #[serde(default)]
     fx: Option<toml::Value>,
@@ -538,6 +542,9 @@ impl Module {
     ) -> Result<Module> {
         let mut manifest: Manifest = toml::from_str(manifest_text)?;
         manifest.validate_header()?;
+        if manifest.instrument_old.is_some() {
+            return Err(err!("[[instrument]] is not read: declare V2 instruments with DK_INSTRUMENT in C (sdk/include/dk/instrument.h)"));
+        }
         let mut objects = vec![];
         let mut all = manifest_text.to_string();
         for o in &manifest.object {
@@ -560,6 +567,7 @@ impl Module {
             manifest.voice = d.voices;
             manifest.sample_bank = d.sample_bank;
             manifest.sample_tracks = d.sample_tracks;
+            manifest.instrument = d.instruments;
             // a patched-in module keeps the records out of the image: the objects lose their descriptor sections
             if !manifest.module.dynamic {
                 // an object that held only records is removed with its manifest entry (the two lists stay aligned)

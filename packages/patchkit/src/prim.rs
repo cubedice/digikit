@@ -354,6 +354,7 @@ pub fn collect<'a>(lib: &'a Library, order: &[String], dev: &str) -> Result<Acti
                 m.id()
             ));
         }
+        crate::typed::require_supported_instruments(&m.manifest)?;
         if crate::typed::has_typed(&m.manifest) && !m.manifest.lowered {
             return Err(err!(
                 "{}: typed sections were not lowered (load the library with the device models)",

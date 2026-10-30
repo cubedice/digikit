@@ -10,7 +10,7 @@ use crate::error::*;
 use crate::module::Module;
 use crate::register::EFFECT_KNOBS;
 use crate::sdkgen::{self, DescRecord, DescSpec, DescTy};
-use crate::typed::{FxDef, FxKnob, MachineDef, PageDef, PageKnob, ParamDef, VoiceDef};
+use crate::typed::{FxDef, FxKnob, InstrumentDef, MachineDef, PageDef, PageKnob, ParamDef, VoiceDef};
 
 /// The declarations of a set of objects.
 #[derive(Debug)]
@@ -21,6 +21,8 @@ pub struct Desc {
     pub fx: Vec<FxDef>,
     /// The machines, sorted by id.
     pub machines: Vec<MachineDef>,
+    /// Persistent V2 instruments, kept separate from V1 voices.
+    pub instruments: Vec<InstrumentDef>,
     /// The machines' parameters, by machine id, then word.
     pub params: Vec<ParamDef>,
     /// The machines' pages, by machine id, then in the order of the records.
@@ -52,6 +54,7 @@ enum Rec {
         def: MachineDef,
         voice: VoiceDef,
     },
+    Instrument { def: InstrumentDef },
     Param {
         what: String,
         def: ParamDef,
@@ -235,6 +238,17 @@ fn machine_def(what: &str, b: &[u8], rec: &DescRecord) -> Result<Rec> {
             stereo,
         },
     })
+}
+
+fn instrument_def(what: &str, b: &[u8], rec: &DescRecord) -> Result<Rec> {
+    Ok(Rec::Instrument { def: InstrumentDef {
+        id: req(what, b, rec, "id")?,
+        name: req(what, b, rec, "name")?,
+        short: req(what, b, rec, "short_name")?,
+        reset: req(what, b, rec, "reset")?,
+        process: req(what, b, rec, "process")?,
+        desc: req(what, b, rec, "desc")?,
+    } })
 }
 
 fn param_def(what: &str, b: &[u8], rec: &DescRecord) -> Result<Rec> {
@@ -482,6 +496,7 @@ fn records(obj: &Dko, spec: &DescSpec) -> Result<Vec<Rec>> {
                 "dk_desc_fx" => fx_def(&what, spec, rb, rec)?,
                 "dk_desc_fx_param" => fx_param(&what, spec, rb, rec)?,
                 "dk_desc_machine" => machine_def(&what, rb, rec)?,
+                "dk_desc_instrument" => instrument_def(&what, rb, rec)?,
                 "dk_desc_param" => param_def(&what, rb, rec)?,
                 "dk_desc_param_action" => param_action(&what, rb, rec)?,
                 "dk_desc_param_glyph" => param_glyph(&what, rb, rec)?,
@@ -551,6 +566,7 @@ fn assemble(recs: Vec<Rec>) -> Result<Desc> {
     let mut fxs: Vec<(String, FxDef)> = vec![];
     let mut fx_params: Vec<(String, String, u32, FxKnob)> = vec![];
     let mut machines: Vec<(MachineDef, VoiceDef)> = vec![];
+    let mut instruments: Vec<InstrumentDef> = vec![];
     let mut params: Vec<(String, ParamDef)> = vec![];
     let mut actions: Vec<(String, String, u32, String)> = vec![];
     let mut glyphs: Vec<(String, String, u32, u32)> = vec![];
@@ -588,6 +604,7 @@ fn assemble(recs: Vec<Rec>) -> Result<Desc> {
                 knob,
             } => fx_params.push((what, fx, word, knob)),
             Rec::Machine { def, voice } => machines.push((def, voice)),
+            Rec::Instrument { def } => instruments.push(def),
             Rec::Param { what, def } => params.push((what, def)),
             Rec::ParamAction {
                 what,
@@ -624,6 +641,16 @@ fn assemble(recs: Vec<Rec>) -> Result<Desc> {
         .find(|(_, f)| machines.iter().any(|(m, _)| m.id == f.id))
     {
         return Err(err!("{} is declared as a machine and as an effect", f.id));
+    }
+
+    instruments.sort_by(|a, b| a.id.cmp(&b.id));
+    if let Some(w) = instruments.windows(2).find(|w| w[0].id == w[1].id) {
+        return Err(err!("instrument {} is declared twice", w[0].id));
+    }
+    for i in &instruments {
+        if machines.iter().any(|(m, _)| m.id == i.id) || fxs.iter().any(|(_, f)| f.id == i.id) {
+            return Err(err!("{} is declared as an instrument and as a machine or effect", i.id));
+        }
     }
 
     // the machines' parameters
@@ -872,6 +899,7 @@ fn assemble(recs: Vec<Rec>) -> Result<Desc> {
     Ok(Desc {
         sample_bank,
         sample_tracks,
+        instruments,
         fx: fx_out,
         params: params.into_iter().map(|p| p.1).collect(),
         pages: machine_pages,
@@ -1028,6 +1056,77 @@ mod tests {
             .text("desc", "_pk_desc")
             .num("stereo", 0);
         r
+    }
+
+    fn instrument(id: &str) -> Rb {
+        let mut r = Rb::new("dk_desc_instrument");
+        r.text("id", id).text("name", "Canopy").text("short_name", "CANOPY")
+            .text("reset", "_canopy_reset").text("process", "_canopy_process")
+            .text("desc", "_canopy_desc");
+        r
+    }
+
+    #[test]
+    fn persistent_instruments_are_separate_sorted_records() {
+        let a = obj(&instrument("z").done());
+        let b = obj(&instrument("a").done());
+        let d = read_objects([&a, &b]).unwrap();
+        assert_eq!(d.instruments.iter().map(|i| i.id.as_str()).collect::<Vec<_>>(), ["a", "z"]);
+        assert!(d.machines.is_empty() && d.voices.is_empty());
+        assert_eq!(d.instruments[0].reset, "_canopy_reset");
+        assert_eq!(d.instruments[0].process, "_canopy_process");
+        assert_eq!(d.instruments[0].desc, "_canopy_desc");
+        assert!(read_objects([&a, &a]).unwrap_err().0.contains("declared twice"));
+    }
+
+    #[test]
+    fn instrument_ids_and_required_fields_are_checked() {
+        for field in ["id", "name", "short_name", "reset", "process", "desc"] {
+            let mut i = instrument("canopy"); i.text(field, "");
+            assert!(read(&obj(&i.done())).unwrap_err().0.contains(&format!("{field} is empty")));
+        }
+        for other in [machine("canopy"), fx("canopy")] {
+            let e = read(&obj(&all(&[&instrument("canopy"), &other]))).unwrap_err().0;
+            assert!(e.contains("as an instrument and as a machine or effect"), "{e}");
+        }
+        // A V1 parameter/page must not quietly become a V2 control declaration.
+        for other in [param("canopy", "cutoff", 0), page("canopy")] {
+            assert!(read(&obj(&all(&[&instrument("canopy"), &other]))).is_err());
+        }
+    }
+
+    #[test]
+    fn a_dynamic_instrument_is_inspectable_but_cannot_lower_to_v1() {
+        let object = serde_json::to_string(&obj(&instrument("canopy").done())).unwrap();
+        let manifest = r#"
+[module]
+id = "test/instrument-declaration"
+version = "0.1.0"
+name = "Instrument declaration"
+category = "test"
+type = "machine"
+author = "digikit"
+status = "experimental"
+summary = "Declaration proof"
+dynamic = true
+[[object]]
+path = "declaration.dko.json"
+place = "cf.expansion"
+"#;
+        let mut m = Module::from_parts(manifest, &|_| Ok(object.clone())).unwrap();
+        assert_eq!(m.manifest.instrument[0].id, "canopy");
+        assert!(crate::typed::has_typed(&m.manifest));
+        let models = crate::typed::Models::default();
+        crate::typed::lower(&mut m.manifest, &models).unwrap();
+        let e = crate::typed::resolve(&m.manifest, &models).unwrap_err().0;
+        assert!(e.contains("requires V2 registration and runtime capability"), "{e}");
+        m.manifest.module.dynamic = false;
+        m.manifest.lowered = false;
+        // Applying directly cannot bypass the unsupported-instrument guard.
+        let id = m.id().to_string();
+        let lib = crate::module::Library { modules: vec![m] };
+        let e = crate::prim::collect(&lib, &[id], "dt2").err().unwrap().0;
+        assert!(e.contains("requires V2 registration and runtime capability"), "{e}");
     }
 
     fn param(machine: &str, id: &str, word: u32) -> Rb {

@@ -279,6 +279,7 @@ consts = [
     { name = "DK_GLYPH_ONOFF", value = 3, doc = "Glyph: an on/off switch, values 0 .. 1." },
     { name = "DK_GLYPH_TUNE", value = 4, doc = "Glyph: a tune knob, values 4 .. 124 (centre 64, one unit = one semitone)." },
     { name = "DK_GLYPH_PLAY", value = 5, doc = "Glyph: a play-mode knob, values 0 .. 3 (REV, REV.L, FWD.L, FWD on the Digitakt II; the Digitone II shows 0 .. 3)." },
+    { name = "DK_DESC_INSTRUMENT", value = 6, doc = "Experimental V2 persistent instrument declaration; not a V1 machine." },
     { name = "DK_PAGE_KNOBS", value = 8, doc = "Encoders on a page." },
     { name = "DK_POS_AUTO", value = 255, doc = "The knob takes the lowest free position." },
     { name = "DK_PERCENT", value = 1, doc = "A knob shown as 0 .. 127 (the default)." },
@@ -358,6 +359,21 @@ fields = [
     "char note_on[32] // the SHARC+ symbol of the note-on routine",
     "char desc[32] // the SHARC+ symbol of the dk_machine_desc",
     "u32 stereo // 0 mono, 1 stereo (contract 1.2); must agree with DK_MACHINE_STEREO in the dk_machine_desc",
+]
+
+[[desc.record]]
+name = "dk_desc_instrument"
+kind = "DK_DESC_INSTRUMENT"
+doc = "Experimental persistent instrument. Reset/process and dk_instrument_desc symbols belong to the module's SHARC+ object. V2 runtime registration is not yet supported."
+fields = [
+    "u32 kind // DK_DESC_INSTRUMENT",
+    "u32 size // sizeof(dk_desc_instrument)",
+    "char id[16] // unique among machine, instrument and effect ids in this module",
+    "char name[24] // 1 to 23 characters for the menu",
+    "char short_name[24] // 1 to 23 characters",
+    "char reset[32] // required SHARC+ reset symbol; never a V1 note_on entry",
+    "char process[32] // required SHARC+ process symbol; never a V1 render entry",
+    "char desc[32] // required dk_instrument_desc data symbol",
 ]
 
 [[desc.record]]

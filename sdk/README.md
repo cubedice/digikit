@@ -118,8 +118,22 @@ The CANOPY V2 work adds a separate `[instrument]` layout in `sdk.toml`, generate
 as `include/dk/gen/instrument.h`, `include/dk/gen/instrument_consts.h` and
 `asm/dk_instrument.inc`. It describes persistent track state, bounded normalized
 MIDI batches and reset/process callbacks. It is not yet a supported module API:
-there is no V2 declaration macro or runtime registration, and the V1 packer
-rejects its descriptor. The advertised machine contract remains 1.0. See the
+`<dk/instrument.h>` now provides `DK_INSTRUMENT` for declaration and inspection,
+but there is no V2 runtime registration. The packer refuses these declarations
+instead of emitting V1 rows. The advertised machine contract remains 1.0.
+
+```c
+#include <dk/instrument.h>
+DK_INSTRUMENT(canopy, .name = "CANOPY", .short_name = "CANOPY",
+              .reset = "_canopy_reset", .process = "_canopy_process",
+              .desc = "_canopy_desc");
+```
+
+The three symbols name DSP code/data, not ColdFire function pointers. Instrument
+IDs share a namespace with machine/effect IDs. `patchkit desc` reports these under
+`instruments`, separately from V1 `machines` and `voices`. V1 `DK_PARAM`/`DK_PAGE`
+records cannot yet target an instrument; V2 controls/pages require their own work.
+See the
 [CANOPY interface plan](../docs/design/canopy.md) for the remaining integration.
 
 ## Writing modules

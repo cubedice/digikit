@@ -215,9 +215,22 @@ this magic rather than interpreting it as a V1 voice. Existing V1 layouts and th
 advertised machine contract remain unchanged at 1.0.
 
 This is a schema/validation checkpoint, not completed V2 registration. Remaining:
-C declaration records and typed lowering; a distinct DKM record and old-runtime
+a distinct DKM record and old-runtime
 capability rejection; runtime validation/allocation; DSP callback dispatch and
 lifecycle ownership; conversion of the sine fixture and conformance checks.
+The `DK_INSTRUMENT` C macro and `.dk.desc` record kind 6 now declare reset/process
+callbacks and their descriptor as distinct typed instruments. Reading a dynamic
+module preserves these declarations for `patchkit desc`; duplicate instrument IDs,
+collisions with V1 machine/effect IDs and missing names/symbols are rejected. V1
+parameter/page ownership remains unchanged. Device resolution/packing and direct
+static application explicitly reject instruments until V2 runtime support exists.
+This prevents either silently dropping a declaration or interpreting it as a V1
+voice. The `test/instrument-declaration` fixture compiles a real C macro and checks
+inspection plus pack refusal; it contains no playable DSP machine. Validation:
+14 descriptor-reader tests, nine SDK-generation tests, ten existing typed-machine
+tests and the ColdFire C-to-CLI integration test pass. Logs are under
+`out/canopy-v2-records-*`.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

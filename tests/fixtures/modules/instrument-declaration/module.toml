@@ -1,0 +1,17 @@
+# Declaration/inspection proof only: no DSP implementation or loadable module.
+[module]
+id = "test/instrument-declaration"
+version = "0.1.0"
+name = "V2 instrument declaration"
+category = "test"
+type = "machine"
+author = "digikit"
+status = "experimental"
+summary = "Compile and inspect a V2 declaration; packing must fail until V2 registration exists."
+dynamic = true
+ports = ["dt2-1.17"]
+
+[[object]]
+path = "build/declaration-cf.dko.json"
+sources = ["src/module.c"]
+place = "cf.expansion"

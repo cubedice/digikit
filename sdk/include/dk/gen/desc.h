@@ -42,6 +42,8 @@
 #define DK_GLYPH_TUNE 4
 /* Glyph: a play-mode knob, values 0 .. 3 (REV, REV.L, FWD.L, FWD on the Digitakt II; the Digitone II shows 0 .. 3). */
 #define DK_GLYPH_PLAY 5
+/* Experimental V2 persistent instrument declaration; not a V1 machine. */
+#define DK_DESC_INSTRUMENT 6
 /* Encoders on a page. */
 #define DK_PAGE_KNOBS 8
 /* The knob takes the lowest free position. */
@@ -112,6 +114,18 @@ typedef struct {
     char desc[32];                           /* the SHARC+ symbol of the dk_machine_desc */
     uint32_t stereo;                         /* 0 mono, 1 stereo (contract 1.2); must agree with DK_MACHINE_STEREO in the dk_machine_desc */
 } dk_desc_machine;
+
+/* Experimental persistent instrument. Reset/process and dk_instrument_desc symbols belong to the module's SHARC+ object. V2 runtime registration is not yet supported. */
+typedef struct {
+    uint32_t kind;                           /* DK_DESC_INSTRUMENT */
+    uint32_t size;                           /* sizeof(dk_desc_instrument) */
+    char id[16];                             /* unique among machine, instrument and effect ids in this module */
+    char name[24];                           /* 1 to 23 characters for the menu */
+    char short_name[24];                     /* 1 to 23 characters */
+    char reset[32];                          /* required SHARC+ reset symbol; never a V1 note_on entry */
+    char process[32];                        /* required SHARC+ process symbol; never a V1 render entry */
+    char desc[32];                           /* required dk_instrument_desc data symbol */
+} dk_desc_instrument;
 
 /* One parameter of a machine. Values are knob units times 256 (0x7f00 = 127.0). */
 typedef struct {
@@ -246,6 +260,15 @@ _Static_assert(offsetof(dk_desc_machine, render) == 72, "dk_desc_machine.render"
 _Static_assert(offsetof(dk_desc_machine, note_on) == 104, "dk_desc_machine.note_on");
 _Static_assert(offsetof(dk_desc_machine, desc) == 136, "dk_desc_machine.desc");
 _Static_assert(offsetof(dk_desc_machine, stereo) == 168, "dk_desc_machine.stereo");
+_Static_assert(sizeof(dk_desc_instrument) == 168, "dk_desc_instrument size");
+_Static_assert(offsetof(dk_desc_instrument, kind) == 0, "dk_desc_instrument.kind");
+_Static_assert(offsetof(dk_desc_instrument, size) == 4, "dk_desc_instrument.size");
+_Static_assert(offsetof(dk_desc_instrument, id) == 8, "dk_desc_instrument.id");
+_Static_assert(offsetof(dk_desc_instrument, name) == 24, "dk_desc_instrument.name");
+_Static_assert(offsetof(dk_desc_instrument, short_name) == 48, "dk_desc_instrument.short_name");
+_Static_assert(offsetof(dk_desc_instrument, reset) == 72, "dk_desc_instrument.reset");
+_Static_assert(offsetof(dk_desc_instrument, process) == 104, "dk_desc_instrument.process");
+_Static_assert(offsetof(dk_desc_instrument, desc) == 136, "dk_desc_instrument.desc");
 _Static_assert(sizeof(dk_desc_param) == 112, "dk_desc_param size");
 _Static_assert(offsetof(dk_desc_param, kind) == 0, "dk_desc_param.kind");
 _Static_assert(offsetof(dk_desc_param, size) == 4, "dk_desc_param.size");

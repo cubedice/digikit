@@ -216,6 +216,18 @@ pub struct MachineDef {
     pub stereo: bool,
 }
 
+/// Experimental persistent-instrument declaration. Deliberately separate from
+/// VoiceDef: reset/process must not acquire V1 note-on clearing semantics.
+#[derive(Clone, Debug, Serialize)]
+pub struct InstrumentDef {
+    pub id: String,
+    pub name: String,
+    pub short: String,
+    pub reset: String,
+    pub process: String,
+    pub desc: String,
+}
+
 /// A parameter of a machine (a `DK_PARAM` record). `min`, `max` and `default` are raw: the knob unit times 256.
 #[derive(Clone, Debug, Serialize)]
 pub struct ParamDef {
@@ -360,7 +372,15 @@ pub struct FxKnob {
 }
 
 pub fn has_typed(m: &Manifest) -> bool {
-    !(m.machine.is_empty() && m.param.is_empty() && m.page.is_empty() && m.voice.is_empty())
+    !(m.instrument.is_empty() && m.machine.is_empty() && m.param.is_empty() && m.page.is_empty() && m.voice.is_empty())
+}
+
+/// Do not silently drop V2 declarations when producing V1 rows or firmware.
+pub fn require_supported_instruments(m: &Manifest) -> Result<()> {
+    if let Some(i) = m.instrument.first() {
+        return Err(err!("{}: instrument {} requires V2 registration and runtime capability, which are not implemented", m.module.id, i.id));
+    }
+    Ok(())
 }
 
 // ---- resolution ----------------------------------------------------------------------------------------------
@@ -544,6 +564,7 @@ pub fn resolve(m: &Manifest, models: &Models) -> Result<Vec<DevResolved>> {
     if !m.native_page.is_empty() && !m.module.dynamic {
         return Err(err!("native callback pages require a run-time machine"));
     }
+    require_supported_instruments(m)?;
     let who = m.module.id.as_str();
     let mut out = vec![];
     if m.machine.is_empty() {

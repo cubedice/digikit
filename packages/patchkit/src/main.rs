@@ -966,6 +966,7 @@ plan.json {}",
                 serde_json::to_string_pretty(&serde_json::json!({
                     "fx": fx,
                     "machines": mf.machine,
+                    "instruments": mf.instrument,
                     "params": mf.param,
                     "pages": mf.page,
                     "native_pages": mf.native_page,
