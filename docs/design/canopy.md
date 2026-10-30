@@ -372,6 +372,25 @@ synthetic V2 callback, not live firmware or hardware acceptance. The changed-fil
 check passes 193 host tests (16 skipped), formatting, types and layering; its only
 failure is the existing 256 stale references. Changed document references pass.
 
+The DSP now has an internal eight-row lifecycle table and begin/tick routines in
+`modules/core/adapters/instrument-registry/src/dsp/rows.s`. Initialization and
+detachment reset at most one track instance per tick. Completion follows the last
+callback return; failures retain the owner/generation and attempted-instance count.
+Partial initialization detaches only attempted instances, including a faulted
+callback that may have written state. Detach retries preserve ownership; completed
+rows retain a tombstone until trusted admission explicitly reuses them. READY does
+not yet publish audio dispatch. Production admission does not populate these rows,
+and mailbox commands still report lifecycle operations unsupported. Full callback
+context protection and mailbox scheduling remain the next integration work.
+Validation: 20 SHARC row lifecycle cases pass (`out/canopy-row-lifecycle.log`),
+including partial initialization, detach failure/retry, cancellation, stale owners
+and malformed metadata. The registry adapter rebuilds, re-decodes 281 instructions
+and checks current (`out/canopy-row-lifecycle-build.log`). Changed document
+references, formatting, types and layering pass. The changed-file check reports
+the existing 256 stale references and the recurring minimum-delay timer failure
+(192 host tests passed, 16 skipped); that timer test passes an isolated rerun in
+`out/canopy-row-lifecycle-timing.log`.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

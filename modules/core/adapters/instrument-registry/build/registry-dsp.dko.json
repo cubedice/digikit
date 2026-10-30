@@ -211,22 +211,330 @@
    "section": "seg_pmco",
    "symbol": "_irl_return",
    "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 274,
+   "section": "seg_pmco",
+   "symbol": "_irr_invalid",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 280,
+   "section": "seg_pmco",
+   "symbol": "_ir_rows",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 291,
+   "section": "seg_pmco",
+   "symbol": "_ir_row_address",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 303,
+   "section": "seg_pmco",
+   "symbol": "_irr_invalid",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 309,
+   "section": "seg_pmco",
+   "symbol": "_irr_invalid",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 315,
+   "section": "seg_pmco",
+   "symbol": "_irr_invalid",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 319,
+   "section": "seg_pmco",
+   "symbol": "_irr_invalid",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 327,
+   "section": "seg_pmco",
+   "symbol": "_irr_begin_init",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 333,
+   "section": "seg_pmco",
+   "symbol": "_irr_invalid",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 339,
+   "section": "seg_pmco",
+   "symbol": "_irr_ok",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 345,
+   "section": "seg_pmco",
+   "symbol": "_irr_ok",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 351,
+   "section": "seg_pmco",
+   "symbol": "_irr_invalid",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 357,
+   "section": "seg_pmco",
+   "symbol": "_irr_invalid",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 362,
+   "section": "seg_pmco",
+   "symbol": "_irr_start",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 368,
+   "section": "seg_pmco",
+   "symbol": "_irr_invalid",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 374,
+   "section": "seg_pmco",
+   "symbol": "_irr_invalid",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 397,
+   "section": "seg_pmco",
+   "symbol": "_ir_row_address",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 406,
+   "section": "seg_pmco",
+   "symbol": "_irr_current",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 414,
+   "section": "seg_pmco",
+   "symbol": "_irr_active",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 420,
+   "section": "seg_pmco",
+   "symbol": "_irr_invalid",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 426,
+   "section": "seg_pmco",
+   "symbol": "_irr_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 432,
+   "section": "seg_pmco",
+   "symbol": "_irr_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 438,
+   "section": "seg_pmco",
+   "symbol": "_irr_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 442,
+   "section": "seg_pmco",
+   "symbol": "_irr_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 448,
+   "section": "seg_pmco",
+   "symbol": "_irr_limit",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 455,
+   "section": "seg_pmco",
+   "symbol": "_irr_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 461,
+   "section": "seg_pmco",
+   "symbol": "_irr_cursor_valid",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 467,
+   "section": "seg_pmco",
+   "symbol": "_irr_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 471,
+   "section": "seg_pmco",
+   "symbol": "_irr_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 474,
+   "section": "seg_pmco",
+   "symbol": "_irr_complete",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 480,
+   "section": "seg_pmco",
+   "symbol": "_irr_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 486,
+   "section": "seg_pmco",
+   "symbol": "_irr_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 492,
+   "section": "seg_pmco",
+   "symbol": "_irr_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 509,
+   "section": "seg_pmco",
+   "symbol": "_irr_offset_done",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 514,
+   "section": "seg_pmco",
+   "symbol": "_irr_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 518,
+   "section": "seg_pmco",
+   "symbol": "_irr_offset",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 526,
+   "section": "seg_pmco",
+   "symbol": "_irr_call",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 534,
+   "section": "seg_pmco",
+   "symbol": "_ir_reset_instance",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 537,
+   "section": "seg_pmco",
+   "symbol": "_irr_current",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 541,
+   "section": "seg_pmco",
+   "symbol": "_irr_fault",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 549,
+   "section": "seg_pmco",
+   "symbol": "_irr_ok",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 566,
+   "section": "seg_pmco",
+   "symbol": "_irr_ready",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 573,
+   "section": "seg_pmco",
+   "symbol": "_irr_ok",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 580,
+   "section": "seg_pmco",
+   "symbol": "_irr_ok",
+   "type": "sharc.abs24"
   }
  ],
  "sections": [
   {
    "align": 8,
-   "hex": "100f0000000008900000010f5249314701c3200a0000000021c2830f0100801500000100909120ce33c5810f100031c302060000000022c2200a00000000100f0000000008900100810f010001c3200a000000000890020244c2000a00000000001000000000010f0080000001ce8401412220c3040a0000000008908302800f1f008401500005c3200a000000000890040366c2000a000000000890850308900604800f07008401800008c3200a00000000801500000700830f0800909100c2200a0000000033c6200600000000820f0200800f010070c3000600000000800f020070c3000600000000800f030070c30006000000003e0600000000820f00003e0600000000820f0100110f00000000800f00000893000008930102089382020893030308938403089305040893060108930700041100000000000f52493152089300003e0a0000000004c2040600000000800f03008401400020060000000006c204060000000076c304060000000046c302060000000005c2040600000000800f000450c32406000000003e02000015028001411202c204060000000027c324060000000009c2040600000000a9c3040600000000c9c3020600000000cac322060000000008c2040600000000800f040080c3240600000000800f010080c32006000000007e703f0825c2800f0000b09122c6200600000000fe703f0e1d0f000000003f083f2800c2040a00000000800fffff3e0a00000000",
+   "hex": "100f0000000008900000010f5249314701c3200a0000000021c2830f0100801500000100909120ce33c5810f100031c302060000000022c2200a00000000100f0000000008900100810f010001c3200a000000000890020244c2000a00000000001000000000010f0080000001ce8401412220c3040a0000000008908302800f1f008401500005c3200a000000000890040366c2000a000000000890850308900604800f07008401800008c3200a00000000801500000700830f0800909100c2200a0000000033c6200600000000820f0200800f010070c3000600000000800f020070c3000600000000800f030070c30006000000003e0600000000820f00003e0600000000820f0100110f00000000800f00000893000008930102089382020893030308938403089305040893060108930700041100000000000f52493152089300003e0a0000000004c2040600000000800f03008401400020060000000006c204060000000076c304060000000046c302060000000005c2040600000000800f000450c32406000000003e02000015028001411202c204060000000027c324060000000009c2040600000000a9c3040600000000c9c3020600000000cac322060000000008c2040600000000800f040080c3240600000000800f010080c32006000000007e703f0825c2800f0000b09122c6200600000000fe703f0e1d0f000000003f083f2800c2040a00000000800fffff3e0a00000000800f07008401400004c32006000000003e0200000406010f0000000001c03e703f08800f00003e0a00000000be060000000000c2200a00000000800f1f008401500005c32006000000000890010005c32006000000000890020000c200060000000006c320060000000008908000800f020080c3000600000000800f030080c3200600000000800f060010c3000600000000800f040010c3000600000000800f010010c3020600000000800f050010c3240600000000800f04003e0600000000800f010010c320060000000008900d0000c2200600000000800f020008910000800f000008910b0008910c00800f00003e0a00000000800fffff3e0a00000000be060000000000c2200a000000003e713f0000110000000008908000800f020010c3000600000000800f040010c32006000000000890030122c2040600000000800f100020c324060000000008908d0103c202060000000032c3240600000000800f040010c320060000000023c208908b0103c2020600000000800f020010c320060000000008900d0030c320060000000032c32406000000000006000000000890850205c2040600000000800f000450c32406000000000890040244c20406000000000890060308908703089008060890890408900a053e020000050223c200060000000040c044c204060000000022c6200600000000880f0400800f040010c3000600000000880f010003c508910d00be060000000010100000000000c220060000000008900b0000c508910b003e0600000000800fffff08910c00810f0500089180003e0a00000000800f020010c3000600000000800f0600089100003e0600000000800f0300089100003e0600000000",
    "kind": "text",
    "name": "seg_pmco",
-   "size": 538
+   "size": 1166
   },
   {
    "align": 8,
-   "hex": "1000000000000000",
+   "hex": "100000000000000000000000",
    "kind": "data",
    "name": "seg_dmda",
-   "size": 8
+   "size": 12
   },
   {
    "align": 4,
@@ -241,9 +549,16 @@
    "kind": "bss",
    "name": "pkbss__instrument_registry_reply",
    "size": 32
+  },
+  {
+   "align": 4,
+   "hex": "",
+   "kind": "bss",
+   "name": "pkbss__ir_rows",
+   "size": 512
   }
  ],
- "source_sha256": "081b70d4ec3341f73bf5bd699c8cb424460ccde86122b74bc55288ecaf1e67d8",
+ "source_sha256": "c8d670e60fd90093d12497c8fbabd2b247793489ef3c22686790770ee1742c3a",
  "symbols": [
   {
    "global": true,
@@ -274,6 +589,24 @@
    "name": "_ir_reset_instance",
    "section": "seg_pmco",
    "value": 165
+  },
+  {
+   "global": false,
+   "name": "_ir_row_address",
+   "section": "seg_pmco",
+   "value": 269
+  },
+  {
+   "global": true,
+   "name": "_ir_row_begin",
+   "section": "seg_pmco",
+   "value": 291
+  },
+  {
+   "global": true,
+   "name": "_ir_row_tick",
+   "section": "seg_pmco",
+   "value": 397
   },
   {
    "global": false,
@@ -312,6 +645,90 @@
    "value": 260
   },
   {
+   "global": false,
+   "name": "_irr_active",
+   "section": "seg_pmco",
+   "value": 423
+  },
+  {
+   "global": false,
+   "name": "_irr_bad",
+   "section": "seg_pmco",
+   "value": 552
+  },
+  {
+   "global": false,
+   "name": "_irr_begin_init",
+   "section": "seg_pmco",
+   "value": 365
+  },
+  {
+   "global": false,
+   "name": "_irr_call",
+   "section": "seg_pmco",
+   "value": 534
+  },
+  {
+   "global": false,
+   "name": "_irr_complete",
+   "section": "seg_pmco",
+   "value": 563
+  },
+  {
+   "global": false,
+   "name": "_irr_cursor_valid",
+   "section": "seg_pmco",
+   "value": 470
+  },
+  {
+   "global": false,
+   "name": "_irr_fault",
+   "section": "seg_pmco",
+   "value": 554
+  },
+  {
+   "global": false,
+   "name": "_irr_invalid",
+   "section": "seg_pmco",
+   "value": 392
+  },
+  {
+   "global": false,
+   "name": "_irr_limit",
+   "section": "seg_pmco",
+   "value": 452
+  },
+  {
+   "global": false,
+   "name": "_irr_offset",
+   "section": "seg_pmco",
+   "value": 512
+  },
+  {
+   "global": false,
+   "name": "_irr_offset_done",
+   "section": "seg_pmco",
+   "value": 521
+  },
+  {
+   "global": false,
+   "name": "_irr_ok",
+   "section": "seg_pmco",
+   "value": 387
+  },
+  {
+   "global": false,
+   "name": "_irr_ready",
+   "section": "seg_pmco",
+   "value": 576
+  },
+  {
+   "global": false,
+   "name": "_irr_start",
+   "section": "seg_pmco",
+   "value": 379
+  },
+  {
    "global": true,
    "name": "_dl_irows",
    "section": "pkbss__dl_irows",
@@ -330,14 +747,26 @@
    "value": 0
   },
   {
+   "global": true,
+   "name": "_ir_rows",
+   "section": "pkbss__ir_rows",
+   "value": 0
+  },
+  {
    "global": false,
    "name": "_ir_sequence",
    "section": "seg_dmda",
    "value": 4
+  },
+  {
+   "global": false,
+   "name": "_irr_current",
+   "section": "seg_dmda",
+   "value": 8
   }
  ],
  "toolchain": {
-  "instructions_redecoded": "130",
+  "instructions_redecoded": "281",
   "selache_rev": "2b26d3b75c53063575bc5c820fa0d38879335187"
  }
 }

@@ -111,3 +111,35 @@ ABI and must not be passed to this worker.
 callback on the SHARC processor core. It checks exact clearing bounds, retained
 state on non-CREATE resets, invalid ranges and callback failure propagation.
 No mailbox lifecycle success or live device admission is implied.
+
+## Internal DSP row lifecycle
+
+`src/dsp/rows.s` now owns eight 16-word DSP rows. This table is separate from the
+window-3 command buffer and is not writable through that window. Trusted future
+admission must populate metadata only while a row is unreachable, after validating
+allocation ownership, executable ranges, descriptor limits and callback budgets.
+No admission path populates it in the production adapter yet.
+
+The row layout is phase, owner, generation, track count, state base, state words
+per track, state arena start/end, reset entry, executable start/end, cursor, last
+error, attempted-instance count, and two reserved words. Phases are EMPTY=0,
+RESERVED=1, INITIALIZING=2, READY=3, DETACHING=4, FAULT=5 and DETACHED=6. READY
+means all initialization callbacks returned; it does not publish audio dispatch.
+DETACHED retains the owner and generation as a tombstone; it does not free memory.
+
+`_ir_row_begin` requires a matching owner/generation and valid row index. It starts
+initialization only from RESERVED, and detachment from reserved, initializing,
+ready or faulted rows. Repeated detach requests preserve in-progress work.
+`_ir_row_tick` attempts at most one instance reset per call. A separate completion
+tick marks READY or DETACHED after the final callback has returned. A failed
+callback records its negative result and marks FAULT without discarding metadata.
+Initialization records each attempted instance before calling reset, so partial
+writes on failure remain owned. Detachment resets only attempted instances; a
+cancel before the first initialization tick needs no callback. Failed detachment
+retains the row and may be retried with the same owner/generation.
+
+The row worker inherits the reset worker's context requirements and is currently
+unreachable from mailbox commands. Callback register protection, admission,
+mailbox scheduling/acknowledgements, and audio dispatch remain to be connected.
+`tests/patchkit/test_instrument_rows.py` executes these transitions with synthetic
+V2 callbacks on the SHARC core; this is not device acceptance.
