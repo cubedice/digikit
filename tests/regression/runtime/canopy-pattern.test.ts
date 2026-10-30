@@ -16,7 +16,7 @@ const h = withSession({
   binary: process.env.DIGI_EMUD_DT2,
 });
 
-test('running pattern switch preserves the source until the committed boundary', async () => {
+test('running pattern switch retains held notes across a compatible committed boundary', async () => {
   const root = repoRoot();
   const image = path.join(root, 'out/patch/canopy-live-carrier.syx');
   const plan: RuntimePlan = JSON.parse(fs.readFileSync(image.replace(/\.syx$/, '.plan.json'), 'utf8'));
@@ -170,10 +170,12 @@ test('running pattern switch preserves the source until the committed boundary',
     'old ownership persists until commit',
   ).toBe(true);
   expect(trace.at(-1)?.committed).not.toBe(sourcePattern);
-  await expect.poll(() => word(10), { timeout: 15_000 }).toBe(generation + 1);
-  await expect.poll(readVoices, { timeout: 15_000 }).toEqual([]);
+  await expect.poll(() => info(3), { timeout: 15_000 }).not.toBe(sourcePattern);
+  expect(await word(10)).toBe(generation);
+  await expect.poll(readVoices, { timeout: 15_000 }).toEqual([{ token: 1, gate: 1 }]);
   await expect.poll(() => word(0), { timeout: 15_000 }).toBe(3);
-  await measure('reset', true);
+  await measure('retained');
+  expect(await word(10)).toBe(generation);
   await session.client.call('pcm.tap', { action: 'capture_stop' });
   capturing = false;
   const raw = fs.readFileSync(capture);
@@ -194,15 +196,30 @@ test('running pattern switch preserves the source until the committed boundary',
       maxStepFrame = Math.floor(i / 2);
     }
   }
+  // This held C4 is settled before capture. Require audible energy throughout
+  // every complete 1024-frame window, not merely a nonzero whole-file RMS.
+  let minWindowRms = Infinity;
+  for (let frame = 0; frame + 1024 <= raw.length / 8; frame += 1024) {
+    let energy = 0;
+    for (let n = 0; n < 1024; n++) energy += raw.readFloatLE((frame + n) * 8) ** 2;
+    minWindowRms = Math.min(minWindowRms, Math.sqrt(energy / 1024));
+  }
   fs.writeFileSync(
     path.join(root, 'out/canopy-pattern-transition-pcm.json'),
-    JSON.stringify({ frames: raw.length / 8, peak, maxStep, maxStepFrame, nonFinite }),
+    JSON.stringify({ frames: raw.length / 8, peak, maxStep, maxStepFrame, nonFinite, minWindowRms }),
   );
   expect(nonFinite).toBe(0);
   expect(peak).toBeGreaterThan(1e-4);
-  // Step magnitude is evidence only: no click-free threshold has been established.
+  expect(minWindowRms).toBeGreaterThan(1e-4);
+  // A settled C4 sine advances ~0.0343 radians/frame. Allow 0.05 * peak
+  // for the stock output path; this is a fixture bound, not universal de-click proof.
+  expect(maxStep).toBeLessThan(peak * 0.05);
   await key('STOP');
-  await session.client.call('midi.usb.in', { bytes: [0x90, 60, 100, 0x80, 60, 0, 0x90, 67, 100] });
+  // The original key-up must release the original token after the switch.
+  await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0] });
+  await expect.poll(readVoices, { timeout: 60_000 }).toEqual([]);
+  await measure('original-released', true);
+  await session.client.call('midi.usb.in', { bytes: [0x90, 60, 100, 0x90, 67, 100] });
   await expect.poll(readVoices, { timeout: 10_000 }).toEqual([
     { token: 2, gate: 1 },
     { token: 3, gate: 1 },

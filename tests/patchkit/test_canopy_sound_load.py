@@ -84,6 +84,23 @@ def test_sound_load_and_pattern_admission_lifetimes(tmp_path):
                 "tag": f"pattern-{case}",
             }
         )
+    # ROM vtable entry + a getter returning the synthetic RAM Sound.
+    ops.extend(
+        [
+            {"op": "poke", "addr": 0x403F0028, "hex": "403f0100"},
+            {"op": "poke", "addr": 0x403F0100, "hex": "203c470120004e75"},
+        ]
+    )
+    for case in range(4):
+        ops.append(
+            {
+                "op": "call",
+                "pc": linked.symbols["cp_retention_case"],
+                "args": [case],
+                "max": 100000,
+                "tag": f"retain-{case}",
+            }
+        )
     script = tmp_path / "script.json"
     script.write_text(json.dumps(ops))
     result = subprocess.run(
@@ -94,6 +111,6 @@ def test_sound_load_and_pattern_admission_lifetimes(tmp_path):
         json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")
     ]
     calls = [r for r in rows if r.get("op") == "call"]
-    assert len(calls) == 8
+    assert len(calls) == 12
     for row in calls:
         assert row["ok"] and not row.get("error") and row["d0"] == 0, json.dumps(calls)

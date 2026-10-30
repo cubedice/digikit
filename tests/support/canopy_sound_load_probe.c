@@ -8,9 +8,9 @@ extern int canopy_carrier_prepare(int);
 static uint32_t sound[1024], other[1024], record[280];
 static uint32_t resets, old_marker, blocked;
 volatile uint32_t pp_position[16];
-static uint32_t scheduled, project_reads;
-uint32_t cp_project(void) { ++project_reads; return 0; }
-uint32_t cp_kit(uint32_t p) { (void)p; return 0; }
+static uint32_t scheduled, project_reads, mock_project;
+uint32_t cp_project(void) { ++project_reads; return mock_project; }
+uint32_t cp_kit(uint32_t p) { (void)p; return mock_project ? 0x47011000 : 0; }
 uint32_t pp_current_pattern(void) { return scheduled; }
 void cp_refresh(uint32_t s, uint32_t t) { (void)s; (void)t; }
 uint32_t dkrt_irq_mask(void) { return 0x2700; }
@@ -77,4 +77,28 @@ uint32_t cp_pattern_case(uint32_t kind)
     if (kind==1) return result!=0 || project_reads || cp_admission[0];
     if (kind==2) return result!=-1 || project_reads || cp_admission[0] || cp_admission[4]!=1;
     return result!=-1 || project_reads!=1 || cp_admission[0] || cp_admission[4]!=1;
+}
+
+/* The runner supplies a ROM-shaped getter/vtable returning RAM Sound storage.
+ * Exercise the actual admission function, not a duplicate transition policy. */
+uint32_t cp_retention_case(uint32_t kind)
+{
+    for (uint32_t i=0;i<8;++i) cp_admission[i]=0;
+    for (uint32_t i=0;i<16;++i) pp_position[i]=0;
+    mock_project=0x47010000;
+    *(uint32_t *)0x4701106c=0x403f0000;
+    *(uint8_t *)0x470120a2=1;
+    scheduled=0x47100000;
+    if (canopy_carrier_prepare(1)!=1 || cp_admission[2]!=1) return 1;
+    scheduled=0x47200000;
+    if (kind==1) {
+        pp_position[14]=1; pp_position[5]=3; pp_position[6]=scheduled;
+    }
+    if (kind==2) *(uint8_t *)0x470120a2=0; /* Destination stock machine. */
+    if (kind==3) mock_project=0x47020000; /* Project replacement. */
+    int result=canopy_carrier_prepare(0); /* Already active: no new config. */
+    mock_project=0;
+    if (kind<2) return result!=1 || cp_admission[0]!=1 ||
+        cp_admission[2]!=2 || cp_admission[3]!=scheduled || cp_admission[4];
+    return result!=-1 || cp_admission[0] || cp_admission[2]!=1 || cp_admission[4]!=1;
 }

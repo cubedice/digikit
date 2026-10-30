@@ -921,3 +921,48 @@ Fixture SHA-256 is
 This remains an emulator-only sine fixture. Public V2 registration, compatible
 pattern retention, chord/pad/arp modes, CPU-budget acceptance and hardware tests
 remain open.
+
+
+## Compatible pattern retention [D]
+
+The fixture now distinguishes a pattern transition from replacing the instrument.
+When track 0 is already admitted, both old/new Sounds are type 1, both patterns
+are nonzero and differ, and the project is unchanged, it refreshes the destination
+stock carrier without changing the MIDI generation or CANOPY configuration.
+Running switches still wait until selected and committed pattern identities agree.
+Machine/project changes, invalid timing and tracked in-place Sound loads retain
+the reset path. This is limited to the fixed sine configuration in the WERP shadow;
+it is not the public V2 registration or a general preset migration policy.
+
+The ColdFire admission probe now exercises compatible stopped/running switches,
+incompatible machine and project switches, plus the existing lookahead, unknown
+timing and real stock-deserializer cases. Both Python tests pass, including all
+12 processor calls. The synthetic getter/vtable only supplies a RAM Sound; the
+admission function itself is the patched C code.
+
+The first booted running-switch test passed in 212.59 seconds. A held USB C4 keeps
+its original token and generation across the committed switch and remains audible.
+Its original physical key-up retires it after the switch; a fresh C/G pair also
+plays and releases to final quietness. No transport/emulator faults were reported.
+The 87,744-frame transition capture has peak 0.04195921 and maximum adjacent-frame
+same-channel step 0.001436894. Left-channel RMS across complete 1,024-frame windows
+ranges from 0.02946210 to 0.02987585: no silent window in that capture. Destination
+RMS is 0.02967367. These are default-Sound, internal-clock emulator measurements;
+they do not prove arbitrary filter/FX settings, external clock or hardware.
+
+The regression now asserts audible energy in every complete 1,024-frame window
+and bounds adjacent-frame steps below 0.05 times peak for this settled C4 fixture
+(the sine phase increment is about 0.0343 radians/frame). This catches gross gaps
+and jumps; it is not sample-aligned proof of phase invariance for general audio.
+Fixture SHA-256: `162753af4f781ebbf00a962746e36ccac9f9a35758f16024fadbf32af755b90b`,
+1,935,776 bytes, 39 writes. Logs are under `out/canopy-retain-*`; transition PCM and
+measurements are under `out/canopy-pattern-*`. Public V2 packaging and the remaining
+stock control/lifetime acceptance are still required before an installable machine.
+
+The final strengthened pattern regression and existing temporary-reload/sustain
+regression both pass (403.04 seconds together; 201.32- and 196.70-second bodies).
+This confirms that retention did not disable explicit same-pointer reload resets.
+Changed-file checks pass lint, types and layers; formatting passes after applying
+Prettier. The repository-wide path checker still reports the existing 256 stale
+references in 78 files. Targeted checks of the three changed documents report zero
+stale references. No full merge gate or device test was run.

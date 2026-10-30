@@ -156,15 +156,16 @@ final PCM; individual releases retire their own voices and the final release
 returns the carrier to idle with final output below -120 dBFS. It shadows stock
 WERP; selection now resolves the live Sound and refreshes its stock configuration
 before CANOPY configuration acknowledgement and MIDI admission, without a stock
-audition. It also resets on observed identity changes and re-admits after a
-machine change or a stopped pattern change, preserving old-key tombstones.
+audition. Machine and project changes reset the instance, preserving old-key tombstones.
+Compatible pattern changes within a project retain the instance and refresh the
+destination stock carrier.
 This remains a track-0 emulator proof, not a DKM or a supported keyboard workflow.
 A fixture-only deserializer hook now brackets same-pointer, same-type Sound loads;
 ColdFire tests cover the real stock routine with synthetic records. A booted
 panel-driven temporary pattern reload also proves same-pointer invalidation,
 re-admission and stale-release protection. A running switch between two prepared patterns also preserves source ownership
-during observed scheduling lookahead and re-admits after commitment. The running-switch
-regression now checks source/destination audio and settled reset/release quietness,
+during observed scheduling lookahead and retains it after compatible commitment. The running-switch
+regression now checks retained tokens, original key release, source/destination audio and settled release quietness,
 and captures transition PCM with diagnostic adjacent-frame step measurements. Browser,
 kit and paste coverage, broader transport cases and audio continuity remain unproven. Public V2 initialization, broader Sound/control behavior
 and final-output continuity remain open. See the

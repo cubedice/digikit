@@ -66,11 +66,24 @@ int canopy_carrier_prepare(int allow_refresh)
     uint32_t type=source ? *(const uint8_t *)(uintptr_t)(source+0xa2) : UINT32_MAX;
     uint32_t changed=project != last_project || kit != last_kit ||
         source != last_source || pattern != last_pattern || type != last_type;
+    /* A committed switch within this project retains the instrument instance.
+     * Refresh the destination stock carrier, but do not reset the MIDI ledger,
+     * configuration, oscillators or controllers. Same-pattern Sound loads still
+     * invalidate through the deserializer hook; project/machine changes reset.
+     * This fixture has one fixed configuration and shadows type 1 only. */
+    uint32_t retain=cp_admission[0] && pattern && last_pattern &&
+        pattern != last_pattern && project == last_project &&
+        source && kit && type == 1 && last_type == 1;
     last_project=project; last_kit=kit; last_source=source;
     last_pattern=pattern; last_type=type;
     cp_admission[1]=source;
     cp_admission[3]=pattern;
     cp_admission[5]=type;
+    if (retain) {
+        cp_refresh(source,0);
+        ++cp_admission[2];
+        return 1;
+    }
     if (changed && cp_admission[0]) {
         cp_admission[0]=0;
         ++cp_admission[4];
