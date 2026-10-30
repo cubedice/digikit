@@ -233,7 +233,15 @@ bounded stack storage and checked 32-bit arithmetic. It validates descriptor
 structure and table bounds, but does not check signatures, imports, relocation
 contents or device-specific cycle/stack admission limits. It is not a load check.
 The normal `needs_of` entry point still rejects V5, keeping the scan/fit ABI and
-capacity protocol unchanged until an instrument registry is implemented.
+capacity protocol unchanged until V2 registry integration is complete.
+
+The internal V2 registry reserves all types of a module in one transaction.
+Publication requires completion of DSP initialization; retirement hides the rows
+but holds their capacity until DSP detachment is acknowledged. Module-slot and
+generation tickets prevent stale completions from affecting reused rows. The
+explicit V2 fit API rejects missing instrument capacity and updates planning
+snapshots only if both instrument and legacy resources fit. These library paths
+are not connected to loader transfers yet; they do not enable V2 capability.
 
 ## What the loader checks, in order (nothing is written to the arena before the last one)
 

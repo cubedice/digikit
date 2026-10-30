@@ -5,6 +5,9 @@
 //! Format and rules: docs/design/digikit-runtime.md and docs/design/digikit-dkm.md.
 #![no_std]
 
+/// Internal V2 loader bookkeeping, shared with host tests. Not a C ABI or capability.
+pub mod instrument_registry;
+
 /// Version of the `Api` table layout. A field is only ever appended; `Api::size` tells a module how much is there.
 pub const API_VERSION: u32 = 1;
 /// Version of the runtime a module was packed against (`runtime_min` in the `.dkm` header). 2: DSP sections and asynchronous loads

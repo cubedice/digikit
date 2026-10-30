@@ -10,6 +10,9 @@
 //! (the next boot loads them into an empty runtime), and a host checks against CAPACITY as the device reports it.
 #![no_std]
 
+/// Explicit V2 accounting; legacy scan/fit entry points remain unchanged.
+pub mod instruments;
+
 use dkrt_sdk::proto::*;
 use dkrt_sdk::{DkrtCap, DkrtFitOut, DkrtScan, SCAN_COMPAT, SCAN_MAX, SCAN_NEEDS};
 
