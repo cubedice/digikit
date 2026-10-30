@@ -203,6 +203,138 @@ def bits(value):
     return struct.unpack("<I", struct.pack("<f", value))[0]
 
 
+def gain_path(memory):
+    """Execute the stock coefficient builder and its scalar audio ramp.
+
+    The input semantics are intentionally unnamed until the CF writers are
+    resolved. This experiment must not justify overriding the LEVEL control.
+    """
+    params, cache, gain = 0x200A0000, 0x200A1000, 0x200A2000
+    measurements = []
+    for control, factor, machine in (
+        (1, 1, 1),
+        (0.5, 1, 1),
+        (1, 0.25, 1),
+        (1, 4, 1),
+        (1, 1, 0.5),
+        (0, 1, 1),
+    ):
+        runner = Runner(memory, 0x1C6A28, breakpoints=[0x1C6A49])
+        for address, value in (
+            (params - 128, bits(control)),
+            (params + 16, 0),
+            (cache + 124, bits(factor)),
+            (cache + 444, 0),
+            (gain, 0),
+        ):
+            put(runner, address, value)
+        runner = runner.fresh_call(
+            0x1C6A28,
+            regs={
+                "I5": params,
+                "I1": cache,
+                "I3": gain,
+                "I11": cache,
+                "R14": bits(machine),
+                "M5": 0,
+                "M7": 0xFFFFFFFF,
+                "L1": 0,
+                "L3": 0,
+                "L5": 0,
+                "MODE1": 0x1011800,
+            },
+        )
+        result = runner.run(100)
+        if result.halt.reason != "breakpoint" or result.final_pc_sw != 0x1C6A49:
+            raise RuntimeError(f"gain builder failed: {result.halt.to_json()}")
+        target = struct.unpack("<f", struct.pack("<I", get(runner, gain)))[0]
+        for i in range(32):
+            put(runner, BUFFER + 4 * i, bits(0.25))
+        put(runner, BUFFER - 4, 0xDEADBEEF)
+        put(runner, BUFFER + 128, 0xDEADBEEF)
+        put(runner, gain + 8, bits(0.0))
+        put(runner, gain + 64, BUFFER)
+        runner.breakpoints = frozenset({0x1C6F8F})
+        runner = runner.fresh_call(
+            0x1C6F4E,
+            regs={
+                "I4": gain + 64,
+                "I3": gain,
+                "R15": 32,
+                "R12": 16,
+                "R8": 0,
+                "M5": 0,
+                "M6": 1,
+                "L1": 0,
+                "L2": 0,
+                "L3": 0,
+                "L4": 0,
+                "MODE1": 0x1011800,
+            },
+        )
+        result = runner.run(300)
+        if result.halt.reason != "breakpoint" or result.final_pc_sw != 0x1C6F8F:
+            raise RuntimeError(f"gain ramp failed: {result.halt.to_json()}")
+        measurements.append(
+            {
+                "control": control,
+                "cached_factor": factor,
+                "machine_factor": machine,
+                "target": target,
+                "expected_target": 2
+                * min(max(control * control * factor, 0), 1)
+                * machine,
+                "audio_matches": all(
+                    get(runner, BUFFER + 4 * i) == bits(0.25 * target)
+                    for i in range(32)
+                ),
+                "guards_intact": get(runner, BUFFER - 4) == 0xDEADBEEF
+                and get(runner, BUFFER + 128) == 0xDEADBEEF,
+            }
+        )
+    return measurements
+
+
+def velocity_lookup(memory):
+    """Follow the actual frame velocity read into the per-track cached factor."""
+    rows = []
+    for curve, velocity in (
+        (curve, velocity) for curve in range(5) for velocity in (1, 20, 64, 100, 127)
+    ):
+        runner = Runner(memory, 0x1C2546, breakpoints=[0x1C25CF])
+        for address in (0x255910, 0x2558DE, 0x2558FE, 0x255906, 0x256016, 0x2559BA):
+            put(runner, address, 0)
+        put(runner, 0x255910, velocity << 8)
+        runner = runner.fresh_call(
+            0x1C2546,
+            regs={
+                "I0": 0x255910,
+                "I5": 0x2558DE,
+                "I2": 0x2559B6,
+                "I4": curve << 9,
+                "I6": STACK,
+                "R8": 0,
+                "R12": 0,
+                "R14": 0,
+                "R9": 0,
+                "M3": 0,
+                "M4": 0,
+                "M5": 0,
+                "M6": 1,
+                "MODE1": 0x1011800,
+                **{f"L{i}": 0 for i in range(16)},
+            },
+        )
+        result = runner.run(200)
+        if result.halt.reason != "breakpoint" or result.final_pc_sw != 0x1C25CF:
+            raise RuntimeError(f"velocity lookup failed: {result.halt.to_json()}")
+        factor = struct.unpack("<f", struct.pack("<I", get(runner, 0x25242C)))[0]
+        rows.append(
+            {"velocity": velocity, "curve_index": curve, "cached_factor": factor}
+        )
+    return rows
+
+
 def configure_from_dispatcher(runner):
     """Execute the actual argument-loading caller with sustained proof settings."""
     params = 0x2008F000
@@ -445,6 +577,31 @@ def probe(firmware: Path, blocks: int):
         and edges.count((0, 0)) == blocks + 1,
     }
     checks.update(musical_chain(memory, initial, symbols))
+    gain_measurements = gain_path(memory)
+    velocity_measurements = velocity_lookup(memory)
+    checks["frame_velocity_curve_factors_are_finite"] = all(
+        math.isfinite(row["cached_factor"]) for row in velocity_measurements
+    )
+    checks["velocity_curve_zero_is_neutral_across_keys"] = (
+        len(
+            {
+                row["cached_factor"]
+                for row in velocity_measurements
+                if row["curve_index"] == 0
+            }
+        )
+        == 1
+    )
+    checks["velocity_curve_one_responds_to_velocity"] = (
+        velocity_measurements[5]["cached_factor"]
+        < velocity_measurements[9]["cached_factor"]
+    )
+    checks["stock_gain_formula_matches_controlled_inputs"] = all(
+        row["target"] == row["expected_target"] for row in gain_measurements
+    )
+    checks["stock_gain_applies_to_all_32_samples_without_overwrite"] = all(
+        row["audio_matches"] and row["guards_intact"] for row in gain_measurements
+    )
     return {
         "firmware_sha256": FIRMWARE_SHA,
         "dsp_sha256": BLOB_SHA,
@@ -452,6 +609,8 @@ def probe(firmware: Path, blocks: int):
         "blocks": blocks,
         "samples": blocks * 32,
         "checks": checks,
+        "gain_measurements": gain_measurements,
+        "velocity_measurements": velocity_measurements,
         "hold_counter": held[9],
         "configured": configured,
         "release_state": release_state,

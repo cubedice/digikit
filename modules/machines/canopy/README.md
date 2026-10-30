@@ -93,6 +93,11 @@ AMP, and reset retirement. Stock configuration is loaded by the original DSP
 caller from synthetic sustained settings. It still bypasses live MIDI ingress,
 instance admission and the final filter/mixer path.
 
+The probe additionally checks the stock gain builder and 32-sample application,
+plus frame-velocity lookup across five curves. Curve 0 is constant across keys,
+a candidate for neutral shared velocity. This does not yet establish an owned
+velocity override or final mixer output.
+
 These checks do not establish stock AMP lifetime, final track output, MIDI latency
 or device performance. The current V1 contract path skips inactive stock voices
 and clears configured state at stock note-on. The raw path avoids that contract

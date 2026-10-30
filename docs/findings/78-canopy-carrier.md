@@ -163,6 +163,34 @@ this path does not copy flags between processor instances. It directly invokes
 note callbacks and marks the proof instance configured; live MIDI, registration,
 the frame scheduler and downstream gain/filter/mixer are not included.
 
+**[D] Downstream gain and velocity-cache follow-up:** The probe executes the
+coefficient builder at `0x1c6a28` through `0x1c6a49` with controlled inputs.
+For `a = DM(I5-32)`, `b = DM(I1+31)` and incoming F14 = c, the target stored at
+the original I3 is `2 * clamp(a*a*b, 0, 1) * c`. Six cases cover square-law
+attenuation, the cached factor, saturation, the machine-path factor and zero.
+The probe then executes the actual scalar gain application from `0x1c6f4e`
+through `0x1c6f8f`; all 32 input samples receive the expected gain and adjacent
+sentinels remain intact. Entry must include the odd/even sample-count branch:
+starting inside its odd-count path incorrectly processes 33 samples for a
+32-sample block. This is a harness-entry requirement, not a firmware defect.
+The exact control semantics of a/b/c are not yet established; in particular,
+do not treat this entire gain as velocity and bypass LEVEL or modulation.
+
+Separately, the probe executes `0x1c2546` through the velocity-cache write at
+`0x1c25cd`. It reads the actual frame velocity word at `0x255910` (frame +0x34),
+shifts it by eight, indexes a curve at `0x8045a9b8 + 512*curve`, multiplies the
+lookup by 127/128, and writes the track-zero cache at `0x25242c`. The caller
+clamps the curve selector to 0..4 before this slice. Twenty-five measurements
+cover five velocities on each curve. Curve 0 yields 0.9921875 for every tested
+velocity; curve 2 follows velocity/128; the other curves vary nonlinearly.
+Curve 0 is therefore a candidate for neutral shared velocity while CANOPY keeps
+its local per-note velocity. This is neutral across key velocities, not unity
+gain. The cache's connection to the downstream a/b/c factors and the ownership
+hook still need proof; no velocity override is installed.
+
+All 21 report checks passed in the combined bounded run (eight constant-input
+hold blocks, 260 musical blocks, six gain cases and 25 velocity cases).
+
 Resolve live configuration delivery and both flag writers before adding
 the hook to the production manifest. Use idle-to-active to start the envelope once; avoid
 rearming it for subsequent keys. Retain the carrier through local release tails

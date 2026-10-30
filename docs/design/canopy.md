@@ -28,6 +28,12 @@ while live configuration delivery, neutral downstream velocity and final mixer
 output remain required. Stock AMP remains a master shape; sustained proof settings
 do not change the release design's treatment of user AMP controls.
 
+The carrier probe also measures stock downstream gain and all five shared
+velocity curves. Curve 0 produces a constant 127/128 factor across key velocities,
+making it a candidate for the required neutral shared velocity. Its ownership
+hook and connection to final gain remain open; no override is installed. Preserve
+LEVEL and modulation while resolving that connection.
+
 - Ship a DTII-only experimental module, proposed ID `digikit/canopy`, with an explicitly required new runtime capability. Keep existing V1 machines compatible.
 - Support four foreground pad notes. Additional fixed slots handle one arp note and two shared release tails. Voice count never grows with release time.
 - Use internal envelopes and velocity for individual notes. Retain the stock filter, level, pan, mute and FX routing. Treat the stock AMP envelope as a shared master shape, subject to the lifecycle proof below.
