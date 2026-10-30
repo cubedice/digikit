@@ -36,8 +36,11 @@ control attenuation and silence. Updating only the incoming cache leaves the
 latched value unchanged. A proof hook now substitutes only the owned velocity
 operand before gain construction, using a post-receive snapshot of admitted
 instances and actual kernel tails/pending notes. Stereo/context component tests
-and the original scalar gain builder pass; the hook remains uninstalled. Preserve
-LEVEL and modulation, and prove final output separately.
+and the original scalar gain builder pass. The connected musical proof now runs
+through stock scalar audio gain as well, keeping the owned chord's gain stable
+while shared velocity changes. The hook has resolved firmware declarations but
+remains uninstalled. Preserve LEVEL and modulation, and prove final output
+separately; live scheduling and changing-control smoothing remain open.
 
 - Ship a DTII-only experimental module, proposed ID `digikit/canopy`, with an explicitly required new runtime capability. Keep existing V1 machines compatible.
 - Support four foreground pad notes. Additional fixed slots handle one arp note and two shared release tails. Voice count never grows with release time.

@@ -3166,6 +3166,28 @@ mark = "D"
 rule = "fw/dsp/voice:sharc_func"
 
 [[anchor]]
+name = "dsp.voice.site.velocity_operand"
+cpu = "sharc"
+kind = "code"
+addr = 0x2838d45c
+pm = 0x1c6a2e
+len = 6
+sha256 = "eb33e0cb074a6e42ae543abe331809da8e88e7c610e176a87a5b0e2214935055"
+mark = "D"
+rule = "fw/dsp/voice:sharc_func"
+
+[[anchor]]
+name = "dsp.voice.site.velocity_operand.next"
+cpu = "sharc"
+kind = "code"
+addr = 0x2838d462
+pm = 0x1c6a31
+len = 6
+sha256 = "ee0e52179f5636c72d5f05fbe6d74056b74bde96006c7f0422f8cc998e08ea91"
+mark = "D"
+rule = "fw/dsp/voice:sharc_func"
+
+[[anchor]]
 name = "dsp.voice.value.frame_base"
 cpu = "sharc"
 kind = "value"
@@ -3474,4 +3496,9 @@ mode = "replace"
 [[hook]]
 name = "dsp.voice.hook.render_entry"
 site = "dsp.voice.fn.render_entry"
+mode = "replace"
+
+[[hook]]
+name = "dsp.voice.hook.velocity_operand"
+site = "dsp.voice.site.velocity_operand"
 mode = "replace"

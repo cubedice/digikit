@@ -101,8 +101,10 @@ leaves the latched gain unchanged. Curve 0 is constant across keys, a candidate
 for neutral shared velocity. An in-memory proof hook now substitutes that factor
 for owned voices while retaining the stock cache and separate gain controls.
 Pre-render ownership includes actual kernel tails and pending notes, even after
-configuration is reset. The hook is not installed; final mixer output remains
-unproved.
+configuration is reset. The musical scenario now traverses admission, patched
+gain construction, kernel, AMP and scalar audio gain in one memory image. Shared
+velocity changes do not rescale the owned chord. The hook has resolved firmware
+declarations but is not installed; final mixer output remains unproved.
 
 These checks do not establish stock AMP lifetime, final track output, MIDI latency
 or device performance. The current V1 contract path skips inactive stock voices

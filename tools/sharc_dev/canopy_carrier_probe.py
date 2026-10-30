@@ -228,6 +228,33 @@ def bits(value):
     return struct.unpack("<I", struct.pack("<f", value))[0]
 
 
+def apply_stock_gain(runner, gain):
+    """Run the actual 32-sample scalar gain path at a settled coefficient."""
+    saved_breakpoints = runner.breakpoints
+    put(runner, gain + 8, bits(0.0))
+    put(runner, gain + 64, BUFFER)
+    runner.breakpoints = frozenset({0x1C6F8F})
+    runner = runner.fresh_call(
+        0x1C6F4E,
+        regs={
+            "I4": gain + 64,
+            "I3": gain,
+            "R15": 32,
+            "R12": 16,
+            "R8": 0,
+            "M5": 0,
+            "M6": 1,
+            "MODE1": 0x1011800,
+            **{f"L{i}": 0 for i in range(16)},
+        },
+    )
+    result = runner.run(300)
+    if result.halt.reason != "breakpoint" or result.final_pc_sw != 0x1C6F8F:
+        raise RuntimeError(f"gain ramp failed: {result.halt.to_json()}")
+    runner.breakpoints = saved_breakpoints
+    return runner
+
+
 def gain_path(memory):
     """Execute the stock coefficient builder and its scalar audio ramp.
 
@@ -277,29 +304,7 @@ def gain_path(memory):
             put(runner, BUFFER + 4 * i, bits(0.25))
         put(runner, BUFFER - 4, 0xDEADBEEF)
         put(runner, BUFFER + 128, 0xDEADBEEF)
-        put(runner, gain + 8, bits(0.0))
-        put(runner, gain + 64, BUFFER)
-        runner.breakpoints = frozenset({0x1C6F8F})
-        runner = runner.fresh_call(
-            0x1C6F4E,
-            regs={
-                "I4": gain + 64,
-                "I3": gain,
-                "R15": 32,
-                "R12": 16,
-                "R8": 0,
-                "M5": 0,
-                "M6": 1,
-                "L1": 0,
-                "L2": 0,
-                "L3": 0,
-                "L4": 0,
-                "MODE1": 0x1011800,
-            },
-        )
-        result = runner.run(300)
-        if result.halt.reason != "breakpoint" or result.final_pc_sw != 0x1C6F8F:
-            raise RuntimeError(f"gain ramp failed: {result.halt.to_json()}")
+        runner = apply_stock_gain(runner, gain)
         measurements.append(
             {
                 "control": control,
@@ -535,7 +540,7 @@ def configure_from_dispatcher(runner):
 
 
 def musical_chain(memory, initial, symbols):
-    """One core: kernel -> carrier publication -> patched stock envelope."""
+    """One core: admission -> gain builder -> kernel -> AMP -> stock gain."""
     runner = Runner(memory, ENVELOPE, breakpoints=[END])
     for address, value in initial.items():
         put(runner, address, value)
@@ -566,22 +571,76 @@ def musical_chain(memory, initial, symbols):
             raise RuntimeError(f"{entry} failed: {result.halt.to_json()}")
 
     unchanged, counters, releases, audio = True, [], [], []
+    admissions = []
+    gain_matches, neutral_while_owned, cache_preserved = True, True, True
 
     def render():
-        nonlocal runner, unchanged
+        nonlocal runner, unchanged, gain_matches, neutral_while_owned, cache_preserved
         internal("_mi_carrier_begin")
+        internal("_instrument_carrier_prepare")
+        admitted = get(runner, symbols["_mi_velocity_owners"] + 4) != 0
+        admissions.append(admitted)
+        cache, params, gain = RECORD + 0x6E4, 0x200A0000, 0x200A2000
+        stock_velocity = 0.125 if len(counters) % 2 else 0.75
+        for address, value in (
+            (cache + 124, bits(stock_velocity)),
+            (cache + 444, 0),
+            (params - 128, bits(0.5)),
+            (params + 16, 0),
+            (gain, 0),
+        ):
+            put(runner, address, value)
+        runner.breakpoints |= {0x1C6A49}
+        runner = runner.fresh_call(
+            0x1C6A28,
+            regs={
+                "I1": cache,
+                "I5": params,
+                "I3": gain,
+                "I11": cache,
+                "R14": bits(1),
+                "M5": 0,
+                "M7": 0xFFFFFFFF,
+                "MODE1": 0x1011800,
+                **{f"L{i}": 0 for i in range(16)},
+            },
+        )
+        result = runner.run(300)
+        if result.halt.reason != "breakpoint" or result.final_pc_sw != 0x1C6A49:
+            raise RuntimeError(f"musical gain builder failed: {result.halt.to_json()}")
+        runner.breakpoints -= {0x1C6A49}
+        coefficient = struct.unpack("<f", struct.pack("<I", get(runner, gain)))[0]
+        neutral_while_owned &= coefficient == 0.5 * (
+            127 / 128 if admitted else stock_velocity
+        )
+        cache_preserved &= get(runner, cache + 124) == bits(stock_velocity)
         internal("_cp_voice_render", R2=0, R8=BUFFER)
         before = [get(runner, BUFFER + 4 * i) for i in range(32)]
+        neutral_while_owned &= admitted or not any(before)
         pair = get(runner, symbols["_mi_carrier_pairs"] + 4)
         owned = get(runner, symbols["_mi_carrier_pairs"] + 8)
         runner = call(runner, ENVELOPE, trigger=True, release=True)
         after = [get(runner, BUFFER + 4 * i) for i in range(32)]
-        audio.extend(struct.unpack("<f", struct.pack("<I", word))[0] for word in after)
         if owned and pair == 0:
             unchanged &= before == after
         if owned and pair == 2:
             releases.append(before == [0] * 32)
         counters.append(record(runner)[9])
+        put(runner, BUFFER - 4, 0xDEADBEEF)
+        put(runner, BUFFER + 128, 0xDEADBEEF)
+        runner = apply_stock_gain(runner, gain)
+        post_gain = [get(runner, BUFFER + 4 * i) for i in range(32)]
+        gain_matches &= (
+            all(
+                actual
+                == bits(struct.unpack("<f", struct.pack("<I", value))[0] * coefficient)
+                for actual, value in zip(post_gain, after, strict=True)
+            )
+            and get(runner, BUFFER - 4) == get(runner, BUFFER + 128) == 0xDEADBEEF
+        )
+        audio.extend(
+            struct.unpack("<f", struct.pack("<I", word))[0] for word in post_gain
+        )
 
     internal("_cp_note_on", R8=1, R12=60, R9=20)
     internal("_cp_note_on", R8=2, R12=64, R9=100)
@@ -614,15 +673,18 @@ def musical_chain(memory, initial, symbols):
         "independent_low_then_high_velocity_survives": abs(gains.get(1, -1) - 20 / 127)
         < 1e-6
         and abs(gains.get(3, -1) - 1) < 1e-6,
-        "post_envelope_audio_is_finite_and_nonzero": all(
-            math.isfinite(x) for x in audio
-        )
+        "post_gain_audio_is_finite_and_nonzero": all(math.isfinite(x) for x in audio)
         and 0.01 < max(abs(x) for x in audio) < 0.375,
         "held_audio_is_bit_identical_through_stock_envelope": unchanged,
         "stock_envelope_counter_never_restarts_while_held": all(
             b == a + 32 for a, b in zip(counters[:255], counters[1:256], strict=True)
         ),
         "reset_releases_only_after_last_audio_block": releases == [True],
+        "musical_audio_passes_stock_gain_with_guards": gain_matches,
+        "shared_velocity_changes_do_not_rescale_owned_chord": neutral_while_owned
+        and all(admissions[:256])
+        and not admissions[-1],
+        "musical_gain_hook_leaves_stock_velocity_cache_unchanged": cache_preserved,
     }
 
 
@@ -739,7 +801,10 @@ def probe(firmware: Path, blocks: int):
         and edges.count((0, 1)) == 1
         and edges.count((0, 0)) == blocks + 1,
     }
-    checks.update(musical_chain(memory, initial, symbols))
+    _, musical_memory, musical_initial, musical_symbols = carrier_policy(
+        blob, velocity_hook=True
+    )
+    checks.update(musical_chain(musical_memory, musical_initial, musical_symbols))
     gain_measurements = gain_path(memory)
     velocity_measurements = velocity_lookup(memory)
     owned_gain_measurements = owned_velocity_gain(blob)
@@ -779,7 +844,7 @@ def probe(firmware: Path, blocks: int):
     return {
         "firmware_sha256": FIRMWARE_SHA,
         "dsp_sha256": BLOB_SHA,
-        "scope": "in-memory patched stock envelope entry and adapter policy; no live frame or final mix proof",
+        "scope": "in-memory patched stock envelope and velocity operand, musical audio through scalar gain; no live frame or final mix proof",
         "blocks": blocks,
         "samples": blocks * 32,
         "checks": checks,

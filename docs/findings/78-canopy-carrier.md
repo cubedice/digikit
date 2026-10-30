@@ -249,6 +249,25 @@ changed documentation references and layercheck pass. The broader changed-file
 preflight still reports 256 existing stale references in 78 files and cannot
 start its routed host checks because `pnpm` is unavailable in the WSL environment.
 
+**[D] Connected musical gain path and declared hook:** The 260-block C/E/G
+scenario now runs admission, the patched coefficient builder, the sine kernel,
+the patched stock AMP and actual scalar audio gain in one memory image. The
+latched stock velocity alternates between 0.125 and 0.75 every block. Owned gain
+stays at 0.5 * 127/128 (proof control 0.5, machine factor 1); after retirement it
+follows the stock value again. Every post-AMP sample is checked against the
+original gain stage's result, with adjacent buffer sentinels. Independent release,
+per-note velocity, uninterrupted master hold and reset retirement still pass.
+All 28 aggregate checks pass. The proof deliberately uses a settled coefficient
+(zero ramp delta), synthetic control values and explicit slice entry; it does not
+prove the live scheduler, changing-control smoothing or final mixer output.
+
+Two hash-resolved velocity sites and one replace hook now appear in the firmware
+declarations and DT2 port: operand at `0x1c6a2e`, continuation at `0x1c6a31`.
+Both resolve against the pinned OS 1.17 image, preserving every existing anchor.
+As with the earlier envelope sites, this is scoped DSP resolution; full port
+regeneration still needs the missing local ColdFire analysis inputs. No normal
+manifest claims or installs the new hook.
+
 Resolve live configuration delivery and both flag writers before adding
 the hook to the production manifest. Use idle-to-active to start the envelope once; avoid
 rearming it for subsequent keys. Retain the carrier through local release tails

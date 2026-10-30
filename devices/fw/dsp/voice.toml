@@ -60,6 +60,35 @@ mark = "D"
 users = ["core/midi-events"]
 doc = "Interpose owned carrier flags in stack arguments +1/+2; preserve live state and execute the displaced stack reservation."
 
+[[site]]
+name = "dsp.voice.site.velocity_operand"
+cpu = "sharc"
+devices = ["dt2"]
+rule = { kind = "sharc_func", reloc_hash = "47f65f5034040ec69829448cd833243cef4ad84cecabddae61f8849d3f70f7be", offset = 0x604, len = 6 }
+mark = "D"
+users = ["core/midi-events"]
+doc = "DT2 1.17 PC 0x1c6a2e, after latched velocity is loaded into R1 and before gain multiplication. Displaced instruction sets R7=1. See finding 78."
+
+[[site]]
+name = "dsp.voice.site.velocity_operand.next"
+cpu = "sharc"
+devices = ["dt2"]
+rule = { kind = "sharc_func", reloc_hash = "47f65f5034040ec69829448cd833243cef4ad84cecabddae61f8849d3f70f7be", offset = 0x607, len = 6 }
+mark = "D"
+users = ["core/midi-events"]
+doc = "Resume at DT2 1.17 PC 0x1c6a31, multiplying squared control R2 by velocity R1."
+
+[[hook]]
+name = "dsp.voice.hook.velocity_operand"
+site = "dsp.voice.site.velocity_operand"
+cpu = "sharc"
+mode = "replace"
+regs = { in = ["r1", "i1"], clobbers = ["r1", "r7", "s7"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/midi-events"]
+doc = "Replace only owned scalar velocity R1 using pre-render admission. Preserve squared control R2, status and stock cache; execute displaced R7=1 (also S7 in SIMD mode)."
+
 # ---- Digitone II (FUN_b8251b: the helper the engine calls once per voice buffer after the FM synthesis, first
 # instruction `I7 = MODIFY(I7, -18)`, 48 bits, displaced; the DSP's frame copy is the literal `I4 = 0x25c48c` of the
 # per-block copy in FUN_1c2712).

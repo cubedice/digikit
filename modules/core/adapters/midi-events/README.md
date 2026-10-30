@@ -193,9 +193,11 @@ notes before stock gain construction. `velocity.s` selects stock curve 0's 127/1
 factor only for owned, current-frame stereo voices. `velocity-entry.s` interposes
 the scalar gain builder after its velocity read, preserving the stock latch and
 all other operands. Frame start expires these snapshots explicitly. The new gain
-interposer is tested in private firmware memory but has no firmware declaration
-or manifest hook yet; its provider and helper sources remain outside the normal
-object list.
+interposer is tested in private firmware memory and has two hash-resolved sites
+and a replace-hook declaration. Its provider and helper sources remain outside
+the normal object list; no manifest installs it. The musical proof connects
+kernel, AMP and scalar gain while varying the shared velocity cache every block.
+It does not establish the live scheduler or final mixer output.
 
 ```sh
 cargo test -p dkmidi-host
