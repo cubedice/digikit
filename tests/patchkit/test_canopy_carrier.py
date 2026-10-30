@@ -67,6 +67,33 @@ def block(rig):
     return result.samples
 
 
+def carrier(rig, *, active=None, owned=1, trigger=0, release=0, track=None):
+    bank = rig.built.data["_mi_carrier_active"] // 4
+    before = [rig.sess.peek(bank + i) for i in range(16)]
+    selected = rig.track if track is None else track
+    if active is None:
+        active = rig.sess.peek(rig.built.data["_cp_probe_active"] // 4)
+    result = rig.sess.call(
+        "_mi_carrier_step",
+        {
+            "R4": selected,
+            "R8": active,
+            "R10": owned,
+            "R12": trigger,
+            "R9": release,
+            "M5": 0,
+            "L0": 0,
+            "MODE1": 0x1011800,
+        },
+        max_steps=100,
+        read_regs=("R0", "R1", "R2", "R3", "I0", "M5"),
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    after = [rig.sess.peek(bank + i) for i in range(16)]
+    assert all(before[i] == after[i] for i in range(16) if i != selected)
+    return result["regs"]["R0"], result["regs"]["R1"]
+
+
 @pytest.mark.parametrize("track", [0, 15])
 def test_idle_raw_render_does_not_establish_a_stock_carrier(spec, track):
     rig = make_rig(spec, track)
@@ -125,3 +152,41 @@ def test_quiet_bank_accepts_new_notes_without_stock_trigger(spec):
     event(rig, "note_on", 2, 72)
     assert any(abs(x) > 0.00001 for x in block(rig))
     assert rig.read_rec_word(0, 0x1B8) == 0
+
+
+def test_carrier_edges_follow_kernel_tails_not_keys(spec):
+    rig = make_rig(spec)
+    assert carrier(rig, active=0, trigger=1) == (0, 0)
+    event(rig, "note_on", 1)
+    block(rig)
+    assert carrier(rig) == (1, 0)
+    event(rig, "note_on", 2, 67)
+    block(rig)
+    assert carrier(rig, trigger=1, release=1) == (0, 0)
+    event(rig, "note_off", 1)
+    block(rig)
+    assert carrier(rig, release=1) == (0, 0)
+    event(rig, "note_off", 2)
+    block(rig)
+    assert carrier(rig, release=1) == (0, 0)
+    edges = []
+    for _ in range(80):
+        block(rig)
+        edges.append(carrier(rig))
+    assert edges.count((0, 1)) == 1
+    assert all(edge in ((0, 0), (0, 1)) for edge in edges)
+    event(rig, "note_on", 3, 72)
+    block(rig)
+    assert carrier(rig) == (1, 0)
+
+
+def test_carrier_ownership_is_per_track_and_stock_flags_pass_through(spec):
+    rig = make_rig(spec)
+    assert carrier(rig, track=0, active=1) == (1, 0)
+    assert carrier(rig, track=15, active=1) == (1, 0)
+    assert carrier(rig, track=0, active=0) == (0, 1)
+    assert carrier(rig, track=15, active=1) == (0, 0)
+    assert carrier(rig, track=15, active=1, owned=0, trigger=7, release=9) == (7, 9)
+    assert carrier(rig, track=15, active=1) == (1, 0)
+    assert carrier(rig, track=16, active=1, trigger=7, release=9) == (7, 9)
+    assert carrier(rig, track=0xFFFFFFFF, active=1, trigger=7, release=9) == (7, 9)

@@ -1,7 +1,7 @@
 """Bounded DT2 1.17 carrier investigation using the supplied firmware's instructions.
 
-This is a component experiment with synthetic envelope state, not a booted-device
-or MIDI proof. It does not patch firmware, initialize a carrier, or enable routes.
+This configures and runs the stock envelope with the V2 transition policy. It is
+not a booted-device or MIDI proof and does not patch firmware or enable routes.
 Run from the repository root with python -m tools.sharc_dev.canopy_carrier_probe.
 """
 
@@ -13,6 +13,7 @@ import json
 import struct
 from pathlib import Path
 
+from tools.patchkit import pk_sharc
 from tools.patchkit.port_resolve import sections_of
 from tools.sharc_dev.sharc_run import Runner, st
 from tools.sharc_dev.sharcldr import LoadedMemory
@@ -21,6 +22,7 @@ from tools.sharc_dev.sharcldr import LoadedMemory
 FIRMWARE_SHA = "26c22f6652625ac2cfd47f7ee970d388ed8b6427dae3563c0a6a2f2d334350d5"
 BLOB_SHA = "0f514a12a2255f5c081e292c47f1f29462003177658da4bbae0a22fd737fffa2"
 ARM, ENVELOPE = 0x1C4EAF, 0x1CBB57
+CONFIGURE = 0x1CBA9E
 STACK, RECORD, BUFFER, SAMPLE_RECORD = (
     0x20090000,
     0x20091000,
@@ -28,6 +30,42 @@ STACK, RECORD, BUFFER, SAMPLE_RECORD = (
     0x20093000,
 )
 END = 0xB9F100
+
+
+def carrier_policy():
+    """Execute the adapter policy, keeping its per-track state between calls."""
+    path = (
+        Path(__file__).resolve().parents[2]
+        / "modules/core/adapters/midi-events/src/dsp/carrier.s"
+    )
+    obj = pk_sharc.assemble(path.read_text())
+    address = 0x20094000
+    linked = pk_sharc.link(obj, 0xB90000, {"_mi_carrier_active": address})
+    session = pk_sharc.CallSession([linked], END)
+    for i in range(16):
+        session.poke(address // 4 + i, 0)
+
+    def step(active, trigger, release):
+        result = session.call(
+            "_mi_carrier_step",
+            {
+                "R4": 0,
+                "R8": active,
+                "R10": 1,
+                "R12": trigger,
+                "R9": release,
+                "M5": 0,
+                "L0": 0,
+                "MODE1": 0x1011800,
+            },
+            max_steps=100,
+            read_regs=("R0", "R1", "R2", "R3", "I0", "M5"),
+        )
+        if result["halt"]["reason"] != "breakpoint":
+            raise RuntimeError(f"carrier policy failed: {result}")
+        return result["regs"]["R0"], result["regs"]["R1"]
+
+    return step
 
 
 def put(runner, address, value):
@@ -52,7 +90,7 @@ def record(runner):
     return [get(runner, RECORD + 4 * i) for i in range(11)]
 
 
-def call(runner, entry, *, sample_record=False, trigger=False):
+def call(runner, entry, *, sample_record=False, trigger=False, release=False):
     regs = {
         "R0": 0,
         "R4": SAMPLE_RECORD if sample_record else RECORD,
@@ -74,8 +112,13 @@ def call(runner, entry, *, sample_record=False, trigger=False):
     # Stock caller passes two flags followed by the 32-sample count. Their
     # relation to live CF note/gate fields is not established by this probe.
     put(runner, STACK + 4, 1 if trigger else 0)
-    put(runner, STACK + 8, 0)
+    put(runner, STACK + 8, int(release))
     put(runner, STACK + 12, 32)
+    if entry == CONFIGURE:
+        regs["R8"] = 1
+        regs["R12"] = bits(0.0)
+        for i, value in enumerate((bits(1.0), bits(0.0), bits(1.0), bits(0.0), 0), 1):
+            put(runner, STACK + 4 * i, value)
     runner = runner.fresh_call(entry, regs=regs, return_address=END)
     result = runner.run(10000)
     if result.halt.reason != "breakpoint" or result.final_pc_sw != END:
@@ -93,57 +136,65 @@ def probe(firmware: Path, blocks: int):
     for base, words in ((STACK - 256, 128), (RECORD, 11), (SAMPLE_RECORD, 118)):
         for i in range(words):
             put(runner, base + 4 * i, 0)
-    # Synthetic sustained envelope: HOLD=127, mode flags=1, state=3 and
-    # internal negative unity amplitude. This does not replace normal setup.
-    for offset, value in ((4, 127), (24, 1), (28, 3), (40, bits(-1.0))):
-        put(runner, RECORD + offset, value)
+    runner = call(runner, CONFIGURE)
+    configured = record(runner)
     before_arm = record(runner)
     runner = call(runner, ARM, sample_record=True)
     arm_record = get(runner, SAMPLE_RECORD + 0x1B8)
     arm_preserves_envelope = record(runner) == before_arm
 
-    def render(current, *, trigger=False):
+    policy = carrier_policy()
+    edges = []
+
+    def render(current, *, active=1, stock_trigger=0, stock_release=0):
+        trigger, release = policy(active, stock_trigger, stock_release)
+        edges.append((trigger, release))
         for i in range(32):
             put(current, BUFFER + 4 * i, bits(0.25))
-        current = call(current, ENVELOPE, trigger=trigger)
+        current = call(current, ENVELOPE, trigger=trigger, release=release)
         output = [get(current, BUFFER + 4 * i) for i in range(32)]
         return current, output
 
+    runner, onset = render(runner)
+    counter_at_onset = record(runner)[9]
     sustained = True
     for _ in range(blocks):
-        runner, output = render(runner)
+        runner, output = render(runner, stock_trigger=1, stock_release=1)
         sustained &= output == [bits(0.25)] * 32
     held = record(runner)
-    # Enter the routine's release state explicitly; live note-off ownership
-    # remains a separate hook investigation.
-    put(runner, RECORD + 28, 4)
-    runner, released = render(runner)
+    runner, released = render(runner, active=0)
     release_state = record(runner)
     release_peak = max(
         abs(struct.unpack("<f", struct.pack("<I", value))[0]) for value in released[1:]
     )
     # Trigger branch must restore a nonzero block after the release experiment.
-    runner, retriggered = render(runner, trigger=True)
+    runner, retriggered = render(runner)
     retrigger_state = record(runner)
     runner, settled = render(runner)
     recovered = retriggered[-1] == bits(0.25) and settled == [bits(0.25)] * 32
     checks = {
         "arm_sets_active_and_seed": arm_record == 0x00010001,
         "sample_arm_leaves_separate_envelope_unchanged": arm_preserves_envelope,
-        "synthetic_hold_passes_input_unchanged": sustained,
+        "configured_envelope_wakes": onset[-1] == bits(0.25),
+        "configured_hold_passes_input_unchanged": sustained,
         "hold_state_persists": held[7] == 3,
-        "hold_counter_advances_without_retrigger": held[9] == blocks * 32,
-        "explicit_release_attenuates": release_peak < 0.25,
+        "hold_counter_advances_without_retrigger": held[9]
+        == counter_at_onset + blocks * 32,
+        "quiet_edge_releases_envelope": release_peak < 0.25,
         "trigger_recovers_output": recovered,
+        "policy_emits_only_two_wakes_and_one_release": edges.count((1, 0)) == 2
+        and edges.count((0, 1)) == 1
+        and edges.count((0, 0)) == blocks + 1,
     }
     return {
         "firmware_sha256": FIRMWARE_SHA,
         "dsp_sha256": BLOB_SHA,
-        "scope": "synthetic-state firmware component; no live carrier or final mix proof",
+        "scope": "configured stock envelope and adapter policy; no live carrier or final mix proof",
         "blocks": blocks,
         "samples": blocks * 32,
         "checks": checks,
         "hold_counter": held[9],
+        "configured": configured,
         "release_state": release_state,
         "retrigger_state": retrigger_state,
         "release_peak_after_first_sample": release_peak,

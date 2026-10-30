@@ -63,6 +63,33 @@ ownership, keyboard behavior or a device CPU measurement.
 
 ## Remaining carrier integration
 
+### Configured envelope and transition policy follow-up
+
+**[D]** The probe now calls the stock configuration routine at `0x1cba9e` before
+rendering. It no longer seeds hold/release state or amplitude by hand. The
+investigation uses mode 1, normalized attack 0 and HOLD 1, with the remaining
+normalized arguments 0/1/0 and final flag 0. The routine produces HOLD index 127,
+mode 1 and zero runtime state. A single first-flag pulse starts its envelope;
+the second flag releases it. These are component call arguments, not resolved
+CF MIDI fields.
+
+The probe also executes the assembled adapter
+[carrier policy](../../modules/core/adapters/midi-events/src/dsp/carrier.s),
+feeding its emitted flags into the stock envelope. It supplies conflicting stock
+trigger and release flags on every held block. All **nine** checks pass over
+1,500 held blocks: the counter advances from 31 after onset to 48,031, with no
+retrigger; QUIET emits release and a new ACTIVE edge wakes again. The report has
+exactly two wake edges and one release edge. Input is still constant 0.25 and
+the full mixer is not executed.
+
+Eight [CANOPY adapter checks](../../tests/patchkit/test_canopy_carrier.py) also
+pass. They exercise the policy with the real kernel's ACTIVE/QUIET result,
+including held notes, independent releases, local tails, per-track isolation,
+unowned stock pass-through and invalid indexes. The kernel and firmware-envelope
+checks are separate component experiments, not a continuous live device chain.
+
+### Still open
+
 Resolve the normal envelope configuration and both flag writers before adding
 the V2-only wake/retire hook. Use idle-to-active to start the envelope once; avoid
 rearming it for subsequent keys. Retain the carrier through local release tails

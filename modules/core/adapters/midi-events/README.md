@@ -143,6 +143,20 @@ link checks, Python lint/format and module layering passed. No device was flashe
 
 Checks:
 
+The internal `src/dsp/carrier.s` implements a per-track carrier transition policy:
+owned tracks emit one wake on QUIET-to-ACTIVE, suppress stock key/sequencer edges,
+and emit one release on ACTIVE-to-QUIET. ACTIVE includes local release tails and
+pending replacements. Unowned tracks pass stock flags through and forget previous
+V2 history. Invalid track indexes pass through without accessing the state bank.
+Call once per track per block and use the returned flags for both stereo voices;
+calling separately for each voice would consume the edge on the first voice.
+The owner must complete retirement/reset before relinquishing ownership; this
+helper does not silence the kernel or configure the stock envelope.
+
+This source is component-tested but deliberately absent from the normal object
+source list: the pinned envelope hook, stereo handoff and full final-output proof
+are not yet implemented. It does not change readiness or enable MIDI routes.
+
 ```sh
 cargo test -p dkmidi-host
 uv run python -m tools.patchkit.patchkit build core/midi-events core/runtime

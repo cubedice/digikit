@@ -181,6 +181,14 @@ state, followed by release and retrigger. Sample activation and envelope state
 are separate; calling the sample arm routine alone does not establish AMP wakeup.
 Normal configuration, live flag ownership and final mixer output remain open.
 
+The internal adapter carrier policy now emits per-track wake/release edges from
+ACTIVE/QUIET and passes stock flags through for unowned tracks. Component tests
+connect it to the real kernel's release lifetime; the firmware probe separately
+feeds its output into the stock-configured envelope. Repeated stock trigger/release
+flags do not restart or cut off an owned hold. The eventual hook must evaluate
+the policy once per track and apply its result to both stereo voices. It remains
+unlinked in normal firmware until that handoff and final-output proof pass.
+
 Complete the carrier work in this order:
 
 1. Resolve the activation call and downstream envelope/gain initialization on the

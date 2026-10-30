@@ -3,6 +3,7 @@
 #include "../../modules/machines/canopy/src/dsp/voice.s"
 #include "../../modules/machines/canopy/src/dsp/tuning.s"
 #include "../../modules/machines/canopy/src/dsp/instrument.s"
+#include "../../modules/core/adapters/midi-events/src/dsp/carrier.s"
 .SECTION/PM seg_pmco;
 .GLOBAL _cp_voice_probe;
 .EXTERN _cp_render_track;
