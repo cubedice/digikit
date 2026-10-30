@@ -80,3 +80,34 @@ bit. The bootstrap provider sets neither and rejects lifecycle commands, so it
 cannot complete these transactions. Successful lifecycle tests use synthetic
 replies. Reset payloads, callbacks, dispatch and live SPI scheduling remain open;
 this client does not enable V2 admission.
+
+## Internal V2 reset worker
+
+`src/dsp/lifecycle.s` implements `_ir_reset_instance` for one admitted instance.
+It accepts state pointer/word count, an owned state interval, reset entry and an
+owned executable interval. All intervals are positive, non-wrapping addresses;
+state is four-byte aligned and limited to 1..1024 words per call. State addresses
+are bytes; executable addresses are SHARC short words. The caller must validate
+allocation ownership and executable sections before supplying these intervals.
+Bounds checks alone do not establish ownership or exclude other allocations.
+
+The worker validates every argument before changing memory or calling code.
+CREATE clears exactly the requested state extent before reset. REPLACE, RECOVER
+and UNLOAD preserve state for the callback to inspect. It enters the V2 reset
+callback with R4=state and R8=reason, with I13 carrying the return address. Only a
+zero callback result succeeds; negative faults propagate and positive results
+are rejected. Failure after callback entry can leave modified state and requires
+quarantine, not immediate memory reuse.
+
+This is an internal primitive, currently unreachable from mailbox commands.
+Before connecting it, the adapter still needs validated row metadata, admission
+of reset budgets, protection of the full callback register context, and work
+scheduling across tracks. Clearing is bounded; a callback that fails to return
+cannot be preempted by this worker. The caller must pin the documented registers
+and preserve callback clobbers. The older CANOPY event-reset hook uses a different
+ABI and must not be passed to this worker.
+
+`tests/patchkit/test_instrument_reset.py` executes the worker and a synthetic V2
+callback on the SHARC processor core. It checks exact clearing bounds, retained
+state on non-CREATE resets, invalid ranges and callback failure propagation.
+No mailbox lifecycle success or live device admission is implied.

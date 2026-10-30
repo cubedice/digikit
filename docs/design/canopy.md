@@ -356,6 +356,22 @@ changed-file check passes layering and reports only the existing 256 stale
 references (`out/canopy-mailbox-client-changed.log`). No device or ColdFire
 execution is claimed.
 
+An internal SHARC V2 single-instance reset worker is now implemented in
+`modules/core/adapters/instrument-registry/src/dsp/lifecycle.s`. It validates the
+state extent, callback range and reset reason before any write/call, clears state
+only for CREATE, and accepts only a zero callback result. Its current clearing
+limit is 1024 words per call. It is not yet connected to mailbox commands: trusted
+row metadata, owned allocation bounds, reset-budget admission, complete callback
+context protection and per-track scheduling remain required. The earlier CANOPY
+event-reset hook is not ABI-compatible with this worker. No new V2 capability is
+advertised and no lifecycle success is acknowledged by the bootstrap provider.
+Validation: 29 SHARC component cases pass (`out/canopy-reset-worker.log`); the
+registry adapter rebuilds, re-decodes all 130 instructions and checks current
+(`out/canopy-reset-worker-build.log`). These are processor-core tests with a
+synthetic V2 callback, not live firmware or hardware acceptance. The changed-file
+check passes 193 host tests (16 skipped), formatting, types and layering; its only
+failure is the existing 256 stale references. Changed document references pass.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
