@@ -187,6 +187,16 @@ Four hash-resolved firmware sites and two replace hooks now declare these
 boundaries. Normal manifest installation, stock envelope configuration and final
 mixer output remain unproved. Readiness and MIDI routes remain disabled.
 
+The block wrapper also calls optional `_instrument_carrier_prepare` after receive.
+The CANOPY proof provider snapshots admitted tracks and actual kernel tails/pending
+notes before stock gain construction. `velocity.s` selects stock curve 0's 127/128
+factor only for owned, current-frame stereo voices. `velocity-entry.s` interposes
+the scalar gain builder after its velocity read, preserving the stock latch and
+all other operands. Frame start expires these snapshots explicitly. The new gain
+interposer is tested in private firmware memory but has no firmware declaration
+or manifest hook yet; its provider and helper sources remain outside the normal
+object list.
+
 ```sh
 cargo test -p dkmidi-host
 uv run python -m tools.patchkit.patchkit build core/midi-events core/runtime

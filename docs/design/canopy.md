@@ -33,8 +33,10 @@ velocity curves. Curve 0 produces a constant 127/128 factor across key velocitie
 making it a candidate for the required neutral shared velocity. The probe now
 follows the velocity latch into the gain coefficient builder, preserving separate
 control attenuation and silence. Updating only the incoming cache leaves the
-latched value unchanged. The ownership hook must act before gain construction,
-earlier than current-block render publication; it remains uninstalled. Preserve
+latched value unchanged. A proof hook now substitutes only the owned velocity
+operand before gain construction, using a post-receive snapshot of admitted
+instances and actual kernel tails/pending notes. Stereo/context component tests
+and the original scalar gain builder pass; the hook remains uninstalled. Preserve
 LEVEL and modulation, and prove final output separately.
 
 - Ship a DTII-only experimental module, proposed ID `digikit/canopy`, with an explicitly required new runtime capability. Keep existing V1 machines compatible.

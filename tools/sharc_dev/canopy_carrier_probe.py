@@ -35,7 +35,7 @@ STACK, RECORD, BUFFER, SAMPLE_RECORD = (
 END = 0xB9F100
 
 
-def carrier_policy(blob):
+def carrier_policy(blob, *, velocity_hook=False):
     """Execute the adapter policy, keeping its per-track state between calls."""
     path = (
         Path(__file__).resolve().parents[2]
@@ -44,12 +44,25 @@ def carrier_policy(blob):
     obj = pk_sharc.assemble(
         "\n".join(
             path.with_name(name).read_text()
-            for name in ("carrier.s", "envelope.s", "workspace.s", "carrier-frame.s")
+            for name in (
+                "carrier.s",
+                "envelope.s",
+                "workspace.s",
+                "carrier-frame.s",
+                "velocity.s",
+                "velocity-entry.s",
+            )
         )
         + "\n"
         + "\n".join(
             (path.parents[5] / "machines/canopy/src/dsp" / name).read_text()
-            for name in ("voice.s", "tuning.s", "instrument.s", "render.s")
+            for name in (
+                "voice.s",
+                "tuning.s",
+                "instrument.s",
+                "render.s",
+                "carrier-prepare.s",
+            )
         )
         + "\n.PKDATA _mi_epoch, 4;\n"
     )
@@ -72,6 +85,7 @@ def carrier_policy(blob):
             **symbols,
             "_mi_envelope_next": ENVELOPE + 3,
             "_mi_workspace_next": WORKSPACE + 3,
+            "_mi_velocity_next": 0x1C6A31,
         },
     )
     jump = pk_sharc.link(
@@ -88,9 +102,20 @@ def carrier_policy(blob):
         WORKSPACE,
         linked.symbols,
     )
+    codes = [linked, jump, workspace_jump]
+    if velocity_hook:
+        codes.append(
+            pk_sharc.link(
+                pk_sharc.assemble(
+                    ".SECTION/PM seg_pmco;\n.EXTERN _mi_velocity_entry;\nJUMP _mi_velocity_entry;\n"
+                ),
+                0x1C6A2E,
+                linked.symbols,
+            )
+        )
     blocks = list(parse_blocks(blob))
     image = blob
-    for code in (linked, jump, workspace_jump):
+    for code in codes:
         blocks.append(
             {
                 "target_address": 0x28000000 + 2 * code.base_sw,
@@ -408,6 +433,71 @@ def velocity_latch_gain(runner, factor):
     }
 
 
+def owned_velocity_gain(blob):
+    """Execute the in-memory gain interposer inside the stock builder."""
+    _, memory, initial, symbols = carrier_policy(blob, velocity_hook=True)
+    rows = []
+    for voice in (0, 1, 30, 31):
+        for owned in (False, True):
+            runner = Runner(memory, ENVELOPE, breakpoints=[END])
+            for address, value in initial.items():
+                put(runner, address, value)
+            runner = bind_workspace(runner, RECORD - 0xD604)
+            put(runner, symbols["_cp_ready"] + 4 * (voice // 2), int(owned))
+            for entry in ("_mi_carrier_begin", "_instrument_carrier_prepare"):
+                runner = runner.fresh_call(
+                    symbols[entry],
+                    regs={
+                        "MODE1": 0x1011800,
+                        **{f"L{i}": 0 for i in range(16)},
+                    },
+                    return_address=END,
+                )
+                result = runner.run(3000)
+                if result.halt.reason != "breakpoint" or result.final_pc_sw != END:
+                    raise RuntimeError(
+                        f"gain admission failed: {result.halt.to_json()}"
+                    )
+            cache = RECORD + 0x6E4 + 4 * voice
+            params, gain = 0x200A0000, 0x200A2000
+            for address, value in (
+                (cache + 124, bits(0.125)),
+                (cache + 444, 0),
+                (params - 128, bits(0.5)),
+                (params + 16, 0),
+                (gain, 0),
+            ):
+                put(runner, address, value)
+            runner.breakpoints = frozenset({0x1C6A49})
+            runner = runner.fresh_call(
+                0x1C6A28,
+                regs={
+                    "I1": cache,
+                    "I5": params,
+                    "I3": gain,
+                    "I11": cache,
+                    "R14": bits(1),
+                    "M5": 0,
+                    "M7": 0xFFFFFFFF,
+                    "MODE1": 0x1011800,
+                    **{f"L{i}": 0 for i in range(16)},
+                },
+            )
+            result = runner.run(300)
+            if result.halt.reason != "breakpoint" or result.final_pc_sw != 0x1C6A49:
+                raise RuntimeError(f"owned gain failed: {result.halt.to_json()}")
+            rows.append(
+                {
+                    "voice": voice,
+                    "owned": owned,
+                    "expected_gain": get(runner, gain)
+                    == bits(0.5 * (127 / 128 if owned else 0.125)),
+                    "stock_cache_preserved": get(runner, cache + 124) == bits(0.125),
+                }
+            )
+    return rows
+
+
 def configure_from_dispatcher(runner):
     """Execute the actual argument-loading caller with sustained proof settings."""
     params = 0x2008F000
@@ -652,6 +742,11 @@ def probe(firmware: Path, blocks: int):
     checks.update(musical_chain(memory, initial, symbols))
     gain_measurements = gain_path(memory)
     velocity_measurements = velocity_lookup(memory)
+    owned_gain_measurements = owned_velocity_gain(blob)
+    checks["owned_velocity_hook_preserves_gain_control_and_stock_voices"] = all(
+        row["expected_gain"] and row["stock_cache_preserved"]
+        for row in owned_gain_measurements
+    )
     checks["frame_velocity_curve_factors_are_finite"] = all(
         math.isfinite(row["cached_factor"]) for row in velocity_measurements
     )
@@ -690,6 +785,7 @@ def probe(firmware: Path, blocks: int):
         "checks": checks,
         "gain_measurements": gain_measurements,
         "velocity_measurements": velocity_measurements,
+        "owned_gain_measurements": owned_gain_measurements,
         "hold_counter": held[9],
         "configured": configured,
         "release_state": release_state,

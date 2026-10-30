@@ -207,7 +207,7 @@ the results are 2*b, 0.5*b and zero. Changing the upstream cache to 0.125 after
 the copy leaves both the latch and these targets unchanged. All 24 aggregate
 checks pass, including the existing musical and audio gain scenarios.
 
-**[O] Ownership override placement:** An upstream cache override alone is
+**[D] Ownership override placement:** An upstream cache override alone is
 insufficient: it needs the stock copy to run. Prefer replacing only the velocity
 operand at the coefficient-builder read, leaving the square-law control, clamp,
 machine multiplier and gain ramp intact. Establish ownership before this stage;
@@ -216,6 +216,38 @@ as its admission check. The predicate must include admitted CANOPY instances
 and retiring local tails, reject stale/reset instances once quiet, and preserve
 the stock operand for every other voice. Prove both stereo members, ownership
 changes and DSP context preservation before declaring or installing this hook.
+
+The proof implementation now does this at `0x1c6a2e`, immediately after the stock
+velocity load. `velocity-entry.s` derives the voice from I1 and the captured
+workspace (envelope base +0x6e4, four-byte stride), rejects missing/misaligned or
+out-of-range pointers, and replaces only R1 for owned voices. It restores status,
+square-law R2 and SIMD partners, then executes displaced R7=1 and returns to
+`0x1c6a31`. As in the original instruction, R7=1 also updates S7 in SIMD mode.
+The hook does not rewrite the latched stock value. The proven audio builder
+path remains scalar; context preservation with SIMD enabled is not a SIMD audio
+gain proof.
+
+The block bridge calls optional `_instrument_carrier_prepare` after receive and
+before reply. CANOPY prepares all 16 admission records from readiness plus its
+six live/tail tokens and four pending tokens. Scanning the kernel matters when a
+note is reset before its first render, with no prior ACTIVE publication. Records
+expire explicitly at frame start, including stamp wrap. Both stereo members read
+the same snapshot; quiet, unconfigured tracks return to stock velocity next frame.
+This callback has no provider in the ordinary installed module set.
+
+The firmware probe installs the gain hook only in private emulator memory and
+runs the real builder for owned and stock voices 0, 1, 30 and 31. All eight cases
+retain the stock cache, preserve the independent control coefficient, and select
+127/128 only for owned voices. All 25 aggregate probe checks pass. Component tests
+cover stereo membership, skipped preparation, wrap, retirement, malformed pointers
+and scalar/SIMD context. Firmware declarations and normal installation of this
+new hook remain pending; no live MIDI or final mixer proof follows from this run.
+
+Validation for this checkpoint: 62 carrier component tests pass; the changed
+MIDI adapter builds and its object check passes. Targeted Python lint/format,
+changed documentation references and layercheck pass. The broader changed-file
+preflight still reports 256 existing stale references in 78 files and cannot
+start its routed host checks because `pnpm` is unavailable in the WSL environment.
 
 Resolve live configuration delivery and both flag writers before adding
 the hook to the production manifest. Use idle-to-active to start the envelope once; avoid

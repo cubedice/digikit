@@ -98,8 +98,11 @@ plus frame-velocity lookup across five curves. The lookup now continues through
 the stock velocity latch into the gain builder in the same memory; separate
 control attenuation and silence still work. Changing only the upstream cache
 leaves the latched gain unchanged. Curve 0 is constant across keys, a candidate
-for neutral shared velocity. This does not yet establish an owned velocity
-override or final mixer output.
+for neutral shared velocity. An in-memory proof hook now substitutes that factor
+for owned voices while retaining the stock cache and separate gain controls.
+Pre-render ownership includes actual kernel tails and pending notes, even after
+configuration is reset. The hook is not installed; final mixer output remains
+unproved.
 
 These checks do not establish stock AMP lifetime, final track output, MIDI latency
 or device performance. The current V1 contract path skips inactive stock voices

@@ -321,7 +321,7 @@ def frame(rig):
     result = rig.sess.call(
         "_instrument_block",
         {"I3": 0x20098000, "MODE1": 0x1011800},
-        max_steps=500,
+        max_steps=3000,
     )
     assert result["halt"]["reason"] == "breakpoint", result
     return rig.sess.peek(rig.built.data["_mi_carrier_stamp"] // 4)
@@ -430,7 +430,10 @@ def test_render_publishes_once_for_both_voices_and_keeps_reset_tails(
     edges = []
     for _ in range(80):
         stamp = frame(rig)
+        selected_velocity = velocity(rig, track * 2)
         samples = block(rig)
+        if any(samples):
+            assert selected_velocity == 0x3F7E0000
         edge = pair_call(rig, "flags", track * 2, stamp)
         if edge == (0, 1, 1):
             assert samples == (0.0,) * 32
@@ -438,6 +441,7 @@ def test_render_publishes_once_for_both_voices_and_keeps_reset_tails(
     assert edges[0] == (0, 0, 1)
     assert edges.count((0, 1, 1)) == 1
     assert edges[-1] == (7, 9, 0)
+    assert velocity(rig, track * 2) == 0x3E000000
     rig.sess.poke(ready, 1)
     event(rig, "note_on", 2, 72)
     stamp = frame(rig)
@@ -477,8 +481,142 @@ def test_frame_callback_preserves_live_registers(spec, simd):
         ASTATY=0x4321,
     )
     result = rig.sess.call(
-        "_instrument_block", regs, max_steps=500, read_regs=tuple(regs)
+        "_instrument_block", regs, max_steps=3000, read_regs=tuple(regs)
     )
     assert result["halt"]["reason"] == "breakpoint", result
     assert result["regs"] == regs
     assert rig.sess.peek(rig.built.data["_mi_carrier_stamp"] // 4) == 1
+
+
+def velocity(rig, voice, stock=0x3E000000):
+    result = rig.sess.call(
+        "_mi_velocity_select",
+        {"R4": voice, "R8": stock, "L0": 0, "MODE1": 0x1011800},
+        max_steps=100,
+        read_regs=("R0",),
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    return result["regs"]["R0"]
+
+
+@pytest.mark.parametrize("track", [0, 15])
+def test_velocity_admission_precedes_render_and_is_stereo(spec, track):
+    rig = make_rig(spec, track)
+    assert velocity(rig, 2 * track) == 0x3E000000
+    rig.sess.poke(rig.built.data["_cp_ready"] // 4 + track, 1)
+    frame(rig)
+    # No render/publication has run. Other tracks still retain stock velocity.
+    for voice in range(32):
+        assert velocity(rig, voice) == (
+            0x3F7E0000 if voice // 2 == track else 0x3E000000
+        )
+    rig.sess.poke(rig.built.data["_cp_ready"] // 4 + track, 0)
+    frame(rig)
+    assert velocity(rig, 2 * track) == 0x3E000000
+
+
+@pytest.mark.parametrize("voice", [-1, 32, 0x7FFFFFFF])
+def test_velocity_invalid_voice_falls_through(spec, voice):
+    assert velocity(make_rig(spec), voice) == 0x3E000000
+
+
+def test_velocity_expiry_even_when_stamp_wraps_and_prepare_is_skipped(spec):
+    rig = make_rig(spec)
+    rig.sess.poke(rig.built.data["_cp_ready"] // 4, 1)
+    frame(rig)
+    rig.sess.poke(rig.built.data["_mi_carrier_stamp"] // 4, 0xFFFFFFFF)
+    owners = rig.built.data["_mi_velocity_owners"] // 4
+    rig.sess.poke(owners, 0)  # ancient snapshot with the next stamp
+    result = rig.sess.call(
+        "_mi_carrier_begin", {"L0": 0, "MODE1": 0x1011800}, max_steps=500
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    assert velocity(rig, 0) == 0x3E000000
+
+
+def test_velocity_owns_unrendered_notes_and_pending_replacements(spec):
+    rig = make_rig(spec)
+    event(rig, "note_on", 1)
+    frame(rig)
+    assert velocity(rig, 0) == 0x3F7E0000
+    # With no admitted configuration, the actual release state owns the tail.
+    event(rig, "note_off", 1)
+    for _ in range(260):
+        block(rig)
+    frame(rig)
+    assert velocity(rig, 0) == 0x3E000000
+    # A queued onset also owns the upcoming render, before ACTIVE is published.
+    rig.sess.poke(rig.built.data["_cp_banks"] // 4 + 48, 99)
+    frame(rig)
+    assert velocity(rig, 1) == 0x3F7E0000
+
+
+def test_velocity_retains_reset_before_first_render(spec):
+    rig = make_rig(spec)
+    event(rig, "note_on", 1)
+    packet = 0x20098000
+    rig.sess.poke(packet // 4 + 2, 0)
+    rig.sess.poke(packet // 4 + 8, 0)
+    result = rig.sess.call(
+        "_instrument_reset",
+        {"R4": packet, "M6": 1, "L0": 0, "L1": 0, "MODE1": 0x1011800},
+        max_steps=500,
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    frame(rig)
+    assert velocity(rig, 0) == 0x3F7E0000
+    for _ in range(4):
+        block(rig)
+    frame(rig)
+    assert velocity(rig, 0) == 0x3E000000
+
+
+@pytest.mark.parametrize("simd", [False, True])
+@pytest.mark.parametrize("voice", [0, 1, 30, 31])
+@pytest.mark.parametrize("owned", [False, True])
+def test_velocity_hook_only_changes_owned_operand(spec, simd, voice, owned):
+    rig = make_rig(spec)
+    base = 0x200B0000
+    bind_workspace(rig, base)
+    rig.sess.poke(rig.built.data["_cp_ready"] // 4 + voice // 2, int(owned))
+    frame(rig)
+    regs = {f"R{i}": 0x12340000 + i for i in range(16)}
+    regs.update({f"S{i}": 0x56780000 + i for i in range(16)})
+    regs.update(
+        I0=0x20097000,
+        I1=base + 0x6E4 + 4 * voice,
+        L0=128,
+        MODE1=0x1011800 | (0x200000 if simd else 0),
+        ASTATX=0x1234,
+        ASTATY=0x4321,
+        STKYX=0x12,
+        STKYY=0x21,
+    )
+    rig.sess.runner.breakpoints |= {rig.sess.symbols["_mi_velocity_next"]}
+    result = rig.sess.call(
+        "_mi_velocity_entry", regs, max_steps=200, read_regs=tuple(regs)
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    assert result["regs"] == {
+        **regs,
+        "R1": 0x3F7E0000 if owned else regs["R1"],
+        "R7": 0x3F800000,
+        "S7": 0x3F800000 if simd else regs["S7"],
+    }
+
+
+@pytest.mark.parametrize("offset", [-4, 1, 128])
+def test_velocity_hook_rejects_non_voice_pointers(spec, offset):
+    rig = make_rig(spec)
+    base = 0x200B0000
+    bind_workspace(rig, base)
+    rig.sess.poke(rig.built.data["_cp_ready"] // 4, 1)
+    frame(rig)
+    result = rig.sess.call(
+        "_mi_velocity_entry",
+        {"R1": 0x3E000000, "I1": base + 0x6E4 + offset, "MODE1": 0x1011800},
+        max_steps=200,
+        read_regs=("R1",),
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    assert result["regs"]["R1"] == 0x3E000000

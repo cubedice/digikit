@@ -8,6 +8,7 @@
 .EXTERN _mi_carrier_pairs;
 .EXTERN _mi_carrier_active;
 .EXTERN _mi_carrier_publish;
+.EXTERN _mi_velocity_owners;
 _mi_carrier_begin:
     R0 = DM(_mi_carrier_stamp);
     R0 = R0 + 1;
@@ -20,6 +21,13 @@ _mi_carrier_expire:
     MODIFY(I0, 3) (NW);
     R1 = R1 - 1;
     IF NE JUMP _mi_carrier_expire;
+    I0 = _mi_velocity_owners;
+    R1 = 16;
+_mi_velocity_expire:
+    DM(1, I0) = R0;
+    MODIFY(I0, 2) (NW);
+    R1 = R1 - 1;
+    IF NE JUMP _mi_velocity_expire;
     RTS;
 
 // Internal render completion: R4=track, R8=ACTIVE, R10=configured/ready.
