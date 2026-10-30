@@ -95,10 +95,26 @@ it without mutation for both voices. Ten adapter tests cover both endpoint
 tracks, odd-first and repeated reads, stale blocks, an initial zero stamp,
 ownership loss, per-voice stock flags and invalid indexes. The firmware probe
 checks both reads on every block before feeding the pair into its envelope call.
-This is a tested handoff API; it is not yet attached to the firmware call site.
+This handoff is now used by a component-tested envelope entry hook.
+
+**[D] Entry-hook follow-up:** `src/dsp/envelope.s` in the MIDI adapter replaces
+the first instruction at `0x1cbb57`, executes its displaced 16-normal-word stack
+reservation, and resumes at `0x1cbb5a`. It derives the voice by bounded lookup of
+the 32 aligned 44-byte records relative to a configured base; unknown records
+fall through. It substitutes only stack arguments +1/+2 when a current owned
+pair exists. The audio pointers and count remain stock.
+
+The firmware probe now overlays an entry jump in its private loaded-memory view.
+It supplies conflicting stock flags at the original entry, so only the hook can
+apply the published pair. Producer and firmware cores remain separate; the harness
+copies the producer's actual publication into the firmware core each block.
+This proves the entry interposition, not live frame delivery. No SYX is written.
+Twenty-four adapter tests check the hook at both stereo endpoints, scalar/SIMD
+register and status preservation, the displaced stack adjustment, argument
+sentinels, and fallback on stale/missing/disabled/unaligned/out-of-range inputs.
 
 Resolve the normal envelope configuration and both flag writers before adding
-the V2-only wake/retire hook. Use idle-to-active to start the envelope once; avoid
+the hook to the production manifest. Use idle-to-active to start the envelope once; avoid
 rearming it for subsequent keys. Retain the carrier through local release tails
 and pending onsets, then retire both stereo voices on QUIET. Prove neutral shared
 velocity and downstream LEVEL, pan, mute, filter and FX in running firmware.

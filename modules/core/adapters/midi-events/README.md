@@ -158,9 +158,18 @@ the same block stamp to publish and both reads, and must publish only once.
 The owner must complete retirement/reset before relinquishing ownership; this
 helper does not silence the kernel or configure the stock envelope.
 
-This source is component-tested but deliberately absent from the normal object
-source list: the pinned envelope hook and full final-output proof
-are not yet implemented. It does not change readiness or enable MIDI routes.
+`src/dsp/envelope.s` now interposes the DT2 envelope entry. It derives the voice
+from the configured envelope-record base, substitutes only the two owned control
+arguments, restores touched registers/status (including SIMD pairs), executes the
+displaced stack adjustment and jumps back into stock code. Missing, stale,
+disabled or non-record inputs leave stock arguments unchanged. The frame owner
+must set the record base and block stamp before the call; neither is inferred
+from a caller scratch register. This hook is non-reentrant.
+
+These sources remain absent from the normal object list. The probe installs the
+entry jump only in its private firmware memory view; production frame publication,
+firmware declarations/manifest wiring and final mixer output are still unproved.
+This does not change readiness or enable MIDI routes.
 
 ```sh
 cargo test -p dkmidi-host

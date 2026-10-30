@@ -1,7 +1,8 @@
 """Bounded DT2 1.17 carrier investigation using the supplied firmware's instructions.
 
-This configures and runs the stock envelope with the V2 transition policy. It is
-not a booted-device or MIDI proof and does not patch firmware or enable routes.
+This configures and runs the stock envelope through an in-memory entry patch and
+the V2 transition policy. It does not write a patched SYX or enable MIDI routes.
+It is a component experiment, not a booted-device or live-frame delivery proof.
 Run from the repository root with python -m tools.sharc_dev.canopy_carrier_probe.
 """
 
@@ -16,7 +17,7 @@ from pathlib import Path
 from tools.patchkit import pk_sharc
 from tools.patchkit.port_resolve import sections_of
 from tools.sharc_dev.sharc_run import Runner, st
-from tools.sharc_dev.sharcldr import LoadedMemory
+from tools.sharc_dev.sharcldr import LoadedMemory, parse_blocks
 
 # Refuse other images: these are investigation addresses, not SDK declarations.
 FIRMWARE_SHA = "26c22f6652625ac2cfd47f7ee970d388ed8b6427dae3563c0a6a2f2d334350d5"
@@ -32,28 +33,58 @@ STACK, RECORD, BUFFER, SAMPLE_RECORD = (
 END = 0xB9F100
 
 
-def carrier_policy():
+def carrier_policy(blob):
     """Execute the adapter policy, keeping its per-track state between calls."""
     path = (
         Path(__file__).resolve().parents[2]
         / "modules/core/adapters/midi-events/src/dsp/carrier.s"
     )
-    obj = pk_sharc.assemble(path.read_text())
-    address = 0x20094000
-    linked = pk_sharc.link(
-        obj,
-        0xB90000,
-        {
-            "_mi_carrier_active": address,
-            "_mi_carrier_pairs": address + 64,
-        },
+    obj = pk_sharc.assemble(
+        path.read_text() + "\n" + path.with_name("envelope.s").read_text()
     )
+    address = 0x20094000
+    sections, initial = {}, {}
+    for name, (data, align, _) in obj.data.items():
+        address = (address + align - 1) // align * align
+        sections[name] = address
+        for i in range(0, len(data), 4):
+            initial[address + i] = int.from_bytes(data[i : i + 4], "little")
+        address += len(data)
+    symbols = {
+        name: sections[section] + offset
+        for name, (section, offset, _) in obj.data_symbols.items()
+    }
+    linked = pk_sharc.link(
+        obj, 0xB90000, {**symbols, "_mi_envelope_next": ENVELOPE + 3}
+    )
+    jump = pk_sharc.link(
+        pk_sharc.assemble(
+            ".SECTION/PM seg_pmco;\n.EXTERN _mi_envelope_entry;\nJUMP _mi_envelope_entry;\n"
+        ),
+        ENVELOPE,
+        linked.symbols,
+    )
+    blocks = list(parse_blocks(blob))
+    image = blob
+    for code in (linked, jump):
+        blocks.append(
+            {
+                "target_address": 0x28000000 + 2 * code.base_sw,
+                "byte_count": len(code.code_boot),
+                "fill": False,
+                "payload_offset": len(image),
+                "payload_len": len(code.code_boot),
+                "index": len(blocks),
+            }
+        )
+        image += code.code_boot
+    memory = LoadedMemory(image, blocks)
     session = pk_sharc.CallSession([linked], END)
-    for i in range(64):
-        session.poke(address // 4 + i, 0)
+    for address, value in initial.items():
+        session.poke(address // 4, value)
     stamp = 0
 
-    def step(active, trigger, release):
+    def step(active, trigger, release, runner):
         nonlocal stamp
         result = session.call(
             "_mi_carrier_publish",
@@ -93,10 +124,18 @@ def carrier_policy():
                 delivered["regs"][r] for r in ("R0", "R1", "R2")
             ) != (*pair, 1):
                 raise RuntimeError(f"stereo carrier delivery failed: {delivered}")
+        # Copy the actual policy publication into the firmware core. The two
+        # cores are a component harness, not live frame delivery.
+        for name, count in (("_mi_carrier_active", 16), ("_mi_carrier_pairs", 48)):
+            for i in range(count):
+                address = symbols[name] + 4 * i
+                put(runner, address, session.peek(address // 4))
+        put(runner, symbols["_mi_envelope_records"], RECORD)
+        put(runner, symbols["_mi_carrier_stamp"], stamp)
         stamp += 1
         return pair
 
-    return step
+    return step, memory, initial
 
 
 def put(runner, address, value):
@@ -163,7 +202,10 @@ def probe(firmware: Path, blocks: int):
     blob = sections_of(firmware)[7]
     if hashlib.sha256(blob).hexdigest() != BLOB_SHA:
         raise ValueError("unexpected DT2 1.17 DSP blob")
-    runner = Runner(LoadedMemory.from_stream(blob), ENVELOPE, breakpoints=[END])
+    policy, memory, initial = carrier_policy(blob)
+    runner = Runner(memory, ENVELOPE, breakpoints=[END])
+    for address, value in initial.items():
+        put(runner, address, value)
     for base, words in ((STACK - 256, 128), (RECORD, 11), (SAMPLE_RECORD, 118)):
         for i in range(words):
             put(runner, base + 4 * i, 0)
@@ -174,15 +216,16 @@ def probe(firmware: Path, blocks: int):
     arm_record = get(runner, SAMPLE_RECORD + 0x1B8)
     arm_preserves_envelope = record(runner) == before_arm
 
-    policy = carrier_policy()
     edges = []
 
     def render(current, *, active=1, stock_trigger=0, stock_release=0):
-        trigger, release = policy(active, stock_trigger, stock_release)
+        trigger, release = policy(active, stock_trigger, stock_release, current)
         edges.append((trigger, release))
         for i in range(32):
             put(current, BUFFER + 4 * i, bits(0.25))
-        current = call(current, ENVELOPE, trigger=trigger, release=release)
+        # Enter at the patched stock address with unmodified STOCK arguments:
+        # only the new entry hook is allowed to replace them with owned flags.
+        current = call(current, ENVELOPE, trigger=stock_trigger, release=stock_release)
         output = [get(current, BUFFER + 4 * i) for i in range(32)]
         return current, output
 
@@ -220,7 +263,7 @@ def probe(firmware: Path, blocks: int):
     return {
         "firmware_sha256": FIRMWARE_SHA,
         "dsp_sha256": BLOB_SHA,
-        "scope": "configured stock envelope and adapter policy; no live carrier or final mix proof",
+        "scope": "in-memory patched stock envelope entry and adapter policy; no live frame or final mix proof",
         "blocks": blocks,
         "samples": blocks * 32,
         "checks": checks,

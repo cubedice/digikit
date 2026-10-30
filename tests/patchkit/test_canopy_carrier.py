@@ -4,6 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from support import dsp_voice_rig as dv
 from support.machine_rig import MachineRig
 
 from tools.patchkit import pk_conform
@@ -233,3 +234,84 @@ def test_stereo_carrier_pair_is_shared_and_expires_each_block(spec, track):
     assert pair_call(rig, "flags", 2 * track + 1, 3, trigger=5, release=6) == (5, 6, 0)
     assert pair_call(rig, "flags", 32, 3) == (7, 9, 0)
     assert pair_call(rig, "flags", 0xFFFFFFFF, 3) == (7, 9, 0)
+
+
+@pytest.mark.parametrize("simd", [False, True])
+@pytest.mark.parametrize("voice", [0, 1, 30, 31])
+def test_envelope_hook_changes_only_owned_flags_and_preserves_context(
+    spec, voice, simd
+):
+    rig = make_rig(spec)
+    base, stamp = 0x20096000, 51
+    rig.sess.poke(rig.built.data["_mi_envelope_records"] // 4, base)
+    rig.sess.poke(rig.built.data["_mi_carrier_stamp"] // 4, stamp)
+    pair_call(rig, "publish", voice // 2, stamp)
+    regs = {f"R{i}": 0x12340000 + i for i in range(16)}
+    regs.update({f"S{i}": 0x56780000 + i for i in range(16)})
+    regs.update(
+        {
+            "R4": base + 44 * voice,
+            "I0": 0x20097000,
+            "I6": dv.STACK,
+            "I7": dv.STACK,
+            "L0": 64,
+            "M5": 19,
+            "MODE1": 0x1011800 | (0x200000 if simd else 0),
+            "ASTATX": 0x1234,
+            "ASTATY": 0x4321,
+            "STKYX": 0x15,
+            "STKYY": 0x26,
+        }
+    )
+    for offset, value in ((0, 0x1357), (1, 7), (2, 9), (3, 32), (4, 0x2468)):
+        rig.sess.poke(dv.STACK // 4 + offset, value)
+    rig.sess.runner.breakpoints |= {rig.sess.symbols["_mi_envelope_next"]}
+    result = rig.sess.call(
+        "_mi_envelope_entry", regs, max_steps=400, read_regs=tuple(regs)
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    for name, value in regs.items():
+        assert result["regs"][name] == (value - 64 if name == "I7" else value), name
+    assert [rig.sess.peek(dv.STACK // 4 + i) for i in range(5)] == [
+        0x1357,
+        1,
+        0,
+        32,
+        0x2468,
+    ]
+
+
+@pytest.mark.parametrize(
+    "kind", ["missing", "stale", "unaligned", "below", "above", "disabled"]
+)
+def test_envelope_hook_falls_through_without_changing_stock_arguments(spec, kind):
+    rig = make_rig(spec)
+    base, stamp = 0x20096000, 51
+    rig.sess.poke(
+        rig.built.data["_mi_envelope_records"] // 4, 0 if kind == "disabled" else base
+    )
+    rig.sess.poke(rig.built.data["_mi_carrier_stamp"] // 4, stamp)
+    if kind != "missing":
+        pair_call(rig, "publish", 0, stamp - (kind == "stale"))
+    address = {"unaligned": base + 1, "below": base - 44, "above": base + 1408}.get(
+        kind, base
+    )
+    rig.sess.poke(dv.STACK // 4 + 1, 7)
+    rig.sess.poke(dv.STACK // 4 + 2, 9)
+    result = rig.sess.call(
+        "_mi_envelope_entry",
+        {
+            "R4": address,
+            "I6": dv.STACK,
+            "I7": dv.STACK,
+            "M5": 0,
+            "L0": 0,
+            "MODE1": 0x1011800,
+        },
+        max_steps=400,
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    assert (rig.sess.peek(dv.STACK // 4 + 1), rig.sess.peek(dv.STACK // 4 + 2)) == (
+        7,
+        9,
+    )

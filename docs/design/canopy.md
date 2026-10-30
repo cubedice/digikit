@@ -187,10 +187,17 @@ connect it to the real kernel's release lifetime; the firmware probe separately
 feeds its output into the stock-configured envelope. Repeated stock trigger/release
 flags do not restart or cut off an owned hold. The eventual hook must evaluate
 the policy once per track and apply its result to both stereo voices. It remains
-unlinked in normal firmware until the hook and final-output proof pass.
+unlinked in normal firmware until frame integration and final-output proof pass.
 The stereo handoff now has explicit publish/read entry points: a single track
 publication stores the edge pair with a block stamp, and both voice reads return
 that pair without consuming it. Missing or stale publications preserve stock flags.
+
+The envelope entry interposer is now component-tested, including register/status
+preservation and stock fallback. The firmware probe overlays its entry jump in
+memory and enters through the original stock address for 1,500 held blocks. The
+hook applies the actual published flags before resuming stock envelope code.
+The harness still copies publications between separate producer and firmware
+cores; live frame publication, manifest wiring and the full mixer remain open.
 
 Complete the carrier work in this order:
 

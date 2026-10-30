@@ -4,7 +4,11 @@
 #include "../../modules/machines/canopy/src/dsp/tuning.s"
 #include "../../modules/machines/canopy/src/dsp/instrument.s"
 #include "../../modules/core/adapters/midi-events/src/dsp/carrier.s"
+#include "../../modules/core/adapters/midi-events/src/dsp/envelope.s"
 .SECTION/PM seg_pmco;
+.GLOBAL _mi_envelope_next;
+_mi_envelope_next:
+    RTS; // boundary test stops before the rest of the real stock envelope
 .GLOBAL _cp_voice_probe;
 .EXTERN _cp_render_track;
 _cp_voice_probe:
