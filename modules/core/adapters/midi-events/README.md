@@ -6,7 +6,7 @@ The runtime's existing USB hook composes an optional `mi_channel_message` callba
 
 The fixed ownership ledger has 32 port/channel routes, 128 physical press records and a 128-event ring. Repeated pitches pair FIFO by token. Releases follow the original track/generation after rerouting; reset, panic and ignored sequencer-mode presses retain tombstones until their physical release. A capacity failure resets all configured instrument instances and quarantines their routes until explicit recovery with keys released. It does not claim unrelated stock routes.
 
-Events remain in the ring until an exact epoch/sequence ACK. Instance resets use reserved priority bits outside the ring; ordinary dequeue waits for reset ACK. Epoch and generation checks reject stale acknowledgements. Token exhaustion requires explicit recovery into a new stream epoch. All mutation is serialized by the CF adapter's interrupt mask; a future audio sender must use the same critical-section contract. The readiness callback must be bounded, allocation-free and nonblocking.
+Events remain in the ring until an exact epoch/sequence ACK. Instance resets use reserved priority bits outside the ring; ordinary dequeue waits for reset ACK. Epoch and generation checks reject stale acknowledgements. Token exhaustion requires explicit recovery into a new stream epoch. All mutation is serialized by the CF adapter's interrupt mask; the frame sender uses the same critical-section contract. The readiness callback must be bounded, allocation-free and nonblocking.
 
 ## Ordered transport components
 
@@ -18,7 +18,7 @@ changes. A reset supersedes unacknowledged notes without releasing physical-key
 tombstones. After 900 blocks without ACK, the sender disables routes and services
 priority resets; fresh sounding input requires explicit stream recovery. Message
 identity never wraps within an epoch. The caller must serialize these operations
-with the ownership ledger; these functions are not yet called by the frame ISR.
+with the ownership ledger; the frame callback supplies that critical section.
 
 Internal wire version 1 (`0x494e0101`) uses eight header words: magic/version,
 kind/count, epoch, message sequence, first event sequence, configuration revision,
@@ -75,8 +75,8 @@ magic/version `0x494ea101`, accepted stream epoch, accepted message sequence,
 wrapping block heartbeat, eleven zero reserved words and a checksum. The checksum
 uses wrapping Fletcher sums over words 0-14; magic is published last. This internal
 format is separate from the final twelve-word CANOPY status payload, which will
-require a new reply version. The helper's `_mi_reply` buffer is not yet exported
-as DSP-link's `_instrument_reply`, so it does not activate a half-wired channel.
+require a new reply version. DSP-link copies `_instrument_reply` into its reserved
+reply rows at the end of each block.
 
 `mt_reply_read` reconstructs words from the reserved DTII reply rows 21-28,
 including the low-halfword-first wire order. `mt_reply_tick` validates the entire
@@ -94,13 +94,30 @@ Tests execute the SHARC reply writer and feed its actual output into the ColdFir
 ACK code. They cover checksum corruption, reserved fields, epoch mismatch,
 replayed replies, heartbeat/CF-clock wrap, idle timeout and record-slot decoding.
 
-These components are built but deliberately **not hooked into the live stream**.
-The V2 consumer/schema publisher and composed frame hooks remain to be implemented.
-The current module still
+The frame hooks are connected: `instrument_write_frame` processes replies and writes
+only the instrument data halfwords; the pattern-position owner calls
+`_instrument_block` before stock dispatch/render, even when position is invalid.
+The wrapper preserves DSP registers and arithmetic state, including SIMD pairs.
+The V2 consumer/schema publisher remains to be implemented. The current module
 does not claim keyboard routes. Target tests feed actual ColdFire-produced reset
 and eight-note packets to the SHARC validator, and exercise receiver retries,
 gaps, reset preemption, consumer rejection and stale epochs. They do not establish
 live SPI delivery or the independent-note audio lifetime gate.
+
+The internal CF lifecycle API is in `src/cf/bridge.h`. A future instance owner
+first calls `mi_instance_reset`, waits for its acknowledged reset and a healthy
+heartbeat, then submits configuration with `mi_config_submit`. `mi_route_enable`
+requires both an acknowledged configuration and the V2 readiness provider.
+Recovery through `mi_transport_recover` is explicit and requires all keys up.
+Without a DSP consumer, reset cannot be acknowledged and routes stay disabled.
+
+Frame-hook checkpoint: 20 host tests and 116 targeted transport, pattern-position
+and loop-display tests passed (two DNII firmware-dependent cases skipped).
+Both changed modules rebuilt and passed freshness checks; the local combined
+DTII proof image passed firmware preflight. The broader changed-file check remains
+incomplete: repository pathcheck reports 256 existing stale references in 78 files,
+and its host step requires `pnpm`, unavailable in this WSL environment. Changed-doc
+link checks, Python lint/format and module layering passed. No device was flashed.
 
 Checks:
 

@@ -7,6 +7,7 @@ fn main() {
     println!("cargo:rerun-if-changed=../src/cf/transport.c");
     println!("cargo:rerun-if-changed=../src/cf/transport.h");
     println!("cargo:rerun-if-changed=../src/cf/adapter.c");
+    println!("cargo:rerun-if-changed=../src/cf/bridge.h");
     println!("cargo:rerun-if-changed=../../../runtime/src/cf/midi_dispatch.c");
     cc::Build::new()
         .std("c11")

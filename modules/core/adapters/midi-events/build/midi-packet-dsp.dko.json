@@ -755,7 +755,7 @@
    "addend": 0,
    "offset": 757,
    "section": "seg_pmco",
-   "symbol": "_mi_reply",
+   "symbol": "_instrument_reply",
    "type": "sharc.abs32"
   },
   {
@@ -797,7 +797,7 @@
    "addend": 0,
    "offset": 795,
    "section": "seg_pmco",
-   "symbol": "_mi_reply",
+   "symbol": "_instrument_reply",
    "type": "sharc.abs32"
   },
   {
@@ -811,17 +811,437 @@
    "addend": 0,
    "offset": 817,
    "section": "seg_pmco",
-   "symbol": "_mi_reply",
+   "symbol": "_instrument_reply",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 828,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 8,
+   "offset": 831,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 16,
+   "offset": 834,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 24,
+   "offset": 837,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 32,
+   "offset": 840,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 40,
+   "offset": 843,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 48,
+   "offset": 846,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 56,
+   "offset": 849,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 64,
+   "offset": 852,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 72,
+   "offset": 855,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 80,
+   "offset": 858,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 88,
+   "offset": 861,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 96,
+   "offset": 864,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 104,
+   "offset": 867,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 112,
+   "offset": 870,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 120,
+   "offset": 873,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 128,
+   "offset": 878,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 136,
+   "offset": 883,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 144,
+   "offset": 888,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 152,
+   "offset": 893,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 160,
+   "offset": 898,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 168,
+   "offset": 903,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 176,
+   "offset": 908,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 184,
+   "offset": 913,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 192,
+   "offset": 918,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 200,
+   "offset": 923,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 208,
+   "offset": 928,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 216,
+   "offset": 933,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 224,
+   "offset": 938,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 960,
+   "section": "seg_pmco",
+   "symbol": "_mi_receive",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 963,
+   "section": "seg_pmco",
+   "symbol": "_mi_reply_build",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 128,
+   "offset": 966,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 136,
+   "offset": 971,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 144,
+   "offset": 976,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 152,
+   "offset": 981,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 160,
+   "offset": 986,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 168,
+   "offset": 991,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 176,
+   "offset": 996,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 184,
+   "offset": 1001,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 192,
+   "offset": 1006,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 200,
+   "offset": 1011,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 208,
+   "offset": 1016,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 216,
+   "offset": 1021,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 224,
+   "offset": 1026,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 8,
+   "offset": 1031,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 16,
+   "offset": 1034,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 24,
+   "offset": 1037,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 32,
+   "offset": 1040,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 40,
+   "offset": 1043,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 48,
+   "offset": 1046,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 56,
+   "offset": 1049,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 64,
+   "offset": 1052,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 72,
+   "offset": 1055,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 80,
+   "offset": 1058,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 88,
+   "offset": 1061,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 96,
+   "offset": 1064,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 104,
+   "offset": 1067,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 112,
+   "offset": 1070,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 120,
+   "offset": 1073,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 1076,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   }
  ],
  "sections": [
   {
    "align": 8,
-   "hex": "7e703f0808900000010f4e49010101c32006000000000890020000c20006000000000890030000c2000600000000810f0000820f0000830f0000800f070030c3000600000000509110c021c080150000010033c5800f200030c30206000000007e703f080890070012ce01c320060000000008900100810f020001c3000600000000810f030001c3000600000000810f040001c30006000000003e02100850083e02000015083e023000110001c320060000000055c2000600000000810f080051c32406000000000890050000c20006000000000890040000c200060000000015c680010111020f0080000012ce02ce10c30206000000000890090366c200060000000008908a033e021008770a80150000080085c29991909106c32006000000009a913e0210080a1c00c22006000000003e0210000a84810f010001c32406000000003e0210080a0a07c32006000000003e0210080a00810f010001c3020600000000810f040001c3240600000000810f020001c324060000000099c20006000000003e060000000099c220060000000088c62006000000003e020000050105c0810f1800800110283e0600000000089004000890850001cd200600000000089008003e02007800fc00c22006000000000890090000c2000600000000801500000a00880f160088c2000600000000909100c220060000000088c63e0600000000800f01003e0a00000000800f00003e0a00000000a0c20890040000c2200600000000089008003e02007800fc00c22006000000000890090000c200060000000008900a0000c20006000000000890850001c320060000000008900d0000c200060000000008908c02800f0300840150002006000000003e02007805f700c2200600000000800f040050c3020600000000800f000150c32406000000003e02007855fe08900b033e02007806fd00c220060000000008908f03800f0400a0c30006000000003e020000060480015028800f010080c3020600000000800f100080c324700004000078c32006000000003e060000000077c2200600000000800f0f00800150103e02007800fc60c32006000000003e0200000702800140103e703f08801500001000800f1000800107283e0600000000041100000000be060000000000c20006000000000410000000007e703f080890820208900303071000000000081000000000000f00800000840150218401702212c3020600000000240600000000840160218401802212c302060000000000060000000008900100810f020001c300060000000088c568c32006000000003e060000000008900100810f020001c3200600000000000f0000000000c2000600000000be0600000000810f010001c32006000000000410000000007e703f080890020000110000000008900300001100000000800f01003e0a00000000800f02003e0a00000000800f03003e0a00000000800f04003e0a00000000800f00003e0a00000000800f00000011000000000011000000003e0a000000007e703f0808900100810f030001c3000600000000810f040001c32006000000003e060000000008900b0000c2200600000000110f00000000801500000800850f07009091b09355c6200600000000800f0100001100000000800f00000011000000007e703f0800100000000000c200060000000008900b0001100000000001c3200600000000110f00000000801500000800850f000090919193820f030052c300060000000001c320060000000055c5800f070050c30206000000007e703f0808900100810f040001c300060000000008908f0208900b003e0200000006010f0000000001c03e70bf088015000010009091b09355c620060000000000100000000000c5001100000000800f01003e0a0000000008908c023e02007855fe08900e03110f00000000810f0000820f0000909310c021c055c62006000000008401122006c3200600000000000f0000000000c2000600000000040f00000000080f00000000be0600000000810f010001c3200600000000800f0000001100000000001100000000800f01003e0a00000000800f00003e0a00000000100f00000000800f000008910000001000000000089101000010000000000891020000100000000000c500110000000008910300801500000400800f0000830f0b00b09133c6200600000000100f00000000801500000100010f4e4901a121c2830f0e00909110c021c033c6200600000000840112207091100f00000000000f4e4901a1089100003e0a00000000",
+   "hex": "7e703f0808900000010f4e49010101c32006000000000890020000c20006000000000890030000c2000600000000810f0000820f0000830f0000800f070030c3000600000000509110c021c080150000010033c5800f200030c30206000000007e703f080890070012ce01c320060000000008900100810f020001c3000600000000810f030001c3000600000000810f040001c30006000000003e02100850083e02000015083e023000110001c320060000000055c2000600000000810f080051c32406000000000890050000c20006000000000890040000c200060000000015c680010111020f0080000012ce02ce10c30206000000000890090366c200060000000008908a033e021008770a80150000080085c29991909106c32006000000009a913e0210080a1c00c22006000000003e0210000a84810f010001c32406000000003e0210080a0a07c32006000000003e0210080a00810f010001c3020600000000810f040001c3240600000000810f020001c324060000000099c20006000000003e060000000099c220060000000088c62006000000003e020000050105c0810f1800800110283e0600000000089004000890850001cd200600000000089008003e02007800fc00c22006000000000890090000c2000600000000801500000a00880f160088c2000600000000909100c220060000000088c63e0600000000800f01003e0a00000000800f00003e0a00000000a0c20890040000c2200600000000089008003e02007800fc00c22006000000000890090000c200060000000008900a0000c20006000000000890850001c320060000000008900d0000c200060000000008908c02800f0300840150002006000000003e02007805f700c2200600000000800f040050c3020600000000800f000150c32406000000003e02007855fe08900b033e02007806fd00c220060000000008908f03800f0400a0c30006000000003e020000060480015028800f010080c3020600000000800f100080c324700004000078c32006000000003e060000000077c2200600000000800f0f00800150103e02007800fc60c32006000000003e0200000702800140103e703f08801500001000800f1000800107283e0600000000041100000000be060000000000c20006000000000410000000007e703f080890820208900303071000000000081000000000000f00800000840150218401702212c3020600000000240600000000840160218401802212c302060000000000060000000008900100810f020001c300060000000088c568c32006000000003e060000000008900100810f020001c3200600000000000f0000000000c2000600000000be0600000000810f010001c32006000000000410000000007e703f080890020000110000000008900300001100000000800f01003e0a00000000800f02003e0a00000000800f03003e0a00000000800f04003e0a00000000800f00003e0a00000000800f00000011000000000011000000003e0a000000007e703f0808900100810f030001c3000600000000810f040001c32006000000003e060000000008900b0000c2200600000000110f00000000801500000800850f07009091b09355c6200600000000800f0100001100000000800f00000011000000007e703f0800100000000000c200060000000008900b0001100000000001c3200600000000110f00000000801500000800850f000090919193820f030052c300060000000001c320060000000055c5800f070050c30206000000007e703f0808900100810f040001c300060000000008908f0208900b003e0200000006010f0000000001c03e70bf088015000010009091b09355c620060000000000100000000000c5001100000000800f01003e0a0000000008908c023e02007855fe08900e03110f00000000810f0000820f0000909310c021c055c62006000000008401122006c3200600000000000f0000000000c2000600000000040f00000000080f00000000be0600000000810f010001c3200600000000800f0000001100000000001100000000800f01003e0a00000000800f00003e0a00000000100f00000000800f000008910000001000000000089101000010000000000891020000100000000000c500110000000008910300801500000400800f0000830f0b00b09133c6200600000000100f00000000801500000100010f4e4901a121c2830f0e00909110c021c033c6200600000000840112207091100f00000000000f4e4901a1089100003e0a000000000011000000000111000000000211000000000311000000000411000000000511000000000611000000000711000000000811000000000911000000000a11000000000b11000000000c11000000000d11000000000e11000000000f11000000003e713f000011000000003e713f800011000000003f713f000011000000007e723f800011000000007f723f000011000000003e733f000011000000003e733f800011000000003f733f000011000000003f773f000011000000007f773f000011000000007f773f80001100000000be773f00001100000000be773f80001100000000221420000020b00f0000b10f0000b20f0000a50f0000a60f01003f713f80810ffc0980010114be0600000000be06000000000010000000003e703f080010000000003e70bf080010000000003e703f090010000000003e70bf120010000000003e703f130010000000003e703f180010000000003e70bf180010000000003e703f190010000000003e703f390010000000003e703f3b0010000000003e70bf3b0010000000003e703f3c0010000000003e70bf3c0110000000000210000000000310000000000410000000000510000000000610000000000710000000000810000000000910000000000a10000000000b10000000000c10000000000d10000000000e10000000000f10000000000010000000003e0a00000000",
    "kind": "text",
    "name": "seg_pmco",
-   "size": 1656
+   "size": 2164
   },
   {
    "align": 8,
@@ -848,12 +1268,25 @@
    "align": 4,
    "hex": "",
    "kind": "bss",
-   "name": "pkbss__mi_reply",
+   "name": "pkbss__instrument_reply",
    "size": 64
+  },
+  {
+   "align": 4,
+   "hex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "kind": "data",
+   "name": "pkdata__mi_block_save",
+   "size": 232
   }
  ],
- "source_sha256": "63b76376128ad62f2ce5002da74de58630a1ab11ceb4f4c4bbefdd55f3781f29",
+ "source_sha256": "553d3637ae22df1776ae39ebab293f1632cde0038891ebb7809f633621df6d54",
  "symbols": [
+  {
+   "global": true,
+   "name": "_instrument_block",
+   "section": "seg_pmco",
+   "value": 828
+  },
   {
    "global": false,
    "name": "_mc_chunk",
@@ -1060,6 +1493,18 @@
   },
   {
    "global": true,
+   "name": "_instrument_reply",
+   "section": "pkbss__instrument_reply",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_mi_block_save",
+   "section": "pkdata__mi_block_save",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "_mi_config_active",
    "section": "seg_dmda",
    "value": 12
@@ -1108,12 +1553,6 @@
   },
   {
    "global": true,
-   "name": "_mi_reply",
-   "section": "pkbss__mi_reply",
-   "value": 0
-  },
-  {
-   "global": true,
    "name": "_mi_apply_packet",
    "section": null,
    "value": 0
@@ -1126,7 +1565,7 @@
   }
  ],
  "toolchain": {
-  "instructions_redecoded": "387",
+  "instructions_redecoded": "483",
   "selache_rev": "2b26d3b75c53063575bc5c820fa0d38879335187"
  }
 }

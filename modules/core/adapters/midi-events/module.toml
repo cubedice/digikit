@@ -8,7 +8,7 @@ type = "framework"
 author = "digikit"
 status = "experimental"
 summary = "Bounded USB/DIN ownership for persistent track instruments; routes require a ready V2 consumer."
-requires = ["core/runtime"]
+requires = ["core/runtime", "core/pattern-position"]
 conflicts = []
 ports = ["dt2-1.17"]
 
@@ -34,11 +34,11 @@ to = "mi_din_hook"
 [[claim]]
 resource = "cf.midi.site.din_rx"
 
-# Internal validator only. No block hook or routing provider until the ordered
-# receiver, configuration transaction and V2 lifetime consumer are ready.
+# Composed through pattern-position's existing early-block hook. No keyboard
+# routes until the future V2 consumer acknowledges reset and configuration.
 [[object]]
 path = "build/midi-packet-dsp.dko.json"
-sources = ["src/dsp/packet.s", "src/dsp/receiver.s", "src/dsp/config.s", "src/dsp/reply.s"]
+sources = ["src/dsp/packet.s", "src/dsp/receiver.s", "src/dsp/config.s", "src/dsp/reply.s", "src/dsp/block.s"]
 optional = ["_mi_apply_packet", "_mi_config_publish"]
 place = "dsp.l2"
 devices = ["dt2"]

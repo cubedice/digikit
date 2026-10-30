@@ -6,6 +6,13 @@ The start and sequencer hooks snapshot a bounded 16-entry marker queue. Type 7 d
 
 The per-send writer fills the existing 16-word reserved suffix; the early DSP receiver checks packet integrity and sequence before publishing its 20-word record. ColdFire accesses are interrupt-masked. SDK definitions are in `sdk/include/dk/pattern_position.h` and `sdk/asm/dk_pattern_position.inc`. This record is read-only to effects. It describes the nominal master grid, not per-track swing or microtimed notes.
 
+The same early DSP hook optionally calls `_instrument_block` after processing the
+position packet, including rejected packets, and before returning to stock render.
+The MIDI-events adapter owns that callback and preserves its scratch context.
+Without the callback, the position provider operates alone. Composed component
+tests cover valid/invalid position packets, missing instrument consumers and
+SIMD/saturation modes; the combined running-firmware proof remains open.
+
 Firmware declarations are in `devices/fw/pattern.toml`; their hashes pin the DT2 1.17 sites. `tests/patchkit/test_pattern_position_cf.py` exercises queue/packet behaviour on the ColdFire core and checks the windows against the pinned firmware. `tests/patchkit/test_pattern_position_transport.py` checks the DSP receiver and context preservation.
 
 The ABI 2 paired running-firmware proof preserved 241,184 stereo frames bit for bit and aligned committed boundaries with tested note events, including first PLAY. The actual overloop effect also captured a whole cycle and a selected-step interval exactly. These emulator results cover a 16-step pattern at 120 BPM; non-default lengths/scales, tempo changes in running firmware, external clock and hardware remain open. See `docs/findings/76-pattern-position.md` for evidence; its earlier ABI 1 results are historical.
