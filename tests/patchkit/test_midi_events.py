@@ -98,9 +98,11 @@ def packet_check(words):
 
 
 @pytest.mark.parametrize("mode", [0x1011800, 0x1013800, 0x1213800])
-@pytest.mark.parametrize("consumer", [False, True])
+@pytest.mark.parametrize(
+    "consumer,carrier", [(False, False), (True, False), (True, True)]
+)
 @pytest.mark.parametrize("valid_position", [False, True])
-def test_composed_frame_preserves_context(mode, consumer, valid_position):
+def test_composed_frame_preserves_context(mode, consumer, carrier, valid_position):
     position = (
         ROOT / "modules/core/adapters/pattern-position/src/dsp/pattern_position.s"
     )
@@ -111,6 +113,10 @@ def test_composed_frame_preserves_context(mode, consumer, valid_position):
         canopy = ROOT / "modules/machines/canopy/src/dsp"
         for name in ("voice", "tuning", "instrument"):
             source += "\n" + (canopy / f"{name}.s").read_text()
+    if carrier:
+        for name in ("carrier", "carrier-frame", "velocity", "envelope", "workspace"):
+            source += "\n" + (MOD / f"src/dsp/{name}.s").read_text()
+        source += "\n" + (canopy / "carrier-prepare.s").read_text()
     obj = pk_sharc.assemble(source)
     sections, address, dm = {}, 0x20020000, {}
     for name, (blob, align, _) in obj.data.items():
@@ -127,6 +133,12 @@ def test_composed_frame_preserves_context(mode, consumer, valid_position):
         name: sections[sec] + off for name, (sec, off, _) in obj.data_symbols.items()
     }
     externs = {**symbols, "_pp_block_back": 0xB9F000}
+    if carrier:
+        externs["_mi_envelope_next"] = 0
+        externs["_mi_workspace_next"] = 0
+    if not carrier:
+        externs["_mi_carrier_begin"] = 0
+        externs["_instrument_carrier_prepare"] = 0
     if not consumer:
         externs["_instrument_reset"] = 0
         externs["_instrument_events"] = 0
@@ -175,6 +187,14 @@ def test_composed_frame_preserves_context(mode, consumer, valid_position):
             "reply": (symbols["_instrument_reply"] // 4, 16),
             "position": (symbols["_pattern_position_info"] // 4, 20),
             "frame": (rx // 4, len(frame)),
+            **(
+                {
+                    "stamp": (symbols["_mi_carrier_stamp"] // 4, 1),
+                    "owners": (symbols["_mi_velocity_owners"] // 4, 32),
+                }
+                if carrier
+                else {}
+            ),
         },
         read_regs=tuple(regs),
         max_steps=4000,
@@ -185,6 +205,9 @@ def test_composed_frame_preserves_context(mode, consumer, valid_position):
     assert result["frame"] == frame
     assert result["reply"][:4] == [0x494EA101, int(consumer), int(consumer), 1]
     assert result["position"][0] == (position_words[0] if valid_position else 0)
+    if carrier:
+        assert result["stamp"] == [1]
+        assert result["owners"] == [1, 0] * 16
 
 
 def configuration_packets(values, revision=1):

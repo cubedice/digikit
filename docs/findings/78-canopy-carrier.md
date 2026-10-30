@@ -269,7 +269,7 @@ regeneration still needs the missing local ColdFire analysis inputs. No normal
 manifest claims or installs the new hook.
 
 **[D] Conditional stage after gain:** The next per-voice loop at `0x1c6fb9`
-checks a word at workspace +0xdde4 +4*voice and envelope-record byte offset 20.
+checks a byte at workspace +0xdde4 +voice and envelope-record byte offset 20.
 Only when both are nonzero does it multiply the block by a ramp from 1 to zero.
 The probe executes one original loop body through `0x1c7009`, including its
 odd/even count branch. All four flag combinations pass for 31 and 32 samples;
@@ -286,15 +286,40 @@ and the helper at `0x1c6056` clears it using M13 at `0x1c606e`. Those are DSP
 writers, not a proven mapping to MIDI note-off, front-panel mute or a Sound setting.
 
 The connected musical scenario now runs this stage after ordinary gain, using
-the real envelope record and alternating a synthetic transition word. The proof
+the real envelope record and alternating a synthetic transition byte. The proof
 configuration's final flag is zero; all samples remain unchanged through this
 conditional stage, including local release and reset retirement. All 30 aggregate
 checks pass. This result is conditional on that setting: an arbitrary Sound with
-the flag enabled can still fade a held block when the transition word is raised.
+the flag enabled can still fade a held block when the transition byte is raised.
 Resolve the controls and live event writers before deciding whether any additional
 ownership interception is appropriate. No new bypass or firmware hook is added.
 
-Resolve live configuration delivery and both flag writers before adding
+**[C] Trigger latch width:** The earlier description of a word per voice was
+incorrect. Bounded OS 1.17 execution confirms a byte per voice at `0x24f0ac + voice`.
+The post-gain probe now writes exactly that byte. This does not change the separate
+four-byte velocity-cache stride used by the velocity hook.
+
+**[D] Incoming trigger and machine change:** The probe reads the actual incoming
+track mask at frame offset `0x22` through `0x1c2cda`, then executes the branch at
+`0x1c2d1a` and the machine-type comparison at `0x1c33bc`. Across 24 cases (voices
+0, 1, 30, 31; trigger absent/present; unchanged type with flag 0/1 or changed type),
+only the selected voice's latch byte is raised. Without a trigger, the fade
+parameter remains untouched. With a trigger and unchanged type, the incoming
+flag is preserved; changing the machine type forces it to 1. All 31 aggregate
+probe checks pass with `--blocks 8`.
+
+The input flag comes from frame offset `0x12e + 0x60*track`; its public control
+meaning remains unresolved. These are isolated DSP slices with synthetic frames,
+not a running ColdFire-to-DSP event-delivery proof. The implementation policy is
+to consume owned keyboard events before stock note-on routing and preserve the
+stock machine-change fade. Sequencer triggers and live configuration delivery
+still need a composed firmware proof before that policy can be enabled.
+
+The combined pattern-position/MIDI frame test now covers absent carrier callbacks
+and the real CANOPY carrier callbacks. It checks register and frame preservation,
+frame-stamp advancement and expired/unowned velocity records after reset.
+
+Resolve live configuration delivery and remaining event writers before adding
 the hook to the production manifest. Use idle-to-active to start the envelope once; avoid
 rearming it for subsequent keys. Retain the carrier through local release tails
 and pending onsets, then retire both stereo voices on QUIET. Prove neutral shared

@@ -228,6 +228,94 @@ def bits(value):
     return struct.unpack("<I", struct.pack("<f", value))[0]
 
 
+def put_small(runner, address, value, width):
+    if not st._dm_write(
+        runner.state, address, width, st.Const(value), normal_word=False
+    ):
+        raise RuntimeError(f"write failed at {address:#x}")
+
+
+def trigger_transition_path(memory):
+    """Follow the actual incoming trig mask and type comparison to the fade flag."""
+    rows = []
+    for voice in (0, 1, 30, 31):
+        for triggered in (False, True):
+            for new_type, enabled in ((18, 0), (18, 1), (19, 0)):
+                frame, params, track = 0x200B0000, 0x200C0000, voice // 2
+                runner = Runner(memory, 0x1C2CDA, breakpoints=[0x1C2CDC])
+                for base in (0x24F0AC, 0x24F0EC):
+                    for i in range(8):
+                        put(runner, base + 4 * i, 0)
+                for addr, value in (
+                    (frame + 0x22, (1 << track) if triggered else 0),
+                    (0x255970 + 2 * track, 18),
+                    (frame + 0x94 + 2 * track, new_type),
+                    (frame + 0xDA + 0x60 * track + 0x54, enabled << 8),
+                ):
+                    put_small(runner, addr, value, 2)
+                put(runner, STACK - 8, frame + 0xDA)
+                put(runner, params + 196, 0xDEADBEEF)
+                runner = runner.fresh_call(
+                    0x1C2CDA,
+                    regs={
+                        "I3": frame,
+                        "MODE1": 0x1011800,
+                        **{f"L{i}": 0 for i in range(16)},
+                    },
+                )
+                result = runner.run(5)
+                if result.halt.reason != "breakpoint" or result.final_pc_sw != 0x1C2CDC:
+                    raise RuntimeError(
+                        f"trig mask read failed: {result.halt.to_json()}"
+                    )
+                runner.breakpoints = frozenset({0x1C2D20, 0x1C2D31})
+                runner = runner.fresh_call(
+                    0x1C2D1A,
+                    regs={
+                        "I6": STACK,
+                        "I10": frame + 0x94,
+                        "I5": params,
+                        "R5": track,
+                        "R13": 0,
+                        "R15": voice,
+                        "M0": track,
+                        "M5": 0,
+                        "M13": 0,
+                        "M14": 1,
+                    },
+                )
+                result = runner.run(100)
+                expected_pc = 0x1C2D31 if triggered else 0x1C2D20
+                if (
+                    result.halt.reason != "breakpoint"
+                    or result.final_pc_sw != expected_pc
+                ):
+                    raise RuntimeError(f"trig dispatch failed: {result.halt.to_json()}")
+                active_bytes = [
+                    i
+                    for i in range(32)
+                    if st._dm_read(
+                        runner.state, 0x24F0AC + i, 1, normal_word=False
+                    ).value
+                ]
+                expected_flag = (
+                    (enabled if new_type == 18 else 1) if triggered else 0xDEADBEEF
+                )
+                rows.append(
+                    {
+                        "voice": voice,
+                        "triggered": triggered,
+                        "machine_changed": new_type != 18,
+                        "frame_flag": enabled,
+                        "fade_flag": get(runner, params + 196),
+                        "latch_is_one_byte_per_voice": active_bytes
+                        == ([voice] if triggered else []),
+                        "fade_flag_matches": get(runner, params + 196) == expected_flag,
+                    }
+                )
+    return rows
+
+
 def apply_stock_gain(runner, gain):
     """Run the actual 32-sample scalar gain path at a settled coefficient."""
     saved_breakpoints = runner.breakpoints
@@ -262,7 +350,7 @@ def apply_post_gain_ramp(runner, transition, envelope_flag, count=32):
     Keep the envelope flag at its actual record offset for connected callers.
     """
     state, pointers = 0x200A4000, 0x200A4100
-    put(runner, state, transition)
+    put_small(runner, state, transition, 1)
     put(runner, pointers, BUFFER)
     saved_breakpoints = runner.breakpoints
     runner.breakpoints = frozenset({0x1C7009})
@@ -888,6 +976,11 @@ def probe(firmware: Path, blocks: int):
     checks.update(musical_chain(musical_memory, musical_initial, musical_symbols))
     gain_measurements = gain_path(memory)
     post_gain_measurements = post_gain_ramp_path(memory)
+    transition_measurements = trigger_transition_path(memory)
+    checks["incoming_trig_mask_controls_byte_latch_and_type_change_fade"] = all(
+        row["latch_is_one_byte_per_voice"] and row["fade_flag_matches"]
+        for row in transition_measurements
+    )
     checks["post_gain_ramp_requires_both_flags_and_respects_sample_count"] = all(
         row["matches"] and row["guards_intact"] and row["configured_flag_matches"]
         for row in post_gain_measurements
@@ -936,6 +1029,7 @@ def probe(firmware: Path, blocks: int):
         "checks": checks,
         "gain_measurements": gain_measurements,
         "post_gain_measurements": post_gain_measurements,
+        "transition_measurements": transition_measurements,
         "velocity_measurements": velocity_measurements,
         "owned_gain_measurements": owned_gain_measurements,
         "hold_counter": held[9],
