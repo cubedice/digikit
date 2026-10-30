@@ -351,7 +351,7 @@ fn dsp<B: Bytes>(
         16
     } else if version == 2 {
         48
-    } else if (3..=5).contains(&version) {
+    } else if (3..=5).contains(&version) || (version == 6 && instruments.is_some()) {
         64
     } else {
         return Err(Error::Dsp);
@@ -504,7 +504,7 @@ fn dsp<B: Bytes>(
         total = total.checked_add((state + 7) & !7).ok_or(Error::Dsp)?;
         i += 1;
     }
-    if version == 5 {
+    if version == 5 || version == 6 {
         let allocation = instrument::read(src, off, size)?;
         total = total
             .checked_add(allocation.state_bytes)

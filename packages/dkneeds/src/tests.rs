@@ -681,3 +681,44 @@ fn v2_reads_are_bounded_and_io_failures_propagate() {
     let mut probe = Probe { bytes: &good, fail_at: Some(HEADER + 112) };
     assert_eq!(needs_of_v2(&mut probe), Err(Error::Unreadable));
 }
+
+#[test]
+fn v6_requires_executable_callback_ranges_and_preserves_v5_accounting() {
+    let old = dsp_section_v5();
+    let mut s = old[..96].to_vec();
+    s.extend_from_slice(&[0; 16]);
+    s.extend_from_slice(&old[96..]);
+    for (at, value) in [
+        (4, 6),
+        (0x18, 112),
+        (0x48, 96),
+        (0x4c, 1),
+        (96, 0),
+        (100, 12),
+    ] {
+        put(&mut s, at, value);
+    }
+    let file = dkm(4, 0, &[], &s);
+    let needs = needs_of_v2(&mut file.as_slice()).unwrap();
+    assert_eq!(needs.instruments.state_bytes, 528);
+    assert_eq!(needs.base.dsp_area, 640);
+    assert_eq!(of(&file), Err(Error::Dsp));
+    for (at, value) in [
+        (0x48, 80),
+        (0x4c, 0),
+        (0x4c, 33),
+        (96, 1),
+        (100, 4),
+        (100, 64),
+        (84, 8),
+        (88, 16),
+    ] {
+        let mut bad = s.clone();
+        put(&mut bad, at, value);
+        let file = dkm(4, 0, &[], &bad);
+        assert!(
+            needs_of_v2(&mut file.as_slice()).is_err(),
+            "field {at:x} = {value}"
+        );
+    }
+}

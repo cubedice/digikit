@@ -102,3 +102,36 @@ fn instrument_descriptor_bounds_batches_and_total_state() {
         Err(Error::Records)
     );
 }
+
+#[test]
+fn instrument_executable_ranges_exclude_data_padding_and_cross_section_entries() {
+    let (mut table, _) = fixture();
+    let mut bytes = [0u8; 16];
+    for (i, value) in [0u32, 12, 64, 76].iter().enumerate() {
+        bytes[i * 4..i * 4 + 4].copy_from_slice(&value.to_be_bytes());
+    }
+    let ranges = executable_ranges(&bytes, 80).unwrap();
+    assert!(validate_executables(&table, &ranges).is_ok());
+    for offset in [8u32, 12, 16, 60, 72] {
+        table[4..8].copy_from_slice(&offset.to_be_bytes());
+        assert_eq!(
+            validate_executables(&table, &ranges),
+            Err(Error::Executable)
+        );
+    }
+    table[4..8].copy_from_slice(&64u32.to_be_bytes());
+    assert!(validate_executables(&table, &ranges).is_ok());
+    table[12..16].copy_from_slice(&8u32.to_be_bytes());
+    assert_eq!(
+        validate_executables(&table, &ranges),
+        Err(Error::Executable)
+    );
+    for (field, value) in [(0, 1u32), (4, 4), (4, 82), (8, 10), (12, 64)] {
+        let mut bad = bytes;
+        bad[field..field + 4].copy_from_slice(&value.to_be_bytes());
+        assert_eq!(executable_ranges(&bad, 80), Err(Error::Executable));
+    }
+    for size in 0..8 {
+        assert!(executable_ranges(&bytes[..size], 80).is_err());
+    }
+}

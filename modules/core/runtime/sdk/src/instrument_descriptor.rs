@@ -41,10 +41,12 @@ pub enum Error {
     Callback,
     DescriptorRange,
     Relocation,
+    Executable,
 }
 impl core::fmt::Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str(match self {
+            Self::Executable => "instrument V2 executable ranges or callback placement are invalid",
             Self::Size => "instrument V2 descriptor must be exactly 48 bytes",
             Self::Header => "instrument V2 descriptor magic, version or size is incompatible",
             Self::Flags => "instrument V2 descriptor has unsupported flags",
@@ -196,6 +198,77 @@ pub fn records(
         });
     }
     Ok(result)
+}
+
+/// Executable section offsets relative to the DSP image, end exclusive.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Executable {
+    pub start: u32,
+    pub end: u32,
+}
+
+/// DKDS6 text ranges, sorted and nonoverlapping. These are section boundaries,
+/// not a disassembly or a proof of control flow / declared callback budgets.
+pub fn executable_ranges(
+    table: &[u8],
+    image_bytes: u32,
+) -> Result<[Option<Executable>; 32], Error> {
+    if table.is_empty() || table.len() % 8 != 0 || table.len() > 32 * 8 {
+        return Err(Error::Executable);
+    }
+    let mut ranges = [None; 32];
+    let mut previous_end = 0;
+    for (i, bytes) in table.chunks_exact(8).enumerate() {
+        let start = u32::from_be_bytes(bytes[..4].try_into().unwrap());
+        let end = u32::from_be_bytes(bytes[4..].try_into().unwrap());
+        if start % 2 != 0
+            || end % 2 != 0
+            || end <= start
+            || end > image_bytes
+            || end - start < 6
+            || start < previous_end
+        {
+            return Err(Error::Executable);
+        }
+        ranges[i] = Some(Executable { start, end });
+        previous_end = end;
+    }
+    Ok(ranges)
+}
+
+/// Require complete callback instructions inside text, and descriptors outside
+/// text. Call after `records` validated the same record table and image.
+pub fn validate_executables(
+    records: &[u8],
+    ranges: &[Option<Executable>; 32],
+) -> Result<(), Error> {
+    if records.is_empty() || records.len() % 16 != 0 || records.len() > 128 {
+        return Err(Error::Records);
+    }
+    for row in records.chunks_exact(16) {
+        let word = |at: usize| u32::from_be_bytes(row[at..at + 4].try_into().unwrap());
+        for offset in [word(4), word(8)] {
+            if offset % 2 != 0
+                || !ranges.iter().flatten().any(|r| {
+                    offset >= r.start && offset.checked_add(6).is_some_and(|end| end <= r.end)
+                })
+            {
+                return Err(Error::Executable);
+            }
+        }
+        let desc = word(12);
+        let end = desc
+            .checked_add(DESC_BYTES as u32)
+            .ok_or(Error::DescriptorRange)?;
+        if ranges
+            .iter()
+            .flatten()
+            .any(|r| desc < r.end && r.start < end)
+        {
+            return Err(Error::Executable);
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -199,9 +199,9 @@ failed or timed out), `E_DSP_DEVICE` -36, `E_DSP_TYPE` -37 (a voice key that has
 The DSP's per-type **selector** word (which render path a track uses) is not set by this section: the selector of a run-time type is
 type 0's (finding 30). A machine that clones SAMPLE, like `pluck`, is right already.
 
-### Experimental persistent instruments (DKDS 5)
+### Experimental persistent instruments (DKDS 5 and 6)
 
-The host packer can encode version 5 for V2 instruments. The shipped runtime
+The host packer emits version 6 for V2 instruments and can still read version 5. The shipped runtime
 does not yet support it. The experimental `dkneeds::needs_of_v2` entry point can
 account for its memory requirements. The outer DKM requests **machine contract 2.0**;
 the runtime still advertises 1.0, so its contract check rejects these files before
@@ -212,7 +212,20 @@ V5 extends the header from 0x40 to 0x50 bytes: u32 instrument table offset at
 The existing voice and effect records retain their V4 layouts. Tables appear in
 canonical order: header, imports, relocations, voices, effects, instruments,
 zero padding to 16 bytes, image. The host parser rejects other layouts, trailing
-bytes, overlapping tables and nonzero reserved bytes. V1–V4 output is unchanged.
+bytes, overlapping tables and nonzero reserved bytes. V1â€“V4 output is unchanged.
+
+V6 retains the 0x50-byte header and uses 0x48/0x4c for an executable-range table
+offset and count (1..32). This table follows the instrument records, before the
+16-byte image alignment padding. Each entry is two big-endian u32 image byte
+offsets: start and exclusive end. The packer derives these from the linker's text
+sections, preserving gaps between sections. Ranges must be sorted, nonoverlapping,
+two-byte aligned, at least six bytes long and entirely within the image. Each
+instrument callback must fit a full six-byte instruction inside one range;
+descriptors must not overlap any range. The SDK decoder, host parser and
+experimental resource reader enforce these checks. These are section bounds,
+not proof of instruction boundaries, valid control flow, or execution budgets.
+V5 retains zero at 0x48/0x4c and has no executable-boundary assurance. Neither
+version is admitted by the current runtime; V1–V4 serialization is unchanged.
 
 Each instrument record is four big-endian words: machine type, reset callback
 image byte offset, process callback image byte offset, descriptor image byte
@@ -232,7 +245,7 @@ separate instrument row, track-instance and aligned state-byte counts, using
 bounded stack storage and checked 32-bit arithmetic. It validates descriptor
 structure and table bounds, but does not check signatures, imports, relocation
 contents or device-specific cycle/stack admission limits. It is not a load check.
-The normal `needs_of` entry point still rejects V5, keeping the scan/fit ABI and
+The normal `needs_of` entry point still rejects V5/V6, keeping the scan/fit ABI and
 capacity protocol unchanged until V2 registry integration is complete.
 
 The internal V2 registry reserves all types of a module in one transaction.

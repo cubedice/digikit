@@ -416,7 +416,7 @@ pub fn pack_full_max(
         dsp.get(off..off + 4)
             .map_or(0, |b| u32::from_be_bytes(b.try_into().unwrap()))
     };
-    let v5 = word(4) == crate::dkmdsp::VERSION_5;
+    let v5 = matches!(word(4), crate::dkmdsp::VERSION_5 | crate::dkmdsp::VERSION_6);
     let has_fx = (word(4) == crate::dkmdsp::VERSION_4 || v5) && word(0x38) > 0;
     let fx_only = has_fx && word(0x30) == 0;
     // a version 5 DSP section whose record has kind 2 holds the per-track sample table: the module uses Api 1.5
@@ -1057,6 +1057,7 @@ mod tests {
             }],
             fxs: vec![],
             instruments: vec![],
+            executable: vec![],
         }
         .encode()
     }

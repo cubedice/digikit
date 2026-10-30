@@ -17,10 +17,10 @@ const DESC: u32 = 48;
 const MAX_ROWS: u32 = 8;
 
 pub(super) fn read<B: Bytes>(src: &mut B, off: u32, size: u32) -> Result<InstrumentNeeds, Error> {
+    let v6 = word(src, off + 4)? == 6;
     if size < HEADER
         || word(src, off + 0x3c)? != 0
-        || word(src, off + 0x48)? != 0
-        || word(src, off + 0x4c)? != 0
+        || (!v6 && (word(src, off + 0x48)? != 0 || word(src, off + 0x4c)? != 0))
     {
         return Err(Error::Dsp);
     }
@@ -47,6 +47,35 @@ pub(super) fn read<B: Bytes>(src: &mut B, off: u32, size: u32) -> Result<Instrum
         end = end
             .checked_add(word(src, off + length)? * stride)
             .ok_or(Error::Dsp)?;
+    }
+    let mut text = [(0u32, 0u32); 32];
+    let mut text_count = 0;
+    if v6 {
+        text_count = word(src, off + 0x4c)?;
+        if text_count == 0
+            || text_count > 32
+            || word(src, off + 0x48)? != end
+            || !inside(end, text_count * 8, size)
+        {
+            return Err(Error::Dsp);
+        }
+        let mut previous = 0;
+        for i in 0..text_count {
+            let start = word(src, off + end + i * 8)?;
+            let stop = word(src, off + end + i * 8 + 4)?;
+            if start & 1 != 0
+                || stop & 1 != 0
+                || stop <= start
+                || stop > image_size
+                || stop - start < 6
+                || start < previous
+            {
+                return Err(Error::Dsp);
+            }
+            text[i as usize] = (start, stop);
+            previous = stop;
+        }
+        end += text_count * 8;
     }
     let padded = end.checked_add(15).ok_or(Error::Dsp)? & !15;
     if image_off != padded || image_off.checked_add(image_size) != Some(size) {
@@ -85,12 +114,25 @@ pub(super) fn read<B: Bytes>(src: &mut B, off: u32, size: u32) -> Result<Instrum
             j += 1;
         }
         for entry in [word(src, at + 4)?, word(src, at + 8)?] {
-            if entry & 1 != 0 || !inside(entry, 6, image_size) {
+            if entry & 1 != 0
+                || !inside(entry, 6, image_size)
+                || (v6
+                    && !text[..text_count as usize].iter().any(|&(start, stop)| {
+                        entry >= start && entry.checked_add(6).is_some_and(|end| end <= stop)
+                    }))
+            {
                 return Err(Error::Dsp);
             }
         }
         let desc = word(src, at + 12)?;
         if desc & 3 != 0 || !inside(desc, DESC, image_size) {
+            return Err(Error::Dsp);
+        }
+        if v6
+            && text[..text_count as usize]
+                .iter()
+                .any(|&(start, stop)| desc < stop && start < desc + DESC)
+        {
             return Err(Error::Dsp);
         }
         // Descriptor words are little endian within the SHARC image.

@@ -13,7 +13,8 @@
 //! 0x34 u32 fx_off       0x38 u32 fx_count   (version 4: effect records; 0 before)   0x3c reserved (0)
 //! V5 extends the header to 0x50: instrument offset/count at 0x40/0x44; 0x48/0x4c reserved.
 //! Instruments follow effects: 16 bytes (type, reset, process, desc), all image byte offsets.
-//! V5 is host-only until runtime registration exists; the outer DKM requires machine 2.0.
+//! V6 uses 0x48/0x4c for sorted executable range offset/count (8-byte start/end records).
+//! V5/V6 are host-only until runtime registration exists; the outer DKM requires machine 2.0.
 //! imports: 32-byte NUL padded names of DSP symbols the runtime resolves (`dyndsp_info` of core/dyn-dsp)
 //! relocs : 8 bytes each: u32 image byte offset of a 48-bit instruction, u32 kind << 28 | class << 24 | import index
 //!            kind 0 abs24 (the instruction's 24-bit address field), kind 1 abs32 (its 32-bit immediate)
@@ -53,6 +54,8 @@ pub const VERSION_3: u32 = 3;
 pub const VERSION_4: u32 = 4;
 /// Experimental persistent instruments, separate from the V1 voice table.
 pub const VERSION_5: u32 = 5;
+/// Text range metadata for persistent instruments; still host-only.
+pub const VERSION_6: u32 = 6;
 pub const HEADER_V5: usize = 0x50;
 pub const INSTRUMENT_LEN: usize = 16;
 pub const MAX_INSTRUMENTS: usize = 8;
@@ -277,6 +280,7 @@ pub struct DspSection {
     pub voices: Vec<Voice>,
     pub fxs: Vec<Effect>,
     pub instruments: Vec<Instrument>,
+    pub executable: Vec<(u32, u32)>,
 }
 
 /// Link `obj` (a SHARC+ object) at the nominal base and encode the section. `voices` names the entry routine of each machine type
@@ -571,6 +575,21 @@ pub fn pack_with_instruments(
             desc,
         });
     }
+    let mut executable = vec![];
+    if !ins.is_empty() {
+        for &(start, end) in &linked.text_ranges {
+            if start == end {
+                continue;
+            }
+            executable.push((
+                u32::try_from(start - L2_BYTE_BASE as u64)
+                    .map_err(|_| err!("text range overflow"))?,
+                u32::try_from(end - L2_BYTE_BASE as u64)
+                    .map_err(|_| err!("text range overflow"))?,
+            ));
+        }
+        executable.sort_unstable();
+    }
     let s = DspSection {
         device,
         image,
@@ -581,6 +600,7 @@ pub fn pack_with_instruments(
         voices: vs,
         fxs: es,
         instruments: ins,
+        executable,
     };
     s.validate_instruments(limits)?;
     let encoded = s.encode();
@@ -656,13 +676,16 @@ impl DspSection {
         let vlen = if v3 { VOICE_LEN_V3 } else { VOICE_LEN };
         let fx_off = voice_off + self.voices.len() * vlen;
         let instrument_off = fx_off + self.fxs.len() * FX_LEN;
-        let image_off = align_up(instrument_off + self.instruments.len() * INSTRUMENT_LEN, 16);
+        let text_off = instrument_off + self.instruments.len() * INSTRUMENT_LEN;
+        let image_off = align_up(text_off + self.executable.len() * 8, 16);
         let mut f = vec![0u8; image_off + self.image.len()];
         put(&mut f, 0, MAGIC);
         put(
             &mut f,
             4,
-            if v5 {
+            if v5 && !self.executable.is_empty() {
+                VERSION_6
+            } else if v5 {
                 VERSION_5
             } else if v4 {
                 VERSION_4
@@ -739,6 +762,14 @@ impl DspSection {
                 }
             }
         }
+        if !self.executable.is_empty() {
+            put(&mut f, 0x48, text_off as u32);
+            put(&mut f, 0x4c, self.executable.len() as u32);
+            for (i, &(start, end)) in self.executable.iter().enumerate() {
+                put(&mut f, text_off + i * 8, start);
+                put(&mut f, text_off + i * 8 + 4, end);
+            }
+        }
         f[image_off..].copy_from_slice(&self.image);
         f
     }
@@ -765,7 +796,7 @@ impl DspSection {
         n.div_ceil(GRANULE) * GRANULE
     }
 
-    /// Parse legacy sections as the runtime does, plus experimental host-only V5.
+    /// Parse legacy sections as the runtime does, plus experimental host-only V5/V6.
     pub fn parse(f: &[u8]) -> Result<DspSection> {
         if f.len() < HEADER || get(f, 0) != MAGIC {
             return Err(err!("not a DSP section (magic)"));
@@ -776,16 +807,17 @@ impl DspSection {
             && version != VERSION_3
             && version != VERSION_4
             && version != VERSION_5
+            && version != VERSION_6
         {
             return Err(err!("DSP section version {version}"));
         }
-        if version == VERSION_5 && f.len() < HEADER_V5 {
-            return Err(err!("truncated V5 header"));
+        if version >= VERSION_5 && f.len() < HEADER_V5 {
+            return Err(err!("truncated V5/V6 header"));
         }
         let v3 = version >= VERSION_3;
         let vlen = match version {
             VERSION_1 => VOICE_LEN_V1,
-            VERSION_3 | VERSION_4 | VERSION_5 => VOICE_LEN_V3,
+            VERSION_3 | VERSION_4 | VERSION_5 | VERSION_6 => VOICE_LEN_V3,
             _ => VOICE_LEN,
         };
         let rng = |off: u32, n: usize| -> Result<&[u8]> {
@@ -859,7 +891,7 @@ impl DspSection {
                     voices: if v3 { get(vo, at + 52) } else { 0 },
                     ranges: match version {
                         VERSION_1 => [0; 8],
-                        VERSION_3 | VERSION_4 | VERSION_5 => {
+                        VERSION_3 | VERSION_4 | VERSION_5 | VERSION_6 => {
                             std::array::from_fn(|k| get(vo, at + 20 + 4 * k))
                         }
                         _ => std::array::from_fn(|k| get(vo, at + 8 + 4 * k)),
@@ -903,10 +935,10 @@ impl DspSection {
             return Err(err!("DSP effect record outside the image or malformed"));
         }
         let mut instruments = vec![];
-        if version == VERSION_5 {
+        if version >= VERSION_5 {
             let count = get(f, 0x44) as usize;
             if count == 0 || count > MAX_INSTRUMENTS || get(f, 0x10) % 4 != 0 {
-                return Err(err!("invalid V5 instrument count or bss"));
+                return Err(err!("invalid V5/V6 instrument count or bss"));
             }
             let records = rng(get(f, 0x40), count * INSTRUMENT_LEN)?;
             for n in 0..count {
@@ -919,6 +951,21 @@ impl DspSection {
                 });
             }
         }
+        let mut executable = vec![];
+        if version == VERSION_6 {
+            let count = get(f, 0x4c) as usize;
+            if count == 0 || count > 32 {
+                return Err(err!("invalid executable range count"));
+            }
+            let table = rng(get(f, 0x48), count * 8)?;
+            let ranges =
+                dkrt_sdk::instrument_descriptor::executable_ranges(table, image_size as u32)?;
+            dkrt_sdk::instrument_descriptor::validate_executables(
+                rng(get(f, 0x40), instruments.len() * INSTRUMENT_LEN)?,
+                &ranges,
+            )?;
+            executable.extend(ranges.iter().flatten().map(|r| (r.start, r.end)));
+        }
         let section = DspSection {
             device: get(f, 8),
             image,
@@ -929,12 +976,13 @@ impl DspSection {
             voices,
             fxs,
             instruments,
+            executable,
         };
         section.validate_instruments(FORMAT_LIMITS)?;
-        // V5 uses canonical table order, zero reserved words and padding. This
+        // V5/V6 use canonical table order, zero reserved words and padding. This
         // rejects overlapping tables and header aliases as well as trailing data.
-        if version == VERSION_5 && section.encode() != f {
-            return Err(err!("noncanonical V5 table layout or reserved fields"));
+        if version >= VERSION_5 && section.encode() != f {
+            return Err(err!("noncanonical V5/V6 table layout or reserved fields"));
         }
         Ok(section)
     }
@@ -1090,7 +1138,7 @@ mod tests {
     fn persistent_instrument_roundtrip_and_contract_boundary() {
         let (o, i) = instrument_object();
         let bytes = pack_with_instruments(&o, 1, &[], &[], &[i], FORMAT_LIMITS).unwrap();
-        assert_eq!(get(&bytes, 4), VERSION_5);
+        assert_eq!(get(&bytes, 4), VERSION_6);
         let section = DspSection::parse(&bytes).unwrap();
         assert!(section.voices.is_empty());
         assert_eq!(section.instruments[0].reset, 0);
@@ -1133,6 +1181,35 @@ mod tests {
     }
 
     #[test]
+    fn persistent_instrument_text_ranges_reject_data_and_preserve_v5_reading() {
+        let (o, i) = instrument_object();
+        let bytes = pack_with_instruments(&o, 1, &[], &[], &[i], FORMAT_LIMITS).unwrap();
+        let section = DspSection::parse(&bytes).unwrap();
+        assert_eq!(section.executable, vec![(0, 24)]);
+        let ranges = get(&bytes, 0x48) as usize;
+        let records = get(&bytes, 0x40) as usize;
+        let descriptor = section.instruments[0].desc;
+        for (at, value) in [
+            (ranges, 1),
+            (ranges + 4, 4),
+            (ranges + 4, descriptor + 48),
+            (records + 4, descriptor),
+            (records + 8, 22),
+            (0x4c, 0),
+            (0x4c, 33),
+        ] {
+            let mut bad = bytes.clone();
+            put(&mut bad, at, value);
+            assert!(DspSection::parse(&bad).is_err(), "field {at:x} = {value}");
+        }
+        let mut legacy = section;
+        legacy.executable.clear();
+        let v5 = legacy.encode();
+        assert_eq!(get(&v5, 4), VERSION_5);
+        assert_eq!(DspSection::parse(&v5).unwrap().encode(), v5);
+    }
+
+    #[test]
     fn persistent_instrument_rejects_bad_tables_descriptors_and_allocation() {
         let (o, i) = instrument_object();
         let bytes = pack_with_instruments(&o, 1, &[], &[], &[i], FORMAT_LIMITS).unwrap();
@@ -1144,7 +1221,7 @@ mod tests {
             (0x44, 0),
             (0x44, 9),
             (0x48, 1),
-            (0x4c, 1),
+            (0x4c, 0),
             (0x3c, 1),
             (0x10, u32::MAX - 3),
             (table + 4, 1),

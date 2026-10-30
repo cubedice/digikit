@@ -509,6 +509,25 @@ actual packed DKDS5 bytes read by the SDK decoder (`out/canopy-decoder-sdk.log`,
 Focused documentation and layering checks pass; the changed-file check fails only
 on the existing 256 stale references in 78 files (`out/canopy-decoder-changed.log`).
 
+Experimental DKDS6 now preserves the linker's executable section ranges in a
+bounded table. It reuses the 0x50-byte header, with table offset/count at 0x48/0x4c
+and up to 32 sorted start/end pairs after the instrument records. The packer
+emits V6 for new V2 images; host parsing still round-trips older DKDS5 without
+inventing executable ranges, and legacy V1-V4 output stays unchanged. Both formats
+continue to request machine contract 2.0 and remain rejected by normal admission.
+The shared SDK decoder and experimental resource checker reject overlapping or
+out-of-image ranges, callbacks outside text or crossing a section end, and
+descriptors overlapping text. Text boundaries are not a proof of instruction
+boundaries, control flow or budget compliance. The live loader must still consume
+this metadata and install rows through the pending admission/SPI integration.
+Validation: 29 SDK tests, 11 DSP packer tests and eight selected resource-reader
+tests pass (`out/canopy-executable-sdk.log`, `out/canopy-executable-packer.log`,
+`out/canopy-executable-needs.log`). The runtime host check passes
+(`out/canopy-executable-runtime.log`); no ColdFire build or device capability is
+claimed while its toolchain and live dispatch remain unavailable. Focused docs
+and layering checks pass; the changed-file check fails only on the existing 256
+stale references in 78 files (`out/canopy-executable-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
