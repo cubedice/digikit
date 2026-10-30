@@ -1,5 +1,96 @@
 #include "transport.h"
 #define CHECK(c) do { if (!(c)) return __LINE__; } while (0)
+static void reply_checksum(uint32_t *r)
+{
+    uint32_t i, a = 0, b = 0;
+    for (i = 0; i < 15; ++i) { a += r[i]; b += a; }
+    r[15] = a ^ b;
+}
+static void reply_words(uint32_t *r, uint32_t epoch, uint32_t message, uint32_t heartbeat)
+{
+    uint32_t i;
+    for (i = 0; i < MT_REPLY_WORDS; ++i) r[i] = 0;
+    r[0] = MT_REPLY_MAGIC; r[1] = epoch; r[2] = message; r[3] = heartbeat;
+    reply_checksum(r);
+}
+uint32_t mi_test_reply_ack(void)
+{
+    MiLedger m; MiTransport t;
+    uint32_t r[MT_REPLY_WORDS], rev[MI_TRACKS] = {1}, message;
+    uint8_t note[3] = {0x90, 60, 100};
+    mi_init(&m); mt_init(&t);
+    CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
+    mi_message(&m, 0, note, 3);
+    message = mt_prepare(&t, &m, rev, 0)[3];
+    reply_words(r, 2, message, 20);
+    CHECK(mt_reply_tick(&t, &m, r, 1) == -1 && m.count == 1);
+    reply_words(r, 1, message, 20); r[15] ^= 1;
+    CHECK(mt_reply_tick(&t, &m, r, 2) == -1 && !t.heartbeat_seen);
+    reply_words(r, 1, message, 20); r[4] = 1;
+    reply_checksum(r); /* valid integrity, invalid reserved payload */
+    CHECK(mt_reply_tick(&t, &m, r, 3) == -1 && m.count == 1);
+    reply_words(r, 1, message+1, 20);
+    CHECK(mt_reply_tick(&t, &m, r, 4) == 1 && m.count == 1);
+    reply_words(r, 1, message, 20);
+    CHECK(mt_reply_tick(&t, &m, r, 5) == 0 && m.count == 1);
+    reply_words(r, 1, message, 21);
+    CHECK(mt_reply_tick(&t, &m, r, 6) == 2 && !m.count);
+    CHECK(mt_reply_tick(&t, &m, r, 7) == 0);
+    reply_words(r, 1, message, 19);
+    CHECK(mt_reply_tick(&t, &m, r, 8) == -1 && t.faults && m.reset_mask);
+    CHECK(!m.routes[0].enabled && m.keys[0].tombstone);
+    return 0;
+}
+uint32_t mi_test_reply_watchdog(void)
+{
+    MiLedger m; MiTransport t;
+    uint32_t r[MT_REPLY_WORDS];
+    mi_init(&m); mt_init(&t);
+    CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
+    reply_words(r, 1, 0, UINT32_MAX);
+    CHECK(mt_reply_tick(&t, &m, r, UINT32_MAX-10) == 1);
+    reply_words(r, 1, 0, 0);
+    CHECK(mt_reply_tick(&t, &m, r, 2) == 1 && !t.faults);
+    CHECK(mt_reply_tick(&t, &m, r, 901) == 0 && !t.faults);
+    CHECK(mt_reply_tick(&t, &m, 0, 902) == 0 && t.faults == 1);
+    CHECK(!m.routes[0].enabled);
+    CHECK(mt_reply_tick(&t, &m, 0, 903) == 0 && t.faults == 1);
+    mi_recover(&m);
+    reply_words(r, 1, 0, 1);
+    CHECK(mt_reply_tick(&t, &m, r, 904) == -1 && !t.heartbeat_seen);
+    return 0;
+}
+uint32_t mi_test_reply_record(void)
+{
+    uint16_t record[0xabc/2]; uint32_t words[MT_REPLY_WORDS], i;
+    for (i = 0; i < 0xabc/2; ++i) record[i] = 0xcccc;
+    for (i = 0; i < MT_REPLY_WORDS; ++i) {
+        uint32_t h = (0x1cu + 0x54u*(21u+i/2u)+0x44u+(i&1u)*4u)/2u;
+        record[h] = (uint16_t)(0x1000+i); record[h+1] = (uint16_t)(0x2000+i);
+    }
+    mt_reply_read(record, words);
+    for (i = 0; i < MT_REPLY_WORDS; ++i)
+        CHECK(words[i] == ((0x2000u+i)<<16) + 0x1000u+i);
+    CHECK(record[0] == 0xcccc && record[0xabc/2-1] == 0xcccc);
+    mt_reply_read(0, words);
+    for (i = 0; i < MT_REPLY_WORDS; ++i) CHECK(!words[i]);
+    return 0;
+}
+/* Python supplies the actual SHARC-generated acknowledgement to this target
+ * entry point; this is not a host-model packet in the cross-processor test. */
+uint32_t mi_test_reply_from_dsp(const uint32_t *r)
+{
+    MiLedger m; MiTransport t;
+    uint32_t rev[MI_TRACKS] = {1};
+    uint8_t note[3] = {0x90, 60, 100};
+    mi_init(&m); mt_init(&t);
+    CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
+    mi_message(&m, 0, note, 3);
+    CHECK(mt_prepare(&t, &m, rev, 0)[3] == 1);
+    CHECK(mt_reply_tick(&t, &m, r, 1) == 2 && !m.count);
+    CHECK(t.heartbeat == 42);
+    return 0;
+}
 uint32_t mi_test_config_wire[3 * MT_WORDS];
 uint32_t mi_test_config_transaction(void)
 {

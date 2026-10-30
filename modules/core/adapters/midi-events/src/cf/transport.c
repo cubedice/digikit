@@ -42,7 +42,10 @@ static void fault(MiTransport *t, MiLedger *m)
 {
     uint32_t i;
     if (t->faults != UINT32_MAX) ++t->faults;
-    for (i = 0; i < MI_TRACKS; ++i) mi_reset_track(m, i);
+    for (i = 0; i < MI_TRACKS; ++i) {
+        mi_reset_track(m, i);
+        t->applied[i] = 0;
+    }
     t->pending = 0;
     t->config_active = 0;
 }
@@ -166,4 +169,47 @@ int mt_ack(MiTransport *t, MiLedger *m, uint32_t epoch, uint32_t message)
     }
     t->pending = 0;
     return 1;
+}
+
+void mt_reply_read(const volatile uint16_t *record, uint32_t out[MT_REPLY_WORDS])
+{
+    uint32_t i;
+    for (i = 0; i < MT_REPLY_WORDS; ++i) {
+        uint32_t half = (0x1cu + 0x54u * (21u + i/2u) + 0x44u + (i & 1u)*4u)/2u;
+        out[i] = record ? (uint32_t)record[half] | ((uint32_t)record[half+1] << 16) : 0;
+    }
+}
+
+int mt_reply_tick(MiTransport *t, MiLedger *m,
+                  const uint32_t reply[MT_REPLY_WORDS], uint32_t block)
+{
+    uint32_t i, a = 0, b = 0, valid = reply != 0;
+    int result = 0;
+    if (t->epoch != m->epoch) { mt_init(t); t->epoch = m->epoch; }
+    if (reply) {
+        for (i = 0; i < MT_REPLY_WORDS-1; ++i) {
+            a += reply[i]; b += a;
+            if (i >= 4 && reply[i]) valid = 0;
+        }
+        if (reply[0] != MT_REPLY_MAGIC || reply[1] != m->epoch ||
+            reply[15] != (a ^ b)) valid = 0;
+        if (!valid) result = -1;
+    }
+    if (valid) {
+        uint32_t delta = reply[3] - t->heartbeat;
+        if (t->heartbeat_seen && delta >= 0x80000000u) {
+            /* Reboot/backward heartbeat: ownership is no longer trustworthy. */
+            if (!t->faults) fault(t, m);
+            return -1;
+        }
+        if (!t->heartbeat_seen || delta) {
+            t->heartbeat_seen = 1;
+            t->heartbeat = reply[3];
+            t->heartbeat_block = block;
+            result = mt_ack(t, m, reply[1], reply[2]) ? 2 : 1;
+        }
+    }
+    if (t->heartbeat_seen && block - t->heartbeat_block >= MT_STALL_BLOCKS && !t->faults)
+        fault(t, m);
+    return result;
 }

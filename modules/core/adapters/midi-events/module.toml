@@ -38,7 +38,7 @@ resource = "cf.midi.site.din_rx"
 # receiver, configuration transaction and V2 lifetime consumer are ready.
 [[object]]
 path = "build/midi-packet-dsp.dko.json"
-sources = ["src/dsp/packet.s", "src/dsp/receiver.s", "src/dsp/config.s"]
+sources = ["src/dsp/packet.s", "src/dsp/receiver.s", "src/dsp/config.s", "src/dsp/reply.s"]
 optional = ["_mi_apply_packet", "_mi_config_publish"]
 place = "dsp.l2"
 devices = ["dt2"]

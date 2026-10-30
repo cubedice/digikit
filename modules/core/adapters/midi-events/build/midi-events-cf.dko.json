@@ -81,6 +81,13 @@
   },
   {
    "addend": 0,
+   "offset": 36,
+   "section": ".text.fault",
+   "symbol": "mi_reset_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 92,
    "section": ".text.mt_config_begin",
    "symbol": ".sec..text.mt_init",
@@ -102,28 +109,28 @@
   },
   {
    "addend": 0,
-   "offset": 166,
+   "offset": 162,
    "section": ".text.mt_prepare",
-   "symbol": "mi_reset_track",
+   "symbol": ".sec..text.fault",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 224,
+   "offset": 190,
    "section": ".text.mt_prepare",
-   "symbol": "mi_reset_track",
+   "symbol": ".sec..text.fault",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 448,
+   "offset": 400,
    "section": ".text.mt_prepare",
    "symbol": ".sec..text.mt_check",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 490,
+   "offset": 442,
    "section": ".text.mt_prepare",
    "symbol": "mi_peek",
    "type": "cf.32"
@@ -140,6 +147,34 @@
    "offset": 264,
    "section": ".text.mt_ack",
    "symbol": "mi_ack",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 34,
+   "section": ".text.mt_reply_tick",
+   "symbol": ".sec..text.mt_init",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 160,
+   "section": ".text.mt_reply_tick",
+   "symbol": ".sec..text.fault",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 220,
+   "section": ".text.mt_reply_tick",
+   "symbol": ".sec..text.fault",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 272,
+   "section": ".text.mt_reply_tick",
+   "symbol": ".sec..text.mt_ack",
    "type": "cf.32"
   },
   {
@@ -363,7 +398,14 @@
   },
   {
    "align": 2,
-   "hex": "206f0004428042011181080052800c800000020066f07001214000844e75",
+   "hex": "4feffff072ff48d71c04246f0014202a009cb280670652802540009c47ea01c0428249f9000000002f0252822f2f001c4e94429b508f7010b08266ec42aa008842aa01a04cd71c044fef00104e75",
+   "kind": "text",
+   "name": ".text.fault",
+   "size": 78
+  },
+  {
+   "align": 2,
+   "hex": "206f0004428042011181080052800c800000020c66f07001214000844e75",
    "kind": "text",
    "name": ".text.mt_init",
    "size": 30
@@ -384,10 +426,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56ffb848d71cfc246e000c286e0008202a1318266e0010b0ac008067102f0c4eb900000000296a13180080588f4aaa131067404aac01a067167204b2ac0088660e2f2c01a42f0a4eb900000000508f42ac01a04280242a131041ec01c07201e1a9c2824a81670442b00c0052807e10be8066ea202c00884a80671455804a80670002b64aaa1310670002ae42ac00884aac00846664242c009c4a82662472012941009c47f9000000002f0276102f0a4e935282508fb68266f042ac008842ac01a042aeffe060000286242c009c4a826600027876012943009c2f022f0a41f90000000052824e90508f7010b08266ea42ac008842ac01a06096222a13104a81671c7001c08108010000660000fc52807401e1aac4814a8267f474026038202c009c4aac01a0670000b44a806694202c01a422000681000004c722321c00b2ac01a86600ff7a222c01b8e989b2ac01b4640000bc7403220c204c0681000000804298b28866fa222c00842e012a2a1318528728bc494e01012941000c22000681000004c729450008294700842940008c296e0014001828321c00720229440090b28266702940002029440024428320032d4cffe0e1888082294000042f0c4eb900000000588f2942008829430094296e001400982940001c600001744a806600fee2486effea2f0a4eb900000000508f4a806700fece71aefffd4ab30c006700fec274016000ff5042806000ff0e74046000ff4422025781e2896666294000207e03202c01b42600e58b222c01ac296c01a800242941001429410028222c01b82941002c29430030296c01b00034296c01bc0038be826600ff542601e98b90837610b68064027010ed892940003c43ec004091c8b0886700ff34528822f1186060f247f30c002e00720ae3af2c2effee93c9262a1304294600102953001447ec00202d47ffe4b3c36700ff047e08be89672222097e7fd2aa1300c2877e164c07180041f21800baa80800660873a80813b081670626096000fed6b8a8080c66f42206d289b2a8080466ea26a808082744000473a808117fa80812528947eb000ce989ed8f82877fa8081082877fa8081482aeffe42d41ffdc720ee3af72158eaeffdc2d47ffe07fa80815e3af8eaeffe02747fffc6000ff70202e001490ac00980c80000003836200fd822d4cffe04cee1cfcffb8202effe04e5e4e75",
+   "hex": "4e56ffb848d71cfc246e000c286e0008202a1318266e0010b0ac008067102f0c4eb900000000296a13180080588f4aaa131067404aac01a067167204b2ac0088660e2f2c01a42f0a4eb900000000508f42ac01a04280242a131041ec01c07201e1a9c2824a81670442b00c0052807e10be8066ea202c00884a80671455804a80670002864aaa13106700027e42ac00884aac008466304aac009c660c2f0a2f0c4eb900000000508f42aeffe0600002704aac009c660002642f0a2f0c4eb900000000508f60ca222a13104a81671c7001c081080100006600010052807401e1aac4814a8267f47402603c202c009c4aac01a0670000b84a8066ae202c01a422000681000004c722321c00b2ac01a8670642ac01a06092222c01b8e989b2ac01b4640000bc7403220c204c0681000000804298b28866fa222c008426012a2a1318528328bc494e01012941000c22000681000004c729450008294300842940008c296e0014001828321c00720229440090b28266702940002029440024428320032d4cffe0e1888082294000042f0c4eb900000000588f2942008829430094296e001400982940001c600001744a806600fef8486effea2f0a4eb900000000508f4a806700fee471aefffd4ab30c006700fed874016000ff5042806000ff0a74046000ff4422025781e2896666294000207e03202c01b42600e58b222c01ac296c01a800242941001429410028222c01b82941002c29430030296c01b00034296c01bc0038be826600ff542601e98b90837610b68064027010ed892940003c43ec004091c8b0886700ff34528822f1186060f247f30c002e00720ae3af2c2effee93c9262a1304294600102953001447ec00202d47ffe4b3c36700ff047e08be89672222097e7fd2aa1300c2877e164c07180041f21800baa80800660873a80813b081670626096000fed6b8a8080c66f42206d289b2a8080466ea26a808082744000473a808117fa80812528947eb000ce989ed8f82877fa8081082877fa8081482aeffe42d41ffdc720ee3af72158eaeffdc2d47ffe07fa80815e3af8eaeffe02747fffc6000ff70202e001490ac00980c80000003836200fd982d4cffe04cee1cfcffb8202effe04e5e4e75",
    "kind": "text",
    "name": ".text.mt_prepare",
-   "size": 860
+   "size": 812
   },
   {
    "align": 2,
@@ -395,6 +437,20 @@
    "kind": "text",
    "name": ".text.mt_ack",
    "size": 338
+  },
+  {
+   "align": 2,
+   "hex": "2f02226f00084281206f000c4a8967407001c0812401e28ac4fc00150680000001d1d08271c0e58834310800548002800001fffe75c23031080048404240808221801c0070105281b08166c0241f4e75428060ec",
+   "kind": "text",
+   "name": ".text.mt_reply_read",
+   "size": 84
+  },
+  {
+   "align": 2,
+   "hex": "4fefffec48d71c0c286f001c246f0018266f0020202c1318b0aa008067102f0a4eb900000000256c13180080588f4a8b670000ba327c0001428291c8428120331c00d1c0d4887603b6816504528160ee4a8057c02609528171004480c680700f2243b08166d8263c494ea101b693660a202c1318b0ab00046738367cffff4aaa02006722202f002490aa02080c800000038363124aaa009c660c2f0c2f0a4eb900000000508f200b4cd71c0c4fef00144e752608b782b4ab003c66be4a8967ba4aaa0200672a202b000c90aa02046a184aaa009c660c2f0c2f0a4eb900000000508f367cffff60be4a80660497cb608e700125400200256b000c0204256f002402082f2b00082f2b00042f0c2f0a4eb9000000004fef00102640528b6000ff60",
+   "kind": "text",
+   "name": ".text.mt_reply_tick",
+   "size": 288
   },
   {
    "align": 2,
@@ -432,7 +488,7 @@
    "size": 4956
   }
  ],
- "source_sha256": "6d4d90314a5afc4bd4db2d4a0ca8d993120e3228d6c1da77e915f136950c874b",
+ "source_sha256": "36b19b43b7c47f203e92070622a888ce3de28f3dbac6d97f29cb78934079e2da",
  "symbols": [
   {
    "global": false,
@@ -454,6 +510,12 @@
   },
   {
    "global": false,
+   "name": ".sec..text.fault",
+   "section": ".text.fault",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..text.mi_init",
    "section": ".text.mi_init",
    "value": 0
@@ -462,6 +524,12 @@
    "global": false,
    "name": ".sec..text.mi_reset_track",
    "section": ".text.mi_reset_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.mt_ack",
+   "section": ".text.mt_ack",
    "value": 0
   },
   {
@@ -498,6 +566,12 @@
    "global": false,
    "name": "emit.isra.0",
    "section": ".text.emit.isra.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "fault",
+   "section": ".text.fault",
    "value": 0
   },
   {
@@ -633,6 +707,18 @@
    "value": 0
   },
   {
+   "global": true,
+   "name": "mt_reply_read",
+   "section": ".text.mt_reply_read",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mt_reply_tick",
+   "section": ".text.mt_reply_tick",
+   "value": 0
+  },
+  {
    "global": false,
    "name": "overflow",
    "section": ".text.overflow",
@@ -643,8 +729,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "1222",
-  "isa_check": "cf306ca2ca344b073e5bcee1c8aac60884807a7b056c65cfb294e1e2fda52d39",
+  "instructions_redecoded": "1358",
+  "isa_check": "76fd0cb99470bfa153d92ee948fc0da0455ae3a5356770431bf83ba9dc181fec",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

@@ -19,6 +19,9 @@ mod tests {
         fn mi_test_transport_wire() -> u32;
         fn mi_test_config_transaction() -> u32;
         fn mi_test_config_maximum() -> u32;
+        fn mi_test_reply_ack() -> u32;
+        fn mi_test_reply_watchdog() -> u32;
+        fn mi_test_reply_record() -> u32;
     }
     macro_rules! case {
         ($name:ident, $run:ident) => {
@@ -29,6 +32,12 @@ mod tests {
         };
     }
     case!(repeated_notes_pair_fifo_and_acks_are_idempotent, mi_test_fifo);
+    case!(reply_requires_valid_fresh_identity, mi_test_reply_ack);
+    case!(
+        reply_watchdog_covers_idle_and_counter_wrap,
+        mi_test_reply_watchdog
+    );
+    case!(reply_uses_only_reserved_record_slots, mi_test_reply_record);
     case!(
         configuration_commits_only_after_final_ack,
         mi_test_config_transaction

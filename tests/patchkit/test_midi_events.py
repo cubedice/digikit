@@ -21,6 +21,67 @@ FIRMWARE = ROOT / "firmware/Digitakt_II_OS1.17.syx"
 
 
 @pytest.fixture(scope="module")
+def reply_builder():
+    obj = pk_sharc.assemble((MOD / "src/dsp/reply.s").read_text())
+    sections, address, initial = {}, 0x20020000, {}
+    for name, (blob, align, _) in obj.data.items():
+        address = (address + align - 1) // align * align
+        sections[name] = address
+        initial.update(
+            {
+                address // 4 + i: int.from_bytes(blob[i * 4 : i * 4 + 4], "little")
+                for i in range(len(blob) // 4)
+            }
+        )
+        address += len(blob) + 64
+    symbols = {
+        name: sections[sec] + off for name, (sec, off, _) in obj.data_symbols.items()
+    }
+    epoch_at, message_at = 0x20040000, 0x20040004
+    linked = pk_sharc.link(
+        obj, 0xB90000, {**symbols, "_mi_epoch": epoch_at, "_mi_message": message_at}
+    )
+
+    def build(epoch, message, heartbeat):
+        dm = dict(initial)
+        dm[epoch_at // 4] = epoch
+        dm[message_at // 4] = message
+        dm[symbols["_mi_heartbeat"] // 4] = heartbeat
+        base = symbols["_mi_reply"] // 4
+        dm[base - 1] = dm[base + 16] = 0xDEADBEEF
+        result = pk_sharc.run_call(
+            linked,
+            "_mi_reply_build",
+            regs={"M5": 0, "M6": 1, "L0": 0},
+            dm_words=dm,
+            reads={"reply": (base, 16), "guard": (base - 1, 18)},
+            max_steps=1000,
+        )
+        assert result["halt"]["reason"] == "breakpoint", result
+        assert result["guard"][0] == result["guard"][-1] == 0xDEADBEEF
+        return result["reply"]
+
+    return build
+
+
+@pytest.mark.parametrize(
+    "epoch,message,heartbeat",
+    [(0, 0, 0), (1, 1, 41), (0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF)],
+)
+def test_dsp_reply_contains_only_ack_and_fresh_heartbeat(
+    reply_builder, epoch, message, heartbeat
+):
+    words = reply_builder(epoch, message, heartbeat)
+    assert words[:4] == [0x494EA101, epoch, message, (heartbeat + 1) & 0xFFFFFFFF]
+    assert words[4:15] == [0] * 11
+    a = b = 0
+    for word in words[:15]:
+        a = (a + word) & 0xFFFFFFFF
+        b = (b + a) & 0xFFFFFFFF
+    assert words[15] == a ^ b
+
+
+@pytest.fixture(scope="module")
 def packet_validator():
     obj = pk_sharc.assemble((MOD / "src/dsp/packet.s").read_text())
     return pk_sharc.link(obj, 0xB90000, {})
@@ -590,7 +651,7 @@ def test_din_hook_resolves_uniquely_on_pinned_image():
 
 
 def test_ownership_and_dispatch_on_coldfire(
-    tmp_path, packet_validator, config_receiver
+    tmp_path, packet_validator, config_receiver, reply_builder
 ):
     runner = Path(
         os.environ.get("DIGIKIT_CF_SCRIPT", ROOT / "target/release/examples/cf_script")
@@ -643,6 +704,9 @@ void *memset(void *d, int c, unsigned n) {
         "transport_wire",
         "config_transaction",
         "config_maximum",
+        "reply_ack",
+        "reply_watchdog",
+        "reply_record",
     ]
     script = tmp_path / "calls.json"
     script.write_text(
@@ -675,6 +739,20 @@ void *memset(void *d, int c, unsigned n) {
                     "len": 384,
                     "tag": "config_wire",
                 },
+                {
+                    "op": "poke",
+                    "addr": 0x47D00000,
+                    "hex": b"".join(
+                        w.to_bytes(4, "big") for w in reply_builder(1, 1, 41)
+                    ).hex(),
+                },
+                {
+                    "op": "call",
+                    "tag": "reply_cross",
+                    "pc": linked.symbols["mi_test_reply_from_dsp"],
+                    "args": [0x47D00000],
+                    "max": 5_000_000,
+                },
             ]
         )
     )
@@ -690,7 +768,7 @@ void *memset(void *d, int c, unsigned n) {
         json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")
     ]
     calls = [row for row in rows if row.get("op") == "call"]
-    assert [row["tag"] for row in calls] == names
+    assert [row["tag"] for row in calls] == names + ["reply_cross"]
     for row in calls:
         assert row["ok"] and not row["error"] and row["d0"] == 0, row
     wire = bytes.fromhex(next(row["hex"] for row in rows if row.get("tag") == "wire"))

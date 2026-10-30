@@ -68,9 +68,35 @@ Those integration callbacks are not implemented yet. Tests use a publisher fixtu
 to verify that only a complete valid commit changes its bank; they also execute
 actual CF-generated chunk/commit packets on the SHARC staging code.
 
+## Reply and heartbeat components
+
+`src/dsp/reply.s` builds a bootstrap ACK-only reply once per requested tick:
+magic/version `0x494ea101`, accepted stream epoch, accepted message sequence,
+wrapping block heartbeat, eleven zero reserved words and a checksum. The checksum
+uses wrapping Fletcher sums over words 0-14; magic is published last. This internal
+format is separate from the final twelve-word CANOPY status payload, which will
+require a new reply version. The helper's `_mi_reply` buffer is not yet exported
+as DSP-link's `_instrument_reply`, so it does not activate a half-wired channel.
+
+`mt_reply_read` reconstructs words from the reserved DTII reply rows 21-28,
+including the low-halfword-first wire order. `mt_reply_tick` validates the entire
+reply before ACK handling, rejects other epochs, and only accepts an ACK with a
+fresh heartbeat. A repeated reply cannot retire a later packet. After the first
+valid epoch-bound reply, 900 CF blocks without heartbeat progress reset ownership,
+disable routes and clear applied revisions even when the event queue is idle.
+Malformed or missing replies do not refresh that deadline. Backward heartbeat
+movement (half-range serial arithmetic) immediately faults the stream; natural
+counter wrap is supported. Recovery remains explicit and advances the epoch.
+The future readiness provider must require a healthy, acknowledged instance; an
+unobserved heartbeat is not readiness.
+
+Tests execute the SHARC reply writer and feed its actual output into the ColdFire
+ACK code. They cover checksum corruption, reserved fields, epoch mismatch,
+replayed replies, heartbeat/CF-clock wrap, idle timeout and record-slot decoding.
+
 These components are built but deliberately **not hooked into the live stream**.
-The V2 consumer/schema publisher, reply framing/heartbeat, and composed early-block
-hook remain to be implemented. The current module still
+The V2 consumer/schema publisher and composed frame hooks remain to be implemented.
+The current module still
 does not claim keyboard routes. Target tests feed actual ColdFire-produced reset
 and eight-note packets to the SHARC validator, and exercise receiver retries,
 gaps, reset preemption, consumer rejection and stale epochs. They do not establish
