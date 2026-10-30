@@ -1157,6 +1157,11 @@ mod tests {
         assert_eq!(record.key, section.instruments[0].type_no);
         assert_eq!((record.reset_offset, record.process_offset), (0, 6));
         assert_eq!(record.descriptor.allocation_bytes, 528);
+        let checked =
+            dkrt_sdk::instrument_section::Section::parse(&bytes, 1, FORMAT_LIMITS).unwrap();
+        assert_eq!(checked.records()[0].unwrap(), record);
+        assert_eq!(checked.memory_request().state_bytes, 528);
+        assert_eq!(checked.memory_request().bss_bytes, section.bss);
         assert_eq!(
             section.range_len(),
             (section.image.len() as u32 + 64 + 2 * 264).div_ceil(64) * 64

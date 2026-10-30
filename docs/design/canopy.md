@@ -547,6 +547,26 @@ Live loader calls, row publication, SPI integration and device proof remain open
 Focused docs and layering checks pass; the changed-file check fails only on the
 existing 256 stale references in 78 files (`out/canopy-packed-changed.log`).
 
+A bounded no-std whole-section DKDS6 reader now validates the canonical header,
+device, table order/counts, zero padding, exact image extent, imports and relocation
+metadata before exposing slices. It checks nonempty NUL-padded unique import
+names, relocation kinds/classes/import indices and text-range containment, then
+uses shared descriptor/range decoding. Image/BSS/state sizing is checked before
+returning a memory request and a view suitable for packed admission. The reader
+accepts instrument-only sections; mixed V1 voice/effect loads are rejected until
+their coordinated lifecycle is implemented. Legacy loading remains separate.
+Validation: 35 SDK tests, real packed-file compatibility and the runtime host
+check pass (`out/canopy-section-sdk.log`, `out/canopy-section-packer.log`,
+`out/canopy-section-runtime.log`). Tests cover parsing through reservation and row
+planning, every truncation, byte mutations, aliases, invalid counts, import and
+relocation errors, and trailing data. This establishes format validation, not
+actual import resolution, relocation results, instruction boundaries, row writes
+or transport readiness; live loader integration and device proof remain open.
+The three parser cases pass again after final source-encoding cleanup
+(`out/canopy-section-final.log`). Focused documentation and layering checks pass;
+the changed-file check fails only on the existing 256 stale references in 78 files
+(`out/canopy-section-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

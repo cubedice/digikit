@@ -212,7 +212,7 @@ V5 extends the header from 0x40 to 0x50 bytes: u32 instrument table offset at
 The existing voice and effect records retain their V4 layouts. Tables appear in
 canonical order: header, imports, relocations, voices, effects, instruments,
 zero padding to 16 bytes, image. The host parser rejects other layouts, trailing
-bytes, overlapping tables and nonzero reserved bytes. V1â€“V4 output is unchanged.
+bytes, overlapping tables and nonzero reserved bytes. V1-V4 output is unchanged.
 
 V6 retains the 0x50-byte header and uses 0x48/0x4c for an executable-range table
 offset and count (1..32). This table follows the instrument records, before the
@@ -247,6 +247,14 @@ structure and table bounds, but does not check signatures, imports, relocation
 contents or device-specific cycle/stack admission limits. It is not a load check.
 The normal `needs_of` entry point still rejects V5/V6, keeping the scan/fit ABI and
 capacity protocol unchanged until V2 registry integration is complete.
+
+The SDK's `instrument_section::Section` reader validates a complete DKDS6
+instrument-only section without allocation and returns bounded slices and memory
+requirements for admission. It checks canonical layout, padding, import names,
+relocation fields and text containment in addition to descriptors. Mixed legacy
+voice/effect sections are rejected by this reader pending coordinated lifecycle
+support. This reader is not yet called by the live loader and does not resolve
+imports, apply relocations, publish rows or enable a V2 device capability.
 
 The internal V2 registry reserves all types of a module in one transaction.
 Publication requires completion of DSP initialization; retirement hides the rows

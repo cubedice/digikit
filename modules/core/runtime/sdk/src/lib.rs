@@ -16,6 +16,8 @@ pub mod instrument_load;
 pub mod instrument_mailbox;
 /// Shared bounded V2 descriptor and record decoding; no loading capability.
 pub mod instrument_descriptor;
+/// Bounded DKDS6 instrument-only section validation.
+pub mod instrument_section;
 /// Experimental validation/planning of allocator-owned V2 row metadata.
 pub mod instrument_admission;
 
