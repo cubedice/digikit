@@ -425,3 +425,53 @@ in 78 files; devtools verification has one `patch:toolchains` routing assertion
 and four missing `dn2-1.11.sqlite` failures (222 tests pass). Host checks first
 passed 193/193 (16 skipped); the repeat had one unrelated firmware-pause timing
 failure (12 ms), with 192 passing. No firmware is approved for flashing here.
+
+
+**[D] Booted carrier and final PCM (2026-10-30):** The separate emulator-only
+`test/canopy-carrier` fixture links the existing workspace, envelope and velocity
+interposers, frame expiry, CANOPY pre-render ownership and raw renderer. Its raw
+registry row shadows stock WERP type 1 only in this fixture. The Vitest
+`canopy-carrier` project selects WERP through FUNC+SRC, DOWN and two YES presses,
+then auditions TRIG 1 once. Selection alone left the DSP type cache at zero in
+this run; the audition initialized it to 1. This explicit primer is a remaining
+V2 initialization gap, not a release requirement to impose on keyboard players.
+Registry type zero cannot select a renderer: it terminates the raw voice table.
+
+After that setup, USB C/E and DIN G reach the real lifecycle callbacks. Oscillator
+state advances; releasing C retires only C, releasing E (velocity-zero note-on)
+retires only E while G remains held, and releasing G empties the foreground bank
+and returns carrier ACTIVE to zero. No further stock audition occurs. Transport
+and guest fault checks pass. The test allows up to 60 wall-clock seconds for each
+one-second DSP release, because this coupled run is slower than real time; no
+hardware performance claim follows.
+
+During E's release with G held, the final PCM tap produced 96,640 scalar stereo
+samples (1.0067 seconds), all nonzero and finite, peak 0.0914142 and RMS 0.0405009.
+This is the first booted MIDI-to-renderer-to-final-output result, beyond the earlier
+component gain/envelope proofs. It does not yet prove spectral/phase continuity,
+pedal behavior, final silence, arbitrary Sounds, pan/mute/filter/FX controls or
+hardware timing. The bounded live test passes (about 133 seconds); 83 targeted
+carrier/layer tests also pass.
+
+Carrier transition history and published pairs now use loaded `.PKDATA` rather
+than unloaded `.PKBSS`, matching the bank initialization correction above. The
+normal MIDI adapter still does not install these carrier hooks. The fixture has
+narrow, path-and-ID-bound layer exceptions for its specific source includes,
+private imports and three firmware continuations; unrelated anchors remain denied.
+
+A sample-card variant lost its acknowledged configuration after admission, before
+note testing. The passing proof uses the isolated synth boot without sample-card
+loading. Boot/load watchdog recovery and coexistence remain open. This fixture
+must not be flashed: it replaces a stock renderer, has no public V2 descriptor,
+and does not resolve the previously documented firmware-preflight data scan issue.
+
+Carrier checkpoint validation: the live carrier test passes; targeted
+carrier/layer tests pass 83/83 and conformance-routing/layer tests pass 30/30
+(overlapping layer cases). The required changed-file check passes 193 host tests
+(16 skipped), 44 routing tests, 21 layer tests, lint, formatting and typing.
+It remains red only for the existing 256 stale paths and five devtools verification
+failures described above; 222 other verification tests pass. Changed-document
+references are clean. The raw-row integration fixture is excluded by exact ID,
+path and framework type from the standalone V1 machine rig: it has no V1 note-on
+or parameter contract, and its booted Vitest project supplies the required live
+lifecycle state. Ordinary raw machines retain their existing conformance checks.

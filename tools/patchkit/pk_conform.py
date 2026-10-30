@@ -288,6 +288,17 @@ def spec(mid: str, device: str) -> MachineSpec | None:
         )
     moddir = modroots.module_dir(mid)
     man = _manifest(moddir)
+    # This booted integration fixture shadows a stock row to exercise the MIDI
+    # lifecycle owned by another module. It has no V1 note-on/parameter contract
+    # for the standalone machine rig; tests/regression's canopy-carrier project
+    # owns its acceptance. Do not exempt ordinary raw machines or other fixtures.
+    if (
+        mid == "test/canopy-carrier"
+        and moddir.resolve()
+        == (ROOT / "tests/fixtures/modules/canopy-carrier").resolve()
+        and man.get("module", {}).get("type") == "framework"
+    ):
+        return None
     ports = man.get("module", {}).get("ports", [])
     if ports and not any(p.split("-")[0] == device for p in ports):
         return None

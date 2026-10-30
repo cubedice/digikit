@@ -128,3 +128,12 @@ fixture installs no renderer and proves no audio. Its preflight currently flags
 tuning-table data as instructions; it must not be flashed. See the
 [carrier findings](../../../docs/findings/78-canopy-carrier.md) and
 [regression commands](../../../tests/regression/README.md).
+
+The separate `test/canopy-carrier` fixture now exercises the raw renderer and
+carrier hooks in booted DT2 firmware. Its USB/DIN chord produces finite, nonzero
+final PCM; individual releases retire their own voices and the final release
+returns the carrier to idle. It currently shadows stock WERP and needs one stock
+audition to initialize the DSP selector. This is an emulator proof, not a DKM or
+a supported keyboard workflow. V2 initialization without that primer, broader
+Sound/control behavior and final-output continuity tests remain open. See the
+[carrier findings](../../../docs/findings/78-canopy-carrier.md) for measured results.

@@ -13,6 +13,7 @@ time (the stock project may run files in parallel, `REGRESSION_JOBS`, set by the
 | `scenarios/` | `fx-dn2`, `fx-dt2` | Stock FX oracles (see [scenarios/README.md](scenarios/README.md)) |
 | `emulator/` | device | Emulator checks that belong to no module: stock-firmware reply record, SHARC instruction semantics |
 | `runtime/` | none | Helpers only (daemon, card, UI and module-install kits) |
+| `runtime/canopy-carrier.test.ts` | `canopy-carrier` | Emulator-only renderer, independent release and final PCM after stock audition setup |
 | `runtime/canopy-transport.test.ts` | `canopy-transport` | Emulator-only CANOPY MIDI/reset/configuration/event ACKs with real DSP |
 | `runtime/overloop-display.test.ts` | `overloop` | Experimental DT2 Overloop display, capture and live playback window |
 | `host/` | none (root `regression-host`) | Mocked helper tests, no daemon or firmware |
@@ -187,3 +188,25 @@ machine descriptor is installed. It is excluded from the normal runtime suite.
 This image is emulator-only: current firmware preflight reports two tuning-table
 data values as instructions. Keep the preflight failure visible; do not flash or
 bypass it. Details are in the [carrier findings](../../docs/findings/78-canopy-carrier.md).
+
+## CANOPY carrier proof
+
+This separate emulator fixture requires the same DT2 daemon and stock ready inputs
+as the transport proof. It deliberately replaces stock WERP's raw renderer and
+must not be flashed. Prepare explicitly:
+
+```sh
+uv run python -m tools.patchkit.patchkit build test/canopy-carrier
+uv run python -m tools.patchkit.patchkit patch --firmware firmware/Digitakt_II_OS1.17.syx --modules test/canopy-carrier -o out/patch/canopy-live-carrier.syx --plan out/patch/canopy-live-carrier.plan.json
+DIGI_EMUD_DT2=PATH_TO_DAEMON pnpm --filter @digi/regression exec vitest run --project canopy-carrier
+```
+
+The test cold-boots without a sample card, waits for real DSP admission, selects
+WERP with the panel controls and auditions TRIG 1 once to initialize the stock
+selector. Subsequent USB/DIN keys exercise independent rendering and full release
+tails. Final PCM must contain finite nonzero samples while G remains held through
+E's release, and the final key release must retire the carrier. The test has a
+four-minute ceiling for the slower-than-real-time coupled engine. UI frames and
+PCM statistics remain under `out/`. No spectral continuity or hardware claim is
+made. Preflight and public V2 initialization remain blocked as described in the
+[carrier findings](../../docs/findings/78-canopy-carrier.md).

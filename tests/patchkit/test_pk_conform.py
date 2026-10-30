@@ -8,6 +8,11 @@ from tools.patchkit import pk_conform as c
 from tools.patchkit import pk_device
 
 
+def test_booted_carrier_fixture_is_not_a_standalone_v1_machine():
+    assert c.spec("test/canopy-carrier", "dt2") is None
+    assert not c.is_machine_module("test/canopy-carrier")
+
+
 def test_machine_parameters_come_from_the_manifest_and_the_device_frame():
     dt2 = c.spec("test/sine", "dt2")
     dn2 = c.spec("test/sine", "dn2")

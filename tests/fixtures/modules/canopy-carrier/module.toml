@@ -1,0 +1,47 @@
+[module]
+id = "test/canopy-carrier"
+version = "0.1.0"
+name = "CANOPY carrier proof"
+category = "test"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Emulator-only raw renderer and carrier integration; replaces stock type 1 in this fixture."
+requires = ["test/canopy-transport", "core/dsp-voice"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/carrier-dsp.dko.json"
+sources = ["src/dsp/carrier.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+
+[object.externs]
+_mi_workspace_next = "dsp.voice.site.envelope_workspace.next"
+_mi_envelope_next = "dsp.voice.site.envelope_entry.next"
+_mi_velocity_next = "dsp.voice.site.velocity_operand.next"
+
+[[entry]]
+registry = "voices"
+id = "canopy_proof"
+type = "1"
+pc = "_cp_voice_render"
+
+[[op]]
+op = "hook"
+hook = "dsp.voice.hook.envelope_workspace"
+to = "_mi_workspace_entry"
+
+[[op]]
+op = "hook"
+hook = "dsp.voice.hook.envelope_entry"
+to = "_mi_envelope_entry"
+
+[[op]]
+op = "hook"
+hook = "dsp.voice.hook.velocity_operand"
+to = "_mi_velocity_entry"

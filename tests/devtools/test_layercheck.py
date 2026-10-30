@@ -388,3 +388,26 @@ def test_canopy_fixture_exception_is_narrow(
     assert len(objects) == (1 if allowed else 2)
     assert any("other.h" in v.message for v in sources)
     assert any("_unrelated_private" in v.message for v in objects)
+
+
+def test_carrier_fixture_does_not_allow_other_firmware_anchors(tree: Path) -> None:
+    directory = "tests/fixtures/modules/canopy-carrier"
+    module(
+        tree,
+        directory,
+        "test/canopy-carrier",
+        "test",
+        None,
+        '\n[[object]]\npath = "build/proof.dko.json"\nplace = "dsp.l2"\n'
+        '[object.externs]\n_mi_envelope_next = "dsp.voice.site.envelope_entry.next"\n'
+        '_mi_workspace_next = "dsp.unrelated.site.next"\n',
+    )
+    dko(
+        tree,
+        "out/cache/dko/test/canopy-carrier/build/proof.dko.json",
+        ["_cp_ready", "_mi_envelope_next", "_unrelated_private"],
+    )
+    found = layercheck.check(tree)
+    assert len(found) == 2
+    assert any("dsp.unrelated.site.next" in v.message for v in found)
+    assert any("_unrelated_private" in v.message for v in found)

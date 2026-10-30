@@ -88,6 +88,41 @@ def canopy_fixture(root: Path, m: Module) -> bool:
     return m.id == "test/canopy-transport" and rel(root, m.dir) == CANOPY_FIXTURE
 
 
+# The separate carrier fixture installs only the three investigated DSP hooks.
+# These rights do not apply to CANOPY's production module or other test modules.
+CARRIER_INCLUDES = {
+    f"modules/core/adapters/midi-events/src/dsp/{name}.s"
+    for name in (
+        "carrier",
+        "carrier-frame",
+        "envelope",
+        "workspace",
+        "velocity",
+        "velocity-entry",
+    )
+} | {
+    "modules/machines/canopy/src/dsp/render.s",
+    "modules/machines/canopy/src/dsp/carrier-prepare.s",
+}
+CARRIER_EXTERNS = {
+    "_mi_workspace_next": "dsp.voice.site.envelope_workspace.next",
+    "_mi_envelope_next": "dsp.voice.site.envelope_entry.next",
+    "_mi_velocity_next": "dsp.voice.site.velocity_operand.next",
+}
+CARRIER_IMPORTS = {
+    "_cp_render_track",
+    "_cp_ready",
+    "_cp_banks",
+} | CARRIER_EXTERNS.keys()
+
+
+def carrier_fixture(root: Path, m: Module) -> bool:
+    return (
+        m.id == "test/canopy-carrier"
+        and rel(root, m.dir) == "tests/fixtures/modules/canopy-carrier"
+    )
+
+
 # Headers of the core layers an app may include.
 APP_HEADERS = {"dkrt.h", "dk_ui_core.h"}
 ANCHOR = re.compile(r"^(cf|dsp|hook|pk)\.")
@@ -306,6 +341,11 @@ def check_sources(root: Path, mods: list[Module]) -> list[Violation]:
                     and rel(root.resolve(), target) in CANOPY_INCLUDES
                 ):
                     continue
+                if (
+                    carrier_fixture(root, m)
+                    and rel(root.resolve(), target) in CARRIER_INCLUDES
+                ):
+                    continue
                 base = Path(name).name
                 if any(d in target.parents for d in fw_dirs):
                     out.append(
@@ -419,6 +459,8 @@ def check_objects(root: Path, mods: list[Module]) -> list[Violation]:
         mrel = rel(root, m.dir)
         for obj in m.manifest.get("object", []):
             for sym, anchor in (obj.get("externs") or {}).items():
+                if carrier_fixture(root, m) and CARRIER_EXTERNS.get(sym) == anchor:
+                    continue
                 out.append(
                     Violation(
                         f"{mrel}/module.toml:{line_of(m.text, sym)}",
@@ -442,6 +484,7 @@ def check_objects(root: Path, mods: list[Module]) -> list[Violation]:
                     name in imports
                     or name in sdk_externs
                     or (canopy_fixture(root, m) and name in CANOPY_IMPORTS)
+                    or (carrier_fixture(root, m) and name in CARRIER_IMPORTS)
                     or name.startswith(("dkrt_", "dk_ui_", "dk_app_", "dkm_"))
                 )
                 if ANCHOR.match(name) or not ok:

@@ -115,5 +115,5 @@ _mi_carrier_unowned:
     RTS;
 
 .SECTION/DM seg_dmda;
-.PKBSS _mi_carrier_active, 64;
-.PKBSS _mi_carrier_pairs, 192;
+.PKDATA _mi_carrier_active, 64;
+.PKDATA _mi_carrier_pairs, 192;

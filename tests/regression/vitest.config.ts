@@ -81,7 +81,11 @@ export default defineConfig({
         test: {
           name: 'proofs',
           include: ['runtime/**/*.test.ts'],
-          exclude: ['runtime/overloop-display.test.ts', 'runtime/canopy-transport.test.ts'],
+          exclude: [
+            'runtime/overloop-display.test.ts',
+            'runtime/canopy-transport.test.ts',
+            'runtime/canopy-carrier.test.ts',
+          ],
           pool: 'forks',
           testTimeout: 300_000,
           hookTimeout: 150_000,
@@ -89,6 +93,16 @@ export default defineConfig({
       },
       {
         extends: true,
+        test: {
+          name: 'canopy-carrier',
+          include: ['runtime/canopy-carrier.test.ts'],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 120_000,
+          hookTimeout: 150_000,
+        },
+      },
+      {
         test: {
           name: 'canopy-transport',
           include: ['runtime/canopy-transport.test.ts'],
