@@ -86,6 +86,13 @@ and shared release occur on the following empty block. These sources are still
 uninstalled. Connected tests now execute the workspace capture shim with a
 synthetic workspace pointer instead of writing the envelope-record base directly.
 
+The firmware carrier probe also connects the kernel and render publication to
+the actual stock envelope in one execution core. Its bounded C/E/G scenario
+checks independent release, low-then-high velocity, unchanged held audio through
+AMP, and reset retirement. Stock configuration is loaded by the original DSP
+caller from synthetic sustained settings. It still bypasses live MIDI ingress,
+instance admission and the final filter/mixer path.
+
 These checks do not establish stock AMP lifetime, final track output, MIDI latency
 or device performance. The current V1 contract path skips inactive stock voices
 and clears configured state at stock note-on. The raw path avoids that contract

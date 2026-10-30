@@ -21,6 +21,13 @@ bank; the firmware probe checks it against the stock computation and relocation.
 Normal hook installation, shared envelope configuration and final mixer proof
 remain open; this checkpoint does not provide a playable machine or enable routes.
 
+The firmware probe now uses the original DSP configuration caller and executes a
+connected C/E/G note-and-release scenario through the real stock envelope in one
+memory image. This closes the component gap between synthesized audio and AMP,
+while live configuration delivery, neutral downstream velocity and final mixer
+output remain required. Stock AMP remains a master shape; sustained proof settings
+do not change the release design's treatment of user AMP controls.
+
 - Ship a DTII-only experimental module, proposed ID `digikit/canopy`, with an explicitly required new runtime capability. Keep existing V1 machines compatible.
 - Support four foreground pad notes. Additional fixed slots handle one arp note and two shared release tails. Voice count never grows with release time.
 - Use internal envelopes and velocity for individual notes. Retain the stock filter, level, pan, mute and FX routing. Treat the stock AMP envelope as a shared master shape, subject to the lifecycle proof below.

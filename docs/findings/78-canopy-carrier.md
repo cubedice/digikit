@@ -142,7 +142,28 @@ the local ColdFire analysis database, so only these DSP sites were resolved with
 the standard resolver and rendered into the existing port; all existing anchors
 were preserved. Booted dispatcher execution remains unproved.
 
-Resolve normal envelope configuration and both flag writers before adding
+**[D] Stock configuration caller and musical chain:** The probe now enters the
+original argument loader at `0x1c6a0a`, calls stock configuration at `0x1c6a1e`,
+and stops after its caller restores the argument stack at `0x1c6a28`. Its
+synthetic I5-relative inputs are mode at -7, attack -6, hold -5, decay -4,
+sustain -3, release -2 and the final flag -1 (normal-word offsets). R6/R7 carry
+the last two values already loaded before this snippet. Sustained proof settings
+remain mode 1 and normalized 0/1/0/1/0, flag 0. This maps the DSP caller, not the
+CF parameter writer or front-panel knob values. The implementation preserves
+stock AMP as a master shape, as specified; it does not force all Sounds to sustain.
+
+A new 260-block musical scenario executes the production sine kernel, render
+publisher, frame expiry and patched stock envelope in one core and memory image.
+It plays low-velocity C and E, adds high-velocity G, releases E, waits for E's
+local tail, then invokes the production reset ramp. It checks independent tokens
+and gains, finite nonzero post-envelope audio, exact sample equality across held
+envelope blocks, a continuously advancing hold counter, and one shared release
+only after the last audio block. Unlike the older constant-input policy scenario,
+this path does not copy flags between processor instances. It directly invokes
+note callbacks and marks the proof instance configured; live MIDI, registration,
+the frame scheduler and downstream gain/filter/mixer are not included.
+
+Resolve live configuration delivery and both flag writers before adding
 the hook to the production manifest. Use idle-to-active to start the envelope once; avoid
 rearming it for subsequent keys. Retain the carrier through local release tails
 and pending onsets, then retire both stereo voices on QUIET. Prove neutral shared
