@@ -114,7 +114,7 @@ impl Registry {
     /// Reserve an entire module or change nothing. One outstanding transaction per
     /// module slot; all requested types remain invisible until `publish`.
     pub fn reserve(&mut self, owner: u32, requests: &[Request]) -> Result<Ticket, Error> {
-        if requests.is_empty() || requests.len() > MAX_ROWS {
+        if owner >= 32 || requests.is_empty() || requests.len() > MAX_ROWS {
             return Err(Error::Invalid);
         }
         let mut tracks = 0;
@@ -172,6 +172,24 @@ impl Registry {
         }
         self.last_generation = generation;
         Ok(ticket)
+    }
+
+    /// Physical row identities for one reservation, including retiring rows.
+    pub(crate) fn row_mask(&self, ticket: Ticket) -> Result<u32, Error> {
+        let mut mask = 0;
+        for (index, row) in self.rows.iter().enumerate() {
+            if row.phase != FREE
+                && row.entry.owner == ticket.owner
+                && row.entry.generation == ticket.generation
+            {
+                mask |= 1 << index;
+            }
+        }
+        if mask == 0 {
+            Err(Error::StaleTicket)
+        } else {
+            Ok(mask)
+        }
     }
 
     /// Called after code, state and DSP rows have been acknowledged as initialized.

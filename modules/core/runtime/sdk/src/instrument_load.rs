@@ -140,6 +140,25 @@ impl Loads {
         Ok(Command::Release(ticket))
     }
 
+    /// Bind a mailbox transaction to the current phase and exact physical rows.
+    pub(crate) fn command_rows(&self, command: Command) -> Result<u32, Error> {
+        let ticket = match command {
+            Command::Initialize(ticket) => {
+                self.at(ticket, INITIALIZE)?;
+                ticket
+            }
+            Command::Detach(ticket) => {
+                let (_, phase) = self.find(ticket)?;
+                if phase != DETACH && phase != QUARANTINED {
+                    return Err(Error::WrongPhase);
+                }
+                ticket
+            }
+            _ => return Err(Error::WrongPhase),
+        };
+        self.registry.row_mask(ticket)
+    }
+
     fn find(&self, ticket: Ticket) -> Result<(usize, u32), Error> {
         for (i, p) in self.pending.iter().enumerate() {
             if let Some(p) = p {

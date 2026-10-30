@@ -59,3 +59,24 @@ Processor-component checks live in `tests/patchkit/test_instrument_registry.py`.
 The composed-frame tests in `tests/patchkit/test_midi_events.py` exercise the
 provider alongside the carrier and verify register preservation. These are
 emulator checks; no hardware acceptance is claimed.
+
+## Loader transaction client
+
+The internal no-std `instrument_mailbox` SDK component serializes a whole loader
+reservation into per-row commands. It obtains physical row identities from the
+registry, including holes left by prior unloads. Clear, body and commit writes
+require their own sequence/stage-matched transport acknowledgements. The caller
+must drain earlier writes before starting a transaction or abandoning one.
+
+The client verifies the full outer checksum and all five echoed identifiers.
+It waits for every row before invoking the loader's publish/release transition.
+Timeout or partial rejection retains the whole reservation for a fresh detach;
+sequence numbers survive recovery and never wrap. A cancellation prevents any
+further row from being scheduled after its pending reply arrives.
+
+Reserved future capability bits are bit 0 for reset completion support and bit 1
+for detachment support. A successful lifecycle reply must include its respective
+bit. The bootstrap provider sets neither and rejects lifecycle commands, so it
+cannot complete these transactions. Successful lifecycle tests use synthetic
+replies. Reset payloads, callbacks, dispatch and live SPI scheduling remain open;
+this client does not enable V2 admission.

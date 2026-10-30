@@ -1,0 +1,234 @@
+use super::*;
+use crate::instrument_registry::Request;
+
+fn reserve(loads: &mut Loads, owner: u32, types: &[u32]) -> Ticket {
+    let mut requests = [Request {
+        type_no: 0,
+        tracks: 2,
+    }; 8];
+    for (i, type_no) in types.iter().enumerate() {
+        requests[i].type_no = *type_no;
+    }
+    loads.reserve(owner, &requests[..types.len()]).unwrap()
+}
+
+fn initialize(loads: &mut Loads, ticket: Ticket) -> Command {
+    loads.start(ticket).unwrap();
+    loads.image_acked(ticket).unwrap()
+}
+
+fn checksum(reply: &mut [u32; 16]) {
+    let (mut a, mut b) = (0u32, 0u32);
+    for word in &reply[..15] {
+        a = a.wrapping_add(*word);
+        b = b.wrapping_add(a);
+    }
+    reply[15] = a ^ b;
+}
+
+fn response(mailbox: &Mailbox, status: u32, capabilities: u32) -> [u32; 16] {
+    let p = mailbox.pending.unwrap();
+    let mut words = [0; 16];
+    words[0] = 0x494ea101;
+    words[4..12].copy_from_slice(&[
+        0x49525231,
+        p.sequence,
+        p.ticket.owner(),
+        p.ticket.generation(),
+        p.operation,
+        p.row,
+        status,
+        capabilities,
+    ]);
+    checksum(&mut words);
+    words
+}
+
+fn transfer(mailbox: &mut Mailbox) -> [u32; 16] {
+    let mut destination = [u32::MAX; 16];
+    for stage in [CLEAR, BODY, COMMIT] {
+        let write = mailbox.write().unwrap();
+        assert_eq!(write.stage, stage);
+        assert_eq!(mailbox.write(), Some(write)); // retry is byte-identical
+        destination[write.offset as usize..write.offset as usize + write.count]
+            .copy_from_slice(&write.words[..write.count]);
+        if stage != COMMIT {
+            assert_eq!(destination[0], 0);
+        }
+        mailbox.write_acked(write.sequence, write.stage).unwrap();
+        assert_eq!(
+            mailbox.write_acked(write.sequence, write.stage),
+            Err(Error::WrongTransfer)
+        );
+    }
+    assert_eq!(destination.iter().fold(0, |a, b| a ^ b), 0);
+    assert_eq!(mailbox.write(), None);
+    destination
+}
+
+#[test]
+fn every_noncontiguous_row_must_complete_before_publish_or_release() {
+    let mut loads = Loads::new(32);
+    let hole = reserve(&mut loads, 1, &[16]);
+    let other = reserve(&mut loads, 2, &[17]);
+    loads.cancel(hole).unwrap();
+    let ticket = reserve(&mut loads, 3, &[18, 19]); // physical rows 0 and 2
+    let mut mailbox = Mailbox::new();
+    let command = initialize(&mut loads, ticket);
+    mailbox.begin(command, &loads, true).unwrap();
+    assert_eq!(transfer(&mut mailbox)[6], 0);
+    let old = response(&mailbox, 0, 1);
+    assert_eq!(mailbox.reply(&old, &mut loads), Ok(None));
+    assert_eq!(loads.lookup(18), None);
+    assert_eq!(transfer(&mut mailbox)[6], 2);
+    assert_eq!(mailbox.reply(&old, &mut loads), Err(Error::MismatchedReply));
+    let reply = response(&mailbox, 0, 1);
+    assert_eq!(
+        mailbox.reply(&reply, &mut loads),
+        Ok(Some(Command::Publish(ticket)))
+    );
+    assert_eq!(loads.lookup(19).unwrap().owner, 3);
+    let detach = loads.cancel(ticket).unwrap();
+    mailbox.begin(detach, &loads, true).unwrap();
+    transfer(&mut mailbox);
+    let reply = response(&mailbox, 0, 2);
+    assert_eq!(mailbox.reply(&reply, &mut loads), Ok(None));
+    assert_eq!(loads.capacity().rows_used, 3);
+    transfer(&mut mailbox);
+    let reply = response(&mailbox, 0, 2);
+    assert_eq!(
+        mailbox.reply(&reply, &mut loads),
+        Ok(Some(Command::Release(ticket)))
+    );
+    assert_eq!(loads.capacity().rows_used, 1);
+    assert_eq!(loads.cancel(other), Ok(Command::Release(other)));
+}
+
+#[test]
+fn malformed_mismatched_and_bootstrap_replies_cannot_publish() {
+    let mut loads = Loads::new(16);
+    let ticket = reserve(&mut loads, 0, &[17]);
+    let mut mailbox = Mailbox::new();
+    let command = initialize(&mut loads, ticket);
+    mailbox.begin(command, &loads, true).unwrap();
+    let reply = response(&mailbox, 0, 1);
+    assert_eq!(mailbox.reply(&reply, &mut loads), Err(Error::WrongTransfer));
+    transfer(&mut mailbox);
+    for index in [0, 4, 5, 6, 7, 8, 9, 15] {
+        let mut bad = reply;
+        bad[index] ^= 1;
+        assert_eq!(mailbox.reply(&bad, &mut loads), Err(Error::InvalidReply));
+        if (5..10).contains(&index) {
+            checksum(&mut bad);
+            assert_eq!(mailbox.reply(&bad, &mut loads), Err(Error::MismatchedReply));
+        }
+    }
+    let unsupported = response(&mailbox, 1, 0);
+    assert_eq!(
+        mailbox.reply(&unsupported, &mut loads),
+        Err(Error::Rejected(1))
+    );
+    let incapable = response(&mailbox, 0, 0);
+    assert_eq!(
+        mailbox.reply(&incapable, &mut loads),
+        Err(Error::MissingCapability)
+    );
+    assert_eq!(loads.lookup(17), None);
+    assert_eq!(loads.capacity().rows_used, 1);
+}
+
+#[test]
+fn partial_failure_quarantines_all_rows_and_requires_drained_detach() {
+    let mut loads = Loads::new(4);
+    let ticket = reserve(&mut loads, 0, &[17, 18]);
+    let mut mailbox = Mailbox::new();
+    let command = initialize(&mut loads, ticket);
+    assert_eq!(
+        mailbox.begin(command, &loads, false),
+        Err(Error::NotDrained)
+    );
+    mailbox.begin(command, &loads, true).unwrap();
+    assert_eq!(mailbox.begin(command, &loads, true), Err(Error::Busy));
+    transfer(&mut mailbox);
+    let reply = response(&mailbox, 0, 1);
+    mailbox.reply(&reply, &mut loads).unwrap();
+    transfer(&mut mailbox);
+    let late = response(&mailbox, 0, 1);
+    assert_eq!(
+        mailbox.abandon_after_drain(&mut loads, false),
+        Err(Error::NotDrained)
+    );
+    let detach = mailbox.abandon_after_drain(&mut loads, true).unwrap();
+    assert_eq!(loads.lookup(17), None);
+    assert_eq!(loads.capacity().rows_used, 2);
+    assert_eq!(
+        loads.reserve(
+            1,
+            &[Request {
+                type_no: 19,
+                tracks: 1
+            }]
+        ),
+        Err(LoadError::Capacity)
+    );
+    mailbox.begin(detach, &loads, true).unwrap();
+    transfer(&mut mailbox);
+    assert_eq!(
+        mailbox.reply(&late, &mut loads),
+        Err(Error::MismatchedReply)
+    );
+    let unsupported = response(&mailbox, 1, 0);
+    assert_eq!(
+        mailbox.reply(&unsupported, &mut loads),
+        Err(Error::Rejected(1))
+    );
+    assert_eq!(loads.capacity().rows_used, 2);
+}
+
+#[test]
+fn sequence_exhaustion_reserves_the_whole_batch_and_never_wraps() {
+    let mut loads = Loads::new(16);
+    let ticket = reserve(&mut loads, 31, &[17, 18]);
+    let command = initialize(&mut loads, ticket);
+    let mut mailbox = Mailbox::new();
+    mailbox.sequence = u32::MAX - 1;
+    assert_eq!(
+        mailbox.begin(command, &loads, true),
+        Err(Error::SequenceExhausted)
+    );
+    assert_eq!(mailbox.write(), None);
+    assert_eq!(loads.lookup(17), None);
+    assert_eq!(
+        loads.reserve(
+            32,
+            &[Request {
+                type_no: 19,
+                tracks: 1
+            }]
+        ),
+        Err(LoadError::Invalid)
+    );
+}
+
+#[test]
+fn cancellation_between_row_acks_cannot_publish_or_schedule_another_row() {
+    let mut loads = Loads::new(16);
+    let ticket = reserve(&mut loads, 0, &[17, 18]);
+    let mut mailbox = Mailbox::new();
+    assert_eq!(
+        mailbox.begin(Command::Initialize(ticket), &loads, true),
+        Err(Error::Load(LoadError::WrongPhase))
+    );
+    let command = initialize(&mut loads, ticket);
+    mailbox.begin(command, &loads, true).unwrap();
+    transfer(&mut mailbox);
+    let reply = response(&mailbox, 0, 1);
+    loads.cancel(ticket).unwrap();
+    assert_eq!(
+        mailbox.reply(&reply, &mut loads),
+        Err(Error::Load(LoadError::WrongPhase))
+    );
+    assert_eq!(loads.lookup(17), None);
+    assert_eq!(loads.capacity().rows_used, 2);
+    assert_eq!(mailbox.write(), None);
+}

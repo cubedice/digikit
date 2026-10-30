@@ -340,6 +340,22 @@ minimum-delay timer assertion (192 host tests passed, 16 skipped). That timer
 test passes an isolated rerun in `out/canopy-registry-timing-recheck.log`. Changed
 document references pass. Hardware validation remains outstanding.
 
+The internal no-std mailbox client now binds loader commands to exact physical
+rows, serializes clear/body/commit writes, and validates complete replies before
+advancing. A module with several rows publishes or releases only after all rows
+acknowledge the matching operation. Partial failure quarantines the entire module;
+recovery requires the caller to drain prior writes and start a fresh detach.
+Sequence exhaustion rejects the whole batch, and late or mismatched replies cannot
+complete another row or a cancelled initialization. Owner IDs are bounded to the
+mailbox's 32 module slots. The current DSP bootstrap still rejects lifecycle work;
+successful lifecycle replies in client tests are synthetic. Live SPI scheduling,
+DSP reset/detach implementation and staged-file admission are still outstanding.
+Validation: 14 targeted SDK registry/load/mailbox host tests pass; log
+`out/canopy-mailbox-client.log`. Changed documentation references pass. The
+changed-file check passes layering and reports only the existing 256 stale
+references (`out/canopy-mailbox-client-changed.log`). No device or ColdFire
+execution is claimed.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

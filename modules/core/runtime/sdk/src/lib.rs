@@ -9,6 +9,8 @@
 pub mod instrument_registry;
 /// V2 transfer sequencing; transport calls remain the runtime loader's responsibility.
 pub mod instrument_load;
+/// Experimental V2 mailbox transactions; no device capability is enabled.
+pub mod instrument_mailbox;
 
 /// Version of the `Api` table layout. A field is only ever appended; `Api::size` tells a module how much is there.
 pub const API_VERSION: u32 = 1;
