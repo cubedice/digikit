@@ -218,6 +218,14 @@ It then leaves and reselects WERP with a held key, proves an old same-pitch rele
 cannot kill a fresh note, and changes to a stopped destination pattern. Routes
 remain closed until WERP is selected there; a fresh note then renders and retires.
 The scenario checks three refreshes, two invalidations and generations 2 through 4.
+It then wakes the carrier with velocity-24 C before adding velocity-127 G,
+measures their mixed output, releases C and measures G alone, and compares that
+G with the same pitch/velocity started from silence. Held windows settle for
+0.25 seconds before measuring at least 24,000 scalar samples. The G-alone RMS
+ratio must be within 2%; the mixed ratio must be 0.95–1.10 to allow low C's energy
+and finite-window beating. These bounds detect shared gain inherited from the
+soft first key; they do not prove phase continuity or all velocity curves.
+The extended carrier test has an eight-minute body ceiling.
 Reset quietness checks allow 24,000 scalar stereo samples (0.25 seconds) to settle
 before measuring a separate window against the unchanged -120 dBFS threshold.
 The companion `runtime/canopy-reload.test.ts` uses FUNC+YES then FUNC+NO while

@@ -148,3 +148,10 @@ and captures transition PCM with diagnostic adjacent-frame step measurements. Br
 kit and paste coverage, broader transport cases and audio continuity remain unproven. Public V2 initialization, broader Sound/control behavior
 and final-output continuity remain open. See the
 [carrier findings](../../../docs/findings/78-canopy-carrier.md) for measured results.
+
+The extended booted carrier proof also compares velocity-127 G after velocity-24
+C with G started from silence. Their final-output RMS ratio is 0.9999787403;
+the C/G mixture is 1.0185269755 times the reference. Independent release and
+quiet re-wake pass. This is final-output evidence against shared first-note
+velocity suppression for the tested Sound, not phase-continuity or all-curve
+acceptance; sustain pedal and public V2 registration remain open.

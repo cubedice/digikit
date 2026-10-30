@@ -758,3 +758,34 @@ exact firmware boundary. Audio and ownership snapshots are not sample-aligned;
 this does not establish absence of premature silence, reset-ramp length at the
 final output, phase continuity, or hardware behavior. Pattern changes still
 retire held notes and require fresh presses in the destination.
+
+
+## Low-first/high-second final-output comparison [D]
+
+The booted carrier scenario now starts USB C at velocity 24 from a quiet carrier,
+waits 0.25 seconds of output, then adds G at velocity 127. It measures the held
+mixture, releases C and waits for that token to retire, measures the remaining G,
+then releases G and verifies quietness. A fresh velocity-127 G from silence is
+the reference. Every held measurement follows a 0.25-second settling interval
+and contains at least 24,000 scalar stereo samples. This exercises real MIDI,
+stock carrier, gain and final-output paths on the same destination Sound.
+
+The G-alone RMS ratio must lie within 0.98–1.02 of the fresh reference; the mixed
+ratio must lie within 0.95–1.10 to accommodate low C's added energy and window
+beating. Both bounds would reject a loud G scaled by the first key's 24/127
+velocity. Ratios compare final RMS, not isolated spectral amplitudes. They do not
+prove phase continuity, per-sample gain invariance, arbitrary stock settings,
+other velocity curves or hardware behavior. The fixture still lacks pedal
+handling and public V2 registration.
+
+The extended test passed in 303.18 seconds (299.80-second body), with the unchanged
+fixture SHA-256 `af6bb0f505ec3ed0a989a4de582ab7a8b78c4233bfdbca9916e4c45e761b9cbd`.
+Each held window contains 24,448 scalar samples. Mixed RMS is 0.0384029233;
+G after C retires is 0.0377035737; fresh G is 0.0377043753. The ratios are
+0.9999787403 (after-low/reference) and 1.0185269755 (mixed/reference).
+The before-reference and final-release quiet windows each contain 4,416 scalar
+samples with zero RMS and peak. All windows are finite; the scenario reports no
+transport or emulator fault. Existing machine/stopped-pattern re-admission and
+stale-release checks also pass in this run. Evidence is saved as
+`out/canopy-carrier-{low-high-mixed,high-after-low,high-reference}-pcm.json`,
+`out/canopy-carrier-velocity-ratios.json` and `out/canopy-velocity-test.log`.

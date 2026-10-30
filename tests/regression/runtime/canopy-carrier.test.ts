@@ -282,6 +282,50 @@ test('live carrier renders held keys and retires each release independently', as
       invalidations: await session.client.memPeek(admission + 16),
     }),
   );
+  // A soft first key must not impose shared stock velocity on a later loud key.
+  // Compare the same high G both after low C and from a freshly quiet carrier.
+  const heldWindow = async (name: string) => {
+    await settleResetOutput(); // 0.25 seconds also exceeds the 80 ms local attack.
+    await session.client.call('pcm.tap', { action: 'start' });
+    await expect.poll(async () => (await pcmReport()).samples, { timeout: 30_000 }).toBeGreaterThanOrEqual(24_000);
+    const report = await pcmReport();
+    fs.writeFileSync(path.join(root, `out/canopy-carrier-${name}-pcm.json`), JSON.stringify(report));
+    expect(report.non_finite).toBe(0);
+    expect(report.rms).toBeGreaterThan(1e-4);
+    return report;
+  };
+  await session.client.call('midi.usb.in', { bytes: [0x90, 60, 24] });
+  await expect.poll(readVoices, { timeout: 10_000 }).toEqual([{ token: 8, gate: 1 }]);
+  await settleResetOutput(); // Ensure low C wakes and settles the carrier first.
+  await session.client.call('midi.usb.in', { bytes: [0x90, 67, 127] });
+  await expect.poll(readVoices, { timeout: 10_000 }).toEqual([
+    { token: 8, gate: 1 },
+    { token: 9, gate: 1 },
+  ]);
+  const mixed = await heldWindow('low-high-mixed');
+  await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0] });
+  await expect.poll(readVoices, { timeout: 60_000 }).toEqual([{ token: 9, gate: 1 }]);
+  const afterLow = await heldWindow('high-after-low');
+  await session.client.call('midi.usb.in', { bytes: [0x80, 67, 0] });
+  await expect.poll(readVoices, { timeout: 60_000 }).toEqual([]);
+  await settleResetOutput();
+  await quietWindow('before-high-reference');
+  await session.client.call('midi.usb.in', { bytes: [0x90, 67, 127] });
+  await expect.poll(readVoices, { timeout: 10_000 }).toEqual([{ token: 10, gate: 1 }]);
+  const reference = await heldWindow('high-reference');
+  const ratios = { afterLow: afterLow.rms / reference.rms, mixed: mixed.rms / reference.rms };
+  fs.writeFileSync(path.join(root, 'out/canopy-carrier-velocity-ratios.json'), JSON.stringify(ratios));
+  // Same pitch/velocity after low-C retirement: allow 2% for window phase.
+  expect(ratios.afterLow).toBeGreaterThan(0.98);
+  expect(ratios.afterLow).toBeLessThan(1.02);
+  // Low C adds some energy. This wider bound catches a shared gain inherited
+  // from velocity 24 while tolerating finite-window beating and stock filtering.
+  expect(ratios.mixed).toBeGreaterThan(0.95);
+  expect(ratios.mixed).toBeLessThan(1.1);
+  await session.client.call('midi.usb.in', { bytes: [0x80, 67, 0] });
+  await expect.poll(readVoices, { timeout: 60_000 }).toEqual([]);
+  await settleResetOutput();
+  await quietWindow('velocity-released');
   expect(await word(3)).toBe(0);
   await session.expectNoFault('CANOPY carrier lifecycle');
-}, 360_000);
+}, 480_000);
