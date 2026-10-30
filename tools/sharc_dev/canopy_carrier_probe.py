@@ -40,30 +40,61 @@ def carrier_policy():
     )
     obj = pk_sharc.assemble(path.read_text())
     address = 0x20094000
-    linked = pk_sharc.link(obj, 0xB90000, {"_mi_carrier_active": address})
+    linked = pk_sharc.link(
+        obj,
+        0xB90000,
+        {
+            "_mi_carrier_active": address,
+            "_mi_carrier_pairs": address + 64,
+        },
+    )
     session = pk_sharc.CallSession([linked], END)
-    for i in range(16):
+    for i in range(64):
         session.poke(address // 4 + i, 0)
+    stamp = 0
 
     def step(active, trigger, release):
+        nonlocal stamp
         result = session.call(
-            "_mi_carrier_step",
+            "_mi_carrier_publish",
             {
                 "R4": 0,
                 "R8": active,
                 "R10": 1,
+                "R11": stamp,
                 "R12": trigger,
                 "R9": release,
                 "M5": 0,
                 "L0": 0,
                 "MODE1": 0x1011800,
             },
-            max_steps=100,
+            max_steps=150,
             read_regs=("R0", "R1", "R2", "R3", "I0", "M5"),
         )
         if result["halt"]["reason"] != "breakpoint":
             raise RuntimeError(f"carrier policy failed: {result}")
-        return result["regs"]["R0"], result["regs"]["R1"]
+        pair = result["regs"]["R0"], result["regs"]["R1"]
+        for voice in (0, 1):
+            delivered = session.call(
+                "_mi_carrier_flags",
+                {
+                    "R4": voice,
+                    "R11": stamp,
+                    "R12": trigger,
+                    "R9": release,
+                    "M5": 0,
+                    "L0": 0,
+                    "MODE1": 0x1011800,
+                },
+                max_steps=100,
+                read_regs=("R0", "R1", "R2"),
+            )
+            if delivered["halt"]["reason"] != "breakpoint" or tuple(
+                delivered["regs"][r] for r in ("R0", "R1", "R2")
+            ) != (*pair, 1):
+                raise RuntimeError(f"stereo carrier delivery failed: {delivered}")
+        stamp += 1
+        return pair
 
     return step
 

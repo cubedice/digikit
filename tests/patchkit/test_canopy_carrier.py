@@ -190,3 +190,46 @@ def test_carrier_ownership_is_per_track_and_stock_flags_pass_through(spec):
     assert carrier(rig, track=15, active=1) == (1, 0)
     assert carrier(rig, track=16, active=1, trigger=7, release=9) == (7, 9)
     assert carrier(rig, track=0xFFFFFFFF, active=1, trigger=7, release=9) == (7, 9)
+
+
+def pair_call(rig, entry, index, stamp, active=1, owned=1, trigger=7, release=9):
+    result = rig.sess.call(
+        "_mi_carrier_" + entry,
+        {
+            "R4": index,
+            "R8": active,
+            "R10": owned,
+            "R11": stamp,
+            "R12": trigger,
+            "R9": release,
+            "M5": 0,
+            "L0": 0,
+            "MODE1": 0x1011800,
+        },
+        max_steps=150,
+        read_regs=("R0", "R1", "R2"),
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    return tuple(result["regs"][name] for name in ("R0", "R1", "R2"))
+
+
+@pytest.mark.parametrize("track", [0, 15])
+def test_stereo_carrier_pair_is_shared_and_expires_each_block(spec, track):
+    rig = make_rig(spec, track)
+    # Initial zero stamp cannot turn zeroed BSS into an owned pair.
+    assert pair_call(rig, "flags", 2 * track, 0) == (7, 9, 0)
+    pair_call(rig, "publish", track, 0)
+    for voice in (2 * track + 1, 2 * track, 2 * track + 1):
+        assert pair_call(rig, "flags", voice, 0) == (1, 0, 1)
+    assert pair_call(rig, "flags", 2 * track, 1) == (7, 9, 0)
+    pair_call(rig, "publish", track, 1)
+    for voice in (2 * track, 2 * track + 1):
+        assert pair_call(rig, "flags", voice, 1) == (0, 0, 1)
+    pair_call(rig, "publish", track, 2, active=0)
+    for voice in (2 * track, 2 * track + 1):
+        assert pair_call(rig, "flags", voice, 2) == (0, 1, 1)
+    pair_call(rig, "publish", track, 3, owned=0)
+    assert pair_call(rig, "flags", 2 * track, 3) == (7, 9, 0)
+    assert pair_call(rig, "flags", 2 * track + 1, 3, trigger=5, release=6) == (5, 6, 0)
+    assert pair_call(rig, "flags", 32, 3) == (7, 9, 0)
+    assert pair_call(rig, "flags", 0xFFFFFFFF, 3) == (7, 9, 0)

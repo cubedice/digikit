@@ -150,11 +150,16 @@ pending replacements. Unowned tracks pass stock flags through and forget previou
 V2 history. Invalid track indexes pass through without accessing the state bank.
 Call once per track per block and use the returned flags for both stereo voices;
 calling separately for each voice would consume the edge on the first voice.
+`_mi_carrier_publish` now performs that single transition and stores a pair with
+the current block stamp. `_mi_carrier_flags` reads it without consuming it for
+voice 2t or 2t+1; stale, missing or unowned pairs pass that voice's stock flags
+through. Publish must finish before either envelope call. The caller must supply
+the same block stamp to publish and both reads, and must publish only once.
 The owner must complete retirement/reset before relinquishing ownership; this
 helper does not silence the kernel or configure the stock envelope.
 
 This source is component-tested but deliberately absent from the normal object
-source list: the pinned envelope hook, stereo handoff and full final-output proof
+source list: the pinned envelope hook and full final-output proof
 are not yet implemented. It does not change readiness or enable MIDI routes.
 
 ```sh

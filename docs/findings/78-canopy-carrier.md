@@ -90,6 +90,13 @@ checks are separate component experiments, not a continuous live device chain.
 
 ### Still open
 
+The stereo handoff now publishes a block-stamped pair once per track and reads
+it without mutation for both voices. Ten adapter tests cover both endpoint
+tracks, odd-first and repeated reads, stale blocks, an initial zero stamp,
+ownership loss, per-voice stock flags and invalid indexes. The firmware probe
+checks both reads on every block before feeding the pair into its envelope call.
+This is a tested handoff API; it is not yet attached to the firmware call site.
+
 Resolve the normal envelope configuration and both flag writers before adding
 the V2-only wake/retire hook. Use idle-to-active to start the envelope once; avoid
 rearming it for subsequent keys. Retain the carrier through local release tails

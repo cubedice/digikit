@@ -187,7 +187,10 @@ connect it to the real kernel's release lifetime; the firmware probe separately
 feeds its output into the stock-configured envelope. Repeated stock trigger/release
 flags do not restart or cut off an owned hold. The eventual hook must evaluate
 the policy once per track and apply its result to both stereo voices. It remains
-unlinked in normal firmware until that handoff and final-output proof pass.
+unlinked in normal firmware until the hook and final-output proof pass.
+The stereo handoff now has explicit publish/read entry points: a single track
+publication stores the edge pair with a block stamp, and both voice reads return
+that pair without consuming it. Missing or stale publications preserve stock flags.
 
 Complete the carrier work in this order:
 
