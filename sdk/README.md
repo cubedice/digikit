@@ -112,6 +112,15 @@ What you see:
 Off means off: without `--trace` both macros expand to nothing (the arguments of `DK_TRACE_LOG` are not evaluated), the objects have no extra
 instruction, data or import, and the `.dkm` is byte-identical to one built from sources without the marks
 (`packages/patchkit/tests/trace.rs`). A `DK_STEP` costs two instructions when on, so keep it out of the innermost loop.
+## Experimental persistent instruments
+
+The CANOPY V2 work adds a separate `[instrument]` layout in `sdk.toml`, generated
+as `include/dk/gen/instrument.h`, `include/dk/gen/instrument_consts.h` and
+`asm/dk_instrument.inc`. It describes persistent track state, bounded normalized
+MIDI batches and reset/process callbacks. It is not yet a supported module API:
+there is no V2 declaration macro or runtime registration, and the V1 packer
+rejects its descriptor. The advertised machine contract remains 1.0. See the
+[CANOPY interface plan](../docs/design/canopy.md) for the remaining integration.
 
 ## Writing modules
 

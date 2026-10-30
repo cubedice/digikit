@@ -550,6 +550,11 @@ pub fn pack_with_samples(
                 .get(at..at + DESC_WORDS * 4)
                 .ok_or_else(|| err!("voice desc {d}: shorter than {} bytes", DESC_WORDS * 4))?;
             let w = |i: usize| u32::from_le_bytes(bytes[i * 4..i * 4 + 4].try_into().unwrap());
+            if w(0) == crate::instrument::MAGIC {
+                return Err(err!(
+                    "voice desc {d}: persistent-instrument V2 requires its own registration and runtime capability; V1 voice packing is not supported"
+                ));
+            }
             if w(0) != DESC_MAGIC {
                 return Err(err!(
                     "voice desc {d}: magic {:#x}, not DKMA ({DESC_MAGIC:#x})",
@@ -1398,6 +1403,34 @@ mod tests {
         let mut d = DspSection::parse(&good).unwrap();
         d.bss = u32::MAX;
         assert!(DspSection::parse(&d.encode()).is_err());
+    }
+
+    #[test]
+    fn a_persistent_instrument_cannot_be_packed_as_a_v1_voice() {
+        let mut o = object();
+        let words = [
+            crate::instrument::MAGIC,
+            2,
+            48,
+            0,
+            16,
+            256,
+            8,
+            32,
+            20000,
+            2000,
+            4,
+            64,
+        ];
+        let data: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
+        o.sections[1] = sec("d", "data", 4, &data);
+        let mut v = VoiceSpec::old(16, "entry".into(), [0; 8]);
+        v.desc = Some("var".into());
+        let error = pack(&o, 1, &[v], &[]).unwrap_err().0;
+        assert!(
+            error.contains("persistent-instrument V2 requires"),
+            "{error}"
+        );
     }
 
     #[test]

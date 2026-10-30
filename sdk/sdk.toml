@@ -131,6 +131,81 @@ fns = [
     "i32 render(void *state, const dk_voice_in *in, const i32 *params) // Once per block while the voice runs, including the note-on block after note_on. Writes DK_BLOCK floats to in->out. params: DK_MAX_PARAMS words; DK_PARAM_LATCHED words retain the effective clamped note_on value, all other words are live. Returns dk_status.",
 ]
 
+# Experimental persistent-instrument ABI. This does NOT advertise runtime support:
+# [contract].machine stays V1 until registration, loading and dispatch are complete.
+# Its separate magic prevents a V1 packer/adapter from interpreting this as a voice.
+[instrument]
+consts = [
+    { name = "DK_INSTRUMENT_V2", value = 2, doc = "Experimental layout version; not a runtime capability claim." },
+    { name = "DK_I_MAGIC", value = 1145784660, doc = "DKIT: persistent instrument descriptor, distinct from DKMA." },
+    { name = "DK_I_BLOCK", value = 32, doc = "Mono samples at 48 kHz per process call." },
+    { name = "DK_I_MAX_TRACKS", value = 16, doc = "Track instances, not internal polyphony." },
+    { name = "DK_I_MAX_EVENTS", value = 8, doc = "Maximum normalized events per process call." },
+    { name = "DK_I_MAX_CONTROLS", value = 32, doc = "Maximum immutable configuration words." },
+    { name = "DK_I_ACTIVE", value = 0, doc = "Output written; notes, tails or pending work remain." },
+    { name = "DK_I_QUIET", value = 1, doc = "Output written; no audible tails or pending work remain." },
+    { name = "DK_I_EVENT_WORDS", value = 6, doc = "Normalized event: kind, owner, token, pitch, value, sample offset." },
+    { name = "DK_I_EVENT_KIND", value = 0, doc = "Word index; ON=1, OFF=2, CC=3, BEND=4." },
+    { name = "DK_I_EVENT_OWNER", value = 1, doc = "Word index; MIDI port in bits 8..15, channel in bits 0..7." },
+    { name = "DK_I_EVENT_TOKEN", value = 2, doc = "Word index; nonzero raw key token for ON/OFF, zero for controllers." },
+    { name = "DK_I_EVENT_PITCH", value = 3, doc = "Word index; ON/OFF MIDI semitones << 8; CC controller number; zero for bend." },
+    { name = "DK_I_EVENT_VALUE", value = 4, doc = "Word index; velocity << 8, raw CC 0..127 or raw 14-bit bend." },
+    { name = "DK_I_EVENT_OFFSET", value = 5, doc = "Word index; must be zero in V2. No sample-accurate MIDI timestamps." },
+    { name = "DK_I_RESET_CREATE", value = 1 },
+    { name = "DK_I_RESET_REPLACE", value = 2 },
+    { name = "DK_I_RESET_RECOVER", value = 3 },
+    { name = "DK_I_RESET_UNLOAD", value = 4 },
+    { name = "DK_I_EVENT_ON", value = 1 },
+    { name = "DK_I_EVENT_OFF", value = 2 },
+    { name = "DK_I_EVENT_CC", value = 3 },
+    { name = "DK_I_EVENT_BEND", value = 4 },
+]
+input = ["version", "size_bytes", "track", "generation", "block", "out", "tune", "events", "event_count", "controls", "control_count", "revision", "transport_flags", "run_generation", "boundary", "step", "pattern_length", "shared_gate"]
+desc = ["magic", "version", "size_bytes", "flags", "tracks", "state_bytes", "max_events", "max_controls", "max_cycles_process", "max_cycles_reset", "max_call_depth", "stack_bytes"]
+
+[instrument.c]
+intro = "Experimental persistent-instrument layout. Runtime V2 registration is not yet supported. Never use this descriptor with DK_MACHINE or a V1 voice row."
+desc_doc = "Read-only DSP descriptor. All fields are 32-bit little-endian in the linked DSP image. No callback pointers; registration must name reset/process separately."
+rules = "Proposed SHARC call: I13 return address, R4 instance state, R8 input (or reset reason), result R0. Same saved-register rules as V1. A process call consumes all events atomically before rendering; negative result faults the instance. Ordinary note-on never clears state. Borrowed input pointers remain valid only during the call."
+input = [
+    "u32 version // DK_INSTRUMENT_V2; validate before reading later fields",
+    "u32 size_bytes // DK_I_IN_BYTES; reject incompatible layouts",
+    "u32 track // Zero-based track instance",
+    "u32 generation // Nonzero instance generation; stale events are rejected by the adapter",
+    "u32 block // Absolute DSP block counter, wrapping u32",
+    "float *out // Write all DK_I_BLOCK mono floats",
+    "i32 tune // Global stock tune in semitones << 8; raw event pitch excludes it",
+    "const u32 *events // event_count consecutive DK_I_EVENT_WORDS records; null only when count is zero",
+    "u32 event_count // At most descriptor max_events and DK_I_MAX_EVENTS",
+    "const u32 *controls // Immutable effective configuration, copied on revision change if retained",
+    "u32 control_count // At most descriptor max_controls and DK_I_MAX_CONTROLS",
+    "u32 revision // Applied configuration revision, nonzero",
+    "u32 transport_flags // Pattern-position ABI 2 VALID=1/RUNNING=2 flags; zero when unknown",
+    "u32 run_generation // Pattern-position transport generation",
+    "u32 boundary // Monotonic master-step boundary identity, wrapping u32",
+    "u32 step // Zero-based committed master step; meaningful only with valid timing",
+    "u32 pattern_length // Master steps in committed pattern; meaningful only with valid timing",
+    "u32 shared_gate // Adapter-owned carrier gate, not an individual note gate",
+]
+desc = [
+    "u32 magic // DK_I_MAGIC",
+    "u32 version // DK_INSTRUMENT_V2",
+    "u32 size_bytes // DK_I_DESC_BYTES",
+    "u32 flags // Reserved; must be zero",
+    "u32 tracks // 1..DK_I_MAX_TRACKS isolated instances",
+    "u32 state_bytes // Nonzero bytes per track, multiple of four; zeroed only at creation",
+    "u32 max_events // 1..DK_I_MAX_EVENTS events consumed atomically per block",
+    "u32 max_controls // 1..DK_I_MAX_CONTROLS configuration words",
+    "u32 max_cycles_process // Nonzero worst-case process instructions including full event batch and render",
+    "u32 max_cycles_reset // Nonzero worst-case reset instructions per instance",
+    "u32 max_call_depth // Declared nested CALL depth, bounded by the loading device",
+    "u32 stack_bytes // Multiple of four, bounded by the loading device",
+]
+fns = [
+    "i32 instrument_reset(void *state, u32 reason) // Adapter reset; no note-on reset. Returns zero on success, negative on fault. Reason is CREATE=1, REPLACE=2, RECOVER=3 or UNLOAD=4.",
+    "i32 instrument_process(void *state, const dk_instrument_in *in) // Consumes the bounded batch and writes output; returns DK_I_ACTIVE, DK_I_QUIET or a negative fault.",
+]
+
 # The FX contract's numbers (sdk/include/dk/gen/fx.h is the generated C view; it includes the generated sdk/include/dk/gen/fx_consts.h).
 # `patchkit gen` writes sdk/asm/dk_fx.inc and sdk/include/dk/gen/fx_consts.h from this table. Do not include it together with dk_machine.inc (DK_BLOCK and DK_LEVEL_BOUND_BITS are in both).
 [fx]

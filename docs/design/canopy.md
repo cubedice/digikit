@@ -200,7 +200,35 @@ Latch replacement clears the previous phrase's pedal-only membership too; otherw
 
 Add an opt-in V2 contract in `sdk/sdk.toml`, generate its C/assembly bindings, and extend descriptor parsing, DKM packing, runtime validation, DSP registration and conformance together. Never enlarge `dk_voice_in` or reinterpret V1 descriptors in place. A V2 module must fail to load with a clear capability error on old firmware.
 
-The following is the semantic contract, not a frozen binary struct:
+The semantic contract below now has an experimental binary layout in
+`sdk/sdk.toml` under `[instrument]`, with generated C and assembly bindings in
+`sdk/include/dk/gen/instrument.h`, `sdk/include/dk/gen/instrument_consts.h` and
+`sdk/asm/dk_instrument.inc`. The input is 72 bytes; the separate `DKIT` descriptor
+is 48 bytes. Normalized events have six 32-bit words and require zero sample
+offset. The descriptor declares track count, per-track state, bounded events and
+controls, and process/reset instruction, call-depth and stack budgets.
+
+`packages/patchkit/src/instrument.rs` validates descriptor sizes, reserved flags,
+limits and aligned per-track allocation with overflow checks. These are declared
+admission bounds, not measured CPU performance. The V1 packer explicitly rejects
+this magic rather than interpreting it as a V1 voice. Existing V1 layouts and the
+advertised machine contract remain unchanged at 1.0.
+
+This is a schema/validation checkpoint, not completed V2 registration. Remaining:
+C declaration records and typed lowering; a distinct DKM record and old-runtime
+capability rejection; runtime validation/allocation; DSP callback dispatch and
+lifecycle ownership; conversion of the sine fixture and conformance checks.
+Only after those pieces pass together may a build advertise V2 support.
+
+Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
+tests and seven DSP-packer tests pass. A freestanding ColdFire compilation verifies
+both struct sizes and all 30 field offsets against the generated constants. The
+full `patchkit gen` command writes the SDK files but then fails in the existing
+firmware declaration validation at `dsp.voice.hook.velocity_operand` (unknown
+register `s7`); the independent SDK current-file test passes. No V2 runtime,
+installation or hardware acceptance is implied by these checks.
+
+The input semantics are:
 
 | Input | Meaning |
 | --- | --- |
