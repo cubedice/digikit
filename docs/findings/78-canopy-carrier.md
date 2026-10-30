@@ -475,3 +475,51 @@ references are clean. The raw-row integration fixture is excluded by exact ID,
 path and framework type from the standalone V1 machine rig: it has no V1 note-on
 or parameter contract, and its booted Vitest project supplies the required live
 lifecycle state. Ordinary raw machines retain their existing conformance checks.
+
+**[D] Cold-boot admission boundary (2026-10-30):** The booted carrier test now
+pins the stock SYX hash before reading the investigation addresses. After WERP
+selection but before audition, the cached track-0 source pointer at `0x8000470c`
+is zero, the outgoing row type at `0x80003cd0` is zero, and the DSP mirror at
+`0x255970` is zero. After audition the source pointer is `0x426532ec`, its byte
+at `+0xa2` is 1, and both row and mirror contain type 1. The snapshots are retained
+in `out/canopy-carrier-admission.json`. This rules out an initializer that simply
+refreshes the cached source: there is no cached source on this cold boot.
+
+Static inspection of the supplied 1.17 MAIN image (base `0x40000400`) confirms
+the stock refresh function at `0x4002d438`. It validates source and track, caches
+the source pointer, copies 0x8e bytes from source+0x14 into the track parameter
+row, copies 0x9a bytes from source+0xa2 into the outgoing machine row, and
+tail-calls `0x400d9164`. This is broader than updating the type byte. Its
+successful use as a direct V2 initializer remains unproved; do not call it with
+the null cached pointer or replace its work with a type-cache poke.
+
+The next admission proof must resolve the selected Sound from the live
+project/kit, validate track/type and instance identity, refresh through the
+stock configuration path, and confirm the DSP receives that configuration
+before enabling keyboard ownership. It must work without any audition and
+invalidate/retry on Sound or pattern replacement. The existing transport
+fixture's acknowledged CPS1 configuration alone does not establish that stock
+configuration readiness.
+
+**[D] Final-output quietness:** The expanded live test initially rejected exact
+digital silence after the last note and carrier retired. A fresh 4,480-sample
+window measured RMS `2.83501e-8` and peak `5.07571e-8`, with no non-finite samples.
+The residue's origin is not established. The acceptance check now measures both
+idle and post-release output using fresh windows of at least 4,096 scalar
+samples, requiring RMS and peak below `1e-6` (-120 dBFS). It drains at least
+4,096 samples between carrier retirement and the final observation window.
+The sine kernel's exact-zero idle contract remains unchanged; this tolerance
+applies only to the final stock DSP output. Spectral continuity, sustain pedal,
+arbitrary Sounds and hardware acceptance remain open.
+
+The corrected bounded live test passes (138 seconds total). Idle output was
+exactly zero across 4,416 samples; the post-release window contained 4,416 samples
+with RMS `2.79082e-8` and peak `4.98258e-8`, both below the stated bound. The held
+note window retained 96,640 finite nonzero samples and RMS `0.0405009`.
+Admission snapshots repeated the null-before/populated-after result above.
+No new initialization hook is installed by this checkpoint.
+
+The required changed-file check passes layercheck, TypeScript typing, lint and
+formatting; no related host or Python tests were selected. Its sole failure is
+the existing repository pathcheck baseline (256 stale references in 78 files).
+Targeted pathcheck on all three changed documents passes with zero stale links.

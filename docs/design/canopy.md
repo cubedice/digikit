@@ -12,6 +12,17 @@ Implementation payoff is a playable harmonic instrument that coexists with Overl
 
 ## Scope and decisions
 
+Admission must initialize the stock track configuration before consuming keyboard
+events. The cold-boot proof found no cached stock Sound source before the first
+audition; acknowledging the separate CPS1 configuration is insufficient. Resolve
+the selected Sound from the live project/kit, validate its track and instance,
+publish its stock configuration, and wait for matching DSP readiness. Do not
+dereference the empty cached source or directly force the DSP type mirror.
+The acceptance scenario must select CANOPY and play its first keyboard note
+without a panel audition or sequencer trig, then repeat after Sound/pattern
+replacement. Keep routes closed when initialization or confirmation fails.
+See the [measured admission boundary](../findings/78-canopy-carrier.md).
+
 The carrier integration now has an optional early-frame expiry callback and an
 internal CANOPY render entry that publishes shared stereo envelope controls.
 Connected instruction-core tests cover frame/render/envelope handoff and reset

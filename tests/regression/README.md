@@ -205,7 +205,12 @@ The test cold-boots without a sample card, waits for real DSP admission, selects
 WERP with the panel controls and auditions TRIG 1 once to initialize the stock
 selector. Subsequent USB/DIN keys exercise independent rendering and full release
 tails. Final PCM must contain finite nonzero samples while G remains held through
-E's release, and the final key release must retire the carrier. The test has a
+E's release, and the final key release must retire the carrier. Idle and
+post-release PCM windows must each contain at least 4,096 scalar samples with
+finite RMS and peak below -120 dBFS; the stock output is not required to be
+bit-exact zero. The test also saves the stock cached source pointer, source type,
+outgoing row type and DSP mirror before and after audition to localize the
+startup dependency. The test has a
 four-minute ceiling for the slower-than-real-time coupled engine. UI frames and
 PCM statistics remain under `out/`. No spectral continuity or hardware claim is
 made. Preflight and public V2 initialization remain blocked as described in the

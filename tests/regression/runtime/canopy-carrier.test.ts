@@ -21,6 +21,8 @@ test('live carrier renders held keys and retires each release independently', as
   const image = path.join(root, 'out/patch/canopy-live-carrier.syx');
   const plan: RuntimePlan = JSON.parse(fs.readFileSync(image.replace(/\.syx$/, '.plan.json'), 'utf8'));
   expect(plan.modules).toContain('test/canopy-carrier@0.1.0');
+  // The investigation addresses below are pinned to this exact stock image.
+  expect(plan.base.syx_sha256).toBe('26c22f6652625ac2cfd47f7ee970d388ed8b6427dae3563c0a6a2f2d334350d5');
   const sha = createHash('sha256').update(fs.readFileSync(image)).digest('hex');
   expect(plan.output?.syx_sha256).toBe(sha);
   const { session } = h;
@@ -65,7 +67,24 @@ test('live carrier renders held keys and retires each release independently', as
     expect(result.unknown).toBe(0);
     return Buffer.from(result.hex, 'hex');
   };
+  const pcmReport = () =>
+    session.client.call<{ samples: number; nonzero: number; non_finite: number; rms: number; peak: number }>(
+      'pcm.tap',
+      { action: 'report' },
+    );
+  const quietWindow = async (name: string) => {
+    await session.client.call('pcm.tap', { action: 'start' });
+    await expect.poll(async () => (await pcmReport()).samples, { timeout: 15_000 }).toBeGreaterThanOrEqual(4096);
+    const pcm = await pcmReport();
+    fs.writeFileSync(path.join(root, `out/canopy-carrier-${name}-pcm.json`), JSON.stringify(pcm));
+    expect(pcm.non_finite).toBe(0);
+    // Final stock DSP output can retain tiny residue, unlike the exact-zero kernel.
+    // Require RMS and every sample below -120 dBFS, both before and after playing.
+    expect(pcm.rms).toBeLessThan(1e-6);
+    expect(pcm.peak).toBeLessThan(1e-6);
+  };
   await settleUi(session);
+  await quietWindow('idle');
   const shot = async (name: string) =>
     fs.writeFileSync(
       path.join(root, `out/canopy-carrier-${name}.json`),
@@ -90,6 +109,28 @@ test('live carrier renders held keys and retires each release independently', as
   await key('YES');
   await key('YES');
   await shot('after');
+  const admissionSnapshot = async () => {
+    const byte = async (addr: number) => {
+      const value = await session.client.memPeek(addr - (addr % 4));
+      expect(value).not.toBeNull();
+      return (value! >>> (8 * (3 - (addr % 4)))) & 255;
+    };
+    // Stock refresh caches its source pointer and copies source+0xa2 to this row.
+    const source = await session.client.memPeek(0x8000470c);
+    const validSource = source !== null && source >= 0x40000000 && source < 0x48000000;
+    const mirror = await session.client.call<{ hex: string; unknown: number }>('dsp.peek', {
+      addr: 0x255970,
+      len: 4,
+    });
+    expect(mirror.unknown).toBe(0);
+    return {
+      source,
+      sourceType: validSource ? await byte(source! + 0xa2) : null,
+      rowType: await byte(0x80003cd0),
+      dspType: Buffer.from(mirror.hex, 'hex').readUInt16LE(),
+    };
+  };
+  const selected = await admissionSnapshot();
   // One stock audition primes the stock type/configuration path.
   await key('TRIG 1');
   await expect
@@ -101,6 +142,10 @@ test('live carrier renders held keys and retires each release independently', as
       { timeout: 10_000 },
     )
     .toBe(1);
+  const auditioned = await admissionSnapshot();
+  fs.writeFileSync(path.join(root, 'out/canopy-carrier-admission.json'), JSON.stringify({ selected, auditioned }));
+  expect(auditioned.rowType).toBe(1);
+  expect(auditioned.sourceType).toBe(1);
   await session.client.call('midi.usb.in', { bytes: [0x90, 60, 80, 0x90, 64, 100] });
   await expect.poll(readVoices, { timeout: 10_000 }).toEqual([
     { token: 1, gate: 1 },
@@ -148,6 +193,10 @@ test('live carrier renders held keys and retires each release independently', as
       { timeout: 10_000 },
     )
     .toBe(0);
+  // Drain the stock output pipeline before observing a fresh silence window.
+  await session.client.call('pcm.tap', { action: 'start' });
+  await expect.poll(async () => (await pcmReport()).samples, { timeout: 15_000 }).toBeGreaterThanOrEqual(4096);
+  await quietWindow('silence');
   expect(await word(3)).toBe(0);
   await session.expectNoFault('CANOPY carrier lifecycle');
 }, 240_000);
