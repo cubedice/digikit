@@ -725,3 +725,36 @@ instance; the test establishes its source generation after valid running
 position and readiness. Pause/resume, external clock, rapid/cancelled switches,
 other track layouts, in-place destination loads and hardware remain unproven.
 Logs and the trace remain under `out/canopy-pattern-*`.
+
+
+## Running pattern final-output measurements [D]
+
+The running-switch regression now records raw 48 kHz stereo f32le from before
+queuing the destination through settled reset, and checks separate source,
+reset, fresh-destination and final-release PCM windows. The fixture image is
+unchanged from the committed-boundary proof above. Source and destination RMS
+must exceed 1e-4; reset and release RMS/peak must fall below 1e-6 after a
+24,000-scalar-sample drain and at least 4,096 separate measurement samples.
+All measured samples must be finite.
+
+The first expanded run exposed a test race: a boundary-spanning snapshot was
+excluded from the trace but still terminated the polling loop. The loop now
+terminates only on an accepted coherent destination snapshot. This fixes test
+observation, not firmware behavior.
+
+The corrected regression passed in 179.68 seconds (175.58-second test body),
+with no transport or emulator fault. Source RMS was 0.0264922862; the final
+release window contained 4,416 scalar samples with zero RMS and peak.
+
+The transition capture contains 92,640 stereo frames (1.93 seconds), peak
+0.0419592112 and no non-finite samples. The maximum same-channel adjacent-frame
+step is 0.0014368943 at frame 65,282. The reset window contains 4,416 scalar
+samples, RMS 9.24584e-9 and peak 1.62981e-8. Fresh destination C/G produce RMS
+0.0375176330 and peak 0.0838790983 over 24,448 scalar samples.
+
+Capture and metrics remain under `out/canopy-pattern-*`. The maximum-step
+measurement has no click-free acceptance threshold and is not localized to an
+exact firmware boundary. Audio and ownership snapshots are not sample-aligned;
+this does not establish absence of premature silence, reset-ramp length at the
+final output, phase continuity, or hardware behavior. Pattern changes still
+retire held notes and require fresh presses in the destination.

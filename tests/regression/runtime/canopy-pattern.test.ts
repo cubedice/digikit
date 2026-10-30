@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { button, repoRoot } from '@digi/test-support';
-import { expect, test } from 'vitest';
+import { expect, onTestFinished, test } from 'vitest';
 import { withSession } from '../support.ts';
 import { settleUi } from './live.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
@@ -93,6 +93,28 @@ test('running pattern switch preserves the source until the committed boundary',
   await selectPattern(1);
   await expect.poll(() => word(0), { timeout: 15_000 }).toBe(3);
   const sourcePattern = await info(3);
+  const pcm = () =>
+    session.client.call<{ samples: number; rms: number; peak: number; non_finite: number }>('pcm.tap', {
+      action: 'report',
+    });
+  const measure = async (name: string, quiet = false) => {
+    // Drain downstream residue before an independent quiet window.
+    await session.client.call('pcm.tap', { action: 'start' });
+    await expect.poll(async () => (await pcm()).samples, { timeout: 20_000 }).toBeGreaterThanOrEqual(24_000);
+    if (quiet) {
+      await session.client.call('pcm.tap', { action: 'start' });
+      await expect.poll(async () => (await pcm()).samples, { timeout: 15_000 }).toBeGreaterThanOrEqual(4096);
+    }
+    const report = await pcm();
+    fs.writeFileSync(path.join(root, `out/canopy-pattern-${name}-pcm.json`), JSON.stringify(report));
+    expect(report.non_finite).toBe(0);
+    if (quiet) {
+      expect(report.rms).toBeLessThan(1e-6);
+      expect(report.peak).toBeLessThan(1e-6);
+    } else {
+      expect(report.rms).toBeGreaterThan(1e-4);
+    }
+  };
 
   const position = planSymbol(plan, 'pp_position');
   const pos = (n: number) => session.client.memPeek(position + 4 * n);
@@ -103,6 +125,13 @@ test('running pattern switch preserves the source until the committed boundary',
   const generation = (await word(10))!;
   await session.client.call('midi.usb.in', { bytes: [0x90, 60, 100] });
   await expect.poll(readVoices, { timeout: 10_000 }).toEqual([{ token: 1, gate: 1 }]);
+  await measure('source');
+  const capture = path.join(root, 'out/canopy-pattern-transition.f32le');
+  await session.client.call('pcm.tap', { action: 'capture', path: capture });
+  let capturing = true;
+  onTestFinished(async () => {
+    if (capturing) await session.client.call('pcm.tap', { action: 'capture_stop' });
+  });
   const trace: {
     selected: number | null;
     committed: number | null;
@@ -121,8 +150,10 @@ test('running pattern switch preserves the source until the committed boundary',
       boundary: await pos(3),
       flags: await pos(5),
     };
-    if (before === row.boundary) trace.push(row);
-    if (row.committed !== sourcePattern && row.flags === 3) break;
+    if (before === row.boundary) {
+      trace.push(row);
+      if (row.committed !== sourcePattern && row.flags === 3) break;
+    }
     await delay(20);
   }
   fs.writeFileSync(
@@ -142,14 +173,44 @@ test('running pattern switch preserves the source until the committed boundary',
   await expect.poll(() => word(10), { timeout: 15_000 }).toBe(generation + 1);
   await expect.poll(readVoices, { timeout: 15_000 }).toEqual([]);
   await expect.poll(() => word(0), { timeout: 15_000 }).toBe(3);
+  await measure('reset', true);
+  await session.client.call('pcm.tap', { action: 'capture_stop' });
+  capturing = false;
+  const raw = fs.readFileSync(capture);
+  expect(raw.length % 8).toBe(0); // Interleaved stereo f32le at 48 kHz.
+  expect(raw.length).toBeGreaterThan(4096 * 4);
+  let peak = 0;
+  let maxStep = 0;
+  let maxStepFrame = 0;
+  let nonFinite = 0;
+  for (let i = 0; i < raw.length / 4; i++) {
+    const sample = raw.readFloatLE(i * 4);
+    if (!Number.isFinite(sample)) nonFinite++;
+    peak = Math.max(peak, Math.abs(sample));
+    // Compare adjacent frames on the same channel, never left against right.
+    const step = i >= 2 ? Math.abs(sample - raw.readFloatLE((i - 2) * 4)) : 0;
+    if (step > maxStep) {
+      maxStep = step;
+      maxStepFrame = Math.floor(i / 2);
+    }
+  }
+  fs.writeFileSync(
+    path.join(root, 'out/canopy-pattern-transition-pcm.json'),
+    JSON.stringify({ frames: raw.length / 8, peak, maxStep, maxStepFrame, nonFinite }),
+  );
+  expect(nonFinite).toBe(0);
+  expect(peak).toBeGreaterThan(1e-4);
+  // Step magnitude is evidence only: no click-free threshold has been established.
   await key('STOP');
   await session.client.call('midi.usb.in', { bytes: [0x90, 60, 100, 0x80, 60, 0, 0x90, 67, 100] });
   await expect.poll(readVoices, { timeout: 10_000 }).toEqual([
     { token: 2, gate: 1 },
     { token: 3, gate: 1 },
   ]);
+  await measure('destination');
   await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0, 0x80, 67, 0] });
   await expect.poll(readVoices, { timeout: 60_000 }).toEqual([]);
+  await measure('released', true);
   expect(await word(3)).toBe(0);
   await session.expectNoFault('CANOPY running pattern switch');
-}, 240_000);
+}, 300_000);

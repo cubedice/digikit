@@ -142,7 +142,9 @@ A fixture-only deserializer hook now brackets same-pointer, same-type Sound load
 ColdFire tests cover the real stock routine with synthetic records. A booted
 panel-driven temporary pattern reload also proves same-pointer invalidation,
 re-admission and stale-release protection. A running switch between two prepared patterns also preserves source ownership
-during observed scheduling lookahead and re-admits after commitment. Browser,
+during observed scheduling lookahead and re-admits after commitment. The running-switch
+regression now checks source/destination audio and settled reset/release quietness,
+and captures transition PCM with diagnostic adjacent-frame step measurements. Browser,
 kit and paste coverage, broader transport cases and audio continuity remain unproven. Public V2 initialization, broader Sound/control behavior
 and final-output continuity remain open. See the
 [carrier findings](../../../docs/findings/78-canopy-carrier.md) for measured results.

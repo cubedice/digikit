@@ -230,9 +230,14 @@ three-minute body ceiling and can run alone by appending
 `runtime/canopy-reload.test.ts` to the command above. The `runtime/canopy-pattern.test.ts` companion prepares WERP on two patterns,
 starts playback, holds C and queues a switch. It requires observing scheduled
 lookahead, unchanged source generation until commitment, destination re-admission,
-and fresh C/G ownership despite an old C release. It has a four-minute body
-ceiling. Its trace rejects samples spanning a committed boundary; it does not
-measure PCM continuity. Other clock modes, pause/resume, rapid or cancelled
+and fresh C/G ownership despite an old C release. It has a five-minute body
+ceiling. Source and fresh destination notes must produce finite PCM above -80
+dBFS RMS. Reset and final release each drain 0.25 seconds before a separate
+window below -120 dBFS RMS and peak. A raw stereo f32le capture spans the queued
+switch through settled reset; its report records peak and maximum same-channel
+adjacent-frame step. Step magnitude is diagnostic, not a click-free acceptance
+threshold. Its ownership trace rejects samples spanning a committed boundary;
+PCM and trace timestamps are not sample-aligned. Other clock modes, pause/resume, rapid or cancelled
 switches, and other UI load paths are not covered. The separate
 `tests/patchkit/test_canopy_sound_load.py` component proof runs the real stock
 deserializer with synthetic records, including unrelated and rejected loads.
