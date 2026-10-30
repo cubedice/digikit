@@ -1,0 +1,9 @@
+[package]
+name = "dkmidi-host"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Behavior tests of the ColdFire MIDI ownership implementation"
+
+[build-dependencies]
+cc = "1"

@@ -1,0 +1,90 @@
+#include "bridge.h"
+#define CHECK(c) do { if (!(c)) return __LINE__; } while (0)
+extern MiLedger mi_ledger;
+extern int mi_route_enable(uint32_t, uint32_t, uint32_t, int);
+extern void mi_instance_reset(uint32_t);
+extern int dkrt_midi_dispatch(const uint8_t *, uint32_t, uint32_t);
+static uint32_t ready, upload_calls, masks, restores;
+uint32_t dkrt_irq_mask(void) { ++masks; return 0x2300; }
+void dkrt_irq_restore(uint32_t sr) { if (sr == 0x2300) ++restores; }
+int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
+{ return ready && track < 16 && epoch == 1 && generation == 1; }
+int dkrt_midi_rx(const uint8_t *msg, uint32_t len, uint32_t source)
+{
+    (void)source;
+    ++upload_calls;
+    return len >= 4 && msg[0] == 0xf0 && msg[1] == 0x7d && msg[2] == 0x64 && msg[3] == 0x6b;
+}
+uint32_t mi_test_dispatch(void)
+{
+    uint8_t note[3] = {0x90, 60, 90};
+    uint8_t off[3] = {0x80, 60, 0};
+    uint8_t sysex[8] = {0xf0, 0x7d, 0x64, 0x6b, 1, 0, 0, 0xf7};
+    uint8_t clock = 0xf8;
+    MiEvent e;
+    uint16_t queue[0x55e*2], record[0xabc/2];
+    uint32_t i, seq, r[MT_REPLY_WORDS], a = 0, b = 0;
+    CHECK(!dkrt_midi_dispatch(note, 3, 2));
+    CHECK(mi_route_enable(0, 0, 0, 0) == -2);
+    CHECK(!dkrt_midi_dispatch(note, 3, 2));
+    ready = 1;
+    CHECK(mi_route_enable(0, 0, 0, 0) == -2);
+    mi_transport.heartbeat_seen = 1;
+    mi_transport.applied[0] = mi_transport.applied[15] = 1;
+    CHECK(mi_route_enable(0, 0, 0, 0) == 0);
+    CHECK(mi_route_enable(1, 0, 15, 0) == 0);
+    upload_calls = 0;
+    CHECK(dkrt_midi_dispatch(note, 3, 2));
+    CHECK(dkrt_midi_dispatch(note, 3, 16));
+    CHECK(!upload_calls);
+    CHECK(mi_peek(&mi_ledger, &e) && e.track == 0 && e.port == 0);
+    CHECK(mi_ack(&mi_ledger, e.epoch, e.sequence));
+    CHECK(mi_peek(&mi_ledger, &e) && e.track == 15 && e.port == 1);
+    CHECK(mi_ack(&mi_ledger, e.epoch, e.sequence));
+    CHECK(dkrt_midi_dispatch(off, 3, 4));
+    CHECK(dkrt_midi_dispatch(off, 3, 8));
+    CHECK(!upload_calls);
+    CHECK(dkrt_midi_dispatch(sysex, sizeof(sysex), 2));
+    CHECK(!dkrt_midi_dispatch(&clock, 1, 2));
+    CHECK(!dkrt_midi_dispatch(note, 3, 32));
+    CHECK(upload_calls == 3);
+    mi_instance_reset(0);
+    CHECK(mi_ledger.reset_mask == 1 && masks == restores);
+    /* Exercise the actual frame callback after the dispatch case, in this same
+     * test to avoid concurrent host tests mutating the adapter's globals. */
+    mi_init(&mi_ledger); mt_init(&mi_transport);
+    mi_transport.epoch = mi_ledger.epoch;
+    mi_instance_reset(0);
+    for (i = 0; i < 0x55e*2; ++i) queue[i] = 0xcccc;
+    instrument_write_frame((uintptr_t)queue, 1, 0);
+    for (i = 0; i < 0x55e*2; ++i) CHECK(queue[i] == 0xcccc);
+    instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0);
+    CHECK(mi_transport.pending == MT_RESET);
+    for (i = 0; i < 0x55e*2; ++i) {
+        uint32_t entry = i/2;
+        if (!(i & 1) || entry < 0x9fc/2 || entry >= 0xa7c/2) CHECK(queue[i] == 0xcccc);
+    }
+    for (i = 0; i < MT_WORDS; ++i) {
+        uint32_t at = 2u*(0x9fc/2+2*i)+1;
+        CHECK(((uint32_t)queue[at] | ((uint32_t)queue[at+2]<<16)) == mi_transport.words[i]);
+    }
+    seq = mi_transport.words[3];
+    for (i = 0; i < MT_REPLY_WORDS; ++i) r[i] = 0;
+    r[0] = MT_REPLY_MAGIC; r[1] = 1; r[2] = seq; r[3] = 1;
+    for (i = 0; i < 15; ++i) { a += r[i]; b += a; }
+    r[15] = a ^ b;
+    for (i = 0; i < 0xabc/2; ++i) record[i] = 0;
+    for (i = 0; i < MT_REPLY_WORDS; ++i) {
+        uint32_t h = (0x1cu + 0x54u*(21u+i/2u)+0x44u+(i&1u)*4u)/2u;
+        record[h] = (uint16_t)r[i]; record[h+1] = (uint16_t)(r[i]>>16);
+    }
+    instrument_write_frame((uintptr_t)queue, 0x9fc/2, record);
+    CHECK(!mi_ledger.reset_mask && !mi_transport.pending && mi_transport.heartbeat_seen);
+    for (i = 0; i < MT_WORDS; ++i) {
+        uint32_t at = 2u*(0x9fc/2+2*i)+1;
+        CHECK(!queue[at] && !queue[at+2]);
+    }
+    CHECK(mi_route_enable(0, 0, 0, 0) == -2); /* reset ACK alone is not configured */
+    CHECK(masks == restores);
+    return 0;
+}

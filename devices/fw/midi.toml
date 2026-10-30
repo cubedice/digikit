@@ -1,6 +1,26 @@
 # midi: MIDI send and receive
 # Names follow <cpu>.<subsystem>.<kind>.<name>; was = former names, for reading older docs, never resolved (docs/design/firmware-decls.md).
 
+[[site]]
+name = "cf.midi.site.din_rx"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 14, offset = 4, sha256 = "f327daa3a3640ffc2cbde1981f662742d1ce959b8acd0f115464299ee287164d", len = 6 }
+mark = "D"
+users = ["core/midi-events"]
+doc = "DT2 1.17 MIDI task DIN router call: (message, length, source) already on the stack, source 8 or 16. The six-byte indirect call is followed by the stock argument cleanup."
+
+[[hook]]
+name = "cf.midi.hook.din_rx"
+site = "cf.midi.site.din_rx"
+cpu = "cf"
+mode = "before"
+regs = { in = [], clobbers = ["ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/midi-events"]
+doc = "Optional instrument channel-message handler before the DIN router. Preserve arguments and registers; consume by continuing at return, otherwise run the displaced call through tail."
+
 [[fn]]
 name = "cf.midi.fn.send"
 was = ["dkrt.fw.midi_send"]

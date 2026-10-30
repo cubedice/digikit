@@ -42,9 +42,10 @@ dkrt_boot_hook:
 
 /* dkrt_midi_hook: the hook in the MIDI task's dispatch of a gathered USB SysEx message (docs/design/digikit-upload.md). At the hook the
  * stack holds the router's arguments, pushed by the task: 0(sp) = message, 4(sp) = length, 8(sp) = source; the displaced instructions
- * (`movea.l (0,A2,D1*4),A0; jsr (A0)`) call the router. d0/d1/a0/a1 are saved (D1 is live: it indexes the router table). dkrt_midi_rx
- * returns 1 for our messages: continue at dkrt_midi_ret (after the call, where the task pops its arguments and frees the blocks), else
- * run the displaced instructions in dkrt_midi_next. movem and lea leave the condition codes alone. */
+ * (`movea.l (0,A2,D1*4),A0; jsr (A0)`) call the router. d0/d1/a0/a1 are saved (D1 is live: it indexes the router table). dkrt_midi_dispatch
+ * (midi_dispatch.c) composes the optional channel adapter and dkrt_midi_rx. A claimed message returns 1: continue at dkrt_midi_ret (after
+ * the call, where the task pops its arguments and frees the blocks), else run the displaced instructions in dkrt_midi_next. movem and lea
+ * leave the condition codes alone. */
     .globl dkrt_midi_hook
 dkrt_midi_hook:
     lea     -16(%sp),%sp
@@ -52,7 +53,7 @@ dkrt_midi_hook:
     move.l  24(%sp),-(%sp)      /* source */
     move.l  24(%sp),-(%sp)      /* length */
     move.l  24(%sp),-(%sp)      /* message */
-    jsr     dkrt_midi_rx
+    jsr     dkrt_midi_dispatch
     lea     12(%sp),%sp
     tst.l   %d0
     movem.l (%sp),%d0-%d1/%a0-%a1

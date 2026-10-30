@@ -28,10 +28,11 @@ uses = ["DDR_CACHED_BASE", "DDR_BYTES"]
 
 [[object]]
 path = "build/platform.dko.json"
-sources = ["src/cf/platform.s"]
+sources = ["src/cf/platform.s", "src/cf/midi_dispatch.c"]
 place = "cf.expansion"
-# Optional adapter policies the UI-loop hook runs before the runtime tick (core/loop-controls, core/loop-display).
-optional = ["fx_controls_tick", "loop_ui_tick"]
+# Optional adapter policies the UI-loop hook runs before the runtime tick (core/loop-controls, core/loop-display), and the
+# instrument channel adapter the MIDI hook offers a message to before the runtime (core/midi-events).
+optional = ["fx_controls_tick", "loop_ui_tick", "mi_channel_message"]
 
 [object.externs]
 fw_queue_pop = "cf.rtos.fn.queue_pop"

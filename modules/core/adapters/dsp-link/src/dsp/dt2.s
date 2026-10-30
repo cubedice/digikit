@@ -11,9 +11,11 @@
 // zero-initialised bss of a module live in the area together.
 #include "device-dt2.inc"
 // A present position provider owns the last 16 words. R0/R4 are scratch at this check; the next instruction overwrites ASTAT.
-#define DL_POSITION_EXTERN .EXTERN _pattern_position_info;
-#define DL_POSITION_LIMIT R0 = _pattern_position_info; R4 = DL_TAIL_WORDS - 19; R0 = PASS R0; IF NE R3 = R4;
-#define DL_LOOP_RETURN JUMP _dl_loop_status; _dl_loop_status_return:
+#define DL_POSITION_EXTERN .EXTERN _pattern_position_info; .EXTERN _instrument_reply;
+// Instrument transport implies the fixed 16-word position suffix too: 174-16-32-3 = 123.
+#define DL_POSITION_LIMIT R0 = _pattern_position_info; R4 = DL_TAIL_WORDS - 19; R0 = PASS R0; IF NE R3 = R4; R0 = _instrument_reply; R4 = DL_TAIL_WORDS - 51; R0 = PASS R0; IF NE R3 = R4;
+#define DL_LOOP_RETURN JUMP _dl_loop_status; _dl_loop_status_return: JUMP _dl_instrument_status; _dl_instrument_status_return:
 #include "dsp-link.inc"
 #include "loop-status.inc"
+#include "instrument-status.inc"
 .PKBSS _dl_area, DL_AREA_BYTES;

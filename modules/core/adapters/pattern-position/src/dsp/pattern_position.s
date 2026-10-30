@@ -1,5 +1,6 @@
-// DT2 1.17 per-audio-frame position receiver. No allocation, calls, DO loops,
-// UI work, or acknowledged-link traffic. The current RX ring is I3.
+// DT2 1.17 per-audio-frame position receiver. No allocation, DO loops or UI
+// work. An optional instrument callback composes the early frame hook.
+// The current RX ring is I3.
 // Hook: stock block handler +0x34 (0x1c7501), before command dispatch/render.
 // All touched registers and arithmetic status are saved explicitly; each
 // save slot is 8 bytes, so a live PEYEN bit also saves/restores the paired S
@@ -27,6 +28,7 @@
 .SECTION/PM seg_pmco;
 .GLOBAL _pp_block_entry;
 .EXTERN _pp_block_back;
+.EXTERN _instrument_block;
 
 _pp_block_entry:
     DM(_pp_sv_r0) = R0;
@@ -186,6 +188,11 @@ _pp_bad:
     DM(_pattern_position_info) = R0;
     DM(_pattern_position_info + 20) = R0;
 _pp_restore:
+    R0 = _instrument_block;
+    R0 = PASS R0;
+    IF EQ JUMP _pp_no_instrument;
+    CALL _instrument_block;
+_pp_no_instrument:
     R0 = DM(_pp_sv_i0);
     I0 = R0;
     R0 = DM(_pp_sv_i1);
