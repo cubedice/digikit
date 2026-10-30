@@ -255,6 +255,81 @@ def apply_stock_gain(runner, gain):
     return runner
 
 
+def apply_post_gain_ramp(runner, transition, envelope_flag, count=32):
+    """One voice of the stock conditional ramp after the ordinary gain stage.
+
+    The two flags are controlled slice inputs, not decoded live mute controls.
+    Keep the envelope flag at its actual record offset for connected callers.
+    """
+    state, pointers = 0x200A4000, 0x200A4100
+    put(runner, state, transition)
+    put(runner, pointers, BUFFER)
+    saved_breakpoints = runner.breakpoints
+    runner.breakpoints = frozenset({0x1C7009})
+    runner = runner.fresh_call(
+        0x1C6FB9,
+        regs={
+            "I4": state,
+            "I3": envelope_flag,
+            "I5": pointers,
+            "R15": count,
+            "R11": count // 2,
+            "R10": 0,
+            "R14": 0,
+            "R12": bits(-1 / (count - 1)),
+            "M5": 0,
+            "M6": 1,
+            "MODE1": 0x1011800,
+            **{f"L{i}": 0 for i in range(16)},
+        },
+    )
+    result = runner.run(400)
+    if result.halt.reason != "breakpoint" or result.final_pc_sw != 0x1C7009:
+        raise RuntimeError(f"post-gain ramp failed: {result.halt.to_json()}")
+    runner.breakpoints = saved_breakpoints
+    return runner
+
+
+def post_gain_ramp_path(memory):
+    rows = []
+    for count in (31, 32):
+        for transition, enabled in ((0, 0), (0, 1), (1, 0), (1, 1)):
+            runner = Runner(memory, 0x1C6FB9)
+            runner = configure_from_dispatcher(runner, flag=enabled)
+            configured_flag = get(runner, RECORD + 20)
+            for i in range(count):
+                put(runner, BUFFER + 4 * i, bits(0.25))
+            put(runner, BUFFER - 4, 0xDEADBEEF)
+            put(runner, BUFFER + 4 * count, 0xDEADBEEF)
+            runner = apply_post_gain_ramp(runner, transition, RECORD + 20, count)
+            samples = [
+                struct.unpack("<f", struct.pack("<I", get(runner, BUFFER + 4 * i)))[0]
+                for i in range(count)
+            ]
+            expected = [
+                0.25 * (1 - i / (count - 1)) if transition and enabled else 0.25
+                for i in range(count)
+            ]
+            rows.append(
+                {
+                    "samples": count,
+                    "transition": transition,
+                    "envelope_flag": enabled,
+                    "configured_flag_matches": configured_flag == enabled,
+                    "first": samples[0],
+                    "last": samples[-1],
+                    "matches": all(
+                        abs(a - b) < 1e-6
+                        for a, b in zip(samples, expected, strict=True)
+                    ),
+                    "guards_intact": get(runner, BUFFER - 4)
+                    == get(runner, BUFFER + 4 * count)
+                    == 0xDEADBEEF,
+                }
+            )
+    return rows
+
+
 def gain_path(memory):
     """Execute the stock coefficient builder and its scalar audio ramp.
 
@@ -503,11 +578,11 @@ def owned_velocity_gain(blob):
     return rows
 
 
-def configure_from_dispatcher(runner):
+def configure_from_dispatcher(runner, *, flag=0):
     """Execute the actual argument-loading caller with sustained proof settings."""
     params = 0x2008F000
     # I5-relative mode, attack, hold, decay, sustain, release and final flag.
-    values = (1, bits(0.0), bits(1.0), bits(0.0), bits(1.0), bits(0.0), 0)
+    values = (1, bits(0.0), bits(1.0), bits(0.0), bits(1.0), bits(0.0), flag)
     for offset, value in zip(range(-7, 0), values, strict=True):
         put(runner, params + offset * 4, value)
     stop = 0x1C6A28
@@ -573,9 +648,11 @@ def musical_chain(memory, initial, symbols):
     unchanged, counters, releases, audio = True, [], [], []
     admissions = []
     gain_matches, neutral_while_owned, cache_preserved = True, True, True
+    post_gain_gate_preserves_audio = True
 
     def render():
         nonlocal runner, unchanged, gain_matches, neutral_while_owned, cache_preserved
+        nonlocal post_gain_gate_preserves_audio
         internal("_mi_carrier_begin")
         internal("_instrument_carrier_prepare")
         admitted = get(runner, symbols["_mi_velocity_owners"] + 4) != 0
@@ -638,8 +715,11 @@ def musical_chain(memory, initial, symbols):
             )
             and get(runner, BUFFER - 4) == get(runner, BUFFER + 128) == 0xDEADBEEF
         )
+        runner = apply_post_gain_ramp(runner, len(counters) % 2, RECORD + 20)
+        post_gate = [get(runner, BUFFER + 4 * i) for i in range(32)]
+        post_gain_gate_preserves_audio &= post_gate == post_gain
         audio.extend(
-            struct.unpack("<f", struct.pack("<I", word))[0] for word in post_gain
+            struct.unpack("<f", struct.pack("<I", word))[0] for word in post_gate
         )
 
     internal("_cp_note_on", R8=1, R12=60, R9=20)
@@ -685,6 +765,7 @@ def musical_chain(memory, initial, symbols):
         and all(admissions[:256])
         and not admissions[-1],
         "musical_gain_hook_leaves_stock_velocity_cache_unchanged": cache_preserved,
+        "musical_audio_survives_post_gain_gate_with_proof_configuration": post_gain_gate_preserves_audio,
     }
 
 
@@ -806,6 +887,11 @@ def probe(firmware: Path, blocks: int):
     )
     checks.update(musical_chain(musical_memory, musical_initial, musical_symbols))
     gain_measurements = gain_path(memory)
+    post_gain_measurements = post_gain_ramp_path(memory)
+    checks["post_gain_ramp_requires_both_flags_and_respects_sample_count"] = all(
+        row["matches"] and row["guards_intact"] and row["configured_flag_matches"]
+        for row in post_gain_measurements
+    )
     velocity_measurements = velocity_lookup(memory)
     owned_gain_measurements = owned_velocity_gain(blob)
     checks["owned_velocity_hook_preserves_gain_control_and_stock_voices"] = all(
@@ -844,11 +930,12 @@ def probe(firmware: Path, blocks: int):
     return {
         "firmware_sha256": FIRMWARE_SHA,
         "dsp_sha256": BLOB_SHA,
-        "scope": "in-memory patched stock envelope and velocity operand, musical audio through scalar gain; no live frame or final mix proof",
+        "scope": "in-memory patched stock envelope and velocity operand, musical audio through scalar gain and conditional post-gain ramp; no live frame or final mix proof",
         "blocks": blocks,
         "samples": blocks * 32,
         "checks": checks,
         "gain_measurements": gain_measurements,
+        "post_gain_measurements": post_gain_measurements,
         "velocity_measurements": velocity_measurements,
         "owned_gain_measurements": owned_gain_measurements,
         "hold_counter": held[9],

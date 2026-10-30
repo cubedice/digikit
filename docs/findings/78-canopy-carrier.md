@@ -268,6 +268,32 @@ As with the earlier envelope sites, this is scoped DSP resolution; full port
 regeneration still needs the missing local ColdFire analysis inputs. No normal
 manifest claims or installs the new hook.
 
+**[D] Conditional stage after gain:** The next per-voice loop at `0x1c6fb9`
+checks a word at workspace +0xdde4 +4*voice and envelope-record byte offset 20.
+Only when both are nonzero does it multiply the block by a ramp from 1 to zero.
+The probe executes one original loop body through `0x1c7009`, including its
+odd/even count branch. All four flag combinations pass for 31 and 32 samples;
+the ramp matches `1 - sample/(count-1)` within 1e-6 and adjacent sentinels survive.
+The harness supplies the reciprocal ramp delta; this does not prove its caller
+or behavior at counts outside those two cases.
+
+The envelope flag is now driven through the original configuration caller for
+these measurements, rather than written into the record. The caller's I5-relative
+word -1 becomes stack argument +5 and is stored at record +20 by `0x1cbb0b`.
+Both 0 and 1 arrive unchanged. Static inspection also identifies the transition
+array as `0x24f0ac` with the stock workspace: the branch at `0x1c33ce` writes M14,
+and the helper at `0x1c6056` clears it using M13 at `0x1c606e`. Those are DSP
+writers, not a proven mapping to MIDI note-off, front-panel mute or a Sound setting.
+
+The connected musical scenario now runs this stage after ordinary gain, using
+the real envelope record and alternating a synthetic transition word. The proof
+configuration's final flag is zero; all samples remain unchanged through this
+conditional stage, including local release and reset retirement. All 30 aggregate
+checks pass. This result is conditional on that setting: an arbitrary Sound with
+the flag enabled can still fade a held block when the transition word is raised.
+Resolve the controls and live event writers before deciding whether any additional
+ownership interception is appropriate. No new bypass or firmware hook is added.
+
 Resolve live configuration delivery and both flag writers before adding
 the hook to the production manifest. Use idle-to-active to start the envelope once; avoid
 rearming it for subsequent keys. Retain the carrier through local release tails

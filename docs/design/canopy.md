@@ -42,6 +42,12 @@ while shared velocity changes. The hook has resolved firmware declarations but
 remains uninstalled. Preserve LEVEL and modulation, and prove final output
 separately; live scheduling and changing-control smoothing remain open.
 
+The musical proof also traverses the conditional ramp after gain. Controlled
+31/32-sample cases establish that it fades only when a transition word and an
+envelope configuration flag are both set. The proof's zero configuration flag
+preserves chord audio. The live control/event meanings remain unresolved, so this
+does not yet establish arbitrary Sound compatibility or justify bypassing the ramp.
+
 - Ship a DTII-only experimental module, proposed ID `digikit/canopy`, with an explicitly required new runtime capability. Keep existing V1 machines compatible.
 - Support four foreground pad notes. Additional fixed slots handle one arp note and two shared release tails. Voice count never grows with release time.
 - Use internal envelopes and velocity for individual notes. Retain the stock filter, level, pan, mute and FX routing. Treat the stock AMP envelope as a shared master shape, subject to the lifecycle proof below.

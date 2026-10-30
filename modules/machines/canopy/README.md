@@ -106,6 +106,12 @@ gain construction, kernel, AMP and scalar audio gain in one memory image. Shared
 velocity changes do not rescale the owned chord. The hook has resolved firmware
 declarations but is not installed; final mixer output remains unproved.
 
+The next conditional post-gain ramp is also included. The proof configuration
+passes audio unchanged; enabling its envelope flag and transition word together
+fades a block to zero. Both odd and even sample counts retain buffer guards.
+Live control meanings and arbitrary Sound compatibility remain open; CANOPY does
+not bypass this stock stage.
+
 These checks do not establish stock AMP lifetime, final track output, MIDI latency
 or device performance. The current V1 contract path skips inactive stock voices
 and clears configured state at stock note-on. The raw path avoids that contract
