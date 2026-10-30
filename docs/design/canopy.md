@@ -12,6 +12,13 @@ Implementation payoff is a playable harmonic instrument that coexists with Overl
 
 ## Scope and decisions
 
+The carrier integration now has an optional early-frame expiry callback and an
+internal CANOPY render entry that publishes shared stereo envelope controls.
+Connected instruction-core tests cover frame/render/envelope handoff and reset
+retirement. ACTIVE includes the final block of tail samples, with release on the
+next empty block. The firmware workspace binding and final mixer proof remain
+open; this checkpoint does not provide a playable machine or enable routes.
+
 - Ship a DTII-only experimental module, proposed ID `digikit/canopy`, with an explicitly required new runtime capability. Keep existing V1 machines compatible.
 - Support four foreground pad notes. Additional fixed slots handle one arp note and two shared release tails. Voice count never grows with release time.
 - Use internal envelopes and velocity for individual notes. Retain the stock filter, level, pan, mute and FX routing. Treat the stock AMP envelope as a shared master shape, subject to the lifecycle proof below.

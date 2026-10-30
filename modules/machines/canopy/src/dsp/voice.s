@@ -231,6 +231,9 @@ _cp_render_slot:
     R0 = DM(0, I0);
     R0 = PASS R0;
     IF EQ JUMP _cp_render_next;
+    // Keep the shared carrier held for the whole block containing a tail's
+    // final samples. QUIET is safe only on the following empty block.
+    R15 = 1;
     F2 = DM(2, I0); // oscillator x,y
     F3 = DM(3, I0);
     F4 = DM(4, I0); // rotation sin,cos

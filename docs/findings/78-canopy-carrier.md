@@ -113,7 +113,18 @@ Twenty-four adapter tests check the hook at both stereo endpoints, scalar/SIMD
 register and status preservation, the displaced stack adjustment, argument
 sentinels, and fallback on stale/missing/disabled/unaligned/out-of-range inputs.
 
-Resolve the normal envelope configuration and both flag writers before adding
+**[D] Frame/render follow-up:** The early-block wrapper has an optional carrier
+callback that increments the stamp and invalidates all old pairs, even on wrap.
+The CANOPY raw render entry now publishes its ACTIVE result and configuration
+readiness through the core carrier owner. This owner retains a previously active
+track through reset tails and the release edge. The kernel keeps ACTIVE set for
+the entire block containing final tail samples; reporting QUIET at that block's
+end would release the downstream envelope before those samples were processed.
+Connected instruction-core tests now run frame, render and envelope entries in
+one memory image without copying flags or stamps. They supply the envelope-record
+base and stub packet receive/reply; this is not running-firmware delivery.
+
+Resolve the live workspace binding, normal envelope configuration and both flag writers before adding
 the hook to the production manifest. Use idle-to-active to start the envelope once; avoid
 rearming it for subsequent keys. Retain the carrier through local release tails
 and pending onsets, then retire both stereo voices on QUIET. Prove neutral shared

@@ -315,3 +315,126 @@ def test_envelope_hook_falls_through_without_changing_stock_arguments(spec, kind
         7,
         9,
     )
+
+
+def frame(rig):
+    result = rig.sess.call(
+        "_instrument_block",
+        {"I3": 0x20098000, "MODE1": 0x1011800},
+        max_steps=500,
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    return rig.sess.peek(rig.built.data["_mi_carrier_stamp"] // 4)
+
+
+@pytest.mark.parametrize("track", [0, 15])
+@pytest.mark.parametrize("reset", [False, True])
+def test_render_publishes_once_for_both_voices_and_keeps_reset_tails(
+    spec, track, reset
+):
+    rig = make_rig(
+        replace(spec, module="canopy-render-proof", entry="_cp_voice_render"), track
+    )
+    ready = rig.built.data["_cp_ready"] // 4 + track
+    rig.sess.poke(ready, 1)
+    event(rig, "note_on", 1)
+    stamp = frame(rig)
+    left = block(rig)
+    assert any(abs(x) > 0.00001 for x in left)
+    assert pair_call(rig, "flags", track * 2, stamp) == (1, 0, 1)
+    rig.voice = track * 2 + 1
+    assert block(rig) == left
+    assert pair_call(rig, "flags", track * 2 + 1, stamp) == (1, 0, 1)
+    # The real envelope interposer consumes the render's publication, with no
+    # harness copying of carrier flags or stamps between these boundaries.
+    base = 0x20096000
+    rig.sess.poke(rig.built.data["_mi_envelope_records"] // 4, base)
+    for voice in (track * 2, track * 2 + 1):
+        rig.sess.poke(dv.STACK // 4 + 1, 7)
+        rig.sess.poke(dv.STACK // 4 + 2, 9)
+        result = rig.sess.call(
+            "_mi_envelope_entry",
+            {
+                "R4": base + 44 * voice,
+                "I6": dv.STACK,
+                "I7": dv.STACK,
+                "MODE1": 0x1011800,
+            },
+            max_steps=400,
+        )
+        assert result["halt"]["reason"] == "breakpoint", result
+        assert (rig.sess.peek(dv.STACK // 4 + 1), rig.sess.peek(dv.STACK // 4 + 2)) == (
+            1,
+            0,
+        )
+    rig.voice = track * 2
+    # Configuration loss must not relinquish a sounding tail mid-release.
+    if reset:
+        packet = 0x20098000
+        rig.sess.poke(packet // 4 + 2, 0)  # same epoch, track-local reset
+        rig.sess.poke(packet // 4 + 8, track)
+        result = rig.sess.call(
+            "_instrument_reset",
+            {"R4": packet, "M6": 1, "L0": 0, "L1": 0, "MODE1": 0x1011800},
+            max_steps=500,
+        )
+        assert result["halt"]["reason"] == "breakpoint", result
+        assert rig.sess.peek(ready) == 0
+    else:
+        rig.sess.poke(ready, 0)
+        event(rig, "note_off", 1)
+    edges = []
+    for _ in range(80):
+        stamp = frame(rig)
+        samples = block(rig)
+        edge = pair_call(rig, "flags", track * 2, stamp)
+        if edge == (0, 1, 1):
+            assert samples == (0.0,) * 32
+        edges.append(edge)
+    assert edges[0] == (0, 0, 1)
+    assert edges.count((0, 1, 1)) == 1
+    assert edges[-1] == (7, 9, 0)
+    rig.sess.poke(ready, 1)
+    event(rig, "note_on", 2, 72)
+    stamp = frame(rig)
+    block(rig)
+    assert pair_call(rig, "flags", track * 2, stamp) == (1, 0, 1)
+
+
+def test_frame_expiry_clears_skipped_tracks_even_at_stamp_wrap(spec):
+    rig = make_rig(spec)
+    # An ancient zero-stamp pair must not revive on the next counter wrap.
+    pair_call(rig, "publish", 15, 0)
+    rig.sess.poke(rig.built.data["_mi_carrier_stamp"] // 4, 0xFFFFFFFF)
+    assert frame(rig) == 0
+    assert pair_call(rig, "flags", 30, 0) == (7, 9, 0)
+    # Expiry leaves ACTIVE history intact, so the next render holds, not wakes.
+    pair_call(rig, "publish", 15, 0)
+    assert pair_call(rig, "flags", 30, 0) == (0, 0, 1)
+
+
+@pytest.mark.parametrize("simd", [False, True])
+def test_frame_callback_preserves_live_registers(spec, simd):
+    rig = make_rig(spec)
+    regs = {f"R{i}": 0x12340000 + i for i in range(16)}
+    regs.update({f"S{i}": 0x56780000 + i for i in range(16)})
+    regs.update(
+        I0=0x20096000,
+        I1=0x20097000,
+        I2=0x20098000,
+        I3=0x20099000,
+        L0=64,
+        L1=128,
+        L2=256,
+        M5=19,
+        M6=23,
+        MODE1=0x1011800 | (0x200000 if simd else 0),
+        ASTATX=0x1234,
+        ASTATY=0x4321,
+    )
+    result = rig.sess.call(
+        "_instrument_block", regs, max_steps=500, read_regs=tuple(regs)
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    assert result["regs"] == regs
+    assert rig.sess.peek(rig.built.data["_mi_carrier_stamp"] // 4) == 1

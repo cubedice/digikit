@@ -166,10 +166,22 @@ disabled or non-record inputs leave stock arguments unchanged. The frame owner
 must set the record base and block stamp before the call; neither is inferred
 from a caller scratch register. This hook is non-reentrant.
 
-These sources remain absent from the normal object list. The probe installs the
-entry jump only in its private firmware memory view; production frame publication,
-firmware declarations/manifest wiring and final mixer output are still unproved.
-This does not change readiness or enable MIDI routes.
+The normal block wrapper now calls optional `_mi_carrier_begin` before receiving
+events. When linked, `carrier-frame.s` advances the block stamp and clears all
+publication-valid bits, including at counter wrap. Transition history survives.
+CANOPY's internal raw render entry calls `_mi_carrier_rendered` after rendering;
+this publishes once for both stereo voices and retains ownership through reset
+tails and their final release edge. The kernel reports ACTIVE through the block
+containing its last tail samples, so the shared envelope cannot release early.
+
+The carrier sources remain absent from the normal object list; the optional call
+is skipped when absent. Instruction-core tests connect the actual block wrapper,
+raw voice adapter, render publisher and envelope interposer in one memory image.
+Their receive/reply callbacks are stubs and the envelope-record base is supplied
+by the harness. The separate firmware probe installs the entry jump only in its
+private firmware memory view. Live workspace binding, firmware declarations and
+manifest wiring, and final mixer output remain unproved. Readiness and MIDI
+routes remain disabled.
 
 ```sh
 cargo test -p dkmidi-host

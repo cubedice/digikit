@@ -78,6 +78,13 @@ stores through the production voice adapter. It deliberately leaves stock ACTIVE
 unchanged, including when the kernel becomes QUIET; this exposes the missing
 carrier handoff rather than implementing one.
 
+The internal `src/dsp/render.s` entry now publishes carrier controls through the
+core adapter after each even-voice render. Connected component tests exercise
+frame expiry, stereo sharing, envelope argument substitution and retirement
+after configuration loss or reset. The final tail block remains ACTIVE; QUIET
+and shared release occur on the following empty block. These sources are still
+uninstalled, and the tests supply the stock envelope-record base explicitly.
+
 These checks do not establish stock AMP lifetime, final track output, MIDI latency
 or device performance. The current V1 contract path skips inactive stock voices
 and clears configured state at stock note-on. The raw path avoids that contract
