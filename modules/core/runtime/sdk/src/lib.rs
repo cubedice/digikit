@@ -5,6 +5,9 @@
 //! Format and rules: docs/design/digikit-runtime.md and docs/design/digikit-dkm.md.
 #![no_std]
 
+/// Shared DSP allocation search used by the live runtime loader.
+pub mod dsp_memory;
+
 /// Internal V2 loader bookkeeping, shared with host tests. Not a C ABI or capability.
 pub mod instrument_registry;
 /// V2 transfer sequencing; transport calls remain the runtime loader's responsibility.

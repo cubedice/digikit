@@ -452,6 +452,23 @@ layering and types; it fails only on the existing pathcheck baseline of 256 stal
 references in 78 files (`out/canopy-admission-changed.log`). No live admission is
 claimed.
 
+The live runtime now calls a shared, allocation-free DSP first-fit search over its
+existing per-module offset/length ledger. This is the common pool used by legacy
+voices and effects; future V2 reservations must use the same ledger rather than
+an independent allocator. The search preserves absolute-address alignment and
+lowest-gap reuse, and rejects overflowing, overlapping or out-of-bounds ledger
+entries before returning a candidate. It does not reserve or free a range: the
+single loader still owns ledger updates and must retain pending allocations.
+Four host tests pass, including exhaustive comparison against a byte-by-byte
+oracle for 131,072 small fragmented-pool requests
+(`out/canopy-memory-tests.log`). The integrated runtime passes a release host
+compiler check (`out/canopy-memory-runtime-check.log`). The ColdFire rebuild is
+blocked because Rust-for-ColdFire is not installed (`out/canopy-memory-build.log`);
+no rebuilt runtime artifact or device validation is claimed. V2 grant creation,
+row installation and live SPI sequencing remain disconnected. Focused documentation
+and layering checks pass; the changed-file check fails only on the existing 256
+stale path references in 78 files (`out/canopy-memory-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

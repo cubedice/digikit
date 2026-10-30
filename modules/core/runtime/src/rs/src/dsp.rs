@@ -489,7 +489,7 @@ pub unsafe fn rows_counts() -> (u32, u32) {
 /// First fit: the lowest offset whose byte address is `align`-aligned and whose `len` bytes touch no other range.
 unsafe fn alloc_range(len: u32, align: u32) -> Option<u32> {
     let d = ds();
-    capacity::first_fit(iw(I_AREA), iw(I_AREA_BYTES), &d.mod_off, &d.mod_len, len, align)
+    dsp_memory::first_fit(iw(I_AREA), iw(I_AREA_BYTES), len, align, &d.mod_off, &d.mod_len)
 }
 
 // ---- checking a section --------------------------------------------------------------------------------------------------
