@@ -193,5 +193,8 @@ impl<'a> Section<'a> {
     }
 }
 
+mod relocate;
+pub use relocate::RelocateError;
+
 #[cfg(test)]
 mod tests;

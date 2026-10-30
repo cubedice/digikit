@@ -1162,6 +1162,17 @@ mod tests {
         assert_eq!(checked.records()[0].unwrap(), record);
         assert_eq!(checked.memory_request().state_bytes, 528);
         assert_eq!(checked.memory_request().bss_bytes, section.bss);
+        let mut relocated = vec![0; section.image.len()];
+        checked
+            .relocate_into(0x20010000, &mut relocated, |name| {
+                assert_eq!(name, b"helper");
+                Some(0xb90000)
+            })
+            .unwrap();
+        assert_eq!(
+            relocated,
+            section.relocated(0x20010000, &|_| Some(0xb90000)).unwrap()
+        );
         assert_eq!(
             section.range_len(),
             (section.image.len() as u32 + 64 + 2 * 264).div_ceil(64) * 64

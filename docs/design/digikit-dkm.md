@@ -256,6 +256,15 @@ voice/effect sections are rejected by this reader pending coordinated lifecycle
 support. This reader is not yet called by the live loader and does not resolve
 imports, apply relocations, publish rows or enable a V2 device capability.
 
+`Section::relocate_into` prepares a checked copy in caller-owned memory. It
+resolves each import name once through a trusted resolver and preflights all
+fixups before writing. Missing imports, overlapping fixup instructions, invalid
+placement and address overflow leave the output unchanged. Internal text/data
+addresses use checked base shifts; abs32 import fields encode signed 32-bit
+addends, while abs24 import addends are unsigned as required by packing. The full
+image/BSS/state extent must fit DTII L2. The operation does not initialize BSS,
+transfer bytes, install rows or establish transport quiescence.
+
 The internal V2 registry reserves all types of a module in one transaction.
 Publication requires completion of DSP initialization; retirement hides the rows
 but holds their capacity until DSP detachment is acknowledged. Module-slot and

@@ -567,6 +567,24 @@ The three parser cases pass again after final source-encoding cleanup
 the changed-file check fails only on the existing 256 stale references in 78 files
 (`out/canopy-section-changed.log`).
 
+Validated instrument sections can now prepare a relocated image in caller-owned
+storage without allocation or SPI activity. The relocator checks placement of the
+entire image/BSS/state allocation in DTII L2, resolves each import exactly once
+through a trusted callback, rejects overlapping fixup instructions and validates
+all address arithmetic before copying any bytes. A missing import, invalid
+placement, short output or late fixup error leaves the output unchanged. Internal
+addresses use checked rebasing; abs32 import addends use signed arithmetic, while
+abs24 retains the packer's unsigned-addend contract. Opcode parcels are preserved.
+Validation: 39 targeted SDK tests pass, including late-failure atomicity, signed
+addends, overlap rejection and output preservation (`out/canopy-relocation-sdk.log`).
+A real packed fixture produces byte-identical output to the host reference
+relocator (`out/canopy-relocation-packer.log`), and the runtime host check passes
+(`out/canopy-relocation-runtime.log`). The live firmware export resolver is not
+connected yet. Image transfer/BSS initialization, row installation and SPI-driven
+lifecycle remain pending; no installable module or device proof is claimed.
+Focused docs and layering checks pass; the changed-file check fails only on the
+existing 256 stale references in 78 files (`out/canopy-relocation-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

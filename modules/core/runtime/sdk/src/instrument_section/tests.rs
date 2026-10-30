@@ -159,3 +159,110 @@ fn instrument_section_all_truncations_and_byte_edits_remain_bounded() {
         Err(Error::Layout)
     ));
 }
+
+#[test]
+fn instrument_relocation_resolves_once_preserves_opcodes_and_source() {
+    let mut bytes = fixture();
+    bytes[144..150].copy_from_slice(&[0x11, 0x22, 0, 0x44, 4, 0]);
+    let section = Section::parse(&bytes, 1, limits()).unwrap();
+    let mut out = [0xaa; 64];
+    let mut calls = 0;
+    section
+        .relocate_into(0x20010000, &mut out, |name| {
+            assert_eq!(name, b"test");
+            calls += 1;
+            Some(0xb80000)
+        })
+        .unwrap();
+    assert_eq!(calls, 1);
+    assert_eq!(&out[..6], &[0x11, 0x22, 0xb8, 0x44, 4, 0]);
+    assert_eq!(&out[6..], &bytes[150..]);
+    assert_eq!(&bytes[144..150], &[0x11, 0x22, 0, 0x44, 4, 0]);
+}
+#[test]
+fn instrument_relocation_failures_leave_output_untouched() {
+    let bytes = fixture();
+    let section = Section::parse(&bytes, 1, limits()).unwrap();
+    let mut out = [0xaa; 64];
+    assert_eq!(
+        section.relocate_into(0x20010000, &mut out, |_| None),
+        Err(RelocateError::MissingImport(0))
+    );
+    assert_eq!(
+        section.relocate_into(0x20010000, &mut out, |_| Some(1 << 24)),
+        Err(RelocateError::Address)
+    );
+    for base in [0x1ffffff0, 0x20010001, 0x20080000, 0xfffffff0] {
+        assert_eq!(
+            section.relocate_into(base, &mut out, |_| Some(0xb80000)),
+            Err(RelocateError::Placement)
+        );
+    }
+    assert_eq!(
+        section.relocate_into(0x20010000, &mut out[..63], |_| Some(0)),
+        Err(RelocateError::OutputSize)
+    );
+    assert_eq!(out, [0xaa; 64]);
+}
+#[test]
+fn instrument_relocation_signed_import_addends_and_internal_overflow() {
+    let mut bytes = fixture();
+    put(&mut bytes, 116, 0x12000000); // abs32 import, encoded -4
+    bytes[146..150].copy_from_slice(&[0xff, 0xff, 0xfc, 0xff]);
+    let section = Section::parse(&bytes, 1, limits()).unwrap();
+    let mut out = [0xaa; 64];
+    section
+        .relocate_into(0x20010000, &mut out, |_| Some(0x20000100))
+        .unwrap();
+    assert_eq!(&out[2..6], &[0x00, 0x20, 0xfc, 0x00]);
+    out.fill(0xaa);
+    assert_eq!(
+        section.relocate_into(0x20010000, &mut out, |_| Some(3)),
+        Err(RelocateError::Address)
+    );
+    put(&mut bytes, 116, 0x11000000); // same bits as absolute internal data would overflow
+    let section = Section::parse(&bytes, 1, limits()).unwrap();
+    assert_eq!(
+        section.relocate_into(0x20010000, &mut out, |_| Some(0)),
+        Err(RelocateError::Address)
+    );
+    assert_eq!(out, [0xaa; 64]);
+}
+
+#[test]
+fn instrument_relocation_late_failure_and_overlap_are_atomic() {
+    let old = fixture();
+    let mut bytes = [0u8; 224];
+    bytes[..120].copy_from_slice(&old[..120]);
+    bytes[128..152].copy_from_slice(&old[120..144]);
+    bytes[160..].copy_from_slice(&old[144..]);
+    for (at, value) in [
+        (0x18, 160),
+        (0x20, 2),
+        (0x2c, 128),
+        (0x34, 128),
+        (0x40, 128),
+        (0x48, 144),
+        (120, 6),
+        (124, 0x02000000),
+    ] {
+        put(&mut bytes, at, value);
+    }
+    bytes[168] = 0xff;
+    bytes[170] = 0xff;
+    bytes[171] = 0xff;
+    let section = Section::parse(&bytes, 1, limits()).unwrap();
+    let mut out = [0xaa; 64];
+    assert_eq!(
+        section.relocate_into(0x20010000, &mut out, |_| Some(1)),
+        Err(RelocateError::Address)
+    );
+    assert_eq!(out, [0xaa; 64]);
+    put(&mut bytes, 120, 2);
+    let section = Section::parse(&bytes, 1, limits()).unwrap();
+    assert_eq!(
+        section.relocate_into(0x20010000, &mut out, |_| Some(1)),
+        Err(RelocateError::Overlap)
+    );
+    assert_eq!(out, [0xaa; 64]);
+}
