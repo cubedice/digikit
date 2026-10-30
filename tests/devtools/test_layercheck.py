@@ -400,12 +400,13 @@ def test_carrier_fixture_does_not_allow_other_firmware_anchors(tree: Path) -> No
         None,
         '\n[[object]]\npath = "build/proof.dko.json"\nplace = "dsp.l2"\n'
         '[object.externs]\n_mi_envelope_next = "dsp.voice.site.envelope_entry.next"\n'
+        'cp_refresh = "cf.machine.fn.refresh_track"\n'
         '_mi_workspace_next = "dsp.unrelated.site.next"\n',
     )
     dko(
         tree,
         "out/cache/dko/test/canopy-carrier/build/proof.dko.json",
-        ["_cp_ready", "_mi_envelope_next", "_unrelated_private"],
+        ["_cp_ready", "_mi_envelope_next", "cp_refresh", "_unrelated_private"],
     )
     found = layercheck.check(tree)
     assert len(found) == 2

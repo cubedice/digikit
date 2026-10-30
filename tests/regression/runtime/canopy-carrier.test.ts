@@ -49,10 +49,10 @@ test('live carrier renders held keys and retires each release independently', as
       .filter((voice) => voice.token !== 0)
       .sort((a, b) => a.token - b.token);
   };
-  await expect.poll(() => word(0), { timeout: 30_000, interval: 100 }).toBe(3);
-  expect(await word(1)).toBe(1);
-  expect(await word(4)).toBe(0);
-  expect(await word(5)).toBe(1);
+  await expect.poll(() => word(0), { timeout: 30_000, interval: 100 }).toBe(1);
+  await expect.poll(() => word(1), { timeout: 10_000 }).toBe(1);
+  await expect.poll(() => word(4), { timeout: 10_000 }).toBe(0);
+  expect(await word(5)).toBe(0);
   expect(await word(10)).toBe(2);
   expect(await readVoices()).toEqual([]);
   const write = async (addr: number, value: number) => {
@@ -130,9 +130,9 @@ test('live carrier renders held keys and retires each release independently', as
       dspType: Buffer.from(mirror.hex, 'hex').readUInt16LE(),
     };
   };
-  const selected = await admissionSnapshot();
-  // One stock audition primes the stock type/configuration path.
-  await key('TRIG 1');
+  // The fixture resolves and refreshes the selected Sound; no stock note trigger.
+  await expect.poll(() => word(0), { timeout: 15_000 }).toBe(3);
+  expect(await word(5)).toBe(1);
   await expect
     .poll(
       async () => {
@@ -142,10 +142,14 @@ test('live carrier renders held keys and retires each release independently', as
       { timeout: 10_000 },
     )
     .toBe(1);
-  const auditioned = await admissionSnapshot();
-  fs.writeFileSync(path.join(root, 'out/canopy-carrier-admission.json'), JSON.stringify({ selected, auditioned }));
-  expect(auditioned.rowType).toBe(1);
-  expect(auditioned.sourceType).toBe(1);
+  const admitted = await admissionSnapshot();
+  fs.writeFileSync(path.join(root, 'out/canopy-carrier-admission.json'), JSON.stringify({ admitted }));
+  expect(admitted.rowType).toBe(1);
+  expect(admitted.sourceType).toBe(1);
+  const admission = planSymbol(plan, 'cp_admission');
+  expect(await session.client.memPeek(admission)).toBe(1);
+  expect(await session.client.memPeek(admission + 4)).toBe(admitted.source);
+  expect(await session.client.memPeek(admission + 8)).toBe(1);
   await session.client.call('midi.usb.in', { bytes: [0x90, 60, 80, 0x90, 64, 100] });
   await expect.poll(readVoices, { timeout: 10_000 }).toEqual([
     { token: 1, gate: 1 },

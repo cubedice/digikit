@@ -273,6 +273,16 @@ mark = "D"
 rule = "fw/machine:cf_func"
 
 [[anchor]]
+name = "cf.machine.fn.refresh_track"
+cpu = "cf"
+kind = "code"
+addr = 0x4002d438
+len = 172
+sha256 = "73fa55909e763ea88f19b800ea655cb0e36fd5bae161120e37e9ea4228eba9a9"
+mark = "D"
+rule = "fw/machine:cf_window_hash"
+
+[[anchor]]
 name = "cf.machine.site.clone.0"
 cpu = "cf"
 kind = "code"

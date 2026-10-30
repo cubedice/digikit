@@ -523,3 +523,46 @@ The required changed-file check passes layercheck, TypeScript typing, lint and
 formatting; no related host or Python tests were selected. Its sole failure is
 the existing repository pathcheck baseline (256 stale references in 78 files).
 Targeted pathcheck on all three changed documents passes with zero stale links.
+
+**[D] Selection-only initialization (2026-10-30):** The carrier fixture now
+starts and sounds MIDI notes without any stock audition or sequencer trig. Its
+CF initializer uses the declared project singleton and active-kit accessors.
+For this track-0-only experiment, the kit's track object is at `+0x6c`; the
+stock `track_type` path at `0x40036266` computes that address (stride `0x3c0`
+for other tracks). The type getter at `0x4005063e` calls vtable slot `+0x28`
+for the Sound pointer and reads its byte `+0xa2`. The fixture follows that
+getter, checks pointer ranges/alignment and requires type 1 before calling
+the stock refresh. These are pinned OS 1.17 layout facts, not a public SDK.
+
+`cf.machine.fn.refresh_track` declares the refresh routine by its unique
+172-byte instruction-window hash. Full port regeneration is unavailable here
+because the local ColdFire analysis database is missing. The existing resolver's
+exact-window matcher and port renderer generated only the added anchor, after
+checking MAIN against the lockfile hash; existing anchors remain unchanged.
+
+The shared transport fixture has an optional preparation callback. When present,
+it waits before submitting CPS1; when absent, transport-only bootstrap follows
+its previous path. Thus the carrier routes remain closed until selection,
+stock refresh and real configuration acknowledgement. The carrier test checks
+matching source/row/DSP type, exactly one refresh, then USB C/E and DIN G,
+independent release, and final output quietness. No TRIG button is pressed.
+
+The bounded test passes in 136 seconds. The admitted source is `0x426532ec`,
+with source, outgoing row and DSP type all 1. Held output has 96,640 finite,
+nonzero scalar samples, RMS `0.0405009`, and the same PCM digest as the earlier
+audition-primed proof. After final release, a 4,416-sample window has RMS
+`2.85231e-8` and peak `5.07571e-8`, below -120 dBFS.
+
+This closes the isolated cold-boot primer gap only. The initializer is one-shot,
+track 0, type 1, and uses the test fixture's configuration lifecycle. It does not
+handle Sound/pattern replacement, re-admission, arbitrary track layouts or
+concurrent lifecycle changes. Production V2 readiness and its DSP confirmation
+contract remain open; normal firmware does not install this initializer.
+
+Validation: carrier and transport-only live tests both pass, as do 21 layer
+regressions. The transport manifest explicitly marks the preparation callback
+optional; a weak C reference alone was insufficient for standalone linking.
+Changed-document links, lint, formatting and typing pass. The required
+changed-file check retains only the known 256 stale-link errors and five
+devtools verification failures (task routing and missing DN2 analysis data);
+222 other verification tests pass. No related host tests were selected.

@@ -13,7 +13,7 @@ time (the stock project may run files in parallel, `REGRESSION_JOBS`, set by the
 | `scenarios/` | `fx-dn2`, `fx-dt2` | Stock FX oracles (see [scenarios/README.md](scenarios/README.md)) |
 | `emulator/` | device | Emulator checks that belong to no module: stock-firmware reply record, SHARC instruction semantics |
 | `runtime/` | none | Helpers only (daemon, card, UI and module-install kits) |
-| `runtime/canopy-carrier.test.ts` | `canopy-carrier` | Emulator-only renderer, independent release and final PCM after stock audition setup |
+| `runtime/canopy-carrier.test.ts` | `canopy-carrier` | Emulator-only selection initialization, independent release and final PCM without audition |
 | `runtime/canopy-transport.test.ts` | `canopy-transport` | Emulator-only CANOPY MIDI/reset/configuration/event ACKs with real DSP |
 | `runtime/overloop-display.test.ts` | `overloop` | Experimental DT2 Overloop display, capture and live playback window |
 | `host/` | none (root `regression-host`) | Mocked helper tests, no daemon or firmware |
@@ -201,16 +201,18 @@ uv run python -m tools.patchkit.patchkit patch --firmware firmware/Digitakt_II_O
 DIGI_EMUD_DT2=PATH_TO_DAEMON pnpm --filter @digi/regression exec vitest run --project canopy-carrier
 ```
 
-The test cold-boots without a sample card, waits for real DSP admission, selects
-WERP with the panel controls and auditions TRIG 1 once to initialize the stock
-selector. Subsequent USB/DIN keys exercise independent rendering and full release
+The test cold-boots without a sample card and waits for reset acknowledgement
+with MIDI routes closed. Selecting WERP with the panel controls lets the fixture
+resolve the live Sound and refresh its stock rows, then obtain configuration
+acknowledgement and enable routing. It sends no stock audition or sequencer trig.
+USB/DIN keys exercise independent rendering and full release
 tails. Final PCM must contain finite nonzero samples while G remains held through
 E's release, and the final key release must retire the carrier. Idle and
 post-release PCM windows must each contain at least 4,096 scalar samples with
 finite RMS and peak below -120 dBFS; the stock output is not required to be
 bit-exact zero. The test also saves the stock cached source pointer, source type,
-outgoing row type and DSP mirror before and after audition to localize the
-startup dependency. The test has a
+outgoing row type and DSP mirror after admission, checking exactly one refresh.
+The test has a
 four-minute ceiling for the slower-than-real-time coupled engine. UI frames and
 PCM statistics remain under `out/`. No spectral continuity or hardware claim is
 made. Preflight and public V2 initialization remain blocked as described in the

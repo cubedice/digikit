@@ -132,8 +132,10 @@ tuning-table data as instructions; it must not be flashed. See the
 The separate `test/canopy-carrier` fixture now exercises the raw renderer and
 carrier hooks in booted DT2 firmware. Its USB/DIN chord produces finite, nonzero
 final PCM; individual releases retire their own voices and the final release
-returns the carrier to idle. It currently shadows stock WERP and needs one stock
-audition to initialize the DSP selector. This is an emulator proof, not a DKM or
-a supported keyboard workflow. V2 initialization without that primer, broader
-Sound/control behavior and final-output continuity tests remain open. See the
+returns the carrier to idle with final output below -120 dBFS. It shadows stock
+WERP; selection now resolves the live Sound and refreshes its stock configuration
+before CANOPY configuration acknowledgement and MIDI admission, without a stock
+audition. This is a one-shot, track-0 emulator proof, not a DKM or a supported
+keyboard workflow. Public V2 initialization, Sound/pattern replacement,
+broader Sound/control behavior and final-output continuity remain open. See the
 [carrier findings](../../../docs/findings/78-canopy-carrier.md) for measured results.

@@ -75,6 +75,7 @@ CANOPY_INCLUDES = {
     "modules/machines/canopy/src/dsp/instrument.s",
 }
 CANOPY_IMPORTS = {
+    "canopy_carrier_prepare",
     "mi_config_submit",
     "mi_instance_reset",
     "mi_ledger",
@@ -88,7 +89,7 @@ def canopy_fixture(root: Path, m: Module) -> bool:
     return m.id == "test/canopy-transport" and rel(root, m.dir) == CANOPY_FIXTURE
 
 
-# The separate carrier fixture installs only the three investigated DSP hooks.
+# The carrier fixture installs three DSP hooks and tests stock Sound refresh.
 # These rights do not apply to CANOPY's production module or other test modules.
 CARRIER_INCLUDES = {
     f"modules/core/adapters/midi-events/src/dsp/{name}.s"
@@ -105,6 +106,9 @@ CARRIER_INCLUDES = {
     "modules/machines/canopy/src/dsp/carrier-prepare.s",
 }
 CARRIER_EXTERNS = {
+    "cp_project": "cf.project.fn.singleton",
+    "cp_kit": "cf.project.fn.active_kit",
+    "cp_refresh": "cf.machine.fn.refresh_track",
     "_mi_workspace_next": "dsp.voice.site.envelope_workspace.next",
     "_mi_envelope_next": "dsp.voice.site.envelope_entry.next",
     "_mi_velocity_next": "dsp.voice.site.velocity_operand.next",

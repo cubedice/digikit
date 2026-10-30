@@ -15,6 +15,17 @@ ports = ["dt2-1.17"]
 "dt2-1.17" = "experimental"
 
 [[object]]
+path = "build/admission-cf.dko.json"
+sources = ["src/admission.c"]
+place = "cf.expansion"
+devices = ["dt2"]
+
+[object.externs]
+cp_project = "cf.project.fn.singleton"
+cp_kit = "cf.project.fn.active_kit"
+cp_refresh = "cf.machine.fn.refresh_track"
+
+[[object]]
 path = "build/carrier-dsp.dko.json"
 sources = ["src/dsp/carrier.s"]
 place = "dsp.l2"
