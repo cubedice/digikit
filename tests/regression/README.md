@@ -1,7 +1,7 @@
 # @digi/regression
 
 Vitest suites that drive the emulator daemon (`emud`) through `@digi/test-support` and `@digi/control-client`.
-All device suites share one config, `vitest.config.ts`, with five projects. Device projects run one file at a
+All device suites share one config, `vitest.config.ts`, with named projects. Device projects run one file at a
 time (the stock project may run files in parallel, `REGRESSION_JOBS`, set by the Nx launcher from its budget, default 2).
 
 ## Layout
@@ -9,6 +9,7 @@ time (the stock project may run files in parallel, `REGRESSION_JOBS`, set by the
 | Directory | Project | Content |
 | --- | --- | --- |
 | `dt2/` | `stock` | Stock DT2 1.17 UI and transport goldens, zero DSP |
+| `dt2/midi-ingress.test.ts` | `midi-ingress` | Experimental DT2 USB/DIN parser-to-task observation, zero DSP |
 | `scenarios/` | `fx-dn2`, `fx-dt2` | Stock FX oracles (see [scenarios/README.md](scenarios/README.md)) |
 | `emulator/` | device | Emulator checks that belong to no module: stock-firmware reply record, SHARC instruction semantics |
 | `runtime/` | none | Helpers only (daemon, card, UI and module-install kits) |
@@ -62,6 +63,15 @@ Running `pnpm --filter @digi/regression test:*` or Vitest directly builds nothin
   There is no `DIGI_RUNTIME_CARD` variable.
 
 ## Stock suite
+
+The separate `midi-ingress` project requires a private observer artifact. Prepare
+it with `uv run python -m tools.coldfire.midi_ingress_probe`, then run
+`DIGI_EMUD=PATH_TO_DAEMON pnpm --filter @digi/regression exec vitest run --project midi-ingress`.
+The observer and displaced firmware bytes stay under `out/`. The test observes
+the original gathered-message task hooks, checks receive-enable and auto-channel
+behavior, and continues through stock routing. It uses the stock ready snapshot
+with zero DSP; it proves neither CANOPY ownership nor audio. It is excluded from
+the ordinary stock golden suite and never builds its artifact implicitly.
 
 Each test checks no guest fault, DSP halt or stall (`Session.expectNoFault`), and that the stock firmware writes
 nothing into the patchkit free regions: `guard.set` is armed with the `cpu = "cf"` `[[region]]` blocks of

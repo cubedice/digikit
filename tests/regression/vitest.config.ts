@@ -42,6 +42,7 @@ export default defineConfig({
         test: {
           name: 'stock',
           include: ['dt2/**/*.test.ts'],
+          exclude: ['dt2/midi-ingress.test.ts'],
           pool: 'forks',
           testTimeout: 120_000,
           hookTimeout: 120_000,
@@ -49,6 +50,16 @@ export default defineConfig({
       },
       {
         extends: true,
+        test: {
+          name: 'midi-ingress',
+          include: ['dt2/midi-ingress.test.ts'],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 120_000,
+          hookTimeout: 120_000,
+        },
+      },
+      {
         test: {
           name: 'runtime',
           include: [

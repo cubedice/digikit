@@ -337,6 +337,46 @@ execute the live USB/DIN parser, stock router or outgoing stock trigger mask.
 Thus it closes the callback-to-continuation component gap, not the live ingress
 or final-audio gate. No normal MIDI route is enabled by this test.
 
+**[D] Stock USB parser boundary:** On the pinned OS 1.17 image, registration at
+`0x400ccae2` supplies cable-0 callback `0x4011da4c`. The callback accepts channel
+messages as well as SysEx; the older SysEx-only description is too narrow. Five
+ColdFire instruction-core cases execute its original bytes with bounded test
+allocation, queue-push and semaphore-wakeup replacements. They cover a note split
+across three calls, running-status notes, clock interleaved between note data bytes,
+replacement of an incomplete message by a new status, and channel-16 note/CC/bend.
+Each queued message has the expected status/data and length. Interleaved clock is
+queued separately without destroying running status; velocity-zero note-on stays
+`0x90` for the ownership layer to normalize. All five cases pass.
+
+The test pins the whole supplied SYX hash before using addresses. It replaces
+the short-message allocator at `0x4011d956`, queue push at `0x40001896`, and wakeup
+at `0x4000155c` only in the private test image. Parser state and service handles
+are synthetic; the byte-parser body and message-length table are stock. This is
+neither a USB packet/interrupt timing proof nor execution of the queue task.
+
+Static inspection of that task finds the channel-enable test before USB routing
+at `0x4011f1c0` (bit 1 of `0x429368ca`), then source 4 for the auto channel or 2
+otherwise, and the existing hook at `0x4011f1e2`. DIN uses bit 0 and source 16/8
+before its hook at `0x4011f178`. Thus live acceptance must exercise enabled and
+disabled receive settings as well as ordinary/auto channels. Do not infer live
+reachability solely from the parser or trampoline component results.
+
+**[D] Booted firmware ingress:** The separate Vitest `midi-ingress` project now
+passes against DT2 1.17's ready snapshot and the existing `digi-emud` binary. A
+private observer in the port's reserved CF expansion region records each message
+at the USB/DIN hook, then executes the displaced stock router call. With receive
+enabled, note-on/off on channel 1 (set as auto) and channel 2 arrive with sources
+4/2 on USB and 16/8 on DIN, exact three-byte payloads and no observer overflow.
+Disabling each port's receive bit prevents its channel messages reaching the hook.
+All four port/enable combinations pass without guest faults.
+
+USB injection uses the emulator's byte callback; DIN uses its UART/eDMA path.
+The test changes receive/auto-channel settings in emulator RAM and restores them.
+It uses zero DSP and always forwards messages to stock routing: this closes
+parser-to-hook reachability for these inputs, not live CANOPY ownership, DSP
+delivery, hardware timing or final sound. The preparation command pins the SYX
+hash; firmware tail bytes and the observer artifact remain ignored under `out/`.
+
 Resolve live configuration delivery and remaining event writers before adding
 the hook to the production manifest. Use idle-to-active to start the envelope once; avoid
 rearming it for subsequent keys. Retain the carrier through local release tails

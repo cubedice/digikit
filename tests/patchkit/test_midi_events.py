@@ -944,6 +944,78 @@ def test_din_hook_resolves_uniquely_on_pinned_image():
     )
 
 
+def test_stock_usb_parser_frames_channel_messages(tmp_path):
+    runner = Path(
+        os.environ.get("DIGIKIT_CF_SCRIPT", ROOT / "target/release/examples/cf_script")
+    )
+    if not FIRMWARE.exists() or not runner.exists() or not pk_toolchains.m68k_bin():
+        pytest.skip("DTII firmware, m68k compiler and cf_script required")
+    # Addresses below are measured on this exact image, not a cross-version API.
+    assert hashlib.sha256(FIRMWARE.read_bytes()).hexdigest() == (
+        "26c22f6652625ac2cfd47f7ee970d388ed8b6427dae3563c0a6a2f2d334350d5"
+    )
+    linked = patchkit.cf_link(
+        [ROOT / "tests/support/midi_parser_probe.c"],
+        0x47E00000,
+        {"mi_stock_usb_receive": 0x4011DA4C},
+    )
+    operations = [
+        {
+            "op": "poke",
+            "addr": linked.base,
+            "hex": (linked.image + bytes(linked.bss_size)).hex(),
+        }
+    ]
+    for address, symbol in (
+        (0x4011D956, "mi_parser_alloc"),
+        (0x40001896, "mi_parser_push"),
+        (0x4000155C, "mi_parser_wake"),
+    ):
+        operations.append(
+            {
+                "op": "poke",
+                "addr": address,
+                "hex": "4ef9" + linked.symbols[symbol].to_bytes(4, "big").hex(),
+            }
+        )
+    operations.extend(
+        [
+            {"op": "poke32", "addr": 0x44D4E930, "value": 0x12345678},
+            {"op": "poke32", "addr": 0x44D4E934, "value": 0x23456789},
+        ]
+    )
+    for case in range(5):
+        operations.extend(
+            [
+                {"op": "poke", "addr": 0x44D2E8C0, "hex": bytes(20).hex()},
+                {
+                    "op": "call",
+                    "tag": str(case),
+                    "pc": linked.symbols["mi_parser_case"],
+                    "args": [case],
+                    "max": 100_000,
+                },
+            ]
+        )
+    script = tmp_path / "parser.json"
+    script.write_text(json.dumps(operations))
+    result = subprocess.run(
+        [str(runner), str(FIRMWARE), str(script)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    rows = [
+        json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")
+    ]
+    calls = [row for row in rows if row.get("op") == "call"]
+    assert [row["tag"] for row in calls] == [str(case) for case in range(5)]
+    for row in calls:
+        assert row["ok"] and not row["error"] and row["d0"] == 0, row
+
+
 def test_usb_din_trampolines_consume_owned_notes(tmp_path):
     runner = Path(
         os.environ.get("DIGIKIT_CF_SCRIPT", ROOT / "target/release/examples/cf_script")

@@ -78,7 +78,15 @@ final-output gate.
 
 Source evidence: [machine ABI](../../sdk/include/dk/gen/machine.h), [DTII profile](../../devices/digitakt-ii.toml), [machine adapter](../../modules/core/adapters/dsp-voice/src/dsp/dsp-voice.s), [MIDI declarations](../../devices/fw/midi.toml), [upload analysis](../findings/43-digikit-upload.md), [typed descriptor validation](../../packages/patchkit/src/typed.rs), [module authoring](../MODULE-AUTHORING.md), [pattern-position ABI](../../sdk/include/dk/pattern_position.h), and [settings implementation](../../modules/core/runtime/src/rs/src/settings.rs).
 
-The USB hook's declaration describes SysEx, while the upload analysis describes a router for gathered cable-0 messages. Its channel-message reachability must be checked on the pinned 1.17 image; do not treat the documentation discrepancy as a proven new API. DIN/common-dispatch hook addresses from older firmware must be resolved again.
+The USB hook's declaration still describes SysEx. Pinned 1.17 component execution
+now confirms that the cable-0 byte parser also queues complete channel messages,
+including fragmented/running-status notes and interleaved clock. Static task
+inspection places the existing hook after the USB receive-enable and auto-channel
+tests. A separate zero-DSP Vitest scenario now observes both USB and DIN messages
+at the stock task hooks in booted firmware, checks ordinary/auto channels and
+receive-enable settings, and forwards every message to the stock router. This
+closes ingress reachability for those cases. Live CANOPY ownership and the
+MIDI-to-DSP-to-final-output chain remain unproved; no new SDK API is published.
 
 ## Architecture and ownership
 
