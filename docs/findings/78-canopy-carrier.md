@@ -319,6 +319,24 @@ The combined pattern-position/MIDI frame test now covers absent carrier callback
 and the real CANOPY carrier callbacks. It checks register and frame preservation,
 frame-stamp advancement and expired/unowned velocity records after reset.
 
+**[D] MIDI hook consumption boundary:** The ColdFire component suite now links
+the complete production runtime trampoline, DIN trampoline, MIDI dispatcher,
+ownership ledger and transport. A test wrapper supplies the firmware's existing
+three-argument stack shape and records the selected continuation. USB sources
+2/4 and DIN sources 8/16 consume owned note-on, note-off and velocity-zero
+note-on messages, while unclaimed channels take the stock continuation. Reset
+tombstones consume old releases; fresh presses on the disabled route remain
+consumed. The callback preserves D0/D1/A0/A1, tested callee registers D2/A2, all
+three arguments and the original stack position. USB upload messages reach the
+runtime upload handler; DIN SysEx remains on its stock path.
+
+This executes the real assembly branches and production C on the ColdFire core,
+with the runtime's actual interrupt-mask helpers. Readiness and transport ACK
+state are injected, and the continuations are observation stubs. It does not
+execute the live USB/DIN parser, stock router or outgoing stock trigger mask.
+Thus it closes the callback-to-continuation component gap, not the live ingress
+or final-audio gate. No normal MIDI route is enabled by this test.
+
 Resolve live configuration delivery and remaining event writers before adding
 the hook to the production manifest. Use idle-to-active to start the envelope once; avoid
 rearming it for subsequent keys. Retain the carrier through local release tails

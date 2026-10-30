@@ -43,10 +43,19 @@ remains uninstalled. Preserve LEVEL and modulation, and prove final output
 separately; live scheduling and changing-control smoothing remain open.
 
 The musical proof also traverses the conditional ramp after gain. Controlled
-31/32-sample cases establish that it fades only when a transition word and an
+31/32-sample cases establish that it fades only when a transition byte and an
 envelope configuration flag are both set. The proof's zero configuration flag
 preserves chord audio. The live control/event meanings remain unresolved, so this
 does not yet establish arbitrary Sound compatibility or justify bypassing the ramp.
+
+The incoming DSP track-trigger mask sets that per-voice byte, and a machine-type
+change forces the fade configuration flag on. Preserve that machine-change fade.
+ColdFire component tests now execute the production USB/DIN trampolines and
+confirm that owned keys select the consumed continuation, including velocity-zero
+releases and reset tombstones, with arguments/registers preserved. Readiness is
+injected and the continuations are test observers; live parser-to-trigger-frame
+delivery remains open. These checks do not enable keyboard routes or satisfy the
+final-output gate.
 
 - Ship a DTII-only experimental module, proposed ID `digikit/canopy`, with an explicitly required new runtime capability. Keep existing V1 machines compatible.
 - Support four foreground pad notes. Additional fixed slots handle one arp note and two shared release tails. Voice count never grows with release time.

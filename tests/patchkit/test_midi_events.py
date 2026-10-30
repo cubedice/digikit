@@ -944,6 +944,79 @@ def test_din_hook_resolves_uniquely_on_pinned_image():
     )
 
 
+def test_usb_din_trampolines_consume_owned_notes(tmp_path):
+    runner = Path(
+        os.environ.get("DIGIKIT_CF_SCRIPT", ROOT / "target/release/examples/cf_script")
+    )
+    if not FIRMWARE.exists() or not runner.exists() or not pk_toolchains.m68k_bin():
+        pytest.skip("DTII firmware, m68k compiler and cf_script required")
+    runtime = ROOT / "modules/core/runtime"
+    linked = patchkit.cf_link(
+        [
+            *(
+                MOD / f"src/cf/{name}"
+                for name in ("ownership.c", "transport.c", "adapter.c", "din.s")
+            ),
+            runtime / "src/cf/tramp.s",
+            runtime / "src/cf/midi_dispatch.c",
+            ROOT / "tests/support/midi_ingress_probe.c",
+            ROOT / "tests/support/midi_ingress_probe.s",
+        ],
+        0x47E00000,
+        dict.fromkeys(
+            (
+                "fx_controls_tick",
+                "loop_ui_tick",
+                "dkrt_tick",
+                "fw_queue_pop",
+                "dkrt_boot",
+                "dkrt_boot_next",
+                "dkrt_exc",
+            ),
+            0,
+        ),
+        [MOD / "src/cf", runtime / "build/gen", ROOT / "modules/core/fw/inc"],
+    )
+    script = tmp_path / "ingress.json"
+    script.write_text(
+        json.dumps(
+            [
+                {
+                    "op": "poke",
+                    "addr": linked.base,
+                    "hex": (linked.image + bytes(linked.bss_size)).hex(),
+                },
+                *(
+                    {
+                        "op": "call",
+                        "tag": str(source),
+                        "pc": linked.symbols["mi_probe_ingress"],
+                        "args": [source],
+                        "max": 2_000_000,
+                    }
+                    for source in (2, 4, 8, 16)
+                ),
+            ]
+        )
+    )
+    result = subprocess.run(
+        [str(runner), str(FIRMWARE), str(script)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    calls = [
+        json.loads(line)
+        for line in result.stdout.splitlines()
+        if line.startswith("{") and json.loads(line).get("op") == "call"
+    ]
+    assert [row["tag"] for row in calls] == ["2", "4", "8", "16"]
+    for row in calls:
+        assert row["ok"] and not row["error"] and row["d0"] == 0, row
+
+
 def test_ownership_and_dispatch_on_coldfire(
     tmp_path, packet_validator, config_receiver, reply_builder
 ):
