@@ -1298,6 +1298,39 @@ formatting and types. Its only failure is the existing 256 stale references in
 78 files (`out/canopy-live-session-changed.log`); focused checks of the edited
 documentation pass. No device installation or public V2 capability is implied.
 
+Live revocation now has a separate emulator-only fixture,
+`test/instrument-session-loss`. Its protected block callback waits 2,048 DSP
+blocks after observing the bind, clears only the session token for 64 blocks,
+and then restores the original token while retaining the original registry ACK.
+The callback runs before the production reply builder; the real reply transport,
+CF guard and UI coordinator observe the loss. The regression checks permanent
+blocked state, no new transfer identity, no renewed lease or admission, and no
+rearm even after the old valid-looking token/ACK returns and UI ticks advance.
+The normal bootstrap fixture remains free of fault injection.
+
+This is deliberately partial-state loss, not a DSP reset. The control daemon
+currently offers DSP memory inspection but no independent hardware-reset action;
+`SharcRenderer::reset` restores a prepared start state rather than exercising the
+firmware's reset line/boot protocol. All supported DSP-only restart paths still
+need validation before enabling admission. Do not substitute this injected loss
+or a whole-machine snapshot restore for that evidence.
+
+Validation: both running-firmware session cases pass (64.2 s normal binding,
+93.4 s injected loss/replay; `out/canopy-session-loss-live.log`). The loss fixture
+build passes all 36 instruction decodes. Its sole private import is restricted
+by exact fixture ID, directory, object, source list and symbol in the layering
+checker; other private state remains forbidden.
+
+All 26 layering tests pass. Focused documentation and current-artifact checks
+pass. Required preflight passes layering, Python lint/format/types, related-host
+selection, JS lint/format and TypeScript checks. It remains red on the existing
+256 stale references in 78 files and five broader verification-tool failures:
+`test_mise_tasks_of_the_repo_resolve` does not expect the already-present
+`patch:toolchains` task, while four FX-tier cases require the absent DNII 1.11
+analysis database. The latter suite has 222 passes and five failures; its task
+routing and database-dependent code are unchanged by this checkpoint. See
+`out/canopy-session-loss-changed.log` and `out/canopy-session-loss-layers-test.log`.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

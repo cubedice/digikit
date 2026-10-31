@@ -412,3 +412,33 @@ def test_carrier_fixture_does_not_allow_other_firmware_anchors(tree: Path) -> No
     assert len(found) == 2
     assert any("dsp.unrelated.site.next" in v.message for v in found)
     assert any("_unrelated_private" in v.message for v in found)
+
+
+@pytest.mark.parametrize("variant", ["allowed", "directory", "id", "object", "source"])
+def test_session_loss_fixture_private_import_is_narrow(
+    tree: Path, variant: str
+) -> None:
+    directory = "tests/fixtures/modules/instrument-session-loss"
+    mid = "test/instrument-session-loss"
+    obj = "build/loss.dko.json"
+    source = "src/dsp/loss.s"
+    if variant == "directory":
+        directory = "tests/fixtures/modules/other"
+    elif variant == "id":
+        mid = "test/other"
+    elif variant == "object":
+        obj = "build/other.dko.json"
+    elif variant == "source":
+        source = "src/dsp/other.s"
+    module(
+        tree,
+        directory,
+        mid,
+        "test",
+        None,
+        f'\n[[object]]\npath = "{obj}"\nsources = ["{source}"]\nplace = "dsp.l2"\n',
+    )
+    dko(tree, f"out/cache/dko/{mid}/{obj}", ["_instrument_session", "_ir_rows"])
+    found = layercheck.check_objects(tree, layercheck.load_modules(tree))
+    assert len(found) == (1 if variant == "allowed" else 2)
+    assert any("_ir_rows" in v.message for v in found)

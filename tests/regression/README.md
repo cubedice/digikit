@@ -175,17 +175,21 @@ Module cells write diagnostic JSON under `out/regression/module-load/<device>/<m
 
 This isolated DTII project uses the ready inputs and existing daemon above. It
 cold-boots the registry and triggers the runtime's one-shot bootstrap, checks the
-DSP session token and drained link release, and rejects rearming. No machine is
-admitted. The optional trigger is supplied only by the test fixture.
+DSP session token and drained link release, and rejects rearming. A second image
+injects token loss and then restores the old token/ACK; the CF runtime must remain
+blocked without another transfer. No machine is admitted. The optional trigger
+and fault injector are supplied only by the test fixtures.
 
 ```sh
-uv run python -m tools.patchkit.patchkit build core/runtime test/instrument-session
+uv run python -m tools.patchkit.patchkit build core/runtime test/instrument-session test/instrument-session-loss
 uv run python -m tools.patchkit.patchkit patch --firmware firmware/Digitakt_II_OS1.17.syx --modules test/instrument-session -o out/patch/canopy-live-session.syx
+uv run python -m tools.patchkit.patchkit patch --firmware firmware/Digitakt_II_OS1.17.syx --modules test/instrument-session-loss -o out/patch/canopy-live-session-loss.syx
 DIGI_EMUD_DT2=PATH_TO_DAEMON pnpm --filter @digi/regression exec vitest run --project instrument-session
 ```
 
-This proves the running firmware's initial exchange, not DSP-only restart or
-hardware reset behavior. Do not install the fixture on a device.
+These tests prove the running firmware's initial exchange and sticky revocation
+after injected token loss. They do not emulate a DSP-only hardware reset or prove
+that its reset paths clear the latch. Do not install these fixtures on a device.
 
 ## CANOPY transport proof
 
@@ -240,7 +244,7 @@ It then wakes the carrier with velocity-24 C before adding velocity-127 G,
 measures their mixed output, releases C and measures G alone, and compares that
 G with the same pitch/velocity started from silence. Held windows settle for
 0.25 seconds before measuring at least 24,000 scalar samples. The G-alone RMS
-ratio must be within 2%; the mixed ratio must be 0.95–1.10 to allow low C's energy
+ratio must be within 2%; the mixed ratio must be 0.95â€“1.10 to allow low C's energy
 and finite-window beating. These bounds detect shared gain inherited from the
 soft first key; they do not prove phase continuity or all velocity curves.
 The extended carrier test has an eight-minute body ceiling.
