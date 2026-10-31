@@ -1,4 +1,4 @@
-// Internal V2 row lifecycle. Installation and audio dispatch remain unwired.
+// Internal V2 row lifecycle. Public admission and audio dispatch remain unwired.
 // Trusted admission alone may write metadata, while the row is unreachable.
 // 16 words: phase,owner,generation,tracks,state_base,state_words,arena_start,
 // arena_end,reset_entry,code_start,code_end,cursor,error,touched,reserved,reserved.
@@ -23,7 +23,7 @@ _ir_row_address:
     R0 = 0;
     RTS;
 // Trusted internal install: R4 index, I1 immutable private 16-word snapshot.
-// No mailbox/window points at this entry or snapshot. Caller owns the allocation,
+// Mailbox INSTALL supplies a private snapshot. Caller owns the allocation,
 // validates instruction boundaries/budgets, drains image writes and serializes
 // installs/ticks. No callbacks. Clobbers R0..R3, I0/I1; linear L0/L1, M6=1.
 // Accept empty rows or a strictly newer unsigned generation after full detach.
@@ -159,6 +159,26 @@ _ir_row_begin:
     R0 = R5 AND R0;
     COMP(R0, R5);
     IF NE JUMP _irr_invalid;
+    R0 = PASS R6;
+    IF EQ JUMP _irr_invalid;
+    // After transport drainage, DETACH also retires a never-installed ticket.
+    // Only EMPTY or an older DETACHED tombstone may be claimed this way.
+    R0 = 3;
+    COMP(R8, R0);
+    IF NE JUMP _irr_identity;
+    R1 = DM(0, I0);
+    R0 = PASS R1;
+    IF EQ JUMP _irr_retire_empty;
+    R0 = 6;
+    COMP(R1, R0);
+    IF NE JUMP _irr_identity;
+    R0 = DM(2, I0);
+    R1 = 0x80000000;
+    R0 = R0 XOR R1;
+    R2 = R6 XOR R1;
+    COMP(R2, R0);
+    IF GT JUMP _irr_retire_empty;
+_irr_identity:
     R0 = DM(1, I0);
     COMP(R0, R5);
     IF NE JUMP _irr_invalid;
@@ -189,6 +209,21 @@ _ir_row_begin:
     IF GT JUMP _irr_invalid;
     R0 = 4;
     JUMP _irr_start;
+_irr_retire_empty:
+    // Retain the cancelled generation so a delayed INSTALL cannot resurrect it.
+    DM(1, I0) = R5;
+    DM(2, I0) = R6;
+    MODIFY(I0, 3) (NW);
+    R2 = 13;
+    R0 = 0;
+_irr_retire_clear:
+    DM(I0, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _irr_retire_clear;
+    MODIFY(I0, -16) (NW);
+    R0 = 6;
+    DM(0, I0) = R0;
+    JUMP _irr_ok;
 _irr_begin_init:
     R0 = 1;
     COMP(R1, R0);

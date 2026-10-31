@@ -303,6 +303,16 @@ fn instrument_memory_waits_for_all_mailbox_detach_rows_before_freeing() {
 
 #[test]
 fn instrument_install_binds_plan_and_waits_for_every_dsp_reply() {
+    run_install_scenario(None);
+}
+
+#[test]
+fn instrument_partial_install_failure_releases_only_after_all_detach_replies() {
+    run_install_scenario(Some(0));
+    run_install_scenario(Some(1));
+}
+
+fn run_install_scenario(cancel_after: Option<u32>) {
     use crate::instrument_admission::{prepare, Limits, Range, Spec};
     use crate::instrument_image::Transfer;
     use crate::instrument_load::{Ledger, MemoryRequest};
@@ -386,6 +396,10 @@ fn instrument_install_binds_plan_and_waits_for_every_dsp_reply() {
     assert_eq!(words[5], 4);
     assert_eq!(words[7..15], plan.rows()[0].unwrap().words[3..11]);
     assert!(mailbox.take_installed().is_none()); // transfer ACK alone cannot authorize init
+    if cancel_after == Some(0) {
+        cleanup_partial_install(&mut mailbox, &mut loads, t, &mut offsets, &mut lengths);
+        return;
+    }
     let missing_cap = response(&mailbox, 0, 3);
     assert_eq!(
         mailbox.reply(&missing_cap, &mut loads),
@@ -405,6 +419,15 @@ fn instrument_install_binds_plan_and_waits_for_every_dsp_reply() {
         mailbox.reply(&first, &mut loads),
         Err(Error::MismatchedReply)
     );
+    if cancel_after == Some(1) {
+        let rejected = response(&mailbox, 3, 7);
+        assert_eq!(
+            mailbox.reply(&rejected, &mut loads),
+            Err(Error::Rejected(3))
+        );
+        cleanup_partial_install(&mut mailbox, &mut loads, t, &mut offsets, &mut lengths);
+        return;
+    }
     let second = response(&mailbox, 0, 7);
     mailbox.reply(&second, &mut loads).unwrap();
     assert!(loads.lookup(18).is_none());
@@ -421,4 +444,53 @@ fn instrument_install_binds_plan_and_waits_for_every_dsp_reply() {
         mailbox.reply(&reply, &mut loads).unwrap();
     }
     assert_eq!(loads.lookup(18).unwrap().owner, 3);
+}
+
+fn cleanup_partial_install(
+    mailbox: &mut Mailbox,
+    loads: &mut Loads,
+    ticket: Ticket,
+    offsets: &mut [u32],
+    lengths: &mut [u32],
+) {
+    use crate::instrument_load::Ledger;
+    assert!(mailbox.take_installed().is_none());
+    assert_eq!(
+        mailbox.abandon_after_drain(loads, false),
+        Err(Error::NotDrained)
+    );
+    let old_reply = response(mailbox, 0, 7);
+    let detach = mailbox.abandon_after_drain(loads, true).unwrap();
+    let mut ledger = Ledger {
+        base: 0x20010000,
+        bytes: 4096,
+        offsets,
+        lengths,
+    };
+    let retained = ledger.lengths[3];
+    assert!(retained > 0);
+    assert!(loads.release_memory(ticket, &mut ledger).is_err());
+    mailbox.begin(detach, loads, true).unwrap();
+    for index in 0..2 {
+        transfer(mailbox);
+        assert_eq!(
+            mailbox.reply(&old_reply, loads),
+            Err(Error::MismatchedReply)
+        );
+        assert!(loads.release_memory(ticket, &mut ledger).is_err());
+        let ack = response(mailbox, 0, 7);
+        assert_eq!(
+            mailbox.reply(&ack, loads).unwrap(),
+            if index == 1 {
+                Some(Command::Release(ticket))
+            } else {
+                None
+            }
+        );
+        assert_eq!(ledger.lengths[3], retained);
+    }
+    loads.release_memory(ticket, &mut ledger).unwrap();
+    assert_eq!(ledger.lengths[3], 0);
+    let next = reserve(loads, 3, &[18, 19]);
+    assert!(next.generation() > ticket.generation());
 }

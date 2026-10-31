@@ -143,6 +143,22 @@ _ir_install_zero:
     JUMP _ir_finish;
 _ir_poll:
     R4 = DM(_ir_ticket + 16);
+    // A never-installed or already-detached row needs no lifecycle tick.
+    R0 = LSHIFT R4 BY 6;
+    R1 = _ir_rows;
+    R0 = R0 + R1;
+    I0 = R0;
+    R0 = DM(0, I0);
+    R1 = 6;
+    COMP(R0, R1);
+    IF NE JUMP _ir_tick;
+    R0 = DM(_ir_ticket + 12);
+    R1 = 3;
+    COMP(R0, R1);
+    IF NE JUMP _ir_failed;
+    R2 = 0;
+    JUMP _ir_finish;
+_ir_tick:
     CALL _ir_row_tick_protected;
     R0 = PASS R0;
     IF NE JUMP _ir_failed;

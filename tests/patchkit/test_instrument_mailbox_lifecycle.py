@@ -109,6 +109,7 @@ def scheduler(scheduler_object):
         **sections,
         "wire": (symbols["_instrument_reply"] // 4, 16),
         "row": (base, 16),
+        "rows": (symbols["_ir_rows"] // 4, 128),
         "calls": (0x20040010 // 4, 3),
         "state": (0x20070000 // 4, 16),
     }
@@ -260,4 +261,65 @@ def test_install_bad_metadata_and_owned_row_are_rejected(scheduler):
     result = scheduler(words, empty=True)
     assert result["ack"][6] == 3
     assert result["row"] == [0] * 16
+    assert result["state"] == [0xDEADBEEF] * 16
+
+
+@pytest.mark.parametrize("installed", [False, True])
+def test_cancel_before_initialize_detaches_and_blocks_delayed_install(
+    scheduler, installed
+):
+    words = install_command(scheduler)
+    if installed:
+        scheduler(words, empty=True)
+    result = scheduler(command(3, 3), empty=not installed)
+    assert result["ack"][1:] == [3, 3, 9, 3, 7, 0, 7]
+    assert result["row"][:3] == [6, 3, 9]
+    assert result["calls"][0] == 0
+    assert result["state"] == [0xDEADBEEF] * 16
+    # Lost detach replies can be retried with a new sequence, with no callback.
+    result = scheduler(command(4, 3))
+    assert result["ack"][1:] == [4, 3, 9, 3, 7, 0, 7]
+    words[2] = 5
+    words[15] = reduce(xor, words[:15])
+    result = scheduler(words)
+    assert result["ack"][6] == 3
+    assert result["row"][:3] == [6, 3, 9]
+    words[2], words[4] = 6, 10
+    words[15] = reduce(xor, words[:15])
+    result = scheduler(words)
+    assert result["ack"][6] == 0
+    assert result["row"][:3] == [1, 3, 10]
+    assert result["calls"][0] == 0
+
+
+def test_never_installed_reuse_of_older_detached_row(scheduler):
+    scheduler(command(1, 3))
+    result = scheduler(command(2, 3, owner=4, generation=10))
+    assert result["ack"][1:] == [2, 4, 10, 3, 7, 0, 7]
+    assert result["row"] == [6, 4, 10] + [0] * 13
+    assert result["calls"][0] == 0
+
+
+def test_partial_install_detaches_both_installed_and_missing_rows(scheduler):
+    words = install_command(scheduler)
+    words[6] = 6
+    words[15] = reduce(xor, words[:15])
+    result = scheduler(words, empty=True)
+    assert result["rows"][96:99] == [1, 3, 9]
+    assert result["row"] == [0] * 16
+    words[2], words[6], words[7] = 3, 7, 17
+    words[15] = reduce(xor, words[:15])
+    assert scheduler(words)["ack"][6] == 3
+    detach = command(4, 3)
+    detach[6] = 6
+    detach[15] = reduce(xor, detach[:15])
+    result = scheduler(detach)
+    assert result["ack"][1:] == [4, 3, 9, 3, 6, 0, 7]
+    assert result["rows"][96:99] == [6, 3, 9]
+    assert result["row"] == [0] * 16
+    result = scheduler(command(5, 3))
+    assert result["ack"][1:] == [5, 3, 9, 3, 7, 0, 7]
+    assert result["row"] == [6, 3, 9] + [0] * 13
+    assert result["rows"][:96] == [0] * 96
+    assert result["calls"][0] == 0
     assert result["state"] == [0xDEADBEEF] * 16

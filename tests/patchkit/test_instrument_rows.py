@@ -352,3 +352,41 @@ def test_install_rejects_invalid_row_index(rows, index):
     result = rows("_ir_row_install", index=index, install={})
     assert result["regs"]["R0"] == 0xFFFFFFFF
     assert result["rows"] == before["rows"]
+
+
+@pytest.mark.parametrize(
+    "phase,old,new", [(0, 0, 9), (6, 8, 9), (6, 0x7FFFFFFF, 0x80000000)]
+)
+def test_detach_never_installed_ticket_creates_empty_tombstone(rows, phase, old, new):
+    result = rows(
+        "_ir_row_begin", operation=3, generation=new, fields={0: phase, 1: 2, 2: old}
+    )
+    assert result["regs"]["R0"] == 0
+    assert result["rows"][:16] == [6, 3, new] + [0] * 13
+    assert result["calls"][0] == 0
+    assert result["state"] == [0xDEADBEEF] * 64
+    # A later transport sequence cannot install the cancelled generation again.
+    result = rows("_ir_row_install", install={2: new})
+    assert result["regs"]["R0"] == 0xFFFFFFFF
+    assert result["rows"][:16] == [6, 3, new] + [0] * 13
+
+
+@pytest.mark.parametrize(
+    "phase,old,new",
+    [
+        (6, 9, 8),
+        (6, 0xFFFFFFFF, 1),
+        (6, 9, 9),
+        (1, 8, 9),
+        (2, 8, 9),
+        (3, 8, 9),
+        (4, 8, 9),
+        (5, 8, 9),
+    ],
+)
+def test_detach_cannot_claim_another_owner_or_stale_tombstone(rows, phase, old, new):
+    before = rows("_ir_row_begin", owner=31, fields={0: phase, 1: 2, 2: old})
+    result = rows("_ir_row_begin", operation=3, generation=new)
+    assert result["regs"]["R0"] == 0xFFFFFFFF
+    assert result["rows"] == before["rows"]
+    assert result["calls"][0] == 0

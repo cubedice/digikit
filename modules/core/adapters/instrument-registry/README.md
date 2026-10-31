@@ -93,9 +93,13 @@ the client returns an opaque ticket-bound `Installed` receipt. The image control
 requires this receipt to advance to initialization; a boolean or transfer ACK is
 insufficient. Receipts and client state are valid only for the current DSP boot.
 Transport drainage, allocation ownership and callback budgets remain trusted
-loader obligations. Partial-install failure must retain the allocation: cleanup
-of rows that never installed is not yet implemented, so it must remain quarantined
-rather than infer successful detachment from a rejected row identity.
+loader obligations. Partial-install failure retains the allocation until matching successful DETACH
+replies arrive for every reserved row. An empty row or an older detached entry can
+be retired directly for the cancelled ticket without a callback. Its generation
+is retained as a tombstone, so delayed INSTALL cannot resurrect it. A newer
+identity, equal generation under another owner, or any occupied row belonging to
+another ticket is rejected; rejection never authorizes release. The caller must
+drain old writes before cleanup and keep the allocation until all replies succeed.
 
 ## Internal V2 reset worker
 
@@ -143,9 +147,12 @@ RESERVED=1, INITIALIZING=2, READY=3, DETACHING=4, FAULT=5 and DETACHED=6. READY
 means all initialization callbacks returned; it does not publish audio dispatch.
 DETACHED retains the owner and generation as a tombstone; it does not free memory.
 
-`_ir_row_begin` requires a matching owner/generation and valid row index. It starts
+`_ir_row_begin` requires a valid row index, owner and nonzero generation. DETACH
+may claim EMPTY or a strictly older DETACHED entry as a cleared tombstone for the
+cancelled ticket. Other transitions require matching owner/generation. It starts
 initialization only from RESERVED, and detachment from reserved, initializing,
-ready or faulted rows. Repeated detach requests preserve in-progress work.
+ready or faulted rows. Repeated detach requests preserve in-progress work;
+already-detached rows return success without another lifecycle tick.
 `_ir_row_tick` attempts at most one instance reset per call. A separate completion
 tick marks READY or DETACHED after the final callback has returned. A failed
 callback records its negative result and marks FAULT without discarding metadata.

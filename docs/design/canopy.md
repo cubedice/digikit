@@ -650,6 +650,24 @@ Focused docs, lint, layering, host tests and types pass. The changed-file check
 fails only on the existing 256 stale references in 78 files
 (`out/canopy-install-mailbox-changed.log`).
 
+Partial-install cleanup now uses DETACH for every reserved row, including rows
+that never installed. EMPTY or strictly older DETACHED rows become cleared
+tombstones for the cancelled ticket without any callback or state-memory write.
+The retained generation blocks delayed installation even under a newer command
+sequence; another active owner and stale/wrapped generations remain rejected.
+The scheduler also acknowledges already-detached rows without an invalid extra
+tick, allowing lost-reply recovery. The SDK still requires transport drainage and
+every matching detach reply before releasing the original allocator grant.
+This closes the preceding checkpoint's never-installed-row cleanup gap at the
+component level; live SPI integration and trusted admission remain pending.
+Validation: 45 SDK tests pass; DSP row/mailbox/registry/protection checks pass,
+including the additional mixed installed/missing-row scenario. Composed MIDI
+checks pass (84 passed, three skipped), and the rebuilt registry is current.
+Logs: `out/canopy-partial-install-{sdk,dsp,mailbox,frame,build}.log`.
+Focused docs, lint, layering, host tests and types pass. The changed-file check
+fails only on the existing 256 stale references in 78 files
+(`out/canopy-partial-install-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
