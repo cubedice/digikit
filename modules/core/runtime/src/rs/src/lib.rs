@@ -1126,6 +1126,7 @@ pub unsafe extern "C" fn dkrt_tick() {
     files::tick();
     fxpage::tick();
     pageclick::tick();
+    instrument::tick(s.ticks);
     settings::tick();
     watch::tick();
     let mb = &mut *addr_of_mut!(DKRT_MAILBOX);

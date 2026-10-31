@@ -597,26 +597,32 @@ fn boot_loss_after_detach_completion_prevents_allocator_reuse() {
 fn handoff_waits_for_legacy_then_keeps_release_exclusive() {
     let mut f = Fixture::new();
     WIRE.with_borrow_mut(|w| w.require_lease = true);
+    assert_eq!(f.owner.legacy_policy(), LegacyPolicy::Run);
     assert_eq!(f.owner.tick_link(0, false), LinkProgress::Released);
     assert_eq!(f.owner.request_link(10, 20), Ok(()));
+    assert_eq!(f.owner.legacy_policy(), LegacyPolicy::Drain);
     assert_eq!(f.owner.tick_link(11, false), LinkProgress::Pending);
     WIRE.with_borrow(|w| assert_eq!(w.claims, 0));
     WIRE.with_borrow_mut(|w| w.claim_busy = true);
     assert_eq!(f.owner.tick_link(12, true), LinkProgress::Pending);
     WIRE.with_borrow_mut(|w| w.claim_busy = false);
     assert_eq!(f.owner.tick_link(13, true), LinkProgress::Owned);
+    assert_eq!(f.owner.legacy_policy(), LegacyPolicy::Pause);
     f.begin(14, 1000);
     assert_eq!(f.owner.request_link_release(15, 10), Err(Error::Busy));
     assert_eq!(f.owner.tick_link(15, false), LinkProgress::Owned);
     for now in 16..1000 {
         if matches!(f.owner.tick(now), Progress::Complete { .. }) {
             assert_eq!(f.owner.request_link_release(now, 10), Ok(()));
+            assert_eq!(f.owner.legacy_policy(), LegacyPolicy::Pause);
             WIRE.with_borrow_mut(|w| w.release_busy = true);
             assert_eq!(f.owner.tick_link(now, true), LinkProgress::Pending);
             WIRE.with_borrow(|w| assert!(w.owned));
+            assert_eq!(f.owner.legacy_policy(), LegacyPolicy::Pause);
             WIRE.with_borrow_mut(|w| w.release_busy = false);
             assert_eq!(f.owner.tick_link(now + 1, true), LinkProgress::Released);
             assert_eq!(f.owner.tick_link(now + 2, true), LinkProgress::Released);
+            assert_eq!(f.owner.legacy_policy(), LegacyPolicy::Run);
             WIRE.with_borrow(|w| {
                 assert!(!w.owned);
                 assert_eq!((w.claims, w.releases), (2, 2));
@@ -708,4 +714,43 @@ fn handoff_rejects_invalid_budgets_and_loads_during_waits() {
     assert_eq!(f.owner.tick_link(0, true), LinkProgress::Owned);
     assert_eq!(f.owner.request_link_release(1, 0), Err(Error::Budget));
     assert_eq!(f.owner.tick_link(2, false), LinkProgress::Owned);
+}
+
+#[test]
+fn uncertain_handoff_never_restores_legacy_pollers() {
+    let mut f = Fixture::new();
+    f.owner.request_link(0, 10).unwrap();
+    assert_eq!(f.owner.tick_link(0, true), LinkProgress::Owned);
+    f.owner.request_link_release(1, 10).unwrap();
+    WIRE.with_borrow_mut(|w| w.uncertain_release = true);
+    assert_eq!(
+        f.owner.tick_link(2, true),
+        LinkProgress::Blocked(Failure::Link)
+    );
+    assert_eq!(f.owner.legacy_policy(), LegacyPolicy::Pause);
+    assert_eq!(
+        f.owner.tick_link(3, true),
+        LinkProgress::Blocked(Failure::Link)
+    );
+    WIRE.with_borrow(|w| assert_eq!(w.releases, 1));
+}
+
+#[test]
+fn boot_loss_pauses_legacy_even_before_claim_and_after_release() {
+    for acquired in [false, true] {
+        let mut f = Fixture::new();
+        if acquired {
+            f.owner.request_link(0, 10).unwrap();
+            assert_eq!(f.owner.tick_link(0, true), LinkProgress::Owned);
+            f.owner.request_link_release(1, 10).unwrap();
+            assert_eq!(f.owner.tick_link(1, true), LinkProgress::Released);
+        }
+        assert_eq!(f.owner.legacy_policy(), LegacyPolicy::Run);
+        f.owner.invalidate_boot();
+        assert_eq!(f.owner.legacy_policy(), LegacyPolicy::Pause);
+        assert_eq!(
+            f.owner.tick_link(2, true),
+            LinkProgress::Blocked(Failure::Boot)
+        );
+    }
 }

@@ -1005,6 +1005,34 @@ Focused documentation references pass. Required preflight passes layering,
 host tests, formatting and types; only the existing 256 stale references in
 78 files fail (`out/canopy-handoff-changed.log`).
 
+The firmware now consumes the optional provider set into one boot-owned
+coordinator and aligned 256-byte transfer buffer. The coordinator starts with
+zero admitted instances; no V2 module can load just because providers exist.
+Its handoff tick runs after legacy DSP loading, FX parameters and FX sends, so
+all four idle conditions (loader phase, queued loads, parameter transfer and
+send transfer) must clear before a lease claim. Physical END drainage remains
+the DSP-link provider's responsibility.
+
+The coordinator's Run/Drain/Pause policy is wired into the real runtime. Drain
+allows queued legacy jobs and outstanding FX polls to finish, rejects new
+legacy admissions and blocks new FX word writes. Pause stops legacy loader and
+FX polling; only successful release restores Run. SDK tests cover the policy
+through acquisition, a complete load, busy release, ambiguous release and boot
+invalidation. All 140 SDK tests pass (`out/canopy-legacy-gate-sdk.log`).
+
+The firmware has no admission path requesting this handoff yet: provider setup
+and idle tick are live, while active ownership transitions are SDK-tested.
+V2 image/allocator admission, live boot-trust invalidation and publication remain
+pending; this does not advertise V2 support or make CANOPY playable.
+ColdFire rebuild and current-source checks pass (32,249 decoded instructions;
+`out/canopy-legacy-gate-build.log`, `out/canopy-legacy-gate-check.log`). The runtime
+module check passes DTII boot/INFO/reopen/restart, with DNII skipped
+(`out/canopy-legacy-gate-module.log`: one pass, one skip). This default-set
+regression check does not exercise an active V2 load.
+Focused documentation references pass. Required preflight passes layering,
+host tests, formatting and types; it fails only on the existing 256 stale
+references in 78 files (`out/canopy-legacy-gate-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

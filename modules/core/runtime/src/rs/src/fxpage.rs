@@ -505,6 +505,9 @@ pub fn busy() -> bool {
 
 /// Once per UI-loop pass: finish the transfer in flight, put the values in a new kit's array, and send the next changed value; then the send effects' amounts.
 pub unsafe fn tick() {
+    if crate::instrument::legacy_policy() == dkrt_sdk::instrument_coordinator::LegacyPolicy::Pause {
+        return;
+    }
     let s = fs();
     let mut any = false;
     let mut k = 0;

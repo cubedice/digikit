@@ -373,6 +373,9 @@ unsafe fn put_amounts(k: usize) {
 
 /// Once per UI-loop pass (after the effect pages' own tick).
 pub unsafe fn tick() {
+    if crate::instrument::legacy_policy() == dkrt_sdk::instrument_coordinator::LegacyPolicy::Pause {
+        return;
+    }
     let s = ss();
     if s.used == 0 {
         return;

@@ -364,7 +364,9 @@ pub unsafe fn fx_live(k: usize) -> bool {
 
 /// The effect row's words in the chain: word `w` of row `k` (a one-word write through window 2).
 pub unsafe fn fx_word_start(k: usize, w: u32, value: u32) -> bool {
-    if finfo().is_null() {
+    if crate::instrument::legacy_policy() != dkrt_sdk::instrument_coordinator::LegacyPolicy::Run
+        || finfo().is_null()
+    {
         return false;
     }
     start_word(WIN_FX, FX_ROW_WORDS * (fiw(F_FIRST) + k as u32) + w, value)
@@ -1270,6 +1272,9 @@ unsafe fn fail(code: i32) {
 
 /// Advance the load in progress by what is ready now. Called once per UI-loop pass.
 pub unsafe fn step() {
+    if crate::instrument::legacy_policy() == dkrt_sdk::instrument_coordinator::LegacyPolicy::Pause {
+        return;
+    }
     let d = ds();
     if d.magic != STATE_MAGIC {
         return;

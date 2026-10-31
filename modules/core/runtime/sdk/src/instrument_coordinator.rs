@@ -45,6 +45,14 @@ pub enum LinkProgress {
     Owned,
     Blocked(Failure),
 }
+/// Firmware scheduling policy. Drain lets already queued legacy load jobs and
+/// FX pollers finish, but refuses new admissions and new FX word writes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LegacyPolicy {
+    Run,
+    Drain,
+    Pause,
+}
 #[derive(Clone, Copy)]
 enum Handoff {
     Released,
@@ -90,6 +98,18 @@ impl<'image, T: Transport> Coordinator<'image, T> {
             job: None,
             blocked: None,
             handoff: Handoff::Released,
+        }
+    }
+
+    /// Apply before running any legacy load or FX work on the UI task.
+    pub fn legacy_policy(&self) -> LegacyPolicy {
+        if self.blocked.is_some() {
+            return LegacyPolicy::Pause;
+        }
+        match self.handoff {
+            Handoff::Released => LegacyPolicy::Run,
+            Handoff::Acquire { .. } => LegacyPolicy::Drain,
+            Handoff::Owned | Handoff::Release { .. } => LegacyPolicy::Pause,
         }
     }
 

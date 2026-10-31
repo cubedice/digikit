@@ -110,6 +110,9 @@ unsafe fn load_inner(path: *const u8) -> i32 {
     if !EARLY {
         return E_BOOT_ONLY;
     }
+    if crate::instrument::legacy_policy() != dkrt_sdk::instrument_coordinator::LegacyPolicy::Run {
+        return E_DSP_XFER;
+    }
     let found = match store::find(path) {
         Ok(f) => f,
         Err(e) => return e,
