@@ -101,6 +101,29 @@ identity, equal generation under another owner, or any occupied row belonging to
 another ticket is rejected; rejection never authorizes release. The caller must
 drain old writes before cleanup and keep the allocation until all replies succeed.
 
+## Tagged transport driver
+
+The no-std `instrument_transport` component connects image/mailbox writes to the
+`dl_send_tagged`/`dl_poll_tagged` C ABI through validated function pointers. Its
+single boot-lifetime owner supplies a dedicated static 256-byte buffer. Image
+bytes are copied into it; mailbox words are explicitly encoded little-endian.
+Moving or dropping the driver cannot invalidate an accepted transfer's source.
+The buffer is never exposed for reuse or freed by this component.
+
+An accepted request retains its ID and exact image span or mailbox sequence/stage.
+Busy starts can be retried. Terminal status without END-frame drainage stays
+pending. A drained success yields an opaque completion that advances the matching
+image or mailbox controller; it cannot replace the later registry reply. A drained
+error yields a failure without an ACK. A stale/reused ID or unexpected link result
+freezes the buffer until reboot, so uncertain writes cannot overwrite it.
+
+The `Api` binding requires trusted matching provider functions, and starts/polls
+remain serialized on the UI task. Firmware symbol resolution, boot ownership,
+reply ingestion and top-level V2 load coordination are still not connected. Host
+tests exercise the driver with controlled transport responses and C ABI stubs;
+the production tagged link has separate ColdFire component coverage. This is
+not a live firmware load proof.
+
 ## Internal V2 reset worker
 
 `src/dsp/lifecycle.s` implements `_ir_reset_instance` for one admitted instance.

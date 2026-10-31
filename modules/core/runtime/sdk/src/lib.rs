@@ -14,6 +14,8 @@ pub mod instrument_registry;
 pub mod instrument_load;
 /// Ticket-bound image/BSS transfer sequencing for V2 loads.
 pub mod instrument_image;
+/// Stable-buffer driver for the tagged production DSP-link ABI.
+pub mod instrument_transport;
 /// Experimental V2 mailbox transactions; no device capability is enabled.
 pub mod instrument_mailbox;
 /// Shared bounded V2 descriptor and record decoding; no loading capability.

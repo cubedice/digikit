@@ -686,6 +686,24 @@ Focused docs, lint, layering, host tests and types pass. The changed-file check
 fails only on the existing 256 stale references in 78 files
 (`out/canopy-link-ticket-changed.log`).
 
+A bounded no-std transport driver now connects the image/mailbox controllers to
+the tagged link C ABI through supplied provider functions. It owns a dedicated
+static 256-byte buffer, copies image bytes and encodes mailbox words little-endian,
+retains the exact target with the accepted transfer ID, and waits for drainage
+before producing an opaque controller completion. Drained errors never ACK;
+uncertain identity or unexpected transport results freeze the buffer until reboot.
+Moving/dropping the driver cannot invalidate the source of an accepted transfer.
+Validation: 51 SDK tests and the runtime host check pass
+(`out/canopy-transport-sdk.log`, `out/canopy-transport-runtime.log`). New tests cover
+buffer retention, busy retries, endian encoding, exact-span advancement, mailbox
+ACK gating, drained failure, stale/repeated identity, malformed writes and the C
+ABI binding via host stubs. Actual provider resolution, boot-owned driver storage,
+registry reply ingestion and the top-level live V2 coordinator remain pending.
+No ColdFire runtime rebuild or live V2 firmware load is claimed.
+Focused documentation and layering checks pass. The changed-file preflight fails
+only on the existing 256 stale references in 78 files
+(`out/canopy-transport-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
