@@ -105,15 +105,22 @@ def rows(row_object):
         operation=2,
         fail_at=None,
         fields=None,
+        install=None,
     ):
         if fail_at is not None:
             dm[0x20040000 // 4 + 4] = fail_at
         for field, value in (fields or {}).items():
             dm[symbols["_ir_rows"] // 4 + field] = value
+        if install is not None:
+            snapshot = row.copy()
+            for field, value in install.items():
+                snapshot[field] = value
+            dm.update({0x20041000 // 4 + i: value for i, value in enumerate(snapshot)})
         result = pk_sharc.run_call(
             linked,
             entry,
             regs={
+                "I1": 0x20041000,
                 "R4": index,
                 "R5": owner,
                 "R6": generation,
@@ -244,3 +251,104 @@ def test_odd_word_states_keep_eight_byte_stride_and_padding(rows):
     assert result["state"][:12] == [1, 0, 0, 0xDEADBEEF] * 3
     assert result["state"][12:] == [0xDEADBEEF] * 52
     assert rows()["rows"][0] == 3
+
+
+def test_install_empty_row_then_initialize_and_detach(rows):
+    result = rows("_ir_row_install", index=7, install={})
+    assert result["regs"]["R0"] == 0
+    assert result["rows"][112:128] == result["rows"][:16]
+    assert result["calls"][0] == 0
+    assert result["state"] == [0xDEADBEEF] * 64
+    rows("_ir_row_begin", index=7)
+    for _ in range(4):
+        result = rows(index=7)
+    assert result["rows"][112] == 3
+    assert result["calls"][0] == 3
+    rows("_ir_row_begin", index=7, operation=3)
+    for _ in range(4):
+        result = rows(index=7)
+    assert result["rows"][112] == 6
+    result = rows("_ir_row_install", index=7, install={2: 10})
+    assert result["regs"]["R0"] == 0
+    assert result["rows"][112:116] == [1, 3, 10, 3]
+    assert result["rows"][123:128] == [0] * 5
+
+
+@pytest.mark.parametrize("phase", [1, 2, 3, 4, 5])
+def test_install_never_overwrites_owned_row(rows, phase):
+    before = rows("_ir_row_begin", owner=31, fields={0: phase})
+    result = rows("_ir_row_install", install={2: 10})
+    assert result["regs"]["R0"] == 0xFFFFFFFF
+    assert result["rows"] == before["rows"]
+    assert result["calls"][0] == 0
+
+
+@pytest.mark.parametrize(
+    "old,new,accepted",
+    [
+        (9, 9, False),
+        (9, 8, False),
+        (9, 0, False),
+        (0x7FFFFFFF, 0x80000000, True),
+        (0xFFFFFFFF, 1, False),
+        (0x80000000, 0x7FFFFFFF, False),
+    ],
+)
+def test_install_detached_generation_is_unsigned_and_never_wraps(
+    rows, old, new, accepted
+):
+    result = rows("_ir_row_install", fields={0: 6, 2: old}, install={2: new})
+    assert result["regs"]["R0"] == (0 if accepted else 0xFFFFFFFF)
+    assert result["rows"][:3] == ([1, 3, new] if accepted else [6, 3, old])
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {0: 2},
+        {1: 32},
+        {2: 0},
+        {3: 0},
+        {3: 17},
+        {5: 0},
+        {5: 1025},
+        {4: 0x20050004},
+        {6: 0x1FFFFFF8},
+        {6: 0x20050008},
+        {7: 0x20080008},
+        {7: 0x20050020},
+        {7: 0x20050000},
+        {8: 0x7FFFFFFF},
+        {8: 0xB90002, 9: 0xB90000, 10: 0xB90004},
+        {8: 0xB90000},
+        {9: 0xB7FFFF},
+        {10: 0xBC0001},
+        {11: 1},
+        {12: 1},
+        {13: 1},
+        {14: 1},
+        {15: 1},
+    ],
+)
+def test_install_rejects_bad_snapshot_without_any_row_write(rows, fields):
+    before = rows("_ir_row_begin", index=7)
+    result = rows("_ir_row_install", index=7, install=fields)
+    assert result["regs"]["R0"] == 0xFFFFFFFF
+    assert result["rows"] == before["rows"]
+    assert result["state"] == [0xDEADBEEF] * 64
+    assert result["calls"][0] == 0
+
+
+def test_install_checks_whole_odd_word_state_extent(rows):
+    result = rows("_ir_row_install", index=7, install={5: 1, 7: 0x20050010})
+    assert result["regs"]["R0"] == 0xFFFFFFFF
+    result = rows("_ir_row_install", index=7, install={5: 1, 7: 0x20050018})
+    assert result["regs"]["R0"] == 0
+
+
+@pytest.mark.parametrize("index", [8, 0xFFFFFFFF])
+def test_install_rejects_invalid_row_index(rows, index):
+    before = rows("_ir_row_begin", owner=31)
+    result = rows("_ir_row_install", index=index, install={})
+    assert result["regs"]["R0"] == 0xFFFFFFFF
+    assert result["rows"] == before["rows"]

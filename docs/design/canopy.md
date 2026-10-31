@@ -605,6 +605,28 @@ CANOPY is not installable and no device build is claimed. Focused docs and layer
 checks pass; the changed-file check fails only on the existing 256 stale references
 in 78 files (`out/canopy-image-changed.log`).
 
+The DSP now has an internal row-install entry for the next transport integration.
+It consumes a caller-owned immutable snapshot, validates owner/generation, complete
+aligned state allocation, reset instruction extent and clean lifecycle fields,
+then copies metadata and publishes RESERVED last. It accepts only an empty row
+or a detached row with a strictly newer unsigned generation; reserved, initializing,
+ready, detaching and faulted rows cannot be overwritten. Invalid input leaves
+all rows and instance state untouched. Installation invokes no callback.
+This entry is deliberately not exposed through a transport window: the trusted
+caller must provide private non-aliasing snapshot storage, enforce exclusive
+allocation and callback budgets, drain image writes and serialize install/tick.
+Bounds checking alone cannot prove those properties. An acknowledged mailbox
+install command and its loader sequencing are still pending; the existing image
+controller still takes a caller-confirmed row-install boolean. Lifecycle capability
+remains disabled, and CANOPY is not installable.
+Validation: 86 focused DSP tests pass, including complete install/init/detach/reuse,
+unsigned generation boundaries, malformed snapshots with no writes and odd-sized
+state strides (`out/canopy-row-install-tests.log`). The registry artifact rebuilds
+and passes its current-file check (`out/canopy-row-install-build.log`). Focused
+documentation checks pass. The changed-file preflight passes lint, layering, host
+tests and types; its only failure is the existing 256 stale references in 78 files
+(`out/canopy-row-install-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

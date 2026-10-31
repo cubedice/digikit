@@ -1,4 +1,4 @@
-// Internal V2 row lifecycle. Not wired to the public mailbox or audio dispatch.
+// Internal V2 row lifecycle. Installation and audio dispatch remain unwired.
 // Trusted admission alone may write metadata, while the row is unreachable.
 // 16 words: phase,owner,generation,tracks,state_base,state_words,arena_start,
 // arena_end,reset_entry,code_start,code_end,cursor,error,touched,reserved,reserved.
@@ -22,6 +22,135 @@ _ir_row_address:
     I0 = R0;
     R0 = 0;
     RTS;
+// Trusted internal install: R4 index, I1 immutable private 16-word snapshot.
+// No mailbox/window points at this entry or snapshot. Caller owns the allocation,
+// validates instruction boundaries/budgets, drains image writes and serializes
+// installs/ticks. No callbacks. Clobbers R0..R3, I0/I1; linear L0/L1, M6=1.
+// Accept empty rows or a strictly newer unsigned generation after full detach.
+// Validate everything before writing; publish RESERVED last. R0=0/-1.
+.GLOBAL _ir_row_install;
+_ir_row_install:
+    CALL _ir_row_address;
+    R0 = PASS R0;
+    IF NE RTS;
+    R0 = DM(0, I0);
+    R0 = PASS R0;
+    IF EQ JUMP _iri_metadata;
+    R1 = 6;
+    COMP(R0, R1);
+    IF NE JUMP _irr_invalid;
+    R0 = DM(2, I0);
+    R1 = DM(2, I1);
+    R2 = 0x80000000;
+    R0 = R0 XOR R2;
+    R1 = R1 XOR R2;
+    COMP(R1, R0);
+    IF LE JUMP _irr_invalid;
+_iri_metadata:
+    R0 = DM(0, I1);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _irr_invalid;
+    R0 = DM(1, I1);
+    R1 = 31;
+    R1 = R0 AND R1;
+    COMP(R0, R1);
+    IF NE JUMP _irr_invalid;
+    R0 = DM(2, I1);
+    R0 = PASS R0;
+    IF EQ JUMP _irr_invalid;
+    R3 = DM(3, I1);
+    R3 = PASS R3;
+    IF LE JUMP _irr_invalid;
+    R0 = 16;
+    COMP(R3, R0);
+    IF GT JUMP _irr_invalid;
+    R2 = DM(5, I1);
+    R2 = PASS R2;
+    IF LE JUMP _irr_invalid;
+    R0 = 1024;
+    COMP(R2, R0);
+    IF GT JUMP _irr_invalid;
+    R2 = R2 + 1;
+    R2 = LSHIFT R2 BY -1;
+    R2 = LSHIFT R2 BY 3; // eight-byte stride
+    R1 = DM(4, I1);
+    R0 = 7;
+    R0 = R1 AND R0;
+    IF NE JUMP _irr_invalid;
+    R0 = DM(6, I1);
+    COMP(R1, R0);
+    IF LT JUMP _irr_invalid;
+    R0 = 0x20000000;
+    COMP(R1, R0);
+    IF LT JUMP _irr_invalid;
+    R1 = DM(6, I1);
+    COMP(R1, R0);
+    IF LT JUMP _irr_invalid;
+    R0 = 7;
+    R0 = R1 AND R0;
+    IF NE JUMP _irr_invalid;
+    R1 = DM(7, I1);
+    R0 = 0x20080000;
+    COMP(R1, R0);
+    IF GT JUMP _irr_invalid;
+    R0 = 7;
+    R0 = R1 AND R0;
+    IF NE JUMP _irr_invalid;
+    R0 = DM(6, I1);
+    COMP(R1, R0);
+    IF LE JUMP _irr_invalid;
+    R1 = DM(4, I1);
+_iri_extent:
+    R1 = R1 + R2;
+    R0 = PASS R1;
+    IF LE JUMP _irr_invalid;
+    R3 = R3 - 1;
+    IF NE JUMP _iri_extent;
+    R0 = DM(7, I1);
+    COMP(R1, R0);
+    IF GT JUMP _irr_invalid;
+    R1 = DM(9, I1);
+    R0 = 0x00b80000;
+    COMP(R1, R0);
+    IF LT JUMP _irr_invalid;
+    R2 = DM(10, I1);
+    R0 = 0x00bc0000;
+    COMP(R2, R0);
+    IF GT JUMP _irr_invalid;
+    R3 = DM(8, I1);
+    COMP(R3, R1);
+    IF LT JUMP _irr_invalid;
+    COMP(R3, R2);
+    IF GE JUMP _irr_invalid;
+    R0 = 3; // complete six-byte callback instruction
+    R3 = R3 + R0;
+    COMP(R3, R2);
+    IF GT JUMP _irr_invalid;
+    R0 = DM(11, I1);
+    R1 = DM(12, I1);
+    R0 = R0 OR R1;
+    R1 = DM(13, I1);
+    R0 = R0 OR R1;
+    R1 = DM(14, I1);
+    R0 = R0 OR R1;
+    R1 = DM(15, I1);
+    R0 = R0 OR R1;
+    IF NE JUMP _irr_invalid;
+    // The snapshot cannot alias any row or be changed concurrently by transport.
+    // Caller supplies private storage; destination remains unreachable throughout.
+    MODIFY(I0, 1) (NW);
+    MODIFY(I1, 1) (NW);
+    R3 = 15;
+_iri_copy:
+    R0 = DM(I1, M6);
+    DM(I0, M6) = R0;
+    R3 = R3 - 1;
+    IF NE JUMP _iri_copy;
+    MODIFY(I0, -16) (NW);
+    R0 = 1;
+    DM(0, I0) = R0;
+    JUMP _irr_ok;
 _ir_row_begin:
     CALL _ir_row_address;
     R0 = PASS R0;
