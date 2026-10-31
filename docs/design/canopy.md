@@ -1512,6 +1512,33 @@ references in 78 files. Focused documentation validation passes. Logs:
 `out/canopy-bound-init-build.log`, `out/canopy-bound-init-check.log` and
 `out/canopy-bound-init-changed.log`.
 
+The CF MIDI bridge now accepts version-2 ACKs through the existing one-shot
+session guard. Arming moves MIDI to a fresh epoch and clears old configuration
+and heartbeat state while preserving physical-key tombstones. Until the exact
+bind ACK establishes readiness, the adapter publishes zero packet data and
+refuses configuration and routes. Once bound, reset/configuration/event ACKs must
+retain the token and match the current MIDI epoch/message. Session revocation
+faults MIDI immediately and keeps forward packet data zero even if old valid
+replies return. The separate consumer-ready callback and committed configuration
+remain mandatory before route enable; normal firmware still exposes no V2 machine.
+
+Validation: 22 host cases pass. The ColdFire component run executes the same
+ownership/adapter cases, including configuration commit and note ACKs after bind,
+wrong-session revocation, and an actual SHARC-built version-2 reply. The first
+attempt exposed missing optional reset symbols in that standalone test linker;
+they now resolve to zero, matching a firmware without DSP-link. The corrected
+component run passes. The adapter rebuild validates 1,891 decoded instructions;
+CF and DSP artifacts are current. Both live emulator session tests pass (63.9 s
+normal binding, 92.0 s token-loss/replay). These live tests establish bootstrap
+and revocation, not live version-2 note delivery to an admitted instrument.
+Logs: `out/canopy-session-midi-host.log`, `out/canopy-session-midi-cf.log`,
+`out/canopy-session-midi-build.log`, `out/canopy-session-midi-check.log` and
+`out/canopy-session-midi-live.log`.
+Required changed-file preflight passes 200 host tests (16 skipped), Python lint
+and format, layering, formatting and types. Only the existing 256 stale references
+in 78 files fail; both changed documents pass focused pathcheck.
+See `out/canopy-session-midi-changed.log`.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

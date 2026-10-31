@@ -247,8 +247,17 @@ downgrade, backward heartbeat or expired deadline revokes trust permanently.
 Malformed replies do not establish identity or refresh liveness; they lead to
 timeout if valid replies do not resume. No late frame revives an expired guard.
 
-These checks do not implement the loader bootstrap transaction or prove reset
-coverage. The SDK mailbox and MIDI event ACK path still reject version 2; V2
-admission stays disabled. The eventual loader must also apply a UI-clock deadline
-when frame callbacks stop, keep the expectation armed before its first bind
-write, and never retry a possibly committed bind after an uncertain outcome.
+The MIDI adapter now consumes version-2 reset/configuration/event ACKs only
+through the armed, ready guard and its exact session token. The legacy entry
+point still rejects version 2. Arming advances the MIDI epoch, clears old
+configuration/heartbeat state, and preserves physical-key tombstones. During
+binding, outgoing MIDI packet slots are zero and configuration/routes are refused.
+A revoked armed guard faults MIDI immediately, closes routes and keeps those
+slots zero; an old valid reply cannot resume traffic. Configuration still requires
+its commit ACK and the ready-consumer callback still owns final route admission.
+
+The SDK implements the one-shot bootstrap and session-aware mailbox, but public
+V2 loading remains disabled. These checks do not prove a live V2 instrument or
+hardware MIDI behavior. The loader must apply a UI-clock deadline when frame
+callbacks stop, arm before its first bind write, and never retry a possibly
+committed bind after an uncertain outcome.

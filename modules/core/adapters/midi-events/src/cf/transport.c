@@ -195,12 +195,12 @@ int mt_reply_valid(const uint32_t reply[MT_REPLY_WORDS])
     return 1;
 }
 
-int mt_reply_tick(MiTransport *t, MiLedger *m,
-                  const uint32_t reply[MT_REPLY_WORDS], uint32_t block)
+static int reply_tick(MiTransport *t, MiLedger *m,
+                      const uint32_t *reply, uint32_t block, uint32_t session)
 {
-    /* MIDI admission is still version 1 only. Framing validity alone must not
-     * authorize version 2 event ACKs before session ownership is integrated. */
-    uint32_t valid = mt_reply_valid(reply) && reply[0] == MT_REPLY_MAGIC;
+    uint32_t valid = mt_reply_valid(reply) &&
+        (session ? reply[0] == MT_SESSION_REPLY_MAGIC && reply[12] == session :
+                   reply[0] == MT_REPLY_MAGIC);
     int result = 0;
     if (t->epoch != m->epoch) { mt_init(t); t->epoch = m->epoch; }
     if (reply) {
@@ -224,6 +224,24 @@ int mt_reply_tick(MiTransport *t, MiLedger *m,
     if (t->heartbeat_seen && block - t->heartbeat_block >= MT_STALL_BLOCKS && !t->faults)
         fault(t, m);
     return result;
+}
+
+int mt_reply_tick(MiTransport *t, MiLedger *m,
+                  const uint32_t reply[MT_REPLY_WORDS], uint32_t block)
+{
+    return reply_tick(t, m, reply, block, 0);
+}
+
+int mt_reply_tick_guarded(MiTransport *t, MiLedger *m, const uint32_t *reply,
+                          uint32_t block, const MtReplyGuard *g)
+{
+    if (!g || !g->expected) return mt_reply_tick(t, m, reply, block);
+    if (g->invalid) {
+        if (!t->faults) fault(t, m);
+        return -1;
+    }
+    if (!g->ready) return 0;
+    return reply_tick(t, m, reply, block, g->expected);
 }
 
 

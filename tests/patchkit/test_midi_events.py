@@ -1169,7 +1169,7 @@ void *memset(void *d, int c, unsigned n) {
             memory,
         ],
         0x47E00000,
-        {},
+        {"dl_reset_begin": 0, "dl_reset_quiesce": 0},
         [MOD / "src/cf"],
     )
     names = [
@@ -1193,6 +1193,7 @@ void *memset(void *d, int c, unsigned n) {
         "reply_ack",
         "reply_watchdog",
         "session_guard",
+        "session_midi",
         "reply_record",
     ]
     script = tmp_path / "calls.json"
@@ -1263,7 +1264,7 @@ void *memset(void *d, int c, unsigned n) {
                     "hex": b"".join(
                         w.to_bytes(4, "big")
                         for w in reply_builder(
-                            0,
+                            1,
                             0,
                             41,
                             [0x49525231, 17, 0, 0xDEADBEEF, 5, 0, 0, 0],

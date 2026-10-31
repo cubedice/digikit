@@ -436,5 +436,49 @@ uint32_t mi_test_session_from_dsp(const uint32_t *r)
     CHECK(g.ready && !g.invalid && g.heartbeat == r[3]);
     mi_init(&m); mt_init(&t);
     CHECK(mt_reply_tick(&t, &m, r, 1) == -1 && !t.heartbeat_seen);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 1, &g) == 1 && t.heartbeat_seen);
+    return 0;
+}
+
+uint32_t mi_test_session_midi(void)
+{
+    MtReplyGuard g = {0}; MiTransport t; MiLedger m;
+    uint32_t r[MT_REPLY_WORDS], rev[MI_TRACKS] = {1}, message, i;
+    uint32_t config[1] = {7};
+    mi_init(&m); mt_init(&t);
+    CHECK(mt_reply_guard_expect(&g, 0xdeadbeefu, 17, 0) == 0);
+    reply_words(r, m.epoch, 0, 1);
+    mt_reply_guard_tick(&g, r, 1);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 1, &g) == 0 && !t.heartbeat_seen);
+    session_reply(r, 2); r[1] = m.epoch; reply_checksum(r);
+    mt_reply_guard_tick(&g, r, 2);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 2, &g) == 1);
+    CHECK(g.ready && t.heartbeat_seen);
+    CHECK(mt_config_begin(&t, &m, 0, 1, 1, config, 1) == 0);
+    for (i = 0; i < 2; ++i) {
+        message = mt_prepare(&t, &m, rev, 3+i)[3];
+        r[2] = message; r[3]++; reply_checksum(r);
+        mt_reply_guard_tick(&g, r, 3+i);
+        CHECK(mt_reply_tick_guarded(&t, &m, r, 3+i, &g) == 2);
+        CHECK(t.applied[0] == (i ? 1u : 0u));
+    }
+    CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
+    note(&m, 0, 60);
+    message = mt_prepare(&t, &m, rev, 5)[3];
+    r[2] = message; r[3]++; reply_checksum(r);
+    mt_reply_guard_tick(&g, r, 5);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 5, &g) == 2 && !m.count);
+    note(&m, 0, 64);
+    message = mt_prepare(&t, &m, rev, 6)[3];
+    /* Valid checksum and exact event ACK from a different session must not
+     * retire this batch, refresh trust, or let held notes survive revocation. */
+    r[2] = message; r[3]++; r[12]++; reply_checksum(r);
+    mt_reply_guard_tick(&g, r, 6);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 6, &g) == -1);
+    CHECK(g.invalid && t.faults && !t.applied[0] && m.reset_mask);
+    CHECK(m.keys[0].tombstone);
+    r[12]--; r[3]++; reply_checksum(r);
+    mt_reply_guard_tick(&g, r, 7);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 7, &g) == -1 && t.faults == 1);
     return 0;
 }

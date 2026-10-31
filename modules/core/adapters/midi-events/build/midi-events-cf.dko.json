@@ -173,36 +173,64 @@
   {
    "addend": 0,
    "offset": 24,
-   "section": ".text.mt_reply_tick",
+   "section": ".text.reply_tick",
    "symbol": ".sec..text.mt_reply_valid",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 64,
-   "section": ".text.mt_reply_tick",
+   "offset": 80,
+   "section": ".text.reply_tick",
    "symbol": ".sec..text.mt_init",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 126,
-   "section": ".text.mt_reply_tick",
+   "offset": 142,
+   "section": ".text.reply_tick",
    "symbol": ".sec..text.fault",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 186,
-   "section": ".text.mt_reply_tick",
+   "offset": 216,
+   "section": ".text.reply_tick",
    "symbol": ".sec..text.fault",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 230,
-   "section": ".text.mt_reply_tick",
+   "offset": 260,
+   "section": ".text.reply_tick",
    "symbol": ".sec..text.mt_ack",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": ".text.mt_reply_tick",
+   "symbol": ".sec..text.reply_tick",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 58,
+   "section": ".text.mt_reply_tick_guarded",
+   "symbol": ".sec..text.mt_reply_tick",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 88,
+   "section": ".text.mt_reply_tick_guarded",
+   "symbol": ".sec..text.fault",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 128,
+   "section": ".text.mt_reply_tick_guarded",
+   "symbol": ".sec..text.reply_tick",
    "type": "cf.32"
   },
   {
@@ -382,72 +410,100 @@
   },
   {
    "addend": 0,
-   "offset": 254,
+   "offset": 250,
    "section": ".text.instrument_write_frame",
-   "symbol": ".sec..bss.mi_ledger",
+   "symbol": ".sec..bss.registry_guard",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 260,
    "section": ".text.instrument_write_frame",
-   "symbol": ".sec..bss.mi_transport",
+   "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 266,
    "section": ".text.instrument_write_frame",
-   "symbol": "mt_reply_tick",
+   "symbol": ".sec..bss.mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 272,
    "section": ".text.instrument_write_frame",
-   "symbol": ".sec..bss.frame_block",
+   "symbol": "mt_reply_tick_guarded",
    "type": "cf.32"
   },
   {
-   "addend": 0,
+   "addend": 16,
    "offset": 282,
    "section": ".text.instrument_write_frame",
-   "symbol": ".sec..bss.frame_block",
+   "symbol": ".sec..bss.registry_guard",
    "type": "cf.32"
   },
   {
-   "addend": 448,
+   "addend": 28,
    "offset": 290,
    "section": ".text.instrument_write_frame",
-   "symbol": ".sec..bss.mi_transport",
+   "symbol": ".sec..bss.registry_guard",
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 296,
+   "addend": 12,
+   "offset": 298,
    "section": ".text.instrument_write_frame",
-   "symbol": ".sec..bss.mi_ledger",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 302,
-   "section": ".text.instrument_write_frame",
-   "symbol": ".sec..bss.mi_transport",
+   "symbol": ".sec..bss.registry_guard",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 308,
    "section": ".text.instrument_write_frame",
-   "symbol": "mt_prepare",
+   "symbol": ".sec..bss.frame_block",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 356,
+   "offset": 350,
    "section": ".text.instrument_write_frame",
    "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 368,
+   "section": ".text.instrument_write_frame",
+   "symbol": ".sec..bss.frame_block",
+   "type": "cf.32"
+  },
+  {
+   "addend": 448,
+   "offset": 374,
+   "section": ".text.instrument_write_frame",
+   "symbol": ".sec..bss.mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 380,
+   "section": ".text.instrument_write_frame",
+   "symbol": ".sec..bss.mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 386,
+   "section": ".text.instrument_write_frame",
+   "symbol": ".sec..bss.mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 392,
+   "section": ".text.instrument_write_frame",
+   "symbol": "mt_prepare",
    "type": "cf.32"
   },
   {
@@ -606,49 +662,91 @@
   },
   {
    "addend": 0,
-   "offset": 4,
+   "offset": 6,
    "section": ".text.mi_registry_expect_session",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 14,
+   "offset": 16,
    "section": ".text.mi_registry_expect_session",
    "symbol": ".sec..text.initialize",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 20,
+   "offset": 22,
    "section": ".text.mi_registry_expect_session",
    "symbol": ".sec..bss.frame_block",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 34,
+   "offset": 36,
    "section": ".text.mi_registry_expect_session",
    "symbol": ".sec..bss.registry_guard",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 40,
+   "offset": 42,
    "section": ".text.mi_registry_expect_session",
    "symbol": "mt_reply_guard_expect",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 54,
+   "offset": 58,
+   "section": ".text.mi_registry_expect_session",
+   "symbol": ".sec..bss.mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 64,
    "section": ".text.mi_registry_expect_session",
    "symbol": ".sec..bss.registry_reply_valid",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 68,
+   "offset": 70,
+   "section": ".text.mi_registry_expect_session",
+   "symbol": "mi_recover",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 76,
+   "section": ".text.mi_registry_expect_session",
+   "symbol": ".sec..bss.mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 82,
+   "section": ".text.mi_registry_expect_session",
+   "symbol": "mt_init",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4888,
+   "offset": 90,
+   "section": ".text.mi_registry_expect_session",
+   "symbol": ".sec..bss.mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 128,
+   "offset": 96,
+   "section": ".text.mi_registry_expect_session",
+   "symbol": ".sec..bss.mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 106,
    "section": ".text.mi_registry_expect_session",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
@@ -668,10 +766,10 @@
    "type": "cf.32"
   },
   {
-   "addend": 512,
+   "addend": 0,
    "offset": 20,
    "section": ".text.mi_config_submit",
-   "symbol": ".sec..bss.mi_transport",
+   "symbol": ".sec..bss.reset_seen",
    "type": "cf.32"
   },
   {
@@ -682,36 +780,57 @@
    "type": "cf.32"
   },
   {
-   "addend": 0,
+   "addend": 16,
    "offset": 54,
    "section": ".text.mi_config_submit",
-   "symbol": ".sec..bss.reset_seen",
+   "symbol": ".sec..bss.registry_guard",
+   "type": "cf.32"
+  },
+  {
+   "addend": 28,
+   "offset": 62,
+   "section": ".text.mi_config_submit",
+   "symbol": ".sec..bss.registry_guard",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 70,
+   "section": ".text.mi_config_submit",
+   "symbol": ".sec..bss.registry_guard",
+   "type": "cf.32"
+  },
+  {
+   "addend": 512,
+   "offset": 78,
+   "section": ".text.mi_config_submit",
+   "symbol": ".sec..bss.mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 156,
-   "offset": 60,
+   "offset": 86,
    "section": ".text.mi_config_submit",
    "symbol": ".sec..bss.mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 88,
+   "offset": 114,
    "section": ".text.mi_config_submit",
    "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 94,
+   "offset": 120,
    "section": ".text.mi_config_submit",
    "symbol": ".sec..bss.mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 100,
+   "offset": 126,
    "section": ".text.mi_config_submit",
    "symbol": "mt_config_begin",
    "type": "cf.32"
@@ -825,54 +944,75 @@
    "addend": 0,
    "offset": 72,
    "section": ".text.mi_route_enable",
-   "symbol": ".sec..bss.mi_transport",
-   "type": "cf.32"
-  },
-  {
-   "addend": 512,
-   "offset": 78,
-   "section": ".text.mi_route_enable",
-   "symbol": ".sec..bss.mi_transport",
+   "symbol": ".sec..bss.reset_seen",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 92,
+   "offset": 86,
    "section": ".text.mi_route_enable",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 102,
+   "addend": 16,
+   "offset": 96,
    "section": ".text.mi_route_enable",
-   "symbol": ".sec..bss.reset_seen",
+   "symbol": ".sec..bss.registry_guard",
+   "type": "cf.32"
+  },
+  {
+   "addend": 28,
+   "offset": 104,
+   "section": ".text.mi_route_enable",
+   "symbol": ".sec..bss.registry_guard",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 112,
+   "section": ".text.mi_route_enable",
+   "symbol": ".sec..bss.registry_guard",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 120,
+   "section": ".text.mi_route_enable",
+   "symbol": ".sec..bss.mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 512,
+   "offset": 126,
+   "section": ".text.mi_route_enable",
+   "symbol": ".sec..bss.mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 156,
-   "offset": 108,
+   "offset": 134,
    "section": ".text.mi_route_enable",
    "symbol": ".sec..bss.mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 130,
+   "offset": 156,
    "section": ".text.mi_route_enable",
    "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 4888,
-   "offset": 148,
+   "offset": 174,
    "section": ".text.mi_route_enable",
    "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 186,
+   "offset": 212,
    "section": ".text.mi_route_enable",
    "symbol": "mi_route",
    "type": "cf.32"
@@ -1091,10 +1231,24 @@
   },
   {
    "align": 2,
-   "hex": "4feffff048d71c04266f001c246f0014286f00182f0b4eb900000000588f24004a80670e203c494ea101b09357c275024482202c1318b0aa008067102f0a4eb900000000256c13180080588f4a8b675e202c1318b0ab0004672c74ff4aaa02006740202f002090aa02080c800000038363304aaa009c662a2f0c2f0a4eb900000000508f601c4a8267d04aaa02006736202b000c90aa02046a284aaa009c671474ff20024cd71c044fef00104e754a8266d860a82f0c2f0a4eb900000000508f60de4a806730700125400200256b000c0204256f002002082f2b00082f2b00042f0c2f0a4eb9000000004fef0010240052826000ff6842826000ff62",
+   "hex": "4feffff048d71c04266f001c246f0014286f00182f0b4eb900000000588f24004a80671e24134aaf0024676a0c82494ea102666c202f0024b0ab003057c275024482202c1318b0aa008067102f0a4eb900000000256c13180080588f4a8b676c202c1318b0ab0004673a74ff4aaa0200674e202f002090aa02080c8000000383633e4aaa009c66382f0c2f0a4eb900000000508f602a0c82494ea10157c2609e4282609e4a8267c24aaa02006736202b000c90aa02046a284aaa009c671474ff20024cd71c044fef00104e754a82679c60d62f0c2f0a4eb900000000508f60de4a806730700125400200256b000c0204256f002002082f2b00082f2b00042f0c2f0a4eb9000000004fef0010240052826000ff5a42826000ff54",
+   "kind": "text",
+   "name": ".text.reply_tick",
+   "size": 282
+  },
+  {
+   "align": 2,
+   "hex": "42a72f2f00142f2f00142f2f00142f2f00144eb9000000004fef00144e75",
    "kind": "text",
    "name": ".text.mt_reply_tick",
-   "size": 252
+   "size": 30
+  },
+  {
+   "align": 2,
+   "hex": "2f032f02226f001c206f000c202f0010222f0014242f00184a896708262900104a83661a2f4200182f4100142f4000102f48000c241f261f4ef9000000004aa9000c671c4aa8009c670870ff241f261f4e752f002f084eb900000000508f60ea4aa9001c671e2f43001c2f4200182f4100142f4000102f48000c241f261f4ef900000000428060c4",
+   "kind": "text",
+   "name": ".text.mt_reply_tick_guarded",
+   "size": 136
   },
   {
    "align": 2,
@@ -1119,10 +1273,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffac48d7441c2c6f0058282f00604a8e67000156200e7203c0814a806600014a327c04feb3ef005c6600013e4eb90000000026004eb9000000004ab900000000672841ee13fa4dee14fa4240425050883140fffcbdc866f22f4300584cd7441c4fef00544ef90000000045ef00142f0a2f044eb9000000002f39000000002f0a4879000000004eb9000000004fef00142439000000004a82664a4ab90000000067084ab900000000673a2f0a4eb900000000588f4a80672c223c49525231b2af00246620700123c00000000041f90000000043f228007040219128005882b08266f0600642b9000000002039000000004a846702280a2f002f044879000000004879000000004eb9000000002039000000002200528123c1000000002f004879000000004879000000004879000000004eb9000000004dee13fa4fef002091c84a80672e224022318c003c81424148415288508e3d41fffc7220b28866e22f034eb900000000588f4cd7441c4fef00544e75428160d4",
+   "hex": "4fefffac48d7441c2c6f0058282f00604a8e67000150200e7203c0814a8066000144327c04feb3ef005c660001384eb90000000026004eb9000000004ab900000000672841ee13fa4dee14fa4240425050883140fffcb1ce66f22f4300584cd7441c4fef00544ef90000000045ef00142f0a2f044eb9000000002f39000000002f0a4879000000004eb9000000004fef00142439000000004a82664a4ab90000000067084ab900000000673a2f0a4eb900000000588f4a80672c223c49525231b2af00246620700123c00000000041f90000000043f228007040219128005882b08266f0600642b9000000002039000000004a846702280a4879000000002f002f044879000000004879000000004eb9000000004fef00144ab900000000674e4ab90000000067084ab900000000673e91c852b9000000004dee13fa42804a88675222300c003c81424148415280508e3d41fffc7220b28066e42f034eb900000000588f4cd7441c4fef00544e752f39000000004879000000004879000000004879000000004eb9000000004fef00102040609e428160ae",
    "kind": "text",
    "name": ".text.instrument_write_frame",
-   "size": 376
+   "size": 408
   },
   {
    "align": 2,
@@ -1147,17 +1301,17 @@
   },
   {
    "align": 2,
-   "hex": "518f4eb9000000002f4000044eb9000000002f39000000002f2f00142f2f00144879000000004eb9000000004fef00104a80660642b9000000002f2f00042f4000044eb900000000202f00044fef000c4e75",
+   "hex": "598f2f024eb9000000002f4000044eb9000000002f39000000002f2f00142f2f00144879000000004eb9000000004fef001024004a80662c48790000000042b9000000004eb9000000004879000000004eb900000000508f41f90000000023d0000000002f2f00044eb900000000588f2002241f588f4e75",
    "kind": "text",
    "name": ".text.mi_registry_expect_session",
-   "size": 82
+   "size": 120
   },
   {
    "align": 2,
-   "hex": "518f4eb9000000002f4000044eb9000000004ab900000000661a70fe2f2f00042f4000044eb900000000202f00044fef000c4e7520390000000080b90000000066d82f2f001c2f2f001c2f2f001c2f2f001c2f2f001c4879000000004879000000004eb9000000004fef001c60ae",
+   "hex": "518f4eb9000000002f4000044eb9000000004ab900000000671a70fe2f2f00042f4000044eb900000000202f00044fef000c4e754ab90000000067104ab90000000067d64ab90000000066ce4ab90000000067c64ab90000000066be2f2f001c2f2f001c2f2f001c2f2f001c2f2f001c4879000000004879000000004eb9000000004fef001c6094",
    "kind": "text",
    "name": ".text.mi_config_submit",
-   "size": 110
+   "size": 136
   },
   {
    "align": 2,
@@ -1168,10 +1322,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffec700148d70c0c242f0020b0af0018640e74ff20024cd70c0c4fef00144e75202f001c8082e88866e847f9000000004a8b67de4eb9000000002f4000104eb90000000041f9000000004ab900000000661074fe2f2f00104eb900000000588f60b220390000000080b90000000066e220020680000000704ab00c0067d445f90000000026020683000004c72f323c002f39000000002f024e934fef000c4a8067b02f2f00242f323c002f022f2f00282f2f00282f0a4eb9000000004fef001824006090",
+   "hex": "4fefffec700148d70c0c242f0020b0af0018640e74ff20024cd70c0c4fef00144e75202f001c8082e88866e847f9000000004a8b67de4eb9000000002f4000104eb9000000004ab900000000671074fe2f2f00104eb900000000588f60b84ab90000000067104ab90000000067e04ab90000000066d841f9000000004ab90000000067ca4ab90000000066c220020680000000704ab00c0067b445f90000000026020683000004c72f323c002f39000000002f024e934fef000c4a8067902f2f00242f323c002f022f2f00282f2f00282f0a4eb9000000004fef001824006000ff70",
    "kind": "text",
    "name": ".text.mi_route_enable",
-   "size": 198
+   "size": 226
   },
   {
    "align": 2,
@@ -1244,7 +1398,7 @@
    "size": 4956
   }
  ],
- "source_sha256": "309b129fecb39b28dd6aa685912fc5e566a9cf56447cdacd3613ae68b0b4ebd7",
+ "source_sha256": "fcbd8317e97f4fcfe58e6af8df4df9bebbe3beca48bd201c968985dda1324a11",
  "symbols": [
   {
    "global": false,
@@ -1344,6 +1498,12 @@
   },
   {
    "global": false,
+   "name": ".sec..text.mt_reply_tick",
+   "section": ".text.mt_reply_tick",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..text.mt_reply_valid",
    "section": ".text.mt_reply_valid",
    "value": 0
@@ -1352,6 +1512,12 @@
    "global": false,
    "name": ".sec..text.overflow",
    "section": ".text.overflow",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.reply_tick",
+   "section": ".text.reply_tick",
    "value": 0
   },
   {
@@ -1620,6 +1786,12 @@
   },
   {
    "global": true,
+   "name": "mt_reply_tick_guarded",
+   "section": ".text.mt_reply_tick_guarded",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "mt_reply_valid",
    "section": ".text.mt_reply_valid",
    "value": 0
@@ -1650,6 +1822,12 @@
   },
   {
    "global": false,
+   "name": "reply_tick",
+   "section": ".text.reply_tick",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "reset_seen",
    "section": ".bss.reset_seen",
    "value": 0
@@ -1659,8 +1837,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "1798",
-  "isa_check": "d595ea0336a019cde8c6af1560f8a05a07b3ad17393bfb8916f7f3852b34fa06",
+  "instructions_redecoded": "1891",
+  "isa_check": "a110721c7b38f01746e2f5caf6fafd48ae96582678ca5309cd8e2a7ff3f6a19b",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

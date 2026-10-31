@@ -50,8 +50,10 @@ void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_
         (!registry_guard.expected || registry_guard.ready) && mt_reply_valid(reply) && reply[4] == 0x49525231u;
     if (registry_reply_valid)
         for (i = 0; i < MT_REPLY_WORDS; ++i) registry_reply[i] = reply[i];
-    mt_reply_tick(&mi_transport, &mi_ledger, record ? reply : 0, frame_block);
-    packet = mt_prepare(&mi_transport, &mi_ledger, mi_transport.applied, frame_block++);
+    mt_reply_tick_guarded(&mi_transport, &mi_ledger, record ? reply : 0, frame_block, &registry_guard);
+    packet = registry_guard.expected && (!registry_guard.ready || registry_guard.invalid) ? 0 :
+        mt_prepare(&mi_transport, &mi_ledger, mi_transport.applied, frame_block);
+    ++frame_block;
     /* Queue entries contain command/data halfwords. Only data halves belong to
      * this callback. Write zeros when idle so old accepted packets do not recur. */
     for (i = 0; i < MT_WORDS; ++i) {
@@ -113,7 +115,14 @@ int mi_registry_expect_session(uint32_t token, uint32_t sequence)
     int result;
     initialize();
     result = mt_reply_guard_expect(&registry_guard, token, sequence, frame_block);
-    if (!result) registry_reply_valid = 0;
+    if (!result) {
+        registry_reply_valid = 0;
+        /* Never carry legacy MIDI ACK/configuration identity into the new
+         * session. Retain physical-key tombstones through the epoch change. */
+        mi_recover(&mi_ledger);
+        mt_init(&mi_transport);
+        mi_transport.epoch = mi_ledger.epoch;
+    }
     dkrt_irq_restore(sr);
     return result;
 }
@@ -124,7 +133,8 @@ int mi_config_submit(uint32_t track, uint32_t revision, uint32_t schema,
     uint32_t sr = dkrt_irq_mask();
     int result;
     initialize();
-    result = reset_seen || !mi_transport.heartbeat_seen || mi_transport.faults ? -2 :
+    result = reset_seen || (registry_guard.expected && (!registry_guard.ready || registry_guard.invalid)) ||
+        !mi_transport.heartbeat_seen || mi_transport.faults ? -2 :
         mt_config_begin(&mi_transport, &mi_ledger, track, revision, schema, values, count);
     dkrt_irq_restore(sr);
     return result;
@@ -150,7 +160,8 @@ int mi_route_enable(uint32_t port, uint32_t channel, uint32_t track, int sequenc
     if (port >= 2 || channel >= 16 || track >= MI_TRACKS || !instrument_midi_ready) return -1;
     sr = dkrt_irq_mask();
     initialize();
-    if (!reset_seen && mi_transport.heartbeat_seen && !mi_transport.faults && mi_transport.applied[track] &&
+    if (!reset_seen && (!registry_guard.expected || (registry_guard.ready && !registry_guard.invalid)) &&
+        mi_transport.heartbeat_seen && !mi_transport.faults && mi_transport.applied[track] &&
         instrument_midi_ready(track, mi_ledger.epoch, mi_ledger.generations[track]))
         result = mi_route(&mi_ledger, port, channel, track,
                           mi_ledger.generations[track], sequencer);

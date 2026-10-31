@@ -118,9 +118,15 @@ uint32_t mi_test_dispatch(void)
     CHECK(mi_registry_expect_session(0, 18) == -1);
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS);
     CHECK(mi_registry_expect_session(0xdeadbeefu, 18) == 0);
+    CHECK(mi_ledger.epoch == 2 && !mi_transport.heartbeat_seen);
+    CHECK(mi_route_enable(0, 0, 0, 0) == -2);
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0);
     CHECK(mi_registry_expect_session(0xdeadbeefu, 18) == -2);
     r[3] = 3; publish_reply(queue, record, r, 0);
+    for (i = 0; i < MT_WORDS; ++i) {
+        uint32_t at = 2u*(0x9fc/2+2*i)+1;
+        CHECK(!queue[at] && !queue[at+2]);
+    }
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0); /* still old version */
     r[0] = MT_SESSION_REPLY_MAGIC; r[3] = 4; r[5] = 18;
     r[6] = 0; r[7] = 0xdeadbeefu; r[8] = 5; r[11] = 0; r[12] = 0xdeadbeefu;
@@ -133,6 +139,11 @@ uint32_t mi_test_dispatch(void)
     publish_reply(queue, record, r, 0);
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == -2);
     CHECK(snapshot[3] == 4);
+    CHECK(mi_transport.faults && mi_route_enable(0, 0, 0, 0) == -2);
+    for (i = 0; i < MT_WORDS; ++i) {
+        uint32_t at = 2u*(0x9fc/2+2*i)+1;
+        CHECK(!queue[at] && !queue[at+2]);
+    }
     mi_transport_recover();
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == -2);
     publish_reply(queue, record, r, 0);

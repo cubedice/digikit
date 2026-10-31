@@ -65,5 +65,9 @@ typedef struct {
 int mt_reply_guard_expect(MtReplyGuard *guard, uint32_t token,
                           uint32_t sequence, uint32_t block);
 void mt_reply_guard_tick(MtReplyGuard *guard, const uint32_t *reply, uint32_t block);
+/* Call after guard_tick on the same snapshot/block. An armed session must bind
+ * before ACKs are consumed; sticky trust loss faults MIDI ownership immediately. */
+int mt_reply_tick_guarded(MiTransport *t, MiLedger *m, const uint32_t *reply,
+                          uint32_t block, const MtReplyGuard *guard);
 
 #endif
