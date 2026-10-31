@@ -1086,6 +1086,31 @@ Focused documentation references pass. Required preflight passes layering,
 host tests, formatting and types; only the existing 256 stale references in
 78 files fail (`out/canopy-budget-changed.log`).
 
+V2 machine keys now have a selection-scoped resolver. It borrows the boot
+assignment table with an explicit saved selection index instead of consulting
+the mutable current-load index. Both hashed and pinned keys must be declared by
+that selected module; ambiguous declarations, unassigned/out-of-range numbers,
+occupied legacy rows and two records resolving to the same type are rejected.
+The result preserves descriptor order and is returned only as a complete batch.
+
+The firmware assignment adapter supplies the existing sticky table and device
+range, and checks both CF machine rows (owner or nonempty name) and legacy DSP
+reservations, including unpublished owners. Missing CF registry data fails closed.
+This adapter is ready for the pending V2 loader caller; it is not invoked by the
+current boot loader, and existing legacy assignment behavior is unchanged.
+
+All 152 SDK tests pass (`out/canopy-types-sdk.log`). Five new cases cover saved
+selection lookup, declared pinned keys, ambiguity/malformed maps, exhausted or
+stock assignments, and duplicate resolved types. The composed admission-to-INIT
+test now consumes resolver output. Actual firmware invocation, DSP boot identity
+and enabling the admission gate remain open.
+The ColdFire rebuild and current-source check pass (`out/canopy-types-build.log`,
+`out/canopy-types-check.log`). The executable is unchanged; only its source
+fingerprint updates because these new firmware adapters are not called yet.
+Focused documentation references pass. Required preflight passes layering, host
+tests, formatting and types; only the existing 256 stale references in 78 files
+fail (`out/canopy-types-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

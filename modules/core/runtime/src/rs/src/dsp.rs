@@ -1469,3 +1469,10 @@ pub unsafe fn sample_idle() -> bool {
 pub(super) unsafe fn cleanup_test_first_fit(len: u32, align: u32) -> Option<u32> {
     alloc_range(len, align)
 }
+
+/// Includes unpublished legacy reservations, not merely visible machines.
+pub unsafe fn type_is_free(t: u32) -> bool {
+    let d = ds();
+    (TYPE_FIRST..=TYPE_LAST).contains(&t)
+        && !d.row_owner.iter().zip(d.row_type.iter()).any(|(&owner, &ty)| owner != 0 && ty == t)
+}

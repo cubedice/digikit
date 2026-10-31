@@ -918,3 +918,19 @@ pub unsafe fn remove(owner: u8) {
     }
     s.removes = s.removes.wrapping_add(1);
 }
+
+/// A free CF machine row in the runtime range. Absent registry fails closed.
+pub unsafe fn type_is_free(t: u32) -> bool {
+    let inf = info();
+    if inf.is_null() { return false; }
+    let first = iw(inf, w::M_DYN0);
+    let count = iw(inf, w::M_DYN_N);
+    let Some(k) = t.checked_sub(first) else { return false; };
+    if k >= count || k as usize >= MAX_MACH || t < iw(inf, w::M_FIRST) {
+        return false;
+    }
+    if rs().mach_owner[k as usize] != 0 { return false; }
+    let row = iw(inf, w::M_ROWS) + (t - iw(inf, w::M_FIRST)) * iw(inf, w::M_ROW_SIZE);
+    let name = rd(row + iw(inf, w::O_NAME));
+    name == 0 || *(name as *const u8) == 0
+}

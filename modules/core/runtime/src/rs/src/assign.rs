@@ -111,3 +111,24 @@ pub fn changed_map() -> Option<[u32; MAP_N]> {
         None
     }
 }
+
+/// V2 lookup uses the saved selection index, not the current BOOT_IDX. Keep this
+/// borrowed snapshot on the UI task; no assignment-table pointer escapes.
+pub unsafe fn resolve_instruments(
+    section: &dkrt_sdk::instrument_section::Section<'_>,
+    selection: u32,
+) -> Result<dkrt_sdk::instrument_types::Resolved, dkrt_sdk::instrument_types::Error> {
+    let a = st();
+    if a.magic != 0x444b_4153 || a.n > MAX_KEYS || selection >= SEL_MAX as u32 {
+        return Err(dkrt_sdk::instrument_types::Error::Map);
+    }
+    let context = dkrt_sdk::instrument_types::Context {
+        selection,
+        indices: &a.idx[..a.n],
+        keys: &a.key[..a.n],
+        types: &a.ty[..a.n],
+        first: DYN_TYPE_FIRST,
+        last: DYN_TYPE_LAST,
+    };
+    section.resolve_types(&context, |t| !crate::registry::type_is_free(t) || !crate::dsp::type_is_free(t))
+}

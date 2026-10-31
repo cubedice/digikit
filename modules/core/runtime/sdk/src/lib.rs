@@ -32,6 +32,8 @@ pub mod instrument_mailbox;
 pub mod instrument_descriptor;
 /// Bounded DKDS6 instrument-only section validation.
 pub mod instrument_section;
+/// Selection-scoped V2 machine-key resolution against boot assignments.
+pub mod instrument_types;
 /// Experimental validation/planning of allocator-owned V2 row metadata.
 pub mod instrument_admission;
 

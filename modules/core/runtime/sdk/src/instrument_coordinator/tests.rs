@@ -793,6 +793,15 @@ fn admitted_section_uses_shared_ledger_and_publishes_only_after_initialization()
     let mut owner = admission_owner();
     let bytes = section_test::fixture();
     let section = Section::parse(&bytes, 1, section_test::limits()).unwrap();
+    let context = crate::instrument_types::Context {
+        selection: 3,
+        indices: &[3],
+        keys: &[20],
+        types: &[0],
+        first: 16,
+        last: 23,
+    };
+    let resolved = section.resolve_types(&context, |_| false).unwrap();
     let output = Box::leak(Box::new([0u8; 64]));
     let mut offsets = [0, 0, 128];
     let mut lengths = [0, 0, 64]; // an unrelated legacy module occupies the next range
@@ -806,7 +815,7 @@ fn admitted_section_uses_shared_ledger_and_publishes_only_after_initialization()
         .admit(
             1,
             &section,
-            &[20],
+            resolved.as_slice(),
             &admission_limits(),
             &mut ledger,
             output,
