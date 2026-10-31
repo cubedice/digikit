@@ -60,6 +60,7 @@ typedef unsigned char u8;
 #define DL_E_RANGE 3u /* the DSP refused the destination (its status 3) */
 #define DL_E_TIMEOUT 100u
 #define DL_E_GEOMETRY 101u
+#define DL_E_RESET 102u
 
 typedef struct DlStatus {
     u32 state;
@@ -94,7 +95,8 @@ typedef struct DlLink {
     u32 serial; /* nonzero accepted-request identity; never wraps within a boot */
     u32 lease; /* exclusive UI-task transaction owner, 0 permits legacy starts */
     u32 lease_serial; /* nonwrapping boot-local ownership generation */
-    u32 pad[3]; /* 96 bytes: whole 16-byte cache lines, no code shares a written line */
+    u32 revoked; /* sticky reset after link use; no completion/drainage claim */
+    u32 pad[2]; /* 96 bytes: whole 16-byte cache lines, no code shares a written line */
 } DlLink;
 
 DlLink dl_link __attribute__((aligned(16)));
@@ -149,6 +151,7 @@ static int can_send(u32 lease)
 {
     DlLink *l = &dl_link;
     u32 st = l->state;
+    if (l->revoked) return -2;
     if (lease != l->lease)
         return lease ? -2 : -1;
     if (st == DL_BUSY || st == DL_START || l->ending)
@@ -159,7 +162,7 @@ static int can_send(u32 lease)
 int dl_claim(u32 *lease)
 {
     DlLink *l = &dl_link;
-    if (!lease || l->lease_serial == 0xffffffffu)
+    if (!lease || l->revoked || l->lease_serial == 0xffffffffu)
         return -2;
     if (l->lease || can_send(0))
         return -1;
@@ -172,12 +175,25 @@ int dl_claim(u32 *lease)
 int dl_release(u32 lease)
 {
     DlLink *l = &dl_link;
-    if (!lease || lease != l->lease)
+    if (l->revoked || !lease || lease != l->lease)
         return -2;
     if (can_send(lease))
         return -1;
     l->lease = 0;
     return 0;
+}
+
+/* Called with interrupts masked before DSP reset assertion. Cold boot before
+ * any use is harmless. Preserve the source/lease/identity and never manufacture
+ * a terminal drained result: a frame already owned by DMA may still exist. */
+void dl_reset_begin(void)
+{
+    DlLink *l = &dl_link;
+    if (!l->revoked && (l->serial || l->lease_serial)) {
+        l->revoked = 1;
+        l->err = DL_E_RESET;
+        l->state = DL_BUSY;
+    }
 }
 
 static int send_area(u32 lease, u32 dst_l2, const void *buf, u32 len)
@@ -253,7 +269,7 @@ int dl_poll(DlStatus *s)
 {
     DlLink *l = &dl_link;
     u32 st = l->state;
-    if (st == DL_START)
+    if (l->revoked || st == DL_START)
         st = DL_BUSY;
     s->state = st;
     s->err = l->err;
@@ -290,7 +306,7 @@ int dl_poll_tagged(u32 ticket, DlStatus *s)
     if (!ticket || ticket != dl_link.serial || !s)
         return -1;
     state = dl_poll(s);
-    return (state == DL_DONE || state == DL_ERROR) && dl_link.ending == 0u;
+    return !dl_link.revoked && (state == DL_DONE || state == DL_ERROR) && dl_link.ending == 0u;
 }
 
 /* Record byte offset of diagnostic word j: slot row 1 + j / 2 (0x1c + 0x54 row), +0x44 for even j, +0x48 for odd j (words 14 and 15 are in row 8, 16 and 17 in row 9, 22 and 23 in row 12, 24 and 25 in row 13, 30 and 31 in row 16). */
@@ -373,7 +389,7 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
     if (pp_write_frame || instrument_write_frame) {
         /* The provider is DT2 1.17 only. Reject another geometry before writing a single queue halfword. */
         if (len != 0x802 || reclen != 0xabc || words != 174u || !tx || (tx & 3u) || !pp_write_frame) {
-            if (st == DL_START || st == DL_BUSY)
+            if (!l->revoked && (st == DL_START || st == DL_BUSY))
                 finish(l, DL_ERROR, DL_E_GEOMETRY);
             return;
         }
@@ -386,6 +402,13 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
         /* Position snapshots are sent even while the acknowledged link is idle. */
         if (st != DL_START && st != DL_BUSY && !l->ending && !l->dirty)
             return;
+    }
+    if (l->revoked) {
+        /* Suppress future chunks and END packets; old ACKs cannot complete the
+         * request. This clears the next queue image, not an active DMA frame. */
+        if (words >= 1u && tx && !(tx & 3u)) put_word(tx, e0, 0, 0);
+        l->dirty = 0;
+        return;
     }
     if (st == DL_START) {
         if (words < 4u) {

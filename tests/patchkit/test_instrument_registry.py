@@ -227,6 +227,11 @@ def test_dsp_session_replies_cross_cf_frame_publisher_and_snapshot(
     helper = tmp_path / "session_boundary.c"
     helper.write_text("""
 #include "bridge.h"
+int dl_claim(uint32_t *lease);
+int dl_send_owned(uint32_t lease, uint32_t win, uint32_t dst, const void *buf,
+                  uint32_t len, uint32_t *ticket);
+int dl_poll_tagged(uint32_t ticket, uint32_t *status);
+int dl_release(uint32_t lease);
 uint32_t dkrt_irq_mask(void) { return 0; }
 void dkrt_irq_restore(uint32_t x) { (void)x; }
 int instrument_midi_ready(uint32_t t, uint32_t e, uint32_t g) {
@@ -245,7 +250,11 @@ void *memset(void *d, int c, unsigned n) {
 uint32_t session_boundary(const uint32_t *words, uint32_t step) {
     static uint16_t record[0xabc/2];
     static uint16_t queue[0x2000] __attribute__((aligned(4)));
+    static uint32_t lease, ticket, payload=0x12345678;
     uint32_t out[16], i;
+    if (step == 1 && RESET_NOTIFICATION) {
+        if(dl_claim(&lease) || dl_send_owned(lease,3,0,&payload,4,&ticket)) return 15;
+    }
     if (!step) {
         mi_dsp_reset_begin(); /* initial assertion before adapter use is harmless */
         if (mi_registry_expect_session(0xdeadbeefu,17)) return 1;
@@ -292,6 +301,8 @@ uint32_t session_boundary(const uint32_t *words, uint32_t step) {
             if(mi_route_enable(0,0,0,0)!=-2) return 10;
             mi_transport_recover();
             if(mi_registry_reply(out,16)!=-2) return 11;
+            if(dl_poll_tagged(ticket,out)!=0 || out[0]!=1 || out[1]!=102) return 16;
+            if(dl_release(lease)!=-2) return 17;
         }
     }
     return 0;
@@ -306,11 +317,12 @@ uint32_t session_boundary(const uint32_t *words, uint32_t step) {
             mod / "src/cf/ownership.c",
             mod / "src/cf/transport.c",
             mod / "src/cf/adapter.c",
+            REPO_ROOT / "modules/core/adapters/dsp-link/src/cf/dsp-link.c",
             helper,
         ],
         0x47E00000,
-        {},
-        [mod / "src/cf"],
+        {"_dl_area": 0, "dl_tx_lit": 0, "dl_rec_lit": 0, "pp_write_frame": 0},
+        [mod / "src/cf", REPO_ROOT / "modules/core/adapters/dsp-link/build/gen"],
     )
     calls = [
         {

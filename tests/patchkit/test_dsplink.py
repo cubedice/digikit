@@ -1077,3 +1077,62 @@ def test_lease_claim_cannot_take_over_legacy_start_or_end_drain(machine, built):
         assert results[i].reads[0] == b"\xcc" * 4
     assert results[-1].d0 == 0
     assert results[-1].reads[0] == struct.pack(">I", 1)
+
+
+@needs_gcc
+@pytest.mark.parametrize("phase", ["start", "busy", "ending", "drained"])
+def test_reset_retains_owned_transfer_and_rejects_stale_ack(machine, built, phase):
+    src, lease, ticket, output = (DATA + n for n in (0x4000, 0x5000, 0x5100, 0x5200))
+    record = bytearray(0xABC)
+    struct.pack_into(">HHHH", record, ACK_OFF, ACK_MAGIC, 1, 0x101, 0)
+    tick = call(built, "dl_tick", [0x802, 0, 0xABC, REC], [(TXQ + 4 * 0x402 + 2, 2)])
+    calls = [
+        call(built, "dl_reset_begin", []),  # initial boot must allow first use
+        call(built, "dl_claim", [lease]),
+        call(built, "dl_send_owned", [1, 3, 0, src, 4, ticket]),
+    ]
+    if phase != "start":
+        calls.append(call(built, "dl_tick", [0x802, 0, 0xABC, 0]))
+    if phase in ("ending", "drained"):
+        calls.append(tick)
+    if phase == "drained":
+        calls.extend([tick] * 6)
+    calls.extend(
+        [
+            call(built, "dl_reset_begin", []),
+            call(built, "dl_reset_begin", []),
+        ]
+    )
+    prefix = len(calls)
+    calls.extend([tick] * 8)  # valid old ACK and enough frames to have drained normally
+    calls.extend(
+        [
+            call(
+                built,
+                "dl_poll_tagged",
+                [1, output],
+                [(output, 28), (built.symbols["dl_link"], 96)],
+            ),
+            call(built, "dl_release", [1]),
+            call(built, "dl_claim", [lease], [(lease, 4)]),
+            call(built, "dl_send_owned", [1, 3, 0, src, 4, ticket], [(ticket, 4)]),
+            call(built, "dl_send", [AREA, src, 4]),
+            call(built, "dl_send_tagged", [3, 0, src, 4, ticket], [(ticket, 4)]),
+        ]
+    )
+    results = run(machine, built, {src: b"abcd", REC: bytes(record)}, calls)
+    assert results[1].d0 == results[2].d0 == 0
+    assert all(r.reads[0] == bytes(2) for r in results[prefix : prefix + 8])
+    done = results[prefix + 8]
+    assert done.d0 == 0  # unresolved, never terminal/drained
+    assert struct.unpack(">7I", done.reads[0])[:2] == (1, 102)
+    state = struct.unpack(">24I", done.reads[1])
+    assert state[2] == src  # source remains owned
+    assert state[18:22] == (1, 1, 1, 1)  # serial, lease, lease serial, revoked
+    assert all(r.d0 == 0xFFFFFFFE for r in results[prefix + 9 :])
+    assert results[prefix + 10].reads[0] == struct.pack(">I", 1)
+    assert (
+        results[prefix + 11].reads[0]
+        == results[prefix + 13].reads[0]
+        == struct.pack(">I", 1)
+    )

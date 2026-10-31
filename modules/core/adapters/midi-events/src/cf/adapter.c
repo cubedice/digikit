@@ -4,6 +4,7 @@
 #include "bridge.h"
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
+extern void dl_reset_begin(void) __attribute__((weak));
 extern int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
     __attribute__((weak));
 
@@ -67,6 +68,7 @@ void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_
 void mi_dsp_reset_begin(void)
 {
     uint32_t sr = dkrt_irq_mask();
+    if (dl_reset_begin) dl_reset_begin();
     if (initialized && !reset_seen) {
         reset_seen = 1;
         registry_reply_valid = 0;

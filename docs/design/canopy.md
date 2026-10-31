@@ -1413,6 +1413,37 @@ references in 78 files (`out/canopy-reset-hook-changed.log`).
 
 
 
+Reset assertion now also reaches the optional `dl_reset_begin` sender boundary
+inside the same interrupt mask. Once the link has issued a transfer or lease,
+reset permanently revokes it for the CF boot. The sender retains its request
+identity, source pointer and lease; rejects claims, releases and all new sends;
+and reports BUSY with reset error 102 rather than a falsely drained completion.
+Subsequent frame ticks clear the code-channel magic and do not process old ACKs
+or emit more payload/END chunks. The new sticky flag uses a former padding word,
+preserving the 96-byte link layout and prior field offsets. Initial reset before
+any link use remains harmless, including when the MIDI adapter is not initialized.
+
+This stops future software emission and resource reuse; it does not retract a
+frame already owned by DMA or prove the hardware reset has stopped reception.
+The DSP-only reset and receiver/DMA timing acceptance therefore remains open.
+The sender processor suite passes 41 cases (two skips), including reset at START,
+BUSY, END drainage and already-drained phases followed by repeated valid stale
+ACKs. These cases check zero code-channel magic, retained source/lease/identity,
+unresolved polls, idempotent notification and rejection of new producer requests.
+All 29 registry processor cases also pass; the reset case now links the actual
+sender and verifies that the MIDI reset callback revokes its pending owned
+request. Both adapter artifacts pass current-source checks. Logs:
+`out/canopy-reset-link-cf.log`, `out/canopy-reset-link-boundary.log` and
+`out/canopy-reset-link-check.log`.
+Both running-firmware session regressions pass with the reset-aware sender
+(64.1 s bind, 92.8 s loss/replay; `out/canopy-reset-link-live.log`).
+Staged preflight passes 193 host tests (16 skips), layering, lint, formatting
+and types. Only the existing 256 stale references in 78 files fail
+(`out/canopy-reset-link-changed.log`).
+
+
+
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

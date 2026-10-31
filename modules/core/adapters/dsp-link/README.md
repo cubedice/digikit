@@ -165,3 +165,16 @@ outside the reservation. Live coexistence and the event protocol remain open.
 Design, measurements and open points: [docs/findings/31-dsp-link.md](../../../../docs/findings/31-dsp-link.md) and, for the windows and
 the wider chunk header, [docs/findings/32-runtime-dsp-machines.md](../../../../docs/findings/32-runtime-dsp-machines.md). Proof:
 `uv run python -m tools.patchkit.pk_dsplink proof --device dt2|dn2`; tests: `tests/patchkit/test_dsplink.py`.
+
+
+## DSP reset revocation
+
+The DTII reset hook calls `dl_reset_begin` with interrupts masked. Before the
+link has ever issued a request or lease this is a no-op. After use it permanently
+revokes the sender for that CF boot: no new claim/send/release succeeds, the
+source and lease remain retained, and tagged polls remain unresolved (BUSY,
+error 102). Old ACKs cannot convert the request to a drained completion.
+Subsequent frame ticks clear code-channel magic without emitting payload or END
+chunks. This prevents future software emission; it does not cancel an already
+active DMA frame. Cold boot is required to reinitialize the link. The reset hook
+currently covers the identified DTII GPIO helper, not every possible reset source.
