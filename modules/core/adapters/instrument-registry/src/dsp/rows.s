@@ -351,4 +351,5 @@ _irr_ready:
     JUMP _irr_ok;
 .SECTION/DM seg_dmda;
 .VAR _irr_current = 0;
-.PKBSS _ir_rows, 512;
+// INSTALL reads the initial row phase before writing metadata.
+.PKDATA _ir_rows, 512;

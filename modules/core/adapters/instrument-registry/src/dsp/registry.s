@@ -250,15 +250,17 @@ _ir_caps:
 .GLOBAL _dl_iwords;
 .VAR _dl_iwords = 16;
 .VAR _ir_sequence = 0;
-.PKBSS _dl_irows, 64;
-.PKBSS _instrument_registry_reply, 32;
+// These are read before the first mailbox transaction. PKBSS only reserves
+// memory; PKDATA supplies zeros in the DSP boot stream.
+.PKDATA _dl_irows, 64;
+.PKDATA _instrument_registry_reply, 32;
 
 // Trusted admission only; not part of writable window 3. Zero on cold boot.
-.PKBSS _ir_lifecycle_ready, 4;
-.PKBSS _ir_pending, 4;
+.PKDATA _ir_lifecycle_ready, 4;
+.PKDATA _ir_pending, 4;
 .PKBSS _ir_ticket, 20;
 
 .PKBSS _ir_snapshot, 64;
 
 // Cleared by image initialization, never by MIDI recovery or row detach.
-.PKBSS _instrument_session, 4;
+.PKDATA _instrument_session, 4;

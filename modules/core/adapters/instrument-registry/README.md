@@ -312,12 +312,20 @@ word 12, independently of the current registry ACK. Words 13..14 remain zero and
 the checksum covers the version and token. An absent registry or unbound latch
 retains the existing `0x494ea101` frame. The CF guard accepts the new version only after explicitly arming the expected
 bind identity; SDK mailbox and MIDI event ACK validators still reject it.
-The production runtime does not send BIND_SESSION yet. This is the DSP
-half of a future protocol, not an enabled boot-identity guarantee.
+Normal runtime images do not initiate BIND_SESSION. The optional
+`test/instrument-session` fixture triggers the owned coordinator for an emulator
+proof; no machine admission or V2 capability is enabled.
 
 The CF receiver now validates the expected token with sticky revocation on
-loss/downgrade and stale-frame timeout. The loader still needs a bounded, one-shot
-bootstrap transaction and a UI-clock deadline independent of frame callbacks. Before admission is enabled, prove that every supported DSP
+loss/downgrade and stale-frame timeout. The coordinator supplies a bounded, one-shot
+bootstrap and a UI-clock deadline independent of frame callbacks. Before
+admission is enabled, prove that every supported DSP
 restart clears this private latch before processing commands or publishing
 replies, and that pending writes cannot restore an old bind. The component test
 that clears session/sequence storage is fault injection, not that reset proof.
+
+State read before the first command (mailbox, reply, pending flag, admission flag,
+session token and row table) uses `.PKDATA`, supplying zeros in the SHARC boot
+stream. `.PKBSS` reserves memory without initializing it and is used only for
+scratch that is written before reading. Loading that stream initializes the
+session; DSP-only restart behavior still requires separate evidence.

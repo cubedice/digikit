@@ -1256,6 +1256,48 @@ Focused documentation validation passes. Required preflight passes Python lint
 and formatting, layering, host tests, formatting and types; only the existing
 256 stale references in 78 files fail (`out/canopy-bind-provider-changed.log`).
 
+The emulator-only `test/instrument-session` fixture now supplies an explicit
+bootstrap trigger. The runtime acquires the existing owned link, arms the CF
+reply guard, sends the one-shot bind, waits for its acknowledged session and
+releases the drained channel. Diagnostic phases are idle, acquiring, binding,
+releasing, bound and blocked (0..5). Each handoff/exchange has a 2,000-UI-tick
+budget; the CF frame watchdog is independent. The trigger is sampled once and
+cannot retry or rearm within the CF boot. Normal images omit this provider;
+`Loads::new(0)` and the DSP admission flag stay disabled.
+
+The live boot exposed an initialization gap hidden by zero-filled component
+fixtures: SHARC `.PKBSS` reserves space but does not load zeros. The registry
+mailbox, reply, pending flag, admission flag, session token and row table now use
+`.PKDATA`, giving the boot stream explicit initial values. Scratch buffers still
+use reserved storage and are written before use. This corrects the earlier
+assumption that reserved session storage was initialized by loading the image;
+it does not establish the behavior of DSP-only reset paths.
+
+The same live test reached a second target-only failure: mailbox serialization
+using `to_le_bytes()` linked a ColdFire `__bswapsi2` implementation whose call
+relocated back to itself. The first write recursively consumed the UI stack.
+Serialization now uses explicit volatile byte stores into the driver's private
+buffer, preventing the backend from folding the writes into that helper.
+The bootstrap tick entry point also avoids linking the unused image-load path;
+the UI phase dispatcher uses branches rather than an inline jump table.
+
+Validation: the new running-firmware TypeScript bootstrap test passes in 66.1 s
+(`out/canopy-live-session-test.log`), including zero initial session, expected
+bound token, drained lease release, disabled admission and refusal to rearm.
+All 162 SDK tests and 28 registry processor tests pass
+(`out/canopy-live-session-sdk.log`, `out/canopy-live-session-registry-test.log`).
+The rebuilt runtime passes instruction validation at 33,266 instructions; runtime,
+registry and fixture artifacts match their current sources. The compiled runtime
+has no `__bswapsi2` relocations. This proves the initial exchange through the
+emulated physical link, not DSP-only restart or hardware reset behavior.
+Default DTII runtime boot/INFO/reopen/restart also passes (one pass, one DNII
+skip; `out/canopy-live-session-module.log`).
+
+Required changed-file preflight passes layering, 193 host tests (16 skipped),
+formatting and types. Its only failure is the existing 256 stale references in
+78 files (`out/canopy-live-session-changed.log`); focused checks of the edited
+documentation pass. No device installation or public V2 capability is implied.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

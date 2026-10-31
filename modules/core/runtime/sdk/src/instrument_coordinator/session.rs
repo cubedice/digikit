@@ -68,6 +68,18 @@ impl<'image, T: Transport> Coordinator<'image, T> {
             }
         }
     }
+    /// Drive only the one-shot bootstrap. Kept separate from image-load ticking
+    /// so a bootstrap-only firmware does not link the dormant image loader.
+    pub fn tick_bootstrap(&mut self, now: u32) -> Progress {
+        if let Err(cause) = self.observe_boot() {
+            return Progress::Blocked(cause);
+        }
+        if self.session.is_none() {
+            return Progress::Idle;
+        }
+        self.tick_session(now)
+    }
+
     /// A successful bind exchange only; not a capability or reset-path proof.
     pub fn session_bound(&self) -> bool {
         self.blocked.is_none() && self.session.as_ref().is_some_and(|s| s.bound)

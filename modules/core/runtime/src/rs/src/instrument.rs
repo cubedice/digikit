@@ -2,7 +2,7 @@
 //! No admission or capabilities are enabled until the loader is integrated.
 use core::ptr::addr_of_mut;
 use dkrt_sdk::{
-    instrument_coordinator::{Coordinator, LegacyPolicy},
+    instrument_coordinator::{Coordinator, LegacyPolicy, LinkProgress, Progress},
     instrument_lease::OwnedApi,
     instrument_load::Loads,
     instrument_provider::{Binding, ExpectSession},
@@ -12,12 +12,18 @@ use dkrt_sdk::{
 type Owner = Coordinator<'static, OwnedApi>;
 static mut OWNER: Option<Owner> = None;
 // Bound atomically with the snapshot/transport set; not invoked until the
-// explicit loader bootstrap is enabled after reset-path validation.
+// explicit emulator probe requests a bootstrap. Production loading stays disabled.
 #[used]
 static mut EXPECT_SESSION: Option<ExpectSession> = None;
 #[repr(C, align(16))]
 struct Buffer([u8; 256]);
 static mut BUFFER: Buffer = Buffer([0; 256]);
+
+/// Emulator-only bootstrap diagnostic: phase (idle/acquire/bind/release/bound/
+/// blocked), token, start tick. No retry, admission, or capability publication.
+/// The optional trigger exists only in test/instrument-session images.
+#[no_mangle]
+pub static mut DKRT_INSTRUMENT_SESSION: [u32; 3] = [0; 3];
 
 /// UI-task only. Without all providers, legacy scheduling is unchanged.
 pub unsafe fn legacy_policy() -> LegacyPolicy {
@@ -36,12 +42,55 @@ pub unsafe fn tick(now: u32) {
             && d.nwait == 0
             && !crate::fxpage::busy()
             && !crate::fxsend::busy();
-        let _ = owner.tick_link(now, idle);
+        let link = owner.tick_link(now, idle);
+        let proof = &mut *addr_of_mut!(DKRT_INSTRUMENT_SESSION);
+        if matches!(link, LinkProgress::Blocked(_)) {
+            proof[0] = 5;
+            return;
+        }
+        // A dense match emits an inline jump table on this ColdFire backend.
+        if proof[0] == 0 {
+            let probe = core::hint::black_box(instrument_session_probe as usize);
+            if probe != 0 {
+                let token = instrument_session_probe();
+                if token != 0 {
+                    proof[1] = token;
+                    proof[2] = now;
+                    proof[0] = if owner.request_link(now, 2000).is_ok() {
+                        1
+                    } else {
+                        5
+                    };
+                }
+            }
+        } else if proof[0] == 1 {
+            if link == LinkProgress::Owned {
+                proof[0] = match EXPECT_SESSION {
+                    Some(expect) if owner.begin_session(expect, proof[1], now, 2000).is_ok() => 2,
+                    _ => 5,
+                };
+            }
+        } else if proof[0] == 2 {
+            match owner.tick_bootstrap(now) {
+                Progress::Idle if owner.session_bound() => {
+                    proof[0] = if owner.request_link_release(now, 2000).is_ok() {
+                        3
+                    } else {
+                        5
+                    };
+                }
+                Progress::Blocked(_) => proof[0] = 5,
+                _ => {}
+            }
+        } else if proof[0] == 3 && link == LinkProgress::Released {
+            proof[0] = 4;
+        }
     }
 }
 
 extern "C" {
     // Optional patchkit relocations resolve to zero when their module is absent.
+    fn instrument_session_probe() -> u32;
     fn dl_claim();
     fn dl_release();
     fn dl_send_owned();

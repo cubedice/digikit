@@ -82,6 +82,7 @@ export default defineConfig({
           name: 'proofs',
           include: ['runtime/**/*.test.ts'],
           exclude: [
+            'runtime/instrument-session.test.ts',
             'runtime/overloop-display.test.ts',
             'runtime/canopy-transport.test.ts',
             'runtime/canopy-carrier.test.ts',
@@ -106,6 +107,16 @@ export default defineConfig({
             'runtime/canopy-panic.test.ts',
             'runtime/canopy-bend.test.ts',
           ],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 120_000,
+          hookTimeout: 150_000,
+        },
+      },
+      {
+        test: {
+          name: 'instrument-session',
+          include: ['runtime/instrument-session.test.ts'],
           pool: 'forks',
           ...serial,
           testTimeout: 120_000,

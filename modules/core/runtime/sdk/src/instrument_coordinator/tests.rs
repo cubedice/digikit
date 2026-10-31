@@ -1269,10 +1269,10 @@ fn session_exchange_arms_once_drains_each_write_and_keeps_sequence_namespace() {
         Err(Error::Busy)
     );
     for now in 3..9 {
-        assert_eq!(c.tick(now), Progress::Pending);
+        assert_eq!(c.tick_bootstrap(now), Progress::Pending);
     }
     assert!(!c.session_bound()); // transport completion alone is insufficient
-    assert_eq!(c.tick(9), Progress::Idle);
+    assert_eq!(c.tick_bootstrap(9), Progress::Idle);
     assert!(c.session_bound());
     assert_eq!(c.mailbox.reserve_session_sequence(), Ok(2));
     WIRE.with_borrow(|w| {
@@ -1370,7 +1370,7 @@ fn session_arm_failure_and_boot_loss_never_send_or_release() {
     let mut c = bootstrap_owner();
     unsafe { c.begin_session(expect_session, 1, 2, 10) }.unwrap();
     WIRE.with_borrow_mut(|w| w.boot_lost = true);
-    assert_eq!(c.tick(3), Progress::Blocked(Failure::Boot));
+    assert_eq!(c.tick_bootstrap(3), Progress::Blocked(Failure::Boot));
     WIRE.with_borrow(|w| {
         assert_eq!(w.starts, 0);
         assert_eq!(w.releases, 0);

@@ -1924,30 +1924,30 @@
   },
   {
    "align": 4,
-   "hex": "",
-   "kind": "bss",
-   "name": "pkbss__dl_irows",
+   "hex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "kind": "data",
+   "name": "pkdata__dl_irows",
    "size": 64
   },
   {
    "align": 4,
-   "hex": "",
-   "kind": "bss",
-   "name": "pkbss__instrument_registry_reply",
+   "hex": "0000000000000000000000000000000000000000000000000000000000000000",
+   "kind": "data",
+   "name": "pkdata__instrument_registry_reply",
    "size": 32
   },
   {
    "align": 4,
-   "hex": "",
-   "kind": "bss",
-   "name": "pkbss__ir_lifecycle_ready",
+   "hex": "00000000",
+   "kind": "data",
+   "name": "pkdata__ir_lifecycle_ready",
    "size": 4
   },
   {
    "align": 4,
-   "hex": "",
-   "kind": "bss",
-   "name": "pkbss__ir_pending",
+   "hex": "00000000",
+   "kind": "data",
+   "name": "pkdata__ir_pending",
    "size": 4
   },
   {
@@ -1966,16 +1966,16 @@
   },
   {
    "align": 4,
-   "hex": "",
-   "kind": "bss",
-   "name": "pkbss__instrument_session",
+   "hex": "00000000",
+   "kind": "data",
+   "name": "pkdata__instrument_session",
    "size": 4
   },
   {
    "align": 4,
-   "hex": "",
-   "kind": "bss",
-   "name": "pkbss__ir_rows",
+   "hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "kind": "data",
+   "name": "pkdata__ir_rows",
    "size": 512
   },
   {
@@ -1993,7 +1993,7 @@
    "size": 4
   }
  ],
- "source_sha256": "bae7a53fb187c42cb056e3b4074d37b3ef2276bb55b52941fe8c1c6d0a569499",
+ "source_sha256": "c4c877a9ee6ba0ea9944fc10dcbd2752d03c98ac51f21067d5410671d2e20d82",
  "symbols": [
   {
    "global": true,
@@ -2292,7 +2292,7 @@
   {
    "global": true,
    "name": "_dl_irows",
-   "section": "pkbss__dl_irows",
+   "section": "pkdata__dl_irows",
    "value": 0
   },
   {
@@ -2304,31 +2304,31 @@
   {
    "global": true,
    "name": "_instrument_registry_reply",
-   "section": "pkbss__instrument_registry_reply",
+   "section": "pkdata__instrument_registry_reply",
    "value": 0
   },
   {
    "global": true,
    "name": "_instrument_session",
-   "section": "pkbss__instrument_session",
+   "section": "pkdata__instrument_session",
    "value": 0
   },
   {
    "global": true,
    "name": "_ir_lifecycle_ready",
-   "section": "pkbss__ir_lifecycle_ready",
+   "section": "pkdata__ir_lifecycle_ready",
    "value": 0
   },
   {
    "global": true,
    "name": "_ir_pending",
-   "section": "pkbss__ir_pending",
+   "section": "pkdata__ir_pending",
    "value": 0
   },
   {
    "global": true,
    "name": "_ir_rows",
-   "section": "pkbss__ir_rows",
+   "section": "pkdata__ir_rows",
    "value": 0
   },
   {

@@ -171,6 +171,22 @@ the file passed, the run directory is removed; on a failure the reports and logs
 `DIGI_FX_KEEP_RUNS=1` keeps the whole run directory including WAV files.
 Module cells write diagnostic JSON under `out/regression/module-load/<device>/<module>/`.
 
+## Instrument session bootstrap proof
+
+This isolated DTII project uses the ready inputs and existing daemon above. It
+cold-boots the registry and triggers the runtime's one-shot bootstrap, checks the
+DSP session token and drained link release, and rejects rearming. No machine is
+admitted. The optional trigger is supplied only by the test fixture.
+
+```sh
+uv run python -m tools.patchkit.patchkit build core/runtime test/instrument-session
+uv run python -m tools.patchkit.patchkit patch --firmware firmware/Digitakt_II_OS1.17.syx --modules test/instrument-session -o out/patch/canopy-live-session.syx
+DIGI_EMUD_DT2=PATH_TO_DAEMON pnpm --filter @digi/regression exec vitest run --project instrument-session
+```
+
+This proves the running firmware's initial exchange, not DSP-only restart or
+hardware reset behavior. Do not install the fixture on a device.
+
 ## CANOPY transport proof
 
 This isolated project requires the existing DT2 daemon and ready inputs above.

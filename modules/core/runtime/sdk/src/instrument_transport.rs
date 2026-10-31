@@ -186,7 +186,18 @@ impl<T: Transport> Driver<T> {
             return Err(Error::InvalidWrite);
         }
         for (i, word) in write.words[..write.count].iter().enumerate() {
-            self.buffer[4 * i..4 * i + 4].copy_from_slice(&word.to_le_bytes());
+            // ColdFire rustc_codegen_gcc currently lowers swap_bytes to a
+            // recursive __bswapsi2 helper. Byte stores also prevent combining
+            // this serialization back into that broken intrinsic. The driver
+            // exclusively owns this buffer until start accepts the transfer.
+            for byte in 0..4 {
+                unsafe {
+                    core::ptr::write_volatile(
+                        self.buffer.as_mut_ptr().add(4 * i + byte),
+                        (word >> (8 * byte)) as u8,
+                    );
+                }
+            }
         }
         self.start(
             3,

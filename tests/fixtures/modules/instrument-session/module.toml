@@ -1,0 +1,21 @@
+[module]
+id = "test/instrument-session"
+version = "0.1.0"
+name = "Instrument session bootstrap proof"
+category = "test"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Emulator-only one-shot session bootstrap; no machine admission."
+requires = ["core/runtime", "core/instrument-registry"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/probe.dko.json"
+sources = ["src/probe.c"]
+place = "cf.expansion"
+devices = ["dt2"]
