@@ -252,3 +252,19 @@ fn instrument_provider_composes_tagged_write_drainage_with_registry_reply() {
     );
     assert!(loads.lookup(17).is_some());
 }
+
+#[test]
+fn boot_probe_does_not_consume_or_publish_a_pending_reply() {
+    let (mut loads, mut mailbox, expected) = pending();
+    drain(&mut mailbox);
+    let mut reply = replies(good);
+    assert_eq!(reply.check_boot(), Ok(()));
+    assert_eq!(loads.lookup(17), None);
+    assert_eq!(
+        reply.poll(&mut mailbox, &mut loads),
+        Ok(Progress::Complete(expected))
+    );
+    assert!(loads.lookup(17).is_some());
+    assert_eq!(replies(absent).check_boot(), Ok(()));
+    assert_eq!(replies(short).check_boot(), Err(Error::Provider(15)));
+}

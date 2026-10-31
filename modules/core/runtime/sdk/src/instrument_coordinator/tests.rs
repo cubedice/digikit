@@ -22,6 +22,7 @@ struct Wire {
     busy: bool,
     silent: bool,
     boot_lost: bool,
+    snapshot_error: i32,
     reject: u32,
     starts: u32,
     polls: u32,
@@ -243,6 +244,9 @@ unsafe extern "C" fn snapshot(out: *mut u32, n: u32) -> i32 {
         w.snapshots += 1;
         if w.boot_lost {
             return -2;
+        }
+        if w.snapshot_error != 0 {
+            return w.snapshot_error;
         }
         if w.silent {
             return 0;
@@ -539,12 +543,13 @@ fn invalid_budget_changes_neither_admission_nor_wire() {
             f.owner.begin(f.plan.take().unwrap(), &IMAGE, 0, budget),
             Err(Error::Budget)
         );
+        WIRE.with_borrow(|w| assert_eq!((w.starts, w.polls, w.snapshots), (0, 0, 0)));
         assert_eq!(f.owner.tick(0), Progress::Idle);
         assert_eq!(
             f.owner.loads.start(f.ticket),
             Ok(Command::SendImage(f.ticket))
         );
-        WIRE.with_borrow(|w| assert_eq!((w.starts, w.polls, w.snapshots), (0, 0, 0)));
+        WIRE.with_borrow(|w| assert_eq!((w.starts, w.polls, w.snapshots), (0, 0, 1)));
     }
 }
 
@@ -1156,4 +1161,75 @@ fn externally_adopted_reservations_cannot_bypass_aggregate_budget_accounting() {
     ));
     assert_eq!(output, [0xa5; 64]);
     assert_eq!(ledger.lengths[0], 0);
+}
+
+#[test]
+fn detected_boot_loss_preempts_claim_owned_idle_and_release() {
+    for stage in 0..3 {
+        let mut owner = admission_owner();
+        owner.request_link(0, 20).unwrap();
+        if stage != 0 {
+            assert_eq!(owner.tick_link(0, true), LinkProgress::Owned);
+        }
+        if stage == 2 {
+            owner.request_link_release(1, 20).unwrap();
+        }
+        WIRE.with_borrow_mut(|w| w.boot_lost = true);
+        let before = WIRE.with_borrow(|w| (w.claims, w.releases, w.starts, w.polls));
+        assert_eq!(
+            owner.tick_link(2, true),
+            LinkProgress::Blocked(Failure::Boot)
+        );
+        assert_eq!(owner.legacy_policy(), LegacyPolicy::Pause);
+        WIRE.with_borrow(|w| assert_eq!((w.claims, w.releases, w.starts, w.polls), before));
+        let snapshots = WIRE.with_borrow(|w| w.snapshots);
+        assert_eq!(
+            owner.tick_link(3, true),
+            LinkProgress::Blocked(Failure::Boot)
+        );
+        assert_eq!(owner.tick(3), Progress::Blocked(Failure::Boot));
+        WIRE.with_borrow(|w| assert_eq!(w.snapshots, snapshots));
+    }
+}
+
+#[test]
+fn detected_boot_loss_stops_upload_before_polling_or_reusing_its_buffer() {
+    let mut f = Fixture::new();
+    f.begin(0, 100);
+    assert_eq!(f.owner.tick(0), Progress::Pending);
+    WIRE.with_borrow_mut(|w| w.boot_lost = true);
+    assert_eq!(f.owner.tick(1), Progress::Blocked(Failure::Boot));
+    WIRE.with_borrow(|w| {
+        assert_eq!((w.starts, w.polls), (1, 0));
+        let (_, _, ptr, bytes) = w.source.unwrap();
+        assert_eq!(
+            unsafe { core::slice::from_raw_parts(ptr, bytes) },
+            &IMAGE[..256]
+        );
+        assert!(w.operations.is_empty());
+    });
+    assert!(f.release().is_err());
+}
+
+#[test]
+fn malformed_guard_provider_results_stop_handoff_without_link_callbacks() {
+    for result in [-1, 15, 17] {
+        let mut owner = admission_owner();
+        owner.request_link(0, 20).unwrap();
+        WIRE.with_borrow_mut(|w| w.snapshot_error = result);
+        assert_eq!(
+            owner.tick_link(1, true),
+            LinkProgress::Blocked(Failure::Reply)
+        );
+        assert_eq!(
+            owner.tick_link(2, true),
+            LinkProgress::Blocked(Failure::Reply)
+        );
+        WIRE.with_borrow(|w| {
+            assert_eq!(
+                (w.claims, w.releases, w.starts, w.polls, w.snapshots),
+                (0, 0, 0, 0, 1)
+            )
+        });
+    }
 }

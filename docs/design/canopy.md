@@ -1111,6 +1111,37 @@ Focused documentation references pass. Required preflight passes layering, host
 tests, formatting and types; only the existing 256 stale references in 78 files
 fail (`out/canopy-types-changed.log`).
 
+The coordinator now observes the reply provider's sticky boot-trust loss before
+every transfer tick and every ownership-handoff tick, including idle and release
+states. Previously that loss was observed only when awaiting a mailbox reply,
+so an upload could continue after the guard had already detected a restart.
+A loss now invalidates the owner before another link send/poll/claim/release;
+allocations, budgets, leases and any in-flight source buffer remain retained.
+Malformed provider return lengths/errors block the owner as a reply failure.
+Subsequent ticks make no further provider or link calls.
+
+The bounded probe copies into local scratch storage without consuming a mailbox
+ACK. Missing/current snapshots establish neither identity nor readiness, and only
+the existing drained mailbox validator may publish. The firmware already calls
+the handoff tick on each UI pass, so a bound provider's revocation is now observed
+there even without a V2 job. The optional provider boundary is unchanged.
+
+All 156 SDK tests pass (`out/canopy-boot-probe-sdk.log`). New cases cover revocation
+before acquisition, while owned but idle, before release, and before the next
+upload poll; malformed getter results and probe-without-publication are covered.
+This closes a revocation gap but does not solve the heartbeat ambiguity: an
+unobserved DSP restart can still look forward. An explicit boot/session handshake
+and its reset-path proof remain required before enabling firmware V2 admission.
+ColdFire rebuild/current-source checks pass (32,361 decoded instructions;
+`out/canopy-boot-probe-build.log`, `out/canopy-boot-probe-check.log`). The default
+runtime DTII boot/INFO/reopen/restart check passes, with DNII skipped
+(`out/canopy-boot-probe-module.log`: one pass, one skip); this does not exercise
+a V2 load or prove DSP restart detection on hardware.
+Focused documentation validation passes. Required changed-file preflight passes
+layering, 193 host tests (16 skipped), formatting and types; it fails only on the
+existing 256 stale references in 78 files
+(`out/canopy-boot-probe-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

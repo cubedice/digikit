@@ -193,8 +193,27 @@ impl<'image, T: Transport> Coordinator<'image, T> {
         Ok(())
     }
 
-    pub fn tick(&mut self, now: u32) -> Progress {
+    /// Observe revocation before any send/poll, including between jobs. A
+    /// successful probe is not proof of a unique DSP boot or V2 readiness.
+    fn observe_boot(&mut self) -> Result<(), Failure> {
         if let Some(cause) = self.blocked {
+            return Err(cause);
+        }
+        match self.replies.check_boot() {
+            Ok(()) => Ok(()),
+            Err(crate::instrument_provider::Error::BootInvalidated) => {
+                self.invalidate_boot();
+                Err(Failure::Boot)
+            }
+            Err(_) => {
+                self.blocked = Some(Failure::Reply);
+                Err(Failure::Reply)
+            }
+        }
+    }
+
+    pub fn tick(&mut self, now: u32) -> Progress {
+        if let Err(cause) = self.observe_boot() {
             return Progress::Blocked(cause);
         }
         let Some(job) = self.job.as_mut() else {
@@ -330,10 +349,10 @@ impl<T: crate::instrument_lease::LeaseTransport> Coordinator<'_, T> {
     /// One bounded UI pass. legacy_idle means all logical load/FX transactions
     /// and their pollers have drained, not merely that the wire is idle. Caller
     /// must keep new legacy starts paused throughout acquisition and ownership.
-    /// No callbacks occur after deadline expiry or loss of boot trust. A failed
+    /// No link callbacks occur after deadline expiry or loss of boot trust. A failed
     /// handoff is terminal for this owner, retaining any lease and allocations.
     pub fn tick_link(&mut self, now: u32, legacy_idle: bool) -> LinkProgress {
-        if let Some(cause) = self.blocked {
+        if let Err(cause) = self.observe_boot() {
             return LinkProgress::Blocked(cause);
         }
         let (start, budget, acquire) = match self.handoff {

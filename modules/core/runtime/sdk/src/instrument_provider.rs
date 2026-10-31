@@ -165,23 +165,37 @@ impl Replies {
         self.invalidated = true;
     }
 
+    /// Observe the provider's sticky loss-of-boot-trust flag even when no
+    /// mailbox reply is pending. This neither establishes boot identity nor
+    /// consumes an ACK. Missing/current data does not grant any capability.
+    pub fn check_boot(&mut self) -> Result<(), Error> {
+        let mut words = [0u32; 16];
+        self.snapshot_into(&mut words).map(|_| ())
+    }
+
+    fn snapshot_into(&mut self, words: &mut [u32; 16]) -> Result<bool, Error> {
+        if self.invalidated {
+            return Err(Error::BootInvalidated);
+        }
+        match unsafe { (self.snapshot)(words.as_mut_ptr(), words.len() as u32) } {
+            0 => Ok(false),
+            16 => Ok(true),
+            -2 => {
+                self.invalidate_boot();
+                Err(Error::BootInvalidated)
+            }
+            other => Err(Error::Provider(other)),
+        }
+    }
+
     /// Read a private stack snapshot and pass it through the mailbox validator.
     /// Call only while awaiting a DSP reply, after all three writes drained.
     /// Waiting never resets the coordinator's deadline. Repeated old frames are
     /// harmless because mailbox identities are never reused within a DSP boot.
     pub fn poll(&mut self, mailbox: &mut Mailbox, loads: &mut Loads) -> Result<Progress, Error> {
-        if self.invalidated {
-            return Err(Error::BootInvalidated);
-        }
         let mut words = [0u32; 16];
-        match unsafe { (self.snapshot)(words.as_mut_ptr(), words.len() as u32) } {
-            0 => return Ok(Progress::Waiting),
-            -2 => {
-                self.invalidate_boot();
-                return Err(Error::BootInvalidated);
-            }
-            16 => {}
-            other => return Err(Error::Provider(other)),
+        if !self.snapshot_into(&mut words)? {
+            return Ok(Progress::Waiting);
         }
         match mailbox.reply(&words, loads) {
             Ok(Some(command)) => Ok(Progress::Complete(command)),
