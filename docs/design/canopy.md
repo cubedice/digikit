@@ -1457,8 +1457,8 @@ The current emulator cannot close the remaining DMA/reset gate: its GPIO model
 implements the SD continuity gate, not DSP reset wiring, and its DSPI2 exchange
 completes synchronously in the board register-write path. An artificial session
 latch clear or a renderer state reload does not establish interruption of an
-active hardware transfer. Keep this gate open until a bounded hardware experiment
-or a separately validated asynchronous reset/DMA model supplies that evidence.
+active hardware transfer. The physical experiment below supplies evidence for
+the hooked DTII reset path; it does not validate the emulator reset model.
 Do not enable V2 admission on the strength of the composed callback test.
 
 The hardware gap now has an implemented quiescence path: the periodic frame
@@ -1475,11 +1475,19 @@ checks exact firmware identity and reset-hook bytes, requires an already-used
 link, requests reset only while SPI is active, then checks stopped DMA addresses
 and the asserted GPIO over later snapshots. It writes the results even on
 failure. The probe never triggers automatically at boot; it intentionally leaves
-DSP reset asserted and requires a whole-device restart. Physical evidence is
-still pending installation of the prepared diagnostic image. The connected DTII
-currently reports runtime 0.5.2, image `a0b6312007e7c8ec`, with the stock reset
-entry and Overloop loaded; its module was backed up under
-`out/dt2-before-reset-proof`. No hardware reset has yet been performed.
+DSP reset asserted and requires a whole-device restart.
+
+[D] The 2026-10-31 physical DTII experiment passed on image
+`7eed7aa5661f7981`: reset entered during active SPI with RX DMA ACTIVE,
+quiesced in one poll, retained link ownership, and kept both DMA addresses
+stable across three later snapshots. See [hardware reset evidence](../findings/79-dt2-dsp-reset.md).
+This closes the active-transfer quiescence measurement for the hooked reset
+path. USB commands stopped responding after the measurement, including software
+restart. Physical power cycling restored USB; Overloop-only selection, removal
+of the diagnostic, and a subsequent normal boot are verified without reported
+crash or module faults. The original Overloop bytes match the backup.
+The original Overloop module remains backed up under `out/dt2-before-reset-proof`.
+This result does not enable V2 admission or prove automatic DSP restart.
 
 Only after those pieces pass together may a build advertise V2 support.
 
