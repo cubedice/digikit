@@ -13,10 +13,12 @@
  * stalls. Format and the DSP side: src/dsp/dsp-link.inc.
  *
  * Interface for the runtime (C ABI, no struct results):
- *   int dl_send(u32 dst_l2, const void *buf, u32 len);   0 started; -1 busy; -2 bad destination or size
+ *   int dl_send(u32 dst_l2, const void *buf, u32 len);   0 started; -1 busy; -2 bad request or exhausted identity counter
  *   int dl_send_win(u32 win, u32 dst_word, const void *buf, u32 len);   the same into window `win` (1: voice rows, 2: effect rows, 3: optional V2 registration data),
  *       the destination in words from the start of the window; the DSP checks it against the window's size (status 3)
  *   int dl_poll(DlStatus *st);                           the state (DL_IDLE, DL_BUSY, DL_DONE, DL_ERROR), and *st filled
+ *   int dl_send_tagged(u32 win, u32 dst, const void *buf, u32 len, u32 *ticket); returns the accepted identity
+ *   int dl_poll_tagged(u32 ticket, DlStatus *st); -1 mismatch; 0 pending; 1 terminal and END frames drained
  *   int dl_diag(u32 *out, u32 n);                        the DSP's diagnostic words of the last block (layout: README.md and
  *       src/dsp/dsp-link.inc); returns the number of words written (at most n, at most DL_DG_WORDS), -1 when the image has no record
  *       address, -2 when the reply carries no diagnostic block (core/dsp-voice absent from the image, or the DSP halted
@@ -86,7 +88,8 @@ typedef struct DlLink {
     u32 ending;
     u32 dirty;
     u32 win; /* the window of the transfer (appended: the order of the fields above is read by tests) */
-    u32 pad[2]; /* 80 bytes: the state fills whole 16-byte cache lines, no code shares a line it writes to (flush check) */
+    u32 serial; /* nonzero accepted-request identity; never wraps within a boot */
+    u32 pad[1]; /* 80 bytes: the state fills whole 16-byte cache lines, no code shares a line it writes to (flush check) */
 } DlLink;
 
 DlLink dl_link __attribute__((aligned(16)));
@@ -144,6 +147,9 @@ int dl_send(u32 dst_l2, const void *buf, u32 len)
     if ((dst_l2 & 3u) || (len & 3u) || len == 0u || dst_l2 < lo || dst_l2 - lo >= DL_AREA_BYTES ||
         len > DL_AREA_BYTES - (dst_l2 - lo) || buf == 0)
         return -2;
+    if (l->serial == 0xffffffffu)
+        return -2;
+    l->serial++;
     l->win = 0;
     l->buf = (u32)buf;
     l->dst_off = (dst_l2 - lo) >> 2;
@@ -163,6 +169,9 @@ int dl_send_win(u32 win, u32 dst_word, const void *buf, u32 len)
         return -1;
     if (win == 0u || win > 3u || (len & 3u) || len == 0u || dst_word >= DL_AREA_MAX_WORDS || buf == 0)
         return -2;
+    if (l->serial == 0xffffffffu)
+        return -2;
+    l->serial++;
     l->win = win;
     l->buf = (u32)buf;
     l->dst_off = dst_word;
@@ -188,6 +197,34 @@ int dl_poll(DlStatus *s)
     s->resent = l->resent;
     s->nerr = l->nerr;
     return (int)st;
+}
+
+/* Single UI-task producer, like dl_send. All accepted requests, including legacy
+ * ones, consume an identity. Rejection leaves the caller's ticket untouched.
+ * Window 0 takes an L2 byte address; other windows take a word offset. */
+int dl_send_tagged(u32 win, u32 dst, const void *buf, u32 len, u32 *ticket)
+{
+    int result;
+    if (!ticket)
+        return -2;
+    result = win == 0u ? dl_send(dst, buf, len) : dl_send_win(win, dst, buf, len);
+    if (result == 0)
+        *ticket = dl_link.serial;
+    return result;
+}
+
+/* -1: stale/zero identity or null output (output untouched); 0: pending;
+ * 1: this request is terminal AND its END frames have drained. Inspect s->state
+ * to distinguish DONE from ERROR. This proves link drainage, not row lifecycle.
+ * The UI task serializes starts/polls; the ISR may only advance the current job.
+ * A timeout in the caller must not be treated as a drained return here. */
+int dl_poll_tagged(u32 ticket, DlStatus *s)
+{
+    int state;
+    if (!ticket || ticket != dl_link.serial || !s)
+        return -1;
+    state = dl_poll(s);
+    return (state == DL_DONE || state == DL_ERROR) && dl_link.ending == 0u;
 }
 
 /* Record byte offset of diagnostic word j: slot row 1 + j / 2 (0x1c + 0x54 row), +0x44 for even j, +0x48 for odd j (words 14 and 15 are in row 8, 16 and 17 in row 9, 22 and 23 in row 12, 24 and 25 in row 13, 30 and 31 in row 16). */

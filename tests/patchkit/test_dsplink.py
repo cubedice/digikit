@@ -848,3 +848,94 @@ def test_tick_callback_gets_the_reply_record_and_can_be_cleared(machine, built):
         ],
     )
     assert r[2].reads[0] == bytes(4)
+
+
+@needs_gcc
+@pytest.mark.parametrize("status,terminal", [(1, 2), (3, 3)])
+def test_tagged_completion_waits_for_end_frames_and_rejects_legacy_replacement(
+    machine, built, status, terminal
+):
+    src, ticket, output = DATA + 0x4000, DATA + 0x5000, DATA + 0x5100
+    record = bytearray(0xABC)
+    struct.pack_into(">HHHH", record, ACK_OFF, ACK_MAGIC, 1, 1 | (status << 8), 0)
+
+    def tick(rec):
+        return call(built, "dl_tick", [0x802, 0, 0xABC, rec])
+
+    poll = call(built, "dl_poll_tagged", [1, output], [(output, 28)])
+    calls = [
+        call(built, "dl_send_tagged", [3, 1, src, 4, ticket], [(ticket, 4)]),
+        poll,
+        tick(0),
+        tick(REC),
+        poll,
+    ]
+    for _ in range(5):
+        calls += [tick(REC), poll]
+    calls += [
+        call(built, "dl_send", [AREA, src, 4]),
+        poll,
+        call(built, "dl_poll_tagged", [2, output], [(output, 28)]),
+    ]
+    results = run(
+        machine, built, {src: b"abcd", REC: bytes(record), output: b"\xcc" * 28}, calls
+    )
+    assert results[0].d0 == 0
+    assert results[0].reads[0] == struct.pack(">I", 1)
+    assert results[1].d0 == 0 and struct.unpack(">7I", results[1].reads[0])[0] == 1
+    assert results[4].d0 == 0  # terminal status is not yet a drainage proof
+    assert struct.unpack(">7I", results[4].reads[0])[0] == terminal
+    assert [results[i].d0 for i in (6, 8, 10, 12, 14)] == [0, 0, 0, 0, 1]
+    assert results[15].d0 == 0  # legacy transfer consumes the next identity too
+    assert results[16].d0 == 0xFFFFFFFF
+    assert (
+        results[16].reads[0] == results[14].reads[0]
+    )  # stale poll cannot overwrite output
+    assert results[17].d0 == 0 and struct.unpack(">7I", results[17].reads[0])[0] == 1
+
+
+@needs_gcc
+def test_tagged_rejections_preserve_identity_and_caller_output(machine, built):
+    src, ticket, output = DATA + 0x4000, DATA + 0x5000, DATA + 0x5100
+    calls = [
+        call(built, "dl_send_tagged", [3, 0, src, 4, 0]),
+        call(built, "dl_send_tagged", [4, 0, src, 4, ticket], [(ticket, 4)]),
+        call(built, "dl_poll_tagged", [0, output], [(output, 28)]),
+        call(built, "dl_send_tagged", [0, AREA, src, 4, ticket], [(ticket, 4)]),
+        call(built, "dl_send_tagged", [3, 0, src, 4, ticket], [(ticket, 4)]),
+        call(built, "dl_poll_tagged", [1, 0]),
+    ]
+    results = run(
+        machine, built, {src: b"abcd", ticket: b"\xcc" * 4, output: b"\xcc" * 28}, calls
+    )
+    assert [r.d0 for r in results] == [
+        0xFFFFFFFE,
+        0xFFFFFFFE,
+        0xFFFFFFFF,
+        0,
+        0xFFFFFFFF,
+        0xFFFFFFFF,
+    ]
+    assert results[1].reads[0] == b"\xcc" * 4
+    assert results[2].reads[0] == b"\xcc" * 28
+    assert results[3].reads[0] == results[4].reads[0] == struct.pack(">I", 1)
+
+
+@needs_gcc
+@pytest.mark.parametrize("serial,expected", [(0xFFFFFFFE, 0), (0xFFFFFFFF, 0xFFFFFFFE)])
+def test_transfer_identity_never_wraps(machine, built, serial, expected):
+    src, ticket = DATA + 0x4000, DATA + 0x5000
+    results = run(
+        machine,
+        built,
+        {
+            built.symbols["dl_link"] + 72: struct.pack(">I", serial),
+            src: b"abcd",
+            ticket: b"\xcc" * 4,
+        },
+        [call(built, "dl_send_tagged", [3, 0, src, 4, ticket], [(ticket, 4)])],
+    )
+    assert results[0].d0 == expected
+    assert results[0].reads[0] == (
+        struct.pack(">I", 0xFFFFFFFF) if expected == 0 else b"\xcc" * 4
+    )

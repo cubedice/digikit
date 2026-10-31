@@ -18,6 +18,28 @@ on DTII. It is not enabled by default. Publication, reset completion, detachment
 and matching loader tickets still require the V2 lifecycle implementation. Do not publish an instrument
 on a data-transfer ACK alone.
 
+## Transfer identity and drainage
+
+The optional V2 loader can use `dl_send_tagged(win, dst, buf, len, ticket_out)`.
+Window 0 uses an L2 byte destination; windows 1..3 use word offsets. Successful
+starts return zero and write a nonzero request ID. Busy returns -1; invalid
+arguments or exhausted IDs return -2. Failed starts leave `ticket_out` unchanged.
+Every accepted request, including legacy `dl_send` and `dl_send_win`, advances
+this ID. It never wraps during a boot; exhaustion requires reboot.
+
+`dl_poll_tagged(ticket, status)` returns -1 for a zero/stale ticket or null output
+without writing the output, zero while pending, and one only when that exact
+request has reached DONE or ERROR **and all END frames have drained**. Inspect
+`status.state` to distinguish success from failure. A caller timeout is not proof
+of drainage. Legacy `dl_poll` behavior and the status layout are unchanged.
+
+Starts and polls must be serialized on the UI task; the frame ISR only advances
+the current request. The source stays valid through transfer completion. The
+new request ID is host-side bookkeeping, distinct from the small on-wire chunk
+ID, and does not alter the frame format. A drained transfer confirms neither
+row installation nor reset completion: V2 still needs the registry reply.
+The V2 runtime coordinator is not yet wired to these entry points.
+
 ## Optional DTII instrument allocation
 
 An optional `instrument_write_frame(tx_queue, entry, rec)` provider reserves 32

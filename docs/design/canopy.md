@@ -668,6 +668,24 @@ Focused docs, lint, layering, host tests and types pass. The changed-file check
 fails only on the existing 256 stale references in 78 files
 (`out/canopy-partial-install-changed.log`).
 
+The production ColdFire DSP-link now has tagged start/poll entry points for live
+loader integration. Every accepted transfer, including legacy starts, consumes
+a nonwrapping host-side identity. A tagged poll rejects stale identities without
+changing the output, and reports drainage only after terminal status and all END
+frames. This distinguishes an image/mailbox write from a replacement request and
+provides an actual transport predicate for the SDK's drainage requirement. The
+wire format and legacy status layout remain unchanged. The V2 runtime coordinator
+has not yet been wired to these entry points; registry replies remain separately
+required before installation or initialization may advance.
+Validation: five new ColdFire execution tests pass, covering success/error END
+frame drainage, replacement by a legacy request, untouched outputs on rejection,
+busy/invalid starts and identity exhaustion. The DSP-link regression file passes
+(28 passed, two skipped), and all DSP-link artifacts pass their current-file check.
+Logs: `out/canopy-link-ticket-{tests,regression,build}.log`.
+Focused docs, lint, layering, host tests and types pass. The changed-file check
+fails only on the existing 256 stale references in 78 files
+(`out/canopy-link-ticket-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
