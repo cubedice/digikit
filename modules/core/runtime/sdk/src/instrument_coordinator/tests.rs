@@ -11,6 +11,11 @@ use std::{boxed::Box, cell::RefCell, vec::Vec};
 
 #[derive(Default)]
 struct Wire {
+    require_lease: bool,
+    owned: bool,
+    claims: u32,
+    releases: u32,
+    uncertain_release: bool,
     mode: u32,
     busy: bool,
     silent: bool,
@@ -28,6 +33,9 @@ struct Wire {
 std::thread_local! { static WIRE: RefCell<Wire> = RefCell::new(Wire::default()); }
 struct Link;
 unsafe impl Transport for Link {
+    fn transaction_ready(&self) -> bool {
+        WIRE.with_borrow(|w| !w.require_lease || w.owned)
+    }
     unsafe fn start(
         &mut self,
         window: u32,
@@ -36,6 +44,7 @@ unsafe impl Transport for Link {
         bytes: u32,
     ) -> (i32, u32) {
         WIRE.with_borrow_mut(|w| {
+            assert!(!w.require_lease || w.owned);
             if w.busy {
                 return (-1, 0);
             }
@@ -97,6 +106,122 @@ unsafe impl Transport for Link {
             1
         })
     }
+}
+
+impl crate::instrument_lease::LeaseTransport for Link {
+    fn claim(&mut self) -> Result<bool, crate::instrument_lease::Error> {
+        WIRE.with_borrow_mut(|w| {
+            w.claims += 1;
+            w.owned = true;
+        });
+        Ok(true)
+    }
+    fn release(&mut self) -> Result<(), crate::instrument_lease::Error> {
+        WIRE.with_borrow_mut(|w| {
+            w.releases += 1;
+            if w.uncertain_release {
+                return Err(crate::instrument_lease::Error::Uncertain);
+            }
+            assert!(w.source.is_none());
+            w.owned = false;
+            Ok(())
+        })
+    }
+}
+
+#[test]
+fn coordinator_keeps_lease_across_all_phases_until_explicit_release() {
+    let mut f = Fixture::new();
+    WIRE.with_borrow_mut(|w| w.require_lease = true);
+    assert_eq!(f.owner.claim_link(), Ok(true));
+    f.begin(0, 60);
+    for now in 0..60 {
+        assert_eq!(
+            f.owner.release_link(),
+            Err(crate::instrument_lease::Error::Busy)
+        );
+        assert_eq!(
+            f.owner.claim_link(),
+            Err(crate::instrument_lease::Error::Busy)
+        );
+        match f.owner.tick(now) {
+            Progress::Pending => continue,
+            Progress::Complete {
+                command: Command::Publish(ticket),
+                recovered: None,
+            } => {
+                assert_eq!(ticket, f.ticket);
+                assert_eq!(f.owner.release_link(), Ok(()));
+                WIRE.with_borrow(|w| {
+                    assert_eq!((w.claims, w.releases), (1, 1));
+                    assert!(!w.owned);
+                });
+                return;
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+    }
+    panic!("did not complete");
+}
+
+#[test]
+fn coordinator_refuses_unowned_start_and_keeps_boot_lost_lease() {
+    let mut f = Fixture::new();
+    WIRE.with_borrow_mut(|w| w.require_lease = true);
+    assert_eq!(
+        f.owner.begin(f.plan.take().unwrap(), &IMAGE, 0, 60),
+        Err(Error::NotOwned)
+    );
+    assert_eq!(f.owner.tick(0), Progress::Idle);
+    assert_eq!(f.owner.claim_link(), Ok(true));
+    f.owner.invalidate_boot();
+    assert_eq!(
+        f.owner.release_link(),
+        Err(crate::instrument_lease::Error::Uncertain)
+    );
+    WIRE.with_borrow(|w| {
+        assert_eq!((w.starts, w.releases), (0, 0));
+        assert!(w.owned);
+    });
+}
+
+#[test]
+fn uncertain_release_after_recovery_blocks_allocator_and_future_calls() {
+    let mut f = Fixture::new();
+    WIRE.with_borrow_mut(|w| {
+        w.require_lease = true;
+        w.busy = true;
+    });
+    assert_eq!(f.owner.claim_link(), Ok(true));
+    f.begin(0, 20);
+    assert_eq!(f.owner.tick(20), Progress::Pending);
+    assert_eq!(
+        f.owner.release_link(),
+        Err(crate::instrument_lease::Error::Busy)
+    );
+    WIRE.with_borrow_mut(|w| w.busy = false);
+    assert_eq!(
+        f.run(21, 20),
+        Progress::Complete {
+            command: Command::Release(f.ticket),
+            recovered: Some(Failure::Timeout)
+        }
+    );
+    WIRE.with_borrow_mut(|w| w.uncertain_release = true);
+    assert_eq!(
+        f.owner.release_link(),
+        Err(crate::instrument_lease::Error::Uncertain)
+    );
+    assert_eq!(
+        f.owner.release_link(),
+        Err(crate::instrument_lease::Error::Uncertain)
+    );
+    assert!(f.release().is_err());
+    assert_eq!(f.owner.tick(100), Progress::Blocked(Failure::Link));
+    WIRE.with_borrow(|w| {
+        assert_eq!(w.releases, 1);
+        assert!(w.owned);
+    });
 }
 unsafe extern "C" fn unused_send(_: u32, _: u32, _: *const u8, _: u32, _: *mut u32) -> i32 {
     panic!("wrong driver");

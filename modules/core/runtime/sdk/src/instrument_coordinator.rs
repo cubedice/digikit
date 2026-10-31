@@ -1,5 +1,6 @@
 //! Owning UI-task coordinator for an admitted V2 load. No self-references,
-//! allocation, firmware calls outside tick, or public V2 capability.
+//! allocation or public V2 capability. Transfers run in tick; explicit lease
+//! acquisition/release also run on the owning UI task.
 //! Keep this owner for the entire DSP boot, including after a blocked load.
 use crate::{
     instrument_admission::Plan,
@@ -15,6 +16,7 @@ use crate::{
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
+    NotOwned,
     Busy,
     Blocked,
     Budget,
@@ -91,6 +93,9 @@ impl<'image, T: Transport> Coordinator<'image, T> {
         }
         if self.job.is_some() {
             return Err(Error::Busy);
+        }
+        if !self.driver.transaction_ready() {
+            return Err(Error::NotOwned);
         }
         let phase = upload::PumpState::new(now, budget).ok_or(Error::Budget)?;
         // No new traffic has started, but an adopted driver must also be idle.
@@ -226,6 +231,40 @@ impl<'image, T: Transport> Coordinator<'image, T> {
         }
         self.blocked = Some(cause);
         Progress::Blocked(cause)
+    }
+}
+
+impl<T: crate::instrument_lease::LeaseTransport> Coordinator<'_, T> {
+    /// Scheduler must first quiesce legacy load/FX pollers. Busy acquisition
+    /// needs an external bounded wait; it does not start a load's deadline.
+    pub fn claim_link(&mut self) -> Result<bool, crate::instrument_lease::Error> {
+        if self.blocked.is_some() {
+            return Err(crate::instrument_lease::Error::Uncertain);
+        }
+        if self.job.is_some() {
+            return Err(crate::instrument_lease::Error::Busy);
+        }
+        let result = self.driver.claim_link();
+        if result == Err(crate::instrument_lease::Error::Uncertain) {
+            self.blocked = Some(Failure::Link);
+        }
+        result
+    }
+    /// Only between jobs, never during reply gaps, recovery or after blockage.
+    /// Busy release retains ownership; the scheduler must keep legacy paused.
+    /// No Drop implementation releases on cancellation or lost boot trust.
+    pub fn release_link(&mut self) -> Result<(), crate::instrument_lease::Error> {
+        if self.blocked.is_some() {
+            return Err(crate::instrument_lease::Error::Uncertain);
+        }
+        if self.job.is_some() {
+            return Err(crate::instrument_lease::Error::Busy);
+        }
+        let result = self.driver.release_link();
+        if result == Err(crate::instrument_lease::Error::Uncertain) {
+            self.blocked = Some(Failure::Link);
+        }
+        result
     }
 }
 

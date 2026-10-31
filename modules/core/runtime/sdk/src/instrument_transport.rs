@@ -22,6 +22,11 @@ pub struct Status {
 /// IDs identify a single serialized boot-wide request namespace. Poll return 1
 /// proves END-frame drainage, not just terminal status. No concurrent UI starts.
 pub unsafe trait Transport {
+    /// Whether this transport owns the transaction boundary required for starts.
+    /// Unleased implementations must provide equivalent external serialization.
+    fn transaction_ready(&self) -> bool {
+        true
+    }
     /// # Safety
     /// Source must remain valid and immutable through drainage.
     unsafe fn start(
@@ -120,6 +125,9 @@ pub struct Driver<T> {
     uncertain: bool,
 }
 impl<T: Transport> Driver<T> {
+    pub(crate) fn transaction_ready(&self) -> bool {
+        !self.uncertain && self.transport.transaction_ready()
+    }
     pub(crate) fn is_idle(&self) -> bool {
         self.pending.is_none() && !self.uncertain
     }
@@ -237,6 +245,35 @@ impl<T: Transport> Driver<T> {
                 Err(Error::Uncertain)
             }
         }
+    }
+}
+
+impl<T: crate::instrument_lease::LeaseTransport> Driver<T> {
+    pub(crate) fn claim_link(&mut self) -> Result<bool, crate::instrument_lease::Error> {
+        if self.uncertain {
+            return Err(crate::instrument_lease::Error::Uncertain);
+        }
+        if self.pending.is_some() {
+            return Err(crate::instrument_lease::Error::Busy);
+        }
+        let result = self.transport.claim();
+        if result == Err(crate::instrument_lease::Error::Uncertain) {
+            self.uncertain = true;
+        }
+        result
+    }
+    pub(crate) fn release_link(&mut self) -> Result<(), crate::instrument_lease::Error> {
+        if self.uncertain {
+            return Err(crate::instrument_lease::Error::Uncertain);
+        }
+        if self.pending.is_some() {
+            return Err(crate::instrument_lease::Error::Busy);
+        }
+        let result = self.transport.release();
+        if result == Err(crate::instrument_lease::Error::Uncertain) {
+            self.uncertain = true;
+        }
+        result
     }
 }
 

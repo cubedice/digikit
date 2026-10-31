@@ -16,6 +16,8 @@ pub mod instrument_load;
 pub mod instrument_image;
 /// Stable-buffer driver for the tagged production DSP-link ABI.
 pub mod instrument_transport;
+/// Exclusive DSP-link ownership retained across a complete V2 transaction.
+pub mod instrument_lease;
 /// Optional V2 provider binding and validated registry reply ingestion.
 pub mod instrument_provider;
 /// Bounded mailbox pumping and drain-before-detach recovery.

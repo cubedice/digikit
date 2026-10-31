@@ -920,6 +920,38 @@ Required preflight fails only on the existing 256 stale references in 78 files
 
 
 
+The SDK coordinator now accepts an owned DSP-link transport. `OwnedProviders`
+binds claim, release, owned send, tagged poll and reply snapshot as one complete
+set without invoking any provider. `OwnedApi` retains its lease and the last
+accepted lease generation across transactions, forwards the lease on every send,
+and never releases on drop. Zero/reused leases or uncertain release results
+permanently stop that owner; ordinary busy acquisition is retryable.
+
+The scheduler-facing coordinator methods allow claim/release only between jobs.
+An unowned transport cannot begin a load. Ownership remains through every upload,
+install, initialize and recovery phase, including idle reply gaps. A busy release
+keeps ownership and disallows new sends until release succeeds; uncertain release
+blocks the coordinator and allocator reuse. Boot-invalidated/blocked jobs cannot
+release or reacquire. Claim/release are explicit UI-task calls; acquisition and
+release retry deadlines, legacy poller suspension, firmware optional-symbol
+resolution and boot/session identity still belong to the pending live scheduler.
+This does not enable the machine or advertise V2 support.
+
+Validation: all 131 SDK tests pass (`out/canopy-owned-link-sdk.log`), including
+all 32 optional-provider combinations, C ABI lease/request forwarding, busy and
+stale ownership, retained ownership on drop/boot loss, coordinator exclusion of
+mid-job release and failed-release prevention of memory reuse.
+ColdFire runtime build and current-source checks pass
+(`out/canopy-owned-link-build.log`, `out/canopy-owned-link-check.log`). The runtime
+artifact changes only its source hash because these SDK entry points are not yet
+called by the firmware scheduler; no device execution of this integration is
+claimed.
+Focused docs and required preflight layering, host tests, formatting and types
+pass. Preflight fails only on the existing 256 stale references in 78 files
+(`out/canopy-owned-link-changed.log`).
+
+
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

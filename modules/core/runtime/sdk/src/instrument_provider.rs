@@ -15,6 +15,35 @@ pub struct Providers {
     replies: Replies,
 }
 
+pub struct OwnedProviders {
+    transport: crate::instrument_lease::OwnedApi,
+    replies: Replies,
+}
+impl OwnedProviders {
+    /// Bind the entire leased provider set without acquiring or calling it.
+    /// # Safety
+    /// Entries must satisfy Providers::bind and OwnedApi::new's same-boot,
+    /// ABI, exclusive UI-task and invalidation requirements.
+    pub unsafe fn bind(
+        claim: Option<crate::instrument_lease::Claim>,
+        release: Option<crate::instrument_lease::Release>,
+        send: Option<crate::instrument_lease::SendOwned>,
+        poll: Option<Poll>,
+        snapshot: Option<Snapshot>,
+    ) -> Option<Self> {
+        Some(Self {
+            transport: crate::instrument_lease::OwnedApi::new(claim?, release?, send?, poll?),
+            replies: Replies {
+                snapshot: snapshot?,
+                invalidated: false,
+            },
+        })
+    }
+    pub fn into_parts(self) -> (crate::instrument_lease::OwnedApi, Replies) {
+        (self.transport, self.replies)
+    }
+}
+
 impl Providers {
     /// Bind only a complete provider set; missing symbols must be represented
     /// as None, never transmuted into a null function pointer. Calls no provider.
