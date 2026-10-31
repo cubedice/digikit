@@ -168,6 +168,8 @@ impl Mailbox {
         Ok(())
     }
 
+    pub(crate) fn has_pending(&self) -> bool { self.pending.is_some() }
+
     pub fn take_installed(&mut self) -> Option<Installed> {
         self.installed.take()
     }

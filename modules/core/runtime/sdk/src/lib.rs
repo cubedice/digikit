@@ -18,6 +18,8 @@ pub mod instrument_image;
 pub mod instrument_transport;
 /// Optional V2 provider binding and validated registry reply ingestion.
 pub mod instrument_provider;
+/// Bounded mailbox pumping and drain-before-detach recovery.
+pub mod instrument_exchange;
 /// Experimental V2 mailbox transactions; no device capability is enabled.
 pub mod instrument_mailbox;
 /// Shared bounded V2 descriptor and record decoding; no loading capability.

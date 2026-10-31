@@ -748,6 +748,31 @@ The changed-file preflight passes layering and fails only on the existing 256
 stale references in 78 files (`out/canopy-provider-changed.log`).
 
 
+A bounded SDK exchange pump now holds exclusive borrows of the tagged driver,
+mailbox, reply adapter and load registry while driving an already-started mailbox
+transaction. One wrapping monotonic deadline covers every row, busy retry and
+missing/stale reply. It never refreshes the deadline on traffic. Expiry stops
+new writes and starts a separate bounded drain period. Once the accepted write
+drains, its completion is discarded and the mailbox quarantines the load and
+returns a fresh detach command. Only that detach's matching DSP replies may
+release resources. An uncertain link identity or expired drain period blocks the
+exchange with its buffer and allocation retained; further ticks do no work.
+Dropping the pump is not cancellation or cleanup. The owner must retain the same
+boot-local controllers and recover them, never recreate identities to retry.
+The pump does not detect reboot or wire the firmware scheduler. It covers mailbox
+transactions, not image-transfer deadlines. Live provider resolution, boot-owned
+storage, image orchestration and whole-boot invalidation remain pending.
+Validation: 65 SDK instrument tests and the runtime host compile check pass
+(`out/canopy-exchange-sdk.log`, `out/canopy-exchange-runtime.log`). Nine new
+exchange cases cover success, busy/missing replies, rollover, deadline-edge late
+success, stuck drainage, drained failure versus unknown identity, invalid reply
+recovery, invalid construction, and timeout through fresh detach completion.
+Focused documentation checks pass. No live runtime or hardware activation is
+claimed.
+Changed-file preflight passes layering and fails only on the existing 256 stale
+references in 78 files (`out/canopy-exchange-changed.log`).
+
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
