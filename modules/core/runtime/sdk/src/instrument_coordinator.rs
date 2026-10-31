@@ -1,5 +1,5 @@
 //! Owning UI-task coordinator for an admitted V2 load. No self-references,
-//! allocation or public V2 capability. Transfers run in tick; explicit lease
+//! heap allocation or public V2 capability. Transfers run in tick; explicit lease
 //! acquisition/release also run on the owning UI task.
 //! Keep this owner for the entire DSP boot, including after a blocked load.
 use crate::{
@@ -400,3 +400,6 @@ impl<T: crate::instrument_lease::LeaseTransport> Coordinator<'_, T> {
 
 #[cfg(test)]
 mod tests;
+
+mod admission;
+pub use admission::AdmissionError;

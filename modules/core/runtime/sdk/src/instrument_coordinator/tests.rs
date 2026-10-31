@@ -754,3 +754,243 @@ fn boot_loss_pauses_legacy_even_before_claim_and_after_release() {
         );
     }
 }
+
+fn admission_owner() -> Coordinator<'static, Link> {
+    WIRE.with_borrow_mut(|w| {
+        *w = Wire {
+            mode: 1,
+            require_lease: true,
+            ..Wire::default()
+        }
+    });
+    let replies = unsafe { Providers::bind(Some(unused_send), Some(unused_poll), Some(snapshot)) }
+        .unwrap()
+        .into_parts()
+        .1;
+    Coordinator::new(
+        Driver::new(Link, Box::leak(Box::new([0; 256]))),
+        replies,
+        Loads::new(16),
+    )
+}
+fn admission_limits() -> Limits {
+    Limits {
+        l2: Range {
+            start: 0x20000000,
+            end: 0x20080000,
+        },
+        reset_frame: 1000,
+        reset_overhead: 500,
+        process_total: 100,
+        call_depth: 2,
+        stack_bytes: 32,
+    }
+}
+
+#[test]
+fn admitted_section_uses_shared_ledger_and_publishes_only_after_initialization() {
+    use crate::instrument_section::{tests as section_test, Section};
+    let mut owner = admission_owner();
+    let bytes = section_test::fixture();
+    let section = Section::parse(&bytes, 1, section_test::limits()).unwrap();
+    let output = Box::leak(Box::new([0u8; 64]));
+    let mut offsets = [0, 0, 128];
+    let mut lengths = [0, 0, 64]; // an unrelated legacy module occupies the next range
+    let mut ledger = Ledger {
+        base: 0x20010000,
+        bytes: 512,
+        offsets: &mut offsets,
+        lengths: &mut lengths,
+    };
+    let plan = owner
+        .admit(
+            1,
+            &section,
+            &[20],
+            &admission_limits(),
+            &mut ledger,
+            output,
+            |_| Some(0xb80000),
+        )
+        .unwrap();
+    let ticket = plan.ticket();
+    assert_eq!(ledger.lengths, &[0, 128, 64]);
+    assert_eq!(owner.loads().capacity().tracks_used, 2);
+    assert_eq!(owner.loads().lookup(20), None);
+    WIRE.with_borrow(|w| assert_eq!((w.starts, w.claims, w.snapshots), (0, 0, 0)));
+    owner.request_link(0, 100).unwrap();
+    assert_eq!(owner.tick_link(1, true), LinkProgress::Owned);
+    owner.begin(plan, output, 2, 1000).unwrap();
+    assert!(matches!(
+        owner.cancel_admission(ticket, &mut ledger),
+        Err(AdmissionError::Coordinator(Error::Busy))
+    ));
+    for now in 3..1000 {
+        match owner.tick(now) {
+            Progress::Pending => assert_eq!(owner.loads().lookup(20), None),
+            Progress::Complete {
+                command: Command::Publish(done),
+                recovered: None,
+            } => {
+                assert_eq!(done, ticket);
+                assert!(owner.loads().lookup(20).is_some());
+                assert!(matches!(
+                    owner.cancel_admission(ticket, &mut ledger),
+                    Err(AdmissionError::Registry(_))
+                ));
+                assert_eq!(ledger.lengths, &[0, 128, 64]);
+                WIRE.with_borrow(|w| {
+                    assert_eq!(&w.image[..64], &output[..]);
+                    assert_eq!(&w.image[64..], &[0; 8]);
+                    assert_eq!(w.operations.iter().map(|x| x.1).collect::<Vec<_>>(), [4, 2]);
+                });
+                return;
+            }
+            other => panic!("unexpected admission progress: {other:?}"),
+        }
+    }
+    panic!("admitted image never initialized");
+}
+
+#[test]
+fn admission_failures_restore_rows_memory_and_output_without_traffic() {
+    use crate::instrument_section::{tests as section_test, Section};
+    for failure in 0..4 {
+        let mut owner = admission_owner();
+        let bytes = section_test::fixture();
+        let section = Section::parse(&bytes, 1, section_test::limits()).unwrap();
+        let mut output = [0xa5; 64];
+        let mut offsets = [0, 0, 128];
+        let mut lengths = [0, 0, 64];
+        let mut ledger = Ledger {
+            base: 0x20010000,
+            bytes: if failure == 0 { 64 } else { 512 },
+            offsets: &mut offsets,
+            lengths: &mut lengths,
+        };
+        let mut limits = admission_limits();
+        if failure == 1 {
+            limits.process_total = 1;
+        }
+        let types: &[u32] = if failure == 3 { &[] } else { &[20] };
+        assert!(owner
+            .admit(
+                1,
+                &section,
+                types,
+                &limits,
+                &mut ledger,
+                &mut output,
+                |_| if failure == 2 { None } else { Some(0xb80000) }
+            )
+            .is_err());
+        assert_eq!(ledger.lengths, &[0, 0, 64]);
+        assert_eq!(ledger.offsets, &[0, 0, 128]);
+        assert_eq!(owner.loads().capacity().rows_used, 0);
+        assert_eq!(owner.loads().capacity().tracks_used, 0);
+        assert_eq!(output, [0xa5; 64]);
+        assert_eq!(owner.legacy_policy(), LegacyPolicy::Run);
+        WIRE.with_borrow(|w| assert_eq!((w.starts, w.claims, w.snapshots), (0, 0, 0)));
+        // A failed preparation must not strand the same owner or type number.
+        ledger.bytes = 512;
+        let plan = owner
+            .admit(
+                1,
+                &section,
+                &[20],
+                &admission_limits(),
+                &mut ledger,
+                &mut output,
+                |_| Some(0xb80000),
+            )
+            .unwrap();
+        owner.cancel_admission(plan.ticket(), &mut ledger).unwrap();
+        assert_eq!(ledger.lengths, &[0, 0, 64]);
+    }
+}
+
+#[test]
+fn cancellation_refuses_changed_ledger_and_blocks_further_admission() {
+    use crate::instrument_section::{tests as section_test, Section};
+    let mut owner = admission_owner();
+    let bytes = section_test::fixture();
+    let section = Section::parse(&bytes, 1, section_test::limits()).unwrap();
+    let mut output = [0; 64];
+    let mut offsets = [0];
+    let mut lengths = [0];
+    let mut ledger = Ledger {
+        base: 0x20010000,
+        bytes: 512,
+        offsets: &mut offsets,
+        lengths: &mut lengths,
+    };
+    let plan = owner
+        .admit(
+            0,
+            &section,
+            &[20],
+            &admission_limits(),
+            &mut ledger,
+            &mut output,
+            |_| Some(0xb80000),
+        )
+        .unwrap();
+    ledger.lengths[0] = 256;
+    assert_eq!(
+        owner.cancel_admission(plan.ticket(), &mut ledger),
+        Err(AdmissionError::Cleanup(MemoryError::LedgerChanged))
+    );
+    assert_eq!(ledger.lengths[0], 256);
+    assert_eq!(owner.legacy_policy(), LegacyPolicy::Pause);
+    assert!(matches!(
+        owner.admit(
+            0,
+            &section,
+            &[20],
+            &admission_limits(),
+            &mut ledger,
+            &mut output,
+            |_| Some(0xb80000)
+        ),
+        Err(AdmissionError::Coordinator(Error::Blocked))
+    ));
+    WIRE.with_borrow(|w| assert_eq!(w.starts, 0));
+}
+
+#[test]
+fn waiting_or_boot_invalidated_coordinator_cannot_prepare_images() {
+    use crate::instrument_section::{tests as section_test, Section};
+    for boot_lost in [false, true] {
+        let mut owner = admission_owner();
+        let bytes = section_test::fixture();
+        let section = Section::parse(&bytes, 1, section_test::limits()).unwrap();
+        let mut output = [0xa5; 64];
+        let mut offsets = [0];
+        let mut lengths = [0];
+        let mut ledger = Ledger {
+            base: 0x20010000,
+            bytes: 512,
+            offsets: &mut offsets,
+            lengths: &mut lengths,
+        };
+        if boot_lost {
+            owner.invalidate_boot();
+        } else {
+            owner.request_link(0, 10).unwrap();
+        }
+        assert!(matches!(
+            owner.admit(
+                0,
+                &section,
+                &[20],
+                &admission_limits(),
+                &mut ledger,
+                &mut output,
+                |_| panic!("must not resolve imports")
+            ),
+            Err(AdmissionError::Coordinator(_))
+        ));
+        assert_eq!(ledger.lengths, &[0]);
+        assert_eq!(output, [0xa5; 64]);
+    }
+}

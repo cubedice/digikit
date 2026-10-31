@@ -84,6 +84,10 @@ pub struct Plan {
     rows: [Option<Row>; MAX_ROWS],
 }
 impl Plan {
+    /// Identity for pre-transfer cancellation; never a DSP completion receipt.
+    pub fn ticket(&self) -> Ticket {
+        self.grant.ticket
+    }
     pub fn rows(&self) -> &[Option<Row>; MAX_ROWS] {
         &self.rows
     }

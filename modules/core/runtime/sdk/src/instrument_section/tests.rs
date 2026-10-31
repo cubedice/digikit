@@ -2,7 +2,7 @@ use super::*;
 use crate::instrument_admission::{prepare_packed, Limits, Range};
 use crate::instrument_load::{Ledger, Loads};
 use crate::instrument_registry::Request;
-fn limits() -> descriptor::Limits {
+pub(crate) fn limits() -> descriptor::Limits {
     descriptor::Limits {
         state_bytes: 1024,
         cycles_process: 100,
@@ -14,7 +14,7 @@ fn limits() -> descriptor::Limits {
 fn put(bytes: &mut [u8], at: usize, value: u32) {
     bytes[at..at + 4].copy_from_slice(&value.to_be_bytes());
 }
-fn fixture() -> [u8; 208] {
+pub(crate) fn fixture() -> [u8; 208] {
     let mut bytes = [0; 208];
     for (at, value) in [
         (0, 0x444b4453),

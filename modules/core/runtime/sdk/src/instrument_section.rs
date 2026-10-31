@@ -197,4 +197,4 @@ mod relocate;
 pub use relocate::RelocateError;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

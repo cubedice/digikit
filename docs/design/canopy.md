@@ -1033,6 +1033,33 @@ Focused documentation references pass. Required preflight passes layering,
 host tests, formatting and types; it fails only on the existing 256 stale
 references in 78 files (`out/canopy-legacy-gate-changed.log`).
 
+The coordinator now prepares a parsed DKDS6 section through one admission
+operation: resolve type reservations, reserve the caller's shared ledger range,
+validate the packed plan, and relocate into caller-owned CF storage. Preparation
+never calls the link or publishes a machine. Count, allocation, plan and import
+failures unwind pre-transfer rows and memory; a consumed generation is not reused.
+A prepared ticket can be cancelled only before transfer. A changed cleanup ledger
+blocks the owner without clearing someone else's range. Admission and cancellation
+are refused during active jobs, ownership handoffs or lost boot trust.
+
+All 144 SDK tests pass (`out/canopy-admit-sdk.log`). The composed-path test uses
+a parsed section alongside an unrelated occupied ledger range, then drives
+upload, INSTALL and INIT through the coordinator's transport harness. Publication
+appears only after INIT; its uploaded bytes and BSS are checked. Failure tests
+prove reservation cleanup, unchanged output, no link calls, retry by the same
+owner/type, stale-phase cancellation refusal, and changed-ledger preservation.
+
+The firmware caller must still supply type resolution checked against builtin/V1
+registries, remaining callback budgets, the actual shared ledger, persistent CF
+image storage and verified DSP boot identity. The runtime's zero-instance gate
+remains closed; these composed host tests are not an active firmware V2 load.
+The ColdFire rebuild/current-source checks pass (`out/canopy-admit-build.log`,
+`out/canopy-admit-check.log`). Executable code remains unchanged; only the source
+fingerprint updates because the firmware caller does not yet invoke admission.
+Focused documentation references pass. Required preflight passes layering,
+host tests, formatting and types, failing only on the existing 256 stale
+references in 78 files (`out/canopy-admit-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
