@@ -52,8 +52,14 @@ def mailbox(registry_object):
     reads["ack"] = (symbols["_instrument_registry_reply"] // 4, 8)
     reads["wire"] = (symbols["_instrument_reply"] // 4, 16)
 
-    def execute(words):
-        dm.update({symbols["_dl_irows"] // 4 + i: v for i, v in enumerate(words)})
+    def execute(words, *, full=False, clear_session=False, lifecycle_ready=None):
+        if lifecycle_ready is not None:
+            dm[symbols["_ir_lifecycle_ready"] // 4] = lifecycle_ready
+        if clear_session:
+            dm[symbols["_instrument_session"] // 4] = 0
+            dm[symbols["_ir_sequence"] // 4] = 0
+        if words is not None:
+            dm.update({symbols["_dl_irows"] // 4 + i: v for i, v in enumerate(words)})
         for entry in ("_instrument_registry_block", "_mi_reply_build"):
             result = pk_sharc.run_call(
                 linked,
@@ -68,13 +74,15 @@ def mailbox(registry_object):
                 dm.update({address + i: v for i, v in enumerate(result[name])})
         wire = result["wire"]
         assert wire[4:12] == result["ack"]
-        assert wire[12:15] == [0] * 3
+        session = result["_instrument_session"][0]
+        assert wire[0] == (0x494EA102 if session else 0x494EA101)
+        assert wire[12:15] == [session, 0, 0]
         a = b = 0
         for value in wire[:15]:
             a = (a + value) & 0xFFFFFFFF
             b = (b + a) & 0xFFFFFFFF
         assert wire[15] == a ^ b
-        return result["ack"]
+        return result if full else result["ack"]
 
     return execute
 
@@ -135,3 +143,61 @@ def test_replay_old_sequence_and_wrap_are_rejected(mailbox):
     ack = mailbox(command(sequence=0xFFFFFFFF))
     assert ack[1] == 0xFFFFFFFF
     assert mailbox(command(sequence=1)) == ack
+
+
+def bind(sequence=1, token=0xDEADBEEF, **fields):
+    return command(sequence, 5, **{"3": 0, "4": token, "6": 0, **fields})
+
+
+def test_session_bind_consumes_commit_and_survives_ack_replacement(mailbox):
+    result = mailbox(bind(), full=True)
+    assert result["ack"] == [0x49525231, 1, 0, 0xDEADBEEF, 5, 0, 0, 0]
+    assert result["_dl_irows"] == [0]
+    assert result["wire"][12] == 0xDEADBEEF
+    # A query replaces the ACK but not the per-block session attestation.
+    result = mailbox(command(sequence=2), full=True)
+    assert result["ack"][4] == 1
+    assert result["wire"][12] == 0xDEADBEEF
+
+
+@pytest.mark.parametrize("token", [0xDEADBEEF, 1, 0xFFFFFFFF])
+def test_session_bind_cannot_renew_or_replace(mailbox, token):
+    mailbox(bind())
+    result = mailbox(bind(sequence=2, token=token), full=True)
+    assert result["ack"][6:] == [5, 0]
+    assert result["wire"][12] == 0xDEADBEEF
+    assert result["_dl_irows"] == [0]
+    assert mailbox(None, full=True, clear_session=True)["wire"][12] == 0
+
+
+@pytest.mark.parametrize("fields", [{"3": 1}, {"6": 1}, {"4": 0}, {"7": 1}, {"14": 1}])
+def test_invalid_bind_cannot_establish_session(mailbox, fields):
+    result = mailbox(bind(**fields), full=True)
+    assert result["ack"] == [0] * 8
+    assert result["wire"][12] == 0
+    assert mailbox(bind())[6] == 0
+
+
+def test_consumed_bind_does_not_reestablish_cleared_session(mailbox):
+    mailbox(bind())
+    result = mailbox(None, full=True, clear_session=True)
+    assert result["_instrument_session"] == [0]
+    assert result["_dl_irows"] == [0]
+    assert result["wire"][0] == 0x494EA101
+    # This models a cleared latch, not a claim about hardware reset coverage.
+
+
+def test_replayed_bind_is_consumed_without_new_ack(mailbox):
+    first = mailbox(bind())
+    result = mailbox(bind(), full=True)
+    assert result["ack"] == first
+    assert result["_dl_irows"] == [0]
+    assert mailbox(None, full=True, clear_session=True)["wire"][12] == 0
+
+
+def test_bind_after_lifecycle_admission_is_rejected(mailbox):
+    result = mailbox(bind(), full=True, lifecycle_ready=1)
+    assert result["ack"][6] == 5
+    assert result["_instrument_session"] == [0]
+    assert result["_dl_irows"] == [0]
+    assert result["wire"][0] == 0x494EA101

@@ -25,7 +25,7 @@ The transport ACK alone does not acknowledge installation, initialization or det
 | 2 | Nonzero, strictly increasing unsigned sequence; never wraps within a boot |
 | 3 | Module owner, 0..31 |
 | 4 | Nonzero generation |
-| 5 | Operation: 1 QUERY, 2 INITIALIZE, 3 DETACH, 4 INSTALL |
+| 5 | Operation: 1 QUERY, 2 INITIALIZE, 3 DETACH, 4 INSTALL, 5 BIND_SESSION |
 | 6 | Registry row, 0..7 |
 | 7..14 | INSTALL: track count, state base, state words, arena start/end, reset entry, executable start/end; other operations: zero |
 | 15 | XOR of words 0..14, including the committed magic |
@@ -291,3 +291,32 @@ span; initialization also requires caller-confirmed row installation. Errors
 retain memory through quarantine and detach. This is component-tested sequencing,
 not a connected SPI driver: the loader still owns sending, ACK validation against
 the live link, transport drainage and row installation.
+
+
+## Experimental session binding
+
+BIND_SESSION uses owner and row zero, a nonzero challenge in the generation field,
+and zero payload words 7..14. While lifecycle admission is disabled it can bind
+exactly once per initialized DSP image. Status 0 acknowledges binding; status 5
+rejects an already-bound or admission-enabled provider. Binding never enables
+lifecycle admission or adds capability bits. Malformed commands retain the ACK.
+
+The DSP consumes the command commit before latching or rejecting a valid bind.
+Checksummed stale sequences also consume their commit without changing the ACK.
+This prevents a retained accepted/rejected/replayed bind from automatically
+reestablishing a cleared session. CF must never retransmit a bind after an
+uncertain outcome or reuse the challenge to recover within the same CF boot.
+
+Once bound, every reply uses outer magic `0x494ea102` and echoes the challenge in
+word 12, independently of the current registry ACK. Words 13..14 remain zero and
+the checksum covers the version and token. An absent registry or unbound latch
+retains the existing `0x494ea101` frame. Existing CF/SDK validators reject the new
+version; the production runtime does not send BIND_SESSION yet. This is the DSP
+half of a future protocol, not an enabled boot-identity guarantee.
+
+The receiver still needs a bounded, one-shot bootstrap transaction and sticky
+validation of the expected token on every frame, including loss/downgrade and
+stale-frame timeout. Before admission is enabled, prove that every supported DSP
+restart clears this private latch before processing commands or publishing
+replies, and that pending writes cannot restore an old bind. The component test
+that clears session/sequence storage is fault injection, not that reset proof.

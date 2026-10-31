@@ -9,6 +9,7 @@
 .EXTERN _mi_message;
 .EXTERN _instrument_reply;
 .EXTERN _instrument_registry_reply;
+.EXTERN _instrument_session;
 _mi_reply_build:
     I0 = _instrument_reply;
     R0 = 0;
@@ -41,9 +42,23 @@ _mr_registry_copy:
     R3 = R3 - 1;
     IF NE JUMP _mr_registry_copy;
 _mr_registry_done:
+    // Version 2 echoes the one-shot bound session in word 12 on every block,
+    // independently of registry ACK replacement. Unbound/absent stays version 1.
+    R6 = 0x494ea101;
+    R0 = _instrument_session;
+    R0 = PASS R0;
+    IF EQ JUMP _mr_session_done;
+    I1 = R0;
+    R0 = DM(0, I1);
+    R0 = PASS R0;
+    IF EQ JUMP _mr_session_done;
+    I0 = _instrument_reply;
+    DM(12, I0) = R0;
+    R6 = 0x494ea102;
+_mr_session_done:
     I0 = _instrument_reply;
     MODIFY(I0, 1) (NW);
-    R1 = 0x494ea101;
+    R1 = R6;
     R2 = R1;
     R3 = 14;
 _mr_sum:
@@ -55,7 +70,7 @@ _mr_sum:
     R0 = R1 XOR R2;
     DM(I0, M5) = R0;
     I0 = _instrument_reply;
-    R0 = 0x494ea101;
+    R0 = R6;
     DM(0, I0) = R0;
     RTS;
 .SECTION/DM seg_dmda;

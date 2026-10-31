@@ -46,6 +46,7 @@ def reply_builder():
             "_mi_epoch": epoch_at,
             "_mi_message": message_at,
             "_instrument_registry_reply": 0,
+            "_instrument_session": 0,
         },
     )
 
@@ -58,6 +59,7 @@ def reply_builder():
             "_mi_epoch": epoch_at,
             "_mi_message": message_at,
             "_instrument_registry_reply": registry_at,
+            "_instrument_session": 0,
         },
     )
 
@@ -170,6 +172,7 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
     if not carrier:
         externs["_instrument_registry_block"] = 0
         externs["_instrument_registry_reply"] = 0
+        externs["_instrument_session"] = 0
         externs["_mi_carrier_begin"] = 0
         externs["_instrument_carrier_prepare"] = 0
     if not consumer:

@@ -1142,6 +1142,32 @@ layering, 193 host tests (16 skipped), formatting and types; it fails only on th
 existing 256 stale references in 78 files
 (`out/canopy-boot-probe-changed.log`).
 
+The DSP half of session binding now implements BIND_SESSION (operation 5) with
+owner/row zero and the nonzero challenge in generation. It binds once while
+lifecycle admission is disabled; it cannot replace/renew an existing token and
+grants no capabilities. Valid binds and checksummed stale commits are consumed,
+including rejected/replayed binds, so clearing private session/sequence storage
+does not re-execute a retained command. Bound replies use outer version
+`0x494ea102` and carry the token in word 12 on every block, independently of the
+registry ACK. Unbound or absent registry providers retain the original frame.
+
+This is not yet wired to CF admission. Existing CF/SDK validators deliberately
+reject the new reply version, and production does not issue binds. Next implement
+the bounded one-shot CF bootstrap and sticky expected-token validation, then
+prove initialization on every supported DSP reset path and drainage of old
+writes. Clearing session/sequence storage in a processor-component test does not
+establish that hardware reset behavior. No challenge reuse, automatic rebind or
+V2 capability advertisement is permitted on an uncertain outcome.
+The registry/MIDI component run passes 113 tests; a subsequent focused registry,
+row and protected-lifecycle run passes 101 tests, including rejection of binding
+after lifecycle admission. Both DSP artifacts rebuild and pass current-source
+checks; focused documentation validation passes. Logs are
+`out/canopy-session-dsp.log`, `out/canopy-session-lifecycle.log`,
+`out/canopy-session-build.log` and `out/canopy-session-check.log`.
+Required preflight passes Python lint/format, layering, host tests, formatting
+and types; only the existing 256 stale references in 78 files fail
+(`out/canopy-session-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

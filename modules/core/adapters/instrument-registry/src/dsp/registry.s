@@ -46,7 +46,7 @@ _ir_sum:
     R0 = R0 XOR R1;
     R2 = R4 XOR R1;
     COMP(R2, R0);
-    IF LE RTS;
+    IF LE JUMP _ir_stale;
     R5 = DM(3, I0);
     R0 = 31;
     R0 = R5 AND R0;
@@ -74,6 +74,9 @@ _ir_reserved:
     IF NE JUMP _ir_reserved;
     // Status: 0 query accepted; 1 unsupported lifecycle; 2 unknown command.
     // Operations: 1 QUERY, 2 INITIALIZE, 3 DETACH. None enables a live instance.
+    R0 = 5;
+    COMP(R7, R0);
+    IF EQ JUMP _ir_bind;
     R2 = 2;
     R0 = 1;
     COMP(R7, R0);
@@ -84,6 +87,35 @@ _ir_reserved:
     R0 = 3;
     COMP(R7, R0);
     IF EQ JUMP _ir_start;
+    JUMP _ir_reply;
+// Consume checksummed stale commits as well: a retransmitted bind must not
+// remain in the mailbox for a later reset of private sequence/session storage.
+_ir_stale:
+    I0 = _dl_irows;
+    R0 = 0;
+    DM(0, I0) = R0;
+    RTS;
+
+// BIND_SESSION: owner/row zero, generation is the nonzero CF challenge.
+// One accepted bind per initialized DSP image; never renew on retry/reset.
+// Consume commit before latching so a retained mailbox cannot rebind after
+// session storage alone is cleared. No lifecycle capability is granted.
+_ir_bind:
+    R0 = R5 OR R8;
+    R0 = PASS R0;
+    IF NE RTS;
+    I0 = _dl_irows;
+    R0 = 0;
+    DM(0, I0) = R0;
+    R0 = DM(_instrument_session);
+    R0 = PASS R0;
+    R2 = 5; // already bound; even the same challenge cannot renew this session
+    IF NE JUMP _ir_reply;
+    R0 = DM(_ir_lifecycle_ready);
+    R0 = PASS R0;
+    IF NE JUMP _ir_reply;
+    DM(_instrument_session) = R6;
+    R2 = 0;
     JUMP _ir_reply;
 _ir_query:
     R2 = 0;
@@ -227,3 +259,6 @@ _ir_caps:
 .PKBSS _ir_ticket, 20;
 
 .PKBSS _ir_snapshot, 64;
+
+// Cleared by image initialization, never by MIDI recovery or row detach.
+.PKBSS _instrument_session, 4;
