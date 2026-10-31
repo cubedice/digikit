@@ -1444,6 +1444,23 @@ and types. Only the existing 256 stale references in 78 files fail
 
 
 
+The composed reset boundary now executes the shipped assembly hook, MIDI
+adapter and sender together. The registry processor scenario checks sender
+revocation at entry to a stand-in for the stock tail, before the reset helper
+would run; it also checks a release argument with a nonzero upper byte leaves
+both the session and pending transfer usable. Repeated assertions remain
+terminal and idempotent. Together with the exact displaced-prologue/ABI checks,
+all 31 focused cases pass (`out/canopy-reset-composed.log`). This is processor
+integration evidence, not a physical reset experiment.
+
+The current emulator cannot close the remaining DMA/reset gate: its GPIO model
+implements the SD continuity gate, not DSP reset wiring, and its DSPI2 exchange
+completes synchronously in the board register-write path. An artificial session
+latch clear or a renderer state reload does not establish interruption of an
+active hardware transfer. Keep this gate open until a bounded hardware experiment
+or a separately validated asynchronous reset/DMA model supplies that evidence.
+Do not enable V2 admission on the strength of the composed callback test.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
