@@ -966,3 +966,44 @@ Changed-file checks pass lint, types and layers; formatting passes after applyin
 Prettier. The repository-wide path checker still reports the existing 256 stale
 references in 78 files. Targeted checks of the three changed documents report zero
 stale references. No full merge gate or device test was run.
+
+## DSP reset and explicit boot initialization (DTII 1.17) [D]
+
+Local stock firmware SHA-256:
+`26c22f6652625ac2cfd47f7ee970d388ed8b6427dae3563c0a6a2f2d334350d5`.
+The extraction marker matches that file. MAIN OS section 3 loads at
+`0x40000400`; disassembly below uses that base, not `0x40000000`.
+
+The boot routine at `0x400cd0d8` calls `0x400cd01c` with argument 1 at
+`0x400cd0e4`, before peripheral setup, allocation and section-7 decompression.
+It calls the same helper with argument 0 at `0x400cd37c`, then delays before
+sending command byte 3 plus the depacked stream. The helper branches on the
+board byte at `0x402a1b58`. On one branch the nonzero argument writes `0xfd`
+to `0xec09402c`, while zero writes bit 1 to `0xec094020`; on the other it
+writes `0x7f` to `0xec094029` or bit 7 to `0xec09401d`. Both configure the
+corresponding GPIO direction. These assert/release sites agree with the boot
+sequence recorded in finding 06. Electrical reset behavior is not measured here.
+
+A bounded reference scan of `0x40000400..0x40140000` finds those two direct
+calls to the helper (99.95% decoded byte coverage). This does not rule out
+indirect calls, computed addresses, other GPIO writes or references outside the
+scan. Logs: `out/canopy-reset-control-disasm.log`,
+`out/canopy-reset-entry-disasm.log`, `out/canopy-reset-stream-disasm.log` and
+`out/canopy-reset-control-refs.json`.
+
+The patcher integration test in
+`tests/patchkit/test_instrument_boot.py` builds a fresh registry firmware and
+reads its actual section-7 boot stream using the independent Python loader
+reader. It requires explicit zero coverage for the session latch, sequence,
+lifecycle enable, pending operation, complete command mailbox, registry ACK,
+all eight registry rows, MIDI epoch/message and heartbeat. An uninitialized BSS
+reservation cannot satisfy the check. Scratch written before use is excluded.
+The test passes (`out/canopy-boot-initialization-test.log`).
+
+This closes the image-content part of restart initialization, not the complete
+reset gate. Next integration must revoke CF trust before reset assertion, cover
+pending physical writes and establish whether the callback can run before the
+runtime has initialized its state. Hooking this early routine directly to a
+UI-only coordinator is not justified. A live DSP reset test must establish that
+the firmware actually reloads the patched stream and that no old transfer or
+MIDI route resumes. Production V2 admission remains disabled.

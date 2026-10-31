@@ -1348,6 +1348,18 @@ selected host, layering, lint, formatting and type checks; its only failure is
 the existing stale-reference baseline (`out/canopy-session-replies-changed.log`).
 
 
+The shipped boot-image initialization is now checked independently of zeroed
+processor fixtures: a patcher integration test generates registry firmware and
+requires explicit section-7 zero writes over all boot-owned session/registry
+state and MIDI identity counters. It passes. DTII 1.17 reset assertion/release
+call sites are also resolved from local image bytes; see
+[finding 78](../findings/78-canopy-carrier.md). The remaining reset work is a
+pre-assertion CF invalidation boundary, early-boot initialization safety and a
+live reset with pending transfers. The current emulator's snapshot reset does
+not establish those properties. Focused documentation checks pass; staged
+preflight passes Python lint/format and layering, with only the existing 256
+stale references in 78 files failing (`out/canopy-boot-initialization-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
