@@ -1168,6 +1168,32 @@ Required preflight passes Python lint/format, layering, host tests, formatting
 and types; only the existing 256 stale references in 78 files fail
 (`out/canopy-session-changed.log`).
 
+The CF reply guard now supports an explicitly armed one-shot session expectation.
+`mi_registry_expect_session(token, sequence)` serializes arming with the frame
+publisher and clears cached registry replies. Before a successful bind, armed
+getters return no snapshot. The first fresh version-2 frame must match the token
+and complete successful BIND_SESSION identity, including zero status/capabilities.
+Thereafter registry ACK replacement is allowed but token change, downgrade,
+backward heartbeat or expiry permanently revokes the guard. Repeated arming
+cannot renew a deadline; malformed frames cannot refresh liveness or establish
+identity. Deadline checks run before accepting a late fresh frame.
+
+The bind deadline and heartbeat watchdog use CF frame blocks. A UI-clock deadline
+and actual one-shot bind sender remain required, as does DSP reset-path proof.
+MIDI event ACKs and the SDK mailbox still reject version 2; no V2 route, lifecycle
+capability or firmware load is enabled. The component suite exchanges an actual
+SHARC-produced version-2 frame with compiled ColdFire validation, while adapter
+checks cover cache clearing, withheld snapshots and sticky invalidation.
+Validation: 21 host cases and all 87 MIDI processor-component cases pass. After
+adding adapter snapshot assertions, the host suite and focused ColdFire boundary
+test pass again. The CF adapter rebuilds (1,709 decoded instructions), and both
+MIDI artifacts pass current-source checks. Logs: `out/canopy-session-guard-host.log`,
+`out/canopy-session-guard-cf.log`, `out/canopy-session-guard-dispatch.log`,
+`out/canopy-session-guard-build.log` and `out/canopy-session-guard-check.log`.
+Focused documentation checks pass. Required preflight passes Python lint/format,
+layering, host tests, formatting and types; only the existing 256 stale references
+in 78 files fail (`out/canopy-session-guard-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

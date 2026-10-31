@@ -21,6 +21,7 @@ mod tests {
         fn mi_test_config_maximum() -> u32;
         fn mi_test_reply_ack() -> u32;
         fn mi_test_reply_watchdog() -> u32;
+        fn mi_test_session_guard() -> u32;
         fn mi_test_reply_record() -> u32;
     }
     macro_rules! case {
@@ -36,6 +37,10 @@ mod tests {
     case!(
         reply_watchdog_covers_idle_and_counter_wrap,
         mi_test_reply_watchdog
+    );
+    case!(
+        session_guard_requires_one_shot_identity,
+        mi_test_session_guard
     );
     case!(reply_uses_only_reserved_record_slots, mi_test_reply_record);
     case!(

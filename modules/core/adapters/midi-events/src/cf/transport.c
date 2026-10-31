@@ -183,10 +183,11 @@ void mt_reply_read(const volatile uint16_t *record, uint32_t out[MT_REPLY_WORDS]
 int mt_reply_valid(const uint32_t reply[MT_REPLY_WORDS])
 {
     uint32_t i, a = 0, b = 0;
-    if (!reply || reply[0] != MT_REPLY_MAGIC) return 0;
+    if (!reply || (reply[0] != MT_REPLY_MAGIC && reply[0] != MT_SESSION_REPLY_MAGIC)) return 0;
+    if (reply[0] == MT_SESSION_REPLY_MAGIC && !reply[12]) return 0;
     for (i = 0; i < MT_REPLY_WORDS-1; ++i) {
         a += reply[i]; b += a;
-        if (i >= 12 && reply[i]) return 0;
+        if ((i >= 13 || (i == 12 && reply[0] == MT_REPLY_MAGIC)) && reply[i]) return 0;
     }
     if (reply[15] != (a ^ b)) return 0;
     if (reply[4] == 0x49525231u) return 1; /* registry validates its own identity/status */
@@ -197,7 +198,9 @@ int mt_reply_valid(const uint32_t reply[MT_REPLY_WORDS])
 int mt_reply_tick(MiTransport *t, MiLedger *m,
                   const uint32_t reply[MT_REPLY_WORDS], uint32_t block)
 {
-    uint32_t valid = mt_reply_valid(reply);
+    /* MIDI admission is still version 1 only. Framing validity alone must not
+     * authorize version 2 event ACKs before session ownership is integrated. */
+    uint32_t valid = mt_reply_valid(reply) && reply[0] == MT_REPLY_MAGIC;
     int result = 0;
     if (t->epoch != m->epoch) { mt_init(t); t->epoch = m->epoch; }
     if (reply) {
@@ -224,15 +227,38 @@ int mt_reply_tick(MiTransport *t, MiLedger *m,
 }
 
 
+int mt_reply_guard_expect(MtReplyGuard *g, uint32_t token,
+                          uint32_t sequence, uint32_t block)
+{
+    if (!token || !sequence) return -1;
+    if (g->invalid || g->expected) return -2;
+    g->expected = token; g->sequence = sequence; g->started = block;
+    return 0;
+}
+
 void mt_reply_guard_tick(MtReplyGuard *g, const uint32_t *reply, uint32_t block)
 {
     uint32_t delta;
     if (g->invalid) return;
+    if ((g->expected && !g->ready && block - g->started >= MT_STALL_BLOCKS) ||
+        (g->seen && block - g->block >= MT_STALL_BLOCKS)) {
+        g->invalid = 1; return;
+    }
     if (mt_reply_valid(reply)) {
+        if (reply[0] == MT_SESSION_REPLY_MAGIC) {
+            if (!g->expected || reply[12] != g->expected) { g->invalid = 1; return; }
+            if (!g->ready) {
+                if (reply[4] != 0x49525231u || reply[5] != g->sequence ||
+                    reply[6] || reply[7] != g->expected || reply[8] != 5 ||
+                    reply[9] || reply[10] || reply[11]) { g->invalid = 1; return; }
+            }
+        } else if (g->ready) { g->invalid = 1; return; }
+
         delta = reply[3] - g->heartbeat;
         if (g->seen && delta >= 0x80000000u) { g->invalid = 1; return; }
         if (!g->seen || delta) {
             g->seen = 1; g->heartbeat = reply[3]; g->block = block;
+            if (reply[0] == MT_SESSION_REPLY_MAGIC) g->ready = 1;
         }
     }
     if (g->seen && block - g->block >= MT_STALL_BLOCKS) g->invalid = 1;

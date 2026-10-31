@@ -209,7 +209,8 @@ DIGIKIT_CF_SCRIPT=out/native/target/nogen/release/examples/cf_script \
 The host tests execute the production C implementation, including the runtime dispatcher. The ColdFire component test compiles the same cases for the target and executes them on its instruction core. Neither establishes real USB/DIN latency, stock AMP lifetime, DSP transport coexistence or final audio. Those remain required gates before enabling routes in a release.
 
 The CF reply validator accepts the optional IRR1 registry block in words 4..11;
-words 12..14 remain reserved zero and the outer checksum covers both blocks.
+version 1 reserves words 12..14 as zero, while version 2 carries a nonzero
+session token in word 12 and reserves words 13..14. The checksum covers all fields.
 `mi_registry_reply(out, words)` copies the last framed registry reply under the
 frame IRQ lock: 16 words on success, 0 if unavailable, -1 for a null output or
 capacity below 16, and -2 when registry boot trust is lost. Unsuccessful calls
@@ -229,3 +230,25 @@ unique reboot detector. It cannot detect an unobserved reset whose new counter
 looks forward. If frame callbacks stop entirely, UI-task deadlines still apply.
 The SDK treats -2 as permanent boot invalidation and blocks the mailbox exchange
 without issuing a detach into the unknown boot or releasing its storage.
+
+
+`mi_registry_expect_session(token, sequence)` arms one expected bind identity under
+that same IRQ lock and clears the cached reply. Zero arguments return -1 without
+mutation; a second arm or revoked guard returns -2. It sends no command and grants
+no lifecycle or MIDI capability. Before arming, unexpected version-2 replies
+revoke trust. While armed, version-1 replies may maintain heartbeat liveness but
+cannot provide registry snapshots or extend the fixed 900-frame bind deadline.
+
+The first accepted version-2 reply must have a fresh heartbeat, the expected
+nonzero token and exact successful BIND_SESSION ACK: sequence, owner/row zero,
+generation equal to token, operation 5, status/capabilities zero. Subsequent ACKs
+may change, but every framed reply must retain the token and version. A mismatch,
+downgrade, backward heartbeat or expired deadline revokes trust permanently.
+Malformed replies do not establish identity or refresh liveness; they lead to
+timeout if valid replies do not resume. No late frame revives an expired guard.
+
+These checks do not implement the loader bootstrap transaction or prove reset
+coverage. The SDK mailbox and MIDI event ACK path still reject version 2; V2
+admission stays disabled. The eventual loader must also apply a UI-clock deadline
+when frame callbacks stop, keep the expectation armed before its first bind
+write, and never retry a possibly committed bind after an uncertain outcome.

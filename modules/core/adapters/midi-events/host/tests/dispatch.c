@@ -115,12 +115,24 @@ uint32_t mi_test_dispatch(void)
     for (i = 0; i < 15; ++i) CHECK(snapshot[i] == r[i]);
     CHECK(snapshot[15] == (r[15] ^ 1));
     publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_expect_session(0, 18) == -1);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS);
+    CHECK(mi_registry_expect_session(0xdeadbeefu, 18) == 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0);
+    CHECK(mi_registry_expect_session(0xdeadbeefu, 18) == -2);
+    r[3] = 3; publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0); /* still old version */
+    r[0] = MT_SESSION_REPLY_MAGIC; r[3] = 4; r[5] = 18;
+    r[6] = 0; r[7] = 0xdeadbeefu; r[8] = 5; r[11] = 0; r[12] = 0xdeadbeefu;
+    publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS);
+    CHECK(snapshot[0] == MT_SESSION_REPLY_MAGIC && snapshot[12] == 0xdeadbeefu);
     /* A backwards, otherwise valid heartbeat invalidates registry trust even
      * when its MIDI epoch is not admitted. The caller buffer stays unchanged. */
     r[3] = 1;
     publish_reply(queue, record, r, 0);
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == -2);
-    CHECK(snapshot[3] == 2);
+    CHECK(snapshot[3] == 4);
     mi_transport_recover();
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == -2);
     publish_reply(queue, record, r, 0);

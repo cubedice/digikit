@@ -12,6 +12,10 @@ int mi_config_submit(uint32_t track, uint32_t revision, uint32_t schema,
  * -2 boot trust lost (sticky until cold boot).
  * Output unchanged on 0 or errors. Does not prove freshness or a matching transaction. */
 int mi_registry_reply(uint32_t *out, uint32_t words);
+/* Arm the one-shot expected BIND_SESSION identity before the first write.
+ * Does not send a command; clears the cached reply on success. Return codes
+ * match mt_reply_guard_expect. The loader must also enforce a UI-clock deadline. */
+int mi_registry_expect_session(uint32_t token, uint32_t sequence);
 /* Explicit recovery only, with all physical keys released. */
 void mi_transport_recover(void);
 void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record);

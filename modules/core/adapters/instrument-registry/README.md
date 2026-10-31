@@ -310,13 +310,14 @@ uncertain outcome or reuse the challenge to recover within the same CF boot.
 Once bound, every reply uses outer magic `0x494ea102` and echoes the challenge in
 word 12, independently of the current registry ACK. Words 13..14 remain zero and
 the checksum covers the version and token. An absent registry or unbound latch
-retains the existing `0x494ea101` frame. Existing CF/SDK validators reject the new
-version; the production runtime does not send BIND_SESSION yet. This is the DSP
+retains the existing `0x494ea101` frame. The CF guard accepts the new version only after explicitly arming the expected
+bind identity; SDK mailbox and MIDI event ACK validators still reject it.
+The production runtime does not send BIND_SESSION yet. This is the DSP
 half of a future protocol, not an enabled boot-identity guarantee.
 
-The receiver still needs a bounded, one-shot bootstrap transaction and sticky
-validation of the expected token on every frame, including loss/downgrade and
-stale-frame timeout. Before admission is enabled, prove that every supported DSP
+The CF receiver now validates the expected token with sticky revocation on
+loss/downgrade and stale-frame timeout. The loader still needs a bounded, one-shot
+bootstrap transaction and a UI-clock deadline independent of frame callbacks. Before admission is enabled, prove that every supported DSP
 restart clears this private latch before processing commands or publishing
 replies, and that pending writes cannot restore an old bind. The component test
 that clears session/sequence storage is fault injection, not that reset proof.
