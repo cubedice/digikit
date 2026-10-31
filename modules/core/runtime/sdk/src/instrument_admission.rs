@@ -80,6 +80,7 @@ pub struct Row {
 }
 
 pub struct Plan {
+    pub(crate) process_cost: u32,
     pub(crate) grant: Grant,
     rows: [Option<Row>; MAX_ROWS],
 }
@@ -222,6 +223,7 @@ pub fn prepare(
         extents[index] = Some(state);
     }
     Ok(Plan {
+        process_cost: process_total,
         rows,
         grant: Grant {
             ticket,

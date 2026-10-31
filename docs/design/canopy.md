@@ -1060,6 +1060,32 @@ Focused documentation references pass. Required preflight passes layering,
 host tests, formatting and types, failing only on the existing 256 stale
 references in 78 files (`out/canopy-admit-changed.log`).
 
+Coordinator admission now reserves aggregate V2 process cost, rather than
+checking each module against the same independent allowance. A plan retains its
+checked per-instance process sum; each owner/generation retains that cost from
+successful preparation through publication, cancellation or recovery. The supplied
+process ceiling is the total V2 allowance after legacy reservations, and existing
+V2 charges are subtracted before planning the next image. Failed preparation
+charges nothing. Only successful pre-transfer cancellation or validated detach
+followed by shared-memory release returns the charge; boot loss and failed cleanup
+retain it. Externally adopted loads without accounting cannot silently consume
+zero budget, and an uncharged plan cannot join an active accounted ledger.
+
+All 147 SDK tests pass (`out/canopy-budget-sdk.log`), including combined-limit
+rejection, exact-fit admission, cancellation reuse, lower-ceiling refusal,
+publication retention, failed-INIT recovery through detach/memory release, and
+refusal of unaccounted adopted reservations. These are declared instruction-cost
+budgets, not measurements of actual callback execution time. Firmware type mapping,
+boot identity and the closed admission gate still require integration.
+The ColdFire rebuild/current-source checks pass (32,261 decoded instructions;
+`out/canopy-budget-build.log`, `out/canopy-budget-check.log`). The coordinator
+storage initialization changes executable code. Default runtime DTII boot, INFO,
+reopen and restart pass, with DNII skipped (`out/canopy-budget-module.log`: one
+pass, one skip). This is a runtime regression check, not an active V2 load.
+Focused documentation references pass. Required preflight passes layering,
+host tests, formatting and types; only the existing 256 stale references in
+78 files fail (`out/canopy-budget-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

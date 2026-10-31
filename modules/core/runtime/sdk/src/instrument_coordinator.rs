@@ -83,6 +83,7 @@ pub struct Coordinator<'image, T> {
     job: Option<Job<'image>>,
     blocked: Option<Failure>,
     handoff: Handoff,
+    costs: [Option<admission::Cost>; 32],
 }
 
 impl<'image, T: Transport> Coordinator<'image, T> {
@@ -98,6 +99,7 @@ impl<'image, T: Transport> Coordinator<'image, T> {
             job: None,
             blocked: None,
             handoff: Handoff::Released,
+            costs: [None; 32],
         }
     }
 
@@ -141,6 +143,12 @@ impl<'image, T: Transport> Coordinator<'image, T> {
         if !self.driver.transaction_ready() {
             return Err(Error::NotOwned);
         }
+        if self.costs.iter().any(Option::is_some)
+            && !self.costs[plan.grant.ticket.owner() as usize]
+                .is_some_and(|cost| cost.matches(&plan))
+        {
+            return Err(Error::Budget);
+        }
         let phase = upload::PumpState::new(now, budget).ok_or(Error::Budget)?;
         // No new traffic has started, but an adopted driver must also be idle.
         if !self.driver.is_idle() {
@@ -180,7 +188,9 @@ impl<'image, T: Transport> Coordinator<'image, T> {
                 crate::instrument_registry::Error::WrongPhase,
             ));
         }
-        self.loads.release_memory(ticket, ledger)
+        self.loads.release_memory(ticket, ledger)?;
+        self.costs[ticket.owner() as usize] = None;
+        Ok(())
     }
 
     pub fn tick(&mut self, now: u32) -> Progress {

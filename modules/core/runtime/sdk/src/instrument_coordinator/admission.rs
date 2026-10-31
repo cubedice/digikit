@@ -10,6 +10,8 @@ use crate::{
 pub enum AdmissionError {
     Coordinator(Error),
     Types,
+    Budget,
+    Unaccounted,
     Registry(instrument_registry::Error),
     Memory(MemoryError),
     Plan(instrument_admission::Error),
@@ -17,10 +19,25 @@ pub enum AdmissionError {
     Cleanup(MemoryError),
 }
 
+#[derive(Clone, Copy)]
+pub(super) struct Cost {
+    ticket: Ticket,
+    process: u32,
+    tracks: u32,
+}
+
+impl Cost {
+    pub(super) fn matches(&self, plan: &Plan) -> bool {
+        self.ticket == plan.ticket() && self.process == plan.process_cost
+    }
+}
+
 impl<T: Transport> Coordinator<'_, T> {
     /// Prepare without sending or publishing anything. The caller supplies the
     /// actual shared DSP ledger, resolved type numbers checked against builtin
-    /// and V1 types, remaining callback budgets and trusted import resolution.
+    /// and V1 types, callback budgets after legacy reservations and trusted imports.
+    /// process_total is the total V2 allowance: existing V2 costs are subtracted
+    /// here. Prepared, live and retiring modules all retain their reservation.
     /// Section parsing must precede this call. Callback instruction boundaries
     /// and actual resource usage remain the trusted packer/loader's obligation.
     /// Output is written only after all planning checks pass; relocation errors
@@ -37,6 +54,31 @@ impl<T: Transport> Coordinator<'_, T> {
         resolve: impl FnMut(&[u8]) -> Option<u32>,
     ) -> Result<Plan, AdmissionError> {
         self.admission_idle()?;
+        let (used, tracks) = self
+            .costs
+            .iter()
+            .flatten()
+            .try_fold((0u32, 0u32), |(cost, tracks), c| {
+                Some((cost.checked_add(c.process)?, tracks.checked_add(c.tracks)?))
+            })
+            .ok_or(AdmissionError::Budget)?;
+        // An externally adopted ledger lacks trusted per-plan costs. Do not
+        // silently treat its existing modules as free; finish/retire them first.
+        if tracks != self.loads.capacity().tracks_used {
+            return Err(AdmissionError::Unaccounted);
+        }
+        let remaining = limits
+            .process_total
+            .checked_sub(used)
+            .ok_or(AdmissionError::Budget)?;
+        let available = Limits {
+            process_total: remaining,
+            l2: limits.l2,
+            reset_frame: limits.reset_frame,
+            reset_overhead: limits.reset_overhead,
+            call_depth: limits.call_depth,
+            stack_bytes: limits.stack_bytes,
+        };
         let count = section.records().iter().flatten().count();
         if types.len() != count {
             return Err(AdmissionError::Types);
@@ -72,7 +114,7 @@ impl<T: Transport> Coordinator<'_, T> {
             ticket,
             &grant,
             &section.packed(types),
-            limits,
+            &available,
         )
         .map_err(AdmissionError::Plan)
         .and_then(|plan| {
@@ -81,8 +123,15 @@ impl<T: Transport> Coordinator<'_, T> {
                 .map_err(AdmissionError::Relocate)?;
             Ok(plan)
         });
-        if prepared.is_err() {
-            self.cancel_admission(ticket, ledger)?;
+        match &prepared {
+            Ok(plan) => {
+                self.costs[owner as usize] = Some(Cost {
+                    ticket,
+                    process: plan.process_cost,
+                    tracks: requests[..count].iter().map(|r| r.tracks).sum(),
+                });
+            }
+            Err(_) => self.cancel_admission(ticket, ledger)?,
         }
         prepared
     }
@@ -105,7 +154,13 @@ impl<T: Transport> Coordinator<'_, T> {
             self.blocked = Some(Failure::Protocol);
             return Err(AdmissionError::Cleanup(error));
         }
+        self.costs[ticket.owner() as usize] = None;
         Ok(())
+    }
+
+    /// Reserved V2 processing cost, including prepared and retiring loads.
+    pub fn process_reserved(&self) -> u32 {
+        self.costs.iter().flatten().map(|c| c.process).sum()
     }
 
     fn admission_idle(&self) -> Result<(), AdmissionError> {

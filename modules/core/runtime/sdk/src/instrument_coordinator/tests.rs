@@ -834,6 +834,7 @@ fn admitted_section_uses_shared_ledger_and_publishes_only_after_initialization()
             } => {
                 assert_eq!(done, ticket);
                 assert!(owner.loads().lookup(20).is_some());
+                assert_eq!(owner.process_reserved(), 40);
                 assert!(matches!(
                     owner.cancel_admission(ticket, &mut ledger),
                     Err(AdmissionError::Registry(_))
@@ -993,4 +994,157 @@ fn waiting_or_boot_invalidated_coordinator_cannot_prepare_images() {
         assert_eq!(ledger.lengths, &[0]);
         assert_eq!(output, [0xa5; 64]);
     }
+}
+
+#[test]
+fn admission_budgets_include_other_prepared_modules_and_return_on_cancel() {
+    use crate::instrument_section::{tests as section_test, Section};
+    let mut owner = admission_owner();
+    let bytes = section_test::fixture();
+    let section = Section::parse(&bytes, 1, section_test::limits()).unwrap();
+    let mut a = [0; 64];
+    let mut b = [0xa5; 64];
+    let mut offsets = [0; 2];
+    let mut lengths = [0; 2];
+    let mut ledger = Ledger {
+        base: 0x20010000,
+        bytes: 512,
+        offsets: &mut offsets,
+        lengths: &mut lengths,
+    };
+    let mut limits = admission_limits();
+    limits.process_total = 60; // each module needs 2 tracks * 20 instructions
+    let first = owner
+        .admit(0, &section, &[20], &limits, &mut ledger, &mut a, |_| {
+            Some(0xb80000)
+        })
+        .unwrap();
+    assert_eq!(owner.process_reserved(), 40);
+    assert!(matches!(
+        owner.admit(1, &section, &[21], &limits, &mut ledger, &mut b, |_| Some(
+            0xb80000
+        )),
+        Err(AdmissionError::Plan(_))
+    ));
+    assert_eq!(owner.process_reserved(), 40);
+    assert_eq!(ledger.lengths, &[128, 0]);
+    assert_eq!(b, [0xa5; 64]);
+    limits.process_total = 39;
+    assert!(matches!(
+        owner.admit(
+            1,
+            &section,
+            &[21],
+            &limits,
+            &mut ledger,
+            &mut b,
+            |_| panic!("over budget")
+        ),
+        Err(AdmissionError::Budget)
+    ));
+    owner.cancel_admission(first.ticket(), &mut ledger).unwrap();
+    assert_eq!(owner.process_reserved(), 0);
+    limits.process_total = 80;
+    let first = owner
+        .admit(0, &section, &[20], &limits, &mut ledger, &mut a, |_| {
+            Some(0xb80000)
+        })
+        .unwrap();
+    let second = owner
+        .admit(1, &section, &[21], &limits, &mut ledger, &mut b, |_| {
+            Some(0xb80000)
+        })
+        .unwrap();
+    assert_eq!(owner.process_reserved(), 80); // exact boundary admits both
+    owner
+        .cancel_admission(second.ticket(), &mut ledger)
+        .unwrap();
+    assert_eq!(owner.process_reserved(), 40);
+    owner.cancel_admission(first.ticket(), &mut ledger).unwrap();
+    assert_eq!(owner.process_reserved(), 0);
+}
+
+#[test]
+fn processing_cost_survives_failed_init_until_confirmed_detach_and_memory_release() {
+    use crate::instrument_section::{tests as section_test, Section};
+    let mut owner = admission_owner();
+    WIRE.with_borrow_mut(|w| w.reject = 2);
+    let bytes = section_test::fixture();
+    let section = Section::parse(&bytes, 1, section_test::limits()).unwrap();
+    let output = Box::leak(Box::new([0; 64]));
+    let mut offsets = [0];
+    let mut lengths = [0];
+    let mut ledger = Ledger {
+        base: 0x20010000,
+        bytes: 512,
+        offsets: &mut offsets,
+        lengths: &mut lengths,
+    };
+    let plan = owner
+        .admit(
+            0,
+            &section,
+            &[20],
+            &admission_limits(),
+            &mut ledger,
+            output,
+            |_| Some(0xb80000),
+        )
+        .unwrap();
+    let ticket = plan.ticket();
+    owner.request_link(0, 100).unwrap();
+    assert_eq!(owner.tick_link(0, true), LinkProgress::Owned);
+    owner.begin(plan, output, 1, 1000).unwrap();
+    assert!(owner.release_memory(ticket, &mut ledger).is_err());
+    for now in 2..1000 {
+        assert_eq!(owner.process_reserved(), 40);
+        match owner.tick(now) {
+            Progress::Pending => (),
+            Progress::Complete {
+                command: Command::Release(done),
+                recovered: Some(_),
+            } => {
+                assert_eq!(done, ticket);
+                assert_eq!(owner.process_reserved(), 40);
+                assert_eq!(ledger.lengths[0], 128);
+                owner.release_memory(ticket, &mut ledger).unwrap();
+                assert_eq!(owner.process_reserved(), 0);
+                assert_eq!(ledger.lengths[0], 0);
+                return;
+            }
+            other => panic!("unexpected recovery: {other:?}"),
+        }
+    }
+    panic!("detach never completed");
+}
+
+#[test]
+fn externally_adopted_reservations_cannot_bypass_aggregate_budget_accounting() {
+    use crate::instrument_section::{tests as section_test, Section};
+    let mut f = Fixture::new(); // pre-admitted outside the coordinator
+    let bytes = section_test::fixture();
+    let section = Section::parse(&bytes, 1, section_test::limits()).unwrap();
+    let mut output = [0xa5; 64];
+    let mut offsets = [0];
+    let mut lengths = [0];
+    let mut ledger = Ledger {
+        base: 0x20010000,
+        bytes: 512,
+        offsets: &mut offsets,
+        lengths: &mut lengths,
+    };
+    assert!(matches!(
+        f.owner.admit(
+            0,
+            &section,
+            &[20],
+            &admission_limits(),
+            &mut ledger,
+            &mut output,
+            |_| panic!("unknown budgets")
+        ),
+        Err(AdmissionError::Unaccounted)
+    ));
+    assert_eq!(output, [0xa5; 64]);
+    assert_eq!(ledger.lengths[0], 0);
 }
