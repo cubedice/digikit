@@ -843,6 +843,24 @@ on the existing 256 stale references in 78 files
 (`out/canopy-linux-toolchain-changed.log`).
 
 
+The Linux-native backend bootstrap now completes successfully: pinned libgccjit
+and rustc_codegen_gcc are installed under the WSL cache selected by
+DIGIKIT_CODEGEN_DIR (`out/canopy-codegen-native.log`). The production ColdFire
+runtime builds with this backend; Patchkit re-decodes 31,690 instructions and
+all runtime objects pass the current-source check
+(`out/canopy-runtime-coldfire-build.log`, `out/canopy-runtime-coldfire-check.log`).
+This removes the missing-toolchain blocker. It does not activate the V2 loader;
+its provider binding, coordinator and boot/session identity still need live
+integration and acceptance.
+Runtime module check: one pass (Digitakt II), one skip (Digitone II), including
+patched runtime boot and INFO responses through the existing coupled daemon
+(`out/canopy-runtime-coldfire-module.log`). The framework is intentionally not a
+single-object DKM, so the module check's pack-size line is not an install target.
+Focused documentation checks pass. The required changed-file preflight passes
+its host checks and fails only on the existing 256 stale references in 78 files
+(`out/canopy-runtime-coldfire-changed.log`).
+
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
