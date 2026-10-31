@@ -19,6 +19,11 @@ pub struct Upload<'a, 'image, T> {
     driver: &'a mut Driver<T>,
     transfer: &'a mut Transfer<'image>,
     loads: &'a mut Loads,
+    state: PumpState,
+}
+
+/// Persistent state owned by the coordinator; no references into its owner.
+pub(crate) struct PumpState {
     start: u32,
     budget: u32,
     draining: Option<(Failure, u32)>,
@@ -36,13 +41,30 @@ impl<'a, 'image, T: Transport> Upload<'a, 'image, T> {
         now: u32,
         budget: u32,
     ) -> Option<Self> {
-        if budget == 0 || budget >= 0x80000000 || transfer.next(loads).is_err() {
+        if transfer.next(loads).is_err() {
             return None;
         }
         Some(Self {
             driver,
             transfer,
             loads,
+            state: PumpState::new(now, budget)?,
+        })
+    }
+    pub fn invalidate_boot(&mut self) {
+        self.state.invalidate_boot(self.driver);
+    }
+    pub fn tick(&mut self, now: u32) -> Progress {
+        self.state.tick(self.driver, self.transfer, self.loads, now)
+    }
+}
+
+impl PumpState {
+    pub(crate) fn new(now: u32, budget: u32) -> Option<Self> {
+        if budget == 0 || budget >= 0x80000000 {
+            return None;
+        }
+        Some(Self {
             start: now,
             budget,
             draining: None,
@@ -54,8 +76,13 @@ impl<'a, 'image, T: Transport> Upload<'a, 'image, T> {
         self.blocked = Some(cause);
         Progress::Blocked(cause)
     }
-    fn recover(&mut self, cause: Failure) -> Progress {
-        match self.transfer.failed(self.loads) {
+    fn recover(
+        &mut self,
+        transfer: &mut Transfer<'_>,
+        loads: &mut Loads,
+        cause: Failure,
+    ) -> Progress {
+        match transfer.failed(loads) {
             Ok(command) => {
                 self.finished = true;
                 Progress::Recover { cause, command }
@@ -65,12 +92,18 @@ impl<'a, 'image, T: Transport> Upload<'a, 'image, T> {
     }
     /// Caller has lost trust in this DSP boot. Preserve all storage and stop
     /// provider calls; whole-boot teardown is the owning runtime's responsibility.
-    pub fn invalidate_boot(&mut self) {
-        self.driver.invalidate_boot();
+    pub(crate) fn invalidate_boot<T: Transport>(&mut self, driver: &mut Driver<T>) {
+        driver.invalidate_boot();
         self.finished = false;
         self.blocked = Some(Failure::Boot);
     }
-    pub fn tick(&mut self, now: u32) -> Progress {
+    pub(crate) fn tick<T: Transport>(
+        &mut self,
+        driver: &mut Driver<T>,
+        transfer: &mut Transfer<'_>,
+        loads: &mut Loads,
+        now: u32,
+    ) -> Progress {
         if self.finished {
             return Progress::Finished;
         }
@@ -80,11 +113,11 @@ impl<'a, 'image, T: Transport> Upload<'a, 'image, T> {
         if self.draining.is_none() && now.wrapping_sub(self.start) >= self.budget {
             self.draining = Some((Failure::Timeout, now));
         }
-        let link = self.driver.poll();
+        let link = driver.poll();
         if let Some((cause, began)) = self.draining {
             return match link {
                 Ok(LinkProgress::Idle | LinkProgress::Complete(_) | LinkProgress::Failed(_)) => {
-                    self.recover(cause)
+                    self.recover(transfer, loads, cause)
                 }
                 Ok(LinkProgress::Pending) if now.wrapping_sub(began) < self.budget => {
                     Progress::Pending
@@ -95,9 +128,9 @@ impl<'a, 'image, T: Transport> Upload<'a, 'image, T> {
         match link {
             Err(_) => return self.block(Failure::Link),
             Ok(LinkProgress::Pending) => return Progress::Pending,
-            Ok(LinkProgress::Failed(_)) => return self.recover(Failure::Link),
+            Ok(LinkProgress::Failed(_)) => return self.recover(transfer, loads, Failure::Link),
             Ok(LinkProgress::Complete(completed)) => {
-                return if completed.image(self.transfer, self.loads).is_ok() {
+                return if completed.image(transfer, loads).is_ok() {
                     Progress::Pending
                 } else {
                     self.block(Failure::Protocol)
@@ -105,7 +138,7 @@ impl<'a, 'image, T: Transport> Upload<'a, 'image, T> {
             }
             Ok(LinkProgress::Idle) => {}
         }
-        let write = match self.transfer.next(self.loads) {
+        let write = match transfer.next(loads) {
             Ok(Some(write)) => write,
             Ok(None) => {
                 self.finished = true;
@@ -113,10 +146,10 @@ impl<'a, 'image, T: Transport> Upload<'a, 'image, T> {
             }
             Err(_) => return self.block(Failure::Protocol),
         };
-        match self.driver.start_image(&write) {
+        match driver.start_image(&write) {
             Ok(_) => Progress::Pending,
             Err(LinkError::Uncertain | LinkError::Busy) => self.block(Failure::Link),
-            Err(_) => self.recover(Failure::Link),
+            Err(_) => self.recover(transfer, loads, Failure::Link),
         }
     }
 }

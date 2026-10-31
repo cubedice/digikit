@@ -861,6 +861,41 @@ its host checks and fails only on the existing 256 stale references in 78 files
 (`out/canopy-runtime-coldfire-changed.log`).
 
 
+The SDK now owns a complete admitted-load transaction in `Coordinator`: its
+load ledger, tagged driver, reply reader and mailbox stay together for the DSP
+boot. Upload and exchange pumps keep reference-free phase state, allowing UI
+calls to borrow the controllers for one tick without restarting their deadlines.
+The coordinator uploads image/BSS, installs every row, consumes the opaque install
+receipt, then initializes every row before returning Publish. Its deadlines cover
+each entire phase, with a separate bounded drain period on timeout.
+
+Recoverable upload/install/initialization failures drive one fresh detach batch.
+Only its validated completion returns Release, and freeing memory still requires
+the caller's original shared ledger. Failed detach, uncertain link identity and
+undrained writes block further work while retaining storage. Explicit boot loss
+or the reply provider's boot-invalidated result stops all provider calls and
+prevents allocator release, even after an earlier Release result. No cancellation
+or whole-boot reset is inferred from dropping this owner.
+
+This is an SDK coordinator, not yet a firmware UI-loop integration. It adopts
+pre-admitted reservations and a borrowed relocated image; live admission,
+optional-symbol resolution, exclusive scheduling against legacy DSP loads,
+boot/session identity and revocation of already-published MIDI routes remain
+required. Its read-only load ledger is bookkeeping, not a live readiness signal.
+
+Validation: all 123 SDK tests pass, including ten coordinator cases exercising
+multi-row install/init order, a moved owner with a retained source pointer,
+wrapping deadlines, busy transport, rejected install/init, missing replies,
+failed detach, unknown transfer identity and boot loss. Logs:
+`out/canopy-coordinator-sdk.log`. The ColdFire runtime rebuild and current-source
+checks pass (`out/canopy-coordinator-build.log`,
+`out/canopy-coordinator-check.log`). Its decoded artifact changes only the source
+hash: the coordinator is not yet called from the firmware runtime, so this is not
+a device execution test of the coordinator. Focused documentation checks pass.
+Required preflight passes layering, host tests, formatting and types; it fails
+only on the existing 256 stale references in 78 files
+(`out/canopy-coordinator-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

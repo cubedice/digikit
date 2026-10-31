@@ -22,6 +22,8 @@ pub mod instrument_provider;
 pub mod instrument_exchange;
 /// Bounded image/BSS transfer and drain-before-detach recovery.
 pub mod instrument_upload;
+/// Persistent owner of V2 upload, installation and initialization transactions.
+pub mod instrument_coordinator;
 /// Experimental V2 mailbox transactions; no device capability is enabled.
 pub mod instrument_mailbox;
 /// Shared bounded V2 descriptor and record decoding; no loading capability.

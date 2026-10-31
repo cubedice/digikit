@@ -120,6 +120,9 @@ pub struct Driver<T> {
     uncertain: bool,
 }
 impl<T: Transport> Driver<T> {
+    pub(crate) fn is_idle(&self) -> bool {
+        self.pending.is_none() && !self.uncertain
+    }
     /// The buffer is dedicated for this driver's lifetime and cannot be reclaimed
     /// by dropping it, even if the transport is still reading it. No allocator.
     pub fn new(transport: T, buffer: &'static mut [u8; 256]) -> Self {

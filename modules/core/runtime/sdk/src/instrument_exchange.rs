@@ -39,6 +39,11 @@ pub struct Exchange<'a, T> {
     mailbox: &'a mut Mailbox,
     replies: &'a mut Replies,
     loads: &'a mut Loads,
+    state: PumpState,
+}
+
+/// Persistent state owned by the coordinator; no references into its owner.
+pub(crate) struct PumpState {
     start: u32,
     budget: u32,
     draining: Option<(Failure, u32)>,
@@ -58,7 +63,7 @@ impl<'a, T: Transport> Exchange<'a, T> {
         now: u32,
         budget: u32,
     ) -> Option<Self> {
-        if budget == 0 || budget >= 0x80000000 || !mailbox.has_pending() {
+        if !mailbox.has_pending() {
             return None;
         }
         Some(Self {
@@ -66,6 +71,24 @@ impl<'a, T: Transport> Exchange<'a, T> {
             mailbox,
             replies,
             loads,
+            state: PumpState::new(now, budget)?,
+        })
+    }
+    pub fn invalidate_boot(&mut self) {
+        self.state.invalidate_boot(self.driver, self.replies);
+    }
+    pub fn tick(&mut self, now: u32) -> Progress {
+        self.state
+            .tick(self.driver, self.mailbox, self.replies, self.loads, now)
+    }
+}
+
+impl PumpState {
+    pub(crate) fn new(now: u32, budget: u32) -> Option<Self> {
+        if budget == 0 || budget >= 0x80000000 {
+            return None;
+        }
+        Some(Self {
             start: now,
             budget,
             draining: None,
@@ -74,9 +97,13 @@ impl<'a, T: Transport> Exchange<'a, T> {
         })
     }
     /// Stop this boot's link and reply APIs without releasing any resources.
-    pub fn invalidate_boot(&mut self) {
-        self.driver.invalidate_boot();
-        self.replies.invalidate_boot();
+    pub(crate) fn invalidate_boot<T: Transport>(
+        &mut self,
+        driver: &mut Driver<T>,
+        replies: &mut Replies,
+    ) {
+        driver.invalidate_boot();
+        replies.invalidate_boot();
         self.finished = false;
         self.blocked = Some(Failure::Boot);
     }
@@ -84,8 +111,8 @@ impl<'a, T: Transport> Exchange<'a, T> {
         self.blocked = Some(failure);
         Progress::Blocked(failure)
     }
-    fn recover(&mut self, cause: Failure) -> Progress {
-        match self.mailbox.abandon_after_drain(self.loads, true) {
+    fn recover(&mut self, mailbox: &mut Mailbox, loads: &mut Loads, cause: Failure) -> Progress {
+        match mailbox.abandon_after_drain(loads, true) {
             Ok(command) => {
                 self.finished = true;
                 Progress::Recover { cause, command }
@@ -95,7 +122,14 @@ impl<'a, T: Transport> Exchange<'a, T> {
     }
     /// At most one provider poll or send per tick, plus one bounded snapshot
     /// when the link is idle. No busy loop and no timeout-driven buffer reuse.
-    pub fn tick(&mut self, now: u32) -> Progress {
+    pub(crate) fn tick<T: Transport>(
+        &mut self,
+        driver: &mut Driver<T>,
+        mailbox: &mut Mailbox,
+        replies: &mut Replies,
+        loads: &mut Loads,
+        now: u32,
+    ) -> Progress {
         if self.finished {
             return Progress::Finished;
         }
@@ -105,11 +139,11 @@ impl<'a, T: Transport> Exchange<'a, T> {
         if self.draining.is_none() && now.wrapping_sub(self.start) >= self.budget {
             self.draining = Some((Failure::Timeout, now));
         }
-        let link = self.driver.poll();
+        let link = driver.poll();
         if let Some((cause, began)) = self.draining {
             return match link {
                 Ok(LinkProgress::Idle | LinkProgress::Complete(_) | LinkProgress::Failed(_)) => {
-                    self.recover(cause)
+                    self.recover(mailbox, loads, cause)
                 }
                 Ok(LinkProgress::Pending) if now.wrapping_sub(began) < self.budget => {
                     Progress::Pending
@@ -120,9 +154,9 @@ impl<'a, T: Transport> Exchange<'a, T> {
         match link {
             Err(_) => return self.block(Failure::Link),
             Ok(LinkProgress::Pending) => return Progress::Pending,
-            Ok(LinkProgress::Failed(_)) => return self.recover(Failure::Link),
+            Ok(LinkProgress::Failed(_)) => return self.recover(mailbox, loads, Failure::Link),
             Ok(LinkProgress::Complete(completed)) => {
-                return if completed.mailbox(self.mailbox).is_ok() {
+                return if completed.mailbox(mailbox).is_ok() {
                     Progress::Pending
                 } else {
                     self.block(Failure::Protocol)
@@ -130,29 +164,31 @@ impl<'a, T: Transport> Exchange<'a, T> {
             }
             Ok(LinkProgress::Idle) => {}
         }
-        if let Some(write) = self.mailbox.write() {
-            return match self.driver.start_mailbox(&write) {
+        if let Some(write) = mailbox.write() {
+            return match driver.start_mailbox(&write) {
                 Ok(_) => Progress::Pending,
                 Err(LinkError::Uncertain | LinkError::Busy) => self.block(Failure::Link),
-                Err(_) => self.recover(Failure::Link),
+                Err(_) => self.recover(mailbox, loads, Failure::Link),
             };
         }
-        match self.replies.poll(self.mailbox, self.loads) {
+        match replies.poll(mailbox, loads) {
             Ok(ReplyProgress::Waiting) => Progress::Pending,
             Ok(ReplyProgress::Complete(command)) => {
                 self.finished = true;
                 Progress::Complete(Some(command))
             }
-            Ok(ReplyProgress::RowComplete) if self.mailbox.has_pending() => Progress::Pending,
+            Ok(ReplyProgress::RowComplete) if mailbox.has_pending() => Progress::Pending,
             Ok(ReplyProgress::RowComplete) => {
                 self.finished = true;
                 Progress::Complete(None)
             }
             Err(ReplyError::BootInvalidated) => {
-                self.invalidate_boot();
+                self.invalidate_boot(driver, replies);
                 Progress::Blocked(Failure::Boot)
             }
-            Err(ReplyError::Mailbox(_) | ReplyError::Provider(_)) => self.recover(Failure::Reply),
+            Err(ReplyError::Mailbox(_) | ReplyError::Provider(_)) => {
+                self.recover(mailbox, loads, Failure::Reply)
+            }
         }
     }
 }
