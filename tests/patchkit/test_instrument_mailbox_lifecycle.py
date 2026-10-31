@@ -82,17 +82,17 @@ def scheduler(scheduler_object):
     linked, symbols, initial, sections = scheduler_object
     dm = dict(initial)
     dm.update({0x20040000 // 4 + i: 0 for i in range(8)})
-    dm.update({0x20090000 // 4 + i: 0xDEADBEEF for i in range(16)})
+    dm.update({0x20070000 // 4 + i: 0xDEADBEEF for i in range(16)})
     callback = linked.symbols["_test_reset"]
     row = [
         1,
         3,
         9,
         2,
-        0x20090000,
+        0x20070000,
         4,
-        0x20090000,
-        0x20090040,
+        0x20070000,
+        0x20070040,
         callback,
         callback,
         callback + 64,
@@ -110,10 +110,12 @@ def scheduler(scheduler_object):
         "wire": (symbols["_instrument_reply"] // 4, 16),
         "row": (base, 16),
         "calls": (0x20040010 // 4, 3),
-        "state": (0x20090000 // 4, 16),
+        "state": (0x20070000 // 4, 16),
     }
 
-    def block(words=None, fail_at=None, ready=None):
+    def block(words=None, fail_at=None, ready=None, empty=False):
+        if empty:
+            dm.update({base + i: 0 for i in range(16)})
         if words is not None:
             dm.update(
                 {symbols["_dl_irows"] // 4 + i: value for i, value in enumerate(words)}
@@ -151,14 +153,14 @@ def test_success_waits_for_all_callbacks_and_replay_does_not_repeat_them(schedul
         assert result["ack"] == previous and result["calls"][0] == count
     result = scheduler()
     assert result["row"][0] == 3
-    assert result["ack"] == [0x49525231, 2, 3, 9, 2, 7, 0, 3]
+    assert result["ack"] == [0x49525231, 2, 3, 9, 2, 7, 0, 7]
     assert scheduler()["calls"][0] == 2
     for count, words in [(3, command(3, 3)), (4, None)]:
         result = scheduler(words)
         assert result["ack"][1] == 2 and result["calls"][0] == count
     result = scheduler()
     assert result["row"][:3] == [6, 3, 9]
-    assert result["ack"] == [0x49525231, 3, 3, 9, 3, 7, 0, 3]
+    assert result["ack"] == [0x49525231, 3, 3, 9, 3, 7, 0, 7]
 
 
 def test_pending_ticket_survives_mailbox_clear_and_new_command(scheduler):
@@ -175,7 +177,7 @@ def test_pending_ticket_survives_mailbox_clear_and_new_command(scheduler):
 def test_partial_callback_fault_retains_row_until_completed_detach(scheduler):
     scheduler(command(1, 2))
     result = scheduler(fail_at=2)
-    assert result["ack"][1:] == [1, 3, 9, 2, 7, 4, 3]
+    assert result["ack"][1:] == [1, 3, 9, 2, 7, 4, 7]
     assert result["row"][:3] == [5, 3, 9]
     assert result["row"][12] == 0xFFFFFFF9
     assert scheduler()["calls"][0] == 2
@@ -191,13 +193,13 @@ def test_detach_fault_requires_new_sequence_and_successful_cleanup(scheduler):
     scheduler()
     scheduler()
     result = scheduler(command(2, 3), fail_at=3)
-    assert result["ack"][1:] == [2, 3, 9, 3, 7, 4, 3]
+    assert result["ack"][1:] == [2, 3, 9, 3, 7, 4, 7]
     assert result["row"][:3] == [5, 3, 9]
     assert scheduler()["calls"][0] == 3
     scheduler(command(3, 3))
     scheduler()
     result = scheduler()
-    assert result["ack"][1:] == [3, 3, 9, 3, 7, 0, 3]
+    assert result["ack"][1:] == [3, 3, 9, 3, 7, 0, 7]
     assert result["row"][:3] == [6, 3, 9]
     assert result["calls"][0] == 5
 
@@ -214,3 +216,48 @@ def test_unadmitted_provider_remains_unsupported(scheduler, ready):
     result = scheduler(command(1, 2), ready=ready)
     assert result["ack"][6:] == [1, 0]
     assert result["row"][0] == 1 and result["calls"][0] == 0
+
+
+def install_command(scheduler, sequence=2, generation=9):
+    original = scheduler(command(1, 1))["row"]
+    words = command(sequence, 4, generation=generation)
+    words[7:15] = original[3:11]
+    words[15] = reduce(xor, words[:15])
+    return words
+
+
+def test_install_reply_precedes_initialization_and_replay_preserves_row(scheduler):
+    words = install_command(scheduler)
+    result = scheduler(words, empty=True)
+    assert result["ack"] == [0x49525231, 2, 3, 9, 4, 7, 0, 7]
+    assert result["row"][:3] == [1, 3, 9]
+    assert result["row"][3:11] == words[7:15]
+    assert result["state"] == [0xDEADBEEF] * 16
+    assert result["calls"][0] == 0
+    assert scheduler()["row"] == result["row"]
+    scheduler(command(3, 2))
+    scheduler()
+    result = scheduler()
+    assert result["row"][0] == 3 and result["calls"][0] == 2
+    assert result["ack"][1:] == [3, 3, 9, 2, 7, 0, 7]
+
+
+@pytest.mark.parametrize("ready", [0, 2])
+def test_install_is_disabled_without_trusted_admission(scheduler, ready):
+    words = install_command(scheduler)
+    result = scheduler(words, ready=ready, empty=True)
+    assert result["ack"][6:] == [1, 0]
+    assert result["row"] == [0] * 16
+
+
+def test_install_bad_metadata_and_owned_row_are_rejected(scheduler):
+    words = install_command(scheduler)
+    result = scheduler(words)
+    assert result["ack"][6] == 3 and result["calls"][0] == 0
+    words[2] = 3
+    words[7] = 17
+    words[15] = reduce(xor, words[:15])
+    result = scheduler(words, empty=True)
+    assert result["ack"][6] == 3
+    assert result["row"] == [0] * 16
+    assert result["state"] == [0xDEADBEEF] * 16

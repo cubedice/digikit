@@ -94,6 +94,11 @@ impl Loads {
         self.at(ticket, IMAGE).map(|_| ())
     }
 
+    pub(crate) fn install_rows(&self, ticket: Ticket) -> Result<u32, Error> {
+        self.check_image_transfer(ticket)?;
+        self.registry.row_mask(ticket)
+    }
+
     pub fn image_acked(&mut self, ticket: Ticket) -> Result<Command, Error> {
         let slot = self.at(ticket, IMAGE)?;
         self.set_phase(slot, INITIALIZE);

@@ -1,8 +1,8 @@
 //! Single-owner V2 mailbox client. Logical DSP words, not host-endian wire bytes.
 //! The caller must retain this instance for the entire DSP boot and serialize all
 //! window-3 traffic through it. This does not enable V2 or schedule SPI writes.
-//! Current DSP bootstrap rejects lifecycle commands; successful replies in tests
-//! model a future provider, not a claim that reset/dispatch exists today.
+//! DSP lifecycle/install operations remain gated by trusted admission.
+//! This client does not establish live SPI drainage or enable audio dispatch.
 use crate::instrument_load::{Command, Loads};
 use crate::instrument_registry::{Error as LoadError, Ticket};
 
@@ -23,6 +23,8 @@ pub enum Error {
     Rejected(u32),
     MissingCapability,
     Load(LoadError),
+    Image(crate::instrument_image::Error),
+    InvalidPlan,
 }
 
 /// Retry exactly this write until its own transfer ACK. Its token must be echoed
@@ -46,9 +48,27 @@ struct Pending {
     stage: u32,
 }
 
+/// Created only after every row has a matching successful DSP install reply.
+/// This receipt is boot-local, as are its Mailbox, Loads and Transfer owners.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Installed {
+    ticket: Ticket,
+}
+impl Installed {
+    pub(crate) fn matches(&self, ticket: Ticket) -> bool {
+        self.ticket == ticket
+    }
+    #[cfg(test)]
+    pub(crate) fn test_receipt(ticket: Ticket) -> Self {
+        Self { ticket }
+    }
+}
+
 pub struct Mailbox {
     sequence: u32,
     pending: Option<Pending>,
+    metadata: [[u32; 8]; 8],
+    installed: Option<Installed>,
 }
 
 impl Mailbox {
@@ -57,6 +77,8 @@ impl Mailbox {
         Self {
             sequence: 0,
             pending: None,
+            metadata: [[0; 8]; 8],
+            installed: None,
         }
     }
 
@@ -95,6 +117,61 @@ impl Mailbox {
         Ok(())
     }
 
+    /// Install only after every image/BSS write has been acknowledged. Plan must
+    /// match the allocator grant and every reserved physical row for this ticket.
+    pub fn begin_install(
+        &mut self,
+        image: &crate::instrument_image::Transfer<'_>,
+        plan: &crate::instrument_admission::Plan,
+        loads: &Loads,
+        prior_writes_drained: bool,
+    ) -> Result<(), Error> {
+        if self.pending.is_some() || self.installed.is_some() {
+            return Err(Error::Busy);
+        }
+        if !prior_writes_drained {
+            return Err(Error::NotDrained);
+        }
+        let ticket = image.install_ticket(loads).map_err(Error::Image)?;
+        loads
+            .check_memory_grant(ticket, &plan.grant)
+            .map_err(Error::Load)?;
+        let rows = loads.install_rows(ticket).map_err(Error::Load)?;
+        let mut mask = 0u32;
+        let mut metadata = [[0; 8]; 8];
+        for row in plan.rows().iter().flatten() {
+            if row.index >= 8
+                || mask & (1 << row.index) != 0
+                || row.words[..3] != [1, ticket.owner(), ticket.generation()]
+            {
+                return Err(Error::InvalidPlan);
+            }
+            mask |= 1 << row.index;
+            metadata[row.index as usize].copy_from_slice(&row.words[3..11]);
+        }
+        if mask != rows {
+            return Err(Error::InvalidPlan);
+        }
+        self.sequence
+            .checked_add(rows.count_ones())
+            .ok_or(Error::SequenceExhausted)?;
+        self.sequence += 1;
+        self.metadata = metadata;
+        self.pending = Some(Pending {
+            ticket,
+            operation: 4,
+            rows,
+            row: rows.trailing_zeros(),
+            sequence: self.sequence,
+            stage: CLEAR,
+        });
+        Ok(())
+    }
+
+    pub fn take_installed(&mut self) -> Option<Installed> {
+        self.installed.take()
+    }
+
     pub fn write(&self) -> Option<Write> {
         let p = self.pending?;
         if p.stage == REPLY {
@@ -115,6 +192,9 @@ impl Mailbox {
                 p.operation,
                 p.row,
             ]);
+            if p.operation == 4 {
+                words[6..14].copy_from_slice(&self.metadata[p.row as usize]);
+            }
             words[14] = words[..14].iter().fold(MAGIC, |sum, word| sum ^ word);
             (1, 15)
         };
@@ -138,7 +218,7 @@ impl Mailbox {
 
     /// Validate the complete 16-word instrument reply. No transfer ACK can reach
     /// this path. Publish/release only after every physical row succeeds. Required
-    /// future capability bits: bit 0 reset completed, bit 1 detach supported.
+    /// capability bits: bit 0 reset completed, bit 1 detach, bit 2 install.
     /// Bootstrap status 1/capabilities 0 cannot authorize either transition.
     pub fn reply(
         &mut self,
@@ -171,7 +251,11 @@ impl Mailbox {
         if words[10] != 0 {
             return Err(Error::Rejected(words[10]));
         }
-        let capability = if p.operation == 2 { 1 } else { 2 };
+        let capability = match p.operation {
+            2 => 1,
+            3 => 2,
+            _ => 4,
+        };
         if words[11] & capability == 0 {
             return Err(Error::MissingCapability);
         }
@@ -180,9 +264,18 @@ impl Mailbox {
         } else {
             Command::Detach(p.ticket)
         };
-        loads.command_rows(command).map_err(Error::Load)?;
+        if p.operation == 4 {
+            loads.install_rows(p.ticket).map_err(Error::Load)?;
+        } else {
+            loads.command_rows(command).map_err(Error::Load)?;
+        }
         p.rows &= !(1 << p.row);
         if p.rows == 0 {
+            if p.operation == 4 {
+                self.installed = Some(Installed { ticket: p.ticket });
+                self.pending = None;
+                return Ok(None);
+            }
             let completion = if p.operation == 2 {
                 loads.initialized(p.ticket)
             } else {

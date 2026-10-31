@@ -8,7 +8,7 @@ use crate::instrument_registry::{Error as LoadError, Ticket};
 const CHUNK: usize = 256;
 static ZERO: [u8; CHUNK] = [0; CHUNK];
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Error {
     Load(LoadError),
     NotDrained,
@@ -107,11 +107,22 @@ impl<'a> Transfer<'a> {
         self.cursor += ack.bytes;
         Ok(())
     }
+    pub(crate) fn install_ticket(&self, loads: &Loads) -> Result<Ticket, Error> {
+        self.check(loads)?;
+        if self.cursor != self.end {
+            return Err(Error::NotReady);
+        }
+        Ok(self.ticket)
+    }
     /// Row metadata must also be installed and acknowledged before initialization.
     /// An image or zero-fill ACK alone is never an initialization completion.
-    pub fn finish(&mut self, loads: &mut Loads, rows_installed: bool) -> Result<Command, Error> {
+    pub fn finish(
+        &mut self,
+        loads: &mut Loads,
+        installed: &crate::instrument_mailbox::Installed,
+    ) -> Result<Command, Error> {
         self.check(loads)?;
-        if self.cursor != self.end || !rows_installed {
+        if self.cursor != self.end || !installed.matches(self.ticket) {
             return Err(Error::NotReady);
         }
         let command = loads.image_acked(self.ticket).map_err(Error::Load)?;

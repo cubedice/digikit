@@ -612,12 +612,12 @@ then copies metadata and publishes RESERVED last. It accepts only an empty row
 or a detached row with a strictly newer unsigned generation; reserved, initializing,
 ready, detaching and faulted rows cannot be overwritten. Invalid input leaves
 all rows and instance state untouched. Installation invokes no callback.
-This entry is deliberately not exposed through a transport window: the trusted
+At that checkpoint the entry was not exposed through a transport window: the trusted
 caller must provide private non-aliasing snapshot storage, enforce exclusive
 allocation and callback budgets, drain image writes and serialize install/tick.
 Bounds checking alone cannot prove those properties. An acknowledged mailbox
-install command and its loader sequencing are still pending; the existing image
-controller still takes a caller-confirmed row-install boolean. Lifecycle capability
+install command and its loader sequencing were still pending; the image
+controller still took a caller-confirmed row-install boolean. Lifecycle capability
 remains disabled, and CANOPY is not installable.
 Validation: 86 focused DSP tests pass, including complete install/init/detach/reuse,
 unsigned generation boundaries, malformed snapshots with no writes and odd-sized
@@ -626,6 +626,29 @@ and passes its current-file check (`out/canopy-row-install-build.log`). Focused
 documentation checks pass. The changed-file preflight passes lint, layering, host
 tests and types; its only failure is the existing 256 stale references in 78 files
 (`out/canopy-row-install-changed.log`).
+
+The next checkpoint connects INSTALL (operation 4) to the existing 16-word mailbox.
+Words 7..14 carry row fields 3..10; the DSP constructs phase/owner/generation and
+zero lifecycle fields in a private snapshot before invoking the installer. It
+acknowledges only the completed row installation, advertises capability bit 2 only
+under the existing trusted-admission gate, and leaves callback work to INITIALIZE.
+The SDK binds the admission plan to the exact allocated grant and physical rows,
+requires acknowledged image/BSS writes first, and emits an opaque ticket-bound
+receipt only after every row succeeds. The image controller now requires that
+receipt instead of the preceding checkpoint's boolean. Transfer ACKs, missing
+capabilities and stale row replies cannot authorize initialization.
+Real SPI driving, firmware export lookup, trusted enablement and audio dispatch
+remain unconnected. Failed partial installation stays quarantined; cleanup for
+never-installed rows needs an explicit protocol before release can be supported.
+No playable DKM or hardware acceptance is implied.
+Validation: 44 SDK tests and 90 focused DSP tests pass, including multi-row receipts,
+rejected/missing-capability replies, gated installation, no writes on rejection,
+replay and install-to-initialize sequencing. Composed MIDI tests pass (84 passed,
+three skipped); the runtime host check and rebuilt registry current-file check
+also pass. Logs: `out/canopy-install-mailbox-{sdk,dsp,frame,runtime,build}.log`.
+Focused docs, lint, layering, host tests and types pass. The changed-file check
+fails only on the existing 256 stale references in 78 files
+(`out/canopy-install-mailbox-changed.log`).
 
 Only after those pieces pass together may a build advertise V2 support.
 

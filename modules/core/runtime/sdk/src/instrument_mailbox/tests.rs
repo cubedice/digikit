@@ -300,3 +300,125 @@ fn instrument_memory_waits_for_all_mailbox_detach_rows_before_freeing() {
     loads.release_memory(ticket, &mut ledger).unwrap();
     assert_eq!(ledger.lengths[0], 0);
 }
+
+#[test]
+fn instrument_install_binds_plan_and_waits_for_every_dsp_reply() {
+    use crate::instrument_admission::{prepare, Limits, Range, Spec};
+    use crate::instrument_image::Transfer;
+    use crate::instrument_load::{Ledger, MemoryRequest};
+    let mut loads = Loads::new(32);
+    let t = reserve(&mut loads, 3, &[18, 19]);
+    let mut offsets = [0; 4];
+    let mut lengths = [0; 4];
+    let grant = loads
+        .reserve_memory(
+            t,
+            &mut Ledger {
+                base: 0x20010000,
+                bytes: 4096,
+                offsets: &mut offsets,
+                lengths: &mut lengths,
+            },
+            &MemoryRequest {
+                image_bytes: 256,
+                bss_bytes: 8,
+                state_bytes: 64,
+                align: 8,
+            },
+        )
+        .unwrap();
+    let spec = Spec {
+        type_no: 18,
+        state_base: grant.state.start,
+        state_bytes: 12,
+        text: grant.image,
+        process_text: grant.image,
+        reset_sw: 0xb88000,
+        process_sw: 0xb88003,
+        reset_instructions: 100,
+        process_instructions: 100,
+        call_depth: 2,
+        stack_bytes: 64,
+        max_events: 8,
+        max_controls: 32,
+    };
+    let plan = prepare(
+        &loads,
+        t,
+        &grant,
+        &[
+            spec,
+            Spec {
+                type_no: 19,
+                state_base: grant.state.start + 32,
+                ..spec
+            },
+        ],
+        &Limits {
+            l2: Range {
+                start: 0x20000000,
+                end: 0x20080000,
+            },
+            reset_frame: 1000,
+            reset_overhead: 500,
+            process_total: 1000,
+            call_depth: 4,
+            stack_bytes: 128,
+        },
+    )
+    .unwrap();
+    let bytes = [0x5a; 256];
+    let mut image = Transfer::begin(&mut loads, t, &grant, &bytes, true).unwrap();
+    let mut mailbox = Mailbox::new();
+    assert_eq!(
+        mailbox.begin_install(&image, &plan, &loads, true),
+        Err(Error::Image(crate::instrument_image::Error::NotReady))
+    );
+    while let Some(write) = image.next(&loads).unwrap() {
+        image.acknowledged(&loads, write.ack).unwrap();
+    }
+    assert_eq!(
+        mailbox.begin_install(&image, &plan, &loads, false),
+        Err(Error::NotDrained)
+    );
+    mailbox.begin_install(&image, &plan, &loads, true).unwrap();
+    let words = transfer(&mut mailbox);
+    assert_eq!(words[5], 4);
+    assert_eq!(words[7..15], plan.rows()[0].unwrap().words[3..11]);
+    assert!(mailbox.take_installed().is_none()); // transfer ACK alone cannot authorize init
+    let missing_cap = response(&mailbox, 0, 3);
+    assert_eq!(
+        mailbox.reply(&missing_cap, &mut loads),
+        Err(Error::MissingCapability)
+    );
+    let rejected = response(&mailbox, 3, 7);
+    assert_eq!(
+        mailbox.reply(&rejected, &mut loads),
+        Err(Error::Rejected(3))
+    );
+    let first = response(&mailbox, 0, 7);
+    assert_eq!(mailbox.reply(&first, &mut loads), Ok(None));
+    assert!(mailbox.take_installed().is_none());
+    let words = transfer(&mut mailbox);
+    assert_eq!(words[7..15], plan.rows()[1].unwrap().words[3..11]);
+    assert_eq!(
+        mailbox.reply(&first, &mut loads),
+        Err(Error::MismatchedReply)
+    );
+    let second = response(&mailbox, 0, 7);
+    mailbox.reply(&second, &mut loads).unwrap();
+    assert!(loads.lookup(18).is_none());
+    let receipt = mailbox.take_installed().unwrap();
+    assert!(mailbox.take_installed().is_none());
+    assert_eq!(
+        image.finish(&mut loads, &receipt),
+        Ok(Command::Initialize(t))
+    );
+    mailbox.begin(Command::Initialize(t), &loads, true).unwrap();
+    for _ in 0..2 {
+        transfer(&mut mailbox);
+        let reply = response(&mailbox, 0, 7);
+        mailbox.reply(&reply, &mut loads).unwrap();
+    }
+    assert_eq!(loads.lookup(18).unwrap().owner, 3);
+}

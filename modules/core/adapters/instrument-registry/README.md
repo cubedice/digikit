@@ -16,7 +16,7 @@ Words are logical 32-bit DSP values, transported by the existing DSP-link encode
 There is one outstanding command globally. The sender must clear word 0 and await
 its transfer ACK, write words 1..15 and await their transfer ACK, then commit word
 0 last. Do not begin the next command until the matching registry reply arrives.
-The transport ACK alone does not acknowledge initialization or detachment.
+The transport ACK alone does not acknowledge installation, initialization or detachment.
 
 | Word | Meaning |
 | --- | --- |
@@ -25,17 +25,17 @@ The transport ACK alone does not acknowledge initialization or detachment.
 | 2 | Nonzero, strictly increasing unsigned sequence; never wraps within a boot |
 | 3 | Module owner, 0..31 |
 | 4 | Nonzero generation |
-| 5 | Operation: 1 QUERY, 2 INITIALIZE, 3 DETACH |
+| 5 | Operation: 1 QUERY, 2 INITIALIZE, 3 DETACH, 4 INSTALL |
 | 6 | Registry row, 0..7 |
-| 7..14 | Reserved, must be zero |
+| 7..14 | INSTALL: track count, state base, state words, arena start/end, reset entry, executable start/end; other operations: zero |
 | 15 | XOR of words 0..14, including the committed magic |
 
 Invalid, incomplete, duplicate or older commands retain the previous reply and
 do not advance the sequence. A valid command advances the sequence even when its
 operation is unsupported. Retrying a committed command with the same sequence
 therefore preserves its original reply. After sequence `0xffffffff`, a reboot
-is required before further commands. This protocol is internal and experimental; row metadata is supplied by trusted
-admission rather than command payloads. Public V2 loading remains disabled.
+is required before further commands. This protocol is internal and experimental.
+Only the trusted loader may submit admitted metadata. Public V2 loading remains disabled.
 
 ## Reply
 
@@ -48,10 +48,10 @@ carry the result; there is no additional reply allocation.
 | --- | --- |
 | 0 | Commit magic `0x49525231` (`IRR1`), zero before the first accepted command |
 | 1..5 | Echoed sequence, owner, generation, operation, row |
-| 6 | Status: 0 completed, 1 unsupported lifecycle, 2 unknown operation, 3 row identity/phase rejected, 4 row callback/metadata fault |
-| 7 | Capabilities: 0 while disabled, 3 when trusted lifecycle admission is enabled |
+| 6 | Status: 0 completed, 1 unsupported lifecycle, 2 unknown operation, 3 row identity/phase/installation metadata rejected, 4 row callback/metadata fault |
+| 7 | Capabilities: 0 while disabled, 7 when trusted lifecycle admission is enabled |
 
-INITIALIZE and DETACH return status 1 while trusted admission is disabled.
+INSTALL, INITIALIZE and DETACH return status 1 while trusted admission is disabled.
 When enabled, success is returned only after row work completes. Callers must validate the outer checksum, reply magic and all echoed
 identifiers before interpreting status. A stale reply never authorizes freeing
 memory or publishing a row.
@@ -75,12 +75,27 @@ Timeout or partial rejection retains the whole reservation for a fresh detach;
 sequence numbers survive recovery and never wrap. A cancellation prevents any
 further row from being scheduled after its pending reply arrives.
 
-Reserved future capability bits are bit 0 for reset completion support and bit 1
-for detachment support. A successful lifecycle reply must include its respective
-bit. The provider sets neither until trusted admission enables its lifecycle scheduler.
+Capability bits are bit 0 for reset completion, bit 1 for detachment and bit 2
+for row installation. A successful lifecycle reply must include its respective
+bit. The provider sets none until trusted admission enables its lifecycle scheduler.
 Host client tests use synthetic replies; DSP scheduler tests execute real row work
 with synthetic callbacks. Trusted admission, audio dispatch and live SPI scheduling
 remain open; this client does not enable V2 admission.
+
+INSTALL is accepted only after the SDK image controller has acknowledged all image
+and BSS writes and the plan matches the retained allocator grant and physical rows.
+The DSP checks its private snapshot and publishes RESERVED last, without calling a
+reset. An occupied row is rejected; reuse requires DETACHED and a strictly newer
+unsigned generation. Initialization requires a separate command.
+
+After every row has a matching successful install reply with capability bit 2,
+the client returns an opaque ticket-bound `Installed` receipt. The image controller
+requires this receipt to advance to initialization; a boolean or transfer ACK is
+insufficient. Receipts and client state are valid only for the current DSP boot.
+Transport drainage, allocation ownership and callback budgets remain trusted
+loader obligations. Partial-install failure must retain the allocation: cleanup
+of rows that never installed is not yet implemented, so it must remain quarantined
+rather than infer successful detachment from a rejected row identity.
 
 ## Internal V2 reset worker
 
@@ -118,7 +133,8 @@ These worker tests alone do not prove mailbox completion or live device admissio
 window-3 command buffer and is not writable through that window. Trusted future
 admission must populate metadata only while a row is unreachable, after validating
 allocation ownership, executable ranges, descriptor limits and callback budgets.
-No admission path populates it in the production adapter yet.
+The INSTALL handler copies its payload into a private snapshot and invokes the
+internal installer. There is still no production caller enabling admission.
 
 The row layout is phase, owner, generation, track count, state base, state words
 per track, state arena start/end, reset entry, executable start/end, cursor, last

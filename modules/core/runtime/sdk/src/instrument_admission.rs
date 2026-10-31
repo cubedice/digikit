@@ -80,6 +80,7 @@ pub struct Row {
 }
 
 pub struct Plan {
+    pub(crate) grant: Grant,
     rows: [Option<Row>; MAX_ROWS],
 }
 impl Plan {
@@ -216,7 +217,14 @@ pub fn prepare(
         });
         extents[index] = Some(state);
     }
-    Ok(Plan { rows })
+    Ok(Plan {
+        rows,
+        grant: Grant {
+            ticket,
+            image: grant.image,
+            state: grant.state,
+        },
+    })
 }
 
 mod packed;

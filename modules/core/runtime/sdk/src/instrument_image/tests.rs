@@ -38,9 +38,10 @@ fn setup(image_bytes: u32, bss_bytes: u32) -> (Loads, Ticket, Grant, [u32; 2], [
 fn instrument_image_retries_and_clears_bss_before_initialization() {
     let (mut loads, t, grant, _, _) = setup(300, 300);
     let image = [0x5a; 300];
+    let receipt = crate::instrument_mailbox::Installed::test_receipt(t);
     let mut memory = [0xee; 640];
     let mut transfer = Transfer::begin(&mut loads, t, &grant, &image, true).unwrap();
-    assert_eq!(transfer.finish(&mut loads, true), Err(Error::NotReady));
+    assert_eq!(transfer.finish(&mut loads, &receipt), Err(Error::NotReady));
     let mut writes = 0;
     while let Some(write) = transfer.next(&loads).unwrap() {
         assert_eq!(transfer.next(&loads).unwrap().unwrap(), write);
@@ -55,9 +56,20 @@ fn instrument_image_retries_and_clears_bss_before_initialization() {
     assert_eq!(&memory[..300], &image);
     assert!(memory[300..600].iter().all(|&b| b == 0));
     assert!(memory[600..].iter().all(|&b| b == 0xee));
-    assert_eq!(transfer.finish(&mut loads, false), Err(Error::NotReady));
+    assert!(transfer.install_ticket(&loads).is_ok());
+    let other = loads
+        .reserve(
+            1,
+            &[Request {
+                type_no: 21,
+                tracks: 1,
+            }],
+        )
+        .unwrap();
+    let wrong = crate::instrument_mailbox::Installed::test_receipt(other);
+    assert_eq!(transfer.finish(&mut loads, &wrong), Err(Error::NotReady));
     assert_eq!(
-        transfer.finish(&mut loads, true),
+        transfer.finish(&mut loads, &receipt),
         Ok(Command::Initialize(t))
     );
     assert_eq!(transfer.next(&loads), Err(Error::Stopped));
