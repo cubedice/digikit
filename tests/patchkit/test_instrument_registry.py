@@ -1,12 +1,16 @@
 """Execute the query-only V2 mailbox and its shared reply on the SHARC core."""
 
+import json
+import os
+import subprocess
 from functools import reduce
 from operator import xor
+from pathlib import Path
 
 import pytest
 from support.paths import REPO_ROOT
 
-from tools.patchkit import pk_sharc
+from tools.patchkit import patchkit, pk_sharc, pk_toolchains
 
 
 @pytest.fixture(scope="module")
@@ -201,3 +205,112 @@ def test_bind_after_lifecycle_admission_is_rejected(mailbox):
     assert result["_instrument_session"] == [0]
     assert result["_dl_irows"] == [0]
     assert result["wire"][0] == 0x494EA101
+
+
+def test_dsp_session_replies_cross_cf_frame_publisher_and_snapshot(mailbox, tmp_path):
+    firmware = REPO_ROOT / "firmware/Digitakt_II_OS1.17.syx"
+    runner = Path(
+        os.environ.get(
+            "DIGIKIT_CF_SCRIPT", REPO_ROOT / "target/release/examples/cf_script"
+        )
+    )
+    if not firmware.exists() or not runner.exists() or not pk_toolchains.m68k_bin():
+        pytest.skip("DTII firmware, m68k compiler and cf_script required")
+    # Actual registry command execution, reply construction and injected latch
+    # loss. This does not model or claim a hardware DSP restart path.
+    bound = mailbox(bind(sequence=17), full=True)["wire"]
+    queried = mailbox(command(sequence=18), full=True)["wire"]
+    lost = mailbox(None, full=True, clear_session=True)["wire"]
+    helper = tmp_path / "session_boundary.c"
+    helper.write_text("""
+#include "bridge.h"
+uint32_t dkrt_irq_mask(void) { return 0; }
+void dkrt_irq_restore(uint32_t x) { (void)x; }
+int instrument_midi_ready(uint32_t t, uint32_t e, uint32_t g) {
+    (void)t; (void)e; (void)g; return 0;
+}
+void *memcpy(void *d, const void *s, unsigned n) {
+    volatile unsigned char *p=d; const volatile unsigned char *q=s;
+    while(n--) { *p++=*q++; }
+    return d;
+}
+void *memset(void *d, int c, unsigned n) {
+    volatile unsigned char *p=d;
+    while(n--) { *p++=(unsigned char)c; }
+    return d;
+}
+uint32_t session_boundary(const uint32_t *words, uint32_t step) {
+    static uint16_t record[0xabc/2], queue[0x2000];
+    uint32_t out[16], i;
+    if (!step && mi_registry_expect_session(0xdeadbeefu,17)) return 1;
+    for (i=0;i<16;++i) {
+        uint32_t h=(0x1cu+0x54u*(21u+i/2u)+0x44u+(i&1u)*4u)/2u;
+        record[h]=(uint16_t)words[i]; record[h+1]=(uint16_t)(words[i]>>16);
+        out[i]=0xccccccccu;
+    }
+    instrument_write_frame((uintptr_t)queue,0x9fc/2,record);
+    int result=mi_registry_reply(out,16);
+    if (step < 2) {
+        if (result!=16) return 2;
+        for (i=0;i<16;++i) if(out[i]!=words[i]) return 3;
+    } else {
+        if (result!=-2) return 4;
+        for (i=0;i<16;++i) if(out[i]!=0xccccccccu) return 5;
+        if(mi_registry_expect_session(0xdeadbeefu,17)!=-2) return 6;
+    }
+    return 0;
+}
+""")
+    mod = REPO_ROOT / "modules/core/adapters/midi-events"
+    linked = patchkit.cf_link(
+        [
+            mod / "src/cf/ownership.c",
+            mod / "src/cf/transport.c",
+            mod / "src/cf/adapter.c",
+            helper,
+        ],
+        0x47E00000,
+        {},
+        [mod / "src/cf"],
+    )
+    calls = [
+        {
+            "op": "poke",
+            "addr": linked.base,
+            "hex": (linked.image + bytes(linked.bss_size)).hex(),
+        }
+    ]
+    for step, words in enumerate([bound, queried, lost, bound]):
+        calls.extend(
+            [
+                {
+                    "op": "poke",
+                    "addr": 0x47D00000,
+                    "hex": b"".join(w.to_bytes(4, "big") for w in words).hex(),
+                },
+                {
+                    "op": "call",
+                    "tag": str(step),
+                    "pc": linked.symbols["session_boundary"],
+                    "args": [0x47D00000, step],
+                    "max": 5_000_000,
+                },
+            ]
+        )
+    script = tmp_path / "session.json"
+    script.write_text(json.dumps(calls))
+    result = subprocess.run(
+        [str(runner), str(firmware), str(script)],
+        capture_output=True,
+        text=True,
+        timeout=90,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    rows = [
+        json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")
+    ]
+    executed = [row for row in rows if row.get("op") == "call"]
+    assert [row["tag"] for row in executed] == ["0", "1", "2", "3"]
+    for row in executed:
+        assert row["ok"] and not row["error"] and row["d0"] == 0, row

@@ -1229,6 +1229,33 @@ Focused documentation checks pass. Required preflight passes layering, host test
 formatting and types; it fails only on the existing 256 stale references in 78
 files (`out/canopy-bind-changed.log`).
 
+Firmware provider binding now requires six optional symbols, including
+`mi_registry_expect_session`. The typed expectation callback is consumed together
+with the transport/snapshot provider set and retained by the firmware owner; the
+complete diagnostic presence mask is now 63. Missing symbols remain unavailable
+for the whole CF boot, including an older adapter with no expectation callback.
+Binding still calls none of the providers and does not initiate a session.
+
+A new processor-boundary test executes BIND_SESSION and a subsequent QUERY in the
+production SHARC registry, builds their actual reply frames, and passes those
+words through the compiled CF record reader, frame publisher, session guard and
+registry snapshot getter. It then injects loss of DSP session/sequence storage,
+checks permanent getter revocation, and replays the old bound frame to confirm
+that neither old data nor another arm request restores trust. This crosses the
+registry-to-snapshot boundary; it does not drive the coordinator writes through
+physical SPI, emulate a real hardware reset, or automatically start a live bind.
+Those remaining integration/reset checks still gate CANOPY admission.
+Validation: all 162 SDK tests pass, including all 64 provider-presence masks and
+atomic one-time consumption (`out/canopy-bind-provider-sdk.log`). The new DSP-to-CF
+snapshot test passes (`out/canopy-bind-provider-cross.log`). Runtime rebuild and
+current-source checks pass at 32,416 decoded instructions; the retained callback
+storage is present in the object. Default DTII boot/INFO/reopen/restart passes
+with DNII skipped (`out/canopy-bind-provider-module.log`: one pass, one skip).
+This default boot check does not initiate a session.
+Focused documentation validation passes. Required preflight passes Python lint
+and formatting, layering, host tests, formatting and types; only the existing
+256 stale references in 78 files fail (`out/canopy-bind-provider-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

@@ -20,7 +20,7 @@ pub struct Binding {
     attempted: u32,
     present: u32,
     bound: u32,
-    providers: Option<OwnedProviders>,
+    providers: Option<(OwnedProviders, ExpectSession)>,
 }
 impl Binding {
     pub const fn new() -> Self {
@@ -33,10 +33,11 @@ impl Binding {
     }
     /// # Safety
     /// Nonzero addresses must be validated functions from this patched firmware
-    /// image, in order: claim, release, owned send, tagged poll, reply snapshot.
+    /// image, in order: claim, release, owned send, tagged poll, reply snapshot,
+    /// one-shot session expectation.
     /// Their signatures and lifetime must satisfy OwnedProviders::bind. Call only
     /// on the owning UI task. A DSP restart does not authorize rebinding.
-    pub unsafe fn bind_once(&mut self, addresses: [usize; 5]) {
+    pub unsafe fn bind_once(&mut self, addresses: [usize; 6]) {
         if self.attempted != 0 {
             return;
         }
@@ -45,9 +46,9 @@ impl Binding {
                 self.present |= 1 << i;
             }
         }
-        if self.present == 31 {
+        if self.present == 63 {
             // Never form a function pointer from an optional zero address.
-            self.providers = OwnedProviders::bind(
+            let providers = OwnedProviders::bind(
                 Some(core::mem::transmute::<usize, crate::instrument_lease::Claim>(addresses[0])),
                 Some(core::mem::transmute::<
                     usize,
@@ -60,13 +61,19 @@ impl Binding {
                 Some(core::mem::transmute::<usize, Poll>(addresses[3])),
                 Some(core::mem::transmute::<usize, Snapshot>(addresses[4])),
             );
+            self.providers = providers.map(|p| {
+                (
+                    p,
+                    core::mem::transmute::<usize, ExpectSession>(addresses[5]),
+                )
+            });
             self.bound = 1;
         }
         self.attempted = 1;
     }
     /// Move the provider set to its boot-long owner at most once. Presence and
     /// successful binding diagnostics remain unchanged after consumption.
-    pub fn take(&mut self) -> Option<OwnedProviders> {
+    pub fn take(&mut self) -> Option<(OwnedProviders, ExpectSession)> {
         self.providers.take()
     }
     pub fn diagnostics(&self) -> [u32; 3] {

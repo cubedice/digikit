@@ -9,9 +9,10 @@ struct State {
     next: u32,
     calls: [u32; 4],
     lease: u32,
+    arms: u32,
 }
 std::thread_local! { static STATE: RefCell<State> = RefCell::new(State {
-    claim_result: 0, release_result: 0, next: 7, calls: [0; 4], lease: 0,
+    claim_result: 0, release_result: 0, next: 7, calls: [0; 4], lease: 0, arms: 0,
 }); }
 unsafe extern "C" fn claim(out: *mut u32) -> i32 {
     STATE.with_borrow_mut(|s| {
@@ -69,6 +70,7 @@ fn api() -> OwnedApi {
             next: 7,
             calls: [0; 4],
             lease: 0,
+            arms: 0,
         }
     });
     unsafe { OwnedApi::new(claim, release, send, poll) }
@@ -166,20 +168,26 @@ fn stale_release_and_boot_invalidation_never_retry_or_reclaim() {
     });
 }
 
-fn addresses() -> [usize; 5] {
+unsafe extern "C" fn expect(token: u32, sequence: u32) -> i32 {
+    STATE.with_borrow_mut(|s| s.arms += 1);
+    assert_eq!((token, sequence), (7, 1));
+    17 // Distinct result verifies the consumed entry, without arming production.
+}
+fn addresses() -> [usize; 6] {
     [
         claim as usize,
         release as usize,
         send as usize,
         poll as usize,
         snapshot as usize,
+        expect as usize,
     ]
 }
 
 #[test]
 fn firmware_binding_handles_every_optional_mask_without_calls_or_late_rebinding() {
     let _ = api();
-    for mask in 0..32 {
+    for mask in 0..64 {
         let mut binding = crate::instrument_provider::Binding::new();
         assert_eq!(binding.diagnostics(), [0; 3]);
         let mut optional = addresses();
@@ -191,15 +199,16 @@ fn firmware_binding_handles_every_optional_mask_without_calls_or_late_rebinding(
         unsafe {
             binding.bind_once(optional);
         }
-        assert_eq!(binding.diagnostics(), [1, mask, u32::from(mask == 31)]);
+        assert_eq!(binding.diagnostics(), [1, mask, u32::from(mask == 63)]);
         // A missing provider stays missing for this CF boot, even if a caller
         // later supplies a complete set. Taking never resets diagnostic state.
         unsafe {
             binding.bind_once(addresses());
         }
-        assert_eq!(binding.take().is_some(), mask == 31);
+        assert_eq!(binding.take().is_some(), mask == 63);
+        STATE.with_borrow(|s| assert_eq!(s.arms, 0));
         assert!(binding.take().is_none());
-        assert_eq!(binding.diagnostics(), [1, mask, u32::from(mask == 31)]);
+        assert_eq!(binding.diagnostics(), [1, mask, u32::from(mask == 63)]);
     }
     STATE.with_borrow(|s| assert_eq!(s.calls, [0; 4]));
 }
@@ -212,13 +221,15 @@ fn resolved_provider_set_can_be_consumed_only_once_and_uses_original_entries() {
     unsafe {
         binding.bind_once(addresses());
     }
-    let (mut transport, _) = binding.take().unwrap().into_parts();
+    let (providers, arm) = binding.take().unwrap();
+    assert_eq!(unsafe { arm(7, 1) }, 17);
+    let (mut transport, _) = providers.into_parts();
     unsafe {
-        binding.bind_once([0; 5]);
+        binding.bind_once([0; 6]);
         binding.bind_once(addresses());
     }
     assert!(binding.take().is_none());
-    assert_eq!(binding.diagnostics(), [1, 31, 1]);
+    assert_eq!(binding.diagnostics(), [1, 63, 1]);
     assert_eq!(transport.claim(), Ok(true));
     assert_eq!(
         unsafe { transport.start(3, 0, b"abcd".as_ptr(), 4) },

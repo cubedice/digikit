@@ -5,12 +5,16 @@ use dkrt_sdk::{
     instrument_coordinator::{Coordinator, LegacyPolicy},
     instrument_lease::OwnedApi,
     instrument_load::Loads,
-    instrument_provider::Binding,
+    instrument_provider::{Binding, ExpectSession},
     instrument_transport::Driver,
 };
 
 type Owner = Coordinator<'static, OwnedApi>;
 static mut OWNER: Option<Owner> = None;
+// Bound atomically with the snapshot/transport set; not invoked until the
+// explicit loader bootstrap is enabled after reset-path validation.
+#[used]
+static mut EXPECT_SESSION: Option<ExpectSession> = None;
 #[repr(C, align(16))]
 struct Buffer([u8; 256]);
 static mut BUFFER: Buffer = Buffer([0; 256]);
@@ -43,6 +47,7 @@ extern "C" {
     fn dl_send_owned();
     fn dl_poll_tagged();
     fn mi_registry_reply();
+    fn mi_registry_expect_session();
 }
 
 /// Read-only diagnostic header: attempted, symbol-presence mask, bound. The
@@ -64,8 +69,10 @@ pub unsafe fn bind_once() {
         core::hint::black_box(dl_send_owned as usize),
         core::hint::black_box(dl_poll_tagged as usize),
         core::hint::black_box(mi_registry_reply as usize),
+        core::hint::black_box(mi_registry_expect_session as usize),
     ]);
-    if let Some(providers) = binding.take() {
+    if let Some((providers, expect)) = binding.take() {
+        EXPECT_SESSION = Some(expect);
         let (transport, replies) = providers.into_parts();
         let buffer = &mut (*addr_of_mut!(BUFFER)).0;
         // Zero admitted instances until device budgets and the shared allocator
