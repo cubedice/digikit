@@ -704,6 +704,26 @@ Focused documentation and layering checks pass. The changed-file preflight fails
 only on the existing 256 stale references in 78 files
 (`out/canopy-transport-changed.log`).
 
+Registry reply ingestion checkpoint: the CF MIDI receiver now accepts the optional
+IRR1 block in reply words 4..11 while preserving zero-reserved words 12..14,
+outer checksum, MIDI epoch and heartbeat checks. Previously its reserved-word
+validation rejected every registry-bearing reply, preventing MIDI ACK progress.
+The adapter caches the complete validated 16-word reply and exposes
+`mi_registry_reply` as a bounded UI-task copy under the frame publisher's IRQ
+lock. Missing/bad frames and explicit transport recovery invalidate the cache;
+no firmware record pointer escapes the frame callback. Registry bootstrap does
+not depend on the MIDI epoch. This is a framing snapshot, not freshness or
+transaction acceptance: the coordinator must still match the mailbox sequence,
+owner, generation, operation and row and enforce timeouts/reboot recovery.
+Actual provider binding and the top-level V2 load coordinator remain pending.
+Validation: all 87 MIDI component tests and 20 native MIDI host tests pass,
+including an actual SHARC-produced registry reply consumed by ColdFire and the
+snapshot capacity/corruption/recovery cases. The CF adapter is rebuilt and its
+current-artifact check passes. Logs: `out/canopy-reply-tests.log`,
+`out/canopy-reply-host.log`, `out/canopy-reply-build.log`. Focused documentation
+checks pass; the changed-file preflight fails only on the existing stale-path
+baseline (`out/canopy-reply-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

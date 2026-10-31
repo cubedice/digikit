@@ -40,11 +40,13 @@ uint32_t mt_check(const uint32_t words[MT_WORDS]);
 int mt_config_begin(MiTransport *t, const MiLedger *m, uint32_t track,
                     uint32_t revision, uint32_t schema,
                     const uint32_t *words, uint32_t count);
-/* Bootstrap ACK-only reply: magic, epoch, accepted message, heartbeat,
- * eleven reserved zero words, checksum. Final UI status needs another version.
+/* Reply: magic, epoch, accepted message, heartbeat, optional registry block
+ * in words 4..11, reserved zero words 12..14, checksum. Final UI needs another version.
  * Call once per CF block, including with null/malformed replies. Returns -1
  * invalid, 0 repeated/missing, 1 fresh, 2 fresh and pending packet acknowledged.
  * Only an epoch-bound, forward heartbeat may acknowledge a packet. */
+/* Framing/integrity only; independent of MIDI epoch and registry identity. */
+int mt_reply_valid(const uint32_t reply[MT_REPLY_WORDS]);
 int mt_reply_tick(MiTransport *t, MiLedger *m,
                   const uint32_t reply[MT_REPLY_WORDS], uint32_t block);
 void mt_reply_read(const volatile uint16_t *record, uint32_t out[MT_REPLY_WORDS]);

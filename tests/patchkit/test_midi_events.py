@@ -49,15 +49,29 @@ def reply_builder():
         },
     )
 
-    def build(epoch, message, heartbeat):
+    registry_at = 0x20041000
+    registry_linked = pk_sharc.link(
+        obj,
+        0xB90000,
+        {
+            **symbols,
+            "_mi_epoch": epoch_at,
+            "_mi_message": message_at,
+            "_instrument_registry_reply": registry_at,
+        },
+    )
+
+    def build(epoch, message, heartbeat, registry=None):
         dm = dict(initial)
+        if registry is not None:
+            dm.update({registry_at // 4 + i: w for i, w in enumerate(registry)})
         dm[epoch_at // 4] = epoch
         dm[message_at // 4] = message
         dm[symbols["_mi_heartbeat"] // 4] = heartbeat
         base = symbols["_instrument_reply"] // 4
         dm[base - 1] = dm[base + 16] = 0xDEADBEEF
         result = pk_sharc.run_call(
-            linked,
+            registry_linked if registry is not None else linked,
             "_mi_reply_build",
             regs={"M5": 0, "M6": 1, "L0": 0},
             dm_words=dm,
@@ -1221,6 +1235,23 @@ void *memset(void *d, int c, unsigned n) {
                     "args": [0x47D00000],
                     "max": 5_000_000,
                 },
+                {
+                    "op": "poke",
+                    "addr": 0x47D00000,
+                    "hex": b"".join(
+                        w.to_bytes(4, "big")
+                        for w in reply_builder(
+                            1, 1, 41, [0x49525231, 17, 2, 4, 4, 0, 0, 7]
+                        )
+                    ).hex(),
+                },
+                {
+                    "op": "call",
+                    "tag": "registry_cross",
+                    "pc": linked.symbols["mi_test_reply_from_dsp"],
+                    "args": [0x47D00000],
+                    "max": 5_000_000,
+                },
             ]
         )
     )
@@ -1236,7 +1267,7 @@ void *memset(void *d, int c, unsigned n) {
         json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")
     ]
     calls = [row for row in rows if row.get("op") == "call"]
-    assert [row["tag"] for row in calls] == names + ["reply_cross"]
+    assert [row["tag"] for row in calls] == names + ["reply_cross", "registry_cross"]
     for row in calls:
         assert row["ok"] and not row["error"] and row["d0"] == 0, row
     wire = bytes.fromhex(next(row["hex"] for row in rows if row.get("tag") == "wire"))

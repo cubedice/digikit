@@ -15,6 +15,17 @@ int dkrt_midi_rx(const uint8_t *msg, uint32_t len, uint32_t source)
     ++upload_calls;
     return len >= 4 && msg[0] == 0xf0 && msg[1] == 0x7d && msg[2] == 0x64 && msg[3] == 0x6b;
 }
+static void publish_reply(uint16_t *queue, uint16_t *record, uint32_t *r, int corrupt)
+{
+    uint32_t i, a = 0, b = 0;
+    for (i = 0; i < 15; ++i) { a += r[i]; b += a; }
+    r[15] = (a ^ b) ^ (uint32_t)corrupt;
+    for (i = 0; i < MT_REPLY_WORDS; ++i) {
+        uint32_t h = (0x1cu + 0x54u*(21u+i/2u)+0x44u+(i&1u)*4u)/2u;
+        record[h] = (uint16_t)r[i]; record[h+1] = (uint16_t)(r[i]>>16);
+    }
+    instrument_write_frame((uintptr_t)queue, 0x9fc/2, record);
+}
 uint32_t mi_test_dispatch(void)
 {
     uint8_t note[3] = {0x90, 60, 90};
@@ -23,6 +34,7 @@ uint32_t mi_test_dispatch(void)
     uint8_t clock = 0xf8;
     MiEvent e;
     uint16_t queue[0x55e*2], record[0xabc/2];
+    uint32_t snapshot[MT_REPLY_WORDS+2];
     uint32_t i, seq, r[MT_REPLY_WORDS], a = 0, b = 0;
     CHECK(!dkrt_midi_dispatch(note, 3, 2));
     CHECK(mi_route_enable(0, 0, 0, 0) == -2);
@@ -85,6 +97,29 @@ uint32_t mi_test_dispatch(void)
         CHECK(!queue[at] && !queue[at+2]);
     }
     CHECK(mi_route_enable(0, 0, 0, 0) == -2); /* reset ACK alone is not configured */
+    for (i = 0; i < MT_REPLY_WORDS+2; ++i) snapshot[i] = 0xdeadbeef;
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0);
+    r[1] = 99; /* Registry bootstrap is independent of MIDI epoch admission. */
+    r[3] = 2; r[4] = 0x49525231u; r[5] = 17; r[6] = 2; r[7] = 4;
+    r[8] = 4; r[9] = 0; r[10] = 0; r[11] = 7;
+    publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_reply(0, MT_REPLY_WORDS) == -1);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS-1) == -1);
+    for (i = 0; i < MT_REPLY_WORDS+2; ++i) CHECK(snapshot[i] == 0xdeadbeef);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS+2) == MT_REPLY_WORDS);
+    for (i = 0; i < MT_REPLY_WORDS; ++i) CHECK(snapshot[i] == r[i]);
+    CHECK(snapshot[16] == 0xdeadbeef && snapshot[17] == 0xdeadbeef);
+    CHECK(mi_route_enable(0, 0, 0, 0) == -2);
+    publish_reply(queue, record, r, 1);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0);
+    for (i = 0; i < 15; ++i) CHECK(snapshot[i] == r[i]);
+    CHECK(snapshot[15] == (r[15] ^ 1));
+    publish_reply(queue, record, r, 0);
+    mi_transport_recover();
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0);
+    publish_reply(queue, record, r, 0);
+    instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0);
     CHECK(masks == restores);
     return 0;
 }

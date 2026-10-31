@@ -34,6 +34,14 @@ uint32_t mi_test_reply_ack(void)
     reply_words(r, 1, message, 20);
     CHECK(mt_reply_tick(&t, &m, r, 5) == 0 && m.count == 1);
     reply_words(r, 1, message, 21);
+    r[4] = 0x49525231u; r[5] = 17; r[6] = 2; r[7] = 4;
+    r[8] = 4; r[9] = 0; r[10] = 0; r[11] = 7;
+    for (uint32_t j = 12; j < 15; ++j) {
+        r[j] = 1; reply_checksum(r);
+        CHECK(!mt_reply_valid(r));
+        r[j] = 0;
+    }
+    reply_checksum(r);
     CHECK(mt_reply_tick(&t, &m, r, 6) == 2 && !m.count);
     CHECK(mt_reply_tick(&t, &m, r, 7) == 0);
     reply_words(r, 1, message, 19);

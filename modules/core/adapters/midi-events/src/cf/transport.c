@@ -180,19 +180,28 @@ void mt_reply_read(const volatile uint16_t *record, uint32_t out[MT_REPLY_WORDS]
     }
 }
 
+int mt_reply_valid(const uint32_t reply[MT_REPLY_WORDS])
+{
+    uint32_t i, a = 0, b = 0;
+    if (!reply || reply[0] != MT_REPLY_MAGIC) return 0;
+    for (i = 0; i < MT_REPLY_WORDS-1; ++i) {
+        a += reply[i]; b += a;
+        if (i >= 12 && reply[i]) return 0;
+    }
+    if (reply[15] != (a ^ b)) return 0;
+    if (reply[4] == 0x49525231u) return 1; /* registry validates its own identity/status */
+    for (i = 4; i < 12; ++i) if (reply[i]) return 0;
+    return 1;
+}
+
 int mt_reply_tick(MiTransport *t, MiLedger *m,
                   const uint32_t reply[MT_REPLY_WORDS], uint32_t block)
 {
-    uint32_t i, a = 0, b = 0, valid = reply != 0;
+    uint32_t valid = mt_reply_valid(reply);
     int result = 0;
     if (t->epoch != m->epoch) { mt_init(t); t->epoch = m->epoch; }
     if (reply) {
-        for (i = 0; i < MT_REPLY_WORDS-1; ++i) {
-            a += reply[i]; b += a;
-            if (i >= 4 && reply[i]) valid = 0;
-        }
-        if (reply[0] != MT_REPLY_MAGIC || reply[1] != m->epoch ||
-            reply[15] != (a ^ b)) valid = 0;
+        if (reply[1] != m->epoch) valid = 0;
         if (!valid) result = -1;
     }
     if (valid) {

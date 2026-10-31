@@ -207,3 +207,13 @@ DIGIKIT_CF_SCRIPT=out/native/target/nogen/release/examples/cf_script \
 ```
 
 The host tests execute the production C implementation, including the runtime dispatcher. The ColdFire component test compiles the same cases for the target and executes them on its instruction core. Neither establishes real USB/DIN latency, stock AMP lifetime, DSP transport coexistence or final audio. Those remain required gates before enabling routes in a release.
+
+The CF reply validator accepts the optional IRR1 registry block in words 4..11;
+words 12..14 remain reserved zero and the outer checksum covers both blocks.
+`mi_registry_reply(out, words)` copies the last framed registry reply under the
+frame IRQ lock: 16 words on success, 0 if unavailable, -1 for a null output or
+capacity below 16. Unsuccessful calls leave output untouched. Missing or corrupt
+frames and explicit recovery invalidate the cache. MIDI epoch admission remains
+independent, so registry bootstrap can precede MIDI readiness. The caller must
+validate transaction identity and freshness; this getter does not enable routes
+or prove a live V2 module.
