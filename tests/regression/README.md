@@ -260,25 +260,33 @@ normally, measures C alone after 1.25 seconds (longer than its local release),
 and verifies pedal-up releases C while a fresh physically held G stays active.
 Final G release must restore output below -120 dBFS RMS and peak. This test has a
 five-minute body ceiling and can run alone by appending
-`runtime/canopy-reload.test.ts` to the command above. The `runtime/canopy-pattern.test.ts` companion prepares WERP on two patterns,
-starts playback, holds C and queues a switch. It requires observing scheduled
-lookahead, unchanged source generation until commitment, destination re-admission,
-and fresh C/G ownership despite an old C release. It has a five-minute body
-ceiling. Source and fresh destination notes must produce finite PCM above -80
-dBFS RMS. Reset and final release each drain 0.25 seconds before a separate
-window below -120 dBFS RMS and peak. A raw stereo f32le capture spans the queued
-switch through settled reset; its report records peak and maximum same-channel
-adjacent-frame step. Step magnitude is diagnostic, not a click-free acceptance
-threshold. Its ownership trace rejects samples spanning a committed boundary;
-PCM and trace timestamps are not sample-aligned. Other clock modes, pause/resume, rapid or cancelled
-switches, and other UI load paths are not covered. The separate
+`runtime/canopy-reload.test.ts` to the command above.
+
+The `runtime/canopy-pattern.test.ts` companion prepares WERP on two patterns,
+starts playback, holds C and queues a compatible switch. It requires observed
+scheduling lookahead, unchanged ownership through destination commitment, release
+by the original key-up, and fresh C/G playback afterwards. Its body ceiling is
+five minutes. Settled release output must fall below -120 dBFS RMS and peak.
+
+Stereo f32le capture includes at least 8,192 settled source frames before the
+switch is requested and continues through settled destination audio. Alongside
+window energy and adjacent-frame bounds, `sine-continuity.ts` estimates frequency,
+amplitude and phase from that source prefix alone. It predicts every subsequent
+sample without refitting. Each channel must stay within 0.1% of fitted amplitude,
+with a second-order sine recurrence residual below 0.001%. This is a bound for
+the fixed C4 sine and default Sound, not arbitrary musical audio. Host fault
+injections prove detection of a dropped sample, duplicate sample, oscillator
+restart, gain change and short gap on the right channel independently.
+
+Captures, ownership traces and the continuity report remain under
+`out/canopy-pattern-*`. UI polling is not sample-aligned; prediction covers the
+entire audio interval rather than assigning a PCM index to the UI transition.
+Other clock modes, pause/resume, rapid or cancelled switches, other Sound controls
+and other UI load paths are not covered. The separate
 `tests/patchkit/test_canopy_sound_load.py` component proof runs the real stock
 deserializer with synthetic records, including unrelated and rejected loads.
-The test has a
-six-minute ceiling for the slower-than-real-time coupled engine. UI frames and
-PCM statistics remain under `out/`. No spectral continuity or hardware claim is
-made. Preflight and public V2 initialization remain blocked as described in the
-[carrier findings](../../docs/findings/78-canopy-carrier.md).
+This remains emulator acceptance; the carrier fixture is not a hardware release.
+See the [carrier findings](../../docs/findings/78-canopy-carrier.md).
 
 The `canopy-carrier` project's `runtime/canopy-panic.test.ts` has a four-minute
 body ceiling. It sends USB CC123 under sustain, then USB CC120 while DIN holds a

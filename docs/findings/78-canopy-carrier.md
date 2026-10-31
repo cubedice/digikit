@@ -1007,3 +1007,34 @@ runtime has initialized its state. Hooking this early routine directly to a
 UI-only coordinator is not justified. A live DSP reset test must establish that
 the firmware actually reloads the patched stream and that no old transfer or
 MIDI route resumes. Production V2 admission remains disabled.
+
+
+## Source-predicted pattern continuity [D]
+
+The running compatible-pattern regression collects 8,192 settled stereo frames
+before requesting the destination. From that source-only prefix it fits frequency
+and sine/cosine coefficients, then predicts every captured frame without refitting.
+Both output channels must stay within 0.001 of fitted amplitude; the local sine
+recurrence residual must remain below 0.00001. A missing sample at C4 causes
+approximately 0.034 of amplitude error. Seven host cases cover unbroken float32
+stereo, invalid PCM, and detection of dropped/duplicated samples, oscillator
+restart, a 5% gain change and a 32-frame gap on the right channel independently.
+
+The 2026-10-31 emulator capture contains 87,520 stereo frames. Both channels fit
+261.625572273 Hz at amplitude 0.04195916821. Maximum prediction error is
+0.0001085897073 of amplitude (0.010859%); maximum recurrence residual is
+0.000001272750804 (0.0001273%). The highest prediction error is near the end,
+frame 87,297. This establishes bounded sample-level continuity across this
+compatible internal-clock switch with the fixed sine/default Sound. It does
+not claim bit identity, arbitrary controls or hardware audio acceptance.
+
+Evidence: `out/canopy-pattern-continuity.json`,
+`out/canopy-pattern-transition.f32le` and `out/canopy-continuity-live.log`.
+The full scenario also checks retained ownership, release by the original key-up,
+fresh destination notes, and final quietness. Seven host cases and TypeScript
+checking pass.
+
+The full pattern scenario passes in 202.95 seconds, including release and quietness.
+Changed-file preflight passes seven related host tests, lint, formatting, types
+and layering. Its only failure remains the repository pathcheck (256 existing
+stale references in 78 files). Focused checks of all four edited documents pass.

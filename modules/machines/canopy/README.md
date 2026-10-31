@@ -166,8 +166,9 @@ panel-driven temporary pattern reload also proves same-pointer invalidation,
 re-admission and stale-release protection. A running switch between two prepared patterns also preserves source ownership
 during observed scheduling lookahead and retains it after compatible commitment. The running-switch
 regression now checks retained tokens, original key release, source/destination audio and settled release quietness,
-and captures transition PCM with diagnostic adjacent-frame step measurements. Browser,
-kit and paste coverage, broader transport cases and audio continuity remain unproven. Public V2 initialization, broader Sound/control behavior
+and checks transition PCM against a source-only sine prediction on both channels.
+The fixed-Sound pattern-continuity bound passes. Browser,
+kit and paste coverage, broader transport cases and arbitrary-control audio continuity remain unproven. Public V2 initialization, broader Sound/control behavior
 and final-output continuity remain open. See the
 [carrier findings](../../../docs/findings/78-canopy-carrier.md) for measured results.
 

@@ -7,6 +7,7 @@ import { expect, onTestFinished, test } from 'vitest';
 import { withSession } from '../support.ts';
 import { settleUi } from './live.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
+import { sineContinuity } from './sine-continuity.ts';
 
 const h = withSession({
   device: 'dt2',
@@ -132,6 +133,10 @@ test('running pattern switch retains held notes across a compatible committed bo
   onTestFinished(async () => {
     if (capturing) await session.client.call('pcm.tap', { action: 'capture_stop' });
   });
+  // Capture a settled source-only prefix before scheduling the destination.
+  // Reset statistics after capture starts, so these frames are all in the file.
+  await session.client.call('pcm.tap', { action: 'start' });
+  await expect.poll(async () => (await pcm()).samples, { timeout: 20_000 }).toBeGreaterThanOrEqual(8192 * 2);
   const trace: {
     selected: number | null;
     committed: number | null;
@@ -214,6 +219,15 @@ test('running pattern switch retains held notes across a compatible committed bo
   // A settled C4 sine advances ~0.0343 radians/frame. Allow 0.05 * peak
   // for the stock output path; this is a fixture bound, not universal de-click proof.
   expect(maxStep).toBeLessThan(peak * 0.05);
+  const continuity = sineContinuity(raw);
+  fs.writeFileSync(path.join(root, 'out/canopy-pattern-continuity.json'), JSON.stringify(continuity));
+  for (const channel of continuity) {
+    expect(channel.frequency).toBeCloseTo(261.625565, 2);
+    // Fixed source-only prediction: one missing C4 sample is ~3.4% of amplitude.
+    // Allow 0.1% for accumulated oscillator/output rounding, without refitting.
+    expect(channel.relativeError).toBeLessThan(0.001);
+    expect(channel.relativeResidual).toBeLessThan(0.00001);
+  }
   await key('STOP');
   // The original key-up must release the original token after the switch.
   await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0] });
