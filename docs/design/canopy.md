@@ -896,6 +896,30 @@ Required preflight passes layering, host tests, formatting and types; it fails
 only on the existing 256 stale references in 78 files
 (`out/canopy-coordinator-changed.log`).
 
+The ColdFire DSP-link now provides exclusive transaction leases. Claiming an
+idle, drained channel returns a nonwrapping boot-local lease; owned sends require
+that exact lease and still use tagged transfer completion. Legacy and unowned
+starts return busy for the whole lease, including registry-reply gaps. Stale
+release/send requests cannot affect a later owner, and release refuses START,
+BUSY and outstanding END frames. Neither errors nor timeouts release ownership.
+The on-wire protocol and SHARC objects are unchanged.
+
+This supplies the physical-write boundary needed by the firmware scheduler. The
+runtime must still keep legacy load/FX state machines out of their between-write
+poll/start paths before claiming, hold the lease through V2 completion/recovery,
+and retain it on blocked/boot-invalidated outcomes. Provider binding, scheduling
+and explicit boot/session identity remain open; no V2 capability is activated.
+Validation: the rebuilt ColdFire object passes all 37 DSP-link tests, with two
+firmware-dependent skips (`out/canopy-link-lease-tests.log`). Nine added cases
+execute the lease API on the ColdFire core, covering normal/error END drainage,
+legacy exclusion, every transfer window, stale owners and exhausted generations.
+The SHARC objects are unchanged (`out/canopy-link-lease-build.log`).
+Python lint, formatting, focused docs and preflight host/types/layer checks pass.
+Required preflight fails only on the existing 256 stale references in 78 files
+(`out/canopy-link-lease-changed.log`).
+
+
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

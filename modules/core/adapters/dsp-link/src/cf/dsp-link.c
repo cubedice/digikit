@@ -19,6 +19,9 @@
  *   int dl_poll(DlStatus *st);                           the state (DL_IDLE, DL_BUSY, DL_DONE, DL_ERROR), and *st filled
  *   int dl_send_tagged(u32 win, u32 dst, const void *buf, u32 len, u32 *ticket); returns the accepted identity
  *   int dl_poll_tagged(u32 ticket, DlStatus *st); -1 mismatch; 0 pending; 1 terminal and END frames drained
+ *   int dl_claim(u32 *lease); 0 acquired; -1 busy; -2 null output/exhausted counter
+ *   int dl_release(u32 lease); 0 released; -1 not drained; -2 stale/zero lease
+ *   int dl_send_owned(u32 lease, u32 win, u32 dst, const void *buf, u32 len, u32 *ticket);
  *   int dl_diag(u32 *out, u32 n);                        the DSP's diagnostic words of the last block (layout: README.md and
  *       src/dsp/dsp-link.inc); returns the number of words written (at most n, at most DL_DG_WORDS), -1 when the image has no record
  *       address, -2 when the reply carries no diagnostic block (core/dsp-voice absent from the image, or the DSP halted
@@ -89,7 +92,9 @@ typedef struct DlLink {
     u32 dirty;
     u32 win; /* the window of the transfer (appended: the order of the fields above is read by tests) */
     u32 serial; /* nonzero accepted-request identity; never wraps within a boot */
-    u32 pad[1]; /* 80 bytes: the state fills whole 16-byte cache lines, no code shares a line it writes to (flush check) */
+    u32 lease; /* exclusive UI-task transaction owner, 0 permits legacy starts */
+    u32 lease_serial; /* nonwrapping boot-local ownership generation */
+    u32 pad[3]; /* 96 bytes: whole 16-byte cache lines, no code shares a written line */
 } DlLink;
 
 DlLink dl_link __attribute__((aligned(16)));
@@ -137,13 +142,51 @@ static void put_word(u32 tx, u32 e0, u32 j, u32 v)
     put_half(tx, e0 + 2u * j + 1u, v >> 16);
 }
 
-int dl_send(u32 dst_l2, const void *buf, u32 len)
+/* Leases cover entire transactions, including idle gaps awaiting a DSP reply.
+ * All producer calls remain serialized on the UI task. The ISR never claims,
+ * releases or changes ownership; a timeout does not implicitly release it. */
+static int can_send(u32 lease)
+{
+    DlLink *l = &dl_link;
+    u32 st = l->state;
+    if (lease != l->lease)
+        return lease ? -2 : -1;
+    if (st == DL_BUSY || st == DL_START || l->ending)
+        return -1;
+    return 0;
+}
+
+int dl_claim(u32 *lease)
+{
+    DlLink *l = &dl_link;
+    if (!lease || l->lease_serial == 0xffffffffu)
+        return -2;
+    if (l->lease || can_send(0))
+        return -1;
+    l->lease_serial++;
+    l->lease = l->lease_serial;
+    *lease = l->lease;
+    return 0;
+}
+
+int dl_release(u32 lease)
+{
+    DlLink *l = &dl_link;
+    if (!lease || lease != l->lease)
+        return -2;
+    if (can_send(lease))
+        return -1;
+    l->lease = 0;
+    return 0;
+}
+
+static int send_area(u32 lease, u32 dst_l2, const void *buf, u32 len)
 {
     u32 lo = (u32)_dl_area;
     DlLink *l = &dl_link;
-    u32 st = l->state;
-    if (st == DL_BUSY || st == DL_START || l->ending)
-        return -1;
+    int ready = can_send(lease);
+    if (ready)
+        return ready;
     if ((dst_l2 & 3u) || (len & 3u) || len == 0u || dst_l2 < lo || dst_l2 - lo >= DL_AREA_BYTES ||
         len > DL_AREA_BYTES - (dst_l2 - lo) || buf == 0)
         return -2;
@@ -161,12 +204,12 @@ int dl_send(u32 dst_l2, const void *buf, u32 len)
     return 0;
 }
 
-int dl_send_win(u32 win, u32 dst_word, const void *buf, u32 len)
+static int send_window(u32 lease, u32 win, u32 dst_word, const void *buf, u32 len)
 {
     DlLink *l = &dl_link;
-    u32 st = l->state;
-    if (st == DL_BUSY || st == DL_START || l->ending)
-        return -1;
+    int ready = can_send(lease);
+    if (ready)
+        return ready;
     if (win == 0u || win > 3u || (len & 3u) || len == 0u || dst_word >= DL_AREA_MAX_WORDS || buf == 0)
         return -2;
     if (l->serial == 0xffffffffu)
@@ -181,6 +224,29 @@ int dl_send_win(u32 win, u32 dst_word, const void *buf, u32 len)
     l->nerr = 0;
     l->state = DL_START;
     return 0;
+}
+
+int dl_send(u32 dst_l2, const void *buf, u32 len)
+{
+    return send_area(0, dst_l2, buf, len);
+}
+
+int dl_send_win(u32 win, u32 dst_word, const void *buf, u32 len)
+{
+    return send_window(0, win, dst_word, buf, len);
+}
+
+/* Same request identity and poll API as tagged sends. No unowned fallback:
+ * a stale lease cannot enter a later owner's transaction, even while idle. */
+int dl_send_owned(u32 lease, u32 win, u32 dst, const void *buf, u32 len, u32 *ticket)
+{
+    int result;
+    if (!lease || !ticket)
+        return -2;
+    result = win == 0u ? send_area(lease, dst, buf, len) : send_window(lease, win, dst, buf, len);
+    if (result == 0)
+        *ticket = dl_link.serial;
+    return result;
 }
 
 int dl_poll(DlStatus *s)

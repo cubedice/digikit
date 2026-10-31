@@ -40,6 +40,31 @@ ID, and does not alter the frame format. A drained transfer confirms neither
 row installation nor reset completion: V2 still needs the registry reply.
 The V2 runtime coordinator is not yet wired to these entry points.
 
+## Exclusive transaction ownership
+
+`dl_claim(lease_out)` acquires an idle, drained code channel for one UI-task
+transaction. It returns zero and a nonzero lease, -1 when owned/busy/draining,
+or -2 for null output or exhausted lease IDs. Failure leaves output untouched.
+Lease generations never wrap or reuse an ID within a ColdFire boot.
+
+While leased, legacy `dl_send`, `dl_send_win` and unowned `dl_send_tagged` return
+busy, including between transfers while the owner awaits a registry reply.
+`dl_send_owned(lease, win, dst, buf, len, ticket_out)` requires the current lease
+and returns a normal tagged request ID; `dl_poll_tagged` still proves drainage.
+A zero/stale lease or null ticket output returns -2 without starting a write.
+Claiming ownership does not consume a transfer ID or change the wire protocol.
+
+`dl_release(lease)` returns zero only for the current lease after START/BUSY and
+all END frames have finished. It returns -1 while undrained, -2 for zero/stale
+leases. Transfer errors and timeouts never release ownership automatically.
+On lost boot trust or uncertain drainage, retain ownership until whole-boot
+recovery; do not release merely because the caller's deadline expired.
+
+These calls serialize physical writes, not the runtime's entire job queue.
+The future UI scheduler must finish or suspend legacy load/FX transactions before
+claiming, keep their pollers paused while owned, and release only when the V2
+coordinator permits it. No live coordinator binding is enabled by this API.
+
 ## Optional DTII instrument allocation
 
 An optional `instrument_write_frame(tx_queue, entry, rec)` provider reserves 32

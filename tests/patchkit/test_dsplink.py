@@ -939,3 +939,141 @@ def test_transfer_identity_never_wraps(machine, built, serial, expected):
     assert results[0].reads[0] == (
         struct.pack(">I", 0xFFFFFFFF) if expected == 0 else b"\xcc" * 4
     )
+
+
+@needs_gcc
+@pytest.mark.parametrize("status", [1, 3])
+def test_lease_survives_terminal_drain_and_registry_reply_gap(machine, built, status):
+    src, lease, ticket, output = (DATA + n for n in (0x4000, 0x5000, 0x5100, 0x5200))
+    record = bytearray(0xABC)
+    struct.pack_into(">HHHH", record, ACK_OFF, ACK_MAGIC, 1, 1 | (status << 8), 0)
+    tick = call(built, "dl_tick", [0x802, 0, 0xABC, REC])
+    calls = [
+        call(built, "dl_claim", [lease], [(lease, 4)]),
+        call(built, "dl_send_owned", [1, 3, 0, src, 4, ticket], [(ticket, 4)]),
+        call(built, "dl_release", [1]),  # START is not drained
+        call(built, "dl_tick", [0x802, 0, 0xABC, 0]),
+        call(built, "dl_release", [1]),  # BUSY
+        tick,
+        call(built, "dl_release", [1]),  # terminal, END still outstanding
+        *([tick] * 5),
+        call(built, "dl_poll_tagged", [1, output], [(output, 28)]),
+        # Byte completion does not end ownership: registry reply may be pending.
+        call(built, "dl_send", [AREA, src, 4]),
+        call(built, "dl_send_win", [2, 0, src, 4]),
+        call(built, "dl_send_tagged", [0, AREA, src, 4, ticket], [(ticket, 4)]),
+        call(built, "dl_claim", [lease], [(lease, 4)]),
+        call(built, "dl_release", [2]),  # wrong owner cannot release
+        call(built, "dl_release", [1]),
+        call(built, "dl_send", [AREA, src, 4]),
+    ]
+    results = run(machine, built, {src: b"abcd", REC: bytes(record)}, calls)
+    assert results[0].d0 == results[1].d0 == 0
+    assert results[0].reads[0] == results[1].reads[0] == struct.pack(">I", 1)
+    assert [results[i].d0 for i in (2, 4, 6)] == [0xFFFFFFFF] * 3
+    assert results[12].d0 == 1
+    assert struct.unpack(">7I", results[12].reads[0])[0] == (2 if status == 1 else 3)
+    assert [r.d0 for r in results[13:17]] == [0xFFFFFFFF] * 4
+    assert results[15].reads[0] == results[16].reads[0] == struct.pack(">I", 1)
+    assert [r.d0 for r in results[17:]] == [0xFFFFFFFE, 0, 0]
+
+
+@needs_gcc
+@pytest.mark.parametrize("window", [0, 1, 2, 3])
+def test_owned_send_requires_current_lease_and_preserves_wire_window(
+    machine, built, window
+):
+    src, lease, ticket = (DATA + n for n in (0x4000, 0x5000, 0x5100))
+    dst = AREA if window == 0 else 3
+    args = [window, dst, src, 4, ticket]
+    results = run(
+        machine,
+        built,
+        {src: b"abcd", ticket: b"\xcc" * 4},
+        [
+            call(built, "dl_send_owned", [0, *args], [(ticket, 4)]),
+            call(built, "dl_send_owned", [1, *args], [(ticket, 4)]),
+            call(built, "dl_claim", [lease]),
+            call(built, "dl_release", [1]),
+            call(built, "dl_claim", [lease], [(lease, 4)]),
+            call(built, "dl_release", [1]),
+            call(built, "dl_send_owned", [1, *args], [(ticket, 4)]),
+            call(built, "dl_send_owned", [2, *args], [(ticket, 4)]),
+            call(built, "dl_tick", [0x802, 0, 0xABC, 0], [(TXQ, 0x55E * 4)]),
+        ],
+    )
+    assert [r.d0 for r in results[:8]] == [
+        0xFFFFFFFE,
+        0xFFFFFFFE,
+        0,
+        0,
+        0,
+        0xFFFFFFFE,
+        0xFFFFFFFE,
+        0,
+    ]
+    assert results[4].reads[0] == struct.pack(">I", 2)
+    for i in (0, 1, 6):
+        assert results[i].reads[0] == b"\xcc" * 4
+    assert results[7].reads[0] == struct.pack(
+        ">I", 1
+    )  # claims do not consume transfer IDs
+    words = tail_words(results[8].reads[0], 0x402, 174)
+    assert words[0] >> 30 == window
+    assert words[1] & 0x1FFFF == (0 if window == 0 else dst)
+    assert words[2] == int.from_bytes(b"abcd", "little")
+    assert words[3] == check_word(words[:3])
+
+
+@needs_gcc
+@pytest.mark.parametrize("serial,expected", [(0xFFFFFFFE, 0), (0xFFFFFFFF, 0xFFFFFFFE)])
+def test_lease_identity_never_wraps_or_changes_output_on_failure(
+    machine, built, serial, expected
+):
+    lease = DATA + 0x5000
+    results = run(
+        machine,
+        built,
+        {
+            built.symbols["dl_link"] + 80: struct.pack(">I", serial),
+            lease: b"\xcc" * 4,
+        },
+        [
+            call(built, "dl_claim", [0]),
+            call(built, "dl_claim", [lease], [(lease, 4)]),
+            call(built, "dl_release", [0]),
+        ],
+    )
+    assert [r.d0 for r in results] == [0xFFFFFFFE, expected, 0xFFFFFFFE]
+    assert results[1].reads[0] == (
+        struct.pack(">I", 0xFFFFFFFF) if expected == 0 else b"\xcc" * 4
+    )
+
+
+@needs_gcc
+def test_lease_claim_cannot_take_over_legacy_start_or_end_drain(machine, built):
+    src, lease = DATA + 0x4000, DATA + 0x5000
+    record = bytearray(0xABC)
+    struct.pack_into(">HHHH", record, ACK_OFF, ACK_MAGIC, 1, 1 | (1 << 8), 0)
+    tick = call(built, "dl_tick", [0x802, 0, 0xABC, REC])
+    claim = call(built, "dl_claim", [lease], [(lease, 4)])
+    results = run(
+        machine,
+        built,
+        {src: b"abcd", REC: bytes(record), lease: b"\xcc" * 4},
+        [
+            call(built, "dl_send", [AREA, src, 4]),
+            claim,
+            call(built, "dl_tick", [0x802, 0, 0xABC, 0]),
+            claim,
+            tick,
+            claim,
+            *([tick] * 5),
+            claim,
+        ],
+    )
+    for i in (1, 3, 5):
+        assert results[i].d0 == 0xFFFFFFFF
+        assert results[i].reads[0] == b"\xcc" * 4
+    assert results[-1].d0 == 0
+    assert results[-1].reads[0] == struct.pack(">I", 1)
