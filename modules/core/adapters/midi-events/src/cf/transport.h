@@ -50,4 +50,12 @@ int mt_reply_valid(const uint32_t reply[MT_REPLY_WORDS]);
 int mt_reply_tick(MiTransport *t, MiLedger *m,
                   const uint32_t reply[MT_REPLY_WORDS], uint32_t block);
 void mt_reply_read(const volatile uint16_t *record, uint32_t out[MT_REPLY_WORDS]);
+
+/* Separate from MIDI epochs: registry bootstrap precedes MIDI admission.
+ * Zero-initialize once per CF boot. invalid is sticky until a real cold boot. */
+typedef struct {
+    uint32_t seen, heartbeat, block, invalid;
+} MtReplyGuard;
+void mt_reply_guard_tick(MtReplyGuard *guard, const uint32_t *reply, uint32_t block);
+
 #endif

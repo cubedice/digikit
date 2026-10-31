@@ -212,8 +212,20 @@ The CF reply validator accepts the optional IRR1 registry block in words 4..11;
 words 12..14 remain reserved zero and the outer checksum covers both blocks.
 `mi_registry_reply(out, words)` copies the last framed registry reply under the
 frame IRQ lock: 16 words on success, 0 if unavailable, -1 for a null output or
-capacity below 16. Unsuccessful calls leave output untouched. Missing or corrupt
+capacity below 16, and -2 when registry boot trust is lost. Unsuccessful calls
+leave output untouched. Missing or corrupt
 frames and explicit recovery invalidate the cache. MIDI epoch admission remains
 independent, so registry bootstrap can precede MIDI readiness. The caller must
 validate transaction identity and freshness; this getter does not enable routes
 or prove a live V2 module.
+
+Registry reply trust uses its own heartbeat guard, independent of MIDI epoch
+admission. A valid backwards heartbeat, a non-advancing/missing heartbeat for
+`MT_STALL_BLOCKS`, or explicit MIDI transport recovery permanently invalidates
+registry snapshots until a cold CF boot. Valid heartbeat wraparound is accepted;
+corrupt replies cannot supply a new heartbeat. The getter returns -2 without
+copying old bytes after invalidation. This is conservative loss of trust, not a
+unique reboot detector. It cannot detect an unobserved reset whose new counter
+looks forward. If frame callbacks stop entirely, UI-task deadlines still apply.
+The SDK treats -2 as permanent boot invalidation and blocks the mailbox exchange
+without issuing a detach into the unknown boot or releasing its storage.

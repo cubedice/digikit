@@ -51,6 +51,38 @@ uint32_t mi_test_reply_ack(void)
 }
 uint32_t mi_test_reply_watchdog(void)
 {
+    MtReplyGuard g = {0};
+    uint32_t guard_reply[MT_REPLY_WORDS];
+    mt_reply_guard_tick(&g, 0, 10000);
+    CHECK(!g.seen && !g.invalid);
+    reply_words(guard_reply, 99, 0, UINT32_MAX);
+    mt_reply_guard_tick(&g, guard_reply, UINT32_MAX-5);
+    CHECK(g.seen && !g.invalid);
+    reply_words(guard_reply, 0, 0, 0);
+    mt_reply_guard_tick(&g, guard_reply, 2);
+    CHECK(!g.invalid && g.heartbeat == 0 && g.block == 2);
+    mt_reply_guard_tick(&g, guard_reply, 2+MT_STALL_BLOCKS-1);
+    CHECK(!g.invalid && g.block == 2); /* cached replies cannot extend liveness */
+    mt_reply_guard_tick(&g, guard_reply, 2+MT_STALL_BLOCKS);
+    CHECK(g.invalid);
+    reply_words(guard_reply, 0, 0, 1);
+    mt_reply_guard_tick(&g, guard_reply, 3+MT_STALL_BLOCKS);
+    CHECK(g.invalid && g.heartbeat == 0);
+    g.seen = g.invalid = 0;
+    reply_words(guard_reply, 0, 0, 50);
+    mt_reply_guard_tick(&g, guard_reply, 10);
+    guard_reply[3] = 1; /* bad checksum must not be mistaken for a reboot */
+    mt_reply_guard_tick(&g, guard_reply, 11);
+    CHECK(!g.invalid && g.heartbeat == 50);
+    reply_checksum(guard_reply);
+    mt_reply_guard_tick(&g, guard_reply, 12);
+    CHECK(g.invalid);
+    g.seen = g.invalid = 0;
+    reply_words(guard_reply, 0, 0, 50);
+    mt_reply_guard_tick(&g, guard_reply, 10);
+    mt_reply_guard_tick(&g, 0, 10+MT_STALL_BLOCKS);
+    CHECK(g.invalid);
+
     MiLedger m; MiTransport t;
     uint32_t r[MT_REPLY_WORDS];
     mi_init(&m); mt_init(&t);

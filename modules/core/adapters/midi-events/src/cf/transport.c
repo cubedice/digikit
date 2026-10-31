@@ -222,3 +222,18 @@ int mt_reply_tick(MiTransport *t, MiLedger *m,
         fault(t, m);
     return result;
 }
+
+
+void mt_reply_guard_tick(MtReplyGuard *g, const uint32_t *reply, uint32_t block)
+{
+    uint32_t delta;
+    if (g->invalid) return;
+    if (mt_reply_valid(reply)) {
+        delta = reply[3] - g->heartbeat;
+        if (g->seen && delta >= 0x80000000u) { g->invalid = 1; return; }
+        if (!g->seen || delta) {
+            g->seen = 1; g->heartbeat = reply[3]; g->block = block;
+        }
+    }
+    if (g->seen && block - g->block >= MT_STALL_BLOCKS) g->invalid = 1;
+}

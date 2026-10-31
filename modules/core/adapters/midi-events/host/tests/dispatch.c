@@ -115,11 +115,17 @@ uint32_t mi_test_dispatch(void)
     for (i = 0; i < 15; ++i) CHECK(snapshot[i] == r[i]);
     CHECK(snapshot[15] == (r[15] ^ 1));
     publish_reply(queue, record, r, 0);
+    /* A backwards, otherwise valid heartbeat invalidates registry trust even
+     * when its MIDI epoch is not admitted. The caller buffer stays unchanged. */
+    r[3] = 1;
+    publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == -2);
+    CHECK(snapshot[3] == 2);
     mi_transport_recover();
-    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == -2);
     publish_reply(queue, record, r, 0);
     instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0);
-    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == -2);
     CHECK(masks == restores);
     return 0;
 }

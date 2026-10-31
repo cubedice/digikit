@@ -148,7 +148,10 @@ impl<'a, T: Transport> Exchange<'a, T> {
                 self.finished = true;
                 Progress::Complete(None)
             }
-            Err(ReplyError::BootInvalidated) => self.block(Failure::Boot),
+            Err(ReplyError::BootInvalidated) => {
+                self.invalidate_boot();
+                Progress::Blocked(Failure::Boot)
+            }
             Err(ReplyError::Mailbox(_) | ReplyError::Provider(_)) => self.recover(Failure::Reply),
         }
     }

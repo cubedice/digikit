@@ -798,6 +798,31 @@ Changed-file preflight passes layering and fails only on the existing 256 stale
 references in 78 files (`out/canopy-upload-changed.log`).
 
 
+The production CF registry snapshot now has an independent heartbeat trust
+guard. It accepts forward progress and wraparound before MIDI epoch admission;
+valid backward movement, a stalled/missing heartbeat for MT_STALL_BLOCKS or an
+explicit transport recovery permanently invalidates the registry snapshot for
+that CF boot. Getter result -2 copies no bytes. The SDK reply adapter latches
+this result, and the exchange invalidates its driver and blocks rather than
+sending a blind detach or freeing storage. This closes the gap where the MIDI
+watchdog rejected a heartbeat but registry consumers could still read an old
+otherwise valid reply. Corrupt frames never reset the guard's liveness deadline.
+These are conservative trust-loss signals, not a unique DSP reboot identity.
+An unobserved reset that resumes with an apparently forward counter remains
+ambiguous; absent frame callbacks require the UI deadlines. Runtime binding and
+an explicit boot/session identity handshake remain open; no automatic reload or
+active V2 capability is enabled.
+Validation: 87 MIDI component tests, 20 MIDI host tests, all 113 SDK tests and
+the runtime host compile check pass. The production CF adapter is rebuilt and
+its artifact check passes. Logs: `out/canopy-boottrust-cf.log`,
+`out/canopy-boottrust-host.log`, `out/canopy-boottrust-build.log`,
+`out/canopy-boottrust-runtime.log`. Focused documentation checks pass. Toolchain
+status still reports codegen_gcc unavailable (`out/canopy-boottrust-toolchains.log`),
+so no ColdFire Rust runtime rebuild or live V2 activation is claimed.
+Changed-file preflight passes its host, type, formatting and layering checks;
+only the existing stale-reference baseline fails (`out/canopy-boottrust-changed.log`).
+
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

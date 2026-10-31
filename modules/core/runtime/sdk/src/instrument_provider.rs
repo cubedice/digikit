@@ -23,7 +23,8 @@ impl Providers {
     /// All supplied functions must be validated entries from the same DSP boot.
     /// Send/poll must obey instrument_transport::Transport. Snapshot must obey
     /// mi_registry_reply: write at most the supplied capacity, retain no pointer,
-    /// return 16 for a complete copy, 0 when unavailable, -1 for invalid capacity.
+    /// return 16 for a complete copy, 0 when unavailable, -1 for invalid capacity,
+    /// -2 when boot trust is lost (sticky until a cold boot).
     /// The caller must serialize UI-task access and invalidate on firmware reboot.
     pub unsafe fn bind(
         send: Option<Send>,
@@ -84,6 +85,10 @@ impl Replies {
         let mut words = [0u32; 16];
         match unsafe { (self.snapshot)(words.as_mut_ptr(), words.len() as u32) } {
             0 => return Ok(Progress::Waiting),
+            -2 => {
+                self.invalidate_boot();
+                return Err(Error::BootInvalidated);
+            }
             16 => {}
             other => return Err(Error::Provider(other)),
         }

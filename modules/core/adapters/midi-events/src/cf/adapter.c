@@ -13,6 +13,7 @@ static uint32_t initialized;
 static uint32_t frame_block;
 static uint32_t registry_reply[MT_REPLY_WORDS];
 static uint32_t registry_reply_valid;
+static MtReplyGuard registry_guard;
 
 static void initialize(void)
 {
@@ -33,7 +34,8 @@ void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_
     sr = dkrt_irq_mask();
     initialize();
     mt_reply_read(record, reply);
-    registry_reply_valid = mt_reply_valid(reply) && reply[4] == 0x49525231u;
+    mt_reply_guard_tick(&registry_guard, reply, frame_block);
+    registry_reply_valid = !registry_guard.invalid && mt_reply_valid(reply) && reply[4] == 0x49525231u;
     if (registry_reply_valid)
         for (i = 0; i < MT_REPLY_WORDS; ++i) registry_reply[i] = reply[i];
     mt_reply_tick(&mi_transport, &mi_ledger, record ? reply : 0, frame_block);
@@ -56,7 +58,8 @@ int mi_registry_reply(uint32_t *out, uint32_t words)
     int result = 0;
     if (!out || words < MT_REPLY_WORDS) return -1;
     sr = dkrt_irq_mask();
-    if (registry_reply_valid) {
+    if (registry_guard.invalid) result = -2;
+    else if (registry_reply_valid) {
         for (i = 0; i < MT_REPLY_WORDS; ++i) out[i] = registry_reply[i];
         result = MT_REPLY_WORDS;
     }
@@ -81,6 +84,7 @@ void mi_transport_recover(void)
     uint32_t sr = dkrt_irq_mask();
     initialize();
     registry_reply_valid = 0;
+    registry_guard.invalid = 1; /* recovery cannot establish a new DSP boot */
     mi_recover(&mi_ledger);
     mt_init(&mi_transport);
     mi_transport.epoch = mi_ledger.epoch;
