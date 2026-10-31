@@ -10,6 +10,68 @@ use crate::{
 
 pub type Snapshot = unsafe extern "C" fn(*mut u32, u32) -> i32;
 
+/// ColdFire-boot-local resolution state. First three u32 words are diagnostic:
+/// attempted, present-symbol mask, successfully bound. None means unavailable,
+/// never permission to retry later in the same boot. Not a V2 capability.
+#[repr(C)]
+pub struct Binding {
+    attempted: u32,
+    present: u32,
+    bound: u32,
+    providers: Option<OwnedProviders>,
+}
+impl Binding {
+    pub const fn new() -> Self {
+        Self {
+            attempted: 0,
+            present: 0,
+            bound: 0,
+            providers: None,
+        }
+    }
+    /// # Safety
+    /// Nonzero addresses must be validated functions from this patched firmware
+    /// image, in order: claim, release, owned send, tagged poll, reply snapshot.
+    /// Their signatures and lifetime must satisfy OwnedProviders::bind. Call only
+    /// on the owning UI task. A DSP restart does not authorize rebinding.
+    pub unsafe fn bind_once(&mut self, addresses: [usize; 5]) {
+        if self.attempted != 0 {
+            return;
+        }
+        for (i, address) in addresses.iter().enumerate() {
+            if *address != 0 {
+                self.present |= 1 << i;
+            }
+        }
+        if self.present == 31 {
+            // Never form a function pointer from an optional zero address.
+            self.providers = OwnedProviders::bind(
+                Some(core::mem::transmute::<usize, crate::instrument_lease::Claim>(addresses[0])),
+                Some(core::mem::transmute::<
+                    usize,
+                    crate::instrument_lease::Release,
+                >(addresses[1])),
+                Some(core::mem::transmute::<
+                    usize,
+                    crate::instrument_lease::SendOwned,
+                >(addresses[2])),
+                Some(core::mem::transmute::<usize, Poll>(addresses[3])),
+                Some(core::mem::transmute::<usize, Snapshot>(addresses[4])),
+            );
+            self.bound = 1;
+        }
+        self.attempted = 1;
+    }
+    /// Move the provider set to its boot-long owner at most once. Presence and
+    /// successful binding diagnostics remain unchanged after consumption.
+    pub fn take(&mut self) -> Option<OwnedProviders> {
+        self.providers.take()
+    }
+    pub fn diagnostics(&self) -> [u32; 3] {
+        [self.attempted, self.present, self.bound]
+    }
+}
+
 pub struct Providers {
     transport: Api,
     replies: Replies,

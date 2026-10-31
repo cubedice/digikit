@@ -952,6 +952,37 @@ pass. Preflight fails only on the existing 256 stale references in 78 files
 
 
 
+The firmware runtime now resolves the five optional V2 provider symbols on its
+first UI-loop pass: claim, release, owned send, tagged poll and registry reply.
+The SDK's boot-local binding checks every address before forming any function
+pointer, stores a complete set only, and can hand it off at most once. Missing
+symbols remain unavailable for that entire ColdFire boot; a later call cannot
+silently rebind after a DSP fault. Binding itself never invokes a provider or
+acquires DSP-link, so legacy loading and FX traffic continue normally.
+
+`DKRT_INSTRUMENT_BINDING` exposes a three-word diagnostic header (attempted,
+present-symbol bitmask, bound-at-boot) ahead of the private provider storage.
+Presence/binding is not lifecycle capability or boot-identity proof. The live
+scheduler must still quiesce legacy transactions, consume the provider set,
+manage acquisition/release deadlines, and revoke readiness on DSP boot loss.
+No V2 module admission or MIDI route is enabled by this binding.
+
+Validation: all 133 SDK tests pass (`out/canopy-runtime-binding-sdk.log`). The
+ColdFire runtime rebuild and current-source check pass, with 31,818 instructions
+re-decoded (`out/canopy-runtime-binding-build.log`,
+`out/canopy-runtime-binding-check.log`). Unlike the preceding SDK-only changes,
+this checkpoint adds executable code to the actual firmware UI path.
+The runtime module check passes for DTII (one pass, one DNII skip), covering
+boot/INFO, patched reopen and restart with stable inputs
+(`out/canopy-runtime-binding-module-stable.log`). An earlier run passed boot/INFO
+but failed its cache-hit assertion after a manifest comment changed mid-run;
+the stable rerun resolves that failure. This remains the default runtime set,
+not an end-to-end V2 instrument load. Focused documentation references pass.
+Required changed-file preflight passes layering, host tests, formatting and
+types; its only failure is the existing 256 stale references in 78 files
+(`out/canopy-runtime-binding-changed.log`).
+
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

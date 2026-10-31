@@ -22,6 +22,7 @@ pub mod card;
 pub mod crash;
 pub mod dlog;
 mod dsp;
+mod instrument;
 mod gen_abi_check;
 pub mod fxpage;
 mod fxsend;
@@ -1112,6 +1113,7 @@ pub unsafe extern "C" fn dkrt_restart() -> i32 {
 #[no_mangle]
 pub unsafe extern "C" fn dkrt_tick() {
     init_once();
+    instrument::bind_once();
     let s = st();
     s.ticks = s.ticks.wrapping_add(1);
     boot::ui_pass();

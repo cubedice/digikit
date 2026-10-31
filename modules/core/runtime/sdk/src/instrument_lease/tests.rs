@@ -165,3 +165,66 @@ fn stale_release_and_boot_invalidation_never_retry_or_reclaim() {
         assert_eq!(s.lease, 7);
     });
 }
+
+fn addresses() -> [usize; 5] {
+    [
+        claim as usize,
+        release as usize,
+        send as usize,
+        poll as usize,
+        snapshot as usize,
+    ]
+}
+
+#[test]
+fn firmware_binding_handles_every_optional_mask_without_calls_or_late_rebinding() {
+    let _ = api();
+    for mask in 0..32 {
+        let mut binding = crate::instrument_provider::Binding::new();
+        assert_eq!(binding.diagnostics(), [0; 3]);
+        let mut optional = addresses();
+        for (i, value) in optional.iter_mut().enumerate() {
+            if mask & (1 << i) == 0 {
+                *value = 0;
+            }
+        }
+        unsafe {
+            binding.bind_once(optional);
+        }
+        assert_eq!(binding.diagnostics(), [1, mask, u32::from(mask == 31)]);
+        // A missing provider stays missing for this CF boot, even if a caller
+        // later supplies a complete set. Taking never resets diagnostic state.
+        unsafe {
+            binding.bind_once(addresses());
+        }
+        assert_eq!(binding.take().is_some(), mask == 31);
+        assert!(binding.take().is_none());
+        assert_eq!(binding.diagnostics(), [1, mask, u32::from(mask == 31)]);
+    }
+    STATE.with_borrow(|s| assert_eq!(s.calls, [0; 4]));
+}
+
+#[test]
+fn resolved_provider_set_can_be_consumed_only_once_and_uses_original_entries() {
+    let _ = api();
+    let mut binding = crate::instrument_provider::Binding::new();
+    assert!(binding.take().is_none());
+    unsafe {
+        binding.bind_once(addresses());
+    }
+    let (mut transport, _) = binding.take().unwrap().into_parts();
+    unsafe {
+        binding.bind_once([0; 5]);
+        binding.bind_once(addresses());
+    }
+    assert!(binding.take().is_none());
+    assert_eq!(binding.diagnostics(), [1, 31, 1]);
+    assert_eq!(transport.claim(), Ok(true));
+    assert_eq!(
+        unsafe { transport.start(3, 0, b"abcd".as_ptr(), 4) },
+        (0, 42)
+    );
+    assert_eq!(transport.poll(42, &mut Status::default()), 1);
+    assert_eq!(transport.release(), Ok(()));
+    STATE.with_borrow(|s| assert_eq!(s.calls, [1; 4]));
+}
