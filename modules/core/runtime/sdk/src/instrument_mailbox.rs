@@ -82,6 +82,18 @@ impl Mailbox {
         }
     }
 
+    /// Reserve from the same boot-wide sequence namespace for session binding.
+    pub(crate) fn reserve_session_sequence(&mut self) -> Result<u32, Error> {
+        if self.pending.is_some() {
+            return Err(Error::Busy);
+        }
+        self.sequence = self
+            .sequence
+            .checked_add(1)
+            .ok_or(Error::SequenceExhausted)?;
+        Ok(self.sequence)
+    }
+
     /// Caller must drain previous image/mailbox transfers before starting,
     /// especially before detach. A false drain confirmation changes nothing.
     pub fn begin(
@@ -168,7 +180,9 @@ impl Mailbox {
         Ok(())
     }
 
-    pub(crate) fn has_pending(&self) -> bool { self.pending.is_some() }
+    pub(crate) fn has_pending(&self) -> bool {
+        self.pending.is_some()
+    }
 
     pub fn take_installed(&mut self) -> Option<Installed> {
         self.installed.take()
@@ -236,7 +250,11 @@ impl Mailbox {
             a = a.wrapping_add(*word);
             b = b.wrapping_add(a);
         }
-        if words[0] != 0x494ea101 || words[4] != 0x49525231 || words[15] != a ^ b || words[12..15] != [0; 3] {
+        if words[0] != 0x494ea101
+            || words[4] != 0x49525231
+            || words[15] != a ^ b
+            || words[12..15] != [0; 3]
+        {
             return Err(Error::InvalidReply);
         }
         if words[5..10]

@@ -8,6 +8,8 @@ use crate::{
     instrument_transport::{Api, Poll, Send},
 };
 
+pub type ExpectSession = unsafe extern "C" fn(u32, u32) -> i32;
+
 pub type Snapshot = unsafe extern "C" fn(*mut u32, u32) -> i32;
 
 /// ColdFire-boot-local resolution state. First three u32 words are diagnostic:
@@ -186,6 +188,31 @@ impl Replies {
             }
             other => Err(Error::Provider(other)),
         }
+    }
+
+    /// Bootstrap-only reply check, after all bind writes have drained. Does not
+    /// admit lifecycle commands or relax the existing mailbox version contract.
+    pub(crate) fn session_bound(&mut self, token: u32, sequence: u32) -> Result<bool, Error> {
+        let mut w = [0u32; 16];
+        if !self.snapshot_into(&mut w)? {
+            return Ok(false);
+        }
+        let (mut a, mut b) = (0u32, 0u32);
+        for word in &w[..15] {
+            a = a.wrapping_add(*word);
+            b = b.wrapping_add(a);
+        }
+        if w[0] != 0x494ea102
+            || w[4..12] != [0x49525231, sequence, 0, token, 5, 0, 0, 0]
+            || token == 0
+            || w[12] != token
+            || w[13] != 0
+            || w[14] != 0
+            || w[15] != (a ^ b)
+        {
+            return Err(Error::Mailbox(instrument_mailbox::Error::InvalidReply));
+        }
+        Ok(true)
     }
 
     /// Read a private stack snapshot and pass it through the mailbox validator.

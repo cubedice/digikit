@@ -84,6 +84,7 @@ pub struct Coordinator<'image, T> {
     blocked: Option<Failure>,
     handoff: Handoff,
     costs: [Option<admission::Cost>; 32],
+    session: Option<session::Session>,
 }
 
 impl<'image, T: Transport> Coordinator<'image, T> {
@@ -100,6 +101,7 @@ impl<'image, T: Transport> Coordinator<'image, T> {
             blocked: None,
             handoff: Handoff::Released,
             costs: [None; 32],
+            session: None,
         }
     }
 
@@ -133,6 +135,7 @@ impl<'image, T: Transport> Coordinator<'image, T> {
             return Err(Error::Blocked);
         }
         if self.job.is_some()
+            || self.session.is_some()
             || matches!(
                 self.handoff,
                 Handoff::Acquire { .. } | Handoff::Release { .. }
@@ -215,6 +218,9 @@ impl<'image, T: Transport> Coordinator<'image, T> {
     pub fn tick(&mut self, now: u32) -> Progress {
         if let Err(cause) = self.observe_boot() {
             return Progress::Blocked(cause);
+        }
+        if self.session.is_some() {
+            return self.tick_session(now);
         }
         let Some(job) = self.job.as_mut() else {
             return Progress::Idle;
@@ -328,6 +334,7 @@ impl<T: crate::instrument_lease::LeaseTransport> Coordinator<'_, T> {
             return Err(Error::Blocked);
         }
         if self.job.is_some()
+            || self.session_pending()
             || !matches!(
                 (acquire, self.handoff),
                 (true, Handoff::Released) | (false, Handoff::Owned)
@@ -354,6 +361,10 @@ impl<T: crate::instrument_lease::LeaseTransport> Coordinator<'_, T> {
     pub fn tick_link(&mut self, now: u32, legacy_idle: bool) -> LinkProgress {
         if let Err(cause) = self.observe_boot() {
             return LinkProgress::Blocked(cause);
+        }
+        if self.session_expired(now) {
+            self.blocked = Some(Failure::Timeout);
+            return LinkProgress::Blocked(Failure::Timeout);
         }
         let (start, budget, acquire) = match self.handoff {
             Handoff::Released => return LinkProgress::Released,
@@ -400,7 +411,7 @@ impl<T: crate::instrument_lease::LeaseTransport> Coordinator<'_, T> {
         if self.blocked.is_some() {
             return Err(crate::instrument_lease::Error::Uncertain);
         }
-        if self.job.is_some() {
+        if self.job.is_some() || self.session_pending() {
             return Err(crate::instrument_lease::Error::Busy);
         }
         let result = self.driver.claim_link();
@@ -416,7 +427,7 @@ impl<T: crate::instrument_lease::LeaseTransport> Coordinator<'_, T> {
         if self.blocked.is_some() {
             return Err(crate::instrument_lease::Error::Uncertain);
         }
-        if self.job.is_some() {
+        if self.job.is_some() || self.session_pending() {
             return Err(crate::instrument_lease::Error::Busy);
         }
         let result = self.driver.release_link();
@@ -432,3 +443,5 @@ mod tests;
 
 mod admission;
 pub use admission::AdmissionError;
+
+mod session;

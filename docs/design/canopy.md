@@ -1194,6 +1194,41 @@ Focused documentation checks pass. Required preflight passes Python lint/format,
 layering, host tests, formatting and types; only the existing 256 stale references
 in 78 files fail (`out/canopy-session-guard-changed.log`).
 
+The owning SDK coordinator now drives the one-shot bind exchange. Its unsafe
+`begin_session` entry requires the validated CF expectation provider, exclusive
+link ownership, an idle driver and no admitted rows. It reserves from the same
+nonwrapping mailbox sequence namespace and arms the CF guard before the first
+write. Tick sends clear/body/commit through the existing retained driver buffer,
+advancing only on the matching drained transfer completion, then validates the
+full version-2 bind reply and checksum. Transport completion alone never marks
+the session bound. One monotonic UI-task deadline covers all writes, busy starts
+and ACK waiting; link-handoff ticks also enforce it when transfer ticks stop.
+
+Repeated starts cannot rearm or renew the exchange. Arm failure, lost boot trust,
+link failure, malformed/mismatched ACK or expiry blocks the owner and retains
+its lease and any pending source buffer. There is no blind detach, rebind or
+timeout-driven reuse. A successful bind can release the drained lease, but this
+checkpoint refuses image admission/start on session-bearing owners: lifecycle
+mailbox and MIDI version-2 support still need integration. Legacy pre-session
+component paths retain their existing behavior; the live runtime's zero-instance
+gate remains closed.
+
+This is coordinator integration, not an automatically started firmware bind.
+Optional expectation-provider resolution, invoking the handshake from the live
+loader, a composed CF-to-DSP bind proof, and DSP reset-path coverage remain open.
+The SDK tests exercise production coordinator/driver logic with simulated link
+and reply providers; they do not establish live transport or restart behavior.
+Validation: all 162 SDK tests pass (`out/canopy-bind-sdk.log`), including exact
+write drainage, shared sequence allocation, lost ACK, valid-checksum wrong token,
+wraparound timeout, arm failures and retained ownership after link failures.
+ColdFire rebuild/current-source checks pass (32,377 decoded instructions;
+`out/canopy-bind-build.log`, `out/canopy-bind-check.log`). The default DTII runtime
+boot/INFO/reopen/restart check passes, with DNII skipped
+(`out/canopy-bind-module.log`: one pass, one skip); this does not run a live bind.
+Focused documentation checks pass. Required preflight passes layering, host tests,
+formatting and types; it fails only on the existing 256 stale references in 78
+files (`out/canopy-bind-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

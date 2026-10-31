@@ -92,6 +92,10 @@ pub struct Completed {
     target: Target,
 }
 impl Completed {
+    pub(crate) fn session(&self, sequence: u32, stage: u32) -> bool {
+        self.target == Target::Mailbox { sequence, stage }
+    }
+
     pub fn image(
         self,
         transfer: &mut image::Transfer<'_>,

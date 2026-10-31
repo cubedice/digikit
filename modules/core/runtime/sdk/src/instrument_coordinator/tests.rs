@@ -12,6 +12,9 @@ use std::{boxed::Box, cell::RefCell, vec::Vec};
 #[derive(Default)]
 struct Wire {
     require_lease: bool,
+    expected: u32,
+    arms: u32,
+    arm_error: i32,
     owned: bool,
     claims: u32,
     releases: u32,
@@ -98,6 +101,13 @@ unsafe impl Transport for Link {
                         if w.words[5] == w.reject { 1 } else { 0 },
                         7,
                     ]);
+                    if w.words[5] == 5 {
+                        assert_eq!(w.expected, w.words[4]);
+                        assert_eq!(w.arms, 1);
+                        w.reply[0] = 0x494ea102;
+                        w.reply[11] = 0;
+                        w.reply[12] = w.expected;
+                    }
                     let (mut a, mut b) = (0u32, 0u32);
                     for word in &w.reply[..15] {
                         a = a.wrapping_add(*word);
@@ -1230,6 +1240,175 @@ fn malformed_guard_provider_results_stop_handoff_without_link_callbacks() {
                 (w.claims, w.releases, w.starts, w.polls, w.snapshots),
                 (0, 0, 0, 0, 1)
             )
+        });
+    }
+}
+
+unsafe extern "C" fn expect_session(token: u32, sequence: u32) -> i32 {
+    WIRE.with_borrow_mut(|w| {
+        assert!(w.owned);
+        assert_eq!(sequence, 1);
+        w.arms += 1;
+        w.expected = token;
+        w.arm_error
+    })
+}
+fn bootstrap_owner() -> Coordinator<'static, Link> {
+    let mut c = admission_owner();
+    c.request_link(0, 100).unwrap();
+    assert_eq!(c.tick_link(1, true), LinkProgress::Owned);
+    c
+}
+#[test]
+fn session_exchange_arms_once_drains_each_write_and_keeps_sequence_namespace() {
+    let mut c = bootstrap_owner();
+    unsafe { c.begin_session(expect_session, 0xdeadbeef, 2, 100) }.unwrap();
+    assert_eq!(c.request_link_release(3, 100), Err(Error::Busy));
+    assert_eq!(
+        unsafe { c.begin_session(expect_session, 1, 3, 100) },
+        Err(Error::Busy)
+    );
+    for now in 3..9 {
+        assert_eq!(c.tick(now), Progress::Pending);
+    }
+    assert!(!c.session_bound()); // transport completion alone is insufficient
+    assert_eq!(c.tick(9), Progress::Idle);
+    assert!(c.session_bound());
+    assert_eq!(c.mailbox.reserve_session_sequence(), Ok(2));
+    WIRE.with_borrow(|w| {
+        assert_eq!(w.arms, 1);
+        assert_eq!(w.starts, 3);
+        assert_eq!(w.operations, [(1, 5, 0)]);
+        assert!(w.source.is_none());
+    });
+    assert_eq!(
+        unsafe { c.begin_session(expect_session, 2, 10, 100) },
+        Err(Error::Busy)
+    );
+    c.request_link_release(10, 100).unwrap();
+    assert_eq!(c.tick_link(11, true), LinkProgress::Released);
+}
+#[test]
+fn session_deadline_cannot_be_renewed_and_retains_pending_buffer() {
+    for mode in [0, 1] {
+        let mut c = bootstrap_owner();
+        unsafe { c.begin_session(expect_session, 1, u32::MAX - 2, 5) }.unwrap();
+        WIRE.with_borrow_mut(|w| {
+            w.mode = mode;
+            w.busy = mode == 1;
+        });
+        assert_eq!(c.tick(u32::MAX - 1), Progress::Pending);
+        assert_eq!(c.tick(1), Progress::Pending);
+        assert_eq!(c.tick(2), Progress::Blocked(Failure::Timeout));
+        let counts = WIRE.with_borrow(|w| (w.starts, w.polls, w.snapshots));
+        assert_eq!(c.tick(3), Progress::Blocked(Failure::Timeout));
+        assert_eq!(c.request_link_release(3, 10), Err(Error::Blocked));
+        WIRE.with_borrow(|w| {
+            assert_eq!((w.starts, w.polls, w.snapshots), counts);
+            assert!(w.owned);
+            if mode == 0 {
+                assert!(w.source.is_some());
+            }
+        });
+    }
+}
+#[test]
+fn session_ack_loss_and_wrong_identity_block_without_rebind() {
+    for silent in [false, true] {
+        let mut c = bootstrap_owner();
+        unsafe { c.begin_session(expect_session, 7, 2, 10) }.unwrap();
+        for now in 3..9 {
+            assert_eq!(c.tick(now), Progress::Pending);
+        }
+        WIRE.with_borrow_mut(|w| {
+            w.silent = silent;
+            w.reply[12] ^= 1;
+            let (mut a, mut b) = (0u32, 0u32);
+            for word in &w.reply[..15] {
+                a = a.wrapping_add(*word);
+                b = b.wrapping_add(a);
+            }
+            w.reply[15] = a ^ b;
+        });
+        if silent {
+            assert_eq!(c.tick(9), Progress::Pending);
+            assert_eq!(
+                c.tick_link(12, true),
+                LinkProgress::Blocked(Failure::Timeout)
+            );
+        } else {
+            assert_eq!(c.tick(9), Progress::Blocked(Failure::Reply));
+        }
+        assert!(!c.session_bound());
+        assert_eq!(
+            unsafe { c.begin_session(expect_session, 8, 13, 10) },
+            Err(Error::Blocked)
+        );
+        WIRE.with_borrow(|w| {
+            assert_eq!(w.arms, 1);
+            assert_eq!(w.starts, 3);
+            assert_eq!(w.releases, 0);
+        });
+    }
+}
+#[test]
+fn session_arm_failure_and_boot_loss_never_send_or_release() {
+    for error in [-1, -2, 7] {
+        let mut c = bootstrap_owner();
+        WIRE.with_borrow_mut(|w| w.arm_error = error);
+        assert_eq!(
+            unsafe { c.begin_session(expect_session, 1, 2, 10) },
+            Err(Error::Blocked)
+        );
+        assert!(!c.session_bound());
+        WIRE.with_borrow(|w| {
+            assert_eq!(w.arms, 1);
+            assert_eq!(w.starts, 0);
+            assert!(w.owned);
+        });
+    }
+    let mut c = bootstrap_owner();
+    unsafe { c.begin_session(expect_session, 1, 2, 10) }.unwrap();
+    WIRE.with_borrow_mut(|w| w.boot_lost = true);
+    assert_eq!(c.tick(3), Progress::Blocked(Failure::Boot));
+    WIRE.with_borrow(|w| {
+        assert_eq!(w.starts, 0);
+        assert_eq!(w.releases, 0);
+    });
+}
+#[test]
+fn session_requires_ownership_and_valid_budget_before_arming() {
+    let mut c = admission_owner();
+    assert_eq!(
+        unsafe { c.begin_session(expect_session, 1, 0, 10) },
+        Err(Error::NotOwned)
+    );
+    for (token, budget) in [(0, 10), (1, 0), (1, 0x80000000)] {
+        assert_eq!(
+            unsafe { c.begin_session(expect_session, token, 0, budget) },
+            Err(Error::Budget)
+        );
+    }
+    WIRE.with_borrow(|w| {
+        assert_eq!(w.arms, 0);
+        assert_eq!(w.starts, 0);
+    });
+}
+
+#[test]
+fn session_link_failure_retains_lease_and_never_retries_commit() {
+    for mode in [2, 3] {
+        let mut c = bootstrap_owner();
+        unsafe { c.begin_session(expect_session, 1, 2, 100) }.unwrap();
+        assert_eq!(c.tick(3), Progress::Pending);
+        WIRE.with_borrow_mut(|w| w.mode = mode);
+        assert_eq!(c.tick(4), Progress::Blocked(Failure::Link));
+        assert_eq!(c.tick(5), Progress::Blocked(Failure::Link));
+        WIRE.with_borrow(|w| {
+            assert_eq!(w.starts, 1);
+            assert_eq!(w.polls, 1);
+            assert!(w.owned);
+            assert_eq!(w.releases, 0);
         });
     }
 }
