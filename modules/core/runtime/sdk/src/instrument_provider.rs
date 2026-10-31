@@ -107,6 +107,7 @@ impl OwnedProviders {
             replies: Replies {
                 snapshot: snapshot?,
                 invalidated: false,
+                session: None,
             },
         })
     }
@@ -136,6 +137,7 @@ impl Providers {
             replies: Replies {
                 snapshot: snapshot?,
                 invalidated: false,
+                session: None,
             },
         })
     }
@@ -148,6 +150,7 @@ impl Providers {
 pub struct Replies {
     snapshot: Snapshot,
     invalidated: bool,
+    session: Option<u32>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -198,8 +201,12 @@ impl Replies {
     }
 
     /// Bootstrap-only reply check, after all bind writes have drained. Does not
-    /// admit lifecycle commands or relax the existing mailbox version contract.
+    /// admit lifecycle commands. Latches the identity for later reply validation.
     pub(crate) fn session_bound(&mut self, token: u32, sequence: u32) -> Result<bool, Error> {
+        if self.session.is_some() {
+            self.invalidate_boot();
+            return Err(Error::BootInvalidated);
+        }
         let mut w = [0u32; 16];
         if !self.snapshot_into(&mut w)? {
             return Ok(false);
@@ -219,6 +226,7 @@ impl Replies {
         {
             return Err(Error::Mailbox(instrument_mailbox::Error::InvalidReply));
         }
+        self.session = Some(token);
         Ok(true)
     }
 
@@ -231,7 +239,7 @@ impl Replies {
         if !self.snapshot_into(&mut words)? {
             return Ok(Progress::Waiting);
         }
-        match mailbox.reply(&words, loads) {
+        match mailbox.reply_for_session(&words, loads, self.session) {
             Ok(Some(command)) => Ok(Progress::Complete(command)),
             Ok(None) => Ok(Progress::RowComplete),
             Err(instrument_mailbox::Error::MismatchedReply) => Ok(Progress::Waiting),

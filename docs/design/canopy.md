@@ -1331,6 +1331,23 @@ analysis database. The latter suite has 222 passes and five failures; its task
 routing and database-dependent code are unchanged by this checkpoint. See
 `out/canopy-session-loss-changed.log` and `out/canopy-session-loss-layers-test.log`.
 
+The SDK reply provider now retains the token from a successful bootstrap ACK
+and uses it to validate subsequent lifecycle replies. Bound replies require V2
+framing, that exact nonzero token, zero reserved fields and the full checksum
+before transaction matching. Unbound callers retain the V1 contract. A second
+bootstrap validation invalidates the provider permanently; it cannot replace the
+identity. Host coverage verifies wrong-token/downgrade rejection without pending
+load mutation, same-session delayed replies and successful publication. All 163
+SDK tests pass (`out/canopy-session-replies-host.log`). This adds reply validation
+only: the coordinator still refuses image loads/admission after binding, and
+production lifecycle capabilities remain disabled pending reset-path proof.
+The rebuilt runtime passes current-artifact checks and both running-firmware
+session regressions (normal bind and permanent loss/replay revocation;
+`out/canopy-session-replies-live.log`). Required staged preflight passes its
+selected host, layering, lint, formatting and type checks; its only failure is
+the existing stale-reference baseline (`out/canopy-session-replies-changed.log`).
+
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

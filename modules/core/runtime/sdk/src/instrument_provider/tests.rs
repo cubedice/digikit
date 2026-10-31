@@ -268,3 +268,63 @@ fn boot_probe_does_not_consume_or_publish_a_pending_reply() {
     assert_eq!(replies(absent).check_boot(), Ok(()));
     assert_eq!(replies(short).check_boot(), Err(Error::Provider(15)));
 }
+
+#[test]
+fn bound_session_checks_identity_before_transaction_and_preserves_pending_load() {
+    extern crate std;
+    std::thread_local! {
+        static FRAME: core::cell::Cell<[u32; 16]> = const { core::cell::Cell::new([0; 16]) };
+    }
+    fn frame(mut words: [u32; 16]) {
+        let (mut a, mut b) = (0u32, 0u32);
+        for word in &words[..15] {
+            a = a.wrapping_add(*word);
+            b = b.wrapping_add(a);
+        }
+        words[15] = a ^ b;
+        FRAME.with(|f| f.set(words));
+    }
+    unsafe extern "C" fn snapshot(out: *mut u32, n: u32) -> i32 {
+        assert_eq!(n, 16);
+        FRAME.with(|f| core::ptr::copy_nonoverlapping(f.get().as_ptr(), out, 16));
+        16
+    }
+    let token = 0x12345678;
+    let mut reply = replies(snapshot);
+    let mut bind = [0; 16];
+    bind[0] = 0x494ea102;
+    bind[4..12].copy_from_slice(&[0x49525231, 7, 0, token, 5, 0, 0, 0]);
+    bind[12] = token;
+    frame(bind);
+    assert_eq!(reply.session_bound(token, 7), Ok(true));
+    let (mut loads, mut mailbox, expected) = pending();
+    drain(&mut mailbox);
+    let mut valid = bind;
+    valid[4..12].copy_from_slice(&[0x49525231, 1, 0, 1, 2, 0, 0, 1]);
+    // Correctly checksummed downgrade, old token and reserved data all fail
+    // without publishing or consuming the pending row.
+    for (index, value) in [(0, 0x494ea101), (12, 0), (12, token + 1), (13, 1), (14, 1)] {
+        let mut bad = valid;
+        bad[index] = value;
+        frame(bad);
+        assert_eq!(
+            reply.poll(&mut mailbox, &mut loads),
+            Err(Error::Mailbox(instrument_mailbox::Error::InvalidReply))
+        );
+        assert_eq!(loads.lookup(17), None);
+        assert_eq!(loads.capacity().rows_used, 1);
+    }
+    let mut old = valid;
+    old[5] = 99;
+    frame(old);
+    assert_eq!(reply.poll(&mut mailbox, &mut loads), Ok(Progress::Waiting));
+    frame(valid);
+    assert_eq!(
+        reply.poll(&mut mailbox, &mut loads),
+        Ok(Progress::Complete(expected))
+    );
+    // A second bind attempt cannot replace identity, even with the same token.
+    frame(bind);
+    assert_eq!(reply.session_bound(token, 7), Err(Error::BootInvalidated));
+    assert_eq!(reply.check_boot(), Err(Error::BootInvalidated));
+}

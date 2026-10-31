@@ -241,6 +241,18 @@ impl Mailbox {
         words: &[u32; 16],
         loads: &mut Loads,
     ) -> Result<Option<Command>, Error> {
+        self.reply_for_session(words, loads, None)
+    }
+
+    /// A token comes only from the provider's validated bootstrap ACK. Identity
+    /// is checked before transaction matching, so stale sessions cannot be
+    /// mistaken for merely delayed replies from this boot.
+    pub(crate) fn reply_for_session(
+        &mut self,
+        words: &[u32; 16],
+        loads: &mut Loads,
+        session: Option<u32>,
+    ) -> Result<Option<Command>, Error> {
         let mut p = self.pending.ok_or(Error::MismatchedReply)?;
         if p.stage != REPLY {
             return Err(Error::WrongTransfer);
@@ -250,10 +262,14 @@ impl Mailbox {
             a = a.wrapping_add(*word);
             b = b.wrapping_add(a);
         }
-        if words[0] != 0x494ea101
+        let identity_valid = match session {
+            Some(token) => token != 0 && words[0] == 0x494ea102 && words[12] == token,
+            None => words[0] == 0x494ea101 && words[12] == 0,
+        };
+        if !identity_valid
             || words[4] != 0x49525231
             || words[15] != a ^ b
-            || words[12..15] != [0; 3]
+            || words[13..15] != [0; 2]
         {
             return Err(Error::InvalidReply);
         }
