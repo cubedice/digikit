@@ -131,6 +131,11 @@ impl<T: Transport> Driver<T> {
             uncertain: false,
         }
     }
+    /// Irrevocably stop this boot's provider calls without freeing its buffer.
+    /// A boot change does not prove outstanding DMA/source reads have stopped.
+    pub fn invalidate_boot(&mut self) {
+        self.uncertain = true;
+    }
     fn available(&self) -> Result<(), Error> {
         if self.uncertain {
             Err(Error::Uncertain)

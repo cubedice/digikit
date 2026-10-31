@@ -34,6 +34,7 @@ impl Providers {
             transport: Api::new(send?, poll?),
             replies: Replies {
                 snapshot: snapshot?,
+                invalidated: false,
             },
         })
     }
@@ -45,10 +46,12 @@ impl Providers {
 
 pub struct Replies {
     snapshot: Snapshot,
+    invalidated: bool,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
+    BootInvalidated,
     Provider(i32),
     Mailbox(instrument_mailbox::Error),
 }
@@ -64,11 +67,20 @@ pub enum Progress {
 }
 
 impl Replies {
+    /// Discard trust in this provider for the rest of its boot. Never call it
+    /// again, even if its cached bytes match a formerly pending transaction.
+    pub fn invalidate_boot(&mut self) {
+        self.invalidated = true;
+    }
+
     /// Read a private stack snapshot and pass it through the mailbox validator.
     /// Call only while awaiting a DSP reply, after all three writes drained.
     /// Waiting never resets the coordinator's deadline. Repeated old frames are
     /// harmless because mailbox identities are never reused within a DSP boot.
     pub fn poll(&mut self, mailbox: &mut Mailbox, loads: &mut Loads) -> Result<Progress, Error> {
+        if self.invalidated {
+            return Err(Error::BootInvalidated);
+        }
         let mut words = [0u32; 16];
         match unsafe { (self.snapshot)(words.as_mut_ptr(), words.len() as u32) } {
             0 => return Ok(Progress::Waiting),

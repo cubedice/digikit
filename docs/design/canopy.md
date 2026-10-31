@@ -773,6 +773,31 @@ Changed-file preflight passes layering and fails only on the existing 256 stale
 references in 78 files (`out/canopy-exchange-changed.log`).
 
 
+The SDK now also pumps image/BSS transfers with one deadline across chunks,
+zero fills and busy retries. Success returns ReadyToInstall only after every
+exact write has drained; it cannot initialize or publish a module. Timeout stops
+new writes, waits a bounded drain period, discards late ACKs and quarantines the
+allocation through Transfer::failed before returning a detach request. Unknown
+transfer identity or stuck drainage blocks without releasing storage. Tests use
+the actual allocation ledger and confirm release_memory still refuses reuse.
+Both pumps now expose explicit boot invalidation. It permanently disables the
+old driver and, for mailbox transactions, the cached reply adapter. No further
+provider calls or replies can advance that pump, even after dropping it. Storage
+is retained because observing a boot change alone does not prove outstanding
+source reads stopped. This hook is not automatic reboot detection or whole-boot
+teardown. Live firmware binding, boot-owned controller storage, validated reboot
+observation and a complete load coordinator remain pending.
+Validation: 73 SDK instrument tests and the runtime host compile check pass
+(`out/canopy-upload-sdk.log`, `out/canopy-upload-runtime.log`). New tests cover
+chunked image/zero fill, busy retry rollover, timeout with late ACK, stuck drain,
+unknown transfer identity, drained error, final-ACK deadline precedence, invalid
+budgets, retained allocator grants, and permanent link/reply invalidation.
+Focused documentation checks pass. No ColdFire Rust build or device load is
+claimed.
+Changed-file preflight passes layering and fails only on the existing 256 stale
+references in 78 files (`out/canopy-upload-changed.log`).
+
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

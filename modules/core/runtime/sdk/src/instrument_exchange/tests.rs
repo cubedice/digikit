@@ -351,3 +351,28 @@ fn instrument_exchange_invalid_reply_recovers_without_freeing_rows() {
     );
     assert_eq!(e.loads.capacity().rows_used, 1);
 }
+
+#[test]
+fn instrument_exchange_boot_invalidation_stops_link_and_cached_reply() {
+    let mut f = Fixture::new(good);
+    let state = f.state.clone();
+    let mut e = f.exchange(0, 20);
+    for now in 0..6 {
+        assert_eq!(e.tick(now), Progress::Pending);
+    }
+    let polls = state.polls.get();
+    e.invalidate_boot();
+    assert_eq!(e.tick(6), Progress::Blocked(Failure::Boot));
+    drop(e);
+    assert_eq!(
+        f.driver.poll(),
+        Err(crate::instrument_transport::Error::Uncertain)
+    );
+    assert_eq!(
+        f.replies.poll(&mut f.mailbox, &mut f.loads),
+        Err(crate::instrument_provider::Error::BootInvalidated)
+    );
+    assert_eq!(state.polls.get(), polls);
+    assert_eq!(f.loads.lookup(17), None);
+    assert_eq!(f.loads.capacity().rows_used, 1);
+}

@@ -20,6 +20,8 @@ pub mod instrument_transport;
 pub mod instrument_provider;
 /// Bounded mailbox pumping and drain-before-detach recovery.
 pub mod instrument_exchange;
+/// Bounded image/BSS transfer and drain-before-detach recovery.
+pub mod instrument_upload;
 /// Experimental V2 mailbox transactions; no device capability is enabled.
 pub mod instrument_mailbox;
 /// Shared bounded V2 descriptor and record decoding; no loading capability.

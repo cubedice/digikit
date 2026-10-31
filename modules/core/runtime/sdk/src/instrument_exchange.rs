@@ -11,6 +11,7 @@ use crate::{
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Failure {
+    Boot,
     Timeout,
     Link,
     Reply,
@@ -71,6 +72,13 @@ impl<'a, T: Transport> Exchange<'a, T> {
             blocked: None,
             finished: false,
         })
+    }
+    /// Stop this boot's link and reply APIs without releasing any resources.
+    pub fn invalidate_boot(&mut self) {
+        self.driver.invalidate_boot();
+        self.replies.invalidate_boot();
+        self.finished = false;
+        self.blocked = Some(Failure::Boot);
     }
     fn block(&mut self, failure: Failure) -> Progress {
         self.blocked = Some(failure);
@@ -140,6 +148,7 @@ impl<'a, T: Transport> Exchange<'a, T> {
                 self.finished = true;
                 Progress::Complete(None)
             }
+            Err(ReplyError::BootInvalidated) => self.block(Failure::Boot),
             Err(ReplyError::Mailbox(_) | ReplyError::Provider(_)) => self.recover(Failure::Reply),
         }
     }
