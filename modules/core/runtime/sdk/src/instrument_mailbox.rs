@@ -234,7 +234,7 @@ impl Mailbox {
             a = a.wrapping_add(*word);
             b = b.wrapping_add(a);
         }
-        if words[0] != 0x494ea101 || words[4] != 0x49525231 || words[15] != a ^ b {
+        if words[0] != 0x494ea101 || words[4] != 0x49525231 || words[15] != a ^ b || words[12..15] != [0; 3] {
             return Err(Error::InvalidReply);
         }
         if words[5..10]

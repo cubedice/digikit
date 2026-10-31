@@ -16,6 +16,8 @@ pub mod instrument_load;
 pub mod instrument_image;
 /// Stable-buffer driver for the tagged production DSP-link ABI.
 pub mod instrument_transport;
+/// Optional V2 provider binding and validated registry reply ingestion.
+pub mod instrument_provider;
 /// Experimental V2 mailbox transactions; no device capability is enabled.
 pub mod instrument_mailbox;
 /// Shared bounded V2 descriptor and record decoding; no loading capability.

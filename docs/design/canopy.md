@@ -724,6 +724,30 @@ current-artifact check passes. Logs: `out/canopy-reply-tests.log`,
 checks pass; the changed-file preflight fails only on the existing stale-path
 baseline (`out/canopy-reply-changed.log`).
 
+The SDK now has an all-or-nothing optional-provider binding for tagged send,
+tagged poll and the CF registry snapshot getter. Missing entries return no
+binding without calling any provider. The unsafe binding boundary requires
+validated entries from one boot and serialized UI-task ownership; symbol
+presence alone is not a capability. Its reply adapter owns a private stack copy,
+accepts only an exact 16-word result and feeds the mailbox validator. Unavailable
+or mismatched transactions remain waiting without resetting any deadline;
+provider errors, malformed replies, rejected operations and missing capabilities
+remain explicit errors. Mailbox validation now also rejects nonzero reserved
+reply words 12..14. Load transitions still require drained writes and matching
+DSP replies. Actual firmware symbol resolution, boot-owned driver storage,
+timeout/reboot handling and the live V2 coordinator are still pending; this is
+an SDK integration boundary, not an activated runtime path.
+Validation: 56 SDK instrument tests and the runtime host compile check pass
+(`out/canopy-provider-sdk.log`, `out/canopy-provider-runtime.log`). New cases cover
+all optional-symbol combinations, no provider calls during binding, exact-length
+snapshot handling, transaction and capability rejection, reserved fields, and a
+combined clear/body/commit transfer with terminal-but-undrained link status before
+the matching registry reply. Focused documentation checks pass. No ColdFire Rust
+runtime rebuild or hardware load is claimed.
+The changed-file preflight passes layering and fails only on the existing 256
+stale references in 78 files (`out/canopy-provider-changed.log`).
+
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
