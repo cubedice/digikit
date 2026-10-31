@@ -135,7 +135,7 @@ impl<'image, T: Transport> Coordinator<'image, T> {
             return Err(Error::Blocked);
         }
         if self.job.is_some()
-            || self.session.is_some()
+            || self.session_pending()
             || matches!(
                 self.handoff,
                 Handoff::Acquire { .. } | Handoff::Release { .. }
@@ -219,7 +219,7 @@ impl<'image, T: Transport> Coordinator<'image, T> {
         if let Err(cause) = self.observe_boot() {
             return Progress::Blocked(cause);
         }
-        if self.session.is_some() {
+        if self.session_pending() {
             return self.tick_session(now);
         }
         let Some(job) = self.job.as_mut() else {

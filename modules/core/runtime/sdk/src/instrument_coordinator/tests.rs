@@ -101,6 +101,10 @@ unsafe impl Transport for Link {
                         if w.words[5] == w.reject { 1 } else { 0 },
                         7,
                     ]);
+                    if w.expected != 0 {
+                        w.reply[0] = 0x494ea102;
+                        w.reply[12] = w.expected;
+                    }
                     if w.words[5] == 5 {
                         assert_eq!(w.expected, w.words[4]);
                         assert_eq!(w.arms, 1);
@@ -118,6 +122,80 @@ unsafe impl Transport for Link {
             }
             1
         })
+    }
+}
+
+#[test]
+fn bound_session_drives_install_initialize_and_rejected_init_detach() {
+    use crate::instrument_section::{tests as section_test, Section};
+    for reject in [false, true] {
+        let mut owner = bootstrap_owner();
+        unsafe { owner.begin_session(expect_session, 0x10203040, 2, 100) }.unwrap();
+        let bytes = section_test::fixture();
+        let section = Section::parse(&bytes, 1, section_test::limits()).unwrap();
+        let output = Box::leak(Box::new([0; 64]));
+        let mut offsets = [0];
+        let mut lengths = [0];
+        let mut ledger = Ledger {
+            base: 0x20010000,
+            bytes: 512,
+            offsets: &mut offsets,
+            lengths: &mut lengths,
+        };
+        assert!(matches!(owner.admit(0, &section, &[20], &admission_limits(),
+            &mut ledger, output, |_| Some(0xb80000)),
+            Err(AdmissionError::Coordinator(Error::Busy))));
+        assert_eq!(ledger.lengths[0], 0);
+        for now in 3..9 {
+            assert_eq!(owner.tick(now), Progress::Pending);
+        }
+        assert_eq!(owner.tick(9), Progress::Idle);
+        assert!(owner.session_bound());
+        // Exercise the actual handoff between bootstrap and a later load.
+        owner.request_link_release(10, 100).unwrap();
+        assert_eq!(owner.tick_link(11, true), LinkProgress::Released);
+        let plan = owner.admit(0, &section, &[20], &admission_limits(),
+            &mut ledger, output, |_| Some(0xb80000)).unwrap();
+        let ticket = plan.ticket();
+        owner.request_link(12, 100).unwrap();
+        assert_eq!(owner.tick_link(13, true), LinkProgress::Owned);
+        WIRE.with_borrow_mut(|w| w.reject = if reject { 2 } else { 0 });
+        owner.begin(plan, output, 14, 1000).unwrap();
+        let mut completed = false;
+        for now in 15..1000 {
+            match owner.tick(now) {
+                Progress::Pending => assert_eq!(owner.loads().lookup(20), None),
+                Progress::Complete { command, recovered } => {
+                    if reject {
+                        assert_eq!(command, Command::Release(ticket));
+                        assert_eq!(recovered, Some(Failure::Reply));
+                        owner.release_memory(ticket, &mut ledger).unwrap();
+                        assert_eq!(ledger.lengths[0], 0);
+                    } else {
+                        assert_eq!(command, Command::Publish(ticket));
+                        assert_eq!(recovered, None);
+                        assert!(owner.loads().lookup(20).is_some());
+                        assert_eq!(ledger.lengths[0], 128);
+                    }
+                    completed = true;
+                    break;
+                }
+                other => panic!("session load failed: {other:?}"),
+            }
+        }
+        assert!(completed);
+        assert!(owner.session_bound());
+        WIRE.with_borrow(|w| {
+            let operations: Vec<_> = w.operations.iter().map(|x| (x.0, x.1)).collect();
+            let expected = if reject {
+                std::vec![(1, 5), (2, 4), (3, 2), (4, 3)]
+            } else {
+                std::vec![(1, 5), (2, 4), (3, 2)]
+            };
+            assert_eq!(operations, expected);
+            assert_eq!(w.arms, 1);
+            assert!(w.source.is_none());
+        });
     }
 }
 
@@ -1411,4 +1489,53 @@ fn session_link_failure_retains_lease_and_never_retries_commit() {
             assert_eq!(w.releases, 0);
         });
     }
+}
+
+#[test]
+fn bound_session_loss_during_upload_retains_memory_and_pending_source() {
+    use crate::instrument_section::{tests as section_test, Section};
+    let mut owner = bootstrap_owner();
+    unsafe { owner.begin_session(expect_session, 17, 2, 100) }.unwrap();
+    for now in 3..9 {
+        assert_eq!(owner.tick(now), Progress::Pending);
+    }
+    assert_eq!(owner.tick(9), Progress::Idle);
+    let bytes = section_test::fixture();
+    let section = Section::parse(&bytes, 1, section_test::limits()).unwrap();
+    let output = Box::leak(Box::new([0; 64]));
+    let mut offsets = [0];
+    let mut lengths = [0];
+    let mut ledger = Ledger {
+        base: 0x20010000,
+        bytes: 512,
+        offsets: &mut offsets,
+        lengths: &mut lengths,
+    };
+    let plan = owner.admit(0, &section, &[20], &admission_limits(),
+        &mut ledger, output, |_| Some(0xb80000)).unwrap();
+    let ticket = plan.ticket();
+    owner.begin(plan, output, 10, 100).unwrap();
+    assert_eq!(owner.tick(11), Progress::Pending);
+    WIRE.with_borrow_mut(|w| {
+        assert!(w.source.is_some());
+        w.boot_lost = true;
+    });
+    assert_eq!(owner.tick(12), Progress::Blocked(Failure::Boot));
+    assert!(!owner.session_bound());
+    // A formerly valid bind ACK cannot restart a revoked owner.
+    WIRE.with_borrow_mut(|w| w.boot_lost = false);
+    let counts = WIRE.with_borrow(|w| (w.starts, w.polls, w.snapshots));
+    assert_eq!(owner.tick(13), Progress::Blocked(Failure::Boot));
+    assert!(owner.release_memory(ticket, &mut ledger).is_err());
+    assert_eq!(ledger.lengths[0], 128);
+    assert_eq!(owner.loads().lookup(20), None);
+    assert_eq!(owner.request_link_release(14, 100), Err(Error::Blocked));
+    WIRE.with_borrow(|w| {
+        assert_eq!((w.starts, w.polls, w.snapshots), counts);
+        let (_, _, pointer, count) = w.source.unwrap();
+        assert_eq!(unsafe { core::slice::from_raw_parts(pointer, count) }, output);
+        assert_eq!(w.operations, [(1, 5, 0)]);
+        assert_eq!(w.releases, 0);
+        assert!(w.owned);
+    });
 }

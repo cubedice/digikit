@@ -1489,6 +1489,29 @@ crash or module faults. The original Overloop bytes match the backup.
 The original Overloop module remains backed up under `out/dt2-before-reset-proof`.
 This result does not enable V2 admission or prove automatic DSP restart.
 
+The SDK coordinator now continues from a bound session into image upload,
+INSTALL and INITIALIZE, instead of treating any session as permanently busy.
+Pending bootstrap still blocks preparation and upload. Bind, install, initialize
+and recovery detach share the same nonwrapping sequence namespace; the existing
+reply provider checks the bound version-2 token for lifecycle replies. The
+bootstrap-only runtime tick remains separate, and normal firmware still uses
+`Loads::new(0)` with no public V2 loading or routing.
+
+SDK tests now cover bind, release/reacquire, admission, image/BSS drainage,
+install, successful initialization/publication, and rejected initialization
+followed by acknowledged detach before memory release. A session-loss case
+interrupts an actual pending host-test upload: the coordinator retains the
+source buffer and memory, blocks publication, and refuses release or revival
+when the old bind reply reappears. All 165 SDK tests pass
+(`out/canopy-bound-init-sdk.log`). This is host integration evidence with simulated
+providers; live DSP lifecycle admission and version-2 MIDI routing remain open.
+The ColdFire runtime rebuild validates 33,325 decoded instructions and all runtime
+artifacts are current. Changed-file preflight passes 200 host tests (16 skipped),
+layering, formatting and types; its only failure is the existing 256 stale
+references in 78 files. Focused documentation validation passes. Logs:
+`out/canopy-bound-init-build.log`, `out/canopy-bound-init-check.log` and
+`out/canopy-bound-init-changed.log`.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
