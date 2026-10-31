@@ -1383,6 +1383,36 @@ Focused documentation checks pass. The fixture now explicitly aligns its transmi
 bytes as required by the production callback; two-byte C array alignment had
 made the earlier layout-dependent test fail. Log: `out/canopy-reset-notify-cf.log`.
 
+The reset notification is now connected to the DTII 1.17 GPIO helper through
+`cf.rtos.hook.dsp_reset`. The declaration hashes the helper's complete 112-byte
+window, and the port resolver locates its six-byte entry at `0x400cd01c`.
+The wrapper preserves D0/D1/A0/A1 and the argument/return stack, calls the
+notification only for a nonzero low argument byte, then enters the generated
+tail to execute the displaced D2 save and argument load. Expansion code/data/BSS
+is copied/cleared by `core/expansion` on the reset path before this boot task
+runs; the notification does not require UI-owner initialization. The hook covers
+calls through this helper, not direct GPIO writes or autonomous DSP resets.
+
+Two processor/anchor tests pass: the declaration matches current image bytes,
+and the assembled wrapper tolerates a callback that clobbers all volatile
+registers while preserving the stock argument and callee-saved D2. Cases include
+zero, nonzero, high-byte-only values and repeated assert/release calls. These
+are ABI component proofs, not electrical reset or pending-DMA cancellation.
+The adapter builds and all 1,771 instructions decode; its artifacts are current.
+The full SDK generator still fails on the existing unrelated
+`dsp.voice.hook.velocity_operand` declaration's `s7` register; no callable SDK
+binding is needed for this port hook. Logs: `out/canopy-reset-hook-cf.log`,
+`out/canopy-reset-hook-build.log` and `out/canopy-reset-hook-gen.log`.
+Both running-firmware session regressions pass with the hook installed (63.9 s
+normal bind, 93.0 s token loss/replay; `out/canopy-reset-hook-live.log`). This
+establishes compatibility of the patched image with those flows, not that the
+emulator exercised GPIO reset or canceled an in-flight transfer.
+Staged preflight passes 193 host tests (16 skipped), layering, Python lint/format,
+JS formatting and type checks. Its only failure is the existing 256 stale
+references in 78 files (`out/canopy-reset-hook-changed.log`).
+
+
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

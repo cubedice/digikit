@@ -60,7 +60,7 @@ void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_
     dkrt_irq_restore(sr);
 }
 
-/* Future reset hook boundary: expansion data/BSS must already be initialized.
+/* Reset hook boundary: expansion data/BSS must already be initialized.
  * No UI coordinator access, allocation or transport writes. The initial stock
  * assertion before any adapter use is harmless. Once used, reset is terminal
  * for this CF boot; neither release nor MIDI recovery may resume old traffic. */

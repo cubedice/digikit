@@ -2438,6 +2438,16 @@ mark = "D"
 rule = "fw/rtos:cf_reset_init_calls"
 
 [[anchor]]
+name = "cf.rtos.site.dsp_reset"
+cpu = "cf"
+kind = "code"
+addr = 0x400cd01c
+len = 6
+sha256 = "86362a5c1ab4bb2b862cfba43fb5bbac90a1fdd9dfe5497fde9a29be31bad115"
+mark = "D"
+rule = "fw/rtos:cf_window_hash"
+
+[[anchor]]
 name = "cf.rtos.site.exc_hook_lit"
 cpu = "cf"
 kind = "code"
@@ -3447,6 +3457,11 @@ mode = "retarget"
 name = "cf.pattern.hook.tick"
 site = "cf.pattern.site.tick"
 mode = "replace"
+
+[[hook]]
+name = "cf.rtos.hook.dsp_reset"
+site = "cf.rtos.site.dsp_reset"
+mode = "before"
 
 [[hook]]
 name = "cf.rtos.hook.idle"

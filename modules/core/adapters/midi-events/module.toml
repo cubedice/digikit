@@ -17,12 +17,13 @@ ports = ["dt2-1.17"]
 
 [[object]]
 path = "build/midi-events-cf.dko.json"
-sources = ["src/cf/ownership.c", "src/cf/transport.c", "src/cf/adapter.c", "src/cf/din.s"]
+sources = ["src/cf/ownership.c", "src/cf/transport.c", "src/cf/adapter.c", "src/cf/din.s", "src/cf/reset.s"]
 place = "cf.expansion"
 devices = ["dt2"]
 optional = ["instrument_midi_ready"]
 
 [object.externs]
+mi_dsp_reset_next = "hook.cf.rtos.site.dsp_reset.tail"
 mi_din_next = "hook.cf.midi.site.din_rx.tail"
 mi_din_return = "hook.cf.midi.site.din_rx.return"
 
@@ -33,6 +34,14 @@ to = "mi_din_hook"
 
 [[claim]]
 resource = "cf.midi.site.din_rx"
+
+[[op]]
+op = "hook"
+hook = "cf.rtos.hook.dsp_reset"
+to = "mi_dsp_reset_hook"
+
+[[claim]]
+resource = "cf.rtos.site.dsp_reset"
 
 # Composed through pattern-position's existing early-block hook. No keyboard
 # routes until the future V2 consumer acknowledges reset and configuration.

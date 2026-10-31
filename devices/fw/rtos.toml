@@ -115,3 +115,24 @@ devices = ["dt2", "dn2"]
 mark = "D"
 users = ["core/health"]
 doc = "The boot thread's last call (create the main-OS task), after which the thread idles; the hook makes that call itself and then counts idle iterations forever."
+
+
+[[site]]
+name = "cf.rtos.site.dsp_reset"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 112, offset = 0, sha256 = "608159b25f49dac0d9d175bbdbd415c39052916ef3bddb3d939932a2999a9988", len = 6 }
+mark = "D"
+users = ["core/midi-events"]
+doc = "DTII 1.17 GPIO DSP reset helper entry. Low argument byte nonzero asserts reset; zero releases it. First six bytes save D2 and load the argument byte; continuation must preserve the stack. See finding 78."
+
+[[hook]]
+name = "cf.rtos.hook.dsp_reset"
+site = "cf.rtos.site.dsp_reset"
+cpu = "cf"
+mode = "before"
+regs = { in = [], clobbers = ["ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/midi-events"]
+doc = "Notify session revocation before reset assertion, then execute the displaced prologue. Release must not revoke or rearm. Expansion data/BSS is initialized by the reset-path loader before the boot task calls this helper."

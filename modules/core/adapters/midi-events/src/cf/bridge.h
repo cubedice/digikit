@@ -19,7 +19,7 @@ int mi_registry_reply(uint32_t *out, uint32_t words);
 int mi_registry_expect_session(uint32_t token, uint32_t sequence);
 /* Reset assertion notification, before GPIO changes. Safe only after expansion
  * data/BSS initialization; does not access the UI owner or abort physical DMA.
- * Not connected to the firmware reset helper until the hook is verified. */
+ * Called by the DTII reset helper hook on nonzero low-byte arguments. */
 void mi_dsp_reset_begin(void);
 /* Explicit recovery only, with all physical keys released. */
 void mi_transport_recover(void);

@@ -25,6 +25,20 @@
   },
   {
    "addend": 0,
+   "offset": 72,
+   "section": ".text",
+   "symbol": "mi_dsp_reset_begin",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 86,
+   "section": ".text",
+   "symbol": "mi_dsp_reset_next",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 42,
    "section": ".text.overflow",
    "symbol": ".sec..text.mi_reset_track",
@@ -916,10 +930,10 @@
  "sections": [
   {
    "align": 4,
-   "hex": "4feffff048d703032f2f00182f2f00182f2f00184eb9000000004fef000c4a804cd703034fef001066064ef9000000004ef900000000",
+   "hex": "4feffff048d703032f2f00182f2f00182f2f00184eb9000000004fef000c4a804cd703034fef001066064ef9000000004ef9000000004e714feffff048d703034a2f001767064eb9000000004cd703034fef00104ef900000000",
    "kind": "text",
    "name": ".text",
-   "size": 54
+   "size": 90
   },
   {
    "align": 2,
@@ -1195,7 +1209,7 @@
    "size": 4956
   }
  ],
- "source_sha256": "e2f40fdadc223ba2282486e833abcc8976bbce6e1612265d2a2612c40d4e5d31",
+ "source_sha256": "e721f625e2895ad9d662c7678006ede07592ee0c859f86600bfe514139269702",
  "symbols": [
   {
    "global": false,
@@ -1403,6 +1417,18 @@
   },
   {
    "global": true,
+   "name": "mi_dsp_reset_hook",
+   "section": ".text",
+   "value": 56
+  },
+  {
+   "global": true,
+   "name": "mi_dsp_reset_next",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "mi_init",
    "section": ".text.mi_init",
    "value": 0
@@ -1580,8 +1606,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "1762",
-  "isa_check": "c25f17c0026b31140045f5f8100045029f223393931a3bafd5c03cf3e30fdea1",
+  "instructions_redecoded": "1771",
+  "isa_check": "de7915f92aea48048a32c594d7b68c03d52bec08afc21421e5efa6e818792704",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }
