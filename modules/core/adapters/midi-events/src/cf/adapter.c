@@ -5,6 +5,7 @@
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
 extern void dl_reset_begin(void) __attribute__((weak));
+extern int dl_reset_quiesce(void) __attribute__((weak));
 extern int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
     __attribute__((weak));
 
@@ -69,6 +70,7 @@ void mi_dsp_reset_begin(void)
 {
     uint32_t sr = dkrt_irq_mask();
     if (dl_reset_begin) dl_reset_begin();
+    if (dl_reset_quiesce) (void)dl_reset_quiesce();
     if (initialized && !reset_seen) {
         reset_seen = 1;
         registry_reply_valid = 0;
@@ -79,6 +81,12 @@ void mi_dsp_reset_begin(void)
         mi_transport.faults = 1;
     }
     dkrt_irq_restore(sr);
+}
+
+/* No retry after a timeout: stale FIFO/DMA work must not cross reset release. */
+int mi_dsp_reset_release(void)
+{
+    return !dl_reset_quiesce || dl_reset_quiesce() != 2;
 }
 
 /* UI-task snapshot, copied under the same lock as the frame publisher. No record

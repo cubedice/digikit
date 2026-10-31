@@ -1461,6 +1461,26 @@ active hardware transfer. Keep this gate open until a bounded hardware experimen
 or a separately validated asynchronous reset/DMA model supplies that evidence.
 Do not enable V2 admission on the strength of the composed callback test.
 
+The hardware gap now has an implemented quiescence path: the periodic frame
+hook refuses stock DMA rearm after revocation; the reset callback disables the
+DSPI2 channel requests, halts serial transfers, and waits for START/ACTIVE and
+TXRXS to clear before flushing FIFOs. Unexpected DMA chaining or a bounded-wait
+timeout keeps reset release blocked. Source ownership stays retained in both
+cases. This is terminal recovery through a whole-device restart, not automatic
+DSP reload. The eight-word `dl_reset_hw` diagnostic preserves the measured state.
+
+A DTII-only `test/dsp-reset-probe` service and
+`tools.device.dsp_reset_probe` runner prepare the physical proof. The runner
+checks exact firmware identity and reset-hook bytes, requires an already-used
+link, requests reset only while SPI is active, then checks stopped DMA addresses
+and the asserted GPIO over later snapshots. It writes the results even on
+failure. The probe never triggers automatically at boot; it intentionally leaves
+DSP reset asserted and requires a whole-device restart. Physical evidence is
+still pending installation of the prepared diagnostic image. The connected DTII
+currently reports runtime 0.5.2, image `a0b6312007e7c8ec`, with the stock reset
+entry and Overloop loaded; its module was backed up under
+`out/dt2-before-reset-proof`. No hardware reset has yet been performed.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

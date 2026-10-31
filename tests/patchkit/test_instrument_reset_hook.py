@@ -30,7 +30,8 @@ def test_reset_window_matches_pinned_firmware():
     ] == bytes.fromhex("2f02102f000b")
 
 
-def test_reset_hook_preserves_call_and_uses_low_argument_byte(tmp_path):
+@pytest.mark.parametrize("allow_release", [True, False])
+def test_reset_hook_preserves_call_and_uses_low_argument_byte(tmp_path, allow_release):
     firmware = REPO_ROOT / "firmware/Digitakt_II_OS1.17.syx"
     runner = Path(
         os.environ.get(
@@ -42,7 +43,7 @@ def test_reset_hook_preserves_call_and_uses_low_argument_byte(tmp_path):
     probe = tmp_path / "probe.s"
     probe.write_text("""
 .text
-.globl reset_probe, mi_dsp_reset_begin, mi_dsp_reset_next
+.globl reset_probe, mi_dsp_reset_begin, mi_dsp_reset_next, mi_dsp_reset_release
 reset_probe:
     move.l %d2,-(%sp)
     move.l 8(%sp),-(%sp)
@@ -61,6 +62,9 @@ mi_dsp_reset_begin:
     moveq #-2,%d1
     movea.l #-3,%a0
     movea.l #-4,%a1
+    rts
+mi_dsp_reset_release:
+    moveq #ALLOW,%d0
     rts
 mi_dsp_reset_next:
     cmpi.l #17,%d0
@@ -90,6 +94,7 @@ bad:
 notifications: .long 0
 argument: .long 0
 """)
+    probe.write_text(probe.read_text().replace("ALLOW", str(int(allow_release))))
     linked = patchkit.cf_link(
         [REPO_ROOT / "modules/core/adapters/midi-events/src/cf/reset.s", probe],
         0x47E00000,
@@ -103,7 +108,11 @@ argument: .long 0
         }
     ]
     values = [0, 0x100, 1, 0, 0x12340080, 0xFF000000, 0xFFFFFFFF]
-    expected = [0, 0, 0x101, 0x100, 0x280, 0x200, 0x3FF]
+    expected = (
+        [0, 0, 0x101, 0x100, 0x280, 0x200, 0x3FF]
+        if allow_release
+        else [17, 17, 0x101, 17, 0x280, 17, 0x3FF]
+    )
     for i, value in enumerate(values):
         ops.append(
             {
@@ -130,3 +139,76 @@ argument: .long 0
     assert len(calls) == len(values)
     for row, value in zip(calls, expected, strict=True):
         assert row["ok"] and not row["error"] and row["d0"] == value, row
+
+
+def test_revoked_frame_hook_never_rearms_stock_dma(tmp_path):
+    firmware = REPO_ROOT / "firmware/Digitakt_II_OS1.17.syx"
+    runner = Path(
+        os.environ.get(
+            "DIGIKIT_CF_SCRIPT", REPO_ROOT / "target/release/examples/cf_script"
+        )
+    )
+    if not firmware.exists() or not runner.exists():
+        pytest.skip("DTII firmware and cf_script required")
+    probe = tmp_path / "frame.s"
+    probe.write_text("""
+.text
+.globl frame_probe, dl_tick, dl_stock_send, dl_link
+frame_probe:
+    move.l 4(%sp),%d0
+    move.l %d0,dl_link+84
+    jsr dl_frame_hook
+    move.l ticks,%d0
+    lsl.l #8,%d0
+    or.l sends,%d0
+    rts
+dl_tick:
+    addq.l #1,ticks
+    rts
+dl_stock_send:
+    addq.l #1,sends
+    rts
+.data
+.balign 16
+dl_link: .space 96
+ticks: .long 0
+sends: .long 0
+""")
+    linked = patchkit.cf_link(
+        [REPO_ROOT / "modules/core/adapters/dsp-link/src/cf/tramp.s", probe],
+        0x47E00000,
+        {},
+        [REPO_ROOT / "modules/core/fw/inc"],
+    )
+    ops = [
+        {
+            "op": "poke",
+            "addr": linked.base,
+            "hex": (linked.image + bytes(linked.bss_size)).hex(),
+        }
+    ]
+    ops.extend(
+        {
+            "op": "call",
+            "pc": linked.symbols["frame_probe"],
+            "args": [revoked],
+            "max": 10000,
+        }
+        for revoked in [0, 1, 1]
+    )
+    script = tmp_path / "frame.json"
+    script.write_text(json.dumps(ops))
+    result = subprocess.run(
+        [str(runner), str(firmware), str(script)],
+        capture_output=True,
+        text=True,
+        timeout=90,
+        check=True,
+    )
+    rows = [
+        json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")
+    ]
+    calls = [r for r in rows if r.get("op") == "call"]
+    assert len(calls) == 3
+    for row in calls:
+        assert row["ok"] and not row["error"] and row["d0"] == 0x101, row

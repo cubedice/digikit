@@ -174,7 +174,18 @@ link has ever issued a request or lease this is a no-op. After use it permanentl
 revokes the sender for that CF boot: no new claim/send/release succeeds, the
 source and lease remain retained, and tagged polls remain unresolved (BUSY,
 error 102). Old ACKs cannot convert the request to a drained completion.
-Subsequent frame ticks clear code-channel magic without emitting payload or END
-chunks. This prevents future software emission; it does not cancel an already
-active DMA frame. Cold boot is required to reinitialize the link. The reset hook
-currently covers the identified DTII GPIO helper, not every possible reset source.
+The periodic frame hook now returns before the stock sender, preventing DMA
+rearming. Direct sender ticks still clear sideband magic. The DTII reset callback
+also disables eDMA requests 28/29 and sets DSPI2 HALT. A bounded 65,536-poll wait
+requires SPI TXRXS and both DMA START/ACTIVE bits to clear, rejecting linked or
+scatter/gather descriptors, before flushing both FIFOs. A timeout retains HALT
+and suppresses subsequent DSP reset release. Neither outcome releases ownership
+or resumes V2 admission; whole-device restart is required.
+
+`dl_reset_hw` records eight words: result (0 unused, 1 stopped, 2 timed out), poll
+count, initial MCR/SR/RX-CSR/TX-CSR, final SR, and combined final DMA status. The
+register sequence follows MCF54418RM rev 5 chapters 19/40. Processor tests verify
+success and timeout decisions; physical validation uses the explicit
+`test/dsp-reset-probe` service and `tools.device.dsp_reset_probe`. The probe is
+read-only unless RSET is sent, and leaves the DSP reset asserted after testing.
+The hook covers the identified DTII GPIO helper, not every possible reset source.

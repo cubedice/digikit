@@ -1136,3 +1136,74 @@ def test_reset_retains_owned_transfer_and_rejects_stale_ack(machine, built, phas
         == results[prefix + 13].reads[0]
         == struct.pack(">I", 1)
     )
+
+
+@needs_gcc
+@pytest.mark.parametrize(
+    "status,csr,minor,expected",
+    [
+        (0, 0, 0, 1),
+        (0x40000000, 0, 0, 2),
+        (0, 1, 0, 2),
+        (0, 0x40, 0, 2),
+        (0, 0x20, 0, 2),
+        (0, 0, 0x8000, 2),
+    ],
+)
+def test_reset_hardware_requires_stopped_spi_and_dma(
+    machine, built, status, csr, minor, expected
+):
+    mcr, sr, rx, tx, cerq = (DATA + n for n in (0x6000, 0x6004, 0x6020, 0x6040, 0x6050))
+    registers = [mcr, sr, cerq, rx, tx]
+    calls = [
+        call(built, "dl_reset_quiesce_regs", registers, [(mcr, 4)]),
+        call(built, "dl_claim", [DATA + 0x5000]),
+        call(built, "dl_reset_begin", []),
+        call(
+            built,
+            "dl_reset_quiesce_regs",
+            registers,
+            [(built.symbols["dl_reset_hw"], 32), (mcr, 4)],
+        ),
+        call(
+            built,
+            "dl_reset_quiesce_regs",
+            registers,
+            [(built.symbols["dl_reset_hw"], 32)],
+        ),
+    ]
+    for operation in calls:
+        operation["max"] = 10_000_000
+    results = run(
+        machine,
+        built,
+        {
+            mcr: struct.pack(">I", 0x80010000),
+            sr: struct.pack(">I", status),
+            rx - 10: struct.pack(">H", minor),
+            rx - 2: bytes(2),
+            tx - 10: bytes(2),
+            tx - 2: bytes(2),
+            rx: struct.pack(">H", csr),
+            tx: bytes(2),
+        },
+        calls,
+    )
+    assert results[0].d0 == 0
+    assert results[0].reads[0] == struct.pack(">I", 0x80010000)
+    assert results[3].d0 == results[4].d0 == expected
+    diagnostic = struct.unpack(">8I", results[3].reads[0])
+    assert diagnostic == (
+        expected,
+        1 if expected == 1 else 65536,
+        0x80010000,
+        status,
+        csr,
+        0,
+        status,
+        csr | minor,
+    )
+    assert results[4].reads[0] == results[3].reads[0]  # never retry after timeout
+    assert results[3].reads[1] == struct.pack(
+        ">I", 0x80010C01 if expected == 1 else 0x80010001
+    )

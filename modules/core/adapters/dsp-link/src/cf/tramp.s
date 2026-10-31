@@ -10,4 +10,8 @@
     .even
     .globl dl_frame_hook
 dl_frame_hook:
+    /* Revoked means no stock DMA rearm, not merely no new sideband data. */
+    tst.l dl_link+84
+    bne.s 1f
     dk_fw_link_block_isr_frame_call_hook dl_tick, dl_stock_send
+1:  rts

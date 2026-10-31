@@ -32,7 +32,14 @@
   },
   {
    "addend": 0,
-   "offset": 86,
+   "offset": 80,
+   "section": ".text",
+   "symbol": "mi_dsp_reset_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 98,
    "section": ".text",
    "symbol": "mi_dsp_reset_next",
    "type": "cf.32"
@@ -461,91 +468,105 @@
    "addend": 0,
    "offset": 24,
    "section": ".text.mi_dsp_reset_begin",
+   "symbol": "dl_reset_quiesce",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 36,
+   "section": ".text.mi_dsp_reset_begin",
    "symbol": ".sec..bss.initialized",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 32,
+   "offset": 44,
    "section": ".text.mi_dsp_reset_begin",
    "symbol": ".sec..bss.reset_seen",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 42,
-   "section": ".text.mi_dsp_reset_begin",
-   "symbol": ".sec..bss.mi_ledger",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 48,
-   "section": ".text.mi_dsp_reset_begin",
-   "symbol": ".sec..bss.reset_seen",
-   "type": "cf.32"
-  },
-  {
-   "addend": 12,
    "offset": 54,
    "section": ".text.mi_dsp_reset_begin",
-   "symbol": ".sec..bss.registry_guard",
+   "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 60,
    "section": ".text.mi_dsp_reset_begin",
-   "symbol": ".sec..bss.registry_reply_valid",
+   "symbol": ".sec..bss.reset_seen",
    "type": "cf.32"
   },
   {
-   "addend": 0,
+   "addend": 12,
    "offset": 66,
    "section": ".text.mi_dsp_reset_begin",
-   "symbol": "mi_recover",
+   "symbol": ".sec..bss.registry_guard",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 72,
    "section": ".text.mi_dsp_reset_begin",
-   "symbol": ".sec..bss.mi_transport",
+   "symbol": ".sec..bss.registry_reply_valid",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 78,
    "section": ".text.mi_dsp_reset_begin",
-   "symbol": "mt_init",
+   "symbol": "mi_recover",
    "type": "cf.32"
   },
   {
-   "addend": 4888,
-   "offset": 86,
-   "section": ".text.mi_dsp_reset_begin",
-   "symbol": ".sec..bss.mi_ledger",
-   "type": "cf.32"
-  },
-  {
-   "addend": 128,
-   "offset": 94,
-   "section": ".text.mi_dsp_reset_begin",
-   "symbol": ".sec..bss.mi_transport",
-   "type": "cf.32"
-  },
-  {
-   "addend": 156,
-   "offset": 100,
+   "addend": 0,
+   "offset": 84,
    "section": ".text.mi_dsp_reset_begin",
    "symbol": ".sec..bss.mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 108,
+   "offset": 90,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": "mt_init",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4888,
+   "offset": 98,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": ".sec..bss.mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 128,
+   "offset": 106,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": ".sec..bss.mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 156,
+   "offset": 112,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": ".sec..bss.mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 120,
    "section": ".text.mi_dsp_reset_begin",
    "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text.mi_dsp_reset_release",
+   "symbol": "dl_reset_quiesce",
    "type": "cf.32"
   },
   {
@@ -937,10 +958,10 @@
  "sections": [
   {
    "align": 4,
-   "hex": "4feffff048d703032f2f00182f2f00182f2f00184eb9000000004fef000c4a804cd703034fef001066064ef9000000004ef9000000004e714feffff048d703034a2f001767064eb9000000004cd703034fef00104ef900000000",
+   "hex": "4feffff048d703032f2f00182f2f00182f2f00184eb9000000004fef000c4a804cd703034fef001066064ef9000000004ef9000000004e714feffff048d703034a2f001767084eb900000000600a4eb9000000004a80670e4cd703034fef00104ef9000000004cd703034fef00104e75",
    "kind": "text",
    "name": ".text",
-   "size": 90
+   "size": 112
   },
   {
    "align": 2,
@@ -1105,10 +1126,17 @@
   },
   {
    "align": 2,
-   "hex": "598f4eb90000000041f9000000002e804a8867024e904ab900000000674a4ab9000000006642700148790000000023c00000000023c00000000042b9000000004eb9000000004879000000004eb900000000508f41f900000000700123d00000000023c0000000002f174eb900000000508f4e75",
+   "hex": "598f4eb90000000041f9000000002e804a8867024e9041f9000000004a8867024e904ab900000000674a4ab9000000006642700148790000000023c00000000023c00000000042b9000000004eb9000000004879000000004eb900000000508f41f900000000700123d00000000023c0000000002f174eb900000000508f4e75",
    "kind": "text",
    "name": ".text.mi_dsp_reset_begin",
-   "size": 116
+   "size": 128
+  },
+  {
+   "align": 2,
+   "hex": "41f9000000004a88670e4e907202b28056c0710044804e75700160fa",
+   "kind": "text",
+   "name": ".text.mi_dsp_reset_release",
+   "size": 28
   },
   {
    "align": 2,
@@ -1216,7 +1244,7 @@
    "size": 4956
   }
  ],
- "source_sha256": "341593552c78328213fe091a5f11c98a471bad0f00016f6ab2cb9132c721b81a",
+ "source_sha256": "309b129fecb39b28dd6aa685912fc5e566a9cf56447cdacd3613ae68b0b4ebd7",
  "symbols": [
   {
    "global": false,
@@ -1345,6 +1373,12 @@
    "value": 0
   },
   {
+   "global": true,
+   "name": "dl_reset_quiesce",
+   "section": null,
+   "value": 0
+  },
+  {
    "global": false,
    "name": "emit.isra.0",
    "section": ".text.emit.isra.0",
@@ -1438,6 +1472,12 @@
    "global": true,
    "name": "mi_dsp_reset_next",
    "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_dsp_reset_release",
+   "section": ".text.mi_dsp_reset_release",
    "value": 0
   },
   {
@@ -1619,8 +1659,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "1775",
-  "isa_check": "166835bc83373f11bb53d05bb2a471c736bcd618efb3d0b1cb9a75413037121f",
+  "instructions_redecoded": "1798",
+  "isa_check": "d595ea0336a019cde8c6af1560f8a05a07b3ad17393bfb8916f7f3852b34fa06",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

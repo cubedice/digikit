@@ -196,6 +196,52 @@ void dl_reset_begin(void)
     }
 }
 
+/* MCF54418RM rev 5, chapters 19 and 40. Called with CPU interrupts masked.
+ * Revocation prevents the periodic driver from rearming channels 28/29. DMA
+ * itself is asynchronous: disabling requests does not cancel a current minor
+ * loop, and HALT takes effect after the current serial frame. Never flush the
+ * FIFOs until both engines report stopped. State 2 is terminal: hold DSP reset.
+ * [state, polls, old MCR, old SR, old RX CSR, old TX CSR, final SR, final CSRs]. */
+volatile u32 dl_reset_hw[8];
+int dl_reset_quiesce_regs(volatile u32 *mcr, volatile u32 *sr,
+                          volatile u8 *cerq, volatile u16 *rx, volatile u16 *tx)
+{
+    u32 i, status, channels;
+    if (!dl_link.revoked) return 0;
+    if (dl_reset_hw[0]) return (int)dl_reset_hw[0];
+    dl_reset_hw[2] = *mcr;
+    dl_reset_hw[3] = *sr;
+    dl_reset_hw[4] = *rx;
+    dl_reset_hw[5] = *tx;
+    *cerq = 28;
+    *cerq = 29;
+    *mcr = *mcr | 1u; /* HALT; preserve configuration */
+    for (i = 0; i < 65536u; ++i) {
+        status = *sr;
+        channels = (u32)*rx | (u32)*tx;
+        channels |= ((u32)rx[-5] | rx[-1] | tx[-5] | tx[-1]) & 0x8000u;
+        dl_reset_hw[1] = i + 1;
+        dl_reset_hw[6] = status;
+        dl_reset_hw[7] = channels;
+        /* START or ACTIVE, plus unexpected scatter/gather or major/minor linking:
+         * this path supports only the stock independent DSPI descriptors. */
+        if (!(status & 0x40000000u) && !(channels & 0x8071u)) {
+            *mcr = *mcr | 0xc00u; /* CLR_TXF | CLR_RXF while halted */
+            dl_reset_hw[0] = 1;
+            return 1;
+        }
+    }
+    dl_reset_hw[0] = 2;
+    return 2;
+}
+
+int dl_reset_quiesce(void)
+{
+    return dl_reset_quiesce_regs((volatile u32 *)0xec038000u,
+        (volatile u32 *)0xec03802cu, (volatile u8 *)0xfc044019u,
+        (volatile u16 *)0xfc04539eu, (volatile u16 *)0xfc0453beu);
+}
+
 static int send_area(u32 lease, u32 dst_l2, const void *buf, u32 len)
 {
     u32 lo = (u32)_dl_area;

@@ -83,6 +83,7 @@ export default defineConfig({
           include: ['runtime/**/*.test.ts'],
           exclude: [
             'runtime/instrument-session.test.ts',
+            'runtime/dsp-reset.test.ts',
             'runtime/overloop-display.test.ts',
             'runtime/canopy-transport.test.ts',
             'runtime/canopy-carrier.test.ts',
@@ -110,6 +111,16 @@ export default defineConfig({
           pool: 'forks',
           ...serial,
           testTimeout: 120_000,
+          hookTimeout: 150_000,
+        },
+      },
+      {
+        test: {
+          name: 'dsp-reset',
+          include: ['runtime/dsp-reset.test.ts'],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 240_000,
           hookTimeout: 150_000,
         },
       },

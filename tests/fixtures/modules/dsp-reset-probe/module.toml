@@ -1,0 +1,18 @@
+[module]
+id = "test/dsp-reset-probe"
+version = "0.1.0"
+name = "DSP reset hardware probe"
+category = "test"
+type = "raw"
+author = "digikit"
+status = "experimental"
+summary = "Explicit, one-shot DTII DSP-only reset diagnostic; requires whole-device reboot afterwards."
+requires = []
+conflicts = ["test/svc-echo"]
+ports = ["dt2-1.17"]
+[targets]
+"dt2-1.17" = "experimental"
+[[object]]
+path = "build/probe.dko.json"
+sources = ["src/c/probe.c"]
+place = "cf.expansion"
