@@ -68,6 +68,7 @@ pub struct Env {
     pub tools: PathBuf,
     /// Build defines (`DK_TRACE`): `-D` for the C sources, `#ifdef` names for the SHARC+ sources. They are part of the object's cache key.
     pub defines: Vec<String>,
+    codegen: PathBuf,
     version: OnceLock<std::result::Result<Vec<(String, String)>, String>>,
 }
 
@@ -79,7 +80,11 @@ impl Env {
     pub fn new(root: &Path) -> Env {
         let root = canon(root);
         let tools = canon(&root.join("out/tools"));
+        let codegen = std::env::var_os("DIGIKIT_CODEGEN_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| tools.join("codegen-gcc"));
         Env {
+            codegen: canon(&codegen),
             root,
             tools,
             defines: vec![],
@@ -117,7 +122,7 @@ impl Env {
     }
 
     pub fn cg_dir(&self) -> PathBuf {
-        self.tools.join("codegen-gcc")
+        self.codegen.clone()
     }
 
     pub fn codegen_backend(&self) -> PathBuf {
@@ -274,4 +279,37 @@ pub fn read(p: &Path) -> Result<Vec<u8>> {
 
 pub fn read_text(p: &Path) -> Result<String> {
     std::fs::read_to_string(p).map_err(|e| err!("{}: {e}", p.display()))
+}
+
+#[cfg(test)]
+mod codegen_tests {
+    use super::*;
+    #[test]
+    fn codegen_readiness_uses_host_shared_library() {
+        let temp = TempDir::new("codegen-native-").unwrap();
+        let mut env = Env::new(temp.path());
+        env.codegen = temp.path().join("isolated-codegen");
+        let backend = env
+            .cg_dir()
+            .join("rustc_codegen_gcc/target/debug")
+            .join(format!(
+                "{}rustc_codegen_gcc{}",
+                std::env::consts::DLL_PREFIX,
+                std::env::consts::DLL_SUFFIX
+            ));
+        std::fs::create_dir_all(backend.parent().unwrap()).unwrap();
+        std::fs::write(&backend, b"backend").unwrap();
+        assert!(!env.codegen_gcc_ready());
+        for p in [
+            env.cg_dir().join("jitlib/libgccjit.so"),
+            env.m68k_prefix().join("bin/m68k-elf-as"),
+        ] {
+            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+            std::fs::write(p, b"present").unwrap();
+        }
+        assert_eq!(env.codegen_backend(), backend);
+        assert!(env.codegen_gcc_ready());
+        std::fs::remove_file(backend).unwrap();
+        assert!(!env.codegen_gcc_ready());
+    }
 }

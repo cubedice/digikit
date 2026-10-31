@@ -49,7 +49,7 @@ sudo apt update
 sudo apt install build-essential git curl ca-certificates xz-utils bison flex texinfo libgmp-dev libmpfr-dev libmpc-dev libisl-dev libzstd-dev pkg-config libasound2-dev
 ```
 
-The `patch:toolchains` task uses these system libraries on Linux; Homebrew is only needed for its macOS dependency lookup. The separate experimental `codegen-gcc` Rust backend builder still has macOS-specific setup.
+The `patch:toolchains` task uses these system libraries on Linux; Homebrew is only needed for its macOS dependency lookup. The experimental `codegen-gcc` Rust backend builder also selects Linux system libraries and `.so` artifacts; macOS-only patches and `.dylib` aliases are restricted to macOS. It still needs the pinned Rust nightly and a full libgccjit build. On WSL, set `DIGIKIT_CODEGEN_DIR` to an absolute path on the Linux filesystem (for example `$HOME/.cache/digikit/codegen-gcc`) before both installing and building modules, to avoid compiling the large GCC tree on `/mnt/c`. Python and native Patchkit honor the same override; without it they use `out/tools/codegen-gcc`.
 
 Patchkit's native MIDI support requires the ALSA development package even when building only to check compiler output. `pkg-config --modversion alsa` should succeed before running `patch:toolchains`.
 

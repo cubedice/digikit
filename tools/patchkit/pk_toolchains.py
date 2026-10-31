@@ -50,7 +50,9 @@ SELACHE_REV = "02d6d785b8e3a125ab237a00bb89503aff835f5d"
 SELACHE_DIR = TOOLS / "selache"
 
 # Rust through GCC (finding 23 S1b, finding 26). Every revision is pinned.
-CG_DIR = TOOLS / "codegen-gcc"
+CG_DIR = pathlib.Path(
+    os.environ.get("DIGIKIT_CODEGEN_DIR", TOOLS / "codegen-gcc")
+).resolve()
 CG_PATCHES = pathlib.Path(__file__).resolve().parent / "toolchain"
 _PINS = tomllib.loads(
     (CG_PATCHES / "pins.toml").read_text()
@@ -347,13 +349,31 @@ def _apply_patch(src: pathlib.Path, patch: pathlib.Path) -> None:
     run(["git", "apply", str(patch)], cwd=src)
 
 
+def _publish_codegen_jit(gbuild: pathlib.Path, jitlib: pathlib.Path) -> None:
+    """Expose only an existing native JIT artifact; never publish dangling links."""
+    darwin = sys.platform == "darwin"
+    source = gbuild / "gcc" / ("libgccjit.0.dylib" if darwin else "libgccjit.so")
+    if not source.is_file():
+        sys.exit(f"libgccjit build did not produce {source}")
+    jitlib.mkdir(parents=True, exist_ok=True)
+    names = (
+        ("libgccjit.so", "libgccjit.dylib", "libgccjit.0.dylib")
+        if darwin
+        else ("libgccjit.so",)
+    )
+    for name in names:
+        link = jitlib / name
+        link.unlink(missing_ok=True)
+        link.symlink_to(source.resolve())
+
+
 def build_codegen_gcc() -> None:
     """Rust for the ColdFire. About 75 minutes the first time on an Apple M-series Mac, almost all of it the
     libgccjit build (S1b measured 75 min including the fixes now in the patches; a scripted run is not timed yet)."""
     if not (M68K_PREFIX / "bin" / "m68k-elf-as").exists():
         sys.exit("build the m68k toolchain first: pk_toolchains m68k")
     jobs = str(min(os.cpu_count() or 4, 8))
-    deps = {f: brew_prefix(f) for f in ("gmp", "mpfr", "libmpc", "isl", "zstd")}
+    deps = m68k_dependency_prefixes()
     env = dict(os.environ)
     env.pop("RUSTUP_TOOLCHAIN", None)
     env["PATH"] = f"{M68K_PREFIX / 'bin'}:{env['PATH']}"

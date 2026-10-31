@@ -124,3 +124,57 @@ def test_interrupted_extraction_is_not_marked_complete(tmp_path, monkeypatch):
     source = T.unpack(archive)
     assert (source / "configure").is_file()
     assert (source / "gcc/source.c").is_file()
+
+
+@pytest.mark.parametrize("platform,suffix", [("linux", ".so"), ("darwin", ".dylib")])
+def test_codegen_readiness_requires_native_backend_and_jit(
+    tmp_path, monkeypatch, platform, suffix
+):
+    monkeypatch.setattr(T.sys, "platform", platform)
+    monkeypatch.setattr(T, "CG_DIR", tmp_path / "cg")
+    monkeypatch.setattr(T, "M68K_PREFIX", tmp_path / "m68k")
+    assembler = T.M68K_PREFIX / "bin/m68k-elf-as"
+    assembler.parent.mkdir(parents=True)
+    assembler.touch()
+    backend = (
+        T.CG_DIR / "rustc_codegen_gcc/target/debug" / f"librustc_codegen_gcc{suffix}"
+    )
+    backend.parent.mkdir(parents=True)
+    backend.touch()
+    assert T.codegen_gcc_backend() == backend
+    assert not T.codegen_gcc_ready()
+    jit = T.CG_DIR / "jitlib/libgccjit.so"
+    jit.parent.mkdir()
+    jit.write_bytes(b"native jit")
+    assert T.codegen_gcc_ready()
+    backend.unlink()
+    backend.with_suffix(".dylib" if suffix == ".so" else ".so").touch()
+    assert not T.codegen_gcc_ready()
+
+
+@pytest.mark.parametrize(
+    "platform,name", [("linux", "libgccjit.so"), ("darwin", "libgccjit.0.dylib")]
+)
+def test_codegen_jit_publication_checks_native_artifact(
+    tmp_path, monkeypatch, platform, name
+):
+    monkeypatch.setattr(T.sys, "platform", platform)
+    build, links = tmp_path / "build", tmp_path / "jitlib"
+    with pytest.raises(SystemExit, match="did not produce"):
+        T._publish_codegen_jit(build, links)
+    assert not links.exists()
+    source = build / "gcc" / name
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"native jit")
+    T._publish_codegen_jit(build, links)
+    assert (links / "libgccjit.so").read_bytes() == b"native jit"
+    T._publish_codegen_jit(build, links)  # resumable without a dangling marker
+    assert (links / "libgccjit.so").resolve() == source.resolve()
+
+
+def test_linux_codegen_dependencies_do_not_call_homebrew(monkeypatch):
+    monkeypatch.setattr(T.sys, "platform", "linux")
+    monkeypatch.setattr(
+        T, "brew_prefix", lambda _: pytest.fail("Homebrew called on Linux")
+    )
+    assert set(T.m68k_dependency_prefixes().values()) == {"/usr"}

@@ -823,6 +823,26 @@ Changed-file preflight passes its host, type, formatting and layering checks;
 only the existing stale-reference baseline fails (`out/canopy-boottrust-changed.log`).
 
 
+ColdFire Rust build unblock: the backend installer now uses system development
+libraries on Linux/WSL, applies the libgccjit Darwin patch and Apple libc++
+workaround only on macOS, and publishes links only after the native JIT artifact
+exists. Both Python and native Patchkit now select the host backend library
+suffix rather than always requiring a dylib. Eleven installer tests and the
+native Patchkit backend-readiness test pass (`out/canopy-linux-toolchain-python.log`,
+`out/canopy-linux-toolchain-rust.log`). The actual pinned bootstrap log is
+`out/canopy-codegen-bootstrap.log`; bootstrap completion and a ColdFire runtime
+build are separate required checks, not established by these host tests.
+The pinned nightly installed, but GCC checkout on the Windows-mounted drive was
+still waiting on filesystem I/O after ten minutes. That bootstrap was stopped
+without deleting its source cache. `DIGIKIT_CODEGEN_DIR` now selects an absolute
+WSL-native build directory for both Python and native Patchkit; the default stays
+under out/tools. The local ignored environment points to the WSL user cache.
+Installer tests and the native readiness test pass again after this change.
+Focused lint/docs and preflight layering pass; the required preflight fails only
+on the existing 256 stale references in 78 files
+(`out/canopy-linux-toolchain-changed.log`).
+
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
