@@ -1360,6 +1360,29 @@ not establish those properties. Focused documentation checks pass; staged
 preflight passes Python lint/format and layering, with only the existing 256
 stale references in 78 files failing (`out/canopy-boot-initialization-changed.log`).
 
+The CF adapter now exposes an internal reset-assertion notification boundary,
+`mi_dsp_reset_begin`. Before first adapter use it leaves the initial boot alone;
+after use it permanently invalidates the registry snapshot, clears MIDI routes
+and pending transport state, and suppresses frame payloads. Repeated notification
+is idempotent; MIDI recovery, configuration, routing and replayed replies cannot
+resume the adapter in that CF boot. Stock MIDI messages fall through. This code
+requires expansion data/BSS initialization and does not access the UI coordinator
+or claim to abort physical DMA. The firmware GPIO hook is not connected yet.
+
+All 29 registry processor tests pass, including both token-loss and explicit
+reset notification through the compiled ColdFire adapter. The reset case uses
+an otherwise valid bound reply, verifies cleared payload halves and preserved
+command halves, checks cleared routes, rejects recovery/rearm and repeats the
+notification without changing the epoch. Initial-before-use notification is
+also exercised. The 21 MIDI host tests and current-source adapter build checks
+pass. Staged preflight passes lint, formatting, layering and types; it reports
+the existing 256 stale references in 78 files and one unchanged web timer test
+failure (192 host passes, 16 skips). That timer test passes when rerun alone
+with the repository host configuration (`out/canopy-reset-notify-timer.log`).
+Focused documentation checks pass. The fixture now explicitly aligns its transmit queue to four
+bytes as required by the production callback; two-byte C array alignment had
+made the earlier layout-dependent test fail. Log: `out/canopy-reset-notify-cf.log`.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

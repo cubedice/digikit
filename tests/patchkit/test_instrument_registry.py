@@ -207,7 +207,10 @@ def test_bind_after_lifecycle_admission_is_rejected(mailbox):
     assert result["wire"][0] == 0x494EA101
 
 
-def test_dsp_session_replies_cross_cf_frame_publisher_and_snapshot(mailbox, tmp_path):
+@pytest.mark.parametrize("reset_notification", [False, True])
+def test_dsp_session_replies_cross_cf_frame_publisher_and_snapshot(
+    mailbox, tmp_path, reset_notification
+):
     firmware = REPO_ROOT / "firmware/Digitakt_II_OS1.17.syx"
     runner = Path(
         os.environ.get(
@@ -240,9 +243,27 @@ void *memset(void *d, int c, unsigned n) {
     return d;
 }
 uint32_t session_boundary(const uint32_t *words, uint32_t step) {
-    static uint16_t record[0xabc/2], queue[0x2000];
+    static uint16_t record[0xabc/2];
+    static uint16_t queue[0x2000] __attribute__((aligned(4)));
     uint32_t out[16], i;
-    if (!step && mi_registry_expect_session(0xdeadbeefu,17)) return 1;
+    if (!step) {
+        mi_dsp_reset_begin(); /* initial assertion before adapter use is harmless */
+        if (mi_registry_expect_session(0xdeadbeefu,17)) return 1;
+    }
+    if (step == 2 && RESET_NOTIFICATION) {
+        mi_ledger.routes[0].enabled=1;
+        mi_ledger.routes[0].track=0;
+        mi_ledger.count=1;
+        mi_dsp_reset_begin();
+        uint32_t epoch=mi_ledger.epoch;
+        mi_dsp_reset_begin();
+        if(mi_ledger.epoch!=epoch) return 14;
+        if(mi_ledger.count || mi_ledger.routes[0].enabled) return 12;
+    }
+    for(i=0;i<MT_WORDS*2;++i) {
+        queue[2u*(0x9fc/2+i)]=0xabcd;
+        queue[2u*(0x9fc/2+i)+1u]=0xffff;
+    }
     for (i=0;i<16;++i) {
         uint32_t h=(0x1cu+0x54u*(21u+i/2u)+0x44u+(i&1u)*4u)/2u;
         record[h]=(uint16_t)words[i]; record[h+1]=(uint16_t)(words[i]>>16);
@@ -251,16 +272,34 @@ uint32_t session_boundary(const uint32_t *words, uint32_t step) {
     instrument_write_frame((uintptr_t)queue,0x9fc/2,record);
     int result=mi_registry_reply(out,16);
     if (step < 2) {
-        if (result!=16) return 2;
+        if (result!=16) return 100+step*1000+result;
         for (i=0;i<16;++i) if(out[i]!=words[i]) return 3;
     } else {
         if (result!=-2) return 4;
         for (i=0;i<16;++i) if(out[i]!=0xccccccccu) return 5;
         if(mi_registry_expect_session(0xdeadbeefu,17)!=-2) return 6;
+        if (RESET_NOTIFICATION) {
+            uint8_t note[3]={0x90,60,100};
+            uint32_t value=1;
+            for(i=0;i<MT_WORDS*2;++i)
+                if(queue[2u*(0x9fc/2+i)]!=0xabcd) return 13;
+            for(i=0;i<MT_WORDS;++i) {
+                if(queue[2u*(0x9fc/2+2u*i)+1u] ||
+                   queue[2u*(0x9fc/2+2u*i+1u)+1u]) return 7;
+            }
+            if(mi_channel_message(note,3,2)) return 8;
+            if(mi_config_submit(0,1,1,&value,1)!=-2) return 9;
+            if(mi_route_enable(0,0,0,0)!=-2) return 10;
+            mi_transport_recover();
+            if(mi_registry_reply(out,16)!=-2) return 11;
+        }
     }
     return 0;
 }
 """)
+    helper.write_text(
+        helper.read_text().replace("RESET_NOTIFICATION", str(int(reset_notification)))
+    )
     mod = REPO_ROOT / "modules/core/adapters/midi-events"
     linked = patchkit.cf_link(
         [
@@ -280,7 +319,9 @@ uint32_t session_boundary(const uint32_t *words, uint32_t step) {
             "hex": (linked.image + bytes(linked.bss_size)).hex(),
         }
     ]
-    for step, words in enumerate([bound, queried, lost, bound]):
+    for step, words in enumerate(
+        [bound, queried, bound if reset_notification else lost, bound]
+    ):
         calls.extend(
             [
                 {

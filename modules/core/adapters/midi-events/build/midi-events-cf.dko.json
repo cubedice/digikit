@@ -256,162 +256,274 @@
   },
   {
    "addend": 0,
-   "offset": 60,
+   "offset": 56,
    "section": ".text.instrument_write_frame",
    "symbol": ".sec..text.initialize",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 70,
+   "offset": 62,
+   "section": ".text.instrument_write_frame",
+   "symbol": ".sec..bss.reset_seen",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 104,
+   "section": ".text.instrument_write_frame",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 118,
    "section": ".text.instrument_write_frame",
    "symbol": "mt_reply_read",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 76,
+   "offset": 124,
    "section": ".text.instrument_write_frame",
    "symbol": ".sec..bss.frame_block",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 84,
+   "offset": 132,
    "section": ".text.instrument_write_frame",
    "symbol": ".sec..bss.registry_guard",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 90,
+   "offset": 138,
    "section": ".text.instrument_write_frame",
    "symbol": "mt_reply_guard_tick",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 100,
+   "offset": 148,
    "section": ".text.instrument_write_frame",
    "symbol": ".sec..bss.registry_guard",
    "type": "cf.32"
   },
   {
    "addend": 16,
-   "offset": 110,
+   "offset": 158,
    "section": ".text.instrument_write_frame",
    "symbol": ".sec..bss.registry_guard",
    "type": "cf.32"
   },
   {
    "addend": 28,
-   "offset": 118,
+   "offset": 166,
    "section": ".text.instrument_write_frame",
    "symbol": ".sec..bss.registry_guard",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 128,
+   "offset": 176,
    "section": ".text.instrument_write_frame",
    "symbol": "mt_reply_valid",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 154,
+   "offset": 202,
    "section": ".text.instrument_write_frame",
    "symbol": ".sec..bss.registry_reply_valid",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 160,
+   "offset": 208,
    "section": ".text.instrument_write_frame",
    "symbol": ".sec..bss.registry_reply",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 184,
+   "offset": 232,
    "section": ".text.instrument_write_frame",
    "symbol": ".sec..bss.registry_reply_valid",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 190,
+   "offset": 238,
    "section": ".text.instrument_write_frame",
    "symbol": ".sec..bss.frame_block",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 206,
-   "section": ".text.instrument_write_frame",
-   "symbol": ".sec..bss.mi_ledger",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 212,
-   "section": ".text.instrument_write_frame",
-   "symbol": ".sec..bss.mi_transport",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 218,
-   "section": ".text.instrument_write_frame",
-   "symbol": "mt_reply_tick",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 224,
-   "section": ".text.instrument_write_frame",
-   "symbol": ".sec..bss.frame_block",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 234,
-   "section": ".text.instrument_write_frame",
-   "symbol": ".sec..bss.frame_block",
-   "type": "cf.32"
-  },
-  {
-   "addend": 448,
-   "offset": 242,
-   "section": ".text.instrument_write_frame",
-   "symbol": ".sec..bss.mi_transport",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 248,
-   "section": ".text.instrument_write_frame",
-   "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 254,
    "section": ".text.instrument_write_frame",
-   "symbol": ".sec..bss.mi_transport",
+   "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 260,
    "section": ".text.instrument_write_frame",
+   "symbol": ".sec..bss.mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 266,
+   "section": ".text.instrument_write_frame",
+   "symbol": "mt_reply_tick",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 272,
+   "section": ".text.instrument_write_frame",
+   "symbol": ".sec..bss.frame_block",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 282,
+   "section": ".text.instrument_write_frame",
+   "symbol": ".sec..bss.frame_block",
+   "type": "cf.32"
+  },
+  {
+   "addend": 448,
+   "offset": 290,
+   "section": ".text.instrument_write_frame",
+   "symbol": ".sec..bss.mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 296,
+   "section": ".text.instrument_write_frame",
+   "symbol": ".sec..bss.mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 302,
+   "section": ".text.instrument_write_frame",
+   "symbol": ".sec..bss.mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 308,
+   "section": ".text.instrument_write_frame",
    "symbol": "mt_prepare",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 312,
+   "offset": 356,
    "section": ".text.instrument_write_frame",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 12,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": ".sec..bss.initialized",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": ".sec..bss.reset_seen",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 30,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": ".sec..bss.mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 36,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": ".sec..bss.reset_seen",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 42,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": ".sec..bss.registry_guard",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 48,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": ".sec..bss.registry_reply_valid",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 54,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": "mi_recover",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 60,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": ".sec..bss.mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 66,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": "mt_init",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4888,
+   "offset": 74,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": ".sec..bss.mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 128,
+   "offset": 82,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": ".sec..bss.mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 156,
+   "offset": 88,
+   "section": ".text.mi_dsp_reset_begin",
+   "symbol": ".sec..bss.mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 96,
+   "section": ".text.mi_dsp_reset_begin",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
@@ -528,36 +640,43 @@
    "type": "cf.32"
   },
   {
-   "addend": 156,
+   "addend": 0,
    "offset": 54,
    "section": ".text.mi_config_submit",
-   "symbol": ".sec..bss.mi_transport",
+   "symbol": ".sec..bss.reset_seen",
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 82,
+   "addend": 156,
+   "offset": 60,
    "section": ".text.mi_config_submit",
-   "symbol": ".sec..bss.mi_ledger",
+   "symbol": ".sec..bss.mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 88,
    "section": ".text.mi_config_submit",
-   "symbol": ".sec..bss.mi_transport",
+   "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 94,
    "section": ".text.mi_config_submit",
+   "symbol": ".sec..bss.mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 100,
+   "section": ".text.mi_config_submit",
    "symbol": "mt_config_begin",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4,
+   "offset": 6,
    "section": ".text.mi_transport_recover",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
@@ -566,70 +685,77 @@
    "addend": 0,
    "offset": 12,
    "section": ".text.mi_transport_recover",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": ".text.mi_transport_recover",
    "symbol": ".sec..text.initialize",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 18,
+   "offset": 26,
+   "section": ".text.mi_transport_recover",
+   "symbol": ".sec..bss.reset_seen",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 48,
    "section": ".text.mi_transport_recover",
    "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 24,
-   "section": ".text.mi_transport_recover",
-   "symbol": ".sec..bss.registry_reply_valid",
-   "type": "cf.32"
-  },
-  {
    "addend": 12,
-   "offset": 32,
+   "offset": 54,
    "section": ".text.mi_transport_recover",
    "symbol": ".sec..bss.registry_guard",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 38,
+   "offset": 60,
+   "section": ".text.mi_transport_recover",
+   "symbol": ".sec..bss.registry_reply_valid",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 66,
    "section": ".text.mi_transport_recover",
    "symbol": "mi_recover",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 44,
+   "offset": 72,
    "section": ".text.mi_transport_recover",
    "symbol": ".sec..bss.mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 50,
+   "offset": 78,
    "section": ".text.mi_transport_recover",
    "symbol": "mt_init",
    "type": "cf.32"
   },
   {
    "addend": 4888,
-   "offset": 60,
+   "offset": 86,
    "section": ".text.mi_transport_recover",
    "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 128,
-   "offset": 66,
+   "offset": 92,
    "section": ".text.mi_transport_recover",
    "symbol": ".sec..bss.mi_transport",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 72,
-   "section": ".text.mi_transport_recover",
-   "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
@@ -675,29 +801,36 @@
    "type": "cf.32"
   },
   {
-   "addend": 156,
+   "addend": 0,
    "offset": 102,
+   "section": ".text.mi_route_enable",
+   "symbol": ".sec..bss.reset_seen",
+   "type": "cf.32"
+  },
+  {
+   "addend": 156,
+   "offset": 108,
    "section": ".text.mi_route_enable",
    "symbol": ".sec..bss.mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 124,
+   "offset": 130,
    "section": ".text.mi_route_enable",
    "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 4888,
-   "offset": 142,
+   "offset": 148,
    "section": ".text.mi_route_enable",
    "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 180,
+   "offset": 186,
    "section": ".text.mi_route_enable",
    "symbol": "mi_route",
    "type": "cf.32"
@@ -746,28 +879,35 @@
   },
   {
    "addend": 0,
-   "offset": 50,
+   "offset": 18,
+   "section": ".text.mi_channel_message",
+   "symbol": ".sec..bss.reset_seen",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 60,
    "section": ".text.mi_channel_message",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 70,
+   "offset": 80,
    "section": ".text.mi_channel_message",
    "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 76,
+   "offset": 86,
    "section": ".text.mi_channel_message",
    "symbol": "mi_message",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 88,
+   "offset": 98,
    "section": ".text.mi_channel_message",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
@@ -937,10 +1077,17 @@
   },
   {
    "align": 2,
-   "hex": "4fefffb048d7440c262f005c4aaf00546700012c7003c0af00544a8066000120203c000004feb0af0058660001124eb90000000045ef00102c404eb9000000002f0a2f034eb9000000002f39000000002f0a4879000000004eb9000000004fef00142439000000004a82664a4ab90000000067084ab900000000673a2f0a4eb900000000588f4a80672c223c49525231b2af00206620700123c00000000041f90000000043f228007040219128005882b08266f0600642b9000000002039000000004a836702260a2f002f034879000000004879000000004eb9000000002039000000002200528123c1000000002f004879000000004879000000004879000000004eb900000000206f007493c94fef002041e813fa4a80672e244022329c00308142414841528950883141fffc7220b28966e22f0e4eb900000000588f4cd7440c4fef00504e75428160d4",
+   "hex": "4fefffac48d7441c2c6f0058282f00604a8e67000156200e7203c0814a806600014a327c04feb3ef005c6600013e4eb90000000026004eb9000000004ab900000000672841ee13fa4dee14fa4240425050883140fffcbdc866f22f4300584cd7441c4fef00544ef90000000045ef00142f0a2f044eb9000000002f39000000002f0a4879000000004eb9000000004fef00142439000000004a82664a4ab90000000067084ab900000000673a2f0a4eb900000000588f4a80672c223c49525231b2af00246620700123c00000000041f90000000043f228007040219128005882b08266f0600642b9000000002039000000004a846702280a2f002f044879000000004879000000004eb9000000002039000000002200528123c1000000002f004879000000004879000000004879000000004eb9000000004dee13fa4fef002091c84a80672e224022318c003c81424148415288508e3d41fffc7220b28866e22f034eb900000000588f4cd7441c4fef00544e75428160d4",
    "kind": "text",
    "name": ".text.instrument_write_frame",
-   "size": 332
+   "size": 376
+  },
+  {
+   "align": 2,
+   "hex": "598f4eb9000000002e804ab900000000674a4ab9000000006642700148790000000023c00000000023c00000000042b9000000004eb9000000004879000000004eb900000000508f41f900000000700123d00000000023c0000000002f174eb900000000508f4e75",
+   "kind": "text",
+   "name": ".text.mi_dsp_reset_begin",
+   "size": 104
   },
   {
    "align": 2,
@@ -958,24 +1105,24 @@
   },
   {
    "align": 2,
-   "hex": "518f4eb9000000002f4000044eb9000000004ab900000000661a70fe2f2f00042f4000044eb900000000202f00044fef000c4e754ab90000000066de2f2f001c2f2f001c2f2f001c2f2f001c2f2f001c4879000000004879000000004eb9000000004fef001c60b4",
+   "hex": "518f4eb9000000002f4000044eb9000000004ab900000000661a70fe2f2f00042f4000044eb900000000202f00044fef000c4e7520390000000080b90000000066d82f2f001c2f2f001c2f2f001c2f2f001c2f2f001c4879000000004879000000004eb9000000004fef001c60ae",
    "kind": "text",
    "name": ".text.mi_config_submit",
+   "size": 110
+  },
+  {
+   "align": 2,
+   "hex": "2f0a2f024eb90000000045f90000000024004eb9000000004ab900000000670c2f024e92588f241f245f4e75700148790000000023c00000000042b9000000004eb9000000004879000000004eb9000000002f0241f90000000023d0000000004e924fef000c60be",
+   "kind": "text",
+   "name": ".text.mi_transport_recover",
    "size": 104
   },
   {
    "align": 2,
-   "hex": "598f4eb9000000002e804eb90000000048790000000042b900000000700123c0000000004eb9000000004879000000004eb9000000002f2f000841f90000000023d0000000004eb9000000004fef00104e75",
-   "kind": "text",
-   "name": ".text.mi_transport_recover",
-   "size": 82
-  },
-  {
-   "align": 2,
-   "hex": "4fefffec700148d70c0c242f0020b0af0018640e74ff20024cd70c0c4fef00144e75202f001c8082e88866e847f9000000004a8b67de4eb9000000002f4000104eb90000000041f9000000004ab900000000661074fe2f2f00104eb900000000588f60b24ab90000000066e820020680000000704ab00c0067da45f90000000026020683000004c72f323c002f39000000002f024e934fef000c4a8067b62f2f00242f323c002f022f2f00282f2f00282f0a4eb9000000004fef001824006096",
+   "hex": "4fefffec700148d70c0c242f0020b0af0018640e74ff20024cd70c0c4fef00144e75202f001c8082e88866e847f9000000004a8b67de4eb9000000002f4000104eb90000000041f9000000004ab900000000661074fe2f2f00104eb900000000588f60b220390000000080b90000000066e220020680000000704ab00c0067d445f90000000026020683000004c72f323c002f39000000002f024e934fef000c4a8067b02f2f00242f323c002f022f2f00282f2f00282f0a4eb9000000004fef001824006090",
    "kind": "text",
    "name": ".text.mi_route_enable",
-   "size": 192
+   "size": 198
   },
   {
    "align": 2,
@@ -986,10 +1133,10 @@
   },
   {
    "align": 2,
-   "hex": "598f2f02202f00144ab90000000067087203b2af0010670a42822002241f588f4e754aaf000c67f07208b280663474014eb9000000002f400004487800032f2f00102f024879000000004eb9000000002f2f001424004eb9000000004fef001460b87208b28065107202b280670659804a8066a4428260b87210b28067b06098",
+   "hex": "598f2f02202f00144ab900000000670a2439000000004a82670a42822002241f588f4e757203b2af001066ee4aaf000c67e87208b280663474014eb9000000002f400004487800032f2f00102f024879000000004eb9000000002f2f001424004eb9000000004fef001460b07208b280650e7202b28067c259804a8067bc609a7210b28067b26092",
    "kind": "text",
    "name": ".text.mi_channel_message",
-   "size": 128
+   "size": 136
   },
   {
    "align": 2,
@@ -1023,6 +1170,13 @@
    "align": 2,
    "hex": "",
    "kind": "bss",
+   "name": ".bss.reset_seen",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
    "name": ".bss.initialized",
    "size": 4
   },
@@ -1041,7 +1195,7 @@
    "size": 4956
   }
  ],
- "source_sha256": "583161472105386e0861adb1dceb6c8ec7029df968c3ab3336eae2e55b5f5ebf",
+ "source_sha256": "e2f40fdadc223ba2282486e833abcc8976bbce6e1612265d2a2612c40d4e5d31",
  "symbols": [
   {
    "global": false,
@@ -1083,6 +1237,12 @@
    "global": false,
    "name": ".sec..bss.registry_reply_valid",
    "section": ".bss.registry_reply_valid",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.reset_seen",
+   "section": ".bss.reset_seen",
    "value": 0
   },
   {
@@ -1233,6 +1393,12 @@
    "global": true,
    "name": "mi_din_return",
    "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_dsp_reset_begin",
+   "section": ".text.mi_dsp_reset_begin",
    "value": 0
   },
   {
@@ -1402,14 +1568,20 @@
    "name": "registry_reply_valid",
    "section": ".bss.registry_reply_valid",
    "value": 0
+  },
+  {
+   "global": false,
+   "name": "reset_seen",
+   "section": ".bss.reset_seen",
+   "value": 0
   }
  ],
  "toolchain": {
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "1709",
-  "isa_check": "e72732a9ecb5071fcfd35eabb6db1e3f6bb28e7b961fdb66e7f3e190dc1361ca",
+  "instructions_redecoded": "1762",
+  "isa_check": "c25f17c0026b31140045f5f8100045029f223393931a3bafd5c03cf3e30fdea1",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

@@ -3,6 +3,7 @@
 #include "transport.h"
 extern MiLedger mi_ledger;
 extern MiTransport mi_transport;
+int mi_channel_message(const uint8_t *msg, uint32_t len, uint32_t source);
 /* Internal core handoff, serialized with MIDI and the frame ISR. */
 int mi_route_enable(uint32_t port, uint32_t channel, uint32_t track, int sequencer);
 void mi_instance_reset(uint32_t track);
@@ -16,6 +17,10 @@ int mi_registry_reply(uint32_t *out, uint32_t words);
  * Does not send a command; clears the cached reply on success. Return codes
  * match mt_reply_guard_expect. The loader must also enforce a UI-clock deadline. */
 int mi_registry_expect_session(uint32_t token, uint32_t sequence);
+/* Reset assertion notification, before GPIO changes. Safe only after expansion
+ * data/BSS initialization; does not access the UI owner or abort physical DMA.
+ * Not connected to the firmware reset helper until the hook is verified. */
+void mi_dsp_reset_begin(void);
 /* Explicit recovery only, with all physical keys released. */
 void mi_transport_recover(void);
 void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record);
