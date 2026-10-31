@@ -983,6 +983,28 @@ types; its only failure is the existing 256 stale references in 78 files
 (`out/canopy-runtime-binding-changed.log`).
 
 
+The coordinator now owns bounded scheduler handoffs for DSP-link acquisition
+and release. Acquisition waits for the caller's legacy-idle proof before making
+any claim call; one deadline includes both logical legacy drainage and physical
+link-busy retries. Release is allowed only between complete jobs and retains
+ownership while the provider is busy. Repeated requests cannot renew either
+deadline. Timeout, ambiguous release or boot invalidation blocks further calls
+and preserves the lease and allocations; only an explicit Released result lets
+legacy producers resume. Unbounded claim/release helpers are now private.
+
+Five new coordinator scenarios cover legacy wait/claim retries, successful load
+and release, deadline wraparound, release timeout, invalid budgets, and boot loss
+in both waiting states. All 138 SDK tests pass (`out/canopy-handoff-sdk.log`).
+The firmware scheduler still needs to supply the logical legacy-idle proof,
+stop new legacy load/FX transactions, and own the coordinator and its buffer.
+This checkpoint does not enable V2 admission or establish DSP boot identity.
+The ColdFire rebuild and current-source check pass
+(`out/canopy-handoff-build.log`, `out/canopy-handoff-check.log`); the executable
+is unchanged and only its SDK source fingerprint changes.
+Focused documentation references pass. Required preflight passes layering,
+host tests, formatting and types; only the existing 256 stale references in
+78 files fail (`out/canopy-handoff-changed.log`).
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

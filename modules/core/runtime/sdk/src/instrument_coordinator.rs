@@ -36,6 +36,23 @@ pub enum Progress {
     Blocked(Failure),
 }
 
+/// Scheduler-visible link handoff. Only Released permits legacy producers to
+/// resume; Pending, Owned and Blocked require them to remain paused.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LinkProgress {
+    Released,
+    Pending,
+    Owned,
+    Blocked(Failure),
+}
+#[derive(Clone, Copy)]
+enum Handoff {
+    Released,
+    Acquire { start: u32, budget: u32 },
+    Owned,
+    Release { start: u32, budget: u32 },
+}
+
 enum Phase {
     Upload(upload::PumpState),
     Install(exchange::PumpState),
@@ -57,6 +74,7 @@ pub struct Coordinator<'image, T> {
     loads: Loads,
     job: Option<Job<'image>>,
     blocked: Option<Failure>,
+    handoff: Handoff,
 }
 
 impl<'image, T: Transport> Coordinator<'image, T> {
@@ -71,6 +89,7 @@ impl<'image, T: Transport> Coordinator<'image, T> {
             mailbox: Mailbox::new(),
             job: None,
             blocked: None,
+            handoff: Handoff::Released,
         }
     }
 
@@ -91,7 +110,12 @@ impl<'image, T: Transport> Coordinator<'image, T> {
         if self.blocked.is_some() {
             return Err(Error::Blocked);
         }
-        if self.job.is_some() {
+        if self.job.is_some()
+            || matches!(
+                self.handoff,
+                Handoff::Acquire { .. } | Handoff::Release { .. }
+            )
+        {
             return Err(Error::Busy);
         }
         if !self.driver.transaction_ready() {
@@ -235,9 +259,95 @@ impl<'image, T: Transport> Coordinator<'image, T> {
 }
 
 impl<T: crate::instrument_lease::LeaseTransport> Coordinator<'_, T> {
+    /// Stop admitting new legacy jobs before requesting ownership, then let
+    /// existing legacy load/FX jobs drain. The same deadline covers that drain
+    /// and every claim retry. Repeated requests cannot renew the deadline.
+    /// Clock units are monotonic; budget is 1..2^31 and ticks must be less than
+    /// 2^31 apart. Clock reset requires invalidate_boot.
+    pub fn request_link(&mut self, now: u32, budget: u32) -> Result<(), Error> {
+        self.request_handoff(now, budget, true)
+    }
+
+    /// Request release only after the entire job (including recovery) ends.
+    /// Legacy producers must remain paused until tick_link returns Released.
+    pub fn request_link_release(&mut self, now: u32, budget: u32) -> Result<(), Error> {
+        self.request_handoff(now, budget, false)
+    }
+
+    fn request_handoff(&mut self, now: u32, budget: u32, acquire: bool) -> Result<(), Error> {
+        if self.blocked.is_some() {
+            return Err(Error::Blocked);
+        }
+        if self.job.is_some()
+            || !matches!(
+                (acquire, self.handoff),
+                (true, Handoff::Released) | (false, Handoff::Owned)
+            )
+        {
+            return Err(Error::Busy);
+        }
+        if budget == 0 || budget >= 0x80000000 {
+            return Err(Error::Budget);
+        }
+        self.handoff = if acquire {
+            Handoff::Acquire { start: now, budget }
+        } else {
+            Handoff::Release { start: now, budget }
+        };
+        Ok(())
+    }
+
+    /// One bounded UI pass. legacy_idle means all logical load/FX transactions
+    /// and their pollers have drained, not merely that the wire is idle. Caller
+    /// must keep new legacy starts paused throughout acquisition and ownership.
+    /// No callbacks occur after deadline expiry or loss of boot trust. A failed
+    /// handoff is terminal for this owner, retaining any lease and allocations.
+    pub fn tick_link(&mut self, now: u32, legacy_idle: bool) -> LinkProgress {
+        if let Some(cause) = self.blocked {
+            return LinkProgress::Blocked(cause);
+        }
+        let (start, budget, acquire) = match self.handoff {
+            Handoff::Released => return LinkProgress::Released,
+            Handoff::Owned => return LinkProgress::Owned,
+            Handoff::Acquire { start, budget } => (start, budget, true),
+            Handoff::Release { start, budget } => (start, budget, false),
+        };
+        if now.wrapping_sub(start) >= budget {
+            self.blocked = Some(Failure::Timeout);
+            return LinkProgress::Blocked(Failure::Timeout);
+        }
+        if acquire && !legacy_idle {
+            return LinkProgress::Pending;
+        }
+        let result = if acquire {
+            self.claim_link()
+        } else {
+            self.release_link().map(|()| true)
+        };
+        match result {
+            Ok(true) => {
+                self.handoff = if acquire {
+                    Handoff::Owned
+                } else {
+                    Handoff::Released
+                };
+                if acquire {
+                    LinkProgress::Owned
+                } else {
+                    LinkProgress::Released
+                }
+            }
+            Ok(false) | Err(crate::instrument_lease::Error::Busy) => LinkProgress::Pending,
+            Err(_) => {
+                self.blocked = Some(Failure::Link);
+                LinkProgress::Blocked(Failure::Link)
+            }
+        }
+    }
+
     /// Scheduler must first quiesce legacy load/FX pollers. Busy acquisition
     /// needs an external bounded wait; it does not start a load's deadline.
-    pub fn claim_link(&mut self) -> Result<bool, crate::instrument_lease::Error> {
+    fn claim_link(&mut self) -> Result<bool, crate::instrument_lease::Error> {
         if self.blocked.is_some() {
             return Err(crate::instrument_lease::Error::Uncertain);
         }
@@ -253,7 +363,7 @@ impl<T: crate::instrument_lease::LeaseTransport> Coordinator<'_, T> {
     /// Only between jobs, never during reply gaps, recovery or after blockage.
     /// Busy release retains ownership; the scheduler must keep legacy paused.
     /// No Drop implementation releases on cancellation or lost boot trust.
-    pub fn release_link(&mut self) -> Result<(), crate::instrument_lease::Error> {
+    fn release_link(&mut self) -> Result<(), crate::instrument_lease::Error> {
         if self.blocked.is_some() {
             return Err(crate::instrument_lease::Error::Uncertain);
         }

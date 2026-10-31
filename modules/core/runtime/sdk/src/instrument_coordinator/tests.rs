@@ -16,6 +16,8 @@ struct Wire {
     claims: u32,
     releases: u32,
     uncertain_release: bool,
+    claim_busy: bool,
+    release_busy: bool,
     mode: u32,
     busy: bool,
     silent: bool,
@@ -112,13 +114,19 @@ impl crate::instrument_lease::LeaseTransport for Link {
     fn claim(&mut self) -> Result<bool, crate::instrument_lease::Error> {
         WIRE.with_borrow_mut(|w| {
             w.claims += 1;
+            if w.claim_busy {
+                return Ok(false);
+            }
             w.owned = true;
-        });
-        Ok(true)
+            Ok(true)
+        })
     }
     fn release(&mut self) -> Result<(), crate::instrument_lease::Error> {
         WIRE.with_borrow_mut(|w| {
             w.releases += 1;
+            if w.release_busy {
+                return Err(crate::instrument_lease::Error::Busy);
+            }
             if w.uncertain_release {
                 return Err(crate::instrument_lease::Error::Uncertain);
             }
@@ -583,4 +591,121 @@ fn boot_loss_after_detach_completion_prevents_allocator_reuse() {
     f.owner.invalidate_boot();
     assert!(f.release().is_err());
     assert_ne!(f.lengths[0], 0);
+}
+
+#[test]
+fn handoff_waits_for_legacy_then_keeps_release_exclusive() {
+    let mut f = Fixture::new();
+    WIRE.with_borrow_mut(|w| w.require_lease = true);
+    assert_eq!(f.owner.tick_link(0, false), LinkProgress::Released);
+    assert_eq!(f.owner.request_link(10, 20), Ok(()));
+    assert_eq!(f.owner.tick_link(11, false), LinkProgress::Pending);
+    WIRE.with_borrow(|w| assert_eq!(w.claims, 0));
+    WIRE.with_borrow_mut(|w| w.claim_busy = true);
+    assert_eq!(f.owner.tick_link(12, true), LinkProgress::Pending);
+    WIRE.with_borrow_mut(|w| w.claim_busy = false);
+    assert_eq!(f.owner.tick_link(13, true), LinkProgress::Owned);
+    f.begin(14, 1000);
+    assert_eq!(f.owner.request_link_release(15, 10), Err(Error::Busy));
+    assert_eq!(f.owner.tick_link(15, false), LinkProgress::Owned);
+    for now in 16..1000 {
+        if matches!(f.owner.tick(now), Progress::Complete { .. }) {
+            assert_eq!(f.owner.request_link_release(now, 10), Ok(()));
+            WIRE.with_borrow_mut(|w| w.release_busy = true);
+            assert_eq!(f.owner.tick_link(now, true), LinkProgress::Pending);
+            WIRE.with_borrow(|w| assert!(w.owned));
+            WIRE.with_borrow_mut(|w| w.release_busy = false);
+            assert_eq!(f.owner.tick_link(now + 1, true), LinkProgress::Released);
+            assert_eq!(f.owner.tick_link(now + 2, true), LinkProgress::Released);
+            WIRE.with_borrow(|w| {
+                assert!(!w.owned);
+                assert_eq!((w.claims, w.releases), (2, 2));
+            });
+            return;
+        }
+    }
+    panic!("load did not finish");
+}
+
+#[test]
+fn acquisition_deadline_includes_legacy_drain_and_wraps_without_renewal() {
+    let mut f = Fixture::new();
+    assert_eq!(f.owner.request_link(u32::MAX - 2, 5), Ok(()));
+    assert_eq!(f.owner.tick_link(0, false), LinkProgress::Pending);
+    assert_eq!(f.owner.request_link(0, 100), Err(Error::Busy));
+    WIRE.with_borrow_mut(|w| w.claim_busy = true);
+    assert_eq!(f.owner.tick_link(1, true), LinkProgress::Pending);
+    assert_eq!(
+        f.owner.tick_link(2, true),
+        LinkProgress::Blocked(Failure::Timeout)
+    );
+    assert_eq!(
+        f.owner.tick_link(3, true),
+        LinkProgress::Blocked(Failure::Timeout)
+    );
+    assert_eq!(f.owner.request_link(3, 100), Err(Error::Blocked));
+    WIRE.with_borrow(|w| assert_eq!((w.claims, w.releases), (1, 0)));
+}
+
+#[test]
+fn release_timeout_retains_lease_and_blocks_memory_reuse() {
+    let mut f = Fixture::new();
+    assert_eq!(f.owner.request_link(0, 10), Ok(()));
+    assert_eq!(f.owner.tick_link(0, true), LinkProgress::Owned);
+    assert_eq!(f.owner.request_link_release(1, 2), Ok(()));
+    WIRE.with_borrow_mut(|w| w.release_busy = true);
+    assert_eq!(f.owner.tick_link(2, true), LinkProgress::Pending);
+    assert_eq!(f.owner.request_link_release(2, 20), Err(Error::Busy));
+    assert_eq!(
+        f.owner.tick_link(3, true),
+        LinkProgress::Blocked(Failure::Timeout)
+    );
+    assert!(f.release().is_err());
+    assert_eq!(f.owner.tick(4), Progress::Blocked(Failure::Timeout));
+    assert_eq!(
+        f.owner.tick_link(4, true),
+        LinkProgress::Blocked(Failure::Timeout)
+    );
+    WIRE.with_borrow(|w| {
+        assert!(w.owned);
+        assert_eq!(w.releases, 1);
+    });
+}
+
+#[test]
+fn boot_loss_stops_handoff_callbacks_in_all_wait_states() {
+    for acquired in [false, true] {
+        let mut f = Fixture::new();
+        assert_eq!(f.owner.request_link(0, 10), Ok(()));
+        if acquired {
+            assert_eq!(f.owner.tick_link(0, true), LinkProgress::Owned);
+            assert_eq!(f.owner.request_link_release(1, 10), Ok(()));
+        }
+        f.owner.invalidate_boot();
+        assert_eq!(
+            f.owner.tick_link(2, true),
+            LinkProgress::Blocked(Failure::Boot)
+        );
+        WIRE.with_borrow(|w| {
+            assert_eq!(w.claims, u32::from(acquired));
+            assert_eq!(w.releases, 0);
+            assert_eq!(w.owned, acquired);
+        });
+    }
+}
+
+#[test]
+fn handoff_rejects_invalid_budgets_and_loads_during_waits() {
+    let mut f = Fixture::new();
+    for budget in [0, 0x80000000, u32::MAX] {
+        assert_eq!(f.owner.request_link(0, budget), Err(Error::Budget));
+    }
+    assert_eq!(f.owner.request_link(0, 10), Ok(()));
+    assert_eq!(
+        f.owner.begin(f.plan.take().unwrap(), &IMAGE, 0, 10),
+        Err(Error::Busy)
+    );
+    assert_eq!(f.owner.tick_link(0, true), LinkProgress::Owned);
+    assert_eq!(f.owner.request_link_release(1, 0), Err(Error::Budget));
+    assert_eq!(f.owner.tick_link(2, false), LinkProgress::Owned);
 }
