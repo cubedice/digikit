@@ -1,11 +1,11 @@
 # CANOPY implementation
 
-This directory contains the Stage 1 sine instrument for the
+This directory contains the Stage 3 four-note pad instrument for the
 [CANOPY design](../../../docs/design/canopy.md). Its dynamic package uses V2
 reset/process callbacks and an assigned machine type. It requires the optional
 DTII 1.17 `core/instrument-play` adapter; ordinary firmware cannot admit it.
-Integrated Stage 1 keyboard/audio acceptance passes in the coupled emulator.
-This development package is not a finished pad synth or hardware release.
+The engine supports Velvet/Reed families, color, drift and local envelopes.
+Arp, the final SRC interface, presets and hardware release remain later stages.
 
 Build and pack with `patchkit build digikit/canopy` and
 `patchkit pack digikit/canopy --device dt2 -o out/patch/canopy-dt2.dkm` through
@@ -13,16 +13,17 @@ the repository's Python wrapper. Select CANOPY on track 1. In firmware containin
 the adapter, SETTINGS > DIGIKIT > KEYBOARD selects USB/DIN, channel and ENABLE.
 Enable the corresponding stock MIDI receive ports as well. Development
 installation uses the upload/selection protocol; the generic module-browser fit
-calculator remains V1-only. Routing starts disabled on every boot; Stage 1 does
-not persist setup settings.
+calculator remains V1-only. Routing starts disabled on every boot. Learned chord templates persist;
+keyboard and sound setup currently return to defaults.
 Only track 1 is admitted. Other tracks and channels retain stock behavior.
 
 `src/dsp/voice.s` implements four foreground notes, two short release tails and
 four pending-replacement records in a caller-owned 256-byte bank.
 Each note has its own token, gate, oscillator phase, velocity and linear envelope.
-Attack is fixed at 80 ms; release falls at full-scale per second (a note released
-during attack ends sooner). Output is mono, in 32-sample blocks at 48 kHz. The sine
-rotator normalizes its phase vector once per block to limit numerical drift.
+Attack defaults to 80 ms and release to one second; both are adjustable in
+KEYBOARD setup (a note released during attack ends sooner). Output is mono, in
+32-sample blocks at 48 kHz. A normalized sine rotator supplies the fundamental
+and finite second/third harmonic families; harmonics fade before Nyquist.
 `src/dsp/tuning.s` supplies MIDI 0–127 coefficients at A4=440 Hz.
 
 Note-on rejects duplicate tokens and invalid notes/velocities without changing
@@ -31,12 +32,12 @@ note. Zero-velocity Note On must already have been normalized by MIDI ingress.
 QUIET is returned only after every local release finishes, and the entire output
 block is always written. Independent banks allow separate track state.
 
-This is deliberately the lifetime-test kernel, not the finished instrument. It has
-no chord modes, arp or preset controls. These
-operations must not be advertised by a ready instrument yet. The callback layer
-now supports CC64 sustain, CC121 pedal reset, CC123 All Notes Off and CC120
+The adapter supplies PLAY, ROOT + TYPE and learned chord modes. Arp and presets
+remain future stages. The callback layer supports CC64 sustain, CC121 pedal reset, CC123 All Notes Off and CC120
 All Sound Off, plus 14-bit pitch bend at a fixed +/-2 semitone range, scoped to
 MIDI port/channel.
+
+## Earlier carrier and transport evidence
 
 The earlier legacy fixture owns sixteen separate voice banks and a 256-byte staging bank.
 Each track additionally has a 256-byte controller record with 32 route pedal bits and
@@ -194,17 +195,21 @@ The booted reload scenario also verifies pedal-owned USB C remains audible after
 retires C without cutting off a fresh physically held USB G; G's release returns
 the final output to zero in the measured window. This is emulator evidence only.
 
-The V2 callback prototype in `src/dsp/v2.s` uses a 528-byte allocator-owned
+## Current V2 callback
+
+The V2 callback in `src/dsp/v2.s` uses a 544-byte allocator-owned
 instance and normalized input events. It shares the atomic voice/pedal engine
 with the transport proof. `test_canopy_v2.py` checks it both directly and through
 the protected registry dispatcher, including paired held-voice phase/gain state,
 independent velocity and bend, sustain, malformed batches and reset isolation.
-It requires neutral tuning and fixed PLAY configuration. Descriptor budgets are
-provisional, and destructive reset still requires carrier quiescence. This is
-not a packaged instrument or a completed live V2 audio route.
+CPS3 accepts family, color, drift, attack and release. CPS1 retains the historical
+sine diagnostic. Descriptor budgets remain provisional; destructive reset
+requires carrier quiescence. The optional adapter packages and admits the V2
+instrument through the normal module protocol.
 
 
 Stage 2 keyboard modes and learned shape memory are provided by the optional
 `core/instrument-play` adapter. See
 [the keyboard setup guide](../../core/adapters/instrument-play/README.md#keyboard-modes-and-shape-memory).
-The DSP remains the Stage 1 sine renderer; pad timbres and arp are later stages.
+Stage 3 now supplies the pad renderer; arp remains Stage 4. See the
+[pad sound setup](../../core/adapters/instrument-play/README.md#pad-sound-setup-stage-3).

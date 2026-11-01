@@ -3,7 +3,7 @@
 Development-only DTII OS 1.17 adapter for one admitted V2 instance on track 1
 (the zero-based DSP track 0). It is not in a default patch set. There is no
 hardware release approval. The development policy admits one instance with a
-528-byte state ceiling and declared 100000/1000 process/reset ceilings.
+544-byte state ceiling and declared 100000/1000 process/reset ceilings.
 Instruction-test limits are not a measured hardware cycle budget.
 
 The early-frame transport callbacks copy normalized events into an owned input
@@ -38,7 +38,7 @@ published CF code/metadata remain retained until reboot for existing readers.
 The adapter has its own UI tick and does not take Overloop's control callback.
 
 `tests/regression/runtime/canopy-stage1.test.ts` is the integrated acceptance.
-Prepare `out/patch/canopy-stage2.syx` from `core/instrument-play,core/digikit-menu`
+Prepare `out/patch/canopy-stage3.syx` from `core/instrument-play,core/digikit-menu`
 and `out/patch/canopy-dt2.dkm` from `digikit/canopy` before running the dedicated
 `canopy-stage1` Vitest project. It requires the preflighted coupled DT2 daemon
 and sample card. No firmware build in this document authorizes a device flash.
@@ -105,3 +105,46 @@ Host scenarios execute the production C engine, transport and UI callbacks in
 remains in `tests/regression/runtime/canopy-stage1.test.ts` and uses the
 artifact names above. Instruction tests measure bounded CF work separately from
 SHARC rendering. These checks do not establish hardware timing or release approval.
+
+
+## Pad sound setup (Stage 3)
+
+The final five KEYBOARD rows control the pad while notes remain held:
+
+| Row | Range and meaning | Default |
+| --- | --- | --- |
+| REED (OFF=VELVET) | Velvet has a rounded odd-harmonic spectrum; Reed adds even and odd harmonics | Velvet |
+| COLOR | 0 is sine; 127 is the full family spectrum | 64 |
+| DRIFT | 0 is exact tuning; 127 adds deterministic slow motion up to five cents, less at high pitches | 0 |
+| ATTACK | 0..127 maps to `10 + 14*value` milliseconds | 5 = 80 ms |
+| RELEASE | 0..127 maps to `40 + 64*value` milliseconds from full level | 15 = 1000 ms |
+
+These are setup controls until the Stage 5 SRC pages/presets. They remain at the
+current setting across compatible pattern switches and return to defaults on
+reboot. They are not Sound/project parameters. Stock filter, level, pan and FX
+continue downstream of the instrument. Use a sustained stock AMP shape for
+independent keyboard notes; stock AMP remains a shared master shape.
+
+CPS3 uses six integer words (version 3, family, color, drift, attack, release).
+The existing checked/acknowledged configuration transport commits all six at
+once. UI changes coalesce while a prior packet is pending; updates retain tokens,
+phase and envelopes. Invalid configurations cannot partially update sound.
+Family and color are smoothed over 20 ms with sample interpolation. Drift updates
+at block rate, with independent deterministic instance phase and opposite motion
+for alternating tokens. Normal release never extends the 64-sample panic ramp.
+
+CANOPY uses one rotating oscillator per tone group and derives only the second
+and third harmonics. Frequency-dependent weights fade harmonics before Nyquist,
+including bent/drifted pitches. Four foreground groups and two shared tails have
+fixed headroom below 0.75 at full velocity; note count never normalizes gain.
+The 544-byte instance and 2560-byte shared pitch/envelope tables fit the design's
+4 KiB/64 KiB targets. Single-instance admission remains in force. Instruction
+bounds are not a silicon CPU or Overloop coexistence qualification.
+
+The packaged Stage 3 acceptance uses `out/patch/canopy-stage3.syx` and
+`out/patch/canopy-dt2.dkm`, in the `canopy-stage3` Vitest project. Earlier Stage 1/2
+acceptance can run against the Stage 3 image as well. No physical device is
+flashed by these tests.
+
+Use the matching Stage 3 firmware and CANOPY DKM together. The older sine-only
+DKM cannot consume the new six-word sound configuration.

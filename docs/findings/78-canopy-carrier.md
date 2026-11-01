@@ -1366,3 +1366,37 @@ USB INFO. The full-flow image was
 the final bounds-only guard has the separate current CF/host evidence above.
 The Stage 2 handover records the final built artifact hash. No hardware timing or
 release claim follows from this functional emulator acceptance.
+
+
+## Stage 3 bounded pad engine (2026-11-01)
+
+**[D]** The V2 pad adds Velvet/Reed spectra, smoothed color/family, deterministic
+slow drift and local attack/release controls through atomic CPS3 configuration.
+The four-plus-two pool remains bounded; state is 544 bytes and shared pitch/time
+tables are 2560 bytes. The analytic six-group signal bound is below 0.75.
+
+The final direct/protected callback run passes 58 cases with memory canaries,
+invalid configuration rollback, instance isolation, reset-tail preservation and
+non-finite/over-level silence. Against declared ceilings of 100000 process and
+1000 reset instructions, measured maxima are 20830 and 423. This is not hardware
+timing. Separate actual-kernel checks compare bounded spectra at six pitches
+through MIDI 127, exercise maximum drift and full-pool retriggers, and retain
+long-hold/release pitch checks. Logs: `out/canopy-stage3-components.log` and
+`out/canopy-stage3-final-v2.log`. Live filter/FX acceptance is recorded separately.
+
+
+**[D] Running-firmware acceptance:** The Stage 3 test passes live family/color/
+drift/release changes without losing the held token, audible Reed harmonics in
+both channels, stock filter close/reopen, and reverb after the module buffer is
+exactly zero. Dry/closed/open stereo RMS is 0.027996/0.006159/0.027922; reverb-tail
+RMS is 0.010511. Runtime is 581.25 s (651.08 s including setup). The complete
+Stage 1/2 keyboard/storage/panic/fault-retirement flow also passes in 482.93 s
+(554.75 s total) with this pad engine. Logs: `out/canopy-stage3-live.log` and
+`out/canopy-stage3-keyboard-live.log`.
+
+Both live runs used the pre-output-guard DKM, full-file SHA-256
+`c0e7924c335a94d04cca4b734b9abe9ae1b5fc59ca453f6b0909b8af512f050a`.
+The final output-only guard was separately verified by the 58-case V2 run and
+the build-current check; the otherwise identical live flows were not repeated.
+Two additional instruction cases verify bounded LFO wraparound. See the Stage 3
+handover for current artifacts. No physical hardware or coexistence claim follows.

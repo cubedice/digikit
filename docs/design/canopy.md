@@ -2003,6 +2003,48 @@ fault retirement with responsive USB. The final defensive output-buffer guard
 also passes the 29-case focused host suite and actual CF instruction probe.
 Hardware timing, coexistence and release approval remain Stage 6.
 
+## Stage 3 implementation
+
+The pad engine uses a bounded additive alternative to wavetables: one normalized
+rotator per group supplies the fundamental and analytic second/third harmonics.
+Velvet morphs toward a rounded odd-harmonic spectrum; Reed adds even and odd
+harmonics. Pitch-dependent weights taper harmonics to zero before Nyquist, using
+the current bend/drift coefficient. MIDI 0..127 and +/-2-semitone bend remain the
+supported range. There are four foreground groups and two shared release tails;
+the seventh arp group belongs to Stage 4, not this stage.
+
+CPS3 transports six validated integer words atomically. Setup exposes family,
+color, drift, attack and release without resetting held ownership. Color/family
+use 20 ms smoothing and per-sample interpolation. A seeded 6.667-second triangle
+changes pitch at block rate, up to five cents with reduced excursion at high
+pitches, with opposite signs for alternating tokens. Base tuning never accumulates
+drift. Local attack is 10..1788 ms, release 40..8168 ms from full amplitude, with
+80/1000 ms defaults. Reset tails retain tone/modulation through their 64-sample
+fade. No dynamic allocation, per-sample pitch calculation or spectrum analysis
+occurs in the renderer.
+
+A fixed 0.08 gain gives an analytic full six-group bound below 0.75. It does not
+change with the number of held notes. Instance state is 544 bytes; shared tuning
+and envelope tables occupy 2560 bytes. Current single-instance admission remains
+in force; these figures do not qualify sixteen instances or hardware CPU time.
+Non-finite or over-level output is silenced and faults the callback before the
+stock chain. The protected callback's declared ceilings remain 100000 process instructions
+and 1000 reset instructions; observed Stage 3 maxima are 20830 and 423 in the
+bounded component workload. State canaries and interleaved-instance tests pass.
+
+Pitch/spectral comparisons cover both families at MIDI 0, 60, 100, 110, 119 and
+127; other checks cover long sine holds/releases, full-pool retriggers, maximum
+drift, envelope endpoints, invalid controls and live configuration preservation.
+Stage 3 is complete at the functional emulator boundary. Running-firmware
+acceptance passes live family/color/drift/release changes with retained ownership,
+stock filter close/reopen, and reverb after the module output becomes silent.
+The full keyboard/learning/storage/panic/fault-retirement regression also passes.
+The final output guard is separately verified in direct/protected instruction
+tests; the live runs used the preceding otherwise-identical pad DKM. Exact
+artifacts and evidence versions are in the
+[Stage 3 handover](../handovers/HANDOVER-2026-11-01-canopy-stage3.md).
+Hardware coexistence remains Stage 6; Stage 4 is next.
+
 ## Implementation stages and acceptance
 
 | Stage | Work | Exit evidence |

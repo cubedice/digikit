@@ -88,8 +88,9 @@ _test_done:
 def canopy(canopy_object):
     linked, sections, initial, obj, symbols, protected = canopy_object
     dm = dict(initial)
-    for base, size in [(0x20050000, 132), (0x20054000, 132), (0x20013000, 32)]:
+    for base, size in [(0x20050000, 136), (0x20054000, 136), (0x20013000, 32)]:
         dm.update({base // 4 + i: 0 for i in range(size)})
+        dm[base // 4 - 1] = dm[base // 4 + size] = 0xDEADBEEF
 
     def call(
         events=(),
@@ -99,7 +100,10 @@ def canopy(canopy_object):
         reset=None,
         edits=None,
         packet=None,
+        controls=(1,),
+        state_edits=None,
     ):
+        dm.update({state // 4 + i: v for i, v in (state_edits or {}).items()})
         words = [
             2,
             72,
@@ -111,7 +115,7 @@ def canopy(canopy_object):
             0x20012100,
             len(events),
             0x20012000,
-            1,
+            len(controls),
             1,
             0,
             0,
@@ -123,7 +127,7 @@ def canopy(canopy_object):
         for index, value in (edits or {}).items():
             words[index] = value
         dm.update({0x20011000 // 4 + i: value for i, value in enumerate(words)})
-        dm[0x20012000 // 4] = 1
+        dm.update({0x20012000 // 4 + i: v for i, v in enumerate(controls)})
         for i, event in enumerate(events):
             dm.update(
                 {0x20012100 // 4 + i * 6 + j: value for j, value in enumerate(event)}
@@ -132,9 +136,12 @@ def canopy(canopy_object):
             name: (sections[name] // 4, len(blob) // 4)
             for name, (blob, _, _) in obj.data.items()
         }
-        reads.update({"state": (state // 4, 132), "out": (0x20013000 // 4, 32)})
+        reads.update({"state": (state // 4, 136), "out": (0x20013000 // 4, 32)})
+        reads.update(
+            {"guard_before": (state // 4 - 1, 1), "guard_after": (state // 4 + 136, 1)}
+        )
         if protected and reset is None:
-            row = [3, 2, 9, 1, state, 132, state, state + 528, 0, 0, 0, 0, 0, 0, 0, 0]
+            row = [3, 2, 9, 1, state, 136, state, state + 544, 0, 0, 0, 0, 0, 0, 0, 0]
             meta = [
                 2,
                 9,
@@ -143,7 +150,7 @@ def canopy(canopy_object):
                 0xB90000,
                 0xBC0000,
                 8,
-                1,
+                6,
             ]
             for name, values in [("_ir_rows", row), ("_ir_process_rows", meta)]:
                 dm.update(
@@ -178,6 +185,7 @@ def canopy(canopy_object):
             max_steps=100000,
         )
         assert result["halt"]["reason"] == "breakpoint", result
+        assert result["guard_before"] == result["guard_after"] == [0xDEADBEEF]
         for name, (base, _) in reads.items():
             dm.update({base + i: value for i, value in enumerate(result[name])})
         return result
@@ -198,7 +206,7 @@ def voices(result):
 
 
 def test_v2_chord_independent_release_and_state_isolation(canopy):
-    assert canopy(reset=1)["state"] == [0] * 132
+    assert canopy(reset=1)["state"] == [0] * 136
     result = canopy([note(1, 60), note(2, 64)])
     assert result["regs"]["R0"] == 0
     assert set(voices(result)) == {1, 2}
@@ -246,7 +254,7 @@ def test_generation_change_requires_reset_and_reset_is_per_instance(canopy):
     canopy([note(1, 60)])
     canopy([note(2, 67)], state=0x20054000, track=1)
     assert canopy(generation=2)["regs"]["R0"] == 0xFFFFFFFF
-    assert canopy(reset=3)["state"] == [0] * 132
+    assert canopy(reset=3)["state"] == [0] * 136
     assert canopy(generation=2)["regs"]["R0"] == 1
     assert set(voices(canopy(state=0x20054000, track=1))) == {2}
 
@@ -387,7 +395,8 @@ def test_replace_reset_preserves_phase_then_finishes_bounded_tail(canopy):
     reset = canopy(reset=2)
     assert reset["state"][2:8] == before["state"][2:8]
     assert reset["state"][1] == 2
-    assert reset["state"][48:] == [0] * 84
+    assert reset["state"][48:132] == [0] * 84
+    assert reset["state"][132:] == before["state"][132:]
     first = canopy(generation=2)
     second = canopy(generation=2)
     quiet = canopy(generation=2)
@@ -402,7 +411,11 @@ def test_replace_reset_preserves_phase_then_finishes_bounded_tail(canopy):
     assert max(abs(b - a) for a, b in zip(values, values[1:], strict=False)) < 0.1
 
 
-def test_stage1_callback_instruction_ceiling(canopy):
+@pytest.mark.parametrize("controls", [(1,), (3, 1, 127, 127, 0, 127)])
+def test_callback_instruction_ceiling(canopy, controls):
+    from functools import partial
+
+    canopy = partial(canopy, controls=controls)
     measured = {}
     measured["create"] = canopy(reset=1)["instructions"]
     measured["eight_on"] = canopy([note(i + 1, 48 + i, 127) for i in range(8)])[
@@ -427,3 +440,88 @@ def test_stage1_callback_instruction_ceiling(canopy):
     assert max(measured[k] for k in ("create", "replace_reset", "unload")) < 1000
     assert max(measured.values()) < 100000
     print("CANOPY instruction counts (not device cycles):", measured)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        (3, 2, 0, 0, 5, 15),
+        (3, 0, 128, 0, 5, 15),
+        (3, 0, 0, 128, 5, 15),
+        (3, 0, 0, 0, 128, 15),
+        (3, 0, 0, 0, 5, 128),
+        (3, 0, 0, 0, 5),
+    ],
+)
+def test_pad_invalid_controls_cannot_mutate_notes(canopy, bad):
+    before = canopy([note(1, 60)])["state"]
+    rejected = canopy([note(2, 64)], controls=bad)
+    assert rejected["regs"]["R0"] == 0xFFFFFFFF
+    assert rejected["state"] == before
+
+
+def test_pad_live_settings_preserve_tokens_phase_and_instance_state(canopy):
+    import struct
+
+    def fp(w):
+        return struct.unpack("<f", struct.pack("<I", w))[0]
+
+    a = (3, 0, 127, 0, 5, 15)
+    b = (3, 1, 0, 127, 127, 127)
+    first = canopy([note(1, 60)], controls=a)
+    second = canopy(controls=b)
+    assert set(voices(second)) == {1}
+    assert voices(second)[1][2:4] != voices(first)[1][2:4]
+    assert fp(voices(second)[1][7]) > fp(voices(first)[1][7])
+    assert 0 < fp(second["state"][132]) < fp(first["state"][132])
+    assert 0 < fp(second["state"][134]) < 0.00289
+    other = canopy([note(2, 67)], state=0x20054000, track=1, controls=b)
+    assert other["state"][132] == 0  # no color leaked from the first instance
+    after = canopy(controls=b)
+    assert fp(after["state"][132]) < fp(second["state"][132])
+    assert set(voices(after)) == {1}
+    assert after["instructions"] < 100000
+
+
+def test_pad_envelope_range_and_reset_keep_the_tail_spectrum(canopy):
+    import struct
+
+    def fp(w):
+        return struct.unpack("<f", struct.pack("<I", w))[0]
+
+    c = (3, 1, 127, 127, 127, 127)
+    first = canopy([note(1, 60)], controls=c)
+    assert fp(voices(first)[1][7]) == pytest.approx(32 / (48 * 1788), rel=1e-5)
+    before = canopy(controls=c)
+    released = canopy([note(1, 60, off=True)], controls=c)
+    assert fp(voices(before)[1][7]) - fp(voices(released)[1][7]) == pytest.approx(
+        32 / (48 * 8168), rel=1e-4
+    )
+    reset = canopy(reset=2)
+    assert reset["state"][132:] == released["state"][132:]
+    assert reset["state"][48:132] == [0] * 84
+    assert canopy(generation=2, controls=c)["regs"]["R0"] == 0
+    assert canopy(generation=2, controls=c)["regs"]["R0"] == 1
+
+
+@pytest.mark.parametrize("gain", [0x7FC00000, 0x7F800000, 0x49742400])
+def test_pad_bad_audio_is_silenced_before_the_stock_chain(canopy, gain):
+    controls = (3, 1, 127, 127, 0, 127)
+    result = canopy([note(1, 60)], controls=controls)
+    slot = next(i for i in range(0, 32, 8) if result["state"][i] == 1)
+    bad = canopy(controls=controls, state_edits={slot + 6: gain})
+    assert bad["regs"]["R0"] == 0xFFFFFFFF
+    assert bad["out"] == [0] * 32
+
+
+def test_pad_drift_wrap_preserves_note_and_bounded_phase(canopy):
+    import struct
+
+    controls = (3, 1, 127, 127, 5, 15)
+    before = canopy([note(1, 60)], controls=controls)
+    phase = struct.unpack("<I", struct.pack("<f", 0.99995))[0]
+    after = canopy(controls=controls, state_edits={133: phase})
+    value = struct.unpack("<f", struct.pack("<I", after["state"][133]))[0]
+    assert 0 <= value < 0.0002
+    assert set(voices(after)) == set(voices(before)) == {1}
+    assert after["regs"]["R0"] == 0

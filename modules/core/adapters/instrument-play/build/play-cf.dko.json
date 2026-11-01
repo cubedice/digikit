@@ -40,6 +40,13 @@
   {
    "addend": 0,
    "offset": 4,
+   "section": ".text.pad_changed",
+   "symbol": ".sec..data.pad_dirty",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4,
    "section": ".text.retry_save",
    "symbol": ".sec..bss.save_pending",
    "type": "cf.32"
@@ -389,91 +396,196 @@
   },
   {
    "addend": 39,
-   "offset": 506,
+   "offset": 508,
    "section": ".text.fill",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 136,
-   "offset": 514,
+   "offset": 518,
    "section": ".text.fill",
    "symbol": ".sec..rodata.fill.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 530,
+   "offset": 534,
    "section": ".text.fill",
    "symbol": ".sec..text.retry_save",
    "type": "cf.32"
   },
   {
    "addend": 261,
-   "offset": 536,
+   "offset": 540,
    "section": ".text.fill",
    "symbol": ".sec..rodata.fill.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 550,
+   "offset": 554,
    "section": ".text.fill",
    "symbol": ".sec..text.recover",
    "type": "cf.32"
   },
   {
    "addend": 278,
-   "offset": 556,
-   "section": ".text.fill",
-   "symbol": ".sec..rodata.fill.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 19,
-   "offset": 578,
+   "offset": 560,
    "section": ".text.fill",
    "symbol": ".sec..rodata.fill.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
+   "offset": 576,
+   "section": ".text.fill",
+   "symbol": ".sec..text.pad_changed",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 582,
+   "section": ".text.fill",
+   "symbol": ".sec..bss.pad_family",
+   "type": "cf.32"
+  },
+  {
+   "addend": 295,
    "offset": 588,
    "section": ".text.fill",
    "symbol": ".sec..rodata.fill.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 42,
-   "offset": 598,
+   "addend": 0,
+   "offset": 600,
    "section": ".text.fill",
-   "symbol": ".sec..rodata.fill.str1.1",
+   "symbol": ".sec..text.pad_changed",
    "type": "cf.32"
   },
   {
-   "addend": 87,
-   "offset": 608,
+   "addend": 0,
+   "offset": 612,
    "section": ".text.fill",
-   "symbol": ".sec..rodata.fill.str1.1",
+   "symbol": ".sec..data.pad_color",
    "type": "cf.32"
   },
   {
-   "addend": 61,
+   "addend": 313,
    "offset": 618,
    "section": ".text.fill",
    "symbol": ".sec..rodata.fill.str1.1",
    "type": "cf.32"
   },
   {
+   "addend": 0,
+   "offset": 634,
+   "section": ".text.fill",
+   "symbol": ".sec..text.pad_changed",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 646,
+   "section": ".text.fill",
+   "symbol": ".sec..bss.pad_drift",
+   "type": "cf.32"
+  },
+  {
+   "addend": 319,
+   "offset": 652,
+   "section": ".text.fill",
+   "symbol": ".sec..rodata.fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 664,
+   "section": ".text.fill",
+   "symbol": ".sec..text.pad_changed",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 676,
+   "section": ".text.fill",
+   "symbol": ".sec..data.pad_attack",
+   "type": "cf.32"
+  },
+  {
+   "addend": 325,
+   "offset": 682,
+   "section": ".text.fill",
+   "symbol": ".sec..rodata.fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 698,
+   "section": ".text.fill",
+   "symbol": ".sec..text.pad_changed",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 710,
+   "section": ".text.fill",
+   "symbol": ".sec..data.pad_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 332,
+   "offset": 716,
+   "section": ".text.fill",
+   "symbol": ".sec..rodata.fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 19,
+   "offset": 738,
+   "section": ".text.fill",
+   "symbol": ".sec..rodata.fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 748,
+   "section": ".text.fill",
+   "symbol": ".sec..rodata.fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 42,
+   "offset": 758,
+   "section": ".text.fill",
+   "symbol": ".sec..rodata.fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 87,
+   "offset": 768,
+   "section": ".text.fill",
+   "symbol": ".sec..rodata.fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 61,
+   "offset": 778,
+   "section": ".text.fill",
+   "symbol": ".sec..rodata.fill.str1.1",
+   "type": "cf.32"
+  },
+  {
    "addend": 119,
-   "offset": 628,
+   "offset": 788,
    "section": ".text.fill",
    "symbol": ".sec..rodata.fill.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 106,
-   "offset": 636,
+   "offset": 798,
    "section": ".text.fill",
    "symbol": ".sec..rodata.fill.str1.1",
    "type": "cf.32"
@@ -865,21 +977,21 @@
   },
   {
    "addend": 452,
-   "offset": 70,
+   "offset": 68,
    "section": ".text.instrument_midi_ready",
    "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 4880,
-   "offset": 78,
+   "offset": 76,
    "section": ".text.instrument_midi_ready",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 156,
-   "offset": 84,
+   "offset": 82,
    "section": ".text.instrument_midi_ready",
    "symbol": "mi_transport",
    "type": "cf.32"
@@ -1544,84 +1656,77 @@
   },
   {
    "addend": 0,
-   "offset": 16,
+   "offset": 6,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.pad_family",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 26,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.pad_color",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 36,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.pad_drift",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 46,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.pad_attack",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 56,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.pad_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 66,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard_initialized",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 24,
+   "offset": 74,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 30,
+   "offset": 80,
    "section": ".text.instrument_play_tick",
    "symbol": "kb_init",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 44,
+   "offset": 94,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.shape_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 50,
+   "offset": 100,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_settings_get",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 72,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.keyboard",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 78,
-   "section": ".text.instrument_play_tick",
-   "symbol": "kb_decode",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 88,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.storage_result",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 96,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.keyboard_initialized",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 102,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.save_pending",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 110,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_irq_mask",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 120,
+   "offset": 122,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
@@ -1630,105 +1735,112 @@
    "addend": 0,
    "offset": 128,
    "section": ".text.instrument_play_tick",
-   "symbol": "kb_encode",
+   "symbol": "kb_decode",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 136,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_irq_restore",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 150,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..rodata.shape_key",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 156,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_settings_put",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 166,
+   "offset": 138,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.storage_result",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 176,
+   "offset": 146,
    "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_settings_flush",
+   "symbol": ".sec..bss.keyboard_initialized",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 182,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.storage_result",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 194,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 202,
+   "offset": 152,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.save_pending",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 208,
+   "offset": 160,
    "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_toast",
+   "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 216,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.learn_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 228,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_is_open",
-   "type": "cf.32"
-  },
-  {
-   "addend": 24,
-   "offset": 240,
+   "offset": 170,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 0,
+   "offset": 178,
+   "section": ".text.instrument_play_tick",
+   "symbol": "kb_encode",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 186,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 200,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..rodata.shape_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 206,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_settings_put",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 216,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.storage_result",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 226,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_settings_flush",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 232,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.storage_result",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 244,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 252,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.learn_menu",
+   "symbol": ".sec..bss.save_pending",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 258,
    "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_close",
+   "symbol": "dk_ui_toast",
    "type": "cf.32"
   },
   {
@@ -1746,15 +1858,8 @@
    "type": "cf.32"
   },
   {
-   "addend": 20,
+   "addend": 24,
    "offset": 290,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.keyboard",
-   "type": "cf.32"
-  },
-  {
-   "addend": 38,
-   "offset": 296,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
@@ -1763,481 +1868,467 @@
    "addend": 0,
    "offset": 302,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.refreshed_revision",
+   "symbol": ".sec..bss.learn_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 310,
+   "offset": 308,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.refreshed_status",
+   "symbol": "dk_ui_close",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 318,
+   "offset": 316,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.learn_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 324,
+   "offset": 328,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_is_open",
+   "type": "cf.32"
+  },
+  {
+   "addend": 20,
+   "offset": 340,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.keyboard",
+   "type": "cf.32"
+  },
+  {
+   "addend": 38,
+   "offset": 346,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.keyboard",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 352,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.refreshed_revision",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 330,
+   "offset": 360,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.refreshed_status",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 336,
+   "offset": 368,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.learn_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 374,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.refreshed_revision",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 380,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.refreshed_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 386,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_refresh",
    "type": "cf.32"
   },
   {
    "addend": 16,
-   "offset": 344,
+   "offset": 394,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 350,
+   "offset": 400,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_instrument_type",
    "type": "cf.32"
   },
   {
    "addend": 24,
-   "offset": 356,
+   "offset": 406,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 362,
+   "offset": 412,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 28,
-   "offset": 368,
+   "offset": 418,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 374,
+   "offset": 424,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 26,
-   "offset": 380,
+   "offset": 430,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 8,
-   "offset": 386,
+   "offset": 436,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 33,
-   "offset": 392,
+   "offset": 442,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 398,
+   "offset": 448,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 38,
-   "offset": 404,
+   "offset": 454,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 16,
-   "offset": 410,
+   "offset": 460,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 20,
-   "offset": 416,
+   "offset": 466,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 20,
-   "offset": 422,
+   "offset": 472,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 24,
-   "offset": 428,
+   "offset": 478,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 39,
-   "offset": 434,
+   "offset": 484,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 440,
+   "offset": 490,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.storage_result",
    "type": "cf.32"
   },
   {
    "addend": 28,
-   "offset": 446,
+   "offset": 496,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 34,
-   "offset": 452,
+   "offset": 502,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 32,
-   "offset": 458,
+   "offset": 508,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 36,
-   "offset": 464,
+   "offset": 514,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 35,
-   "offset": 470,
+   "offset": 520,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 40,
-   "offset": 476,
+   "offset": 526,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 36,
-   "offset": 482,
+   "offset": 532,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 44,
-   "offset": 488,
+   "offset": 538,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 500,
+   "offset": 550,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_view",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 508,
+   "offset": 558,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.listed_type",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 516,
+   "offset": 566,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_view",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 526,
+   "offset": 576,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_view_build",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 538,
+   "offset": 588,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.listed_type",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 552,
+   "offset": 602,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_registry_reply",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 598,
+   "offset": 648,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_instrument_generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 614,
+   "offset": 664,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.fault_generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 660,
+   "offset": 710,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.healthy",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 666,
+   "offset": 716,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.healthy",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 676,
+   "offset": 726,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.enabled",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 686,
+   "offset": 736,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.usb",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 692,
+   "offset": 742,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.din",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 700,
+   "offset": 750,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.quarantined",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 714,
+   "offset": 764,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.phase",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 728,
+   "offset": 778,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_instance_reset",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 738,
+   "offset": 788,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.phase",
    "type": "cf.32"
   },
   {
    "addend": 4880,
-   "offset": 744,
+   "offset": 794,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 772,
+   "offset": 822,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.storage_result",
    "type": "cf.32"
   },
   {
    "addend": 39,
-   "offset": 784,
+   "offset": 834,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 106,
-   "offset": 790,
+   "offset": 840,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.fill.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 810,
+   "offset": 860,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.healthy",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 816,
+   "offset": 866,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.phase",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 828,
+   "offset": 878,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_sound_suspend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 834,
+   "offset": 884,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.phase",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 840,
+   "offset": 890,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_control",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 846,
+   "offset": 896,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.enabled",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 852,
+   "offset": 902,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_control",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 858,
+   "offset": 908,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.healthy",
    "type": "cf.32"
   },
   {
    "addend": 8,
-   "offset": 864,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_control",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 870,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.prepared",
-   "type": "cf.32"
-  },
-  {
-   "addend": 12,
-   "offset": 876,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_control",
-   "type": "cf.32"
-  },
-  {
-   "addend": 156,
-   "offset": 882,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_transport",
-   "type": "cf.32"
-  },
-  {
-   "addend": 16,
-   "offset": 888,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_control",
-   "type": "cf.32"
-  },
-  {
-   "addend": 4880,
-   "offset": 894,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_ledger",
-   "type": "cf.32"
-  },
-  {
-   "addend": 20,
-   "offset": 900,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_control",
-   "type": "cf.32"
-  },
-  {
-   "addend": 452,
-   "offset": 906,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_transport",
-   "type": "cf.32"
-  },
-  {
-   "addend": 24,
-   "offset": 912,
+   "offset": 914,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_control",
    "type": "cf.32"
@@ -2246,280 +2337,315 @@
    "addend": 0,
    "offset": 920,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.menu",
+   "symbol": ".sec..bss.prepared",
    "type": "cf.32"
   },
   {
-   "addend": 28,
+   "addend": 12,
    "offset": 926,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_control",
    "type": "cf.32"
   },
   {
-   "addend": 28,
+   "addend": 156,
+   "offset": 932,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 16,
    "offset": 938,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4880,
+   "offset": 944,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 20,
+   "offset": 950,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 452,
+   "offset": 956,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 962,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 970,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 28,
+   "offset": 976,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 28,
+   "offset": 988,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 24,
-   "offset": 944,
+   "offset": 994,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 950,
+   "offset": 1000,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.storage_result",
    "type": "cf.32"
   },
   {
    "addend": 38,
-   "offset": 964,
+   "offset": 1014,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 974,
+   "offset": 1024,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.phase",
    "type": "cf.32"
   },
   {
    "addend": 39,
-   "offset": 984,
+   "offset": 1034,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 994,
+   "offset": 1044,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.quarantined",
    "type": "cf.32"
   },
   {
    "addend": 156,
-   "offset": 1002,
+   "offset": 1052,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1008,
+   "offset": 1058,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_is_open",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1030,
+   "offset": 1080,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.learn_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1124,
+   "offset": 1174,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.shown_main",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1132,
+   "offset": 1182,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1138,
+   "offset": 1188,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.shown_main",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1144,
+   "offset": 1194,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_refresh",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1170,
+   "offset": 1220,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_instrument_generation",
    "type": "cf.32"
   },
   {
    "addend": 4880,
-   "offset": 1196,
+   "offset": 1246,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 452,
-   "offset": 1204,
+   "offset": 1254,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1212,
+   "offset": 1262,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_sound_suspend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1220,
+   "offset": 1270,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.phase",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1234,
+   "offset": 1284,
    "section": ".text.instrument_play_tick",
    "symbol": "instrument_sound_prepare",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1248,
+   "offset": 1298,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_sound_suspend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1256,
+   "offset": 1306,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.phase",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1266,
+   "offset": 1316,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.prepared",
    "type": "cf.32"
   },
   {
    "addend": 4880,
-   "offset": 1276,
+   "offset": 1326,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1306,
+   "offset": 1356,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_config_submit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1324,
+   "offset": 1374,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.phase",
    "type": "cf.32"
   },
   {
+   "addend": 0,
+   "offset": 1380,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.pad_dirty",
+   "type": "cf.32"
+  },
+  {
    "addend": 4892,
-   "offset": 1330,
+   "offset": 1386,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 4888,
-   "offset": 1336,
+   "offset": 1392,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1344,
+   "offset": 1400,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_midi_ready",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1360,
+   "offset": 1416,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.usb",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1372,
+   "offset": 1428,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.channel",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1384,
+   "offset": 1440,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_route_enable",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1400,
+   "offset": 1456,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.din",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1412,
+   "offset": 1468,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.channel",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1426,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_route_enable",
-   "type": "cf.32"
-  },
-  {
-   "addend": 24,
-   "offset": 1442,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.keyboard",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1454,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.selector_channel",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1464,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.usb",
    "type": "cf.32"
   },
   {
@@ -2530,10 +2656,10 @@
    "type": "cf.32"
   },
   {
-   "addend": 0,
+   "addend": 24,
    "offset": 1498,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.din",
+   "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
@@ -2545,28 +2671,91 @@
   },
   {
    "addend": 0,
-   "offset": 1524,
+   "offset": 1520,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.usb",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1538,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_route_enable",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1542,
+   "offset": 1554,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.din",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1566,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.selector_channel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1580,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_route_enable",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1598,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.phase",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1552,
+   "offset": 1608,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.prepared",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1564,
+   "offset": 1620,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.phase",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1628,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.pad_dirty",
+   "type": "cf.32"
+  },
+  {
+   "addend": 452,
+   "offset": 1652,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1664,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_config_submit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1678,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.pad_dirty",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1686,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.phase",
    "type": "cf.32"
@@ -3221,6 +3410,13 @@
    "align": 2,
    "hex": "700123c0000000004e75",
    "kind": "text",
+   "name": ".text.pad_changed",
+   "size": 10
+  },
+  {
+   "align": 2,
+   "hex": "700123c0000000004e75",
+   "kind": "text",
    "name": ".text.retry_save",
    "size": 10
   },
@@ -3233,17 +3429,17 @@
   },
   {
    "align": 1,
-   "hex": "5245434f564552204f5220524553544152540052454c45415345204b455953202f205245434f5645520043484f5244204f5554204f462052414e47450053454c4543542043414e4f5059204f4e20543100524541445900435553544f4d20534841504520454d5054590053484150455320534156454400534841504553204e4f5420534156454400534156452050454e44494e4700545241434b2031204b4559424f41524400454e41424c45005553420044494e004348414e4e454c004c415443480053454c4543544f52204f43544156450053454c4543542043482028303d53414d452900534841504520534c4f54004c4541524e20544f20524f4f540050414e49430052455452592053484150452053415645005245434f564552204b4559424f41524400",
+   "hex": "5245434f564552204f5220524553544152540052454c45415345204b455953202f205245434f5645520043484f5244204f5554204f462052414e47450053454c4543542043414e4f5059204f4e20543100524541445900435553544f4d20534841504520454d5054590053484150455320534156454400534841504553204e4f5420534156454400534156452050454e44494e4700545241434b2031204b4559424f41524400454e41424c45005553420044494e004348414e4e454c004c415443480053454c4543544f52204f43544156450053454c4543542043482028303d53414d452900534841504520534c4f54004c4541524e20544f20524f4f540050414e49430052455452592053484150452053415645005245434f564552204b4559424f415244005245454420284f46463d56454c5645542900434f4c4f520044524946540041545441434b0052454c4541534500",
    "kind": "data",
    "name": ".rodata.fill.str1.1",
-   "size": 295
+   "size": 340
   },
   {
    "align": 2,
-   "hex": "4fefffec48d73c04242f00184879000000004bf9000000002f0249f90000000047f9000000004e9542a74879000000004879000000004879000000002f024e9442a74879000000004879000000004879000000002f024e944fef002c42974879000000004879000000004879000000002f024e9442a748790000000048780010487800014879000000004879000000002f024e934fef00304eb9000000004a806600019e4ab9000000006600019e71b9000000007202b2806700019a7203b2806700019cb2b9000000006600019c203c000000002f002f024e9542a742a748790000000020390000000041f90000000045f9000000002f300c002f024e9242a74879000000004879000000004879000000002f024e944fef00304878000142a771b90000000048790000000041f9000000002f300c002f024e924878000242a748790000000020390000000041f9000000002f300c002f024e924fef00244297487900000000487800084878ffff4879000000004879000000002f024e9342a74879000000004878001042a74879000000004879000000002f024e934fef0034429748790000000048780008487800014879000000004879000000002f024e9342a742a74879000000004879000000002f024e924fef002c429742a74879000000004879000000002f024e924fef00144ab900000000667a4a3900000000677a203c000000002f002f024e9542a742a74879000000004879000000002f024e9242a742a74879000000004879000000002f024e924cef3c0400304fef00444e75203c000000006000fe8c203c000000006000fe82203c000000006000fe78203c000000006000fe6e203c000000006000fe64203c00000000608c203c000000006084",
+   "hex": "4fefffec48d73c04242f00184879000000004bf9000000002f0249f90000000045f9000000004e9542a74879000000004879000000004879000000002f024e9442a74879000000004879000000004879000000002f024e944fef002c42974879000000004879000000004879000000002f024e9442a748790000000048780010487800014879000000004879000000002f024e924fef00304eb9000000004a806600023e4ab9000000006600023e71b9000000007202b2806700023a7203b2806700023cb2b9000000006600023c203c000000002f002f024e9542a742a748790000000020390000000041f90000000047f9000000002f300c002f024e9342a74879000000004879000000004879000000002f024e944fef00304878000142a771b90000000048790000000041f9000000002f300c002f024e934878000242a748790000000020390000000041f9000000002f300c002f024e934fef00244297487900000000487800084878ffff4879000000004879000000002f024e9242a74879000000004878001042a74879000000004879000000002f024e924fef0034429748790000000048780008487800014879000000004879000000002f024e9242a742a74879000000004879000000002f024e934fef002c429742a74879000000004879000000002f024e934fef00144ab9000000006600011a4a39000000006700011a203c000000002f002f024e9542a742a74879000000004879000000002f024e9342a742a74879000000004879000000002f024e934fef002c42974879000000004879000000004879000000002f024e9442a74879000000004878007f42a74879000000004879000000002f024e924fef002c42974879000000004878007f42a74879000000004879000000002f024e9242a74879000000004878007f42a74879000000004879000000002f024e924fef003442974879000000004878007f42a74879000000004879000000002f024e924cef3c04001c4fef00304e75203c000000006000fdec203c000000006000fde2203c000000006000fdd8203c000000006000fdce203c000000006000fdc4203c000000006000fef0203c000000006000fee6",
    "kind": "text",
    "name": ".text.fill",
-   "size": 642
+   "size": 806
   },
   {
    "align": 1,
@@ -3324,10 +3520,10 @@
   },
   {
    "align": 2,
-   "hex": "2039000000004a80670a4ab900000000660442804e754ab90000000067f42039000000005580e28866e8202f0008b0b90000000066dc222f000cb2b90000000066d07001b0b90000000066c620390000000080b90000000080af000457c07100448060b0",
+   "hex": "2039000000004a80670a4ab900000000660442804e754ab90000000067f42039000000005580e28866e8202f0008b0b90000000066dc222f000cb2b90000000066d04ab90000000067c820390000000080b90000000080af000457c07100448060b2",
    "kind": "text",
    "name": ".text.instrument_midi_ready",
-   "size": 100
+   "size": 98
   },
   {
    "align": 2,
@@ -3443,10 +3639,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56ffa470012f0a2f022d40ffbc4ab900000000664e4879000000004eb90000000048780030486effc04879000000004eb9000000004fef00104a806d0002bc2f00486effc04879000000004eb9000000004fef000c23c000000000740123c2000000004ab900000000676a4eb900000000486effc048790000000024404eb9000000002f0a4eb90000000048780030486effc04879000000004eb9000000004fef001823c0000000004a8066124eb90000000023c0000000004a806700024e203c000000002f0042b9000000004eb900000000588f2039000000004a8067282f004eb900000000588f4a80671a71b90000000055804a80670e2f39000000004eb900000000588f2039000000004a8067442f004eb900000000588f4a80673622390000000071b900000000b2b9000000006608b0b900000000671a2f390000000023c10000000023c0000000004eb900000000588f41f90000000045f90000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023d00000000041f90000000023d00000000023c00000000071b90000000041f90000000023c00000000071b90000000023d00000000023c00000000071b90000000023c00000000071b90000000023c0000000004e924a80672c4ab9000000006724b0b900000000671c2f39000000002d40ffa84eb900000000588f202effa823c00000000048780010486effc04eb900000000508f72102d40ffb4b280660000e6243c494ea103b4aeffc066247005b0aefff4661c2d6efff8ffac4eb900000000b0aeffac660a41eefff823d0000000004e924a80670000b87210b2aeffb4661e243c494ea103b4aeffc0660a7003b0aefff4670001fc428023c0000000004ab9000000006700008e4ab9000000006700008420390000000080b90000000067744eb9000000002d40ffac4a8066662039000000004a80660001d242a74eb900000000588f700123c0000000004ab90000000057c0710044802d40ffac600001d472bcb2806700fd5c23c0000000006000fd52420013c000000000203c000000006000fdaa70feb0aeffb46600ff4442b9000000002039000000005580e28866064eb90000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d0000000004e9224790000000023c0000000004a8a670000d81239000000001439000000002079000000002d48ffa41d41ffac1239000000001d42ffb12439000000001d41ffb21239000000001d41ffb34eb9000000002f0a22390000000045f9000000002d40ffb82d41ffb44e92588f4a80677a2039000000004a80670a2f004e92588f4a80666620027209e3a873aeffac740d808173aeffb1e989808173aeffb2ed89808173aeffb3e5a9740c80814aaeffa456c173014481e5a9740e8081222effb882aeffb456c173014481e5a98081b0b90000000067142f390000000023c0000000004eb900000000588f242eff9c246effa04e5e4e752d6efff8ffac4eb900000000b0aeffac57c0710044806000fdf057804a8066164ab90000000066084ab90000000066124eb9000000007401b4b9000000006700fe1c2f2effac4eb900000000588f4a806c0001324eb9000000007001b0b9000000006600012a4ab9000000006700fe484ab9000000006600fe3e48780001486effbc2f3c435053314878000142a74eb9000000004fef00144a80660000f2720223c1000000002f39000000002f390000000042a74eb9000000004fef000c4a806700fdf44ab900000000672042a742a720790000000053882f0842a74eb9000000004fef00104a806600fdc64ab900000000672242a742a720390000000053802f00487800014eb9000000004fef00104a806600fd9c71b90000000053804a8066562079000000004a88674c4ab900000000671a42a742a74868ffff42a74eb9000000004fef00104a806600fd644ab900000000672242a742a724390000000053822f02487800014eb9000000004fef00104a806600fd3a700323c0000000006000fd3423c0000000006000fece7402b4b9000000006600fd1e6000ff0a",
+   "hex": "4e56ff9041f90000000070032f0a2f022d40ffa82d50ffac41f9000000002d50ffb041f9000000002d50ffb441f9000000002d50ffb841f9000000002d50ffbc4ab900000000664e4879000000004eb90000000048780030486effc04879000000004eb9000000004fef00104a806d0002bc2f00486effc04879000000004eb9000000004fef000c23c000000000740123c2000000004ab900000000676a4eb900000000486effc048790000000024404eb9000000002f0a4eb90000000048780030486effc04879000000004eb9000000004fef001823c0000000004a8066124eb90000000023c0000000004a806700024e203c000000002f0042b9000000004eb900000000588f2039000000004a8067282f004eb900000000588f4a80671a71b90000000055804a80670e2f39000000004eb900000000588f2039000000004a8067442f004eb900000000588f4a80673622390000000071b900000000b2b9000000006608b0b900000000671a2f390000000023c10000000023c0000000004eb900000000588f41f90000000045f90000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023d00000000041f90000000023d00000000023c00000000071b90000000041f90000000023c00000000071b90000000023d00000000023c00000000071b90000000023c00000000071b90000000023c0000000004e924a80672c4ab9000000006724b0b900000000671c2f39000000002d40ff944eb900000000588f202eff9423c00000000048780010486effc04eb900000000508f72102d40ffa0b280660000e6243c494ea103b4aeffc066247005b0aefff4661c2d6efff8ff984eb900000000b0aeff98660a41eefff823d0000000004e924a80670000b87210b2aeffa0661e243c494ea103b4aeffc0660a7003b0aefff4670001fc428023c0000000004ab9000000006700008e4ab9000000006700008420390000000080b90000000067744eb9000000002d40ff984a8066662039000000004a80660001d242a74eb900000000588f700123c0000000004ab90000000057c0710044802d40ff98600001d472bcb2806700fd5c23c0000000006000fd52420013c000000000203c000000006000fdaa70feb0aeffa06600ff4442b9000000002039000000005580e28866064eb90000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d0000000004e9224790000000023c0000000004a8a670000d81239000000001439000000002079000000002d48ff901d41ff981239000000001d42ff9d2439000000001d41ff9e1239000000001d41ff9f4eb9000000002f0a22390000000045f9000000002d40ffa42d41ffa04e92588f4a80677a2039000000004a80670a2f004e92588f4a80666620027209e3a873aeff98740d808173aeff9de989808173aeff9eed89808173aeff9fe5a9740c80814aaeff9056c173014481e5a9740e8081222effa482aeffa056c173014481e5a98081b0b90000000067142f390000000023c0000000004eb900000000588f242eff88246eff8c4e5e4e752d6efff8ff984eb900000000b0aeff9857c0710044806000fdf057804a8066164ab90000000066084ab90000000066124eb9000000007401b4b9000000006700fe1c2f2eff984eb900000000588f4a806c0001384eb9000000007001b0b900000000660001304ab9000000006700fe484ab9000000006600fe3e48780006486effa82f3c435053334878000142a74eb9000000004fef00144a80660000f8720223c10000000042b9000000002f39000000002f390000000042a74eb9000000004fef000c4a806700fdee4ab900000000672042a742a722390000000053812f0142a74eb9000000004fef00104a806600fdc04ab900000000672242a742a724390000000053822f02487800014eb9000000004fef00104a806600fd9671b90000000053804a8066562079000000004a88674c4ab900000000671a42a742a74868ffff42a74eb9000000004fef00104a806600fd5e4ab900000000672242a742a724390000000053822f02487800014eb9000000004fef00104a806600fd34700323c0000000006000fd2e23c0000000006000fec87403b4b90000000066384ab9000000006700fd1048780006486effa82f3c4350533320790000000052882f0842a74eb9000000004fef00144a80660642b9000000007002b0b9000000006700fecc6000fcd2",
    "kind": "text",
    "name": ".text.instrument_play_tick",
-   "size": 1576
+   "size": 1698
   },
   {
    "align": 1,
@@ -3625,6 +3821,48 @@
   },
   {
    "align": 2,
+   "hex": "00000001",
+   "kind": "data",
+   "name": ".data.pad_dirty",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "0000000f",
+   "kind": "data",
+   "name": ".data.pad_release",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "00000005",
+   "kind": "data",
+   "name": ".data.pad_attack",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.pad_drift",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "00000040",
+   "kind": "data",
+   "name": ".data.pad_color",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.pad_family",
+   "size": 4
+  },
+  {
+   "align": 2,
    "hex": "",
    "kind": "bss",
    "name": ".bss.listed_type",
@@ -3702,7 +3940,7 @@
   },
   {
    "align": 2,
-   "hex": "495250310000000100000001000186a0000003e8000000080000008000000210",
+   "hex": "495250310000000100000001000186a0000003e8000000080000008000000220",
    "kind": "data",
    "name": ".rodata.limits",
    "size": 32
@@ -3869,7 +4107,7 @@
    "size": 32
   }
  ],
- "source_sha256": "201e9d77001989291e6897bc8d08748a09c823201b979afae964b40f73f8987c",
+ "source_sha256": "c86749646c026092fa1504e911f286c7f9097fa39eb1e1b3135f96a8f1a3c7ad",
  "symbols": [
   {
    "global": false,
@@ -3987,6 +4225,18 @@
   },
   {
    "global": false,
+   "name": ".sec..bss.pad_drift",
+   "section": ".bss.pad_drift",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.pad_family",
+   "section": ".bss.pad_family",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..bss.phase",
    "section": ".bss.phase",
    "value": 0
@@ -4061,6 +4311,30 @@
    "global": false,
    "name": ".sec..data.din",
    "section": ".data.din",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..data.pad_attack",
+   "section": ".data.pad_attack",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..data.pad_color",
+   "section": ".data.pad_color",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..data.pad_dirty",
+   "section": ".data.pad_dirty",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..data.pad_release",
+   "section": ".data.pad_release",
    "value": 0
   },
   {
@@ -4289,6 +4563,12 @@
    "global": false,
    "name": ".sec..text.learn_fill",
    "section": ".text.learn_fill",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.pad_changed",
+   "section": ".text.pad_changed",
    "value": 0
   },
   {
@@ -4893,6 +5173,48 @@
   },
   {
    "global": false,
+   "name": "pad_attack",
+   "section": ".data.pad_attack",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "pad_changed",
+   "section": ".text.pad_changed",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "pad_color",
+   "section": ".data.pad_color",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "pad_dirty",
+   "section": ".data.pad_dirty",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "pad_drift",
+   "section": ".bss.pad_drift",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "pad_family",
+   "section": ".bss.pad_family",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "pad_release",
+   "section": ".data.pad_release",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "panic",
    "section": ".text.panic",
    "value": 0
@@ -5064,8 +5386,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "2406",
-  "isa_check": "fbadf057ae772f3a2ee2ad92c41fcba13ae09f1080628a2018c71e024ef3370f",
+  "instructions_redecoded": "2477",
+  "isa_check": "e9fa521b14742a5d08023a17e75e596dbd9b4339066d839846f2b25a5f827952",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

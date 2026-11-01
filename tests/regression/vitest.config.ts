@@ -86,6 +86,7 @@ export default defineConfig({
             'runtime/instrument-load.test.ts',
             'runtime/instrument-file.test.ts',
             'runtime/canopy-stage1.test.ts',
+            'runtime/canopy-stage3.test.ts',
             'runtime/dsp-reset.test.ts',
             'runtime/overloop-display.test.ts',
             'runtime/canopy-transport.test.ts',
@@ -127,6 +128,16 @@ export default defineConfig({
           ...serial,
           testTimeout: 240_000,
           hookTimeout: 150_000,
+        },
+      },
+      {
+        test: {
+          name: 'canopy-stage3',
+          include: ['runtime/canopy-stage3.test.ts'],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 600_000,
+          hookTimeout: 300_000,
         },
       },
       {

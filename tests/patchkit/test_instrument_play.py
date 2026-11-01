@@ -34,10 +34,10 @@ def playback_object():
 .PKDATA _mi_epoch, 4;
 .PKDATA _instrument_session, 4;
 .PKDATA _mi_carrier_stamp, 4;
-.PKDATA _test_state, 528;
+.PKDATA _test_state, 544;
 .PKDATA _test_packet, 128;
 .PKDATA _test_metadata, 24;
-.PKDATA _test_values, 4;
+.PKDATA _test_values, 24;
 .PKDATA _test_output, 128;
 .SECTION/PM seg_pmco;
 """
@@ -104,9 +104,9 @@ def playback(playback_object):
             9,
             1,
             state,
-            132,
+            136,
             state,
-            state + 528,
+            state + 544,
             linked.symbols["_canopy_reset"],
             0xB90000,
             0xBC0000,
@@ -119,7 +119,7 @@ def playback(playback_object):
     )
     put(
         "_ir_process_rows",
-        [2, 9, 20, linked.symbols["_canopy_process"], 0xB90000, 0xBC0000, 8, 1],
+        [2, 9, 20, linked.symbols["_canopy_process"], 0xB90000, 0xBC0000, 8, 6],
     )
     put("_instrument_session", [1])
     put("_mi_epoch", [1])
@@ -153,9 +153,19 @@ def playback(playback_object):
         put("_test_packet", packet)
         return call(1, R4=symbols["_test_packet"])
 
-    def configure(generation=1):
-        put("_test_metadata", [0, generation, 1, 0, 4, 0x43505331])
-        put("_test_values", [1])
+    def configure(generation=1, values=(1,), revision=1):
+        put(
+            "_test_metadata",
+            [
+                0,
+                generation,
+                revision,
+                0,
+                len(values) * 4,
+                0x43505331 if len(values) == 1 else 0x43505333,
+            ],
+        )
+        put("_test_values", values)
         return call(2, R4=symbols["_test_values"], R8=symbols["_test_metadata"])
 
     def events(batch, generation=1):
@@ -177,12 +187,12 @@ def test_admitted_render_consumes_batch_once_and_raw_carrier_only_copies(playbac
     call(0)
     assert get("_iv_result") == [0]
     assert get("_iv_input", 18)[8] == 0
-    state = get("_test_state", 132)
+    state = get("_test_state", 136)
     voices = {state[i]: state[i : i + 8] for i in range(0, 32, 8) if state[i]}
     assert set(voices) == {1, 2}
     assert voices[1][6] < voices[2][6]
     call(4, R2=0, R8=symbols["_test_output"])
-    assert get("_test_state", 132) == state
+    assert get("_test_state", 136) == state
     assert get("_test_output", 32) == get("_iv_output", 32)
     call(0)
     assert get("_iv_result") == [0]  # replaying the ON would reject its duplicate token
@@ -298,3 +308,25 @@ int idle(void) { return kb_process(&state,input,0,output); }
     assert calls[1]["insns"] < 100_000, calls
     assert calls[2]["insns"] < 100, calls
     print("keyboard CF instructions:", [(r["tag"], r["insns"]) for r in calls])
+
+
+def test_pad_configuration_is_atomic_and_does_not_reset_a_held_note(playback):
+    call, _, get, reset, configure, events, _ = playback
+    reset()
+    call(0)
+    assert configure(values=(3, 0, 64, 0, 5, 15)) == 1
+    call(0)
+    assert events([(1, 1, 60, 127, 0, 0)]) == 1
+    call(0)
+    before = get("_test_state", 136)
+    assert configure(values=(3, 1, 127, 127, 0, 127), revision=2) == 1
+    assert get("_test_state", 136) == before
+    call(0)
+    after = get("_test_state", 136)
+    assert [after[i] for i in range(0, 48, 8)] == [before[i] for i in range(0, 48, 8)]
+    assert get("_iv_revision") == [2]
+    assert configure(values=(3, 1, 128, 0, 5, 15), revision=3) == 0
+    assert get("_iv_revision") == [2]
+    assert get("_test_state", 136) == after
+    call(0)
+    assert get("_iv_result") == [0]

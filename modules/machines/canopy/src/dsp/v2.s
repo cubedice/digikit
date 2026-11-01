@@ -1,6 +1,5 @@
-// Stage-1 V2 callbacks. Instance: bank[256], pedals[256], generation, track,
-// revision, initialized. The adapter supplies validated normalized event buffers.
-// Fixed sine PLAY controls: one word equal to 1; tuning is neutral in this proof.
+// V2 pad callbacks: 256-byte bank, 256-byte controllers, four identity words,
+// four modulation words. CPS3 has six bounded controls; CPS1 retains sine probes.
 .SECTION/PM seg_pmco;
 .GLOBAL _canopy_reset;
 .GLOBAL _canopy_process;
@@ -16,7 +15,7 @@ _canopy_reset:
     COMP(R8, R0);
     IF EQ JUMP _cv_replace;
     I0 = R4;
-    R1 = 132;
+    R1 = 136;
     R0 = 0;
 _cv_reset_clear:
     DM(I0, M6) = R0;
@@ -34,7 +33,7 @@ _cv_replace_slots:
     IF NE JUMP _cv_replace_slots;
     // Discard pending onsets, pedal ownership and generation metadata. The six
     // oscillator slots retain phase/gain through their at-most-64-sample ramp.
-    R1 = 84;
+    R1 = 84; // preserve modulation through the reset tail
     R0 = 0;
 _cv_replace_clear:
     DM(I0, M6) = R0;
@@ -64,15 +63,42 @@ _canopy_process:
     R0 = DM(6, I2);
     R0 = PASS R0;
     IF NE JUMP _cv_bad;
+    // Legacy CPS1 remains a diagnostic sine configuration. CPS3 is six
+    // bounded integer words: version, family, color, drift, attack, release.
     R0 = DM(10, I2);
     R1 = 1;
+    COMP(R0, R1);
+    IF EQ JUMP _cv_legacy_controls;
+    R1 = 6;
     COMP(R0, R1);
     IF NE JUMP _cv_bad;
     R0 = DM(9, I2);
     I0 = R0;
     R0 = DM(0, I0);
+    R1 = 3;
     COMP(R0, R1);
     IF NE JUMP _cv_bad;
+    R0 = DM(1, I0);
+    R1 = LSHIFT R0 BY -1;
+    R1 = PASS R1;
+    IF NE JUMP _cv_bad;
+    MODIFY(I0, 2) (NW);
+    R2 = 4;
+_cv_check_controls:
+    R0 = DM(I0, M6);
+    R0 = LSHIFT R0 BY -7;
+    R0 = PASS R0;
+    IF NE JUMP _cv_bad;
+    R2 = R2 - 1;
+    IF NE JUMP _cv_check_controls;
+    JUMP _cv_controls_ok;
+_cv_legacy_controls:
+    R0 = DM(9, I2);
+    I0 = R0;
+    R0 = DM(0, I0);
+    COMP(R0, R1);
+    IF NE JUMP _cv_bad;
+_cv_controls_ok:
     R0 = DM(11, I2);
     R0 = PASS R0;
     IF EQ JUMP _cv_bad;
@@ -203,14 +229,192 @@ _cv_render:
     DM(1, I0) = R0;
     R0 = DM(11, I2);
     DM(2, I0) = R0;
+    R0 = DM(3, I0);
+    R0 = PASS R0;
+    IF NE JUMP _cv_seeded;
+    R0 = DM(5, I0);
+    R0 = PASS R0;
+    IF NE JUMP _cv_seeded; // REPLACE retains drift phase
+    R0 = DM(3, I2);
+    R1 = DM(2, I2);
+    R0 = R0 XOR R1;
+    R1 = 255;
+    R0 = R0 AND R1;
+    F0 = FLOAT R0;
+    F1 = 0.00390625;
+    F0 = F0 * F1;
+    DM(5, I0) = F0;
+_cv_seeded:
     R0 = 1;
     DM(3, I0) = R0;
+    CALL _cv_sound;
+    R0 = DM(_cv_input);
+    I2 = R0;
     R8 = DM(5, I2);
     R4 = DM(_cv_state);
     CALL _cp_render;
+    R3 = R0;
+    R0 = DM(_cv_input);
+    I0 = R0;
+    R0 = DM(5, I0);
+    I0 = R0;
+    R2 = 32;
+    R1 = 0x7fffffff;
+    R4 = 0x3f800000; // final module output must be finite and <=1.0
+_cv_audio_check:
+    R0 = DM(I0, M6);
+    R0 = R0 AND R1;
+    COMP(R0, R4);
+    IF GT JUMP _cv_audio_bad;
+    R2 = R2 - 1;
+    IF NE JUMP _cv_audio_check;
     R1 = 1;
-    R0 = R1 - R0;
+    R0 = R1 - R3;
     JUMP (M13, I13);
+_cv_audio_bad:
+    R0 = DM(_cv_input);
+    I0 = R0;
+    R0 = DM(5, I0);
+    I0 = R0;
+    R0 = 0;
+    R1 = 32;
+_cv_audio_zero:
+    DM(I0, M6) = R0;
+    R1 = R1 - 1;
+    IF NE JUMP _cv_audio_zero;
+    JUMP _cv_bad;
+// Runs only after validation/event commit. Smooth color and drift in the
+// instance, so alternating instances cannot share modulation history.
+_cv_sound:
+    F0 = 0.0002604166667;
+    DM(_cp_attack) = F0;
+    F0 = -0.00002083333333;
+    DM(_cp_release_step) = F0;
+    F0 = 0.125;
+    DM(_cp_level) = F0;
+    R0 = 0;
+    DM(_cp_second) = R0;
+    DM(_cp_third) = R0;
+    DM(_cp_second_start) = R0;
+    DM(_cp_third_start) = R0;
+    DM(_cp_second_step) = R0;
+    DM(_cp_third_step) = R0;
+    DM(_cp_drift) = R0;
+    R0 = DM(10, I2);
+    R1 = 1;
+    COMP(R0, R1);
+    IF EQ RTS;
+    F0 = 0.08; // 6 simultaneous groups * (1+.35+.2) * .08 < .75
+    DM(_cp_level) = F0;
+    R0 = DM(9, I2);
+    I1 = R0;
+    R0 = DM(_cv_state);
+    R1 = 528;
+    R0 = R0 + R1;
+    I0 = R0;
+    F2 = DM(0, I0);
+    F3 = DM(3, I0);
+    F0 = 0.35;
+    F0 = F0 * F3;
+    F0 = F0 * F2;
+    DM(_cp_second_start) = F0;
+    F0 = 0.3111111111;
+    F0 = F0 * F3;
+    F1 = -0.1111111111;
+    F0 = F0 + F1;
+    F0 = F0 * F2;
+    DM(_cp_third_start) = F0;
+    R0 = DM(2, I1);
+    F0 = FLOAT R0;
+    F1 = 0.007874015748;
+    F0 = F0 * F1;
+    F2 = DM(0, I0);
+    F0 = F0 - F2;
+    F1 = 0.0327838995; // 20ms time constant at 32/48000 blocks
+    F0 = F0 * F1;
+    F2 = F2 + F0;
+    DM(0, I0) = F2;
+    R0 = DM(1, I1);
+    F0 = FLOAT R0;
+    F3 = DM(3, I0);
+    F0 = F0 - F3;
+    F1 = 0.0327838995;
+    F0 = F0 * F1;
+    F3 = F3 + F0;
+    DM(3, I0) = F3;
+    F0 = 0.35;
+    F0 = F0 * F3;
+    F0 = F0 * F2;
+    DM(_cp_second) = F0;
+    F0 = 0.3111111111;
+    F0 = F0 * F3;
+    F1 = -0.1111111111;
+    F0 = F0 + F1;
+    F0 = F0 * F2;
+    DM(_cp_third) = F0;
+    F1 = DM(_cp_third_start);
+    F0 = F0 - F1;
+    F1 = 0.03125;
+    F0 = F0 * F1;
+    DM(_cp_third_step) = F0;
+    F0 = DM(_cp_second);
+    F2 = DM(_cp_second_start);
+    F0 = F0 - F2;
+    F0 = F0 * F1;
+    DM(_cp_second_step) = F0;
+_cv_drift:
+    F0 = DM(1, I0);
+    F1 = 0.0001; // one deterministic 6.667-second cycle
+    F0 = F0 + F1;
+    F1 = 1.0;
+    COMP(F0, F1);
+    IF GE F0 = F0 - F1;
+    DM(1, I0) = F0;
+    F1 = 0.5;
+    F0 = F0 - F1;
+    F0 = ABS F0;
+    F1 = 4.0;
+    F0 = F0 * F1;
+    F1 = 1.0;
+    F0 = F0 - F1;
+    F3 = F0;
+    R0 = DM(3, I1);
+    F0 = FLOAT R0;
+    F1 = 0.0000227467; // <=5 cents; less at high pitches
+    F0 = F0 * F1;
+    F2 = DM(2, I0);
+    F0 = F0 - F2;
+    F1 = 0.0327838995;
+    F0 = F0 * F1;
+    F2 = F2 + F0;
+    DM(2, I0) = F2;
+    F0 = F3 * F2;
+    DM(_cp_drift) = F0;
+    R0 = DM(4, I1);
+    R0 = LSHIFT R0 BY 3;
+    R1 = _cp_envelopes;
+    R0 = R0 + R1;
+    I0 = R0;
+    R0 = DM(0, I0);
+    DM(_cp_attack) = R0;
+    R0 = DM(5, I1);
+    R0 = LSHIFT R0 BY 3;
+    R0 = R0 + R1;
+    I0 = R0;
+    R0 = DM(1, I0);
+    DM(_cp_release_step) = R0;
+    RTS;
+.EXTERN _cp_attack;
+.EXTERN _cp_release_step;
+.EXTERN _cp_second;
+.EXTERN _cp_third;
+.EXTERN _cp_drift;
+.EXTERN _cp_level;
+.EXTERN _cp_envelopes;
+.EXTERN _cp_second_start;
+.EXTERN _cp_third_start;
+.EXTERN _cp_second_step;
+.EXTERN _cp_third_step;
 _cv_bad:
     R0 = -1;
     JUMP (M13, I13);
@@ -225,9 +429,9 @@ _cv_bad:
 .VAR _canopy_descriptor_2 = 48;
 .VAR _canopy_descriptor_3 = 0;
 .VAR _canopy_descriptor_4 = 1;
-.VAR _canopy_descriptor_5 = 528;
+.VAR _canopy_descriptor_5 = 544;
 .VAR _canopy_descriptor_6 = 8;
-.VAR _canopy_descriptor_7 = 1;
+.VAR _canopy_descriptor_7 = 6;
 .VAR _canopy_descriptor_8 = 100000;
 .VAR _canopy_descriptor_9 = 1000;
 .VAR _canopy_descriptor_10 = 8;

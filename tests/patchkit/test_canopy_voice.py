@@ -59,8 +59,12 @@ _cp_test_loop:
     }
     linked = pk_sharc.link(obj, 0xB90000, symbols)
 
-    def session():
+    def session(sound=None):
         dm = dict(initial)
+        for name, value in (sound or {}).items():
+            dm[symbols["_cp_" + name] // 4] = struct.unpack(
+                "<I", struct.pack("<f", value)
+            )[0]
         dm.update({BANK // 4 + i: 0 for i in range(64)})
         dm.update({OUTPUT // 4 + i: 0 for i in range(32)})
         for base, count in ((BANK, 64), (OUTPUT, 32)):
@@ -92,7 +96,7 @@ _cp_test_loop:
                     "bank": (BANK // 4 - 1, 66),
                     "out": (OUTPUT // 4 - 1, count + 2),
                 },
-                max_steps=12000 * blocks,
+                max_steps=20000 * blocks,
             )
             assert result["halt"]["reason"] == "breakpoint", result
             for name, base in (("bank", BANK), ("out", OUTPUT)):
@@ -222,3 +226,70 @@ def test_sine_pitch_attack_and_sustained_stability(engine, note):
     status, slots, pcm = call("render_many", blocks=1502)
     assert status == 0 and slots == {} and pcm[-32:] == [0.0] * 32
     assert all(math.isfinite(x) and abs(x) <= 0.126 for x in pcm)
+
+
+@pytest.mark.parametrize("family", ["velvet", "reed"])
+@pytest.mark.parametrize("note", [0, 60, 100, 110, 119, 127])
+def test_pad_spectrum_is_bounded_before_nyquist(engine, family, note):
+    second, third = (0, -1 / 9) if family == "velvet" else (0.35, 0.2)
+    call = engine(dict(second_start=second, third_start=third, level=0.08, attack=1.0))
+    call("note_on", 1, note, 127)
+    _, _, pcm = call("render_many", blocks=256)
+    frequency = 440 * 2 ** ((note - 69) / 12)
+    w = 2 * math.pi * frequency / 48000
+    h2 = second * min(1, max(0, (math.cos(w) - 0.05) * 4))
+    h3 = third * min(1, max(0, (math.cos(w) - 0.5) * 4))
+    # Compare every actual instruction-rendered sample with a finite spectrum,
+    # including the high notes where harmonic aliases MUST be absent.
+    expected = [
+        0.08
+        * (
+            math.sin(w * (i + 1))
+            + h2 * math.sin(2 * w * (i + 1))
+            + h3 * math.sin(3 * w * (i + 1))
+        )
+        for i in range(len(pcm))
+    ]
+    assert max(abs(a - b) for a, b in zip(pcm, expected, strict=True)) < 0.0001
+    assert all(math.isfinite(x) and abs(x) < 0.125 for x in pcm)
+
+
+def test_pad_full_pool_and_fast_retrigger_keep_fixed_headroom(engine):
+    call = engine(
+        dict(
+            second_start=0.35,
+            third_start=0.2,
+            level=0.08,
+            attack=1.0,
+            release_step=-1 / (48 * 8168),
+        )
+    )
+    for token in range(1, 5):
+        call("note_on", token, 60, 127)
+    call("render_many", blocks=3)
+    call("note_on", 5, 60, 127)
+    call("note_on", 6, 60, 127)
+    _, voices, pcm = call("render")
+    assert len(voices) == 6
+    assert max(abs(x) for x in pcm) < 0.75
+    for token in range(7, 11):
+        call("note_on", token, 60, 127)
+    _, voices, pcm = call("render_many", blocks=4)
+    assert len(voices) <= 6
+    assert max(abs(x) for x in pcm) < 0.75
+    assert set(voices).issuperset({7, 8, 9, 10})
+
+
+@pytest.mark.parametrize("amount", [-0.00288883, 0.00288883])
+def test_pad_max_drift_is_finite_and_phase_continuous(engine, amount):
+    call = engine(dict(drift=amount, attack=1.0, level=0.08))
+    call("note_on", 1, 69, 127)
+    _, slots, pcm = call("render_many", blocks=256)
+    base = 2 * math.pi * 440 / 48000
+    delta = amount * math.sin(base)
+    w = base + math.atan2(delta, 1 - 0.5 * delta * delta)
+    expected = [0.08 * math.sin(w * (i + 1)) for i in range(len(pcm))]
+    assert max(abs(a - b) for a, b in zip(pcm, expected, strict=True)) < 0.0002
+    assert abs(1200 * math.log2(w / base)) < 5.01
+    x, y = floats(slots[1][2:4])
+    assert x * x + y * y == pytest.approx(1, abs=0.000002)

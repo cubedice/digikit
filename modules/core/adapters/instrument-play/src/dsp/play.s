@@ -58,8 +58,9 @@ _instrument_carrier_prepare:
     DM(7, I0) = R0;
     R0 = _iv_controls;
     DM(9, I0) = R0;
-    R0 = 1;
+    R0 = DM(_iv_control_count);
     DM(10, I0) = R0;
+    R0 = 1;
     // A reset tail renders before configuration. No new events are admitted.
     R1 = DM(_iv_revision);
     R1 = PASS R1;
@@ -141,9 +142,13 @@ _instrument_configure:
     R0 = PASS R0;
     IF EQ JUMP _iv_no;
     // A replacement's bounded release tail must finish before new ownership.
+    R0 = DM(_iv_revision);
+    R0 = PASS R0;
+    IF NE JUMP _iv_live_config;
     R0 = DM(_iv_active);
     R0 = PASS R0;
     IF NE JUMP _iv_no;
+_iv_live_config:
     R0 = DM(_iv_metadata);
     I0 = R0;
     R0 = DM(0, I0);
@@ -156,7 +161,36 @@ _instrument_configure:
     R0 = DM(4, I0);
     R1 = 4;
     COMP(R0, R1);
+    IF EQ JUMP _iv_legacy_config;
+    R1 = 24;
+    COMP(R0, R1);
     IF NE JUMP _iv_no;
+    R0 = DM(5, I0);
+    R1 = 0x43505333;
+    COMP(R0, R1);
+    IF NE JUMP _iv_no;
+    R0 = DM(_iv_values);
+    I1 = R0;
+    R0 = DM(0, I1);
+    R1 = 3;
+    COMP(R0, R1);
+    IF NE JUMP _iv_no;
+    R0 = DM(1, I1);
+    R0 = LSHIFT R0 BY -1;
+    R0 = PASS R0;
+    IF NE JUMP _iv_no;
+    MODIFY(I1, 2) (NW);
+    R2 = 4;
+_iv_config_validate:
+    R0 = DM(I1, M6);
+    R0 = LSHIFT R0 BY -7;
+    R0 = PASS R0;
+    IF NE JUMP _iv_no;
+    R2 = R2 - 1;
+    IF NE JUMP _iv_config_validate;
+    R2 = 6;
+    JUMP _iv_config_copy;
+_iv_legacy_config:
     R0 = DM(5, I0);
     R1 = 0x43505331;
     COMP(R0, R1);
@@ -167,6 +201,17 @@ _instrument_configure:
     R1 = 1;
     COMP(R0, R1);
     IF NE JUMP _iv_no;
+    R2 = 1;
+_iv_config_copy:
+    DM(_iv_control_count) = R2;
+    R0 = DM(_iv_values);
+    I1 = R0;
+    I2 = _iv_controls;
+_iv_config_word:
+    R0 = DM(I1, M6);
+    DM(I2, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _iv_config_word;
     R0 = DM(2, I0);
     DM(_iv_revision) = R0;
     R0 = 1;
@@ -285,6 +330,12 @@ _iv_voice_zero:
 .PKDATA _iv_output, 128;
 .PKDATA _iv_events, 192;
 .VAR _iv_controls = 1;
+.VAR _iv_controls_1 = 0;
+.VAR _iv_controls_2 = 0;
+.VAR _iv_controls_3 = 0;
+.VAR _iv_controls_4 = 5;
+.VAR _iv_controls_5 = 15;
+.VAR _iv_control_count = 1;
 .VAR _iv_generation = 0;
 .VAR _iv_revision = 0;
 .VAR _iv_active = 0;

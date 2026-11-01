@@ -14,7 +14,7 @@ import { chordWindow, voiceChange } from './chord-continuity.ts';
 const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
 test('admitted CANOPY Stage 1 and 2 keyboard, learning, stereo chord and fault retirement', async () => {
   const root = repoRoot(),
-    image = path.join(root, 'out/patch/canopy-stage2.syx');
+    image = path.join(root, 'out/patch/canopy-stage3.syx');
   const plan: RuntimePlan = JSON.parse(fs.readFileSync(image.replace(/\.syx$/, '.plan.json'), 'utf8'));
   expect(createHash('sha256').update(fs.readFileSync(image)).digest('hex')).toBe(plan.output?.syx_sha256);
   expect(plan.modules.some((m) => m.startsWith('test/canopy'))).toBe(false);
