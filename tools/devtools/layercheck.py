@@ -523,7 +523,7 @@ def check_objects(root: Path, mods: list[Module]) -> list[Violation]:
                             "_instrument_session",
                             "_ir_lifecycle_ready",
                             "_ir_rows",
-                            "_ir_process_protected",
+                            "_ir_process_packet",
                         }
                     )
                     or name.startswith(("dkrt_", "dk_ui_", "dk_app_", "dkm_"))

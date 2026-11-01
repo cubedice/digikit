@@ -130,6 +130,8 @@ test('bound instrument uploads, initializes and retires before memory release', 
   expect((await peek(planSymbol(plan, '_ilp_process_result'), 4)).readUInt32LE()).toBe(0);
   expect((await peek(planSymbol(plan, '_ilp_process_output'), 4)).readUInt32LE()).toBe(0x3e800000);
   expect((await peek(state + 4, 4)).readUInt32LE()).toBe(1);
+  const events = await peek(planSymbol(plan, '_ilp_events'), 24);
+  expect(Array.from({ length: 6 }, (_, i) => events.readUInt32LE(i * 4))).toEqual([1, 0, 17, 60 << 8, 100 << 8, 0]);
   await writeWord(input, 2);
   await waitPhase(6);
   expect(await word(4)).toBe(0);

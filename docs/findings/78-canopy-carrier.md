@@ -1193,3 +1193,15 @@ direct/protected tests, and 31 mailbox lifecycle cases pass. The SDK suite has
 167 passing cases after adding process binding. This single emulator result is
 not a hardware result or final PCM proof; public V2 loading and production
 keyboard/carrier routing remain open. Stage 1 is not complete.
+
+
+## 2026-11-01: packet-to-admitted-callback bridge [D]
+
+The booted DT2 1.17 load fixture now supplies an ordered note packet through
+`_ir_process_packet`, checks its normalized six-word note record, verifies the
+uploaded callback's output/state write, then retires it before memory release.
+It passes in 84.93 seconds (`out/canopy-input-live.log`). The shared CANOPY
+processor suite has 30 passing tests, including normalized packet note/pedal/bend
+behavior, full batches and silent rejection without instance mutation for stale
+or corrupt input. Production receiver ordering, live route/configuration ownership
+and final carrier output remain unconnected. Stage 1 is still open.

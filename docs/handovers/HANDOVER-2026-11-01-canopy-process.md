@@ -64,3 +64,20 @@ still reports the existing 256 stale references. The unrelated repository
 and the two already-known failures: unclassified `patch:toolchains` task and
 `tools/device/dsp_reset_probe.py`. It is not a clean full preflight or merge gate.
 The targeted new/changed behavior checks completed separately as listed above.
+
+## Follow-up: transport input boundary
+
+`src/dsp/input.s` in core/instrument-registry now supplies `_ir_process_packet`
+and `_ir_normalize_packet`. They validate/normalize an ordered packet into the
+borrowed V2 ABI, preclear output, reject stale track/generation/revision/epoch,
+and render event-free blocks without replaying a prior batch. Production receiver
+ordering and route ownership are still required from the caller. The core object
+is rebuilt/current-checked (1355 decoded instructions).
+
+The CANOPY processor suite now has 30 passing cases, including packet-to-instance
+notes, sustain, bend, full bursts, stale/corrupt packets and atomic late-event
+rejection. The 36 layer tests pass. The booted load fixture now uses this packet
+path before its uploaded callback and checks the normalized six-word note record;
+it passes in 84.93 seconds (`out/canopy-input-live.log`). This is a diagnostic
+callback, not CANOPY final-output acceptance. Stage 1 remains open; the production
+loader, machine/route selection and shared-carrier connection remain the next work.

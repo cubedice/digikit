@@ -347,3 +347,20 @@ module-owned buffer pointers. The adapter must clear scratch output before calls
 because rejected dispatch does not invoke a callback or clear an untrusted output
 pointer. The booted load fixture exercises this boundary, but production carrier
 routing and public V2 loading remain disabled.
+
+## Transport packet input
+
+`_ir_process_packet` bridges one ordered transport packet to an admitted process
+call. The trusted frame owner supplies row/instance, the borrowed V2 input and
+bound epoch. A null packet means an event-free render; it never replays the prior
+batch. The adapter preclears the 32-float output and checks destination extents.
+`_ir_normalize_packet` uses the existing packet validator, checks epoch, physical
+track, instance generation and applied revision, then converts a complete batch
+into private staging before copying any events. Note pitch/velocity become Q8;
+port/channel ownership is preserved; bend becomes one 14-bit value. Corrupt or
+stale packets do not invoke the process callback or mutate its instance.
+
+This is a scalar, non-reentrant frame API. The ordered receiver still owns replay
+protection and ACKs; the frame owner must provide valid route/configuration
+lifetimes and invoke processing exactly once per block. This API alone does not
+publish a keyboard route or connect the stock carrier.

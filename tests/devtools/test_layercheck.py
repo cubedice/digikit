@@ -505,7 +505,7 @@ def test_instrument_load_gate_private_imports_are_narrow(
             "_instrument_session",
             "_ir_lifecycle_ready",
             "_ir_rows",
-            "_ir_process_protected",
+            "_ir_process_packet",
             "_ir_snapshot",
         ],
     )

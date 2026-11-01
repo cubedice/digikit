@@ -1923,8 +1923,10 @@ The booted uploaded-process test passes: CREATE, installed process entry, output
 write and instance mutation, then acknowledged DETACH before memory release.
 That uses a small diagnostic callback, not CANOPY final PCM.
 
-These callbacks are not yet connected to a public machine package, normalized live
-input adapter or final carrier dispatch. No stage completion is claimed by this checkpoint.
+The core packet adapter now validates ordered packets, checks epoch/track/instance
+generation/revision, normalizes the full batch and preclears output before dispatch.
+The booted load fixture exercises this path with a diagnostic callback. These callbacks
+are not yet connected to a public machine package, live route owner or final carrier dispatch. No stage completion is claimed by this checkpoint.
 
 ### Stage 1 completion checklist
 
