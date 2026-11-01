@@ -25,9 +25,9 @@ The transport ACK alone does not acknowledge installation, initialization or det
 | 2 | Nonzero, strictly increasing unsigned sequence; never wraps within a boot |
 | 3 | Module owner, 0..31 |
 | 4 | Nonzero generation |
-| 5 | Operation: 1 QUERY, 2 INITIALIZE, 3 DETACH, 4 INSTALL, 5 BIND_SESSION |
+| 5 | Operation: 1 QUERY, 2 INITIALIZE, 3 DETACH, 4 INSTALL, 5 BIND_SESSION, 6 INSTALL_PROCESS |
 | 6 | Registry row, 0..7 |
-| 7..14 | INSTALL: track count, state base, state words, arena start/end, reset entry, executable start/end; other operations: zero |
+| 7..14 | INSTALL: track count, state base, state words, arena start/end, reset entry, executable start/end; INSTALL_PROCESS: type, process entry, executable start/end, max events/controls, two reserved zeros; other operations: zero |
 | 15 | XOR of words 0..14, including the committed magic |
 
 Invalid, incomplete, duplicate or older commands retain the previous reply and
@@ -49,9 +49,9 @@ carry the result; there is no additional reply allocation.
 | 0 | Commit magic `0x49525231` (`IRR1`), zero before the first accepted command |
 | 1..5 | Echoed sequence, owner, generation, operation, row |
 | 6 | Status: 0 completed, 1 unsupported lifecycle, 2 unknown operation, 3 row identity/phase/installation metadata rejected, 4 row callback/metadata fault |
-| 7 | Capabilities: 0 while disabled, 7 when trusted lifecycle admission is enabled |
+| 7 | Capabilities: 0 while disabled, 15 when trusted lifecycle and process binding are enabled |
 
-INSTALL, INITIALIZE and DETACH return status 1 while trusted admission is disabled.
+INSTALL, INSTALL_PROCESS, INITIALIZE and DETACH return status 1 while trusted admission is disabled.
 When enabled, success is returned only after row work completes. Callers must validate the outer checksum, reply magic and all echoed
 identifiers before interpreting status. A stale reply never authorizes freeing
 memory or publishing a row.
@@ -329,3 +329,21 @@ session token and row table) uses `.PKDATA`, supplying zeros in the SHARC boot
 stream. `.PKBSS` reserves memory without initializing it and is used only for
 scratch that is written before reading. Loading that stream initializes the
 session; DSP-only restart behavior still requires separate evidence.
+
+## Protected process binding
+
+The loader commits INSTALL followed by INSTALL_PROCESS with separate sequences
+and acknowledgements before INITIALIZE or publication. Process binding requires
+an owned RESERVED row, bounded executable entry and event/control capacities.
+Binding cannot change once the row is READY. The protected dispatcher requires
+READY state and matching owner/generation, derives the selected instance from the
+admitted state allocation, and preserves the shared caller context. Callback
+failure quarantines the row and silences its 32-float scratch output; state stays
+allocated until retirement. ACTIVE and QUIET are the only successful returns.
+
+The input and event/control buffers belong to the trusted adapter. The dispatcher
+checks input/output L2 extents and counts; it is not a validator for arbitrary
+module-owned buffer pointers. The adapter must clear scratch output before calls,
+because rejected dispatch does not invoke a callback or clear an untrusted output
+pointer. The booted load fixture exercises this boundary, but production carrier
+routing and public V2 loading remain disabled.

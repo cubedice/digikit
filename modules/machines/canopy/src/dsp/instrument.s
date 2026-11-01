@@ -110,9 +110,29 @@ _instrument_events:
     IF EQ JUMP _ci_reject;
     R0 = LSHIFT R5 BY 8;
     R1 = _cp_pedals;
-    R0 = R0 + R1;
-    DM(_ci_pedal_bank) = R0;
-    I1 = R0;
+    R8 = R0 + R1;
+    R1 = _cp_banks;
+    R4 = R0 + R1;
+    R0 = DM(1, I0);
+    R9 = FEXT R0 BY 8:4;
+    R0 = I0;
+    R1 = 32;
+    R12 = R0 + R1;
+    JUMP _cp_apply_packed;
+// Internal shared atomic event engine. Explicit instance storage, independent
+// of the legacy track-bank lookup: R4 bank, R8 pedal state, R12 triples, R9 count.
+.GLOBAL _cp_apply_packed;
+_cp_apply_packed:
+    R0 = PASS R9;
+    IF LE JUMP _ci_reject;
+    R0 = 8;
+    COMP(R9, R0);
+    IF GT JUMP _ci_reject;
+    DM(_ci_remaining) = R9;
+    DM(_ci_event) = R12;
+    DM(_ci_bank) = R4;
+    DM(_ci_pedal_bank) = R8;
+    I1 = R8;
     I2 = _ci_pedal_staging;
     R2 = 64;
 _ci_snapshot_pedals:
@@ -120,10 +140,7 @@ _ci_snapshot_pedals:
     DM(I2, M6) = R0;
     R2 = R2 - 1;
     IF NE JUMP _ci_snapshot_pedals;
-    R0 = LSHIFT R5 BY 8;
-    R1 = _cp_banks;
-    R0 = R0 + R1;
-    DM(_ci_bank) = R0;
+    R0 = DM(_ci_bank);
     I1 = R0;
     I2 = _cp_staging;
     R2 = 64;
@@ -132,12 +149,6 @@ _ci_snapshot:
     DM(I2, M6) = R0;
     R2 = R2 - 1;
     IF NE JUMP _ci_snapshot;
-    R0 = DM(1, I0);
-    R0 = FEXT R0 BY 8:4;
-    DM(_ci_remaining) = R0;
-    MODIFY(I0, 8) (NW);
-    R0 = I0;
-    DM(_ci_event) = R0;
 _ci_event_loop:
     R0 = DM(_ci_event);
     I0 = R0;

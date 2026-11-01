@@ -413,6 +413,14 @@ fn run_install_scenario(cancel_after: Option<u32>) {
     let first = response(&mailbox, 0, 7);
     assert_eq!(mailbox.reply(&first, &mut loads), Ok(None));
     assert!(mailbox.take_installed().is_none());
+    let process = transfer(&mut mailbox);
+    assert_eq!(process[5], 6);
+    assert_eq!(process[7..15], [18, spec.process_sw, 0xb88000, 0xb88080, 8, 32, 0, 0]);
+    let old_capabilities = response(&mailbox, 0, 7);
+    assert_eq!(mailbox.reply(&old_capabilities, &mut loads), Err(Error::MissingCapability));
+    assert!(mailbox.take_installed().is_none());
+    let process_reply = response(&mailbox, 0, 15);
+    assert_eq!(mailbox.reply(&process_reply, &mut loads), Ok(None));
     let words = transfer(&mut mailbox);
     assert_eq!(words[7..15], plan.rows()[1].unwrap().words[3..11]);
     assert_eq!(
@@ -430,6 +438,12 @@ fn run_install_scenario(cancel_after: Option<u32>) {
     }
     let second = response(&mailbox, 0, 7);
     mailbox.reply(&second, &mut loads).unwrap();
+    assert!(mailbox.take_installed().is_none());
+    let process = transfer(&mut mailbox);
+    assert_eq!(process[5], 6);
+    assert_eq!(process[7], 19);
+    let process_reply = response(&mailbox, 0, 15);
+    mailbox.reply(&process_reply, &mut loads).unwrap();
     assert!(loads.lookup(18).is_none());
     let receipt = mailbox.take_installed().unwrap();
     assert!(mailbox.take_installed().is_none());

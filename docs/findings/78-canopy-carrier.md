@@ -1173,3 +1173,23 @@ The incremental changed-file run passes 203 host cases; an unrelated 12 ms
 firmware-pause timing test fails once and passes its isolated rerun. Repository
 pathcheck retains the known stale-link failures; the edited finding passes.
 Logs: `out/canopy-chord-changed.log`, `out/canopy-chord-pause-retry.log`.
+
+
+## 2026-11-01: admitted process execution [D]
+
+The DT2 1.17 booted `instrument-load` test passes with separate uploaded reset
+and process entry points. It checks op-6 owner/generation/type/entry metadata,
+CREATE state, a process output word of 0.25, exactly one instance process call,
+then DETACH state before ledger release. The protected dispatcher originally
+rejected the fixture's statically linked input/output buffers because it used
+the smaller dynamic image arena as the input/output bound. The corrected bound
+is bootable L2 through 0x200fe000 (exclusive), matching patchkit's ROM workspace
+boundary. Dynamic code/state allocation limits were not enlarged.
+
+Image SHA256: 82d9fc582b0d7c0d2b73e0d4a5f7c1cd6b103491be9956591fc6bbe9ef6f10e8.
+Log: `out/canopy-process-live.log`; test duration 89.26 seconds, full run 93.20.
+The dispatcher has 24 processor tests, CANOPY's normalized callbacks have 22
+direct/protected tests, and 31 mailbox lifecycle cases pass. The SDK suite has
+167 passing cases after adding process binding. This single emulator result is
+not a hardware result or final PCM proof; public V2 loading and production
+keyboard/carrier routing remain open. Stage 1 is not complete.

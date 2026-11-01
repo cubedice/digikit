@@ -99,7 +99,7 @@ unsafe impl Transport for Link {
                         w.words[5],
                         w.words[6],
                         if w.words[5] == w.reject { 1 } else { 0 },
-                        7,
+                        15,
                     ]);
                     if w.expected != 0 {
                         w.reply[0] = 0x494ea102;
@@ -188,9 +188,9 @@ fn bound_session_drives_install_initialize_and_rejected_init_detach() {
         WIRE.with_borrow(|w| {
             let operations: Vec<_> = w.operations.iter().map(|x| (x.0, x.1)).collect();
             let expected = if reject {
-                std::vec![(1, 5), (2, 4), (3, 2), (4, 3)]
+                std::vec![(1, 5), (2, 4), (3, 6), (4, 2), (5, 3)]
             } else {
-                std::vec![(1, 5), (2, 4), (3, 2)]
+                std::vec![(1, 5), (2, 4), (3, 6), (4, 2)]
             };
             assert_eq!(operations, expected);
             assert_eq!(w.arms, 1);
@@ -504,7 +504,7 @@ fn moved_owner_keeps_buffer_and_drives_all_rows_before_publishing() {
         assert_eq!(&w.image[..300], &IMAGE);
         assert!(w.image[300..].iter().all(|&b| b == 0));
         assert_eq!(w.image.len(), 600);
-        assert_eq!(w.operations, [(1, 4, 0), (2, 4, 1), (3, 2, 0), (4, 2, 1)]);
+        assert_eq!(w.operations, [(1, 4, 0), (2, 6, 0), (3, 4, 1), (4, 6, 1), (5, 2, 0), (6, 2, 1)]);
     });
 }
 
@@ -539,7 +539,7 @@ fn upload_deadline_survives_ticks_and_wrap_then_detaches_before_release() {
 
 #[test]
 fn rejected_install_or_initialize_uses_fresh_detach_sequences() {
-    for operation in [4, 2] {
+    for operation in [4, 6, 2] {
         let mut f = Fixture::new();
         WIRE.with_borrow_mut(|w| w.reject = operation);
         f.begin(0, 60);
@@ -945,7 +945,7 @@ fn admitted_section_uses_shared_ledger_and_publishes_only_after_initialization()
                 WIRE.with_borrow(|w| {
                     assert_eq!(&w.image[..64], &output[..]);
                     assert_eq!(&w.image[64..], &[0; 8]);
-                    assert_eq!(w.operations.iter().map(|x| x.1).collect::<Vec<_>>(), [4, 2]);
+                    assert_eq!(w.operations.iter().map(|x| x.1).collect::<Vec<_>>(), [4, 6, 2]);
                 });
                 return;
             }
@@ -1593,7 +1593,7 @@ fn published_retirement_retains_memory_until_exact_detach_ack() {
                 owner.request_link_release(now, 100).unwrap();
                 assert_eq!(owner.tick_link(now + 1, true), LinkProgress::Released);
                 WIRE.with_borrow(|w| assert_eq!(w.operations.iter().map(|x| (x.0, x.1)).collect::<Vec<_>>(),
-                    [(1, 5), (2, 4), (3, 2), (4, 3)]));
+                    [(1, 5), (2, 4), (3, 6), (4, 2), (5, 3)]));
                 return;
             }
             other => panic!("unexpected retirement: {other:?}"),

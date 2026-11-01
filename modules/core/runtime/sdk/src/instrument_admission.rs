@@ -74,7 +74,10 @@ pub enum Error {
 pub struct Row {
     pub index: u32,
     pub words: [u32; 16],
-    /// Retained for future dispatch admission; the reset row does not publish it.
+    /// Process binding is installed separately before initialization.
+    pub type_no: u32,
+    pub max_events: u32,
+    pub max_controls: u32,
     pub process_sw: u32,
     pub process_text: Range,
 }
@@ -217,6 +220,9 @@ pub fn prepare(
                 0,
                 0,
             ],
+            type_no: spec.type_no,
+            max_events: spec.max_events,
+            max_controls: spec.max_controls,
             process_sw: spec.process_sw,
             process_text: spec.process_text,
         });

@@ -110,6 +110,7 @@ def scheduler(scheduler_object):
         "wire": (symbols["_instrument_reply"] // 4, 16),
         "row": (base, 16),
         "rows": (symbols["_ir_rows"] // 4, 128),
+        "process": (symbols["_ir_process_rows"] // 4 + 7 * 8, 8),
         "calls": (0x20040010 // 4, 3),
         "state": (0x20070000 // 4, 16),
     }
@@ -154,14 +155,14 @@ def test_success_waits_for_all_callbacks_and_replay_does_not_repeat_them(schedul
         assert result["ack"] == previous and result["calls"][0] == count
     result = scheduler()
     assert result["row"][0] == 3
-    assert result["ack"] == [0x49525231, 2, 3, 9, 2, 7, 0, 7]
+    assert result["ack"] == [0x49525231, 2, 3, 9, 2, 7, 0, 15]
     assert scheduler()["calls"][0] == 2
     for count, words in [(3, command(3, 3)), (4, None)]:
         result = scheduler(words)
         assert result["ack"][1] == 2 and result["calls"][0] == count
     result = scheduler()
     assert result["row"][:3] == [6, 3, 9]
-    assert result["ack"] == [0x49525231, 3, 3, 9, 3, 7, 0, 7]
+    assert result["ack"] == [0x49525231, 3, 3, 9, 3, 7, 0, 15]
 
 
 def test_pending_ticket_survives_mailbox_clear_and_new_command(scheduler):
@@ -178,7 +179,7 @@ def test_pending_ticket_survives_mailbox_clear_and_new_command(scheduler):
 def test_partial_callback_fault_retains_row_until_completed_detach(scheduler):
     scheduler(command(1, 2))
     result = scheduler(fail_at=2)
-    assert result["ack"][1:] == [1, 3, 9, 2, 7, 4, 7]
+    assert result["ack"][1:] == [1, 3, 9, 2, 7, 4, 15]
     assert result["row"][:3] == [5, 3, 9]
     assert result["row"][12] == 0xFFFFFFF9
     assert scheduler()["calls"][0] == 2
@@ -194,13 +195,13 @@ def test_detach_fault_requires_new_sequence_and_successful_cleanup(scheduler):
     scheduler()
     scheduler()
     result = scheduler(command(2, 3), fail_at=3)
-    assert result["ack"][1:] == [2, 3, 9, 3, 7, 4, 7]
+    assert result["ack"][1:] == [2, 3, 9, 3, 7, 4, 15]
     assert result["row"][:3] == [5, 3, 9]
     assert scheduler()["calls"][0] == 3
     scheduler(command(3, 3))
     scheduler()
     result = scheduler()
-    assert result["ack"][1:] == [3, 3, 9, 3, 7, 0, 7]
+    assert result["ack"][1:] == [3, 3, 9, 3, 7, 0, 15]
     assert result["row"][:3] == [6, 3, 9]
     assert result["calls"][0] == 5
 
@@ -230,7 +231,7 @@ def install_command(scheduler, sequence=2, generation=9):
 def test_install_reply_precedes_initialization_and_replay_preserves_row(scheduler):
     words = install_command(scheduler)
     result = scheduler(words, empty=True)
-    assert result["ack"] == [0x49525231, 2, 3, 9, 4, 7, 0, 7]
+    assert result["ack"] == [0x49525231, 2, 3, 9, 4, 7, 0, 15]
     assert result["row"][:3] == [1, 3, 9]
     assert result["row"][3:11] == words[7:15]
     assert result["state"] == [0xDEADBEEF] * 16
@@ -240,7 +241,7 @@ def test_install_reply_precedes_initialization_and_replay_preserves_row(schedule
     scheduler()
     result = scheduler()
     assert result["row"][0] == 3 and result["calls"][0] == 2
-    assert result["ack"][1:] == [3, 3, 9, 2, 7, 0, 7]
+    assert result["ack"][1:] == [3, 3, 9, 2, 7, 0, 15]
 
 
 @pytest.mark.parametrize("ready", [0, 2])
@@ -272,13 +273,13 @@ def test_cancel_before_initialize_detaches_and_blocks_delayed_install(
     if installed:
         scheduler(words, empty=True)
     result = scheduler(command(3, 3), empty=not installed)
-    assert result["ack"][1:] == [3, 3, 9, 3, 7, 0, 7]
+    assert result["ack"][1:] == [3, 3, 9, 3, 7, 0, 15]
     assert result["row"][:3] == [6, 3, 9]
     assert result["calls"][0] == 0
     assert result["state"] == [0xDEADBEEF] * 16
     # Lost detach replies can be retried with a new sequence, with no callback.
     result = scheduler(command(4, 3))
-    assert result["ack"][1:] == [4, 3, 9, 3, 7, 0, 7]
+    assert result["ack"][1:] == [4, 3, 9, 3, 7, 0, 15]
     words[2] = 5
     words[15] = reduce(xor, words[:15])
     result = scheduler(words)
@@ -295,7 +296,7 @@ def test_cancel_before_initialize_detaches_and_blocks_delayed_install(
 def test_never_installed_reuse_of_older_detached_row(scheduler):
     scheduler(command(1, 3))
     result = scheduler(command(2, 3, owner=4, generation=10))
-    assert result["ack"][1:] == [2, 4, 10, 3, 7, 0, 7]
+    assert result["ack"][1:] == [2, 4, 10, 3, 7, 0, 15]
     assert result["row"] == [6, 4, 10] + [0] * 13
     assert result["calls"][0] == 0
 
@@ -314,12 +315,53 @@ def test_partial_install_detaches_both_installed_and_missing_rows(scheduler):
     detach[6] = 6
     detach[15] = reduce(xor, detach[:15])
     result = scheduler(detach)
-    assert result["ack"][1:] == [4, 3, 9, 3, 6, 0, 7]
+    assert result["ack"][1:] == [4, 3, 9, 3, 6, 0, 15]
     assert result["rows"][96:99] == [6, 3, 9]
     assert result["row"] == [0] * 16
     result = scheduler(command(5, 3))
-    assert result["ack"][1:] == [5, 3, 9, 3, 7, 0, 7]
+    assert result["ack"][1:] == [5, 3, 9, 3, 7, 0, 15]
     assert result["row"] == [6, 3, 9] + [0] * 13
     assert result["rows"][:96] == [0] * 96
     assert result["calls"][0] == 0
     assert result["state"] == [0xDEADBEEF] * 16
+
+
+def process_command(scheduler):
+    row = scheduler(command(1, 1))["row"]
+    words = command(2, 6)
+    words[7:15] = [20, row[8], row[9], row[10], 8, 32, 0, 0]
+    words[15] = reduce(xor, words[:15])
+    return words
+
+
+def test_process_binding_is_owned_and_cannot_change_after_initialization(scheduler):
+    words = process_command(scheduler)
+    result = scheduler(words)
+    expected = [3, 9] + words[7:13]
+    assert result["ack"][1:] == [2, 3, 9, 6, 7, 0, 15]
+    assert result["process"] == expected
+    assert result["row"][0] == 1 and result["calls"][0] == 0
+    scheduler(command(3, 2))
+    scheduler()
+    assert scheduler()["row"][0] == 3
+    words[2], words[7] = 4, 21
+    words[15] = reduce(xor, words[:15])
+    result = scheduler(words)
+    assert result["ack"][6] == 3
+    assert result["process"] == expected
+
+
+@pytest.mark.parametrize("index,value", [
+    (3, 4), (4, 10), (7, 0), (7, 256), (8, 0), (8, 0x7fffffff),
+    (9, 0), (10, 0x00bc0001), (11, 0), (11, 9), (12, 0), (12, 33),
+    (13, 1), (14, 1),
+])
+def test_invalid_process_binding_does_not_publish_metadata(scheduler, index, value):
+    words = process_command(scheduler)
+    words[index] = value
+    words[15] = reduce(xor, words[:15])
+    result = scheduler(words)
+    assert result["ack"][6] == 3
+    assert result["process"] == [0] * 8
+    assert result["row"][:3] == [1, 3, 9]
+    assert result["calls"][0] == 0

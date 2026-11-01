@@ -353,3 +353,81 @@ _irr_ready:
 .VAR _irr_current = 0;
 // INSTALL reads the initial row phase before writing metadata.
 .PKDATA _ir_rows, 512;
+
+// Process metadata is bound only to an already RESERVED reset row. It is not
+// callable until that exact owner/generation reaches READY. Input snapshot:
+// phase,owner,generation,type,entry,code_start,code_end,max_events,max_controls,
+// followed by zero reserved words. R4 row index; I1 immutable snapshot.
+.SECTION/PM seg_pmco;
+.GLOBAL _ir_process_install;
+_ir_process_install:
+    CALL _ir_row_address;
+    R0 = PASS R0;
+    IF NE RTS;
+    R0 = DM(0, I0);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _irr_invalid;
+    R0 = DM(1, I0);
+    R1 = DM(1, I1);
+    COMP(R0, R1);
+    IF NE JUMP _irr_invalid;
+    R0 = DM(2, I0);
+    R1 = DM(2, I1);
+    COMP(R0, R1);
+    IF NE JUMP _irr_invalid;
+    R0 = DM(3, I1);
+    R0 = PASS R0;
+    IF LE JUMP _irr_invalid;
+    R1 = 255;
+    COMP(R0, R1);
+    IF GT JUMP _irr_invalid;
+    R0 = DM(5, I1);
+    R1 = 0x00b80000;
+    COMP(R0, R1);
+    IF LT JUMP _irr_invalid;
+    R2 = DM(6, I1);
+    R1 = 0x00bc0000;
+    COMP(R2, R1);
+    IF GT JUMP _irr_invalid;
+    R3 = DM(4, I1);
+    COMP(R3, R0);
+    IF LT JUMP _irr_invalid;
+    COMP(R3, R2);
+    IF GE JUMP _irr_invalid;
+    R0 = 3;
+    R3 = R3 + R0;
+    COMP(R3, R2);
+    IF GT JUMP _irr_invalid;
+    R0 = DM(7, I1);
+    R0 = PASS R0;
+    IF LE JUMP _irr_invalid;
+    R1 = 8;
+    COMP(R0, R1);
+    IF GT JUMP _irr_invalid;
+    R0 = DM(8, I1);
+    R0 = PASS R0;
+    IF LE JUMP _irr_invalid;
+    R1 = 32;
+    COMP(R0, R1);
+    IF GT JUMP _irr_invalid;
+    R0 = DM(9, I1);
+    R1 = DM(10, I1);
+    R0 = R0 OR R1;
+    IF NE JUMP _irr_invalid;
+    R0 = LSHIFT R4 BY 5;
+    R1 = _ir_process_rows;
+    R0 = R0 + R1;
+    I0 = R0;
+    MODIFY(I1, 1) (NW);
+    R3 = 8;
+_ir_process_copy:
+    R0 = DM(I1, M6);
+    DM(I0, M6) = R0;
+    R3 = R3 - 1;
+    IF NE JUMP _ir_process_copy;
+    R0 = 0;
+    RTS;
+.SECTION/DM seg_dmda;
+// owner,generation,type,entry,code_start,code_end,max_events,max_controls
+.PKDATA _ir_process_rows, 256;

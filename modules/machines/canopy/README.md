@@ -183,3 +183,12 @@ The booted reload scenario also verifies pedal-owned USB C remains audible after
 1.25 seconds beyond physical release, while DIN G releases independently. Pedal-up
 retires C without cutting off a fresh physically held USB G; G's release returns
 the final output to zero in the measured window. This is emulator evidence only.
+
+The V2 callback prototype in `src/dsp/v2.s` uses a 528-byte allocator-owned
+instance and normalized input events. It shares the atomic voice/pedal engine
+with the transport proof. `test_canopy_v2.py` checks it both directly and through
+the protected registry dispatcher, including paired held-voice phase/gain state,
+independent velocity and bend, sustain, malformed batches and reset isolation.
+It requires neutral tuning and fixed PLAY configuration. Descriptor budgets are
+provisional, and destructive reset still requires carrier quiescence. This is
+not a packaged instrument or a completed live V2 audio route.

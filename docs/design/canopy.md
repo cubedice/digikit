@@ -1900,6 +1900,32 @@ The live proof also exposed and fixed recursive ColdFire byte-swap lowering in
 descriptor decoding. All 167 SDK cases pass. See
 [the measured lifecycle result](../findings/78-canopy-carrier.md).
 
+### Admitted process dispatch checkpoint
+
+The coordinator now requires separate INSTALL and INSTALL_PROCESS acknowledgements
+before CREATE and publication. The DSP binds each process entry and its event/control
+limits to the reserved owner/generation. A protected dispatcher checks READY state,
+selects the admitted instance stride, and quarantines callback faults while retaining
+state for retirement. Fault output is silenced. Adapter input/output buffers may live
+throughout bootable L2; this does not enlarge the dynamic image/state allocation.
+
+CANOPY now has V2 reset/process callbacks using allocator-owned 528-byte instances
+and normalized six-word events. They validate a complete event batch before applying
+it. Direct and protected processor tests cover C/E, add G, release E, sustain, per-note
+velocity, route-specific bend, reset isolation, generation rejection and bounded
+stealing. A paired instance reference checks that C/G oscillator state and gain remain
+identical through E's onset/release. This is kernel evidence, not final-output acceptance.
+The callback currently requires neutral tuning and one fixed PLAY control; its provisional
+descriptor limits are not release admission budgets. Reset clears an instance immediately;
+carrier quiescence/ramping must precede destructive lifecycle resets.
+
+The booted uploaded-process test passes: CREATE, installed process entry, output
+write and instance mutation, then acknowledged DETACH before memory release.
+That uses a small diagnostic callback, not CANOPY final PCM.
+
+These callbacks are not yet connected to a public machine package, normalized live
+input adapter or final carrier dispatch. No stage completion is claimed by this checkpoint.
+
 ### Stage 1 completion checklist
 
 - [x] Booted upload, CREATE, publication, DETACH and allocator release.

@@ -52,13 +52,13 @@ test('bound instrument uploads, initializes and retires before memory release', 
   expect(object.relocs).toEqual([]);
   const text = object.sections.find((s: { name: string }) => s.name === 'seg_pmco');
   const code = Buffer.from(text.hex, 'hex');
-  expect(code.length).toBeLessThanOrEqual(32);
-  const section = Buffer.alloc(192); // 112-byte header/tables/padding + 80-byte image
+  expect(code.length).toBeLessThanOrEqual(64);
+  const section = Buffer.alloc(224); // 112-byte header/tables/padding + 112-byte image
   const fields: [number, number][] = [
     [0, 0x444b4453],
     [4, 6],
     [8, 1],
-    [12, 80],
+    [12, 112],
     [20, 16],
     [24, 112],
     [28, 80],
@@ -71,14 +71,14 @@ test('bound instrument uploads, initializes and retires before memory release', 
     [76, 1],
     [80, 20],
     [84, 0],
-    [88, 0],
-    [92, 32],
+    [88, 16],
+    [92, 64],
     [96, 0],
     [100, code.length],
   ];
   for (const [at, value] of fields) section.writeUInt32BE(value, at);
   code.copy(section, 112);
-  [0x444b4954, 2, 48, 0, 1, 8, 8, 1, 20, 20, 2, 32].forEach((value, i) => section.writeUInt32LE(value, 144 + 4 * i));
+  [0x444b4954, 2, 48, 0, 1, 8, 8, 1, 20, 20, 2, 32].forEach((value, i) => section.writeUInt32LE(value, 176 + 4 * i));
   const input = planSymbol(plan, 'ilp_input');
   await write(input + 12, section);
   await writeWord(input + 4, section.length);
@@ -114,14 +114,22 @@ test('bound instrument uploads, initializes and retires before memory release', 
   expect(await word(5)).toBe(128);
   const base = (await word(1))!;
   const state = (await word(2))!;
-  expect(state).toBe(base + 80);
+  expect(state).toBe(base + 112);
   const peek = async (addr: number, len: number) => {
     const result = await session.client.call<{ hex: string; unknown: number }>('dsp.peek', { addr, len });
     expect(result.unknown).toBe(0);
     return Buffer.from(result.hex, 'hex');
   };
-  expect(await peek(base, 80)).toEqual(section.subarray(112));
+  const process = await peek(planSymbol(plan, '_ir_process_rows'), 32);
+  const processWords = Array.from({ length: 8 }, (_, i) => process.readUInt32LE(i * 4));
+  const entry = 0x00b80000 + (base - 0x20000000) / 2;
+  expect(processWords).toEqual([7, 1, 20, entry + 8, entry, entry + code.length / 2, 8, 1]);
+  expect(await peek(base, 112)).toEqual(section.subarray(112));
   expect((await peek(state, 4)).readUInt32LE()).toBe(1); // CREATE callback executed from uploaded code
+  await expect.poll(async () => (await peek(planSymbol(plan, '_ilp_dispatched'), 4)).readUInt32LE()).toBe(1);
+  expect((await peek(planSymbol(plan, '_ilp_process_result'), 4)).readUInt32LE()).toBe(0);
+  expect((await peek(planSymbol(plan, '_ilp_process_output'), 4)).readUInt32LE()).toBe(0x3e800000);
+  expect((await peek(state + 4, 4)).readUInt32LE()).toBe(1);
   await writeWord(input, 2);
   await waitPhase(6);
   expect(await word(4)).toBe(0);

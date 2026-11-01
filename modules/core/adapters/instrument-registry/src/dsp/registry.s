@@ -11,6 +11,7 @@
 .EXTERN _ir_rows;
 .EXTERN _ir_row_begin;
 .EXTERN _ir_row_install;
+.EXTERN _ir_process_install;
 .EXTERN _ir_row_tick_protected;
 _instrument_registry_block:
     R0 = DM(_ir_pending);
@@ -62,6 +63,9 @@ _ir_sum:
     COMP(R0, R8);
     IF NE RTS;
     R0 = 4;
+    COMP(R7, R0);
+    IF EQ JUMP _ir_start;
+    R0 = 6;
     COMP(R7, R0);
     IF EQ JUMP _ir_start;
     MODIFY(I0, 7) (NW);
@@ -136,6 +140,9 @@ _ir_start:
     R0 = 4;
     COMP(R7, R0);
     IF EQ JUMP _ir_install;
+    R0 = 6;
+    COMP(R7, R0);
+    IF EQ JUMP _ir_install;
     R4 = R8;
     R8 = R7;
     CALL _ir_row_begin;
@@ -167,7 +174,15 @@ _ir_install_zero:
     IF NE JUMP _ir_install_zero;
     I1 = _ir_snapshot;
     R4 = R8;
+    R0 = DM(_ir_ticket + 12);
+    R1 = 6;
+    COMP(R0, R1);
+    IF EQ JUMP _ir_install_process;
     CALL _ir_row_install;
+    JUMP _ir_install_result;
+_ir_install_process:
+    CALL _ir_process_install;
+_ir_install_result:
     R0 = PASS R0;
     R2 = 0;
     IF EQ JUMP _ir_finish;
@@ -239,7 +254,7 @@ _ir_reply:
     R1 = 1;
     COMP(R3, R1);
     IF NE JUMP _ir_caps;
-    R0 = 7; // reset/detach/install; does not advertise V2 audio dispatch
+    R0 = 15; // reset/detach/row install/process binding; not audio readiness
 _ir_caps:
     DM(7, I1) = R0;
     DM(_ir_sequence) = R4;

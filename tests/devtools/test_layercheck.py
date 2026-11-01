@@ -501,8 +501,14 @@ def test_instrument_load_gate_private_imports_are_narrow(
     dko(
         tree,
         f"out/cache/dko/{mid}/{obj}",
-        ["_instrument_session", "_ir_lifecycle_ready", "_ir_rows"],
+        [
+            "_instrument_session",
+            "_ir_lifecycle_ready",
+            "_ir_rows",
+            "_ir_process_protected",
+            "_ir_snapshot",
+        ],
     )
     found = layercheck.check_objects(tree, layercheck.load_modules(tree))
-    assert len(found) == (1 if variant == "allowed" else 3)
-    assert any("_ir_rows" in v.message for v in found)
+    assert len(found) == (1 if variant == "allowed" else 5)
+    assert any("_ir_snapshot" in v.message for v in found)

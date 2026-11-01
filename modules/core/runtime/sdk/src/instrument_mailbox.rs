@@ -68,6 +68,7 @@ pub struct Mailbox {
     sequence: u32,
     pending: Option<Pending>,
     metadata: [[u32; 8]; 8],
+    process_metadata: [[u32; 8]; 8],
     installed: Option<Installed>,
 }
 
@@ -78,6 +79,7 @@ impl Mailbox {
             sequence: 0,
             pending: None,
             metadata: [[0; 8]; 8],
+            process_metadata: [[0; 8]; 8],
             installed: None,
         }
     }
@@ -151,6 +153,7 @@ impl Mailbox {
         let rows = loads.install_rows(ticket).map_err(Error::Load)?;
         let mut mask = 0u32;
         let mut metadata = [[0; 8]; 8];
+        let mut process_metadata = [[0; 8]; 8];
         for row in plan.rows().iter().flatten() {
             if row.index >= 8
                 || mask & (1 << row.index) != 0
@@ -160,15 +163,20 @@ impl Mailbox {
             }
             mask |= 1 << row.index;
             metadata[row.index as usize].copy_from_slice(&row.words[3..11]);
+            let pc = |byte| 0x00b8_0000 + (byte - 0x2000_0000) / 2;
+            process_metadata[row.index as usize] = [row.type_no, row.process_sw,
+                pc(row.process_text.start), pc(row.process_text.end),
+                row.max_events, row.max_controls, 0, 0];
         }
         if mask != rows {
             return Err(Error::InvalidPlan);
         }
         self.sequence
-            .checked_add(rows.count_ones())
+            .checked_add(rows.count_ones() * 2)
             .ok_or(Error::SequenceExhausted)?;
         self.sequence += 1;
         self.metadata = metadata;
+        self.process_metadata = process_metadata;
         self.pending = Some(Pending {
             ticket,
             operation: 4,
@@ -210,6 +218,8 @@ impl Mailbox {
             ]);
             if p.operation == 4 {
                 words[6..14].copy_from_slice(&self.metadata[p.row as usize]);
+            } else if p.operation == 6 {
+                words[6..14].copy_from_slice(&self.process_metadata[p.row as usize]);
             }
             words[14] = words[..14].iter().fold(MAGIC, |sum, word| sum ^ word);
             (1, 15)
@@ -290,6 +300,7 @@ impl Mailbox {
         let capability = match p.operation {
             2 => 1,
             3 => 2,
+            6 => 8,
             _ => 4,
         };
         if words[11] & capability == 0 {
@@ -300,14 +311,24 @@ impl Mailbox {
         } else {
             Command::Detach(p.ticket)
         };
-        if p.operation == 4 {
+        if p.operation == 4 || p.operation == 6 {
             loads.install_rows(p.ticket).map_err(Error::Load)?;
         } else {
             loads.command_rows(command).map_err(Error::Load)?;
         }
+        // A reset row alone cannot authorize publication. Install the process
+        // target under the same ticket before accepting this row as complete.
+        if p.operation == 4 {
+            self.sequence += 1;
+            p.sequence = self.sequence;
+            p.operation = 6;
+            p.stage = CLEAR;
+            self.pending = Some(p);
+            return Ok(None);
+        }
         p.rows &= !(1 << p.row);
         if p.rows == 0 {
-            if p.operation == 4 {
+            if p.operation == 6 {
                 self.installed = Some(Installed { ticket: p.ticket });
                 self.pending = None;
                 return Ok(None);
@@ -324,6 +345,7 @@ impl Mailbox {
         self.sequence += 1; // whole batch checked for exhaustion in begin
         p.sequence = self.sequence;
         p.row = p.rows.trailing_zeros();
+        if p.operation == 6 { p.operation = 4; }
         p.stage = CLEAR;
         self.pending = Some(p);
         Ok(None)
