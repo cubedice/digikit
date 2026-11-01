@@ -1539,6 +1539,23 @@ and format, layering, formatting and types. Only the existing 256 stale referenc
 in 78 files fail; both changed documents pass focused pathcheck.
 See `out/canopy-session-midi-changed.log`.
 
+Session arming now uses a dedicated epoch transition instead of explicit
+keys-up recovery. The earlier implementation incorrectly erased physical-key
+tombstones despite the claim above. The corrected path retains key tokens and
+route quarantine, discards old queued events, and requires reset acknowledgements
+for all tracks in the new epoch. A shared host/ColdFire regression holds a key
+across that transition, plays the same pitch again, and proves that the stale
+release cannot stop the new note. All 23 host cases and the ColdFire component
+case pass. The adapter rebuild validates 1,930 decoded instructions.
+
+The booted CANOPY transport fixture now also proves USB and DIN note delivery
+and independent releases after exact-token binding and configuration. The bound
+case passes in 66.34 seconds; legacy delivery passes in 60.48 seconds. A redundant
+fixture reset discovered in the first bound run has been removed: session arming
+already resets every track. See the bound-session MIDI section in
+[carrier findings](../findings/78-canopy-carrier.md). This is delivery to configured
+test banks, not public V2 installation/initialization or final CANOPY audio.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

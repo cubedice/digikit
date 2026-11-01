@@ -1038,3 +1038,39 @@ The full pattern scenario passes in 202.95 seconds, including release and quietn
 Changed-file preflight passes seven related host tests, lint, formatting, types
 and layering. Its only failure remains the repository pathcheck (256 existing
 stale references in 78 files). Focused checks of all four edited documents pass.
+
+
+## Bound-session MIDI delivery [D]
+
+The emulator-only CANOPY transport fixture now waits for the exact requested
+version-2 session token before configuration or route admission. The booted
+firmware regression verifies empty banks before binding, committed configuration
+and reset acknowledgements before admission, then USB C/E and DIN G note-ons,
+independent note-offs, drained event queues and zero transport faults. The bound
+case passes in 66.34 seconds; the legacy case passed in 60.48 seconds. The first
+bound run exposed a redundant fixture reset after the session reset; the fixture
+now uses the session reset, making its generation independent of UI scheduling.
+
+[C] The previous session-arming implementation used explicit keys-up recovery,
+which erased held-key history despite the design notes claiming it retained it.
+A dedicated epoch transition now preserves tokens, tombstones and route
+quarantine while dropping old queued events and requiring all-track reset ACKs.
+All 23 host cases and the shared ColdFire component test pass, including an old
+release that must not stop a fresh same-pitch note. The CF adapter rebuild checks
+1,930 decoded instructions; the fixture checks 179.
+
+Evidence: `out/canopy-bound-keys-host.log`, `out/canopy-bound-keys-cf.log`,
+`out/canopy-bound-transport-build.log`, `out/canopy-bound-fixture-build.log`,
+`out/canopy-bound-midi-live.log` and `out/canopy-bound-midi-retry.log`.
+This proves session-gated delivery to configured test banks. Public version-2
+module installation/initialization and final CANOPY audio remain open. No device
+was modified for this proof.
+
+Changed-file preflight passes 200 host tests (16 skipped), lint, formatting,
+types and layering. The 26 focused layer tests and artifact-current checks pass;
+both edited documents pass focused pathcheck. The full preflight remains red:
+256 stale links in 78 files, plus six verification-tool failures outside this
+patch (unclassified patch:toolchains task, unclassified dsp_reset_probe tool,
+and four cases requiring the unavailable dn2-1.11 analysis database). The
+verification-tool file has 221 passing cases. See `out/canopy-bound-changed.log`
+and `out/runs/test-changed/20261101-071902` for the complete result.

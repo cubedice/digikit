@@ -119,7 +119,10 @@ int mi_registry_expect_session(uint32_t token, uint32_t sequence)
         registry_reply_valid = 0;
         /* Never carry legacy MIDI ACK/configuration identity into the new
          * session. Retain physical-key tombstones through the epoch change. */
-        mi_recover(&mi_ledger);
+        if (mi_session_begin(&mi_ledger)) {
+            registry_guard.invalid = 1;
+            result = -2;
+        }
         mt_init(&mi_transport);
         mi_transport.epoch = mi_ledger.epoch;
     }

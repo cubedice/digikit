@@ -18,7 +18,7 @@ ports = ["dt2-1.17"]
 path = "build/proof-cf.dko.json"
 sources = ["src/control.c"]
 place = "cf.expansion"
-optional = ["canopy_carrier_prepare"]
+optional = ["canopy_carrier_prepare", "isp_request"]
 devices = ["dt2"]
 
 [[object]]

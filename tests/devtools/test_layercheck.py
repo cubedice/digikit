@@ -379,13 +379,13 @@ def test_canopy_fixture_exception_is_narrow(
     dko(
         tree,
         f"out/cache/dko/{mid}/build/proof.dko.json",
-        ["mi_ledger", "_unrelated_private"],
+        ["mi_ledger", "mi_registry_reply", "isp_request", "_unrelated_private"],
     )
     mods = layercheck.load_modules(tree)
     sources = layercheck.check_sources(tree, mods)
     objects = layercheck.check_objects(tree, mods)
     assert len(sources) == (1 if allowed else 2)
-    assert len(objects) == (1 if allowed else 2)
+    assert len(objects) == (1 if allowed else 4)
     assert any("other.h" in v.message for v in sources)
     assert any("_unrelated_private" in v.message for v in objects)
 

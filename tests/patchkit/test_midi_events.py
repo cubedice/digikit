@@ -1194,6 +1194,7 @@ void *memset(void *d, int c, unsigned n) {
         "reply_watchdog",
         "session_guard",
         "session_midi",
+        "session_keys",
         "reply_record",
     ]
     script = tmp_path / "calls.json"

@@ -76,6 +76,8 @@ CANOPY_INCLUDES = {
 }
 CANOPY_IMPORTS = {
     "canopy_carrier_prepare",
+    "isp_request",
+    "mi_registry_reply",
     "mi_config_submit",
     "mi_instance_reset",
     "mi_ledger",
