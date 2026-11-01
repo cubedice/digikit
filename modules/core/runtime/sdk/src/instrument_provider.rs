@@ -216,7 +216,7 @@ impl Replies {
             a = a.wrapping_add(*word);
             b = b.wrapping_add(a);
         }
-        if w[0] != 0x494ea102
+        if !matches!(w[0], 0x494ea102 | 0x494ea103)
             || w[4..12] != [0x49525231, sequence, 0, token, 5, 0, 0, 0]
             || token == 0
             || w[12] != token

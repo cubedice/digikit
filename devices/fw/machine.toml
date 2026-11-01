@@ -842,3 +842,23 @@ regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
 mark = "D"
 users = ["test/canopy-carrier"]
 doc = "Emulator-only Sound-load lifetime wrapper; preserves the C ABI and original result."
+
+[[fn]]
+name = "cf.machine.fn.selection_build"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 64, sha256 = "43551b5d737f2711140fde1d528ae6c4af52b55bb2e32ebd0972f3160aa7feb3", len = 8 }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 persistent machine-selection view item builder. C ABI build(view), clears then refills the cached list. Archived registry proof, finding 30."
+
+[[hook]]
+name = "cf.machine.hook.selection_build"
+site = "cf.machine.fn.selection_build"
+cpu = "cf"
+mode = "before"
+regs = { in = [], clobbers = ["ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/instrument-play"]
+doc = "Remember the persistent selection view so delayed boot-only V2 publication can refresh its item list on the UI task."

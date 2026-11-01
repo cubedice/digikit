@@ -217,3 +217,38 @@ out/canopy-reply-order-host.log and out/canopy-reply-order-coldfire.log.
 Still open: CANOPY admission budgets and packaging, explicit keyboard route and
 Sound ownership, DSP fault feedback/retirement, and integrated final stereo
 acceptance. No hardware changes. Stage 1 is not complete.
+
+
+## Stage 1 complete: admitted CANOPY integration
+
+The real CANOPY DKM now packs V2 reset/process entries and loads under the
+optional core/instrument-play policy. Explicit KEYBOARD setup, tracked Sound
+ownership, asynchronous chooser refresh and V3 DSP fault feedback connect the
+normal loader to the shared carrier. The integrated acceptance passes (347.66 s):
+normal upload/readback/restart, assigned machine selection, USB/DIN C-E/add G/
+release E final stereo continuity including transitions, pedal ownership,
+independent velocity and callback-fault detach/reclamation. See finding 78 and
+out/canopy-stage1-live.log. All Stage 1 checklist items are now checked.
+
+The reply guard uses an eight-record exact-copy cache, not a numeric backward
+window. Unknown regressions and altered ACK/status still fail closed; discarded
+copies cannot refresh deadlines. 25 host cases and actual ColdFire dispatch pass.
+The view refresh reuses the archived stock builder, verified against current
+1.17 bytes. Full port resolution needs an unavailable CF analysis database, so
+only the new window was resolved with port_resolve and the port was rendered
+with its existing entries preserved. No addresses were guessed.
+
+Keep scope clear: optional DTII-only firmware, one admitted track-1 instance,
+boot-only package, nonpersistent keyboard settings, development uploader/selection
+path. Generic module-browser fit remains V1-only. Hardware CPU, coexistence,
+polyphonic pad sound/chord modes/arp and finished SRC UI belong to later stages.
+No hardware changed. Do not extend this task into Stage 2 without new direction.
+
+
+Final validation: the updated normal-file loader regression passes both cases
+(publication and failed-initializer acknowledged detach/reclamation) in 259.49 s,
+log out/canopy-final-loader-live.log. Build-current checks pass for runtime,
+MIDI events, instrument playback and menu. Scoped changed-document pathcheck is
+clean. The changed-file host suite passes 204 tests (16 skipped); lint, formatting
+and layers pass. The global pathcheck retains its pre-existing 256 stale references
+in 78 files. Full merge-gate/device release coverage remains separate.

@@ -23,6 +23,11 @@
 // This adapter is absent from ordinary images. Linking it is the trusted
 // single-instance capability; binding the session must precede lifecycle work.
 _instrument_carrier_prepare:
+    I0 = _ir_rows;
+    R0 = DM(0, I0);
+    DM(_instrument_play_status) = R0;
+    R0 = DM(2, I0);
+    DM(_instrument_play_status + 4) = R0;
     R0 = DM(_instrument_session);
     R0 = PASS R0;
     IF EQ RTS;
@@ -287,3 +292,5 @@ _iv_voice_zero:
 .PKBSS _iv_packet, 4;
 .PKBSS _iv_values, 4;
 .PKBSS _iv_metadata, 4;
+
+.PKDATA _instrument_play_status, 8;

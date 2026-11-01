@@ -1127,6 +1127,7 @@ pub unsafe extern "C" fn dkrt_tick() {
     fxpage::tick();
     pageclick::tick();
     instrument::tick(s.ticks);
+    if core::hint::black_box(instrument_play_tick as usize) != 0 { instrument_play_tick(); }
     settings::tick();
     watch::tick();
     let mb = &mut *addr_of_mut!(DKRT_MAILBOX);
@@ -1235,3 +1236,4 @@ pub fn irq_restore(_: u32) {}
 
 #[cfg(test)]
 pub unsafe fn fw_blocks() -> Option<u32> { None }
+extern "C" { fn instrument_play_tick(); }

@@ -328,3 +328,24 @@ fn bound_session_checks_identity_before_transaction_and_preserves_pending_load()
     assert_eq!(reply.session_bound(token, 7), Err(Error::BootInvalidated));
     assert_eq!(reply.check_boot(), Err(Error::BootInvalidated));
 }
+
+
+#[test]
+fn v3_playback_report_does_not_replace_exact_lifecycle_ack() {
+    unsafe extern "C" fn snapshot(out: *mut u32, n: u32) -> i32 {
+        assert_eq!(n, 16);
+        let mut w=[0x494ea103u32,1,0,42,0x49525231,1,0,1,2,0,0,1,77,3,1,0];
+        let (mut a,mut b)=(0u32,0u32);
+        for word in &w[..15] { a=a.wrapping_add(*word); b=b.wrapping_add(a); }
+        w[15]=a^b;
+        core::ptr::copy_nonoverlapping(w.as_ptr(),out,16);16
+    }
+    let (mut loads,mut mailbox,expected)=pending();drain(&mut mailbox);
+    let mut reply=replies(snapshot);reply.session=Some(77);
+    assert_eq!(reply.poll(&mut mailbox,&mut loads),Ok(Progress::Complete(expected)));
+    assert!(loads.lookup(17).is_some());
+    let (mut loads,mut mailbox,_)=pending();drain(&mut mailbox);
+    let mut wrong=replies(snapshot);wrong.session=Some(78);
+    assert_eq!(wrong.poll(&mut mailbox,&mut loads),Err(Error::Mailbox(instrument_mailbox::Error::InvalidReply)));
+    assert_eq!(loads.lookup(17),None);
+}

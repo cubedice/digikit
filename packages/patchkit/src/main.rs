@@ -798,7 +798,7 @@ plan.json {}",
                     )));
                 }
                 let models = patchkit::typed::Models::from_dir(&a.root.join("devices"))?;
-                let res = patchkit::typed::resolve(&m.manifest, &models)?;
+                let res = patchkit::typed::resolve_runtime(&m.manifest, &models, &dev)?;
                 // the DSP object of the device, if any: its voices are the `[[voice]]` entries (type from the machine)
                 let sharc: Vec<_> = m
                     .objects
@@ -856,28 +856,45 @@ plan.json {}",
                         pages.push(p);
                     }
                 }
+                let instruments: Vec<_> = m.manifest.instrument.iter().map(|i|
+                    patchkit::dkmdsp::InstrumentSpec {
+                        type_no: patchkit::register::machine_key(id, &i.id),
+                        reset: i.reset.clone(), process: i.process.clone(), desc: i.desc.clone(),
+                    }).collect();
+                if !instruments.is_empty() && !fxs.is_empty() {
+                    return Err(Error(format!("{id}: Stage 1 instruments cannot share a file with effects")));
+                }
                 match sharc.first().filter(|_| !ui_preview) {
                     Some((o, _)) => {
-                        dsp = patchkit::dkmdsp::pack_with_samples(
+                        dsp = patchkit::dkmdsp::pack_with_resources(
                             o,
                             patchkit::register::device_id(&dev)?,
                             &voices,
                             &fxs,
                             m.manifest.sample_bank.as_ref(),
                             m.manifest.sample_tracks.as_ref(),
+                            &instruments,
+                            patchkit::dkmdsp::FORMAT_LIMITS,
                         )?
                     }
                     None if !ui_preview
                         && (!voices.is_empty()
                             || !fxs.is_empty()
                             || m.manifest.sample_bank.is_some()
-                            || m.manifest.sample_tracks.is_some()) =>
+                            || m.manifest.sample_tracks.is_some()
+                            || !instruments.is_empty()) =>
                     {
                         return Err(Error(format!(
                             "{id}: a voice or an effect needs a DSP object for {dev}"
                         )));
                     }
                     None => {}
+                }
+                if !instruments.is_empty() {
+                    // Reject formats the owning runtime cannot admit before producing a file.
+                    dkrt_sdk::instrument_section::Section::parse(
+                        &dsp, patchkit::register::device_id(&dev)?, patchkit::dkmdsp::FORMAT_LIMITS,
+                    ).map_err(|e| Error(format!("{id}: V2 runtime section: {e:?}")))?;
                 }
                 let mut regs = match resolved {
                     Some(r) => Some(patchkit::register::Register::lower(r, id)?),

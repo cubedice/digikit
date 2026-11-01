@@ -272,16 +272,31 @@ committed bind after an uncertain outcome.
 
 ### Bounded stale reply copies
 
-The DT2 1.17 coupled normal-file load captured heartbeat 3476 after 3478, with
-the same bound session, no physical reset, and a still-advancing DSP heartbeat.
-The frame adapter discards a valid same-session reply exactly one or two blocks
-behind the guard's latest heartbeat. This applies only after session binding.
-It passes missing input to both the guard and MIDI ACK receiver and invalidates
-the cached registry snapshot for that frame. It never updates the last-progress
-block or accepts an ACK from the discarded copy. Persistent old copies still
-expire at the original deadline; larger regressions, a changed session, version
-downgrade and the physical-reset hook retain their existing terminal behavior.
+The DT2 1.17 coupled loads captured older valid replies after newer ones,
+including heartbeat 3549 after 3552 during CANOPY binding. The frame adapter
+keeps the last eight accepted bound replies and discards a backward reply only
+when all 16 words exactly match one of those records. A numerically nearby but
+previously unseen reply is not evidence of a duplicate and still invalidates
+trust. The bounded cache uses 512 bytes; eviction fails closed.
+
+Unbound legacy heartbeats do not establish a session identity. The first trusted
+heartbeat comes from the exact bind acknowledgement. Legacy traffic cannot
+refresh the bind deadline. Unexpected sessions, version downgrades and the
+physical-reset hook still invalidate trust.
+
+Known stale copies become missing input for both the guard and MIDI ACK receiver,
+and invalidate the cached registry snapshot for that frame. They cannot accept
+an ACK or update the last-progress block. Repeated copies expire at the original
+deadline. An altered ACK, status or generation with an old heartbeat is not a
+known copy, even with a valid checksum.
 
 `mt_guard_fault` records reason, CF block, received heartbeat, prior heartbeat
 and reply magic for trust failure diagnostics. It cannot reset or reopen trust.
 The capture above is emulator evidence, not a new hardware timing claim.
+
+
+Version 3 (`0x494ea103`) is emitted only with the optional playback adapter and
+a bound session. Words 13/14 carry admitted row-zero phase/generation. Version
+1/2 still require zero reserved words. Status is not a lifecycle ACK: command,
+sequence, owner and generation checks remain mandatory. A non-ready row prevents
+keyboard routing; a fault requests retirement on the owning UI task.

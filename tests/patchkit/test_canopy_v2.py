@@ -400,3 +400,30 @@ def test_replace_reset_preserves_phase_then_finishes_bounded_tail(canopy):
         for word in first["out"] + second["out"]
     ]
     assert max(abs(b - a) for a, b in zip(values, values[1:], strict=False)) < 0.1
+
+
+def test_stage1_callback_instruction_ceiling(canopy):
+    measured = {}
+    measured["create"] = canopy(reset=1)["instructions"]
+    measured["eight_on"] = canopy([note(i + 1, 48 + i, 127) for i in range(8)])[
+        "instructions"
+    ]
+    measured["eight_replace"] = canopy([note(i + 9, 60 + i, 127) for i in range(8)])[
+        "instructions"
+    ]
+    measured["six_slots"] = canopy()["instructions"]
+    measured["eight_bends"] = canopy([[4, 0, 0, 0, 16383 - i, 0] for i in range(8)])[
+        "instructions"
+    ]
+    measured["eight_pedals"] = canopy(
+        [[3, 0, 0, 64, 127 if i % 2 else 0, 0] for i in range(8)]
+    )["instructions"]
+    measured["eight_off"] = canopy(
+        [note(i + 9, 60 + i, 0, off=True) for i in range(8)]
+    )["instructions"]
+    measured["replace_reset"] = canopy(reset=2)["instructions"]
+    measured["release_tail"] = canopy()["instructions"]
+    measured["unload"] = canopy(reset=4)["instructions"]
+    assert max(measured[k] for k in ("create", "replace_reset", "unload")) < 1000
+    assert max(measured.values()) < 100000
+    print("CANOPY instruction counts (not device cycles):", measured)

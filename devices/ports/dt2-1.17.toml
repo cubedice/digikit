@@ -283,6 +283,16 @@ mark = "D"
 rule = "fw/machine:cf_window_hash"
 
 [[anchor]]
+name = "cf.machine.fn.selection_build"
+cpu = "cf"
+kind = "code"
+addr = 0x40060f50
+len = 8
+sha256 = "d38e64037d171546ea46d9f5ff950af69f4742dd92f87e4f56faf9fe101bb64e"
+mark = "D"
+rule = "fw/machine:cf_window_hash"
+
+[[anchor]]
 name = "cf.machine.site.clone.0"
 cpu = "cf"
 kind = "code"
@@ -3340,6 +3350,11 @@ mode = "before"
 [[hook]]
 name = "cf.machine.hook.param_code.args"
 site = "cf.machine.site.param_code.args"
+mode = "before"
+
+[[hook]]
+name = "cf.machine.hook.selection_build"
+site = "cf.machine.fn.selection_build"
 mode = "before"
 
 [[hook]]

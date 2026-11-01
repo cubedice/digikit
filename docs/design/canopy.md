@@ -1,8 +1,17 @@
 # CANOPY technical design
 
-Status: proposed implementation, 2026-10-29. Target: Digitakt II OS 1.17. Source baseline: `9b168c21` on `codex/short-loop-proof`. This design specifies new capabilities; it does not claim that CANOPY or the proposed interfaces already exist.
+Status: Stage 1 complete in the DTII OS 1.17 coupled emulator, 2026-11-01.
+The optional development firmware admits the uploaded CANOPY V2 sine instrument
+on track 1. The stock machine chooser and explicit USB/DIN keyboard setup work;
+final stereo chord continuity, pedal ownership, independent velocity and
+acknowledged fault retirement pass the integrated acceptance. This is not the
+finished pad synth or a hardware release. Stages 2-6 remain separate.
 
-Implementation has started with [instrument MIDI ownership](../../modules/core/adapters/midi-events/README.md): bounded token/FIFO ownership, reset tombstones, queue acknowledgements, an optional USB dispatcher and a separately pinned DIN hook. Host and ColdFire component tests cover the production C logic. [DSP-link](../../modules/core/adapters/dsp-link/README.md) owns the optional 32-word forward reservation, matching loader bounds and 16-word reply allocation, preserving Overloop's fields. The retained CF batch sender, SHARC packet validator, ordered receiver, configuration transaction helpers, bootstrap ACK reply writer and CF heartbeat watchdog are implemented and component-tested. Tests exchange actual processor-produced packets in both directions. The CF sender and DSP receiver now connect through DSP-link and the existing pattern-position frame hook; composed instruction-core tests cover register preservation and missing-consumer behavior. The DSP lifecycle bridge now gates atomic callbacks using per-track generations and committed revisions, including cross-track reset isolation and configuration aborts. Proof-only CANOPY callbacks now connect packets to isolated sine banks with atomic batch application and bounded reset ramps. They are not linked into normal firmware; public V2 initialization and live readiness are still absent. An emulator-only fixture now proves USB/DIN delivery into CANOPY banks through real reset, configuration and event ACKs; a separate carrier fixture now initializes the selected Sound without audition and reaches final PCM with independent note retirement and post-release quietness. The carrier fixture also resets and re-admits after a machine change and a stopped pattern change, preserving stale-release tombstones. A fixture-only Sound-deserializer wrapper now closes admission before in-place writes and blocks refresh until completion; ColdFire tests exercise same-pointer, same-type replacement through the real stock routine. A booted panel-driven temporary pattern reload now proves same-pointer Sound invalidation and fresh MIDI playback with stale-release protection. The fixture waits through scheduled-pattern lookahead before applying the committed destination; a booted internal-clock switch between two prepared WERP shadows proves the ownership ordering. The sine callback now implements per-port/channel CC64 sustain, CC121 pedal reset, CC123 sustain-aware All Notes Off and CC120 emergency All Sound Off, plus fixed +/-2-semitone 14-bit route bend with phase-preserving coefficient updates and CC121 centering, with atomic pedal/voice batches, bounded deferred-token storage and reset clearing. Booted final-audio pitch measurements now verify center, maximum upward bend, other-port isolation and CC121 centering. A booted route-panic scenario verifies USB/DIN isolation, stale physical release protection, unchanged instance generation and final quietness. The booted emulator verifies pedal-owned USB audio beyond the normal release time, independent DIN release, pedal-up preserving a physically held note, and final quietness. The booted carrier now also passes a low-first/high-second final-output RMS comparison against a fresh loud-note reference. Running-switch acceptance now checks retained ownership and the original physical release across compatible switches, measures source/destination PCM and settled release quietness, and now predicts both channels sample by sample from a source-only sine fit across the complete transition. This fixed-Sound continuity bound passes; other Sound-load paths, broader transport cases, public initialization and general final-output continuity remain open. Routes remain inactive without a ready V2 consumer. Stage 0 is still open: schema publication, V2 capability, wider live routing/recovery and coexistence remain; stage 1's final-output lifetime gate has not passed. A [four-note sine kernel](../../modules/machines/canopy/README.md) now provides independent token gates, phase, velocity and attack/release for the stage-1 proof, with SHARC component tests. The kernel now steals within four foreground slots and two shared tails, with at-most-64-sample delayed replacements when both tails are busy; full eight-event bursts and stale releases are component-tested. The MIDI lifecycle-to-kernel connection is component-tested and the carrier now has a booted emulator proof; public V2 initialization and full audio acceptance remain open. There is no playable CANOPY DKM yet.
+The implementation uses [instrument MIDI ownership](../../modules/core/adapters/midi-events/README.md),
+[the admitted playback adapter](../../modules/core/adapters/instrument-play/README.md)
+and the [CANOPY sine kernel](../../modules/machines/canopy/README.md).
+Earlier fixture checkpoints below remain historical evidence; the current
+completion checklist and acceptance table define the next work.
 
 CANOPY is a keyboard-playable pad instrument on one audio track, with four independently articulated chord tones and an arpeggiator blended over the pad. PLAY sounds the notes the player actually presses. ROOT + TYPE generates a chord from a root key and a silent chord-selector key. LEARN TO ROOT captures a voicing for later transposition. Sequencer mode plays a chord from a stock note trig.
 
@@ -1935,23 +1944,35 @@ are not yet connected to a public machine package, live route owner or final car
 - [x] Exact C-E, add G, release E sequence measured in final stereo PCM: settled
   C/G phase and amplitude persist, and E disappears. This does not establish
   uninterrupted samples throughout the release transient.
-- [ ] Replace the fixture's stock type-1 shadow with the admitted V2 process entry.
+- [x] Replace the fixture's stock type-1 shadow with the admitted V2 process entry.
 - [x] Connect normalized MIDI/configuration input and instance state to that process ABI
   in the single-instance adapter; instruction-level checks pass. Booted integrated
   audio acceptance remains separate below.
-- [ ] Connect supported machine registration, explicit keyboard route and shared carrier ownership.
-- [ ] Run the complete Stage 1 acceptance through that integrated path, including
+- [x] Connect supported machine registration, explicit keyboard route and shared carrier ownership.
+- [x] Run the complete Stage 1 acceptance through that integrated path, including
   transition-sample continuity, pedal, velocity and fault retirement.
 
-The normal-file V2 loader now passes booted publication and failed-initializer
-reclamation tests under a private diagnostic policy. The single-instance playback
-adapter is still under integration. Component checks cover an admitted process receiving normalized
-notes, once-per-block rendering, raw carrier copying, replacement tails and
-legacy voice priority. The adapter is not in a default patch set; public packing,
-CF route readiness/fault feedback and final stereo acceptance remain open.
+The integrated test uploads and reads back the actual CANOPY DKM, restarts,
+waits for CREATE/publication, selects its assigned type through the stock
+chooser and enables the keyboard route through SETTINGS > DIGIKIT > KEYBOARD.
+It captures final stereo PCM for C-E, add G, release E, checks every transition
+sample for discontinuities/missing blocks, checks independent pedal ownership,
+and compares the same pitch at velocities 40 and 127 while DIN G stays held.
+An injected callback-generation fault must produce silence and acknowledged
+DETACH before DSP allocation release; published CF storage remains until reboot.
 
-Stage 1 remains open. Passing fixture proofs must not be reported as a playable
-V2 machine or as completion of the integrated lifecycle/audio path.
+Acceptance: `tests/regression/runtime/canopy-stage1.test.ts` passes in 347.66 s;
+log `out/canopy-stage1-live.log`, PCM and fits `out/canopy-stage1*`.
+The package uses V2 reset/process entries, not a stock type-1 shadow. The adapter
+is optional, DTII-only, one instance, track 1, boot-only, with disabled-by-default
+nonpersistent route settings. Development installation uses the upload/selection
+protocol; the generic module-browser fit calculator remains V1-only. General
+module browsing, coexistence and hardware release proof are not implied.
+
+Stage 1 is complete at its emulator acceptance boundary. The declared policy's
+100000/1000 process/reset ceilings exceed the tested 17732/411 instruction cases;
+these are instruction counts, not a measured hardware CPU budget. Stage 6 owns
+hardware timing and release approval.
 
 ## Implementation stages and acceptance
 

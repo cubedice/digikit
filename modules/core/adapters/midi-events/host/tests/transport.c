@@ -49,27 +49,29 @@ uint32_t mi_test_reply_ack(void)
     CHECK(!m.routes[0].enabled && m.keys[0].tombstone);
     return 0;
 }
+static void session_reply(uint32_t *r, uint32_t heartbeat);
 uint32_t mi_test_reply_watchdog(void)
 {
     MtReplyGuard g = {0};
     uint32_t guard_reply[MT_REPLY_WORDS];
     mt_reply_guard_tick(&g, 0, 10000);
     CHECK(!g.seen && !g.invalid);
-    reply_words(guard_reply, 99, 0, UINT32_MAX);
+    CHECK(mt_reply_guard_expect(&g,0xdeadbeefu,17,UINT32_MAX-10)==0);
+    session_reply(guard_reply, UINT32_MAX);
     mt_reply_guard_tick(&g, guard_reply, UINT32_MAX-5);
     CHECK(g.seen && !g.invalid);
-    reply_words(guard_reply, 0, 0, 0);
+    session_reply(guard_reply, 0);
     mt_reply_guard_tick(&g, guard_reply, 2);
     CHECK(!g.invalid && g.heartbeat == 0 && g.block == 2);
     mt_reply_guard_tick(&g, guard_reply, 2+MT_STALL_BLOCKS-1);
     CHECK(!g.invalid && g.block == 2); /* cached replies cannot extend liveness */
     mt_reply_guard_tick(&g, guard_reply, 2+MT_STALL_BLOCKS);
     CHECK(g.invalid);
-    reply_words(guard_reply, 0, 0, 1);
+    session_reply(guard_reply, 1);
     mt_reply_guard_tick(&g, guard_reply, 3+MT_STALL_BLOCKS);
     CHECK(g.invalid && g.heartbeat == 0);
     g.seen = g.invalid = 0;
-    reply_words(guard_reply, 0, 0, 50);
+    session_reply(guard_reply, 50);
     mt_reply_guard_tick(&g, guard_reply, 10);
     guard_reply[3] = 1; /* bad checksum must not be mistaken for a reboot */
     mt_reply_guard_tick(&g, guard_reply, 11);
@@ -78,7 +80,7 @@ uint32_t mi_test_reply_watchdog(void)
     mt_reply_guard_tick(&g, guard_reply, 12);
     CHECK(g.invalid);
     g.seen = g.invalid = 0;
-    reply_words(guard_reply, 0, 0, 50);
+    session_reply(guard_reply, 50);
     mt_reply_guard_tick(&g, guard_reply, 10);
     mt_reply_guard_tick(&g, 0, 10+MT_STALL_BLOCKS);
     CHECK(g.invalid);
@@ -485,34 +487,69 @@ uint32_t mi_test_session_midi(void)
 
 uint32_t mi_test_reply_reordering(void)
 {
+    {
+        MtReplyGuard unbound={0}; uint32_t before[16];
+        reply_words(before,1,0,100); mt_reply_guard_tick(&unbound,before,1);
+        before[3]=1; reply_checksum(before); mt_reply_guard_tick(&unbound,before,2);
+        CHECK(!unbound.invalid && !unbound.seen && !unbound.ready);
+        CHECK(mt_reply_guard_expect(&unbound,0xdeadbeefu,17,3)==0);
+        mt_reply_guard_tick(&unbound,before,4);
+        CHECK(!unbound.invalid && !unbound.seen && !unbound.ready);
+        mt_reply_guard_tick(&unbound,before,3+MT_STALL_BLOCKS);
+        CHECK(unbound.invalid && !unbound.ready);
+    }
     MtReplyGuard g = {0}; MiTransport t; MiLedger m;
     uint32_t r[MT_REPLY_WORDS], rev[MI_TRACKS] = {1}, message, i;
     mi_init(&m); mt_init(&t);
     CHECK(mt_reply_guard_expect(&g, 0xdeadbeefu, 17, 0) == 0);
-    session_reply(r, 100); r[1] = m.epoch; reply_checksum(r);
-    CHECK(!mt_reply_reordered(&g, r));
-    mt_reply_guard_tick(&g, r, 1);
-    CHECK(mt_reply_tick_guarded(&t, &m, r, 1, &g) == 1);
+    for (i = 93; i <= 100; ++i) {
+        session_reply(r, i); r[1] = m.epoch; reply_checksum(r);
+        CHECK(!mt_reply_reordered(&g, r));
+        mt_reply_guard_tick(&g, r, i);
+        CHECK(mt_reply_tick_guarded(&t, &m, r, i, &g) == 1);
+    }
     CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
     note(&m, 0, 60);
-    message = mt_prepare(&t, &m, rev, 2)[3];
-    for (i = 1; i <= 2; ++i) {
-        r[2] = message; r[3] = 100-i; reply_checksum(r);
+    message = mt_prepare(&t, &m, rev, 101)[3];
+    for (i = 1; i <= 7; ++i) {
+        r[3] = 100-i; reply_checksum(r);
         CHECK(mt_reply_reordered(&g, r));
-        mt_reply_guard_tick(&g, 0, 2+i);
-        CHECK(mt_reply_tick_guarded(&t, &m, 0, 2+i, &g) == 0);
-        CHECK(m.count == 1 && !g.invalid && g.heartbeat == 100 && g.block == 1);
+        mt_reply_guard_tick(&g, 0, 101+i);
+        CHECK(mt_reply_tick_guarded(&t, &m, 0, 101+i, &g) == 0);
+        CHECK(m.count == 1 && !g.invalid && g.heartbeat == 100 && g.block == 100);
+        /* Same heartbeat with a new ACK is not a known copy. */
+        r[2] = message; reply_checksum(r); CHECK(!mt_reply_reordered(&g, r));
+        r[2] = 0;
     }
-    r[3] = 97; reply_checksum(r); CHECK(!mt_reply_reordered(&g, r));
+    r[3] = 92; reply_checksum(r); CHECK(!mt_reply_reordered(&g, r));
     r[3] = 99; r[12]++; reply_checksum(r); CHECK(!mt_reply_reordered(&g, r));
     r[12]--; r[0] = MT_REPLY_MAGIC; r[12] = 0; reply_checksum(r);
     CHECK(!mt_reply_reordered(&g, r));
     session_reply(r, 101); r[1] = m.epoch; r[2] = message; reply_checksum(r);
     CHECK(!mt_reply_reordered(&g, r));
-    mt_reply_guard_tick(&g, r, 5);
-    CHECK(mt_reply_tick_guarded(&t, &m, r, 5, &g) == 2 && !m.count);
-    r[3] = 100; reply_checksum(r); CHECK(mt_reply_reordered(&g, r));
-    mt_reply_guard_tick(&g, 0, 5+MT_STALL_BLOCKS);
+    mt_reply_guard_tick(&g, r, 109);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 109, &g) == 2 && !m.count);
+    session_reply(r, 100); r[1] = m.epoch; reply_checksum(r);
+    CHECK(mt_reply_reordered(&g, r));
+    r[3] = 93; reply_checksum(r); CHECK(!mt_reply_reordered(&g, r)); /* evicted */
+    mt_reply_guard_tick(&g, 0, 109+MT_STALL_BLOCKS);
     CHECK(g.invalid); /* repeated stale copies never extend freshness */
+    return 0;
+}
+
+uint32_t mi_test_play_reply(void)
+{
+    uint32_t r[16]; MtReplyGuard g={0};
+    CHECK(mt_reply_guard_expect(&g,0xdeadbeefu,17,0)==0);
+    session_reply(r,1); r[0]=MT_PLAY_REPLY_MAGIC; reply_checksum(r);
+    CHECK(mt_reply_valid(r)); mt_reply_guard_tick(&g,r,1);
+    CHECK(g.ready && !g.invalid);
+    r[3]=2; r[13]=3; r[14]=9; reply_checksum(r);
+    CHECK(mt_reply_valid(r)); mt_reply_guard_tick(&g,r,2);
+    CHECK(!g.invalid && g.heartbeat==2);
+    r[13]=5; reply_checksum(r); CHECK(mt_reply_valid(r));
+    r[13]=7; reply_checksum(r); CHECK(!mt_reply_valid(r));
+    r[13]=3; r[14]=0; reply_checksum(r); CHECK(!mt_reply_valid(r));
+    r[14]=9; r[0]=MT_SESSION_REPLY_MAGIC; reply_checksum(r); CHECK(!mt_reply_valid(r));
     return 0;
 }

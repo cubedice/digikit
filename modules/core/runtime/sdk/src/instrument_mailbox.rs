@@ -273,13 +273,13 @@ impl Mailbox {
             b = b.wrapping_add(a);
         }
         let identity_valid = match session {
-            Some(token) => token != 0 && words[0] == 0x494ea102 && words[12] == token,
+            Some(token) => token != 0 && matches!(words[0], 0x494ea102 | 0x494ea103) && words[12] == token,
             None => words[0] == 0x494ea101 && words[12] == 0,
         };
         if !identity_valid
             || words[4] != 0x49525231
             || words[15] != a ^ b
-            || words[13..15] != [0; 2]
+            || if words[0] == 0x494ea103 { words[13] > 6 || (words[13] != 0 && words[14] == 0) } else { words[13..15] != [0; 2] }
         {
             return Err(Error::InvalidReply);
         }

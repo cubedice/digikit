@@ -47,6 +47,7 @@ def reply_builder():
             "_mi_message": message_at,
             "_instrument_registry_reply": 0,
             "_instrument_session": 0,
+            "_instrument_play_status": 0,
         },
     )
 
@@ -60,21 +61,40 @@ def reply_builder():
             "_mi_message": message_at,
             "_instrument_registry_reply": registry_at,
             "_instrument_session": registry_at + 32,
+            "_instrument_play_status": 0,
         },
     )
 
-    def build(epoch, message, heartbeat, registry=None, session=0):
+    play_linked = pk_sharc.link(
+        obj,
+        0xB90000,
+        {
+            **symbols,
+            "_mi_epoch": epoch_at,
+            "_mi_message": message_at,
+            "_instrument_registry_reply": registry_at,
+            "_instrument_session": registry_at + 32,
+            "_instrument_play_status": registry_at + 36,
+        },
+    )
+
+    def build(epoch, message, heartbeat, registry=None, session=0, play=None):
         dm = dict(initial)
         if registry is not None:
             dm.update({registry_at // 4 + i: w for i, w in enumerate(registry)})
         dm[(registry_at + 32) // 4] = session
+        if play is not None:
+            dm[(registry_at + 36) // 4] = play[0]
+            dm[(registry_at + 40) // 4] = play[1]
         dm[epoch_at // 4] = epoch
         dm[message_at // 4] = message
         dm[symbols["_mi_heartbeat"] // 4] = heartbeat
         base = symbols["_instrument_reply"] // 4
         dm[base - 1] = dm[base + 16] = 0xDEADBEEF
         result = pk_sharc.run_call(
-            registry_linked if registry is not None else linked,
+            play_linked
+            if play is not None
+            else (registry_linked if registry is not None else linked),
             "_mi_reply_build",
             regs={"M5": 0, "M6": 1, "L0": 0},
             dm_words=dm,
@@ -135,7 +155,7 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
         source += "\n" + (MOD / f"src/dsp/{name}.s").read_text()
     if consumer:
         canopy = ROOT / "modules/machines/canopy/src/dsp"
-        for name in ("voice", "tuning", "instrument"):
+        for name in ("voice", "tuning", "events", "instrument"):
             source += "\n" + (canopy / f"{name}.s").read_text()
     if carrier:
         for name in ("carrier", "carrier-frame", "velocity", "envelope", "workspace"):
@@ -166,6 +186,7 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
     externs = {
         **symbols,
         "_pp_block_back": 0xB9F000,
+        "_instrument_play_status": 0,
     }
     if carrier:
         externs["_mi_envelope_next"] = 0
@@ -1403,3 +1424,17 @@ def test_v2_registration_window_is_bounded(
         expected[offset + 1 : offset + 3] = words[2:4]
     assert result["target"] == expected
     assert result["status"] == [0 if accepted else 3]
+
+
+@pytest.mark.parametrize("phase", [0, 3, 5, 6])
+def test_dsp_reply_v3_binds_playback_status_to_session(reply_builder, phase):
+    words = reply_builder(1, 9, 20, registry=[0] * 8, session=7, play=[phase, 4])
+    assert words[:4] == [0x494EA103, 1, 9, 21]
+    assert words[12:15] == [7, phase, 4]
+    a = b = 0
+    for word in words[:15]:
+        a = (a + word) & 0xFFFFFFFF
+        b = (b + a) & 0xFFFFFFFF
+    assert words[15] == a ^ b
+    unbound = reply_builder(1, 9, 20, registry=[0] * 8, play=[phase, 4])
+    assert unbound[0] == 0x494EA101 and unbound[12:15] == [0, 0, 0]

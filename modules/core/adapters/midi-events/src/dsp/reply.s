@@ -10,6 +10,7 @@
 .EXTERN _instrument_reply;
 .EXTERN _instrument_registry_reply;
 .EXTERN _instrument_session;
+.EXTERN _instrument_play_status;
 _mi_reply_build:
     I0 = _instrument_reply;
     R0 = 0;
@@ -55,6 +56,15 @@ _mr_registry_done:
     I0 = _instrument_reply;
     DM(12, I0) = R0;
     R6 = 0x494ea102;
+    R0 = _instrument_play_status;
+    R0 = PASS R0;
+    IF EQ JUMP _mr_session_done;
+    I1 = R0;
+    R0 = DM(0, I1);
+    DM(13, I0) = R0;
+    R0 = DM(1, I1);
+    DM(14, I0) = R0;
+    R6 = 0x494ea103;
 _mr_session_done:
     I0 = _instrument_reply;
     MODIFY(I0, 1) (NW);

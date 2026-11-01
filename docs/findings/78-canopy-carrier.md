@@ -1282,3 +1282,37 @@ The adapter now discards one/two-block stale copies without ACK or deadline
 progress; larger regressions, token changes, reset and stall remain terminal.
 24 host cases and the ColdFire adapter dispatch test pass. This is emulator
 evidence; no hardware timing claim or playable CANOPY acceptance is implied.
+
+
+### [D] Admitted CANOPY Stage 1 acceptance (2026-11-01)
+
+The real 8244-byte CANOPY V2 DKM passes the normal upload/readback/restart path,
+CREATE and CF publication on DTII OS 1.17. The integrated test selects assigned
+type 16 through the stock chooser, enables the explicit keyboard route, plays
+USB C/E and DIN G, releases only E, checks both final PCM channels and every
+transition sample, then checks pedal ownership and low/high same-pitch velocity.
+Corrupting the callback's instance generation triggers silence, route revocation
+and acknowledged DETACH before DSP memory release. Published CF code stays until
+reboot. USB control remains responsive. One integrated test passes in 347.66 s;
+log out/canopy-stage1-live.log. This closes Stage 1's emulator gate.
+
+Two integration fixes were necessary. The session guard now discards only exact
+16-word copies of one of its last eight accepted bound replies, replacing the
+weaker numeric one/two-block heuristic above. The larger load exposed 3549 after
+3552. Unknown regressions, altered ACK/status, token change, reset and deadline
+expiry remain terminal; known copies cannot acknowledge work or extend freshness.
+Unbound legacy heartbeats do not establish session lifetime. 25 host tests and
+the actual ColdFire dispatch test pass.
+
+V2 publication is asynchronous and occurs after the persistent machine chooser
+is constructed. The optional playback adapter remembers that view and rebuilds
+its item list once after publication, on the owning UI task. The narrow hook
+reuses finding 30's stock builder at 0x40060f50; the first eight bytes match the
+archived hash, and the new 64-byte window resolves uniquely on 1.17. This does
+not enable hot reload or removal of published CF registrations.
+
+Firmware SHA256 b3d8fc42ce5e4b8b95ea7a3355a85c5a1c89ac4d5e5b6f1ee45f126c9b4992f2.
+DKM SHA256 48758a2841bcc69d5eab95527d069ac3bd2a993a086b545e941492005827c432.
+Development scope: one instance on track 1, optional firmware, route setup not
+persisted, uploader selection (generic browser fit remains V1-only). No hardware
+flash, CPU-cycle measurement, broader coexistence or finished pad-synth claim.

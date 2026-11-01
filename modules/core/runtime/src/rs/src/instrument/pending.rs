@@ -23,15 +23,31 @@ pub(crate) struct Pending {
     ticket: Option<Ticket>,
     result: i32,
     reported: bool,
+    type_no: u32,
+    was_live: bool,
 }
 static mut PENDING: Option<Pending> = None;
 // UI-owned read-only diagnostics: phase, module record, terminal load result, last progress/failure.
 #[no_mangle]
 pub static mut DKRT_INSTRUMENT_FILE: [u32; 4] = [0; 4];
+#[no_mangle]
+pub unsafe extern "C" fn dkrt_instrument_type() -> u32 {
+    if let Some(p) = (&*core::ptr::addr_of!(PENDING)).as_ref() {
+        if p.phase == 3 { return p.type_no; }
+    }
+    0
+}
+#[no_mangle]
+pub unsafe extern "C" fn dkrt_instrument_generation() -> u32 {
+    if let Some(p) = (&*core::ptr::addr_of!(PENDING)).as_ref() {
+        if p.phase == 3 { return p.ticket.map_or(0, |t| t.generation()); }
+    }
+    0
+}
 
 // Admission policy is supplied only by the trusted firmware adapter, never a
 // DKM. Eight words: magic, version, tracks, process, reset, depth, stack, state.
-extern "C" { fn instrument_runtime_policy() -> *const u32; }
+extern "C" { fn instrument_runtime_policy() -> *const u32; fn instrument_play_faulted(generation: u32) -> i32; }
 pub(crate) unsafe fn policy() -> Option<[u32; 8]> {
     if core::hint::black_box(instrument_runtime_policy as usize) == 0 { return None; }
     let ptr = instrument_runtime_policy();
@@ -62,7 +78,7 @@ impl Pending {
         section: u32, section_size: u32, output: u32, output_size: u32,
         init: u32, menu: u32, mask: u32, fns: [u32; SLOTS]) -> Self {
         Self { rec, selection, reg, reg_size, section, section_size, output,
-            output_size, init, menu, mask, fns, phase: 0, ticket: None, result: E_DSP_XFER, reported: false }
+            output_size, init, menu, mask, fns, phase: 0, ticket: None, result: E_DSP_XFER, reported: false, type_no: 0, was_live: false }
     }
     unsafe fn discard(&mut self, result: i32) {
         // Only before admission or after release_memory, never on uncertainty.
@@ -101,7 +117,23 @@ pub(crate) unsafe fn tick(owner: &mut Owner, link: LinkProgress, now: u32) {
 }
 unsafe fn tick_inner(owner: &mut Owner, link: LinkProgress, now: u32) {
     let Some(p) = (&mut *addr_of_mut!(PENDING)).as_mut() else { return; };
-    if p.phase == 6 || p.phase == 9 || p.phase == 3 { return; }
+    if p.phase == 6 || p.phase == 9 { return; }
+    if p.phase == 3 {
+        if core::hint::black_box(instrument_play_faulted as usize) != 0 &&
+            instrument_play_faulted(p.ticket.unwrap().generation()) != 0 {
+            // Revoke readiness before lease acquisition. Retain published CF code
+            // until reboot: UI/service readers may still own its addresses.
+            p.was_live = true; p.result = E_DSP_XFER;
+            p.phase = if owner.request_link(now, 2000).is_ok() { 8 } else { 9 };
+        }
+        return;
+    }
+    if p.phase == 8 {
+        if link == LinkProgress::Owned {
+            p.phase = if owner.retire(p.ticket.unwrap(), now, 2000).is_ok() { 4 } else { 9 };
+        }
+        return;
+    }
     if p.phase == 0 {
         if owner.request_link(now, 2000).is_err() { p.phase = 9; return; }
         p.phase = 1; return;
@@ -137,7 +169,9 @@ unsafe fn tick_inner(owner: &mut Owner, link: LinkProgress, now: u32) {
             Progress::Complete { command: Command::Release(ticket), .. }
                 if Some(ticket) == p.ticket => {
                 if owner.release_memory(ticket, &mut ledger).is_err() { p.phase = 9; return; }
-                p.discard(p.result);
+                if !p.was_live { p.discard(p.result); }
+                // Published CF registrations/code remain as a silent tombstone.
+                // Only the acknowledged, detached DSP range is reusable here.
                 p.phase = if owner.request_link_release(now, 2000).is_ok() { 5 } else { 9 };
             }
             Progress::Pending => {}
@@ -162,6 +196,7 @@ unsafe fn prepare(owner: &mut Owner, p: &mut Pending, ledger: &mut instrument_lo
     let output = core::slice::from_raw_parts_mut(p.output as *mut u8, p.output_size as usize);
     let Ok(plan) = owner.admit(p.rec as u32, &section, types.as_slice(), &limits,
         ledger, output, |_| None) else { return E_DSP_XFER; };
+    p.type_no = types.as_slice()[0];
     p.ticket = Some(plan.ticket());
     if owner.begin(plan, output, now, 2000).is_err() { return E_DSP_XFER; }
     p.phase = 2;

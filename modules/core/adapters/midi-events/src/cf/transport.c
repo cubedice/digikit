@@ -180,15 +180,19 @@ void mt_reply_read(const volatile uint16_t *record, uint32_t out[MT_REPLY_WORDS]
     }
 }
 
+static int session_reply(uint32_t magic)
+{ return magic == MT_SESSION_REPLY_MAGIC || magic == MT_PLAY_REPLY_MAGIC; }
+
 int mt_reply_valid(const uint32_t reply[MT_REPLY_WORDS])
 {
     uint32_t i, a = 0, b = 0;
-    if (!reply || (reply[0] != MT_REPLY_MAGIC && reply[0] != MT_SESSION_REPLY_MAGIC)) return 0;
-    if (reply[0] == MT_SESSION_REPLY_MAGIC && !reply[12]) return 0;
+    if (!reply || (reply[0] != MT_REPLY_MAGIC && !session_reply(reply[0]))) return 0;
+    if (session_reply(reply[0]) && !reply[12]) return 0;
     for (i = 0; i < MT_REPLY_WORDS-1; ++i) {
         a += reply[i]; b += a;
-        if ((i >= 13 || (i == 12 && reply[0] == MT_REPLY_MAGIC)) && reply[i]) return 0;
+        if (((i >= 13 && reply[0] != MT_PLAY_REPLY_MAGIC) || (i == 12 && reply[0] == MT_REPLY_MAGIC)) && reply[i]) return 0;
     }
+    if (reply[0] == MT_PLAY_REPLY_MAGIC && (reply[13] > 6 || (reply[13] && !reply[14]))) return 0;
     if (reply[15] != (a ^ b)) return 0;
     if (reply[4] == 0x49525231u) return 1; /* registry validates its own identity/status */
     for (i = 4; i < 12; ++i) if (reply[i]) return 0;
@@ -199,7 +203,7 @@ static int reply_tick(MiTransport *t, MiLedger *m,
                       const uint32_t *reply, uint32_t block, uint32_t session)
 {
     uint32_t valid = mt_reply_valid(reply) &&
-        (session ? reply[0] == MT_SESSION_REPLY_MAGIC && reply[12] == session :
+        (session ? session_reply(reply[0]) && reply[12] == session :
                    reply[0] == MT_REPLY_MAGIC);
     int result = 0;
     if (t->epoch != m->epoch) { mt_init(t); t->epoch = m->epoch; }
@@ -256,11 +260,17 @@ int mt_reply_guard_expect(MtReplyGuard *g, uint32_t token,
 
 int mt_reply_reordered(const MtReplyGuard *g, const uint32_t *reply)
 {
-    uint32_t behind;
+    uint32_t behind, i, j;
     if (!g->ready || !g->expected || g->invalid || !mt_reply_valid(reply) ||
-        reply[0] != MT_SESSION_REPLY_MAGIC || reply[12] != g->expected) return 0;
+        !session_reply(reply[0]) || reply[12] != g->expected) return 0;
     behind = g->heartbeat - reply[3];
-    return behind == 1 || behind == 2;
+    if (!behind || behind >= 0x80000000u) return 0;
+    for (i = 0; i < g->history_count; ++i) {
+        for (j = 0; j < MT_REPLY_WORDS; ++j)
+            if (g->history[i][j] != reply[j]) break;
+        if (j == MT_REPLY_WORDS) return 1;
+    }
+    return 0;
 }
 
 /* Sticky diagnostic for the first trust failure of a guard. No reply pointer
@@ -288,7 +298,11 @@ void mt_reply_guard_tick(MtReplyGuard *g, const uint32_t *reply, uint32_t block)
         guard_fail(g, reply, block, 1); return;
     }
     if (mt_reply_valid(reply)) {
-        if (reply[0] == MT_SESSION_REPLY_MAGIC) {
+        /* An unbound heartbeat is not evidence about this session's lifetime.
+         * The exact bind ACK establishes its first trusted heartbeat. Legacy
+         * traffic cannot refresh the bind deadline; physical reset still revokes. */
+        if (!g->ready && reply[0] == MT_REPLY_MAGIC) return;
+        if (session_reply(reply[0])) {
             if (!g->expected || reply[12] != g->expected) { guard_fail(g, reply, block, 2); return; }
             if (!g->ready) {
                 if (reply[4] != 0x49525231u || reply[5] != g->sequence ||
@@ -300,8 +314,13 @@ void mt_reply_guard_tick(MtReplyGuard *g, const uint32_t *reply, uint32_t block)
         delta = reply[3] - g->heartbeat;
         if (g->seen && delta >= 0x80000000u) { guard_fail(g, reply, block, 5); return; }
         if (!g->seen || delta) {
+            uint32_t i;
             g->seen = 1; g->heartbeat = reply[3]; g->block = block;
-            if (reply[0] == MT_SESSION_REPLY_MAGIC) g->ready = 1;
+            if (session_reply(reply[0])) g->ready = 1;
+            for (i = 0; i < MT_REPLY_WORDS; ++i)
+                g->history[g->history_next][i] = reply[i];
+            g->history_next = (g->history_next + 1) & 7u;
+            if (g->history_count < 8) ++g->history_count;
         }
     }
     if (g->seen && block - g->block >= MT_STALL_BLOCKS) guard_fail(g, reply, block, 6);

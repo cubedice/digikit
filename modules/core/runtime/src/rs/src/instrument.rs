@@ -1,5 +1,5 @@
 //! Boot-owned V2 controller and legacy traffic arbitration on the UI task.
-//! No admission or capabilities are enabled until the loader is integrated.
+//! Normal-file admission requires an explicit trusted firmware policy.
 use core::ptr::addr_of_mut;
 use dkrt_sdk::{
     instrument_coordinator::{Coordinator, LegacyPolicy, LinkProgress, Progress},
@@ -13,8 +13,8 @@ type Owner = Coordinator<'static, OwnedApi>;
 mod probe;
 pub(crate) mod pending;
 static mut OWNER: Option<Owner> = None;
-// Bound atomically with the snapshot/transport set; not invoked until the
-// explicit emulator probe requests a bootstrap. Production loading stays disabled.
+// Bound atomically with the snapshot/transport set. A queued V2 file or the
+// optional emulator probe starts the one-shot bootstrap.
 #[used]
 static mut EXPECT_SESSION: Option<ExpectSession> = None;
 #[repr(C, align(16))]

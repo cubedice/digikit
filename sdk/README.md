@@ -117,10 +117,14 @@ instruction, data or import, and the `.dkm` is byte-identical to one built from 
 The CANOPY V2 work adds a separate `[instrument]` layout in `sdk.toml`, generated
 as `include/dk/gen/instrument.h`, `include/dk/gen/instrument_consts.h` and
 `asm/dk_instrument.inc`. It describes persistent track state, bounded normalized
-MIDI batches and reset/process callbacks. It is not yet a supported module API:
-`<dk/instrument.h>` now provides `DK_INSTRUMENT` for declaration and inspection,
-but there is no V2 runtime registration. The packer refuses these declarations
-instead of emitting V1 rows. The advertised machine contract remains 1.0.
+MIDI batches and reset/process callbacks. `<dk/instrument.h>` provides
+`DK_INSTRUMENT`. Experimental runtime packing accepts one DT2 1.17 instrument
+whose manifest requires `core/instrument-play`, without V1 declarations or FX.
+It emits a V2 DSP section and CF machine-list metadata, never a V1 voice callback.
+Static firmware lowering still refuses these declarations. Default firmware
+advertises machine contract 1.0 and cannot admit the package; the optional
+playback adapter supplies a bounded policy. Integrated acceptance and hardware
+release remain separate from declaration/packing support.
 
 ```c
 #include <dk/instrument.h>

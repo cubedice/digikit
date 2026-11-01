@@ -54,14 +54,14 @@ pub const VERSION_3: u32 = 3;
 pub const VERSION_4: u32 = 4;
 /// Experimental persistent instruments, separate from the V1 voice table.
 pub const VERSION_5: u32 = 5;
-/// Text range metadata for persistent instruments; still host-only.
+/// Text range metadata for persistent instruments and protected runtime admission.
 pub const VERSION_6: u32 = 6;
 pub const HEADER_V5: usize = 0x50;
 pub const INSTRUMENT_LEN: usize = 16;
 pub const MAX_INSTRUMENTS: usize = 8;
 
 /// Format validation ceilings only; runtime admission must supply device limits.
-const FORMAT_LIMITS: crate::instrument::Limits = crate::instrument::Limits {
+pub const FORMAT_LIMITS: crate::instrument::Limits = crate::instrument::Limits {
     state_bytes: u32::MAX,
     cycles_process: u32::MAX,
     cycles_reset: u32::MAX,

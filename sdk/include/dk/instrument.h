@@ -1,5 +1,5 @@
-/* Experimental persistent instruments. Declaration/inspection only until the
- * V2 loader and adapter are implemented. DK_PARAM/DK_PAGE are V1 records and
+/* Experimental persistent instruments. Runtime packing requires the optional
+ * DT2 1.17 single-instance V2 playback adapter. DK_PARAM/DK_PAGE are V1 records and
  * cannot be attached to this declaration yet. */
 #ifndef DK_INSTRUMENT_H
 #define DK_INSTRUMENT_H

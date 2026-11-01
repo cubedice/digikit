@@ -7,8 +7,8 @@ role = "adapter"
 type = "framework"
 author = "digikit"
 status = "experimental"
-summary = "Single-instance V2 transport and shared carrier; admission policy supplied separately."
-requires = ["core/instrument-registry", "core/dsp-voice"]
+summary = "Single-instance V2 transport, development admission policy and shared carrier."
+requires = ["core/instrument-registry", "core/dsp-voice", "core/dynreg", "core/dyndsp", "core/ui"]
 conflicts = ["test/canopy-carrier", "test/canopy-transport", "test/instrument-load"]
 ports = ["dt2-1.17"]
 [targets]
@@ -34,3 +34,25 @@ to = "_mi_envelope_entry"
 op = "hook"
 hook = "dsp.voice.hook.velocity_operand"
 to = "_mi_velocity_entry"
+
+[[object]]
+path = "build/play-cf.dko.json"
+sources = ["src/cf/control.c", "src/cf/sound.c", "src/cf/sound-load.s", "src/cf/view.s"]
+place = "cf.expansion"
+devices = ["dt2"]
+[object.externs]
+ip_view_next = "hook.cf.machine.fn.selection_build.tail"
+ip_view_build = "cf.machine.fn.selection_build"
+ip_project = "cf.project.fn.singleton"
+ip_kit = "cf.project.fn.active_kit"
+ip_refresh = "cf.machine.fn.refresh_track"
+ip_sound_resume = "hook.cf.machine.site.sound_deserialize.return"
+[[op]]
+op = "hook"
+hook = "cf.machine.hook.sound_deserialize"
+to = "ip_sound_entry"
+
+[[op]]
+op = "hook"
+hook = "cf.machine.hook.selection_build"
+to = "ip_view_entry"

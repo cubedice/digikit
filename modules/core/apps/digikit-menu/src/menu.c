@@ -17,6 +17,7 @@
 #include <dk_ui_core.h>
 #include <dk/gen/limits.h>
 #include "dkrt.h"
+extern void dk_app_instrument_settings_rows(dk_ui_menu *) __attribute__((weak));
 
 #define MAX_ENT DKRT_SCAN_MAX
 #define MAX_FXR 4
@@ -504,6 +505,7 @@ static void fill_main(dk_ui_menu *m, void *ctx)
         safe_reason(&t, g_boot.reason);
         dk_ui_action(m, t.b, safe_notice, 0, 0);
     }
+    if (dk_app_instrument_settings_rows) dk_app_instrument_settings_rows(m);
     dk_ui_submenu(m, "ABOUT", g_about);
     dk_ui_action(m, "HEALTH", open_health, 0, 0);
     dk_ui_submenu(m, "MEMORY", g_mem);

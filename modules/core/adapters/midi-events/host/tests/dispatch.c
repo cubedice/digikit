@@ -150,18 +150,19 @@ uint32_t mi_test_dispatch(void)
     publish_reply(queue, record, r, 0);
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS);
     CHECK(snapshot[0] == MT_SESSION_REPLY_MAGIC && snapshot[12] == 0xdeadbeefu);
-    /* The same-session two-block lag observed after an uploaded CREATE is
-     * missing input, never a replacement registry ACK or fresh heartbeat. */
-    r[3] = 2; publish_reply(queue, record, r, 0);
-    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0 && snapshot[3] == 4);
-    r[3] = 5; publish_reply(queue, record, r, 0);
-    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS && snapshot[3] == 5);
+    /* Only an exact previously accepted reply is a known stale copy. */
+    r[3] = 7; publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS);
+    r[3] = 4; publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0 && snapshot[3] == 7);
+    r[3] = 8; publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS && snapshot[3] == 8);
     /* A backwards, otherwise valid heartbeat invalidates registry trust even
      * when its MIDI epoch is not admitted. The caller buffer stays unchanged. */
     r[3] = 1;
     publish_reply(queue, record, r, 0);
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == -2);
-    CHECK(snapshot[3] == 5);
+    CHECK(snapshot[3] == 8);
     CHECK(mi_transport.faults && mi_route_enable(0, 0, 0, 0) == -2);
     for (i = 0; i < MT_WORDS; ++i) {
         uint32_t at = 2u*(0x9fc/2+2*i)+1;
