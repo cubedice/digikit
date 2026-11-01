@@ -202,3 +202,9 @@ independent velocity and bend, sustain, malformed batches and reset isolation.
 It requires neutral tuning and fixed PLAY configuration. Descriptor budgets are
 provisional, and destructive reset still requires carrier quiescence. This is
 not a packaged instrument or a completed live V2 audio route.
+
+
+Stage 2 keyboard modes and learned shape memory are provided by the optional
+`core/instrument-play` adapter. See
+[the keyboard setup guide](../../core/adapters/instrument-play/README.md#keyboard-modes-and-shape-memory).
+The DSP remains the Stage 1 sine renderer; pad timbres and arp are later stages.

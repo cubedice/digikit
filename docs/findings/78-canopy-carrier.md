@@ -1316,3 +1316,53 @@ DKM SHA256 48758a2841bcc69d5eab95527d069ac3bd2a993a086b545e941492005827c432.
 Development scope: one instance on track 1, optional firmware, route setup not
 persisted, uploader selection (generic browser fit remains V1-only). No hardware
 flash, CPU-cycle measurement, broader coexistence or finished pad-synth claim.
+
+
+## Stage 2 bounded keyboard mapper (2026-11-01)
+
+[D] The optional instrument-play adapter now maps physical ownership to bounded
+musical output in ColdFire C. It retains PLAY note identity, performs silent
+ROOT + TYPE selection and last-held-root fallback, and supports isolated four-note
+LEARN capture, latch, four fixed voicings and eight persistent shape slots. The
+existing sine DSP and its bounded release tails are unchanged. Physical FIFO
+retirement and audible output counts are separate; retained packets are mapped
+once, silent selectors consume no DSP packet, and UI-only diffs consume no input.
+Capacity loss quarantines routes. Confirmed keys-up recovery cannot clear a
+failed DSP bind/reset guard. No firmware was installed on hardware for this work.
+
+[D] The new host suite executes the production C engine, physical ledger,
+transport and UI callbacks: 28 cases pass. It covers selector ordering, both ports
+and channels 1/16, repeated pitches, stale releases after reset/stealing,
+pedal/latch replacement, controller fallback, learned intervals/transposition,
+empty/stale SAVE, CANCEL/interruption, validated record load, deferred writes,
+write failure/retry, capacity quarantine and immutable ACK retry. The existing
+25 MIDI host cases also pass, including the new trusted-session recovery checks.
+
+[D] Actual ColdFire execution has a 100000-instruction ceiling for the eight-event
+probe and 100 for idle. A full physical pool with eight new notes takes 37309
+instructions; idle takes 48. Probe setup takes 22118. Five targeted instruction
+tests pass, including the admitted SHARC path and CF ownership/dispatch. These
+counts are component evidence, not hardware CPU or latency measurements.
+
+The integrated test must wait for the normal one-second note-off tail before
+asserting that a replaced chord tone is absent. PANIC has its own bounded reset
+ramp; fresh input belongs after the reset/configuration ACK and READY admission,
+not merely after the audio first becomes silent. Neither condition weakens the
+common-tone phase-continuity or stale-release assertions.
+
+[D] Final defensive output bounds also reject an oversized direct caller even
+when it skips the transport's UI-diff preflush. The focused suite now passes 29
+cases. The updated CF counts are 37333 for the eight-event probe, 48 idle and
+22130 setup, under the same ceilings; `out/canopy-stage2-bounds.log` records them.
+
+[D] Combined Stage 1/2 functional acceptance passes in 472.04 s (539.63 s with
+setup), log `out/canopy-stage2-final-live.log`: uploaded normal DKM admission,
+stock chooser, stereo continuity/pedal/velocity, silent major-to-minor selector
+with retained common-tone phase, capture/save of 0,7,11,16, clean durable settings
+readback, transposed four-note output, READY-gated PANIC and old-release safety,
+NO cancellation preserving the prior shape, callback-fault retirement and live
+USB INFO. The full-flow image was
+`73503bf704df964541474389a2347d147d4fc313ca51b64c5015ba3451d0e89c`;
+the final bounds-only guard has the separate current CF/host evidence above.
+The Stage 2 handover records the final built artifact hash. No hardware timing or
+release claim follows from this functional emulator acceptance.

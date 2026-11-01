@@ -4,6 +4,8 @@
 #include "bridge.h"
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
+extern int instrument_keyboard_events(uint32_t, uint32_t, uint32_t,
+    const MiEvent *, uint32_t, MiEvent *) __attribute__((weak));
 extern void dl_reset_begin(void) __attribute__((weak));
 extern int dl_reset_quiesce(void) __attribute__((weak));
 extern int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
@@ -78,7 +80,7 @@ void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_
     mt_reply_tick_guarded(&mi_transport, &mi_ledger, record ? observed : 0, frame_block, &registry_guard);
     revalidate_routes();
     packet = registry_guard.expected && (!registry_guard.ready || registry_guard.invalid) ? 0 :
-        mt_prepare(&mi_transport, &mi_ledger, mi_transport.applied, frame_block);
+        mt_prepare_mapped(&mi_transport, &mi_ledger, mi_transport.applied, frame_block, instrument_keyboard_events);
     ++frame_block;
     /* Queue entries contain command/data halfwords. Only data halves belong to
      * this callback. Write zeros when idle so old accepted packets do not recur. */
@@ -180,6 +182,18 @@ void mi_transport_recover(void)
     mt_init(&mi_transport);
     mi_transport.epoch = mi_ledger.epoch;
     dkrt_irq_restore(sr);
+}
+
+int mi_keyboard_recover(void)
+{
+    uint32_t sr=dkrt_irq_mask();
+    initialize();
+    if (reset_seen || !registry_guard.ready || registry_guard.invalid || mi_ledger.epoch==UINT32_MAX) {
+        dkrt_irq_restore(sr); return -1;
+    }
+    mi_recover(&mi_ledger);
+    mt_init(&mi_transport); mi_transport.epoch=mi_ledger.epoch;
+    dkrt_irq_restore(sr); return 0;
 }
 
 int mi_route_enable(uint32_t port, uint32_t channel, uint32_t track, int sequencer)

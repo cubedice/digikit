@@ -35,6 +35,13 @@ typedef struct {
     uint32_t reset_mask, overruns, epoch, generations[MI_TRACKS];
 } MiLedger;
 
+/* Volatile byte copy keeps freestanding CF code independent of libc helpers. */
+static inline void mi_event_copy(MiEvent *to, const MiEvent *from)
+{
+    volatile uint8_t *d=(volatile uint8_t *)to;
+    const volatile uint8_t *s=(const volatile uint8_t *)from;
+    for (uint32_t i=0;i<sizeof(*to);++i) d[i]=s[i];
+}
 void mi_init(MiLedger *m);
 /* Disable/reset the old track before publishing a route. Returns -1 for invalid
  * input, -2 while quarantined. Caller must obtain DSP reset ACK before enabling

@@ -23,5 +23,8 @@ int mi_registry_expect_session(uint32_t token, uint32_t sequence);
 void mi_dsp_reset_begin(void);
 /* Explicit recovery only, with all physical keys released. */
 void mi_transport_recover(void);
+/* UI-confirmed keys-up recovery for FIFO/ACK exhaustion within a still-trusted
+ * bound DSP session. Never clears reset/boot-trust failure. */
+int mi_keyboard_recover(void);
 void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record);
 #endif

@@ -38,7 +38,70 @@ published CF code/metadata remain retained until reboot for existing readers.
 The adapter has its own UI tick and does not take Overloop's control callback.
 
 `tests/regression/runtime/canopy-stage1.test.ts` is the integrated acceptance.
-Prepare `out/patch/canopy-stage1.syx` from `core/instrument-play,core/digikit-menu`
+Prepare `out/patch/canopy-stage2.syx` from `core/instrument-play,core/digikit-menu`
 and `out/patch/canopy-dt2.dkm` from `digikit/canopy` before running the dedicated
 `canopy-stage1` Vitest project. It requires the preflighted coupled DT2 daemon
 and sample card. No firmware build in this document authorizes a device flash.
+
+
+## Keyboard modes and shape memory
+
+Stage 2 keeps the sine renderer and adds a bounded ColdFire musical mapper to
+`core/instrument-play`. Open DIGIKIT > KEYBOARD and explicitly enable routing.
+PLAY admits four foreground notes, preserving pitch, octave, velocity and token
+ownership; the existing DSP supplies the two bounded release tails. Stolen held
+keys stay in the physical ledger until their own releases and never reappear.
+
+ROOT + TYPE uses last-pressed physical-root priority, falling back to the most
+recent still-held root. The selector octave defaults to C1 (MIDI 24-35).
+C/D/E/F/G/A/B choose major/sus2/minor/sus4/dom7/min7/maj7; the black keys choose
+major6/minor6/add9/diminished/custom. Selectors are silent. SELECT CH = 0 uses the
+selector octave on the root channel; 1-16 reserves that separate channel for
+selectors. Choosing the root channel as selector channel falls back to SAME so
+roles never overlap. USB/DIN and the root channel remain explicit setup choices.
+CLOSE, OPEN, INVERSION 1 and INVERSION 2 are available. A chord outside MIDI
+0-127 is rejected as a whole. A missing custom shape produces silence and an
+EMPTY status. Live chord/voicing edits retain the tokens of unchanged pitches.
+
+LATCH retains a released phrase. After all physical keys are up, a new press
+starts its replacement and subsequent rolled notes join it. Replacement clears
+old pedal membership. Turning latch off retains only physical/pedal-owned notes.
+CC64, CC120, CC121, CC123 and per-route pitch bend retain their defined roles.
+The mapper handles pedal ownership; bend is forwarded exactly once to the DSP.
+Unsupported controllers still follow the existing stock fallthrough policy.
+
+Choose one of eight SHAPE SLOT values, then LEARN TO ROOT. Capture auditions in
+isolated PLAY with latch disabled, accumulating up to four unique pitches even
+after release. The fifth distinct pitch reports FULL. SAVE checks the displayed
+session/revision, rejects an empty or changed capture, and stores ascending
+intervals relative to its lowest note. CANCEL or NO preserves the prior shape.
+Both exits restore the previous mode/latch and invalidate held-key ownership.
+For example C-G-B-E above C saves 0,7,11,16; root D plays D-A-C#-F#.
+
+All eight templates occupy one versioned 48-byte `canopy/shapes/v1` record in the
+shared settings store. Validation covers length, version, checksum, reserved
+bytes, counts, range and ordering before applying any template. RAM save is
+immediate; a UI-task tick performs the durable write without holding the MIDI
+critical section. Failure retains RAM and dirty state; RETRY SHAPE SAVE retries.
+Keyboard enable, route, latch, mode and voicing start at defaults after reboot;
+only templates persist in this stage. Presets and the named SRC pages are Stage 5.
+
+PANIC releases sound and retains held-key tombstones. RECOVER KEYBOARD separately
+asks for all keys and pedals to be released before clearing capacity quarantine
+and advancing the MIDI epoch. It cannot restore a failed boot/session guard or
+a retired DSP callback; those require a real restart. Route/mode changes also
+retain tombstones, so an old release cannot kill a new same-pitch press.
+
+The optional mapper consumes at most eight physical note events or one controller
+at a time. Selectors within a batch precede roots. Audible diffs contain at most
+eight commands; original FIFO retirement counts are separate from output counts.
+Retries retain the exact mapped packet, never re-run the musical transformation,
+and only matching acknowledgements retire physical events. Silent selector-only
+batches retire locally. Pending UI diffs are sent before new controller batches.
+Idle calls do no pool scan. No allocation, card access or UI calls run in this path.
+
+Host scenarios execute the production C engine, transport and UI callbacks in
+`tests/regression/host/canopy-keyboard.test.ts`; the combined Stage 1/2 acceptance
+remains in `tests/regression/runtime/canopy-stage1.test.ts` and uses the
+artifact names above. Instruction tests measure bounded CF work separately from
+SHARC rendering. These checks do not establish hardware timing or release approval.

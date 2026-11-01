@@ -38,6 +38,7 @@ uint32_t mi_test_dispatch(void)
     uint32_t i, seq, r[MT_REPLY_WORDS], a = 0, b = 0;
     CHECK(!dkrt_midi_dispatch(note, 3, 2));
     CHECK(mi_route_enable(0, 0, 0, 0) == -2);
+    CHECK(mi_keyboard_recover() == -1); /* no trusted bound session */
     CHECK(!dkrt_midi_dispatch(note, 3, 2));
     ready = 1;
     CHECK(mi_route_enable(0, 0, 0, 0) == -2);
@@ -157,12 +158,19 @@ uint32_t mi_test_dispatch(void)
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0 && snapshot[3] == 7);
     r[3] = 8; publish_reply(queue, record, r, 0);
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS && snapshot[3] == 8);
+    /* Explicit keys-up recovery advances MIDI epoch without revoking a healthy
+     * DSP bind. It cannot be used after the trust failure below. */
+    mi_ledger.routes[0].quarantined=1;
+    CHECK(mi_keyboard_recover() == 0);
+    CHECK(mi_ledger.epoch == 3 && !mi_ledger.routes[0].quarantined);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS);
     /* A backwards, otherwise valid heartbeat invalidates registry trust even
      * when its MIDI epoch is not admitted. The caller buffer stays unchanged. */
     r[3] = 1;
     publish_reply(queue, record, r, 0);
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == -2);
     CHECK(snapshot[3] == 8);
+    CHECK(mi_keyboard_recover() == -1);
     CHECK(mi_transport.faults && mi_route_enable(0, 0, 0, 0) == -2);
     for (i = 0; i < MT_WORDS; ++i) {
         uint32_t at = 2u*(0x9fc/2+2*i)+1;

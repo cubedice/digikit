@@ -1190,7 +1190,7 @@ void *memset(void *d, int c, unsigned n) {
             memory,
         ],
         0x47E00000,
-        {"dl_reset_begin": 0, "dl_reset_quiesce": 0},
+        {"dl_reset_begin": 0, "dl_reset_quiesce": 0, "instrument_keyboard_events": 0},
         [MOD / "src/cf"],
     )
     names = [

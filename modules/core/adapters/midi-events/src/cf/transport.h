@@ -18,7 +18,7 @@
 typedef struct {
     uint32_t words[MT_WORDS];
     uint32_t epoch, next_message, pending, track, generation, count;
-    uint32_t sent_block, faults;
+    uint32_t sent_block, faults, source_sequence;
     uint32_t config[MT_CONFIG_WORDS];
     uint32_t config_active, config_track, config_generation, config_revision;
     uint32_t config_schema, config_words, config_chunk, config_check;
@@ -31,6 +31,13 @@ void mt_init(MiTransport *t);
  * Word 6 is first-send block until ingress timestamping is implemented. */
 const uint32_t *mt_prepare(MiTransport *t, MiLedger *m,
                            const uint32_t revisions[MI_TRACKS], uint32_t block);
+/* Optional musical mapping. One bounded note batch or one controller per call.
+ * Retained packets are never transformed twice. Zero output retires silent
+ * input locally; negative output revokes the track before any output is sent. */
+typedef int (*MtTransform)(uint32_t track, uint32_t epoch, uint32_t generation,
+                          const MiEvent *input, uint32_t count, MiEvent output[8]);
+const uint32_t *mt_prepare_mapped(MiTransport *t, MiLedger *m,
+    const uint32_t revisions[MI_TRACKS], uint32_t block, MtTransform transform);
 /* Caller validates reply framing/integrity first. Only exact pending identity
  * can retire events; duplicate and delayed ACKs have no effect. */
 int mt_ack(MiTransport *t, MiLedger *m, uint32_t epoch, uint32_t message);

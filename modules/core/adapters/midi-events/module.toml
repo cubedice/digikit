@@ -20,7 +20,7 @@ path = "build/midi-events-cf.dko.json"
 sources = ["src/cf/ownership.c", "src/cf/transport.c", "src/cf/adapter.c", "src/cf/din.s", "src/cf/reset.s"]
 place = "cf.expansion"
 devices = ["dt2"]
-optional = ["instrument_midi_ready", "dl_reset_begin", "dl_reset_quiesce"]
+optional = ["instrument_keyboard_events", "instrument_midi_ready", "dl_reset_begin", "dl_reset_quiesce"]
 
 [object.externs]
 mi_dsp_reset_next = "hook.cf.rtos.site.dsp_reset.tail"

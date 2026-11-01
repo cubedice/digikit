@@ -1,10 +1,15 @@
 """Execute the admitted instance/transport/carrier boundary on the SHARC core."""
 
+import json
+import os
+import subprocess
+from pathlib import Path
+
 import pytest
 from support.paths import REPO_ROOT
 from test_canopy_v2 import wire_packet
 
-from tools.patchkit import pk_sharc
+from tools.patchkit import patchkit, pk_sharc, pk_toolchains
 
 
 @pytest.fixture(scope="module")
@@ -217,3 +222,79 @@ def test_lost_row_identity_closes_events_and_silences_stale_output(playback):
     call(0)
     assert get("_iv_output", 32) == [0] * 32
     assert get("_iv_revision") == [0]
+
+
+def test_keyboard_coldfire_instruction_ceiling(tmp_path):
+    """Bound actual CF work: full physical pool, eight notes, then idle."""
+    runner = Path(
+        os.environ.get(
+            "DIGIKIT_CF_SCRIPT", REPO_ROOT / "target/release/examples/cf_script"
+        )
+    )
+    firmware = REPO_ROOT / "firmware/Digitakt_II_OS1.17.syx"
+    if not runner.exists() or not firmware.exists() or not pk_toolchains.m68k_bin():
+        pytest.skip("ColdFire runner, compiler and DTII 1.17 required")
+    owner = REPO_ROOT / "modules/core/adapters/instrument-play/src/cf"
+    probe = tmp_path / "keyboard.c"
+    probe.write_text("""
+#include "keyboard.h"
+static KbState state;
+static MiEvent input[8], output[8];
+int prepare(void) {
+    kb_init(&state); kb_reset(&state,1,1);
+    for(unsigned i=0;i<120;++i) {
+        state.keys[i].token=i+1; state.keys[i].note=60;
+        state.keys[i].held=1; state.keys[i].velocity=90;
+        state.keys[i].stolen=i<116;
+    }
+    for(unsigned i=0;i<8;++i) {
+        input[i].epoch=1; input[i].generation=1; input[i].token=121+i;
+        input[i].kind=MI_NOTE_ON; input[i].note=60+i; input[i].value=100;
+    }
+    state.update=1;
+    return kb_process(&state,input,0,output);
+}
+int batch(void) { return kb_process(&state,input,8,output); }
+int idle(void) { return kb_process(&state,input,0,output); }
+""")
+    linked = patchkit.cf_link([owner / "keyboard.c", probe], 0x47E00000, {}, [owner])
+    script = tmp_path / "calls.json"
+    script.write_text(
+        json.dumps(
+            [
+                {
+                    "op": "poke",
+                    "addr": linked.base,
+                    "hex": (linked.image + bytes(linked.bss_size)).hex(),
+                },
+                *[
+                    {
+                        "op": "call",
+                        "tag": name,
+                        "pc": linked.symbols[name],
+                        "args": [],
+                        "max": 100_000,
+                    }
+                    for name in ("prepare", "batch", "idle")
+                ],
+            ]
+        )
+    )
+    result = subprocess.run(
+        [str(runner), str(firmware), str(script)],
+        capture_output=True,
+        text=True,
+        timeout=90,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    calls = [
+        json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")
+    ]
+    calls = [row for row in calls if row.get("op") == "call"]
+    assert [row["tag"] for row in calls] == ["prepare", "batch", "idle"]
+    for row, expected in zip(calls, (4, 8, 0), strict=True):
+        assert row["ok"] and not row["error"] and row["d0"] == expected, row
+    assert calls[1]["insns"] < 100_000, calls
+    assert calls[2]["insns"] < 100, calls
+    print("keyboard CF instructions:", [(r["tag"], r["insns"]) for r in calls])

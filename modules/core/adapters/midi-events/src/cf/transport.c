@@ -50,11 +50,23 @@ static void fault(MiTransport *t, MiLedger *m)
     t->config_active = 0;
 }
 
+static void mapping_fault(MiLedger *m,uint32_t track)
+{
+    for (uint32_t i=0;i<MI_ROUTES;++i)
+        if (m->routes[i].track==track) m->routes[i].quarantined=1;
+    mi_reset_track(m,track);
+}
+
 const uint32_t *mt_prepare(MiTransport *t, MiLedger *m,
                            const uint32_t revisions[MI_TRACKS], uint32_t block)
+{ return mt_prepare_mapped(t,m,revisions,block,0); }
+
+const uint32_t *mt_prepare_mapped(MiTransport *t, MiLedger *m,
+    const uint32_t revisions[MI_TRACKS], uint32_t block, MtTransform transform)
 {
-    uint32_t i, kind, track, count = 0;
-    MiEvent first;
+    uint32_t i, kind, track, count = 0, consumed = 0;
+    MiEvent first, input[8], output[8];
+    first.sequence=0; first.track=0;
     if (t->epoch != m->epoch) {
         mt_init(t); t->epoch = m->epoch;
     }
@@ -91,9 +103,37 @@ const uint32_t *mt_prepare(MiTransport *t, MiLedger *m,
         kind = t->config_chunk * MT_CHUNK_WORDS < t->config_words ?
                MT_CONFIG_CHUNK : MT_CONFIG_COMMIT;
     } else {
-        if (t->faults || !mi_peek(m, &first) || !revisions[first.track]) return 0;
-        track = first.track; kind = MT_EVENTS;
+        if (t->faults) return 0;
+        /* Publish a pending UI edit before consuming a new controller. This
+         * keeps an eight-note voicing diff plus bend within packet capacity. */
+        if (transform && revisions[0]) {
+            int result=transform(0,m->epoch,m->generations[0],input,0,output);
+            if (result<0 || result>8) { mapping_fault(m,0); return 0; }
+            if (result) { track=0; kind=MT_EVENTS; count=(uint32_t)result; goto assemble; }
+        }
+        int present=mi_peek(m,&first);
+        if (!present) return 0;
+        track=present ? first.track : 0;
+        if (!revisions[track]) return 0;
+        kind=MT_EVENTS;
+        for (i=0;present && i<m->count && i<8;++i) {
+            const MiEvent *e=&m->events[(m->head+i)%MI_EVENTS];
+            if (e->epoch!=m->epoch || e->track!=track ||
+                e->generation!=m->generations[track] || e->sequence!=first.sequence+i) break;
+            if (transform && i && (first.kind>MI_NOTE_OFF || e->kind>MI_NOTE_OFF)) break;
+            mi_event_copy(&input[consumed++],e);
+        }
+        if (transform) {
+            int result=transform(track,m->epoch,m->generations[track],input,consumed,output);
+            if (result<0 || result>8) { mapping_fault(m,track); return 0; }
+            count=(uint32_t)result;
+        } else { count=consumed; for (i=0;i<count;++i) mi_event_copy(&output[i],&input[i]); }
+        if (!count) {
+            for (i=0;i<consumed;++i) mi_ack(m,m->epoch,first.sequence+i);
+            return 0;
+        }
     }
+assemble:
     for (i = 0; i < MT_WORDS; ++i) t->words[i] = 0;
     t->words[0] = MT_MAGIC;
     t->words[2] = m->epoch;
@@ -120,23 +160,23 @@ const uint32_t *mt_prepare(MiTransport *t, MiLedger *m,
             for (i = 0; i < n; ++i) t->words[16+i] = t->config[offset+i];
         }
     } else {
-        t->words[4] = first.sequence;
+        t->source_sequence=first.sequence;
+        /* Source and audible event counts differ. DSP ordering is packet-based;
+         * mapped batches use a local nonzero sequence, never the physical FIFO. */
+        t->words[4] = transform ? 1 : first.sequence;
         t->words[5] = revisions[track];
-        for (i = 0; i < m->count && i < 8; ++i) {
-            const MiEvent *e = &m->events[(m->head + i) % MI_EVENTS];
-            if (e->epoch != m->epoch || e->track != track ||
-                e->generation != t->generation || e->sequence != first.sequence + i) break;
+        for (i = 0; i < count; ++i) {
+            const MiEvent *e = &output[i];
             t->words[8 + 3*i] = e->token;
             t->words[9 + 3*i] = e->generation;
             t->words[10 + 3*i] = e->kind | ((uint32_t)e->port << 4) |
                 ((uint32_t)e->channel << 6) | ((uint32_t)e->track << 10) |
                 ((uint32_t)e->note << 14) | ((uint32_t)e->value << 21);
-            ++count;
         }
     }
     t->words[1] = kind | (count << 8);
     t->words[7] = mt_check(t->words);
-    t->pending = kind; t->count = count; t->sent_block = block;
+    t->pending = kind; t->count = consumed; t->sent_block = block;
     return t->words;
 }
 
@@ -162,10 +202,10 @@ int mt_ack(MiTransport *t, MiLedger *m, uint32_t epoch, uint32_t message)
         /* Validate the entire retained batch before consuming any event. */
         for (i = 0; i < t->count; ++i) {
             const MiEvent *e = &m->events[(m->head + i) % MI_EVENTS];
-            if (e->epoch != epoch || e->sequence != t->words[4] + i ||
+            if (e->epoch != epoch || e->sequence != t->source_sequence + i ||
                 e->track != t->track || e->generation != t->generation) return 0;
         }
-        for (i = 0; i < t->count; ++i) mi_ack(m, epoch, t->words[4] + i);
+        for (i = 0; i < t->count; ++i) mi_ack(m, epoch, t->source_sequence + i);
     }
     t->pending = 0;
     return 1;

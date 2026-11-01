@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { button, repoRoot } from '@digi/test-support';
+import { CMD } from '@digi/dk-session/gen_proto';
 import { expect, onTestFinished, test } from 'vitest';
 import { withSession } from '../support.ts';
 import { liveOptions, liveProtocol, settleUi } from './live.ts';
@@ -11,9 +12,9 @@ import { openDigikitMenu } from './runtime-menu.ts';
 import { chordWindow, voiceChange } from './chord-continuity.ts';
 
 const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
-test('admitted CANOPY keyboard, stereo chord and fault retirement', async () => {
+test('admitted CANOPY Stage 1 and 2 keyboard, learning, stereo chord and fault retirement', async () => {
   const root = repoRoot(),
-    image = path.join(root, 'out/patch/canopy-stage1.syx');
+    image = path.join(root, 'out/patch/canopy-stage2.syx');
   const plan: RuntimePlan = JSON.parse(fs.readFileSync(image.replace(/\.syx$/, '.plan.json'), 'utf8'));
   expect(createHash('sha256').update(fs.readFileSync(image)).digest('hex')).toBe(plan.output?.syx_sha256);
   expect(plan.modules.some((m) => m.startsWith('test/canopy'))).toBe(false);
@@ -234,6 +235,135 @@ test('admitted CANOPY keyboard, stereo chord and fault retirement', async () => 
   }
   expect(await cf('ip_control', 4)).toBe(0);
   await session.expectNoFault('admitted CANOPY keyboard');
+  console.info('CANOPY acceptance: Stage 1 stereo continuity, pedal and velocity passed');
+  // Stage 2: drive the shipped UI, physical MIDI FIFO, mapper and sine DSP.
+  await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0] });
+  await session.client.call('midi.in', { bytes: [0x80, 67, 0] });
+  await expect.poll(voices, { timeout: 60_000 }).toEqual([]);
+  await openDigikitMenu(key);
+  await key('YES');
+  const menuRow = async (row: number) => {
+    for (let i = 0; i < 20; i++) await key('UP', 50);
+    for (let i = 0; i < row; i++) await key('DOWN', 100);
+  };
+  await menuRow(6);
+  await key('YES');
+  await key('DOWN');
+  await key('YES');
+  await expect.poll(() => cf('ip_keyboard_status'), { timeout: 15_000 }).toBe(1);
+  await expect.poll(() => cf('ip_control'), { timeout: 30_000 }).toBe(3);
+  capture = path.join(root, 'out/canopy-stage2.f32le');
+  await session.client.call('pcm.tap', { action: 'capture', path: capture });
+  capturing = true;
+  await session.client.call('midi.usb.in', { bytes: [0x90, 60, 100] });
+  await expect.poll(async () => (await voices()).length, { timeout: 30_000 }).toBe(3);
+  const majorStart = await window();
+  await session.client.call('midi.usb.in', { bytes: [0x90, 28, 127] }); // selector E: minor
+  await expect.poll(() => cf('ip_keyboard_status', 1), { timeout: 15_000 }).toBe(4);
+  // Normal note-off keeps the established one-second release tail. Wait for
+  // that tail to finish before asserting an absent major third.
+  await expect.poll(async () => (await voices()).length, { timeout: 60_000 }).toBe(3);
+  const minorStart = await window();
+  await session.client.call('pcm.tap', { action: 'capture_stop' });
+  capturing = false;
+  const chordRaw = fs.readFileSync(capture),
+    pitches = [28, 60, 63, 64, 67];
+  const major = chordWindow(chordRaw, majorStart, 8192, pitches);
+  const minor = chordWindow(chordRaw, minorStart, 8192, pitches);
+  for (const channel of [0, 1]) {
+    expect(major[channel]![3]!.amplitude).toBeGreaterThan(1e-4);
+    expect(minor[channel]![2]!.amplitude).toBeGreaterThan(1e-4);
+    expect(minor[channel]![3]!.amplitude).toBeLessThan(1e-5);
+    expect(minor[channel]![0]!.amplitude).toBeLessThan(1e-5); // selector never sounds
+    expect(voiceChange(major[channel]![1]!, minor[channel]![1]!)).toBeLessThan(0.001);
+    expect(voiceChange(major[channel]![4]!, minor[channel]![4]!)).toBeLessThan(0.001);
+  }
+  await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0, 0x80, 28, 0] });
+  await expect.poll(voices, { timeout: 60_000 }).toEqual([]);
+  console.info('CANOPY acceptance: silent selector and common-tone continuity passed');
+  await menuRow(13);
+  await key('YES'); // isolated learn session
+  await expect.poll(() => cf('ip_keyboard_status'), { timeout: 15_000 }).toBe(2);
+  await expect.poll(() => cf('ip_control'), { timeout: 30_000 }).toBe(3);
+  await session.client.call('midi.usb.in', { bytes: [0x90, 60, 90, 0x90, 67, 90, 0x90, 71, 90, 0x90, 76, 90] });
+  await expect.poll(() => cf('ip_keyboard_status', 3), { timeout: 15_000 }).toBe(4);
+  await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0, 0x80, 67, 0, 0x80, 71, 0, 0x80, 76, 0] });
+  await expect.poll(voices, { timeout: 60_000 }).toEqual([]);
+  fs.writeFileSync(
+    path.join(root, 'out/canopy-stage2-learn.json'),
+    JSON.stringify(await session.client.framebufferGet({ data: true, hash: true })),
+  );
+  await menuRow(2);
+  await key('YES'); // save exact displayed capture revision
+  await expect.poll(() => cf('ip_keyboard_status'), { timeout: 15_000 }).toBe(1);
+  await expect.poll(() => cf('ip_keyboard_status', 7), { timeout: 30_000 }).toBe(0);
+  expect(await cf('ip_keyboard_status', 8)).toBe(0);
+  // Read the namespaced value through the real settings service after flush.
+  const saved = await dk.request(CMD.SETTINGS, Uint8Array.of(0, 0, 0, 0, 2, 0));
+  expect(saved.status).toBe(0);
+  const settings = Buffer.from(saved.body);
+  expect(settings[0]! & 1).toBe(0); // no RAM-only changes
+  expect(settings.readUInt32BE(2)).toBeGreaterThan(0); // durable card revision
+  const record = settings.subarray(10),
+    used = record.readUInt32BE(10);
+  expect(record.length).toBeGreaterThanOrEqual(used);
+  let shape: Buffer | undefined;
+  for (let at = 18; at < used;) {
+    const size = record[at++]!,
+      name = record.subarray(at, at + size).toString('ascii');
+    at += size;
+    const length = record.readUInt16BE(at);
+    at += 2;
+    if (name === 'canopy/shapes/v1') shape = record.subarray(at, at + length);
+    at += length;
+  }
+  expect(shape?.length).toBe(48);
+  expect([...shape!.subarray(0, 9)]).toEqual([67, 80, 1, 8, 4, 0, 7, 11, 16]);
+  fs.writeFileSync(
+    path.join(root, 'out/canopy-stage2-settings.json'),
+    JSON.stringify({ sequence: settings.readUInt32BE(2), shape: shape!.toString('hex') }),
+  );
+  await menuRow(8);
+  await key('YES');
+  for (let i = 0; i < 10; i++) await key('DOWN', 100);
+  await key('YES'); // custom shape
+  await expect.poll(() => cf('ip_keyboard_status', 1), { timeout: 15_000 }).toBe(10);
+  await expect.poll(() => cf('ip_control'), { timeout: 30_000 }).toBe(3);
+  capture = path.join(root, 'out/canopy-stage2-learned.f32le');
+  await session.client.call('pcm.tap', { action: 'capture', path: capture });
+  capturing = true;
+  await session.client.call('midi.in', { bytes: [0x90, 62, 100] });
+  await expect.poll(async () => (await voices()).length, { timeout: 30_000 }).toBe(4);
+  const learnedStart = await window();
+  await session.client.call('pcm.tap', { action: 'capture_stop' });
+  capturing = false;
+  const learned = chordWindow(fs.readFileSync(capture), learnedStart, 8192, [62, 69, 73, 78]);
+  for (const channel of learned) for (const tone of channel) expect(tone.amplitude).toBeGreaterThan(1e-4);
+  await menuRow(14);
+  await key('YES'); // explicit panic while root is held
+  await expect.poll(voices, { timeout: 60_000 }).toEqual([]);
+  await expect.poll(() => cf('ip_control'), { timeout: 30_000 }).toBe(3);
+  await session.client.call('midi.in', { bytes: [0x90, 62, 100, 0x80, 62, 0] });
+  await expect.poll(async () => (await voices()).length, { timeout: 30_000 }).toBe(4); // old release tombstone
+  await session.client.call('midi.in', { bytes: [0x80, 62, 0] });
+  await expect.poll(voices, { timeout: 60_000 }).toEqual([]);
+  fs.writeFileSync(path.join(root, 'out/canopy-stage2-audio.json'), JSON.stringify({ major, minor, learned }));
+  await menuRow(13);
+  await key('YES');
+  await expect.poll(() => cf('ip_keyboard_status'), { timeout: 15_000 }).toBe(2);
+  await expect.poll(() => cf('ip_control'), { timeout: 30_000 }).toBe(3);
+  await session.client.call('midi.usb.in', { bytes: [0x90, 65, 90] });
+  await expect.poll(() => cf('ip_keyboard_status', 3), { timeout: 15_000 }).toBe(1);
+  await key('NO'); // cancel through the actual list back callback
+  await expect.poll(() => cf('ip_keyboard_status'), { timeout: 15_000 }).toBe(1);
+  await expect.poll(() => cf('ip_control'), { timeout: 30_000 }).toBe(3);
+  await session.client.call('midi.usb.in', { bytes: [0x80, 65, 0] });
+  await session.client.call('midi.in', { bytes: [0x90, 62, 100] });
+  await expect.poll(async () => (await voices()).length, { timeout: 60_000 }).toBe(4);
+  await session.client.call('midi.in', { bytes: [0x80, 62, 0] });
+  await expect.poll(voices, { timeout: 60_000 }).toEqual([]);
+  await session.expectNoFault('CANOPY Stage 2 keyboard modes');
+  console.info('CANOPY acceptance: learned shape, card save, transposition, panic and cancel passed');
   // Emulator-only corruption exercises the actual callback's rejection path.
   // The protected dispatcher must silence it, revoke routes and detach before
   // the coordinator releases the DSP allocation. CF code stays until reboot.
@@ -244,4 +374,4 @@ test('admitted CANOPY keyboard, stereo chord and fault retirement', async () => 
   expect(await peek(planSymbol(plan, '_iv_output'), 128)).toEqual(Buffer.alloc(128));
   await dk.info(); // unrelated USB control remains responsive after retirement
   await session.expectNoFault('admitted CANOPY fault retirement');
-}, 600_000);
+}, 900_000);

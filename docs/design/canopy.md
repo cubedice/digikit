@@ -1974,6 +1974,35 @@ Stage 1 is complete at its emulator acceptance boundary. The declared policy's
 these are instruction counts, not a measured hardware CPU budget. Stage 6 owns
 hardware timing and release approval.
 
+## Stage 2 implementation
+
+The optional single-instance adapter now owns a bounded CF musical mapper above
+its physical MIDI ledger. PLAY, ROOT + TYPE, LEARN TO ROOT, latch, twelve selector
+types, four fixed voicings, eight learned-shape slots, SAVE/CANCEL, PANIC and
+explicit keys-up recovery are implemented in the KEYBOARD setup menu. The
+existing four-voice/two-tail sine DSP and neutral control schema are unchanged.
+The mapper retains audible tokens for common tones; physical tokens remain in
+the ingress ledger, including stolen-key and reset tombstones. Mapped output and
+source-event retirement counts are separate and retries reuse immutable packets.
+
+Learned templates persist in one validated 48-byte namespaced settings record.
+Saving is RAM-immediate and card-deferred to the UI task; failure retains dirty
+state and exposes retry. Route/enable/mode/latch settings intentionally start at
+defaults after reboot. Presets, chord-name recognition/display, optional automatic
+voice leading and the final SRC pages remain later presentation/musical work;
+Stage 2 exposes the fixed close/open/inversion choices. There is no arp or pad
+oscillator claim in this stage.
+
+See [the adapter guide](../../modules/core/adapters/instrument-play/README.md)
+for exact selectors, ownership behavior, storage and recovery controls.
+Stage 2 is complete at its functional emulator acceptance boundary. The combined
+menu/audio test passes normal admission, independent-note continuity, silent
+selectors, common-tone continuity, four-note learning, durable settings readback,
+transposition, PANIC with old-release protection, NO cancellation and callback
+fault retirement with responsive USB. The final defensive output-buffer guard
+also passes the 29-case focused host suite and actual CF instruction probe.
+Hardware timing, coexistence and release approval remain Stage 6.
+
 ## Implementation stages and acceptance
 
 | Stage | Work | Exit evidence |
