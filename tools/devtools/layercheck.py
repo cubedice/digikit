@@ -506,6 +506,20 @@ def check_objects(root: Path, mods: list[Module]) -> list[Violation]:
                         and obj.get("sources") == ["src/dsp/loss.s"]
                         and name == "_instrument_session"
                     )
+                    or (
+                        m.id == "test/instrument-load"
+                        and mrel == "tests/fixtures/modules/instrument-load"
+                        and obj.get("path") == "build/probe-cf.dko.json"
+                        and obj.get("sources") == ["src/probe.c"]
+                        and name == "_dl_area"
+                    )
+                    or (
+                        m.id == "test/instrument-load"
+                        and mrel == "tests/fixtures/modules/instrument-load"
+                        and obj.get("path") == "build/enable-dsp.dko.json"
+                        and obj.get("sources") == ["src/dsp/enable.s"]
+                        and name in {"_instrument_session", "_ir_lifecycle_ready"}
+                    )
                     or name.startswith(("dkrt_", "dk_ui_", "dk_app_", "dkm_"))
                 )
                 if ANCHOR.match(name) or not ok:

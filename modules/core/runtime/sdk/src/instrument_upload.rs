@@ -7,13 +7,16 @@ use crate::{
     instrument_transport::{Driver, Error as LinkError, Progress as LinkProgress, Transport},
 };
 
+// Sparse local tags prevent GCC from embedding jump-table data in ColdFire text.
+// These values are not serialized on the wire.
+#[repr(u8)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum Progress {
-    Pending,
-    ReadyToInstall,
-    Recover { cause: Failure, command: Command },
-    Blocked(Failure),
-    Finished,
+    Pending = 0,
+    ReadyToInstall = 16,
+    Recover { cause: Failure, command: Command } = 32,
+    Blocked(Failure) = 48,
+    Finished = 64,
 }
 pub struct Upload<'a, 'image, T> {
     driver: &'a mut Driver<T>,

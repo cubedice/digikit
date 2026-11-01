@@ -43,6 +43,8 @@ impl<T: Transport> Coordinator<'_, T> {
     /// Output is written only after all planning checks pass; relocation errors
     /// leave it unchanged. Keep successful output alive through begin and drain.
     /// A failed attempt may consume a generation, but releases its reservations.
+    // Keep large loader frames separate from the firmware UI-task caller.
+    #[inline(never)]
     pub fn admit(
         &mut self,
         owner: u32,

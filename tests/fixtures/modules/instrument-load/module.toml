@@ -1,0 +1,30 @@
+[module]
+id = "test/instrument-load"
+version = "0.1.0"
+name = "Instrument load lifecycle proof"
+category = "test"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Emulator-only upload, initialize and retire probe; no public admission."
+requires = ["test/instrument-session"]
+conflicts = ["test/instrument-session-loss", "test/canopy-carrier"]
+ports = ["dt2-1.17"]
+[targets]
+"dt2-1.17" = "experimental"
+[[object]]
+path = "build/probe-cf.dko.json"
+sources = ["src/probe.c"]
+place = "cf.expansion"
+devices = ["dt2"]
+[[object]]
+path = "build/probe-dsp.dko.json"
+sources = ["src/dsp/probe.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+
+[[object]]
+path = "build/enable-dsp.dko.json"
+sources = ["src/dsp/enable.s"]
+place = "dsp.l2"
+devices = ["dt2"]

@@ -80,7 +80,18 @@ impl Descriptor {
         if bytes.len() != DESC_BYTES {
             return Err(Error::Size);
         }
-        let w = |i: usize| u32::from_le_bytes(bytes[i * 4..i * 4 + 4].try_into().unwrap());
+        // Volatile byte reads prevent ColdFire codegen from folding this into
+        // the toolchain's recursively lowered __bswapsi2 helper. The length
+        // check above bounds every descriptor word read below.
+        let w = |i: usize| {
+            let mut word = 0u32;
+            for byte in 0..4 {
+                word |= (unsafe { core::ptr::read_volatile(bytes.as_ptr().add(i * 4 + byte)) }
+                    as u32)
+                    << (8 * byte);
+            }
+            word
+        };
         if w(0) != MAGIC || w(1) != VERSION || w(2) != DESC_BYTES as u32 {
             return Err(Error::Header);
         }

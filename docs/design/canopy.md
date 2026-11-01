@@ -1888,6 +1888,34 @@ The first release distinguishes scopes explicitly:
 
 For full Sound/project integration, first prove stable identities and save/load/copy/paste/reload paths. A RAM Sound pointer or a pattern number is not a persistent key. Define behavior for missing modules and old schema versions before extending native serialization or adding a project sidecar. Keep that work separately releasable; do not imply that an attractive SRC page establishes native persistence.
 
+## Booted loader proof
+
+An emulator-only `test/instrument-load` fixture now drives the real coordinator
+through DKDS6 parsing, admission, DSP image upload, INSTALL, CREATE, publication,
+DETACH and memory/link release. The DT2 1.17 test checks uploaded bytes and callback
+state, and releases the 128-byte allocation only after acknowledged detach.
+The fixture enables private DSP lifecycle readiness after session binding; normal
+firmware still has no public V2 admission, machine route or audio dispatch.
+The live proof also exposed and fixed recursive ColdFire byte-swap lowering in
+descriptor decoding. All 167 SDK cases pass. See
+[the measured lifecycle result](../findings/78-canopy-carrier.md).
+
+### Stage 1 completion checklist
+
+- [x] Booted upload, CREATE, publication, DETACH and allocator release.
+- [x] Sine-bank keyboard ownership, pedal and independent velocity in the carrier fixture.
+- [x] Exact C-E, add G, release E sequence measured in final stereo PCM: settled
+  C/G phase and amplitude persist, and E disappears. This does not establish
+  uninterrupted samples throughout the release transient.
+- [ ] Replace the fixture's stock type-1 shadow with the admitted V2 process entry.
+- [ ] Connect normalized MIDI/configuration input and instance state to that process ABI.
+- [ ] Connect supported machine registration, explicit keyboard route and shared carrier ownership.
+- [ ] Run the complete Stage 1 acceptance through that integrated path, including
+  transition-sample continuity, pedal, velocity and fault retirement.
+
+Stage 1 remains open. Passing fixture proofs must not be reported as a playable
+V2 machine or as completion of the integrated lifecycle/audio path.
+
 ## Implementation stages and acceptance
 
 | Stage | Work | Exit evidence |

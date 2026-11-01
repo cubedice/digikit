@@ -17,21 +17,24 @@ pub enum Failure {
     Reply,
     Protocol,
 }
+// Sparse local tags prevent GCC from embedding jump-table data in ColdFire text.
+// These values are not serialized on the wire.
+#[repr(u8)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum Progress {
-    Pending,
+    Pending = 0,
     /// Transaction completed; None means an INSTALL receipt is in the mailbox.
-    Complete(Option<Command>),
+    Complete(Option<Command>) = 16,
     /// Old writes drained; rows quarantined. Drive this fresh detach command
     /// through the same mailbox before releasing anything.
     Recover {
         cause: Failure,
         command: Command,
-    },
+    } = 32,
     /// Drainage/identity could not be proved. Retain rows, memory and buffer.
     /// Reboot recovery must replace the entire boot namespace, never just IDs.
-    Blocked(Failure),
-    Finished,
+    Blocked(Failure) = 48,
+    Finished = 64,
 }
 
 pub struct Exchange<'a, T> {

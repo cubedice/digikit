@@ -442,3 +442,67 @@ def test_session_loss_fixture_private_import_is_narrow(
     found = layercheck.check_objects(tree, layercheck.load_modules(tree))
     assert len(found) == (1 if variant == "allowed" else 2)
     assert any("_ir_rows" in v.message for v in found)
+
+
+@pytest.mark.parametrize("variant", ["allowed", "directory", "id", "object", "source"])
+def test_instrument_load_fixture_private_import_is_narrow(
+    tree: Path, variant: str
+) -> None:
+    directory = "tests/fixtures/modules/instrument-load"
+    mid = "test/instrument-load"
+    obj = "build/probe-cf.dko.json"
+    source = "src/probe.c"
+    if variant == "directory":
+        directory = "tests/fixtures/modules/other"
+    elif variant == "id":
+        mid = "test/other"
+    elif variant == "object":
+        obj = "build/other.dko.json"
+    elif variant == "source":
+        source = "src/dsp/other.s"
+    module(
+        tree,
+        directory,
+        mid,
+        "test",
+        None,
+        f'\n[[object]]\npath = "{obj}"\nsources = ["{source}"]\nplace = "cf.expansion"\n',
+    )
+    dko(tree, f"out/cache/dko/{mid}/{obj}", ["_dl_area", "_ir_rows"])
+    found = layercheck.check_objects(tree, layercheck.load_modules(tree))
+    assert len(found) == (1 if variant == "allowed" else 2)
+    assert any("_ir_rows" in v.message for v in found)
+
+
+@pytest.mark.parametrize("variant", ["allowed", "directory", "id", "object", "source"])
+def test_instrument_load_gate_private_imports_are_narrow(
+    tree: Path, variant: str
+) -> None:
+    directory = "tests/fixtures/modules/instrument-load"
+    mid = "test/instrument-load"
+    obj = "build/enable-dsp.dko.json"
+    source = "src/dsp/enable.s"
+    if variant == "directory":
+        directory = "tests/fixtures/modules/other"
+    elif variant == "id":
+        mid = "test/other"
+    elif variant == "object":
+        obj = "build/other.dko.json"
+    elif variant == "source":
+        source = "src/dsp/other.s"
+    module(
+        tree,
+        directory,
+        mid,
+        "test",
+        None,
+        f'\n[[object]]\npath = "{obj}"\nsources = ["{source}"]\nplace = "dsp.l2"\n',
+    )
+    dko(
+        tree,
+        f"out/cache/dko/{mid}/{obj}",
+        ["_instrument_session", "_ir_lifecycle_ready", "_ir_rows"],
+    )
+    found = layercheck.check_objects(tree, layercheck.load_modules(tree))
+    assert len(found) == (1 if variant == "allowed" else 3)
+    assert any("_ir_rows" in v.message for v in found)

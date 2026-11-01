@@ -10,6 +10,7 @@ use dkrt_sdk::{
 };
 
 type Owner = Coordinator<'static, OwnedApi>;
+mod probe;
 static mut OWNER: Option<Owner> = None;
 // Bound atomically with the snapshot/transport set; not invoked until the
 // explicit emulator probe requests a bootstrap. Production loading stays disabled.
@@ -85,6 +86,7 @@ pub unsafe fn tick(now: u32) {
         } else if proof[0] == 3 && link == LinkProgress::Released {
             proof[0] = 4;
         }
+        if proof[0] == 4 { probe::tick(owner, link, now); }
     }
 }
 
@@ -129,7 +131,7 @@ pub unsafe fn bind_once() {
         OWNER = Some(Coordinator::new(
             Driver::new(transport, buffer),
             replies,
-            Loads::new(0),
+            Loads::new(if probe::present() { 1 } else { 0 }),
         ));
     }
 }

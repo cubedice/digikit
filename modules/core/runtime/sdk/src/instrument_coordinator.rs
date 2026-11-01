@@ -127,6 +127,8 @@ impl<'image, T: Transport> Coordinator<'image, T> {
 
     /// Start an already admitted, relocated image. A deadline covers each whole
     /// phase (all chunks or all rows); it is never restarted by a UI tick.
+    // Keep large loader frames separate from the firmware UI-task caller.
+    #[inline(never)]
     pub fn begin(
         &mut self,
         plan: Plan,
@@ -250,6 +252,8 @@ impl<'image, T: Transport> Coordinator<'image, T> {
         }
     }
 
+    // Keep large loader frames separate from the firmware UI-task caller.
+    #[inline(never)]
     pub fn tick(&mut self, now: u32) -> Progress {
         if let Err(cause) = self.observe_boot() {
             return Progress::Blocked(cause);

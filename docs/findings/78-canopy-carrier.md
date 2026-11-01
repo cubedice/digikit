@@ -1101,3 +1101,75 @@ repository pathcheck (256 stale references in 78 files); both edited documents
 pass focused pathcheck. Logs: `out/canopy-retire-build.log`,
 `out/canopy-retire-current.log`, `out/canopy-retire-docs.log` and
 `out/canopy-retire-changed.log`.
+
+
+## Live loader descriptor decoding [D]
+
+The emulator-only instrument-load fixture exposed recursive __bswapsi2 calls
+while decoding little-endian DSP descriptors on ColdFire. Direct cf_script
+calls stopped inside that helper with repeated return addresses and a falling
+stack pointer; the booted loader eventually faulted at PC zero. Descriptor
+reads now use explicit volatile bytes, as the mailbox serializer already does.
+The rebuilt runtime validates 43,508 instructions and all 167 SDK tests pass.
+The booted probe now passes parsing and admission, reserves 128 bytes, and
+reaches the upload lifecycle without a CPU fault. It subsequently fails closed
+and retains its allocation; upload/initialize/retirement completion is still
+unproven. See out/canopy-descriptor-host.log and out/canopy-descriptor-live.log.
+This fixture does not enable production V2 admission or modify hardware.
+
+A second booted run with failure classification reaches begin successfully,
+then reports coordinator Failure::Reply (diagnostic 103), with the 128-byte
+allocation retained and no published lookup. The remaining gap is registry
+reply validation during the live transaction, not descriptor parsing or memory
+admission. Log: out/canopy-load-stage-live.log.
+
+
+## Booted upload and retirement completion [D]
+
+The remaining reply rejection was status 1 (unsupported lifecycle): the new
+fixture had omitted the private DSP readiness gate. Its separate enable.s hook
+now sets readiness only after the session token is bound. The production
+registry remains cold-boot-zero and public V2 admission stays disabled. Layer
+checks restrict these private imports to the fixture's exact source and object.
+
+The booted DT2 1.17 test now passes in 81.75 seconds. It verifies all 80 uploaded
+image bytes, CREATE reason 1 written by the uploaded callback, published lookup,
+DETACH reason 4, detached DSP row, released allocator slot and released link.
+No processor fault occurs. Allocation is 128 bytes and the fixture has one
+instance with no MIDI route or audio dispatch. This is an emulator lifecycle
+proof, not hardware acceptance or a playable CANOPY module. Evidence:
+`out/canopy-load-enable-live.log`.
+
+Validation: 36 focused layer tests pass, tracked runtime artifacts are current,
+and both edited documents pass pathcheck. Changed-file checks pass 200 host
+tests (16 skipped), layering, lint, formatting and types. Preflight remains red
+on the existing 256 stale references in 78 files and six verification-tool
+failures (two unclassified task/tool cases and four missing DN2 database cases);
+221 verification-tool cases pass. Logs: `out/canopy-load-changed.log`,
+`out/canopy-load-layers.log`, `out/canopy-load-current.log` and
+`out/canopy-load-docs.log`.
+
+
+## Held C-E-G final-output measurement [D]
+
+The new canopy-chord booted test follows the exact stage-1 musical sequence:
+USB C4/E4, DIN G4 added, then USB E4 released while C/G remain physically held.
+It captures the final stereo f32 stream and fits all three note frequencies
+against one absolute sample clock in settled 8192-frame windows. Both channels
+retain C's complex amplitude across G's onset and C/G across E's release; the
+released E component falls below 0.1 percent of its prior amplitude. Measured
+relative changes are below 0.001 (the largest is G at about 0.000118). The
+159.36-second booted run passed the initial 0.02 bound; the retained test tightens
+that bound to 0.001, supported by the saved PCM measurement. Four host cases
+validate separation and detection of right-channel restart, gain loss and cutoff.
+This measures settled phase/gain retention; it does not prove every transition
+sample free of a brief glitch. It still runs the stock-type-shadow carrier
+fixture, not production V2 dispatch, and does not close Stage 1 by itself.
+Evidence: `out/canopy-chord-live.log`, `out/canopy-chord-continuity.json`.
+
+The stricter 0.001 bound was also checked against the saved measurements, with
+maximum relative change 0.000118200653. Type checking, lint and formatting pass.
+The incremental changed-file run passes 203 host cases; an unrelated 12 ms
+firmware-pause timing test fails once and passes its isolated rerun. Repository
+pathcheck retains the known stale-link failures; the edited finding passes.
+Logs: `out/canopy-chord-changed.log`, `out/canopy-chord-pause-retry.log`.
