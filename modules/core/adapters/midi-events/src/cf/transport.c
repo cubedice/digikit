@@ -254,30 +254,55 @@ int mt_reply_guard_expect(MtReplyGuard *g, uint32_t token,
     return 0;
 }
 
+int mt_reply_reordered(const MtReplyGuard *g, const uint32_t *reply)
+{
+    uint32_t behind;
+    if (!g->ready || !g->expected || g->invalid || !mt_reply_valid(reply) ||
+        reply[0] != MT_SESSION_REPLY_MAGIC || reply[12] != g->expected) return 0;
+    behind = g->heartbeat - reply[3];
+    return behind == 1 || behind == 2;
+}
+
+/* Sticky diagnostic for the first trust failure of a guard. No reply pointer
+ * escapes this call. This records why memory was retained; it cannot recover
+ * or weaken the session guard. reason, CF block, reply heartbeat, prior heartbeat,
+ * reply magic. Physical-reset invalidation is separately recorded by reset_seen. */
+volatile uint32_t mt_guard_fault[5];
+static void guard_fail(MtReplyGuard *g, const uint32_t *reply,
+                       uint32_t block, uint32_t reason)
+{
+    mt_guard_fault[0] = reason;
+    mt_guard_fault[1] = block;
+    mt_guard_fault[2] = reply ? reply[3] : 0;
+    mt_guard_fault[3] = g->heartbeat;
+    mt_guard_fault[4] = reply ? reply[0] : 0;
+    g->invalid = 1;
+}
+
 void mt_reply_guard_tick(MtReplyGuard *g, const uint32_t *reply, uint32_t block)
 {
     uint32_t delta;
     if (g->invalid) return;
     if ((g->expected && !g->ready && block - g->started >= MT_STALL_BLOCKS) ||
         (g->seen && block - g->block >= MT_STALL_BLOCKS)) {
-        g->invalid = 1; return;
+        guard_fail(g, reply, block, 1); return;
     }
     if (mt_reply_valid(reply)) {
         if (reply[0] == MT_SESSION_REPLY_MAGIC) {
-            if (!g->expected || reply[12] != g->expected) { g->invalid = 1; return; }
+            if (!g->expected || reply[12] != g->expected) { guard_fail(g, reply, block, 2); return; }
             if (!g->ready) {
                 if (reply[4] != 0x49525231u || reply[5] != g->sequence ||
                     reply[6] || reply[7] != g->expected || reply[8] != 5 ||
-                    reply[9] || reply[10] || reply[11]) { g->invalid = 1; return; }
+                    reply[9] || reply[10] || reply[11]) { guard_fail(g, reply, block, 3); return; }
             }
-        } else if (g->ready) { g->invalid = 1; return; }
+        } else if (g->ready) { guard_fail(g, reply, block, 4); return; }
 
         delta = reply[3] - g->heartbeat;
-        if (g->seen && delta >= 0x80000000u) { g->invalid = 1; return; }
+        if (g->seen && delta >= 0x80000000u) { guard_fail(g, reply, block, 5); return; }
         if (!g->seen || delta) {
             g->seen = 1; g->heartbeat = reply[3]; g->block = block;
             if (reply[0] == MT_SESSION_REPLY_MAGIC) g->ready = 1;
         }
     }
-    if (g->seen && block - g->block >= MT_STALL_BLOCKS) g->invalid = 1;
+    if (g->seen && block - g->block >= MT_STALL_BLOCKS) guard_fail(g, reply, block, 6);
 }

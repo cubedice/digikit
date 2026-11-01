@@ -1,0 +1,19 @@
+[module]
+id = "test/instrument-file"
+version = "0.1.0"
+name = "Normal V2 file load proof"
+category = "test"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Private bounded admission policy for the normal-file V2 loader."
+requires = ["test/instrument-load", "core/dynreg"]
+conflicts = []
+ports = ["dt2-1.17"]
+[targets]
+"dt2-1.17" = "experimental"
+[[object]]
+path = "build/policy.dko.json"
+sources = ["src/policy.c"]
+place = "cf.expansion"
+devices = ["dt2"]

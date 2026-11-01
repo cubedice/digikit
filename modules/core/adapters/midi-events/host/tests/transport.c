@@ -482,3 +482,37 @@ uint32_t mi_test_session_midi(void)
     CHECK(mt_reply_tick_guarded(&t, &m, r, 7, &g) == -1 && t.faults == 1);
     return 0;
 }
+
+uint32_t mi_test_reply_reordering(void)
+{
+    MtReplyGuard g = {0}; MiTransport t; MiLedger m;
+    uint32_t r[MT_REPLY_WORDS], rev[MI_TRACKS] = {1}, message, i;
+    mi_init(&m); mt_init(&t);
+    CHECK(mt_reply_guard_expect(&g, 0xdeadbeefu, 17, 0) == 0);
+    session_reply(r, 100); r[1] = m.epoch; reply_checksum(r);
+    CHECK(!mt_reply_reordered(&g, r));
+    mt_reply_guard_tick(&g, r, 1);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 1, &g) == 1);
+    CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
+    note(&m, 0, 60);
+    message = mt_prepare(&t, &m, rev, 2)[3];
+    for (i = 1; i <= 2; ++i) {
+        r[2] = message; r[3] = 100-i; reply_checksum(r);
+        CHECK(mt_reply_reordered(&g, r));
+        mt_reply_guard_tick(&g, 0, 2+i);
+        CHECK(mt_reply_tick_guarded(&t, &m, 0, 2+i, &g) == 0);
+        CHECK(m.count == 1 && !g.invalid && g.heartbeat == 100 && g.block == 1);
+    }
+    r[3] = 97; reply_checksum(r); CHECK(!mt_reply_reordered(&g, r));
+    r[3] = 99; r[12]++; reply_checksum(r); CHECK(!mt_reply_reordered(&g, r));
+    r[12]--; r[0] = MT_REPLY_MAGIC; r[12] = 0; reply_checksum(r);
+    CHECK(!mt_reply_reordered(&g, r));
+    session_reply(r, 101); r[1] = m.epoch; r[2] = message; reply_checksum(r);
+    CHECK(!mt_reply_reordered(&g, r));
+    mt_reply_guard_tick(&g, r, 5);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 5, &g) == 2 && !m.count);
+    r[3] = 100; reply_checksum(r); CHECK(mt_reply_reordered(&g, r));
+    mt_reply_guard_tick(&g, 0, 5+MT_STALL_BLOCKS);
+    CHECK(g.invalid); /* repeated stale copies never extend freshness */
+    return 0;
+}

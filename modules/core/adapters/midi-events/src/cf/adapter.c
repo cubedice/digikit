@@ -55,7 +55,7 @@ static void revalidate_routes(void)
 void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record)
 {
     uint32_t reply[MT_REPLY_WORDS], i, sr;
-    const uint32_t *packet;
+    const uint32_t *packet, *observed;
     volatile uint16_t *queue = (volatile uint16_t *)tx;
     if (!tx || (tx & 3u) || entry != 0x9fcu/2u) return;
     sr = dkrt_irq_mask();
@@ -69,12 +69,13 @@ void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_
         return;
     }
     mt_reply_read(record, reply);
-    mt_reply_guard_tick(&registry_guard, reply, frame_block);
+    observed = mt_reply_reordered(&registry_guard, reply) ? 0 : reply;
+    mt_reply_guard_tick(&registry_guard, observed, frame_block);
     registry_reply_valid = !registry_guard.invalid &&
-        (!registry_guard.expected || registry_guard.ready) && mt_reply_valid(reply) && reply[4] == 0x49525231u;
+        (!registry_guard.expected || registry_guard.ready) && mt_reply_valid(observed) && reply[4] == 0x49525231u;
     if (registry_reply_valid)
         for (i = 0; i < MT_REPLY_WORDS; ++i) registry_reply[i] = reply[i];
-    mt_reply_tick_guarded(&mi_transport, &mi_ledger, record ? reply : 0, frame_block, &registry_guard);
+    mt_reply_tick_guarded(&mi_transport, &mi_ledger, record ? observed : 0, frame_block, &registry_guard);
     revalidate_routes();
     packet = registry_guard.expected && (!registry_guard.ready || registry_guard.invalid) ? 0 :
         mt_prepare(&mi_transport, &mi_ledger, mi_transport.applied, frame_block);

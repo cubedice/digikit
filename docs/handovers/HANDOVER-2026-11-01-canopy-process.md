@@ -190,3 +190,30 @@ Still required for Stage 1: normal-file completion/reclamation, public CANOPY
 packing and a measured trusted admission policy, CF Sound/route readiness and
 DSP fault feedback, then final stereo continuity/pedal/velocity/fault-retirement
 acceptance through the admitted path. No hardware was changed.
+
+
+## Follow-up: normal-file V2 completion and stale reply copies
+
+The normal card loader now retains the CF image and DSP staging data until the
+coordinator completes. It publishes CF registrations only after CREATE, and on
+a failing CF initializer detaches before reclaiming either allocation. The
+trusted firmware policy is optional; absent policy still refuses V2 loads.
+This is single-instance, boot-only loading. Public V2 packing remains closed.
+
+Both booted DT2 regression cases pass (249.53 seconds): successful publication
+and link release, and E_INIT followed by acknowledged detach, memory release,
+and removal of the failed initializer's service handler. See
+out/canopy-normal-file-live.log. The earlier blocked result was a valid
+same-session reply two blocks behind the prior reply, not a reset: guard
+heartbeat 3478, incoming 3476, CF block 3482, reset_seen zero.
+
+The adapter discards only checksummed, bound-session replies one or two blocks
+behind; discarded copies cannot acknowledge work or refresh a deadline. Larger
+regressions, token changes, reset notifications and stalls remain terminal.
+The original deadline expires even under repeated stale copies. All 24 MIDI
+host cases and the actual ColdFire ownership/dispatch test pass; logs are
+out/canopy-reply-order-host.log and out/canopy-reply-order-coldfire.log.
+
+Still open: CANOPY admission budgets and packaging, explicit keyboard route and
+Sound ownership, DSP fault feedback/retirement, and integrated final stereo
+acceptance. No hardware changes. Stage 1 is not complete.

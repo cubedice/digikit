@@ -227,7 +227,7 @@ validate transaction identity and freshness; this getter does not enable routes
 or prove a live V2 module.
 
 Registry reply trust uses its own heartbeat guard, independent of MIDI epoch
-admission. A valid backwards heartbeat, a non-advancing/missing heartbeat for
+admission. An unfiltered backwards heartbeat, a non-advancing/missing heartbeat for
 `MT_STALL_BLOCKS`, or explicit MIDI transport recovery permanently invalidates
 registry snapshots until a cold CF boot. Valid heartbeat wraparound is accepted;
 corrupt replies cannot supply a new heartbeat. The getter returns -2 without
@@ -249,7 +249,8 @@ The first accepted version-2 reply must have a fresh heartbeat, the expected
 nonzero token and exact successful BIND_SESSION ACK: sequence, owner/row zero,
 generation equal to token, operation 5, status/capabilities zero. Subsequent ACKs
 may change, but every framed reply must retain the token and version. A mismatch,
-downgrade, backward heartbeat or expired deadline revokes trust permanently.
+downgrade, backward heartbeat outside the bounded stale-copy filter, or expired
+deadline revokes trust permanently.
 Malformed replies do not establish identity or refresh liveness; they lead to
 timeout if valid replies do not resume. No late frame revives an expired guard.
 
@@ -267,3 +268,20 @@ V2 loading remains disabled. These checks do not prove a live V2 instrument or
 hardware MIDI behavior. The loader must apply a UI-clock deadline when frame
 callbacks stop, arm before its first bind write, and never retry a possibly
 committed bind after an uncertain outcome.
+
+
+### Bounded stale reply copies
+
+The DT2 1.17 coupled normal-file load captured heartbeat 3476 after 3478, with
+the same bound session, no physical reset, and a still-advancing DSP heartbeat.
+The frame adapter discards a valid same-session reply exactly one or two blocks
+behind the guard's latest heartbeat. This applies only after session binding.
+It passes missing input to both the guard and MIDI ACK receiver and invalidates
+the cached registry snapshot for that frame. It never updates the last-progress
+block or accepts an ACK from the discarded copy. Persistent old copies still
+expire at the original deadline; larger regressions, a changed session, version
+downgrade and the physical-reset hook retain their existing terminal behavior.
+
+`mt_guard_fault` records reason, CF block, received heartbeat, prior heartbeat
+and reply magic for trust failure diagnostics. It cannot reset or reopen trust.
+The capture above is emulator evidence, not a new hardware timing claim.

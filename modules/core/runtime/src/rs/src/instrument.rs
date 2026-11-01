@@ -11,6 +11,7 @@ use dkrt_sdk::{
 
 type Owner = Coordinator<'static, OwnedApi>;
 mod probe;
+pub(crate) mod pending;
 static mut OWNER: Option<Owner> = None;
 // Bound atomically with the snapshot/transport set; not invoked until the
 // explicit emulator probe requests a bootstrap. Production loading stays disabled.
@@ -45,15 +46,18 @@ pub unsafe fn tick(now: u32) {
             && !crate::fxsend::busy();
         let link = owner.tick_link(now, idle);
         let proof = &mut *addr_of_mut!(DKRT_INSTRUMENT_SESSION);
-        if matches!(link, LinkProgress::Blocked(_)) {
+        if let LinkProgress::Blocked(cause) = link {
             proof[0] = 5;
+            pending::blocked(100 + cause as u32);
             return;
         }
         // A dense match emits an inline jump table on this ColdFire backend.
         if proof[0] == 0 {
             let probe = core::hint::black_box(instrument_session_probe as usize);
-            if probe != 0 {
-                let token = instrument_session_probe();
+            if probe != 0 || pending::occupied() {
+                // Module set is boot-only. A fresh CF/DSP boot owns this session;
+                // any observed DSP-only reset remains a blocked session.
+                let token = if pending::occupied() { 1 } else { instrument_session_probe() };
                 if token != 0 {
                     proof[1] = token;
                     proof[2] = now;
@@ -86,7 +90,11 @@ pub unsafe fn tick(now: u32) {
         } else if proof[0] == 3 && link == LinkProgress::Released {
             proof[0] = 4;
         }
-        if proof[0] == 4 { probe::tick(owner, link, now); }
+        if proof[0] == 5 { pending::blocked(200); }
+        if proof[0] == 4 {
+            if pending::occupied() { pending::tick(owner, link, now); }
+            else { probe::tick(owner, link, now); }
+        }
     }
 }
 
@@ -131,7 +139,7 @@ pub unsafe fn bind_once() {
         OWNER = Some(Coordinator::new(
             Driver::new(transport, buffer),
             replies,
-            Loads::new(if probe::present() { 1 } else { 0 }),
+            Loads::new(if probe::present() || pending::policy().is_some() { 1 } else { 0 }),
         ));
     }
 }

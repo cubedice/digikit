@@ -64,6 +64,11 @@ typedef struct {
  * ACK plus version/token. Deadline uses CF frame blocks, not a UI wall clock. */
 int mt_reply_guard_expect(MtReplyGuard *guard, uint32_t token,
                           uint32_t sequence, uint32_t block);
+/* A DT2 coupled load observed reply copies two blocks behind after link traffic. Only a valid
+ * already-bound SAME-session reply in that narrow backward window is stale.
+ * Treat it as missing everywhere: no ACK, no cached registry reply, no deadline
+ * refresh. Larger regressions and any changed/missing session still fault. */
+int mt_reply_reordered(const MtReplyGuard *guard, const uint32_t *reply);
 void mt_reply_guard_tick(MtReplyGuard *guard, const uint32_t *reply, uint32_t block);
 /* Call after guard_tick on the same snapshot/block. An armed session must bind
  * before ACKs are consumed; sticky trust loss faults MIDI ownership immediately. */

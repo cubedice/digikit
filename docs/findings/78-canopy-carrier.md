@@ -1270,3 +1270,15 @@ output, bounded replacement tails and ownership-loss silence. Legacy dispatch
 priority is preserved. This is component evidence, not booted final stereo
 acceptance or public keyboard-route readiness. See the November 1 CANOPY handover
 for test counts and outstanding Stage 1 integration.
+
+
+### [D] Normal-file V2 completion and bounded stale reply copies (2026-11-01)
+
+The DT2 1.17 normal-file regression passes both publication/link release and
+failed-CF-init detach/reclamation (out/canopy-normal-file-live.log, 249.53 s).
+A prior failure captured a checksummed same-session heartbeat 3476 after 3478
+at CF block 3482, reset_seen=0, with DSP heartbeat subsequently advancing.
+The adapter now discards one/two-block stale copies without ACK or deadline
+progress; larger regressions, token changes, reset and stall remain terminal.
+24 host cases and the ColdFire adapter dispatch test pass. This is emulator
+evidence; no hardware timing claim or playable CANOPY acceptance is implied.

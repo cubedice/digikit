@@ -1943,8 +1943,9 @@ are not yet connected to a public machine package, live route owner or final car
 - [ ] Run the complete Stage 1 acceptance through that integrated path, including
   transition-sample continuity, pedal, velocity and fault retirement.
 
-The normal-file V2 load path and single-instance playback adapter are now under
-integration. Component checks cover an admitted process receiving normalized
+The normal-file V2 loader now passes booted publication and failed-initializer
+reclamation tests under a private diagnostic policy. The single-instance playback
+adapter is still under integration. Component checks cover an admitted process receiving normalized
 notes, once-per-block rendering, raw carrier copying, replacement tails and
 legacy voice priority. The adapter is not in a default patch set; public packing,
 CF route readiness/fault feedback and final stereo acceptance remain open.

@@ -156,11 +156,14 @@ unsafe fn load_inner(path: *const u8) -> i32 {
         contract::FX,
         contract::SERVICE,
     ];
+    let v2 = *f.add(H_CONTRACT + 2) == 2;
+    if v2 && (crate::instrument::pending::policy().is_none()
+        || crate::instrument::pending::occupied()) { return E_CONTRACT; }
     let mut c = 0;
     while c < 4 {
         let major = *f.add(H_CONTRACT + 2 * c);
         let minor = *f.add(H_CONTRACT + 2 * c + 1);
-        if major != 0 && (major != rt[c].0 || minor > rt[c].1) {
+        if major != 0 && !((c == 1 && v2 && minor == 0) || (major == rt[c].0 && minor <= rt[c].1)) {
             return E_CONTRACT;
         }
         c += 1;
@@ -246,7 +249,8 @@ unsafe fn load_inner(path: *const u8) -> i32 {
         if idx >= SLOTS as u32 || fo >= image_size || mask & (1 << idx) != 0 {
             return E_FORMAT;
         }
-        if read_volatile(addr_of!(s.slots[idx as usize])) != 0 {
+        if read_volatile(addr_of!(s.slots[idx as usize])) != 0
+            || crate::instrument::pending::slots_busy(1 << idx) {
             return E_SLOT;
         }
         mask |= 1 << idx;
@@ -265,11 +269,17 @@ unsafe fn load_inner(path: *const u8) -> i32 {
     // the DSP section, if any
     let (dsp_off, dsp_size) = (rd32(f.add(H_DSP_OFF)), rd32(f.add(H_DSP_SIZE)));
     let mut job = dsp::Job::empty();
-    if dsp_size != 0 {
+    let mut output_size = 0;
+    if v2 {
+        if dsp_size == 0 || !in_file(dsp_off, dsp_size, size) { return E_FORMAT; }
+        let bytes = core::slice::from_raw_parts(f.add(dsp_off as usize), dsp_size as usize);
+        let Some(limits) = crate::instrument::pending::descriptor_limits() else { return E_CONTRACT; };
+        let Ok(section) = instrument_section::Section::parse(bytes, crate::device(), limits) else { return E_FORMAT; };
+        if crate::assign::resolve_instruments(&section, BOOT_IDX).is_err() { return E_FORMAT; }
+        output_size = section.memory_request().image_bytes;
+    } else if dsp_size != 0 {
         let r = dsp::check(f, dsp_off, dsp_size, size, &mut job);
-        if r != OK {
-            return r;
-        }
+        if r != OK { return r; }
     }
     // already loaded; a free record
     let rec = match capacity::pick_record(MAX_MODULES, |i| s.modules[i].used != 0, |i| cstr_eq(s.modules[i].name.as_ptr(), name)) {
@@ -278,19 +288,24 @@ unsafe fn load_inner(path: *const u8) -> i32 {
     };
 
     // ---- allocate, copy, relocate, zero bss ----
-    // The DSP range, the relocated DSP image and the voice rows come first: nothing else is allocated yet if they fail.
-    if dsp_size != 0 {
+    // V2 owns retained registry/section/output bytes in the CF allocation; the
+    // boot staging buffer may be reused immediately by the next selected module.
+    let reg_at = (total + 15) & !15;
+    let section_at = reg_at + ((reg_size + 15) & !15);
+    let output_at = section_at + ((dsp_size + 15) & !15);
+    let allocation = if v2 { output_at.checked_add(output_size).unwrap_or(u32::MAX) } else { total };
+    if dsp_size != 0 && !v2 {
         let r = dsp::reserve(rec, &job);
-        if r != OK {
-            return r;
-        }
+        if r != OK { return r; }
     }
-    let mem = arena::alloc(total);
+    let mem = arena::alloc(allocation);
     if mem.is_null() {
-        if dsp_size != 0 {
-            dsp::cancel(rec);
-        }
+        if dsp_size != 0 && !v2 { dsp::cancel(rec); }
         return E_NOMEM;
+    }
+    if v2 {
+        core::ptr::copy_nonoverlapping(reg, mem.add(reg_at as usize), reg_size as usize);
+        core::ptr::copy_nonoverlapping(f.add(dsp_off as usize), mem.add(section_at as usize), dsp_size as usize);
     }
     let base = mem as u32;
     i = 0;
@@ -343,7 +358,7 @@ unsafe fn load_inner(path: *const u8) -> i32 {
         i += 1;
     }
     m.base = base;
-    m.size = total;
+    m.size = allocation;
     m.fini = if fini == NONE { 0 } else { base + fini };
     (*addr_of_mut!(crate::DKRT_MENUS))[rec] = if menu == NONE { 0 } else { base + menu };
     m.slot_mask = 0;
@@ -366,6 +381,15 @@ unsafe fn load_inner(path: *const u8) -> i32 {
     }
     m.slot_mask = 0;
     let initaddr = if init == NONE { 0 } else { base + init };
+    if v2 {
+        let menuaddr = (*addr_of_mut!(crate::DKRT_MENUS))[rec];
+        (*addr_of_mut!(crate::DKRT_MENUS))[rec] = 0;
+        m.used = 2; // occupied, not published
+        crate::instrument::pending::queue(crate::instrument::pending::Pending::new(
+            rec, BOOT_IDX, base + reg_at, reg_size, base + section_at, dsp_size,
+            base + output_at, output_size, initaddr, menuaddr, mask, fns));
+        return LOADING;
+    }
     if dsp_size != 0 {
         // the CF part goes live now (rows in place before the machine view is built); the DSP code and the voice rows follow
         // when the frames flow
@@ -407,7 +431,7 @@ unsafe fn load_inner(path: *const u8) -> i32 {
 /// calling load owner: this routine must never release DSP or module memory.
 /// A V2 owner may call it only after CREATE ACK and must detach before reclaiming
 /// storage on failure. Current legacy callers cancel their unsent reservation.
-unsafe fn publish_cf(
+pub(crate) unsafe fn publish_cf(
     rec: usize,
     reg: *const u8,
     reg_size: u32,
@@ -417,6 +441,10 @@ unsafe fn publish_cf(
 ) -> i32 {
     let s = st();
     let owner = rec as u8 + 1;
+    // Deferred V2 publication can follow other selected modules. Revalidate
+    // against their now-live registry before writing any row.
+    let checked = crate::registry::check(reg, reg_size);
+    if checked != OK { return checked; }
     crate::files::init_begin(rec);
     // registry rows before `init` (which may reuse the staging buffer through `store_read`)
     let r = crate::registry::apply(owner, reg, reg_size, s.modules[rec].base);
