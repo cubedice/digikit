@@ -20,6 +20,7 @@ pub enum Error {
     Busy,
     Blocked,
     Budget,
+    Load(crate::instrument_registry::Error),
     Image(crate::instrument_image::Error),
 }
 
@@ -81,6 +82,7 @@ pub struct Coordinator<'image, T> {
     mailbox: Mailbox,
     loads: Loads,
     job: Option<Job<'image>>,
+    retirement: Option<(Ticket, exchange::PumpState)>,
     blocked: Option<Failure>,
     handoff: Handoff,
     costs: [Option<admission::Cost>; 32],
@@ -98,6 +100,7 @@ impl<'image, T: Transport> Coordinator<'image, T> {
             loads,
             mailbox: Mailbox::new(),
             job: None,
+            retirement: None,
             blocked: None,
             handoff: Handoff::Released,
             costs: [None; 32],
@@ -135,6 +138,7 @@ impl<'image, T: Transport> Coordinator<'image, T> {
             return Err(Error::Blocked);
         }
         if self.job.is_some()
+            || self.retirement.is_some()
             || self.session_pending()
             || matches!(
                 self.handoff,
@@ -168,6 +172,37 @@ impl<'image, T: Transport> Coordinator<'image, T> {
             budget,
             recovered: None,
         });
+        Ok(())
+    }
+
+    /// Retire a published load while retaining its storage and process budget.
+    /// Caller first closes MIDI admission and acquires the exclusive link. Only
+    /// the matching detach completion permits release_memory; errors retain it.
+    pub fn retire(&mut self, ticket: Ticket, now: u32, budget: u32) -> Result<(), Error> {
+        if self.observe_boot().is_err() {
+            return Err(Error::Blocked);
+        }
+        if self.job.is_some()
+            || self.retirement.is_some()
+            || self.session_pending()
+            || matches!(
+                self.handoff,
+                Handoff::Acquire { .. } | Handoff::Release { .. }
+            )
+            || !self.driver.is_idle()
+        {
+            return Err(Error::Busy);
+        }
+        if !self.driver.transaction_ready() {
+            return Err(Error::NotOwned);
+        }
+        let state = exchange::PumpState::new(now, budget).ok_or(Error::Budget)?;
+        let command = self.loads.retire(ticket).map_err(Error::Load)?;
+        if self.mailbox.begin(command, &self.loads, true).is_err() {
+            self.blocked = Some(Failure::Protocol);
+            return Err(Error::Blocked);
+        }
+        self.retirement = Some((ticket, state));
         Ok(())
     }
 
@@ -221,6 +256,33 @@ impl<'image, T: Transport> Coordinator<'image, T> {
         }
         if self.session_pending() {
             return self.tick_session(now);
+        }
+        if let Some((ticket, state)) = self.retirement.as_mut() {
+            let outcome = state.tick(
+                &mut self.driver,
+                &mut self.mailbox,
+                &mut self.replies,
+                &mut self.loads,
+                now,
+            );
+            let cause = match outcome {
+                exchange::Progress::Pending => return Progress::Pending,
+                exchange::Progress::Complete(Some(Command::Release(done))) if done == *ticket => {
+                    self.retirement = None;
+                    return Progress::Complete {
+                        command: Command::Release(done),
+                        recovered: None,
+                    };
+                }
+                exchange::Progress::Blocked(cause)
+                | exchange::Progress::Recover { cause, .. } => cause,
+                _ => Failure::Protocol,
+            };
+            if cause == Failure::Boot {
+                self.invalidate_boot();
+            }
+            self.blocked = Some(cause);
+            return Progress::Blocked(cause);
         }
         let Some(job) = self.job.as_mut() else {
             return Progress::Idle;
@@ -334,6 +396,7 @@ impl<T: crate::instrument_lease::LeaseTransport> Coordinator<'_, T> {
             return Err(Error::Blocked);
         }
         if self.job.is_some()
+            || self.retirement.is_some()
             || self.session_pending()
             || !matches!(
                 (acquire, self.handoff),
@@ -411,7 +474,10 @@ impl<T: crate::instrument_lease::LeaseTransport> Coordinator<'_, T> {
         if self.blocked.is_some() {
             return Err(crate::instrument_lease::Error::Uncertain);
         }
-        if self.job.is_some() || self.session_pending() {
+        if self.job.is_some()
+            || self.retirement.is_some()
+            || self.session_pending()
+        {
             return Err(crate::instrument_lease::Error::Busy);
         }
         let result = self.driver.claim_link();
@@ -427,7 +493,10 @@ impl<T: crate::instrument_lease::LeaseTransport> Coordinator<'_, T> {
         if self.blocked.is_some() {
             return Err(crate::instrument_lease::Error::Uncertain);
         }
-        if self.job.is_some() || self.session_pending() {
+        if self.job.is_some()
+            || self.retirement.is_some()
+            || self.session_pending()
+        {
             return Err(crate::instrument_lease::Error::Busy);
         }
         let result = self.driver.release_link();

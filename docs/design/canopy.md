@@ -1556,6 +1556,15 @@ already resets every track. See the bound-session MIDI section in
 [carrier findings](../findings/78-canopy-carrier.md). This is delivery to configured
 test banks, not public V2 installation/initialization or final CANOPY audio.
 
+The coordinator now has an explicit retirement path for successfully published
+loads. It removes lookup visibility before sending DETACH, serializes retirement
+against admission, upload and link handoff, and retains memory and processing
+budget until a matching completion. Rejected detach, timeout and boot/session
+loss block further retirement and release. All 167 SDK tests pass, including a
+bound-session install/initialize/retire cycle with monotonic mailbox sequences
+and three retirement failure cases. This closes a host lifecycle gap needed by
+the next live installation probe; that probe is not yet implemented.
+
 Only after those pieces pass together may a build advertise V2 support.
 
 Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation

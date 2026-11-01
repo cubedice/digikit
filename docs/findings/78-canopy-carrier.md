@@ -1074,3 +1074,30 @@ patch (unclassified patch:toolchains task, unclassified dsp_reset_probe tool,
 and four cases requiring the unavailable dn2-1.11 analysis database). The
 verification-tool file has 221 passing cases. See `out/canopy-bound-changed.log`
 and `out/runs/test-changed/20261101-071902` for the complete result.
+
+
+## Published-instrument retirement [D]
+
+The SDK coordinator now drives explicit retirement after successful publication,
+not only failed-load cleanup. Retirement removes lookup visibility, retains the
+allocation and processing reservation, and blocks admission, image starts and
+link handoff until the exact detach completion. The caller must close MIDI
+admission first and hold the exclusive link. Only a completed detach permits
+release_memory; rejection, missing replies and boot/session loss retain storage
+and prevent retry or link release. Invalid deadlines and non-live tickets are
+rejected before beginning retirement.
+
+All 167 SDK cases pass (`out/canopy-retire-sdk.log`). The new bound-session test
+runs actual coordinator upload/install/initialize/retire logic with simulated
+providers and verifies mailbox operation sequences 1 through 4. Failure cases
+cover rejected detach, reply timeout and boot loss, including attempted revival.
+This is host evidence, not a live firmware installation or public V2 capability.
+The emulator installation probe still needs implementation.
+
+The ColdFire runtime rebuild validates 33,344 decoded instructions, and all
+runtime artifacts are current. Changed-file preflight passes 200 host tests
+(16 skipped), layering, formatting and types. Its only failure is the existing
+repository pathcheck (256 stale references in 78 files); both edited documents
+pass focused pathcheck. Logs: `out/canopy-retire-build.log`,
+`out/canopy-retire-current.log`, `out/canopy-retire-docs.log` and
+`out/canopy-retire-changed.log`.

@@ -168,6 +168,7 @@ impl<T: Transport> Coordinator<'_, T> {
             return Err(AdmissionError::Coordinator(Error::Blocked));
         }
         if self.job.is_some()
+            || self.retirement.is_some()
             || self.session_pending()
             || !self.driver.is_idle()
             || matches!(

@@ -1539,3 +1539,93 @@ fn bound_session_loss_during_upload_retains_memory_and_pending_source() {
         assert!(w.owned);
     });
 }
+
+
+fn published_session_owner() -> (Coordinator<'static, Link>, Ticket, [u32; 1], [u32; 1]) {
+    use crate::instrument_section::{tests as section_test, Section};
+    let mut owner = bootstrap_owner();
+    unsafe { owner.begin_session(expect_session, 0x10203040, 2, 100) }.unwrap();
+    for now in 3..10 { owner.tick(now); }
+    assert!(owner.session_bound());
+    let bytes = section_test::fixture();
+    let section = Section::parse(&bytes, 1, section_test::limits()).unwrap();
+    let output = Box::leak(Box::new([0; 64]));
+    let mut offsets = [0];
+    let mut lengths = [0];
+    let mut ledger = Ledger { base: 0x20010000, bytes: 512,
+        offsets: &mut offsets, lengths: &mut lengths };
+    let plan = owner.admit(0, &section, &[20], &admission_limits(),
+        &mut ledger, output, |_| Some(0xb80000)).unwrap();
+    let ticket = plan.ticket();
+    owner.begin(plan, output, 10, 100).unwrap();
+    for now in 11..100 {
+        if owner.tick(now) == (Progress::Complete {
+            command: Command::Publish(ticket), recovered: None }) {
+            return (owner, ticket, offsets, lengths);
+        }
+    }
+    panic!("load did not publish");
+}
+
+#[test]
+fn published_retirement_retains_memory_until_exact_detach_ack() {
+    let (mut owner, ticket, mut offsets, mut lengths) = published_session_owner();
+    let mut ledger = Ledger { base: 0x20010000, bytes: 512,
+        offsets: &mut offsets, lengths: &mut lengths };
+    assert_eq!(owner.retire(ticket, 100, 0), Err(Error::Budget));
+    assert!(owner.loads().lookup(20).is_some());
+    owner.retire(ticket, 100, 100).unwrap();
+    assert!(owner.loads().lookup(20).is_none());
+    assert_eq!(owner.retire(ticket, 101, 100), Err(Error::Busy));
+    assert_eq!(owner.request_link_release(101, 100), Err(Error::Busy));
+    assert!(owner.release_memory(ticket, &mut ledger).is_err());
+    assert_eq!(ledger.lengths[0], 128);
+    assert!(owner.process_reserved() > 0);
+    for now in 101..200 {
+        match owner.tick(now) {
+            Progress::Pending => assert_eq!(ledger.lengths[0], 128),
+            Progress::Complete { command: Command::Release(done), recovered: None } => {
+                assert_eq!(done, ticket);
+                owner.release_memory(ticket, &mut ledger).unwrap();
+                assert_eq!(ledger.lengths[0], 0);
+                assert_eq!(owner.process_reserved(), 0);
+                assert!(matches!(owner.retire(ticket, now, 100), Err(Error::Load(_))));
+                owner.request_link_release(now, 100).unwrap();
+                assert_eq!(owner.tick_link(now + 1, true), LinkProgress::Released);
+                WIRE.with_borrow(|w| assert_eq!(w.operations.iter().map(|x| (x.0, x.1)).collect::<Vec<_>>(),
+                    [(1, 5), (2, 4), (3, 2), (4, 3)]));
+                return;
+            }
+            other => panic!("unexpected retirement: {other:?}"),
+        }
+    }
+    panic!("retirement did not finish");
+}
+
+#[test]
+fn retirement_failure_cannot_release_or_retry_live_storage() {
+    for loss in 0..3 {
+        let (mut owner, ticket, mut offsets, mut lengths) = published_session_owner();
+        let mut ledger = Ledger { base: 0x20010000, bytes: 512,
+            offsets: &mut offsets, lengths: &mut lengths };
+        owner.retire(ticket, 100, 20).unwrap();
+        WIRE.with_borrow_mut(|w| match loss {
+            0 => w.reject = 3,
+            1 => w.silent = true,
+            _ => w.boot_lost = true,
+        });
+        let mut blocked = false;
+        for now in 101..150 {
+            if matches!(owner.tick(now), Progress::Blocked(_)) { blocked = true; break; }
+        }
+        assert!(blocked);
+        assert_eq!(owner.retire(ticket, 150, 20), Err(Error::Blocked));
+        assert_eq!(owner.request_link_release(150, 20), Err(Error::Blocked));
+        assert!(owner.release_memory(ticket, &mut ledger).is_err());
+        assert_eq!(ledger.lengths[0], 128);
+        assert!(owner.process_reserved() > 0);
+        assert!(owner.loads().lookup(20).is_none());
+        WIRE.with_borrow_mut(|w| { w.reject = 0; w.silent = false; w.boot_lost = false; });
+        assert!(matches!(owner.tick(151), Progress::Blocked(_)));
+    }
+}

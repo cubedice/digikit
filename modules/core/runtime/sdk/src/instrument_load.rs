@@ -114,6 +114,12 @@ impl Loads {
         Ok(Command::Publish(ticket))
     }
 
+    /// Begin retirement of a published instance, never a prepared/in-flight load.
+    pub fn retire(&mut self, ticket: Ticket) -> Result<Command, Error> {
+        self.at(ticket, LIVE)?;
+        self.cancel(ticket)
+    }
+
     /// Pre-transfer cancellation releases immediately. Once work may be in flight,
     /// hide admissions and retain every row until a detach ACK; failure to send a
     /// detach command must be reported via `timeout`, not by freeing storage.
