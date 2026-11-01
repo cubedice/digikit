@@ -6,7 +6,13 @@ The runtime's existing USB hook composes an optional `mi_channel_message` callba
 
 The fixed ownership ledger has 32 port/channel routes, 128 physical press records and a 128-event ring. Repeated pitches pair FIFO by token. Releases follow the original track/generation after rerouting; reset, panic and ignored sequencer-mode presses retain tombstones until their physical release. A capacity failure resets all configured instrument instances and quarantines their routes until explicit recovery with keys released. It does not claim unrelated stock routes.
 
-Events remain in the ring until an exact epoch/sequence ACK. Instance resets use reserved priority bits outside the ring; ordinary dequeue waits for reset ACK. Epoch and generation checks reject stale acknowledgements. Token exhaustion requires explicit recovery into a new stream epoch. All mutation is serialized by the CF adapter's interrupt mask; the frame sender uses the same critical-section contract. The readiness callback must be bounded, allocation-free and nonblocking.
+Events remain in the ring until an exact epoch/sequence ACK. Instance resets use reserved priority bits outside the ring; ordinary dequeue waits for reset ACK. Epoch and generation checks reject stale acknowledgements. Token exhaustion requires explicit recovery into a new stream epoch. All mutation is serialized by the CF adapter's interrupt mask; the frame sender uses the same critical-section contract. The readiness callback must be bounded, read-only, allocation-free and nonblocking;
+it runs with interrupts masked and must not call UI or storage services. Readiness
+is rechecked before each routed channel message and before each frame sends queued
+events (once per enabled track). Lost readiness disables that track's routes,
+retains physical-key tombstones and requests a priority reset. It does not silently
+reopen when readiness returns: reset/configuration acknowledgement and an explicit
+route-enable call are still required.
 
 ## Ordered transport components
 

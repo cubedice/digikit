@@ -28,6 +28,30 @@ static void initialize(void)
     }
 }
 
+/* Called only inside the existing critical section. Readiness providers must
+ * be bounded, read-only and IRQ-safe: no I/O, allocation or UI calls. Revocation
+ * retains physical-key tombstones and uses the reserved reset path. */
+static void revalidate_track(uint32_t track)
+{
+    if (track < MI_TRACKS && (!instrument_midi_ready ||
+        !mi_transport.applied[track] ||
+        !instrument_midi_ready(track, mi_ledger.epoch, mi_ledger.generations[track])))
+        mi_reset_track(&mi_ledger, track);
+}
+
+static void revalidate_routes(void)
+{
+    uint32_t i, seen = 0;
+    for (i = 0; i < MI_ROUTES; ++i) {
+        MiRoute *route = &mi_ledger.routes[i];
+        if (route->enabled && route->track < MI_TRACKS &&
+            !(seen & (1u << route->track))) {
+            seen |= 1u << route->track;
+            revalidate_track(route->track);
+        }
+    }
+}
+
 void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record)
 {
     uint32_t reply[MT_REPLY_WORDS], i, sr;
@@ -51,6 +75,7 @@ void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_
     if (registry_reply_valid)
         for (i = 0; i < MT_REPLY_WORDS; ++i) registry_reply[i] = reply[i];
     mt_reply_tick_guarded(&mi_transport, &mi_ledger, record ? reply : 0, frame_block, &registry_guard);
+    revalidate_routes();
     packet = registry_guard.expected && (!registry_guard.ready || registry_guard.invalid) ? 0 :
         mt_prepare(&mi_transport, &mi_ledger, mi_transport.applied, frame_block);
     ++frame_block;
@@ -189,6 +214,10 @@ int mi_channel_message(const uint8_t *msg, uint32_t len, uint32_t source)
     else if (source == 8 || source == 16) port = 1; /* DIN */
     else return 0;
     sr = dkrt_irq_mask();
+    if (msg[0] >= 0x80u && msg[0] < 0xf0u) {
+        MiRoute *route = &mi_ledger.routes[port * 16u + (msg[0] & 15u)];
+        if (route->enabled) revalidate_track(route->track);
+    }
     consumed = mi_message(&mi_ledger, port, msg, len);
     dkrt_irq_restore(sr);
     return consumed;

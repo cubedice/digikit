@@ -60,8 +60,25 @@ uint32_t mi_test_dispatch(void)
     CHECK(!dkrt_midi_dispatch(&clock, 1, 2));
     CHECK(!dkrt_midi_dispatch(note, 3, 32));
     CHECK(upload_calls == 3);
-    mi_instance_reset(0);
-    CHECK(mi_ledger.reset_mask == 1 && masks == restores);
+    /* An existing route must lose admission before new input, even if the
+     * owning module did not explicitly disable it. Keep old-key pairing. */
+    CHECK(dkrt_midi_dispatch(note, 3, 2));
+    ready = 0;
+    CHECK(dkrt_midi_dispatch(off, 3, 2));
+    CHECK(mi_ledger.reset_mask == 1 && !mi_ledger.routes[0].enabled);
+    CHECK(mi_ledger.routes[16].enabled); /* unrelated DIN track not touched */
+    CHECK(mi_ledger.generations[0] == 2);
+    CHECK(dkrt_midi_dispatch(note, 3, 2)); /* held while disabled: tombstone */
+    CHECK(dkrt_midi_dispatch(off, 3, 2));
+    CHECK(mi_ledger.generations[0] == 2); /* no repeated generation churn */
+    /* Frame-time revocation catches a quiet keyboard and queued old events. */
+    for (i = 0; i < 0x55e*2; ++i) queue[i] = 0;
+    instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0);
+    CHECK(mi_ledger.reset_mask == ((1u << 15) | 1u));
+    CHECK(!mi_ledger.routes[16].enabled);
+    CHECK(mi_transport.pending == MT_RESET);
+    CHECK(masks == restores);
+    ready = 1;
     /* Exercise the actual frame callback after the dispatch case, in this same
      * test to avoid concurrent host tests mutating the adapter's globals. */
     mi_init(&mi_ledger); mt_init(&mi_transport);

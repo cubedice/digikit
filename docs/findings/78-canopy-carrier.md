@@ -1205,3 +1205,19 @@ processor suite has 30 passing tests, including normalized packet note/pedal/ben
 behavior, full batches and silent rejection without instance mutation for stale
 or corrupt input. Production receiver ordering, live route/configuration ownership
 and final carrier output remain unconnected. Stage 1 is still open.
+
+
+## Route readiness revocation (2026-11-01)
+
+[D] The production MIDI adapter now rechecks readiness before routed input and
+before outgoing frames, once per enabled track. Loss disables routes and schedules
+the reserved reset while preserving physical-key tombstones. The 23 host cases
+and ColdFire ownership/dispatch test pass, including quiet-keyboard revocation.
+The rebuilt CF object has 2008 decoded instructions. The booted stock-carrier
+chord test passes in 158.88 seconds: held C/G retain phase and gain on E release.
+Logs: `out/canopy-route-readiness.log`, `out/canopy-route-coldfire.log`,
+`out/canopy-route-build.log`, `out/canopy-route-chord.log`.
+
+[O] This is route-lifetime protection and fixture regression evidence. Production
+V2 loading, explicit machine/route selection and shared-carrier integration are
+still required before Stage 1 final-output acceptance.

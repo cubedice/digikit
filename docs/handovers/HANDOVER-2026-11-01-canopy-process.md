@@ -81,3 +81,25 @@ path before its uploaded callback and checks the normalized six-word note record
 it passes in 84.93 seconds (`out/canopy-input-live.log`). This is a diagnostic
 callback, not CANOPY final-output acceptance. Stage 1 remains open; the production
 loader, machine/route selection and shared-carrier connection remain the next work.
+
+## Follow-up: route readiness lifetime
+
+The MIDI adapter now revalidates instance readiness before accepting a routed
+channel message and before preparing each outgoing frame. A module losing readiness
+revokes that track's routes and requests the reserved reset while keeping held-key
+tombstones. Idle keyboards cannot leave queued old notes flowing into a retired
+instance. Readiness callbacks are now explicitly read-only and IRQ-safe; the frame
+loop calls at most once per enabled track. No public V2 route provider is enabled.
+
+The production C behavior passes all 23 host cases and the ColdFire ownership/dispatch
+component test, including revocation without an explicit owner disable, unrelated
+track isolation, release pairing and quiet-keyboard frame-time revocation. The MIDI
+core object is rebuilt/current-checked (2008 decoded instructions). Logs:
+`out/canopy-route-readiness.log`, `out/canopy-route-coldfire.log`,
+`out/canopy-route-build.log`. Production loader and carrier connection remain open.
+
+The booted stock-carrier chord regression also passes (158.88 seconds;
+`out/canopy-route-chord.log`): C/G retain phase and gain when E is released.
+This remains fixture regression evidence, not integrated V2 acceptance. Scoped
+documentation path checks pass. Changed-file preflight passes its other selected
+checks but still fails the existing global 256 stale references in 78 files.
