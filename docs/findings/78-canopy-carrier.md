@@ -1244,3 +1244,19 @@ is simulated occupancy, not coexistence with a running legacy module. Logs:
 
 [O] Normal DKM loading and deferred CF publication, production routing and shared
 carrier wiring remain disabled/incomplete. This does not complete Stage 1.
+
+
+## CF publication failure cleanup (2026-11-01)
+
+[D] Normal DKM initialization could register a service handler and then fail,
+freeing the CF image without removing the handler. loader::publish_cf now removes
+the failed owner's handlers before returning E_INIT. It leaves DSP memory release
+to the load owner instead of calling the legacy release path itself. Existing
+legacy callers cancel unsent reservations; future V2 callers require detach ACK.
+
+[D] The DT2 1.17 zero-DSP regression uploads test/svc-init-fail, selects and restarts
+through the real loader, observes E_INIT and an unpublished module, then confirms
+the command returns E_PROTO. The fixture emits E_INIT only if registration first
+succeeded. It passes in 17.08 seconds (out/canopy-publication-live.log). The six
+gate-routing cases pass and the rebuilt runtime object is current. This proves
+CF cleanup, not asynchronous V2 publication or DSP/audio integration.

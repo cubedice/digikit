@@ -130,3 +130,27 @@ Validation: the full booted shared-ledger lifecycle test passes
 type/format checks and scoped documentation checks. The runtime object is rebuilt
 and current-checked at 43690 decoded instructions. Changed-file preflight still
 fails only the existing 256 stale references in 78 files. No hardware was touched.
+
+## Follow-up: CF publication failure cleanup
+
+The normal loader publication routine is now publish_cf: it owns CF registry,
+init and slot publication only. It no longer releases DSP memory on failure; the
+existing legacy caller cancels its unsent reservation. A future V2 caller must
+wait for CREATE before publication and detach before reclaiming storage. That
+asynchronous normal-file loading path is still not implemented.
+
+Fixed a real normal-load bug: init could register service command handlers and
+then fail, leaving pointers into the freed CF image. Publication failure now
+removes those handlers before registry cleanup and caller-owned reclamation.
+The new test/svc-init-fail fixture returns an init failure only after successful
+command registration. The regression uploads its real DKM, selects and restarts,
+checks E_INIT and absence from loaded modules, then checks E_PROTO for its command.
+It passes on DT2 1.17 with the real CF loader and zero-DSP harness (17.08 seconds
+body, 29.31 seconds overall). Two coupled attempts timed out during startup,
+before the test body; no DSP or audio acceptance is claimed by this CF-only test.
+
+Runtime build/current check, six targeted gate-routing tests, Python lint/format,
+TypeScript types/format and scoped documentation checks pass. The gate now packs
+the fixture for this regression. Changed-file preflight still fails only the
+existing global 256 stale references. Logs: out/canopy-publication-{build,check,
+routing,live,changed}.log. No hardware changes or public V2 enablement.

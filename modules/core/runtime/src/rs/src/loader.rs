@@ -370,7 +370,7 @@ unsafe fn load_inner(path: *const u8) -> i32 {
         // the CF part goes live now (rows in place before the machine view is built); the DSP code and the voice rows follow
         // when the frames flow
         m.used = 1;
-        let r = complete(rec, reg, reg_size, initaddr, mask, &fns);
+        let r = publish_cf(rec, reg, reg_size, initaddr, mask, &fns);
         if r != OK {
             if dsp::retained() { return E_BUSY; }
             dsp::cancel(rec);
@@ -394,7 +394,7 @@ unsafe fn load_inner(path: *const u8) -> i32 {
         });
         return LOADING;
     }
-    let r = complete(rec, reg, reg_size, initaddr, mask, &fns);
+    let r = publish_cf(rec, reg, reg_size, initaddr, mask, &fns);
     if r != OK {
         if dsp::retained() || !crate::files::retire(rec) { return E_BUSY; }
         arena::free(mem);
@@ -403,9 +403,11 @@ unsafe fn load_inner(path: *const u8) -> i32 {
     r
 }
 
-/// The end of a load, shared by the immediate and the DSP path (both run in the boot hook): the registry rows (the machine is listed from here), `init`, the
-/// slots. On an error everything it did is undone (the DSP part too) and the caller frees the module's memory.
-unsafe fn complete(
+/// Publish only the ColdFire registry, init and slots. Storage belongs to the
+/// calling load owner: this routine must never release DSP or module memory.
+/// A V2 owner may call it only after CREATE ACK and must detach before reclaiming
+/// storage on failure. Current legacy callers cancel their unsent reservation.
+unsafe fn publish_cf(
     rec: usize,
     reg: *const u8,
     reg_size: u32,
@@ -421,7 +423,6 @@ unsafe fn complete(
     if r != OK {
         crate::registry::remove(owner);
         crate::files::retire(rec);
-        if !dsp::release(rec) { return E_BUSY; }
         return r;
     }
     if init != 0 {
@@ -431,7 +432,6 @@ unsafe fn complete(
             crate::files::retire(rec);
             crate::upload::release_cmds(owner);
             crate::registry::remove(owner);
-            if !dsp::release(rec) { return E_BUSY; }
             return E_INIT;
         }
     }

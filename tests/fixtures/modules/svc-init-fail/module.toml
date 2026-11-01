@@ -1,0 +1,18 @@
+[module]
+id = "test/svc-init-fail"
+version = "0.1.0"
+name = "Failed service initializer"
+category = "test"
+type = "raw"
+author = "digikit"
+status = "experimental"
+summary = "Registers a service handler then fails initialization to test loader cleanup."
+requires = []
+conflicts = []
+[targets]
+"dt2-1.17" = "experimental"
+"dn2-1.12" = "experimental"
+[[object]]
+path = "build/svc-init-fail.dko.json"
+sources = ["src/c/module.c"]
+place = "cf.expansion"
