@@ -19,7 +19,9 @@ def floats(words):
 
 @pytest.fixture(scope="module")
 def engine():
-    source = "\n".join((SOURCE / name).read_text() for name in ("voice.s", "tuning.s"))
+    source = "\n".join(
+        (SOURCE / name).read_text() for name in ("voice.s", "tuning.s", "blend.s")
+    )
     source += """
 .SECTION/PM seg_pmco;
 .GLOBAL _cp_render_many;
@@ -59,15 +61,16 @@ _cp_test_loop:
     }
     linked = pk_sharc.link(obj, 0xB90000, symbols)
 
-    def session(sound=None):
+    def session(sound=None, one=False):
+        bank_words = 8 if one else 64
         dm = dict(initial)
         for name, value in (sound or {}).items():
             dm[symbols["_cp_" + name] // 4] = struct.unpack(
                 "<I", struct.pack("<f", value)
             )[0]
-        dm.update({BANK // 4 + i: 0 for i in range(64)})
+        dm.update({BANK // 4 + i: 0 for i in range(bank_words)})
         dm.update({OUTPUT // 4 + i: 0 for i in range(32)})
-        for base, count in ((BANK, 64), (OUTPUT, 32)):
+        for base, count in ((BANK, bank_words), (OUTPUT, 32)):
             dm[base // 4 - 1] = dm[base // 4 + count] = 0xDEADBEEF
 
         def call(entry, token=0, note=60, velocity=100, blocks=1):
@@ -93,7 +96,7 @@ _cp_test_loop:
                 },
                 dm_words=dm,
                 reads={
-                    "bank": (BANK // 4 - 1, 66),
+                    "bank": (BANK // 4 - 1, bank_words + 2),
                     "out": (OUTPUT // 4 - 1, count + 2),
                 },
                 max_steps=20000 * blocks,
@@ -105,11 +108,57 @@ _cp_test_loop:
                     {base // 4 - 1 + i: word for i, word in enumerate(result[name])}
                 )
             bank = result["bank"][1:-1]
-            slots = {bank[i]: bank[i : i + 8] for i in range(0, 48, 8) if bank[i]}
+            slots = {
+                bank[i]: bank[i : i + 8]
+                for i in range(0, 8 if one else 48, 8)
+                if bank[i]
+            }
             return result["regs"]["R0"], slots, floats(result["out"][1:-1])
 
         return call
 
+    def blend(pad, arp, current, target):
+        def word(value):
+            return struct.unpack("<I", struct.pack("<f", value))[0]
+
+        other, state = OUTPUT + 256, OUTPUT + 512
+        dm = dict(initial)
+        for base, values in ((OUTPUT, pad), (other, arp), (state, [current, target])):
+            dm.update({base // 4 + i: word(v) for i, v in enumerate(values)})
+            dm[base // 4 - 1] = dm[base // 4 + len(values)] = 0xDEADBEEF
+        result = pk_sharc.run_call(
+            linked,
+            "_cp_blend",
+            regs={
+                "R4": OUTPUT,
+                "R8": other,
+                "R12": state,
+                "M5": 0,
+                "M6": 1,
+                "L0": 0,
+                "L1": 0,
+                "L2": 0,
+                "MODE1": 0x1011800,
+            },
+            dm_words=dm,
+            reads={
+                "pad": (OUTPUT // 4 - 1, 34),
+                "arp": (other // 4 - 1, 34),
+                "state": (state // 4 - 1, 4),
+            },
+            max_steps=2000,
+        )
+        assert result["halt"]["reason"] == "breakpoint", result
+        for name in ("pad", "arp", "state"):
+            assert result[name][0] == result[name][-1] == 0xDEADBEEF
+        assert result["arp"][1:-1] == [word(v) for v in arp]
+        return (
+            result["regs"]["R0"],
+            floats(result["pad"][1:-1]),
+            floats(result["state"][1:-1]),
+        )
+
+    session.blend = blend
     return session
 
 
@@ -132,6 +181,67 @@ def test_notes_keep_independent_phase_velocity_and_release(engine):
     assert after[1][1] == 0 and after[2][1] == 1
     assert floats([after[1][7]])[0] < floats([slots[1][7]])[0]
     assert floats([after[2][7]])[0] > floats([slots[2][7]])[0]
+
+
+def test_arp_group_uses_exactly_one_slot_and_releases_only_its_token(engine):
+    call = engine(one=True)
+    assert call("render_one") == (0, {}, [0.0] * 32)
+    assert call("start_one", 91, 69, 127)[0] == 1
+    _, before, pcm = call("render_one")
+    assert set(before) == {91} and max(abs(v) for v in pcm) > 0
+    assert call("start_one", 92, 72, 127)[:2] == (0, before)
+    assert call("release_one", 92)[:2] == (0, before)
+    assert call("release_one", 91)[0] == 1
+    for _ in range(14):
+        result, slots, _ = call("render_one")
+    assert result == 0 and slots == {}
+    assert call("start_one", 92, 72, 127)[0] == 1
+
+
+@pytest.mark.parametrize("mix", [0.0, 0.25, 0.5, 1.0])
+def test_pad_arp_blend_endpoints_and_fixed_headroom(engine, mix):
+    pad = [0.6 * math.sin(i) for i in range(32)]
+    arp = [0.12 * math.cos(i) for i in range(32)]
+    result, pcm, state = engine.blend(pad, arp, mix, mix)
+    assert result == 1 and state == [mix, mix]
+    assert pcm == pytest.approx(
+        [(1 - mix) * p + mix * a for p, a in zip(pad, arp, strict=True)], abs=1e-7
+    )
+    assert max(abs(v) for v in pcm) <= 0.6
+
+
+def test_pad_arp_blend_smooths_every_sample_and_retains_instance_state(engine):
+    current = 0.0
+    samples = []
+    for _ in range(30):
+        result, pcm, state = engine.blend([1.0] * 32, [0.0] * 32, current, 1.0)
+        assert result == 1
+        current = state[0]
+        samples.extend(pcm)
+    assert samples[-1] == pytest.approx(math.exp(-1), abs=1e-6)
+    assert all(
+        0 < a - b < 0.00105 for a, b in zip([1.0] + samples[:-1], samples, strict=True)
+    )
+    assert engine.blend([1.0] * 32, [0.0] * 32, 0.0, 0.0)[1] == [1.0] * 32
+
+
+@pytest.mark.parametrize("target", [0.0, 1.0])
+def test_pad_arp_blend_settles_exactly_without_residual_muted_lane(engine, target):
+    current = 0.00003 if target == 0 else 0.99997
+    result, pcm, state = engine.blend([1.0] * 32, [-1.0] * 32, current, target)
+    assert result == 1 and state == [target, target]
+    assert pcm == [1.0 - 2 * target] * 32
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), -0.1, 1.1])
+@pytest.mark.parametrize("field", [0, 1])
+def test_pad_arp_blend_rejects_invalid_state_without_writing_audio(engine, bad, field):
+    state = [0.5, 0.5]
+    state[field] = bad
+    result, pcm, after = engine.blend([0.25] * 32, [-0.5] * 32, *state)
+    assert result == 0 and pcm == [0.25] * 32
+    for a, b in zip(after, state, strict=True):
+        assert math.isnan(a) if math.isnan(b) else a == pytest.approx(b)
 
 
 def test_tokens_capacity_and_quiet_output(engine):

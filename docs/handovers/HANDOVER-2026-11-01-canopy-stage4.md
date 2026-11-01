@@ -85,5 +85,51 @@ preflight log: `out/canopy-stage4-changed.log`. No merge gate was run.
    is unqualified. Fix these before offering musical synchronized playback.
 6. Execute protected DSP ownership/guard/headroom/instruction proofs and actual
    running-firmware arp/strum/transport tests, including clock loss, recovery,
-   tempo changes and existing Stage 1–3 keyboard/sound regressions. Do not mark
+   tempo changes and existing Stage 1ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“3 keyboard/sound regressions. Do not mark
    Stage 4 complete until these pass. Hardware/coexistence remains Stage 6.
+
+## DSP primitive checkpoint
+
+The next implementation adds `_cp_start_one`, `_cp_release_one` and
+`_cp_render_one` to the production SHARC voice kernel. A separate arp group can
+use exactly one 32-byte slot; the single-group renderer never reads the four
+pad pending records. Starting over an occupied slot is rejected, and releases
+match its token. Shared-tail allocation and scheduler invocation remain open.
+The existing six-group pad entry keeps its behavior.
+
+`src/dsp/blend.s`, included in the CANOPY module build, adds `_cp_blend`: a
+32-sample linear PAD/ARP blend with a per-sample 20-ms smoother. Its explicit
+8-byte state holds current/target mix. Invalid current or target (negative,
+above one, infinity, NaN) is rejected before writing audio or state. It does
+not own envelopes or gates and therefore cannot cut off keyboard ownership.
+The caller remains responsible for audio finiteness validation. Neither this
+helper nor the independent arp entry is invoked by the current V2 callback yet.
+
+**[D]** All 97 cases in `test_canopy_voice.py` and `test_canopy_v2.py` pass,
+including the new exact-slot guards, token matching, blend endpoints/headroom,
+per-sample ramp and invalid-state cases, plus existing direct/protected pad
+regressions. Runtime 165.04 seconds. Log:
+`out/canopy-stage4-dsp-primitives.log`. One initial blend test run caught use of
+an aliased float/integer loop register; the counter now uses R10 and the full
+rerun passes.
+
+The module compiles and both objects pass build-current checks; the DSP object
+re-decodes 1251 instructions. Logs: `out/canopy-stage4-dsp-build.log` and
+`out/canopy-stage4-dsp-current.log`. No firmware was patched, no DKM was packed,
+and no physical device was changed by this checkpoint. Stage 4 remains
+incomplete: integrate the scheduler, shared tails, coherent chord/configuration
+snapshots and verified clock provider, then run firmware/audio acceptance.
+
+The final blend snaps to its exact target below 1/32768 (-90 dB) to avoid a
+residual lane from float32 smoothing stagnation. All 15 blend cases pass after
+this change, including two new endpoint-settling cases
+(`out/canopy-stage4-blend-final.log`). There are 99 unique voice/V2 cases across
+the full 97-case run and this focused follow-up. The 20-ms envelope test is
+unchanged; its final sample remains within 1e-6 of exp(-1).
+
+The DSP checkpoint's required preflight passes layering and formatting, and
+reports the same 256 global stale references. It also initially flagged three
+missing explicit `zip(strict=...)` choices in the new tests; these were corrected
+and focused Ruff checks plus all 15 blend tests pass. The full preflight log is
+`out/canopy-stage4-dsp-changed.log`; changed-document pathcheck is clean in
+`out/canopy-stage4-dsp-docs.log`.

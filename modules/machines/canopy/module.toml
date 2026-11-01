@@ -19,6 +19,6 @@ sources = ["src/module.c"]
 place = "cf.expansion"
 [[object]]
 path = "build/canopy-dsp.dko.json"
-sources = ["src/dsp/voice.s", "src/dsp/tuning.s", "src/dsp/events.s", "src/dsp/v2.s"]
+sources = ["src/dsp/voice.s", "src/dsp/blend.s", "src/dsp/tuning.s", "src/dsp/events.s", "src/dsp/v2.s"]
 place = "dsp.l2"
 devices = ["dt2"]

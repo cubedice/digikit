@@ -217,7 +217,44 @@ _cp_release_done:
 _cp_reject:
     R0 = 0;
     RTS;
+// Single-group entry is for the independent arp owner. The caller owns its
+// 32-byte slot and shared-tail allocation; no extra foreground bank exists.
+.GLOBAL _cp_render_one;
+.GLOBAL _cp_start_one;
+.GLOBAL _cp_release_one;
+_cp_start_one:
+    R0 = PASS R8;
+    IF EQ JUMP _cp_reject;
+    R0 = LSHIFT R12 BY -7;
+    R0 = PASS R0;
+    IF NE JUMP _cp_reject;
+    R0 = LSHIFT R9 BY -7;
+    R0 = PASS R0;
+    IF NE JUMP _cp_reject;
+    R9 = PASS R9;
+    IF EQ JUMP _cp_reject;
+    I0 = R4;
+    R0 = DM(0, I0);
+    R0 = PASS R0;
+    IF NE JUMP _cp_reject; // never overwrite an audible group
+    R3 = R4;
+    JUMP _cp_start;
+_cp_release_one:
+    I0 = R4;
+    R0 = DM(0, I0);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_reject;
+    COMP(R0, R8);
+    IF NE JUMP _cp_reject;
+    JUMP _cp_release;
+_cp_render_one:
+    R0 = 1;
+    DM(_cp_render_count) = R0;
+    JUMP _cp_render_begin;
 _cp_render:
+    R0 = 6;
+    DM(_cp_render_count) = R0;
+_cp_render_begin:
     I2 = R8;
     R0 = 0;
     R1 = 32;
@@ -227,7 +264,7 @@ _cp_clear_output:
     IF NE JUMP _cp_clear_output;
     I0 = R4;
     R11 = R4;
-    R14 = 6;
+    R14 = DM(_cp_render_count);
     R15 = 0;
 _cp_render_slot:
     R0 = DM(0, I0);
@@ -761,3 +798,5 @@ _cp_retune_store:
 .VAR _cp_third_step = 0;
 .VAR _cp_h2step = 0;
 .VAR _cp_h3step = 0;
+
+.VAR _cp_render_count = 6;

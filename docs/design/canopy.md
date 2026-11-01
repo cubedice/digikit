@@ -2058,7 +2058,11 @@ It requires one call per 32-sample block and a complete revisioned snapshot.
 The C policy currently has no runtime caller and is not included in the DKM.
 Its native behavior tests and ColdFire compilation are component evidence only;
 they do not establish audible arpeggiation, clock delivery or DSP performance.
-The current Stage 3 firmware and artifacts are unchanged.
+The current Stage 3 firmware and packed artifacts are unchanged. The production
+DSP kernel now includes a single-group arp entry and a per-sample 20-ms PAD/ARP
+blend helper, with 97 passing voice/protected-callback cases. These helpers are
+not yet invoked by the V2 callback; shared-tail allocation and scheduler wiring
+remain required. See the handover for the exact component evidence.
 
 Remaining Stage 4 work:
 

@@ -1414,3 +1414,11 @@ arp off/on), exceeding the existing eight-event external input contract. The
 master timing provider also lacks verified subdivisions and first-gate duration.
 See [handover](../handovers/HANDOVER-2026-11-01-canopy-stage4.md) for remaining
 integration work. Stage 4 remains incomplete.
+
+
+**[D] Stage 4 DSP primitives:** The exact 32-byte single-arp-slot entry and
+per-sample 20-ms linear blend now pass instruction-core checks alongside the
+existing pad/direct/protected V2 cases: 97 passes in 165.04 seconds. The build
+and build-current checks pass (1251 decoded DSP instructions after the endpoint snap). These are
+callable module helpers, not yet scheduler-connected playback. No Stage 4
+running-firmware or hardware result follows. Details are in the Stage 4 handover.
