@@ -2043,7 +2043,47 @@ The final output guard is separately verified in direct/protected instruction
 tests; the live runs used the preceding otherwise-identical pad DKM. Exact
 artifacts and evidence versions are in the
 [Stage 3 handover](../handovers/HANDOVER-2026-11-01-canopy-stage3.md).
-Hardware coexistence remains Stage 6; Stage 4 is next.
+Hardware coexistence remains Stage 6; Stage 4 is in progress.
+
+## Stage 4 implementation status
+
+Stage 4 is **not complete**. The bounded movement policy in
+`modules/machines/canopy/src/movement.c` now implements note order, octave
+expansion, generated-chord strum cancellation, arp token ownership, restart
+policies, master-step multiples and explicit local BPM. Local triplets retain
+rational phase; swing edits wait for a complete pair. The policy operates on
+committed admitted membership, not release tails or the physical key ledger.
+It requires one call per 32-sample block and a complete revisioned snapshot.
+
+The C policy currently has no runtime caller and is not included in the DKM.
+Its native behavior tests and ColdFire compilation are component evidence only;
+they do not establish audible arpeggiation, clock delivery or DSP performance.
+The current Stage 3 firmware and artifacts are unchanged.
+
+Remaining Stage 4 work:
+
+- Integrate movement at the audio-block boundary with an independent arp voice,
+  the two shared tails, and smoothed PAD/ARP audio gains. Keep the four admitted
+  pad owners separate from pending strum and arp tokens. Maximum replacement
+  produces ten internal changes (four pad offs, four pad ons, arp off/on), so
+  never forward it blindly through the current eight-event input. Internal DSP
+  scheduling can retain the eight-event external contract.
+- Publish a coherent admitted-chord/phrase snapshot from the keyboard mapper;
+  do not reschedule immutable retried MIDI packets. Expose movement settings
+  through the existing applied-revision configuration channel and setup menu.
+- Add and measure the versioned synchronized tempo/phase provider. The present
+  pattern-position ABI has master boundaries only. This policy never reads its
+  raw deadline as BPM. Master mode supports step multiples without swing;
+  local BPM, finer divisions and swing are explicit LOCAL behavior only.
+- Replace the provisional master first-gate behavior (one block until an
+  observed interval exists) with verified timing; qualify the eight-second
+  reference watchdog. Neither is ready to be advertised as musical sync.
+- Run protected DSP bounds/ownership/audio checks and running-firmware tests
+  for internal/external clocks, tempo changes, stop/restart, compatible pattern
+  changes and the existing keyboard/pad regressions.
+
+Details and evidence are in the
+[Stage 4 handover](../handovers/HANDOVER-2026-11-01-canopy-stage4.md).
 
 ## Implementation stages and acceptance
 

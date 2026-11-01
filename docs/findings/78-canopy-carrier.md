@@ -1400,3 +1400,17 @@ The final output-only guard was separately verified by the 58-case V2 run and
 the build-current check; the otherwise identical live flows were not repeated.
 Two additional instruction cases verify bounded LFO wraparound. See the Stage 3
 handover for current artifacts. No physical hardware or coexistence claim follows.
+
+
+## Stage 4 movement policy checkpoint
+
+**[D]** The isolated C movement policy passes 30 native scenarios with undefined-
+behavior instrumentation, including a 200000-block triplet/swing run, full
+replacement output canaries, phrase/pattern restart, stale-clock recovery and
+strum cancellation. It compiles for ColdFire 54418 without unresolved symbols.
+This is not linked into the CANOPY DKM; no Stage 4 DSP/audio or running-firmware
+acceptance has passed. Ten internal changes can coincide (eight pad changes and
+arp off/on), exceeding the existing eight-event external input contract. The
+master timing provider also lacks verified subdivisions and first-gate duration.
+See [handover](../handovers/HANDOVER-2026-11-01-canopy-stage4.md) for remaining
+integration work. Stage 4 remains incomplete.
