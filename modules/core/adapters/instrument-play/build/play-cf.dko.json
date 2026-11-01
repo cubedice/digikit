@@ -1,0 +1,1832 @@
+{
+ "arch": "cf",
+ "format": 1,
+ "relocs": [
+  {
+   "addend": 0,
+   "offset": 22,
+   "section": ".text",
+   "symbol": "ip_sound_begin",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 46,
+   "section": ".text",
+   "symbol": "ip_sound_end",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 74,
+   "section": ".text",
+   "symbol": "ip_sound_resume",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 88,
+   "section": ".text",
+   "symbol": ".sec..bss",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 96,
+   "section": ".text",
+   "symbol": "ip_view_next",
+   "type": "cf.32"
+  },
+  {
+   "addend": 26,
+   "offset": 10,
+   "section": ".text.fill",
+   "symbol": ".sec..rodata.fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 16,
+   "section": ".text.fill",
+   "symbol": "dk_ui_toggle",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 24,
+   "section": ".text.fill",
+   "symbol": "dk_ui_text",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 32,
+   "section": ".text.fill",
+   "symbol": ".sec..text.changed",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 38,
+   "section": ".text.fill",
+   "symbol": ".sec..bss.enabled",
+   "type": "cf.32"
+  },
+  {
+   "addend": 43,
+   "offset": 44,
+   "section": ".text.fill",
+   "symbol": ".sec..rodata.fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 56,
+   "section": ".text.fill",
+   "symbol": ".sec..text.changed",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 62,
+   "section": ".text.fill",
+   "symbol": ".sec..data.usb",
+   "type": "cf.32"
+  },
+  {
+   "addend": 50,
+   "offset": 68,
+   "section": ".text.fill",
+   "symbol": ".sec..rodata.fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 84,
+   "section": ".text.fill",
+   "symbol": ".sec..text.changed",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 90,
+   "section": ".text.fill",
+   "symbol": ".sec..data.din",
+   "type": "cf.32"
+  },
+  {
+   "addend": 54,
+   "offset": 96,
+   "section": ".text.fill",
+   "symbol": ".sec..rodata.fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 108,
+   "section": ".text.fill",
+   "symbol": ".sec..text.changed",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 122,
+   "section": ".text.fill",
+   "symbol": ".sec..data.channel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 58,
+   "offset": 128,
+   "section": ".text.fill",
+   "symbol": ".sec..rodata.fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 136,
+   "section": ".text.fill",
+   "symbol": "dk_ui_value",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 148,
+   "section": ".text.fill",
+   "symbol": ".sec..bss.phase",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 156,
+   "section": ".text.fill",
+   "symbol": ".sec..rodata.fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 174,
+   "section": ".text.fill",
+   "symbol": "dk_ui_text",
+   "type": "cf.32"
+  },
+  {
+   "addend": 6,
+   "offset": 180,
+   "section": ".text.fill",
+   "symbol": ".sec..rodata.fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text.instrument_runtime_policy",
+   "symbol": ".sec..rodata.limits",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.instrument_play_faulted",
+   "symbol": ".sec..bss.fault_generation",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text.instrument_midi_ready",
+   "symbol": ".sec..bss.enabled",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 12,
+   "section": ".text.instrument_midi_ready",
+   "symbol": ".sec..bss.healthy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 24,
+   "section": ".text.instrument_midi_ready",
+   "symbol": ".sec..bss.prepared",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 32,
+   "section": ".text.instrument_midi_ready",
+   "symbol": ".sec..bss.phase",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4888,
+   "offset": 48,
+   "section": ".text.instrument_midi_ready",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4892,
+   "offset": 60,
+   "section": ".text.instrument_midi_ready",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 448,
+   "offset": 70,
+   "section": ".text.instrument_midi_ready",
+   "symbol": "mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4880,
+   "offset": 78,
+   "section": ".text.instrument_midi_ready",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 156,
+   "offset": 84,
+   "section": ".text.instrument_midi_ready",
+   "symbol": "mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4,
+   "section": ".text.instrument_sound_suspend",
+   "symbol": ".sec..bss.prepared",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.instrument_sound_suspend",
+   "symbol": "mi_instance_reset",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": ".text.instrument_sound_suspend",
+   "symbol": ".sec..bss.phase",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text.changed",
+   "symbol": ".sec..text.instrument_sound_suspend",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text.dk_app_instrument_settings_rows",
+   "symbol": ".sec..bss.menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 12,
+   "section": ".text.dk_app_instrument_settings_rows",
+   "symbol": ".sec..rodata.desc",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 18,
+   "section": ".text.dk_app_instrument_settings_rows",
+   "symbol": "dk_ui_menu_new",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 26,
+   "section": ".text.dk_app_instrument_settings_rows",
+   "symbol": ".sec..bss.menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 38,
+   "section": ".text.dk_app_instrument_settings_rows",
+   "symbol": ".sec..rodata.dk_app_instrument_settings_rows.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 48,
+   "section": ".text.dk_app_instrument_settings_rows",
+   "symbol": "dk_ui_submenu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 16,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_instrument_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 32,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 40,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.listed_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 48,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 54,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_view_build",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 66,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.listed_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 82,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_registry_reply",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 126,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_instrument_generation",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 142,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.fault_generation",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 178,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.healthy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 184,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.healthy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 192,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.enabled",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 200,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.usb",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 206,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.din",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 214,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.phase",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 228,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_instance_reset",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 238,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.phase",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4880,
+   "offset": 244,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 268,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.healthy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 274,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.phase",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 286,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.instrument_sound_suspend",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 292,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.phase",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 298,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 304,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.enabled",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 310,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 316,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.healthy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 8,
+   "offset": 322,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 328,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.prepared",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 334,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 156,
+   "offset": 340,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 16,
+   "offset": 346,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4880,
+   "offset": 352,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 20,
+   "offset": 358,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 448,
+   "offset": 364,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 370,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 28,
+   "offset": 386,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 412,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_instrument_generation",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 444,
+   "section": ".text.instrument_play_tick",
+   "symbol": "instrument_sound_prepare",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 458,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.instrument_sound_suspend",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 466,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.phase",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 476,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.prepared",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4880,
+   "offset": 486,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 516,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_config_submit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 534,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.phase",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4892,
+   "offset": 540,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4888,
+   "offset": 546,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 554,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.instrument_midi_ready",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 570,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.usb",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 582,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.channel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 594,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_route_enable",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 610,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.din",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 622,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.channel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 636,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_route_enable",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 654,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.phase",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 664,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.prepared",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 676,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.phase",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 0,
+   "section": ".rodata.desc",
+   "symbol": ".sec..rodata.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4,
+   "section": ".rodata.desc",
+   "symbol": ".sec..rodata.dk_app_instrument_settings_rows.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 12,
+   "section": ".rodata.desc",
+   "symbol": ".sec..text.fill",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 10,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 44,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 50,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": "pp_current_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 56,
+   "offset": 60,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": "pp_position",
+   "type": "cf.32"
+  },
+  {
+   "addend": 20,
+   "offset": 66,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": "pp_position",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 74,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": "pp_position",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 82,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 112,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 16,
+   "offset": 120,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 142,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": "ip_project",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 178,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": "ip_kit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 318,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.last_project",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 336,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 342,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 348,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.last_project",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 354,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.last_kit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 360,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.last_source",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 366,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.last_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 372,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.last_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 20,
+   "offset": 378,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 394,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": "ip_refresh",
+   "type": "cf.32"
+  },
+  {
+   "addend": 8,
+   "offset": 400,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 420,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.last_kit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 428,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.last_source",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 436,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.last_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 444,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.last_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 462,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.last_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 502,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": "dkrt_instrument_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 518,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.last_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 574,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": "dkrt_instrument_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 604,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": "ip_refresh",
+   "type": "cf.32"
+  },
+  {
+   "addend": 8,
+   "offset": 610,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 620,
+   "section": ".text.instrument_sound_prepare",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.ip_sound_begin",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 30,
+   "section": ".text.ip_sound_begin",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 54,
+   "section": ".text.ip_sound_begin",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 28,
+   "offset": 60,
+   "section": ".text.ip_sound_begin",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 66,
+   "section": ".text.ip_sound_begin",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 74,
+   "section": ".text.ip_sound_begin",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 16,
+   "offset": 80,
+   "section": ".text.ip_sound_begin",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 86,
+   "section": ".text.ip_sound_begin",
+   "symbol": "instrument_sound_suspend",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 98,
+   "section": ".text.ip_sound_begin",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 8,
+   "section": ".text.ip_sound_end",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 18,
+   "section": ".text.ip_sound_end",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 26,
+   "section": ".text.ip_sound_end",
+   "symbol": ".sec..bss.ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 38,
+   "section": ".text.ip_sound_end",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  }
+ ],
+ "sections": [
+  {
+   "align": 4,
+   "hex": "4feffff048d70c0c246f0014266f00182f0b2f0a4eb900000000508f24002f0b2f0a6100001c508f26002f024eb900000000588f20034cd70c0c4fef00104e754fefffe048d77c1c4ef9000000004e712f00202f000823c000000000201f4ef900000000",
+   "kind": "text",
+   "name": ".text",
+   "size": 100
+  },
+  {
+   "align": 16,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss",
+   "size": 16
+  },
+  {
+   "align": 1,
+   "hex": "52454144590053454c4543542043414e4f5059204f4e20543100545241434b2031204b4559424f41524400454e41424c45005553420044494e004348414e4e454c00",
+   "kind": "data",
+   "name": ".rodata.fill.str1.1",
+   "size": 66
+  },
+  {
+   "align": 2,
+   "hex": "2f0a2f02242f000c48790000000045f9000000002f024eb90000000042a74879000000004879000000004879000000002f024e9242a74879000000004879000000004879000000002f024e924fef002c42974879000000004879000000004879000000002f024e9242a748790000000048780010487800014879000000004879000000002f024eb9000000004fef00307003b0b9000000006618203c000000002f4000102f42000c241f245f4ef900000000203c0000000060e6",
+   "kind": "text",
+   "name": ".text.fill",
+   "size": 186
+  },
+  {
+   "align": 2,
+   "hex": "203c000000004e75",
+   "kind": "text",
+   "name": ".text.instrument_runtime_policy",
+   "size": 8
+  },
+  {
+   "align": 2,
+   "hex": "202f00044a80670cb0b90000000057c0710044804e75",
+   "kind": "text",
+   "name": ".text.instrument_play_faulted",
+   "size": 22
+  },
+  {
+   "align": 2,
+   "hex": "2039000000004a80670a4ab900000000660442804e754ab90000000067f42039000000005580e28866e8202f0008b0b90000000066dc222f000cb2b90000000066d07001b0b90000000066c620390000000080b90000000080af000457c07100448060b0",
+   "kind": "text",
+   "name": ".text.instrument_midi_ready",
+   "size": 100
+  },
+  {
+   "align": 2,
+   "hex": "42a742b9000000004eb900000000588f700123c0000000004e75",
+   "kind": "text",
+   "name": ".text.instrument_sound_suspend",
+   "size": 26
+  },
+  {
+   "align": 2,
+   "hex": "4ef900000000",
+   "kind": "text",
+   "name": ".text.changed",
+   "size": 6
+  },
+  {
+   "align": 1,
+   "hex": "4b4559424f41524400",
+   "kind": "data",
+   "name": ".rodata.dk_app_instrument_settings_rows.str1.1",
+   "size": 9
+  },
+  {
+   "align": 2,
+   "hex": "2039000000004a8066184879000000004eb900000000588f23c0000000004a8067162f004879000000002f2f000c4eb9000000004fef000c4e75",
+   "kind": "text",
+   "name": ".text.dk_app_instrument_settings_rows",
+   "size": 58
+  },
+  {
+   "align": 2,
+   "hex": "4e56ffb470012f0a2f022d40ffbc45f9000000004e922d40ffb84a8067284ab9000000006720b0b90000000067182f39000000004eb900000000588f222effb823c100000000487800107410486effc04eb900000000508f2d40ffb4b480660000a2207c494ea103b1eeffc066247005b0aefff4661c2d6efff8ffb84eb900000000b0aeffb8660a41eefff823d0000000004e924a8067727210b2aeffb46616243c494ea103b4aeffc0670000de428023c0000000004ab90000000067524ab900000000674a20390000000080b900000000673c2239000000004a81660000d042a74eb900000000588f700123c0000000004ab90000000057c071004480600000b870feb0aeffb4668842b9000000002039000000005580e28866064eb90000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d0000000004e92242effac246effb023c0000000004e5e4e757003b0aefff46600ff1c2d6efff8ffb84eb900000000b0aeffb857c0710044806000ff04428053814a816700ff3c2f004eb900000000588f4a806c0000d04eb9000000007001b0b900000000660000c84ab9000000006700ff404ab9000000006600ff3648780001486effbc2f3c435053314878000142a74eb9000000004fef00144a8066000090720223c1000000002f39000000002f390000000042a74eb9000000004fef000c4a806700feec4ab900000000672042a742a720790000000053882f0842a74eb9000000004fef00104a806600febe4ab900000000672242a742a720390000000053802f00487800014eb9000000004fef00104a806600fe94720323c1000000006000fe8e23c0000000006000ff307402b4b9000000006600fe786000ff6c",
+   "kind": "text",
+   "name": ".text.instrument_play_tick",
+   "size": 688
+  },
+  {
+   "align": 1,
+   "hex": "696e737472756d656e742d6b6579626f61726400",
+   "kind": "data",
+   "name": ".rodata.str1.1",
+   "size": 20
+  },
+  {
+   "align": 2,
+   "hex": "000000000000000000000000000000000000000000000000000000000000000000000000",
+   "kind": "data",
+   "name": ".rodata.desc",
+   "size": 36
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.listed_type",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.menu",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.ip_control",
+   "size": 32
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.fault_generation",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.healthy",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.prepared",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.phase",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "00000001",
+   "kind": "data",
+   "name": ".data.channel",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "00000001",
+   "kind": "data",
+   "name": ".data.din",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "00000001",
+   "kind": "data",
+   "name": ".data.usb",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.enabled",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "495250310000000100000001000186a0000003e8000000080000008000000210",
+   "kind": "data",
+   "name": ".rodata.limits",
+   "size": 32
+  },
+  {
+   "align": 2,
+   "hex": "4fefffd848d71cfc243900000000282f002c47f9000000004a82670e428420044cd71cfc4fef00284e754eb90000000049f9000000002a004e942479000000002639000000002f052e39000000002c004eb900000000588f7001b08a662e7003c680b08366044a8766144a9367ae42b90000000078ff52b90000000060a0be86670a4a9356c47904448460924eb9000000002e000680be0000000c8005ffffff620000fa7003c0874a80660000f02f074eb900000000588f2a000680be0000000c8005ffffff62487403c4854a826640204541e8006c201022000681bffffc000c81003ffbff620000b67203c2804a81660000ac22402029002822000681bffffc000c81003ffbff620608000000670642826000008a2f0820404e90588f24000680be0000000c8005ffffff62e27003c0824a8066da224277a900a2203900000000be80675c72014a93667c95ca23c20000000023c60000000023c70000000023c50000000023c20000000023c60000000023c30000000023c3000000004a8a6700009442a72f024eb90000000052b900000000508f280a6000fe84428576ff609abab900000000669cb4b9000000006694bcb900000000668cb6b90000000056c17301448160804a8667802079000000004a886700ff76bc886700ff70be806600ff6a4a826700ff644a856700ff5e2f4100244eb900000000222f0024b6806600ff4ab6b90000000057c07100448024406000ff3a4a8167064a936600fe504a93670678016000fdf64a846700fdf04a826700ff624a836700ff5c4eb900000000b6806600ff504a866700ff4a4e94bc806600ff4242a72f024eb90000000052b900000000508f700123c00000000060b2",
+   "kind": "text",
+   "name": ".text.instrument_sound_prepare",
+   "size": 626
+  },
+  {
+   "align": 2,
+   "hex": "598f2f02242f000c4eb9000000002f4000044a8267464aaf00106708b4b900000000670442826034206f00107003b0a8000466f052b90000000052b9000000004ab900000000671242b90000000052b9000000004eb90000000074012f2f00044eb900000000588f2002241f588f4e75",
+   "kind": "text",
+   "name": ".text.ip_sound_begin",
+   "size": 112
+  },
+  {
+   "align": 2,
+   "hex": "598f2eaf00084eb9000000004a97670e4ab900000000670653b9000000002f400008588f4ef900000000",
+   "kind": "text",
+   "name": ".text.ip_sound_end",
+   "size": 42
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.last_type",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.last_pattern",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.last_source",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.last_kit",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.last_project",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.ip_admission",
+   "size": 32
+  }
+ ],
+ "source_sha256": "8d9d5b51e795358cc33cf218126f2346cc03afbf2ccaa347ad8101837961b1ff",
+ "symbols": [
+  {
+   "global": false,
+   "name": ".sec..bss",
+   "section": ".bss",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.enabled",
+   "section": ".bss.enabled",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.fault_generation",
+   "section": ".bss.fault_generation",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.healthy",
+   "section": ".bss.healthy",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.ip_admission",
+   "section": ".bss.ip_admission",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.ip_control",
+   "section": ".bss.ip_control",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.last_kit",
+   "section": ".bss.last_kit",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.last_pattern",
+   "section": ".bss.last_pattern",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.last_project",
+   "section": ".bss.last_project",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.last_source",
+   "section": ".bss.last_source",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.last_type",
+   "section": ".bss.last_type",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.listed_type",
+   "section": ".bss.listed_type",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.menu",
+   "section": ".bss.menu",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.phase",
+   "section": ".bss.phase",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.prepared",
+   "section": ".bss.prepared",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..data.channel",
+   "section": ".data.channel",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..data.din",
+   "section": ".data.din",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..data.usb",
+   "section": ".data.usb",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..rodata.desc",
+   "section": ".rodata.desc",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..rodata.dk_app_instrument_settings_rows.str1.1",
+   "section": ".rodata.dk_app_instrument_settings_rows.str1.1",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..rodata.fill.str1.1",
+   "section": ".rodata.fill.str1.1",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..rodata.limits",
+   "section": ".rodata.limits",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..rodata.str1.1",
+   "section": ".rodata.str1.1",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.changed",
+   "section": ".text.changed",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.fill",
+   "section": ".text.fill",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.instrument_midi_ready",
+   "section": ".text.instrument_midi_ready",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.instrument_sound_suspend",
+   "section": ".text.instrument_sound_suspend",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "changed",
+   "section": ".text.changed",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "channel",
+   "section": ".data.channel",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "desc",
+   "section": ".rodata.desc",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "din",
+   "section": ".data.din",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dk_app_instrument_settings_rows",
+   "section": ".text.dk_app_instrument_settings_rows",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dk_ui_menu_new",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dk_ui_submenu",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dk_ui_text",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dk_ui_toggle",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dk_ui_value",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_instrument_generation",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_instrument_type",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_irq_mask",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_irq_restore",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "enabled",
+   "section": ".bss.enabled",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "fault_generation",
+   "section": ".bss.fault_generation",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "fill",
+   "section": ".text.fill",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "healthy",
+   "section": ".bss.healthy",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "instrument_midi_ready",
+   "section": ".text.instrument_midi_ready",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "instrument_play_faulted",
+   "section": ".text.instrument_play_faulted",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "instrument_play_tick",
+   "section": ".text.instrument_play_tick",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "instrument_runtime_policy",
+   "section": ".text.instrument_runtime_policy",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "instrument_sound_prepare",
+   "section": ".text.instrument_sound_prepare",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "instrument_sound_suspend",
+   "section": ".text.instrument_sound_suspend",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_admission",
+   "section": ".bss.ip_admission",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_control",
+   "section": ".bss.ip_control",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_kit",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_project",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_refresh",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_sound_begin",
+   "section": ".text.ip_sound_begin",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_sound_end",
+   "section": ".text.ip_sound_end",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_sound_entry",
+   "section": ".text",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "ip_sound_original",
+   "section": ".text",
+   "value": 64
+  },
+  {
+   "global": true,
+   "name": "ip_sound_resume",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_view",
+   "section": ".bss",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_view_build",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_view_entry",
+   "section": ".text",
+   "value": 80
+  },
+  {
+   "global": true,
+   "name": "ip_view_next",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "last_kit",
+   "section": ".bss.last_kit",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "last_pattern",
+   "section": ".bss.last_pattern",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "last_project",
+   "section": ".bss.last_project",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "last_source",
+   "section": ".bss.last_source",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "last_type",
+   "section": ".bss.last_type",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "limits",
+   "section": ".rodata.limits",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "listed_type",
+   "section": ".bss.listed_type",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "menu",
+   "section": ".bss.menu",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_config_submit",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_instance_reset",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_ledger",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_registry_reply",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_route_enable",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_transport",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "phase",
+   "section": ".bss.phase",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "pp_current_pattern",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "pp_position",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "prepared",
+   "section": ".bss.prepared",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "usb",
+   "section": ".data.usb",
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "as": "GNU assembler (GNU Binutils) 2.47.20260726",
+  "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
+  "gcc": "m68k-elf-gcc (GCC) 16.2.0",
+  "instructions_redecoded": "550",
+  "isa_check": "7209af09de356d292a00b704487c15ea02ebc2cc184029b61d9212b2e8bd2d04",
+  "ld": "GNU ld (GNU Binutils) 2.47.20260726"
+ }
+}

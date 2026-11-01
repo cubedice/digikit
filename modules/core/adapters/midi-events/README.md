@@ -6,7 +6,13 @@ core/platform's USB hook composes an optional `mi_channel_message` callback ahea
 
 The fixed ownership ledger has 32 port/channel routes, 128 physical press records and a 128-event ring. Repeated pitches pair FIFO by token. Releases follow the original track/generation after rerouting; reset, panic and ignored sequencer-mode presses retain tombstones until their physical release. A capacity failure resets all configured instrument instances and quarantines their routes until explicit recovery with keys released. It does not claim unrelated stock routes.
 
-Events remain in the ring until an exact epoch/sequence ACK. Instance resets use reserved priority bits outside the ring; ordinary dequeue waits for reset ACK. Epoch and generation checks reject stale acknowledgements. Token exhaustion requires explicit recovery into a new stream epoch. All mutation is serialized by the CF adapter's interrupt mask; the frame sender uses the same critical-section contract. The readiness callback must be bounded, allocation-free and nonblocking.
+Events remain in the ring until an exact epoch/sequence ACK. Instance resets use reserved priority bits outside the ring; ordinary dequeue waits for reset ACK. Epoch and generation checks reject stale acknowledgements. Token exhaustion requires explicit recovery into a new stream epoch. All mutation is serialized by the CF adapter's interrupt mask; the frame sender uses the same critical-section contract. The readiness callback must be bounded, read-only, allocation-free and nonblocking;
+it runs with interrupts masked and must not call UI or storage services. Readiness
+is rechecked before each routed channel message and before each frame sends queued
+events (once per enabled track). Lost readiness disables that track's routes,
+retains physical-key tombstones and requests a priority reset. It does not silently
+reopen when readiness returns: reset/configuration acknowledgement and an explicit
+route-enable call are still required.
 
 ## Ordered transport components
 
@@ -207,3 +213,90 @@ DIGIKIT_CF_SCRIPT=out/native/target/nogen/release/examples/cf_script \
 ```
 
 The host tests execute the production C implementation, including the runtime dispatcher. The ColdFire component test compiles the same cases for the target and executes them on its instruction core. Neither establishes real USB/DIN latency, stock AMP lifetime, DSP transport coexistence or final audio. Those remain required gates before enabling routes in a release.
+
+The CF reply validator accepts the optional IRR1 registry block in words 4..11;
+version 1 reserves words 12..14 as zero, while version 2 carries a nonzero
+session token in word 12 and reserves words 13..14. The checksum covers all fields.
+`mi_registry_reply(out, words)` copies the last framed registry reply under the
+frame IRQ lock: 16 words on success, 0 if unavailable, -1 for a null output or
+capacity below 16, and -2 when registry boot trust is lost. Unsuccessful calls
+leave output untouched. Missing or corrupt
+frames and explicit recovery invalidate the cache. MIDI epoch admission remains
+independent, so registry bootstrap can precede MIDI readiness. The caller must
+validate transaction identity and freshness; this getter does not enable routes
+or prove a live V2 module.
+
+Registry reply trust uses its own heartbeat guard, independent of MIDI epoch
+admission. An unfiltered backwards heartbeat, a non-advancing/missing heartbeat for
+`MT_STALL_BLOCKS`, or explicit MIDI transport recovery permanently invalidates
+registry snapshots until a cold CF boot. Valid heartbeat wraparound is accepted;
+corrupt replies cannot supply a new heartbeat. The getter returns -2 without
+copying old bytes after invalidation. This is conservative loss of trust, not a
+unique reboot detector. It cannot detect an unobserved reset whose new counter
+looks forward. If frame callbacks stop entirely, UI-task deadlines still apply.
+The SDK treats -2 as permanent boot invalidation and blocks the mailbox exchange
+without issuing a detach into the unknown boot or releasing its storage.
+
+
+`mi_registry_expect_session(token, sequence)` arms one expected bind identity under
+that same IRQ lock and clears the cached reply. Zero arguments return -1 without
+mutation; a second arm or revoked guard returns -2. It sends no command and grants
+no lifecycle or MIDI capability. Before arming, unexpected version-2 replies
+revoke trust. While armed, version-1 replies may maintain heartbeat liveness but
+cannot provide registry snapshots or extend the fixed 900-frame bind deadline.
+
+The first accepted version-2 reply must have a fresh heartbeat, the expected
+nonzero token and exact successful BIND_SESSION ACK: sequence, owner/row zero,
+generation equal to token, operation 5, status/capabilities zero. Subsequent ACKs
+may change, but every framed reply must retain the token and version. A mismatch,
+downgrade, backward heartbeat outside the bounded stale-copy filter, or expired
+deadline revokes trust permanently.
+Malformed replies do not establish identity or refresh liveness; they lead to
+timeout if valid replies do not resume. No late frame revives an expired guard.
+
+The MIDI adapter now consumes version-2 reset/configuration/event ACKs only
+through the armed, ready guard and its exact session token. The legacy entry
+point still rejects version 2. Arming advances the MIDI epoch, clears old
+configuration/heartbeat state, and preserves physical-key tombstones. During
+binding, outgoing MIDI packet slots are zero and configuration/routes are refused.
+A revoked armed guard faults MIDI immediately, closes routes and keeps those
+slots zero; an old valid reply cannot resume traffic. Configuration still requires
+its commit ACK and the ready-consumer callback still owns final route admission.
+
+The SDK implements the one-shot bootstrap and session-aware mailbox, but public
+V2 loading remains disabled. These checks do not prove a live V2 instrument or
+hardware MIDI behavior. The loader must apply a UI-clock deadline when frame
+callbacks stop, arm before its first bind write, and never retry a possibly
+committed bind after an uncertain outcome.
+
+
+### Bounded stale reply copies
+
+The DT2 1.17 coupled loads captured older valid replies after newer ones,
+including heartbeat 3549 after 3552 during CANOPY binding. The frame adapter
+keeps the last eight accepted bound replies and discards a backward reply only
+when all 16 words exactly match one of those records. A numerically nearby but
+previously unseen reply is not evidence of a duplicate and still invalidates
+trust. The bounded cache uses 512 bytes; eviction fails closed.
+
+Unbound legacy heartbeats do not establish a session identity. The first trusted
+heartbeat comes from the exact bind acknowledgement. Legacy traffic cannot
+refresh the bind deadline. Unexpected sessions, version downgrades and the
+physical-reset hook still invalidate trust.
+
+Known stale copies become missing input for both the guard and MIDI ACK receiver,
+and invalidate the cached registry snapshot for that frame. They cannot accept
+an ACK or update the last-progress block. Repeated copies expire at the original
+deadline. An altered ACK, status or generation with an old heartbeat is not a
+known copy, even with a valid checksum.
+
+`mt_guard_fault` records reason, CF block, received heartbeat, prior heartbeat
+and reply magic for trust failure diagnostics. It cannot reset or reopen trust.
+The capture above is emulator evidence, not a new hardware timing claim.
+
+
+Version 3 (`0x494ea103`) is emitted only with the optional playback adapter and
+a bound session. Words 13/14 carry admitted row-zero phase/generation. Version
+1/2 still require zero reserved words. Status is not a lifecycle ACK: command,
+sequence, owner and generation checks remain mandatory. A non-ready row prevents
+keyboard routing; a fault requests retirement on the owning UI task.

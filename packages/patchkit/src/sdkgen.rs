@@ -69,6 +69,7 @@ const TS_WIDTH: usize = 120;
 struct Sdk {
     runtime: Runtime,
     machine: Machine,
+    instrument: Machine,
     fx: Fx,
     log: Log,
     spans: Spans,
@@ -699,6 +700,7 @@ struct Status {
 pub struct Machine {
     pub consts: Vec<MachineConst>,
     /// Field names of `struct dk_voice_in` in order (each field is 4 bytes).
+    #[serde(alias = "input")]
     pub voice_in: Vec<String>,
     /// Field names of `struct dk_machine_desc` in order (each field is 4 bytes).
     pub desc: Vec<String>,
@@ -733,7 +735,12 @@ pub fn fx(text: &str) -> Result<Fx> {
     Ok(parse(text)?.fx)
 }
 
-/// `[machine]` of a `sdk/sdk.toml` text (for the header test).
+/// Experimental `[instrument]` layout, without a runtime capability claim.
+pub fn instrument(text: &str) -> Result<Machine> {
+    Ok(parse(text)?.instrument)
+}
+
+/// `[machine]` of a `sdk/sdk.toml` text.
 pub fn machine(text: &str) -> Result<Machine> {
     Ok(parse(text)?.machine)
 }
@@ -2277,6 +2284,70 @@ fn machine_view(sdk: &Sdk) -> Result<View> {
     c_view("[machine.c]", &m.c, &m.voice_in, &m.desc, &["dk_voice_in"])
 }
 
+fn instrument_view(sdk: &Sdk) -> Result<View> {
+    let m = &sdk.instrument;
+    c_view(
+        "[instrument.c]",
+        &m.c,
+        &m.voice_in,
+        &m.desc,
+        &["dk_instrument_in"],
+    )
+}
+
+fn instrument_inc(sdk: &Sdk) -> String {
+    let m = &sdk.instrument;
+    let mut s =
+        format!("// {HEADER}\n// Experimental V2 layout; runtime support is not advertised.\n");
+    for c in &m.consts {
+        let _ = writeln!(s, "#define {} {}", c.name, c.value);
+    }
+    for (prefix, fields) in [("IN", &m.voice_in), ("DESC", &m.desc)] {
+        for (i, f) in fields.iter().enumerate() {
+            let _ = writeln!(s, "#define DK_I_{prefix}_{} {}", f.to_uppercase(), i * 4);
+            let _ = writeln!(s, "#define DK_I_{prefix}_W_{} {i}", f.to_uppercase());
+        }
+        let _ = writeln!(s, "#define DK_I_{prefix}_BYTES {}", fields.len() * 4);
+        let _ = writeln!(s, "#define DK_I_{prefix}_WORDS {}", fields.len());
+    }
+    s
+}
+
+fn instrument_consts_h(sdk: &Sdk) -> String {
+    let m = &sdk.instrument;
+    c_consts(
+        "DK_GEN_INSTRUMENT_CONSTS_H",
+        &m.consts,
+        &[],
+        "DK_I_",
+        [("IN", m.voice_in.as_slice()), ("DESC", m.desc.as_slice())],
+    )
+}
+
+fn instrument_h(sdk: &Sdk) -> Result<String> {
+    let v = instrument_view(sdk)?;
+    Ok(view_h(
+        "DK_GEN_INSTRUMENT_H",
+        "instrument.h",
+        "experimental persistent-instrument V2 layout; not a runtime capability.",
+        "instrument_consts.h",
+        [
+            (
+                "dk_instrument_in",
+                "borrowed input for one process call",
+                &v.input,
+            ),
+            (
+                "dk_instrument_desc",
+                "persistent instance descriptor",
+                &v.desc,
+            ),
+        ],
+        &v.fns,
+        &sdk.instrument.c,
+    ))
+}
+
 fn fx_view(sdk: &Sdk) -> Result<View> {
     let m = &sdk.fx;
     c_view("[fx.c]", &m.c, &m.fx_in, &m.desc, &["dk_fx_in"])
@@ -2790,6 +2861,9 @@ pub fn render(text: &str) -> Result<Vec<(String, String)>> {
         (PY_OUT.to_string(), python(&sdk)?),
         (INC_OUT.to_string(), machine_inc(&sdk)),
         (FX_INC_OUT.to_string(), fx_inc(&sdk)),
+        (INSTRUMENT_INC_OUT.to_string(), instrument_inc(&sdk)),
+        (C_INSTRUMENT_OUT.to_string(), instrument_consts_h(&sdk)),
+        (C_INSTRUMENT_VIEW_OUT.to_string(), instrument_h(&sdk)?),
         (C_MACHINE_OUT.to_string(), machine_consts_h(&sdk)),
         (C_FX_OUT.to_string(), fx_consts_h(&sdk)),
         (C_LIMITS_OUT.to_string(), limits_h(&sdk)),

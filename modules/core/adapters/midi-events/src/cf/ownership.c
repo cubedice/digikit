@@ -67,6 +67,17 @@ void mi_recover(MiLedger *m)
     m->overruns = overruns;
 }
 
+int mi_session_begin(MiLedger *m)
+{
+    uint32_t i;
+    if (m->epoch == UINT32_MAX) { overflow(m); return -1; }
+    for (i = 0; i < MI_TRACKS; ++i) mi_reset_track(m, i);
+    ++m->epoch;
+    m->head = m->count = 0;
+    m->next_sequence = 1;
+    return 0;
+}
+
 int mi_route(MiLedger *m, uint32_t port, uint32_t channel, uint32_t track,
              uint32_t generation, int sequencer)
 {

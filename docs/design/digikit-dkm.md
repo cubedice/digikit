@@ -185,6 +185,85 @@ failed or timed out), `E_DSP_DEVICE` -36, `E_DSP_TYPE` -37 (a voice key that has
 The DSP's per-type **selector** word (which render path a track uses) is not set by this section: the selector of a run-time type is
 type 0's (finding 30). A machine that clones SAMPLE, like `pluck`, is right already.
 
+### Experimental persistent instruments (DKDS 5 and 6)
+
+The host packer emits version 6 for V2 instruments and can still read version 5. The shipped runtime
+does not yet support it. The experimental `dkneeds::needs_of_v2` entry point can
+account for its memory requirements. The outer DKM requests **machine contract 2.0**;
+the runtime still advertises 1.0, so its contract check rejects these files before
+allocation. Public module packing remains disabled pending registration/dispatch.
+
+V5 extends the header from 0x40 to 0x50 bytes: u32 instrument table offset at
+0x40, u32 count at 0x44, and zero reserved words at 0x48/0x4c. The count is 1..8.
+The existing voice and effect records retain their V4 layouts. Tables appear in
+canonical order: header, imports, relocations, voices, effects, instruments,
+zero padding to 16 bytes, image. The host parser rejects other layouts, trailing
+bytes, overlapping tables and nonzero reserved bytes. V1-V4 output is unchanged.
+
+V6 retains the 0x50-byte header and uses 0x48/0x4c for an executable-range table
+offset and count (1..32). This table follows the instrument records, before the
+16-byte image alignment padding. Each entry is two big-endian u32 image byte
+offsets: start and exclusive end. The packer derives these from the linker's text
+sections, preserving gaps between sections. Ranges must be sorted, nonoverlapping,
+two-byte aligned, at least six bytes long and entirely within the image. Each
+instrument callback must fit a full six-byte instruction inside one range;
+descriptors must not overlap any range. The SDK decoder, host parser and
+experimental resource reader enforce these checks. These are section bounds,
+not proof of instruction boundaries, valid control flow, or execution budgets.
+V5 retains zero at 0x48/0x4c and has no executable-boundary assurance. Neither
+version is admitted by the current runtime; V1–V4 serialization is unchanged.
+
+Each instrument record is four big-endian words: machine type, reset callback
+image byte offset, process callback image byte offset, descriptor image byte
+offset. Zero is a valid callback offset. Both callbacks must have a full six-byte
+instruction within the image and be two-byte aligned; the packer requires global
+text symbols. The descriptor is 48 little-endian bytes of the separate DKIT V2
+layout, four-byte aligned, entirely in initialized data, without overlapping
+relocations. Types must be unique across instruments and V1 voices.
+
+State storage is `tracks * align8(state_bytes)` per instrument, after existing
+image/BSS, voice and effect storage; the total is rounded to 64 bytes. Descriptor
+validation checks arithmetic overflow and caller-supplied admission ceilings,
+including aggregate instrument state. Host parsing checks format bounds only;
+real device admission must apply device-specific ceilings. No V2 records are
+counted as V1 voice rows. `needs_of_v2` returns existing resource totals plus
+separate instrument row, track-instance and aligned state-byte counts, using
+bounded stack storage and checked 32-bit arithmetic. It validates descriptor
+structure and table bounds, but does not check signatures, imports, relocation
+contents or device-specific cycle/stack admission limits. It is not a load check.
+The normal `needs_of` entry point still rejects V5/V6, keeping the scan/fit ABI and
+capacity protocol unchanged until V2 registry integration is complete.
+
+The SDK's `instrument_section::Section` reader validates a complete DKDS6
+instrument-only section without allocation and returns bounded slices and memory
+requirements for admission. It checks canonical layout, padding, import names,
+relocation fields and text containment in addition to descriptors. Mixed legacy
+voice/effect sections are rejected by this reader pending coordinated lifecycle
+support. This reader is not yet called by the live loader and does not resolve
+imports, apply relocations, publish rows or enable a V2 device capability.
+
+`Section::relocate_into` prepares a checked copy in caller-owned memory. It
+resolves each import name once through a trusted resolver and preflights all
+fixups before writing. Missing imports, overlapping fixup instructions, invalid
+placement and address overflow leave the output unchanged. Internal text/data
+addresses use checked base shifts; abs32 import fields encode signed 32-bit
+addends, while abs24 import addends are unsigned as required by packing. The full
+image/BSS/state extent must fit DTII L2. The operation does not initialize BSS,
+transfer bytes, install rows or establish transport quiescence.
+
+The internal V2 registry reserves all types of a module in one transaction.
+Publication requires completion of DSP initialization; retirement hides the rows
+but holds their capacity until DSP detachment is acknowledged. Module-slot and
+generation tickets prevent stale completions from affecting reused rows. The
+explicit V2 fit API rejects missing instrument capacity and updates planning
+snapshots only if both instrument and legacy resources fit. These library paths
+are not connected to loader transfers yet; they do not enable V2 capability.
+The V2 transfer controller requires image acknowledgement followed by a separate
+initialization acknowledgement before publication. Once sending starts, rollback
+requires confirmed detachment; a timeout retains rows and memory. Detachment must
+also drain earlier writes before memory can be reused. The existing V1 loader's
+early ColdFire publication ordering is not suitable for this V2 path.
+
 ## What the loader checks, in order (nothing is written to the arena before the last one)
 
 1. Store: header, table checksum, the path, the table's file hash of the file (`E_NOT_FOUND`, `E_BAD_STORE`, `E_SHA`, `E_TOO_BIG`).

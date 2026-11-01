@@ -681,9 +681,19 @@ def test_window_transfers_carry_the_window_and_refuse_bad_arguments(machine, bui
     w = tail_words(r[1].reads[1], 0x402, 174)
     assert w[0] == MAGIC | (0 << 16) | (2 << 30)
     assert (w[1] & 0x1FFFF, (w[1] >> 17) & 0xFF, (w[1] >> 25) & 1) == (5, 2, 1)
+    # V2 data window: the DSP still decides whether a provider exists.
+    r = run(
+        machine, built, {src: data}, [call(built, "dl_send_win", [3, 7, src, 8]), tick]
+    )
+    assert r[0].d0 == 0
+    w = tail_words(r[1].reads[1], 0x402, 174)
+    assert w[0] == MAGIC | (3 << 30)
+    assert w[1] & 0x1FFFF == 7
+    assert w[2:4] == [0x11223344, 0x55667788]
+    assert w[4] == check_word(w[:4])
     bad = [
         [0, 0, src, 8],  # window 0 is dl_send's
-        [3, 0, src, 8],  # no window 3
+        [4, 0, src, 8],  # only two window bits
         [1, 0, src, 0],
         [1, 0, src, 6],
         [1, 0x20000, src, 4],
@@ -838,3 +848,362 @@ def test_tick_callback_gets_the_reply_record_and_can_be_cleared(machine, built):
         ],
     )
     assert r[2].reads[0] == bytes(4)
+
+
+@needs_gcc
+@pytest.mark.parametrize("status,terminal", [(1, 2), (3, 3)])
+def test_tagged_completion_waits_for_end_frames_and_rejects_legacy_replacement(
+    machine, built, status, terminal
+):
+    src, ticket, output = DATA + 0x4000, DATA + 0x5000, DATA + 0x5100
+    record = bytearray(0xABC)
+    struct.pack_into(">HHHH", record, ACK_OFF, ACK_MAGIC, 1, 1 | (status << 8), 0)
+
+    def tick(rec):
+        return call(built, "dl_tick", [0x802, 0, 0xABC, rec])
+
+    poll = call(built, "dl_poll_tagged", [1, output], [(output, 28)])
+    calls = [
+        call(built, "dl_send_tagged", [3, 1, src, 4, ticket], [(ticket, 4)]),
+        poll,
+        tick(0),
+        tick(REC),
+        poll,
+    ]
+    for _ in range(5):
+        calls += [tick(REC), poll]
+    calls += [
+        call(built, "dl_send", [AREA, src, 4]),
+        poll,
+        call(built, "dl_poll_tagged", [2, output], [(output, 28)]),
+    ]
+    results = run(
+        machine, built, {src: b"abcd", REC: bytes(record), output: b"\xcc" * 28}, calls
+    )
+    assert results[0].d0 == 0
+    assert results[0].reads[0] == struct.pack(">I", 1)
+    assert results[1].d0 == 0 and struct.unpack(">7I", results[1].reads[0])[0] == 1
+    assert results[4].d0 == 0  # terminal status is not yet a drainage proof
+    assert struct.unpack(">7I", results[4].reads[0])[0] == terminal
+    assert [results[i].d0 for i in (6, 8, 10, 12, 14)] == [0, 0, 0, 0, 1]
+    assert results[15].d0 == 0  # legacy transfer consumes the next identity too
+    assert results[16].d0 == 0xFFFFFFFF
+    assert (
+        results[16].reads[0] == results[14].reads[0]
+    )  # stale poll cannot overwrite output
+    assert results[17].d0 == 0 and struct.unpack(">7I", results[17].reads[0])[0] == 1
+
+
+@needs_gcc
+def test_tagged_rejections_preserve_identity_and_caller_output(machine, built):
+    src, ticket, output = DATA + 0x4000, DATA + 0x5000, DATA + 0x5100
+    calls = [
+        call(built, "dl_send_tagged", [3, 0, src, 4, 0]),
+        call(built, "dl_send_tagged", [4, 0, src, 4, ticket], [(ticket, 4)]),
+        call(built, "dl_poll_tagged", [0, output], [(output, 28)]),
+        call(built, "dl_send_tagged", [0, AREA, src, 4, ticket], [(ticket, 4)]),
+        call(built, "dl_send_tagged", [3, 0, src, 4, ticket], [(ticket, 4)]),
+        call(built, "dl_poll_tagged", [1, 0]),
+    ]
+    results = run(
+        machine, built, {src: b"abcd", ticket: b"\xcc" * 4, output: b"\xcc" * 28}, calls
+    )
+    assert [r.d0 for r in results] == [
+        0xFFFFFFFE,
+        0xFFFFFFFE,
+        0xFFFFFFFF,
+        0,
+        0xFFFFFFFF,
+        0xFFFFFFFF,
+    ]
+    assert results[1].reads[0] == b"\xcc" * 4
+    assert results[2].reads[0] == b"\xcc" * 28
+    assert results[3].reads[0] == results[4].reads[0] == struct.pack(">I", 1)
+
+
+@needs_gcc
+@pytest.mark.parametrize("serial,expected", [(0xFFFFFFFE, 0), (0xFFFFFFFF, 0xFFFFFFFE)])
+def test_transfer_identity_never_wraps(machine, built, serial, expected):
+    src, ticket = DATA + 0x4000, DATA + 0x5000
+    results = run(
+        machine,
+        built,
+        {
+            built.symbols["dl_link"] + 72: struct.pack(">I", serial),
+            src: b"abcd",
+            ticket: b"\xcc" * 4,
+        },
+        [call(built, "dl_send_tagged", [3, 0, src, 4, ticket], [(ticket, 4)])],
+    )
+    assert results[0].d0 == expected
+    assert results[0].reads[0] == (
+        struct.pack(">I", 0xFFFFFFFF) if expected == 0 else b"\xcc" * 4
+    )
+
+
+@needs_gcc
+@pytest.mark.parametrize("status", [1, 3])
+def test_lease_survives_terminal_drain_and_registry_reply_gap(machine, built, status):
+    src, lease, ticket, output = (DATA + n for n in (0x4000, 0x5000, 0x5100, 0x5200))
+    record = bytearray(0xABC)
+    struct.pack_into(">HHHH", record, ACK_OFF, ACK_MAGIC, 1, 1 | (status << 8), 0)
+    tick = call(built, "dl_tick", [0x802, 0, 0xABC, REC])
+    calls = [
+        call(built, "dl_claim", [lease], [(lease, 4)]),
+        call(built, "dl_send_owned", [1, 3, 0, src, 4, ticket], [(ticket, 4)]),
+        call(built, "dl_release", [1]),  # START is not drained
+        call(built, "dl_tick", [0x802, 0, 0xABC, 0]),
+        call(built, "dl_release", [1]),  # BUSY
+        tick,
+        call(built, "dl_release", [1]),  # terminal, END still outstanding
+        *([tick] * 5),
+        call(built, "dl_poll_tagged", [1, output], [(output, 28)]),
+        # Byte completion does not end ownership: registry reply may be pending.
+        call(built, "dl_send", [AREA, src, 4]),
+        call(built, "dl_send_win", [2, 0, src, 4]),
+        call(built, "dl_send_tagged", [0, AREA, src, 4, ticket], [(ticket, 4)]),
+        call(built, "dl_claim", [lease], [(lease, 4)]),
+        call(built, "dl_release", [2]),  # wrong owner cannot release
+        call(built, "dl_release", [1]),
+        call(built, "dl_send", [AREA, src, 4]),
+    ]
+    results = run(machine, built, {src: b"abcd", REC: bytes(record)}, calls)
+    assert results[0].d0 == results[1].d0 == 0
+    assert results[0].reads[0] == results[1].reads[0] == struct.pack(">I", 1)
+    assert [results[i].d0 for i in (2, 4, 6)] == [0xFFFFFFFF] * 3
+    assert results[12].d0 == 1
+    assert struct.unpack(">7I", results[12].reads[0])[0] == (2 if status == 1 else 3)
+    assert [r.d0 for r in results[13:17]] == [0xFFFFFFFF] * 4
+    assert results[15].reads[0] == results[16].reads[0] == struct.pack(">I", 1)
+    assert [r.d0 for r in results[17:]] == [0xFFFFFFFE, 0, 0]
+
+
+@needs_gcc
+@pytest.mark.parametrize("window", [0, 1, 2, 3])
+def test_owned_send_requires_current_lease_and_preserves_wire_window(
+    machine, built, window
+):
+    src, lease, ticket = (DATA + n for n in (0x4000, 0x5000, 0x5100))
+    dst = AREA if window == 0 else 3
+    args = [window, dst, src, 4, ticket]
+    results = run(
+        machine,
+        built,
+        {src: b"abcd", ticket: b"\xcc" * 4},
+        [
+            call(built, "dl_send_owned", [0, *args], [(ticket, 4)]),
+            call(built, "dl_send_owned", [1, *args], [(ticket, 4)]),
+            call(built, "dl_claim", [lease]),
+            call(built, "dl_release", [1]),
+            call(built, "dl_claim", [lease], [(lease, 4)]),
+            call(built, "dl_release", [1]),
+            call(built, "dl_send_owned", [1, *args], [(ticket, 4)]),
+            call(built, "dl_send_owned", [2, *args], [(ticket, 4)]),
+            call(built, "dl_tick", [0x802, 0, 0xABC, 0], [(TXQ, 0x55E * 4)]),
+        ],
+    )
+    assert [r.d0 for r in results[:8]] == [
+        0xFFFFFFFE,
+        0xFFFFFFFE,
+        0,
+        0,
+        0,
+        0xFFFFFFFE,
+        0xFFFFFFFE,
+        0,
+    ]
+    assert results[4].reads[0] == struct.pack(">I", 2)
+    for i in (0, 1, 6):
+        assert results[i].reads[0] == b"\xcc" * 4
+    assert results[7].reads[0] == struct.pack(
+        ">I", 1
+    )  # claims do not consume transfer IDs
+    words = tail_words(results[8].reads[0], 0x402, 174)
+    assert words[0] >> 30 == window
+    assert words[1] & 0x1FFFF == (0 if window == 0 else dst)
+    assert words[2] == int.from_bytes(b"abcd", "little")
+    assert words[3] == check_word(words[:3])
+
+
+@needs_gcc
+@pytest.mark.parametrize("serial,expected", [(0xFFFFFFFE, 0), (0xFFFFFFFF, 0xFFFFFFFE)])
+def test_lease_identity_never_wraps_or_changes_output_on_failure(
+    machine, built, serial, expected
+):
+    lease = DATA + 0x5000
+    results = run(
+        machine,
+        built,
+        {
+            built.symbols["dl_link"] + 80: struct.pack(">I", serial),
+            lease: b"\xcc" * 4,
+        },
+        [
+            call(built, "dl_claim", [0]),
+            call(built, "dl_claim", [lease], [(lease, 4)]),
+            call(built, "dl_release", [0]),
+        ],
+    )
+    assert [r.d0 for r in results] == [0xFFFFFFFE, expected, 0xFFFFFFFE]
+    assert results[1].reads[0] == (
+        struct.pack(">I", 0xFFFFFFFF) if expected == 0 else b"\xcc" * 4
+    )
+
+
+@needs_gcc
+def test_lease_claim_cannot_take_over_legacy_start_or_end_drain(machine, built):
+    src, lease = DATA + 0x4000, DATA + 0x5000
+    record = bytearray(0xABC)
+    struct.pack_into(">HHHH", record, ACK_OFF, ACK_MAGIC, 1, 1 | (1 << 8), 0)
+    tick = call(built, "dl_tick", [0x802, 0, 0xABC, REC])
+    claim = call(built, "dl_claim", [lease], [(lease, 4)])
+    results = run(
+        machine,
+        built,
+        {src: b"abcd", REC: bytes(record), lease: b"\xcc" * 4},
+        [
+            call(built, "dl_send", [AREA, src, 4]),
+            claim,
+            call(built, "dl_tick", [0x802, 0, 0xABC, 0]),
+            claim,
+            tick,
+            claim,
+            *([tick] * 5),
+            claim,
+        ],
+    )
+    for i in (1, 3, 5):
+        assert results[i].d0 == 0xFFFFFFFF
+        assert results[i].reads[0] == b"\xcc" * 4
+    assert results[-1].d0 == 0
+    assert results[-1].reads[0] == struct.pack(">I", 1)
+
+
+@needs_gcc
+@pytest.mark.parametrize("phase", ["start", "busy", "ending", "drained"])
+def test_reset_retains_owned_transfer_and_rejects_stale_ack(machine, built, phase):
+    src, lease, ticket, output = (DATA + n for n in (0x4000, 0x5000, 0x5100, 0x5200))
+    record = bytearray(0xABC)
+    struct.pack_into(">HHHH", record, ACK_OFF, ACK_MAGIC, 1, 0x101, 0)
+    tick = call(built, "dl_tick", [0x802, 0, 0xABC, REC], [(TXQ + 4 * 0x402 + 2, 2)])
+    calls = [
+        call(built, "dl_reset_begin", []),  # initial boot must allow first use
+        call(built, "dl_claim", [lease]),
+        call(built, "dl_send_owned", [1, 3, 0, src, 4, ticket]),
+    ]
+    if phase != "start":
+        calls.append(call(built, "dl_tick", [0x802, 0, 0xABC, 0]))
+    if phase in ("ending", "drained"):
+        calls.append(tick)
+    if phase == "drained":
+        calls.extend([tick] * 6)
+    calls.extend(
+        [
+            call(built, "dl_reset_begin", []),
+            call(built, "dl_reset_begin", []),
+        ]
+    )
+    prefix = len(calls)
+    calls.extend([tick] * 8)  # valid old ACK and enough frames to have drained normally
+    calls.extend(
+        [
+            call(
+                built,
+                "dl_poll_tagged",
+                [1, output],
+                [(output, 28), (built.symbols["dl_link"], 96)],
+            ),
+            call(built, "dl_release", [1]),
+            call(built, "dl_claim", [lease], [(lease, 4)]),
+            call(built, "dl_send_owned", [1, 3, 0, src, 4, ticket], [(ticket, 4)]),
+            call(built, "dl_send", [AREA, src, 4]),
+            call(built, "dl_send_tagged", [3, 0, src, 4, ticket], [(ticket, 4)]),
+        ]
+    )
+    results = run(machine, built, {src: b"abcd", REC: bytes(record)}, calls)
+    assert results[1].d0 == results[2].d0 == 0
+    assert all(r.reads[0] == bytes(2) for r in results[prefix : prefix + 8])
+    done = results[prefix + 8]
+    assert done.d0 == 0  # unresolved, never terminal/drained
+    assert struct.unpack(">7I", done.reads[0])[:2] == (1, 102)
+    state = struct.unpack(">24I", done.reads[1])
+    assert state[2] == src  # source remains owned
+    assert state[18:22] == (1, 1, 1, 1)  # serial, lease, lease serial, revoked
+    assert all(r.d0 == 0xFFFFFFFE for r in results[prefix + 9 :])
+    assert results[prefix + 10].reads[0] == struct.pack(">I", 1)
+    assert (
+        results[prefix + 11].reads[0]
+        == results[prefix + 13].reads[0]
+        == struct.pack(">I", 1)
+    )
+
+
+@needs_gcc
+@pytest.mark.parametrize(
+    "status,csr,minor,expected",
+    [
+        (0, 0, 0, 1),
+        (0x40000000, 0, 0, 2),
+        (0, 1, 0, 2),
+        (0, 0x40, 0, 2),
+        (0, 0x20, 0, 2),
+        (0, 0, 0x8000, 2),
+    ],
+)
+def test_reset_hardware_requires_stopped_spi_and_dma(
+    machine, built, status, csr, minor, expected
+):
+    mcr, sr, rx, tx, cerq = (DATA + n for n in (0x6000, 0x6004, 0x6020, 0x6040, 0x6050))
+    registers = [mcr, sr, cerq, rx, tx]
+    calls = [
+        call(built, "dl_reset_quiesce_regs", registers, [(mcr, 4)]),
+        call(built, "dl_claim", [DATA + 0x5000]),
+        call(built, "dl_reset_begin", []),
+        call(
+            built,
+            "dl_reset_quiesce_regs",
+            registers,
+            [(built.symbols["dl_reset_hw"], 32), (mcr, 4)],
+        ),
+        call(
+            built,
+            "dl_reset_quiesce_regs",
+            registers,
+            [(built.symbols["dl_reset_hw"], 32)],
+        ),
+    ]
+    for operation in calls:
+        operation["max"] = 10_000_000
+    results = run(
+        machine,
+        built,
+        {
+            mcr: struct.pack(">I", 0x80010000),
+            sr: struct.pack(">I", status),
+            rx - 10: struct.pack(">H", minor),
+            rx - 2: bytes(2),
+            tx - 10: bytes(2),
+            tx - 2: bytes(2),
+            rx: struct.pack(">H", csr),
+            tx: bytes(2),
+        },
+        calls,
+    )
+    assert results[0].d0 == 0
+    assert results[0].reads[0] == struct.pack(">I", 0x80010000)
+    assert results[3].d0 == results[4].d0 == expected
+    diagnostic = struct.unpack(">8I", results[3].reads[0])
+    assert diagnostic == (
+        expected,
+        1 if expected == 1 else 65536,
+        0x80010000,
+        status,
+        csr,
+        0,
+        status,
+        csr | minor,
+    )
+    assert results[4].reads[0] == results[3].reads[0]  # never retry after timeout
+    assert results[3].reads[1] == struct.pack(
+        ">I", 0x80010C01 if expected == 1 else 0x80010001
+    )

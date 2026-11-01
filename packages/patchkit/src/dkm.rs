@@ -908,6 +908,8 @@ mod tests {
                 latched: 0,
             }],
             fxs: vec![],
+            instruments: vec![],
+            executable: vec![],
         }
         .encode()
     }

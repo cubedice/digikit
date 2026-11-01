@@ -17,6 +17,7 @@ pub mod flash;
 pub mod flash_rpc;
 pub mod fwgen;
 pub mod imageid;
+pub mod instrument;
 pub mod syx;
 
 pub use error::{Error, Result};

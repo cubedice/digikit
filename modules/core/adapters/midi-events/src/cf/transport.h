@@ -14,6 +14,7 @@
 #define MT_STALL_BLOCKS 900u
 #define MT_REPLY_WORDS 16u
 #define MT_REPLY_MAGIC 0x494ea101u
+#define MT_SESSION_REPLY_MAGIC 0x494ea102u
 typedef struct {
     uint32_t words[MT_WORDS];
     uint32_t epoch, next_message, pending, track, generation, count;
@@ -40,12 +41,42 @@ uint32_t mt_check(const uint32_t words[MT_WORDS]);
 int mt_config_begin(MiTransport *t, const MiLedger *m, uint32_t track,
                     uint32_t revision, uint32_t schema,
                     const uint32_t *words, uint32_t count);
-/* Bootstrap ACK-only reply: magic, epoch, accepted message, heartbeat,
- * eleven reserved zero words, checksum. Final UI status needs another version.
+/* Reply: magic, epoch, accepted message, heartbeat, optional registry block
+ * in words 4..11, session token at word 12 in version 2 (zero in version 1),
+ * row phase/generation in words 13..14 for version 3 (zero in versions 1/2),
+ * checksum.
  * Call once per CF block, including with null/malformed replies. Returns -1
  * invalid, 0 repeated/missing, 1 fresh, 2 fresh and pending packet acknowledged.
  * Only an epoch-bound, forward heartbeat may acknowledge a packet. */
+/* Framing/integrity only; independent of MIDI epoch and registry identity. */
+int mt_reply_valid(const uint32_t reply[MT_REPLY_WORDS]);
 int mt_reply_tick(MiTransport *t, MiLedger *m,
                   const uint32_t reply[MT_REPLY_WORDS], uint32_t block);
 void mt_reply_read(const volatile uint16_t *record, uint32_t out[MT_REPLY_WORDS]);
+
+/* Separate from MIDI epochs: registry bootstrap precedes MIDI admission.
+ * Zero-initialize once per CF boot. invalid is sticky until a real cold boot. */
+typedef struct {
+    uint32_t seen, heartbeat, block, invalid;
+    uint32_t expected, sequence, started, ready;
+    uint32_t history[8][MT_REPLY_WORDS], history_count, history_next;
+} MtReplyGuard;
+/* Arm exactly once before sending BIND_SESSION. 0 accepted, -1 bad arguments,
+ * -2 already armed or invalid. No reset/retry; readiness requires the exact bind
+ * ACK plus version/token. Deadline uses CF frame blocks, not a UI wall clock. */
+int mt_reply_guard_expect(MtReplyGuard *guard, uint32_t token,
+                          uint32_t sequence, uint32_t block);
+/* Discard only exact copies of the last eight accepted bound replies.
+ * Treat it as missing everywhere: no ACK, no cached registry reply, no deadline
+ * refresh. Unknown regressions and changed/missing bound sessions still fault. */
+int mt_reply_reordered(const MtReplyGuard *guard, const uint32_t *reply);
+void mt_reply_guard_tick(MtReplyGuard *guard, const uint32_t *reply, uint32_t block);
+/* Call after guard_tick on the same snapshot/block. An armed session must bind
+ * before ACKs are consumed; sticky trust loss faults MIDI ownership immediately. */
+int mt_reply_tick_guarded(MiTransport *t, MiLedger *m, const uint32_t *reply,
+                          uint32_t block, const MtReplyGuard *guard);
+
+/* V3 adds admitted row zero phase/generation in reply words 13/14. */
+#define MT_PLAY_REPLY_MAGIC 0x494ea103u
+
 #endif

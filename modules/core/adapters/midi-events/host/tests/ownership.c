@@ -13,6 +13,34 @@ static MiEvent take(MiLedger *m)
     return e;
 }
 
+uint32_t mi_test_session_keys(void)
+{
+    MiLedger m; MiEvent old, fresh, off;
+    mi_init(&m);
+    CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
+    CHECK(message(&m, 0, 0x90, 60, 90));
+    old = take(&m);
+    m.routes[1].quarantined = 1;
+    CHECK(mi_session_begin(&m) == 0 && m.epoch == 2);
+    CHECK(m.keys[0].used && m.keys[0].tombstone);
+    CHECK(m.routes[1].quarantined && !m.routes[0].enabled);
+    CHECK(!mi_reset_ack(&m, 1, 0, m.generations[0]));
+    for (uint32_t track = 0; track < MI_TRACKS; ++track)
+        CHECK(mi_reset_ack(&m, 2, track, m.generations[track]));
+    CHECK(mi_route(&m, 0, 0, 0, m.generations[0], 0) == 0);
+    CHECK(message(&m, 0, 0x90, 60, 100));
+    fresh = take(&m);
+    CHECK(fresh.token != old.token && fresh.epoch == 2);
+    CHECK(message(&m, 0, 0x80, 60, 0));
+    CHECK(!mi_peek(&m, &off));
+    CHECK(message(&m, 0, 0x80, 60, 0));
+    off = take(&m);
+    CHECK(off.token == fresh.token && off.kind == MI_NOTE_OFF);
+    m.epoch = UINT32_MAX;
+    CHECK(mi_session_begin(&m) == -1 && m.epoch == UINT32_MAX);
+    return 0;
+}
+
 uint32_t mi_test_fifo(void)
 {
     MiLedger m;

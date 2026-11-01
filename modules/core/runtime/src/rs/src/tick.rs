@@ -10,6 +10,10 @@ use crate::{admin_cmds, boot, card, dlog, fault, entry, files, intro, io, loader
 use core::ptr::{addr_of, addr_of_mut, read_volatile, write_volatile};
 use dkrt_sdk::*;
 
+extern "C" {
+    fn instrument_play_tick();
+}
+
 /// One tick phase of the services, measured as a span (owner `SPAN_PHASE | p`) while a span sink and clock are set.
 pub(crate) unsafe fn phase(p: u32) {
     dlog::spanned(dlog::SPAN_PHASE | p, || services().tick(p));
@@ -33,6 +37,7 @@ pub(crate) unsafe fn poll_all() {
 #[no_mangle]
 pub unsafe extern "C" fn dkrt_tick() {
     init_once();
+    crate::instrument::bind_once();
     let s = st();
     s.ticks = s.ticks.wrapping_add(1);
     intro::ui_pass();
@@ -48,6 +53,11 @@ pub unsafe extern "C" fn dkrt_tick() {
     files::tick();
     phase(tick_phase::LATE);
     phase(tick_phase::LAST);
+    crate::instrument::tick(s.ticks);
+    // optional (core/instrument-play): zero when the adapter is absent
+    if core::hint::black_box(instrument_play_tick as usize) != 0 {
+        instrument_play_tick();
+    }
     settings::tick();
     watch::tick();
     let mb = &mut *addr_of_mut!(DKRT_MAILBOX);

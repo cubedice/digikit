@@ -39,18 +39,62 @@ def reply_builder():
     }
     epoch_at, message_at = 0x20040000, 0x20040004
     linked = pk_sharc.link(
-        obj, 0xB90000, {**symbols, "_mi_epoch": epoch_at, "_mi_message": message_at}
+        obj,
+        0xB90000,
+        {
+            **symbols,
+            "_mi_epoch": epoch_at,
+            "_mi_message": message_at,
+            "_instrument_registry_reply": 0,
+            "_instrument_session": 0,
+            "_instrument_play_status": 0,
+        },
     )
 
-    def build(epoch, message, heartbeat):
+    registry_at = 0x20041000
+    registry_linked = pk_sharc.link(
+        obj,
+        0xB90000,
+        {
+            **symbols,
+            "_mi_epoch": epoch_at,
+            "_mi_message": message_at,
+            "_instrument_registry_reply": registry_at,
+            "_instrument_session": registry_at + 32,
+            "_instrument_play_status": 0,
+        },
+    )
+
+    play_linked = pk_sharc.link(
+        obj,
+        0xB90000,
+        {
+            **symbols,
+            "_mi_epoch": epoch_at,
+            "_mi_message": message_at,
+            "_instrument_registry_reply": registry_at,
+            "_instrument_session": registry_at + 32,
+            "_instrument_play_status": registry_at + 36,
+        },
+    )
+
+    def build(epoch, message, heartbeat, registry=None, session=0, play=None):
         dm = dict(initial)
+        if registry is not None:
+            dm.update({registry_at // 4 + i: w for i, w in enumerate(registry)})
+        dm[(registry_at + 32) // 4] = session
+        if play is not None:
+            dm[(registry_at + 36) // 4] = play[0]
+            dm[(registry_at + 40) // 4] = play[1]
         dm[epoch_at // 4] = epoch
         dm[message_at // 4] = message
         dm[symbols["_mi_heartbeat"] // 4] = heartbeat
         base = symbols["_instrument_reply"] // 4
         dm[base - 1] = dm[base + 16] = 0xDEADBEEF
         result = pk_sharc.run_call(
-            linked,
+            play_linked
+            if play is not None
+            else (registry_linked if registry is not None else linked),
             "_mi_reply_build",
             regs={"M5": 0, "M6": 1, "L0": 0},
             dm_words=dm,
@@ -111,12 +155,19 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
         source += "\n" + (MOD / f"src/dsp/{name}.s").read_text()
     if consumer:
         canopy = ROOT / "modules/machines/canopy/src/dsp"
-        for name in ("voice", "tuning", "instrument"):
+        for name in ("voice", "tuning", "events", "instrument"):
             source += "\n" + (canopy / f"{name}.s").read_text()
     if carrier:
         for name in ("carrier", "carrier-frame", "velocity", "envelope", "workspace"):
             source += "\n" + (MOD / f"src/dsp/{name}.s").read_text()
         source += "\n" + (canopy / "carrier-prepare.s").read_text()
+        for name in ("registry", "lifecycle", "rows", "protected"):
+            source += (
+                "\n"
+                + (
+                    ROOT / f"modules/core/adapters/instrument-registry/src/dsp/{name}.s"
+                ).read_text()
+            )
     obj = pk_sharc.assemble(source)
     sections, address, dm = {}, 0x20020000, {}
     for name, (blob, align, _) in obj.data.items():
@@ -132,11 +183,18 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
     symbols = {
         name: sections[sec] + off for name, (sec, off, _) in obj.data_symbols.items()
     }
-    externs = {**symbols, "_pp_block_back": 0xB9F000}
+    externs = {
+        **symbols,
+        "_pp_block_back": 0xB9F000,
+        "_instrument_play_status": 0,
+    }
     if carrier:
         externs["_mi_envelope_next"] = 0
         externs["_mi_workspace_next"] = 0
     if not carrier:
+        externs["_instrument_registry_block"] = 0
+        externs["_instrument_registry_reply"] = 0
+        externs["_instrument_session"] = 0
         externs["_mi_carrier_begin"] = 0
         externs["_instrument_carrier_prepare"] = 0
     if not consumer:
@@ -144,6 +202,13 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
         externs["_instrument_events"] = 0
         externs["_instrument_configure"] = 0
     linked = pk_sharc.link(obj, 0xB90000, externs)
+    if carrier:
+        command = [0x49524731, 1, 1, 3, 9, 1, 7] + [0] * 9
+        for value in command[:15]:
+            command[15] ^= value
+        dm.update(
+            {symbols["_dl_irows"] // 4 + i: value for i, value in enumerate(command)}
+        )
     rx = 0x200A0000
     words = [0x494E0101, 2, 1, 1, 0, 0, 42, 0, 0, 2] + [0] * 22
     words[7] = packet_check(words)
@@ -197,7 +262,7 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
             ),
         },
         read_regs=tuple(regs),
-        max_steps=4000,
+        max_steps=8000,
         return_sw=0xB9F000,
     )
     assert result["halt"]["reason"] == "breakpoint", result
@@ -206,6 +271,7 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
     assert result["reply"][:4] == [0x494EA101, int(consumer), int(consumer), 1]
     assert result["position"][0] == (position_words[0] if valid_position else 0)
     if carrier:
+        assert result["reply"][4:12] == [0x49525231, 1, 3, 9, 1, 7, 0, 0]
         assert result["stamp"] == [1]
         assert result["owners"] == [1, 0] * 16
 
@@ -840,6 +906,8 @@ def test_dsp_loader_enforces_each_optional_tail_boundary(
         "_dl_vcount": 0,
         "_dl_frows": 0,
         "_dl_fcount": 0,
+        "_dl_irows": 0,
+        "_dl_iwords": 0,
         "_dv_diag": 0,
         "_dv_rec": 0,
         "_loop_ui_status": 0,
@@ -1122,7 +1190,7 @@ void *memset(void *d, int c, unsigned n) {
             memory,
         ],
         0x47E00000,
-        {},
+        {"dl_reset_begin": 0, "dl_reset_quiesce": 0},
         [MOD / "src/cf"],
     )
     names = [
@@ -1145,6 +1213,9 @@ void *memset(void *d, int c, unsigned n) {
         "config_maximum",
         "reply_ack",
         "reply_watchdog",
+        "session_guard",
+        "session_midi",
+        "session_keys",
         "reply_record",
     ]
     script = tmp_path / "calls.json"
@@ -1192,6 +1263,44 @@ void *memset(void *d, int c, unsigned n) {
                     "args": [0x47D00000],
                     "max": 5_000_000,
                 },
+                {
+                    "op": "poke",
+                    "addr": 0x47D00000,
+                    "hex": b"".join(
+                        w.to_bytes(4, "big")
+                        for w in reply_builder(
+                            1, 1, 41, [0x49525231, 17, 2, 4, 4, 0, 0, 7]
+                        )
+                    ).hex(),
+                },
+                {
+                    "op": "call",
+                    "tag": "registry_cross",
+                    "pc": linked.symbols["mi_test_reply_from_dsp"],
+                    "args": [0x47D00000],
+                    "max": 5_000_000,
+                },
+                {
+                    "op": "poke",
+                    "addr": 0x47D00000,
+                    "hex": b"".join(
+                        w.to_bytes(4, "big")
+                        for w in reply_builder(
+                            1,
+                            0,
+                            41,
+                            [0x49525231, 17, 0, 0xDEADBEEF, 5, 0, 0, 0],
+                            session=0xDEADBEEF,
+                        )
+                    ).hex(),
+                },
+                {
+                    "op": "call",
+                    "tag": "session_cross",
+                    "pc": linked.symbols["mi_test_session_from_dsp"],
+                    "args": [0x47D00000],
+                    "max": 5_000_000,
+                },
             ]
         )
     )
@@ -1207,7 +1316,11 @@ void *memset(void *d, int c, unsigned n) {
         json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")
     ]
     calls = [row for row in rows if row.get("op") == "call"]
-    assert [row["tag"] for row in calls] == names + ["reply_cross"]
+    assert [row["tag"] for row in calls] == names + [
+        "reply_cross",
+        "registry_cross",
+        "session_cross",
+    ]
     for row in calls:
         assert row["ok"] and not row["error"] and row["d0"] == 0, row
     wire = bytes.fromhex(next(row["hex"] for row in rows if row.get("tag") == "wire"))
@@ -1244,3 +1357,84 @@ void *memset(void *d, int c, unsigned n) {
         assert result["regs"]["R0"] == 1
         assert result["revision"] == [1 if offset == 256 else 0]
     assert result["bank"][:17] == [i * 19 for i in range(17)]
+
+
+@pytest.mark.parametrize(
+    "base,capacity,offset,accepted",
+    [
+        (0x20040000, 8, 6, True),  # last two words fit exactly
+        (0x20040000, 8, 7, False),
+        (0, 8, 0, False),
+        (0x20040000, 0, 0, False),
+        (0x20040001, 8, 0, False),
+        (0x20040000, 0xFFFFFFFF, 0, False),
+        (0x20040000, 0x20001, 0, False),
+    ],
+)
+def test_v2_registration_window_is_bounded(
+    link_receiver_object, base, capacity, offset, accepted
+):
+    obj, syms, initial = link_receiver_object
+    rx, reply, frame, target, back = (
+        0x20010000,
+        0x20020000,
+        0x20030000,
+        0x20040000,
+        0xB9F000,
+    )
+    externs = {
+        "_dl_back": back,
+        "_dl_vrows": 0,
+        "_dl_vcount": 0,
+        "_dl_frows": 0,
+        "_dl_fcount": 0,
+        "_dl_irows": base,
+        "_dl_iwords": target + 64,
+        "_dv_diag": 0,
+        "_dv_rec": 0,
+        "_loop_ui_status": 0,
+        "_pattern_position_info": 0,
+        "_instrument_reply": 0,
+        **syms,
+    }
+    linked = pk_sharc.link(obj, 0xB90000, externs)
+    words = [0xD15C | (3 << 30), (1 << 27) | (2 << 17) | offset, 0x11223344, 0x55667788]
+    s1 = s2 = 0
+    for value in words:
+        s1 = (s1 + value) & 0xFFFFFFFF
+        s2 = (s2 + s1) & 0xFFFFFFFF
+    words.append(s1 ^ s2)
+    dm = dict(initial)
+    dm[(target + 64) // 4] = capacity
+    dm.update({(rx + 0x804) // 4 + i: v for i, v in enumerate(words)})
+    dm[frame // 4 - 3], dm[frame // 4 - 2] = rx, reply
+    dm.update({target // 4 - 1 + i: 0xDEADBEEF for i in range(10)})
+    result = pk_sharc.run_call(
+        linked,
+        "_dl_hook",
+        regs={"I4": reply, "I6": frame},
+        dm_words=dm,
+        reads={"target": (target // 4 - 1, 10), "status": (syms["_dl_status"] // 4, 1)},
+        return_sw=back,
+        max_steps=1000,
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    expected = [0xDEADBEEF] * 10
+    if accepted:
+        expected[offset + 1 : offset + 3] = words[2:4]
+    assert result["target"] == expected
+    assert result["status"] == [0 if accepted else 3]
+
+
+@pytest.mark.parametrize("phase", [0, 3, 5, 6])
+def test_dsp_reply_v3_binds_playback_status_to_session(reply_builder, phase):
+    words = reply_builder(1, 9, 20, registry=[0] * 8, session=7, play=[phase, 4])
+    assert words[:4] == [0x494EA103, 1, 9, 21]
+    assert words[12:15] == [7, phase, 4]
+    a = b = 0
+    for word in words[:15]:
+        a = (a + word) & 0xFFFFFFFF
+        b = (b + a) & 0xFFFFFFFF
+    assert words[15] == a ^ b
+    unbound = reply_builder(1, 9, 20, registry=[0] * 8, play=[phase, 4])
+    assert unbound[0] == 0x494EA101 and unbound[12:15] == [0, 0, 0]

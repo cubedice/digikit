@@ -1,0 +1,21 @@
+[module]
+id = "test/instrument-session-loss"
+version = "0.1.0"
+name = "Instrument session loss proof"
+category = "test"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Emulator-only token loss/replay injection; not a hardware reset."
+requires = ["test/instrument-session"]
+conflicts = ["test/canopy-carrier"]
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/loss.dko.json"
+sources = ["src/dsp/loss.s"]
+place = "dsp.l2"
+devices = ["dt2"]

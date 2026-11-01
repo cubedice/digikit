@@ -34,6 +34,14 @@ uint32_t mi_test_reply_ack(void)
     reply_words(r, 1, message, 20);
     CHECK(mt_reply_tick(&t, &m, r, 5) == 0 && m.count == 1);
     reply_words(r, 1, message, 21);
+    r[4] = 0x49525231u; r[5] = 17; r[6] = 2; r[7] = 4;
+    r[8] = 4; r[9] = 0; r[10] = 0; r[11] = 7;
+    for (uint32_t j = 12; j < 15; ++j) {
+        r[j] = 1; reply_checksum(r);
+        CHECK(!mt_reply_valid(r));
+        r[j] = 0;
+    }
+    reply_checksum(r);
     CHECK(mt_reply_tick(&t, &m, r, 6) == 2 && !m.count);
     CHECK(mt_reply_tick(&t, &m, r, 7) == 0);
     reply_words(r, 1, message, 19);
@@ -41,8 +49,42 @@ uint32_t mi_test_reply_ack(void)
     CHECK(!m.routes[0].enabled && m.keys[0].tombstone);
     return 0;
 }
+static void session_reply(uint32_t *r, uint32_t heartbeat);
 uint32_t mi_test_reply_watchdog(void)
 {
+    MtReplyGuard g = {0};
+    uint32_t guard_reply[MT_REPLY_WORDS];
+    mt_reply_guard_tick(&g, 0, 10000);
+    CHECK(!g.seen && !g.invalid);
+    CHECK(mt_reply_guard_expect(&g,0xdeadbeefu,17,UINT32_MAX-10)==0);
+    session_reply(guard_reply, UINT32_MAX);
+    mt_reply_guard_tick(&g, guard_reply, UINT32_MAX-5);
+    CHECK(g.seen && !g.invalid);
+    session_reply(guard_reply, 0);
+    mt_reply_guard_tick(&g, guard_reply, 2);
+    CHECK(!g.invalid && g.heartbeat == 0 && g.block == 2);
+    mt_reply_guard_tick(&g, guard_reply, 2+MT_STALL_BLOCKS-1);
+    CHECK(!g.invalid && g.block == 2); /* cached replies cannot extend liveness */
+    mt_reply_guard_tick(&g, guard_reply, 2+MT_STALL_BLOCKS);
+    CHECK(g.invalid);
+    session_reply(guard_reply, 1);
+    mt_reply_guard_tick(&g, guard_reply, 3+MT_STALL_BLOCKS);
+    CHECK(g.invalid && g.heartbeat == 0);
+    g.seen = g.invalid = 0;
+    session_reply(guard_reply, 50);
+    mt_reply_guard_tick(&g, guard_reply, 10);
+    guard_reply[3] = 1; /* bad checksum must not be mistaken for a reboot */
+    mt_reply_guard_tick(&g, guard_reply, 11);
+    CHECK(!g.invalid && g.heartbeat == 50);
+    reply_checksum(guard_reply);
+    mt_reply_guard_tick(&g, guard_reply, 12);
+    CHECK(g.invalid);
+    g.seen = g.invalid = 0;
+    session_reply(guard_reply, 50);
+    mt_reply_guard_tick(&g, guard_reply, 10);
+    mt_reply_guard_tick(&g, 0, 10+MT_STALL_BLOCKS);
+    CHECK(g.invalid);
+
     MiLedger m; MiTransport t;
     uint32_t r[MT_REPLY_WORDS];
     mi_init(&m); mt_init(&t);
@@ -301,5 +343,213 @@ uint32_t mi_test_transport_wrap(void)
     CHECK(mt_ack(&t, &m, 1, p[3]));
     CHECK(!mt_prepare(&t, &m, revisions, 2));
     CHECK(t.faults && m.reset_mask && m.keys[0].tombstone);
+    return 0;
+}
+
+
+static void session_reply(uint32_t *r, uint32_t heartbeat)
+{
+    reply_words(r, 0, 0, heartbeat);
+    r[0] = MT_SESSION_REPLY_MAGIC;
+    r[4] = 0x49525231u; r[5] = 17; r[7] = 0xdeadbeefu;
+    r[8] = 5; r[12] = 0xdeadbeefu;
+    reply_checksum(r);
+}
+uint32_t mi_test_session_guard(void)
+{
+    MtReplyGuard g = {0}; uint32_t r[MT_REPLY_WORDS], i;
+    CHECK(mt_reply_guard_expect(&g, 0, 17, 0) == -1 && !g.expected);
+    CHECK(mt_reply_guard_expect(&g, 1, 0, 0) == -1 && !g.expected);
+    CHECK(mt_reply_guard_expect(&g, 0xdeadbeefu, 17, UINT32_MAX-5) == 0);
+    CHECK(mt_reply_guard_expect(&g, 0xdeadbeefu, 17, 2) == -2);
+    CHECK(g.started == UINT32_MAX-5);
+    reply_words(r, 0, 0, 1);
+    mt_reply_guard_tick(&g, r, 0);
+    CHECK(!g.ready && !g.invalid);
+    session_reply(r, 2);
+    mt_reply_guard_tick(&g, r, 1);
+    CHECK(g.ready && !g.invalid);
+    /* Later query/lifecycle ACK identity does not replace the session token. */
+    r[5] = 18; r[7] = 4; r[8] = 1; r[3] = 3; reply_checksum(r);
+    mt_reply_guard_tick(&g, r, 2);
+    CHECK(g.ready && !g.invalid);
+    r[12]++; r[3]++; reply_checksum(r);
+    mt_reply_guard_tick(&g, r, 3);
+    CHECK(g.invalid);
+    session_reply(r, 5); mt_reply_guard_tick(&g, r, 4);
+    CHECK(g.invalid && g.heartbeat == 3);
+    CHECK(mt_reply_guard_expect(&g, 1, 19, 4) == -2);
+    /* Every bind identifier, status/capability and token must match. */
+    for (i = 4; i <= 12; ++i) {
+        MtReplyGuard bad = {0};
+        CHECK(mt_reply_guard_expect(&bad, 0xdeadbeefu, 17, 0) == 0);
+        session_reply(r, 1); r[i]++; reply_checksum(r);
+        mt_reply_guard_tick(&bad, r, 1);
+        CHECK(!bad.ready);
+        if (i == 4) mt_reply_guard_tick(&bad, 0, MT_STALL_BLOCKS);
+        CHECK(bad.invalid);
+    }
+    {
+        MtReplyGuard unexpected = {0};
+        session_reply(r, 1); mt_reply_guard_tick(&unexpected, r, 0);
+        CHECK(unexpected.invalid && !unexpected.ready);
+    }
+    {
+        MtReplyGuard downgrade = {0};
+        CHECK(mt_reply_guard_expect(&downgrade, 0xdeadbeefu, 17, 0) == 0);
+        session_reply(r, 1); mt_reply_guard_tick(&downgrade, r, 1);
+        reply_words(r, 0, 0, 2); mt_reply_guard_tick(&downgrade, r, 2);
+        CHECK(downgrade.invalid);
+    }
+    {
+        MtReplyGuard timeout = {0};
+        CHECK(mt_reply_guard_expect(&timeout, 0xdeadbeefu, 17, UINT32_MAX-5) == 0);
+        reply_words(r, 0, 0, 1); mt_reply_guard_tick(&timeout, r, 0);
+        session_reply(r, 2);
+        mt_reply_guard_tick(&timeout, r, MT_STALL_BLOCKS-6);
+        CHECK(timeout.invalid && !timeout.ready); /* exact wrapped deadline */
+    }
+    {
+        MtReplyGuard stale = {0};
+        CHECK(mt_reply_guard_expect(&stale, 0xdeadbeefu, 17, 0) == 0);
+        session_reply(r, 1); mt_reply_guard_tick(&stale, r, 1);
+        mt_reply_guard_tick(&stale, r, MT_STALL_BLOCKS);
+        CHECK(!stale.invalid && stale.block == 1);
+        mt_reply_guard_tick(&stale, r, MT_STALL_BLOCKS+1);
+        CHECK(stale.invalid);
+    }
+    {
+        MtReplyGuard corrupt = {0};
+        CHECK(mt_reply_guard_expect(&corrupt, 0xdeadbeefu, 17, 0) == 0);
+        session_reply(r, 1); r[15] ^= 1;
+        mt_reply_guard_tick(&corrupt, r, 1);
+        CHECK(!corrupt.ready && !corrupt.invalid);
+        mt_reply_guard_tick(&corrupt, 0, MT_STALL_BLOCKS);
+        CHECK(corrupt.invalid && !corrupt.ready);
+    }
+    return 0;
+}
+uint32_t mi_test_session_from_dsp(const uint32_t *r)
+{
+    MtReplyGuard g = {0}; MiTransport t; MiLedger m;
+    CHECK(mt_reply_guard_expect(&g, 0xdeadbeefu, 17, 0) == 0);
+    CHECK(mt_reply_valid(r));
+    mt_reply_guard_tick(&g, r, 1);
+    CHECK(g.ready && !g.invalid && g.heartbeat == r[3]);
+    mi_init(&m); mt_init(&t);
+    CHECK(mt_reply_tick(&t, &m, r, 1) == -1 && !t.heartbeat_seen);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 1, &g) == 1 && t.heartbeat_seen);
+    return 0;
+}
+
+uint32_t mi_test_session_midi(void)
+{
+    MtReplyGuard g = {0}; MiTransport t; MiLedger m;
+    uint32_t r[MT_REPLY_WORDS], rev[MI_TRACKS] = {1}, message, i;
+    uint32_t config[1] = {7};
+    mi_init(&m); mt_init(&t);
+    CHECK(mt_reply_guard_expect(&g, 0xdeadbeefu, 17, 0) == 0);
+    reply_words(r, m.epoch, 0, 1);
+    mt_reply_guard_tick(&g, r, 1);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 1, &g) == 0 && !t.heartbeat_seen);
+    session_reply(r, 2); r[1] = m.epoch; reply_checksum(r);
+    mt_reply_guard_tick(&g, r, 2);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 2, &g) == 1);
+    CHECK(g.ready && t.heartbeat_seen);
+    CHECK(mt_config_begin(&t, &m, 0, 1, 1, config, 1) == 0);
+    for (i = 0; i < 2; ++i) {
+        message = mt_prepare(&t, &m, rev, 3+i)[3];
+        r[2] = message; r[3]++; reply_checksum(r);
+        mt_reply_guard_tick(&g, r, 3+i);
+        CHECK(mt_reply_tick_guarded(&t, &m, r, 3+i, &g) == 2);
+        CHECK(t.applied[0] == (i ? 1u : 0u));
+    }
+    CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
+    note(&m, 0, 60);
+    message = mt_prepare(&t, &m, rev, 5)[3];
+    r[2] = message; r[3]++; reply_checksum(r);
+    mt_reply_guard_tick(&g, r, 5);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 5, &g) == 2 && !m.count);
+    note(&m, 0, 64);
+    message = mt_prepare(&t, &m, rev, 6)[3];
+    /* Valid checksum and exact event ACK from a different session must not
+     * retire this batch, refresh trust, or let held notes survive revocation. */
+    r[2] = message; r[3]++; r[12]++; reply_checksum(r);
+    mt_reply_guard_tick(&g, r, 6);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 6, &g) == -1);
+    CHECK(g.invalid && t.faults && !t.applied[0] && m.reset_mask);
+    CHECK(m.keys[0].tombstone);
+    r[12]--; r[3]++; reply_checksum(r);
+    mt_reply_guard_tick(&g, r, 7);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 7, &g) == -1 && t.faults == 1);
+    return 0;
+}
+
+uint32_t mi_test_reply_reordering(void)
+{
+    {
+        MtReplyGuard unbound={0}; uint32_t before[16];
+        reply_words(before,1,0,100); mt_reply_guard_tick(&unbound,before,1);
+        before[3]=1; reply_checksum(before); mt_reply_guard_tick(&unbound,before,2);
+        CHECK(!unbound.invalid && !unbound.seen && !unbound.ready);
+        CHECK(mt_reply_guard_expect(&unbound,0xdeadbeefu,17,3)==0);
+        mt_reply_guard_tick(&unbound,before,4);
+        CHECK(!unbound.invalid && !unbound.seen && !unbound.ready);
+        mt_reply_guard_tick(&unbound,before,3+MT_STALL_BLOCKS);
+        CHECK(unbound.invalid && !unbound.ready);
+    }
+    MtReplyGuard g = {0}; MiTransport t; MiLedger m;
+    uint32_t r[MT_REPLY_WORDS], rev[MI_TRACKS] = {1}, message, i;
+    mi_init(&m); mt_init(&t);
+    CHECK(mt_reply_guard_expect(&g, 0xdeadbeefu, 17, 0) == 0);
+    for (i = 93; i <= 100; ++i) {
+        session_reply(r, i); r[1] = m.epoch; reply_checksum(r);
+        CHECK(!mt_reply_reordered(&g, r));
+        mt_reply_guard_tick(&g, r, i);
+        CHECK(mt_reply_tick_guarded(&t, &m, r, i, &g) == 1);
+    }
+    CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
+    note(&m, 0, 60);
+    message = mt_prepare(&t, &m, rev, 101)[3];
+    for (i = 1; i <= 7; ++i) {
+        r[3] = 100-i; reply_checksum(r);
+        CHECK(mt_reply_reordered(&g, r));
+        mt_reply_guard_tick(&g, 0, 101+i);
+        CHECK(mt_reply_tick_guarded(&t, &m, 0, 101+i, &g) == 0);
+        CHECK(m.count == 1 && !g.invalid && g.heartbeat == 100 && g.block == 100);
+        /* Same heartbeat with a new ACK is not a known copy. */
+        r[2] = message; reply_checksum(r); CHECK(!mt_reply_reordered(&g, r));
+        r[2] = 0;
+    }
+    r[3] = 92; reply_checksum(r); CHECK(!mt_reply_reordered(&g, r));
+    r[3] = 99; r[12]++; reply_checksum(r); CHECK(!mt_reply_reordered(&g, r));
+    r[12]--; r[0] = MT_REPLY_MAGIC; r[12] = 0; reply_checksum(r);
+    CHECK(!mt_reply_reordered(&g, r));
+    session_reply(r, 101); r[1] = m.epoch; r[2] = message; reply_checksum(r);
+    CHECK(!mt_reply_reordered(&g, r));
+    mt_reply_guard_tick(&g, r, 109);
+    CHECK(mt_reply_tick_guarded(&t, &m, r, 109, &g) == 2 && !m.count);
+    session_reply(r, 100); r[1] = m.epoch; reply_checksum(r);
+    CHECK(mt_reply_reordered(&g, r));
+    r[3] = 93; reply_checksum(r); CHECK(!mt_reply_reordered(&g, r)); /* evicted */
+    mt_reply_guard_tick(&g, 0, 109+MT_STALL_BLOCKS);
+    CHECK(g.invalid); /* repeated stale copies never extend freshness */
+    return 0;
+}
+
+uint32_t mi_test_play_reply(void)
+{
+    uint32_t r[16]; MtReplyGuard g={0};
+    CHECK(mt_reply_guard_expect(&g,0xdeadbeefu,17,0)==0);
+    session_reply(r,1); r[0]=MT_PLAY_REPLY_MAGIC; reply_checksum(r);
+    CHECK(mt_reply_valid(r)); mt_reply_guard_tick(&g,r,1);
+    CHECK(g.ready && !g.invalid);
+    r[3]=2; r[13]=3; r[14]=9; reply_checksum(r);
+    CHECK(mt_reply_valid(r)); mt_reply_guard_tick(&g,r,2);
+    CHECK(!g.invalid && g.heartbeat==2);
+    r[13]=5; reply_checksum(r); CHECK(mt_reply_valid(r));
+    r[13]=7; reply_checksum(r); CHECK(!mt_reply_valid(r));
+    r[13]=3; r[14]=0; reply_checksum(r); CHECK(!mt_reply_valid(r));
+    r[14]=9; r[0]=MT_SESSION_REPLY_MAGIC; reply_checksum(r); CHECK(!mt_reply_valid(r));
     return 0;
 }

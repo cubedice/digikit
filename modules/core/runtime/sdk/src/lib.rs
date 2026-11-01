@@ -5,6 +5,38 @@
 //! Format and rules: docs/design/digikit-runtime.md and docs/design/digikit-dkm.md.
 #![no_std]
 
+/// Shared DSP allocation search used by the live runtime loader.
+pub mod dsp_memory;
+
+/// Internal V2 loader bookkeeping, shared with host tests. Not a C ABI or capability.
+pub mod instrument_registry;
+/// V2 transfer sequencing; transport calls remain the runtime loader's responsibility.
+pub mod instrument_load;
+/// Ticket-bound image/BSS transfer sequencing for V2 loads.
+pub mod instrument_image;
+/// Stable-buffer driver for the tagged production DSP-link ABI.
+pub mod instrument_transport;
+/// Exclusive DSP-link ownership retained across a complete V2 transaction.
+pub mod instrument_lease;
+/// Optional V2 provider binding and validated registry reply ingestion.
+pub mod instrument_provider;
+/// Bounded mailbox pumping and drain-before-detach recovery.
+pub mod instrument_exchange;
+/// Bounded image/BSS transfer and drain-before-detach recovery.
+pub mod instrument_upload;
+/// Persistent owner of V2 upload, installation and initialization transactions.
+pub mod instrument_coordinator;
+/// Experimental V2 mailbox transactions; no device capability is enabled.
+pub mod instrument_mailbox;
+/// Shared bounded V2 descriptor and record decoding; no loading capability.
+pub mod instrument_descriptor;
+/// Bounded DKDS6 instrument-only section validation.
+pub mod instrument_section;
+/// Selection-scoped V2 machine-key resolution against boot assignments.
+pub mod instrument_types;
+/// Experimental validation/planning of allocator-owned V2 row metadata.
+pub mod instrument_admission;
+
 /// The one version of the SDK: the runtime release. A module records the version it needs in the `.dkm` header (the newest `since` of its imports). 2: DSP sections and asynchronous loads
 /// (finding 32), `register` PAGE records and `own_dsp` (finding 33), codes -25/-26 and -30 to -37. 3: card safety (codes -46/-47, -62), the
 /// debug log and its SysEx commands LOG and PEEK, `dkrt_diag`, `dkrt_debug_set`, the crash record (finding 46). 4: SELECT and RESTART.

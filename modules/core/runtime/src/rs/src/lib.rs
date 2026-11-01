@@ -34,6 +34,7 @@ pub mod dlog;
 mod dsp;
 mod link;
 pub mod entry;
+mod instrument;
 mod gen_abi_check;
 mod loader;
 pub mod params;

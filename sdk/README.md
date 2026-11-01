@@ -92,6 +92,33 @@ What you see:
 Off means off: without `--trace` both macros expand to nothing (the arguments of `DK_TRACE_LOG` are not evaluated), the objects have no extra
 instruction, data or import, and the `.dkm` is byte-identical to one built from sources without the marks
 (`packages/patchkit/tests/trace.rs`). A `DK_STEP` costs two instructions when on, so keep it out of the innermost loop.
+## Experimental persistent instruments
+
+The CANOPY V2 work adds a separate `[instrument]` layout in `sdk.toml`, generated
+as `include/dk/gen/instrument.h`, `include/dk/gen/instrument_consts.h` and
+`asm/dk_instrument.inc`. It describes persistent track state, bounded normalized
+MIDI batches and reset/process callbacks. `<dk/instrument.h>` provides
+`DK_INSTRUMENT`. Experimental runtime packing accepts one DT2 1.17 instrument
+whose manifest requires `core/instrument-play`, without V1 declarations or FX.
+It emits a V2 DSP section and CF machine-list metadata, never a V1 voice callback.
+Static firmware lowering still refuses these declarations. Default firmware
+advertises machine contract 1.0 and cannot admit the package; the optional
+playback adapter supplies a bounded policy. Integrated acceptance and hardware
+release remain separate from declaration/packing support.
+
+```c
+#include <dk/instrument.h>
+DK_INSTRUMENT(canopy, .name = "CANOPY", .short_name = "CANOPY",
+              .reset = "_canopy_reset", .process = "_canopy_process",
+              .desc = "_canopy_desc");
+```
+
+The three symbols name DSP code/data, not ColdFire function pointers. Instrument
+IDs share a namespace with machine/effect IDs. `patchkit desc` reports these under
+`instruments`, separately from V1 `machines` and `voices`. V1 `DK_PARAM`/`DK_PAGE`
+records cannot yet target an instrument; V2 controls/pages require their own work.
+See the
+[CANOPY interface plan](../docs/design/canopy.md) for the remaining integration.
 
 ## Writing modules
 

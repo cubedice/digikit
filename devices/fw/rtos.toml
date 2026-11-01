@@ -88,6 +88,7 @@ doc = "The reset code's two consecutive calls `jsr copy; jsr clear` (the .data c
 # move.l <save>,-(sp); jsr (a0); ...; rte`. The anchor is the 4-byte literal of `movea.l (<hook word>).l,a0` (finding 37: the word holds the function
 # that prints EXCEPTION and halts); core/platform points the word at the runtime's hook, which records the fault and soft-resets (finding 46). The
 # words are the code with the two address operands (they differ per firmware) and the `jsr`'s displaced bytes left open.
+
 [[site]]
 name = "cf.rtos.site.exc_hook_lit"
 was = ["dkrt.fw.exc_hook_lit"]
@@ -99,6 +100,7 @@ users = ["core/platform"]
 doc = "The firmware's default exception handler (the code every vector points at until a specific handler is installed; DT2 1.16 0x40001252, not a function of its own): `move #0x2700,sr; move.l sp,<save>; lea -16(sp),sp; movem.l d0-d1/a0-a1,(sp); movea.l <hook word>,a0; tst.l a0; beq +10; move.l <save>,-(sp); jsr (a0); ...; rte`."
 
 # The boot thread: DT2 FUN_400cc864 (1.16; 1.17 0x400cc9c8), DN2 FUN_400cec98 (1.11; 1.12 0x400cedfc), the same code in both versions.
+
 [[site]]
 name = "cf.rtos.site.idle"
 was = ["health.hook.idle"]
@@ -168,6 +170,26 @@ mark = "D"
 users = ["core/health"]
 doc = "The boot thread's last call (create the main-OS task), after which the thread idles; the hook makes that call itself and then counts idle iterations forever."
 
+[[site]]
+name = "cf.rtos.site.dsp_reset"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 112, offset = 0, sha256 = "608159b25f49dac0d9d175bbdbd415c39052916ef3bddb3d939932a2999a9988", len = 6 }
+mark = "D"
+users = ["core/midi-events"]
+doc = "DTII 1.17 GPIO DSP reset helper entry. Low argument byte nonzero asserts reset; zero releases it. First six bytes save D2 and load the argument byte; continuation must preserve the stack. See finding 78."
+
+[[hook]]
+name = "cf.rtos.hook.dsp_reset"
+site = "cf.rtos.site.dsp_reset"
+cpu = "cf"
+mode = "before"
+regs = { in = [], clobbers = ["ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/midi-events"]
+doc = "Notify session revocation before reset assertion, then execute the displaced prologue. Release must not revoke or rearm. Expansion data/BSS is initialized by the reset-path loader before the boot task calls this helper."
+
 [[value]]
 name = "cf.rtos.value.intro_entry"
 cpu = "cf"
@@ -179,6 +201,7 @@ doc = "The intro's current-entry pointer: {callback, frame count} in the scene t
 # The intro's setup function (DT2 1.17 0x400d1832, DN2 1.12 0x400d3d0a; the same code in DN2 1.11): `lea -0x1c,sp; clr.l d1; move.l d2,-(sp);
 # move.l (0x24,sp),d0; movea.l d0,a0; ...`. Its one argument is the scene table (`{callback, count}` entries, a 0 terminator): it stores the pointer as the
 # current entry and counts the entries. The intro task calls it with one of five tables.
+
 [[site]]
 name = "cf.rtos.site.intro_setup.table_arg"
 cpu = "cf"

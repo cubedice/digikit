@@ -10,7 +10,11 @@
 //! 0x14 u32 align        placement alignment in bytes (8 or more, a power of two)
 //! 0x18 u32 image_off    0x1c u32 reloc_off   0x20 u32 reloc_count
 //! 0x24 u32 import_off   0x28 u32 import_count   0x2c u32 voice_off   0x30 u32 voice_count
-//! 0x34 u32 fx_off       0x38 u32 fx_count   (version 4+: effect records; 0 before)   0x3c u32 bank_record_off (version 5; 0 before)
+//! 0x34 u32 fx_off       0x38 u32 fx_count   (version 4: effect records; 0 before)   0x3c reserved (0)
+//! V5 extends the header to 0x50: instrument offset/count at 0x40/0x44; 0x48/0x4c reserved.
+//! Instruments follow effects: 16 bytes (type, reset, process, desc), all image byte offsets.
+//! V6 uses 0x48/0x4c for sorted executable range offset/count (8-byte start/end records).
+//! V5/V6 are host-only until runtime registration exists; the outer DKM requires machine 2.0.
 //! imports: 32-byte NUL padded names of DSP symbols the runtime resolves (`dyndsp_info` of core/dyn-dsp)
 //! relocs : 8 bytes each: u32 image byte offset of a 48-bit instruction, u32 kind << 28 | class << 24 | import index
 //!            kind 0 abs24 (the instruction's 24-bit address field), kind 1 abs32 (its 32-bit immediate)
@@ -21,7 +25,7 @@
 //!            guard of core/dsp-voice (min | max << 16; 0: undeclared), 2 x u32 reserved. Version 1 had 16 bytes (type, entry, 2 reserved)
 //!          version 3: 64 bytes each: 0 u32 type, 4 u32 render entry (image byte offset), 8 u32 note_on entry (image byte offset; 0: none),
 //!            12 u32 state_bytes (per voice), 16 u32 clear_bytes (zeroed at note-on), 20..51 8 x u32 ranges as above, 52 u32 voices (number of
-//!            voice states to reserve behind the image and bss), 56 u32 parameter-word latch mask (contract 1.3), 60 reserved 0. The packer writes version 3 only when a voice has a
+//!            voice states to reserve behind the image and bss), 56..63 reserved 0. The packer writes version 3 only when a voice has a
 //!            note_on entry or a state; otherwise version 2 (the runtime parses all three; v1 and v2 voices have note_on 0 and no state)
 //! fx     : version 4: 64 bytes each: 0 u32 process (image byte offset of the process routine), 4 u32 desc (image byte offset of its `dk_fx_desc`),
 //!            8 u32 state_bytes (from the desc: reserved behind the image, bss and voice states), 12 u32 n_params (from the desc), 16 u32 flags (the routes, below; 0 is the legacy master-only value; the packer writes the placeholder pair MASTER|SEND, `FXF_SEND`, which the runtime overrides at commit),
@@ -44,6 +48,7 @@ use dksharc::dkds::Dkds;
 use std::collections::{BTreeMap, BTreeSet};
 
 pub const VERSION: u32 = 2;
+<<<<<<< HEAD
 // The container layout is read by `dksharc::dkds`, the one reader; the constants are its. Version 3 has `note_on` entries and per-voice state (voices
 // of `VOICE_LEN_V3` bytes); 4 adds effect records (`FX_LEN` bytes each); 5 one per-track sample table; version 1 has voices of `VOICE_LEN_V1`
 // bytes without ranges (the runtime still loads it, with every range undeclared).
@@ -86,8 +91,78 @@ pub const FX_MAX_PARAMS: u32 = dkneeds::fx::DK_FX_MAX_PARAMS;
 pub const MAX_RELOCS: usize = dkneeds::MAX_RELOCS as usize;
 pub const MAX_IMPORTS: usize = dkneeds::MAX_IMPORTS as usize;
 pub const MAX_VOICES: usize = dkneeds::MAX_VOICES as usize;
+=======
+/// The version with `note_on` entries and per-voice state (voices of `VOICE_LEN_V3` bytes).
+pub const VERSION_3: u32 = 3;
+/// The version with effect records (`FX_LEN` bytes each); its voices are those of version 3.
+pub const VERSION_4: u32 = 4;
+/// Experimental persistent instruments, separate from the V1 voice table.
+pub const VERSION_5: u32 = 5;
+/// Text range metadata for persistent instruments and protected runtime admission.
+pub const VERSION_6: u32 = 6;
+pub const HEADER_V5: usize = 0x50;
+pub const INSTRUMENT_LEN: usize = 16;
+pub const MAX_INSTRUMENTS: usize = 8;
+
+/// Format validation ceilings only; runtime admission must supply device limits.
+pub const FORMAT_LIMITS: crate::instrument::Limits = crate::instrument::Limits {
+    state_bytes: u32::MAX,
+    cycles_process: u32::MAX,
+    cycles_reset: u32::MAX,
+    call_depth: u32::MAX,
+    stack_bytes: u32::MAX,
+};
+
+#[derive(Clone, Debug)]
+pub struct InstrumentSpec {
+    pub type_no: u32,
+    pub reset: String,
+    pub process: String,
+    pub desc: String,
+}
+
+/// All three addresses are image byte offsets; zero is a valid callback address.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Instrument {
+    pub type_no: u32,
+    pub reset: u32,
+    pub process: u32,
+    pub desc: u32,
+}
+
+/// The version without voice ranges (voices of `VOICE_LEN_V1` bytes); the runtime still loads it, with every range undeclared.
+pub const VERSION_1: u32 = 1;
+pub const HEADER: usize = 0x40;
+pub const RELOC_LEN: usize = 8;
+pub const VOICE_LEN: usize = 48;
+pub const VOICE_LEN_V3: usize = 64;
+/// `dk_machine_desc` (SDK contract): magic "DKMA" and the contract number the packer accepts, and its size in u32 words.
+pub const DESC_MAGIC: u32 = 0x444b_4d41;
+pub const DESC_CONTRACT: u32 = 1;
+pub const DESC_WORDS: usize = 10;
+pub const VOICE_LEN_V1: usize = 16;
+pub const FX_LEN: usize = 64;
+/// The routes of an effect (the manifest's `route` and `routes`): the master chain and a send bus. `Effect::routes` is a mask of them.
+pub const ROUTE_MASTER: u32 = 1;
+pub const ROUTE_SEND: u32 = 2;
+/// Bits of the effect record's flags word (offset 16); 0 = master only, the default route master (a record of the version before the routes).
+pub const FXF_SEND: u32 = 1;
+pub const FXF_NOMASTER: u32 = 2;
+pub const FXF_DEFAULT_SEND: u32 = 4;
+/// Effects a module may carry (`DK_FX_MAX` of <dk/fx.h>).
+pub const MAX_FX: usize = 4;
+/// `dk_fx_desc` (<dk/fx.h>): magic "DKFX", the contract number the packer accepts, its size in u32 words and the most parameter words.
+pub const FX_DESC_MAGIC: u32 = 0x444b_4658;
+pub const FX_DESC_CONTRACT: u32 = 1;
+pub const FX_DESC_WORDS: usize = 7;
+pub const FX_MAX_PARAMS: u32 = 8;
+pub const IMPORT_LEN: usize = 32;
+pub const MAX_RELOCS: usize = 4096;
+pub const MAX_IMPORTS: usize = 32;
+pub const MAX_VOICES: usize = 8;
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
 /// Placement granule of the runtime's area allocator (bytes).
-pub const GRANULE: u32 = dkneeds::GRANULE;
+pub const GRANULE: u32 = 64;
 
 // Offsets in the DSP section: `[format]` of sdk/sdk.toml, through `dkneeds`.
 const RELOC_OFFSET: usize = dkneeds::RELOC_OFFSET as usize;
@@ -150,18 +225,12 @@ pub struct Voice {
     pub voices: u32,
     /// range of machine knob 0 .. 7 (min | max << 16; 0 undeclared)
     pub ranges: [u32; 8],
-    /// Parameter-word latch mask (machine contract 1.3), in v3 reserved word 14.
-    pub latched: u32,
 }
 
 impl Voice {
     /// The record needs version 3.
     fn contract(&self) -> bool {
-        self.note_on != 0
-            || self.state_bytes != 0
-            || self.clear_bytes != 0
-            || self.voices != 0
-            || self.latched != 0
+        self.note_on != 0 || self.state_bytes != 0 || self.clear_bytes != 0 || self.voices != 0
     }
 }
 
@@ -173,10 +242,7 @@ pub struct VoiceSpec {
     pub render: String,
     pub note_on: Option<String>,
     pub desc: Option<String>,
-    /// Declared stereo in `DK_MACHINE`; the desc must carry `DESC_STEREO` too.
-    pub stereo: bool,
     pub ranges: [u32; 8],
-    pub latched: u32,
 }
 
 impl VoiceSpec {
@@ -187,8 +253,6 @@ impl VoiceSpec {
             render,
             note_on: None,
             desc: None,
-            stereo: false,
-            latched: 0,
             ranges,
         }
     }
@@ -282,6 +346,7 @@ pub struct Reloc {
     pub import: u32,
 }
 
+<<<<<<< HEAD
 /// Version 5 sample-table wire record, kind 2 (little-endian words).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SampleTracks {
@@ -326,6 +391,10 @@ impl SampleTracks {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DspSection {
     pub sample_tracks: Option<SampleTracks>,
+=======
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DspSection {
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
     pub device: u32,
     pub image: Vec<u8>,
     pub bss: u32,
@@ -334,20 +403,31 @@ pub struct DspSection {
     pub relocs: Vec<Reloc>,
     pub voices: Vec<Voice>,
     pub fxs: Vec<Effect>,
+    pub instruments: Vec<Instrument>,
+    pub executable: Vec<(u32, u32)>,
 }
 
 /// Link `obj` (a SHARC+ object) at the nominal base and encode the section. `voices` names the entry routine of each machine type
 /// (a global text symbol of the object), `fxs` the process routine and descriptor of each effect.
 pub fn pack(obj: &Dko, device: u32, voices: &[VoiceSpec], fxs: &[FxSpec]) -> Result<Vec<u8>> {
+<<<<<<< HEAD
     pack_with_samples(obj, device, voices, fxs, None)
 }
 
 /// Pack an optional per-track sample table.
 pub fn pack_with_samples(
+=======
+    pack_with_instruments(obj, device, voices, fxs, &[], FORMAT_LIMITS)
+}
+
+/// Host-only V2 serialization. This does not enable runtime registration.
+pub fn pack_with_instruments(
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
     obj: &Dko,
     device: u32,
     voices: &[VoiceSpec],
     fxs: &[FxSpec],
+<<<<<<< HEAD
     tracks: Option<&crate::typed::SampleTracksDef>,
 ) -> Result<Vec<u8>> {
     pack_with_gate(obj, device, voices, fxs, tracks).map(|(bytes, _)| bytes)
@@ -362,6 +442,11 @@ pub fn pack_with_gate(
     tracks: Option<&crate::typed::SampleTracksDef>,
 ) -> Result<(Vec<u8>, bool)> {
     let mut gate = false;
+=======
+    instruments: &[InstrumentSpec],
+    limits: crate::instrument::Limits,
+) -> Result<Vec<u8>> {
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
     if obj.arch != "sharc" {
         return Err(err!(
             "a DSP section holds a SHARC+ object; the object is {}",
@@ -484,12 +569,6 @@ pub fn pack_with_gate(
         Ok(((pc - L2_SW_BASE as u64) * 2) as u32)
     };
     for v in voices {
-        if v.latched & !0xff != 0 || (v.latched != 0 && (v.note_on.is_none() || v.desc.is_none())) {
-            return Err(err!(
-                "voice {}: latching requires a contract note_on and an 8-bit parameter mask",
-                v.render
-            ));
-        }
         let entry = entry_of(&v.render)?;
         let note_on = match &v.note_on {
             Some(n) => {
@@ -519,12 +598,18 @@ pub fn pack_with_gate(
                 .get(at..at + DESC_WORDS * 4)
                 .ok_or_else(|| err!("voice desc {d}: shorter than {} bytes", DESC_WORDS * 4))?;
             let w = |i: usize| u32::from_le_bytes(bytes[i * 4..i * 4 + 4].try_into().unwrap());
+            if w(0) == crate::instrument::MAGIC {
+                return Err(err!(
+                    "voice desc {d}: persistent-instrument V2 requires its own registration and runtime capability; V1 voice packing is not supported"
+                ));
+            }
             if w(0) != DESC_MAGIC {
                 return Err(err!(
                     "voice desc {d}: magic {:#x}, not DKMA ({DESC_MAGIC:#x})",
                     w(0)
                 ));
             }
+<<<<<<< HEAD
             if w(1) & !(DESC_STEREO | DESC_GATE) != DESC_CONTRACT {
                 return Err(err!(
                     "voice desc {d}: contract {:#x}, this packer takes {DESC_CONTRACT} (optionally with {DESC_STEREO:#x}, stereo, and {DESC_GATE:#x}, gate)",
@@ -539,6 +624,14 @@ pub fn pack_with_gate(
                     (w(1) & DESC_STEREO != 0) as u32
                 ));
             }
+=======
+            if w(1) != DESC_CONTRACT {
+                return Err(err!(
+                    "voice desc {d}: contract {}, this packer takes {DESC_CONTRACT}",
+                    w(1)
+                ));
+            }
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
             voices_n = w(3);
             state_bytes = w(4);
             clear_bytes = w(5);
@@ -556,7 +649,6 @@ pub fn pack_with_gate(
             clear_bytes,
             voices: voices_n,
             ranges: v.ranges,
-            latched: v.latched,
         });
     }
     if fxs.len() > MAX_FX {
@@ -630,27 +722,39 @@ pub fn pack_with_gate(
         });
         Effect::flags_of(f.routes, f.route).map_err(|e| err!("effect {}: {}", f.process, e.0))?;
     }
-    let symbol = |name: &str, kind: &str, len: u32| -> Result<u32> {
-        let sym = obj
-            .symbols
-            .iter()
-            .find(|s| s.name == name && s.section.is_some())
-            .ok_or_else(|| err!("sample symbol {name}: not defined by this DSP object"))?;
-        let sec = obj
-            .sections
-            .iter()
-            .find(|s| Some(&s.name) == sym.section.as_ref())
-            .unwrap();
-        if sec.kind != kind
-            || sym
-                .value
-                .checked_add(u64::from(len))
-                .is_none_or(|end| end > u64::from(sec.size))
-        {
-            return Err(err!(
-                "sample bank symbol {name}: outside its {kind} section"
+    if instruments.len() > MAX_INSTRUMENTS {
+        return Err(err!("too many persistent instruments"));
+    }
+    let mut ins = vec![];
+    for instrument in instruments {
+        let reset = entry_of(&instrument.reset)?;
+        let process = entry_of(&instrument.process)?;
+        if !matches!(defined.get(instrument.desc.as_str()), Some(("data", _))) {
+            return Err(err!("instrument descriptor must be a defined data symbol"));
+        }
+        let desc = u32::try_from(linked.symbols[instrument.desc.as_str()] - L2_BYTE_BASE as u64)
+            .map_err(|_| err!("instrument descriptor offset overflow"))?;
+        ins.push(Instrument {
+            type_no: instrument.type_no,
+            reset,
+            process,
+            desc,
+        });
+    }
+    let mut executable = vec![];
+    if !ins.is_empty() {
+        for &(start, end) in &linked.text_ranges {
+            if start == end {
+                continue;
+            }
+            executable.push((
+                u32::try_from(start - L2_BYTE_BASE as u64)
+                    .map_err(|_| err!("text range overflow"))?,
+                u32::try_from(end - L2_BYTE_BASE as u64)
+                    .map_err(|_| err!("text range overflow"))?,
             ));
         }
+<<<<<<< HEAD
         let at = linked.symbols[name]
             .checked_sub(u64::from(L2_BYTE_BASE))
             .and_then(|n| u32::try_from(n).ok())
@@ -670,43 +774,119 @@ pub fn pack_with_gate(
         .transpose()?;
     let s = DspSection {
         sample_tracks,
+=======
+        executable.sort_unstable();
+    }
+    let s = DspSection {
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
         device,
         image,
-        bss: u32::try_from(
-            linked
-                .bss_size
-                .div_ceil(4)
-                .checked_mul(4)
-                .ok_or_else(|| err!("DSP BSS overflow"))?,
-        )
-        .map_err(|_| err!("DSP BSS too large"))?,
+        bss: linked.bss_size.div_ceil(4) as u32 * 4,
         align,
         imports: imports.iter().map(|s| s.to_string()).collect(),
         relocs,
         voices: vs,
         fxs: es,
+        instruments: ins,
+        executable,
     };
+<<<<<<< HEAD
     Ok((s.encode(), gate))
+=======
+    s.validate_instruments(limits)?;
+    let encoded = s.encode();
+    if !s.instruments.is_empty() {
+        DspSection::parse(&encoded)?;
+    }
+    Ok(encoded)
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
 }
 
 impl DspSection {
+    /// Validate descriptors and total state before any V2 allocation.
+    pub fn validate_instruments(&self, limits: crate::instrument::Limits) -> Result<()> {
+        if self.instruments.is_empty() {
+            return Ok(());
+        }
+        if self.instruments.len() > MAX_INSTRUMENTS {
+            return Err(err!("too many persistent instruments"));
+        }
+        let mut types: BTreeSet<u32> = self.voices.iter().map(|v| v.type_no).collect();
+        let mut allocation = 0u64;
+        for i in &self.instruments {
+            if !types.insert(i.type_no) {
+                return Err(err!("duplicate instrument/voice type {}", i.type_no));
+            }
+            for at in [i.reset, i.process] {
+                if at % 2 != 0 || at as u64 + 6 > self.image.len() as u64 {
+                    return Err(err!("instrument callback outside image or unaligned"));
+                }
+            }
+            let at = i.desc as usize;
+            let end = at
+                .checked_add(crate::instrument::DESC_BYTES)
+                .ok_or_else(|| err!("instrument descriptor overflow"))?;
+            let bytes = self
+                .image
+                .get(at..end)
+                .filter(|_| at % 4 == 0)
+                .ok_or_else(|| err!("instrument descriptor outside image or unaligned"))?;
+            if self
+                .relocs
+                .iter()
+                .any(|r| (r.offset as u64) < end as u64 && r.offset as u64 + 6 > at as u64)
+            {
+                return Err(err!("instrument descriptor overlaps a relocation"));
+            }
+            allocation +=
+                crate::instrument::Descriptor::parse(bytes, limits)?.allocation_bytes as u64;
+        }
+        if allocation > limits.state_bytes as u64 {
+            return Err(err!("aggregate instrument state exceeds admission limits"));
+        }
+        let mut total =
+            (self.image.len() as u128 + self.bss as u128).div_ceil(8) * 8 + allocation as u128;
+        for v in &self.voices {
+            total += v.voices as u128 * (v.state_bytes as u128).div_ceil(8) * 8;
+        }
+        for e in &self.fxs {
+            total += (e.state_bytes as u128).div_ceil(8) * 8;
+        }
+        if total.div_ceil(GRANULE as u128) * GRANULE as u128 > u32::MAX as u128 {
+            return Err(err!("instrument section allocation overflow"));
+        }
+        Ok(())
+    }
+
     pub fn encode(&self) -> Vec<u8> {
-        let import_off = HEADER;
+        let v5 = !self.instruments.is_empty();
+        let import_off = if v5 { HEADER_V5 } else { HEADER };
         let reloc_off = import_off + self.imports.len() * IMPORT_LEN;
         let voice_off = reloc_off + self.relocs.len() * RELOC_LEN;
+<<<<<<< HEAD
         let v5 = self.sample_tracks.is_some();
+=======
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
         let v4 = v5 || !self.fxs.is_empty();
         let v3 = v4 || self.voices.iter().any(|v| v.contract());
         let vlen = if v3 { VOICE_LEN_V3 } else { VOICE_LEN };
         let fx_off = voice_off + self.voices.len() * vlen;
+<<<<<<< HEAD
         let bank_off = fx_off + self.fxs.len() * FX_LEN;
         let image_off = align_up(bank_off + if v5 { SAMPLE_RECORD_LEN } else { 0 }, 16);
+=======
+        let instrument_off = fx_off + self.fxs.len() * FX_LEN;
+        let text_off = instrument_off + self.instruments.len() * INSTRUMENT_LEN;
+        let image_off = align_up(text_off + self.executable.len() * 8, 16);
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
         let mut f = vec![0u8; image_off + self.image.len()];
         put(&mut f, 0, MAGIC);
         put(
             &mut f,
             4,
-            if v5 {
+            if v5 && !self.executable.is_empty() {
+                VERSION_6
+            } else if v5 {
                 VERSION_5
             } else if v4 {
                 VERSION_4
@@ -731,6 +911,7 @@ impl DspSection {
             put(&mut f, H_FX_OFF, fx_off as u32);
             put(&mut f, H_FX_N, self.fxs.len() as u32);
         }
+<<<<<<< HEAD
         let record = self.sample_tracks.as_ref().map(|t| {
             [
                 SAMPLE_TRACKS_KIND,
@@ -749,6 +930,8 @@ impl DspSection {
                 f[bank_off + i * 4..bank_off + i * 4 + 4].copy_from_slice(&w.to_le_bytes());
             }
         }
+=======
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
         for (i, n) in self.imports.iter().enumerate() {
             let at = import_off + i * IMPORT_LEN;
             f[at..at + n.len()].copy_from_slice(n.as_bytes());
@@ -773,8 +956,12 @@ impl DspSection {
                 for (k, w) in v.ranges.iter().enumerate() {
                     put(&mut f, at + VOICE_V3_RANGES + 4 * k, *w);
                 }
+<<<<<<< HEAD
                 put(&mut f, at + VOICE_VOICES, v.voices);
                 put(&mut f, at + VOICE_LATCH, v.latched);
+=======
+                put(&mut f, at + 52, v.voices);
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
             } else {
                 for (k, w) in v.ranges.iter().enumerate() {
                     put(&mut f, at + VOICE_V2_RANGES + 4 * k, *w);
@@ -796,6 +983,24 @@ impl DspSection {
                 put(&mut f, at + FX_PARAMS + 4 * k, *w);
             }
         }
+        if v5 {
+            put(&mut f, 0x40, instrument_off as u32);
+            put(&mut f, 0x44, self.instruments.len() as u32);
+            for (n, i) in self.instruments.iter().enumerate() {
+                let at = instrument_off + n * INSTRUMENT_LEN;
+                for (k, w) in [i.type_no, i.reset, i.process, i.desc].iter().enumerate() {
+                    put(&mut f, at + k * 4, *w);
+                }
+            }
+        }
+        if !self.executable.is_empty() {
+            put(&mut f, 0x48, text_off as u32);
+            put(&mut f, 0x4c, self.executable.len() as u32);
+            for (i, &(start, end)) in self.executable.iter().enumerate() {
+                put(&mut f, text_off + i * 8, start);
+                put(&mut f, text_off + i * 8 + 4, end);
+            }
+        }
         f[image_off..].copy_from_slice(&self.image);
         f
     }
@@ -810,17 +1015,58 @@ impl DspSection {
         for e in &self.fxs {
             n += e.state_bytes.div_ceil(8) * 8;
         }
+        for i in &self.instruments {
+            let at = i.desc as usize;
+            n += crate::instrument::Descriptor::parse(
+                &self.image[at..at + crate::instrument::DESC_BYTES],
+                FORMAT_LIMITS,
+            )
+            .expect("validated instrument descriptor")
+            .allocation_bytes;
+        }
         n.div_ceil(GRANULE) * GRANULE
     }
 
-    /// Parse and check a section the way the runtime does.
+    /// Parse legacy sections as the runtime does, plus experimental host-only V5/V6.
     pub fn parse(f: &[u8]) -> Result<DspSection> {
+<<<<<<< HEAD
         let d = Dkds::parse(f)?;
         let version = d.version;
         let v3 = version >= VERSION_3;
         let vlen = d.voice_len();
         let image_size = d.image_size() as usize;
         let align = d.align();
+=======
+        if f.len() < HEADER || get(f, 0) != MAGIC {
+            return Err(err!("not a DSP section (magic)"));
+        }
+        let version = get(f, 4);
+        if version != VERSION
+            && version != VERSION_1
+            && version != VERSION_3
+            && version != VERSION_4
+            && version != VERSION_5
+            && version != VERSION_6
+        {
+            return Err(err!("DSP section version {version}"));
+        }
+        if version >= VERSION_5 && f.len() < HEADER_V5 {
+            return Err(err!("truncated V5/V6 header"));
+        }
+        let v3 = version >= VERSION_3;
+        let vlen = match version {
+            VERSION_1 => VOICE_LEN_V1,
+            VERSION_3 | VERSION_4 | VERSION_5 | VERSION_6 => VOICE_LEN_V3,
+            _ => VOICE_LEN,
+        };
+        let rng = |off: u32, n: usize| -> Result<&[u8]> {
+            let off = off as usize;
+            f.get(off..off.checked_add(n).ok_or_else(|| err!("overflow"))?)
+                .ok_or_else(|| err!("DSP section table at {off:#x}+{n:#x} is outside the section"))
+        };
+        let image_size = get(f, 0x0c) as usize;
+        let align = get(f, 0x14);
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
         if image_size == 0
             || image_size % 4 != 0
             || !align.is_power_of_two()
@@ -870,11 +1116,15 @@ impl DspSection {
                     state_bytes: if v3 { get(vo, at + 12) } else { 0 },
                     clear_bytes: if v3 { get(vo, at + 16) } else { 0 },
                     voices: if v3 { get(vo, at + 52) } else { 0 },
-                    latched: if v3 { get(vo, at + 56) } else { 0 },
                     ranges: match version {
                         VERSION_1 => [0; 8],
+<<<<<<< HEAD
                         VERSION_3 | VERSION_4 | VERSION_5 => {
                             std::array::from_fn(|k| get(vo, at + VOICE_V3_RANGES + 4 * k))
+=======
+                        VERSION_3 | VERSION_4 | VERSION_5 | VERSION_6 => {
+                            std::array::from_fn(|k| get(vo, at + 20 + 4 * k))
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
                         }
                         _ => std::array::from_fn(|k| get(vo, at + VOICE_V2_RANGES + 4 * k)),
                     },
@@ -887,8 +1137,6 @@ impl DspSection {
                 || v.note_on as usize >= image_size
                 || v.note_on % 2 != 0
                 || v.clear_bytes > v.state_bytes
-                || v.latched & !0xff != 0
-                || (v.latched != 0 && v.note_on == 0)
         }) {
             return Err(err!("DSP voice entry outside the image"));
         }
@@ -918,6 +1166,7 @@ impl DspSection {
         }) {
             return Err(err!("DSP effect record outside the image or malformed"));
         }
+<<<<<<< HEAD
         let sample_tracks = if version == VERSION_5 {
             let off = get(f, H_BANK_OFF);
             let mut ranges = vec![
@@ -980,6 +1229,41 @@ impl DspSection {
         };
         Ok(DspSection {
             sample_tracks,
+=======
+        let mut instruments = vec![];
+        if version >= VERSION_5 {
+            let count = get(f, 0x44) as usize;
+            if count == 0 || count > MAX_INSTRUMENTS || get(f, 0x10) % 4 != 0 {
+                return Err(err!("invalid V5/V6 instrument count or bss"));
+            }
+            let records = rng(get(f, 0x40), count * INSTRUMENT_LEN)?;
+            for n in 0..count {
+                let at = n * INSTRUMENT_LEN;
+                instruments.push(Instrument {
+                    type_no: get(records, at),
+                    reset: get(records, at + 4),
+                    process: get(records, at + 8),
+                    desc: get(records, at + 12),
+                });
+            }
+        }
+        let mut executable = vec![];
+        if version == VERSION_6 {
+            let count = get(f, 0x4c) as usize;
+            if count == 0 || count > 32 {
+                return Err(err!("invalid executable range count"));
+            }
+            let table = rng(get(f, 0x48), count * 8)?;
+            let ranges =
+                dkrt_sdk::instrument_descriptor::executable_ranges(table, image_size as u32)?;
+            dkrt_sdk::instrument_descriptor::validate_executables(
+                rng(get(f, 0x40), instruments.len() * INSTRUMENT_LEN)?,
+                &ranges,
+            )?;
+            executable.extend(ranges.iter().flatten().map(|r| (r.start, r.end)));
+        }
+        let section = DspSection {
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
             device: get(f, 8),
             image,
             bss: get(f, H_BSS),
@@ -988,7 +1272,16 @@ impl DspSection {
             relocs,
             voices,
             fxs,
-        })
+            instruments,
+            executable,
+        };
+        section.validate_instruments(FORMAT_LIMITS)?;
+        // V5/V6 use canonical table order, zero reserved words and padding. This
+        // rejects overlapping tables and header aliases as well as trailing data.
+        if version >= VERSION_5 && section.encode() != f {
+            return Err(err!("noncanonical V5/V6 table layout or reserved fields"));
+        }
+        Ok(section)
     }
 
     /// The reference loader: the image placed at the L2 byte address `base`, imports resolved by `resolve` (pc or byte address as
@@ -1108,6 +1401,7 @@ mod tests {
         }
     }
 
+<<<<<<< HEAD
     fn tracks_object() -> (Dko, crate::typed::SampleTracksDef) {
         let mut o = object();
         o.sections[1] = sec("d", "data", 4, &[0; 768]);
@@ -1119,11 +1413,40 @@ mod tests {
                 local_id: 7,
                 records: "var".into(),
                 control: "ctl".into(),
+=======
+    fn instrument_object() -> (Dko, InstrumentSpec) {
+        let mut o = object();
+        let words = [
+            crate::instrument::MAGIC,
+            2,
+            48,
+            0,
+            2,
+            260,
+            8,
+            32,
+            20000,
+            2000,
+            4,
+            64,
+        ];
+        let data: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
+        o.sections[1] = sec("d", "data", 4, &data);
+        o.symbols.push(sym("process", Some("t"), 3, true));
+        (
+            o,
+            InstrumentSpec {
+                type_no: 17,
+                reset: "entry".into(),
+                process: "process".into(),
+                desc: "var".into(),
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
             },
         )
     }
 
     #[test]
+<<<<<<< HEAD
     fn sample_tracks_record_roundtrips_and_old_sections_stay_old() {
         let (o, t) = tracks_object();
         let bytes = pack_with_samples(&o, 1, &[], &[], Some(&t)).unwrap();
@@ -1138,18 +1461,88 @@ mod tests {
         assert_eq!(get(&old, 4), VERSION);
         assert_eq!(get(&old, H_BANK_OFF), 0);
         assert!(DspSection::parse(&old).unwrap().sample_tracks.is_none());
+=======
+    fn persistent_instrument_roundtrip_and_contract_boundary() {
+        let (o, i) = instrument_object();
+        let bytes = pack_with_instruments(&o, 1, &[], &[], &[i], FORMAT_LIMITS).unwrap();
+        assert_eq!(get(&bytes, 4), VERSION_6);
+        let section = DspSection::parse(&bytes).unwrap();
+        assert!(section.voices.is_empty());
+        assert_eq!(section.instruments[0].reset, 0);
+        assert_eq!(section.instruments[0].process, 6);
+        let table_at = get(&bytes, 0x40) as usize;
+        let reloc_at = get(&bytes, 0x1c) as usize;
+        let reloc_len = get(&bytes, 0x20) as usize * 8;
+        let decoded = dkrt_sdk::instrument_descriptor::records(
+            &bytes[table_at..table_at + INSTRUMENT_LEN],
+            &section.image,
+            &bytes[reloc_at..reloc_at + reloc_len],
+            FORMAT_LIMITS,
+        )
+        .unwrap();
+        let record = decoded[0].unwrap();
+        assert_eq!(record.key, section.instruments[0].type_no);
+        assert_eq!((record.reset_offset, record.process_offset), (0, 6));
+        assert_eq!(record.descriptor.allocation_bytes, 528);
+        let checked =
+            dkrt_sdk::instrument_section::Section::parse(&bytes, 1, FORMAT_LIMITS).unwrap();
+        assert_eq!(checked.records()[0].unwrap(), record);
+        assert_eq!(checked.memory_request().state_bytes, 528);
+        assert_eq!(checked.memory_request().bss_bytes, section.bss);
+        let mut relocated = vec![0; section.image.len()];
+        checked
+            .relocate_into(0x20010000, &mut relocated, |name| {
+                assert_eq!(name, b"helper");
+                Some(0xb90000)
+            })
+            .unwrap();
+        assert_eq!(
+            relocated,
+            section.relocated(0x20010000, &|_| Some(0xb90000)).unwrap()
+        );
+        assert_eq!(
+            section.range_len(),
+            (section.image.len() as u32 + 64 + 2 * 264).div_ceil(64) * 64
+        );
+        assert_eq!(section.encode(), bytes);
+        let options = crate::dkm::Options {
+            name: "v2-test".into(),
+            version: 1,
+            runtime_min: crate::dkm::runtime_version(),
+        };
+        let file = crate::dkm::pack_full(None, &[], &bytes, &options).unwrap();
+        assert_eq!(&file[0x3a..0x3c], &[2, 0]);
+        assert_eq!(crate::sdkgen::embedded().machine, (1, 0));
+        // Until the runtime has V2 registration, its resource checker also refuses it.
+        assert!(crate::dkm::needs(&file).is_err());
+        let needs = dkneeds::needs_of_v2(&mut file.as_slice()).unwrap();
+        assert_eq!(needs.base.dsp_area, section.range_len());
+        assert_eq!(needs.base.voice_rows, 0);
+        assert_eq!(needs.instruments.rows, 1);
+        assert_eq!(needs.instruments.tracks, 2);
+        assert_eq!(needs.instruments.state_bytes, 528);
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
     }
 
     #[test]
-    fn sample_tracks_need_zero_data_inside_the_image_and_no_overlap() {
-        let (o, t) = tracks_object();
-        // a block that is not in an initialized data section, is too short, overlaps the other, or is not zero
-        for (records, control) in [
-            ("buf", "ctl"),
-            ("var", "buf"),
-            ("var", "var"),
-            ("helper", "ctl"),
+    fn persistent_instrument_text_ranges_reject_data_and_preserve_v5_reading() {
+        let (o, i) = instrument_object();
+        let bytes = pack_with_instruments(&o, 1, &[], &[], &[i], FORMAT_LIMITS).unwrap();
+        let section = DspSection::parse(&bytes).unwrap();
+        assert_eq!(section.executable, vec![(0, 24)]);
+        let ranges = get(&bytes, 0x48) as usize;
+        let records = get(&bytes, 0x40) as usize;
+        let descriptor = section.instruments[0].desc;
+        for (at, value) in [
+            (ranges, 1),
+            (ranges + 4, 4),
+            (ranges + 4, descriptor + 48),
+            (records + 4, descriptor),
+            (records + 8, 22),
+            (0x4c, 0),
+            (0x4c, 33),
         ] {
+<<<<<<< HEAD
             let t = crate::typed::SampleTracksDef {
                 records: records.into(),
                 control: control.into(),
@@ -1192,6 +1585,128 @@ mod tests {
     }
 
     #[test]
+=======
+            let mut bad = bytes.clone();
+            put(&mut bad, at, value);
+            assert!(DspSection::parse(&bad).is_err(), "field {at:x} = {value}");
+        }
+        let mut legacy = section;
+        legacy.executable.clear();
+        let v5 = legacy.encode();
+        assert_eq!(get(&v5, 4), VERSION_5);
+        assert_eq!(DspSection::parse(&v5).unwrap().encode(), v5);
+    }
+
+    #[test]
+    fn persistent_instrument_rejects_bad_tables_descriptors_and_allocation() {
+        let (o, i) = instrument_object();
+        let bytes = pack_with_instruments(&o, 1, &[], &[], &[i], FORMAT_LIMITS).unwrap();
+        let table = get(&bytes, 0x40) as usize;
+        let image = get(&bytes, 0x18) as usize;
+        let desc = get(&bytes, table + 12) as usize;
+        for (offset, value) in [
+            (0x40, 0),
+            (0x44, 0),
+            (0x44, 9),
+            (0x48, 1),
+            (0x4c, 0),
+            (0x3c, 1),
+            (0x10, u32::MAX - 3),
+            (table + 4, 1),
+            (table + 8, u32::MAX - 1),
+            (table + 12, u32::MAX - 3),
+        ] {
+            let mut bad = bytes.clone();
+            put(&mut bad, offset, value);
+            assert!(DspSection::parse(&bad).is_err(), "offset {offset:x}");
+        }
+        for (word, value) in [(0, 0), (3, 1), (4, 17), (5, 0xffff_fffc), (6, 9), (8, 0)] {
+            let mut bad = bytes.clone();
+            bad[image + desc + word * 4..image + desc + word * 4 + 4]
+                .copy_from_slice(&u32::to_le_bytes(value));
+            assert!(DspSection::parse(&bad).is_err());
+        }
+        for length in 0..bytes.len() {
+            assert!(DspSection::parse(&bytes[..length]).is_err());
+        }
+        let mut section = DspSection::parse(&bytes).unwrap();
+        section.instruments.push(section.instruments[0].clone());
+        assert!(DspSection::parse(&section.encode()).is_err());
+        section.instruments[1].type_no += 1;
+        let limits = crate::instrument::Limits {
+            state_bytes: 600,
+            ..FORMAT_LIMITS
+        };
+        assert!(section.validate_instruments(limits).is_err());
+        section.voices.push(Voice {
+            type_no: 17,
+            entry: 0,
+            note_on: 0,
+            state_bytes: 0,
+            clear_bytes: 0,
+            voices: 0,
+            ranges: [0; 8],
+        });
+        assert!(DspSection::parse(&section.encode()).is_err());
+    }
+
+    #[test]
+    fn persistent_instrument_symbols_and_legacy_output() {
+        let (o, mut i) = instrument_object();
+        for bad in ["missing", "again", "var", "buf"] {
+            i.process = bad.into();
+            assert!(pack_with_instruments(&o, 1, &[], &[], &[i.clone()], FORMAT_LIMITS).is_err());
+        }
+        i.process = "process".into();
+        for bad in ["missing", "entry", "buf"] {
+            i.desc = bad.into();
+            assert!(pack_with_instruments(&o, 1, &[], &[], &[i.clone()], FORMAT_LIMITS).is_err());
+        }
+        let voice = VoiceSpec::old(16, "entry".into(), [0; 8]);
+        let legacy = pack(&o, 1, &[voice.clone()], &[]).unwrap();
+        assert_eq!(get(&legacy, 4), VERSION);
+        assert_eq!(
+            legacy,
+            pack_with_instruments(&o, 1, &[voice.clone()], &[], &[], FORMAT_LIMITS).unwrap()
+        );
+        i.desc = "var".into();
+        let mixed = pack_with_instruments(&o, 1, &[voice], &[], &[i], FORMAT_LIMITS).unwrap();
+        let parsed = DspSection::parse(&mixed).unwrap();
+        assert_eq!(parsed.voices.len(), 1);
+        assert_eq!(parsed.instruments.len(), 1);
+        assert_eq!(parsed.encode(), mixed);
+    }
+
+    #[test]
+    fn a_persistent_instrument_cannot_be_packed_as_a_v1_voice() {
+        let mut o = object();
+        let words = [
+            crate::instrument::MAGIC,
+            2,
+            48,
+            0,
+            16,
+            256,
+            8,
+            32,
+            20000,
+            2000,
+            4,
+            64,
+        ];
+        let data: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
+        o.sections[1] = sec("d", "data", 4, &data);
+        let mut v = VoiceSpec::old(16, "entry".into(), [0; 8]);
+        v.desc = Some("var".into());
+        let error = pack(&o, 1, &[v], &[]).unwrap_err().0;
+        assert!(
+            error.contains("persistent-instrument V2 requires"),
+            "{error}"
+        );
+    }
+
+    #[test]
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
     fn relocation_at_any_base_equals_the_linker() {
         let o = object();
         let bytes = pack(
@@ -1217,7 +1732,6 @@ mod tests {
                 state_bytes: 0,
                 clear_bytes: 0,
                 voices: 0,
-                latched: 0,
                 ranges: [0, 0x7f00_0000, 0, 0, 0, 0, 0, 0]
             }]
         );
@@ -1287,6 +1801,7 @@ mod tests {
         }
     }
 
+<<<<<<< HEAD
     /// A contract machine: `render` and `note_on` in the text, a `dk_machine_desc` with the given contract word in the data.
     fn machine_object(contract: u32) -> Dko {
         let mut o = object();
@@ -1367,6 +1882,8 @@ mod tests {
         assert!(e.contains("contract 0xa01"));
     }
 
+=======
+>>>>>>> 148c3b33 (Add V2 instrument admission, loading, DSP sessions and reset handling for CANOPY Stage 1)
     #[test]
     fn the_routes_are_the_flags_of_the_record_and_zero_is_master_only() {
         let o = fx_object(1, 4);

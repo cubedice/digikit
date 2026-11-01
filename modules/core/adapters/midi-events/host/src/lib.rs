@@ -21,6 +21,11 @@ mod tests {
         fn mi_test_config_maximum() -> u32;
         fn mi_test_reply_ack() -> u32;
         fn mi_test_reply_watchdog() -> u32;
+        fn mi_test_session_guard() -> u32;
+        fn mi_test_reply_reordering() -> u32;
+        fn mi_test_play_reply() -> u32;
+        fn mi_test_session_keys() -> u32;
+        fn mi_test_session_midi() -> u32;
         fn mi_test_reply_record() -> u32;
     }
     macro_rules! case {
@@ -37,7 +42,15 @@ mod tests {
         reply_watchdog_covers_idle_and_counter_wrap,
         mi_test_reply_watchdog
     );
+    case!(
+        session_guard_requires_one_shot_identity,
+        mi_test_session_guard
+    );
     case!(reply_uses_only_reserved_record_slots, mi_test_reply_record);
+    case!(bounded_old_replies_never_ack_or_extend_trust, mi_test_reply_reordering);
+    case!(versioned_playback_status_is_validated, mi_test_play_reply);
+    case!(session_bound_midi_ack_and_revocation, mi_test_session_midi);
+    case!(session_transition_preserves_old_key_release, mi_test_session_keys);
     case!(
         configuration_commits_only_after_final_ack,
         mi_test_config_transaction

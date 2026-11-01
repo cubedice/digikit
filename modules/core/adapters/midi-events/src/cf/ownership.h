@@ -48,6 +48,9 @@ int mi_reset_ack(MiLedger *m, uint32_t epoch, uint32_t track, uint32_t generatio
 /* Explicit panic/recovery with physical keys released; no automatic recovery
  * from lost ownership. Reset ACK and a subsequent route call are still needed. */
 void mi_recover(MiLedger *m);
+/* Session boundary with keys possibly held: retain tokens/tombstones and route
+ * quarantine, discard queued events, and require reset ACKs in a fresh epoch. */
+int mi_session_begin(MiLedger *m);
 /* Fully normalized channel messages only. 1 consumed, 0 stock fallthrough.
  * Unsupported controllers, system messages and malformed messages fall through. */
 int mi_message(MiLedger *m, uint32_t port, const uint8_t *msg, uint32_t len);

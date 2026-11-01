@@ -295,6 +295,8 @@ pub fn synth(spec: &Spec, dev: &str, models: &Models, decl: Option<&Dko>) -> Res
                 relocs: vec![],
                 voices,
                 fxs: vec![],
+                instruments: vec![],
+                executable: vec![],
             }
             .encode()
         }

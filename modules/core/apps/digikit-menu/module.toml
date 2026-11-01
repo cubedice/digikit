@@ -24,3 +24,4 @@ conflicts = []
 path = "build/digikit-menu.dko.json"
 sources = ["src/menu.c"]
 place = "cf.expansion"
+optional = ["dk_app_instrument_settings_rows"]

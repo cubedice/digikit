@@ -70,6 +70,7 @@
 .EXTERN _fw_release_latch;
 .EXTERN _fw_unpack;
 .EXTERN _dv_table;
+.EXTERN _instrument_voice_rows;
 
 // The frame consumer's two calls of the per-track unpack (R12 = track, R8 = voice) come here. Without a registered row (`_dv_mask` 0) it
 // goes to the stock unpack at once. Otherwise, when the row of the track's type declares knob 7's range (word 9), knob 7's frame word
@@ -199,6 +200,8 @@ _dv_nodiag:
     R0 = 0x400;
     R2 = R2 OR R0;
     R1 = FEXT R1 BY R2;                   // cache[t]
+    R0 = 0;
+    DM(_dv_v2_scan) = R0;
     R2 = 31;                              // a type that no row registers takes the stock path without the table walk (`_dv_mask`, above)
     R0 = R1;
     COMP(R0, R2);
@@ -209,14 +212,14 @@ _dv_nodiag:
     R2 = LSHIFT R2 BY R0;                 // a shift by a negative count moves bit t down to bit 0
     R0 = 1;
     R2 = R2 AND R0;
-    IF EQ JUMP _dv_stock;
+    IF EQ JUMP _dv_scan_v2;
     I4 = _dv_table;
 _dv_scan:
     R0 = DM(0, I4);                       // row type; 0 ends the table (the last row is always empty)
     R2 = DM(1, I4);                       // row pc
     MODIFY(I4, 24) (NW);                  // a row is 24 words (see the header, "The registry row")
     R0 = PASS R0;
-    IF EQ JUMP _dv_stock;
+    IF EQ JUMP _dv_scan_v2;
     COMP(R0, R1);
     IF NE JUMP _dv_scan;
     R0 = I4;
@@ -1026,6 +1029,21 @@ _dv_done:
     JUMP (M14, I12) (DB);
     R3 = DM(-6, I6);
     RFRAME;
+
+// Optional trusted V2 adapter table, scanned only after legacy registrations.
+// Its rows use the raw carrier ABI, never V1 note-on or state clearing.
+_dv_scan_v2:
+    R0 = DM(_dv_v2_scan);
+    R0 = PASS R0;
+    IF NE JUMP _dv_stock;
+    R0 = _instrument_voice_rows;
+    R0 = PASS R0;
+    IF EQ JUMP _dv_stock;
+    I4 = R0;
+    R0 = 1;
+    DM(_dv_v2_scan) = R0;
+    JUMP _dv_scan;
+.PKDATA _dv_v2_scan, 4;
 
 // ---- the guard, after the routine (docs/findings/51) ----
 // The block must hold finite samples of at most 8.0 in magnitude (+18 dB over the full scale of a voice; the stock voices stay below 2). One

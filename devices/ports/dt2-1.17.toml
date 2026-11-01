@@ -293,6 +293,16 @@ mark = "D"
 rule = "fw/machine:cf_window_hash"
 
 [[anchor]]
+name = "cf.machine.fn.selection_build"
+cpu = "cf"
+kind = "code"
+addr = 0x40060f50
+len = 8
+sha256 = "d38e64037d171546ea46d9f5ff950af69f4742dd92f87e4f56faf9fe101bb64e"
+mark = "D"
+rule = "fw/machine:cf_window_hash"
+
+[[anchor]]
 name = "cf.machine.site.clone.0"
 cpu = "cf"
 kind = "code"
@@ -2468,6 +2478,16 @@ mark = "D"
 rule = "fw/rtos:cf_reset_init_calls"
 
 [[anchor]]
+name = "cf.rtos.site.dsp_reset"
+cpu = "cf"
+kind = "code"
+addr = 0x400cd01c
+len = 6
+sha256 = "86362a5c1ab4bb2b862cfba43fb5bbac90a1fdd9dfe5497fde9a29be31bad115"
+mark = "D"
+rule = "fw/rtos:cf_window_hash"
+
+[[anchor]]
 name = "cf.rtos.fn.sem_init"
 cpu = "cf"
 kind = "code"
@@ -3937,6 +3957,11 @@ site = "cf.machine.site.param_code.args"
 mode = "before"
 
 [[hook]]
+name = "cf.machine.hook.selection_build"
+site = "cf.machine.fn.selection_build"
+mode = "before"
+
+[[hook]]
 name = "cf.machine.hook.sound_deserialize"
 site = "cf.machine.site.sound_deserialize"
 mode = "replace"
@@ -4051,6 +4076,11 @@ mode = "retarget"
 name = "cf.pattern.hook.tick"
 site = "cf.pattern.site.tick"
 mode = "replace"
+
+[[hook]]
+name = "cf.rtos.hook.dsp_reset"
+site = "cf.rtos.site.dsp_reset"
+mode = "before"
 
 [[hook]]
 name = "cf.rtos.hook.idle"

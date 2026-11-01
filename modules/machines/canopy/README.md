@@ -1,11 +1,21 @@
 # CANOPY implementation
 
-This directory contains the stage-1 sine kernel for the
-[CANOPY design](../../../docs/design/canopy.md). It is **not an installable module**:
-there is no machine manifest, V2 descriptor, firmware carrier integration or UI yet.
-`src/dsp/instrument.s` now connects the production MIDI lifecycle bridge to this
-kernel in instruction-core tests. Normal firmware builds do not link it or enable
-keyboard routes.
+This directory contains the Stage 1 sine instrument for the
+[CANOPY design](../../../docs/design/canopy.md). Its dynamic package uses V2
+reset/process callbacks and an assigned machine type. It requires the optional
+DTII 1.17 `core/instrument-play` adapter; ordinary firmware cannot admit it.
+Integrated Stage 1 keyboard/audio acceptance passes in the coupled emulator.
+This development package is not a finished pad synth or hardware release.
+
+Build and pack with `patchkit build digikit/canopy` and
+`patchkit pack digikit/canopy --device dt2 -o out/patch/canopy-dt2.dkm` through
+the repository's Python wrapper. Select CANOPY on track 1. In firmware containing
+the adapter, SETTINGS > DIGIKIT > KEYBOARD selects USB/DIN, channel and ENABLE.
+Enable the corresponding stock MIDI receive ports as well. Development
+installation uses the upload/selection protocol; the generic module-browser fit
+calculator remains V1-only. Routing starts disabled on every boot; Stage 1 does
+not persist setup settings.
+Only track 1 is admitted. Other tracks and channels retain stock behavior.
 
 `src/dsp/voice.s` implements four foreground notes, two short release tails and
 four pending-replacement records in a caller-owned 256-byte bank.
@@ -28,7 +38,7 @@ now supports CC64 sustain, CC121 pedal reset, CC123 All Notes Off and CC120
 All Sound Off, plus 14-bit pitch bend at a fixed +/-2 semitone range, scoped to
 MIDI port/channel.
 
-The callback layer owns sixteen separate voice banks and a 256-byte staging bank.
+The earlier legacy fixture owns sixteen separate voice banks and a 256-byte staging bank.
 Each track additionally has a 256-byte controller record with 32 route pedal bits and
 four deferred-token/route pairs; a separate 256-byte staging record makes pedal and
 voice changes commit together. CC64 values 64–127 hold released keys; 0–63 release
@@ -166,8 +176,9 @@ panel-driven temporary pattern reload also proves same-pointer invalidation,
 re-admission and stale-release protection. A running switch between two prepared patterns also preserves source ownership
 during observed scheduling lookahead and retains it after compatible commitment. The running-switch
 regression now checks retained tokens, original key release, source/destination audio and settled release quietness,
-and captures transition PCM with diagnostic adjacent-frame step measurements. Browser,
-kit and paste coverage, broader transport cases and audio continuity remain unproven. Public V2 initialization, broader Sound/control behavior
+and checks transition PCM against a source-only sine prediction on both channels.
+The fixed-Sound pattern-continuity bound passes. Browser,
+kit and paste coverage, broader transport cases and arbitrary-control audio continuity remain unproven. Public V2 initialization, broader Sound/control behavior
 and final-output continuity remain open. See the
 [carrier findings](../../../docs/findings/78-canopy-carrier.md) for measured results.
 
@@ -182,3 +193,12 @@ The booted reload scenario also verifies pedal-owned USB C remains audible after
 1.25 seconds beyond physical release, while DIN G releases independently. Pedal-up
 retires C without cutting off a fresh physically held USB G; G's release returns
 the final output to zero in the measured window. This is emulator evidence only.
+
+The V2 callback prototype in `src/dsp/v2.s` uses a 528-byte allocator-owned
+instance and normalized input events. It shares the atomic voice/pedal engine
+with the transport proof. `test_canopy_v2.py` checks it both directly and through
+the protected registry dispatcher, including paired held-voice phase/gain state,
+independent velocity and bend, sustain, malformed batches and reset isolation.
+It requires neutral tuning and fixed PLAY configuration. Descriptor budgets are
+provisional, and destructive reset still requires carrier quiescence. This is
+not a packaged instrument or a completed live V2 audio route.

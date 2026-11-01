@@ -83,6 +83,11 @@ export default defineConfig({
           name: 'proofs',
           include: ['runtime/**/*.test.ts'],
           exclude: [
+            'runtime/instrument-session.test.ts',
+            'runtime/instrument-load.test.ts',
+            'runtime/instrument-file.test.ts',
+            'runtime/canopy-stage1.test.ts',
+            'runtime/dsp-reset.test.ts',
             'runtime/overloop-display.test.ts',
             'runtime/canopy-transport.test.ts',
             'runtime/canopy-carrier.test.ts',
@@ -90,6 +95,7 @@ export default defineConfig({
             'runtime/canopy-pattern.test.ts',
             'runtime/canopy-panic.test.ts',
             'runtime/canopy-bend.test.ts',
+            'runtime/canopy-chord.test.ts',
           ],
           // Backstops; see the runtime project.
           testTimeout: 1_800_000,
@@ -105,7 +111,58 @@ export default defineConfig({
             'runtime/canopy-pattern.test.ts',
             'runtime/canopy-panic.test.ts',
             'runtime/canopy-bend.test.ts',
+            'runtime/canopy-chord.test.ts',
           ],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 120_000,
+          hookTimeout: 150_000,
+        },
+      },
+      {
+        test: {
+          name: 'dsp-reset',
+          include: ['runtime/dsp-reset.test.ts'],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 240_000,
+          hookTimeout: 150_000,
+        },
+      },
+      {
+        test: {
+          name: 'canopy-stage1',
+          include: ['runtime/canopy-stage1.test.ts'],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 600_000,
+          hookTimeout: 300_000,
+        },
+      },
+      {
+        test: {
+          name: 'instrument-file',
+          include: ['runtime/instrument-file.test.ts'],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 480_000,
+          hookTimeout: 300_000,
+        },
+      },
+      {
+        test: {
+          name: 'instrument-load',
+          include: ['runtime/instrument-load.test.ts'],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 150_000,
+          hookTimeout: 150_000,
+        },
+      },
+      {
+        test: {
+          name: 'instrument-session',
+          include: ['runtime/instrument-session.test.ts'],
           pool: 'forks',
           ...serial,
           testTimeout: 120_000,

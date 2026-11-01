@@ -4,6 +4,7 @@
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
 extern int canopy_carrier_prepare(int allow_refresh) __attribute__((weak));
+extern volatile uint32_t isp_request __attribute__((weak));
 static uint32_t phase;
 static uint32_t carrier_prepared;
 volatile uint32_t cp_transport_proof[12];
@@ -25,7 +26,15 @@ void canopy_carrier_suspend(void)
 
 void fx_controls_tick(void)
 {
-    uint32_t sr, value=1;
+    uint32_t sr, value=1, reply[MT_REPLY_WORDS];
+    /* Combining with test/instrument-session must never admit legacy routes
+     * before the emulator explicitly requests and receives a bound session. */
+    if (&isp_request) {
+        int result=mi_registry_reply(reply, MT_REPLY_WORDS);
+        if (result == -2) { carrier_prepared=0; phase=4; }
+        if (result != MT_REPLY_WORDS || reply[0] != MT_SESSION_REPLY_MAGIC ||
+            !isp_request || reply[12] != isp_request || phase == 4) goto publish;
+    }
     if (!canopy_carrier_prepare) carrier_prepared=1;
     else if (phase) {
         int prepared=canopy_carrier_prepare(phase == 1 && !mi_ledger.reset_mask);
@@ -36,7 +45,8 @@ void fx_controls_tick(void)
     if (!phase) {
         /* Initializes the bridge, but cannot admit a route before a heartbeat. */
         (void)mi_route_enable(0,0,0,0);
-        mi_instance_reset(0);
+        /* Session arming already reset every track in the new epoch. */
+        if (!&isp_request) mi_instance_reset(0);
         phase=1;
     } else if (phase == 1) {
         if (carrier_prepared && !mi_config_submit(0,1,0x43505331,&value,1)) phase=2;
@@ -44,6 +54,7 @@ void fx_controls_tick(void)
         if (!mi_route_enable(0,0,0,0) && !mi_route_enable(1,0,0,0)) phase=3;
         else phase=4; /* Explicit test failure; never spin on partial admission. */
     }
+publish:
     sr=dkrt_irq_mask();
     cp_transport_proof[0]=phase;
     cp_transport_proof[1]=mi_transport.heartbeat_seen;

@@ -966,3 +966,353 @@ Changed-file checks pass lint, types and layers; formatting passes after applyin
 Prettier. The repository-wide path checker still reports the existing 256 stale
 references in 78 files. Targeted checks of the three changed documents report zero
 stale references. No full merge gate or device test was run.
+
+## DSP reset and explicit boot initialization (DTII 1.17) [D]
+
+Local stock firmware SHA-256:
+`26c22f6652625ac2cfd47f7ee970d388ed8b6427dae3563c0a6a2f2d334350d5`.
+The extraction marker matches that file. MAIN OS section 3 loads at
+`0x40000400`; disassembly below uses that base, not `0x40000000`.
+
+The boot routine at `0x400cd0d8` calls `0x400cd01c` with argument 1 at
+`0x400cd0e4`, before peripheral setup, allocation and section-7 decompression.
+It calls the same helper with argument 0 at `0x400cd37c`, then delays before
+sending command byte 3 plus the depacked stream. The helper branches on the
+board byte at `0x402a1b58`. On one branch the nonzero argument writes `0xfd`
+to `0xec09402c`, while zero writes bit 1 to `0xec094020`; on the other it
+writes `0x7f` to `0xec094029` or bit 7 to `0xec09401d`. Both configure the
+corresponding GPIO direction. These assert/release sites agree with the boot
+sequence recorded in finding 06. Electrical reset behavior is not measured here.
+
+A bounded reference scan of `0x40000400..0x40140000` finds those two direct
+calls to the helper (99.95% decoded byte coverage). This does not rule out
+indirect calls, computed addresses, other GPIO writes or references outside the
+scan. Logs: `out/canopy-reset-control-disasm.log`,
+`out/canopy-reset-entry-disasm.log`, `out/canopy-reset-stream-disasm.log` and
+`out/canopy-reset-control-refs.json`.
+
+The patcher integration test in
+`tests/patchkit/test_instrument_boot.py` builds a fresh registry firmware and
+reads its actual section-7 boot stream using the independent Python loader
+reader. It requires explicit zero coverage for the session latch, sequence,
+lifecycle enable, pending operation, complete command mailbox, registry ACK,
+all eight registry rows, MIDI epoch/message and heartbeat. An uninitialized BSS
+reservation cannot satisfy the check. Scratch written before use is excluded.
+The test passes (`out/canopy-boot-initialization-test.log`).
+
+This closes the image-content part of restart initialization, not the complete
+reset gate. Next integration must revoke CF trust before reset assertion, cover
+pending physical writes and establish whether the callback can run before the
+runtime has initialized its state. Hooking this early routine directly to a
+UI-only coordinator is not justified. A live DSP reset test must establish that
+the firmware actually reloads the patched stream and that no old transfer or
+MIDI route resumes. Production V2 admission remains disabled.
+
+
+## Source-predicted pattern continuity [D]
+
+The running compatible-pattern regression collects 8,192 settled stereo frames
+before requesting the destination. From that source-only prefix it fits frequency
+and sine/cosine coefficients, then predicts every captured frame without refitting.
+Both output channels must stay within 0.001 of fitted amplitude; the local sine
+recurrence residual must remain below 0.00001. A missing sample at C4 causes
+approximately 0.034 of amplitude error. Seven host cases cover unbroken float32
+stereo, invalid PCM, and detection of dropped/duplicated samples, oscillator
+restart, a 5% gain change and a 32-frame gap on the right channel independently.
+
+The 2026-10-31 emulator capture contains 87,520 stereo frames. Both channels fit
+261.625572273 Hz at amplitude 0.04195916821. Maximum prediction error is
+0.0001085897073 of amplitude (0.010859%); maximum recurrence residual is
+0.000001272750804 (0.0001273%). The highest prediction error is near the end,
+frame 87,297. This establishes bounded sample-level continuity across this
+compatible internal-clock switch with the fixed sine/default Sound. It does
+not claim bit identity, arbitrary controls or hardware audio acceptance.
+
+Evidence: `out/canopy-pattern-continuity.json`,
+`out/canopy-pattern-transition.f32le` and `out/canopy-continuity-live.log`.
+The full scenario also checks retained ownership, release by the original key-up,
+fresh destination notes, and final quietness. Seven host cases and TypeScript
+checking pass.
+
+The full pattern scenario passes in 202.95 seconds, including release and quietness.
+Changed-file preflight passes seven related host tests, lint, formatting, types
+and layering. Its only failure remains the repository pathcheck (256 existing
+stale references in 78 files). Focused checks of all four edited documents pass.
+
+
+## Bound-session MIDI delivery [D]
+
+The emulator-only CANOPY transport fixture now waits for the exact requested
+version-2 session token before configuration or route admission. The booted
+firmware regression verifies empty banks before binding, committed configuration
+and reset acknowledgements before admission, then USB C/E and DIN G note-ons,
+independent note-offs, drained event queues and zero transport faults. The bound
+case passes in 66.34 seconds; the legacy case passed in 60.48 seconds. The first
+bound run exposed a redundant fixture reset after the session reset; the fixture
+now uses the session reset, making its generation independent of UI scheduling.
+
+[C] The previous session-arming implementation used explicit keys-up recovery,
+which erased held-key history despite the design notes claiming it retained it.
+A dedicated epoch transition now preserves tokens, tombstones and route
+quarantine while dropping old queued events and requiring all-track reset ACKs.
+All 23 host cases and the shared ColdFire component test pass, including an old
+release that must not stop a fresh same-pitch note. The CF adapter rebuild checks
+1,930 decoded instructions; the fixture checks 179.
+
+Evidence: `out/canopy-bound-keys-host.log`, `out/canopy-bound-keys-cf.log`,
+`out/canopy-bound-transport-build.log`, `out/canopy-bound-fixture-build.log`,
+`out/canopy-bound-midi-live.log` and `out/canopy-bound-midi-retry.log`.
+This proves session-gated delivery to configured test banks. Public version-2
+module installation/initialization and final CANOPY audio remain open. No device
+was modified for this proof.
+
+Changed-file preflight passes 200 host tests (16 skipped), lint, formatting,
+types and layering. The 26 focused layer tests and artifact-current checks pass;
+both edited documents pass focused pathcheck. The full preflight remains red:
+256 stale links in 78 files, plus six verification-tool failures outside this
+patch (unclassified patch:toolchains task, unclassified dsp_reset_probe tool,
+and four cases requiring the unavailable dn2-1.11 analysis database). The
+verification-tool file has 221 passing cases. See `out/canopy-bound-changed.log`
+and `out/runs/test-changed/20261101-071902` for the complete result.
+
+
+## Published-instrument retirement [D]
+
+The SDK coordinator now drives explicit retirement after successful publication,
+not only failed-load cleanup. Retirement removes lookup visibility, retains the
+allocation and processing reservation, and blocks admission, image starts and
+link handoff until the exact detach completion. The caller must close MIDI
+admission first and hold the exclusive link. Only a completed detach permits
+release_memory; rejection, missing replies and boot/session loss retain storage
+and prevent retry or link release. Invalid deadlines and non-live tickets are
+rejected before beginning retirement.
+
+All 167 SDK cases pass (`out/canopy-retire-sdk.log`). The new bound-session test
+runs actual coordinator upload/install/initialize/retire logic with simulated
+providers and verifies mailbox operation sequences 1 through 4. Failure cases
+cover rejected detach, reply timeout and boot loss, including attempted revival.
+This is host evidence, not a live firmware installation or public V2 capability.
+The emulator installation probe still needs implementation.
+
+The ColdFire runtime rebuild validates 33,344 decoded instructions, and all
+runtime artifacts are current. Changed-file preflight passes 200 host tests
+(16 skipped), layering, formatting and types. Its only failure is the existing
+repository pathcheck (256 stale references in 78 files); both edited documents
+pass focused pathcheck. Logs: `out/canopy-retire-build.log`,
+`out/canopy-retire-current.log`, `out/canopy-retire-docs.log` and
+`out/canopy-retire-changed.log`.
+
+
+## Live loader descriptor decoding [D]
+
+The emulator-only instrument-load fixture exposed recursive __bswapsi2 calls
+while decoding little-endian DSP descriptors on ColdFire. Direct cf_script
+calls stopped inside that helper with repeated return addresses and a falling
+stack pointer; the booted loader eventually faulted at PC zero. Descriptor
+reads now use explicit volatile bytes, as the mailbox serializer already does.
+The rebuilt runtime validates 43,508 instructions and all 167 SDK tests pass.
+The booted probe now passes parsing and admission, reserves 128 bytes, and
+reaches the upload lifecycle without a CPU fault. It subsequently fails closed
+and retains its allocation; upload/initialize/retirement completion is still
+unproven. See out/canopy-descriptor-host.log and out/canopy-descriptor-live.log.
+This fixture does not enable production V2 admission or modify hardware.
+
+A second booted run with failure classification reaches begin successfully,
+then reports coordinator Failure::Reply (diagnostic 103), with the 128-byte
+allocation retained and no published lookup. The remaining gap is registry
+reply validation during the live transaction, not descriptor parsing or memory
+admission. Log: out/canopy-load-stage-live.log.
+
+
+## Booted upload and retirement completion [D]
+
+The remaining reply rejection was status 1 (unsupported lifecycle): the new
+fixture had omitted the private DSP readiness gate. Its separate enable.s hook
+now sets readiness only after the session token is bound. The production
+registry remains cold-boot-zero and public V2 admission stays disabled. Layer
+checks restrict these private imports to the fixture's exact source and object.
+
+The booted DT2 1.17 test now passes in 81.75 seconds. It verifies all 80 uploaded
+image bytes, CREATE reason 1 written by the uploaded callback, published lookup,
+DETACH reason 4, detached DSP row, released allocator slot and released link.
+No processor fault occurs. Allocation is 128 bytes and the fixture has one
+instance with no MIDI route or audio dispatch. This is an emulator lifecycle
+proof, not hardware acceptance or a playable CANOPY module. Evidence:
+`out/canopy-load-enable-live.log`.
+
+Validation: 36 focused layer tests pass, tracked runtime artifacts are current,
+and both edited documents pass pathcheck. Changed-file checks pass 200 host
+tests (16 skipped), layering, lint, formatting and types. Preflight remains red
+on the existing 256 stale references in 78 files and six verification-tool
+failures (two unclassified task/tool cases and four missing DN2 database cases);
+221 verification-tool cases pass. Logs: `out/canopy-load-changed.log`,
+`out/canopy-load-layers.log`, `out/canopy-load-current.log` and
+`out/canopy-load-docs.log`.
+
+
+## Held C-E-G final-output measurement [D]
+
+The new canopy-chord booted test follows the exact stage-1 musical sequence:
+USB C4/E4, DIN G4 added, then USB E4 released while C/G remain physically held.
+It captures the final stereo f32 stream and fits all three note frequencies
+against one absolute sample clock in settled 8192-frame windows. Both channels
+retain C's complex amplitude across G's onset and C/G across E's release; the
+released E component falls below 0.1 percent of its prior amplitude. Measured
+relative changes are below 0.001 (the largest is G at about 0.000118). The
+159.36-second booted run passed the initial 0.02 bound; the retained test tightens
+that bound to 0.001, supported by the saved PCM measurement. Four host cases
+validate separation and detection of right-channel restart, gain loss and cutoff.
+This measures settled phase/gain retention; it does not prove every transition
+sample free of a brief glitch. It still runs the stock-type-shadow carrier
+fixture, not production V2 dispatch, and does not close Stage 1 by itself.
+Evidence: `out/canopy-chord-live.log`, `out/canopy-chord-continuity.json`.
+
+The stricter 0.001 bound was also checked against the saved measurements, with
+maximum relative change 0.000118200653. Type checking, lint and formatting pass.
+The incremental changed-file run passes 203 host cases; an unrelated 12 ms
+firmware-pause timing test fails once and passes its isolated rerun. Repository
+pathcheck retains the known stale-link failures; the edited finding passes.
+Logs: `out/canopy-chord-changed.log`, `out/canopy-chord-pause-retry.log`.
+
+
+## 2026-11-01: admitted process execution [D]
+
+The DT2 1.17 booted `instrument-load` test passes with separate uploaded reset
+and process entry points. It checks op-6 owner/generation/type/entry metadata,
+CREATE state, a process output word of 0.25, exactly one instance process call,
+then DETACH state before ledger release. The protected dispatcher originally
+rejected the fixture's statically linked input/output buffers because it used
+the smaller dynamic image arena as the input/output bound. The corrected bound
+is bootable L2 through 0x200fe000 (exclusive), matching patchkit's ROM workspace
+boundary. Dynamic code/state allocation limits were not enlarged.
+
+Image SHA256: 82d9fc582b0d7c0d2b73e0d4a5f7c1cd6b103491be9956591fc6bbe9ef6f10e8.
+Log: `out/canopy-process-live.log`; test duration 89.26 seconds, full run 93.20.
+The dispatcher has 24 processor tests, CANOPY's normalized callbacks have 22
+direct/protected tests, and 31 mailbox lifecycle cases pass. The SDK suite has
+167 passing cases after adding process binding. This single emulator result is
+not a hardware result or final PCM proof; public V2 loading and production
+keyboard/carrier routing remain open. Stage 1 is not complete.
+
+
+## 2026-11-01: packet-to-admitted-callback bridge [D]
+
+The booted DT2 1.17 load fixture now supplies an ordered note packet through
+`_ir_process_packet`, checks its normalized six-word note record, verifies the
+uploaded callback's output/state write, then retires it before memory release.
+It passes in 84.93 seconds (`out/canopy-input-live.log`). The shared CANOPY
+processor suite has 30 passing tests, including normalized packet note/pedal/bend
+behavior, full batches and silent rejection without instance mutation for stale
+or corrupt input. Production receiver ordering, live route/configuration ownership
+and final carrier output remain unconnected. Stage 1 is still open.
+
+
+## Route readiness revocation (2026-11-01)
+
+[D] The production MIDI adapter now rechecks readiness before routed input and
+before outgoing frames, once per enabled track. Loss disables routes and schedules
+the reserved reset while preserving physical-key tombstones. The 23 host cases
+and ColdFire ownership/dispatch test pass, including quiet-keyboard revocation.
+The rebuilt CF object has 2008 decoded instructions. The booted stock-carrier
+chord test passes in 158.88 seconds: held C/G retain phase and gain on E release.
+Logs: `out/canopy-route-readiness.log`, `out/canopy-route-coldfire.log`,
+`out/canopy-route-build.log`, `out/canopy-route-chord.log`.
+
+[O] This is route-lifetime protection and fixture regression evidence. Production
+V2 loading, explicit machine/route selection and shared-carrier integration are
+still required before Stage 1 final-output acceptance.
+
+
+## Shared runtime allocation (2026-11-01)
+
+[D] The V2 load proof now borrows the runtime DSP allocation ledger and provider
+bounds instead of a caller-supplied 256-byte sub-pool. In the booted DT2 1.17
+fixture, the real pool starts at 0x2001b24c and spans 512 KiB. Requiring that whole
+pool to end below 0x20080000 incorrectly refused admission. The allocator now
+validates shared-pool bookkeeping up to the bootable L2 boundary 0x200fe000, while
+requiring the complete V2 reservation to remain below 0x20080000. Legacy upper-L2
+reservations remain visible to the shared search. No executable bound was widened.
+
+[D] Seven allocator tests pass, including occupied upper L2 and lower-region
+exhaustion with atomic refusal. The booted lifecycle test reserves the first
+512 bytes in the real ledger, uploads after that aligned range, executes reset
+and process callbacks, then detaches before releasing only its own reservation.
+The pre-existing reservation and its uninitialized bytes remain unchanged. This
+is simulated occupancy, not coexistence with a running legacy module. Logs:
+`out/canopy-shared-ledger-host.log`, `out/canopy-shared-ledger-live.log`,
+`out/canopy-shared-ledger-build.log`, `out/canopy-shared-ledger-check.log`.
+
+[O] Normal DKM loading and deferred CF publication, production routing and shared
+carrier wiring remain disabled/incomplete. This does not complete Stage 1.
+
+
+## CF publication failure cleanup (2026-11-01)
+
+[D] Normal DKM initialization could register a service handler and then fail,
+freeing the CF image without removing the handler. loader::publish_cf now removes
+the failed owner's handlers before returning E_INIT. It leaves DSP memory release
+to the load owner instead of calling the legacy release path itself. Existing
+legacy callers cancel unsent reservations; future V2 callers require detach ACK.
+
+[D] The DT2 1.17 zero-DSP regression uploads test/svc-init-fail, selects and restarts
+through the real loader, observes E_INIT and an unpublished module, then confirms
+the command returns E_PROTO. The fixture emits E_INIT only if registration first
+succeeded. It passes in 17.08 seconds (out/canopy-publication-live.log). The six
+gate-routing cases pass and the rebuilt runtime object is current. This proves
+CF cleanup, not asynchronous V2 publication or DSP/audio integration.
+
+
+## [D] Admitted playback boundary
+
+The non-default core/instrument-play adapter passes instruction-level checks for
+normalized event consumption, one process advance per block, cached carrier
+output, bounded replacement tails and ownership-loss silence. Legacy dispatch
+priority is preserved. This is component evidence, not booted final stereo
+acceptance or public keyboard-route readiness. See the November 1 CANOPY handover
+for test counts and outstanding Stage 1 integration.
+
+
+### [D] Normal-file V2 completion and bounded stale reply copies (2026-11-01)
+
+The DT2 1.17 normal-file regression passes both publication/link release and
+failed-CF-init detach/reclamation (out/canopy-normal-file-live.log, 249.53 s).
+A prior failure captured a checksummed same-session heartbeat 3476 after 3478
+at CF block 3482, reset_seen=0, with DSP heartbeat subsequently advancing.
+The adapter now discards one/two-block stale copies without ACK or deadline
+progress; larger regressions, token changes, reset and stall remain terminal.
+24 host cases and the ColdFire adapter dispatch test pass. This is emulator
+evidence; no hardware timing claim or playable CANOPY acceptance is implied.
+
+
+### [D] Admitted CANOPY Stage 1 acceptance (2026-11-01)
+
+The real 8244-byte CANOPY V2 DKM passes the normal upload/readback/restart path,
+CREATE and CF publication on DTII OS 1.17. The integrated test selects assigned
+type 16 through the stock chooser, enables the explicit keyboard route, plays
+USB C/E and DIN G, releases only E, checks both final PCM channels and every
+transition sample, then checks pedal ownership and low/high same-pitch velocity.
+Corrupting the callback's instance generation triggers silence, route revocation
+and acknowledged DETACH before DSP memory release. Published CF code stays until
+reboot. USB control remains responsive. One integrated test passes in 347.66 s;
+log out/canopy-stage1-live.log. This closes Stage 1's emulator gate.
+
+Two integration fixes were necessary. The session guard now discards only exact
+16-word copies of one of its last eight accepted bound replies, replacing the
+weaker numeric one/two-block heuristic above. The larger load exposed 3549 after
+3552. Unknown regressions, altered ACK/status, token change, reset and deadline
+expiry remain terminal; known copies cannot acknowledge work or extend freshness.
+Unbound legacy heartbeats do not establish session lifetime. 25 host tests and
+the actual ColdFire dispatch test pass.
+
+V2 publication is asynchronous and occurs after the persistent machine chooser
+is constructed. The optional playback adapter remembers that view and rebuilds
+its item list once after publication, on the owning UI task. The narrow hook
+reuses finding 30's stock builder at 0x40060f50; the first eight bytes match the
+archived hash, and the new 64-byte window resolves uniquely on 1.17. This does
+not enable hot reload or removal of published CF registrations.
+
+Firmware SHA256 b3d8fc42ce5e4b8b95ea7a3355a85c5a1c89ac4d5e5b6f1ee45f126c9b4992f2.
+DKM SHA256 48758a2841bcc69d5eab95527d069ac3bd2a993a086b545e941492005827c432.
+Development scope: one instance on track 1, optional firmware, route setup not
+persisted, uploader selection (generic browser fit remains V1-only). No hardware
+flash, CPU-cycle measurement, broader coexistence or finished pad-synth claim.

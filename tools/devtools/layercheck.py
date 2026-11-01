@@ -90,9 +90,12 @@ CANOPY_INCLUDES = {
     "modules/machines/canopy/src/dsp/voice.s",
     "modules/machines/canopy/src/dsp/tuning.s",
     "modules/machines/canopy/src/dsp/instrument.s",
+    "modules/machines/canopy/src/dsp/events.s",
 }
 CANOPY_IMPORTS = {
     "canopy_carrier_prepare",
+    "isp_request",
+    "mi_registry_reply",
     "mi_config_submit",
     "mi_instance_reset",
     "mi_ledger",
@@ -577,6 +580,35 @@ def check_objects(root: Path, mods: list[Module]) -> list[Violation]:
                     or name in sdk_externs
                     or (canopy_fixture(root, m) and name in CANOPY_IMPORTS)
                     or (carrier_fixture(root, m) and name in CARRIER_IMPORTS)
+                    # This fault injector alone may corrupt the private session
+                    # latch. No other source, object, module or symbol is exempt.
+                    or (
+                        m.id == "test/instrument-session-loss"
+                        and mrel == "tests/fixtures/modules/instrument-session-loss"
+                        and obj.get("path") == "build/loss.dko.json"
+                        and obj.get("sources") == ["src/dsp/loss.s"]
+                        and name == "_instrument_session"
+                    )
+                    or (
+                        m.id == "test/instrument-load"
+                        and mrel == "tests/fixtures/modules/instrument-load"
+                        and obj.get("path") == "build/probe-cf.dko.json"
+                        and obj.get("sources") == ["src/probe.c"]
+                        and name == "_dl_area"
+                    )
+                    or (
+                        m.id == "test/instrument-load"
+                        and mrel == "tests/fixtures/modules/instrument-load"
+                        and obj.get("path") == "build/enable-dsp.dko.json"
+                        and obj.get("sources") == ["src/dsp/enable.s"]
+                        and name
+                        in {
+                            "_instrument_session",
+                            "_ir_lifecycle_ready",
+                            "_ir_rows",
+                            "_ir_process_packet",
+                        }
+                    )
                     or name.startswith(("dkrt_", "dk_ui_", "dk_app_", "dkm_"))
                 )
                 if ANCHOR.match(name) or not ok:

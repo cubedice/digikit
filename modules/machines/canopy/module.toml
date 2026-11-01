@@ -1,0 +1,24 @@
+[module]
+id = "digikit/canopy"
+version = "0.1.0"
+name = "CANOPY"
+category = "machines"
+type = "machine"
+author = "digikit"
+status = "experimental"
+summary = "Stage 1 persistent sine instrument for an explicitly routed keyboard."
+dynamic = true
+ports = ["dt2-1.17"]
+requires = ["core/instrument-play"]
+conflicts = []
+[targets]
+"dt2-1.17" = "experimental"
+[[object]]
+path = "build/canopy-cf.dko.json"
+sources = ["src/module.c"]
+place = "cf.expansion"
+[[object]]
+path = "build/canopy-dsp.dko.json"
+sources = ["src/dsp/voice.s", "src/dsp/tuning.s", "src/dsp/events.s", "src/dsp/v2.s"]
+place = "dsp.l2"
+devices = ["dt2"]

@@ -15,6 +15,17 @@ int dkrt_midi_rx(const uint8_t *msg, uint32_t len, uint32_t source)
     ++upload_calls;
     return len >= 4 && msg[0] == 0xf0 && msg[1] == 0x7d && msg[2] == 0x64 && msg[3] == 0x6b;
 }
+static void publish_reply(uint16_t *queue, uint16_t *record, uint32_t *r, int corrupt)
+{
+    uint32_t i, a = 0, b = 0;
+    for (i = 0; i < 15; ++i) { a += r[i]; b += a; }
+    r[15] = (a ^ b) ^ (uint32_t)corrupt;
+    for (i = 0; i < MT_REPLY_WORDS; ++i) {
+        uint32_t h = (0x1cu + 0x54u*(21u+i/2u)+0x44u+(i&1u)*4u)/2u;
+        record[h] = (uint16_t)r[i]; record[h+1] = (uint16_t)(r[i]>>16);
+    }
+    instrument_write_frame((uintptr_t)queue, 0x9fc/2, record);
+}
 uint32_t mi_test_dispatch(void)
 {
     uint8_t note[3] = {0x90, 60, 90};
@@ -23,6 +34,7 @@ uint32_t mi_test_dispatch(void)
     uint8_t clock = 0xf8;
     MiEvent e;
     uint16_t queue[0x55e*2], record[0xabc/2];
+    uint32_t snapshot[MT_REPLY_WORDS+2];
     uint32_t i, seq, r[MT_REPLY_WORDS], a = 0, b = 0;
     CHECK(!dkrt_midi_dispatch(note, 3, 2));
     CHECK(mi_route_enable(0, 0, 0, 0) == -2);
@@ -48,8 +60,25 @@ uint32_t mi_test_dispatch(void)
     CHECK(!dkrt_midi_dispatch(&clock, 1, 2));
     CHECK(!dkrt_midi_dispatch(note, 3, 32));
     CHECK(upload_calls == 3);
-    mi_instance_reset(0);
-    CHECK(mi_ledger.reset_mask == 1 && masks == restores);
+    /* An existing route must lose admission before new input, even if the
+     * owning module did not explicitly disable it. Keep old-key pairing. */
+    CHECK(dkrt_midi_dispatch(note, 3, 2));
+    ready = 0;
+    CHECK(dkrt_midi_dispatch(off, 3, 2));
+    CHECK(mi_ledger.reset_mask == 1 && !mi_ledger.routes[0].enabled);
+    CHECK(mi_ledger.routes[16].enabled); /* unrelated DIN track not touched */
+    CHECK(mi_ledger.generations[0] == 2);
+    CHECK(dkrt_midi_dispatch(note, 3, 2)); /* held while disabled: tombstone */
+    CHECK(dkrt_midi_dispatch(off, 3, 2));
+    CHECK(mi_ledger.generations[0] == 2); /* no repeated generation churn */
+    /* Frame-time revocation catches a quiet keyboard and queued old events. */
+    for (i = 0; i < 0x55e*2; ++i) queue[i] = 0;
+    instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0);
+    CHECK(mi_ledger.reset_mask == ((1u << 15) | 1u));
+    CHECK(!mi_ledger.routes[16].enabled);
+    CHECK(mi_transport.pending == MT_RESET);
+    CHECK(masks == restores);
+    ready = 1;
     /* Exercise the actual frame callback after the dispatch case, in this same
      * test to avoid concurrent host tests mutating the adapter's globals. */
     mi_init(&mi_ledger); mt_init(&mi_transport);
@@ -85,6 +114,65 @@ uint32_t mi_test_dispatch(void)
         CHECK(!queue[at] && !queue[at+2]);
     }
     CHECK(mi_route_enable(0, 0, 0, 0) == -2); /* reset ACK alone is not configured */
+    for (i = 0; i < MT_REPLY_WORDS+2; ++i) snapshot[i] = 0xdeadbeef;
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0);
+    r[1] = 99; /* Registry bootstrap is independent of MIDI epoch admission. */
+    r[3] = 2; r[4] = 0x49525231u; r[5] = 17; r[6] = 2; r[7] = 4;
+    r[8] = 4; r[9] = 0; r[10] = 0; r[11] = 7;
+    publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_reply(0, MT_REPLY_WORDS) == -1);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS-1) == -1);
+    for (i = 0; i < MT_REPLY_WORDS+2; ++i) CHECK(snapshot[i] == 0xdeadbeef);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS+2) == MT_REPLY_WORDS);
+    for (i = 0; i < MT_REPLY_WORDS; ++i) CHECK(snapshot[i] == r[i]);
+    CHECK(snapshot[16] == 0xdeadbeef && snapshot[17] == 0xdeadbeef);
+    CHECK(mi_route_enable(0, 0, 0, 0) == -2);
+    publish_reply(queue, record, r, 1);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0);
+    for (i = 0; i < 15; ++i) CHECK(snapshot[i] == r[i]);
+    CHECK(snapshot[15] == (r[15] ^ 1));
+    publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_expect_session(0, 18) == -1);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS);
+    CHECK(mi_registry_expect_session(0xdeadbeefu, 18) == 0);
+    CHECK(mi_ledger.epoch == 2 && !mi_transport.heartbeat_seen);
+    CHECK(mi_route_enable(0, 0, 0, 0) == -2);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0);
+    CHECK(mi_registry_expect_session(0xdeadbeefu, 18) == -2);
+    r[3] = 3; publish_reply(queue, record, r, 0);
+    for (i = 0; i < MT_WORDS; ++i) {
+        uint32_t at = 2u*(0x9fc/2+2*i)+1;
+        CHECK(!queue[at] && !queue[at+2]);
+    }
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0); /* still old version */
+    r[0] = MT_SESSION_REPLY_MAGIC; r[3] = 4; r[5] = 18;
+    r[6] = 0; r[7] = 0xdeadbeefu; r[8] = 5; r[11] = 0; r[12] = 0xdeadbeefu;
+    publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS);
+    CHECK(snapshot[0] == MT_SESSION_REPLY_MAGIC && snapshot[12] == 0xdeadbeefu);
+    /* Only an exact previously accepted reply is a known stale copy. */
+    r[3] = 7; publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS);
+    r[3] = 4; publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0 && snapshot[3] == 7);
+    r[3] = 8; publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS && snapshot[3] == 8);
+    /* A backwards, otherwise valid heartbeat invalidates registry trust even
+     * when its MIDI epoch is not admitted. The caller buffer stays unchanged. */
+    r[3] = 1;
+    publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == -2);
+    CHECK(snapshot[3] == 8);
+    CHECK(mi_transport.faults && mi_route_enable(0, 0, 0, 0) == -2);
+    for (i = 0; i < MT_WORDS; ++i) {
+        uint32_t at = 2u*(0x9fc/2+2*i)+1;
+        CHECK(!queue[at] && !queue[at+2]);
+    }
+    mi_transport_recover();
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == -2);
+    publish_reply(queue, record, r, 0);
+    instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == -2);
     CHECK(masks == restores);
     return 0;
 }

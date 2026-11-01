@@ -171,6 +171,26 @@ the file passed, the run directory is removed; on a failure the reports and logs
 `DIGI_FX_KEEP_RUNS=1` keeps the whole run directory including WAV files.
 Module cells write diagnostic JSON under `out/regression/module-load/<device>/<module>/`.
 
+## Instrument session bootstrap proof
+
+This isolated DTII project uses the ready inputs and existing daemon above. It
+cold-boots the registry and triggers the runtime's one-shot bootstrap, checks the
+DSP session token and drained link release, and rejects rearming. A second image
+injects token loss and then restores the old token/ACK; the CF runtime must remain
+blocked without another transfer. No machine is admitted. The optional trigger
+and fault injector are supplied only by the test fixtures.
+
+```sh
+uv run python -m tools.patchkit.patchkit build core/runtime test/instrument-session test/instrument-session-loss
+uv run python -m tools.patchkit.patchkit patch --firmware firmware/Digitakt_II_OS1.17.syx --modules test/instrument-session -o out/patch/canopy-live-session.syx
+uv run python -m tools.patchkit.patchkit patch --firmware firmware/Digitakt_II_OS1.17.syx --modules test/instrument-session-loss -o out/patch/canopy-live-session-loss.syx
+DIGI_EMUD_DT2=PATH_TO_DAEMON pnpm --filter @digi/regression exec vitest run --project instrument-session
+```
+
+These tests prove the running firmware's initial exchange and sticky revocation
+after injected token loss. They do not emulate a DSP-only hardware reset or prove
+that its reset paths clear the latch. Do not install these fixtures on a device.
+
 ## CANOPY transport proof
 
 This isolated project requires the existing DT2 daemon and ready inputs above.
@@ -224,7 +244,7 @@ It then wakes the carrier with velocity-24 C before adding velocity-127 G,
 measures their mixed output, releases C and measures G alone, and compares that
 G with the same pitch/velocity started from silence. Held windows settle for
 0.25 seconds before measuring at least 24,000 scalar samples. The G-alone RMS
-ratio must be within 2%; the mixed ratio must be 0.95–1.10 to allow low C's energy
+ratio must be within 2%; the mixed ratio must be 0.95â€“1.10 to allow low C's energy
 and finite-window beating. These bounds detect shared gain inherited from the
 soft first key; they do not prove phase continuity or all velocity curves.
 The extended carrier test has an eight-minute body ceiling.
@@ -240,25 +260,33 @@ normally, measures C alone after 1.25 seconds (longer than its local release),
 and verifies pedal-up releases C while a fresh physically held G stays active.
 Final G release must restore output below -120 dBFS RMS and peak. This test has a
 five-minute body ceiling and can run alone by appending
-`runtime/canopy-reload.test.ts` to the command above. The `runtime/canopy-pattern.test.ts` companion prepares WERP on two patterns,
-starts playback, holds C and queues a switch. It requires observing scheduled
-lookahead, unchanged source generation until commitment, destination re-admission,
-and fresh C/G ownership despite an old C release. It has a five-minute body
-ceiling. Source and fresh destination notes must produce finite PCM above -80
-dBFS RMS. Reset and final release each drain 0.25 seconds before a separate
-window below -120 dBFS RMS and peak. A raw stereo f32le capture spans the queued
-switch through settled reset; its report records peak and maximum same-channel
-adjacent-frame step. Step magnitude is diagnostic, not a click-free acceptance
-threshold. Its ownership trace rejects samples spanning a committed boundary;
-PCM and trace timestamps are not sample-aligned. Other clock modes, pause/resume, rapid or cancelled
-switches, and other UI load paths are not covered. The separate
+`runtime/canopy-reload.test.ts` to the command above.
+
+The `runtime/canopy-pattern.test.ts` companion prepares WERP on two patterns,
+starts playback, holds C and queues a compatible switch. It requires observed
+scheduling lookahead, unchanged ownership through destination commitment, release
+by the original key-up, and fresh C/G playback afterwards. Its body ceiling is
+five minutes. Settled release output must fall below -120 dBFS RMS and peak.
+
+Stereo f32le capture includes at least 8,192 settled source frames before the
+switch is requested and continues through settled destination audio. Alongside
+window energy and adjacent-frame bounds, `sine-continuity.ts` estimates frequency,
+amplitude and phase from that source prefix alone. It predicts every subsequent
+sample without refitting. Each channel must stay within 0.1% of fitted amplitude,
+with a second-order sine recurrence residual below 0.001%. This is a bound for
+the fixed C4 sine and default Sound, not arbitrary musical audio. Host fault
+injections prove detection of a dropped sample, duplicate sample, oscillator
+restart, gain change and short gap on the right channel independently.
+
+Captures, ownership traces and the continuity report remain under
+`out/canopy-pattern-*`. UI polling is not sample-aligned; prediction covers the
+entire audio interval rather than assigning a PCM index to the UI transition.
+Other clock modes, pause/resume, rapid or cancelled switches, other Sound controls
+and other UI load paths are not covered. The separate
 `tests/patchkit/test_canopy_sound_load.py` component proof runs the real stock
 deserializer with synthetic records, including unrelated and rejected loads.
-The test has a
-six-minute ceiling for the slower-than-real-time coupled engine. UI frames and
-PCM statistics remain under `out/`. No spectral continuity or hardware claim is
-made. Preflight and public V2 initialization remain blocked as described in the
-[carrier findings](../../docs/findings/78-canopy-carrier.md).
+This remains emulator acceptance; the carrier fixture is not a hardware release.
+See the [carrier findings](../../docs/findings/78-canopy-carrier.md).
 
 The `canopy-carrier` project's `runtime/canopy-panic.test.ts` has a four-minute
 body ceiling. It sends USB CC123 under sustain, then USB CC120 while DIN holds a

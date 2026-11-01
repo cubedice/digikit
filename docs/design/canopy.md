@@ -1,8 +1,17 @@
 # CANOPY technical design
 
-Status: proposed implementation, 2026-10-29. Target: Digitakt II OS 1.17. Source baseline: `9b168c21` on `codex/short-loop-proof`. This design specifies new capabilities; it does not claim that CANOPY or the proposed interfaces already exist.
+Status: Stage 1 complete in the DTII OS 1.17 coupled emulator, 2026-11-01.
+The optional development firmware admits the uploaded CANOPY V2 sine instrument
+on track 1. The stock machine chooser and explicit USB/DIN keyboard setup work;
+final stereo chord continuity, pedal ownership, independent velocity and
+acknowledged fault retirement pass the integrated acceptance. This is not the
+finished pad synth or a hardware release. Stages 2-6 remain separate.
 
-Implementation has started with [instrument MIDI ownership](../../modules/core/adapters/midi-events/README.md): bounded token/FIFO ownership, reset tombstones, queue acknowledgements, an optional USB dispatcher and a separately pinned DIN hook. Host and ColdFire component tests cover the production C logic. [DSP-link](../../modules/core/adapters/dsp-link/README.md) owns the optional 32-word forward reservation, matching loader bounds and 16-word reply allocation, preserving Overloop's fields. The retained CF batch sender, SHARC packet validator, ordered receiver, configuration transaction helpers, bootstrap ACK reply writer and CF heartbeat watchdog are implemented and component-tested. Tests exchange actual processor-produced packets in both directions. The CF sender and DSP receiver now connect through DSP-link and the existing pattern-position frame hook; composed instruction-core tests cover register preservation and missing-consumer behavior. The DSP lifecycle bridge now gates atomic callbacks using per-track generations and committed revisions, including cross-track reset isolation and configuration aborts. Proof-only CANOPY callbacks now connect packets to isolated sine banks with atomic batch application and bounded reset ramps. They are not linked into normal firmware; the public V2 descriptor and live readiness are still absent. An emulator-only fixture now proves USB/DIN delivery into CANOPY banks through real reset, configuration and event ACKs; a separate carrier fixture now initializes the selected Sound without audition and reaches final PCM with independent note retirement and post-release quietness. The carrier fixture also resets and re-admits after a machine change and a stopped pattern change, preserving stale-release tombstones. A fixture-only Sound-deserializer wrapper now closes admission before in-place writes and blocks refresh until completion; ColdFire tests exercise same-pointer, same-type replacement through the real stock routine. A booted panel-driven temporary pattern reload now proves same-pointer Sound invalidation and fresh MIDI playback with stale-release protection. The fixture waits through scheduled-pattern lookahead before applying the committed destination; a booted internal-clock switch between two prepared WERP shadows proves the ownership ordering. The sine callback now implements per-port/channel CC64 sustain, CC121 pedal reset, CC123 sustain-aware All Notes Off and CC120 emergency All Sound Off, plus fixed +/-2-semitone 14-bit route bend with phase-preserving coefficient updates and CC121 centering, with atomic pedal/voice batches, bounded deferred-token storage and reset clearing. Booted final-audio pitch measurements now verify center, maximum upward bend, other-port isolation and CC121 centering. A booted route-panic scenario verifies USB/DIN isolation, stale physical release protection, unchanged instance generation and final quietness. The booted emulator verifies pedal-owned USB audio beyond the normal release time, independent DIN release, pedal-up preserving a physically held note, and final quietness. The booted carrier now also passes a low-first/high-second final-output RMS comparison against a fresh loud-note reference. Running-switch acceptance now checks retained ownership and the original physical release across compatible switches, measures source/destination PCM and settled release quietness, and captures the transition for discontinuity analysis. Other Sound-load paths, broader transport cases, public initialization and sample-aligned final-output continuity remain open. Routes remain inactive without a ready V2 consumer. Stage 0 is still open: schema publication, V2 capability, wider live routing/recovery and coexistence remain; stage 1's final-output lifetime gate has not passed. A [four-note sine kernel](../../modules/machines/canopy/README.md) now provides independent token gates, phase, velocity and attack/release for the stage-1 proof, with SHARC component tests. The kernel now steals within four foreground slots and two shared tails, with at-most-64-sample delayed replacements when both tails are busy; full eight-event bursts and stale releases are component-tested. The MIDI lifecycle-to-kernel connection is component-tested and the carrier now has a booted emulator proof; public V2 initialization and full audio acceptance remain open. There is no playable CANOPY DKM yet.
+The implementation uses [instrument MIDI ownership](../../modules/core/adapters/midi-events/README.md),
+[the admitted playback adapter](../../modules/core/adapters/instrument-play/README.md)
+and the [CANOPY sine kernel](../../modules/machines/canopy/README.md).
+Earlier fixture checkpoints below remain historical evidence; the current
+completion checklist and acceptance table define the next work.
 
 CANOPY is a keyboard-playable pad instrument on one audio track, with four independently articulated chord tones and an arpeggiator blended over the pad. PLAY sounds the notes the player actually presses. ROOT + TYPE generates a chord from a root key and a silent chord-selector key. LEARN TO ROOT captures a voicing for later transposition. Sequencer mode plays a chord from a stock note trig.
 
@@ -200,7 +209,1382 @@ Latch replacement clears the previous phrase's pedal-only membership too; otherw
 
 Add an opt-in V2 contract in `sdk/sdk.toml`, generate its C/assembly bindings, and extend descriptor parsing, DKM packing, runtime validation, DSP registration and conformance together. Never enlarge `dk_voice_in` or reinterpret V1 descriptors in place. A V2 module must fail to load with a clear capability error on old firmware.
 
-The following is the semantic contract, not a frozen binary struct:
+The semantic contract below now has an experimental binary layout in
+`sdk/sdk.toml` under `[instrument]`, with generated C and assembly bindings in
+`sdk/include/dk/gen/instrument.h`, `sdk/include/dk/gen/instrument_consts.h` and
+`sdk/asm/dk_instrument.inc`. The input is 72 bytes; the separate `DKIT` descriptor
+is 48 bytes. Normalized events have six 32-bit words and require zero sample
+offset. The descriptor declares track count, per-track state, bounded events and
+controls, and process/reset instruction, call-depth and stack budgets.
+
+`packages/patchkit/src/instrument.rs` validates descriptor sizes, reserved flags,
+limits and aligned per-track allocation with overflow checks. These are declared
+admission bounds, not measured CPU performance. The V1 packer explicitly rejects
+this magic rather than interpreting it as a V1 voice. Existing V1 layouts and the
+advertised machine contract remain unchanged at 1.0.
+
+This is a serialization checkpoint, not completed V2 registration. Remaining:
+runtime registry/capacity integration and validation/allocation; DSP callback dispatch and
+lifecycle ownership; conversion of the sine fixture and conformance checks.
+The `DK_INSTRUMENT` C macro and `.dk.desc` record kind 6 now declare reset/process
+callbacks and their descriptor as distinct typed instruments. Reading a dynamic
+module preserves these declarations for `patchkit desc`; duplicate instrument IDs,
+collisions with V1 machine/effect IDs and missing names/symbols are rejected. V1
+parameter/page ownership remains unchanged. Device resolution/packing and direct
+static application explicitly reject instruments until V2 runtime support exists.
+This prevents either silently dropping a declaration or interpreting it as a V1
+voice. The `test/instrument-declaration` fixture compiles a real C macro and checks
+inspection plus pack refusal; it contains no playable DSP machine. Validation:
+14 descriptor-reader tests, nine SDK-generation tests, ten existing typed-machine
+tests and the ColdFire C-to-CLI integration test pass. Logs are under
+`out/canopy-v2-records-*`.
+
+The host DSP packer now serializes separate instrument records in experimental
+DKDS version 5. Reset/process callbacks must resolve to global text symbols, the
+descriptor to initialized data. Parsing checks bounded counts, descriptor budgets,
+aggregate allocation, duplicate types (including V1 collisions), table layout and
+reserved bytes. A V5 DKM requests machine contract 2.0, while the current runtime
+still advertises 1.0 and rejects that major version before allocation. This is a
+format/header proof, not an emulator load proof. The normal `dkneeds::needs_of` resource
+checker also continues to reject V5; do not interpret host serialization as a
+loadable module. Public module packing remains guarded. Next: connect the runtime
+instrument registry to loader transactions and the capacity protocol, then implement
+callback dispatch.
+The experimental `dkneeds::needs_of_v2` API now computes V2 memory requirements
+without allocation: total DSP storage plus separate instrument rows, track
+instances and state bytes. Legacy scan/fit callers remain on `needs_of`, which
+rejects V5. This avoids losing an instrument requirement in the old capacity ABI.
+The parser checks descriptors, table layout, duplicate types and overflow;
+cycle/stack ceilings and full load validation remain the runtime's responsibility.
+Accounting validation: 14 `dkneeds` tests, ten DSP packer tests (including a real
+V2 file/accounting cross-check), and nine existing runtime-fit tests pass. Logs
+are under `out/canopy-v2-needs*.log`. The two edited design documents have no stale
+references. No emulator/device admission is claimed by this checkpoint.
+Validation: ten DSP serialization tests and seven DKM compatibility tests pass
+(`out/canopy-v5-tests.log` and `out/canopy-v5-dkm-tests.log`). The required
+changed-file check passes layering but still reports the existing 256 stale
+references in 78 files.
+
+V2 registration bookkeeping is now implemented in
+`modules/core/runtime/sdk/src/instrument_registry.rs`. A single loader task owns
+eight fixed rows and a caller-supplied track-instance limit. A whole module is
+reserved atomically, remains invisible until publication, and is hidden from new
+admissions when retirement starts. Reserved and retiring rows continue to consume
+capacity. Failed reservations leave no partial rows; rollback is allowed only
+before publication and after any in-flight DSP work is quiescent. Retiring rows
+are released only after the matching DSP detach/reset completion, never timeout.
+Tickets bind the module slot and a monotonic generation; stale completions cannot
+publish or release a replacement. Generation exhaustion fails closed.
+
+`modules/core/runtime/fit/src/instruments.rs` checks the separately reported V2
+row/instance capacity plus existing resources. Missing V2 capacity is unsupported,
+not unlimited. Planning consumes both snapshots only after every requirement fits.
+It does not reserve the live registry or change the existing scan/fit ABI.
+
+These are tested library components, not wired loader or DSP publication paths.
+The loader still rejects contract 2.0. Remaining integration must validate device
+type ranges and V1/V2 conflicts, reserve memory and rows together, bind transfer
+ACKs to tickets, publish after reset/initialization, and keep failed or timed-out
+retirements quarantined. Full live initialization, DSP dispatch and public module
+packing remain disabled. Five registry lifecycle tests and twelve fit tests
+(including the nine existing cases) pass; logs are in
+`out/canopy-v2-registry.log` and `out/canopy-v2-registry-fit.log`. The changed design
+references pass their focused path check. No ColdFire or emulator execution of
+these new lifecycle components has been claimed.
+
+`modules/core/runtime/sdk/src/instrument_load.rs` now owns the registry through a
+bounded transfer state machine. It emits commands for image transfer,
+initialization, publication, detachment and storage release. Image transfer and
+initialization require separate ordered acknowledgements carrying the reservation
+ticket. A pre-transfer cancellation releases immediately; after transfer starts,
+cancellation requires DSP detachment. Timeouts quarantine the reservation, and
+late image/initialization acknowledgements cannot publish it. A late matching
+detach completion may release it only after the transport has drained earlier
+writes and callbacks. Repeated/stale completions cannot release a replacement.
+
+The live loader's V1 path currently publishes ColdFire registrations before its
+DSP transfer completes. Do not reuse that ordering for V2. The new state machine
+is tested with the actual registry and capacity planner, but its commands are not
+yet connected to DSP-link. Next: implement V2 DSP row/reset transport, bind its
+acknowledgements to these commands, and then connect staged-file admission and
+memory ownership. Contract 2.0 remains disabled until those paths work together.
+Validation: nine transfer/registry tests and twelve fit tests pass, including
+interleaved owners, cancellation at each transfer stage, stale completions and
+retained capacity after timeout. Logs: `out/canopy-v2-load.log` and
+`out/canopy-v2-load-fit.log`. These are host tests, not DSP transport acceptance.
+
+DSP-link now carries optional V2 registration data through window 3. The existing
+ColdFire sender encodes the fourth window, and both SHARC receivers use optional
+`_dl_irows`/`_dl_iwords` provider bounds. Absent, misaligned, zero-sized or oversized
+providers fail closed; each write must fit the declared region. Existing frame
+suffixes and reply allocations are unchanged. Component tests execute the actual
+sender and receiver. The optional DTII `core/instrument-registry` provider now supplies a 16-word
+query-only command mailbox. `_dl_iwords` points to its word-count constant.
+Committed, checksummed commands carry a strictly increasing sequence plus owner,
+generation and row. Malformed or stale commands retain the previous reply.
+QUERY reports zero capabilities; INITIALIZE and DETACH return unsupported, never
+a successful lifecycle acknowledgement. The block wrapper invokes the provider
+and copies its eight-word reply into existing instrument reply words 4..11,
+covered by the existing reply checksum. No extra SPI reply rows are allocated.
+See [mailbox protocol](../../modules/core/adapters/instrument-registry/README.md).
+Next: implement bounded DSP initialization/reset and detachment, then connect the
+load controller to these acknowledgements. No instrument rows are published yet.
+Validation: 13 SHARC component cases (seven V2-window and six existing suffix-bound
+cases) and the ColdFire window-encoding test pass. DSP-link rebuilds for DTII and
+DNII; its CF and both DSP objects re-decode and check current. Logs are under
+`out/canopy-v2-window-*.log`. This is processor-core execution, not hardware proof.
+The changed-file check also passes 193 host tests (16 skipped), formatting, types
+and layering; its remaining failure is the existing 256 stale references.
+
+Mailbox checkpoint validation: 15 command/reply cases pass, including malformed
+input, checksum failure, unsupported operations, replay and sequence exhaustion.
+The 18 composed-frame cases pass with the optional provider present alongside the
+carrier or absent, preserving processor context. Three standalone reply cases and
+13 DSP-link window/suffix cases also pass. DTII/DNII DSP-link, DTII MIDI-events
+and the new DTII registry objects rebuild, re-decode and check current. Logs:
+`out/canopy-registry-final.log` (49 passing component cases) and
+`out/canopy-registry-build.log`. The changed-file check passes formatting, types
+and layering; it reports the existing 256 stale references and one unrelated
+minimum-delay timer assertion (192 host tests passed, 16 skipped). That timer
+test passes an isolated rerun in `out/canopy-registry-timing-recheck.log`. Changed
+document references pass. Hardware validation remains outstanding.
+
+The internal no-std mailbox client now binds loader commands to exact physical
+rows, serializes clear/body/commit writes, and validates complete replies before
+advancing. A module with several rows publishes or releases only after all rows
+acknowledge the matching operation. Partial failure quarantines the entire module;
+recovery requires the caller to drain prior writes and start a fresh detach.
+Sequence exhaustion rejects the whole batch, and late or mismatched replies cannot
+complete another row or a cancelled initialization. Owner IDs are bounded to the
+mailbox's 32 module slots. The current DSP bootstrap still rejects lifecycle work;
+successful lifecycle replies in client tests are synthetic. Live SPI scheduling,
+DSP reset/detach implementation and staged-file admission are still outstanding.
+Validation: 14 targeted SDK registry/load/mailbox host tests pass; log
+`out/canopy-mailbox-client.log`. Changed documentation references pass. The
+changed-file check passes layering and reports only the existing 256 stale
+references (`out/canopy-mailbox-client-changed.log`). No device or ColdFire
+execution is claimed.
+
+An internal SHARC V2 single-instance reset worker is now implemented in
+`modules/core/adapters/instrument-registry/src/dsp/lifecycle.s`. It validates the
+state extent, callback range and reset reason before any write/call, clears state
+only for CREATE, and accepts only a zero callback result. Its current clearing
+limit is 1024 words per call. It is not yet connected to mailbox commands: trusted
+row metadata, owned allocation bounds, reset-budget admission, complete callback
+context protection and per-track scheduling remain required. The earlier CANOPY
+event-reset hook is not ABI-compatible with this worker. No new V2 capability is
+advertised and no lifecycle success is acknowledged by the bootstrap provider.
+Validation: 29 SHARC component cases pass (`out/canopy-reset-worker.log`); the
+registry adapter rebuilds, re-decodes all 130 instructions and checks current
+(`out/canopy-reset-worker-build.log`). These are processor-core tests with a
+synthetic V2 callback, not live firmware or hardware acceptance. The changed-file
+check passes 193 host tests (16 skipped), formatting, types and layering; its only
+failure is the existing 256 stale references. Changed document references pass.
+
+The DSP now has an internal eight-row lifecycle table and begin/tick routines in
+`modules/core/adapters/instrument-registry/src/dsp/rows.s`. Initialization and
+detachment reset at most one track instance per tick. Completion follows the last
+callback return; failures retain the owner/generation and attempted-instance count.
+Partial initialization detaches only attempted instances, including a faulted
+callback that may have written state. Detach retries preserve ownership; completed
+rows retain a tombstone until trusted admission explicitly reuses them. READY does
+not yet publish audio dispatch. Production admission does not populate these rows,
+and mailbox commands still report lifecycle operations unsupported. Full callback
+context protection and mailbox scheduling remain the next integration work.
+Validation: 20 SHARC row lifecycle cases pass (`out/canopy-row-lifecycle.log`),
+including partial initialization, detach failure/retry, cancellation, stale owners
+and malformed metadata. The registry adapter rebuilds, re-decodes 281 instructions
+and checks current (`out/canopy-row-lifecycle-build.log`). Changed document
+references, formatting, types and layering pass. The changed-file check reports
+the existing 256 stale references and the recurring minimum-delay timer failure
+(192 host tests passed, 16 skipped); that timer test passes an isolated rerun in
+`out/canopy-row-lifecycle-timing.log`.
+
+A protected row-tick boundary is now implemented in
+`modules/core/adapters/instrument-registry/src/dsp/protected.s`. It preserves V2
+callback scratch context, both 80-bit multiplier accumulators, addressing lengths
+and arithmetic mode/status while pinning the callback ABI. B3 is restored before
+I3; accumulator guard words are restored after middle words. Entry must already be
+non-SIMD and callbacks must comply with the ABI. The boundary is non-reentrant.
+The actual row lifecycle component tests now execute through it. This supplies
+the context protection needed for mailbox integration, but mailbox scheduling,
+trusted admission and audio dispatch are still disconnected. Validation: four
+context-preservation cases and 20 protected row lifecycle cases pass
+(`out/canopy-protected-tests.log`); the adapter rebuilds, re-decodes 503 instructions
+and checks current (`out/canopy-protected-build.log`). The changed-file check
+passes 193 host tests (16 skipped), types and layering. Its import-format finding
+was fixed and both changed test files pass Ruff check/format on recheck; the
+existing 256 stale references remain. Changed documentation references pass.
+No hardware proof is claimed.
+
+The mailbox now schedules protected row work and emits delayed lifecycle replies.
+It snapshots sequence/owner/generation/operation/row, consumes the sequence, and
+runs at most one protected row tick per frame. While pending it preserves the
+previous reply and ignores mutable command bytes. READY/DETACHED produce success;
+row identity/phase rejection produces status 3 and callback/metadata faults produce
+status 4, retaining owned rows. Replays do not rerun callbacks. An internal
+cold-boot-zero `_ir_lifecycle_ready` gate keeps production lifecycle work disabled;
+only future trusted admission may enable it after validating rows and budgets.
+No production admission path sets it, no audio dispatch is published, and the
+loader still rejects V2. Remaining work: owned image/state admission, live SPI
+client integration and dispatch. Processor tests seed admission only in fixtures.
+Validation: 40 mailbox/lifecycle/shared-frame component cases pass in
+`out/canopy-mailbox-scheduler.log`, including real protected row execution with
+synthetic callbacks. The expanded eight-case lifecycle suite also covers failed
+detach and new-sequence retry (`out/canopy-mailbox-lifecycle-final.log`). The adapter
+rebuilds, re-decodes 558 instructions and checks current
+(`out/canopy-mailbox-scheduler-build.log`). Changed documentation, formatting,
+types and layering pass. The changed-file check reports the existing 256 stale
+references and recurring timer assertion (192 host tests passed, 16 skipped); the
+timer passes an isolated rerun (`out/canopy-mailbox-scheduler-timing.log`). No
+device or hardware acceptance is claimed.
+
+An internal admission planner in `modules/core/runtime/sdk/src/instrument_admission.rs`
+now validates ticket-bound allocator grants against reserved physical rows before
+transfer. It checks exact type coverage, L2/image/state bounds, non-overlap,
+executable callback extents, instance allocation and declared budgets. It produces
+inert fixed-size row metadata only after the whole batch succeeds. The trusted
+caller must still obtain exclusive grants, validate instruction boundaries and
+supply remaining resource ceilings; the planner neither allocates nor enables the
+DSP gate. Live allocator/SPI integration and V1/builtin type exclusion remain open.
+
+This exposed a stride mismatch: descriptor allocation rounds each state to eight
+bytes, while the row worker previously advanced by the raw state size. The worker
+now uses the same rounded stride and preserves padding. A processor regression
+covers three 12-byte states at 16-byte intervals through the protected lifecycle.
+Validation: 19 admission/registry/load/mailbox Rust tests pass
+(`out/canopy-admission.log`), and 29 protected row/mailbox DSP cases pass
+(`out/canopy-admission-dsp.log`). The registry adapter rebuilds and re-decodes
+560 instructions (`out/canopy-admission-build.log`). Focused documentation checks
+pass. The changed-file check passes 193 host tests (16 skipped), formatting,
+layering and types; it fails only on the existing pathcheck baseline of 256 stale
+references in 78 files (`out/canopy-admission-changed.log`). No live admission is
+claimed.
+
+The live runtime now calls a shared, allocation-free DSP first-fit search over its
+existing per-module offset/length ledger. This is the common pool used by legacy
+voices and effects; future V2 reservations must use the same ledger rather than
+an independent allocator. The search preserves absolute-address alignment and
+lowest-gap reuse, and rejects overflowing, overlapping or out-of-bounds ledger
+entries before returning a candidate. It does not reserve or free a range: the
+single loader still owns ledger updates and must retain pending allocations.
+Four host tests pass, including exhaustive comparison against a byte-by-byte
+oracle for 131,072 small fragmented-pool requests
+(`out/canopy-memory-tests.log`). The integrated runtime passes a release host
+compiler check (`out/canopy-memory-runtime-check.log`). The ColdFire rebuild is
+blocked because Rust-for-ColdFire is not installed (`out/canopy-memory-build.log`);
+no rebuilt runtime artifact or device validation is claimed. V2 grant creation,
+row installation and live SPI sequencing remain disconnected. Focused documentation
+and layering checks pass; the changed-file check fails only on the existing 256
+stale path references in 78 files (`out/canopy-memory-changed.log`).
+
+The V2 load controller now supports ticket-bound memory reservations through a
+borrowed view of the shared DSP allocation ledger. It claims one range for image,
+BSS, alignment and instance states, derives image/state grants from that range,
+and leaves the ledger unchanged on rejection. Legacy allocations remain occupied.
+Memory-backed tickets enter a release-pending phase after pre-transfer cancellation
+or completed detach. The owner slot stays busy until `release_memory` verifies the
+exact generation and recorded range and clears the ledger entry. Timeouts, partial
+mailbox completion and stale releases cannot free the allocation. Calls without
+memory reservations retain the existing component behavior.
+Validation: 25 targeted SDK tests pass (`out/canopy-memory-lifetime-tests.log`),
+including derived-grant admission, other-module coexistence, rollback/retry,
+quarantine, changed-ledger rejection and a two-row mailbox detach. The integrated
+runtime passes a release host check (`out/canopy-memory-lifetime-runtime.log`).
+The live loader does not call these reservation APIs yet: it must pass its actual
+ledger, retain the CF record through release and bypass legacy unreserve on every
+V2 error path. DKDS5 parsing, row installation and live SPI integration remain
+open. The missing Rust-for-ColdFire toolchain still prevents a device build.
+Focused documentation and layering checks pass; the changed-file check fails only
+on the existing 256 stale references in 78 files
+(`out/canopy-memory-lifetime-changed.log`).
+
+Descriptor decoding is now shared no-std code in the runtime SDK; the host
+packer uses that same implementation for the 48-byte V2 descriptor, admission
+ceilings and eight-byte instance allocation. A bounded DKDS5 instrument-record
+reader decodes BE records and LE descriptors into eight fixed slots. It rejects
+truncation, duplicate/invalid keys, unaligned or out-of-image callbacks,
+descriptor relocation overlap, and excessive aggregate state. It takes separately
+bounded table/image/relocation slices; it does not validate the complete DKDS5
+header, resolve keys/imports, relocate code or reserve memory.
+The existing DKDS5 records do not preserve executable-section boundaries.
+Image-range validation alone cannot establish that a callback belongs to code;
+the loader still needs validated executable metadata before admission. The new
+reader deliberately returns image offsets and does not manufacture a code grant.
+Validation: 28 SDK tests and ten selected packer/schema tests pass, including
+actual packed DKDS5 bytes read by the SDK decoder (`out/canopy-decoder-sdk.log`,
+`out/canopy-decoder-packer.log`). The runtime passes a release host check
+(`out/canopy-decoder-runtime.log`). Device admission remains disabled.
+Focused documentation and layering checks pass; the changed-file check fails only
+on the existing 256 stale references in 78 files (`out/canopy-decoder-changed.log`).
+
+Experimental DKDS6 now preserves the linker's executable section ranges in a
+bounded table. It reuses the 0x50-byte header, with table offset/count at 0x48/0x4c
+and up to 32 sorted start/end pairs after the instrument records. The packer
+emits V6 for new V2 images; host parsing still round-trips older DKDS5 without
+inventing executable ranges, and legacy V1-V4 output stays unchanged. Both formats
+continue to request machine contract 2.0 and remain rejected by normal admission.
+The shared SDK decoder and experimental resource checker reject overlapping or
+out-of-image ranges, callbacks outside text or crossing a section end, and
+descriptors overlapping text. Text boundaries are not a proof of instruction
+boundaries, control flow or budget compliance. The live loader must still consume
+this metadata and install rows through the pending admission/SPI integration.
+Validation: 29 SDK tests, 11 DSP packer tests and eight selected resource-reader
+tests pass (`out/canopy-executable-sdk.log`, `out/canopy-executable-packer.log`,
+`out/canopy-executable-needs.log`). The runtime host check passes
+(`out/canopy-executable-runtime.log`); no ColdFire build or device capability is
+claimed while its toolchain and live dispatch remain unavailable. Focused docs
+and layering checks pass; the changed-file check fails only on the existing 256
+stale references in 78 files (`out/canopy-executable-changed.log`).
+
+Packed-metadata admission now composes the DKDS6 record/range decoders with the
+allocator grant and reserved load ticket. It checks exact image extent and
+resolved-type coverage, verifies descriptor track counts against reservations,
+places each type's state using descriptor allocation sizes, and derives SHARC
+callback PCs from the allocated image base. Reset and process may occupy separate
+text sections; reset rows retain only reset bounds, while the inert plan retains
+process bounds separately. No encompassing range spans a gap or data section.
+The caller still supplies header-bounded slices and resolved types, with builtin
+and V1 conflict checks, relocation/import validation and instruction-boundary
+proof required before live loading. The operation neither allocates nor writes
+DSP memory, and leaves failed reservations available for cancellation.
+Validation: 32 targeted SDK tests and the runtime release host check pass
+(`out/canopy-packed-sdk.log`, `out/canopy-packed-runtime.log`). Tests compose real
+memory reservations with mixed-endian records, split text sections, reversed
+physical-row order, aligned state layout and rejected metadata/type/phase changes.
+Live loader calls, row publication, SPI integration and device proof remain open.
+Focused docs and layering checks pass; the changed-file check fails only on the
+existing 256 stale references in 78 files (`out/canopy-packed-changed.log`).
+
+A bounded no-std whole-section DKDS6 reader now validates the canonical header,
+device, table order/counts, zero padding, exact image extent, imports and relocation
+metadata before exposing slices. It checks nonempty NUL-padded unique import
+names, relocation kinds/classes/import indices and text-range containment, then
+uses shared descriptor/range decoding. Image/BSS/state sizing is checked before
+returning a memory request and a view suitable for packed admission. The reader
+accepts instrument-only sections; mixed V1 voice/effect loads are rejected until
+their coordinated lifecycle is implemented. Legacy loading remains separate.
+Validation: 35 SDK tests, real packed-file compatibility and the runtime host
+check pass (`out/canopy-section-sdk.log`, `out/canopy-section-packer.log`,
+`out/canopy-section-runtime.log`). Tests cover parsing through reservation and row
+planning, every truncation, byte mutations, aliases, invalid counts, import and
+relocation errors, and trailing data. This establishes format validation, not
+actual import resolution, relocation results, instruction boundaries, row writes
+or transport readiness; live loader integration and device proof remain open.
+The three parser cases pass again after final source-encoding cleanup
+(`out/canopy-section-final.log`). Focused documentation and layering checks pass;
+the changed-file check fails only on the existing 256 stale references in 78 files
+(`out/canopy-section-changed.log`).
+
+Validated instrument sections can now prepare a relocated image in caller-owned
+storage without allocation or SPI activity. The relocator checks placement of the
+entire image/BSS/state allocation in DTII L2, resolves each import exactly once
+through a trusted callback, rejects overlapping fixup instructions and validates
+all address arithmetic before copying any bytes. A missing import, invalid
+placement, short output or late fixup error leaves the output unchanged. Internal
+addresses use checked rebasing; abs32 import addends use signed arithmetic, while
+abs24 retains the packer's unsigned-addend contract. Opcode parcels are preserved.
+Validation: 39 targeted SDK tests pass, including late-failure atomicity, signed
+addends, overlap rejection and output preservation (`out/canopy-relocation-sdk.log`).
+A real packed fixture produces byte-identical output to the host reference
+relocator (`out/canopy-relocation-packer.log`), and the runtime host check passes
+(`out/canopy-relocation-runtime.log`). The live firmware export resolver is not
+connected yet. Image transfer/BSS initialization, row installation and SPI-driven
+lifecycle remain pending; no installable module or device proof is claimed.
+Focused docs and layering checks pass; the changed-file check fails only on the
+existing 256 stale references in 78 files (`out/canopy-relocation-changed.log`).
+
+A ticket-bound image transfer controller now sequences the relocated image,
+BSS zero-fill and alignment padding in at-most-256-byte writes. It validates the
+exact allocator-recorded image/state grant before starting, borrows the immutable
+image for stable retries, and binds each ACK to the ticket generation and exact
+destination span. Duplicate or mismatched ACKs do not advance. Instance states
+are not cleared by this transfer; their CREATE reset remains DSP-owned.
+Initialization is offered only after image/zero-fill ACKs and a caller-confirmed
+row-installation ACK. Transfer failure quarantines the load and requests detach;
+external cancellation stops further writes. The caller must still drive real
+SPI, prove write drainage before detach and retain the borrowed source until link
+reads have stopped. The controller does not establish those facts itself.
+Validation: 43 targeted SDK tests and the runtime host check pass
+(`out/canopy-image-sdk.log`, `out/canopy-image-runtime.log`). Tests verify exact
+image/zero contents, untouched state, retries, invalid grants, stale spans,
+row-install gating and retained allocation through failed-transfer cleanup.
+Firmware export lookup, row installation and actual SPI calls remain unconnected;
+CANOPY is not installable and no device build is claimed. Focused docs and layering
+checks pass; the changed-file check fails only on the existing 256 stale references
+in 78 files (`out/canopy-image-changed.log`).
+
+The DSP now has an internal row-install entry for the next transport integration.
+It consumes a caller-owned immutable snapshot, validates owner/generation, complete
+aligned state allocation, reset instruction extent and clean lifecycle fields,
+then copies metadata and publishes RESERVED last. It accepts only an empty row
+or a detached row with a strictly newer unsigned generation; reserved, initializing,
+ready, detaching and faulted rows cannot be overwritten. Invalid input leaves
+all rows and instance state untouched. Installation invokes no callback.
+At that checkpoint the entry was not exposed through a transport window: the trusted
+caller must provide private non-aliasing snapshot storage, enforce exclusive
+allocation and callback budgets, drain image writes and serialize install/tick.
+Bounds checking alone cannot prove those properties. An acknowledged mailbox
+install command and its loader sequencing were still pending; the image
+controller still took a caller-confirmed row-install boolean. Lifecycle capability
+remains disabled, and CANOPY is not installable.
+Validation: 86 focused DSP tests pass, including complete install/init/detach/reuse,
+unsigned generation boundaries, malformed snapshots with no writes and odd-sized
+state strides (`out/canopy-row-install-tests.log`). The registry artifact rebuilds
+and passes its current-file check (`out/canopy-row-install-build.log`). Focused
+documentation checks pass. The changed-file preflight passes lint, layering, host
+tests and types; its only failure is the existing 256 stale references in 78 files
+(`out/canopy-row-install-changed.log`).
+
+The next checkpoint connects INSTALL (operation 4) to the existing 16-word mailbox.
+Words 7..14 carry row fields 3..10; the DSP constructs phase/owner/generation and
+zero lifecycle fields in a private snapshot before invoking the installer. It
+acknowledges only the completed row installation, advertises capability bit 2 only
+under the existing trusted-admission gate, and leaves callback work to INITIALIZE.
+The SDK binds the admission plan to the exact allocated grant and physical rows,
+requires acknowledged image/BSS writes first, and emits an opaque ticket-bound
+receipt only after every row succeeds. The image controller now requires that
+receipt instead of the preceding checkpoint's boolean. Transfer ACKs, missing
+capabilities and stale row replies cannot authorize initialization.
+Real SPI driving, firmware export lookup, trusted enablement and audio dispatch
+remain unconnected. Failed partial installation stays quarantined; cleanup for
+never-installed rows needs an explicit protocol before release can be supported.
+No playable DKM or hardware acceptance is implied.
+Validation: 44 SDK tests and 90 focused DSP tests pass, including multi-row receipts,
+rejected/missing-capability replies, gated installation, no writes on rejection,
+replay and install-to-initialize sequencing. Composed MIDI tests pass (84 passed,
+three skipped); the runtime host check and rebuilt registry current-file check
+also pass. Logs: `out/canopy-install-mailbox-{sdk,dsp,frame,runtime,build}.log`.
+Focused docs, lint, layering, host tests and types pass. The changed-file check
+fails only on the existing 256 stale references in 78 files
+(`out/canopy-install-mailbox-changed.log`).
+
+Partial-install cleanup now uses DETACH for every reserved row, including rows
+that never installed. EMPTY or strictly older DETACHED rows become cleared
+tombstones for the cancelled ticket without any callback or state-memory write.
+The retained generation blocks delayed installation even under a newer command
+sequence; another active owner and stale/wrapped generations remain rejected.
+The scheduler also acknowledges already-detached rows without an invalid extra
+tick, allowing lost-reply recovery. The SDK still requires transport drainage and
+every matching detach reply before releasing the original allocator grant.
+This closes the preceding checkpoint's never-installed-row cleanup gap at the
+component level; live SPI integration and trusted admission remain pending.
+Validation: 45 SDK tests pass; DSP row/mailbox/registry/protection checks pass,
+including the additional mixed installed/missing-row scenario. Composed MIDI
+checks pass (84 passed, three skipped), and the rebuilt registry is current.
+Logs: `out/canopy-partial-install-{sdk,dsp,mailbox,frame,build}.log`.
+Focused docs, lint, layering, host tests and types pass. The changed-file check
+fails only on the existing 256 stale references in 78 files
+(`out/canopy-partial-install-changed.log`).
+
+The production ColdFire DSP-link now has tagged start/poll entry points for live
+loader integration. Every accepted transfer, including legacy starts, consumes
+a nonwrapping host-side identity. A tagged poll rejects stale identities without
+changing the output, and reports drainage only after terminal status and all END
+frames. This distinguishes an image/mailbox write from a replacement request and
+provides an actual transport predicate for the SDK's drainage requirement. The
+wire format and legacy status layout remain unchanged. The V2 runtime coordinator
+has not yet been wired to these entry points; registry replies remain separately
+required before installation or initialization may advance.
+Validation: five new ColdFire execution tests pass, covering success/error END
+frame drainage, replacement by a legacy request, untouched outputs on rejection,
+busy/invalid starts and identity exhaustion. The DSP-link regression file passes
+(28 passed, two skipped), and all DSP-link artifacts pass their current-file check.
+Logs: `out/canopy-link-ticket-{tests,regression,build}.log`.
+Focused docs, lint, layering, host tests and types pass. The changed-file check
+fails only on the existing 256 stale references in 78 files
+(`out/canopy-link-ticket-changed.log`).
+
+A bounded no-std transport driver now connects the image/mailbox controllers to
+the tagged link C ABI through supplied provider functions. It owns a dedicated
+static 256-byte buffer, copies image bytes and encodes mailbox words little-endian,
+retains the exact target with the accepted transfer ID, and waits for drainage
+before producing an opaque controller completion. Drained errors never ACK;
+uncertain identity or unexpected transport results freeze the buffer until reboot.
+Moving/dropping the driver cannot invalidate the source of an accepted transfer.
+Validation: 51 SDK tests and the runtime host check pass
+(`out/canopy-transport-sdk.log`, `out/canopy-transport-runtime.log`). New tests cover
+buffer retention, busy retries, endian encoding, exact-span advancement, mailbox
+ACK gating, drained failure, stale/repeated identity, malformed writes and the C
+ABI binding via host stubs. Actual provider resolution, boot-owned driver storage,
+registry reply ingestion and the top-level live V2 coordinator remain pending.
+No ColdFire runtime rebuild or live V2 firmware load is claimed.
+Focused documentation and layering checks pass. The changed-file preflight fails
+only on the existing 256 stale references in 78 files
+(`out/canopy-transport-changed.log`).
+
+Registry reply ingestion checkpoint: the CF MIDI receiver now accepts the optional
+IRR1 block in reply words 4..11 while preserving zero-reserved words 12..14,
+outer checksum, MIDI epoch and heartbeat checks. Previously its reserved-word
+validation rejected every registry-bearing reply, preventing MIDI ACK progress.
+The adapter caches the complete validated 16-word reply and exposes
+`mi_registry_reply` as a bounded UI-task copy under the frame publisher's IRQ
+lock. Missing/bad frames and explicit transport recovery invalidate the cache;
+no firmware record pointer escapes the frame callback. Registry bootstrap does
+not depend on the MIDI epoch. This is a framing snapshot, not freshness or
+transaction acceptance: the coordinator must still match the mailbox sequence,
+owner, generation, operation and row and enforce timeouts/reboot recovery.
+Actual provider binding and the top-level V2 load coordinator remain pending.
+Validation: all 87 MIDI component tests and 20 native MIDI host tests pass,
+including an actual SHARC-produced registry reply consumed by ColdFire and the
+snapshot capacity/corruption/recovery cases. The CF adapter is rebuilt and its
+current-artifact check passes. Logs: `out/canopy-reply-tests.log`,
+`out/canopy-reply-host.log`, `out/canopy-reply-build.log`. Focused documentation
+checks pass; the changed-file preflight fails only on the existing stale-path
+baseline (`out/canopy-reply-changed.log`).
+
+The SDK now has an all-or-nothing optional-provider binding for tagged send,
+tagged poll and the CF registry snapshot getter. Missing entries return no
+binding without calling any provider. The unsafe binding boundary requires
+validated entries from one boot and serialized UI-task ownership; symbol
+presence alone is not a capability. Its reply adapter owns a private stack copy,
+accepts only an exact 16-word result and feeds the mailbox validator. Unavailable
+or mismatched transactions remain waiting without resetting any deadline;
+provider errors, malformed replies, rejected operations and missing capabilities
+remain explicit errors. Mailbox validation now also rejects nonzero reserved
+reply words 12..14. Load transitions still require drained writes and matching
+DSP replies. Actual firmware symbol resolution, boot-owned driver storage,
+timeout/reboot handling and the live V2 coordinator are still pending; this is
+an SDK integration boundary, not an activated runtime path.
+Validation: 56 SDK instrument tests and the runtime host compile check pass
+(`out/canopy-provider-sdk.log`, `out/canopy-provider-runtime.log`). New cases cover
+all optional-symbol combinations, no provider calls during binding, exact-length
+snapshot handling, transaction and capability rejection, reserved fields, and a
+combined clear/body/commit transfer with terminal-but-undrained link status before
+the matching registry reply. Focused documentation checks pass. No ColdFire Rust
+runtime rebuild or hardware load is claimed.
+The changed-file preflight passes layering and fails only on the existing 256
+stale references in 78 files (`out/canopy-provider-changed.log`).
+
+
+A bounded SDK exchange pump now holds exclusive borrows of the tagged driver,
+mailbox, reply adapter and load registry while driving an already-started mailbox
+transaction. One wrapping monotonic deadline covers every row, busy retry and
+missing/stale reply. It never refreshes the deadline on traffic. Expiry stops
+new writes and starts a separate bounded drain period. Once the accepted write
+drains, its completion is discarded and the mailbox quarantines the load and
+returns a fresh detach command. Only that detach's matching DSP replies may
+release resources. An uncertain link identity or expired drain period blocks the
+exchange with its buffer and allocation retained; further ticks do no work.
+Dropping the pump is not cancellation or cleanup. The owner must retain the same
+boot-local controllers and recover them, never recreate identities to retry.
+The pump does not detect reboot or wire the firmware scheduler. It covers mailbox
+transactions, not image-transfer deadlines. Live provider resolution, boot-owned
+storage, image orchestration and whole-boot invalidation remain pending.
+Validation: 65 SDK instrument tests and the runtime host compile check pass
+(`out/canopy-exchange-sdk.log`, `out/canopy-exchange-runtime.log`). Nine new
+exchange cases cover success, busy/missing replies, rollover, deadline-edge late
+success, stuck drainage, drained failure versus unknown identity, invalid reply
+recovery, invalid construction, and timeout through fresh detach completion.
+Focused documentation checks pass. No live runtime or hardware activation is
+claimed.
+Changed-file preflight passes layering and fails only on the existing 256 stale
+references in 78 files (`out/canopy-exchange-changed.log`).
+
+
+The SDK now also pumps image/BSS transfers with one deadline across chunks,
+zero fills and busy retries. Success returns ReadyToInstall only after every
+exact write has drained; it cannot initialize or publish a module. Timeout stops
+new writes, waits a bounded drain period, discards late ACKs and quarantines the
+allocation through Transfer::failed before returning a detach request. Unknown
+transfer identity or stuck drainage blocks without releasing storage. Tests use
+the actual allocation ledger and confirm release_memory still refuses reuse.
+Both pumps now expose explicit boot invalidation. It permanently disables the
+old driver and, for mailbox transactions, the cached reply adapter. No further
+provider calls or replies can advance that pump, even after dropping it. Storage
+is retained because observing a boot change alone does not prove outstanding
+source reads stopped. This hook is not automatic reboot detection or whole-boot
+teardown. Live firmware binding, boot-owned controller storage, validated reboot
+observation and a complete load coordinator remain pending.
+Validation: 73 SDK instrument tests and the runtime host compile check pass
+(`out/canopy-upload-sdk.log`, `out/canopy-upload-runtime.log`). New tests cover
+chunked image/zero fill, busy retry rollover, timeout with late ACK, stuck drain,
+unknown transfer identity, drained error, final-ACK deadline precedence, invalid
+budgets, retained allocator grants, and permanent link/reply invalidation.
+Focused documentation checks pass. No ColdFire Rust build or device load is
+claimed.
+Changed-file preflight passes layering and fails only on the existing 256 stale
+references in 78 files (`out/canopy-upload-changed.log`).
+
+
+The production CF registry snapshot now has an independent heartbeat trust
+guard. It accepts forward progress and wraparound before MIDI epoch admission;
+valid backward movement, a stalled/missing heartbeat for MT_STALL_BLOCKS or an
+explicit transport recovery permanently invalidates the registry snapshot for
+that CF boot. Getter result -2 copies no bytes. The SDK reply adapter latches
+this result, and the exchange invalidates its driver and blocks rather than
+sending a blind detach or freeing storage. This closes the gap where the MIDI
+watchdog rejected a heartbeat but registry consumers could still read an old
+otherwise valid reply. Corrupt frames never reset the guard's liveness deadline.
+These are conservative trust-loss signals, not a unique DSP reboot identity.
+An unobserved reset that resumes with an apparently forward counter remains
+ambiguous; absent frame callbacks require the UI deadlines. Runtime binding and
+an explicit boot/session identity handshake remain open; no automatic reload or
+active V2 capability is enabled.
+Validation: 87 MIDI component tests, 20 MIDI host tests, all 113 SDK tests and
+the runtime host compile check pass. The production CF adapter is rebuilt and
+its artifact check passes. Logs: `out/canopy-boottrust-cf.log`,
+`out/canopy-boottrust-host.log`, `out/canopy-boottrust-build.log`,
+`out/canopy-boottrust-runtime.log`. Focused documentation checks pass. Toolchain
+status still reports codegen_gcc unavailable (`out/canopy-boottrust-toolchains.log`),
+so no ColdFire Rust runtime rebuild or live V2 activation is claimed.
+Changed-file preflight passes its host, type, formatting and layering checks;
+only the existing stale-reference baseline fails (`out/canopy-boottrust-changed.log`).
+
+
+ColdFire Rust build unblock: the backend installer now uses system development
+libraries on Linux/WSL, applies the libgccjit Darwin patch and Apple libc++
+workaround only on macOS, and publishes links only after the native JIT artifact
+exists. Both Python and native Patchkit now select the host backend library
+suffix rather than always requiring a dylib. Eleven installer tests and the
+native Patchkit backend-readiness test pass (`out/canopy-linux-toolchain-python.log`,
+`out/canopy-linux-toolchain-rust.log`). The actual pinned bootstrap log is
+`out/canopy-codegen-bootstrap.log`; bootstrap completion and a ColdFire runtime
+build are separate required checks, not established by these host tests.
+The pinned nightly installed, but GCC checkout on the Windows-mounted drive was
+still waiting on filesystem I/O after ten minutes. That bootstrap was stopped
+without deleting its source cache. `DIGIKIT_CODEGEN_DIR` now selects an absolute
+WSL-native build directory for both Python and native Patchkit; the default stays
+under out/tools. The local ignored environment points to the WSL user cache.
+Installer tests and the native readiness test pass again after this change.
+Focused lint/docs and preflight layering pass; the required preflight fails only
+on the existing 256 stale references in 78 files
+(`out/canopy-linux-toolchain-changed.log`).
+
+
+The Linux-native backend bootstrap now completes successfully: pinned libgccjit
+and rustc_codegen_gcc are installed under the WSL cache selected by
+DIGIKIT_CODEGEN_DIR (`out/canopy-codegen-native.log`). The production ColdFire
+runtime builds with this backend; Patchkit re-decodes 31,690 instructions and
+all runtime objects pass the current-source check
+(`out/canopy-runtime-coldfire-build.log`, `out/canopy-runtime-coldfire-check.log`).
+This removes the missing-toolchain blocker. It does not activate the V2 loader;
+its provider binding, coordinator and boot/session identity still need live
+integration and acceptance.
+Runtime module check: one pass (Digitakt II), one skip (Digitone II), including
+patched runtime boot and INFO responses through the existing coupled daemon
+(`out/canopy-runtime-coldfire-module.log`). The framework is intentionally not a
+single-object DKM, so the module check's pack-size line is not an install target.
+Focused documentation checks pass. The required changed-file preflight passes
+its host checks and fails only on the existing 256 stale references in 78 files
+(`out/canopy-runtime-coldfire-changed.log`).
+
+
+The SDK now owns a complete admitted-load transaction in `Coordinator`: its
+load ledger, tagged driver, reply reader and mailbox stay together for the DSP
+boot. Upload and exchange pumps keep reference-free phase state, allowing UI
+calls to borrow the controllers for one tick without restarting their deadlines.
+The coordinator uploads image/BSS, installs every row, consumes the opaque install
+receipt, then initializes every row before returning Publish. Its deadlines cover
+each entire phase, with a separate bounded drain period on timeout.
+
+Recoverable upload/install/initialization failures drive one fresh detach batch.
+Only its validated completion returns Release, and freeing memory still requires
+the caller's original shared ledger. Failed detach, uncertain link identity and
+undrained writes block further work while retaining storage. Explicit boot loss
+or the reply provider's boot-invalidated result stops all provider calls and
+prevents allocator release, even after an earlier Release result. No cancellation
+or whole-boot reset is inferred from dropping this owner.
+
+This is an SDK coordinator, not yet a firmware UI-loop integration. It adopts
+pre-admitted reservations and a borrowed relocated image; live admission,
+optional-symbol resolution, exclusive scheduling against legacy DSP loads,
+boot/session identity and revocation of already-published MIDI routes remain
+required. Its read-only load ledger is bookkeeping, not a live readiness signal.
+
+Validation: all 123 SDK tests pass, including ten coordinator cases exercising
+multi-row install/init order, a moved owner with a retained source pointer,
+wrapping deadlines, busy transport, rejected install/init, missing replies,
+failed detach, unknown transfer identity and boot loss. Logs:
+`out/canopy-coordinator-sdk.log`. The ColdFire runtime rebuild and current-source
+checks pass (`out/canopy-coordinator-build.log`,
+`out/canopy-coordinator-check.log`). Its decoded artifact changes only the source
+hash: the coordinator is not yet called from the firmware runtime, so this is not
+a device execution test of the coordinator. Focused documentation checks pass.
+Required preflight passes layering, host tests, formatting and types; it fails
+only on the existing 256 stale references in 78 files
+(`out/canopy-coordinator-changed.log`).
+
+The ColdFire DSP-link now provides exclusive transaction leases. Claiming an
+idle, drained channel returns a nonwrapping boot-local lease; owned sends require
+that exact lease and still use tagged transfer completion. Legacy and unowned
+starts return busy for the whole lease, including registry-reply gaps. Stale
+release/send requests cannot affect a later owner, and release refuses START,
+BUSY and outstanding END frames. Neither errors nor timeouts release ownership.
+The on-wire protocol and SHARC objects are unchanged.
+
+This supplies the physical-write boundary needed by the firmware scheduler. The
+runtime must still keep legacy load/FX state machines out of their between-write
+poll/start paths before claiming, hold the lease through V2 completion/recovery,
+and retain it on blocked/boot-invalidated outcomes. Provider binding, scheduling
+and explicit boot/session identity remain open; no V2 capability is activated.
+Validation: the rebuilt ColdFire object passes all 37 DSP-link tests, with two
+firmware-dependent skips (`out/canopy-link-lease-tests.log`). Nine added cases
+execute the lease API on the ColdFire core, covering normal/error END drainage,
+legacy exclusion, every transfer window, stale owners and exhausted generations.
+The SHARC objects are unchanged (`out/canopy-link-lease-build.log`).
+Python lint, formatting, focused docs and preflight host/types/layer checks pass.
+Required preflight fails only on the existing 256 stale references in 78 files
+(`out/canopy-link-lease-changed.log`).
+
+
+
+The SDK coordinator now accepts an owned DSP-link transport. `OwnedProviders`
+binds claim, release, owned send, tagged poll and reply snapshot as one complete
+set without invoking any provider. `OwnedApi` retains its lease and the last
+accepted lease generation across transactions, forwards the lease on every send,
+and never releases on drop. Zero/reused leases or uncertain release results
+permanently stop that owner; ordinary busy acquisition is retryable.
+
+The scheduler-facing coordinator methods allow claim/release only between jobs.
+An unowned transport cannot begin a load. Ownership remains through every upload,
+install, initialize and recovery phase, including idle reply gaps. A busy release
+keeps ownership and disallows new sends until release succeeds; uncertain release
+blocks the coordinator and allocator reuse. Boot-invalidated/blocked jobs cannot
+release or reacquire. Claim/release are explicit UI-task calls; acquisition and
+release retry deadlines, legacy poller suspension, firmware optional-symbol
+resolution and boot/session identity still belong to the pending live scheduler.
+This does not enable the machine or advertise V2 support.
+
+Validation: all 131 SDK tests pass (`out/canopy-owned-link-sdk.log`), including
+all 32 optional-provider combinations, C ABI lease/request forwarding, busy and
+stale ownership, retained ownership on drop/boot loss, coordinator exclusion of
+mid-job release and failed-release prevention of memory reuse.
+ColdFire runtime build and current-source checks pass
+(`out/canopy-owned-link-build.log`, `out/canopy-owned-link-check.log`). The runtime
+artifact changes only its source hash because these SDK entry points are not yet
+called by the firmware scheduler; no device execution of this integration is
+claimed.
+Focused docs and required preflight layering, host tests, formatting and types
+pass. Preflight fails only on the existing 256 stale references in 78 files
+(`out/canopy-owned-link-changed.log`).
+
+
+
+The firmware runtime now resolves the five optional V2 provider symbols on its
+first UI-loop pass: claim, release, owned send, tagged poll and registry reply.
+The SDK's boot-local binding checks every address before forming any function
+pointer, stores a complete set only, and can hand it off at most once. Missing
+symbols remain unavailable for that entire ColdFire boot; a later call cannot
+silently rebind after a DSP fault. Binding itself never invokes a provider or
+acquires DSP-link, so legacy loading and FX traffic continue normally.
+
+`DKRT_INSTRUMENT_BINDING` exposes a three-word diagnostic header (attempted,
+present-symbol bitmask, bound-at-boot) ahead of the private provider storage.
+Presence/binding is not lifecycle capability or boot-identity proof. The live
+scheduler must still quiesce legacy transactions, consume the provider set,
+manage acquisition/release deadlines, and revoke readiness on DSP boot loss.
+No V2 module admission or MIDI route is enabled by this binding.
+
+Validation: all 133 SDK tests pass (`out/canopy-runtime-binding-sdk.log`). The
+ColdFire runtime rebuild and current-source check pass, with 31,818 instructions
+re-decoded (`out/canopy-runtime-binding-build.log`,
+`out/canopy-runtime-binding-check.log`). Unlike the preceding SDK-only changes,
+this checkpoint adds executable code to the actual firmware UI path.
+The runtime module check passes for DTII (one pass, one DNII skip), covering
+boot/INFO, patched reopen and restart with stable inputs
+(`out/canopy-runtime-binding-module-stable.log`). An earlier run passed boot/INFO
+but failed its cache-hit assertion after a manifest comment changed mid-run;
+the stable rerun resolves that failure. This remains the default runtime set,
+not an end-to-end V2 instrument load. Focused documentation references pass.
+Required changed-file preflight passes layering, host tests, formatting and
+types; its only failure is the existing 256 stale references in 78 files
+(`out/canopy-runtime-binding-changed.log`).
+
+
+The coordinator now owns bounded scheduler handoffs for DSP-link acquisition
+and release. Acquisition waits for the caller's legacy-idle proof before making
+any claim call; one deadline includes both logical legacy drainage and physical
+link-busy retries. Release is allowed only between complete jobs and retains
+ownership while the provider is busy. Repeated requests cannot renew either
+deadline. Timeout, ambiguous release or boot invalidation blocks further calls
+and preserves the lease and allocations; only an explicit Released result lets
+legacy producers resume. Unbounded claim/release helpers are now private.
+
+Five new coordinator scenarios cover legacy wait/claim retries, successful load
+and release, deadline wraparound, release timeout, invalid budgets, and boot loss
+in both waiting states. All 138 SDK tests pass (`out/canopy-handoff-sdk.log`).
+The firmware scheduler still needs to supply the logical legacy-idle proof,
+stop new legacy load/FX transactions, and own the coordinator and its buffer.
+This checkpoint does not enable V2 admission or establish DSP boot identity.
+The ColdFire rebuild and current-source check pass
+(`out/canopy-handoff-build.log`, `out/canopy-handoff-check.log`); the executable
+is unchanged and only its SDK source fingerprint changes.
+Focused documentation references pass. Required preflight passes layering,
+host tests, formatting and types; only the existing 256 stale references in
+78 files fail (`out/canopy-handoff-changed.log`).
+
+The firmware now consumes the optional provider set into one boot-owned
+coordinator and aligned 256-byte transfer buffer. The coordinator starts with
+zero admitted instances; no V2 module can load just because providers exist.
+Its handoff tick runs after legacy DSP loading, FX parameters and FX sends, so
+all four idle conditions (loader phase, queued loads, parameter transfer and
+send transfer) must clear before a lease claim. Physical END drainage remains
+the DSP-link provider's responsibility.
+
+The coordinator's Run/Drain/Pause policy is wired into the real runtime. Drain
+allows queued legacy jobs and outstanding FX polls to finish, rejects new
+legacy admissions and blocks new FX word writes. Pause stops legacy loader and
+FX polling; only successful release restores Run. SDK tests cover the policy
+through acquisition, a complete load, busy release, ambiguous release and boot
+invalidation. All 140 SDK tests pass (`out/canopy-legacy-gate-sdk.log`).
+
+The firmware has no admission path requesting this handoff yet: provider setup
+and idle tick are live, while active ownership transitions are SDK-tested.
+V2 image/allocator admission, live boot-trust invalidation and publication remain
+pending; this does not advertise V2 support or make CANOPY playable.
+ColdFire rebuild and current-source checks pass (32,249 decoded instructions;
+`out/canopy-legacy-gate-build.log`, `out/canopy-legacy-gate-check.log`). The runtime
+module check passes DTII boot/INFO/reopen/restart, with DNII skipped
+(`out/canopy-legacy-gate-module.log`: one pass, one skip). This default-set
+regression check does not exercise an active V2 load.
+Focused documentation references pass. Required preflight passes layering,
+host tests, formatting and types; it fails only on the existing 256 stale
+references in 78 files (`out/canopy-legacy-gate-changed.log`).
+
+The coordinator now prepares a parsed DKDS6 section through one admission
+operation: resolve type reservations, reserve the caller's shared ledger range,
+validate the packed plan, and relocate into caller-owned CF storage. Preparation
+never calls the link or publishes a machine. Count, allocation, plan and import
+failures unwind pre-transfer rows and memory; a consumed generation is not reused.
+A prepared ticket can be cancelled only before transfer. A changed cleanup ledger
+blocks the owner without clearing someone else's range. Admission and cancellation
+are refused during active jobs, ownership handoffs or lost boot trust.
+
+All 144 SDK tests pass (`out/canopy-admit-sdk.log`). The composed-path test uses
+a parsed section alongside an unrelated occupied ledger range, then drives
+upload, INSTALL and INIT through the coordinator's transport harness. Publication
+appears only after INIT; its uploaded bytes and BSS are checked. Failure tests
+prove reservation cleanup, unchanged output, no link calls, retry by the same
+owner/type, stale-phase cancellation refusal, and changed-ledger preservation.
+
+The firmware caller must still supply type resolution checked against builtin/V1
+registries, remaining callback budgets, the actual shared ledger, persistent CF
+image storage and verified DSP boot identity. The runtime's zero-instance gate
+remains closed; these composed host tests are not an active firmware V2 load.
+The ColdFire rebuild/current-source checks pass (`out/canopy-admit-build.log`,
+`out/canopy-admit-check.log`). Executable code remains unchanged; only the source
+fingerprint updates because the firmware caller does not yet invoke admission.
+Focused documentation references pass. Required preflight passes layering,
+host tests, formatting and types, failing only on the existing 256 stale
+references in 78 files (`out/canopy-admit-changed.log`).
+
+Coordinator admission now reserves aggregate V2 process cost, rather than
+checking each module against the same independent allowance. A plan retains its
+checked per-instance process sum; each owner/generation retains that cost from
+successful preparation through publication, cancellation or recovery. The supplied
+process ceiling is the total V2 allowance after legacy reservations, and existing
+V2 charges are subtracted before planning the next image. Failed preparation
+charges nothing. Only successful pre-transfer cancellation or validated detach
+followed by shared-memory release returns the charge; boot loss and failed cleanup
+retain it. Externally adopted loads without accounting cannot silently consume
+zero budget, and an uncharged plan cannot join an active accounted ledger.
+
+All 147 SDK tests pass (`out/canopy-budget-sdk.log`), including combined-limit
+rejection, exact-fit admission, cancellation reuse, lower-ceiling refusal,
+publication retention, failed-INIT recovery through detach/memory release, and
+refusal of unaccounted adopted reservations. These are declared instruction-cost
+budgets, not measurements of actual callback execution time. Firmware type mapping,
+boot identity and the closed admission gate still require integration.
+The ColdFire rebuild/current-source checks pass (32,261 decoded instructions;
+`out/canopy-budget-build.log`, `out/canopy-budget-check.log`). The coordinator
+storage initialization changes executable code. Default runtime DTII boot, INFO,
+reopen and restart pass, with DNII skipped (`out/canopy-budget-module.log`: one
+pass, one skip). This is a runtime regression check, not an active V2 load.
+Focused documentation references pass. Required preflight passes layering,
+host tests, formatting and types; only the existing 256 stale references in
+78 files fail (`out/canopy-budget-changed.log`).
+
+V2 machine keys now have a selection-scoped resolver. It borrows the boot
+assignment table with an explicit saved selection index instead of consulting
+the mutable current-load index. Both hashed and pinned keys must be declared by
+that selected module; ambiguous declarations, unassigned/out-of-range numbers,
+occupied legacy rows and two records resolving to the same type are rejected.
+The result preserves descriptor order and is returned only as a complete batch.
+
+The firmware assignment adapter supplies the existing sticky table and device
+range, and checks both CF machine rows (owner or nonempty name) and legacy DSP
+reservations, including unpublished owners. Missing CF registry data fails closed.
+This adapter is ready for the pending V2 loader caller; it is not invoked by the
+current boot loader, and existing legacy assignment behavior is unchanged.
+
+All 152 SDK tests pass (`out/canopy-types-sdk.log`). Five new cases cover saved
+selection lookup, declared pinned keys, ambiguity/malformed maps, exhausted or
+stock assignments, and duplicate resolved types. The composed admission-to-INIT
+test now consumes resolver output. Actual firmware invocation, DSP boot identity
+and enabling the admission gate remain open.
+The ColdFire rebuild and current-source check pass (`out/canopy-types-build.log`,
+`out/canopy-types-check.log`). The executable is unchanged; only its source
+fingerprint updates because these new firmware adapters are not called yet.
+Focused documentation references pass. Required preflight passes layering, host
+tests, formatting and types; only the existing 256 stale references in 78 files
+fail (`out/canopy-types-changed.log`).
+
+The coordinator now observes the reply provider's sticky boot-trust loss before
+every transfer tick and every ownership-handoff tick, including idle and release
+states. Previously that loss was observed only when awaiting a mailbox reply,
+so an upload could continue after the guard had already detected a restart.
+A loss now invalidates the owner before another link send/poll/claim/release;
+allocations, budgets, leases and any in-flight source buffer remain retained.
+Malformed provider return lengths/errors block the owner as a reply failure.
+Subsequent ticks make no further provider or link calls.
+
+The bounded probe copies into local scratch storage without consuming a mailbox
+ACK. Missing/current snapshots establish neither identity nor readiness, and only
+the existing drained mailbox validator may publish. The firmware already calls
+the handoff tick on each UI pass, so a bound provider's revocation is now observed
+there even without a V2 job. The optional provider boundary is unchanged.
+
+All 156 SDK tests pass (`out/canopy-boot-probe-sdk.log`). New cases cover revocation
+before acquisition, while owned but idle, before release, and before the next
+upload poll; malformed getter results and probe-without-publication are covered.
+This closes a revocation gap but does not solve the heartbeat ambiguity: an
+unobserved DSP restart can still look forward. An explicit boot/session handshake
+and its reset-path proof remain required before enabling firmware V2 admission.
+ColdFire rebuild/current-source checks pass (32,361 decoded instructions;
+`out/canopy-boot-probe-build.log`, `out/canopy-boot-probe-check.log`). The default
+runtime DTII boot/INFO/reopen/restart check passes, with DNII skipped
+(`out/canopy-boot-probe-module.log`: one pass, one skip); this does not exercise
+a V2 load or prove DSP restart detection on hardware.
+Focused documentation validation passes. Required changed-file preflight passes
+layering, 193 host tests (16 skipped), formatting and types; it fails only on the
+existing 256 stale references in 78 files
+(`out/canopy-boot-probe-changed.log`).
+
+The DSP half of session binding now implements BIND_SESSION (operation 5) with
+owner/row zero and the nonzero challenge in generation. It binds once while
+lifecycle admission is disabled; it cannot replace/renew an existing token and
+grants no capabilities. Valid binds and checksummed stale commits are consumed,
+including rejected/replayed binds, so clearing private session/sequence storage
+does not re-execute a retained command. Bound replies use outer version
+`0x494ea102` and carry the token in word 12 on every block, independently of the
+registry ACK. Unbound or absent registry providers retain the original frame.
+
+This is not yet wired to CF admission. Existing CF/SDK validators deliberately
+reject the new reply version, and production does not issue binds. Next implement
+the bounded one-shot CF bootstrap and sticky expected-token validation, then
+prove initialization on every supported DSP reset path and drainage of old
+writes. Clearing session/sequence storage in a processor-component test does not
+establish that hardware reset behavior. No challenge reuse, automatic rebind or
+V2 capability advertisement is permitted on an uncertain outcome.
+The registry/MIDI component run passes 113 tests; a subsequent focused registry,
+row and protected-lifecycle run passes 101 tests, including rejection of binding
+after lifecycle admission. Both DSP artifacts rebuild and pass current-source
+checks; focused documentation validation passes. Logs are
+`out/canopy-session-dsp.log`, `out/canopy-session-lifecycle.log`,
+`out/canopy-session-build.log` and `out/canopy-session-check.log`.
+Required preflight passes Python lint/format, layering, host tests, formatting
+and types; only the existing 256 stale references in 78 files fail
+(`out/canopy-session-changed.log`).
+
+The CF reply guard now supports an explicitly armed one-shot session expectation.
+`mi_registry_expect_session(token, sequence)` serializes arming with the frame
+publisher and clears cached registry replies. Before a successful bind, armed
+getters return no snapshot. The first fresh version-2 frame must match the token
+and complete successful BIND_SESSION identity, including zero status/capabilities.
+Thereafter registry ACK replacement is allowed but token change, downgrade,
+backward heartbeat or expiry permanently revokes the guard. Repeated arming
+cannot renew a deadline; malformed frames cannot refresh liveness or establish
+identity. Deadline checks run before accepting a late fresh frame.
+
+The bind deadline and heartbeat watchdog use CF frame blocks. A UI-clock deadline
+and actual one-shot bind sender remain required, as does DSP reset-path proof.
+MIDI event ACKs and the SDK mailbox still reject version 2; no V2 route, lifecycle
+capability or firmware load is enabled. The component suite exchanges an actual
+SHARC-produced version-2 frame with compiled ColdFire validation, while adapter
+checks cover cache clearing, withheld snapshots and sticky invalidation.
+Validation: 21 host cases and all 87 MIDI processor-component cases pass. After
+adding adapter snapshot assertions, the host suite and focused ColdFire boundary
+test pass again. The CF adapter rebuilds (1,709 decoded instructions), and both
+MIDI artifacts pass current-source checks. Logs: `out/canopy-session-guard-host.log`,
+`out/canopy-session-guard-cf.log`, `out/canopy-session-guard-dispatch.log`,
+`out/canopy-session-guard-build.log` and `out/canopy-session-guard-check.log`.
+Focused documentation checks pass. Required preflight passes Python lint/format,
+layering, host tests, formatting and types; only the existing 256 stale references
+in 78 files fail (`out/canopy-session-guard-changed.log`).
+
+The owning SDK coordinator now drives the one-shot bind exchange. Its unsafe
+`begin_session` entry requires the validated CF expectation provider, exclusive
+link ownership, an idle driver and no admitted rows. It reserves from the same
+nonwrapping mailbox sequence namespace and arms the CF guard before the first
+write. Tick sends clear/body/commit through the existing retained driver buffer,
+advancing only on the matching drained transfer completion, then validates the
+full version-2 bind reply and checksum. Transport completion alone never marks
+the session bound. One monotonic UI-task deadline covers all writes, busy starts
+and ACK waiting; link-handoff ticks also enforce it when transfer ticks stop.
+
+Repeated starts cannot rearm or renew the exchange. Arm failure, lost boot trust,
+link failure, malformed/mismatched ACK or expiry blocks the owner and retains
+its lease and any pending source buffer. There is no blind detach, rebind or
+timeout-driven reuse. A successful bind can release the drained lease, but this
+checkpoint refuses image admission/start on session-bearing owners: lifecycle
+mailbox and MIDI version-2 support still need integration. Legacy pre-session
+component paths retain their existing behavior; the live runtime's zero-instance
+gate remains closed.
+
+This is coordinator integration, not an automatically started firmware bind.
+Optional expectation-provider resolution, invoking the handshake from the live
+loader, a composed CF-to-DSP bind proof, and DSP reset-path coverage remain open.
+The SDK tests exercise production coordinator/driver logic with simulated link
+and reply providers; they do not establish live transport or restart behavior.
+Validation: all 162 SDK tests pass (`out/canopy-bind-sdk.log`), including exact
+write drainage, shared sequence allocation, lost ACK, valid-checksum wrong token,
+wraparound timeout, arm failures and retained ownership after link failures.
+ColdFire rebuild/current-source checks pass (32,377 decoded instructions;
+`out/canopy-bind-build.log`, `out/canopy-bind-check.log`). The default DTII runtime
+boot/INFO/reopen/restart check passes, with DNII skipped
+(`out/canopy-bind-module.log`: one pass, one skip); this does not run a live bind.
+Focused documentation checks pass. Required preflight passes layering, host tests,
+formatting and types; it fails only on the existing 256 stale references in 78
+files (`out/canopy-bind-changed.log`).
+
+Firmware provider binding now requires six optional symbols, including
+`mi_registry_expect_session`. The typed expectation callback is consumed together
+with the transport/snapshot provider set and retained by the firmware owner; the
+complete diagnostic presence mask is now 63. Missing symbols remain unavailable
+for the whole CF boot, including an older adapter with no expectation callback.
+Binding still calls none of the providers and does not initiate a session.
+
+A new processor-boundary test executes BIND_SESSION and a subsequent QUERY in the
+production SHARC registry, builds their actual reply frames, and passes those
+words through the compiled CF record reader, frame publisher, session guard and
+registry snapshot getter. It then injects loss of DSP session/sequence storage,
+checks permanent getter revocation, and replays the old bound frame to confirm
+that neither old data nor another arm request restores trust. This crosses the
+registry-to-snapshot boundary; it does not drive the coordinator writes through
+physical SPI, emulate a real hardware reset, or automatically start a live bind.
+Those remaining integration/reset checks still gate CANOPY admission.
+Validation: all 162 SDK tests pass, including all 64 provider-presence masks and
+atomic one-time consumption (`out/canopy-bind-provider-sdk.log`). The new DSP-to-CF
+snapshot test passes (`out/canopy-bind-provider-cross.log`). Runtime rebuild and
+current-source checks pass at 32,416 decoded instructions; the retained callback
+storage is present in the object. Default DTII boot/INFO/reopen/restart passes
+with DNII skipped (`out/canopy-bind-provider-module.log`: one pass, one skip).
+This default boot check does not initiate a session.
+Focused documentation validation passes. Required preflight passes Python lint
+and formatting, layering, host tests, formatting and types; only the existing
+256 stale references in 78 files fail (`out/canopy-bind-provider-changed.log`).
+
+The emulator-only `test/instrument-session` fixture now supplies an explicit
+bootstrap trigger. The runtime acquires the existing owned link, arms the CF
+reply guard, sends the one-shot bind, waits for its acknowledged session and
+releases the drained channel. Diagnostic phases are idle, acquiring, binding,
+releasing, bound and blocked (0..5). Each handoff/exchange has a 2,000-UI-tick
+budget; the CF frame watchdog is independent. The trigger is sampled once and
+cannot retry or rearm within the CF boot. Normal images omit this provider;
+`Loads::new(0)` and the DSP admission flag stay disabled.
+
+The live boot exposed an initialization gap hidden by zero-filled component
+fixtures: SHARC `.PKBSS` reserves space but does not load zeros. The registry
+mailbox, reply, pending flag, admission flag, session token and row table now use
+`.PKDATA`, giving the boot stream explicit initial values. Scratch buffers still
+use reserved storage and are written before use. This corrects the earlier
+assumption that reserved session storage was initialized by loading the image;
+it does not establish the behavior of DSP-only reset paths.
+
+The same live test reached a second target-only failure: mailbox serialization
+using `to_le_bytes()` linked a ColdFire `__bswapsi2` implementation whose call
+relocated back to itself. The first write recursively consumed the UI stack.
+Serialization now uses explicit volatile byte stores into the driver's private
+buffer, preventing the backend from folding the writes into that helper.
+The bootstrap tick entry point also avoids linking the unused image-load path;
+the UI phase dispatcher uses branches rather than an inline jump table.
+
+Validation: the new running-firmware TypeScript bootstrap test passes in 66.1 s
+(`out/canopy-live-session-test.log`), including zero initial session, expected
+bound token, drained lease release, disabled admission and refusal to rearm.
+All 162 SDK tests and 28 registry processor tests pass
+(`out/canopy-live-session-sdk.log`, `out/canopy-live-session-registry-test.log`).
+The rebuilt runtime passes instruction validation at 33,266 instructions; runtime,
+registry and fixture artifacts match their current sources. The compiled runtime
+has no `__bswapsi2` relocations. This proves the initial exchange through the
+emulated physical link, not DSP-only restart or hardware reset behavior.
+Default DTII runtime boot/INFO/reopen/restart also passes (one pass, one DNII
+skip; `out/canopy-live-session-module.log`).
+
+Required changed-file preflight passes layering, 193 host tests (16 skipped),
+formatting and types. Its only failure is the existing 256 stale references in
+78 files (`out/canopy-live-session-changed.log`); focused checks of the edited
+documentation pass. No device installation or public V2 capability is implied.
+
+Live revocation now has a separate emulator-only fixture,
+`test/instrument-session-loss`. Its protected block callback waits 2,048 DSP
+blocks after observing the bind, clears only the session token for 64 blocks,
+and then restores the original token while retaining the original registry ACK.
+The callback runs before the production reply builder; the real reply transport,
+CF guard and UI coordinator observe the loss. The regression checks permanent
+blocked state, no new transfer identity, no renewed lease or admission, and no
+rearm even after the old valid-looking token/ACK returns and UI ticks advance.
+The normal bootstrap fixture remains free of fault injection.
+
+This is deliberately partial-state loss, not a DSP reset. The control daemon
+currently offers DSP memory inspection but no independent hardware-reset action;
+`SharcRenderer::reset` restores a prepared start state rather than exercising the
+firmware's reset line/boot protocol. All supported DSP-only restart paths still
+need validation before enabling admission. Do not substitute this injected loss
+or a whole-machine snapshot restore for that evidence.
+
+Validation: both running-firmware session cases pass (64.2 s normal binding,
+93.4 s injected loss/replay; `out/canopy-session-loss-live.log`). The loss fixture
+build passes all 36 instruction decodes. Its sole private import is restricted
+by exact fixture ID, directory, object, source list and symbol in the layering
+checker; other private state remains forbidden.
+
+All 26 layering tests pass. Focused documentation and current-artifact checks
+pass. Required preflight passes layering, Python lint/format/types, related-host
+selection, JS lint/format and TypeScript checks. It remains red on the existing
+256 stale references in 78 files and five broader verification-tool failures:
+`test_mise_tasks_of_the_repo_resolve` does not expect the already-present
+`patch:toolchains` task, while four FX-tier cases require the absent DNII 1.11
+analysis database. The latter suite has 222 passes and five failures; its task
+routing and database-dependent code are unchanged by this checkpoint. See
+`out/canopy-session-loss-changed.log` and `out/canopy-session-loss-layers-test.log`.
+
+The SDK reply provider now retains the token from a successful bootstrap ACK
+and uses it to validate subsequent lifecycle replies. Bound replies require V2
+framing, that exact nonzero token, zero reserved fields and the full checksum
+before transaction matching. Unbound callers retain the V1 contract. A second
+bootstrap validation invalidates the provider permanently; it cannot replace the
+identity. Host coverage verifies wrong-token/downgrade rejection without pending
+load mutation, same-session delayed replies and successful publication. All 163
+SDK tests pass (`out/canopy-session-replies-host.log`). This adds reply validation
+only: the coordinator still refuses image loads/admission after binding, and
+production lifecycle capabilities remain disabled pending reset-path proof.
+The rebuilt runtime passes current-artifact checks and both running-firmware
+session regressions (normal bind and permanent loss/replay revocation;
+`out/canopy-session-replies-live.log`). Required staged preflight passes its
+selected host, layering, lint, formatting and type checks; its only failure is
+the existing stale-reference baseline (`out/canopy-session-replies-changed.log`).
+
+
+The shipped boot-image initialization is now checked independently of zeroed
+processor fixtures: a patcher integration test generates registry firmware and
+requires explicit section-7 zero writes over all boot-owned session/registry
+state and MIDI identity counters. It passes. DTII 1.17 reset assertion/release
+call sites are also resolved from local image bytes; see
+[finding 78](../findings/78-canopy-carrier.md). The remaining reset work is a
+pre-assertion CF invalidation boundary, early-boot initialization safety and a
+live reset with pending transfers. The current emulator's snapshot reset does
+not establish those properties. Focused documentation checks pass; staged
+preflight passes Python lint/format and layering, with only the existing 256
+stale references in 78 files failing (`out/canopy-boot-initialization-changed.log`).
+
+The CF adapter now exposes an internal reset-assertion notification boundary,
+`mi_dsp_reset_begin`. Before first adapter use it leaves the initial boot alone;
+after use it permanently invalidates the registry snapshot, clears MIDI routes
+and pending transport state, and suppresses frame payloads. Repeated notification
+is idempotent; MIDI recovery, configuration, routing and replayed replies cannot
+resume the adapter in that CF boot. Stock MIDI messages fall through. This code
+requires expansion data/BSS initialization and does not access the UI coordinator
+or claim to abort physical DMA. The firmware GPIO hook is not connected yet.
+
+All 29 registry processor tests pass, including both token-loss and explicit
+reset notification through the compiled ColdFire adapter. The reset case uses
+an otherwise valid bound reply, verifies cleared payload halves and preserved
+command halves, checks cleared routes, rejects recovery/rearm and repeats the
+notification without changing the epoch. Initial-before-use notification is
+also exercised. The 21 MIDI host tests and current-source adapter build checks
+pass. Staged preflight passes lint, formatting, layering and types; it reports
+the existing 256 stale references in 78 files and one unchanged web timer test
+failure (192 host passes, 16 skips). That timer test passes when rerun alone
+with the repository host configuration (`out/canopy-reset-notify-timer.log`).
+Focused documentation checks pass. The fixture now explicitly aligns its transmit queue to four
+bytes as required by the production callback; two-byte C array alignment had
+made the earlier layout-dependent test fail. Log: `out/canopy-reset-notify-cf.log`.
+
+The reset notification is now connected to the DTII 1.17 GPIO helper through
+`cf.rtos.hook.dsp_reset`. The declaration hashes the helper's complete 112-byte
+window, and the port resolver locates its six-byte entry at `0x400cd01c`.
+The wrapper preserves D0/D1/A0/A1 and the argument/return stack, calls the
+notification only for a nonzero low argument byte, then enters the generated
+tail to execute the displaced D2 save and argument load. Expansion code/data/BSS
+is copied/cleared by `core/expansion` on the reset path before this boot task
+runs; the notification does not require UI-owner initialization. The hook covers
+calls through this helper, not direct GPIO writes or autonomous DSP resets.
+
+Two processor/anchor tests pass: the declaration matches current image bytes,
+and the assembled wrapper tolerates a callback that clobbers all volatile
+registers while preserving the stock argument and callee-saved D2. Cases include
+zero, nonzero, high-byte-only values and repeated assert/release calls. These
+are ABI component proofs, not electrical reset or pending-DMA cancellation.
+The adapter builds and all 1,771 instructions decode; its artifacts are current.
+The full SDK generator still fails on the existing unrelated
+`dsp.voice.hook.velocity_operand` declaration's `s7` register; no callable SDK
+binding is needed for this port hook. Logs: `out/canopy-reset-hook-cf.log`,
+`out/canopy-reset-hook-build.log` and `out/canopy-reset-hook-gen.log`.
+Both running-firmware session regressions pass with the hook installed (63.9 s
+normal bind, 93.0 s token loss/replay; `out/canopy-reset-hook-live.log`). This
+establishes compatibility of the patched image with those flows, not that the
+emulator exercised GPIO reset or canceled an in-flight transfer.
+Staged preflight passes 193 host tests (16 skipped), layering, Python lint/format,
+JS formatting and type checks. Its only failure is the existing 256 stale
+references in 78 files (`out/canopy-reset-hook-changed.log`).
+
+
+
+Reset assertion now also reaches the optional `dl_reset_begin` sender boundary
+inside the same interrupt mask. Once the link has issued a transfer or lease,
+reset permanently revokes it for the CF boot. The sender retains its request
+identity, source pointer and lease; rejects claims, releases and all new sends;
+and reports BUSY with reset error 102 rather than a falsely drained completion.
+Subsequent frame ticks clear the code-channel magic and do not process old ACKs
+or emit more payload/END chunks. The new sticky flag uses a former padding word,
+preserving the 96-byte link layout and prior field offsets. Initial reset before
+any link use remains harmless, including when the MIDI adapter is not initialized.
+
+This stops future software emission and resource reuse; it does not retract a
+frame already owned by DMA or prove the hardware reset has stopped reception.
+The DSP-only reset and receiver/DMA timing acceptance therefore remains open.
+The sender processor suite passes 41 cases (two skips), including reset at START,
+BUSY, END drainage and already-drained phases followed by repeated valid stale
+ACKs. These cases check zero code-channel magic, retained source/lease/identity,
+unresolved polls, idempotent notification and rejection of new producer requests.
+All 29 registry processor cases also pass; the reset case now links the actual
+sender and verifies that the MIDI reset callback revokes its pending owned
+request. Both adapter artifacts pass current-source checks. Logs:
+`out/canopy-reset-link-cf.log`, `out/canopy-reset-link-boundary.log` and
+`out/canopy-reset-link-check.log`.
+Both running-firmware session regressions pass with the reset-aware sender
+(64.1 s bind, 92.8 s loss/replay; `out/canopy-reset-link-live.log`).
+Staged preflight passes 193 host tests (16 skips), layering, lint, formatting
+and types. Only the existing 256 stale references in 78 files fail
+(`out/canopy-reset-link-changed.log`).
+
+
+
+
+The composed reset boundary now executes the shipped assembly hook, MIDI
+adapter and sender together. The registry processor scenario checks sender
+revocation at entry to a stand-in for the stock tail, before the reset helper
+would run; it also checks a release argument with a nonzero upper byte leaves
+both the session and pending transfer usable. Repeated assertions remain
+terminal and idempotent. Together with the exact displaced-prologue/ABI checks,
+all 31 focused cases pass (`out/canopy-reset-composed.log`). This is processor
+integration evidence, not a physical reset experiment.
+
+The current emulator cannot close the remaining DMA/reset gate: its GPIO model
+implements the SD continuity gate, not DSP reset wiring, and its DSPI2 exchange
+completes synchronously in the board register-write path. An artificial session
+latch clear or a renderer state reload does not establish interruption of an
+active hardware transfer. The physical experiment below supplies evidence for
+the hooked DTII reset path; it does not validate the emulator reset model.
+Do not enable V2 admission on the strength of the composed callback test.
+
+The hardware gap now has an implemented quiescence path: the periodic frame
+hook refuses stock DMA rearm after revocation; the reset callback disables the
+DSPI2 channel requests, halts serial transfers, and waits for START/ACTIVE and
+TXRXS to clear before flushing FIFOs. Unexpected DMA chaining or a bounded-wait
+timeout keeps reset release blocked. Source ownership stays retained in both
+cases. This is terminal recovery through a whole-device restart, not automatic
+DSP reload. The eight-word `dl_reset_hw` diagnostic preserves the measured state.
+
+A DTII-only `test/dsp-reset-probe` service and
+`tools.device.dsp_reset_probe` runner prepare the physical proof. The runner
+checks exact firmware identity and reset-hook bytes, requires an already-used
+link, requests reset only while SPI is active, then checks stopped DMA addresses
+and the asserted GPIO over later snapshots. It writes the results even on
+failure. The probe never triggers automatically at boot; it intentionally leaves
+DSP reset asserted and requires a whole-device restart.
+
+[D] The 2026-10-31 physical DTII experiment passed on image
+`7eed7aa5661f7981`: reset entered during active SPI with RX DMA ACTIVE,
+quiesced in one poll, retained link ownership, and kept both DMA addresses
+stable across three later snapshots. See [hardware reset evidence](../findings/79-dt2-dsp-reset.md).
+This closes the active-transfer quiescence measurement for the hooked reset
+path. USB commands stopped responding after the measurement, including software
+restart. Physical power cycling restored USB; Overloop-only selection, removal
+of the diagnostic, and a subsequent normal boot are verified without reported
+crash or module faults. The original Overloop bytes match the backup.
+The original Overloop module remains backed up under `out/dt2-before-reset-proof`.
+This result does not enable V2 admission or prove automatic DSP restart.
+
+The SDK coordinator now continues from a bound session into image upload,
+INSTALL and INITIALIZE, instead of treating any session as permanently busy.
+Pending bootstrap still blocks preparation and upload. Bind, install, initialize
+and recovery detach share the same nonwrapping sequence namespace; the existing
+reply provider checks the bound version-2 token for lifecycle replies. The
+bootstrap-only runtime tick remains separate, and normal firmware still uses
+`Loads::new(0)` with no public V2 loading or routing.
+
+SDK tests now cover bind, release/reacquire, admission, image/BSS drainage,
+install, successful initialization/publication, and rejected initialization
+followed by acknowledged detach before memory release. A session-loss case
+interrupts an actual pending host-test upload: the coordinator retains the
+source buffer and memory, blocks publication, and refuses release or revival
+when the old bind reply reappears. All 165 SDK tests pass
+(`out/canopy-bound-init-sdk.log`). This is host integration evidence with simulated
+providers; live DSP lifecycle admission and version-2 MIDI routing remain open.
+The ColdFire runtime rebuild validates 33,325 decoded instructions and all runtime
+artifacts are current. Changed-file preflight passes 200 host tests (16 skipped),
+layering, formatting and types; its only failure is the existing 256 stale
+references in 78 files. Focused documentation validation passes. Logs:
+`out/canopy-bound-init-build.log`, `out/canopy-bound-init-check.log` and
+`out/canopy-bound-init-changed.log`.
+
+The CF MIDI bridge now accepts version-2 ACKs through the existing one-shot
+session guard. Arming moves MIDI to a fresh epoch and clears old configuration
+and heartbeat state while preserving physical-key tombstones. Until the exact
+bind ACK establishes readiness, the adapter publishes zero packet data and
+refuses configuration and routes. Once bound, reset/configuration/event ACKs must
+retain the token and match the current MIDI epoch/message. Session revocation
+faults MIDI immediately and keeps forward packet data zero even if old valid
+replies return. The separate consumer-ready callback and committed configuration
+remain mandatory before route enable; normal firmware still exposes no V2 machine.
+
+Validation: 22 host cases pass. The ColdFire component run executes the same
+ownership/adapter cases, including configuration commit and note ACKs after bind,
+wrong-session revocation, and an actual SHARC-built version-2 reply. The first
+attempt exposed missing optional reset symbols in that standalone test linker;
+they now resolve to zero, matching a firmware without DSP-link. The corrected
+component run passes. The adapter rebuild validates 1,891 decoded instructions;
+CF and DSP artifacts are current. Both live emulator session tests pass (63.9 s
+normal binding, 92.0 s token-loss/replay). These live tests establish bootstrap
+and revocation, not live version-2 note delivery to an admitted instrument.
+Logs: `out/canopy-session-midi-host.log`, `out/canopy-session-midi-cf.log`,
+`out/canopy-session-midi-build.log`, `out/canopy-session-midi-check.log` and
+`out/canopy-session-midi-live.log`.
+Required changed-file preflight passes 200 host tests (16 skipped), Python lint
+and format, layering, formatting and types. Only the existing 256 stale references
+in 78 files fail; both changed documents pass focused pathcheck.
+See `out/canopy-session-midi-changed.log`.
+
+Session arming now uses a dedicated epoch transition instead of explicit
+keys-up recovery. The earlier implementation incorrectly erased physical-key
+tombstones despite the claim above. The corrected path retains key tokens and
+route quarantine, discards old queued events, and requires reset acknowledgements
+for all tracks in the new epoch. A shared host/ColdFire regression holds a key
+across that transition, plays the same pitch again, and proves that the stale
+release cannot stop the new note. All 23 host cases and the ColdFire component
+case pass. The adapter rebuild validates 1,930 decoded instructions.
+
+The booted CANOPY transport fixture now also proves USB and DIN note delivery
+and independent releases after exact-token binding and configuration. The bound
+case passes in 66.34 seconds; legacy delivery passes in 60.48 seconds. A redundant
+fixture reset discovered in the first bound run has been removed: session arming
+already resets every track. See the bound-session MIDI section in
+[carrier findings](../findings/78-canopy-carrier.md). This is delivery to configured
+test banks, not public V2 installation/initialization or final CANOPY audio.
+
+The coordinator now has an explicit retirement path for successfully published
+loads. It removes lookup visibility before sending DETACH, serializes retirement
+against admission, upload and link handoff, and retains memory and processing
+budget until a matching completion. Rejected detach, timeout and boot/session
+loss block further retirement and release. All 167 SDK tests pass, including a
+bound-session install/initialize/retire cycle with monotonic mailbox sequences
+and three retirement failure cases. This closes a host lifecycle gap needed by
+the next live installation probe; that probe is not yet implemented.
+
+Only after those pieces pass together may a build advertise V2 support.
+
+Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
+tests and seven DSP-packer tests pass. A freestanding ColdFire compilation verifies
+both struct sizes and all 30 field offsets against the generated constants. The
+full `patchkit gen` command writes the SDK files but then fails in the existing
+firmware declaration validation at `dsp.voice.hook.velocity_operand` (unknown
+register `s7`); the independent SDK current-file test passes. No V2 runtime,
+installation or hardware acceptance is implied by these checks.
+
+The input semantics are:
 
 | Input | Meaning |
 | --- | --- |
@@ -512,6 +1896,83 @@ The first release distinguishes scopes explicitly:
 | Sound/pattern copy, p-locks and LFO modulation of new fields | Not promised until their integration passes dedicated tests |
 
 For full Sound/project integration, first prove stable identities and save/load/copy/paste/reload paths. A RAM Sound pointer or a pattern number is not a persistent key. Define behavior for missing modules and old schema versions before extending native serialization or adding a project sidecar. Keep that work separately releasable; do not imply that an attractive SRC page establishes native persistence.
+
+## Booted loader proof
+
+An emulator-only `test/instrument-load` fixture now drives the real coordinator
+through DKDS6 parsing, admission, DSP image upload, INSTALL, CREATE, publication,
+DETACH and memory/link release. The DT2 1.17 test checks uploaded bytes and callback
+state, and releases the 128-byte allocation only after acknowledged detach.
+The fixture enables private DSP lifecycle readiness after session binding; normal
+firmware still has no public V2 admission, machine route or audio dispatch.
+The live proof also exposed and fixed recursive ColdFire byte-swap lowering in
+descriptor decoding. All 167 SDK cases pass. See
+[the measured lifecycle result](../findings/78-canopy-carrier.md).
+
+### Admitted process dispatch checkpoint
+
+The coordinator now requires separate INSTALL and INSTALL_PROCESS acknowledgements
+before CREATE and publication. The DSP binds each process entry and its event/control
+limits to the reserved owner/generation. A protected dispatcher checks READY state,
+selects the admitted instance stride, and quarantines callback faults while retaining
+state for retirement. Fault output is silenced. Adapter input/output buffers may live
+throughout bootable L2; this does not enlarge the dynamic image/state allocation.
+
+CANOPY now has V2 reset/process callbacks using allocator-owned 528-byte instances
+and normalized six-word events. They validate a complete event batch before applying
+it. Direct and protected processor tests cover C/E, add G, release E, sustain, per-note
+velocity, route-specific bend, reset isolation, generation rejection and bounded
+stealing. A paired instance reference checks that C/G oscillator state and gain remain
+identical through E's onset/release. This is kernel evidence, not final-output acceptance.
+The callback currently requires neutral tuning and one fixed PLAY control; its provisional
+descriptor limits are not release admission budgets. Reset clears an instance immediately;
+carrier quiescence/ramping must precede destructive lifecycle resets.
+
+The booted uploaded-process test passes: CREATE, installed process entry, output
+write and instance mutation, then acknowledged DETACH before memory release.
+That uses a small diagnostic callback, not CANOPY final PCM.
+
+The core packet adapter now validates ordered packets, checks epoch/track/instance
+generation/revision, normalizes the full batch and preclears output before dispatch.
+The booted load fixture exercises this path with a diagnostic callback. These callbacks
+are not yet connected to a public machine package, live route owner or final carrier dispatch. No stage completion is claimed by this checkpoint.
+
+### Stage 1 completion checklist
+
+- [x] Booted upload, CREATE, publication, DETACH and allocator release.
+- [x] Sine-bank keyboard ownership, pedal and independent velocity in the carrier fixture.
+- [x] Exact C-E, add G, release E sequence measured in final stereo PCM: settled
+  C/G phase and amplitude persist, and E disappears. This does not establish
+  uninterrupted samples throughout the release transient.
+- [x] Replace the fixture's stock type-1 shadow with the admitted V2 process entry.
+- [x] Connect normalized MIDI/configuration input and instance state to that process ABI
+  in the single-instance adapter; instruction-level checks pass. Booted integrated
+  audio acceptance remains separate below.
+- [x] Connect supported machine registration, explicit keyboard route and shared carrier ownership.
+- [x] Run the complete Stage 1 acceptance through that integrated path, including
+  transition-sample continuity, pedal, velocity and fault retirement.
+
+The integrated test uploads and reads back the actual CANOPY DKM, restarts,
+waits for CREATE/publication, selects its assigned type through the stock
+chooser and enables the keyboard route through SETTINGS > DIGIKIT > KEYBOARD.
+It captures final stereo PCM for C-E, add G, release E, checks every transition
+sample for discontinuities/missing blocks, checks independent pedal ownership,
+and compares the same pitch at velocities 40 and 127 while DIN G stays held.
+An injected callback-generation fault must produce silence and acknowledged
+DETACH before DSP allocation release; published CF storage remains until reboot.
+
+Acceptance: `tests/regression/runtime/canopy-stage1.test.ts` passes in 347.66 s;
+log `out/canopy-stage1-live.log`, PCM and fits `out/canopy-stage1*`.
+The package uses V2 reset/process entries, not a stock type-1 shadow. The adapter
+is optional, DTII-only, one instance, track 1, boot-only, with disabled-by-default
+nonpersistent route settings. Development installation uses the upload/selection
+protocol; the generic module-browser fit calculator remains V1-only. General
+module browsing, coexistence and hardware release proof are not implied.
+
+Stage 1 is complete at its emulator acceptance boundary. The declared policy's
+100000/1000 process/reset ceilings exceed the tested 17732/411 instruction cases;
+these are instruction counts, not a measured hardware CPU budget. Stage 6 owns
+hardware timing and release approval.
 
 ## Implementation stages and acceptance
 
