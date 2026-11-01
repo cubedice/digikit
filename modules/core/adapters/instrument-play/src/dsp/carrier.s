@@ -1,0 +1,6 @@
+#include "../../../midi-events/src/dsp/carrier.s"
+#include "../../../midi-events/src/dsp/carrier-frame.s"
+#include "../../../midi-events/src/dsp/envelope.s"
+#include "../../../midi-events/src/dsp/workspace.s"
+#include "../../../midi-events/src/dsp/velocity.s"
+#include "../../../midi-events/src/dsp/velocity-entry.s"

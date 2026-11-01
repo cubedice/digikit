@@ -22,7 +22,7 @@ def instrument():
     )
     source += "\n" + "\n".join(
         (CANOPY / (name + ".s")).read_text()
-        for name in ("voice", "tuning", "instrument")
+        for name in ("voice", "tuning", "events", "instrument")
     )
     obj = pk_sharc.assemble(source)
     sections, initial, address = {}, {}, 0x20020000

@@ -73,6 +73,7 @@ CANOPY_INCLUDES = {
     "modules/machines/canopy/src/dsp/voice.s",
     "modules/machines/canopy/src/dsp/tuning.s",
     "modules/machines/canopy/src/dsp/instrument.s",
+    "modules/machines/canopy/src/dsp/events.s",
 }
 CANOPY_IMPORTS = {
     "canopy_carrier_prepare",

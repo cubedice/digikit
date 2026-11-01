@@ -1260,3 +1260,13 @@ the command returns E_PROTO. The fixture emits E_INIT only if registration first
 succeeded. It passes in 17.08 seconds (out/canopy-publication-live.log). The six
 gate-routing cases pass and the rebuilt runtime object is current. This proves
 CF cleanup, not asynchronous V2 publication or DSP/audio integration.
+
+
+## [D] Admitted playback boundary
+
+The non-default core/instrument-play adapter passes instruction-level checks for
+normalized event consumption, one process advance per block, cached carrier
+output, bounded replacement tails and ownership-loss silence. Legacy dispatch
+priority is preserved. This is component evidence, not booted final stereo
+acceptance or public keyboard-route readiness. See the November 1 CANOPY handover
+for test counts and outstanding Stage 1 integration.

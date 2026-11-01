@@ -137,7 +137,9 @@ def _externs_fixed(device: str, spec: pk_conform.MachineSpec) -> dict[str, int]:
         "_fw_render_next": dv.STOCK_BP,
         "_fw_frame": dv.FRAME,
         "_fw_param_rec": dv.PARAM_REC,
+        "_instrument_voice_rows": 0,
         "_dv_table": dv.TABLE,
+        "_dv_v2_scan": dv.DIAG + 0x120,
     }
     if device == "dn2":
         fixed.update(

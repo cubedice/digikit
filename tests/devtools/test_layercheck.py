@@ -365,6 +365,7 @@ def test_canopy_fixture_exception_is_narrow(
     bridge = write(
         tree, "modules/core/adapters/midi-events/src/cf/bridge.h", "/* private */"
     )
+    events = write(tree, "modules/machines/canopy/src/dsp/events.s", "// shared engine")
     other = write(
         tree, "modules/core/adapters/midi-events/src/cf/other.h", "/* private */"
     )
@@ -373,7 +374,7 @@ def test_canopy_fixture_exception_is_narrow(
         f"{directory}/src/control.c",
         "\n".join(
             f'#include "{os.path.relpath(p, source.parent).replace(chr(92), "/")}"'
-            for p in (bridge, other)
+            for p in (bridge, events, other)
         ),
     )
     dko(
@@ -384,7 +385,7 @@ def test_canopy_fixture_exception_is_narrow(
     mods = layercheck.load_modules(tree)
     sources = layercheck.check_sources(tree, mods)
     objects = layercheck.check_objects(tree, mods)
-    assert len(sources) == (1 if allowed else 2)
+    assert len(sources) == (1 if allowed else 3)
     assert len(objects) == (1 if allowed else 4)
     assert any("other.h" in v.message for v in sources)
     assert any("_unrelated_private" in v.message for v in objects)

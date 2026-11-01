@@ -154,3 +154,39 @@ TypeScript types/format and scoped documentation checks pass. The gate now packs
 the fixture for this regression. Changed-file preflight still fails only the
 existing global 256 stale references. Logs: out/canopy-publication-{build,check,
 routing,live,changed}.log. No hardware changes or public V2 enablement.
+
+
+## Follow-up: admitted playback adapter (Stage 1 still open)
+
+Added core/instrument-play, a non-default DT2-only adapter for one admitted row
+and track 1. It receives normalized MIDI/configuration into owned buffers, invokes
+the protected V2 process once per block, and copies cached output through a separate
+optional raw-carrier table. The stock voice adapter checks legacy registrations
+first. The new table never replaces a stock type and retains silence on ownership
+loss rather than falling back to a stock renderer for the added type.
+
+Separated CANOPY's shared atomic note engine into events.s, so a future uploaded
+module can omit the legacy track-bank callbacks. REPLACE reset now retains
+oscillator phase/gain for the existing bounded 64-sample release ramp, clears
+pending notes/pedal ownership, and waits for quiet before new configuration.
+Other reset reasons retain their clear-state behavior.
+
+Validation: 55 CANOPY callback/legacy-engine tests, 145 playback/stock-voice tests,
+and two additional optional-table/legacy-priority tests pass. Build/current checks
+passed for core/instrument-play, core/dsp-voice and test/canopy-transport. Logs:
+out/canopy-event-split.log, out/canopy-play-host.log,
+out/canopy-play-dispatch.log, out/canopy-play-build.log, out/canopy-play-check.log.
+The instruction test caught a duplicate global code/data declaration for the
+optional table; removing the redundant GLOBAL data declaration fixes its address.
+
+The normal-file loader work is still being debugged separately. Its original
+publication test passed, but the stronger completion/failure test found phase 9
+(blocked); DKRT_INSTRUMENT_FILE now includes the last phase or coordinator failure.
+The diagnostic identifies coordinator Boot invalidation (code 100), after CF
+publication or the expected E_INIT. The runtime retains memory on this uncertainty.
+Do not mark normal-file finalization complete until that regression passes.
+
+Still required for Stage 1: normal-file completion/reclamation, public CANOPY
+packing and a measured trusted admission policy, CF Sound/route readiness and
+DSP fault feedback, then final stereo continuity/pedal/velocity/fault-retirement
+acceptance through the admitted path. No hardware was changed.

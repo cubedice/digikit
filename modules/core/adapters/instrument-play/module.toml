@@ -1,0 +1,36 @@
+[module]
+id = "core/instrument-play"
+version = "0.1.0"
+name = "Persistent instrument playback"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Single-instance V2 transport and shared carrier; admission policy supplied separately."
+requires = ["core/instrument-registry", "core/dsp-voice"]
+conflicts = ["test/canopy-carrier", "test/canopy-transport", "test/instrument-load"]
+ports = ["dt2-1.17"]
+[targets]
+"dt2-1.17" = "experimental"
+[[object]]
+path = "build/play-dsp.dko.json"
+sources = ["src/dsp/play.s", "src/dsp/reset-protected.s", "src/dsp/carrier.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+[object.externs]
+_mi_workspace_next = "dsp.voice.site.envelope_workspace.next"
+_mi_envelope_next = "dsp.voice.site.envelope_entry.next"
+_mi_velocity_next = "dsp.voice.site.velocity_operand.next"
+[[op]]
+op = "hook"
+hook = "dsp.voice.hook.envelope_workspace"
+to = "_mi_workspace_entry"
+[[op]]
+op = "hook"
+hook = "dsp.voice.hook.envelope_entry"
+to = "_mi_envelope_entry"
+[[op]]
+op = "hook"
+hook = "dsp.voice.hook.velocity_operand"
+to = "_mi_velocity_entry"

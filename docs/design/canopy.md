@@ -1936,10 +1936,18 @@ are not yet connected to a public machine package, live route owner or final car
   C/G phase and amplitude persist, and E disappears. This does not establish
   uninterrupted samples throughout the release transient.
 - [ ] Replace the fixture's stock type-1 shadow with the admitted V2 process entry.
-- [ ] Connect normalized MIDI/configuration input and instance state to that process ABI.
+- [x] Connect normalized MIDI/configuration input and instance state to that process ABI
+  in the single-instance adapter; instruction-level checks pass. Booted integrated
+  audio acceptance remains separate below.
 - [ ] Connect supported machine registration, explicit keyboard route and shared carrier ownership.
 - [ ] Run the complete Stage 1 acceptance through that integrated path, including
   transition-sample continuity, pedal, velocity and fault retirement.
+
+The normal-file V2 load path and single-instance playback adapter are now under
+integration. Component checks cover an admitted process receiving normalized
+notes, once-per-block rendering, raw carrier copying, replacement tails and
+legacy voice priority. The adapter is not in a default patch set; public packing,
+CF route readiness/fault feedback and final stereo acceptance remain open.
 
 Stage 1 remains open. Passing fixture proofs must not be reported as a playable
 V2 machine or as completion of the integrated lifecycle/audio path.

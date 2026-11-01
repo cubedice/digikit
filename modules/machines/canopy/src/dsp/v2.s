@@ -12,6 +12,9 @@ _canopy_reset:
     R0 = 4;
     COMP(R8, R0);
     IF GT JUMP _cv_bad;
+    R0 = 2;
+    COMP(R8, R0);
+    IF EQ JUMP _cv_replace;
     I0 = R4;
     R1 = 132;
     R0 = 0;
@@ -19,6 +22,24 @@ _cv_reset_clear:
     DM(I0, M6) = R0;
     R1 = R1 - 1;
     IF NE JUMP _cv_reset_clear;
+    JUMP (M13, I13);
+_cv_replace:
+    I0 = R4;
+    R1 = 6;
+_cv_replace_slots:
+    R0 = 2;
+    DM(1, I0) = R0;
+    MODIFY(I0, 8) (NW);
+    R1 = R1 - 1;
+    IF NE JUMP _cv_replace_slots;
+    // Discard pending onsets, pedal ownership and generation metadata. The six
+    // oscillator slots retain phase/gain through their at-most-64-sample ramp.
+    R1 = 84;
+    R0 = 0;
+_cv_replace_clear:
+    DM(I0, M6) = R0;
+    R1 = R1 - 1;
+    IF NE JUMP _cv_replace_clear;
     JUMP (M13, I13);
 _canopy_process:
     DM(_cv_state) = R4;

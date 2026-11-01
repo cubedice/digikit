@@ -728,3 +728,25 @@ def test_a_retrigger_restarts_the_oscillator_and_a_stopped_voice_is_silent(rig_c
     rig.rec_word(0, 0x1B8, 0)
     out = rig.call(0)
     assert out["out"] == [0] * 32
+
+
+@pytest.mark.parametrize("legacy_match", [False, True])
+def test_optional_v2_carrier_table_preserves_legacy_priority(monkeypatch, legacy_match):
+    from support import dsp_voice_rig as dv
+
+    original = dv.core_externs
+    table = dv.TABLE + 0x800
+    monkeypatch.setattr(
+        dv, "core_externs", lambda: {**original(), "_instrument_voice_rows": table}
+    )
+    rig = Rig()
+    for i in range(48):
+        rig.dm[nw(table) + i] = 0
+    kind = TYPE if legacy_match else 20
+    rig.dm[nw(table)] = kind
+    # An invalid new-table entry must not preempt the valid legacy entry.
+    rig.dm[nw(table) + 1] = 0xDEAD if legacy_match else rig.render_pc
+    rig.set_type(0, kind)
+    out = rig.call(0)
+    assert stops_at(out, RETURN_SW), out["halt"]
+    context_intact(out)

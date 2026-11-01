@@ -11,7 +11,7 @@ def canopy_object(request):
     root = REPO_ROOT / "modules/machines/canopy/src/dsp"
     source = "\n".join(
         (root / f"{name}.s").read_text()
-        for name in ["voice", "tuning", "instrument", "v2"]
+        for name in ["voice", "tuning", "events", "instrument", "v2"]
     )
     if request.param:
         registry = REPO_ROOT / "modules/core/adapters/instrument-registry/src/dsp"
@@ -377,3 +377,26 @@ def test_packet_bend_and_full_event_batch(canopy):
         assert voices(result)[token][4:6] != before[token][4:6]
     for token in (6, 8):
         assert voices(result)[token][4:7] == before[token][4:7]
+
+
+def test_replace_reset_preserves_phase_then_finishes_bounded_tail(canopy):
+    import struct
+
+    canopy([note(1, 60)])
+    before = canopy()
+    reset = canopy(reset=2)
+    assert reset["state"][2:8] == before["state"][2:8]
+    assert reset["state"][1] == 2
+    assert reset["state"][48:] == [0] * 84
+    first = canopy(generation=2)
+    second = canopy(generation=2)
+    quiet = canopy(generation=2)
+    assert any(first["out"])
+    assert quiet["regs"]["R0"] == 1
+    assert quiet["out"] == [0] * 32
+    assert second["state"][0] == 0
+    values = [
+        struct.unpack("<f", struct.pack("<I", word))[0]
+        for word in first["out"] + second["out"]
+    ]
+    assert max(abs(b - a) for a, b in zip(values, values[1:], strict=False)) < 0.1
