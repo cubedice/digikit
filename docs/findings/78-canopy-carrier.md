@@ -1221,3 +1221,26 @@ Logs: `out/canopy-route-readiness.log`, `out/canopy-route-coldfire.log`,
 [O] This is route-lifetime protection and fixture regression evidence. Production
 V2 loading, explicit machine/route selection and shared-carrier integration are
 still required before Stage 1 final-output acceptance.
+
+
+## Shared runtime allocation (2026-11-01)
+
+[D] The V2 load proof now borrows the runtime DSP allocation ledger and provider
+bounds instead of a caller-supplied 256-byte sub-pool. In the booted DT2 1.17
+fixture, the real pool starts at 0x2001b24c and spans 512 KiB. Requiring that whole
+pool to end below 0x20080000 incorrectly refused admission. The allocator now
+validates shared-pool bookkeeping up to the bootable L2 boundary 0x200fe000, while
+requiring the complete V2 reservation to remain below 0x20080000. Legacy upper-L2
+reservations remain visible to the shared search. No executable bound was widened.
+
+[D] Seven allocator tests pass, including occupied upper L2 and lower-region
+exhaustion with atomic refusal. The booted lifecycle test reserves the first
+512 bytes in the real ledger, uploads after that aligned range, executes reset
+and process callbacks, then detaches before releasing only its own reservation.
+The pre-existing reservation and its uninitialized bytes remain unchanged. This
+is simulated occupancy, not coexistence with a running legacy module. Logs:
+`out/canopy-shared-ledger-host.log`, `out/canopy-shared-ledger-live.log`,
+`out/canopy-shared-ledger-build.log`, `out/canopy-shared-ledger-check.log`.
+
+[O] Normal DKM loading and deferred CF publication, production routing and shared
+carrier wiring remain disabled/incomplete. This does not complete Stage 1.

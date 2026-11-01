@@ -57,7 +57,7 @@ impl Loads {
             || ledger
                 .base
                 .checked_add(ledger.bytes)
-                .is_none_or(|end| end > 0x2008_0000)
+                .is_none_or(|end| end > 0x200f_e000)
             || request.image_bytes == 0
             || request.image_bytes % 2 != 0
             || request.state_bytes == 0
@@ -90,6 +90,12 @@ impl Loads {
         )
         .ok_or(MemoryError::NoSpace)?;
         let start = ledger.base + offset;
+        // The shared pool may include upper L2 used by legacy data. V2 code
+        // still uses the lower executable alias; constrain this allocation,
+        // not the entire pool, and preserve upper-L2 reservation bookkeeping.
+        if start.checked_add(len).is_none_or(|end| end > 0x2008_0000) {
+            return Err(MemoryError::NoSpace);
+        }
         let grant = Grant {
             ticket,
             image: Range {

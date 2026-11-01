@@ -436,6 +436,26 @@ pub unsafe fn area_bytes() -> u32 {
     }
 }
 
+/// Borrow the actual shared image/state ledger for V2 admission and release.
+/// UI-task only: the caller must own the DSP link lease before mutating it and
+/// keep the module record reserved until acknowledged detach/release. Never use
+/// legacy `cancel`/`release` for a V2 reservation. No caller-supplied area address.
+pub unsafe fn instrument_ledger() -> Option<instrument_load::Ledger<'static>> {
+    if info().is_null() {
+        return None;
+    }
+    let base = iw(I_AREA);
+    let bytes = iw(I_AREA_BYTES);
+    if bytes == 0 || base < 0x2000_0000
+        || base.checked_add(bytes).is_none_or(|end| end > 0x200f_e000) {
+        return None;
+    }
+    let d = ds();
+    Some(instrument_load::Ledger {
+        base, bytes, offsets: &mut d.mod_off, lengths: &mut d.mod_len,
+    })
+}
+
 /// Free bytes in the area and the largest free range, for `dkrt_status`.
 pub unsafe fn area_stats() -> (u32, u32) {
     let total = area_bytes();

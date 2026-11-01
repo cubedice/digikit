@@ -4,7 +4,7 @@
 use super::{Owner, LinkProgress, Progress};
 use core::ptr::{addr_of_mut, read_volatile};
 use dkrt_sdk::{instrument_admission::{Limits, Range}, instrument_descriptor,
-    instrument_load::{Command, Ledger}, instrument_registry::Ticket,
+    instrument_load::Command, instrument_registry::Ticket,
     instrument_section::Section};
 extern "C" { fn instrument_load_probe() -> *const u32; }
 pub(super) fn present() -> bool {
@@ -22,14 +22,14 @@ pub(super) unsafe fn tick(owner: &mut Owner, link: LinkProgress, now: u32) {
     let request = read_volatile(input);
     let status = &mut *addr_of_mut!(DKRT_INSTRUMENT_LOAD);
     if status[0] == 6 || status[0] == 9 { return; }
-    let d = crate::dsp::ds();
-    let mut ledger = Ledger { base: read_volatile(input.add(2)), bytes: 256,
-        offsets: &mut d.mod_off, lengths: &mut d.mod_len };
-    // The probe uses only the first 256 bytes of the link area, and only with
-    // an empty legacy DSP ledger. It is not the production allocator policy.
+    // Use the production allocator bounds and shared legacy/V2 reservation table.
+    let Some(mut ledger) = crate::dsp::instrument_ledger() else {
+        status[0] = 9; return;
+    };
     if status[0] == 0 {
         if request != 1 { return; }
-        if ledger.lengths.iter().any(|n| *n != 0) || owner.request_link(now, 2000).is_err() {
+        if crate::st().modules[SLOT].used != 0 || ledger.lengths[SLOT] != 0
+            || owner.request_link(now, 2000).is_err() {
             status[0] = 9; return;
         }
         status[0] = 1;

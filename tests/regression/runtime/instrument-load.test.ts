@@ -45,6 +45,21 @@ test('bound instrument uploads, initializes and retires before memory release', 
     .poll(() => session.client.memPeek(planSymbol(plan, 'DKRT_INSTRUMENT_SESSION')), { timeout: 30_000 })
     .toBe(4);
 
+  // Seed one occupied range in the real runtime ledger. This models a prior
+  // reservation, not a loaded legacy instrument. DKRT_DSP is repr(C): 13 words
+  // precede the eight offsets, followed by the eight lengths.
+  const ledger = planSymbol(plan, 'DKRT_DSP');
+  const offsets = ledger + 13 * 4;
+  const lengths = offsets + 8 * 4;
+  const area = planSymbol(plan, '_dl_area');
+  expect(await session.client.memPeek(lengths)).toBe(0);
+  await writeWord(offsets, 0);
+  await writeWord(lengths, 512);
+  const occupiedBefore = await session.client.call<{ hex: string; unknown: number }>('dsp.peek', {
+    addr: area,
+    len: 512,
+  });
+
   // Use assembler-produced, relocation-free callback bytes. Never guess opcode encodings.
   const object = JSON.parse(
     fs.readFileSync(path.join(root, 'out/cache/dko/test/instrument-load/build/probe-dsp.dko.json'), 'utf8'),
@@ -80,6 +95,7 @@ test('bound instrument uploads, initializes and retires before memory release', 
   code.copy(section, 112);
   [0x444b4954, 2, 48, 0, 1, 8, 8, 1, 20, 20, 2, 32].forEach((value, i) => section.writeUInt32LE(value, 176 + 4 * i));
   const input = planSymbol(plan, 'ilp_input');
+  await writeWord(input + 8, 0xffffffff); // must never supply allocator bounds
   await write(input + 12, section);
   await writeWord(input + 4, section.length);
   await writeWord(input, 1);
@@ -114,7 +130,10 @@ test('bound instrument uploads, initializes and retires before memory release', 
   expect(await word(5)).toBe(128);
   const base = (await word(1))!;
   const state = (await word(2))!;
+  expect(base).toBe(Math.ceil((area + 512) / 16) * 16);
   expect(state).toBe(base + 112);
+  expect(await session.client.memPeek(lengths)).toBe(512);
+  expect(await session.client.memPeek(lengths + 7 * 4)).toBe(128);
   const peek = async (addr: number, len: number) => {
     const result = await session.client.call<{ hex: string; unknown: number }>('dsp.peek', { addr, len });
     expect(result.unknown).toBe(0);
@@ -139,5 +158,15 @@ test('bound instrument uploads, initializes and retires before memory release', 
   expect((await peek(state, 4)).readUInt32LE()).toBe(4); // DETACH callback completed before release
   expect((await peek(planSymbol(plan, '_ir_rows'), 4)).readUInt32LE()).toBe(6);
   expect(await session.client.memPeek(planSymbol(plan, 'dl_link') + 76)).toBe(0);
+  expect(await session.client.memPeek(lengths + 7 * 4)).toBe(0);
+  expect(await session.client.memPeek(lengths)).toBe(512);
+  expect(await session.client.memPeek(offsets)).toBe(0);
+  const occupiedAfter = await session.client.call<{ hex: string; unknown: number }>('dsp.peek', {
+    addr: area,
+    len: 512,
+  });
+  expect(occupiedAfter.hex).toBe(occupiedBefore.hex);
+  expect(occupiedAfter.unknown).toBe(occupiedBefore.unknown);
+  await writeWord(lengths, 0); // release only our synthetic reservation
   await session.expectNoFault('completed instrument lifecycle');
 }, 150_000);

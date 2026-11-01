@@ -7,7 +7,7 @@ type = "framework"
 author = "digikit"
 status = "experimental"
 summary = "Emulator-only upload, initialize and retire probe; no public admission."
-requires = ["test/instrument-session"]
+requires = ["test/instrument-session", "core/dyndsp"]
 conflicts = ["test/instrument-session-loss", "test/canopy-carrier"]
 ports = ["dt2-1.17"]
 [targets]

@@ -103,3 +103,30 @@ The booted stock-carrier chord regression also passes (158.88 seconds;
 This remains fixture regression evidence, not integrated V2 acceptance. Scoped
 documentation path checks pass. Changed-file preflight passes its other selected
 checks but still fails the existing global 256 stale references in 78 files.
+
+## Follow-up: shared DSP allocation
+
+The V2 lifecycle path now obtains its pool bounds from the runtime dyndsp provider
+and borrows the real mod_off/mod_len ledger through dsp::instrument_ledger. The
+probe no longer supplies an address or assumes an empty 256-byte pool. It refuses
+an occupied owner record and holds the link lease through acknowledged release.
+
+Booted integration exposed an allocator mismatch: the actual 512-KiB shared pool
+starts above the L2 origin, extending beyond the lower executable region. V2 now
+validates the complete ledger within bootable L2, including upper-L2 legacy
+reservations, but still requires its own entire allocation below 0x20080000.
+A full lower region fails without changing the ledger or consuming the ticket.
+Seven allocator tests pass, including upper-L2 reservations and lower-region
+exhaustion. The diagnostic fixture explicitly depends on core/dyndsp.
+
+The booted test seeds a 512-byte reservation in the actual runtime ledger, then
+checks aligned V2 placement after it, uploaded reset/process callbacks, and detach
+before release. The seeded reservation models occupancy; it is not a running
+legacy module. Normal DKM loading, CF publication after CREATE, public capability
+gating and machine/route/shared-carrier integration remain open.
+
+Validation: the full booted shared-ledger lifecycle test passes
+(`out/canopy-shared-ledger-live.log`), as do seven allocator tests, TypeScript
+type/format checks and scoped documentation checks. The runtime object is rebuilt
+and current-checked at 43690 decoded instructions. Changed-file preflight still
+fails only the existing 256 stale references in 78 files. No hardware was touched.

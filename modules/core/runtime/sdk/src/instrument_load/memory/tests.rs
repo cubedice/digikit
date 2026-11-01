@@ -265,3 +265,39 @@ fn instrument_memory_live_retirement_keeps_other_modules_intact() {
     assert_eq!(ledger.lengths, &[0, 128]);
     assert_eq!(loads.capacity().rows_used, 1);
 }
+
+#[test]
+fn instrument_memory_shared_pool_can_include_upper_l2_legacy_data() {
+    let mut loads = Loads::new(16);
+    let ticket = reserve(&mut loads, 1);
+    let mut offsets = [0x70000, 0];
+    let mut lengths = [128, 0];
+    let mut ledger = Ledger {
+        base: 0x20010004, bytes: 0x80000,
+        offsets: &mut offsets, lengths: &mut lengths,
+    };
+    let grant = loads.reserve_memory(ticket, &mut ledger, &request()).unwrap();
+    assert_eq!(grant.image.start, 0x20010010);
+    assert_eq!(ledger.offsets, &[0x70000, 12]);
+    assert_eq!(ledger.lengths, &[128, 128]);
+    assert_eq!(loads.cancel(ticket), Ok(Command::Release(ticket)));
+    loads.release_memory(ticket, &mut ledger).unwrap();
+    assert_eq!(ledger.lengths, &[128, 0]);
+}
+
+#[test]
+fn instrument_memory_does_not_place_code_in_upper_l2_when_lower_pool_is_full() {
+    let mut loads = Loads::new(16);
+    let ticket = reserve(&mut loads, 1);
+    let mut offsets = [0, 0];
+    let mut lengths = [0x70000, 0];
+    let mut ledger = Ledger {
+        base: 0x20010000, bytes: 0x80000,
+        offsets: &mut offsets, lengths: &mut lengths,
+    };
+    assert!(matches!(loads.reserve_memory(ticket, &mut ledger, &request()), Err(MemoryError::NoSpace)));
+    assert_eq!(ledger.offsets, &[0, 0]);
+    assert_eq!(ledger.lengths, &[0x70000, 0]);
+    // Refusal must leave the ticket cancellable without a DSP detach.
+    assert_eq!(loads.cancel(ticket), Ok(Command::Release(ticket)));
+}
