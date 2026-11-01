@@ -54,3 +54,13 @@ the adapter must preclear scratch and handle faults.
    old fixture, so they do not close this gate.
 
 No hardware firmware deployment occurred in this work.
+
+## Preflight disposition
+
+The changed-file preflight passed Python lint/format/type checks, layer checking,
+related host-test selection, TypeScript lint and formatting. Global pathcheck
+still reports the existing 256 stale references. The unrelated repository
+`test_verify.py` sweep was interrupted after 287 seconds, with 132 passing tests
+and the two already-known failures: unclassified `patch:toolchains` task and
+`tools/device/dsp_reset_probe.py`. It is not a clean full preflight or merge gate.
+The targeted new/changed behavior checks completed separately as listed above.
