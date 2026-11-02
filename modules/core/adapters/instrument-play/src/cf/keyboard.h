@@ -13,7 +13,7 @@ typedef struct {
 } KbKey;
 typedef struct { uint32_t source, token; uint8_t note, velocity, port, channel; } KbVoice;
 typedef struct {
-    uint32_t epoch, generation, next_token, pedals, session, revision;
+    uint32_t epoch, generation, next_token, pedals, session, revision, phrase;
     uint8_t mode, previous_mode, latch, previous_latch, type, voicing, selector_base, selector_channel;
     uint8_t slot, capture_count, capture[4], status, dirty, update;
     KbShape shapes[8];

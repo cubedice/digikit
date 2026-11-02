@@ -9,7 +9,7 @@
 //! 0x03  DTERn    8  R/W  event, write-1-to-clear (bit 1 REF, bit 0 CAP)
 //! 0x04  DTRRn   32  R/W  reference value
 //! 0x08  DTCRn   32  R/W  capture (not modelled: unexercised)
-//! 0x0C  DTCNn   32  R    free-running counter (not modelled: unexercised)
+//! 0x0C  DTCNn   32  R    counter (opt-in bus-clock model; capture/external input unmodelled)
 //! ```
 //!
 //! DTMRn bits: 15-8 PS (prescaler, divides by PS+1), 7-6 CE, 5 OM, 4 ORRI,
@@ -83,6 +83,13 @@ struct Channel {
     transitions: u64,
 }
 
+#[derive(Clone, Default)]
+struct Counter {
+    enabled: bool,
+    now: u64,
+    fraction: f64,
+}
+
 pub struct DtimBank {
     regs: [RegFile; 4],
     /// See `PitBank::channels`: only these get scheduling logic; an
@@ -97,6 +104,7 @@ pub struct DtimBank {
     /// only, but retained when a portable timer component is imported.
     stale: Vec<usize>,
     ch: [Channel; 4],
+    counters: [Counter; 4],
 }
 
 impl Default for DtimBank {
@@ -113,6 +121,7 @@ impl Default for DtimBank {
             held: false,
             stale: Vec::new(),
             ch: Default::default(),
+            counters: Default::default(),
         }
     }
 }
@@ -160,6 +169,53 @@ impl DtimBank {
         }
     }
 
+    /// Opt into counter reads independently of interrupt scheduling. Trace replay
+    /// keeps its historical register-only model unless explicitly enabled.
+    pub fn enable_counter(&mut self, channel: usize, now: u64) {
+        self.counters[channel] = Counter {
+            enabled: true,
+            now,
+            fraction: 0.0,
+        };
+    }
+
+    /// Advance bus-clock counters before a timestamped MMIO access. No host time
+    /// enters this calculation. External-pin and 1588 clocks remain unmodelled.
+    pub fn advance_counters(&mut self, now: u64) {
+        for ch in 0..4 {
+            let c = &mut self.counters[ch];
+            if !c.enabled {
+                continue;
+            }
+            let elapsed = now.saturating_sub(c.now);
+            c.now = now;
+            let mode = self.regs[ch].u16_at(DTMR);
+            if mode & RST == 0 {
+                c.fraction = 0.0;
+                self.regs[ch].write(DTCN as u32, 4, 0);
+                continue;
+            }
+            let clock = (mode >> 1) & 3;
+            if clock != 1 && clock != 2 {
+                continue;
+            }
+            // Extended clock modes need separate clock models.
+            if self.regs[ch].u8_at(DTXMR) != 0 {
+                continue;
+            }
+            let divisor = ((mode >> 8) as u32 + 1) * if clock == 1 { 1 } else { 16 };
+            let ticks = c.fraction + elapsed as f64 * F_BUS / self.ips / divisor as f64;
+            c.fraction = ticks.fract();
+            let modulus = if mode & FRR != 0 {
+                self.regs[ch].u32_at(DTRR) as f64 + 1.0
+            } else {
+                4294967296.0
+            };
+            let value = (self.regs[ch].u32_at(DTCN) as f64 + ticks.floor()) % modulus;
+            self.regs[ch].write(DTCN as u32, 4, value as u32);
+        }
+    }
+
     pub fn read(&self, addr: u32, size: u8) -> Option<u32> {
         let ch = Self::slot(addr)?;
         Some(self.regs[ch].read(addr - BASES[ch], size))
@@ -173,6 +229,15 @@ impl DtimBank {
             return false;
         };
         self.regs[ch].write(addr - BASES[ch], size, value);
+        if self.counters[ch].enabled {
+            let offset = addr - BASES[ch];
+            if (offset < 16 && offset + size as u32 > DTCN as u32)
+                || self.regs[ch].u16_at(DTMR) & RST == 0
+            {
+                self.regs[ch].write(DTCN as u32, 4, 0);
+                self.counters[ch].fraction = 0.0;
+            }
+        }
         if self.channels.contains(&ch) {
             let target = BASES[ch] as i64 + DTER as i64;
             let start = addr as i64;
@@ -322,6 +387,7 @@ impl DtimBank {
         if new_ips == self.ips {
             return;
         }
+        self.advance_counters(now as u64);
         for c in &mut self.ch {
             if let Some(n) = c.next {
                 c.next = Some(now + (n - now) * new_ips / self.ips);
@@ -606,6 +672,12 @@ impl DtimBank {
 
 impl DtimBank {
     pub fn snap_save(&self, w: &mut crate::snap::Writer) {
+        w.tag("DTCN");
+        for c in &self.counters {
+            w.bool(c.enabled);
+            w.u64(c.now);
+            w.f64(c.fraction);
+        }
         w.bool(self.held);
         w.u64(self.stale.len() as u64);
         for s in &self.stale {
@@ -622,6 +694,18 @@ impl DtimBank {
         }
     }
     pub fn snap_load(&mut self, r: &mut crate::snap::Reader) -> crate::snap::Result<()> {
+        self.counters = Default::default();
+        if r.has_tag("DTCN") {
+            r.tag("DTCN")?;
+            for c in &mut self.counters {
+                c.enabled = r.bool()?;
+                c.now = r.u64()?;
+                c.fraction = r.f64()?;
+                if !c.fraction.is_finite() || !(0.0..1.0).contains(&c.fraction) {
+                    return Err("invalid DTIM counter fraction".into());
+                }
+            }
+        }
         self.held = r.bool()?;
         let n = r.len(1 << 16)?;
         self.stale = (0..n)

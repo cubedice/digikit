@@ -166,7 +166,7 @@ test('out-of-range generated chord is rejected as a whole', () => {
 test('retained expansion is identical on retries; stale ACK cannot retire physical input', () => {
   const [a, b, c, d] = run('mode 1\non 0 0 60 90\nhold\nack 99 1\nhold\nack 1 999\ntick\nsnapshot');
   expect(a!.packet).toHaveLength(32);
-  expect(a!.packet[1]).toBe(1 | (3 << 8));
+  expect(a!.packet[1]).toBe(5 | (3 << 8));
   expect(b!.packet).toEqual(a!.packet);
   expect(c!.packet).toEqual(a!.packet);
   expect(d!.queued).toBe(0);
@@ -174,7 +174,7 @@ test('retained expansion is identical on retries; stale ACK cannot retire physic
 });
 test('lost ACK deadline resets ownership rather than replaying a fresh chord', () => {
   const [a, b] = run('mode 1\non 0 0 60 90\nhold\nblock 900\nhold');
-  expect(a!.packet[1]).toBe(1 | (3 << 8));
+  expect(a!.packet[1]).toBe(5 | (3 << 8));
   expect(b!.reset).not.toBe(0);
   expect(b!.packet[1]).toBe(2);
 });
@@ -332,4 +332,27 @@ test('direct controller plus unflushed UI diff fails within its output buffer', 
     'mode 1\nlearn\non 0 0 60 90\non 0 0 61 90\non 0 0 62 90\non 0 0 63 90\ntick\nsave\ntype 11\non 0 0 60 90\ntick\ntype 10\nvoicing 3\ndirectcc 120\nsnapshot',
   ).slice(-1);
   expect(s!.result).toBe(-1);
+});
+
+test('mapped phrases survive retry and same-chord latch replacement commits without note retrigger', () => {
+  const [a, release, b, retry] = run(
+    'mode 1\nlatch 1\non 0 0 60 90\ntick\noff 0 0 60 0\ntick\non 0 0 60 90\nhold\nhold',
+  );
+  expect(release!.voices).toEqual(a!.voices);
+  expect(b!.voices).toEqual(a!.voices);
+  expect(b!.packet[1]).toBe(5 | (1 << 8));
+  expect(b!.packet[10]).toBe(5); // metadata-only commit
+  expect(b!.packet[4]! >>> 31).toBe(1);
+  expect(b!.packet[4]! & 0x7fffffff).toBe((a!.packet[4]! & 0x7fffffff) + 1);
+  expect(retry!.packet).toEqual(b!.packet);
+});
+
+test('PLAY chord edits retain phrase while fresh attack after silence advances it', () => {
+  const [a, b, release, c] = run(
+    'on 0 0 60 90\ntick\non 0 0 64 90\ntick\noff 0 0 60 0\noff 0 0 64 0\ntick\non 0 0 67 90\ntick',
+  );
+  expect(a!.packet[4]! >>> 31).toBe(0);
+  expect(b!.packet[4]).toBe(a!.packet[4]);
+  expect(release!.voices).toEqual([]);
+  expect(c!.packet[4]).toBe(a!.packet[4]! + 1);
 });

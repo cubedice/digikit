@@ -46,16 +46,35 @@ _ir_process_row:
     IF LT JUMP _ip_invalid;
     // Adapter buffers may be statically linked above the dynamic code arena.
     // Bound them by bootable L2, excluding the boot ROM workspace at 0x200fe000.
-    R0 = 0x200fdfb8;
+    R0 = 0x200fdfb0;
     COMP(R8, R0);
     IF GT JUMP _ip_invalid;
     I2 = R8;
     R0 = DM(0, I2);
     R1 = 2;
     COMP(R0, R1);
+    IF EQ JUMP _ip_v2;
+    R1 = 3;
+    COMP(R0, R1);
+    IF EQ JUMP _ip_v3;
+    R1 = 4;
+    COMP(R0, R1);
     IF NE JUMP _ip_invalid;
+    R0 = I2;
+    R1 = 0x200fdfa8;
+    COMP(R0, R1);
+    IF GT JUMP _ip_invalid;
+    R0 = DM(1, I2);
+    R1 = 88;
+    JUMP _ip_size;
+_ip_v3:
+    R0 = DM(1, I2);
+    R1 = 80;
+    JUMP _ip_size;
+_ip_v2:
     R0 = DM(1, I2);
     R1 = 72;
+_ip_size:
     COMP(R0, R1);
     IF NE JUMP _ip_invalid;
     R0 = DM(8, I2);

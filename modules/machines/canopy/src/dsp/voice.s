@@ -28,9 +28,14 @@ _cp_note_on:
     I0 = R4;
     R2 = 6;
 _cp_unique_token:
+    R0 = DM(1, I0);
+    R1 = 4;
+    R0 = R0 AND R1;
+    IF NE JUMP _cp_unique_next;
     R0 = DM(0, I0);
     COMP(R0, R8);
     IF EQ JUMP _cp_reject;
+_cp_unique_next:
     MODIFY(I0, 8) (NW);
     R2 = R2 - 1;
     IF NE JUMP _cp_unique_token;
@@ -67,6 +72,8 @@ _cp_oldest:
     R1 = PASS R1;
     IF NE JUMP _cp_compare_candidate; // queued onset remains a held owner
     R0 = DM(1, I0);
+    R1 = 7;
+    R0 = R0 AND R1;
     R1 = 1;
     COMP(R0, R1);
     IF NE R15 = R1;
@@ -192,9 +199,14 @@ _cp_release_pending:
     I0 = R4;
     R2 = 6;
 _cp_find_release:
+    R0 = DM(1, I0);
+    R1 = 4;
+    R0 = R0 AND R1;
+    IF NE JUMP _cp_release_next;
     R0 = DM(0, I0);
     COMP(R0, R8);
     IF EQ JUMP _cp_release;
+_cp_release_next:
     MODIFY(I0, 8) (NW);
     R2 = R2 - 1;
     IF NE JUMP _cp_find_release;
@@ -267,6 +279,21 @@ _cp_clear_output:
     R14 = DM(_cp_render_count);
     R15 = 0;
 _cp_render_slot:
+    R0 = DM(1, I0);
+    R1 = 8;
+    R0 = R0 AND R1;
+    IF NE JUMP _cp_advance_slot;
+    // Bit 2 marks an arp-owned shared tail. Only the single-group renderer
+    // renders that lane; the pad-bank walk leaves it for the arp mixer.
+    R0 = DM(_cp_render_count);
+    R1 = 1;
+    COMP(R0, R1);
+    IF EQ JUMP _cp_render_owned;
+    R0 = DM(1, I0);
+    R1 = 4;
+    R0 = R0 AND R1;
+    IF NE JUMP _cp_advance_slot;
+_cp_render_owned:
     R0 = DM(0, I0);
     R0 = PASS R0;
     IF EQ JUMP _cp_render_next;
@@ -280,6 +307,8 @@ _cp_render_slot:
     F6 = DM(6, I0);
     F7 = DM(7, I0);
     R0 = DM(1, I0);
+    R1 = 3;
+    R0 = R0 AND R1;
     F10 = DM(_cp_attack); // per-note linear attack
     R1 = 2;
     COMP(R0, R1);

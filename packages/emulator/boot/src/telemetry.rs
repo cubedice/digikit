@@ -38,6 +38,13 @@ pub struct Milestone {
     pub boundary: &'static str,
 }
 #[derive(Debug, Serialize)]
+pub struct FaultRegisters {
+    pub d: [u32; 8],
+    pub a: [u32; 8],
+    pub pc: u32,
+    pub sr: u16,
+}
+#[derive(Debug, Serialize)]
 pub struct DiagnosticReport {
     pub schema_version: u32,
     pub device: String,
@@ -58,6 +65,9 @@ pub struct DiagnosticReport {
     pub bus_trace_enabled: bool,
     pub ram_clear_acceleration_enabled: bool,
     pub fault: Option<String>,
+    /// CPU state at the reported fault; exception frames remain in guest RAM.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fault_registers: Option<FaultRegisters>,
     pub profile: Option<ProfileReport>,
     pub events: Option<EventReport>,
 }

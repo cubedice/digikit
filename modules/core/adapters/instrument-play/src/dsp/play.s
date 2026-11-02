@@ -19,6 +19,8 @@
 .EXTERN _ir_lifecycle_ready;
 .EXTERN _mi_velocity_prepare;
 .EXTERN _mi_carrier_rendered;
+.EXTERN _pattern_position_info;
+.EXTERN _pattern_clock_info;
 
 // This adapter is absent from ordinary images. Linking it is the trusted
 // single-instance capability; binding the session must precede lifecycle work.
@@ -45,11 +47,8 @@ _instrument_carrier_prepare:
     R0 = DM(_iv_generation);
     R0 = PASS R0;
     IF EQ JUMP _iv_quiet;
+    CALL _iv_position;
     I0 = _iv_input;
-    R0 = 2;
-    DM(0, I0) = R0;
-    R0 = 72;
-    DM(1, I0) = R0;
     R0 = DM(_iv_generation);
     DM(3, I0) = R0;
     R0 = _iv_output;
@@ -90,12 +89,88 @@ _iv_quiet:
     DM(_iv_revision) = R0;
     I0 = _iv_input;
     DM(8, I0) = R0;
+    DM(18, I0) = R0;
     I0 = _iv_output;
     R1 = 32;
 _iv_clear_output:
     DM(I0, M6) = R0;
     R1 = R1 - 1;
     IF NE JUMP _iv_clear_output;
+    RTS;
+
+// Borrow a coherent position snapshot only at the saved early-block boundary.
+// Reject wrong ABI, invalid wire state or a missed frame. The receive counter
+// remains a block clock even when transport is stopped or position is invalid.
+_iv_position:
+    I0 = _iv_input;
+    R0 = 3;
+    DM(0, I0) = R0;
+    R0 = 80;
+    DM(1, I0) = R0;
+    R0 = 0;
+    DM(20, I0) = R0;
+    DM(21, I0) = R0;
+    I1 = _pattern_position_info;
+    R0 = DM(16, I1);
+    DM(4, I0) = R0;
+    R0 = 0;
+    DM(12, I0) = R0;
+    DM(13, I0) = R0;
+    DM(14, I0) = R0;
+    DM(15, I0) = R0;
+    DM(16, I0) = R0;
+    DM(19, I0) = R0;
+    R0 = DM(0, I1);
+    R1 = 0x50504f53;
+    COMP(R0, R1);
+    IF NE RTS;
+    R0 = DM(1, I1);
+    R1 = 2;
+    COMP(R0, R1);
+    IF NE RTS;
+    R0 = DM(19, I1);
+    R1 = 1;
+    COMP(R0, R1);
+    IF GT RTS;
+    R0 = DM(5, I1);
+    R1 = 3;
+    R0 = R0 AND R1;
+    DM(12, I0) = R0;
+    R0 = DM(4, I1);
+    DM(13, I0) = R0;
+    R0 = DM(3, I1);
+    DM(14, I0) = R0;
+    R0 = DM(7, I1);
+    DM(15, I0) = R0;
+    R0 = DM(8, I1);
+    DM(16, I0) = R0;
+    R0 = DM(6, I1);
+    DM(19, I0) = R0;
+    I1 = _pattern_clock_info;
+    R0 = DM(0, I1);
+    R1 = 0x50434c4b;
+    COMP(R0, R1);
+    IF NE RTS;
+    R0 = DM(1, I1);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE RTS;
+    R0 = DM(4, I1);
+    R1 = 3;
+    COMP(R0, R1);
+    IF EQ JUMP _iv_phase_fresh;
+    R0 = 0;
+    DM(12, I0) = R0;
+    RTS;
+_iv_phase_fresh:
+    R0 = DM(2, I1);
+    DM(20, I0) = R0;
+    R0 = DM(3, I1);
+    DM(21, I0) = R0;
+    R0 = 4;
+    DM(0, I0) = R0;
+    R0 = 88;
+    DM(1, I0) = R0;
     RTS;
 
 // A receiver reset can precede CREATE. Such a reset establishes only transport
@@ -162,6 +237,9 @@ _iv_live_config:
     R1 = 4;
     COMP(R0, R1);
     IF EQ JUMP _iv_legacy_config;
+    R1 = 64;
+    COMP(R0, R1);
+    IF EQ JUMP _iv_five_config;
     R1 = 40;
     COMP(R0, R1);
     IF EQ JUMP _iv_four_config;
@@ -193,6 +271,62 @@ _iv_config_validate:
     IF NE JUMP _iv_config_validate;
     R2 = 6;
     JUMP _iv_config_copy;
+_iv_five_config:
+    R0 = DM(5, I0);
+    R1 = 0x43505335;
+    COMP(R0, R1);
+    IF NE JUMP _iv_no;
+    R0 = DM(_iv_values);
+    I1 = R0;
+    R0 = DM(0, I1);
+    R1 = 5;
+    COMP(R0, R1);
+    IF NE JUMP _iv_no;
+    R0 = DM(10, I1);
+    R1 = 4;
+    COMP(R0, R1);
+    IF GT JUMP _iv_no;
+    R0 = PASS R0;
+    IF LT JUMP _iv_no;
+    R0 = DM(11, I1);
+    R1 = 1;
+    COMP(R0, R1);
+    IF LT JUMP _iv_no;
+    R1 = 3;
+    COMP(R0, R1);
+    IF GT JUMP _iv_no;
+    R0 = DM(12, I1);
+    R1 = 75;
+    COMP(R0, R1);
+    IF GT JUMP _iv_no;
+    R0 = PASS R0;
+    IF LT JUMP _iv_no;
+    R0 = DM(13, I1);
+    R1 = 2;
+    COMP(R0, R1);
+    IF GT JUMP _iv_no;
+    R0 = PASS R0;
+    IF LT JUMP _iv_no;
+    R0 = DM(14, I1);
+    R1 = 2;
+    COMP(R0, R1);
+    IF GT JUMP _iv_no;
+    R0 = PASS R0;
+    IF LT JUMP _iv_no;
+    R0 = DM(15, I1);
+    R1 = 750;
+    COMP(R0, R1);
+    IF GT JUMP _iv_no;
+    R0 = PASS R0;
+    IF LT JUMP _iv_no;
+    R0 = DM(13, I1);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _iv_four_body;
+    R0 = DM(12, I1);
+    R0 = PASS R0;
+    IF NE JUMP _iv_no;
+    JUMP _iv_four_body;
 _iv_four_config:
     R0 = DM(5, I0);
     R1 = 0x43505334;
@@ -204,6 +338,7 @@ _iv_four_config:
     R1 = 4;
     COMP(R0, R1);
     IF NE JUMP _iv_no;
+_iv_four_body:
     R0 = DM(1, I1);
     R0 = LSHIFT R0 BY -1;
     R0 = PASS R0;
@@ -239,6 +374,13 @@ _iv_four_validate:
     R2 = R2 - 1;
     IF NE JUMP _iv_four_validate;
     R2 = 10;
+    R0 = DM(_iv_values);
+    I1 = R0;
+    R0 = DM(0, I1);
+    R1 = 5;
+    COMP(R0, R1);
+    R1 = 16;
+    IF EQ R2 = R1;
     JUMP _iv_config_copy;
 _iv_legacy_config:
     R0 = DM(5, I0);
@@ -376,7 +518,7 @@ _iv_voice_zero:
 
 .SECTION/DM seg_dmda;
 .PKDATA _instrument_voice_rows, 192;
-.PKDATA _iv_input, 72;
+.PKDATA _iv_input, 88;
 .PKDATA _iv_output, 128;
 .PKDATA _iv_events, 192;
 .VAR _iv_controls = 1;
@@ -389,6 +531,12 @@ _iv_voice_zero:
 .VAR _iv_controls_7 = 120;
 .VAR _iv_controls_8 = 4;
 .VAR _iv_controls_9 = 50;
+.VAR _iv_controls_10 = 0;
+.VAR _iv_controls_11 = 1;
+.VAR _iv_controls_12 = 0;
+.VAR _iv_controls_13 = 0;
+.VAR _iv_controls_14 = 0;
+.VAR _iv_controls_15 = 0;
 .VAR _iv_control_count = 1;
 .VAR _iv_generation = 0;
 .VAR _iv_revision = 0;

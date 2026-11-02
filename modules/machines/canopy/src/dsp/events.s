@@ -210,9 +210,14 @@ _ci_token_alive:
     I0 = _cp_staging;
     R2 = 6;
 _ci_alive_voice:
+    R0 = DM(1, I0);
+    R1 = 4;
+    R0 = R0 AND R1;
+    IF NE JUMP _ci_alive_next;
     R0 = DM(0, I0);
     COMP(R0, R8);
     IF EQ JUMP _ci_alive;
+_ci_alive_next:
     MODIFY(I0, 8) (NW);
     R2 = R2 - 1;
     IF NE JUMP _ci_alive_voice;
@@ -337,6 +342,10 @@ _ci_route_panic:
     I0 = _cp_staging;
     R2 = 6;
 _ci_panic_voice:
+    R0 = DM(1, I0);
+    R1 = 4;
+    R0 = R0 AND R1;
+    IF NE JUMP _ci_panic_voice_next;
     R0 = DM(0, I0);
     COMP(R0, R8);
     IF NE JUMP _ci_panic_voice_next;
@@ -432,6 +441,10 @@ _ci_bend_voice:
     R1 = _cp_staging;
     R0 = R0 + R1;
     I0 = R0;
+    R0 = DM(1, I0);
+    R1 = 4;
+    R0 = R0 AND R1;
+    IF NE JUMP _ci_bend_voice_next;
     R0 = DM(0, I0);
     R1 = DM(_ci_bend_token);
     COMP(R0, R1);

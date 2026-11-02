@@ -88,6 +88,8 @@ export default defineConfig({
             'runtime/canopy-stage1.test.ts',
             'runtime/canopy-stage3.test.ts',
             'runtime/canopy-stage4-local.test.ts',
+            'runtime/canopy-stage4.test.ts',
+            'runtime/canopy-clock.test.ts',
             'runtime/dsp-reset.test.ts',
             'runtime/overloop-display.test.ts',
             'runtime/canopy-transport.test.ts',
@@ -129,6 +131,26 @@ export default defineConfig({
           ...serial,
           testTimeout: 240_000,
           hookTimeout: 150_000,
+        },
+      },
+      {
+        test: {
+          name: 'canopy-clock',
+          include: ['runtime/canopy-clock.test.ts'],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 900000,
+          hookTimeout: 300000,
+        },
+      },
+      {
+        test: {
+          name: 'canopy-stage4',
+          include: ['runtime/canopy-stage4.test.ts'],
+          pool: 'forks',
+          ...serial,
+          testTimeout: 1500000,
+          hookTimeout: 300000,
         },
       },
       {

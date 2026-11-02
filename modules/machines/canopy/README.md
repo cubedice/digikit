@@ -1,11 +1,12 @@
 # CANOPY implementation
 
-This directory contains the Stage 3 four-note pad instrument for the
+This directory contains the four-note pad instrument with Stage 4 movement for the
 [CANOPY design](../../../docs/design/canopy.md). Its dynamic package uses V2
 reset/process callbacks and an assigned machine type. It requires the optional
 DTII 1.17 `core/instrument-play` adapter; ordinary firmware cannot admit it.
 The engine supports Velvet/Reed families, color, drift and local envelopes.
-Arp, the final SRC interface, presets and hardware release remain later stages.
+The final SRC interface, presets and hardware release remain later stages.
+Synchronized-clock qualification is still in progress.
 
 Build and pack with `patchkit build digikit/canopy` and
 `patchkit pack digikit/canopy --device dt2 -o out/patch/canopy-dt2.dkm` through
@@ -32,8 +33,7 @@ note. Zero-velocity Note On must already have been normalized by MIDI ingress.
 QUIET is returned only after every local release finishes, and the entire output
 block is always written. Independent banks allow separate track state.
 
-The adapter supplies PLAY, ROOT + TYPE and learned chord modes. Arp and presets
-remain future stages. The callback layer supports CC64 sustain, CC121 pedal reset, CC123 All Notes Off and CC120
+The adapter supplies PLAY, ROOT + TYPE and learned chord modes. Presets remain a future stage. The callback layer supports CC64 sustain, CC121 pedal reset, CC123 All Notes Off and CC120
 All Sound Off, plus 14-bit pitch bend at a fixed +/-2 semitone range, scoped to
 MIDI port/channel.
 
@@ -215,25 +215,38 @@ Stage 3 now supplies the pad renderer; arp remains Stage 4. See the
 [pad sound setup](../../core/adapters/instrument-play/README.md#pad-sound-setup-stage-3).
 
 
-## Local arpeggiator development build
+## Movement controls (CPS5)
 
-The Stage 4 local-clock slice adds `LOCAL ARP - UP` to KEYBOARD setup. ARP MIX
-blends the sustained pad with an ascending arpeggio (0=pad, 127=arp); LOCAL BPM
-is 30..300, NOTES / Q is 1..8 onsets per quarter, and ARP GATE is 1..100 percent.
-Defaults are mix 0, 120 BPM, four notes/quarter and 50 percent gate. These are
-current module settings, not native Sound/project or destination-pattern data.
-The explicit local clock runs independently of PLAY/STOP. There is no automatic
-external-clock fallback and no synchronized-clock option in this slice.
+KEYBOARD setup exposes ARP MIX (0 pad, 127 arp), LOCAL BPM (30..300),
+NOTES/Q (1..8), gate percent (1..100), UP/DOWN/UP-DOWN/AS-PLAYED/RANDOM,
+one to three octaves, swing (0..75), LOCAL BPM, MASTER GRID or MASTER PHASE clock,
+TRIG/PATTERN/CONTINUE restart and STRUM MS (0..500). In MASTER GRID, the
+rate becomes a whole-step multiple and swing is disabled. Clock changes
+restart timing observation. Setup values currently return to defaults at boot.
 
-The arp reads four logical foreground/pending pad owners, excluding release
-tails. It owns a separate oscillator/envelope and follows the selected key's
-velocity and live pitch bend. Chord edits affect the next scheduled note; a
-delayed onset is cancelled if its source key leaves admitted membership. The
-PAD/ARP blend is smoothed per sample. Disabling the arp leaves held pad notes
-untouched. This version ramps the previous arp group for at most 64 samples
-before replacement when needed, rather than allocating an extra release group.
+Generated chords can spread their onsets over the strum interval; PLAY keys
+remain immediate. A new committed chord cancels obsolete delayed onsets while
+preserving sounding common notes. TRIG means a new phrase, not each added key.
+CONTINUE keeps timing across chord changes, including a gap with no held keys.
+Arp gates never release pad owners. The lanes share two bounded release tails.
 
-Full Stage 4 remains open: shared arp/pad tail allocation, the other note orders
-and octave ranges, strum, selectable restart behavior, and verified synchronized
-tempo/phase with swing still need production integration. The broader C movement
-policy and its host tests are not evidence that those options are playable.
+The sixteen-word CPS5 layout is version, family, color, drift, attack, release,
+mix, local BPM, rate, gate, order, octaves, swing, clock, restart, strum blocks.
+Strum uses 1500 blocks/second internally. CPS1/CPS3/CPS4 remain accepted.
+State is now 768 bytes: use the matching instrument-play firmware policy.
+Both MASTER modes wait for a complete observed boundary interval before playing.
+MASTER PHASE uses the firmware's musical clock for 1..8 notes/quarter, including
+triplets, and pair-preserving swing; MASTER GRID counts whole native master
+steps. Neither mode falls back to local BPM. Missing frames, skipped boundaries,
+large phase corrections and overdue boundaries silence the arp while preserving
+held pad ownership. Recovery requires another complete boundary interval.
+Minor backward clock corrections wait until phase catches up, avoiding duplicate
+notes. STOP silences master arp; LOCAL remains independently playable.
+The matched adapter forwards optional input V4 (88 bytes); old V2/V3 input is
+accepted, but cannot drive MASTER PHASE. Descriptor and reset ABI remain V2.
+
+Stage 4 is complete at the functional emulator boundary: menu/audio, both master
+modes, local arp, strum, USB/DIN loss and recovery, and changed tempo/scale pass.
+A lost external clock stays latched across timestamp wrap until a new pulse.
+See the design and Stage 4 handover for artifact-specific evidence. Hardware
+release and coexistence remain Stage 6; named SRC pages and presets are Stage 5.

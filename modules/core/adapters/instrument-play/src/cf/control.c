@@ -8,7 +8,7 @@ extern uint32_t dkrt_instrument_generation(void);
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
 extern int instrument_sound_prepare(int allow_refresh);
-static const uint32_t limits[8] = {0x49525031,1,1,100000,1000,8,128,640};
+static const uint32_t limits[8] = {0x49525031,1,1,100000,1000,8,128,768};
 const uint32_t *instrument_runtime_policy(void) { return limits; }
 static int enabled, usb=1, din=1, channel=1;
 static uint32_t phase, prepared, healthy, fault_generation;
@@ -29,6 +29,7 @@ int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
  * retain note ownership, and coalesce knob motion while an ACK is pending. */
 static int pad_family=0, pad_color=64, pad_drift=0, pad_attack=5, pad_release=15;
 static int arp_mix=0, arp_bpm=120, arp_rate=4, arp_gate=50;
+static int arp_order=0, arp_octaves=1, arp_swing=0, arp_clock=0, arp_restart=0, pad_strum=0;
 static uint32_t pad_dirty=1;
 static void pad_changed(void *ctx,int value) { (void)ctx; (void)value; pad_dirty=1; }
 static KbState keyboard;
@@ -167,6 +168,27 @@ static int quarantined(void)
         if (mi_ledger.routes[i].track==0 && mi_ledger.routes[i].quarantined) return 1;
     return 0;
 }
+static const char *const arp_orders[]={"UP","DOWN","UP / DOWN","AS PLAYED","RANDOM"};
+static const char *const arp_clocks[]={"LOCAL BPM","MASTER GRID","MASTER PHASE"};
+static const char *const arp_restarts[]={"TRIG","PATTERN","CONTINUE"};
+static void arp_order_done(void *ctx,int value)
+{ (void)ctx; if(value<0 || value>4) return; arp_order=value; pad_changed(0,value); dk_ui_refresh(menu); }
+static void arp_clock_done(void *ctx,int value)
+{
+    (void)ctx; if(value<0 || value>2) return;
+    arp_clock=value; arp_rate=value==1 ? 1 : 4;
+    if(value==1) arp_swing=0;
+    pad_changed(0,value); dk_ui_refresh(menu);
+}
+static void arp_restart_done(void *ctx,int value)
+{ (void)ctx; if(value<0 || value>2) return; arp_restart=value; pad_changed(0,value); dk_ui_refresh(menu); }
+static void arp_choice(void *ctx,int value)
+{
+    (void)ctx;
+    if(value==0) dk_ui_choice("ARP ORDER",arp_orders,5,arp_order_done,0);
+    if(value==1) dk_ui_choice("CLOCK",arp_clocks,3,arp_clock_done,0);
+    if(value==2) dk_ui_choice("RESTART",arp_restarts,3,arp_restart_done,0);
+}
 static void fill(dk_ui_menu *m, void *ctx)
 {
     (void)ctx;
@@ -195,11 +217,17 @@ static void fill(dk_ui_menu *m, void *ctx)
     dk_ui_value(m,"DRIFT",&pad_drift,0,127,pad_changed,0);
     dk_ui_value(m,"ATTACK",&pad_attack,0,127,pad_changed,0);
     dk_ui_value(m,"RELEASE",&pad_release,0,127,pad_changed,0);
-    dk_ui_text(m,"LOCAL ARP - UP");
+    dk_ui_text(m,arp_clock==2 ? "MASTER PHASE ARP" : arp_clock==1 ? "MASTER GRID ARP" : "LOCAL ARP");
     dk_ui_value(m,"ARP MIX",&arp_mix,0,127,pad_changed,0);
     dk_ui_value(m,"LOCAL BPM",&arp_bpm,30,300,pad_changed,0);
-    dk_ui_value(m,"NOTES / Q",&arp_rate,1,8,pad_changed,0);
+    dk_ui_value(m,arp_clock==1 ? "MASTER STEPS" : "NOTES / Q",&arp_rate,1,8,pad_changed,0);
     dk_ui_value(m,"ARP GATE",&arp_gate,1,100,pad_changed,0);
+    dk_ui_action(m,arp_orders[arp_order],arp_choice,0,0);
+    dk_ui_value(m,"OCTAVES",&arp_octaves,1,3,pad_changed,0);
+    dk_ui_value(m,"SWING",&arp_swing,0,arp_clock==1 ? 0 : 75,pad_changed,0);
+    dk_ui_action(m,arp_clocks[arp_clock],arp_choice,0,1);
+    dk_ui_action(m,arp_restarts[arp_restart],arp_choice,0,2);
+    dk_ui_value(m,"STRUM MS",&pad_strum,0,500,pad_changed,0);
 }
 static const dk_ui_menu_desc desc = {.name="instrument-keyboard",.title="KEYBOARD",.fill=fill};
 void dk_app_instrument_settings_rows(dk_ui_menu *parent)
@@ -210,7 +238,7 @@ void dk_app_instrument_settings_rows(dk_ui_menu *parent)
 void instrument_play_tick(void)
 {
     uint32_t reply[16];
-    uint32_t values[10]={4,(uint32_t)pad_family,(uint32_t)pad_color,(uint32_t)pad_drift,(uint32_t)pad_attack,(uint32_t)pad_release,(uint32_t)arp_mix,(uint32_t)arp_bpm,(uint32_t)arp_rate,(uint32_t)arp_gate};
+    uint32_t values[16]={5,(uint32_t)pad_family,(uint32_t)pad_color,(uint32_t)pad_drift,(uint32_t)pad_attack,(uint32_t)pad_release,(uint32_t)arp_mix,(uint32_t)arp_bpm,(uint32_t)arp_rate,(uint32_t)arp_gate,(uint32_t)arp_order,(uint32_t)arp_octaves,(uint32_t)arp_swing,(uint32_t)arp_clock,(uint32_t)arp_restart,(uint32_t)(pad_strum*3/2)};
     if (!keyboard_initialized) {
         uint8_t record[KB_RECORD_BYTES]; kb_init(&keyboard);
         int length=dkrt_settings_get(shape_key,record,sizeof(record));
@@ -265,8 +293,8 @@ void instrument_play_tick(void)
         else prepared=(uint32_t)result;
     }
     if (phase == 1 && prepared && !mi_ledger.reset_mask &&
-        !mi_config_submit(0,1,0x43505334,values,10)) { phase=2; pad_dirty=0; }
-    if (phase==3 && pad_dirty && !mi_config_submit(0,mi_transport.applied[0]+1,0x43505334,values,10)) pad_dirty=0;
+        !mi_config_submit(0,1,0x43505335,values,16)) { phase=2; pad_dirty=0; }
+    if (phase==3 && pad_dirty && !mi_config_submit(0,mi_transport.applied[0]+1,0x43505335,values,16)) pad_dirty=0;
     if (phase == 2 && instrument_midi_ready(0,mi_ledger.epoch,mi_ledger.generations[0])) {
         if ((!usb || !mi_route_enable(0,(uint32_t)channel-1,0,0)) &&
             (!din || !mi_route_enable(1,(uint32_t)channel-1,0,0)) &&

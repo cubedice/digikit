@@ -19,16 +19,35 @@ _ir_normalize_packet:
     R1 = 0x20000000;
     COMP(R0, R1);
     IF LT JUMP _in_bad;
-    R1 = 0x200fdfb8;
+    R1 = 0x200fdfb0;
     COMP(R0, R1);
     IF GT JUMP _in_bad;
     I1 = R0;
     R0 = DM(0, I1);
     R1 = 2;
     COMP(R0, R1);
+    IF EQ JUMP _in_v2;
+    R1 = 3;
+    COMP(R0, R1);
+    IF EQ JUMP _in_v3;
+    R1 = 4;
+    COMP(R0, R1);
     IF NE JUMP _in_bad;
+    R0 = I1;
+    R1 = 0x200fdfa8;
+    COMP(R0, R1);
+    IF GT JUMP _in_bad;
+    R0 = DM(1, I1);
+    R1 = 88;
+    JUMP _in_size;
+_in_v3:
+    R0 = DM(1, I1);
+    R1 = 80;
+    JUMP _in_size;
+_in_v2:
     R0 = DM(1, I1);
     R1 = 72;
+_in_size:
     COMP(R0, R1);
     IF NE JUMP _in_bad;
     R0 = DM(_in_packet);
@@ -37,7 +56,20 @@ _ir_normalize_packet:
     R1 = FEXT R0 BY 0:8;
     R2 = 1;
     COMP(R1, R2);
+    IF EQ JUMP _in_plain;
+    R2 = 5;
+    COMP(R1, R2);
     IF NE JUMP _in_bad;
+    R2 = DM(0, I1);
+    R1 = 3;
+    COMP(R2, R1);
+    IF LT JUMP _in_bad;
+    R1 = DM(4, I0);
+    JUMP _in_meta;
+_in_plain:
+    R1 = 0;
+_in_meta:
+    DM(_in_movement) = R1;
     R2 = FEXT R0 BY 8:4;
     DM(_in_count) = R2;
     R0 = DM(2, I0);
@@ -123,6 +155,13 @@ _in_commit:
     DM(I1, M6) = R0;
     R2 = R2 - 1;
     IF NE JUMP _in_commit;
+    R0 = DM(0, I0);
+    R1 = 3;
+    COMP(R0, R1);
+    IF LT JUMP _in_committed;
+    R0 = DM(_in_movement);
+    DM(18, I0) = R0;
+_in_committed:
     R0 = DM(_in_count);
     DM(8, I0) = R0;
     RTS;
@@ -155,7 +194,7 @@ _ir_process_packet:
     R1 = 0x20000000;
     COMP(R0, R1);
     IF LT JUMP _in_bad;
-    R1 = 0x200fdfb8;
+    R1 = 0x200fdfb0;
     COMP(R0, R1);
     IF GT JUMP _in_bad;
     I0 = R8;
@@ -206,3 +245,5 @@ _if_render:
 .PKBSS _if_input, 4;
 .PKBSS _if_packet, 4;
 .PKBSS _if_epoch, 4;
+
+.PKBSS _in_movement, 4;

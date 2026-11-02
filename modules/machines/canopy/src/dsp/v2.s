@@ -15,7 +15,7 @@ _canopy_reset:
     COMP(R8, R0);
     IF EQ JUMP _cv_replace;
     I0 = R4;
-    R1 = 160;
+    R1 = 192;
     R0 = 0;
 _cv_reset_clear:
     DM(I0, M6) = R0;
@@ -26,7 +26,11 @@ _cv_replace:
     I0 = R4;
     R1 = 6;
 _cv_replace_slots:
-    R0 = 2;
+    R0 = DM(1, I0);
+    R2 = 4;
+    R0 = R0 AND R2;
+    R2 = 2;
+    R0 = R0 OR R2;
     DM(1, I0) = R0;
     MODIFY(I0, 8) (NW);
     R1 = R1 - 1;
@@ -45,7 +49,7 @@ _cv_replace_clear:
     R0 = 2;
     DM(1, I0) = R0;
     MODIFY(I0, 10) (NW);
-    R1 = 14;
+    R1 = 46;
     R0 = 0;
 _cv_clear_movement:
     DM(I0, M6) = R0;
@@ -59,9 +63,28 @@ _canopy_process:
     R0 = DM(0, I2);
     R1 = 2;
     COMP(R0, R1);
+    IF EQ JUMP _cv_v2;
+    R1 = 3;
+    COMP(R0, R1);
+    IF EQ JUMP _cv_v3;
+    R1 = 4;
+    COMP(R0, R1);
     IF NE JUMP _cv_bad;
+    R0 = I2;
+    R1 = 0x200fdfa8;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = DM(1, I2);
+    R1 = 88;
+    JUMP _cv_size;
+_cv_v3:
+    R0 = DM(1, I2);
+    R1 = 80;
+    JUMP _cv_size;
+_cv_v2:
     R0 = DM(1, I2);
     R1 = 72;
+_cv_size:
     COMP(R0, R1);
     IF NE JUMP _cv_bad;
     R0 = DM(2, I2);
@@ -81,6 +104,9 @@ _canopy_process:
     R1 = 1;
     COMP(R0, R1);
     IF EQ JUMP _cv_legacy_controls;
+    R1 = 16;
+    COMP(R0, R1);
+    IF EQ JUMP _cv_five_controls;
     R1 = 10;
     COMP(R0, R1);
     IF EQ JUMP _cv_four_controls;
@@ -107,6 +133,59 @@ _cv_check_controls:
     R2 = R2 - 1;
     IF NE JUMP _cv_check_controls;
     JUMP _cv_controls_ok;
+_cv_five_controls:
+    R0 = DM(9, I2);
+    I0 = R0;
+    R0 = DM(0, I0);
+    R1 = 5;
+    COMP(R0, R1);
+    IF NE JUMP _cv_bad;
+    R0 = DM(10, I0);
+    R1 = 4;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    R0 = DM(11, I0);
+    R1 = 1;
+    COMP(R0, R1);
+    IF LT JUMP _cv_bad;
+    R1 = 3;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = DM(12, I0);
+    R1 = 75;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    R0 = DM(13, I0);
+    R1 = 2;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    R0 = DM(14, I0);
+    R1 = 2;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    R0 = DM(15, I0);
+    R1 = 750;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    // GRID supports whole steps; fine MASTER uses the phase extension.
+    R0 = DM(13, I0);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _cv_four_body;
+    R0 = DM(12, I0);
+    R0 = PASS R0;
+    IF NE JUMP _cv_bad;
+    JUMP _cv_four_body;
 _cv_four_controls:
     R0 = DM(9, I2);
     I0 = R0;
@@ -114,6 +193,7 @@ _cv_four_controls:
     R1 = 4;
     COMP(R0, R1);
     IF NE JUMP _cv_bad;
+_cv_four_body:
     R0 = DM(1, I0);
     R0 = LSHIFT R0 BY -1;
     R0 = PASS R0;
@@ -180,6 +260,10 @@ _cv_events:
 _cv_convert:
     R0 = DM(7, I2);
     I0 = R0;
+    R0 = DM(0, I0);
+    R1 = 5;
+    COMP(R0, R1);
+    IF EQ JUMP _cv_phrase_only;
     I1 = _cv_events_buffer;
 _cv_event:
     R3 = DM(0, I0);
@@ -266,6 +350,29 @@ _cv_pack:
     R1 = 1;
     COMP(R0, R1);
     IF NE JUMP _cv_bad;
+    JUMP _cv_render;
+_cv_phrase_only:
+    R0 = 1;
+    COMP(R2, R0);
+    IF NE JUMP _cv_bad;
+    R0 = DM(0, I2);
+    R1 = 3;
+    COMP(R0, R1);
+    IF LT JUMP _cv_bad;
+    R0 = DM(18, I2);
+    R1 = 0x7fffffff;
+    R0 = R0 AND R1;
+    IF EQ JUMP _cv_bad;
+    R0 = DM(1, I0);
+    R1 = DM(2, I0);
+    R0 = R0 OR R1;
+    R1 = DM(3, I0);
+    R0 = R0 OR R1;
+    R1 = DM(4, I0);
+    R0 = R0 OR R1;
+    R1 = DM(5, I0);
+    R0 = R0 OR R1;
+    IF NE JUMP _cv_bad;
 _cv_render:
     R0 = DM(_cv_state);
     R1 = 512;
@@ -298,12 +405,16 @@ _cv_seeded:
     R0 = 1;
     DM(3, I0) = R0;
     CALL _cv_sound;
+    R4 = DM(_cv_state);
+    R8 = DM(_cv_input);
+    CALL _cs_prepare;
     R0 = DM(_cv_input);
     I2 = R0;
     R8 = DM(5, I2);
     R4 = DM(_cv_state);
     CALL _cp_render;
     DM(_cv_pad_active) = R0;
+    CALL _cs_restore;
     R4 = DM(_cv_state);
     R8 = DM(_cv_input);
     CALL _ca_process;
@@ -486,9 +597,9 @@ _cv_bad:
 .VAR _canopy_descriptor_2 = 48;
 .VAR _canopy_descriptor_3 = 0;
 .VAR _canopy_descriptor_4 = 1;
-.VAR _canopy_descriptor_5 = 640;
+.VAR _canopy_descriptor_5 = 768;
 .VAR _canopy_descriptor_6 = 8;
-.VAR _canopy_descriptor_7 = 10;
+.VAR _canopy_descriptor_7 = 16;
 .VAR _canopy_descriptor_8 = 100000;
 .VAR _canopy_descriptor_9 = 1000;
 .VAR _canopy_descriptor_10 = 8;
@@ -496,3 +607,6 @@ _cv_bad:
 
 .EXTERN _ca_process;
 .PKBSS _cv_pad_active, 4;
+
+.EXTERN _cs_prepare;
+.EXTERN _cs_restore;

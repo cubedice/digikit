@@ -491,6 +491,11 @@ impl Emulator {
             vec![3, 1],
             periph::clock::cf_ips() as f64,
         ));
+        // DT2 1.17 MAIN never initializes DTIM0. Passive hardware timestamps
+        // establish its inherited 132 MHz free-running counter (finding 78).
+        if device.short == "dt2" {
+            board.time_mut().unwrap().inherit_timestamp_counter(0);
+        }
         for base in [0xfc04_8000, 0xfc04_c000, 0xfc05_0000] {
             board
                 .write32(base + 0x08, 0)
@@ -780,6 +785,10 @@ impl Emulator {
             bus_trace_enabled: CAPTURE_BUS_TRACE,
             ram_clear_acceleration_enabled: ACCELERATE_RAM_CLEAR && self.ram_clear.is_some(),
             fault: self.error.clone(),
+            fault_registers: self.error.as_ref().map(|_| {
+                let (d, a, pc, sr) = self.cpu_regs();
+                crate::telemetry::FaultRegisters { d, a, pc, sr }
+            }),
             profile: self.telemetry.profile(),
             events: self.telemetry.events(),
         }
@@ -3163,7 +3172,7 @@ fn idle_advance_limit(remaining: u32, passes: u64, now: u64, deadline: Option<u6
     u64::from(remaining).min(before_yield).min(before_timer) as u32
 }
 
-/// Opt-in machine snapshot ("DT2SNP01"). It holds the mutable run state at a
+/// Opt-in machine snapshot ("DT2SNP02"). It holds the mutable run state at a
 /// `step_chunk` boundary: CPU, board (RAM, DMA/DSPI/SSI link, eSDHC and card,
 /// timers), input queue, frame trackers and the counters that gate
 /// readiness. Construction-time facts (firmware signatures, panel profile,
@@ -3172,7 +3181,7 @@ fn idle_advance_limit(remaining: u32, passes: u64, now: u64, deadline: Option<u6
 /// the same optional lanes enabled (SSI diagnostic), before any execution.
 /// Telemetry marks, bus trace vectors and the DSPI capture recorder are not
 /// state and start empty after a restore.
-const SNAPSHOT_MAGIC: &[u8; 8] = b"DT2SNP01";
+const SNAPSHOT_MAGIC: &[u8; 8] = b"DT2SNP02";
 
 fn snap_frame(w: &mut periph::snap::Writer, f: &Frame) {
     w.u32(f.owner_tcb);
@@ -3424,8 +3433,9 @@ impl Emulator {
             return Err("load_state needs an emulator that has not executed".into());
         }
         let mut r = Reader::new(data);
-        if r.raw(8)? != SNAPSHOT_MAGIC {
-            return Err("not a DT2SNP01 snapshot".into());
+        let magic = r.raw(8)?;
+        if magic != SNAPSHOT_MAGIC && magic != b"DT2SNP01" {
+            return Err("not a DT2SNP01/02 snapshot".into());
         }
         self.snapshot_time_base();
         let main_sha = r.bytes()?;
@@ -3932,6 +3942,33 @@ mod tests {
         assert_eq!(runtime.snapshot().frame.unwrap(), vec![0xa5; PANEL_BYTES]);
         runtime.diagnostics();
         assert!(runtime.snapshot().frame.is_none());
+        runtime.error = Some("synthetic diagnostic fault".into());
+        let before = runtime.cpu.clone();
+        let fault = runtime.diagnostics().fault_registers.unwrap();
+        assert_eq!((fault.d, fault.a, fault.pc, fault.sr), runtime.cpu_regs());
+        assert_eq!(runtime.cpu, before);
+        assert!(runtime.snapshot().frame.is_none());
+    }
+
+    #[test]
+    fn inherited_timestamp_counter_survives_runtime_snapshot() {
+        let Ok(syx) = std::fs::read("../../../firmware/Digitakt_II_OS1.17.syx") else {
+            return;
+        };
+        let mut saved = Emulator::new(&syx, None).unwrap();
+        saved.cpu.icount = 132_000_000;
+        saved.bus.current_icount = saved.cpu.icount;
+        assert_eq!(saved.bus.read32(0xfc07000c).unwrap(), 132_000_000);
+        let state = saved.save_state().unwrap();
+        let mut restored = Emulator::new(&syx, None).unwrap();
+        restored.load_state(&state).unwrap();
+        assert_eq!(restored.bus.read32(0xfc07000c).unwrap(), 132_000_000);
+        restored.bus.current_icount += 132_000_000;
+        assert_eq!(restored.bus.read32(0xfc07000c).unwrap(), 264_000_000);
+        restored.bus.write8(0xfc07000f, 99).unwrap();
+        assert_eq!(restored.bus.read32(0xfc07000c).unwrap(), 0);
+        restored.bus.current_icount += 37;
+        assert_eq!(restored.bus.read32(0xfc07000c).unwrap(), 37);
     }
 
     #[test]

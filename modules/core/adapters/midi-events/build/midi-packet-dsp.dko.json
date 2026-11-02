@@ -67,58 +67,72 @@
   },
   {
    "addend": 0,
-   "offset": 87,
+   "offset": 89,
+   "section": "seg_pmco",
+   "symbol": "_mi_event_kind",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 95,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 91,
+   "offset": 100,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 97,
+   "offset": 104,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 103,
+   "offset": 110,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 109,
+   "offset": 116,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 121,
+   "offset": 122,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 127,
+   "offset": 128,
+   "section": "seg_pmco",
+   "symbol": "_mi_sequence_range",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 135,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 142,
+   "offset": 138,
    "section": "seg_pmco",
-   "symbol": "_mi_bad",
+   "symbol": "_mi_sequence_valid",
    "type": "sharc.abs24"
   },
   {
@@ -130,100 +144,93 @@
   },
   {
    "addend": 0,
-   "offset": 159,
+   "offset": 156,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 166,
+   "offset": 171,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 175,
+   "offset": 179,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 181,
+   "offset": 188,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 187,
+   "offset": 195,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 204,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 216,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 220,
+   "section": "seg_pmco",
+   "symbol": "_mi_event_note_or_controller",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 226,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 233,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 239,
    "section": "seg_pmco",
    "symbol": "_mi_controller",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 191,
+   "offset": 243,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 194,
+   "offset": 246,
    "section": "seg_pmco",
    "symbol": "_mi_next_event",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 198,
-   "section": "seg_pmco",
-   "symbol": "_mi_bad",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 202,
-   "section": "seg_pmco",
-   "symbol": "_mi_event",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 213,
-   "section": "seg_pmco",
-   "symbol": "_mi_padding",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 221,
-   "section": "seg_pmco",
-   "symbol": "_mi_bad",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 230,
-   "section": "seg_pmco",
-   "symbol": "_mi_bad",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 236,
-   "section": "seg_pmco",
-   "symbol": "_mi_bad",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 245,
-   "section": "seg_pmco",
-   "symbol": "_mi_good",
    "type": "sharc.abs24"
   },
   {
@@ -237,68 +244,61 @@
    "addend": 0,
    "offset": 254,
    "section": "seg_pmco",
+   "symbol": "_mi_event",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 265,
+   "section": "seg_pmco",
    "symbol": "_mi_padding",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 271,
+   "offset": 273,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 280,
+   "offset": 282,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 286,
+   "offset": 288,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 292,
+   "offset": 297,
+   "section": "seg_pmco",
+   "symbol": "_mi_good",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 302,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 298,
+   "offset": 306,
    "section": "seg_pmco",
-   "symbol": "_mi_bad",
+   "symbol": "_mi_padding",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 304,
-   "section": "seg_pmco",
-   "symbol": "_mi_bad",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 313,
-   "section": "seg_pmco",
-   "symbol": "_mi_bad",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 320,
-   "section": "seg_pmco",
-   "symbol": "_mi_bad",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 326,
+   "offset": 323,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
@@ -312,6 +312,13 @@
   },
   {
    "addend": 0,
+   "offset": 338,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
    "offset": 344,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
@@ -319,259 +326,252 @@
   },
   {
    "addend": 0,
-   "offset": 352,
+   "offset": 350,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 356,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 365,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 372,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 378,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 384,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 396,
+   "section": "seg_pmco",
+   "symbol": "_mi_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 404,
    "section": "seg_pmco",
    "symbol": "_mi_config_commit",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 363,
+   "offset": 415,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 373,
+   "offset": 425,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 376,
+   "offset": 428,
    "section": "seg_pmco",
    "symbol": "_mi_config_padding",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 380,
+   "offset": 432,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 391,
+   "offset": 443,
    "section": "seg_pmco",
    "symbol": "_mi_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 408,
+   "offset": 460,
    "section": "seg_pmco",
    "symbol": "_mi_padding",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 411,
+   "offset": 463,
    "section": "seg_pmco",
    "symbol": "_mi_packet",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 414,
+   "offset": 466,
    "section": "seg_pmco",
    "symbol": "_mi_packet_valid",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 418,
+   "offset": 470,
    "section": "seg_pmco",
    "symbol": "_mi_rejected",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 421,
+   "offset": 473,
    "section": "seg_pmco",
    "symbol": "_mi_packet",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 430,
+   "offset": 482,
    "section": "seg_pmco",
    "symbol": "_mi_epoch",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 433,
+   "offset": 485,
    "section": "seg_pmco",
    "symbol": "_mi_message",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 444,
+   "offset": 496,
    "section": "seg_pmco",
    "symbol": "_mi_stale",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 447,
+   "offset": 499,
    "section": "seg_pmco",
    "symbol": "_mi_new_epoch",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 455,
+   "offset": 507,
    "section": "seg_pmco",
    "symbol": "_mi_stale",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 458,
+   "offset": 510,
    "section": "seg_pmco",
    "symbol": "_mi_duplicate",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 466,
+   "offset": 518,
    "section": "seg_pmco",
    "symbol": "_mi_apply",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 471,
+   "offset": 523,
    "section": "seg_pmco",
    "symbol": "_mi_gap",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 474,
+   "offset": 526,
    "section": "seg_pmco",
    "symbol": "_mi_apply",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 482,
+   "offset": 534,
    "section": "seg_pmco",
    "symbol": "_mi_gap",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 485,
+   "offset": 537,
    "section": "seg_pmco",
    "symbol": "_mi_apply_packet",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 489,
+   "offset": 541,
    "section": "seg_pmco",
    "symbol": "_mi_rejected",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 492,
+   "offset": 544,
    "section": "seg_pmco",
    "symbol": "_mi_apply_packet",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 498,
+   "offset": 550,
    "section": "seg_pmco",
    "symbol": "_mi_rejected",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 501,
+   "offset": 553,
    "section": "seg_pmco",
    "symbol": "_mi_packet",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 508,
+   "offset": 560,
    "section": "seg_pmco",
    "symbol": "_mi_epoch",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 513,
+   "offset": 565,
    "section": "seg_pmco",
    "symbol": "_mi_message",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 543,
-   "section": "seg_pmco",
-   "symbol": "_mi_config_active",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 546,
-   "section": "seg_pmco",
-   "symbol": "_mi_config_next",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 559,
-   "section": "seg_pmco",
-   "symbol": "_mc_chunk",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 565,
-   "section": "seg_pmco",
-   "symbol": "_mc_reject",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 568,
-   "section": "seg_pmco",
-   "symbol": "_mc_match",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 574,
-   "section": "seg_pmco",
-   "symbol": "_mc_match",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 577,
-   "section": "seg_pmco",
-   "symbol": "_mi_config_meta",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 588,
-   "section": "seg_pmco",
-   "symbol": "_mc_meta_copy",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 593,
+   "offset": 595,
    "section": "seg_pmco",
    "symbol": "_mi_config_active",
    "type": "sharc.abs32"
@@ -585,133 +585,126 @@
   },
   {
    "addend": 0,
-   "offset": 603,
+   "offset": 611,
    "section": "seg_pmco",
-   "symbol": "_mi_config_active",
-   "type": "sharc.abs32"
+   "symbol": "_mc_chunk",
+   "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 607,
+   "offset": 617,
    "section": "seg_pmco",
    "symbol": "_mc_reject",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 612,
+   "offset": 620,
    "section": "seg_pmco",
-   "symbol": "_mi_config_next",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 616,
-   "section": "seg_pmco",
-   "symbol": "_mc_reject",
+   "symbol": "_mc_match",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 619,
+   "offset": 626,
+   "section": "seg_pmco",
+   "symbol": "_mc_match",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 629,
    "section": "seg_pmco",
    "symbol": "_mi_config_meta",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 632,
+   "offset": 640,
+   "section": "seg_pmco",
+   "symbol": "_mc_meta_copy",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 645,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_active",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 650,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_next",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 655,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_active",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 659,
+   "section": "seg_pmco",
+   "symbol": "_mc_reject",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 664,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_next",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 668,
+   "section": "seg_pmco",
+   "symbol": "_mc_reject",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 671,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_meta",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 684,
    "section": "seg_pmco",
    "symbol": "_mc_meta_next",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 636,
+   "offset": 688,
    "section": "seg_pmco",
    "symbol": "_mc_reject",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 643,
+   "offset": 695,
    "section": "seg_pmco",
    "symbol": "_mc_meta_check",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 653,
+   "offset": 705,
    "section": "seg_pmco",
    "symbol": "_mc_commit",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 663,
-   "section": "seg_pmco",
-   "symbol": "_mi_config_data",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 675,
-   "section": "seg_pmco",
-   "symbol": "_mc_data_copy",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 678,
-   "section": "seg_pmco",
-   "symbol": "_mi_config_next",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 682,
-   "section": "seg_pmco",
-   "symbol": "_mi_config_next",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 697,
-   "section": "seg_pmco",
-   "symbol": "_mi_config_data",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 708,
-   "section": "seg_pmco",
-   "symbol": "_mc_sum",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 714,
-   "section": "seg_pmco",
-   "symbol": "_mc_reject",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 717,
-   "section": "seg_pmco",
-   "symbol": "_mi_config_publish",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 721,
-   "section": "seg_pmco",
-   "symbol": "_mc_reject",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 724,
+   "offset": 715,
    "section": "seg_pmco",
    "symbol": "_mi_config_data",
    "type": "sharc.abs32"
@@ -720,922 +713,992 @@
    "addend": 0,
    "offset": 727,
    "section": "seg_pmco",
-   "symbol": "_mi_config_meta",
-   "type": "sharc.abs32"
+   "symbol": "_mc_data_copy",
+   "type": "sharc.abs24"
   },
   {
    "addend": 0,
    "offset": 730,
-   "section": "seg_pmco",
-   "symbol": "_mi_config_publish",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 736,
-   "section": "seg_pmco",
-   "symbol": "_mc_reject",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 741,
-   "section": "seg_pmco",
-   "symbol": "_mi_config_active",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 744,
    "section": "seg_pmco",
    "symbol": "_mi_config_next",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 757,
+   "offset": 734,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_next",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 749,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_data",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 760,
+   "section": "seg_pmco",
+   "symbol": "_mc_sum",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 766,
+   "section": "seg_pmco",
+   "symbol": "_mc_reject",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 769,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_publish",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 773,
+   "section": "seg_pmco",
+   "symbol": "_mc_reject",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 776,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_data",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 779,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_meta",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 782,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_publish",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 788,
+   "section": "seg_pmco",
+   "symbol": "_mc_reject",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 793,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_active",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 796,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_next",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 809,
    "section": "seg_pmco",
    "symbol": "_instrument_reply",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 764,
+   "offset": 816,
    "section": "seg_pmco",
    "symbol": "_mi_epoch",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 769,
+   "offset": 821,
    "section": "seg_pmco",
    "symbol": "_mi_message",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 774,
+   "offset": 826,
    "section": "seg_pmco",
    "symbol": "_mi_heartbeat",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 778,
+   "offset": 830,
    "section": "seg_pmco",
    "symbol": "_mi_heartbeat",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 792,
-   "section": "seg_pmco",
-   "symbol": "_mr_clear",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 795,
-   "section": "seg_pmco",
-   "symbol": "_instrument_registry_reply",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 799,
-   "section": "seg_pmco",
-   "symbol": "_mr_registry_done",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 804,
-   "section": "seg_pmco",
-   "symbol": "_instrument_reply",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 815,
-   "section": "seg_pmco",
-   "symbol": "_mr_registry_copy",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 821,
-   "section": "seg_pmco",
-   "symbol": "_instrument_session",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 825,
-   "section": "seg_pmco",
-   "symbol": "_mr_session_done",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 833,
-   "section": "seg_pmco",
-   "symbol": "_mr_session_done",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 836,
-   "section": "seg_pmco",
-   "symbol": "_instrument_reply",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
    "offset": 844,
    "section": "seg_pmco",
-   "symbol": "_instrument_play_status",
+   "symbol": "_mr_clear",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 847,
+   "section": "seg_pmco",
+   "symbol": "_instrument_registry_reply",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 848,
+   "offset": 851,
+   "section": "seg_pmco",
+   "symbol": "_mr_registry_done",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 856,
+   "section": "seg_pmco",
+   "symbol": "_instrument_reply",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 867,
+   "section": "seg_pmco",
+   "symbol": "_mr_registry_copy",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 873,
+   "section": "seg_pmco",
+   "symbol": "_instrument_session",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 877,
    "section": "seg_pmco",
    "symbol": "_mr_session_done",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 864,
+   "offset": 885,
+   "section": "seg_pmco",
+   "symbol": "_mr_session_done",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 888,
    "section": "seg_pmco",
    "symbol": "_instrument_reply",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 878,
+   "offset": 896,
+   "section": "seg_pmco",
+   "symbol": "_instrument_play_status",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 900,
+   "section": "seg_pmco",
+   "symbol": "_mr_session_done",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 916,
+   "section": "seg_pmco",
+   "symbol": "_instrument_reply",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 930,
    "section": "seg_pmco",
    "symbol": "_mr_sum",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 884,
+   "offset": 936,
    "section": "seg_pmco",
    "symbol": "_instrument_reply",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 893,
+   "offset": 945,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
    "addend": 8,
-   "offset": 896,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 16,
-   "offset": 899,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 24,
-   "offset": 902,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 32,
-   "offset": 905,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 40,
-   "offset": 908,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 48,
-   "offset": 911,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 56,
-   "offset": 914,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 64,
-   "offset": 917,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 72,
-   "offset": 920,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 80,
-   "offset": 923,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 88,
-   "offset": 926,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 96,
-   "offset": 929,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 104,
-   "offset": 932,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 112,
-   "offset": 935,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 120,
-   "offset": 938,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 128,
-   "offset": 943,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 136,
    "offset": 948,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
-   "addend": 144,
-   "offset": 953,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 152,
-   "offset": 958,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 160,
-   "offset": 963,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 168,
-   "offset": 968,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 176,
-   "offset": 973,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 184,
-   "offset": 978,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 192,
-   "offset": 983,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 200,
-   "offset": 988,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 208,
-   "offset": 993,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 216,
-   "offset": 998,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 224,
-   "offset": 1003,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1019,
-   "section": "seg_pmco",
-   "symbol": "_instrument_registry_block",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1023,
-   "section": "seg_pmco",
-   "symbol": "_mi_registry_done",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1026,
-   "section": "seg_pmco",
-   "symbol": "_instrument_registry_block",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1029,
-   "section": "seg_pmco",
-   "symbol": "_mi_carrier_begin",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1033,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_receive",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1036,
-   "section": "seg_pmco",
-   "symbol": "_mi_carrier_begin",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1045,
-   "section": "seg_pmco",
-   "symbol": "_mi_receive",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1048,
-   "section": "seg_pmco",
-   "symbol": "_instrument_carrier_prepare",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1052,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_reply",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1055,
-   "section": "seg_pmco",
-   "symbol": "_instrument_carrier_prepare",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1058,
-   "section": "seg_pmco",
-   "symbol": "_mi_reply_build",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 128,
-   "offset": 1061,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 136,
-   "offset": 1066,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 144,
-   "offset": 1071,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 152,
-   "offset": 1076,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 160,
-   "offset": 1081,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 168,
-   "offset": 1086,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 176,
-   "offset": 1091,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 184,
-   "offset": 1096,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 192,
-   "offset": 1101,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 200,
-   "offset": 1106,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 208,
-   "offset": 1111,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 216,
-   "offset": 1116,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 224,
-   "offset": 1121,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 8,
-   "offset": 1126,
-   "section": "seg_pmco",
-   "symbol": "_mi_block_save",
-   "type": "sharc.abs32"
-  },
-  {
    "addend": 16,
-   "offset": 1129,
+   "offset": 951,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
    "addend": 24,
-   "offset": 1132,
+   "offset": 954,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
    "addend": 32,
-   "offset": 1135,
+   "offset": 957,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
    "addend": 40,
-   "offset": 1138,
+   "offset": 960,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
    "addend": 48,
-   "offset": 1141,
+   "offset": 963,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
    "addend": 56,
-   "offset": 1144,
+   "offset": 966,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
    "addend": 64,
-   "offset": 1147,
+   "offset": 969,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
    "addend": 72,
-   "offset": 1150,
+   "offset": 972,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
    "addend": 80,
-   "offset": 1153,
+   "offset": 975,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
    "addend": 88,
-   "offset": 1156,
+   "offset": 978,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
    "addend": 96,
-   "offset": 1159,
+   "offset": 981,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
    "addend": 104,
-   "offset": 1162,
+   "offset": 984,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
    "addend": 112,
-   "offset": 1165,
+   "offset": 987,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
    "addend": 120,
+   "offset": 990,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 128,
+   "offset": 995,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 136,
+   "offset": 1000,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 144,
+   "offset": 1005,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 152,
+   "offset": 1010,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 160,
+   "offset": 1015,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 168,
+   "offset": 1020,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 176,
+   "offset": 1025,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 184,
+   "offset": 1030,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 192,
+   "offset": 1035,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 200,
+   "offset": 1040,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 208,
+   "offset": 1045,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 216,
+   "offset": 1050,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 224,
+   "offset": 1055,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 1071,
+   "section": "seg_pmco",
+   "symbol": "_instrument_registry_block",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 1075,
+   "section": "seg_pmco",
+   "symbol": "_mi_registry_done",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1078,
+   "section": "seg_pmco",
+   "symbol": "_instrument_registry_block",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1081,
+   "section": "seg_pmco",
+   "symbol": "_mi_carrier_begin",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 1085,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_receive",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1088,
+   "section": "seg_pmco",
+   "symbol": "_mi_carrier_begin",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1097,
+   "section": "seg_pmco",
+   "symbol": "_mi_receive",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1100,
+   "section": "seg_pmco",
+   "symbol": "_instrument_carrier_prepare",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 1104,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_reply",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1107,
+   "section": "seg_pmco",
+   "symbol": "_instrument_carrier_prepare",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1110,
+   "section": "seg_pmco",
+   "symbol": "_mi_reply_build",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 128,
+   "offset": 1113,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 136,
+   "offset": 1118,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 144,
+   "offset": 1123,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 152,
+   "offset": 1128,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 160,
+   "offset": 1133,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 168,
+   "offset": 1138,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 176,
+   "offset": 1143,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 184,
+   "offset": 1148,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 192,
+   "offset": 1153,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 200,
+   "offset": 1158,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 208,
+   "offset": 1163,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 216,
    "offset": 1168,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
-   "addend": 0,
-   "offset": 1171,
+   "addend": 224,
+   "offset": 1173,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 8,
+   "offset": 1178,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 16,
+   "offset": 1181,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 24,
+   "offset": 1184,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 32,
+   "offset": 1187,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 40,
+   "offset": 1190,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 48,
+   "offset": 1193,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 56,
+   "offset": 1196,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 64,
+   "offset": 1199,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 72,
+   "offset": 1202,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 80,
+   "offset": 1205,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 88,
+   "offset": 1208,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 96,
+   "offset": 1211,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 104,
+   "offset": 1214,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 112,
+   "offset": 1217,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 120,
+   "offset": 1220,
    "section": "seg_pmco",
    "symbol": "_mi_block_save",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1177,
+   "offset": 1223,
+   "section": "seg_pmco",
+   "symbol": "_mi_block_save",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 1229,
    "section": "seg_pmco",
    "symbol": "_mc_packet",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1187,
+   "offset": 1239,
    "section": "seg_pmco",
    "symbol": "_mc_reset_instance",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 1196,
+   "offset": 1248,
    "section": "seg_pmco",
    "symbol": "_mc_events",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 1205,
+   "offset": 1254,
+   "section": "seg_pmco",
+   "symbol": "_mc_events",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1263,
    "section": "seg_pmco",
    "symbol": "_mc_instance",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 1211,
+   "offset": 1269,
    "section": "seg_pmco",
    "symbol": "_mc_no",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 1222,
+   "offset": 1280,
    "section": "seg_pmco",
    "symbol": "_mc_no",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1225,
-   "section": "seg_pmco",
-   "symbol": "_mc_packet",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1228,
-   "section": "seg_pmco",
-   "symbol": "_mi_config_apply",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1243,
-   "section": "seg_pmco",
-   "symbol": "_mc_instance",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1249,
-   "section": "seg_pmco",
-   "symbol": "_mc_no",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1255,
-   "section": "seg_pmco",
-   "symbol": "_mc_no",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1258,
-   "section": "seg_pmco",
-   "symbol": "_instrument_events",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1262,
-   "section": "seg_pmco",
-   "symbol": "_mc_no",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1265,
-   "section": "seg_pmco",
-   "symbol": "_mc_packet",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1268,
-   "section": "seg_pmco",
-   "symbol": "_instrument_events",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1278,
-   "section": "seg_pmco",
-   "symbol": "_mc_instance",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
    "offset": 1283,
    "section": "seg_pmco",
-   "symbol": "_mi_epoch",
+   "symbol": "_mc_packet",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1287,
+   "offset": 1286,
    "section": "seg_pmco",
-   "symbol": "_mc_reset_ready",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1298,
-   "section": "seg_pmco",
-   "symbol": "_mc_no",
+   "symbol": "_mi_config_apply",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
    "offset": 1301,
    "section": "seg_pmco",
-   "symbol": "_instrument_reset",
-   "type": "sharc.abs32"
+   "symbol": "_mc_instance",
+   "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 1305,
+   "offset": 1307,
    "section": "seg_pmco",
    "symbol": "_mc_no",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 1308,
-   "section": "seg_pmco",
-   "symbol": "_mc_packet",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1311,
-   "section": "seg_pmco",
-   "symbol": "_instrument_reset",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1317,
+   "offset": 1313,
    "section": "seg_pmco",
    "symbol": "_mc_no",
    "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1316,
+   "section": "seg_pmco",
+   "symbol": "_instrument_events",
+   "type": "sharc.abs32"
   },
   {
    "addend": 0,
    "offset": 1320,
    "section": "seg_pmco",
+   "symbol": "_mc_no",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1323,
+   "section": "seg_pmco",
    "symbol": "_mc_packet",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1327,
+   "offset": 1326,
    "section": "seg_pmco",
-   "symbol": "_mi_epoch",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1331,
-   "section": "seg_pmco",
-   "symbol": "_mc_reset_track",
+   "symbol": "_instrument_events",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 1334,
-   "section": "seg_pmco",
-   "symbol": "_mi_instances",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1343,
-   "section": "seg_pmco",
-   "symbol": "_mc_clear_instances",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1350,
+   "offset": 1336,
    "section": "seg_pmco",
    "symbol": "_mc_instance",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 1359,
+   "offset": 1341,
    "section": "seg_pmco",
-   "symbol": "_mi_config_abort",
+   "symbol": "_mi_epoch",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 1345,
+   "section": "seg_pmco",
+   "symbol": "_mc_reset_ready",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 1370,
+   "offset": 1356,
+   "section": "seg_pmco",
+   "symbol": "_mc_no",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1359,
+   "section": "seg_pmco",
+   "symbol": "_instrument_reset",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 1363,
+   "section": "seg_pmco",
+   "symbol": "_mc_no",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1366,
+   "section": "seg_pmco",
+   "symbol": "_mc_packet",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 1369,
+   "section": "seg_pmco",
+   "symbol": "_instrument_reset",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1375,
+   "section": "seg_pmco",
+   "symbol": "_mc_no",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1378,
+   "section": "seg_pmco",
+   "symbol": "_mc_packet",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 1385,
+   "section": "seg_pmco",
+   "symbol": "_mi_epoch",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 1389,
+   "section": "seg_pmco",
+   "symbol": "_mc_reset_track",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1392,
    "section": "seg_pmco",
    "symbol": "_mi_instances",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1379,
+   "offset": 1401,
+   "section": "seg_pmco",
+   "symbol": "_mc_clear_instances",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1408,
+   "section": "seg_pmco",
+   "symbol": "_mc_instance",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1417,
+   "section": "seg_pmco",
+   "symbol": "_mi_config_abort",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 1428,
+   "section": "seg_pmco",
+   "symbol": "_mi_instances",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 1437,
    "section": "seg_pmco",
    "symbol": "_mc_metadata",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1382,
+   "offset": 1440,
    "section": "seg_pmco",
    "symbol": "_instrument_configure",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1386,
+   "offset": 1444,
    "section": "seg_pmco",
    "symbol": "_mc_no",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 1389,
+   "offset": 1447,
    "section": "seg_pmco",
    "symbol": "_instrument_configure",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 1395,
+   "offset": 1453,
    "section": "seg_pmco",
    "symbol": "_mc_no",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 1398,
+   "offset": 1456,
    "section": "seg_pmco",
    "symbol": "_mc_metadata",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1407,
+   "offset": 1465,
    "section": "seg_pmco",
    "symbol": "_mc_instance",
    "type": "sharc.abs24"
@@ -1644,10 +1707,10 @@
  "sections": [
   {
    "align": 8,
-   "hex": "7e703f0808900000010f4e49010101c32006000000000890020000c20006000000000890030000c2000600000000810f0000820f0000830f0000800f070030c3000600000000509110c021c080150000010033c5800f200030c30206000000007e703f080890070012ce01c320060000000008900100810f020001c3000600000000810f030001c3000600000000810f040001c30006000000003e02100850083e02000015083e023000110001c320060000000055c2000600000000810f080051c32406000000000890050000c20006000000000890040000c200060000000015c680010111020f0080000012ce02ce10c30206000000000890090366c200060000000008908a033e021008770a80150000080085c29991909106c32006000000009a913e0210080a1c00c22006000000003e0210000a84810f010001c32406000000003e0210080a0a07c32006000000003e0210080a00810f010001c3020600000000810f040001c3240600000000810f020001c324060000000099c20006000000003e060000000099c220060000000088c62006000000003e020000050105c0810f1800800110283e0600000000089004000890850001cd200600000000089008003e02007800fc00c22006000000000890090000c2000600000000801500000a00880f160088c2000600000000909100c220060000000088c63e0600000000800f01003e0a00000000800f00003e0a00000000a0c20890040000c2200600000000089008003e02007800fc00c22006000000000890090000c200060000000008900a0000c20006000000000890850001c320060000000008900d0000c200060000000008908c02800f0300840150002006000000003e02007805f700c2200600000000800f040050c3020600000000800f000150c32406000000003e02007855fe08900b033e02007806fd00c220060000000008908f03800f0400a0c30006000000003e020000060480015028800f010080c3020600000000800f100080c324700004000078c32006000000003e060000000077c2200600000000800f0f00800150103e02007800fc60c32006000000003e0200000702800140103e703f08801500001000800f1000800107283e0600000000041100000000be060000000000c20006000000000410000000007e703f080890820208900303071000000000081000000000000f00800000840150218401702212c3020600000000240600000000840160218401802212c302060000000000060000000008900100810f020001c300060000000088c568c32006000000003e060000000008900100810f020001c3200600000000000f0000000000c2000600000000be0600000000810f010001c32006000000000410000000007e703f080890020000110000000008900300001100000000800f01003e0a00000000800f02003e0a00000000800f03003e0a00000000800f04003e0a00000000800f00003e0a00000000800f00000011000000000011000000003e0a000000007e703f0808900100810f030001c3000600000000810f040001c32006000000003e060000000008900b0000c2200600000000110f00000000801500000800850f07009091b09355c6200600000000800f0100001100000000800f00000011000000007e703f0800100000000000c200060000000008900b0001100000000001c3200600000000110f00000000801500000800850f000090919193820f030052c300060000000001c320060000000055c5800f070050c30206000000007e703f0808900100810f040001c300060000000008908f0208900b003e0200000006010f0000000001c03e70bf088015000010009091b09355c620060000000000100000000000c5001100000000800f01003e0a0000000008908c023e02007855fe08900e03110f00000000810f0000820f0000909310c021c055c62006000000008401122006c3200600000000000f0000000000c2000600000000040f00000000080f00000000be0600000000810f010001c3200600000000800f0000001100000000001100000000800f01003e0a00000000800f00003e0a00000000100f00000000800f000008910000001000000000089101000010000000000891020000100000000000c500110000000008910300801500000400800f0000830f0b00b09133c6200600000000000f0000000000c20006000000003e70bf08100f00000000801500000400830f08009093b09133c6200600000000060f4e4901a1000f0000000000c20006000000003e70bf080892000000c2000600000000100f0000000008910c00060f4e4902a1000f0000000000c20006000000003e70bf080892000008910d000892010008910e00060f4e4903a1100f0000000080150000010016c221c2830f0e00909110c021c033c6200600000000840112207091100f0000000006c2089100003e0a000000000011000000000111000000000211000000000311000000000411000000000511000000000611000000000711000000000811000000000911000000000a11000000000b11000000000c11000000000d11000000000e11000000000f11000000003e713f000011000000003e713f800011000000003f713f000011000000007e723f800011000000007f723f000011000000003e733f000011000000003e733f800011000000003f733f000011000000003f773f000011000000007f773f000011000000007f773f80001100000000be773f00001100000000be773f80001100000000221420000020b00f0000b10f0000b20f0000a50f0000a60f0100000f0000000000c2000600000000be0600000000000f0000000000c2000600000000be06000000003f713f80810ffc0980010114be0600000000000f0000000000c2000600000000be0600000000be06000000000010000000003e703f080010000000003e70bf080010000000003e703f090010000000003e70bf120010000000003e703f130010000000003e703f180010000000003e70bf180010000000003e703f190010000000003e703f390010000000003e703f3b0010000000003e70bf3b0010000000003e703f3c0010000000003e70bf3c0110000000000210000000000310000000000410000000000510000000000610000000000710000000000810000000000910000000000a10000000000b10000000000c10000000000d10000000000e10000000000f10000000000010000000003e0a000000000411000000007e703f0808900100810f020001c30006000000003e0210101000820f010012c3000600000000089088020890090308908a03be06000000000892000006c320060000000008920100010f0080000001ce71ce70c3040600000000041000000000be06000000003e0a0000000008900a003e021008500a0890090308908503be06000000000892000006c32006000000000892010007c3200600000000000f0000000000c2000600000000041000000000be06000000003e0a000000000890880208900903be06000000000890020001100000000001c320060000000008920000010f0080000001ce61ce60c3040600000000000f0000000000c2000600000000041000000000be0600000000810f010001c32006000000000410000000007e703f080890020001100000000001c3000600000000110f00000000800f0000810f2000b09311c62006000000000890880208900903be060000000008930003800f000008930100be0600000000800f01003e0a000000003e0200000503010f0000000001c03e70bf083e0a00000000081100000000000f0000000000c2000600000000be0600000000810f010001c3200600000000081000000000be703f080890800208908203be060000000008938103800f01003e0a00000000800f00003e0a00000000",
+   "hex": "7e703f0808900000010f4e49010101c32006000000000890020000c20006000000000890030000c2000600000000810f0000820f0000830f0000800f070030c3000600000000509110c021c080150000010033c5800f200030c30206000000007e703f080890070012ce01c320060000000008900100810f020001c3000600000000810f030001c3000600000000810f040001c30006000000003e02100850083e02000015083e021010b000820f0100b2c3000600000000820f0500b2c32006000000001bcd01c320060000000055c2000600000000810f080051c32406000000000890050000c20006000000000890040000c2000600000000810f0500b1c3200600000000010fff7fffff01cc0006000000003e060000000015c680010111020f0080000012ce02ce10c30206000000000890090366c200060000000008908a033e021008770a80150000080085c29991909106c32006000000009a913e0210080a1c00c22006000000003e0210000a84810f010001c32406000000003e0210080a0a07c32006000000003e0210080a00810f010001c3020600000000810f0400820f0500b2c301708000000001c324060000000002c3200600000000820f010052c32006000000003e0200782afc22c2200600000000810f020001c324060000000099c20006000000003e060000000099c220060000000088c62006000000003e020000050105c0810f1800800110283e0600000000089004000890850001cd200600000000089008003e02007800fc00c22006000000000890090000c2000600000000801500000a00880f160088c2000600000000909100c220060000000088c63e0600000000800f01003e0a00000000800f00003e0a00000000a0c20890040000c2200600000000089008003e02007800fc00c22006000000000890090000c200060000000008900a0000c20006000000000890850001c320060000000008900d0000c200060000000008908c02800f0300840150002006000000003e02007805f700c2200600000000800f040050c3020600000000800f000150c32406000000003e02007855fe08900b033e02007806fd00c220060000000008908f03800f0400a0c30006000000003e020000060480015028800f010080c3020600000000800f100080c324700004000078c32006000000003e060000000077c2200600000000800f0f00800150103e02007800fc60c32006000000003e0200000702800140103e703f08801500001000800f1000800107283e0600000000041100000000be060000000000c20006000000000410000000007e703f080890820208900303071000000000081000000000000f00800000840150218401702212c3020600000000240600000000840160218401802212c302060000000000060000000008900100810f020001c300060000000088c568c32006000000003e060000000008900100810f020001c3200600000000000f0000000000c2000600000000be0600000000810f010001c32006000000000410000000007e703f080890020000110000000008900300001100000000800f01003e0a00000000800f02003e0a00000000800f03003e0a00000000800f04003e0a00000000800f00003e0a00000000800f00000011000000000011000000003e0a000000007e703f0808900100810f030001c3000600000000810f040001c32006000000003e060000000008900b0000c2200600000000110f00000000801500000800850f07009091b09355c6200600000000800f0100001100000000800f00000011000000007e703f0800100000000000c200060000000008900b0001100000000001c3200600000000110f00000000801500000800850f000090919193820f030052c300060000000001c320060000000055c5800f070050c30206000000007e703f0808900100810f040001c300060000000008908f0208900b003e0200000006010f0000000001c03e70bf088015000010009091b09355c620060000000000100000000000c5001100000000800f01003e0a0000000008908c023e02007855fe08900e03110f00000000810f0000820f0000909310c021c055c62006000000008401122006c3200600000000000f0000000000c2000600000000040f00000000080f00000000be0600000000810f010001c3200600000000800f0000001100000000001100000000800f01003e0a00000000800f00003e0a00000000100f00000000800f000008910000001000000000089101000010000000000891020000100000000000c500110000000008910300801500000400800f0000830f0b00b09133c6200600000000000f0000000000c20006000000003e70bf08100f00000000801500000400830f08009093b09133c6200600000000060f4e4901a1000f0000000000c20006000000003e70bf080892000000c2000600000000100f0000000008910c00060f4e4902a1000f0000000000c20006000000003e70bf080892000008910d000892010008910e00060f4e4903a1100f0000000080150000010016c221c2830f0e00909110c021c033c6200600000000840112207091100f0000000006c2089100003e0a000000000011000000000111000000000211000000000311000000000411000000000511000000000611000000000711000000000811000000000911000000000a11000000000b11000000000c11000000000d11000000000e11000000000f11000000003e713f000011000000003e713f800011000000003f713f000011000000007e723f800011000000007f723f000011000000003e733f000011000000003e733f800011000000003f733f000011000000003f773f000011000000007f773f000011000000007f773f80001100000000be773f00001100000000be773f80001100000000221420000020b00f0000b10f0000b20f0000a50f0000a60f0100000f0000000000c2000600000000be0600000000000f0000000000c2000600000000be06000000003f713f80810ffc0980010114be0600000000000f0000000000c2000600000000be0600000000be06000000000010000000003e703f080010000000003e70bf080010000000003e703f090010000000003e70bf120010000000003e703f130010000000003e703f180010000000003e70bf180010000000003e703f190010000000003e703f390010000000003e703f3b0010000000003e70bf3b0010000000003e703f3c0010000000003e70bf3c0110000000000210000000000310000000000410000000000510000000000610000000000710000000000810000000000910000000000a10000000000b10000000000c10000000000d10000000000e10000000000f10000000000010000000003e0a000000000411000000007e703f0808900100810f020001c30006000000003e0210101000820f010012c3000600000000820f050012c3000600000000089088020890090308908a03be06000000000892000006c320060000000008920100010f0080000001ce71ce70c3040600000000041000000000be06000000003e0a0000000008900a003e021008500a0890090308908503be06000000000892000006c32006000000000892010007c3200600000000000f0000000000c2000600000000041000000000be06000000003e0a000000000890880208900903be06000000000890020001100000000001c320060000000008920000010f0080000001ce61ce60c3040600000000000f0000000000c2000600000000041000000000be0600000000810f010001c32006000000000410000000007e703f080890020001100000000001c3000600000000110f00000000800f0000810f2000b09311c62006000000000890880208900903be060000000008930003800f000008930100be0600000000800f01003e0a000000003e0200000503010f0000000001c03e70bf083e0a00000000081100000000000f0000000000c2000600000000be0600000000810f010001c3200600000000081000000000be703f080890800208908203be060000000008938103800f01003e0a00000000800f00003e0a00000000",
    "kind": "text",
    "name": "seg_pmco",
-   "size": 2844
+   "size": 2960
   },
   {
    "align": 8,
@@ -1692,217 +1755,229 @@
    "size": 128
   }
  ],
- "source_sha256": "5e28cfe11a3c836faabca051581c2a1daeda175466b3df0475f15c173fd3e74b",
+ "source_sha256": "bcab3b32b19c1862148e3cbdb648d473f11779c0374caf6f90f3d035db059367",
  "symbols": [
   {
    "global": true,
    "name": "_instrument_block",
    "section": "seg_pmco",
-   "value": 893
+   "value": 945
   },
   {
    "global": false,
    "name": "_mc_chunk",
    "section": "seg_pmco",
-   "value": 571
+   "value": 623
   },
   {
    "global": false,
    "name": "_mc_clear_instances",
    "section": "seg_pmco",
-   "value": 1341
+   "value": 1399
   },
   {
    "global": false,
    "name": "_mc_commit",
    "section": "seg_pmco",
-   "value": 690
+   "value": 742
   },
   {
    "global": false,
    "name": "_mc_data_copy",
    "section": "seg_pmco",
-   "value": 672
+   "value": 724
   },
   {
    "global": false,
    "name": "_mc_events",
    "section": "seg_pmco",
-   "value": 1234
+   "value": 1292
   },
   {
    "global": false,
    "name": "_mc_instance",
    "section": "seg_pmco",
-   "value": 1367
+   "value": 1425
   },
   {
    "global": false,
    "name": "_mc_match",
    "section": "seg_pmco",
-   "value": 603
+   "value": 655
   },
   {
    "global": false,
    "name": "_mc_meta_check",
    "section": "seg_pmco",
-   "value": 627
+   "value": 679
   },
   {
    "global": false,
    "name": "_mc_meta_copy",
    "section": "seg_pmco",
-   "value": 585
+   "value": 637
   },
   {
    "global": false,
    "name": "_mc_meta_next",
    "section": "seg_pmco",
-   "value": 639
+   "value": 691
   },
   {
    "global": false,
    "name": "_mc_no",
    "section": "seg_pmco",
-   "value": 1417
+   "value": 1475
   },
   {
    "global": false,
    "name": "_mc_reject",
    "section": "seg_pmco",
-   "value": 752
+   "value": 804
   },
   {
    "global": false,
    "name": "_mc_reset_instance",
    "section": "seg_pmco",
-   "value": 1274
+   "value": 1332
   },
   {
    "global": false,
    "name": "_mc_reset_ready",
    "section": "seg_pmco",
-   "value": 1301
+   "value": 1359
   },
   {
    "global": false,
    "name": "_mc_reset_track",
    "section": "seg_pmco",
-   "value": 1346
+   "value": 1404
   },
   {
    "global": false,
    "name": "_mc_sum",
    "section": "seg_pmco",
-   "value": 704
+   "value": 756
   },
   {
    "global": false,
    "name": "_mi_apply",
    "section": "seg_pmco",
-   "value": 485
+   "value": 537
   },
   {
    "global": true,
    "name": "_mi_apply_packet",
    "section": "seg_pmco",
-   "value": 1177
+   "value": 1229
   },
   {
    "global": false,
    "name": "_mi_bad",
    "section": "seg_pmco",
-   "value": 262
+   "value": 314
   },
   {
    "global": false,
    "name": "_mi_block_receive",
    "section": "seg_pmco",
-   "value": 1039
+   "value": 1091
   },
   {
    "global": false,
    "name": "_mi_block_reply",
    "section": "seg_pmco",
-   "value": 1058
+   "value": 1110
   },
   {
    "global": true,
    "name": "_mi_config_abort",
    "section": "seg_pmco",
-   "value": 541
+   "value": 593
   },
   {
    "global": true,
    "name": "_mi_config_apply",
    "section": "seg_pmco",
-   "value": 552
+   "value": 604
   },
   {
    "global": false,
    "name": "_mi_config_commit",
    "section": "seg_pmco",
-   "value": 379
+   "value": 431
   },
   {
    "global": false,
    "name": "_mi_config_packet",
    "section": "seg_pmco",
-   "value": 267
+   "value": 319
   },
   {
    "global": false,
    "name": "_mi_config_padding",
    "section": "seg_pmco",
-   "value": 394
+   "value": 446
   },
   {
    "global": true,
    "name": "_mi_config_publish",
    "section": "seg_pmco",
-   "value": 1379
+   "value": 1437
   },
   {
    "global": false,
    "name": "_mi_controller",
    "section": "seg_pmco",
-   "value": 197
+   "value": 249
   },
   {
    "global": false,
    "name": "_mi_duplicate",
    "section": "seg_pmco",
-   "value": 521
+   "value": 573
   },
   {
    "global": false,
    "name": "_mi_event",
    "section": "seg_pmco",
-   "value": 139
+   "value": 168
+  },
+  {
+   "global": false,
+   "name": "_mi_event_kind",
+   "section": "seg_pmco",
+   "value": 98
+  },
+  {
+   "global": false,
+   "name": "_mi_event_note_or_controller",
+   "section": "seg_pmco",
+   "value": 236
   },
   {
    "global": false,
    "name": "_mi_gap",
    "section": "seg_pmco",
-   "value": 526
+   "value": 578
   },
   {
    "global": false,
    "name": "_mi_good",
    "section": "seg_pmco",
-   "value": 257
+   "value": 309
   },
   {
    "global": false,
    "name": "_mi_new_epoch",
    "section": "seg_pmco",
-   "value": 477
+   "value": 529
   },
   {
    "global": false,
    "name": "_mi_next_event",
    "section": "seg_pmco",
-   "value": 201
+   "value": 253
   },
   {
    "global": true,
@@ -1914,37 +1989,49 @@
    "global": false,
    "name": "_mi_padding",
    "section": "seg_pmco",
-   "value": 244
+   "value": 296
   },
   {
    "global": true,
    "name": "_mi_receive",
    "section": "seg_pmco",
-   "value": 411
+   "value": 463
   },
   {
    "global": false,
    "name": "_mi_registry_done",
    "section": "seg_pmco",
-   "value": 1029
+   "value": 1081
   },
   {
    "global": false,
    "name": "_mi_rejected",
    "section": "seg_pmco",
-   "value": 536
+   "value": 588
   },
   {
    "global": true,
    "name": "_mi_reply_build",
    "section": "seg_pmco",
-   "value": 757
+   "value": 809
   },
   {
    "global": false,
    "name": "_mi_reset_packet",
    "section": "seg_pmco",
-   "value": 216
+   "value": 268
+  },
+  {
+   "global": false,
+   "name": "_mi_sequence_range",
+   "section": "seg_pmco",
+   "value": 141
+  },
+  {
+   "global": false,
+   "name": "_mi_sequence_valid",
+   "section": "seg_pmco",
+   "value": 153
   },
   {
    "global": false,
@@ -1956,7 +2043,7 @@
    "global": false,
    "name": "_mi_stale",
    "section": "seg_pmco",
-   "value": 531
+   "value": 583
   },
   {
    "global": false,
@@ -1968,31 +2055,31 @@
    "global": false,
    "name": "_mr_clear",
    "section": "seg_pmco",
-   "value": 790
+   "value": 842
   },
   {
    "global": false,
    "name": "_mr_registry_copy",
    "section": "seg_pmco",
-   "value": 812
+   "value": 864
   },
   {
    "global": false,
    "name": "_mr_registry_done",
    "section": "seg_pmco",
-   "value": 818
+   "value": 870
   },
   {
    "global": false,
    "name": "_mr_session_done",
    "section": "seg_pmco",
-   "value": 864
+   "value": 916
   },
   {
    "global": false,
    "name": "_mr_sum",
    "section": "seg_pmco",
-   "value": 874
+   "value": 926
   },
   {
    "global": true,
@@ -2128,7 +2215,7 @@
   }
  ],
  "toolchain": {
-  "instructions_redecoded": "634",
+  "instructions_redecoded": "662",
   "selache_rev": "2b26d3b75c53063575bc5c820fa0d38879335187"
  }
 }

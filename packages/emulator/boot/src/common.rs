@@ -675,6 +675,14 @@ impl<const TRACE: bool> LoggingBus<TRACE> {
         }
     }
     #[inline]
+    fn clock_timer_access(&mut self, addr: u32) {
+        if addr.wrapping_sub(periph::dtim::BASES[0]) < 0x10000 {
+            if let Some(time) = self.board.time_mut() {
+                time.advance_counters(self.current_icount);
+            }
+        }
+    }
+    #[inline]
     fn note_timer_write(&mut self, addr: u32, size: u8, value: u32) {
         if TRACE && Time::owns(addr) && self.timer_writes.len() < 64 {
             self.timer_writes.push((self.current_pc, addr, size, value));
@@ -742,6 +750,7 @@ impl<const TRACE: bool> Bus for LoggingBus<TRACE> {
     fn read8(&mut self, addr: u32) -> Result<u8, BusError> {
         #[cfg(feature = "cf-mix")]
         crate::cfmix::data_ref(addr, false);
+        self.clock_timer_access(addr);
         let r = self.board.read8(addr);
         if !TRACE && (r.is_ok() || !self.zero_page_mmio) {
             // zero_page() is false and log() a no-op: the board's result.
@@ -753,6 +762,7 @@ impl<const TRACE: bool> Bus for LoggingBus<TRACE> {
     fn read16(&mut self, addr: u32) -> Result<u16, BusError> {
         #[cfg(feature = "cf-mix")]
         crate::cfmix::data_ref(addr, false);
+        self.clock_timer_access(addr);
         let r = self.board.read16(addr);
         if !TRACE && (r.is_ok() || !self.zero_page_mmio) {
             // zero_page() is false and log() a no-op: the board's result.
@@ -764,6 +774,7 @@ impl<const TRACE: bool> Bus for LoggingBus<TRACE> {
     fn read32(&mut self, addr: u32) -> Result<u32, BusError> {
         #[cfg(feature = "cf-mix")]
         crate::cfmix::data_ref(addr, false);
+        self.clock_timer_access(addr);
         let r = self.board.read32(addr);
         if !TRACE && (r.is_ok() || !self.zero_page_mmio) {
             // zero_page() is false and log() a no-op: the board's result.
@@ -794,6 +805,7 @@ impl<const TRACE: bool> Bus for LoggingBus<TRACE> {
             return r;
         }
         self.note_guard_write(addr, 1, u32::from(value));
+        self.clock_timer_access(addr);
         self.note_timer_write(addr, 1, u32::from(value));
         self.note_uart8_write(addr, 1, u32::from(value));
         self.note_dspi2_dma_write(addr, 1, u32::from(value));
@@ -809,6 +821,7 @@ impl<const TRACE: bool> Bus for LoggingBus<TRACE> {
         #[cfg(feature = "cf-mix")]
         crate::cfmix::data_ref(addr, true);
         self.note_guard_write(addr, 2, u32::from(value));
+        self.clock_timer_access(addr);
         self.note_timer_write(addr, 2, u32::from(value));
         self.note_uart8_write(addr, 2, u32::from(value));
         self.note_dspi2_dma_write(addr, 2, u32::from(value));
@@ -824,6 +837,7 @@ impl<const TRACE: bool> Bus for LoggingBus<TRACE> {
         #[cfg(feature = "cf-mix")]
         crate::cfmix::data_ref(addr, true);
         self.note_guard_write(addr, 4, value);
+        self.clock_timer_access(addr);
         self.note_timer_write(addr, 4, value);
         self.note_uart8_write(addr, 4, value);
         self.note_dspi2_dma_write(addr, 4, value);

@@ -18,7 +18,7 @@ def playback_object():
     canopy = REPO_ROOT / "modules/machines/canopy/src/dsp"
     source = "\n".join(
         (canopy / f"{n}.s").read_text()
-        for n in ("voice", "tuning", "events", "blend", "arp", "v2")
+        for n in ("voice", "tuning", "events", "blend", "arp", "strum", "v2")
     )
     for module, names in (
         ("instrument-registry", ("process", "process-protected", "input", "lifecycle")),
@@ -29,16 +29,18 @@ def playback_object():
             (adapters / module / "src/dsp" / f"{n}.s").read_text() for n in names
         )
     source += """
+.PKDATA _pattern_position_info, 80;
+.PKDATA _pattern_clock_info, 32;
 .PKDATA _ir_rows, 512;
 .PKDATA _ir_process_rows, 256;
 .PKDATA _ir_lifecycle_ready, 4;
 .PKDATA _mi_epoch, 4;
 .PKDATA _instrument_session, 4;
 .PKDATA _mi_carrier_stamp, 4;
-.PKDATA _test_state, 640;
+.PKDATA _test_state, 768;
 .PKDATA _test_packet, 128;
 .PKDATA _test_metadata, 24;
-.PKDATA _test_values, 40;
+.PKDATA _test_values, 64;
 .PKDATA _test_output, 128;
 .SECTION/PM seg_pmco;
 """
@@ -105,9 +107,9 @@ def playback(playback_object):
             9,
             1,
             state,
-            160,
+            192,
             state,
-            state + 640,
+            state + 768,
             linked.symbols["_canopy_reset"],
             0xB90000,
             0xBC0000,
@@ -120,7 +122,7 @@ def playback(playback_object):
     )
     put(
         "_ir_process_rows",
-        [2, 9, 20, linked.symbols["_canopy_process"], 0xB90000, 0xBC0000, 8, 10],
+        [2, 9, 20, linked.symbols["_canopy_process"], 0xB90000, 0xBC0000, 8, 16],
     )
     put("_instrument_session", [1])
     put("_mi_epoch", [1])
@@ -163,7 +165,9 @@ def playback(playback_object):
                 revision,
                 0,
                 len(values) * 4,
-                {1: 0x43505331, 6: 0x43505333, 10: 0x43505334}[len(values)],
+                {1: 0x43505331, 6: 0x43505333, 10: 0x43505334, 16: 0x43505335}[
+                    len(values)
+                ],
             ],
         )
         put("_test_values", values)
@@ -188,12 +192,12 @@ def test_admitted_render_consumes_batch_once_and_raw_carrier_only_copies(playbac
     call(0)
     assert get("_iv_result") == [0]
     assert get("_iv_input", 18)[8] == 0
-    state = get("_test_state", 160)
+    state = get("_test_state", 192)
     voices = {state[i]: state[i : i + 8] for i in range(0, 32, 8) if state[i]}
     assert set(voices) == {1, 2}
     assert voices[1][6] < voices[2][6]
     call(4, R2=0, R8=symbols["_test_output"])
-    assert get("_test_state", 160) == state
+    assert get("_test_state", 192) == state
     assert get("_test_output", 32) == get("_iv_output", 32)
     call(0)
     assert get("_iv_result") == [0]  # replaying the ON would reject its duplicate token
@@ -319,16 +323,16 @@ def test_pad_configuration_is_atomic_and_does_not_reset_a_held_note(playback):
     call(0)
     assert events([(1, 1, 60, 127, 0, 0)]) == 1
     call(0)
-    before = get("_test_state", 160)
+    before = get("_test_state", 192)
     assert configure(values=(3, 1, 127, 127, 0, 127), revision=2) == 1
-    assert get("_test_state", 160) == before
+    assert get("_test_state", 192) == before
     call(0)
-    after = get("_test_state", 160)
+    after = get("_test_state", 192)
     assert [after[i] for i in range(0, 48, 8)] == [before[i] for i in range(0, 48, 8)]
     assert get("_iv_revision") == [2]
     assert configure(values=(3, 1, 128, 0, 5, 15), revision=3) == 0
     assert get("_iv_revision") == [2]
-    assert get("_test_state", 160) == after
+    assert get("_test_state", 192) == after
     call(0)
     assert get("_iv_result") == [0]
 
@@ -342,9 +346,82 @@ def test_local_arp_configuration_reaches_the_process_callback(playback):
     call(0)
     assert events([(1, 1, 60, 127, 0, 0), (2, 1, 64, 127, 0, 0)]) == 1
     call(0)
-    assert get("_test_state", 160)[136] == 1
+    assert get("_test_state", 192)[136] == 1
     assert get("_iv_controls", 10) == list(values)
-    before = get("_test_state", 160)
+    before = get("_test_state", 192)
     assert configure(values=values[:7] + (301, 4, 50), revision=2) == 0
-    assert get("_test_state", 160) == before
+    assert get("_test_state", 192) == before
     assert get("_iv_revision") == [1]
+
+
+def test_extended_movement_configuration_is_applied_atomically(playback):
+    call, _, get, reset, configure, events, _ = playback
+    reset()
+    call(0)
+    values = (5, 0, 64, 0, 0, 0, 127, 120, 4, 50, 1, 3, 50, 0, 0, 0)
+    assert configure(values=values) == 1
+    call(0)
+    assert events([(1, 1, 60, 127, 0, 0)]) == 1
+    call(0)
+    assert get("_test_state", 192)[151] == 84
+    assert get("_iv_controls", 16) == list(values)
+    assert configure(values=values[:12] + (76,) + values[13:], revision=2) == 0
+    assert get("_iv_revision") == [1]
+    fine = values[:13] + (2,) + values[14:]
+    assert configure(values=fine, revision=2) == 1
+    assert get("_iv_controls", 16) == list(fine)
+    assert configure(values=values[:13] + (1,) + values[14:], revision=3) == 0
+    assert configure(values=values[:13] + (3,) + values[14:], revision=3) == 0
+    assert get("_iv_revision") == [2]
+
+
+def test_position_snapshot_reaches_input_and_rejects_gaps(playback):
+    call, put, get, reset, configure, _, _ = playback
+    reset()
+    call(0)
+    assert configure() == 1
+    position = [
+        0x50504F53,
+        2,
+        30,
+        9,
+        7,
+        3,
+        0x43170000,
+        4,
+        16,
+        0,
+        100,
+        0,
+        100,
+        5,
+        1,
+        0,
+        101,
+        0,
+        30,
+        1,
+    ]
+    put("_pattern_position_info", position)
+    call(0)
+    assert get("_iv_input", 18)[4] == 101
+    assert get("_iv_input", 18)[12:17] == [3, 7, 9, 4, 16]
+    put("_pattern_clock_info", [0x50434C4B, 1, 0xFFFFFF10, 0xFFFF0000, 3, 101, 9, 7])
+    call(0)
+    assert get("_iv_input", 22)[:2] == [4, 88]
+    assert get("_iv_input", 22)[20:] == [0xFFFFFF10, 0xFFFF0000]
+    put("_pattern_clock_info", [0x50434C4B, 1, 0xFFFFFF10, 0xFFFF0000, 0, 101, 9, 7])
+    call(0)
+    assert get("_iv_input", 22)[12] == 0  # GRID and PHASE both pause on expired clock
+    put("_pattern_clock_info", [0x50434C4B, 99, 0xFFFFFF10, 0xFFFF0000, 3, 101, 9, 7])
+    call(0)
+    assert get("_iv_input", 22)[:2] == [3, 80]
+    assert get("_iv_input", 22)[20:] == [0, 0]
+    position[19] = 2
+    put("_pattern_position_info", position)
+    call(0)
+    assert get("_iv_input", 18)[12:17] == [0] * 5
+    position[19], position[1] = 1, 99
+    put("_pattern_position_info", position)
+    call(0)
+    assert get("_iv_input", 18)[12:17] == [0] * 5

@@ -2047,50 +2047,44 @@ Hardware coexistence remains Stage 6; Stage 4 is in progress.
 
 ## Stage 4 implementation status
 
-Stage 4 is **not complete**. The bounded movement policy in
-`modules/machines/canopy/src/movement.c` now implements note order, octave
-expansion, generated-chord strum cancellation, arp token ownership, restart
-policies, master-step multiples and explicit local BPM. Local triplets retain
-rational phase; swing edits wait for a complete pair. The policy operates on
-committed admitted membership, not release tails or the physical key ledger.
-It requires one call per 32-sample block and a complete revisioned snapshot.
+Stage 4 is **complete at the functional emulator acceptance boundary**.
+The production DSP now implements UP, DOWN, UP/DOWN, AS PLAYED and deterministic
+RANDOM, one to three octaves, local rational timing and pair-preserving swing,
+TRIG/PATTERN/CONTINUE restart, generated-chord strum and a smoothed PAD/ARP blend.
+The seventh oscillator uses the same two release-tail slots as the four pad
+owners. Busy replacement still has a bounded 64-sample ramp. CONTINUE retains
+phase across empty membership; release tails never become arp candidates.
 
-The C policy currently has no runtime caller and is not included in the DKM.
-Its native behavior tests and ColdFire compilation are component evidence only;
-they do not establish audible arpeggiation, clock delivery or DSP performance.
-The current Stage 3 firmware and packed artifacts are unchanged. The production
-DSP callback now invokes a separate local-clock UP arp and the per-sample 20-ms
-PAD/ARP blend. CPS4 carries mix, BPM, notes/quarter and gate through the setup
-menu and acknowledged configuration channel. This is a production integration
-of that subset, not the whole C policy: other orders, octaves, strum, selectable
-restart modes, synchronized clock and shared arp/pad tail allocation remain open.
-Per-instance state is now 640 bytes. An occupied arp slot uses a bounded
-64-sample replacement ramp until the shared-tail allocator is implemented. The
-local subset passes component tests and running-firmware acceptance through
-stock chooser, MIDI, setup encoders and final stereo audio. See the handover
-for exact evidence and limits.
+CPS5 applies sixteen controls atomically through KEYBOARD setup. Named SRC
+pages and presets remain Stage 5. Instance storage is 768 bytes; the package
+requires the matching adapter admission policy. Optional process-input V3 adds
+explicit committed phrase/generated metadata and opaque pattern identity to
+the unchanged V2 prefix. Sample offsets are not repurposed. Immutable mapped
+packet retries and metadata-only same-chord phrase commits preserve ownership.
+The C movement policy remains an executable reference, not a runtime caller.
 
-Remaining Stage 4 work:
+MASTER GRID schedules whole committed master-step multiples. MASTER PHASE uses
+optional process-input V4 (88 bytes) carrying firmware phase and the committed
+boundary deadline, at 21600000 ticks/quarter. Integer phase carry supports
+subdivisions and swing independently of native master scale. Both modes wait
+for a complete observed interval and fail quiet on missing timing. Minor
+backward corrections do not count time twice; large jumps reobserve.
 
-- Extend the DSP local UP subset with other orders, octave ranges, strum and
-  selectable restart policies; integrate the two shared tails. Keep the four admitted
-  pad owners separate from pending strum and arp tokens. Maximum replacement
-  produces ten internal changes (four pad offs, four pad ons, arp off/on), so
-  never forward it blindly through the current eight-event input. Internal DSP
-  scheduling can retain the eight-event external contract.
-- Publish a coherent admitted-chord/phrase snapshot from the keyboard mapper;
-  do not reschedule immutable retried MIDI packets. Extend the existing CPS4
-  applied-revision configuration channel and setup menu for the remaining controls.
-- Add and measure the versioned synchronized tempo/phase provider. The present
-  pattern-position ABI has master boundaries only. This policy never reads its
-  raw deadline as BPM. Master mode supports step multiples without swing;
-  local BPM, finer divisions and swing are explicit LOCAL behavior only.
-- Replace the provisional master first-gate behavior (one block until an
-  observed interval exists) with verified timing; qualify the eight-second
-  reference watchdog. Neither is ready to be advertised as musical sync.
-- Run protected DSP bounds/ownership/audio checks and running-firmware tests
-  for internal/external clocks, tempo changes, stop/restart, compatible pattern
-  changes and the existing keyboard/pad regressions.
+The stock sequencer can freewheel after external MIDI pulses disappear. A
+separate instrument-clock freshness policy observes the stock source mask and
+last accepted pulse timestamp. It expires after three estimated pulse periods,
+bounded to 40..500 ms, and requires fresh pulses until STOP or clock receive is
+disabled. The legacy position ABI and its freewheel behavior remain unchanged.
+
+Running-firmware acceptance passes both master modes through the settings menu,
+final audio, stopped/held-note silence and restart, USB pulse loss and slower
+recovery, local note order/octave controls, and generated strum cancellation.
+The final provider additionally passes DIN loss/recovery, a seven-step cycle at
+double master scale, and exact phase progression independent of that scale.
+The long-counter-wrap latch has CF-core coverage; the final provider passes the
+DIN run. The full musical run used the otherwise-identical preceding provider.
+Artifact hashes and evidence boundaries are recorded in the Stage 4 handover.
+Hardware and coexistence remain Stage 6.
 
 Details and evidence are in the
 [Stage 4 handover](../handovers/HANDOVER-2026-11-01-canopy-stage4.md).

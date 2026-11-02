@@ -82,6 +82,10 @@ impl<'a> Reader<'a> {
         self.pos = end;
         Ok(s)
     }
+    /// Inspect an optional versioned component without consuming its prefix.
+    pub fn has_tag(&self, tag: &str) -> bool {
+        self.data[self.pos..].starts_with(tag.as_bytes())
+    }
     pub fn tag(&mut self, tag: &str) -> Result<()> {
         let at = self.pos;
         if self.take(4)? != tag.as_bytes() {

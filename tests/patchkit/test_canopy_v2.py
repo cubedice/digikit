@@ -11,7 +11,16 @@ def canopy_object(request):
     root = REPO_ROOT / "modules/machines/canopy/src/dsp"
     source = "\n".join(
         (root / f"{name}.s").read_text()
-        for name in ["voice", "tuning", "events", "instrument", "blend", "arp", "v2"]
+        for name in [
+            "voice",
+            "tuning",
+            "events",
+            "instrument",
+            "blend",
+            "arp",
+            "strum",
+            "v2",
+        ]
     )
     if request.param:
         registry = REPO_ROOT / "modules/core/adapters/instrument-registry/src/dsp"
@@ -114,7 +123,7 @@ _test_loop:
 def canopy(canopy_object):
     linked, sections, initial, obj, symbols, protected = canopy_object
     dm = dict(initial)
-    for base, size in [(0x20050000, 160), (0x20054000, 160), (0x20013000, 32)]:
+    for base, size in [(0x20050000, 192), (0x20054000, 192), (0x20013000, 32)]:
         dm.update({base // 4 + i: 0 for i in range(size)})
         dm[base // 4 - 1] = dm[base // 4 + size] = 0xDEADBEEF
 
@@ -150,7 +159,10 @@ def canopy(canopy_object):
             0,
             0,
             0,
+            0,
+            0,
         ]
+        words += [0, 0]  # optional V4 transport phase/deadline
         for index, value in (edits or {}).items():
             words[index] = value
         dm.update({0x20011000 // 4 + i: value for i, value in enumerate(words)})
@@ -163,12 +175,12 @@ def canopy(canopy_object):
             name: (sections[name] // 4, len(blob) // 4)
             for name, (blob, _, _) in obj.data.items()
         }
-        reads.update({"state": (state // 4, 160), "out": (0x20013000 // 4, 32)})
+        reads.update({"state": (state // 4, 192), "out": (0x20013000 // 4, 32)})
         reads.update(
-            {"guard_before": (state // 4 - 1, 1), "guard_after": (state // 4 + 160, 1)}
+            {"guard_before": (state // 4 - 1, 1), "guard_after": (state // 4 + 192, 1)}
         )
         if protected and reset is None:
-            row = [3, 2, 9, 1, state, 160, state, state + 640, 0, 0, 0, 0, 0, 0, 0, 0]
+            row = [3, 2, 9, 1, state, 192, state, state + 768, 0, 0, 0, 0, 0, 0, 0, 0]
             meta = [
                 2,
                 9,
@@ -177,7 +189,7 @@ def canopy(canopy_object):
                 0xB90000,
                 0xBC0000,
                 8,
-                10,
+                16,
             ]
             for name, values in [("_ir_rows", row), ("_ir_process_rows", meta)]:
                 dm.update(
@@ -233,12 +245,12 @@ def voices(result):
     return {
         result["state"][i]: result["state"][i : i + 8]
         for i in range(0, 32, 8)
-        if result["state"][i]
+        if result["state"][i] and not result["state"][i + 1] & 4
     }
 
 
 def test_v2_chord_independent_release_and_state_isolation(canopy):
-    assert canopy(reset=1)["state"] == [0] * 160
+    assert canopy(reset=1)["state"] == [0] * 192
     result = canopy([note(1, 60), note(2, 64)])
     assert result["regs"]["R0"] == 0
     assert set(voices(result)) == {1, 2}
@@ -286,7 +298,7 @@ def test_generation_change_requires_reset_and_reset_is_per_instance(canopy):
     canopy([note(1, 60)])
     canopy([note(2, 67)], state=0x20054000, track=1)
     assert canopy(generation=2)["regs"]["R0"] == 0xFFFFFFFF
-    assert canopy(reset=3)["state"] == [0] * 160
+    assert canopy(reset=3)["state"] == [0] * 192
     assert canopy(generation=2)["regs"]["R0"] == 1
     assert set(voices(canopy(state=0x20054000, track=1))) == {2}
 
@@ -334,7 +346,7 @@ def test_other_notes_do_not_reset_held_voice_phase_or_gain(canopy):
             assert voices(actual)[token] == voices(reference)[token]
 
 
-def wire_packet(events, *, track=0, generation=1, revision=1, epoch=1):
+def wire_packet(events, *, track=0, generation=1, revision=1, epoch=1, movement=None):
     words = [0x494E0101, 1 | (len(events) << 8), epoch, 1, 1, revision, 0, 0] + [0] * 24
     for i, (token, kind, pitch, value, port, channel) in enumerate(events):
         words[8 + 3 * i : 11 + 3 * i] = [
@@ -342,6 +354,9 @@ def wire_packet(events, *, track=0, generation=1, revision=1, epoch=1):
             generation,
             kind | port << 4 | channel << 6 | track << 10 | pitch << 14 | value << 21,
         ]
+    if movement is not None:
+        words[1] = 5 | (len(events) << 8)
+        words[4] = movement
     a = b = 0
     for i, word in enumerate(words):
         if i != 7:
@@ -445,7 +460,12 @@ def test_replace_reset_preserves_phase_then_finishes_bounded_tail(canopy):
 
 @pytest.mark.parametrize(
     "controls",
-    [(1,), (3, 1, 127, 127, 0, 127), (4, 1, 127, 127, 0, 127, 127, 300, 8, 100)],
+    [
+        (1,),
+        (3, 1, 127, 127, 0, 127),
+        (4, 1, 127, 127, 0, 127, 127, 300, 8, 100),
+        (5, 1, 127, 127, 0, 127, 127, 300, 8, 100, 4, 3, 75, 0, 0, 750),
+    ],
 )
 def test_callback_instruction_ceiling(canopy, controls):
     from functools import partial
@@ -606,7 +626,7 @@ def test_local_arp_reset_cancels_pending_and_bounds_both_lanes(canopy):
     canopy(controls=LOCAL, state_edits={146: 89999})
     r = canopy(reset=2)
     assert r["state"][137] == 2
-    assert r["state"][146:] == [0] * 14
+    assert r["state"][146:] == [0] * 46
     for _ in range(4):
         r = canopy(controls=(3, 0, 64, 0, 0, 0))
     assert r["state"][136] == 0
@@ -655,3 +675,402 @@ def test_local_arp_output_corruption_is_silenced(canopy):
     r = canopy(controls=LOCAL, state_edits={138: 0x7FC00000})
     assert r["regs"]["R0"] == 0xFFFFFFFF
     assert r["out"] == [0] * 32
+
+
+@pytest.mark.parametrize(
+    "order,expected",
+    [
+        (0, [60, 64, 67, 72, 76, 79, 60]),
+        (1, [79, 76, 72, 67, 64, 60, 79]),
+        (2, [60, 64, 67, 72, 76, 79, 76, 72, 67, 64, 60]),
+        (3, [67, 60, 64, 79, 72, 76, 67]),
+    ],
+)
+def test_movement_order_and_octaves(canopy, order, expected):
+    controls = (5,) + LOCAL[1:] + (order, 2, 0, 0, 0, 0)
+    r = canopy([note(1, 67), note(2, 60), note(3, 64)], controls=controls)
+    pitches = [r["state"][151]]
+    for _ in expected[1:]:
+        r = canopy(controls=controls, state_edits={146: 89999})
+        pitches.append(r["state"][151])
+    assert pitches == expected
+    assert set(voices(r)) == {1, 2, 3}
+
+
+def test_movement_octaves_omit_out_of_range_and_bend_retains_octave(canopy):
+    controls = (5,) + LOCAL[1:] + (0, 3, 0, 0, 0, 0)
+    r = canopy([note(1, 115)], controls=controls)
+    assert r["state"][151] == 115
+    r = canopy(controls=controls, state_edits={146: 89999})
+    assert r["state"][151] == 127
+    for _ in range(3):
+        r = canopy(controls=controls)
+    before = r["state"][140:142]
+    r = canopy([[4, 0, 0, 0, 8192, 0]], controls=controls)
+    assert r["state"][140:142] == before
+    r = canopy(controls=controls, state_edits={146: 89999})
+    assert r["state"][151] == 115
+
+
+def test_movement_random_stays_in_chord_and_is_instance_local(canopy):
+    controls = (5,) + LOCAL[1:] + (4, 2, 0, 0, 0, 0)
+    a = canopy([note(1, 60), note(2, 67)], controls=controls)
+    b = canopy([note(1, 60), note(2, 67)], controls=controls, state=0x20054000, track=1)
+    assert a["state"][151] == b["state"][151]
+    values = set()
+    for _ in range(20):
+        a = canopy(controls=controls, state_edits={146: 89999})
+        values.add(a["state"][151])
+    assert values == {60, 67, 72, 79}
+
+
+def test_movement_swing_latches_at_pair_boundary(canopy):
+    controls = (5,) + LOCAL[1:] + (0, 1, 50, 0, 0, 0)
+    r = canopy([note(1, 60)], controls=controls)
+    assert r["state"][158:160] == [0, 50]
+    r = canopy(controls=controls, state_edits={146: 90000})
+    assert r["state"][149] == 1
+    changed = controls[:12] + (25,) + controls[13:]
+    r = canopy(controls=changed, state_edits={146: 134999})
+    assert r["state"][149] == 2
+    assert r["state"][158:160] == [1, 50]
+    r = canopy(controls=changed, state_edits={146: 44999})
+    assert r["state"][149] == 3
+    assert r["state"][158:160] == [0, 25]
+
+
+@pytest.mark.parametrize(
+    "index,value",
+    [(10, 5), (10, 0xFFFFFFFF), (11, 0), (11, 4), (12, 76), (12, 0xFFFFFFFF)],
+)
+def test_movement_invalid_configuration_is_atomic(canopy, index, value):
+    controls = (5,) + LOCAL[1:] + (0, 1, 0, 0, 0, 0)
+    before = canopy([note(1, 60)], controls=controls)["state"]
+    bad = list(controls)
+    bad[index] = value
+    r = canopy([note(2, 64)], controls=bad)
+    assert r["regs"]["R0"] == 0xFFFFFFFF
+    assert r["state"] == before
+
+
+def test_shared_arp_tails_keep_lane_and_do_not_alias_pad_tokens(canopy):
+    c = (5, 0, 64, 0, 0, 127, 127, 120, 4, 50, 0, 1, 0, 0, 0, 0)
+    canopy([note(1, 60), note(2, 64), note(3, 67), note(4, 72)], controls=c)
+    for _ in range(3):
+        canopy(controls=c)
+    r = canopy(controls=c, state_edits={146: 89999})
+    assert r["state"][32] == 1 and r["state"][33] == 4
+    assert r["state"][136] == 2
+    tail = r["state"][36:38]
+    r = canopy([note(1, 60, off=True), [4, 0, 0, 0, 16383, 0]], controls=c)
+    assert r["state"][33] == 4
+    assert r["state"][36:38] == tail
+    assert voices(r)[1][1] == 0
+    for _ in range(4):
+        r = canopy(controls=c, state_edits={146: 89999})
+    assert sum(bool(r["state"][i]) for i in (0, 8, 16, 24, 32, 40, 136)) <= 7
+    r = canopy(reset=2)
+    assert r["state"][33] == 6
+    for _ in range(4):
+        r = canopy(controls=c)
+    assert not any(r["state"][i] for i in (0, 8, 16, 24, 32, 40, 136))
+
+
+MASTER = (5,) + LOCAL[1:8] + (1,) + LOCAL[9:] + (0, 1, 0, 1, 0, 0)
+
+
+def position(block, boundary, step=0, generation=1, flags=3):
+    return {4: block, 12: flags, 13: generation, 14: boundary, 15: step, 16: 16}
+
+
+FINE = MASTER[:8] + (3,) + MASTER[9:13] + (2, 2, 0)
+
+
+def phase_position(ticks, block, origin=0, **kwargs):
+    boundary, remainder = divmod(ticks, 5400000)
+    return {
+        **position(block, boundary + 1, boundary % 16, **kwargs),
+        0: 4,
+        1: 88,
+        20: (origin + ticks) & 0xFFFFFFFF,
+        21: (origin + ticks - remainder) & 0xFFFFFFFF,
+    }
+
+
+@pytest.mark.parametrize("origin", [0, 0xFFD00000])
+def test_fine_master_triplet_carry_gate_and_wrap(canopy, origin):
+    # Real phase advances, including uint32 rollover; no scheduler state edits.
+    events = [note(1, 60), note(2, 64), note(3, 67)]
+    onsets = []
+    serial = 0
+    for block in range(94):
+        ticks = block * 300000
+        r = canopy(
+            events if block == 0 else (),
+            controls=FINE,
+            edits=phase_position(ticks, block, origin),
+        )
+        assert r["regs"]["R0"] in (0, 1)
+        if r["state"][149] != serial:
+            serial = r["state"][149]
+            onsets.append((ticks, r["state"][151]))
+        if ticks == 9000000:
+            assert r["state"][137] == 0  # 50% gate at half a triplet
+    assert onsets == [(5400000, 60), (12600000, 64), (19800000, 67), (27000000, 60)]
+    assert r["state"][146] == 2700000
+
+
+def test_fine_master_backward_correction_loss_and_recovery(canopy):
+    canopy([note(1, 60)], controls=FINE, edits=phase_position(0, 0))
+    r = canopy(controls=FINE, edits=phase_position(5400000, 18))
+    assert r["state"][149] == 1
+    canopy(controls=FINE, edits=phase_position(5700000, 19))
+    r = canopy(controls=FINE, edits=phase_position(5550000, 20))
+    assert r["state"][146] == 900000
+    r = canopy(controls=FINE, edits=phase_position(6000000, 21))
+    assert r["state"][146] == 1800000  # correction is not counted twice
+    r = canopy(controls=FINE, edits=phase_position(6000000, 55))
+    assert r["state"][170] == 3 and r["state"][147] == 0
+    r = canopy(controls=FINE, edits=phase_position(10800000, 60))
+    assert r["state"][149] == 1
+    r = canopy(controls=FINE, edits=phase_position(16200000, 78))
+    assert r["state"][149] == 2
+    for block in range(79, 83):
+        r = canopy(controls=FINE, edits=position(block, 4))  # old provider
+    assert r["state"][136] == 0 and r["state"][170] == 3
+    assert voices(r)[1][1] == 1
+
+
+def test_fine_master_swing_and_tempo_change(canopy):
+    controls = FINE[:8] + (4,) + FINE[9:12] + (50,) + FINE[13:]
+    serial, ticks, onsets = 0, 0, []
+    for block in range(100):
+        r = canopy(
+            [note(1, 60)] if block == 0 else (),
+            controls=controls,
+            edits=phase_position(ticks, block),
+        )
+        if r["state"][149] != serial:
+            serial = r["state"][149]
+            onsets.append(ticks)
+        ticks += 300000 if block < 40 else 600000
+    assert onsets[:5] == [5400000, 13800000, 16200000, 24600000, 27000000]
+    # Alternating long/short pairs retain their exact musical total across tempo change.
+    assert onsets[4] - onsets[2] == 10800000
+
+
+@pytest.mark.parametrize("restart,expected", [(0, 60), (1, 60), (2, 64)])
+def test_fine_master_restart_and_phase_discontinuity(canopy, restart, expected):
+    controls = FINE[:14] + (restart, 0)
+    canopy(
+        [note(1, 60), note(2, 64)],
+        controls=controls,
+        edits={**phase_position(0, 0), 18: 1, 19: 10},
+    )
+    canopy(controls=controls, edits={**phase_position(5400000, 18), 18: 1, 19: 10})
+    # A large forward correction must never emit a catch-up burst.
+    r = canopy(controls=controls, edits={**phase_position(7800000, 19), 18: 1, 19: 10})
+    assert r["state"][149] == 1 and r["state"][147] == 0
+    r = canopy(controls=controls, edits={**phase_position(10800000, 36), 18: 2, 19: 11})
+    assert r["state"][149] == 2 and r["state"][151] == expected
+
+
+def test_master_waits_for_interval_then_gates_and_tracks_tempo(canopy):
+    r = canopy([note(1, 60), note(2, 64)], controls=MASTER, edits=position(100, 1))
+    assert r["state"][149] == 0
+    r = canopy(controls=MASTER, edits=position(287, 2, 1))
+    assert r["state"][149] == 1 and r["state"][151] == 60
+    assert r["state"][166] == 187
+    r = canopy(controls=MASTER, edits=position(379, 2, 1))
+    assert r["state"][137] == 1
+    r = canopy(controls=MASTER, edits=position(381, 2, 1))
+    assert r["state"][137] == 0
+    r = canopy(controls=MASTER, edits=position(412, 3, 2))
+    assert r["state"][149] == 2 and r["state"][151] == 64
+    assert r["state"][166] == 125
+
+
+def test_master_clock_loss_and_stop_never_fall_back_to_local(canopy):
+    canopy([note(1, 60)], controls=MASTER, edits=position(100, 1))
+    canopy(controls=MASTER, edits=position(200, 2, 1))
+    r = canopy(controls=MASTER, edits=position(401, 2, 1))
+    assert r["state"][147] == 0 and r["state"][162] == 0
+    assert r["state"][170] == 3
+    for i in range(4):
+        r = canopy(controls=MASTER, edits=position(402 + i, 2, 1, flags=0))
+    assert r["state"][136] == 0
+    assert voices(r)[1][1] == 1
+    r = canopy(controls=MASTER, edits=position(700, 3, 2))
+    assert r["state"][149] == 1
+    r = canopy(controls=MASTER, edits=position(800, 4, 3))
+    assert r["state"][149] == 2
+
+
+def test_master_missed_boundary_discards_gate_and_observes_again(canopy):
+    canopy([note(1, 60)], controls=MASTER, edits=position(100, 1))
+    canopy(controls=MASTER, edits=position(200, 2, 1))
+    r = canopy(controls=MASTER, edits=position(400, 4, 3))
+    assert r["state"][149] == 1 and r["state"][166] == 0
+    r = canopy(controls=MASTER, edits=position(500, 5, 4))
+    assert r["state"][149] == 2
+
+
+@pytest.mark.parametrize("restart,expected", [(1, 60), (2, 67)])
+def test_master_pattern_restart_and_continue(canopy, restart, expected):
+    controls = MASTER[:14] + (restart, 0)
+    canopy(
+        [note(1, 60), note(2, 64), note(3, 67)], controls=controls, edits=position(0, 1)
+    )
+    canopy(controls=controls, edits=position(100, 2, 1))
+    canopy(controls=controls, edits=position(200, 3, 2))
+    r = canopy(controls=controls, edits=position(300, 4, 0))
+    assert r["state"][151] == expected
+
+
+def test_master_rate_is_whole_boundaries_and_source_change_reobserves(canopy):
+    controls = MASTER[:8] + (2,) + MASTER[9:]
+    canopy([note(1, 60)], controls=controls, edits=position(0, 1))
+    canopy(controls=controls, edits=position(100, 2, 1))
+    r = canopy(controls=controls, edits=position(200, 3, 2))
+    assert r["state"][149] == 1
+    r = canopy(controls=controls, edits=position(300, 4, 3))
+    assert r["state"][149] == 2
+    local = controls[:13] + (0, 0, 0)
+    r = canopy(controls=local, edits=position(301, 4, 3))
+    assert r["state"][149] == 3
+    r = canopy(controls=controls, edits=position(302, 4, 3))
+    assert r["state"][149] == 3 and r["state"][166] == 0
+
+
+STRUM = (5, 0, 64, 0, 0, 0, 0, 120, 4, 50, 0, 1, 0, 0, 0, 6)
+
+
+def mapped(phrase=1, generated=True, **kwargs):
+    return {0: 3, 1: 80, 18: phrase | (0x80000000 if generated else 0), **kwargs}
+
+
+def test_generated_strum_spreads_onsets_on_audio_blocks(canopy):
+    r = canopy([note(1, 60), note(2, 64), note(3, 67)], controls=STRUM, edits=mapped())
+    assert [voices(r)[i][1] for i in (1, 2, 3)] == [1, 9, 9]
+    for _ in range(2):
+        r = canopy(controls=STRUM, edits=mapped())
+    assert voices(r)[2][1] == 9
+    r = canopy(controls=STRUM, edits=mapped())
+    assert voices(r)[2][1] == 1 and voices(r)[3][1] == 9
+    for _ in range(3):
+        r = canopy(controls=STRUM, edits=mapped())
+    assert [voices(r)[i][1] for i in (1, 2, 3)] == [1, 1, 1]
+
+
+def test_play_is_not_strummed_and_chord_release_cancels_pending(canopy):
+    r = canopy(
+        [note(1, 60), note(2, 64)], controls=STRUM, edits=mapped(generated=False)
+    )
+    assert all(v[1] == 1 for v in voices(r).values())
+    canopy(reset=1)
+    canopy([note(1, 60), note(2, 64)], controls=STRUM, edits=mapped())
+    canopy([note(2, 64, off=True)], controls=STRUM, edits=mapped())
+    for _ in range(8):
+        r = canopy(controls=STRUM, edits=mapped())
+    assert set(voices(r)) == {1}
+    assert not any(r["state"][176:184:2])
+
+
+def test_transport_stop_cancels_strum_without_releasing_keyboard_pad(canopy):
+    canopy([note(1, 60), note(2, 64)], controls=STRUM, edits={**mapped(), 12: 3})
+    r = canopy(controls=STRUM, edits=mapped())
+    assert set(voices(r)) == {1}
+    for _ in range(8):
+        r = canopy(controls=STRUM, edits=mapped())
+    assert set(voices(r)) == {1}
+
+
+@pytest.mark.parametrize("restart,expected", [(0, 60), (2, 64)])
+def test_explicit_phrase_restarts_arp_without_retriggering_common_pad(
+    canopy, restart, expected
+):
+    controls = STRUM[:6] + (127,) + STRUM[7:14] + (restart, 0)
+    canopy([note(1, 60), note(2, 64)], controls=controls, edits=mapped())
+    r = canopy(controls=controls, edits=mapped(), state_edits={146: 89999})
+    assert r["state"][151] == 64
+    r = canopy([[5, 0, 0, 0, 0, 0]], controls=controls, edits=mapped(phrase=2))
+    assert r["state"][151] == expected
+    assert set(voices(r)) == {1, 2}
+    assert all(v[1] == 1 for v in voices(r).values())
+
+
+def test_pattern_identity_change_restarts_local_arp_mid_pattern(canopy):
+    controls = STRUM[:6] + (127,) + STRUM[7:14] + (1, 0)
+    timing = {**mapped(), 12: 3, 13: 1, 14: 10, 15: 4, 19: 0x43170000}
+    canopy([note(1, 60), note(2, 64)], controls=controls, edits=timing)
+    canopy(controls=controls, edits=timing, state_edits={146: 89999})
+    r = canopy(controls=controls, edits={**timing, 19: 0x43180000})
+    assert r["state"][151] == 60
+
+
+@pytest.mark.parametrize("canopy_object", [True], indirect=True)
+def test_mapped_wire_preserves_sample_offsets_and_commits_phrase(canopy):
+    packet = wire_packet(
+        [(1, 1, 60, 127, 0, 0), (2, 1, 64, 127, 0, 0)], movement=0x80000002
+    )
+    r = canopy(packet=packet, controls=STRUM, edits={0: 3, 1: 80})
+    assert r["state"][174] == 2
+    assert voices(r)[1][1] == 1 and voices(r)[2][1] == 9
+    r = canopy(
+        packet=wire_packet([(0, 5, 0, 0, 0, 0)], movement=0x80000003),
+        controls=STRUM,
+        edits={0: 3, 1: 80},
+    )
+    assert r["state"][174] == 3
+    assert set(voices(r)) == {1, 2}
+
+
+def test_continue_preserves_phase_across_empty_chord(canopy):
+    controls = (5,) + LOCAL[1:] + (0, 1, 0, 0, 2, 0)
+    r = canopy([note(1, 60)], controls=controls)
+    ordinal = r["state"][148]
+    r = canopy([note(1, 60, off=True)], controls=controls, state_edits={146: 10000})
+    assert r["state"][147] == 1
+    assert r["state"][146] == 10000 + controls[7] * controls[8]
+    assert r["state"][148] == ordinal
+    phase = r["state"][146]
+    r = canopy([note(2, 64)], controls=controls)
+    assert r["state"][146] == phase + controls[7] * controls[8]
+    assert r["state"][149] == 1  # no immediate onset on new membership
+    r = canopy(controls=controls, state_edits={146: 89999})
+    assert r["state"][149] == 2 and r["state"][151] == 64
+
+
+@pytest.mark.parametrize("canopy_object", [True], indirect=True)
+@pytest.mark.parametrize(
+    "events,movement,header",
+    [
+        ([(0, 5, 0, 0, 0, 0)], 0, {0: 3, 1: 80}),
+        ([(0, 5, 0, 0, 0, 0)], 0x80000000, {0: 3, 1: 80}),
+        ([(0, 5, 0, 0, 0, 0)], 2, {}),
+        ([(1, 5, 0, 0, 0, 0)], 2, {0: 3, 1: 80}),
+        ([(0, 5, 60, 0, 0, 0)], 2, {0: 3, 1: 80}),
+        ([(0, 5, 0, 0, 0, 0), (2, 1, 64, 127, 0, 0)], 2, {0: 3, 1: 80}),
+    ],
+)
+def test_malformed_mapped_commit_cannot_mutate_instance(
+    canopy, events, movement, header
+):
+    before = canopy([note(1, 60)], controls=STRUM)["state"]
+    r = canopy(
+        packet=wire_packet(events, movement=movement), controls=STRUM, edits=header
+    )
+    assert r["regs"]["R0"] == 0xFFFFFFFF
+    assert r["state"] == before
+    assert r["out"] == [0] * 32
+
+
+def test_v4_input_preserves_mapped_phrase_and_strum(canopy):
+    r = canopy(
+        events=[note(1, 60), note(2, 64), note(3, 67)],
+        controls=STRUM,
+        edits={0: 4, 1: 88, 18: 0x80000001, 20: 1234, 21: 1000},
+    )
+    assert r["regs"]["R0"] == 0
+    assert r["state"][175] == 0x80000001
+    assert any(r["state"][8 * i + 1] == 9 for i in range(4))

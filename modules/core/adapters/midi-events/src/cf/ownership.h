@@ -14,6 +14,8 @@
 #define MI_NOTE_OFF 2u
 #define MI_CC 3u
 #define MI_BEND 4u
+/* Mapper-only phrase commit; never accepted from physical MIDI. */
+#define MI_COMMIT 5u
 
 typedef struct {
     uint32_t epoch, sequence, token, generation;

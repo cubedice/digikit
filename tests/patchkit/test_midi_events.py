@@ -1105,6 +1105,10 @@ def test_usb_din_trampolines_consume_owned_notes(tmp_path):
         0x47E00000,
         dict.fromkeys(
             (
+                "instrument_keyboard_events",
+                "instrument_midi_ready",
+                "dl_reset_begin",
+                "dl_reset_quiesce",
                 "fx_controls_tick",
                 "loop_ui_tick",
                 "dkrt_tick",

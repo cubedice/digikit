@@ -26,6 +26,9 @@ _mi_apply_packet:
     R2 = 1;
     COMP(R1, R2);
     IF EQ JUMP _mc_events;
+    R2 = 5;
+    COMP(R1, R2);
+    IF EQ JUMP _mc_events;
     R5 = DM(8, I0); // config track/generation/revision
     R6 = DM(9, I0);
     R7 = DM(10, I0);

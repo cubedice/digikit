@@ -1,6 +1,7 @@
 /* DT2 1.17, admitted track-zero carrier. No cached audition Sound.
  * Layout follows stock track_type and its Sound getter (finding 78). */
 #include <stdint.h>
+#include "timing.h"
 extern uint32_t dkrt_instrument_type(void);
 extern uint32_t ip_project(void);
 extern uint32_t ip_kit(uint32_t project);
@@ -13,6 +14,7 @@ extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
 extern void instrument_sound_suspend(void);
 /* [6] active in-place loads; [7] observed loads of the tracked Sound. */
+static IpStartTiming start_timing;
 static uint32_t last_project, last_kit, last_source, last_pattern, last_type;
 
 static int ram(uint32_t p)
@@ -44,10 +46,26 @@ int instrument_sound_prepare(int allow_refresh)
     if (ip_admission[6]) return 0;
     uint32_t sr=dkrt_irq_mask();
     uint32_t pattern=pp_current_pattern(), running=pp_position[14] == 1;
-    uint32_t flags=pp_position[5], committed=pp_position[6];
+    uint32_t flags=pp_position[5], committed=pp_position[6], block=pp_position[12];
     dkrt_irq_restore(sr);
+    /* A scheduled destination is not yet the sounding identity. Do not even
+     * call its getter until the committed boundary catches up. */
+    if (running && (flags & 3) == 3 && committed && pattern != committed) {
+        (void)ip_start_hold(&start_timing,running,1,block,0);
+        return ip_admission[0] ? 1 : 0;
+    }
+    uint32_t project=0, kit=0;
+    uint32_t source=sound(&project,&kit);
+    uint32_t type=source ? *(const uint8_t *)(uintptr_t)(source+0xa2) : UINT32_MAX;
+    uint32_t same=ip_admission[0] && project == last_project && kit == last_kit &&
+        source == last_source && pattern == last_pattern && type == last_type &&
+        type == dkrt_instrument_type();
+    int hold=ip_start_hold(&start_timing,running,(flags & 3) == 3 && committed,block,same);
     if (running) {
         if ((flags & 3) != 3 || !committed) {
+            /* START can precede its first committed boundary. Preserve only
+             * the already verified identity, for a bounded observation window. */
+            if (hold) return 1;
             /* Unknown timing cannot authorize a new generation. */
             if (ip_admission[0]) {
                 ip_admission[0]=0;
@@ -56,14 +74,7 @@ int instrument_sound_prepare(int allow_refresh)
             }
             return 0;
         }
-        /* The scheduler can expose destination Sound/kit data before playback.
-         * Keep the source ownership; never refresh from those early pointers.
-         * An in-place loader can still close admission first for safety. */
-        if (pattern != committed) return ip_admission[0] ? 1 : 0;
     }
-    uint32_t project=0, kit=0;
-    uint32_t source=sound(&project,&kit);
-    uint32_t type=source ? *(const uint8_t *)(uintptr_t)(source+0xa2) : UINT32_MAX;
     uint32_t changed=project != last_project || kit != last_kit ||
         source != last_source || pattern != last_pattern || type != last_type;
     /* A committed switch within this project retains the instrument instance.

@@ -148,6 +148,11 @@ Time (release build): the first patch of a 1.17 or 1.12 image takes about 1.3 s,
 `framebuffer.get {hash?, data?}`: `hash: true` adds `sha256`, the hex SHA-256 of the 1024 decoded OLED bytes
 (the bytes `data_b64` carries; the hash the patchkit smoke goldens use); `data: false` omits `data_b64`.
 
+`diagnostics` includes optional `fault_registers` (D0-D7, A0-A7, PC and SR)
+when the runtime has faulted. Reading it does not step the CPU or clear the
+fault. A7 locates the guest exception frame, which can be inspected with
+`mem.cf.peek`; PC may already point at the exception handler.
+
 `cpu.exceptions {deliver?}` (a test aid): `deliver: true` makes a CPU exception run the guest's own handler; the default is a fault of the run
 (`step` fails with `exception vector N`), because an exception in the firmware is a bug the harness must see. The setting is kept for every runtime
 installed later, so it holds across a soft reset. A soft reset also carries the RAM range `[digikit] keep_base .. + keep_bytes` of the device file into the new
@@ -320,3 +325,8 @@ The design document lists these; no server method or client wrapper exists.
 | save / restore, counters | none |
 | `cf_read` | `mem.cf.peek` |
 | `capture.*` wrappers | `pcm.tap` with `action=capture` through `call` |
+
+DT2 fresh main-OS boots inherit a bus-clock DTIM0 timestamp counter. Counter
+state is serialized in `DT2SNP02`; older `DT2SNP01` snapshots still load with
+their original register-only timer semantics. Reload firmware to use the new
+boot state. External-pin and extended DTIM counter clocks are not modelled.

@@ -113,7 +113,7 @@ class Snapshot:
         self._page_cache: dict[int, bytes] = {}
         with open(path, "rb") as fh:
             magic = fh.read(8)
-        if magic == RUST_MAGIC:
+        if magic in (RUST_MAGIC, b"DT2SNP02"):
             # Rust DT2SNP01 file (packages/emulator/boot runtime.rs): memory only.
             pages = _load_rust_pages(path)
             self._blob: dict[str, Any] = {

@@ -91,6 +91,7 @@ def execute(linked, tmp_path, events):
             },
         ]
     ops += [
+        {"op": "peek", "addr": 0x80004880, "len": 4, "tag": "phase"},
         {
             "op": "call",
             "pc": linked.symbols["pp_write_frame"],
@@ -128,7 +129,8 @@ def execute(linked, tmp_path, events):
     checksum = 0x7B91D6E3
     for w in words[:15]:
         checksum ^= w
-    assert words[15] == checksum and words[:2] == [0x50504F53, 2]
+    assert words[9] == int(rows["phase"]["hex"], 16)
+    assert words[15] == checksum and words[:2] == [0x50504F53, 3]
     return words, rows
 
 
@@ -138,6 +140,21 @@ def observe(clock, step, start=0):
 
 def due(clock, kind=5, block=9):
     return ("pp_commit", [clock, kind, block])
+
+
+def test_external_clock_expiry_latches_until_stop_and_handles_wrap(linked, tmp_path):
+    cases = [
+        ([1, 1, 1, 100000000, 0, 44000000, 24], 1),  # internal
+        ([1, 1, 3, 0xFFF00000, 0xFFF00000, 44000000, 24], 1),
+        ([1, 1, 1, 0x500000, 0xFFF00000, 44000000, 24], 0),  # wrap + stock fallback
+        ([1, 1, 1, 0xFFF00000, 0xFFF00000, 44000000, 24], 0),  # full counter wrap
+        ([1, 1, 3, 0x600000, 0x600000, 44000000, 24], 1),  # next pulse
+        ([1, 1, 3, 100000000, 0, 0xFFFFFFFF, 24], 0),  # bounded timeout
+        ([0, 1, 1, 100000000, 0, 44000000, 24], 1),
+        ([1, 1, 1, 100000000, 0, 44000000, 24], 1),  # new internal run
+    ]
+    _, rows = execute(linked, tmp_path, [("pp_clock_fresh", args) for args, _ in cases])
+    assert [rows[f"call{i}"]["d0"] for i in range(len(cases))] == [v for _, v in cases]
 
 
 def test_snapshot_does_not_publish_early_and_commit_freezes_context(linked, tmp_path):

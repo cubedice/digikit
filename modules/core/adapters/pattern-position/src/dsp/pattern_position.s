@@ -11,10 +11,11 @@
 // Wire words 0..15 at receive byte 0xa7c:
 // 0 PPOS magic, 1 version, 2 CF transmit sequence, 3 event sequence,
 // 4 observed epoch, 5 flags (bit 0 valid, bit 1 running), 6 opaque pattern,
-// 7 native master step, 8 length (0 = unknown), 9 substep, 10 snapshot CF block,
+// 7 native master step, 8 length (0 = unknown), 9 reserved (v2) / phase (v3), 10 snapshot CF block,
 // 11 raw scheduler clock, 12 transmit CF block, 13 next step, 14 raw transport,
 // 15 XOR of words 0..14 and PP_CHECK_SALT. Semantics belong to the CF hook.
-// DSP record: wire mirror plus 16 receive count, 17 rejected frames,
+// DSP record: ABI 2 mirror (normalized version/reserved/check) plus
+// 16 receive count, 17 rejected frames,
 // 18 accepted frames, 19 unsigned transmit-sequence delta (0 on first).
 // Counter domains are distinct: neither is core/fx's conditional _fx_blk.
 // Bad header/check or a repeated/backward transmit sequence clears magic and flags.
@@ -72,7 +73,11 @@ _pp_block_entry:
     R0 = DM(1, I0);
     R1 = PP_VERSION;
     COMP(R0, R1);
+    IF EQ JUMP _pp_wire_version_ok;
+    R1 = 3;
+    COMP(R0, R1);
     IF NE JUMP _pp_bad;
+_pp_wire_version_ok:
     I0 = R2;
     R3 = PP_CHECK_SALT;
     R0 = DM(0, I0);
@@ -177,6 +182,55 @@ _pp_copy:
     R0 = DM(_pattern_position_info + 72);
     R1 = R0 + 1;
     DM(_pattern_position_info + 72) = R1;
+    // Wire v3 adds phase without changing the legacy position ABI. Its
+    // checksum is normalized too, so old clients see a coherent v2 record.
+    R0 = 0;
+    DM(_pattern_clock_info) = R0;
+    R0 = DM(1, I1);
+    R1 = 3;
+    COMP(R0, R1);
+    IF NE JUMP _pp_publish;
+    R0 = DM(9, I1);
+    DM(_pattern_clock_info + 8) = R0;
+    R1 = DM(15, I1);
+    R1 = R1 XOR R0;
+    R0 = DM(5, I1);
+    R2 = 4;
+    R0 = R0 AND R2;
+    R1 = R1 XOR R0;
+    R0 = 1; // 3 XOR 2
+    R1 = R1 XOR R0;
+    DM(15, I1) = R1;
+    R0 = 2;
+    DM(1, I1) = R0;
+    R0 = 0;
+    DM(9, I1) = R0;
+    R0 = 1;
+    DM(_pattern_clock_info + 4) = R0;
+    R0 = DM(11, I1);
+    DM(_pattern_clock_info + 12) = R0;
+    R0 = DM(5, I1);
+    R1 = 3;
+    R1 = R0 AND R1;
+    DM(5, I1) = R1; // legacy position retains stock freewheel semantics
+    R2 = 4;
+    R0 = R0 AND R2;
+    IF NE JUMP _pp_clock_stale;
+    R0 = R1;
+    JUMP _pp_clock_flags;
+_pp_clock_stale:
+    R0 = 0;
+_pp_clock_flags:
+    DM(_pattern_clock_info + 16) = R0;
+    R0 = DM(16, I1);
+    DM(_pattern_clock_info + 20) = R0;
+    R0 = DM(3, I1);
+    DM(_pattern_clock_info + 24) = R0;
+    R0 = DM(4, I1);
+    DM(_pattern_clock_info + 28) = R0;
+    R0 = 0x50434c4b;
+    DM(_pattern_clock_info) = R0;
+_pp_publish:
     R0 = PP_MAGIC;
     DM(_pattern_position_info) = R0;
     JUMP _pp_restore;
@@ -187,6 +241,8 @@ _pp_bad:
     R0 = 0;
     DM(_pattern_position_info) = R0;
     DM(_pattern_position_info + 20) = R0;
+    DM(_pattern_clock_info) = R0;
+    DM(_pattern_clock_info + 16) = R0;
 _pp_restore:
     R0 = _instrument_block;
     R0 = PASS R0;
@@ -220,6 +276,7 @@ _pp_no_instrument:
     JUMP _pp_block_back;
 
 .PKDATA _pattern_position_info, 80;
+.PKDATA _pattern_clock_info, 32;
 .PKDATA _pp_seen, 4;
 .PKDATA _pp_sv_r0, 8;
 .PKDATA _pp_sv_r1, 8;

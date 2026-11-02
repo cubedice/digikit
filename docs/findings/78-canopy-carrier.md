@@ -1453,3 +1453,172 @@ KEYBOARD encoder setup, MIDI-held 60/64/67, separate arp ownership, full-arp
 finite final PCM (RMS 0.01661365, peak 0.03100340), mix-off preserving pads and
 note-off cleanup. Log: `out/canopy-stage4-local-live.log`; measurements:
 `out/canopy-stage4-local-audio.json`. This is emulator evidence only.
+
+
+### CPS5 movement and explicit phrase boundary
+
+[D] Production CANOPY now integrates bounded five-order/three-octave arp,
+local swing, committed master-step multiples, restart modes, generated strum,
+smoothed blend and the two shared release tails in 768 bytes. V3 process input
+extends the V2 prefix with phrase/generated metadata and opaque pattern identity;
+event sample offsets remain unchanged. The mapper commits unchanged-chord new
+phrases without retriggering common pad owners. Malformed metadata commits are
+rejected before state mutation. CONTINUE retains phase through an empty chord.
+
+[D] The current component regression has 272 passing cases across its main run
+and a repaired optional-extern fixture rerun. Forty focused movement/clock cases
+pass after the CONTINUE correction, and fifteen final packet/limit cases pass.
+Logs and limits are recorded in the Stage 4 handover. Local firmware UP audio
+and DOWN/octave controls passed, but full movement acceptance is still open.
+
+[O] Paced external USB clock reaches the position provider (observed 126-block
+steps) before the emulator faults with ColdFire exception vector 5, even with
+no CANOPY DKM installed. This is not an external-clock or hardware proof.
+Master interval delivery and fine timing require further qualification; Stage 4
+must not be marked complete from the component results alone.
+
+
+## Stage 4 clock and strum qualification, 2026-11-01
+
+[D] The final START-admission firmware (out/patch/canopy-stage4-final.syx,
+SHA256 2db02faa062a3ab1b4c786caf6ef78de3a87594511e1d88ba2296c13e11eb0db)
+passed MASTER onset/gate/final PCM, STOP/restart without clearing the held chord,
+LOCAL UP final PCM, and DOWN/octave controls. That combined run then stopped
+at the strum test's first encoder packet. The isolated strum run now passes
+100 ms generated-chord delay, release cancellation, and no delayed resurrection
+(out/canopy-stage4-strum-filter.log). The stock encoder idle filter can consume
+an initial turn; the corrected test repeats turns until the applied value
+matches instead of requiring every packet to change a value.
+
+[D] The external-clock divide-by-zero is localized, with no CANOPY DKM loaded:
+DT2 1.17 instruction 0x4011f052 divides by the 24-pulse timestamp sum shifted
+right by nine. That sum was zero because DTCN0 at 0xfc07000c was unmodelled.
+Exception diagnostics now expose read-only ColdFire registers; the original PC
+is the exception frame at A7+4, not the handler PC. Artifact:
+out/canopy-stage4-clock-fault-registers.json.
+
+[D] Passive physical DTII reads of the firmware's accumulated DTCN timestamp
+at 0x42940a4c confirm an advancing approximately 132 MHz clock. Sixty reads over
+about twelve seconds, without playback, firmware, settings or module changes,
+are saved in out/canopy-stage4-hardware-timestamp.json. The sparse refresh and
+200 ms polling give an endpoint estimate of 131.606 MHz, consistent with the
+132 MHz bus clock; this is not a measurement of the DTMR register. MAIN has no
+DTMR0 initializer. Emulation supplies the minimal inferred bootloader state:
+DTIM0 bus/1, no prescaler, free-running, interrupts disabled.
+
+The optional counter model advances from guest instruction time, independent
+of IRQ scheduling; disabled trace lanes retain register-only semantics. Bus
+clock/prescale, reset, counter-write clearing, stop/resume, reference restart,
+wrap, instruction-rate rescaling and snapshot fraction/epoch are covered.
+External-pin/extended clock modes remain unmodelled. Counter state is saved in
+DT2SNP02; DT2SNP01 loads retain their legacy counter semantics. Fresh firmware
+loads inherit the new counter. The memory-only snapshot reader accepts both.
+Reference: NXP MCF5441x Reference Manual chapter 39,
+https://www.nxp.com/docs/en/reference-manual/MCF54418RM.pdf.
+
+[D] Fourteen DTIM cases, three rate-rescaling cases, runtime counter-snapshot
+round-trip, read-only fault diagnostics and both memory snapshot formats pass.
+The bounded USB external-clock firmware proof now passes: internal 102 BPM
+steps alternate 220/221 blocks; paced 180 BPM input yields eight consecutive
+126-block steps, then MIDI STOP clears running/valid without an exception.
+Logs: out/canopy-stage4-clock-bounded.log, out/canopy-stage4-timer-final.log,
+out/canopy-stage4-timer-regression.log, out/canopy-stage4-timer-snapshot.log,
+out/canopy-stage4-timer-diagnostics.log and out/canopy-stage4-snapread.log.
+
+[O] Stage 4 still needs finer synchronized movement and tempo-change/loss
+qualification. Static DT2 1.17 evidence: 0x4002f296 adds twice the tempo value
+at 0x402b67fc to transport phase 0x80004880 each audio block. The tempo unit is
+1/120 BPM (102 BPM reads 12240); this gives 21600000 phase ticks per quarter.
+External-clock path 0x400d7bba aligns phase to the scheduler clock, then advances
+the next pulse deadline by 900000 ticks (24 pulses per quarter). This arithmetic
+is single-read evidence, not yet a live subdivision/phase alignment proof.
+A wire-v3 phase experiment is in progress. It retains the existing wire size
+and normalizes the public position record back to ABI 2 for Overloop; a separate
+clock record has its own version. Do not claim fine-clock completion yet.
+
+
+### Fine-clock integration and pulse freshness
+
+[D] Input V4 (88 bytes) forwards the wire-v3 phase/deadline pair while keeping
+instrument descriptor/reset ABI 2. Direct/protected triplet, swing, tempo,
+wraparound, backward-correction, discontinuity and restart checks pass. The
+matched component run passed 208 tests; subsequent pulse-freshness/adapter
+checks passed 36. Logs: out/canopy-stage4-matched-components.log and
+out/canopy-stage4-pulse-freshness.log. The live menu exposed a stale adapter
+clock-enum validator; it now admits MASTER PHASE and permits its swing, while
+still rejecting swing in MASTER GRID. The added atomic configuration check passes.
+
+[D] Stock external clock can freewheel: dropping F8 without FC did not stop
+committed boundaries. The old boundary-age-only expectation was incorrect.
+OS1.17 0x4011eea8 reads DTCN0 and accepted clocks update last timestamp
+0x44e086e4, sum 0x44e086d4, count 0x44e086dc. Clock receive is 0x429368d6;
+0x40138f64 selects the highest bit in source mask 0x402b6800, with MIDI source
+bit 1 set by 0x40138fce. The new instrument freshness policy latches an observed
+external source while running and expires at three pulse periods (40..500 ms).
+A subsequent stock fallback cannot silently restart the arp; STOP or receive OFF
+clears the latch. Pulse return permits reobservation. Wire-only flag bit 2 marks
+staleness; the receiver removes it and adjusts the checksum for legacy ABI 2,
+while clearing the separate clock capability flags. Both master instrument
+modes then silence without revoking pad ownership. CF policy tests cover wrap,
+expiry, fallback latch, pulse return, bounded timeout and new internal run.
+
+[O] Final acceptance runs are underway on firmware SHA256
+0ed894b86c58ca237a053c9b5346dc1c9bada03c58677954bef003941eee84fc.
+Do not call Stage 4 complete from component tests alone. Logs are
+out/canopy-stage4-clock-qualified.log (DIN, scale/wrap and recovery) and
+out/canopy-stage4-qualified-live.log (matched CANOPY, UI/audio and USB recovery).
+No physical module, selection or firmware was changed during this work.
+
+
+### Stage 4 completed: functional emulator acceptance
+
+[D] The full production musical acceptance passes (1113.31 s total test time):
+MASTER GRID and MASTER PHASE selected via KEYBOARD; synchronized triplets and
+swing; finite final audio; STOP silence with retained keyboard ownership;
+restart; USB pulse loss without STOP; recovery at slower tempo; explicit STOP;
+LOCAL UP membership, DOWN/octave control and blend; generated-chord strum and
+release cancellation. Log: out/canopy-stage4-qualified-live.log. Final captured
+phase-mode audio RMS 0.08360847, peak 0.22527526; local arp RMS 0.02779781,
+peak 0.06434289. These are workload observations, not worst-case hardware CPU
+or all-settings headroom qualification.
+
+[D] Final provider acceptance passes (286.02 s): internal 102 BPM master steps
+220/221 blocks; double scale 110/111 blocks with seven-step wrap (1..6,0,1,2);
+DIN 180 BPM 125 blocks; pulse expiry while legacy position stays valid; resumed
+120 BPM 187/188 blocks and STOP. Phase advances exactly 24480 ticks per received
+frame at internal 102 BPM in both normal and double-scale observations, proving
+phase units independent of master scale. Log: out/canopy-stage4-clock-qualified.log;
+data: out/canopy-stage4-clock-{internal,scaled,external,recovered,loss}.json.
+No provider outputs or DSP musical state were fabricated. The scale/length
+fixture edits stock pattern inputs, then restores them before DIN playback.
+
+Final artifacts (SHA256):
+- out/patch/canopy-stage4.dkm:
+  0b090b3974bb86e7f6126525e72c966e590962091c71175ace6e504930186ed7
+- out/patch/canopy-stage4-final.syx:
+  02df04c612756c80e6e0c53117ebd970584c890cc8bba09ee778ad79c34c66e1
+- Full musical run's out/patch/canopy-stage4-prewrap.syx:
+  0ed894b86c58ca237a053c9b5346dc1c9bada03c58677954bef003941eee84fc
+
+The final image adds only the persistent expired-clock latch to that musical
+run's provider, preventing a full 32-bit timestamp wrap from briefly reviving
+a lost clock. This final difference passes its CF-core regression plus the final
+DIN/scale firmware proof; the full musical suite was not repeated for this
+isolated latch. Both artifacts use the same CANOPY DKM and adapter logic.
+The complete current source is build-checked separately. Never substitute the
+older stage-4-local or 640-byte instance artifacts.
+
+Validation: 208 component tests passed before pulse-expiry addition; 36 relevant
+provider/adapter cases passed with expiry; final two targeted wrap/expired-input
+checks passed. Native timestamp tests: 14 counter cases, snapshot round-trip,
+read-only diagnostics and two snapshot-reader cases pass. Changed-file preflight
+passes 269 host tests (16 optional skips), Python lint/format/types, JS lint,
+format/types and layer check. Its only failure is the pre-existing repository
+path baseline: 256 stale references in 78 files. Changed-document references
+are checked separately. The final small fixture/test additions receive scoped
+format/type checks, rather than rerunning unrelated host tests.
+
+Stage 4 is complete at the functional emulator boundary. Hardware load,
+USB/DIN keyboard latency, coexistence and release approval remain Stage 6.
+No physical firmware/module/settings changes were made. Stage 5 (presets and
+named SRC pages) is the next implementation stage.

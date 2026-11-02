@@ -62,7 +62,7 @@ pub unsafe extern "C" fn digi_load(ptr: *const u8, len: usize) -> i32 {
     unsafe { load_with_policy(ptr, len, ExecutionPolicy::Reference) }
 }
 
-/// Loads firmware and restores a `DT2SNP01` ColdFire snapshot (taken at ready
+/// Loads firmware and restores a `DT2SNP02` ColdFire snapshot (taken at ready
 /// with the SSI diagnostic lane on, as the coupled ready snapshots are), with
 /// no DSP attached. For measuring the ColdFire cost of the audio path alone.
 #[unsafe(no_mangle)]
@@ -256,7 +256,7 @@ mod coupled {
     }
 
     /// Loads firmware (SYX), the packed DSP image, the DSP state (`.dsp`
-    /// file or bare canonical state) and optionally a `DT2SNP01` ColdFire
+    /// file or bare canonical state) and optionally a `DT2SNP02` ColdFire
     /// snapshot taken at ready (length 0: boot from reset with the DSP
     /// attached from the first frame). Reference-compatible ColdFire policy.
     #[unsafe(no_mangle)]

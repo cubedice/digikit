@@ -9,6 +9,8 @@
 #define MT_RESET 2u
 #define MT_CONFIG_CHUNK 3u
 #define MT_CONFIG_COMMIT 4u
+/* Mapped batch: word 4 is phrase identity, high bit marks generated chords. */
+#define MT_MAPPED 5u
 #define MT_CONFIG_WORDS 64u
 #define MT_CHUNK_WORDS 16u
 #define MT_STALL_BLOCKS 900u

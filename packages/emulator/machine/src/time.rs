@@ -434,6 +434,17 @@ impl Time {
             || self.intc.load_page(base, data)
     }
 
+    /// The main-OS entry inherits a free-running bus-clock timestamp from the
+    /// bootloader. This is separate from IRQ scheduling and trace replay.
+    pub fn inherit_timestamp_counter(&mut self, channel: usize) {
+        self.dtim.write(periph::dtim::BASES[channel], 2, 3);
+        self.dtim.enable_counter(channel, 0);
+    }
+
+    pub fn advance_counters(&mut self, now: u64) {
+        self.dtim.advance_counters(now);
+    }
+
     /// Current timer delivery contract.
     pub fn policy(&self) -> TimerPolicy {
         self.policy

@@ -174,6 +174,13 @@ assemble:
                 ((uint32_t)e->note << 14) | ((uint32_t)e->value << 21);
         }
     }
+    if (kind==MT_EVENTS && transform && output[0].sequence) {
+        kind=MT_MAPPED;
+        t->words[4]=output[0].sequence;
+        for (i=1;i<count;++i) if (output[i].sequence!=output[0].sequence) {
+            mapping_fault(m,track); return 0;
+        }
+    }
     t->words[1] = kind | (count << 8);
     t->words[7] = mt_check(t->words);
     t->pending = kind; t->count = consumed; t->sent_block = block;

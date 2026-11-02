@@ -220,3 +220,92 @@ fn oracle_collection_retains_requests_until_accepted_or_guest_cleared() {
     bank.release();
     assert_eq!(bank.pending_vectors(), vec![VECTORS[0]]);
 }
+
+#[test]
+fn timestamp_counter_tracks_bus_time_wrap_and_reset() {
+    let mut bank = DtimBank::new(vec![], F_BUS, false);
+    bank.enable_counter(0, 0);
+    bank.write(BASES[0], 2, 3); // enabled, bus/1, free run, no IRQ
+    bank.advance_counters(132_000_000);
+    assert_eq!(bank.read(BASES[0] + 12, 4), Some(132_000_000));
+    bank.advance_counters((1u64 << 32) + 7);
+    assert_eq!(bank.read(BASES[0] + 12, 4), Some(7));
+    assert_eq!(bank.read(BASES[0] + 14, 2), Some(7));
+    bank.write(BASES[0] + 13, 1, 0xff); // any counter write clears it
+    assert_eq!(bank.read(BASES[0] + 12, 4), Some(0));
+    bank.advance_counters((1u64 << 32) + 17);
+    assert_eq!(bank.read(BASES[0] + 12, 4), Some(10));
+    bank.write(BASES[0], 2, 0);
+    assert_eq!(bank.read(BASES[0] + 12, 4), Some(0));
+    bank.advance_counters((1u64 << 32) + 100);
+    assert_eq!(bank.read(BASES[0] + 12, 4), Some(0));
+}
+
+#[test]
+fn timestamp_counter_preserves_fraction_pause_and_rate_change() {
+    let mut bank = DtimBank::new(vec![], F_BUS, false);
+    bank.enable_counter(0, 0);
+    bank.write(BASES[0], 2, 0x0105); // bus/16, prescale /2
+    bank.advance_counters(31);
+    assert_eq!(bank.read(BASES[0] + 12, 4), Some(0));
+    bank.rescale(31.0, F_BUS * 2.0);
+    bank.advance_counters(33);
+    assert_eq!(bank.read(BASES[0] + 12, 4), Some(1));
+    bank.write(BASES[0], 2, 1); // stopped, out of reset
+    bank.advance_counters(1000);
+    assert_eq!(bank.read(BASES[0] + 12, 4), Some(1));
+    bank.write(BASES[0], 2, 3);
+    bank.advance_counters(1004);
+    assert_eq!(bank.read(BASES[0] + 12, 4), Some(3));
+}
+
+#[test]
+fn timestamp_counter_snapshot_preserves_subtick_and_epoch() {
+    let mut bank = DtimBank::new(vec![], F_BUS, false);
+    bank.enable_counter(0, 0);
+    bank.write(BASES[0], 2, 5); // bus/16
+    bank.advance_counters(23);
+    let mut w = periph::snap::Writer::new();
+    bank.snap_save(&mut w);
+    let mut restored = DtimBank::new(vec![], F_BUS, false);
+    restored
+        .snap_load(&mut periph::snap::Reader::new(&w.buf))
+        .unwrap();
+    bank.advance_counters(48);
+    restored.advance_counters(48);
+    assert_eq!(restored.read(BASES[0] + 12, 4), Some(3));
+    assert_eq!(restored.read(BASES[0] + 12, 4), bank.read(BASES[0] + 12, 4));
+}
+
+#[test]
+fn timestamp_counter_restart_and_unmodelled_external_input() {
+    let mut bank = DtimBank::new(vec![], F_BUS, false);
+    bank.enable_counter(0, 0);
+    bank.write(BASES[0] + 4, 4, 9);
+    bank.write(BASES[0], 2, 11); // restart at reference, no IRQ
+    bank.advance_counters(25);
+    assert_eq!(bank.read(BASES[0] + 12, 4), Some(5));
+    bank.write(BASES[0], 2, 7); // external input has no supplied edges
+    bank.advance_counters(100);
+    assert_eq!(bank.read(BASES[0] + 12, 4), Some(5));
+    assert_eq!(bank.period(0), None); // counter does not turn IRQs on
+}
+
+#[test]
+fn legacy_snapshot_retains_register_only_counter_semantics() {
+    let mut bank = DtimBank::new(vec![], F_BUS, false);
+    bank.write(BASES[0], 2, 3);
+    bank.write(BASES[0] + 12, 4, 1234);
+    let mut w = periph::snap::Writer::new();
+    bank.snap_save(&mut w);
+    // Legacy state starts with held, without the DTCN tag and four
+    // (enabled:u8, epoch:u64, fraction:f64) records added in SNP02.
+    let legacy = &w.buf[4 + 4 * 17..];
+    let mut restored = DtimBank::new(vec![], F_BUS, false);
+    restored.enable_counter(0, 0);
+    restored
+        .snap_load(&mut periph::snap::Reader::new(legacy))
+        .unwrap();
+    restored.advance_counters(132_000_000);
+    assert_eq!(restored.read(BASES[0] + 12, 4), Some(1234));
+}

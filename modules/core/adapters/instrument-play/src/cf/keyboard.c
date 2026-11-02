@@ -3,13 +3,13 @@
 static void zero(void *p, uint32_t n) { volatile uint8_t *b=p; while (n--) *b++=0; }
 void kb_init(KbState *s)
 {
-    zero(s,sizeof(*s)); s->next_token=1; s->selector_base=24;
+    zero(s,sizeof(*s)); s->next_token=1; s->phrase=1; s->selector_base=24;
     s->selector_channel=MI_NONE;
 }
 void kb_reset(KbState *s, uint32_t epoch, uint32_t generation)
 {
     zero(s->keys,sizeof(s->keys)); zero(s->voices,sizeof(s->voices));
-    s->epoch=epoch; s->generation=generation; s->next_token=1; s->pedals=0;
+    s->epoch=epoch; s->generation=generation; s->next_token=1; s->phrase=1; s->pedals=0;
     s->status=KB_OK; s->update=0;
 }
 static int selector(const KbState *s, const MiEvent *e)
@@ -61,6 +61,12 @@ static int note(KbState *s, const MiEvent *e)
     for (i=0;i<MI_KEYS;++i) {
         if (s->keys[i].token==e->token) return -1;
         held+=!!s->keys[i].held;
+    }
+    uint32_t sounding=0;
+    for (i=0;i<MI_KEYS;++i) sounding+=!!active(&s->keys[i]);
+    if (s->mode==KB_ROOT || !sounding || (s->latch && !held)) {
+        if (s->phrase==0x7fffffffu) { s->status=KB_EXHAUSTED; return -1; }
+        ++s->phrase;
     }
     if (s->latch && !held) {
         for (i=0;i<MI_KEYS;++i) { s->keys[i].latched=0; s->keys[i].pedal=0; }
@@ -144,7 +150,7 @@ static void event(KbState *s, KbVoice *v, uint8_t kind, MiEvent *e)
 }
 int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8])
 {
-    KbVoice want[4]; uint32_t i,j,n,used=0;
+    KbVoice want[4]; uint32_t i,j,n,used=0,phrase=s->phrase;
     if (count>8 || s->status==KB_EXHAUSTED || s->mode>KB_LEARN ||
         s->type>=12 || s->slot>=8 || s->voicing>3 ||
         (s->selector_channel!=MI_NONE && s->selector_channel>15)) return -1;
@@ -205,6 +211,15 @@ int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8])
         const volatile uint8_t *from=(const volatile uint8_t *)&want[i];
         for (j=0;j<sizeof(KbVoice);++j) to[j]=from[j];
     }
+    // A new root/latch phrase can retain every common tone. Publish its
+    // identity even when there are no audible note differences.
+    if (!used && phrase!=s->phrase) {
+        zero(&out[0],sizeof(out[0]));
+        out[0].kind=MI_COMMIT; out[0].epoch=s->epoch;
+        out[0].generation=s->generation; used=1;
+    }
+    for (i=0;i<used;++i)
+        out[i].sequence=s->phrase | (s->mode==KB_ROOT ? 0x80000000u : 0);
     s->update=0;
     return (int)used;
 }
