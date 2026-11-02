@@ -15,7 +15,7 @@ _canopy_reset:
     COMP(R8, R0);
     IF EQ JUMP _cv_replace;
     I0 = R4;
-    R1 = 192;
+    R1 = 200;
     R0 = 0;
 _cv_reset_clear:
     DM(I0, M6) = R0;
@@ -49,7 +49,7 @@ _cv_replace_clear:
     R0 = 2;
     DM(1, I0) = R0;
     MODIFY(I0, 10) (NW);
-    R1 = 46;
+    R1 = 54;
     R0 = 0;
 _cv_clear_movement:
     DM(I0, M6) = R0;
@@ -732,7 +732,7 @@ _cv_bad:
 .VAR _canopy_descriptor_2 = 48;
 .VAR _canopy_descriptor_3 = 0;
 .VAR _canopy_descriptor_4 = 1;
-.VAR _canopy_descriptor_5 = 768;
+.VAR _canopy_descriptor_5 = 800;
 .VAR _canopy_descriptor_6 = 8;
 .VAR _canopy_descriptor_7 = 32;
 .VAR _canopy_descriptor_8 = 100000;

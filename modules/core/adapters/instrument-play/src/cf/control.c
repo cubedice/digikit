@@ -15,7 +15,7 @@ extern uint32_t dkrt_instrument_generation(void);
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
 extern int instrument_sound_prepare(int allow_refresh);
-static const uint32_t limits[8] = {0x49525031,1,1,100000,1000,8,128,768};
+static const uint32_t limits[8] = {0x49525031,1,1,100000,1000,8,128,800};
 const uint32_t *instrument_runtime_policy(void) { return limits; }
 static int enabled, usb=1, din=1, channel=1;
 static uint32_t phase, prepared, healthy, fault_generation;
@@ -134,10 +134,14 @@ static void learn_close(void *ctx,int save)
     if (!result) { instrument_sound_suspend(); if (save) save_pending=1; }
     dkrt_irq_restore(sr);
     if (result) { dk_ui_toast("CAPTURE CHANGED OR EMPTY"); dk_ui_refresh(learn_menu); }
-    else dk_ui_close(learn_menu);
+    else { dk_ui_close(learn_menu); if(save) dk_ui_toast("LEARNED - UNSAVED"); }
 }
 /* We close explicitly: consume NO so the stock handler cannot close twice. */
 static int learn_back(void *ctx) { learn_close(ctx,0); return 1; }
+/* YES saves from every visible row. NO is handled by learn_back; it must not
+ * depend on which informational row the native list currently selects. */
+static void learn_row(dk_ui_menu *m,const char *text)
+{ dk_ui_action(m,text,learn_close,0,1); }
 static void learn_fill(dk_ui_menu *m,void *ctx)
 {
     (void)ctx;
@@ -148,7 +152,7 @@ static void learn_fill(dk_ui_menu *m,void *ctx)
     dkrt_irq_restore(sr);
     char title[18];
     for(uint32_t i=0;i<sizeof(title);++i) ((volatile char *)title)[i]="SLOT 1  0/4 NOTES"[i];
-    title[5]=(char)('1'+shape_slot); title[8]=(char)('0'+count); dk_ui_text(m,title);
+    title[5]=(char)('1'+shape_slot); title[8]=(char)('0'+count); learn_row(m,title);
     /* Note zero is C-1, never an empty sentinel. Two pitches per row fit the
      * native menu font even at the four-character C#-1 boundary. */
     for(uint32_t row=0;row<2;++row) {
@@ -158,11 +162,10 @@ static void learn_fill(dk_ui_menu *m,void *ctx)
             if(col) { line[at++]=' '; line[at++]=' '; }
             for(uint32_t j=0;note[j];++j) line[at++]=note[j];
         }
-        line[at]=0; dk_ui_text(m,line);
+        line[at]=0; learn_row(m,line);
     }
-    char root[11]={'R','O','O','T',' ',0}; cv_note(root+5,notes[0],count!=0); dk_ui_text(m,root);
-    dk_ui_text(m,status==KB_FULL ? "FULL - FOUR NOTES" : count ? "YES SAVE / NO CANCEL" : "PLAY 1-4 NOTES");
-    dk_ui_action(m,"SAVE",learn_close,0,1); dk_ui_action(m,"CANCEL",learn_close,0,0);
+    char root[11]={'R','O','O','T',' ',0}; cv_note(root+5,notes[0],count!=0); learn_row(m,root);
+    learn_row(m,status==KB_FULL ? "FULL - FOUR NOTES" : count ? "YES SAVE / NO CANCEL" : "PLAY 1-4 NOTES");
 }
 static const dk_ui_menu_desc learn_desc={.name="canopy-learn",.title="LEARN TO ROOT",
     .flags=DK_UI_LIST,.fill=learn_fill,.back=learn_back};
@@ -294,6 +297,9 @@ void instrument_src_display(CvDisplay *out,uint32_t now,const char *tune,const c
     if(is_detail_confirmed(&src_status,now))
         cs_applied(&src_state,src_status.generation,src_status.detail_control,src_status.detail);
     cv_build(out,&src_state,&src_status,now,tune,level,preset_result || storage_result);
+    uint32_t sr=dkrt_irq_mask();
+    cv_ownership(out,&src_status,&keyboard,now);
+    dkrt_irq_restore(sr);
 }
 int instrument_src_receive(const uint32_t words[IS_WORDS],uint32_t now)
 { return src_initialized ? is_receive(&src_status,words,now) : -1; }

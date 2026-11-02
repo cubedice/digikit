@@ -318,6 +318,22 @@ test('UI SAVE rejects a changed capture since the displayed revision and NO canc
   expect(cancelled!.mode).toBe(0);
   expect(cancelled!.dirty).toBe(0);
 });
+test.each([0, 1, 2, 3, 4])('LEARN YES saves from informational row %s', (row) => {
+  const [saved] = settings(`learn\nkey 0\nkey 13\ntick\nyes ${row}\nsnapshot`);
+  expect(saved!.shape).toEqual([0, 13]);
+  expect(saved!.mode).toBe(0);
+  expect(saved!.dirty).toBe(1);
+  expect(saved!.exists).toBe(0);
+});
+
+test('LEARN YES refreshes a changed capture before allowing a second press to save', () => {
+  const [stale, saved] = settings('learn\nkey 60\ntick\nkey 67\nyes 0\nsnapshot\nyes 0\nsnapshot');
+  expect(stale!.mode).toBe(2);
+  expect(stale!.shape).toEqual([]);
+  expect(saved!.shape).toEqual([0, 7]);
+  expect(saved!.mode).toBe(0);
+});
+
 test('failed LEARN menu opening restores PLAY instead of leaving invisible capture active', () => {
   const [s] = settings('openerror 1\nlearn\nsnapshot');
   expect(s!.mode).toBe(0);

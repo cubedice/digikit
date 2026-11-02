@@ -7,6 +7,7 @@
 #include "../../../modules/core/adapters/instrument-play/src/cf/src-display.h"
 static IsStatus status;
 static uint32_t fast[12], detail[64], now=100;
+static uint32_t detail_schema=1;
 static int queued,queue_error,continuous;
 static uint32_t queue_age=1;
 static int read_status(uint32_t *out,uint32_t words,uint32_t *age)
@@ -26,7 +27,7 @@ static void start(void)
 static int fragment(unsigned index)
 {
     uint32_t w[12]={0}; w[0]=++fast[0]; w[1]=0x40000000; w[2]=12;
-    w[3]=fast[11]; w[4]=0x10b00|index; w[5]=fast[3];
+    w[3]=fast[11]; w[4]=(detail_schema<<16)|0xb00|index; w[5]=fast[3];
     for(unsigned i=0;i<(index==10?4:6);++i) w[6+i]=detail[index*6+i];
     return is_receive(&status,w,now);
 }
@@ -37,7 +38,25 @@ int main(int argc,char **argv)
     CsState ui; cs_init(&ui);
     uint32_t token=cs_context(&ui,0,12,1,0,KB_ROOT,0,0,0),id=255;
     ui.pending=0; /* Fixture starts after an applied initial bank. */
-    if(!strcmp(scenario,"poll-freshness")) {
+    if(!strcmp(scenario,"token-ownership")) {
+        CvDisplay display; KbState keyboard={0}; start();
+        fast[0]++; fast[1]=(3u<<16)|(2u<<20); fast[5]=60|(60u<<8); fast[6]=8u<<8;
+        assert(is_receive(&status,fast,now)==1);
+        detail_schema=2; detail[38]=11; detail[39]=12; complete();
+        keyboard.generation=12; keyboard.mode=KB_PLAY;
+        keyboard.voices[0]=(KbVoice){.token=11,.source=100,.note=60};
+        keyboard.voices[1]=(KbVoice){.token=12,.source=101,.note=60};
+        keyboard.keys[0]=(KbKey){.token=100,.held=1};
+        keyboard.keys[1]=(KbKey){.token=101,.pedal=1};
+        cs_context(&ui,0,12,1,0,KB_PLAY,0,0,0);
+        cv_build(&display,&ui,&status,now,"0","100",0);
+        cv_ownership(&display,&status,&keyboard,now);
+        assert(display.membership[0]==1 && display.membership[1]==2);
+        keyboard.voices[0].token=13; cv_ownership(&display,&status,&keyboard,now);
+        assert(display.membership[0]==0 && display.membership[1]==2);
+        keyboard.generation=13; display.membership[0]=0;
+        cv_ownership(&display,&status,&keyboard,now); assert(!display.membership[0]);
+    } else if(!strcmp(scenario,"poll-freshness")) {
         start(); queued=2; is_poll(&status,100,read_status);
         assert(!status.fast_valid && status.poll_valid && !queued);
         queued=1; is_poll(&status,120,read_status);
@@ -154,7 +173,7 @@ int main(int argc,char **argv)
         assert(fragment(10)==-1 && status.detail[63]==0);
     } else if(!strcmp(scenario,"fragment-framing")) {
         start(); uint32_t w[12]={1001,0x40000000,12,9,0x10b00,5,0,0,0,0,0,0};
-        const uint32_t framing[]={0x10b0b,0x10a00,0x20b00,0x1010b00};
+        const uint32_t framing[]={0x10b0b,0x10a00,0x30b00,0x1010b00};
         for(unsigned i=0;i<4;++i) { w[4]=framing[i]; assert(is_receive(&status,w,now)==-1 && !status.assembling); }
         w[4]=0x10b0a; w[10]=1; assert(is_receive(&status,w,now)==-1);
         w[10]=0; w[11]=1; assert(is_receive(&status,w,now)==-1);
@@ -224,6 +243,32 @@ int main(int argc,char **argv)
         cv_note(display.notes[0],0,1); assert(!strcmp(display.notes[0],"C-1"));
         cv_note(display.notes[0],1,1); assert(!strcmp(display.notes[0],"C#-1"));
         cv_note(display.notes[0],127,1); assert(!strcmp(display.notes[0],"G9"));
+    } else if(!strcmp(scenario,"wall-clock")) {
+        extern uint32_t cc_milliseconds(uint32_t,uint32_t,uint32_t,uint32_t);
+        const uint64_t ticks[]={0,131999,132000,0xffffffffULL,0x100000000ULL,
+            132000ULL*0xffffffffULL,132000ULL*0x100000000ULL,0x123456789abcdef0ULL};
+        for(unsigned i=0;i<sizeof(ticks)/sizeof(ticks[0]);++i) {
+            uint64_t t=ticks[i];
+            assert(cc_milliseconds((uint32_t)(t>>32),(uint32_t)t,17,17)==(uint32_t)(t/132000));
+            assert(cc_milliseconds((uint32_t)(t>>32),(uint32_t)t,0xffff0000,66000)==(uint32_t)((t+131536)/132000));
+        }
+        // A stalled UI sees elapsed hardware time without an audio callback.
+        assert(cc_milliseconds(0,132000000,100,19800100)==1150);
+    } else if(!strcmp(scenario,"display-clock")) {
+        CvDisplay display; start();
+        cs_context(&ui,0,12,1,1,KB_PLAY,1,0,0);
+        fast[1]=(1u<<16)|(1u<<20)|(1u<<26)|(1u<<27);
+        fast[5]=60; fast[6]=0; fast[7]=60|256|512; fast[8]=100;
+        const char *heading[]={"WAIT CLK","CLK LOST","STOPPED"};
+        const unsigned states[]={IS_CLOCK_WAIT,IS_CLOCK_LOST,IS_CLOCK_STOPPED};
+        for(unsigned i=0;i<3;++i) {
+            ++fast[0]; fast[9]=1|(states[i]<<8)|(3u<<16)|(1u<<24);
+            assert(is_receive(&status,fast,now)==1);
+            cv_build(&display,&ui,&status,now,"0","100",0);
+            assert(!strcmp(display.heading,heading[i]) && !display.highlight);
+            assert(!strcmp(display.notes[0],"C4"));
+        }
+        ++fast[0]; fast[9]=1|(5u<<8); assert(is_receive(&status,fast,now)==-1);
     } else if(!strcmp(scenario,"duplicate-tone")) {
         CvDisplay display; start(); ++fast[0];
         fast[1]=(3u<<16)|(2u<<20)|(1u<<26)|(1u<<27);

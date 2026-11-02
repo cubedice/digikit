@@ -1873,7 +1873,7 @@ the UI receiver must additionally enforce its wall-clock freshness deadline.
 | 6 | Four membership bytes: key, pedal, latch flags plus stable source-tone identity within the chord revision |
 | 7 | Actual arp pitch bits 0..7; pitch-valid bit 8; source-match-valid bit 9; source-tone index bits 10..11; reserved bits 12..15; bounded ordinal bits 16..31. Source-match-valid means the arp source revision equals word 4; generate packed masks in SDK |
 | 8 | Applied arp mix, unique physically held count, eligible-but-excluded count, and reserved byte |
-| 9 | Clock source, clock state, timing-capability flags and applied rate ID, one byte each |
+| 9 | Clock mode (LOCAL/GRID/PHASE), state (0 local, 1 waiting, 2 running, 3 lost, 4 stopped), provider bits (bit0 grid, bit1 phase), and applied rate ID, one byte each |
 | 10 | Last fault code and saturating overrun count, sixteen bits each |
 | 11 | Selected-track detail revision |
 

@@ -2,7 +2,10 @@
 #include <stdio.h>
 #include <string.h>
 #include "../../../modules/core/adapters/instrument-play/src/cf/control.c"
-struct dk_ui_menu { const dk_ui_menu_desc *desc; int open; };
+struct dk_ui_menu {
+    const dk_ui_menu_desc *desc; int open, count;
+    struct { dk_ui_act_fn *fn; void *ctx; int arg; } rows[32];
+};
 MiLedger mi_ledger;
 MiTransport mi_transport;
 volatile uint32_t ip_view;
@@ -90,13 +93,13 @@ int dkrt_settings_flush(void)
 }
 dk_ui_menu *dk_ui_menu_new(const dk_ui_menu_desc *d)
 { if(menu_count==3) return 0; menus[menu_count].desc=d; return &menus[menu_count++]; }
-int dk_ui_open(dk_ui_menu *m) { if(open_error) return -1; m->open=1; m->desc->fill(m,0); return 0; }
+int dk_ui_open(dk_ui_menu *m) { if(open_error) return -1; m->open=1; m->count=0; m->desc->fill(m,0); return 0; }
 void dk_ui_close(dk_ui_menu *m) { m->open=0; }
 int dk_ui_is_open(const dk_ui_menu *m) { return m->open; }
-void dk_ui_refresh(dk_ui_menu *m) { m->desc->fill(m,0); }
-void dk_ui_text(dk_ui_menu *m,const char *s) { (void)m;(void)s; }
+void dk_ui_refresh(dk_ui_menu *m) { m->count=0; m->desc->fill(m,0); }
+void dk_ui_text(dk_ui_menu *m,const char *s) { dk_ui_action(m,s,0,0,0); }
 void dk_ui_action(dk_ui_menu *m,const char *s,dk_ui_act_fn *f,void *c,int a)
-{ (void)m;(void)s;(void)f;(void)c;(void)a; }
+{ (void)s; if(m->count<32) { int i=m->count++; m->rows[i].fn=f; m->rows[i].ctx=c; m->rows[i].arg=a; } }
 void dk_ui_toggle(dk_ui_menu *m,const char *s,int *v,dk_ui_act_fn *f,void *c)
 { (void)m;(void)s;(void)v;(void)f;(void)c; }
 void dk_ui_value(dk_ui_menu *m,const char *s,int *v,int a,int b,dk_ui_act_fn *f,void *c)
@@ -121,6 +124,10 @@ int main(void)
             instrument_keyboard_events(0,in.epoch,in.generation,&in,1,out);
         } else if(!strcmp(cmd,"tick")) instrument_play_tick();
         else if(!strcmp(cmd,"save")) learn_close(0,1);
+        else if(!strcmp(cmd,"yes")) {
+            if(learn_menu && learn_menu->open && value>=0 && value<learn_menu->count && learn_menu->rows[value].fn)
+                learn_menu->rows[value].fn(learn_menu->rows[value].ctx,learn_menu->rows[value].arg);
+        }
         else if(!strcmp(cmd,"suspend")) instrument_sound_suspend();
         else if(!strcmp(cmd,"back")) learn_back(0);
         else if(!strcmp(cmd,"puterror")) put_error=value;

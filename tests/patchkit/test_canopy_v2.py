@@ -126,7 +126,7 @@ def canopy(canopy_object):
     dm = dict(initial)
     dm.update({0x20015000 // 4 + i: 0 for i in range(13)})
     dm[0x20015000 // 4 - 1] = dm[0x20015000 // 4 + 13] = 0xDEADBEEF
-    for base, size in [(0x20050000, 192), (0x20054000, 192), (0x20013000, 32)]:
+    for base, size in [(0x20050000, 200), (0x20054000, 200), (0x20013000, 32)]:
         dm.update({base // 4 + i: 0 for i in range(size)})
         dm[base // 4 - 1] = dm[base // 4 + size] = 0xDEADBEEF
 
@@ -179,16 +179,16 @@ def canopy(canopy_object):
             name: (sections[name] // 4, len(blob) // 4)
             for name, (blob, _, _) in obj.data.items()
         }
-        reads.update({"state": (state // 4, 192), "out": (0x20013000 // 4, 32)})
+        reads.update({"state": (state // 4, 200), "out": (0x20013000 // 4, 32)})
         reads["status"] = (0x20015000 // 4, 13)
         reads["status_before"] = (0x20015000 // 4 - 1, 1)
         reads["status_after"] = (0x20015000 // 4 + 13, 1)
         reads.update(
-            {"guard_before": (state // 4 - 1, 1), "guard_after": (state // 4 + 192, 1)}
+            {"guard_before": (state // 4 - 1, 1), "guard_after": (state // 4 + 200, 1)}
         )
         if protected and reset is None:
             dm[symbols["_ir_process_flags"] // 4] = 1 if words[0] == 5 else 0
-            row = [3, 2, 9, 1, state, 192, state, state + 768, 0, 0, 0, 0, 0, 0, 0, 0]
+            row = [3, 2, 9, 1, state, 200, state, state + 800, 0, 0, 0, 0, 0, 0, 0, 0]
             meta = [
                 2,
                 9,
@@ -291,12 +291,12 @@ def test_v5_status_fragments_reconstruct_the_applied_presentation_bank(
         if block % 2 != wire_parity:
             continue
         if w[1] >> 30:
-            assert w[3] == w[5] == 7
+            assert w[3] == 1 and w[5] == 7
             index = w[4] & 255
-            assert w[4] == 0x10B00 | index
+            assert w[4] == 0x20B00 | index
             fragments[index] = w[6:]
         else:
-            assert (w[1] >> 6) & 3 == 1 and w[3] == w[11] == 7
+            assert (w[1] >> 6) & 3 == 1 and w[3] == 7 and w[11] == 1
             fast_blocks.append(block)
     assert set(fragments) == set(range(11))
     bank = sum((fragments[i] for i in range(11)), [])
@@ -337,8 +337,81 @@ def test_v5_status_does_not_change_rendering_and_clears_ready_on_rejection(canop
     assert r["regs"]["R0"] == 0xFFFFFFFF and r["status"][0] == 0
 
 
+@pytest.mark.parametrize("clock", [1, 2], ids=["grid", "phase"])
+def test_v5_status_clock_acquisition_loss_stop_and_recovery(canopy, clock):
+    controls = presentation_controls(base=MASTER if clock == 1 else FINE)
+
+    def sample(block, boundary, flags=3, events=()):
+        r = canopy(
+            events,
+            controls=controls,
+            edits={
+                **position(block, boundary, flags=flags | 0x300),
+                0: 5,
+                1: 96,
+                20: max(0, boundary - 1) * 5400000,
+                21: max(0, boundary - 1) * 5400000,
+            },
+        )
+        assert r["status"][0] == 1
+        assert r["status"][2] >> 30 == 0
+        assert (r["status"][10] >> 16) & 255 == 3
+        return (r["status"][10] >> 8) & 255
+
+    assert sample(0, 0, flags=0, events=[note(1, 60)]) == 1
+    assert sample(1, 1) == 1
+    assert sample(188, 2) == 2
+    assert sample(600, 2) == 3
+    # Four detail callbacks separate successive fast publication groups.
+    for block in range(601, 605):
+        canopy(controls=controls, edits={**position(block, 2), 0: 5, 1: 96})
+    assert sample(605, 2, flags=0x400) == 4
+    assert sample(606, 2, flags=0) == 1
+    assert sample(607, 3) == 1
+    assert sample(794, 4) == 2
+
+
+def test_v5_fine_clock_does_not_schedule_without_phase_provider(canopy):
+    controls = presentation_controls(base=FINE)
+    for block, boundary in [(0, 1), (188, 2), (376, 3)]:
+        r = canopy(
+            [note(1, 60)] if not block else [],
+            controls=controls,
+            edits={
+                **position(block, boundary, flags=0x103),
+                0: 5,
+                1: 96,
+                20: (boundary - 1) * 5400000,
+                21: (boundary - 1) * 5400000,
+            },
+        )
+        assert r["state"][136] == 0
+        assert (r["status"][10] >> 8) & 255 == 1
+        assert (r["status"][10] >> 16) & 255 == 1
+
+
+def test_v5_status_token_change_starts_a_new_immutable_detail_revision(canopy):
+    controls = presentation_controls()
+    first = canopy([note(11, 60)], controls=controls, edits={0: 5, 1: 96})
+    revision = first["status"][12]
+    fragments = {}
+    for block in range(1, 88):
+        r = canopy(controls=controls, edits={0: 5, 1: 96, 4: block})
+        w = r["status"][1:]
+        if w[1] >> 30:
+            assert w[3] == revision
+            fragments[w[4] & 255] = w[6:]
+    bank = sum((fragments[i] for i in range(11)), [])
+    assert sorted(t for t in bank[38:42] if t) == [11]
+    changed = canopy(
+        [note(11, 60, off=True), note(12, 60)], controls=controls, edits={0: 5, 1: 96}
+    )
+    assert changed["status"][2] >> 30 == 0
+    assert changed["status"][12] == revision + 1
+
+
 def test_v2_chord_independent_release_and_state_isolation(canopy):
-    assert canopy(reset=1)["state"] == [0] * 192
+    assert canopy(reset=1)["state"] == [0] * 200
     result = canopy([note(1, 60), note(2, 64)])
     assert result["regs"]["R0"] == 0
     assert set(voices(result)) == {1, 2}
@@ -386,7 +459,7 @@ def test_generation_change_requires_reset_and_reset_is_per_instance(canopy):
     canopy([note(1, 60)])
     canopy([note(2, 67)], state=0x20054000, track=1)
     assert canopy(generation=2)["regs"]["R0"] == 0xFFFFFFFF
-    assert canopy(reset=3)["state"] == [0] * 192
+    assert canopy(reset=3)["state"] == [0] * 200
     assert canopy(generation=2)["regs"]["R0"] == 1
     assert set(voices(canopy(state=0x20054000, track=1))) == {2}
 
@@ -714,7 +787,7 @@ def test_local_arp_reset_cancels_pending_and_bounds_both_lanes(canopy):
     canopy(controls=LOCAL, state_edits={146: 89999})
     r = canopy(reset=2)
     assert r["state"][137] == 2
-    assert r["state"][146:] == [0] * 46
+    assert r["state"][146:] == [0] * 54
     for _ in range(4):
         r = canopy(controls=(3, 0, 64, 0, 0, 0))
     assert r["state"][136] == 0

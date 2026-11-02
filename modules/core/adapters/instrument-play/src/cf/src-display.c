@@ -79,6 +79,27 @@ static void chord_name(char out[22],const uint8_t *pitch,uint32_t count)
         }
     }
 }
+void cv_ownership(CvDisplay *d,const IsStatus *s,const KbState *k,uint32_t now)
+{
+    if(!is_detail_confirmed(s,now) || s->detail_schema!=2 ||
+        s->generation!=k->generation || s->mode!=k->mode) return;
+    for(uint32_t slot=0;slot<4;++slot) {
+        if(!(s->fast[1]&(1u<<(16+slot)))) continue;
+        uint32_t pitch=(s->fast[5]>>(slot*8))&255,rank=0;
+        for(uint32_t j=0;j<4;++j) if(s->fast[1]&(1u<<(16+j))) {
+            uint32_t other=(s->fast[5]>>(j*8))&255;
+            if(other<pitch || (other==pitch && j<slot)) ++rank;
+        }
+        d->membership[rank]=0;
+        uint32_t token=s->detail[38+slot];
+        if(!token) continue;
+        for(uint32_t v=0;v<4;++v) if(k->voices[v].token==token && k->voices[v].note==pitch)
+            for(uint32_t i=0;i<MI_KEYS;++i) if(k->keys[i].token && k->keys[i].token==k->voices[v].source)
+                d->membership[rank]=(uint8_t)((!!k->keys[i].held) | ((!!k->keys[i].pedal)<<1) | ((!!k->keys[i].latched)<<2));
+    }
+    d->pedal=(uint8_t)!!k->pedals; d->latch=k->latch?1:0;
+    for(uint32_t i=0;i<MI_KEYS;++i) if(k->keys[i].token && k->keys[i].latched) d->latch=2;
+}
 void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
     const char *tune,const char *level,int save_error)
 {
@@ -110,6 +131,9 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
     }
     if(flags&(1u<<14)) { d->highlight=0; text(d->heading,22,"VOICE ERR"); return; }
     if(save_error) { text(d->heading,22,"NOT SAVED"); return; }
+    uint32_t clock=(status->fast[9]>>8)&255;
+    if(clock==IS_CLOCK_WAIT || clock==IS_CLOCK_LOST || clock==IS_CLOCK_STOPPED)
+        d->highlight=0;
     if(cs_focused(s,now)) {
         d->focused=1; d->highlight=0;
         uint32_t id=s->focus_id;
@@ -124,7 +148,10 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
         if(id==CP_ARP_MIX) { d->mix_bar=1; d->mix_requested=(uint8_t)s->value[id]; d->mix_applied=(uint8_t)status->fast[8]; }
         return;
     }
-    if(!count) text(d->heading,22,(flags&(7u<<23))?"RELEASE":"NO NOTES");
+    if(page && (status->fast[8]&255) && clock==IS_CLOCK_STOPPED) text(d->heading,22,"STOPPED");
+    else if(page && (status->fast[8]&255) && clock==IS_CLOCK_LOST) text(d->heading,22,"CLK LOST");
+    else if(page && (status->fast[8]&255) && clock==IS_CLOCK_WAIT) text(d->heading,22,"WAIT CLK");
+    else if(!count) text(d->heading,22,(flags&(7u<<23))?"RELEASE":"NO NOTES");
     else if(!page) chord_name(d->heading,pitches,n);
     else if(!(status->fast[8]&255)) text(d->heading,22,"ARP OFF");
     else if(status->fast[7]&256) { text(d->heading,22,"ARP "); cv_note(d->heading+4,status->fast[7]&255,1); }

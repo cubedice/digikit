@@ -38,7 +38,7 @@ def playback_object():
 .PKDATA _mi_epoch, 4;
 .PKDATA _instrument_session, 4;
 .PKDATA _mi_carrier_stamp, 4;
-.PKDATA _test_state, 768;
+.PKDATA _test_state, 800;
 .PKDATA _test_packet, 128;
 .PKDATA _test_metadata, 24;
 .PKDATA _test_values, 128;
@@ -121,9 +121,9 @@ def playback(playback_object):
             9,
             1,
             state,
-            192,
+            200,
             state,
-            state + 768,
+            state + 800,
             linked.symbols["_canopy_reset"],
             0xB90000,
             0xBC0000,
@@ -232,12 +232,12 @@ def test_admitted_render_consumes_batch_once_and_raw_carrier_only_copies(playbac
     call(0)
     assert get("_iv_result") == [0]
     assert get("_iv_input", 18)[8] == 0
-    state = get("_test_state", 192)
+    state = get("_test_state", 200)
     voices = {state[i]: state[i : i + 8] for i in range(0, 32, 8) if state[i]}
     assert set(voices) == {1, 2}
     assert voices[1][6] < voices[2][6]
     call(4, R2=0, R8=symbols["_test_output"])
-    assert get("_test_state", 192) == state
+    assert get("_test_state", 200) == state
     assert get("_test_output", 32) == get("_iv_output", 32)
     call(0)
     assert get("_iv_result") == [0]  # replaying the ON would reject its duplicate token
@@ -363,16 +363,16 @@ def test_pad_configuration_is_atomic_and_does_not_reset_a_held_note(playback):
     call(0)
     assert events([(1, 1, 60, 127, 0, 0)]) == 1
     call(0)
-    before = get("_test_state", 192)
+    before = get("_test_state", 200)
     assert configure(values=(3, 1, 127, 127, 0, 127), revision=2) == 1
-    assert get("_test_state", 192) == before
+    assert get("_test_state", 200) == before
     call(0)
-    after = get("_test_state", 192)
+    after = get("_test_state", 200)
     assert [after[i] for i in range(0, 48, 8)] == [before[i] for i in range(0, 48, 8)]
     assert get("_iv_revision") == [2]
     assert configure(values=(3, 1, 128, 0, 5, 15), revision=3) == 0
     assert get("_iv_revision") == [2]
-    assert get("_test_state", 192) == after
+    assert get("_test_state", 200) == after
     call(0)
     assert get("_iv_result") == [0]
 
@@ -386,11 +386,11 @@ def test_local_arp_configuration_reaches_the_process_callback(playback):
     call(0)
     assert events([(1, 1, 60, 127, 0, 0), (2, 1, 64, 127, 0, 0)]) == 1
     call(0)
-    assert get("_test_state", 192)[136] == 1
+    assert get("_test_state", 200)[136] == 1
     assert get("_iv_controls", 10) == list(values)
-    before = get("_test_state", 192)
+    before = get("_test_state", 200)
     assert configure(values=values[:7] + (301, 4, 50), revision=2) == 0
-    assert get("_test_state", 192) == before
+    assert get("_test_state", 200) == before
     assert get("_iv_revision") == [1]
 
 
@@ -403,7 +403,7 @@ def test_extended_movement_configuration_is_applied_atomically(playback):
     call(0)
     assert events([(1, 1, 60, 127, 0, 0)]) == 1
     call(0)
-    assert get("_test_state", 192)[151] == 84
+    assert get("_test_state", 200)[151] == 84
     assert get("_iv_controls", 16) == list(values)
     assert configure(values=values[:12] + (76,) + values[13:], revision=2) == 0
     assert get("_iv_revision") == [1]
@@ -465,6 +465,53 @@ def test_position_snapshot_reaches_input_and_rejects_gaps(playback):
     put("_pattern_position_info", position)
     call(0)
     assert get("_iv_input", 18)[12:17] == [0] * 5
+
+
+def test_v5_timing_metadata_distinguishes_stop_loss_and_missing_provider(playback):
+    call, put, get, reset, configure, _, _ = playback
+    reset()
+    call(0)
+    assert configure() == 1
+    put("_ir_process_flags", [1])
+    position = [
+        0x50504F53,
+        2,
+        30,
+        9,
+        7,
+        3,
+        0x43170000,
+        4,
+        16,
+        0,
+        100,
+        0,
+        100,
+        5,
+        1,
+        0,
+        101,
+        0,
+        30,
+        1,
+    ]
+    put("_pattern_position_info", position)
+    call(0)
+    assert get("_iv_input", 24)[12] == 0x103
+    put("_pattern_clock_info", [0x50434C4B, 1, 10, 5, 3, 101, 9, 7])
+    call(0)
+    assert get("_iv_input", 24)[12] == 0x303
+    put("_pattern_clock_info", [0x50434C4B, 1, 10, 5, 0, 101, 9, 7])
+    call(0)
+    assert get("_iv_input", 24)[12] == 0x300  # Lost sync, transport still running.
+    position[5], position[14] = 0, 0
+    put("_pattern_position_info", position)
+    call(0)
+    assert get("_iv_input", 24)[12] == 0x700  # Explicit STOP, providers still exist.
+    position[19] = 2
+    put("_pattern_position_info", position)
+    call(0)
+    assert get("_iv_input", 24)[12] == 0  # Missing frame, not an explicit STOP.
 
 
 def test_configuration_copies_one_complete_presentation_revision(playback):

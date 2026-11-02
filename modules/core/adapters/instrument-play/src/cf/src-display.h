@@ -14,4 +14,7 @@ void cv_build(CvDisplay *,const CsState *,const IsStatus *,uint32_t now_ms,
 void cv_note(char out[6],uint32_t note,int valid);
 /* 128x64, row-major, MSB first. Only x0..123/y10..63 may be touched. */
 void cv_paint(uint8_t pixels[1024],const CvDisplay *);
+/* Caller supplies a locked mapper snapshot. Match full token and pitch, never
+ * just a pitch or a slot reused by another performance generation. */
+void cv_ownership(CvDisplay *,const IsStatus *,const KbState *,uint32_t now_ms);
 #endif

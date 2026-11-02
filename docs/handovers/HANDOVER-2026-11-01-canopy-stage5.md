@@ -379,3 +379,95 @@ finding (explicit `zip(strict=False)` for adjacent pairs) was fixed and the
 owner lint/format checks pass. Global pathcheck remains the same 256 pre-existing
 stale references in 78 files; scoped handover pathcheck passes. The broader
 previously denied callback regression was not rerun.
+
+## 2026-11-02: token-bound ownership integration (current work)
+
+DSP instance allocation is now 800 bytes (200 words), with the core admission
+ceiling updated to match. Reset/replace clear the new metadata. Words189..192
+hold admitted tokens,193 the detail/chord observation revision,194 the control
+revision. A changed token set or control revision advances the observation
+revision and restarts detail transmission; unchanged frames retain the revision.
+Every fragment therefore describes the same token/control set. Same-pitch
+replacement still changes identity. DSP schema2 adds tokens at detail words38..41;
+the remainder stays zero. Schema1 remains accepted by the CF receiver, but its
+frames cannot supply token-based ownership. Mixed-schema assemblies and duplicate
+nonzero tokens are rejected.
+
+`cv_ownership` joins confirmed schema2 tokens against current mapper voices by
+full token AND pitch, then their source-key tokens. It handles duplicate pitches
+independently and refuses another generation/mode. The UI bridge calls it under
+the mapper lock; no borrowed pointer survives. It supplies held/pedal/latch
+underlines and physical pedal/retained-latch badges without treating audio tails
+as held keys. A replaced, not-yet-confirmed voice receives no ownership mark.
+
+Checks completed: 13 focused producer/reset/carrier DSP tests; two additional
+direct/protected immutable-token-revision cases; 44 SRC/preset host tests.
+Explicit builds pass: CF playback6552 and CANOPY DSP2985 decoded instructions.
+Logs are `out/canopy-stage5-identity-{dsp,tokens,host,build}.log`.
+Required changed-file checks and combined-image link remain to be completed for
+this chunk. The current changes have not been committed yet.
+Changed-tests was started with explicit changed paths in execution session59330;
+inspect that session or `out/canopy-stage5-identity-changed.log` before launching
+another check or build. It was still running at the last observation.
+
+Stage5 is still open: LEARN metadata/modal, complete clock-state reporting,
+native SRC view/input/independent clock, native TUNE/LEVEL integration and booted
+acceptance remain. Production descriptor capability remains disabled. No device
+operations were performed.
+
+## 2026-11-02: clock reporting, LEARN actions and independent UI time
+
+Token ownership checks completed: required changed-tests passed host/lint/types/
+layering but retained the existing global pathcheck failure. The identity image
+linked successfully (SHA256 cdd610cc0f5a17c54befd879547195f20e18a8581fd8f118c8718665ed31bf7c).
+That intermediate image predates the following changes.
+
+V5 timing flags now retain low valid/running bits and add coherent grid/phase
+provider bits8/9 and explicit stopped bit10. Only V5 receives those bits;
+V2-V4 remain unchanged. Missing frames do not masquerade as STOP. CANOPY masks
+those flags before scheduling, requires the fine provider for V5 PHASE, and
+publishes LOCAL/WAIT/RUNNING/LOST/STOPPED plus provider capabilities. Instance
+words195/196 track acquired sync and selected clock mode. The display suppresses
+arp highlights during WAIT/LOST/STOP and retains pad-note labels. Tests cover
+initial absence, acquisition, loss, explicit stop, restart and absent providers.
+
+LEARN now binds YES SAVE to every informational row; NO still cancels. A stale
+capture refreshes before a second YES can commit it. Successful working-memory
+commit immediately says LEARNED - UNSAVED; durable completion retains its
+separate success/failure notification. Five informational rows replace the old
+seven-row list with selection-dependent SAVE/CANCEL actions.
+
+[D] Independent UI clock: MAIN function400cc8b2 extends DTCN0 at0xfc07000c
+into high/low words42940a4c/42940a50, retaining the previous counter at42940a54.
+Function400cc970 divides the accumulator by132000000 for seconds. Registration
+at400cca0c passes the update callback and interval128 to40002aa4. The earlier
+Stage4 passive hardware readings independently measured approximately132MHz.
+The adapter now reads high/low/previous/current under the IRQ mask, restores
+interrupts, then converts to milliseconds with bounded unsigned division.
+It includes unaccumulated counter time and does not modify firmware state.
+Native SRC display/encoder bridges use this clock; host fixtures retain injected
+time. Full-width conversion preserves hardware-counter and millisecond wrap.
+Logs: out/canopy-stage5-time-{refs,disasm,callers,registration}.log.
+
+Validation:17 focused DSP/carrier checks;56 keyboard/preset host checks;27 SRC
+host checks including timer conversion and wrap. Builds:CF6665,playbackDSP1116,
+CANOPY DSP3048 decoded instructions. Latest link/pack and changed checks are
+pending below. No physical device changes. Production status capability remains
+OFF. Native SRC painter/input attachment, queued-event context capture, native
+TUNE/LEVEL/custom-parameter integration, LEARN wire metadata and booted Stage5
+acceptance still remain; Stage5 must not be marked complete.
+
+Final local link:out/patch/canopy-stage5-clock-learn.syx,2010912bytes,SHA256
+`e03c50e91bf1bd06e16a49d7dc033140a89e2877a64dc2fae85f543225898202`.
+Package:out/patch/canopy-stage5-clock-learn.dkm,22660bytes,SHA256
+`9c146dffd055baa6c923e9cf60f40e2b18a4db05689ca5c2214874a4420f884d`.
+The final acquisition/loss/stop/recovery test also passes for both GRID and
+PHASE, direct and protected (four cases). Native selected-track scalar was
+resolved by static consumers:4004abb8 returns the selected record's word8;
+40035cca treats it as0..15 and computes kit+0x6c+index*0x3c0. See finding80.
+
+Final checks: changed-file preflight passed64 related host cases, layering,
+lint, formatting and types; it failed only the existing global pathcheck
+(256 stale references in78 files). Scoped checks of all three changed documents
+report zero stale paths. Focused Python lint passes. The missing-phase-provider
+check passes direct/protected (two cases). No check remains running.

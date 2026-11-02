@@ -14,6 +14,7 @@ static int fast_valid(const IsStatus *s,const uint32_t *w)
     if((flags&0xf0000000u) || ((flags>>4)&3)>1 || ((flags>>6)&3)!=s->mode ||
         ((flags>>20)&7)>4 || (w[7]&0xf000) ||
         (w[8]>>24) || (w[8]&255)>127 || (w[9]&255)>2 ||
+        ((w[9]>>8)&255)>IS_CLOCK_STOPPED || ((w[9]>>16)&255)>3 ||
         ((w[9]>>24)&255)>8) return 0;
     for(uint32_t i=0;i<4;++i) {
         uint32_t pitch=(w[5]>>(8*i))&255,member=(w[6]>>(8*i))&255;
@@ -47,7 +48,11 @@ static int detail_valid(const IsStatus *s,const uint32_t *w)
         else if(pitch) return 0;
     }
     if(!count && root) return 0;
-    for(uint32_t i=38;i<IS_DETAIL_WORDS;++i) if(w[i]) return 0;
+    if(s->assembly_schema==2) {
+        for(uint32_t i=38;i<42;++i) if(w[i])
+            for(uint32_t j=38;j<i;++j) if(w[i]==w[j]) return 0;
+    }
+    for(uint32_t i=s->assembly_schema==2?42:38;i<IS_DETAIL_WORDS;++i) if(w[i]) return 0;
     return 1;
 }
 int is_receive(IsStatus *s,const uint32_t w[IS_WORDS],uint32_t now)
@@ -65,15 +70,17 @@ int is_receive(IsStatus *s,const uint32_t w[IS_WORDS],uint32_t now)
     if((w[1]&0xfffffff0u)!=0x40000000u || !is_fresh(s,now) || w[3]!=s->fast[11] ||
         w[5]!=s->fast[3] || (w[0]!=s->fast[0] && !newer(w[0],s->fast[0]))) return -1;
     uint32_t index=w[4]&255;
-    if((w[4]&0xffffff00u)!=0x00010b00u || index>=IS_FRAGMENTS || (index==10 && (w[10] || w[11]))) return -1;
+    uint32_t schema=w[4]>>16;
+    if((schema!=1 && schema!=2) || (w[4]&0xff00ff00u)!=0x00000b00u || index>=IS_FRAGMENTS || (index==10 && (w[10] || w[11]))) return -1;
     if(s->assembling && now-s->started_at>=IS_TIMEOUT_MS) s->assembling=0;
     if(!s->assembling) {
         /* A transfer may be joined mid-stream; completion still needs all 11
          * fragments. A new revision supersedes an incomplete old snapshot. */
         s->assembly_revision=w[3]; s->assembly_control=w[5]; s->assembly_block=w[0];
         s->fragments=0; s->started_at=now; s->assembling=1;
+        s->assembly_schema=schema;
     }
-    if(s->assembly_revision!=w[3] || s->assembly_control!=w[5] ||
+    if(s->assembly_schema!=schema || s->assembly_revision!=w[3] || s->assembly_control!=w[5] ||
         (w[0]!=s->assembly_block && !newer(w[0],s->assembly_block))) return -1;
     uint32_t n=index==10 ? 4 : 6;
     if(s->fragments&(1u<<index)) {
@@ -85,12 +92,13 @@ int is_receive(IsStatus *s,const uint32_t w[IS_WORDS],uint32_t now)
     s->assembling=0;
     if(!detail_valid(s,s->assembly)) return -1;
     if(s->detail_valid && s->detail_revision==w[3]) {
-        if(s->detail_control!=w[5]) return -1;
+        if(s->detail_control!=w[5] || s->detail_schema!=schema) return -1;
         for(uint32_t i=0;i<IS_DETAIL_WORDS;++i) if(s->detail[i]!=s->assembly[i]) return -1;
     }
     copy(s->detail,s->assembly,IS_DETAIL_WORDS);
     s->detail_revision=w[3]; s->detail_control=w[5]; s->capture_revision=s->detail[34];
     s->detail_at=now; s->detail_valid=1;
+    s->detail_schema=schema;
     return 1;
 }
 int is_fresh(const IsStatus *s,uint32_t now)

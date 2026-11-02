@@ -40,6 +40,10 @@ typedef struct dk_instrument_in_v4 {
 
 /* V5 is sent only to a descriptor opting into STATUS_OUTPUT. V2..V4 remain
  * valid inputs. It retains V4's layout, with zero timing fields when absent.
+ * V5 timing flags retain valid/running in bits0/1 and add provider information:
+ * bit8 coherent grid provider, bit9 phase provider, bit10 explicitly stopped.
+ * These high bits never authorize scheduling: use the low valid/running bits
+ * and the required provider capability. They are absent from V2..V4 inputs.
  * status is an adapter-owned, aligned L2 buffer of exactly 13 words: ready,
  * then twelve normalized UI payload words. The adapter clears ready before
  * every process call. A successful callback may fill all payload words then

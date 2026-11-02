@@ -64,6 +64,10 @@ _instrument_carrier_prepare:
     DM(22, I0) = R0;
     R0 = 13;
     DM(23, I0) = R0;
+    R0 = DM(12, I0);
+    R1 = DM(_iv_timing_meta);
+    R0 = R0 OR R1;
+    DM(12, I0) = R0;
 _iv_no_status:
     R0 = DM(_iv_generation);
     DM(3, I0) = R0;
@@ -119,6 +123,8 @@ _iv_clear_output:
 // Reject wrong ABI, invalid wire state or a missed frame. The receive counter
 // remains a block clock even when transport is stopped or position is invalid.
 _iv_position:
+    R0 = 0;
+    DM(_iv_timing_meta) = R0;
     I0 = _iv_input;
     R0 = 3;
     DM(0, I0) = R0;
@@ -149,6 +155,15 @@ _iv_position:
     R1 = 1;
     COMP(R0, R1);
     IF GT RTS;
+    R0 = 0x100; // Coherent grid provider, independent of running/valid.
+    DM(_iv_timing_meta) = R0;
+    R0 = DM(14, I1); // Firmware transport state, not boundary validity.
+    R1 = 1;
+    COMP(R0, R1);
+    IF EQ JUMP _iv_transport_known;
+    R0 = 0x500; // Explicitly stopped.
+    DM(_iv_timing_meta) = R0;
+_iv_transport_known:
     R0 = DM(5, I1);
     R1 = 3;
     R0 = R0 AND R1;
@@ -172,6 +187,10 @@ _iv_position:
     R1 = 1;
     COMP(R0, R1);
     IF NE RTS;
+    R0 = DM(_iv_timing_meta);
+    R1 = 0x200;
+    R0 = R0 OR R1;
+    DM(_iv_timing_meta) = R0;
     R0 = DM(4, I1);
     R1 = 3;
     COMP(R0, R1);
@@ -189,6 +208,8 @@ _iv_phase_fresh:
     R0 = 88;
     DM(1, I0) = R0;
     RTS;
+
+.PKBSS _iv_timing_meta, 4;
 
 // A receiver reset can precede CREATE. Such a reset establishes only transport
 // identity; no callback or state pointer is used until the admitted row is ready.

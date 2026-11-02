@@ -609,6 +609,7 @@ _ca_master:
     I1 = R0;
     R0 = DM(12, I1);
     R1 = 3;
+    R0 = R0 AND R1; // V5 high bits describe provider capability/state.
     COMP(R0, R1);
     IF NE JUMP _ca_master_lost;
     R0 = DM(26, I2);
@@ -747,8 +748,17 @@ _ca_fine:
     R1 = 4;
     COMP(R0, R1);
     IF LT JUMP _ca_master_lost; // V5 retains the V4 phase fields.
+    R1 = 5;
+    COMP(R0, R1);
+    IF NE JUMP _ca_fine_capable;
+    R0 = DM(12, I1);
+    R1 = 0x200;
+    R0 = R0 AND R1;
+    IF EQ JUMP _ca_master_lost;
+_ca_fine_capable:
     R0 = DM(12, I1);
     R1 = 3;
+    R0 = R0 AND R1;
     COMP(R0, R1);
     IF NE JUMP _ca_master_lost;
     R0 = DM(26, I2);

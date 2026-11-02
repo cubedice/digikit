@@ -66,3 +66,31 @@ The DT2 module builds with 404 decoded instructions; the DN2 object is unchanged
 CANOPY's two rendered pages, native header/dot geometry, focus, all encoder
 gestures, firmware-backed controls and actual DSP telemetry are still open.
 This finding records a Stage 5 dependency, not Stage 5 completion.
+
+## Independent elapsed-time source [D]
+
+DT2 1.17 function `0x400cc8b2` extends the wrapping DTCN0 counter
+`0xfc07000c` into a 64-bit accumulator at `0x42940a4c` (high) and
+`0x42940a50` (low), retaining the last counter at `0x42940a54`.
+`0x400cc970` divides that accumulator by 132000000 to obtain seconds.
+Registration at `0x400cca0c` passes the update callback and interval128 to
+`0x40002aa4`. Prior passive physical measurements are recorded in
+[CANOPY carrier](78-canopy-carrier.md).
+
+The instrument adapter reads all four words under the IRQ mask, includes the
+unaccumulated counter delta, and converts outside the mask. It does not write
+timer configuration or firmware state. Bounded division avoids a freestanding
+64-bit division import. Native SRC bridge calls now use this source; host
+fixtures inject time. Counter wrap, accumulated carry, millisecond wrap and
+elapsed time without audio callbacks are covered by the SRC host tests.
+This does not establish native painter/input integration or booted acceptance.
+
+### Selected track scalar [D]
+
+`0x4004abb8` reads the word at offset8 of the selector's selected record; it
+returns that word, not the address of the record. In the normal SRC context,
+`0x40035cca` consumes it as a signed track index, clamps it to0..15 and returns
+`kit + 0x6c + index*0x3c0`. `0x400cd88a` independently consumes it as an index
+into the track-level array. This resolves the earlier ambiguity for the normal
+selection path. The alternate-context closure and queued-event ownership still
+need explicit treatment before attaching native input.

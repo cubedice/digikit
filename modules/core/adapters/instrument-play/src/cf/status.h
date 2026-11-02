@@ -6,6 +6,8 @@
 #include <stdint.h>
 enum { IS_WORDS=12, IS_DETAIL_WORDS=64, IS_FRAGMENTS=11, IS_TIMEOUT_MS=150 };
 enum { IS_FAST=0, IS_DETAIL=1 };
+enum { IS_CLOCK_LOCAL=0, IS_CLOCK_WAIT=1, IS_CLOCK_RUNNING=2,
+    IS_CLOCK_LOST=3, IS_CLOCK_STOPPED=4 };
 typedef struct {
     uint32_t generation, track, mode, session;
     uint32_t fast[IS_WORDS], detail[IS_DETAIL_WORDS], assembly[IS_DETAIL_WORDS];
@@ -13,6 +15,7 @@ typedef struct {
     uint32_t assembly_revision, assembly_control, assembly_block, fragments;
     uint32_t detail_revision, detail_control, capture_revision;
     uint32_t poll_at;
+    uint32_t assembly_schema, detail_schema;
     uint8_t fast_valid, detail_valid, assembling, retried;
     uint8_t poll_valid;
 } IsStatus;
