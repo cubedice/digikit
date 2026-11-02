@@ -40,6 +40,9 @@ beforeAll(() => {
       path.join(import.meta.dirname, 'canopy-settings.c'),
       path.join(root, 'modules/core/adapters/instrument-play/src/cf/keyboard.c'),
       path.join(root, 'modules/core/adapters/instrument-play/src/cf/preset.c'),
+      ...['src-state.c', 'status.c', 'src-display.c'].map((f) =>
+        path.join(root, 'modules/core/adapters/instrument-play/src/cf', f),
+      ),
       '-o',
       settingsBinary,
     ],

@@ -122,3 +122,64 @@ This is an integration build, not a booted or install-ready Stage 5 release.
 Changed-tests preflight passed host tests, layering, lint, formatting and types;
 the global pre-existing pathcheck failure remains. Scoped changed-document
 pathcheck and the Python owner's lint pass. No physical device was changed.
+
+## SRC model and presentation implementation, 2026-11-02
+
+The instrument adapter now builds `src-state.c`, `status.c`, and `src-display.c`.
+The requested controls share the existing configuration/preset bank through
+`instrument_src_context`, `instrument_src_encoder`, and `instrument_src_display`
+in `control.c`. The context token invalidates old page/track/generation/mode events;
+LEARN consumes hidden encoders. Native TUNE/LEVEL return a delegation result,
+never a fabricated replacement parameter scale. PLAY and learned-shape controls
+are read-only as specified; SOURCE remains KEYS. Setup/preset/selector edits are
+imported into this same requested bank. Pending markers clear only for a matching
+generation, effective revision and value, never a transport ACK.
+
+The normalized twelve-word status receiver validates identity, wrapping
+publication/revision order, pitch validity (including MIDI zero), unique source
+identities, fragment framing and padding. It assembles eleven fragments privately,
+retains the last completed bank while newer details arrive, rejects conflicting
+duplicates and same-revision mutations, validates LEARN session/capture identity,
+and implements independent 150 ms freshness and bounded retry scheduling.
+The receiver is **not wired to the MIDI reply channel**. Call it only after a
+future transport demultiplexer has authenticated a status message; it is not a
+replacement for the lifecycle/reset ACK receiver.
+
+Detail schema 1 now has explicit offsets: controls 0..31; pending chord revision
+32; LEARN session 33; capture revision 34; four packed pitches 35; count in bits
+0..2, validity mask in 4..7, root in 8..15 and FULL in 16 of word 36; shape
+revision 37; zero padding 38..63. Captured pitches are sorted and unique. The
+last fragment carries four words plus two zeros. Clock-state/capability bytes
+still need a producer-owned definition before clock messages can be formatted.
+
+The pure bitmap painter is bounded to x0..123/y10..63, preserving native header
+and page-dot pixels. It provides the two control rows, note names, conservative
+exact-set chord names, sorted notes retaining source identity, physical/pedal/
+latch underlines and badges, actual arp pitch/highlight, focus and requested/
+applied mix positions, and link/fault/save errors. A generated preview lives in
+`out/canopy-src-preview.png` (component output, **not** an emulator screenshot).
+The existing native LEARN menu now uses note names, slot/count and ROOT instead
+of raw MIDI numbers; it is not yet the specified custom opaque SRC modal.
+
+Focused host checks cover controls, stale events, clipping, feedback assembly,
+revision wrap, MIDI-zero formatting, duplicate-pitch source identity, and the
+real preset/configuration callbacks. Firmware compilation caught jump tables
+inside executable sections and compiler-inserted libc calls; local freestanding
+compiler options prevent those transformations without weakening the ISA gate.
+
+**Still required to complete Stage 5:** native SRC paint/input attachment and
+selection ownership, page keys/memory and redraw timing; a versioned DSP status
+output extension and producer; authenticated reply multiplexing that preserves
+session/reset/lifecycle guarantees; effective native-parameter save/load evidence;
+complete clock/excluded-note formatting and the custom LEARN modal; booted
+acceptance. No two-page capability is registered yet. No hardware was changed.
+
+Validation for this checkpoint: 309 host cases passed, 16 optional skips;
+layering, lint, formatting and types passed. Required changed-tests preflight
+still fails only on the pre-existing 256 stale paths in 78 files. The explicit
+adapter rebuild passes with 6111 decoded CF instructions. The combined image
+links as `out/patch/canopy-stage5-src-model.syx`, SHA-256
+`4e868736dbf93f1a90e50af0c82ce9cfed500b66e0a507de37e48688af79c113`.
+This is a linked component checkpoint, not booted SRC acceptance or a release.
+`patchkit patch` reused an existing DKO during the first attempts: explicitly
+run `patchkit build core/instrument-play` after source edits before patching.

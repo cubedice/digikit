@@ -103,6 +103,7 @@ int dk_ui_toast(const char *text) { (void)text; return 0; }
 int main(void)
 {
     char line[64],cmd[24]; int value;
+    uint32_t src_token=0; int src_result=0;
     mi_ledger.epoch=1; mi_ledger.generations[0]=1; instrument_play_tick();
     while(fgets(line,sizeof(line),stdin)) {
         value=0; if(sscanf(line,"%23s %d",cmd,&value)<1) continue;
@@ -140,6 +141,17 @@ int main(void)
         else if(!strcmp(cmd,"presetslot")) preset_slot=value;
         else if(!strcmp(cmd,"color")) { pad_color=value; pad_changed(0,value); }
         else if(!strcmp(cmd,"mode")) choose_mode(0,value);
+        else if(!strcmp(cmd,"srcpage")) src_token=instrument_src_context(0,(uint32_t)value,1);
+        else if(!strcmp(cmd,"srcturn")) {
+            unsigned knob; int delta;
+            if(sscanf(line,"%*s %u %d",&knob,&delta)!=2) return 2;
+            src_result=instrument_src_encoder(src_token,knob,delta,100);
+        }
+        else if(!strcmp(cmd,"srcstate")) {
+            CvDisplay display; instrument_src_display(&display,100,"0","100");
+            printf("{\"result\":%d,\"color\":%d,\"mix\":%d,\"rate\":%d,\"type\":%u,\"latch\":%u,\"dirty\":%u,\"value\":\"%s\",\"heading\":\"%s\"}\n",
+                src_result,pad_color,arp_mix,arp_rate,keyboard.type,keyboard.latch,pad_dirty,display.value[3],display.heading);
+        }
         else if(!strcmp(cmd,"type")) choose_type(0,value);
         else if(!strcmp(cmd,"shapeslot")) { slot=value; changed(0,0); }
         else if(!strcmp(cmd,"corruptpreset")) preset_card[preset_slot-1][value]^=1;

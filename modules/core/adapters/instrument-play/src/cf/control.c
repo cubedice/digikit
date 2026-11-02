@@ -1,9 +1,14 @@
 /* UI-task policy and setup for the single admitted keyboard instrument. */
+#if defined(__m68k__) && defined(__GNUC__)
+/* Keep lookup data out of executable sections checked by the CF ISA gate. */
+#pragma GCC optimize ("no-jump-tables", "no-tree-loop-distribute-patterns")
+#endif
 #include <stdint.h>
 #include <dk/ui.h>
 #include "keyboard.h"
 #include "preset.h"
 #include "routing.h"
+#include "src-control.h"
 #include "../../../midi-events/src/cf/bridge.h"
 extern uint32_t dkrt_instrument_type(void);
 extern uint32_t dkrt_instrument_generation(void);
@@ -55,6 +60,9 @@ static uint8_t route_write[CR_BYTES];
 static int route_pending,route_result;
 static CrRoute restore_route;
 static int route_restore;
+static CsState src_state;
+static IsStatus src_status;
+static int src_initialized;
 static const char *const modes[]={"PLAY","ROOT + TYPE"};
 static const char *const types[]={"MAJOR","MAJOR 6","SUS 2","MINOR 6","MINOR","SUS 4",
     "ADD 9","DOM 7","DIMINISHED","MIN 7","CUSTOM","MAJ 7"};
@@ -135,17 +143,25 @@ static void learn_fill(dk_ui_menu *m,void *ctx)
     (void)ctx;
     uint32_t sr=dkrt_irq_mask();
     shown_session=keyboard.session; shown_revision=keyboard.revision;
-    uint8_t notes[4],count=keyboard.capture_count,status=keyboard.status;
+    uint8_t notes[4],count=keyboard.capture_count,status=keyboard.status,shape_slot=keyboard.slot;
     for (uint32_t i=0;i<4;++i) notes[i]=keyboard.capture[i];
     dkrt_irq_restore(sr);
-    char text[24]; uint32_t at=6;
-    text[0]='N'; text[1]='O'; text[2]='T'; text[3]='E'; text[4]='S'; text[5]=' ';
-    for (uint32_t i=0;i<count;++i) {
-        text[at++]=(char)('0'+notes[i]/100); text[at++]=(char)('0'+notes[i]/10%10);
-        text[at++]=(char)('0'+notes[i]%10); text[at++]=' ';
+    char title[18];
+    for(uint32_t i=0;i<sizeof(title);++i) ((volatile char *)title)[i]="SLOT 1  0/4 NOTES"[i];
+    title[5]=(char)('1'+shape_slot); title[8]=(char)('0'+count); dk_ui_text(m,title);
+    /* Note zero is C-1, never an empty sentinel. Two pitches per row fit the
+     * native menu font even at the four-character C#-1 boundary. */
+    for(uint32_t row=0;row<2;++row) {
+        char line[14]; uint32_t at=0;
+        for(uint32_t col=0;col<2;++col) {
+            uint32_t i=row*2+col; char note[6]; cv_note(note,notes[i],i<count);
+            if(col) { line[at++]=' '; line[at++]=' '; }
+            for(uint32_t j=0;note[j];++j) line[at++]=note[j];
+        }
+        line[at]=0; dk_ui_text(m,line);
     }
-    text[at]=0;
-    dk_ui_text(m,text); dk_ui_text(m,status==KB_FULL ? "FULL - FOUR NOTES" : "PLAY UP TO FOUR NOTES");
+    char root[11]={'R','O','O','T',' ',0}; cv_note(root+5,notes[0],count!=0); dk_ui_text(m,root);
+    dk_ui_text(m,status==KB_FULL ? "FULL - FOUR NOTES" : count ? "YES SAVE / NO CANCEL" : "PLAY 1-4 NOTES");
     dk_ui_action(m,"SAVE",learn_close,0,1); dk_ui_action(m,"CANCEL",learn_close,0,0);
 }
 static const dk_ui_menu_desc learn_desc={.name="canopy-learn",.title="LEARN TO ROOT",
@@ -223,6 +239,57 @@ static void preset_snapshot(CpPreset *p)
     for(uint32_t i=0;i<4;++i) p->shape.intervals[i]=shape->intervals[i];
     dkrt_irq_restore(sr);
 }
+uint32_t instrument_src_context(uint32_t track,uint32_t page,int visible)
+{
+    if(!src_initialized) { cs_init(&src_state); src_initialized=1; }
+    CpPreset current; preset_snapshot(&current); cs_sync(&src_state,current.control);
+    uint32_t generation=mi_ledger.generations[0];
+    uint32_t token=cs_context(&src_state,track,generation,
+        visible && track==0 && keyboard_initialized && dkrt_instrument_type(),page,
+        keyboard.mode,(uint32_t)arp_clock,keyboard.mode==KB_ROOT && keyboard.type==10,
+        keyboard.mode==KB_LEARN || (learn_menu && dk_ui_is_open(learn_menu)));
+    is_select(&src_status,track,generation,keyboard.mode,keyboard.mode==KB_LEARN ? keyboard.session : 0);
+    return token;
+}
+int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint32_t now)
+{
+    if(!src_initialized) return CS_STALE;
+    /* A queued event can outlive a preset load or sound reset without another
+     * paint. Revalidate ownership before using its captured token. */
+    (void)instrument_src_context(src_state.track,src_state.page[src_state.track],src_state.visible);
+    uint32_t id=CS_NONE;
+    int result=cs_edit(&src_state,token,encoder,detents,now,&id);
+    if(result!=CS_EDIT) return result;
+    uint32_t sr=dkrt_irq_mask(); int v=src_state.value[id];
+    switch(id) {
+    case CP_CHORD: type=v; keyboard.type=(uint8_t)v; keyboard.update=1; break;
+    case CP_VOICING: voicing=v; keyboard.voicing=(uint8_t)v; keyboard.update=1; break;
+    case CP_COLOR: pad_color=v; break;
+    case CP_DRIFT: pad_drift=v; break;
+    case CP_STRUM: pad_strum=v; break;
+    case CP_ARP_MIX: arp_mix=v; break;
+    case CP_RATE: arp_rate=v; break;
+    case CP_ORDER: arp_order=v; break;
+    case CP_OCTAVES: arp_octaves=v; break;
+    case CP_GATE: arp_gate=v; break;
+    case CP_SWING: arp_swing=v; break;
+    case CP_RESTART: arp_restart=v; break;
+    case CP_LATCH: latch=v; kb_latch(&keyboard,v); break;
+    default: break;
+    }
+    pad_dirty=1; dkrt_irq_restore(sr);
+    return result;
+}
+void instrument_src_display(CvDisplay *out,uint32_t now,const char *tune,const char *level)
+{
+    if(!src_initialized) (void)instrument_src_context(0,0,0);
+    (void)instrument_src_context(src_state.track,src_state.page[src_state.track],src_state.visible);
+    if(is_detail_confirmed(&src_status,now))
+        cs_applied(&src_state,src_status.generation,src_status.detail_control,src_status.detail);
+    cv_build(out,&src_state,&src_status,now,tune,level,preset_result || storage_result);
+}
+int instrument_src_receive(const uint32_t words[IS_WORDS],uint32_t now)
+{ return src_initialized ? is_receive(&src_status,words,now) : -1; }
 static int preset_dirty(void)
 {
     CpPreset p; uint8_t b[CP_RECORD_BYTES]; preset_snapshot(&p);

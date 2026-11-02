@@ -13,7 +13,11 @@ beforeAll(() => {
   settings = path.join(directory, 'settings');
   for (const [driver, output, extra] of [
     ['canopy-preset.c', codec, []],
-    ['canopy-settings.c', settings, [path.join(source, 'keyboard.c')]],
+    [
+      'canopy-settings.c',
+      settings,
+      ['keyboard.c', 'src-state.c', 'status.c', 'src-display.c'].map((f) => path.join(source, f)),
+    ],
   ] as const) {
     execFileSync(
       'cc',
@@ -55,6 +59,28 @@ test('preset byte record restores stable controls and the embedded shape', () =>
     shape: [0, 7, 16, 127],
   });
 });
+test('SRC encoder edits use the real preset/configuration bank without enabling arp', () => {
+  const [edited, restored, stale, movement] = run(
+    settings,
+    'srcpage 0\nsrcturn 3 12\nsrcstate\npresetsave\ntick\ncolor 10\npresetload\nsrcstate\n' +
+      'srcturn 3 1\nsrcstate\nsrcpage 1\nsrcturn 0 1\nsrcstate',
+  );
+  expect(edited).toMatchObject({ result: 1, color: 76, value: '76', dirty: 1, heading: 'LINK LOST' });
+  expect(restored).toMatchObject({ color: 76, value: '76' });
+  expect(stale).toMatchObject({ result: -1, color: 76 });
+  expect(movement).toMatchObject({ result: 1, rate: 5, mix: 0 });
+});
+
+test('SRC cannot edit hidden sound values during LEARN or synthesize PLAY chords', () => {
+  const [play, modal, closed] = run(
+    settings,
+    'srcpage 0\nsrcturn 1 1\nsrcstate\nlearn\nsrcpage 0\nsrcturn 3 10\nsrcstate\n' + 'back\nsrcturn 3 10\nsrcstate',
+  );
+  expect(play).toMatchObject({ result: 0, type: 0 });
+  expect(modal).toMatchObject({ result: 0, color: 64 });
+  expect(closed).toMatchObject({ result: -1, color: 64 });
+});
+
 test('invalid lengths and checksums leave the existing sound untouched', () => {
   for (const command of ['decode 0', 'decode 63', 'decode 65', 'byte 13 3\ndecode 64']) {
     const [before, after] = run(codec, `decode 64\nsnapshot\n${command}\nsnapshot`);
