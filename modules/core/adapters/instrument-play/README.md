@@ -114,6 +114,16 @@ The shared settings store checks its remaining capacity before inserting a value
 This checkpoint does not implement the named SRC pages, display telemetry or
 native Sound/pattern persistence. Those Stage 5 acceptance tasks remain open.
 
+SAVE ROUTING stores enable, USB/DIN choices, root channel, selector channel and
+selector octave separately in a 16-byte `canopy/routes/v1` record. It snapshots
+the requested setup when pressed and writes on the UI task. Boot validates the
+entire record before restoring anything, then waits for a registered instrument
+generation. The existing healthy/prepared/configured handshake still gates
+actual MIDI route activation. An explicit route edit cancels deferred boot
+restoration. Invalid records leave routing disabled at its boot defaults.
+Failed saves keep working settings and offer retry through SAVE ROUTING.
+Including this entry, all CANOPY settings occupy 424 bytes with entry overhead.
+
 PANIC releases sound and retains held-key tombstones. RECOVER KEYBOARD separately
 asks for all keys and pedals to be released before clearing capacity quarantine
 and advancing the MIDI epoch. It cannot restore a failed boot/session guard or

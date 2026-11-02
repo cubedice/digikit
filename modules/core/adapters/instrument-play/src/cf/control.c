@@ -3,6 +3,7 @@
 #include <dk/ui.h>
 #include "keyboard.h"
 #include "preset.h"
+#include "routing.h"
 #include "../../../midi-events/src/cf/bridge.h"
 extern uint32_t dkrt_instrument_type(void);
 extern uint32_t dkrt_instrument_generation(void);
@@ -49,6 +50,11 @@ static uint8_t preset_records[CP_SLOTS][CP_RECORD_BYTES], preset_present;
 static uint8_t preset_write[CP_RECORD_BYTES];
 static int preset_slot=1, preset_result, preset_pending;
 static dk_ui_menu *preset_menu;
+static const char route_key[]="canopy/routes/v1";
+static uint8_t route_write[CR_BYTES];
+static int route_pending,route_result;
+static CrRoute restore_route;
+static int route_restore;
 static const char *const modes[]={"PLAY","ROOT + TYPE"};
 static const char *const types[]={"MAJOR","MAJOR 6","SUS 2","MINOR 6","MINOR","SUS 4",
     "ADD 9","DOM 7","DIMINISHED","MIN 7","CUSTOM","MAJ 7"};
@@ -74,6 +80,7 @@ static void changed(void *ctx, int value)
 {
     (void)ctx; (void)value;
     uint32_t sr=dkrt_irq_mask();
+    route_restore=0; /* An explicit user edit supersedes deferred boot setup. */
     type=keyboard.type;
     if (keyboard.mode==KB_LEARN) kb_learn_cancel(&keyboard);
     if (selector_channel==channel) selector_channel=0;
@@ -276,6 +283,14 @@ static void preset_fill(dk_ui_menu *m,void *ctx)
     dk_ui_text(m,"ROUTING IS NOT IN PRESETS");
 }
 static const dk_ui_menu_desc preset_desc={.name="canopy-presets",.title="CANOPY PRESETS",.fill=preset_fill};
+static void route_save(void *ctx,int value)
+{
+    (void)ctx; (void)value;
+    CrRoute r={(uint8_t)enabled,(uint8_t)usb,(uint8_t)din,(uint8_t)channel,
+        (uint8_t)(selector_octave+1),(uint8_t)selector_channel};
+    if(cr_encode(&r,route_write)) { dk_ui_toast("INVALID ROUTING - NOT SAVED"); return; }
+    route_pending=1;
+}
 static void fill(dk_ui_menu *m, void *ctx)
 {
     (void)ctx;
@@ -317,6 +332,8 @@ static void fill(dk_ui_menu *m, void *ctx)
     dk_ui_value(m,"STRUM MS",&pad_strum,0,500,pad_changed,0);
     if(!preset_menu) preset_menu=dk_ui_menu_new(&preset_desc);
     if(preset_menu) dk_ui_submenu(m,"PRESETS",preset_menu);
+    dk_ui_action(m,"SAVE ROUTING",route_save,0,0);
+    if(route_result) dk_ui_text(m,"ROUTING NOT SAVED");
 }
 static const dk_ui_menu_desc desc = {.name="instrument-keyboard",.title="KEYBOARD",.fill=fill};
 void dk_app_instrument_settings_rows(dk_ui_menu *parent)
@@ -339,7 +356,27 @@ void instrument_play_tick(void)
             int n=dkrt_settings_get(preset_keys[i],preset_records[i],CP_RECORD_BYTES);
             if(n>=0 && !cp_decode(&p,preset_records[i],(uint32_t)n)) preset_present|=(uint8_t)(1u<<i);
         }
+        uint8_t route[CR_BYTES];
+        int n=dkrt_settings_get(route_key,route,sizeof(route));
+        route_restore=n>=0 && !cr_decode(&restore_route,route,(uint32_t)n);
+        route_result=(n==-68 || route_restore) ? 0 : n<0 ? n : -1;
         keyboard_initialized=1;
+    }
+    /* Reading a valid record cannot open MIDI routes. Restore requested setup
+     * only after this boot has an admitted instrument generation; the ordinary
+     * healthy/prepared/configured handshake still owns actual route activation. */
+    if(route_restore && dkrt_instrument_type() && dkrt_instrument_generation()) {
+        enabled=restore_route.enabled; usb=restore_route.usb; din=restore_route.din;
+        channel=restore_route.channel; selector_octave=(int)restore_route.selector_octave-1;
+        selector_channel=restore_route.selector_channel;
+        changed(0,0);
+    }
+    if(route_pending) {
+        route_result=dkrt_settings_put(route_key,route_write,sizeof(route_write));
+        if(!route_result) route_result=dkrt_settings_flush();
+        route_pending=0;
+        dk_ui_toast(route_result ? "ROUTING IN RAM - SAVE FAILED" : "ROUTING SAVED");
+        if(menu && dk_ui_is_open(menu)) dk_ui_refresh(menu);
     }
     if(preset_pending) {
         uint32_t index=(uint32_t)preset_pending-1;

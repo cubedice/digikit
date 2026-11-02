@@ -12,13 +12,16 @@ static int exists, staged, put_error, flush_error, open_error;
 static uint8_t card[KB_RECORD_BYTES], pending_card[KB_RECORD_BYTES];
 static uint8_t preset_card[CP_SLOTS][CP_RECORD_BYTES], preset_staged[CP_SLOTS][CP_RECORD_BYTES];
 static unsigned preset_exists, preset_staged_mask;
+static uint8_t route_card[CR_BYTES],route_staged[CR_BYTES];
+static int route_exists,route_staged_valid;
+static uint32_t admitted=1,route_calls;
 static int preset_index(const char *key)
 {
     for(int i=0;i<CP_SLOTS;++i) if(!strcmp(key,preset_keys[i])) return i;
     return -1;
 }
-uint32_t dkrt_instrument_type(void) { return 1; }
-uint32_t dkrt_instrument_generation(void) { return 1; }
+uint32_t dkrt_instrument_type(void) { return admitted; }
+uint32_t dkrt_instrument_generation(void) { return admitted; }
 uint32_t dkrt_irq_mask(void) { unsigned before=masked; ++masked; return before; }
 void dkrt_irq_restore(uint32_t sr) { masked=sr; }
 int instrument_sound_prepare(int refresh) { (void)refresh; return 1; }
@@ -28,11 +31,16 @@ int mi_registry_reply(uint32_t *out,uint32_t words) { (void)out; (void)words; re
 int mi_config_submit(uint32_t a,uint32_t b,uint32_t c,const uint32_t *d,uint32_t e)
 { (void)a;(void)b;(void)c;(void)d;(void)e;return -2; }
 int mi_route_enable(uint32_t p,uint32_t c,uint32_t t,int s)
-{ (void)p;(void)c;(void)t;(void)s;return -2; }
+{ (void)p;(void)c;(void)t;(void)s;++route_calls;return -2; }
 int mi_keyboard_recover(void) { return -1; }
 int dkrt_settings_get(const char *key,uint8_t *out,uint32_t capacity)
 {
     if(masked) ++unsafe_io;
+    if(!strcmp(key,route_key)) {
+        if(capacity<CR_BYTES) return -69;
+        if(!route_exists) return -68;
+        memcpy(out,route_card,CR_BYTES); return CR_BYTES;
+    }
     int index=preset_index(key);
     if(index>=0) {
         if(capacity<CP_RECORD_BYTES) return -69;
@@ -46,6 +54,11 @@ int dkrt_settings_get(const char *key,uint8_t *out,uint32_t capacity)
 int dkrt_settings_put(const char *key,const uint8_t *in,uint32_t size)
 {
     if(masked) ++unsafe_io;
+    if(!strcmp(key,route_key)) {
+        if(size!=CR_BYTES) return -69;
+        if(put_error) return put_error;
+        memcpy(route_staged,in,CR_BYTES); route_staged_valid=1; return 0;
+    }
     int index=preset_index(key);
     if(index>=0) {
         if(size!=CP_RECORD_BYTES) return -69;
@@ -60,6 +73,7 @@ int dkrt_settings_flush(void)
 {
     if(masked) ++unsafe_io;
     if(flush_error) return flush_error;
+    if(route_staged_valid) { memcpy(route_card,route_staged,CR_BYTES); route_exists=1; route_staged_valid=0; }
     for(unsigned i=0;i<CP_SLOTS;++i) if(preset_staged_mask & (1u<<i)) {
         memcpy(preset_card[i],preset_staged[i],CP_RECORD_BYTES); preset_exists|=1u<<i;
     }
@@ -105,6 +119,22 @@ int main(void)
         else if(!strcmp(cmd,"flusherror")) flush_error=value;
         else if(!strcmp(cmd,"openerror")) open_error=value;
         else if(!strcmp(cmd,"retry")) retry_save(0,0);
+        else if(!strcmp(cmd,"routesave")) route_save(0,0);
+        else if(!strcmp(cmd,"enable")) { enabled=value; changed(0,0); }
+        else if(!strcmp(cmd,"channel")) { channel=value; changed(0,0); }
+        else if(!strcmp(cmd,"usb")) { usb=value; changed(0,0); }
+        else if(!strcmp(cmd,"din")) { din=value; changed(0,0); }
+        else if(!strcmp(cmd,"selectorchannel")) { selector_channel=value; changed(0,0); }
+        else if(!strcmp(cmd,"selectoroctave")) { selector_octave=value; changed(0,0); }
+        else if(!strcmp(cmd,"admitted")) admitted=(uint32_t)value;
+        else if(!strcmp(cmd,"corruptroute")) route_card[value]^=1;
+        else if(!strcmp(cmd,"resignroute")) {
+            route_card[14]=route_card[15]=0;
+            for(unsigned i=0;i<14;++i) { route_card[14]+=route_card[i]; route_card[15]+=route_card[14]; }
+        }
+        else if(!strcmp(cmd,"routestate"))
+            printf("{\"enabled\":%d,\"usb\":%d,\"din\":%d,\"channel\":%d,\"octave\":%d,\"selector\":%d,\"result\":%d,\"pending\":%d,\"restore\":%d,\"calls\":%u,\"unsafe\":%u}\n",
+                enabled,usb,din,channel,selector_octave,selector_channel,route_result,route_pending,route_restore,route_calls,unsafe_io);
         else if(!strcmp(cmd,"presetsave")) preset_save(0,0);
         else if(!strcmp(cmd,"presetload")) preset_load(0,0);
         else if(!strcmp(cmd,"presetslot")) preset_slot=value;
@@ -120,7 +150,10 @@ int main(void)
             for(unsigned i=0;i<s->count;++i) printf("%s%u",i ? ",":"",s->intervals[i]);
             puts("]}");
         }
-        else if(!strcmp(cmd,"restart")) { keyboard_initialized=0; instrument_play_tick(); }
+        else if(!strcmp(cmd,"restart")) {
+            enabled=0; usb=din=channel=1; selector_channel=0; selector_octave=1;
+            keyboard_initialized=0; instrument_play_tick();
+        }
         else if(!strcmp(cmd,"snapshot")) {
             printf("{\"mode\":%u,\"dirty\":%u,\"status\":%u,\"storage\":%d,\"pending\":%d,\"exists\":%d,\"unsafe\":%u,\"shape\":[",
                 keyboard.mode,keyboard.dirty,keyboard.status,storage_result,save_pending,exists,unsafe_io);

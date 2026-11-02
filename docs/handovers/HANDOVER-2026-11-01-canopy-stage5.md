@@ -47,8 +47,7 @@ durability acknowledgement bug; no device was flashed or selected differently.
    revision checks, timeout/retry and actual applied versus requested values.
 4. Bounded renderer, actual admitted notes and arp source identity, mode/pedal/
    latch marks, clock/link/fault states and the specified LEARN modal.
-5. Routing persistence separately from sound presets, firmware-backed control
-   save/load evidence and honest SOURCE support (current runtime admits keyboard
+5. Firmware-backed control save/load evidence and honest SOURCE support (current runtime admits keyboard
    only; do not expose a nonfunctional sequencer choice).
 6. Booted emulator acceptance for page keys, stock views, stale events, focus,
    audio/display agreement and persistence. Hardware readability is still unproven.
@@ -61,3 +60,34 @@ The four firmware-backed custom controls are not yet unified with setup controls
 Relevant code: `modules/core/adapters/instrument-play/src/cf/preset.{h,c}`,
 `control.c`, `keyboard.{h,c}`, and runtime `src/rs/src/settings.rs`.
 Read `docs/design/canopy.md` SRC interface and persistence sections before proceeding.
+
+## Routing checkpoint after preset commit `167448ad`
+
+Device routing now has a separate canonical 16-byte record, deferred SAVE ROUTING
+and validation before any field is restored. Restoring saved enable waits for
+an admitted type/generation and cannot bypass the existing healthy/prepared/
+configured handshake. User route edits cancel pending restoration. MIDI routes
+remain outside presets. Total namespace use including entry overhead is 424 bytes.
+No device or firmware selection changed.
+
+Seven new host scenarios exercise delayed admission, user cancellation, failed
+put/flush with retry, corrupt records, valid-checksum malformed fields and sound/
+route independence. The preexisting 40 keyboard/preset scenarios remain applicable.
+The ColdFire adapter build passes with 3688 instructions re-decoded.
+Final changed-tests preflight: 288 host tests pass, 16 optional tests skipped;
+layer check, lint, formatting and types pass. Its only failure is the existing
+256 stale references in 78 files. Scoped changed-document pathcheck reports zero.
+
+Static integration finding [D]: the current 16-word MIDI reply is **not** four
+transport words plus twelve free UI words. `midi-events/src/dsp/reply.s` uses
+words 4-11 for registry ACKs, 12 for the bound session, 13-14 for lifecycle state
+and generation, and 15 for a checksum. The UI proposal requires a negotiated
+new reply kind or multiplexing that preserves all lifecycle/reset consumers;
+simply writing the proposed payload would corrupt safety acknowledgements.
+The content-side input ABI ends at V4/88 bytes and has no status output sink.
+An explicit status extension is needed before the adapter can publish actual
+applied DSP state without hard-coding CANOPY's private state offsets in core.
+
+**Stage 5 still incomplete:** this checkpoint closes routing persistence only.
+SRC page capability/hooks, renderer, controls, status producer/receiver and booted
+acceptance remain necessary. Do not label this a Stage 5 release.

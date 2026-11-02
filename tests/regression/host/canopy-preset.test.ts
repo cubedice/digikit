@@ -144,3 +144,65 @@ test('deferred save retains the sound and destination selected when SAVE was pre
   expect(edited).toMatchObject({ color: 90, dirty: 1, present: 1 });
   expect(saved).toMatchObject({ color: 20, dirty: 0 });
 });
+
+test('routing restores only after admission and cannot bypass the DSP handshake', () => {
+  const [waiting, restored] = run(
+    settings,
+    'enable 1\nusb 0\nchannel 16\nselectorchannel 5\nselectoroctave -1\nroutesave\ntick\n' +
+      'admitted 0\nrestart\nroutestate\nadmitted 1\ntick\nroutestate',
+  );
+  expect(waiting).toMatchObject({ enabled: 0, channel: 1, restore: 1, calls: 0 });
+  expect(restored).toMatchObject({
+    enabled: 1,
+    usb: 0,
+    din: 1,
+    channel: 16,
+    selector: 5,
+    octave: -1,
+    restore: 0,
+    calls: 0,
+    unsafe: 0,
+  });
+});
+
+test('a user route edit cancels deferred restoration', () => {
+  const [s] = run(
+    settings,
+    'enable 1\nchannel 16\nroutesave\ntick\nadmitted 0\nrestart\nchannel 4\nadmitted 1\ntick\nroutestate',
+  );
+  expect(s).toMatchObject({ enabled: 0, channel: 4, restore: 0, calls: 0 });
+});
+
+test.each(['puterror', 'flusherror'])('routing %s keeps working values and can be retried', (operation) => {
+  const [failed, restored, retried] = run(
+    settings,
+    `channel 4\nroutesave\ntick\nchannel 16\n${operation} -67\nroutesave\ntick\nroutestate\n` +
+      `restart\nroutestate\n${operation} 0\nchannel 16\nroutesave\ntick\nrestart\nroutestate`,
+  );
+  expect(failed).toMatchObject({ channel: 16, result: -67, unsafe: 0 });
+  expect(restored).toMatchObject({ channel: 4, result: 0 });
+  expect(retried).toMatchObject({ channel: 16, result: 0, unsafe: 0 });
+});
+
+test('corrupt routing cannot enable the keyboard or partially load routes', () => {
+  for (const offset of [0, 2, 3, 4, 7, 8, 10, 14, 15]) {
+    const [s] = run(settings, `enable 1\nchannel 16\nroutesave\ntick\ncorruptroute ${offset}\nrestart\nroutestate`);
+    expect(s).toMatchObject({ enabled: 0, usb: 1, din: 1, channel: 1, restore: 0, calls: 0 });
+    expect(s!.result).toBe(-1);
+  }
+});
+
+test('sound preset loading and saving do not replace device routing', () => {
+  const [s] = run(settings, 'channel 4\nroutesave\ntick\npresetsave\ntick\nchannel 16\npresetload\nroutestate');
+  expect(s).toMatchObject({ channel: 16, unsafe: 0 });
+});
+
+test('a valid routing checksum cannot conceal unsupported schema or channel ranges', () => {
+  for (const offset of [2, 3, 7, 10]) {
+    const [s] = run(
+      settings,
+      `enable 1\nchannel 16\nroutesave\ntick\ncorruptroute ${offset}\nresignroute\nrestart\nroutestate`,
+    );
+    expect(s).toMatchObject({ enabled: 0, channel: 1, restore: 0, calls: 0, result: -1 });
+  }
+});
