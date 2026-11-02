@@ -331,3 +331,51 @@ the link fixes. Combined image `out/patch/canopy-stage5-presentation.syx` links
 successfully (2,010,016 bytes, SHA-256
 `f901490a94bae60bbc2d0fdbe6a3c4edc6b423dd2390ad48061178ca2b33cff3`).
 It has not been booted for acceptance or installed on hardware.
+
+## 2026-11-02: CANOPY audio-side status producer
+
+Added `modules/machines/canopy/src/dsp/status.s`, called only after successful
+finite-output validation. V5 validates its borrowed sink and clears ready before
+configuration/event validation; publication sets ready last. V2/V3/V4 remain
+supported. Fine synchronized arp accepts V5's unchanged V4 phase fields.
+
+For CPS6, the producer emits admitted pitches with explicit validity and stable
+slot IDs, actual arp source/pitch/gate matching, applied blend, release-tail count,
+and the applied control revision/bank. Release tails never join the chord pool.
+The instance's previously reserved word188 holds an 88-block cursor: fast and
+detail choices each last four callbacks. Thus either parity of the alternating
+wire reply observes all eleven fragments and a fast message within eight blocks,
+while completed banks remain below the 25-per-second ceiling.
+Control/detail revisions change together; no receipt alone confirms settings.
+
+This is deliberately NOT enabled in the production descriptor. Physical key,
+pedal and retained-latch fields cannot be inferred from DSP gates; those fields
+are currently zero, not a complete ownership report. LEARN capture and complete
+clock-state/capability telemetry are also absent. Do not expose these partial
+frames as complete product status. Next work should correlate DSP token identity
+with the CF mapper (without substituting requested notes for admitted notes),
+complete those fields, then enable descriptor bit0. Native SRC hooks and running
+firmware acceptance still remain. Stage 5 is incomplete.
+
+Evidence: 38 focused direct/protected callback tests pass, covering the new output,
+V4 timing and CPS6 bank validation; both wire parities reconstruct the bank. Ten
+producer tests pass with sink canaries, including exact sample/state equality to
+V4 and ready clearing on rejection. Seven existing focused playback adapter
+tests pass. An additional real-CANOPY protected-carrier test passes, including
+status revocation on session loss. Its initial fixture sent MIDI revision1 after
+configuring revision7 and was correctly rejected; the corrected fixture uses
+one revision throughout. Logs: `out/canopy-stage5-producer*.log`.
+
+Explicit CANOPY build passes with 2940 decoded DSP instructions. The disabled-
+capability package `out/patch/canopy-stage5-producer.dkm` packs successfully:
+22,036 bytes, SHA-256
+`43e8e40c6fea3f2ace0bd028a36e7ab6d3feabb083facdf9d01e9ae280a95da0`.
+No physical device was changed.
+
+Final producer review corrected the initial 44-block cycle to 88 blocks to
+respect the completed-detail rate limit. All eleven producer/carrier tests pass
+after that correction. Changed-tests passes formatting and layering; its lint
+finding (explicit `zip(strict=False)` for adjacent pairs) was fixed and the
+owner lint/format checks pass. Global pathcheck remains the same 256 pre-existing
+stale references in 78 files; scoped handover pathcheck passes. The broader
+previously denied callback regression was not rerun.

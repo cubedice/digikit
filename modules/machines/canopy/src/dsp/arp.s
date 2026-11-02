@@ -746,7 +746,7 @@ _ca_fine:
     R0 = DM(0, I1);
     R1 = 4;
     COMP(R0, R1);
-    IF NE JUMP _ca_master_lost;
+    IF LT JUMP _ca_master_lost; // V5 retains the V4 phase fields.
     R0 = DM(12, I1);
     R1 = 3;
     COMP(R0, R1);

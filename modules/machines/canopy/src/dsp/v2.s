@@ -69,7 +69,39 @@ _canopy_process:
     IF EQ JUMP _cv_v3;
     R1 = 4;
     COMP(R0, R1);
+    IF EQ JUMP _cv_v4;
+    R1 = 5;
+    COMP(R0, R1);
     IF NE JUMP _cv_bad;
+    R0 = I2;
+    R1 = 0x200fdfa0;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = DM(1, I2);
+    R1 = 96;
+    COMP(R0, R1);
+    IF NE JUMP _cv_bad;
+    R0 = DM(23, I2);
+    R1 = 13;
+    COMP(R0, R1);
+    IF NE JUMP _cv_bad;
+    R0 = DM(22, I2);
+    R1 = 3;
+    R1 = R0 AND R1;
+    IF NE JUMP _cv_bad;
+    R1 = 0x20000000;
+    COMP(R0, R1);
+    IF LT JUMP _cv_bad;
+    R1 = 0x200fdfcc;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    I0 = R0;
+    R0 = 0;
+    DM(0, I0) = R0;
+    R0 = 96;
+    R1 = 96;
+    JUMP _cv_size;
+_cv_v4:
     R0 = I2;
     R1 = 0x200fdfa8;
     COMP(R0, R1);
@@ -534,6 +566,11 @@ _cv_audio_check:
     IF GT JUMP _cv_audio_bad;
     R2 = R2 - 1;
     IF NE JUMP _cv_audio_check;
+    DM(_cv_pad_active) = R3;
+    R4 = DM(_cv_state);
+    R8 = DM(_cv_input);
+    CALL _cu_publish;
+    R3 = DM(_cv_pad_active);
     R1 = 1;
     R0 = R1 - R3;
     JUMP (M13, I13);
@@ -708,3 +745,4 @@ _cv_bad:
 
 .EXTERN _cs_prepare;
 .EXTERN _cs_restore;
+.EXTERN _cu_publish;

@@ -19,6 +19,7 @@ def canopy_object(request):
             "blend",
             "arp",
             "strum",
+            "status",
             "v2",
         ]
     )
@@ -123,6 +124,8 @@ _test_loop:
 def canopy(canopy_object):
     linked, sections, initial, obj, symbols, protected = canopy_object
     dm = dict(initial)
+    dm.update({0x20015000 // 4 + i: 0 for i in range(13)})
+    dm[0x20015000 // 4 - 1] = dm[0x20015000 // 4 + 13] = 0xDEADBEEF
     for base, size in [(0x20050000, 192), (0x20054000, 192), (0x20013000, 32)]:
         dm.update({base // 4 + i: 0 for i in range(size)})
         dm[base // 4 - 1] = dm[base // 4 + size] = 0xDEADBEEF
@@ -163,6 +166,7 @@ def canopy(canopy_object):
             0,
         ]
         words += [0, 0]  # optional V4 transport phase/deadline
+        words += [0x20015000, 13]  # optional borrowed V5 status output
         for index, value in (edits or {}).items():
             words[index] = value
         dm.update({0x20011000 // 4 + i: value for i, value in enumerate(words)})
@@ -176,10 +180,14 @@ def canopy(canopy_object):
             for name, (blob, _, _) in obj.data.items()
         }
         reads.update({"state": (state // 4, 192), "out": (0x20013000 // 4, 32)})
+        reads["status"] = (0x20015000 // 4, 13)
+        reads["status_before"] = (0x20015000 // 4 - 1, 1)
+        reads["status_after"] = (0x20015000 // 4 + 13, 1)
         reads.update(
             {"guard_before": (state // 4 - 1, 1), "guard_after": (state // 4 + 192, 1)}
         )
         if protected and reset is None:
+            dm[symbols["_ir_process_flags"] // 4] = 1 if words[0] == 5 else 0
             row = [3, 2, 9, 1, state, 192, state, state + 768, 0, 0, 0, 0, 0, 0, 0, 0]
             meta = [
                 2,
@@ -230,6 +238,7 @@ def canopy(canopy_object):
         )
         assert result["halt"]["reason"] == "breakpoint", result
         assert result["guard_before"] == result["guard_after"] == [0xDEADBEEF]
+        assert result["status_before"] == result["status_after"] == [0xDEADBEEF]
         for name, (base, _) in reads.items():
             dm.update({base + i: value for i, value in enumerate(result[name])})
         return result
@@ -247,6 +256,85 @@ def voices(result):
         for i in range(0, 32, 8)
         if result["state"][i] and not result["state"][i + 1] & 4
     }
+
+
+def test_v5_status_reports_admitted_notes_without_inventing_key_ownership(canopy):
+    controls = presentation_controls()
+    r = canopy(
+        [note(1, 0), note(2, 127)], controls=controls, edits={0: 5, 1: 96, 4: 123}
+    )
+    ready, *w = r["status"]
+    assert ready == 1 and w[0] == 123 and w[2:4] == [1, 1]
+    assert (w[1] >> 20) & 7 == 2
+    pitches, identities = [], []
+    for slot in range(4):
+        if w[1] & (1 << (16 + slot)):
+            pitches.append((w[5] >> (slot * 8)) & 255)
+            member = (w[6] >> (slot * 8)) & 255
+            assert member & 7 == 0  # An audio gate cannot prove physical ownership.
+            identities.append(member >> 3)
+    assert sorted(pitches) == [0, 127] and len(set(identities)) == 2
+
+
+@pytest.mark.parametrize("wire_parity", [0, 1])
+def test_v5_status_fragments_reconstruct_the_applied_presentation_bank(
+    canopy, wire_parity
+):
+    controls = presentation_controls(mode=1)
+    fragments = {}
+    fast_blocks = []
+    for block in range(88):
+        r = canopy(controls=controls, edits={0: 5, 1: 96, 4: block, 11: 7})
+        ready, *w = r["status"]
+        assert ready == 1 and w[0] == block and w[2] == 1
+        # Observe only one parity, just like the multiplexed wire reply.
+        if block % 2 != wire_parity:
+            continue
+        if w[1] >> 30:
+            assert w[3] == w[5] == 7
+            index = w[4] & 255
+            assert w[4] == 0x10B00 | index
+            fragments[index] = w[6:]
+        else:
+            assert (w[1] >> 6) & 3 == 1 and w[3] == w[11] == 7
+            fast_blocks.append(block)
+    assert set(fragments) == set(range(11))
+    bank = sum((fragments[i] for i in range(11)), [])
+    assert bank == controls[16:] + [0] * 50
+    assert max(b - a for a, b in zip(fast_blocks, fast_blocks[1:], strict=False)) <= 8
+
+
+def test_v5_status_tracks_actual_arp_gate_and_release_tails(canopy):
+    base = list(STRUM)
+    base[6], base[15] = 127, 0
+    controls = presentation_controls(base)
+    r = canopy([note(1, 60), note(2, 64)], controls=controls, edits={0: 5, 1: 96})
+    w = r["status"][1:]
+    assert w[7] & 255 == 60 and w[7] & 256 and w[7] & 512
+    assert w[1] & (1 << 26) and w[1] & (1 << 27)
+    assert 0 < w[8] <= 127
+    r = canopy(controls=controls, edits={0: 5, 1: 96}, state_edits={146: 45000})
+    w = r["status"][1:]
+    assert w[7] & 255 == 60 and not w[1] & (1 << 26)
+    # The first four callbacks are fast snapshots.
+    canopy([note(2, 64, off=True)], controls=controls, edits={0: 5, 1: 96})
+    r = canopy(controls=controls, edits={0: 5, 1: 96})
+    w = r["status"][1:]
+    assert (w[1] >> 20) & 7 == 1 and (w[1] >> 23) & 7 >= 1
+    assert r["instructions"] < 100000
+
+
+def test_v5_status_does_not_change_rendering_and_clears_ready_on_rejection(canopy):
+    controls = presentation_controls()
+    batch = [note(1, 60), note(2, 64)]
+    legacy = canopy(batch, controls=controls, edits={0: 4, 1: 88})
+    current = canopy(batch, state=0x20054000, controls=controls, edits={0: 5, 1: 96})
+    assert current["out"] == legacy["out"]
+    assert current["state"][:188] == legacy["state"][:188]
+    bad = controls.copy()
+    bad[18] ^= 1
+    r = canopy(controls=bad, edits={0: 5, 1: 96})
+    assert r["regs"]["R0"] == 0xFFFFFFFF and r["status"][0] == 0
 
 
 def test_v2_chord_independent_release_and_state_isolation(canopy):

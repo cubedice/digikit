@@ -18,7 +18,7 @@ def playback_object():
     canopy = REPO_ROOT / "modules/machines/canopy/src/dsp"
     source = "\n".join(
         (canopy / f"{n}.s").read_text()
-        for n in ("voice", "tuning", "events", "blend", "arp", "strum", "v2")
+        for n in ("voice", "tuning", "events", "blend", "arp", "strum", "status", "v2")
     )
     for module, names in (
         ("instrument-registry", ("process", "process-protected", "input", "lifecycle")),
@@ -503,3 +503,25 @@ def test_configuration_exceeding_installed_capacity_preserves_previous_bank(play
     assert get("_iv_controls", 16) == old
     call(0)
     assert get("_iv_result")[0] in (0, 1)
+
+
+def test_canopy_status_output_flows_through_protected_carrier(playback):
+    from test_canopy_v2 import presentation_controls
+
+    call, put, get, reset, configure, events, _ = playback
+    assert reset() == 1
+    assert configure(values=presentation_controls(), revision=1) == 1
+    # Exercise the opt-in without publishing the incomplete production feature.
+    put("_ir_process_flags", [1])
+    call(0)
+    assert get("_iv_input", 2) == [5, 96]
+    assert get("_iv_result")[0] in (0, 1)
+    status = get("_instrument_ui_status", 13)
+    assert status[0] == 1 and status[3:5] == [1, 1]
+    assert events([(1, 1, 60, 100, 0, 0)]) == 1
+    call(0)
+    status = get("_instrument_ui_status", 13)
+    assert status[0] == 1 and (status[2] >> 20) & 7 == 1
+    put("_instrument_session", [0])
+    call(0)
+    assert get("_instrument_ui_status")[0] == 0
