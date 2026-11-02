@@ -41,7 +41,7 @@ def playback_object():
 .PKDATA _test_state, 768;
 .PKDATA _test_packet, 128;
 .PKDATA _test_metadata, 24;
-.PKDATA _test_values, 64;
+.PKDATA _test_values, 128;
 .PKDATA _test_output, 128;
 .SECTION/PM seg_pmco;
 .GLOBAL _test_status_process;
@@ -136,7 +136,7 @@ def playback(playback_object):
     )
     put(
         "_ir_process_rows",
-        [2, 9, 20, linked.symbols["_canopy_process"], 0xB90000, 0xBC0000, 8, 16],
+        [2, 9, 20, linked.symbols["_canopy_process"], 0xB90000, 0xBC0000, 8, 32],
     )
     put("_instrument_session", [1])
     put("_mi_epoch", [1])
@@ -179,9 +179,13 @@ def playback(playback_object):
                 revision,
                 0,
                 len(values) * 4,
-                {1: 0x43505331, 6: 0x43505333, 10: 0x43505334, 16: 0x43505335}[
-                    len(values)
-                ],
+                {
+                    1: 0x43505331,
+                    6: 0x43505333,
+                    10: 0x43505334,
+                    16: 0x43505335,
+                    32: 0x43505336,
+                }[len(values)],
             ],
         )
         put("_test_values", values)
@@ -203,7 +207,7 @@ def test_opted_in_output_is_borrowed_per_block_and_revoked_with_session(playback
     put("_ir_process_flags", [1])
     put(
         "_ir_process_rows",
-        [2, 9, 20, symbols["_test_status_process"], 0xB90000, 0xBC0000, 8, 16],
+        [2, 9, 20, symbols["_test_status_process"], 0xB90000, 0xBC0000, 8, 32],
     )
     call(0)
     assert get("_iv_input", 24)[:2] == [5, 96]
@@ -461,3 +465,41 @@ def test_position_snapshot_reaches_input_and_rejects_gaps(playback):
     put("_pattern_position_info", position)
     call(0)
     assert get("_iv_input", 18)[12:17] == [0] * 5
+
+
+def test_configuration_copies_one_complete_presentation_revision(playback):
+    from test_canopy_v2 import presentation_controls
+
+    call, _, get, reset, configure, _, _ = playback
+    reset()
+    call(0)
+    controls = presentation_controls(mode=1)
+    assert configure(values=controls, revision=7) == 1
+    call(0)
+    assert get("_iv_controls", 32) == controls
+    assert get("_iv_input", 12)[10:] == [32, 7]
+    assert get("_iv_result")[0] in (0, 1)
+    bad = controls.copy()
+    bad[18] = 0
+    assert configure(values=bad, revision=8) == 0
+    assert get("_iv_controls", 32) == controls and get("_iv_revision") == [7]
+
+
+def test_configuration_exceeding_installed_capacity_preserves_previous_bank(playback):
+    from test_canopy_v2 import presentation_controls
+
+    call, put, get, reset, configure, _, _ = playback
+    reset()
+    call(0)
+    controls = presentation_controls()
+    old = [5, *controls[1:16]]
+    assert configure(values=old, revision=7) == 1
+    row = get("_ir_process_rows", 8)
+    row[7] = 16
+    put("_ir_process_rows", row)
+    assert configure(values=controls, revision=8) == 0
+    assert get("_iv_control_count") == [16]
+    assert get("_iv_revision") == [7]
+    assert get("_iv_controls", 16) == old
+    call(0)
+    assert get("_iv_result")[0] in (0, 1)

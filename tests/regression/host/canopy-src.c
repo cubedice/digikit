@@ -7,6 +7,16 @@
 #include "../../../modules/core/adapters/instrument-play/src/cf/src-display.h"
 static IsStatus status;
 static uint32_t fast[12], detail[64], now=100;
+static int queued,queue_error,continuous;
+static uint32_t queue_age=1;
+static int read_status(uint32_t *out,uint32_t words,uint32_t *age)
+{
+    assert(words==12);
+    if(queue_error) { int result=queue_error; queue_error=0; return result; }
+    if(!queued && !continuous) return 0;
+    if(queued) --queued;
+    ++fast[0]; memcpy(out,fast,sizeof(fast)); *age=queue_age; return 12;
+}
 static void start(void)
 {
     is_select(&status,0,12,0,0);
@@ -27,7 +37,39 @@ int main(int argc,char **argv)
     CsState ui; cs_init(&ui);
     uint32_t token=cs_context(&ui,0,12,1,0,KB_ROOT,0,0,0),id=255;
     ui.pending=0; /* Fixture starts after an applied initial bank. */
-    if(!strcmp(scenario,"controls")) {
+    if(!strcmp(scenario,"poll-freshness")) {
+        start(); queued=2; is_poll(&status,100,read_status);
+        assert(!status.fast_valid && status.poll_valid && !queued);
+        queued=1; is_poll(&status,120,read_status);
+        assert(status.fast_at==100 && is_fresh(&status,249) && !is_fresh(&status,250));
+        /* A stopped audio callback cannot age the queued frame counter. A UI
+         * stall must nevertheless discard it, without stamping it fresh. */
+        queued=1; is_poll(&status,300,read_status); assert(!status.fast_valid);
+        queued=1; is_poll(&status,310,read_status); assert(status.fast_at==300);
+        queue_age=225; queued=1; is_poll(&status,320,read_status);
+        assert(status.fast_at==300);
+    } else if(!strcmp(scenario,"poll-loss")) {
+        start(); is_poll(&status,100,read_status);
+        queued=1; is_poll(&status,110,read_status); assert(status.fast_valid);
+        queue_error=-3; queued=2; is_poll(&status,120,read_status);
+        assert(!status.fast_valid && status.poll_valid && !queued);
+        queued=1; is_poll(&status,130,read_status); assert(status.fast_valid);
+        queue_error=-2; is_poll(&status,140,read_status);
+        assert(!status.fast_valid && !status.poll_valid);
+        continuous=1; is_poll(&status,150,read_status);
+        assert(!status.fast_valid && !status.poll_valid);
+        continuous=0; is_poll(&status,UINT32_MAX-10,read_status);
+        queued=1; is_poll(&status,5,read_status);
+        assert(status.fast_at==UINT32_MAX-10 && is_fresh(&status,5));
+    } else if(!strcmp(scenario,"metadata")) {
+        uint32_t revision=ui.revision;
+        cs_metadata(&ui,123); assert(ui.revision==revision+1 && ui.pending==0xffff);
+        cs_metadata(&ui,123); assert(ui.revision==revision+1);
+        uint32_t values[32]={0}; for(unsigned i=0;i<16;++i) values[i]=ui.value[i];
+        cs_applied(&ui,12,revision,values); assert(ui.pending==0xffff);
+        cs_applied(&ui,12,revision+1,values); assert(!ui.pending);
+        ui.revision=UINT32_MAX; cs_metadata(&ui,124); assert(ui.metadata==123);
+    } else if(!strcmp(scenario,"controls")) {
         assert(cs_edit(&ui,token,3,12,10,&id)==CS_EDIT && id==CP_COLOR && ui.value[id]==76);
         assert(cs_edit(&ui,token,0,1,20,&id)==CS_NATIVE && id==CS_TUNE);
         assert(cs_edit(&ui,token,7,-1,20,&id)==CS_NATIVE && id==CS_LEVEL);
@@ -141,6 +183,29 @@ int main(int argc,char **argv)
         assert(is_receive(&status,fast,UINT32_MAX-10)==1);
         assert(is_fresh(&status,138) && !is_fresh(&status,139));
         fast[0]=1; fast[3]=UINT32_MAX; assert(is_receive(&status,fast,1)==-1);
+    } else if(!strcmp(scenario,"display-units")) {
+        CvDisplay display; start(); cs_context(&ui,0,12,1,0,KB_ROOT,0,0,0);
+        ui.value[CP_STRUM]=500; ui.value[CP_ARP_MIX]=64;
+        cv_build(&display,&ui,&status,now,"-12","100",0);
+        assert(!strcmp(display.value[5],"500ms") && !strcmp(display.value[6],"50%"));
+        assert(!strcmp(display.label[2],"VOICE"));
+        cs_context(&ui,0,12,1,1,KB_ROOT,0,0,0);
+        cv_build(&display,&ui,&status,now,"-12","100",0);
+        assert(!strcmp(display.value[0],"1/16") && !strcmp(display.value[2],"1OCT"));
+        assert(!strcmp(display.value[3],"50%") && !strcmp(display.value[4],"50%"));
+        ui.value[CP_RATE]=6; ui.value[CP_SWING]=75;
+        cv_build(&display,&ui,&status,now,"-12","100",0);
+        assert(!strcmp(display.value[0],"1/16T") && !strcmp(display.value[4],"88%"));
+        cs_context(&ui,0,12,1,1,KB_ROOT,1,0,0);
+        cv_build(&display,&ui,&status,now,"-12","100",0);
+        assert(!strcmp(display.value[0],"6STP") && !strcmp(display.value[4],"--"));
+    } else if(!strcmp(scenario,"display-capacity")) {
+        CvDisplay display; start(); ++fast[0];
+        fast[1]=(7u<<16)|(3u<<20)|(1u<<11);
+        fast[5]=60|(64u<<8)|(67u<<16); fast[6]=1|(9u<<8)|(17u<<16); fast[8]=2u<<16;
+        assert(is_receive(&status,fast,now)==1); cs_context(&ui,0,12,1,0,KB_PLAY,0,0,0);
+        cv_build(&display,&ui,&status,now,"0","100",0);
+        assert(!strcmp(display.heading,"C> +2"));
     } else if(!strcmp(scenario,"display-notes")) {
         CvDisplay display; start(); ++fast[0];
         fast[1]=(7u<<16)|(3u<<20)|(1u<<26)|(1u<<27);

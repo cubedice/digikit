@@ -27,7 +27,11 @@ _ca_process:
     R0 = DM(10, I2);
     R1 = 16;
     COMP(R0, R1);
+    IF EQ JUMP _arp_full_controls;
+    R1 = 32;
+    COMP(R0, R1);
     IF NE JUMP _ca_legacy;
+_arp_full_controls:
     R0 = DM(9, I2);
     I1 = R0;
     R0 = DM(10, I1);

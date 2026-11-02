@@ -6,7 +6,7 @@
 enum { CS_TUNE=16, CS_LEVEL=17, CS_NONE=255, CS_FOCUS_MS=750 };
 enum { CS_STALE=-1, CS_READONLY=0, CS_EDIT=1, CS_NATIVE=2 };
 typedef struct {
-    uint32_t generation, track, token, revision, pending, focus_at;
+    uint32_t generation, track, token, revision, pending, focus_at, metadata;
     uint16_t value[CP_CONTROLS];
     uint8_t page[16], visible, mode, clock, learned, modal, focus, focus_id;
 } CsState;
@@ -14,6 +14,7 @@ typedef struct {
 void cs_init(CsState *);
 /* Import setup/preset/MIDI-selector changes into the same requested bank. */
 void cs_sync(CsState *,const uint16_t values[CP_CONTROLS]);
+void cs_metadata(CsState *,uint32_t metadata);
 uint32_t cs_context(CsState *,uint32_t track,uint32_t generation,int visible,
     uint32_t page,uint32_t mode,uint32_t clock,int learned,int modal);
 uint32_t cs_control(uint32_t page,uint32_t encoder);

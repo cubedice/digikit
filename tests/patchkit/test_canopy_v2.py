@@ -28,7 +28,7 @@ def canopy_object(request):
             (registry / name).read_text()
             for name in ["process.s", "process-protected.s", "input.s"]
         )
-        source += "\n.PKDATA _ir_rows, 512;\n.PKDATA _ir_process_rows, 256;\n"
+        source += "\n.PKDATA _ir_rows, 512;\n.PKDATA _ir_process_rows, 256;\n.PKDATA _ir_process_flags, 32;\n"
         source += (
             REPO_ROOT / "modules/core/adapters/midi-events/src/dsp/packet.s"
         ).read_text()
@@ -189,7 +189,7 @@ def canopy(canopy_object):
                 0xB90000,
                 0xBC0000,
                 8,
-                16,
+                32,
             ]
             for name, values in [("_ir_rows", row), ("_ir_process_rows", meta)]:
                 dm.update(
@@ -1074,3 +1074,63 @@ def test_v4_input_preserves_mapped_phrase_and_strum(canopy):
     assert r["regs"]["R0"] == 0
     assert r["state"][175] == 0x80000001
     assert any(r["state"][8 * i + 1] == 9 for i in range(4))
+
+
+def presentation_controls(base=STRUM, mode=0):
+    ui = [
+        0,
+        0,
+        base[2],
+        base[3],
+        base[15] * 2 // 3,
+        base[6],
+        base[8],
+        base[10],
+        base[11],
+        base[9],
+        base[12],
+        base[14],
+        0,
+        0,
+        base[4],
+        base[5],
+    ]
+    return [6 | (mode << 8), *base[1:], *ui]
+
+
+@pytest.mark.parametrize("mode", [0, 1, 2])
+def test_presentation_bank_preserves_audio_and_movement(canopy, mode):
+    base = (5, 1, 75, 22, 7, 31, 64, 123, 5, 70, 2, 2, 12, 0, 1, 6)
+    batch = [note(1, 60), note(2, 64), note(3, 67)]
+    old = canopy(batch, controls=base, edits=mapped(phrase=1))
+    new = canopy(
+        batch,
+        controls=presentation_controls(base, mode),
+        edits=mapped(phrase=1),
+        state=0x20054000,
+    )
+    assert new["regs"]["R0"] == old["regs"]["R0"]
+    assert new["out"] == old["out"] and new["state"] == old["state"]
+
+
+@pytest.mark.parametrize(
+    "offset,value",
+    [
+        (0, 0x306),
+        (0, 7),
+        (16, 12),
+        (17, 4),
+        (18, 0),
+        (20, 5),
+        (21, 127),
+        (28, 2),
+        (29, 1),
+        (31, 0xFFFFFFFF),
+    ],
+)
+def test_presentation_bank_rejects_inconsistent_audio_claims(canopy, offset, value):
+    controls = presentation_controls()
+    before = canopy([note(1, 60)], controls=controls)["state"]
+    controls[offset] = value
+    rejected = canopy([note(2, 64)], controls=controls)
+    assert rejected["regs"]["R0"] == 0xFFFFFFFF and rejected["state"] == before

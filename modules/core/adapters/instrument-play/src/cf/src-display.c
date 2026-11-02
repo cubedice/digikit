@@ -5,12 +5,16 @@
 #endif
 static void text(char *out,uint32_t cap,const char *in)
 { uint32_t i=0; if(!cap) return; while(i+1<cap && in && in[i]) { out[i]=in[i]; ++i; } out[i]=0; }
+static uint32_t length(const char *s,uint32_t cap)
+{ uint32_t n=0; while(n<cap && ((const volatile char *)s)[n]) ++n; return n; }
 static void number(char *out,uint32_t n)
 {
     uint32_t at=0; if(n>=100) out[at++]=(char)('0'+n/100%10);
     if(n>=10) out[at++]=(char)('0'+n/10%10);
     out[at++]=(char)('0'+n%10); out[at]=0;
 }
+static void unit(char out[6],uint32_t n,const char *suffix)
+{ number(out,n); uint32_t at=length(out,5); text(out+at,6-at,suffix); }
 void cv_note(char out[6],uint32_t note,int valid)
 {
     static const char *const names[]={"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
@@ -28,17 +32,32 @@ static void value(char out[6],const CsState *s,uint32_t id,const char *tune,cons
     static const char *const chord[]={"MAJ","MAJ6","SUS2","MIN6","MIN","SUS4","ADD9","DOM7","DIM","MIN7","USER","MAJ7"};
     static const char *const voice[]={"CLOSE","OPEN","INV1","INV2"};
     static const char *const order[]={"UP","DOWN","UP/DN","PLAY","RND"};
-    static const char *const restart[]={"TRIG","PATTR","CONT"};
+    static const char *const restart[]={"TRIG","PATT","CONT"};
+    static const char *const rate[]={"--","1/4","1/8","1/8T","1/16","5/Q","1/16T","7/Q","1/32"};
     if(id==CS_TUNE || id==CS_LEVEL) { text(out,6,id==CS_TUNE?tune:level); return; }
     uint32_t n=s->value[id]; const char *v=0;
     if(id==CP_CHORD) v=s->mode==KB_PLAY?"AUTO":s->learned?"USER":n<12?chord[n]:"--";
     else if(id==CP_VOICING) v=s->mode==KB_PLAY?"--":s->learned?"ASLRN":n<4?voice[n]:"--";
     else if(id==CP_STRUM && s->mode==KB_PLAY) v="--";
+    else if(id==CP_STRUM) { if(!n) v="OFF"; else { unit(out,n,"ms"); return; } }
+    else if(id==CP_RATE) {
+        if(s->clock==1) { unit(out,n,"STP"); return; }
+        v=n<=8?rate[n]:"--";
+    }
+    else if(id==CP_OCTAVES) { unit(out,n,"OCT"); return; }
+    else if(id==CP_GATE) { unit(out,n,"%"); return; }
+    else if(id==CP_SWING) {
+        if(s->clock==1) v="--";
+        /* Existing DSP alternates 100+n / 100-n, so the long interval
+         * occupies (100+n)/2 percent of a pair. Round only the display. */
+        else { unit(out,(101+n)/2,"%"); return; }
+    }
     else if(id==CP_ORDER) v=n<5?order[n]:"--";
     else if(id==CP_RESTART) v=n<3?restart[n]:"--";
     else if(id==CP_SOURCE) v="KEYS";
     else if(id==CP_LATCH) v=n?"ON":"OFF";
     else if(id==CP_ARP_MIX && (n==0 || n==127)) v=n?"ARP":"PAD";
+    else if(id==CP_ARP_MIX) { unit(out,(n*100+63)/127,"%"); return; }
     if(v) text(out,6,v); else number(out,n);
 }
 static void chord_name(char out[22],const uint8_t *pitch,uint32_t count)
@@ -53,8 +72,8 @@ static void chord_name(char out[22],const uint8_t *pitch,uint32_t count)
         uint32_t mask=0;
         for(uint32_t i=0;i<count;++i) mask|=1u<<((pitch[i]+12-root)%12);
         for(uint32_t j=0;j<8;++j) if(mask==masks[j]) {
-            text(out,22,pc[root]); uint32_t at=0; while(out[at]) ++at;
-            text(out+at,22-at,suffix[j]); while(out[at]) ++at;
+            text(out,22,pc[root]); uint32_t at=length(out,21);
+            text(out+at,22-at,suffix[j]); at=length(out,21);
             if(pitch[0]%12!=root) { out[at++]='/'; text(out+at,22-at,pc[pitch[0]%12]); }
             return;
         }
@@ -69,7 +88,8 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
     for(uint32_t i=0;i<8;++i) {
         uint32_t id=cs_control(page,i);
         if(id>=18) continue;
-        text(d->label[i],8,labels[id]); value(d->value[i],s,id,tune,level);
+        text(d->label[i],8,id==CP_VOICING?"VOICE":id==CP_OCTAVES?"OCTS":labels[id]);
+        value(d->value[i],s,id,tune,level);
         if(id<16 && (!fresh || !is_detail_confirmed(status,now) || (s->pending&(1u<<id)))) d->pending|=(uint8_t)(1u<<i);
     }
     text(d->mode,6,s->mode==KB_PLAY?"K:PLY":s->mode==KB_ROOT?"K:RT":"K:LRN");
@@ -91,12 +111,15 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
     if(flags&(1u<<14)) { d->highlight=0; text(d->heading,22,"VOICE ERR"); return; }
     if(save_error) { text(d->heading,22,"NOT SAVED"); return; }
     if(cs_focused(s,now)) {
+        d->focused=1; d->highlight=0;
         uint32_t id=s->focus_id;
         if(s->mode==KB_PLAY && (id==CP_CHORD || id==CP_VOICING || id==CP_STRUM)) text(d->heading,22,"YOUR NOTES");
         else if(s->learned && (id==CP_CHORD || id==CP_VOICING)) text(d->heading,22,"AS LEARNED");
         else if(id<18) {
-            text(d->heading,22,labels[id]); uint32_t at=0; while(d->heading[at]) ++at;
+            text(d->heading,22,labels[id]); uint32_t at=length(d->heading,21);
             d->heading[at++]=' '; char v[6]; value(v,s,id,tune,level); text(d->heading+at,22-at,v);
+            at=length(d->heading,21);
+            if(id<16 && (s->pending&(1u<<id)) && at+1<22) text(d->heading+at,22-at,"*");
         }
         if(id==CP_ARP_MIX) { d->mix_bar=1; d->mix_requested=(uint8_t)s->value[id]; d->mix_applied=(uint8_t)status->fast[8]; }
         return;
@@ -106,6 +129,14 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
     else if(!(status->fast[8]&255)) text(d->heading,22,"ARP OFF");
     else if(status->fast[7]&256) { text(d->heading,22,"ARP "); cv_note(d->heading+4,status->fast[7]&255,1); }
     else text(d->heading,22,"ARP --");
+    if(!page) {
+        uint32_t at=length(d->heading,21);
+        if(flags&(1u<<11)) { text(d->heading+at,22-at,">"); ++at; }
+        uint32_t excluded=(status->fast[8]>>16)&255;
+        if(excluded && at+5<22) {
+            d->heading[at++]=' '; d->heading[at++]='+'; number(d->heading+at,excluded);
+        }
+    }
 }
 /* Small original 3x5 glyphs, row-major packed bits. The larger 5x7 face uses
  * replicated strokes; all strings are bounded and each cell clips separately. */
@@ -155,7 +186,9 @@ void cv_paint(uint8_t p[1024],const CvDisplay *d)
     for(int y=10;y<64;++y) for(int x=0;x<124;++x) pixel(p,x,y,0);
     for(uint32_t i=0;i<8;++i) {
         int x=(int)(i%4)*31,y=i<4?11:48;
-        draw(p,d->label[i],x,y,0,x+30); draw(p,d->value[i],x,y+7,1,x+30);
+        uint32_t chars=length(d->value[i],5);
+        int inset=(31-(int)chars*6+1)/2;
+        draw(p,d->label[i],x,y,0,x+30); draw(p,d->value[i],x+inset,y+7,1,x+30);
         if(d->pending&(1u<<i)) draw(p,"*",x+28,y,0,x+31);
     }
     draw(p,d->heading,2,28,1,79); draw(p,d->mode,80,29,0,100);
@@ -165,11 +198,12 @@ void cv_paint(uint8_t p[1024],const CvDisplay *d)
         for(int y=27;y<=35;++y) { pixel(p,101,y,1); pixel(p,108,y,1); }
     }
     for(uint32_t i=0;i<4;++i) {
+        if(d->focused) break;
         int x=(int)i*31;
         draw(p,d->notes[i],x+2,37,1,x+30);
         for(int col=2;col<26;++col) {
             int line=(d->membership[i]&1) || ((d->membership[i]&2) && !(col&1)) ||
-                (!(d->membership[i]&3) && (d->membership[i]&4) && col<10);
+                (!(d->membership[i]&3) && (d->membership[i]&4) && col>=10 && col<18);
             if(line) pixel(p,x+col,45,1);
         }
         if(d->highlight&(1u<<i)) for(int y=36;y<45;++y) for(int col=1;col<27;++col) {

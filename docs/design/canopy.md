@@ -1790,7 +1790,7 @@ The physical ordering in the preceding control table is unchanged. The reference
 | ORDER | `UP`, `DOWN`, `UP/DN`, `PLAY`, `RAND` | `PLAY` means input order, not keyboard mode; focus says AS PLAYED |
 | OCTS | `1OCT`..`3OCT` | No octave animation or implicit chord transposition |
 | GATE | Percentage | Exact implemented range appears in the descriptor; round for the cell, retain stored precision |
-| SWING | `50%` straight to `75%` | Percentage of the event pair occupied by its first interval; unavailable timing shows `--` and consumes the turn |
+| SWING | `50%` straight to rounded `88%` | Existing DSP macro 0..75 alternates interval weights `100+n` / `100-n`, giving 50..87.5% of the pair to its first interval; the cell rounds to whole percent. Master-step timing shows `--` and consumes the turn |
 | RESTART | `TRIG`, `PATT`, `CONT` | Full descriptions in focus: phrase/trig, pattern, continuous |
 | LATCH | `OFF` or `ON` | This is the enabled keyboard setting; the separate L badge distinguishes an active retained phrase; read-only `--` in SEQUENCER |
 | SOURCE | `KEYS` or `SEQ` | Changing this starts the instance reset described above; it is not a live-input blend |
@@ -1882,6 +1882,15 @@ A separate typed DETAIL fragment uses the same twelve-word payload: publication 
 Transmit details only for the selected track or active LEARN dialog, at most 25 completed snapshots per second. A source snapshot remains immutable until its fragments complete; coalesce intervening requests. Alternate fast/status detail frames during a transfer to retain the thirty-two-block fast refresh bound. CF publishes a completed detail snapshot only after every fragment matches track, instance, revision, schema and expected length; reject invalid indices, counts or padding. Validate LEARN session identity and capture revision against the current dialog before publishing its capture fields. Discard incomplete/stale fragments on track/mode/session changes. After 150 ms without completion, discard that assembly and request a fresh snapshot through the ordinary control stream, with at most one retry per 150 ms. Keep the last matching complete controls marked unconfirmed while recovering; missing details must not disable retry or invalidate fresh fast notes. No new reply rows are claimed by this multiplexing.
 
 Use a 150 ms initial freshness threshold for matching fast telemetry, measured on the UI clock. After it expires, stop animation and display LINK LOST; a paused UI loop does not infer a DSP fault until it can recheck fresh data. Detail freshness is checked separately and does not blank valid fast notes while a new detail snapshot is assembling. Paint only at most every 40 ms for animation, with immediate input/fault redraw permitted. Copy bounded data under a short lock/mask; format and draw after releasing it. Retain no firmware view pointers or DSP buffer pointers across updates.
+
+The CF consumer conservatively timestamps queued messages at its previous empty
+FIFO poll, never at dequeue time. The first poll after selection, a 150 ms UI
+stall, or reported FIFO loss discards the backlog before establishing a new
+arrival-time lower bound. A drain is bounded to 66 reads (64 entries, a loss
+notification and the empty observation); failure to reach empty invalidates the
+bound. Audio-frame age is an additional rejection check, not a substitute for
+the independent UI clock. The native view must supply that clock before the
+consumer is enabled on-device.
 
 ### UI acceptance
 

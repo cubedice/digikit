@@ -215,7 +215,22 @@ Stage 3 now supplies the pad renderer; arp remains Stage 4. See the
 [pad sound setup](../../core/adapters/instrument-play/README.md#pad-sound-setup-stage-3).
 
 
-## Movement controls (CPS5)
+## Applied controls and SRC values (CPS6)
+
+CPS6 is a 32-word configuration shared by playback and SRC presentation. Word
+0 contains version 6 in its low byte and mapper mode (0..2) above it. Words
+1..15 retain CPS5 sound and movement settings; words 16..31 contain the sixteen
+stable SRC control values in ID order. Both owners validate ranges and reject
+any duplicated SRC value that disagrees with its audio setting. STRUM must
+match the truncated milliseconds-to-DSP-block conversion; SOURCE remains KEYS.
+
+Both banks come from one locked snapshot with the SRC requested revision.
+Mode, clock, family and BPM also advance that revision. Transport ACKs still
+cannot clear pending markers without a matching DSP-applied bank. The status
+producer and native SRC attachment remain unfinished. Build the updated CANOPY
+package with the updated playback firmware: older packages cannot consume CPS6.
+
+## Movement controls (CPS5 compatibility)
 
 KEYBOARD setup exposes ARP MIX (0 pad, 127 arp), LOCAL BPM (30..300),
 NOTES/Q (1..8), gate percent (1..100), UP/DOWN/UP-DOWN/AS-PLAYED/RANDOM,

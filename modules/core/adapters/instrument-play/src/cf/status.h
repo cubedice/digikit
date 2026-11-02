@@ -12,12 +12,20 @@ typedef struct {
     uint32_t fast_at, detail_at, started_at, retry_at;
     uint32_t assembly_revision, assembly_control, assembly_block, fragments;
     uint32_t detail_revision, detail_control, capture_revision;
+    uint32_t poll_at;
     uint8_t fast_valid, detail_valid, assembling, retried;
+    uint8_t poll_valid;
 } IsStatus;
 void is_select(IsStatus *,uint32_t track,uint32_t generation,uint32_t mode,uint32_t session);
 /* Return 1 only on publication; 0 for accepted partials; -1 for rejected input.
  * Rejections never make old data fresh or partially replace published state. */
 int is_receive(IsStatus *,const uint32_t words[IS_WORDS],uint32_t now_ms);
+/* Drain the authenticated adapter FIFO on the UI task. The clock must advance
+ * independently of the audio callbacks. First poll and a UI stall discard the
+ * backlog; later messages use the previous empty poll as their conservative
+ * arrival time, never their dequeue time. */
+typedef int (*IsRead)(uint32_t *,uint32_t,uint32_t *);
+void is_poll(IsStatus *,uint32_t now_ms,IsRead);
 int is_fresh(const IsStatus *,uint32_t now_ms);
 int is_detail_confirmed(const IsStatus *,uint32_t now_ms);
 /* Once per 150 ms while a new matching detail is needed. Caller sends a normal

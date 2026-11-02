@@ -257,3 +257,77 @@ Required changed-tests preflight: 309 host cases passed, 16 optional skips;
 lint, formatting, layering and types passed. Only the existing global pathcheck
 fails (256 stale paths in 78 files); the two changed documents pass scoped
 pathcheck. The final descriptor test also passes after its readability edit.
+
+## Shared configuration revision, 2026-11-02 (in progress)
+
+CPS6 now carries the existing sixteen DSP controls plus the sixteen stable SRC
+values. Header low byte is 6; the remaining bits hold mapper mode 0..2. The
+adapter and CANOPY validate ranges, duplicated values and the milliseconds-to-
+blocks STRUM conversion before mutation. CANOPY declares max_controls=32;
+CPS1/3/4/5 remain supported. Arp and strum accept the new control count.
+
+The CF owner creates both banks from one locked preset snapshot and submits the
+SRC revision, rather than inventing an unrelated transport revision. Metadata
+(mode/clock/family/BPM) advances the same revision; identical snapshots do not.
+Configuration receipts still cannot clear pending markers without DSP feedback.
+This does not yet implement the actual-note/status producer or native SRC view.
+
+Evidence so far: 27 focused direct/protected DSP cases pass, including sample-
+and-state equality against CPS5, contradictory UI-bank rejection and atomic
+configuration replacement. The 39 focused preset/SRC host cases pass. Explicit
+builds pass: playback DSP 1094 instructions, CF 6149, CANOPY DSP 2656. The CANOPY
+callback fixture now supplies the process-flags table added by the prior ABI
+change. Production CANOPY remains unflagged for V5 status output.
+
+The broader CANOPY callback/playback regression command was rejected by the
+user at the execution approval boundary and was not run. Do not retry that
+denied command without renewed authorization. Required changed-tests, complete
+regression, combined-image/package checks and booted acceptance have not run
+for this configuration change. No physical device was changed. Stage 5 is
+still incomplete; do not present these component checks as release acceptance.
+
+## 2026-11-02: bounded SRC status consumer and presentation bank checks
+
+The display bridge now drains authenticated `mi_status_reply` traffic through
+`is_poll`. It never timestamps a queued message as fresh at dequeue time. First
+selection, a UI gap of 150 ms, overflow, trust loss, or an unbounded drain clears
+published/partial status. A previous empty poll provides a conservative arrival
+timestamp; audio-frame age supplies an additional rejection check. Native SRC
+integration must still supply an independent millisecond clock. The callback
+frame counter and UI-loop iteration counter do not satisfy that requirement.
+
+Configuration acceptance now checks the installed module's control capacity
+before replacing its current bank/revision. An older 16-word module therefore
+rejects CPS6 without losing its last usable configuration. The CF bank explicitly
+initializes all 32 words: a partial aggregate initializer generated an unresolved
+`memset` at firmware link despite the loop-distribution pragma.
+
+SRC cells now format musical rate names (including explicit 5/Q and 7/Q), master
+step counts, milliseconds, octave counts and percentages. Swing reflects the
+existing DSP's 100+n / 100-n ratio, rounded only for display, rather than claiming
+the earlier proposed 75% ceiling. Compact VOICE/OCTS labels, centered values,
+pending-chord/excluded-key text, centered latch-only marks and focus suppression
+of the note strip are implemented in the bitmap renderer. These remain component
+rendering changes, not a claim of native-view acceptance.
+
+Validation: 24 SRC host cases, 19 preset host cases, and 6 focused SHARC
+configuration cases pass. Required changed-tests passes 315 host cases (16
+skipped), lint, formatting, types and layers; its global pathcheck still reports
+the existing 256 stale paths across 78 files. Scoped checks of the changed design
+and handover report zero stale paths. Logs use `out/canopy-stage5-poll-*`,
+`out/canopy-stage5-capacity.log`, `out/canopy-stage5-display-final.log` and
+`out/canopy-stage5-bank-final.log`. The previously denied full CANOPY callback
+regression was not retried. No physical device operations were performed.
+
+Next required work remains the CANOPY V5 actual-state producer, physical-key and
+LEARN metadata ownership, native SRC painter/input/clock hooks, unified native
+TUNE/LEVEL handling, and booted Stage 5 acceptance. CANOPY still does not publish
+the two-page capability or opt into V5 output; do not mark Stage 5 complete.
+
+Final explicit builds: CF playback 6375 decoded instructions, DSP playback 1098,
+CANOPY DSP 2656. Bounded volatile string measurement also avoids an unwanted
+`strlen` import in the firmware renderer. Both owner host suites were rerun after
+the link fixes. Combined image `out/patch/canopy-stage5-presentation.syx` links
+successfully (2,010,016 bytes, SHA-256
+`f901490a94bae60bbc2d0fdbe6a3c4edc6b423dd2390ad48061178ca2b33cff3`).
+It has not been booted for acceptance or installed on hardware.

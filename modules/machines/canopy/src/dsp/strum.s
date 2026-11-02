@@ -20,7 +20,11 @@ _cs_prepare:
     R0 = DM(10, I0);
     R1 = 16;
     COMP(R0, R1);
+    IF EQ JUMP _strum_full_controls;
+    R1 = 32;
+    COMP(R0, R1);
     IF NE JUMP _cs_tick_begin;
+_strum_full_controls:
     R0 = DM(9, I0);
     I1 = R0;
     R0 = DM(15, I1);

@@ -95,6 +95,25 @@ int is_receive(IsStatus *s,const uint32_t w[IS_WORDS],uint32_t now)
 }
 int is_fresh(const IsStatus *s,uint32_t now)
 { return s->fast_valid && now-s->fast_at<IS_TIMEOUT_MS; }
+static void invalidate(IsStatus *s)
+{ s->fast_valid=0; s->detail_valid=0; s->assembling=0; s->retried=0; }
+void is_poll(IsStatus *s,uint32_t now,IsRead read)
+{
+    uint32_t words[IS_WORDS],age=0;
+    int accept=s->poll_valid && now-s->poll_at<IS_TIMEOUT_MS;
+    if(!accept) invalidate(s);
+    /* The adapter has 64 entries plus a possible loss notification. Bounded
+     * even if the audio interrupt continues publishing during this drain. */
+    for(uint32_t i=0;i<66;++i) {
+        int result=read(words,IS_WORDS,&age);
+        if(!result) { s->poll_at=now; s->poll_valid=1; return; }
+        if(result==-3) { invalidate(s); accept=0; continue; }
+        if(result!=IS_WORDS) { invalidate(s); s->poll_valid=0; return; }
+        if(accept && age<225) (void)is_receive(s,words,s->poll_at);
+    }
+    /* No empty-queue boundary: there is no arrival lower bound for next time. */
+    invalidate(s); s->poll_valid=0;
+}
 int is_detail_confirmed(const IsStatus *s,uint32_t now)
 { return is_fresh(s,now) && s->detail_valid && s->detail_revision==s->fast[11] && s->detail_control==s->fast[3]; }
 int is_retry(IsStatus *s,uint32_t now)

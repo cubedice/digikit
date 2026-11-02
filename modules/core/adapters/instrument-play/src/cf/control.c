@@ -239,10 +239,16 @@ static void preset_snapshot(CpPreset *p)
     for(uint32_t i=0;i<4;++i) p->shape.intervals[i]=shape->intervals[i];
     dkrt_irq_restore(sr);
 }
-uint32_t instrument_src_context(uint32_t track,uint32_t page,int visible)
+static void src_requested(CpPreset *current)
 {
     if(!src_initialized) { cs_init(&src_state); src_initialized=1; }
-    CpPreset current; preset_snapshot(&current); cs_sync(&src_state,current.control);
+    preset_snapshot(current); cs_sync(&src_state,current->control);
+    cs_metadata(&src_state,current->mode | ((uint32_t)current->clock<<2) |
+        ((uint32_t)current->family<<4) | ((uint32_t)current->bpm<<8));
+}
+uint32_t instrument_src_context(uint32_t track,uint32_t page,int visible)
+{
+    CpPreset current; src_requested(&current);
     uint32_t generation=mi_ledger.generations[0];
     uint32_t token=cs_context(&src_state,track,generation,
         visible && track==0 && keyboard_initialized && dkrt_instrument_type(),page,
@@ -284,6 +290,7 @@ void instrument_src_display(CvDisplay *out,uint32_t now,const char *tune,const c
 {
     if(!src_initialized) (void)instrument_src_context(0,0,0);
     (void)instrument_src_context(src_state.track,src_state.page[src_state.track],src_state.visible);
+    is_poll(&src_status,now,mi_status_reply);
     if(is_detail_confirmed(&src_status,now))
         cs_applied(&src_state,src_status.generation,src_status.detail_control,src_status.detail);
     cv_build(out,&src_state,&src_status,now,tune,level,preset_result || storage_result);
@@ -411,7 +418,6 @@ void dk_app_instrument_settings_rows(dk_ui_menu *parent)
 void instrument_play_tick(void)
 {
     uint32_t reply[16];
-    uint32_t values[16]={5,(uint32_t)pad_family,(uint32_t)pad_color,(uint32_t)pad_drift,(uint32_t)pad_attack,(uint32_t)pad_release,(uint32_t)arp_mix,(uint32_t)arp_bpm,(uint32_t)arp_rate,(uint32_t)arp_gate,(uint32_t)arp_order,(uint32_t)arp_octaves,(uint32_t)arp_swing,(uint32_t)arp_clock,(uint32_t)arp_restart,(uint32_t)(pad_strum*3/2)};
     if (!keyboard_initialized) {
         uint8_t record[KB_RECORD_BYTES]; kb_init(&keyboard);
         int length=dkrt_settings_get(shape_key,record,sizeof(record));
@@ -486,6 +492,16 @@ void instrument_play_tick(void)
         ip_view_build(ip_view);
         listed_type=type;
     }
+    /* The DSP bank and its presentation values come from one locked snapshot.
+     * The same revision owns SRC pending markers and the audio configuration. */
+    CpPreset current; src_requested(&current);
+    const uint16_t *v=current.control;
+    uint32_t values[32]={6|((uint32_t)current.mode<<8),current.family,
+        v[CP_COLOR],v[CP_DRIFT],v[CP_ATTACK],v[CP_RELEASE],v[CP_ARP_MIX],current.bpm,
+        v[CP_RATE],v[CP_GATE],v[CP_ORDER],v[CP_OCTAVES],v[CP_SWING],current.clock,
+        v[CP_RESTART],(uint32_t)v[CP_STRUM]*3/2,
+        v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],
+        v[8],v[9],v[10],v[11],v[12],v[13],v[14],v[15]};
     int count=mi_registry_reply(reply,16);
     /* A temporarily missing/reordered reply cannot revoke a healthy route;
      * the transport's independent deadline and reset guard remain authoritative. */
@@ -506,8 +522,9 @@ void instrument_play_tick(void)
         else prepared=(uint32_t)result;
     }
     if (phase == 1 && prepared && !mi_ledger.reset_mask &&
-        !mi_config_submit(0,1,0x43505335,values,16)) { phase=2; pad_dirty=0; }
-    if (phase==3 && pad_dirty && !mi_config_submit(0,mi_transport.applied[0]+1,0x43505335,values,16)) pad_dirty=0;
+        !mi_config_submit(0,src_state.revision,0x43505336,values,32)) { phase=2; pad_dirty=0; }
+    if (phase==3 && src_state.revision>mi_transport.applied[0] &&
+        !mi_config_submit(0,src_state.revision,0x43505336,values,32)) pad_dirty=0;
     if (phase == 2 && instrument_midi_ready(0,mi_ledger.epoch,mi_ledger.generations[0])) {
         if ((!usb || !mi_route_enable(0,(uint32_t)channel-1,0,0)) &&
             (!din || !mi_route_enable(1,(uint32_t)channel-1,0,0)) &&

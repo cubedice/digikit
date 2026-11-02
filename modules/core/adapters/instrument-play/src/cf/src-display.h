@@ -4,7 +4,7 @@
 #include "status.h"
 typedef struct {
     char label[8][8], value[8][6], heading[22], mode[6], notes[4][6];
-    uint8_t pending, membership[4], highlight, latch, pedal, mix_bar, mix_requested, mix_applied;
+    uint8_t pending, membership[4], highlight, latch, pedal, mix_bar, mix_requested, mix_applied, focused;
 } CvDisplay;
 /* Snapshot in, bounded presentation out. Native values are already formatted
  * by their firmware owners; this code never invents a second TUNE/LEVEL scale. */

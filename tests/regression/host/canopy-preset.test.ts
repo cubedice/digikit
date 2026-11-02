@@ -232,3 +232,19 @@ test('a valid routing checksum cannot conceal unsupported schema or channel rang
     expect(s).toMatchObject({ enabled: 0, channel: 1, restore: 0, calls: 0, result: -1 });
   }
 });
+
+test('audio submission and SRC pending markers share the full configuration revision', () => {
+  const [first, unchanged, mode, tempo] = run(
+    settings,
+    'color 100\nconfig\ntick\nconfig\nmode 1\nconfig\nbpm 140\nconfig',
+  );
+  expect(first).toMatchObject({ schema: 0x43505336, count: 32, pending: 0xffff });
+  expect(first!.revision).toBe(first!.srcRevision);
+  expect((first!.values as number[]).slice(16)).toEqual([0, 0, 100, 0, 0, 0, 4, 0, 1, 50, 0, 0, 0, 0, 5, 15]);
+  expect((first!.values as number[])[2]).toBe(100);
+  expect(unchanged!.revision).toBe(first!.revision);
+  expect(mode!.revision as number).toBeGreaterThan(first!.revision as number);
+  expect((mode!.values as number[])[0]).toBe(0x106);
+  expect(tempo!.revision as number).toBeGreaterThan(mode!.revision as number);
+  expect((tempo!.values as number[])[7]).toBe(140);
+});

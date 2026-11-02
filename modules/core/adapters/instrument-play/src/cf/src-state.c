@@ -42,6 +42,11 @@ void cs_sync(CsState *s,const uint16_t values[CP_CONTROLS])
 }
 uint32_t cs_control(uint32_t page,uint32_t encoder)
 { return page<2 && encoder<8 ? controls[page][encoder] : CS_NONE; }
+void cs_metadata(CsState *s,uint32_t metadata)
+{
+    if(s->metadata==metadata || s->revision==UINT32_MAX) return;
+    s->metadata=metadata; ++s->revision; s->pending=0xffff;
+}
 int cs_edit(CsState *s,uint32_t token,uint32_t encoder,int32_t detents,uint32_t now,uint32_t *id)
 {
     if(!token || token!=s->token || !s->generation || !s->visible || encoder>=8 || !detents) return CS_STALE;
