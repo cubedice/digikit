@@ -43,7 +43,10 @@ int cp_decode(CpPreset *out,const uint8_t *b,uint32_t length)
     for(uint32_t i=51;i<60;++i) if(b[i]) return -1;
     uint32_t h=checksum(b);
     for(uint32_t i=0;i<4;++i) if(b[60+i]!=(uint8_t)(h>>(24-8*i))) return -1;
-    CpPreset p={0};
+    CpPreset p;
+    /* Freestanding ColdFire does not supply libc memset. Keep this bounded
+     * initialization explicit, including padding copied below. */
+    for(uint32_t i=0;i<sizeof(p);++i) ((volatile uint8_t *)&p)[i]=0;
     for(uint32_t i=0;i<CP_CONTROLS;++i) p.control[i]=(uint16_t)((uint32_t)b[8+2*i]*256+b[9+2*i]);
     p.family=b[40]; p.mode=b[41]; p.clock=b[42]; p.bpm=(uint16_t)((uint32_t)b[44]*256+b[45]);
     p.shape.count=b[46];

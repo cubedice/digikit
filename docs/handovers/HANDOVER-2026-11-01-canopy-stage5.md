@@ -91,3 +91,34 @@ applied DSP state without hard-coding CANOPY's private state offsets in core.
 **Stage 5 still incomplete:** this checkpoint closes routing persistence only.
 SRC page capability/hooks, renderer, controls, status producer/receiver and booted
 acceptance remain necessary. Do not label this a Stage 5 release.
+
+## SRC capability checkpoint, 2026-11-02
+
+`core/machines` now supports an explicit versioned two-page capability, scoped
+to added machine type and instance generation. The draw hook preserves the page
+index and native vector for a registered implementation. Default added-machine
+and stock behavior remain unchanged. No CANOPY registration occurs until its
+input and paint adapters are complete. V1 declaration rules are unchanged.
+
+26 ColdFire component cases pass; the DT2 module builds with 404 instructions
+re-decoded and the DN2 object is unchanged. Static input tracing also identified
+the separate encoder interface at SourcePageView+4; primary View slot 3 must not
+be replaced as an encoder handler. See the
+[SRC findings](../findings/80-canopy-src-pages.md) for exact measured layouts.
+
+Stage 5 remains incomplete. The next implementation must connect the painter
+and input adapter, preserve native TUNE/LEVEL and stored custom values, provide
+versioned actual-applied DSP telemetry, and run booted acceptance. Do not expose
+two pages merely by calling the new registration function.
+
+Combined firmware linking exposed an earlier preset decoder initialization that
+emitted an unresolved libc `memset`. Replaced it with a bounded volatile byte
+clear; all sixteen preset/routing host scenarios still pass. The playback CF
+object now decodes 3690 instructions. The combined instrument-play/digikit-menu
+firmware links successfully as `out/patch/canopy-stage5-foundation.syx`, SHA-256
+`ef5c2c59f0c8a19d6f0e5fbb3f787bbb67c603512b06a719c8890724899ddde2`.
+This is an integration build, not a booted or install-ready Stage 5 release.
+
+Changed-tests preflight passed host tests, layering, lint, formatting and types;
+the global pre-existing pathcheck failure remains. Scoped changed-document
+pathcheck and the Python owner's lint pass. No physical device was changed.

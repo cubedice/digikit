@@ -119,7 +119,7 @@ def tables():
 def unit():
     return pk_cfunit.CfUnit(
         SYX,
-        [SRC, ROOT / "tests/fixtures/native-page-absent.s"],
+        [SRC, SRC.with_name("src-pages.c"), ROOT / "tests/fixtures/native-page-absent.s"],
         STUBS,
         {
             "_mf_first": FIRST,
@@ -131,6 +131,8 @@ def unit():
         },
         [
             "mf_srcpage",
+            "mf_src_register",
+            "mf_src_unregister",
             "mf_dispatch",
             "mf_list_entry",
             "mf_rank",
@@ -250,7 +252,7 @@ def gap_unit():
     # rows: XSlice (7), a gap (8: nobody selected it), Pluck (9)
     return pk_cfunit.CfUnit(
         SYX,
-        [SRC, ROOT / "tests/fixtures/native-page-absent.s"],
+        [SRC, SRC.with_name("src-pages.c"), ROOT / "tests/fixtures/native-page-absent.s"],
         STUBS,
         {
             "_mf_first": FIRST,
@@ -535,3 +537,122 @@ def test_src_page_hook_gives_added_types_one_page_and_stock_types_two(unit):
         assert run_src_page(unit, typ, 2, 0) == ("_mf_spa", 2, 0), typ
         assert run_src_page(unit, typ, 2, 1) == ("_mf_sp", 2, 1), typ
         assert run_src_page(unit, typ, 1, 0) == ("_mf_spa", 2, 0), typ
+
+
+def capability_case(unit, typ=18, fields=(1, 16, 2, 7), idx=1, capacity=2):
+    address = VIEW + 0x300
+    memory = {**type_fn(typ), **view_mem(1, idx)}
+    view = bytearray(memory[VIEW])
+    view[0x84:0x88] = be32(PAGES + 4 * capacity)
+    memory[VIEW] = bytes(view)
+    memory[address] = b"".join(be32(v) for v in fields)
+    draw = {
+        "routine": "mf_srcpage",
+        "a": {2: VIEW},
+        "stack": [0xAAAA, 0xBBBB],
+        "reads": [(VIEW + 0x7C, 0x18)],
+    }
+    return memory, address, draw
+
+
+def page_state(result):
+    b = result.reads[0]
+    return (int.from_bytes(b[4:8], "big") - PAGES) // 4, int.from_bytes(b[20:24], "big")
+
+
+def test_explicit_src_capability_survives_draw_and_requires_matching_revocation(unit):
+    memory, address, draw = capability_case(unit)
+    registered, first, _, still, _, removed = unit.run_cases(
+        memory,
+        [
+            {"routine": "mf_src_register", "stack": [unit.rts, 18, address]},
+            draw,
+            {"routine": "mf_src_unregister", "stack": [unit.rts, 18, 6]},
+            draw,
+            {"routine": "mf_src_unregister", "stack": [unit.rts, 18, 7]},
+            draw,
+        ],
+    )
+    assert registered.d[0] == 0
+    assert page_state(first) == page_state(still) == (2, 1)
+    assert page_state(removed) == (1, 0)
+    for r in (first, still, removed):
+        assert r.stub == "_mf_spa" and r.a[2] == VIEW and r.stack[0] == 0xAAAA
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [(2, 16, 2, 7), (1, 12, 2, 7), (1, 16, 3, 7), (1, 16, 0, 7), (1, 16, 2, 0)],
+)
+def test_invalid_src_capability_does_not_enable_second_page(unit, fields):
+    memory, address, draw = capability_case(unit, fields=fields)
+    registered, painted = unit.run_cases(
+        memory,
+        [
+            {"routine": "mf_src_register", "stack": [unit.rts, 18, address]},
+            draw,
+        ],
+    )
+    assert registered.d[0] == 0xFFFFFFFF
+    assert page_state(painted) == (1, 0)
+
+
+@pytest.mark.parametrize(
+    "idx,capacity,expected", [(2, 2, (2, 0)), (0xFFFFFFFF, 2, (2, 0)), (1, 1, (1, 0))]
+)
+def test_src_capability_bounds_index_and_never_extends_storage(
+    unit, idx, capacity, expected
+):
+    memory, address, draw = capability_case(unit, idx=idx, capacity=capacity)
+    _, painted = unit.run_cases(
+        memory,
+        [
+            {"routine": "mf_src_register", "stack": [unit.rts, 18, address]},
+            draw,
+        ],
+    )
+    assert page_state(painted) == expected
+    assert int.from_bytes(painted.reads[0][8:12], "big") == PAGES + 4 * capacity
+
+
+def test_src_registration_cannot_replace_another_live_generation(unit):
+    memory, address, draw = capability_case(unit)
+    other = address + 16
+    memory[other] = b"".join(be32(v) for v in (1, 16, 1, 8))
+    first, second, painted = unit.run_cases(
+        memory,
+        [
+            {"routine": "mf_src_register", "stack": [unit.rts, 18, address]},
+            {"routine": "mf_src_register", "stack": [unit.rts, 18, other]},
+            draw,
+        ],
+    )
+    assert first.d[0] == 0 and second.d[0] == 0xFFFFFFFF
+    assert page_state(painted) == (2, 1)
+
+
+@pytest.mark.parametrize("typ", [0, 6, 32, 0xFFFFFFFF])
+def test_src_registration_refuses_stock_and_out_of_range_types(unit, typ):
+    memory, address, draw = capability_case(unit, typ=typ)
+    registered, painted = unit.run_cases(
+        memory,
+        [
+            {"routine": "mf_src_register", "stack": [unit.rts, typ, address]},
+            draw,
+        ],
+    )
+    assert registered.d[0] == 0xFFFFFFFF
+    assert page_state(painted) == ((1, 0) if typ == 32 else (2, 1))
+
+
+def test_src_registration_is_scoped_to_its_machine_type(unit):
+    memory, address, draw = capability_case(unit, typ=19)
+    registered, painted = unit.run_cases(
+        memory,
+        [
+            {"routine": "mf_src_register", "stack": [unit.rts, 18, address]},
+            draw,
+        ],
+    )
+    assert registered.d[0] == 0
+    assert page_state(painted) == (1, 0)
