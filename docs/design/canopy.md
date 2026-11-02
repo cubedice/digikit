@@ -2159,6 +2159,15 @@ Details and evidence are in the
 | 6 | Coexistence, admitted instance count and hardware release proof | CANOPY + Overloop + uploads; worst-case CPU; real keyboard latency and lifetime checks |
 | Later | Native Sound/project extension, automation and internal MIDI-track chords | Dedicated round-trip, copy/paste, p-lock/LFO and routing proofs |
 
+Stage 6 progress, 2026-11-02: the named `canopy-overloop` image passes preflight
+and the combined booted-emulator test passes four held notes, Overloop capture,
+a 32 KiB upload/verification, live window edits, loop-side playback and key
+release without losing the recording or note ownership. Physical timing,
+worst-case hardware CPU and USB/DIN lifetime qualification remain open. USB
+audio is connected, but capture permission was declined; no DIN source is
+connected. See the [Stage 6 handover](../handovers/HANDOVER-2026-11-02-canopy-stage6.md)
+for the exact artifacts, measurement boundaries and remaining release gates.
+
 Stage 1 is a go/no-go gate. A beautiful pad sound with shared-note cutoff is a failed keyboard instrument. The detailed two-page UI must not delay that proof. Do not expand into extra oscillator types or recognition heuristics while MIDI/AMP ownership remains unresolved.
 
 ## Tests and code owners

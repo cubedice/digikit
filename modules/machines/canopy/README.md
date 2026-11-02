@@ -1,12 +1,12 @@
 # CANOPY implementation
 
-This directory contains the four-note pad instrument with Stage 4 movement for the
+This directory contains the four-note pad instrument with movement, presets and two SRC pages for the
 [CANOPY design](../../../docs/design/canopy.md). Its dynamic package uses V2
 reset/process callbacks and an assigned machine type. It requires the optional
 DTII 1.17 `core/instrument-play` adapter; ordinary firmware cannot admit it.
 The engine supports Velvet/Reed families, color, drift and local envelopes.
-The final SRC interface, presets and hardware release remain later stages.
-Synchronized-clock qualification is still in progress.
+Stage 5 emulator acceptance is complete. Stage 6 coexistence and physical release qualification remain open.
+This is not a hardware-qualified release.
 
 Build and pack with `patchkit build digikit/canopy` and
 `patchkit pack digikit/canopy --device dt2 -o out/patch/canopy-dt2.dkm` through
@@ -33,7 +33,7 @@ note. Zero-velocity Note On must already have been normalized by MIDI ingress.
 QUIET is returned only after every local release finishes, and the entire output
 block is always written. Independent banks allow separate track state.
 
-The adapter supplies PLAY, ROOT + TYPE and learned chord modes. Presets remain a future stage. The callback layer supports CC64 sustain, CC121 pedal reset, CC123 All Notes Off and CC120
+The adapter supplies PLAY, ROOT + TYPE and learned chord modes. The callback layer supports CC64 sustain, CC121 pedal reset, CC123 All Notes Off and CC120
 All Sound Off, plus 14-bit pitch bend at a fixed +/-2 semitone range, scoped to
 MIDI port/channel.
 
