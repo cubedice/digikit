@@ -27,14 +27,14 @@ void cv_note(char out[6],uint32_t note,int valid)
 }
 static const char *const labels[18]={"CHORD","VOICING","COLOR","DRIFT","STRUM","ARP MIX",
     "RATE","ORDER","OCTAVES","GATE","SWING","RESTART","LATCH","SOURCE","ATTACK","RELEASE","TUNE","LEVEL"};
-static void value(char out[6],const CsState *s,uint32_t id,const char *tune,const char *level)
+static void value(char out[8],const CsState *s,uint32_t id,const char *tune,const char *level)
 {
     static const char *const chord[]={"MAJ","MAJ6","SUS2","MIN6","MIN","SUS4","ADD9","DOM7","DIM","MIN7","USER","MAJ7"};
     static const char *const voice[]={"CLOSE","OPEN","INV1","INV2"};
     static const char *const order[]={"UP","DOWN","UP/DN","PLAY","RND"};
     static const char *const restart[]={"TRIG","PATT","CONT"};
     static const char *const rate[]={"--","1/4","1/8","1/8T","1/16","5/Q","1/16T","7/Q","1/32"};
-    if(id==CS_TUNE || id==CS_LEVEL) { text(out,6,id==CS_TUNE?tune:level); return; }
+    if(id==CS_TUNE || id==CS_LEVEL) { text(out,8,id==CS_TUNE?tune:level); return; }
     uint32_t n=s->value[id]; const char *v=0;
     if(id==CP_CHORD) v=s->mode==KB_PLAY?"AUTO":s->learned?"USER":n<12?chord[n]:"--";
     else if(id==CP_VOICING) v=s->mode==KB_PLAY?"--":s->learned?"ASLRN":n<4?voice[n]:"--";
@@ -111,7 +111,7 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
         if(id>=18) continue;
         text(d->label[i],8,id==CP_VOICING?"VOICE":id==CP_OCTAVES?"OCTS":labels[id]);
         value(d->value[i],s,id,tune,level);
-        if(id<16 && (!fresh || !is_detail_confirmed(status,now) || (s->pending&(1u<<id)))) d->pending|=(uint8_t)(1u<<i);
+        if(id<=CS_TUNE && (!fresh || !is_detail_confirmed(status,now) || (s->pending&(1u<<id)))) d->pending|=(uint8_t)(1u<<i);
     }
     text(d->mode,6,s->mode==KB_PLAY?"K:PLY":s->mode==KB_ROOT?"K:RT":"K:LRN");
     for(uint32_t i=0;i<4;++i) cv_note(d->notes[i],0,0);
@@ -141,9 +141,9 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
         else if(s->learned && (id==CP_CHORD || id==CP_VOICING)) text(d->heading,22,"AS LEARNED");
         else if(id<18) {
             text(d->heading,22,labels[id]); uint32_t at=length(d->heading,21);
-            d->heading[at++]=' '; char v[6]; value(v,s,id,tune,level); text(d->heading+at,22-at,v);
+            d->heading[at++]=' '; char v[8]; value(v,s,id,tune,level); text(d->heading+at,22-at,v);
             at=length(d->heading,21);
-            if(id<16 && (s->pending&(1u<<id)) && at+1<22) text(d->heading+at,22-at,"*");
+            if(id<=CS_TUNE && (s->pending&(1u<<id)) && at+1<22) text(d->heading+at,22-at,"*");
         }
         if(id==CP_ARP_MIX) { d->mix_bar=1; d->mix_requested=(uint8_t)s->value[id]; d->mix_applied=(uint8_t)status->fast[8]; }
         return;
@@ -185,6 +185,7 @@ static uint16_t glyph(char c)
     if(c=='b') return 0x49ae;
     if(c=='#') return 0x5f7d;
     if(c==':') return 0x0410;
+    if(c=='.') return 0x0002;
     if(c=='-') return 0x01c0;
     if(c=='/') return 0x12a4;
     if(c=='+') return 0x05d0;
@@ -213,9 +214,9 @@ void cv_paint(uint8_t p[1024],const CvDisplay *d)
     for(int y=10;y<64;++y) for(int x=0;x<124;++x) pixel(p,x,y,0);
     for(uint32_t i=0;i<8;++i) {
         int x=(int)(i%4)*31,y=i<4?11:48;
-        uint32_t chars=length(d->value[i],5);
-        int inset=(31-(int)chars*6+1)/2;
-        draw(p,d->label[i],x,y,0,x+30); draw(p,d->value[i],x+inset,y+7,1,x+30);
+        uint32_t chars=length(d->value[i],7); int large=chars<=5;
+        int inset=(31-(int)chars*(large?6:4)+1)/2;
+        draw(p,d->label[i],x,y,0,x+30); draw(p,d->value[i],x+inset,y+7,large,x+30);
         if(d->pending&(1u<<i)) draw(p,"*",x+28,y,0,x+31);
     }
     draw(p,d->heading,2,28,1,79); draw(p,d->mode,80,29,0,100);

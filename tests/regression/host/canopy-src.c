@@ -80,6 +80,18 @@ int main(int argc,char **argv)
         continuous=0; is_poll(&status,UINT32_MAX-10,read_status);
         queued=1; is_poll(&status,5,read_status);
         assert(status.fast_at==UINT32_MAX-10 && is_fresh(&status,5));
+    } else if(!strcmp(scenario,"native-tune")) {
+        uint32_t revision=ui.revision, values[32]={0};
+        cs_native_tune(&ui,0x4c80);
+        assert(ui.revision==revision+1 && ui.pending==(1u<<CS_TUNE));
+        cs_native_tune(&ui,0xffff); assert(ui.native_tune==0x4c80);
+        cs_metadata(&ui,123); assert(ui.pending==0x1ffff);
+        for(unsigned i=0;i<CP_CONTROLS;++i) values[i]=ui.value[i];
+        values[CS_TUNE]=0x4000;
+        cs_applied(&ui,12,ui.revision,values); assert(ui.pending==(1u<<CS_TUNE));
+        values[CS_TUNE]=0x4c80;
+        cs_applied(&ui,12,ui.revision-1,values); assert(ui.pending);
+        cs_applied(&ui,12,ui.revision,values); assert(!ui.pending);
     } else if(!strcmp(scenario,"metadata")) {
         uint32_t revision=ui.revision;
         cs_metadata(&ui,123); assert(ui.revision==revision+1 && ui.pending==0xffff);

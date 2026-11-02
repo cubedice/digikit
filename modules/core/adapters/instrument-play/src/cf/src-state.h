@@ -9,12 +9,14 @@ typedef struct {
     uint32_t generation, track, token, revision, pending, focus_at, metadata;
     uint16_t value[CP_CONTROLS];
     uint8_t page[16], visible, mode, clock, learned, modal, focus, focus_id;
+    uint32_t native_tune;
 } CsState;
 /* Caller owns serial access. No retained view pointer or I/O. */
 void cs_init(CsState *);
 /* Import setup/preset/MIDI-selector changes into the same requested bank. */
 void cs_sync(CsState *,const uint16_t values[CP_CONTROLS]);
 void cs_metadata(CsState *,uint32_t metadata);
+void cs_native_tune(CsState *,uint32_t raw);
 uint32_t cs_context(CsState *,uint32_t track,uint32_t generation,int visible,
     uint32_t page,uint32_t mode,uint32_t clock,int learned,int modal);
 uint32_t cs_control(uint32_t page,uint32_t encoder);

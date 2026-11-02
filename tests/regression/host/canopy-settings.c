@@ -29,6 +29,7 @@ uint32_t dkrt_instrument_generation(void) { return admitted; }
 uint32_t dkrt_irq_mask(void) { unsigned before=masked; ++masked; return before; }
 void dkrt_irq_restore(uint32_t sr) { masked=sr; }
 int instrument_sound_prepare(int refresh) { (void)refresh; return 1; }
+uint32_t instrument_sound_tune(void) { return 0x4000; }
 void ip_view_build(uint32_t view) { (void)view; }
 void mi_instance_reset(uint32_t track) { ++mi_ledger.generations[track]; }
 int mi_registry_reply(uint32_t *out,uint32_t words) { (void)out; (void)words; return 0; }

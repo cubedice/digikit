@@ -10,12 +10,26 @@
 .EXTERN _cp_start_one;
 .EXTERN _cp_retune;
 .EXTERN _cp_blend;
+.EXTERN _cp_tune_changed;
+.EXTERN _cp_v2_instance;
 _ca_process:
     DM(_ca_state) = R4;
     DM(_ca_input) = R8;
     R0 = 544;
     R0 = R4 + R0;
     DM(_ca_voice) = R0;
+    I0 = R0;
+    R0 = DM(_cp_tune_changed);
+    R0 = PASS R0;
+    IF EQ JUMP _ca_native_tuned;
+    R0 = DM(0, I0);
+    R0 = PASS R0;
+    IF EQ JUMP _ca_native_tuned;
+    I1 = R4;
+    R12 = DM(198, I1);
+    R9 = DM(199, I1);
+    CALL _cp_retune;
+_ca_native_tuned:
     I2 = R8;
     R0 = 0;
     DM(_ca_order) = R0;
@@ -257,6 +271,7 @@ _ca_try_start:
     I0 = R0;
     R12 = DM(15, I2);
     R9 = DM(17, I2);
+    CALL _ca_remember_tuning;
     CALL _cp_retune;
     R0 = DM(_ca_voice);
     I2 = R0;
@@ -316,7 +331,17 @@ _ca_member_bend:
     R0 = DM(21, I2);
     R12 = R12 + R0;
     R9 = DM(_ca_bend_value);
+    CALL _ca_remember_tuning;
     CALL _cp_retune;
+    RTS;
+_ca_remember_tuning:
+    R0 = DM(_cp_v2_instance);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R0 = DM(_ca_state);
+    I1 = R0;
+    DM(198, I1) = R12;
+    DM(199, I1) = R9;
     RTS;
 _ca_candidates:
     R0 = 0;

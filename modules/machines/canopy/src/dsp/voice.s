@@ -462,7 +462,8 @@ _cp_render_next:
     DM(0, I1) = R0;
     CALL _cp_start;
     R9 = DM(_cp_pending_bend);
-    R9 = PASS R9;
+    R0 = DM(_cp_native_tune);
+    R0 = R0 OR R9;
     IF NE CALL _cp_retune;
     R8 = R13;
     R15 = 1;
@@ -480,7 +481,24 @@ _cp_advance_slot:
 .GLOBAL _cp_retune;
 .EXTERN _cp_angles;
 _cp_retune:
-    R0 = LSHIFT R12 BY 3;
+    R0 = DM(_cp_native_tune);
+    R1 = -8;
+    R10 = ASHIFT R0 BY R1;
+    R10 = R12 + R10;
+    R1 = 255;
+    R0 = R0 AND R1;
+    R1 = 0;
+    COMP(R10, R1);
+    IF LT R0 = R1;
+    IF LT R10 = R1;
+    R1 = 127;
+    COMP(R10, R1);
+    R2 = 0;
+    IF GE R0 = R2;
+    IF GT R10 = R1;
+    R0 = LSHIFT R0 BY 4;
+    R9 = R9 + R0;
+    R0 = LSHIFT R10 BY 3;
     R1 = _cp_tuning;
     R0 = R0 + R1;
     I1 = R0;
@@ -505,7 +523,7 @@ _cp_retune:
     F2 = 1.0;
     F1 = F1 + F2;
     F1 = F1 * F0; // exp(x)-1 directly, avoiding cancellation near center
-    R0 = LSHIFT R12 BY 2;
+    R0 = LSHIFT R10 BY 2;
     R2 = _cp_angles;
     R0 = R0 + R2;
     I1 = R0;
@@ -543,6 +561,12 @@ _cp_retune_store:
     RTS;
 .SECTION/DM seg_dmda;
 .VAR _cp_pending_bend = 0;
+.GLOBAL _cp_native_tune;
+.VAR _cp_native_tune = 0;
+.GLOBAL _cp_tune_changed;
+.VAR _cp_tune_changed = 0;
+.GLOBAL _cp_v2_instance;
+.VAR _cp_v2_instance = 0;
 
 // Scalar call workspace. V2 loads these from the current instance each block;
 // no persistent voice ownership lives here. Legacy kernel probes use sine.

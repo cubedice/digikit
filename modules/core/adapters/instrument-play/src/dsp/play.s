@@ -314,6 +314,9 @@ _iv_config_validate:
     JUMP _iv_config_copy;
 _iv_six_config:
     R0 = DM(5, I0);
+    R1 = 0x43505337;
+    COMP(R0, R1);
+    IF EQ JUMP _iv_seven_config;
     R1 = 0x43505336;
     COMP(R0, R1);
     IF NE JUMP _iv_no;
@@ -328,6 +331,30 @@ _iv_six_config:
     R1 = 2;
     COMP(R0, R1);
     IF GT JUMP _iv_no;
+    JUMP _iv_effective_controls;
+_iv_seven_config:
+    R0 = DM(_iv_values);
+    I1 = R0;
+    R0 = DM(0, I1);
+    R1 = FEXT R0 BY 0:8;
+    R2 = 7;
+    COMP(R1, R2);
+    IF NE JUMP _iv_no;
+    R1 = FEXT R0 BY 10:6;
+    R1 = PASS R1;
+    IF NE JUMP _iv_no;
+    R1 = LSHIFT R0 BY -16;
+    R2 = 0x400;
+    COMP(R1, R2);
+    IF LT JUMP _iv_no;
+    R2 = 0x7c00;
+    COMP(R1, R2);
+    IF GT JUMP _iv_no;
+    R0 = FEXT R0 BY 8:2;
+    R1 = 2;
+    COMP(R0, R1);
+    IF GT JUMP _iv_no;
+_iv_effective_controls:
     R0 = DM(16, I1);
     R0 = PASS R0;
     IF LT JUMP _iv_no;
@@ -523,6 +550,10 @@ _iv_four_validate:
     IF EQ R2 = R1;
     R0 = FEXT R0 BY 0:8;
     R1 = 6;
+    COMP(R0, R1);
+    R1 = 32;
+    IF EQ R2 = R1;
+    R1 = 7;
     COMP(R0, R1);
     R1 = 32;
     IF EQ R2 = R1;

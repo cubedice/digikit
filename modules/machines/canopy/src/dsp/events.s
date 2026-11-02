@@ -3,6 +3,50 @@
 .EXTERN _cp_note_on;
 .EXTERN _cp_note_off;
 .EXTERN _cp_retune;
+// UI-native transpose changes retune every owned foreground/tail/pending slot
+// using its original MIDI pitch and route bend. Phase and gates are preserved.
+.GLOBAL _cp_retune_all;
+_cp_retune_all:
+    DM(_ci_bank) = R4;
+    I1 = R8;
+    I2 = _ci_pedal_staging;
+    R2 = 64;
+_ci_tune_controllers:
+    R0 = DM(I1, M6);
+    DM(I2, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _ci_tune_controllers;
+    I1 = R4;
+    I2 = _cp_staging;
+    R2 = 64;
+_ci_tune_snapshot:
+    R0 = DM(I1, M6);
+    DM(I2, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _ci_tune_snapshot;
+    R0 = 0;
+    DM(_ci_owner_index) = R0;
+_ci_tune_owner:
+    CALL _ci_owner_at;
+    R0 = DM(0, I2);
+    R0 = PASS R0;
+    IF NE CALL _ci_retune_owner;
+    R0 = DM(_ci_owner_index);
+    R0 = R0 + 1;
+    DM(_ci_owner_index) = R0;
+    R1 = 10;
+    COMP(R0, R1);
+    IF LT JUMP _ci_tune_owner;
+    R0 = DM(_ci_bank);
+    I1 = R0;
+    I2 = _cp_staging;
+    R2 = 64;
+_ci_tune_commit:
+    R0 = DM(I2, M6);
+    DM(I1, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _ci_tune_commit;
+    RTS;
 // Internal shared atomic event engine. Explicit instance storage, independent
 // of the legacy track-bank lookup: R4 bank, R8 pedal state, R12 triples, R9 count.
 .GLOBAL _cp_apply_packed;

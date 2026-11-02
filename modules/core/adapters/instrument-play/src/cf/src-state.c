@@ -9,6 +9,7 @@ void cs_init(CsState *s)
 {
     for(uint32_t i=0;i<sizeof(*s);++i) ((volatile uint8_t *)s)[i]=0;
     s->token=1; s->revision=1; s->focus_id=CS_NONE;
+    s->native_tune=0x4000;
     s->value[CP_COLOR]=64; s->value[CP_RATE]=4; s->value[CP_OCTAVES]=1;
     s->value[CP_GATE]=50; s->value[CP_ATTACK]=5; s->value[CP_RELEASE]=15;
 }
@@ -45,7 +46,12 @@ uint32_t cs_control(uint32_t page,uint32_t encoder)
 void cs_metadata(CsState *s,uint32_t metadata)
 {
     if(s->metadata==metadata || s->revision==UINT32_MAX) return;
-    s->metadata=metadata; ++s->revision; s->pending=0xffff;
+    s->metadata=metadata; ++s->revision; s->pending|=0xffff;
+}
+void cs_native_tune(CsState *s,uint32_t raw)
+{
+    if(raw<0x400 || raw>0x7c00 || raw==s->native_tune || s->revision==UINT32_MAX) return;
+    s->native_tune=raw; ++s->revision; s->pending|=1u<<CS_TUNE;
 }
 int cs_edit(CsState *s,uint32_t token,uint32_t encoder,int32_t detents,uint32_t now,uint32_t *id)
 {
@@ -76,4 +82,5 @@ void cs_applied(CsState *s,uint32_t generation,uint32_t revision,const uint32_t 
     if(generation!=s->generation || revision!=s->revision) return;
     for(uint32_t i=0;i<CP_CONTROLS;++i)
         if(values[i]==s->value[i]) s->pending&=~(1u<<i);
+    if(values[CS_TUNE]==s->native_tune) s->pending&=~(1u<<CS_TUNE);
 }

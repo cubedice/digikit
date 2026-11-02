@@ -3,7 +3,7 @@
 Development-only DTII OS 1.17 adapter for one admitted V2 instance on track 1
 (the zero-based DSP track 0). It is not in a default patch set. There is no
 hardware release approval. The development policy admits one instance with a
-544-byte state ceiling and declared 100000/1000 process/reset ceilings.
+800-byte state ceiling and declared 100000/1000 process/reset ceilings.
 Instruction-test limits are not a measured hardware cycle budget.
 
 The early-frame transport callbacks copy normalized events into an owned input
@@ -157,9 +157,10 @@ The final five KEYBOARD rows control the pad while notes remain held:
 | ATTACK | 0..127 maps to `10 + 14*value` milliseconds | 5 = 80 ms |
 | RELEASE | 0..127 maps to `40 + 64*value` milliseconds from full level | 15 = 1000 ms |
 
-These are setup controls until the Stage 5 SRC pages/presets. They remain at the
-current setting across compatible pattern switches and return to defaults on
-reboot. They are not Sound/project parameters. Stock filter, level, pan and FX
+The Stage 5 SOUND/MOVEMENT pages expose the performance controls; ATTACK and
+RELEASE remain in setup. Four explicit presets save the complete custom bank
+and an embedded learned shape. They are not native Sound/project parameters.
+Stock filter, level, pan and FX
 continue downstream of the instrument. Use a sustained stock AMP shape for
 independent keyboard notes; stock AMP remains a shared master shape.
 
@@ -175,7 +176,7 @@ CANOPY uses one rotating oscillator per tone group and derives only the second
 and third harmonics. Frequency-dependent weights fade harmonics before Nyquist,
 including bent/drifted pitches. Four foreground groups and two shared tails have
 fixed headroom below 0.75 at full velocity; note count never normalizes gain.
-The 544-byte instance and 2560-byte shared pitch/envelope tables fit the design's
+The current 800-byte instance and 2560-byte shared pitch/envelope tables fit the design's
 4 KiB/64 KiB targets. Single-instance admission remains in force. Instruction
 bounds are not a silicon CPU or Overloop coexistence qualification.
 
@@ -184,8 +185,9 @@ The packaged Stage 3 acceptance uses `out/patch/canopy-stage3.syx` and
 acceptance can run against the Stage 3 image as well. No physical device is
 flashed by these tests.
 
-Use the matching Stage 3 firmware and CANOPY DKM together. The older sine-only
-DKM cannot consume the new six-word sound configuration.
+Use matching firmware and CANOPY DKM builds together. Stage 5 uses the CPS7
+32-word bank, including native TUNE and the complete custom presentation bank;
+the Stage 3 package above is a historical checkpoint.
 ## Optional process status output
 
 Descriptor flag bit 0 opts an instrument into the V5/96-byte borrowed input.
@@ -205,6 +207,14 @@ negative or invalid callback results. The playback owner also clears readiness
 each block before checking admission/session, preventing reuse after revocation.
 
 The mailbox connects to the authenticated alternating status-frame transport.
-CANOPY's descriptor remains unflagged until its actual-state producer and
-applied-control identity are implemented. This interface alone does not supply
-screen telemetry or complete SRC acceptance.
+CANOPY now opts in: actual notes/arp state and revision-bound detail fragments
+drive the two SRC pages. The visible UI task drains telemetry independently of
+painting and invalidates at most every 40 ms. Native TUNE/LEVEL use the stock
+parameter editor and bounded custom value cells; the remaining controls use
+stable preset IDs. The adapter captures queued encoder ownership at dispatch
+and excludes stock tracks, alternate context and opaque modals.
+
+Stage 5 acceptance is `tests/regression/runtime/canopy-stage5.test.ts`, using
+`out/patch/canopy-stage5-native.syx` and the matching
+`out/patch/canopy-stage5-native.dkm`. Hardware keyboard latency, worst-case CPU
+and Overloop coexistence remain separate Stage 6 release checks.

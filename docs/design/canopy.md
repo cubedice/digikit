@@ -1,11 +1,13 @@
 # CANOPY technical design
 
-Status: Stage 1 complete in the DTII OS 1.17 coupled emulator, 2026-11-01.
-The optional development firmware admits the uploaded CANOPY V2 sine instrument
-on track 1. The stock machine chooser and explicit USB/DIN keyboard setup work;
-final stereo chord continuity, pedal ownership, independent velocity and
-acknowledged fault retirement pass the integrated acceptance. This is not the
-finished pad synth or a hardware release. Stages 2-6 remain separate.
+Status: Stage 5 implementation and DTII OS 1.17 emulator acceptance complete,
+2026-11-02. The admitted CANOPY pad instrument has explicit presets, live
+SOUND/MOVEMENT pages, native TUNE/LEVEL editing and revision-bound display
+updates. The integrated test passes LEARN, durable preset save/load, held-note
+retuning, page navigation and stock-track isolation. Stage 6 hardware latency,
+CPU and Overloop coexistence qualification remain separate; this is not a
+hardware release. Evidence is in the
+[Stage 5 handover](../handovers/HANDOVER-2026-11-01-canopy-stage5.md).
 
 The implementation uses [instrument MIDI ownership](../../modules/core/adapters/midi-events/README.md),
 [the admitted playback adapter](../../modules/core/adapters/instrument-play/README.md)
@@ -1912,12 +1914,45 @@ The first release distinguishes scopes explicitly:
 
 | State | Initial persistence contract |
 | --- | --- |
-| Four existing machine values and stock TUNE/LEVEL | Existing firmware slot backing; verify save/load in CANOPY scenarios |
-| Extra controls and learned shapes | Explicit DigiKit preset save/load; no automatic Sound/pattern association |
+| Stock TUNE/LEVEL | Existing firmware Sound backing and native parameter editing |
+| All sixteen CANOPY controls and learned shapes | Explicit DigiKit preset save/load; no automatic Sound/pattern association |
 | MIDI routing | Device setup, restored only after valid CANOPY instances register |
 | Sound/pattern copy, p-locks and LFO modulation of new fields | Not promised until their integration passes dedicated tests |
 
 For full Sound/project integration, first prove stable identities and save/load/copy/paste/reload paths. A RAM Sound pointer or a pattern number is not a persistent key. Define behavior for missing modules and old schema versions before extending native serialization or adding a project sidecar. Keep that work separately releasable; do not imply that an attractive SRC page establishes native persistence.
+
+### V2 implementation decisions
+
+The earlier four-value native mapping described the V1 experiment. The shipped
+V2 declaration has no legacy `DK_PARAM` table; its sixteen stable control IDs
+live in one explicit preset bank. Reusing sample-machine slots for a subset of
+that bank would create two conflicting persistence owners. All custom controls
+therefore use the same validated preset service. TUNE and LEVEL retain their
+native Sound backing; loading a CANOPY preset leaves those two values alone.
+Full native Sound/project serialization remains the separately listed later
+stage, including copy/paste and modulation qualification.
+
+LEARN capture is owned by the ColdFire keyboard mapper, which sees physical
+key ownership before chord normalization. The opaque setup modal reads that
+bounded capture and binds SAVE to its session and revision. DSP note gates
+cannot reconstruct physical key ownership, so the release does not duplicate
+LEARN capture in DSP telemetry. The SRC page stops animation under the modal;
+DSP telemetry continues to own applied audio values, notes and arp state.
+
+The native SRC adapter maps SOUND A/H to stock TUNE/LEVEL parameter codes and
+forwards their native modifier behavior. Custom controls use one bounded step
+per encoder detent. Encoder presses on custom controls are consumed; no
+unverified stock reset gesture is exposed. Logical control IDs stay independent
+of visual knob order.
+
+The internal CPS7 bank keeps 32 words: word0 contains version7 in bits0..7,
+keyboard mode in bits8..9, zero in bits10..15, and native TUNE raw8.8 in bits16..31.
+The raw value is biased by0x4000 and bounded to0x0400..0x7c00. Words1..31 retain
+CPS6 meaning. Applied detail word16 reports the exact native TUNE value, allowing
+the pending marker to clear only for the matching generation and revision.
+The 800-byte instance uses words197..199 for transpose and active arp pitch/bend.
+Pitch changes preserve held voice identity; native LEVEL stays downstream in
+the stock voice path. DSP/schema changes do not alter the explicit preset format.
 
 ## Booted loader proof
 
@@ -2120,7 +2155,7 @@ Details and evidence are in the
 | 2 | Bounded pool, PLAY, ROOT + TYPE, LEARN TO ROOT, latch and settings menu | Deterministic ownership, silent selectors, capture/transposition, panic and failure recovery |
 | 3 | Pad oscillator families, local envelopes, drift and stock filter/FX integration | Pitch/aliasing/headroom checks, bounded memory/instructions, musical sustained/retrigger tests |
 | 4 | Master-grid arp, blend/strum; then finer clock/local BPM | Correct note order/gates, chord commit, stop/restart, clock-loss and tempo-change behavior |
-| 5 | Presets, named display and two SRC pages | Audio/display revision agreement, stable IDs, persistence errors, unaffected stock views |
+| 5 — complete | Presets, named display and two SRC pages | Host and booted DT2 1.17 acceptance: revision agreement, stable IDs, persistence errors, unaffected stock views |
 | 6 | Coexistence, admitted instance count and hardware release proof | CANOPY + Overloop + uploads; worst-case CPU; real keyboard latency and lifetime checks |
 | Later | Native Sound/project extension, automation and internal MIDI-track chords | Dedicated round-trip, copy/paste, p-lock/LFO and routing proofs |
 

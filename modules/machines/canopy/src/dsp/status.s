@@ -39,7 +39,7 @@ _cu_clear:
     R0 = DM(9, I3);
     I1 = R0;
     R0 = DM(0, I1);
-    R0 = LSHIFT R0 BY -8;
+    R0 = FEXT R0 BY 8:2;
     R0 = LSHIFT R0 BY 6;
     R1 = DM(2, I4);
     R0 = R0 OR R1;
@@ -353,6 +353,7 @@ _cu_detail_word:
     R0 = 0;
     R1 = 16;
     COMP(R5, R1);
+    IF EQ JUMP _cu_detail_tune;
     IF GE JUMP _cu_detail_token;
     R1 = R5 + R1;
     R1 = LSHIFT R1 BY 2;
@@ -360,6 +361,16 @@ _cu_detail_word:
     R1 = R1 + R2;
     I1 = R1;
     R0 = DM(0, I1);
+    JUMP _cu_detail_store;
+_cu_detail_tune:
+    R1 = DM(9, I3);
+    I1 = R1;
+    R1 = DM(0, I1);
+    R2 = FEXT R1 BY 0:8;
+    R3 = 7;
+    COMP(R2, R3);
+    IF NE JUMP _cu_detail_store;
+    R0 = LSHIFT R1 BY -16;
     JUMP _cu_detail_store;
 _cu_detail_token:
     R1 = 38;

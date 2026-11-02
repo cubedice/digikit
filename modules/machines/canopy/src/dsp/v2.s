@@ -5,6 +5,10 @@
 .GLOBAL _canopy_process;
 .EXTERN _cp_apply_packed;
 .EXTERN _cp_render;
+.EXTERN _cp_retune_all;
+.EXTERN _cp_native_tune;
+.EXTERN _cp_v2_instance;
+.EXTERN _cp_tune_changed;
 _canopy_reset:
     R0 = PASS R8;
     IF LE JUMP _cv_bad;
@@ -173,6 +177,9 @@ _cv_six_controls:
     I0 = R0;
     R0 = DM(0, I0);
     R1 = FEXT R0 BY 0:8;
+    R2 = 7;
+    COMP(R1, R2);
+    IF EQ JUMP _cv_seven_controls;
     R2 = 6;
     COMP(R1, R2);
     IF NE JUMP _cv_bad;
@@ -180,6 +187,23 @@ _cv_six_controls:
     R1 = 2;
     COMP(R0, R1);
     IF GT JUMP _cv_bad;
+    JUMP _cv_effective_controls;
+_cv_seven_controls:
+    R1 = FEXT R0 BY 10:6;
+    R1 = PASS R1;
+    IF NE JUMP _cv_bad;
+    R1 = LSHIFT R0 BY -16;
+    R2 = 0x400;
+    COMP(R1, R2);
+    IF LT JUMP _cv_bad;
+    R2 = 0x7c00;
+    COMP(R1, R2);
+    IF GT JUMP _cv_bad;
+    R0 = FEXT R0 BY 8:2;
+    R1 = 2;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+_cv_effective_controls:
     R0 = DM(16, I0);
     R0 = PASS R0;
     IF LT JUMP _cv_bad;
@@ -378,6 +402,24 @@ _cv_controls_ok:
     COMP(R0, R1);
     IF NE JUMP _cv_bad;
 _cv_events:
+    R0 = 0;
+    DM(_cp_native_tune) = R0;
+    R0 = DM(10, I2);
+    R1 = 32;
+    COMP(R0, R1);
+    IF NE JUMP _cv_tune_ready;
+    R0 = DM(9, I2);
+    I0 = R0;
+    R0 = DM(0, I0);
+    R1 = FEXT R0 BY 0:8;
+    R2 = 7;
+    COMP(R1, R2);
+    IF NE JUMP _cv_tune_ready;
+    R0 = LSHIFT R0 BY -16;
+    R1 = 0x4000;
+    R0 = R0 - R1;
+    DM(_cp_native_tune) = R0;
+_cv_tune_ready:
     R2 = DM(8, I2);
     R0 = 7;
     R1 = R2 - 1;
@@ -504,6 +546,23 @@ _cv_phrase_only:
     R0 = R0 OR R1;
     IF NE JUMP _cv_bad;
 _cv_render:
+    R0 = 1;
+    DM(_cp_v2_instance) = R0;
+    R0 = 0;
+    DM(_cp_tune_changed) = R0;
+    R4 = DM(_cv_state);
+    I0 = R4;
+    R0 = DM(_cp_native_tune);
+    R1 = DM(197, I0);
+    COMP(R0, R1);
+    IF EQ JUMP _cv_retuned;
+    DM(197, I0) = R0;
+    R0 = 1;
+    DM(_cp_tune_changed) = R0;
+    R1 = 256;
+    R8 = R4 + R1;
+    CALL _cp_retune_all;
+_cv_retuned:
     R0 = DM(_cv_state);
     R1 = 512;
     R0 = R0 + R1;
@@ -730,7 +789,7 @@ _cv_bad:
 .VAR _canopy_descriptor = 0x444b4954;
 .VAR _canopy_descriptor_1 = 2;
 .VAR _canopy_descriptor_2 = 48;
-.VAR _canopy_descriptor_3 = 0;
+.VAR _canopy_descriptor_3 = 1; // V5 status output for the native SRC adapter.
 .VAR _canopy_descriptor_4 = 1;
 .VAR _canopy_descriptor_5 = 800;
 .VAR _canopy_descriptor_6 = 8;

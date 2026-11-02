@@ -1,8 +1,9 @@
-# CANOPY Stage 5: preset storage checkpoint
+# CANOPY Stage 5: completed implementation and emulator acceptance
 
-Requested: complete Stage 5. **Stage 5 remains incomplete.** Stage 4 baseline is
-commit `977d144d`. This checkpoint implements explicit presets and fixes a
-durability acknowledgement bug; no device was flashed or selected differently.
+Requested: complete Stage 5. **Stage 5 is complete as of 2026-11-02.** The final
+acceptance and scope decisions are recorded at the end of this document.
+Earlier checkpoints below are historical. Stage 4 baseline is commit `977d144d`.
+No physical device was flashed or selected differently during this Stage 5 work.
 
 ## Implemented
 
@@ -471,3 +472,89 @@ lint, formatting and types; it failed only the existing global pathcheck
 (256 stale references in78 files). Scoped checks of all three changed documents
 report zero stale paths. Focused Python lint passes. The missing-phase-provider
 check passes direct/protected (two cases). No check remains running.
+
+## 2026-11-02: native SRC integration and idle refresh acceptance
+
+The native adapter now attaches SOUND/MOVEMENT paint, key, encoder, update,
+attach/detach and encoder-dispatch capture hooks on hash-pinned DT2 1.17 sites.
+The dispatch pointer must be captured after the stock event copy. Native
+fill_rect uses negative color for XOR, so the bitmap writes use 0/1. The entire
+custom grid is redrawn: native TUNE/LEVEL values use their existing formatters
+inside bounded cells, fixing the stock sample-widget fragments and cropped
+LEVEL. Header and page-dot pixels remain stock.
+
+The UI loop resolves the drawable view suffix afresh, without retaining View
+pointers. It polls telemetry independently of painting, reconciles the applied
+control revision, then invalidates at a 40 ms animation ceiling. Polling only
+inside draw left pending markers stuck until a forced capture. The production
+status capability is now enabled.
+
+The booted native UI test passes: all custom SOUND/MOVEMENT controls, disabled
+PLAY controls and KEYBOARD-only SOURCE, SRC/UP/DOWN, AMP/FLTR return, stock-track
+isolation, page memory, pending completion without forced redraw, idle paints,
+focus expiry and three MIDI notes. 54 focused host tests pass (8 native, 27 SRC,
+19 preset). Current image: out/patch/canopy-stage5-native.syx, SHA256
+0f6f2c4db7f4b5ce906b3fd30d2758f8c850067a3482398529539549550d70dd.
+Passing boot log: out/canopy-stage5-native-proof.log (326.97 seconds).
+
+At this checkpoint, Stage 5 was still open pending expanded acceptance.
+The first expanded run passed LEARN/presets and exposed the native TUNE gap;
+the final result below supersedes that run. No hardware changes or push occurred.
+
+Tooling note: this execution environment terminates the kept devreload daemon
+when its launching execution session exits. A separate later connection cannot
+reuse it. The attempted interactive harness inspection was discarded after
+setup failures; it is not evidence. Use the owner runtime test for acceptance.
+
+## Final Stage 5 acceptance — 2026-11-02
+
+Stage 5 is complete within the development single-instance V2 scope. The final
+running-firmware acceptance passes both SRC pages, editable/read-only controls,
+requested/applied agreement, idle refresh and focus expiry, SRC/UP/DOWN and
+AMP/FLTR navigation, page restoration, stock-track isolation and MIDI notes.
+It also proves opaque LEARN ownership with hidden encoders blocked, capture
+and save, a durable preset record through the real settings service, complete
+preset restoration, and native TUNE/LEVEL editing. TUNE changes the rotation
+of an already-held voice without replacing its token; its pending marker clears
+only when the applied detail revision agrees. LEVEL changes its native Sound
+value. Native encoder tests use continued movement through the stock accumulator,
+which can consume an initial event without changing a parameter.
+
+The native TUNE integration uses CPS7, preserving the complete32-word bank,
+adding the raw biased8.8 pitch in word0 and its applied detail at logical ID16.
+Direct/protected checks cover fractional pitch, pitch bend, arp, old-bank
+transitions, invalid banks, state guards and the existing instruction ceiling.
+The bounds are instruction counts, not hardware cycle measurements.
+
+Validation:
+- `out/canopy-stage5-final-runtime.log`: passing booted acceptance,394.95s test.
+- `out/canopy-stage5-final-changed.log`:333 host tests passed,16 skipped;
+  Python lint/format, layering, TypeScript lint and formatting pass.
+- The changed preflight initially found nullable memory reads in the new test;
+  explicit read failure handling fixes them. `out/canopy-stage5-final-types.log`
+  passes all routed workspace types.
+- Global pathcheck retains the known baseline256 stale references in78 files.
+  `out/canopy-stage5-final-paths.log` reports zero stale paths in changed docs.
+- `out/canopy-stage5-tune-dsp.log`:28 focused pitch/presentation/status passes.
+  The extended run added bend/arp/detail and existing budget coverage; its
+  control-copy failure was fixed and both versions pass in
+  `out/canopy-stage5-tune-bank.log`. The final busy-retune limit passes both
+  direct/protected paths in `out/canopy-stage5-tune-bound.log`.
+
+Final local artifacts:
+- `out/patch/canopy-stage5-native.syx`,2012704bytes,SHA256
+  `65520ae2ddc0086e3e4ba564180a92fc42d95f36f4db169d7651c3d4414eee21`.
+- `out/patch/canopy-stage5-native.dkm`,23652bytes,SHA256
+  `984f08a57d08280180dcee5b9c51363bdce812eacc0605735eb479e60a40df08`.
+
+The design now states the V2 persistence decision explicitly: all sixteen
+custom controls use explicit CANOPY presets; native TUNE/LEVEL retain stock
+Sound backing and are not overwritten by preset LOAD. The earlier four-value
+V1 slot mapping is not part of the V2 contract. Full native Sound/project,
+copy/paste and modulation integration remains the plan's separately listed
+later work. LEARN capture is authoritative in the physical-key mapper and its
+session/revision-bound modal, not reconstructed from DSP gate telemetry.
+
+Next is Stage 6: physical USB/DIN keyboard latency/lifetime, worst-case CPU and
+CANOPY + Overloop + uploads coexistence. No physical installation or remote push
+was performed for this completion.

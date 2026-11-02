@@ -1295,3 +1295,113 @@ def test_presentation_bank_rejects_inconsistent_audio_claims(canopy, offset, val
     controls[offset] = value
     rejected = canopy([note(2, 64)], controls=controls)
     assert rejected["regs"]["R0"] == 0xFFFFFFFF and rejected["state"] == before
+
+
+def native_controls(raw=0x4000, base=STRUM):
+    values = presentation_controls(base)
+    values[0] = 7 | (raw << 16)
+    return values
+
+
+@pytest.mark.parametrize(
+    "raw,pitch",
+    [
+        (0x4000, 60),
+        (0x4C00, 72),
+        (0x3400, 48),
+        (0x4080, None),
+        (0x400, 0),
+        (0x7C00, 120),
+    ],
+)
+def test_native_tune_transposes_held_notes_without_retrigger(canopy, raw, pitch):
+    first = canopy([note(1, 60)], controls=native_controls(), blocks=2)
+    tuned = canopy(controls=native_controls(raw), edits={11: 2})
+    assert tuned["regs"]["R0"] == 0
+    assert voices(tuned)[1][0:2] == voices(first)[1][0:2]
+    assert tuned["state"][197] == (raw - 0x4000) & 0xFFFFFFFF
+    if pitch is not None:
+        reference = canopy(
+            [note(1, pitch)], state=0x20054000, controls=native_controls()
+        )
+        assert voices(tuned)[1][4:6] == voices(reference)[1][4:6]
+    else:
+        assert voices(tuned)[1][4:6] != voices(first)[1][4:6]
+    restored = canopy(controls=native_controls(), edits={11: 3})
+    assert voices(restored)[1][4:6] == voices(first)[1][4:6]
+
+
+@pytest.mark.parametrize("raw", [0x3FF, 0x7C01, 0xFFFF])
+def test_native_tune_rejects_invalid_bank_atomically(canopy, raw):
+    first = canopy([note(1, 60)], controls=native_controls())
+    rejected = canopy(controls=native_controls(raw))
+    assert rejected["regs"]["R0"] & 0x80000000
+    assert rejected["state"] == first["state"]
+
+
+def test_native_tune_fraction_and_route_bend_combine(canopy):
+    import math
+    import struct
+
+    r = canopy([note(1, 60), [4, 0, 0, 0, 12288, 0]], controls=native_controls(0x4080))
+    sine, cosine = [
+        struct.unpack("<f", v.to_bytes(4, "little"))[0] for v in voices(r)[1][4:6]
+    ]
+    measured = math.atan2(sine, cosine) * 48000 / (2 * math.pi)
+    expected = 440 * 2 ** ((61.5 - 69) / 12)
+    assert measured == pytest.approx(expected, rel=2e-5)
+
+
+def test_native_tune_reaches_running_arp_and_survives_legacy_controls(canopy):
+    base = list(STRUM)
+    base[6] = 127
+    first = canopy([note(1, 60)], controls=native_controls(base=base), blocks=3)
+    assert first["state"][136] and first["state"][198] == 60
+    changed = canopy(controls=native_controls(0x4C00, base), edits={11: 2})
+    assert changed["state"][136] == first["state"][136]
+    assert changed["state"][140:142] != first["state"][140:142]
+    restored = canopy(controls=presentation_controls(base), edits={11: 3})
+    assert restored["state"][140:142] == first["state"][140:142]
+    changed = canopy(controls=native_controls(0x4C00, base), edits={11: 4})
+    assert changed["state"][140:142] != first["state"][140:142]
+
+
+def test_native_tune_detail_ack_contains_exact_applied_raw_value(canopy):
+    controls = native_controls(0x4080)
+    fragments = {}
+    for block in range(88):
+        r = canopy(controls=controls, edits={0: 5, 1: 96, 4: block, 11: 7})
+        ready, *words = r["status"]
+        assert ready == 1
+        if words[1] >> 30:
+            assert words[5] == 7
+            fragments[words[4] & 255] = words[6:]
+        else:
+            assert (words[1] >> 6) & 3 == 0
+    bank = sum((fragments[i] for i in range(11)), [])
+    assert bank[16] == 0x4080
+    assert bank[:16] == controls[16:]
+
+
+def test_native_tune_busy_callback_stays_within_declared_instruction_bound(canopy):
+    base = (5, 1, 127, 127, 0, 127, 127, 300, 8, 100, 4, 3, 75, 0, 0, 750)
+    controls = native_controls(0x4080, base)
+    measured = [
+        canopy([note(i + 1, 48 + i, 127) for i in range(8)], controls=controls)[
+            "instructions"
+        ]
+    ]
+    measured.append(
+        canopy([note(i + 9, 60 + i, 127) for i in range(8)], controls=controls)[
+            "instructions"
+        ]
+    )
+    changed = native_controls(0x4C80, base)
+    measured.append(
+        canopy(
+            [[4, 0, 0, 0, 16383 - i, 0] for i in range(8)],
+            controls=changed,
+            edits={11: 2},
+        )["instructions"]
+    )
+    assert max(measured) < 100000

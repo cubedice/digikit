@@ -39,6 +39,7 @@ test.each([
   'focus',
   'applied',
   'metadata',
+  'native-tune',
   'token-ownership',
   'freshness',
   'poll-freshness',

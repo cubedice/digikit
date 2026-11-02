@@ -15,6 +15,7 @@ extern uint32_t dkrt_instrument_generation(void);
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
 extern int instrument_sound_prepare(int allow_refresh);
+extern uint32_t instrument_sound_tune(void);
 static const uint32_t limits[8] = {0x49525031,1,1,100000,1000,8,128,800};
 const uint32_t *instrument_runtime_policy(void) { return limits; }
 static int enabled, usb=1, din=1, channel=1;
@@ -245,6 +246,7 @@ static void preset_snapshot(CpPreset *p)
 static void src_requested(CpPreset *current)
 {
     if(!src_initialized) { cs_init(&src_state); src_initialized=1; }
+    cs_native_tune(&src_state,instrument_sound_tune());
     preset_snapshot(current); cs_sync(&src_state,current->control);
     cs_metadata(&src_state,current->mode | ((uint32_t)current->clock<<2) |
         ((uint32_t)current->family<<4) | ((uint32_t)current->bpm<<8));
@@ -289,13 +291,18 @@ int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint3
     pad_dirty=1; dkrt_irq_restore(sr);
     return result;
 }
+void instrument_src_poll(uint32_t now)
+{
+    if(!src_initialized) return;
+    is_poll(&src_status,now,mi_status_reply);
+    if(is_detail_confirmed(&src_status,now))
+        cs_applied(&src_state,src_status.generation,src_status.detail_control,src_status.detail);
+}
 void instrument_src_display(CvDisplay *out,uint32_t now,const char *tune,const char *level)
 {
     if(!src_initialized) (void)instrument_src_context(0,0,0);
     (void)instrument_src_context(src_state.track,src_state.page[src_state.track],src_state.visible);
-    is_poll(&src_status,now,mi_status_reply);
-    if(is_detail_confirmed(&src_status,now))
-        cs_applied(&src_state,src_status.generation,src_status.detail_control,src_status.detail);
+    instrument_src_poll(now);
     cv_build(out,&src_state,&src_status,now,tune,level,preset_result || storage_result);
     uint32_t sr=dkrt_irq_mask();
     cv_ownership(out,&src_status,&keyboard,now);
@@ -423,6 +430,10 @@ void dk_app_instrument_settings_rows(dk_ui_menu *parent)
 }
 void instrument_play_tick(void)
 {
+#if defined(__m68k__)
+    extern void instrument_src_tick(void);
+    instrument_src_tick();
+#endif
     uint32_t reply[16];
     if (!keyboard_initialized) {
         uint8_t record[KB_RECORD_BYTES]; kb_init(&keyboard);
@@ -502,7 +513,7 @@ void instrument_play_tick(void)
      * The same revision owns SRC pending markers and the audio configuration. */
     CpPreset current; src_requested(&current);
     const uint16_t *v=current.control;
-    uint32_t values[32]={6|((uint32_t)current.mode<<8),current.family,
+    uint32_t values[32]={7|((uint32_t)current.mode<<8)|(src_state.native_tune<<16),current.family,
         v[CP_COLOR],v[CP_DRIFT],v[CP_ATTACK],v[CP_RELEASE],v[CP_ARP_MIX],current.bpm,
         v[CP_RATE],v[CP_GATE],v[CP_ORDER],v[CP_OCTAVES],v[CP_SWING],current.clock,
         v[CP_RESTART],(uint32_t)v[CP_STRUM]*3/2,
@@ -528,9 +539,9 @@ void instrument_play_tick(void)
         else prepared=(uint32_t)result;
     }
     if (phase == 1 && prepared && !mi_ledger.reset_mask &&
-        !mi_config_submit(0,src_state.revision,0x43505336,values,32)) { phase=2; pad_dirty=0; }
+        !mi_config_submit(0,src_state.revision,0x43505337,values,32)) { phase=2; pad_dirty=0; }
     if (phase==3 && src_state.revision>mi_transport.applied[0] &&
-        !mi_config_submit(0,src_state.revision,0x43505336,values,32)) pad_dirty=0;
+        !mi_config_submit(0,src_state.revision,0x43505337,values,32)) pad_dirty=0;
     if (phase == 2 && instrument_midi_ready(0,mi_ledger.epoch,mi_ledger.generations[0])) {
         if ((!usb || !mi_route_enable(0,(uint32_t)channel-1,0,0)) &&
             (!din || !mi_route_enable(1,(uint32_t)channel-1,0,0)) &&

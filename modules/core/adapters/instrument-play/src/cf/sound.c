@@ -38,6 +38,17 @@ static uint32_t sound(uint32_t *project, uint32_t *kit)
     return ram(source) ? source : 0;
 }
 
+uint32_t instrument_sound_tune(void)
+{
+    uint32_t project=0,kit=0,source=sound(&project,&kit);
+    uint32_t type=dkrt_instrument_type();
+    if(!source || !type || *(const uint8_t *)(uintptr_t)(source+0xa2)!=type) return 0x4000;
+    /* DT2 1.17 parameter 0xca: native Sound slot25, signed 8.8 semitones
+     * biased by 0x4000. Read the current Sound, never the selected UI track. */
+    uint32_t raw=*(const uint16_t *)(uintptr_t)(source+0x14+25*2);
+    return raw>=0x400 && raw<=0x7c00 ? raw : 0x4000;
+}
+
 /* -1: close routes/reset before another refresh; 0: wait; 1: prepared.
  * Poll even while configuration is in flight. Never refresh in an old generation.
  * The deserializer hook brackets in-place loads of the tracked Sound. */

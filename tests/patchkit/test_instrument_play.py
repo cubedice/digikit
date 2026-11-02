@@ -184,7 +184,7 @@ def playback(playback_object):
                     6: 0x43505333,
                     10: 0x43505334,
                     16: 0x43505335,
-                    32: 0x43505336,
+                    32: 0x43505337 if values[0] & 255 == 7 else 0x43505336,
                 }[len(values)],
             ],
         )
@@ -514,13 +514,16 @@ def test_v5_timing_metadata_distinguishes_stop_loss_and_missing_provider(playbac
     assert get("_iv_input", 24)[12] == 0  # Missing frame, not an explicit STOP.
 
 
-def test_configuration_copies_one_complete_presentation_revision(playback):
+@pytest.mark.parametrize("native", [False, True])
+def test_configuration_copies_one_complete_presentation_revision(playback, native):
     from test_canopy_v2 import presentation_controls
 
     call, _, get, reset, configure, _, _ = playback
     reset()
     call(0)
     controls = presentation_controls(mode=1)
+    if native:
+        controls[0] = 7 | (1 << 8) | (0x4C80 << 16)
     assert configure(values=controls, revision=7) == 1
     call(0)
     assert get("_iv_controls", 32) == controls
