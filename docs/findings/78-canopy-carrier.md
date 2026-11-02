@@ -1422,3 +1422,34 @@ existing pad/direct/protected V2 cases: 97 passes in 165.04 seconds. The build
 and build-current checks pass (1251 decoded DSP instructions after the endpoint snap). These are
 callable module helpers, not yet scheduler-connected playback. No Stage 4
 running-firmware or hardware result follows. Details are in the Stage 4 handover.
+
+
+## Stage 4 local UP arp DSP integration
+
+[D] The CANOPY V2 callback now runs a local-clock ascending arp from its four
+admitted foreground/pending pad owners, excluding release tails. The arp has a
+seventh oscillator/envelope, source-token cancellation for delayed onsets, live
+pitch bend and the per-sample PAD/ARP blend. CPS4 configuration reaches this
+callback through KEYBOARD setup and the applied-revision adapter. Its mix, BPM,
+notes/quarter and gate are validated before state mutation. State is 640 bytes.
+
+102 distinct V2/adapter/ColdFire component cases pass across the component,
+timing and CF logs named `out/canopy-stage4-local-*.log`. Consecutive 600-block
+runs at 137 BPM x 3 and 300 BPM x 8 retain exact rational phase and onset counts,
+directly and under the protected callback ABI. Existing keyboard/settings host
+coverage passes all 29 cases. See the
+[Stage 4 handover](../handovers/HANDOVER-2026-11-01-canopy-stage4.md) for artifacts,
+individual logs and limits.
+
+[O] This is the explicit LOCAL UP subset. Shared arp/pad release tails, other
+orders/octaves, strum, phrase/restart semantics, synchronized tempo/phase and
+swing are not yet integrated. Busy arp replacement currently ramps its own
+slot for at most 64 samples before the new onset. The C movement policy is not
+a runtime caller and its broader options must not be advertised as implemented.
+No physical device or coexistence acceptance is claimed here.
+
+[D] The matching running-firmware acceptance also passes: stock chooser and
+KEYBOARD encoder setup, MIDI-held 60/64/67, separate arp ownership, full-arp
+finite final PCM (RMS 0.01661365, peak 0.03100340), mix-off preserving pads and
+note-off cleanup. Log: `out/canopy-stage4-local-live.log`; measurements:
+`out/canopy-stage4-local-audio.json`. This is emulator evidence only.

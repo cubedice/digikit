@@ -133,3 +133,65 @@ missing explicit `zip(strict=...)` choices in the new tests; these were correcte
 and focused Ruff checks plus all 15 blend tests pass. The full preflight log is
 `out/canopy-stage4-dsp-changed.log`; changed-document pathcheck is clean in
 `out/canopy-stage4-dsp-docs.log`.
+
+
+## Local UP arp integration checkpoint
+
+The production V2 callback now invokes `src/dsp/arp.s` and the smoothed
+PAD/ARP blend. This supersedes the unused-helper status above. CPS4 has ten
+words: version, family, color, drift, attack, release, mix, local BPM, notes
+per quarter and gate percent. KEYBOARD setup exposes the four movement values
+under LOCAL ARP - UP. Instance storage and admission policy are 640 bytes.
+Legacy CPS1/CPS3 remain accepted. Configuration validates before applying.
+
+The arp uses admitted foreground/pending pad owners, excludes the two release
+tails and keeps its own seventh oscillator/envelope. Source ownership cancels
+delayed onsets; the active source's bend retunes without resetting phase. Busy
+arp replacement uses a <=64-sample ramp; shared-tail allocation is still open.
+The rational local phase runs per 32-sample block, independently of PLAY/STOP.
+BPM/rate updates retain phase. No master-clock mode or silent fallback is exposed.
+
+[D] Component evidence: 93 passing V2/adapter cases plus one initially skipped
+ColdFire keyboard case (`out/canopy-stage4-local-components.log`). That skipped
+case passes with DIGIKIT_CF_SCRIPT set (`out/canopy-stage4-local-cf.log`). An
+additional timing/guard run passes 12 cases, four overlapping the earlier run
+(`out/canopy-stage4-local-timing.log`): 102 distinct component cases in total.
+The cadence proof executes 600 consecutive DSP blocks at 137 BPM x 3 and
+300 BPM x 8, directly and through the protected ABI, checking integer phase,
+onset count and retained pad ownership. Declared process/reset ceilings remain
+100000/1000 instructions; the measured cases peak at 23598/495. This is bounded
+callback evidence, not a hardware throughput or performance comparison.
+All 29 existing keyboard/settings host cases pass
+(`out/canopy-stage4-local-host.log`); focused Python lint/format passes.
+
+Separate emulator artifacts: `out/patch/canopy-stage4-local.syx` (1996192 bytes),
+SHA256 f84342329909cb2ca53d758f8339d56339b2f5411e28e990af54f8ec8618ed3e;
+`out/patch/canopy-stage4-local.dkm` (13620 bytes), full-file SHA256
+3141befe6fb04c5cb3581ac7b611985c1da0efb8b0ad75a7ad85be8d8cd4d65e.
+The packed payload hash is different from the full-file hash. New 640-byte
+state requires the matching core policy image; do not pair this DKM with the
+previous 544-byte Stage 3 core. No physical device was flashed.
+
+Full Stage 4 remains incomplete: other orders/octaves, strum, explicit phrase
+snapshots and restart modes, shared arp/pad tails, synchronized tempo/phase,
+swing and the associated firmware/transport acceptance remain open. The C
+movement policy is still a reference component, not the runtime implementation.
+
+[D] Running-firmware acceptance passes in 479.59 seconds
+(`out/canopy-stage4-local-live.log`). The isolated DT2 OS1.17 emulator boots the
+matched image/module, selects CANOPY through the stock chooser, enables MIDI
+through KEYBOARD setup, and applies ARP MIX through real encoder input. Held
+60/64/67 produce exactly those three ascending candidates while retaining pad
+ownership; full arp mix produces finite final stereo PCM (RMS 0.01661365, peak
+0.03100340). Mix zero clears the arp while retaining pads; note-offs then clear
+the pad voices and the adapter stays healthy. No DSP state writes fake playback.
+Only stock MIDI receive-port settings are initialized as fixture data. The
+first run timed out advancing mix with four-detent increments; the successful
+run turns by the remaining distance and still waits for applied DSP values.
+This proves local integration, not all Stage 4 timing or physical-device sound.
+
+Required preflight passes Ruff, layers, 263 host tests (16 optional skips),
+oxlint, Prettier and types. Its only failure is the unchanged repository-wide
+pathcheck baseline: 256 stale references in 78 files. Scoped changed-document
+pathcheck is clean (`out/canopy-stage4-local-docs.log`). Module and adapter
+build-current checks pass (`out/canopy-stage4-local-current.log`).

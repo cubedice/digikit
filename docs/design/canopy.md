@@ -2059,22 +2059,28 @@ The C policy currently has no runtime caller and is not included in the DKM.
 Its native behavior tests and ColdFire compilation are component evidence only;
 they do not establish audible arpeggiation, clock delivery or DSP performance.
 The current Stage 3 firmware and packed artifacts are unchanged. The production
-DSP kernel now includes a single-group arp entry and a per-sample 20-ms PAD/ARP
-blend helper, with 97 passing voice/protected-callback cases. These helpers are
-not yet invoked by the V2 callback; shared-tail allocation and scheduler wiring
-remain required. See the handover for the exact component evidence.
+DSP callback now invokes a separate local-clock UP arp and the per-sample 20-ms
+PAD/ARP blend. CPS4 carries mix, BPM, notes/quarter and gate through the setup
+menu and acknowledged configuration channel. This is a production integration
+of that subset, not the whole C policy: other orders, octaves, strum, selectable
+restart modes, synchronized clock and shared arp/pad tail allocation remain open.
+Per-instance state is now 640 bytes. An occupied arp slot uses a bounded
+64-sample replacement ramp until the shared-tail allocator is implemented. The
+local subset passes component tests and running-firmware acceptance through
+stock chooser, MIDI, setup encoders and final stereo audio. See the handover
+for exact evidence and limits.
 
 Remaining Stage 4 work:
 
-- Integrate movement at the audio-block boundary with an independent arp voice,
-  the two shared tails, and smoothed PAD/ARP audio gains. Keep the four admitted
+- Extend the DSP local UP subset with other orders, octave ranges, strum and
+  selectable restart policies; integrate the two shared tails. Keep the four admitted
   pad owners separate from pending strum and arp tokens. Maximum replacement
   produces ten internal changes (four pad offs, four pad ons, arp off/on), so
   never forward it blindly through the current eight-event input. Internal DSP
   scheduling can retain the eight-event external contract.
 - Publish a coherent admitted-chord/phrase snapshot from the keyboard mapper;
-  do not reschedule immutable retried MIDI packets. Expose movement settings
-  through the existing applied-revision configuration channel and setup menu.
+  do not reschedule immutable retried MIDI packets. Extend the existing CPS4
+  applied-revision configuration channel and setup menu for the remaining controls.
 - Add and measure the versioned synchronized tempo/phase provider. The present
   pattern-position ABI has master boundaries only. This policy never reads its
   raw deadline as BPM. Master mode supports step multiples without swing;

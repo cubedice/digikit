@@ -213,3 +213,27 @@ Stage 2 keyboard modes and learned shape memory are provided by the optional
 [the keyboard setup guide](../../core/adapters/instrument-play/README.md#keyboard-modes-and-shape-memory).
 Stage 3 now supplies the pad renderer; arp remains Stage 4. See the
 [pad sound setup](../../core/adapters/instrument-play/README.md#pad-sound-setup-stage-3).
+
+
+## Local arpeggiator development build
+
+The Stage 4 local-clock slice adds `LOCAL ARP - UP` to KEYBOARD setup. ARP MIX
+blends the sustained pad with an ascending arpeggio (0=pad, 127=arp); LOCAL BPM
+is 30..300, NOTES / Q is 1..8 onsets per quarter, and ARP GATE is 1..100 percent.
+Defaults are mix 0, 120 BPM, four notes/quarter and 50 percent gate. These are
+current module settings, not native Sound/project or destination-pattern data.
+The explicit local clock runs independently of PLAY/STOP. There is no automatic
+external-clock fallback and no synchronized-clock option in this slice.
+
+The arp reads four logical foreground/pending pad owners, excluding release
+tails. It owns a separate oscillator/envelope and follows the selected key's
+velocity and live pitch bend. Chord edits affect the next scheduled note; a
+delayed onset is cancelled if its source key leaves admitted membership. The
+PAD/ARP blend is smoothed per sample. Disabling the arp leaves held pad notes
+untouched. This version ramps the previous arp group for at most 64 samples
+before replacement when needed, rather than allocating an extra release group.
+
+Full Stage 4 remains open: shared arp/pad tail allocation, the other note orders
+and octave ranges, strum, selectable restart behavior, and verified synchronized
+tempo/phase with swing still need production integration. The broader C movement
+policy and its host tests are not evidence that those options are playable.

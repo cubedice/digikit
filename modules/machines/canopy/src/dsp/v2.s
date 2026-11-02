@@ -15,7 +15,7 @@ _canopy_reset:
     COMP(R8, R0);
     IF EQ JUMP _cv_replace;
     I0 = R4;
-    R1 = 136;
+    R1 = 160;
     R0 = 0;
 _cv_reset_clear:
     DM(I0, M6) = R0;
@@ -39,6 +39,18 @@ _cv_replace_clear:
     DM(I0, M6) = R0;
     R1 = R1 - 1;
     IF NE JUMP _cv_replace_clear;
+    R0 = 544;
+    R0 = R4 + R0;
+    I0 = R0;
+    R0 = 2;
+    DM(1, I0) = R0;
+    MODIFY(I0, 10) (NW);
+    R1 = 14;
+    R0 = 0;
+_cv_clear_movement:
+    DM(I0, M6) = R0;
+    R1 = R1 - 1;
+    IF NE JUMP _cv_clear_movement;
     JUMP (M13, I13);
 _canopy_process:
     DM(_cv_state) = R4;
@@ -69,6 +81,9 @@ _canopy_process:
     R1 = 1;
     COMP(R0, R1);
     IF EQ JUMP _cv_legacy_controls;
+    R1 = 10;
+    COMP(R0, R1);
+    IF EQ JUMP _cv_four_controls;
     R1 = 6;
     COMP(R0, R1);
     IF NE JUMP _cv_bad;
@@ -92,6 +107,41 @@ _cv_check_controls:
     R2 = R2 - 1;
     IF NE JUMP _cv_check_controls;
     JUMP _cv_controls_ok;
+_cv_four_controls:
+    R0 = DM(9, I2);
+    I0 = R0;
+    R0 = DM(0, I0);
+    R1 = 4;
+    COMP(R0, R1);
+    IF NE JUMP _cv_bad;
+    R0 = DM(1, I0);
+    R0 = LSHIFT R0 BY -1;
+    R0 = PASS R0;
+    IF NE JUMP _cv_bad;
+    R0 = DM(7, I0);
+    R1 = 30;
+    COMP(R0, R1);
+    IF LT JUMP _cv_bad;
+    R1 = 300;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = DM(8, I0);
+    R1 = 1;
+    COMP(R0, R1);
+    IF LT JUMP _cv_bad;
+    R1 = 8;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = DM(9, I0);
+    R1 = 1;
+    COMP(R0, R1);
+    IF LT JUMP _cv_bad;
+    R1 = 100;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    MODIFY(I0, 2) (NW);
+    R2 = 5;
+    JUMP _cv_check_controls;
 _cv_legacy_controls:
     R0 = DM(9, I2);
     I0 = R0;
@@ -253,7 +303,14 @@ _cv_seeded:
     R8 = DM(5, I2);
     R4 = DM(_cv_state);
     CALL _cp_render;
-    R3 = R0;
+    DM(_cv_pad_active) = R0;
+    R4 = DM(_cv_state);
+    R8 = DM(_cv_input);
+    CALL _ca_process;
+    R0 = PASS R0;
+    IF LT JUMP _cv_audio_bad;
+    R3 = DM(_cv_pad_active);
+    R3 = R0 OR R3;
     R0 = DM(_cv_input);
     I0 = R0;
     R0 = DM(5, I0);
@@ -429,10 +486,13 @@ _cv_bad:
 .VAR _canopy_descriptor_2 = 48;
 .VAR _canopy_descriptor_3 = 0;
 .VAR _canopy_descriptor_4 = 1;
-.VAR _canopy_descriptor_5 = 544;
+.VAR _canopy_descriptor_5 = 640;
 .VAR _canopy_descriptor_6 = 8;
-.VAR _canopy_descriptor_7 = 6;
+.VAR _canopy_descriptor_7 = 10;
 .VAR _canopy_descriptor_8 = 100000;
 .VAR _canopy_descriptor_9 = 1000;
 .VAR _canopy_descriptor_10 = 8;
 .VAR _canopy_descriptor_11 = 128;
+
+.EXTERN _ca_process;
+.PKBSS _cv_pad_active, 4;

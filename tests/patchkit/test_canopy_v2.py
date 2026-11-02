@@ -11,7 +11,7 @@ def canopy_object(request):
     root = REPO_ROOT / "modules/machines/canopy/src/dsp"
     source = "\n".join(
         (root / f"{name}.s").read_text()
-        for name in ["voice", "tuning", "events", "instrument", "v2"]
+        for name in ["voice", "tuning", "events", "instrument", "blend", "arp", "v2"]
     )
     if request.param:
         registry = REPO_ROOT / "modules/core/adapters/instrument-registry/src/dsp"
@@ -65,6 +65,32 @@ _test_done:
     RTS;
 """,
         )
+    source += """
+.SECTION/PM seg_pmco;
+.GLOBAL _test_many;
+_test_many:
+    DM(_test_loop_left) = R10;
+    DM(_test_loop_state) = R4;
+    DM(_test_loop_input) = R8;
+_test_loop:
+    R4 = DM(_test_loop_state);
+    R8 = DM(_test_loop_input);
+    CALL _test_process;
+    R0 = PASS R0;
+    IF LT RTS;
+    R1 = DM(_test_loop_input);
+    I0 = R1;
+    R1 = 0;
+    DM(8, I0) = R1;
+    R1 = DM(_test_loop_left);
+    R1 = R1 - 1;
+    DM(_test_loop_left) = R1;
+    IF NE JUMP _test_loop;
+    RTS;
+.PKBSS _test_loop_left, 4;
+.PKBSS _test_loop_state, 4;
+.PKBSS _test_loop_input, 4;
+"""
     obj = pk_sharc.assemble(source)
     sections, initial, address = {}, {}, 0x20020000
     for name, (blob, align, _) in obj.data.items():
@@ -88,7 +114,7 @@ _test_done:
 def canopy(canopy_object):
     linked, sections, initial, obj, symbols, protected = canopy_object
     dm = dict(initial)
-    for base, size in [(0x20050000, 136), (0x20054000, 136), (0x20013000, 32)]:
+    for base, size in [(0x20050000, 160), (0x20054000, 160), (0x20013000, 32)]:
         dm.update({base // 4 + i: 0 for i in range(size)})
         dm[base // 4 - 1] = dm[base // 4 + size] = 0xDEADBEEF
 
@@ -102,6 +128,7 @@ def canopy(canopy_object):
         packet=None,
         controls=(1,),
         state_edits=None,
+        blocks=1,
     ):
         dm.update({state // 4 + i: v for i, v in (state_edits or {}).items()})
         words = [
@@ -136,12 +163,12 @@ def canopy(canopy_object):
             name: (sections[name] // 4, len(blob) // 4)
             for name, (blob, _, _) in obj.data.items()
         }
-        reads.update({"state": (state // 4, 136), "out": (0x20013000 // 4, 32)})
+        reads.update({"state": (state // 4, 160), "out": (0x20013000 // 4, 32)})
         reads.update(
-            {"guard_before": (state // 4 - 1, 1), "guard_after": (state // 4 + 136, 1)}
+            {"guard_before": (state // 4 - 1, 1), "guard_after": (state // 4 + 160, 1)}
         )
         if protected and reset is None:
-            row = [3, 2, 9, 1, state, 136, state, state + 544, 0, 0, 0, 0, 0, 0, 0, 0]
+            row = [3, 2, 9, 1, state, 160, state, state + 640, 0, 0, 0, 0, 0, 0, 0, 0]
             meta = [
                 2,
                 9,
@@ -150,7 +177,7 @@ def canopy(canopy_object):
                 0xB90000,
                 0xBC0000,
                 8,
-                6,
+                10,
             ]
             for name, values in [("_ir_rows", row), ("_ir_process_rows", meta)]:
                 dm.update(
@@ -165,11 +192,16 @@ def canopy(canopy_object):
             linked,
             "_test_packet"
             if packet is not None
-            else ("_test_process" if reset is None else "_test_reset"),
+            else (
+                ("_test_many" if blocks > 1 else "_test_process")
+                if reset is None
+                else "_test_reset"
+            ),
             regs={
                 "R4": 0 if protected and reset is None else state,
                 "R5": 0,
                 "R9": 1,
+                "R10": blocks,
                 "R12": 0x20014000 if packet else 0,
                 "R8": 0x20011000 if reset is None else reset,
                 "M5": 0,
@@ -182,7 +214,7 @@ def canopy(canopy_object):
             },
             dm_words=dm,
             reads=reads,
-            max_steps=100000,
+            max_steps=100000 * blocks,
         )
         assert result["halt"]["reason"] == "breakpoint", result
         assert result["guard_before"] == result["guard_after"] == [0xDEADBEEF]
@@ -206,7 +238,7 @@ def voices(result):
 
 
 def test_v2_chord_independent_release_and_state_isolation(canopy):
-    assert canopy(reset=1)["state"] == [0] * 136
+    assert canopy(reset=1)["state"] == [0] * 160
     result = canopy([note(1, 60), note(2, 64)])
     assert result["regs"]["R0"] == 0
     assert set(voices(result)) == {1, 2}
@@ -254,7 +286,7 @@ def test_generation_change_requires_reset_and_reset_is_per_instance(canopy):
     canopy([note(1, 60)])
     canopy([note(2, 67)], state=0x20054000, track=1)
     assert canopy(generation=2)["regs"]["R0"] == 0xFFFFFFFF
-    assert canopy(reset=3)["state"] == [0] * 136
+    assert canopy(reset=3)["state"] == [0] * 160
     assert canopy(generation=2)["regs"]["R0"] == 1
     assert set(voices(canopy(state=0x20054000, track=1))) == {2}
 
@@ -411,7 +443,10 @@ def test_replace_reset_preserves_phase_then_finishes_bounded_tail(canopy):
     assert max(abs(b - a) for a, b in zip(values, values[1:], strict=False)) < 0.1
 
 
-@pytest.mark.parametrize("controls", [(1,), (3, 1, 127, 127, 0, 127)])
+@pytest.mark.parametrize(
+    "controls",
+    [(1,), (3, 1, 127, 127, 0, 127), (4, 1, 127, 127, 0, 127, 127, 300, 8, 100)],
+)
 def test_callback_instruction_ceiling(canopy, controls):
     from functools import partial
 
@@ -525,3 +560,98 @@ def test_pad_drift_wrap_preserves_note_and_bounded_phase(canopy):
     assert 0 <= value < 0.0002
     assert set(voices(after)) == set(voices(before)) == {1}
     assert after["regs"]["R0"] == 0
+
+
+LOCAL = (4, 0, 64, 0, 0, 0, 127, 120, 4, 50)
+
+
+def test_local_arp_is_independent_of_four_pad_owners(canopy):
+    r = canopy([note(1, 67), note(2, 60), note(3, 64), note(4, 72)], controls=LOCAL)
+    assert set(voices(r)) == {1, 2, 3, 4}
+    assert r["state"][136] == 1
+    assert r["state"][151] == 60
+    pad = voices(r)
+    r = canopy(controls=LOCAL, state_edits={146: 89999})
+    assert r["state"][151] == 64
+    for _ in range(3):
+        r = canopy(controls=LOCAL)
+    assert r["state"][136] == 2
+    assert set(voices(r)) == set(pad)
+    assert all(v[1] == 1 for v in voices(r).values())
+    assert r["instructions"] < 100000
+
+
+def test_local_arp_chord_edit_excludes_released_tail(canopy):
+    canopy([note(1, 60), note(2, 64), note(3, 67)], controls=LOCAL)
+    r = canopy([note(2, 64, off=True)], controls=LOCAL)
+    assert r["state"][151] == 60
+    r = canopy(controls=LOCAL, state_edits={146: 89999})
+    assert r["state"][151] == 67
+    assert voices(r)[2][1] == 0
+    assert voices(r)[1][1] == voices(r)[3][1] == 1
+
+
+def test_local_arp_gate_and_disable_never_release_pad(canopy):
+    canopy([note(1, 60)], controls=LOCAL)
+    r = canopy(controls=LOCAL, state_edits={146: 45000})
+    assert r["state"][137] == 0
+    assert voices(r)[1][1] == 1
+    r = canopy(controls=LOCAL[:6] + (0,) + LOCAL[7:])
+    assert r["state"][147] == r["state"][150] == 0
+    assert voices(r)[1][1] == 1
+
+
+def test_local_arp_reset_cancels_pending_and_bounds_both_lanes(canopy):
+    canopy([note(1, 60), note(2, 64)], controls=LOCAL)
+    canopy(controls=LOCAL, state_edits={146: 89999})
+    r = canopy(reset=2)
+    assert r["state"][137] == 2
+    assert r["state"][146:] == [0] * 14
+    for _ in range(4):
+        r = canopy(controls=(3, 0, 64, 0, 0, 0))
+    assert r["state"][136] == 0
+    assert not voices(r)
+
+
+@pytest.mark.parametrize(
+    "index,value",
+    [(0, 5), (6, 128), (7, 29), (7, 301), (8, 0), (8, 9), (9, 0), (9, 101)],
+)
+def test_local_arp_rejects_bad_controls_atomically(canopy, index, value):
+    before = canopy([note(1, 60)], controls=LOCAL)["state"]
+    bad = list(LOCAL)
+    bad[index] = value
+    r = canopy([note(2, 64)], controls=bad)
+    assert r["regs"]["R0"] == 0xFFFFFFFF
+    assert r["state"] == before
+
+
+def test_local_arp_pending_candidate_cannot_survive_release(canopy):
+    canopy([note(1, 60), note(2, 64)], controls=LOCAL)
+    canopy(controls=LOCAL, state_edits={146: 89999})
+    r = canopy([note(2, 64, off=True)], controls=LOCAL)
+    assert r["state"][150] == 0
+
+
+def test_local_arp_live_bend_preserves_identity(canopy):
+    a = canopy([note(1, 60)], controls=LOCAL)
+    b = canopy([[4, 0, 0, 0, 16383, 0]], controls=LOCAL)
+    assert a["state"][136] == b["state"][136] == 1
+    assert a["state"][140:142] != b["state"][140:142]
+    assert b["state"][137] == 1
+
+
+@pytest.mark.parametrize("bpm,rate", [(137, 3), (300, 8)])
+def test_local_arp_real_block_clock_retains_rational_phase(canopy, bpm, rate):
+    controls = LOCAL[:7] + (bpm, rate, 50)
+    r = canopy([note(1, 60), note(2, 64), note(3, 67)], controls=controls, blocks=600)
+    assert r["state"][149] == 1 + (599 * bpm * rate) // 90000
+    assert r["state"][146] == (599 * bpm * rate) % 90000
+    assert set(voices(r)) == {1, 2, 3}
+
+
+def test_local_arp_output_corruption_is_silenced(canopy):
+    r = canopy([note(1, 60)], controls=LOCAL)
+    r = canopy(controls=LOCAL, state_edits={138: 0x7FC00000})
+    assert r["regs"]["R0"] == 0xFFFFFFFF
+    assert r["out"] == [0] * 32

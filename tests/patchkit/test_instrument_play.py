@@ -17,7 +17,8 @@ def playback_object():
     adapters = REPO_ROOT / "modules/core/adapters"
     canopy = REPO_ROOT / "modules/machines/canopy/src/dsp"
     source = "\n".join(
-        (canopy / f"{n}.s").read_text() for n in ("voice", "tuning", "events", "v2")
+        (canopy / f"{n}.s").read_text()
+        for n in ("voice", "tuning", "events", "blend", "arp", "v2")
     )
     for module, names in (
         ("instrument-registry", ("process", "process-protected", "input", "lifecycle")),
@@ -34,10 +35,10 @@ def playback_object():
 .PKDATA _mi_epoch, 4;
 .PKDATA _instrument_session, 4;
 .PKDATA _mi_carrier_stamp, 4;
-.PKDATA _test_state, 544;
+.PKDATA _test_state, 640;
 .PKDATA _test_packet, 128;
 .PKDATA _test_metadata, 24;
-.PKDATA _test_values, 24;
+.PKDATA _test_values, 40;
 .PKDATA _test_output, 128;
 .SECTION/PM seg_pmco;
 """
@@ -104,9 +105,9 @@ def playback(playback_object):
             9,
             1,
             state,
-            136,
+            160,
             state,
-            state + 544,
+            state + 640,
             linked.symbols["_canopy_reset"],
             0xB90000,
             0xBC0000,
@@ -119,7 +120,7 @@ def playback(playback_object):
     )
     put(
         "_ir_process_rows",
-        [2, 9, 20, linked.symbols["_canopy_process"], 0xB90000, 0xBC0000, 8, 6],
+        [2, 9, 20, linked.symbols["_canopy_process"], 0xB90000, 0xBC0000, 8, 10],
     )
     put("_instrument_session", [1])
     put("_mi_epoch", [1])
@@ -162,7 +163,7 @@ def playback(playback_object):
                 revision,
                 0,
                 len(values) * 4,
-                0x43505331 if len(values) == 1 else 0x43505333,
+                {1: 0x43505331, 6: 0x43505333, 10: 0x43505334}[len(values)],
             ],
         )
         put("_test_values", values)
@@ -187,12 +188,12 @@ def test_admitted_render_consumes_batch_once_and_raw_carrier_only_copies(playbac
     call(0)
     assert get("_iv_result") == [0]
     assert get("_iv_input", 18)[8] == 0
-    state = get("_test_state", 136)
+    state = get("_test_state", 160)
     voices = {state[i]: state[i : i + 8] for i in range(0, 32, 8) if state[i]}
     assert set(voices) == {1, 2}
     assert voices[1][6] < voices[2][6]
     call(4, R2=0, R8=symbols["_test_output"])
-    assert get("_test_state", 136) == state
+    assert get("_test_state", 160) == state
     assert get("_test_output", 32) == get("_iv_output", 32)
     call(0)
     assert get("_iv_result") == [0]  # replaying the ON would reject its duplicate token
@@ -318,15 +319,32 @@ def test_pad_configuration_is_atomic_and_does_not_reset_a_held_note(playback):
     call(0)
     assert events([(1, 1, 60, 127, 0, 0)]) == 1
     call(0)
-    before = get("_test_state", 136)
+    before = get("_test_state", 160)
     assert configure(values=(3, 1, 127, 127, 0, 127), revision=2) == 1
-    assert get("_test_state", 136) == before
+    assert get("_test_state", 160) == before
     call(0)
-    after = get("_test_state", 136)
+    after = get("_test_state", 160)
     assert [after[i] for i in range(0, 48, 8)] == [before[i] for i in range(0, 48, 8)]
     assert get("_iv_revision") == [2]
     assert configure(values=(3, 1, 128, 0, 5, 15), revision=3) == 0
     assert get("_iv_revision") == [2]
-    assert get("_test_state", 136) == after
+    assert get("_test_state", 160) == after
     call(0)
     assert get("_iv_result") == [0]
+
+
+def test_local_arp_configuration_reaches_the_process_callback(playback):
+    call, _, get, reset, configure, events, _ = playback
+    reset()
+    call(0)
+    values = (4, 0, 64, 0, 0, 0, 127, 120, 4, 50)
+    assert configure(values=values) == 1
+    call(0)
+    assert events([(1, 1, 60, 127, 0, 0), (2, 1, 64, 127, 0, 0)]) == 1
+    call(0)
+    assert get("_test_state", 160)[136] == 1
+    assert get("_iv_controls", 10) == list(values)
+    before = get("_test_state", 160)
+    assert configure(values=values[:7] + (301, 4, 50), revision=2) == 0
+    assert get("_test_state", 160) == before
+    assert get("_iv_revision") == [1]
