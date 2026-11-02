@@ -57,6 +57,7 @@ pub struct Spec {
     pub stack_bytes: u32,
     pub max_events: u32,
     pub max_controls: u32,
+    pub flags: u32,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -78,6 +79,7 @@ pub struct Row {
     pub type_no: u32,
     pub max_events: u32,
     pub max_controls: u32,
+    pub flags: u32,
     pub process_sw: u32,
     pub process_text: Range,
 }
@@ -197,6 +199,7 @@ pub fn prepare(
             || spec.max_events > 8
             || spec.max_controls == 0
             || spec.max_controls > 32
+            || spec.flags & !crate::instrument_descriptor::STATUS_OUTPUT != 0
         {
             return Err(Error::Budget);
         }
@@ -223,6 +226,7 @@ pub fn prepare(
             type_no: spec.type_no,
             max_events: spec.max_events,
             max_controls: spec.max_controls,
+            flags: spec.flags,
             process_sw: spec.process_sw,
             process_text: spec.process_text,
         });

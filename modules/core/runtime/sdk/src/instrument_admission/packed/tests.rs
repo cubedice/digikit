@@ -116,6 +116,22 @@ fn instrument_packed_admission_derives_split_text_and_aligned_state_rows() {
     assert!(loads.lookup(20).is_none());
 }
 #[test]
+fn instrument_status_capability_follows_physical_row_mapping() {
+    let (loads, ticket, grant) = setup();
+    let (mut image, records, executable) = fixture();
+    image[28..32].copy_from_slice(&descriptor::STATUS_OUTPUT.to_le_bytes());
+    let packed = Packed {
+        image: &image,
+        records: &records,
+        relocations: &[],
+        executable: &executable,
+        resolved_types: &[20, 21],
+    };
+    let plan = prepare_packed(&loads, ticket, &grant, &packed, &limits()).unwrap();
+    assert_eq!(plan.rows()[0].unwrap().flags, 0);
+    assert_eq!(plan.rows()[1].unwrap().flags, descriptor::STATUS_OUTPUT);
+}
+#[test]
 fn instrument_packed_admission_rejects_mappings_tracks_and_grant_mismatch() {
     let (loads, t, mut grant) = setup();
     let (mut image, records, executable) = fixture();

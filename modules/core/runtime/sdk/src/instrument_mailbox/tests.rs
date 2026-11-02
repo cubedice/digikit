@@ -351,6 +351,7 @@ fn run_install_scenario(cancel_after: Option<u32>) {
         stack_bytes: 64,
         max_events: 8,
         max_controls: 32,
+        flags: crate::instrument_descriptor::STATUS_OUTPUT,
     };
     let plan = prepare(
         &loads,
@@ -360,6 +361,7 @@ fn run_install_scenario(cancel_after: Option<u32>) {
             spec,
             Spec {
                 type_no: 19,
+                flags: 0,
                 state_base: grant.state.start + 32,
                 ..spec
             },
@@ -415,7 +417,7 @@ fn run_install_scenario(cancel_after: Option<u32>) {
     assert!(mailbox.take_installed().is_none());
     let process = transfer(&mut mailbox);
     assert_eq!(process[5], 6);
-    assert_eq!(process[7..15], [18, spec.process_sw, 0xb88000, 0xb88080, 8, 32, 0, 0]);
+    assert_eq!(process[7..15], [18, spec.process_sw, 0xb88000, 0xb88080, 8, 32, 1, 0]);
     let old_capabilities = response(&mailbox, 0, 7);
     assert_eq!(mailbox.reply(&old_capabilities, &mut loads), Err(Error::MissingCapability));
     assert!(mailbox.take_installed().is_none());
@@ -442,6 +444,7 @@ fn run_install_scenario(cancel_after: Option<u32>) {
     let process = transfer(&mut mailbox);
     assert_eq!(process[5], 6);
     assert_eq!(process[7], 19);
+    assert_eq!(process[13], 0);
     let process_reply = response(&mailbox, 0, 15);
     mailbox.reply(&process_reply, &mut loads).unwrap();
     assert!(loads.lookup(18).is_none());

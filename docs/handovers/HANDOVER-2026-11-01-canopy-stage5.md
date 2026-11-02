@@ -217,3 +217,43 @@ inspect private CANOPY state or present queued old messages as newly fresh.
 Native SRC view/input integration, complete modal/clock presentation, native
 parameter persistence and booted acceptance listed above are still required.
 No physical device was changed and this image is not a Stage 5 release.
+
+## Opt-in process status output, 2026-11-02
+
+The borrowed-output capability is implemented end to end. Descriptor flag bit
+0 is preserved by decoding, physical row mapping and process-install metadata;
+unknown bits are rejected before publication. DSP rows retain flags separately
+without changing the existing eight-word process-row layout. V5/96-byte inputs
+are accepted only with an installed status capability and matching READY row
+identity. The last two words contain the adapter-owned 13-word output pointer
+and exact capacity. Alignment, L2 extents and input size are checked before
+calling content. Ready is cleared before invocation and after negative/invalid
+results. The adapter clears it every block before admission/session checks.
+Unflagged modules continue receiving the prior V3/V4 layouts.
+
+The playback adapter now owns `_instrument_ui_status`, linking the negotiated
+output to the authenticated wire transport. CANOPY remains unflagged: its
+actual-note producer and coherent applied-control/mapper metadata are still
+required. Do not enable the bit while its callback accepts only V2..V4, and do
+not infer PLAY/ROOT/LEARN from notes or treat CF requested values as DSP-applied.
+The UI consumer, wall-clock freshness and native SRC attachment remain open.
+
+Evidence [D]: 133 SDK instrument tests pass; 71 DSP lifecycle tests pass;
+39 process/playback tests pass with one unrelated CF runner test skipped;
+the added opted-in playback/session-revocation scenario passes separately.
+Adapter builds decode 1470 registry and 989 playback DSP instructions;
+runtime rebuild decodes 46374 CF instructions. The combined image links at
+`out/patch/canopy-stage5-output.syx`, SHA-256
+`8d5ec4071c5b1ced631249d492b5ed679be87a477e115809c7873bb0b8412c10`.
+
+The SDK header was regenerated from its source. The broader generator stops
+in an unchanged firmware hook on `dsp.voice.hook.velocity_operand: unknown
+register "s7"`; initial stale header reports also included line-ending-only
+differences in machine/fx headers (no content change retained). Do not report
+the repository-wide generator as passing. No booted acceptance or physical
+device modification was performed for this checkpoint.
+
+Required changed-tests preflight: 309 host cases passed, 16 optional skips;
+lint, formatting, layering and types passed. Only the existing global pathcheck
+fails (256 stale paths in 78 files); the two changed documents pass scoped
+pathcheck. The final descriptor test also passes after its readability edit.

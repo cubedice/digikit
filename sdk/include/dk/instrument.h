@@ -38,6 +38,24 @@ typedef struct dk_instrument_in_v4 {
     uint32_t boundary_phase;
 } dk_instrument_in_v4;
 
+/* V5 is sent only to a descriptor opting into STATUS_OUTPUT. V2..V4 remain
+ * valid inputs. It retains V4's layout, with zero timing fields when absent.
+ * status is an adapter-owned, aligned L2 buffer of exactly 13 words: ready,
+ * then twelve normalized UI payload words. The adapter clears ready before
+ * every process call. A successful callback may fill all payload words then
+ * publish ready=1 last. No pointer may escape the call. Negative/invalid process
+ * results suppress publication. Neither ready nor payload acknowledges MIDI.
+ * The adapter must provide disjoint input/output/event/control/state storage. */
+#define DK_INSTRUMENT_STATUS_OUTPUT 1u
+#define DK_INSTRUMENT_INPUT_V5 5u
+#define DK_INSTRUMENT_INPUT_V5_BYTES 96u
+#define DK_INSTRUMENT_STATUS_WORDS 13u
+typedef struct dk_instrument_in_v5 {
+    dk_instrument_in_v4 base;
+    uint32_t *status;
+    uint32_t status_words;
+} dk_instrument_in_v5;
+
 /* ID is a C identifier, unique among all instruments, machines and effects.
  * Required initializers: .name, .short_name, .reset, .process and .desc.
  * Callbacks and descriptor name SHARC+ symbols in this module, not CF pointers. */

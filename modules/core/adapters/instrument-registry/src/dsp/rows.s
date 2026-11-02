@@ -357,7 +357,8 @@ _irr_ready:
 // Process metadata is bound only to an already RESERVED reset row. It is not
 // callable until that exact owner/generation reaches READY. Input snapshot:
 // phase,owner,generation,type,entry,code_start,code_end,max_events,max_controls,
-// followed by zero reserved words. R4 row index; I1 immutable snapshot.
+// flags (bit 0: V5 status output), zero reserved word. R4 row index;
+// I1 immutable snapshot. Capabilities are bound to this owner/generation.
 .SECTION/PM seg_pmco;
 .GLOBAL _ir_process_install;
 _ir_process_install:
@@ -412,9 +413,18 @@ _ir_process_install:
     COMP(R0, R1);
     IF GT JUMP _irr_invalid;
     R0 = DM(9, I1);
-    R1 = DM(10, I1);
-    R0 = R0 OR R1;
+    R1 = 1;
+    R1 = R0 AND R1;
+    COMP(R0, R1);
     IF NE JUMP _irr_invalid;
+    R1 = DM(10, I1);
+    R1 = PASS R1;
+    IF NE JUMP _irr_invalid;
+    R1 = LSHIFT R4 BY 2;
+    R2 = _ir_process_flags;
+    R1 = R1 + R2;
+    I0 = R1;
+    DM(0, I0) = R0;
     R0 = LSHIFT R4 BY 5;
     R1 = _ir_process_rows;
     R0 = R0 + R1;
@@ -431,3 +441,4 @@ _ir_process_copy:
 .SECTION/DM seg_dmda;
 // owner,generation,type,entry,code_start,code_end,max_events,max_controls
 .PKDATA _ir_process_rows, 256;
+.PKDATA _ir_process_flags, 32;

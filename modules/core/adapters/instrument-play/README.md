@@ -186,3 +186,25 @@ flashed by these tests.
 
 Use the matching Stage 3 firmware and CANOPY DKM together. The older sine-only
 DKM cannot consume the new six-word sound configuration.
+## Optional process status output
+
+Descriptor flag bit 0 opts an instrument into the V5/96-byte borrowed input.
+The first 88 bytes retain the V4 layout. Words 22/23 provide the adapter-owned
+status buffer and its exact capacity of 13 words. The buffer contains ready,
+then twelve normalized UI payload words; publish ready=1 only after filling the
+payload. It is disjoint from input, events, controls, audio output and state.
+Retain no pointer beyond the call. This capability does not authorize a module
+to inspect other modules or firmware storage.
+
+Admission preserves the flag through descriptor decoding, row mapping and
+process installation. Unknown bits are rejected. A matching READY row and
+owner/generation are still required; unflagged modules retain V3/V4 inputs.
+The dispatcher bounds the V5 input and status storage in L2, requires alignment
+and exact capacity, clears readiness before invocation and clears it again on
+negative or invalid callback results. The playback owner also clears readiness
+each block before checking admission/session, preventing reuse after revocation.
+
+The mailbox connects to the authenticated alternating status-frame transport.
+CANOPY's descriptor remains unflagged until its actual-state producer and
+applied-control identity are implemented. This interface alone does not supply
+screen telemetry or complete SRC acceptance.

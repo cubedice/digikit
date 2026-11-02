@@ -40,10 +40,25 @@ _test_output:
     DM(I1, M6) = R0;
     R1 = R1 - 1;
     IF NE JUMP _test_output;
+    I1 = R8;
+    R0 = DM(0, I1);
+    R1 = 5;
+    COMP(R0, R1);
+    IF NE JUMP _test_result;
+    R0 = DM(22, I1);
+    I1 = R0;
+    R0 = DM(0, I1);
+    DM(1, I1) = R0; // Observe that the dispatcher cleared old readiness.
+    R0 = 123;
+    DM(12, I1) = R0;
+    R0 = 1;
+    DM(0, I1) = R0;
+_test_result:
     R0 = DM(0x20053000);
     JUMP (M13, I13);
 .PKDATA _ir_rows, 512;
 .PKDATA _ir_process_rows, 256;
+.PKDATA _ir_process_flags, 32;
 """
     obj = pk_sharc.assemble(source)
     sections, initial, address = {}, {}, 0x20060000
@@ -69,6 +84,7 @@ def process(process_object):
     dm = dict(initial)
     dm.update({0x20050000 // 4 + i: 0 for i in range(8)})
     dm.update({0x20051000 // 4 + i: 0 for i in range(32)})
+    dm.update({0x20054000 // 4 + i: 99 for i in range(14)})
     entry = linked.symbols["_test_process"]
     row = [3, 2, 9, 2, 0x20050000, 4, 0x20050000, 0x20050020, 0, 0, 0, 0, 0, 0, 0, 0]
     meta = [2, 9, 20, entry, entry, entry + 64, 8, 1]
@@ -77,6 +93,7 @@ def process(process_object):
         "row": (symbols["_ir_rows"] // 4, 16),
         "state": (0x20050000 // 4, 8),
         "out": (0x20051000 // 4, 32),
+        "status": (0x20054000 // 4, 14),
     }
 
     def call(
@@ -88,7 +105,9 @@ def process(process_object):
         fields=None,
         input_base=0x20052000,
         output_base=0x20051000,
+        capabilities=0,
     ):
+        dm[symbols["_ir_process_flags"] // 4] = capabilities
         packet[5] = output_base
         reads["out"] = (output_base // 4, 32)
         for i in range(32):
@@ -129,6 +148,30 @@ def process(process_object):
         return out
 
     return call
+
+
+def test_status_output_requires_installed_capability_and_clears_ready(process):
+    fields = {0: 5, 1: 96, 22: 0x20054000, 23: 13}
+    rejected = process(fields=fields)
+    assert rejected["state"] == [0] * 8
+    assert rejected["status"] == [99] * 14
+    accepted = process(fields=fields, capabilities=1)
+    assert accepted["state"][0] == 1
+    assert accepted["status"][0:2] == [1, 0]
+    assert accepted["status"][12:] == [123, 99]
+    failed = process(fields=fields, capabilities=1, result=0xFFFFFFFF)
+    assert failed["row"][0] == 5 and failed["status"][0] == 0
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [(1, 88), (22, 0), (22, 0x20054001), (22, 0x200FDFD0), (23, 0), (23, 12), (23, 14)],
+)
+def test_status_output_rejects_bad_borrow_without_mutation(process, field, value):
+    fields = {0: 5, 1: 96, 22: 0x20054000, 23: 13, field: value}
+    rejected = process(fields=fields, capabilities=1)
+    assert rejected["state"] == [0] * 8
+    assert rejected["status"] == [99] * 14
 
 
 def test_process_preserves_instance_state_and_uses_distinct_strides(process):

@@ -5,6 +5,8 @@
 pub const MAGIC: u32 = 0x444b_4954;
 pub const VERSION: u32 = 2;
 pub const DESC_BYTES: usize = 48;
+/// Opt in to the V5 borrowed status-output extension. Unknown bits fail closed.
+pub const STATUS_OUTPUT: u32 = 1;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Limits {
@@ -17,6 +19,7 @@ pub struct Limits {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Descriptor {
+    pub flags: u32,
     pub tracks: u32,
     pub state_bytes: u32,
     pub max_events: u32,
@@ -95,7 +98,7 @@ impl Descriptor {
         if w(0) != MAGIC || w(1) != VERSION || w(2) != DESC_BYTES as u32 {
             return Err(Error::Header);
         }
-        if w(3) != 0 {
+        if w(3) & !STATUS_OUTPUT != 0 {
             return Err(Error::Flags);
         }
         if !(1..=16).contains(&w(4)) || !(1..=8).contains(&w(6)) || !(1..=32).contains(&w(7)) {
@@ -122,6 +125,7 @@ impl Descriptor {
             return Err(Error::Budget);
         }
         Ok(Self {
+            flags: w(3),
             tracks: w(4),
             state_bytes: w(5),
             max_events: w(6),

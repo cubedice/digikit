@@ -10,6 +10,7 @@
 .GLOBAL _iv_reset_row;
 .EXTERN _ir_rows;
 .EXTERN _ir_process_rows;
+.EXTERN _ir_process_flags;
 .EXTERN _ir_process_protected;
 .EXTERN _ir_normalize_packet;
 .EXTERN _ir_reset_instance;
@@ -25,6 +26,8 @@
 // This adapter is absent from ordinary images. Linking it is the trusted
 // single-instance capability; binding the session must precede lifecycle work.
 _instrument_carrier_prepare:
+    R0 = 0;
+    DM(_instrument_ui_status) = R0;
     I0 = _ir_rows;
     R0 = DM(0, I0);
     DM(_instrument_play_status) = R0;
@@ -49,6 +52,19 @@ _instrument_carrier_prepare:
     IF EQ JUMP _iv_quiet;
     CALL _iv_position;
     I0 = _iv_input;
+    R0 = DM(_ir_process_flags);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _iv_no_status;
+    R0 = 5;
+    DM(0, I0) = R0;
+    R0 = 96;
+    DM(1, I0) = R0;
+    R0 = _instrument_ui_status;
+    DM(22, I0) = R0;
+    R0 = 13;
+    DM(23, I0) = R0;
+_iv_no_status:
     R0 = DM(_iv_generation);
     DM(3, I0) = R0;
     R0 = _iv_output;
@@ -85,6 +101,7 @@ _instrument_carrier_prepare:
     RTS;
 _iv_quiet:
     R0 = 0;
+    DM(_instrument_ui_status) = R0;
     DM(_iv_active) = R0;
     DM(_iv_revision) = R0;
     I0 = _iv_input;
@@ -518,7 +535,7 @@ _iv_voice_zero:
 
 .SECTION/DM seg_dmda;
 .PKDATA _instrument_voice_rows, 192;
-.PKDATA _iv_input, 88;
+.PKDATA _iv_input, 96;
 .PKDATA _iv_output, 128;
 .PKDATA _iv_events, 192;
 .VAR _iv_controls = 1;
@@ -547,3 +564,4 @@ _iv_voice_zero:
 .PKBSS _iv_metadata, 4;
 
 .PKDATA _instrument_play_status, 8;
+.PKDATA _instrument_ui_status, 52;

@@ -33,6 +33,7 @@ def playback_object():
 .PKDATA _pattern_clock_info, 32;
 .PKDATA _ir_rows, 512;
 .PKDATA _ir_process_rows, 256;
+.PKDATA _ir_process_flags, 32;
 .PKDATA _ir_lifecycle_ready, 4;
 .PKDATA _mi_epoch, 4;
 .PKDATA _instrument_session, 4;
@@ -43,6 +44,18 @@ def playback_object():
 .PKDATA _test_values, 64;
 .PKDATA _test_output, 128;
 .SECTION/PM seg_pmco;
+.GLOBAL _test_status_process;
+_test_status_process:
+    I0 = R8;
+    R0 = DM(22, I0);
+    I1 = R0;
+    R0 = DM(0, I0);
+    DM(1, I1) = R0;
+    R0 = DM(23, I0);
+    DM(12, I1) = R0;
+    R0 = 1;
+    DM(0, I1) = R0;
+    JUMP (M13, I13);
 """
     entries = [
         "_instrument_carrier_prepare",
@@ -81,6 +94,7 @@ _test_{i}:
         at += len(blob) + 64
     symbols = {n: sections[sec] + off for n, (sec, off, _) in obj.data_symbols.items()}
     linked = pk_sharc.link(obj, 0xB90000, symbols)
+    symbols["_test_status_process"] = linked.symbols["_test_status_process"]
     reads = {
         n: (sections[n] // 4, len(blob) // 4) for n, (blob, _, _) in obj.data.items()
     }
@@ -178,6 +192,28 @@ def playback(playback_object):
         return call(3, R4=symbols["_test_packet"])
 
     return call, put, get, reset, configure, events, symbols
+
+
+def test_opted_in_output_is_borrowed_per_block_and_revoked_with_session(playback):
+    call, put, get, reset, configure, events, symbols = playback
+    assert reset() == 1
+    call(0)
+    assert configure() == 1
+    # Installed capability and callback are owned by the same row identity.
+    put("_ir_process_flags", [1])
+    put(
+        "_ir_process_rows",
+        [2, 9, 20, symbols["_test_status_process"], 0xB90000, 0xBC0000, 8, 16],
+    )
+    call(0)
+    assert get("_iv_input", 24)[:2] == [5, 96]
+    assert get("_iv_input", 24)[22:] == [symbols["_instrument_ui_status"], 13]
+    status = get("_instrument_ui_status", 13)
+    assert status[:2] == [1, 5] and status[12] == 13
+    assert events([(1, 1, 60, 100, 0, 0)]) == 1
+    put("_instrument_session", [0])
+    call(0)
+    assert get("_instrument_ui_status") == [0]
 
 
 def test_admitted_render_consumes_batch_once_and_raw_carrier_only_copies(playback):
