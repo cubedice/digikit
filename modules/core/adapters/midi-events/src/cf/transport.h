@@ -17,6 +17,12 @@
 #define MT_REPLY_WORDS 16u
 #define MT_REPLY_MAGIC 0x494ea101u
 #define MT_SESSION_REPLY_MAGIC 0x494ea102u
+/* V4 status frames alternate with legacy lifecycle/ACK frames. Header:
+ * magic, bound session, wire heartbeat; twelve normalized status words; sum.
+ * They cannot bind a session or acknowledge a MIDI/configuration message. */
+#define MT_STATUS_REPLY_MAGIC 0x494ea104u
+uint32_t mt_reply_session(const uint32_t reply[MT_REPLY_WORDS]);
+uint32_t mt_reply_heartbeat(const uint32_t reply[MT_REPLY_WORDS]);
 typedef struct {
     uint32_t words[MT_WORDS];
     uint32_t epoch, next_message, pending, track, generation, count;

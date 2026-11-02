@@ -48,6 +48,6 @@ resource = "cf.rtos.site.dsp_reset"
 [[object]]
 path = "build/midi-packet-dsp.dko.json"
 sources = ["src/dsp/packet.s", "src/dsp/receiver.s", "src/dsp/config.s", "src/dsp/reply.s", "src/dsp/block.s", "src/dsp/consumer.s"]
-optional = ["_instrument_play_status", "_instrument_session", "_instrument_registry_block", "_instrument_registry_reply", "_instrument_reset", "_instrument_events", "_instrument_configure", "_mi_carrier_begin", "_instrument_carrier_prepare"]
+optional = ["_instrument_ui_status", "_instrument_play_status", "_instrument_session", "_instrument_registry_block", "_instrument_registry_reply", "_instrument_reset", "_instrument_events", "_instrument_configure", "_mi_carrier_begin", "_instrument_carrier_prepare"]
 place = "dsp.l2"
 devices = ["dt2"]

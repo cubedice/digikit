@@ -19,6 +19,9 @@ static uint32_t frame_block;
 static uint32_t registry_reply[MT_REPLY_WORDS];
 static uint32_t registry_reply_valid;
 static MtReplyGuard registry_guard;
+enum { STATUS_QUEUE=64, STATUS_WORDS=12 };
+static uint32_t status_words[STATUS_QUEUE][STATUS_WORDS],status_at[STATUS_QUEUE];
+static uint32_t status_head,status_count,status_lost;
 
 static void initialize(void)
 {
@@ -73,11 +76,30 @@ void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_
     mt_reply_read(record, reply);
     observed = mt_reply_reordered(&registry_guard, reply) ? 0 : reply;
     mt_reply_guard_tick(&registry_guard, observed, frame_block);
-    registry_reply_valid = !registry_guard.invalid &&
-        (!registry_guard.expected || registry_guard.ready) && mt_reply_valid(observed) && reply[4] == 0x49525231u;
-    if (registry_reply_valid)
-        for (i = 0; i < MT_REPLY_WORDS; ++i) registry_reply[i] = reply[i];
-    mt_reply_tick_guarded(&mi_transport, &mi_ledger, record ? observed : 0, frame_block, &registry_guard);
+    /* A valid UI frame does not replace the last ordinary ACK. Otherwise a
+     * UI task polling on the status half of the cadence could never see ACKs.
+     * Preserve its original heartbeat/checksum; never synthesize progress.
+     * Missing, reordered or invalid traffic retains the existing invalidation
+     * behavior, and the bound-session guard remains authoritative. */
+    if (registry_guard.invalid || !mt_reply_valid(observed) ||
+        (registry_guard.expected && !registry_guard.ready)) registry_reply_valid=0;
+    else if (reply[0]!=MT_STATUS_REPLY_MAGIC) {
+        registry_reply_valid=reply[4]==0x49525231u;
+        if (registry_reply_valid)
+            for (i = 0; i < MT_REPLY_WORDS; ++i) registry_reply[i] = reply[i];
+    }
+    int progress=mt_reply_tick_guarded(&mi_transport, &mi_ledger, record ? observed : 0, frame_block, &registry_guard);
+    if(registry_guard.invalid || mi_transport.faults) status_head=status_count=status_lost=0;
+    else if(progress>0 && observed && observed[0]==MT_STATUS_REPLY_MAGIC && registry_guard.ready) {
+        if(status_count==STATUS_QUEUE) {
+            /* Discard the interrupted transfer, not arbitrary fragment bytes.
+             * Report loss once before exposing any newer message. */
+            status_head=status_count=0; status_lost=1;
+        }
+        uint32_t slot=(status_head+status_count)&(STATUS_QUEUE-1);
+        for(i=0;i<STATUS_WORDS;++i) status_words[slot][i]=observed[3+i];
+        status_at[slot]=frame_block; ++status_count;
+    }
     revalidate_routes();
     packet = registry_guard.expected && (!registry_guard.ready || registry_guard.invalid) ? 0 :
         mt_prepare_mapped(&mi_transport, &mi_ledger, mi_transport.applied, frame_block, instrument_keyboard_events);
@@ -104,6 +126,7 @@ void mi_dsp_reset_begin(void)
     if (initialized && !reset_seen) {
         reset_seen = 1;
         registry_reply_valid = 0;
+        status_head=status_count=status_lost=0;
         registry_guard.invalid = 1;
         mi_recover(&mi_ledger);
         mt_init(&mi_transport);
@@ -136,6 +159,20 @@ int mi_registry_reply(uint32_t *out, uint32_t words)
     return result;
 }
 
+int mi_status_reply(uint32_t *out,uint32_t words,uint32_t *age_blocks)
+{
+    if(!out || words<STATUS_WORDS || !age_blocks) return -1;
+    uint32_t sr=dkrt_irq_mask(); int result=0;
+    if(reset_seen || registry_guard.invalid) result=-2;
+    else if(status_lost) { status_lost=0; result=-3; }
+    else if(status_count) {
+        for(uint32_t i=0;i<STATUS_WORDS;++i) out[i]=status_words[status_head][i];
+        *age_blocks=frame_block-status_at[status_head];
+        status_head=(status_head+1)&(STATUS_QUEUE-1); --status_count; result=STATUS_WORDS;
+    }
+    dkrt_irq_restore(sr); return result;
+}
+
 /* UI-task preparation only; does not send a bind or advertise readiness. */
 int mi_registry_expect_session(uint32_t token, uint32_t sequence)
 {
@@ -145,6 +182,7 @@ int mi_registry_expect_session(uint32_t token, uint32_t sequence)
     result = mt_reply_guard_expect(&registry_guard, token, sequence, frame_block);
     if (!result) {
         registry_reply_valid = 0;
+        status_head=status_count=status_lost=0;
         /* Never carry legacy MIDI ACK/configuration identity into the new
          * session. Retain physical-key tombstones through the epoch change. */
         if (mi_session_begin(&mi_ledger)) {

@@ -183,3 +183,37 @@ links as `out/patch/canopy-stage5-src-model.syx`, SHA-256
 This is a linked component checkpoint, not booted SRC acceptance or a release.
 `patchkit patch` reused an existing DKO during the first attempts: explicitly
 run `patchkit build core/instrument-play` after source edits before patching.
+
+## Authenticated UI transport, 2026-11-02
+
+Implemented the separate version-4 reply envelope in `core/midi-events`:
+session token, heartbeat, twelve normalized payload words and checksum. It can
+neither bind a session nor ACK MIDI/configuration/registry commands. The optional
+DSP mailbox is emitted only for an already-bound ready row on alternating
+heartbeats; ordinary replies retain the other slots. The design now documents
+this cadence rather than the infeasible original all-fields-in-sixteen-words
+proposal. Existing images without a producer continue ordinary replies.
+
+The CF adapter authenticates before copying into a 64-message FIFO. It returns
+arrival age, explicitly signals lost fragments and clears queued data on trust
+loss/reset. Exact duplicate wire replies cannot enqueue twice. Valid status
+frames preserve the last genuine registry snapshot, with its original heartbeat
+and checksum, so UI polling aligned to status slots cannot starve registry ACKs.
+Status payload bytes cannot manufacture a registry acknowledgement.
+
+Evidence [D]: 35 focused native-CF/SHARC tests pass, covering both frame kinds,
+session binding, checksums, duplicate/reordered traffic, queue overflow, wrong
+sessions and protected frame context. The CF rebuild decodes 2539 instructions;
+the DSP object decodes 693. Required changed-tests ran: 309 host checks passed,
+16 skipped, layering/lint/types passed. Its Python formatting failure was fixed;
+the pre-existing 256 stale paths in 78 files remain outside this change.
+The combined image `out/patch/canopy-stage5-status.syx` links, SHA-256
+`396331526acff0ab636aa28293ba810a16934231c35903a42bb967aa81128c48`.
+
+**Stage 5 remains incomplete.** This mailbox has no production producer or UI
+consumer yet. Next implement the opt-in process output capability, actual DSP
+telemetry/effective bank and UI-clock freshness handoff. Do not have the adapter
+inspect private CANOPY state or present queued old messages as newly fresh.
+Native SRC view/input integration, complete modal/clock presentation, native
+parameter persistence and booted acceptance listed above are still required.
+No physical device was changed and this image is not a Stage 5 release.

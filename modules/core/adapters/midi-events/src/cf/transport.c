@@ -228,19 +228,26 @@ void mt_reply_read(const volatile uint16_t *record, uint32_t out[MT_REPLY_WORDS]
 }
 
 static int session_reply(uint32_t magic)
-{ return magic == MT_SESSION_REPLY_MAGIC || magic == MT_PLAY_REPLY_MAGIC; }
+{ return magic == MT_SESSION_REPLY_MAGIC || magic == MT_PLAY_REPLY_MAGIC || magic == MT_STATUS_REPLY_MAGIC; }
+
+uint32_t mt_reply_session(const uint32_t reply[MT_REPLY_WORDS])
+{ return reply[reply[0]==MT_STATUS_REPLY_MAGIC ? 1 : 12]; }
+uint32_t mt_reply_heartbeat(const uint32_t reply[MT_REPLY_WORDS])
+{ return reply[reply[0]==MT_STATUS_REPLY_MAGIC ? 2 : 3]; }
 
 int mt_reply_valid(const uint32_t reply[MT_REPLY_WORDS])
 {
     uint32_t i, a = 0, b = 0;
     if (!reply || (reply[0] != MT_REPLY_MAGIC && !session_reply(reply[0]))) return 0;
-    if (session_reply(reply[0]) && !reply[12]) return 0;
+    if (session_reply(reply[0]) && !mt_reply_session(reply)) return 0;
     for (i = 0; i < MT_REPLY_WORDS-1; ++i) {
         a += reply[i]; b += a;
-        if (((i >= 13 && reply[0] != MT_PLAY_REPLY_MAGIC) || (i == 12 && reply[0] == MT_REPLY_MAGIC)) && reply[i]) return 0;
+        if (reply[0]!=MT_STATUS_REPLY_MAGIC &&
+            (((i >= 13 && reply[0] != MT_PLAY_REPLY_MAGIC) || (i == 12 && reply[0] == MT_REPLY_MAGIC)) && reply[i])) return 0;
     }
     if (reply[0] == MT_PLAY_REPLY_MAGIC && (reply[13] > 6 || (reply[13] && !reply[14]))) return 0;
     if (reply[15] != (a ^ b)) return 0;
+    if (reply[0] == MT_STATUS_REPLY_MAGIC) return 1; /* payload validated by its owner */
     if (reply[4] == 0x49525231u) return 1; /* registry validates its own identity/status */
     for (i = 4; i < 12; ++i) if (reply[i]) return 0;
     return 1;
@@ -250,16 +257,16 @@ static int reply_tick(MiTransport *t, MiLedger *m,
                       const uint32_t *reply, uint32_t block, uint32_t session)
 {
     uint32_t valid = mt_reply_valid(reply) &&
-        (session ? session_reply(reply[0]) && reply[12] == session :
+        (session ? session_reply(reply[0]) && mt_reply_session(reply) == session :
                    reply[0] == MT_REPLY_MAGIC);
     int result = 0;
     if (t->epoch != m->epoch) { mt_init(t); t->epoch = m->epoch; }
     if (reply) {
-        if (reply[1] != m->epoch) valid = 0;
+        if (reply[0]!=MT_STATUS_REPLY_MAGIC && reply[1] != m->epoch) valid = 0;
         if (!valid) result = -1;
     }
     if (valid) {
-        uint32_t delta = reply[3] - t->heartbeat;
+        uint32_t heartbeat=mt_reply_heartbeat(reply), delta = heartbeat - t->heartbeat;
         if (t->heartbeat_seen && delta >= 0x80000000u) {
             /* Reboot/backward heartbeat: ownership is no longer trustworthy. */
             if (!t->faults) fault(t, m);
@@ -267,9 +274,9 @@ static int reply_tick(MiTransport *t, MiLedger *m,
         }
         if (!t->heartbeat_seen || delta) {
             t->heartbeat_seen = 1;
-            t->heartbeat = reply[3];
+            t->heartbeat = heartbeat;
             t->heartbeat_block = block;
-            result = mt_ack(t, m, reply[1], reply[2]) ? 2 : 1;
+            result = reply[0]!=MT_STATUS_REPLY_MAGIC && mt_ack(t, m, reply[1], reply[2]) ? 2 : 1;
         }
     }
     if (t->heartbeat_seen && block - t->heartbeat_block >= MT_STALL_BLOCKS && !t->faults)
@@ -309,8 +316,8 @@ int mt_reply_reordered(const MtReplyGuard *g, const uint32_t *reply)
 {
     uint32_t behind, i, j;
     if (!g->ready || !g->expected || g->invalid || !mt_reply_valid(reply) ||
-        !session_reply(reply[0]) || reply[12] != g->expected) return 0;
-    behind = g->heartbeat - reply[3];
+        !session_reply(reply[0]) || mt_reply_session(reply) != g->expected) return 0;
+    behind = g->heartbeat - mt_reply_heartbeat(reply);
     if (!behind || behind >= 0x80000000u) return 0;
     for (i = 0; i < g->history_count; ++i) {
         for (j = 0; j < MT_REPLY_WORDS; ++j)
@@ -330,7 +337,7 @@ static void guard_fail(MtReplyGuard *g, const uint32_t *reply,
 {
     mt_guard_fault[0] = reason;
     mt_guard_fault[1] = block;
-    mt_guard_fault[2] = reply ? reply[3] : 0;
+    mt_guard_fault[2] = reply ? mt_reply_heartbeat(reply) : 0;
     mt_guard_fault[3] = g->heartbeat;
     mt_guard_fault[4] = reply ? reply[0] : 0;
     g->invalid = 1;
@@ -350,19 +357,19 @@ void mt_reply_guard_tick(MtReplyGuard *g, const uint32_t *reply, uint32_t block)
          * traffic cannot refresh the bind deadline; physical reset still revokes. */
         if (!g->ready && reply[0] == MT_REPLY_MAGIC) return;
         if (session_reply(reply[0])) {
-            if (!g->expected || reply[12] != g->expected) { guard_fail(g, reply, block, 2); return; }
+            if (!g->expected || mt_reply_session(reply) != g->expected) { guard_fail(g, reply, block, 2); return; }
             if (!g->ready) {
-                if (reply[4] != 0x49525231u || reply[5] != g->sequence ||
+                if (reply[0]==MT_STATUS_REPLY_MAGIC || reply[4] != 0x49525231u || reply[5] != g->sequence ||
                     reply[6] || reply[7] != g->expected || reply[8] != 5 ||
                     reply[9] || reply[10] || reply[11]) { guard_fail(g, reply, block, 3); return; }
             }
         } else if (g->ready) { guard_fail(g, reply, block, 4); return; }
 
-        delta = reply[3] - g->heartbeat;
+        delta = mt_reply_heartbeat(reply) - g->heartbeat;
         if (g->seen && delta >= 0x80000000u) { guard_fail(g, reply, block, 5); return; }
         if (!g->seen || delta) {
             uint32_t i;
-            g->seen = 1; g->heartbeat = reply[3]; g->block = block;
+            g->seen = 1; g->heartbeat = mt_reply_heartbeat(reply); g->block = block;
             if (session_reply(reply[0])) g->ready = 1;
             for (i = 0; i < MT_REPLY_WORDS; ++i)
                 g->history[g->history_next][i] = reply[i];

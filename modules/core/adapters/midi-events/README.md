@@ -300,3 +300,33 @@ a bound session. Words 13/14 carry admitted row-zero phase/generation. Version
 1/2 still require zero reserved words. Status is not a lifecycle ACK: command,
 sequence, owner and generation checks remain mandatory. A non-ready row prevents
 keyboard routing; a fault requests retirement on the owning UI task.
+
+### Instrument UI transport
+
+Version 4 (`0x494ea104`) is a separate status frame: word 1 is the bound
+session token, word 2 the wire heartbeat, words 3..14 a twelve-word normalized
+UI message, and word 15 the ordinary cumulative checksum. It contains no MIDI
+epoch, command ACK or registry ACK. It cannot establish a session. Only an
+already-bound guard accepts it; wrong sessions, unknown backward heartbeats
+and reset retain their terminal behavior. Its heartbeat advances link liveness
+but never commits configuration or consumes an event packet.
+
+The optional `_instrument_ui_status` mailbox contains a ready word followed by
+twelve immutable words. Only ready=1, a bound session and playback phase=3
+permit emission, on odd heartbeats. Even heartbeats retain the ordinary reply.
+Absent or unready mailboxes retain legacy behavior. The playback adapter must
+own and validate this mailbox; a producer is not installed by this change.
+
+The CF adapter copies fresh authenticated messages into a bounded 64-entry FIFO.
+`mi_status_reply` copies twelve words plus their age in CF frame callbacks;
+it retains no caller pointer. Overflow discards the interrupted queue and
+reports -3 once before newer messages. Reset/trust loss clears it and reports
+-2. Duplicate wire heartbeats cannot enqueue twice. The consumer must validate
+payload identity and UI-clock freshness; callback age alone is not wall time.
+
+Valid status frames preserve the last ordinary registry snapshot unchanged,
+including its original heartbeat and checksum. This prevents UI polling from
+missing all acknowledgements merely by aligning with the status cadence. A
+status payload resembling a registry signature cannot replace that snapshot.
+Missing, reordered or invalid frames still invalidate the cached snapshot as
+before. Consumers still own transaction and freshness checks.

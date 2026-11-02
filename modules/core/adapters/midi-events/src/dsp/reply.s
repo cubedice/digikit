@@ -11,6 +11,7 @@
 .EXTERN _instrument_registry_reply;
 .EXTERN _instrument_session;
 .EXTERN _instrument_play_status;
+.EXTERN _instrument_ui_status;
 _mi_reply_build:
     I0 = _instrument_reply;
     R0 = 0;
@@ -66,6 +67,43 @@ _mr_registry_done:
     DM(14, I0) = R0;
     R6 = 0x494ea103;
 _mr_session_done:
+    // Status is a different frame kind, never an ACK. The mailbox is optional
+    // and owned by the process adapter: ready word followed by 12 immutable
+    // normalized words. Only a healthy bound row may publish it. Alternate
+    // with the ordinary frame so lifecycle and MIDI ACK progress is retained.
+    R0 = 0x494ea103;
+    COMP(R6, R0);
+    IF NE JUMP _mr_checksum;
+    I0 = _instrument_reply;
+    R0 = DM(13, I0);
+    R1 = 3;
+    COMP(R0, R1);
+    IF NE JUMP _mr_checksum;
+    R0 = DM(_mi_heartbeat);
+    R1 = 1;
+    R0 = R0 AND R1;
+    IF EQ JUMP _mr_checksum;
+    R0 = _instrument_ui_status;
+    R0 = PASS R0;
+    IF EQ JUMP _mr_checksum;
+    I1 = R0;
+    R0 = DM(I1, M6);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _mr_checksum;
+    R0 = DM(12, I0);
+    DM(1, I0) = R0;
+    R0 = DM(_mi_heartbeat);
+    DM(2, I0) = R0;
+    MODIFY(I0, 3) (NW);
+    R3 = 12;
+_mr_status_copy:
+    R0 = DM(I1, M6);
+    DM(I0, M6) = R0;
+    R3 = R3 - 1;
+    IF NE JUMP _mr_status_copy;
+    R6 = 0x494ea104;
+_mr_checksum:
     I0 = _instrument_reply;
     MODIFY(I0, 1) (NW);
     R1 = R6;

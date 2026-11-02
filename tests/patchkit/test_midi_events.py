@@ -48,6 +48,7 @@ def reply_builder():
             "_instrument_registry_reply": 0,
             "_instrument_session": 0,
             "_instrument_play_status": 0,
+            "_instrument_ui_status": 0,
         },
     )
 
@@ -62,6 +63,7 @@ def reply_builder():
             "_instrument_registry_reply": registry_at,
             "_instrument_session": registry_at + 32,
             "_instrument_play_status": 0,
+            "_instrument_ui_status": 0,
         },
     )
 
@@ -75,17 +77,21 @@ def reply_builder():
             "_instrument_registry_reply": registry_at,
             "_instrument_session": registry_at + 32,
             "_instrument_play_status": registry_at + 36,
+            "_instrument_ui_status": registry_at + 44,
         },
     )
 
-    def build(epoch, message, heartbeat, registry=None, session=0, play=None):
+    def build(epoch, message, heartbeat, registry=None, session=0, play=None, ui=None):
         dm = dict(initial)
         if registry is not None:
             dm.update({registry_at // 4 + i: w for i, w in enumerate(registry)})
         dm[(registry_at + 32) // 4] = session
+        dm[(registry_at + 44) // 4] = 0
         if play is not None:
             dm[(registry_at + 36) // 4] = play[0]
             dm[(registry_at + 40) // 4] = play[1]
+        if ui is not None:
+            dm.update({(registry_at + 44) // 4 + i: w for i, w in enumerate(ui)})
         dm[epoch_at // 4] = epoch
         dm[message_at // 4] = message
         dm[symbols["_mi_heartbeat"] // 4] = heartbeat
@@ -187,6 +193,7 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
         **symbols,
         "_pp_block_back": 0xB9F000,
         "_instrument_play_status": 0,
+        "_instrument_ui_status": 0,
     }
     if carrier:
         externs["_mi_envelope_next"] = 0
@@ -1221,6 +1228,10 @@ void *memset(void *d, int c, unsigned n) {
         "session_midi",
         "session_keys",
         "reply_record",
+        "status_reply",
+        "status_cannot_bind",
+        "reply_reordering",
+        "play_reply",
     ]
     script = tmp_path / "calls.json"
     script.write_text(
@@ -1442,3 +1453,30 @@ def test_dsp_reply_v3_binds_playback_status_to_session(reply_builder, phase):
     assert words[15] == a ^ b
     unbound = reply_builder(1, 9, 20, registry=[0] * 8, play=[phase, 4])
     assert unbound[0] == 0x494EA101 and unbound[12:15] == [0, 0, 0]
+
+
+@pytest.mark.parametrize("phase", [0, 3, 5])
+@pytest.mark.parametrize("ready", [0, 1, 2])
+def test_status_frames_alternate_without_replacing_lifecycle_ack(
+    reply_builder, phase, ready
+):
+    payload = [0x12340000 + i for i in range(12)]
+    registry = [0x49525231, 17, 0, 7, 5, 0, 0, 0]
+    first = reply_builder(1, 9, 20, registry, 7, [phase, 4], [ready, *payload])
+    second = reply_builder(1, 9, 21, registry, 7, [phase, 4], [ready, *payload])
+    if phase == 3 and ready == 1:
+        assert first[:3] == [0x494EA104, 7, 21]
+        assert first[3:15] == payload
+    else:
+        assert first[:4] == [0x494EA103, 1, 9, 21]
+        assert first[4:12] == registry
+    assert second[:4] == [0x494EA103, 1, 9, 22]
+    assert second[4:12] == registry and second[12:15] == [7, phase, 4]
+    for words in (first, second):
+        a = b = 0
+        for word in words[:15]:
+            a = (a + word) & 0xFFFFFFFF
+            b = (b + a) & 0xFFFFFFFF
+        assert words[15] == a ^ b
+    unbound = reply_builder(1, 9, 20, registry, 0, [phase, 4], [ready, *payload])
+    assert unbound[0] == 0x494EA101

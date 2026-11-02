@@ -1847,7 +1847,20 @@ YES commits exactly the displayed capture revision to the selected slot; if a ne
 
 ### Status payload and redraw contract
 
-Freeze the fast-status payload at twelve words, using the following proposed packing. The four transport ACK/heartbeat words remain independent. All identity/revision fields use wrapping unsigned comparisons; a flag is not a replacement for a generation check.
+Freeze the fast-status payload at twelve words, using the following packing. All identity/revision fields use wrapping unsigned comparisons; a flag is not a replacement for a generation check.
+
+The implemented transport envelope uses sixteen words: magic `0x494ea104`,
+bound-session token, heartbeat, twelve payload words, checksum. This supersedes
+the earlier proposal to carry four ACK/heartbeat words alongside every payload:
+that proposal left no room for both session authentication and checksum. Status
+frames alternate with ordinary ACK frames, only after binding and while the row
+is ready. Thus ordinary ACKs remain available every two DSP blocks while status
+is active; a status frame never acknowledges a configuration or MIDI event.
+No status frame can bind a session. An absent/unready status producer preserves
+the existing ordinary frame cadence. Fast/detail rotation occurs within status
+slots, rather than replacing the lifecycle ACK path. The CF queue is bounded to
+64 messages, reports overflow explicitly and retains authenticated arrival age;
+the UI receiver must additionally enforce its wall-clock freshness deadline.
 
 | Word | Fast payload meaning |
 | --- | --- |
