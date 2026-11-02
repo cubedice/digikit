@@ -6,10 +6,17 @@ struct dk_ui_menu { const dk_ui_menu_desc *desc; int open; };
 MiLedger mi_ledger;
 MiTransport mi_transport;
 volatile uint32_t ip_view;
-static struct dk_ui_menu menus[2];
+static struct dk_ui_menu menus[3];
 static unsigned menu_count, masked, unsafe_io, token=1;
 static int exists, staged, put_error, flush_error, open_error;
 static uint8_t card[KB_RECORD_BYTES], pending_card[KB_RECORD_BYTES];
+static uint8_t preset_card[CP_SLOTS][CP_RECORD_BYTES], preset_staged[CP_SLOTS][CP_RECORD_BYTES];
+static unsigned preset_exists, preset_staged_mask;
+static int preset_index(const char *key)
+{
+    for(int i=0;i<CP_SLOTS;++i) if(!strcmp(key,preset_keys[i])) return i;
+    return -1;
+}
 uint32_t dkrt_instrument_type(void) { return 1; }
 uint32_t dkrt_instrument_generation(void) { return 1; }
 uint32_t dkrt_irq_mask(void) { unsigned before=masked; ++masked; return before; }
@@ -26,6 +33,12 @@ int mi_keyboard_recover(void) { return -1; }
 int dkrt_settings_get(const char *key,uint8_t *out,uint32_t capacity)
 {
     if(masked) ++unsafe_io;
+    int index=preset_index(key);
+    if(index>=0) {
+        if(capacity<CP_RECORD_BYTES) return -69;
+        if(!(preset_exists & (1u<<index))) return -68;
+        memcpy(out,preset_card[index],CP_RECORD_BYTES); return CP_RECORD_BYTES;
+    }
     if(strcmp(key,"canopy/shapes/v1") || capacity<sizeof(card)) return -69;
     if(!exists) return -68;
     memcpy(out,card,sizeof(card)); return sizeof(card);
@@ -33,6 +46,12 @@ int dkrt_settings_get(const char *key,uint8_t *out,uint32_t capacity)
 int dkrt_settings_put(const char *key,const uint8_t *in,uint32_t size)
 {
     if(masked) ++unsafe_io;
+    int index=preset_index(key);
+    if(index>=0) {
+        if(size!=CP_RECORD_BYTES) return -69;
+        if(put_error) return put_error;
+        memcpy(preset_staged[index],in,size); preset_staged_mask|=1u<<index; return 0;
+    }
     if(strcmp(key,"canopy/shapes/v1") || size!=sizeof(card)) return -69;
     if(put_error) return put_error;
     memcpy(pending_card,in,size); staged=1; return 0;
@@ -41,11 +60,15 @@ int dkrt_settings_flush(void)
 {
     if(masked) ++unsafe_io;
     if(flush_error) return flush_error;
+    for(unsigned i=0;i<CP_SLOTS;++i) if(preset_staged_mask & (1u<<i)) {
+        memcpy(preset_card[i],preset_staged[i],CP_RECORD_BYTES); preset_exists|=1u<<i;
+    }
+    preset_staged_mask=0;
     if(staged) { memcpy(card,pending_card,sizeof(card)); exists=1; staged=0; }
     return 0;
 }
 dk_ui_menu *dk_ui_menu_new(const dk_ui_menu_desc *d)
-{ if(menu_count==2) return 0; menus[menu_count].desc=d; return &menus[menu_count++]; }
+{ if(menu_count==3) return 0; menus[menu_count].desc=d; return &menus[menu_count++]; }
 int dk_ui_open(dk_ui_menu *m) { if(open_error) return -1; m->open=1; m->desc->fill(m,0); return 0; }
 void dk_ui_close(dk_ui_menu *m) { m->open=0; }
 int dk_ui_is_open(const dk_ui_menu *m) { return m->open; }
@@ -82,6 +105,21 @@ int main(void)
         else if(!strcmp(cmd,"flusherror")) flush_error=value;
         else if(!strcmp(cmd,"openerror")) open_error=value;
         else if(!strcmp(cmd,"retry")) retry_save(0,0);
+        else if(!strcmp(cmd,"presetsave")) preset_save(0,0);
+        else if(!strcmp(cmd,"presetload")) preset_load(0,0);
+        else if(!strcmp(cmd,"presetslot")) preset_slot=value;
+        else if(!strcmp(cmd,"color")) { pad_color=value; pad_changed(0,value); }
+        else if(!strcmp(cmd,"mode")) choose_mode(0,value);
+        else if(!strcmp(cmd,"type")) choose_type(0,value);
+        else if(!strcmp(cmd,"shapeslot")) { slot=value; changed(0,0); }
+        else if(!strcmp(cmd,"corruptpreset")) preset_card[preset_slot-1][value]^=1;
+        else if(!strcmp(cmd,"presetstate")) {
+            printf("{\"color\":%d,\"dirty\":%d,\"result\":%d,\"present\":%u,\"durable\":%u,\"pending\":%d,\"override\":%u,\"unsafe\":%u,\"shape\":[",
+                pad_color,preset_dirty(),preset_result,preset_present,preset_exists,preset_pending,keyboard.preset_shape_active,unsafe_io);
+            const KbShape *s=keyboard.preset_shape_active ? &keyboard.preset_shape : &keyboard.shapes[keyboard.slot];
+            for(unsigned i=0;i<s->count;++i) printf("%s%u",i ? ",":"",s->intervals[i]);
+            puts("]}");
+        }
         else if(!strcmp(cmd,"restart")) { keyboard_initialized=0; instrument_play_tick(); }
         else if(!strcmp(cmd,"snapshot")) {
             printf("{\"mode\":%u,\"dirty\":%u,\"status\":%u,\"storage\":%d,\"pending\":%d,\"exists\":%d,\"unsafe\":%u,\"shape\":[",

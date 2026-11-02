@@ -17,6 +17,10 @@ typedef struct {
     uint8_t mode, previous_mode, latch, previous_latch, type, voicing, selector_base, selector_channel;
     uint8_t slot, capture_count, capture[4], status, dirty, update;
     KbShape shapes[8];
+    /* Loaded preset owns its shape by value; selecting a library slot releases
+     * this override. Preset loading never overwrites the learned library. */
+    KbShape preset_shape;
+    uint8_t preset_shape_active;
     KbKey keys[MI_KEYS];
     KbVoice voices[4];
 } KbState;

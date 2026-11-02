@@ -128,7 +128,10 @@ static uint32_t desired(KbState *s, KbVoice v[4])
     if (!root) return n;
     const uint8_t *intervals=shapes[s->type]+1;
     n=shapes[s->type][0];
-    if (s->type==10) { n=s->shapes[s->slot].count; intervals=s->shapes[s->slot].intervals; }
+    if (s->type==10) {
+        const KbShape *shape=s->preset_shape_active ? &s->preset_shape : &s->shapes[s->slot];
+        n=shape->count; intervals=shape->intervals;
+    }
     if (s->status==KB_RANGE || s->status==KB_EMPTY) s->status=KB_OK;
     if (!n) s->status=KB_EMPTY;
     for (i=0;i<n;++i) {
@@ -240,6 +243,7 @@ int kb_learn_save(KbState *s, uint32_t session, uint32_t revision)
     KbShape *shape=&s->shapes[s->slot]; zero(shape,sizeof(*shape));
     shape->count=s->capture_count;
     for (i=0;i<shape->count;++i) shape->intervals[i]=s->capture[i]-s->capture[0];
+    s->preset_shape_active=0;
     s->dirty=1; s->mode=s->previous_mode; s->latch=s->previous_latch; s->status=KB_OK; return 0;
 }
 void kb_learn_cancel(KbState *s)

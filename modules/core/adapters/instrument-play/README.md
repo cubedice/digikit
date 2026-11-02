@@ -86,6 +86,34 @@ critical section. Failure retains RAM and dirty state; RETRY SHAPE SAVE retries.
 Keyboard enable, route, latch, mode and voicing start at defaults after reboot;
 only templates persist in this stage. Presets and the named SRC pages are Stage 5.
 
+### Stage 5 preset storage checkpoint
+
+KEYBOARD > PRESETS now provides four explicit sound slots. SAVE CURRENT SOUND
+queues a write on the UI task; LOAD SAVED SOUND validates the complete record
+and resets the instrument before applying it. Fresh keyboard presses are required
+after loading. Failed saves leave the working sound untouched and report NOT SAVED;
+repeat SAVE to retry. Loading uses the last confirmed saved copy for this boot.
+The shared store may independently retry a failed write, but the preset UI does
+not claim confirmation until its own successful save.
+
+Each version-1 `canopy/preset/1` through `canopy/preset/4` value is 64 bytes.
+It includes stable logical control IDs 0-15, family, keyboard mode, local BPM,
+clock source, and the custom shape by value. It excludes routing, native TUNE/
+LEVEL, held keys, pedal membership, tokens, phase and pointers. Loading does not
+overwrite any of the eight learned library slots. Selecting a different shape
+slot or completing LEARN releases the preset shape override.
+
+The format uses big-endian 16-bit controls and BPM, canonical zero padding and
+a 32-bit FNV-1a checksum. Length, schema, checksum, every range, shape ordering
+and unused bytes are checked before applying anything. SOURCE currently accepts
+keyboard only; no sequencer owner is implied. Swing retains the existing CPS5
+extra-delay percentage. Four presets plus the shape library occupy 390 bytes
+including settings-entry overhead, within the requested 1536-byte quota.
+The shared settings store checks its remaining capacity before inserting a value.
+
+This checkpoint does not implement the named SRC pages, display telemetry or
+native Sound/pattern persistence. Those Stage 5 acceptance tasks remain open.
+
 PANIC releases sound and retains held-key tombstones. RECOVER KEYBOARD separately
 asks for all keys and pedals to be released before clearing capacity quarantine
 and advancing the MIDI epoch. It cannot restore a failed boot/session guard or

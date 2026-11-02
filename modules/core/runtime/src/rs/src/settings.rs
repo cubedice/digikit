@@ -341,7 +341,10 @@ pub unsafe fn flush_if_dirty() -> i32 {
     if state().off != 0 {
         return E_SET_OFF;
     }
-    if state().dirty == 0 {
+    // Automatic retries can stop after a card error, but the RAM record still
+    // differs from the last durable copy. An explicit SAVE/RETRY must attempt
+    // that write again; returning OK here would falsely acknowledge persistence.
+    if state().dirty == 0 && state().last_result == OK {
         return OK;
     }
     flush()

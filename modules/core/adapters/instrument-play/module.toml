@@ -37,7 +37,7 @@ to = "_mi_velocity_entry"
 
 [[object]]
 path = "build/play-cf.dko.json"
-sources = ["src/cf/control.c", "src/cf/keyboard.c", "src/cf/sound.c", "src/cf/sound-load.s", "src/cf/view.s"]
+sources = ["src/cf/control.c", "src/cf/keyboard.c", "src/cf/preset.c", "src/cf/sound.c", "src/cf/sound-load.s", "src/cf/view.s"]
 place = "cf.expansion"
 devices = ["dt2"]
 [object.externs]

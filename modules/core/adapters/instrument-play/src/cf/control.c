@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <dk/ui.h>
 #include "keyboard.h"
+#include "preset.h"
 #include "../../../midi-events/src/cf/bridge.h"
 extern uint32_t dkrt_instrument_type(void);
 extern uint32_t dkrt_instrument_generation(void);
@@ -43,6 +44,11 @@ extern int dkrt_settings_get(const char *, uint8_t *, uint32_t);
 extern int dkrt_settings_put(const char *, const uint8_t *, uint32_t);
 extern int dkrt_settings_flush(void);
 static const char shape_key[]="canopy/shapes/v1";
+static const char *const preset_keys[CP_SLOTS]={"canopy/preset/1","canopy/preset/2","canopy/preset/3","canopy/preset/4"};
+static uint8_t preset_records[CP_SLOTS][CP_RECORD_BYTES], preset_present;
+static uint8_t preset_write[CP_RECORD_BYTES];
+static int preset_slot=1, preset_result, preset_pending;
+static dk_ui_menu *preset_menu;
 static const char *const modes[]={"PLAY","ROOT + TYPE"};
 static const char *const types[]={"MAJOR","MAJOR 6","SUS 2","MINOR 6","MINOR","SUS 4",
     "ADD 9","DOM 7","DIMINISHED","MIN 7","CUSTOM","MAJ 7"};
@@ -72,7 +78,9 @@ static void changed(void *ctx, int value)
     if (keyboard.mode==KB_LEARN) kb_learn_cancel(&keyboard);
     if (selector_channel==channel) selector_channel=0;
     keyboard.mode=(uint8_t)mode; keyboard.type=(uint8_t)type;
-    keyboard.voicing=(uint8_t)voicing; keyboard.slot=(uint8_t)(slot-1);
+    keyboard.voicing=(uint8_t)voicing;
+    if(keyboard.slot!=(uint8_t)(slot-1)) keyboard.preset_shape_active=0;
+    keyboard.slot=(uint8_t)(slot-1);
     keyboard.selector_base=(uint8_t)((selector_octave+1)*12);
     keyboard.selector_channel=selector_channel ? (uint8_t)(selector_channel-1) : MI_NONE;
     instrument_sound_suspend();
@@ -189,6 +197,85 @@ static void arp_choice(void *ctx,int value)
     if(value==1) dk_ui_choice("CLOCK",arp_clocks,3,arp_clock_done,0);
     if(value==2) dk_ui_choice("RESTART",arp_restarts,3,arp_restart_done,0);
 }
+/* Snapshot on the UI task under the mapper lock. Routes and performance state
+ * are deliberately absent. Presets include the effective custom shape, not a
+ * mutable library slot number. */
+static void preset_snapshot(CpPreset *p)
+{
+    uint32_t sr=dkrt_irq_mask();
+    uint16_t v[CP_CONTROLS]={(uint16_t)keyboard.type,(uint16_t)keyboard.voicing,
+        (uint16_t)pad_color,(uint16_t)pad_drift,(uint16_t)pad_strum,(uint16_t)arp_mix,
+        (uint16_t)arp_rate,(uint16_t)arp_order,(uint16_t)arp_octaves,(uint16_t)arp_gate,
+        (uint16_t)arp_swing,(uint16_t)arp_restart,(uint16_t)keyboard.latch,0,
+        (uint16_t)pad_attack,(uint16_t)pad_release};
+    for(uint32_t i=0;i<CP_CONTROLS;++i) p->control[i]=v[i];
+    p->bpm=(uint16_t)arp_bpm; p->family=(uint8_t)pad_family;
+    p->mode=keyboard.mode; p->clock=(uint8_t)arp_clock;
+    const KbShape *shape=keyboard.preset_shape_active ? &keyboard.preset_shape : &keyboard.shapes[keyboard.slot];
+    p->shape.count=shape->count;
+    for(uint32_t i=0;i<4;++i) p->shape.intervals[i]=shape->intervals[i];
+    dkrt_irq_restore(sr);
+}
+static int preset_dirty(void)
+{
+    CpPreset p; uint8_t b[CP_RECORD_BYTES]; preset_snapshot(&p);
+    if(cp_encode(&p,b) || !(preset_present & (1u<<(preset_slot-1)))) return 1;
+    for(uint32_t i=0;i<CP_RECORD_BYTES;++i)
+        if(b[i]!=preset_records[preset_slot-1][i]) return 1;
+    return 0;
+}
+static void preset_save(void *ctx,int value)
+{
+    (void)ctx; (void)value;
+    if(keyboard.mode==KB_LEARN) { dk_ui_toast("CLOSE LEARN FIRST"); return; }
+    CpPreset p; preset_snapshot(&p);
+    if(cp_encode(&p,preset_write)) { dk_ui_toast("INVALID SOUND - NOT SAVED"); return; }
+    preset_pending=preset_slot;
+}
+static void preset_select(void *ctx,int value)
+{
+    (void)ctx; (void)value;
+    if(preset_menu) dk_ui_refresh(preset_menu);
+}
+static void preset_load(void *ctx,int value)
+{
+    (void)ctx; (void)value; CpPreset p;
+    if(keyboard.mode==KB_LEARN) { dk_ui_toast("CLOSE LEARN FIRST"); return; }
+    if(!(preset_present & (1u<<(preset_slot-1))) ||
+        cp_decode(&p,preset_records[preset_slot-1],CP_RECORD_BYTES)) {
+        dk_ui_toast("PRESET EMPTY OR INVALID"); return;
+    }
+    uint32_t sr=dkrt_irq_mask();
+    /* One reset boundary prevents notes from observing a partial sound change.
+     * The physical ledger retains old-key tombstones. */
+    instrument_sound_suspend();
+    mode=keyboard.mode=p.mode; type=keyboard.type=(uint8_t)p.control[CP_CHORD];
+    voicing=keyboard.voicing=(uint8_t)p.control[CP_VOICING];
+    latch=keyboard.latch=(uint8_t)p.control[CP_LATCH];
+    keyboard.preset_shape.count=p.shape.count;
+    for(uint32_t i=0;i<4;++i) keyboard.preset_shape.intervals[i]=p.shape.intervals[i];
+    keyboard.preset_shape_active=1;
+    pad_color=p.control[CP_COLOR]; pad_drift=p.control[CP_DRIFT];
+    pad_strum=p.control[CP_STRUM]; arp_mix=p.control[CP_ARP_MIX];
+    arp_rate=p.control[CP_RATE]; arp_order=p.control[CP_ORDER]; arp_octaves=p.control[CP_OCTAVES];
+    arp_gate=p.control[CP_GATE]; arp_swing=p.control[CP_SWING]; arp_restart=p.control[CP_RESTART];
+    pad_attack=p.control[CP_ATTACK]; pad_release=p.control[CP_RELEASE];
+    pad_family=p.family; arp_clock=p.clock; arp_bpm=p.bpm; pad_dirty=1;
+    preset_pending=0;
+    dkrt_irq_restore(sr);
+    dk_ui_toast("PRESET LOADED - PRESS NEW KEYS");
+    if(preset_menu) dk_ui_refresh(preset_menu);
+}
+static void preset_fill(dk_ui_menu *m,void *ctx)
+{
+    (void)ctx;
+    dk_ui_value(m,"PRESET",&preset_slot,1,CP_SLOTS,preset_select,0);
+    dk_ui_text(m,preset_result ? "NOT SAVED - RETRY SAVE" : preset_dirty() ? "UNSAVED CHANGES" : "SAVED");
+    dk_ui_action(m,"SAVE CURRENT SOUND",preset_save,0,0);
+    dk_ui_action(m,"LOAD SAVED SOUND",preset_load,0,0);
+    dk_ui_text(m,"ROUTING IS NOT IN PRESETS");
+}
+static const dk_ui_menu_desc preset_desc={.name="canopy-presets",.title="CANOPY PRESETS",.fill=preset_fill};
 static void fill(dk_ui_menu *m, void *ctx)
 {
     (void)ctx;
@@ -228,6 +315,8 @@ static void fill(dk_ui_menu *m, void *ctx)
     dk_ui_action(m,arp_clocks[arp_clock],arp_choice,0,1);
     dk_ui_action(m,arp_restarts[arp_restart],arp_choice,0,2);
     dk_ui_value(m,"STRUM MS",&pad_strum,0,500,pad_changed,0);
+    if(!preset_menu) preset_menu=dk_ui_menu_new(&preset_desc);
+    if(preset_menu) dk_ui_submenu(m,"PRESETS",preset_menu);
 }
 static const dk_ui_menu_desc desc = {.name="instrument-keyboard",.title="KEYBOARD",.fill=fill};
 void dk_app_instrument_settings_rows(dk_ui_menu *parent)
@@ -244,7 +333,27 @@ void instrument_play_tick(void)
         int length=dkrt_settings_get(shape_key,record,sizeof(record));
         if (length>=0) storage_result=kb_decode(&keyboard,record,(uint32_t)length);
         else if (length!=-68) storage_result=length;
+        preset_present=0;
+        for(uint32_t i=0;i<CP_SLOTS;++i) {
+            CpPreset p;
+            int n=dkrt_settings_get(preset_keys[i],preset_records[i],CP_RECORD_BYTES);
+            if(n>=0 && !cp_decode(&p,preset_records[i],(uint32_t)n)) preset_present|=(uint8_t)(1u<<i);
+        }
         keyboard_initialized=1;
+    }
+    if(preset_pending) {
+        uint32_t index=(uint32_t)preset_pending-1;
+        /* settings_put checks shared capacity before changing its RAM record.
+         * A failed flush never promotes our last confirmed durable copy. */
+        preset_result=dkrt_settings_put(preset_keys[index],preset_write,sizeof(preset_write));
+        if(!preset_result) preset_result=dkrt_settings_flush();
+        if(!preset_result) {
+            for(uint32_t i=0;i<CP_RECORD_BYTES;++i) preset_records[index][i]=preset_write[i];
+            preset_present|=(uint8_t)(1u<<index);
+        }
+        preset_pending=0;
+        dk_ui_toast(preset_result ? "SOUND IN RAM - SAVE FAILED" : "PRESET SAVED");
+        if(preset_menu && dk_ui_is_open(preset_menu)) dk_ui_refresh(preset_menu);
     }
     if (save_pending) {
         uint8_t record[KB_RECORD_BYTES];
