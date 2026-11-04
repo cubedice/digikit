@@ -4,9 +4,9 @@ Status: Stage 5 implementation and DTII OS 1.17 emulator acceptance complete,
 2026-11-02. The admitted CANOPY pad instrument has explicit presets, live
 SOUND/MOVEMENT pages, native TUNE/LEVEL editing and revision-bound display
 updates. The integrated test passes LEARN, durable preset save/load, held-note
-retuning, page navigation and stock-track isolation. Stage 6 hardware latency,
-CPU and Overloop coexistence qualification remain separate; this is not a
-hardware release. Evidence is in the
+retuning, page navigation and stock-track isolation. Stage 6 hardware latency
+and worst-case CPU qualification remain open; physical Overloop coexistence
+passed on November 3. This is not a hardware release. Evidence is in the
 [Stage 5 handover](../handovers/HANDOVER-2026-11-01-canopy-stage5.md).
 
 The implementation uses [instrument MIDI ownership](../../modules/core/adapters/midi-events/README.md),
@@ -2159,14 +2159,17 @@ Details and evidence are in the
 | 6 | Coexistence, admitted instance count and hardware release proof | CANOPY + Overloop + uploads; worst-case CPU; real keyboard latency and lifetime checks |
 | Later | Native Sound/project extension, automation and internal MIDI-track chords | Dedicated round-trip, copy/paste, p-lock/LFO and routing proofs |
 
-Stage 6 progress, 2026-11-02: the named `canopy-overloop` image passes preflight
-and the combined booted-emulator test passes four held notes, Overloop capture,
-a 32 KiB upload/verification, live window edits, loop-side playback and key
-release without losing the recording or note ownership. Physical timing,
-worst-case hardware CPU and USB/DIN lifetime qualification remain open. USB
-audio is connected, but capture permission was declined; no DIN source is
-connected. See the [Stage 6 handover](../handovers/HANDOVER-2026-11-02-canopy-stage6.md)
-for the exact artifacts, measurement boundaries and remaining release gates.
+Stage 6 progress, 2026-11-03: the combined emulator test and physical
+CANOPY/Overloop/upload test pass. Physical Overloop capture, live window edits,
+USB partial releases, sustain messages and replaced-note release checks pass.
+The connected DIN keyboard demonstrated C-E-G to C-G ownership, four-note chords
+and complete release. A bounded USB stress run passed 1,440 note events and four
+verified 32 KiB uploads with no guard faults. One keyboard instrument on track 1
+remains the admitted configuration. Calibrated ingress-to-final-output latency,
+worst-case DSP budget, and broader transition/recovery qualification remain open;
+a physical sustain pedal is unavailable. See the
+[physical findings](../findings/81-canopy-stage6-hardware.md) and
+[Stage 6 handover](../handovers/HANDOVER-2026-11-02-canopy-stage6.md).
 
 Stage 1 is a go/no-go gate. A beautiful pad sound with shared-note cutoff is a failed keyboard instrument. The detailed two-page UI must not delay that proof. Do not expand into extra oscillator types or recognition heuristics while MIDI/AMP ownership remains unresolved.
 

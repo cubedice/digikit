@@ -1,5 +1,7 @@
 # Digitakt II / Digitone II â€” findings
 
+CANOPY: [Stage 6 physical coexistence and USB/DIN ownership](findings/81-canopy-stage6-hardware.md) (**[D]**, DTII OS1.17; timing release gates remain open).
+
 Overloop: [performance display and DSP status return on DTII 1.17](findings/77-overloop-display.md) (**[D]**, emulator/component evidence; hardware unverified).
 
 CANOPY: [separate sample activation and sustained stock envelope](findings/78-canopy-carrier.md) (**[D]**, DT2 1.17 firmware component probe; live carrier integration open).

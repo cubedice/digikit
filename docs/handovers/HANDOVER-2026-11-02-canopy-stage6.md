@@ -1,9 +1,11 @@
 # CANOPY Stage 6 qualification
 
-Stage 6 remains open. The user requested completion, and confirmed DTII USB
-audio with no DIN source. Windows enumerates a stereo Digitakt II WASAPI input.
-Permission for a two-second audio capture was declined; no audio was captured
-and no firmware or module was installed on the physical device in this work.
+Stage 6 remains open for calibrated internal latency and worst-case physical
+DSP timing. On November 3 the user authorized USB audio capture, confirmed the
+project disposable, and connected a DIN keyboard. The combined firmware and
+CANOPY, Overloop and remote-control modules are now installed. Hardware
+coexistence, live loop edits, USB ownership and DIN keyboard checks passed;
+see [physical evidence](../findings/81-canopy-stage6-hardware.md).
 
 ## Combined image
 
@@ -56,22 +58,57 @@ headroom, keyboard latency, DIN timing, all pattern transitions, or long-duratio
 hardware stability. Current production admission is one keyboard instrument on
 track 1; the four-note foreground pool has two short release-tail slots.
 
-## Physical gates still required
+## Remaining release gates
 
-- Preserve the existing Overloop module, selection and settings before deploying
-  the preflighted combined image. Current physical image is `7eed7aa5661f7981`,
-  runtime 0.5.2, with only `digikit/overloop` v0.4.0 loaded.
 - Measure completed MIDI ingress to final audio onset under the coexistence
-  workload. The design target is below 10 ms median and 15 ms p99. Host MIDI send
-  times plus USB audio arrival include transport and host buffering; they cannot
-  be relabeled as this internal interval. Existing transport word 6 records
-  first-send block, not ingress time, so timestamp instrumentation is still needed.
-- Establish a hardware DSP deadline budget and worst-case block duration with
-  maximum event/replacement load, arp, Overloop recording/playback and uploads.
-  Instruction counts and host interpreter CPU are not silicon cycle measurements.
-  Performance comparisons must use the required paired A/B procedure.
-- Repeat physical ownership, pedal, stale-release, route/pattern changes and
-  upload recovery checks, on USB and DIN. A DIN source is not connected.
+  workload. Target: below 10 ms median and 15 ms p99. Host MIDI-send and USB
+  audio-arrival times include transport/buffering and are not this interval.
+  Transport word 6 is first-send block, not ingress time. Add bounded ingress
+  timestamps and correlate them with final-output sample position before
+  collecting a latency distribution; validate the measurement path itself.
+- Establish the physical DSP deadline budget and worst-case block duration
+  with maximum event/replacement load, arp, Overloop and uploads. Current health
+  counters are raw observations, not a qualified full-workload CPU percentage.
+  Finding 06's programmed 1 GHz analysis targets older firmware; verify current
+  OS1.17 and measurement coverage before using it. Follow the required paired
+  A/B procedure for performance comparisons.
+- Extend hardware qualification to route/pattern changes and upload recovery.
+  USB replacement and sustain-message tests passed; a physical DIN sustain
+  pedal is unavailable. Do not represent the short stress run as a soak test.
 
-Do not mark Stage 6 complete or remove experimental status from emulator-only
-evidence.
+## Physical work, 2026-11-03
+
+Authorization was granted after the earlier declined capture. The user confirmed
+that the current project is disposable. Preflight and image identity checks
+passed before flashing image `f064c83d13ad47d4`, runtime 0.5.2. CANOPY and the
+remote service were installed alongside the existing Overloop v0.4.0. All three
+loaded, and the keyboard route admits CANOPY on track 1, channel 1, USB and DIN.
+CANOPY load completion is asynchronous: wait for file phase 3 / session ready,
+not the first post-restart INFO response.
+
+The original Overloop package is backed up at
+`out/stage6-hardware-backup/overloop.dkm`, SHA256
+`e388ebf2a4f0efb5298ec1a6bd40b3336357c8a1a3545dc184c2dd36442e5081`.
+SETTINGS originally returned `E_SET_NOKEY`; no record existed. Keyboard settings
+are now enabled/persisted. Track 1 is CANOPY with the native AMP set to ADSR and
+full sustain, verified on the physical display. These are intentional changes
+to the disposable project, not a restoration of the original project state.
+
+The first two coexistence attempts stopped before recording: bounded +8 knob
+movements did not reach ARMED. Repeating the Record movement with +30 increments
+and checking the display reached ARMED. The successful test captured 60,000
+stereo frames / eight steps during a verified 32 KiB upload. Live edits reduced
+the window to 7,488 frames at offset 7,488 without replacing the recording.
+USB ownership/sustain/replacement, the user's DIN chord sequence, and 1,440
+USB note events with four verified uploads passed. Exact measurements and
+limitations are recorded in the linked finding.
+
+At completion the sequencer is stopped, Overloop FADE is LIVE, REC was turned
+down, and all automated notes/sustain messages were released. The recorded loop
+remains available; START and LENGTH are both 1. CANOPY, Overloop and remote remain
+selected. No further flash was needed for these tests.
+
+The physical capture scripts and raw artifacts are under ignored `out/`;
+production device regression scenarios remain TypeScript. This work changes
+qualification documentation only. Do not mark Stage 6 complete or remove the
+experimental designation while the remaining measurement gates are open.
