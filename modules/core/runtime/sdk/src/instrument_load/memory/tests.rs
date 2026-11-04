@@ -64,6 +64,7 @@ fn instrument_memory_grants_exclude_legacy_ranges_bss_and_padding() {
         stack_bytes: 16,
         max_events: 8,
         max_controls: 32,
+        flags: 0,
     };
     let limits = Limits {
         l2: Range {

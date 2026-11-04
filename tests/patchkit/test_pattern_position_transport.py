@@ -124,7 +124,7 @@ def receiver():
     return linked, syms, dm
 
 
-def receive(receiver, words, *, previous=None, seen=False, mode=0x1011800):
+def receive(receiver, words, *, previous=None, seen=False, mode=0x1011800, clock=False):
     linked, syms, initial = receiver
     dm = dict(initial)
     record = syms["_pattern_position_info"] // 4
@@ -156,7 +156,11 @@ def receive(receiver, words, *, previous=None, seen=False, mode=0x1011800):
         "_pp_block_entry",
         regs=regs,
         dm_words=dm,
-        reads={"record": (record, 20), "wire": ((RX + SUFFIX) // 4 - 1, 18)},
+        reads={
+            "record": (record, 20),
+            "wire": ((RX + SUFFIX) // 4 - 1, 18),
+            "clock": (syms["_pattern_clock_info"] // 4, 5),
+        },
         read_regs=SAVED,
         max_steps=500,
         return_sw=BACK,
@@ -166,7 +170,7 @@ def receive(receiver, words, *, previous=None, seen=False, mode=0x1011800):
     for name in SAVED:
         assert out["regs"][name] == regs[name], (name, out["regs"][name], regs[name])
     assert out["wire"] == [0x99118822, *words, 0x33774466]
-    return out["record"]
+    return (out["record"], out["clock"]) if clock else out["record"]
 
 
 @pytest.mark.parametrize("mode", [0x1011800, 0x1013800, 0x1213800])
@@ -212,3 +216,22 @@ def test_gap_count_and_semantically_invalid_snapshot_are_explicit(receiver):
     assert record[:16] == words
     assert record[16:] == [43, 0, 41, 3]
     assert record[5] == 0  # valid wire does not fabricate valid sequencer semantics
+
+
+@pytest.mark.parametrize("mode", [0x1011800, 0x1213800])
+@pytest.mark.parametrize("stale", [False, True])
+def test_phase_extension_normalizes_legacy_position(receiver, mode, stale):
+    words = wire()
+    words[1], words[9] = 3, 0xFFFF1234
+    if stale:
+        words[5] |= 4
+    words[15] = reduce(xor, words[:15], SALT)
+    record, clock = receive(receiver, words, mode=mode, clock=True)
+    legacy = words[:15]
+    legacy[1], legacy[9] = 2, 0
+    legacy[5] &= 3
+    assert record[:16] == legacy + [reduce(xor, legacy, SALT)]
+    assert clock == [0x50434C4B, 1, 0xFFFF1234, words[11], 0 if stale else 3]
+    assert receive(receiver, wire(), clock=True)[1][0] == 0
+    words[15] ^= 1
+    assert receive(receiver, words, clock=True)[1][0] == 0

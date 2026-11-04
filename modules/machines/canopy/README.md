@@ -1,11 +1,12 @@
 # CANOPY implementation
 
-This directory contains the Stage 1 sine instrument for the
+This directory contains the four-note pad instrument with movement, presets and two SRC pages for the
 [CANOPY design](../../../docs/design/canopy.md). Its dynamic package uses V2
 reset/process callbacks and an assigned machine type. It requires the optional
 DTII 1.17 `core/instrument-play` adapter; ordinary firmware cannot admit it.
-Integrated Stage 1 keyboard/audio acceptance passes in the coupled emulator.
-This development package is not a finished pad synth or hardware release.
+The engine supports Velvet/Reed families, color, drift and local envelopes.
+Stage 5 emulator acceptance is complete. Stage 6 coexistence and physical release qualification remain open.
+This is not a hardware-qualified release.
 
 Build and pack with `patchkit build digikit/canopy` and
 `patchkit pack digikit/canopy --device dt2 -o out/patch/canopy-dt2.dkm` through
@@ -13,16 +14,17 @@ the repository's Python wrapper. Select CANOPY on track 1. In firmware containin
 the adapter, SETTINGS > DIGIKIT > KEYBOARD selects USB/DIN, channel and ENABLE.
 Enable the corresponding stock MIDI receive ports as well. Development
 installation uses the upload/selection protocol; the generic module-browser fit
-calculator remains V1-only. Routing starts disabled on every boot; Stage 1 does
-not persist setup settings.
+calculator remains V1-only. Routing starts disabled on every boot. Learned chord templates persist;
+keyboard and sound setup currently return to defaults.
 Only track 1 is admitted. Other tracks and channels retain stock behavior.
 
 `src/dsp/voice.s` implements four foreground notes, two short release tails and
 four pending-replacement records in a caller-owned 256-byte bank.
 Each note has its own token, gate, oscillator phase, velocity and linear envelope.
-Attack is fixed at 80 ms; release falls at full-scale per second (a note released
-during attack ends sooner). Output is mono, in 32-sample blocks at 48 kHz. The sine
-rotator normalizes its phase vector once per block to limit numerical drift.
+Attack defaults to 80 ms and release to one second; both are adjustable in
+KEYBOARD setup (a note released during attack ends sooner). Output is mono, in
+32-sample blocks at 48 kHz. A normalized sine rotator supplies the fundamental
+and finite second/third harmonic families; harmonics fade before Nyquist.
 `src/dsp/tuning.s` supplies MIDI 0–127 coefficients at A4=440 Hz.
 
 Note-on rejects duplicate tokens and invalid notes/velocities without changing
@@ -31,12 +33,11 @@ note. Zero-velocity Note On must already have been normalized by MIDI ingress.
 QUIET is returned only after every local release finishes, and the entire output
 block is always written. Independent banks allow separate track state.
 
-This is deliberately the lifetime-test kernel, not the finished instrument. It has
-no chord modes, arp or preset controls. These
-operations must not be advertised by a ready instrument yet. The callback layer
-now supports CC64 sustain, CC121 pedal reset, CC123 All Notes Off and CC120
+The adapter supplies PLAY, ROOT + TYPE and learned chord modes. The callback layer supports CC64 sustain, CC121 pedal reset, CC123 All Notes Off and CC120
 All Sound Off, plus 14-bit pitch bend at a fixed +/-2 semitone range, scoped to
 MIDI port/channel.
+
+## Earlier carrier and transport evidence
 
 The earlier legacy fixture owns sixteen separate voice banks and a 256-byte staging bank.
 Each track additionally has a 256-byte controller record with 32 route pedal bits and
@@ -194,11 +195,73 @@ The booted reload scenario also verifies pedal-owned USB C remains audible after
 retires C without cutting off a fresh physically held USB G; G's release returns
 the final output to zero in the measured window. This is emulator evidence only.
 
-The V2 callback prototype in `src/dsp/v2.s` uses a 528-byte allocator-owned
+## Current V2 callback
+
+The V2 callback in `src/dsp/v2.s` uses a 544-byte allocator-owned
 instance and normalized input events. It shares the atomic voice/pedal engine
 with the transport proof. `test_canopy_v2.py` checks it both directly and through
 the protected registry dispatcher, including paired held-voice phase/gain state,
 independent velocity and bend, sustain, malformed batches and reset isolation.
-It requires neutral tuning and fixed PLAY configuration. Descriptor budgets are
-provisional, and destructive reset still requires carrier quiescence. This is
-not a packaged instrument or a completed live V2 audio route.
+CPS3 accepts family, color, drift, attack and release. CPS1 retains the historical
+sine diagnostic. Descriptor budgets remain provisional; destructive reset
+requires carrier quiescence. The optional adapter packages and admits the V2
+instrument through the normal module protocol.
+
+
+Stage 2 keyboard modes and learned shape memory are provided by the optional
+`core/instrument-play` adapter. See
+[the keyboard setup guide](../../core/adapters/instrument-play/README.md#keyboard-modes-and-shape-memory).
+Stage 3 now supplies the pad renderer; arp remains Stage 4. See the
+[pad sound setup](../../core/adapters/instrument-play/README.md#pad-sound-setup-stage-3).
+
+
+## Applied controls and SRC values (CPS6)
+
+CPS6 is a 32-word configuration shared by playback and SRC presentation. Word
+0 contains version 6 in its low byte and mapper mode (0..2) above it. Words
+1..15 retain CPS5 sound and movement settings; words 16..31 contain the sixteen
+stable SRC control values in ID order. Both owners validate ranges and reject
+any duplicated SRC value that disagrees with its audio setting. STRUM must
+match the truncated milliseconds-to-DSP-block conversion; SOURCE remains KEYS.
+
+Both banks come from one locked snapshot with the SRC requested revision.
+Mode, clock, family and BPM also advance that revision. Transport ACKs still
+cannot clear pending markers without a matching DSP-applied bank. The status
+producer and native SRC attachment remain unfinished. Build the updated CANOPY
+package with the updated playback firmware: older packages cannot consume CPS6.
+
+## Movement controls (CPS5 compatibility)
+
+KEYBOARD setup exposes ARP MIX (0 pad, 127 arp), LOCAL BPM (30..300),
+NOTES/Q (1..8), gate percent (1..100), UP/DOWN/UP-DOWN/AS-PLAYED/RANDOM,
+one to three octaves, swing (0..75), LOCAL BPM, MASTER GRID or MASTER PHASE clock,
+TRIG/PATTERN/CONTINUE restart and STRUM MS (0..500). In MASTER GRID, the
+rate becomes a whole-step multiple and swing is disabled. Clock changes
+restart timing observation. Setup values currently return to defaults at boot.
+
+Generated chords can spread their onsets over the strum interval; PLAY keys
+remain immediate. A new committed chord cancels obsolete delayed onsets while
+preserving sounding common notes. TRIG means a new phrase, not each added key.
+CONTINUE keeps timing across chord changes, including a gap with no held keys.
+Arp gates never release pad owners. The lanes share two bounded release tails.
+
+The sixteen-word CPS5 layout is version, family, color, drift, attack, release,
+mix, local BPM, rate, gate, order, octaves, swing, clock, restart, strum blocks.
+Strum uses 1500 blocks/second internally. CPS1/CPS3/CPS4 remain accepted.
+State is now 768 bytes: use the matching instrument-play firmware policy.
+Both MASTER modes wait for a complete observed boundary interval before playing.
+MASTER PHASE uses the firmware's musical clock for 1..8 notes/quarter, including
+triplets, and pair-preserving swing; MASTER GRID counts whole native master
+steps. Neither mode falls back to local BPM. Missing frames, skipped boundaries,
+large phase corrections and overdue boundaries silence the arp while preserving
+held pad ownership. Recovery requires another complete boundary interval.
+Minor backward clock corrections wait until phase catches up, avoiding duplicate
+notes. STOP silences master arp; LOCAL remains independently playable.
+The matched adapter forwards optional input V4 (88 bytes); old V2/V3 input is
+accepted, but cannot drive MASTER PHASE. Descriptor and reset ABI remain V2.
+
+Stage 4 is complete at the functional emulator boundary: menu/audio, both master
+modes, local arp, strum, USB/DIN loss and recovery, and changed tempo/scale pass.
+A lost external clock stays latched across timestamp wrap until a new pulse.
+See the design and Stage 4 handover for artifact-specific evidence. Hardware
+release and coexistence remain Stage 6; named SRC pages and presets are Stage 5.

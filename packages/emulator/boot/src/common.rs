@@ -675,6 +675,7 @@ impl<const TRACE: bool> LoggingBus<TRACE> {
         }
     }
     #[inline]
+    #[inline]
     fn note_timer_write(&mut self, addr: u32, size: u8, value: u32) {
         if TRACE && Time::owns(addr) && self.timer_writes.len() < 64 {
             self.timer_writes.push((self.current_pc, addr, size, value));

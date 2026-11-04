@@ -38,6 +38,7 @@ uint32_t mi_test_dispatch(void)
     uint32_t i, seq, r[MT_REPLY_WORDS], a = 0, b = 0;
     CHECK(!dkrt_midi_dispatch(note, 3, 2));
     CHECK(mi_route_enable(0, 0, 0, 0) == -2);
+    CHECK(mi_keyboard_recover() == -1); /* no trusted bound session */
     CHECK(!dkrt_midi_dispatch(note, 3, 2));
     ready = 1;
     CHECK(mi_route_enable(0, 0, 0, 0) == -2);
@@ -157,12 +158,45 @@ uint32_t mi_test_dispatch(void)
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0 && snapshot[3] == 7);
     r[3] = 8; publish_reply(queue, record, r, 0);
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS && snapshot[3] == 8);
+    /* Explicit keys-up recovery advances MIDI epoch without revoking a healthy
+     * DSP bind. It cannot be used after the trust failure below. */
+    mi_ledger.routes[0].quarantined=1;
+    CHECK(mi_keyboard_recover() == 0);
+    CHECK(mi_ledger.epoch == 3 && !mi_ledger.routes[0].quarantined);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS);
+    {
+        uint32_t legacy[16],ui[14],age=0xdeadbeef;
+        for(i=0;i<16;++i) legacy[i]=r[i];
+        for(i=0;i<14;++i) ui[i]=0xdeadbeef;
+        r[0]=MT_STATUS_REPLY_MAGIC; r[1]=0xdeadbeef; r[2]=9;
+        for(i=3;i<15;++i) r[i]=100+i;
+        r[4]=0x49525231; /* Payload resemblance cannot create a registry ACK. */
+        publish_reply(queue,record,r,0);
+        CHECK(mi_registry_reply(snapshot,16)==16);
+        /* A status payload must neither replace nor refresh the ordinary ACK. */
+        for(i=0;i<16;++i) CHECK(snapshot[i]==legacy[i]);
+        CHECK(mi_status_reply(ui,11,&age)==-1 && age==0xdeadbeef);
+        CHECK(mi_status_reply(ui,14,&age)==12 && age==1);
+        for(i=0;i<12;++i) CHECK(ui[i]==r[3+i]);
+        CHECK(ui[12]==0xdeadbeef && ui[13]==0xdeadbeef);
+        CHECK(mi_status_reply(ui,14,&age)==0);
+        /* Identical wire heartbeat is not published twice. */
+        publish_reply(queue,record,r,0); CHECK(mi_status_reply(ui,14,&age)==0);
+        for(uint32_t h=10;h<75;++h) { r[2]=h; publish_reply(queue,record,r,0); }
+        CHECK(mi_status_reply(ui,14,&age)==-3);
+        CHECK(mi_status_reply(ui,14,&age)==12 && age==1);
+        CHECK(mi_status_reply(ui,14,&age)==0);
+        r[2]=75; publish_reply(queue,record,r,0); /* queued at trust loss below */
+        for(i=0;i<16;++i) r[i]=legacy[i];
+    }
     /* A backwards, otherwise valid heartbeat invalidates registry trust even
      * when its MIDI epoch is not admitted. The caller buffer stays unchanged. */
     r[3] = 1;
     publish_reply(queue, record, r, 0);
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == -2);
+    { uint32_t age=0; CHECK(mi_status_reply(snapshot,16,&age)==-2 && !age); }
     CHECK(snapshot[3] == 8);
+    CHECK(mi_keyboard_recover() == -1);
     CHECK(mi_transport.faults && mi_route_enable(0, 0, 0, 0) == -2);
     for (i = 0; i < MT_WORDS; ++i) {
         uint32_t at = 2u*(0x9fc/2+2*i)+1;

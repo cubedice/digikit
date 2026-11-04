@@ -35,6 +35,7 @@ fn spec(type_no: u32, base: u32) -> Spec {
         stack_bytes: 64,
         max_events: 8,
         max_controls: 32,
+        flags: 0,
     }
 }
 fn setup() -> (Loads, Ticket, Grant) {

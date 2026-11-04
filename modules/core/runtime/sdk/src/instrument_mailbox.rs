@@ -166,7 +166,7 @@ impl Mailbox {
             let pc = |byte| 0x00b8_0000 + (byte - 0x2000_0000) / 2;
             process_metadata[row.index as usize] = [row.type_no, row.process_sw,
                 pc(row.process_text.start), pc(row.process_text.end),
-                row.max_events, row.max_controls, 0, 0];
+                row.max_events, row.max_controls, row.flags, 0];
         }
         if mask != rows {
             return Err(Error::InvalidPlan);

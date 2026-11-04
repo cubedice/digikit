@@ -947,6 +947,10 @@ impl Emulator {
             bus_trace_enabled: CAPTURE_BUS_TRACE,
             ram_clear_acceleration_enabled: ACCELERATE_RAM_CLEAR && self.ram_clear.is_some(),
             fault: self.error.clone(),
+            fault_registers: self.error.as_ref().map(|_| {
+                let (d, a, pc, sr) = self.cpu_regs();
+                crate::telemetry::FaultRegisters { d, a, pc, sr }
+            }),
             profile: self.telemetry.profile(),
             events: self.telemetry.events(),
         }
@@ -4050,7 +4054,7 @@ fn dtcn0_on(_device: &str, env: Option<&str>) -> Result<bool, String> {
 /// the same optional lanes enabled (SSI diagnostic), before any execution.
 /// Telemetry marks, bus trace vectors and the DSPI capture recorder are not
 /// state and start empty after a restore.
-const SNAPSHOT_MAGIC: &[u8; 8] = b"DT2SNP01";
+const SNAPSHOT_MAGIC: &[u8; 8] = b"DT2SNP02";
 
 fn snap_frame(w: &mut periph::snap::Writer, f: &Frame) {
     w.u32(f.owner_tcb);
@@ -4305,8 +4309,9 @@ impl Emulator {
             return Err("load_state needs an emulator that has not executed".into());
         }
         let mut r = Reader::new(data);
-        if r.raw(8)? != SNAPSHOT_MAGIC {
-            return Err("not a DT2SNP01 snapshot".into());
+        let magic = r.raw(8)?;
+        if magic != SNAPSHOT_MAGIC && magic != b"DT2SNP01" {
+            return Err("not a DT2SNP01/02 snapshot".into());
         }
         self.midi.usb.reset_boot();
         self.snapshot_time_base();
@@ -4902,6 +4907,12 @@ mod tests {
         assert!(!first.sharc_execution_connected && !first.pcm_output_connected);
         assert_eq!(runtime.snapshot().frame.unwrap(), vec![0xa5; PANEL_BYTES]);
         runtime.diagnostics();
+        assert!(runtime.snapshot().frame.is_none());
+        runtime.error = Some("synthetic diagnostic fault".into());
+        let before = runtime.cpu.clone();
+        let fault = runtime.diagnostics().fault_registers.unwrap();
+        assert_eq!((fault.d, fault.a, fault.pc, fault.sr), runtime.cpu_regs());
+        assert_eq!(runtime.cpu, before);
         assert!(runtime.snapshot().frame.is_none());
     }
 

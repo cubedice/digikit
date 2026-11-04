@@ -50,8 +50,16 @@ _mi_skip_check:
     IF EQ JUMP _mi_config_packet;
     R5 = FEXT R0 BY 8:4; // count
     R1 = LSHIFT R5 BY 8;
-    R1 = BSET R1 BY 0;
-    COMP(R0, R1); // exactly EVENTS | count << 8
+    R11 = FEXT R0 BY 0:8;
+    R2 = 1;
+    COMP(R11, R2);
+    IF EQ JUMP _mi_event_kind;
+    R2 = 5;
+    COMP(R11, R2);
+    IF NE JUMP _mi_bad;
+_mi_event_kind:
+    R1 = R1 OR R11;
+    COMP(R0, R1); // exactly EVENTS/MAPPED | count << 8
     IF NE JUMP _mi_bad;
     R5 = PASS R5;
     IF EQ JUMP _mi_bad;
@@ -64,6 +72,14 @@ _mi_skip_check:
     R0 = DM(4, I0); // first event sequence; range cannot wrap
     R0 = PASS R0;
     IF EQ JUMP _mi_bad;
+    R1 = 5;
+    COMP(R11, R1);
+    IF NE JUMP _mi_sequence_range;
+    R1 = 0x7fffffff;
+    R0 = R0 AND R1;
+    IF EQ JUMP _mi_bad;
+    JUMP _mi_sequence_valid;
+_mi_sequence_range:
     R1 = R5 - 1;
     R1 = R0 + R1;
     R2 = 0x80000000;
@@ -71,6 +87,7 @@ _mi_skip_check:
     R0 = R0 XOR R2;
     COMP(R1, R0);
     IF LT JUMP _mi_bad;
+_mi_sequence_valid:
     R6 = DM(9, I0); // generation shared by entire batch
     R6 = PASS R6;
     IF EQ JUMP _mi_bad;
@@ -99,8 +116,20 @@ _mi_event:
     COMP(R0, R1);
     IF LT JUMP _mi_bad;
     R1 = 4;
+    R2 = 5;
+    COMP(R11, R2);
+    IF EQ R1 = R2;
     COMP(R0, R1);
     IF GT JUMP _mi_bad;
+    COMP(R0, R2);
+    IF NE JUMP _mi_event_note_or_controller;
+    R2 = 1;
+    COMP(R5, R2);
+    IF NE JUMP _mi_bad;
+    R2 = LSHIFT R10 BY -4;
+    R2 = PASS R2;
+    IF NE JUMP _mi_bad;
+_mi_event_note_or_controller:
     R1 = 2;
     COMP(R0, R1);
     IF GT JUMP _mi_controller;

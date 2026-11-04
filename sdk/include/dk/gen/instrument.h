@@ -34,7 +34,7 @@ typedef struct dk_instrument_desc {
     uint32_t magic;                     /* DK_I_MAGIC */
     uint32_t version;                   /* DK_INSTRUMENT_V2 */
     uint32_t size_bytes;                /* DK_I_DESC_BYTES */
-    uint32_t flags;                     /* Reserved; must be zero */
+    uint32_t flags;                     /* Bit 0: V5 status-output capability; other bits must be zero */
     uint32_t tracks;                    /* 1..DK_I_MAX_TRACKS isolated instances */
     uint32_t state_bytes;               /* Nonzero bytes per track, multiple of four; zeroed only at creation */
     uint32_t max_events;                /* 1..DK_I_MAX_EVENTS events consumed atomically per block */

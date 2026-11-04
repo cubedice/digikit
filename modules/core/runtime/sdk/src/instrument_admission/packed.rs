@@ -102,6 +102,7 @@ pub fn prepare_packed(
             stack_bytes: d.stack_bytes,
             max_events: d.max_events,
             max_controls: d.max_controls,
+            flags: d.flags,
         })
     };
     // The decoder guarantees at least one record; a fixed array avoids heap use.

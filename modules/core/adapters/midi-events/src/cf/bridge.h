@@ -13,6 +13,11 @@ int mi_config_submit(uint32_t track, uint32_t revision, uint32_t schema,
  * -2 boot trust lost (sticky until cold boot).
  * Output unchanged on 0 or errors. Does not prove freshness or a matching transaction. */
 int mi_registry_reply(uint32_t *out, uint32_t words);
+/* Pop one authenticated normalized UI message (12 words). Return 12, zero
+ * empty, -1 bad arguments, -2 trust lost, -3 dropped fragments (retry snapshot).
+ * age_blocks is measured at pop, not a freshness assertion. All outputs remain
+ * untouched on nonpositive returns. The caller checks generation and UI time. */
+int mi_status_reply(uint32_t *out,uint32_t words,uint32_t *age_blocks);
 /* Arm the one-shot expected BIND_SESSION identity before the first write.
  * Does not send a command; clears the cached reply on success. Return codes
  * match mt_reply_guard_expect. The loader must also enforce a UI-clock deadline. */
@@ -23,5 +28,8 @@ int mi_registry_expect_session(uint32_t token, uint32_t sequence);
 void mi_dsp_reset_begin(void);
 /* Explicit recovery only, with all physical keys released. */
 void mi_transport_recover(void);
+/* UI-confirmed keys-up recovery for FIFO/ACK exhaustion within a still-trusted
+ * bound DSP session. Never clears reset/boot-trust failure. */
+int mi_keyboard_recover(void);
 void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record);
 #endif

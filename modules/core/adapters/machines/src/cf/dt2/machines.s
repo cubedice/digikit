@@ -308,13 +308,16 @@ mf_typearg:
 | view, for SAMPLE, WERP, STRETCH, REPITCH, SLICED SMP and MANUAL SLICE). The page dots (the shared `ParameterPageView::vfunc_4`
 | and `SourcePageView::vfunc_4`) and the page keys (`ParameterPageView::vfunc_2`, which flips only when the vector holds more
 | than one entry) read that vector; the sample view draws nothing for a type 7 or higher, whose knobs are its own (finding 50).
-| An added machine therefore has ONE SRC page: at the start of `SourcePageView::vfunc_4` the vector is cut to SRC_PAGES entries
+| An added machine defaults to ONE SRC page: at the start of `SourcePageView::vfunc_4` the vector is cut to SRC_PAGES entries
 | and the page index is 0 when the track's type is an added one, and a stock type gets its two entries back. The key of the next
 | page then does nothing and no dots are drawn. SRC_PAGES is 1: the engine has only ten parameter slots (sound-array slots 25 to
 | 34) and the knob page reads eight of them, so a second knob page has no slots to show (docs/findings/50). Site (8 bytes, the
 | first test of the function): `tst.l 0x90(A2); beq.w T`; a2 = the view, d2 = the draw context. T (an anchor, `_mf_spa`) is the
 | knob-page branch; the stock path goes on at site + 8. `_mf_spt` is `FUN_4005f6bc` (the type as a signed long, -1 without a
 | track). d0, d1, a0, a1 are free at the site (the prologue saved d3 .. d7, a3 .. a6).
+| A core adapter may opt a ready painter/input implementation into two pages via
+| src-pages.h. This preserves the native vector and index without enlarging the
+| V1 parameter ABI. Until registered, all existing added machines stay unchanged.
     .equ    SRC_PAGES,  1
     .equ    SRC_STOCK,  2           | entries of the stock vector
     .globl mf_srcpage
@@ -324,18 +327,31 @@ mf_srcpage:
     addq.l  #4,%sp
     cmpi.l  #_mf_first,%d0
     blt.s   1f
-    move.l  #SRC_PAGES,-(%sp)
     move.l  %d0,-(%sp)
-    jsr     mf_native_page_count
-    addq.l  #8,%sp
-    move.l  %d0,%d1
-    lsl.l   #2,%d1
-    add.l   0x7c(%a2),%d1
-    move.l  %d1,0x80(%a2)            | existing capacity is two entries; no allocation or vector growth
-    cmp.l   0x90(%a2),%d0
-    bhi.s   4f
+    jsr     mf_src_page_count
+    addq.l  #4,%sp
+    cmpi.l  #2,%d0
+    bne.s   4f
+    | An explicitly registered two-page painter owns both contents. Keep the
+    | native vector/dots/navigation, but still use the knob-page draw path.
+    | The original vector has two entries; never extend beyond its capacity.
+    move.l  0x84(%a2),%d1
+    sub.l   0x7c(%a2),%d1
+    cmpi.l  #8,%d1
+    blt.s   4f
+    move.l  0x90(%a2),%d1
+    cmpi.l  #2,%d1
+    bcs.s   5f
     clr.l   0x90(%a2)
-4:  jmp     _mf_spa
+5:  move.l  0x7c(%a2),%d1
+    addq.l  #8,%d1
+    move.l  %d1,0x80(%a2)
+    jmp     _mf_spa
+4:  clr.l   0x90(%a2)               | default added type: page 0 and one entry
+    move.l  0x7c(%a2),%d1
+    addi.l  #4 * SRC_PAGES,%d1
+    move.l  %d1,0x80(%a2)
+    jmp     _mf_spa
 1:  move.l  0x80(%a2),%d0           | any other type: the stock vector again if an added type cut it
     sub.l   0x7c(%a2),%d0
     subq.l  #4 * SRC_PAGES,%d0

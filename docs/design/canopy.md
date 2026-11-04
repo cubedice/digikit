@@ -1,11 +1,13 @@
 # CANOPY technical design
 
-Status: Stage 1 complete in the DTII OS 1.17 coupled emulator, 2026-11-01.
-The optional development firmware admits the uploaded CANOPY V2 sine instrument
-on track 1. The stock machine chooser and explicit USB/DIN keyboard setup work;
-final stereo chord continuity, pedal ownership, independent velocity and
-acknowledged fault retirement pass the integrated acceptance. This is not the
-finished pad synth or a hardware release. Stages 2-6 remain separate.
+Status: Stage 5 implementation and DTII OS 1.17 emulator acceptance complete,
+2026-11-02. The admitted CANOPY pad instrument has explicit presets, live
+SOUND/MOVEMENT pages, native TUNE/LEVEL editing and revision-bound display
+updates. The integrated test passes LEARN, durable preset save/load, held-note
+retuning, page navigation and stock-track isolation. Stage 6 hardware latency
+and worst-case CPU qualification remain open; physical Overloop coexistence
+passed on November 3. This is not a hardware release. Evidence is in the
+[Stage 5 handover](../handovers/HANDOVER-2026-11-01-canopy-stage5.md).
 
 The implementation uses [instrument MIDI ownership](../../modules/core/adapters/midi-events/README.md),
 [the admitted playback adapter](../../modules/core/adapters/instrument-play/README.md)
@@ -1790,7 +1792,7 @@ The physical ordering in the preceding control table is unchanged. The reference
 | ORDER | `UP`, `DOWN`, `UP/DN`, `PLAY`, `RAND` | `PLAY` means input order, not keyboard mode; focus says AS PLAYED |
 | OCTS | `1OCT`..`3OCT` | No octave animation or implicit chord transposition |
 | GATE | Percentage | Exact implemented range appears in the descriptor; round for the cell, retain stored precision |
-| SWING | `50%` straight to `75%` | Percentage of the event pair occupied by its first interval; unavailable timing shows `--` and consumes the turn |
+| SWING | `50%` straight to rounded `88%` | Existing DSP macro 0..75 alternates interval weights `100+n` / `100-n`, giving 50..87.5% of the pair to its first interval; the cell rounds to whole percent. Master-step timing shows `--` and consumes the turn |
 | RESTART | `TRIG`, `PATT`, `CONT` | Full descriptions in focus: phrase/trig, pattern, continuous |
 | LATCH | `OFF` or `ON` | This is the enabled keyboard setting; the separate L badge distinguishes an active retained phrase; read-only `--` in SEQUENCER |
 | SOURCE | `KEYS` or `SEQ` | Changing this starts the instance reset described above; it is not a live-input blend |
@@ -1847,7 +1849,20 @@ YES commits exactly the displayed capture revision to the selected slot; if a ne
 
 ### Status payload and redraw contract
 
-Freeze the fast-status payload at twelve words, using the following proposed packing. The four transport ACK/heartbeat words remain independent. All identity/revision fields use wrapping unsigned comparisons; a flag is not a replacement for a generation check.
+Freeze the fast-status payload at twelve words, using the following packing. All identity/revision fields use wrapping unsigned comparisons; a flag is not a replacement for a generation check.
+
+The implemented transport envelope uses sixteen words: magic `0x494ea104`,
+bound-session token, heartbeat, twelve payload words, checksum. This supersedes
+the earlier proposal to carry four ACK/heartbeat words alongside every payload:
+that proposal left no room for both session authentication and checksum. Status
+frames alternate with ordinary ACK frames, only after binding and while the row
+is ready. Thus ordinary ACKs remain available every two DSP blocks while status
+is active; a status frame never acknowledges a configuration or MIDI event.
+No status frame can bind a session. An absent/unready status producer preserves
+the existing ordinary frame cadence. Fast/detail rotation occurs within status
+slots, rather than replacing the lifecycle ACK path. The CF queue is bounded to
+64 messages, reports overflow explicitly and retains authenticated arrival age;
+the UI receiver must additionally enforce its wall-clock freshness deadline.
 
 | Word | Fast payload meaning |
 | --- | --- |
@@ -1860,7 +1875,7 @@ Freeze the fast-status payload at twelve words, using the following proposed pac
 | 6 | Four membership bytes: key, pedal, latch flags plus stable source-tone identity within the chord revision |
 | 7 | Actual arp pitch bits 0..7; pitch-valid bit 8; source-match-valid bit 9; source-tone index bits 10..11; reserved bits 12..15; bounded ordinal bits 16..31. Source-match-valid means the arp source revision equals word 4; generate packed masks in SDK |
 | 8 | Applied arp mix, unique physically held count, eligible-but-excluded count, and reserved byte |
-| 9 | Clock source, clock state, timing-capability flags and applied rate ID, one byte each |
+| 9 | Clock mode (LOCAL/GRID/PHASE), state (0 local, 1 waiting, 2 running, 3 lost, 4 stopped), provider bits (bit0 grid, bit1 phase), and applied rate ID, one byte each |
 | 10 | Last fault code and saturating overrun count, sixteen bits each |
 | 11 | Selected-track detail revision |
 
@@ -1869,6 +1884,15 @@ A separate typed DETAIL fragment uses the same twelve-word payload: publication 
 Transmit details only for the selected track or active LEARN dialog, at most 25 completed snapshots per second. A source snapshot remains immutable until its fragments complete; coalesce intervening requests. Alternate fast/status detail frames during a transfer to retain the thirty-two-block fast refresh bound. CF publishes a completed detail snapshot only after every fragment matches track, instance, revision, schema and expected length; reject invalid indices, counts or padding. Validate LEARN session identity and capture revision against the current dialog before publishing its capture fields. Discard incomplete/stale fragments on track/mode/session changes. After 150 ms without completion, discard that assembly and request a fresh snapshot through the ordinary control stream, with at most one retry per 150 ms. Keep the last matching complete controls marked unconfirmed while recovering; missing details must not disable retry or invalidate fresh fast notes. No new reply rows are claimed by this multiplexing.
 
 Use a 150 ms initial freshness threshold for matching fast telemetry, measured on the UI clock. After it expires, stop animation and display LINK LOST; a paused UI loop does not infer a DSP fault until it can recheck fresh data. Detail freshness is checked separately and does not blank valid fast notes while a new detail snapshot is assembling. Paint only at most every 40 ms for animation, with immediate input/fault redraw permitted. Copy bounded data under a short lock/mask; format and draw after releasing it. Retain no firmware view pointers or DSP buffer pointers across updates.
+
+The CF consumer conservatively timestamps queued messages at its previous empty
+FIFO poll, never at dequeue time. The first poll after selection, a 150 ms UI
+stall, or reported FIFO loss discards the backlog before establishing a new
+arrival-time lower bound. A drain is bounded to 66 reads (64 entries, a loss
+notification and the empty observation); failure to reach empty invalidates the
+bound. Audio-frame age is an additional rejection check, not a substitute for
+the independent UI clock. The native view must supply that clock before the
+consumer is enabled on-device.
 
 ### UI acceptance
 
@@ -1890,12 +1914,45 @@ The first release distinguishes scopes explicitly:
 
 | State | Initial persistence contract |
 | --- | --- |
-| Four existing machine values and stock TUNE/LEVEL | Existing firmware slot backing; verify save/load in CANOPY scenarios |
-| Extra controls and learned shapes | Explicit DigiKit preset save/load; no automatic Sound/pattern association |
+| Stock TUNE/LEVEL | Existing firmware Sound backing and native parameter editing |
+| All sixteen CANOPY controls and learned shapes | Explicit DigiKit preset save/load; no automatic Sound/pattern association |
 | MIDI routing | Device setup, restored only after valid CANOPY instances register |
 | Sound/pattern copy, p-locks and LFO modulation of new fields | Not promised until their integration passes dedicated tests |
 
 For full Sound/project integration, first prove stable identities and save/load/copy/paste/reload paths. A RAM Sound pointer or a pattern number is not a persistent key. Define behavior for missing modules and old schema versions before extending native serialization or adding a project sidecar. Keep that work separately releasable; do not imply that an attractive SRC page establishes native persistence.
+
+### V2 implementation decisions
+
+The earlier four-value native mapping described the V1 experiment. The shipped
+V2 declaration has no legacy `DK_PARAM` table; its sixteen stable control IDs
+live in one explicit preset bank. Reusing sample-machine slots for a subset of
+that bank would create two conflicting persistence owners. All custom controls
+therefore use the same validated preset service. TUNE and LEVEL retain their
+native Sound backing; loading a CANOPY preset leaves those two values alone.
+Full native Sound/project serialization remains the separately listed later
+stage, including copy/paste and modulation qualification.
+
+LEARN capture is owned by the ColdFire keyboard mapper, which sees physical
+key ownership before chord normalization. The opaque setup modal reads that
+bounded capture and binds SAVE to its session and revision. DSP note gates
+cannot reconstruct physical key ownership, so the release does not duplicate
+LEARN capture in DSP telemetry. The SRC page stops animation under the modal;
+DSP telemetry continues to own applied audio values, notes and arp state.
+
+The native SRC adapter maps SOUND A/H to stock TUNE/LEVEL parameter codes and
+forwards their native modifier behavior. Custom controls use one bounded step
+per encoder detent. Encoder presses on custom controls are consumed; no
+unverified stock reset gesture is exposed. Logical control IDs stay independent
+of visual knob order.
+
+The internal CPS7 bank keeps 32 words: word0 contains version7 in bits0..7,
+keyboard mode in bits8..9, zero in bits10..15, and native TUNE raw8.8 in bits16..31.
+The raw value is biased by0x4000 and bounded to0x0400..0x7c00. Words1..31 retain
+CPS6 meaning. Applied detail word16 reports the exact native TUNE value, allowing
+the pending marker to clear only for the matching generation and revision.
+The 800-byte instance uses words197..199 for transpose and active arp pitch/bend.
+Pitch changes preserve held voice identity; native LEVEL stays downstream in
+the stock voice path. DSP/schema changes do not alter the explicit preset format.
 
 ## Booted loader proof
 
@@ -1974,6 +2031,121 @@ Stage 1 is complete at its emulator acceptance boundary. The declared policy's
 these are instruction counts, not a measured hardware CPU budget. Stage 6 owns
 hardware timing and release approval.
 
+## Stage 2 implementation
+
+The optional single-instance adapter now owns a bounded CF musical mapper above
+its physical MIDI ledger. PLAY, ROOT + TYPE, LEARN TO ROOT, latch, twelve selector
+types, four fixed voicings, eight learned-shape slots, SAVE/CANCEL, PANIC and
+explicit keys-up recovery are implemented in the KEYBOARD setup menu. The
+existing four-voice/two-tail sine DSP and neutral control schema are unchanged.
+The mapper retains audible tokens for common tones; physical tokens remain in
+the ingress ledger, including stolen-key and reset tombstones. Mapped output and
+source-event retirement counts are separate and retries reuse immutable packets.
+
+Learned templates persist in one validated 48-byte namespaced settings record.
+Saving is RAM-immediate and card-deferred to the UI task; failure retains dirty
+state and exposes retry. Route/enable/mode/latch settings intentionally start at
+defaults after reboot. Presets, chord-name recognition/display, optional automatic
+voice leading and the final SRC pages remain later presentation/musical work;
+Stage 2 exposes the fixed close/open/inversion choices. There is no arp or pad
+oscillator claim in this stage.
+
+See [the adapter guide](../../modules/core/adapters/instrument-play/README.md)
+for exact selectors, ownership behavior, storage and recovery controls.
+Stage 2 is complete at its functional emulator acceptance boundary. The combined
+menu/audio test passes normal admission, independent-note continuity, silent
+selectors, common-tone continuity, four-note learning, durable settings readback,
+transposition, PANIC with old-release protection, NO cancellation and callback
+fault retirement with responsive USB. The final defensive output-buffer guard
+also passes the 29-case focused host suite and actual CF instruction probe.
+Hardware timing, coexistence and release approval remain Stage 6.
+
+## Stage 3 implementation
+
+The pad engine uses a bounded additive alternative to wavetables: one normalized
+rotator per group supplies the fundamental and analytic second/third harmonics.
+Velvet morphs toward a rounded odd-harmonic spectrum; Reed adds even and odd
+harmonics. Pitch-dependent weights taper harmonics to zero before Nyquist, using
+the current bend/drift coefficient. MIDI 0..127 and +/-2-semitone bend remain the
+supported range. There are four foreground groups and two shared release tails;
+the seventh arp group belongs to Stage 4, not this stage.
+
+CPS3 transports six validated integer words atomically. Setup exposes family,
+color, drift, attack and release without resetting held ownership. Color/family
+use 20 ms smoothing and per-sample interpolation. A seeded 6.667-second triangle
+changes pitch at block rate, up to five cents with reduced excursion at high
+pitches, with opposite signs for alternating tokens. Base tuning never accumulates
+drift. Local attack is 10..1788 ms, release 40..8168 ms from full amplitude, with
+80/1000 ms defaults. Reset tails retain tone/modulation through their 64-sample
+fade. No dynamic allocation, per-sample pitch calculation or spectrum analysis
+occurs in the renderer.
+
+A fixed 0.08 gain gives an analytic full six-group bound below 0.75. It does not
+change with the number of held notes. Instance state is 544 bytes; shared tuning
+and envelope tables occupy 2560 bytes. Current single-instance admission remains
+in force; these figures do not qualify sixteen instances or hardware CPU time.
+Non-finite or over-level output is silenced and faults the callback before the
+stock chain. The protected callback's declared ceilings remain 100000 process instructions
+and 1000 reset instructions; observed Stage 3 maxima are 20830 and 423 in the
+bounded component workload. State canaries and interleaved-instance tests pass.
+
+Pitch/spectral comparisons cover both families at MIDI 0, 60, 100, 110, 119 and
+127; other checks cover long sine holds/releases, full-pool retriggers, maximum
+drift, envelope endpoints, invalid controls and live configuration preservation.
+Stage 3 is complete at the functional emulator boundary. Running-firmware
+acceptance passes live family/color/drift/release changes with retained ownership,
+stock filter close/reopen, and reverb after the module output becomes silent.
+The full keyboard/learning/storage/panic/fault-retirement regression also passes.
+The final output guard is separately verified in direct/protected instruction
+tests; the live runs used the preceding otherwise-identical pad DKM. Exact
+artifacts and evidence versions are in the
+[Stage 3 handover](../handovers/HANDOVER-2026-11-01-canopy-stage3.md).
+Hardware coexistence remains Stage 6; Stage 4 is in progress.
+
+## Stage 4 implementation status
+
+Stage 4 is **complete at the functional emulator acceptance boundary**.
+The production DSP now implements UP, DOWN, UP/DOWN, AS PLAYED and deterministic
+RANDOM, one to three octaves, local rational timing and pair-preserving swing,
+TRIG/PATTERN/CONTINUE restart, generated-chord strum and a smoothed PAD/ARP blend.
+The seventh oscillator uses the same two release-tail slots as the four pad
+owners. Busy replacement still has a bounded 64-sample ramp. CONTINUE retains
+phase across empty membership; release tails never become arp candidates.
+
+CPS5 applies sixteen controls atomically through KEYBOARD setup. Named SRC
+pages and presets remain Stage 5. Instance storage is 768 bytes; the package
+requires the matching adapter admission policy. Optional process-input V3 adds
+explicit committed phrase/generated metadata and opaque pattern identity to
+the unchanged V2 prefix. Sample offsets are not repurposed. Immutable mapped
+packet retries and metadata-only same-chord phrase commits preserve ownership.
+The C movement policy remains an executable reference, not a runtime caller.
+
+MASTER GRID schedules whole committed master-step multiples. MASTER PHASE uses
+optional process-input V4 (88 bytes) carrying firmware phase and the committed
+boundary deadline, at 21600000 ticks/quarter. Integer phase carry supports
+subdivisions and swing independently of native master scale. Both modes wait
+for a complete observed interval and fail quiet on missing timing. Minor
+backward corrections do not count time twice; large jumps reobserve.
+
+The stock sequencer can freewheel after external MIDI pulses disappear. A
+separate instrument-clock freshness policy observes the stock source mask and
+last accepted pulse timestamp. It expires after three estimated pulse periods,
+bounded to 40..500 ms, and requires fresh pulses until STOP or clock receive is
+disabled. The legacy position ABI and its freewheel behavior remain unchanged.
+
+Running-firmware acceptance passes both master modes through the settings menu,
+final audio, stopped/held-note silence and restart, USB pulse loss and slower
+recovery, local note order/octave controls, and generated strum cancellation.
+The final provider additionally passes DIN loss/recovery, a seven-step cycle at
+double master scale, and exact phase progression independent of that scale.
+The long-counter-wrap latch has CF-core coverage; the final provider passes the
+DIN run. The full musical run used the otherwise-identical preceding provider.
+Artifact hashes and evidence boundaries are recorded in the Stage 4 handover.
+Hardware and coexistence remain Stage 6.
+
+Details and evidence are in the
+[Stage 4 handover](../handovers/HANDOVER-2026-11-01-canopy-stage4.md).
+
 ## Implementation stages and acceptance
 
 | Stage | Work | Exit evidence |
@@ -1983,9 +2155,21 @@ hardware timing and release approval.
 | 2 | Bounded pool, PLAY, ROOT + TYPE, LEARN TO ROOT, latch and settings menu | Deterministic ownership, silent selectors, capture/transposition, panic and failure recovery |
 | 3 | Pad oscillator families, local envelopes, drift and stock filter/FX integration | Pitch/aliasing/headroom checks, bounded memory/instructions, musical sustained/retrigger tests |
 | 4 | Master-grid arp, blend/strum; then finer clock/local BPM | Correct note order/gates, chord commit, stop/restart, clock-loss and tempo-change behavior |
-| 5 | Presets, named display and two SRC pages | Audio/display revision agreement, stable IDs, persistence errors, unaffected stock views |
+| 5 — complete | Presets, named display and two SRC pages | Host and booted DT2 1.17 acceptance: revision agreement, stable IDs, persistence errors, unaffected stock views |
 | 6 | Coexistence, admitted instance count and hardware release proof | CANOPY + Overloop + uploads; worst-case CPU; real keyboard latency and lifetime checks |
 | Later | Native Sound/project extension, automation and internal MIDI-track chords | Dedicated round-trip, copy/paste, p-lock/LFO and routing proofs |
+
+Stage 6 progress, 2026-11-03: the combined emulator test and physical
+CANOPY/Overloop/upload test pass. Physical Overloop capture, live window edits,
+USB partial releases, sustain messages and replaced-note release checks pass.
+The connected DIN keyboard demonstrated C-E-G to C-G ownership, four-note chords
+and complete release. A bounded USB stress run passed 1,440 note events and four
+verified 32 KiB uploads with no guard faults. One keyboard instrument on track 1
+remains the admitted configuration. Calibrated ingress-to-final-output latency,
+worst-case DSP budget, and broader transition/recovery qualification remain open;
+a physical sustain pedal is unavailable. See the
+[physical findings](../findings/81-canopy-stage6-hardware.md) and
+[Stage 6 handover](../handovers/HANDOVER-2026-11-02-canopy-stage6.md).
 
 Stage 1 is a go/no-go gate. A beautiful pad sound with shared-note cutoff is a failed keyboard instrument. The detailed two-page UI must not delay that proof. Do not expand into extra oscillator types or recognition heuristics while MIDI/AMP ownership remains unresolved.
 

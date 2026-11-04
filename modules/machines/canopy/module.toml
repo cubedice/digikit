@@ -6,7 +6,7 @@ category = "machines"
 type = "machine"
 author = "digikit"
 status = "experimental"
-summary = "Stage 1 persistent sine instrument for an explicitly routed keyboard."
+summary = "Persistent four-note pad instrument with keyboard modes and learned chords."
 dynamic = true
 ports = ["dt2-1.17"]
 requires = ["core/instrument-play"]
@@ -19,6 +19,6 @@ sources = ["src/module.c"]
 place = "cf.expansion"
 [[object]]
 path = "build/canopy-dsp.dko.json"
-sources = ["src/dsp/voice.s", "src/dsp/tuning.s", "src/dsp/events.s", "src/dsp/v2.s"]
+sources = ["src/dsp/voice.s", "src/dsp/blend.s", "src/dsp/arp.s", "src/dsp/strum.s", "src/dsp/tuning.s", "src/dsp/events.s", "src/dsp/status.s", "src/dsp/v2.s"]
 place = "dsp.l2"
 devices = ["dt2"]

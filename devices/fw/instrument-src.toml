@@ -1,0 +1,197 @@
+[[site]]
+name = "cf.page.site.instrument_src_draw_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 240, offset = 16, len = 4, sha256 = "4204bce86fba9924c347375a882db841cf44ade9d851c918e55c3e04d80f583e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration draw_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_key_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 240, offset = 8, len = 4, sha256 = "4204bce86fba9924c347375a882db841cf44ade9d851c918e55c3e04d80f583e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration key_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_update_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 240, offset = 44, len = 4, sha256 = "4204bce86fba9924c347375a882db841cf44ade9d851c918e55c3e04d80f583e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration update_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_turn_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 240, offset = 68, len = 4, sha256 = "4204bce86fba9924c347375a882db841cf44ade9d851c918e55c3e04d80f583e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration turn_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_encoder_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 12, offset = 8, len = 4, sha256 = "58c1845cdcc8e177195df996d2378e95928096f255af4075adaae614808f16bb" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration encoder_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_draw"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "9b9509ec01838a18bfc606b5bb4962078418507d254f70b99017070dd24d15e2" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration draw; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_key"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "fba0123c17090034b80b6654407a1996dbe64ed8837cd1315d99c51501785181" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration key; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_update"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "a665f801431c5bb0863f893fb5c24a64797422f20c207f1e7c3b22bd59664f9e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration update; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_turn"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "2c1de6fc2cbce442d0e8f1108d0395d8f31ff420eae140878bda97991ab82ae8" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration turn; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_event_dispatch"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "ab3fef36f8f2773f98aa6d6f5a96468be2a54e267d6643701a1e064f7ea47ccc" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration event_dispatch; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_event_call"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 22, offset = 10, len = 6, sha256 = "2a5239f61f1ad2c0e491a7418b5483d1c39bdcdf36d91e85aece20cce55e5a87" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration event_call; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_track"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 96, offset = 0, len = 6, sha256 = "cb113ec57e15d78c92ac7291cdbffaf283c0a137a78d3f527b8495546a8e7bbf" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration track; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_alternate"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 96, offset = 0, len = 6, sha256 = "544bcf14862feee44a8a25cc2e3b58122115575006c98d9012d246daff7d1bbe" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration alternate; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_attach_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 240, offset = 20, len = 4, sha256 = "4204bce86fba9924c347375a882db841cf44ade9d851c918e55c3e04d80f583e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration attach_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_detach_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 240, offset = 28, len = 4, sha256 = "4204bce86fba9924c347375a882db841cf44ade9d851c918e55c3e04d80f583e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration detach_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_attach"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "e963f8e360ad18bf8b0fc40cbbd36dbbb68919d3db6a3f59913e4cf0dfcb0cdf" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration attach; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_detach"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "5584261d60e11a4e62b3ce0d83c22aaf582decfee288815bc262fd2698cf45b2" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration detach; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_value"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "59bb0edbda44472e0b8dc9b3e32aadfb86c4485e5bd85fd23cd54ad2e6389532" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration value; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_tune_format"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "bc85b18e1639f5ebe5763f51bc4661b0e556228ffe058e978a71662bf37ba37f" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration tune_format; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_level_format"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "133c878139d9ffea252ac373ae7644e25e7d676816a5888032d2559f338e842f" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration level_format; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_parameter_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 240, offset = 188, len = 4, sha256 = "4204bce86fba9924c347375a882db841cf44ade9d851c918e55c3e04d80f583e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration parameter_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_parameter"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "d07cbd161d5dd4c5756da644046b332e793bfb5a25d1ab437383873554d6979b" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration parameter; bounded static image inspection, retained stock ABI."

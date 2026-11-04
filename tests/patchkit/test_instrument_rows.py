@@ -95,6 +95,8 @@ def rows(row_object):
         "rows": (symbols["_ir_rows"] // 4, 128),
         "state": (0x20050000 // 4, 64),
         "calls": (0x20040000 // 4, 5),
+        "process": (symbols["_ir_process_rows"] // 4, 64),
+        "capabilities": (symbols["_ir_process_flags"] // 4, 8),
     }
 
     def call(
@@ -141,6 +143,33 @@ def rows(row_object):
         return result
 
     return call
+
+
+def test_process_capability_is_validated_before_install_and_bound_to_row(rows):
+    metadata = {
+        0: 1,
+        1: 3,
+        2: 9,
+        3: 20,
+        4: 0xB90000,
+        5: 0xB90000,
+        6: 0xB90100,
+        7: 8,
+        8: 16,
+        9: 1,
+        10: 0,
+    }
+    accepted = rows("_ir_process_install", install=metadata)
+    assert accepted["regs"]["R0"] == 0
+    assert accepted["capabilities"] == [1] + [0] * 7
+    assert accepted["process"][:8] == [3, 9, 20, 0xB90000, 0xB90000, 0xB90100, 8, 16]
+    for change in [{9: 2}, {9: 3}, {10: 1}, {1: 4}, {2: 8}]:
+        rejected = rows("_ir_process_install", install={**metadata, **change})
+        assert rejected["regs"]["R0"] == 0xFFFFFFFF
+        assert rejected["capabilities"] == accepted["capabilities"]
+        assert rejected["process"] == accepted["process"]
+    legacy = rows("_ir_process_install", install={**metadata, 9: 0})
+    assert legacy["regs"]["R0"] == 0 and legacy["capabilities"] == [0] * 8
 
 
 def test_initialize_and_detach_one_instance_per_tick(rows):

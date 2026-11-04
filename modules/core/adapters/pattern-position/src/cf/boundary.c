@@ -13,6 +13,28 @@ struct marker { u32 clock, generation, pattern, step, length, kind; };
 static struct marker pending[N];
 static u32 head, count, generation, seen, last_step, last_pattern, valid;
 volatile u32 pp_position[16];
+static u32 external_seen, external_expired, external_stamp;
+
+/* Stock transport may freewheel after MIDI clock disappears. Keep that
+ * behavior for position clients, but expire the separate instrument clock.
+ * Once externally clocked, require fresh pulses until STOP or receive OFF. */
+u32 pp_clock_fresh(u32 transport, u32 receive, u32 sources, u32 now,
+                   u32 last, u32 sum, u32 samples) {
+    if (transport != 1 || !receive) { external_seen = external_expired = 0; return 1; }
+    if (!external_seen && (sources & 2)) {
+        external_seen = 1;
+        external_stamp = last;
+    }
+    if (!external_seen) return 1;
+    if (last != external_stamp) { external_stamp = last; external_expired = 0; }
+    if (external_expired) return 0; /* counter wrap cannot revive a lost clock */
+    u32 limit = samples && samples <= 24 ? sum / samples : 0;
+    if (limit > 22000000) limit = 22000000;
+    limit *= 3;
+    if (limit < 5280000) limit = 5280000; /* minimum 40 ms, maximum 500 ms */
+    external_expired = (u32)(now - last) > limit;
+    return !external_expired;
+}
 
 /* Exported pure entry points also allow deterministic queue tests. */
 void pp_observe(u32 start, u32 clock, u32 pattern, u32 step, u32 length) {
@@ -97,8 +119,15 @@ void pp_write_frame_impl(u32 queue, u32 suffix) {
     u32 sum = 0x7b91d6e3;
     for (u32 i = 0; i < 15; ++i) sum ^= pp_position[i];
     pp_position[15] = sum;
+    /* Wire v3 adds musical phase in reserved word 9. Keep the public CF
+     * position record at ABI 2. The receiver normalizes it for old effects
+     * and publishes a separate versioned clock capability. */
+    u32 phase = U32(0x80004880);
+    u32 stale = pp_clock_fresh(transport, U32(0x429368d6), U32(0x402b6800),
+        U32(0xfc07000c), U32(0x44e086e4), U32(0x44e086d4), U32(0x44e086dc)) ? 0 : 4;
+    u32 wire_sum = sum ^ 2 ^ 3 ^ phase ^ stale;
     for (u32 i = 0; i < 16; ++i) {
-        u32 v = pp_position[i];
+        u32 v = i == 1 ? 3 : i == 5 ? pp_position[5] | stale : i == 9 ? phase : i == 15 ? wire_sum : pp_position[i];
         out[0] = (u16)v;
         out[2] = (u16)(v >> 16);
         out += 4;

@@ -553,3 +553,55 @@ uint32_t mi_test_play_reply(void)
     r[14]=9; r[0]=MT_SESSION_REPLY_MAGIC; reply_checksum(r); CHECK(!mt_reply_valid(r));
     return 0;
 }
+
+static void status_reply(uint32_t *r,uint32_t heartbeat)
+{
+    for(uint32_t i=0;i<16;++i) r[i]=0;
+    r[0]=MT_STATUS_REPLY_MAGIC; r[1]=0xdeadbeefu; r[2]=heartbeat;
+    /* Arbitrary normalized payload, including values that resemble ACKs. */
+    for(uint32_t i=3;i<15;++i) r[i]=0x49525231u+i;
+    reply_checksum(r);
+}
+uint32_t mi_test_status_reply(void)
+{
+    MtReplyGuard g={0}; MiTransport t; MiLedger m;
+    uint32_t r[16],older[16],rev[MI_TRACKS]={1},message;
+    mi_init(&m); mt_init(&t);
+    CHECK(mt_reply_guard_expect(&g,0xdeadbeefu,17,0)==0);
+    session_reply(r,100); r[1]=m.epoch; reply_checksum(r);
+    mt_reply_guard_tick(&g,r,1);
+    CHECK(mt_reply_tick_guarded(&t,&m,r,1,&g)==1 && g.ready);
+    CHECK(mi_route(&m,0,0,0,1,0)==0); note(&m,0,60);
+    message=mt_prepare(&t,&m,rev,2)[3];
+    status_reply(r,101); CHECK(mt_reply_valid(r));
+    mt_reply_guard_tick(&g,r,2);
+    CHECK(mt_reply_tick_guarded(&t,&m,r,2,&g)==1 && m.count==1 && !g.invalid);
+    for(uint32_t i=0;i<16;++i) older[i]=r[i];
+    status_reply(r,102); mt_reply_guard_tick(&g,r,3);
+    CHECK(mt_reply_tick_guarded(&t,&m,r,3,&g)==1 && m.count==1);
+    CHECK(mt_reply_reordered(&g,older));
+    mt_reply_guard_tick(&g,0,4);
+    CHECK(mt_reply_tick_guarded(&t,&m,0,4,&g)==0 && g.block==3);
+    session_reply(r,103); r[1]=m.epoch; r[2]=message; reply_checksum(r);
+    mt_reply_guard_tick(&g,r,5);
+    CHECK(mt_reply_tick_guarded(&t,&m,r,5,&g)==2 && !m.count && !g.invalid);
+    status_reply(r,104); r[1]++; reply_checksum(r);
+    mt_reply_guard_tick(&g,r,6); CHECK(g.invalid);
+    return 0;
+}
+uint32_t mi_test_status_cannot_bind(void)
+{
+    MtReplyGuard g={0}; uint32_t r[16]; MiTransport t; MiLedger m;
+    mi_init(&m); mt_init(&t);
+    CHECK(mt_reply_guard_expect(&g,0xdeadbeefu,17,0)==0);
+    status_reply(r,1); CHECK(mt_reply_valid(r));
+    CHECK(mt_reply_tick(&t,&m,r,1)==-1 && !t.heartbeat_seen);
+    mt_reply_guard_tick(&g,r,1); CHECK(g.invalid && !g.ready);
+    r[1]=0; reply_checksum(r); CHECK(!mt_reply_valid(r));
+    status_reply(r,1); r[15]^=1; CHECK(!mt_reply_valid(r));
+    MtReplyGuard bound={0}; CHECK(mt_reply_guard_expect(&bound,0xdeadbeefu,17,0)==0);
+    session_reply(r,100); mt_reply_guard_tick(&bound,r,1);
+    status_reply(r,99); CHECK(!mt_reply_reordered(&bound,r));
+    mt_reply_guard_tick(&bound,r,2); CHECK(bound.invalid);
+    return 0;
+}

@@ -7,7 +7,10 @@
 .GLOBAL _ir_process_row;
 .EXTERN _ir_rows;
 .EXTERN _ir_process_rows;
+.EXTERN _ir_process_flags;
 _ir_process_row:
+    R0 = 0;
+    DM(_ip_status) = R0;
     R0 = 7;
     R0 = R4 AND R0;
     COMP(R0, R4);
@@ -46,16 +49,70 @@ _ir_process_row:
     IF LT JUMP _ip_invalid;
     // Adapter buffers may be statically linked above the dynamic code arena.
     // Bound them by bootable L2, excluding the boot ROM workspace at 0x200fe000.
-    R0 = 0x200fdfb8;
+    R0 = 0x200fdfb0;
     COMP(R8, R0);
     IF GT JUMP _ip_invalid;
     I2 = R8;
     R0 = DM(0, I2);
     R1 = 2;
     COMP(R0, R1);
+    IF EQ JUMP _ip_v2;
+    R1 = 3;
+    COMP(R0, R1);
+    IF EQ JUMP _ip_v3;
+    R1 = 4;
+    COMP(R0, R1);
+    IF EQ JUMP _ip_v4;
+    R1 = 5;
+    COMP(R0, R1);
     IF NE JUMP _ip_invalid;
+    // Only a capability installed with this exact row may receive V5.
+    R0 = LSHIFT R4 BY 2;
+    R1 = _ir_process_flags;
+    R0 = R0 + R1;
+    I3 = R0;
+    R0 = DM(0, I3);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _ip_invalid;
+    R0 = I2;
+    R1 = 0x200fdfa0;
+    COMP(R0, R1);
+    IF GT JUMP _ip_invalid;
+    R0 = DM(23, I2);
+    R1 = 13;
+    COMP(R0, R1);
+    IF NE JUMP _ip_invalid;
+    R0 = DM(22, I2);
+    R1 = 3;
+    R1 = R0 AND R1;
+    IF NE JUMP _ip_invalid;
+    R1 = 0x20000000;
+    COMP(R0, R1);
+    IF LT JUMP _ip_invalid;
+    R1 = 0x200fdfcc;
+    COMP(R0, R1);
+    IF GT JUMP _ip_invalid;
+    DM(_ip_status) = R0;
+    R0 = DM(1, I2);
+    R1 = 96;
+    JUMP _ip_size;
+_ip_v4:
+    R0 = I2;
+    R1 = 0x200fdfa8;
+    COMP(R0, R1);
+    IF GT JUMP _ip_invalid;
+    R0 = DM(1, I2);
+    R1 = 88;
+    JUMP _ip_size;
+_ip_v3:
+    R0 = DM(1, I2);
+    R1 = 80;
+    JUMP _ip_size;
+_ip_v2:
     R0 = DM(1, I2);
     R1 = 72;
+_ip_size:
     COMP(R0, R1);
     IF NE JUMP _ip_invalid;
     R0 = DM(8, I2);
@@ -93,6 +150,13 @@ _ip_state:
     R5 = R5 - 1;
     IF NE JUMP _ip_state;
 _ip_call:
+    R0 = DM(_ip_status);
+    R0 = PASS R0;
+    IF EQ JUMP _ip_invoke;
+    I3 = R0;
+    R0 = 0;
+    DM(0, I3) = R0;
+_ip_invoke:
     R0 = DM(3, I1);
     I12 = R0;
     I13 = _ip_return;
@@ -106,6 +170,13 @@ _ip_return:
     R0 = -1;
 _ip_fault:
     DM(_ip_error) = R0;
+    R1 = DM(_ip_status);
+    R1 = PASS R1;
+    IF EQ JUMP _ip_fault_row;
+    I3 = R1;
+    R1 = 0;
+    DM(0, I3) = R1;
+_ip_fault_row:
     R1 = DM(_ip_row);
     I0 = R1;
     R1 = 5;
@@ -127,3 +198,4 @@ _ip_invalid:
 .PKBSS _ip_row, 4;
 .PKBSS _ip_output, 4;
 .PKBSS _ip_error, 4;
+.PKBSS _ip_status, 4;

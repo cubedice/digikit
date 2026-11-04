@@ -280,7 +280,7 @@ from = { anchor = "cf.machine.fn.type_reader", len = 48 }
 
 [[object]]
 path = "build/machines-dt2.dko.json"
-sources = ["src/cf/dt2/machines.s"]
+sources = ["src/cf/dt2/machines.s", "src/cf/dt2/src-pages.c"]
 place = "cf.expansion"
 devices = ["dt2"]
 
@@ -667,7 +667,9 @@ hook = "cf.machine.hook.param_code.args"
 to = "mf_typearg"
 devices = ["dt2"]
 
-# SRC page (Digitakt II): an added type has one page (the page vector is cut to it, page 0), see mf_srcpage in src/cf/dt2/machines.s
+# SRC page (Digitakt II): added types default to one page. A ready core UI adapter
+# may explicitly register a versioned two-page capability (src/cf/dt2/src-pages.h).
+# This is not a V1 DK_PAGE extension and does not allocate parameter slots.
 
 [[op]]
 op = "hook"

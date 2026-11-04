@@ -1,5 +1,7 @@
 # Digitakt II / Digitone II â€” findings
 
+CANOPY: [Stage 6 physical coexistence and USB/DIN ownership](findings/81-canopy-stage6-hardware.md) (**[D]**, DTII OS1.17; timing release gates remain open).
+
 Overloop: [performance display and DSP status return on DTII 1.17](findings/77-overloop-display.md) (**[D]**, emulator/component evidence; hardware unverified).
 
 CANOPY: [separate sample activation and sustained stock envelope](findings/78-canopy-carrier.md) (**[D]**, DT2 1.17 firmware component probe; live carrier integration open).
@@ -211,3 +213,5 @@ occupied regions and the remaining production ownership questions.
 | [`130-sharc-interrupt-save-set.md`](findings/130-sharc-interrupt-save-set.md) | Stock DSP interrupt chain on DT2 1.17 and DN2 1.12 (vector stub, wrapper `0x1c02a4`, return stub): what it saves, restores, clobbers and assumes, the machine and effect adapters' saves around a module call, and the comparison with the `[machine.c]` and `[fx.c]` register rules of `sdk.toml` (**[V]**, live-in claim 8 and the adapter section **[D]**). |
 | [`132-r12-0-hook-timing-probe.md`](findings/132-r12-0-hook-timing-probe.md) | ColdFire PC probe results on stock DT2 1.17 and DN2 1.12: task switches enter at IPL 0 only (vector 205 interrupt-entered, vector 32 `trap #0`; vector 191 does not occur); first-fire phase of the service hooks (which install directly after main-OS entry, which stay patched); `param_code` runs before main-OS entry but sees only stock types (**[D]**, project loads after main-OS entry **[O]**). |
 DTII physical DSP reset: [active SPI/DMA quiescence and retained ownership](findings/79-dt2-dsp-reset.md) (**[D]**, physical measurement passed; power-cycle recovery and Overloop restoration verified).
+
+CANOPY SRC foundation: [explicit page capability and DT2 input interfaces](findings/80-canopy-src-pages.md) (**[D]**, ColdFire component proof; rendered pages and booted UI acceptance remain open).
