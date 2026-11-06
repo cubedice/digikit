@@ -43,7 +43,7 @@
 /* Glyph: a play-mode knob, values 0 .. 3 (REV, REV.L, FWD.L, FWD on the Digitakt II; the Digitone II shows 0 .. 3). */
 #define DK_GLYPH_PLAY 5
 /* Experimental V2 persistent instrument declaration; not a V1 machine. */
-#define DK_DESC_INSTRUMENT 6
+#define DK_DESC_INSTRUMENT 13
 /* Encoders on a page. */
 #define DK_PAGE_KNOBS 8
 /* The knob takes the lowest free position. */

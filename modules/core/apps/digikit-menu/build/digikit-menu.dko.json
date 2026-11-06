@@ -1154,68 +1154,75 @@
    "addend": 0,
    "offset": 94,
    "section": ".text.fill_main",
-   "symbol": "dk_ui_submenu",
+   "symbol": "dk_app_instrument_settings_rows",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 100,
+   "offset": 110,
    "section": ".text.fill_main",
    "symbol": ".sec..bss.g_about",
    "type": "cf.32"
   },
   {
    "addend": 7,
-   "offset": 106,
+   "offset": 116,
    "section": ".text.fill_main",
    "symbol": ".sec..rodata.fill_main.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 120,
-   "section": ".text.fill_main",
-   "symbol": ".sec..text.open_health",
-   "type": "cf.32"
-  },
-  {
-   "addend": 13,
-   "offset": 126,
-   "section": ".text.fill_main",
-   "symbol": ".sec..rodata.fill_main.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 140,
-   "section": ".text.fill_main",
-   "symbol": ".sec..bss.g_mem",
-   "type": "cf.32"
-  },
-  {
-   "addend": 20,
-   "offset": 146,
-   "section": ".text.fill_main",
-   "symbol": ".sec..rodata.fill_main.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 154,
+   "offset": 124,
    "section": ".text.fill_main",
    "symbol": "dk_ui_submenu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 166,
+   "offset": 136,
+   "section": ".text.fill_main",
+   "symbol": ".sec..text.open_health",
+   "type": "cf.32"
+  },
+  {
+   "addend": 13,
+   "offset": 142,
+   "section": ".text.fill_main",
+   "symbol": ".sec..rodata.fill_main.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 156,
+   "section": ".text.fill_main",
+   "symbol": ".sec..bss.g_mem",
+   "type": "cf.32"
+  },
+  {
+   "addend": 20,
+   "offset": 162,
+   "section": ".text.fill_main",
+   "symbol": ".sec..rodata.fill_main.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 170,
+   "section": ".text.fill_main",
+   "symbol": "dk_ui_submenu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 182,
    "section": ".text.fill_main",
    "symbol": ".sec..text.open_modules",
    "type": "cf.32"
   },
   {
    "addend": 27,
-   "offset": 172,
+   "offset": 188,
    "section": ".text.fill_main",
    "symbol": ".sec..rodata.fill_main.str1.1",
    "type": "cf.32"
@@ -4836,10 +4843,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffc048d744042c6f004445f9000000004ab9000000006742420042af003c1f40000c487900000000240f0682000000102f024eb9000000002f39000000002f024eb90000000042a742a74879000000002f022f0e4e924fef002441f9000000002f39000000004879000000002f0e4e9042a742a74879000000004879000000002f0e4e924fef001c2eb9000000004879000000002f0e41f9000000004e9042a742a74879000000004879000000002f0e4e924cef440400204fef00604e75",
+   "hex": "4fefffc048d744042c6f004445f9000000004ab9000000006742420042af003c1f40000c487900000000240f0682000000102f024eb9000000002f39000000002f024eb90000000042a742a74879000000002f022f0e4e924fef002441f9000000004a8867062f0e4e90588f2f39000000004879000000002f0e41f9000000004e9042a742a74879000000004879000000002f0e4e924fef001c2eb9000000004879000000002f0e41f9000000004e9042a742a74879000000004879000000002f0e4e924cef440400204fef00604e75",
    "kind": "text",
    "name": ".text.fill_main",
-   "size": 192
+   "size": 208
   },
   {
    "align": 1,
@@ -5675,7 +5682,7 @@
    "size": 4
   }
  ],
- "source_sha256": "dbf6c18a1ea14974cfad45bd2de60afe1704cb7e430b3a26935cd50fbbf53666",
+ "source_sha256": "1aa9160d5097c828edd8c7b712597306e014e51f3b9564ada7e8d9af3e9b3ba9",
  "symbols": [
   {
    "global": false,
@@ -6783,6 +6790,12 @@
   },
   {
    "global": true,
+   "name": "dk_app_instrument_settings_rows",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "dk_app_settings_rows",
    "section": ".text.dk_app_settings_rows",
    "value": 0
@@ -7524,8 +7537,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "2995",
-  "isa_check": "af9d3378be3f06d6b2919e282de9efa696401667a3f484028f07fdfd2f2c6061",
+  "instructions_redecoded": "3001",
+  "isa_check": "7c7dcc6d5fad6916cdefedf6e7727667446c0e02e172bd12d67967180ee2fa27",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

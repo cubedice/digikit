@@ -199,22 +199,30 @@ failed or timed out), `E_DSP_DEVICE` -36, `E_DSP_TYPE` -37 (a voice key that has
 The DSP's per-type **selector** word (which render path a track uses) is not set by this section: the selector of a run-time type is
 type 0's (finding 30). A machine that clones SAMPLE, like `pluck`, is right already.
 
-### Experimental persistent instruments (DKDS 5 and 6)
+### Experimental persistent instruments (DKDS 7 and 8)
 
-The host packer emits version 6 for V2 instruments and can still read version 5. The shipped runtime
+The November 5 upstream rebase reserves DKDS 5 for upstream sample banks and
+track tables. Instrument formats are now 7 (metadata only) and 8 (executable
+ranges); pre-rebase instrument files using 5/6 must be rebuilt. The live V2
+loader accepts only 8. Descriptor declaration kind 13 identifies instruments;
+upstream sample declaration kinds 6/7 are unchanged. Sample declarations and
+instruments cannot share one DSP section. The historical rollout notes below
+describe the initial host implementation, before live registration was added.
+
+The host packer emits version 8 for V2 instruments and can still read version 7. The shipped runtime
 does not yet support it. The experimental `dkneeds::needs_of_v2` entry point can
 account for its memory requirements. The outer DKM requests **machine contract 2.0**;
 the runtime still advertises 1.0, so its contract check rejects these files before
 allocation. Public module packing remains disabled pending registration/dispatch.
 
-V5 extends the header from 0x40 to 0x50 bytes: u32 instrument table offset at
+V7 extends the header from 0x40 to 0x50 bytes: u32 instrument table offset at
 0x40, u32 count at 0x44, and zero reserved words at 0x48/0x4c. The count is 1..8.
 The existing voice and effect records retain their V4 layouts. Tables appear in
 canonical order: header, imports, relocations, voices, effects, instruments,
 zero padding to 16 bytes, image. The host parser rejects other layouts, trailing
 bytes, overlapping tables and nonzero reserved bytes. V1-V4 output is unchanged.
 
-V6 retains the 0x50-byte header and uses 0x48/0x4c for an executable-range table
+V8 retains the 0x50-byte header and uses 0x48/0x4c for an executable-range table
 offset and count (1..32). This table follows the instrument records, before the
 16-byte image alignment padding. Each entry is two big-endian u32 image byte
 offsets: start and exclusive end. The packer derives these from the linker's text
@@ -224,7 +232,7 @@ instrument callback must fit a full six-byte instruction inside one range;
 descriptors must not overlap any range. The SDK decoder, host parser and
 experimental resource reader enforce these checks. These are section bounds,
 not proof of instruction boundaries, valid control flow, or execution budgets.
-V5 retains zero at 0x48/0x4c and has no executable-boundary assurance. Neither
+V7 retains zero at 0x48/0x4c and has no executable-boundary assurance. Neither
 version is admitted by the current runtime; V1–V4 serialization is unchanged.
 
 Each instrument record is four big-endian words: machine type, reset callback
@@ -245,10 +253,10 @@ separate instrument row, track-instance and aligned state-byte counts, using
 bounded stack storage and checked 32-bit arithmetic. It validates descriptor
 structure and table bounds, but does not check signatures, imports, relocation
 contents or device-specific cycle/stack admission limits. It is not a load check.
-The normal `needs_of` entry point still rejects V5/V6, keeping the scan/fit ABI and
+The normal `needs_of` entry point still rejects V7/V8, keeping the scan/fit ABI and
 capacity protocol unchanged until V2 registry integration is complete.
 
-The SDK's `instrument_section::Section` reader validates a complete DKDS6
+The SDK's `instrument_section::Section` reader validates a complete DKDS8
 instrument-only section without allocation and returns bounded slices and memory
 requirements for admission. It checks canonical layout, padding, import names,
 relocation fields and text containment in addition to descriptors. Mixed legacy

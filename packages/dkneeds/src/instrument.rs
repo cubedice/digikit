@@ -17,10 +17,10 @@ const DESC: u32 = 48;
 const MAX_ROWS: u32 = 8;
 
 pub(super) fn read<B: Bytes>(src: &mut B, off: u32, size: u32) -> Result<InstrumentNeeds, Error> {
-    let v6 = word(src, off + 4)? == 6;
+    let v8 = word(src, off + 4)? == 8;
     if size < HEADER
         || word(src, off + 0x3c)? != 0
-        || (!v6 && (word(src, off + 0x48)? != 0 || word(src, off + 0x4c)? != 0))
+        || (!v8 && (word(src, off + 0x48)? != 0 || word(src, off + 0x4c)? != 0))
     {
         return Err(Error::Dsp);
     }
@@ -31,7 +31,7 @@ pub(super) fn read<B: Bytes>(src: &mut B, off: u32, size: u32) -> Result<Instrum
     if count == 0 || count > MAX_ROWS || !inside(table, count * RECORD, size) {
         return Err(Error::Dsp);
     }
-    // Canonical V5 table order. Counts have already been bounded by dsp().
+    // Canonical V7 table order. Counts have already been bounded by dsp().
     let tables = [
         (0x24, 0x28, 32),
         (0x1c, 0x20, 8),
@@ -50,7 +50,7 @@ pub(super) fn read<B: Bytes>(src: &mut B, off: u32, size: u32) -> Result<Instrum
     }
     let mut text = [(0u32, 0u32); 32];
     let mut text_count = 0;
-    if v6 {
+    if v8 {
         text_count = word(src, off + 0x4c)?;
         if text_count == 0
             || text_count > 32
@@ -116,7 +116,7 @@ pub(super) fn read<B: Bytes>(src: &mut B, off: u32, size: u32) -> Result<Instrum
         for entry in [word(src, at + 4)?, word(src, at + 8)?] {
             if entry & 1 != 0
                 || !inside(entry, 6, image_size)
-                || (v6
+                || (v8
                     && !text[..text_count as usize].iter().any(|&(start, stop)| {
                         entry >= start && entry.checked_add(6).is_some_and(|end| end <= stop)
                     }))
@@ -128,7 +128,7 @@ pub(super) fn read<B: Bytes>(src: &mut B, off: u32, size: u32) -> Result<Instrum
         if desc & 3 != 0 || !inside(desc, DESC, image_size) {
             return Err(Error::Dsp);
         }
-        if v6
+        if v8
             && text[..text_count as usize]
                 .iter()
                 .any(|&(start, stop)| desc < stop && start < desc + DESC)

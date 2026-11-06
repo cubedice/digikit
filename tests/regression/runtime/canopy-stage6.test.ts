@@ -6,7 +6,9 @@ import { button, repoRoot } from '@digi/test-support';
 
 import { expect, onTestFinished, test } from 'vitest';
 import { withSession } from '../support.ts';
-import { liveOptions, liveProtocol, settleUi } from './live.ts';
+import { liveOptions } from './devices.ts';
+import { liveProtocol } from './protocol.ts';
+import { settleUi } from './waits.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 import { captureRemoteOled } from './remote.ts';
 import { openDigikitMenu } from './runtime-menu.ts';

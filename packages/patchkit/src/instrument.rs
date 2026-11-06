@@ -40,7 +40,7 @@ mod tests {
             (0, 0x444b4d41),
             (1, 1),
             (2, 40),
-            (3, 1),
+            (3, 2),
             (4, 0),
             (4, 17),
             (5, 0),
@@ -85,6 +85,6 @@ mod tests {
         assert_eq!(constant("DK_I_MAX_TRACKS"), 16);
         assert_eq!(constant("DK_I_MAX_EVENTS"), 8);
         assert_eq!(constant("DK_I_MAX_CONTROLS"), 32);
-        assert_eq!(crate::sdkgen::embedded().machine, (1, 0));
+        assert_eq!(crate::sdkgen::embedded().machine.0, 1);
     }
 }

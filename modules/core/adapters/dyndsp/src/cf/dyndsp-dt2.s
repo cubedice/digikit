@@ -25,7 +25,7 @@ dyndsp_info:
     .long   _dd_vfirst
     .long   DYN_TYPES
     .long   _dd_vcount
-    .long   7
+    .long   8
     .asciz  "_dv_exp2"
     .space  28 - 9
     .long   _dv_exp2

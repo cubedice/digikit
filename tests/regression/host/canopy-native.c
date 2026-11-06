@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "../../../modules/core/adapters/instrument-play/src/cf/src-native.c"
+uint32_t mf_native_page_count(uint32_t type, uint32_t ordinary) { (void)type; return ordinary; }
 static CsState state;
 static uint32_t selected,alternate,now=100,type_id=9,generation=1,stock_turns,stock_keys,invalidations,polls;
 static uint32_t manager[16],node[4],vtable[60],modal[24],modal_node[4];

@@ -9,6 +9,7 @@ use dkrt_sdk::{*, instrument_admission::{Limits, Range}, instrument_descriptor,
 pub(crate) struct Pending {
     pub rec: usize,
     pub selection: u32,
+    pub image_size: u32,
     pub reg: u32,
     pub reg_size: u32,
     pub section: u32,
@@ -74,10 +75,10 @@ pub(crate) unsafe fn queue(mut p: Pending) {
     *addr_of_mut!(PENDING) = Some(p);
 }
 impl Pending {
-    pub(crate) fn new(rec: usize, selection: u32, reg: u32, reg_size: u32,
+    pub(crate) fn new(rec: usize, selection: u32, image_size: u32, reg: u32, reg_size: u32,
         section: u32, section_size: u32, output: u32, output_size: u32,
         init: u32, menu: u32, mask: u32, fns: [u32; SLOTS]) -> Self {
-        Self { rec, selection, reg, reg_size, section, section_size, output,
+        Self { rec, selection, image_size, reg, reg_size, section, section_size, output,
             output_size, init, menu, mask, fns, phase: 0, ticket: None, result: E_DSP_XFER, reported: false, type_no: 0, was_live: false }
     }
     unsafe fn discard(&mut self, result: i32) {
@@ -153,7 +154,7 @@ unsafe fn tick_inner(owner: &mut Owner, link: LinkProgress, now: u32) {
                 let old = crate::loader::BOOT_IDX;
                 crate::loader::BOOT_IDX = p.selection;
                 let result = crate::loader::publish_cf(p.rec, p.reg as *const u8,
-                    p.reg_size, p.init, p.mask, &p.fns);
+                    p.reg_size, p.image_size, p.init, p.mask, &p.fns);
                 crate::loader::BOOT_IDX = old;
                 if result == OK {
                     (*addr_of_mut!(crate::DKRT_MENUS))[p.rec] = p.menu;

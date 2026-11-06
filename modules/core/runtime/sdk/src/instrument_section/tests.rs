@@ -18,7 +18,7 @@ pub(crate) fn fixture() -> [u8; 208] {
     let mut bytes = [0; 208];
     for (at, value) in [
         (0, 0x444b4453),
-        (4, 6),
+        (4, 8),
         (8, 1),
         (0x0c, 64),
         (0x10, 8),
@@ -265,4 +265,13 @@ fn instrument_relocation_late_failure_and_overlap_are_atomic() {
         Err(RelocateError::Overlap)
     );
     assert_eq!(out, [0xaa; 64]);
+}
+
+#[test]
+fn rejects_sample_and_old_experimental_formats() {
+    for version in [5, 6, 7] {
+        let mut bytes = fixture();
+        put(&mut bytes, 4, version);
+        assert!(matches!(Section::parse(&bytes, 1, limits()), Err(Error::Header)));
+    }
 }

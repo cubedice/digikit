@@ -30,7 +30,7 @@ pub mod instrument_coordinator;
 pub mod instrument_mailbox;
 /// Shared bounded V2 descriptor and record decoding; no loading capability.
 pub mod instrument_descriptor;
-/// Bounded DKDS6 instrument-only section validation.
+/// Bounded DKDS8 instrument-only section validation.
 pub mod instrument_section;
 /// Selection-scoped V2 machine-key resolution against boot assignments.
 pub mod instrument_types;

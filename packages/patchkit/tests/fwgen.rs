@@ -373,3 +373,22 @@ fn reference_leaves_out_a_port_without_the_anchor() {
     assert!(at.get("dt2-1.17").is_some());
     assert!(at.get("dn2-1.12").is_none());
 }
+
+#[test]
+fn sharc_secondary_registers_are_valid_but_bounded() {
+    let text = r#"[[site]]
+name = "dsp.voice.site.velocity"
+cpu = "sharc"
+rule = { kind = "sharc_func" }
+doc = "Velocity operand."
+[[hook]]
+name = "dsp.voice.hook.velocity"
+site = "dsp.voice.site.velocity"
+cpu = "sharc"
+mode = "replace"
+regs = { in = ["r1"], clobbers = ["r7", "s7"] }
+doc = "Displaced SIMD register write."
+"#;
+    assert!(render(&[("voice.toml", text)]).is_ok());
+    assert!(render(&[("voice.toml", &text.replace("s7", "s16"))]).is_err());
+}

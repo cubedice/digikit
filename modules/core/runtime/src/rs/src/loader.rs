@@ -386,7 +386,7 @@ unsafe fn load_inner(path: *const u8) -> i32 {
         (*addr_of_mut!(crate::DKRT_MENUS))[rec] = 0;
         m.used = 2; // occupied, not published
         crate::instrument::pending::queue(crate::instrument::pending::Pending::new(
-            rec, BOOT_IDX, base + reg_at, reg_size, base + section_at, dsp_size,
+            rec, BOOT_IDX, image_size, base + reg_at, reg_size, base + section_at, dsp_size,
             base + output_at, output_size, initaddr, menuaddr, mask, fns));
         return LOADING;
     }
@@ -394,7 +394,7 @@ unsafe fn load_inner(path: *const u8) -> i32 {
         // the CF part goes live now (rows in place before the machine view is built); the DSP code and the voice rows follow
         // when the frames flow
         m.used = 1;
-        let r = publish_cf(rec, reg, reg_size, initaddr, mask, &fns);
+        let r = publish_cf(rec, reg, reg_size, image_size, initaddr, mask, &fns);
         if r != OK {
             if dsp::retained() { return E_BUSY; }
             dsp::cancel(rec);
@@ -418,7 +418,7 @@ unsafe fn load_inner(path: *const u8) -> i32 {
         });
         return LOADING;
     }
-    let r = publish_cf(rec, reg, reg_size, initaddr, mask, &fns);
+    let r = publish_cf(rec, reg, reg_size, image_size, initaddr, mask, &fns);
     if r != OK {
         if dsp::retained() || !crate::files::retire(rec) { return E_BUSY; }
         arena::free(mem);
@@ -435,6 +435,7 @@ pub(crate) unsafe fn publish_cf(
     rec: usize,
     reg: *const u8,
     reg_size: u32,
+    image_size: u32,
     init: u32,
     mask: u32,
     fns: &[u32; SLOTS],
@@ -443,7 +444,7 @@ pub(crate) unsafe fn publish_cf(
     let owner = rec as u8 + 1;
     // Deferred V2 publication can follow other selected modules. Revalidate
     // against their now-live registry before writing any row.
-    let checked = crate::registry::check(reg, reg_size);
+    let checked = crate::registry::check(reg, reg_size, image_size);
     if checked != OK { return checked; }
     crate::files::init_begin(rec);
     // registry rows before `init` (which may reuse the staging buffer through `store_read`)

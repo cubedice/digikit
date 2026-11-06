@@ -4,7 +4,8 @@ import { createHash } from 'node:crypto';
 import { repoRoot } from '@digi/test-support';
 import { expect, onTestFinished, test } from 'vitest';
 import { withSession } from '../support.ts';
-import { installModule, liveProtocol } from './live.ts';
+import { installModule } from './install.ts';
+import { liveProtocol } from './protocol.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 
 const h = withSession({

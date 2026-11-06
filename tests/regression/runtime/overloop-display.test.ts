@@ -3,7 +3,10 @@ import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { button, encoder } from '@digi/test-support';
 import { expect } from 'vitest';
-import { installModule, liveArtifacts, moduleArtifact, runtimeTests, settleUi, tap } from './live.ts';
+import { installModule, moduleArtifact } from './install.ts';
+import { liveArtifacts } from './artifacts.ts';
+import { runtimeTests } from './ready.ts';
+import { settleUi, tap } from './waits.ts';
 import { planSymbol, prepareRuntimePlan } from './runtime-plan.ts';
 
 runtimeTests(
@@ -17,7 +20,7 @@ runtimeTests(
     const base = planSymbol(plan, 'loop_ui_snapshot');
     const word = async (index: number) => (await session.client.memPeek(base + index * 4))!;
     const paints = () => session.client.memPeek(planSymbol(plan, 'loop_ui_paints'));
-    const key = (name: string) => tap((down) => session.client.inputButton(button(name), down), 150, 400);
+    const key = (name: string) => tap(session, (down) => session.client.inputButton(button(name), down), 150, 400);
     const shot = async (name: string) => {
       const frame = await session.client.framebufferGet({ hash: true, data: true });
       fs.writeFileSync(path.join(artifacts, `${name}.json`), JSON.stringify(frame));

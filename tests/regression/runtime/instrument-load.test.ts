@@ -71,7 +71,7 @@ test('bound instrument uploads, initializes and retires before memory release', 
   const section = Buffer.alloc(224); // 112-byte header/tables/padding + 112-byte image
   const fields: [number, number][] = [
     [0, 0x444b4453],
-    [4, 6],
+    [4, 8],
     [8, 1],
     [12, 112],
     [20, 16],

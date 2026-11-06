@@ -523,12 +523,12 @@ fn sample_bank_v5_counts_owned_bss_and_rejects_bad_records() {
     assert_eq!(of(&dkm(4, 0, &[], &dsp)), Err(Error::Dsp));
 }
 
-/// Canonical V5 section: two independent track states, no V1 voices.
-fn dsp_section_v5() -> Vec<u8> {
+/// Canonical V7 section: two independent track states, no V1 voices.
+fn dsp_section_v7() -> Vec<u8> {
     let mut s = vec![0u8; 160];
     for (at, value) in [
         (0, DSP_MAGIC),
-        (4, 5),
+        (4, 7),
         (8, 1),
         (0x0c, 64),
         (0x10, 8),
@@ -556,7 +556,7 @@ fn dsp_section_v5() -> Vec<u8> {
 
 #[test]
 fn v2_accounting_is_explicit_and_keeps_instruments_out_of_voice_rows() {
-    let file = dkm(4, 0, &[], &dsp_section_v5());
+    let file = dkm(4, 0, &[], &dsp_section_v7());
     assert_eq!(of(&file), Err(Error::Dsp));
     let n = needs_of_v2(&mut file.as_slice()).unwrap();
     assert_eq!(
@@ -578,7 +578,7 @@ fn v2_accounting_is_explicit_and_keeps_instruments_out_of_voice_rows() {
 
 #[test]
 fn v2_rejects_bad_descriptors_tables_and_overflow() {
-    let good = dsp_section_v5();
+    let good = dsp_section_v7();
     for (at, value) in [
         (0x40, 0),
         (0x44, 0),
@@ -634,7 +634,7 @@ fn v2_rejects_bad_descriptors_tables_and_overflow() {
 
 #[test]
 fn v2_accumulates_multiple_instruments_and_rejects_duplicate_types() {
-    let mut s = dsp_section_v5();
+    let mut s = dsp_section_v7();
     let second = s[80..96].to_vec();
     s.splice(96..96, second);
     put(&mut s, 0x18, 112);
@@ -669,7 +669,7 @@ fn v2_reads_are_bounded_and_io_failures_propagate() {
             true
         }
     }
-    let good = dkm(4, 0, &[], &dsp_section_v5());
+    let good = dkm(4, 0, &[], &dsp_section_v7());
     for cut in 0..good.len() {
         let mut probe = Probe { bytes: &good[..cut], fail_at: None };
         assert!(needs_of_v2(&mut probe).is_err());
@@ -683,13 +683,13 @@ fn v2_reads_are_bounded_and_io_failures_propagate() {
 }
 
 #[test]
-fn v6_requires_executable_callback_ranges_and_preserves_v5_accounting() {
-    let old = dsp_section_v5();
+fn v8_requires_executable_callback_ranges_and_preserves_v7_accounting() {
+    let old = dsp_section_v7();
     let mut s = old[..96].to_vec();
     s.extend_from_slice(&[0; 16]);
     s.extend_from_slice(&old[96..]);
     for (at, value) in [
-        (4, 6),
+        (4, 8),
         (0x18, 112),
         (0x48, 96),
         (0x4c, 1),

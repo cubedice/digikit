@@ -1,4 +1,4 @@
-//! Bounded decoding of V2 descriptors and DKDS5 instrument records. No addresses
+//! Bounded decoding of V2 descriptors and DKDS7 instrument records. No addresses
 //! are dereferenced, allocations made, or runtime capabilities enabled. Decoded
 //! callbacks are image offsets, NOT proof of executable instruction boundaries.
 
@@ -150,7 +150,7 @@ pub struct Record {
 }
 
 /// Decode an exact BE record table and LE image descriptors, using checked
-/// slices from a separately validated DKDS5 header. Relocations are BE 8-byte
+/// slices from a separately validated DKDS7 header. Relocations are BE 8-byte
 /// entries. This validates their bounds and keeps descriptors immutable; the
 /// caller still validates relocation classes/import indices and section layout.
 /// Returned records occupy a fixed eight-slot array in file order.
@@ -222,7 +222,7 @@ pub struct Executable {
     pub end: u32,
 }
 
-/// DKDS6 text ranges, sorted and nonoverlapping. These are section boundaries,
+/// DKDS8 text ranges, sorted and nonoverlapping. These are section boundaries,
 /// not a disassembly or a proof of control flow / declared callback budgets.
 pub fn executable_ranges(
     table: &[u8],

@@ -397,7 +397,7 @@ pub fn resolve_runtime(m: &Manifest, models: &Models, dev: &str) -> Result<Vec<D
     let i = &m.instrument[0];
     let mut metadata = m.clone();
     metadata.instrument.clear();
-    metadata.machine.push(MachineDef { id: i.id.clone(), name: i.name.clone(), short: i.short.clone() });
+    metadata.machine.push(MachineDef { stereo: false, id: i.id.clone(), name: i.name.clone(), short: i.short.clone() });
     let mut resolved = resolve(&metadata, models)?;
     resolved.retain(|r| r.dev == dev);
     Ok(resolved)

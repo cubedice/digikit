@@ -2,7 +2,7 @@
 use super::*;
 use crate::instrument_descriptor as descriptor;
 
-/// Slices bounded by a separately validated DKDS6 header. The image must be the
+/// Slices bounded by a separately validated DKDS8 header. The image must be the
 /// exact immutable source covered by the allocation grant. The loader resolves
 /// keys and rejects builtin/V1 conflicts before supplying types in record order.
 pub struct Packed<'a> {

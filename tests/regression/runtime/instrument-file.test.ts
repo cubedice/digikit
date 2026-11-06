@@ -4,7 +4,9 @@ import { createHash } from 'node:crypto';
 import { repoRoot } from '@digi/test-support';
 import { expect, test } from 'vitest';
 import { withSession } from '../support.ts';
-import { liveOptions, liveProtocol, moduleArtifact } from './live.ts';
+import { liveOptions } from './devices.ts';
+import { liveProtocol } from './protocol.ts';
+import { moduleArtifact } from './install.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 
 const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
@@ -39,7 +41,7 @@ test.each([false, true])(
     const section = Buffer.alloc(224); // 112-byte header/tables/padding + 112-byte image
     const fields: [number, number][] = [
       [0, 0x444b4453],
-      [4, 6],
+      [4, 8],
       [8, 1],
       [12, 112],
       [20, 16],
@@ -64,7 +66,7 @@ test.each([false, true])(
     [0x444b4954, 2, 48, 0, 1, 8, 8, 1, 20, 20, 2, 32].forEach((value, i) => section.writeUInt32LE(value, 176 + 4 * i));
 
     // A real checksummed DKM with an inert CF image, one pinned machine record,
-    // and the diagnostic DKDS6. No debugger injection into loader state.
+    // and the diagnostic DKDS8. No debugger injection into loader state.
     const registry = Buffer.alloc(124);
     [0x444b5247, 1, 1, 1, 2, 108, 20, 1, 255].forEach((value, i) => registry.writeUInt32BE(value, i * 4));
     registry.write('V2 FILE', 24 + 52);

@@ -1475,6 +1475,74 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002d438",
+            "len": 172
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_machine_refresh_track",
+        "rust": "dkfw::machine::refresh_track"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 stock Sound-to-track refresh: source pointer and track index on the C stack. Validates the type, caches the source, copies the parameter and machine rows, and refreshes modulation. Emulator admission proof only; caller must resolve a live Sound.",
+      "file": "devices/fw/machine.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.machine.fn.refresh_track",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 172
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "test/canopy-carrier"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40060f50",
+            "len": 8
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_machine_selection_build",
+        "rust": "dkfw::machine::selection_build"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 persistent machine-selection view item builder. C ABI build(view), clears then refills the cached list. Archived registry proof, finding 30.",
+      "file": "devices/fw/machine.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.machine.fn.selection_build",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x400c24d2",
@@ -2184,6 +2252,70 @@
       "subsystem": "machine",
       "users": [
         "core/machines"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40060f50"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Remember the persistent selection view so delayed boot-only V2 publication can refresh its item list on the UI task.",
+      "file": "devices/fw/machine.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "cf.machine.hook.selection_build",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.machine.fn.selection_build",
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400db3b2"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Emulator-only Sound-load lifetime wrapper; preserves the C ABI and original result.",
+      "file": "devices/fw/machine.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.machine.hook.sound_deserialize",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.machine.site.sound_deserialize",
+      "subsystem": "machine",
+      "users": [
+        "test/canopy-carrier"
       ],
       "was": []
     },
@@ -3479,6 +3611,37 @@
       "was": [
         "cf.machines.pertype.5"
       ]
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400db3b2",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 Sound deserializer prologue. C ABI destination and serialized record; returns boolean in d0. Fixture wrapper replays the displaced stack allocation and register save before resuming at +8.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.sound_deserialize",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "test/canopy-carrier"
+      ],
+      "was": []
     },
     {
       "at": {
@@ -5995,6 +6158,37 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4011f178"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Optional instrument channel-message handler before the DIN router. Preserve arguments and registers; consume by continuing at return, otherwise run the displaced call through tail.",
+      "file": "devices/fw/midi.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "cf.midi.hook.din_rx",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.midi.site.din_rx",
+      "subsystem": "midi",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x40120876"
@@ -6032,6 +6226,37 @@
       "subsystem": "midi",
       "users": [
         "core/runtime"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4011f178",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 MIDI task DIN router call: (message, length, source) already on the stack, source 8 or 16. The six-byte indirect call is followed by the stock argument cleanup.",
+      "file": "devices/fw/midi.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.midi.site.din_rx",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 4
+        }
+      },
+      "subsystem": "midi",
+      "users": [
+        "core/midi-events"
       ],
       "was": []
     },
@@ -7556,6 +7781,67 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40069eb8",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 stock FxPageView per-view update entry, retained by the vtable adapter. Local ABI void(u8 *view); the wrapper calls it before its own invalidation policy.",
+      "file": "devices/fw/page.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.fx_update_entry",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/loop-display"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f99b4",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 FxPageView primary View vtable slot 11, per-view update. The window starts at slot 0; only this slot is replaced.",
+      "file": "devices/fw/page.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.fx_update_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 44
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/loop-display"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x40061616",
@@ -7649,6 +7935,688 @@
         "cf.fxpages.list",
         "cf.page.site.list"
       ]
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005ab0e",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration alternate; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_alternate",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400693da",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration attach; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_attach",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edcac",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration attach_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_attach_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 20
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4011b422",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration detach; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_detach",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edcb4",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration detach_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_detach_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 28
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40016eac",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration draw; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_draw",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edca8",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration draw_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_draw_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 16
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edd98",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration encoder_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_encoder_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40030bac",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration event_call; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_event_call",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 10
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4011c674",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration event_dispatch; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_event_dispatch",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400181fe",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration key; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_key",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edca0",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration key_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_key_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400e1588",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration level_format; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_level_format",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40017cd4",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration parameter; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_parameter",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edd54",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration parameter_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_parameter_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 188
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4004abb8",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration track; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_track",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400e177c",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration tune_format; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_tune_format",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400184ea",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration turn; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_turn",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edcdc",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration turn_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_turn_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 68
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40017a40",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration update; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_update",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edcc4",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration update_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_update_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 44
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4006aa32",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration value; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_value",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
     },
     {
       "at": {
@@ -9385,6 +10353,295 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d66d8"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Observe pp.cf.start; shim preserves live state and resumes the stock path.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.pattern.hook.start",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": [
+          "d2"
+        ]
+      },
+      "site": "cf.pattern.site.start",
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e6b4"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Observe pp.cf.start_due; shim preserves live state and resumes the stock path.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.pattern.hook.start_due",
+      "regs": {
+        "clobbers": [
+          "d1",
+          "ccr"
+        ],
+        "in": [
+          "a4",
+          "a6"
+        ]
+      },
+      "site": "cf.pattern.site.start_due",
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e158"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Observe pp.cf.step_due; shim preserves live state and resumes the stock path.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "retarget",
+      "name": "cf.pattern.hook.step_due",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": [
+          "a4"
+        ]
+      },
+      "site": "cf.pattern.site.step_due",
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d8dca"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Observe pp.cf.tick; shim preserves live state and resumes the stock path.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.pattern.hook.tick",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": [
+          "d2"
+        ]
+      },
+      "site": "cf.pattern.site.tick",
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d66d8",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.cf.start.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.start",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e6b4",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.cf.start_due.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.start_due",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e158",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.cf.step_due.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.step_due",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 6
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012bff0",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.cf.step_fn.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.step_fn",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d8dca",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.cf.tick.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.tick",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x4003e41a",
@@ -9785,6 +11042,37 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400cd01c"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Notify session revocation before reset assertion, then execute the displaced prologue. Release must not revoke or rearm. Expansion data/BSS is initialized by the reset-path loader before the boot task calls this helper.",
+      "file": "devices/fw/rtos.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "cf.rtos.hook.dsp_reset",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.rtos.site.dsp_reset",
+      "subsystem": "rtos",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x400cf0ea"
@@ -9872,6 +11160,37 @@
       "subsystem": "rtos",
       "users": [
         "core/runtime"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400cd01c",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 GPIO DSP reset helper entry. Low argument byte nonzero asserts reset; zero releases it. First six bytes save D2 and load the argument byte; continuation must preserve the stack. See finding 78.",
+      "file": "devices/fw/rtos.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.rtos.site.dsp_reset",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "rtos",
+      "users": [
+        "core/midi-events"
       ],
       "was": []
     },
@@ -13789,6 +15108,70 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838ea02",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Observe pp.dsp.block_entry; shim preserves live state and resumes the stock path.",
+      "file": "devices/fw/dsp/pattern.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "dsp.pattern.hook.block_entry",
+      "regs": {
+        "clobbers": [],
+        "in": [
+          "i3"
+        ]
+      },
+      "site": "dsp.pattern.site.block_entry",
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838ea02",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.dsp.block_entry.",
+      "file": "devices/fw/dsp/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.pattern.site.block_entry",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 52
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.12": [
           {
             "addr": "0x20003ada",
@@ -14498,6 +15881,76 @@
       "subsystem": "voice",
       "users": [
         "core/dsp-voice"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x283976ae",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Interpose owned carrier flags in stack arguments +1/+2; preserve live state and execute the displaced stack reservation.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "dsp.voice.hook.envelope_entry",
+      "regs": {
+        "clobbers": [
+          "i7"
+        ],
+        "in": [
+          "r4",
+          "i6",
+          "i7"
+        ]
+      },
+      "site": "dsp.voice.site.envelope_entry",
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838c914",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Capture the derived envelope-bank pointer; replacement must execute the displaced MODIFY exactly.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "dsp.voice.hook.envelope_workspace",
+      "regs": {
+        "clobbers": [
+          "i1"
+        ],
+        "in": [
+          "i1"
+        ]
+      },
+      "site": "dsp.voice.site.envelope_workspace",
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
       ],
       "was": []
     },
@@ -15593,6 +17046,43 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838d45c",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Replace only owned scalar velocity R1 using pre-render admission. Preserve squared control R2, status and stock cache; execute displaced R7=1 (also S7 in SIMD mode).",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "dsp.voice.hook.velocity_operand",
+      "regs": {
+        "clobbers": [
+          "r1",
+          "r7",
+          "s7"
+        ],
+        "in": [
+          "r1",
+          "i1"
+        ]
+      },
+      "site": "dsp.voice.site.velocity_operand",
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.12": [
           {
             "addr": "0x28393810",
@@ -15652,6 +17142,134 @@
       "subsystem": "voice",
       "users": [
         "core/dsp-voice"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x283976ae",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Stock envelope entry, MODIFY(I7, -16) (NW), at DT2 1.17 PC 0x1cbb57. See finding 78.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.envelope_entry",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x283976b4",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Resume after the envelope's stack reservation at DT2 1.17 PC 0x1cbb5a.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.envelope_entry.next",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 3
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838c914",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Dispatcher MODIFY(I1, 0xd604), deriving the envelope bank from the live workspace. See finding 78.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.envelope_workspace",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 96
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838c91a",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Resume after the envelope workspace derivation at DT2 1.17 PC 0x1c648d.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.envelope_workspace.next",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 99
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
       ],
       "was": []
     },
@@ -16545,6 +18163,70 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838d45c",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 PC 0x1c6a2e, after latched velocity is loaded into R1 and before gain multiplication. Displaced instruction sets R7=1. See finding 78.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.velocity_operand",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 1540
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838d462",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Resume at DT2 1.17 PC 0x1c6a31, multiplying squared control R2 by velocity R1.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.velocity_operand.next",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 1543
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.12": [
           {
             "addr": "0x241298",
@@ -16783,7 +18465,7 @@
       "name": "link"
     },
     {
-      "count": 78,
+      "count": 83,
       "cpu": "cf",
       "file": "devices/fw/machine.toml",
       "meaning": "the machine framework: dispatch, names, per-type tables, the run-time registry",
@@ -16804,16 +18486,16 @@
       "name": "menu"
     },
     {
-      "count": 5,
+      "count": 7,
       "cpu": "cf",
       "file": "devices/fw/midi.toml",
       "meaning": "MIDI send and receive",
       "name": "midi"
     },
     {
-      "count": 34,
+      "count": 58,
       "cpu": "cf",
-      "file": "devices/fw/page.toml",
+      "file": "devices/fw/instrument-src.toml",
       "meaning": "parameter and FX pages",
       "name": "page"
     },
@@ -16825,6 +18507,13 @@
       "name": "param"
     },
     {
+      "count": 9,
+      "cpu": "cf",
+      "file": "devices/fw/pattern.toml",
+      "meaning": "master-pattern scheduling and timed step dispatch",
+      "name": "pattern"
+    },
+    {
       "count": 4,
       "cpu": "cf",
       "file": "devices/fw/project.toml",
@@ -16832,7 +18521,7 @@
       "name": "project"
     },
     {
-      "count": 11,
+      "count": 13,
       "cpu": "cf",
       "file": "devices/fw/rtos.toml",
       "meaning": "tasks, queues, mutexes, idle, interrupts, the reset and boot path",
@@ -16923,7 +18612,14 @@
       "name": "master"
     },
     {
-      "count": 80,
+      "count": 2,
+      "cpu": "sharc",
+      "file": "devices/fw/dsp/pattern.toml",
+      "meaning": "master-pattern position transport before rendering",
+      "name": "pattern"
+    },
+    {
+      "count": 89,
       "cpu": "sharc",
       "file": "devices/fw/dsp/voice.toml",
       "meaning": "voice rendering",
