@@ -35,9 +35,38 @@ Firmware-derived images and packages remain ignored under `out/`.
 - The firmware includes the CANOPY/Overloop core adapters and runtime 0.5.4.
   The isolated UI/audio acceptance selects only CANOPY. Firmware preflight
   passes; the module uses the rebased DKDS 8 instrument format.
-- This revision has not been installed on the physical DTII. Read-only INFO
-  still reported runtime 0.5.2 / image `f064c83d13ad47d4`; its older measurements
-  do not qualify this image. A read-only screenshot request timed out.
+- Installed on the physical DTII on 2026-11-06 at the user's request. INFO
+  reports runtime 0.5.4 / image `6c03036ecf861957`, matching the image ID
+  extracted from the exact firmware above. The installation receipt is
+  `out/canopy-native-ui-hardware-installed.json`.
+
+## Physical installation [D]
+
+The three previous module files were read back and their hashes checked before
+replacement; backups and the prior device inventory are under
+`out/canopy-native-ui-install-backup/`. SETTINGS returned `E_SET_NOKEY`: there
+was no persisted DigiKit settings record to back up. The existing selection was
+preserved, with compatible packages uploaded at the same paths before flashing:
+
+- `modules/canopy.dkm`: the CANOPY artifact above.
+- `modules/overloop.dkm`: `out/patch/overloop-native-ui.dkm`, whole-file SHA256
+  `748e3044eeee912771b1b2b9e216e1ee0fa90d4001441764431a1ebac982bf8b`.
+- `modules/remote.dkm`: `out/patch/remote-native-ui.dkm`, whole-file SHA256
+  `8678c47cbf7abf91c6b55f1f03fea39f367655d5e7bda6fb212d8bdea1b1161c`.
+
+The device validated the entire firmware transfer and accepted the flash commit.
+It continued reporting the previous image briefly before completing its restart;
+no second flash or manual restart was issued. Final INFO matched the expected
+image, with safe mode off and no crash record. MODULES listed CANOPY, Overloop,
+and remote, all with API contract 1.4, zero guard faults and no disabled guards.
+CANOPY retained machine type 16. All three files passed fresh card readback hash
+verification, and remote control answered its state request. The user confirmed
+the normal CANOPY screen. The screenshot RPC still timed out, so no physical
+screen capture was obtained. Flash log:
+`out/canopy-native-ui-hardware-flash.log`.
+
+These are installation and load checks, not a replacement for physical audio,
+keyboard, or full UI-state qualification of this revision.
 
 ## Validation
 
