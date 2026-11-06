@@ -394,7 +394,7 @@ _ca_find_owner:
 _ca_found_owner:
     R0 = DM(1, I0);
     R12 = FEXT R0 BY 8:7;
-    R0 = FEXT R0 BY 0:5;
+    R0 = FEXT R0 BY 0:6;
     R0 = LSHIFT R0 BY 2;
     R1 = 372; // controller bank + 29 route-bend words
     R0 = R0 + R1;

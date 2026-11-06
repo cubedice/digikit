@@ -107,7 +107,7 @@ int main(int argc,char **argv)
         token=cs_context(&ui,0,12,1,1,KB_ROOT,0,0,0);
         assert(cs_edit(&ui,token,0,1,30,&id)==CS_EDIT && id==CP_RATE && ui.value[id]==5);
         assert(ui.value[CP_ARP_MIX]==0);
-        assert(cs_edit(&ui,token,7,1,30,&id)==CS_READONLY && ui.value[CP_SOURCE]==0);
+        assert(cs_edit(&ui,token,7,1,30,&id)==CS_EDIT && ui.value[CP_ARP_MIX]==1);
     } else if(!strcmp(scenario,"stale")) {
         uint32_t old=token; token=cs_context(&ui,0,12,1,1,KB_ROOT,0,0,0);
         assert(cs_edit(&ui,old,3,1,0,&id)==CS_STALE);
@@ -218,9 +218,13 @@ int main(int argc,char **argv)
         CvDisplay display; start(); cs_context(&ui,0,12,1,0,KB_ROOT,0,0,0);
         ui.value[CP_STRUM]=500; ui.value[CP_ARP_MIX]=64;
         cv_build(&display,&ui,&status,now,"-12","100",0);
-        assert(!strcmp(display.value[5],"500ms") && !strcmp(display.value[6],"50%"));
-        assert(!strcmp(display.label[2],"VOICE"));
+        assert(!strcmp(display.value[5],"500") && !strcmp(display.value[6],"50%"));
+        char feedback[32]; cv_feedback(feedback,&ui,5); assert(!strcmp(feedback,"Strum=500 ms"));
+        cv_feedback(feedback,&ui,2); assert(!strcmp(feedback,"Voicing=Closed"));
+        assert(!strcmp(display.label[2],"VOIC"));
         cs_context(&ui,0,12,1,1,KB_ROOT,0,0,0);
+        ui.value[CP_ORDER]=3; cv_feedback(feedback,&ui,1); assert(!strcmp(feedback,"Order=As Played"));
+        ui.value[CP_RESTART]=1; cv_feedback(feedback,&ui,5); assert(!strcmp(feedback,"Restart=Pattern"));
         cv_build(&display,&ui,&status,now,"-12","100",0);
         assert(!strcmp(display.value[0],"1/16") && !strcmp(display.value[2],"1OCT"));
         assert(!strcmp(display.value[3],"50%") && !strcmp(display.value[4],"50%"));
@@ -296,22 +300,18 @@ int main(int argc,char **argv)
         cv_build(&display,&ui,&status,now,"-12","100",0);
         assert(display.mix_bar && display.mix_requested==32 && display.mix_applied==0);
         cv_build(&display,&ui,&status,now,"-12","100",1); assert(!strcmp(display.heading,"NOT SAVED") && !display.mix_bar);
-    } else if(!strcmp(scenario,"preview")) {
-        CvDisplay display; uint8_t pixels[1024]={0}; start(); ++fast[0];
-        fast[1]=(7u<<16)|(3u<<20); fast[5]=60|(64u<<8)|(67u<<16); fast[6]=1|(9u<<8)|(17u<<16);
-        assert(is_receive(&status,fast,now)==1); cs_context(&ui,0,12,1,0,KB_PLAY,0,0,0);
-        cv_build(&display,&ui,&status,now,"0","100",0); cv_paint(pixels,&display);
-        puts("P1\n128 64");
-        for(unsigned y=0;y<64;++y) { for(unsigned x=0;x<128;++x) printf("%u ",!!(pixels[y*16+x/8]&(128u>>(x&7)))); puts(""); }
-        return 0;
-    } else if(!strcmp(scenario,"pixels")) {
-        CvDisplay display; uint8_t guarded[1026]; memset(guarded,255,sizeof(guarded));
-        start(); cv_build(&display,&ui,&status,now,"-12","100",0); cv_paint(guarded+1,&display);
-        assert(guarded[0]==255 && guarded[1025]==255);
-        for(unsigned i=0;i<160;++i) assert(guarded[1+i]==255);
-        for(unsigned y=10;y<64;++y) assert((guarded[1+y*16+15]&15)==15);
-        unsigned ink=0; for(unsigned i=160;i<1024;++i) if(guarded[1+i]) ++ink;
-        assert(ink>100 && ink<700);
+    } else if(!strcmp(scenario,"native-presentation")) {
+        CvDisplay display; start(); cs_context(&ui,0,12,1,0,KB_PLAY,0,0,0);
+        cv_build(&display,&ui,&status,now,"-12","100",0);
+        assert(!strcmp(display.label[0],"TUNE") && !strcmp(display.label[7],"LEV"));
+        assert(!(display.pending&0x81));
+        assert(!strcmp(display.label[2],"VOIC") && !strcmp(display.label[6],"MIX"));
+        assert(display.rotary&(1u<<3));
+        char feedback[32]; cv_feedback(feedback,&ui,0);assert(!feedback[0]);
+        cv_feedback(feedback,&ui,1);assert(!strcmp(feedback,"PLAY: YOUR NOTES"));
+        cs_context(&ui,0,12,1,1,KB_ROOT,0,0,0);
+        cv_build(&display,&ui,&status,now,"0","100",0);
+        assert(!strcmp(display.label[7],"MIX"));
     } else { fprintf(stderr,"unknown scenario %s\n",scenario); return 2; }
     puts("ok"); return 0;
 }

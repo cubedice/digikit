@@ -89,6 +89,10 @@ _ci_event_loop:
     DM(_ci_route_index) = R2;
     R3 = 1;
     R3 = LSHIFT R3 BY R2;
+    R1 = 32;
+    COMP(R2, R1);
+    R1 = 0;
+    IF EQ R3 = R1; // PANEL has no sustain controller.
     DM(_ci_route_mask) = R3;
     R1 = FEXT R0 BY 0:4;
     R12 = FEXT R0 BY 14:7;
@@ -364,7 +368,7 @@ _ci_route_release_next:
     R8 = PASS R8;
     IF EQ JUMP _ci_route_advance;
     R0 = DM(1, I2);
-    R0 = FEXT R0 BY 0:5;
+    R0 = FEXT R0 BY 0:6;
     R1 = DM(_ci_route_index);
     COMP(R0, R1);
     IF NE JUMP _ci_route_advance;
@@ -418,7 +422,8 @@ _ci_route_advance:
     COMP(R0, R1);
     IF LT JUMP _ci_route_release_next;
     JUMP _ci_next_event;
-// Signed per-route bend values live at word 29..60 of controller state.
+// Signed MIDI route bends live at word 29..60. PANEL uses reserved word 61,
+// always zero: packets cannot submit panel pitch bend or reset controllers.
 _ci_bend_address:
     R0 = DM(_ci_route_index);
     R0 = LSHIFT R0 BY 2;
@@ -451,7 +456,7 @@ _ci_bend_next_owner:
     R0 = PASS R0;
     IF EQ JUMP _ci_bend_advance;
     R0 = DM(1, I2);
-    R0 = FEXT R0 BY 0:5;
+    R0 = FEXT R0 BY 0:6;
     R1 = DM(_ci_route_index);
     COMP(R0, R1);
     IF NE JUMP _ci_bend_advance;
@@ -470,7 +475,7 @@ _ci_retune_owner:
     R0 = DM(1, I2);
     R1 = FEXT R0 BY 8:7;
     DM(_ci_bend_note) = R1;
-    R0 = FEXT R0 BY 0:5;
+    R0 = FEXT R0 BY 0:6;
     R0 = LSHIFT R0 BY 2;
     R1 = _ci_pedal_staging;
     R0 = R0 + R1;

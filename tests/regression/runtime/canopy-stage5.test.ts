@@ -8,15 +8,16 @@ import { expect, onTestFinished, test } from 'vitest';
 import { withSession } from '../support.ts';
 import { liveOptions } from './devices.ts';
 import { liveProtocol } from './protocol.ts';
-import { settleUi } from './waits.ts';
+import { waitEmulated } from './waits.ts';
+import { expectRuntimeUi } from './ready.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 import { captureRemoteOled } from './remote.ts';
 import { openDigikitMenu } from './runtime-menu.ts';
 
 const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
-test('CANOPY native SOUND and MOVEMENT pages route controls to the audible bank', async () => {
+test('CANOPY native SOUND and ARP pages and panel keys route controls to the audible bank', async () => {
   const root = repoRoot(),
-    image = path.join(root, 'out/patch/canopy-stage5-native.syx');
+    image = path.resolve(root, process.env.CANOPY_UI_IMAGE ?? 'out/patch/canopy-native-ui.syx');
   const plan: RuntimePlan = JSON.parse(fs.readFileSync(image.replace(/\.syx$/, '.plan.json'), 'utf8'));
   expect(createHash('sha256').update(fs.readFileSync(image)).digest('hex')).toBe(plan.output?.syx_sha256);
   expect(plan.modules.some((m) => m.startsWith('test/canopy'))).toBe(false);
@@ -31,10 +32,12 @@ test('CANOPY native SOUND and MOVEMENT pages route controls to the audible bank'
   });
   await session.client.call('run.mode', { mode: 'free' });
   const dk = liveProtocol(session),
-    file = fs.readFileSync(path.join(root, 'out/patch/canopy-stage5-native.dkm'));
+    file = fs.readFileSync(path.resolve(root, process.env.CANOPY_UI_PACKAGE ?? 'out/patch/canopy-native-ui.dkm'));
   await dk.put('modules/canopy.dkm', file);
   expect(await dk.verifyFile('modules/canopy.dkm', file)).toBe(true);
   await dk.select(['modules/canopy.dkm']);
+  const beforeRestart = (await session.status()).epoch;
+  if (typeof beforeRestart !== 'number') throw new Error('Missing pre-restart epoch');
   await dk.restart();
   await dk.waitForBoot(undefined, 180_000);
   const word = async (address: number) => {
@@ -53,6 +56,7 @@ test('CANOPY native SOUND and MOVEMENT pages route controls to the audible bank'
       ['ip_control', 8],
       ['ip_src_debug', 12],
       ['ip_src_refresh', 8],
+      ['ip_panel_debug', 8],
       ['src_state', 21],
       ['src_status', 160],
     ] as const)
@@ -84,7 +88,7 @@ test('CANOPY native SOUND and MOVEMENT pages route controls to the audible bank'
     .toBe(3);
 
   expect((await dk.modules()).map((m) => m.name)).toContain('digikit/canopy');
-  expect(await cf('ip_control', 1)).toBe(0); // routes always start disabled
+  expect(await cf('ip_control', 1)).toBe(0); // external MIDI starts disabled
   const peek = async (addr: number, len: number) => {
     const r = await session.client.call<{ hex: string; unknown: number }>('dsp.peek', { addr, len });
     expect(r.unknown).toBe(0);
@@ -117,7 +121,11 @@ test('CANOPY native SOUND and MOVEMENT pages route controls to the audible bank'
     await session.client.inputButton(button(name), false);
     await delay(settle);
   };
-  await settleUi(session);
+  await expectRuntimeUi(session, plan, path.join(root, 'out/design/canopy-native-ui'), {
+    afterEpoch: beforeRestart,
+    timeout: 180_000,
+  });
+  console.info('CANOPY: restarted runtime UI ready');
   // Select the admitted machine using the stock machine chooser.
   await session.client.inputButton(button('FUNC'), true);
   try {
@@ -132,6 +140,30 @@ test('CANOPY native SOUND and MOVEMENT pages route controls to the audible bank'
   );
   await key('YES');
   await key('YES');
+  // Local audition does not depend on enabling an external MIDI route.
+  await expect.poll(() => cf('ip_control'), { timeout: 60_000 }).toBe(3);
+  await key('KEYBOARD');
+  const heldPanel = async () => (await voices()).filter((v) => v.gate === 1);
+  try {
+    let presses = await cf('ip_panel_debug');
+    // Chromatic mode's lower row is the white keys. Upper-row 1/4/8
+    // are intentional gaps and must retain the stock no-note behavior.
+    for (const n of [9, 11, 13]) {
+      await session.client.inputButton(button(`TRIG ${n}`), true);
+      await expect.poll(() => cf('ip_panel_debug'), { timeout: 30_000 }).toBe(++presses);
+    }
+    await expect.poll(() => cf('ip_panel_debug'), { timeout: 30_000 }).toBeGreaterThanOrEqual(3);
+    await expect.poll(async () => (await heldPanel()).length, { timeout: 30_000 }).toBe(3);
+    const before = await heldPanel();
+    await session.client.inputButton(button('TRIG 11'), false);
+    await expect.poll(async () => (await heldPanel()).length, { timeout: 30_000 }).toBe(2);
+    expect((await heldPanel()).every((v) => before.some((p) => p.token === v.token))).toBe(true);
+    await key('KEYBOARD'); // leaving keyboard mode releases only its own notes
+    await expect.poll(async () => (await heldPanel()).length, { timeout: 30_000 }).toBe(0);
+  } finally {
+    for (const n of [9, 11, 13]) await session.client.inputButton(button(`TRIG ${n}`), false);
+  }
+  console.info('CANOPY: panel chord, independent release and keyboard exit passed');
   await openDigikitMenu(key);
   await key('YES'); // KEYBOARD is the first optional setup row
   await key('DOWN'); // skip the track heading
@@ -160,6 +192,18 @@ test('CANOPY native SOUND and MOVEMENT pages route controls to the audible bank'
   if (await cf('ip_src_debug', 1)) await key('SRC', 1000);
   expect(await cf('ip_src_debug', 1)).toBe(0);
   await captureRemoteOled(session, 'canopy-stage5-sound');
+  const heldValues = async (name: string) => {
+    await session.client.inputButton(button('SRC'), true);
+    try {
+      await waitEmulated(session, 800);
+      await captureRemoteOled(session, name);
+    } finally {
+      await session.client.inputButton(button('SRC'), false);
+    }
+    await waitEmulated(session, 100);
+  };
+  await heldValues('canopy-sound-held-values');
+  expect(await cf('ip_src_debug', 1)).toBe(0);
   const start = await bank();
   for (const encoder of [2, 3, 6]) {
     await session.client.inputTurn(encoder, 8);
@@ -181,6 +225,8 @@ test('CANOPY native SOUND and MOVEMENT pages route controls to the audible bank'
   await key('SRC', 1500);
   expect(await cf('ip_src_debug', 1)).toBe(1);
   await captureRemoteOled(session, 'canopy-stage5-movement');
+  await heldValues('canopy-arp-held-values');
+  expect(await cf('ip_src_debug', 1)).toBe(1);
   const movement = await bank();
   await expect
     .poll(
@@ -192,7 +238,7 @@ test('CANOPY native SOUND and MOVEMENT pages route controls to the audible bank'
       { timeout: 20000 },
     )
     .toBeGreaterThan(movement[24]!);
-  // Remaining editable PLAY controls, including every MOVEMENT encoder.
+  // Remaining editable PLAY controls, including every ARP encoder.
   for (const [encoder, index] of [
     [1, 22],
     [2, 23],
@@ -207,7 +253,7 @@ test('CANOPY native SOUND and MOVEMENT pages route controls to the audible bank'
   }
   const source = await bank();
   await session.client.inputTurn(8, 4);
-  await delay(700);
+  await expect.poll(async () => (await bank())[21], { timeout: 15000 }).toBe(source[21]! + 4);
   expect((await bank())[29]).toBe(source[29]);
   await key('AMP');
   await key('SRC');
@@ -263,6 +309,20 @@ test('CANOPY native SOUND and MOVEMENT pages route controls to the audible bank'
   await delay(1500);
   await captureRemoteOled(session, 'canopy-stage5-notes');
   expect(await cf('ip_src_debug', 5)).toBeGreaterThan(0);
+  await openDigikitMenu(key);
+  await key('DOWN'); // CANOPY STATUS follows the legacy KEYBOARD shortcut.
+  await key('YES');
+  await waitEmulated(session, 300);
+  await expect.poll(async () => (await cf('src_status', 158)) >>> 24, { timeout: 15000 }).toBe(1);
+  expect(((await cf('src_status', 5)) >>> 20) & 7).toBe(3);
+  const statusPaints = await cf('ip_src_debug', 3);
+  await captureRemoteOled(session, 'canopy-native-status');
+  await waitEmulated(session, 150);
+  expect(await cf('ip_src_debug', 3)).toBe(statusPaints);
+  await key('NO');
+  await key('UP'); // Restore the root's remembered selection to KEYBOARD.
+  await key('NO');
+  await key('NO');
   for (const note of [60, 64, 67]) await session.client.call('midi.usb.in', { bytes: [0x80, note, 0] });
   const menuRow = async (row: number) => {
     for (let i = 0; i < 40; i++) await key('UP', 50);
@@ -360,5 +420,64 @@ test('CANOPY native SOUND and MOVEMENT pages route controls to the audible bank'
     )
     .toBeLessThan(beforeLevel);
   await captureRemoteOled(session, 'canopy-stage5-native-tune-level');
+  console.info('CANOPY: native pages, held values, controls, presets and tuning passed');
+  // Observe the final stereo output while the same CANOPY token remains held.
+  // Changing track level must not alter the source LEV Sound slot.
+  const audioLevel = async (name: string) => {
+    const output = path.join(root, `out/canopy-native-level-${name}.f32le`);
+    await session.client.call('pcm.tap', { action: 'capture', path: output });
+    try {
+      await session.client.call('pcm.tap', { action: 'start' });
+      await expect
+        .poll(
+          async () => {
+            const r = await session.client.call<{ samples: number; non_finite: number }>('pcm.tap', {
+              action: 'report',
+            });
+            expect(r.non_finite).toBe(0);
+            return r.samples;
+          },
+          { timeout: 60000 },
+        )
+        .toBeGreaterThanOrEqual(24000);
+    } finally {
+      await session.client.call('pcm.tap', { action: 'capture_stop' });
+    }
+    const raw = fs.readFileSync(output);
+    let energy = 0;
+    const first = Math.max(0, raw.length - 8192 * 8);
+    for (let at = first; at < raw.length; at += 4) energy += raw.readFloatLE(at) ** 2;
+    return Math.sqrt(energy / ((raw.length - first) / 4));
+  };
+  const turnRange = async (encoder: number, direction: 1 | -1) => {
+    // Native detents can be fractional; cover the range without assuming
+    // that one injected detent equals one displayed level unit.
+    for (let i = 0; i < 32; i++) {
+      await session.client.inputTurn(encoder, direction * 30);
+      await waitEmulated(session, 40);
+      if (encoder === 8 && (await word(sound + 0x58)) >>> 16 === (direction < 0 ? 0 : 0x7f00)) break;
+    }
+  };
+  const sourceBeforeTrack = (await word(sound + 0x58)) >>> 16;
+  await turnRange(9, 1);
+  const full = await audioLevel('track-full');
+  expect(full).toBeGreaterThan(1e-5);
+  await turnRange(9, -1);
+  const zero = await audioLevel('track-zero');
+  expect((await word(sound + 0x58)) >>> 16).toBe(sourceBeforeTrack);
+  expect(zero).toBeLessThan(full * 0.01);
+  await key('SRC'); // Track LEVEL/DATA also edits the native control on ARP.
+  await turnRange(9, 1);
+  const arpFull = await audioLevel('arp-track-full');
+  expect(arpFull).toBeGreaterThan(full * 0.5);
+  await key('SRC');
+  await turnRange(8, -1);
+  expect((await word(sound + 0x58)) >>> 16).toBe(0);
+  const sourceZero = await audioLevel('source-zero');
+  expect(sourceZero).toBeLessThan(full * 0.01);
+  fs.writeFileSync(
+    path.join(root, 'out/canopy-native-levels.json'),
+    JSON.stringify({ full, zero, arpFull, sourceZero }, null, 2),
+  );
   for (const note of [60, 64, 67]) await session.client.call('midi.usb.in', { bytes: [0x80, note, 0] });
-}, 900000);
+}, 1800000);

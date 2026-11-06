@@ -15,6 +15,7 @@ void kb_reset(KbState *s, uint32_t epoch, uint32_t generation)
 static int selector(const KbState *s, const MiEvent *e)
 {
     return s->mode == KB_ROOT && (s->selector_channel != MI_NONE ?
+        e->port!=MI_PANEL &&
         e->channel == s->selector_channel :
         e->note >= s->selector_base && e->note < s->selector_base+12);
 }
@@ -52,7 +53,7 @@ static int note(KbState *s, const MiEvent *e)
     if (e->kind==MI_NOTE_OFF) {
         for (i=0;i<MI_KEYS;++i) if (s->keys[i].token==e->token) {
             KbKey *k=&s->keys[i]; k->held=0;
-            k->pedal=!!(s->pedals & (1u<<(k->port*16+k->channel)));
+            k->pedal=k->port!=MI_PANEL && !!(s->pedals & (1u<<(k->port*16+k->channel)));
             break;
         }
         collect(s); return 0;
@@ -90,7 +91,7 @@ static int note(KbState *s, const MiEvent *e)
 }
 static void controller(KbState *s, const MiEvent *e)
 {
-    uint32_t i, bit=1u<<(e->port*16+e->channel);
+    uint32_t i, bit=e->port==MI_PANEL ? 0 : 1u<<(e->port*16+e->channel);
     if (e->note==64) {
         if (e->value>=64) s->pedals|=bit; else s->pedals&=~bit;
     } else if (e->note==120 || e->note==121) s->pedals&=~bit;
@@ -161,7 +162,9 @@ int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8])
     for (i=0;i<count;++i) {
         const MiEvent *e=&in[i];
         if (e->epoch!=s->epoch || e->generation!=s->generation || e->track ||
-            e->port>1 || e->channel>15 || e->note>127 || e->value>127 ||
+            e->port>MI_PANEL || e->channel>15 || e->note>127 || e->value>127 ||
+            (e->port==MI_PANEL && (e->channel || (e->kind>MI_NOTE_OFF &&
+                !(e->kind==MI_CC && e->note==120)))) ||
             e->kind<MI_NOTE_ON || e->kind>MI_BEND ||
             (count>1 && e->kind>MI_NOTE_OFF)) return -1;
     }

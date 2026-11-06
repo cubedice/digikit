@@ -11,10 +11,12 @@ This is not a hardware-qualified release.
 Build and pack with `patchkit build digikit/canopy` and
 `patchkit pack digikit/canopy --device dt2 -o out/patch/canopy-dt2.dkm` through
 the repository's Python wrapper. Select CANOPY on track 1. In firmware containing
-the adapter, SETTINGS > DIGIKIT > KEYBOARD selects USB/DIN, channel and ENABLE.
+the adapter, SETTINGS > DIGIKIT > KEYBOARD opens CANOPY SETUP for USB/DIN,
+channel and EXTERNAL MIDI. The built-in KEYBOARD/TRIG route is available on
+the admitted track without enabling external MIDI.
 Enable the corresponding stock MIDI receive ports as well. Development
 installation uses the upload/selection protocol; the generic module-browser fit
-calculator remains V1-only. Routing starts disabled on every boot. Learned chord templates persist;
+calculator remains V1-only. External MIDI routing starts disabled on every boot. Learned chord templates persist;
 keyboard and sound setup currently return to defaults.
 Only track 1 is admitted. Other tracks and channels retain stock behavior.
 

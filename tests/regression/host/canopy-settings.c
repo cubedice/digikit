@@ -4,12 +4,12 @@
 #include "../../../modules/core/adapters/instrument-play/src/cf/control.c"
 struct dk_ui_menu {
     const dk_ui_menu_desc *desc; int open, count;
-    struct { dk_ui_act_fn *fn; void *ctx; int arg; } rows[32];
+    struct { dk_ui_act_fn *fn; void *ctx; int arg; char label[DK_UI_ROW]; } rows[32];
 };
 MiLedger mi_ledger;
 MiTransport mi_transport;
 volatile uint32_t ip_view;
-static struct dk_ui_menu menus[3];
+static struct dk_ui_menu menus[4];
 static unsigned menu_count, masked, unsafe_io, token=1;
 static int exists, staged, put_error, flush_error, open_error;
 static uint8_t card[KB_RECORD_BYTES], pending_card[KB_RECORD_BYTES];
@@ -30,6 +30,7 @@ uint32_t dkrt_irq_mask(void) { unsigned before=masked; ++masked; return before; 
 void dkrt_irq_restore(uint32_t sr) { masked=sr; }
 int instrument_sound_prepare(int refresh) { (void)refresh; return 1; }
 uint32_t instrument_sound_tune(void) { return 0x4000; }
+uint32_t instrument_src_now(void) { return 100; }
 void ip_view_build(uint32_t view) { (void)view; }
 void mi_instance_reset(uint32_t track) { ++mi_ledger.generations[track]; }
 int mi_registry_reply(uint32_t *out,uint32_t words) { (void)out; (void)words; return 0; }
@@ -93,19 +94,20 @@ int dkrt_settings_flush(void)
     return 0;
 }
 dk_ui_menu *dk_ui_menu_new(const dk_ui_menu_desc *d)
-{ if(menu_count==3) return 0; menus[menu_count].desc=d; return &menus[menu_count++]; }
+{ if(menu_count==4) return 0; menus[menu_count].desc=d; return &menus[menu_count++]; }
 int dk_ui_open(dk_ui_menu *m) { if(open_error) return -1; m->open=1; m->count=0; m->desc->fill(m,0); return 0; }
 void dk_ui_close(dk_ui_menu *m) { m->open=0; }
 int dk_ui_is_open(const dk_ui_menu *m) { return m->open; }
 void dk_ui_refresh(dk_ui_menu *m) { m->count=0; m->desc->fill(m,0); }
 void dk_ui_text(dk_ui_menu *m,const char *s) { dk_ui_action(m,s,0,0,0); }
 void dk_ui_action(dk_ui_menu *m,const char *s,dk_ui_act_fn *f,void *c,int a)
-{ (void)s; if(m->count<32) { int i=m->count++; m->rows[i].fn=f; m->rows[i].ctx=c; m->rows[i].arg=a; } }
+{ if(m->count<32) { int i=m->count++; m->rows[i].fn=f; m->rows[i].ctx=c; m->rows[i].arg=a;
+  snprintf(m->rows[i].label,sizeof(m->rows[i].label),"%s",s); } }
 void dk_ui_toggle(dk_ui_menu *m,const char *s,int *v,dk_ui_act_fn *f,void *c)
 { (void)m;(void)s;(void)v;(void)f;(void)c; }
 void dk_ui_value(dk_ui_menu *m,const char *s,int *v,int a,int b,dk_ui_act_fn *f,void *c)
 { (void)m;(void)s;(void)v;(void)a;(void)b;(void)f;(void)c; }
-void dk_ui_submenu(dk_ui_menu *m,const char *s,dk_ui_menu *child) { (void)m;(void)s;(void)child; }
+void dk_ui_submenu(dk_ui_menu *m,const char *s,dk_ui_menu *child) { dk_ui_action(m,s,0,child,0); }
 int dk_ui_choice(const char *t,const char *const *i,int n,void (*done)(void *,int),void *c)
 { (void)t;(void)i;(void)n;(void)done;(void)c;return 0; }
 int dk_ui_confirm(const char *t,const char *v,void (*done)(void *,int),void *c)
@@ -174,6 +176,26 @@ int main(void)
             CvDisplay display; instrument_src_display(&display,100,"0","100");
             printf("{\"result\":%d,\"color\":%d,\"mix\":%d,\"rate\":%d,\"type\":%u,\"latch\":%u,\"dirty\":%u,\"value\":\"%s\",\"heading\":\"%s\"}\n",
                 src_result,pad_color,arp_mix,arp_rate,keyboard.type,keyboard.latch,pad_dirty,display.value[3],display.heading);
+        }
+        else if(!strcmp(cmd,"statuswrap")) {
+            struct dk_ui_menu status={0};
+            status_pair(&status,"ROOT","C#maj7/G# +123");
+            printf("[\"%s\",\"%s\"]\n",status.rows[0].label,status.rows[1].label);
+        }
+        else if(!strcmp(cmd,"statusview")) {
+            struct dk_ui_menu parent={0};
+            int owns=dk_app_instrument_module_settings((const uint8_t *)"digikit/canopy",&parent);
+            int foreign=dk_app_instrument_module_settings((const uint8_t *)"digikit/overloop",0);
+            (void)instrument_src_context(0,0,0);
+            instrument_src_poll(100);
+            src_status.fast_valid=(uint8_t)value; src_status.fast_at=100;
+            src_status.fast[1]=(15u<<16)|(4u<<20)|(1u<<10)|(1u<<9)|(1u<<8);
+            src_status.fast[5]=1|(3u<<8)|(8u<<16)|(10u<<24);
+            struct dk_ui_menu status={0};status_fill(&status,0);
+            printf("{\"owns\":%d,\"foreign\":%d,\"entry\":\"%s\",\"visible\":%u,\"rows\":[",
+                owns,foreign,parent.rows[0].label,src_state.visible);
+            for(int i=0;i<status.count;++i) printf("%s\"%s\"",i?",":"",status.rows[i].label);
+            puts("]}");
         }
         else if(!strcmp(cmd,"type")) choose_type(0,value);
         else if(!strcmp(cmd,"shapeslot")) { slot=value; changed(0,0); }

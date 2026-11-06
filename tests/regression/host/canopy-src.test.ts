@@ -59,7 +59,7 @@ test.each([
   'display-capacity',
   'duplicate-tone',
   'display-focus',
-  'pixels',
+  'native-presentation',
 ])('SRC controls and telemetry: %s', (scenario) => {
   expect(execFileSync(binary, [scenario], { encoding: 'utf8', timeout: 2000 }).trim()).toBe('ok');
 });

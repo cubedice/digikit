@@ -6,6 +6,8 @@ extern MiTransport mi_transport;
 int mi_channel_message(const uint8_t *msg, uint32_t len, uint32_t source);
 /* Internal core handoff, serialized with MIDI and the frame ISR. */
 int mi_route_enable(uint32_t port, uint32_t channel, uint32_t track, int sequencer);
+int mi_panel_key(uint32_t key,uint32_t note,uint32_t velocity,int down);
+void mi_panel_release(void);
 void mi_instance_reset(uint32_t track);
 int mi_config_submit(uint32_t track, uint32_t revision, uint32_t schema,
                      const uint32_t *values, uint32_t count);

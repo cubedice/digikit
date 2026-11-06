@@ -816,6 +816,20 @@
   },
   {
    "addend": 0,
+   "offset": 56,
+   "section": ".text.fill_settings",
+   "symbol": "dk_app_instrument_module_settings",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 66,
+   "section": ".text.fill_settings",
+   "symbol": ".sec..bss.mod.3",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 8,
    "section": ".text.fill_settings",
    "symbol": ".sec..bss.mod.3",
@@ -829,38 +843,59 @@
    "type": "cf.32"
   },
   {
+   "addend": 112,
+   "offset": 26,
+   "section": ".text.fill_settings",
+   "symbol": ".sec..bss.mod.3",
+   "type": "cf.32"
+  },
+  {
    "addend": 120,
-   "offset": 30,
+   "offset": 34,
    "section": ".text.fill_settings",
    "symbol": ".sec..bss.mod.3",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 34,
+   "offset": 82,
+   "section": ".text.fill_settings",
+   "symbol": "dk_app_instrument_module_settings",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 22,
    "section": ".text.settings_module",
    "symbol": ".sec..bss.NENT",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 60,
+   "offset": 48,
    "section": ".text.settings_module",
    "symbol": ".sec..bss.g_ent",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 70,
+   "offset": 58,
    "section": ".text.settings_module",
    "symbol": "dkrt_module",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 90,
+   "offset": 78,
    "section": ".text.settings_module",
    "symbol": ".sec..text.same_text",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 116,
+   "section": ".text.settings_module",
+   "symbol": "dk_app_instrument_module_settings",
    "type": "cf.32"
   },
   {
@@ -4766,17 +4801,17 @@
   },
   {
    "align": 2,
-   "hex": "598f2eaf00084879000000002f2f00104eb900000000508f4a8066162279000000004a89670c42af000c2f570008588f4ed1588f4e75",
+   "hex": "2f02242f00084879000000002f2f00104eb900000000508f80b90000000066362279000000004a89670c42af000c2f420008241f4ed1203c000000004a806716203c000000002f42000c2f400008241f4ef900000000241f4e75",
    "kind": "text",
    "name": ".text.fill_settings",
-   "size": 54
+   "size": 90
   },
   {
    "align": 2,
-   "hex": "4fefffe8202f001c48d71c1c246f00204a806c0c70ff4cd71c1c4fef00184e75b0b9000000006cec727442824c010800280a06840000003026000683000000002f0a2f024eb900000000508f4a8066c44878003f2f042f034eb9000000004fef000c4a8067104aaa007867a84aaa007066a2200260a052827010b08266c26094",
+   "hex": "4fefffe8202f001c48d71c1c246f00204a806d74b0b9000000006c6c727442824c010800280a06840000003026000683000000002f0a2f024eb900000000508f4a8066444878003f2f042f034eb9000000004fef000c4a8067324aaa007066284aaa0078670c20024cd71c1c4fef00184e7541f9000000004a88670c42a72f0a4e90508f4a8066de70ff60dc52827010b08266a060f2",
    "kind": "text",
    "name": ".text.settings_module",
-   "size": 128
+   "size": 150
   },
   {
    "align": 1,
@@ -5682,7 +5717,7 @@
    "size": 4
   }
  ],
- "source_sha256": "1aa9160d5097c828edd8c7b712597306e014e51f3b9564ada7e8d9af3e9b3ba9",
+ "source_sha256": "b4db7666340d929c7201a27feb29d3ea25110f7ec0bca6331e08623ebc695ab7",
  "symbols": [
   {
    "global": false,
@@ -6790,6 +6825,12 @@
   },
   {
    "global": true,
+   "name": "dk_app_instrument_module_settings",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "dk_app_instrument_settings_rows",
    "section": null,
    "value": 0
@@ -7537,8 +7578,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "3001",
-  "isa_check": "7c7dcc6d5fad6916cdefedf6e7727667446c0e02e172bd12d67967180ee2fa27",
+  "instructions_redecoded": "3018",
+  "isa_check": "f2efedac744b8222062e7055ff7b16203f27a6e0fb139d4762d8208df0676009",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

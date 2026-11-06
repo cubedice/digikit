@@ -4,7 +4,15 @@ Work in progress for the [CANOPY implementation](../../../../docs/design/canopy.
 
 The runtime's existing USB hook composes an optional `mi_channel_message` callback ahead of upload handling. This adapter adds the separate hash-pinned DIN router hook. Both receive complete messages, normalize USB sources 2/4 and DIN sources 8/16, and leave SysEx, clock, unsupported controllers and unclaimed channels on their stock paths. Firmware receive-channel enable settings still apply before these hooks.
 
-The fixed ownership ledger has 32 port/channel routes, 128 physical press records and a 128-event ring. Repeated pitches pair FIFO by token. Releases follow the original track/generation after rerouting; reset, panic and ignored sequencer-mode presses retain tombstones until their physical release. A capacity failure resets all configured instrument instances and quarantines their routes until explicit recovery with keys released. It does not claim unrelated stock routes.
+The fixed ownership ledger has 32 external port/channel routes plus one PANEL route,
+128 physical press records and a 128-event ring. External repeated pitches pair
+FIFO by token. PANEL uses physical key identity and captures the resolved pitch
+at key-down. Its normalized source is port 2/channel 0; only notes and scoped
+CC120 are accepted. It has no external pedal or pitch-bend state. Releases follow
+the original track/generation after rerouting; reset, panic and ignored presses
+retain tombstones until their physical release. A capacity failure resets all
+configured instrument instances and quarantines their routes until explicit
+recovery with keys released. It does not claim unrelated stock routes.
 
 Events remain in the ring until an exact epoch/sequence ACK. Instance resets use reserved priority bits outside the ring; ordinary dequeue waits for reset ACK. Epoch and generation checks reject stale acknowledgements. Token exhaustion requires explicit recovery into a new stream epoch. All mutation is serialized by the CF adapter's interrupt mask; the frame sender uses the same critical-section contract. The readiness callback must be bounded, read-only, allocation-free and nonblocking;
 it runs with interrupts masked and must not call UI or storage services. Readiness

@@ -105,9 +105,26 @@ _mi_event:
     R0 = PASS R0;
     IF NE JUMP _mi_bad;
     R0 = FEXT R10 BY 4:2;
-    R1 = 1;
+    R1 = 2;
     COMP(R0, R1);
     IF GT JUMP _mi_bad;
+    IF NE JUMP _mi_external_source;
+    // PANEL has one route and no channel controllers except scoped panic.
+    R0 = FEXT R10 BY 6:4;
+    R0 = PASS R0;
+    IF NE JUMP _mi_bad;
+    R0 = FEXT R10 BY 0:4;
+    R1 = 2;
+    COMP(R0, R1);
+    IF LE JUMP _mi_external_source;
+    R1 = 3;
+    COMP(R0, R1);
+    IF NE JUMP _mi_bad;
+    R0 = FEXT R10 BY 14:7;
+    R1 = 120;
+    COMP(R0, R1);
+    IF NE JUMP _mi_bad;
+_mi_external_source:
     R0 = FEXT R10 BY 10:4;
     COMP(R0, R7);
     IF NE JUMP _mi_bad;

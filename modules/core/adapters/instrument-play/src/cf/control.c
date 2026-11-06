@@ -9,6 +9,7 @@
 #include "preset.h"
 #include "routing.h"
 #include "src-control.h"
+#include "src-clock.h"
 #include "../../../midi-events/src/cf/bridge.h"
 extern uint32_t dkrt_instrument_type(void);
 extern uint32_t dkrt_instrument_generation(void);
@@ -29,7 +30,7 @@ static uint32_t listed_type;
 
 int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
 {
-    return enabled && healthy && prepared && (phase == 2 || phase == 3) &&
+    return healthy && prepared && (phase == 2 || phase == 3) &&
         track == 0 && epoch == mi_ledger.epoch && generation == mi_ledger.generations[0] &&
         mi_transport.applied[0] != 0 && !mi_ledger.reset_mask && !mi_transport.faults;
 }
@@ -46,6 +47,8 @@ static int selector_channel, slot=1, storage_result, save_pending;
 static uint32_t shown_session, shown_revision, refreshed_revision, refreshed_status;
 static uint32_t shown_main=UINT32_MAX;
 static dk_ui_menu *learn_menu;
+static dk_ui_menu *status_menu;
+static uint32_t status_draw_at;
 volatile uint32_t ip_keyboard_status[12];
 extern int dkrt_settings_get(const char *, uint8_t *, uint32_t);
 extern int dkrt_settings_put(const char *, const uint8_t *, uint32_t);
@@ -310,6 +313,45 @@ void instrument_src_display(CvDisplay *out,uint32_t now,const char *tune,const c
 }
 int instrument_src_receive(const uint32_t words[IS_WORDS],uint32_t now)
 { return src_initialized ? is_receive(&src_status,words,now) : -1; }
+void instrument_src_feedback(char out[32],uint32_t encoder)
+{ cv_feedback(out,&src_state,encoder); }
+static void status_pair(dk_ui_menu *m,const char *a,const char *b)
+{
+    const char *first=a,*second=b;
+    char row[DK_UI_ROW]; uint32_t at=0;
+    while(*a && at+1<sizeof(row)) row[at++]=*a++;
+    if(at+1<sizeof(row)) row[at++]=' ';
+    while(*b && at+1<sizeof(row)) row[at++]=*b++;
+    row[at]=0;
+    /* The native right column fits 18 parameter-font characters. Keep long
+     * chord/bass names and excluded-note counts whole on a separate row. */
+    if(at>18) { dk_ui_text(m,first); dk_ui_text(m,second); }
+    else dk_ui_text(m,row);
+}
+static void status_fill(dk_ui_menu *m,void *ctx)
+{
+    (void)ctx;
+    uint32_t now=instrument_src_now();
+    (void)instrument_src_context(0,src_state.page[0],0);
+    instrument_src_poll(now);
+    CsState snapshot;
+    for(uint32_t i=0;i<sizeof(snapshot);++i)
+        ((volatile uint8_t *)&snapshot)[i]=((const volatile uint8_t *)&src_state)[i];
+    snapshot.focus=0; snapshot.page[0]=0;
+    CvDisplay d; cv_build(&d,&snapshot,&src_status,now,"","",preset_result || storage_result);
+    uint32_t sr=dkrt_irq_mask(); cv_ownership(&d,&src_status,&keyboard,now); dkrt_irq_restore(sr);
+    status_pair(m,snapshot.mode==KB_PLAY?"PLAY":snapshot.mode==KB_ROOT?"ROOT":"LEARN",d.heading);
+    status_pair(m,d.notes[0],d.notes[1]); status_pair(m,d.notes[2],d.notes[3]);
+    int invalid=d.fault==1 || d.fault==2;
+    dk_ui_text(m,invalid?"LATCH --":d.latch==2?"LATCH HOLDING":d.latch?"LATCH ON":"LATCH OFF");
+    dk_ui_text(m,invalid?"PEDAL --":d.pedal?"PEDAL DOWN":"PEDAL UP");
+    snapshot.page[0]=1; cv_build(&d,&snapshot,&src_status,now,"","",preset_result || storage_result);
+    dk_ui_text(m,d.heading);
+    status_draw_at=now;
+}
+/* VerticalMenuView reserves a narrow left title column. */
+static const dk_ui_menu_desc status_desc={.name="canopy-status",.title="STATUS",
+    .flags=DK_UI_TEXT_PAGE,.fill=status_fill};
 static int preset_dirty(void)
 {
     CpPreset p; uint8_t b[CP_RECORD_BYTES]; preset_snapshot(&p);
@@ -382,7 +424,7 @@ static void fill(dk_ui_menu *m, void *ctx)
 {
     (void)ctx;
     dk_ui_text(m, "TRACK 1 KEYBOARD");
-    dk_ui_toggle(m, "ENABLE", &enabled, changed, 0);
+    dk_ui_toggle(m, "EXTERNAL MIDI", &enabled, changed, 0);
     dk_ui_toggle(m, "USB", &usb, changed, 0);
     dk_ui_toggle(m, "DIN", &din, changed, 0);
     dk_ui_value(m, "CHANNEL", &channel, 1, 16, changed, 0);
@@ -421,18 +463,45 @@ static void fill(dk_ui_menu *m, void *ctx)
     if(preset_menu) dk_ui_submenu(m,"PRESETS",preset_menu);
     dk_ui_action(m,"SAVE ROUTING",route_save,0,0);
     if(route_result) dk_ui_text(m,"ROUTING NOT SAVED");
+    dk_ui_text(m,"PANEL: SELECT T1 / KEYS");
 }
-static const dk_ui_menu_desc desc = {.name="instrument-keyboard",.title="KEYBOARD",.fill=fill};
+static const dk_ui_menu_desc desc = {.name="instrument-keyboard",.title="CANOPY SETUP",.fill=fill};
+/* CANOPY is the only admitted instrument policy today. The menu asks with a
+ * loaded module's validated id; a null parent is a capability query. */
+int dk_app_instrument_module_settings(const uint8_t *name,dk_ui_menu *parent)
+{
+    static const char id[]="digikit/canopy";
+    if(!name || !dkrt_instrument_type()) return 0;
+    for(uint32_t i=0;i<sizeof(id);++i) if(name[i]!=(uint8_t)id[i]) return 0;
+    if(!parent) return 1;
+    if(!status_menu) status_menu=dk_ui_menu_new(&status_desc);
+    if(status_menu) dk_ui_submenu(parent,"STATUS",status_menu);
+    if(!menu) menu=dk_ui_menu_new(&desc);
+    if(menu) dk_ui_submenu(parent,"NOTE INPUT / PLAY MODE",menu);
+    dk_ui_text(parent,"LEVEL/DATA: TRACK LEVEL");
+    dk_ui_text(parent,"SOUND H: SAMPLE LEVEL");
+    dk_ui_text(parent,"SRC HOLD: SHOW VALUES");
+    return 1;
+}
 void dk_app_instrument_settings_rows(dk_ui_menu *parent)
 {
     if (!menu) menu=dk_ui_menu_new(&desc);
     if (menu) dk_ui_submenu(parent, "KEYBOARD", menu);
+    if (!status_menu) status_menu=dk_ui_menu_new(&status_desc);
+    if (status_menu) dk_ui_submenu(parent,"CANOPY STATUS",status_menu);
 }
 void instrument_play_tick(void)
 {
 #if defined(__m68k__)
     extern void instrument_src_tick(void);
     instrument_src_tick();
+    if(status_menu && dk_ui_is_open(status_menu)) {
+        uint32_t now=instrument_src_now();
+        /* Drain at the UI tick cadence, independently of the slower repaint.
+         * Waiting 100 ms to drain can overflow the bounded telemetry ring. */
+        instrument_src_poll(now);
+        if(now-status_draw_at>=100) dk_ui_refresh(status_menu);
+    }
 #endif
     uint32_t reply[16];
     if (!keyboard_initialized) {
@@ -527,7 +596,7 @@ void instrument_play_tick(void)
     if (count == -2 || !dkrt_instrument_type()) healthy=0;
     else if (count == 16) healthy=reply[0] == MT_PLAY_REPLY_MAGIC &&
         reply[13] == 3 && reply[14] == dkrt_instrument_generation();
-    if (!healthy || !enabled || (!usb && !din) || quarantined()) {
+    if (!healthy || quarantined()) {
         if (phase == 2 || phase == 3) instrument_sound_suspend();
         goto publish;
     }
@@ -543,9 +612,10 @@ void instrument_play_tick(void)
     if (phase==3 && src_state.revision>mi_transport.applied[0] &&
         !mi_config_submit(0,src_state.revision,0x43505337,values,32)) pad_dirty=0;
     if (phase == 2 && instrument_midi_ready(0,mi_ledger.epoch,mi_ledger.generations[0])) {
-        if ((!usb || !mi_route_enable(0,(uint32_t)channel-1,0,0)) &&
-            (!din || !mi_route_enable(1,(uint32_t)channel-1,0,0)) &&
-            (keyboard.mode!=KB_ROOT || !selector_channel ||
+        if (!mi_route_enable(MI_PANEL,0,0,0) &&
+            (!enabled || !usb || !mi_route_enable(0,(uint32_t)channel-1,0,0)) &&
+            (!enabled || !din || !mi_route_enable(1,(uint32_t)channel-1,0,0)) &&
+            (!enabled || keyboard.mode!=KB_ROOT || !selector_channel ||
              ((!usb || !mi_route_enable(0,(uint32_t)selector_channel-1,0,0)) &&
               (!din || !mi_route_enable(1,(uint32_t)selector_channel-1,0,0))))) phase=3;
         else instrument_sound_suspend();

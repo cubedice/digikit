@@ -238,7 +238,8 @@ int mi_route_enable(uint32_t port, uint32_t channel, uint32_t track, int sequenc
 {
     uint32_t sr;
     int result = -2;
-    if (port >= 2 || channel >= 16 || track >= MI_TRACKS || !instrument_midi_ready) return -1;
+    if (port > MI_PANEL || channel >= 16 || (port==MI_PANEL && (channel || track)) ||
+        track >= MI_TRACKS || !instrument_midi_ready) return -1;
     sr = dkrt_irq_mask();
     initialize();
     if (!reset_seen && (!registry_guard.expected || (registry_guard.ready && !registry_guard.invalid)) &&
@@ -255,6 +256,24 @@ void mi_instance_reset(uint32_t track)
     uint32_t sr = dkrt_irq_mask();
     initialize();
     mi_reset_track(&mi_ledger, track);
+    dkrt_irq_restore(sr);
+}
+
+int mi_panel_key(uint32_t key,uint32_t note,uint32_t velocity,int down)
+{
+    uint32_t sr=dkrt_irq_mask(); int result=1;
+    initialize();
+    if(!reset_seen) {
+        if(mi_ledger.routes[32].enabled) revalidate_track(0);
+        if(down) result=mi_panel_down(&mi_ledger,key,note,velocity);
+        else mi_panel_up(&mi_ledger,key);
+    }
+    dkrt_irq_restore(sr); return result;
+}
+void mi_panel_release(void)
+{
+    uint32_t sr=dkrt_irq_mask();
+    if(initialized && !reset_seen) mi_panel_cancel(&mi_ledger);
     dkrt_irq_restore(sr);
 }
 

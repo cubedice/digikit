@@ -446,9 +446,26 @@ _cv_event:
     R0 = DM(5, I0);
     R0 = PASS R0;
     IF NE JUMP _cv_bad;
+    // PANEL owns route 32 (port 2, channel 0). It has notes and scoped
+    // all-sound-off only; it must never alias an external pedal/bend bank.
+    R0 = 0x200;
+    COMP(R5, R0);
+    IF NE JUMP _cv_external_owner;
+    R0 = 2;
+    COMP(R3, R0);
+    IF LE JUMP _cv_owner_ok;
+    R0 = 3;
+    COMP(R3, R0);
+    IF NE JUMP _cv_bad;
+    R0 = 120;
+    COMP(R7, R0);
+    IF NE JUMP _cv_bad;
+    JUMP _cv_owner_ok;
+_cv_external_owner:
     R0 = 0xfffffef0;
     R0 = R5 AND R0;
     IF NE JUMP _cv_bad;
+_cv_owner_ok:
     R0 = 15;
     R10 = R5 AND R0;
     R10 = LSHIFT R10 BY 6;

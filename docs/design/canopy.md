@@ -1753,6 +1753,13 @@ Add SRC paint/update/encoder hooks scoped to the resolved CANOPY machine, using 
 
 ## SRC interface specification
 
+**Accepted redesign (2026-11-06):** the [native DTII UI contract](canopy-ui-review.md)
+supersedes the layout below. The implementation now preserves native TUNE/LEV,
+fonts and hold-SRC values, maps LEVEL/DATA to native track level, adds Status,
+and bridges resolved local keyboard notes through distinct PANEL ownership.
+The following original layout remains historical; acceptance evidence and open
+physical checks are tracked in the new contract and its implementation handover.
+
 ### Reference screens and pixel layout
 
 ![CANOPY SRC design showing PLAY, generated chords, arpeggiator, encoder focus, LEARN and clock wait](assets/canopy-src-ui.png)

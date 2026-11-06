@@ -37,7 +37,7 @@ to = "_mi_velocity_entry"
 
 [[object]]
 path = "build/play-cf.dko.json"
-sources = ["src/cf/control.c", "src/cf/keyboard.c", "src/cf/preset.c", "src/cf/src-state.c", "src/cf/status.c", "src/cf/src-display.c", "src/cf/src-clock.c", "src/cf/src-native.c", "src/cf/sound.c", "src/cf/sound-load.s", "src/cf/view.s"]
+sources = ["src/cf/control.c", "src/cf/keyboard.c", "src/cf/preset.c", "src/cf/src-state.c", "src/cf/status.c", "src/cf/src-display.c", "src/cf/src-clock.c", "src/cf/src-native.c", "src/cf/panel.c", "src/cf/panel.s", "src/cf/sound.c", "src/cf/sound-load.s", "src/cf/view.s"]
 place = "cf.expansion"
 devices = ["dt2"]
 [object.externs]
@@ -61,6 +61,47 @@ ip_src_stock_detach = "cf.page.site.instrument_src_detach"
 ip_src_value = "cf.page.site.instrument_src_value"
 ip_src_tune_format = "cf.page.site.instrument_src_tune_format"
 ip_src_level_format = "cf.page.site.instrument_src_level_format"
+ip_src_focus_touch = "cf.page.site.instrument_focus_touch"
+ip_src_focus_active = "cf.page.site.instrument_focus_active"
+ip_src_label_font = "cf.page.site.instrument_label_font"
+ip_panel_on_resume = "hook.cf.page.site.instrument_panel_on.return"
+ip_panel_off_resume = "hook.cf.page.site.instrument_panel_off.return"
+ip_panel_track_object = "cf.page.site.instrument_panel_track_object"
+ip_panel_track_type = "cf.page.site.instrument_panel_track_type"
+ip_panel_selected_track = "cf.page.site.instrument_panel_selected_track"
+ip_panel_stock_key = "cf.page.site.instrument_panel_key"
+ip_panel_stock_detach = "cf.page.site.instrument_panel_detach"
+ip_panel_active = "cf.page.site.instrument_panel_active"
+ip_panel_stock_toggle = "cf.page.site.instrument_panel_toggle"
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_panel_toggle_call"
+offset = 2
+value = "ip_panel_toggle"
+width = 4
+[[op]]
+op = "hook"
+hook = "cf.page.hook.instrument_panel_on"
+to = "ip_panel_on"
+[[op]]
+op = "hook"
+hook = "cf.page.hook.instrument_panel_off"
+to = "ip_panel_off"
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_panel_key_slot"
+value = "ip_panel_key_event"
+width = 4
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_panel_detach_slot"
+value = "ip_panel_detach"
+width = 4
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_panel_update_slot"
+value = "ip_panel_update"
+width = 4
 [[op]]
 op = "hook"
 hook = "cf.machine.hook.sound_deserialize"

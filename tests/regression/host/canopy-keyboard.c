@@ -25,6 +25,7 @@ static void reset(void)
     transport.pending=0; transport.applied[0]=1;
     for (unsigned p=0;p<2;++p) for (unsigned c=0;c<16;++c)
         mi_route(&ledger,p,c,0,ledger.generations[0],0);
+    mi_route(&ledger,MI_PANEL,0,0,ledger.generations[0],0);
 }
 static void snapshot(const uint32_t *packet)
 {
@@ -52,7 +53,10 @@ int main(void)
         if(!strcmp(cmd,"on") || !strcmp(cmd,"off") || !strcmp(cmd,"cc") || !strcmp(cmd,"bend")) {
             uint8_t bytes[3]={(uint8_t)((!strcmp(cmd,"on")?0x90:!strcmp(cmd,"off")?0x80:!strcmp(cmd,"cc")?0xb0:0xe0)|a),(uint8_t)c,(uint8_t)d};
             result=mi_message(&ledger,b,bytes,3);
-        } else if(!strcmp(cmd,"tick") || !strcmp(cmd,"hold")) {
+        } else if(!strcmp(cmd,"panelon")) result=mi_panel_down(&ledger,a,b,c);
+        else if(!strcmp(cmd,"paneloff")) mi_panel_up(&ledger,a);
+        else if(!strcmp(cmd,"panelcancel")) mi_panel_cancel(&ledger);
+        else if(!strcmp(cmd,"tick") || !strcmp(cmd,"hold")) {
             const uint32_t *p=mt_prepare_mapped(&transport,&ledger,transport.applied,++block,mapping);
             snapshot(p);
             if(p && !strcmp(cmd,"tick")) mt_ack(&transport,&ledger,ledger.epoch,p[3]);

@@ -410,12 +410,13 @@ def test_v5_status_token_change_starts_a_new_immutable_detail_revision(canopy):
     assert changed["status"][12] == revision + 1
 
 
-def test_v2_chord_independent_release_and_state_isolation(canopy):
+@pytest.mark.parametrize("other_owner", [0x100, 0x200])
+def test_v2_chord_independent_release_and_state_isolation(canopy, other_owner):
     assert canopy(reset=1)["state"] == [0] * 200
     result = canopy([note(1, 60), note(2, 64)])
     assert result["regs"]["R0"] == 0
     assert set(voices(result)) == {1, 2}
-    result = canopy([note(3, 67, owner=0x100)])
+    result = canopy([note(3, 67, owner=other_owner)])
     assert set(voices(result)) == {1, 2, 3}
     assert any(result["out"])
     held = voices(result)
@@ -442,7 +443,10 @@ def test_v2_pedal_release_preserves_physically_held_notes(canopy):
     "bad",
     [
         [1, 0, 2, 64 << 8, 100 << 8, 1],
-        [1, 0x200, 2, 64 << 8, 100 << 8, 0],
+        [1, 0x300, 2, 64 << 8, 100 << 8, 0],
+        [1, 0x201, 2, 64 << 8, 100 << 8, 0],
+        [3, 0x200, 0, 64, 127, 0],
+        [4, 0x200, 0, 0, 8192, 0],
         [1, 0, 0, 64 << 8, 100 << 8, 0],
         [1, 0, 2, 64 << 8, 0, 0],
         [4, 0, 0, 0, 16384, 0],
@@ -464,8 +468,9 @@ def test_generation_change_requires_reset_and_reset_is_per_instance(canopy):
     assert set(voices(canopy(state=0x20054000, track=1))) == {2}
 
 
-def test_velocity_is_per_note_and_other_route_bend_isolated(canopy):
-    result = canopy([note(1, 60, 20), note(2, 67, 127, owner=0x100)])
+@pytest.mark.parametrize("other_owner", [0x100, 0x200])
+def test_velocity_is_per_note_and_other_route_bend_isolated(canopy, other_owner):
+    result = canopy([note(1, 60, 20), note(2, 67, 127, owner=other_owner)])
     before = voices(result)
     assert before[1][6] < before[2][6]  # positive IEEE float gain words
     result = canopy([[4, 0, 0, 0, 16383, 0]])
@@ -528,8 +533,13 @@ def wire_packet(events, *, track=0, generation=1, revision=1, epoch=1, movement=
 
 
 @pytest.mark.parametrize("canopy_object", [True], indirect=True)
-def test_transport_packet_reaches_instance_and_preserves_other_note(canopy):
-    result = canopy(packet=wire_packet([(1, 1, 60, 24, 0, 0), (2, 1, 64, 127, 1, 3)]))
+@pytest.mark.parametrize("other_route", [(1, 3), (2, 0)])
+def test_transport_packet_reaches_instance_and_preserves_other_note(
+    canopy, other_route
+):
+    result = canopy(
+        packet=wire_packet([(1, 1, 60, 24, 0, 0), (2, 1, 64, 127, *other_route)])
+    )
     assert result["regs"]["R0"] == 0
     assert set(voices(result)) == {1, 2}
     assert voices(result)[1][6] < voices(result)[2][6]
@@ -539,6 +549,17 @@ def test_transport_packet_reaches_instance_and_preserves_other_note(canopy):
     result = canopy(packet=wire_packet([(0, 3, 64, 0, 0, 0)]))
     assert voices(result)[1][1] == 0
     assert voices(result)[2][1] == 1
+
+
+def test_panel_cancel_and_release_preserve_external_notes(canopy):
+    canopy([note(1, 60), note(2, 60, owner=0x200), note(3, 67, owner=0x200)])
+    result = canopy([note(2, 60, off=True, owner=0x200)])
+    assert voices(result)[1][1] == 1
+    assert voices(result)[2][1] == 0
+    assert voices(result)[3][1] == 1
+    result = canopy([[3, 0x200, 0, 120, 0, 0]])
+    assert voices(result)[1][1] == 1
+    assert not any(v[1] == 1 for t, v in voices(result).items() if t != 1)
 
 
 @pytest.mark.parametrize(
@@ -814,11 +835,15 @@ def test_local_arp_pending_candidate_cannot_survive_release(canopy):
     assert r["state"][150] == 0
 
 
-def test_local_arp_live_bend_preserves_identity(canopy):
-    a = canopy([note(1, 60)], controls=LOCAL)
+@pytest.mark.parametrize("owner", [0, 0x200])
+def test_local_arp_live_bend_preserves_identity(canopy, owner):
+    a = canopy([note(1, 60, owner=owner)], controls=LOCAL)
     b = canopy([[4, 0, 0, 0, 16383, 0]], controls=LOCAL)
     assert a["state"][136] == b["state"][136] == 1
-    assert a["state"][140:142] != b["state"][140:142]
+    if owner == 0x200:
+        assert a["state"][140:142] == b["state"][140:142]
+    else:
+        assert a["state"][140:142] != b["state"][140:142]
     assert b["state"][137] == 1
 
 
@@ -1352,10 +1377,13 @@ def test_native_tune_fraction_and_route_bend_combine(canopy):
     assert measured == pytest.approx(expected, rel=2e-5)
 
 
-def test_native_tune_reaches_running_arp_and_survives_legacy_controls(canopy):
+@pytest.mark.parametrize("owner", [0, 0x200])
+def test_native_tune_reaches_running_arp_and_survives_legacy_controls(canopy, owner):
     base = list(STRUM)
     base[6] = 127
-    first = canopy([note(1, 60)], controls=native_controls(base=base), blocks=3)
+    first = canopy(
+        [note(1, 60, owner=owner)], controls=native_controls(base=base), blocks=3
+    )
     assert first["state"][136] and first["state"][198] == 60
     changed = canopy(controls=native_controls(0x4C00, base), edits={11: 2})
     assert changed["state"][136] == first["state"][136]

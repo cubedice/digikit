@@ -73,6 +73,55 @@ function run(commands: string): State[] {
     .map((line) => JSON.parse(line) as State);
 }
 const notes = (s: State) => s.voices.map((v) => v[0]).sort((a, b) => a! - b!);
+
+test('PANEL keys retain independent ownership beside identical USB and DIN pitches', () => {
+  const [held, panelUp, usbUp, released] = run(
+    'panelon 0 60 90\non 0 0 60 80\non 0 1 60 70\ntick\npaneloff 0\ntick\noff 0 0 60 0\ntick\noff 0 1 60 0\ntick',
+  );
+  expect(held!.voices.map((v) => v[3]).sort()).toEqual([0, 1, 2]);
+  expect(panelUp!.voices.map((v) => v[3]).sort()).toEqual([0, 1]);
+  expect(usbUp!.voices.map((v) => v[3])).toEqual([1]);
+  expect(released!.voices).toEqual([]);
+});
+
+test('PANEL release uses physical key identity through octave and scale changes', () => {
+  const [held, remaining, released] = run(
+    'panelon 0 60 90\npanelon 1 64 90\npanelon 2 67 90\npanelon 0 72 90\ntick\npaneloff 1\ntick\npaneloff 0\npaneloff 2\ntick',
+  );
+  expect(notes(held!)).toEqual([60, 64, 67]);
+  expect(notes(remaining!)).toEqual([60, 67]);
+  expect(released!.voices).toEqual([]);
+});
+
+test('PANEL cancel clears latched local voices without releasing MIDI or sharing its pedal', () => {
+  const [held, cancelled, afterOldUp] = run(
+    'cc 0 0 64 127\ntick\npanelon 0 60 90\non 0 0 64 90\ntick\npanelcancel\ntick\npaneloff 0\ntick',
+  ).slice(1);
+  expect(notes(held!)).toEqual([60, 64]);
+  expect(notes(cancelled!)).toEqual([64]);
+  expect(afterOldUp!.voices).toEqual(cancelled!.voices);
+  const [latched, clear] = run('latch 1\npanelon 0 67 90\npaneloff 0\ntick\npanelcancel\ntick');
+  expect(notes(latched!)).toEqual([67]);
+  expect(clear!.voices).toEqual([]);
+});
+
+test('PANEL generation tombstones cannot release a fresh same-pitch key', () => {
+  const [old, fresh, afterOldUp, clear] = run(
+    'panelon 0 60 90\ntick\nreset\npanelon 1 60 90\ntick\npaneloff 0\ntick\npaneloff 1\ntick',
+  );
+  expect(notes(old!)).toEqual([60]);
+  expect(notes(fresh!)).toEqual([60]);
+  expect(afterOldUp!.voices).toEqual(fresh!.voices);
+  expect(clear!.voices).toEqual([]);
+});
+
+test('PANEL runs ROOT and LEARN without a MIDI selector channel', () => {
+  const [root, up] = run('mode 1\nselector 0\npanelon 0 60 100\ntick\npaneloff 0\ntick');
+  expect(notes(root!)).toEqual([60, 64, 67]);
+  expect(up!.voices).toEqual([]);
+  const [learned] = run('learn\npanelon 0 60 90\npanelon 1 64 90\npanelon 2 67 90\ntick');
+  expect(learned!.capture).toEqual([60, 64, 67]);
+});
 test('PLAY preserves exact token, velocity and phase identity of untouched notes', () => {
   const [a, b, c] = run('on 0 0 60 40\non 0 0 64 90\ntick\non 0 0 67 127\ntick\noff 0 0 64 0\ntick');
   expect(notes(a!)).toEqual([60, 64]);
@@ -284,6 +333,34 @@ function settings(commands: string): SettingsState[] {
     .split('\n')
     .map((s) => JSON.parse(s) as SettingsState);
 }
+test('Status wraps a long mode/chord pair without clipping either part', () => {
+  const rows = JSON.parse(
+    execFileSync(settingsBinary, {
+      input: 'statuswrap\n',
+      encoding: 'utf8',
+      timeout: 2000,
+    }),
+  );
+  expect(rows).toEqual(['ROOT', 'C#maj7/G# +123']);
+});
+test('CANOPY Settings exposes bounded native Status rows and clears stale performance state', () => {
+  const [fresh, stale] = execFileSync(settingsBinary, {
+    input: 'statusview 1\nstatusview 0\n',
+    encoding: 'utf8',
+    timeout: 2000,
+  })
+    .trim()
+    .split('\n')
+    .map((s) => JSON.parse(s) as { owns: number; foreign: number; entry: string; visible: number; rows: string[] });
+  expect(fresh!.owns).toBe(1);
+  expect(fresh!.foreign).toBe(0);
+  expect(fresh!.entry).toBe('STATUS');
+  expect(fresh!.visible).toBe(0);
+  expect(fresh!.rows.slice(1, 5)).toEqual(['C#-1 D#-1', 'G#-1 A#-1', 'LATCH HOLDING', 'PEDAL DOWN']);
+  expect(fresh!.rows.every((row) => row.length < 24)).toBe(true);
+  expect(stale!.rows[0]).toContain('LINK LOST');
+  expect(stale!.rows.slice(1, 5)).toEqual(['-- --', '-- --', 'LATCH --', 'PEDAL --']);
+});
 test('SAVE is RAM-immediate, card-deferred, restores after restart and never performs I/O under IRQ mask', () => {
   const [ram, durable, restored] = settings(
     'learn\nkey 60\nkey 67\ntick\nsave\nsnapshot\ntick\nsnapshot\nrestart\nsnapshot',

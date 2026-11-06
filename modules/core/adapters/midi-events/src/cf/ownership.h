@@ -5,7 +5,8 @@
 #define DK_MIDI_OWNERSHIP_H
 #include <stdint.h>
 
-#define MI_ROUTES 32u
+#define MI_PANEL 2u
+#define MI_ROUTES 33u /* USB/DIN channels, then the local panel (channel zero). */
 #define MI_KEYS 128u
 #define MI_EVENTS 128u
 #define MI_TRACKS 16u
@@ -22,7 +23,7 @@ typedef struct {
     uint8_t kind, port, channel, track, note, value;
 } MiEvent;
 typedef struct {
-    uint32_t token, generation;
+    uint32_t token, generation, identity;
     uint8_t used, port, channel, note, track, tombstone;
 } MiKey;
 typedef struct {
@@ -63,6 +64,11 @@ int mi_session_begin(MiLedger *m);
 /* Fully normalized channel messages only. 1 consumed, 0 stock fallthrough.
  * Unsupported controllers, system messages and malformed messages fall through. */
 int mi_message(MiLedger *m, uint32_t port, const uint8_t *msg, uint32_t len);
+/* Resolved local keys have an identity independent of pitch. Key-up releases
+ * exactly the pitches captured at key-down, including across scale changes. */
+int mi_panel_down(MiLedger *m, uint32_t key, uint32_t note, uint32_t velocity);
+void mi_panel_up(MiLedger *m, uint32_t key);
+void mi_panel_cancel(MiLedger *m);
 /* Peek leaves the ring intact for retransmission. ACK must match its exact head
  * sequence; a duplicate or stale ACK cannot consume a different message. */
 int mi_peek(MiLedger *m, MiEvent *out);

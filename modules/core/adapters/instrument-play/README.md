@@ -6,6 +6,20 @@ hardware release approval. The development policy admits one instance with a
 800-byte state ceiling and declared 100000/1000 process/reset ceilings.
 Instruction-test limits are not a measured hardware cycle budget.
 
+The native UI revision uses the stock TUNE, source LEV and track LEV paths on
+SOUND, with native fonts and bounded custom cells. ARP H aliases SOUND G's MIX.
+Hold SRC uses the firmware's momentary values state. Detailed notes, latch,
+pedal and clock state are under `DIGIKIT > MODULES > CANOPY > SETTINGS > STATUS`.
+See the [accepted UI contract](../../../../docs/design/canopy-ui-review.md).
+
+The DTII 1.17 KeyboardView bridge intercepts resolved performance notes before
+stock mono audition. It retains native key-up closures and uses a separate PANEL
+owner through PLAY/ROOT/LEARN. Local keys do not require enabling external MIDI.
+Only the admitted CANOPY on track 1 is consumed; stock machines delegate to the
+original handlers. Leaving keyboard mode or selecting another track cancels the
+panel phrase without canceling external notes. This is local audition support,
+not qualification of native pattern recording or sequencer polyphony.
+
 The early-frame transport callbacks copy normalized events into an owned input
 buffer. The admitted process callback runs once per frame; the raw stock-carrier
 entry copies its output without advancing state. A separate optional voice table

@@ -140,7 +140,8 @@ int cm_tick(CmState *s,const CmInput *in,CmEvent out[CM_MAX_EVENTS])
     if(s->initialized && in->block-s->block!=1) return -1;
     for(uint32_t i=0;i<in->count;++i) {
         const CmNote *v=&in->notes[i];
-        if(!v->token || v->note>127 || !v->velocity || v->velocity>127 || v->port>1 || v->channel>15)
+        if(!v->token || v->note>127 || !v->velocity || v->velocity>127 || v->port>2 || v->channel>15 ||
+            (v->port==2 && v->channel))
             return -1;
         for(uint32_t j=0;j<i;++j) if(in->notes[j].token==v->token) return -1;
     }
