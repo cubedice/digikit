@@ -36,7 +36,7 @@ static void value(char out[8],const CsState *s,uint32_t id,const char *tune,cons
     static const char *const rate[]={"--","1/4","1/8","1/8T","1/16","5/Q","1/16T","7/Q","1/32"};
     if(id==CS_TUNE || id==CS_LEVEL) { text(out,8,id==CS_TUNE?tune:level); return; }
     uint32_t n=s->value[id]; const char *v=0;
-    if(id==CP_CHORD) v=s->mode==KB_PLAY?"AUTO":s->learned?"USER":n<12?chord[n]:"--";
+    if(id==CP_CHORD) v=s->mode==KB_PLAY?"AUTO":n<12?chord[n]:"--";
     else if(id==CP_VOICING) v=s->mode==KB_PLAY?"--":s->learned?"LRND":n<4?voice[n]:"--";
     else if(id==CP_STRUM && s->mode==KB_PLAY) v="--";
     else if(id==CP_STRUM) { if(!n) v="OFF"; else { number(out,n); return; } }
@@ -44,7 +44,10 @@ static void value(char out[8],const CsState *s,uint32_t id,const char *tune,cons
         if(s->clock==1) { unit(out,n,"STP"); return; }
         v=n<=8?rate[n]:"--";
     }
-    else if(id==CP_OCTAVES) { unit(out,n,"OCT"); return; }
+    else if(id==CP_OCTAVES) {
+        if(n==3) v="0";
+        else { out[0]=n<3?'-':'+'; number(out+1,n<3?3-n:n-3); return; }
+    }
     else if(id==CP_GATE) { unit(out,n,"%"); return; }
     else if(id==CP_SWING) {
         if(s->clock==1) v="--";
@@ -70,7 +73,7 @@ void cv_feedback(char out[32],const CsState *s,uint32_t encoder)
     if(s->mode==KB_PLAY && (id==CP_CHORD || id==CP_VOICING || id==CP_STRUM)) {
         text(out,32,"PLAY: YOUR NOTES"); return;
     }
-    if(s->learned && (id==CP_CHORD || id==CP_VOICING)) {
+    if(s->learned && id==CP_VOICING) {
         text(out,32,"ROOT: LEARNED VOICING"); return;
     }
     if(s->clock==1 && id==CP_SWING) { text(out,32,"SWING: PHASE CLOCK NEEDED"); return; }
@@ -176,7 +179,7 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
         d->focused=1; d->highlight=0;
         uint32_t id=s->focus_id;
         if(s->mode==KB_PLAY && (id==CP_CHORD || id==CP_VOICING || id==CP_STRUM)) text(d->heading,22,"YOUR NOTES");
-        else if(s->learned && (id==CP_CHORD || id==CP_VOICING)) text(d->heading,22,"AS LEARNED");
+        else if(s->learned && id==CP_VOICING) text(d->heading,22,"AS LEARNED");
         else if(id<18) {
             text(d->heading,22,labels[id]); uint32_t at=length(d->heading,21);
             d->heading[at++]=' '; char v[8]; value(v,s,id,tune,level); text(d->heading+at,22-at,v);

@@ -108,134 +108,134 @@
    "type": "cf.32"
   },
   {
-   "addend": 2,
+   "addend": 33,
    "offset": 66,
    "section": ".text.preset_snapshot",
-   "symbol": ".sec..data.arp_rate",
+   "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 2,
    "offset": 76,
    "section": ".text.preset_snapshot",
+   "symbol": ".sec..data.arp_rate",
+   "type": "cf.32"
+  },
+  {
+   "addend": 2,
+   "offset": 86,
+   "section": ".text.preset_snapshot",
    "symbol": ".sec..bss.arp_order",
    "type": "cf.32"
   },
   {
-   "addend": 33,
-   "offset": 86,
-   "section": ".text.preset_snapshot",
-   "symbol": ".sec..bss.keyboard",
-   "type": "cf.32"
-  },
-  {
    "addend": 2,
-   "offset": 96,
-   "section": ".text.preset_snapshot",
-   "symbol": ".sec..data.arp_octaves",
-   "type": "cf.32"
-  },
-  {
-   "addend": 2,
-   "offset": 106,
+   "offset": 100,
    "section": ".text.preset_snapshot",
    "symbol": ".sec..data.arp_gate",
    "type": "cf.32"
   },
   {
+   "addend": 0,
+   "offset": 106,
+   "section": ".text.preset_snapshot",
+   "symbol": ".sec..bss.arp_octaves",
+   "type": "cf.32"
+  },
+  {
    "addend": 30,
-   "offset": 120,
+   "offset": 122,
    "section": ".text.preset_snapshot",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 2,
-   "offset": 126,
+   "offset": 128,
    "section": ".text.preset_snapshot",
    "symbol": ".sec..bss.arp_swing",
    "type": "cf.32"
   },
   {
    "addend": 2,
-   "offset": 136,
+   "offset": 138,
    "section": ".text.preset_snapshot",
    "symbol": ".sec..bss.arp_restart",
    "type": "cf.32"
   },
   {
    "addend": 2,
-   "offset": 146,
+   "offset": 148,
    "section": ".text.preset_snapshot",
    "symbol": ".sec..data.pad_attack",
    "type": "cf.32"
   },
   {
    "addend": 2,
-   "offset": 162,
+   "offset": 164,
    "section": ".text.preset_snapshot",
    "symbol": ".sec..data.pad_release",
    "type": "cf.32"
   },
   {
    "addend": 2,
-   "offset": 194,
+   "offset": 196,
    "section": ".text.preset_snapshot",
    "symbol": ".sec..data.arp_bpm",
    "type": "cf.32"
   },
   {
    "addend": 3,
-   "offset": 204,
+   "offset": 206,
    "section": ".text.preset_snapshot",
    "symbol": ".sec..bss.pad_family",
    "type": "cf.32"
   },
   {
    "addend": 28,
-   "offset": 214,
+   "offset": 216,
    "section": ".text.preset_snapshot",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 3,
-   "offset": 224,
+   "offset": 226,
    "section": ".text.preset_snapshot",
    "symbol": ".sec..bss.arp_clock",
    "type": "cf.32"
   },
   {
    "addend": 90,
-   "offset": 234,
+   "offset": 236,
    "section": ".text.preset_snapshot",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 36,
-   "offset": 242,
+   "offset": 244,
    "section": ".text.preset_snapshot",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 45,
-   "offset": 254,
+   "offset": 256,
    "section": ".text.preset_snapshot",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 300,
+   "offset": 302,
    "section": ".text.preset_snapshot",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 85,
-   "offset": 306,
+   "offset": 308,
    "section": ".text.preset_snapshot",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
@@ -1063,7 +1063,7 @@
    "addend": 0,
    "offset": 962,
    "section": ".text.fill",
-   "symbol": ".sec..data.arp_octaves",
+   "symbol": ".sec..bss.arp_octaves",
    "type": "cf.32"
   },
   {
@@ -1095,7 +1095,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 448,
+   "addend": 454,
    "offset": 1014,
    "section": ".text.fill",
    "symbol": ".sec..rodata.fill.str1.1",
@@ -1158,7 +1158,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 454,
+   "addend": 460,
    "offset": 1112,
    "section": ".text.fill",
    "symbol": ".sec..rodata.fill.str1.1",
@@ -1193,7 +1193,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 463,
+   "addend": 469,
    "offset": 1162,
    "section": ".text.fill",
    "symbol": ".sec..rodata.fill.str1.1",
@@ -1214,7 +1214,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 471,
+   "addend": 477,
    "offset": 1190,
    "section": ".text.fill",
    "symbol": ".sec..rodata.fill.str1.1",
@@ -1228,14 +1228,14 @@
    "type": "cf.32"
   },
   {
-   "addend": 484,
+   "addend": 490,
    "offset": 1212,
    "section": ".text.fill",
    "symbol": ".sec..rodata.fill.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 502,
+   "addend": 508,
    "offset": 1228,
    "section": ".text.fill",
    "symbol": ".sec..rodata.fill.str1.1",
@@ -1397,98 +1397,105 @@
   },
   {
    "addend": 0,
-   "offset": 102,
+   "offset": 104,
    "section": ".text.preset_fill",
    "symbol": ".sec..bss.preset_present",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 108,
+   "offset": 110,
    "section": ".text.preset_fill",
    "symbol": ".sec..data.preset_slot",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 126,
+   "offset": 128,
    "section": ".text.preset_fill",
    "symbol": ".sec..bss.preset_records",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 152,
+   "offset": 146,
+   "section": ".text.preset_fill",
+   "symbol": "cp_decode",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 196,
    "section": ".text.preset_fill",
    "symbol": ".sec..rodata.preset_fill.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 29,
-   "offset": 160,
+   "offset": 204,
    "section": ".text.preset_fill",
    "symbol": ".sec..rodata.preset_fill.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 170,
+   "offset": 214,
    "section": ".text.preset_fill",
    "symbol": "dk_ui_text",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 180,
+   "offset": 224,
    "section": ".text.preset_fill",
    "symbol": ".sec..text.preset_save",
    "type": "cf.32"
   },
   {
    "addend": 52,
-   "offset": 186,
+   "offset": 230,
    "section": ".text.preset_fill",
    "symbol": ".sec..rodata.preset_fill.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 194,
+   "offset": 238,
    "section": ".text.preset_fill",
    "symbol": "dk_ui_action",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 206,
+   "offset": 250,
    "section": ".text.preset_fill",
    "symbol": ".sec..text.preset_load",
    "type": "cf.32"
   },
   {
    "addend": 71,
-   "offset": 212,
+   "offset": 256,
    "section": ".text.preset_fill",
    "symbol": ".sec..rodata.preset_fill.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 88,
-   "offset": 232,
+   "offset": 276,
    "section": ".text.preset_fill",
    "symbol": ".sec..rodata.preset_fill.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 246,
+   "offset": 290,
    "section": ".text.preset_fill",
    "symbol": "dk_ui_text",
    "type": "cf.32"
   },
   {
    "addend": 6,
-   "offset": 252,
+   "offset": 296,
    "section": ".text.preset_fill",
    "symbol": ".sec..rodata.preset_fill.str1.1",
    "type": "cf.32"
@@ -2412,98 +2419,98 @@
   },
   {
    "addend": 0,
-   "offset": 302,
+   "offset": 304,
    "section": ".text.preset_load",
-   "symbol": ".sec..data.arp_octaves",
+   "symbol": ".sec..bss.arp_octaves",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 312,
+   "offset": 314,
    "section": ".text.preset_load",
    "symbol": ".sec..data.arp_gate",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 326,
+   "offset": 328,
    "section": ".text.preset_load",
    "symbol": ".sec..bss.preset_pending",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 332,
+   "offset": 334,
    "section": ".text.preset_load",
    "symbol": ".sec..bss.arp_swing",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 342,
+   "offset": 344,
    "section": ".text.preset_load",
    "symbol": ".sec..bss.arp_restart",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 352,
+   "offset": 354,
    "section": ".text.preset_load",
    "symbol": ".sec..data.pad_attack",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 362,
+   "offset": 364,
    "section": ".text.preset_load",
    "symbol": ".sec..data.pad_release",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 372,
+   "offset": 374,
    "section": ".text.preset_load",
    "symbol": ".sec..bss.pad_family",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 382,
+   "offset": 384,
    "section": ".text.preset_load",
    "symbol": ".sec..bss.arp_clock",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 392,
+   "offset": 394,
    "section": ".text.preset_load",
    "symbol": ".sec..data.arp_bpm",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 398,
+   "offset": 400,
    "section": ".text.preset_load",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 24,
-   "offset": 404,
+   "offset": 406,
    "section": ".text.preset_load",
    "symbol": ".sec..rodata.preset_load.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 414,
+   "offset": 416,
    "section": ".text.preset_load",
    "symbol": ".sec..bss.preset_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 428,
+   "offset": 430,
    "section": ".text.preset_load",
    "symbol": "dk_ui_refresh",
    "type": "cf.32"
@@ -3371,42 +3378,42 @@
   },
   {
    "addend": 0,
-   "offset": 338,
+   "offset": 340,
    "section": ".text.instrument_src_encoder",
-   "symbol": ".sec..data.arp_octaves",
+   "symbol": ".sec..bss.arp_octaves",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 346,
+   "offset": 348,
    "section": ".text.instrument_src_encoder",
    "symbol": ".sec..bss.arp_swing",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 354,
+   "offset": 356,
    "section": ".text.instrument_src_encoder",
    "symbol": ".sec..bss.arp_restart",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 364,
+   "offset": 368,
    "section": ".text.instrument_src_encoder",
    "symbol": ".sec..bss.keyboard",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 370,
+   "offset": 374,
    "section": ".text.instrument_src_encoder",
    "symbol": ".sec..bss.latch",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 376,
+   "offset": 380,
    "section": ".text.instrument_src_encoder",
    "symbol": "kb_latch",
    "type": "cf.32"
@@ -6150,7 +6157,7 @@
   },
   {
    "addend": 0,
-   "offset": 290,
+   "offset": 326,
    "section": ".text.cp_decode",
    "symbol": ".sec..text.cp_valid",
    "type": "cf.32"
@@ -6290,132 +6297,111 @@
   },
   {
    "addend": 0,
-   "offset": 114,
+   "offset": 106,
    "section": ".text.value",
    "symbol": ".sec..rodata.chord.8",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 162,
+   "offset": 154,
    "section": ".text.value",
    "symbol": ".sec..rodata.voice.7",
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 206,
-   "section": ".text.value",
-   "symbol": ".sec..text.number",
-   "type": "cf.32"
-  },
-  {
-   "addend": 38,
-   "offset": 228,
+   "addend": 35,
+   "offset": 204,
    "section": ".text.value",
    "symbol": ".sec..rodata.value.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 254,
+   "offset": 230,
    "section": ".text.value",
    "symbol": ".sec..text.unit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 268,
+   "offset": 244,
    "section": ".text.value",
    "symbol": ".sec..rodata.rate.6",
    "type": "cf.32"
   },
   {
-   "addend": 42,
-   "offset": 284,
+   "addend": 0,
+   "offset": 296,
+   "section": ".text.value",
+   "symbol": ".sec..text.number",
+   "type": "cf.32"
+  },
+  {
+   "addend": 39,
+   "offset": 316,
    "section": ".text.value",
    "symbol": ".sec..rodata.value.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 46,
-   "offset": 302,
-   "section": ".text.value",
-   "symbol": ".sec..rodata.value.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 46,
-   "offset": 328,
+   "addend": 39,
+   "offset": 346,
    "section": ".text.value",
    "symbol": ".sec..rodata.value.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 360,
+   "offset": 380,
    "section": ".text.value",
    "symbol": ".sec..rodata.order.5",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 382,
+   "offset": 402,
    "section": ".text.value",
    "symbol": ".sec..rodata.restart.4",
    "type": "cf.32"
   },
   {
-   "addend": 34,
-   "offset": 408,
+   "addend": 26,
+   "offset": 428,
    "section": ".text.value",
    "symbol": ".sec..rodata.value.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 46,
-   "offset": 440,
+   "addend": 39,
+   "offset": 460,
    "section": ".text.value",
    "symbol": ".sec..rodata.value.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 468,
-   "section": ".text.value",
-   "symbol": ".sec..rodata.value.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 478,
-   "section": ".text.value",
-   "symbol": ".sec..rodata.value.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 25,
    "offset": 488,
    "section": ".text.value",
    "symbol": ".sec..rodata.value.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 15,
+   "addend": 0,
    "offset": 498,
    "section": ".text.value",
    "symbol": ".sec..rodata.value.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 20,
+   "addend": 15,
    "offset": 508,
    "section": ".text.value",
    "symbol": ".sec..rodata.value.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 9,
+   "addend": 20,
    "offset": 518,
    "section": ".text.value",
    "symbol": ".sec..rodata.value.str1.1",
@@ -6429,8 +6415,22 @@
    "type": "cf.32"
   },
   {
-   "addend": 5,
+   "addend": 9,
    "offset": 538,
+   "section": ".text.value",
+   "symbol": ".sec..rodata.value.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 22,
+   "offset": 548,
+   "section": ".text.value",
+   "symbol": ".sec..rodata.value.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 5,
+   "offset": 558,
    "section": ".text.value",
    "symbol": ".sec..rodata.value.str1.1",
    "type": "cf.32"
@@ -7339,322 +7339,322 @@
    "type": "cf.32"
   },
   {
-   "addend": 25,
-   "offset": 40,
-   "section": ".rodata.chord.8",
-   "symbol": ".sec..rodata.value.str1.1",
-   "type": "cf.32"
-  },
-  {
    "addend": 615,
-   "offset": 44,
+   "offset": 40,
    "section": ".rodata.chord.8",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 620,
+   "offset": 44,
+   "section": ".rodata.chord.8",
+   "symbol": ".sec..rodata.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 625,
    "offset": 0,
    "section": ".rodata.restarts.9",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 628,
+   "addend": 633,
    "offset": 4,
    "section": ".rodata.restarts.9",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 636,
+   "addend": 641,
    "offset": 8,
    "section": ".rodata.restarts.9",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 647,
+   "addend": 652,
    "offset": 0,
-   "section": ".rodata.orders.10",
-   "symbol": ".sec..rodata.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 650,
-   "offset": 4,
    "section": ".rodata.orders.10",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 655,
+   "offset": 4,
+   "section": ".rodata.orders.10",
+   "symbol": ".sec..rodata.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 660,
    "offset": 8,
    "section": ".rodata.orders.10",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 663,
+   "addend": 668,
    "offset": 12,
    "section": ".rodata.orders.10",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 673,
+   "addend": 678,
    "offset": 16,
    "section": ".rodata.orders.10",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 680,
+   "addend": 685,
    "offset": 0,
-   "section": ".rodata.voicings.11",
-   "symbol": ".sec..rodata.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 687,
-   "offset": 4,
    "section": ".rodata.voicings.11",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 692,
+   "offset": 4,
+   "section": ".rodata.voicings.11",
+   "symbol": ".sec..rodata.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 697,
    "offset": 8,
    "section": ".rodata.voicings.11",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 704,
+   "addend": 709,
    "offset": 12,
    "section": ".rodata.voicings.11",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 716,
+   "addend": 721,
    "offset": 0,
    "section": ".rodata.names.12",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 722,
+   "addend": 727,
    "offset": 4,
    "section": ".rodata.names.12",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 730,
+   "addend": 735,
    "offset": 8,
    "section": ".rodata.names.12",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 736,
+   "addend": 741,
    "offset": 12,
    "section": ".rodata.names.12",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 742,
+   "addend": 747,
    "offset": 16,
    "section": ".rodata.names.12",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 748,
+   "addend": 753,
    "offset": 20,
-   "section": ".rodata.names.12",
-   "symbol": ".sec..rodata.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 756,
-   "offset": 24,
    "section": ".rodata.names.12",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 761,
+   "offset": 24,
+   "section": ".rodata.names.12",
+   "symbol": ".sec..rodata.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 766,
    "offset": 28,
    "section": ".rodata.names.12",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 767,
+   "addend": 772,
    "offset": 32,
-   "section": ".rodata.names.12",
-   "symbol": ".sec..rodata.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 775,
-   "offset": 36,
    "section": ".rodata.names.12",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 780,
+   "offset": 36,
+   "section": ".rodata.names.12",
+   "symbol": ".sec..rodata.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 785,
    "offset": 40,
    "section": ".rodata.names.12",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 786,
+   "addend": 791,
    "offset": 44,
    "section": ".rodata.names.12",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 794,
+   "addend": 799,
    "offset": 48,
    "section": ".rodata.names.12",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 800,
+   "addend": 805,
    "offset": 52,
    "section": ".rodata.names.12",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 807,
-   "offset": 0,
-   "section": ".rodata.names.13",
-   "symbol": ".sec..rodata.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 809,
-   "offset": 4,
-   "section": ".rodata.names.13",
-   "symbol": ".sec..rodata.str1.1",
-   "type": "cf.32"
-  },
-  {
    "addend": 812,
-   "offset": 8,
+   "offset": 0,
    "section": ".rodata.names.13",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 814,
-   "offset": 12,
+   "offset": 4,
    "section": ".rodata.names.13",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 817,
-   "offset": 16,
+   "offset": 8,
    "section": ".rodata.names.13",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 819,
-   "offset": 20,
+   "offset": 12,
    "section": ".rodata.names.13",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 821,
-   "offset": 24,
+   "addend": 822,
+   "offset": 16,
    "section": ".rodata.names.13",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 824,
-   "offset": 28,
+   "offset": 20,
    "section": ".rodata.names.13",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 826,
-   "offset": 32,
+   "offset": 24,
    "section": ".rodata.names.13",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 829,
-   "offset": 36,
+   "offset": 28,
    "section": ".rodata.names.13",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 831,
-   "offset": 40,
+   "offset": 32,
    "section": ".rodata.names.13",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 834,
-   "offset": 44,
+   "offset": 36,
    "section": ".rodata.names.13",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 836,
+   "offset": 40,
+   "section": ".rodata.names.13",
+   "symbol": ".sec..rodata.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 839,
+   "offset": 44,
+   "section": ".rodata.names.13",
+   "symbol": ".sec..rodata.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 841,
    "offset": 0,
    "section": ".rodata.labels",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 842,
+   "addend": 847,
    "offset": 4,
    "section": ".rodata.labels",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 850,
+   "addend": 855,
    "offset": 8,
    "section": ".rodata.labels",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 856,
+   "addend": 861,
    "offset": 12,
    "section": ".rodata.labels",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 862,
+   "addend": 867,
    "offset": 16,
    "section": ".rodata.labels",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 868,
+   "addend": 873,
    "offset": 20,
    "section": ".rodata.labels",
    "symbol": ".sec..rodata.str1.1",
@@ -7668,14 +7668,14 @@
    "type": "cf.32"
   },
   {
-   "addend": 876,
+   "addend": 881,
    "offset": 28,
    "section": ".rodata.labels",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 882,
+   "addend": 887,
    "offset": 32,
    "section": ".rodata.labels",
    "symbol": ".sec..rodata.str1.1",
@@ -7689,35 +7689,35 @@
    "type": "cf.32"
   },
   {
-   "addend": 890,
+   "addend": 895,
    "offset": 40,
    "section": ".rodata.labels",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 896,
+   "addend": 901,
    "offset": 44,
    "section": ".rodata.labels",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 904,
+   "addend": 909,
    "offset": 48,
    "section": ".rodata.labels",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 910,
+   "addend": 915,
    "offset": 52,
    "section": ".rodata.labels",
    "symbol": ".sec..rodata.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 917,
+   "addend": 922,
    "offset": 56,
    "section": ".rodata.labels",
    "symbol": ".sec..rodata.str1.1",
@@ -7738,7 +7738,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 924,
+   "addend": 929,
    "offset": 68,
    "section": ".rodata.labels",
    "symbol": ".sec..rodata.str1.1",
@@ -9470,10 +9470,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffe02f0e2f022c6f002c4eb90000000073b90000000041f9000000003f50000c41f9000000003f50000e41f9000000003f50001041f9000000003f50001241f9000000003f50001441f9000000003f41000873b9000000003f50001641f9000000003f50001841f9000000003f41000a3f50001a73b90000000041f9000000003f50001c41f9000000003f50001e41f9000000003f41002042413f50002441f9000000003f5000263f410022428141f7180874203d9018005481b48166f041f9000000003d50002041f9000000001d50002241f9000000001d50002341f9000000001d5000244a3900000000664073b900000000c2fc00052041d1fc000000001d5000251d68000100261d68000200271d68000300281d68000400292f40002c241f2c5f4fef00204ef90000000041f90000000060ca",
+   "hex": "4fefffe02f0e2f022c6f002c4eb90000000073b90000000041f9000000003f50000c41f9000000003f50000e41f9000000003f50001041f9000000003f41000873b9000000003f50001241f9000000003f50001441f9000000003f41000a3f50001641f90000000022390000000056813f4100183f50001a73b90000000041f9000000003f50001c41f9000000003f50001e41f9000000003f41002042413f50002441f9000000003f5000263f410022428141f7180874203d9018005481b48166f041f9000000003d50002041f9000000001d50002241f9000000001d50002341f9000000001d5000244a3900000000664073b900000000c2fc00052041d1fc000000001d5000251d68000100261d68000200271d68000300281d68000400292f40002c241f2c5f4fef00204ef90000000041f90000000060ca",
    "kind": "text",
    "name": ".text.preset_snapshot",
-   "size": 312
+   "size": 314
   },
   {
    "align": 2,
@@ -9512,14 +9512,14 @@
   },
   {
    "align": 1,
-   "hex": "5245434f564552204f5220524553544152540052454c45415345204b455953202f205245434f5645520043484f5244204f5554204f462052414e47450053454c4543542043414e4f5059204f4e20543100524541445900435553544f4d20534841504520454d5054590053484150455320534156454400534841504553204e4f5420534156454400534156452050454e44494e47004c4f43414c20415250004d415354455220504841534520415250004d4153544552204752494420415250004d4153544552205354455053004e4f544553202f205100545241434b2031204b4559424f4152440045585445524e414c204d494449005553420044494e004348414e4e454c004c415443480053454c4543544f52204f43544156450053454c4543542043482028303d53414d452900534841504520534c4f54004c4541524e20544f20524f4f540050414e49430052455452592053484150452053415645005245434f564552204b4559424f415244005245454420284f46463d56454c5645542900434f4c4f520044524946540041545441434b0052454c4541534500415250204d4958004c4f43414c2042504d004152502047415445004f435441564553005357494e4700535452554d204d530050524553455453005341564520524f5554494e4700524f5554494e47204e4f542053415645440050414e454c3a2053454c454354205431202f204b45595300",
+   "hex": "5245434f564552204f5220524553544152540052454c45415345204b455953202f205245434f5645520043484f5244204f5554204f462052414e47450053454c4543542043414e4f5059204f4e20543100524541445900435553544f4d20534841504520454d5054590053484150455320534156454400534841504553204e4f5420534156454400534156452050454e44494e47004c4f43414c20415250004d415354455220504841534520415250004d4153544552204752494420415250004d4153544552205354455053004e4f544553202f205100545241434b2031204b4559424f4152440045585445524e414c204d494449005553420044494e004348414e4e454c004c415443480053454c4543544f52204f43544156450053454c4543542043482028303d53414d452900534841504520534c4f54004c4541524e20544f20524f4f540050414e49430052455452592053484150452053415645005245434f564552204b4559424f415244005245454420284f46463d56454c5645542900434f4c4f520044524946540041545441434b0052454c4541534500415250204d4958004c4f43414c2042504d004152502047415445004f435441564520535052454144005357494e4700535452554d204d530050524553455453005341564520524f5554494e4700524f5554494e47204e4f542053415645440050414e454c3a2053454c454354205431202f204b45595300",
    "kind": "data",
    "name": ".rodata.fill.str1.1",
-   "size": 526
+   "size": 532
   },
   {
    "align": 2,
-   "hex": "4fefffec48d73c04242f001848790000000049f9000000002f024bf90000000045f9000000004e9442a74879000000004879000000004879000000002f024e9542a74879000000004879000000004879000000002f024e954fef002c42974879000000004879000000004879000000002f024e9542a748790000000048780010487800014879000000004879000000002f024e924fef00304eb9000000004a80660004404ab9000000006600044071b9000000007202b2806700043c7203b2806700043eb2b9000000006600043e203c000000002f002f024e9442a742a748790000000020390000000041f90000000047f9000000002f300c002f024e9342a74879000000004879000000004879000000002f024e954fef00304878000142a771b90000000048790000000041f9000000002f300c002f024e934878000242a748790000000020390000000041f9000000002f300c002f024e934fef00244297487900000000487800084878ffff4879000000004879000000002f024e9242a74879000000004878001042a74879000000004879000000002f024e924fef0034429748790000000048780008487800014879000000004879000000002f024e9242a742a74879000000004879000000002f024e934fef002c429742a74879000000004879000000002f024e934fef00144ab9000000006600031c4a39000000006700031c203c000000002f002f024e9442a742a74879000000004879000000002f024e9342a742a74879000000004879000000002f024e934fef002c42974879000000004879000000004879000000002f024e9542a74879000000004878007f42a74879000000004879000000002f024e924fef002c42974879000000004878007f42a74879000000004879000000002f024e9242a74879000000004878007f42a74879000000004879000000002f024e924fef003442974879000000004878007f42a74879000000004879000000002f024e924fef001c2039000000007202b2806700024453804a8066000246203c000000002f002f024e9442a74879000000004878007f42a74879000000004879000000002f024e924fef002042974879000000004878012c4878001e4879000000004879000000002f024e924fef001c7001b0b900000000660001f2203c0000000042a748790000000048780008487800014879000000002f002f024e9242a748790000000048780064487800014879000000004879000000002f024e924fef0034429742a720390000000048790000000041f9000000002f300c002f024e9342a748790000000048780003487800014879000000004879000000002f024e924fef00307201b2b90000000066000168428042a74879000000002f0042a74879000000004879000000002f024e924878000142a748790000000020390000000041f9000000002f300c002f024e934fef00304878000242a720390000000048790000000041f9000000002f300c002f024e9342a7487900000000487801f442a74879000000004879000000002f024e924fef00302039000000004a8066184879000000004eb900000000588f23c0000000004a8067142f004879000000002f024eb9000000004fef000c42a742a74879000000004879000000002f024e934fef00144ab900000000670c4879000000002f024e94508f2f420018203c000000002f40001c4cd73c044fef00144ef900000000203c000000006000fbea203c000000006000fbe0203c000000006000fbd6203c000000006000fbcc203c000000006000fbc2203c000000006000fcee203c000000006000fce4203c000000006000fdc4203c000000006000fdba203c000000006000fe0e704b6000fe98",
+   "hex": "4fefffec48d73c04242f001848790000000049f9000000002f024bf90000000045f9000000004e9442a74879000000004879000000004879000000002f024e9542a74879000000004879000000004879000000002f024e954fef002c42974879000000004879000000004879000000002f024e9542a748790000000048780010487800014879000000004879000000002f024e924fef00304eb9000000004a80660004404ab9000000006600044071b9000000007202b2806700043c7203b2806700043eb2b9000000006600043e203c000000002f002f024e9442a742a748790000000020390000000041f90000000047f9000000002f300c002f024e9342a74879000000004879000000004879000000002f024e954fef00304878000142a771b90000000048790000000041f9000000002f300c002f024e934878000242a748790000000020390000000041f9000000002f300c002f024e934fef00244297487900000000487800084878ffff4879000000004879000000002f024e9242a74879000000004878001042a74879000000004879000000002f024e924fef0034429748790000000048780008487800014879000000004879000000002f024e9242a742a74879000000004879000000002f024e934fef002c429742a74879000000004879000000002f024e934fef00144ab9000000006600031c4a39000000006700031c203c000000002f002f024e9442a742a74879000000004879000000002f024e9342a742a74879000000004879000000002f024e934fef002c42974879000000004879000000004879000000002f024e9542a74879000000004878007f42a74879000000004879000000002f024e924fef002c42974879000000004878007f42a74879000000004879000000002f024e9242a74879000000004878007f42a74879000000004879000000002f024e924fef003442974879000000004878007f42a74879000000004879000000002f024e924fef001c2039000000007202b2806700024453804a8066000246203c000000002f002f024e9442a74879000000004878007f42a74879000000004879000000002f024e924fef002042974879000000004878012c4878001e4879000000004879000000002f024e924fef001c7001b0b900000000660001f2203c0000000042a748790000000048780008487800014879000000002f002f024e9242a748790000000048780064487800014879000000004879000000002f024e924fef0034429742a720390000000048790000000041f9000000002f300c002f024e9342a7487900000000487800034878fffd4879000000004879000000002f024e924fef00307201b2b90000000066000168428042a74879000000002f0042a74879000000004879000000002f024e924878000142a748790000000020390000000041f9000000002f300c002f024e934fef00304878000242a720390000000048790000000041f9000000002f300c002f024e9342a7487900000000487801f442a74879000000004879000000002f024e924fef00302039000000004a8066184879000000004eb900000000588f23c0000000004a8067142f004879000000002f024eb9000000004fef000c42a742a74879000000004879000000002f024e934fef00144ab900000000670c4879000000002f024e94508f2f420018203c000000002f40001c4cd73c044fef00144ef900000000203c000000006000fbea203c000000006000fbe0203c000000006000fbd6203c000000006000fbcc203c000000006000fbc2203c000000006000fcee203c000000006000fce4203c000000006000fdc4203c000000006000fdba203c000000006000fe0e704b6000fe98",
    "kind": "text",
    "name": ".text.fill",
    "size": 1356
@@ -9547,10 +9547,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefff8848d744042c6f007c42a748790000000048780004487800014879000000004879000000002f0e4eb9000000004fef001c4ab900000000660000be240f06820000000e2f024eb90000000045ef003c2f0a2f024eb9000000004fef000c4a80663a73b900000000203900000000538001016728ed8820404280d1fc0000000075b2080073b00800b282661052807240b28066ec203c000000006006203c000000002f002f0e4eb90000000042a742a74879000000004879000000002f0e45f9000000004e9242a742a74879000000004879000000002f0e4e922f4e00ac4cef44040030203c000000002f4000b04fef00a84ef900000000203c0000000060a2",
+   "hex": "4fefff1848d75c042c6f00ec42a748790000000048780004487800014879000000004879000000002f0e4eb9000000004fef001c4ab900000000660000ea240f0682000000142f024eb90000000045ef006c2f0a2f0249f9000000004e944fef000c4a80666473b900000000203900000000538001016752ed88487800400680000000002f00240f0682000000462f024eb9000000004fef000c4a80662c47ef00a82f0b2f024e94508f4a80661c75b2080073b30800b282661052807240b28066ec203c000000006006203c000000002f002f0e4eb90000000042a742a74879000000004879000000002f0e45f9000000004e9242a742a74879000000004879000000002f0e4e922f4e011c4cef5c040030203c000000002f4001204fef01184ef900000000203c0000000060a2",
    "kind": "text",
    "name": ".text.preset_fill",
-   "size": 258
+   "size": 302
   },
   {
    "align": 1,
@@ -9694,10 +9694,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56ffd071b9000000002f0a55804a806616246effcc41f9000000002d4800084e5e4ef90000000073b900000000203900000000538045f900000000010166124879000000004e92588f246effcc4e5e4e75ed88487800400680000000002f00486effd64eb9000000004fef000c4a8066ce4eb9000000002d40ffd04eb900000000122efff9302effd641eefffb23d00000000041eeffff13d00000000013c100000000738113c00000000023c10000000022007381302effd823c100000000220013c0000000007381302effee23c10000000013c00000000022007001738113c00000000071eeffda23c10000000023c00000000071eeffdc23c00000000071eeffde23c00000000071eeffe023c00000000071eeffe223c00000000071eeffe423c00000000071eeffe623c00000000071eeffe823c00000000071eeffea2f2effd042b90000000023c00000000071eeffec23c00000000071eefff223c00000000071eefff423c00000000071aefff823c00000000071aefffa23c00000000071eefff623c0000000004eb9000000004879000000004e92508f2039000000004a806700fea42f004eb9000000006000fe96",
+   "hex": "4e56ffd071b9000000002f0a55804a806616246effcc41f9000000002d4800084e5e4ef90000000073b900000000203900000000538045f900000000010166124879000000004e92588f246effcc4e5e4e75ed88487800400680000000002f00486effd64eb9000000004fef000c4a8066ce4eb9000000002d40ffd04eb900000000122efff9302effd641eefffb23d00000000041eeffff13d00000000013c100000000738113c00000000023c10000000022007381302effd823c100000000220013c0000000007381302effee23c10000000013c00000000022007001738113c00000000071eeffda23c10000000023c00000000071eeffdc23c00000000071eeffde23c00000000071eeffe023c00000000071eeffe223c00000000071eeffe423c00000000071eeffe6578023c00000000071eeffe823c00000000071eeffea2f2effd042b90000000023c00000000071eeffec23c00000000071eefff223c00000000071eefff423c00000000071aefff823c00000000071aefffa23c00000000071eefff623c0000000004eb9000000004879000000004e92508f2039000000004a806700fea22f004eb9000000006000fe94",
    "kind": "text",
    "name": ".text.preset_load",
-   "size": 436
+   "size": 438
   },
   {
    "align": 1,
@@ -9792,10 +9792,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56fff42f0a2f024ab9000000006700017245f90000000073b9000000002039000000002f0173b2083c2f012f004eb900000000486efffc2f2e0014203c000000ff2f2e00102f2e000c2d40fffc2f2e00082f0a4eb9000000004fef00242d40fff453804a806600008c4eb9000000007406206efffc2d40fff830328a1c73c0b488670000bc65307403b488670000a265167401b488670000827402b488666423c10000000060407004b0886600008a23c1000000006030740ab4886700009a65167008b088670000887409b488667823c1000000006010700bb08867000082740cb488670000822f2efff84eb900000000588f202efff4242effec246efff04e5e4e7513c000000000700123c10000000013c00000000060ce740113c00000000023c10000000013c20000000060b823c10000000060b023c10000000060a823c10000000060a023c100000000609823c100000000609023c100000000608823c10000000060802f0148790000000023c1000000004eb900000000508f6000ff6874ff2d42fff46000ff6a",
+   "hex": "4e56fff42f0a2f024ab9000000006700017645f90000000073b9000000002039000000002f0173b2083c2f012f004eb900000000486efffc2f2e0014203c000000ff2f2e00102f2e000c2d40fffc2f2e00082f0a4eb9000000004fef00242d40fff453804a806600008c4eb9000000007406206efffc2d40fff830328a1c73c0b488670000bc65307403b488670000a265167401b488670000827402b488666423c10000000060407004b0886600008a23c1000000006030740ab4886700009c65167008b088670000887409b488667823c1000000006010700bb08867000084740cb488670000862f2efff84eb900000000588f202efff4242effec246efff04e5e4e7513c000000000700123c10000000013c00000000060ce740113c00000000023c10000000013c20000000060b823c10000000060b023c10000000060a823c10000000060a023c1000000006098578123c100000000608e23c100000000608623c1000000006000ff7e2f0148790000000023c1000000004eb900000000508f6000ff6474ff2d42fff46000ff66",
    "kind": "text",
    "name": ".text.instrument_src_encoder",
-   "size": 396
+   "size": 400
   },
   {
    "align": 2,
@@ -9876,7 +9876,7 @@
   },
   {
    "align": 2,
-   "hex": "4e56feec48d73c7c4eb9000000002039000000004a8067402f004eb900000000588f4a8067324eb9000000002f002d40ff104eb900000000588f202eff10726390b900000000b280640e2f39000000004eb900000000588f2479000000004a8a660001b04879000000004eb90000000048780030240e0682ffffff802f0248790000000047f9000000004e934fef00104a806d0000be2f002f024879000000004eb9000000004fef000c23c0000000004204260e243c0000000049f9000000000683ffffff4013c4000000004284487800402f022f1c4e934fef000c4a806d262f002f022f034eb9000000004fef000c4a8066127001123900000000e9a8808113c00000000052840682000000407004b08466ba4878001049eeff402f0c4879000000004e934fef000c2d40ff104a806d00018e7210b280672a42b900000000246eff104a8a6d0000bc347cffff600000b474bcb4806700ff5823c0000000006000ff4e71aeff407443b48066cc71aeff417852b88066c271aeff4253804a8066b84a2eff4366b2700a1434080066aa5280780eb88066f2420391c8103488005288780ed0822200d28314001601b88866ea718075aeff4eb4806600ff7e738171aeff4fb0816600ff72486eff163d6eff48ff1a2d6eff44ff164eb900000000588f4a806700ff5441eeff16700123d00000000041eeff1a33d00000000023c000000000740123ca0000000023c2000000004ab900000000676a4eb9000000004a8067604eb9000000004a80675671b90000000042a742a723c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b900000000538023c00000000071b90000000023c0000000004eb900000000508f4ab90000000067000094487800104879000000004879000000004eb9000000004fef000c23c0000000004a80672242b900000000203c00000000603042b90000000072bcb2aeff106700ff366000fe6e4eb90000000042b90000000023c0000000004a8066ce203c000000002f004eb900000000588f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f2839000000002d44ff104a84676a4878004048790000000041f900000000240453822f302c004eb9000000004fef000c23c0000000004a80670003b6203c000000002f0042b9000000004eb900000000588f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f4ab900000000676e4eb900000000260e0683ffffff802f0348790000000024004eb9000000002f024eb900000000487800302f034879000000004eb9000000004fef001823c0000000004a8066124eb90000000023c0000000004a806700036c203c000000002f0042b9000000004eb900000000588f2039000000004a8067282f004eb900000000588f4a80671a71b90000000055804a80670e2f39000000004eb900000000588f2039000000004a8067442f004eb900000000588f4a80673622390000000071b900000000b2b9000000006608b0b900000000671a2f390000000023c10000000023c0000000004eb900000000588f41f90000000045f90000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023d00000000023d20000000041f90000000023c00000000045f90000000071b90000000023c00000000071b90000000023d00000000023c00000000071b90000000023c00000000071b90000000023c0000000004e9224004a8067244ab900000000671cb0b90000000067142f39000000004eb90000000023c200000000588f486eff164eb90000000071aeff3922390000000075eeff34e188484142417deeff1a7beeff1c77eeff3279eeff202d42ff942d46ff882d45ff8c2d43ff902d44ff9880817207828071aeff382d40ff8471eeff362d40ff9c71eeff222d41ff8073eeff282d40ff102d40ffa071eeff2426412d41ffa42a402d40ffa873eeff2671eeff2a284122402d41ffac2d40ffb073eeff2c71aeff3a2d41ffb82d40ffb4302eff1e2041487800102d42fffc486eff402d46ffc82d45ffcc2d44ffd42d4dffdc2d4cffe02d4bffe42d49ffe82d48ffec2d43fff8320071c02d6eff10ffd82d40ffd071eeff2ec2fc00032d40fff071eeff302d40fff4e2892d41ffbc73eeff162d41ffc073eeff182d41ffc44eb9000000004fef000c24007010b08266000104223c494ea103b2aeff4066207805b8aeff746618262eff784eb900000000b083660a41eeff7823d0000000004e924a80670000d87210b282661e243c494ea103b4aeff40660a7803b8aeff7467000208428023c0000000004ab900000000670000b04eb90000000024004a80660000a22039000000004a80660001f642a774014eb90000000023c200000000588f4ab90000000057c275024482600001fc4eb90000000023c0000000004a806600fc3c2002ed8843f90000000020404280d1fc0000000045f108007240119208005280b28066f07001123900000000e5a8808113c000000000203c000000006000fc024202203c0000000013c2000000006000fc8c70feb0826600ff2442b9000000002039000000005580e28866064eb90000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d0000000004e9226390000000023c0000000004a83670000c410390000000012390000000045f9000000002839000000001439000000002c39000000002d44ff103a40103900000000384136404eb9000000002f032839000000002a004e92588f4a8067762039000000004a80670a2f004e92588f4a806662202eff1072097582e3a88082340d7382340ce98980817382340bed8980817382740de5a9740c80814a8656c173014481e5a9808122058284780e4a8156c173014481e9a98081b0b90000000067142f390000000023c0000000004eb900000000588f4cee3c7cfeec4e5e4e752d6eff78ff104eb900000000b0aeff1057c0710044806000fde457804a8066164ab90000000066084ab90000000066124eb9000000007001b0b9000000006700fdf82f024eb900000000588f4a806c00016a4eb9000000007201b2b900000000660001624ab9000000006700fe604ab9000000006600fe5648780020486eff802f3c435053372f390000000042a74eb9000000004fef00144a8066000128740223c2000000002f39000000002f390000000042a74eb9000000004fef000c4a806700fe0a42a742a742a7487800024eb9000000004fef00104a806600fdea4ab900000000670000c84ab900000000672a42a742a722390000000053812f0142a74eb9000000004fef00104a806600fdb84ab900000000670000964ab900000000672a42a742a724390000000053822f02487800014eb9000000004fef00104a806600fd844ab900000000676271b90000000053804a8066562079000000004a88674c4ab900000000671a42a742a74868ffff42a74eb9000000004fef00104a806600fd444ab900000000672242a742a720790000000053882f08487800014eb9000000004fef00104a806600fd1a700323c0000000006000fd1423c0000000006000fe967803b8b900000000662c203900000000b0b9000000006300fcf048780020486eff802f3c435053372f0042a74eb9000000004fef00147002b0b9000000006700fea26000fcc4",
+   "hex": "4e56feec48d73c7c4eb9000000002039000000004a8067402f004eb900000000588f4a8067324eb9000000002f002d40ff104eb900000000588f202eff10726390b900000000b280640e2f39000000004eb900000000588f2479000000004a8a660001b04879000000004eb90000000048780030240e0682ffffff802f0248790000000047f9000000004e934fef00104a806d0000be2f002f024879000000004eb9000000004fef000c23c0000000004204260e243c0000000049f9000000000683ffffff4013c4000000004284487800402f022f1c4e934fef000c4a806d262f002f022f034eb9000000004fef000c4a8066127001123900000000e9a8808113c00000000052840682000000407004b08466ba4878001049eeff402f0c4879000000004e934fef000c2d40ff104a806d00018e7210b280672a42b900000000246eff104a8a6d0000bc347cffff600000b474bcb4806700ff5823c0000000006000ff4e71aeff407443b48066cc71aeff417852b88066c271aeff4253804a8066b84a2eff4366b2700a1434080066aa5280780eb88066f2420391c8103488005288780ed0822200d28314001601b88866ea718075aeff4eb4806600ff7e738171aeff4fb0816600ff72486eff163d6eff48ff1a2d6eff44ff164eb900000000588f4a806700ff5441eeff16700123d00000000041eeff1a33d00000000023c000000000740123ca0000000023c2000000004ab900000000676a4eb9000000004a8067604eb9000000004a80675671b90000000042a742a723c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b900000000538023c00000000071b90000000023c0000000004eb900000000508f4ab90000000067000094487800104879000000004879000000004eb9000000004fef000c23c0000000004a80672242b900000000203c00000000603042b90000000072bcb2aeff106700ff366000fe6e4eb90000000042b90000000023c0000000004a8066ce203c000000002f004eb900000000588f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f2839000000002d44ff104a84676a4878004048790000000041f900000000240453822f302c004eb9000000004fef000c23c0000000004a80670003b6203c000000002f0042b9000000004eb900000000588f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f4ab900000000676e4eb900000000260e0683ffffff802f0348790000000024004eb9000000002f024eb900000000487800302f034879000000004eb9000000004fef001823c0000000004a8066124eb90000000023c0000000004a806700036c203c000000002f0042b9000000004eb900000000588f2039000000004a8067282f004eb900000000588f4a80671a71b90000000055804a80670e2f39000000004eb900000000588f2039000000004a8067442f004eb900000000588f4a80673622390000000071b900000000b2b9000000006608b0b900000000671a2f390000000023c10000000023c0000000004eb900000000588f41f90000000045f90000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023d00000000023d20000000041f90000000023c00000000045f90000000071b90000000023c00000000071b90000000023d00000000023c00000000071b90000000023c00000000071b90000000023c0000000004e9224004a8067244ab900000000671cb0b90000000067142f39000000004eb90000000023c200000000588f486eff164eb90000000071aeff3922390000000075eeff34e188484142417deeff1a7beeff1c77eeff3279eeff202d42ff942d46ff882d45ff8c2d43ff902d44ff9880817208828071aeff382d40ff8471eeff362d40ff9c71eeff222d41ff8073eeff282d40ff102d40ffa071eeff2426412d41ffa42a402d40ffa873eeff2671eeff2a284122402d41ffac2d40ffb073eeff2c71aeff3a2d41ffb82d40ffb4302eff1e2041487800102d42fffc486eff402d46ffc82d45ffcc2d44ffd42d4dffdc2d4cffe02d4bffe42d49ffe82d48ffec2d43fff8320071c02d6eff10ffd82d40ffd071eeff2ec2fc00032d40fff071eeff302d40fff4e2892d41ffbc73eeff162d41ffc073eeff182d41ffc44eb9000000004fef000c24007010b08266000104223c494ea103b2aeff4066207805b8aeff746618262eff784eb900000000b083660a41eeff7823d0000000004e924a80670000d87210b282661e243c494ea103b4aeff40660a7803b8aeff7467000208428023c0000000004ab900000000670000b04eb90000000024004a80660000a22039000000004a80660001f642a774014eb90000000023c200000000588f4ab90000000057c275024482600001fc4eb90000000023c0000000004a806600fc3c2002ed8843f90000000020404280d1fc0000000045f108007240119208005280b28066f07001123900000000e5a8808113c000000000203c000000006000fc024202203c0000000013c2000000006000fc8c70feb0826600ff2442b9000000002039000000005580e28866064eb90000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000041f90000000023d0000000004e9226390000000023c0000000004a83670000c410390000000012390000000045f9000000002839000000001439000000002c39000000002d44ff103a40103900000000384136404eb9000000002f032839000000002a004e92588f4a8067762039000000004a80670a2f004e92588f4a806662202eff1072097582e3a88082340d7382340ce98980817382340bed8980817382740de5a9740c80814a8656c173014481e5a9808122058284780e4a8156c173014481e9a98081b0b90000000067142f390000000023c0000000004eb900000000588f4cee3c7cfeec4e5e4e752d6eff78ff104eb900000000b0aeff1057c0710044806000fde457804a8066164ab90000000066084ab90000000066124eb9000000007001b0b9000000006700fdf82f024eb900000000588f4a806c00016a4eb9000000007201b2b900000000660001624ab9000000006700fe604ab9000000006600fe5648780020486eff802f3c435053382f390000000042a74eb9000000004fef00144a8066000128740223c2000000002f39000000002f390000000042a74eb9000000004fef000c4a806700fe0a42a742a742a7487800024eb9000000004fef00104a806600fdea4ab900000000670000c84ab900000000672a42a742a722390000000053812f0142a74eb9000000004fef00104a806600fdb84ab900000000670000964ab900000000672a42a742a724390000000053822f02487800014eb9000000004fef00104a806600fd844ab900000000676271b90000000053804a8066562079000000004a88674c4ab900000000671a42a742a74868ffff42a74eb9000000004fef00104a806600fd444ab900000000672242a742a720790000000053882f08487800014eb9000000004fef00104a806600fd1a700323c0000000006000fd1423c0000000006000fe967803b8b900000000662c203900000000b0b9000000006300fcf048780020486eff802f3c435053382f0042a74eb9000000004fef00147002b0b9000000006700fea26000fcc4",
    "kind": "text",
    "name": ".text.instrument_play_tick",
    "size": 2770
@@ -9890,10 +9890,10 @@
   },
   {
    "align": 1,
-   "hex": "696e737472756d656e742d6b6579626f6172640043414e4f50592053455455500063616e6f70792d707265736574730043414e4f505920505245534554530063616e6f70792d7374617475730054524947005041545445524e00434f4e54494e5545004d41535445522047524944004d415354455220504841534500555000444f574e005550202f20444f574e00415320504c415945440052414e444f4d0063616e6f70792d6c6561726e00434c4f5345004f50454e00494e56455253494f4e203100494e56455253494f4e2032004d414a4f52004d414a4f522036005355532032004d494e4f522036004d494e4f5200535553203400414444203900444f4d20370044494d494e4953484544004d494e203700435553544f4d004d414a203700524f4f54202b20545950450063616e6f70792f7072657365742f310063616e6f70792f7072657365742f320063616e6f70792f7072657365742f330063616e6f70792f7072657365742f34006d007375733200737573340064696d0037006d616a37006d37004348524400564f494300434f4c520044524654005354524d004d49580052415445004f524452004f43545300474154450053574e4700525354004c544348005352430041544b0052454c0054554e45004c45560054524947005041545400434f4e5400555000444f574e005550444e00504c415900524e4400312f3400312f3800312f385400312f313600352f5100312f31365400372f5100312f333200434c53004f50454e00494e563100494e5632004d414a004d414a360053555332004d494e36004d494e0053555334004144443900444f4d370044494d004d494e37004d414a370054726967676572005061747465726e00436f6e74696e756f757300557000446f776e0055702f446f776e00417320506c617965640052616e646f6d00436c6f736564004f70656e00496e76657273696f6e203100496e76657273696f6e20320043686f726400566f6963696e6700436f6c6f7200447269667400537472756d00417270204d69780052617465004f72646572004f6374617665730047617465005377696e670052657374617274004c6174636800536f7572636500430043230044004423004500460046230047004723004100412300420043484f524400564f4943494e4700434f4c4f5200445249465400535452554d00415250204d4958004f52444552004f435441564553005357494e470052455354415254004c4154434800534f555243450041545441434b004c4556454c00",
+   "hex": "696e737472756d656e742d6b6579626f6172640043414e4f50592053455455500063616e6f70792d707265736574730043414e4f505920505245534554530063616e6f70792d7374617475730054524947005041545445524e00434f4e54494e5545004d41535445522047524944004d415354455220504841534500555000444f574e005550202f20444f574e00415320504c415945440052414e444f4d0063616e6f70792d6c6561726e00434c4f5345004f50454e00494e56455253494f4e203100494e56455253494f4e2032004d414a4f52004d414a4f522036005355532032004d494e4f522036004d494e4f5200535553203400414444203900444f4d20370044494d494e4953484544004d494e203700435553544f4d004d414a203700524f4f54202b20545950450063616e6f70792f7072657365742f310063616e6f70792f7072657365742f320063616e6f70792f7072657365742f330063616e6f70792f7072657365742f34006d007375733200737573340064696d0037006d616a37006d37004348524400564f494300434f4c520044524654005354524d004d49580052415445004f524452004f43545300474154450053574e4700525354004c544348005352430041544b0052454c0054554e45004c45560054524947005041545400434f4e5400555000444f574e005550444e00504c415900524e4400312f3400312f3800312f385400312f313600352f5100312f31365400372f5100312f333200434c53004f50454e00494e563100494e5632004d414a004d414a360053555332004d494e36004d494e0053555334004144443900444f4d370044494d004d494e370055534552004d414a370054726967676572005061747465726e00436f6e74696e756f757300557000446f776e0055702f446f776e00417320506c617965640052616e646f6d00436c6f736564004f70656e00496e76657273696f6e203100496e76657273696f6e20320043686f726400566f6963696e6700436f6c6f7200447269667400537472756d00417270204d69780052617465004f72646572004f6374617665730047617465005377696e670052657374617274004c6174636800536f7572636500430043230044004423004500460046230047004723004100412300420043484f524400564f4943494e4700434f4c4f5200445249465400535452554d00415250204d4958004f52444552004f435441564553005357494e470052455354415254004c4154434800534f555243450041545441434b004c4556454c00",
    "kind": "data",
    "name": ".rodata.str1.1",
-   "size": 930
+   "size": 935
   },
   {
    "align": 2,
@@ -10261,9 +10261,9 @@
   },
   {
    "align": 2,
-   "hex": "00000001",
-   "kind": "data",
-   "name": ".data.arp_octaves",
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.arp_octaves",
    "size": 4
   },
   {
@@ -10527,35 +10527,35 @@
   },
   {
    "align": 2,
-   "hex": "4feffff448d70c04266f0010246f00142f0b4eb900000000588f4a80670000a8428042017440158108005280b48066f2327c011024bc4350535441ea000842803549000410b3080043f308015488548072201151ffffb28066ea156b00220028203c811c9dc54281156b00230029156b0024002a156b0020002c156b0021002d156b0025002e156b0026002f156b00270030156b00280031156b0029003275b218005281b580243c010001934c020800743cb48166e82540003c42804cd70c044fef000c4e7570ff60f2",
+   "hex": "4feffff448d70c04266f0010246f00142f0b4eb900000000588f4a80670000a8428042017440158108005280b48066f2327c021024bc4350535441ea000842803549000410b3080043f308015488548072201151ffffb28066ea156b00220028203c811c9dc54281156b00230029156b0024002a156b0020002c156b0021002d156b0025002e156b0026002f156b00270030156b00280031156b0029003275b218005281b580243c010001934c020800743cb48166e82540003c42804cd70c044fef000c4e7570ff60f2",
    "kind": "text",
    "name": ".text.cp_encode",
    "size": 202
   },
   {
    "align": 2,
-   "hex": "4fefffc0704048d74c0c2c6f0044206f0048b0af004c670c70ff4cd74c0c4fef00404e7571907243b28066ec71a800017450b48066e271a800027653b68066d871a800037254b28066ce71a8000453804a8066c471a800057610b68066ba4a28000666b44a28000766ae4a28002b66a870334a30080066a05280723cb28066f2203c811c9dc5428175b01800763c5281b580243c010001934c020800b68166e8327c001845e8003c22002609e6a975927381b2826600ff62528a518972f8b28966e6428045ef00164202762a158208005280b68066f22408264a43e80008068200000028739171a900015489e189d08136c0b48966ee73a8002c71a8002d3f68002800381f68002a003ae1891f680032003f2f68002e003bd0813f4000362f0a4eb900000000588f4a806700feec428041f20800722a1d9008005280b28066f042806000fed6",
+   "hex": "4fefffc0704048d74c0c2c6f0044206f0048b0af004c670c70ff4cd74c0c4fef00404e7571907243b28066ec71a800017450b48066e271a800027653b68066d871a800037254b28066ce1028000453807180e28866c271a800057610b68066b84a28000666b24a28000766ac4a28002b66a670334a300800669e5280723cb28066f2203c811c9dc5428175b01800763c5281b580243c010001934c020800b68166e8327c001845e8003c22002609e6a975927381b2826600ff60528a518972f8b28966e6428045ef00164202762a158208005280b68066f22408264a43e80008068200000028739171a900015489e189d08136c0b48966ee71a8000453804a806618302f002674022200538173c1b4816500ff0654803f40002673a8002c71a8002d3f68002800381f68002a003ae1891f680032003f2f68002e003bd0813f4000362f0a4eb900000000588f4a806700fec8428041f20800722a1d9008005280b28066f042806000feb2",
    "kind": "text",
    "name": ".text.cp_decode",
-   "size": 326
+   "size": 362
   },
   {
    "align": 2,
-   "hex": "0000000000000000000000000001000000010001000000000000000000000000",
+   "hex": "0000000000000000000000000001000000000001000000000000000000000000",
    "kind": "data",
    "name": ".rodata.minimum",
    "size": 32
   },
   {
    "align": 2,
-   "hex": "000b0003007f007f01f4007f0008000400030064004b000200010000007f007f",
+   "hex": "000b0003007f007f01f4007f0008000400060064004b000200010000007f007f",
    "kind": "data",
    "name": ".rodata.maximum",
    "size": 32
   },
   {
    "align": 2,
-   "hex": "206f0004428042011181080052807258b28066f250c17001214000082140000c203c0000400021400054700411410052724031400028203c0005000f2140003831410020223c000100322141002c4e75",
+   "hex": "206f0004428042011181080052807258b28066f250c17001214000082140000c203c0000400021400054700411410052724031400028203c0005000f2140003831410020223c000300322141002c4e75",
    "kind": "text",
    "name": ".text.cs_init",
    "size": 80
@@ -10597,7 +10597,7 @@
   },
   {
    "align": 2,
-   "hex": "4feffff0222f001848d7041c246f0014202f001c242f00284a81660c70ff4cd7041c4fef00104e75b2aa000866ee4a9267ea4a2a004c67e47207b28065de4aaf002067d82f00202a000471b2083c2f004eb900000000508f20404a826704224222804a2a00506704428060b2102a004d738055814a8167f072013408256f002400141541005115420052220874010681fffffff0b4816400009c720db28867c84a00660ab48864c07404b48867ba4a2a004f67067001b08864ae71aa004e53804a806606740ab488679e240806820000000e36322a0043f90000000073f18a0079c39284b2af00206f04222f002043f90000000071f18a002240200193c4b3c16f0220094a806700ff16226a000c72ffb2896700ff542200d28335812a00700152892408e5a82549000c81aa001070016000feec70026000fee6",
+   "hex": "4feffff0222f001848d7041c246f0014202f001c242f00284a81660c70ff4cd7041c4fef00104e75b2aa000866ee4a9267ea4a2a004c67e47207b28065de4aaf002067d82f00202a000471b2083c2f004eb900000000508f20404a826704224222804a2a00506704428060b2102a004d738055814a8167f072013408256f002400141541005115420052220874010681fffffff0b4816400009c720db28867c84a00660ab48864c07404b48867ba4a2a004f67067001b08867ae71aa004e53804a806606740ab488679e240806820000000e36322a0043f90000000073f18a0079c39284b2af00206f04222f002043f90000000071f18a002240200193c4b3c16f0220094a806700ff16226a000c72ffb2896700ff542200d28335812a00700152892408e5a82549000c81aa001070016000feec70026000fee6",
    "kind": "text",
    "name": ".text.cs_edit",
    "size": 314
@@ -10625,14 +10625,14 @@
   },
   {
    "align": 2,
-   "hex": "000b0003007f007f01f4007f0008000400030064004b000200010000007f007f",
+   "hex": "000b0003007f007f01f4007f0008000400060064004b000200010000007f007f",
    "kind": "data",
    "name": ".rodata.high",
    "size": 32
   },
   {
    "align": 2,
-   "hex": "0000000000000000000000000001000000010001000000000000000000000000",
+   "hex": "0000000000000000000000000001000000000001000000000000000000000000",
    "kind": "data",
    "name": ".rodata.low",
    "size": 32
@@ -10723,17 +10723,17 @@
   },
   {
    "align": 1,
-   "hex": "4155544f00415250004f4e002d2d004c524e44004b455953005553455200504144004f464600535450004f4354002500",
+   "hex": "4155544f00415250004f4e002d2d004c524e44003000504144004f4646004b45595300535450002500",
    "kind": "data",
    "name": ".rodata.value.str1.1",
-   "size": 48
+   "size": 41
   },
   {
    "align": 2,
-   "hex": "4feffff448d7040c222f001824010682fffffff0e28a206f0010246f0014226f001c202f00204a8266247410b481660220092f40001876082f4300144cd7040c2f4800104fef000c4ef90000000034321a1c71c24a81662a4a2a004d6700017e4a2a004f66000180720bb2806500016443f90000000020310c002f400018760660b67601b68166204a2a004d670001444a2a004f6600015a7203b2806500013443f90000000060ce7604b68166244a2a004d6700011e4a80670000dc4cd7040c2f4000142f4800104fef000c4ef9000000007606b681663c73aa004e53814a816620263c000000002f4300184cd7040c2f4000142f4800104fef000c4ef9000000007208b280650000ca43f9000000006000ff647608b681660c223c000000002f41001860c67609b6816608223c0000000060ec760ab681662073aa004e53814a816700008e263c00000000068000000065e2882f43001860927607b68166107204b280656c43f9000000006000ff08760bb68166107202b280655643f9000000006000fef2760db681676e760cb681660e4a80666e203c000000006000fedc5b814a816600ff164a806762727fb28067663002747f263c000000002f430018c0fc006406800000003f4c4200006000ff1c203c000000006000fea0203c000000006000fe96203c000000006000fe8c203c000000006000fe82203c000000006000fe78203c000000006000fe6e203c000000006000fe64203c000000006000fe5a",
+   "hex": "4feffff448d7040c222f001824010682fffffff0e28a206f0010246f0014226f001c202f00204a8266247410b481660220092f40001876082f4300144cd7040c2f4800104fef000c4ef90000000034321a1c71c24a8166224a2a004d67000192720bb2806500018043f90000000020310c002f400018760660be7601b68166204a2a004d670001604a2a004f6600016c7203b2806500015043f90000000060ce7604b68166144a2a004d6700013a4a80670000f82f40001460607606b681663c73aa004e53814a816620263c000000002f4300184cd7040c2f4000142f4800104fef000c4ef9000000007208b280650000f643f9000000006000ff747608b68166327203b280670000fc7402b480651c9280702d10c02f4100144cd7040c2f4800104fef000c4ef90000000022005781702b60e07609b681660c223c000000002f410018608e760ab681662273aa004e53814a8167000090263c00000000068000000065e2882f4300186000ff687607b68166107204b280656c43f9000000006000feec760bb68166107202b280655643f9000000006000fed6760db681676e760cb681660e4a80666e203c000000006000fec05b814a816600fefa4a806762727fb28067663002747f263c000000002f430018c0fc006406800000003f4c4200006000fef0203c000000006000fe84203c000000006000fe7a203c000000006000fe70203c000000006000fe66203c000000006000fe5c203c000000006000fe52203c000000006000fe48203c000000006000fe3e",
    "kind": "text",
    "name": ".text.value",
-   "size": 546
+   "size": 566
   },
   {
    "align": 2,
@@ -10758,7 +10758,7 @@
   },
   {
    "align": 2,
-   "hex": "4fefffdc48d77c04266f002c246f00282f2f0030202b000471b3083c2f004eb9000000004212508f2c40700db08e650001924a2b004d662e7201b28e64067404b48e6622203c0000000072202f4000302f41002c2f4a00284cd77c044fef00244ef9000000004a2b004f670e7401b48e6508203c0000000060d071ab004e53804a806618700ab08e6612223c0000000074202f4100302f42002c60b841f90000000074012f30ec00487800202f0a4eb9000000004878001f2f0a49f9000000004e94723d2a40528d158108004879000000004879000000002f0e2f0b200f0680000000402f002f4000404eb9000000004fef002873f3ea1c202f0018b48e660000907403b481650a41f90000000020301c002f007020908d2f004872d8004bf9000000004e954878001f2f0a4e944fef00147204b28e66244a6b0024671e742048790000000094802f02487208004e954878001f2f0a4e944fef00147201240ee5a9c2ab00104a8167587420d5c094802f42002c223c000000002f4a00284cd77c042f4100304fef00244ef9000000007407b48e66127404b4816500ff7641f9000000006000ff68740bb48e6600ff647402b4816500ff5c41f9000000006000ff4e4cd77c044fef00244e75",
+   "hex": "4fefffdc48d77c04266f002c246f00282f2f0030202b000471b3083c2f004eb9000000004212508f2c40700db08e650001924a2b004d662e7201b28e64067404b48e6622203c0000000072202f4000302f41002c2f4a00284cd77c044fef00244ef9000000004a2b004f670e7401b48e6608203c0000000060d071ab004e53804a806618700ab08e6612223c0000000074202f4100302f42002c60b841f90000000074012f30ec00487800202f0a4eb9000000004878001f2f0a49f9000000004e94723d2a40528d158108004879000000004879000000002f0e2f0b200f0680000000402f002f4000404eb9000000004fef002873f3ea1c202f0018b48e660000907403b481650a41f90000000020301c002f007020908d2f004872d8004bf9000000004e954878001f2f0a4e944fef00147204b28e66244a6b0024671e742048790000000094802f02487208004e954878001f2f0a4e944fef00147201240ee5a9c2ab00104a8167587420d5c094802f42002c223c000000002f4a00284cd77c042f4100304fef00244ef9000000007407b48e66127404b4816500ff7641f9000000006000ff68740bb48e6600ff647402b4816500ff5c41f9000000006000ff4e4cd77c044fef00244e75",
    "kind": "text",
    "name": ".text.cv_feedback",
    "size": 460
@@ -10779,7 +10779,7 @@
   },
   {
    "align": 2,
-   "hex": "4fefffb0428048d77cfc2c6f0054266f0058246f005c2f6f006000302f6f006400342f6f006800382f6f006c003c42061d86080052800c80000000ca66f0202b00047e0fbe806402428071b3083c2f2f00302f0a2a404eb900000000508f24004a80670e206b0004b1ea00046700015442822c0e284e428778010686000000c02f072f0d4eb900000000508f72112600b2806500009e41f9000000002f300c00487800082f0c4eb9000000002f2f00442f2f00442f032f0b486c00404eb9000000004fef0020700fb08365664a82671e2f2f00302f0a4eb900000000508f4a80670c7001e7a8c0ab00104a80670e2204102e00b4efa982801d4100b420035580e28867087a05ba83660000d2707f122e00c82a042046efad3241220982851d4100c832333a1cc2fc007f4c401001118178005287508c7008b0876600ff44102b004d670000ca718053804a80660000ca203c000000002f0048780006486e009649f9000000004e94280e06840000009c260e2a040683000000b44fef000c487900000000487800062f054e945c854fef000cba8366e84a82660000887401263c000000001d4200c92f4300584dee00802f4e00544cd77cfc4fef00504ef9000000002013b0926600fea875ab004db4aa000857c2750244826000fe987009b0836720720ab28367207a04ba836600ff444a2b004d6700ff3c203c000001f46000ff0e70646000ff08704b6000ff02203c000000006000ff40203c000000006000ff36242a00140802000a660000b47a097c012002eaa8c0861d4000ba2002e0887e014283c0871d4000bb42802a007201068500000010eba9c2824a8167387bc043f7384049f73844222a0024e78deaa92f41002c7faf002f22034a81670a1a29ffff7d85be86655e41ef002f52831f9018401f80184452807204b28066ae2a022c0e028508000000428749f9000000000686000000b52f45002cbe8366360802000e6700009874022a3c0000000042031d4200c91d4300b92f4500586000fece70026000ff54128518acffff53815389538c6086487800017a0771b778442f002f044e9473b77850202a002820464fef000ce789e2a8c085118078004aaf002c6732206a002c20080800000967265681202a00287a0ae2a82208eaa9b3807203c0814a80660e7201102e00b9efa982801d4100b952875c846000ff604aaf003c67147c032e3c000000001d4600c92f4700586000fe3879aa00367001b084670820045780e288660642051d4500b94a2a0033671a7c03bc8466147e0441f9000000001d4700c92f4800586000fe002f2f00302f0b4eb900000000508f4a8067000116700142011d4000bf1d4100b975ab00524a2b004d661a7601b68264067a04ba82660e2c3c000000002f4600586000fdbc4a2b004f670e7e01be82650841f90000000060a07011b082650000c041f9000000002f302c0049ee00802f0c4eb900000000487800152f0c4eb90000000072204bf90000000041f6080028005284114100802f2f00482f2f00482f022f0b2a0f0685000000682f054eb9000000004fef00202e85701690842f00487448004e95487800152f0c4eb9000000004fef00147211b28267447201e5a9c2ab00104a816720220076155281b68165167a164879000000009a802f05487408004e954fef000c5b824a8266127e011d4700bc1d6b002700bd1d6a003300be4cd77cfc4fef00504e7547ee00804a8d67424a2a0033673c7004b0846612223c000000002f4100582f4b00546000fcba7a03ba84660c2c3c000000002f46005860e653844a84660c41f9000000002f48005860d420020280007000004a80660000a220020280038000004a806700008a203c000000002f002f0b4eb900000000508f4a8d6600ff7a487800152f0b4eb900000000508f26000802000b671c7c1652834879000000009c802f06487308004eb9000000004fef000c71aa00314a806700ff3e22037e155a81be816500ff327220742bddc347f338021d4100801d4200812f4b00544cd77cfc2f4000584fef00504ef900000000203c000000006000ff764a8d660000ec4879000000002f0b49f9000000004e94508f4a836700ff6a4284307c000c4281428091c47bb708407c0c528043f058002a094c4650077a01efad8285b08366e441f900000000428571d0b081660000824bf9000000002f354c002f0b4e94487800152f0b4eb90000000049f90000000041f90000000072162f305c0092802f017a13487308004e94487800152f0b4eb90000000073af00644fef00243601c6fcaaabeaabc7fc000c92837381b8816700fed07c2f7e159e80178608002f351c002f07487308014e944fef000c6000feb2548852857008b0856600ff6e5284720cb2846600ff366000fe984a2a0033660e243c000000002f4200586000fe24202a002c0280000001004a80673648790000000076012f0b4eb9000000002f4300644dee0084202a002c2f4e005c4cef7cfc000871802f4000604fef00584ef9000000002a3c000000002f4500586000fdd2",
+   "hex": "4fefffb0428048d77cfc2c6f0054266f0058246f005c2f6f006000302f6f006400342f6f006800382f6f006c003c42061d86080052800c80000000ca66f0202b00047e0fbe806402428071b3083c2f2f00302f0a2a404eb900000000508f24004a80670e206b0004b1ea00046700015442822c0e284e428778010686000000c02f072f0d4eb900000000508f72112600b2806500009e41f9000000002f300c00487800082f0c4eb9000000002f2f00442f2f00442f032f0b486c00404eb9000000004fef0020700fb08365664a82671e2f2f00302f0a4eb900000000508f4a80670c7001e7a8c0ab00104a80670e2204102e00b4efa982801d4100b420035580e28867087a05ba83660000d2707f122e00c82a042046efad3241220982851d4100c832333a1cc2fc007f4c401001118178005287508c7008b0876600ff44102b004d670000ca718053804a80660000ca203c000000002f0048780006486e009649f9000000004e94280e06840000009c260e2a040683000000b44fef000c487900000000487800062f054e945c854fef000cba8366e84a82660000887401263c000000001d4200c92f4300584dee00802f4e00544cd77cfc4fef00504ef9000000002013b0926600fea875ab004db4aa000857c2750244826000fe987009b0836720720ab28367207a04ba836600ff444a2b004d6700ff3c203c000001f46000ff0e70646000ff08704b6000ff02203c000000006000ff40203c000000006000ff36242a00140802000a660000b47a097c012002eaa8c0861d4000ba2002e0887e014283c0871d4000bb42802a007201068500000010eba9c2824a8167387bc043f7384049f73844222a0024e78deaa92f41002c7faf002f22034a81670a1a29ffff7d85be86655e41ef002f52831f9018401f80184452807204b28066ae2a022c0e028508000000428749f9000000000686000000b52f45002cbe8366360802000e6700009874022a3c0000000042031d4200c91d4300b92f4500586000fece70026000ff54128518acffff53815389538c6086487800017a0771b778442f002f044e9473b77850202a002820464fef000ce789e2a8c085118078004aaf002c6732206a002c20080800000967265681202a00287a0ae2a82208eaa9b3807203c0814a80660e7201102e00b9efa982801d4100b952875c846000ff604aaf003c67147c032e3c000000001d4600c92f4700586000fe3879aa00367001b084670820045780e288660642051d4500b94a2a0033671a7c03bc8466147e0441f9000000001d4700c92f4800586000fe002f2f00302f0b4eb900000000508f4a8067000116700142011d4000bf1d4100b975ab00524a2b004d661a7601b68264067a04ba82660e2c3c000000002f4600586000fdbc4a2b004f670e7e01be82660841f90000000060a07011b082650000c041f9000000002f302c0049ee00802f0c4eb900000000487800152f0c4eb90000000072204bf90000000041f6080028005284114100802f2f00482f2f00482f022f0b2a0f0685000000682f054eb9000000004fef00202e85701690842f00487448004e95487800152f0c4eb9000000004fef00147211b28267447201e5a9c2ab00104a816720220076155281b68165167a164879000000009a802f05487408004e954fef000c5b824a8266127e011d4700bc1d6b002700bd1d6a003300be4cd77cfc4fef00504e7547ee00804a8d67424a2a0033673c7004b0846612223c000000002f4100582f4b00546000fcba7a03ba84660c2c3c000000002f46005860e653844a84660c41f9000000002f48005860d420020280007000004a80660000a220020280038000004a806700008a203c000000002f002f0b4eb900000000508f4a8d6600ff7a487800152f0b4eb900000000508f26000802000b671c7c1652834879000000009c802f06487308004eb9000000004fef000c71aa00314a806700ff3e22037e155a81be816500ff327220742bddc347f338021d4100801d4200812f4b00544cd77cfc2f4000584fef00504ef900000000203c000000006000ff764a8d660000ec4879000000002f0b49f9000000004e94508f4a836700ff6a4284307c000c4281428091c47bb708407c0c528043f058002a094c4650077a01efad8285b08366e441f900000000428571d0b081660000824bf9000000002f354c002f0b4e94487800152f0b4eb90000000049f90000000041f90000000072162f305c0092802f017a13487308004e94487800152f0b4eb90000000073af00644fef00243601c6fcaaabeaabc7fc000c92837381b8816700fed07c2f7e159e80178608002f351c002f07487308014e944fef000c6000feb2548852857008b0856600ff6e5284720cb2846600ff366000fe984a2a0033660e243c000000002f4200586000fe24202a002c0280000001004a80673648790000000076012f0b4eb9000000002f4300644dee0084202a002c2f4e005c4cef7cfc000871802f4000604fef00584ef9000000002a3c000000002f4500586000fdd2",
    "kind": "text",
    "name": ".text.cv_build",
    "size": 1828
@@ -11233,7 +11233,7 @@
    "size": 32
   }
  ],
- "source_sha256": "0ca4e1858ada4a0a9ee7f5f81347105745b8ef9a9fc41493694f4b6cb22c277d",
+ "source_sha256": "71d4836bac3e3f0679230801172299205b0039aeb34f088a0557ab6414c43ceb",
  "symbols": [
   {
    "global": false,
@@ -11251,6 +11251,12 @@
    "global": false,
    "name": ".sec..bss.arp_mix",
    "section": ".bss.arp_mix",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.arp_octaves",
+   "section": ".bss.arp_octaves",
    "value": 0
   },
   {
@@ -11683,12 +11689,6 @@
    "global": false,
    "name": ".sec..data.arp_gate",
    "section": ".data.arp_gate",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..data.arp_octaves",
-   "section": ".data.arp_octaves",
    "value": 0
   },
   {
@@ -12510,7 +12510,7 @@
   {
    "global": false,
    "name": "arp_octaves",
-   "section": ".data.arp_octaves",
+   "section": ".bss.arp_octaves",
    "value": 0
   },
   {
@@ -14336,8 +14336,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "7526",
-  "isa_check": "ddd692f73b5ad628c0af7cd6ac3fb1496f1a32be92ede185570d03c7716c519f",
+  "instructions_redecoded": "7569",
+  "isa_check": "585ca5316ccbd9d3dfd923bcf1bd5ddc3f3d49875fd1b8c3106bf1b75e72c03d",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

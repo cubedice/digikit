@@ -165,12 +165,12 @@ stock controls contract above determines appearance.
 | Knob | Label | What it does / what you see |
 | --- | --- | --- |
 | A | TUNE | Native transpose, including fine tuning; preserve its current native range, adjustment and Sound storage. |
-| B | CHRD | Chord shape in ROOT mode; `AUTO` in PLAY because the keyboard supplies the notes; `USER` for a learned shape. Full detected/generated chord appears in Status. |
+| B | CHRD | Chord shape in ROOT mode; `AUTO` in PLAY because the keyboard supplies the notes; `USER` for a learned shape. Turning B always lets you leave USER for another chord in either direction, without deleting the learned shape. Full detected/generated chord appears in Status. |
 | C | VOIC | Close/open/inversion choice in ROOT; `--` in PLAY; `LRND` for the saved learned voicing. Shorten `CLOSE` to `CLS`, with the full name in focus. |
 | D | COLR | Existing 0..127 tone-color macro. Rotary widget; exact value while turning or holding SRC. |
 | E | DRFT | Existing 0..127 drift macro. Rotary widget; no fake measured cents value. |
 | F | STRM | Chord spread, OFF or milliseconds; unavailable in PLAY. For values too long for the cell, show the number and put units in full focus feedback. |
-| G | MIX | Pad-to-arp balance: PAD at 0, ARP at 127, percentage between. Focus says `Arp Mix`; it is not output volume. |
+| G | MIX | Pad-to-arp balance: PAD at 0, ARP at 127, percentage between. Focus says `Arp Mix`; it is not output volume. Same-pitch arp onsets align with their held pad to avoid pitch-dependent cancellation; the arp retains its own gate and envelope. |
 | H | LEV | Source level. Exact stock control and glyph; focus retains `Sample Level`. |
 
 ## ARP: controls and explanation
@@ -181,7 +181,7 @@ Use the same native layout and track LEV on ARP, with the controls below.
 | --- | --- | --- |
 | A | RATE | Existing clock division, e.g. 1/16. Triplet and step-only representations must fit without implying unsupported timing. |
 | B | ORDR | UP, DOWN, UPDN, PLAY, or RND. Full `As Played` in focus distinguishes arp order from keyboard PLAY mode. |
-| C | OCTS | One to three octaves of arp expansion. |
+| C | OCTS | Signed octave spread: **−3 to +3**, in one direction at a time. **0** uses only the played octave; **+1…+3** add one to three octaves above it; **−1…−3** add one to three below it. The pad pitch stays unchanged. Values display as `-3`, `0`, `+3`, without the ambiguous `OCT` suffix. |
 | D | GATE | Note-gate percentage; full value in focus. |
 | E | SWNG | Existing swing percentage, straight at 50%; `--` when the active clock capability cannot support it. |
 | F | RST | TRIG, PATT or CONT; full restart-policy name in focus. |

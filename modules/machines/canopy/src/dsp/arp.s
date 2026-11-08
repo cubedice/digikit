@@ -12,6 +12,20 @@
 .EXTERN _cp_blend;
 .EXTERN _cp_tune_changed;
 .EXTERN _cp_v2_instance;
+.GLOBAL _ca_prepare;
+// Remember the foreground phases before the pad renders this block. The arp
+// renders afterwards; using the pad's advanced phase would offset it by 32
+// samples. This scratch belongs to one synchronous process call, not a voice.
+_ca_prepare:
+    I0 = R4;
+    I1 = _ca_pad_start;
+    R2 = 32;
+_ca_copy_pad_start:
+    R0 = DM(I0, M6);
+    DM(I1, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _ca_copy_pad_start;
+    RTS;
 _ca_process:
     DM(_ca_state) = R4;
     DM(_ca_input) = R8;
@@ -38,6 +52,8 @@ _ca_native_tuned:
     DM(_ca_restart) = R0;
     R0 = 1;
     DM(_ca_octaves) = R0;
+    R0 = 12;
+    DM(_ca_octave_step) = R0;
     R0 = DM(10, I2);
     R1 = 16;
     COMP(R0, R1);
@@ -52,6 +68,23 @@ _arp_full_controls:
     DM(_ca_order) = R0;
     R0 = DM(11, I1);
     DM(_ca_octaves) = R0;
+    R0 = DM(0, I1);
+    R0 = FEXT R0 BY 0:8;
+    R1 = 8;
+    COMP(R0, R1);
+    IF NE JUMP _ca_span_ready;
+    // CPS8: biased -3..+3 additional octaves, only one direction at a time.
+    R0 = DM(11, I1);
+    R1 = 3;
+    R0 = R0 - R1;
+    R1 = 12;
+    R0 = PASS R0;
+    IF LT R1 = -R1;
+    DM(_ca_octave_step) = R1;
+    R0 = ABS R0;
+    R0 = R0 + 1;
+    DM(_ca_octaves) = R0;
+_ca_span_ready:
     R0 = DM(12, I1);
     DM(_ca_swing) = R0;
     R0 = DM(13, I1);
@@ -227,11 +260,15 @@ _ca_stop_next:
     R0 = 2;
     DM(1, I2) = R0;
 _ca_render:
+    R0 = 0;
+    DM(_ca_rendered) = R0;
     CALL _ca_try_start;
     R4 = DM(_ca_voice);
     R8 = _ca_pcm;
     CALL _cp_render_one;
     DM(_ca_active) = R0;
+    R0 = 1;
+    DM(_ca_rendered) = R0;
     CALL _ca_try_start;
     R1 = DM(_ca_active);
     R0 = R0 OR R1;
@@ -281,10 +318,59 @@ _ca_try_start:
     DM(19, I2) = R0;
     R0 = DM(20, I2);
     DM(21, I2) = R0;
+    CALL _ca_align_phase;
     R0 = 1;
     RTS;
 _ca_no_start:
     R0 = 0;
+    RTS;
+// A base-octave retrigger shares its held owner's oscillator phase. Independent
+// reset phases otherwise cancel at intermediate PAD/ARP mixes according to
+// pitch and onset time. Match both identity and actual tuned rotation: octave
+// extensions and stale/replaced owners keep their independent phase. Drift
+// remains independent after onset, as before. If a ramp completed during this
+// render, the new group first sounds next block and needs the end phase instead.
+_ca_align_phase:
+    R0 = DM(_ca_voice);
+    I1 = R0;
+    R8 = DM(19, I1);
+    R0 = DM(_ca_rendered);
+    R0 = PASS R0;
+    IF NE JUMP _ca_phase_after;
+    I0 = _ca_pad_start;
+    JUMP _ca_phase_find;
+_ca_phase_after:
+    R0 = DM(_ca_state);
+    I0 = R0;
+_ca_phase_find:
+    R10 = 4;
+_ca_phase_owner:
+    R0 = DM(0, I0);
+    COMP(R0, R8);
+    IF NE JUMP _ca_phase_next;
+    R0 = DM(1, I0);
+    R1 = 3;
+    R0 = R0 AND R1;
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE RTS;
+    R0 = DM(4, I0);
+    R1 = DM(4, I1);
+    COMP(R0, R1);
+    IF NE RTS;
+    R0 = DM(5, I0);
+    R1 = DM(5, I1);
+    COMP(R0, R1);
+    IF NE RTS;
+    R0 = DM(2, I0);
+    DM(2, I1) = R0;
+    R0 = DM(3, I0);
+    DM(3, I1) = R0;
+    RTS;
+_ca_phase_next:
+    MODIFY(I0, 8) (NW);
+    R10 = R10 - 1;
+    IF NE JUMP _ca_phase_owner;
     RTS;
 // A delayed onset cannot outlive its candidate. Live bend follows the active
 // candidate without changing its oscillator phase or envelope.
@@ -422,7 +508,7 @@ _ca_candidate_next:
     COMP(R0, R1);
     IF LT JUMP _ca_candidate;
     RTS;
-// Expand at most four admitted notes to at most twelve octave candidates.
+// Expand at most four admitted notes to at most sixteen octave candidates.
 _ca_expand:
     R0 = DM(_ca_count);
     DM(_ca_base_count) = R0;
@@ -436,11 +522,11 @@ _ca_octave:
 _ca_expand_note:
     R11 = PASS R11;
     IF EQ JUMP _ca_next_octave;
-    R0 = LSHIFT R10 BY 3;
-    R1 = LSHIFT R10 BY 2;
-    R0 = R0 + R1;
+    R1 = DM(_ca_octave_step);
+    R0 = R10 * R1 (SSI);
     R1 = DM(0, I0);
     R12 = R0 + R1;
+    IF LT JUMP _ca_expand_next;
     R1 = 127;
     COMP(R12, R1);
     IF GT JUMP _ca_expand_next;
@@ -491,6 +577,12 @@ _ca_sort_admission:
     R1 = DM(8, I0);
     R2 = DM(12, I0);
     R1 = R1 - R2;
+    R2 = DM(_ca_octave_step);
+    R2 = PASS R2;
+    IF GE JUMP _ca_sort_octaves;
+    R0 = -R0;
+    R1 = -R1;
+_ca_sort_octaves:
     COMP(R0, R1);
     IF NE JUMP _ca_sort_compare;
     R0 = DM(2, I0);
@@ -967,7 +1059,9 @@ _ca_tail_next:
 .PKBSS _ca_count, 4;
 .PKBSS _ca_slot, 4;
 .PKBSS _ca_active, 4;
-.PKBSS _ca_notes, 384;
+.PKBSS _ca_rendered, 4;
+.PKBSS _ca_pad_start, 128;
+.PKBSS _ca_notes, 512;
 .PKBSS _ca_pcm, 128;
 
 .PKBSS _ca_bend_note, 4;
@@ -975,6 +1069,7 @@ _ca_tail_next:
 
 .PKBSS _ca_order, 4;
 .PKBSS _ca_octaves, 4;
+.PKBSS _ca_octave_step, 4;
 .PKBSS _ca_swing, 4;
 .PKBSS _ca_base_count, 4;
 .PKBSS _ca_phase, 4;

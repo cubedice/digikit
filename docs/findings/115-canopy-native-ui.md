@@ -101,3 +101,79 @@ skipped; eight focused cases additionally cover PANEL arp bend isolation and
 native retuning. The keyboard-exit/glyph host revision passed all ten bridge tests.
 These observations have not received an independent image-byte audit, so none
 is marked [V]. Local audition is not proof of polyphonic pattern recording.
+
+## USER exit and directional octave spread (2026-11-06) [D]
+
+USER fixes the learned voicing, not the chord selector. SRC B can now leave USER
+in either direction while retaining the learned shape for later recall. The
+read-only guard and feedback apply only to VOICING. The compiled acceptance
+learns a shape, enters ROOT, and turns native encoder B through 10/9/10/11.
+
+ARP C now displays -3 through +3 as an octave spread, not transposition. Zero
+keeps the played octave, positive values add octaves above, and negative values
+add octaves below. The pad is unchanged. Four notes plus three extra octaves
+require at most sixteen candidates; extensions outside MIDI 0..127 are omitted.
+As Played retains the original notes first, then extends in the selected
+direction. Live changes take effect at the next onset.
+
+CPST v2 retains the 64-byte preset size and stores the signed spread with a +3
+bias. V1's total upward octave counts 1/2/3 migrate to spreads 0/+1/+2. Dirty
+comparison canonicalizes saved records so migration alone is not an edit.
+CPS8 carries the same biased field in both the audio and presentation halves;
+CPS6/7 keep their prior interpretation. Full 32-word copy and validation are
+required for CPS8; a focused test caught an initial ten-word copy error.
+
+## Physical screenshots and PLAY level investigation (2026-11-06) [D/O]
+
+The physical screen RPC was working. Windows RtMidi delivered the 1194-byte
+SysEx reply as 1024- and 170-byte fragments, which `dkscreen` discarded as
+separate incomplete messages. It now buffers through F7 before decoding.
+Nine tool tests cover complete and fragmented replies; ordinary RtMidi screen
+capture subsequently worked on the installed `6c03036ecf861957` image.
+
+Screen readback confirmed CANOPY in PLAY, but EXTERNAL MIDI was OFF. The first
+USB note recordings therefore exercised the stock path and are not CANOPY
+level evidence. It was temporarily enabled for the later comparison. The sound
+had ARP MIX 76/127 (60%, not the initially misread 50%), gate 25%, 1/16 rate,
+drift 23, and active delay/reverb/chorus sends of 43/52/19.
+
+Equal-velocity MIDI 60..71 recordings used the same 0.35..0.95-second window
+after each note-on. With effects sends off and source level verified at 57,
+pad-only RMS varied 1.056 dB, gradually with pitch. Restoring mix 76 while
+keeping sends off produced 5.166 dB with non-monotonic changes. These are
+whole-device USB measurements through the existing stock filter/AMP chain,
+not isolated oscillator levels. Captures had no overflows. The automatic
+transient-hit summary is unsuitable for these sustained notes; use the
+event-aligned measurements instead. Intermediate captures with an unverified
+mix or source level are excluded. Original sends, source level, mix and
+external-input setting were restored and read back on screen.
+
+An isolated assembled voice-kernel test over MIDI 48..84 at equal velocity
+measured only 0.0160 dB (Velvet) and 0.0236 dB (Reed) sustained RMS variation.
+The held pad and retriggered arp instead used independent reset phases. A new
+four-pitch test failed on the original code in both direct and protected
+execution: a same-pitch arp could oppose its held pad at intermediate MIX.
+
+The correction copies the held owner's phase at same-pitch arp onset, matching
+identity and tuned oscillator coefficients. A 128-byte temporary snapshot is
+taken before pad rendering because the arp renders afterwards. An onset
+deferred until after its own render uses the pad's end phase for the next
+block. The instance remains 800 bytes; the snapshot is per synchronous call,
+not retained ownership. Octave extensions do not copy the base phase. Existing
+independent drift, envelopes, release tails, note gain and mixer law remain.
+Phase, full-tail-pool and octave-boundary checks pass; physical post-update
+gain qualification is recorded separately in the follow-up handover.
+
+The final package passed all 312 CANOPY V2 DSP tests and compiled native UI/audio
+acceptance, then was installed on the DTII as image `366a87b86ab545d2`.
+Physical knob screenshots confirm both USER exits and spread -3/0/+3.
+USB/DIN input was enabled and saved at the user's request; the preserved sound
+and original effects sends were restored after testing.
+
+Post-update USB measurements reduced the note-to-note variation of the
+mixed-minus-pad level difference from 4.236 dB to 0.170 dB. However, the common
+whole-device response still rises across MIDI 60..71: 6.332 dB mixed and
+6.361 dB pad-only. The earlier pad-only recording varied 1.056 dB. Matching
+visible controls and correct measured pitches do not resolve that discrepancy;
+the remaining stock-processing/carrier-state contribution is still open.
+These results support the cancellation fix, not a claim of uniformly loud notes.

@@ -110,7 +110,7 @@ repeat SAVE to retry. Loading uses the last confirmed saved copy for this boot.
 The shared store may independently retry a failed write, but the preset UI does
 not claim confirmation until its own successful save.
 
-Each version-1 `canopy/preset/1` through `canopy/preset/4` value is 64 bytes.
+Each version-2 `canopy/preset/1` through `canopy/preset/4` value is 64 bytes.
 It includes stable logical control IDs 0-15, family, keyboard mode, local BPM,
 clock source, and the custom shape by value. It excludes routing, native TUNE/
 LEVEL, held keys, pedal membership, tokens, phase and pointers. Loading does not
@@ -124,6 +124,11 @@ keyboard only; no sequencer owner is implied. Swing retains the existing CPS5
 extra-delay percentage. Four presets plus the shape library occupy 390 bytes
 including settings-entry overhead, within the requested 1536-byte quota.
 The shared settings store checks its remaining capacity before inserting a value.
+
+Octave spread uses control ID 8 with a +3 bias: 0..6 represents -3..+3
+additional octaves in one direction. Version-1 presets remain readable: their
+1..3 total upward octaves migrate to 0..+2 spread without changing the sound.
+Migration alone does not mark a loaded preset unsaved.
 
 This checkpoint does not implement the named SRC pages, display telemetry or
 native Sound/pattern persistence. Those Stage 5 acceptance tasks remain open.
@@ -199,9 +204,11 @@ The packaged Stage 3 acceptance uses `out/patch/canopy-stage3.syx` and
 acceptance can run against the Stage 3 image as well. No physical device is
 flashed by these tests.
 
-Use matching firmware and CANOPY DKM builds together. Stage 5 uses the CPS7
+Use matching firmware and CANOPY DKM builds together. Stage 5 uses the CPS8
 32-word bank, including native TUNE and the complete custom presentation bank;
-the Stage 3 package above is a historical checkpoint.
+word 11 and presentation word 24 contain the biased signed octave spread.
+CPS6/CPS7 remain accepted with their original 1..3 total upward octaves.
+The Stage 3 package above is a historical checkpoint.
 ## Optional process status output
 
 Descriptor flag bit 0 opts an instrument into the V5/96-byte borrowed input.

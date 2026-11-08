@@ -5,6 +5,7 @@
 .GLOBAL _canopy_process;
 .EXTERN _cp_apply_packed;
 .EXTERN _cp_render;
+.EXTERN _ca_prepare;
 .EXTERN _cp_retune_all;
 .EXTERN _cp_native_tune;
 .EXTERN _cp_v2_instance;
@@ -177,6 +178,9 @@ _cv_six_controls:
     I0 = R0;
     R0 = DM(0, I0);
     R1 = FEXT R0 BY 0:8;
+    R2 = 8;
+    COMP(R1, R2);
+    IF EQ JUMP _cv_seven_controls;
     R2 = 7;
     COMP(R1, R2);
     IF EQ JUMP _cv_seven_controls;
@@ -301,12 +305,25 @@ _cv_five_body:
     R0 = PASS R0;
     IF LT JUMP _cv_bad;
     R0 = DM(11, I0);
+    R2 = DM(0, I0);
+    R2 = FEXT R2 BY 0:8;
+    R1 = 8;
+    COMP(R2, R1);
+    IF EQ JUMP _cv_spread_range;
     R1 = 1;
     COMP(R0, R1);
     IF LT JUMP _cv_bad;
     R1 = 3;
     COMP(R0, R1);
     IF GT JUMP _cv_bad;
+    JUMP _cv_spread_ok;
+_cv_spread_range:
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    R1 = 6;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+_cv_spread_ok:
     R0 = DM(12, I0);
     R1 = 75;
     COMP(R0, R1);
@@ -414,7 +431,7 @@ _cv_events:
     R1 = FEXT R0 BY 0:8;
     R2 = 7;
     COMP(R1, R2);
-    IF NE JUMP _cv_tune_ready;
+    IF LT JUMP _cv_tune_ready; // CPS7 and CPS8 have native tune.
     R0 = LSHIFT R0 BY -16;
     R1 = 0x4000;
     R0 = R0 - R1;
@@ -614,6 +631,8 @@ _cv_seeded:
     R4 = DM(_cv_state);
     R8 = DM(_cv_input);
     CALL _cs_prepare;
+    R4 = DM(_cv_state);
+    CALL _ca_prepare;
     R0 = DM(_cv_input);
     I2 = R0;
     R8 = DM(5, I2);

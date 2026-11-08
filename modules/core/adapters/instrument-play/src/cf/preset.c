@@ -1,6 +1,6 @@
 #include "preset.h"
-static const uint16_t maximum[CP_CONTROLS]={11,3,127,127,500,127,8,4,3,100,75,2,1,0,127,127};
-static const uint16_t minimum[CP_CONTROLS]={0,0,0,0,0,0,1,0,1,1,0,0,0,0,0,0};
+static const uint16_t maximum[CP_CONTROLS]={11,3,127,127,500,127,8,4,6,100,75,2,1,0,127,127};
+static const uint16_t minimum[CP_CONTROLS]={0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0};
 int cp_valid(const CpPreset *p)
 {
     uint32_t i;
@@ -24,7 +24,7 @@ int cp_encode(const CpPreset *p,uint8_t b[CP_RECORD_BYTES])
 {
     if(!cp_valid(p)) return -1;
     for(uint32_t i=0;i<CP_RECORD_BYTES;++i) b[i]=0;
-    b[0]='C'; b[1]='P'; b[2]='S'; b[3]='T'; b[4]=1; b[5]=CP_CONTROLS;
+    b[0]='C'; b[1]='P'; b[2]='S'; b[3]='T'; b[4]=2; b[5]=CP_CONTROLS;
     for(uint32_t i=0;i<CP_CONTROLS;++i) {
         b[8+2*i]=(uint8_t)(p->control[i]>>8); b[9+2*i]=(uint8_t)p->control[i];
     }
@@ -39,7 +39,7 @@ int cp_encode(const CpPreset *p,uint8_t b[CP_RECORD_BYTES])
 int cp_decode(CpPreset *out,const uint8_t *b,uint32_t length)
 {
     if(length!=CP_RECORD_BYTES || b[0]!='C' || b[1]!='P' || b[2]!='S' || b[3]!='T' ||
-        b[4]!=1 || b[5]!=CP_CONTROLS || b[6] || b[7] || b[43]) return -1;
+        (b[4]!=1 && b[4]!=2) || b[5]!=CP_CONTROLS || b[6] || b[7] || b[43]) return -1;
     for(uint32_t i=51;i<60;++i) if(b[i]) return -1;
     uint32_t h=checksum(b);
     for(uint32_t i=0;i<4;++i) if(b[60+i]!=(uint8_t)(h>>(24-8*i))) return -1;
@@ -48,6 +48,10 @@ int cp_decode(CpPreset *out,const uint8_t *b,uint32_t length)
      * initialization explicit, including padding copied below. */
     for(uint32_t i=0;i<sizeof(p);++i) ((volatile uint8_t *)&p)[i]=0;
     for(uint32_t i=0;i<CP_CONTROLS;++i) p.control[i]=(uint16_t)((uint32_t)b[8+2*i]*256+b[9+2*i]);
+    if(b[4]==1) {
+        if(p.control[CP_OCTAVES]<1 || p.control[CP_OCTAVES]>3) return -1;
+        p.control[CP_OCTAVES]+=2;
+    }
     p.family=b[40]; p.mode=b[41]; p.clock=b[42]; p.bpm=(uint16_t)((uint32_t)b[44]*256+b[45]);
     p.shape.count=b[46];
     for(uint32_t i=0;i<4;++i) p.shape.intervals[i]=b[47+i];

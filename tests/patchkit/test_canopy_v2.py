@@ -1328,6 +1328,138 @@ def native_controls(raw=0x4000, base=STRUM):
     return values
 
 
+def spread_controls(spread=0, order=0, raw=0x4000):
+    base = (5,) + LOCAL[1:] + (order, 1, 0, 0, 0, 0)
+    values = native_controls(raw, base)
+    values[0] = 8 | (raw << 16)
+    values[11] = values[24] = spread + 3
+    return values
+
+
+@pytest.mark.parametrize("pitch", [60, 64, 67, 71])
+def test_same_pitch_arp_retrigger_starts_in_phase_with_held_pad(canopy, pitch):
+    import struct
+
+    controls = spread_controls()
+    controls[6] = controls[21] = 64
+    canopy([note(1, pitch)], controls=controls, blocks=37)
+    r = canopy(controls=controls, state_edits={146: 89999})
+    for _ in range(4):
+        r = canopy(controls=controls)
+    assert r["state"][155] == 1  # the held pad owns this arp candidate
+    pad = voices(r)[1]
+    assert pad[4:6] == r["state"][140:142]
+
+    def phase(words):
+        return struct.unpack("<2f", struct.pack("<2I", *words))
+
+    assert phase(pad[2:4]) == pytest.approx(phase(r["state"][138:140]), abs=0.000002)
+
+
+def test_same_pitch_arp_phase_survives_full_shared_tail_pool(canopy):
+    import struct
+
+    controls = spread_controls()
+    controls[5] = controls[31] = 127
+    canopy([note(i, 60) for i in range(1, 5)], controls=controls, blocks=8)
+    r = canopy([note(5, 60), note(6, 60)], controls=controls)
+    assert r["state"][32] and r["state"][40]
+    old_arp = r["state"][136]
+    r = canopy(controls=controls, state_edits={146: 89999})
+    for _ in range(5):
+        r = canopy(controls=controls)
+    assert r["state"][136] and r["state"][136] != old_arp
+    pad = voices(r)[r["state"][155]]
+    phase = struct.unpack("<4f", struct.pack("<4I", *pad[2:4], *r["state"][138:140]))
+    assert phase[:2] == pytest.approx(phase[2:], abs=0.000002)
+
+
+@pytest.mark.parametrize("spread", [-1, 1])
+def test_octave_arp_does_not_copy_the_base_note_phase(canopy, spread):
+    import struct
+
+    controls = spread_controls(spread, order=3)
+    canopy([note(1, 60)], controls=controls, blocks=37)
+    r = canopy(controls=controls, state_edits={146: 89999})
+    assert r["state"][151] == 60 + 12 * spread
+    pad = voices(r)[1]
+    assert pad[4:6] != r["state"][140:142]
+    phase = struct.unpack("<4f", struct.pack("<4I", *pad[2:4], *r["state"][138:140]))
+    assert max(abs(phase[i] - phase[i + 2]) for i in range(2)) > 0.01
+
+
+@pytest.mark.parametrize("old_octaves", [1, 2, 3])
+def test_signed_spread_preserves_legacy_upward_audio(canopy, old_octaves):
+    base = (5,) + LOCAL[1:] + (0, old_octaves, 0, 0, 0, 0)
+    old = native_controls(base=base)
+    new = spread_controls(old_octaves - 1)
+    for ordinal in range(13):
+        events = [note(1, 60), note(2, 64), note(3, 67)] if not ordinal else []
+        a = canopy(events, controls=old, state_edits={146: 89999})
+        b = canopy(events, controls=new, state=0x20054000, state_edits={146: 89999})
+        assert a["out"] == b["out"] and a["state"] == b["state"]
+
+
+@pytest.mark.parametrize("spread", [-3, -2, -1, 0, 1, 2, 3])
+def test_signed_spread_uses_only_one_direction_and_keeps_pad_pitch(canopy, spread):
+    controls = spread_controls(spread, order=3)
+    r = canopy([note(1, 67), note(2, 60), note(3, 64), note(4, 72)], controls=controls)
+    pad_rotation = [r["state"][i * 8 + 4 : i * 8 + 7] for i in range(4)]
+    offsets = range(0, spread + (1 if spread >= 0 else -1), 1 if spread >= 0 else -1)
+    expected = [n + 12 * octaves for octaves in offsets for n in [67, 60, 64, 72]]
+    pitches = [r["state"][151]]
+    for _ in expected[1:]:
+        r = canopy(controls=controls, state_edits={146: 89999})
+        pitches.append(r["state"][151])
+    assert pitches == expected
+    assert [r["state"][i * 8 + 4 : i * 8 + 7] for i in range(4)] == pad_rotation
+    assert max(pitches) <= 127 and min(pitches) >= 0
+
+
+@pytest.mark.parametrize(
+    "spread,pitch,expected", [(-3, 12, [12, 0, 12]), (3, 115, [115, 127, 115])]
+)
+def test_signed_spread_skips_unplayable_extensions(canopy, spread, pitch, expected):
+    controls = spread_controls(spread, order=3)
+    r = canopy([note(1, pitch)], controls=controls)
+    pitches = [r["state"][151]]
+    for _ in expected[1:]:
+        r = canopy(controls=controls, state_edits={146: 89999})
+        pitches.append(r["state"][151])
+    assert pitches == expected
+
+
+def test_live_signed_spread_change_applies_at_next_onset_without_resetting_pad(canopy):
+    r = canopy([note(1, 60)], controls=spread_controls(3))
+    pad = r["state"][:8]
+    r = canopy(controls=spread_controls(-3), state_edits={146: 89999})
+    assert r["state"][151] == 36  # ordinal 1 in [24,36,48,60]
+    assert r["state"][0:2] == pad[0:2] and r["state"][4:7] == pad[4:7]
+    for _ in range(3):
+        r = canopy(controls=spread_controls(-3))
+    assert r["state"][198] == 36
+    bent = canopy([[4, 0, 0, 0, 16383, 0]], controls=spread_controls(-3))
+    assert bent["state"][198] == 36 and bent["state"][199] == 8191
+    assert bent["state"][140:142] != r["state"][140:142]
+    for _ in range(3):
+        r = canopy(controls=spread_controls(-3, raw=0x4C00))
+    reference = canopy(
+        [note(2, 48), [4, 0, 0, 0, 16383, 0]],
+        state=0x20054000,
+        controls=spread_controls(),
+    )
+    assert r["state"][140:142] == reference["state"][140:142]
+
+
+@pytest.mark.parametrize("bad", [-1, 7, 0xFFFFFFFF])
+def test_signed_spread_rejects_invalid_bank_before_mutating_voices(canopy, bad):
+    controls = spread_controls()
+    before = canopy([note(1, 60)], controls=controls)["state"]
+    controls[11] = controls[24] = bad & 0xFFFFFFFF
+    rejected = canopy([note(2, 64)], controls=controls)
+    assert rejected["regs"]["R0"] == 0xFFFFFFFF and rejected["state"] == before
+
+
 @pytest.mark.parametrize(
     "raw,pitch",
     [
@@ -1411,9 +1543,15 @@ def test_native_tune_detail_ack_contains_exact_applied_raw_value(canopy):
     assert bank[:16] == controls[16:]
 
 
-def test_native_tune_busy_callback_stays_within_declared_instruction_bound(canopy):
+@pytest.mark.parametrize("spread", [None, -3, 3])
+def test_native_tune_busy_callback_stays_within_declared_instruction_bound(
+    canopy, spread
+):
     base = (5, 1, 127, 127, 0, 127, 127, 300, 8, 100, 4, 3, 75, 0, 0, 750)
     controls = native_controls(0x4080, base)
+    if spread is not None:
+        controls[0] = 8 | (0x4080 << 16)
+        controls[11] = controls[24] = spread + 3
     measured = [
         canopy([note(i + 1, 48 + i, 127) for i in range(8)], controls=controls)[
             "instructions"
@@ -1424,7 +1562,8 @@ def test_native_tune_busy_callback_stays_within_declared_instruction_bound(canop
             "instructions"
         ]
     )
-    changed = native_controls(0x4C80, base)
+    changed = controls.copy()
+    changed[0] = (changed[0] & 0xFFFF) | (0x4C80 << 16)
     measured.append(
         canopy(
             [[4, 0, 0, 0, 16383 - i, 0] for i in range(8)],

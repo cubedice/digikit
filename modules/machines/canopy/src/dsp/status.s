@@ -369,7 +369,7 @@ _cu_detail_tune:
     R2 = FEXT R1 BY 0:8;
     R3 = 7;
     COMP(R2, R3);
-    IF NE JUMP _cu_detail_store;
+    IF LT JUMP _cu_detail_store; // Native tune is shared by CPS7 and CPS8.
     R0 = LSHIFT R1 BY -16;
     JUMP _cu_detail_store;
 _cu_detail_token:

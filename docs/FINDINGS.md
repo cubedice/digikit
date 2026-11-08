@@ -199,4 +199,5 @@ DTII physical DSP reset: [active SPI/DMA quiescence and retained ownership](find
 CANOPY SRC foundation: [explicit page capability and DT2 input interfaces](findings/80-canopy-src-pages.md) (**[D]**, ColdFire component proof; rendered pages and booted UI acceptance remain open).
 
 CANOPY native UI revision: [native SRC controls and resolved panel ownership](findings/115-canopy-native-ui.md)
-(**[D]/[O]**, native control paths, default pixel comparison, separate panel source and acceptance limits).
+(**[D]/[O]**, native control paths, default pixel comparison, separate panel source,
+USER exit, directional octave spread, fragmented physical screenshots and pad/arp phase interaction).

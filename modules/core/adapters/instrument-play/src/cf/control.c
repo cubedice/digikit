@@ -38,7 +38,7 @@ int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
  * retain note ownership, and coalesce knob motion while an ACK is pending. */
 static int pad_family=0, pad_color=64, pad_drift=0, pad_attack=5, pad_release=15;
 static int arp_mix=0, arp_bpm=120, arp_rate=4, arp_gate=50;
-static int arp_order=0, arp_octaves=1, arp_swing=0, arp_clock=0, arp_restart=0, pad_strum=0;
+static int arp_order=0, arp_octaves=0, arp_swing=0, arp_clock=0, arp_restart=0, pad_strum=0;
 static uint32_t pad_dirty=1;
 static void pad_changed(void *ctx,int value) { (void)ctx; (void)value; pad_dirty=1; }
 static KbState keyboard;
@@ -235,7 +235,7 @@ static void preset_snapshot(CpPreset *p)
     uint32_t sr=dkrt_irq_mask();
     uint16_t v[CP_CONTROLS]={(uint16_t)keyboard.type,(uint16_t)keyboard.voicing,
         (uint16_t)pad_color,(uint16_t)pad_drift,(uint16_t)pad_strum,(uint16_t)arp_mix,
-        (uint16_t)arp_rate,(uint16_t)arp_order,(uint16_t)arp_octaves,(uint16_t)arp_gate,
+        (uint16_t)arp_rate,(uint16_t)arp_order,(uint16_t)(arp_octaves+3),(uint16_t)arp_gate,
         (uint16_t)arp_swing,(uint16_t)arp_restart,(uint16_t)keyboard.latch,0,
         (uint16_t)pad_attack,(uint16_t)pad_release};
     for(uint32_t i=0;i<CP_CONTROLS;++i) p->control[i]=v[i];
@@ -284,7 +284,7 @@ int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint3
     case CP_ARP_MIX: arp_mix=v; break;
     case CP_RATE: arp_rate=v; break;
     case CP_ORDER: arp_order=v; break;
-    case CP_OCTAVES: arp_octaves=v; break;
+    case CP_OCTAVES: arp_octaves=v-3; break;
     case CP_GATE: arp_gate=v; break;
     case CP_SWING: arp_swing=v; break;
     case CP_RESTART: arp_restart=v; break;
@@ -356,8 +356,11 @@ static int preset_dirty(void)
 {
     CpPreset p; uint8_t b[CP_RECORD_BYTES]; preset_snapshot(&p);
     if(cp_encode(&p,b) || !(preset_present & (1u<<(preset_slot-1)))) return 1;
+    /* Compare current encodings: migrating a V1 preset alone is not an edit. */
+    CpPreset saved; uint8_t canonical[CP_RECORD_BYTES];
+    if(cp_decode(&saved,preset_records[preset_slot-1],CP_RECORD_BYTES) || cp_encode(&saved,canonical)) return 1;
     for(uint32_t i=0;i<CP_RECORD_BYTES;++i)
-        if(b[i]!=preset_records[preset_slot-1][i]) return 1;
+        if(b[i]!=canonical[i]) return 1;
     return 0;
 }
 static void preset_save(void *ctx,int value)
@@ -393,7 +396,7 @@ static void preset_load(void *ctx,int value)
     keyboard.preset_shape_active=1;
     pad_color=p.control[CP_COLOR]; pad_drift=p.control[CP_DRIFT];
     pad_strum=p.control[CP_STRUM]; arp_mix=p.control[CP_ARP_MIX];
-    arp_rate=p.control[CP_RATE]; arp_order=p.control[CP_ORDER]; arp_octaves=p.control[CP_OCTAVES];
+    arp_rate=p.control[CP_RATE]; arp_order=p.control[CP_ORDER]; arp_octaves=(int)p.control[CP_OCTAVES]-3;
     arp_gate=p.control[CP_GATE]; arp_swing=p.control[CP_SWING]; arp_restart=p.control[CP_RESTART];
     pad_attack=p.control[CP_ATTACK]; pad_release=p.control[CP_RELEASE];
     pad_family=p.family; arp_clock=p.clock; arp_bpm=p.bpm; pad_dirty=1;
@@ -454,7 +457,7 @@ static void fill(dk_ui_menu *m, void *ctx)
     dk_ui_value(m,arp_clock==1 ? "MASTER STEPS" : "NOTES / Q",&arp_rate,1,8,pad_changed,0);
     dk_ui_value(m,"ARP GATE",&arp_gate,1,100,pad_changed,0);
     dk_ui_action(m,arp_orders[arp_order],arp_choice,0,0);
-    dk_ui_value(m,"OCTAVES",&arp_octaves,1,3,pad_changed,0);
+    dk_ui_value(m,"OCTAVE SPREAD",&arp_octaves,-3,3,pad_changed,0);
     dk_ui_value(m,"SWING",&arp_swing,0,arp_clock==1 ? 0 : 75,pad_changed,0);
     dk_ui_action(m,arp_clocks[arp_clock],arp_choice,0,1);
     dk_ui_action(m,arp_restarts[arp_restart],arp_choice,0,2);
@@ -582,7 +585,7 @@ void instrument_play_tick(void)
      * The same revision owns SRC pending markers and the audio configuration. */
     CpPreset current; src_requested(&current);
     const uint16_t *v=current.control;
-    uint32_t values[32]={7|((uint32_t)current.mode<<8)|(src_state.native_tune<<16),current.family,
+    uint32_t values[32]={8|((uint32_t)current.mode<<8)|(src_state.native_tune<<16),current.family,
         v[CP_COLOR],v[CP_DRIFT],v[CP_ATTACK],v[CP_RELEASE],v[CP_ARP_MIX],current.bpm,
         v[CP_RATE],v[CP_GATE],v[CP_ORDER],v[CP_OCTAVES],v[CP_SWING],current.clock,
         v[CP_RESTART],(uint32_t)v[CP_STRUM]*3/2,
@@ -608,9 +611,9 @@ void instrument_play_tick(void)
         else prepared=(uint32_t)result;
     }
     if (phase == 1 && prepared && !mi_ledger.reset_mask &&
-        !mi_config_submit(0,src_state.revision,0x43505337,values,32)) { phase=2; pad_dirty=0; }
+        !mi_config_submit(0,src_state.revision,0x43505338,values,32)) { phase=2; pad_dirty=0; }
     if (phase==3 && src_state.revision>mi_transport.applied[0] &&
-        !mi_config_submit(0,src_state.revision,0x43505337,values,32)) pad_dirty=0;
+        !mi_config_submit(0,src_state.revision,0x43505338,values,32)) pad_dirty=0;
     if (phase == 2 && instrument_midi_ready(0,mi_ledger.epoch,mi_ledger.generations[0])) {
         if (!mi_route_enable(MI_PANEL,0,0,0) &&
             (!enabled || !usb || !mi_route_enable(0,(uint32_t)channel-1,0,0)) &&

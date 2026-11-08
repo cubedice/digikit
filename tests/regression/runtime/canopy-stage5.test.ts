@@ -207,7 +207,7 @@ test('CANOPY native SOUND and ARP pages and panel keys route controls to the aud
   const start = await bank();
   for (const encoder of [2, 3, 6]) {
     await session.client.inputTurn(encoder, 8);
-    await delay(700);
+    await waitEmulated(session, 50);
   }
   const readonly = await bank();
   expect(readonly.slice(16, 18)).toEqual(start.slice(16, 18));
@@ -216,7 +216,7 @@ test('CANOPY native SOUND and ARP pages and panel keys route controls to the aud
     .poll(
       async () => {
         await session.client.inputTurn(4, 4);
-        await delay(300);
+        await waitEmulated(session, 50);
         return (await bank())[18];
       },
       { timeout: 20000 },
@@ -232,12 +232,37 @@ test('CANOPY native SOUND and ARP pages and panel keys route controls to the aud
     .poll(
       async () => {
         await session.client.inputTurn(3, 2);
-        await delay(300);
+        await waitEmulated(session, 50);
         return (await bank())[24];
       },
       { timeout: 20000 },
     )
     .toBeGreaterThan(movement[24]!);
+  // One signed spread control: no transposition of the pad or bidirectional
+  // spread. The 0..6 wire value represents the visible -3..+3 range.
+  const tuneBeforeSpread = (await bank())[0]! >>> 16;
+  const setSpread = async (encoded: number) => {
+    // Acknowledge each small physical turn before the next. Wall-time waits
+    // and a large reversal can coalesce pending UART turns on a busy host.
+    let current = (await bank())[24]!;
+    while (current !== encoded) {
+      const delta = Math.sign(encoded - current);
+      await session.client.inputTurn(3, delta);
+      current += delta;
+      await expect.poll(async () => (await bank())[24], { timeout: 15000 }).toBe(current);
+    }
+  };
+  for (const [encoded, name] of [
+    [0, 'down'],
+    [3, 'zero'],
+    [6, 'up'],
+  ] as const) {
+    await setSpread(encoded);
+    expect((await bank())[11]).toBe(encoded);
+    expect((await bank())[0]! >>> 16).toBe(tuneBeforeSpread);
+    await captureRemoteOled(session, `canopy-spread-${name}`);
+  }
+  await setSpread(3);
   // Remaining editable PLAY controls, including every ARP encoder.
   for (const [encoder, index] of [
     [1, 22],
@@ -348,6 +373,33 @@ test('CANOPY native SOUND and ARP pages and panel keys route controls to the aud
   await expect.poll(() => cf('ip_keyboard_status'), { timeout: 15000 }).toBe(0);
   await expect.poll(() => cf('ip_keyboard_status', 7), { timeout: 30000 }).toBe(0);
   expect(await cf('ip_keyboard_status', 8)).toBe(0);
+  // USER is a chord choice within ROOT, not a read-only mode. Exercise both
+  // directions through the native encoder path after learning a real shape.
+  await menuRow(6);
+  await key('YES');
+  await key('DOWN');
+  await key('YES'); // ROOT + TYPE
+  await expect.poll(() => cf('ip_keyboard_status'), { timeout: 15000 }).toBe(1);
+  for (let i = 0; i < 3; i++) await key('NO');
+  if (await cf('ip_src_debug', 1)) await key('SRC');
+  for (const [delta, chord] of [
+    [10, 10],
+    [-1, 9],
+    [1, 10],
+    [1, 11],
+  ] as const) {
+    await session.client.inputTurn(2, delta);
+    await expect.poll(async () => (await bank())[16], { timeout: 15000 }).toBe(chord);
+    await waitEmulated(session, 100);
+  }
+  await captureRemoteOled(session, 'canopy-user-chord-exit');
+  console.info('CANOPY: USER chord exits in both directions through native encoder B');
+  await openDigikitMenu(key);
+  await key('YES');
+  await menuRow(6);
+  await key('YES');
+  await key('YES'); // restore PLAY before the preset/audio checks
+  await expect.poll(() => cf('ip_keyboard_status'), { timeout: 15000 }).toBe(0);
   await menuRow(34);
   await key('YES'); // PRESETS
   const savedBank = await bank();

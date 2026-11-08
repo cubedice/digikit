@@ -232,11 +232,22 @@ cannot clear pending markers without a matching DSP-applied bank. The status
 producer and native SRC attachment remain unfinished. Build the updated CANOPY
 package with the updated playback firmware: older packages cannot consume CPS6.
 
+## Signed octave spread (CPS8)
+
+ARP encoder C (`OCTS`) expands in one direction at a time: 0 uses the played
+octave, +1..+3 adds that many octaves above, and -1..-3 adds that many below.
+The pad stays at its played pitch. Out-of-range extensions are omitted; ORDER
+controls the sequence through the expanded notes. Edits affect the next arp
+onset without resetting held pad notes. Four admitted notes expand to at most
+sixteen candidates; there is still one arp voice. Values display without the
+ambiguous OCT suffix. Use matching CPS8 firmware and DKM. V1 presets migrate
+without changing their original sound; old CPS5/CPS6/CPS7 banks remain accepted.
+
 ## Movement controls (CPS5 compatibility)
 
 KEYBOARD setup exposes ARP MIX (0 pad, 127 arp), LOCAL BPM (30..300),
 NOTES/Q (1..8), gate percent (1..100), UP/DOWN/UP-DOWN/AS-PLAYED/RANDOM,
-one to three octaves, swing (0..75), LOCAL BPM, MASTER GRID or MASTER PHASE clock,
+signed octave spread (-3..+3), swing (0..75), LOCAL BPM, MASTER GRID or MASTER PHASE clock,
 TRIG/PATTERN/CONTINUE restart and STRUM MS (0..500). In MASTER GRID, the
 rate becomes a whole-step multiple and swing is disabled. Clock changes
 restart timing observation. Setup values currently return to defaults at boot.
@@ -267,3 +278,11 @@ modes, local arp, strum, USB/DIN loss and recovery, and changed tempo/scale pass
 A lost external clock stays latched across timestamp wrap until a new pulse.
 See the design and Stage 4 handover for artifact-specific evidence. Hardware
 release and coexistence remain Stage 6; named SRC pages and presets are Stage 5.
+
+### Pad/arp note levels
+
+At intermediate MIX, a same-pitch arp onset starts in phase with its held pad
+owner. This avoids pitch-dependent cancellation from resetting the arp oscillator
+independently. Its gate, envelope and drift remain independent; octave extensions
+keep their own pitch and phase. Native filtering, AMP and send effects can still
+change level across notes. Set MIX to PAD when comparing the pad alone.

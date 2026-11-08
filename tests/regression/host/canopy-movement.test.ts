@@ -50,7 +50,7 @@ function config(
     clock: 1,
     rate: 4,
     order: 0,
-    octaves: 1,
+    octaves: 0,
     gate: 50,
     swing: 0,
     restart: 2,
@@ -85,7 +85,7 @@ test('one-note UP/DOWN and clipped octave expansion remain playable', () => {
   ]);
 });
 test('three octaves and seeded random stay bounded and repeatable', () => {
-  const cmd = config({ order: 4, octaves: 3 }) + chord() + 'tick 10000';
+  const cmd = config({ order: 4, octaves: 2 }) + chord() + 'tick 10000';
   const a = onsets(run(cmd)),
     b = onsets(run(cmd));
   expect(a).toEqual(b);
@@ -97,6 +97,18 @@ test('three octaves and seeded random stay bounded and repeatable', () => {
 test('triplets retain rational remainder over a long run', () => {
   const notes = onsets(run(config({ rate: 3, bpm: 137 }) + chord() + 'tick 200000'));
   for (let i = 0; i < notes.length; i++) expect(notes[i]!.block).toBe(Math.ceil((i * 90000) / (137 * 3)));
+});
+
+test.each([-3, -2, -1, 0, 1, 2, 3])('spread %i stays on one side of the played octave', (octaves) => {
+  const pitches = onsets(run(config({ octaves, order: 3 }) + chord([60]) + 'tick 751')).map((e) => e.note);
+  const cycle = Array.from({ length: Math.abs(octaves) + 1 }, (_, i) => 60 + 12 * i * Math.sign(octaves));
+  expect(pitches).toEqual(Array.from({ length: 5 }, (_, i) => cycle[i % cycle.length]));
+});
+
+test('downward expansion omits pitches below MIDI zero', () => {
+  expect(onsets(run(config({ octaves: -3, order: 3 }) + chord([12]) + 'tick 751')).map((e) => e.note)).toEqual([
+    12, 0, 12, 0, 12,
+  ]);
 });
 test('swing preserves pair duration rather than accumulating rounded intervals', () => {
   const notes = onsets(run(config({ rate: 3, bpm: 137, swing: 63 }) + chord() + 'tick 200000'));

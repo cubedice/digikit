@@ -108,6 +108,17 @@ int main(int argc,char **argv)
         assert(cs_edit(&ui,token,0,1,30,&id)==CS_EDIT && id==CP_RATE && ui.value[id]==5);
         assert(ui.value[CP_ARP_MIX]==0);
         assert(cs_edit(&ui,token,7,1,30,&id)==CS_EDIT && ui.value[CP_ARP_MIX]==1);
+    } else if(!strcmp(scenario,"signed-spread")) {
+        token=cs_context(&ui,0,12,1,1,KB_PLAY,0,0,0);
+        char feedback[32];
+        assert(ui.value[CP_OCTAVES]==3);
+        assert(cs_edit(&ui,token,2,-99,0,&id)==CS_EDIT && ui.value[id]==0);
+        cv_feedback(feedback,&ui,2); assert(!strcmp(feedback,"Octaves=-3*"));
+        assert(cs_edit(&ui,token,2,3,0,&id)==CS_EDIT && ui.value[id]==3);
+        cv_feedback(feedback,&ui,2); assert(!strcmp(feedback,"Octaves=0*"));
+        assert(cs_edit(&ui,token,2,99,0,&id)==CS_EDIT && ui.value[id]==6);
+        cv_feedback(feedback,&ui,2); assert(!strcmp(feedback,"Octaves=+3*"));
+        assert(ui.native_tune==0x4000 && ui.value[CP_ARP_MIX]==0);
     } else if(!strcmp(scenario,"stale")) {
         uint32_t old=token; token=cs_context(&ui,0,12,1,1,KB_ROOT,0,0,0);
         assert(cs_edit(&ui,old,3,1,0,&id)==CS_STALE);
@@ -121,13 +132,31 @@ int main(int argc,char **argv)
         token=cs_context(&ui,0,12,1,0,KB_PLAY,0,0,0);
         for(unsigned i=0;i<3;++i) { unsigned knob=i==2?5:i+1; assert(cs_edit(&ui,token,knob,1,0,&id)==CS_READONLY); }
         token=cs_context(&ui,0,12,1,0,KB_ROOT,0,1,0);
-        assert(cs_edit(&ui,token,1,1,0,&id)==CS_READONLY);
         assert(cs_edit(&ui,token,2,1,0,&id)==CS_READONLY);
         token=cs_context(&ui,0,12,1,1,KB_ROOT,1,0,0);
         assert(cs_edit(&ui,token,4,1,0,&id)==CS_READONLY);
         token=cs_context(&ui,0,12,1,0,KB_ROOT,0,0,1);
         for(unsigned i=0;i<8;++i) assert(cs_edit(&ui,token,i,1,0,&id)==CS_READONLY);
         assert(!cs_focused(&ui,0));
+    } else if(!strcmp(scenario,"user-chord-exit")) {
+        char feedback[32]; CvDisplay display;
+        assert(cs_edit(&ui,token,1,10,100,&id)==CS_EDIT);
+        token=cs_context(&ui,0,12,1,0,KB_ROOT,0,1,0);
+        cv_build(&display,&ui,&status,now,"0","100",0);
+        assert(!strcmp(display.value[1],"USER") && !strcmp(display.value[2],"LRND"));
+        assert(cs_edit(&ui,token,2,1,100,&id)==CS_READONLY);
+        assert(cs_edit(&ui,token,1,-1,100,&id)==CS_EDIT && ui.value[CP_CHORD]==9);
+        /* Turn feedback is requested before the next paint updates context. */
+        cv_feedback(feedback,&ui,1); assert(!strcmp(feedback,"Chord=MIN7*"));
+        token=cs_context(&ui,0,12,1,0,KB_ROOT,0,0,0);
+        assert(cs_edit(&ui,token,2,1,100,&id)==CS_EDIT);
+        assert(cs_edit(&ui,token,1,1,100,&id)==CS_EDIT && ui.value[CP_CHORD]==10);
+        token=cs_context(&ui,0,12,1,0,KB_ROOT,0,1,0);
+        assert(cs_edit(&ui,token,1,1,100,&id)==CS_EDIT && ui.value[CP_CHORD]==11);
+        cv_feedback(feedback,&ui,1); assert(!strcmp(feedback,"Chord=MAJ7*"));
+        token=cs_context(&ui,0,12,1,0,KB_ROOT,0,0,0);
+        cv_build(&display,&ui,&status,now,"0","100",0);
+        assert(!strcmp(display.value[1],"MAJ7") && !strcmp(display.value[2],"OPEN"));
     } else if(!strcmp(scenario,"clamp")) {
         assert(cs_edit(&ui,token,1,INT32_MAX,0,&id)==CS_EDIT && ui.value[CP_CHORD]==11);
         assert(cs_edit(&ui,token,1,INT32_MIN,0,&id)==CS_EDIT && ui.value[CP_CHORD]==0);
@@ -226,7 +255,7 @@ int main(int argc,char **argv)
         ui.value[CP_ORDER]=3; cv_feedback(feedback,&ui,1); assert(!strcmp(feedback,"Order=As Played"));
         ui.value[CP_RESTART]=1; cv_feedback(feedback,&ui,5); assert(!strcmp(feedback,"Restart=Pattern"));
         cv_build(&display,&ui,&status,now,"-12","100",0);
-        assert(!strcmp(display.value[0],"1/16") && !strcmp(display.value[2],"1OCT"));
+        assert(!strcmp(display.value[0],"1/16") && !strcmp(display.value[2],"0"));
         assert(!strcmp(display.value[3],"50%") && !strcmp(display.value[4],"50%"));
         ui.value[CP_RATE]=6; ui.value[CP_SWING]=75;
         cv_build(&display,&ui,&status,now,"-12","100",0);

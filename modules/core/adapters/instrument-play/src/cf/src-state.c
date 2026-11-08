@@ -1,6 +1,6 @@
 #include "src-state.h"
-static const uint16_t low[CP_CONTROLS]={0,0,0,0,0,0,1,0,1,1,0,0,0,0,0,0};
-static const uint16_t high[CP_CONTROLS]={11,3,127,127,500,127,8,4,3,100,75,2,1,0,127,127};
+static const uint16_t low[CP_CONTROLS]={0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0};
+static const uint16_t high[CP_CONTROLS]={11,3,127,127,500,127,8,4,6,100,75,2,1,0,127,127};
 static const uint8_t controls[2][8]={
     {CS_TUNE,CP_CHORD,CP_VOICING,CP_COLOR,CP_DRIFT,CP_STRUM,CP_ARP_MIX,CS_LEVEL},
     {CP_RATE,CP_ORDER,CP_OCTAVES,CP_GATE,CP_SWING,CP_RESTART,CP_LATCH,CP_ARP_MIX}
@@ -10,7 +10,7 @@ void cs_init(CsState *s)
     for(uint32_t i=0;i<sizeof(*s);++i) ((volatile uint8_t *)s)[i]=0;
     s->token=1; s->revision=1; s->focus_id=CS_NONE;
     s->native_tune=0x4000;
-    s->value[CP_COLOR]=64; s->value[CP_RATE]=4; s->value[CP_OCTAVES]=1;
+    s->value[CP_COLOR]=64; s->value[CP_RATE]=4; s->value[CP_OCTAVES]=3;
     s->value[CP_GATE]=50; s->value[CP_ATTACK]=5; s->value[CP_RELEASE]=15;
 }
 uint32_t cs_context(CsState *s,uint32_t track,uint32_t generation,int visible,
@@ -63,7 +63,8 @@ int cs_edit(CsState *s,uint32_t token,uint32_t encoder,int32_t detents,uint32_t 
     if(control==CS_TUNE || control==CS_LEVEL) return CS_NATIVE;
     if(control==CP_SOURCE || (s->mode==KB_PLAY &&
         (control==CP_CHORD || control==CP_VOICING || control==CP_STRUM)) ||
-        (s->learned && (control==CP_CHORD || control==CP_VOICING)) ||
+        /* A learned shape fixes its voicing, not the choice of chord. */
+        (s->learned && control==CP_VOICING) ||
         (s->clock==1 && control==CP_SWING)) return CS_READONLY;
     /* Clamp before addition; even a malformed INT_MIN event cannot overflow. */
     int32_t room=(int32_t)high[control]-s->value[control];

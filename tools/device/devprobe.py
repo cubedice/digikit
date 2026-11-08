@@ -8,7 +8,9 @@ r"""Closed-loop hardware debugging: press keys on a real Digitakt II / Digitone 
     uv run python -m tools.device.devprobe --analyse capture.wav                           # any WAV, no device
 
 Steps (comma separated): `LABEL[*COUNT][@MS]` presses a key by label (trig1, play, stop, ...), `key:CODE[*COUNT][@MS]`
-a key by code, `turn:ENC:DELTA` (ENC A..H, LEVEL or 1..9), `wait:MS`, `shot[:NAME]` a screenshot.
+a key by code, `note:PITCH:VELOCITY[:CHANNEL]` a MIDI note (channel defaults to 1),
+`turn:ENC:DELTA` (ENC A..H, LEVEL or 1..9), `wait:MS`, `shot[:NAME]` a screenshot.
+Both keys and MIDI notes use --hold milliseconds; add wait:MS between notes.
 Results go to --out (default out/runs/devprobe/<time>): capture.wav, events.json, hits.json, screenshots.
 Event times are seconds since the capture stream started; hit times are seconds in the WAV.
 """
@@ -63,6 +65,13 @@ class Turn:
 
 
 @dataclass
+class Note:
+    pitch: int
+    velocity: int
+    channel: int = 1
+
+
+@dataclass
 class Wait:
     ms: int
 
@@ -72,7 +81,7 @@ class Shot:
     name: str | None = None
 
 
-Step = Press | Turn | Wait | Shot
+Step = Press | Turn | Note | Wait | Shot
 
 ENCODERS = {c: i + 1 for i, c in enumerate("ABCDEFGH")} | {"LEVEL": 9}
 
@@ -119,6 +128,19 @@ def parse_steps(text: str) -> list[Step]:
             name, count, gap = _repeat(rest)
             code = _int(name, "key code")
             steps.append(Press(code, f"key:{code}", count, gap))
+        elif kind == "note":
+            parts = rest.split(":")
+            if len(parts) not in (2, 3):
+                raise ValueError(f"note needs PITCH:VELOCITY[:CHANNEL]: {item!r}")
+            pitch, velocity = (_int(v, "MIDI note") for v in parts[:2])
+            channel = _int(parts[2], "MIDI channel") if len(parts) == 3 else 1
+            if (
+                not 0 <= pitch <= 127
+                or not 1 <= velocity <= 127
+                or not 1 <= channel <= 16
+            ):
+                raise ValueError(f"MIDI note out of range: {item!r}")
+            steps.append(Note(pitch, velocity, channel))
         elif kind == "turn":
             parts = rest.split(":")
             if len(parts) != 2:
@@ -375,6 +397,22 @@ def run_device(args: argparse.Namespace, out: Path, steps: list[Step]) -> int:
                         up.remote_key(code, False)
                         if n + 1 < s.count:
                             time.sleep(s.gap_ms / 1000)
+                elif isinstance(s, Note):
+                    events.append(
+                        {
+                            "t": now(),
+                            "kind": "key",
+                            "label": f"note:{s.pitch}",
+                            "pitch": s.pitch,
+                            "velocity": s.velocity,
+                            "channel": s.channel,
+                        }
+                    )
+                    try:
+                        t.send(bytes([0x90 + s.channel - 1, s.pitch, s.velocity]))
+                        time.sleep(args.hold / 1000)
+                    finally:
+                        t.send(bytes([0x80 + s.channel - 1, s.pitch, 0]))
                 elif isinstance(s, Turn):
                     events.append(
                         {"t": now(), "kind": "turn", "encoder": s.encoder,

@@ -81,16 +81,87 @@ test('SRC cannot edit hidden sound values during LEARN or synthesize PLAY chords
   expect(closed).toMatchObject({ result: -1, color: 64 });
 });
 
+test.each(['', 'learn\nkey 60\nkey 67\nkey 76\ntick\nsave\ntick\n'])(
+  'SRC can leave USER in either direction without changing learned memory (%s)',
+  (learn) => {
+    const [user, lower, userAgain, upper, memory] = run(
+      settings,
+      learn +
+        'mode 1\nsrcpage 0\nsrcturn 1 10\nsrcstate\n' +
+        'srcpage 0\nsrcturn 1 -1\nsrcstate\nsrcpage 0\nsrcturn 1 1\nsrcstate\n' +
+        'srcpage 0\nsrcturn 1 1\nsrcstate\nsnapshot',
+    );
+    expect(user).toMatchObject({ result: 1, type: 10 });
+    expect(lower).toMatchObject({ result: 1, type: 9 });
+    expect(userAgain).toMatchObject({ result: 1, type: 10 });
+    expect(upper).toMatchObject({ result: 1, type: 11 });
+    expect(memory).toMatchObject({ mode: 1, shape: learn ? [0, 7, 16] : [], unsafe: 0 });
+  },
+);
+
+test('a preset loaded with USER can select a standard chord and return without losing its embedded shape', () => {
+  const [loaded, standard, back, preserved] = run(
+    settings,
+    'learn\nkey 60\nkey 76\ntick\nsave\ntick\nmode 1\ntype 10\npresetsave\ntick\n' +
+      'type 0\npresetload\npresetstate\nsrcpage 0\nsrcturn 1 -10\nsrcstate\n' +
+      'srcpage 0\nsrcturn 1 10\nsrcstate\npresetstate',
+  );
+  expect(loaded).toMatchObject({ override: 1, shape: [0, 16] });
+  expect(standard).toMatchObject({ result: 1, type: 0 });
+  expect(back).toMatchObject({ result: 1, type: 10 });
+  expect(preserved).toMatchObject({ override: 1, shape: [0, 16], unsafe: 0 });
+});
+
 test('invalid lengths and checksums leave the existing sound untouched', () => {
   for (const command of ['decode 0', 'decode 63', 'decode 65', 'byte 13 3\ndecode 64']) {
     const [before, after] = run(codec, `decode 64\nsnapshot\n${command}\nsnapshot`);
     expect(after).toEqual({ ...before, result: -1 });
   }
 });
+
+test.each([1, 2, 3])('old preset with %i total octaves preserves its upward spread', (old) => {
+  const [decoded] = run(codec, `byte 4 1\nbyte 25 ${old}\nresign\ndecode 64\nsnapshot`);
+  expect(decoded!.result).toBe(0);
+  expect((decoded!.controls as number[])[8]).toBe(old + 2);
+});
+
+test.each([0, 3, 6])('new preset preserves encoded signed spread %i', (spread) => {
+  const [decoded] = run(codec, `byte 25 ${spread}\nresign\ndecode 64\nsnapshot`);
+  expect(decoded!.result).toBe(0);
+  expect((decoded!.controls as number[])[8]).toBe(spread);
+});
+
+test.each([
+  [1, 0],
+  [1, 4],
+  [2, 7],
+])('preset version %i rejects invalid spread %i atomically', (version, spread) => {
+  const [before, after] = run(
+    codec,
+    `decode 64\nsnapshot\nbyte 4 ${version}\nbyte 25 ${spread}\nresign\ndecode 64\nsnapshot`,
+  );
+  expect(after).toEqual({ ...before, result: -1 });
+});
+
+test('SRC signed spread is saved and restored through the real control bank', () => {
+  const [negative, positive, restored] = run(
+    settings,
+    'srcpage 1\nsrcturn 2 -3\nconfig\npresetsave\ntick\nsrcpage 1\nsrcturn 2 6\nconfig\npresetload\nconfig',
+  );
+  for (const [row, encoded] of [
+    [negative, 0],
+    [positive, 6],
+    [restored, 0],
+  ] as const) {
+    expect(row!.schema).toBe(0x43505338);
+    expect((row!.values as number[])[11]).toBe(encoded);
+    expect((row!.values as number[])[24]).toBe(encoded);
+  }
+});
 test('valid checksum cannot hide bad versions, padding, shape or parameter ranges', () => {
   // Every field class, including each stable control ID and unavailable SOURCE.
   const edits = [
-    [4, 2],
+    [4, 3],
     [5, 15],
     [6, 1],
     [7, 1],
@@ -238,13 +309,13 @@ test('audio submission and SRC pending markers share the full configuration revi
     settings,
     'color 100\nconfig\ntick\nconfig\nmode 1\nconfig\nbpm 140\nconfig',
   );
-  expect(first).toMatchObject({ schema: 0x43505337, count: 32, pending: 0xffff });
+  expect(first).toMatchObject({ schema: 0x43505338, count: 32, pending: 0xffff });
   expect(first!.revision).toBe(first!.srcRevision);
-  expect((first!.values as number[]).slice(16)).toEqual([0, 0, 100, 0, 0, 0, 4, 0, 1, 50, 0, 0, 0, 0, 5, 15]);
+  expect((first!.values as number[]).slice(16)).toEqual([0, 0, 100, 0, 0, 0, 4, 0, 3, 50, 0, 0, 0, 0, 5, 15]);
   expect((first!.values as number[])[2]).toBe(100);
   expect(unchanged!.revision).toBe(first!.revision);
   expect(mode!.revision as number).toBeGreaterThan(first!.revision as number);
-  expect((mode!.values as number[])[0]).toBe(0x40000107);
+  expect((mode!.values as number[])[0]).toBe(0x40000108);
   expect(tempo!.revision as number).toBeGreaterThan(mode!.revision as number);
   expect((tempo!.values as number[])[7]).toBe(140);
 });

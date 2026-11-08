@@ -33,8 +33,10 @@ afterAll(() => {
 });
 test.each([
   'controls',
+  'signed-spread',
   'stale',
   'readonly',
+  'user-chord-exit',
   'clamp',
   'focus',
   'applied',

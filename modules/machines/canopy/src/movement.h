@@ -20,7 +20,9 @@ typedef struct {
      * Swing applies only to LOCAL; MASTER never estimates subdivisions.
      * Strum is total chord spread in blocks (0..750 = 500 ms).
      * Gate is 1..100 percent; mix is 0..127, zero disables arp onsets. */
-    uint32_t clock, rate, order, octaves, gate, swing, restart, bpm, strum, mix;
+    uint32_t clock, rate, order;
+    int32_t octaves; /* -3..+3 additional octaves, one direction at a time */
+    uint32_t gate, swing, restart, bpm, strum, mix;
 } CmConfig;
 typedef struct {
     uint32_t block, generation, boundary, pattern;

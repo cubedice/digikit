@@ -26,10 +26,31 @@ def test_step_forms():
     ]
     assert D.parse_steps("turn:LEVEL:1") == [D.Turn(9, 1)]
     assert D.parse_steps("shot") == [D.Shot(None)]
+    assert D.parse_steps("note:60:100,note:127:1:16") == [
+        D.Note(60, 100),
+        D.Note(127, 1, 16),
+    ]
 
 
 @pytest.mark.parametrize(
-    "bad", ["", "trig1,,play", "turn:B", "turn:Z:1", "wait", "foo:1", "key:x", "a*0"]
+    "bad",
+    [
+        "",
+        "trig1,,play",
+        "turn:B",
+        "turn:Z:1",
+        "wait",
+        "foo:1",
+        "key:x",
+        "a*0",
+        "note:60",
+        "note:128:100",
+        "note:-1:100",
+        "note:60:0",
+        "note:60:128",
+        "note:60:100:0",
+        "note:60:100:17",
+    ],
 )
 def test_bad_steps(bad):
     with pytest.raises(ValueError):

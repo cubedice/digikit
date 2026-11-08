@@ -16,7 +16,9 @@ typedef struct {
     uint8_t family, mode, clock;
     KbShape shape;
 } CpPreset;
-/* SOURCE=keyboard only until the sequencer event owner is implemented. Swing
+/* OCTAVES stores signed spread with a +3 bias: 0..6 means -3..+3 additional
+ * octaves in one direction. V1 stored total upward octaves (1..3).
+ * SOURCE=keyboard only until the sequencer event owner is implemented. Swing
  * retains CPS5's extra-delay percentage, not an incorrectly labelled 50..75%. */
 int cp_valid(const CpPreset *p);
 int cp_encode(const CpPreset *p, uint8_t out[CP_RECORD_BYTES]);
