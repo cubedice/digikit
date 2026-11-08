@@ -201,3 +201,6 @@ CANOPY SRC foundation: [explicit page capability and DT2 input interfaces](findi
 CANOPY native UI revision: [native SRC controls and resolved panel ownership](findings/115-canopy-native-ui.md)
 (**[D]/[O]**, native control paths, default pixel comparison, separate panel source,
 USER exit, directional octave spread, fragmented physical screenshots and pad/arp phase interaction).
+
+Overloop reply ownership: [separate status from immediate FX diagnostics](findings/116-overloop-reply-ownership.md)
+(**[D]/[O]**, fixed carrier allocation and component regression; running coexistence recheck pending).
