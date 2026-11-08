@@ -94,8 +94,9 @@ def test_dsp_section_is_deterministic_and_relocates_like_the_reference(tmp_path)
     assert r.returncode != 0
 
 
+@pytest.mark.parametrize("device,stage_end", [("dt2", 0x60000), ("dn2", 0x30000)])
 def test_runtime_watch_env_preserves_dma_holes_and_sequential_mode(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, device, stage_end
 ):
     from tools.coldfire import arena_safety
 
@@ -103,7 +104,7 @@ def test_runtime_watch_env_preserves_dma_holes_and_sequential_mode(
     plan.write_text(
         json.dumps(
             {
-                "base": {"device": "dt2", "version": "1.17"},
+                "base": {"device": device, "version": "1.17"},
                 "regions": {"cf.expansion": [0x180]},
                 "symbols": {"core/runtime@0.1.0:DKRT_STAGE": 0x20000},
             }
@@ -113,7 +114,7 @@ def test_runtime_watch_env_preserves_dma_holes_and_sequential_mode(
     env = pk_dkrt_machine.runtime_watch_env(
         plan, tmp_path / "watch.jsonl", sequential=True
     )
-    assert env["DIGI_WRITE_WATCH"] == "0x1000-0x20000,0x30000-0x80000"
+    assert env["DIGI_WRITE_WATCH"] == f"0x1000-0x20000,{stage_end:#x}-0x80000"
     assert env["DIGI_WRITE_WATCH_ALLOW_PC"] == "0x1000-0x1180"
     assert env["DIGI_WRITE_WATCH_AFTER"] == "cacr" and env["DIGI_FLUSH_CHECK"] == "1"
     assert env["DIGI_WRITE_WATCH_SEQ"] == "1"

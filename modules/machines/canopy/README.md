@@ -5,7 +5,7 @@ This directory contains the four-note pad instrument with movement, presets and 
 reset/process callbacks and an assigned machine type. It requires the optional
 DTII 1.17 `core/instrument-play` adapter; ordinary firmware cannot admit it.
 The engine supports Velvet/Reed and factory wavetable families, drift and local envelopes.
-Earlier Stage 5 acceptance predates the wavetable extension, which requires matching CPS9 firmware and package builds. Stage 6 coexistence and physical release qualification remain open.
+Stage 5 full wavetable acceptance has passed in the emulator with matching CPS9 firmware and package builds. The Stage 6 coexistence rerun is in progress; the wavetable build has not been installed or qualified on the physical DTII.
 This is not a hardware-qualified release.
 
 Build and pack with `patchkit build digikit/canopy` and
@@ -251,7 +251,7 @@ the final output to zero in the measured window. This is emulator evidence only.
 
 ## Current V2 callback
 
-The V2 callback in `src/dsp/v2.s` uses a 544-byte allocator-owned
+The V2 callback in `src/dsp/v2.s` uses a 1,184-byte allocator-owned
 instance and normalized input events. It shares the atomic voice/pedal engine
 with the transport proof. `test_canopy_v2.py` checks it both directly and through
 the protected registry dispatcher, including paired held-voice phase/gain state,
@@ -265,7 +265,7 @@ instrument through the normal module protocol.
 Stage 2 keyboard modes and learned shape memory are provided by the optional
 `core/instrument-play` adapter. See
 [the keyboard setup guide](../../core/adapters/instrument-play/README.md#keyboard-modes-and-shape-memory).
-Stage 3 now supplies the pad renderer; arp remains Stage 4. See the
+The Stage 3 pad renderer and Stage 4 arp are implemented. See the
 [pad sound setup](../../core/adapters/instrument-play/README.md#pad-sound-setup-stage-3).
 
 
@@ -281,8 +281,9 @@ match the truncated milliseconds-to-DSP-block conversion; SOURCE remains KEYS.
 Both banks come from one locked snapshot with the SRC requested revision.
 Mode, clock, family and BPM also advance that revision. Transport ACKs still
 cannot clear pending markers without a matching DSP-applied bank. The status
-producer and native SRC attachment remain unfinished. Build the updated CANOPY
-package with the updated playback firmware: older packages cannot consume CPS6.
+producer and native SRC attachment are implemented; full Stage 5 wavetable
+acceptance has passed in the emulator. Current wavetable builds require the
+matching CPS9 CANOPY package and playback firmware.
 
 ## Signed octave spread (CPS8)
 
@@ -292,7 +293,8 @@ The pad stays at its played pitch. Out-of-range extensions are omitted; ORDER
 controls the sequence through the expanded notes. Edits affect the next arp
 onset without resetting held pad notes. Four admitted notes expand to at most
 sixteen candidates; there is still one arp voice. Values display without the
-ambiguous OCT suffix. Use matching CPS8 firmware and DKM. V1 presets migrate
+ambiguous OCT suffix. Current wavetable builds require matching CPS9 firmware
+and DKM. V1 presets migrate
 without changing their original sound; old CPS5/CPS6/CPS7 banks remain accepted.
 
 ## Movement controls (CPS5 compatibility)
@@ -313,7 +315,8 @@ Arp gates never release pad owners. The lanes share two bounded release tails.
 The sixteen-word CPS5 layout is version, family, color, drift, attack, release,
 mix, local BPM, rate, gate, order, octaves, swing, clock, restart, strum blocks.
 Strum uses 1500 blocks/second internally. CPS1/CPS3/CPS4 remain accepted.
-State is now 768 bytes: use the matching instrument-play firmware policy.
+CPS5 originally used 768-byte instances; the current CPS9 instance is 1,184 bytes.
+Use the matching instrument-play firmware policy.
 Both MASTER modes wait for a complete observed boundary interval before playing.
 MASTER PHASE uses the firmware's musical clock for 1..8 notes/quarter, including
 triplets, and pair-preserving swing; MASTER GRID counts whole native master
@@ -329,7 +332,10 @@ Stage 4 is complete at the functional emulator boundary: menu/audio, both master
 modes, local arp, strum, USB/DIN loss and recovery, and changed tempo/scale pass.
 A lost external clock stays latched across timestamp wrap until a new pulse.
 See the design and Stage 4 handover for artifact-specific evidence. Hardware
-release and coexistence remain Stage 6; named SRC pages and presets are Stage 5.
+release and coexistence remain Stage 6, whose emulator rerun is in progress.
+Named SRC pages and presets are implemented and included in the passing full
+Stage 5 wavetable acceptance. The wavetable build is not physically installed
+or hardware-qualified.
 
 ### Pad/arp note levels
 

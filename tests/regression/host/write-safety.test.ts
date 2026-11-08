@@ -4,7 +4,15 @@ import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import type { Device } from '@digi/test-support';
 import { cardStore, uploadStore } from '../runtime/device-data.ts';
-import { KIT_AREAS, overlayWrites, runtimeSafety, type SafetyPolicy } from '../runtime/write-safety.ts';
+import {
+  dmaHoles,
+  KIT_AREAS,
+  overlayWrites,
+  runtimeSafety,
+  runtimeWatchEnv,
+  type SafetyPolicy,
+} from '../runtime/write-safety.ts';
+import type { RuntimePlan } from '../runtime/runtime-plan.ts';
 
 const directories: string[] = [];
 afterEach(() => {
@@ -37,6 +45,40 @@ const check = (device: Device, sectors: number[], policy: SafetyPolicy = 'defaul
   const { output, overlay } = run(sectors);
   return runtimeSafety(device, output, [overlay], 1, policy);
 };
+
+test.each([
+  ['dt2', '1.17', 0x40000],
+  ['dn2', '1.12', 0x10000],
+] as const)('DMA watch excludes the full %s stage and keeps its neighbors watched', (device, version, stageSize) => {
+  const stage = 0x47f00000;
+  const plan: RuntimePlan & { regions: Record<string, number[]> } = {
+    base: { device, version, syx_sha256: 'test' },
+    modules: ['core/runtime@0.1.0'],
+    output: null,
+    regions: { 'cf.expansion': [0x1000] },
+    symbols: {
+      'core/runtime@0.1.0:DKRT_STAGE': stage,
+      'core/runtime@0.1.0:DKRT_SECBUF': 0x47ef0000,
+    },
+  };
+  expect(dmaHoles(plan)).toEqual([
+    [0x47ef0000, 512],
+    [stage, stageSize],
+  ]);
+  const { output } = run([]);
+  const file = path.join(path.dirname(output), 'plan.json');
+  fs.writeFileSync(file, JSON.stringify(plan));
+  const ranges = runtimeWatchEnv(file, output)
+    .DIGI_WRITE_WATCH!.split(',')
+    .map((range) => range.split('-').map(Number));
+  const watched = (address: number) => ranges.some(([lo, hi]) => lo! <= address && address < hi!);
+  expect(watched(stage - 1)).toBe(true);
+  expect(watched(stage)).toBe(false);
+  expect(watched(stage + stageSize - 1)).toBe(false);
+  expect(watched(stage + stageSize)).toBe(true);
+  expect(watched(0x47ef0000)).toBe(false);
+  expect(watched(0x47ef0200)).toBe(true);
+});
 
 describe.each(['dt2', 'dn2'] as const)('runtime safety on %s', (device) => {
   const store = cardStore(device);

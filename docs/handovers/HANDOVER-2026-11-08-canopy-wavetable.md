@@ -435,6 +435,15 @@ profile call now runs before firmware loading, so its failure cannot waste a ban
 load. The unchanged production pair is being rechecked in
 `out/canopy-wavetable-final-coexist.log`; Stage 5 was not repeated.
 
+A follow-up staging audit found four proof helpers still excluding only 64 KiB
+from their DMA write watch. `pk_dkrt`, `pk_dkrt_machine`, `digikit_menu_proof`
+and the TypeScript runtime safety helper now exclude the selected device's full
+stage allocation, with no change to neighboring watched memory. Six Python
+regressions and all 21 write-safety host checks pass
+(`out/canopy-wavetable-watch-python.log`, `out/canopy-wavetable-watch-host.log`).
+No further stale staging assumptions were found in the bounded runtime,
+packing, upload and capacity-path audit.
+
 The current affected gate's stock DT2 FX render exhausted its 30-minute fixture
 deadline (SIGKILL, 146 assertions skipped), separately from CANOPY. The gate's
 pin target also lacks the DN2 1.12 firmware and ready snapshots. These do not

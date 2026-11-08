@@ -254,7 +254,7 @@ def write_selection(card: Path, paths: list[str], device: str) -> None:
 
 def watch_ranges(rt: dict, lo: int, hi: int) -> list[tuple[int, int]]:
     """[lo, hi) minus the buffers the card reads fill by DMA (the staging buffer, the 512-byte record buffer)."""
-    holes = [(rt["stage"], 64 * 1024)]
+    holes = [(rt["stage"], rt["stage_bytes"])]
     # 512-byte buffers the card reads land in by DMA: the selection record, the store's header sectors, the fingerprint of a list
     for name in (
         "DKRT_SECBUF",
@@ -294,6 +294,7 @@ def runtime_ranges(plan: dict) -> dict:
         "mailbox": sym["DKRT_MAILBOX"],
         "arena": sym["DKRT_ARENA"],
         "stage": sym["DKRT_STAGE"],
+        "stage_bytes": pk_device.limits(plan["base"]["device"]).stage_bytes,
         "code": code,
         "sym": sym,
     }
