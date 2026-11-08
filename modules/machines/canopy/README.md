@@ -43,8 +43,9 @@ MIDI port/channel.
 
 ## Wavetable controls
 
-Choose **WAVETABLE** in the CANOPY SETUP engine chooser. Press SRC to cycle
-SOUND, ARP and TONE. Existing Velvet/Reed presets retain their original sound
+In CANOPY SETUP, highlight the current engine name (initially **VELVET**),
+press YES and choose **WAVETABLE**. Back out and press SRC to cycle SOUND, ARP
+and TONE. Existing Velvet/Reed presets retain their original sound
 controls; wavetable-only TONE controls are inactive until that engine is selected.
 
 | Encoder | TONE control | Meaning |
@@ -57,6 +58,9 @@ controls; wavetable-only TONE controls are inactive until that engine is selecte
 | F | SHAP | Sine, triangle or smooth random scan |
 | G | RST | Free-running, phrase restart or pattern restart |
 | H | LEV | Stock source level, shared with SOUND |
+
+DEP starts at zero; raise it to hear automatic scanning. To keep a sound, use
+CANOPY SETUP > PRESETS > SAVE CURRENT SOUND.
 
 SOUND D becomes a POS shortcut. It does not overwrite the remembered legacy
 COLOR setting. Dedicated LEVEL/DATA remains the stock track-level control;

@@ -342,6 +342,28 @@ panel-acknowledgement host tests pass, as does regression typechecking
 The affected gate was restarted with the fresh shared core, native Linux TMPDIR,
 and no stale-core override: `out/canopy-wavetable-merge-gate-current.log`.
 
+The stack-fix integration loaded the complete bank and passed panel chord,
+independent release and keyboard-exit checks without a DSP/guard fault. It then
+exposed two harness assumptions: Stage 5 allowed only 15 seconds of host time
+for the 750 ms device-time focus timeout; Stage 6 sent 64 detents in one flush,
+but the stock decoder clamps that flush to 30. The captured SOUND page showed
+24% arp mix and the applied value was 30, not the requested 64. These were not
+new production failures. The corrected test waits 800 ms of emulated time before
+checking focus expiry and sends large custom-control changes as at most 30
+detents, waiting for each exact applied value before sending the next chunk.
+All eight encoder-helper host tests and regression typechecking pass
+(`out/canopy-wavetable-encoder-host.log`,
+`out/canopy-wavetable-encoder-typecheck.log`). Failure-only evidence collection
+now queues DSP/status before the large CF reads and allows 20 seconds; the
+earlier five-second queue budget lost some useful diagnostics. The unchanged
+firmware/package pair is being rechecked in
+`out/canopy-wavetable-panel-time-integration.log`.
+
+The current affected gate's stock DT2 FX render exhausted its 30-minute fixture
+deadline (SIGKILL, 146 assertions skipped), separately from CANOPY. The gate's
+pin target also lacks the DN2 1.12 firmware and ready snapshots. These do not
+constitute a passing repository gate, even when the focused CANOPY lanes pass.
+
 Generated-output review found the per-device stage allocations and dependent
 object hashes are required by the new stage contract. DN2 still reserves 65,536
 bytes; its buffer merely moves from the shared runtime to device assembly. Two

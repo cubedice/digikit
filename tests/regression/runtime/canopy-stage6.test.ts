@@ -15,6 +15,7 @@ import { openDigikitMenu } from './runtime-menu.ts';
 import { waitInstrumentReady } from './instrument-ready.ts';
 import { acknowledgedPanel } from './panel-ack.ts';
 import { menuSelection } from './menu-selection.ts';
+import { turnAppliedControl } from './encoder-applied.ts';
 
 const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
 test(
@@ -57,7 +58,7 @@ test(
     const cf = (name: string, i = 0) => word(planSymbol(plan, name) + 4 * i);
     const diagnostic = async () => {
       const values: Record<string, unknown> = {};
-      const deadline = Date.now() + 5000;
+      const deadline = Date.now() + 20_000;
       const capture = async (name: string, read: () => Promise<unknown>) => {
         try {
           values[name] = await withinRuntimeDeadline(deadline, read);
@@ -66,22 +67,10 @@ test(
         }
       };
       await Promise.all([
-        ...(
-          [
-            ['DKRT_BOOT', 20],
-            ['DKRT_INSTRUMENT_FILE', 4],
-            ['DKRT_INSTRUMENT_SESSION', 4],
-            ['dl_link', 24],
-            ['mt_guard_fault', 5],
-            ['registry_guard', 8],
-            ['frame_block', 1],
-            ['ip_control', 8],
-            ['ip_src_debug', 12],
-            ['ip_src_refresh', 8],
-            ['src_state', 21],
-            ['src_status', 160],
-          ] as const
-        ).map(([name, n]) => capture(name, () => Promise.all(Array.from({ length: n }, (_, i) => cf(name, i))))),
+        // Queue the compact liveness/DSP reads before the individual CF words.
+        capture('status', () => session.status()),
+        capture('audio_report', () => session.client.call('audio.report')),
+        capture('diagnostics', () => session.client.call('diagnostics')),
         ...(
           [
             ['_ir_rows', 64],
@@ -100,9 +89,22 @@ test(
             }),
           ),
         ),
-        capture('status', () => session.status()),
-        capture('audio_report', () => session.client.call('audio.report')),
-        capture('diagnostics', () => session.client.call('diagnostics')),
+        ...(
+          [
+            ['DKRT_BOOT', 20],
+            ['DKRT_INSTRUMENT_FILE', 4],
+            ['DKRT_INSTRUMENT_SESSION', 4],
+            ['dl_link', 24],
+            ['mt_guard_fault', 5],
+            ['registry_guard', 8],
+            ['frame_block', 1],
+            ['ip_control', 8],
+            ['ip_src_debug', 12],
+            ['ip_src_refresh', 8],
+            ['src_state', 21],
+            ['src_status', 160],
+          ] as const
+        ).map(([name, n]) => capture(name, () => Promise.all(Array.from({ length: n }, (_, i) => cf(name, i))))),
       ]);
       fs.writeFileSync(path.join(root, 'out/canopy-stage6-state.json'), JSON.stringify(values, null, 2));
       return values;
@@ -128,17 +130,17 @@ test(
       // Evidence is independent and best effort: a failed screenshot must neither
       // skip the instance dump nor replace the failure that triggered cleanup.
       const captures = [
-        ['state', diagnostic],
-        ['OLED', () => captureRemoteOled(session, 'canopy-stage6-finish')],
         [
           'instance',
           async () => {
-            const instance = await withinRuntimeDeadline(Date.now() + 5000, () =>
+            const instance = await withinRuntimeDeadline(Date.now() + 20_000, () =>
               session.client.call('dsp.peek', { addr: state, len: 1184 }),
             ).catch((error: unknown) => ({ error: String(error) }));
             fs.writeFileSync(path.join(root, 'out/canopy-stage6-instance.json'), JSON.stringify(instance));
           },
         ],
+        ['state', diagnostic],
+        ['OLED', () => captureRemoteOled(session, 'canopy-stage6-finish')],
       ] as const;
       const results = await Promise.allSettled(captures.map(([, capture]) => capture()));
       results.forEach((result, index) => {
@@ -220,13 +222,11 @@ test(
     for (let i = 0; i < 3; i++) await key('NO');
     await key('SRC');
     await srcPage(0);
-    await session.client.inputTurn(7, 64); // equal pad/arp mixture, SOUND G
-    await expect.poll(async () => (await rawBank())[21]! & 65535, { timeout: 15000 }).toBe(64);
+    // Panel flushes clamp at 30 detents: await each applied step before the next.
+    await turnAppliedControl(session, 7, async () => (await rawBank())[21]! & 65535, 64); // equal pad/arp mix
     await srcPage(2);
-    await session.client.inputTurn(3, 350); // center position 4.50
-    await expect.poll(async () => (await toneBank())[1], { timeout: 15000 }).toBe(350);
-    await session.client.inputTurn(4, 50); // a moving table while chords are held
-    await expect.poll(async () => (await toneBank())[2], { timeout: 15000 }).toBe(50);
+    await turnAppliedControl(session, 3, async () => (await toneBank())[1]!, 350); // center position 4.50
+    await turnAppliedControl(session, 4, async () => (await toneBank())[2]!, 50); // moving held chords
     const wheelRoutes = async () => {
       const b = await peek(state + 264 * 4, 32 * 4);
       return Array.from({ length: 32 }, (_, i) => b.readUInt32LE(i * 4));

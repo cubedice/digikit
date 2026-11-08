@@ -53,7 +53,7 @@ test(
     const cf = (name: string, i = 0) => word(planSymbol(plan, name) + 4 * i);
     const diagnostic = async () => {
       const values: Record<string, unknown> = {};
-      const deadline = Date.now() + 5000;
+      const deadline = Date.now() + 20_000;
       const capture = async (name: string, read: () => Promise<unknown>) => {
         try {
           values[name] = await withinRuntimeDeadline(deadline, read);
@@ -62,23 +62,10 @@ test(
         }
       };
       await Promise.all([
-        ...(
-          [
-            ['DKRT_BOOT', 20],
-            ['DKRT_INSTRUMENT_FILE', 4],
-            ['DKRT_INSTRUMENT_SESSION', 4],
-            ['dl_link', 24],
-            ['mt_guard_fault', 5],
-            ['registry_guard', 8],
-            ['frame_block', 1],
-            ['ip_control', 8],
-            ['ip_src_debug', 12],
-            ['ip_src_refresh', 8],
-            ['ip_panel_debug', 8],
-            ['src_state', 21],
-            ['src_status', 160],
-          ] as const
-        ).map(([name, n]) => capture(name, () => Promise.all(Array.from({ length: n }, (_, i) => cf(name, i))))),
+        // Queue the compact liveness/DSP reads before the individual CF words.
+        capture('status', () => session.status()),
+        capture('audio_report', () => session.client.call('audio.report')),
+        capture('diagnostics', () => session.client.call('diagnostics')),
         ...(
           [
             ['_ir_rows', 64],
@@ -97,9 +84,23 @@ test(
             }),
           ),
         ),
-        capture('status', () => session.status()),
-        capture('audio_report', () => session.client.call('audio.report')),
-        capture('diagnostics', () => session.client.call('diagnostics')),
+        ...(
+          [
+            ['DKRT_BOOT', 20],
+            ['DKRT_INSTRUMENT_FILE', 4],
+            ['DKRT_INSTRUMENT_SESSION', 4],
+            ['dl_link', 24],
+            ['mt_guard_fault', 5],
+            ['registry_guard', 8],
+            ['frame_block', 1],
+            ['ip_control', 8],
+            ['ip_src_debug', 12],
+            ['ip_src_refresh', 8],
+            ['ip_panel_debug', 8],
+            ['src_state', 21],
+            ['src_status', 160],
+          ] as const
+        ).map(([name, n]) => capture(name, () => Promise.all(Array.from({ length: n }, (_, i) => cf(name, i))))),
       ]);
       fs.writeFileSync(path.join(root, 'out/canopy-stage5-native-state.json'), JSON.stringify(values, null, 2));
       return values;
@@ -125,17 +126,17 @@ test(
       // Evidence is independent and best effort: a failed screenshot must neither
       // skip the instance dump nor replace the failure that triggered cleanup.
       const captures = [
-        ['state', diagnostic],
-        ['OLED', () => captureRemoteOled(session, 'canopy-stage5-native-finish')],
         [
           'instance',
           async () => {
-            const instance = await withinRuntimeDeadline(Date.now() + 5000, () =>
+            const instance = await withinRuntimeDeadline(Date.now() + 20_000, () =>
               session.client.call('dsp.peek', { addr: state, len: 1184 }),
             ).catch((error: unknown) => ({ error: String(error) }));
             fs.writeFileSync(path.join(root, 'out/canopy-stage5-native-instance.json'), JSON.stringify(instance));
           },
         ],
+        ['state', diagnostic],
+        ['OLED', () => captureRemoteOled(session, 'canopy-stage5-native-finish')],
       ] as const;
       const results = await Promise.allSettled(captures.map(([, capture]) => capture()));
       results.forEach((result, index) => {
@@ -345,6 +346,9 @@ test(
     await expect.poll(() => cf('src_state', 4), { timeout: 20000 }).toBe(0);
     const idlePaints = await cf('ip_src_debug', 3);
     await expect.poll(() => cf('ip_src_debug', 3), { timeout: 15000 }).toBeGreaterThan(idlePaints);
+    // Focus expires after 750 device milliseconds; allow the next 40 ms paint.
+    // Wall time only bounds a stalled poll, not the lifetime of a UI value.
+    await waitEmulated(session, 800);
     // The last byte of the bounded presentation is the visible focus flag.
     await expect.poll(async () => (await cf('display', 47)) & 255, { timeout: 15000 }).toBe(0);
     // Applied status revision must agree with the requested bank, not just an ACK.
