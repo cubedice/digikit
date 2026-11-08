@@ -548,11 +548,36 @@ were normalized to alter their stamps.
   categorized above. Focused passing suites do not replace that failed gate.
   Log: `out/canopy-wavetable-merge-gate-current.log`.
 
-No wavetable firmware or module has been installed on the physical DTII during
-this implementation. The last verified installed pair is the spread/phase build
-in `HANDOVER-2026-11-06-canopy-spread-phase.md`, with external USB/DIN MIDI enabled
-and saved at the user's request. Preserve the user's device settings and the
-five pre-existing untracked design mockup PNGs.
+The wavetable firmware and module were installed on the physical DTII at the
+user's explicit request on 2026-11-08. The device accepted the complete image
+and rebooted to image ID `f9c1b80776a93049`; INFO reports no safe mode, crash,
+open upload or read-only card. CANOPY, Overloop and remote all loaded with zero
+module faults and guards enabled. The DTII reports the new 262,144-byte staging
+allocation. This supersedes the installed spread/phase pair recorded in
+`HANDOVER-2026-11-06-canopy-spread-phase.md`.
+
+Installed firmware SHA256:
+`78a6cc77597dd5f60c065fdd41ed310288f971115b4d5bd70044d3a55d7a041b`.
+The CANOPY file was read back from the card and matches SHA256
+`73bb61df9414806c09671d7bba4eec593647e7464f9632a10d46e50da5f3760c`.
+Overloop and remote match their original full-file hashes; module selection
+remains unchanged. Evidence: `out/canopy-wavetable-hardware-flash.log` and
+`out/canopy-wavetable-hardware-installed.json`.
+
+The unsaved current sound was preserved into previously empty preset slot 3
+before flashing. Existing preset 4 and saved USB/DIN routing were unchanged.
+All three settings records remain byte-identical after installation and preset
+loading; external MIDI, USB and DIN remain enabled on channel 1. The new ENGINE
+chooser and all three SRC pages were exercised on hardware, with WAVETABLE
+temporarily selected. Captures show native TUNE 0.00, source LEV 35 and track
+LEVEL 85 unchanged; the TONE page shows ANLG, position 1.00, depth 0%, 0.10 Hz,
+SINE and FREE. Preset slot 3 was then loaded again to restore the Velvet sound.
+Backups and before/after screens are in `out/canopy-wavetable-install-backup/`.
+Preserve these backups and the five pre-existing untracked design mockup PNGs.
+
+These are physical installation, boot, readback and UI observations. No physical
+wavetable audio capture or timing/capacity qualification was performed during
+installation; the remaining qualification above is unchanged.
 
 The common pitch-dependent whole-device loudness baseline remains unresolved.
 The earlier phase fix reduced mixed-versus-pad cancellation, but both paths still
