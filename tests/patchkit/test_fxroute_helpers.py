@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import struct
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from tools import python_env
 from tools.device import dksettings
 from tools.patchkit import pk_device
 from tools.patchkit import pk_digikit_fxroute as track_routes
@@ -16,6 +20,33 @@ from tools.patchkit import pk_digikit_project as project
 
 
 class FxRouteHelpersTest(unittest.TestCase):
+    def test_profile_cli_imports_with_device_specific_staging_limits(self):
+        for device in ("dt2", "dn2"):
+            with self.subTest(device=device):
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "tools.patchkit.pk_digikit_fxroutes",
+                        "profile",
+                        "--device",
+                        device,
+                    ],
+                    cwd=pk_device.ROOT,
+                    env=python_env(),
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=True,
+                )
+                profile = json.loads(result.stdout)
+                limits = pk_device.limits(device)
+                store = pk_device.store_of(device)
+                self.assertEqual(profile["fx_slots"], limits.fx_slots)
+                self.assertEqual(profile["send_slots"], limits.send_slots)
+                self.assertEqual(profile["selection"]["copy_a"], store.sel_a)
+                self.assertEqual(profile["settings"]["copy_a"], store.set_a)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

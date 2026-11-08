@@ -31,6 +31,15 @@ test(
     const plan: RuntimePlan = JSON.parse(fs.readFileSync(image.replace(/\.syx$/, '.plan.json'), 'utf8'));
     expect(createHash('sha256').update(fs.readFileSync(image)).digest('hex')).toBe(plan.output?.syx_sha256);
     expect(plan.modules.some((m) => m.startsWith('test/canopy'))).toBe(false);
+    // Resolve static helper prerequisites before the costly firmware/bank load.
+    const readyArtifacts = path.join(root, 'out/canopy-stage6-ready');
+    fs.mkdirSync(readyArtifacts, { recursive: true });
+    const fxProfile = await analysisJson<FxProfile>(
+      'tools.patchkit.pk_digikit_fxroutes',
+      ['profile', '--device', 'dt2'],
+      readyArtifacts,
+      'fx-profile',
+    );
     const { session } = h;
     await session.client.firmwareLoad({
       syx: image,
@@ -171,18 +180,10 @@ test(
         .sort((a, b) => a.token - b.token);
     };
     const { tap: key, edge, turn } = acknowledgedPanel(session);
-    const readyArtifacts = path.join(root, 'out/canopy-stage6-ready');
-    fs.mkdirSync(readyArtifacts, { recursive: true });
     await expectRuntimeUi(session, plan, readyArtifacts, {
       afterEpoch: beforeRestart,
       timeout: 180_000,
     });
-    const fxProfile = await analysisJson<FxProfile>(
-      'tools.patchkit.pk_digikit_fxroutes',
-      ['profile', '--device', 'dt2'],
-      readyArtifacts,
-      'fx-profile',
-    );
     const loopKit = pageKit(session, fxProfile);
     // Select the admitted machine using the stock machine chooser.
     await edge('FUNC', true);

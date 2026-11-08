@@ -183,7 +183,16 @@ oracle was removed after collecting this evidence.
 
 ## Build artifacts [D]
 
-- Firmware: `out/patch/canopy-wavetable.syx`, SHA256
+- Final candidate firmware: `out/patch/canopy-wavetable-loop-carrier.syx`,
+  2,071,712 bytes, SHA256
+  `78a6cc77597dd5f60c065fdd41ed310288f971115b4d5bd70044d3a55d7a041b`.
+  Includes the bounded upload budget, stack-safe CPS9 validator and OVL2 reply
+  carrier. Its matching plan and preflight pass are recorded in
+  `out/canopy-wavetable-loop-preflight.log`; MAIN staged 3,662,036 of 4,193,280
+  bytes and DSP decoded 353,928. Stage 5 passed this exact firmware/package pair;
+  the final Stage 6 rerun is below. Use this candidate while the canonical SYX
+  still names the obsolete first build.
+- Superseded canonical firmware: `out/patch/canopy-wavetable.syx`, SHA256
   `37c7182510dcf9b922c36571cccfb005ee545273a8648459f2fdfba9141a3733`.
   Superseded candidate: this includes compact UI labels and device-specific
   staging, but retains the insufficient upload deadline described below.
@@ -203,7 +212,7 @@ oracle was removed after collecting this evidence.
   `out/canopy-wavetable-dag-preflight.log` passes. MAIN staged 3,661,992 of
   4,193,280 bytes; DSP decoded 353,896. Its integration run was deliberately
   stopped during upload to remove the temporary I7 stack-pointer borrow.
-- Latest candidate: `out/patch/canopy-wavetable-stack-fix.syx`, 2,071,584 bytes,
+- Superseded candidate: `out/patch/canopy-wavetable-stack-fix.syx`, 2,071,584 bytes,
   SHA256 `b089bec7c99223e80c2db83c0e5c9fc99483380b8bf0c8bcf2e1d652cce53dba`.
   The validator uses scratch I0 and leaves I7/B7/L7 untouched throughout.
   All 63 adapter tests pass, including the optional ColdFire instruction check
@@ -412,6 +421,19 @@ native FX scaling, followed by exact semantic publication checks. Its format
 and type checks pass (`out/canopy-wavetable-fade-types.log`). Only Stage 6 is
 being rerun in `out/canopy-wavetable-fade-integration.log`; the production pair
 and passing Stage 5 path are unchanged.
+
+That Stage 6 attempt loaded the bank but then failed while importing the Python
+FX profile CLI: `shared_limits()` still required identical DT2/DN2 staging
+capacities. This was a missed integration change, not a firmware audio failure.
+The helper now returns only the four genuinely shared runtime limits; callers
+must use `limits(device).stage_bytes` for device staging. Tests retain rejection
+of mismatched shared limits and execute the real FX profile CLI for both devices
+in fresh processes. All 19 focused Python checks pass in
+`out/canopy-wavetable-profile-tests.log`, as do Ruff, formatting, both standalone
+profile commands, Stage 6 formatting and regression typechecking. The static
+profile call now runs before firmware loading, so its failure cannot waste a bank
+load. The unchanged production pair is being rechecked in
+`out/canopy-wavetable-final-coexist.log`; Stage 5 was not repeated.
 
 The current affected gate's stock DT2 FX render exhausted its 30-minute fixture
 deadline (SIGKILL, 146 assertions skipped), separately from CANOPY. The gate's
