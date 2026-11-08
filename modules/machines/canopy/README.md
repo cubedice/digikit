@@ -5,7 +5,7 @@ This directory contains the four-note pad instrument with movement, presets and 
 reset/process callbacks and an assigned machine type. It requires the optional
 DTII 1.17 `core/instrument-play` adapter; ordinary firmware cannot admit it.
 The engine supports Velvet/Reed and factory wavetable families, drift and local envelopes.
-Stage 5 full wavetable acceptance has passed in the emulator with matching CPS9 firmware and package builds. The Stage 6 coexistence rerun is in progress; the wavetable build has not been installed or qualified on the physical DTII.
+Full Stage 5 and Stage 6 wavetable acceptance passed in the emulator with matching CPS9 firmware and package builds, including Overloop recording, crossfades, transfers and shared release tails. The wavetable build has not been installed or qualified on the physical DTII.
 This is not a hardware-qualified release.
 
 Build and pack with `patchkit build digikit/canopy` and
@@ -332,7 +332,7 @@ Stage 4 is complete at the functional emulator boundary: menu/audio, both master
 modes, local arp, strum, USB/DIN loss and recovery, and changed tempo/scale pass.
 A lost external clock stays latched across timestamp wrap until a new pulse.
 See the design and Stage 4 handover for artifact-specific evidence. Hardware
-release and coexistence remain Stage 6, whose emulator rerun is in progress.
+release remains Stage 6 qualification work; full wavetable coexistence passed in the emulator.
 Named SRC pages and presets are implemented and included in the passing full
 Stage 5 wavetable acceptance. The wavetable build is not physically installed
 or hardware-qualified.

@@ -183,18 +183,19 @@ oracle was removed after collecting this evidence.
 
 ## Build artifacts [D]
 
-- Final candidate firmware: `out/patch/canopy-wavetable-loop-carrier.syx`,
+- Final firmware: `out/patch/canopy-wavetable.syx`, identical to the tested
+  `out/patch/canopy-wavetable-loop-carrier.syx`,
   2,071,712 bytes, SHA256
   `78a6cc77597dd5f60c065fdd41ed310288f971115b4d5bd70044d3a55d7a041b`.
   Includes the bounded upload budget, stack-safe CPS9 validator and OVL2 reply
   carrier. Its matching plan and preflight pass are recorded in
   `out/canopy-wavetable-loop-preflight.log`; MAIN staged 3,662,036 of 4,193,280
-  bytes and DSP decoded 353,928. Stage 5 passed this exact firmware/package pair;
-  the final Stage 6 rerun is below. Use this candidate while the canonical SYX
-  still names the obsolete first build.
-- Superseded canonical firmware: `out/patch/canopy-wavetable.syx`, SHA256
+  bytes and DSP decoded 353,928. Stage 5 and Stage 6 passed this exact pair.
+  The canonical SYX and matching plan were replaced with the accepted candidate;
+  file hashes were checked after copying.
+- Superseded first firmware, formerly at the canonical path, SHA256
   `37c7182510dcf9b922c36571cccfb005ee545273a8648459f2fdfba9141a3733`.
-  Superseded candidate: this includes compact UI labels and device-specific
+  This included compact UI labels and device-specific
   staging, but retains the insufficient upload deadline described below.
   The matching preflight passed in
   `out/canopy-wavetable-ui-final-preflight.log`; the earlier
@@ -238,7 +239,8 @@ oracle was removed after collecting this evidence.
 Both whole-file hashes and the final package size were checked from the files.
 Static review found agreement between CF control packing, core DSP validation,
 module unpacking, status indices, state/reset limits and preset migration.
-This is source-level integration review, not an independent firmware-byte audit.
+That initial integration review was source-level; the later bounded independent
+image audits are recorded below.
 
 The first compiled acceptance attempts stopped on a short wall-time wait while
 the instrument file remained in phase 2. Read-only diagnostics showed healthy
@@ -445,6 +447,34 @@ must have distinct new foreground tokens. The existing step/publication bounds
 remain unchanged. Regression typechecking passed; the complete rerun is
 `out/canopy-wavetable-replacement-coexist.log`.
 
+The strengthened Stage 6 run passed in 1,771 seconds (total runner duration
+1,776 seconds). It loaded the complete final bank, exercised four-note pad/arp
+audio, verified USB/DIN wheel routing, recorded 56,448 stereo frames in Overloop,
+verified a concurrent 32-KiB transfer, edited loop START/LENGTH live, passed both
+half/full native fades, changed through all five tables while notes remained
+held, and proved actual replacement ownership beside the shared tails and arp.
+The witness occurred on bounded step 3: original pad tokens 1..4 were in reset
+ramps, new tokens 5..8 were pending with notes 67/71/74/79, both shared tails
+held arp releases (tokens 91/92), and the current arp token was 97. All four new foreground owners appeared
+after the ramps. Releasing all live notes left the recorded loop sounding.
+
+`out/canopy-stage6-coexistence.json` records RMS/peak pairs of
+0.0111425/0.0286292 (live), 0.0411864/0.119559 (transitions),
+0.0831955/0.224087 (loop) and 0.0834008/0.224087 (loop after release).
+All captured samples were finite and unclipped. The final state records zero
+instrument guard faults, rejected input count, DSP traps and missing audio
+blocks, with a fresh Overloop snapshot (age zero, 3,134 updates). The current
+TONE screen was saved and visually reviewed as
+`out/canopy-wavetable-tone-acceptance.png`. These are functional emulator results
+and raw instruction observations, not a paired timing benchmark or a physical
+capacity qualification.
+
+A second agent independently reviewed the saved coexistence/state/instance
+artifacts and confirmed those identities, the post-release zero-token slots,
+retained USB note ownership, fresh full-gain loop, and zero guard faults, DSP
+traps, missing blocks, stalls and underruns. This does not claim that the pending
+replacement pads already sounded simultaneously with their resetting predecessors.
+
 A follow-up staging audit found four proof helpers still excluding only 64 KiB
 from their DMA write watch. `pk_dkrt`, `pk_dkrt_machine`, `digikit_menu_proof`
 and the TypeScript runtime safety helper now exclude the selected device's full
@@ -508,12 +538,12 @@ changing compiled sections, symbols or relocations. These remain included under
 the shared generation contract in `docs/TESTING.md`; no unrelated source headers
 were normalized to alter their stamps.
 
-## Remaining completion markers [O]
+## Completion and remaining qualification
 
-- Compiled Stage 5 acceptance passed for the final pair, as recorded above.
-- **PENDING ROOT UPDATE:** Stage 6 emulator coexistence/guard checks with Overloop
-  and any paired timing/resource measurement. Physical timing is a separate
-  qualification; instruction counts do not establish it.
+- Compiled Stage 5 and Stage 6 acceptance passed for the final pair, as recorded
+  above. The wavetable implementation and focused emulator checks are complete.
+- Physical timing/resource qualification and a paired timing measurement remain
+  open. Instruction counts and emulator audio do not establish hardware capacity.
 - The affected merge gate completed with 88 successful and 47 failed targets,
   categorized above. Focused passing suites do not replace that failed gate.
   Log: `out/canopy-wavetable-merge-gate-current.log`.

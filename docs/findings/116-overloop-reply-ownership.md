@@ -1,7 +1,7 @@
 # 116: Overloop status and immediate FX diagnostics
 
-DT2 OS 1.17, 2026-11-08. **[D]** Static diagnosis and component regression;
-full running-firmware coexistence recheck pending. No hardware installation.
+DT2 OS 1.17, 2026-11-08. **[D]** Static diagnosis, component regression and full
+running-firmware emulator coexistence passed. No hardware installation.
 
 The CANOPY wavetable coexistence run reached four-note audio and the Overloop
 page, but LENGTH never appeared in the DSP-derived UI snapshot. Forty real
@@ -77,4 +77,12 @@ collision case in `out/canopy-wavetable-loop-fixture-retest.log` after correctin
 its fixture allocation. The original fixture put its first reply ring over the
 FX adapter's initialized data; both rings now follow that allocation and remain
 inside the fixture's RAM bounds. No production assertion was removed.
-Full Stage 6 coexistence remains pending.
+The full Stage 6 coexistence run passed on this image in 1,771 seconds:
+`out/canopy-wavetable-replacement-coexist.log`. It recorded 56,448 stereo frames
+while four CANOPY wavetable notes and arp sounded, verified a concurrent 32-KiB
+transfer, edited START/LENGTH, crossed through half/full fades, changed tables,
+and proved actual pad replacement while both shared tails and arp were active.
+The loop continued after all live notes released. Final diagnostics reported no
+instrument guard fault, DSP trap or missing audio block; the Overloop snapshot
+was fresh (age zero, 3,134 updates). This is functional emulator evidence, not
+physical timing or hardware-capacity qualification.
