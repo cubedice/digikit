@@ -356,13 +356,92 @@ All eight encoder-helper host tests and regression typechecking pass
 `out/canopy-wavetable-encoder-typecheck.log`). Failure-only evidence collection
 now queues DSP/status before the large CF reads and allows 20 seconds; the
 earlier five-second queue budget lost some useful diagnostics. The unchanged
-firmware/package pair is being rechecked in
+firmware/package pair was rechecked in
 `out/canopy-wavetable-panel-time-integration.log`.
+
+That run loaded both complete banks with no instrument guard fault. Native
+keyboard chords, individual release and keyboard exit passed; the coexistence
+lane also passed four-note wavetable output and routed USB/DIN wheel checks.
+The active TONE screenshot (`out/canopy-wavetable-tone-current.png`) was reviewed:
+controls and the native lower-right LEV field fit without cropping. Neither
+complete acceptance lane passed: Stage 5's first chord encoder packet after a
+long idle never reached the native handler; Stage 6's first LENGTH adjustment
+changed the kit but Overloop showed NO STATUS. The former matches the documented
+stock encoder idle filter; the latter exposed an existing collision between
+immediate FX breadcrumbs and Overloop's reply carrier. Finding 116 records the
+carrier relocation and independent image/slot review. The next acceptance run
+must use the rebuilt firmware, not the earlier b089 image.
+
+The corrected candidate is `out/patch/canopy-wavetable-loop-carrier.syx`, SHA256
+`78a6cc77597dd5f60c065fdd41ed310288f971115b4d5bd70044d3a55d7a041b`.
+Its matching plan and preflight pass are recorded in
+`out/canopy-wavetable-loop-preflight.log`. The DKM remains `73bb61df...`.
+The final carrier/component cases passed all 25 checks (24 in the first run,
+one after fixing reply-buffer placement in the test fixture; finding 116).
+The input helper now acknowledges the native decoder and UI consumption of each
+turn before considering another detent, then waits for the requested revision
+and exact DSP value. Both acceptance lanes reuse this for small custom-control
+changes; already-passing large position adjustments retain bounded chunks.
+All 22 helper cases and regression typechecking pass:
+`out/canopy-wavetable-ovl2-host.log` and `out/canopy-wavetable-ovl2-types.log`.
+The full candidate rerun is `out/canopy-wavetable-ovl2-integration.log`.
+The carrier correction is committed as `d1e45d65`. A second agent independently
+decoded the candidate image and confirmed all 212 inline writes and 640
+relocations across DSP-link, loop-display and instrument-play, with matching
+source digests and object/plan hashes. The prior stack fix is unchanged outside
+relocation operands. See finding 116 for the bounded scope of this audit.
+
+The OVL2 run passed the complete Stage 5 acceptance in 2,334 seconds. This covers
+native page cycling and held values, panel chords and independent release,
+USER-chord exit in both directions, native tuning, audible native source/track
+level changes, live wavetable controls and v3 preset recall. Its level fixture
+measured RMS 0.01460094 at full track level, zero at zero track level, 0.01478296
+after restoring track level on ARP, and 3.83e-8 at zero source level. These are
+emulator observations, not new physical loudness measurements. The active TONE
+screen was visually reviewed in `out/canopy-wavetable-tone-final.png`; the normal
+Stage 5 screenshot directory was removed by the harness on success.
+
+Stage 6 in that run passed full loading, routed USB/DIN wheel checks, four-note
+audio, Overloop recording, a concurrent 32-KiB verified transfer and live
+START/LENGTH edits. The OVL2 snapshot stayed fresh (age zero, 2,856 updates),
+with no guard fault. The first half-fade exhausted its fixed 40-packet helper
+just before publication: final DSP, FX-row and CF snapshot all held
+`0x3f010204` (64/127, above the unchanged half-fade threshold). No table-change
+or tail assertion had run yet. The test now reuses `pageKit.setRaw/maximum` for
+native FX scaling, followed by exact semantic publication checks. Its format
+and type checks pass (`out/canopy-wavetable-fade-types.log`). Only Stage 6 is
+being rerun in `out/canopy-wavetable-fade-integration.log`; the production pair
+and passing Stage 5 path are unchanged.
 
 The current affected gate's stock DT2 FX render exhausted its 30-minute fixture
 deadline (SIGKILL, 146 assertions skipped), separately from CANOPY. The gate's
 pin target also lacks the DN2 1.12 firmware and ready snapshots. These do not
 constitute a passing repository gate, even when the focused CANOPY lanes pass.
+
+The complete affected gate finished with 88 successful and 47 failed targets
+in 121m25s. All nine DT2 smoke cells passed (329 checks). Failures comprise 20
+runtime import-alias collection failures, 10 unavailable-DN2-daemon targets
+whose DT2 cases passed, seven missing firmware/database targets, three existing
+format/layer checks, one graph-query timeout, one missing desktop dependency,
+two DT2 FX preparation/render failures, two generic CANOPY/Overloop conformance
+failures, and one generated-object comparison. The registry comparison was
+independently rebuilt into `out/canopy-registry-object-audit`; only
+`toolchain.selache_rev` differs, with all 1,470 instructions, sections, symbols,
+relocations and source hash identical. Unrelated baseline metadata was retained.
+
+Generic CANOPY conformance uses the default emulator image, which omits the
+required `core/instrument-play` adapter. Both uploads succeeded, but verification
+or selection timed out before restart; the available evidence cannot identify
+which of those uninstrumented calls failed. Its separate 30-second publication
+and DSP-completion waits also do not accommodate this bank. Generic Overloop
+conformance reached reboot but timed out its registration poll. These fixtures
+remain unresolved; the dedicated tests use the requirement-complete image.
+
+The gate started with `DIGI_GATE_BASE=HEAD` before implementation commits, but
+its late Python selector resolved the new HEAD and ran only the always-selected
+staleness check. Consequently the gate does not establish broad Python-owner
+coverage; the explicitly recorded focused owner runs supply that evidence.
+Any later gate should pin the immutable base commit instead of moving HEAD.
 
 Generated-output review found the per-device stage allocations and dependent
 object hashes are required by the new stage contract. DN2 still reserves 65,536
@@ -376,15 +455,13 @@ were normalized to alter their stamps.
 
 ## Remaining completion markers [O]
 
-- **PENDING ROOT UPDATE:** compiled Stage 5 acceptance for the final pair,
-  including native page cycling, held values, preset recall and waveform output.
+- Compiled Stage 5 acceptance passed for the final pair, as recorded above.
 - **PENDING ROOT UPDATE:** Stage 6 emulator coexistence/guard checks with Overloop
   and any paired timing/resource measurement. Physical timing is a separate
   qualification; instruction counts do not establish it.
-- **PENDING ROOT UPDATE:** affected merge-gate outcome. Focused passing suites
-  do not replace the complete affected gate. The current rerun is
-  `out/canopy-wavetable-merge-gate-current.log`, with
-  `TMPDIR=/home/mdaven/.cache/digikit/canopy-test-tmp`.
+- The affected merge gate completed with 88 successful and 47 failed targets,
+  categorized above. Focused passing suites do not replace that failed gate.
+  Log: `out/canopy-wavetable-merge-gate-current.log`.
 
 No wavetable firmware or module has been installed on the physical DTII during
 this implementation. The last verified installed pair is the spread/phase build

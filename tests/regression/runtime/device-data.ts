@@ -6,7 +6,12 @@ import { parse } from 'smol-toml';
 /** The one reader of devices/<profile>.toml and devices/ports/<device>-<firmware>.toml. Only the keys read by the tests are typed. */
 export interface DeviceProfile {
   input: { backend: string };
-  panel: { linear_channels: number; button_channels: number; exceptions: Record<string, [number, number]> };
+  panel: {
+    linear_channels: number;
+    button_channels: number;
+    encoders: number;
+    exceptions: Record<string, [number, number]>;
+  };
   limits: { fx_slots: number } & Record<string, number>;
   digikit: { peek: [number, number][]; dsp_area_bytes: number };
   storage?: { samples?: string };

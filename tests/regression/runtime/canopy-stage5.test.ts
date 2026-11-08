@@ -16,6 +16,8 @@ import { openDigikitMenu } from './runtime-menu.ts';
 import { waitInstrumentReady } from './instrument-ready.ts';
 import { acknowledgedPanel } from './panel-ack.ts';
 import { menuSelection } from './menu-selection.ts';
+import { encoderValue } from './encoder-value.ts';
+import { canopyControls } from './canopy-controls.ts';
 
 const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
 test(
@@ -97,7 +99,8 @@ test(
             ['ip_src_debug', 12],
             ['ip_src_refresh', 8],
             ['ip_panel_debug', 8],
-            ['src_state', 21],
+            ['ip_keyboard_status', 12],
+            ['src_state', 28],
             ['src_status', 160],
           ] as const
         ).map(([name, n]) => capture(name, () => Promise.all(Array.from({ length: n }, (_, i) => cf(name, i))))),
@@ -154,7 +157,7 @@ test(
         .filter((v) => v.token !== 0 && !(v.gate & 4))
         .sort((a, b) => a.token - b.token);
     };
-    const { tap: key, edge } = acknowledgedPanel(session);
+    const { tap: key, edge, turn } = acknowledgedPanel(session);
     const readyArtifacts = path.join(root, 'out/design/canopy-native-ui');
     fs.mkdirSync(readyArtifacts, { recursive: true });
     await expectRuntimeUi(session, plan, readyArtifacts, {
@@ -225,9 +228,22 @@ test(
     };
     const bank = async () => (await rawBank()).map((v, i) => (i < 16 ? v : v & 65535));
     const toneBank = async () => (await rawBank()).slice(16, 28).map((v) => v >>> 16);
+    const { settled } = canopyControls(cf, rawBank);
+    const setControl = (encoder: number, control: number, target: number) =>
+      encoderValue(
+        (delta) => turn(encoder, delta),
+        () => settled(control),
+        target,
+      );
     const srcPage = async (page: number) => {
+      // The remembered page alone does not prove the native SRC view is bound
+      // after a modal closes. A nonzero published token proves visible ownership.
+      if (!(await cf('ip_src_debug', 2))) await key('SRC');
+      await expect.poll(() => cf('ip_src_debug', 2), { timeout: 30000 }).toBeGreaterThan(0);
       for (let i = 0; i < 3 && (await cf('ip_src_debug', 1)) !== page; i++) await key('SRC');
       expect(await cf('ip_src_debug', 1)).toBe(page);
+      expect(await cf('ip_src_debug')).toBe(0);
+      expect(await cf('ip_src_debug', 2)).toBeGreaterThan(0);
     };
     await key('SRC');
     await expect.poll(() => cf('ip_src_debug', 3), { timeout: 15000 }).toBeGreaterThan(0);
@@ -253,46 +269,20 @@ test(
     const readonly = await bank();
     expect(readonly.slice(16, 18)).toEqual(start.slice(16, 18));
     expect(readonly[20]).toBe(start[20]);
-    await expect
-      .poll(
-        async () => {
-          await session.client.inputTurn(4, 4);
-          await waitEmulated(session, 50);
-          return (await bank())[18];
-        },
-        { timeout: 20000 },
-      )
-      .toBeGreaterThan(start[18]!);
+    await setControl(4, 2, start[18]! + 4);
+    expect((await bank())[18]).toBeGreaterThan(start[18]!);
     await key('SRC');
     expect(await cf('ip_src_debug', 1)).toBe(1);
     await captureRemoteOled(session, 'canopy-stage5-movement');
     await heldValues('canopy-arp-held-values');
     expect(await cf('ip_src_debug', 1)).toBe(1);
     const movement = await bank();
-    await expect
-      .poll(
-        async () => {
-          await session.client.inputTurn(3, 2);
-          await waitEmulated(session, 50);
-          return (await bank())[24];
-        },
-        { timeout: 20000 },
-      )
-      .toBeGreaterThan(movement[24]!);
+    await setControl(3, 8, movement[24]! + 2);
+    expect((await bank())[24]).toBeGreaterThan(movement[24]!);
     // One signed spread control: no transposition of the pad or bidirectional
     // spread. The 0..6 wire value represents the visible -3..+3 range.
     const tuneBeforeSpread = (await bank())[0]! >>> 16;
-    const setSpread = async (encoded: number) => {
-      // Acknowledge each small physical turn before the next. Wall-time waits
-      // and a large reversal can coalesce pending UART turns on a busy host.
-      let current = (await bank())[24]!;
-      while (current !== encoded) {
-        const delta = Math.sign(encoded - current);
-        await session.client.inputTurn(3, delta);
-        current += delta;
-        await expect.poll(async () => (await bank())[24], { timeout: 15000 }).toBe(current);
-      }
-    };
+    const setSpread = (encoded: number) => setControl(3, 8, encoded);
     for (const [encoded, name] of [
       [0, 'down'],
       [3, 'zero'],
@@ -314,12 +304,12 @@ test(
       [7, 28],
     ] as const) {
       const before = (await bank())[index]!;
-      await session.client.inputTurn(encoder, 1);
-      await expect.poll(async () => (await bank())[index], { timeout: 15000 }).toBe(before + 1);
+      await setControl(encoder, index - 16, before + 1);
+      expect((await bank())[index]).toBe(before + 1);
     }
     const source = await bank();
-    await session.client.inputTurn(8, 4);
-    await expect.poll(async () => (await bank())[21], { timeout: 15000 }).toBe(source[21]! + 4);
+    await setControl(8, 5, source[21]! + 4);
+    expect((await bank())[21]).toBe(source[21]! + 4);
     expect((await bank())[29]).toBe(source[29]);
     await key('AMP');
     await key('SRC');
@@ -340,8 +330,8 @@ test(
       [7, 21],
     ] as const) {
       const before = (await bank())[index]!;
-      await session.client.inputTurn(encoder, 2);
-      await expect.poll(async () => (await bank())[index], { timeout: 15000 }).toBe(before + 2);
+      await setControl(encoder, index - 16, before + 2);
+      expect((await bank())[index]).toBe(before + 2);
     }
     await expect.poll(() => cf('src_state', 4), { timeout: 20000 }).toBe(0);
     const idlePaints = await cf('ip_src_debug', 3);
@@ -433,14 +423,12 @@ test(
     await expect.poll(() => cf('ip_keyboard_status'), { timeout: 15000 }).toBe(1);
     for (let i = 0; i < 3; i++) await key('NO');
     await srcPage(0);
-    for (const [delta, chord] of [
-      [10, 10],
-      [-1, 9],
-      [1, 10],
-      [1, 11],
-    ] as const) {
-      await session.client.inputTurn(2, delta);
-      await expect.poll(async () => (await bank())[16], { timeout: 15000 }).toBe(chord);
+    for (const chord of [10, 9, 10, 11]) {
+      // The stock idle filter can consume the first packet after a long menu
+      // visit (finding 78). Drain each actual input and its configuration before
+      // deciding whether another single detent is necessary.
+      await setControl(2, 0, chord);
+      expect((await bank())[16]).toBe(chord);
       await waitEmulated(session, 100);
     }
     await captureRemoteOled(session, 'canopy-user-chord-exit');
@@ -480,8 +468,8 @@ test(
     expect(Array.from({ length: 12 }, (_, i) => preset!.readUInt16BE(64 + 2 * i))).toEqual(await toneBank());
     for (let i = 0; i < 4; i++) await key('NO');
     await srcPage(0);
-    await session.client.inputTurn(4, 1);
-    await expect.poll(async () => (await bank())[18], { timeout: 15000 }).toBe(savedBank[18]! + 1);
+    await setControl(4, 2, savedBank[18]! + 1);
+    expect((await bank())[18]).toBe(savedBank[18]! + 1);
     await openDigikitMenu(key);
     await key('YES');
     await menuRow(34);
@@ -613,8 +601,8 @@ test(
       [7, 5, 1], // PHRASE
     ] as const) {
       const before = (await toneBank())[index]!;
-      await session.client.inputTurn(encoder, delta);
-      await expect.poll(async () => (await toneBank())[index], { timeout: 15000 }).toBe(before + delta);
+      await setControl(encoder, 16 + index, before + delta);
+      expect((await toneBank())[index]).toBe(before + delta);
     }
     expect((await voices())[0]!.token).toBe(wavetableHeld);
     await expect.poll(() => cf('src_state', 4), { timeout: 30000 }).toBe(0);
@@ -625,8 +613,8 @@ test(
     await srcPage(0);
     const tonePosition = (await toneBank())[1]!;
     const oldColor = (await bank())[18];
-    await session.client.inputTurn(4, 1); // SOUND D aliases TONE C for WAVETABLE.
-    await expect.poll(async () => (await toneBank())[1], { timeout: 15000 }).toBe(tonePosition + 1);
+    await setControl(4, 17, tonePosition + 1); // SOUND D aliases TONE C for WAVETABLE.
+    expect((await toneBank())[1]).toBe(tonePosition + 1);
     expect((await bank())[18]).toBe(oldColor);
     const savedTone = await toneBank();
     await openDigikitMenu(key);
@@ -638,8 +626,8 @@ test(
     await expect.poll(() => cf('preset_result'), { timeout: 30000 }).toBe(0);
     for (let i = 0; i < 4; i++) await key('NO');
     await srcPage(2);
-    await session.client.inputTurn(3, 1);
-    await expect.poll(async () => (await toneBank())[1], { timeout: 15000 }).toBe(savedTone[1]! + 1);
+    await setControl(3, 17, savedTone[1]! + 1);
+    expect((await toneBank())[1]).toBe(savedTone[1]! + 1);
     await openDigikitMenu(key);
     await key('YES');
     await menuRow(34);

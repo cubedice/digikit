@@ -72,11 +72,23 @@ wheel amounts. These modulation amounts default to zero. Position modulation
 clamps at the table ends. Mod wheel follows its USB/DIN channel; CC121 clears
 that route's wheel, while CC120 stops sound without changing wheel position.
 
+RST=TRIG restarts scanning at the beginning of a phrase (no held notes to at least
+one), rather than on every chord note. Tempo-synchronized scanning holds its position
+while transport or clock is unavailable. Selecting the scan clock resets RATE to
+1 BAR for tempo sync or 0.10 Hz for free running. The scan clock is independent of
+the arp clock. Timbre ATTACK/RELEASE use 0-127 control values, not milliseconds;
+the position envelope rises, holds while the note is held, then releases.
+
+The four custom preset slots save custom sound controls, mode and chord shape.
+Native TUNE, source LEV, track LEVEL and routing are outside these presets.
+
 The factory waves are original, reproducibly generated data, compiled into the
 module. No sample-bank upload is needed. User-table import is a later extension.
 Presets use CPST v3 (96 bytes), including all wavetable controls and factory-table
 version 1. The existing 64-byte v1/v2 presets remain readable and receive neutral
-wavetable defaults. Native Sound/project persistence and parameter locks remain
+wavetable defaults. Loading an older preset does not rewrite it, but SAVE CURRENT SOUND
+then writes v3; older firmware cannot read that updated record. Native Sound/project
+persistence and parameter locks remain
 outside this custom preset format.
 
 ## Earlier carrier and transport evidence

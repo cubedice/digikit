@@ -16,6 +16,11 @@ import { waitInstrumentReady } from './instrument-ready.ts';
 import { acknowledgedPanel } from './panel-ack.ts';
 import { menuSelection } from './menu-selection.ts';
 import { turnAppliedControl } from './encoder-applied.ts';
+import { encoderValue } from './encoder-value.ts';
+import { canopyControls } from './canopy-controls.ts';
+import { analysisJson } from './fx-live.ts';
+import { pageKit } from './fx-pages-ui.ts';
+import type { FxProfile } from './fx-session.ts';
 
 const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
 test(
@@ -80,6 +85,10 @@ test(
             ['_iv_input', 80],
             ['_pattern_position_info', 80],
             ['_instrument_reply', 64],
+            ['_loop_ui_status', 64],
+            ['_fx_diag', 32],
+            ['_fx_blk', 4],
+            ['fx.rows', 288],
           ] as const
         ).map(([name, len]) =>
           capture(name, () =>
@@ -98,6 +107,9 @@ test(
             ['mt_guard_fault', 5],
             ['registry_guard', 8],
             ['frame_block', 1],
+            ['loop_ui_snapshot', 16],
+            ['loop_ui_age', 1],
+            ['loop_ui_updates', 1],
             ['ip_control', 8],
             ['ip_src_debug', 12],
             ['ip_src_refresh', 8],
@@ -158,13 +170,20 @@ test(
         .filter((v) => v.token !== 0 && !(v.gate & 4))
         .sort((a, b) => a.token - b.token);
     };
-    const { tap: key, edge } = acknowledgedPanel(session);
+    const { tap: key, edge, turn } = acknowledgedPanel(session);
     const readyArtifacts = path.join(root, 'out/canopy-stage6-ready');
     fs.mkdirSync(readyArtifacts, { recursive: true });
     await expectRuntimeUi(session, plan, readyArtifacts, {
       afterEpoch: beforeRestart,
       timeout: 180_000,
     });
+    const fxProfile = await analysisJson<FxProfile>(
+      'tools.patchkit.pk_digikit_fxroutes',
+      ['profile', '--device', 'dt2'],
+      readyArtifacts,
+      'fx-profile',
+    );
+    const loopKit = pageKit(session, fxProfile);
     // Select the admitted machine using the stock machine chooser.
     await edge('FUNC', true);
     try {
@@ -204,6 +223,7 @@ test(
       return Array.from({ length: 32 }, (_, i) => b.readUInt32LE(i * 4));
     };
     const toneBank = async () => (await rawBank()).slice(16, 28).map((v) => v >>> 16);
+    const controls = canopyControls(cf, rawBank);
     const srcPage = async (page: number) => {
       for (let i = 0; i < 3 && (await cf('ip_src_debug', 1)) !== page; i++) await key('SRC');
       expect(await cf('ip_src_debug', 1)).toBe(page);
@@ -360,7 +380,16 @@ test(
     await expect.poll(() => loopWord(13), { timeout: 10000 }).toBeLessThan(frames);
     await turnUntil(2, 1, async () => (await loopWord(14)) > 0);
     await expect.poll(() => loopWord(12), { timeout: 10000 }).toBeGreaterThan(0);
-    await turnUntil(4, 8, async () => (await loopWord(6)) >= 0x3f000000);
+    // Physical D edits logical parameter 2. Native FX controls use a fine raw
+    // scale; settle their kit value before waiting for the DSP publication.
+    const halfFadeRaw = await loopKit.setRaw('ENC D', 2, 0x4200);
+    expect(halfFadeRaw, 'Overloop half fade: raw target 0x4200, minimum 0x4000').toBeGreaterThanOrEqual(0x4000);
+    await expect
+      .poll(() => loopWord(6), {
+        timeout: 30_000,
+        message: `Overloop half fade publishes gain >= 0.5 after raw 0x${halfFadeRaw.toString(16)} (target 0x4200)`,
+      })
+      .toBeGreaterThanOrEqual(0x3f000000);
     await key('SRC');
     await srcPage(2);
     const replacements = [67, 71, 74, 79];
@@ -368,8 +397,14 @@ test(
       { tokens: number[]; gates: number[]; arpToken: number; arpGate: number; steps: number } | undefined;
     const transitions = await audio('wavetable-loop-transitions', async () => {
       for (let table = 1; table <= 4; table++) {
-        await session.client.inputTurn(2, 1);
-        await expect.poll(async () => (await toneBank())[0], { timeout: 15000 }).toBe(table);
+        // A long Overloop recording can leave the native encoder idle filter
+        // armed. Drain each packet and its configuration before retrying a detent.
+        await encoderValue(
+          (delta) => turn(2, delta),
+          () => controls.settled(16),
+          table,
+        );
+        expect((await toneBank())[0]).toBe(table);
         await waitEmulated(session, 50);
         expect(await voices()).toEqual(held);
       }
@@ -415,12 +450,23 @@ test(
     }
     for (let i = 0; i < 4; i++) await key('UP');
     for (let i = 0; i < 3; i++) await key('DOWN');
-    await turnUntil(4, 8, async () => (await loopWord(6)) >= 0x3f7f0000);
+    await loopKit.maximum('ENC D', 2);
+    const fullFadeRaw = await loopKit.raw(2);
+    expect(fullFadeRaw, 'Overloop full fade: raw target 0x7f00').toBe(0x7f00);
+    await expect
+      .poll(() => loopWord(6), {
+        timeout: 30_000,
+        message: `Overloop full fade publishes loop-side gain after raw 0x${fullFadeRaw.toString(16)} (target 0x7f00)`,
+      })
+      .toBeGreaterThanOrEqual(0x3f7f0000);
     const loopAudio = await audio('loop');
     for (const note of [...notes, ...replacements]) {
       await session.client.call('midi.usb.in', { bytes: [0x80, note, 0] });
       await session.client.call('midi.in', { bytes: [0x80, note, 0] });
     }
+    // RELEASE=15 takes one device second from a sustained amplitude. The
+    // ordinary release voices remain present until that envelope reaches zero.
+    await waitEmulated(session, 1050);
     await expect.poll(async () => (await voices()).length, { timeout: 30000 }).toBe(0);
     const released = await audio('loop-after-release');
     expect(await dk.verifyFile('stage6/transfer.bin', payload)).toBe(true);

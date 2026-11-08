@@ -3,7 +3,7 @@ import { aggregate } from '../support.ts';
 import { deviceProfile, portAnchor } from './device-data.ts';
 
 type PanelSession = Pick<Session, 'options' | 'status'> & {
-  client: Pick<Session['client'], 'inputButton' | 'memPeek'>;
+  client: Pick<Session['client'], 'inputButton' | 'inputTurn' | 'memPeek'>;
 };
 
 /** Panel edges acknowledged by the guest, for slow free-running device tests.
@@ -89,5 +89,73 @@ export function acknowledgedPanel(session: PanelSession, { timeoutMs = 30_000, p
     if (pressFailed) throw pressError;
   }
 
-  return { edge, tap };
+  /** A turn may be filtered without producing a view event (finding 78).
+   * Wait for the UART decoder, its pending-count flush, and the UI handler;
+   * input_pending alone only acknowledges the UART delivery. The two literals
+   * are inside the hashed decoder (finding 58): +0x10 is the encoder map and
+   * +0x34 the base of eight-byte {pending delta, timestamp} rows. The pending
+   * row uses the mapped one-based encoder, not its zero-based click-key index.
+   * This is an input acknowledgement, not a DSP/configuration acknowledgement. */
+  async function turn(encoder: number, detents: number): Promise<void> {
+    if (!Number.isInteger(encoder) || encoder < 1 || encoder > profile.panel.encoders)
+      throw new Error(`No panel encoder ${encoder} on ${device}`);
+    if (!Number.isInteger(detents) || !detents || Math.abs(detents) > 30)
+      throw new Error('An acknowledged turn requires 1..30 signed detents');
+    const deadline = Date.now() + timeoutMs;
+    let phase = 'layout',
+      last: unknown;
+    const word = async (address: number) => {
+      const value = await withinRuntimeDeadline(deadline, () => session.client.memPeek(address));
+      if (value === null) throw new Error(`Unmapped encoder memory at ${address.toString(16)}`);
+      return value >>> 0;
+    };
+    const until = async <T>(read: () => Promise<T>, done: (value: T) => boolean) => {
+      for (;;) {
+        last = await withinRuntimeDeadline(deadline, read);
+        if (done(last as T)) return;
+        if (Date.now() >= deadline) throw new Error('Encoder acknowledgement deadline expired');
+        await new Promise<void>((resolve) => setTimeout(resolve, Math.min(pollMs, deadline - Date.now())));
+      }
+    };
+    const status = () => withinRuntimeDeadline(deadline, () => session.status());
+    const loop = async () => {
+      const hits = (await status()).heartbeat.mainloop_hits;
+      if (!Number.isSafeInteger(hits) || hits < 0) throw new Error('Missing UI mainloop counter');
+      return hits;
+    };
+    const nextLoop = async () => {
+      const before = await loop();
+      await until(loop, (hits) => hits > before);
+    };
+    try {
+      const decoder = portAnchor(device, firmware, 'cf.input.fn.enc_decoder');
+      if ((await word(decoder + 0x30)) !== 0x2440d5fc) throw new Error('Unexpected encoder pending-count instruction');
+      const mapped = await word((await word(decoder + 0x10)) + 4 * (encoder - 1));
+      if (mapped < 1 || mapped > profile.panel.encoders) throw new Error(`Invalid mapped encoder ${mapped}`);
+      const pending = (await word(decoder + 0x34)) + 8 * mapped;
+      const queue = await word(queueLiteral);
+      phase = 'send';
+      await withinRuntimeDeadline(deadline, () => session.client.inputTurn(encoder, detents));
+      phase = 'UART';
+      await until(status, (s) => s.cf.input_pending === 0 && s.scheduled_inputs === 0);
+      // The final byte can have left the UART while its decoder still executes.
+      await nextLoop();
+      phase = 'flush';
+      await until(
+        () => word(pending),
+        (delta) => delta === 0,
+      );
+      phase = 'queue';
+      await until(
+        () => word(queue + 4),
+        (count) => count === 0,
+      );
+      phase = 'handler';
+      await nextLoop();
+    } catch (cause) {
+      throw new Error(`Encoder ${encoder} turn failed at ${phase}: ${JSON.stringify(last)}`, { cause });
+    }
+  }
+
+  return { edge, tap, turn };
 }
