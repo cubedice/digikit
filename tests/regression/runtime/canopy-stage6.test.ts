@@ -394,8 +394,52 @@ test(
     await key('SRC');
     await srcPage(2);
     const replacements = [67, 71, 74, 79];
+    const originalTokens = new Set(held.map((voice) => voice.token));
+    const replacementState = async () => {
+      // The six sounding slots and four pending records precede the controller
+      // bank. Its ten ownership records retain the base note and input route.
+      const b = await peek(state, 512);
+      const owners = Array.from({ length: 10 }, (_, i) => ({
+        token: b.readUInt32LE(292 + i * 8),
+        note: (b.readUInt32LE(296 + i * 8) >>> 8) & 127,
+        route: b.readUInt32LE(296 + i * 8) & 255,
+      }));
+      const replacementOwner = (token: number) =>
+        owners.find(
+          (owner) =>
+            owner.token === token &&
+            token !== 0 &&
+            !originalTokens.has(token) &&
+            owner.route === 0 &&
+            replacements.includes(owner.note),
+        );
+      const slots = Array.from({ length: 6 }, (_, slot) => ({
+        slot,
+        token: b.readUInt32LE(slot * 32),
+        gate: b.readUInt32LE(slot * 32 + 4),
+      }));
+      const onsets = slots
+        .filter((voice) => voice.slot < 4 && voice.gate === 1)
+        .flatMap((voice) => {
+          const owner = replacementOwner(voice.token);
+          return owner ? [{ ...voice, note: owner.note }] : [];
+        });
+      const pending = Array.from({ length: 4 }, (_, slot) => ({
+        slot,
+        token: b.readUInt32LE(192 + slot * 16),
+        note: b.readUInt32LE(196 + slot * 16),
+      })).filter((voice) => replacementOwner(voice.token)?.note === voice.note);
+      return { slots, onsets, pending };
+    };
     let tailWitness:
-      { tokens: number[]; gates: number[]; arpToken: number; arpGate: number; steps: number } | undefined;
+      | (Awaited<ReturnType<typeof replacementState>> & {
+          resetPads: number[];
+          originalTokens: number[];
+          arpToken: number;
+          arpGate: number;
+          steps: number;
+        })
+      | undefined;
     const transitions = await audio('wavetable-loop-transitions', async () => {
       for (let table = 1; table <= 4; table++) {
         // A long Overloop recording can leave the native encoder idle filter
@@ -419,26 +463,50 @@ test(
         await session.client.call('midi.usb.in', { bytes: replacements.flatMap((n) => [0x90, n, 100]), chunk: 12 });
         for (let steps = 1; steps <= 256 && !tailWitness; steps++) {
           await session.client.step(44_000, { timeout_wall_s: 30 });
-          const slots = await peek(state, 192),
+          const snapshot = await replacementState(),
             a = await arp();
-          const tokens = Array.from({ length: 6 }, (_, i) => slots.readUInt32LE(i * 32));
-          const gates = Array.from({ length: 6 }, (_, i) => slots.readUInt32LE(i * 32 + 4));
-          if (tokens.slice(0, 4).every((token) => token !== 0) && tokens[4] && tokens[5] && a.token) {
-            // Pad steals use the bounded reset ramp; an arp release can already
-            // occupy either shared tail with its own lane bit.
-            expect(gates[4]! & 6).not.toBe(0);
-            expect(gates[5]! & 6).not.toBe(0);
-            tailWitness = { tokens, gates, arpToken: a.token, arpGate: a.gate, steps };
+          const resetPads = snapshot.slots
+            .filter((voice) => originalTokens.has(voice.token) && voice.gate === 2)
+            .map((voice) => voice.token);
+          if (
+            snapshot.slots[4]!.token &&
+            snapshot.slots[5]!.token &&
+            a.token &&
+            resetPads.length &&
+            snapshot.onsets.length + snapshot.pending.length > 0
+          ) {
+            // A steal must involve an original pad token and a newly admitted
+            // replacement identity. With both shared tails busy, the old pad
+            // ramps in its foreground slot before the pending onset can start.
+            expect(snapshot.slots[4]!.gate & 6).not.toBe(0);
+            expect(snapshot.slots[5]!.gate & 6).not.toBe(0);
+            tailWitness = {
+              ...snapshot,
+              resetPads,
+              originalTokens: [...originalTokens],
+              arpToken: a.token,
+              arpGate: a.gate,
+              steps,
+            };
           }
         }
-        expect(tailWitness, 'four-note replacement exercises both shared tails beside the arp').toBeDefined();
+        expect(
+          tailWitness,
+          'a new replacement identity overlaps an old pad reset ramp, both shared tails and arp',
+        ).toBeDefined();
       } finally {
         await session.client.call('run.mode', { mode: 'free' });
       }
       await expect
-        .poll(async () => (await voices()).filter((v) => v.slot < 4 && v.gate === 1).length, { timeout: 30000 })
-        .toBe(4);
+        .poll(async () => (await replacementState()).onsets.map((voice) => voice.note).sort((a, b) => a - b), {
+          timeout: 30000,
+          message: 'all four foreground voices are the requested USB replacements after their ramps',
+        })
+        .toEqual(replacements);
       await waitEmulated(session, 100);
+      const replacementVoices = (await replacementState()).onsets;
+      expect(replacementVoices.map((voice) => voice.note).sort((a, b) => a - b)).toEqual(replacements);
+      expect(new Set(replacementVoices.map((voice) => voice.token)).size).toBe(4);
       held = await voices();
       expect(held).toHaveLength(4);
       expect(await cf('mt_guard_fault')).toBe(0);

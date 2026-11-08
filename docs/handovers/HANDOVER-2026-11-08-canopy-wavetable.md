@@ -435,6 +435,16 @@ profile call now runs before firmware loading, so its failure cannot waste a ban
 load. The unchanged production pair is being rechecked in
 `out/canopy-wavetable-final-coexist.log`; Stage 5 was not repeated.
 
+That rerun was deliberately stopped early after review found that the tail
+witness could accept the original voices before replacement MIDI arrived.
+The corrected witness requires a new USB replacement token and expected pitch
+in an onset or pending record, an original pad token in its reset ramp, both
+shared tails and an active arp. It permits the bounded foreground-ramp fallback
+when both tails are busy. After the ramps all four requested replacement pitches
+must have distinct new foreground tokens. The existing step/publication bounds
+remain unchanged. Regression typechecking passed; the complete rerun is
+`out/canopy-wavetable-replacement-coexist.log`.
+
 A follow-up staging audit found four proof helpers still excluding only 64 KiB
 from their DMA write watch. `pk_dkrt`, `pk_dkrt_machine`, `digikit_menu_proof`
 and the TypeScript runtime safety helper now exclude the selected device's full
@@ -467,6 +477,20 @@ which of those uninstrumented calls failed. Its separate 30-second publication
 and DSP-completion waits also do not accommodate this bank. Generic Overloop
 conformance reached reboot but timed out its registration poll. These fixtures
 remain unresolved; the dedicated tests use the requirement-complete image.
+
+Read-only follow-up traced these generic fixture incompatibilities to setup
+that predates the wavetable change: the loader rejects V2 instruments without
+the adapter's admission policy, and Overloop's loop-buffer, controls, status and
+pattern-position imports are absent from the default image. Its registry held
+only `digikit/debug`, consistent with rejection rather than slow registration.
+Generic assertions also require a legacy voice-row mask for CANOPY and collect
+an empty DN2 suite for these DT2-only modules. The larger CANOPY file additionally
+exposes a possible six-second VERIFY deadline: the observed pre-restart failure
+timing is consistent with its retries, but request-level evidence is absent.
+The dedicated Stage 5 path passed the same file verification with its bounded
+20-second protocol helper. A proper generic-fixture fix needs module-specific
+firmware prerequisites, V2 assertions, device selection and matching cache inputs;
+increasing registration waits alone would not resolve these failures.
 
 The gate started with `DIGI_GATE_BASE=HEAD` before implementation commits, but
 its late Python selector resolved the new HEAD and ran only the always-selected
