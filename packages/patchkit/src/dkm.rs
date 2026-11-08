@@ -417,7 +417,8 @@ pub fn pack_full_max(
             .map_or(0, |b| u32::from_be_bytes(b.try_into().unwrap()))
     };
     let v5 = matches!(word(4), crate::dkmdsp::VERSION_7 | crate::dkmdsp::VERSION_8);
-    let has_fx = (matches!(word(4), crate::dkmdsp::VERSION_4 | crate::dkmdsp::VERSION_5) || v5) && word(0x38) > 0;
+    let has_fx = (matches!(word(4), crate::dkmdsp::VERSION_4 | crate::dkmdsp::VERSION_5) || v5)
+        && word(0x38) > 0;
     let fx_only = has_fx && word(0x30) == 0;
     // a version 5 DSP section whose record has kind 2 holds the per-track sample table: the module uses Api 1.5
     let uses_tracks = word(4) == crate::dkmdsp::VERSION_5
@@ -809,6 +810,36 @@ mod tests {
         assert!(pack(&object(), &o).is_err());
         o.name = "x".repeat(32);
         assert!(pack(&object(), &o).is_err());
+    }
+
+    #[test]
+    fn large_module_packing_respects_the_selected_device_stage_capacity() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let facts = crate::devgen::Facts::from_dir(&root.join("devices")).unwrap();
+        let mut obj = object();
+        obj.sections
+            .push(sec(".factory", "data", 16, &vec![0x42; 185440]));
+        obj.stamp_isa();
+        let dt2 = facts.stage_bytes("dt2").unwrap();
+        let dn2 = facts.stage_bytes("dn2").unwrap();
+        let file = pack_full_max(Some(&obj), &[], &[], &opts(), dt2).unwrap();
+        assert!(file.len() > dn2 && file.len() < dt2);
+        assert!(Dkm::parse(&file).is_ok());
+        assert!(
+            pack_full_max(Some(&obj), &[], &[], &opts(), dn2)
+                .unwrap_err()
+                .0
+                .contains("runtime stages 65536")
+        );
+        obj.sections
+            .push(sec(".too_large", "data", 16, &vec![0; 80000]));
+        obj.stamp_isa();
+        assert!(
+            pack_full_max(Some(&obj), &[], &[], &opts(), dt2)
+                .unwrap_err()
+                .0
+                .contains("runtime stages 262144")
+        );
     }
 
     #[test]

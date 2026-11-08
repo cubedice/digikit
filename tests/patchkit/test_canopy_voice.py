@@ -20,7 +20,8 @@ def floats(words):
 @pytest.fixture(scope="module")
 def engine():
     source = "\n".join(
-        (SOURCE / name).read_text() for name in ("voice.s", "tuning.s", "blend.s")
+        (SOURCE / name).read_text()
+        for name in ("voice.s", "tuning.s", "blend.s", "wavetable.s", "wavetables.s")
     )
     source += """
 .SECTION/PM seg_pmco;
@@ -45,7 +46,7 @@ _cp_test_loop:
 .VAR _cp_test_bank = 0;
 """
     obj = pk_sharc.assemble(source)
-    sections, initial, address = {}, {}, 0x20020000
+    sections, initial, address = {}, {}, 0x200A0000
     for name, (blob, align, _) in obj.data.items():
         address = (address + align - 1) // align * align
         sections[name] = address

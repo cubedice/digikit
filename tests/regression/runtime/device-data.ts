@@ -5,6 +5,8 @@ import { parse } from 'smol-toml';
 
 /** The one reader of devices/<profile>.toml and devices/ports/<device>-<firmware>.toml. Only the keys read by the tests are typed. */
 export interface DeviceProfile {
+  input: { backend: string };
+  panel: { linear_channels: number; button_channels: number; exceptions: Record<string, [number, number]> };
   limits: { fx_slots: number } & Record<string, number>;
   digikit: { peek: [number, number][]; dsp_area_bytes: number };
   storage?: { samples?: string };
@@ -77,7 +79,11 @@ export function expansionRegion(device: Device, firmware: string): [number, numb
 
 /** The address of the DN2 FX send slot bus, from its port anchor. */
 export function slotBusAddress(device: Device, firmware: string): number {
-  const name = 'dsp.fx.value.send.slot_bus';
+  return portAnchor(device, firmware, 'dsp.fx.value.send.slot_bus');
+}
+
+/** Resolve one named firmware anchor instead of embedding a version-specific address in a test. */
+export function portAnchor(device: Device, firmware: string, name: string): number {
   const anchors = (portFile(device, firmware).anchor ?? []).filter((a) => a.name === name);
   if (anchors.length !== 1) throw new Error(`expected exactly one ${name} anchor, found ${anchors.length}`);
   const address = anchors[0]!.addr;

@@ -239,6 +239,38 @@ test('CC123 honors pedal, CC121 releases it and centers bend, CC120 clears latch
   expect(notes(states[3]!)).toEqual([]);
   expect(notes(states[5]!)).toEqual([]);
 });
+
+test('mod wheel retains its external route through PLAY and ROOT without changing voices or phrase', () => {
+  for (const mode of [0, 1])
+    for (const port of [0, 1])
+      for (const channel of [0, 15]) {
+        const [held, wheel, retry, acked, unchanged] = run(
+          `mode ${mode}\non ${channel} ${port} 60 100\ntick\ncc ${channel} ${port} 1 93\nhold\nhold\ntick\nsnapshot`,
+        );
+        expect(wheel!.voices).toEqual(held!.voices);
+        expect(wheel!.packet[4]).toBe(held!.packet[4]);
+        expect(wheel!.packet[1]).toBe(5 | (1 << 8));
+        expect(wheel!.packet[8]).toBe(0);
+        expect(wheel!.packet[10]).toBe(3 | (port << 4) | (channel << 6) | (1 << 14) | (93 << 21));
+        expect(retry!.packet).toEqual(wheel!.packet);
+        expect(acked!.packet).toEqual(wheel!.packet);
+        expect(unchanged!.queued).toBe(0);
+        expect(unchanged!.voices).toEqual(held!.voices);
+      }
+});
+
+test('controller reset clears only the route wheel while preserving mapped latch; sound off retains wheel', () => {
+  const [held, reset, panic] = run('latch 1\non 15 1 60 90\ntick\ncc 15 1 121 0\ntick\ncc 15 1 120 0\ntick');
+  expect(reset!.voices).toEqual(held!.voices);
+  expect(reset!.packet[1]).toBe(5 | (2 << 8));
+  expect(reset!.packet[8]).toBe(0);
+  expect(reset!.packet[11]).toBe(0);
+  expect(reset!.packet[10]).toBe(4 | (1 << 4) | (15 << 6) | (64 << 21));
+  expect(reset!.packet[13]).toBe(3 | (1 << 4) | (15 << 6) | (1 << 14));
+  expect(panic!.voices).toEqual([]);
+  expect(panic!.packet[1]).toBe(5 | (1 << 8));
+  expect(panic!.packet[10]).toBe(3 | (1 << 4) | (15 << 6) | (120 << 14));
+});
 test('output-token exhaustion requests priority reset without partial send', () => {
   const [s] = run('token 0\non 0 0 60 90\ntick');
   expect(s!.reset).toBe(1);

@@ -355,8 +355,10 @@ mod tests {
 
     #[test]
     fn an_oversize_file_needs_the_flag_and_bad_specs_are_refused() {
-        let big = "name = \"cap/big\"\npad = 70000\n";
-        let e = synth(&Spec::parse(big).unwrap(), "dt2", &models()).unwrap_err();
+        // The header and stub push a full staging buffer of padding over the
+        // current ceiling, including when the supported device maximum grows.
+        let big = format!("name = \"cap/big\"\npad = {}\n", dkm::max_file());
+        let e = synth(&Spec::parse(&big).unwrap(), "dt2", &models()).unwrap_err();
         assert!(e.0.contains("runtime stages"), "{}", e.0);
         let f = make(&format!("{big}oversize = true\n"), "dt2");
         assert!(f.len() > dkm::max_file());

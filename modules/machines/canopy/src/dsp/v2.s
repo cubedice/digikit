@@ -10,6 +10,10 @@
 .EXTERN _cp_native_tune;
 .EXTERN _cp_v2_instance;
 .EXTERN _cp_tune_changed;
+.EXTERN _wt_validate;
+.EXTERN _wt_prepare;
+.EXTERN _wt_finish;
+.EXTERN _wt_state;
 _canopy_reset:
     R0 = PASS R8;
     IF LE JUMP _cv_bad;
@@ -20,7 +24,7 @@ _canopy_reset:
     COMP(R8, R0);
     IF EQ JUMP _cv_replace;
     I0 = R4;
-    R1 = 200;
+    R1 = 296;
     R0 = 0;
 _cv_reset_clear:
     DM(I0, M6) = R0;
@@ -60,10 +64,26 @@ _cv_clear_movement:
     DM(I0, M6) = R0;
     R1 = R1 - 1;
     IF NE JUMP _cv_clear_movement;
+    // Keep WT phase/envelope/transition history through the 64-sample tail.
+    // Controller ownership resets immediately, including every wheel route.
+    R0 = 1056;
+    R0 = R4 + R0;
+    I0 = R0;
+    R1 = 32;
+    R0 = 0;
+_cv_clear_wheel:
+    DM(I0, M6) = R0;
+    R1 = R1 - 1;
+    IF NE JUMP _cv_clear_wheel;
+    I0 = R4;
+    R0 = 1;
+    DM(263, I0) = R0;
+    R0 = 0;
     JUMP (M13, I13);
 _canopy_process:
     DM(_cv_state) = R4;
     DM(_cv_input) = R8;
+    DM(_wt_state) = R4;
     I2 = R8;
     R0 = DM(0, I2);
     R1 = 2;
@@ -178,6 +198,18 @@ _cv_six_controls:
     I0 = R0;
     R0 = DM(0, I0);
     R1 = FEXT R0 BY 0:8;
+    R2 = 9;
+    COMP(R1, R2);
+    IF NE JUMP _cv_check_eight;
+    R4 = DM(9, I2);
+    CALL _wt_validate;
+    R0 = PASS R0;
+    IF EQ JUMP _cv_bad;
+    R0 = DM(_cv_input);
+    I2 = R0;
+    R0 = DM(0, I0);
+    JUMP _cv_seven_controls;
+_cv_check_eight:
     R2 = 8;
     COMP(R1, R2);
     IF EQ JUMP _cv_seven_controls;
@@ -309,7 +341,7 @@ _cv_five_body:
     R2 = FEXT R2 BY 0:8;
     R1 = 8;
     COMP(R2, R1);
-    IF EQ JUMP _cv_spread_range;
+    IF GE JUMP _cv_spread_range;
     R1 = 1;
     COMP(R0, R1);
     IF LT JUMP _cv_bad;
@@ -366,9 +398,22 @@ _cv_four_controls:
     IF NE JUMP _cv_bad;
 _cv_four_body:
     R0 = DM(1, I0);
+    R1 = DM(0, I0);
+    R1 = FEXT R1 BY 0:8;
+    R2 = 9;
+    COMP(R1, R2);
+    IF EQ JUMP _cv_wt_family;
     R0 = LSHIFT R0 BY -1;
     R0 = PASS R0;
     IF NE JUMP _cv_bad;
+    JUMP _cv_family_ok;
+_cv_wt_family:
+    R1 = 2;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+_cv_family_ok:
     R0 = DM(7, I0);
     R1 = 30;
     COMP(R0, R1);
@@ -630,6 +675,9 @@ _cv_seeded:
     CALL _cv_sound;
     R4 = DM(_cv_state);
     R8 = DM(_cv_input);
+    CALL _wt_prepare;
+    R4 = DM(_cv_state);
+    R8 = DM(_cv_input);
     CALL _cs_prepare;
     R4 = DM(_cv_state);
     CALL _ca_prepare;
@@ -647,6 +695,7 @@ _cv_seeded:
     IF LT JUMP _cv_audio_bad;
     R3 = DM(_cv_pad_active);
     R3 = R0 OR R3;
+    CALL _wt_finish;
     R0 = DM(_cv_input);
     I0 = R0;
     R0 = DM(5, I0);
@@ -733,6 +782,8 @@ _cv_sound:
     F2 = F2 + F0;
     DM(0, I0) = F2;
     R0 = DM(1, I1);
+    R1 = 1;
+    R0 = MIN(R0, R1);
     F0 = FLOAT R0;
     F3 = DM(3, I0);
     F0 = F0 - F3;
@@ -827,11 +878,11 @@ _cv_bad:
 .VAR _canopy_descriptor_2 = 48;
 .VAR _canopy_descriptor_3 = 1; // V5 status output for the native SRC adapter.
 .VAR _canopy_descriptor_4 = 1;
-.VAR _canopy_descriptor_5 = 800;
+.VAR _canopy_descriptor_5 = 1184;
 .VAR _canopy_descriptor_6 = 8;
 .VAR _canopy_descriptor_7 = 32;
 .VAR _canopy_descriptor_8 = 100000;
-.VAR _canopy_descriptor_9 = 1000;
+.VAR _canopy_descriptor_9 = 1600;
 .VAR _canopy_descriptor_10 = 8;
 .VAR _canopy_descriptor_11 = 128;
 

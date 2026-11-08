@@ -53,12 +53,12 @@ static uint32_t context(uint8_t *view)
         } else if(!was_owned && saved_valid && saved_generation==gen) {
             page=saved_page; *(uint32_t *)(view+0x90)=page;
         }
-        MfSrcCapability cap={MF_SRC_ABI,sizeof(cap),2,gen};
+        MfSrcCapability cap={MF_SRC_ABI,sizeof(cap),3,gen};
         if(mf_src_register(type,&cap)) owns=0;
         else { owner_type=type; owner_generation=gen; }
-        saved_generation=gen; saved_page=page>1?0:page; saved_valid=1;
+        saved_generation=gen; saved_page=page>2?0:page; saved_valid=1;
     }
-    if(page>1) page=0;
+    if(page>2) page=0;
     was_owned=(uint32_t)owns;
     published=instrument_src_context(track,page,owns);
     ip_src_debug[0]=track; ip_src_debug[1]=page; ip_src_debug[2]=published;
@@ -102,7 +102,7 @@ void ip_src_draw(uint8_t *view,uint8_t *canvas)
     for(uint32_t i=0;i<8;++i) {
         /* The firmware already painted SOUND A/H and the track column.
          * Custom cells never clear or redraw any part of those controls. */
-        if(!page && (i==0 || i==7)) continue;
+        if(page!=1 && (i==0 || i==7)) continue;
         int32_t x=24+26*(int32_t)(i%4),y=i<4?27:0;
         dk_fw_draw_fill_rect(canvas,x-1,y,x+21,y+25,0);
         if(display.rotary&(1u<<i)) {
@@ -193,7 +193,7 @@ uint32_t ip_src_key(uint8_t *view,uint8_t *event)
     published=0;
     (void)instrument_src_context(ip_src_debug[0],page,0);
     if(token && key>=41 && key<=48 &&
-        (page || (key!=41 && key!=48))) return 1;
+        (page==1 || (key!=41 && key!=48))) return 1;
     return ip_src_stock_key(view,event);
 }
 uint32_t ip_src_turn(uint8_t *view,uint8_t *event)
@@ -227,7 +227,7 @@ uint32_t ip_src_parameter(uint8_t *view,uint32_t encoder)
      * including modifier handling and Sound persistence, for SOUND A/H. */
     if(context(view)) {
         if(encoder==8) return 10;
-        if(!word(view,0x90)) {
+        if(word(view,0x90)!=1) {
             if(encoder==0) return 0xca;
             if(encoder==7) return 0xd1;
         }

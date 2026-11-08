@@ -145,7 +145,7 @@ int mi_message(MiLedger *m, uint32_t port, const uint8_t *msg, uint32_t len)
     r = &m->routes[port * 16 + channel];
     if (kind == 9 && !value) kind = 8;
     if (kind != 8 && kind != 9 && kind != 11 && kind != 14) return 0;
-    if (kind == 11 && note != 64 && note != 120 && note != 121 && note != 123) return 0;
+    if (kind == 11 && note != 1 && note != 64 && note != 120 && note != 121 && note != 123) return 0;
     if (kind == 8) {
         k = oldest(m, (uint8_t)port, channel, note);
         if (k) {

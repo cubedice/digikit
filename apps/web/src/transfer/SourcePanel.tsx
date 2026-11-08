@@ -13,6 +13,7 @@ function Panel(props: { id: string }): JSX.Element {
   const files = () => transferEnv().source?.files(props.id) ?? [];
   // module.toml first, then the README, then the code: the order the site ships
   const [path, setPath] = createSignal(files().find((f) => f.startsWith('src/')) ?? files()[0] ?? '');
+  const download = () => transferEnv().source?.download?.(props.id, path());
   createEffect(
     on(
       () => props.id,
@@ -23,7 +24,7 @@ function Panel(props: { id: string }): JSX.Element {
   const [text] = createResource(
     () => ({ id: props.id, path: path() }),
     async (k) => {
-      if (!k.path) return '';
+      if (!k.path || transferEnv().source?.download?.(k.id, k.path)) return '';
       try {
         return await transferEnv().source!.read(k.id, k.path);
       } catch (e) {
@@ -63,9 +64,23 @@ function Panel(props: { id: string }): JSX.Element {
           )}
         </For>
       </ul>
-      <pre class="sourcetext" tabindex={0} aria-label={path()}>
-        {text.loading ? 'Loading…' : text()}
-      </pre>
+      <Show
+        when={download()}
+        fallback={
+          <pre class="sourcetext" tabindex={0} aria-label={path()}>
+            {text.loading ? 'Loading…' : text()}
+          </pre>
+        }
+      >
+        {(file) => (
+          <div class="sourcetext" aria-label={path()}>
+            <p>This file is too large to preview.</p>
+            <a href={file().url} download={path().split('/').pop()}>
+              Download complete source ({Math.ceil(file().size / 1024)} KiB)
+            </a>
+          </div>
+        )}
+      </Show>
     </aside>
   );
 }

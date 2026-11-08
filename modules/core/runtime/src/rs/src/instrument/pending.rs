@@ -199,7 +199,32 @@ unsafe fn prepare(owner: &mut Owner, p: &mut Pending, ledger: &mut instrument_lo
         ledger, output, |_| None) else { return E_DSP_XFER; };
     p.type_no = types.as_slice()[0];
     p.ticket = Some(plan.ticket());
-    if owner.begin(plan, output, now, 2000).is_err() { return E_DSP_XFER; }
+    let Some(budget) = plan.upload_bytes().and_then(upload_budget) else { return E_DSP_XFER; };
+    if owner.begin_with_upload_budget(plan, output, now, 2000, budget).is_err() { return E_DSP_XFER; }
     p.phase = 2;
     OK
+}
+
+// Preserve the old 64-KiB / 2000-UI-pass allowance per upload page. Include
+// zero fill and alignment from the admitted grant, and never exceed the
+// executable L2 window. Metadata and recovery retain their separate limits.
+fn upload_budget(bytes: u32) -> Option<u32> {
+    if bytes == 0 || bytes > 0x80000 { return None; }
+    bytes.checked_add(0xffff)?.checked_div(0x10000)?.checked_mul(2000)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::upload_budget;
+
+    #[test]
+    fn upload_budget_covers_admitted_image_and_zero_fill_with_a_fixed_ceiling() {
+        for (bytes, budget) in [(1, 2000), (65536, 2000), (65537, 4000),
+            (207368 + 2240, 8000), (0x80000, 16000)] {
+            assert_eq!(upload_budget(bytes), Some(budget));
+        }
+        for bytes in [0, 0x80001, u32::MAX] {
+            assert_eq!(upload_budget(bytes), None);
+        }
+    }
 }

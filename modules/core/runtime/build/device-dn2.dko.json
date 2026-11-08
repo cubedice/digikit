@@ -4,15 +4,28 @@
  "relocs": [],
  "sections": [
   {
+   "align": 16,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss",
+   "size": 65536
+  },
+  {
    "align": 4,
-   "hex": "00000002646e32000000000240000000466c00004671200047fe100000000000000000000000000000000000008000000261a000444b494d47494431000000000000000000000000000000000000000000000000000000000000000000000000",
+   "hex": "00000002646e32000000000240000000466c00004671200047fe100000000000000000000000000000000000008000000261a00000010000444b494d47494431000000000000000000000000000000000000000000000000000000000000000000000000",
    "kind": "data",
    "name": ".rodata",
-   "size": 96
+   "size": 100
   }
  ],
- "source_sha256": "adf9711313f0a98c7f3d30f6db6076b18175d3e6d4ce9e2145155cf052be27f9",
+ "source_sha256": "abccf0d2683cffc69395f86f8ee6720f1e853c12fc49ccc9faa95873a4d2d647",
  "symbols": [
+  {
+   "global": true,
+   "name": "DKRT_STAGE",
+   "section": ".bss",
+   "value": 0
+  },
   {
    "global": true,
    "name": "dkrt_device_id",
@@ -29,13 +42,13 @@
    "global": true,
    "name": "dkrt_files_fs",
    "section": ".rodata",
-   "value": 84
+   "value": 88
   },
   {
    "global": true,
    "name": "dkrt_image_id",
    "section": ".rodata",
-   "value": 60
+   "value": 64
   },
   {
    "global": true,
@@ -53,7 +66,13 @@
    "global": true,
    "name": "dkrt_sample_fs",
    "section": ".rodata",
-   "value": 68
+   "value": 72
+  },
+  {
+   "global": true,
+   "name": "dkrt_stage_bytes",
+   "section": ".rodata",
+   "value": 52
   },
   {
    "global": true,
@@ -73,7 +92,7 @@
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
   "instructions_redecoded": "0",
-  "isa_check": "36f64ceffd4aaed7ded4be443bbe032cc105378dc2d2606f5c09baced4b6517f",
+  "isa_check": "b5a9769df0d8663dd871584a578bdfbcbc76e122d932b9eb8cf1bc5293390bca",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

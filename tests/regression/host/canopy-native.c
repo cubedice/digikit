@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdarg.h>
 #include "../../../modules/core/adapters/instrument-play/src/cf/src-native.c"
+uint8_t *mf_src_alloc(uint32_t bytes) { (void)bytes; assert(0); return 0; }
+void mf_src_free(uint8_t *p) { (void)p; assert(0); }
 uint32_t mf_native_page_count(uint32_t type, uint32_t ordinary) { (void)type; return ordinary; }
 static CsState state;
 static uint32_t selected,alternate,now=100,type_id=9,generation=1,stock_turns,stock_keys,invalidations,polls;
@@ -83,9 +85,21 @@ int main(int argc,char **argv)
             if(y<11 || x<23 || x>=124 || (y<37 && x<48) || (y>=38 && x>=101))
                 assert(canvas[y*128+x]==0xaa);
         assert(graphs==1 && texts==11 && !toasts);
-        assert(mf_src_page_count(type_id)==2);
+        assert(mf_src_page_count(type_id)==3);
         now=139; ip_src_update((uint8_t *)v); assert(!invalidations);
         now=140; ip_src_update((uint8_t *)v); assert(invalidations==1);
+    } else if(!strcmp(argv[1],"tone")) {
+        cs_metadata(&state,2u<<4); v[0x90/4]=2; context((uint8_t *)v);
+        assert(ip_src_parameter((uint8_t *)v,0)==0xca && ip_src_parameter((uint8_t *)v,7)==0xd1);
+        assert(ip_src_parameter((uint8_t *)v,8)==10 && ip_src_parameter((uint8_t *)v,2)==0);
+        event((uint8_t *)e,1,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7);
+        event((uint8_t *)e,8,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7);
+        event((uint8_t *)e,3,350,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e);
+        assert(state.value[CP_WT_POS]==350 && stock_turns==2);
+        ip_src_draw((uint8_t *)v,canvas);
+        for(int y=0;y<64;++y) for(int x=0;x<128;++x)
+            if(y<11 || x<23 || x>=124 || (y<37 && x<48) || (y>=38 && x>=101))
+                assert(canvas[y*128+x]==0xaa);
     } else if(!strcmp(argv[1],"routing")) {
         assert(ip_src_parameter((uint8_t *)v,0)==0xca);
         assert(ip_src_parameter((uint8_t *)v,7)==0xd1);

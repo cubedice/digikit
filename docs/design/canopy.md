@@ -2180,6 +2180,53 @@ a physical sustain pedal is unavailable. See the
 
 Stage 1 is a go/no-go gate. A beautiful pad sound with shared-note cutoff is a failed keyboard instrument. The detailed two-page UI must not delay that proof. Do not expand into extra oscillator types or recognition heuristics while MIDI/AMP ownership remains unresolved.
 
+## Factory wavetable extension (CPS9)
+
+WAVETABLE is a third engine family alongside the unchanged Velvet/Reed renderer.
+It uses five original factory tables (ANALOG, GLASS, VOCAL, ORGAN, METAL), each
+with eight phase-aligned frames. POS selects a continuous 1.00-8.00 position;
+adjacent frames interpolate, and modulation clamps at the ends. The assets use
+seven band-limited levels per frame, with lengths 512/256/128/64/64/64/64 and
+harmonic ceilings 64/32/16/8/4/2/1. Guard samples permit bounded interpolation.
+Factory data occupy 185,440 bytes. Frame level calibration happens offline;
+filtered levels retain the same gain, and there is no per-note automatic gain.
+
+The engine retains four held pad groups, one arp group and the existing shared
+release-tail pool. Note identity, velocity, sustain, latch, bend, drift and
+stealing stay with the existing owners. Same-pitch arp onsets inherit phase and
+timbre-envelope history from their pad owner. Table changes use one bounded
+transition at a time; further requests replace the pending destination instead
+of allocating extra oscillators. Rendering performs no heap or card operations.
+
+A shared scan runs free at 0.01-10 Hz or follows master timing at four bars,
+two bars, one bar, half, quarter, eighth or sixteenth. Sine, triangle and smooth
+random shapes support free, phrase and pattern restart. DEP 100% means a
+3.5-frame excursion on either side of POS. Separate timbre attack/release and
+signed envelope, velocity and CC1 amounts shape position without changing the
+amplitude envelope. Modulation amounts default to zero. CC1 is scoped by USB/DIN
+port and channel; CC121 resets the route's wheel, and CC120 retains it.
+
+TONE is the third native SRC page: `TUNE / TABL / POS / DEP` above
+`RATE / SHAP / RST / LEV`. Native TUNE, source LEV, dedicated track LEVEL/DATA
+and held-SRC show-values keep their firmware presentation and behavior. SOUND D
+aliases POS in the wavetable family; legacy COLOR remains remembered. Setup's
+engine chooser retains the old family row, and WAVETABLE TIMBRE adds the clock
+and extended modulation controls. The native page vector must actually allocate
+space for three entries; enlarging only its reported end pointer is forbidden.
+
+CPS9 retains the 128-byte control transport: the first sixteen words contain
+audio controls, the low halves of the next sixteen retain old presentation IDs,
+and twelve high halves carry the new controls. An entire bank is validated before
+publication. Detail schema 3 unpacks 28 controls plus native tune into the
+existing 64-word telemetry record. CPST v3 is 96 bytes and includes factory-table
+version 1; v1/v2 records receive neutral wavetable defaults. Presets remain
+explicit DigiKit sound slots, separate from native Sound/project data.
+
+User-table import, hard sync, FM and PWM are later extensions. Wavetable
+implementation requires fresh sound-quality, instruction-bound, native-page and
+CANOPY/Overloop coexistence checks; earlier additive-engine acceptance does not
+qualify the new renderer. Physical release qualification remains a separate gate.
+
 ## Tests and code owners
 
 Use generated SDK constants and extend existing helpers. Core runtime/adapters retain their repository language conventions; content declarations/control code use C and DSP uses SHARC assembly. New device scenarios use TypeScript/Vitest. Reference-model tests must drive the shipped control logic or compare its executed results, rather than test a disconnected mock alone.

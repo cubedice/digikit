@@ -204,13 +204,20 @@ int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8])
         event(s,&want[i],MI_NOTE_ON,&out[used++]);
     }
     if (count==1 && (in[0].kind==MI_BEND ||
-        (in[0].kind==MI_CC && in[0].note==121))) {
+        (in[0].kind==MI_CC && (in[0].note==1 || in[0].note==121)))) {
         if (used>=8) return -1;
         mi_event_copy(&out[used],&in[0]); out[used].token=0;
         if (in[0].kind==MI_CC && in[0].note==121) {
             out[used].kind=MI_BEND; out[used].note=0; out[used].value=64;
         }
         ++used;
+        if (in[0].kind==MI_CC && in[0].note==121) {
+            /* Pedal/latch ownership is resolved above, so forward only the
+             * wheel reset, alongside centered bend, on this same route. */
+            if (used>=8) return -1;
+            mi_event_copy(&out[used],&in[0]); out[used].token=0;
+            out[used].note=1; out[used].value=0; ++used;
+        }
     }
     for (i=0;i<4;++i) {
         volatile uint8_t *to=(volatile uint8_t *)&s->voices[i];

@@ -21,7 +21,7 @@ deterministic: the same object gives the same bytes.
 
 ## Format
 
-All integers are big endian. The file is at most 64 KiB in v0 (the runtime's staging buffer). Offsets are from the start of the
+All integers are big endian. The file must fit the device's staging buffer: DT2 permits 256 KiB and DN2 64 KiB. Each device object owns an aligned allocation of exactly that size; the runtime reads larger files in native reads of at most 64 KiB, then verifies the complete SHA-256 before loading. Offsets are from the start of the
 file; the loaded image starts at a 16-byte aligned file offset.
 
 | Offset | Size | Field |
@@ -314,7 +314,7 @@ implementation of it. The runtime's loader is checked in the emulator (`tools/pa
 
 ## Open
 
-- Streaming load for files over 64 KiB; compression.
+- Streaming load for files above the device staging limit; compression.
 - Signing: the sha256 is an integrity check, not authentication (the store is on the user's own card).
 - Pages and `own_dsp` machine records (Digitone II, lane B).
 - The selector word of a run-time type (finding 32, open).

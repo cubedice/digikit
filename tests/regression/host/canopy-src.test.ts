@@ -33,6 +33,8 @@ afterAll(() => {
 });
 test.each([
   'controls',
+  'wavetable',
+  'wavetable-status',
   'signed-spread',
   'stale',
   'readonly',

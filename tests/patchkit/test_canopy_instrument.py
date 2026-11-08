@@ -11,11 +11,12 @@ from tools.patchkit import pk_sharc
 ROOT = Path(__file__).resolve().parents[2]
 MIDI = ROOT / "modules/core/adapters/midi-events/src/dsp"
 CANOPY = ROOT / "modules/machines/canopy/src/dsp"
-PACKET, OUTPUT = 0x20010000, 0x20080000
+LEGACY = ROOT / "tests/fixtures/modules/canopy-transport/src/dsp/legacy-wavetable.s"
+PACKET, OUTPUT = 0x20010000, 0x200B0000
 
 
 @pytest.fixture(scope="module")
-def instrument():
+def instrument(request):
     source = "\n".join(
         (MIDI / (name + ".s")).read_text()
         for name in ("packet", "receiver", "config", "consumer")
@@ -24,8 +25,14 @@ def instrument():
         (CANOPY / (name + ".s")).read_text()
         for name in ("voice", "tuning", "events", "instrument")
     )
+    if getattr(request, "param", "production") == "legacy-cps1":
+        source += "\n" + LEGACY.read_text()
+    else:
+        source += "\n" + "\n".join(
+            (CANOPY / (name + ".s")).read_text() for name in ("wavetable", "wavetables")
+        )
     obj = pk_sharc.assemble(source)
-    sections, initial, address = {}, {}, 0x20020000
+    sections, initial, address = {}, {}, 0x20060000
     for name, (blob, align, _) in obj.data.items():
         address = (address + align - 1) // align * align
         sections[name] = address
@@ -146,6 +153,7 @@ def instrument():
     return session
 
 
+@pytest.mark.parametrize("instrument", ["production", "legacy-cps1"], indirect=True)
 def test_packet_notes_render_and_reset_without_cross_track_damage(instrument):
     call = instrument()
     assert call(2)[0] == 1
@@ -167,6 +175,7 @@ def test_packet_notes_render_and_reset_without_cross_track_damage(instrument):
     assert call(1, [(103, 1, 60, 100)])[0] == 0  # stale generation
 
 
+@pytest.mark.parametrize("instrument", ["production", "legacy-cps1"], indirect=True)
 def test_batch_failure_rolls_back_all_notes_and_schema_is_checked(instrument):
     call = instrument()
     call(2)

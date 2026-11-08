@@ -334,6 +334,14 @@ _cu_revision:
 _cu_detail:
     R0 = LSHIFT R0 BY -3;
     R1 = 0x20b00;
+    R2 = DM(9, I3);
+    I1 = R2;
+    R2 = DM(0, I1);
+    R2 = FEXT R2 BY 0:8;
+    R3 = 9;
+    COMP(R2, R3);
+    R2 = 0x30b00;
+    IF EQ R1 = R2;
     R1 = R0 OR R1;
     DM(5, I4) = R1;
     R1 = DM(2, I3);
@@ -351,6 +359,13 @@ _cu_detail:
     R6 = 6;
 _cu_detail_word:
     R0 = 0;
+    R1 = DM(9, I3);
+    I1 = R1;
+    R1 = DM(0, I1);
+    R1 = FEXT R1 BY 0:8;
+    R2 = 9;
+    COMP(R1, R2);
+    IF EQ JUMP _cu_detail_wavetable;
     R1 = 16;
     COMP(R5, R1);
     IF EQ JUMP _cu_detail_tune;
@@ -361,6 +376,32 @@ _cu_detail_word:
     R1 = R1 + R2;
     I1 = R1;
     R0 = DM(0, I1);
+    JUMP _cu_detail_store;
+_cu_detail_wavetable:
+    // CPS9's effective UI bank uses 28 custom values plus native tune.
+    // Echo the accepted audio revision, never the requested CF parameters.
+    R1 = 28;
+    COMP(R5, R1);
+    IF EQ JUMP _cu_detail_tune;
+    IF GE JUMP _cu_detail_token;
+    R1 = 16;
+    COMP(R5, R1);
+    IF GE JUMP _cu_detail_wt_high;
+    R1 = R5 + R1;
+    R1 = LSHIFT R1 BY 2;
+    R2 = DM(9, I3);
+    R1 = R1 + R2;
+    I1 = R1;
+    R0 = DM(0, I1);
+    R0 = FEXT R0 BY 0:16;
+    JUMP _cu_detail_store;
+_cu_detail_wt_high:
+    R1 = LSHIFT R5 BY 2;
+    R2 = DM(9, I3);
+    R1 = R1 + R2;
+    I1 = R1;
+    R0 = DM(0, I1);
+    R0 = LSHIFT R0 BY -16;
     JUMP _cu_detail_store;
 _cu_detail_tune:
     R1 = DM(9, I3);

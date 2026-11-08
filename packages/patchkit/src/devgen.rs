@@ -310,6 +310,14 @@ struct StoreF {
 }
 
 impl Facts {
+    /// The selected device's file staging limit, already checked against the SDK maximum.
+    pub fn stage_bytes(&self, short: &str) -> Result<usize> {
+        self.docs
+            .get(short)
+            .map(|d| d.limits.stage_bytes as usize)
+            .ok_or_else(|| err!("no runtime device facts for {short}"))
+    }
+
     pub fn from_texts<'a>(texts: impl IntoIterator<Item = &'a str>) -> Result<Facts> {
         let mut docs = BTreeMap::new();
         for t in texts {
@@ -1144,7 +1152,7 @@ fn constants(lib: &Library, dev: &str, e: &Entry) -> Result<Vec<C>> {
         c(
             "LIMIT_STAGE_BYTES",
             e.limits.stage_bytes,
-            Shared,
+            PerDevice,
             "[limits] stage_bytes (the staging buffer of a .dkm file)",
         ),
         c(

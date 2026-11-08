@@ -13,6 +13,8 @@ def canopy_object(request):
         (root / f"{name}.s").read_text()
         for name in [
             "voice",
+            "wavetable",
+            "wavetables",
             "tuning",
             "events",
             "instrument",
@@ -77,8 +79,15 @@ _test_done:
         )
     source += """
 .SECTION/PM seg_pmco;
+.GLOBAL _test_many_capture;
+_test_many_capture:
+    DM(_test_capture) = R7;
+    JUMP _test_many_begin;
 .GLOBAL _test_many;
 _test_many:
+    R0 = 0;
+    DM(_test_capture) = R0;
+_test_many_begin:
     DM(_test_loop_left) = R10;
     DM(_test_loop_state) = R4;
     DM(_test_loop_input) = R8;
@@ -88,6 +97,23 @@ _test_loop:
     CALL _test_process;
     R0 = PASS R0;
     IF LT RTS;
+    R1 = DM(_test_capture);
+    R1 = PASS R1;
+    IF EQ JUMP _test_no_capture;
+    I2 = R1;
+    R0 = DM(_test_loop_input);
+    I0 = R0;
+    R0 = DM(5, I0);
+    I1 = R0;
+    R2 = 32;
+_test_capture_block:
+    R0 = DM(I1, M6);
+    DM(I2, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _test_capture_block;
+    R0 = I2;
+    DM(_test_capture) = R0;
+_test_no_capture:
     R1 = DM(_test_loop_input);
     I0 = R1;
     R1 = 0;
@@ -97,12 +123,13 @@ _test_loop:
     DM(_test_loop_left) = R1;
     IF NE JUMP _test_loop;
     RTS;
+.PKBSS _test_capture, 4;
 .PKBSS _test_loop_left, 4;
 .PKBSS _test_loop_state, 4;
 .PKBSS _test_loop_input, 4;
 """
     obj = pk_sharc.assemble(source)
-    sections, initial, address = {}, {}, 0x20020000
+    sections, initial, address = {}, {}, 0x20060000
     for name, (blob, align, _) in obj.data.items():
         address = (address + align - 1) // align * align
         sections[name] = address
@@ -126,7 +153,7 @@ def canopy(canopy_object):
     dm = dict(initial)
     dm.update({0x20015000 // 4 + i: 0 for i in range(13)})
     dm[0x20015000 // 4 - 1] = dm[0x20015000 // 4 + 13] = 0xDEADBEEF
-    for base, size in [(0x20050000, 200), (0x20054000, 200), (0x20013000, 32)]:
+    for base, size in [(0x20050000, 296), (0x20054000, 296), (0x20013000, 32)]:
         dm.update({base // 4 + i: 0 for i in range(size)})
         dm[base // 4 - 1] = dm[base // 4 + size] = 0xDEADBEEF
 
@@ -141,6 +168,7 @@ def canopy(canopy_object):
         controls=(1,),
         state_edits=None,
         blocks=1,
+        capture=False,
     ):
         dm.update({state // 4 + i: v for i, v in (state_edits or {}).items()})
         words = [
@@ -179,16 +207,32 @@ def canopy(canopy_object):
             name: (sections[name] // 4, len(blob) // 4)
             for name, (blob, _, _) in obj.data.items()
         }
-        reads.update({"state": (state // 4, 200), "out": (0x20013000 // 4, 32)})
+        reads.update({"state": (state // 4, 296), "out": (0x20013000 // 4, 32)})
         reads["status"] = (0x20015000 // 4, 13)
+        for debug in (
+            "enabled",
+            "phase",
+            "increment",
+            "size_a",
+            "offset_a",
+            "position",
+            "frame",
+            "frame_base",
+            "result",
+            "env",
+            "source_mix",
+            "r6",
+            "r7",
+        ):
+            reads["wt_" + debug] = (symbols["_wt_" + debug] // 4, 1)
         reads["status_before"] = (0x20015000 // 4 - 1, 1)
         reads["status_after"] = (0x20015000 // 4 + 13, 1)
         reads.update(
-            {"guard_before": (state // 4 - 1, 1), "guard_after": (state // 4 + 200, 1)}
+            {"guard_before": (state // 4 - 1, 1), "guard_after": (state // 4 + 296, 1)}
         )
         if protected and reset is None:
             dm[symbols["_ir_process_flags"] // 4] = 1 if words[0] == 5 else 0
-            row = [3, 2, 9, 1, state, 200, state, state + 800, 0, 0, 0, 0, 0, 0, 0, 0]
+            row = [3, 2, 9, 1, state, 296, state, state + 1184, 0, 0, 0, 0, 0, 0, 0, 0]
             meta = [
                 2,
                 9,
@@ -208,12 +252,19 @@ def canopy(canopy_object):
             dm.update({0x20014000 // 4 + i: value for i, value in enumerate(packet)})
             # Poison audio to prove that rejection cannot replay the last block.
             dm.update({0x20013000 // 4 + i: 0x3F800000 for i in range(32)})
+        if capture:
+            assert blocks > 1
+            reads["audio"] = (0x200B0000 // 4, blocks * 32)
         result = pk_sharc.run_call(
             linked,
             "_test_packet"
             if packet is not None
             else (
-                ("_test_many" if blocks > 1 else "_test_process")
+                (
+                    "_test_many_capture"
+                    if capture
+                    else ("_test_many" if blocks > 1 else "_test_process")
+                )
                 if reset is None
                 else "_test_reset"
             ),
@@ -221,6 +272,7 @@ def canopy(canopy_object):
                 "R4": 0 if protected and reset is None else state,
                 "R5": 0,
                 "R9": 1,
+                "R7": 0x200B0000 if capture else 0,
                 "R10": blocks,
                 "R12": 0x20014000 if packet else 0,
                 "R8": 0x20011000 if reset is None else reset,
@@ -412,7 +464,7 @@ def test_v5_status_token_change_starts_a_new_immutable_detail_revision(canopy):
 
 @pytest.mark.parametrize("other_owner", [0x100, 0x200])
 def test_v2_chord_independent_release_and_state_isolation(canopy, other_owner):
-    assert canopy(reset=1)["state"] == [0] * 200
+    assert canopy(reset=1)["state"] == [0] * 296
     result = canopy([note(1, 60), note(2, 64)])
     assert result["regs"]["R0"] == 0
     assert set(voices(result)) == {1, 2}
@@ -463,7 +515,7 @@ def test_generation_change_requires_reset_and_reset_is_per_instance(canopy):
     canopy([note(1, 60)])
     canopy([note(2, 67)], state=0x20054000, track=1)
     assert canopy(generation=2)["regs"]["R0"] == 0xFFFFFFFF
-    assert canopy(reset=3)["state"] == [0] * 200
+    assert canopy(reset=3)["state"] == [0] * 296
     assert canopy(generation=2)["regs"]["R0"] == 1
     assert set(voices(canopy(state=0x20054000, track=1))) == {2}
 
@@ -625,7 +677,7 @@ def test_replace_reset_preserves_phase_then_finishes_bounded_tail(canopy):
     assert reset["state"][2:8] == before["state"][2:8]
     assert reset["state"][1] == 2
     assert reset["state"][48:132] == [0] * 84
-    assert reset["state"][132:] == before["state"][132:]
+    assert reset["state"][132:200] == before["state"][132:200]
     first = canopy(generation=2)
     second = canopy(generation=2)
     quiet = canopy(generation=2)
@@ -674,7 +726,7 @@ def test_callback_instruction_ceiling(canopy, controls):
     measured["replace_reset"] = canopy(reset=2)["instructions"]
     measured["release_tail"] = canopy()["instructions"]
     measured["unload"] = canopy(reset=4)["instructions"]
-    assert max(measured[k] for k in ("create", "replace_reset", "unload")) < 1000
+    assert max(measured[k] for k in ("create", "replace_reset", "unload")) < 1600
     assert max(measured.values()) < 100000
     print("CANOPY instruction counts (not device cycles):", measured)
 
@@ -735,7 +787,7 @@ def test_pad_envelope_range_and_reset_keep_the_tail_spectrum(canopy):
         32 / (48 * 8168), rel=1e-4
     )
     reset = canopy(reset=2)
-    assert reset["state"][132:] == released["state"][132:]
+    assert reset["state"][132:200] == released["state"][132:200]
     assert reset["state"][48:132] == [0] * 84
     assert canopy(generation=2, controls=c)["regs"]["R0"] == 0
     assert canopy(generation=2, controls=c)["regs"]["R0"] == 1
@@ -808,7 +860,7 @@ def test_local_arp_reset_cancels_pending_and_bounds_both_lanes(canopy):
     canopy(controls=LOCAL, state_edits={146: 89999})
     r = canopy(reset=2)
     assert r["state"][137] == 2
-    assert r["state"][146:] == [0] * 54
+    assert r["state"][146:200] == [0] * 54
     for _ in range(4):
         r = canopy(controls=(3, 0, 64, 0, 0, 0))
     assert r["state"][136] == 0
@@ -1572,3 +1624,423 @@ def test_native_tune_busy_callback_stays_within_declared_instruction_bound(
         )["instructions"]
     )
     assert max(measured) < 100000
+
+
+def wavetable_controls(
+    table=0,
+    position=350,
+    depth=0,
+    rate=100,
+    shape=0,
+    reset=0,
+    clock=0,
+    env=100,
+    attack=5,
+    release=15,
+    velocity=100,
+    wheel=100,
+    mix=0,
+):
+    values = spread_controls()
+    values[0] = 9 | (0x4000 << 16)
+    values[1] = 2
+    values[6] = values[21] = mix
+    for index, value in enumerate(
+        (
+            table,
+            position,
+            depth,
+            rate,
+            shape,
+            reset,
+            clock,
+            env,
+            attack,
+            release,
+            velocity,
+            wheel,
+        )
+    ):
+        values[16 + index] |= value << 16
+    return values
+
+
+def test_wavetable_factory_voice_executes_on_actual_sharc(canopy):
+    import math
+    import struct
+
+    r = canopy([note(1, 60)], controls=wavetable_controls(), blocks=4)
+    assert r["regs"]["R0"] == 0
+    samples = [struct.unpack("<f", w.to_bytes(4, "little"))[0] for w in r["out"]]
+    assert all(math.isfinite(x) and abs(x) < 1 for x in samples)
+    assert max(abs(x) for x in samples) > 0.001, (
+        r["state"][:48],
+        {k: v for k, v in r.items() if k.startswith("wt_")},
+    )
+    assert any(r["state"][200:232])
+    assert r["instructions"] / 4 < 100000
+
+
+def wt_float(word):
+    import struct
+
+    return struct.unpack("<f", word.to_bytes(4, "little"))[0]
+
+
+def wt_bits(value):
+    import struct
+
+    return struct.unpack("<I", struct.pack("<f", value))[0]
+
+
+@pytest.mark.parametrize("table", range(5))
+@pytest.mark.parametrize("pitch", [0, 60, 96, 127])
+def test_wavetable_tables_pitch_and_mips_execute_without_aliasing_rich_bands(
+    canopy, table, pitch
+):
+    import math
+
+    r = canopy(
+        [note(1, pitch)],
+        controls=wavetable_controls(table=table, position=700),
+        blocks=2,
+    )
+    assert r["regs"]["R0"] == 0
+    increment = wt_float(r["wt_increment"][0])
+    assert increment == pytest.approx(440 * 2 ** ((pitch - 69) / 12) / 48000, rel=2e-6)
+    harmonics = {0: 64, 513: 32, 770: 16, 899: 8, 964: 4, 1029: 2, 1094: 1}[
+        r["wt_offset_a"][0]
+    ]
+    assert increment * harmonics < 0.400001 or harmonics == 1
+    assert all(math.isfinite(wt_float(w)) and abs(wt_float(w)) < 1 for w in r["out"])
+    assert max(abs(wt_float(w)) for w in r["out"]) > 1e-5
+
+
+@pytest.mark.parametrize(
+    "index,value",
+    [
+        (0, 5),
+        (1, 701),
+        (2, 101),
+        (3, 0),
+        (3, 1001),
+        (4, 3),
+        (5, 3),
+        (6, 2),
+        (7, 201),
+        (8, 128),
+        (9, 128),
+        (10, 201),
+        (11, 201),
+        (12, 1),
+    ],
+)
+def test_wavetable_rejects_malformed_controls_before_voice_or_wheel_changes(
+    canopy, index, value
+):
+    good = wavetable_controls()
+    before = canopy([note(1, 60)], controls=good)["state"]
+    bad = list(good)
+    bad[16 + index] = (bad[16 + index] & 0xFFFF) | (value << 16)
+    r = canopy([[3, 0, 0, 1, 100, 0], note(2, 64)], controls=bad)
+    assert r["regs"]["R0"] == 0xFFFFFFFF and r["state"] == before
+
+
+def test_wavetable_wheel_routes_are_atomic_and_reset_independently(canopy):
+    controls = wavetable_controls(wheel=170)
+    r = canopy([[3, 0, 0, 1, 100, 0], [3, 0x100, 0, 1, 40, 0]], controls=controls)
+    assert r["state"][264] == 100 and r["state"][280] == 40
+    before = r["state"]
+    r = canopy([[3, 0, 0, 1, 127, 0], [3, 0, 0, 55, 1, 0]], controls=controls)
+    assert r["regs"]["R0"] == 0xFFFFFFFF and r["state"] == before
+    r = canopy([[3, 0, 0, 121, 0, 0]], controls=controls)
+    assert r["state"][264] == 0 and r["state"][280] == 40
+    r = canopy([[3, 0x100, 0, 120, 0, 0]], controls=controls)
+    assert r["state"][280] == 40
+
+
+def test_wavetable_scan_phase_is_shared_and_phrase_restart_ignores_added_notes(canopy):
+    controls = wavetable_controls(depth=100, rate=1000, reset=1)
+    r = canopy([note(1, 60)], controls=controls)
+    first = wt_float(r["state"][239])
+    r = canopy([note(2, 64)], controls=controls)
+    assert wt_float(r["state"][239]) == pytest.approx(first * 2, rel=1e-6)
+    canopy([note(1, 60, off=True), note(2, 64, off=True)], controls=controls)
+    r = canopy([note(3, 67)], controls=controls)
+    assert wt_float(r["state"][239]) == pytest.approx(first, rel=1e-6)
+
+
+def test_wavetable_pattern_reset_requires_new_boundary_and_preserves_midpattern_progress(
+    canopy,
+):
+    controls = wavetable_controls(depth=100, rate=1000, reset=2)
+    timing = {0: 4, 1: 88, 12: 3, 13: 1, 14: 1, 15: 0, 16: 16, 19: 123}
+    r = canopy([note(1, 60)], controls=controls, edits=timing)
+    first = wt_float(r["state"][239])
+    r = canopy(controls=controls, edits=timing)
+    assert wt_float(r["state"][239]) > first
+    r = canopy(controls=controls, edits={**timing, 14: 2, 15: 1})
+    assert wt_float(r["state"][239]) == pytest.approx(first * 3, rel=1e-6)
+    r = canopy(controls=controls, edits={**timing, 14: 17, 15: 0})
+    assert wt_float(r["state"][239]) == pytest.approx(first, rel=1e-6)
+
+
+def test_wavetable_master_scan_holds_on_lost_clock_and_resumes_without_jump(canopy):
+    controls = wavetable_controls(depth=100, rate=5, clock=1)
+    timing = {0: 4, 1: 88, 12: 3, 13: 1, 14: 1, 15: 0, 16: 16, 20: 1000, 21: 100}
+    r = canopy([note(1, 60)], controls=controls, edits=timing)
+    assert wt_float(r["state"][239]) == 0
+    r = canopy(controls=controls, edits={**timing, 20: 217000})
+    assert wt_float(r["state"][239]) == pytest.approx(0.01, rel=1e-6)
+    r = canopy(controls=controls, edits={**timing, 12: 0, 20: 500000})
+    assert wt_float(r["state"][239]) == pytest.approx(0.01, rel=1e-6)
+    r = canopy(controls=controls, edits={**timing, 20: 10000000})
+    assert wt_float(r["state"][239]) == pytest.approx(0.01, rel=1e-6)
+
+
+def test_wavetable_table_changes_are_bounded_and_latest_request_wins(canopy):
+    controls = wavetable_controls()
+    r = canopy([note(1, 60)], controls=controls, blocks=2)
+    original = voices(r)[1]
+    r = canopy(controls=wavetable_controls(table=1))
+    assert r["state"][235:237] == [0, 1]
+    assert 0 < wt_float(r["state"][237]) < 1
+    r = canopy(controls=wavetable_controls(table=4))
+    assert r["state"][235:237] == [0, 1] and r["state"][238] == 4
+    r = canopy(controls=wavetable_controls(table=4), blocks=32)
+    assert r["state"][235:237] == [1, 4]
+    assert voices(r)[1][:2] == original[:2] and voices(r)[1][4:7] == original[4:7]
+
+
+def test_wavetable_reset_preserves_timbre_through_bounded_tail(canopy):
+    controls = wavetable_controls(table=4, env=175, wheel=130)
+    r = canopy([note(1, 60), [3, 0, 0, 1, 90, 0]], controls=controls, blocks=32)
+    history = r["state"][200:264]
+    reset = canopy(reset=2)
+    assert reset["state"][200:263] == history[:-1]
+    assert reset["regs"]["R0"] == 0
+    assert reset["state"][263] == 1
+    assert reset["state"][264:] == [0] * 32
+    r = canopy(controls=controls)
+    assert any(r["out"])
+    r = canopy(controls=controls, blocks=3)
+    assert all(r["state"][i] == 0 for i in range(0, 48, 8))
+
+
+def test_wavetable_worst_case_chord_arp_tails_table_transition_stays_within_ceiling(
+    canopy,
+):
+    controls = wavetable_controls(table=0, position=345, depth=100, env=150, mix=64)
+    canopy([note(i + 1, 60 + i * 3) for i in range(4)], controls=controls, blocks=12)
+    r = canopy(
+        [note(i + 5, 62 + i * 3) for i in range(4)],
+        controls=wavetable_controls(table=4, position=345, depth=100, env=150, mix=64),
+    )
+    assert r["regs"]["R0"] == 0
+    assert r["state"][32] and r["state"][40]
+    assert r["instructions"] < 100000
+    print("WT worst-case instructions", r["instructions"])
+
+
+@pytest.mark.parametrize("pitch", [60, 96, 120])
+def test_wavetable_rendered_samples_match_independent_interpolation_and_spectral_reference(
+    canopy, pitch
+):
+    import numpy as np
+
+    from tools.patchkit.canopy_wavetables import MIPS, frames
+
+    controls = wavetable_controls(table=1, position=350)
+    r = canopy(
+        [note(1, pitch, 127)],
+        controls=controls,
+        state_edits={232: wt_bits(1.0)},
+        blocks=256,
+        capture=True,
+    )
+    audio = np.array([wt_float(w) for w in r["audio"]])
+    frequency = 440 * 2 ** ((pitch - 69) / 12)
+    increment = frequency / 48000
+    mip = next((i for i, (_, h) in enumerate(MIPS) if increment * h < 0.4), 6)
+    mip_mix = max(0, min(1, (increment * MIPS[mip][1] - 0.2) * 5))
+    waves = frames(1)
+    phase = (np.arange(1, len(audio) + 1) * increment) % 1
+
+    def sample(frame, level):
+        size = MIPS[level][0]
+        indices = phase * size
+        index = indices.astype(int)
+        wave = np.array(waves[frame][level])
+        return wave[index] + (wave[index + 1] - wave[index]) * (indices - index)
+
+    def frame_sample(frame):
+        return (1 - mip_mix) * sample(frame, mip) + mip_mix * sample(
+            frame, min(mip + 1, 6)
+        )
+
+    expected = (frame_sample(3) + frame_sample(4)) * 0.5 * 0.08
+    # Exclude initial amplitude attack. Fixed gain is required: no per-note AGC.
+    residual = audio[4096:] - expected[4096:]
+    assert np.sqrt(np.mean(residual**2)) < 0.000015
+    assert np.sqrt(np.mean(audio[4096:] ** 2)) == pytest.approx(
+        np.sqrt(np.mean(expected[4096:] ** 2)), rel=0.002
+    )
+    spectrum = np.abs(np.fft.rfft(audio[4096:] * np.hanning(4096))) ** 2
+    bins = np.fft.rfftfreq(4096, 1 / 48000)
+    allowed = np.zeros(len(bins), dtype=bool)
+    for harmonic in range(1, MIPS[mip][1] + 1):
+        allowed |= np.abs(bins - harmonic * frequency) < 6 * 48000 / 4096
+    alias_power = spectrum[~allowed].sum() / spectrum.sum()
+    assert alias_power < 10 ** (-42 / 10)
+    print(
+        "WT rendered spectrum",
+        pitch,
+        "aliasdB",
+        10 * np.log10(alias_power),
+        "RMS",
+        np.sqrt(np.mean(audio[4096:] ** 2)),
+    )
+
+
+def test_wavetable_arp_inherits_parent_timbre_envelope_even_during_arp_release(canopy):
+    controls = wavetable_controls(mix=64, env=175, wheel=150, velocity=130)
+    r = canopy(
+        [note(1, 60), [3, 0, 0, 1, 100, 0]],
+        controls=controls,
+        state_edits={232: wt_bits(1.0)},
+        blocks=3,
+    )
+    for edits in ({}, {137: 0}, {146: 89999}, {}, {}):
+        r = canopy(controls=controls, state_edits=edits)
+        aux = {
+            (r["state"][i], r["state"][i + 2] & 256): r["state"][i : i + 4]
+            for i in range(200, 232, 4)
+            if r["state"][i]
+        }
+        arp_token = r["state"][136]
+        if arp_token:
+            assert aux[arp_token, 256][1] == aux[1, 0][1]
+            assert aux[arp_token, 256][2] == 256
+
+
+def test_wavetable_route_wheel_and_velocity_move_timbre_with_smooth_live_edits(canopy):
+    controls = wavetable_controls(wheel=200, velocity=150)
+    r = canopy([note(1, 60, 127), note(2, 60, 64, owner=0x100)], controls=controls)
+    positions = {
+        r["state"][200 + i * 4]: wt_float(r["state"][248 + i])
+        for i in range(8)
+        if r["state"][200 + i * 4]
+    }
+    assert positions[1] > positions[2]
+    r = canopy([[3, 0x100, 0, 1, 127, 0]], controls=controls)
+    changed = {
+        r["state"][200 + i * 4]: wt_float(r["state"][248 + i])
+        for i in range(8)
+        if r["state"][200 + i * 4]
+    }
+    assert changed[1] == pytest.approx(positions[1])
+    assert positions[2] < changed[2] < positions[2] + 0.3
+
+
+def test_wavetable_arp_serial_namespace_cannot_overwrite_other_pad_route_or_envelope(
+    canopy,
+):
+    controls = wavetable_controls(mix=64, env=175, wheel=150)
+    r = canopy(
+        [note(1, 60, 127), note(2, 64, 70, owner=0x100)], controls=controls, blocks=2
+    )
+    r = canopy(controls=controls, state_edits={146: 89999})
+    r = canopy(controls=controls, blocks=3)
+    aux = {
+        (r["state"][i], r["state"][i + 2] & 256): r["state"][i : i + 4]
+        for i in range(200, 232, 4)
+        if r["state"][i]
+    }
+    assert (1, 0) in aux and (2, 0) in aux and (r["state"][136], 256) in aux
+    assert aux[1, 0][2] == 0 and aux[2, 0][2] == 16
+    assert aux[r["state"][136], 256][2] == 272
+    assert aux[1, 0][1] == aux[2, 0][1]
+
+
+def test_wavetable_fast_master_division_wraps_multiple_elapsed_cycles(canopy):
+    controls = wavetable_controls(rate=7, clock=1, depth=100)
+    timing = {0: 4, 1: 88, 12: 3, 13: 1, 14: 1, 15: 0, 16: 16, 20: 0, 21: 100}
+    canopy([note(1, 60)], controls=controls, edits=timing)
+    r = canopy(controls=controls, edits={**timing, 20: 21000000})
+    assert 0 <= wt_float(r["state"][239]) < 1
+    assert wt_float(r["state"][239]) == pytest.approx(
+        (21000000 / 21600000 * 4) % 1, abs=1e-6
+    )
+
+
+def test_wavetable_smooth_random_moves_during_its_first_cycle(canopy):
+    controls = wavetable_controls(rate=1000, depth=100, shape=2)
+    first = canopy([note(1, 60)], controls=controls)
+    later = canopy(controls=controls, blocks=12)
+    assert 0 < wt_float(later["state"][239]) < 0.1
+    assert abs(wt_float(first["state"][247])) > 0
+    assert abs(wt_float(later["state"][247])) > abs(wt_float(first["state"][247]))
+
+
+@pytest.mark.parametrize("ticks", [21000000, 21600000])
+def test_wavetable_smooth_random_elapsed_cycles_match_incremental_clock(canopy, ticks):
+    controls = wavetable_controls(rate=7, clock=1, depth=100, shape=2)
+    timing = {0: 4, 1: 88, 12: 3, 13: 1, 14: 1, 15: 0, 16: 16, 20: 0, 21: 100}
+    canopy([note(1, 60)], controls=controls, edits=timing)
+    jumped = canopy(controls=controls, edits={**timing, 20: ticks})
+    canopy(reset=1)
+    canopy([note(1, 60)], controls=controls, edits=timing)
+    for tick in [*range(5400000, ticks, 5400000), ticks]:
+        stepped = canopy(controls=controls, edits={**timing, 20: tick})
+    assert jumped["state"][244:247] == stepped["state"][244:247]
+    assert wt_float(jumped["state"][239]) == pytest.approx(
+        wt_float(stepped["state"][239]), abs=1e-6
+    )
+    assert wt_float(jumped["state"][247]) == pytest.approx(
+        wt_float(stepped["state"][247]), abs=1e-6
+    )
+
+
+def test_wavetable_replace_tail_drain_invalidates_history_before_reused_generation_tokens(
+    canopy,
+):
+    controls = wavetable_controls(table=3, env=180, wheel=150, velocity=150)
+    old = canopy([note(1, 60, 127)], controls=controls, blocks=40)
+    canopy(reset=2)
+    drained = canopy(controls=controls, generation=2, blocks=4)
+    assert drained["state"][200:232] == [0] * 32
+    assert drained["state"][263] == 0
+    fresh = canopy([note(1, 60, 64, owner=0x100)], controls=controls, generation=2)
+    aux = [
+        fresh["state"][i : i + 4] for i in range(200, 232, 4) if fresh["state"][i] == 1
+    ]
+    assert len(aux) == 1 and aux[0][2] == 16
+    assert wt_float(aux[0][1]) < 0.02
+    assert aux[0][1] != next(
+        old["state"][i + 1] for i in range(200, 232, 4) if old["state"][i] == 1
+    )
+
+
+def test_wavetable_master_clock_generation_change_reobserves_without_free_phase_reset(
+    canopy,
+):
+    controls = wavetable_controls(rate=5, clock=1, reset=0)
+    timing = {0: 4, 1: 88, 12: 3, 13: 1, 14: 1, 15: 0, 16: 16, 20: 1000, 21: 100}
+    canopy([note(1, 60)], controls=controls, edits=timing)
+    r = canopy(controls=controls, edits={**timing, 20: 217000})
+    phase = r["state"][239]
+    r = canopy(controls=controls, edits={**timing, 13: 2, 20: 10000000})
+    assert r["state"][239] == phase
+    r = canopy(controls=controls, edits={**timing, 13: 2, 20: 10216000})
+    assert wt_float(r["state"][239]) == pytest.approx(0.02, rel=1e-6)
+
+
+def test_wavetable_v5_master_requires_fine_clock_capability(canopy):
+    controls = wavetable_controls(rate=5, clock=1)
+    timing = {0: 5, 1: 96, 12: 3, 13: 1, 14: 1, 15: 0, 16: 16, 20: 1000, 21: 100}
+    canopy([note(1, 60)], controls=controls, edits=timing)
+    r = canopy(controls=controls, edits={**timing, 20: 217000})
+    assert r["state"][239] == 0
+    canopy(controls=controls, edits={**timing, 12: 515, 20: 217000})
+    r = canopy(controls=controls, edits={**timing, 12: 515, 20: 433000})
+    assert wt_float(r["state"][239]) == pytest.approx(0.01, rel=1e-6)

@@ -95,12 +95,24 @@ fn gallery(lib: &Library, module: &str, rs: &[DevResolved]) -> Result<String> {
     )? + "\n")
 }
 
-/// The generated files of one module (empty: the module has no typed sections).
+/// The generated V1 gallery files of one module. Runtime V2 instruments use
+/// their negotiated controls, rather than the V1 parameter/page slot model.
 pub fn generate(lib: &Library, models: &Models, module: &str) -> Result<Vec<GenFile>> {
     let m = lib
         .get(module)
         .ok_or_else(|| err!("unknown module {module}"))?;
     if !crate::typed::has_typed(&m.manifest) {
+        return Ok(vec![]);
+    }
+    if !m.manifest.instrument.is_empty()
+        && m.manifest.machine.is_empty()
+        && m.manifest.param.is_empty()
+        && m.manifest.page.is_empty()
+        && m.manifest.voice.is_empty()
+    {
+        // V2 has no V1 gallery, including descriptor-only test fixtures. Its
+        // runtime admission is checked by packing, and static lowering stays
+        // unsupported. Mixed declarations still reach resolve and fail below.
         return Ok(vec![]);
     }
     let rs = resolve(&m.manifest, models)?;
@@ -131,7 +143,7 @@ pub fn generate_many(
 mod tests {
     use super::*;
     use crate::module::Module;
-    use crate::typed::{MachineDef, PageDef, PageKnob, ParamDef, VoiceDef};
+    use crate::typed::{InstrumentDef, MachineDef, PageDef, PageKnob, ParamDef, VoiceDef};
 
     const HEAD: &str = "[module]\nid = \"machines/t\"\nversion = \"0.1.0\"\nname = \"T\"\ncategory = \"machines\"\ntype = \"machine\"\nauthor = \"digikit\"\nstatus = \"experimental\"\nsummary = \"t.\"\n";
 
@@ -220,5 +232,51 @@ mod tests {
     fn a_module_without_typed_sections_generates_nothing() {
         let (lib, models) = lib_of(false);
         assert!(generate(&lib, &models, "machines/t").unwrap().is_empty());
+    }
+
+    fn runtime_instrument() -> (Library, Models) {
+        let (mut lib, models) = lib_of(false);
+        let m = &mut lib.modules[0].manifest;
+        m.module.dynamic = true;
+        m.module.ports = vec!["dt2-1.17".into()];
+        m.module.requires = vec!["core/instrument-play".into()];
+        m.instrument = vec![InstrumentDef {
+            id: "t".into(),
+            name: "T".into(),
+            short: "T".into(),
+            reset: "_reset".into(),
+            process: "_process".into(),
+            desc: "_desc".into(),
+        }];
+        (lib, models)
+    }
+
+    #[test]
+    fn runtime_instruments_do_not_generate_v1_parameter_slots() {
+        let (lib, models) = runtime_instrument();
+        assert!(generate(&lib, &models, "machines/t").unwrap().is_empty());
+    }
+
+    #[test]
+    fn gallery_generation_does_not_perform_runtime_admission() {
+        let (mut lib, models) = runtime_instrument();
+        lib.modules[0].manifest.module.dynamic = false;
+        assert!(generate(&lib, &models, "machines/t").unwrap().is_empty());
+
+        let (mut lib, models) = runtime_instrument();
+        lib.modules[0].manifest.module.requires.clear();
+        assert!(generate(&lib, &models, "machines/t").unwrap().is_empty());
+    }
+
+    #[test]
+    fn mixed_v1_v2_declarations_cannot_silently_drop_v1_rows() {
+        let (mut lib, models) = runtime_instrument();
+        lib.modules[0].manifest.machine.push(MachineDef {
+            id: "legacy".into(),
+            name: "Legacy".into(),
+            short: "LEGACY".into(),
+            stereo: false,
+        });
+        assert!(generate(&lib, &models, "machines/t").is_err());
     }
 }

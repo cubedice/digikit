@@ -50,7 +50,7 @@ test('resolved panel bridge consumes only CANOPY and releases ownership on view 
 afterAll(() => {
   if (dir) fs.rmSync(dir, { recursive: true, force: true });
 });
-test.each(['paint', 'routing', 'values', 'delayed', 'overflow', 'alternate', 'attach', 'tick', 'track'])(
+test.each(['paint', 'tone', 'routing', 'values', 'delayed', 'overflow', 'alternate', 'attach', 'tick', 'track'])(
   'native SRC: %s',
   (scenario) => {
     expect(execFileSync(binary, [scenario], { encoding: 'utf8', timeout: 2000 }).trim()).toBe('ok');

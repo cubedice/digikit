@@ -3,18 +3,28 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, mkdtempSync, readdirSync, statSync } from 'node:fs';
+import {
+  existsSync,
+  readFileSync,
+  mkdtempSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { join, resolve, dirname, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'smol-toml';
-import { buildModuleData, shipModules } from '../scripts/gen-modules.mjs';
+import { buildModuleData, shipModules, shipSources } from '../scripts/gen-modules.mjs';
 import { isShipped, shippedDevices } from '../src/data/shipped.mjs';
 import { PatchKit, patchedFileName } from '../src/patch/patchkit-core.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const wasmPath = join(root, 'apps/web/public/patchkit.wasm');
+const bundleMaxChars = 7 * 1024 * 1024;
 const images = {
   dt2: join(root, 'firmware', 'Digitakt_II_OS1.17.syx'),
   dn2: join(root, 'firmware', 'Digitone_II_OS1.12.syx'),
@@ -41,12 +51,18 @@ test('bundle lists the committed modules and ports', () => {
   );
   assert.ok(bundle.modules.some((m) => m.manifest.includes('id = "core/fx"')));
   assert.equal(bundle.ports.length, readdirSync(join(root, 'devices/ports')).length);
-  // Module content only: no firmware blobs or out/modules oracles. The bundle is 4,097,029 characters
-  // with SHOT and the expanded runtime (1,593,445 characters); keep a small margin for module growth.
+  // Module content only: no firmware blobs or out/modules oracles. The ~6.6M-character bundle now
+  // includes runtime (2.16M), CANOPY with factory tables (0.67M) and instrument-play (0.53M).
+  // Keep these build inputs intact while bounding growth; the source preview limit is separate.
   const json = JSON.stringify(bundle);
   assert.ok(!json.includes('out/modules'));
-  const maxChars = 4.5 * 1024 * 1024;
-  assert.ok(json.length < maxChars, `bundle is ${json.length} characters (budget: ${maxChars})`);
+  assert.ok(json.length < bundleMaxChars, `bundle is ${json.length} characters (budget: ${bundleMaxChars})`);
+  for (const text of [
+    ...bundle.ports,
+    ...bundle.devices,
+    ...bundle.modules.flatMap((m) => [m.manifest, ...Object.values(m.files)]),
+  ])
+    assert.ok(!text.includes('\r'), 'bundle text uses the Python CLI universal-newline convention');
 });
 
 test('bundle carries the device knob models and the gallery JSON of typed modules', () => {
@@ -104,7 +120,12 @@ test('the shipped modules: the index describes them, the sources hold no build o
       m.source.every((f) => /^(module\.toml|README\.md|src\/)/.test(f)),
       m.id,
     );
-    for (const f of m.source) assert.ok(existsSync(join(out, 'src', m.id, f)), `${m.id}/${f}`);
+    for (const f of m.source) {
+      const path = join(out, 'src', m.id, f);
+      assert.ok(existsSync(path), `${m.id}/${f}`);
+      if (m.sourceDownloads[f]) assert.equal(statSync(path).size, m.sourceDownloads[f]);
+      else assert.ok(statSync(path).size <= 256 * 1024, `${m.id}/${f}: inline preview is bounded`);
+    }
     assert.ok(!existsSync(join(out, 'src', m.id, 'build')));
     for (const d of Object.values(m.devices)) {
       const bytes = readFileSync(join(out, d.file));
@@ -112,6 +133,30 @@ test('the shipped modules: the index describes them, the sources hold no build o
       assert.equal(createHash('sha256').update(bytes).digest('hex'), d.sha256);
     }
   }
+});
+
+test('large generated sources ship intact as downloads while previews stay bounded', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'source-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const input = join(dir, 'module');
+  const output = join(dir, 'shipped');
+  mkdirSync(join(input, 'src'), { recursive: true });
+  mkdirSync(join(input, 'build'));
+  const manifest = '[module]\r\nid = "test/source"\r\n';
+  const boundary = Buffer.alloc(256 * 1024, 'a');
+  const table = Buffer.alloc(256 * 1024 + 1, 'b');
+  writeFileSync(join(input, 'module.toml'), manifest);
+  writeFileSync(join(input, 'README.md'), 'Sources.\n');
+  writeFileSync(join(input, 'src', 'boundary.s'), boundary);
+  writeFileSync(join(input, 'src', 'table.s'), table);
+  writeFileSync(join(input, 'build', 'generated.dko.json'), '{}');
+  const result = shipSources(input, output);
+  assert.deepEqual(result.source, ['module.toml', 'README.md', 'src/boundary.s', 'src/table.s']);
+  assert.deepEqual(result.sourceDownloads, { 'src/table.s': table.length });
+  assert.equal(readFileSync(join(output, 'module.toml'), 'utf8'), manifest);
+  assert.deepEqual(readFileSync(join(output, 'src', 'boundary.s')), boundary);
+  assert.deepEqual(readFileSync(join(output, 'src', 'table.s')), table);
+  assert.ok(!existsSync(join(output, 'build')));
 });
 
 test('patched file names', () => {
@@ -182,6 +227,7 @@ test('built site (when present) carries no firmware', { skip: !existsSync(join(r
     );
   for (const f of walk(join(root, 'apps/web/dist'))) {
     assert.ok(!/\.(syx|snap|mstate)$/i.test(f), f);
-    assert.ok(statSync(f).size < 5 * 1024 * 1024 || f.endsWith('emulator-core.wasm'), f);
+    const max = f === join(root, 'apps/web/dist/modules/bundle.json') ? bundleMaxChars : 5 * 1024 * 1024;
+    assert.ok(statSync(f).size < max || f.endsWith('emulator-core.wasm'), f);
   }
 });

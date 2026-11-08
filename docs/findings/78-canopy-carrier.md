@@ -1622,3 +1622,40 @@ Stage 4 is complete at the functional emulator boundary. Hardware load,
 USB/DIN keyboard latency, coexistence and release approval remain Stage 6.
 No physical firmware/module/settings changes were made. Stage 5 (presets and
 named SRC pages) is the next implementation stage.
+
+## CPS9 validation and inherited circular addressing (2026-11-08)
+
+[D] The factory-wavetable integration loaded and published its instrument, then
+the DSP stopped during the first CPS9 configuration. With firmware SHA256
+`cd86b53cbd07e44f3fa4673f766b752bfba613ac6b821873298711555a8f78aa`, the current
+emulator reported an unknown conditional branch at `0xbd0cae`: the `IF NE`
+after the duplicate-value comparison in `_iv_wt_presentation`. The CF guard
+subsequently invalidated the session after 900 blocks without a new heartbeat.
+The guard record was a consequence of the DSP stop, not an upload failure.
+
+The new table walker saved I3-I7 but inherited L3-L6. With circular buffering
+enabled, postincrement through those borrowed DAGs can wrap into unrelated
+memory. In particular, L6 changes traversal of the duplicate-index table; a bad
+index then produces an unknown comparison operand. A focused regression with
+only L6 nonzero reproduces the unknown-predicate stop in the previous source.
+The complete before-fix context matrix records four failures and eleven passes
+in `out/canopy-wavetable-dag-red.log`.
+
+The validator now preserves and clears L3-L6 for its linear table reads, then
+restores them on both acceptance and rejection. I3-I6 are restored; all base
+registers and the stack DAG I7/B7/L7 remain untouched. M6 is already pinned to
+one by the outer MIDI block wrapper. The regression checks valid and malformed
+banks under linear, fully circular, and L6-only contexts, including exact
+I/L/B/MODE1 and modifier preservation.
+
+[D] A further audit found that temporarily borrowing I7 for the duplicate read
+was unsafe even if restored on exit. Interrupts remain enabled in this Audio
+Task hook. The DTII 1.17 kernel context-save code at 0xb88291 adjusts I7 by
+-0x81 words, and the interrupt prologue at 0xb888d8 writes through DM(I7,M7) before
+setting I6 from I7. An interrupt during the duplicate read could therefore
+write into the configuration bank. The validator now uses permitted scratch I0
+for that direct read and reloads its metadata pointer before successful
+revision publication. It never repurposes I7. Two accepted/rejected-path
+regressions inspect I7/B7/L7 after every executed instruction, as well as
+checking atomic bank/revision publication. These are source/database and
+emulator observations, not a physical-device qualification.

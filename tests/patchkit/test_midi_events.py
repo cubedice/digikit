@@ -771,6 +771,8 @@ _test_return:
         "reset",
         "eight",
         "bend",
+        "usb_mod_wheel",
+        "din_mod_wheel",
         "signed_boundary",
         "last_sequence",
         "bad_check",
@@ -790,6 +792,7 @@ _test_return:
         "panel_channel",
         "panel_pedal",
         "panel_bend",
+        "panel_mod_wheel",
         "reserved",
         "mixed_track",
         "padding",
@@ -805,6 +808,8 @@ def test_packet_validation_on_sharc(packet_validator, case):
         "reset",
         "eight",
         "bend",
+        "usb_mod_wheel",
+        "din_mod_wheel",
         "signed_boundary",
         "last_sequence",
         "panel_note",
@@ -859,12 +864,18 @@ def test_packet_validation_on_sharc(packet_validator, case):
     if case == "bend":
         words[8] = 0
         words[10] = 4 | (127 << 14) | (127 << 21)
-    if case in {"panel_cancel", "panel_pedal", "panel_bend"}:
+    if case in {"usb_mod_wheel", "din_mod_wheel"}:
+        words[8] = 0
+        words[10] = 3 | (1 << 14) | (127 << 21)
+        if case == "din_mod_wheel":
+            words[10] |= (1 << 4) | (15 << 6)
+    if case in {"panel_cancel", "panel_pedal", "panel_bend", "panel_mod_wheel"}:
         words[8] = 0
         words[10] = (2 << 4) | {
             "panel_cancel": 3 | (120 << 14),
             "panel_pedal": 3 | (64 << 14) | (127 << 21),
             "panel_bend": 4 | (64 << 21),
+            "panel_mod_wheel": 3 | (1 << 14) | (127 << 21),
         }[case]
     words[7] = packet_check(words)
     if case == "bad_check":
@@ -1225,6 +1236,7 @@ void *memset(void *d, int c, unsigned n) {
         "reroute",
         "overflow",
         "messages",
+        "mod_wheel",
         "panic",
         "reset_presses",
         "token_wrap",

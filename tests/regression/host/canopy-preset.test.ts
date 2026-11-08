@@ -49,9 +49,11 @@ function run(binary: string, commands: string): Record<string, unknown>[] {
     .map((s) => JSON.parse(s) as Record<string, unknown>);
 }
 test('preset byte record restores stable controls and the embedded shape', () => {
-  expect(run(codec, 'decode 64\nsnapshot')[0]).toEqual({
+  expect(run(codec, 'decode 96\nsnapshot')[0]).toEqual({
     result: 0,
-    controls: [10, 3, 127, 64, 500, 127, 8, 4, 3, 100, 75, 2, 1, 0, 127, 127],
+    controls: [
+      10, 3, 127, 64, 500, 127, 8, 4, 3, 100, 75, 2, 1, 0, 127, 127, 0, 0, 0, 10, 0, 0, 0, 100, 5, 15, 100, 100,
+    ],
     bpm: 300,
     family: 1,
     mode: 1,
@@ -113,20 +115,20 @@ test('a preset loaded with USER can select a standard chord and return without l
 });
 
 test('invalid lengths and checksums leave the existing sound untouched', () => {
-  for (const command of ['decode 0', 'decode 63', 'decode 65', 'byte 13 3\ndecode 64']) {
-    const [before, after] = run(codec, `decode 64\nsnapshot\n${command}\nsnapshot`);
+  for (const command of ['decode 0', 'decode 63', 'decode 65', 'byte 13 3\ndecode 96']) {
+    const [before, after] = run(codec, `decode 96\nsnapshot\n${command}\nsnapshot`);
     expect(after).toEqual({ ...before, result: -1 });
   }
 });
 
 test.each([1, 2, 3])('old preset with %i total octaves preserves its upward spread', (old) => {
-  const [decoded] = run(codec, `byte 4 1\nbyte 25 ${old}\nresign\ndecode 64\nsnapshot`);
+  const [decoded] = run(codec, `legacy 1\nbyte 25 ${old}\nresign\ndecode 64\nsnapshot`);
   expect(decoded!.result).toBe(0);
   expect((decoded!.controls as number[])[8]).toBe(old + 2);
 });
 
 test.each([0, 3, 6])('new preset preserves encoded signed spread %i', (spread) => {
-  const [decoded] = run(codec, `byte 25 ${spread}\nresign\ndecode 64\nsnapshot`);
+  const [decoded] = run(codec, `byte 25 ${spread}\nresign\ndecode 96\nsnapshot`);
   expect(decoded!.result).toBe(0);
   expect((decoded!.controls as number[])[8]).toBe(spread);
 });
@@ -138,7 +140,7 @@ test.each([
 ])('preset version %i rejects invalid spread %i atomically', (version, spread) => {
   const [before, after] = run(
     codec,
-    `decode 64\nsnapshot\nbyte 4 ${version}\nbyte 25 ${spread}\nresign\ndecode 64\nsnapshot`,
+    `decode 96\nsnapshot\nlegacy ${version}\nbyte 25 ${spread}\nresign\ndecode 64\nsnapshot`,
   );
   expect(after).toEqual({ ...before, result: -1 });
 });
@@ -153,19 +155,19 @@ test('SRC signed spread is saved and restored through the real control bank', ()
     [positive, 6],
     [restored, 0],
   ] as const) {
-    expect(row!.schema).toBe(0x43505338);
+    expect(row!.schema).toBe(0x43505339);
     expect((row!.values as number[])[11]).toBe(encoded);
-    expect((row!.values as number[])[24]).toBe(encoded);
+    expect((row!.values as number[])[24]! & 0xffff).toBe(encoded);
   }
 });
 test('valid checksum cannot hide bad versions, padding, shape or parameter ranges', () => {
   // Every field class, including each stable control ID and unavailable SOURCE.
   const edits = [
-    [4, 3],
+    [4, 4],
     [5, 15],
     [6, 1],
     [7, 1],
-    [40, 2],
+    [40, 3],
     [41, 2],
     [42, 3],
     [43, 1],
@@ -181,10 +183,10 @@ test('valid checksum cannot hide bad versions, padding, shape or parameter range
   ];
   for (let id = 0; id < 16; id++) edits.push([8 + 2 * id, 255]);
   for (const [offset, value] of edits) {
-    const [before, after] = run(codec, `decode 64\nsnapshot\nbyte ${offset} ${value}\nresign\ndecode 64\nsnapshot`);
+    const [before, after] = run(codec, `decode 96\nsnapshot\nbyte ${offset} ${value}\nresign\ndecode 96\nsnapshot`);
     expect(after, `byte ${offset}`).toEqual({ ...before, result: -1 });
   }
-  const [s] = run(codec, 'byte 42 1\nresign\ndecode 64\nsnapshot');
+  const [s] = run(codec, 'byte 42 1\nresign\ndecode 96\nsnapshot');
   expect(s!.result).toBe(-1); // MASTER GRID cannot silently accept swing.
 });
 test('all four slots save only on the UI tick, load independently, and track edits', () => {
@@ -309,13 +311,75 @@ test('audio submission and SRC pending markers share the full configuration revi
     settings,
     'color 100\nconfig\ntick\nconfig\nmode 1\nconfig\nbpm 140\nconfig',
   );
-  expect(first).toMatchObject({ schema: 0x43505338, count: 32, pending: 0xffff });
+  expect(first).toMatchObject({ schema: 0x43505339, count: 32, pending: 0x0fffffff });
   expect(first!.revision).toBe(first!.srcRevision);
-  expect((first!.values as number[]).slice(16)).toEqual([0, 0, 100, 0, 0, 0, 4, 0, 3, 50, 0, 0, 0, 0, 5, 15]);
+  expect((first!.values as number[]).slice(16).map((v) => v & 0xffff)).toEqual([
+    0, 0, 100, 0, 0, 0, 4, 0, 3, 50, 0, 0, 0, 0, 5, 15,
+  ]);
   expect((first!.values as number[])[2]).toBe(100);
   expect(unchanged!.revision).toBe(first!.revision);
   expect(mode!.revision as number).toBeGreaterThan(first!.revision as number);
-  expect((mode!.values as number[])[0]).toBe(0x40000108);
+  expect((mode!.values as number[])[0]).toBe(0x40000109);
   expect(tempo!.revision as number).toBeGreaterThan(mode!.revision as number);
   expect((tempo!.values as number[])[7]).toBe(140);
+});
+
+test.each([1, 2])('legacy v%i initializes wavetable defaults without selecting it', (version) => {
+  const [s] = run(codec, `legacy ${version}\nresign\ndecode 64\nsnapshot`);
+  expect(s).toMatchObject({ result: 0, family: 1 });
+  expect((s!.controls as number[]).slice(16)).toEqual([0, 0, 0, 10, 0, 0, 0, 100, 5, 15, 100, 100]);
+});
+
+test('wavetable presets retain position, modulation and legacy color independently', () => {
+  const [saved, restored, legacy] = run(
+    settings,
+    'family 2\nsrcpage 2\nsrcturn 2 350\nsrcturn 3 55\nconfig\npresetsave\ntick\n' +
+      'srcpage 0\nsrcturn 3 200\ncolor 20\npresetload\nconfig\nfamily 0\nsrcpage 0\nsrcstate',
+  );
+  expect((saved!.values as number[])[1]).toBe(2);
+  expect((saved!.values as number[])[17]! >>> 16).toBe(350);
+  expect((saved!.values as number[])[18]! >>> 16).toBe(55);
+  expect(restored!.values).toEqual(saved!.values);
+  expect(legacy).toMatchObject({ color: 64, value: '64' });
+});
+
+test('sync scan rate uses its own clock domain and clamps to musical divisions', () => {
+  const [sync, free] = run(
+    settings,
+    'family 2\nscanclock 1\nsrcpage 2\nsrcturn 4 1000\nconfig\nscanclock 0\nsrcpage 2\nsrcturn 4 1000\nconfig',
+  );
+  expect((sync!.values as number[])[19]! >>> 16).toBe(7);
+  expect((sync!.values as number[])[22]! >>> 16).toBe(1);
+  expect((free!.values as number[])[19]! >>> 16).toBe(1000);
+  expect((free!.values as number[])[22]! >>> 16).toBe(0);
+});
+
+test.each([
+  [88, 2],
+  [89, 1],
+  [91, 1],
+  [64, 1],
+  [66, 3],
+  [68, 1],
+  [70, 4],
+  [72, 1],
+  [74, 1],
+  [76, 1],
+  [78, 1],
+  [80, 1],
+  [82, 1],
+  [84, 1],
+  [86, 1],
+])('new preset rejects unsupported table version/padding/control (%i,%i)', (offset, value) => {
+  const [before, after] = run(codec, `decode 96\nsnapshot\nbyte ${offset} ${value}\nresign\ndecode 96\nsnapshot`);
+  expect(after).toEqual({ ...before, result: -1 });
+});
+
+test.each([1, 2])('legacy on-card v%i is canonicalized before load and dirty comparison', (version) => {
+  const [restored, canonical] = run(
+    settings,
+    `color 76\npresetsave\ntick\nlegacypreset ${version}\nrestart\ncolor 2\npresetload\npresetstate\npresetsave\ntick\nrestart\npresetload\npresetstate`,
+  );
+  expect(restored).toMatchObject({ color: 76, dirty: 0, present: 1, unsafe: 0 });
+  expect(canonical).toMatchObject({ color: 76, dirty: 0, present: 1, unsafe: 0 });
 });

@@ -54,21 +54,15 @@ fn panic(_: &PanicInfo) -> ! {
 /// Arena bytes. A sub-region of `cf.expansion` that is part of this object's bss: patchkit places it with the object, so no
 /// static object of any module can overlap it, and the reset-path loader zeroes it.
 pub const ARENA_BYTES: usize = dkrt_sdk::device::LIMIT_ARENA_BYTES as usize;
-/// Staging buffer for a `.dkm` file (and the store directory): files are at most this size in v0.
-pub const STAGE_BYTES: usize = dkrt_sdk::device::LIMIT_STAGE_BYTES as usize;
 pub const MAX_MODULES: usize = dkrt_sdk::device::LIMIT_MODULES as usize;
 pub const LOG_ENTRIES: usize = 16;
 pub const STATE_MAGIC: u32 = 0x444b_5254; // "DKRT"
 
 #[repr(C, align(16))]
 pub struct Arena(pub [u8; ARENA_BYTES]);
-#[repr(C, align(16))]
-pub struct Stage(pub [u8; STAGE_BYTES]);
 
 #[no_mangle]
 pub static mut DKRT_ARENA: Arena = Arena([0; ARENA_BYTES]);
-#[no_mangle]
-pub static mut DKRT_STAGE: Stage = Stage([0; STAGE_BYTES]);
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -132,6 +126,10 @@ pub static mut DKRT_MAILBOX: Mailbox = Mailbox {
 };
 
 extern "C" {
+    /// Device-owned, 16-byte aligned staging allocation and its exact byte capacity.
+    /// Rust uses the address only; its extent comes from the same device object.
+    pub static mut DKRT_STAGE: u8;
+    static dkrt_stage_bytes: u32;
     /// Per-device constants, defined by `src/cf/<dev>/device.s` from the device file: the digikit id (`[digikit] id`) and the name the
     /// INFO reply gives (`[digikit] name`: 3 characters and a NUL, as a big-endian word).
     static dkrt_device_id: u32;
@@ -163,6 +161,10 @@ pub fn flush(start: u32, len: u32) {
 
 pub fn device() -> u32 {
     unsafe { read_volatile(addr_of!(dkrt_device_id)) }
+}
+
+pub fn stage_bytes() -> usize {
+    unsafe { read_volatile(addr_of!(dkrt_stage_bytes)) as usize }
 }
 
 /// The effects the image takes at run time: CAPACITY's limit for `FX_SLOTS`. The free effect rows of `core/dynfx` (0 on an image without it, so a device
@@ -915,7 +917,7 @@ pub unsafe extern "C" fn dkrt_capacity(out: *mut DkrtCap, max: u32) -> u32 {
     }
     let (vrows, vused) = dsp::rows_counts();
     let [mach, param, page] = registry::counts();
-    let stage = STAGE_BYTES as u32;
+    let stage = stage_bytes() as u32;
     // the store: its area in KiB (0 when the card is too small for it), and what the headers say is used (a card with no header: nothing)
     let st_total = if card::state() == CARD_TOO_SMALL { 0 } else { store::layout().limit() / 2 };
     let st_used = match store::seen() {

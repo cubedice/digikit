@@ -55,7 +55,7 @@
 // [limits] fx_slots (effects in the chain: CAPACITY's limit and the free effect rows of core/dynfx)
 #define LIMIT_FX_SLOTS 3
 // [limits] stage_bytes (the staging buffer of a .dkm file)
-#define LIMIT_STAGE_BYTES 65536
+#define LIMIT_STAGE_BYTES 262144
 // [digikit] peek: number of ranges
 #define PEEK_N 2
 // [input] backend (1 panel-uart; 0 none)

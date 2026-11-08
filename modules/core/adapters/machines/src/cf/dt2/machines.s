@@ -315,9 +315,10 @@ mf_typearg:
 | first test of the function): `tst.l 0x90(A2); beq.w T`; a2 = the view, d2 = the draw context. T (an anchor, `_mf_spa`) is the
 | knob-page branch; the stock path goes on at site + 8. `_mf_spt` is `FUN_4005f6bc` (the type as a signed long, -1 without a
 | track). d0, d1, a0, a1 are free at the site (the prologue saved d3 .. d7, a3 .. a6).
-| A core adapter may opt a ready painter/input implementation into two pages via
-| src-pages.h. This preserves the native vector and index without enlarging the
-| V1 parameter ABI. Until registered, all existing added machines stay unchanged.
+| A core adapter may opt a ready painter/input implementation into up to three
+| pages via src-pages.h. mf_src_apply_pages grows the native-owned vector with
+| its native allocator when needed; it never extends end beyond capacity.
+| This does not enlarge the V1 parameter ABI.
     .equ    SRC_PAGES,  1
     .equ    SRC_STOCK,  2           | entries of the stock vector
     .globl mf_srcpage
@@ -330,36 +331,16 @@ mf_srcpage:
     move.l  %d0,-(%sp)
     jsr     mf_src_page_count
     addq.l  #4,%sp
-    cmpi.l  #2,%d0
-    bne.s   4f
-    | An explicitly registered two-page painter owns both contents. Keep the
-    | native vector/dots/navigation, but still use the knob-page draw path.
-    | The original vector has two entries; never extend beyond its capacity.
-    move.l  0x84(%a2),%d1
-    sub.l   0x7c(%a2),%d1
-    cmpi.l  #8,%d1
-    blt.s   4f
-    move.l  0x90(%a2),%d1
-    cmpi.l  #2,%d1
-    bcs.s   5f
-    clr.l   0x90(%a2)
-5:  move.l  0x7c(%a2),%d1
-    addq.l  #8,%d1
-    move.l  %d1,0x80(%a2)
+    move.l  %d0,-(%sp)
+    move.l  %a2,-(%sp)
+    jsr     mf_src_apply_pages
+    addq.l  #8,%sp
     jmp     _mf_spa
-4:  clr.l   0x90(%a2)               | default added type: page 0 and one entry
-    move.l  0x7c(%a2),%d1
-    addi.l  #4 * SRC_PAGES,%d1
-    move.l  %d1,0x80(%a2)
-    jmp     _mf_spa
-1:  move.l  0x80(%a2),%d0           | any other type: the stock vector again if an added type cut it
-    sub.l   0x7c(%a2),%d0
-    subq.l  #4 * SRC_PAGES,%d0
-    bne.s   2f
-    move.l  0x7c(%a2),%d1
-    addi.l  #4 * SRC_STOCK,%d1
-    move.l  %d1,0x80(%a2)
-2:  tst.l   0x90(%a2)
+1:  pea     SRC_STOCK
+    move.l  %a2,-(%sp)
+    jsr     mf_src_apply_pages
+    addq.l  #8,%sp
+    tst.l   0x90(%a2)
     beq.w   3f
     jmp     _mf_sp + 8
 3:  jmp     _mf_spa

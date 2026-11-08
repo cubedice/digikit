@@ -80,8 +80,9 @@ EMPTY status. Live chord/voicing edits retain the tokens of unchanged pitches.
 LATCH retains a released phrase. After all physical keys are up, a new press
 starts its replacement and subsequent rolled notes join it. Replacement clears
 old pedal membership. Turning latch off retains only physical/pedal-owned notes.
-CC64, CC120, CC121, CC123 and per-route pitch bend retain their defined roles.
-The mapper handles pedal ownership; bend is forwarded exactly once to the DSP.
+CC1, CC64, CC120, CC121, CC123 and per-route pitch bend retain their defined roles.
+The mapper handles pedal ownership; bend and wheel are forwarded once to the DSP.
+CC121 also emits a zero wheel value for its USB/DIN route; CC120 preserves it.
 Unsupported controllers still follow the existing stock fallthrough policy.
 
 Choose one of eight SHAPE SLOT values, then LEARN TO ROOT. Capture auditions in
@@ -97,10 +98,16 @@ shared settings store. Validation covers length, version, checksum, reserved
 bytes, counts, range and ordering before applying any template. RAM save is
 immediate; a UI-task tick performs the durable write without holding the MIDI
 critical section. Failure retains RAM and dirty state; RETRY SHAPE SAVE retries.
-Keyboard enable, route, latch, mode and voicing start at defaults after reboot;
-only templates persist in this stage. Presets and the named SRC pages are Stage 5.
+Learned templates and saved presets persist across reboot. Keyboard mode, latch,
+voicing and sound controls start at defaults until you load a preset. External
+MIDI starts disabled unless SAVE ROUTING was used; saved routing is restored
+after instrument admission, with activation still gated by the DSP handshake.
 
 ### Stage 5 preset storage checkpoint
+
+This historical checkpoint describes the 64-byte v2 records. The current
+96-byte v3 format and wavetable controls are documented below under CPS9.
+The storage totals in this checkpoint apply to the earlier format.
 
 KEYBOARD > PRESETS now provides four explicit sound slots. SAVE CURRENT SOUND
 queues a write on the UI task; LOAD SAVED SOUND validates the complete record
@@ -204,10 +211,18 @@ The packaged Stage 3 acceptance uses `out/patch/canopy-stage3.syx` and
 acceptance can run against the Stage 3 image as well. No physical device is
 flashed by these tests.
 
-Use matching firmware and CANOPY DKM builds together. Stage 5 uses the CPS8
-32-word bank, including native TUNE and the complete custom presentation bank;
-word 11 and presentation word 24 contain the biased signed octave spread.
-CPS6/CPS7 remain accepted with their original 1..3 total upward octaves.
+Use matching firmware and CANOPY DKM builds together. The wavetable extension
+uses CPS9 in the same 32-word bank. Header word 0 retains native TUNE and mode;
+family word 1 adds value 2 for WAVETABLE. Words 16-31 retain the original sixteen
+presentation controls in their low halves. The high halves of words 16-27 add
+table, position, depth, rate, shape, restart, clock, envelope amount, timbre
+attack/release, velocity amount and wheel amount; remaining high halves are zero.
+The adapter checks every range, duplicate and clock constraint before copying
+the entire bank and revision. Detail schema 3 publishes the unpacked 28 controls
+and native tune at index 28 without widening the existing fragmented transport.
+CPS8 retains signed spread; CPS6/CPS7 retain their original upward octave counts.
+CPST v3 presets are 96 bytes and read legacy v1/v2 records with neutral wavetable
+defaults. Routing and native Sound values remain outside the custom preset.
 The Stage 3 package above is a historical checkpoint.
 ## Optional process status output
 
@@ -229,7 +244,7 @@ each block before checking admission/session, preventing reuse after revocation.
 
 The mailbox connects to the authenticated alternating status-frame transport.
 CANOPY now opts in: actual notes/arp state and revision-bound detail fragments
-drive the two SRC pages. The visible UI task drains telemetry independently of
+drive the three SRC pages. The visible UI task drains telemetry independently of
 painting and invalidates at most every 40 ms. Native TUNE/LEVEL use the stock
 parameter editor and bounded custom value cells; the remaining controls use
 stable preset IDs. The adapter captures queued encoder ownership at dispatch

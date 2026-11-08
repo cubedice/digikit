@@ -23,6 +23,6 @@ devices = ["dt2"]
 
 [[object]]
 path = "build/proof-dsp.dko.json"
-sources = ["src/dsp/consumer.s"]
+sources = ["src/dsp/consumer.s", "src/dsp/legacy-wavetable.s"]
 place = "dsp.l2"
 devices = ["dt2"]

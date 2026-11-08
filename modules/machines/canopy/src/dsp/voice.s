@@ -14,6 +14,8 @@
 .GLOBAL _cp_note_off;
 .GLOBAL _cp_render;
 .EXTERN _cp_tuning;
+.EXTERN _wt_begin_slot;
+.EXTERN _wt_tick;
 _cp_note_on:
     R8 = PASS R8;
     IF EQ JUMP _cp_reject;
@@ -340,6 +342,7 @@ _cp_render_samples:
     F0 = F4 * F0;
     F5 = F5 - F0;
     F4 = F9;
+    CALL _wt_begin_slot;
     // Harmonics fade out BEFORE Nyquist, using the bent/drifted coefficient.
     F0 = 0.05;
     F12 = F5 - F0;
@@ -405,6 +408,7 @@ _cp_sample:
     F1 = DM(_cp_h3);
     F0 = F0 * F1;
     F0 = F9 + F0;
+    CALL _wt_tick;
     F0 = F0 * F6;
     F0 = F0 * F7;
     F1 = DM(_cp_level);

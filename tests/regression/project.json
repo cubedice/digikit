@@ -48,6 +48,7 @@
         "^hostTests",
         "{workspaceRoot}/tools/emulator/fast_regions.json",
         "{workspaceRoot}/devices/*.toml",
+        "{workspaceRoot}/devices/ports/*.toml",
         "{workspaceRoot}/sdk/vectors/**/*",
         {
           "runtime": "shasum -a 256 dist/plusdrive/plusdrive 2>/dev/null || echo no-plusdrive"

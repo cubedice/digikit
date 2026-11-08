@@ -416,6 +416,12 @@ pub extern "C" fn dkpool_cancel(_: u32) {
 // No firmware file systems or DSP tick callback are installed in this host fixture.
 #[no_mangle]
 pub static dkrt_device_id: u32 = 0;
+#[repr(C, align(16))]
+pub struct HostStage([u8; 65536]);
+#[no_mangle]
+pub static mut DKRT_STAGE: HostStage = HostStage([0; 65536]);
+#[no_mangle]
+pub static dkrt_stage_bytes: u32 = 65536;
 #[no_mangle]
 pub static dkrt_sample_fs: [u32; 4] = [0; 4];
 #[no_mangle]

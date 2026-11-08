@@ -23,6 +23,9 @@ dkrt_store_first:
     .globl dkrt_store_sectors
 dkrt_store_sectors:
     .long STORE_SECTORS
+    .globl dkrt_stage_bytes
+dkrt_stage_bytes:
+    .long LIMIT_STAGE_BYTES
     /* The image id (docs/design/digikit-upload.md, INFO): the marker, then 8 bytes that patchkit stamps when it makes the image
      * (packages/patchkit/src/imageid.rs). Zero in the object; INFO reports them. */
     .globl dkrt_image_id
@@ -41,3 +44,10 @@ dkrt_sample_fs:
     .globl dkrt_files_fs
 dkrt_files_fs:
     .long 0, 0, 0
+
+    /* Keep DN2's allocation at its own profile limit, independently of DT2. */
+    .section .bss
+    .balign 16
+    .globl DKRT_STAGE
+DKRT_STAGE:
+    .space LIMIT_STAGE_BYTES

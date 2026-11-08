@@ -1428,3 +1428,56 @@ fn a_file_range_stays_inside_the_file_rounded_up_to_sectors() {
     assert_eq!(file_span(7, u32::MAX, u32::MAX, 1), Err(crate::E_RANGE));
     assert_eq!(file_span(u32::MAX, u32::MAX, 5, 1), Err(crate::E_RANGE));
 }
+
+#[test]
+fn staging_reads_large_extents_in_bounded_chunks_without_touching_guards() {
+    let _g = lock();
+    fresh();
+    static CALLS: Mutex<Vec<(u32, u32)>> = Mutex::new(Vec::new());
+    static FAIL_AT: Mutex<usize> = Mutex::new(usize::MAX);
+    unsafe extern "C" fn bounded(sector: u32, bytes: u32, buf: *mut u8) -> i32 {
+        assert!(bytes > 0 && bytes <= 65536 && bytes % 512 == 0);
+        assert_eq!(buf as usize & 15, 0);
+        let mut calls = CALLS.lock().unwrap();
+        calls.push((sector, bytes));
+        if calls.len() == *FAIL_AT.lock().unwrap() {
+            return -1;
+        }
+        rd(sector, bytes, buf)
+    }
+    let io = Io { rd: bounded, wr };
+    let first = 17;
+    let expected: Vec<u8> = (0..262144).map(|i| (i ^ (i >> 8)) as u8).collect();
+    CARD.lock().unwrap()[first * 512..first * 512 + expected.len()].copy_from_slice(&expected);
+    let mut guarded = Box::new(Buf([0xa5u8; 262176]));
+    let dst = unsafe { guarded.0.as_mut_ptr().add(16) };
+    for count in [129, 424, 512] {
+        guarded.0.fill(0xa5);
+        CALLS.lock().unwrap().clear();
+        *FAIL_AT.lock().unwrap() = usize::MAX;
+        assert_eq!(unsafe { read_extent(&io, &LAY, first as u32, count, dst, 262144) }, OK);
+        assert_eq!(&guarded.0[16..16 + count as usize * 512], &expected[..count as usize * 512]);
+        assert!(guarded.0[..16].iter().all(|&v| v == 0xa5));
+        assert!(guarded.0[16 + count as usize * 512..].iter().all(|&v| v == 0xa5));
+        let calls = CALLS.lock().unwrap();
+        let mut done = 0;
+        for &(sector, bytes) in calls.iter() {
+            assert_eq!(sector, FIRST + first as u32 + done);
+            done += bytes / 512;
+        }
+        assert_eq!(done, count);
+        assert_eq!(calls.len(), count.div_ceil(128) as usize);
+    }
+    for (rel, count, cap) in [(17, 513, 262144), (17, 129, 65536), (SECTORS - 1, 2, 262144), (17, 0, 262144)] {
+        CALLS.lock().unwrap().clear();
+        assert_eq!(unsafe { read_extent(&io, &LAY, rel, count, dst, cap) }, E_BAD_STORE);
+        assert!(CALLS.lock().unwrap().is_empty(), "validate the whole extent before any I/O");
+    }
+    guarded.0.fill(0xa5);
+    CALLS.lock().unwrap().clear();
+    *FAIL_AT.lock().unwrap() = 2;
+    assert_eq!(unsafe { read_extent(&io, &LAY, first as u32, 424, dst, 262144) }, E_READ);
+    assert_eq!(CALLS.lock().unwrap().len(), 2, "stop at the first failed native read");
+    assert_eq!(&guarded.0[16..65552], &expected[..65536]);
+    assert!(guarded.0[65552..].iter().all(|&v| v == 0xa5));
+}

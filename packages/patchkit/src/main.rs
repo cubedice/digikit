@@ -741,6 +741,12 @@ plan.json {}",
                 .get(id)
                 .ok_or_else(|| Error(format!("no module {id}")))?;
             let ui_preview = rest.iter().any(|a| a == "--ui-preview");
+            let max_file = match flag(rest, "--device") {
+                Some(dev) => {
+                    patchkit::devgen::Facts::from_dir(&a.root.join("devices"))?.stage_bytes(&dev)?
+                }
+                None => patchkit::dkm::max_file(),
+            };
             if ui_preview {
                 check_ui_preview(m)?;
             }
@@ -856,13 +862,21 @@ plan.json {}",
                         pages.push(p);
                     }
                 }
-                let instruments: Vec<_> = m.manifest.instrument.iter().map(|i|
-                    patchkit::dkmdsp::InstrumentSpec {
+                let instruments: Vec<_> = m
+                    .manifest
+                    .instrument
+                    .iter()
+                    .map(|i| patchkit::dkmdsp::InstrumentSpec {
                         type_no: patchkit::register::machine_key(id, &i.id),
-                        reset: i.reset.clone(), process: i.process.clone(), desc: i.desc.clone(),
-                    }).collect();
+                        reset: i.reset.clone(),
+                        process: i.process.clone(),
+                        desc: i.desc.clone(),
+                    })
+                    .collect();
                 if !instruments.is_empty() && !fxs.is_empty() {
-                    return Err(Error(format!("{id}: Stage 1 instruments cannot share a file with effects")));
+                    return Err(Error(format!(
+                        "{id}: Stage 1 instruments cannot share a file with effects"
+                    )));
                 }
                 match sharc.first().filter(|_| !ui_preview) {
                     Some((o, _)) => {
@@ -893,8 +907,11 @@ plan.json {}",
                 if !instruments.is_empty() {
                     // Reject formats the owning runtime cannot admit before producing a file.
                     dkrt_sdk::instrument_section::Section::parse(
-                        &dsp, patchkit::register::device_id(&dev)?, patchkit::dkmdsp::FORMAT_LIMITS,
-                    ).map_err(|e| Error(format!("{id}: V2 runtime section: {e:?}")))?;
+                        &dsp,
+                        patchkit::register::device_id(&dev)?,
+                        patchkit::dkmdsp::FORMAT_LIMITS,
+                    )
+                    .map_err(|e| Error(format!("{id}: V2 runtime section: {e:?}")))?;
                 }
                 let mut regs = match resolved {
                     Some(r) => Some(patchkit::register::Register::lower(r, id)?),
@@ -948,7 +965,7 @@ plan.json {}",
                 .first()
                 .filter(|_| !ui_preview)
                 .and_then(|c| patchkit::desc::strip(c.0));
-            let file = patchkit::dkm::pack_full(cf_obj.as_ref(), &reg, &dsp, &opts)?;
+            let file = patchkit::dkm::pack_full_max(cf_obj.as_ref(), &reg, &dsp, &opts, max_file)?;
             write(&out, &file)?;
             let d = patchkit::dkm::Dkm::parse(&file)?;
             println!(
@@ -1789,7 +1806,8 @@ mod selection_tests {
             .unwrap()
             .parent()
             .unwrap();
-        let (lib, ids) = library_for_apply(root, &[], vec!["core/pattern-position".into()]).unwrap();
+        let (lib, ids) =
+            library_for_apply(root, &[], vec!["core/pattern-position".into()]).unwrap();
         assert!(ids.iter().any(|id| id == "core/dsp-link"));
         assert!(!lib.get("core/pattern-position").unwrap().objects.is_empty());
         assert!(lib.get("test/dyn-demo").unwrap().objects.is_empty());

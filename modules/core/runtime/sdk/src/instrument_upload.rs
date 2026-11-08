@@ -29,6 +29,7 @@ pub struct Upload<'a, 'image, T> {
 pub(crate) struct PumpState {
     start: u32,
     budget: u32,
+    drain_budget: u32,
     draining: Option<(Failure, u32)>,
     blocked: Option<Failure>,
     finished: bool,
@@ -64,12 +65,16 @@ impl<'a, 'image, T: Transport> Upload<'a, 'image, T> {
 
 impl PumpState {
     pub(crate) fn new(now: u32, budget: u32) -> Option<Self> {
-        if budget == 0 || budget >= 0x80000000 {
+        Self::with_drain_budget(now, budget, budget)
+    }
+    pub(crate) fn with_drain_budget(now: u32, budget: u32, drain_budget: u32) -> Option<Self> {
+        if budget == 0 || budget >= 0x80000000 || drain_budget == 0 || drain_budget >= 0x80000000 {
             return None;
         }
         Some(Self {
             start: now,
             budget,
+            drain_budget,
             draining: None,
             blocked: None,
             finished: false,
@@ -122,7 +127,7 @@ impl PumpState {
                 Ok(LinkProgress::Idle | LinkProgress::Complete(_) | LinkProgress::Failed(_)) => {
                     self.recover(transfer, loads, cause)
                 }
-                Ok(LinkProgress::Pending) if now.wrapping_sub(began) < self.budget => {
+                Ok(LinkProgress::Pending) if now.wrapping_sub(began) < self.drain_budget => {
                     Progress::Pending
                 }
                 _ => self.block(cause),

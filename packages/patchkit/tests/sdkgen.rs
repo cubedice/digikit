@@ -31,6 +31,9 @@ fn the_fx_chain_cap_is_the_registrys() {
 
 /// `text` with its `[api]` fields replaced by `fields` (the lines of the `fields = [...]` array).
 fn with_api(text: &str, fields: &str) -> String {
+    // A Windows checkout may use CRLF; these edits target TOML sections, not
+    // the checkout's line-ending convention.
+    let text = text.replace("\r\n", "\n");
     let a = text.find("[api]\n").unwrap();
     let b = a + text[a..].find("\n[api.types]\n").unwrap() + 1;
     format!(
@@ -44,12 +47,16 @@ const TWO_FIELDS: &str = "    { name = \"version\", type = \"u32\", doc = \"v\" 
 
 #[test]
 fn the_api_table_is_generated_for_c_and_rust() {
-    let text = std::fs::read_to_string(root().join(sdkgen::SOURCE)).unwrap();
-    let files = sdkgen::render(&with_api(&text, TWO_FIELDS)).unwrap();
-    let get = |p: &str| &files.iter().find(|f| f.0 == p).unwrap().1;
-    let c = get(sdkgen::C_API_OUT);
-    assert!(c.contains("_Static_assert(sizeof(dk_api) == 8,"));
-    assert!(c.contains("_Static_assert(offsetof(dk_api, hook) == 4,"));
+    let text = std::fs::read_to_string(root().join(sdkgen::SOURCE))
+        .unwrap()
+        .replace("\r\n", "\n");
+    for text in [text.clone(), text.replace('\n', "\r\n")] {
+        let files = sdkgen::render(&with_api(&text, TWO_FIELDS)).unwrap();
+        let get = |p: &str| &files.iter().find(|f| f.0 == p).unwrap().1;
+        let c = get(sdkgen::C_API_OUT);
+        assert!(c.contains("_Static_assert(sizeof(dk_api) == 8,"));
+        assert!(c.contains("_Static_assert(offsetof(dk_api, hook) == 4,"));
+    }
 }
 
 #[test]
@@ -138,7 +145,9 @@ fn bad_protocol_ranges_commands_and_capacity_kinds_are_refused() {
 
 #[test]
 fn imports_of_other_modules_get_stubs_from_absent() {
-    let text = std::fs::read_to_string(root().join("sdk/sdk.toml")).unwrap();
+    let text = std::fs::read_to_string(root().join("sdk/sdk.toml"))
+        .unwrap()
+        .replace("\r\n", "\n");
     let files = sdkgen::render(&text).unwrap();
     let rs = &files.iter().find(|f| f.0 == sdkgen::RUST_OUT).unwrap().1;
     // the ui calls are linked by name and have the API's failure value as a stub; the table lists both addresses

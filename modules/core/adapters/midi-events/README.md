@@ -14,6 +14,12 @@ retain tombstones until their physical release. A capacity failure resets all
 configured instrument instances and quarantines their routes until explicit
 recovery with keys released. It does not claim unrelated stock routes.
 
+External routes accept modulation wheel (CC1), sustain (CC64), CC120/121/123
+and pitch bend. Wheel events retain their USB/DIN source and channel through
+the keyboard mapper; PANEL cannot supply wheel events. Reset All Controllers
+centers bend and clears the wheel on only that route, while All Sound Off
+retains wheel position. The event and packet layouts are unchanged.
+
 Events remain in the ring until an exact epoch/sequence ACK. Instance resets use reserved priority bits outside the ring; ordinary dequeue waits for reset ACK. Epoch and generation checks reject stale acknowledgements. Token exhaustion requires explicit recovery into a new stream epoch. All mutation is serialized by the CF adapter's interrupt mask; the frame sender uses the same critical-section contract. The readiness callback must be bounded, read-only, allocation-free and nonblocking;
 it runs with interrupts masked and must not call UI or storage services. Readiness
 is rechecked before each routed channel message and before each frame sends queued

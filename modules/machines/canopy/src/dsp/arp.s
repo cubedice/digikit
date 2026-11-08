@@ -72,7 +72,7 @@ _arp_full_controls:
     R0 = FEXT R0 BY 0:8;
     R1 = 8;
     COMP(R0, R1);
-    IF NE JUMP _ca_span_ready;
+    IF LT JUMP _ca_span_ready;
     // CPS8: biased -3..+3 additional octaves, only one direction at a time.
     R0 = DM(11, I1);
     R1 = 3;

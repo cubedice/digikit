@@ -59,6 +59,7 @@ const open = new Map<string, WebMidiTransport>();
 const { library, source } = createWebLibrary({
   bytes: async (path) => new Uint8Array(await (await fetchOk(`${BASE}modules/${path}`)).arrayBuffer()),
   text: async (path) => (await fetchOk(`${BASE}modules/${path}`)).text(),
+  url: (path) => `${BASE}modules/${path.split('/').map(encodeURIComponent).join('/')}`,
 });
 
 export const webEnv: TransferEnv = {

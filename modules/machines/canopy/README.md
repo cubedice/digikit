@@ -1,11 +1,11 @@
 # CANOPY implementation
 
-This directory contains the four-note pad instrument with movement, presets and two SRC pages for the
+This directory contains the four-note pad instrument with movement, presets and three SRC pages for the
 [CANOPY design](../../../docs/design/canopy.md). Its dynamic package uses V2
 reset/process callbacks and an assigned machine type. It requires the optional
 DTII 1.17 `core/instrument-play` adapter; ordinary firmware cannot admit it.
-The engine supports Velvet/Reed families, color, drift and local envelopes.
-Stage 5 emulator acceptance is complete. Stage 6 coexistence and physical release qualification remain open.
+The engine supports Velvet/Reed and factory wavetable families, drift and local envelopes.
+Earlier Stage 5 acceptance predates the wavetable extension, which requires matching CPS9 firmware and package builds. Stage 6 coexistence and physical release qualification remain open.
 This is not a hardware-qualified release.
 
 Build and pack with `patchkit build digikit/canopy` and
@@ -16,8 +16,10 @@ channel and EXTERNAL MIDI. The built-in KEYBOARD/TRIG route is available on
 the admitted track without enabling external MIDI.
 Enable the corresponding stock MIDI receive ports as well. Development
 installation uses the upload/selection protocol; the generic module-browser fit
-calculator remains V1-only. External MIDI routing starts disabled on every boot. Learned chord templates persist;
-keyboard and sound setup currently return to defaults.
+calculator remains V1-only. External MIDI starts disabled unless you previously used SAVE ROUTING;
+saved routing is restored after CANOPY is admitted and ready. Learned chord
+templates and saved presets persist. Keyboard mode and sound controls start at
+defaults until you load a preset.
 Only track 1 is admitted. Other tracks and channels retain stock behavior.
 
 `src/dsp/voice.s` implements four foreground notes, two short release tails and
@@ -35,9 +37,43 @@ note. Zero-velocity Note On must already have been normalized by MIDI ingress.
 QUIET is returned only after every local release finishes, and the entire output
 block is always written. Independent banks allow separate track state.
 
-The adapter supplies PLAY, ROOT + TYPE and learned chord modes. The callback layer supports CC64 sustain, CC121 pedal reset, CC123 All Notes Off and CC120
+The adapter supplies PLAY, ROOT + TYPE and learned chord modes. The callback layer supports CC1 mod wheel, CC64 sustain, CC121 controller reset, CC123 All Notes Off and CC120
 All Sound Off, plus 14-bit pitch bend at a fixed +/-2 semitone range, scoped to
 MIDI port/channel.
+
+## Wavetable controls
+
+Choose **WAVETABLE** in the CANOPY SETUP engine chooser. Press SRC to cycle
+SOUND, ARP and TONE. Existing Velvet/Reed presets retain their original sound
+controls; wavetable-only TONE controls are inactive until that engine is selected.
+
+| Encoder | TONE control | Meaning |
+| --- | --- | --- |
+| A | TUNE | Stock DTII tuning, shared with SOUND |
+| B | TABL | ANLG, GLASS, VOCAL, ORGAN or METAL; full ANALOG in turn feedback |
+| C | POS | Continuous position 1.00-8.00 through eight related waves |
+| D | DEP | Scan depth 0-100%; full depth reaches 3.5 frames either side |
+| E | HZ / RATE | 0.01-10.00 under HZ, or four bars through 1/16 with tempo sync |
+| F | SHAP | Sine, triangle or smooth random scan |
+| G | RST | Free-running, phrase restart or pattern restart |
+| H | LEV | Stock source level, shared with SOUND |
+
+SOUND D becomes a POS shortcut. It does not overwrite the remembered legacy
+COLOR setting. Dedicated LEVEL/DATA remains the stock track-level control;
+holding SRC uses the native show-values presentation. No second level scale is added.
+
+The WAVETABLE TIMBRE setup submenu selects the scan clock and provides a
+separate timbre envelope with attack/release and signed envelope, velocity and
+wheel amounts. These modulation amounts default to zero. Position modulation
+clamps at the table ends. Mod wheel follows its USB/DIN channel; CC121 clears
+that route's wheel, while CC120 stops sound without changing wheel position.
+
+The factory waves are original, reproducibly generated data, compiled into the
+module. No sample-bank upload is needed. User-table import is a later extension.
+Presets use CPST v3 (96 bytes), including all wavetable controls and factory-table
+version 1. The existing 64-byte v1/v2 presets remain readable and receive neutral
+wavetable defaults. Native Sound/project persistence and parameter locks remain
+outside this custom preset format.
 
 ## Earlier carrier and transport evidence
 

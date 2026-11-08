@@ -14,7 +14,7 @@ static unsigned menu_count, masked, unsafe_io, token=1;
 static int exists, staged, put_error, flush_error, open_error;
 static uint8_t card[KB_RECORD_BYTES], pending_card[KB_RECORD_BYTES];
 static uint8_t preset_card[CP_SLOTS][CP_RECORD_BYTES], preset_staged[CP_SLOTS][CP_RECORD_BYTES];
-static unsigned preset_exists, preset_staged_mask;
+static unsigned preset_exists, preset_staged_mask, preset_bytes[CP_SLOTS];
 static uint8_t route_card[CR_BYTES],route_staged[CR_BYTES];
 static int route_exists,route_staged_valid;
 static uint32_t admitted=1,route_calls;
@@ -57,7 +57,7 @@ int dkrt_settings_get(const char *key,uint8_t *out,uint32_t capacity)
     if(index>=0) {
         if(capacity<CP_RECORD_BYTES) return -69;
         if(!(preset_exists & (1u<<index))) return -68;
-        memcpy(out,preset_card[index],CP_RECORD_BYTES); return CP_RECORD_BYTES;
+        memcpy(out,preset_card[index],preset_bytes[index]); return (int)preset_bytes[index];
     }
     if(strcmp(key,"canopy/shapes/v1") || capacity<sizeof(card)) return -69;
     if(!exists) return -68;
@@ -87,7 +87,7 @@ int dkrt_settings_flush(void)
     if(flush_error) return flush_error;
     if(route_staged_valid) { memcpy(route_card,route_staged,CR_BYTES); route_exists=1; route_staged_valid=0; }
     for(unsigned i=0;i<CP_SLOTS;++i) if(preset_staged_mask & (1u<<i)) {
-        memcpy(preset_card[i],preset_staged[i],CP_RECORD_BYTES); preset_exists|=1u<<i;
+        memcpy(preset_card[i],preset_staged[i],CP_RECORD_BYTES); preset_bytes[i]=CP_RECORD_BYTES; preset_exists|=1u<<i;
     }
     preset_staged_mask=0;
     if(staged) { memcpy(card,pending_card,sizeof(card)); exists=1; staged=0; }
@@ -156,6 +156,8 @@ int main(void)
         else if(!strcmp(cmd,"presetsave")) preset_save(0,0);
         else if(!strcmp(cmd,"presetload")) preset_load(0,0);
         else if(!strcmp(cmd,"presetslot")) preset_slot=value;
+        else if(!strcmp(cmd,"family")) { pad_family=value; pad_changed(0,value); }
+        else if(!strcmp(cmd,"scanclock")) scan_clock_done(0,value);
         else if(!strcmp(cmd,"color")) { pad_color=value; pad_changed(0,value); }
         else if(!strcmp(cmd,"bpm")) { arp_bpm=value; pad_changed(0,value); }
         else if(!strcmp(cmd,"config")) {
@@ -199,6 +201,14 @@ int main(void)
         }
         else if(!strcmp(cmd,"type")) choose_type(0,value);
         else if(!strcmp(cmd,"shapeslot")) { slot=value; changed(0,0); }
+        else if(!strcmp(cmd,"legacypreset")) {
+            uint8_t *b=preset_card[preset_slot-1]; b[4]=(uint8_t)value; b[5]=16;
+            for(unsigned i=51;i<CP_RECORD_BYTES;++i) b[i]=0;
+            uint32_t h=2166136261u;
+            for(unsigned i=0;i<60;++i) h=(h^b[i])*16777619u;
+            for(unsigned i=0;i<4;++i) b[60+i]=(uint8_t)(h>>(24-8*i));
+            preset_bytes[preset_slot-1]=64;
+        }
         else if(!strcmp(cmd,"corruptpreset")) preset_card[preset_slot-1][value]^=1;
         else if(!strcmp(cmd,"presetstate")) {
             printf("{\"color\":%d,\"dirty\":%d,\"result\":%d,\"present\":%u,\"durable\":%u,\"pending\":%d,\"override\":%u,\"unsafe\":%u,\"shape\":[",

@@ -3,6 +3,7 @@
 .EXTERN _cp_note_on;
 .EXTERN _cp_note_off;
 .EXTERN _cp_retune;
+.EXTERN _wt_state;
 // UI-native transpose changes retune every owned foreground/tail/pending slot
 // using its original MIDI pitch and route bend. Phase and gates are preserved.
 .GLOBAL _cp_retune_all;
@@ -60,6 +61,7 @@ _cp_apply_packed:
     DM(_ci_event) = R12;
     DM(_ci_bank) = R4;
     DM(_ci_pedal_bank) = R8;
+    CALL _ci_wheel_snapshot;
     I1 = R8;
     I2 = _ci_pedal_staging;
     R2 = 64;
@@ -148,6 +150,7 @@ _ci_commit_pedals:
     DM(I1, M6) = R0;
     R2 = R2 - 1;
     IF NE JUMP _ci_commit_pedals;
+    CALL _ci_wheel_commit;
     R0 = 1;
     RTS;
 _ci_reject:
@@ -200,6 +203,9 @@ _ci_controller:
     R2 = 121; // Reset All Controllers releases pedal ownership on this route.
     COMP(R12, R2);
     IF EQ JUMP _ci_reset_controllers;
+    R2 = 1;
+    COMP(R12, R2);
+    IF EQ JUMP _ci_wheel_event;
     R2 = 64;
     COMP(R12, R2);
     IF NE JUMP _ci_reject;
@@ -442,6 +448,9 @@ _ci_bend_event:
     CALL _ci_apply_route_bend;
     JUMP _ci_next_event;
 _ci_reset_controllers:
+    CALL _ci_wheel_address;
+    R0 = 0;
+    DM(0, I0) = R0;
     CALL _ci_bend_address;
     R0 = 0;
     DM(0, I0) = R0;
@@ -523,6 +532,51 @@ _ci_bend_pending_next:
     R2 = R2 - 1;
     IF NE JUMP _ci_bend_pending;
     RTS;
+// Wheel events share the event batch transaction; rejected later events cannot
+// partially apply a controller. USB/DIN have separate sixteen-channel banks.
+_ci_wheel_snapshot:
+    R0 = DM(_wt_state);
+    R0 = PASS R0;
+    IF EQ RTS;
+    I1 = R0;
+    MODIFY(I1, 264) (NW);
+    I2 = _ci_wheel_staging;
+    R2 = 32;
+_ci_wheel_copy_in:
+    R0 = DM(I1, M6);
+    DM(I2, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _ci_wheel_copy_in;
+    RTS;
+_ci_wheel_commit:
+    R0 = DM(_wt_state);
+    R0 = PASS R0;
+    IF EQ RTS;
+    I1 = R0;
+    MODIFY(I1, 264) (NW);
+    I2 = _ci_wheel_staging;
+    R2 = 32;
+_ci_wheel_copy_out:
+    R0 = DM(I2, M6);
+    DM(I1, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _ci_wheel_copy_out;
+    RTS;
+_ci_wheel_address:
+    R0 = DM(_ci_route_index);
+    R0 = LSHIFT R0 BY 2;
+    R1 = _ci_wheel_staging;
+    R0 = R0 + R1;
+    I0 = R0;
+    RTS;
+_ci_wheel_event:
+    R0 = DM(_ci_route_index);
+    R1 = 32;
+    COMP(R0, R1);
+    IF GE JUMP _ci_reject;
+    CALL _ci_wheel_address;
+    DM(0, I0) = R9;
+    JUMP _ci_next_event;
 .SECTION/DM seg_dmda;
 .VAR _ci_bank = 0;
 .VAR _ci_event = 0;
@@ -549,3 +603,5 @@ _ci_bend_pending_next:
 .VAR _ci_bend_note = 0;
 .VAR _ci_bend_value = 0;
 .VAR _ci_bend_slot = 0;
+
+.PKBSS _ci_wheel_staging, 128;

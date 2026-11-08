@@ -314,6 +314,9 @@ _iv_config_validate:
     JUMP _iv_config_copy;
 _iv_six_config:
     R0 = DM(5, I0);
+    R1 = 0x43505339;
+    COMP(R0, R1);
+    IF EQ JUMP _iv_nine_config;
     R1 = 0x43505338;
     COMP(R0, R1);
     IF EQ JUMP _iv_eight_config;
@@ -340,6 +343,9 @@ _iv_seven_config:
     JUMP _iv_native_config;
 _iv_eight_config:
     R2 = 8;
+    JUMP _iv_native_config;
+_iv_nine_config:
+    R2 = 9;
 _iv_native_config:
     R0 = DM(_iv_values);
     I1 = R0;
@@ -361,6 +367,11 @@ _iv_native_config:
     R1 = 2;
     COMP(R0, R1);
     IF GT JUMP _iv_no;
+    R0 = DM(0, I1);
+    R0 = FEXT R0 BY 0:8;
+    R1 = 9;
+    COMP(R0, R1);
+    IF EQ JUMP _iv_wavetable_controls;
 _iv_effective_controls:
     R0 = DM(16, I1);
     R0 = PASS R0;
@@ -444,6 +455,139 @@ _iv_effective_controls:
     COMP(R0, R1);
     IF NE JUMP _iv_no;
     JUMP _iv_five_body;
+// CPS9 preserves the 128-byte transport bank. Presentation words contain the
+// original control in low16 and a wavetable control in high16. Validate every
+// field and duplicate before publishing any part of the new revision.
+_iv_wavetable_controls:
+    // MIDI callbacks may clobber I0..I2 only. Keep the consumer's I3+ context.
+    // The outer frame pins M6=1 and L0..L2=0, but leaves the other DAGs in
+    // stock firmware context. The four advancing DAGs I3..I6 need linear
+    // lengths, or a table index can wrap into unrelated/unknown memory.
+    // Never borrow I7: an interrupt saves its context through the live stack
+    // pointer. I0 is scratch; reload the metadata pointer before publication.
+    R0 = I3;
+    DM(_iv_wt_i3) = R0;
+    R0 = I4;
+    DM(_iv_wt_i4) = R0;
+    R0 = I5;
+    DM(_iv_wt_i5) = R0;
+    R0 = I6;
+    DM(_iv_wt_i6) = R0;
+    R0 = L3;
+    DM(_iv_wt_l3) = R0;
+    R0 = L4;
+    DM(_iv_wt_l4) = R0;
+    R0 = L5;
+    DM(_iv_wt_l5) = R0;
+    R0 = L6;
+    DM(_iv_wt_l6) = R0;
+    L3 = 0;
+    L4 = 0;
+    L5 = 0;
+    L6 = 0;
+    I2 = _iv_wt_scalar_min;
+    I3 = _iv_wt_scalar_max;
+    MODIFY(I1, 1) (NW);
+    R6 = 15;
+_iv_wt_scalar:
+    R0 = DM(I1, M6);
+    R1 = DM(I2, M6);
+    COMP(R0, R1);
+    IF LT JUMP _iv_wt_reject;
+    R1 = DM(I3, M6);
+    COMP(R0, R1);
+    IF GT JUMP _iv_wt_reject;
+    R6 = R6 - 1;
+    IF NE JUMP _iv_wt_scalar;
+    I2 = _iv_wt_low_min;
+    I3 = _iv_wt_low_max;
+    I4 = _iv_wt_high_min;
+    I5 = _iv_wt_high_max;
+    I6 = _iv_wt_duplicate;
+    R6 = 16;
+_iv_wt_presentation:
+    R7 = DM(I1, M6);
+    R0 = FEXT R7 BY 0:16;
+    R1 = DM(I2, M6);
+    COMP(R0, R1);
+    IF LT JUMP _iv_wt_reject;
+    R1 = DM(I3, M6);
+    COMP(R0, R1);
+    IF GT JUMP _iv_wt_reject;
+    R2 = DM(I6, M6);
+    R2 = PASS R2;
+    IF LT JUMP _iv_wt_extension;
+    R2 = LSHIFT R2 BY 2;
+    R3 = DM(_iv_values);
+    R2 = R2 + R3;
+    I0 = R2;
+    R3 = DM(0, I0);
+    COMP(R0, R3);
+    IF NE JUMP _iv_wt_reject;
+_iv_wt_extension:
+    R0 = LSHIFT R7 BY -16;
+    R1 = DM(I4, M6);
+    COMP(R0, R1);
+    IF LT JUMP _iv_wt_reject;
+    R1 = DM(I5, M6);
+    COMP(R0, R1);
+    IF GT JUMP _iv_wt_reject;
+    R6 = R6 - 1;
+    IF NE JUMP _iv_wt_presentation;
+    R0 = DM(_iv_values);
+    I1 = R0;
+    R0 = DM(20, I1);
+    R0 = FEXT R0 BY 0:16;
+    R1 = LSHIFT R0 BY 1;
+    R0 = R0 + R1;
+    R0 = LSHIFT R0 BY -1;
+    R1 = DM(15, I1);
+    COMP(R0, R1);
+    IF NE JUMP _iv_wt_reject;
+    R0 = DM(13, I1);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _iv_wt_clock;
+    R0 = DM(12, I1);
+    R0 = PASS R0;
+    IF NE JUMP _iv_wt_reject;
+_iv_wt_clock:
+    R0 = DM(22, I1);
+    R0 = LSHIFT R0 BY -16;
+    R0 = PASS R0;
+    IF EQ JUMP _iv_wt_valid;
+    R0 = DM(19, I1);
+    R0 = LSHIFT R0 BY -16;
+    R1 = 7;
+    COMP(R0, R1);
+    IF GT JUMP _iv_wt_reject;
+_iv_wt_valid:
+    R2 = 32;
+    JUMP _iv_wt_restore;
+_iv_wt_reject:
+    R2 = 0;
+_iv_wt_restore:
+    R0 = DM(_iv_wt_i3);
+    I3 = R0;
+    R0 = DM(_iv_wt_i4);
+    I4 = R0;
+    R0 = DM(_iv_wt_i5);
+    I5 = R0;
+    R0 = DM(_iv_wt_i6);
+    I6 = R0;
+    R0 = DM(_iv_wt_l3);
+    L3 = R0;
+    R0 = DM(_iv_wt_l4);
+    L4 = R0;
+    R0 = DM(_iv_wt_l5);
+    L5 = R0;
+    R0 = DM(_iv_wt_l6);
+    L6 = R0;
+    R2 = PASS R2;
+    IF EQ JUMP _iv_no;
+    R0 = DM(_iv_metadata);
+    I0 = R0;
+    JUMP _iv_config_copy;
 _iv_five_config:
     R0 = DM(5, I0);
     R1 = 0x43505335;
@@ -690,7 +834,7 @@ _iv_reset_row:
     DM(12, I0) = R0;
     RTS;
 _iv_reset_bad:
-    R0 = -1;
+    R0 = 0xffffffff;
     RTS;
 
 // Raw stock-carrier ABI: copy the already-rendered block, never advance DSP
@@ -760,6 +904,116 @@ _iv_voice_zero:
 .VAR _iv_controls_30 = 0;
 .VAR _iv_controls_31 = 0;
 .VAR _iv_control_count = 1;
+.VAR _iv_wt_scalar_min = 0;
+.VAR _iv_wt_scalar_min_1 = 0;
+.VAR _iv_wt_scalar_min_2 = 0;
+.VAR _iv_wt_scalar_min_3 = 0;
+.VAR _iv_wt_scalar_min_4 = 0;
+.VAR _iv_wt_scalar_min_5 = 0;
+.VAR _iv_wt_scalar_min_6 = 30;
+.VAR _iv_wt_scalar_min_7 = 1;
+.VAR _iv_wt_scalar_min_8 = 1;
+.VAR _iv_wt_scalar_min_9 = 0;
+.VAR _iv_wt_scalar_min_10 = 0;
+.VAR _iv_wt_scalar_min_11 = 0;
+.VAR _iv_wt_scalar_min_12 = 0;
+.VAR _iv_wt_scalar_min_13 = 0;
+.VAR _iv_wt_scalar_min_14 = 0;
+.VAR _iv_wt_scalar_max = 2;
+.VAR _iv_wt_scalar_max_1 = 127;
+.VAR _iv_wt_scalar_max_2 = 127;
+.VAR _iv_wt_scalar_max_3 = 127;
+.VAR _iv_wt_scalar_max_4 = 127;
+.VAR _iv_wt_scalar_max_5 = 127;
+.VAR _iv_wt_scalar_max_6 = 300;
+.VAR _iv_wt_scalar_max_7 = 8;
+.VAR _iv_wt_scalar_max_8 = 100;
+.VAR _iv_wt_scalar_max_9 = 4;
+.VAR _iv_wt_scalar_max_10 = 6;
+.VAR _iv_wt_scalar_max_11 = 75;
+.VAR _iv_wt_scalar_max_12 = 2;
+.VAR _iv_wt_scalar_max_13 = 2;
+.VAR _iv_wt_scalar_max_14 = 750;
+.VAR _iv_wt_low_min = 0;
+.VAR _iv_wt_low_min_1 = 0;
+.VAR _iv_wt_low_min_2 = 0;
+.VAR _iv_wt_low_min_3 = 0;
+.VAR _iv_wt_low_min_4 = 0;
+.VAR _iv_wt_low_min_5 = 0;
+.VAR _iv_wt_low_min_6 = 1;
+.VAR _iv_wt_low_min_7 = 0;
+.VAR _iv_wt_low_min_8 = 0;
+.VAR _iv_wt_low_min_9 = 1;
+.VAR _iv_wt_low_min_10 = 0;
+.VAR _iv_wt_low_min_11 = 0;
+.VAR _iv_wt_low_min_12 = 0;
+.VAR _iv_wt_low_min_13 = 0;
+.VAR _iv_wt_low_min_14 = 0;
+.VAR _iv_wt_low_min_15 = 0;
+.VAR _iv_wt_low_max = 11;
+.VAR _iv_wt_low_max_1 = 3;
+.VAR _iv_wt_low_max_2 = 127;
+.VAR _iv_wt_low_max_3 = 127;
+.VAR _iv_wt_low_max_4 = 500;
+.VAR _iv_wt_low_max_5 = 127;
+.VAR _iv_wt_low_max_6 = 8;
+.VAR _iv_wt_low_max_7 = 4;
+.VAR _iv_wt_low_max_8 = 6;
+.VAR _iv_wt_low_max_9 = 100;
+.VAR _iv_wt_low_max_10 = 75;
+.VAR _iv_wt_low_max_11 = 2;
+.VAR _iv_wt_low_max_12 = 1;
+.VAR _iv_wt_low_max_13 = 0;
+.VAR _iv_wt_low_max_14 = 127;
+.VAR _iv_wt_low_max_15 = 127;
+.VAR _iv_wt_high_min = 0;
+.VAR _iv_wt_high_min_1 = 0;
+.VAR _iv_wt_high_min_2 = 0;
+.VAR _iv_wt_high_min_3 = 1;
+.VAR _iv_wt_high_min_4 = 0;
+.VAR _iv_wt_high_min_5 = 0;
+.VAR _iv_wt_high_min_6 = 0;
+.VAR _iv_wt_high_min_7 = 0;
+.VAR _iv_wt_high_min_8 = 0;
+.VAR _iv_wt_high_min_9 = 0;
+.VAR _iv_wt_high_min_10 = 0;
+.VAR _iv_wt_high_min_11 = 0;
+.VAR _iv_wt_high_min_12 = 0;
+.VAR _iv_wt_high_min_13 = 0;
+.VAR _iv_wt_high_min_14 = 0;
+.VAR _iv_wt_high_min_15 = 0;
+.VAR _iv_wt_high_max = 4;
+.VAR _iv_wt_high_max_1 = 700;
+.VAR _iv_wt_high_max_2 = 100;
+.VAR _iv_wt_high_max_3 = 1000;
+.VAR _iv_wt_high_max_4 = 2;
+.VAR _iv_wt_high_max_5 = 2;
+.VAR _iv_wt_high_max_6 = 1;
+.VAR _iv_wt_high_max_7 = 200;
+.VAR _iv_wt_high_max_8 = 127;
+.VAR _iv_wt_high_max_9 = 127;
+.VAR _iv_wt_high_max_10 = 200;
+.VAR _iv_wt_high_max_11 = 200;
+.VAR _iv_wt_high_max_12 = 0;
+.VAR _iv_wt_high_max_13 = 0;
+.VAR _iv_wt_high_max_14 = 0;
+.VAR _iv_wt_high_max_15 = 0;
+.VAR _iv_wt_duplicate = 0xffffffff;
+.VAR _iv_wt_duplicate_1 = 0xffffffff;
+.VAR _iv_wt_duplicate_2 = 2;
+.VAR _iv_wt_duplicate_3 = 3;
+.VAR _iv_wt_duplicate_4 = 0xffffffff;
+.VAR _iv_wt_duplicate_5 = 6;
+.VAR _iv_wt_duplicate_6 = 8;
+.VAR _iv_wt_duplicate_7 = 10;
+.VAR _iv_wt_duplicate_8 = 11;
+.VAR _iv_wt_duplicate_9 = 9;
+.VAR _iv_wt_duplicate_10 = 12;
+.VAR _iv_wt_duplicate_11 = 14;
+.VAR _iv_wt_duplicate_12 = 0xffffffff;
+.VAR _iv_wt_duplicate_13 = 0xffffffff;
+.VAR _iv_wt_duplicate_14 = 4;
+.VAR _iv_wt_duplicate_15 = 5;
 .VAR _iv_generation = 0;
 .VAR _iv_revision = 0;
 .VAR _iv_active = 0;
@@ -770,3 +1024,12 @@ _iv_voice_zero:
 
 .PKDATA _instrument_play_status, 8;
 .PKDATA _instrument_ui_status, 52;
+
+.PKBSS _iv_wt_i3, 4;
+.PKBSS _iv_wt_i4, 4;
+.PKBSS _iv_wt_i5, 4;
+.PKBSS _iv_wt_i6, 4;
+.PKBSS _iv_wt_l3, 4;
+.PKBSS _iv_wt_l4, 4;
+.PKBSS _iv_wt_l5, 4;
+.PKBSS _iv_wt_l6, 4;

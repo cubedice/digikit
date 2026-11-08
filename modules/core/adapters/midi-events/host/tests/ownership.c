@@ -130,13 +130,40 @@ uint32_t mi_test_messages(void)
     CHECK(!mi_message(&m, 1, sysex, sizeof(sysex)));
     CHECK(!mi_message(&m, 1, &realtime, 1));
     CHECK(!mi_message(&m, 1, 0, 3));
-    CHECK(!message(&m, 1, 0xbf, 1, 127));
+    CHECK(!message(&m, 1, 0xbf, 2, 127));
     CHECK(message(&m, 1, 0x9f, 0, 127)); e = take(&m);
     CHECK(e.note == 0 && e.track == 15 && e.port == 1 && e.channel == 15);
     CHECK(message(&m, 1, 0xef, 127, 127)); e = take(&m);
     CHECK(e.kind == MI_BEND && e.token == 0 && ((e.value << 7) | e.note) == 16383);
     CHECK(message(&m, 1, 0xbf, 64, 127)); e = take(&m);
     CHECK(e.kind == MI_CC && e.note == 64 && e.value == 127);
+    return 0;
+}
+
+uint32_t mi_test_mod_wheel(void)
+{
+    MiLedger m; MiEvent e;
+    mi_init(&m);
+    CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
+    CHECK(mi_route(&m, 1, 15, 15, 1, 0) == 0);
+    CHECK(message(&m, 0, 0xb0, 1, 0)); e = take(&m);
+    CHECK(e.kind == MI_CC && !e.token && !e.track && !e.port && !e.channel);
+    CHECK(e.note == 1 && !e.value);
+    CHECK(message(&m, 1, 0xbf, 1, 127)); e = take(&m);
+    CHECK(e.kind == MI_CC && !e.token && e.track == 15 && e.port == 1 && e.channel == 15);
+    CHECK(e.note == 1 && e.value == 127);
+    /* Unclaimed routes and PANEL must retain their existing MIDI behavior. */
+    CHECK(!message(&m, 1, 0xb0, 1, 64));
+    CHECK(!message(&m, MI_PANEL, 0xb0, 1, 64));
+    CHECK(!message(&m, 0, 0xb0, 1, 128));
+    CHECK(!mi_peek(&m, &e));
+    mi_reset_track(&m, 0);
+    CHECK(message(&m, 0, 0xb0, 1, 64));
+    CHECK(!m.count);
+    CHECK(mi_reset_ack(&m, m.epoch, 0, m.generations[0]));
+    CHECK(mi_route(&m, 0, 0, 0, m.generations[0], 1) == 0);
+    CHECK(message(&m, 0, 0xb0, 1, 64));
+    CHECK(!mi_peek(&m, &e));
     return 0;
 }
 

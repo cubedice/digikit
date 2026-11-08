@@ -311,6 +311,8 @@ _mf_c6a = "cf.machine.site.clone.6.alt"
 _mf_sp = "cf.machine.site.srcpage"
 _mf_spa = "cf.machine.site.srcpage.alt"
 _mf_spt = "cf.machine.fn.current_track_type"
+mf_src_alloc = "cf.mem.fn.new"
+mf_src_free = "cf.mem.fn.free"
 
 [[object]]
 path = "build/machines-dn2.dko.json"

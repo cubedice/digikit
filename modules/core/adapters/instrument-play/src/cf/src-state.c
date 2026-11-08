@@ -1,13 +1,16 @@
 #include "src-state.h"
-static const uint16_t low[CP_CONTROLS]={0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0};
-static const uint16_t high[CP_CONTROLS]={11,3,127,127,500,127,8,4,6,100,75,2,1,0,127,127};
-static const uint8_t controls[2][8]={
+static const uint16_t low[CP_CONTROLS]={0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0};
+static const uint16_t high[CP_CONTROLS]={11,3,127,127,500,127,8,4,6,100,75,2,1,0,127,127,4,700,100,1000,2,2,1,200,127,127,200,200};
+static const uint8_t controls[3][8]={
     {CS_TUNE,CP_CHORD,CP_VOICING,CP_COLOR,CP_DRIFT,CP_STRUM,CP_ARP_MIX,CS_LEVEL},
-    {CP_RATE,CP_ORDER,CP_OCTAVES,CP_GATE,CP_SWING,CP_RESTART,CP_LATCH,CP_ARP_MIX}
+    {CP_RATE,CP_ORDER,CP_OCTAVES,CP_GATE,CP_SWING,CP_RESTART,CP_LATCH,CP_ARP_MIX},
+    {CS_TUNE,CP_WT_TABLE,CP_WT_POS,CP_WT_DEPTH,CP_WT_RATE,CP_WT_SHAPE,CP_WT_RESET,CS_LEVEL}
 };
 void cs_init(CsState *s)
 {
     for(uint32_t i=0;i<sizeof(*s);++i) ((volatile uint8_t *)s)[i]=0;
+    static const uint16_t wt[12]={0,0,0,10,0,0,0,100,5,15,100,100};
+    for(uint32_t i=0;i<12;++i) s->value[CP_WT_TABLE+i]=wt[i];
     s->token=1; s->revision=1; s->focus_id=CS_NONE;
     s->native_tune=0x4000;
     s->value[CP_COLOR]=64; s->value[CP_RATE]=4; s->value[CP_OCTAVES]=3;
@@ -16,7 +19,7 @@ void cs_init(CsState *s)
 uint32_t cs_context(CsState *s,uint32_t track,uint32_t generation,int visible,
     uint32_t page,uint32_t mode,uint32_t clock,int learned,int modal)
 {
-    if(track>=16 || page>1 || mode>KB_LEARN || clock>2) { visible=0; track=0; page=0; }
+    if(track>=16 || page>2 || mode>KB_LEARN || clock>2) { visible=0; track=0; page=0; }
     if(s->track!=track || s->generation!=generation || s->visible!=!!visible ||
         s->page[track]!=page || s->mode!=mode || s->clock!=clock ||
         s->learned!=!!learned || s->modal!=!!modal) {
@@ -24,7 +27,7 @@ uint32_t cs_context(CsState *s,uint32_t track,uint32_t generation,int visible,
         if(s->token==UINT32_MAX) { s->visible=0; s->focus=0; return 0; }
         ++s->token; s->focus=0; s->focus_id=CS_NONE;
     }
-    if(s->generation!=generation) s->pending=0xffff;
+    if(s->generation!=generation) s->pending=((1u<<CP_CONTROLS)-1);
     s->track=track; s->generation=generation; s->visible=(uint8_t)!!visible;
     s->page[track]=(uint8_t)page; s->mode=(uint8_t)mode; s->clock=(uint8_t)clock;
     s->learned=(uint8_t)!!learned; s->modal=(uint8_t)!!modal;
@@ -42,11 +45,21 @@ void cs_sync(CsState *s,const uint16_t values[CP_CONTROLS])
     ++s->revision; s->pending|=changed;
 }
 uint32_t cs_control(uint32_t page,uint32_t encoder)
-{ return page<2 && encoder<8 ? controls[page][encoder] : CS_NONE; }
+{ return page<3 && encoder<8 ? controls[page][encoder] : CS_NONE; }
+uint32_t cs_mapped_control(const CsState *s,uint32_t encoder)
+{
+    uint32_t id=cs_control(s->page[s->track],encoder);
+    return id==CP_COLOR && ((s->metadata>>4)&3)==2 ? CP_WT_POS : id;
+}
 void cs_metadata(CsState *s,uint32_t metadata)
 {
     if(s->metadata==metadata || s->revision==UINT32_MAX) return;
-    s->metadata=metadata; ++s->revision; s->pending|=0xffff;
+    if((s->metadata^metadata)&0x30) {
+        s->focus=0;
+        if(s->token==UINT32_MAX) { s->visible=0; return; }
+        ++s->token;
+    }
+    s->metadata=metadata; ++s->revision; s->pending|=((1u<<CP_CONTROLS)-1);
 }
 void cs_native_tune(CsState *s,uint32_t raw)
 {
@@ -56,18 +69,19 @@ void cs_native_tune(CsState *s,uint32_t raw)
 int cs_edit(CsState *s,uint32_t token,uint32_t encoder,int32_t detents,uint32_t now,uint32_t *id)
 {
     if(!token || token!=s->token || !s->generation || !s->visible || encoder>=8 || !detents) return CS_STALE;
-    uint32_t control=cs_control(s->page[s->track],encoder);
+    uint32_t control=cs_mapped_control(s,encoder);
     if(id) *id=control;
     if(s->modal || s->mode==KB_LEARN) return CS_READONLY;
     s->focus=1; s->focus_id=(uint8_t)control; s->focus_at=now;
     if(control==CS_TUNE || control==CS_LEVEL) return CS_NATIVE;
-    if(control==CP_SOURCE || (s->mode==KB_PLAY &&
+    if((control>=CP_WT_TABLE && ((s->metadata>>4)&3)!=2) || control==CP_SOURCE || (s->mode==KB_PLAY &&
         (control==CP_CHORD || control==CP_VOICING || control==CP_STRUM)) ||
         /* A learned shape fixes its voicing, not the choice of chord. */
         (s->learned && control==CP_VOICING) ||
         (s->clock==1 && control==CP_SWING)) return CS_READONLY;
     /* Clamp before addition; even a malformed INT_MIN event cannot overflow. */
-    int32_t room=(int32_t)high[control]-s->value[control];
+    uint32_t maximum=control==CP_WT_RATE && s->value[CP_WT_CLOCK] ? 7 : high[control];
+    int32_t room=(int32_t)maximum-s->value[control];
     if(detents>room) detents=room;
     room=(int32_t)low[control]-s->value[control];
     if(detents<room) detents=room;

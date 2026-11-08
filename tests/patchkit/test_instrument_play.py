@@ -18,7 +18,18 @@ def playback_object():
     canopy = REPO_ROOT / "modules/machines/canopy/src/dsp"
     source = "\n".join(
         (canopy / f"{n}.s").read_text()
-        for n in ("voice", "tuning", "events", "blend", "arp", "strum", "status", "v2")
+        for n in (
+            "voice",
+            "tuning",
+            "events",
+            "blend",
+            "arp",
+            "strum",
+            "status",
+            "v2",
+            "wavetable",
+            "wavetables",
+        )
     )
     for module, names in (
         ("instrument-registry", ("process", "process-protected", "input", "lifecycle")),
@@ -38,7 +49,7 @@ def playback_object():
 .PKDATA _mi_epoch, 4;
 .PKDATA _instrument_session, 4;
 .PKDATA _mi_carrier_stamp, 4;
-.PKDATA _test_state, 800;
+.PKDATA _test_state, 1184;
 .PKDATA _test_packet, 128;
 .PKDATA _test_metadata, 24;
 .PKDATA _test_values, 128;
@@ -63,6 +74,7 @@ _test_status_process:
         "_instrument_configure",
         "_instrument_events",
         "_iv_voice_render",
+        "_cu_publish",
     ]
     for i, entry in enumerate(entries):
         source += f"""
@@ -121,9 +133,9 @@ def playback(playback_object):
             9,
             1,
             state,
-            200,
+            296,
             state,
-            state + 800,
+            state + 1184,
             linked.symbols["_canopy_reset"],
             0xB90000,
             0xBC0000,
@@ -158,10 +170,15 @@ def playback(playback_object):
             dm_words=memory,
             reads=reads,
             max_steps=100000,
+            read_regs=tuple(
+                f"{bank}{i}" for bank in ("I", "L", "B") for i in range(3, 8)
+            )
+            + ("M5", "M6", "MODE1"),
         )
         assert result["halt"]["reason"] == "breakpoint", result
         for name, (base, _) in reads.items():
             memory.update({base + i: value for i, value in enumerate(result[name])})
+        call.last_regs = result["regs"]
         return result["regs"]["R0"]
 
     def reset(generation=1, track=0):
@@ -170,7 +187,7 @@ def playback(playback_object):
         put("_test_packet", packet)
         return call(1, R4=symbols["_test_packet"])
 
-    def configure(generation=1, values=(1,), revision=1):
+    def configure(generation=1, values=(1,), revision=1, **regs):
         put(
             "_test_metadata",
             [
@@ -184,14 +201,17 @@ def playback(playback_object):
                     6: 0x43505333,
                     10: 0x43505334,
                     16: 0x43505335,
-                    32: {6: 0x43505336, 7: 0x43505337, 8: 0x43505338}.get(
-                        values[0] & 255, 0
-                    ),
+                    32: {
+                        6: 0x43505336,
+                        7: 0x43505337,
+                        8: 0x43505338,
+                        9: 0x43505339,
+                    }.get(values[0] & 255, 0),
                 }[len(values)],
             ],
         )
         put("_test_values", values)
-        return call(2, R4=symbols["_test_values"], R8=symbols["_test_metadata"])
+        return call(2, R4=symbols["_test_values"], R8=symbols["_test_metadata"], **regs)
 
     def events(batch, generation=1):
         put("_test_packet", wire_packet(batch, generation=generation))
@@ -555,6 +575,225 @@ def test_configuration_exceeding_installed_capacity_preserves_previous_bank(play
     assert get("_iv_controls", 16) == old
     call(0)
     assert get("_iv_result")[0] in (0, 1)
+
+
+def wavetable_bank(*, family=2, mode=0, tune=0x4000, clock=0, rate=10):
+    from test_canopy_v2 import presentation_controls
+
+    values = presentation_controls(mode=mode)
+    values[0] = 9 | (mode << 8) | (tune << 16)
+    values[1] = family
+    extra = [0, 0, 0, rate, 0, 0, clock, 100, 5, 15, 100, 100]
+    for index, value in enumerate(extra, 16):
+        values[index] |= value << 16
+    return values
+
+
+@pytest.mark.parametrize("family", [0, 1, 2])
+def test_wavetable_configuration_preserves_all_32_packed_words(playback, family):
+    call, _, get, reset, configure, _, _ = playback
+    assert reset() == 1
+    call(0)
+    values = wavetable_bank(family=family, mode=2, tune=0x4C80, clock=1, rate=7)
+    values[16] |= 4 << 16
+    values[17] |= 700 << 16
+    values[18] |= 100 << 16
+    assert configure(values=values, revision=19) == 1
+    assert get("_iv_controls", 32) == values
+    assert get("_iv_revision") == [19]
+    assert get("_iv_control_count") == [32]
+
+
+@pytest.mark.parametrize(
+    "index,value",
+    [
+        (0, 9 | (3 << 8) | (0x4000 << 16)),
+        (0, 9 | (1 << 10) | (0x4000 << 16)),
+        (0, 9 | (0x3FF << 16)),
+        (0, 9 | (0x7C01 << 16)),
+        (1, 3),
+        (7, 29),
+        (7, 301),
+        (16, 5 << 16),
+        (16, 12),
+        (17, 701 << 16),
+        (18, 101 << 16),
+        (19, 1001 << 16),
+        (19, 0),
+        (20, 3 << 16),
+        (21, 3 << 16),
+        (22, 2 << 16),
+        (23, 201 << 16),
+        (24, 128 << 16),
+        (25, 128 << 16),
+        (26, 201 << 16),
+        (27, 201 << 16),
+        (28, 1 << 16),
+        (29, 1 << 16),
+        (30, 1 << 16),
+        (31, 1 << 16),
+    ],
+)
+def test_invalid_wavetable_revision_never_replaces_the_applied_bank(
+    playback, index, value
+):
+    call, _, get, reset, configure, _, _ = playback
+    assert reset() == 1
+    call(0)
+    old = wavetable_bank()
+    assert configure(values=old, revision=41) == 1
+    bad = old.copy()
+    bad[index] = value
+    assert configure(values=bad, revision=42) == 0
+    assert get("_iv_controls", 32) == old
+    assert get("_iv_revision") == [41]
+
+
+def test_wavetable_clock_and_duplicate_validation_is_atomic(playback):
+    call, _, get, reset, configure, _, _ = playback
+    assert reset() == 1
+    call(0)
+    old = wavetable_bank()
+    assert configure(values=old, revision=6) == 1
+    bad_values = [wavetable_bank(clock=1, rate=8)]
+    for index in [18, 19, 21, 22, 23, 24, 25, 26, 27, 30, 31]:
+        bad = old.copy()
+        bad[index] ^= 1
+        bad_values.append(bad)
+    bad = old.copy()
+    bad[20] |= 1  # Strum presentation no longer matches its audio duration.
+    bad_values.append(bad)
+    bad = old.copy()
+    bad[12], bad[13], bad[26] = 1, 1, (100 << 16) | 1
+    bad_values.append(bad)  # Master grid requires zero arp swing.
+    for bad in bad_values:
+        assert configure(values=bad, revision=7) == 0
+        assert get("_iv_controls", 32) == old
+        assert get("_iv_revision") == [6]
+
+
+@pytest.mark.parametrize("invalid", [None, 1, 16, 19, 31])
+@pytest.mark.parametrize("circular", ["linear", "all", "duplicate"])
+def test_wavetable_config_preserves_midi_consumer_address_registers(
+    playback, invalid, circular
+):
+    call, _, get, reset, configure, _, _ = playback
+    assert reset() == 1
+    call(0)
+    values = wavetable_bank()
+    if invalid is not None:
+        values[invalid] = 0xFFFFFFFF
+    # Stock firmware can enter with circular DAGs outside our lookup tables.
+    # All seven validation-table pointers must advance linearly; saved index,
+    # length and base registers must survive both accepted and rejected banks.
+    preserved = {f"I{i}": 0x20100000 + 4 * i for i in range(3, 8)}
+    preserved.update({f"B{i}": 0x21000000 + 256 * i for i in range(3, 8)})
+    for i in range(3, 8):
+        active = circular == "all" or (circular == "duplicate" and i == 6)
+        preserved[f"L{i}"] = 16 + i if active else 0
+    preserved.update(M5=0, M6=1, MODE1=0x1011800)  # CBUFEN remains enabled.
+    assert configure(values=values, **preserved) == int(invalid is None)
+    assert {name: call.last_regs[name] for name in preserved} == preserved
+
+
+@pytest.mark.parametrize("reject_duplicate", [False, True])
+def test_wavetable_config_never_borrows_the_interrupt_stack(
+    playback, playback_object, monkeypatch, reject_duplicate
+):
+    from tools.sharc_dev import sharc_run
+
+    call, _, get, reset, configure, _, _ = playback
+    linked, _, _, _ = playback_object
+    assert reset() == 1
+    call(0)
+    old = wavetable_bank()
+    assert configure(values=old, revision=41) == 1
+    values = old.copy()
+    values[17] |= 250 << 16
+    if reject_duplicate:
+        values[19] ^= 1  # Valid range, but disagrees with audio control word 3.
+
+    # Final restoration is insufficient: a real interrupt writes below the
+    # current I7. Observe the executed code at every instruction boundary.
+    stack = {"I7": 0x20100200, "B7": 0x20100000, "L7": 256}
+    codes = {name: sharc_run.st.UREG_CODES[name] for name in stack}
+    step = sharc_run.Runner.step
+    visited = set()
+
+    def check_stack(runner):
+        pc = runner.state.pc_sw
+        before = {name: runner.state.uregs[code] for name, code in codes.items()}
+        step(runner)
+        visited.add(pc)
+        for name, code in codes.items():
+            assert runner.state.uregs[code] is before[name], (hex(pc), name)
+            assert runner.state.uregs[code].value == stack[name], (hex(pc), name)
+
+    monkeypatch.setattr(sharc_run.Runner, "step", check_stack)
+    assert configure(values=values, revision=42, **stack) == int(not reject_duplicate)
+    assert linked.symbols["_iv_wt_presentation"] in visited
+    assert get("_iv_controls", 32) == (old if reject_duplicate else values)
+    assert get("_iv_revision") == [41 if reject_duplicate else 42]
+
+
+@pytest.mark.parametrize("schema", [8, 9])
+def test_applied_status_unpacks_wavetable_values_without_losing_legacy_tune(
+    playback, schema
+):
+    call, put, get, _, _, _, symbols = playback
+    values = wavetable_bank(mode=1, tune=0x4C80)
+    values[17] |= 327 << 16
+    if schema == 8:
+        values = [v if i < 16 else v & 65535 for i, v in enumerate(values)]
+        values[0] = 8 | (1 << 8) | (0x4C80 << 16)
+        values[1] = 1
+    put("_test_values", values)
+    source = [
+        5,
+        96,
+        0,
+        1,
+        7,
+        symbols["_test_output"],
+        0,
+        0,
+        0,
+        symbols["_test_values"],
+        32,
+        9,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        symbols["_instrument_ui_status"],
+        13,
+    ]
+    put("_iv_input", source)
+    detail = []
+    for part in range(11):
+        state = [0] * 296
+        state[188], state[193], state[194] = 4 + part * 8, 1, 9
+        put("_test_state", state)
+        call(5, R4=symbols["_test_state"], R8=symbols["_iv_input"])
+        status = get("_instrument_ui_status", 13)
+        assert status[0] == 1
+        assert status[5] == ((3 if schema == 9 else 2) << 16) | 0xB00 | part
+        assert status[6] == 9
+        detail.extend(status[7:13])
+    assert detail[:16] == [v & 65535 for v in values[16:32]]
+    if schema == 9:
+        assert detail[16:28] == [v >> 16 for v in values[16:28]]
+        assert detail[28] == 0x4C80
+        assert not any(detail[29:])
+    else:
+        assert detail[16] == 0x4C80
+        assert not any(detail[17:])
 
 
 def test_canopy_status_output_flows_through_protected_carrier(playback):
