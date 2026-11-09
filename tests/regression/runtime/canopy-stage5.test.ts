@@ -21,7 +21,7 @@ import { canopyControls } from './canopy-controls.ts';
 
 const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
 test(
-  'CANOPY native SOUND, ARP and TONE pages route controls to the audible bank',
+  'CANOPY native SOUND, ARP, TONE and FM ENV pages route controls to the audible bank',
   async () => {
     const root = repoRoot(),
       image = path.resolve(root, process.env.CANOPY_UI_IMAGE ?? 'out/patch/canopy-native-ui.syx');
@@ -133,7 +133,7 @@ test(
           'instance',
           async () => {
             const instance = await withinRuntimeDeadline(Date.now() + 20_000, () =>
-              session.client.call('dsp.peek', { addr: state, len: 1184 }),
+              session.client.call('dsp.peek', { addr: state, len: 2976 }),
             ).catch((error: unknown) => ({ error: String(error) }));
             fs.writeFileSync(path.join(root, 'out/canopy-stage5-native-instance.json'), JSON.stringify(instance));
           },
@@ -243,7 +243,7 @@ test(
     const waveChoice = async () => {
       const table = await settled(16),
         family = (await rawBank())[1]!;
-      return family < 2 ? family : table + 2;
+      return family === 3 ? 7 : family < 2 ? family : table + 2;
     };
     const setWave = (choice: number) => encoderValue((delta) => turn(2, delta * 4), waveChoice, choice);
     const srcPage = async (page: number) => {
@@ -251,7 +251,7 @@ test(
       // after a modal closes. A nonzero published token proves visible ownership.
       if (!(await cf('ip_src_debug', 2))) await key('SRC');
       await expect.poll(() => cf('ip_src_debug', 2), { timeout: 30000 }).toBeGreaterThan(0);
-      for (let i = 0; i < 3 && (await cf('ip_src_debug', 1)) !== page; i++) await key('SRC');
+      for (let i = 0; i < 4 && (await cf('ip_src_debug', 1)) !== page; i++) await key('SRC');
       expect(await cf('ip_src_debug', 1)).toBe(page);
       expect(await cf('ip_src_debug')).toBe(0);
       expect(await cf('ip_src_debug', 2)).toBeGreaterThan(0);
@@ -491,8 +491,8 @@ test(
       if (name === 'canopy/preset/1') preset = record.subarray(at, at + size);
       at += size;
     }
-    expect(preset?.length).toBe(96);
-    expect(preset![4]).toBe(3);
+    expect(preset?.length).toBe(128);
+    expect(preset![4]).toBe(4);
     expect(Array.from({ length: 16 }, (_, i) => preset!.readUInt16BE(8 + 2 * i))).toEqual(savedBank.slice(16));
     expect(Array.from({ length: 12 }, (_, i) => preset!.readUInt16BE(64 + 2 * i))).toEqual(await toneBank());
     for (let i = 0; i < 4; i++) await key('NO');
@@ -666,7 +666,108 @@ test(
     expect(await cf('ip_control', 4)).toBe(0);
     expect(await cf('mt_guard_fault')).toBe(0);
     await session.client.call('midi.usb.in', { bytes: [0xb0, 120, 0] });
-    console.info('CANOPY: wavetable engine, held-note edits, TONE values and v3 preset recall passed');
+    console.info('CANOPY: wavetable engine, held-note edits, TONE values and migrated preset recall passed');
+    for (let i = 0; i < 4; i++) await key('NO');
+    await srcPage(2);
+    const rememberedWavetable = await toneBank();
+    const rememberedColor = (await bank())[18];
+    await setWave(7);
+    expect((await rawBank())[0]! & 255).toBe(10);
+    expect((await rawBank())[1]).toBe(3);
+    expect(await toneBank()).toEqual([0, 50, 3, 8, 0, 5, 40, 50, 15, 100, 100, 100]);
+    const setFm = (encoder: number, control: number, target: number) =>
+      encoderValue(
+        (delta) => turn(encoder, delta * ([16, 18, 19].includes(control) ? 4 : 1)),
+        () => settled(control),
+        target,
+      );
+    await session.client.call('midi.usb.in', { bytes: [0x90, 60, 100] });
+    await expect.poll(async () => (await voices()).length, { timeout: 15000 }).toBe(1);
+    const fmHeld = await voices();
+    const fmGeneration = await cf('src_state');
+    const fmLevels: Record<string, number> = {};
+    for (const algorithm of [0, 1, 2, 3]) {
+      await setFm(3, 16, algorithm);
+      expect((await rawBank())[1]).toBe(3); // ALG must never be mistaken for WAVE.
+      expect(await voices()).toEqual(fmHeld);
+      fmLevels[`algorithm-${algorithm}`] = await audioLevel(`fm-algorithm-${algorithm}`);
+      expect(fmLevels[`algorithm-${algorithm}`]).toBeGreaterThan(1e-5);
+    }
+    await setFm(4, 17, 35);
+    await setFm(5, 18, 5);
+    await setFm(6, 19, 10);
+    await setFm(7, 20, 18);
+    await captureRemoteOled(session, 'canopy-fm-tone');
+    await heldValues('canopy-fm-tone-values');
+    await srcPage(0);
+    await setFm(4, 2, 42);
+    expect((await rawBank())[2]).toBe(42);
+    await captureRemoteOled(session, 'canopy-fm-sound');
+    await srcPage(3);
+    for (const [encoder, control, value] of [
+      [1, 21, 9],
+      [2, 22, 48],
+      [3, 23, 62],
+      [4, 24, 20],
+      [5, 25, 145],
+      [6, 26, 120],
+      [7, 27, 135],
+    ] as const)
+      await setFm(encoder, control, value);
+    await captureRemoteOled(session, 'canopy-fm-envelope');
+    await heldValues('canopy-fm-envelope-values');
+    expect(await cf('ip_src_debug', 1)).toBe(3);
+    expect(await voices()).toEqual(fmHeld);
+    expect(await cf('src_state')).toBe(fmGeneration);
+    const savedFm = await toneBank();
+    const fmFull = await audioLevel('fm-full');
+    expect(fmFull).toBeGreaterThan(1e-5);
+    await turnRange(8, -1); // Native source LEV remains H on FM ENV.
+    const fmZero = await audioLevel('fm-source-zero');
+    expect(fmZero).toBeLessThan(fmFull * 0.01);
+    expect(await toneBank()).toEqual(savedFm); // Volume cannot change FM index/routing.
+    await turnRange(8, 1);
+    await srcPage(2);
+    await setWave(rememberedWavetable[0]! + 2); // Restore the independent wavetable bank.
+    expect(await toneBank()).toEqual(rememberedWavetable);
+    expect((await bank())[18]).toBe(rememberedColor);
+    expect(await voices()).toEqual(fmHeld);
+    await key('SRC');
+    expect(await cf('ip_src_debug', 1)).toBe(0); // FM ENV is excluded outside FM.
+    await srcPage(2);
+    await setWave(7);
+    expect(await toneBank()).toEqual(savedFm);
+    expect((await rawBank())[2]).toBe(42);
+    expect(await voices()).toEqual(fmHeld);
+    await openDigikitMenu(key);
+    await key('YES');
+    await menuRow(4);
+    await key('YES');
+    await menuRow(2, 'preset_menu');
+    await key('YES');
+    await expect.poll(() => cf('preset_result'), { timeout: 30000 }).toBe(0);
+    for (let i = 0; i < 4; i++) await key('NO');
+    await srcPage(2);
+    await setFm(3, 16, 0);
+    expect((await toneBank())[0]).toBe(0);
+    await openDigikitMenu(key);
+    await key('YES');
+    await menuRow(4);
+    await key('YES');
+    await menuRow(3, 'preset_menu');
+    await key('YES');
+    await expect.poll(toneBank, { timeout: 30000 }).toEqual(savedFm);
+    expect((await rawBank())[1]).toBe(3);
+    expect((await rawBank())[2]).toBe(42);
+    await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0, 0xb0, 120, 0] });
+    expect(await cf('ip_control', 4)).toBe(0);
+    expect(await cf('mt_guard_fault')).toBe(0);
+    await session.expectNoFault('CANOPY four-operator FM, native controls and v4 preset recall');
+    fs.writeFileSync(
+      path.join(root, 'out/canopy-fm-native-evidence.json'),
+      JSON.stringify({ fmLevels, fmFull, fmZero, savedFm, rememberedWavetable }, null, 2),
+    );
+    console.info('CANOPY: FM algorithms, envelope page, native level, source memory and v4 recall passed');
     // Generic-core measurements: ~23 minutes to load and ~0.91 s per acknowledged
     // key edge. Keep room for navigation/audio without relaxing operation guards.
   },

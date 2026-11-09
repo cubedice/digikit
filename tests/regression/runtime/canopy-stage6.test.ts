@@ -23,7 +23,7 @@ import type { FxProfile } from './fx-session.ts';
 
 const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
 test(
-  'CANOPY wavetable, four-note arp and shared tails coexist with Overloop and uploads',
+  'CANOPY wavetable and FM, four-note arp and shared tails coexist with Overloop and uploads',
   async () => {
     const root = repoRoot(),
       image = path.resolve(root, process.env.CANOPY_COEXIST_IMAGE ?? 'out/patch/canopy-stage6.syx');
@@ -154,7 +154,7 @@ test(
           'instance',
           async () => {
             const instance = await withinRuntimeDeadline(Date.now() + 20_000, () =>
-              session.client.call('dsp.peek', { addr: state, len: 1184 }),
+              session.client.call('dsp.peek', { addr: state, len: 2976 }),
             ).catch((error: unknown) => ({ error: String(error) }));
             fs.writeFileSync(path.join(root, 'out/canopy-stage6-instance.json'), JSON.stringify(instance));
           },
@@ -225,7 +225,7 @@ test(
     const toneBank = async () => (await rawBank()).slice(16, 28).map((v) => v >>> 16);
     const controls = canopyControls(cf, rawBank);
     const srcPage = async (page: number) => {
-      for (let i = 0; i < 3 && (await cf('ip_src_debug', 1)) !== page; i++) await key('SRC');
+      for (let i = 0; i < 4 && (await cf('ip_src_debug', 1)) !== page; i++) await key('SRC');
       expect(await cf('ip_src_debug', 1)).toBe(page);
     };
     await key('SRC');
@@ -240,7 +240,7 @@ test(
       2, // ANALOG is selected directly from WAVE, without an engine menu.
     );
     await expect.poll(async () => (await rawBank())[1], { timeout: 15000 }).toBe(2);
-    expect((await rawBank())[0]! & 255).toBe(9);
+    expect((await rawBank())[0]! & 255).toBe(10);
     await srcPage(0);
     // Panel flushes clamp at 30 detents: await each applied step before the next.
     await turnAppliedControl(session, 7, async () => (await rawBank())[21]! & 65535, 64); // equal pad/arp mix
@@ -439,7 +439,7 @@ test(
           steps: number;
         })
       | undefined;
-    const transitions = await audio('wavetable-loop-transitions', async () => {
+    const transitions = await audio('wavetable-fm-loop-transitions', async () => {
       for (let table = 1; table <= 4; table++) {
         // A long Overloop recording can leave the native encoder idle filter
         // armed. Drain each packet and its configuration before retrying a detent.
@@ -452,6 +452,33 @@ test(
         await waitEmulated(session, 50);
         expect(await voices()).toEqual(held);
       }
+      await encoderValue(
+        (delta) => turn(2, delta * 4),
+        async () => {
+          const table = await controls.settled(16),
+            family = (await rawBank())[1]!;
+          return family === 3 ? 7 : family < 2 ? family : table + 2;
+        },
+        7,
+      );
+      expect((await rawBank())[1]).toBe(3);
+      expect(await voices()).toEqual(held);
+      await srcPage(0);
+      await turnAppliedControl(session, 4, async () => (await rawBank())[2]!, 127);
+      await srcPage(2);
+      await turnAppliedControl(session, 7, async () => (await toneBank())[4]!, 100);
+      for (const algorithm of [0, 1, 2, 3]) {
+        await encoderValue(
+          (delta) => turn(3, delta * 4),
+          () => controls.settled(16),
+          algorithm,
+        );
+        expect((await rawBank())[1]).toBe(3);
+        expect(await voices()).toEqual(held);
+        await waitEmulated(session, 100);
+        expect(await cf('mt_guard_fault')).toBe(0);
+      }
+      await captureRemoteOled(session, 'canopy-stage6-fm-tone');
       const serial = (await arp()).serial;
       await expect.poll(async () => (await arp()).serial, { timeout: 30000 }).toBeGreaterThan(serial);
       // Shared release tails last at most 64 samples. Observe bounded instruction
@@ -540,7 +567,7 @@ test(
     expect(await dk.verifyFile('stage6/transfer.bin', payload)).toBe(true);
     expect(await cf('mt_guard_fault')).toBe(0);
     expect(await cf('ip_control', 4)).toBe(0);
-    await session.expectNoFault('CANOPY wavetable and Overloop with active uploads and shared tails');
+    await session.expectNoFault('CANOPY wavetable/FM and Overloop with active uploads and shared tails');
     fs.writeFileSync(
       path.join(root, 'out/canopy-stage6-coexistence.json'),
       JSON.stringify(

@@ -169,6 +169,19 @@ int main(void)
             for(uint32_t i=0;i<config_count;++i) printf("%s%u",i?",":"",config_words[i]);
             puts("]}");
         }
+        else if(!strcmp(cmd,"ackdetail")) {
+            src_state.pending=0x0fffffff;
+            is_select(&src_status,0,src_state.generation,src_state.mode,0);
+            src_status.fast_valid=src_status.detail_valid=src_status.poll_valid=1;
+            src_status.fast_at=src_status.poll_at=100;
+            src_status.fast[3]=src_status.detail_control=src_state.revision;
+            src_status.fast[11]=src_status.detail_revision=9;
+            src_status.detail_schema=(uint32_t)value;
+            for(unsigned i=0;i<28;++i) src_status.detail[i]=src_state.value[i];
+            src_status.detail[28]=src_state.native_tune;
+            instrument_src_poll(100);
+            printf("{\"pending\":%u}\n",src_state.pending);
+        }
         else if(!strcmp(cmd,"mode")) { uint32_t sr=dkrt_irq_mask(); chord_apply((uint32_t)value,keyboard.type); dkrt_irq_restore(sr); }
         else if(!strcmp(cmd,"srcpage")) src_token=instrument_src_context(0,(uint32_t)value,1);
         else if(!strcmp(cmd,"srcturn")) {
@@ -241,12 +254,13 @@ int main(void)
         }
         else if(!strcmp(cmd,"shapeslot")) { slot=value; changed(0,0); }
         else if(!strcmp(cmd,"legacypreset")) {
-            uint8_t *b=preset_card[preset_slot-1]; b[4]=(uint8_t)value; b[5]=16;
-            for(unsigned i=51;i<CP_RECORD_BYTES;++i) b[i]=0;
+            uint8_t *b=preset_card[preset_slot-1]; b[4]=(uint8_t)value; b[5]=value<=2?16:CP_CONTROLS;
+            for(unsigned i=value<=2?51:92;i<CP_RECORD_BYTES;++i) b[i]=0;
+            unsigned end=value<=2?60:92;
             uint32_t h=2166136261u;
-            for(unsigned i=0;i<60;++i) h=(h^b[i])*16777619u;
-            for(unsigned i=0;i<4;++i) b[60+i]=(uint8_t)(h>>(24-8*i));
-            preset_bytes[preset_slot-1]=64;
+            for(unsigned i=0;i<end;++i) h=(h^b[i])*16777619u;
+            for(unsigned i=0;i<4;++i) b[end+i]=(uint8_t)(h>>(24-8*i));
+            preset_bytes[preset_slot-1]=end+4;
         }
         else if(!strcmp(cmd,"corruptpreset")) preset_card[preset_slot-1][value]^=1;
         else if(!strcmp(cmd,"presetstate")) {

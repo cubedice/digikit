@@ -14,6 +14,11 @@
 .EXTERN _wt_prepare;
 .EXTERN _wt_finish;
 .EXTERN _wt_state;
+.EXTERN _fm_prepare;
+.EXTERN _fm_validate;
+.EXTERN _fm_finish;
+.EXTERN _fm_output;
+.EXTERN _fm_bank;
 _canopy_reset:
     R0 = PASS R8;
     IF LE JUMP _cv_bad;
@@ -24,9 +29,12 @@ _canopy_reset:
     COMP(R8, R0);
     IF EQ JUMP _cv_replace;
     I0 = R4;
-    R1 = 296;
+    R1 = 186;
     R0 = 0;
 _cv_reset_clear:
+    DM(I0, M6) = R0;
+    DM(I0, M6) = R0;
+    DM(I0, M6) = R0;
     DM(I0, M6) = R0;
     R1 = R1 - 1;
     IF NE JUMP _cv_reset_clear;
@@ -198,11 +206,31 @@ _cv_six_controls:
     I0 = R0;
     R0 = DM(0, I0);
     R1 = FEXT R0 BY 0:8;
+    R2 = 10;
+    COMP(R1, R2);
+    IF EQ JUMP _cv_ten_controls;
     R2 = 9;
     COMP(R1, R2);
     IF NE JUMP _cv_check_eight;
     R4 = DM(9, I2);
     CALL _wt_validate;
+    R0 = PASS R0;
+    IF EQ JUMP _cv_bad;
+    R0 = DM(_cv_input);
+    I2 = R0;
+    R0 = DM(0, I0);
+    JUMP _cv_seven_controls;
+_cv_ten_controls:
+    R4 = DM(9, I2);
+    R0 = DM(1, I0);
+    R1 = 3;
+    COMP(R0, R1);
+    IF NE JUMP _cv_ten_wt;
+    CALL _fm_validate;
+    JUMP _cv_ten_result;
+_cv_ten_wt:
+    CALL _wt_validate;
+_cv_ten_result:
     R0 = PASS R0;
     IF EQ JUMP _cv_bad;
     R0 = DM(_cv_input);
@@ -400,6 +428,9 @@ _cv_four_body:
     R0 = DM(1, I0);
     R1 = DM(0, I0);
     R1 = FEXT R1 BY 0:8;
+    R2 = 10;
+    COMP(R1,R2);
+    IF EQ JUMP _cv_fm_family;
     R2 = 9;
     COMP(R1, R2);
     IF EQ JUMP _cv_wt_family;
@@ -407,8 +438,12 @@ _cv_four_body:
     R0 = PASS R0;
     IF NE JUMP _cv_bad;
     JUMP _cv_family_ok;
+_cv_fm_family:
+    R1 = 3;
+    JUMP _cv_family_max;
 _cv_wt_family:
     R1 = 2;
+_cv_family_max:
     COMP(R0, R1);
     IF GT JUMP _cv_bad;
     R0 = PASS R0;
@@ -672,6 +707,11 @@ _cv_retuned:
 _cv_seeded:
     R0 = 1;
     DM(3, I0) = R0;
+    R4 = DM(_cv_state);
+    R8 = DM(_cv_input);
+    CALL _fm_prepare;
+    R0 = DM(_cv_input);
+    I2 = R0;
     CALL _cv_sound;
     R4 = DM(_cv_state);
     R8 = DM(_cv_input);
@@ -695,7 +735,9 @@ _cv_seeded:
     IF LT JUMP _cv_audio_bad;
     R3 = DM(_cv_pad_active);
     R3 = R0 OR R3;
+    CALL _fm_finish;
     CALL _wt_finish;
+    CALL _fm_output;
     R0 = DM(_cv_input);
     I0 = R0;
     R0 = DM(5, I0);
@@ -754,6 +796,9 @@ _cv_sound:
     F0 = 0.08; // 6 simultaneous groups * (1+.35+.2) * .08 < .75
     DM(_cp_level) = F0;
     R0 = DM(9, I2);
+    R1 = DM(_fm_bank);
+    R1 = PASS R1;
+    IF NE R0 = R1;
     I1 = R0;
     R0 = DM(_cv_state);
     R1 = 528;
@@ -878,7 +923,7 @@ _cv_bad:
 .VAR _canopy_descriptor_2 = 48;
 .VAR _canopy_descriptor_3 = 1; // V5 status output for the native SRC adapter.
 .VAR _canopy_descriptor_4 = 1;
-.VAR _canopy_descriptor_5 = 1184;
+.VAR _canopy_descriptor_5 = 2976;
 .VAR _canopy_descriptor_6 = 8;
 .VAR _canopy_descriptor_7 = 32;
 .VAR _canopy_descriptor_8 = 100000;

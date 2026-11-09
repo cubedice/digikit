@@ -314,6 +314,9 @@ _iv_config_validate:
     JUMP _iv_config_copy;
 _iv_six_config:
     R0 = DM(5, I0);
+    R1 = 0x43505341;
+    COMP(R0, R1);
+    IF EQ JUMP _iv_ten_config;
     R1 = 0x43505339;
     COMP(R0, R1);
     IF EQ JUMP _iv_nine_config;
@@ -346,6 +349,9 @@ _iv_eight_config:
     JUMP _iv_native_config;
 _iv_nine_config:
     R2 = 9;
+    JUMP _iv_native_config;
+_iv_ten_config:
+    R2 = 10;
 _iv_native_config:
     R0 = DM(_iv_values);
     I1 = R0;
@@ -371,7 +377,7 @@ _iv_native_config:
     R0 = FEXT R0 BY 0:8;
     R1 = 9;
     COMP(R0, R1);
-    IF EQ JUMP _iv_wavetable_controls;
+    IF GE JUMP _iv_wavetable_controls;
 _iv_effective_controls:
     R0 = DM(16, I1);
     R0 = PASS R0;
@@ -455,10 +461,21 @@ _iv_effective_controls:
     COMP(R0, R1);
     IF NE JUMP _iv_no;
     JUMP _iv_five_body;
-// CPS9 preserves the 128-byte transport bank. Presentation words contain the
-// original control in low16 and a wavetable control in high16. Validate every
-// field and duplicate before publishing any part of the new revision.
+// CPS9/CPSA preserve the 128-byte transport bank. Presentation words contain
+// the original control in low16 and a source-specific control in high16.
+// CPSA adds family 3 (FM); CPS9 retains its original family 0..2 contract.
+// Validate every field and duplicate before publishing any part of a revision.
 _iv_wavetable_controls:
+    R0 = DM(0, I1);
+    R0 = FEXT R0 BY 0:8;
+    R1 = 9;
+    COMP(R0, R1);
+    IF NE JUMP _iv_extended_controls;
+    R0 = DM(1, I1);
+    R1 = 2;
+    COMP(R0, R1);
+    IF GT JUMP _iv_no;
+_iv_extended_controls:
     // MIDI callbacks may clobber I0..I2 only. Keep the consumer's I3+ context.
     // The outer frame pins M6=1 and L0..L2=0, but leaves the other DAGs in
     // stock firmware context. The four advancing DAGs I3..I6 need linear
@@ -503,6 +520,15 @@ _iv_wt_scalar:
     I3 = _iv_wt_low_max;
     I4 = _iv_wt_high_min;
     I5 = _iv_wt_high_max;
+    R0 = DM(_iv_values);
+    I0 = R0;
+    R0 = DM(1, I0);
+    R1 = 3;
+    COMP(R0, R1);
+    IF NE JUMP _iv_extension_ranges;
+    I4 = _iv_fm_high_min;
+    I5 = _iv_fm_high_max;
+_iv_extension_ranges:
     I6 = _iv_wt_duplicate;
     R6 = 16;
 _iv_wt_presentation:
@@ -552,6 +578,10 @@ _iv_wt_extension:
     R0 = PASS R0;
     IF NE JUMP _iv_wt_reject;
 _iv_wt_clock:
+    R0 = DM(1, I1);
+    R1 = 3;
+    COMP(R0, R1);
+    IF EQ JUMP _iv_wt_valid;
     R0 = DM(22, I1);
     R0 = LSHIFT R0 BY -16;
     R0 = PASS R0;
@@ -919,7 +949,7 @@ _iv_voice_zero:
 .VAR _iv_wt_scalar_min_12 = 0;
 .VAR _iv_wt_scalar_min_13 = 0;
 .VAR _iv_wt_scalar_min_14 = 0;
-.VAR _iv_wt_scalar_max = 2;
+.VAR _iv_wt_scalar_max = 3;
 .VAR _iv_wt_scalar_max_1 = 127;
 .VAR _iv_wt_scalar_max_2 = 127;
 .VAR _iv_wt_scalar_max_3 = 127;
@@ -998,6 +1028,38 @@ _iv_voice_zero:
 .VAR _iv_wt_high_max_13 = 0;
 .VAR _iv_wt_high_max_14 = 0;
 .VAR _iv_wt_high_max_15 = 0;
+.VAR _iv_fm_high_min = 0;
+.VAR _iv_fm_high_min_1 = 0;
+.VAR _iv_fm_high_min_2 = 0;
+.VAR _iv_fm_high_min_3 = 0;
+.VAR _iv_fm_high_min_4 = 0;
+.VAR _iv_fm_high_min_5 = 0;
+.VAR _iv_fm_high_min_6 = 0;
+.VAR _iv_fm_high_min_7 = 0;
+.VAR _iv_fm_high_min_8 = 0;
+.VAR _iv_fm_high_min_9 = 0;
+.VAR _iv_fm_high_min_10 = 0;
+.VAR _iv_fm_high_min_11 = 0;
+.VAR _iv_fm_high_min_12 = 0;
+.VAR _iv_fm_high_min_13 = 0;
+.VAR _iv_fm_high_min_14 = 0;
+.VAR _iv_fm_high_min_15 = 0;
+.VAR _iv_fm_high_max = 3;
+.VAR _iv_fm_high_max_1 = 100;
+.VAR _iv_fm_high_max_2 = 15;
+.VAR _iv_fm_high_max_3 = 15;
+.VAR _iv_fm_high_max_4 = 100;
+.VAR _iv_fm_high_max_5 = 127;
+.VAR _iv_fm_high_max_6 = 127;
+.VAR _iv_fm_high_max_7 = 100;
+.VAR _iv_fm_high_max_8 = 127;
+.VAR _iv_fm_high_max_9 = 200;
+.VAR _iv_fm_high_max_10 = 200;
+.VAR _iv_fm_high_max_11 = 200;
+.VAR _iv_fm_high_max_12 = 0;
+.VAR _iv_fm_high_max_13 = 0;
+.VAR _iv_fm_high_max_14 = 0;
+.VAR _iv_fm_high_max_15 = 0;
 .VAR _iv_wt_duplicate = 0xffffffff;
 .VAR _iv_wt_duplicate_1 = 0xffffffff;
 .VAR _iv_wt_duplicate_2 = 2;

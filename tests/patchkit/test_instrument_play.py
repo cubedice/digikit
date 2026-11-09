@@ -29,6 +29,8 @@ def playback_object():
             "v2",
             "wavetable",
             "wavetables",
+            "fm",
+            "fm-tables",
         )
     )
     for module, names in (
@@ -49,7 +51,7 @@ def playback_object():
 .PKDATA _mi_epoch, 4;
 .PKDATA _instrument_session, 4;
 .PKDATA _mi_carrier_stamp, 4;
-.PKDATA _test_state, 1184;
+.PKDATA _test_state, 2976;
 .PKDATA _test_packet, 128;
 .PKDATA _test_metadata, 24;
 .PKDATA _test_values, 128;
@@ -133,9 +135,9 @@ def playback(playback_object):
             9,
             1,
             state,
-            296,
+            744,
             state,
-            state + 1184,
+            state + 2976,
             linked.symbols["_canopy_reset"],
             0xB90000,
             0xBC0000,
@@ -187,7 +189,7 @@ def playback(playback_object):
         put("_test_packet", packet)
         return call(1, R4=symbols["_test_packet"])
 
-    def configure(generation=1, values=(1,), revision=1, **regs):
+    def configure(generation=1, values=(1,), revision=1, schema=None, **regs):
         put(
             "_test_metadata",
             [
@@ -196,7 +198,9 @@ def playback(playback_object):
                 revision,
                 0,
                 len(values) * 4,
-                {
+                schema
+                if schema is not None
+                else {
                     1: 0x43505331,
                     6: 0x43505333,
                     10: 0x43505334,
@@ -206,6 +210,7 @@ def playback(playback_object):
                         7: 0x43505337,
                         8: 0x43505338,
                         9: 0x43505339,
+                        10: 0x43505341,
                     }.get(values[0] & 255, 0),
                 }[len(values)],
             ],
@@ -213,8 +218,10 @@ def playback(playback_object):
         put("_test_values", values)
         return call(2, R4=symbols["_test_values"], R8=symbols["_test_metadata"], **regs)
 
-    def events(batch, generation=1):
-        put("_test_packet", wire_packet(batch, generation=generation))
+    def events(batch, generation=1, revision=1):
+        put(
+            "_test_packet", wire_packet(batch, generation=generation, revision=revision)
+        )
         return call(3, R4=symbols["_test_packet"])
 
     return call, put, get, reset, configure, events, symbols
@@ -589,6 +596,155 @@ def wavetable_bank(*, family=2, mode=0, tune=0x4000, clock=0, rate=10):
     return values
 
 
+def fm_bank():
+    values = wavetable_bank(family=3, mode=2, tune=0x4C80)
+    values[0] = (values[0] & ~255) | 10
+    extra = [0, 50, 3, 8, 0, 5, 40, 50, 15, 100, 100, 100]
+    for index, value in enumerate(extra, 16):
+        values[index] = (values[index] & 65535) | (value << 16)
+    return values
+
+
+@pytest.mark.parametrize("family", [0, 1, 2, 3])
+def test_cpsa_publishes_complete_source_specific_bank(playback, family):
+    call, _, get, reset, configure, _, _ = playback
+    assert reset() == 1
+    call(0)
+    values = fm_bank() if family == 3 else wavetable_bank(family=family)
+    values[0] = (values[0] & ~255) | 10
+    assert configure(values=values, revision=19) == 1
+    assert get("_iv_controls", 32) == values
+    assert get("_iv_revision") == [19]
+    assert get("_iv_control_count") == [32]
+
+
+@pytest.mark.parametrize(
+    "index,value",
+    [
+        (1, 4),
+        (2, 128),
+        (16, 4 << 16),
+        (17, 101 << 16),
+        (18, 16 << 16),
+        (19, 16 << 16),
+        (20, 101 << 16),
+        (21, 128 << 16),
+        (22, 128 << 16),
+        (23, 101 << 16),
+        (24, 128 << 16),
+        (25, 201 << 16),
+        (26, 201 << 16),
+        (27, 201 << 16),
+        (28, 1 << 16),
+        (29, 1 << 16),
+        (30, 1 << 16),
+        (31, 1 << 16),
+    ],
+)
+def test_invalid_fm_revision_never_partially_publishes(playback, index, value):
+    call, _, get, reset, configure, _, _ = playback
+    assert reset() == 1
+    call(0)
+    old = wavetable_bank()
+    assert configure(values=old, revision=41) == 1
+    bad = fm_bank()
+    bad[index] = value if index < 16 else (bad[index] & 65535) | value
+    assert configure(values=bad, revision=42) == 0
+    assert get("_iv_controls", 32) == old
+    assert get("_iv_revision") == [41]
+    assert get("_iv_control_count") == [32]
+
+
+@pytest.mark.parametrize("index", [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 30, 31])
+def test_fm_low_half_duplicates_remain_atomic(playback, index):
+    call, _, get, reset, configure, _, _ = playback
+    assert reset() == 1
+    call(0)
+    values = fm_bank()
+    assert configure(values=values, revision=7) == 1
+    bad = values.copy()
+    bad[index] ^= 1
+    assert configure(values=bad, revision=8) == 0
+    assert get("_iv_controls", 32) == values
+    assert get("_iv_revision") == [7]
+
+
+def test_fm_full_ranges_and_schema_identity_are_enforced(playback):
+    call, _, get, reset, configure, _, _ = playback
+    assert reset() == 1
+    call(0)
+    values = fm_bank()
+    maxima = [3, 100, 15, 15, 100, 127, 127, 100, 127, 200, 200, 200]
+    for extensions in ([0] * 12, maxima):
+        for index, value in enumerate(extensions, 16):
+            values[index] = (values[index] & 65535) | (value << 16)
+        assert configure(values=values, revision=7) == 1
+        assert get("_iv_controls", 32) == values
+    # Older schemas must never reinterpret an FM bank, even if its upper
+    # fields happen to lie within the wavetable ranges.
+    assert configure(values=values, schema=0x43505339, revision=8) == 0
+    bad = wavetable_bank(family=3)
+    assert configure(values=bad, revision=8) == 0
+    bad = wavetable_bank()
+    assert configure(values=bad, schema=0x43505341, revision=8) == 0
+    # A CPSA legacy-family bank retains the wavetable extension semantics.
+    bad = wavetable_bank(rate=0)
+    bad[0] = (bad[0] & ~255) | 10
+    assert configure(values=bad, revision=8) == 0
+    assert get("_iv_controls", 32) == values
+    assert get("_iv_revision") == [7]
+
+
+@pytest.mark.parametrize("bytes_count", [0, 124, 132])
+def test_partial_fm_transport_bank_cannot_publish(playback, bytes_count):
+    call, put, get, reset, configure, _, symbols = playback
+    assert reset() == 1
+    call(0)
+    old = fm_bank()
+    assert configure(values=old, revision=7) == 1
+    put("_test_values", wavetable_bank())
+    put("_test_metadata", [0, 1, 8, 0, bytes_count, 0x43505341])
+    assert call(2, R4=symbols["_test_values"], R8=symbols["_test_metadata"]) == 0
+    assert get("_iv_controls", 32) == old
+    assert get("_iv_revision") == [7]
+    assert get("_iv_control_count") == [32]
+
+
+def test_fm_source_switch_reaches_live_callback_without_replacing_note_owner(playback):
+    call, _, get, reset, configure, events, _ = playback
+    assert reset() == 1
+    call(0)
+    values = wavetable_bank(mode=2, tune=0x4C80)
+    assert configure(values=values, revision=7) == 1
+    call(0)
+    assert events([(1, 1, 60, 100, 0, 0)], revision=7) == 1
+    call(0)
+    before = get("_test_state", 744)
+    tokens = [before[i] for i in range(0, 32, 8)]
+    assert 1 in tokens, (get("_iv_result"), before[:48], before[180:200])
+    assert configure(values=fm_bank(), revision=8) == 1
+    assert get("_test_state", 744) == before
+    # Cross the bounded old-source fade and the new-source fade-in.
+    transition = []
+    for _ in range(8):
+        call(0)
+        assert get("_iv_result") == [0]
+        transition.append((get("_test_state", 744)[712:716], get("_fm_fade_step")))
+    assert get("_iv_input", 12)[10:] == [32, 8]
+    assert [get("_test_state", 32)[i] for i in range(0, 32, 8)] == tokens
+    assert get("_test_state", 744)[712:716] == [3, 0x3F800000, 0, 1], transition
+    assert any(get("_iv_output", 32))
+    assert configure(values=values, revision=9) == 1
+    for _ in range(8):
+        call(0)
+        assert get("_iv_result") == [0]
+    assert get("_test_state", 744)[712:716] == [2, 0x3F800000, 0, 1]
+    assert [get("_test_state", 32)[i] for i in range(0, 32, 8)] == tokens
+    assert events([(1, 2, 60, 0, 0, 0)], revision=9) == 1
+    call(0)
+    assert get("_iv_result")[0] in (0, 1)
+
+
 @pytest.mark.parametrize("family", [0, 1, 2])
 def test_wavetable_configuration_preserves_all_32_packed_words(playback, family):
     call, _, get, reset, configure, _, _ = playback
@@ -674,13 +830,14 @@ def test_wavetable_clock_and_duplicate_validation_is_atomic(playback):
 
 @pytest.mark.parametrize("invalid", [None, 1, 16, 19, 31])
 @pytest.mark.parametrize("circular", ["linear", "all", "duplicate"])
+@pytest.mark.parametrize("fm", [False, True])
 def test_wavetable_config_preserves_midi_consumer_address_registers(
-    playback, invalid, circular
+    playback, invalid, circular, fm
 ):
     call, _, get, reset, configure, _, _ = playback
     assert reset() == 1
     call(0)
-    values = wavetable_bank()
+    values = fm_bank() if fm else wavetable_bank()
     if invalid is not None:
         values[invalid] = 0xFFFFFFFF
     # Stock firmware can enter with circular DAGs outside our lookup tables.
@@ -736,13 +893,14 @@ def test_wavetable_config_never_borrows_the_interrupt_stack(
     assert get("_iv_revision") == [41 if reject_duplicate else 42]
 
 
-@pytest.mark.parametrize("schema", [8, 9])
+@pytest.mark.parametrize("schema", [8, 9, 10])
 def test_applied_status_unpacks_wavetable_values_without_losing_legacy_tune(
     playback, schema
 ):
     call, put, get, _, _, _, symbols = playback
-    values = wavetable_bank(mode=1, tune=0x4C80)
-    values[17] |= 327 << 16
+    values = fm_bank() if schema == 10 else wavetable_bank(mode=1, tune=0x4C80)
+    if schema != 10:
+        values[17] |= 327 << 16
     if schema == 8:
         values = [v if i < 16 else v & 65535 for i, v in enumerate(values)]
         values[0] = 8 | (1 << 8) | (0x4C80 << 16)
@@ -777,17 +935,18 @@ def test_applied_status_unpacks_wavetable_values_without_losing_legacy_tune(
     put("_iv_input", source)
     detail = []
     for part in range(11):
-        state = [0] * 296
+        state = [0] * 744
         state[188], state[193], state[194] = 4 + part * 8, 1, 9
         put("_test_state", state)
         call(5, R4=symbols["_test_state"], R8=symbols["_iv_input"])
         status = get("_instrument_ui_status", 13)
         assert status[0] == 1
-        assert status[5] == ((3 if schema == 9 else 2) << 16) | 0xB00 | part
+        detail_schema = {8: 2, 9: 3, 10: 4}[schema]
+        assert status[5] == (detail_schema << 16) | 0xB00 | part
         assert status[6] == 9
         detail.extend(status[7:13])
     assert detail[:16] == [v & 65535 for v in values[16:32]]
-    if schema == 9:
+    if schema >= 9:
         assert detail[16:28] == [v >> 16 for v in values[16:28]]
         assert detail[28] == 0x4C80
         assert not any(detail[29:])

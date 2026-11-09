@@ -557,7 +557,7 @@
   },
   {
    "addend": 0,
-   "offset": 70,
+   "offset": 68,
    "section": ".text.mf_src_register",
    "symbol": ".sec..bss.entries",
    "type": "cf.32"
@@ -585,14 +585,14 @@
   },
   {
    "addend": 0,
-   "offset": 114,
+   "offset": 144,
    "section": ".text.mf_src_apply_pages",
    "symbol": "mf_src_alloc",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 178,
+   "offset": 216,
    "section": ".text.mf_src_apply_pages",
    "symbol": "mf_src_free",
    "type": "cf.32"
@@ -622,10 +622,10 @@
   },
   {
    "align": 2,
-   "hex": "2f027418202f00082200206f000c5f81b481640670ff241f4e754a8867f67201b29066f07410b4a8000466e822680008740222095381b48165da2228000c4a8167d2e78841f900000000243008044a826704b48166be2181080421890800428060b4",
+   "hex": "2f027418202f00082200206f000c5f81b481640670ff241f4e754a8867f67201b29066f07410b4a8000466e82268000822095381e48966dc2228000c4a8167d4e78841f900000000243008044a826704b48166c02181080421890800428060b6",
    "kind": "text",
    "name": ".text.mf_src_register",
-   "size": 98
+   "size": 96
   },
   {
    "align": 2,
@@ -643,10 +643,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffec48d70c1c266f0018242f001c246b007c4a8a672c206b00802608968a226b008422032009908a8280280a82847803c2844a81660cb1ca6508b3c86504b880651242ab0090428220024cd70c1c4fef00144e75220278025381b881656a7203b282665e7808b88066584878000c4eb900000000588f20404a8066102403e48ab4ab009062c242ab009060bc2092216a0004000421520008200a24482748007c41e8000c27480080274800842f004eb900000000588f71c245f20c00274a008060bee488b08264ee740160ea",
+   "hex": "4fefffe448d70c7c246f0020262f0024266a007c4a8b672c202a00802c009c8b222a008424062801988b84842a0b84857a03c4854a82660cb08b6508b2806504ba84651242aa0090428220024cd70c7c4fef001c4e7520035380e48867047401600e7a02ba8365142403e48cb48462ee71c247f30c00254b008060222a04e48dba8364e4e68c67d62803e58c2f044eb900000000588f4a8066102406e48ab4aa009062a642aa009060a0204bb485643073c222331c00224023812c005282b48366ea2540007c26402009d08425400080254000842f084eb900000000588f608a221360d2",
    "kind": "text",
    "name": ".text.mf_src_apply_pages",
-   "size": 206
+   "size": 228
   },
   {
    "align": 2,
@@ -656,7 +656,7 @@
    "size": 256
   }
  ],
- "source_sha256": "1a4a2f976482e59cb865ddcc2ddee312282f6d9f9e3135b44871809eb7ad3812",
+ "source_sha256": "61e65ec606dbd571416fa56f255961065551ce023239dfd937c5436cc03cf8f2",
  "symbols": [
   {
    "global": false,
@@ -1011,8 +1011,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "467",
-  "isa_check": "aa5f704390d8e4028adb32da8c370228efd3b85960b61bded47541be70bf748f",
+  "instructions_redecoded": "480",
+  "isa_check": "edef2d1a54670a51a3c4ad30bff8afbd091b223d79c93d77ecaf88bbe86038fb",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

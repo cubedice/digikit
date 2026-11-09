@@ -8,14 +8,14 @@
 typedef struct {
     uint32_t version, bytes, pages, generation;
 } MfSrcCapability;
-/* type 7..31, pages 1..3, nonzero instance generation. Descriptor copied. */
+/* type 7..31, pages 1..4, nonzero instance generation. Descriptor copied. */
 int mf_src_register(uint32_t type,const MfSrcCapability *cap);
 /* An old owner's teardown cannot remove a replacement generation. */
 void mf_src_unregister(uint32_t type,uint32_t generation);
 /* Called by the draw hook. Unregistered/invalid types retain the one-page rule. */
 uint32_t mf_src_page_count(uint32_t type);
-/* UI-task native-vector update. A third page grows the firmware-owned vector
- * once using its matching allocator/free; the native destructor retains
+/* UI-task native-vector update. Additional pages grow the firmware-owned vector
+ * using its matching allocator/free; the native destructor retains
  * ownership. Returns the usable count and bounds the current index. */
 uint32_t mf_src_apply_pages(uint8_t *view,uint32_t pages);
 #endif

@@ -7,10 +7,13 @@ uint8_t *mf_src_alloc(uint32_t bytes) { (void)bytes; assert(0); return 0; }
 void mf_src_free(uint8_t *p) { (void)p; assert(0); }
 uint32_t mf_native_page_count(uint32_t type, uint32_t ordinary) { (void)type; return ordinary; }
 static CsState state;
+uint32_t instrument_src_pages(void) { return cs_pages(&state); }
 static uint32_t selected,alternate,now=100,type_id=9,generation=1,stock_turns,stock_keys,invalidations,polls;
 static uint32_t manager[16],node[4],vtable[60],modal[24],modal_node[4];
 static uint32_t focus_mask,texts,graphs,toasts;
 static char label_text[8][32];
+static char body_text[8][32];
+static uint32_t real_display,graph_mask,graph_value[8];
 const uint32_t ip_src_label_font=123;
 void ip_src_focus_touch(uint8_t *tracker,uint32_t index) { (void)tracker; focus_mask|=1u<<index; }
 uint8_t ip_src_focus_active(uint8_t *tracker,uint32_t index) { (void)tracker;return !!(focus_mask&(1u<<index)); }
@@ -31,6 +34,11 @@ int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t turns,uint32_
 { assert(time==now); uint32_t id; return cs_edit(&state,token,encoder,turns,time,&id); }
 void instrument_src_display(CvDisplay *d,uint32_t time,const char *t,const char *l)
 { assert(time==now); assert(!strcmp(t,"-60.00") && !strcmp(l,"127")); memset(d,0,sizeof(*d));
+  if(real_display) {
+      IsStatus status={0}; status.generation=state.generation; status.track=state.track;
+      status.mode=state.mode; status.fast_valid=1; status.fast_at=time;
+      cv_build(d,&state,&status,time,t,l,0); return;
+  }
   for(unsigned i=0;i<8;++i) { strcpy(d->label[i],"COLR");strcpy(d->value[i],"64"); }
   d->rotary=1u<<3; d->knob[3]=64; }
 int32_t ip_src_value(uint8_t *v,uint32_t code,uint8_t *flags)
@@ -53,7 +61,16 @@ static void event(uint8_t *e,uint32_t encoder,int32_t delta,uint32_t stamp,uint3
 }
 void dk_fw_view_invalidate(uint8_t *v) { (void)v; ++invalidations; }
 static void graph(uint8_t *a,uint32_t code,int32_t value,uint32_t alt,uint8_t *state_ptr,uint8_t *canvas,int32_t x,int32_t y)
-{ (void)a;(void)canvas;assert(code==0xcc && value==(64<<8) && !alt && state_ptr);assert(x==102 && y==34);++graphs; }
+{
+    (void)a;(void)canvas;assert(code==0xcc && !alt && state_ptr);
+    if(real_display) {
+        assert(x>=24 && x<=102 && (x-24)%26==0 && (y==7 || y==34));
+        assert(value>=0 && value<=(127<<8));
+        uint32_t i=(uint32_t)(x-24)/26+(y==7?4:0);
+        graph_mask|=1u<<i; graph_value[i]=(uint32_t)value>>8;
+    } else assert(value==(64<<8) && x==102 && y==34);
+    ++graphs;
+}
 static uint32_t accessor_vtable[25],accessor[1];
 static uint8_t *access(uint8_t *v,uint32_t code,int32_t track)
 { (void)v;assert(code==0xcc && track==-1);return (uint8_t *)accessor; }
@@ -63,6 +80,7 @@ int32_t dk_fw_text_draw_box(uint8_t *p,uint8_t *font,int32_t x,int32_t y,int32_t
     assert(x>=33 && x<=111 && y>=0 && y<=41);++texts;
     va_list ap;va_start(ap,fmt);const char *s=va_arg(ap,const char *);
     if(y==0 || y==27) strcpy(label_text[(x-33)/26+(y==0?4:0)],s);
+    if(y==14 || y==41) strcpy(body_text[(x-33)/26+(y==14?4:0)],s);
     va_end(ap);return 0;
 }
 void dk_fw_draw_fill_rect(uint8_t *p,int32_t x0,int32_t y0,int32_t x1,int32_t y1,int32_t color)
@@ -72,6 +90,18 @@ void dk_fw_draw_fill_rect(uint8_t *p,int32_t x0,int32_t y0,int32_t x1,int32_t y1
         uint8_t *px=&p[(63-y)*128+x];
         if(color<0) *px^=1; else *px=(uint8_t)(color&1);
     }
+}
+static void clear_paint(uint8_t *canvas)
+{
+    memset(canvas,0xaa,8192); memset(label_text,0,sizeof(label_text));
+    memset(body_text,0,sizeof(body_text)); memset(graph_value,0,sizeof(graph_value));
+    graph_mask=0;
+}
+static void protected_pixels(const uint8_t *canvas,int native_tune)
+{
+    for(int y=0;y<64;++y) for(int x=0;x<128;++x)
+        if(y<11 || x<23 || x>=124 || (native_tune && y<37 && x<48) || (y>=38 && x>=101))
+            assert(canvas[y*128+x]==0xaa);
 }
 int main(int argc,char **argv)
 {
@@ -108,6 +138,59 @@ int main(int argc,char **argv)
         for(int y=0;y<64;++y) for(int x=0;x<128;++x)
             if(y<11 || x<23 || x>=124 || (y<37 && x<48) || (y>=38 && x>=101))
                 assert(canvas[y*128+x]==0xaa);
+    } else if(!strcmp(argv[1],"fm-envelope")) {
+        cs_metadata(&state,3u<<4); v[0x90/4]=3; context((uint8_t *)v);
+        assert(mf_src_page_count(type_id)==4);
+        assert(ip_src_parameter((uint8_t *)v,0)==0 && ip_src_parameter((uint8_t *)v,7)==0xd1);
+        assert(ip_src_parameter((uint8_t *)v,8)==10);
+        event((uint8_t *)e,1,12,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e);
+        assert(state.value[CP_FM_ATTACK]==17 && !stock_turns);
+        event((uint8_t *)e,8,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7 && stock_turns==1);
+        event((uint8_t *)e,9,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7 && stock_turns==2);
+        v[0x190/4]=0x01010101; ip_src_draw((uint8_t *)v,canvas);
+        assert(!strcmp(label_text[0],"64"));
+        for(int y=0;y<64;++y) for(int x=0;x<128;++x)
+            if(y<11 || x<23 || x>=124 || (y>=38 && x>=101)) assert(canvas[y*128+x]==0xaa);
+        cs_metadata(&state,2u<<4); context((uint8_t *)v);
+        assert(mf_src_page_count(type_id)==3 && v[0x90/4]==2);
+        assert(ip_src_parameter((uint8_t *)v,0)==0xca);
+    } else if(!strcmp(argv[1],"fm-presentation")) {
+        real_display=1; cs_metadata(&state,3u<<4); v[0x90/4]=2; context((uint8_t *)v);
+        state.value[CP_FM_ALG]=3; state.value[CP_FM_BAL]=100;
+        state.value[CP_FM_RTA]=0; state.value[CP_FM_RTB]=15; state.value[CP_FM_FB]=100;
+        clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
+        const char *tone_labels[]={"","WAVE","ALG","BAL","RTA","RTB","FDBK",""};
+        for(unsigned i=0;i<8;++i) assert(!strcmp(label_text[i],tone_labels[i]));
+        assert(!strcmp(body_text[1],"FM") && !strcmp(body_text[2],"CHAIN"));
+        assert(!strcmp(body_text[4],"0.25") && !strcmp(body_text[5],"8.00"));
+        assert(graph_mask==0x48 && graph_value[3]==127 && graph_value[6]==127);
+        protected_pixels(canvas,1);
+        v[0x190/4]=0x01010101; clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
+        const char *tone_values[]={"","FM","CHAIN","100%","0.25","8.00","100%",""};
+        for(unsigned i=0;i<8;++i) assert(!strcmp(label_text[i],tone_values[i]));
+        assert(graph_mask==0x48); protected_pixels(canvas,1);
+        state.value[CP_FM_RTA]=5; state.value[CP_FM_RTB]=7;
+        clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
+        assert(!strcmp(label_text[4],"1.41") && !strcmp(label_text[5],"1.73"));
+        char feedback[32]; cv_feedback(feedback,&state,4); assert(!strcmp(feedback,"PAIR A RATIO=SQRT2*"));
+        cv_feedback(feedback,&state,5); assert(!strcmp(feedback,"PAIR B RATIO=SQRT3*"));
+        v[0x90/4]=3; v[0x190/4]=0; context((uint8_t *)v);
+        const uint16_t envelope[]={127,127,100,127,0,100,200};
+        for(unsigned i=0;i<7;++i) state.value[CP_FM_ATTACK+i]=envelope[i];
+        clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
+        const char *env_labels[]={"ATK","DEC","SUS","REL","ENV","VEL","WHEL",""};
+        for(unsigned i=0;i<8;++i) assert(!strcmp(label_text[i],env_labels[i]));
+        assert(graph_mask==0x7f && graph_value[4]==0 && graph_value[5]==63 && graph_value[6]==127);
+        assert(canvas[20*128+24]==0); /* FM ENV A is custom, not protected TUNE. */
+        protected_pixels(canvas,0);
+        v[0x190/4]=0x01010101; clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
+        const char *env_values[]={"127","127","100%","127","-100%","0%","+100%",""};
+        for(unsigned i=0;i<8;++i) { assert(!strcmp(label_text[i],env_values[i])); assert(strlen(label_text[i])<=5); }
+        assert(graph_mask==0x7f); protected_pixels(canvas,0);
+        assert(ip_src_parameter((uint8_t *)v,0)==0 && ip_src_parameter((uint8_t *)v,7)==0xd1);
+        assert(ip_src_parameter((uint8_t *)v,8)==10);
+        event((uint8_t *)e,8,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7);
+        event((uint8_t *)e,9,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7 && stock_turns==2);
     } else if(!strcmp(argv[1],"routing")) {
         assert(ip_src_parameter((uint8_t *)v,0)==0xca);
         assert(ip_src_parameter((uint8_t *)v,7)==0xd1);

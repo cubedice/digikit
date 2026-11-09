@@ -623,7 +623,7 @@ def test_explicit_src_capability_survives_draw_and_requires_matching_revocation(
 
 @pytest.mark.parametrize(
     "fields",
-    [(2, 16, 2, 7), (1, 12, 2, 7), (1, 16, 4, 7), (1, 16, 0, 7), (1, 16, 2, 0)],
+    [(2, 16, 2, 7), (1, 12, 2, 7), (1, 16, 5, 7), (1, 16, 0, 7), (1, 16, 2, 0)],
 )
 def test_invalid_src_capability_does_not_enable_second_page(unit, fields):
     memory, address, draw = capability_case(unit, fields=fields)
@@ -685,8 +685,53 @@ def test_three_src_pages_grow_native_owned_storage_once(unit, idx, expected):
         assert painted.stack[0] == 0xAAAA
 
 
-def test_src_vector_allocation_failure_preserves_native_storage(unit):
-    memory, address, draw = capability_case(unit, fields=(1, 16, 3, 7), idx=2)
+@pytest.mark.parametrize("capacity", [2, 3])
+@pytest.mark.parametrize(
+    "idx,expected", [(0, 0), (2, 2), (3, 3), (4, 0), (0xFFFFFFFF, 0)]
+)
+def test_four_src_pages_preserve_existing_ids_and_grow_only_once(
+    unit, capacity, idx, expected
+):
+    memory, address, draw = capability_case(
+        unit, fields=(1, 16, 4, 7), idx=idx, capacity=capacity
+    )
+    old = [0xFEEDFACE, 7, 11] + ([13] if capacity == 3 else []) + [0xFEEDFACE]
+    memory[PAGES - 4] = b"".join(be32(v) for v in old)
+    memory[GROWN_PAGES - 4] = be32(0xFEEDFACE) + bytes(16) + be32(0xFEEDFACE)
+    draw["reads"] += [
+        (PAGES - 4, len(old) * 4),
+        (GROWN_PAGES - 4, 24),
+        (ALLOC_STATS, 20),
+    ]
+    registered, first, repeated = unit.run_cases(
+        memory,
+        [{"routine": "mf_src_register", "stack": [unit.rts, 18, address]}, draw, draw],
+    )
+    assert registered.d[0] == 0
+    for painted in (first, repeated):
+        assert page_state(painted) == (4, expected)
+        assert vector_words(painted.reads[0])[:3] == [
+            GROWN_PAGES,
+            GROWN_PAGES + 16,
+            GROWN_PAGES + 16,
+        ]
+        assert vector_words(painted.reads[1]) == old
+        assert vector_words(painted.reads[2]) == [
+            0xFEEDFACE,
+            7,
+            11,
+            13 if capacity == 3 else 7,
+            7,
+            0xFEEDFACE,
+        ]
+        assert vector_words(painted.reads[3]) == [0, 1, 1, PAGES, 16]
+        assert painted.stub == "_mf_spa" and painted.a[2] == VIEW
+        assert painted.stack[0] == 0xAAAA
+
+
+@pytest.mark.parametrize("pages", [3, 4])
+def test_src_vector_allocation_failure_preserves_native_storage(unit, pages):
+    memory, address, draw = capability_case(unit, fields=(1, 16, pages, 7), idx=2)
     memory[ALLOC_STATS] = be32(1) + bytes(16)
     draw["reads"] += [(PAGES - 4, 16), (GROWN_PAGES - 4, 20), (ALLOC_STATS, 20)]
     _, painted = unit.run_cases(
@@ -697,11 +742,14 @@ def test_src_vector_allocation_failure_preserves_native_storage(unit):
     assert vector_words(painted.reads[0])[:3] == [PAGES, PAGES + 4, PAGES + 8]
     assert vector_words(painted.reads[1]) == [0xFEEDFACE, 7, 11, 0xFEEDFACE]
     assert vector_words(painted.reads[2]) == [0xFEEDFACE, 0, 0, 0, 0xFEEDFACE]
-    assert vector_words(painted.reads[3]) == [1, 1, 0, 0, 12]
+    assert vector_words(painted.reads[3]) == [1, 1, 0, 0, pages * 4]
 
 
-def test_grown_src_vector_restores_stock_and_ordinary_machine_policy(unit):
-    memory, address, draw = capability_case(unit, fields=(1, 16, 3, 7), idx=2)
+@pytest.mark.parametrize("pages", [3, 4])
+def test_grown_src_vector_restores_stock_and_ordinary_machine_policy(unit, pages):
+    memory, address, draw = capability_case(
+        unit, fields=(1, 16, pages, 7), idx=pages - 1
+    )
     draw["reads"] += [(ALLOC_STATS, 20)]
     _, three, _, stock, _, ordinary, _, returned = unit.run_cases(
         memory,
@@ -716,16 +764,16 @@ def test_grown_src_vector_restores_stock_and_ordinary_machine_policy(unit):
             draw,
         ],
     )
-    assert page_state(three) == (3, 2)
+    assert page_state(three) == (pages, pages - 1)
     assert page_state(stock) == (2, 0)
     assert page_state(ordinary) == (1, 0)
-    assert page_state(returned) == (3, 0)
+    assert page_state(returned) == (pages, 0)
     for painted in (three, stock, ordinary, returned):
         assert vector_words(painted.reads[0])[0::2][:2] == [
             GROWN_PAGES,
-            GROWN_PAGES + 12,
+            GROWN_PAGES + pages * 4,
         ]
-        assert vector_words(painted.reads[1]) == [0, 1, 1, PAGES, 12]
+        assert vector_words(painted.reads[1]) == [0, 1, 1, PAGES, pages * 4]
 
 
 def test_src_hook_preserves_larger_native_capacity_and_page_ids(unit):
@@ -743,6 +791,33 @@ def test_src_hook_preserves_larger_native_capacity_and_page_ids(unit):
     assert vector_words(painted.reads[0])[:3] == [PAGES, PAGES + 12, PAGES + 16]
     assert vector_words(painted.reads[1]) == original
     assert vector_words(painted.reads[2]) == [0] * 5
+
+
+def test_four_page_owner_can_hide_and_restore_fourth_page_without_reallocation(unit):
+    memory, address, draw = capability_case(unit, fields=(1, 16, 4, 7), idx=3)
+    three_address = address + 16
+    memory[three_address] = b"".join(be32(v) for v in (1, 16, 3, 7))
+    draw["reads"] += [(ALLOC_STATS, 20)]
+    _, four, _, three, _, returned = unit.run_cases(
+        memory,
+        [
+            {"routine": "mf_src_register", "stack": [unit.rts, 18, address]},
+            draw,
+            {"routine": "mf_src_register", "stack": [unit.rts, 18, three_address]},
+            draw,
+            {"routine": "mf_src_register", "stack": [unit.rts, 18, address]},
+            draw,
+        ],
+    )
+    assert page_state(four) == (4, 3)
+    assert page_state(three) == (3, 0)
+    assert page_state(returned) == (4, 0)
+    for painted in (four, three, returned):
+        assert vector_words(painted.reads[0])[0::2][:2] == [
+            GROWN_PAGES,
+            GROWN_PAGES + 16,
+        ]
+        assert vector_words(painted.reads[1]) == [0, 1, 1, PAGES, 16]
 
 
 def test_src_registration_cannot_replace_another_live_generation(unit):

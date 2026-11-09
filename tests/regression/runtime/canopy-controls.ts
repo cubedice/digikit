@@ -1,10 +1,11 @@
 import { withinRuntimeDeadline } from '@digi/test-support';
 
-/** Read a fully applied CPS9 custom control. Native input must be acknowledged
+/** Read a fully applied CPS9/CPSA custom control. Native input must be acknowledged
  * separately: matching revisions alone cannot prove an encoder was consumed.
  * CsState holds 28 big-endian uint16 controls after seven uint32 fields. CPS9
  * stores legacy controls in low halves of words16..31 and WT controls in high
- * halves of words16..27. TUNE/LEVEL are native controls and excluded here. */
+ * halves of words16..27. CPSA uses those high halves for the active WT/FM family.
+ * TUNE/LEVEL are native controls and excluded here. */
 export function canopyControls(
   cf: (name: string, index?: number) => Promise<number>,
   rawBank: () => Promise<number[]>,
@@ -25,7 +26,7 @@ export function canopyControls(
     const [bank, pair] = await withinRuntimeDeadline(deadline, () =>
       Promise.all([rawBank(), cf('src_state', 7 + Math.floor(control / 2))]),
     );
-    if (bank.length !== 32) throw new Error(`Invalid CPS9 bank length ${bank.length}`);
+    if (bank.length !== 32) throw new Error(`Invalid CANOPY configuration bank length ${bank.length}`);
     const value = control < 16 ? bank[16 + control]! & 65535 : bank[control]! >>> 16;
     const requested = control & 1 ? pair & 65535 : pair >>> 16;
     if (requested !== value)

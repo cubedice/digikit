@@ -315,7 +315,7 @@ mf_typearg:
 | first test of the function): `tst.l 0x90(A2); beq.w T`; a2 = the view, d2 = the draw context. T (an anchor, `_mf_spa`) is the
 | knob-page branch; the stock path goes on at site + 8. `_mf_spt` is `FUN_4005f6bc` (the type as a signed long, -1 without a
 | track). d0, d1, a0, a1 are free at the site (the prologue saved d3 .. d7, a3 .. a6).
-| A core adapter may opt a ready painter/input implementation into up to three
+| A core adapter may opt a ready painter/input implementation into up to four
 | pages via src-pages.h. mf_src_apply_pages grows the native-owned vector with
 | its native allocator when needed; it never extends end beyond capacity.
 | This does not enlarge the V1 parameter ABI.

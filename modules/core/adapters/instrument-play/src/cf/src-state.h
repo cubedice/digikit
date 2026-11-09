@@ -3,7 +3,7 @@
 #ifndef DK_CANOPY_SRC_STATE_H
 #define DK_CANOPY_SRC_STATE_H
 #include "preset.h"
-enum { CS_TUNE=28, CS_LEVEL=29, CS_NONE=255, CS_FOCUS_MS=750, CS_LIST_TICKS=4 };
+enum { CS_TUNE=28, CS_LEVEL=29, CS_WAVE=30, CS_NONE=255, CS_FOCUS_MS=750, CS_LIST_TICKS=4 };
 enum { CS_STALE=-1, CS_READONLY=0, CS_EDIT=1, CS_NATIVE=2 };
 typedef struct {
     uint32_t generation, track, token, revision, pending, focus_at, metadata;
@@ -14,16 +14,19 @@ typedef struct {
      * encoder's partial list step separate from other knobs and contexts. */
     int8_t list_delta[8];
     uint8_t list_id[8];
+    uint16_t legacy_color, wavetable[12], fm[13];
 } CsState;
 /* Caller owns serial access. No retained view pointer or I/O. */
 void cs_init(CsState *);
 /* Import setup/preset/MIDI-selector changes into the same requested bank. */
 void cs_sync(CsState *,const uint16_t values[CP_CONTROLS]);
+void cs_import(CsState *,const CpPreset *);
 void cs_metadata(CsState *,uint32_t metadata);
 void cs_native_tune(CsState *,uint32_t raw);
 uint32_t cs_context(CsState *,uint32_t track,uint32_t generation,int visible,
     uint32_t page,uint32_t mode,uint32_t clock,int learned,int modal);
 uint32_t cs_control(uint32_t page,uint32_t encoder);
+uint32_t cs_pages(const CsState *);
 uint32_t cs_mapped_control(const CsState *,uint32_t encoder);
 /* View-only choices. PLAY is followed by the twelve persisted chord types;
  * Velvet/Reed are followed by the five persisted wavetable identifiers. */

@@ -3,7 +3,7 @@
 Development-only DTII OS 1.17 adapter for one admitted V2 instance on track 1
 (the zero-based DSP track 0). It is not in a default patch set. There is no
 hardware release approval. The development policy admits one instance with a
-1184-byte state ceiling and declared 100000/1600 process/reset ceilings.
+2976-byte state ceiling and declared 100000/1600 process/reset ceilings.
 Instruction-test limits are not a measured hardware cycle budget.
 
 The native UI revision uses the stock TUNE, source LEV and track LEV paths on
@@ -13,9 +13,9 @@ pedal and clock state are under `DIGIKIT > MODULES > CANOPY > SETTINGS > STATUS`
 See the [accepted UI contract](../../../../docs/design/canopy-ui-review.md).
 
 SOUND B / CHRD now selects PLAY or any generated chord directly; TONE B / WAVE
-selects Velvet, Reed or one of the five wavetables. Both are UI presentations of
-existing mode/chord and family/table fields, so CPS9 and preset formats remain
-unchanged. Discrete lists accumulate four raw ticks per item without acceleration.
+selects Velvet, Reed, one of the five wavetables or FM. CHRD is a presentation of
+the mode/chord fields; WAVE has its own view-only identity so it cannot alias
+the FM algorithm field. Discrete lists accumulate four raw ticks per item without acceleration.
 Mode transitions retire old note ownership; root chord changes update held notes.
 Family transitions retain the held DSP voices and invalidate queued SRC edits.
 The global setup entry is now CANOPY, with INPUT, CHORD LEARN, SOUND SETUP,
@@ -43,9 +43,11 @@ and UNLOAD still clear CANOPY state. Inactive tracks acknowledge transport reset
 
 Instruction-level checks are in `tests/patchkit/test_instrument_play.py`, with
 stock dispatch coverage in `tests/patchkit/test_dsp_voice.py`. The separate integrated
-acceptance now passes uploaded V2 admission, stock selection, explicit routing,
-final stereo continuity, pedal, velocity and fault retirement. Neither kind of
-test establishes a hardware CPU budget.
+acceptance for earlier CANOPY builds passed uploaded V2 admission, stock selection,
+explicit routing, final stereo continuity, pedal, velocity and fault retirement.
+FM compiled acceptance is tracked separately in the
+[current FM handover](../../../../docs/handovers/HANDOVER-2026-11-09-canopy-fm.md).
+Neither kind of test establishes a hardware CPU budget.
 
 The normal-file loader publishes the assigned type only after CREATE. Because
 that happens after the stock machine chooser is constructed, a narrowly scoped
@@ -116,7 +118,8 @@ after instrument admission, with activation still gated by the DSP handshake.
 ### Stage 5 preset storage checkpoint
 
 This historical checkpoint describes the 64-byte v2 records. The current
-96-byte v3 format and wavetable controls are documented below under CPS9.
+128-byte v4 format is documented below under CPSA; the preceding CPS9 checkpoint
+describes the 96-byte v3 format and wavetable controls.
 The storage totals in this checkpoint apply to the earlier format.
 
 KEYBOARD > PRESETS now provides four explicit sound slots. SAVE CURRENT SOUND
@@ -234,6 +237,20 @@ CPS8 retains signed spread; CPS6/CPS7 retain their original upward octave counts
 CPST v3 presets are 96 bytes and read legacy v1/v2 records with neutral wavetable
 defaults. Routing and native Sound values remain outside the custom preset.
 The Stage 3 package above is a historical checkpoint.
+
+The FM revision uses CPSA (header version 10), adding family 3. For this family
+the twelve upper halves hold ALG, BAL, RTA, RTB, FDBK, ATK, DEC, SUS, REL, ENV,
+VEL and WHEL; common COLOR carries DEP. CPS9 retains its old family 0..2
+interpretation. Detail schema 4 publishes the active bank; older telemetry
+cannot acknowledge pending FM edits. CPST v4 records are 128 bytes and preserve
+independent legacy COLOR, wavetable and FM settings, while reading versions
+1/2/3 without changing their previous sound. Full ranges, layout and migration
+rules are in the [FM contract](../../../../docs/design/canopy.md#four-operator-fm-extension-cpsa).
+
+FM uses SOUND D for DEP and a family-specific TONE page. A conditional fourth
+FM ENV page exposes the timbre ADSR and signed modulation amounts. The native
+page vector owns four entries; leaving FM returns navigation to three pages.
+Native TUNE, source LEV, track LEVEL and held-SRC values retain stock semantics.
 ## Optional process status output
 
 Descriptor flag bit 0 opts an instrument into the V5/96-byte borrowed input.
@@ -254,13 +271,16 @@ each block before checking admission/session, preventing reuse after revocation.
 
 The mailbox connects to the authenticated alternating status-frame transport.
 CANOPY now opts in: actual notes/arp state and revision-bound detail fragments
-drive the three SRC pages. The visible UI task drains telemetry independently of
+drive the SRC pages. The visible UI task drains telemetry independently of
 painting and invalidates at most every 40 ms. Native TUNE/LEVEL use the stock
 parameter editor and bounded custom value cells; the remaining controls use
 stable preset IDs. The adapter captures queued encoder ownership at dispatch
 and excludes stock tracks, alternate context and opaque modals.
 
-Stage 5 acceptance is `tests/regression/runtime/canopy-stage5.test.ts`, using
-`out/patch/canopy-stage5-native.syx` and the matching
-`out/patch/canopy-stage5-native.dkm`. Hardware keyboard latency, worst-case CPU
-and Overloop coexistence remain separate Stage 6 release checks.
+Stage 5 acceptance is `tests/regression/runtime/canopy-stage5.test.ts`. The earlier
+native-UI checkpoint used `out/patch/canopy-stage5-native.syx` and the matching
+`out/patch/canopy-stage5-native.dkm`; these are not the FM artifacts. The
+[FM handover](../../../../docs/handovers/HANDOVER-2026-11-09-canopy-fm.md) records
+the matching CPSA firmware/package hashes and current acceptance status. Hardware
+keyboard latency, worst-case CPU and Overloop coexistence require their own
+Stage 6 results.

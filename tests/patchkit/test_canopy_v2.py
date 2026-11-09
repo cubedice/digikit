@@ -13,6 +13,8 @@ def canopy_object(request):
         (root / f"{name}.s").read_text()
         for name in [
             "voice",
+            "fm",
+            "fm-tables",
             "wavetable",
             "wavetables",
             "tuning",
@@ -153,7 +155,7 @@ def canopy(canopy_object):
     dm = dict(initial)
     dm.update({0x20015000 // 4 + i: 0 for i in range(13)})
     dm[0x20015000 // 4 - 1] = dm[0x20015000 // 4 + 13] = 0xDEADBEEF
-    for base, size in [(0x20050000, 296), (0x20054000, 296), (0x20013000, 32)]:
+    for base, size in [(0x20050000, 744), (0x20054000, 744), (0x20013000, 32)]:
         dm.update({base // 4 + i: 0 for i in range(size)})
         dm[base // 4 - 1] = dm[base // 4 + size] = 0xDEADBEEF
 
@@ -207,7 +209,7 @@ def canopy(canopy_object):
             name: (sections[name] // 4, len(blob) // 4)
             for name, (blob, _, _) in obj.data.items()
         }
-        reads.update({"state": (state // 4, 296), "out": (0x20013000 // 4, 32)})
+        reads.update({"state": (state // 4, 744), "out": (0x20013000 // 4, 32)})
         reads["status"] = (0x20015000 // 4, 13)
         for debug in (
             "enabled",
@@ -228,11 +230,11 @@ def canopy(canopy_object):
         reads["status_before"] = (0x20015000 // 4 - 1, 1)
         reads["status_after"] = (0x20015000 // 4 + 13, 1)
         reads.update(
-            {"guard_before": (state // 4 - 1, 1), "guard_after": (state // 4 + 296, 1)}
+            {"guard_before": (state // 4 - 1, 1), "guard_after": (state // 4 + 744, 1)}
         )
         if protected and reset is None:
             dm[symbols["_ir_process_flags"] // 4] = 1 if words[0] == 5 else 0
-            row = [3, 2, 9, 1, state, 296, state, state + 1184, 0, 0, 0, 0, 0, 0, 0, 0]
+            row = [3, 2, 9, 1, state, 744, state, state + 2976, 0, 0, 0, 0, 0, 0, 0, 0]
             meta = [
                 2,
                 9,
@@ -464,7 +466,7 @@ def test_v5_status_token_change_starts_a_new_immutable_detail_revision(canopy):
 
 @pytest.mark.parametrize("other_owner", [0x100, 0x200])
 def test_v2_chord_independent_release_and_state_isolation(canopy, other_owner):
-    assert canopy(reset=1)["state"] == [0] * 296
+    assert canopy(reset=1)["state"] == [0] * 744
     result = canopy([note(1, 60), note(2, 64)])
     assert result["regs"]["R0"] == 0
     assert set(voices(result)) == {1, 2}
@@ -515,7 +517,7 @@ def test_generation_change_requires_reset_and_reset_is_per_instance(canopy):
     canopy([note(1, 60)])
     canopy([note(2, 67)], state=0x20054000, track=1)
     assert canopy(generation=2)["regs"]["R0"] == 0xFFFFFFFF
-    assert canopy(reset=3)["state"] == [0] * 296
+    assert canopy(reset=3)["state"] == [0] * 744
     assert canopy(generation=2)["regs"]["R0"] == 1
     assert set(voices(canopy(state=0x20054000, track=1))) == {2}
 
@@ -1348,7 +1350,14 @@ def test_presentation_bank_preserves_audio_and_movement(canopy, mode):
         state=0x20054000,
     )
     assert new["regs"]["R0"] == old["regs"]["R0"]
-    assert new["out"] == old["out"] and new["state"] == old["state"]
+    assert new["out"] == old["out"]
+    assert new["state"][:680] == old["state"][:680]
+    assert new["state"][716:] == old["state"][716:]
+    # Only a 32-word bank participates in source-family transitions. Its raw
+    # presentation encoding is remembered without changing voice/audio state.
+    assert old["state"][680:716] == [0] * 36
+    assert new["state"][680:712] == presentation_controls(base, mode)
+    assert new["state"][712:716] == [base[1], 0x3F800000, 0, 1]
 
 
 @pytest.mark.parametrize(
@@ -1449,7 +1458,13 @@ def test_signed_spread_preserves_legacy_upward_audio(canopy, old_octaves):
         events = [note(1, 60), note(2, 64), note(3, 67)] if not ordinal else []
         a = canopy(events, controls=old, state_edits={146: 89999})
         b = canopy(events, controls=new, state=0x20054000, state_edits={146: 89999})
-        assert a["out"] == b["out"] and a["state"] == b["state"]
+        assert a["out"] == b["out"]
+        assert a["state"][:680] == b["state"][:680]
+        assert a["state"][712:] == b["state"][712:]
+        # Legacy octave counts and signed spread retain distinct raw encodings,
+        # while all rendered voice state and source-transition state agree.
+        assert a["state"][680:712] == old
+        assert b["state"][680:712] == new
 
 
 @pytest.mark.parametrize("spread", [-3, -2, -1, 0, 1, 2, 3])
@@ -1820,7 +1835,7 @@ def test_wavetable_reset_preserves_timbre_through_bounded_tail(canopy):
     assert reset["state"][200:263] == history[:-1]
     assert reset["regs"]["R0"] == 0
     assert reset["state"][263] == 1
-    assert reset["state"][264:] == [0] * 32
+    assert reset["state"][264:296] == [0] * 32
     r = canopy(controls=controls)
     assert any(r["out"])
     r = canopy(controls=controls, blocks=3)
@@ -2044,3 +2059,384 @@ def test_wavetable_v5_master_requires_fine_clock_capability(canopy):
     canopy(controls=controls, edits={**timing, 12: 515, 20: 217000})
     r = canopy(controls=controls, edits={**timing, 12: 515, 20: 433000})
     assert wt_float(r["state"][239]) == pytest.approx(0.01, rel=1e-6)
+
+
+def fm_controls(
+    algorithm=0,
+    balance=50,
+    ratio_a=3,
+    ratio_b=8,
+    feedback=0,
+    attack=5,
+    decay=40,
+    sustain=50,
+    release=15,
+    env=100,
+    velocity=100,
+    wheel=100,
+    depth=70,
+    mix=0,
+):
+    values = spread_controls()
+    values[0] = 10 | (0x4000 << 16)
+    values[1] = 3
+    values[2] = values[18] = depth
+    values[6] = values[21] = mix
+    for index, value in enumerate(
+        (
+            algorithm,
+            balance,
+            ratio_a,
+            ratio_b,
+            feedback,
+            attack,
+            decay,
+            sustain,
+            release,
+            env,
+            velocity,
+            wheel,
+        )
+    ):
+        values[16 + index] |= value << 16
+    return values
+
+
+def fm_histories(result):
+    return {
+        (result["state"][i], result["state"][i + 1] & 256): result["state"][i : i + 48]
+        for i in range(296, 680, 48)
+        if result["state"][i]
+    }
+
+
+@pytest.mark.parametrize("algorithm", range(4))
+def test_fm_graphs_execute_actual_sharc_and_keep_note_ownership(canopy, algorithm):
+    import math
+
+    controls = fm_controls(algorithm=algorithm, feedback=40)
+    r = canopy([note(1, 60, 127)], controls=controls, blocks=2)
+    assert r["regs"]["R0"] == 0
+    samples = [wt_float(w) for w in r["out"]]
+    assert all(math.isfinite(x) and abs(x) <= 0.08 for x in samples)
+    assert max(map(abs, samples)) > 0.001, (
+        r["state"][:8],
+        r["state"][680:716],
+        fm_histories(r),
+    )
+    assert set(voices(r)) == {1}
+    assert (1, 0) in fm_histories(r)
+    assert r["instructions"] / 2 < 100000
+
+
+@pytest.mark.parametrize("event_count", [4, 8])
+def test_fm_worst_case_seven_groups_and_graph_morph_fit_ceiling(canopy, event_count):
+    controls = fm_controls(
+        algorithm=3, feedback=100, env=200, velocity=200, wheel=200, mix=64, depth=127
+    )
+    canopy([note(i + 1, 60 + 3 * i) for i in range(4)], controls=controls, blocks=12)
+    r = canopy(
+        [note(i + 5, 62 + 3 * i) for i in range(event_count)],
+        controls=fm_controls(algorithm=0, feedback=100, mix=64, depth=127),
+    )
+    assert r["regs"]["R0"] == 0
+    assert r["state"][32] and r["state"][40] and r["state"][136]
+    assert r["instructions"] < 100000
+    print("FM seven-group graph-transition instructions", r["instructions"])
+
+
+@pytest.mark.parametrize(
+    "control,bad",
+    [
+        (16, 4),
+        (17, 101),
+        (18, 16),
+        (19, 16),
+        (20, 101),
+        (21, 128),
+        (22, 128),
+        (23, 101),
+        (24, 128),
+        (25, 201),
+        (26, 201),
+        (27, 201),
+        (28, 1),
+    ],
+)
+def test_fm_rejects_bad_bank_before_any_voice_write(canopy, control, bad):
+    controls = fm_controls()
+    before = canopy([note(1, 60)], controls=controls)["state"]
+    controls[control] = (controls[control] & 65535) | bad << 16
+    r = canopy([note(2, 64)], controls=controls)
+    assert r["regs"]["R0"] == 0xFFFFFFFF
+    assert r["state"] == before
+
+
+def test_fm_reset_tail_then_reused_token_has_fresh_route_and_envelope(canopy):
+    controls = fm_controls(env=200, wheel=200)
+    warm = canopy(
+        [note(1, 60, 127), [3, 0, 0, 1, 127, 0]], controls=controls, blocks=80
+    )
+    history = fm_histories(warm)[1, 0]
+    assert wt_float(history[5]) > 0
+    reset = canopy(reset=2)
+    assert reset["regs"]["R0"] == 0
+    assert reset["instructions"] <= 1600
+    assert reset["state"][296:680] == warm["state"][296:680]
+    tail = canopy(controls=controls, blocks=4, generation=2)
+    assert not fm_histories(tail)
+    fresh = canopy([note(1, 64, 60, owner=0x100)], controls=controls, generation=2)
+    h = fm_histories(fresh)[1, 0]
+    assert h[1] & 63 == 16
+    assert wt_float(h[5]) < wt_float(history[5])
+
+
+def test_fm_full_reset_fits_published_ceiling_and_clears_all_state(canopy):
+    canopy([note(1, 60)], controls=fm_controls(), blocks=8)
+    r = canopy(reset=1)
+    assert r["regs"]["R0"] == 0 and r["state"] == [0] * 744
+    assert r["instructions"] <= 1600
+    print("FM full reset instructions", r["instructions"])
+
+
+def test_fm_source_change_preserves_held_owners_without_running_both_engines(canopy):
+    r = canopy([note(1, 60), note(2, 64)], controls=wavetable_controls(), blocks=16)
+    before = {token: row[:2] for token, row in voices(r).items()}
+    for controls in [
+        fm_controls(),
+        wavetable_controls(table=4),
+        fm_controls(algorithm=3),
+    ]:
+        for _ in range(12):
+            r = canopy(controls=controls)
+            assert {token: row[:2] for token, row in voices(r).items()} == before
+            assert r["regs"]["R0"] == 0 and r["instructions"] < 100000
+        assert r["state"][712] == controls[1]
+        assert wt_float(r["state"][713]) == 1
+
+
+def test_fm_reentry_reinitializes_dirty_history_payload(canopy):
+    controls = fm_controls(algorithm=3, feedback=100, env=200, velocity=200)
+    canopy([note(1, 60, 127), note(2, 67, 90)], controls=controls, blocks=16)
+    canopy(controls=wavetable_controls(table=4), blocks=12)
+    faded = canopy(controls=controls, blocks=4)
+    assert wt_float(faded["state"][713]) == 0
+    assert any(faded["state"][296:680])  # Previous FM payload remains dirty.
+    # The same held-note state with empty history is the reentry oracle. A
+    # source handoff must initialize every reused record before rendering it.
+    empty_history = dict(enumerate(faded["state"]))
+    empty_history.update(dict.fromkeys(range(296, 680), 0))
+    reference = canopy(controls=controls, state=0x20054000, state_edits=empty_history)
+    actual = canopy(controls=controls)
+    assert actual["out"] == reference["out"]
+    assert actual["state"] == reference["state"]
+
+
+@pytest.mark.parametrize("enter_fm", [True, False])
+@pytest.mark.parametrize(
+    "spread,order,descending",
+    [
+        (0, 4, False),
+        (3, 4, False),
+        (-3, 4, False),
+        (-3, 4, True),
+        (-3, 3, True),
+        (3, 3, True),
+    ],
+    ids=["neutral", "expressive", "downward", "reverse", "played-down", "played-up"],
+)
+def test_fm_source_handoff_with_eight_onsets_fits_ceiling(
+    canopy, enter_fm, spread, order, descending
+):
+    fm = fm_controls(
+        algorithm=3, feedback=100, depth=127, mix=64, env=200, velocity=200, wheel=200
+    )
+    wavetable = wavetable_controls(table=4, depth=100)
+    wavetable[6] = wavetable[21] = 64
+    initial = [
+        note(i + 1, 60 + 3 * (3 - i if descending else i), 127) for i in range(4)
+    ]
+    if spread:
+        for controls in (fm, wavetable):
+            controls[0] = (controls[0] & 65535) | (0x4080 << 16)
+            controls[3] = 127
+            controls[19] = (controls[19] & 0xFFFF0000) | 127
+            controls[10] = order
+            controls[11] = spread + 3
+            controls[23] = (controls[23] & 0xFFFF0000) | order
+            controls[24] = (controls[24] & 0xFFFF0000) | (spread + 3)
+        initial += [[3, 0, 0, 1, 127, 0], [4, 0, 0, 0, 16383, 0]]
+    source, destination = (wavetable, fm) if enter_fm else (fm, wavetable)
+    canopy(initial, controls=source, blocks=12)
+    faded = canopy(controls=destination, blocks=4)
+    assert wt_float(faded["state"][713]) == 0
+    # The next callback adopts the new engine and initializes its histories
+    # while the full event batch creates both shared tails and pending voices.
+    r = canopy(
+        [note(i + 5, 62 + 3 * (7 - i if descending else i), 127) for i in range(8)],
+        controls=destination,
+        state_edits={146: 89999} if spread else None,
+    )
+    assert r["regs"]["R0"] == 0
+    assert r["state"][712] == destination[1]
+    assert r["state"][32] and r["state"][40] and r["state"][136]
+    assert r["instructions"] < 100000
+    print(
+        "FM source-handoff eight-onset instructions",
+        enter_fm,
+        spread,
+        order,
+        descending,
+        r["instructions"],
+    )
+
+
+@pytest.mark.parametrize(
+    "drift,parent_token,phase",
+    [(0, 1, None), (127, 1, None), (0, 2, None), (127, 2, None), (0, 2, 0.5)],
+)
+def test_fm_same_pitch_arp_inherits_full_parent_signal_history(
+    canopy, drift, parent_token, phase
+):
+    controls = fm_controls(algorithm=3, feedback=55, env=180, velocity=125, wheel=150)
+    controls[3] = drift
+    controls[19] = (controls[19] & 0xFFFF0000) | drift
+    canopy(
+        [note(parent_token, 60, 110), [3, 0, 0, 1, 90, 0]], controls=controls, blocks=8
+    )
+    controls = fm_controls(
+        algorithm=1,
+        ratio_a=5,
+        ratio_b=7,
+        feedback=30,
+        env=180,
+        velocity=125,
+        wheel=150,
+        mix=64,
+    )
+    controls[3] = drift
+    controls[19] = (controls[19] & 0xFFFF0000) | drift
+    # The second triangle half can produce IEEE negative zero at DRFT0.
+    r = canopy(
+        controls=controls,
+        state_edits={} if phase is None else {133: wt_bits(phase)},
+    )
+    assert r["state"][155] == parent_token and r["state"][136] == 1
+    histories = fm_histories(r)
+    pad = histories[parent_token, 0]
+    child = histories[r["state"][136], 256]
+    if drift == 0 or parent_token == 1:
+        # The audible filter and modulation state must agree, not just carrier phase.
+        for i in [2, 3, 4, 5, 7, 8, *range(9, 41), 47]:
+            assert wt_float(child[i]) == pytest.approx(wt_float(pad[i]), abs=0.00002), i
+    else:
+        # Opposite token parity has opposite drift: retain independent PM/FIR
+        # history while inheriting the parent's timbre envelope and controls.
+        for i in [5, 8, *range(32, 41)]:
+            assert wt_float(child[i]) == pytest.approx(wt_float(pad[i]), abs=0.00002), i
+        assert abs(wt_float(child[2]) - wt_float(pad[2])) > 0.01
+    assert child[1] & 63 == pad[1] & 63 == 0
+
+
+def test_fm_wheel_is_per_route_and_cc121_resets_only_its_owner(canopy):
+    controls = fm_controls(depth=10, wheel=200)
+    before = canopy(
+        [note(1, 60, 100), note(2, 60, 100, owner=0x100)], controls=controls, blocks=2
+    )
+    assert fm_histories(before)[1, 0][8] == fm_histories(before)[2, 0][8]
+    r = canopy([[3, 0, 0, 1, 127, 0]], controls=controls, blocks=3)
+    histories = fm_histories(r)
+    assert wt_float(histories[1, 0][8]) > wt_float(histories[2, 0][8])
+    held = canopy([[3, 0x100, 0, 121, 0, 0]], controls=controls)
+    assert held["state"][264] == 127
+    reset = canopy([[3, 0, 0, 121, 0, 0]], controls=controls)
+    assert reset["state"][264] == 0
+
+
+def test_fm_feedback_extreme_and_owner_churn_preserve_eight_record_bound(canopy):
+    import math
+
+    for batch in range(7):
+        controls = fm_controls(
+            algorithm=batch % 4,
+            ratio_a=15,
+            ratio_b=15,
+            feedback=100,
+            depth=127,
+            env=200,
+            mix=64,
+        )
+        r = canopy(
+            [note(batch * 4 + i + 1, 48 + batch * 3 + i) for i in range(4)],
+            controls=controls,
+            blocks=3,
+        )
+        assert r["regs"]["R0"] == 0
+        assert all(
+            math.isfinite(wt_float(w)) and abs(wt_float(w)) < 1 for w in r["out"]
+        )
+        assert len(fm_histories(r)) <= 8
+        assert set(voices(r)).issubset(set(range(batch * 4 + 1, batch * 4 + 5)))
+
+
+def test_fm_live_ratio_bandwidth_taper_is_sample_linear(canopy):
+    import math
+
+    from tools.patchkit.canopy_fm_tables import halfband
+
+    before = canopy([note(1, 84, 127)], controls=fm_controls(depth=127), blocks=20)
+    history = [wt_float(w) for w in fm_histories(before)[1, 0]]
+    increment = math.atan2(
+        wt_float(voices(before)[1][4]), wt_float(voices(before)[1][5])
+    ) / (4 * math.pi)
+    target_scale = max(0, min(1, (0.18 - 8 * increment) * 8)) * min(
+        1, 0.007 / (8 * increment)
+    )
+    rendered = canopy(controls=fm_controls(ratio_a=15, ratio_b=15, depth=127))
+    actual = [wt_float(w) for w in rendered["out"]]
+    assert wt_float(fm_histories(rendered)[1, 0][47]) == pytest.approx(
+        target_scale, abs=1e-6
+    )
+
+    def reference(linear):
+        a, b, c = history[2:5]
+        depth = history[8]
+        even, odd = history[9:24], history[24:32]
+        ratio_a, ratio_b = history[37:39]
+        ramp_gain = (1 - (1 - 0.004158) ** 32) / 32
+        step_a, step_b = (8 - ratio_a) * ramp_gain, (8 - ratio_b) * ramp_gain
+        taps = halfband()
+        output = []
+        for sample in range(32):
+            depth += (1 - depth) * 0.004158
+            scale = (
+                history[47] + (target_scale - history[47]) * (sample + 1) / 32
+                if linear
+                else target_scale
+            )
+            ratio_a += step_a
+            ratio_b += step_b
+            internal = []
+            for _ in range(2):
+                a += ratio_a * increment
+                b += ratio_b * increment
+                c += increment
+                index = 4 * depth * scale
+                x = math.sin(2 * math.pi * c + index * math.sin(2 * math.pi * a))
+                y = math.sin(2 * math.pi * c + index * math.sin(2 * math.pi * b))
+                internal.append((x + y) * 0.5)
+            value = taps[0] * (internal[1] + even[14])
+            value += sum(
+                taps[2 * j] * (even[j - 1] + even[14 - j]) for j in range(1, 8)
+            )
+            value += 0.5 * odd[6]
+            output.append(value * 0.08)
+            even = [internal[1], *even[:14]]
+            odd = [internal[0], *odd[:7]]
+        return output
+
+    expected = reference(True)
+    abrupt = reference(False)
+    assert max(abs(a - b) for a, b in zip(actual, expected, strict=True)) < 0.00002
+    # This witness would fail if the new cap were applied at the block edge.
+    assert max(abs(a - b) for a, b in zip(actual, abrupt, strict=True)) > 0.001

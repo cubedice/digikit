@@ -21,7 +21,15 @@ def floats(words):
 def engine():
     source = "\n".join(
         (SOURCE / name).read_text()
-        for name in ("voice.s", "tuning.s", "blend.s", "wavetable.s", "wavetables.s")
+        for name in (
+            "voice.s",
+            "fm.s",
+            "fm-tables.s",
+            "tuning.s",
+            "blend.s",
+            "wavetable.s",
+            "wavetables.s",
+        )
     )
     source += """
 .SECTION/PM seg_pmco;

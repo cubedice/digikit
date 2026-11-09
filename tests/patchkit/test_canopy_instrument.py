@@ -29,7 +29,8 @@ def instrument(request):
         source += "\n" + LEGACY.read_text()
     else:
         source += "\n" + "\n".join(
-            (CANOPY / (name + ".s")).read_text() for name in ("wavetable", "wavetables")
+            (CANOPY / (name + ".s")).read_text()
+            for name in ("wavetable", "wavetables", "fm", "fm-tables")
         )
     obj = pk_sharc.assemble(source)
     sections, initial, address = {}, {}, 0x20060000

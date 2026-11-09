@@ -555,15 +555,17 @@ _ca_next_octave:
     JUMP _ca_octave;
 _ca_sort:
     R10 = DM(_ca_count);
+    R8 = DM(_ca_order);
+    R9 = 3;
 _ca_sort_pass:
     I0 = _ca_notes;
-    R11 = DM(_ca_count);
+    // Each pass leaves the highest remaining candidate in its final position.
+    R11 = R10;
     R11 = R11 - 1;
     IF LE RTS;
+    R3 = 0;
 _ca_sort_pair:
-    R0 = DM(_ca_order);
-    R1 = 3;
-    COMP(R0, R1);
+    COMP(R8, R9);
     IF EQ JUMP _ca_sort_admission;
     R0 = DM(0, I0);
     R1 = DM(8, I0);
@@ -593,20 +595,35 @@ _ca_sort_octaves:
 _ca_sort_compare:
     COMP(R0, R1);
     IF LE JUMP _ca_sorted;
-    R12 = 5;
+    R3 = 1;
 _ca_swap:
+    // Five payload words move together; the three padding words stay untouched.
     R0 = DM(0, I0);
     R1 = DM(8, I0);
     DM(0, I0) = R1;
     DM(8, I0) = R0;
-    MODIFY(I0, 1) (NW);
-    R12 = R12 - 1;
-    IF NE JUMP _ca_swap;
-    MODIFY(I0, -5) (NW);
+    R0 = DM(1, I0);
+    R1 = DM(9, I0);
+    DM(1, I0) = R1;
+    DM(9, I0) = R0;
+    R0 = DM(2, I0);
+    R1 = DM(10, I0);
+    DM(2, I0) = R1;
+    DM(10, I0) = R0;
+    R0 = DM(3, I0);
+    R1 = DM(11, I0);
+    DM(3, I0) = R1;
+    DM(11, I0) = R0;
+    R0 = DM(4, I0);
+    R1 = DM(12, I0);
+    DM(4, I0) = R1;
+    DM(12, I0) = R0;
 _ca_sorted:
     MODIFY(I0, 8) (NW);
     R11 = R11 - 1;
     IF NE JUMP _ca_sort_pair;
+    R3 = PASS R3;
+    IF EQ RTS;
     R10 = R10 - 1;
     IF NE JUMP _ca_sort_pass;
     RTS;

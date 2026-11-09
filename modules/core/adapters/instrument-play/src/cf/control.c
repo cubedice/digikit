@@ -17,7 +17,7 @@ extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
 extern int instrument_sound_prepare(int allow_refresh);
 extern uint32_t instrument_sound_tune(void);
-static const uint32_t limits[8] = {0x49525031,1,1,100000,1600,8,128,1184};
+static const uint32_t limits[8] = {0x49525031,1,1,100000,1600,8,128,2976};
 const uint32_t *instrument_runtime_policy(void) { return limits; }
 static int enabled, usb=1, din=1, channel=1;
 static uint32_t phase, prepared, healthy, fault_generation;
@@ -40,6 +40,8 @@ static int pad_family=0, pad_color=64, pad_drift=0, pad_attack=5, pad_release=15
 static int arp_mix=0, arp_bpm=120, arp_rate=4, arp_gate=50;
 static int arp_order=0, arp_octaves=0, arp_swing=0, arp_clock=0, arp_restart=0, pad_strum=0;
 static int wt[12]={0,0,0,10,0,0,0,100,5,15,100,100};
+static int fm[13]={32,0,50,3,8,0,5,40,50,15,100,100,100};
+uint32_t instrument_src_pages(void) { return pad_family==3 ? 4 : 3; }
 static dk_ui_menu *tone_menu;
 static dk_ui_menu *input_menu, *shape_menu, *sound_menu;
 static uint32_t pad_dirty=1;
@@ -224,6 +226,7 @@ static void preset_snapshot(CpPreset *p)
         (uint16_t)pad_attack,(uint16_t)pad_release};
     for(uint32_t i=0;i<16;++i) p->control[i]=v[i];
     for(uint32_t i=0;i<12;++i) p->control[16+i]=(uint16_t)wt[i];
+    for(uint32_t i=0;i<13;++i) p->fm[i]=(uint16_t)fm[i];
     p->bpm=(uint16_t)arp_bpm; p->family=(uint8_t)pad_family;
     p->mode=keyboard.mode; p->clock=(uint8_t)arp_clock;
     const KbShape *shape=keyboard.preset_shape_active ? &keyboard.preset_shape : &keyboard.shapes[keyboard.slot];
@@ -235,9 +238,7 @@ static void src_requested(CpPreset *current)
 {
     if(!src_initialized) { cs_init(&src_state); src_initialized=1; }
     cs_native_tune(&src_state,instrument_sound_tune());
-    preset_snapshot(current); cs_sync(&src_state,current->control);
-    cs_metadata(&src_state,current->mode | ((uint32_t)current->clock<<2) |
-        ((uint32_t)current->family<<4) | ((uint32_t)current->bpm<<8));
+    preset_snapshot(current); cs_import(&src_state,current);
 }
 uint32_t instrument_src_context(uint32_t track,uint32_t page,int visible)
 {
@@ -259,11 +260,11 @@ int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint3
     uint32_t id=CS_NONE;
     int result=cs_edit(&src_state,token,encoder,detents,now,&id);
     if(result!=CS_EDIT) return result;
-    uint32_t sr=dkrt_irq_mask(); int v=src_state.value[id];
+    uint32_t sr=dkrt_irq_mask(); int v=id<CP_CONTROLS ? src_state.value[id] : 0;
     switch(id) {
     case CP_CHORD: chord_apply(src_state.mode,(uint32_t)v); break;
     case CP_VOICING: voicing=v; keyboard.voicing=(uint8_t)v; keyboard.update=1; break;
-    case CP_COLOR: pad_color=v; break;
+    case CP_COLOR: if(pad_family==3) fm[0]=v; else pad_color=v; break;
     case CP_DRIFT: pad_drift=v; break;
     case CP_STRUM: pad_strum=v; break;
     case CP_ARP_MIX: arp_mix=v; break;
@@ -274,8 +275,15 @@ int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint3
     case CP_SWING: arp_swing=v; break;
     case CP_RESTART: arp_restart=v; break;
     case CP_LATCH: latch=v; kb_latch(&keyboard,v); break;
-    case CP_WT_TABLE: pad_family=(int)((src_state.metadata>>4)&3u); wt[0]=v; break;
-    default: if(id>=CP_WT_TABLE && id<CP_CONTROLS) wt[id-CP_WT_TABLE]=v; break;
+    case CS_WAVE:
+        pad_family=(int)((src_state.metadata>>4)&3u);
+        pad_color=src_state.legacy_color;
+        for(uint32_t i=0;i<12;++i) wt[i]=src_state.wavetable[i];
+        for(uint32_t i=0;i<13;++i) fm[i]=src_state.fm[i];
+        break;
+    default: if(id>=16 && id<CP_CONTROLS) {
+        if(pad_family==3) fm[id-15]=v; else wt[id-16]=v;
+    } break;
     }
     pad_dirty=1; dkrt_irq_restore(sr);
     return result;
@@ -285,6 +293,7 @@ void instrument_src_poll(uint32_t now)
     if(!src_initialized) return;
     is_poll(&src_status,now,mi_status_reply);
     if(is_detail_confirmed(&src_status,now)) {
+        if(pad_family==3 && src_status.detail_schema<4) return;
         if(src_status.detail_schema>=3) cs_applied(&src_state,src_status.generation,src_status.detail_control,src_status.detail);
         else {
             uint32_t legacy[32];
@@ -393,6 +402,7 @@ static void preset_load(void *ctx,int value)
     arp_gate=p.control[CP_GATE]; arp_swing=p.control[CP_SWING]; arp_restart=p.control[CP_RESTART];
     pad_attack=p.control[CP_ATTACK]; pad_release=p.control[CP_RELEASE];
     for(uint32_t i=0;i<12;++i) wt[i]=p.control[16+i];
+    for(uint32_t i=0;i<13;++i) fm[i]=p.fm[i];
     pad_family=p.family; arp_clock=p.clock; arp_bpm=p.bpm; pad_dirty=1;
     preset_pending=0;
     dkrt_irq_restore(sr);
@@ -618,8 +628,8 @@ void instrument_play_tick(void)
     /* The DSP bank and its presentation values come from one locked snapshot.
      * The same revision owns SRC pending markers and the audio configuration. */
     CpPreset current; src_requested(&current);
-    const uint16_t *v=current.control;
-    uint32_t values[32]={9|((uint32_t)current.mode<<8)|(src_state.native_tune<<16),current.family,
+    const uint16_t *v=src_state.value;
+    uint32_t values[32]={10|((uint32_t)current.mode<<8)|(src_state.native_tune<<16),current.family,
         v[CP_COLOR],v[CP_DRIFT],v[CP_ATTACK],v[CP_RELEASE],v[CP_ARP_MIX],current.bpm,
         v[CP_RATE],v[CP_GATE],v[CP_ORDER],v[CP_OCTAVES],v[CP_SWING],current.clock,
         v[CP_RESTART],(uint32_t)v[CP_STRUM]*3/2,
@@ -646,9 +656,9 @@ void instrument_play_tick(void)
         else prepared=(uint32_t)result;
     }
     if (phase == 1 && prepared && !mi_ledger.reset_mask &&
-        !mi_config_submit(0,src_state.revision,0x43505339,values,32)) { phase=2; pad_dirty=0; }
+        !mi_config_submit(0,src_state.revision,0x43505341,values,32)) { phase=2; pad_dirty=0; }
     if (phase==3 && src_state.revision>mi_transport.applied[0] &&
-        !mi_config_submit(0,src_state.revision,0x43505339,values,32)) pad_dirty=0;
+        !mi_config_submit(0,src_state.revision,0x43505341,values,32)) pad_dirty=0;
     if (phase == 2 && instrument_midi_ready(0,mi_ledger.epoch,mi_ledger.generations[0])) {
         if (!mi_route_enable(MI_PANEL,0,0,0) &&
             (!enabled || !usb || !mi_route_enable(0,(uint32_t)channel-1,0,0)) &&

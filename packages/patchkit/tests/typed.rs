@@ -38,11 +38,14 @@ fn digest_without_dsp(syx: &[u8]) -> String {
 /// DT2 moved 2026-11-08 for the generation-scoped page capability and native
 /// three-page allocation. A machine-object-only substitution reproduced the
 /// original f4e19a9e pin, the pre-existing HEAD image, and this new image exactly.
+/// DT2 moved 2026-11-09 for four-page native vectors. Substituting only the DT2
+/// machines object from 640dc649 reproduced the previous f3c01683 pin exactly;
+/// the current object changes section 3 only (+20 bytes), reproducing df87acb4.
 const PINS: &[(&str, &str, &str)] = &[
     (
         "Digitakt_II_OS1.17.syx",
         "test/patched-pluck",
-        "f3c01683193593a3a8422098b63f164deb4485620a8e00931b671fa60da5f3f4",
+        "df87acb4809e1a20a5d1070fac82b3c6c226663bc1c03a8c7ad328bfcd6b3e8d",
     ),
     (
         "Digitone_II_OS1.12.syx",

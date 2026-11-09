@@ -10,6 +10,8 @@
 .GLOBAL _wt_validate;
 .EXTERN _wt_factory;
 .EXTERN _cp_envelopes;
+.EXTERN _fm_bank;
+.GLOBAL _wt_atan;
 
 // R4 original 32-word CPS9 bank. Return R0=1 and I0 a low-word validation
 // copy, or R0=0. No instance or user input is written during validation.
@@ -67,12 +69,23 @@ _wt_prepare:
     COMP(R0, R1);
     IF NE RTS;
     R0 = DM(9, I1);
+    R1 = DM(_fm_bank);
+    R1 = PASS R1;
+    IF NE R0 = R1;
     I2 = R0;
     R0 = DM(0, I2);
     R0 = FEXT R0 BY 0:8;
+    R1 = 10;
+    COMP(R0, R1);
+    IF EQ JUMP _wt_version_ready;
     R1 = 9;
     COMP(R0, R1);
     IF NE RTS;
+_wt_version_ready:
+    R0 = DM(1,I2);
+    R1 = 3;
+    COMP(R0,R1);
+    IF EQ RTS;
     R0 = DM(1, I2);
     R1 = 2;
     COMP(R0, R1);

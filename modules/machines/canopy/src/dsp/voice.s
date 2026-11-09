@@ -16,6 +16,8 @@
 .EXTERN _cp_tuning;
 .EXTERN _wt_begin_slot;
 .EXTERN _wt_tick;
+.EXTERN _fm_enabled;
+.EXTERN _fm_render;
 _cp_note_on:
     R8 = PASS R8;
     IF EQ JUMP _cp_reject;
@@ -342,6 +344,12 @@ _cp_render_samples:
     F0 = F4 * F0;
     F5 = F5 - F0;
     F4 = F9;
+    R0 = DM(_fm_enabled);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_legacy_samples;
+    CALL _fm_render;
+    JUMP _cp_samples_done;
+_cp_legacy_samples:
     CALL _wt_begin_slot;
     // Harmonics fade out BEFORE Nyquist, using the bent/drifted coefficient.
     F0 = 0.05;
@@ -418,6 +426,7 @@ _cp_sample:
     DM(I2, M6) = F0;
     R13 = R13 - 1;
     IF NE JUMP _cp_sample;
+_cp_samples_done:
     // One Newton normalization step per block bounds float32 rotation drift.
     F0 = F2 * F2;
     F1 = F3 * F3;

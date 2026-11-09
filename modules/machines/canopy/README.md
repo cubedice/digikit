@@ -1,10 +1,13 @@
 # CANOPY implementation
 
-This directory contains the four-note pad instrument with movement, presets and three SRC pages for the
+This directory contains the four-note pad instrument with movement, presets and native SRC pages for the
 [CANOPY design](../../../docs/design/canopy.md). Its dynamic package uses V2
 reset/process callbacks and an assigned machine type. It requires the optional
 DTII 1.17 `core/instrument-play` adapter; ordinary firmware cannot admit it.
-The engine supports Velvet/Reed and factory wavetable families, drift and local envelopes.
+The engine supports Velvet/Reed, factory wavetable and four-operator FM families,
+drift and local envelopes. FM adds a fourth, conditional FM ENV page.
+The FM source requires matching CPSA firmware and package builds; the installation
+and acceptance results below describe the preceding wavetable revision.
 Full Stage 5 and Stage 6 wavetable acceptance passed in the emulator with matching
 CPS9 firmware and package builds, including Overloop recording, crossfades,
 transfers and shared release tails. The matching wavetable firmware and module
@@ -74,15 +77,16 @@ and PRESETS for save/load. Performance controls are no longer duplicated there.
 ## Wavetable controls
 
 Press SRC to cycle SOUND, ARP and TONE. **TONE B / WAVE** selects VELVT,
-REED, ANLG, GLASS, VOCAL, ORGAN or METAL directly. The first two are the original
-synth sounds; the other five are wavetables. There is no separate engine menu.
+REED, ANLG, GLASS, VOCAL, ORGAN, METAL or FM directly. The first two are the original
+synth sounds; the next five are wavetables. FM has its own TONE layout and a
+conditional fourth FM ENV page, described below. There is no separate engine menu.
 TONE C-G apply to wavetables and show `--` for Velvet/Reed; their remembered
 values return when a wavetable is selected.
 
 | Encoder | TONE control | Meaning |
 | --- | --- | --- |
 | A | TUNE | Stock DTII tuning, shared with SOUND |
-| B | WAVE | VELVT, REED, ANLG, GLASS, VOCAL, ORGAN or METAL |
+| B | WAVE | VELVT, REED, ANLG, GLASS, VOCAL, ORGAN, METAL or FM |
 | C | POS | Continuous position 1.00-8.00 through eight related waves |
 | D | DEP | Scan depth 0-100%; full depth reaches 3.5 frames either side |
 | E | HZ / RATE | 0.01-10.00 under HZ, or four bars through 1/16 with tempo sync |
@@ -115,12 +119,63 @@ Native TUNE, source LEV, track LEVEL and routing are outside these presets.
 
 The factory waves are original, reproducibly generated data, compiled into the
 module. No sample-bank upload is needed. User-table import is a later extension.
-Presets use CPST v3 (96 bytes), including all wavetable controls and factory-table
-version 1. The existing 64-byte v1/v2 presets remain readable and receive neutral
-wavetable defaults. Loading an older preset does not rewrite it, but SAVE CURRENT SOUND
-then writes v3; older firmware cannot read that updated record. Native Sound/project
-persistence and parameter locks remain
+Presets use CPST v4 (128 bytes), including independent wavetable and FM settings.
+Existing 64-byte v1/v2 and 96-byte v3 presets remain readable and receive neutral
+defaults for their missing source settings. Loading an older preset does not
+rewrite it, but SAVE CURRENT SOUND then writes v4; older firmware cannot read
+that updated record. Native Sound/project persistence and parameter locks remain
 outside this custom preset format.
+
+## Playing FM
+
+On TONE, turn B / WAVE past METAL to FM. CHRD still selects PLAY or a generated
+chord on SOUND. SOUND D becomes DEP: low values are soft and simple, higher
+values add harmonic complexity. Turning WAVE away from FM remembers its settings
+and restores the other source's own COLOR/POS and modulation parameters.
+
+| Knob | FM TONE | FM ENV |
+| --- | --- | --- |
+| A | Native TUNE | Timbre attack |
+| B | WAVE | Timbre decay |
+| C | ALG | Timbre sustain |
+| D | BAL between tones X/Y | Timbre release |
+| E | RTA, modulator A ratio | Signed ENV amount |
+| F | RTB, modulator B ratio | Signed VEL-to-depth amount |
+| G | FDBK on modulator B | Signed WHEL-to-depth amount |
+| H | Native source LEV | Native source LEV |
+
+Press SRC to cycle SOUND, ARP, TONE and FM ENV. The fourth page is omitted when
+another source is selected. TUNE/LEV, dedicated LEVEL/DATA and held-SRC values use
+the native drawing and scales. WAVE, ALG and ratio choices use four raw encoder
+ticks per item. MIX continues to mean pad versus arp; BAL means FM tone X versus Y.
+
+TWIN uses two parallel FM pairs. STACK puts B through A into X and blends X with
+a clean Y. SUM combines both modulators into X alongside clean Y. CHAIN routes
+B through A, X and Y, with X/Y available for the final blend. DEP scales the
+modulation; LEV changes output volume without changing those connections.
+
+Ratios include musical integer/fraction choices and selected inharmonic values.
+They are frequency multipliers, not cents or octave spread. A 1x/2x TWIN with
+moderate DEP is a useful glass-pad starting point; an inharmonic ratio and falling
+FM envelope make bell-like tones. CHAIN becomes complex sooner than TWIN.
+
+High notes and high ratios progressively reduce the available modulation depth
+to control aliasing. This changes brightness, not the LEV setting. The depth
+limit moves smoothly when you change ratios; feedback keeps its separate
+high-frequency attenuation. Two-times internal sampling and filtering reduce
+aliasing but do not make extreme FM or feedback alias-free.
+
+Switching between FM and another source uses a short fade out and in, about
+5.33 ms altogether. Held keys remain owned throughout. Same-pitch arp notes with
+matching drift inherit the parent's FM history; intentionally detuned or
+transposed arp notes keep their own signal history.
+
+FM ENV shapes brightness independently of loudness. ENV, VEL and WHEL default
+to zero. Positive ENV adds complexity during its envelope; negative ENV reduces
+it. The amplitude envelope in SOUND SETUP continues to determine audible note
+attack/release. Wheel modulation follows the incoming USB/DIN channel, like the
+wavetable source. Exact technical contracts and acceptance requirements are in
+the [FM design](../../../docs/design/canopy.md#four-operator-fm-extension-cpsa).
 
 ## Earlier carrier and transport evidence
 
@@ -282,7 +337,7 @@ the final output to zero in the measured window. This is emulator evidence only.
 
 ## Current V2 callback
 
-The V2 callback in `src/dsp/v2.s` uses a 1,184-byte allocator-owned
+The V2 callback in `src/dsp/v2.s` uses a 2,976-byte allocator-owned
 instance and normalized input events. It shares the atomic voice/pedal engine
 with the transport proof. `test_canopy_v2.py` checks it both directly and through
 the protected registry dispatcher, including paired held-voice phase/gain state,
@@ -347,7 +402,8 @@ Arp gates never release pad owners. The lanes share two bounded release tails.
 The sixteen-word CPS5 layout is version, family, color, drift, attack, release,
 mix, local BPM, rate, gate, order, octaves, swing, clock, restart, strum blocks.
 Strum uses 1500 blocks/second internally. CPS1/CPS3/CPS4 remain accepted.
-CPS5 originally used 768-byte instances; the current CPS9 instance is 1,184 bytes.
+CPS5 used 768-byte instances and CPS9 used 1,184 bytes; the current CPSA
+instance is 2,976 bytes for all source families.
 Use the matching instrument-play firmware policy.
 Both MASTER modes wait for a complete observed boundary interval before playing.
 MASTER PHASE uses the firmware's musical clock for 1..8 notes/quarter, including

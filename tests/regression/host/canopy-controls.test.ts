@@ -79,5 +79,5 @@ test('native controls and malformed banks are rejected', async () => {
   await expect(canopyControls(f.cf, f.rawBank).settled(28)).rejects.toThrow('Invalid CANOPY custom control');
   expect(f.cf).not.toHaveBeenCalled();
   f.rawBank.mockResolvedValue([]);
-  await expect(canopyControls(f.cf, f.rawBank).settled(0)).rejects.toThrow('Invalid CPS9 bank length');
+  await expect(canopyControls(f.cf, f.rawBank).settled(0)).rejects.toThrow('Invalid CANOPY configuration bank length');
 });

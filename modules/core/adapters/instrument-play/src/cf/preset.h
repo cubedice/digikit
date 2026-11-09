@@ -11,14 +11,20 @@ enum {
     CP_WT_TABLE=16, CP_WT_POS=17, CP_WT_DEPTH=18, CP_WT_RATE=19,
     CP_WT_SHAPE=20, CP_WT_RESET=21, CP_WT_CLOCK=22, CP_WT_ENV=23,
     CP_WT_ATTACK=24, CP_WT_RELEASE=25, CP_WT_VELOCITY=26, CP_WT_WHEEL=27,
-    CP_CONTROLS=28, CP_RECORD_BYTES=96, CP_LEGACY_BYTES=64, CP_SLOTS=4,
-    CP_TABLE_VERSION=1
+    CP_CONTROLS=28, CP_RECORD_BYTES=128, CP_WAVETABLE_BYTES=96, CP_LEGACY_BYTES=64, CP_SLOTS=4,
+    CP_TABLE_VERSION=1, CP_FM_VERSION=1,
+    CP_FM_DEPTH=CP_COLOR, CP_FM_ALG=16, CP_FM_BAL=17, CP_FM_RTA=18, CP_FM_RTB=19,
+    CP_FM_FB=20, CP_FM_ATTACK=21, CP_FM_DECAY=22, CP_FM_SUSTAIN=23,
+    CP_FM_RELEASE=24, CP_FM_ENV=25, CP_FM_VELOCITY=26, CP_FM_WHEEL=27
 };
 typedef struct {
     uint16_t control[CP_CONTROLS];
     uint16_t bpm;
     uint8_t family, mode, clock;
     KbShape shape;
+    /* Remembered FM depth followed by the twelve active FM controls. The
+     * original control bank always stores legacy COLOR and WT parameters. */
+    uint16_t fm[13];
 } CpPreset;
 /* OCTAVES stores signed spread with a +3 bias: 0..6 means -3..+3 additional
  * octaves in one direction. V1 stored total upward octaves (1..3).
@@ -27,6 +33,7 @@ typedef struct {
 int cp_valid(const CpPreset *p);
 /* Initialize the extension without changing any legacy sound parameter. */
 void cp_wavetable_defaults(uint16_t controls[CP_CONTROLS]);
+void cp_fm_defaults(uint16_t fm[13]);
 int cp_encode(const CpPreset *p, uint8_t out[CP_RECORD_BYTES]);
 /* Validate everything, including canonical padding, before touching *out. */
 int cp_decode(CpPreset *out, const uint8_t *bytes, uint32_t length);

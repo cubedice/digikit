@@ -340,8 +340,12 @@ _cu_detail:
     R2 = FEXT R2 BY 0:8;
     R3 = 9;
     COMP(R2, R3);
-    R2 = 0x30b00;
-    IF EQ R1 = R2;
+    R3 = 0x30b00;
+    IF EQ R1 = R3;
+    R3 = 10;
+    COMP(R2,R3);
+    R3 = 0x40b00;
+    IF EQ R1 = R3;
     R1 = R0 OR R1;
     DM(5, I4) = R1;
     R1 = DM(2, I3);
@@ -363,6 +367,9 @@ _cu_detail_word:
     I1 = R1;
     R1 = DM(0, I1);
     R1 = FEXT R1 BY 0:8;
+    R2 = 10;
+    COMP(R1,R2);
+    IF EQ JUMP _cu_detail_wavetable;
     R2 = 9;
     COMP(R1, R2);
     IF EQ JUMP _cu_detail_wavetable;

@@ -22,7 +22,7 @@ beforeAll(() => {
       '-no-pie',
       '-I' + path.join(root, 'modules/core/fw/include'),
       path.join(import.meta.dirname, 'canopy-native.c'),
-      ...['src-state.c', 'src-display.c', 'status.c'].map((p) => path.join(src, p)),
+      ...['src-state.c', 'src-display.c', 'status.c', 'preset.c'].map((p) => path.join(src, p)),
       path.join(root, 'modules/core/adapters/machines/src/cf/dt2/src-pages.c'),
       '-o',
       binary,
@@ -50,9 +50,19 @@ test('resolved panel bridge consumes only CANOPY and releases ownership on view 
 afterAll(() => {
   if (dir) fs.rmSync(dir, { recursive: true, force: true });
 });
-test.each(['paint', 'tone', 'routing', 'values', 'delayed', 'overflow', 'alternate', 'attach', 'tick', 'track'])(
-  'native SRC: %s',
-  (scenario) => {
-    expect(execFileSync(binary, [scenario], { encoding: 'utf8', timeout: 2000 }).trim()).toBe('ok');
-  },
-);
+test.each([
+  'paint',
+  'tone',
+  'fm-envelope',
+  'fm-presentation',
+  'routing',
+  'values',
+  'delayed',
+  'overflow',
+  'alternate',
+  'attach',
+  'tick',
+  'track',
+])('native SRC: %s', (scenario) => {
+  expect(execFileSync(binary, [scenario], { encoding: 'utf8', timeout: 2000 }).trim()).toBe('ok');
+});

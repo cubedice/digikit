@@ -1,11 +1,14 @@
 # CANOPY technical design
 
-Current control revision (2026-11-09): SOUND B combines PLAY and chord selection;
-TONE B combines the two original sounds and five factory wavetables. The
-[current controls](#controls-and-display) and [CPS9 extension](#factory-wavetable-extension-cps9)
-below define this revision, which is being implemented. Earlier dated stage
-results remain evidence for their corresponding builds, not acceptance of this
-control revision.
+Current revision (2026-11-09): SOUND B combines PLAY and chord selection;
+TONE B combines the two original sounds, five factory wavetables and FM. The
+[current controls](#controls-and-display), [wavetable extension](#factory-wavetable-extension-cps9)
+and [FM extension](#four-operator-fm-extension-cpsa) define this revision.
+The FM implementation and focused emulator acceptance are complete. The
+[FM handover](../handovers/HANDOVER-2026-11-09-canopy-fm.md) records DSP, sound-quality,
+compiled UI/preset, native-pixel and Overloop results, plus outstanding wider-gate
+failures. Physical FM sound/timing qualification remains open. Earlier dated
+stage results remain evidence for their corresponding builds.
 
 Status: Stage 5 implementation and DTII OS 1.17 emulator acceptance complete,
 2026-11-02. The admitted CANOPY pad instrument has explicit presets, live
@@ -1711,7 +1714,12 @@ When stealing a non-silent slot, fade it for at most 64 samples before initializ
 
 Use conservative fixed headroom for the maximum pool and smooth PAD/ARP mixing; avoid instantaneous gain normalization when the note count changes. Guard finite values and the SDK level bound. At pure PAD/ARP endpoints, skip inaudible synthesis where possible while preserving event, envelope and clock state.
 
-Set a memory target of at most 4 KiB per track, plus at most 64 KiB of shared tables and fixed transport/configuration buffers; confirm total placement against other loaded modules. If the CPU ceiling fails, reduce oscillator density before reducing the four-note musical limit.
+Keep persistent state within 4 KiB per track and confirm total placement against
+other loaded modules. The original additive design targeted 64 KiB of shared
+tables/buffers; the accepted factory-wavetable extension supersedes that shared
+target and uses the admitted 512 KiB L2 range. Report the complete module image,
+scratch and instance footprint for each new engine. Preserve the four-note musical
+limit while fitting the existing callback ceiling.
 
 Current conformance derives approximately 12,140 added instructions per track/block for a 16-track DTII case; see [conformance](../../tools/patchkit/pk_conform.py). That projection is not available headroom with Overloop. Count event processing, four simultaneous attacks, arp transitions and tails inside the same bounded block budget. Do not spend the old whole-device note-on allowance independently on every track.
 
@@ -1733,7 +1741,10 @@ On a pattern switch that keeps CANOPY on the same track, retain KEYBOARD tokens 
 
 ## Controls and display
 
-The current layout uses three native SRC pages. The stock header, track-level
+The current layout uses three native SRC pages, plus FM ENV when FM is selected.
+The table below shows the original/wavetable layout; the
+[FM layout](#src-presentation) substitutes DEP on SOUND D and FM controls on TONE.
+The stock header, track-level
 column, page dots, TUNE and source LEV retain their existing drawing, editing and
 hold-SRC values behavior. Custom parameters use the native parameter font and
 cell positions. Detailed note and ownership information remains in STATUS.
@@ -1761,20 +1772,20 @@ own shape. VOIC and STRM remain unavailable in PLAY; learned USER voicing is
 fixed. The LEARN modal owns input and prevents all hidden SRC edits.
 
 TONE B is one ordered list: `VELVT`, `REED`, `ANLG`, `GLASS`, `VOCAL`, `ORGAN`,
-`METAL`. The first two choices select the original synthesis families; the
-remaining five select the corresponding wavetable directly. No separate engine
+`METAL`, `FM`. The first two choices select the original synthesis families;
+the next five select the corresponding wavetable and the last selects FM. No separate engine
 chooser is required. TONE C-G show `--` for VELVT/REED and consume turns without
-changing their remembered wavetable settings; feedback identifies them as
-wavetable-only controls. WAVE, TUNE and LEV stay available. SOUND D edits COLR
-for VELVT/REED and POS for the five wavetable choices. COLOR and POS retain
-independent values when switching sounds.
+changing their remembered settings; feedback directs the player to ANLG through
+FM for these controls. WAVE, TUNE and LEV stay available. SOUND D edits COLR
+for VELVT/REED, POS for the five wavetable choices, and DEP for FM. COLOR, POS
+and FM DEP retain independent values when switching sounds.
 
 Discrete lists use four raw encoder ticks per choice with no time-based
 acceleration. Partial movement accumulates only for the same control/context;
 direction reversals, page/ownership changes and external value changes clear
 the remainder. Lists clamp at their endpoints and discard excess endpoint
 movement. This applies to CHRD, VOIC, arp RATE/ORDR/OCTS/RST/LTCH,
-WAVE/SHAP/RST and tempo-synchronized wavetable RATE. Continuous macros retain
+WAVE/SHAP/RST, FM ALG/RTA/RTB and tempo-synchronized wavetable RATE. Continuous macros retain
 their existing scales. Stock TUNE/LEV and LEVEL/DATA keep native behavior.
 
 The module settings contain SETUP beside the separate STATUS view. The global
@@ -1795,19 +1806,21 @@ existing note-lifecycle rules.
 
 Keep logical parameter identities separate from their displayed choices.
 CHRD still stores `CP_CHORD` 0..11 plus the existing keyboard-mode metadata;
-the displayed PLAY+12 list is not a new preset enumeration. WAVE still stores
-family 0..2 and `CP_WT_TABLE` 0..4, changing both atomically in one sound
-snapshot. Selecting VELVT/REED retains the last table and its modulation values.
-Neither selector adds a virtual control ID or changes the CPS9/CPST formats.
+the displayed PLAY+12 list is not a new preset enumeration. WAVE stores
+family 0..3 and the remembered `CP_WT_TABLE` 0..4, changing the active sound
+atomically. Selecting VELVT/REED retains the last table and its modulation values.
+FM settings are remembered separately. WAVE uses view-only ID 30 so it cannot
+collide with FM ALG at active ID 16; it is not a serialized parameter.
 `CP_SOURCE` 13 remains the reserved keyboard event-source field; it does not
-store WAVE. Logical IDs 0..15 and 16..27 retain their established meanings.
+store WAVE. Logical IDs 0..15 retain their established meanings except COLOR
+becomes DEP in FM. IDs 16..27 select the active wavetable or FM bank.
 
-All custom controls use the validated 32-word CPS9 configuration and explicit
-preset service. TUNE and LEV retain native Sound backing. Requested values may
+All custom controls use the validated 32-word CPSA configuration and explicit
+CPST v4 preset service, with legacy decoding retained. TUNE and LEV retain native Sound backing. Requested values may
 appear immediately, but pending feedback clears only for a matching applied
 generation and complete revision. A family change invalidates previously
 captured encoder ownership because SOUND D changes its meaning; a delayed
-COLOR turn must not become a POS edit. Other machines use their stock handlers,
+COLOR turn must not become a POS or FM DEP edit. Other machines use their stock handlers,
 and page changes alone never change the sound.
 
 ## SRC interface specification
@@ -2287,10 +2300,155 @@ existing 64-word telemetry record. CPST v3 is 96 bytes and includes factory-tabl
 version 1; v1/v2 records receive neutral wavetable defaults. Presets remain
 explicit DigiKit sound slots, separate from native Sound/project data.
 
-User-table import, hard sync, FM and PWM are later extensions. Wavetable
+User-table import, hard sync and PWM are later extensions. Wavetable
 implementation requires fresh sound-quality, instruction-bound, native-page and
 CANOPY/Overloop coexistence checks; earlier additive-engine acceptance does not
 qualify the new renderer. Physical release qualification remains a separate gate.
+
+## Four-operator FM extension (CPSA)
+
+FM is family 3 and the eighth WAVE choice, after METAL. Keyboard mode, chord
+selection, ownership, arp, native tuning and native volume controls remain shared
+with the other sources. FM is implemented as phase modulation using four sine
+operators. The modulators A/B have independent ratios; the audible taps X/Y
+follow the played fundamental. The fixed evaluation order is B, A, X, Y.
+
+| ALG | Modulation connections | Audible taps |
+| --- | --- | --- |
+| TWIN | A to X, B to Y | X, Y |
+| STACK | B to A to X | X, clean Y |
+| SUM | A and B to X | X, clean Y |
+| CHAIN | B to A to X to Y | X, Y |
+
+BAL blends only the final X/Y taps. CHAIN takes normalized X before BAL,
+amplitude envelopes, velocity loudness and native level; a volume edit must not
+change the modulation index. Feedback is a bounded delayed path on B. DEP scales
+the graph edges with per-algorithm calibration. Algorithms share one acyclic
+graph and smooth its edge gains, avoiding a second four-operator renderer.
+
+RTA/RTB use the ordered ratios 0.25, 0.5, 0.75, 1, 1.25, sqrt(2), 1.5,
+sqrt(3), 2, 2.5, 3, 4, 5, 6, 7 and 8. The source retains phase while
+ratios/tuning change. Drift and pitch bend move the base note coherently.
+The source selector, algorithm and ratios use four raw encoder ticks per choice,
+without acceleration. Continuous controls are smoothed.
+
+### SRC presentation
+
+SOUND D is DEP while FM is selected. The existing ARP page is unchanged.
+FM ENV is a fourth SRC page, available only for FM. The native page vector must
+own four entries; extending its end pointer without allocating capacity is
+forbidden. Leaving FM removes the envelope page from navigation.
+
+| Knob | FM TONE | FM ENV |
+| --- | --- | --- |
+| A | Native TUNE | ATK |
+| B | WAVE | DEC |
+| C | ALG | SUS |
+| D | BAL | REL |
+| E | RTA | ENV |
+| F | RTB | VEL |
+| G | FDBK | WHEL |
+| H | Native LEV | Native LEV |
+
+FM ENV changes timbre, not the note's amplitude envelope. Its signed amount,
+velocity and routed wheel amounts add to base DEP and clamp to the supported
+index range. Zero modulation amounts are neutral. ATK/DEC use a full-scale rate
+of `10 + 14 * value` milliseconds; REL uses `40 + 64 * value` milliseconds.
+Decay/release duration scales with the envelope distance traversed. The SRC
+page displays their raw 0..127 values. Sustained common notes retain
+their history; arp voices with matching pitch and drift inherit their owner's
+phase and timbre history. Released and
+stolen voices retain the history required by their existing release ramps.
+
+WAVE is a view-only identity, distinct from FM ALG despite both using the first
+engine parameter position. Native TUNE/LEV, dedicated track LEVEL/DATA and held
+SRC show-values retain stock presentation and semantics. MIX remains exclusively
+pad/arp balance. Switching sources remembers legacy COLOR, all wavetable
+parameters, and FM DEP plus its twelve engine parameters independently.
+
+### Transport and presets
+
+CPSA magic is `0x43505341`; the low header version is 10. Its 32-word size and
+common/duplicate fields match CPS9. The twelve upper halves of words 16..27
+contain the selected family's parameters. Family 0..2 retains wavetable field
+interpretation; family 3 selects the FM table below. Upper halves 28..31 remain
+zero. Validation and publication are atomic. CPS9 retains its old family 0..2
+contract and must never reinterpret old fields as FM.
+
+| Active ID | FM meaning | Range | Default |
+| --- | --- | --- | --- |
+| 2 | DEP (common audio word 2) | 0..127 | 32 |
+| 16 | ALG | 0..3 | 0 |
+| 17 | BAL | 0..100 | 50 |
+| 18 | RTA | 0..15 | 3 (1x) |
+| 19 | RTB | 0..15 | 8 (2x) |
+| 20 | FDBK | 0..100 | 0 |
+| 21 | ATK | 0..127 | 5 |
+| 22 | DEC | 0..127 | 40 |
+| 23 | SUS | 0..100 | 50 |
+| 24 | REL | 0..127 | 15 |
+| 25 | ENV | 0..200, biased by 100 | 100 (zero) |
+| 26 | VEL | 0..200, biased by 100 | 100 (zero) |
+| 27 | WHEL | 0..200, biased by 100 | 100 (zero) |
+
+Detail schema 4 publishes the active bank with the same 28-control/native-tune
+layout as schema 3. Old schemas cannot acknowledge FM controls. Family metadata,
+controls and revision must agree before clearing pending feedback.
+
+CPST v4 is 128 bytes. Existing common and remembered wavetable fields retain
+their offsets through byte 91. Base COLOR remains the remembered legacy value.
+FM DEP occupies bytes 92..93; twelve FM values occupy 94..117; FM format version
+1 is byte 118; bytes 119..123 are canonical zero; checksum is bytes 124..127.
+Versions 1/2/3 load with neutral/default FM parameters and retain their original
+sound. Loading does not rewrite storage. Saving writes v4, which older firmware
+must reject. All remembered banks are validated, including inactive families.
+These explicit presets do not add native Sound/project persistence or p-locks.
+
+### Implementation and acceptance boundaries
+
+Dispatch to the selected renderer before expensive oscillator work. A family
+transition must not overlap two wavetable paths and FM; queue only the latest
+requested destination. If overlapping renderers exceed the existing process
+ceiling, use a bounded fade-out/fade-in while retaining note ownership, and
+document the brief level dip. Never silently reduce polyphony or raise ceilings.
+
+The renderer uses a 2x internal rate, an interpolated 1,024-entry sine table and
+a 31-tap halfband decimator. Oversampling alone does not make FM alias-free.
+Pitch-dependent depth limiting uses `q = max(1, ratioA, ratioB) * frequency / 96000`
+and multiplies the index by `clamp((0.18 - q) * 8, 0, 1) * min(1, 0.007 / q)`.
+The ratio bound includes both requested and currently smoothed ratios, preventing
+a downward ratio edit from briefly exposing the old high-frequency operator at
+the new, larger index. Full depth remains available through 672 Hz maximum
+carrier/operator frequency; higher notes and ratios become progressively gentler.
+This taper applies to modulation depth, not final loudness or feedback strength.
+Each voice interpolates its depth scale across one 32-sample block when the
+target changes. This avoids a block-edge step; for up to 0.67 ms the scale can
+differ from its steady-state bound. Feedback retains its separate original
+high-frequency attenuation and is not multiplied by the additional `0.007 / q`
+depth cap.
+
+At integer ratios with feedback off, executed-render spectral checks require
+energy outside harmonic bins below -35 dB for the selected stress matrix. This
+is a bounded audible-band test, not an alias-free claim. Delayed feedback can
+produce nonperiodic spectra, so that harmonic-bin test does not qualify feedback
+quality. Full-feedback lifecycle tests instead check finite output, headroom,
+ownership and processing bounds; physical sound/timing qualification stays open.
+
+Four foreground groups, one arp group and two shared tails are retained. Each
+voice owns its control ramps and signal history. Matching-pitch/drift arp inheritance
+copies the parent's pre-render signal state; transposed or oppositely detuned onsets preserve their own
+phase/filter state while inheriting timbre and route controls. Route-scoped
+wheel/reset semantics and generation/lane ownership are preserved; token alone
+is insufficient for auxiliary history. The 2,976-byte persistent state is
+separate from callback-local snapshot scratch.
+
+Acceptance requires executed-kernel tests for pitch, envelopes, modulation,
+gain/headroom, source transitions, tails, reused tokens and finite output;
+instruction bounds at maximum event and voice load; compiled native SRC/preset
+tests; and CANOPY/Overloop coexistence. Physical sound/timing qualification is a
+separate result and must not be inferred from emulator passes. Wavetable
+carriers, richer operator waveforms and independent operator envelopes are
+follow-on features, outside this first FM implementation.
 
 ## Tests and code owners
 
