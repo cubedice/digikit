@@ -9,10 +9,9 @@ Full Stage 5 and Stage 6 wavetable acceptance passed in the emulator with matchi
 CPS9 firmware and package builds, including Overloop recording, crossfades,
 transfers and shared release tails. The matching wavetable firmware and module
 were installed on the physical DTII on 2026-11-08; boot, package readback, preserved
-values and the new SRC pages were checked. This installation predates the direct
-CHRD/WAVE control revision described below; that revision has not been installed
-on hardware. Physical timing/resource qualification
-remains open.
+values and the new SRC pages were checked. The direct CHRD/WAVE control revision
+was installed on 2026-11-09 with slower-selector checks, saved-sound restoration
+and USB/DIN routing verification. Physical timing/resource qualification remains open.
 This is not a hardware-qualified release.
 
 Build and pack with `patchkit build digikit/canopy` and

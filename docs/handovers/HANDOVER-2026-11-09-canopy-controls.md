@@ -98,7 +98,32 @@ depending on that bug; its rejection and output-buffer checks remain intact.
   across the original run and targeted retry. Formatting still prevents a
   passing changed-file gate; no merge-gate pass is claimed.
 
-This candidate has not been installed on the physical DTII. The verified
-installed image remains `f9c1b80776a93049`; its sound was preserved in slot 3,
-with external USB/DIN enabled. Do not overwrite that installation backup or any
-of the five pre-existing untracked native UI mockups.
+## Physical installation, 2026-11-09
+
+At the user's explicit request, the candidate above was installed on the DTII.
+The complete image was accepted and the device rebooted to `56edcafce3ba99d0`.
+INFO reports no safe mode, crash, open upload or read-only card. CANOPY,
+Overloop and remote loaded with zero module faults and guards enabled. All
+three module files were read back and match their pre-installation hashes;
+the existing CANOPY package required no replacement.
+
+Fresh backups are in `out/canopy-controls-install-backup/`. The current Metal
+sound was saved into previously empty preset slot 2 as a 96-byte v3 record.
+Existing presets 3/4 and routing records remain byte-identical. The preserved
+sound is PLAY, METAL, POS 3.05, DEP 14%, HZ 0.35, TRI and TRIG; native TUNE is
+0.00, source LEV 87 and track LEVEL 112. The preserved preset was loaded again
+after the temporary control checks. USB/DIN and external MIDI remain enabled
+on channel 1, confirmed in both saved routing and the INPUT screen.
+
+Physical knob checks show CHRD staying PLAY after one raw count and becoming
+MAJ after the fourth; WAVE stays METAL after one count and becomes ORGAN after
+the fourth. All three SRC pages and the compact five-group setup were captured.
+A transient LINK LOST toast appeared after menu/reset transitions; two later
+STATUS captures report PLAY NO NOTES, LATCH OFF and PEDAL UP, and the native
+header was observed clear afterward. These observations establish installation,
+settings preservation and UI behavior, not physical audio or timing qualification.
+No physical audio was captured during this installation.
+
+Logs and metadata: `out/canopy-controls-hardware-flash.log` and
+`out/canopy-controls-hardware-installed.json`. Preserve this backup, the earlier
+wavetable installation backup and the five pre-existing untracked native UI mockups.
