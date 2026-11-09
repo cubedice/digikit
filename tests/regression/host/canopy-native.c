@@ -96,6 +96,14 @@ int main(int argc,char **argv)
         event((uint8_t *)e,8,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7);
         event((uint8_t *)e,3,350,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e);
         assert(state.value[CP_WT_POS]==350 && stock_turns==2);
+        for(unsigned i=0;i<3;++i) {
+            event((uint8_t *)e,2,1,i,0); ip_src_turn((uint8_t *)v,(uint8_t *)e);
+            assert(state.value[CP_WT_TABLE]==0);
+        }
+        event((uint8_t *)e,2,1,1000,1); ip_src_turn((uint8_t *)v,(uint8_t *)e);
+        assert(state.value[CP_WT_TABLE]==1 && stock_turns==2);
+        event((uint8_t *)e,2,4,1001,0); ip_src_turn((uint8_t *)v,(uint8_t *)e);
+        assert(state.value[CP_WT_TABLE]==2 && stock_turns==2);
         ip_src_draw((uint8_t *)v,canvas);
         for(int y=0;y<64;++y) for(int x=0;x<128;++x)
             if(y<11 || x<23 || x>=124 || (y<37 && x<48) || (y>=38 && x>=101))

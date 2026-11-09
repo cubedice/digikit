@@ -3,7 +3,7 @@
 Development-only DTII OS 1.17 adapter for one admitted V2 instance on track 1
 (the zero-based DSP track 0). It is not in a default patch set. There is no
 hardware release approval. The development policy admits one instance with a
-800-byte state ceiling and declared 100000/1000 process/reset ceilings.
+1184-byte state ceiling and declared 100000/1600 process/reset ceilings.
 Instruction-test limits are not a measured hardware cycle budget.
 
 The native UI revision uses the stock TUNE, source LEV and track LEV paths on
@@ -11,6 +11,15 @@ SOUND, with native fonts and bounded custom cells. ARP H aliases SOUND G's MIX.
 Hold SRC uses the firmware's momentary values state. Detailed notes, latch,
 pedal and clock state are under `DIGIKIT > MODULES > CANOPY > SETTINGS > STATUS`.
 See the [accepted UI contract](../../../../docs/design/canopy-ui-review.md).
+
+SOUND B / CHRD now selects PLAY or any generated chord directly; TONE B / WAVE
+selects Velvet, Reed or one of the five wavetables. Both are UI presentations of
+existing mode/chord and family/table fields, so CPS9 and preset formats remain
+unchanged. Discrete lists accumulate four raw ticks per item without acceleration.
+Mode transitions retire old note ownership; root chord changes update held notes.
+Family transitions retain the held DSP voices and invalidate queued SRC edits.
+The global setup entry is now CANOPY, with INPUT, CHORD LEARN, SOUND SETUP,
+WAVETABLE TIMBRE and PRESETS submenus. Duplicate performance controls were removed.
 
 The DTII 1.17 KeyboardView bridge intercepts resolved performance notes before
 stock mono audition. It retains native key-up closures and uses a separate PANEL
@@ -42,7 +51,7 @@ The normal-file loader publishes the assigned type only after CREATE. Because
 that happens after the stock machine chooser is constructed, a narrowly scoped
 hook remembers the persistent view and refreshes its items once on the UI task
 when the admitted type appears. The firmware module set remains boot-only. The
-KEYBOARD setup menu starts disabled and exposes USB, DIN and channel 1-16.
+CANOPY > INPUT setup starts disabled and exposes USB, DIN and channel 1-16.
 The corresponding stock MIDI receive ports must also be enabled.
 Sound changes revoke ownership before in-place writes; committed pattern changes
 may refresh the same admitted carrier. Route edits preserve key tombstones.
@@ -61,7 +70,7 @@ and sample card. No firmware build in this document authorizes a device flash.
 ## Keyboard modes and shape memory
 
 Stage 2 keeps the sine renderer and adds a bounded ColdFire musical mapper to
-`core/instrument-play`. Open DIGIKIT > KEYBOARD and explicitly enable routing.
+`core/instrument-play`. Open DIGIKIT > CANOPY > INPUT and explicitly enable routing.
 PLAY admits four foreground notes, preserving pitch, octave, velocity and token
 ownership; the existing DSP supplies the two bounded release tails. Stolen held
 keys stay in the physical ledger until their own releases and never reappear.
@@ -85,12 +94,13 @@ The mapper handles pedal ownership; bend and wheel are forwarded once to the DSP
 CC121 also emits a zero wheel value for its USB/DIN route; CC120 preserves it.
 Unsupported controllers still follow the existing stock fallthrough policy.
 
-Choose one of eight SHAPE SLOT values, then LEARN TO ROOT. Capture auditions in
-isolated PLAY with latch disabled, accumulating up to four unique pitches even
+In CANOPY > CHORD LEARN, choose one of eight SHAPE SLOT values, then LEARN TO ROOT.
+Capture auditions in isolated PLAY with latch disabled, accumulating up to four unique pitches even
 after release. The fifth distinct pitch reports FULL. SAVE checks the displayed
 session/revision, rejects an empty or changed capture, and stores ascending
 intervals relative to its lowest note. CANCEL or NO preserves the prior shape.
 Both exits restore the previous mode/latch and invalidate held-key ownership.
+After saving, select SOUND B / CHRD = USER to play the learned shape.
 For example C-G-B-E above C saves 0,7,11,16; root D plays D-A-C#-F#.
 
 All eight templates occupy one versioned 48-byte `canopy/shapes/v1` record in the

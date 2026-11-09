@@ -9,15 +9,17 @@ Full Stage 5 and Stage 6 wavetable acceptance passed in the emulator with matchi
 CPS9 firmware and package builds, including Overloop recording, crossfades,
 transfers and shared release tails. The matching wavetable firmware and module
 were installed on the physical DTII on 2026-11-08; boot, package readback, preserved
-values and the new SRC pages were checked. Physical timing/resource qualification
+values and the new SRC pages were checked. This installation predates the direct
+CHRD/WAVE control revision described below; that revision has not been installed
+on hardware. Physical timing/resource qualification
 remains open.
 This is not a hardware-qualified release.
 
 Build and pack with `patchkit build digikit/canopy` and
 `patchkit pack digikit/canopy --device dt2 -o out/patch/canopy-dt2.dkm` through
 the repository's Python wrapper. Select CANOPY on track 1. In firmware containing
-the adapter, SETTINGS > DIGIKIT > KEYBOARD opens CANOPY SETUP for USB/DIN,
-channel and EXTERNAL MIDI. The built-in KEYBOARD/TRIG route is available on
+the adapter, SETTINGS > DIGIKIT > CANOPY > INPUT opens USB/DIN,
+channel and EXTERNAL MIDI settings. The built-in KEYBOARD/TRIG route is available on
 the admitted track without enabling external MIDI.
 Enable the corresponding stock MIDI receive ports as well. Development
 installation uses the upload/selection protocol; the generic module-browser fit
@@ -31,7 +33,7 @@ Only track 1 is admitted. Other tracks and channels retain stock behavior.
 four pending-replacement records in a caller-owned 256-byte bank.
 Each note has its own token, gate, oscillator phase, velocity and linear envelope.
 Attack defaults to 80 ms and release to one second; both are adjustable in
-KEYBOARD setup (a note released during attack ends sooner). Output is mono, in
+CANOPY > SOUND SETUP (a note released during attack ends sooner). Output is mono, in
 32-sample blocks at 48 kHz. A normalized sine rotator supplies the fundamental
 and finite second/third harmonic families; harmonics fade before Nyquist.
 `src/dsp/tuning.s` supplies MIDI 0–127 coefficients at A4=440 Hz.
@@ -46,17 +48,42 @@ The adapter supplies PLAY, ROOT + TYPE and learned chord modes. The callback lay
 All Sound Off, plus 14-bit pitch bend at a fixed +/-2 semitone range, scoped to
 MIDI port/channel.
 
+## Playing and selecting sounds
+
+**SOUND B / CHRD** selects PLAY or a generated chord, including USER. PLAY sounds
+exactly the notes you press; choosing a chord switches to root-note playing.
+Turn CHRD fully left to return to PLAY.
+Changing between PLAY and root mode releases the previous phrase; press new
+keys to start. Changing chord type within root mode updates the held root.
+USER plays the learned or preset-embedded shape. VOIC and STRM are unavailable
+in PLAY, and USER keeps its learned voicing. The old read-only AUTO label is gone.
+
+CHRD, VOIC, ARP lists and TONE lists use four raw knob ticks per choice, with no
+speed-based acceleration. Small turns accumulate, reversing clears partial
+movement, and lists stop at their ends. Continuous controls and native tuning,
+source LEV and track LEVEL retain their existing scales.
+
+**WAVE chooses the sound; CHRD chooses how your keys play it.** Both are edited
+on SRC. Presets still store the original mode, chord, family and table fields;
+existing sounds need no conversion beyond the existing preset migration.
+
+SETTINGS > DIGIKIT > CANOPY contains five short groups: INPUT for connections
+and selector keys; CHORD LEARN for custom shapes; SOUND SETUP for amplitude
+attack/release and arp clock/BPM; WAVETABLE TIMBRE for scan clock and expression;
+and PRESETS for save/load. Performance controls are no longer duplicated there.
+
 ## Wavetable controls
 
-In CANOPY SETUP, highlight the current engine name (initially **VELVET**),
-press YES and choose **WAVETABLE**. Back out and press SRC to cycle SOUND, ARP
-and TONE. Existing Velvet/Reed presets retain their original sound
-controls; wavetable-only TONE controls are inactive until that engine is selected.
+Press SRC to cycle SOUND, ARP and TONE. **TONE B / WAVE** selects VELVT,
+REED, ANLG, GLASS, VOCAL, ORGAN or METAL directly. The first two are the original
+synth sounds; the other five are wavetables. There is no separate engine menu.
+TONE C-G apply to wavetables and show `--` for Velvet/Reed; their remembered
+values return when a wavetable is selected.
 
 | Encoder | TONE control | Meaning |
 | --- | --- | --- |
 | A | TUNE | Stock DTII tuning, shared with SOUND |
-| B | TABL | ANLG, GLASS, VOCAL, ORGAN or METAL; full ANALOG in turn feedback |
+| B | WAVE | VELVT, REED, ANLG, GLASS, VOCAL, ORGAN or METAL |
 | C | POS | Continuous position 1.00-8.00 through eight related waves |
 | D | DEP | Scan depth 0-100%; full depth reaches 3.5 frames either side |
 | E | HZ / RATE | 0.01-10.00 under HZ, or four bars through 1/16 with tempo sync |
@@ -304,10 +331,11 @@ without changing their original sound; old CPS5/CPS6/CPS7 banks remain accepted.
 
 ## Movement controls (CPS5 compatibility)
 
-KEYBOARD setup exposes ARP MIX (0 pad, 127 arp), LOCAL BPM (30..300),
-NOTES/Q (1..8), gate percent (1..100), UP/DOWN/UP-DOWN/AS-PLAYED/RANDOM,
-signed octave spread (-3..+3), swing (0..75), LOCAL BPM, MASTER GRID or MASTER PHASE clock,
-TRIG/PATTERN/CONTINUE restart and STRUM MS (0..500). In MASTER GRID, the
+The ARP page exposes MIX (0 pad, 127 arp), RATE (1..8 notes/quarter), gate percent
+(1..100), UP/DOWN/UP-DOWN/AS-PLAYED/RANDOM, signed octave spread (-3..+3),
+swing (0..75), TRIG/PATTERN/CONTINUE restart and latch. CANOPY > SOUND SETUP
+selects LOCAL BPM, MASTER GRID or MASTER PHASE clock and local tempo (30..300).
+SOUND F controls STRUM MS (0..500). In MASTER GRID, the
 rate becomes a whole-step multiple and swing is disabled. Clock changes
 restart timing observation. Setup values currently return to defaults at boot.
 
@@ -339,7 +367,7 @@ A lost external clock stays latched across timestamp wrap until a new pulse.
 See the design and Stage 4 handover for artifact-specific evidence. Hardware
 release remains Stage 6 qualification work; full wavetable coexistence passed in the emulator.
 Named SRC pages and presets are implemented and included in the passing full
-Stage 5 wavetable acceptance. The wavetable build is physically installed with
+Stage 5 wavetable acceptance. The November 8 wavetable build is installed with
 boot/readback/UI checks complete; physical timing/resource qualification remains open.
 
 ### Pad/arp note levels

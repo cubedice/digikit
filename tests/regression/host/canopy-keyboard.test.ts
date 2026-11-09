@@ -313,6 +313,16 @@ test('a live voicing edit emits an output-only packet without consuming queued p
   expect(c!.queued).toBe(1);
 });
 
+test.each([1, 2, 3])('USER keeps learned intervals while retaining generated voicing %i', (voicing) => {
+  const states = run(
+    `mode 1\nvoicing ${voicing}\nlearn\non 0 0 60 90\non 0 0 67 90\non 0 0 76 90\ntick\n` +
+      'save\ntype 10\non 0 0 62 90\ntick\ntype 0\ntick',
+  );
+  expect(notes(states.at(-2)!)).toEqual([62, 69, 78]);
+  const generated = voicing === 1 ? [62, 69, 78] : voicing === 2 ? [66, 69, 74] : [69, 74, 78];
+  expect(notes(states.at(-1)!)).toEqual(generated);
+});
+
 test('panic and controller reset fall back across ports without exceeding eight commands', () => {
   for (const cc of [120, 121]) {
     const states = run(
@@ -457,10 +467,17 @@ test('source or fault suspension cancels isolated capture and preserves saved me
 });
 
 test('direct controller plus unflushed UI diff fails within its output buffer', () => {
-  const [s] = run(
-    'mode 1\nlearn\non 0 0 60 90\non 0 0 61 90\non 0 0 62 90\non 0 0 63 90\ntick\nsave\ntype 11\non 0 0 60 90\ntick\ntype 10\nvoicing 3\ndirectcc 120\nsnapshot',
-  ).slice(-1);
+  const states = run(
+    'mode 1\nlearn\non 0 0 60 90\non 0 0 61 90\non 0 0 62 90\non 0 0 63 90\ntick\nsave\n' +
+      'type 11\nvoicing 3\non 0 0 60 90\ntick\ntype 10\ndirectcc 120\nsnapshot',
+  );
+  const before = states.at(-2)!;
+  const s = states.at(-1)!;
+  // The generated inversion shares no pitch with learned [60,61,62,63].
+  // Four offs, four ons and the other route's controller require nine outputs.
+  expect(notes(before)).toEqual([67, 71, 72, 76]);
   expect(s!.result).toBe(-1);
+  expect(s.voices).toEqual(before.voices);
 });
 
 test('mapped phrases survive retry and same-chord latch replacement commits without note retrigger', () => {

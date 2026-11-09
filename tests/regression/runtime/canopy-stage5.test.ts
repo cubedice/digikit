@@ -204,12 +204,12 @@ test(
     }
     console.info('CANOPY: panel chord, independent release and keyboard exit passed');
     await openDigikitMenu(key);
-    await key('YES'); // KEYBOARD is the first optional setup row
-    await key('DOWN'); // skip the track heading
+    await key('YES'); // CANOPY setup is the first optional setup row
+    await key('YES'); // INPUT
     await key('YES'); // ENABLE
     await expect.poll(() => cf('ip_control', 1), { timeout: 10_000 }).toBe(1);
     await expect.poll(() => cf('ip_control'), { timeout: 30_000 }).toBe(3);
-    for (let i = 0; i < 3; i++) await key('NO');
+    for (let i = 0; i < 4; i++) await key('NO');
     expect(await cf('ip_admission', 5)).toBe(await cf('ip_control', 7));
     // Stock receive-port settings are independent of the instrument route.
     // Set the emulator fixture to receive both ports, as in the carrier proofs.
@@ -231,10 +231,21 @@ test(
     const { settled } = canopyControls(cf, rawBank);
     const setControl = (encoder: number, control: number, target: number) =>
       encoderValue(
-        (delta) => turn(encoder, delta),
+        (delta) => turn(encoder, delta * ([0, 1, 6, 7, 8, 11, 12, 16, 20, 21].includes(control) ? 4 : 1)),
         () => settled(control),
         target,
       );
+    const chordChoice = async () => {
+      const chord = await settled(0);
+      return ((await rawBank())[0]! >>> 8) & 255 ? chord + 1 : 0;
+    };
+    const setChord = (choice: number) => encoderValue((delta) => turn(2, delta * 4), chordChoice, choice);
+    const waveChoice = async () => {
+      const table = await settled(16),
+        family = (await rawBank())[1]!;
+      return family < 2 ? family : table + 2;
+    };
+    const setWave = (choice: number) => encoderValue((delta) => turn(2, delta * 4), waveChoice, choice);
     const srcPage = async (page: number) => {
       // The remembered page alone does not prove the native SRC view is bound
       // after a modal closes. A nonzero published token proves visible ownership.
@@ -262,7 +273,7 @@ test(
     await heldValues('canopy-sound-held-values');
     expect(await cf('ip_src_debug', 1)).toBe(0);
     const start = await bank();
-    for (const encoder of [2, 3, 6]) {
+    for (const encoder of [3, 6]) {
       await session.client.inputTurn(encoder, 8);
       await waitEmulated(session, 50);
     }
@@ -271,6 +282,28 @@ test(
     expect(readonly[20]).toBe(start[20]);
     await setControl(4, 2, start[18]! + 4);
     expect((await bank())[18]).toBeGreaterThan(start[18]!);
+    // A tiny turn leaves PLAY selected. Four raw ticks select the next item;
+    // changing mode is available on the track page and owns a reset boundary.
+    await turn(2, 1);
+    expect(await chordChoice()).toBe(0);
+    await session.client.call('midi.usb.in', { bytes: [0x90, 60, 100] });
+    await expect.poll(async () => (await voices()).filter((v) => v.gate === 1).length, { timeout: 15000 }).toBe(1);
+    const playGeneration = await cf('src_state');
+    await setChord(1); // MAJ, generated from a root
+    expect(await cf('ip_keyboard_status')).toBe(1);
+    expect(await cf('src_state')).toBeGreaterThan(playGeneration);
+    await expect.poll(async () => (await voices()).length, { timeout: 15000 }).toBe(0);
+    await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0, 0x90, 60, 100] });
+    await expect.poll(async () => (await voices()).filter((v) => v.gate === 1).length, { timeout: 15000 }).toBe(3);
+    const rootGeneration = await cf('src_state');
+    await setChord(0); // PLAY, direct keyboard notes again
+    expect(await cf('ip_keyboard_status')).toBe(0);
+    expect(await cf('src_state')).toBeGreaterThan(rootGeneration);
+    await expect.poll(async () => (await voices()).length, { timeout: 15000 }).toBe(0);
+    await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0, 0x90, 62, 100] });
+    await expect.poll(async () => (await voices()).filter((v) => v.gate === 1).length, { timeout: 15000 }).toBe(1);
+    await session.client.call('midi.usb.in', { bytes: [0x80, 62, 0, 0xb0, 120, 0] });
+    await expect.poll(async () => (await voices()).length, { timeout: 15000 }).toBe(0);
     await key('SRC');
     expect(await cf('ip_src_debug', 1)).toBe(1);
     await captureRemoteOled(session, 'canopy-stage5-movement');
@@ -320,9 +353,8 @@ test(
     await heldValues('canopy-tone-legacy-held-values');
     expect(await cf('ip_src_debug', 1)).toBe(2);
     const legacyTone = await rawBank();
-    await session.client.inputTurn(2, 1);
-    await waitEmulated(session, 100);
-    expect(await rawBank()).toEqual(legacyTone); // Select WAVETABLE before editing TONE.
+    for (const encoder of [3, 4, 5, 6, 7]) await turn(encoder, 4);
+    expect(await rawBank()).toEqual(legacyTone); // WAVE stays available; only C-G require a wavetable.
     await key('SRC');
     expect(await cf('ip_src_debug', 1)).toBe(0);
     for (const [encoder, index] of [
@@ -378,7 +410,7 @@ test(
     await captureRemoteOled(session, 'canopy-stage5-notes');
     expect(await cf('ip_src_debug', 5)).toBeGreaterThan(0);
     await openDigikitMenu(key);
-    await key('DOWN'); // CANOPY STATUS follows the legacy KEYBOARD shortcut.
+    await key('DOWN'); // CANOPY STATUS follows CANOPY setup.
     await key('YES');
     await waitEmulated(session, 300);
     await expect.poll(async () => (await cf('src_status', 158)) >>> 24, { timeout: 15000 }).toBe(1);
@@ -388,7 +420,7 @@ test(
     await waitEmulated(session, 150);
     expect(await cf('ip_src_debug', 3)).toBe(statusPaints);
     await key('NO');
-    await key('UP'); // Restore the root's remembered selection to KEYBOARD.
+    await key('UP'); // Restore the root's remembered selection to CANOPY.
     await key('NO');
     await key('NO');
     for (const note of [60, 64, 67]) await session.client.call('midi.usb.in', { bytes: [0x80, note, 0] });
@@ -396,7 +428,9 @@ test(
     const menuRow = (row: number, menu = 'menu') => selectMenu(menu, row);
     await openDigikitMenu(key);
     await key('YES');
-    await menuRow(13);
+    await menuRow(1); // CHORD LEARN
+    await key('YES');
+    await menuRow(1, 'shape_menu');
     await key('YES');
     await expect.poll(() => cf('ip_keyboard_status'), { timeout: 15000 }).toBe(2);
     await expect.poll(() => cf('ip_control'), { timeout: 30000 }).toBe(3);
@@ -416,13 +450,10 @@ test(
     expect(await cf('ip_keyboard_status', 8)).toBe(0);
     // USER is a chord choice within ROOT, not a read-only mode. Exercise both
     // directions through the native encoder path after learning a real shape.
-    await menuRow(6);
-    await key('YES');
-    await key('DOWN');
-    await key('YES'); // ROOT + TYPE
-    await expect.poll(() => cf('ip_keyboard_status'), { timeout: 15000 }).toBe(1);
-    for (let i = 0; i < 3; i++) await key('NO');
+    for (let i = 0; i < 4; i++) await key('NO');
     await srcPage(0);
+    await setChord(1); // ROOT mode through CHRD, without a setup-menu mode switch.
+    expect(await cf('ip_keyboard_status')).toBe(1);
     for (const chord of [10, 9, 10, 11]) {
       // The stock idle filter can consume the first packet after a long menu
       // visit (finding 78). Drain each actual input and its configuration before
@@ -433,13 +464,11 @@ test(
     }
     await captureRemoteOled(session, 'canopy-user-chord-exit');
     console.info('CANOPY: USER chord exits in both directions through native encoder B');
+    await setChord(0); // restore PLAY directly before the preset/audio checks
+    await expect.poll(() => cf('ip_keyboard_status'), { timeout: 15000 }).toBe(0);
     await openDigikitMenu(key);
     await key('YES');
-    await menuRow(6);
-    await key('YES');
-    await key('YES'); // restore PLAY before the preset/audio checks
-    await expect.poll(() => cf('ip_keyboard_status'), { timeout: 15000 }).toBe(0);
-    await menuRow(34);
+    await menuRow(4);
     await key('YES'); // PRESETS
     const savedBank = await bank();
     await menuRow(2, 'preset_menu');
@@ -472,7 +501,7 @@ test(
     expect((await bank())[18]).toBe(savedBank[18]! + 1);
     await openDigikitMenu(key);
     await key('YES');
-    await menuRow(34);
+    await menuRow(4);
     await key('YES');
     await menuRow(3, 'preset_menu');
     await key('YES'); // LOAD SAVED SOUND
@@ -580,16 +609,14 @@ test(
     await session.client.call('midi.usb.in', { bytes: [0x90, 60, 100] });
     await expect.poll(async () => (await voices()).length, { timeout: 15000 }).toBe(1);
     const wavetableHeld = (await voices())[0]!.token;
-    await openDigikitMenu(key);
-    await key('YES');
-    await menuRow(18);
-    await key('YES'); // ENGINE replaces the legacy REED toggle in the same row.
-    await key('DOWN');
-    await key('DOWN');
-    await key('YES');
-    await expect.poll(async () => (await bank())[1], { timeout: 15000 }).toBe(2);
-    for (let i = 0; i < 3; i++) await key('NO');
+    const wavetableGeneration = await cf('src_state');
     await srcPage(2);
+    for (const choice of [1, 2, 0, 2]) {
+      await setWave(choice); // REED, ANALOG, VELVET, ANALOG on the track itself.
+      expect(await voices()).toEqual([expect.objectContaining({ token: wavetableHeld, gate: 1 })]);
+      expect(await cf('src_state')).toBe(wavetableGeneration);
+    }
+    await expect.poll(async () => (await bank())[1], { timeout: 15000 }).toBe(2);
     const toneDefaults = await toneBank();
     expect(toneDefaults).toEqual([0, 0, 0, 10, 0, 0, 0, 100, 5, 15, 100, 100]);
     for (const [encoder, index, delta] of [
@@ -619,7 +646,7 @@ test(
     const savedTone = await toneBank();
     await openDigikitMenu(key);
     await key('YES');
-    await menuRow(34);
+    await menuRow(4);
     await key('YES');
     await menuRow(2, 'preset_menu');
     await key('YES');
@@ -630,7 +657,7 @@ test(
     expect((await toneBank())[1]).toBe(savedTone[1]! + 1);
     await openDigikitMenu(key);
     await key('YES');
-    await menuRow(34);
+    await menuRow(4);
     await key('YES');
     await menuRow(3, 'preset_menu');
     await key('YES');

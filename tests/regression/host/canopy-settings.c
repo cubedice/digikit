@@ -4,12 +4,12 @@
 #include "../../../modules/core/adapters/instrument-play/src/cf/control.c"
 struct dk_ui_menu {
     const dk_ui_menu_desc *desc; int open, count;
-    struct { dk_ui_act_fn *fn; void *ctx; int arg; char label[DK_UI_ROW]; } rows[32];
+    struct { dk_ui_act_fn *fn; void *ctx; int arg; int *value; int low, high; char label[DK_UI_ROW]; } rows[32];
 };
 MiLedger mi_ledger;
 MiTransport mi_transport;
 volatile uint32_t ip_view;
-static struct dk_ui_menu menus[4];
+static struct dk_ui_menu menus[12];
 static unsigned menu_count, masked, unsafe_io, token=1;
 static int exists, staged, put_error, flush_error, open_error;
 static uint8_t card[KB_RECORD_BYTES], pending_card[KB_RECORD_BYTES];
@@ -94,7 +94,7 @@ int dkrt_settings_flush(void)
     return 0;
 }
 dk_ui_menu *dk_ui_menu_new(const dk_ui_menu_desc *d)
-{ if(menu_count==4) return 0; menus[menu_count].desc=d; return &menus[menu_count++]; }
+{ if(menu_count==12) return 0; menus[menu_count].desc=d; return &menus[menu_count++]; }
 int dk_ui_open(dk_ui_menu *m) { if(open_error) return -1; m->open=1; m->count=0; m->desc->fill(m,0); return 0; }
 void dk_ui_close(dk_ui_menu *m) { m->open=0; }
 int dk_ui_is_open(const dk_ui_menu *m) { return m->open; }
@@ -102,11 +102,13 @@ void dk_ui_refresh(dk_ui_menu *m) { m->count=0; m->desc->fill(m,0); }
 void dk_ui_text(dk_ui_menu *m,const char *s) { dk_ui_action(m,s,0,0,0); }
 void dk_ui_action(dk_ui_menu *m,const char *s,dk_ui_act_fn *f,void *c,int a)
 { if(m->count<32) { int i=m->count++; m->rows[i].fn=f; m->rows[i].ctx=c; m->rows[i].arg=a;
+  m->rows[i].value=0;
   snprintf(m->rows[i].label,sizeof(m->rows[i].label),"%s",s); } }
 void dk_ui_toggle(dk_ui_menu *m,const char *s,int *v,dk_ui_act_fn *f,void *c)
-{ (void)m;(void)s;(void)v;(void)f;(void)c; }
+{ dk_ui_value(m,s,v,0,1,f,c); }
 void dk_ui_value(dk_ui_menu *m,const char *s,int *v,int a,int b,dk_ui_act_fn *f,void *c)
-{ (void)m;(void)s;(void)v;(void)a;(void)b;(void)f;(void)c; }
+{ int i=m->count; dk_ui_action(m,s,f,c,0); if(i<m->count) {
+  m->rows[i].value=v; m->rows[i].low=a; m->rows[i].high=b; } }
 void dk_ui_submenu(dk_ui_menu *m,const char *s,dk_ui_menu *child) { dk_ui_action(m,s,0,child,0); }
 int dk_ui_choice(const char *t,const char *const *i,int n,void (*done)(void *,int),void *c)
 { (void)t;(void)i;(void)n;(void)done;(void)c;return 0; }
@@ -167,7 +169,7 @@ int main(void)
             for(uint32_t i=0;i<config_count;++i) printf("%s%u",i?",":"",config_words[i]);
             puts("]}");
         }
-        else if(!strcmp(cmd,"mode")) choose_mode(0,value);
+        else if(!strcmp(cmd,"mode")) { uint32_t sr=dkrt_irq_mask(); chord_apply((uint32_t)value,keyboard.type); dkrt_irq_restore(sr); }
         else if(!strcmp(cmd,"srcpage")) src_token=instrument_src_context(0,(uint32_t)value,1);
         else if(!strcmp(cmd,"srcturn")) {
             unsigned knob; int delta;
@@ -199,7 +201,44 @@ int main(void)
             for(int i=0;i<status.count;++i) printf("%s\"%s\"",i?",":"",status.rows[i].label);
             puts("]}");
         }
-        else if(!strcmp(cmd,"type")) choose_type(0,value);
+        else if(!strcmp(cmd,"type")) { uint32_t sr=dkrt_irq_mask(); chord_apply(keyboard.mode,(uint32_t)value); dkrt_irq_restore(sr); }
+        else if(!strcmp(cmd,"voicing")) { voicing=value; keyboard.voicing=(uint8_t)value; keyboard.update=1; }
+        else if(!strcmp(cmd,"voices")) {
+            MiEvent out[8]; instrument_keyboard_events(0,mi_ledger.epoch,mi_ledger.generations[0],0,0,out);
+            printf("{\"mode\":%u,\"type\":%u,\"generation\":%u,\"family\":%d,\"table\":%d,\"voices\":[",
+                keyboard.mode,keyboard.type,mi_ledger.generations[0],pad_family,wt[0]);
+            unsigned n=0;
+            for(unsigned i=0;i<4;++i) if(keyboard.voices[i].token)
+                printf("%s[%u,%u]",n++?",":"",keyboard.voices[i].note,keyboard.voices[i].token);
+            puts("]}");
+        }
+        else if(!strcmp(cmd,"menus")) {
+            struct dk_ui_menu parent={0}; dk_app_instrument_settings_rows(&parent);
+            dk_ui_open(menu);
+            printf("{\"entry\":\"%s\",\"home\":[",parent.rows[0].label);
+            for(int i=0;i<menu->count;++i) printf("%s\"%s\"",i?",":"",menu->rows[i].label);
+            printf("],\"children\":[");
+            for(int i=0;i<menu->count;++i) {
+                struct dk_ui_menu *child=menu->rows[i].ctx;
+                if(!child) return 2;
+                dk_ui_open(child); printf("%s[",i?",":"");
+                for(int row=0;row<child->count;++row) printf("%s\"%s\"",row?",":"",child->rows[row].label);
+                printf("]"); dk_ui_close(child);
+            }
+            printf("]}\n");
+        }
+        else if(!strcmp(cmd,"menuset")) {
+            unsigned child_index,row; int setting;
+            if(sscanf(line,"%*s %u %u %d",&child_index,&row,&setting)!=3) return 2;
+            if(!menu || child_index>=(unsigned)menu->count) return 2;
+            struct dk_ui_menu *child=menu->rows[child_index].ctx;
+            dk_ui_open(child);
+            if(row>=(unsigned)child->count || !child->rows[row].value ||
+                setting<child->rows[row].low || setting>child->rows[row].high) return 2;
+            *child->rows[row].value=setting;
+            if(child->rows[row].fn) child->rows[row].fn(child->rows[row].ctx,setting);
+            dk_ui_close(child);
+        }
         else if(!strcmp(cmd,"shapeslot")) { slot=value; changed(0,0); }
         else if(!strcmp(cmd,"legacypreset")) {
             uint8_t *b=preset_card[preset_slot-1]; b[4]=(uint8_t)value; b[5]=16;

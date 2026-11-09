@@ -1,5 +1,12 @@
 # CANOPY technical design
 
+Current control revision (2026-11-09): SOUND B combines PLAY and chord selection;
+TONE B combines the two original sounds and five factory wavetables. The
+[current controls](#controls-and-display) and [CPS9 extension](#factory-wavetable-extension-cps9)
+below define this revision, which is being implemented. Earlier dated stage
+results remain evidence for their corresponding builds, not acceptance of this
+control revision.
+
 Status: Stage 5 implementation and DTII OS 1.17 emulator acceptance complete,
 2026-11-02. The admitted CANOPY pad instrument has explicit presets, live
 SOUND/MOVEMENT pages, native TUNE/LEVEL editing and revision-bound display
@@ -1726,37 +1733,91 @@ On a pattern switch that keeps CANOPY on the same track, retain KEYBOARD tokens 
 
 ## Controls and display
 
-The keyboard proof retains existing stable custom word IDs: 0 CHORD at B, 1 VOICING at C, 2 COLOR at E, and 3 DRIFT at F. Keep stock TUNE and LEVEL. Use the public module menu for source, keyboard mode, explicit MIDI route, selector octave, latch, local attack/release, arp settings, LEARN, SAVE, CANCEL and PANIC.
+The current layout uses three native SRC pages. The stock header, track-level
+column, page dots, TUNE and source LEV retain their existing drawing, editing and
+hold-SRC values behavior. Custom parameters use the native parameter font and
+cell positions. Detailed note and ownership information remains in STATUS.
 
-The release layout is:
+| Encoder | SOUND | ARP | TONE |
+| --- | --- | --- | --- |
+| A | TUNE | RATE | TUNE |
+| B | CHRD | ORDR | WAVE |
+| C | VOIC | OCTS | POS |
+| D | COLR / POS | GATE | DEP |
+| E | DRFT | SWNG | HZ / RATE |
+| F | STRM | RST | SHAP |
+| G | MIX | LTCH | RST |
+| H | LEV | MIX | LEV |
 
-| Encoder | SOUND | MOVEMENT |
-| --- | --- | --- |
-| A | TUNE | RATE |
-| B | CHORD | ORDER |
-| C | VOICING | OCTAVES |
-| D | COLOR | GATE |
-| E | DRIFT | SWING |
-| F | STRUM | RESTART |
-| G | ARP MIX | LATCH |
-| H | LEVEL | SOURCE |
+SOUND B is one ordered list: `PLAY`, `MAJ`, `MAJ6`, `SUS2`, `MIN6`, `MIN`,
+`SUS4`, `ADD9`, `DOM7`, `DIM`, `MIN7`, `USER`, `MAJ7`. PLAY sounds the notes
+actually pressed; it is an editable choice, not an `AUTO` field that cannot be
+left. Every other choice selects ROOT + TYPE and its chord. Changing between
+PLAY and ROOT uses the existing ownership reset and requires fresh key presses.
+Changing chord type while already in ROOT updates the held root through the
+existing mapper. Choosing or leaving USER preserves its learned intervals;
+USER is not labelled with a library slot number because a preset can embed its
+own shape. VOIC and STRM remain unavailable in PLAY; learned USER voicing is
+fixed. The LEARN modal owns input and prevents all hidden SRC edits.
 
-SOURCE is KEYBOARD or SEQUENCER. PLAY/ROOT + TYPE/LEARN TO ROOT is selected in setup. In KEYBOARD PLAY, CHORD, VOICING and STRUM are visibly read-only; turning B, C or F does not edit their stored generated-mode values. In KEYBOARD LEARN TO ROOT, CHORD is USER and VOICING is AS LEARNED, both read-only; transposition preserves captured intervals and spacing, while STRUM remains active. The central status strip shows the recognized chord independently of these controls. During the initial stock-page prototype, retain the numeric controls as documented generated-mode-only settings; the no-op encoder handling and named display belong to the custom-page stage. SEQUENCER uses generated chords regardless of the stored keyboard mode, so these controls are active there. LATCH is read-only in SEQUENCER; retain its stored keyboard setting, but sequencer note lengths continue to own gates.
+TONE B is one ordered list: `VELVT`, `REED`, `ANLG`, `GLASS`, `VOCAL`, `ORGAN`,
+`METAL`. The first two choices select the original synthesis families; the
+remaining five select the corresponding wavetable directly. No separate engine
+chooser is required. TONE C-G show `--` for VELVT/REED and consume turns without
+changing their remembered wavetable settings; feedback identifies them as
+wavetable-only controls. WAVE, TUNE and LEV stay available. SOUND D edits COLR
+for VELVT/REED and POS for the five wavetable choices. COLOR and POS retain
+independent values when switching sounds.
 
-Separate logical parameter IDs, storage backing and physical encoder positions. Reordering COLOR onto D must not repurpose the firmware's sample-slot storage: D has sample-specific semantics today. Route the new page's D encoder to the existing COLOR backing word instead. Stock TUNE/LEVEL keep their native handlers.
+Discrete lists use four raw encoder ticks per choice with no time-based
+acceleration. Partial movement accumulates only for the same control/context;
+direction reversals, page/ownership changes and external value changes clear
+the remainder. Lists clamp at their endpoints and discard excess endpoint
+movement. This applies to CHRD, VOIC, arp RATE/ORDR/OCTS/RST/LTCH,
+WAVE/SHAP/RST and tempo-synchronized wavetable RATE. Continuous macros retain
+their existing scales. Stock TUNE/LEV and LEVEL/DATA keep native behavior.
 
-Four fields retain firmware backing. Extra fields use a versioned module configuration bank, proposed maximum 32 32-bit words, delivered through the new interface; do not overrun V1's eight-word ABI or bypass the packer's four-control validation. Add an explicit descriptor/capability for free placement and multiple pages, leaving V1 rules intact. Maintain one effective snapshot with a revision so the displayed applied values match DSP values.
+The module settings contain SETUP beside the separate STATUS view. The global
+DigiKit menu labels the same setup entry CANOPY, replacing the ambiguous
+KEYBOARD label. SETUP contains five short groups:
 
-Reserve logical IDs 0-3 for CHORD/VOICING/COLOR/DRIFT; 4 STRUM, 5 ARP MIX, 6 RATE, 7 ORDER, 8 OCTAVES, 9 GATE, 10 SWING, 11 RESTART, 12 LATCH, 13 SOURCE, 14 LOCAL ATTACK and 15 LOCAL RELEASE. Mode, selector routing, local BPM and learned-shape data are separately versioned setup fields. TUNE and LEVEL remain stock identities. These IDs describe control identity rather than an instruction to allocate native firmware parameter slots; publish explicit enum values/ranges with the implementation and never reorder released IDs.
+| Group | Controls |
+| --- | --- |
+| INPUT | EXTERNAL MIDI, USB, DIN, CHANNEL, SAVE ROUTING, SELECTOR OCTAVE, selector channel, PANIC, RECOVER, readiness and panel hints |
+| CHORD LEARN | Shape slot, LEARN TO ROOT, shape-save status/retry and the reminder to select CHRD USER |
+| SOUND SETUP | AMP ATTACK, AMP RELEASE, ARP CLOCK and LOCAL BPM |
+| WAVETABLE TIMBRE | Scan clock, envelope amount, timbre attack/release and velocity/wheel to position |
+| PRESETS | Preset slot, saved/dirty state and explicit SAVE/LOAD |
 
-Add SRC paint/update/encoder hooks scoped to the resolved CANOPY machine, using an SDK-facing view adapter. Overloop's FX-specific draw hooks are a precedent, not a reusable SRC API. Compose the existing added-machine page hook as described below; simply painting a second screen is insufficient. Other machines use stock handlers. Page changes never mutate control values.
+Setup removes duplicate performance-page controls and the separate engine/table
+selectors. Learning, loading a preset and changing input mode retain their
+existing note-lifecycle rules.
+
+Keep logical parameter identities separate from their displayed choices.
+CHRD still stores `CP_CHORD` 0..11 plus the existing keyboard-mode metadata;
+the displayed PLAY+12 list is not a new preset enumeration. WAVE still stores
+family 0..2 and `CP_WT_TABLE` 0..4, changing both atomically in one sound
+snapshot. Selecting VELVT/REED retains the last table and its modulation values.
+Neither selector adds a virtual control ID or changes the CPS9/CPST formats.
+`CP_SOURCE` 13 remains the reserved keyboard event-source field; it does not
+store WAVE. Logical IDs 0..15 and 16..27 retain their established meanings.
+
+All custom controls use the validated 32-word CPS9 configuration and explicit
+preset service. TUNE and LEV retain native Sound backing. Requested values may
+appear immediately, but pending feedback clears only for a matching applied
+generation and complete revision. A family change invalidates previously
+captured encoder ownership because SOUND D changes its meaning; a delayed
+COLOR turn must not become a POS edit. Other machines use their stock handlers,
+and page changes alone never change the sound.
 
 ## SRC interface specification
 
-**Accepted redesign (2026-11-06):** the [native DTII UI contract](canopy-ui-review.md)
+**Accepted native layout (2026-11-06):** the [native DTII UI contract](canopy-ui-review.md)
 supersedes the layout below. The implementation now preserves native TUNE/LEV,
 fonts and hold-SRC values, maps LEVEL/DATA to native track level, adds Status,
 and bridges resolved local keyboard notes through distinct PANEL ownership.
+The combined CHRD/WAVE controls specified above supersede the earlier control
+selection instructions while retaining that native layout contract.
 The following original layout remains historical; acceptance evidence and open
 physical checks are tracked in the new contract and its implementation handover.
 
@@ -1946,11 +2007,12 @@ cannot reconstruct physical key ownership, so the release does not duplicate
 LEARN capture in DSP telemetry. The SRC page stops animation under the modal;
 DSP telemetry continues to own applied audio values, notes and arp state.
 
-The native SRC adapter maps SOUND A/H to stock TUNE/LEVEL parameter codes and
-forwards their native modifier behavior. Custom controls use one bounded step
-per encoder detent. Encoder presses on custom controls are consumed; no
-unverified stock reset gesture is exposed. Logical control IDs stay independent
-of visual knob order.
+The native SRC adapter maps SOUND and TONE A/H to stock TUNE/LEVEL parameter
+codes and forwards their native modifier behavior. The current custom list
+controls use four raw encoder ticks per choice without acceleration; continuous
+custom controls retain their existing bounded scales. Encoder presses on custom
+controls are consumed; no unverified stock reset gesture is exposed. Logical
+control IDs stay independent of visual knob order.
 
 The internal CPS7 bank keeps 32 words: word0 contains version7 in bits0..7,
 keyboard mode in bits8..9, zero in bits10..15, and native TUNE raw8.8 in bits16..31.
@@ -2206,13 +2268,16 @@ signed envelope, velocity and CC1 amounts shape position without changing the
 amplitude envelope. Modulation amounts default to zero. CC1 is scoped by USB/DIN
 port and channel; CC121 resets the route's wheel, and CC120 retains it.
 
-TONE is the third native SRC page: `TUNE / TABL / POS / DEP` above
+TONE is the third native SRC page: `TUNE / WAVE / POS / DEP` above
 `RATE / SHAP / RST / LEV`. Native TUNE, source LEV, dedicated track LEVEL/DATA
 and held-SRC show-values keep their firmware presentation and behavior. SOUND D
-aliases POS in the wavetable family; legacy COLOR remains remembered. Setup's
-engine chooser retains the old family row, and WAVETABLE TIMBRE adds the clock
-and extended modulation controls. The native page vector must actually allocate
-space for three entries; enlarging only its reported end pointer is forbidden.
+aliases POS for a wavetable choice; legacy COLOR remains remembered. WAVE
+combines VELVT/REED and all five factory tables as specified above, while the
+persisted family and table fields remain separate. TONE C-G are inactive for
+VELVT/REED. WAVETABLE TIMBRE retains the clock and extended modulation controls
+without a duplicate table selector. The native page vector must actually
+allocate space for three entries; enlarging only its reported end pointer is
+forbidden.
 
 CPS9 retains the 128-byte control transport: the first sixteen words contain
 audio controls, the low halves of the next sixteen retain old presentation IDs,

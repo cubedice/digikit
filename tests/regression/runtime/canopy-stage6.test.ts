@@ -14,7 +14,6 @@ import { captureRemoteOled } from './remote.ts';
 import { openDigikitMenu } from './runtime-menu.ts';
 import { waitInstrumentReady } from './instrument-ready.ts';
 import { acknowledgedPanel } from './panel-ack.ts';
-import { menuSelection } from './menu-selection.ts';
 import { turnAppliedControl } from './encoder-applied.ts';
 import { encoderValue } from './encoder-value.ts';
 import { canopyControls } from './canopy-controls.ts';
@@ -200,12 +199,12 @@ test(
     await key('YES');
     await key('YES');
     await openDigikitMenu(key);
-    await key('YES'); // KEYBOARD is the first optional setup row
-    await key('DOWN'); // skip the track heading
+    await key('YES'); // CANOPY setup
+    await key('YES'); // INPUT
     await key('YES'); // ENABLE
     await expect.poll(() => cf('ip_control', 1), { timeout: 10_000 }).toBe(1);
     await expect.poll(() => cf('ip_control'), { timeout: 30_000 }).toBe(3);
-    for (let i = 0; i < 3; i++) await key('NO');
+    for (let i = 0; i < 4; i++) await key('NO');
     expect(await cf('ip_admission', 5)).toBe(await cf('ip_control', 7));
     // Stock receive-port settings are independent of the instrument route.
     // Set the emulator fixture to receive both ports, as in the carrier proofs.
@@ -229,19 +228,19 @@ test(
       for (let i = 0; i < 3 && (await cf('ip_src_debug', 1)) !== page; i++) await key('SRC');
       expect(await cf('ip_src_debug', 1)).toBe(page);
     };
-    const selectMenu = menuSelection(session, plan, 'core/instrument-play', key);
-    const menuRow = (row: number, menu = 'menu') => selectMenu(menu, row);
-    await openDigikitMenu(key);
-    await key('YES');
-    await menuRow(18);
-    await key('YES'); // ENGINE, same setup row as the old REED toggle
-    await key('DOWN');
-    await key('DOWN');
-    await key('YES');
+    await key('SRC');
+    await srcPage(2);
+    await encoderValue(
+      (delta) => turn(2, delta * 4),
+      async () => {
+        const table = await controls.settled(16),
+          family = (await rawBank())[1]!;
+        return family < 2 ? family : table + 2;
+      },
+      2, // ANALOG is selected directly from WAVE, without an engine menu.
+    );
     await expect.poll(async () => (await rawBank())[1], { timeout: 15000 }).toBe(2);
     expect((await rawBank())[0]! & 255).toBe(9);
-    for (let i = 0; i < 3; i++) await key('NO');
-    await key('SRC');
     await srcPage(0);
     // Panel flushes clamp at 30 detents: await each applied step before the next.
     await turnAppliedControl(session, 7, async () => (await rawBank())[21]! & 65535, 64); // equal pad/arp mix
@@ -445,7 +444,7 @@ test(
         // A long Overloop recording can leave the native encoder idle filter
         // armed. Drain each packet and its configuration before retrying a detent.
         await encoderValue(
-          (delta) => turn(2, delta),
+          (delta) => turn(2, delta * 4),
           () => controls.settled(16),
           table,
         );

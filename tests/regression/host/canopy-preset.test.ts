@@ -65,7 +65,7 @@ test('SRC encoder edits use the real preset/configuration bank without enabling 
   const [edited, restored, stale, movement] = run(
     settings,
     'srcpage 0\nsrcturn 3 12\nsrcstate\npresetsave\ntick\ncolor 10\npresetload\nsrcstate\n' +
-      'srcturn 3 1\nsrcstate\nsrcpage 1\nsrcturn 0 1\nsrcstate',
+      'srcturn 3 1\nsrcstate\nsrcpage 1\nsrcturn 0 4\nsrcstate',
   );
   expect(edited).toMatchObject({ result: 1, color: 76, value: '76', dirty: 1, heading: 'LINK LOST' });
   expect(restored).toMatchObject({ color: 76, value: '76' });
@@ -73,7 +73,7 @@ test('SRC encoder edits use the real preset/configuration bank without enabling 
   expect(movement).toMatchObject({ result: 1, rate: 5, mix: 0 });
 });
 
-test('SRC cannot edit hidden sound values during LEARN or synthesize PLAY chords', () => {
+test('SRC waits for a full list step and cannot edit sound values during LEARN', () => {
   const [play, modal, closed] = run(
     settings,
     'srcpage 0\nsrcturn 1 1\nsrcstate\nlearn\nsrcpage 0\nsrcturn 3 10\nsrcstate\n' + 'back\nsrcturn 3 10\nsrcstate',
@@ -89,9 +89,9 @@ test.each(['', 'learn\nkey 60\nkey 67\nkey 76\ntick\nsave\ntick\n'])(
     const [user, lower, userAgain, upper, memory] = run(
       settings,
       learn +
-        'mode 1\nsrcpage 0\nsrcturn 1 10\nsrcstate\n' +
-        'srcpage 0\nsrcturn 1 -1\nsrcstate\nsrcpage 0\nsrcturn 1 1\nsrcstate\n' +
-        'srcpage 0\nsrcturn 1 1\nsrcstate\nsnapshot',
+        'mode 1\nsrcpage 0\nsrcturn 1 40\nsrcstate\n' +
+        'srcpage 0\nsrcturn 1 -4\nsrcstate\nsrcpage 0\nsrcturn 1 4\nsrcstate\n' +
+        'srcpage 0\nsrcturn 1 4\nsrcstate\nsnapshot',
     );
     expect(user).toMatchObject({ result: 1, type: 10 });
     expect(lower).toMatchObject({ result: 1, type: 9 });
@@ -105,13 +105,110 @@ test('a preset loaded with USER can select a standard chord and return without l
   const [loaded, standard, back, preserved] = run(
     settings,
     'learn\nkey 60\nkey 76\ntick\nsave\ntick\nmode 1\ntype 10\npresetsave\ntick\n' +
-      'type 0\npresetload\npresetstate\nsrcpage 0\nsrcturn 1 -10\nsrcstate\n' +
-      'srcpage 0\nsrcturn 1 10\nsrcstate\npresetstate',
+      'type 0\npresetload\npresetstate\nsrcpage 0\nsrcturn 1 -40\nsrcstate\n' +
+      'srcpage 0\nsrcturn 1 40\nsrcstate\npresetstate',
   );
   expect(loaded).toMatchObject({ override: 1, shape: [0, 16] });
   expect(standard).toMatchObject({ result: 1, type: 0 });
   expect(back).toMatchObject({ result: 1, type: 10 });
   expect(preserved).toMatchObject({ override: 1, shape: [0, 16], unsafe: 0 });
+});
+
+test('CHRD changes performance mode with one reset and changes root types live', () => {
+  const [play, rootBoundary, root, changed, playBoundary, direct] = run(
+    settings,
+    'key 60\nvoices\nsrcpage 0\nsrcturn 1 4\nvoices\nkey 60\nvoices\n' +
+      'srcpage 0\nsrcturn 1 4\nvoices\nsrcpage 0\nsrcturn 1 -8\nvoices\nkey 62\nvoices',
+  );
+  const notes = (row: Record<string, unknown> | undefined) => (row!.voices as number[][]).map((v) => v[0]);
+  expect(notes(play)).toEqual([60]);
+  expect(rootBoundary).toMatchObject({ mode: 1, type: 0, voices: [], generation: (play!.generation as number) + 1 });
+  expect(notes(root)).toEqual([60, 64, 67]);
+  expect(changed).toMatchObject({ mode: 1, type: 1, generation: root!.generation });
+  expect(notes(changed)).toEqual([60, 64, 67, 69]);
+  expect((changed!.voices as number[][]).slice(0, 3)).toEqual(root!.voices);
+  expect(playBoundary).toMatchObject({ mode: 0, voices: [], generation: (root!.generation as number) + 1 });
+  expect(notes(direct)).toEqual([62]);
+});
+
+test('CHRD modes and WAVE families survive preset save without changing routing', () => {
+  const [reed, wave, legacy, restored, routes, direct] = run(
+    settings,
+    'channel 4\nsrcpage 0\nsrcturn 1 4\nsrcpage 2\nsrcturn 1 4\nconfig\n' +
+      'srcpage 2\nsrcturn 1 16\nconfig\npresetsave\ntick\n' +
+      'srcpage 2\nsrcturn 1 -20\nconfig\npresetload\nconfig\nroutestate\n' +
+      'srcpage 0\nsrcturn 1 -4\npresetsave\ntick\nmode 1\npresetload\nvoices',
+  );
+  expect((reed!.values as number[])[1]).toBe(1);
+  expect((wave!.values as number[])[1]).toBe(2);
+  expect((wave!.values as number[])[16]! >>> 16).toBe(3);
+  expect((legacy!.values as number[])[1]).toBe(0);
+  expect((legacy!.values as number[])[16]! >>> 16).toBe(3);
+  expect(restored!.values).toEqual(wave!.values);
+  expect(routes).toMatchObject({ channel: 4, unsafe: 0 });
+  expect(direct).toMatchObject({ mode: 0, family: 2, table: 3 });
+});
+
+test('compact menus keep non-SRC settings accessible and omit duplicate performance controls', () => {
+  const [layout, route, config] = run(
+    settings,
+    'menus\nmenuset 0 0 1\nmenuset 0 3 9\nmenuset 0 5 2\nmenuset 0 6 6\n' +
+      'menuset 2 0 27\nmenuset 2 1 38\nmenuset 2 3 141\n' +
+      'menuset 3 2 -40\nmenuset 3 3 45\nmenuset 3 4 60\nmenuset 3 5 20\nmenuset 3 6 -30\n' +
+      'routestate\nconfig',
+  );
+  expect(layout!.entry).toBe('CANOPY');
+  expect(layout!.home).toEqual(['INPUT', 'CHORD LEARN', 'SOUND SETUP', 'WAVETABLE TIMBRE', 'PRESETS']);
+  const children = layout!.children as string[][];
+  expect(children[0]!.slice(0, 9)).toEqual([
+    'EXTERNAL MIDI',
+    'USB',
+    'DIN',
+    'CHANNEL',
+    'SAVE ROUTING',
+    'SELECTOR OCTAVE',
+    'SELECT CH (0=SAME)',
+    'PANIC',
+    'RECOVER KEYBOARD',
+  ]);
+  expect(children[1]!.slice(0, 4)).toEqual(['SHAPE SLOT', 'LEARN TO ROOT', 'SHAPES SAVED', 'RETRY SHAPE SAVE']);
+  expect(children[2]).toEqual(['AMP ATTACK', 'AMP RELEASE', 'CLOCK: LOCAL BPM', 'LOCAL BPM']);
+  expect(children[3]!.slice(1, 7)).toEqual([
+    'FREE HZ',
+    'ENV AMOUNT',
+    'TIMBRE ATTACK',
+    'TIMBRE RELEASE',
+    'VELOCITY TO POS',
+    'WHEEL TO POS',
+  ]);
+  const labels = children.flat();
+  for (const duplicate of [
+    'PLAY',
+    'ROOT + TYPE',
+    'LATCH',
+    'MAJOR',
+    'CLOSE',
+    'VELVET',
+    'COLOR',
+    'DRIFT',
+    'ARP MIX',
+    'NOTES / Q',
+    'ARP GATE',
+    'UP',
+    'OCTAVE SPREAD',
+    'SWING',
+    'TRIG',
+    'STRUM MS',
+    'ANALOG',
+  ]) {
+    expect(labels).not.toContain(duplicate);
+  }
+  expect(route).toMatchObject({ enabled: 1, channel: 9, octave: 2, selector: 6, unsafe: 0 });
+  const values = config!.values as number[];
+  expect(values[4]).toBe(27);
+  expect(values[5]).toBe(38);
+  expect(values[7]).toBe(141);
+  expect(values.slice(23, 28).map((v) => v >>> 16)).toEqual([60, 45, 60, 120, 70]);
 });
 
 test('invalid lengths and checksums leave the existing sound untouched', () => {
@@ -148,7 +245,7 @@ test.each([
 test('SRC signed spread is saved and restored through the real control bank', () => {
   const [negative, positive, restored] = run(
     settings,
-    'srcpage 1\nsrcturn 2 -3\nconfig\npresetsave\ntick\nsrcpage 1\nsrcturn 2 6\nconfig\npresetload\nconfig',
+    'srcpage 1\nsrcturn 2 -12\nconfig\npresetsave\ntick\nsrcpage 1\nsrcturn 2 24\nconfig\npresetload\nconfig',
   );
   for (const [row, encoded] of [
     [negative, 0],

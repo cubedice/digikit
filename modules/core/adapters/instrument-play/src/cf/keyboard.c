@@ -137,8 +137,10 @@ static uint32_t desired(KbState *s, KbVoice v[4])
     if (!n) s->status=KB_EMPTY;
     for (i=0;i<n;++i) {
         uint32_t pitch=root->note+intervals[i];
-        if (s->voicing==1 && i==1) pitch+=12;
-        if (s->voicing>=2 && i<(uint32_t)(s->voicing-1)) pitch+=12;
+        /* USER intervals already contain the learned voicing. Retain the
+         * generated-chord preference, but do not apply it to this shape. */
+        if (s->type!=10 && s->voicing==1 && i==1) pitch+=12;
+        if (s->type!=10 && s->voicing>=2 && i<(uint32_t)(s->voicing-1)) pitch+=12;
         if (pitch>127) { s->status=KB_RANGE; return 0; }
         voice(&v[i],0,(uint8_t)pitch,root);
     }

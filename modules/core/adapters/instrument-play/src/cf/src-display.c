@@ -27,7 +27,7 @@ void cv_note(char out[6],uint32_t note,int valid)
 }
 static const char *const labels[30]={"CHORD","VOICING","COLOR","DRIFT","STRUM","ARP MIX",
     "RATE","ORDER","OCTAVES","GATE","SWING","RESTART","LATCH","SOURCE","ATTACK","RELEASE",
-    "TABLE","POSITION","SCAN DEPTH","SCAN RATE","SCAN SHAPE","SCAN RESTART","SCAN CLOCK",
+    "WAVE","POSITION","SCAN DEPTH","SCAN RATE","SCAN SHAPE","SCAN RESTART","SCAN CLOCK",
     "TIMBRE ENV","TIMBRE ATTACK","TIMBRE RELEASE","VELOCITY","MOD WHEEL","TUNE","LEVEL"};
 static void value(char out[8],const CsState *s,uint32_t id,const char *tune,const char *level)
 {
@@ -38,11 +38,12 @@ static void value(char out[8],const CsState *s,uint32_t id,const char *tune,cons
     static const char *const rate[]={"--","1/4","1/8","1/8T","1/16","5/Q","1/16T","7/Q","1/32"};
     if(id==CS_TUNE || id==CS_LEVEL) { text(out,8,id==CS_TUNE?tune:level); return; }
     uint32_t n=s->value[id]; const char *v=0;
-    if(id>=CP_WT_TABLE && id<CP_CONTROLS && ((s->metadata>>4)&3)!=2) { text(out,8,"--"); return; }
     if(id==CP_WT_TABLE) {
-        static const char *const table[]={"ANLG","GLASS","VOCAL","ORGAN","METAL"};
-        text(out,8,n<5?table[n]:"--"); return;
+        static const char *const waves[]={"VELVT","REED","ANLG","GLASS","VOCAL","ORGAN","METAL"};
+        uint32_t wave=cs_choice_value(s,id);
+        text(out,8,wave<7?waves[wave]:"--"); return;
     }
+    if(id>CP_WT_TABLE && id<CP_CONTROLS && ((s->metadata>>4)&3)!=2) { text(out,8,"--"); return; }
     if(id==CP_WT_POS) { out[0]=(char)('1'+n/100); out[1]='.'; out[2]=(char)('0'+n/10%10); out[3]=(char)('0'+n%10); out[4]=0; return; }
     if(id==CP_WT_DEPTH) { unit(out,n,"%"); return; }
     if(id==CP_WT_RATE) {
@@ -55,7 +56,7 @@ static void value(char out[8],const CsState *s,uint32_t id,const char *tune,cons
     }
     if(id==CP_WT_SHAPE) { static const char *const shapes[]={"SINE","TRI","RAND"}; text(out,8,n<3?shapes[n]:"--"); return; }
     if(id==CP_WT_RESET) { static const char *const resets[]={"FREE","TRIG","PATT"}; text(out,8,n<3?resets[n]:"--"); return; }
-    if(id==CP_CHORD) v=s->mode==KB_PLAY?"AUTO":n<12?chord[n]:"--";
+    if(id==CP_CHORD) v=s->mode==KB_PLAY?"PLAY":n<12?chord[n]:"--";
     else if(id==CP_VOICING) v=s->mode==KB_PLAY?"--":s->learned?"LRND":n<4?voice[n]:"--";
     else if(id==CP_STRUM && s->mode==KB_PLAY) v="--";
     else if(id==CP_STRUM) { if(!n) v="OFF"; else { number(out,n); return; } }
@@ -86,14 +87,14 @@ void cv_feedback(char out[32],const CsState *s,uint32_t encoder)
 {
     static const char *const names[]={"Chord","Voicing","Color","Drift","Strum","Arp Mix",
         "Rate","Order","Octaves","Gate","Swing","Restart","Latch","Source","Attack","Release",
-        "Table","Position","Scan Depth","Scan Rate","Scan Shape","Scan Restart","Scan Clock",
+        "Wave","Position","Scan Depth","Scan Rate","Scan Shape","Scan Restart","Scan Clock",
         "Timbre Env","Timbre Attack","Timbre Release","Velocity","Mod Wheel"};
     uint32_t id=cs_mapped_control(s,encoder);
     out[0]=0;
     if(id>=CP_CONTROLS) return;
-    if(id>=CP_WT_TABLE && ((s->metadata>>4)&3)!=2) { text(out,32,"SELECT WAVETABLE ENGINE"); return; }
-    if(s->mode==KB_PLAY && (id==CP_CHORD || id==CP_VOICING || id==CP_STRUM)) {
-        text(out,32,"PLAY: YOUR NOTES"); return;
+    if(id>CP_WT_TABLE && ((s->metadata>>4)&3)!=2) { text(out,32,"WAVE: CHOOSE ANLG TO METAL"); return; }
+    if(s->mode==KB_PLAY && (id==CP_VOICING || id==CP_STRUM)) {
+        text(out,32,"CHRD: CHOOSE A CHORD FIRST"); return;
     }
     if(s->learned && id==CP_VOICING) {
         text(out,32,"ROOT: LEARNED VOICING"); return;
@@ -105,7 +106,11 @@ void cv_feedback(char out[32],const CsState *s,uint32_t encoder)
     static const char *const restarts[]={"Trigger","Pattern","Continuous"};
     char v[8]; value(v,s,id,"","");
     const char *full=v; uint32_t n=s->value[id];
-    if(id==CP_WT_TABLE && n==0) full="ANALOG";
+    if(id==CP_WT_TABLE) {
+        static const char *const waves[]={"VELVET","REED","ANALOG","GLASS","VOCAL","ORGAN","METAL"};
+        uint32_t wave=cs_choice_value(s,id); if(wave<7) full=waves[wave];
+    }
+    else if(id==CP_CHORD && s->mode==KB_PLAY) full="PLAY (YOUR NOTES)";
     else if(id==CP_VOICING && n<4) full=voicings[n];
     else if(id==CP_ORDER && n<5) full=orders[n];
     else if(id==CP_RESTART && n<3) full=restarts[n];
@@ -166,7 +171,7 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
         if(id>=30) continue;
         static const char *const short_labels[]={"CHRD","VOIC","COLR","DRFT","STRM","MIX",
             "RATE","ORDR","OCTS","GATE","SWNG","RST","LTCH","SRC","ATK","REL",
-            "TABL","POS","DEP","RATE","SHAP","RST","CLK","ENV","ATK","REL","VEL","WHEL","TUNE","LEV"};
+            "WAVE","POS","DEP","RATE","SHAP","RST","CLK","ENV","ATK","REL","VEL","WHEL","TUNE","LEV"};
         text(d->label[i],8,id==CP_WT_RATE && !s->value[CP_WT_CLOCK]?"HZ":short_labels[id]);
         value(d->value[i],s,id,tune,level);
         if(id<CS_TUNE && (!fresh || !is_detail_confirmed(status,now) || (s->pending&(1u<<id)))) d->pending|=(uint8_t)(1u<<i);
@@ -204,7 +209,8 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
     if(cs_focused(s,now)) {
         d->focused=1; d->highlight=0;
         uint32_t id=s->focus_id;
-        if(s->mode==KB_PLAY && (id==CP_CHORD || id==CP_VOICING || id==CP_STRUM)) text(d->heading,22,"YOUR NOTES");
+        if(s->mode==KB_PLAY && id==CP_CHORD) text(d->heading,22,"PLAY YOUR NOTES");
+        else if(s->mode==KB_PLAY && (id==CP_VOICING || id==CP_STRUM)) text(d->heading,22,"CHOOSE CHRD FIRST");
         else if(s->learned && id==CP_VOICING) text(d->heading,22,"AS LEARNED");
         else if(id<30) {
             text(d->heading,22,labels[id]); uint32_t at=length(d->heading,21);
@@ -219,7 +225,7 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
     else if(page && (status->fast[8]&255) && clock==IS_CLOCK_LOST) text(d->heading,22,"CLK LOST");
     else if(page && (status->fast[8]&255) && clock==IS_CLOCK_WAIT) text(d->heading,22,"WAIT CLK");
     else if(!count) text(d->heading,22,(flags&(7u<<23))?"RELEASE":"NO NOTES");
-    else if(page==2) text(d->heading,22,((s->metadata>>4)&3)==2?"WAVETABLE":"SELECT WAVETABLE");
+    else if(page==2) text(d->heading,22,((s->metadata>>4)&3)==2?"WAVETABLE":((s->metadata>>4)&3)==1?"REED":"VELVET");
     else if(!page) chord_name(d->heading,pitches,n);
     else if(!(status->fast[8]&255)) text(d->heading,22,"ARP OFF");
     else if(status->fast[7]&256) { text(d->heading,22,"ARP "); cv_note(d->heading+4,status->fast[7]&255,1); }
