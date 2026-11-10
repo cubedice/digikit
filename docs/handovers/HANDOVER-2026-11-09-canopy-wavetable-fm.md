@@ -2,8 +2,9 @@
 
 The user requested FM modulation of the selected wavetable while retaining
 position and scanning. This change adds a sine phase modulator to each existing
-wavetable voice. The four-operator FM source remains separate. No physical
-installation or remote push has been requested for this change.
+wavetable voice. The four-operator FM source remains separate. The exact tested
+firmware/module pair was subsequently installed at the user's request; see the
+physical installation record below. No remote push was requested.
 
 ## Player controls
 
@@ -160,5 +161,35 @@ Firmware preflight passes: container 1,637,008 / 3,145,728 bytes; stored DSP
 3,664,968 / 4,193,280. Core `play-cf.dko.json` and `play-dsp.dko.json` were
 explicitly rebuilt before patching. Shared generated-file checks pass.
 
-The previously installed native-AMP build remains on the physical DTII. This
-feature has not been flashed, and no physical sound/timing claim is made.
+## Physical installation, 2026-11-09
+
+Installed the exact artifacts above. The DTII rebooted from image
+`8b8889b9338102fd` to **`826a473886d34148`**, runtime 0.5.4. The new CANOPY module
+was uploaded and freshly read back before flashing, without an intermediate
+restart. This ordering matters: the new core sends CPSB/version 11, which the
+old module does not accept; the new module accepts both old CPSA and CPSB.
+The DTII validated the complete firmware image and accepted the flash commit.
+
+Post-reboot INFO has no safe mode, crash, open upload or read-only card. CANOPY,
+Overloop and remote retain the same selection, with zero module faults and
+guards enabled. CANOPY retains type 16. All three module files were read back;
+CANOPY matches the final package hash above, and Overloop/remote match their
+pre-install backups. Arena use is 459,296 / 524,288 bytes; DSP-area use is
+230,528 / 524,288 bytes. No additional restart was needed.
+
+All four saved presets and MIDI routing entries are byte-identical to the
+backup. External MIDI, USB and DIN remain enabled on channel 1. The current
+standalone-FM sound differed from every occupied preset slot. The user first
+authorized installation without retaining those unsaved edits; a revised choice
+to save over slot 4 arrived after the flash had been committed. The reboot reset
+the unsaved controls, so slot 4 was left untouched rather than overwritten with
+the reset sound. The exact unsaved sound was not preserved or reconstructed.
+
+An initial post-boot capture showed a stale LINK LOST heading. Refreshing SRC
+restored the normal CANOPY ARP screen; the held-values capture shows track
+LEVEL 67. Saved settings were checked again after this navigation. No physical
+audio was recorded, and no new sound/timing qualification is claimed.
+
+Backups and screenshots: `out/canopy-wtfm-install-backup/`. Installation receipt:
+`out/canopy-wtfm-hardware-installed.json`. Flash log:
+`out/canopy-wtfm-hardware-flash.log`. The final page is ARP.

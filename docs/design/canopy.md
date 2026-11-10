@@ -10,8 +10,9 @@ and backward-compatible CPST v5 presets. Its DSP implementation and focused
 checks are complete; the matching compiled UI/audio/preset proof passes in
 403.12 seconds with the verified DT2 emulator and acknowledged control batches. The
 [WT-FM handover](../handovers/HANDOVER-2026-11-09-canopy-wavetable-fm.md) records
-the current evidence and matching artifacts. This extension is not installed
-on the physical DTII.
+the current evidence and matching artifacts. The exact pair is installed on the
+physical DTII; identity, module readback, saved presets/routing and module health
+are verified. Physical sound/timing qualification remains open.
 
 The standalone FM implementation and focused emulator acceptance are complete. The
 [FM handover](../handovers/HANDOVER-2026-11-09-canopy-fm.md) records DSP, sound-quality,
