@@ -20,6 +20,9 @@
 .EXTERN _fm_sines;
 .EXTERN _fm_ratios;
 .EXTERN _fm_halfband;
+.EXTERN _cp_amp_native;
+.EXTERN _cp_amp_samples;
+.EXTERN _cp_amp_end;
 // Atomic CPSA upper-bank validation. Return low-word validation copy in I0.
 _fm_validate:
     I0 = R4;
@@ -806,6 +809,9 @@ _fm_wheel:
     F0 = F0 * F1;
     DM(_fm_gain) = F0;
     R13 = 32;
+    R0 = DM(_cp_amp_native);
+    R0 = PASS R0;
+    IF NE JUMP _fm_native_begin;
 _fm_sample:
     F0 = DM(_fm_key_step);
     F3 = F3 + F0;
@@ -815,6 +821,36 @@ _fm_sample:
     F4 = MAX(F4,F0);
     F0 = 1.0;
     F4 = MIN(F4,F0);
+    CALL _fm_sample_body;
+    R13 = R13 - 1;
+    IF NE JUMP _fm_sample;
+    JUMP _fm_samples_done;
+_fm_native_begin:
+    // Keep the envelope cursor outside the oscillator's three active DAGs.
+    // Preserve the caller's complete I3 addressing context, including L3.
+    R0 = I3;
+    DM(_fm_amp_i3) = R0;
+    R0 = L3;
+    DM(_fm_amp_l3) = R0;
+    R0 = 0;
+    L3 = R0;
+    I3 = _cp_amp_samples;
+_fm_native_sample:
+    F0 = DM(_fm_key_step);
+    F3 = F3 + F0;
+    F4 = DM(I3,M6);
+    CALL _fm_sample_body;
+    R13 = R13 - 1;
+    IF NE JUMP _fm_native_sample;
+    R0 = DM(_fm_amp_i3);
+    I3 = R0;
+    R0 = DM(_fm_amp_l3);
+    L3 = R0;
+    F4 = DM(_cp_amp_end);
+_fm_samples_done:
+    DM(_fm_r7) = F4;
+    JUMP _fm_wrap_phases;
+_fm_sample_body:
     R0 = DM(_fm_held);
     R0 = PASS R0;
     IF EQ JUMP _fm_release_env;
@@ -909,18 +945,15 @@ _fm_env_ready:
 _fm_oversample:
     F1 = DM(5,I0);
     F1 = F1 * F10, F0 = DM(-30,I0);
-    F0 = F0 + F1;
+    F0 = F0 + F1, F1 = DM(6,I0);
     DM(-30,I0) = F0;
-    F1 = DM(6,I0);
     F1 = F1 * F10, F0 = DM(-29,I0);
-    F0 = F0 + F1;
+    F0 = F0 + F1, F2 = DM(-28,I0);
     DM(-29,I0) = F0;
-    F0 = DM(-28,I0);
-    F0 = F0 + F10;
+    F0 = F2 + F10, F1 = DM(8,I0);
     DM(-28,I0) = F0;
     // B delayed self feedback; one internal sample delay bounds recursion.
     F0 = DM(-25,I0);
-    F1 = DM(8,I0);
     F0 = F0 * F1;
     F0 = F0 * F12, F1 = DM(-29,I0);
     F0 = F0 + F1;
@@ -1092,9 +1125,8 @@ _fm_decimate:
     F0 = DM(I2,M5);
     F7 = F7 + F0;
     DM(I2,M6) = F7;
-    R13 = R13 - 1;
-    IF NE JUMP _fm_sample;
-    DM(_fm_r7) = F4;
+    RTS;
+_fm_wrap_phases:
     F0 = DM(2,I0);
     CALL _fm_wrap;
     DM(2,I0) = F0;
@@ -1176,6 +1208,8 @@ _fm_sine:
 .VAR _fm_bank = 0;
 .VAR _fm_state = 0;
 .VAR _fm_input = 0;
+.VAR _fm_amp_i3 = 0;
+.VAR _fm_amp_l3 = 0;
 .VAR _fm_fade_start = 0;
 .VAR _fm_fade_step = 0;
 .VAR _fm_depth = 0;

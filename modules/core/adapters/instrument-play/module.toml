@@ -22,6 +22,9 @@ devices = ["dt2"]
 _mi_workspace_next = "dsp.voice.site.envelope_workspace.next"
 _mi_envelope_next = "dsp.voice.site.envelope_entry.next"
 _mi_velocity_next = "dsp.voice.site.velocity_operand.next"
+_iv_amp_attack_table = "dsp.voice.site.amp_attack_table"
+_iv_amp_decay_table = "dsp.voice.site.amp_decay_table"
+_iv_amp_hold_table = "dsp.voice.site.amp_hold_table"
 [[op]]
 op = "hook"
 hook = "dsp.voice.hook.envelope_workspace"

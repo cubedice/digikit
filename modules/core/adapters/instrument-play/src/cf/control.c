@@ -491,8 +491,7 @@ static const dk_ui_menu_desc shape_desc={.name="canopy-shapes",.title="CANOPY CH
 static void sound_fill(dk_ui_menu *m,void *ctx)
 {
     (void)ctx;
-    dk_ui_value(m,"AMP ATTACK",&pad_attack,0,127,pad_changed,0);
-    dk_ui_value(m,"AMP RELEASE",&pad_release,0,127,pad_changed,0);
+    dk_ui_text(m,"ENVELOPE: AMP PAGE");
     dk_ui_action(m,arp_clock_labels[arp_clock],arp_clock_choice,0,0);
     dk_ui_value(m,"LOCAL BPM",&arp_bpm,30,300,pad_changed,0);
 }

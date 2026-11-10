@@ -21,7 +21,7 @@ def spec():
         base,
         module="canopy-carrier-probe",
         moddir=SOURCE,
-        sources=(ROOT / "tests/support/canopy_voice_probe.s",),
+        sources=(SOURCE.parent.parent / "tests/support/canopy_voice_probe.s",),
         entry="_cp_voice_probe",
         note_on=None,
         desc=None,
@@ -315,6 +315,106 @@ def test_envelope_hook_falls_through_without_changing_stock_arguments(spec, kind
         7,
         9,
     )
+
+
+@pytest.mark.parametrize("voice", [0, 1])
+@pytest.mark.parametrize("simd", [False, True])
+def test_native_amp_bypass_preserves_pcm_record_and_c_call_frame(spec, voice, simd):
+    rig = make_rig(spec)
+    base, stamp, buffer = 0x20096000, 51, 0x20098000
+    for name, value in (
+        ("_mi_envelope_records", base),
+        ("_mi_carrier_stamp", stamp),
+        ("_mi_native_owner_stamp", stamp),
+        ("_mi_native_owner_valid", 1),
+    ):
+        rig.sess.poke(rig.built.data[name] // 4, value)
+    pair_call(rig, "publish", 0, stamp)
+    record = [0x12345000 + i for i in range(22)]
+    pcm = [0x3D000000 + 31 * i for i in range(32)]
+    for i, value in enumerate(record):
+        rig.sess.poke(base // 4 + i, value)
+    for i, value in enumerate(pcm):
+        rig.sess.poke(buffer // 4 + i, value)
+    regs = {f"R{i}": 0x12340000 + i for i in range(16)}
+    regs.update({f"S{i}": 0x56780000 + i for i in range(16)})
+    regs.update(
+        R4=base + 44 * voice,
+        R8=buffer,
+        R12=buffer,
+        I0=0x20097000,
+        I6=dv.STACK,
+        I7=dv.STACK - 64,
+        L0=64,
+        M5=19,
+        M7=0xFFFFFFFF,
+        M14=1,
+        MODE1=0x1011800 | (0x200000 if simd else 0),
+        ASTATX=0x1234,
+        ASTATY=0x4321,
+        STKYX=0x15,
+        STKYY=0x26,
+    )
+    for offset, value in (
+        (-1, rig.sess.return_sw - 1),
+        (0, dv.STACK + 256),
+        (1, 7),
+        (2, 9),
+        (3, 32),
+        (4, 0x2468),
+    ):
+        rig.sess.poke(dv.STACK // 4 + offset, value)
+    result = rig.sess.call(
+        "_mi_envelope_entry", regs, max_steps=400, read_regs=tuple(regs)
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    for name, value in regs.items():
+        # The normal C return empties the synthetic one-entry PC stack.
+        expected = {
+            "I6": dv.STACK + 256,
+            "I7": dv.STACK,
+            "STKYX": regs["STKYX"] | 0x400000,
+        }.get(name, value)
+        assert result["regs"][name] == expected, name
+    assert [rig.sess.peek(base // 4 + i) for i in range(22)] == record
+    assert [rig.sess.peek(buffer // 4 + i) for i in range(32)] == pcm
+    assert [rig.sess.peek(dv.STACK // 4 + i) for i in range(1, 5)] == [7, 9, 32, 0x2468]
+
+
+@pytest.mark.parametrize(
+    "kind", ["disabled", "stale", "other_track", "out_of_place", "count"]
+)
+def test_native_amp_bypass_requires_current_owner_and_stock_call_shape(spec, kind):
+    rig = make_rig(spec)
+    base, stamp, buffer = 0x20096000, 51, 0x20098000
+    voice = 2 if kind == "other_track" else 0
+    for name, value in (
+        ("_mi_envelope_records", base),
+        ("_mi_carrier_stamp", stamp),
+        ("_mi_native_owner_stamp", stamp - (kind == "stale")),
+        ("_mi_native_owner_valid", int(kind != "disabled")),
+    ):
+        rig.sess.poke(rig.built.data[name] // 4, value)
+    pair_call(rig, "publish", voice // 2, stamp)
+    for offset, value in ((1, 7), (2, 9), (3, 31 if kind == "count" else 32)):
+        rig.sess.poke(dv.STACK // 4 + offset, value)
+    rig.sess.runner.breakpoints |= {rig.sess.symbols["_mi_envelope_next"]}
+    result = rig.sess.call(
+        "_mi_envelope_entry",
+        {
+            "R4": base + 44 * voice,
+            "R8": buffer,
+            "R12": buffer + (128 if kind == "out_of_place" else 0),
+            "I6": dv.STACK,
+            "I7": dv.STACK,
+            "M5": 0,
+            "L0": 0,
+            "MODE1": 0x1011800,
+        },
+        max_steps=400,
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    assert [rig.sess.peek(dv.STACK // 4 + i) for i in (1, 2)] == [1, 0]
 
 
 def frame(rig):

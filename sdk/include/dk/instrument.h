@@ -60,6 +60,33 @@ typedef struct dk_instrument_in_v5 {
     uint32_t status_words;
 } dk_instrument_in_v5;
 
+/* V6 is sent only to descriptors with STATUS_OUTPUT | NATIVE_AMP.
+ * V2..V5 remain valid fallback inputs. A valid native AMP snapshot lets an
+ * instrument apply the track's envelope per note; the adapter then bypasses
+ * the shared carrier envelope for that successfully rendered block only.
+ * All appended fields are scalars, with no firmware addresses or lifetime.
+ * mode: 0 unavailable (use legacy/shared AMP), 1 AHD, 2 ADSR.
+ * Attack is a positive per-sample increment. Decay/release are multipliers
+ * in [0,1]; hold is a sample count or UINT32_MAX for gate-controlled hold.
+ * AHD snapshots have sustain=0 and release_multiplier=decay_multiplier.
+ * options bit0 reflects native amplitude restart; other bits/reserved are0.
+ * A callback must validate the snapshot before using it. Native coefficients
+ * may change between blocks, including during a sounding note. */
+#define DK_INSTRUMENT_NATIVE_AMP 2u
+#define DK_INSTRUMENT_INPUT_V6 6u
+#define DK_INSTRUMENT_INPUT_V6_BYTES 128u
+typedef struct dk_instrument_in_v6 {
+    dk_instrument_in_v5 base;
+    uint32_t amp_mode;
+    float amp_attack_increment;
+    uint32_t amp_hold_samples;
+    float amp_decay_multiplier;
+    float amp_sustain;
+    float amp_release_multiplier;
+    uint32_t amp_options;
+    uint32_t reserved;
+} dk_instrument_in_v6;
+
 /* ID is a C identifier, unique among all instruments, machines and effects.
  * Required initializers: .name, .short_name, .reset, .process and .desc.
  * Callbacks and descriptor name SHARC+ symbols in this module, not CF pointers. */

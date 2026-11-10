@@ -154,7 +154,7 @@ test('compact menus keep non-SRC settings accessible and omit duplicate performa
   const [layout, route, config] = run(
     settings,
     'menus\nmenuset 0 0 1\nmenuset 0 3 9\nmenuset 0 5 2\nmenuset 0 6 6\n' +
-      'menuset 2 0 27\nmenuset 2 1 38\nmenuset 2 3 141\n' +
+      'menuset 2 2 141\n' +
       'menuset 3 2 -40\nmenuset 3 3 45\nmenuset 3 4 60\nmenuset 3 5 20\nmenuset 3 6 -30\n' +
       'routestate\nconfig',
   );
@@ -173,7 +173,7 @@ test('compact menus keep non-SRC settings accessible and omit duplicate performa
     'RECOVER KEYBOARD',
   ]);
   expect(children[1]!.slice(0, 4)).toEqual(['SHAPE SLOT', 'LEARN TO ROOT', 'SHAPES SAVED', 'RETRY SHAPE SAVE']);
-  expect(children[2]).toEqual(['AMP ATTACK', 'AMP RELEASE', 'CLOCK: LOCAL BPM', 'LOCAL BPM']);
+  expect(children[2]).toEqual(['ENVELOPE: AMP PAGE', 'CLOCK: LOCAL BPM', 'LOCAL BPM']);
   expect(children[3]!.slice(1, 7)).toEqual([
     'FREE HZ',
     'ENV AMOUNT',
@@ -201,13 +201,15 @@ test('compact menus keep non-SRC settings accessible and omit duplicate performa
     'TRIG',
     'STRUM MS',
     'ANALOG',
+    'AMP ATTACK',
+    'AMP RELEASE',
   ]) {
     expect(labels).not.toContain(duplicate);
   }
   expect(route).toMatchObject({ enabled: 1, channel: 9, octave: 2, selector: 6, unsafe: 0 });
   const values = config!.values as number[];
-  expect(values[4]).toBe(27);
-  expect(values[5]).toBe(38);
+  expect(values[4]).toBe(5); // Legacy preset fields remain readable, not menu controls.
+  expect(values[5]).toBe(15);
   expect(values[7]).toBe(141);
   expect(values.slice(23, 28).map((v) => v >>> 16)).toEqual([60, 45, 60, 120, 70]);
 });

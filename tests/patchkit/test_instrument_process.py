@@ -44,7 +44,7 @@ _test_output:
     R0 = DM(0, I1);
     R1 = 5;
     COMP(R0, R1);
-    IF NE JUMP _test_result;
+    IF LT JUMP _test_result;
     R0 = DM(22, I1);
     I1 = R0;
     R0 = DM(0, I1);
@@ -150,16 +150,21 @@ def process(process_object):
     return call
 
 
-def test_status_output_requires_installed_capability_and_clears_ready(process):
-    fields = {0: 5, 1: 96, 22: 0x20054000, 23: 13}
+@pytest.mark.parametrize(
+    "version,size,capabilities", [(5, 96, 1), (5, 96, 3), (6, 128, 3)]
+)
+def test_status_output_requires_installed_capability_and_clears_ready(
+    process, version, size, capabilities
+):
+    fields = {0: version, 1: size, 22: 0x20054000, 23: 13}
     rejected = process(fields=fields)
     assert rejected["state"] == [0] * 8
     assert rejected["status"] == [99] * 14
-    accepted = process(fields=fields, capabilities=1)
+    accepted = process(fields=fields, capabilities=capabilities)
     assert accepted["state"][0] == 1
     assert accepted["status"][0:2] == [1, 0]
     assert accepted["status"][12:] == [123, 99]
-    failed = process(fields=fields, capabilities=1, result=0xFFFFFFFF)
+    failed = process(fields=fields, capabilities=capabilities, result=0xFFFFFFFF)
     assert failed["row"][0] == 5 and failed["status"][0] == 0
 
 
@@ -167,11 +172,35 @@ def test_status_output_requires_installed_capability_and_clears_ready(process):
     "field,value",
     [(1, 88), (22, 0), (22, 0x20054001), (22, 0x200FDFD0), (23, 0), (23, 12), (23, 14)],
 )
-def test_status_output_rejects_bad_borrow_without_mutation(process, field, value):
-    fields = {0: 5, 1: 96, 22: 0x20054000, 23: 13, field: value}
-    rejected = process(fields=fields, capabilities=1)
+@pytest.mark.parametrize("version,size,capabilities", [(5, 96, 1), (6, 128, 3)])
+def test_status_output_rejects_bad_borrow_without_mutation(
+    process, field, value, version, size, capabilities
+):
+    fields = {0: version, 1: size, 22: 0x20054000, 23: 13, field: value}
+    rejected = process(fields=fields, capabilities=capabilities)
     assert rejected["state"] == [0] * 8
     assert rejected["status"] == [99] * 14
+
+
+@pytest.mark.parametrize("capabilities", [0, 1, 2, 4, 7, 0xFFFFFFFF])
+def test_native_amp_input_requires_both_known_capabilities(process, capabilities):
+    result = process(
+        fields={0: 6, 1: 128, 22: 0x20054000, 23: 13}, capabilities=capabilities
+    )
+    assert result["regs"]["R0"] == 0xFFFFFFFF
+    assert result["state"] == [0] * 8
+    assert result["status"] == [99] * 14
+
+
+@pytest.mark.parametrize("base,accepted", [(0x200FDF80, True), (0x200FDF84, False)])
+def test_native_amp_input_extent_stays_below_boot_workspace(process, base, accepted):
+    result = process(
+        input_base=base,
+        fields={0: 6, 1: 128, 22: 0x20054000, 23: 13},
+        capabilities=3,
+    )
+    assert result["state"][0] == int(accepted)
+    assert result["regs"]["R0"] == (0 if accepted else 0xFFFFFFFF)
 
 
 def test_process_preserves_instance_state_and_uses_distinct_strides(process):

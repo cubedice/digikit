@@ -5,7 +5,8 @@ This directory contains the four-note pad instrument with movement, presets and 
 reset/process callbacks and an assigned machine type. It requires the optional
 DTII 1.17 `core/instrument-play` adapter; ordinary firmware cannot admit it.
 The engine supports Velvet/Reed, factory wavetable and four-operator FM families,
-drift and local envelopes. FM adds a fourth, conditional FM ENV page.
+drift and independent note envelopes controlled by the stock AMP page. FM adds
+a fourth, conditional FM ENV page.
 The FM source requires matching CPSA firmware and package builds; the installation
 and acceptance results below describe the preceding wavetable revision.
 Full Stage 5 and Stage 6 wavetable acceptance passed in the emulator with matching
@@ -33,10 +34,11 @@ Only track 1 is admitted. Other tracks and channels retain stock behavior.
 
 `src/dsp/voice.s` implements four foreground notes, two short release tails and
 four pending-replacement records in a caller-owned 256-byte bank.
-Each note has its own token, gate, oscillator phase, velocity and linear envelope.
-Attack defaults to 80 ms and release to one second; both are adjustable in
-CANOPY > SOUND SETUP (a note released during attack ends sooner). Output is mono, in
-32-sample blocks at 48 kHz. A normalized sine rotator supplies the fundamental
+Each note has its own token, gate, oscillator phase, velocity and amplitude envelope.
+With matching V6 firmware and package builds, the stock AMP page controls each
+note's AHD or ADSR shape. SOUND SETUP points to that page. The earlier linear
+attack/release fields remain available only to legacy fallback inputs. Output is
+mono, in 32-sample blocks at 48 kHz. A normalized sine rotator supplies the fundamental
 and finite second/third harmonic families; harmonics fade before Nyquist.
 `src/dsp/tuning.s` supplies MIDI 0–127 coefficients at A4=440 Hz.
 
@@ -70,8 +72,8 @@ on SRC. Presets still store the original mode, chord, family and table fields;
 existing sounds need no conversion beyond the existing preset migration.
 
 SETTINGS > DIGIKIT > CANOPY contains five short groups: INPUT for connections
-and selector keys; CHORD LEARN for custom shapes; SOUND SETUP for amplitude
-attack/release and arp clock/BPM; WAVETABLE TIMBRE for scan clock and expression;
+and selector keys; CHORD LEARN for custom shapes; SOUND SETUP for the AMP-page
+reminder and arp clock/BPM; WAVETABLE TIMBRE for scan clock and expression;
 and PRESETS for save/load. Performance controls are no longer duplicated there.
 
 ## Wavetable controls
@@ -172,8 +174,8 @@ transposed arp notes keep their own signal history.
 
 FM ENV shapes brightness independently of loudness. ENV, VEL and WHEL default
 to zero. Positive ENV adds complexity during its envelope; negative ENV reduces
-it. The amplitude envelope in SOUND SETUP continues to determine audible note
-attack/release. Wheel modulation follows the incoming USB/DIN channel, like the
+it. The native track AMP page determines each note's audible amplitude envelope,
+independently of FM ENV. Wheel modulation follows the incoming USB/DIN channel, like the
 wavetable source. Exact technical contracts and acceptance requirements are in
 the [FM design](../../../docs/design/canopy.md#four-operator-fm-extension-cpsa).
 

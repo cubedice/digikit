@@ -2,6 +2,7 @@
 
 import json
 import os
+import struct
 import subprocess
 from pathlib import Path
 
@@ -51,6 +52,11 @@ def playback_object():
 .PKDATA _mi_epoch, 4;
 .PKDATA _instrument_session, 4;
 .PKDATA _mi_carrier_stamp, 4;
+.PKDATA _mi_envelope_records, 4;
+.PKDATA _iv_amp_attack_table, 512;
+.PKDATA _iv_amp_decay_table, 512;
+.PKDATA _iv_amp_hold_table, 512;
+.PKDATA _test_amp_record, 44;
 .PKDATA _test_state, 2976;
 .PKDATA _test_packet, 128;
 .PKDATA _test_metadata, 24;
@@ -172,6 +178,7 @@ def playback(playback_object):
             dm_words=memory,
             reads=reads,
             max_steps=100000,
+            return_sw=0xBCF100,
             read_regs=tuple(
                 f"{bank}{i}" for bank in ("I", "L", "B") for i in range(3, 8)
             )
@@ -247,6 +254,117 @@ def test_opted_in_output_is_borrowed_per_block_and_revoked_with_session(playback
     put("_instrument_session", [0])
     call(0)
     assert get("_instrument_ui_status") == [0]
+
+
+def _native_amp_fixture(playback):
+    call, put, get, reset, configure, _, symbols = playback
+    assert reset() == 1
+    call(0)
+    assert configure() == 1
+    put("_ir_process_flags", [3])
+    put(
+        "_ir_process_rows",
+        [2, 9, 20, symbols["_test_status_process"], 0xB90000, 0xBC0000, 8, 32],
+    )
+
+    def bits(value):
+        return int.from_bytes(struct.pack("<f", value), "little")
+
+    put("_iv_amp_attack_table", [bits(-0.125)] * 128)
+    put("_iv_amp_decay_table", [bits(-0.75)] * 127 + [bits(-1.0)])
+    put("_iv_amp_hold_table", [29] * 128)
+    put("_mi_envelope_records", [symbols["_test_amp_record"]])
+    record = [3, 7, 11, bits(0.25), 127, 9, 2, 4, 17, 31, bits(-0.5)]
+    put("_test_amp_record", record)
+    put("_mi_carrier_stamp", [41])
+    return call, put, get, bits, record
+
+
+def test_native_amp_snapshot_uses_stock_configuration_without_mutating_it(playback):
+    call, put, get, bits, record = _native_amp_fixture(playback)
+    call(0)
+    assert get("_iv_input", 32)[:2] == [6, 128]
+    assert get("_iv_input", 32)[24:] == [
+        2,
+        bits(0.125),
+        29,
+        bits(0.75),
+        bits(0.25),
+        bits(1.0),
+        1,
+        0,
+    ]
+    assert get("_test_amp_record", 11) == record
+    assert get("_mi_native_owner_valid") == [1], {
+        name: get(name, count)
+        for name, count in (
+            ("_iv_native_valid", 1),
+            ("_iv_result", 1),
+            ("_ir_rows", 16),
+            ("_ir_process_flags", 1),
+            ("_instrument_ui_status", 13),
+        )
+    }
+    assert get("_mi_native_owner_stamp") == [41]
+    record[1], record[3], record[4], record[5], record[6] = 127, 0, 11, 0, 1
+    put("_test_amp_record", record)
+    call(0)
+    assert get("_iv_input", 32)[24:] == [
+        1,
+        bits(0.125),
+        0xFFFFFFFF,
+        bits(0.75),
+        0,
+        bits(0.75),
+        0,
+        0,
+    ]
+    assert get("_test_amp_record", 11) == record
+    put("_ir_process_flags", [1])
+    call(0)
+    assert get("_iv_input", 2) == [5, 96]
+    assert get("_mi_native_owner_valid") == [0]
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        (0, 128),
+        (1, 0xFFFFFFFF),
+        (2, 128),
+        (3, 0x7FC00000),
+        (3, 0xBF800000),
+        (3, 0x40000000),
+        (4, 128),
+        (6, 0),
+        (6, 3),
+    ],
+)
+def test_invalid_native_amp_snapshot_cannot_enable_shared_bypass(
+    playback, field, value
+):
+    call, put, get, _, record = _native_amp_fixture(playback)
+    call(0)
+    assert get("_mi_native_owner_valid") == [1]
+    record[field] = value
+    put("_test_amp_record", record)
+    call(0)
+    assert get("_iv_input", 32)[24] == 0
+    assert get("_mi_native_owner_valid") == [0]
+
+
+def test_missing_native_snapshot_and_lost_session_revoke_shared_bypass(playback):
+    call, put, get, _, _ = _native_amp_fixture(playback)
+    call(0)
+    assert get("_mi_native_owner_valid") == [1]
+    put("_mi_envelope_records", [0])
+    call(0)
+    assert get("_iv_input", 32)[24] == 0
+    assert get("_mi_native_owner_valid") == [0]
+    put("_mi_native_owner_valid", [1])
+    put("_instrument_session", [0])
+    call(0)
+    assert get("_mi_native_owner_valid") == [0]
 
 
 def test_admitted_render_consumes_batch_once_and_raw_carrier_only_copies(playback):

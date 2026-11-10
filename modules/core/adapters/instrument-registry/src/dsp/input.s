@@ -35,7 +35,19 @@ _ir_normalize_packet:
     IF EQ JUMP _in_v4;
     R1 = 5;
     COMP(R0, R1);
+    IF EQ JUMP _in_v5;
+    R1 = 6;
+    COMP(R0, R1);
     IF NE JUMP _in_bad;
+    // V6 appends scalar native AMP data; normalization leaves it untouched.
+    R0 = I1;
+    R1 = 0x200fdf80;
+    COMP(R0, R1);
+    IF GT JUMP _in_bad;
+    R0 = DM(1, I1);
+    R1 = 128;
+    JUMP _in_size;
+_in_v5:
     // The process owner negotiates V5; normalization never accesses its sink.
     R0 = I1;
     R1 = 0x200fdfa0;

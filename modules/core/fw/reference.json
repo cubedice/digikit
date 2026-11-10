@@ -17645,6 +17645,96 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x26ad30",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 native AMP attack increments: the 0x26ad30 literal at 0x1cbba8. Indexed by the configured record's attack word.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.amp_attack_table",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_literal",
+          "offset": 81
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x26af30",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 native AMP decay/release multipliers: the 0x26af30 literal at 0x1cbca4. Index127 is infinite.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.amp_decay_table",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_literal",
+          "offset": 96
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x26b130",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 native AMP hold sample counts: the 0x26b130 literal at 0x1cbc5f. Index127 has separate infinite-hold behavior.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.amp_hold_table",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_literal",
+          "offset": 27
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.12": [
           {
             "addr": "0x28393810",
@@ -19181,7 +19271,7 @@
       "name": "pattern"
     },
     {
-      "count": 89,
+      "count": 92,
       "cpu": "sharc",
       "file": "devices/fw/dsp/voice.toml",
       "meaning": "voice rendering",

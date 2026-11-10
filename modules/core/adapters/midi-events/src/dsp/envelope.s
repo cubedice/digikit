@@ -1,4 +1,4 @@
-// DT2 envelope entry interposer, non-reentrant. Not enabled by module manifest.
+// DT2 envelope entry interposer, non-reentrant.
 // R4 is the stock envelope record, I6 the stock call frame.
 // workspace.s captures _mi_envelope_records; the frame owner advances the stamp.
 // A zero base, non-record pointer or missing/currently unowned pair falls through.
@@ -7,6 +7,8 @@
 .GLOBAL _mi_envelope_entry;
 .EXTERN _mi_envelope_next;
 .EXTERN _mi_carrier_flags;
+.EXTERN _mi_native_owner_valid;
+.EXTERN _mi_native_owner_stamp;
 _mi_envelope_entry:
     DM(_me_sv_r0) = R0;
     DM(_me_sv_r1) = R1;
@@ -62,6 +64,26 @@ _me_found:
     R3 = 0;
     COMP(R2, R3);
     IF EQ JUMP _me_restore;
+    // Native per-note AMP has already shaped this track's completed block.
+    // Only the admitted stereo pair and the stock in-place 32-sample call
+    // may skip this one stage; its configured record and later gain stay intact.
+    R3 = 1;
+    COMP(R4, R3);
+    IF GT JUMP _me_owned_flags;
+    R3 = DM(_mi_native_owner_valid);
+    R3 = PASS R3;
+    IF EQ JUMP _me_owned_flags;
+    R3 = DM(_mi_native_owner_stamp);
+    COMP(R3, R11);
+    IF NE JUMP _me_owned_flags;
+    R3 = DM(_me_sv_r12);
+    COMP(R8, R3);
+    IF NE JUMP _me_owned_flags;
+    R3 = DM(3, I6);
+    R2 = 32;
+    COMP(R3, R2);
+    IF EQ JUMP _me_native_restore;
+_me_owned_flags:
     DM(1, I6) = R0;
     DM(2, I6) = R1;
 _me_restore:
@@ -91,6 +113,36 @@ _me_restore:
     R0 = DM(_me_sv_r0);
     MODIFY(I7, -16) (NW); // displaced first instruction of DT2 1.17 0x1cbb57
     JUMP _mi_envelope_next;
+_me_native_restore:
+    R0 = DM(_me_sv_i0);
+    I0 = R0;
+    R0 = DM(_me_sv_l0);
+    L0 = R0;
+    R0 = DM(_me_sv_m5);
+    M5 = R0;
+    R0 = DM(_me_sv_mode1);
+    MODE1 = R0;
+    R0 = DM(_me_sv_astatx);
+    ASTATX = R0;
+    R0 = DM(_me_sv_astaty);
+    ASTATY = R0;
+    R0 = DM(_me_sv_stkyx);
+    STKYX = R0;
+    R0 = DM(_me_sv_stkyy);
+    STKYY = R0;
+    R1 = DM(_me_sv_r1);
+    R2 = DM(_me_sv_r2);
+    R3 = DM(_me_sv_r3);
+    R4 = DM(_me_sv_r4);
+    R9 = DM(_me_sv_r9);
+    R11 = DM(_me_sv_r11);
+    R12 = DM(_me_sv_r12);
+    R0 = DM(_me_sv_r0);
+    // Match the stock C-call epilogue without reserving its unused locals.
+    I12 = DM(I6, M7);
+    JUMP (M14, I12) (DB);
+    NOP;
+    RFRAME;
 .PKDATA _mi_envelope_records, 4;
 .PKDATA _mi_carrier_stamp, 4;
 .PKDATA _me_sv_r0, 8;

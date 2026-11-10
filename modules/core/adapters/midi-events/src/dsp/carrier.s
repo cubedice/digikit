@@ -117,3 +117,6 @@ _mi_carrier_unowned:
 .SECTION/DM seg_dmda;
 .PKDATA _mi_carrier_active, 64;
 .PKDATA _mi_carrier_pairs, 192;
+// Single-instance native-AMP opt-in, renewed only by a completed V6 process.
+.PKDATA _mi_native_owner_valid, 4;
+.PKDATA _mi_native_owner_stamp, 4;

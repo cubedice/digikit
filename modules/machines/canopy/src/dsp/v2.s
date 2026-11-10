@@ -19,6 +19,9 @@
 .EXTERN _fm_finish;
 .EXTERN _fm_output;
 .EXTERN _fm_bank;
+.EXTERN _cp_amp_mode;
+.EXTERN _cp_amp_state;
+.EXTERN _cp_amp_input;
 _canopy_reset:
     R0 = PASS R8;
     IF LE JUMP _cv_bad;
@@ -83,6 +86,13 @@ _cv_clear_wheel:
     DM(I0, M6) = R0;
     R1 = R1 - 1;
     IF NE JUMP _cv_clear_wheel;
+    // Reset tails use the independent bounded ramp, so native identities can
+    // retire now. A new generation may safely reuse the same token afterwards.
+    I0 = R4;
+    MODIFY(I0,716) (NW);
+    LCNTR = 28, DO _cv_replace_amp_clear UNTIL LCE;
+_cv_replace_amp_clear:
+    DM(I0,M6) = R0;
     I0 = R4;
     R0 = 1;
     DM(263, I0) = R0;
@@ -92,6 +102,10 @@ _canopy_process:
     DM(_cv_state) = R4;
     DM(_cv_input) = R8;
     DM(_wt_state) = R4;
+    DM(_cp_amp_state) = R4;
+    DM(_cp_amp_input) = R8;
+    R0 = 0;
+    DM(_cp_amp_mode) = R0;
     I2 = R8;
     R0 = DM(0, I2);
     R1 = 2;
@@ -105,7 +119,70 @@ _canopy_process:
     IF EQ JUMP _cv_v4;
     R1 = 5;
     COMP(R0, R1);
+    IF EQ JUMP _cv_v5;
+    R1 = 6;
+    COMP(R0, R1);
     IF NE JUMP _cv_bad;
+    R0 = I2;
+    R1 = 0x200fdf80;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = DM(1, I2);
+    R1 = 128;
+    COMP(R0, R1);
+    IF NE JUMP _cv_bad;
+    R0 = DM(24, I2);
+    R1 = 2;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    R0 = DM(31, I2);
+    R0 = PASS R0;
+    IF NE JUMP _cv_bad;
+    R0 = DM(30, I2);
+    R1 = 1;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    R0 = DM(24, I2);
+    R0 = PASS R0;
+    IF EQ JUMP _cv_v6_ready;
+    R0 = DM(26, I2);
+    R1 = -1;
+    COMP(R0, R1);
+    IF EQ JUMP _cv_amp_coefficients;
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+_cv_amp_coefficients:
+    // Positive IEEE float encodings order all bounded coefficients directly.
+    R0 = DM(25, I2);
+    R0 = PASS R0;
+    IF LE JUMP _cv_bad;
+    R1 = 0x3f800000;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = DM(27, I2);
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = DM(28, I2);
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = DM(29, I2);
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+_cv_v6_ready:
+    R0 = DM(24, I2);
+    DM(_cp_amp_mode) = R0;
+    JUMP _cv_status_input;
+_cv_v5:
     R0 = I2;
     R1 = 0x200fdfa0;
     COMP(R0, R1);
@@ -114,6 +191,7 @@ _canopy_process:
     R1 = 96;
     COMP(R0, R1);
     IF NE JUMP _cv_bad;
+_cv_status_input:
     R0 = DM(23, I2);
     R1 = 13;
     COMP(R0, R1);
@@ -131,8 +209,8 @@ _canopy_process:
     I0 = R0;
     R0 = 0;
     DM(0, I0) = R0;
-    R0 = 96;
-    R1 = 96;
+    R0 = DM(1, I2);
+    R1 = R0;
     JUMP _cv_size;
 _cv_v4:
     R0 = I2;
@@ -660,6 +738,19 @@ _cv_phrase_only:
     R0 = R0 OR R1;
     IF NE JUMP _cv_bad;
 _cv_render:
+    R0 = DM(_cp_amp_mode);
+    R0 = PASS R0;
+    IF NE JUMP _cv_amp_ready;
+    // Returning to a legacy input invalidates native identities. A later valid
+    // snapshot starts each still-owned note coherently instead of resuming stale AMP.
+    R0 = DM(_cv_state);
+    I0 = R0;
+    MODIFY(I0,716) (NW);
+    R0 = 0;
+    LCNTR = 28, DO _cv_amp_clear UNTIL LCE;
+_cv_amp_clear:
+    DM(I0,M6) = R0;
+_cv_amp_ready:
     R0 = 1;
     DM(_cp_v2_instance) = R0;
     R0 = 0;
@@ -921,7 +1012,7 @@ _cv_bad:
 .VAR _canopy_descriptor = 0x444b4954;
 .VAR _canopy_descriptor_1 = 2;
 .VAR _canopy_descriptor_2 = 48;
-.VAR _canopy_descriptor_3 = 1; // V5 status output for the native SRC adapter.
+.VAR _canopy_descriptor_3 = 3; // V6 native AMP snapshot plus borrowed status output.
 .VAR _canopy_descriptor_4 = 1;
 .VAR _canopy_descriptor_5 = 2976;
 .VAR _canopy_descriptor_6 = 8;

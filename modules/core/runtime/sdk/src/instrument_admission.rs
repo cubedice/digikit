@@ -204,7 +204,7 @@ pub fn prepare(
             || spec.max_events > 8
             || spec.max_controls == 0
             || spec.max_controls > 32
-            || spec.flags & !crate::instrument_descriptor::STATUS_OUTPUT != 0
+            || !crate::instrument_descriptor::valid_flags(spec.flags)
         {
             return Err(Error::Budget);
         }

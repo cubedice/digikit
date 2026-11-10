@@ -7,6 +7,12 @@ pub const VERSION: u32 = 2;
 pub const DESC_BYTES: usize = 48;
 /// Opt in to the V5 borrowed status-output extension. Unknown bits fail closed.
 pub const STATUS_OUTPUT: u32 = 1;
+/// Opt in to the V6 native AMP snapshot. Requires STATUS_OUTPUT.
+pub const NATIVE_AMP: u32 = 2;
+
+pub const fn valid_flags(flags: u32) -> bool {
+    flags == 0 || flags == STATUS_OUTPUT || flags == (STATUS_OUTPUT | NATIVE_AMP)
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct Limits {
@@ -98,7 +104,7 @@ impl Descriptor {
         if w(0) != MAGIC || w(1) != VERSION || w(2) != DESC_BYTES as u32 {
             return Err(Error::Header);
         }
-        if w(3) & !STATUS_OUTPUT != 0 {
+        if !valid_flags(w(3)) {
             return Err(Error::Flags);
         }
         if !(1..=16).contains(&w(4)) || !(1..=8).contains(&w(6)) || !(1..=32).contains(&w(7)) {

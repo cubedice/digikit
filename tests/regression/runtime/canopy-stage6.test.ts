@@ -17,6 +17,7 @@ import { acknowledgedPanel } from './panel-ack.ts';
 import { turnAppliedControl } from './encoder-applied.ts';
 import { encoderValue } from './encoder-value.ts';
 import { canopyControls } from './canopy-controls.ts';
+import { proveCanopyNativeAmp } from './canopy-native-amp.ts';
 import { analysisJson } from './fx-live.ts';
 import { pageKit } from './fx-pages-ui.ts';
 import type { FxProfile } from './fx-session.ts';
@@ -90,7 +91,8 @@ test(
             ['_ir_process_rows', 32],
             ['_iv_result', 32],
             ['_mi_heartbeat', 32],
-            ['_iv_input', 80],
+            ['_iv_input', 128],
+            ['_mi_native_owner_valid', 4],
             ['_pattern_position_info', 80],
             ['_instrument_reply', 64],
             ['_loop_ui_status', 64],
@@ -228,6 +230,11 @@ test(
       for (let i = 0; i < 4 && (await cf('ip_src_debug', 1)) !== page; i++) await key('SRC');
       expect(await cf('ip_src_debug', 1)).toBe(page);
     };
+    await key('SRC');
+    await srcPage(0);
+    await turnAppliedControl(session, 7, async () => (await rawBank())[21]! & 65535, 0);
+    await proveCanopyNativeAmp(session, plan, state, root);
+    if (process.env.CANOPY_NATIVE_AMP_ONLY === '1') return;
     await key('SRC');
     await srcPage(2);
     await encoderValue(
@@ -559,9 +566,8 @@ test(
       await session.client.call('midi.usb.in', { bytes: [0x80, note, 0] });
       await session.client.call('midi.in', { bytes: [0x80, note, 0] });
     }
-    // RELEASE=15 takes one device second from a sustained amplitude. The
-    // ordinary release voices remain present until that envelope reaches zero.
-    await waitEmulated(session, 1050);
+    // The native AMP proof explicitly left ADSR/SUS=127/REL=0 selected.
+    await waitEmulated(session, 100);
     await expect.poll(async () => (await voices()).length, { timeout: 30000 }).toBe(0);
     const released = await audio('loop-after-release');
     expect(await dk.verifyFile('stage6/transfer.bin', payload)).toBe(true);

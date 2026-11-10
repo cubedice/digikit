@@ -4,6 +4,8 @@
 .EXTERN _cp_note_off;
 .EXTERN _cp_retune;
 .EXTERN _wt_state;
+.EXTERN _cp_amp_mode;
+.EXTERN _cp_amp_staging;
 // UI-native transpose changes retune every owned foreground/tail/pending slot
 // using its original MIDI pitch and route bend. Phase and gates are preserved.
 .GLOBAL _cp_retune_all;
@@ -79,6 +81,17 @@ _ci_snapshot:
     DM(I2, M6) = R0;
     R2 = R2 - 1;
     IF NE JUMP _ci_snapshot;
+    R0 = DM(_cp_amp_mode);
+    R0 = PASS R0;
+    IF EQ JUMP _ci_event_loop;
+    R0 = DM(_ci_bank);
+    I1 = R0;
+    MODIFY(I1, 716) (NW);
+    I2 = _cp_amp_staging;
+    LCNTR = 24, DO _ci_amp_snapshot UNTIL LCE;
+    R0 = DM(I1, M6);
+_ci_amp_snapshot:
+    DM(I2, M6) = R0;
 _ci_event_loop:
     R0 = DM(_ci_event);
     I0 = R0;
@@ -141,6 +154,18 @@ _ci_commit:
     DM(I1, M6) = R0;
     R2 = R2 - 1;
     IF NE JUMP _ci_commit;
+    R0 = DM(_cp_amp_mode);
+    R0 = PASS R0;
+    IF EQ JUMP _ci_amp_committed;
+    R0 = DM(_ci_bank);
+    I1 = R0;
+    MODIFY(I1, 716) (NW);
+    I2 = _cp_amp_staging;
+    LCNTR = 24, DO _ci_amp_commit UNTIL LCE;
+    R0 = DM(I2, M6);
+_ci_amp_commit:
+    DM(I1, M6) = R0;
+_ci_amp_committed:
     R0 = DM(_ci_pedal_bank);
     I1 = R0;
     I2 = _ci_pedal_staging;

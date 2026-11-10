@@ -12,6 +12,7 @@
 .EXTERN _cp_blend;
 .EXTERN _cp_tune_changed;
 .EXTERN _cp_v2_instance;
+.EXTERN _cp_amp_copy;
 .GLOBAL _ca_prepare;
 // Remember the foreground phases before the pad renders this block. The arp
 // renders afterwards; using the pad's advanced phase would offset it by 32
@@ -1022,6 +1023,9 @@ _ca_tail_word:
     DM(I0, M6) = R0;
     R2 = R2 - 1;
     IF NE JUMP _ca_tail_word;
+    R0 = DM(_ca_voice);
+    R1 = R10;
+    CALL _cp_amp_copy;
     I0 = R10;
     R0 = 4;
     DM(1, I0) = R0;

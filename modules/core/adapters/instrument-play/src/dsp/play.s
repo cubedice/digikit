@@ -20,6 +20,13 @@
 .EXTERN _ir_lifecycle_ready;
 .EXTERN _mi_velocity_prepare;
 .EXTERN _mi_carrier_rendered;
+.EXTERN _mi_envelope_records;
+.EXTERN _mi_native_owner_valid;
+.EXTERN _mi_native_owner_stamp;
+.EXTERN _mi_carrier_stamp;
+.EXTERN _iv_amp_attack_table;
+.EXTERN _iv_amp_decay_table;
+.EXTERN _iv_amp_hold_table;
 .EXTERN _pattern_position_info;
 .EXTERN _pattern_clock_info;
 
@@ -27,6 +34,8 @@
 // single-instance capability; binding the session must precede lifecycle work.
 _instrument_carrier_prepare:
     R0 = 0;
+    DM(_mi_native_owner_valid) = R0;
+    DM(_iv_native_valid) = R0;
     DM(_instrument_ui_status) = R0;
     I0 = _ir_rows;
     R0 = DM(0, I0);
@@ -53,9 +62,9 @@ _instrument_carrier_prepare:
     CALL _iv_position;
     I0 = _iv_input;
     R0 = DM(_ir_process_flags);
-    R1 = 1;
-    COMP(R0, R1);
-    IF NE JUMP _iv_no_status;
+    R1 = FEXT R0 BY 0:1;
+    R1 = PASS R1;
+    IF EQ JUMP _iv_no_status;
     R0 = 5;
     DM(0, I0) = R0;
     R0 = 96;
@@ -68,6 +77,16 @@ _instrument_carrier_prepare:
     R1 = DM(_iv_timing_meta);
     R0 = R0 OR R1;
     DM(12, I0) = R0;
+    R0 = DM(_ir_process_flags);
+    R0 = FEXT R0 BY 1:1;
+    R0 = PASS R0;
+    IF EQ JUMP _iv_no_status;
+    R0 = 6;
+    DM(0, I0) = R0;
+    R0 = 128;
+    DM(1, I0) = R0;
+    CALL _iv_amp_snapshot;
+    I0 = _iv_input;
 _iv_no_status:
     R0 = DM(_iv_generation);
     DM(3, I0) = R0;
@@ -95,6 +114,11 @@ _iv_no_status:
     DM(8, I0) = R1;
     R0 = PASS R0;
     IF LT JUMP _iv_quiet;
+    // The shared AMP may be skipped only after this native block completed.
+    R2 = DM(_iv_native_valid);
+    DM(_mi_native_owner_valid) = R2;
+    R2 = DM(_mi_carrier_stamp);
+    DM(_mi_native_owner_stamp) = R2;
     R1 = 1;
     R0 = R1 - R0; // ACTIVE=0, QUIET=1
     DM(_iv_active) = R0;
@@ -105,6 +129,7 @@ _iv_no_status:
     RTS;
 _iv_quiet:
     R0 = 0;
+    DM(_mi_native_owner_valid) = R0;
     DM(_instrument_ui_status) = R0;
     DM(_iv_active) = R0;
     DM(_iv_revision) = R0;
@@ -117,6 +142,94 @@ _iv_clear_output:
     DM(I0, M6) = R0;
     R1 = R1 - 1;
     IF NE JUMP _iv_clear_output;
+    RTS;
+
+// Stock configuration runs later in the dispatcher. Its previous completed
+// record is stable here, so all eight V6 words describe one native AMP shape.
+// Never write the stock record: parameter locks and other machines still own it.
+_iv_amp_snapshot:
+    I1 = _iv_input;
+    R0 = 0;
+    DM(24, I1) = R0;
+    DM(31, I1) = R0;
+    DM(_iv_native_valid) = R0;
+    R0 = DM(_mi_envelope_records);
+    R0 = PASS R0;
+    IF EQ RTS;
+    I0 = R0;
+    R4 = DM(6, I0);
+    R1 = 1;
+    COMP(R4, R1);
+    IF EQ JUMP _iv_amp_mode_ok;
+    R1 = 2;
+    COMP(R4, R1);
+    IF NE RTS;
+_iv_amp_mode_ok:
+    R0 = DM(0, I0);
+    R1 = LSHIFT R0 BY -7;
+    R1 = PASS R1;
+    IF NE RTS;
+    R0 = LSHIFT R0 BY 2;
+    R1 = _iv_amp_attack_table;
+    R0 = R0 + R1;
+    I2 = R0;
+    R0 = DM(0, I2);
+    F0 = -F0;
+    DM(25, I1) = R0;
+    R0 = DM(1, I0);
+    R1 = LSHIFT R0 BY -7;
+    R1 = PASS R1;
+    IF NE RTS;
+    R2 = 127;
+    COMP(R0, R2);
+    IF EQ JUMP _iv_amp_hold_forever;
+    R0 = LSHIFT R0 BY 2;
+    R1 = _iv_amp_hold_table;
+    R0 = R0 + R1;
+    I2 = R0;
+    R0 = DM(0, I2);
+    JUMP _iv_amp_hold_store;
+_iv_amp_hold_forever:
+    R0 = 0xffffffff;
+_iv_amp_hold_store:
+    DM(26, I1) = R0;
+    R0 = DM(2, I0);
+    R1 = LSHIFT R0 BY -7;
+    R1 = PASS R1;
+    IF NE RTS;
+    R0 = LSHIFT R0 BY 2;
+    R1 = _iv_amp_decay_table;
+    R0 = R0 + R1;
+    I2 = R0;
+    R0 = DM(0, I2);
+    F0 = -F0;
+    DM(27, I1) = R0;
+    R0 = DM(3, I0);
+    R0 = PASS R0;
+    IF LT RTS;
+    R1 = 0x3f800000;
+    COMP(R0, R1);
+    IF GT RTS;
+    DM(28, I1) = R0;
+    R0 = DM(4, I0);
+    R1 = LSHIFT R0 BY -7;
+    R1 = PASS R1;
+    IF NE RTS;
+    R0 = LSHIFT R0 BY 2;
+    R1 = _iv_amp_decay_table;
+    R0 = R0 + R1;
+    I2 = R0;
+    R0 = DM(0, I2);
+    F0 = -F0;
+    DM(29, I1) = R0;
+    R0 = DM(5, I0);
+    R1 = 0;
+    R2 = 1;
+    R0 = PASS R0;
+    IF NE R1 = R2;
+    DM(30, I1) = R1;
+    DM(24, I1) = R4;
+    DM(_iv_native_valid) = R2;
     RTS;
 
 // Borrow a coherent position snapshot only at the saved early-block boundary.
@@ -898,7 +1011,8 @@ _iv_voice_zero:
 
 .SECTION/DM seg_dmda;
 .PKDATA _instrument_voice_rows, 192;
-.PKDATA _iv_input, 96;
+.PKDATA _iv_input, 128;
+.PKDATA _iv_native_valid, 4;
 .PKDATA _iv_output, 128;
 .PKDATA _iv_events, 192;
 .VAR _iv_controls = 1;

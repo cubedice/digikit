@@ -3947,3 +3947,36 @@ kind = "code"
 addr = 0x40065e12
 len = 6
 sha256 = "5cdd74296132edc3942cd0787bb9bf2877118efeef5dd4f2ae55ae9e843aa780"
+
+[[anchor]]
+name = "dsp.voice.site.amp_attack_table"
+cpu = "sharc"
+kind = "value"
+addr = 0x26ad30
+src = 0x28397750
+len = 6
+sha256 = "2850422f123e311c9e4c766e87dd6e8185c30abd4f58377c8a755127264dbde8"
+mark = "D"
+rule = "fw/dsp/voice:sharc_literal"
+
+[[anchor]]
+name = "dsp.voice.site.amp_decay_table"
+cpu = "sharc"
+kind = "value"
+addr = 0x26af30
+src = 0x28397948
+len = 6
+sha256 = "b0c052dd852aefc75b0e143683f4d7df049d3e0204d5b26be2fbad70049074ca"
+mark = "D"
+rule = "fw/dsp/voice:sharc_literal"
+
+[[anchor]]
+name = "dsp.voice.site.amp_hold_table"
+cpu = "sharc"
+kind = "value"
+addr = 0x26b130
+src = 0x283978be
+len = 6
+sha256 = "1bd4aea2592c9079e1d3bc17757d2fc7801210d04d85bf640e401c3bc9a1ea48"
+mark = "D"
+rule = "fw/dsp/voice:sharc_literal"

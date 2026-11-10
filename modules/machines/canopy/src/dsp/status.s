@@ -10,7 +10,7 @@ _cu_publish:
     R0 = DM(0, I3);
     R1 = 5;
     COMP(R0, R1);
-    IF NE RTS;
+    IF LT RTS;
     R0 = DM(22, I3);
     I4 = R0;
     R0 = 0;

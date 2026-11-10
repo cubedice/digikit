@@ -10,6 +10,23 @@ compiled UI/preset, native-pixel and Overloop results, plus outstanding wider-ga
 failures. Physical FM sound/timing qualification remains open. Earlier dated
 stage results remain evidence for their corresponding builds.
 
+Native AMP correction is implemented and passes the focused emulator checks.
+The track AMP page shapes each CANOPY note independently. The earlier local
+attack/release plus shared AMP design
+can end source audio before the native release, and can leave later AHD notes
+behind an already finished shared envelope. V6 supplies a validated scalar
+snapshot of the stock AMP coefficients to the instrument; each note keeps its
+own attack/hold/decay/sustain/release state. Only a successfully rendered native
+AMP block bypasses the shared carrier envelope. Filter, levels, pan and effects
+remain stock. SOUND SETUP no longer duplicates AMP attack/release; old preset
+fields remain readable for compatibility. Earlier shared-AMP descriptions below
+are historical. Focused regressions and the compiled native-knob/audio proof pass,
+including a measured finite ADSR release and a new audible AHD note after an
+earlier held key finishes. Both matching firmware and module builds are required.
+The [native AMP handover](../handovers/HANDOVER-2026-11-09-canopy-native-amp.md)
+records the evidence and wider-gate failures. Physical verification and installation
+remain open.
+
 Status: Stage 5 implementation and DTII OS 1.17 emulator acceptance complete,
 2026-11-02. The admitted CANOPY pad instrument has explicit presets, live
 SOUND/MOVEMENT pages, native TUNE/LEVEL editing and revision-bound display
@@ -1624,7 +1641,10 @@ The first firmware proof uses sine tones and this lifecycle:
 3. Individual note-offs start local releases. The adapter keeps the stock render path alive while any internal voice, latch, arp gate or release remains active.
 4. Only QUIET permits deactivating the stock track carrier. New events can wake it without a stock sample trig.
 
-CANOPY needs local attack/release controls even with a shared stock envelope; expose these in setup initially, defaulting to approximately 80 ms attack and 1 s release. They belong to the effective configuration and preset. Stock AMP remains a master shape and can intentionally shorten the whole chord. Use a sustained stock AMP setting when proving held notes and independent releases.
+The initial proof used separate local attack/release controls with a shared stock
+AMP envelope. The native AMP correction supersedes this: the track AMP page
+controls each note, including AHD's finite hold and decay and ADSR's gated release.
+No sustained-AMP workaround should be required to play the keyboard.
 
 Prove that the engine does not kill the custom renderer prematurely at its own envelope termination, and that stock shared velocity is neutral. A low-velocity first note must not reduce the volume of a later high-velocity note. Inspect both module output and final track output.
 
@@ -1796,7 +1816,7 @@ KEYBOARD label. SETUP contains five short groups:
 | --- | --- |
 | INPUT | EXTERNAL MIDI, USB, DIN, CHANNEL, SAVE ROUTING, SELECTOR OCTAVE, selector channel, PANIC, RECOVER, readiness and panel hints |
 | CHORD LEARN | Shape slot, LEARN TO ROOT, shape-save status/retry and the reminder to select CHRD USER |
-| SOUND SETUP | AMP ATTACK, AMP RELEASE, ARP CLOCK and LOCAL BPM |
+| SOUND SETUP | Reminder to use the track AMP page, ARP CLOCK and LOCAL BPM |
 | WAVETABLE TIMBRE | Scan clock, envelope amount, timbre attack/release and velocity/wheel to position |
 | PRESETS | Preset slot, saved/dirty state and explicit SAVE/LOAD |
 
@@ -1884,7 +1904,7 @@ Arp settings remain editable while ARP MIX is PAD, so a performer can prepare th
 
 ### Performance feedback
 
-On SOUND, show the detected/generated chord at left, such as `Cmaj7`, `Dm7` or `C/E`. A pending quantized chord uses a rightmost `>` marker beside the current name until the DSP commits the new chord revision; never replace the displayed note slots with the future chord early. With no admitted notes, show `NO NOTES`; if only release tails remain, show `RELEASE` and empty note slots. These are note/lifetime indicators, not audio meters: a shared AMP or mute can make held notes inaudible.
+On SOUND, show the detected/generated chord at left, such as `Cmaj7`, `Dm7` or `C/E`. A pending quantized chord uses a rightmost `>` marker beside the current name until the DSP commits the new chord revision; never replace the displayed note slots with the future chord early. With no admitted notes, show `NO NOTES`; if only release tails remain, show `RELEASE` and empty note slots. These are note/lifetime indicators, not audio meters: a finished AHD envelope, zero sustain or mute can make held notes inaudible.
 
 The four slots show the admitted voicing, sorted by pitch for a stable visual order. Keep an explicit mapping from displayed slot to the underlying note token, so AS PLAYED arp order and repeated-pitch notes still highlight correctly. A solid underline means physical-key ownership; a dotted underline means pedal-only ownership; a short centered underline means latch-only ownership. Use physical > pedal > latch precedence when multiple flags apply. Generated chords inherit the ownership of their root phrase. Old release tails are counted separately and never enter the chord label or arp pool.
 

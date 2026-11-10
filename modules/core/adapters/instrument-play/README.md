@@ -186,6 +186,16 @@ SHARC rendering. These checks do not establish hardware timing or release approv
 
 ## Pad sound setup (Stage 3)
 
+The table below documents the earlier local envelope. Current CANOPY uses the
+track AMP page per note through the opt-in V6 input. SOUND SETUP contains an AMP
+page reminder and the arp clock/BPM settings; its duplicate amplitude attack and
+release controls have been removed. Legacy preset values remain stored for
+compatibility with the earlier input layouts. Native AHD and ADSR snapshots use
+the stock coefficient tables, with separate per-note phase and hold counters.
+Only a current successfully rendered V6 block bypasses shared carrier AMP;
+other instruments retain their existing envelope path. Stock filter, levels,
+pan and FX remain downstream. See the current design for verification status.
+
 The final five KEYBOARD rows control the pad while notes remain held:
 
 | Row | Range and meaning | Default |

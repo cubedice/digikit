@@ -58,7 +58,12 @@ def carrier_policy(blob, *, velocity_hook=False):
             (path.parents[5] / "machines/canopy/src/dsp" / name).read_text()
             for name in (
                 "voice.s",
+                "fm.s",
+                "fm-tables.s",
+                "wavetable.s",
+                "wavetables.s",
                 "tuning.s",
+                "events.s",
                 "instrument.s",
                 "render.s",
                 "carrier-prepare.s",
@@ -666,11 +671,29 @@ def owned_velocity_gain(blob):
     return rows
 
 
-def configure_from_dispatcher(runner, *, flag=0):
-    """Execute the actual argument-loading caller with sustained proof settings."""
+def configure_from_dispatcher(
+    runner,
+    *,
+    flag=0,
+    mode=1,
+    attack=0.0,
+    hold=1.0,
+    decay=0.0,
+    sustain=1.0,
+    release=0.0,
+):
+    """Execute the actual argument-loading caller; defaults sustain the proof."""
     params = 0x2008F000
     # I5-relative mode, attack, hold, decay, sustain, release and final flag.
-    values = (1, bits(0.0), bits(1.0), bits(0.0), bits(1.0), bits(0.0), flag)
+    values = (
+        mode,
+        bits(attack),
+        bits(hold),
+        bits(decay),
+        bits(sustain),
+        bits(release),
+        flag,
+    )
     for offset, value in zip(range(-7, 0), values, strict=True):
         put(runner, params + offset * 4, value)
     stop = 0x1C6A28

@@ -65,8 +65,30 @@ _ir_process_row:
     IF EQ JUMP _ip_v4;
     R1 = 5;
     COMP(R0, R1);
+    IF EQ JUMP _ip_v5;
+    R1 = 6;
+    COMP(R0, R1);
     IF NE JUMP _ip_invalid;
-    // Only a capability installed with this exact row may receive V5.
+    // V6 requires both capabilities installed on this exact owner/generation.
+    R0 = LSHIFT R4 BY 2;
+    R1 = _ir_process_flags;
+    R0 = R0 + R1;
+    I3 = R0;
+    R0 = DM(0, I3);
+    R1 = 3;
+    COMP(R0, R1);
+    IF NE JUMP _ip_invalid;
+    R0 = I2;
+    R1 = 0x200fdf80;
+    COMP(R0, R1);
+    IF GT JUMP _ip_invalid;
+    R0 = DM(1, I2);
+    R1 = 128;
+    COMP(R0, R1);
+    IF NE JUMP _ip_invalid;
+    JUMP _ip_status_check;
+_ip_v5:
+    // V5 remains a valid fallback for a V6-capable callback.
     R0 = LSHIFT R4 BY 2;
     R1 = _ir_process_flags;
     R0 = R0 + R1;
@@ -74,11 +96,20 @@ _ir_process_row:
     R0 = DM(0, I3);
     R1 = 1;
     COMP(R0, R1);
+    IF EQ JUMP _ip_v5_bound;
+    R1 = 3;
+    COMP(R0, R1);
     IF NE JUMP _ip_invalid;
+_ip_v5_bound:
     R0 = I2;
     R1 = 0x200fdfa0;
     COMP(R0, R1);
     IF GT JUMP _ip_invalid;
+    R0 = DM(1, I2);
+    R1 = 96;
+    COMP(R0, R1);
+    IF NE JUMP _ip_invalid;
+_ip_status_check:
     R0 = DM(23, I2);
     R1 = 13;
     COMP(R0, R1);
@@ -94,9 +125,7 @@ _ir_process_row:
     COMP(R0, R1);
     IF GT JUMP _ip_invalid;
     DM(_ip_status) = R0;
-    R0 = DM(1, I2);
-    R1 = 96;
-    JUMP _ip_size;
+    JUMP _ip_counts;
 _ip_v4:
     R0 = I2;
     R1 = 0x200fdfa8;
@@ -115,6 +144,7 @@ _ip_v2:
 _ip_size:
     COMP(R0, R1);
     IF NE JUMP _ip_invalid;
+_ip_counts:
     R0 = DM(8, I2);
     R1 = DM(6, I1);
     COMP(R0, R1);
