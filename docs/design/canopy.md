@@ -24,8 +24,10 @@ are historical. Focused regressions and the compiled native-knob/audio proof pas
 including a measured finite ADSR release and a new audible AHD note after an
 earlier held key finishes. Both matching firmware and module builds are required.
 The [native AMP handover](../handovers/HANDOVER-2026-11-09-canopy-native-amp.md)
-records the evidence and wider-gate failures. Physical verification and installation
-remain open.
+records the evidence and wider-gate failures. The matching firmware and module
+were installed on the DTII at the user's request; device identity, module health
+and preserved settings were verified. Physical sound/timing qualification remains
+open.
 
 Status: Stage 5 implementation and DTII OS 1.17 emulator acceptance complete,
 2026-11-02. The admitted CANOPY pad instrument has explicit presets, live

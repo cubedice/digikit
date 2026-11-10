@@ -124,6 +124,35 @@ compute/load fusions described above. The core firmware is identical. The final
 acceptance log uses the exact final hashes listed here and passes both the finite
 release and repeated-AHD checks.
 
-No hardware reads, hardware audio captures or installation were performed for this fix.
-Physical sound and timing qualification remain open. Do not install without
-the user's installation request.
+The implementation phase used emulator checks. The subsequent user-requested
+installation is recorded below; physical sound and timing qualification remain
+open.
+
+## Physical installation, 2026-11-09
+
+At the user's explicit request, installed the exact firmware and module above.
+The DTII rebooted from image ID `56edcafce3ba99d0` to `8b8889b9338102fd`.
+Firmware was installed first, followed by the new CANOPY package and a second
+restart of the existing selection. The normal boot counter was allowed to clear
+between restarts. No selection writes were needed.
+
+Final INFO reports no safe mode, crash, open upload or read-only card. CANOPY,
+Overloop and remote are loaded with zero faults and their guards enabled.
+CANOPY retains machine type 16. Its final DSP allocation is 225,664 bytes; total
+arena use is 455,168 / 524,288 bytes and DSP-area use is 228,672 / 524,288 bytes.
+The CANOPY file was read back and matches the final module SHA256. Overloop and
+remote readback hashes match their pre-installation backups.
+
+Backups are in `out/canopy-native-amp-install-backup/`. The current Vocal PLAY
+sound was preserved in previously empty preset slot 1 as a 96-byte v3 record,
+then loaded after the final restart. Existing presets and routing entries remain
+byte-identical; USB/DIN and external MIDI remain enabled on channel 1. The
+restored ARP values screen shows track LEVEL 67 and source LEV 93, matching the
+pre-installation capture. Native TUNE was captured beforehand but was not
+separately rechecked afterward. The optional final navigation through TONE to
+SOUND was declined, so no further device action was taken; the final page is ARP.
+
+Receipt: `out/canopy-native-amp-hardware-installed.json`. Flash log:
+`out/canopy-native-amp-hardware-flash.log`. The receipt and captures establish
+installation, settings preservation and module health. No physical audio was
+recorded and no new sound or timing qualification is claimed.
