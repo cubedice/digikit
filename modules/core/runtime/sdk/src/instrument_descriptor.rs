@@ -9,9 +9,14 @@ pub const DESC_BYTES: usize = 48;
 pub const STATUS_OUTPUT: u32 = 1;
 /// Opt in to the V6 native AMP snapshot. Requires STATUS_OUTPUT.
 pub const NATIVE_AMP: u32 = 2;
+/// Opt in to V7 gains at the stock AMP position. Requires STATUS_OUTPUT | NATIVE_AMP.
+pub const POST_AMP: u32 = 4;
 
 pub const fn valid_flags(flags: u32) -> bool {
-    flags == 0 || flags == STATUS_OUTPUT || flags == (STATUS_OUTPUT | NATIVE_AMP)
+    flags == 0
+        || flags == STATUS_OUTPUT
+        || flags == (STATUS_OUTPUT | NATIVE_AMP)
+        || flags == (STATUS_OUTPUT | NATIVE_AMP | POST_AMP)
 }
 
 #[derive(Clone, Copy, Debug)]

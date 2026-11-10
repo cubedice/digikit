@@ -10,6 +10,7 @@
 .EXTERN _mi_carrier_publish;
 .EXTERN _mi_velocity_owners;
 .EXTERN _mi_native_owner_valid;
+.EXTERN _mi_post_owner_valid;
 _mi_carrier_begin:
     R0 = DM(_mi_carrier_stamp);
     R0 = R0 + 1;
@@ -18,6 +19,7 @@ _mi_carrier_begin:
     R1 = 16;
     R0 = 0;
     DM(_mi_native_owner_valid) = R0;
+    DM(_mi_post_owner_valid) = R0;
 _mi_carrier_expire:
     DM(2, I0) = R0;
     MODIFY(I0, 3) (NW);

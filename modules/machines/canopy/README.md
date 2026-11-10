@@ -35,12 +35,20 @@ Only track 1 is admitted. Other tracks and channels retain stock behavior.
 `src/dsp/voice.s` implements four foreground notes, two short release tails and
 four pending-replacement records in a caller-owned 256-byte bank.
 Each note has its own token, gate, oscillator phase, velocity and amplitude envelope.
-With matching V6 firmware and package builds, the stock AMP page controls each
+With matching V7 firmware and package builds, the stock AMP page controls each
 note's AHD or ADSR shape. SOUND SETUP points to that page. The earlier linear
 attack/release fields remain available only to legacy fallback inputs. Output is
 mono, in 32-sample blocks at 48 kHz. A normalized sine rotator supplies the fundamental
 and finite second/third harmonic families; harmonics fade before Nyquist.
 `src/dsp/tuning.s` supplies MIDI 0–127 coefficients at A4=440 Hz.
+
+V7 keeps the audible AMP shape after the stock track effects. This prevents
+bit reduction from holding a release at its smallest quantization level until
+the note suddenly ends. Each note retains its relative envelope within the
+polyphonic mix; pad/arp blending and bounded voice-stealing fades are included.
+The core firmware and CANOPY package must both support V7. The older installed
+V6 pair does not contain this correction. Evidence and qualification status:
+[release ordering](../../../docs/findings/119-canopy-post-fx-amp.md).
 
 Note-on rejects duplicate tokens and invalid notes/velocities without changing
 existing notes. Note-off matches the exact token and releases only that

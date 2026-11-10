@@ -20,7 +20,7 @@ compiled UI/preset, native-pixel and Overloop results, plus outstanding wider-ga
 failures. Physical FM sound/timing qualification remains open. Earlier dated
 stage results remain evidence for their corresponding builds.
 
-Native AMP correction is implemented and passes the focused emulator checks.
+The earlier V6 native AMP correction passes its focused emulator checks.
 The track AMP page shapes each CANOPY note independently. The earlier local
 attack/release plus shared AMP design
 can end source audio before the native release, and can leave later AHD notes
@@ -38,6 +38,17 @@ records the evidence and wider-gate failures. The matching firmware and module
 were installed on the DTII at the user's request; device identity, module health
 and preserved settings were verified. Physical sound/timing qualification remains
 open.
+
+The subsequent physical release report exposed an effects-order defect: native
+per-note AMP ran before stock bit reduction, which could turn a fading note
+into a constant-volume quantization residue. The current V7 correction carries
+a common envelope through the track effects and applies it at the stock AMP
+position, retaining each note's relative envelope inside the polyphonic mix.
+Focused regressions and the full compiled playback/coexistence proof pass,
+including measured release after bit reduction at the stock coefficient rate.
+The implementation, artifacts and remaining qualification are recorded in
+[release ordering](../findings/119-canopy-post-fx-amp.md). It requires a matching
+firmware/module pair; the previously installed pair does not contain this fix.
 
 Status: Stage 5 implementation and DTII OS 1.17 emulator acceptance complete,
 2026-11-02. The admitted CANOPY pad instrument has explicit presets, live

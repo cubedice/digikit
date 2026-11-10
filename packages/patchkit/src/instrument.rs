@@ -75,6 +75,22 @@ mod tests {
         assert!(Descriptor::parse(&oversized, limits()).is_err());
     }
     #[test]
+    fn descriptor_extensions_require_their_predecessors_when_packed() {
+        for flags in [0, 1, 3, 7] {
+            let mut w = words();
+            w[3] = flags;
+            assert_eq!(
+                Descriptor::parse(&bytes(&w), limits()).unwrap().flags,
+                flags
+            );
+        }
+        for flags in [2, 4, 5, 6, 8, 15, u32::MAX] {
+            let mut w = words();
+            w[3] = flags;
+            assert!(Descriptor::parse(&bytes(&w), limits()).is_err());
+        }
+    }
+    #[test]
     fn abi_constants_match_the_schema_without_enabling_v2_runtime() {
         let text = include_str!("../../../sdk/sdk.toml");
         let spec = crate::sdkgen::instrument(text).unwrap();

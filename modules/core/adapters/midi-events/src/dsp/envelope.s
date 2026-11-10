@@ -9,6 +9,8 @@
 .EXTERN _mi_carrier_flags;
 .EXTERN _mi_native_owner_valid;
 .EXTERN _mi_native_owner_stamp;
+.EXTERN _mi_post_owner_valid;
+.EXTERN _mi_post_amp;
 _mi_envelope_entry:
     DM(_me_sv_r0) = R0;
     DM(_me_sv_r1) = R1;
@@ -22,6 +24,12 @@ _mi_envelope_entry:
     DM(_me_sv_i0) = R0;
     R0 = L0;
     DM(_me_sv_l0) = R0;
+    R0 = I1;
+    DM(_me_sv_i1) = R0;
+    R0 = L1;
+    DM(_me_sv_l1) = R0;
+    R0 = M6;
+    DM(_me_sv_m6) = R0;
     R0 = M5;
     DM(_me_sv_m5) = R0;
     R0 = MODE1;
@@ -82,7 +90,7 @@ _me_found:
     R3 = DM(3, I6);
     R2 = 32;
     COMP(R3, R2);
-    IF EQ JUMP _me_native_restore;
+    IF EQ JUMP _me_native;
 _me_owned_flags:
     DM(1, I6) = R0;
     DM(2, I6) = R1;
@@ -91,6 +99,12 @@ _me_restore:
     I0 = R0;
     R0 = DM(_me_sv_l0);
     L0 = R0;
+    R0 = DM(_me_sv_i1);
+    I1 = R0;
+    R0 = DM(_me_sv_l1);
+    L1 = R0;
+    R0 = DM(_me_sv_m6);
+    M6 = R0;
     R0 = DM(_me_sv_m5);
     M5 = R0;
     R0 = DM(_me_sv_mode1);
@@ -113,11 +127,40 @@ _me_restore:
     R0 = DM(_me_sv_r0);
     MODIFY(I7, -16) (NW); // displaced first instruction of DT2 1.17 0x1cbb57
     JUMP _mi_envelope_next;
+_me_native:
+    R0 = DM(_mi_post_owner_valid);
+    R0 = PASS R0;
+    IF EQ JUMP _me_native_restore; // V6 retains its original shared-AMP bypass.
+    I0 = R8;
+    I1 = _mi_post_amp;
+    L1 = 0;
+    M6 = 1;
+    R2 = 32;
+_me_post_sample:
+    F0 = DM(I0, M5);
+    F1 = DM(I1, M6);
+    R3 = 0x7fffffff;
+    R3 = R1 AND R3;
+    IF EQ JUMP _me_post_zero;
+    F0 = F0 * F1;
+    JUMP _me_post_store;
+_me_post_zero:
+    R0 = 0;
+_me_post_store:
+    DM(I0, M6) = F0;
+    R2 = R2 - 1;
+    IF NE JUMP _me_post_sample;
 _me_native_restore:
     R0 = DM(_me_sv_i0);
     I0 = R0;
     R0 = DM(_me_sv_l0);
     L0 = R0;
+    R0 = DM(_me_sv_i1);
+    I1 = R0;
+    R0 = DM(_me_sv_l1);
+    L1 = R0;
+    R0 = DM(_me_sv_m6);
+    M6 = R0;
     R0 = DM(_me_sv_m5);
     M5 = R0;
     R0 = DM(_me_sv_mode1);
@@ -155,6 +198,9 @@ _me_native_restore:
 .PKDATA _me_sv_r12, 8;
 .PKDATA _me_sv_i0, 8;
 .PKDATA _me_sv_l0, 8;
+.PKDATA _me_sv_i1, 8;
+.PKDATA _me_sv_l1, 8;
+.PKDATA _me_sv_m6, 8;
 .PKDATA _me_sv_m5, 8;
 .PKDATA _me_sv_mode1, 8;
 .PKDATA _me_sv_astatx, 8;

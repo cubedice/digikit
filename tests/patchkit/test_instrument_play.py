@@ -62,7 +62,37 @@ def playback_object():
 .PKDATA _test_metadata, 24;
 .PKDATA _test_values, 128;
 .PKDATA _test_output, 128;
+.PKDATA _test_post_gains, 128;
+.PKDATA _test_post_samples, 128;
+.PKDATA _test_post_count, 4;
+.PKDATA _test_post_result, 4;
 .SECTION/PM seg_pmco;
+.GLOBAL _test_post_process;
+_test_post_process:
+    I0 = R8;
+    R0 = DM(32, I0);
+    I1 = R0;
+    I2 = _test_post_gains;
+    R2 = DM(_test_post_count);
+    R2 = PASS R2;
+    IF EQ JUMP _test_post_pcm;
+_test_post_gain:
+    R0 = DM(I2, M6);
+    DM(I1, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _test_post_gain;
+_test_post_pcm:
+    R0 = DM(5, I0);
+    I1 = R0;
+    I2 = _test_post_samples;
+    R2 = 32;
+_test_post_copy:
+    R0 = DM(I2, M6);
+    DM(I1, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _test_post_copy;
+    R0 = DM(_test_post_result);
+    JUMP (M13, I13);
 .GLOBAL _test_status_process;
 _test_status_process:
     I0 = R8;
@@ -115,6 +145,7 @@ _test_{i}:
     symbols = {n: sections[sec] + off for n, (sec, off, _) in obj.data_symbols.items()}
     linked = pk_sharc.link(obj, 0xB90000, symbols)
     symbols["_test_status_process"] = linked.symbols["_test_status_process"]
+    symbols["_test_post_process"] = linked.symbols["_test_post_process"]
     reads = {
         n: (sections[n] // 4, len(blob) // 4) for n, (blob, _, _) in obj.data.items()
     }
@@ -366,6 +397,132 @@ def test_missing_native_snapshot_and_lost_session_revoke_shared_bypass(playback)
     put("_instrument_session", [0])
     call(0)
     assert get("_mi_native_owner_valid") == [0]
+
+
+def _post_amp_fixture(playback):
+    call, put, get, bits, record = _native_amp_fixture(playback)
+    symbols = playback[-1]
+    put("_ir_process_flags", [7])
+    put(
+        "_ir_process_rows",
+        [2, 9, 20, symbols["_test_post_process"], 0xB90000, 0xBC0000, 8, 32],
+    )
+    put("_test_post_gains", [bits(0.25)] * 32)
+    put("_test_post_samples", [bits(-0.125)] * 32)
+    put("_test_post_count", [32])
+    put("_test_post_result", [0])
+    return call, put, get, bits, record
+
+
+@pytest.mark.parametrize("result", [0, 1])
+@pytest.mark.parametrize("gain", [1.0, 0.25, 0.1, 1e-20, 1e-38, 1e-44])
+def test_post_amp_negotiates_and_normalizes_completed_blocks(playback, result, gain):
+    call, put, get, bits, record = _post_amp_fixture(playback)
+    symbols = playback[-1]
+    gains = [0.0, -0.0, gain, gain] * 8
+    put("_test_post_gains", [bits(g) for g in gains])
+    # Quantize the divisor first, so even the smallest subnormal ratio is exact.
+    pcm = [0 if not g else bits(g) ^ 0x80000000 for g in gains]
+    put("_test_post_samples", pcm)
+    put("_test_post_result", [result])
+    call(0)
+    packet = get("_iv_input", 34)
+    assert packet[:2] == [7, 136]
+    assert packet[32:] == [symbols["_mi_post_amp"], 32]
+    assert get("_mi_post_amp", 32) == [bits(g) for g in gains]
+    output = [
+        struct.unpack("<f", x.to_bytes(4, "little"))[0] for x in get("_iv_output", 32)
+    ]
+    assert output == pytest.approx([0 if not g else -1 for g in gains], abs=2e-7)
+    assert get("_mi_post_owner_valid") == [1]
+    assert get("_mi_native_owner_valid") == [1]
+    assert get("_mi_native_owner_stamp") == [41]
+    assert get("_test_amp_record", 11) == record
+
+
+@pytest.mark.parametrize("sample", [-8.0, 8.0])
+def test_post_amp_accepts_existing_normalized_output_bound(playback, sample):
+    call, put, get, bits, _ = _post_amp_fixture(playback)
+    put("_test_post_gains", [bits(0.1)] * 32)
+    put("_test_post_samples", [bits(sample * 0.1)] * 32)
+    call(0)
+    assert get("_mi_post_owner_valid") == [1]
+    assert get("_iv_output", 32) == [bits(sample)] * 32
+
+
+def test_post_amp_normalizes_subnormal_pcm_with_normal_gain(playback):
+    call, put, get, bits, _ = _post_amp_fixture(playback)
+    put("_test_post_gains", [0x00800000] * 32)
+    put("_test_post_samples", [0x80400000] * 32)
+    call(0)
+    assert get("_mi_post_owner_valid") == [1]
+    assert get("_iv_output", 32) == [bits(-0.5)] * 32
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "partial",
+        "missing",
+        "nan",
+        "inf",
+        "negative",
+        "above_one",
+        "pcm_nan",
+        "quotient",
+        "failed",
+    ],
+)
+def test_post_amp_rejects_bad_or_incomplete_outputs_and_revokes_owner(playback, kind):
+    call, put, get, bits, _ = _post_amp_fixture(playback)
+    call(0)
+    assert get("_mi_post_owner_valid") == [1]
+    if kind in ("partial", "missing"):
+        put("_test_post_count", [31 if kind == "partial" else 0])
+    elif kind == "failed":
+        put("_test_post_result", [0xFFFFFFFF])
+    elif kind in ("pcm_nan", "quotient"):
+        put("_test_post_samples", [0x7FC00000 if kind == "pcm_nan" else bits(3.0)] * 32)
+    else:
+        bad = {
+            "nan": 0x7FC00000,
+            "inf": 0x7F800000,
+            "negative": bits(-0.1),
+            "above_one": bits(1.01),
+        }[kind]
+        put("_test_post_gains", [bits(0.25)] * 31 + [bad])
+    call(0)
+    assert get("_mi_post_owner_valid") == [0]
+    assert get("_mi_native_owner_valid") == [0]
+    assert get("_iv_output", 32) == [0] * 32
+    assert get("_ir_rows")[0] == 5
+
+
+@pytest.mark.parametrize("kind", ["snapshot", "session", "reset", "v6"])
+def test_post_amp_ownership_expires_without_valid_native_completion(playback, kind):
+    call, put, get, bits, _ = _post_amp_fixture(playback)
+    call(0)
+    assert get("_mi_post_owner_valid") == [1]
+    if kind == "snapshot":
+        put("_mi_envelope_records", [0])
+        put("_test_post_gains", [bits(1.0)] * 32)
+    elif kind == "session":
+        put("_instrument_session", [0])
+    elif kind == "reset":
+        assert playback[3]() == 1
+        assert get("_mi_post_owner_valid") == [0]
+        return
+    else:
+        put("_ir_process_flags", [3])
+        symbols = playback[-1]
+        put(
+            "_ir_process_rows",
+            [2, 9, 20, symbols["_test_status_process"], 0xB90000, 0xBC0000, 8, 32],
+        )
+    call(0)
+    assert get("_mi_post_owner_valid") == [0]
+    if kind == "snapshot":
+        assert get("_iv_output", 32) == [bits(-0.125)] * 32
 
 
 def test_admitted_render_consumes_batch_once_and_raw_carrier_only_copies(playback):

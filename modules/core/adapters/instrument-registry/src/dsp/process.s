@@ -68,8 +68,44 @@ _ir_process_row:
     IF EQ JUMP _ip_v5;
     R1 = 6;
     COMP(R0, R1);
+    IF EQ JUMP _ip_v6;
+    R1 = 7;
+    COMP(R0, R1);
     IF NE JUMP _ip_invalid;
-    // V6 requires both capabilities installed on this exact owner/generation.
+    // V7 requires all three capabilities on this exact owner/generation.
+    R0 = LSHIFT R4 BY 2;
+    R1 = _ir_process_flags;
+    R0 = R0 + R1;
+    I3 = R0;
+    R0 = DM(0, I3);
+    R1 = 7;
+    COMP(R0, R1);
+    IF NE JUMP _ip_invalid;
+    R0 = I2;
+    R1 = 0x200fdf78;
+    COMP(R0, R1);
+    IF GT JUMP _ip_invalid;
+    R0 = DM(1, I2);
+    R1 = 136;
+    COMP(R0, R1);
+    IF NE JUMP _ip_invalid;
+    R0 = DM(33, I2);
+    R1 = 32;
+    COMP(R0, R1);
+    IF NE JUMP _ip_invalid;
+    R0 = DM(32, I2);
+    R1 = 3;
+    R1 = R0 AND R1;
+    IF NE JUMP _ip_invalid;
+    R1 = 0x20000000;
+    COMP(R0, R1);
+    IF LT JUMP _ip_invalid;
+    R1 = 0x200fdf80;
+    COMP(R0, R1);
+    IF GT JUMP _ip_invalid;
+    JUMP _ip_status_check;
+_ip_v6:
+    // V6 remains a valid fallback for a V7-capable callback.
     R0 = LSHIFT R4 BY 2;
     R1 = _ir_process_flags;
     R0 = R0 + R1;
@@ -77,7 +113,11 @@ _ir_process_row:
     R0 = DM(0, I3);
     R1 = 3;
     COMP(R0, R1);
+    IF EQ JUMP _ip_v6_bound;
+    R1 = 7;
+    COMP(R0, R1);
     IF NE JUMP _ip_invalid;
+_ip_v6_bound:
     R0 = I2;
     R1 = 0x200fdf80;
     COMP(R0, R1);
@@ -88,7 +128,7 @@ _ir_process_row:
     IF NE JUMP _ip_invalid;
     JUMP _ip_status_check;
 _ip_v5:
-    // V5 remains a valid fallback for a V6-capable callback.
+    // V5 remains a valid fallback for V6/V7-capable callbacks.
     R0 = LSHIFT R4 BY 2;
     R1 = _ir_process_flags;
     R0 = R0 + R1;
@@ -98,6 +138,9 @@ _ip_v5:
     COMP(R0, R1);
     IF EQ JUMP _ip_v5_bound;
     R1 = 3;
+    COMP(R0, R1);
+    IF EQ JUMP _ip_v5_bound;
+    R1 = 7;
     COMP(R0, R1);
     IF NE JUMP _ip_invalid;
 _ip_v5_bound:

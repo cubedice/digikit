@@ -35,11 +35,12 @@ export async function proveCanopyNativeAmp(session: Session, plan: RuntimePlan, 
       .poll(
         async () => {
           const record = words(await peek(recordAddress, 44));
-          const input = words(await peek(planSymbol(plan, '_iv_input'), 128));
+          const input = words(await peek(planSymbol(plan, '_iv_input'), 136));
           const after = words(await peek(recordAddress, 28));
           observed = { record, input };
           if (record.slice(0, 7).some((value, i) => value !== after[i])) return false;
-          if (input[0] !== 6 || input[1] !== 128 || ![1, 2].includes(record[6]!)) return false;
+          if (input[0] !== 7 || input[1] !== 136 || ![1, 2].includes(record[6]!)) return false;
+          if (input[33] !== 32 || !input[32] || input[32] % 4 !== 0) return false;
           const expected = [
             record[6],
             (attackTable[record[0]!]! ^ 0x80000000) >>> 0,
@@ -52,7 +53,7 @@ export async function proveCanopyNativeAmp(session: Session, plan: RuntimePlan, 
           ];
           return expected.every((value, i) => input[i + 24] === value);
         },
-        { timeout: 30_000, message: 'stock AMP configuration reaches the V6 snapshot intact' },
+        { timeout: 30_000, message: 'stock AMP configuration reaches the V7 snapshot intact' },
       )
       .toBe(true);
     return observed!;
@@ -135,13 +136,13 @@ export async function proveCanopyNativeAmp(session: Session, plan: RuntimePlan, 
     await midi([0xb0, 120, 0]);
     await expect.poll(async () => (await voices()).length, { timeout: 30_000 }).toBe(0);
   };
-  const measure = async (name: string, during?: () => Promise<unknown>) => {
+  const measure = async (name: string, during?: () => Promise<unknown>, durationMs = 120) => {
     const file = path.join(root, `out/canopy-native-amp-${name}.f32le`);
     await session.client.call('pcm.tap', { action: 'capture', path: file });
     try {
       await session.client.call('pcm.tap', { action: 'start' });
       await during?.();
-      await waitEmulated(session, 120);
+      await waitEmulated(session, durationMs);
     } finally {
       await session.client.call('pcm.tap', { action: 'capture_stop' });
     }
@@ -156,7 +157,20 @@ export async function proveCanopyNativeAmp(session: Session, plan: RuntimePlan, 
       peak = Math.max(peak, Math.abs(sample));
     }
     expect(peak).toBeLessThan(1);
-    return { rms: Math.sqrt(sum / (data.length / 4)), peak, samples: data.length / 4 };
+    const windowRms = (start: number, seconds: number) => {
+      const first = Math.round(start * 48_000) * 8;
+      const end = first + Math.round(seconds * 48_000) * 8;
+      expect(data.length).toBeGreaterThanOrEqual(end);
+      let power = 0;
+      for (let offset = first; offset < end; offset += 4) power += data.readFloatLE(offset) ** 2;
+      return Math.sqrt(power / ((end - first) / 4));
+    };
+    return {
+      rms: Math.sqrt(sum / (data.length / 4)),
+      peak,
+      samples: data.length / 4,
+      tailWindows: durationMs >= 1500 ? [0.25, 0.65, 1.05].map((start) => windowRms(start, 0.1)) : [],
+    };
   };
   const evidence: Record<string, unknown> = { snapshots };
   try {
@@ -211,6 +225,49 @@ export async function proveCanopyNativeAmp(session: Session, plan: RuntimePlan, 
     expect(long.remaining[0]!.amplitude).toBeLessThan(long.beforeTail.notes[0]!.amplitude);
     expect(long.beforeTail.config.input[29]).toBeLessThan(0x3f800000);
     console.info('CANOPY AMP: short and long native release produce different audible tails');
+
+    // A pre-FX envelope alone leaves the stock bitcrusher's smallest negative
+    // quantum sounding at constant volume until the note is retired. Measure
+    // several late windows through the actual track path, not just voice state.
+    await clear();
+    await setRelease(40);
+    const originalBitReduction = await soundParam(0, 64);
+    const setBitReduction = async (target: number) => {
+      for (let attempt = 0; attempt < 96; attempt++) {
+        const current = await soundParam(0, 64);
+        if (current === target) return;
+        const difference = target - current;
+        await turn(1, Math.sign(difference) * Math.max(3, Math.min(30, Math.floor(Math.abs(difference) / 256))));
+        await waitEmulated(session, 2);
+      }
+      throw new Error(`Bit reduction did not reach ${target}: ${await soundParam(0, 64)}`);
+    };
+    await tap('FX');
+    try {
+      await setBitReduction(64 * 256);
+      await midi([0x90, 60, 100]);
+      await waitEmulated(session, 250);
+      const held = await measure('bit-reduced-held');
+      const config = await releaseConfig();
+      const tail = await measure('bit-reduced-release', () => midi([0x80, 60, 0]), 1600);
+      const qBytes = Buffer.alloc(4);
+      qBytes.writeUInt32LE(config.input[29]!);
+      const q = qBytes.readFloatLE();
+      const expectedDropDb = 20 * Math.log10(q) * 48_000 * 0.4;
+      const dropsDb = tail.tailWindows.slice(1).map((rms, i) => 20 * Math.log10(rms / tail.tailWindows[i]!));
+      evidence.bitReducedRelease = { held, tail, q, expectedDropDb, dropsDb, config };
+      expect(held.rms).toBeGreaterThan(1e-5);
+      expect(expectedDropDb).toBeLessThan(-6);
+      for (const drop of dropsDb) {
+        expect(Number.isFinite(drop)).toBe(true);
+        expect(Math.abs(drop - expectedDropDb)).toBeLessThan(2);
+      }
+      console.info('CANOPY AMP: bit-reduced audio fades through three tail windows at the stock release rate');
+    } finally {
+      await clear();
+      await setBitReduction(originalBitReduction);
+      await tap('AMP');
+    }
 
     await clear();
     await mode(1);

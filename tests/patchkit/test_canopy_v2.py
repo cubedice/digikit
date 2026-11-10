@@ -179,6 +179,7 @@ def canopy(canopy_object):
         blocks=1,
         capture=False,
         native=None,
+        post_amp=False,
         input_base=0x20011000,
     ):
         dm.update({state // 4 + i: v for i, v in (state_edits or {}).items()})
@@ -211,6 +212,13 @@ def canopy(canopy_object):
             assert len(native) == 8
             words[0:2] = [6, 128]
             words[24:32] = native
+        words += [0, 0]  # V7 borrowed common-envelope output.
+        if post_amp:
+            assert native is not None
+            words[0:2] = [7, 136]
+            words[32:34] = [0x20016000, 32]
+            dm.update({0x20016000 // 4 + i: 0x7FC00000 for i in range(32)})
+            dm[0x20016000 // 4 - 1] = dm[0x20016000 // 4 + 32] = 0xDEADBEEF
         for index, value in (edits or {}).items():
             words[index] = value
         dm.update({input_base // 4 + i: value for i, value in enumerate(words)})
@@ -227,6 +235,10 @@ def canopy(canopy_object):
         reads["status"] = (0x20015000 // 4, 13)
         reads["amp_curve"] = (symbols["_cp_amp_samples"] // 4, 32)
         reads["amp_end"] = (symbols["_cp_amp_end"] // 4, 1)
+        if post_amp:
+            reads["common_amp"] = (0x20016000 // 4, 32)
+            reads["common_before"] = (0x20016000 // 4 - 1, 1)
+            reads["common_after"] = (0x20016000 // 4 + 32, 1)
         for debug in (
             "enabled",
             "phase",
@@ -248,7 +260,9 @@ def canopy(canopy_object):
         )
         if protected and reset is None:
             dm[symbols["_ir_process_flags"] // 4] = (
-                3 if words[0] == 6 else (1 if words[0] == 5 else 0)
+                7
+                if words[0] == 7
+                else (3 if words[0] == 6 else (1 if words[0] == 5 else 0))
             )
             row = [3, 2, 9, 1, state, 744, state, state + 2976, 0, 0, 0, 0, 0, 0, 0, 0]
             meta = [
@@ -309,6 +323,24 @@ def canopy(canopy_object):
         assert result["halt"]["reason"] == "breakpoint", result
         assert result["guard_before"] == result["guard_after"] == [0xDEADBEEF]
         assert result["status_before"] == result["status_after"] == [0xDEADBEEF]
+        if post_amp:
+            assert result["common_before"] == result["common_after"] == [0xDEADBEEF]
+            if result["regs"]["R0"] in (0, 1) and reset is None:
+                # The complete rendered mix must be reconstructible by the
+                # adapter without invalid gains or over-range normalized PCM.
+                import math
+
+                for audio_bits, gain_bits in zip(
+                    result["out"], result["common_amp"], strict=True
+                ):
+                    audio, gain = wt_float(audio_bits), wt_float(gain_bits)
+                    assert math.isfinite(gain) and 0 <= gain <= 1
+                    if gain == 0:
+                        assert audio == 0
+                    else:
+                        normalized = audio / gain
+                        assert math.isfinite(normalized) and abs(normalized) <= 8
+                        assert normalized * gain == pytest.approx(audio, abs=1e-7)
         for name, (base, _) in reads.items():
             dm.update({base + i: value for i, value in enumerate(result[name])})
         return result
@@ -472,6 +504,284 @@ def test_native_amp_finite_ahd_continues_after_keyup_and_retrigger_is_independen
     assert wt_float(r["amp_end"][0]) == pytest.approx(0.5**23, rel=1e-6)
     r = canopy([note(2, 67)], native=amp)
     assert 2 in voices(r) and wt_float(voices(r)[2][7]) == 1.0
+
+
+@pytest.fixture(scope="module")
+def native_release_coefficients():
+    import hashlib
+
+    from tools.sharc_dev import canopy_carrier_probe as stock
+    from tools.sharc_dev.sharc_run import Runner
+    from tools.sharc_dev.sharcldr import LoadedMemory
+
+    path = REPO_ROOT / "out/sections/dt2-1.17/section_7_BLOB.bin"
+    if not path.exists():
+        pytest.skip("requires the local pinned DT2 1.17 DSP extraction")
+    blob = path.read_bytes()
+    assert hashlib.sha256(blob).hexdigest() == stock.BLOB_SHA
+    runner = Runner(LoadedMemory.from_stream(blob), stock.ENVELOPE)
+    return {
+        index: -wt_float(stock.get(runner, 0x26AF30 + index * 4)) for index in (40, 80)
+    }
+
+
+@pytest.mark.parametrize("release", [40, 80])
+@pytest.mark.parametrize("family", ["legacy", "wavetable", "fm", "wavetable-fm"])
+@pytest.mark.parametrize("post_amp", [False, True], ids=["v6", "v7"])
+def test_native_amp_release_attenuates_rendered_audio_through_tail(
+    canopy, native_release_coefficients, family, release, post_amp
+):
+    import math
+
+    controls = {
+        "legacy": (3, 0, 0, 0, 5, 15),
+        "wavetable": wavetable_controls(),
+        "fm": fm_controls(),
+        "wavetable-fm": wavetable_fm_controls(fm_depth=70, ratio=8),
+    }[family]
+    q = native_release_coefficients[release]
+    assert 0 < q < 1
+    amp = native_amp(attack=1, decay=1, sustain=1, release=q)
+    unity = native_amp(attack=1, decay=1, sustain=1, release=1)
+    before = canopy(
+        [note(1, 60)], controls=controls, native=amp, blocks=8, post_amp=post_amp
+    )
+    slot = next(slot for slot in range(4) if before["state"][slot * 8] == 1)
+    assert wt_float(voices(before)[1][7]) == 1
+
+    # Visit early, middle and quiet portions of the real stock exponential.
+    # Seed only elapsed release amplitude to avoid emulating seconds of audio
+    # for each source; every measured sample still passes through the complete
+    # callback, native envelope and oscillator renderer. The first checkpoint
+    # exercises the actual note-off transition instead of preselecting phase 4.
+    for target in (1.0, 0.5, 0.1, 0.01):
+        elapsed = round(math.log(target) / math.log(q))
+        level = wt_float(wt_bits(q**elapsed))
+        seeded = dict(enumerate(before["state"]))
+        seeded[slot * 8 + 7] = wt_bits(level)
+        events = [note(1, 60, off=True)] if target == 1 else []
+        if not events:
+            seeded[slot * 8 + 1] = 0
+            seeded[717 + slot * 4] = 4
+        reference = canopy(
+            events,
+            state=0x20054000,
+            state_edits={**seeded, slot * 8 + 7: wt_bits(1.0)},
+            controls=controls,
+            native=unity,
+            post_amp=post_amp,
+        )
+        released = canopy(
+            events, state_edits=seeded, controls=controls, native=amp, post_amp=post_amp
+        )
+        envelope = []
+        for _ in range(32):
+            envelope.append(level)
+            level = wt_float(wt_bits(level * q))
+        assert [wt_float(v) for v in released["amp_curve"]] == envelope
+        assert wt_float(voices(released)[1][7]) == level
+        assert voices(released)[1][1] == 0
+        assert released["state"][717 + slot * 4] == 4
+        expected = [
+            wt_float(v) * gain
+            for v, gain in zip(reference["out"], envelope, strict=True)
+        ]
+        actual = [wt_float(v) for v in released["out"]]
+        assert max(abs(v) for v in expected) > target * 1e-4
+        assert actual == pytest.approx(expected, rel=2e-6, abs=target * 2e-9)
+        if post_amp:
+            gain = [wt_float(v) for v in released["common_amp"]]
+            assert gain == envelope
+            assert [x / g for x, g in zip(actual, gain, strict=True)] == pytest.approx(
+                [wt_float(v) for v in reference["out"]], rel=2e-6, abs=2e-9
+            )
+
+    # A later onset must not retrigger the released note or end its quiet tail.
+    previous_level = level
+    later = canopy([note(2, 67)], controls=controls, native=amp, post_amp=post_amp)
+    for _ in range(32):
+        level = wt_float(wt_bits(level * q))
+    assert wt_float(voices(later)[1][7]) == level
+    assert voices(later)[1][1] == 0
+    assert wt_float(voices(later)[2][7]) == 1
+    assert voices(later)[2][1] == 1
+    if post_amp:
+        assert [wt_float(v) for v in later["common_amp"]] == [previous_level] + [1] * 31
+
+
+@pytest.mark.parametrize("mode", [0, 1, 2])
+def test_post_amp_quiet_and_zero_sustain_fill_the_complete_borrow(canopy, mode):
+    amp = native_amp(mode=mode, attack=1, hold=0, decay=0, sustain=0, release=0)
+    empty = canopy(native=amp, post_amp=True)
+    assert empty["out"] == [0] * 32
+    assert empty["common_amp"] == [wt_bits(1 if mode == 0 else 0)] * 32
+    if mode == 0:
+        return
+    held = canopy([note(1, 60)], native=amp, post_amp=True, blocks=2)
+    assert held["out"] == held["common_amp"] == [0] * 32
+    assert voices(held)[1][1] == 1
+    released = canopy([note(1, 60, off=True)], native=amp, post_amp=True)
+    assert released["out"] == released["common_amp"] == [0] * 32
+    assert not voices(released)
+
+
+@pytest.mark.parametrize(
+    "index,value",
+    [(1, 128), (32, 0), (32, 0x20016001), (32, 0x200FDF84), (33, 31), (33, 33)],
+)
+def test_post_amp_rejects_invalid_borrow_before_admitting_notes(canopy, index, value):
+    result = canopy(
+        [note(1, 60)], native=native_amp(), post_amp=True, edits={index: value}
+    )
+    assert result["regs"]["R0"] == 0xFFFFFFFF
+    assert result["state"] == [0] * 744
+    assert result["common_amp"] == [0x7FC00000] * 32
+
+
+@pytest.mark.parametrize("canopy_object", [True], indirect=True)
+def test_post_amp_v7_packet_normalization_reaches_kernel(canopy):
+    result = canopy(
+        packet=wire_packet([(1, 1, 60, 100, 0, 0)]),
+        native=native_amp(attack=1 / 64),
+        post_amp=True,
+    )
+    assert result["regs"]["R0"] == 0
+    assert set(voices(result)) == {1}
+    assert [wt_float(v) for v in result["common_amp"]] == [i / 64 for i in range(32)]
+
+
+def test_post_amp_lane_buffers_resolve_to_distinct_data_storage(canopy, canopy_object):
+    _, _, _, obj, symbols, _ = canopy_object
+    pad, arp = (symbols[name] for name in ("_cp_post_pad", "_cp_post_arp"))
+    assert min(pad, arp) >= 0x20000000 and max(pad, arp) + 128 <= 0x200FE000
+    assert abs(pad - arp) >= 128
+    result = canopy([note(1, 60)], native=native_amp(attack=1 / 64), post_amp=True)
+
+    def values(name, count):
+        section, offset, _ = obj.data_symbols[name]
+        return result[section][offset // 4 : offset // 4 + count]
+
+    # PKBSS owns the data symbols. A redundant code-global declaration must
+    # never redirect either lane's immediate pointer into instruction memory.
+    assert values("_cp_post_lane", 1) == [arp]
+    assert [wt_float(v) for v in values("_cp_post_pad", 32)] == [
+        i / 64 for i in range(32)
+    ]
+    assert values("_cp_post_arp", 32) == [0] * 32
+    assert result["common_amp"] == values("_cp_post_pad", 32)
+
+
+def test_post_amp_reset_ramp_remains_smooth_and_then_exactly_quiet(canopy):
+    amp = native_amp(attack=1, decay=1, sustain=1, release=1)
+    controls = wavetable_fm_controls(fm_depth=70)
+    canopy([note(1, 60)], native=amp, controls=controls, post_amp=True, blocks=8)
+    canopy(reset=2)
+    first = canopy(native=amp, controls=controls, post_amp=True)
+    second = canopy(native=amp, controls=controls, post_amp=True)
+    assert [wt_float(v) for v in first["common_amp"]] == [
+        1 - (i + 1) / 64 for i in range(32)
+    ]
+    assert [wt_float(v) for v in second["common_amp"]] == [
+        0.5 - (i + 1) / 64 for i in range(32)
+    ]
+    assert second["out"][-1] == 0
+    quiet = canopy(native=amp, controls=controls, post_amp=True)
+    assert quiet["out"] == quiet["common_amp"] == [0] * 32
+
+
+@pytest.mark.parametrize("mix", [0, 64, 127])
+def test_post_amp_blend_excludes_muted_lanes_and_keeps_arp_tail(canopy, mix):
+    controls = wavetable_fm_controls(fm_depth=70, mix=64)
+    controls[9] = 100
+    controls[25] = (controls[25] & 0xFFFF0000) | 100
+    amp = native_amp(attack=1, decay=1, sustain=1, release=0.99)
+    first = canopy(
+        [note(1, 60)], native=amp, controls=controls, post_amp=True, blocks=8
+    )
+    assert first["regs"]["R0"] == 0 and first["state"][136]
+    tail = canopy(
+        native=amp, controls=controls, post_amp=True, state_edits={146: 89999}
+    )
+    assert any(tail["state"][slot * 8 + 1] & 4 for slot in (4, 5))
+    assert all(0 <= wt_float(v) <= 1 for v in tail["common_amp"])
+    # The pad has finished its native envelope while an independently owned
+    # arp remains audible. Exact blend endpoints must exclude the muted lane.
+    slot = next(slot for slot in range(4) if first["state"][slot * 8] == 1)
+    seeded = {slot * 8 + 7: 0, 717 + slot * 4: 1, 144: wt_bits(mix / 127)}
+    controls[6] = mix
+    controls[21] = (controls[21] & 0xFFFF0000) | mix
+    arp_only = canopy(native=amp, controls=controls, post_amp=True, state_edits=seeded)
+    gain = [wt_float(v) for v in arp_only["common_amp"]]
+    assert gain == pytest.approx([mix / 127] * 32, abs=1e-7)
+    if mix == 0:
+        assert arp_only["out"] == [0] * 32
+    else:
+        assert any(arp_only["out"])
+
+
+def test_post_amp_source_transition_and_pcm_match_v6(canopy):
+    amp = native_amp(attack=1, decay=1, sustain=1, release=1)
+    source = wavetable_controls()
+    first = canopy([note(1, 60)], native=amp, controls=source, blocks=8)
+    # Clone the entire same phase/history snapshot into the independent V7 lane.
+    # Its first transition callback receives the clone before rendering.
+    seed = dict(enumerate(first["state"]))
+    for index in range(10):
+        old = canopy(native=amp, controls=fm_controls())
+        new = canopy(
+            native=amp,
+            controls=fm_controls(),
+            state=0x20054000,
+            state_edits=seed if index == 0 else None,
+            post_amp=True,
+        )
+        assert old["state"] == new["state"]
+        assert old["out"] == new["out"]
+        gain = [wt_float(v) for v in new["common_amp"]]
+        if index < 4:
+            assert gain == [1 - (index * 32 + i + 1) / 128 for i in range(32)]
+        elif index < 8:
+            assert gain == [((index - 4) * 32 + i + 1) / 128 for i in range(32)]
+        else:
+            assert gain == [1] * 32
+
+
+@pytest.mark.parametrize("family", ["legacy", "wavetable", "fm", "wavetable_fm"])
+def test_post_amp_polyphony_tracks_the_loudest_independent_envelope(canopy, family):
+    controls = {
+        "legacy": (3, 0, 0, 0, 5, 15),
+        "wavetable": wavetable_controls(),
+        "fm": fm_controls(),
+        "wavetable_fm": wavetable_fm_controls(fm_depth=75),
+    }[family]
+    amp = native_amp(attack=1 / 64, decay=1, sustain=1, release=0.95)
+    first = canopy(
+        [note(i + 1, 48 + 7 * i) for i in range(3)],
+        controls=controls,
+        native=amp,
+        post_amp=True,
+        blocks=8,
+    )
+    seed = {}
+    for token, level in ((1, 0.9), (2, 0.4), (3, 0.1)):
+        slot = next(slot for slot in range(4) if first["state"][slot * 8] == token)
+        seed[slot * 8 + 7] = wt_bits(level)
+        seed[717 + slot * 4] = 1
+    result = canopy(
+        [note(1, 48, off=True), note(2, 55, off=True), note(4, 72)],
+        controls=controls,
+        native=amp,
+        post_amp=True,
+        state_edits=seed,
+    )
+    level, q, expected = wt_float(wt_bits(0.9)), wt_float(wt_bits(0.95)), []
+    for sample in range(32):
+        expected.append(max(level, sample / 64, wt_float(wt_bits(0.1))))
+        level = wt_float(wt_bits(level * q))
+    assert [wt_float(v) for v in result["common_amp"]] == expected
+    assert len(voices(result)) == 4
+    assert voices(result)[1][1] == voices(result)[2][1] == 0
+    assert voices(result)[3][1] == voices(result)[4][1] == 1
 
 
 def test_native_amp_infinite_release_yields_to_bounded_reset(canopy):
@@ -648,6 +958,7 @@ def test_native_amp_fm_handoff_stays_within_ceiling(
             native=native_amp(
                 mode=mode, attack=attack, hold=hold, sustain=1, release=0.9991
             ),
+            post_amp=True,
             **kwargs,
         )
         if kwargs.get("blocks", 1) == 1:
@@ -2984,6 +3295,7 @@ def test_wavetable_fm_native_amp_seven_groups_and_transition_fit_ceiling(
         + [[3, 0, 0, 1, 127, 0], [4, 0, 0, 0, 16383, 0]],
         controls=controls,
         native=amp,
+        post_amp=True,
         blocks=12,
     )
     controls[16] = (controls[16] & 65535) | 4 << 16
@@ -2997,6 +3309,7 @@ def test_wavetable_fm_native_amp_seven_groups_and_transition_fit_ceiling(
         [note(i + 5, 50 + 3 * i, 127) for i in range(8)],
         controls=controls,
         native=amp,
+        post_amp=True,
         state_edits={146: 89999, **boundary},
     )
     assert busy["regs"]["R0"] == 0
@@ -3013,7 +3326,7 @@ def test_wavetable_fm_native_amp_seven_groups_and_transition_fit_ceiling(
         # callback with all held pad/arp envelopes reaching the same boundary.
         boundary.update({717 + slot * 4: 2 for slot in range(4)})
         boundary[741] = 2
-    steady = canopy(controls=controls, native=amp, state_edits=boundary)
+    steady = canopy(controls=controls, native=amp, post_amp=True, state_edits=boundary)
     assert steady["instructions"] < 100000
     reset = canopy(reset=1)
     assert reset["state"] == [0] * 744 and reset["instructions"] <= 1600

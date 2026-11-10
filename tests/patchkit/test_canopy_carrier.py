@@ -1,5 +1,6 @@
 """CANOPY through the real voice adapter; stock AMP is deliberately not simulated."""
 
+import struct
 from dataclasses import replace
 from pathlib import Path
 
@@ -319,7 +320,10 @@ def test_envelope_hook_falls_through_without_changing_stock_arguments(spec, kind
 
 @pytest.mark.parametrize("voice", [0, 1])
 @pytest.mark.parametrize("simd", [False, True])
-def test_native_amp_bypass_preserves_pcm_record_and_c_call_frame(spec, voice, simd):
+@pytest.mark.parametrize("post_amp", [False, True])
+def test_native_amp_bypass_preserves_pcm_record_and_c_call_frame(
+    spec, voice, simd, post_amp
+):
     rig = make_rig(spec)
     base, stamp, buffer = 0x20096000, 51, 0x20098000
     for name, value in (
@@ -327,15 +331,26 @@ def test_native_amp_bypass_preserves_pcm_record_and_c_call_frame(spec, voice, si
         ("_mi_carrier_stamp", stamp),
         ("_mi_native_owner_stamp", stamp),
         ("_mi_native_owner_valid", 1),
+        ("_mi_post_owner_valid", int(post_amp)),
     ):
         rig.sess.poke(rig.built.data[name] // 4, value)
     pair_call(rig, "publish", 0, stamp)
     record = [0x12345000 + i for i in range(22)]
     pcm = [0x3D000000 + 31 * i for i in range(32)]
+    gains = [0.0, -0.0, 1.0, 0.25] * 8
+    if post_amp:
+        pcm[:2] = [0x7FC00000, 0xBF800000]  # Zero gain must silence either input.
+    for i, gain in enumerate(gains):
+        rig.sess.poke(
+            rig.built.data["_mi_post_amp"] // 4 + i,
+            struct.unpack("<I", struct.pack("<f", gain))[0],
+        )
     for i, value in enumerate(record):
         rig.sess.poke(base // 4 + i, value)
     for i, value in enumerate(pcm):
         rig.sess.poke(buffer // 4 + i, value)
+    rig.sess.poke(buffer // 4 - 1, 0x12345678)
+    rig.sess.poke(buffer // 4 + 32, 0x87654321)
     regs = {f"R{i}": 0x12340000 + i for i in range(16)}
     regs.update({f"S{i}": 0x56780000 + i for i in range(16)})
     regs.update(
@@ -343,10 +358,13 @@ def test_native_amp_bypass_preserves_pcm_record_and_c_call_frame(spec, voice, si
         R8=buffer,
         R12=buffer,
         I0=0x20097000,
+        I1=0x20099000,
         I6=dv.STACK,
         I7=dv.STACK - 64,
         L0=64,
+        L1=128,
         M5=19,
+        M6=23,
         M7=0xFFFFFFFF,
         M14=1,
         MODE1=0x1011800 | (0x200000 if simd else 0),
@@ -365,7 +383,7 @@ def test_native_amp_bypass_preserves_pcm_record_and_c_call_frame(spec, voice, si
     ):
         rig.sess.poke(dv.STACK // 4 + offset, value)
     result = rig.sess.call(
-        "_mi_envelope_entry", regs, max_steps=400, read_regs=tuple(regs)
+        "_mi_envelope_entry", regs, max_steps=900, read_regs=tuple(regs)
     )
     assert result["halt"]["reason"] == "breakpoint", result
     for name, value in regs.items():
@@ -377,7 +395,22 @@ def test_native_amp_bypass_preserves_pcm_record_and_c_call_frame(spec, voice, si
         }.get(name, value)
         assert result["regs"][name] == expected, name
     assert [rig.sess.peek(base // 4 + i) for i in range(22)] == record
-    assert [rig.sess.peek(buffer // 4 + i) for i in range(32)] == pcm
+    expected_pcm = pcm
+    if post_amp:
+        expected_pcm = [
+            0
+            if gain == 0
+            else struct.unpack(
+                "<I",
+                struct.pack(
+                    "<f", struct.unpack("<f", word.to_bytes(4, "little"))[0] * gain
+                ),
+            )[0]
+            for word, gain in zip(pcm, gains, strict=True)
+        ]
+    assert [rig.sess.peek(buffer // 4 + i) for i in range(32)] == expected_pcm
+    assert rig.sess.peek(buffer // 4 - 1) == 0x12345678
+    assert rig.sess.peek(buffer // 4 + 32) == 0x87654321
     assert [rig.sess.peek(dv.STACK // 4 + i) for i in range(1, 5)] == [7, 9, 32, 0x2468]
 
 
@@ -393,9 +426,13 @@ def test_native_amp_bypass_requires_current_owner_and_stock_call_shape(spec, kin
         ("_mi_carrier_stamp", stamp),
         ("_mi_native_owner_stamp", stamp - (kind == "stale")),
         ("_mi_native_owner_valid", int(kind != "disabled")),
+        ("_mi_post_owner_valid", 1),
     ):
         rig.sess.poke(rig.built.data[name] // 4, value)
     pair_call(rig, "publish", voice // 2, stamp)
+    for i in range(32):
+        rig.sess.poke(buffer // 4 + i, 0x3F000000)
+        rig.sess.poke(rig.built.data["_mi_post_amp"] // 4 + i, 0)
     for offset, value in ((1, 7), (2, 9), (3, 31 if kind == "count" else 32)):
         rig.sess.poke(dv.STACK // 4 + offset, value)
     rig.sess.runner.breakpoints |= {rig.sess.symbols["_mi_envelope_next"]}
@@ -415,6 +452,7 @@ def test_native_amp_bypass_requires_current_owner_and_stock_call_shape(spec, kin
     )
     assert result["halt"]["reason"] == "breakpoint", result
     assert [rig.sess.peek(dv.STACK // 4 + i) for i in (1, 2)] == [1, 0]
+    assert [rig.sess.peek(buffer // 4 + i) for i in range(32)] == [0x3F000000] * 32
 
 
 def frame(rig):
@@ -554,7 +592,11 @@ def test_frame_expiry_clears_skipped_tracks_even_at_stamp_wrap(spec):
     # An ancient zero-stamp pair must not revive on the next counter wrap.
     pair_call(rig, "publish", 15, 0)
     rig.sess.poke(rig.built.data["_mi_carrier_stamp"] // 4, 0xFFFFFFFF)
+    rig.sess.poke(rig.built.data["_mi_native_owner_valid"] // 4, 1)
+    rig.sess.poke(rig.built.data["_mi_post_owner_valid"] // 4, 1)
     assert frame(rig) == 0
+    assert rig.sess.peek(rig.built.data["_mi_native_owner_valid"] // 4) == 0
+    assert rig.sess.peek(rig.built.data["_mi_post_owner_valid"] // 4) == 0
     assert pair_call(rig, "flags", 30, 0) == (7, 9, 0)
     # Expiry leaves ACTIVE history intact, so the next render holds, not wakes.
     pair_call(rig, "publish", 15, 0)

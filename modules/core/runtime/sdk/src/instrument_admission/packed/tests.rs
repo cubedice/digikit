@@ -120,6 +120,7 @@ fn instrument_status_capability_follows_physical_row_mapping() {
     for flags in [
         descriptor::STATUS_OUTPUT,
         descriptor::STATUS_OUTPUT | descriptor::NATIVE_AMP,
+        descriptor::STATUS_OUTPUT | descriptor::NATIVE_AMP | descriptor::POST_AMP,
     ] {
         let (loads, ticket, grant) = setup();
         let (mut image, records, executable) = fixture();

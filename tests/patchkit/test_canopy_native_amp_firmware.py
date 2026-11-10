@@ -1,6 +1,7 @@
 """Compare CANOPY's note AMP against the pinned stock DSP instructions."""
 
 import hashlib
+import math
 import struct
 
 import pytest
@@ -34,7 +35,7 @@ def hooked_amp_image(stock_amp_image):
 
 
 @pytest.mark.parametrize("mode", [1, 2])
-@pytest.mark.parametrize("ownership", ["native", "v5", "unowned", "stale"])
+@pytest.mark.parametrize("ownership", ["native", "post", "v5", "unowned", "stale"])
 def test_shared_amp_hook_changes_only_current_native_output(
     stock_amp_image, hooked_amp_image, mode, ownership
 ):
@@ -59,6 +60,9 @@ def test_shared_amp_hook_changes_only_current_native_output(
     reference = stock.configure_from_dispatcher(reference, **config)
     hooked = stock.configure_from_dispatcher(hooked, **config)
     stock.put(hooked, symbols["_mi_native_owner_valid"], ownership != "v5")
+    stock.put(hooked, symbols["_mi_post_owner_valid"], ownership != "native")
+    for i in range(32):
+        stock.put(hooked, symbols["_mi_post_amp"] + 4 * i, stock.bits(0.5))
     stock.put(
         hooked, symbols["_mi_native_owner_stamp"], 40 if ownership == "stale" else 41
     )
@@ -79,14 +83,125 @@ def test_shared_amp_hook_changes_only_current_native_output(
         )
         hooked = stock.call(hooked, stock.ENVELOPE, trigger=trigger, release=release)
         output = [stock.get(hooked, stock.BUFFER + i * 4) for i in range(32)]
-        if ownership == "native":
-            assert output == incoming
+        if ownership in ("native", "post"):
+            assert output == (
+                incoming
+                if ownership == "native"
+                else [stock.bits(_float(word) * 0.5) for word in incoming]
+            )
             assert stock.record(hooked) == before
         else:
             assert output == [
                 stock.get(reference, stock.BUFFER + i * 4) for i in range(32)
             ]
             assert stock.record(hooked) == stock.record(reference)
+
+
+def _bit_reduce(runner, raw):
+    """Call the pinned stock BR stage with its separate one-word record."""
+    br_record = stock.RECORD + 256
+    stock.put(runner, br_record, stock.bits(raw / 127))
+    stock.put(runner, stock.STACK - 4, stock.END - 1)
+    stock.put(runner, stock.STACK, stock.STACK + 256)
+    stock.put(runner, stock.STACK + 4, 32)
+    runner = runner.fresh_call(
+        0x1CDD8B,
+        regs=dict(
+            R4=br_record,
+            R8=stock.BUFFER,
+            R12=stock.BUFFER,
+            I6=stock.STACK,
+            I7=stock.STACK,
+            M5=0,
+            M6=1,
+            M7=0xFFFFFFFF,
+            M13=0,
+            M14=1,
+            M15=0xFFFFFFFF,
+            MODE1=0x1011800,
+            **{f"L{i}": 0 for i in range(16)},
+        ),
+        return_address=stock.END,
+    )
+    result = runner.run(2000)
+    assert result.halt.reason == "breakpoint" and result.final_pc_sw == stock.END
+    return runner
+
+
+@pytest.mark.parametrize("raw_br", [4.85, 64])
+def test_post_amp_keeps_late_release_exponential_after_actual_stock_bit_reduction(
+    hooked_amp_image, raw_br
+):
+    memory, initial, symbols = hooked_amp_image
+    curves = {}
+    for post in (False, True):
+        runner = Runner(memory, stock.ENVELOPE, breakpoints=[stock.END])
+        for address, value in initial.items():
+            stock.put(runner, address, value)
+        for base, count in ((stock.STACK - 256, 128), (stock.RECORD, 11)):
+            for i in range(count):
+                stock.put(runner, base + 4 * i, 0)
+        runner = stock.bind_workspace(runner, stock.RECORD - 0xD604)
+        runner = stock.configure_from_dispatcher(
+            runner, mode=2, attack=0, hold=0, decay=0, sustain=1, release=80 / 127
+        )
+        record = stock.record(runner)
+        q = -_float(stock.get(runner, 0x26AF30 + 4 * record[4]))
+        assert 0 < q < 1
+        for name, value in (
+            ("_mi_native_owner_valid", 1),
+            ("_mi_native_owner_stamp", 41),
+            ("_mi_post_owner_valid", int(post)),
+            ("_mi_carrier_stamp", 41),
+        ):
+            stock.put(runner, symbols[name], value)
+        pairs = symbols["_mi_carrier_pairs"]
+        stock.put(runner, pairs, 41)
+        stock.put(runner, pairs + 8, 1)
+        peaks = []
+        for seconds in (14, 18):
+            gains = [q ** (48000 * seconds + i) for i in range(32)]
+            for i, gain in enumerate(gains):
+                source = 0.25 if i % 2 else -0.25
+                stock.put(
+                    runner,
+                    stock.BUFFER + 4 * i,
+                    stock.bits(source if post else source * gain),
+                )
+                stock.put(runner, symbols["_mi_post_amp"] + 4 * i, stock.bits(gain))
+            runner = _bit_reduce(runner, raw_br)
+            reduced = [
+                _float(stock.get(runner, stock.BUFFER + 4 * i)) for i in range(32)
+            ]
+            runner = stock.call(runner, stock.ENVELOPE)
+            output = [
+                _float(stock.get(runner, stock.BUFFER + 4 * i)) for i in range(32)
+            ]
+            assert stock.record(runner) == record
+            if post:
+                assert output == pytest.approx(
+                    [
+                        sample * gain
+                        for sample, gain in zip(reduced, gains, strict=True)
+                    ],
+                    rel=2e-7,
+                    abs=1e-12,
+                )
+            else:
+                assert output == reduced
+            peaks.append(math.sqrt(sum(sample * sample for sample in output) / 32))
+        curves[post] = peaks
+        if post:
+            assert peaks[1] / peaks[0] == pytest.approx(q ** (48000 * 4), rel=2e-6)
+            for i in range(32):
+                stock.put(runner, symbols["_mi_post_amp"] + 4 * i, 0)
+            runner = stock.call(runner, stock.ENVELOPE)
+            assert [stock.get(runner, stock.BUFFER + 4 * i) for i in range(32)] == [
+                0
+            ] * 32
+    assert curves[False][0] > 0
+    assert curves[False][1] == curves[False][0]  # The old pre-BR tail plateaus.
+    assert curves[True][1] < curves[True][0] * 0.1
 
 
 @pytest.mark.parametrize(

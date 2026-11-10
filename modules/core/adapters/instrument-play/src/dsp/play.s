@@ -23,6 +23,8 @@
 .EXTERN _mi_envelope_records;
 .EXTERN _mi_native_owner_valid;
 .EXTERN _mi_native_owner_stamp;
+.EXTERN _mi_post_owner_valid;
+.EXTERN _mi_post_amp;
 .EXTERN _mi_carrier_stamp;
 .EXTERN _iv_amp_attack_table;
 .EXTERN _iv_amp_decay_table;
@@ -35,6 +37,8 @@
 _instrument_carrier_prepare:
     R0 = 0;
     DM(_mi_native_owner_valid) = R0;
+    DM(_mi_post_owner_valid) = R0;
+    DM(_iv_post_requested) = R0;
     DM(_iv_native_valid) = R0;
     DM(_instrument_ui_status) = R0;
     I0 = _ir_rows;
@@ -87,6 +91,24 @@ _instrument_carrier_prepare:
     DM(1, I0) = R0;
     CALL _iv_amp_snapshot;
     I0 = _iv_input;
+    R0 = DM(_ir_process_flags);
+    R0 = FEXT R0 BY 2:1;
+    R0 = PASS R0;
+    IF EQ JUMP _iv_no_status;
+    DM(_iv_post_requested) = R0;
+    R0 = 7;
+    DM(0, I0) = R0;
+    R0 = 136;
+    DM(1, I0) = R0;
+    R0 = _mi_post_amp;
+    DM(32, I0) = R0;
+    R0 = 32;
+    DM(33, I0) = R0;
+    I1 = _mi_post_amp;
+    R0 = 0x7fc00000;
+    LCNTR = 32, DO _iv_post_clear UNTIL LCE;
+_iv_post_clear:
+    DM(I1, M6) = R0;
 _iv_no_status:
     R0 = DM(_iv_generation);
     DM(3, I0) = R0;
@@ -114,6 +136,16 @@ _iv_no_status:
     DM(8, I0) = R1;
     R0 = PASS R0;
     IF LT JUMP _iv_quiet;
+    R1 = DM(_iv_post_requested);
+    R1 = PASS R1;
+    IF EQ JUMP _iv_post_ready;
+    CALL _iv_post_normalize;
+    R0 = PASS R0;
+    IF LT JUMP _iv_post_fault;
+    R0 = DM(_iv_native_valid);
+    DM(_mi_post_owner_valid) = R0;
+_iv_post_ready:
+    R0 = DM(_iv_result);
     // The shared AMP may be skipped only after this native block completed.
     R2 = DM(_iv_native_valid);
     DM(_mi_native_owner_valid) = R2;
@@ -130,6 +162,7 @@ _iv_no_status:
 _iv_quiet:
     R0 = 0;
     DM(_mi_native_owner_valid) = R0;
+    DM(_mi_post_owner_valid) = R0;
     DM(_instrument_ui_status) = R0;
     DM(_iv_active) = R0;
     DM(_iv_revision) = R0;
@@ -142,6 +175,105 @@ _iv_clear_output:
     DM(I0, M6) = R0;
     R1 = R1 - 1;
     IF NE JUMP _iv_clear_output;
+    RTS;
+
+_iv_post_fault:
+    R0 = -1;
+    DM(_iv_result) = R0;
+    I0 = _ir_rows;
+    DM(12, I0) = R0;
+    R0 = 5;
+    DM(0, I0) = R0;
+    JUMP _iv_quiet;
+
+// V7 preserves the callback's shaped PCM, then moves its common gain past
+// stock bit reduction. Validate the entire borrowed output before publication.
+_iv_post_normalize:
+    I1 = _mi_post_amp;
+    R2 = 32;
+_iv_post_validate:
+    R0 = DM(I1, M6);
+    R1 = 0x7fffffff;
+    R1 = R0 AND R1;
+    IF EQ JUMP _iv_post_gain_ok; // Both signs of zero mean silence.
+    R0 = PASS R0;
+    IF LT JUMP _iv_post_bad;
+    R1 = 0x3f800000;
+    COMP(R0, R1);
+    IF GT JUMP _iv_post_bad;
+_iv_post_gain_ok:
+    R2 = R2 - 1;
+    IF NE JUMP _iv_post_validate;
+    R0 = DM(_iv_native_valid);
+    R0 = PASS R0;
+    IF EQ JUMP _iv_post_ok;
+    I0 = _iv_output;
+    I1 = _mi_post_amp;
+    R6 = 32;
+_iv_post_sample:
+    R0 = DM(I0, M5);
+    R3 = 0x7fffffff;
+    R4 = R0 AND R3;
+    R5 = 0x41000000;
+    COMP(R4, R5);
+    IF GT JUMP _iv_post_bad;
+    F1 = DM(I1, M6);
+    R3 = R1 AND R3;
+    IF EQ JUMP _iv_post_zero;
+    R3 = 0x00800000;
+    COMP(R1, R3);
+    IF LT JUMP _iv_post_tiny_gain;
+    COMP(R4, R3);
+    IF GE JUMP _iv_post_reciprocal;
+    F2 = 16777216.0;
+    F1 = F1 * F2;
+    JUMP _iv_post_scale_pcm;
+_iv_post_tiny_gain:
+    // Float inputs flush denormals. Rebuild their mantissas at 2^24 scale
+    // using integer conversion; scale an ordinary dividend by the same amount.
+    F1 = FLOAT R1;
+    R2 = 0x01000000; // 2^-125 = 2^-149 * 2^24
+    F1 = F1 * F2;
+_iv_post_scale_pcm:
+    COMP(R4, R3);
+    IF LT JUMP _iv_post_tiny_pcm;
+    F2 = 16777216.0;
+    F0 = F0 * F2;
+    JUMP _iv_post_reciprocal;
+_iv_post_tiny_pcm:
+    R5 = 0x80000000;
+    R5 = R0 AND R5;
+    F0 = FLOAT R4;
+    R2 = 0x01000000;
+    F0 = F0 * F2;
+    R0 = R0 OR R5;
+_iv_post_reciprocal:
+    F2 = RECIPS F1;
+    F3 = 2.0;
+    F4 = F1 * F2;
+    F4 = F3 - F4;
+    F2 = F2 * F4;
+    F4 = F1 * F2;
+    F4 = F3 - F4;
+    F2 = F2 * F4;
+    F0 = F0 * F2;
+    R3 = 0x7fffffff;
+    R4 = R0 AND R3;
+    R5 = 0x41000000;
+    COMP(R4, R5);
+    IF GT JUMP _iv_post_bad;
+    JUMP _iv_post_store;
+_iv_post_zero:
+    R0 = 0;
+_iv_post_store:
+    DM(I0, M6) = R0;
+    R6 = R6 - 1;
+    IF NE JUMP _iv_post_sample;
+_iv_post_ok:
+    R0 = 1;
+    RTS;
+_iv_post_bad:
+    R0 = -1;
     RTS;
 
 // Stock configuration runs later in the dispatcher. Its previous completed
@@ -339,6 +471,9 @@ _instrument_reset:
     R0 = 1;
     RTS; // inactive tracks still acknowledge the transport's all-track reset
 _iv_reset_owned:
+    R0 = 0;
+    DM(_mi_native_owner_valid) = R0;
+    DM(_mi_post_owner_valid) = R0;
     CALL _iv_admitted;
     R0 = PASS R0;
     IF EQ JUMP _iv_reset_identity;
@@ -977,6 +1112,9 @@ _iv_admitted:
     RTS;
 
 _iv_reset_row:
+    R0 = 0;
+    DM(_mi_native_owner_valid) = R0;
+    DM(_mi_post_owner_valid) = R0;
     CALL _iv_admitted;
     R0 = PASS R0;
     IF EQ JUMP _iv_reset_bad;
@@ -1032,7 +1170,8 @@ _iv_voice_zero:
 
 .SECTION/DM seg_dmda;
 .PKDATA _instrument_voice_rows, 192;
-.PKDATA _iv_input, 128;
+.PKDATA _iv_input, 136;
+.PKDATA _iv_post_requested, 4;
 .PKDATA _iv_native_valid, 4;
 .PKDATA _iv_output, 128;
 .PKDATA _iv_events, 192;

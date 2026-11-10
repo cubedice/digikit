@@ -25,6 +25,7 @@
 .EXTERN _cp_amp_native;
 .EXTERN _cp_amp_samples;
 .EXTERN _cp_amp_end;
+.EXTERN _cp_post_output;
 // Atomic CPSA upper-bank validation. Return low-word validation copy in I0.
 _fm_validate:
     I0 = R4;
@@ -331,6 +332,9 @@ _fm_output:
     F1 = DM(_fm_fade_start);
     F2 = DM(_fm_fade_step);
     R4 = 32;
+    R0 = DM(_cp_post_output);
+    R0 = PASS R0;
+    IF NE JUMP _fm_post_output;
 _fm_output_loop:
     F1 = F1 + F2;
     F0 = DM(I0,M5);
@@ -338,6 +342,16 @@ _fm_output_loop:
     DM(I0,M6) = F0;
     R4 = R4 - 1;
     IF NE JUMP _fm_output_loop;
+    RTS;
+_fm_post_output:
+    I1 = R0;
+_fm_post_output_loop:
+    F1 = F1 + F2, F0 = DM(I0,M5);
+    F0 = F0 * F1, F5 = DM(I1,M5);
+    F5 = F5 * F1, DM(I0,M6) = F0;
+    DM(I1,M6) = F5;
+    R4 = R4 - 1;
+    IF NE JUMP _fm_post_output_loop;
     RTS;
 
 // Bulk slot renderer saves its caller once; no per-sample register spill.
@@ -929,8 +943,7 @@ _fm_env_ready:
     MODIFY(I1,32) (NW);
     F0 = DM(32,I0);
     F1 = DM(_fm_step32);
-    F0 = F0 + F1;
-    F2 = DM(33,I0);
+    F0 = F0 + F1, F2 = DM(1,I1);
     F1 = DM(_fm_step33);
     F2 = F2 + F1, DM(0,I1) = F0;
     F0 = DM(34,I0);
@@ -988,8 +1001,7 @@ _fm_oversample:
     F2 = F2 - F1;
     F0 = F0 * F2;
     F0 = F0 + F1, F1 = DM(0,I0); // B->A
-    DM(-25,I0) = F0;
-    F8 = F0;
+    R8 = PASS R0, DM(-25,I0) = R0;
     F0 = F0 * F1;
     F0 = F0 * F9, F1 = DM(-30,I0);
     F0 = F0 + F1;
@@ -1088,8 +1100,7 @@ _fm_decimate:
     F7 = F7 + F0;
     F0 = 0.5;
     F0 = F0 * F1;
-    F7 = F7 + F0;
-    R0 = DM(22,I0);
+    F7 = F7 + F0, R0 = DM(22,I0);
     DM(23,I0) = R0;
     R0 = DM(21,I0);
     DM(22,I0) = R0;
@@ -1137,8 +1148,7 @@ _fm_decimate:
     DM(24,I0) = R0;
     F7 = F7 * F4;
     F0 = DM(_fm_gain);
-    F7 = F7 * F0;
-    F0 = DM(I2,M5);
+    F7 = F7 * F0, F0 = DM(I2,M5);
     F7 = F7 + F0;
     DM(I2,M6) = F7;
     RTS;

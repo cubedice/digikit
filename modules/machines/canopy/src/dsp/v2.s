@@ -22,6 +22,8 @@
 .EXTERN _cp_amp_mode;
 .EXTERN _cp_amp_state;
 .EXTERN _cp_amp_input;
+.EXTERN _cp_post_output;
+.EXTERN _cp_post_init;
 _canopy_reset:
     R0 = PASS R8;
     IF LE JUMP _cv_bad;
@@ -106,6 +108,7 @@ _canopy_process:
     DM(_cp_amp_input) = R8;
     R0 = 0;
     DM(_cp_amp_mode) = R0;
+    DM(_cp_post_output) = R0;
     I2 = R8;
     R0 = DM(0, I2);
     R1 = 2;
@@ -120,6 +123,9 @@ _canopy_process:
     R1 = 5;
     COMP(R0, R1);
     IF EQ JUMP _cv_v5;
+    R1 = 7;
+    COMP(R0, R1);
+    IF EQ JUMP _cv_v7;
     R1 = 6;
     COMP(R0, R1);
     IF NE JUMP _cv_bad;
@@ -131,6 +137,32 @@ _canopy_process:
     R1 = 128;
     COMP(R0, R1);
     IF NE JUMP _cv_bad;
+    JUMP _cv_amp_fields;
+_cv_v7:
+    R0 = I2;
+    R1 = 0x200fdf78;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = DM(1,I2);
+    R1 = 136;
+    COMP(R0,R1);
+    IF NE JUMP _cv_bad;
+    R0 = DM(33,I2);
+    R1 = 32;
+    COMP(R0,R1);
+    IF NE JUMP _cv_bad;
+    R0 = DM(32,I2);
+    R1 = 3;
+    R1 = R0 AND R1;
+    IF NE JUMP _cv_bad;
+    R1 = 0x20000000;
+    COMP(R0,R1);
+    IF LT JUMP _cv_bad;
+    R1 = 0x200fdf80;
+    COMP(R0,R1);
+    IF GT JUMP _cv_bad;
+    DM(_cp_post_output) = R0;
+_cv_amp_fields:
     R0 = DM(24, I2);
     R1 = 2;
     COMP(R0, R1);
@@ -816,6 +848,7 @@ _cv_seeded:
     R4 = DM(_cv_state);
     R8 = DM(_cv_input);
     CALL _cs_prepare;
+    CALL _cp_post_init;
     R4 = DM(_cv_state);
     CALL _ca_prepare;
     R0 = DM(_cv_input);
@@ -1018,7 +1051,7 @@ _cv_bad:
 .VAR _canopy_descriptor = 0x444b4954;
 .VAR _canopy_descriptor_1 = 2;
 .VAR _canopy_descriptor_2 = 48;
-.VAR _canopy_descriptor_3 = 3; // V6 native AMP snapshot plus borrowed status output.
+.VAR _canopy_descriptor_3 = 7; // V7 native AMP plus borrowed status/common-envelope outputs.
 .VAR _canopy_descriptor_4 = 1;
 .VAR _canopy_descriptor_5 = 2976;
 .VAR _canopy_descriptor_6 = 8;

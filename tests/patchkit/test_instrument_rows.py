@@ -163,7 +163,18 @@ def test_process_capability_is_validated_before_install_and_bound_to_row(rows):
     assert accepted["regs"]["R0"] == 0
     assert accepted["capabilities"] == [1] + [0] * 7
     assert accepted["process"][:8] == [3, 9, 20, 0xB90000, 0xB90000, 0xB90100, 8, 16]
-    for change in [{9: 2}, {9: 4}, {9: 7}, {10: 1}, {1: 4}, {2: 8}]:
+    for change in [
+        {9: 2},
+        {9: 4},
+        {9: 5},
+        {9: 6},
+        {9: 8},
+        {9: 15},
+        {9: 0xFFFFFFFF},
+        {10: 1},
+        {1: 4},
+        {2: 8},
+    ]:
         rejected = rows("_ir_process_install", install={**metadata, **change})
         assert rejected["regs"]["R0"] == 0xFFFFFFFF
         assert rejected["capabilities"] == accepted["capabilities"]
@@ -172,6 +183,10 @@ def test_process_capability_is_validated_before_install_and_bound_to_row(rows):
     assert native["regs"]["R0"] == 0
     assert native["capabilities"] == [3] + [0] * 7
     assert native["process"] == accepted["process"]
+    post_amp = rows("_ir_process_install", install={**metadata, 9: 7})
+    assert post_amp["regs"]["R0"] == 0
+    assert post_amp["capabilities"] == [7] + [0] * 7
+    assert post_amp["process"] == accepted["process"]
     legacy = rows("_ir_process_install", install={**metadata, 9: 0})
     assert legacy["regs"]["R0"] == 0 and legacy["capabilities"] == [0] * 8
 

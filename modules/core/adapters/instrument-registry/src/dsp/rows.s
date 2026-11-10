@@ -357,7 +357,8 @@ _irr_ready:
 // Process metadata is bound only to an already RESERVED reset row. It is not
 // callable until that exact owner/generation reaches READY. Input snapshot:
 // phase,owner,generation,type,entry,code_start,code_end,max_events,max_controls,
-// flags (bit0: V5 status output; bit1: V6 native AMP, requires bit0), reserved0.
+// flags (bit0: V5 status; bit1: V6 native AMP; bit2: V7 post-AMP gains), reserved0.
+// Each extension requires its predecessors: valid flags are 0, 1, 3 and 7.
 // R4 row index;
 // I1 immutable snapshot. Capabilities are bound to this owner/generation.
 .SECTION/PM seg_pmco;
@@ -414,13 +415,19 @@ _ir_process_install:
     COMP(R0, R1);
     IF GT JUMP _irr_invalid;
     R0 = DM(9, I1);
+    R1 = 0;
+    COMP(R0, R1);
+    IF EQ JUMP _ir_process_flags_ok;
+    R1 = 1;
+    COMP(R0, R1);
+    IF EQ JUMP _ir_process_flags_ok;
     R1 = 3;
-    R1 = R0 AND R1;
+    COMP(R0, R1);
+    IF EQ JUMP _ir_process_flags_ok;
+    R1 = 7;
     COMP(R0, R1);
     IF NE JUMP _irr_invalid;
-    R1 = 2;
-    COMP(R0, R1);
-    IF EQ JUMP _irr_invalid;
+_ir_process_flags_ok:
     R1 = DM(10, I1);
     R1 = PASS R1;
     IF NE JUMP _irr_invalid;

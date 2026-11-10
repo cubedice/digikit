@@ -268,10 +268,14 @@ _cp_release_one:
     IF NE JUMP _cp_reject;
     JUMP _cp_release;
 _cp_render_one:
+    R0 = _cp_post_arp;
+    DM(_cp_post_lane) = R0;
     R0 = 1;
     DM(_cp_render_count) = R0;
     JUMP _cp_render_begin;
 _cp_render:
+    R0 = _cp_post_pad;
+    DM(_cp_post_lane) = R0;
     R0 = 6;
     DM(_cp_render_count) = R0;
 _cp_render_begin:
@@ -309,6 +313,7 @@ _cp_render_owned:
     // final samples. QUIET is safe only on the following empty block.
     R15 = 1;
     CALL _cp_amp_begin;
+    CALL _cp_post_collect;
     F2 = DM(2, I0); // oscillator x,y
     F3 = DM(3, I0);
     F4 = DM(4, I0); // rotation sin,cos
@@ -897,6 +902,83 @@ _cp_amp_done:
 .VAR _cp_amp_sample30 = 0;
 .VAR _cp_amp_sample31 = 0;
 .VAR _cp_amp_samples_end = 0;
+
+// V7 borrows one common-envelope output. The original audio remains enveloped;
+// the adapter removes this common factor before track FX and restores it at AMP.
+// Per-lane maxima preserve relative polyphonic envelopes. Blend combines them
+// with the exact audio mix, so a muted pad cannot hold an audible arp tail open.
+.GLOBAL _cp_post_output;
+.GLOBAL _cp_post_init;
+.VAR _cp_post_output = 0;
+.VAR _cp_post_lane = 0;
+.PKBSS _cp_post_pad, 128;
+.PKBSS _cp_post_arp, 128;
+.SECTION/PM seg_pmco;
+_cp_post_init:
+    R0 = DM(_cp_post_output);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R1 = DM(_cp_amp_mode);
+    R1 = PASS R1;
+    IF NE JUMP _cp_post_clear;
+    // An unavailable native snapshot retains the entire legacy AMP path.
+    I1 = R0;
+    F0 = 1.0;
+    LCNTR = 32, DO _cp_post_unity_last UNTIL LCE;
+_cp_post_unity_last:
+    DM(I1,M6) = F0;
+    R0 = 0;
+    DM(_cp_post_output) = R0;
+    RTS;
+_cp_post_clear:
+    I1 = _cp_post_pad;
+    I2 = _cp_post_arp;
+    R0 = 0;
+    .NOCOMPRESS;
+    LCNTR = 32, DO _cp_post_clear_last UNTIL LCE;
+        DM(I1,M6) = R0;
+_cp_post_clear_last:
+        DM(I2,M6) = R0;
+    .COMPRESS;
+    RTS;
+// Before oscillator registers are loaded: preserve I0,R8,R11..15.
+_cp_post_collect:
+    R0 = DM(_cp_post_output);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R0 = DM(_cp_post_lane);
+    I2 = R0;
+    R0 = DM(_cp_amp_native);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_post_ramp;
+    I1 = _cp_amp_samples;
+    .NOCOMPRESS;
+    LCNTR = 32, DO _cp_post_max_last UNTIL LCE;
+        F0 = DM(I1,M6);
+        F1 = DM(I2,M5);
+        F0 = MAX(F0,F1);
+_cp_post_max_last:
+        DM(I2,M6) = F0;
+    .COMPRESS;
+    RTS;
+_cp_post_ramp:
+    // Native bypass happens only for lifecycle/steal ramps under V7 mode1/2.
+    // Match the renderer's update-before-output order, including its final zero.
+    F2 = DM(7,I0);
+    F3 = -0.015625;
+    F5 = 0.0;
+    F6 = 1.0;
+    .NOCOMPRESS;
+    LCNTR = 32, DO _cp_post_ramp_last UNTIL LCE;
+        F2 = F2 + F3, F1 = DM(I2,M5);
+        F2 = MAX(F2,F5);
+        F2 = MIN(F2,F6);
+        F0 = MAX(F2,F1);
+_cp_post_ramp_last:
+        DM(I2,M6) = F0;
+    .COMPRESS;
+    RTS;
+.SECTION/DM seg_dmda;
 
 // Scalar call workspace. V2 loads these from the current instance each block;
 // no persistent voice ownership lives here. Legacy kernel probes use sine.

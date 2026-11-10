@@ -213,3 +213,7 @@ matching compiled UI/audio/preset acceptance passes).
 DTII emulator test execution: [device-specific generated DSP blocks and bounded test optimizations](findings/118-dt2-emulator-test-execution.md)
 (**[D]**, paired stock-sample execution preserves exact audio and DSP state;
 acknowledged encoder batching and streamed card hashing reduce test overhead).
+
+CANOPY release ordering: [native AMP after stock track effects](findings/119-canopy-post-fx-amp.md)
+(**[D]/[O]**, physical release plateau reproduced and explained by the actual
+stock bitcrusher; per-note envelope factoring and post-effects application).
