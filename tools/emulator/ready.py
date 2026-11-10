@@ -116,7 +116,10 @@ def main(argv: list[str]) -> int:
 
     snap_dir = out
     if a.card_image is not None:
-        card_sha = hashlib.sha256(a.card_image.read_bytes()).hexdigest()[:12]
+        # Card images can be sparse and tens of gigabytes in logical size.
+        # Preserve the content key without materializing the image in memory.
+        with a.card_image.open("rb") as card_file:
+            card_sha = hashlib.file_digest(card_file, "sha256").hexdigest()[:12]
         snap_dir = out / "by-card" / card_sha
         try:
             known = json.loads((snap_dir / "SOURCE.json").read_text())["syx_sha256"]
