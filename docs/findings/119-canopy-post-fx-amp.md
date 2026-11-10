@@ -169,6 +169,22 @@ unrelated timeout or formatting code was changed. Receipts:
 `out/canopy-post-amp-gate.log` and
 `out/canopy-post-amp-remote-about-recheck.log`.
 
-**[O]** Post-fix physical qualification remains open. The device remains on the
-preceding wavetable-FM pair; no new firmware or module was installed during this
-investigation.
+**[D]** The matching pair was installed on the physical DTII on 2026-11-10 at
+the user's request. The stock upgrade RPC accepted the image and rebooted into
+image ID `2c601dc3a9bf3d38`. CANOPY package readback matches the whole-file hash
+above; Overloop and Remote are unchanged. All three modules report zero faults
+with guards enabled, and the runtime reports no crash, safe mode or open upload.
+
+The current edited CANOPY sound was saved over preset 4 as previously
+authorized, validated as a 144-byte CPST v5 record, and loaded after reboot.
+The previous preset 4, other presets, settings and installed modules were
+backed up first. The saved settings were compared after installation, including
+unchanged USB/DIN routing. Native AMP screenshots retain A 0, D 9, S 39, REL 15,
+ADSR mode, AMP volume 64 and track level 67. The device was left on AMP.
+Local receipts are `out/canopy-postamp-hardware-installed.json` and
+`out/canopy-postamp-install-backup/`.
+
+**[O]** Post-fix physical audio qualification remains open. Installation,
+readback and displayed native values do not replace a new USB recording of the
+release curve. Repeated holds captured the same remembered filter, FX and LFO
+pages; those screenshots are not coverage of every secondary page.

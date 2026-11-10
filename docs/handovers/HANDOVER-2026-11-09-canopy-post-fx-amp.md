@@ -35,18 +35,26 @@ Matching local files:
   was interrupted and queued checks did not complete. The full DTII CANOPY
   playback proof above used the separately verified existing emulator.
 
-The physical DTII still runs the preceding wavetable-FM firmware/module pair.
-Only temporary release measurement was performed: REL was restored to 15,
-confirmed on the native values screen. No presets, modules or firmware were
-changed. Physical qualification of V7 remains open.
+The user subsequently requested installation. On 2026-11-10 the physical DTII
+accepted the matching pair and rebooted into image ID `2c601dc3a9bf3d38`.
+CANOPY readback matches the hash in finding 119; Overloop and Remote remain
+unchanged. All three modules report zero faults with guards enabled, with no
+crash, safe mode or open upload.
 
-Before a later installation, preserve the current sound and settings. All four
-saved preset slots were occupied during the previous installation. The user
-subsequently requested saving the current sound over preset 4; do not assume
-the presently edited sound is already saved or discard it silently. The older
-installer in `out/canopy-wtfm-install.py` pins the preceding artifacts and must
-not be reused unchanged. Stage the matching new module before flashing the
-new firmware, with no intermediate restart into an incompatible pair, then
-verify identity, module readback, presets/routing and module health.
+Before installation, all presets, settings and installed modules were backed
+up in `out/canopy-postamp-install-backup/`. The edited sound was saved over
+preset 4 as previously authorized, validated as CPST v5 and restored after
+reboot. The previous preset 4 remains in the backup. Saved settings and USB/DIN
+routing compare unchanged against the preservation baseline. Native AMP still
+shows A 0, D 9, S 39, REL 15, ADSR, volume 64 and track level 67; AMP is selected.
+The installation receipt is `out/canopy-postamp-hardware-installed.json`.
 
-No push or new installation was requested for this bug-fix turn.
+The reviewed local installer is `out/canopy-postamp-install.py`, orchestrated
+by `out/canopy-postamp-install-all.py`. Do not rerun it: its one-time save guard
+and old-image checks intentionally reject an already completed installation.
+The module was staged before the stock firmware-upgrade RPC, without an
+intermediate restart into an incompatible pair.
+
+Physical audio qualification of V7 remains open; this installation did not
+record a new release curve. The native screenshot comparison only covers the
+remembered pages, not every secondary filter/FX/LFO page. No push was requested.
