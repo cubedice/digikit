@@ -52,7 +52,7 @@ static int detail_valid(const IsStatus *s,const uint32_t *w)
         for(uint32_t i=38;i<42;++i) if(w[i])
             for(uint32_t j=38;j<i;++j) if(w[i]==w[j]) return 0;
     }
-    for(uint32_t i=s->assembly_schema>=2?42:38;i<IS_DETAIL_WORDS;++i) if(w[i]) return 0;
+    for(uint32_t i=s->assembly_schema>=5?43:s->assembly_schema>=2?42:38;i<IS_DETAIL_WORDS;++i) if(w[i]) return 0;
     return 1;
 }
 int is_receive(IsStatus *s,const uint32_t w[IS_WORDS],uint32_t now)
@@ -71,7 +71,7 @@ int is_receive(IsStatus *s,const uint32_t w[IS_WORDS],uint32_t now)
         w[5]!=s->fast[3] || (w[0]!=s->fast[0] && !newer(w[0],s->fast[0]))) return -1;
     uint32_t index=w[4]&255;
     uint32_t schema=w[4]>>16;
-    if((schema<1 || schema>4) || (w[4]&0xff00ff00u)!=0x00000b00u || index>=IS_FRAGMENTS || (index==10 && (w[10] || w[11]))) return -1;
+    if((schema<1 || schema>5) || (w[4]&0xff00ff00u)!=0x00000b00u || index>=IS_FRAGMENTS || (index==10 && (w[10] || w[11]))) return -1;
     if(s->assembling && now-s->started_at>=IS_TIMEOUT_MS) s->assembling=0;
     if(!s->assembling) {
         /* A transfer may be joined mid-stream; completion still needs all 11

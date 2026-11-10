@@ -1,10 +1,12 @@
 #include "preset.h"
-static const uint16_t maximum[CP_CONTROLS]={11,3,127,127,500,127,8,4,6,100,75,2,1,0,127,127,4,700,100,1000,2,2,1,200,127,127,200,200};
+static const uint16_t maximum[CP_CONTROLS]={11,3,127,127,500,127,8,4,6,100,75,2,1,0,127,127,4,700,100,1000,2,2,1,200,127,127,200,200,100,15,200,200};
 static const uint16_t minimum[CP_CONTROLS]={0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0};
 void cp_wavetable_defaults(uint16_t controls[CP_CONTROLS])
 {
     static const uint16_t defaults[12]={0,0,0,10,0,0,0,100,5,15,100,100};
     for(uint32_t i=0;i<12;++i) controls[CP_WT_TABLE+i]=defaults[i];
+    controls[CP_WTFM_DEPTH]=0; controls[CP_WTFM_RATIO]=3;
+    controls[CP_WTFM_ENV]=100; controls[CP_WTFM_WHEEL]=100;
 }
 void cp_fm_defaults(uint16_t fm[13])
 {
@@ -37,7 +39,7 @@ int cp_encode(const CpPreset *p,uint8_t b[CP_RECORD_BYTES])
 {
     if(!cp_valid(p)) return -1;
     for(uint32_t i=0;i<CP_RECORD_BYTES;++i) ((volatile uint8_t *)b)[i]=0;
-    b[0]='C'; b[1]='P'; b[2]='S'; b[3]='T'; b[4]=4; b[5]=CP_CONTROLS;
+    b[0]='C'; b[1]='P'; b[2]='S'; b[3]='T'; b[4]=5; b[5]=CP_CONTROLS;
     for(uint32_t i=0;i<16;++i) {
         b[8+2*i]=(uint8_t)(p->control[i]>>8); b[9+2*i]=(uint8_t)p->control[i];
     }
@@ -53,19 +55,31 @@ int cp_encode(const CpPreset *p,uint8_t b[CP_RECORD_BYTES])
         b[92+2*i]=(uint8_t)(p->fm[i]>>8); b[93+2*i]=(uint8_t)p->fm[i];
     }
     b[118]=CP_FM_VERSION;
-    uint32_t h=checksum(b,124);
-    for(uint32_t i=0;i<4;++i) b[124+i]=(uint8_t)(h>>(24-8*i));
+    for(uint32_t i=0;i<4;++i) {
+        b[120+2*i]=(uint8_t)(p->control[CP_WTFM_DEPTH+i]>>8);
+        b[121+2*i]=(uint8_t)p->control[CP_WTFM_DEPTH+i];
+    }
+    b[128]=CP_WTFM_VERSION;
+    uint32_t h=checksum(b,140);
+    for(uint32_t i=0;i<4;++i) b[140+i]=(uint8_t)(h>>(24-8*i));
     return 0;
 }
 int cp_decode(CpPreset *out,const uint8_t *b,uint32_t length)
 {
-    if((length!=CP_RECORD_BYTES && length!=CP_WAVETABLE_BYTES && length!=CP_LEGACY_BYTES) || b[0]!='C' || b[1]!='P' || b[2]!='S' || b[3]!='T') return -1;
+    if((length!=CP_RECORD_BYTES && length!=CP_FM_BYTES && length!=CP_WAVETABLE_BYTES && length!=CP_LEGACY_BYTES) || b[0]!='C' || b[1]!='P' || b[2]!='S' || b[3]!='T') return -1;
     int legacy=length==CP_LEGACY_BYTES;
-    int fm=length==CP_RECORD_BYTES;
-    if((legacy ? (b[4]!=1 && b[4]!=2) || b[5]!=16 : b[4]!=(fm?4:3) || b[5]!=CP_CONTROLS) || b[6] || b[7] || b[43]) return -1;
+    int wtfm=length==CP_RECORD_BYTES,fm=length>=CP_FM_BYTES;
+    if((legacy ? (b[4]!=1 && b[4]!=2) || b[5]!=16 : b[4]!=(wtfm?5:fm?4:3) || b[5]!=(wtfm?32:28)) || b[6] || b[7] || b[43]) return -1;
     for(uint32_t i=51;i<(legacy?60:64);++i) if(b[i]) return -1;
     if(!legacy && (b[88]!=CP_TABLE_VERSION || b[89] || b[90] || b[91])) return -1;
-    if(fm) { if(b[118]!=CP_FM_VERSION) return -1; for(uint32_t i=119;i<124;++i) if(b[i]) return -1; }
+    if(fm) {
+        if(b[118]!=CP_FM_VERSION || b[119]) return -1;
+        if(!wtfm) { for(uint32_t i=120;i<124;++i) if(b[i]) return -1; }
+    }
+    if(wtfm) {
+        if(b[128]!=CP_WTFM_VERSION) return -1;
+        for(uint32_t i=129;i<140;++i) if(b[i]) return -1;
+    }
     uint32_t end=length-4,h=checksum(b,end);
     for(uint32_t i=0;i<4;++i) if(b[end+i]!=(uint8_t)(h>>(24-8*i))) return -1;
     CpPreset p;
@@ -79,6 +93,7 @@ int cp_decode(CpPreset *out,const uint8_t *b,uint32_t length)
     if(legacy && b[40]>1) return -1;
     if(!legacy && !fm && b[40]>2) return -1;
     if(fm) for(uint32_t i=0;i<13;++i) p.fm[i]=(uint16_t)((uint32_t)b[92+2*i]*256+b[93+2*i]);
+    if(wtfm) for(uint32_t i=0;i<4;++i) p.control[CP_WTFM_DEPTH+i]=(uint16_t)((uint32_t)b[120+2*i]*256+b[121+2*i]);
     if(b[4]==1) {
         if(p.control[CP_OCTAVES]<1 || p.control[CP_OCTAVES]>3) return -1;
         p.control[CP_OCTAVES]+=2;

@@ -49,10 +49,11 @@ function run(binary: string, commands: string): Record<string, unknown>[] {
     .map((s) => JSON.parse(s) as Record<string, unknown>);
 }
 test('preset byte record restores stable controls and the embedded shape', () => {
-  expect(run(codec, 'decode 128\nsnapshot')[0]).toEqual({
+  expect(run(codec, 'decode 144\nsnapshot')[0]).toEqual({
     result: 0,
     controls: [
-      10, 3, 127, 64, 500, 127, 8, 4, 3, 100, 75, 2, 1, 0, 127, 127, 0, 0, 0, 10, 0, 0, 0, 100, 5, 15, 100, 100,
+      10, 3, 127, 64, 500, 127, 8, 4, 3, 100, 75, 2, 1, 0, 127, 127, 0, 0, 0, 10, 0, 0, 0, 100, 5, 15, 100, 100, 0, 3,
+      100, 100,
     ],
     bpm: 300,
     family: 1,
@@ -215,8 +216,8 @@ test('compact menus keep non-SRC settings accessible and omit duplicate performa
 });
 
 test('invalid lengths and checksums leave the existing sound untouched', () => {
-  for (const command of ['decode 0', 'decode 63', 'decode 65', 'byte 13 3\ndecode 128']) {
-    const [before, after] = run(codec, `decode 128\nsnapshot\n${command}\nsnapshot`);
+  for (const command of ['decode 0', 'decode 63', 'decode 65', 'byte 13 3\ndecode 144']) {
+    const [before, after] = run(codec, `decode 144\nsnapshot\n${command}\nsnapshot`);
     expect(after).toEqual({ ...before, result: -1 });
   }
 });
@@ -228,7 +229,7 @@ test.each([1, 2, 3])('old preset with %i total octaves preserves its upward spre
 });
 
 test.each([0, 3, 6])('new preset preserves encoded signed spread %i', (spread) => {
-  const [decoded] = run(codec, `byte 25 ${spread}\nresign\ndecode 128\nsnapshot`);
+  const [decoded] = run(codec, `byte 25 ${spread}\nresign\ndecode 144\nsnapshot`);
   expect(decoded!.result).toBe(0);
   expect((decoded!.controls as number[])[8]).toBe(spread);
 });
@@ -240,7 +241,7 @@ test.each([
 ])('preset version %i rejects invalid spread %i atomically', (version, spread) => {
   const [before, after] = run(
     codec,
-    `decode 128\nsnapshot\nlegacy ${version}\nbyte 25 ${spread}\nresign\ndecode 64\nsnapshot`,
+    `decode 144\nsnapshot\nlegacy ${version}\nbyte 25 ${spread}\nresign\ndecode 64\nsnapshot`,
   );
   expect(after).toEqual({ ...before, result: -1 });
 });
@@ -255,7 +256,7 @@ test('SRC signed spread is saved and restored through the real control bank', ()
     [positive, 6],
     [restored, 0],
   ] as const) {
-    expect(row!.schema).toBe(0x43505341);
+    expect(row!.schema).toBe(0x43505342);
     expect((row!.values as number[])[11]).toBe(encoded);
     expect((row!.values as number[])[24]! & 0xffff).toBe(encoded);
   }
@@ -263,7 +264,7 @@ test('SRC signed spread is saved and restored through the real control bank', ()
 test('valid checksum cannot hide bad versions, padding, shape or parameter ranges', () => {
   // Every field class, including each stable control ID and unavailable SOURCE.
   const edits = [
-    [4, 5],
+    [4, 6],
     [5, 15],
     [6, 1],
     [7, 1],
@@ -283,10 +284,10 @@ test('valid checksum cannot hide bad versions, padding, shape or parameter range
   ];
   for (let id = 0; id < 16; id++) edits.push([8 + 2 * id, 255]);
   for (const [offset, value] of edits) {
-    const [before, after] = run(codec, `decode 128\nsnapshot\nbyte ${offset} ${value}\nresign\ndecode 128\nsnapshot`);
+    const [before, after] = run(codec, `decode 144\nsnapshot\nbyte ${offset} ${value}\nresign\ndecode 144\nsnapshot`);
     expect(after, `byte ${offset}`).toEqual({ ...before, result: -1 });
   }
-  const [s] = run(codec, 'byte 42 1\nresign\ndecode 128\nsnapshot');
+  const [s] = run(codec, 'byte 42 1\nresign\ndecode 144\nsnapshot');
   expect(s!.result).toBe(-1); // MASTER GRID cannot silently accept swing.
 });
 test('all four slots save only on the UI tick, load independently, and track edits', () => {
@@ -411,7 +412,7 @@ test('audio submission and SRC pending markers share the full configuration revi
     settings,
     'color 100\nconfig\ntick\nconfig\nmode 1\nconfig\nbpm 140\nconfig',
   );
-  expect(first).toMatchObject({ schema: 0x43505341, count: 32, pending: 0x0fffffff });
+  expect(first).toMatchObject({ schema: 0x43505342, count: 32, pending: 0xffffffff });
   expect(first!.revision).toBe(first!.srcRevision);
   expect((first!.values as number[]).slice(16).map((v) => v & 0xffff)).toEqual([
     0, 0, 100, 0, 0, 0, 4, 0, 3, 50, 0, 0, 0, 0, 5, 15,
@@ -419,7 +420,7 @@ test('audio submission and SRC pending markers share the full configuration revi
   expect((first!.values as number[])[2]).toBe(100);
   expect(unchanged!.revision).toBe(first!.revision);
   expect(mode!.revision as number).toBeGreaterThan(first!.revision as number);
-  expect((mode!.values as number[])[0]).toBe(0x4000010a);
+  expect((mode!.values as number[])[0]).toBe(0x4000010b);
   expect(tempo!.revision as number).toBeGreaterThan(mode!.revision as number);
   expect((tempo!.values as number[])[7]).toBe(140);
 });
@@ -427,7 +428,7 @@ test('audio submission and SRC pending markers share the full configuration revi
 test.each([1, 2])('legacy v%i initializes wavetable defaults without selecting it', (version) => {
   const [s] = run(codec, `legacy ${version}\nresign\ndecode 64\nsnapshot`);
   expect(s).toMatchObject({ result: 0, family: 1 });
-  expect((s!.controls as number[]).slice(16)).toEqual([0, 0, 0, 10, 0, 0, 0, 100, 5, 15, 100, 100]);
+  expect((s!.controls as number[]).slice(16)).toEqual([0, 0, 0, 10, 0, 0, 0, 100, 5, 15, 100, 100, 0, 3, 100, 100]);
 });
 
 test('wavetable presets retain position, modulation and legacy color independently', () => {
@@ -471,11 +472,11 @@ test.each([
   [84, 1],
   [86, 1],
 ])('new preset rejects unsupported table version/padding/control (%i,%i)', (offset, value) => {
-  const [before, after] = run(codec, `decode 128\nsnapshot\nbyte ${offset} ${value}\nresign\ndecode 128\nsnapshot`);
+  const [before, after] = run(codec, `decode 144\nsnapshot\nbyte ${offset} ${value}\nresign\ndecode 144\nsnapshot`);
   expect(after).toEqual({ ...before, result: -1 });
 });
 
-test.each([1, 2, 3])('legacy on-card v%i is canonicalized before load and dirty comparison', (version) => {
+test.each([1, 2, 3, 4])('legacy on-card v%i is canonicalized before load and dirty comparison', (version) => {
   const [restored, canonical] = run(
     settings,
     `color 76\npresetsave\ntick\nlegacypreset ${version}\nrestart\ncolor 2\npresetload\npresetstate\npresetsave\ntick\nrestart\npresetload\npresetstate`,
@@ -506,13 +507,13 @@ test.each([
   [117, 201],
   [118, 2],
   [119, 1],
-  [123, 1],
+  [129, 1],
 ])('inactive remembered FM bank rejects invalid field %i=%i', (offset, value) => {
-  const [before, after] = run(codec, `decode 128\nsnapshot\nbyte ${offset} ${value}\nresign\ndecode 128\nsnapshot`);
+  const [before, after] = run(codec, `decode 144\nsnapshot\nbyte ${offset} ${value}\nresign\ndecode 144\nsnapshot`);
   expect(after).toEqual({ ...before, result: -1 });
 });
 
-test('FM and wavetable sound memories survive source changes and v4 preset save/load', () => {
+test('FM and wavetable sound memories survive source changes and v5 preset save/load', () => {
   const [wavetable, fm, recalled, legacy, wtAgain] = run(
     settings,
     'color 77\nfamily 2\nsrcpage 2\nsrcturn 2 650\nsrcturn 4 989\nconfig\n' +
@@ -521,7 +522,7 @@ test('FM and wavetable sound memories survive source changes and v4 preset save/
       'family 0\ncolor 10\npresetload\nconfig\nfamily 0\nconfig\nfamily 2\nconfig',
   );
   const words = fm!.values as number[];
-  expect(words[0]! & 255).toBe(10);
+  expect(words[0]! & 255).toBe(11);
   expect(words[1]).toBe(3);
   expect(words[2]).toBe(99);
   expect(words.slice(16, 28).map((v) => v >>> 16)).toEqual([3, 50, 15, 15, 0, 18, 40, 75, 15, 100, 100, 100]);
@@ -531,7 +532,55 @@ test('FM and wavetable sound memories survive source changes and v4 preset save/
 });
 
 test('legacy telemetry cannot acknowledge an active FM bank', () => {
-  const [legacy, current] = run(settings, 'family 3\nsrcpage 2\nackdetail 3\nackdetail 4');
-  expect(legacy!.pending).toBe(0x0fffffff);
+  const [legacy, current] = run(settings, 'family 3\nsrcpage 2\nackdetail 3\nackdetail 5');
+  expect(legacy!.pending).toBe(0xffffffff);
+  expect(current!.pending).toBe(0);
+});
+
+test.each([1, 2, 3, 4])('preset v%i adds neutral wavetable FM without changing its original controls', (version) => {
+  const length = version <= 2 ? 64 : version === 3 ? 96 : 128;
+  const [decoded] = run(codec, `legacy ${version}\nresign\ndecode ${length}\nsnapshot`);
+  expect(decoded).toMatchObject({ result: 0, family: 1 });
+  expect((decoded!.controls as number[]).slice(28)).toEqual([0, 3, 100, 100]);
+  expect((decoded!.controls as number[])[2]).toBe(127);
+  expect(decoded!.fm).toEqual([32, 0, 50, 3, 8, 0, 5, 40, 50, 15, 100, 100, 100]);
+});
+
+test.each([
+  [121, 101],
+  [123, 16],
+  [125, 201],
+  [127, 201],
+  [128, 2],
+  [129, 1],
+  [139, 1],
+])('wavetable FM preset rejects invalid field %i=%i atomically', (offset, value) => {
+  const [before, after] = run(codec, `decode 144\nsnapshot\nbyte ${offset} ${value}\nresign\ndecode 144\nsnapshot`);
+  expect(after).toEqual({ ...before, result: -1 });
+});
+
+test('wavetable FM shares timbre timing, preserves scanning and recalls its controls across FM and legacy sounds', () => {
+  const [wave, changed, recalled, legacy, standalone, returned] = run(
+    settings,
+    'family 2\nsrcpage 2\nsrcturn 2 350\nsrcturn 3 45\nsrcturn 4 30\n' +
+      'srcpage 3\nsrcturn 1 65\nsrcturn 2 20\nsrcturn 3 -60\nsrcturn 4 40\nsrcturn 5 30\nsrcturn 6 75\nconfig\npresetsave\ntick\n' +
+      'srcpage 3\nsrcturn 1 -20\nconfig\npresetload\nconfig\nfamily 0\nconfig\nfamily 3\nconfig\nfamily 2\nconfig',
+  );
+  const words = wave!.values as number[];
+  expect(words[0]! & 255).toBe(11);
+  expect(words.slice(28).map((word) => word >>> 16)).toEqual([65, 8, 40, 175]);
+  expect(words.slice(17, 20).map((word) => word >>> 16)).toEqual([350, 45, 40]);
+  expect(words.slice(24, 26).map((word) => word >>> 16)).toEqual([45, 45]);
+  expect((changed!.values as number[])[28]! >>> 16).toBe(45);
+  expect(recalled!.values).toEqual(wave!.values);
+  expect((legacy!.values as number[]).slice(28).map((word) => word >>> 16)).toEqual([65, 8, 40, 175]);
+  expect((standalone!.values as number[])[2]).toBe(32);
+  expect((standalone!.values as number[]).slice(28).map((word) => word >>> 16)).toEqual([65, 8, 40, 175]);
+  expect(returned!.values).toEqual(wave!.values);
+});
+
+test('old detail schemas acknowledge only old controls while schema5 confirms wavetable FM', () => {
+  const [old, current] = run(settings, 'family 2\nsrcpage 3\nsrcturn 1 70\nackdetail 4\nackdetail 5');
+  expect(old!.pending).toBe(0xf0000000);
   expect(current!.pending).toBe(0);
 });

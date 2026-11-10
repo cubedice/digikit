@@ -44,6 +44,7 @@ _cu_clear:
     R1 = DM(2, I4);
     R0 = R0 OR R1;
     R1 = DM(28, I1);
+    R1 = FEXT R1 BY 0:16;
     R1 = LSHIFT R1 BY 9;
     R0 = R0 OR R1;
     DM(2, I4) = R0;
@@ -346,6 +347,10 @@ _cu_detail:
     COMP(R2,R3);
     R3 = 0x40b00;
     IF EQ R1 = R3;
+    R3 = 11;
+    COMP(R2,R3);
+    R3 = 0x50b00;
+    IF EQ R1 = R3;
     R1 = R0 OR R1;
     DM(5, I4) = R1;
     R1 = DM(2, I3);
@@ -367,6 +372,9 @@ _cu_detail_word:
     I1 = R1;
     R1 = DM(0, I1);
     R1 = FEXT R1 BY 0:8;
+    R2 = 11;
+    COMP(R1,R2);
+    IF EQ JUMP _cu_detail_wtfm;
     R2 = 10;
     COMP(R1,R2);
     IF EQ JUMP _cu_detail_wavetable;
@@ -384,6 +392,15 @@ _cu_detail_word:
     I1 = R1;
     R0 = DM(0, I1);
     JUMP _cu_detail_store;
+_cu_detail_wtfm:
+    // CPSB carries32 custom values. Native tune moves to42, after ownership.
+    R1 = 42;
+    COMP(R5,R1);
+    IF EQ JUMP _cu_detail_tune;
+    R1 = 32;
+    COMP(R5,R1);
+    IF GE JUMP _cu_detail_token;
+    JUMP _cu_detail_wt_values;
 _cu_detail_wavetable:
     // CPS9's effective UI bank uses 28 custom values plus native tune.
     // Echo the accepted audio revision, never the requested CF parameters.
@@ -391,6 +408,7 @@ _cu_detail_wavetable:
     COMP(R5, R1);
     IF EQ JUMP _cu_detail_tune;
     IF GE JUMP _cu_detail_token;
+_cu_detail_wt_values:
     R1 = 16;
     COMP(R5, R1);
     IF GE JUMP _cu_detail_wt_high;

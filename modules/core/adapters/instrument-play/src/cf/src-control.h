@@ -6,6 +6,7 @@
  * Neither this bridge nor the model retains borrowed firmware view pointers. */
 uint32_t instrument_src_context(uint32_t track,uint32_t page,int visible);
 uint32_t instrument_src_pages(void);
+uint32_t instrument_src_tune_page(uint32_t page);
 int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint32_t now_ms);
 void instrument_src_display(CvDisplay *,uint32_t now_ms,const char *tune,const char *level);
 void instrument_src_feedback(char out[32],uint32_t encoder);

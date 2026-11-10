@@ -5,9 +5,9 @@ This directory contains the four-note pad instrument with movement, presets and 
 reset/process callbacks and an assigned machine type. It requires the optional
 DTII 1.17 `core/instrument-play` adapter; ordinary firmware cannot admit it.
 The engine supports Velvet/Reed, factory wavetable and four-operator FM families,
-drift and independent note envelopes controlled by the stock AMP page. FM adds
-a fourth, conditional FM ENV page.
-The FM source requires matching CPSA firmware and package builds; the installation
+drift, wavetable FM and independent note envelopes controlled by the stock AMP page. FM adds
+a fourth, conditional FM ENV page; wavetable sounds instead expose WT FM.
+The current source requires matching CPSB firmware and package builds; the installation
 and acceptance results below describe the preceding wavetable revision.
 Full Stage 5 and Stage 6 wavetable acceptance passed in the emulator with matching
 CPS9 firmware and package builds, including Overloop recording, crossfades,
@@ -81,7 +81,7 @@ and PRESETS for save/load. Performance controls are no longer duplicated there.
 Press SRC to cycle SOUND, ARP and TONE. **TONE B / WAVE** selects VELVT,
 REED, ANLG, GLASS, VOCAL, ORGAN, METAL or FM directly. The first two are the original
 synth sounds; the next five are wavetables. FM has its own TONE layout and a
-conditional fourth FM ENV page, described below. There is no separate engine menu.
+conditional fourth FM ENV page; wavetables add the fourth WT FM page described below. There is no separate engine menu.
 TONE C-G apply to wavetables and show `--` for Velvet/Reed; their remembered
 values return when a wavetable is selected.
 
@@ -121,10 +121,10 @@ Native TUNE, source LEV, track LEVEL and routing are outside these presets.
 
 The factory waves are original, reproducibly generated data, compiled into the
 module. No sample-bank upload is needed. User-table import is a later extension.
-Presets use CPST v4 (128 bytes), including independent wavetable and FM settings.
-Existing 64-byte v1/v2 and 96-byte v3 presets remain readable and receive neutral
+Presets use CPST v5 (144 bytes), including independent wavetable, wavetable-FM and FM settings.
+Existing 64-byte v1/v2, 96-byte v3 and 128-byte v4 presets remain readable and receive neutral
 defaults for their missing source settings. Loading an older preset does not
-rewrite it, but SAVE CURRENT SOUND then writes v4; older firmware cannot read
+rewrite it, but SAVE CURRENT SOUND then writes v5; older firmware cannot read
 that updated record. Native Sound/project persistence and parameter locks remain
 outside this custom preset format.
 
@@ -404,7 +404,7 @@ Arp gates never release pad owners. The lanes share two bounded release tails.
 The sixteen-word CPS5 layout is version, family, color, drift, attack, release,
 mix, local BPM, rate, gate, order, octaves, swing, clock, restart, strum blocks.
 Strum uses 1500 blocks/second internally. CPS1/CPS3/CPS4 remain accepted.
-CPS5 used 768-byte instances and CPS9 used 1,184 bytes; the current CPSA
+CPS5 used 768-byte instances and CPS9 used 1,184 bytes; the current CPSB
 instance is 2,976 bytes for all source families.
 Use the matching instrument-play firmware policy.
 Both MASTER modes wait for a complete observed boundary interval before playing.
@@ -434,3 +434,34 @@ owner. This avoids pitch-dependent cancellation from resetting the arp oscillato
 independently. Its gate, envelope and drift remain independent; octave extensions
 keep their own pitch and phase. Native filtering, AMP and send effects can still
 change level across notes. Set MIX to PAD when comparing the pad alone.
+
+## FM on wavetable sounds
+
+Choose ANLG, GLASS, VOCAL, ORGAN or METAL with WAVE on TONE, then press SRC
+again to reach WT FM. Position and scanning stay on TONE.
+
+| Knob | Label | Function |
+| --- | --- | --- |
+| A | TUNE | Stock tuning |
+| B | DEP | FM depth, 0-100% |
+| C | RAT | Modulator-to-note frequency ratio, 0.25-8.00 |
+| D | ENV | Timbre envelope to FM depth, -100% to +100% |
+| E | ATK | Timbre-envelope attack |
+| F | REL | Timbre-envelope release |
+| G | WHEL | Mod wheel to FM depth, -100% to +100% |
+| H | LEV | Stock source level |
+
+Start with DEP around 30 and RAT 1.00 or 2.00. Increase DEP for a stronger
+change; noninteger ratios give more metallic timbres. RAT uses the same slower
+selection as WAVE/SHAP. With DEP, ENV and WHEL at zero the original wavetable
+sound is preserved. Positive ENV or WHEL can add FM even with DEP at zero.
+High notes and ratios use less modulation to control excess high-frequency energy.
+
+ATK/REL share the existing wavetable timbre envelope, including its use for
+position when enabled in WAVETABLE TIMBRE. Use the stock AMP page for loudness
+attack/release. The standalone four-operator FM source keeps its own settings.
+
+Explicit saves now write 144-byte CPST v5 presets. Older presets load with
+wavetable FM off; loading alone does not rewrite them. This extension needs
+matching CPSB firmware and CANOPY module builds. Implementation and verification
+details are in the [design](../../../docs/design/canopy.md#wavetable-fm-integration-cpsb).

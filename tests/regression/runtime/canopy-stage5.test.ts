@@ -4,8 +4,9 @@ import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { repoRoot, withinRuntimeDeadline } from '@digi/test-support';
 import { CMD } from '@digi/dk-session/gen_proto';
-import { expect, onTestFinished, test } from 'vitest';
+import { afterAll, beforeAll, expect, onTestFinished, test, vi } from 'vitest';
 import { withSession } from '../support.ts';
+import { timePhase, timingContext } from '../timing.ts';
 import { liveOptions } from './devices.ts';
 import { liveProtocol } from './protocol.ts';
 import { waitEmulated } from './waits.ts';
@@ -18,8 +19,34 @@ import { acknowledgedPanel } from './panel-ack.ts';
 import { menuSelection } from './menu-selection.ts';
 import { encoderValue } from './encoder-value.ts';
 import { canopyControls } from './canopy-controls.ts';
+import { proveWavetableFm } from '../../../modules/machines/canopy/tests/wavetable-fm.ts';
 
-const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
+// A new prepared card needs a complete coupled boot before its ready pair is
+// cached. Keep this suite's startup bound above that cold path.
+vi.setConfig({ hookTimeout: 600_000 });
+
+const options = liveOptions('dt2');
+const fixtureRoot = fs.realpathSync(path.join(repoRoot(), 'out'));
+const cardSeed = fs.mkdtempSync(path.join(fixtureRoot, 'canopy-stage5-card-'));
+const moduleFile = path.resolve(repoRoot(), process.env.CANOPY_UI_PACKAGE ?? 'out/patch/canopy-native-ui.dkm');
+beforeAll(() => {
+  // Start with the same sample card and factory project, adding only the exact
+  // prepared module. No selection, saved sound, preset or prior overlay is reused.
+  for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav']) {
+    fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
+  }
+  const modules = path.join(cardSeed, 'digikit', 'modules');
+  fs.mkdirSync(modules, { recursive: true });
+  fs.copyFileSync(moduleFile, path.join(modules, 'canopy.dkm'));
+});
+afterAll(() => {
+  const owned = fs.realpathSync(cardSeed);
+  if (path.dirname(owned) !== fixtureRoot || !path.basename(owned).startsWith('canopy-stage5-card-')) {
+    throw new Error('Refusing to remove a card fixture outside its owned directory');
+  }
+  fs.rmSync(owned, { recursive: true });
+});
+const h = withSession({ ...options, card: cardSeed, dsp: 'sharc', restart: false });
 test(
   'CANOPY native SOUND, ARP, TONE and FM ENV pages route controls to the audible bank',
   async () => {
@@ -29,24 +56,50 @@ test(
     expect(createHash('sha256').update(fs.readFileSync(image)).digest('hex')).toBe(plan.output?.syx_sha256);
     expect(plan.modules.some((m) => m.startsWith('test/canopy'))).toBe(false);
     const { session } = h;
-    await session.client.firmwareLoad({
-      syx: image,
-      base_sha256: plan.base.syx_sha256,
-      start: 'auto',
-      force: true,
-      auto_no: true,
-      card: session.cardPath,
-    });
+    const context = { ...timingContext(session), scope: 'CANOPY native UI' };
+    await timePhase(
+      'canopy.firmware-load',
+      () =>
+        session.client.firmwareLoad({
+          syx: image,
+          base_sha256: plan.base.syx_sha256,
+          start: 'auto',
+          force: true,
+          auto_no: true,
+          card: session.cardPath,
+        }),
+      context,
+    );
     await session.client.call('run.mode', { mode: 'free' });
     const dk = liveProtocol(session),
-      file = fs.readFileSync(path.resolve(root, process.env.CANOPY_UI_PACKAGE ?? 'out/patch/canopy-native-ui.dkm'));
-    await dk.put('modules/canopy.dkm', file);
-    expect(await dk.verifyFile('modules/canopy.dkm', file)).toBe(true);
+      file = fs.readFileSync(moduleFile),
+      moduleHash = createHash('sha256').update(file).digest('hex');
+    console.info('CANOPY artifacts:', {
+      firmware: plan.output?.syx_sha256,
+      module: moduleHash,
+      moduleBytes: file.length,
+    });
+    await timePhase(
+      'canopy.module-verify',
+      async () => {
+        expect(await dk.list(), 'clean card holds only the exact prepared module').toEqual([
+          { path: 'modules/canopy.dkm', size: file.length, sha256: moduleHash },
+        ]);
+        expect(await dk.verifyFile('modules/canopy.dkm', file)).toBe(true);
+      },
+      context,
+    );
     await dk.select(['modules/canopy.dkm']);
     const beforeRestart = (await session.status()).epoch;
     if (typeof beforeRestart !== 'number') throw new Error('Missing pre-restart epoch');
-    await dk.restart();
-    await dk.waitForBoot(undefined, 180_000);
+    await timePhase(
+      'canopy.protocol-restart',
+      async () => {
+        await dk.restart();
+        await dk.waitForBoot(undefined, 180_000);
+      },
+      context,
+    );
     const word = async (address: number) => {
       const value = await session.client.memPeek(address);
       if (value === null) throw new Error(`Unreadable firmware word at ${address.toString(16)}`);
@@ -100,7 +153,7 @@ test(
             ['ip_src_refresh', 8],
             ['ip_panel_debug', 8],
             ['ip_keyboard_status', 12],
-            ['src_state', 28],
+            ['src_state', 48],
             ['src_status', 160],
           ] as const
         ).map(([name, n]) => capture(name, () => Promise.all(Array.from({ length: n }, (_, i) => cf(name, i))))),
@@ -222,6 +275,20 @@ test(
       bytes.writeUInt32BE(value);
       await session.client.call('mem.cf.write', { addr, hex: bytes.toString('hex') });
     }
+    // Native AMP now owns each note. A finite AHD sound can correctly finish
+    // while this long UI proof is navigating; use a sustained ADSR fixture.
+    const ampRecord = (await peek(planSymbol(plan, '_mi_envelope_records'), 4)).readUInt32LE();
+    expect(ampRecord).toBeGreaterThan(0);
+    await key('AMP');
+    // The native inactivity filter may consume the first turn as wake-up.
+    for (let attempt = 0; attempt < 12 && (await peek(ampRecord + 24, 4)).readUInt32LE() !== 2; attempt++) {
+      await turn(6, 30);
+      await waitEmulated(session, 2);
+    }
+    expect((await peek(ampRecord + 24, 4)).readUInt32LE()).toBe(2);
+    for (let attempt = 0; attempt < 12 && (await peek(ampRecord + 12, 4)).readFloatLE() < 0.999; attempt++)
+      await turn(3, 30);
+    expect((await peek(ampRecord + 12, 4)).readFloatLE()).toBeGreaterThanOrEqual(0.999);
     const rawBank = async () => {
       const b = await peek(planSymbol(plan, '_iv_controls'), 128);
       return Array.from({ length: 32 }, (_, i) => b.readUInt32LE(i * 4));
@@ -229,12 +296,15 @@ test(
     const bank = async () => (await rawBank()).map((v, i) => (i < 16 ? v : v & 65535));
     const toneBank = async () => (await rawBank()).slice(16, 28).map((v) => v >>> 16);
     const { settled } = canopyControls(cf, rawBank);
-    const setControl = (encoder: number, control: number, target: number) =>
-      encoderValue(
-        (delta) => turn(encoder, delta * ([0, 1, 6, 7, 8, 11, 12, 16, 20, 21].includes(control) ? 4 : 1)),
+    const setControl = (encoder: number, control: number, target: number) => {
+      const discrete = [0, 1, 6, 7, 8, 11, 12, 16, 20, 21, 29].includes(control);
+      return encoderValue(
+        (delta) => turn(encoder, delta * (discrete ? 4 : 1)),
         () => settled(control),
         target,
+        { maxStep: discrete ? 1 : 16 },
       );
+    };
     const chordChoice = async () => {
       const chord = await settled(0);
       return ((await rawBank())[0]! >>> 8) & 255 ? chord + 1 : 0;
@@ -491,8 +561,8 @@ test(
       if (name === 'canopy/preset/1') preset = record.subarray(at, at + size);
       at += size;
     }
-    expect(preset?.length).toBe(128);
-    expect(preset![4]).toBe(4);
+    expect(preset?.length).toBe(144);
+    expect(preset![4]).toBe(5);
     expect(Array.from({ length: 16 }, (_, i) => preset!.readUInt16BE(8 + 2 * i))).toEqual(savedBank.slice(16));
     expect(Array.from({ length: 12 }, (_, i) => preset!.readUInt16BE(64 + 2 * i))).toEqual(await toneBank());
     for (let i = 0; i < 4; i++) await key('NO');
@@ -530,6 +600,7 @@ test(
     await expect.poll(rotation, { timeout: 15000 }).not.toBe(beforeRotation);
     expect((await voices())[0]!.token).toBe(held.token);
     await expect.poll(() => cf('src_state', 4), { timeout: 30000 }).toBe(0);
+    await expect.poll(() => cf('src_state', 30), { timeout: 30000 }).toBe(0);
     const beforeLevel = (await word(sound + 0x58)) >>> 16;
     await expect
       .poll(
@@ -637,6 +708,18 @@ test(
     await heldValues('canopy-wavetable-tone-values');
     expect(await cf('ip_src_debug', 1)).toBe(2);
     expect(await audioLevel('wavetable')).toBeGreaterThan(1e-5);
+    const wavetableFm = await proveWavetableFm({
+      page: srcPage,
+      turn,
+      set: setControl,
+      read: settled,
+      bank: rawBank,
+      ownership: async () => ({ voices: await voices(), generation: await cf('src_state') }),
+      audio: audioLevel,
+      capture: (name) => captureRemoteOled(session, name),
+      values: heldValues,
+      sourceLevel: (direction) => turnRange(8, direction),
+    });
     await srcPage(0);
     const tonePosition = (await toneBank())[1]!;
     const oldColor = (await bank())[18];
@@ -655,6 +738,8 @@ test(
     await srcPage(2);
     await setControl(3, 17, savedTone[1]! + 1);
     expect((await toneBank())[1]).toBe(savedTone[1]! + 1);
+    await srcPage(3);
+    await setControl(2, 28, 0);
     await openDigikitMenu(key);
     await key('YES');
     await menuRow(4);
@@ -662,6 +747,7 @@ test(
     await menuRow(3, 'preset_menu');
     await key('YES');
     await expect.poll(toneBank, { timeout: 30000 }).toEqual(savedTone);
+    expect((await rawBank()).slice(28).map((v) => v >>> 16)).toEqual(wavetableFm.controls);
     expect((await bank())[1]).toBe(2);
     expect(await cf('ip_control', 4)).toBe(0);
     expect(await cf('mt_guard_fault')).toBe(0);
@@ -672,15 +758,18 @@ test(
     const rememberedWavetable = await toneBank();
     const rememberedColor = (await bank())[18];
     await setWave(7);
-    expect((await rawBank())[0]! & 255).toBe(10);
+    expect((await rawBank())[0]! & 255).toBe(11);
     expect((await rawBank())[1]).toBe(3);
     expect(await toneBank()).toEqual([0, 50, 3, 8, 0, 5, 40, 50, 15, 100, 100, 100]);
-    const setFm = (encoder: number, control: number, target: number) =>
-      encoderValue(
-        (delta) => turn(encoder, delta * ([16, 18, 19].includes(control) ? 4 : 1)),
+    const setFm = (encoder: number, control: number, target: number) => {
+      const discrete = [16, 18, 19].includes(control);
+      return encoderValue(
+        (delta) => turn(encoder, delta * (discrete ? 4 : 1)),
         () => settled(control),
         target,
+        { maxStep: discrete ? 1 : 16 },
       );
+    };
     await session.client.call('midi.usb.in', { bytes: [0x90, 60, 100] });
     await expect.poll(async () => (await voices()).length, { timeout: 15000 }).toBe(1);
     const fmHeld = await voices();
@@ -733,7 +822,8 @@ test(
     expect((await bank())[18]).toBe(rememberedColor);
     expect(await voices()).toEqual(fmHeld);
     await key('SRC');
-    expect(await cf('ip_src_debug', 1)).toBe(0); // FM ENV is excluded outside FM.
+    expect(await cf('ip_src_debug', 1)).toBe(3); // Wavetables expose their own FM page.
+    expect((await rawBank()).slice(28).map((v) => v >>> 16)).toEqual(wavetableFm.controls);
     await srcPage(2);
     await setWave(7);
     expect(await toneBank()).toEqual(savedFm);
@@ -762,14 +852,15 @@ test(
     await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0, 0xb0, 120, 0] });
     expect(await cf('ip_control', 4)).toBe(0);
     expect(await cf('mt_guard_fault')).toBe(0);
-    await session.expectNoFault('CANOPY four-operator FM, native controls and v4 preset recall');
+    await session.expectNoFault('CANOPY wavetable/four-operator FM, native controls and v5 preset recall');
     fs.writeFileSync(
       path.join(root, 'out/canopy-fm-native-evidence.json'),
-      JSON.stringify({ fmLevels, fmFull, fmZero, savedFm, rememberedWavetable }, null, 2),
+      JSON.stringify({ wavetableFm, fmLevels, fmFull, fmZero, savedFm, rememberedWavetable }, null, 2),
     );
-    console.info('CANOPY: FM algorithms, envelope page, native level, source memory and v4 recall passed');
-    // Generic-core measurements: ~23 minutes to load and ~0.91 s per acknowledged
-    // key edge. Keep room for navigation/audio without relaxing operation guards.
+    console.info('CANOPY: wavetable FM, FM algorithms, native level, source memory and v5 recall passed');
+    // The prepared card avoids a redundant ~23-minute USB upload. The generic
+    // core still takes ~0.91 s per acknowledged key edge, and WT-FM adds a full
+    // control/preset traversal. Keep margin without relaxing operation guards.
   },
-  60 * 60_000,
+  75 * 60_000,
 );

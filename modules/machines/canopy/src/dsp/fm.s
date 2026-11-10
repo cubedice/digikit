@@ -1,8 +1,8 @@
 // Four-operator phase-modulation engine, 2x internal rate with 31-tap halfband.
 // Persistent instance words296..679: eight lane-tagged48-word histories.
 // token, route|lane256, phaseA/B/C, timbreEnv/stage, delayedB, smoothedDepth,
-// 23 FIR histories, five graph weights, ratioA/B, BAL, feedback, six reserved
-// words and the owner-local bandwidth-taper endpoint.
+// 23 FIR histories, five graph weights, ratioA/B, BAL, feedback, six words
+// reserved by FM (reused for mutually exclusive WT PM), and bandwidth taper.
 // Words680..711 active source bank;712 family,713 gain,714 transition,715 valid.
 // No state is shared between instances. Scratch globals are callback-local;
 // the instrument callback ABI is non-reentrant. No borrowed DAG3..7 registers.
@@ -12,6 +12,8 @@
 .GLOBAL _fm_finish;
 .GLOBAL _fm_output;
 .GLOBAL _fm_validate;
+.GLOBAL _fm_sine;
+.GLOBAL _fm_sine_wrapped;
 .EXTERN _wt_atan;
 .EXTERN _wt_state;
 .EXTERN _cp_envelopes;
@@ -33,12 +35,23 @@ _fm_header:
     DM(I1,M6) = R0;
     R2 = R2 - 1;
     IF NE JUMP _fm_header;
+    I2 = R4;
+    R5 = DM(0,I2);
+    R5 = FEXT R5 BY 0:8;
     I2 = _fm_limits;
     R2 = 16;
 _fm_validate_loop:
     R0 = DM(I0,M6);
     R1 = LSHIFT R0 BY -16;
     R3 = DM(I2,M6);
+    R6 = 4;
+    COMP(R2,R6);
+    IF GT JUMP _fm_validate_limit;
+    R6 = 11;
+    COMP(R5,R6);
+    R6 = 0;
+    IF NE R3 = R6;
+_fm_validate_limit:
     COMP(R1,R3);
     IF GT JUMP _fm_invalid;
     R0 = FEXT R0 BY 0:16;
@@ -110,6 +123,8 @@ _fm_switch:
     R0 = 0;
 _fm_clear_histories:
     DM(I2,M5) = R0;
+    // WAVETABLE PM reuses reserved words41..46 with independent ownership.
+    DM(41,I2) = R0;
     MODIFY(I2,48) (NW);
     R2 = R2 - 1;
     IF NE JUMP _fm_clear_histories;
@@ -303,6 +318,7 @@ _fm_finish_slots:
     R2 = 8;
 _fm_finish_tokens:
     DM(0,I0) = R0;
+    DM(41,I0) = R0;
     MODIFY(I0,48) (NW);
     R2 = R2 - 1;
     IF NE JUMP _fm_finish_tokens;
@@ -1186,6 +1202,8 @@ _fm_sine:
     COMP(F0,F1);
     F1 = 1.0;
     IF LT F0 = F0 + F1;
+_fm_sine_wrapped:
+    // Entry for callers that already normalized phase to [0,1).
     F1 = 1024.0;
     F0 = F0 * F1;
     R2 = TRUNC F0;
@@ -1310,10 +1328,10 @@ _fm_sine:
 .VAR _fm_limits_9 = 200;
 .VAR _fm_limits_10 = 200;
 .VAR _fm_limits_11 = 200;
-.VAR _fm_limits_12 = 0;
-.VAR _fm_limits_13 = 0;
-.VAR _fm_limits_14 = 0;
-.VAR _fm_limits_15 = 0;
+.VAR _fm_limits_12 = 100;
+.VAR _fm_limits_13 = 15;
+.VAR _fm_limits_14 = 200;
+.VAR _fm_limits_15 = 200;
 .VAR _fm_graphs = 0x00000000;
 .VAR _fm_graphs_1 = 0x3f800000;
 .VAR _fm_graphs_2 = 0x00000000;

@@ -53,6 +53,7 @@ afterAll(() => {
 test.each([
   'paint',
   'tone',
+  'wavetable-fm',
   'fm-envelope',
   'fm-presentation',
   'routing',

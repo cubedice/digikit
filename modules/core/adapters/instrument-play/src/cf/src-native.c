@@ -103,7 +103,7 @@ void ip_src_draw(uint8_t *view,uint8_t *canvas)
     for(uint32_t i=0;i<8;++i) {
         /* The firmware already painted SOUND A/H and the track column.
          * Custom cells never clear or redraw any part of those controls. */
-        if((page!=1 && i==7) || ((page==0 || page==2) && i==0)) continue;
+        if((page!=1 && i==7) || (instrument_src_tune_page(page) && i==0)) continue;
         int32_t x=24+26*(int32_t)(i%4),y=i<4?27:0;
         dk_fw_draw_fill_rect(canvas,x-1,y,x+21,y+25,0);
         if(display.rotary&(1u<<i)) {
@@ -194,7 +194,7 @@ uint32_t ip_src_key(uint8_t *view,uint8_t *event)
     published=0;
     (void)instrument_src_context(ip_src_debug[0],page,0);
     if(token && key>=41 && key<=48 &&
-        (page==1 || (key!=48 && (page==3 || key!=41)))) return 1;
+        (page==1 || (key!=48 && (!instrument_src_tune_page(page) || key!=41)))) return 1;
     return ip_src_stock_key(view,event);
 }
 uint32_t ip_src_turn(uint8_t *view,uint8_t *event)
@@ -229,7 +229,7 @@ uint32_t ip_src_parameter(uint8_t *view,uint32_t encoder)
     if(context(view)) {
         if(encoder==8) return 10;
         if(word(view,0x90)!=1) {
-            if(encoder==0 && word(view,0x90)!=3) return 0xca;
+            if(encoder==0 && instrument_src_tune_page(word(view,0x90))) return 0xca;
             if(encoder==7) return 0xd1;
         }
         if(encoder<8) return 0; /* custom cell: no hidden Sound parameter */

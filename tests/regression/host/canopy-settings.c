@@ -170,15 +170,15 @@ int main(void)
             puts("]}");
         }
         else if(!strcmp(cmd,"ackdetail")) {
-            src_state.pending=0x0fffffff;
+            src_state.pending=UINT32_MAX;
             is_select(&src_status,0,src_state.generation,src_state.mode,0);
             src_status.fast_valid=src_status.detail_valid=src_status.poll_valid=1;
             src_status.fast_at=src_status.poll_at=100;
             src_status.fast[3]=src_status.detail_control=src_state.revision;
             src_status.fast[11]=src_status.detail_revision=9;
             src_status.detail_schema=(uint32_t)value;
-            for(unsigned i=0;i<28;++i) src_status.detail[i]=src_state.value[i];
-            src_status.detail[28]=src_state.native_tune;
+            for(unsigned i=0;i<(value>=5?32:28);++i) src_status.detail[i]=src_state.value[i];
+            src_status.detail[value>=5?42:28]=src_state.native_tune;
             instrument_src_poll(100);
             printf("{\"pending\":%u}\n",src_state.pending);
         }
@@ -254,9 +254,9 @@ int main(void)
         }
         else if(!strcmp(cmd,"shapeslot")) { slot=value; changed(0,0); }
         else if(!strcmp(cmd,"legacypreset")) {
-            uint8_t *b=preset_card[preset_slot-1]; b[4]=(uint8_t)value; b[5]=value<=2?16:CP_CONTROLS;
-            for(unsigned i=value<=2?51:92;i<CP_RECORD_BYTES;++i) b[i]=0;
-            unsigned end=value<=2?60:92;
+            uint8_t *b=preset_card[preset_slot-1]; b[4]=(uint8_t)value; b[5]=value<=2?16:28;
+            for(unsigned i=value<=2?51:value==3?92:119;i<CP_RECORD_BYTES;++i) b[i]=0;
+            unsigned end=value<=2?60:value==3?92:124;
             uint32_t h=2166136261u;
             for(unsigned i=0;i<end;++i) h=(h^b[i])*16777619u;
             for(unsigned i=0;i<4;++i) b[end+i]=(uint8_t)(h>>(24-8*i));

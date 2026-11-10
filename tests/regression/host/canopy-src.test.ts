@@ -36,6 +36,8 @@ test.each([
   'controls',
   'wavetable',
   'wavetable-status',
+  'wavetable-fm',
+  'wavetable-fm-status',
   'list-small-turns',
   'list-isolation',
   'list-context',

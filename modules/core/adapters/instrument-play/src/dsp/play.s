@@ -427,6 +427,9 @@ _iv_config_validate:
     JUMP _iv_config_copy;
 _iv_six_config:
     R0 = DM(5, I0);
+    R1 = 0x43505342;
+    COMP(R0, R1);
+    IF EQ JUMP _iv_eleven_config;
     R1 = 0x43505341;
     COMP(R0, R1);
     IF EQ JUMP _iv_ten_config;
@@ -465,6 +468,9 @@ _iv_nine_config:
     JUMP _iv_native_config;
 _iv_ten_config:
     R2 = 10;
+    JUMP _iv_native_config;
+_iv_eleven_config:
+    R2 = 11;
 _iv_native_config:
     R0 = DM(_iv_values);
     I1 = R0;
@@ -574,9 +580,10 @@ _iv_effective_controls:
     COMP(R0, R1);
     IF NE JUMP _iv_no;
     JUMP _iv_five_body;
-// CPS9/CPSA preserve the 128-byte transport bank. Presentation words contain
+// CPS9/CPSA/CPSB preserve the 128-byte transport bank. Presentation words contain
 // the original control in low16 and a source-specific control in high16.
 // CPSA adds family 3 (FM); CPS9 retains its original family 0..2 contract.
+// CPSB uses the last four high halves for remembered wavetable FM controls.
 // Validate every field and duplicate before publishing any part of a revision.
 _iv_wavetable_controls:
     R0 = DM(0, I1);
@@ -642,9 +649,23 @@ _iv_wt_scalar:
     I4 = _iv_fm_high_min;
     I5 = _iv_fm_high_max;
 _iv_extension_ranges:
+    R0 = DM(_iv_values);
+    I0 = R0;
+    R0 = DM(0,I0);
+    R0 = FEXT R0 BY 0:8;
+    DM(_iv_extension_version) = R0;
     I6 = _iv_wt_duplicate;
     R6 = 16;
 _iv_wt_presentation:
+    R0 = 4;
+    COMP(R6,R0);
+    IF NE JUMP _iv_extension_range_ready;
+    R0 = DM(_iv_extension_version);
+    R1 = 11;
+    COMP(R0,R1);
+    IF NE JUMP _iv_extension_range_ready;
+    I5 = _iv_wtfm_high_max;
+_iv_extension_range_ready:
     R7 = DM(I1, M6);
     R0 = FEXT R7 BY 0:16;
     R1 = DM(I2, M6);
@@ -1174,6 +1195,11 @@ _iv_voice_zero:
 .VAR _iv_fm_high_max_13 = 0;
 .VAR _iv_fm_high_max_14 = 0;
 .VAR _iv_fm_high_max_15 = 0;
+.VAR _iv_wtfm_high_max = 100;
+.VAR _iv_wtfm_high_max_1 = 15;
+.VAR _iv_wtfm_high_max_2 = 200;
+.VAR _iv_wtfm_high_max_3 = 200;
+.PKBSS _iv_extension_version, 4;
 .VAR _iv_wt_duplicate = 0xffffffff;
 .VAR _iv_wt_duplicate_1 = 0xffffffff;
 .VAR _iv_wt_duplicate_2 = 2;

@@ -41,7 +41,9 @@ static int arp_mix=0, arp_bpm=120, arp_rate=4, arp_gate=50;
 static int arp_order=0, arp_octaves=0, arp_swing=0, arp_clock=0, arp_restart=0, pad_strum=0;
 static int wt[12]={0,0,0,10,0,0,0,100,5,15,100,100};
 static int fm[13]={32,0,50,3,8,0,5,40,50,15,100,100,100};
-uint32_t instrument_src_pages(void) { return pad_family==3 ? 4 : 3; }
+static int wtfm[4]={0,3,100,100};
+uint32_t instrument_src_pages(void) { return pad_family>=2 ? 4 : 3; }
+uint32_t instrument_src_tune_page(uint32_t page) { return page==0 || page==2 || (page==3 && pad_family==2); }
 static dk_ui_menu *tone_menu;
 static dk_ui_menu *input_menu, *shape_menu, *sound_menu;
 static uint32_t pad_dirty=1;
@@ -227,6 +229,7 @@ static void preset_snapshot(CpPreset *p)
     for(uint32_t i=0;i<16;++i) p->control[i]=v[i];
     for(uint32_t i=0;i<12;++i) p->control[16+i]=(uint16_t)wt[i];
     for(uint32_t i=0;i<13;++i) p->fm[i]=(uint16_t)fm[i];
+    for(uint32_t i=0;i<4;++i) p->control[28+i]=(uint16_t)wtfm[i];
     p->bpm=(uint16_t)arp_bpm; p->family=(uint8_t)pad_family;
     p->mode=keyboard.mode; p->clock=(uint8_t)arp_clock;
     const KbShape *shape=keyboard.preset_shape_active ? &keyboard.preset_shape : &keyboard.shapes[keyboard.slot];
@@ -281,7 +284,8 @@ int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint3
         for(uint32_t i=0;i<12;++i) wt[i]=src_state.wavetable[i];
         for(uint32_t i=0;i<13;++i) fm[i]=src_state.fm[i];
         break;
-    default: if(id>=16 && id<CP_CONTROLS) {
+    default: if(id>=28 && id<CP_CONTROLS) wtfm[id-28]=v;
+    else if(id>=16 && id<28) {
         if(pad_family==3) fm[id-15]=v; else wt[id-16]=v;
     } break;
     }
@@ -294,12 +298,14 @@ void instrument_src_poll(uint32_t now)
     is_poll(&src_status,now,mi_status_reply);
     if(is_detail_confirmed(&src_status,now)) {
         if(pad_family==3 && src_status.detail_schema<4) return;
-        if(src_status.detail_schema>=3) cs_applied(&src_state,src_status.generation,src_status.detail_control,src_status.detail);
+        if(src_status.detail_schema>=5)
+            cs_applied(&src_state,src_status.generation,src_status.detail_control,src_status.detail,src_status.detail[42]);
         else {
             uint32_t legacy[32];
-            for(uint32_t i=0;i<32;++i) legacy[i]=i<16?src_status.detail[i]:UINT32_MAX;
-            legacy[CS_TUNE]=src_status.detail[16];
-            cs_applied(&src_state,src_status.generation,src_status.detail_control,legacy);
+            uint32_t count=src_status.detail_schema>=3?28:16;
+            for(uint32_t i=0;i<32;++i) legacy[i]=i<count?src_status.detail[i]:UINT32_MAX;
+            cs_applied(&src_state,src_status.generation,src_status.detail_control,legacy,
+                src_status.detail[src_status.detail_schema>=3?28:16]);
         }
     }
 }
@@ -403,6 +409,7 @@ static void preset_load(void *ctx,int value)
     pad_attack=p.control[CP_ATTACK]; pad_release=p.control[CP_RELEASE];
     for(uint32_t i=0;i<12;++i) wt[i]=p.control[16+i];
     for(uint32_t i=0;i<13;++i) fm[i]=p.fm[i];
+    for(uint32_t i=0;i<4;++i) wtfm[i]=p.control[28+i];
     pad_family=p.family; arp_clock=p.clock; arp_bpm=p.bpm; pad_dirty=1;
     preset_pending=0;
     dkrt_irq_restore(sr);
@@ -628,13 +635,13 @@ void instrument_play_tick(void)
      * The same revision owns SRC pending markers and the audio configuration. */
     CpPreset current; src_requested(&current);
     const uint16_t *v=src_state.value;
-    uint32_t values[32]={10|((uint32_t)current.mode<<8)|(src_state.native_tune<<16),current.family,
+    uint32_t values[32]={11|((uint32_t)current.mode<<8)|(src_state.native_tune<<16),current.family,
         v[CP_COLOR],v[CP_DRIFT],v[CP_ATTACK],v[CP_RELEASE],v[CP_ARP_MIX],current.bpm,
         v[CP_RATE],v[CP_GATE],v[CP_ORDER],v[CP_OCTAVES],v[CP_SWING],current.clock,
         v[CP_RESTART],(uint32_t)v[CP_STRUM]*3/2,
         v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],
         v[8],v[9],v[10],v[11],v[12],v[13],v[14],v[15]};
-    for(uint32_t i=0;i<12;++i) values[16+i]|=(uint32_t)v[16+i]<<16;
+    for(uint32_t i=0;i<16;++i) values[16+i]|=(uint32_t)v[16+i]<<16;
     int count=mi_registry_reply(reply,16);
     /* A temporarily missing/reordered reply cannot revoke a healthy route;
      * the transport's independent deadline and reset guard remain authoritative. */
@@ -655,9 +662,9 @@ void instrument_play_tick(void)
         else prepared=(uint32_t)result;
     }
     if (phase == 1 && prepared && !mi_ledger.reset_mask &&
-        !mi_config_submit(0,src_state.revision,0x43505341,values,32)) { phase=2; pad_dirty=0; }
+        !mi_config_submit(0,src_state.revision,0x43505342,values,32)) { phase=2; pad_dirty=0; }
     if (phase==3 && src_state.revision>mi_transport.applied[0] &&
-        !mi_config_submit(0,src_state.revision,0x43505341,values,32)) pad_dirty=0;
+        !mi_config_submit(0,src_state.revision,0x43505342,values,32)) pad_dirty=0;
     if (phase == 2 && instrument_midi_ready(0,mi_ledger.epoch,mi_ledger.generations[0])) {
         if (!mi_route_enable(MI_PANEL,0,0,0) &&
             (!enabled || !usb || !mi_route_enable(0,(uint32_t)channel-1,0,0)) &&

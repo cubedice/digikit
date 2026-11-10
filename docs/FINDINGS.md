@@ -204,3 +204,12 @@ USER exit, directional octave spread, fragmented physical screenshots and pad/ar
 
 Overloop reply ownership: [separate status from immediate FX diagnostics](findings/116-overloop-reply-ownership.md)
 (**[D]/[O]**, fixed carrier allocation and component regression; running coexistence recheck pending).
+
+CANOPY wavetable FM: [phase modulation, corrected interior-frame budget coverage and bounded DSP evidence](findings/117-canopy-wavetable-fm.md)
+(**[D]**, CPSB controls and unchanged polyphony/state size; strict interior/AHD
+instruction witnesses, exact neutral PCM and bounded spectrum checks;
+matching compiled UI/audio/preset acceptance passes).
+
+DTII emulator test execution: [device-specific generated DSP blocks and bounded test optimizations](findings/118-dt2-emulator-test-execution.md)
+(**[D]**, paired stock-sample execution preserves exact audio and DSP state;
+acknowledged encoder batching and streamed card hashing reduce test overhead).

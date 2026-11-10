@@ -218,6 +218,7 @@ def playback(playback_object):
                         8: 0x43505338,
                         9: 0x43505339,
                         10: 0x43505341,
+                        11: 0x43505342,
                     }.get(values[0] & 255, 0),
                 }[len(values)],
             ],
@@ -721,6 +722,60 @@ def fm_bank():
     for index, value in enumerate(extra, 16):
         values[index] = (values[index] & 65535) | (value << 16)
     return values
+
+
+def wavetable_fm_bank(family=2):
+    values = fm_bank() if family == 3 else wavetable_bank(family=family)
+    values[0] = (values[0] & ~255) | 11
+    for index, value in enumerate([60, 8, 150, 175], 28):
+        values[index] = (values[index] & 65535) | (value << 16)
+    return values
+
+
+@pytest.mark.parametrize("family", [0, 1, 2, 3])
+def test_cpsb_publishes_wavetable_fm_with_each_source_family(playback, family):
+    call, _, get, reset, configure, _, _ = playback
+    assert reset() == 1
+    call(0)
+    values = wavetable_fm_bank(family)
+    assert configure(values=values, revision=20) == 1
+    assert get("_iv_controls", 32) == values
+    assert get("_iv_revision") == [20]
+    call(0)
+    assert get("_iv_result")[0] in (0, 1)
+
+
+@pytest.mark.parametrize("index,value", [(28, 101), (29, 16), (30, 201), (31, 201)])
+def test_cpsb_rejects_invalid_extension_without_partial_publication(
+    playback, index, value
+):
+    call, _, get, reset, configure, _, _ = playback
+    assert reset() == 1
+    call(0)
+    values = wavetable_fm_bank()
+    assert configure(values=values, revision=21) == 1
+    bad = values.copy()
+    bad[index] = (bad[index] & 65535) | (value << 16)
+    assert configure(values=bad, revision=22) == 0
+    assert get("_iv_controls", 32) == values
+    assert get("_iv_revision") == [21]
+
+
+@pytest.mark.parametrize("version,schema", [(9, 0x43505339), (10, 0x43505341)])
+def test_cpsb_extension_cannot_be_smuggled_through_old_schema(
+    playback, version, schema
+):
+    call, _, get, reset, configure, _, _ = playback
+    assert reset() == 1
+    call(0)
+    old = wavetable_bank()
+    assert configure(values=old, revision=23) == 1
+    bad = wavetable_fm_bank()
+    assert configure(values=bad, schema=schema, revision=24) == 0
+    bad[0] = (bad[0] & ~255) | version
+    assert configure(values=bad, schema=schema, revision=24) == 0
+    assert get("_iv_controls", 32) == old
+    assert get("_iv_revision") == [23]
 
 
 @pytest.mark.parametrize("family", [0, 1, 2, 3])

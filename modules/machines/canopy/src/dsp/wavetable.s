@@ -3,6 +3,7 @@
 // note stealing, bending and same-pitch pad/arp alignment retain their ABI.
 // Added state: words200..231 eight {token,env,route,block-start-env} records;
 // 232..263 shared scan/transition history;264..295 USB/DIN wheel routes.
+// CPSB PM reuses words41..46 in each of the eight FM histories296..679.
 .SECTION/PM seg_pmco;
 .GLOBAL _wt_prepare;
 .GLOBAL _wt_begin_slot;
@@ -11,6 +12,9 @@
 .EXTERN _wt_factory;
 .EXTERN _cp_envelopes;
 .EXTERN _fm_bank;
+.EXTERN _fm_ratios;
+.EXTERN _fm_sines;
+.EXTERN _fm_sine_wrapped;
 .GLOBAL _wt_atan;
 
 // R4 original 32-word CPS9 bank. Return R0=1 and I0 a low-word validation
@@ -24,12 +28,23 @@ _wt_copy_header:
     DM(I1, M6) = R0;
     R2 = R2 - 1;
     IF NE JUMP _wt_copy_header;
+    I2 = R4;
+    R5 = DM(0,I2);
+    R5 = FEXT R5 BY 0:8;
     I2 = _wt_limits;
     R2 = 16;
 _wt_validate_control:
     R0 = DM(I0, M6);
     R1 = LSHIFT R0 BY -16;
     R3 = DM(I2, M6);
+    R6 = 4;
+    COMP(R2,R6);
+    IF GT JUMP _wt_validate_limit;
+    R6 = 11;
+    COMP(R5,R6);
+    R6 = 0;
+    IF NE R3 = R6;
+_wt_validate_limit:
     COMP(R1, R3);
     IF GT JUMP _wt_invalid;
     R0 = FEXT R0 BY 0:16;
@@ -62,6 +77,7 @@ _wt_prepare:
     DM(_wt_input) = R8;
     R0 = 0;
     DM(_wt_enabled) = R0;
+    DM(_wt_pm_active) = R0;
     I0 = R4;
     I1 = R8;
     R0 = DM(10, I1);
@@ -75,6 +91,13 @@ _wt_prepare:
     I2 = R0;
     R0 = DM(0, I2);
     R0 = FEXT R0 BY 0:8;
+    R1 = 11;
+    COMP(R0,R1);
+    IF NE JUMP _wt_old_version;
+    R1 = 1;
+    DM(_wt_pm_active) = R1;
+    JUMP _wt_version_ready;
+_wt_old_version:
     R1 = 10;
     COMP(R0, R1);
     IF EQ JUMP _wt_version_ready;
@@ -117,13 +140,14 @@ _wt_version_ready:
     IF EQ RTS;
     MODIFY(I2, 16) (NW);
     I1 = _wt_controls;
-    R2 = 12;
+    R2 = 16;
 _wt_unpack:
     R0 = DM(I2, M6);
     R0 = LSHIFT R0 BY -16;
     DM(I1, M6) = R0;
     R2 = R2 - 1;
     IF NE JUMP _wt_unpack;
+    CALL _wt_pm_prepare;
     // Record beginning-of-block timbre envelopes for the arp's parent.
     I1 = R4;
     MODIFY(I1, 200) (NW);
@@ -200,8 +224,18 @@ _wt_crossfade_advance:
 _wt_crossfade_ready:
     R0 = DM(235, I0);
     DM(_wt_table_a) = R0;
+    R1 = 37088; // 9272 words per factory table
+    R1 = R0 * R1 (SSI);
+    R2 = _wt_factory;
+    R1 = R1 + R2;
+    DM(_wt_table_base_a) = R1;
     R0 = DM(236, I0);
     DM(_wt_table_b) = R0;
+    R1 = 37088;
+    R1 = R0 * R1 (SSI);
+    R2 = _wt_factory;
+    R1 = R1 + R2;
+    DM(_wt_table_base_b) = R1;
     R0 = DM(237, I0);
     DM(_wt_table_mix) = R0;
     F1 = DM(_wt_table_start);
@@ -565,6 +599,7 @@ _wt_begin_slot:
 _wt_slot:
     R0 = 0;
     DM(_wt_is_new) = R0;
+    DM(_wt_pm_parent) = R0;
     R0 = DM(_wt_source_start);
     DM(_wt_source_cursor) = R0;
     R0 = DM(_wt_table_start);
@@ -596,6 +631,10 @@ _wt_lane_ready:
     R1 = DM(_wt_r5);
     CALL _wt_atan;
     DM(_wt_increment) = F0;
+    // PM broadens every carrier harmonic; resolve its conservative frequency
+    // bound after ownership is known, immediately before the mip selection.
+    JUMP _wt_mip_later;
+_wt_choose_mip:
     // Mip starts filtering at .20/H cycles/sample and reaches the next
     // level by .40/H. The richer band is gone well before Nyquist.
     I1 = _wt_mip_sizes;
@@ -617,11 +656,13 @@ _wt_mip_find:
     IF LT JUMP _wt_mip_find;
 _wt_mip_found:
     R0 = DM(0, I1);
-    DM(_wt_size_a) = R0;
+    F0 = FLOAT R0;
+    DM(_wt_size_a) = F0;
     R0 = DM(0, I2);
     DM(_wt_offset_a) = R0;
     R0 = DM(1, I1);
-    DM(_wt_size_b) = R0;
+    F0 = FLOAT R0;
+    DM(_wt_size_b) = F0;
     R0 = DM(1, I2);
     DM(_wt_offset_b) = R0;
     F0 = 0.2;
@@ -633,6 +674,8 @@ _wt_mip_found:
     F0 = 1.0;
     F2 = MIN(F2, F0);
     DM(_wt_mip_mix) = F2;
+    RTS;
+_wt_mip_later:
     // Resolve token history; prune only records no longer sounding anywhere.
     R0 = DM(_wt_slot_address);
     I0 = R0;
@@ -716,6 +759,11 @@ _wt_new_token:
     R1 = 32;
     R0 = R0 OR R1;
     DM(2, I1) = R0;
+    // A reused WT record also invalidates its independent PM history.
+    R0 = I1;
+    CALL _wt_pm_address;
+    R0 = 0;
+    DM(0,I2) = R0;
 _wt_find_route:
     R0 = DM(_wt_state);
     I2 = R0;
@@ -777,6 +825,8 @@ _wt_parent_next:
     IF NE JUMP _wt_parent;
     JUMP _wt_token_ready;
 _wt_parent_found:
+    R0 = I2;
+    DM(_wt_pm_parent) = R0;
     R0 = DM(3, I2);
     DM(1, I1) = R0;
     R0 = DM(2, I2);
@@ -822,6 +872,7 @@ _wt_token_ready:
     I2 = R0;
     R1 = DM(264, I2);
 _wt_wheel_ready:
+    DM(_wt_pm_wheel) = R1;
     F0 = FLOAT R1;
     F1 = 0.0005511811024; // wheel/127 ×7/100
     F0 = F0 * F1;
@@ -904,26 +955,41 @@ _wt_env_attack:
     R0 = DM(0, I1);
 _wt_env_step_ready:
     DM(_wt_env_step) = R0;
+    CALL _wt_pm_slot;
+    F0 = DM(_wt_pm_frequency);
+    CALL _wt_choose_mip;
     RTS;
 
 // Called before voice gain/envelope, with legacy oscillator sample F0.
+// R0/R1 are scratch; preserve R2..15 and every DAG register.
 _wt_tick:
     R1 = DM(_wt_enabled);
     R1 = PASS R1;
     IF EQ RTS;
-    CALL _wt_save_regs;
-    F0 = DM(_wt_source_cursor);
-    F1 = DM(_wt_source_step);
-    F0 = F0 + F1;
-    DM(_wt_source_cursor) = F0;
-    F0 = DM(_wt_table_cursor);
-    F1 = DM(_wt_table_step);
-    F0 = F0 + F1;
-    DM(_wt_table_cursor) = F0;
-    F0 = DM(_wt_scan_cursor);
-    F1 = DM(_wt_scan_step);
-    F0 = F0 + F1;
-    DM(_wt_scan_cursor) = F0;
+    // Lookup weights remain in R4..7 across all table/frame reads. Save the
+    // caller's pitch, velocity and amplitude registers as well as scratch.
+    DM(_wt_r0) = R0;
+    DM(_wt_r2) = R2;
+    DM(_wt_r3) = R3;
+    DM(_wt_r4) = R4;
+    DM(_wt_r5) = R5;
+    DM(_wt_r6) = R6;
+    DM(_wt_r7) = R7;
+    R0 = I1;
+    DM(_wt_i1) = R0;
+    R0 = I2;
+    DM(_wt_i2) = R0;
+    // Each transition has adjacent start/step/cursor words in scratch.
+    I2 = _wt_source_cursor;
+    F0 = DM(0,I2);
+    F1 = DM(-1,I2);
+    F0 = F0 + F1, F2 = DM(3,I2);
+    F1 = DM(2,I2);
+    F2 = F2 + F1, DM(0,I2) = F0;
+    F0 = DM(6,I2);
+    F1 = DM(5,I2);
+    F0 = F0 + F1, DM(3,I2) = F2;
+    DM(6,I2) = F0;
     F0 = DM(_wt_note_position);
     F1 = DM(_wt_position_step);
     F0 = F0 + F1;
@@ -935,6 +1001,7 @@ _wt_tick:
     COMP(F0, F1);
     IF GE F0 = F0 - F1;
     DM(_wt_phase) = F0;
+    DM(_wt_read_phase) = F0;
     F0 = DM(_wt_env);
     F1 = DM(_wt_env_step);
     F0 = F0 + F1;
@@ -944,8 +1011,10 @@ _wt_tick:
     F0 = MIN(F0, F1);
     DM(_wt_env) = F0;
     R3 = DM(_wt_aux);
-    I0 = R3;
-    DM(1, I0) = F0;
+    I2 = R3;
+    DM(1, I2) = F0;
+    CALL _wt_pm_tick;
+    F0 = DM(_wt_env);
     F1 = DM(_wt_env_amount);
     F0 = F0 * F1;
     F1 = DM(_wt_note_position);
@@ -963,12 +1032,38 @@ _wt_tick:
     R0 = 1159;
     R1 = R1 * R0 (SSI);
     DM(_wt_frame) = R1;
-    R4 = DM(_wt_table_a);
+    // Phase indices depend on the mip, not the frame/table. Calculate each
+    // once before up to eight reads, retaining the original float order.
+    F0 = DM(_wt_size_a);
+    F1 = DM(_wt_read_phase);
+    F0 = F0 * F1;
+    R2 = TRUNC F0;
+    F1 = FLOAT R2;
+    F0 = F0 - F1;
+    R3 = DM(_wt_offset_a);
+    R2 = R2 + R3;
+    R2 = LSHIFT R2 BY 2;
+    DM(_wt_index_a) = R2;
+    F4 = F0;
+    F0 = DM(_wt_size_b);
+    F1 = DM(_wt_read_phase);
+    F0 = F0 * F1;
+    R2 = TRUNC F0;
+    F1 = FLOAT R2;
+    F0 = F0 - F1;
+    R3 = DM(_wt_offset_b);
+    R2 = R2 + R3;
+    R2 = LSHIFT R2 BY 2;
+    DM(_wt_index_b) = R2;
+    F5 = F0;
+    F6 = DM(_wt_mip_mix);
+    F7 = DM(_wt_frame_mix);
+    R3 = DM(_wt_table_base_a);
     CALL _wt_table_sample;
     DM(_wt_sample_a) = F0;
-    R4 = DM(_wt_table_b);
-    R1 = DM(_wt_table_a);
-    COMP(R4, R1);
+    R3 = DM(_wt_table_base_b);
+    R1 = DM(_wt_table_base_a);
+    COMP(R3, R1);
     IF EQ JUMP _wt_tick_blend;
     CALL _wt_table_sample;
     F1 = DM(_wt_sample_a);
@@ -982,72 +1077,369 @@ _wt_tick_blend:
     F2 = DM(_wt_source_cursor);
     F0 = F0 * F2;
     F0 = F0 + F1;
-    DM(_wt_result) = F0;
-    CALL _wt_restore_regs;
-    R0 = DM(_wt_result);
+    // Restore the caller through R1, leaving the final sample in F0.
+    R1 = DM(_wt_i1);
+    I1 = R1;
+    R1 = DM(_wt_i2);
+    I2 = R1;
+    R2 = DM(_wt_r2);
+    R3 = DM(_wt_r3);
+    R4 = DM(_wt_r4);
+    R5 = DM(_wt_r5);
+    R6 = DM(_wt_r6);
+    R7 = DM(_wt_r7);
     RTS;
 
+// R3 table base; F4/F5 phase fractions, F6 mip mix, F7 frame mix.
+// Keep both wave addresses in I1/I2 and pipeline independent reads with
+// interpolation arithmetic. Every multiply/add has the original order.
 _wt_table_sample:
-    R0 = 9272;
-    R0 = R4 * R0 (SSI);
-    R1 = DM(_wt_frame);
-    R0 = R0 + R1;
+    R0 = DM(_wt_frame);
     R0 = LSHIFT R0 BY 2;
-    R1 = _wt_factory;
-    R0 = R0 + R1;
-    DM(_wt_frame_base) = R0;
-    CALL _wt_frame_sample;
+    R0 = R0 + R3;
+    R2 = DM(_wt_index_a);
+    R2 = R2 + R0;
+    I1 = R2;
+    R2 = DM(_wt_index_b);
+    R2 = R2 + R0;
+    I2 = R2;
+    F0 = DM(0,I1);
+    F1 = DM(1,I1);
+    F1 = F1 - F0, F2 = DM(0,I2);
+    F1 = F4 * F1, F3 = DM(1,I2);
+    F0 = F1 + F0;
+    F3 = F3 - F2;
+    F3 = F5 * F3;
+    F2 = F3 + F2;
+    F2 = F2 - F0;
+    F2 = F2 * F6;
+    F0 = F2 + F0;
     DM(_wt_frame_a) = F0;
     R0 = DM(_wt_frame);
     R1 = 8113; // final frame: no read past table
     COMP(R0, R1);
     IF EQ JUMP _wt_final_frame;
-    R0 = DM(_wt_frame_base);
-    R1 = 4636;
-    R0 = R0 + R1;
-    DM(_wt_frame_base) = R0;
-    CALL _wt_frame_sample;
+    MODIFY(I1,1159) (NW);
+    MODIFY(I2,1159) (NW);
+    F0 = DM(0,I1);
+    F1 = DM(1,I1);
+    F1 = F1 - F0, F2 = DM(0,I2);
+    F1 = F4 * F1, F3 = DM(1,I2);
+    F0 = F1 + F0;
+    F3 = F3 - F2;
+    F3 = F5 * F3;
+    F2 = F3 + F2;
+    F2 = F2 - F0;
+    F2 = F2 * F6;
+    F0 = F2 + F0;
     F1 = DM(_wt_frame_a);
     F0 = F0 - F1;
-    F2 = DM(_wt_frame_mix);
-    F0 = F0 * F2;
+    F0 = F0 * F7;
     F0 = F0 + F1;
     RTS;
 _wt_final_frame:
     F0 = DM(_wt_frame_a);
     RTS;
-_wt_frame_sample:
-    R0 = DM(_wt_offset_a);
-    R1 = DM(_wt_size_a);
-    CALL _wt_read_wave;
-    DM(_wt_mip_a) = F0;
-    R0 = DM(_wt_offset_b);
-    R1 = DM(_wt_size_b);
-    CALL _wt_read_wave;
-    F1 = DM(_wt_mip_a);
-    F0 = F0 - F1;
-    F2 = DM(_wt_mip_mix);
-    F0 = F0 * F2;
-    F0 = F0 + F1;
+
+// A WT auxiliary ordinal owns six otherwise reserved words of the mutually
+// exclusive FM history: token, phase, ratio, depth, increment, reserved.
+// R0 WT auxiliary address -> I2 PM history; scratch R0..3, preserve I0/I1.
+_wt_pm_address:
+    R1 = DM(_wt_state);
+    R0 = R0 - R1;
+    R2 = 800;
+    R0 = R0 - R2;
+    R2 = LSHIFT R0 BY 3;
+    R0 = LSHIFT R0 BY 2;
+    R0 = R0 + R2;
+    R2 = 1348; // (296+41)*4
+    R0 = R0 + R2;
+    R0 = R0 + R1;
+    I2 = R0;
     RTS;
-_wt_read_wave:
-    R3 = R0;
-    F0 = FLOAT R1;
-    F1 = DM(_wt_phase);
+
+_wt_pm_prepare:
+    // Only CPSB interprets the last four high halfwords. Older banks leave
+    // audio, history and modulation untouched, even after a newer bank.
+    R0 = DM(_wt_pm_active);
+    R0 = PASS R0;
+    IF EQ RTS;
+    I1 = _wt_controls;
+    R0 = DM(12,I1);
+    F0 = FLOAT R0;
+    F1 = 0.01;
     F0 = F0 * F1;
+    DM(_wt_pm_depth) = F0;
+    R0 = DM(13,I1);
+    R0 = LSHIFT R0 BY 2;
+    R1 = _fm_ratios;
+    R0 = R0 + R1;
+    I2 = R0;
+    R0 = DM(0,I2);
+    DM(_wt_pm_ratio) = R0;
+    R0 = DM(14,I1);
+    R1 = 100;
+    R0 = R0 - R1;
+    F0 = FLOAT R0;
+    F1 = 0.01;
+    F0 = F0 * F1;
+    DM(_wt_pm_env_amount) = F0;
+    R0 = DM(15,I1);
+    R1 = 100;
+    R0 = R0 - R1;
+    F0 = FLOAT R0;
+    F1 = 0.00007874015748; // signed amount/100, wheel/127
+    F0 = F0 * F1;
+    DM(_wt_pm_wheel_amount) = F0;
+    // Snapshots are callback-local; publish each pad's actual beginning below.
+    I1 = _wt_pm_snapshots;
+    R0 = 0;
+    R2 = 8;
+_wt_pm_clear_snapshots:
+    DM(0,I1) = R0;
+    MODIFY(I1,6) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _wt_pm_clear_snapshots;
+    RTS;
+
+_wt_pm_slot:
+    F0 = DM(_wt_increment);
+    DM(_wt_pm_frequency) = F0;
+    R0 = DM(_wt_pm_active);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R0 = DM(_wt_aux);
+    CALL _wt_pm_address;
+    R0 = I2;
+    DM(_wt_pm_aux) = R0;
+    I1 = R0;
+    R0 = DM(_wt_aux);
+    I0 = R0;
+    R3 = DM(0,I0);
+    R0 = DM(0,I1);
+    COMP(R0,R3);
+    IF EQ JUMP _wt_pm_existing;
+    DM(0,I1) = R3;
+    R0 = 0;
+    DM(1,I1) = R0;
+    DM(3,I1) = R0;
+    DM(5,I1) = R0;
+    R0 = DM(_wt_pm_ratio);
+    DM(2,I1) = R0;
+    // Same-frequency arp starts from the pad's beginning-of-block history.
+    // Different pitches keep their own phase; envelope/route still inherit.
+    R0 = DM(_wt_pm_parent);
+    R0 = PASS R0;
+    IF EQ JUMP _wt_pm_existing;
+    CALL _wt_pm_address;
+    R0 = I2;
+    CALL _wt_pm_snapshot_address;
+    R0 = DM(0,I2);
+    R0 = PASS R0;
+    IF EQ JUMP _wt_pm_existing;
+    R0 = DM(4,I2);
+    R1 = DM(_wt_increment);
+    COMP(R0,R1);
+    IF NE JUMP _wt_pm_existing;
+    R0 = DM(1,I2);
+    DM(1,I1) = R0;
+    R0 = DM(2,I2);
+    DM(2,I1) = R0;
+    R0 = DM(3,I2);
+    DM(3,I1) = R0;
+_wt_pm_existing:
+    R0 = DM(_wt_increment);
+    DM(4,I1) = R0;
+    R0 = DM(_wt_lane);
+    R0 = PASS R0;
+    IF NE JUMP _wt_pm_depth_target;
+    R0 = I1;
+    CALL _wt_pm_snapshot_address;
+    R2 = 6;
+    I0 = I1;
+_wt_pm_snapshot:
+    R0 = DM(I0,M6);
+    DM(I2,M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _wt_pm_snapshot;
+_wt_pm_depth_target:
+    R0 = DM(_wt_pm_wheel);
+    F0 = FLOAT R0;
+    F1 = DM(_wt_pm_wheel_amount);
+    F0 = F0 * F1;
+    F1 = DM(_wt_pm_depth);
+    F0 = F0 + F1;
+    DM(_wt_pm_base) = F0;
+    // Ratio advances smoothly every sample, preserving continuous phase.
+    F0 = DM(2,I1);
+    F1 = DM(_wt_pm_ratio);
+    F2 = MAX(F0,F1);
+    DM(_wt_pm_ratio_bound) = F2;
+    F1 = F1 - F0;
+    F2 = 0.003900835401; // (1-exp(-32/(48000*.005)))/32
+    F1 = F1 * F2;
+    DM(_wt_pm_ratio_step) = F1;
+    F2 = 32.0;
+    F2 = F1 * F2;
+    F2 = F2 + F0;
+    F2 = MAX(F0,F2);
+    F3 = 0.00004; // covers repeated float additions through this block
+    F2 = F2 + F3;
+    DM(_wt_pm_render_ratio_bound) = F2;
+    F0 = DM(_wt_pm_ratio_bound);
+    F1 = 1.0;
+    F0 = MAX(F0,F1);
+    F1 = DM(_wt_increment);
+    F3 = F0 * F1; // highest requested/current oscillator /48000
+    F0 = 0.2;
+    F0 = F0 - F3;
+    F1 = 10.0;
+    F0 = F0 * F1;
+    F1 = 0.0;
+    F0 = MAX(F0,F1);
+    F1 = 1.0;
+    F0 = MIN(F0,F1);
+    F2 = RECIPS F3;
+    F1 = F3 * F2;
+    F4 = 2.0;
+    F1 = F4 - F1;
+    F2 = F2 * F1;
+    F1 = F3 * F2;
+    F1 = F4 - F1;
+    F2 = F2 * F1;
+    F1 = 0.007;
+    F2 = F2 * F1;
+    F1 = 1.0;
+    F2 = MIN(F2,F1);
+    F0 = F0 * F2;
+    // Depth is squared, so take sqrt here to apply the bandwidth taper once.
+    // One reciprocal-square-root refinement stays close to the analytic limit.
+    F1 = 0.0;
+    COMP(F0,F1);
+    IF LE JUMP _wt_pm_scale_ready;
+    F3 = RSQRTS F0;
+    F2 = F3 * F3;
+    F2 = F2 * F0;
+    F1 = 0.5;
+    F2 = F2 * F1;
+    F1 = 1.5;
+    F2 = F1 - F2;
+    F3 = F3 * F2;
+    F0 = F0 * F3;
+_wt_pm_scale_ready:
+    DM(_wt_pm_key_scale) = F0;
+    // DEP is squared in the phase expression (maximum one radian). A mip
+    // bound fc*(1+4*d*ratio) includes the significant PM sidebands of every
+    // carrier harmonic. Bound only values reachable during this block: using
+    // the final requested depth immediately would darken the table before the
+    // audible depth ramp. Small margins cover repeated float32 additions.
+    F1 = DM(_wt_pm_env_amount);
+    F2 = 0.0;
+    F1 = MAX(F1,F2);
+    F2 = DM(_wt_pm_base);
+    F1 = F1 + F2;
+    F2 = 0.0;
+    F1 = MAX(F1,F2);
+    F2 = 1.0;
+    F1 = MIN(F1,F2);
+    F1 = F1 * F0;
+    F0 = DM(3,I1);
+    F1 = F1 - F0;
+    F2 = 0.124826732846117; // 1-(1-.004158)^32
+    F1 = F1 * F2;
+    F1 = F1 + F0;
+    F1 = MAX(F1,F0);
+    F2 = 1.00001;
+    F1 = F1 * F2;
+    F0 = DM(_wt_pm_render_ratio_bound);
+    F1 = F1 * F0;
+    F0 = 4.0;
+    F1 = F1 * F0;
+    F0 = 1.0;
+    F1 = F1 + F0;
+    F0 = DM(_wt_increment);
+    F0 = F0 * F1;
+    DM(_wt_pm_frequency) = F0;
+    RTS;
+
+// R0 PM record -> I2 matching callback snapshot. Preserve I1.
+_wt_pm_snapshot_address:
+    R1 = DM(_wt_state);
+    R0 = R0 - R1;
+    R1 = 1348;
+    R0 = R0 - R1;
+    R0 = LSHIFT R0 BY -3; // record192bytes -> snapshot24bytes
+    R1 = _wt_pm_snapshots;
+    R0 = R0 + R1;
+    I2 = R0;
+    RTS;
+
+_wt_pm_tick:
+    R0 = DM(_wt_pm_active);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R0 = DM(_wt_pm_aux);
+    I2 = R0;
+    I1 = _wt_pm_base;
+    F0 = DM(_wt_env);
+    F1 = DM(-3,I1); // signed envelope amount
+    F0 = F0 * F1, F1 = DM(0,I1);
+    F0 = F0 + F1;
+    F1 = 0.0;
+    F0 = MAX(F0,F1);
+    F1 = 1.0;
+    F0 = MIN(F0,F1), F1 = DM(4,I1);
+    F0 = F0 * F1;
+    F2 = F0;
+    F1 = DM(3,I2);
+    F0 = F0 - F1;
+    F3 = 0.004158;
+    F0 = F0 * F3;
+    F0 = F0 + F1;
+    F1 = 0.0000001;
+    COMP(F0,F1);
+    IF GE JUMP _wt_pm_depth_ready;
+    F1 = 0.0;
+    COMP(F2,F1);
+    IF EQ F0 = F1;
+_wt_pm_depth_ready:
+    DM(3,I2) = F0;
+    DM(_wt_pm_depth_cursor) = F0;
+    F0 = DM(2,I2);
+    F1 = DM(1,I1);
+    F0 = F0 + F1;
+    DM(2,I2) = F0;
+    F1 = DM(_wt_increment);
+    F0 = F0 * F1, F1 = DM(1,I2);
+    F0 = F0 + F1;
     R2 = TRUNC F0;
     F1 = FLOAT R2;
     F0 = F0 - F1;
-    R2 = R2 + R3;
-    R2 = LSHIFT R2 BY 2;
-    R3 = DM(_wt_frame_base);
-    R2 = R2 + R3;
-    I1 = R2;
-    F1 = DM(0, I1);
-    F2 = DM(1, I1);
-    F2 = F2 - F1;
-    F0 = F0 * F2;
+    DM(1,I2) = F0;
+    R0 = DM(_wt_pm_depth_cursor);
+    R0 = PASS R0;
+    IF EQ RTS; // exact unmodulated read phase, including neutral CPSB sounds
+    // F0 was aliased by R0 above; load the current phase before the lookup.
+    F0 = DM(1,I2);
+    CALL _fm_sine_wrapped;
+    F1 = DM(_wt_pm_depth_cursor);
+    F1 = F1 * F1;
+    F0 = F0 * F1;
+    F1 = 0.1591549431; // one radian in cycles
+    F0 = F0 * F1;
+    F1 = DM(_wt_phase);
     F0 = F0 + F1;
+    R2 = TRUNC F0;
+    F1 = FLOAT R2;
+    F0 = F0 - F1;
+    F1 = 0.0;
+    COMP(F0,F1);
+    F1 = 1.0;
+    IF LT F0 = F0 + F1;
+    // Adding one to a tiny negative float can round to exactly one.
+    COMP(F0,F1);
+    IF GE F0 = F0 - F1;
+    DM(_wt_read_phase) = F0;
     RTS;
 
 .SECTION/DM seg_dmda;
@@ -1057,7 +1449,7 @@ _wt_read_wave:
 .VAR _wt_enabled = 0;
 .VAR _wt_input = 0;
 .PKBSS _wt_low_controls, 128;
-.PKBSS _wt_controls, 48;
+.PKBSS _wt_controls, 64;
 .VAR _wt_limits = 4;
 .VAR _wt_limit1 = 700;
 .VAR _wt_limit2 = 100;
@@ -1070,10 +1462,10 @@ _wt_read_wave:
 .VAR _wt_limit9 = 127;
 .VAR _wt_limit10 = 200;
 .VAR _wt_limit11 = 200;
-.VAR _wt_limit12 = 0;
-.VAR _wt_limit13 = 0;
-.VAR _wt_limit14 = 0;
-.VAR _wt_limit15 = 0;
+.VAR _wt_limit12 = 100;
+.VAR _wt_limit13 = 15;
+.VAR _wt_limit14 = 200;
+.VAR _wt_limit15 = 200;
 .VAR _wt_mip_sizes = 512;
 .VAR _wt_size1 = 256;
 .VAR _wt_size2 = 128;
@@ -1144,6 +1536,8 @@ _wt_restore_regs:
 .PKBSS _wt_source_mix, 4;
 .PKBSS _wt_table_a, 4;
 .PKBSS _wt_table_b, 4;
+.PKBSS _wt_table_base_a, 4;
+.PKBSS _wt_table_base_b, 4;
 .PKBSS _wt_table_mix, 4;
 .PKBSS _wt_position, 4;
 .PKBSS _wt_slot_address, 4;
@@ -1162,10 +1556,7 @@ _wt_restore_regs:
 .PKBSS _wt_frame_mix, 4;
 .PKBSS _wt_frame, 4;
 .PKBSS _wt_sample_a, 4;
-.PKBSS _wt_frame_base, 4;
 .PKBSS _wt_frame_a, 4;
-.PKBSS _wt_mip_a, 4;
-.PKBSS _wt_result, 4;
 .PKBSS _wt_r0, 4;
 .PKBSS _wt_r1, 4;
 .PKBSS _wt_r2, 4;
@@ -1185,18 +1576,40 @@ _wt_restore_regs:
 .PKBSS _wt_i0, 4;
 .PKBSS _wt_i1, 4;
 .PKBSS _wt_i2, 4;
-.PKBSS _wt_source_start, 4;
-.PKBSS _wt_source_step, 4;
-.PKBSS _wt_source_cursor, 4;
-.PKBSS _wt_table_start, 4;
-.PKBSS _wt_table_step, 4;
-.PKBSS _wt_table_cursor, 4;
-.PKBSS _wt_scan_start, 4;
-.PKBSS _wt_scan_step, 4;
-.PKBSS _wt_scan_cursor, 4;
+// Contiguous transition triplets permit pipelined compute/load instructions.
+// Keep in one data section: individual PKBSS symbols may be relocated apart.
+.VAR _wt_source_start = 0;
+.VAR _wt_source_step = 0;
+.VAR _wt_source_cursor = 0;
+.VAR _wt_table_start = 0;
+.VAR _wt_table_step = 0;
+.VAR _wt_table_cursor = 0;
+.VAR _wt_scan_start = 0;
+.VAR _wt_scan_step = 0;
+.VAR _wt_scan_cursor = 0;
 .PKBSS _wt_scan_wraps, 4;
 .PKBSS _wt_is_new, 4;
 .PKBSS _wt_position_step, 4;
 .PKBSS _wt_gate, 4;
 .PKBSS _wt_expr_starts, 32;
 .PKBSS _wt_lane, 4;
+.PKBSS _wt_read_phase, 4;
+.PKBSS _wt_index_a, 4;
+.PKBSS _wt_index_b, 4;
+.PKBSS _wt_pm_active, 4;
+.PKBSS _wt_pm_aux, 4;
+.PKBSS _wt_pm_parent, 4;
+.PKBSS _wt_pm_snapshots, 192;
+// Contiguous PM parameters; _wt_pm_tick indexes relative to _wt_pm_base.
+.VAR _wt_pm_depth = 0;
+.VAR _wt_pm_ratio = 0;
+.VAR _wt_pm_env_amount = 0;
+.VAR _wt_pm_wheel_amount = 0;
+.VAR _wt_pm_wheel = 0;
+.VAR _wt_pm_base = 0;
+.VAR _wt_pm_ratio_step = 0;
+.VAR _wt_pm_ratio_bound = 0;
+.VAR _wt_pm_render_ratio_bound = 0;
+.VAR _wt_pm_key_scale = 0;
+.VAR _wt_pm_frequency = 0;
+.VAR _wt_pm_depth_cursor = 0;

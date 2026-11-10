@@ -8,6 +8,7 @@ void mf_src_free(uint8_t *p) { (void)p; assert(0); }
 uint32_t mf_native_page_count(uint32_t type, uint32_t ordinary) { (void)type; return ordinary; }
 static CsState state;
 uint32_t instrument_src_pages(void) { return cs_pages(&state); }
+uint32_t instrument_src_tune_page(uint32_t page) { return page==0 || page==2 || (page==3 && ((state.metadata>>4)&3)==2); }
 static uint32_t selected,alternate,now=100,type_id=9,generation=1,stock_turns,stock_keys,invalidations,polls;
 static uint32_t manager[16],node[4],vtable[60],modal[24],modal_node[4];
 static uint32_t focus_mask,texts,graphs,toasts;
@@ -138,6 +139,31 @@ int main(int argc,char **argv)
         for(int y=0;y<64;++y) for(int x=0;x<128;++x)
             if(y<11 || x<23 || x>=124 || (y<37 && x<48) || (y>=38 && x>=101))
                 assert(canvas[y*128+x]==0xaa);
+    } else if(!strcmp(argv[1],"wavetable-fm")) {
+        real_display=1; cs_metadata(&state,2u<<4); v[0x90/4]=3; context((uint8_t *)v);
+        assert(mf_src_page_count(type_id)==4);
+        state.value[CP_WTFM_DEPTH]=100; state.value[CP_WTFM_RATIO]=15;
+        state.value[CP_WTFM_ENV]=0; state.value[CP_WTFM_WHEEL]=200;
+        state.value[CP_WT_ATTACK]=127; state.value[CP_WT_RELEASE]=127;
+        clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
+        const char *labels[]={"","DEP","RAT","ENV","ATK","REL","WHEL",""};
+        for(unsigned i=0;i<8;++i) assert(!strcmp(label_text[i],labels[i]));
+        assert(!strcmp(body_text[2],"8.00") && graph_mask==0x7a);
+        protected_pixels(canvas,1);
+        v[0x190/4]=0x01010101; clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
+        const char *values[]={"","100%","8.00","-100%","127","127","+100%",""};
+        for(unsigned i=0;i<8;++i) assert(!strcmp(label_text[i],values[i]));
+        protected_pixels(canvas,1);
+        assert(ip_src_parameter((uint8_t *)v,0)==0xca && ip_src_parameter((uint8_t *)v,7)==0xd1);
+        assert(ip_src_parameter((uint8_t *)v,8)==10 && ip_src_parameter((uint8_t *)v,1)==0);
+        event((uint8_t *)e,1,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7);
+        event((uint8_t *)e,8,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7);
+        event((uint8_t *)e,9,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7 && stock_turns==3);
+        event((uint8_t *)e,3,-3,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e); assert(state.value[CP_WTFM_RATIO]==15);
+        event((uint8_t *)e,3,-1,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e); assert(state.value[CP_WTFM_RATIO]==14);
+        e[3]=41; assert(ip_src_key((uint8_t *)v,(uint8_t *)e)==7);
+        e[3]=48; assert(ip_src_key((uint8_t *)v,(uint8_t *)e)==7);
+        e[3]=42; assert(ip_src_key((uint8_t *)v,(uint8_t *)e)==1);
     } else if(!strcmp(argv[1],"fm-envelope")) {
         cs_metadata(&state,3u<<4); v[0x90/4]=3; context((uint8_t *)v);
         assert(mf_src_page_count(type_id)==4);
@@ -152,8 +178,10 @@ int main(int argc,char **argv)
         for(int y=0;y<64;++y) for(int x=0;x<128;++x)
             if(y<11 || x<23 || x>=124 || (y>=38 && x>=101)) assert(canvas[y*128+x]==0xaa);
         cs_metadata(&state,2u<<4); context((uint8_t *)v);
-        assert(mf_src_page_count(type_id)==3 && v[0x90/4]==2);
+        assert(mf_src_page_count(type_id)==4 && v[0x90/4]==3);
         assert(ip_src_parameter((uint8_t *)v,0)==0xca);
+        cs_metadata(&state,0); context((uint8_t *)v);
+        assert(mf_src_page_count(type_id)==3 && v[0x90/4]==2);
     } else if(!strcmp(argv[1],"fm-presentation")) {
         real_display=1; cs_metadata(&state,3u<<4); v[0x90/4]=2; context((uint8_t *)v);
         state.value[CP_FM_ALG]=3; state.value[CP_FM_BAL]=100;

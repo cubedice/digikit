@@ -235,8 +235,6 @@ def canopy(canopy_object):
             "offset_a",
             "position",
             "frame",
-            "frame_base",
-            "result",
             "env",
             "source_mix",
             "r6",
@@ -2469,6 +2467,569 @@ def fm_histories(result):
         for i in range(296, 680, 48)
         if result["state"][i]
     }
+
+
+def wavetable_fm_controls(fm_depth=0, ratio=3, fm_env=100, fm_wheel=100, **kwargs):
+    """CPSB retains the complete wavetable bank and adds its four FM controls."""
+    values = wavetable_controls(**kwargs)
+    values[0] = (values[0] & ~255) | 11
+    for index, value in enumerate((fm_depth, ratio, fm_env, fm_wheel), 28):
+        values[index] = (values[index] & 65535) | (value << 16)
+    return values
+
+
+def wavetable_fm_histories(result):
+    """Read owner-keyed PM history; pad and arp serials have separate namespaces."""
+    state = result["state"]
+    return {
+        (state[200 + 4 * i], state[202 + 4 * i] & 256): state[
+            337 + 48 * i : 343 + 48 * i
+        ]
+        for i in range(8)
+        if state[200 + 4 * i] and state[337 + 48 * i] == state[200 + 4 * i]
+    }
+
+
+@pytest.mark.parametrize("table", range(5))
+def test_wavetable_fm_depth_zero_matches_legacy_bank(canopy, table):
+    params = dict(table=table, position=345, depth=100, rate=1000, shape=2, mix=64)
+    events = [note(i + 1, 48 + i * 7) for i in range(4)]
+    old = canopy(events, controls=wavetable_controls(**params), blocks=4)
+    new = canopy(
+        events,
+        controls=wavetable_fm_controls(ratio=15, **params),
+        state=0x20054000,
+        blocks=4,
+    )
+    assert old["out"] == new["out"]
+    assert old["state"][:176] == new["state"][:176]
+    assert old["state"][200:296] == new["state"][200:296]
+    assert old["state"][716:] == new["state"][716:]
+
+
+def test_wavetable_fm_modulates_selected_table_and_retains_position_scan(canopy):
+    import math
+
+    params = dict(table=2, position=170, depth=70, rate=1000, shape=1)
+    dry = canopy(
+        [note(1, 60, 127)],
+        controls=wavetable_fm_controls(**params),
+        state_edits={232: wt_bits(1)},
+        blocks=16,
+    )
+    modulated = canopy(
+        [note(1, 60, 127)],
+        controls=wavetable_fm_controls(fm_depth=80, ratio=8, **params),
+        state=0x20054000,
+        state_edits={232: wt_bits(1)},
+        blocks=16,
+    )
+    assert (
+        max(
+            abs(wt_float(a) - wt_float(b))
+            for a, b in zip(dry["out"], modulated["out"], strict=True)
+        )
+        > 0.001
+    )
+    assert voices(dry)[1] == voices(modulated)[1]
+    assert dry["state"][233:248] == modulated["state"][233:248]
+    assert wt_float(modulated["state"][239]) > 0
+    previous = modulated
+    for changed in (dict(position=620), dict(table=4), dict(depth=0)):
+        unchanged = canopy(
+            controls=wavetable_fm_controls(fm_depth=80, ratio=8, **params),
+            state_edits=dict(enumerate(previous["state"])),
+            blocks=4,
+        )
+        params.update(changed)
+        modulated = canopy(
+            controls=wavetable_fm_controls(fm_depth=80, ratio=8, **params),
+            state=0x20054000,
+            blocks=4,
+        )
+        assert voices(modulated)[1][:2] == voices(previous)[1][:2]
+        # Compare identical oscillator/history snapshots: ordinary phase
+        # advancement alone must not satisfy the live timbre-edit witness.
+        assert modulated["out"] != unchanged["out"]
+        assert voices(modulated)[1] == voices(unchanged)[1]
+        assert wt_float(modulated["state"][239]) > wt_float(previous["state"][239])
+        assert all(
+            math.isfinite(wt_float(word)) and abs(wt_float(word)) < 0.1
+            for word in modulated["out"]
+        )
+        previous = modulated
+    assert modulated["state"][238] == 4
+
+
+@pytest.mark.parametrize("index,bad", [(28, 101), (29, 16), (30, 201), (31, 201)])
+def test_wavetable_fm_invalid_extension_cannot_apply_wheel_or_note(canopy, index, bad):
+    controls = wavetable_fm_controls(fm_depth=70, fm_wheel=200)
+    before = canopy([note(1, 60)], controls=controls)["state"]
+    controls[index] = (controls[index] & 65535) | bad << 16
+    rejected = canopy([[3, 0, 0, 1, 127, 0], note(2, 64)], controls=controls)
+    assert rejected["regs"]["R0"] == 0xFFFFFFFF
+    assert rejected["state"] == before
+
+
+@pytest.mark.parametrize("version", [9, 10])
+def test_wavetable_fm_old_version_cannot_enable_new_extension(canopy, version):
+    controls = wavetable_fm_controls(fm_depth=70)
+    controls[0] = (controls[0] & ~255) | version
+    before = canopy([note(1, 60)], controls=wavetable_controls())["state"]
+    rejected = canopy([note(2, 64)], controls=controls)
+    assert rejected["regs"]["R0"] == 0xFFFFFFFF
+    assert rejected["state"] == before
+
+
+def test_wavetable_fm_status_echoes_complete_bank_and_native_tune(canopy):
+    controls = wavetable_fm_controls(
+        fm_depth=100, ratio=15, fm_env=175, fm_wheel=180, table=4, position=345
+    )
+    controls[0] = (controls[0] & 65535) | 0x4080 << 16
+    timing = {0: 5, 1: 96, 11: 7}
+    first = canopy([note(17, 60), note(18, 67)], controls=controls, edits=timing)
+    fragments = {}
+    for index in range(11):
+        # Existing status tests cover multiplexing cadence. Address one detail
+        # slot per call here to test this schema without 88 idle callbacks.
+        result = canopy(
+            controls=controls, edits=timing, state_edits={188: index * 8 + 4}
+        )
+        ready, *words = result["status"]
+        assert ready == 1 and words[1] >> 30 == 1
+        assert words[4] == 0x50B00 | index
+        assert words[5] == 7
+        fragments[index] = words[6:]
+    bank = sum((fragments[i] for i in range(11)), [])
+    assert bank[:16] == [word & 65535 for word in controls[16:]]
+    assert bank[16:32] == [word >> 16 for word in controls[16:]]
+    assert bank[38:42] == first["state"][189:193]
+    assert bank[42] == 0x4080
+    assert bank[32:38] == [0] * 6 and bank[43:] == [0] * 23
+
+
+@pytest.mark.parametrize("latch", [0, 1])
+def test_wavetable_fm_depth_upper_half_cannot_corrupt_fast_status(canopy, latch):
+    controls = wavetable_fm_controls(fm_depth=100, ratio=15)
+    controls[28] = (controls[28] & 0xFFFF0000) | latch
+    result = canopy(controls=controls, edits={0: 5, 1: 96})
+    ready, *words = result["status"]
+    assert ready == 1
+    assert words[1] == latch << 9  # No notes, arp, detail marker or phantom flags.
+
+
+def test_wavetable_fm_live_ratio_and_depth_keep_phase_and_ramp(canopy):
+    controls = wavetable_fm_controls(fm_depth=10, ratio=3)
+    before = canopy([note(1, 60, 127)], controls=controls, blocks=8)
+    initial = wavetable_fm_histories(before)[1, 0]
+    changed = canopy(controls=wavetable_fm_controls(fm_depth=100, ratio=15))
+    current = wavetable_fm_histories(changed)[1, 0]
+    assert current[0] == initial[0] == 1
+    assert wt_float(initial[2]) < wt_float(current[2]) < 8
+    assert wt_float(initial[3]) < wt_float(current[3])
+    assert 0 <= wt_float(current[1]) < 1
+    assert current[1] != initial[1]
+    assert voices(changed)[1][:2] == voices(before)[1][:2]
+    # A second block continues toward the request rather than resetting it.
+    later = canopy(controls=wavetable_fm_controls(fm_depth=100, ratio=15))
+    history = wavetable_fm_histories(later)[1, 0]
+    assert wt_float(current[2]) < wt_float(history[2]) < 8
+    assert wt_float(current[3]) < wt_float(history[3])
+
+
+def test_wavetable_fm_negative_roundoff_cannot_read_past_phase_endpoint(canopy_object):
+    linked, _, initial, _, symbols, _ = canopy_object
+    history = 0x20050000
+    memory = dict(initial)
+    for name, value in {
+        "_wt_pm_active": 1,
+        "_wt_pm_aux": history,
+        "_wt_pm_base": wt_bits(0.00001),
+        "_wt_pm_key_scale": wt_bits(1),
+        "_wt_pm_env_amount": 0,
+        "_wt_env": 0,
+        "_wt_phase": 0,
+        "_wt_increment": 0,
+        "_wt_pm_ratio_step": 0,
+    }.items():
+        memory[symbols[name] // 4] = value
+    for index, word in enumerate(
+        [1, wt_bits(0.75), wt_bits(1), wt_bits(0.00001), 0, 0]
+    ):
+        memory[history // 4 + index] = word
+    result = pk_sharc.run_call(
+        linked,
+        "_wt_pm_tick",
+        regs={"M5": 0, "M6": 1, "M13": 0, "MODE1": 0x1011800},
+        dm_words=memory,
+        reads={"phase": (symbols["_wt_read_phase"] // 4, 1)},
+        max_steps=1000,
+    )
+    assert result["halt"]["reason"] == "breakpoint"
+    # The negative PM offset is smaller than half an ulp below 1. Wrapping
+    # must handle its rounded endpoint before lookup(index + 1) occurs.
+    assert wt_float(result["phase"][0]) == 0
+
+
+@pytest.mark.parametrize("table", [0, 2, 4])
+def test_wavetable_fm_samples_match_independent_phase_modulated_table(canopy, table):
+    import math
+
+    from tools.patchkit.canopy_wavetables import MIPS, frames
+
+    controls = wavetable_fm_controls(fm_depth=40, ratio=3, table=table, position=350)
+    amp = native_amp(attack=1, decay=1, sustain=1)
+    before = canopy(
+        [note(1, 60, 127)],
+        controls=controls,
+        native=amp,
+        state_edits={232: wt_bits(1)},
+        blocks=32,
+    )
+    history = [wt_float(word) for word in wavetable_fm_histories(before)[1, 0]]
+    voice = voices(before)[1]
+    phase_start = math.atan2(wt_float(voice[2]), wt_float(voice[3])) / (2 * math.pi)
+    increment = math.atan2(wt_float(voice[4]), wt_float(voice[5])) / (2 * math.pi)
+    requested_ratio = 2
+    ratio_bound = max(1, history[2], requested_ratio)
+    q = ratio_bound * increment
+    key_scale = max(0, min(1, (0.2 - q) * 10)) * min(1, 0.007 / q)
+    # Key tracking attenuates the final PM index once; the depth trajectory is
+    # squared to give the knob useful travel near its unmodulated endpoint.
+    target_depth = 0.85 * math.sqrt(key_scale)
+    reachable_gain = 1 - (1 - 0.004158) ** 32
+    reachable_ratio = (
+        max(history[2], history[2] + (requested_ratio - history[2]) * reachable_gain)
+        + 0.00004
+    )
+    reachable_depth = (
+        max(history[3], history[3] + (target_depth - history[3]) * reachable_gain)
+        * 1.00001
+    )
+    frequency_bound = increment * (1 + 4 * reachable_depth * reachable_ratio)
+    mip = next((i for i, (_, h) in enumerate(MIPS) if frequency_bound * h < 0.4), 6)
+    mip_mix = max(0, min(1, (frequency_bound * MIPS[mip][1] - 0.2) * 5))
+    waves = frames(table)
+
+    def sample(frame, level, phase):
+        size = MIPS[level][0]
+        coordinate = (phase % 1) * size
+        index = int(coordinate)
+        wave = waves[frame][level]
+        return wave[index] + (wave[index + 1] - wave[index]) * (coordinate - index)
+
+    def reference(smooth):
+        phase = phase_start
+        mod_phase, ratio, depth = history[1:4]
+        ratio_step = (requested_ratio - ratio) * (1 - (1 - 0.004158) ** 32) / 32
+        result = []
+        for _ in range(32):
+            phase = (phase + increment) % 1
+            ratio = ratio + ratio_step if smooth else requested_ratio
+            depth = (
+                depth + (target_depth - depth) * 0.004158 if smooth else target_depth
+            )
+            mod_phase = (mod_phase + increment * ratio) % 1
+            read_phase = phase + math.sin(2 * math.pi * mod_phase) * depth**2 / (
+                2 * math.pi
+            )
+            value = 0
+            for frame in (3, 4):
+                a = sample(frame, mip, read_phase)
+                b = sample(frame, min(mip + 1, 6), read_phase)
+                value += (a + (b - a) * mip_mix) * 0.5
+            result.append(value * 0.08)
+        return result, (mod_phase, ratio, depth)
+
+    rendered = canopy(
+        controls=wavetable_fm_controls(fm_depth=85, ratio=8, table=table, position=350),
+        native=amp,
+    )
+    actual = [wt_float(word) for word in rendered["out"]]
+    expected, end = reference(True)
+    abrupt, _ = reference(False)
+    assert max(abs(a - b) for a, b in zip(actual, expected, strict=True)) < 0.00003
+    assert max(abs(a - b) for a, b in zip(actual, abrupt, strict=True)) > 0.0001
+    assert [
+        wt_float(word) for word in wavetable_fm_histories(rendered)[1, 0][1:4]
+    ] == pytest.approx(end, abs=0.00001)
+    expected_offset = sum(size + 1 for size, _ in MIPS[:mip])
+    assert rendered["wt_offset_a"] == [expected_offset]
+
+
+@pytest.mark.parametrize("pitch", [96, 108, 127])
+def test_wavetable_fm_out_of_band_modulator_tapers_to_original_waveform(canopy, pitch):
+    import math
+
+    # At 8x these pitches put the modulator above the .20-cycle cutoff. The
+    # published taper must remove PM, retaining the original mip-filtered WT;
+    # this is a bounded cutoff witness, not a universal alias-free claim.
+    assert 8 * 440 * 2 ** ((pitch - 69) / 12) / 48000 > 0.2
+    original = canopy(
+        [note(1, pitch, 127)], controls=wavetable_controls(table=4), blocks=4
+    )
+    modulated = canopy(
+        [note(1, pitch, 127)],
+        controls=wavetable_fm_controls(fm_depth=100, ratio=15, table=4),
+        state=0x20054000,
+        blocks=4,
+    )
+    assert wavetable_fm_histories(modulated)[1, 0][3] == wt_bits(0)
+    assert original["out"] == modulated["out"]
+    assert all(
+        math.isfinite(wt_float(word)) and abs(wt_float(word)) < 0.1
+        for word in modulated["out"]
+    )
+
+
+@pytest.mark.parametrize("canopy_object", [False], indirect=True)
+@pytest.mark.parametrize("table", range(5))
+@pytest.mark.parametrize("pitch", [60, 84, 96])
+@pytest.mark.parametrize("ratio_index,ratio", [(3, 1), (15, 8)])
+def test_wavetable_fm_integer_ratio_nonharmonic_residual_is_bounded(
+    canopy, table, pitch, ratio_index, ratio, record_property
+):
+    import numpy as np
+
+    result = canopy(
+        [note(1, pitch, 127)],
+        controls=wavetable_fm_controls(
+            fm_depth=100, ratio=ratio_index, table=table, position=350
+        ),
+        state_edits={232: wt_bits(1)},
+        blocks=256,
+        capture=True,
+    )
+    audio = np.array([wt_float(word) for word in result["audio"][-4096:]])
+    assert np.isfinite(audio).all() and np.max(np.abs(audio)) < 0.1
+    assert np.sqrt(np.mean(audio**2)) > 0.001
+    frequency = 440 * 2 ** ((pitch - 69) / 12)
+    bins = np.fft.rfftfreq(len(audio), 1 / 48000)
+    spectrum = np.abs(np.fft.rfft(audio * np.hanning(len(audio)))) ** 2
+    allowed = np.zeros(len(bins), dtype=bool)
+    # Integer-ratio PM has harmonics of the carrier, including a possible DC
+    # component. This measures energy outside that lattice; aliases landing
+    # on the lattice are not distinguished and no alias-free claim is made.
+    for harmonic in range(int(24000 / frequency) + 1):
+        allowed |= np.abs(bins - harmonic * frequency) < 4 * 48000 / len(audio)
+    residual = spectrum[~allowed].sum() / spectrum.sum()
+    residual_db = float(10 * np.log10(max(residual, 1e-30)))
+    assert residual_db < -40
+    depth = wt_float(wavetable_fm_histories(result)[1, 0][3])
+    q = ratio * frequency / 48000
+    key_scale = max(0, min(1, (0.2 - q) * 10)) * min(1, 0.007 / q)
+    assert depth**2 <= key_scale + 0.00001
+    record_property("nonharmonic_residual_db", residual_db)
+    print("WT FM integer-ratio residual dB", table, pitch, ratio, residual_db)
+
+
+def test_wavetable_fm_wheel_is_per_route_and_reset_preserves_other_owner(canopy):
+    controls = wavetable_fm_controls(fm_depth=10, fm_wheel=200)
+    before = canopy(
+        [note(1, 60, 100), note(2, 60, 100, owner=0x100)],
+        controls=controls,
+        blocks=2,
+    )
+    histories = wavetable_fm_histories(before)
+    assert histories[1, 0][3] == histories[2, 0][3]
+    changed = canopy([[3, 0, 0, 1, 127, 0]], controls=controls, blocks=3)
+    histories = wavetable_fm_histories(changed)
+    assert wt_float(histories[1, 0][3]) > wt_float(histories[2, 0][3])
+    reset_other = canopy([[3, 0x100, 0, 121, 0, 0]], controls=controls)
+    assert reset_other["state"][264] == 127
+    reset = canopy([[3, 0, 0, 121, 0, 0]], controls=controls)
+    assert reset["state"][264] == 0
+    assert set(voices(reset)) == {1, 2}
+
+
+@pytest.mark.parametrize("amount", [0, 200])
+def test_wavetable_fm_signed_envelope_changes_timbre_without_changing_amp(
+    canopy, amount
+):
+    amp = native_amp(attack=1 / 64, sustain=0.7, release=0.99)
+    neutral = canopy(
+        [note(1, 60, 127)],
+        controls=wavetable_fm_controls(fm_depth=50, attack=0),
+        native=amp,
+        blocks=8,
+    )
+    expressive = canopy(
+        [note(1, 60, 127)],
+        controls=wavetable_fm_controls(fm_depth=50, fm_env=amount, attack=0),
+        native=amp,
+        state=0x20054000,
+        blocks=8,
+    )
+    a = wt_float(wavetable_fm_histories(neutral)[1, 0][3])
+    b = wt_float(wavetable_fm_histories(expressive)[1, 0][3])
+    assert b < a if amount < 100 else b > a
+    assert voices(expressive) == voices(neutral)
+    assert expressive["state"][200:296] == neutral["state"][200:296]
+    assert expressive["state"][716:] == neutral["state"][716:]
+
+
+def test_wavetable_fm_rendering_is_instance_local(canopy):
+    controls = wavetable_fm_controls(fm_depth=75, ratio=7, fm_wheel=180)
+    original = canopy([note(1, 60)], controls=controls, blocks=3)
+    snapshot = dict(enumerate(original["state"]))
+    expected = canopy(controls=controls)
+    canopy(
+        [note(8, 99, 127), [3, 0, 0, 1, 127, 0]],
+        controls=wavetable_fm_controls(fm_depth=100, ratio=15, table=4),
+        state=0x20054000,
+        blocks=2,
+    )
+    actual = canopy(controls=controls, state_edits=snapshot)
+    assert actual["out"] == expected["out"]
+    assert actual["state"] == expected["state"]
+
+
+def test_wavetable_fm_replace_tail_drain_clears_reused_token_history(canopy):
+    controls = wavetable_fm_controls(fm_depth=80, ratio=8, fm_env=175, fm_wheel=180)
+    old = canopy([note(1, 60, 127), [3, 0, 0, 1, 127, 0]], controls=controls, blocks=16)
+    reset = canopy(reset=2)
+    assert reset["instructions"] <= 1600
+    assert reset["regs"]["R0"] == 0
+    tail = canopy(controls=controls, generation=2, blocks=4)
+    assert not voices(tail) and not wavetable_fm_histories(tail)
+    fresh = canopy([note(1, 67, 64, owner=0x100)], controls=controls, generation=2)
+    assert len(wavetable_fm_histories(fresh)) == 1
+    assert wavetable_fm_histories(fresh)[1, 0] != wavetable_fm_histories(old)[1, 0]
+    assert fresh["state"][264:296] == [0] * 32
+    assert set(voices(fresh)) == {1}
+
+
+@pytest.mark.parametrize("drift,parent", [(0, 1), (0, 2), (127, 1), (127, 2)])
+def test_wavetable_fm_same_pitch_arp_inherits_parent_modulation(canopy, drift, parent):
+    controls = wavetable_fm_controls(fm_depth=70, ratio=7, fm_env=175, fm_wheel=180)
+    controls[3] = drift
+    controls[19] = (controls[19] & 0xFFFF0000) | drift
+    canopy([note(parent, 60, 100), [3, 0, 0, 1, 90, 0]], controls=controls, blocks=8)
+    controls[6] = 64
+    controls[21] = (controls[21] & 0xFFFF0000) | 64
+    current = canopy(controls=controls)
+    histories = wavetable_fm_histories(current)
+    pad = histories[parent, 0]
+    arp = histories[current["state"][136], 256]
+    assert current["state"][155] == parent
+    if drift == 0 or parent == 1:
+        assert [wt_float(word) for word in arp[1:4]] == pytest.approx(
+            [wt_float(word) for word in pad[1:4]], abs=2e-5
+        )
+    else:
+        # Opposite parity has different drift: its independent oscillator may
+        # not inherit phase or the pitch-scaled PM depth. The underlying WT
+        # envelope and input route still follow the parent.
+        assert abs(wt_float(arp[1]) - wt_float(pad[1])) > 0.001
+        aux = {
+            (current["state"][i], current["state"][i + 2] & 256): current["state"][
+                i : i + 4
+            ]
+            for i in range(200, 232, 4)
+            if current["state"][i]
+        }
+        child_env = aux[current["state"][136], 256]
+        assert child_env[1] == aux[parent, 0][1]
+        assert child_env[2] & 63 == aux[parent, 0][2] & 63
+        assert 0 < wt_float(arp[3]) < wt_float(pad[3])
+
+
+def test_wavetable_fm_source_roundtrip_preserves_held_owners(canopy):
+    controls = wavetable_fm_controls(fm_depth=90, ratio=12, table=3)
+    current = canopy([note(1, 60), note(2, 67)], controls=controls, blocks=8)
+    owners = {token: row[:2] for token, row in voices(current).items()}
+    for destination in (fm_controls(algorithm=3, feedback=80), controls):
+        for _ in range(12):
+            current = canopy(controls=destination)
+            assert {token: row[:2] for token, row in voices(current).items()} == owners
+            assert current["regs"]["R0"] == 0
+            assert current["instructions"] < 100000
+        assert current["state"][712] == destination[1]
+        assert wt_float(current["state"][713]) == 1
+    assert set(wavetable_fm_histories(current)) == {(1, 0), (2, 0)}
+
+
+@pytest.mark.parametrize("spread", [0, -3, 3])
+@pytest.mark.parametrize("interior", [False, True], ids=["clamped", "interior"])
+@pytest.mark.parametrize(
+    "attack", [1 / 31, 1 / 512, 1e-7], ids=["boundary", "slow", "slow-float-boundary"]
+)
+def test_wavetable_fm_native_amp_seven_groups_and_transition_fit_ceiling(
+    canopy, spread, record_property, attack, interior
+):
+    controls = wavetable_fm_controls(
+        fm_depth=100,
+        ratio=15,
+        fm_env=200,
+        fm_wheel=200,
+        table=0,
+        position=345,
+        depth=0 if interior else 100,
+        rate=1000,
+        shape=2,
+        env=100 if interior else 175,
+        wheel=100 if interior else 180,
+        mix=64,
+    )
+    controls[0] = (controls[0] & 65535) | (0x4080 << 16)
+    controls[3] = 127
+    controls[19] = (controls[19] & 0xFFFF0000) | 127
+    controls[10] = 4
+    controls[23] = (controls[23] & 0xFFFF0000) | 4
+    controls[11] = spread + 3
+    controls[24] = (controls[24] & 0xFFFF0000) | (spread + 3)
+    amp = native_amp(attack=attack, sustain=1, release=0.9991)
+    canopy(
+        [note(i + 1, 48 + 3 * i, 127) for i in range(4)]
+        + [[3, 0, 0, 1, 127, 0], [4, 0, 0, 0, 16383, 0]],
+        controls=controls,
+        native=amp,
+        blocks=12,
+    )
+    controls[16] = (controls[16] & 65535) | 4 << 16
+    boundary = {}
+    if attack == 1e-7:
+        # These valid levels approach the repeated-float attack boundary and
+        # force scalar phase handling while the table transition is busiest.
+        boundary = {slot * 8 + 7: wt_bits(0.9999967813491821) for slot in range(4)}
+        boundary[143] = wt_bits(0.9999967813491821)
+    busy = canopy(
+        [note(i + 5, 50 + 3 * i, 127) for i in range(8)],
+        controls=controls,
+        native=amp,
+        state_edits={146: 89999, **boundary},
+    )
+    assert busy["regs"]["R0"] == 0
+    assert len(voices(busy)) == 4
+    assert busy["state"][32] and busy["state"][40] and busy["state"][136]
+    assert busy["state"][235:237] == [0, 4]
+    if interior:
+        # Frames 3 and 4 must both be interpolated in both changing tables;
+        # a clamped final frame takes the cheaper single-frame branch.
+        assert busy["wt_frame"] == [3 * 1159]
+    assert busy["instructions"] < 100000
+    if boundary:
+        # New onsets start their own envelopes, so exercise the following
+        # callback with all held pad/arp envelopes reaching the same boundary.
+        boundary.update({717 + slot * 4: 2 for slot in range(4)})
+        boundary[741] = 2
+    steady = canopy(controls=controls, native=amp, state_edits=boundary)
+    assert steady["instructions"] < 100000
+    reset = canopy(reset=1)
+    assert reset["state"] == [0] * 744 and reset["instructions"] <= 1600
+    record_property(
+        "max_process_instructions", max(busy["instructions"], steady["instructions"])
+    )
+    record_property("reset_instructions", reset["instructions"])
+    print(
+        "WT FM seven-group native AMP process/reset",
+        "interior" if interior else "clamped",
+        spread,
+        attack,
+        busy["instructions"],
+        steady["instructions"],
+        reset["instructions"],
+    )
 
 
 @pytest.mark.parametrize("algorithm", range(4))

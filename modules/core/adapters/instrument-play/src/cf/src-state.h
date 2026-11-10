@@ -3,13 +3,13 @@
 #ifndef DK_CANOPY_SRC_STATE_H
 #define DK_CANOPY_SRC_STATE_H
 #include "preset.h"
-enum { CS_TUNE=28, CS_LEVEL=29, CS_WAVE=30, CS_NONE=255, CS_FOCUS_MS=750, CS_LIST_TICKS=4 };
+enum { CS_TUNE=32, CS_LEVEL=33, CS_WAVE=34, CS_NONE=255, CS_FOCUS_MS=750, CS_LIST_TICKS=4 };
 enum { CS_STALE=-1, CS_READONLY=0, CS_EDIT=1, CS_NATIVE=2 };
 typedef struct {
     uint32_t generation, track, token, revision, pending, focus_at, metadata;
     uint16_t value[CP_CONTROLS];
     uint8_t page[16], visible, mode, clock, learned, modal, focus, focus_id;
-    uint32_t native_tune;
+    uint32_t native_tune, native_tune_pending;
     /* Signed panel movement, not accelerated parameter increments. Keep each
      * encoder's partial list step separate from other knobs and contexts. */
     int8_t list_delta[8];
@@ -36,5 +36,5 @@ int cs_edit(CsState *,uint32_t token,uint32_t encoder,int32_t detents,uint32_t n
 int cs_focused(const CsState *,uint32_t now_ms);
 /* A complete effective bank from the DSP, never a transport receipt. Values
  * must match before a pending marker is cleared; delayed ACKs are harmless. */
-void cs_applied(CsState *,uint32_t generation,uint32_t revision,const uint32_t values[32]);
+void cs_applied(CsState *,uint32_t generation,uint32_t revision,const uint32_t values[32],uint32_t tune);
 #endif

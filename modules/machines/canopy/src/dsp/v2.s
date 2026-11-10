@@ -284,6 +284,9 @@ _cv_six_controls:
     I0 = R0;
     R0 = DM(0, I0);
     R1 = FEXT R0 BY 0:8;
+    R2 = 11;
+    COMP(R1, R2);
+    IF EQ JUMP _cv_ten_controls;
     R2 = 10;
     COMP(R1, R2);
     IF EQ JUMP _cv_ten_controls;
@@ -506,6 +509,9 @@ _cv_four_body:
     R0 = DM(1, I0);
     R1 = DM(0, I0);
     R1 = FEXT R1 BY 0:8;
+    R2 = 11;
+    COMP(R1,R2);
+    IF EQ JUMP _cv_fm_family;
     R2 = 10;
     COMP(R1,R2);
     IF EQ JUMP _cv_fm_family;

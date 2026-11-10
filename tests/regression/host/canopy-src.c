@@ -37,7 +37,7 @@ int main(int argc,char **argv)
     assert(argc==2); const char *scenario=argv[1];
     CsState ui; cs_init(&ui);
     uint32_t token=cs_context(&ui,0,12,1,0,KB_ROOT,0,0,0),id=255;
-    ui.pending=0; /* Fixture starts after an applied initial bank. */
+    ui.pending=0; ui.native_tune_pending=0; /* Fixture starts after an applied initial bank. */
     if(!strcmp(scenario,"wavetable")) {
         CvDisplay display; char feedback[32]; start();
         token=cs_context(&ui,0,12,1,2,KB_PLAY,0,0,0);
@@ -89,7 +89,7 @@ int main(int argc,char **argv)
             assert(ui.value[CP_WT_TABLE]==0 && ui.revision==revision && !ui.pending);
         }
         assert(cs_edit(&ui,token,1,1,1000,&id)==CS_EDIT && ui.value[CP_WT_TABLE]==1);
-        assert(ui.revision==revision+1 && ui.pending==0x0fffffff);
+        assert(ui.revision==revision+1 && ui.pending==UINT32_MAX);
         assert(cs_edit(&ui,token,1,8,1001,&id)==CS_EDIT && ui.value[CP_WT_TABLE]==3);
         assert(cs_edit(&ui,token,1,3,1002,&id)==CS_READONLY);
         assert(cs_edit(&ui,token,1,-1,1003,&id)==CS_READONLY && ui.value[CP_WT_TABLE]==3);
@@ -146,7 +146,7 @@ int main(int argc,char **argv)
         assert(cs_choice_value(&ui,CP_CHORD)==0 && cs_choice_max(&ui,CP_CHORD)==12);
         assert(cs_edit(&ui,token,1,3,0,&id)==CS_READONLY && ui.mode==KB_PLAY);
         assert(cs_edit(&ui,token,1,1,0,&id)==CS_EDIT && ui.mode==KB_ROOT && ui.value[CP_CHORD]==0);
-        assert((ui.metadata&3)==KB_ROOT && ui.pending==0x0fffffff);
+        assert((ui.metadata&3)==KB_ROOT && ui.pending==UINT32_MAX);
         assert(cs_edit(&ui,token,1,4,0,&id)==CS_STALE); token=ui.token;
         assert(cs_edit(&ui,token,1,-4,0,&id)==CS_EDIT && ui.mode==KB_PLAY && ui.value[CP_CHORD]==0);
         token=ui.token;
@@ -176,6 +176,42 @@ int main(int argc,char **argv)
         token=ui.token;
         assert(cs_edit(&ui,token,1,24,0,&id)==CS_EDIT && ((ui.metadata>>4)&3)==2 && ui.value[CP_WT_TABLE]==4);
         assert(ui.value[CP_COLOR]==64 && ui.value[CP_WT_POS]==0 && ui.native_tune==0x4000);
+    } else if(!strcmp(scenario,"wavetable-fm")) {
+        CvDisplay d; char feedback[32]; start();
+        cs_metadata(&ui,2u<<4); token=cs_context(&ui,0,12,1,3,KB_PLAY,0,0,0);
+        assert(cs_pages(&ui)==4 && cs_mapped_control(&ui,0)==CS_TUNE && cs_mapped_control(&ui,7)==CS_LEVEL);
+        assert(cs_edit(&ui,token,0,1,now,&id)==CS_NATIVE && cs_edit(&ui,token,7,1,now,&id)==CS_NATIVE);
+        assert(cs_edit(&ui,token,1,INT32_MAX,now,&id)==CS_EDIT && id==CP_WTFM_DEPTH && ui.value[id]==100);
+        assert(cs_edit(&ui,token,2,3,now,&id)==CS_READONLY && ui.value[CP_WTFM_RATIO]==3);
+        assert(cs_edit(&ui,token,2,1,now,&id)==CS_EDIT && ui.value[CP_WTFM_RATIO]==4);
+        assert(cs_edit(&ui,token,2,4,now,&id)==CS_EDIT && ui.value[CP_WTFM_RATIO]==5);
+        cv_feedback(feedback,&ui,2); assert(!strcmp(feedback,"WT FM Ratio=SQRT2*"));
+        assert(cs_edit(&ui,token,3,INT32_MIN,now,&id)==CS_EDIT && id==CP_WTFM_ENV && ui.value[id]==0);
+        assert(cs_edit(&ui,token,4,100,now,&id)==CS_EDIT && id==CP_WT_ATTACK && ui.value[id]==105);
+        assert(cs_edit(&ui,token,5,99,now,&id)==CS_EDIT && id==CP_WT_RELEASE && ui.value[id]==114);
+        assert(cs_edit(&ui,token,6,INT32_MAX,now,&id)==CS_EDIT && id==CP_WTFM_WHEEL && ui.value[id]==200);
+        cv_build(&d,&ui,&status,now,"-60.00","127",0);
+        const char *labels[]={"TUNE","DEP","RAT","ENV","ATK","REL","WHEL","LEV"};
+        const char *values[]={"-60.00","100%","1.41","-100%","105","114","+100%","127"};
+        for(unsigned i=0;i<8;++i) { assert(!strcmp(d.label[i],labels[i])); assert(!strcmp(d.value[i],values[i])); }
+        assert(d.rotary==0x7a && ui.value[CP_WT_POS]==0 && ui.value[CP_WT_DEPTH]==0);
+        cs_metadata(&ui,3u<<4); assert(ui.value[CP_FM_ATTACK]==5 && ui.value[CP_WTFM_DEPTH]==100);
+        cs_metadata(&ui,2u<<4); assert(ui.value[CP_WT_ATTACK]==105 && ui.value[CP_WTFM_RATIO]==5);
+        token=cs_context(&ui,0,12,1,3,KB_PLAY,0,0,0);
+        assert(cs_edit(&ui,token,2,INT32_MIN,now,&id)==CS_EDIT && ui.value[CP_WTFM_RATIO]==0);
+        assert(cs_edit(&ui,token,2,INT32_MAX,now,&id)==CS_EDIT && ui.value[CP_WTFM_RATIO]==15);
+    } else if(!strcmp(scenario,"wavetable-fm-status")) {
+        start(); detail_schema=5;
+        for(unsigned i=0;i<32;++i) detail[i]=ui.value[i];
+        detail[28]=70; detail[29]=15; detail[30]=0; detail[31]=200; detail[42]=0x4c80;
+        complete(); assert(status.detail_schema==5 && status.detail[42]==0x4c80);
+        ui.value[28]=70; ui.value[29]=15; ui.value[30]=0; ui.value[31]=200;
+        ui.pending=0xf0000000u; ui.native_tune=0x4c80; ui.native_tune_pending=1;
+        cs_applied(&ui,12,ui.revision,detail,0x4000); assert(!ui.pending && ui.native_tune_pending);
+        cs_applied(&ui,12,ui.revision,detail,detail[42]); assert(!ui.native_tune_pending);
+        ++fast[0]; ++fast[11]; assert(is_receive(&status,fast,now)==1); detail[43]=1;
+        for(unsigned i=0;i<10;++i) assert(fragment(i)==0);
+        assert(fragment(10)==-1 && status.detail[43]==0);
     } else if(!strcmp(scenario,"fm-controls")) {
         CvDisplay d; char feedback[32]; start();
         cs_metadata(&ui,3u<<4); token=cs_context(&ui,0,12,1,2,KB_PLAY,0,0,0);
@@ -217,7 +253,7 @@ int main(int argc,char **argv)
     } else if(!strcmp(scenario,"fm-status")) {
         start(); detail_schema=4; detail[16]=3; detail[19]=15; detail[28]=0x4000; complete();
         assert(status.detail_schema==4 && status.detail[16]==3 && status.detail[19]==15);
-        ++fast[0]; ++fast[11]; assert(is_receive(&status,fast,now)==1); detail_schema=5;
+        ++fast[0]; ++fast[11]; assert(is_receive(&status,fast,now)==1); detail_schema=6;
         assert(fragment(0)==-1 && status.detail_schema==4);
     } else if(!strcmp(scenario,"wavetable-status")) {
         start(); ++fast[0]; fast[1]=2u<<4;
@@ -225,8 +261,8 @@ int main(int argc,char **argv)
         detail_schema=3; detail[17]=350; detail[28]=0x4c80; detail[38]=11; complete();
         assert(status.detail_schema==3 && status.detail[17]==350 && status.detail[28]==0x4c80);
         ui.value[CP_WT_POS]=350; ui.native_tune=0x4c80;
-        ui.pending=(1u<<CP_WT_POS)|(1u<<CS_TUNE);
-        cs_applied(&ui,12,ui.revision,detail); assert(!ui.pending);
+        ui.pending=1u<<CP_WT_POS; ui.native_tune_pending=1;
+        cs_applied(&ui,12,ui.revision,detail,detail[28]); assert(!ui.pending && !ui.native_tune_pending);
         ++fast[0]; ++fast[11]; assert(is_receive(&status,fast,now)==1);
         detail[39]=11;
         for(unsigned i=0;i<10;++i) assert(fragment(i)==0);
@@ -276,22 +312,20 @@ int main(int argc,char **argv)
     } else if(!strcmp(scenario,"native-tune")) {
         uint32_t revision=ui.revision, values[32]={0};
         cs_native_tune(&ui,0x4c80);
-        assert(ui.revision==revision+1 && ui.pending==(1u<<CS_TUNE));
+        assert(ui.revision==revision+1 && !ui.pending && ui.native_tune_pending);
         cs_native_tune(&ui,0x0fffffff); assert(ui.native_tune==0x4c80);
-        cs_metadata(&ui,123); assert(ui.pending==0x1fffffff);
+        cs_metadata(&ui,123); assert(ui.pending==UINT32_MAX && ui.native_tune_pending);
         for(unsigned i=0;i<CP_CONTROLS;++i) values[i]=ui.value[i];
-        values[CS_TUNE]=0x4000;
-        cs_applied(&ui,12,ui.revision,values); assert(ui.pending==(1u<<CS_TUNE));
-        values[CS_TUNE]=0x4c80;
-        cs_applied(&ui,12,ui.revision-1,values); assert(ui.pending);
-        cs_applied(&ui,12,ui.revision,values); assert(!ui.pending);
+        cs_applied(&ui,12,ui.revision,values,0x4000); assert(!ui.pending && ui.native_tune_pending);
+        cs_applied(&ui,12,ui.revision-1,values,0x4c80); assert(ui.native_tune_pending);
+        cs_applied(&ui,12,ui.revision,values,0x4c80); assert(!ui.pending && !ui.native_tune_pending);
     } else if(!strcmp(scenario,"metadata")) {
         uint32_t revision=ui.revision;
-        cs_metadata(&ui,123); assert(ui.revision==revision+1 && ui.pending==0x0fffffff);
+        cs_metadata(&ui,123); assert(ui.revision==revision+1 && ui.pending==UINT32_MAX);
         cs_metadata(&ui,123); assert(ui.revision==revision+1);
         uint32_t values[32]={0}; for(unsigned i=0;i<CP_CONTROLS;++i) values[i]=ui.value[i];
-        cs_applied(&ui,12,revision,values); assert(ui.pending==0x0fffffff);
-        cs_applied(&ui,12,revision+1,values); assert(!ui.pending);
+        cs_applied(&ui,12,revision,values,ui.native_tune); assert(ui.pending==UINT32_MAX);
+        cs_applied(&ui,12,revision+1,values,ui.native_tune); assert(!ui.pending);
         ui.revision=UINT32_MAX; cs_metadata(&ui,124); assert(ui.metadata==123);
     } else if(!strcmp(scenario,"controls")) {
         assert(cs_edit(&ui,token,3,12,10,&id)==CS_EDIT && id==CP_COLOR && ui.value[id]==76);
@@ -369,11 +403,11 @@ int main(int argc,char **argv)
     } else if(!strcmp(scenario,"applied")) {
         uint32_t bank[32]={0};
         assert(cs_edit(&ui,token,3,1,0,&id)==CS_EDIT); bank[CP_COLOR]=65;
-        cs_applied(&ui,13,ui.revision,bank); assert(ui.pending);
-        cs_applied(&ui,12,ui.revision-1,bank); assert(ui.pending);
+        cs_applied(&ui,13,ui.revision,bank,ui.native_tune); assert(ui.pending);
+        cs_applied(&ui,12,ui.revision-1,bank,ui.native_tune); assert(ui.pending);
         assert(cs_edit(&ui,token,3,1,0,&id)==CS_EDIT);
-        cs_applied(&ui,12,ui.revision,bank); assert(ui.pending);
-        bank[CP_COLOR]=66; cs_applied(&ui,12,ui.revision,bank); assert(!ui.pending);
+        cs_applied(&ui,12,ui.revision,bank,ui.native_tune); assert(ui.pending);
+        bank[CP_COLOR]=66; cs_applied(&ui,12,ui.revision,bank,ui.native_tune); assert(!ui.pending);
     } else if(!strcmp(scenario,"freshness")) {
         start(); assert(is_fresh(&status,249) && !is_fresh(&status,250));
         assert(is_receive(&status,fast,200)==-1 && status.fast_at==100);
@@ -409,7 +443,7 @@ int main(int argc,char **argv)
         assert(fragment(10)==-1 && status.detail[63]==0);
     } else if(!strcmp(scenario,"fragment-framing")) {
         start(); uint32_t w[12]={1001,0x40000000,12,9,0x10b00,5,0,0,0,0,0,0};
-        const uint32_t framing[]={0x10b0b,0x10a00,0x50b00,0x1010b00};
+        const uint32_t framing[]={0x10b0b,0x10a00,0x60b00,0x1010b00};
         for(unsigned i=0;i<4;++i) { w[4]=framing[i]; assert(is_receive(&status,w,now)==-1 && !status.assembling); }
         w[4]=0x10b0a; w[10]=1; assert(is_receive(&status,w,now)==-1);
         w[10]=0; w[11]=1; assert(is_receive(&status,w,now)==-1);

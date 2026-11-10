@@ -123,7 +123,7 @@ test(
             ['ip_control', 8],
             ['ip_src_debug', 12],
             ['ip_src_refresh', 8],
-            ['src_state', 21],
+            ['src_state', 48],
             ['src_status', 160],
           ] as const
         ).map(([name, n]) => capture(name, () => Promise.all(Array.from({ length: n }, (_, i) => cf(name, i))))),
@@ -247,7 +247,7 @@ test(
       2, // ANALOG is selected directly from WAVE, without an engine menu.
     );
     await expect.poll(async () => (await rawBank())[1], { timeout: 15000 }).toBe(2);
-    expect((await rawBank())[0]! & 255).toBe(10);
+    expect((await rawBank())[0]! & 255).toBe(11);
     await srcPage(0);
     // Panel flushes clamp at 30 detents: await each applied step before the next.
     await turnAppliedControl(session, 7, async () => (await rawBank())[21]! & 65535, 64); // equal pad/arp mix

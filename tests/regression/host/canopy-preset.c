@@ -14,12 +14,12 @@ int main(void)
         a=b=0; if(sscanf(line,"%23s %u %u",cmd,&a,&b)<1) continue;
         if(!strcmp(cmd,"byte") && a<CP_RECORD_BYTES && b<256) bytes[a]=(uint8_t)b;
         else if(!strcmp(cmd,"legacy")) {
-            bytes[4]=(uint8_t)a; bytes[5]=a<=2?16:CP_CONTROLS;
-            for(unsigned i=a<=2?51:92;i<CP_RECORD_BYTES;++i) bytes[i]=0;
+            bytes[4]=(uint8_t)a; bytes[5]=a<=2?16:28;
+            for(unsigned i=a<=2?51:a==3?92:119;i<CP_RECORD_BYTES;++i) bytes[i]=0;
         }
         else if(!strcmp(cmd,"resign")) {
             uint32_t h=2166136261u;
-            unsigned end=bytes[4]<=2?60:bytes[4]==3?92:124;
+            unsigned end=bytes[4]<=2?60:bytes[4]==3?92:bytes[4]==4?124:140;
             for(unsigned i=0;i<end;++i) h=(h^bytes[i])*16777619u;
             for(unsigned i=0;i<4;++i) bytes[end+i]=(uint8_t)(h>>(24-8*i));
         } else if(!strcmp(cmd,"decode")) result=cp_decode(&decoded,bytes,a);

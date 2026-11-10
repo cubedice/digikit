@@ -1,6 +1,6 @@
 #include "src-state.h"
 static const uint16_t low[CP_CONTROLS]={0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0};
-static const uint16_t high[CP_CONTROLS]={11,3,127,127,500,127,8,4,6,100,75,2,1,0,127,127,4,700,100,1000,2,2,1,200,127,127,200,200};
+static const uint16_t high[CP_CONTROLS]={11,3,127,127,500,127,8,4,6,100,75,2,1,0,127,127,4,700,100,1000,2,2,1,200,127,127,200,200,100,15,200,200};
 static const uint16_t fm_high[12]={3,100,15,15,100,127,127,100,127,200,200,200};
 static const uint8_t controls[4][8]={
     {CS_TUNE,CP_CHORD,CP_VOICING,CP_COLOR,CP_DRIFT,CP_STRUM,CP_ARP_MIX,CS_LEVEL},
@@ -9,7 +9,7 @@ static const uint8_t controls[4][8]={
     {CP_FM_ATTACK,CP_FM_DECAY,CP_FM_SUSTAIN,CP_FM_RELEASE,CP_FM_ENV,CP_FM_VELOCITY,CP_FM_WHEEL,CS_LEVEL}
 };
 static uint32_t family(const CsState *s) { return (s->metadata>>4)&3; }
-uint32_t cs_pages(const CsState *s) { return family(s)==3 ? 4 : 3; }
+uint32_t cs_pages(const CsState *s) { return family(s)>=2 ? 4 : 3; }
 static void remember(CsState *s)
 {
     if(family(s)==3) {
@@ -37,7 +37,8 @@ static void list_reset(CsState *s)
 static int is_list(const CsState *s,uint32_t control)
 {
     if(control==CS_WAVE) return 1;
-    if(family(s)==3 && control>=16) return control==CP_FM_ALG || control==CP_FM_RTA || control==CP_FM_RTB;
+    if(control==CP_WTFM_RATIO) return 1;
+    if(family(s)==3 && control>=16 && control<28) return control==CP_FM_ALG || control==CP_FM_RTA || control==CP_FM_RTB;
     return control==CP_CHORD || control==CP_VOICING || control==CP_RATE ||
         control==CP_ORDER || control==CP_OCTAVES || control==CP_RESTART ||
         control==CP_LATCH || control==CP_WT_SHAPE ||
@@ -59,8 +60,7 @@ static int32_t list_steps(CsState *s,uint32_t encoder,uint32_t control,int32_t m
 void cs_init(CsState *s)
 {
     for(uint32_t i=0;i<sizeof(*s);++i) ((volatile uint8_t *)s)[i]=0;
-    static const uint16_t wt[12]={0,0,0,10,0,0,0,100,5,15,100,100};
-    for(uint32_t i=0;i<12;++i) s->value[CP_WT_TABLE+i]=wt[i];
+    cp_wavetable_defaults(s->value);
     s->token=1; s->revision=1; s->focus_id=CS_NONE;
     s->native_tune=0x4000;
     s->value[CP_COLOR]=64; s->value[CP_RATE]=4; s->value[CP_OCTAVES]=3;
@@ -79,7 +79,7 @@ uint32_t cs_context(CsState *s,uint32_t track,uint32_t generation,int visible,
         if(s->token==UINT32_MAX) { s->visible=0; s->focus=0; return 0; }
         ++s->token; s->focus=0; s->focus_id=CS_NONE; list_reset(s);
     }
-    if(s->generation!=generation) s->pending=((1u<<CP_CONTROLS)-1);
+    if(s->generation!=generation) { s->pending=UINT32_MAX; s->native_tune_pending=1; }
     s->track=track; s->generation=generation; s->visible=(uint8_t)!!visible;
     s->page[track]=(uint8_t)page; s->mode=(uint8_t)mode; s->clock=(uint8_t)clock;
     s->learned=(uint8_t)!!learned; s->modal=(uint8_t)!!modal;
@@ -89,7 +89,7 @@ void cs_sync(CsState *s,const uint16_t values[CP_CONTROLS])
 {
     uint32_t changed=0;
     for(uint32_t i=0;i<CP_CONTROLS;++i) {
-        uint32_t max=family(s)==3 && i>=16 ? fm_high[i-16] : high[i];
+        uint32_t max=family(s)==3 && i>=16 && i<28 ? fm_high[i-16] : high[i];
         if(values[i]<minimum(s,i) || values[i]>max) return;
         if(values[i]!=s->value[i]) changed|=1u<<i;
     }
@@ -104,6 +104,10 @@ uint32_t cs_control(uint32_t page,uint32_t encoder)
 { return page<4 && encoder<8 ? controls[page][encoder] : CS_NONE; }
 uint32_t cs_mapped_control(const CsState *s,uint32_t encoder)
 {
+    if(family(s)==2 && s->page[s->track]==3 && encoder<8) {
+        static const uint8_t wtfm[8]={CS_TUNE,CP_WTFM_DEPTH,CP_WTFM_RATIO,CP_WTFM_ENV,CP_WT_ATTACK,CP_WT_RELEASE,CP_WTFM_WHEEL,CS_LEVEL};
+        return wtfm[encoder];
+    }
     uint32_t id=cs_control(s->page[s->track],encoder);
     if(family(s)==3 && s->page[s->track]==2 && encoder>=2 && encoder<=6) return CP_FM_ALG+encoder-2;
     return id==CP_COLOR && ((s->metadata>>4)&3)==2 ? CP_WT_POS : id;
@@ -121,7 +125,7 @@ uint32_t cs_choice_max(const CsState *s,uint32_t control)
 {
     if(control==CP_CHORD) return 12;
     if(control==CS_WAVE) return 7;
-    if(family(s)==3 && control>=16 && control<CP_CONTROLS) return fm_high[control-16];
+    if(family(s)==3 && control>=16 && control<28) return fm_high[control-16];
     if(control==CP_WT_RATE && s->value[CP_WT_CLOCK]) return 7;
     return control<CP_CONTROLS ? high[control] : 0;
 }
@@ -136,7 +140,7 @@ void cs_metadata(CsState *s,uint32_t metadata)
     int changed_family=(s->metadata^metadata)&0x30;
     s->metadata=metadata;
     if(changed_family) activate(s);
-    ++s->revision; s->pending|=((1u<<CP_CONTROLS)-1);
+    ++s->revision; s->pending=UINT32_MAX;
 }
 void cs_import(CsState *s,const CpPreset *p)
 {
@@ -157,7 +161,7 @@ void cs_import(CsState *s,const CpPreset *p)
 void cs_native_tune(CsState *s,uint32_t raw)
 {
     if(raw<0x400 || raw>0x7c00 || raw==s->native_tune || s->revision==UINT32_MAX) return;
-    s->native_tune=raw; ++s->revision; s->pending|=1u<<CS_TUNE;
+    s->native_tune=raw; ++s->revision; s->native_tune_pending=1;
 }
 int cs_edit(CsState *s,uint32_t token,uint32_t encoder,int32_t detents,uint32_t now,uint32_t *id)
 {
@@ -206,17 +210,17 @@ int cs_edit(CsState *s,uint32_t token,uint32_t encoder,int32_t detents,uint32_t 
         if(next>=2 && next<7) s->value[CP_WT_TABLE]=(uint16_t)(next-2);
     }
     remember(s);
-    if(context_changed) { ++s->token; list_reset(s); s->pending|=(1u<<CP_CONTROLS)-1; }
+    if(context_changed) { ++s->token; list_reset(s); s->pending=UINT32_MAX; }
     if(discrete && (next==maximum || next==minimum(s,control))) s->list_delta[encoder]=0;
-    ++s->revision; s->pending|=control==CS_WAVE ? (1u<<CP_CONTROLS)-1 : 1u<<control;
+    ++s->revision; s->pending|=control==CS_WAVE ? UINT32_MAX : 1u<<control;
     return CS_EDIT;
 }
 int cs_focused(const CsState *s,uint32_t now)
 { return s->visible && !s->modal && s->focus && now-s->focus_at<CS_FOCUS_MS; }
-void cs_applied(CsState *s,uint32_t generation,uint32_t revision,const uint32_t values[32])
+void cs_applied(CsState *s,uint32_t generation,uint32_t revision,const uint32_t values[32],uint32_t tune)
 {
     if(generation!=s->generation || revision!=s->revision) return;
     for(uint32_t i=0;i<CP_CONTROLS;++i)
         if(values[i]==s->value[i]) s->pending&=~(1u<<i);
-    if(values[CS_TUNE]==s->native_tune) s->pending&=~(1u<<CS_TUNE);
+    if(tune==s->native_tune) s->native_tune_pending=0;
 }

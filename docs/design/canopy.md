@@ -3,8 +3,17 @@
 Current revision (2026-11-09): SOUND B combines PLAY and chord selection;
 TONE B combines the two original sounds, five factory wavetables and FM. The
 [current controls](#controls-and-display), [wavetable extension](#factory-wavetable-extension-cps9)
-and [FM extension](#four-operator-fm-extension-cpsa) define this revision.
-The FM implementation and focused emulator acceptance are complete. The
+and [FM extension](#four-operator-fm-extension-cpsa) define the existing sources.
+[Wavetable FM](#wavetable-fm-integration-cpsb) adds per-note modulation of each
+selected table while preserving position/scanning, with a fourth WT FM SRC page
+and backward-compatible CPST v5 presets. Its DSP implementation and focused
+checks are complete; the matching compiled UI/audio/preset proof passes in
+403.12 seconds with the verified DT2 emulator and acknowledged control batches. The
+[WT-FM handover](../handovers/HANDOVER-2026-11-09-canopy-wavetable-fm.md) records
+the current evidence and matching artifacts. This extension is not installed
+on the physical DTII.
+
+The standalone FM implementation and focused emulator acceptance are complete. The
 [FM handover](../handovers/HANDOVER-2026-11-09-canopy-fm.md) records DSP, sound-quality,
 compiled UI/preset, native-pixel and Overloop results, plus outstanding wider-gate
 failures. Physical FM sound/timing qualification remains open. Earlier dated
@@ -1763,7 +1772,8 @@ On a pattern switch that keeps CANOPY on the same track, retain KEYBOARD tokens 
 
 ## Controls and display
 
-The current layout uses three native SRC pages, plus FM ENV when FM is selected.
+The current layout uses three native SRC pages, plus WT FM for a wavetable or
+FM ENV when the standalone FM source is selected.
 The table below shows the original/wavetable layout; the
 [FM layout](#src-presentation) substitutes DEP on SOUND D and FM controls on TONE.
 The stock header, track-level
@@ -1831,14 +1841,15 @@ CHRD still stores `CP_CHORD` 0..11 plus the existing keyboard-mode metadata;
 the displayed PLAY+12 list is not a new preset enumeration. WAVE stores
 family 0..3 and the remembered `CP_WT_TABLE` 0..4, changing the active sound
 atomically. Selecting VELVT/REED retains the last table and its modulation values.
-FM settings are remembered separately. WAVE uses view-only ID 30 so it cannot
+FM settings are remembered separately. WAVE uses view-only ID 34 so it cannot
 collide with FM ALG at active ID 16; it is not a serialized parameter.
 `CP_SOURCE` 13 remains the reserved keyboard event-source field; it does not
 store WAVE. Logical IDs 0..15 retain their established meanings except COLOR
-becomes DEP in FM. IDs 16..27 select the active wavetable or FM bank.
+becomes DEP in FM. IDs 16..27 select the active wavetable or FM bank. IDs 28..31
+hold the independent wavetable FM controls; native TUNE/LEV use view IDs 32/33.
 
-All custom controls use the validated 32-word CPSA configuration and explicit
-CPST v4 preset service, with legacy decoding retained. TUNE and LEV retain native Sound backing. Requested values may
+All custom controls use the validated 32-word CPSB configuration and explicit
+CPST v5 preset service, with legacy decoding retained. TUNE and LEV retain native Sound backing. Requested values may
 appear immediately, but pending feedback clears only for a matching applied
 generation and complete revision. A family change invalidates previously
 captured encoder ownership because SOUND D changes its meaning; a delayed
@@ -2471,6 +2482,80 @@ tests; and CANOPY/Overloop coexistence. Physical sound/timing qualification is a
 separate result and must not be inferred from emulator passes. Wavetable
 carriers, richer operator waveforms and independent operator envelopes are
 follow-on features, outside this first FM implementation.
+
+## Wavetable FM integration (CPSB)
+
+The five factory wavetable sounds gain a per-note sine phase modulator. The
+selected, morphing table is the carrier: FM changes its read phase before both
+frame and mip interpolation. POS, scanning, table changes, note tuning, drift
+and the arpeggiator keep their existing roles. This is a separate, bounded
+two-operator path; the four-operator TWIN/STACK/SUM/CHAIN source remains available
+as the final WAVE choice.
+
+Selecting ANLG, GLASS, VOCAL, ORGAN or METAL exposes a fourth native SRC page,
+WT FM. Its layout is:
+
+| Encoder | Control | Meaning |
+| --- | --- | --- |
+| A | TUNE | Stock source tuning, including native held-SRC values |
+| B | DEP | FM depth, 0–100%; finer response near zero |
+| C | RAT | Modulator frequency relative to the played note |
+| D | ENV | Signed timbre-envelope contribution to FM depth |
+| E | ATK | Timbre-envelope attack |
+| F | REL | Timbre-envelope release |
+| G | WHEL | Signed MIDI mod-wheel contribution to FM depth |
+| H | LEV | Stock source level |
+
+RAT uses the same four raw encoder ticks per choice as WAVE and SHAP. Choices
+are 0.25, 0.50, 0.75, 1.00, 1.25, sqrt(2), 1.50, sqrt(3), 2.00, 2.50, 3.00,
+4.00, 5.00, 6.00, 7.00 and 8.00. ENV and WHEL range from −100% to +100%.
+ATK/REL are the existing wavetable timbre envelope: they also affect position
+when the position-envelope amount is enabled in WAVETABLE TIMBRE. The stock
+AMP page continues to control each note's loudness independently.
+
+DEP zero with neutral ENV/WHEL retains the original wavetable audio. Positive
+ENV or WHEL can introduce FM from DEP zero; negative amounts subtract from the
+base depth, clamped at zero. USB/DIN wheel modulation stays scoped to its note
+route. The default is DEP 0, RAT 1.00, ENV 0 and WHEL 0. Source changes retain
+this bank separately from the standalone FM controls.
+
+The renderer leaves the unmodulated carrier phase authoritative. It adds a
+continuous sine phase offset of up to one radian before pitch-dependent taper,
+with a quadratic depth curve and approximately 5 ms depth/ratio smoothing.
+Mip selection accounts for both current and requested modulation; higher notes
+and ratios progressively reduce FM depth. This is a bandwidth-management
+policy, not a claim that arbitrary phase-modulated wavetables are alias-free.
+Matching-frequency arp onsets inherit the parent's beginning-of-block modulator
+history; independent pitches retain their own phase. Steals, tails, source
+changes and generation replacement must retain or invalidate that history with
+the corresponding note owner.
+
+The persistent instance remains 2,976 bytes. Eight six-word histories reuse the
+otherwise reserved words 41–46 of each standalone-FM history; only one source
+runs at a time. Callback snapshots are separate scratch. The published process
+and reset ceilings remain 100,000 and 1,600 instructions respectively.
+
+CPSB has magic `0x43505342`, header version 11 and the existing 32-word transport
+size. Upper halfwords 28–31 carry DEP (0–100), RAT (0–15), ENV and WHEL (0–200,
+100 means zero). Every family carries these remembered settings; only the
+wavetable renderer consumes them. CPS9/CPSA still require those halfwords to be
+zero. Detail schema 5 echoes all 32 custom controls and moves native TUNE to
+word 42, preserving note-ownership words 38–41. Native tuning has its own pending
+flag, so control 31 cannot collide with it or require an undefined 32-bit shift.
+
+CPST v5 is 144 bytes. It retains v4 field offsets through byte 119, adds four
+big-endian uint16 values at 120–127 and the WT-FM version byte at 128, requires
+zero padding through 139, and stores the checksum at 140–143. Versions 1–4 load
+with neutral WT-FM defaults and retain their original wavetable/FM settings.
+Loading does not rewrite the saved record; the next explicit save writes v5.
+Routing and native TUNE/LEV/LEVEL remain outside this sound preset.
+
+Acceptance covers exact neutral-output comparison against the prior kernel,
+an independent phase-modulated waveform reference, live depth/ratio and scan
+edits, route ownership, arp inheritance, source reentry, preset migration and
+maximum event/voice/table-transition load. Compiled native-page tests exercise
+the real controls and held-SRC display. Hardware sound and timing qualification
+remain separate from emulator results.
 
 ## Tests and code owners
 
