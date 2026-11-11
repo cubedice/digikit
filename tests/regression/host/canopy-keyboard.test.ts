@@ -93,16 +93,29 @@ test('PANEL release uses physical key identity through octave and scale changes'
   expect(released!.voices).toEqual([]);
 });
 
-test('PANEL cancel clears latched local voices without releasing MIDI or sharing its pedal', () => {
+test('PANEL cancel clears local voices without releasing MIDI or sharing its pedal', () => {
   const [held, cancelled, afterOldUp] = run(
     'cc 0 0 64 127\ntick\npanelon 0 60 90\non 0 0 64 90\ntick\npanelcancel\ntick\npaneloff 0\ntick',
   ).slice(1);
   expect(notes(held!)).toEqual([60, 64]);
   expect(notes(cancelled!)).toEqual([64]);
   expect(afterOldUp!.voices).toEqual(cancelled!.voices);
-  const [latched, clear] = run('latch 1\npanelon 0 67 90\npaneloff 0\ntick\npanelcancel\ntick');
-  expect(notes(latched!)).toEqual([67]);
+  const [released, clear] = run('cc 0 0 64 127\ntick\npanelon 0 67 90\npaneloff 0\ntick\npanelcancel\ntick').slice(1);
+  expect(released!.voices).toEqual([]);
   expect(clear!.voices).toEqual([]);
+});
+
+test.each([0, 1])('mode %i releases every panel, USB and DIN phrase on key-up without pedal', (mode) => {
+  for (const route of ['panel', 'usb', 'din']) {
+    const on = route === 'panel' ? 'panelon 0 60 90' : `on 0 ${route === 'usb' ? 0 : 1} 60 90`;
+    const off = route === 'panel' ? 'paneloff 0' : `off 0 ${route === 'usb' ? 0 : 1} 60 0`;
+    const [held, released, idle] = run(`mode ${mode}\n${on}\ntick\n${off}\ntick\ntick`);
+    expect(notes(held!)).toEqual(mode === 1 ? [60, 64, 67] : [60]);
+    expect(released!.voices).toEqual([]);
+    expect(released!.packet[1]! >>> 8).toBe(mode === 1 ? 3 : 1);
+    expect(idle!.voices).toEqual([]);
+    expect(idle!.packet).toEqual([]);
+  }
 });
 
 test('PANEL generation tombstones cannot release a fresh same-pitch key', () => {
@@ -152,15 +165,25 @@ test('reset tombstone absorbs old C-off after fresh C-on', () => {
   const states = run('on 0 0 60 90\nreset\non 0 0 60 110\noff 0 0 60 0\noff 0 0 60 0\ntick');
   expect(states[0]!.voices).toEqual([]);
 });
-test('pedal, latch replacement and latch off retain only current ownership', () => {
+test('sustain pedal retains released notes through new keys and releases only pedal ownership', () => {
   const states = run(
-    'latch 1\non 0 0 60 90\non 0 0 64 90\ntick\ncc 0 0 64 127\ntick\noff 0 0 60 0\noff 0 0 64 0\ntick\non 0 0 62 100\ntick\non 0 0 65 100\ntick\nlatch 0\ntick\noff 0 0 62 0\noff 0 0 65 0\ntick\ncc 0 0 64 0\ntick',
+    'on 0 0 60 90\non 0 0 64 90\ntick\ncc 0 0 64 127\ntick\noff 0 0 60 0\noff 0 0 64 0\ntick\non 0 0 62 100\ntick\non 0 0 65 100\ntick\ncc 0 0 64 0\ntick\noff 0 0 62 0\noff 0 0 65 0\ntick',
   );
   expect(notes(states[2]!)).toEqual([60, 64]);
-  expect(notes(states[3]!)).toEqual([62]);
+  expect(notes(states[3]!)).toEqual([60, 62, 64]);
+  expect(notes(states[4]!)).toEqual([60, 62, 64, 65]);
   expect(notes(states[5]!)).toEqual([62, 65]);
-  expect(notes(states[6]!)).toEqual([62, 65]);
-  expect(notes(states[7]!)).toEqual([]);
+  expect(notes(states[6]!)).toEqual([]);
+});
+
+test.each([0, 1])('ROOT sustain on port %i keeps the chord until pedal-up after its root key is released', (port) => {
+  const [held, pedal, released, clear] = run(
+    `mode 1\non 0 ${port} 60 90\ntick\ncc 0 ${port} 64 127\ntick\noff 0 ${port} 60 0\ntick\ncc 0 ${port} 64 0\ntick`,
+  );
+  expect(notes(held!)).toEqual([60, 64, 67]);
+  expect(pedal!.voices).toEqual(held!.voices);
+  expect(released!.voices).toEqual(held!.voices);
+  expect(clear!.voices).toEqual([]);
 });
 test('same-batch selectors run before roots and remain silent, with last-root priority', () => {
   const states = run(
@@ -231,9 +254,9 @@ test('lost ACK deadline resets ownership rather than replaying a fresh chord', (
   expect(b!.reset).not.toBe(0);
   expect(b!.packet[1]).toBe(2);
 });
-test('CC123 honors pedal, CC121 releases it and centers bend, CC120 clears latch', () => {
+test('CC123 honors pedal, CC121 releases it and centers bend, CC120 clears held voices', () => {
   const states = run(
-    'on 0 0 60 90\ntick\ncc 0 0 64 127\ntick\ncc 0 0 123 0\ntick\ncc 0 0 121 0\ntick\nlatch 1\non 0 0 64 90\ntick\ncc 0 0 120 0\ntick',
+    'on 0 0 60 90\ntick\ncc 0 0 64 127\ntick\ncc 0 0 123 0\ntick\ncc 0 0 121 0\ntick\non 0 0 64 90\ntick\ncc 0 0 120 0\ntick',
   );
   expect(notes(states[2]!)).toEqual([60]);
   expect(notes(states[3]!)).toEqual([]);
@@ -259,8 +282,8 @@ test('mod wheel retains its external route through PLAY and ROOT without changin
       }
 });
 
-test('controller reset clears only the route wheel while preserving mapped latch; sound off retains wheel', () => {
-  const [held, reset, panic] = run('latch 1\non 15 1 60 90\ntick\ncc 15 1 121 0\ntick\ncc 15 1 120 0\ntick');
+test('controller reset clears only the route wheel while preserving held notes; sound off retains wheel', () => {
+  const [held, reset, panic] = run('on 15 1 60 90\ntick\ncc 15 1 121 0\ntick\ncc 15 1 120 0\ntick');
   expect(reset!.voices).toEqual(held!.voices);
   expect(reset!.packet[1]).toBe(5 | (2 << 8));
   expect(reset!.packet[8]).toBe(0);
@@ -351,12 +374,13 @@ test('valid checksum cannot conceal malformed template fields', () => {
   }
 });
 
-test('LEARN isolates latch and restores it on cancel', () => {
-  const states = run(
-    'latch 1\nlearn\non 0 0 60 90\ntick\noff 0 0 60 0\ntick\ncancel\non 0 0 64 90\ntick\noff 0 0 64 0\ntick',
-  );
+test('LEARN remembers released notes without holding them and restores normal key-up on cancel', () => {
+  const states = run('learn\non 0 0 60 90\ntick\noff 0 0 60 0\ntick\ncancel\non 0 0 64 90\ntick\noff 0 0 64 0\ntick');
   expect(states[1]!.voices).toEqual([]);
-  expect(notes(states[3]!)).toEqual([64]);
+  expect(states[1]!.capture).toEqual([60]);
+  expect(notes(states[2]!)).toEqual([64]);
+  expect(states[2]!.mode).toBe(0);
+  expect(states[3]!.voices).toEqual([]);
 });
 
 interface SettingsState {
@@ -398,10 +422,12 @@ test('CANOPY Settings exposes bounded native Status rows and clears stale perfor
   expect(fresh!.foreign).toBe(0);
   expect(fresh!.entry).toBe('STATUS');
   expect(fresh!.visible).toBe(0);
-  expect(fresh!.rows.slice(1, 5)).toEqual(['C#-1 D#-1', 'G#-1 A#-1', 'LATCH HOLDING', 'PEDAL DOWN']);
+  expect(fresh!.rows.slice(1, 4)).toEqual(['C#-1 D#-1', 'G#-1 A#-1', 'PEDAL DOWN']);
+  expect(fresh!.rows.some((row) => row.includes('LATCH'))).toBe(false);
   expect(fresh!.rows.every((row) => row.length < 24)).toBe(true);
   expect(stale!.rows[0]).toContain('LINK LOST');
-  expect(stale!.rows.slice(1, 5)).toEqual(['-- --', '-- --', 'LATCH --', 'PEDAL --']);
+  expect(stale!.rows.slice(1, 4)).toEqual(['-- --', '-- --', 'PEDAL --']);
+  expect(stale!.rows.some((row) => row.includes('LATCH'))).toBe(false);
 });
 test('SAVE is RAM-immediate, card-deferred, restores after restart and never performs I/O under IRQ mask', () => {
   const [ram, durable, restored] = settings(
@@ -480,17 +506,19 @@ test('direct controller plus unflushed UI diff fails within its output buffer', 
   expect(s.voices).toEqual(before.voices);
 });
 
-test('mapped phrases survive retry and same-chord latch replacement commits without note retrigger', () => {
-  const [a, release, b, retry] = run(
-    'mode 1\nlatch 1\non 0 0 60 90\ntick\noff 0 0 60 0\ntick\non 0 0 60 90\nhold\nhold',
+test('mapped phrases survive retry and overlapping same roots commit without note retrigger', () => {
+  const [a, b, retry, acked, release, clear] = run(
+    'mode 1\non 0 0 60 90\ntick\non 0 0 60 90\nhold\nhold\ntick\noff 0 0 60 0\ntick\noff 0 0 60 0\ntick',
   );
   expect(release!.voices).toEqual(a!.voices);
   expect(b!.voices).toEqual(a!.voices);
+  expect(acked!.packet).toEqual(b!.packet);
   expect(b!.packet[1]).toBe(5 | (1 << 8));
   expect(b!.packet[10]).toBe(5); // metadata-only commit
   expect(b!.packet[4]! >>> 31).toBe(1);
   expect(b!.packet[4]! & 0x7fffffff).toBe((a!.packet[4]! & 0x7fffffff) + 1);
   expect(retry!.packet).toEqual(b!.packet);
+  expect(clear!.voices).toEqual([]);
 });
 
 test('PLAY chord edits retain phrase while fresh attack after silence advances it', () => {

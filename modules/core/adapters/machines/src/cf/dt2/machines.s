@@ -274,6 +274,25 @@ mf_clone5:
 | saved here too).
     .globl mf_typearg
 mf_typearg:
+    | Optional persistent-instrument mapping. It supplies only its owned SRC
+    | slots; all other tracks, slots and absent adapters take the old path.
+    move.l  #instrument_mod_param,%d0
+    tst.l   %d0
+    beq.s   8f
+    lea     -16(%sp),%sp
+    movem.l %d0-%d1/%a0-%a1,(%sp)
+    move.l  %a0,-(%sp)
+    move.l  0x24(%sp),-(%sp)
+    jsr     instrument_mod_param
+    addq.l  #8,%sp
+    cmpi.l  #-1,%d0
+    beq.s   6f
+    movem.l 4(%sp),%d1/%a0-%a1
+    lea     16(%sp),%sp
+    jmp     _mf_x_typearg
+6:  movem.l (%sp),%d0-%d1/%a0-%a1
+    lea     16(%sp),%sp
+8:
     move.l  0x10(%sp),%d0
     subi.l  #_mf_first,%d0
     cmpi.l  #_mf_count,%d0

@@ -3,7 +3,7 @@
 #include "../../../modules/core/adapters/instrument-play/src/cf/preset.h"
 int main(void)
 {
-    CpPreset p={.control={10,3,127,64,500,127,8,4,3,100,75,2,1,0,127,127},
+    CpPreset p={.control={10,3,127,64,500,127,8,4,3,100,75,2,0,0,127,127},
         .bpm=300,.family=1,.mode=KB_ROOT,.clock=2,.shape={4,{0,7,16,127}}};
     CpPreset decoded={0}; uint8_t bytes[CP_RECORD_BYTES];
     cp_wavetable_defaults(p.control);
@@ -23,6 +23,11 @@ int main(void)
             for(unsigned i=0;i<end;++i) h=(h^bytes[i])*16777619u;
             for(unsigned i=0;i<4;++i) bytes[end+i]=(uint8_t)(h>>(24-8*i));
         } else if(!strcmp(cmd,"decode")) result=cp_decode(&decoded,bytes,a);
+        else if(!strcmp(cmd,"encode")) result=cp_encode(&decoded,bytes);
+        else if(!strcmp(cmd,"reserved")) decoded.control[CP_RESERVED12]=(uint16_t)a;
+        else if(!strcmp(cmd,"record")) {
+            printf("{\"version\":%u,\"reserved\":%u}\n",bytes[4],(uint32_t)bytes[32]*256+bytes[33]);
+        }
         else if(!strcmp(cmd,"snapshot")) {
             printf("{\"result\":%d,\"controls\":[",result);
             for(unsigned i=0;i<CP_CONTROLS;++i) printf("%s%u",i ? ",":"",decoded.control[i]);

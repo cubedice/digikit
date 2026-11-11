@@ -31,6 +31,9 @@
 .EXTERN _iv_amp_hold_table;
 .EXTERN _pattern_position_info;
 .EXTERN _pattern_clock_info;
+.EXTERN _iv_modulate;
+.EXTERN _iv_mod_status;
+.EXTERN _iv_mod_ready;
 
 // This adapter is absent from ordinary images. Linking it is the trusted
 // single-instance capability; binding the session must precede lifecycle work.
@@ -48,7 +51,7 @@ _instrument_carrier_prepare:
     DM(_instrument_play_status + 4) = R0;
     R0 = DM(_instrument_session);
     R0 = PASS R0;
-    IF EQ RTS;
+    IF EQ JUMP _iv_quiet;
     R0 = 1;
     DM(_ir_lifecycle_ready) = R0;
     CALL _iv_admitted;
@@ -116,7 +119,10 @@ _iv_no_status:
     DM(5, I0) = R0;
     R0 = _iv_events;
     DM(7, I0) = R0;
-    R0 = _iv_controls;
+    R4 = _iv_controls;
+    R8 = DM(_iv_control_count);
+    CALL _iv_modulate;
+    I0 = _iv_input;
     DM(9, I0) = R0;
     R0 = DM(_iv_control_count);
     DM(10, I0) = R0;
@@ -136,6 +142,9 @@ _iv_no_status:
     DM(8, I0) = R1;
     R0 = PASS R0;
     IF LT JUMP _iv_quiet;
+    R4 = _iv_controls;
+    R8 = _iv_input;
+    CALL _iv_mod_status;
     R1 = DM(_iv_post_requested);
     R1 = PASS R1;
     IF EQ JUMP _iv_post_ready;
@@ -161,6 +170,7 @@ _iv_post_ready:
     RTS;
 _iv_quiet:
     R0 = 0;
+    DM(_iv_mod_ready) = R0;
     DM(_mi_native_owner_valid) = R0;
     DM(_mi_post_owner_valid) = R0;
     DM(_instrument_ui_status) = R0;
@@ -472,6 +482,7 @@ _instrument_reset:
     RTS; // inactive tracks still acknowledge the transport's all-track reset
 _iv_reset_owned:
     R0 = 0;
+    DM(_iv_mod_ready) = R0;
     DM(_mi_native_owner_valid) = R0;
     DM(_mi_post_owner_valid) = R0;
     CALL _iv_admitted;
@@ -1113,6 +1124,7 @@ _iv_admitted:
 
 _iv_reset_row:
     R0 = 0;
+    DM(_iv_mod_ready) = R0;
     DM(_mi_native_owner_valid) = R0;
     DM(_mi_post_owner_valid) = R0;
     CALL _iv_admitted;

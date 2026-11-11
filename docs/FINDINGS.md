@@ -217,3 +217,7 @@ acknowledged encoder batching and streamed card hashing reduce test overhead).
 CANOPY release ordering: [native AMP after stock track effects](findings/119-canopy-post-fx-amp.md)
 (**[D]/[O]**, physical release plateau reproduced and explained by the actual
 stock bitcrusher; per-note envelope factoring and post-effects application).
+
+CANOPY controls: [compact SRC pages, latch removal and native MOD](findings/120-canopy-controls-modulation.md)
+(**[D]/[V]**, fixed six targets per source family, immutable base controls and
+narrow independently checked firmware-hook ABI; physical installation pending).

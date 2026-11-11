@@ -31,6 +31,7 @@ void dkrt_irq_restore(uint32_t sr) { masked=sr; }
 int instrument_sound_prepare(int refresh) { (void)refresh; return 1; }
 uint32_t instrument_sound_tune(void) { return 0x4000; }
 uint32_t instrument_src_now(void) { return 100; }
+void instrument_mod_publish(uint32_t family) { (void)family; }
 void ip_view_build(uint32_t view) { (void)view; }
 void mi_instance_reset(uint32_t track) { ++mi_ledger.generations[track]; }
 int mi_registry_reply(uint32_t *out,uint32_t words) { (void)out; (void)words; return 0; }
@@ -191,8 +192,8 @@ int main(void)
         }
         else if(!strcmp(cmd,"srcstate")) {
             CvDisplay display; instrument_src_display(&display,100,"0","100");
-            printf("{\"result\":%d,\"color\":%d,\"mix\":%d,\"rate\":%d,\"type\":%u,\"latch\":%u,\"dirty\":%u,\"value\":\"%s\",\"heading\":\"%s\"}\n",
-                src_result,pad_color,arp_mix,arp_rate,keyboard.type,keyboard.latch,pad_dirty,display.value[3],display.heading);
+            printf("{\"result\":%d,\"color\":%d,\"mix\":%d,\"rate\":%d,\"type\":%u,\"dirty\":%u,\"value\":\"%s\",\"heading\":\"%s\"}\n",
+                src_result,pad_color,arp_mix,arp_rate,keyboard.type,pad_dirty,display.value[0],display.heading);
         }
         else if(!strcmp(cmd,"statuswrap")) {
             struct dk_ui_menu status={0};
@@ -206,7 +207,7 @@ int main(void)
             (void)instrument_src_context(0,0,0);
             instrument_src_poll(100);
             src_status.fast_valid=(uint8_t)value; src_status.fast_at=100;
-            src_status.fast[1]=(15u<<16)|(4u<<20)|(1u<<10)|(1u<<9)|(1u<<8);
+            src_status.fast[1]=(15u<<16)|(4u<<20)|(1u<<8);
             src_status.fast[5]=1|(3u<<8)|(8u<<16)|(10u<<24);
             struct dk_ui_menu status={0};status_fill(&status,0);
             printf("{\"owns\":%d,\"foreign\":%d,\"entry\":\"%s\",\"visible\":%u,\"rows\":[",

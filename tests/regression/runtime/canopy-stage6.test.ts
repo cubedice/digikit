@@ -10,7 +10,8 @@ import { liveProtocol } from './protocol.ts';
 import { waitEmulated } from './waits.ts';
 import { expectRuntimeUi } from './ready.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
-import { captureRemoteOled } from './remote.ts';
+import { captureRemoteOled as captureOled } from './remote.ts';
+import { liveArtifacts } from './artifacts.ts';
 import { openDigikitMenu } from './runtime-menu.ts';
 import { waitInstrumentReady } from './instrument-ready.ts';
 import { acknowledgedPanel } from './panel-ack.ts';
@@ -21,6 +22,90 @@ import { proveCanopyNativeAmp } from './canopy-native-amp.ts';
 import { analysisJson } from './fx-live.ts';
 import { pageKit } from './fx-pages-ui.ts';
 import type { FxProfile } from './fx-session.ts';
+
+async function captureRemoteOled(...args: Parameters<typeof captureOled>) {
+  await captureOled(...args);
+  const destination = path.join(repoRoot(), 'out/canopy-controls-mod-ui');
+  fs.mkdirSync(destination, { recursive: true });
+  fs.copyFileSync(
+    path.join(liveArtifacts(args[0], 'remote-input'), `${args[1]}.png`),
+    path.join(destination, `${args[1]}.png`),
+  );
+}
+
+/** Exercise the stock destination picker and LFO against the actual callback
+ * bank, without changing base controls or held-note ownership. */
+async function proveCanopyModulation(ui: {
+  key: (name: string) => Promise<void>;
+  modPage: () => Promise<void>;
+  turn: (encoder: number, delta: number) => Promise<void>;
+  wait: (milliseconds: number) => Promise<void>;
+  sound: (index: number) => Promise<number>;
+  base: () => Promise<number[]>;
+  effective: () => Promise<number[]>;
+  ownership: () => Promise<unknown>;
+  checkBaseDisplay: () => Promise<void>;
+  capture: (name: string) => Promise<unknown>;
+  audio: (name: string) => Promise<unknown>;
+}) {
+  const base = await ui.base();
+  const owners = await ui.ownership();
+  expect(await ui.effective(), 'neutral MOD preserves every base control').toEqual(base);
+  await ui.modPage();
+  // Native Sound stores DEST in its big-endian high byte (Q8.8 selector). The
+  // stock picker lists the SRC group as TUNE, LEV and then the six custom slots;
+  // the arrow keys move one item per press while the popup is open, whereas
+  // encoder ticks are accelerated. The confirmation toast swallows panel input.
+  const order = [0, 25, 34, 26, 27, 28, 31, 32, 33];
+  const selectDestination = async (mirror: number) => {
+    const current = await ui.sound(4);
+    const from = order.indexOf(current >> 8),
+      to = order.indexOf(mirror);
+    expect(from, `MOD destination 0x${current.toString(16)} is in the SRC group order`).toBeGreaterThanOrEqual(0);
+    expect(to).toBeGreaterThanOrEqual(0);
+    await ui.turn(4, 1); // opens the destination popup on the current item
+    await ui.wait(200);
+    for (let i = 0; i < Math.abs(to - from); i++) await ui.key(to > from ? 'DOWN' : 'UP');
+    await ui.key('YES');
+    await ui.wait(4000);
+    expect(await ui.sound(4), `MOD destination ${mirror}`).toBe(mirror << 8);
+  };
+  await selectDestination(26);
+  await ui.capture('canopy-native-mod-position');
+  // The factory fixture has a free-running sine LFO and bipolar DEP midpoint.
+  const initialDepth = await ui.sound(8);
+  expect(initialDepth).toBe(0x4000);
+  for (let attempt = 0; attempt < 32 && (await ui.sound(8)) < 0x5000; attempt++) await ui.turn(8, 30);
+  expect(await ui.sound(8)).toBeGreaterThanOrEqual(0x5000);
+  const positions: number[] = [];
+  for (let i = 0; i < 12; i++) {
+    await ui.wait(75);
+    positions.push((await ui.effective())[17]! >>> 16);
+  }
+  expect(Math.max(...positions) - Math.min(...positions), 'native LFO moves WT position').toBeGreaterThan(10);
+  expect(await ui.base()).toEqual(base);
+  expect(await ui.ownership()).toEqual(owners);
+  await ui.audio('native-mod-wavetable');
+  await ui.checkBaseDisplay();
+  await ui.modPage();
+  // Mirror 28 normally passes through stock sample-ID conversion. Exercise its
+  // full carrier range in real firmware, not only the first modulation lane.
+  await selectDestination(28);
+  await ui.capture('canopy-native-mod-scan-rate');
+  const scanRates: number[] = [];
+  for (let i = 0; i < 12; i++) {
+    await ui.wait(75);
+    scanRates.push((await ui.effective())[19]! >>> 16);
+  }
+  expect(Math.max(...scanRates) - Math.min(...scanRates), 'native LFO moves WT scan rate').toBeGreaterThan(0);
+  expect(await ui.base()).toEqual(base);
+  expect(await ui.ownership()).toEqual(owners);
+  await selectDestination(0);
+  await ui.wait(100);
+  expect(await ui.effective()).toEqual(base);
+  expect(await ui.base()).toEqual(base);
+  return { positions, scanRates, destinations: [26, 28], initialDepth, depth: await ui.sound(8) };
+}
 
 const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
 test(
@@ -92,6 +177,10 @@ test(
             ['_iv_result', 32],
             ['_mi_heartbeat', 32],
             ['_iv_input', 128],
+            ['_iv_mod_frame', 256],
+            ['_iv_controls', 128],
+            ['_iv_mod_controls', 128],
+            ['_iv_mod_delta', 24],
             ['_mi_native_owner_valid', 4],
             ['_pattern_position_info', 80],
             ['_instrument_reply', 64],
@@ -236,9 +325,9 @@ test(
     await proveCanopyNativeAmp(session, plan, state, root);
     if (process.env.CANOPY_NATIVE_AMP_ONLY === '1') return;
     await key('SRC');
-    await srcPage(2);
+    await srcPage(0);
     await encoderValue(
-      (delta) => turn(2, delta * 4),
+      (delta) => turn(4, delta * 4),
       async () => {
         const table = await controls.settled(16),
           family = (await rawBank())[1]!;
@@ -252,8 +341,8 @@ test(
     // Panel flushes clamp at 30 detents: await each applied step before the next.
     await turnAppliedControl(session, 7, async () => (await rawBank())[21]! & 65535, 64); // equal pad/arp mix
     await srcPage(2);
-    await turnAppliedControl(session, 3, async () => (await toneBank())[1]!, 350); // center position 4.50
-    await turnAppliedControl(session, 4, async () => (await toneBank())[2]!, 50); // moving held chords
+    await turnAppliedControl(session, 1, async () => (await toneBank())[1]!, 350); // center position 4.50
+    await turnAppliedControl(session, 2, async () => (await toneBank())[2]!, 50); // moving held chords
     const wheelRoutes = async () => {
       const b = await peek(state + 264 * 4, 32 * 4);
       return Array.from({ length: 32 }, (_, i) => b.readUInt32LE(i * 4));
@@ -359,6 +448,43 @@ test(
     });
     const live = await audio('live');
     await captureRemoteOled(session, 'canopy-stage6-wavetable-tone');
+    const sound = await cf('ip_admission', 1);
+    // Every [MOD] press advances the LFO page (1/3, 2/3, 3/3), also when it
+    // arrives from another page; the transient page title cannot be read back.
+    let modPresses = 0;
+    const modPage = async () => {
+      do {
+        await key('MOD');
+        modPresses += 1;
+      } while (modPresses % 3 !== 1);
+      await waitEmulated(session, 200);
+    };
+    const nativeModulation = await proveCanopyModulation({
+      key,
+      modPage,
+      turn,
+      wait: (milliseconds) => waitEmulated(session, milliseconds),
+      sound: async (index) => {
+        const address = sound + 0x14 + index * 2;
+        const packed = await word(address & ~3);
+        return address & 2 ? packed & 65535 : packed >>> 16;
+      },
+      base: rawBank,
+      effective: async () => {
+        const input = await peek(planSymbol(plan, '_iv_input'), 44);
+        const bank = await peek(input.readUInt32LE(36), 128);
+        return Array.from({ length: 32 }, (_, i) => bank.readUInt32LE(i * 4));
+      },
+      ownership: voices,
+      checkBaseDisplay: async () => {
+        await srcPage(2);
+        await expect.poll(() => cf('src_state', 4), { timeout: 30000 }).toBe(0);
+        await captureRemoteOled(session, 'canopy-native-mod-base-values');
+      },
+      capture: (name) => captureRemoteOled(session, name),
+      audio,
+    });
+    console.info('CANOPY native MOD:', nativeModulation);
     await key('STOP');
     await edge('FUNC', true);
     try {
@@ -447,11 +573,12 @@ test(
         })
       | undefined;
     const transitions = await audio('wavetable-fm-loop-transitions', async () => {
+      await srcPage(0);
       for (let table = 1; table <= 4; table++) {
         // A long Overloop recording can leave the native encoder idle filter
         // armed. Drain each packet and its configuration before retrying a detent.
         await encoderValue(
-          (delta) => turn(2, delta * 4),
+          (delta) => turn(4, delta * 4),
           () => controls.settled(16),
           table,
         );
@@ -460,7 +587,7 @@ test(
         expect(await voices()).toEqual(held);
       }
       await encoderValue(
-        (delta) => turn(2, delta * 4),
+        (delta) => turn(4, delta * 4),
         async () => {
           const table = await controls.settled(16),
             family = (await rawBank())[1]!;
@@ -470,13 +597,12 @@ test(
       );
       expect((await rawBank())[1]).toBe(3);
       expect(await voices()).toEqual(held);
-      await srcPage(0);
-      await turnAppliedControl(session, 4, async () => (await rawBank())[2]!, 127);
       await srcPage(2);
-      await turnAppliedControl(session, 7, async () => (await toneBank())[4]!, 100);
+      await turnAppliedControl(session, 1, async () => (await rawBank())[2]!, 127);
+      await turnAppliedControl(session, 4, async () => (await toneBank())[4]!, 100);
       for (const algorithm of [0, 1, 2, 3]) {
         await encoderValue(
-          (delta) => turn(3, delta * 4),
+          (delta) => turn(2, delta * 4),
           () => controls.settled(16),
           algorithm,
         );
@@ -579,6 +705,7 @@ test(
       JSON.stringify(
         {
           live,
+          nativeModulation,
           transitions,
           loopAudio,
           released,

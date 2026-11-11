@@ -2,6 +2,7 @@
  * Layout follows stock track_type and its Sound getter (finding 78). */
 #include <stdint.h>
 #include "timing.h"
+#include "src-mod.h"
 extern uint32_t dkrt_instrument_type(void);
 extern uint32_t ip_project(void);
 extern uint32_t ip_kit(uint32_t project);
@@ -102,6 +103,7 @@ int instrument_sound_prepare(int allow_refresh)
     ip_admission[3]=pattern;
     ip_admission[5]=type;
     if (retain) {
+        instrument_mod_defaults(source);
         ip_refresh(source,0);
         ++ip_admission[2];
         return 1;
@@ -114,6 +116,7 @@ int instrument_sound_prepare(int allow_refresh)
     if (ip_admission[0]) return 1;
     if (!allow_refresh || !source || (type == 0 || type != dkrt_instrument_type()) || !pattern ||
         pp_current_pattern() != pattern) return 0;
+    instrument_mod_defaults(source);
     ip_refresh(source,0);
     ++ip_admission[2];
     ip_admission[0]=1;

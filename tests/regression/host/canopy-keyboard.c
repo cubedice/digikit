@@ -63,7 +63,6 @@ int main(void)
         } else if(!strcmp(cmd,"ack")) result=mt_ack(&transport,&ledger,a,b);
         else if(!strcmp(cmd,"mode")) { s.mode=(uint8_t)a; reset(); }
         else if(!strcmp(cmd,"reset")) reset();
-        else if(!strcmp(cmd,"latch")) kb_latch(&s,a);
         else if(!strcmp(cmd,"type")) { s.type=(uint8_t)a; s.update=1; }
         else if(!strcmp(cmd,"selector")) s.selector_channel=(uint8_t)a;
         else if(!strcmp(cmd,"voicing")) { s.voicing=(uint8_t)a; s.update=1; }

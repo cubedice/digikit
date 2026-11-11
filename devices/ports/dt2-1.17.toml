@@ -3980,3 +3980,63 @@ len = 6
 sha256 = "1bd4aea2592c9079e1d3bc17757d2fc7801210d04d85bf640e401c3bc9a1ea48"
 mark = "D"
 rule = "fw/dsp/voice:sharc_literal"
+
+[[anchor]]
+name = "cf.machine.site.instrument_mod_recombine"
+cpu = "cf"
+kind = "code"
+addr = 0x4002e978
+len = 10
+sha256 = "860a5d2ed220e90713a0a257eb99d0226c70d2c090a906b7e7f304aeed6a5f3e"
+mark = "D"
+rule = "fw/machine:cf_window_hash"
+
+[[anchor]]
+name = "cf.machine.site.instrument_mod_recombine_skip"
+cpu = "cf"
+kind = "code"
+addr = 0x4002e994
+len = 8
+sha256 = "487bddb45c4c9bf8bec37f40ed608cc767bf63707d74460bc62c378a680f3d3b"
+mark = "D"
+rule = "fw/machine:cf_window_hash"
+
+[[anchor]]
+name = "cf.machine.site.instrument_mod_split"
+cpu = "cf"
+kind = "code"
+addr = 0x4002e8e2
+len = 6
+sha256 = "05c1b78ed1dc66cd12f513163edf7f7f10e3cfe76979a270ad9fca276ac70051"
+mark = "D"
+rule = "fw/machine:cf_window_hash"
+
+[[anchor]]
+name = "cf.machine.site.instrument_mod_split_skip"
+cpu = "cf"
+kind = "code"
+addr = 0x4002e8fe
+len = 8
+sha256 = "0da1d3bc9a7b292976b8a4c01c752810ac86fa29e15575b19cebccef0fc29d36"
+mark = "D"
+rule = "fw/machine:cf_window_hash"
+
+[[anchor]]
+name = "cf.machine.site.instrument_mod_type_row_literal"
+cpu = "cf"
+kind = "code"
+addr = 0x4002e928
+len = 4
+sha256 = "15a222b5a99e5eb32f3ac742780d00e1a04f189c4b1532d9a7b42aac8a78cd99"
+mark = "D"
+rule = "fw/machine:cf_window_hash"
+
+[[hook]]
+name = "cf.machine.hook.instrument_mod_recombine"
+site = "cf.machine.site.instrument_mod_recombine"
+mode = "replace"
+
+[[hook]]
+name = "cf.machine.hook.instrument_mod_split"
+site = "cf.machine.site.instrument_mod_split"
+mode = "replace"

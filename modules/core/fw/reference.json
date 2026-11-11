@@ -1992,6 +1992,77 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e978"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Preserve every register beyond the displaced instructions; replay ten bytes on the stock path or jump to instrument_mod_recombine_skip for the admitted track-zero instrument.",
+      "file": "devices/fw/machine.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.machine.hook.instrument_mod_recombine",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "ccr"
+        ],
+        "in": [
+          "d6",
+          "a4"
+        ]
+      },
+      "site": "cf.machine.site.instrument_mod_recombine",
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e8e2"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Preserve every register beyond the displaced instructions; replay six bytes on the stock path or jump to instrument_mod_split_skip for the admitted track-zero instrument.",
+      "file": "devices/fw/machine.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.machine.hook.instrument_mod_split",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "d1",
+          "ccr"
+        ],
+        "in": [
+          "d7",
+          "a4"
+        ]
+      },
+      "site": "cf.machine.site.instrument_mod_split",
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x4004d994"
@@ -2991,6 +3062,161 @@
       "was": [
         "cf.machines.group"
       ]
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e978",
+            "len": 10
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 frame ISR sample-slot reconstruction after native LFO: d6 is track, a4 is the smoothed row. Displaced mvs.w 0x5a(a4),d0; cmpi.l #0x400,d0. Bypass preserves the instrument's full-width modulated mirror 28.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.instrument_mod_recombine",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 10,
+          "offset": 10
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e994",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 sampler reconstruction loop continuation; increments d6 and advances the smoothed row by 0x8e.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.instrument_mod_recombine_skip",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 38
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e8e2",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 frame ISR sampler split, after the stock eligibility test: d7 is track, a4 is the smoothed row. Displaced move.w 0x5a(a4),d0; move.l d0,d1. Only the admitted instrument may bypass the sample-slot conversion.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.instrument_mod_split",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 10
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e8fe",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 sampler split loop continuation; increments d7 and advances the smoothed row by 0x8e.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.instrument_mod_split_skip",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 38
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e928",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 frame ISR lea operand: load the operand value, then dereference the current track-zero type byte in the SRAM machine row. It is not a selected UI track.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.instrument_mod_type_row_literal",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 2
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
     },
     {
       "at": {
@@ -19117,7 +19343,7 @@
       "name": "link"
     },
     {
-      "count": 83,
+      "count": 90,
       "cpu": "cf",
       "file": "devices/fw/machine.toml",
       "meaning": "the machine framework: dispatch, names, per-type tables, the run-time registry",

@@ -20,19 +20,13 @@ static int selector(const KbState *s, const MiEvent *e)
         e->note >= s->selector_base && e->note < s->selector_base+12);
 }
 static int active(const KbKey *k)
-{ return k->token && !k->stolen && (k->held || k->pedal || k->latched); }
+{ return k->token && !k->stolen && (k->held || k->pedal); }
 static void collect(KbState *s)
 {
     uint32_t i;
     for (i=0;i<MI_KEYS;++i)
         if (s->keys[i].token && !s->keys[i].held && !active(&s->keys[i]))
             zero(&s->keys[i],sizeof(KbKey));
-}
-void kb_latch(KbState *s, int enabled)
-{
-    uint32_t i; s->latch=!!enabled; s->update=1;
-    for (i=0;i<MI_KEYS;++i) s->keys[i].latched=enabled && active(&s->keys[i]);
-    collect(s);
 }
 static void capture(KbState *s, uint8_t note)
 {
@@ -48,7 +42,7 @@ static void capture(KbState *s, uint8_t note)
 }
 static int note(KbState *s, const MiEvent *e)
 {
-    uint32_t i, n=0, oldest=MI_KEYS, free=MI_KEYS, held=0;
+    uint32_t i, n=0, oldest=MI_KEYS, free=MI_KEYS;
     if (selector(s,e)) return 0;
     if (e->kind==MI_NOTE_OFF) {
         for (i=0;i<MI_KEYS;++i) if (s->keys[i].token==e->token) {
@@ -59,19 +53,12 @@ static int note(KbState *s, const MiEvent *e)
         collect(s); return 0;
     }
     if (!e->token) return -1;
-    for (i=0;i<MI_KEYS;++i) {
-        if (s->keys[i].token==e->token) return -1;
-        held+=!!s->keys[i].held;
-    }
+    for (i=0;i<MI_KEYS;++i) if (s->keys[i].token==e->token) return -1;
     uint32_t sounding=0;
     for (i=0;i<MI_KEYS;++i) sounding+=!!active(&s->keys[i]);
-    if (s->mode==KB_ROOT || !sounding || (s->latch && !held)) {
+    if (s->mode==KB_ROOT || !sounding) {
         if (s->phrase==0x7fffffffu) { s->status=KB_EXHAUSTED; return -1; }
         ++s->phrase;
-    }
-    if (s->latch && !held) {
-        for (i=0;i<MI_KEYS;++i) { s->keys[i].latched=0; s->keys[i].pedal=0; }
-        collect(s);
     }
     for (i=0;i<MI_KEYS;++i) {
         KbKey *k=&s->keys[i];
@@ -85,7 +72,7 @@ static int note(KbState *s, const MiEvent *e)
     if (s->mode!=KB_ROOT && n>=4) s->keys[oldest].stolen=1;
     KbKey *k=&s->keys[free];
     k->token=e->token; k->note=e->note; k->velocity=e->value;
-    k->port=e->port; k->channel=e->channel; k->held=1; k->latched=s->latch;
+    k->port=e->port; k->channel=e->channel; k->held=1;
     if (s->mode==KB_LEARN) capture(s,e->note);
     return 0;
 }
@@ -214,7 +201,7 @@ int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8])
         }
         ++used;
         if (in[0].kind==MI_CC && in[0].note==121) {
-            /* Pedal/latch ownership is resolved above, so forward only the
+            /* Pedal ownership is resolved above, so forward only the
              * wheel reset, alongside centered bend, on this same route. */
             if (used>=8) return -1;
             mi_event_copy(&out[used],&in[0]); out[used].token=0;
@@ -226,7 +213,7 @@ int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8])
         const volatile uint8_t *from=(const volatile uint8_t *)&want[i];
         for (j=0;j<sizeof(KbVoice);++j) to[j]=from[j];
     }
-    // A new root/latch phrase can retain every common tone. Publish its
+    // A new root phrase can retain every common tone. Publish its
     // identity even when there are no audible note differences.
     if (!used && phrase!=s->phrase) {
         zero(&out[0],sizeof(out[0]));
@@ -241,7 +228,7 @@ int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8])
 int kb_learn_begin(KbState *s)
 {
     if (s->mode==KB_LEARN || s->session==UINT32_MAX) return -1;
-    s->previous_mode=s->mode; s->previous_latch=s->latch; s->latch=0;
+    s->previous_mode=s->mode;
     s->mode=KB_LEARN; ++s->session;
     s->revision=1; s->capture_count=0; s->status=KB_OK; return 0;
 }
@@ -256,10 +243,10 @@ int kb_learn_save(KbState *s, uint32_t session, uint32_t revision)
     shape->count=s->capture_count;
     for (i=0;i<shape->count;++i) shape->intervals[i]=s->capture[i]-s->capture[0];
     s->preset_shape_active=0;
-    s->dirty=1; s->mode=s->previous_mode; s->latch=s->previous_latch; s->status=KB_OK; return 0;
+    s->dirty=1; s->mode=s->previous_mode; s->status=KB_OK; return 0;
 }
 void kb_learn_cancel(KbState *s)
-{ if (s->mode==KB_LEARN) { s->mode=s->previous_mode; s->latch=s->previous_latch; }
+{ if (s->mode==KB_LEARN) s->mode=s->previous_mode;
     s->capture_count=0; s->status=KB_OK; }
 void kb_encode(const KbState *s, uint8_t b[KB_RECORD_BYTES])
 {

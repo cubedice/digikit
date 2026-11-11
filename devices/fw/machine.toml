@@ -1,6 +1,73 @@
 # machine: the machine framework: dispatch, names, per-type tables, the run-time registry
 # Names follow <cpu>.<subsystem>.<kind>.<name>; was = former names, for reading older docs, never resolved (docs/design/firmware-decls.md).
 
+[[site]]
+name = "cf.machine.site.instrument_mod_split"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 50, offset = 10, len = 6, sha256 = "0e6e44150cd3f59861dcddb42a5843e26889491fb6235bfed68a2739cdade8da" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 frame ISR sampler split, after the stock eligibility test: d7 is track, a4 is the smoothed row. Displaced move.w 0x5a(a4),d0; move.l d0,d1. Only the admitted instrument may bypass the sample-slot conversion."
+
+[[site]]
+name = "cf.machine.site.instrument_mod_split_skip"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 50, offset = 38, len = 8, sha256 = "0e6e44150cd3f59861dcddb42a5843e26889491fb6235bfed68a2739cdade8da" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 sampler split loop continuation; increments d7 and advances the smoothed row by 0x8e."
+
+[[hook]]
+name = "cf.machine.hook.instrument_mod_split"
+site = "cf.machine.site.instrument_mod_split"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = ["d7", "a4"], clobbers = ["d0", "d1", "ccr"] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "Preserve every register beyond the displaced instructions; replay six bytes on the stock path or jump to instrument_mod_split_skip for the admitted track-zero instrument."
+
+[[site]]
+name = "cf.machine.site.instrument_mod_recombine"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 50, offset = 10, len = 10, sha256 = "277b6f798dccc4ec5f2842f490fe2b99039cd17ef69a1b2a035a72ec448916b1" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 frame ISR sample-slot reconstruction after native LFO: d6 is track, a4 is the smoothed row. Displaced mvs.w 0x5a(a4),d0; cmpi.l #0x400,d0. Bypass preserves the instrument's full-width modulated mirror 28."
+
+[[site]]
+name = "cf.machine.site.instrument_mod_recombine_skip"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 50, offset = 38, len = 8, sha256 = "277b6f798dccc4ec5f2842f490fe2b99039cd17ef69a1b2a035a72ec448916b1" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 sampler reconstruction loop continuation; increments d6 and advances the smoothed row by 0x8e."
+
+[[hook]]
+name = "cf.machine.hook.instrument_mod_recombine"
+site = "cf.machine.site.instrument_mod_recombine"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = ["d6", "a4"], clobbers = ["d0", "ccr"] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "Preserve every register beyond the displaced instructions; replay ten bytes on the stock path or jump to instrument_mod_recombine_skip for the admitted track-zero instrument."
+
+[[site]]
+name = "cf.machine.site.instrument_mod_type_row_literal"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 34, offset = 2, len = 4, sha256 = "ca5d8a04c28179478e1bfade400e12e95025fc0076ff3fc5966569ea774d805b" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 frame ISR lea operand: load the operand value, then dereference the current track-zero type byte in the SRAM machine row. It is not a selected UI track."
+
 [[fn]]
 name = "cf.machine.fn.refresh_track"
 cpu = "cf"

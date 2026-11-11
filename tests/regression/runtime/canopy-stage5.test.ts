@@ -12,7 +12,8 @@ import { liveProtocol } from './protocol.ts';
 import { waitEmulated } from './waits.ts';
 import { expectRuntimeUi } from './ready.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
-import { captureRemoteOled } from './remote.ts';
+import { captureRemoteOled as captureOled } from './remote.ts';
+import { liveArtifacts } from './artifacts.ts';
 import { openDigikitMenu } from './runtime-menu.ts';
 import { waitInstrumentReady } from './instrument-ready.ts';
 import { acknowledgedPanel } from './panel-ack.ts';
@@ -20,6 +21,16 @@ import { menuSelection } from './menu-selection.ts';
 import { encoderValue } from './encoder-value.ts';
 import { canopyControls } from './canopy-controls.ts';
 import { proveWavetableFm } from '../../../modules/machines/canopy/tests/wavetable-fm.ts';
+
+async function captureRemoteOled(...args: Parameters<typeof captureOled>) {
+  await captureOled(...args);
+  const destination = path.join(repoRoot(), 'out/canopy-controls-mod-ui');
+  fs.mkdirSync(destination, { recursive: true });
+  fs.copyFileSync(
+    path.join(liveArtifacts(args[0], 'remote-input'), `${args[1]}.png`),
+    path.join(destination, `${args[1]}.png`),
+  );
+}
 
 // A new prepared card needs a complete coupled boot before its ready pair is
 // cached. Keep this suite's startup bound above that cold path.
@@ -297,7 +308,7 @@ test(
     const toneBank = async () => (await rawBank()).slice(16, 28).map((v) => v >>> 16);
     const { settled } = canopyControls(cf, rawBank);
     const setControl = (encoder: number, control: number, target: number) => {
-      const discrete = [0, 1, 6, 7, 8, 11, 12, 16, 20, 21, 29].includes(control);
+      const discrete = [0, 1, 6, 7, 8, 11, 16, 20, 21, 29].includes(control);
       return encoderValue(
         (delta) => turn(encoder, delta * (discrete ? 4 : 1)),
         () => settled(control),
@@ -315,7 +326,12 @@ test(
         family = (await rawBank())[1]!;
       return family === 3 ? 7 : family < 2 ? family : table + 2;
     };
-    const setWave = (choice: number) => encoderValue((delta) => turn(2, delta * 4), waveChoice, choice);
+    const setWave = async (choice: number) => {
+      const page = await cf('ip_src_debug', 1);
+      await srcPage(0);
+      await encoderValue((delta) => turn(4, delta * 4), waveChoice, choice);
+      await srcPage(page);
+    };
     const srcPage = async (page: number) => {
       // The remembered page alone does not prove the native SRC view is bound
       // after a modal closes. A nonzero published token proves visible ownership.
@@ -350,8 +366,10 @@ test(
     const readonly = await bank();
     expect(readonly.slice(16, 18)).toEqual(start.slice(16, 18));
     expect(readonly[20]).toBe(start[20]);
-    await setControl(4, 2, start[18]! + 4);
+    await srcPage(2);
+    await setControl(1, 2, start[18]! + 4);
     expect((await bank())[18]).toBeGreaterThan(start[18]!);
+    await srcPage(0);
     // A tiny turn leaves PLAY selected. Four raw ticks select the next item;
     // changing mode is available on the track page and owns a reset boundary.
     await turn(2, 1);
@@ -404,16 +422,29 @@ test(
       [4, 25],
       [5, 26],
       [6, 27],
-      [7, 28],
     ] as const) {
       const before = (await bank())[index]!;
       await setControl(encoder, index - 16, before + 1);
       expect((await bank())[index]).toBe(before + 1);
     }
-    const source = await bank();
-    await setControl(8, 5, source[21]! + 4);
-    expect((await bank())[21]).toBe(source[21]! + 4);
-    expect((await bank())[29]).toBe(source[29]);
+    // The freed G/H positions edit clock and tempo, while the removed latch
+    // slot remains zero and can never retain a released keyboard phrase.
+    await encoderValue(
+      (delta) => turn(8, delta),
+      async () => (await rawBank())[7]!,
+      123,
+    );
+    await encoderValue(
+      (delta) => turn(7, delta * 4),
+      async () => (await rawBank())[13]!,
+      2,
+    );
+    expect((await bank())[28]).toBe(0);
+    await encoderValue(
+      (delta) => turn(7, delta * 4),
+      async () => (await rawBank())[13]!,
+      0,
+    );
     await key('AMP');
     await key('SRC');
     expect(await cf('ip_src_debug', 1)).toBe(1);
@@ -423,8 +454,10 @@ test(
     await heldValues('canopy-tone-legacy-held-values');
     expect(await cf('ip_src_debug', 1)).toBe(2);
     const legacyTone = await rawBank();
-    for (const encoder of [3, 4, 5, 6, 7]) await turn(encoder, 4);
-    expect(await rawBank()).toEqual(legacyTone); // WAVE stays available; only C-G require a wavetable.
+    const legacyTune = legacyTone[0]! >>> 16;
+    for (const encoder of [2, 3, 4, 5, 6, 7, 8]) await turn(encoder, 4);
+    expect(await rawBank()).toEqual(legacyTone); // Only COLR is available on the legacy TONE page.
+    expect((await rawBank())[0]! >>> 16).toBe(legacyTune);
     await key('SRC');
     expect(await cf('ip_src_debug', 1)).toBe(0);
     for (const [encoder, index] of [
@@ -442,7 +475,7 @@ test(
     // Wall time only bounds a stalled poll, not the lifetime of a UI value.
     await waitEmulated(session, 800);
     // The last byte of the bounded presentation is the visible focus flag.
-    await expect.poll(async () => (await cf('display', 47)) & 255, { timeout: 15000 }).toBe(0);
+    await expect.poll(async () => ((await cf('display', 47)) >>> 8) & 255, { timeout: 15000 }).toBe(0);
     // Applied status revision must agree with the requested bank, not just an ACK.
     expect(await cf('src_status', 7)).toBe(await cf('src_state', 3));
     await key('DOWN');
@@ -538,7 +571,7 @@ test(
     await expect.poll(() => cf('ip_keyboard_status'), { timeout: 15000 }).toBe(0);
     await openDigikitMenu(key);
     await key('YES');
-    await menuRow(4);
+    await menuRow(3);
     await key('YES'); // PRESETS
     const savedBank = await bank();
     await menuRow(2, 'preset_menu');
@@ -566,12 +599,12 @@ test(
     expect(Array.from({ length: 16 }, (_, i) => preset!.readUInt16BE(8 + 2 * i))).toEqual(savedBank.slice(16));
     expect(Array.from({ length: 12 }, (_, i) => preset!.readUInt16BE(64 + 2 * i))).toEqual(await toneBank());
     for (let i = 0; i < 4; i++) await key('NO');
-    await srcPage(0);
-    await setControl(4, 2, savedBank[18]! + 1);
+    await srcPage(2);
+    await setControl(1, 2, savedBank[18]! + 1);
     expect((await bank())[18]).toBe(savedBank[18]! + 1);
     await openDigikitMenu(key);
     await key('YES');
-    await menuRow(4);
+    await menuRow(3);
     await key('YES');
     await menuRow(3, 'preset_menu');
     await key('YES'); // LOAD SAVED SOUND
@@ -663,7 +696,7 @@ test(
     await turnRange(9, 1);
     const arpFull = await audioLevel('arp-track-full');
     expect(arpFull).toBeGreaterThan(full * 0.5);
-    await key('SRC');
+    await srcPage(0);
     await turnRange(8, -1);
     expect((await word(sound + 0x58)) >>> 16).toBe(0);
     const sourceZero = await audioLevel('source-zero');
@@ -690,13 +723,16 @@ test(
     await expect.poll(async () => (await bank())[1], { timeout: 15000 }).toBe(2);
     const toneDefaults = await toneBank();
     expect(toneDefaults).toEqual([0, 0, 0, 10, 0, 0, 0, 100, 5, 15, 100, 100]);
+    await setWave(3); // GLASS, from the single WAVE selector on SOUND.
     for (const [encoder, index, delta] of [
-      [2, 0, 1], // GLASS
-      [3, 1, 25], // 1.25
-      [4, 2, 20],
-      [5, 3, 5],
-      [6, 4, 1], // TRI
-      [7, 5, 1], // PHRASE
+      [1, 1, 25], // 1.25
+      [2, 2, 20],
+      [3, 3, 5],
+      [4, 4, 1], // TRI
+      [5, 7, 10], // position envelope
+      [6, 8, 1],
+      [7, 9, 1],
+      [8, 10, 10],
     ] as const) {
       const before = (await toneBank())[index]!;
       await setControl(encoder, 16 + index, before + delta);
@@ -718,31 +754,34 @@ test(
       audio: audioLevel,
       capture: (name) => captureRemoteOled(session, name),
       values: heldValues,
-      sourceLevel: (direction) => turnRange(8, direction),
+      sourceLevel: async (direction) => {
+        await srcPage(0);
+        await turnRange(8, direction);
+      },
     });
-    await srcPage(0);
+    await srcPage(2);
     const tonePosition = (await toneBank())[1]!;
     const oldColor = (await bank())[18];
-    await setControl(4, 17, tonePosition + 1); // SOUND D aliases TONE C for WAVETABLE.
+    await setControl(1, 17, tonePosition + 1); // Position has one dedicated page.
     expect((await toneBank())[1]).toBe(tonePosition + 1);
     expect((await bank())[18]).toBe(oldColor);
     const savedTone = await toneBank();
     await openDigikitMenu(key);
     await key('YES');
-    await menuRow(4);
+    await menuRow(3);
     await key('YES');
     await menuRow(2, 'preset_menu');
     await key('YES');
     await expect.poll(() => cf('preset_result'), { timeout: 30000 }).toBe(0);
     for (let i = 0; i < 4; i++) await key('NO');
     await srcPage(2);
-    await setControl(3, 17, savedTone[1]! + 1);
+    await setControl(1, 17, savedTone[1]! + 1);
     expect((await toneBank())[1]).toBe(savedTone[1]! + 1);
     await srcPage(3);
-    await setControl(2, 28, 0);
+    await setControl(1, 28, 0);
     await openDigikitMenu(key);
     await key('YES');
-    await menuRow(4);
+    await menuRow(3);
     await key('YES');
     await menuRow(3, 'preset_menu');
     await key('YES');
@@ -776,21 +815,21 @@ test(
     const fmGeneration = await cf('src_state');
     const fmLevels: Record<string, number> = {};
     for (const algorithm of [0, 1, 2, 3]) {
-      await setFm(3, 16, algorithm);
+      await setFm(2, 16, algorithm);
       expect((await rawBank())[1]).toBe(3); // ALG must never be mistaken for WAVE.
       expect(await voices()).toEqual(fmHeld);
       fmLevels[`algorithm-${algorithm}`] = await audioLevel(`fm-algorithm-${algorithm}`);
       expect(fmLevels[`algorithm-${algorithm}`]).toBeGreaterThan(1e-5);
     }
-    await setFm(4, 17, 35);
+    await setFm(3, 17, 35);
     await setFm(5, 18, 5);
     await setFm(6, 19, 10);
-    await setFm(7, 20, 18);
+    await setFm(4, 20, 18);
     await captureRemoteOled(session, 'canopy-fm-tone');
     await heldValues('canopy-fm-tone-values');
-    await srcPage(0);
-    await setFm(4, 2, 42);
+    await setFm(1, 2, 42);
     expect((await rawBank())[2]).toBe(42);
+    await srcPage(0);
     await captureRemoteOled(session, 'canopy-fm-sound');
     await srcPage(3);
     for (const [encoder, control, value] of [
@@ -800,7 +839,6 @@ test(
       [4, 24, 20],
       [5, 25, 145],
       [6, 26, 120],
-      [7, 27, 135],
     ] as const)
       await setFm(encoder, control, value);
     await captureRemoteOled(session, 'canopy-fm-envelope');
@@ -809,9 +847,14 @@ test(
     expect(await voices()).toEqual(fmHeld);
     expect(await cf('src_state')).toBe(fmGeneration);
     const savedFm = await toneBank();
+    const levelBeforeBlank = (await word(sound + 0x58)) >>> 16;
+    for (const encoder of [7, 8]) await turn(encoder, 16);
+    expect(await toneBank()).toEqual(savedFm);
+    expect((await word(sound + 0x58)) >>> 16).toBe(levelBeforeBlank);
     const fmFull = await audioLevel('fm-full');
     expect(fmFull).toBeGreaterThan(1e-5);
-    await turnRange(8, -1); // Native source LEV remains H on FM ENV.
+    await srcPage(0); // Native source LEV exists only on SOUND.
+    await turnRange(8, -1);
     const fmZero = await audioLevel('fm-source-zero');
     expect(fmZero).toBeLessThan(fmFull * 0.01);
     expect(await toneBank()).toEqual(savedFm); // Volume cannot change FM index/routing.
@@ -831,18 +874,18 @@ test(
     expect(await voices()).toEqual(fmHeld);
     await openDigikitMenu(key);
     await key('YES');
-    await menuRow(4);
+    await menuRow(3);
     await key('YES');
     await menuRow(2, 'preset_menu');
     await key('YES');
     await expect.poll(() => cf('preset_result'), { timeout: 30000 }).toBe(0);
     for (let i = 0; i < 4; i++) await key('NO');
     await srcPage(2);
-    await setFm(3, 16, 0);
+    await setFm(2, 16, 0);
     expect((await toneBank())[0]).toBe(0);
     await openDigikitMenu(key);
     await key('YES');
-    await menuRow(4);
+    await menuRow(3);
     await key('YES');
     await menuRow(3, 'preset_menu');
     await key('YES');

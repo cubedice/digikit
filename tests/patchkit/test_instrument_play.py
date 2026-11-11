@@ -36,7 +36,7 @@ def playback_object():
     )
     for module, names in (
         ("instrument-registry", ("process", "process-protected", "input", "lifecycle")),
-        ("instrument-play", ("play", "reset-protected")),
+        ("instrument-play", ("play", "modulation", "reset-protected")),
         ("midi-events", ("packet", "carrier", "carrier-frame", "velocity")),
     ):
         source += "\n" + "\n".join(
@@ -57,6 +57,7 @@ def playback_object():
 .PKDATA _iv_amp_decay_table, 512;
 .PKDATA _iv_amp_hold_table, 512;
 .PKDATA _test_amp_record, 44;
+.PKDATA _iv_mod_frame, 1024;
 .PKDATA _test_state, 2976;
 .PKDATA _test_packet, 128;
 .PKDATA _test_metadata, 24;
@@ -113,6 +114,9 @@ _test_status_process:
         "_instrument_events",
         "_iv_voice_render",
         "_cu_publish",
+        "_iv_modulate",
+        "_iv_reset_row",
+        "_iv_mod_status",
     ]
     for i, entry in enumerate(entries):
         source += f"""
@@ -191,6 +195,14 @@ def playback(playback_object):
     )
     put("_instrument_session", [1])
     put("_mi_epoch", [1])
+    frame = [0] * 256
+    frame[37] = 20
+    for halfword in (0x6E, 0x6F, 0x70, 0x73, 0x74, 0x75):
+        frame[halfword // 2] |= 0x4000 << (16 * (halfword & 1))
+    put("_iv_mod_frame", frame)
+    # Direct overlay units start with an established owner. Production resets
+    # below clear this flag and must warm the previous-frame copy themselves.
+    put("_iv_mod_ready", [1])
 
     def call(index, **regs):
         result = pk_sharc.run_call(
@@ -219,6 +231,7 @@ def playback(playback_object):
         for name, (base, _) in reads.items():
             memory.update({base + i: value for i, value in enumerate(result[name])})
         call.last_regs = result["regs"]
+        call.last_instructions = result["instructions"]
         return result["regs"]["R0"]
 
     def reset(generation=1, track=0):

@@ -152,6 +152,7 @@ def unit(src_allocator):
             "_mf_rows": ROWS,
             "_mf_list_stock": STOCK_LIST,
             "_mf_spt": TYPE_FN,
+            "instrument_mod_param": 0,
         },
         [
             "mf_srcpage",
@@ -289,6 +290,7 @@ def gap_unit(src_allocator):
             "_mf_first": FIRST,
             "_mf_count": 3,
             "_mf_entries": 2,
+            "instrument_mod_param": 0,
             "_mf_rows": ROWS,
             "_mf_list_stock": STOCK_LIST,
             "_mf_spt": TYPE_FN,

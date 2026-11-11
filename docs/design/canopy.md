@@ -1,7 +1,13 @@
 # CANOPY technical design
 
-Current revision (2026-11-09): SOUND B combines PLAY and chord selection;
-TONE B combines the two original sounds, five factory wavetables and FM. The
+Current control revision (2026-11-10): SOUND B combines PLAY and chord selection;
+SOUND D combines the two original sounds, five factory wavetables and FM. TUNE
+and LEV appear only on SOUND. ARP G/H edit clock/local BPM; position and its
+envelope share wavetable TONE, and wheel amounts move to MODULATION settings.
+Latch is removed, including migration of older presets to latch-off. Six fixed
+SRC targets per sound type connect to the stock MOD page; the implementation
+does not add a separate target-assignment menu. This control revision is a
+local candidate and has not been installed on the physical DTII. The
 [current controls](#controls-and-display), [wavetable extension](#factory-wavetable-extension-cps9)
 and [FM extension](#four-operator-fm-extension-cpsa) define the existing sources.
 [Wavetable FM](#wavetable-fm-integration-cpsb) adds per-note modulation of each
@@ -10,7 +16,7 @@ and backward-compatible CPST v5 presets. Its DSP implementation and focused
 checks are complete; the matching compiled UI/audio/preset proof passes in
 403.12 seconds with the verified DT2 emulator and acknowledged control batches. The
 [WT-FM handover](../handovers/HANDOVER-2026-11-09-canopy-wavetable-fm.md) records
-the current evidence and matching artifacts. The exact pair is installed on the
+the corresponding evidence and matching artifacts. That earlier pair was installed on the
 physical DTII; identity, module readback, saved presets/routing and module health
 are verified. Physical sound/timing qualification remains open.
 
@@ -48,7 +54,8 @@ Focused regressions and the full compiled playback/coexistence proof pass,
 including measured release after bit reduction at the stock coefficient rate.
 The implementation, artifacts and remaining qualification are recorded in
 [release ordering](../findings/119-canopy-post-fx-amp.md). It requires a matching
-firmware/module pair; the previously installed pair does not contain this fix.
+firmware/module pair. The V7 pair was installed on 2026-11-10, with identity,
+module readback and preserved settings verified; see its installation handover.
 
 Status: Stage 5 implementation and DTII OS 1.17 emulator acceptance complete,
 2026-11-02. The admitted CANOPY pad instrument has explicit presets, live
@@ -203,7 +210,7 @@ In SEQUENCER source mode, consume and ignore fresh claimed keyboard performance 
 
 Maintain a bounded ledger keyed by input port, channel and note, with press order, velocity, destination track and routing generation. Note-off follows the destination recorded at note-on, even if the selected track changes. Repeated note-ons at the same pitch receive separate tokens, paired FIFO with note-offs. Bound repeated-note counts; overflow invokes controlled reset rather than wrapping.
 
-MIDI ownership and DSP slots are separate. A stolen note's later note-off must not release the note that replaced its slot. Token matching occurs before changing an envelope. Keep physical key state distinct from sustained, latched, sounding and stolen states.
+MIDI ownership and DSP slots are separate. A stolen note's later note-off must not release the note that replaced its slot. Token matching occurs before changing an envelope. Keep physical key state distinct from sustained, sounding and stolen states. Sustain means CC64 pedal ownership; there is no latch ownership.
 
 Routing edits, source/mode changes, project load, machine removal and faults advance the affected instance generation. Clear its sounding state with a short bounded ramp and invalidate pending old-generation events. Preserve bounded tombstones for outstanding physical presses until their matching note-offs arrive; these releases remain consumed and never redirect to a new track. Tombstones take part in the FIFO pairing even if a fresh same-pitch press has a new destination. Re-enable sounding input with fresh presses after such a reset. If ownership/tombstone capacity is exhausted, quarantine that route until an explicit reset with keys released instead of discarding ownership and guessing.
 
@@ -213,7 +220,7 @@ Routing edits, source/mode changes, project load, machine removal and faults adv
 | --- | --- |
 | Note On velocity 0 | Normalize to Note Off |
 | CC64 below/above 64 | Pedal up/down; pedal up releases deferred notes whose physical keys are up |
-| CC120 | Panic the route: clear keys, pedal, latch and arp, with only the emergency de-click ramp |
+| CC120 | Panic the route: clear keys, pedal and arp, with only the emergency de-click ramp |
 | CC123 | Release all physical keys; ordinary sustain rules still apply |
 | CC121 | Reset controllers, including pedal and channel bend; release pedal-only notes |
 | Pitch bend | Shared channel bend, initially fixed at +/-2 semitones, applied once after note/chord generation |
@@ -225,7 +232,7 @@ Implement only claimed supported controllers; document the fallthrough policy fo
 
 ### PLAY
 
-Every accepted note-on starts its own voice immediately, subject to the fixed four-note foreground limit. Note-off starts only that voice's release unless pedal or latch holds it. Preserve the played pitches, octave spread and velocities. Generated-chord VOICING does not rearrange PLAY notes. The admitted set of at most four tones also supplies chord recognition and arp candidates; a stolen, still-held key stays in the ownership ledger but is excluded from all three until pressed again. Publish the excluded count so the display can show `+N` instead of implying unlimited keyboard polyphony.
+Every accepted note-on starts its own voice immediately, subject to the fixed four-note foreground limit. Note-off starts only that voice's release unless the sustain pedal holds it. Preserve the played pitches, octave spread and velocities. Generated-chord VOICING does not rearrange PLAY notes. The admitted set of at most four tones also supplies chord recognition and arp candidates; a stolen, still-held key stays in the ownership ledger but is excluded from all three until pressed again. Publish the excluded count so the display can show `+N` instead of implying unlimited keyboard polyphony.
 
 Chord recognition is display-only in this mode. After 35 ms without a note-set change, compare the pitch-class mask with a small dictionary of exact chord templates and their inversions. Prefer a root present in the played set and an exact template; use the previous equally valid interpretation to reduce flicker. Show the lowest sounding pitch as the bass in slash notation. If interpretation is ambiguous, show note names. Display updates do not delay notes, quantize them or retune them.
 
@@ -237,7 +244,7 @@ A configurable selector octave is silent. White keys C/D/E/F/G/A/B select major/
 
 An optional dedicated selector-channel route allows a second controller or keyboard zone to choose types without reserving an octave on the root-playing channel. Route roles are explicit configuration; root and selector roles cannot overlap ambiguously for the same port/channel/note. Both still use the same ownership and silent-selector handling.
 
-Selector note-on changes a latched chord type; its note-off remains consumed and silent. Other keys supply roots, using last-pressed-root priority. Releasing the current root restores the most recent still-held root; pedal/latch determine the behavior when none remain. A selector update rebuilds the chord from the current root and never becomes an audible note.
+Selector note-on selects a remembered chord type; its note-off remains consumed and silent. Other keys supply roots, using last-pressed-root priority. Releasing the current root restores the most recent still-held root, or a pedal-held root if no physical root remains. With neither, the generated chord releases. A selector update rebuilds the chord from the current root and never becomes an audible note.
 
 When a selector and root arrive together, apply selector changes first within the same DSP batch. Cross-block ordering remains event order, with smooth reassignment. In PAD mode apply changes immediately. With quantized chord changes enabled, stage the entire new chord and commit at the next arp event, never one interval at a time.
 
@@ -251,11 +258,14 @@ For capture C-G-B-E, store offsets 0, 7, 11, 16. Playing D as root gives D-A-C#-
 
 Library slots are templates. A saved preset embeds its learned intervals by value, so editing a library slot cannot alter existing presets unexpectedly.
 
-### Latch and sustain
+### Sustain and note release
 
-In latch mode, releasing keys preserves the current chord. Once all physical keys have been released, the next note-on begins a replacement phrase; subsequent pressed notes join it. Replace the old latched membership atomically with the first new note, retaining only bounded audio tails. A slow rolled chord grows as played, without waiting for recognition.
-
-Latch replacement clears the previous phrase's pedal-only membership too; otherwise successive phrases could accumulate indefinitely. Pedal and latch never allocate additional hidden voices. Disabling latch releases notes that are neither physically held nor pedal-held.
+There is no latch mode. A note remains owned while its physical key or sustain
+pedal holds it. Key-up starts release otherwise; arp membership follows that
+ownership and excludes release tails. Learning may retain captured pitch data
+after key-up, but it never keeps the audition voice held. Existing presets with
+latch enabled load with it disabled; reserved control slot 12 is always saved
+as zero. Sustain does not allocate additional hidden voices.
 
 ## Versioned instrument interface
 
@@ -1661,7 +1671,7 @@ The first firmware proof uses sine tones and this lifecycle:
 
 1. An idle-to-active event starts the stock track carrier and shared AMP once, using a neutral shared velocity multiplier.
 2. Further key events reach only the V2 state; they do not restart the stock AMP, reset oscillator state or change a global note-velocity multiplier.
-3. Individual note-offs start local releases. The adapter keeps the stock render path alive while any internal voice, latch, arp gate or release remains active.
+3. Individual note-offs start local releases. The adapter keeps the stock render path alive while any internal voice, pedal-held note, arp gate or release remains active.
 4. Only QUIET permits deactivating the stock track carrier. New events can wake it without a stock sample trig.
 
 The initial proof used separate local attack/release controls with a shared stock
@@ -1770,15 +1780,15 @@ For unrestricted track assignment, prove the maximum 16-track case alongside sto
 
 ## Arpeggiator and transport behavior
 
-ARP MIX blends sustained pad and the separate arp group. Candidate notes come from admitted physical/sustained/latched membership in PLAY and from the generated chord in the other modes. Audio release tails and stolen keys outside the admitted four are excluded. The arp operates on a committed chord revision; a mid-step chord edit takes effect at the next scheduled note.
+ARP MIX blends sustained pad and the separate arp group. Candidate notes come from admitted physical/pedal membership in PLAY and from the generated chord in the other modes. Audio release tails and stolen keys outside the admitted four are excluded. The arp operates on a committed chord revision; a mid-step chord edit takes effect at the next scheduled note.
 
-Support UP, DOWN, UP/DOWN without duplicate endpoints, AS PLAYED and seeded RANDOM; one to three octaves; and bounded gate duration. Each arp event has its own internal token. Gate changes release only arp ownership. Initially STRUM applies only to generated ROOT + TYPE, LEARN TO ROOT and SEQUENCER chords: it schedules their pad-tone onsets across a bounded interval and cancels pending old-chord onsets when the chord revision changes. PLAY always preserves immediate individual key onsets; adding a played note cannot cancel a still-held earlier note.
+Support UP, DOWN, UP/DOWN without duplicate endpoints, AS PLAYED and seeded RANDOM; a signed spread of -3..+3 additional octaves in one direction; and bounded gate duration. Zero uses the played octave only. Each arp event has its own internal token. Gate changes release only arp ownership. Initially STRUM applies only to generated ROOT + TYPE, LEARN TO ROOT and SEQUENCER chords: it schedules their pad-tone onsets across a bounded interval and cancels pending old-chord onsets when the chord revision changes. PLAY always preserves immediate individual key onsets; adding a played note cannot cancel a still-held earlier note.
 
 The first clocked proof uses committed master-step boundaries and integer multiples from Overloop's existing bridge. Do not infer BPM, per-track swing or a sample timestamp from its raw scheduler deadline. Faster divisions, triplets and swing require a versioned tempo/phase extension with measured behavior on internal and external clock. Represent subdivision phase rationally, so triplet rounding does not accumulate drift. Swing moves alternating events while preserving each pair's total duration.
 
 Restart choices are TRIG, PATTERN and CONTINUE. In KEYBOARD mode TRIG means the beginning of a new phrase, not each added chord tone. PATTERN follows the committed pattern generation. CONTINUE preserves ordinal/phase across chord updates, while transport reset creates a new clock generation. Quantize pending changes against the clock source actually selected.
 
-While stopped, direct keyboard pads remain playable. A standalone arp can use an explicit local BPM in setup after the local-clock stage; external sync does not silently fall back to that BPM on clock loss. A stale clock releases the current arp gate and pauses scheduling. Transport STOP cancels sequencer notes, pending strums and synchronized arp events; keyboard held/pedal/latch notes retain their ownership. PANIC clears them all.
+While stopped, direct keyboard pads remain playable. ARP G selects LOCAL, GRID or PHASE clock; ARP H edits 30..300 local BPM and is inactive with a synchronized clock. External sync does not silently fall back to local BPM on clock loss. A stale clock releases the current arp gate and pauses scheduling. Transport STOP cancels sequencer notes, pending strums and synchronized arp events; keyboard held/pedal notes retain their ownership. PANIC clears them all.
 
 On a pattern switch that keeps CANOPY on the same track, retain KEYBOARD tokens and oscillator state, then apply the destination's firmware-backed controls. The carrier fixture now retains its instance on a compatible pattern change within the same project and refreshes the destination stock carrier without resetting MIDI ownership. Same-pattern Sound replacement, machine changes, project changes and unknown running timing still invalidate admission. General production retention remains a release requirement; this fixture has one fixed sine configuration and shadows WERP on track 0. Initially the extra module controls remain at the current CANOPY configuration/preset; they do not acquire destination-pattern values automatically. If the machine changes, reset that instance. In SEQUENCER mode the destination's committed trigs and lengths own the generated chord. Tie, retrig, microtiming and note-length behavior need event-source tests; root pitch alone cannot supply a complete gate lifecycle.
 
@@ -1787,7 +1797,7 @@ On a pattern switch that keeps CANOPY on the same track, retain KEYBOARD tokens 
 The current layout uses three native SRC pages, plus WT FM for a wavetable or
 FM ENV when the standalone FM source is selected.
 The table below shows the original/wavetable layout; the
-[FM layout](#src-presentation) substitutes DEP on SOUND D and FM controls on TONE.
+[FM layout](#src-presentation) uses DEP on TONE A and FM controls on TONE.
 The stock header, track-level
 column, page dots, TUNE and source LEV retain their existing drawing, editing and
 hold-SRC values behavior. Custom parameters use the native parameter font and
@@ -1795,14 +1805,14 @@ cell positions. Detailed note and ownership information remains in STATUS.
 
 | Encoder | SOUND | ARP | TONE |
 | --- | --- | --- | --- |
-| A | TUNE | RATE | TUNE |
-| B | CHRD | ORDR | WAVE |
-| C | VOIC | OCTS | POS |
-| D | COLR / POS | GATE | DEP |
-| E | DRFT | SWNG | HZ / RATE |
-| F | STRM | RST | SHAP |
-| G | MIX | LTCH | RST |
-| H | LEV | MIX | LEV |
+| A | TUNE | RATE | POS |
+| B | CHRD | ORDR | DEP |
+| C | VOIC | OCTS | HZ / RATE |
+| D | WAVE | GATE | SHAP |
+| E | DRFT | SWNG | ENV |
+| F | STRM | RST | ATK |
+| G | MIX | CLK | REL |
+| H | LEV | BPM | VEL |
 
 SOUND B is one ordered list: `PLAY`, `MAJ`, `MAJ6`, `SUS2`, `MIN6`, `MIN`,
 `SUS4`, `ADD9`, `DOM7`, `DIM`, `MIN7`, `USER`, `MAJ7`. PLAY sounds the notes
@@ -1815,33 +1825,31 @@ USER is not labelled with a library slot number because a preset can embed its
 own shape. VOIC and STRM remain unavailable in PLAY; learned USER voicing is
 fixed. The LEARN modal owns input and prevents all hidden SRC edits.
 
-TONE B is one ordered list: `VELVT`, `REED`, `ANLG`, `GLASS`, `VOCAL`, `ORGAN`,
+SOUND D is one ordered list: `VELVT`, `REED`, `ANLG`, `GLASS`, `VOCAL`, `ORGAN`,
 `METAL`, `FM`. The first two choices select the original synthesis families;
 the next five select the corresponding wavetable and the last selects FM. No separate engine
-chooser is required. TONE C-G show `--` for VELVT/REED and consume turns without
-changing their remembered settings; feedback directs the player to ANLG through
-FM for these controls. WAVE, TUNE and LEV stay available. SOUND D edits COLR
-for VELVT/REED, POS for the five wavetable choices, and DEP for FM. COLOR, POS
+chooser is required. VELVT/REED have COLR on TONE A and unused B-H cells.
+The five wavetables have the complete position layout above. TONE A edits DEP
+for FM, whose other controls are below. COLOR, POS
 and FM DEP retain independent values when switching sounds.
 
 Discrete lists use four raw encoder ticks per choice with no time-based
 acceleration. Partial movement accumulates only for the same control/context;
 direction reversals, page/ownership changes and external value changes clear
 the remainder. Lists clamp at their endpoints and discard excess endpoint
-movement. This applies to CHRD, VOIC, arp RATE/ORDR/OCTS/RST/LTCH,
+movement. This applies to CHRD, VOIC, arp RATE/ORDR/OCTS/RST/CLK,
 WAVE/SHAP/RST, FM ALG/RTA/RTB and tempo-synchronized wavetable RATE. Continuous macros retain
 their existing scales. Stock TUNE/LEV and LEVEL/DATA keep native behavior.
 
 The module settings contain SETUP beside the separate STATUS view. The global
 DigiKit menu labels the same setup entry CANOPY, replacing the ambiguous
-KEYBOARD label. SETUP contains five short groups:
+KEYBOARD label. SETUP contains four short groups:
 
 | Group | Controls |
 | --- | --- |
 | INPUT | EXTERNAL MIDI, USB, DIN, CHANNEL, SAVE ROUTING, SELECTOR OCTAVE, selector channel, PANIC, RECOVER, readiness and panel hints |
 | CHORD LEARN | Shape slot, LEARN TO ROOT, shape-save status/retry and the reminder to select CHRD USER |
-| SOUND SETUP | Reminder to use the track AMP page, ARP CLOCK and LOCAL BPM |
-| WAVETABLE TIMBRE | Scan clock, envelope amount, timbre attack/release and velocity/wheel to position |
+| MODULATION | Scan clock/restart, wheel to position, wheel to FM and wheel to wavetable FM |
 | PRESETS | Preset slot, saved/dirty state and explicit SAVE/LOAD |
 
 Setup removes duplicate performance-page controls and the separate engine/table
@@ -1857,16 +1865,52 @@ FM settings are remembered separately. WAVE uses view-only ID 34 so it cannot
 collide with FM ALG at active ID 16; it is not a serialized parameter.
 `CP_SOURCE` 13 remains the reserved keyboard event-source field; it does not
 store WAVE. Logical IDs 0..15 retain their established meanings except COLOR
-becomes DEP in FM. IDs 16..27 select the active wavetable or FM bank. IDs 28..31
+becomes DEP in FM and old latch ID 12 is reserved zero. IDs 16..27 select the active wavetable or FM bank. IDs 28..31
 hold the independent wavetable FM controls; native TUNE/LEV use view IDs 32/33.
 
 All custom controls use the validated 32-word CPSB configuration and explicit
 CPST v5 preset service, with legacy decoding retained. TUNE and LEV retain native Sound backing. Requested values may
 appear immediately, but pending feedback clears only for a matching applied
 generation and complete revision. A family change invalidates previously
-captured encoder ownership because SOUND D changes its meaning; a delayed
-COLOR turn must not become a POS or FM DEP edit. Other machines use their stock handlers,
+captured encoder ownership because TONE A changes its meaning; a delayed
+COLR turn must not become a POS or FM DEP edit. Other machines use their stock handlers,
 and page changes alone never change the sound.
+
+### Native MOD targets
+
+The user selected six fixed targets per sound type. MOD's existing DEST picker
+uses the six custom SRC mirrors (26, 27, 28, 31, 32 and 33), with names following
+the active WAVE family:
+
+| Slot | Velvet / Reed | Wavetable | FM |
+| --- | --- | --- | --- |
+| 1 | Color | Position | Depth |
+| 2 | Drift | Scan depth | Balance |
+| 3 | Arp mix | Scan rate | Feedback |
+| 4 | Strum | Timbre envelope amount | Envelope amount |
+| 5 | Arp gate | Wavetable FM depth | Attack |
+| 6 | Arp swing | Wavetable FM envelope amount | Release |
+
+The normal LFO controls set timing and bipolar depth. At zero depth the exact
+base bank reaches the instrument. Active modulation adds a bounded offset to
+the current knob value in a private per-block bank; it never edits the preset or
+the acknowledged base bank. Deselecting the destination restores the original
+value. Native TUNE and LEVEL keep their stock paths. Choosing a different WAVE
+family changes the meaning of each active SRC route, so an LFO aimed at
+wavetable position becomes FM depth when switching to FM.
+
+Scan rate modulation respects FREE HZ versus TEMPO SYNC ranges. GRID keeps arp
+swing at zero. Timbre envelope amounts retain their signed zero at stored 100.
+The descriptors expose native carrier offsets, not a second copy of the SRC
+knob values. The SRC display and saved presets show the base controls, while
+audio consumes the effective bank. Custom parameter locks and native
+Sound/project persistence are separate work.
+
+The adapter validates the active carrier type and CPSB schema before reading
+the completed stock frame. Ordinary machines and legacy instrument schemas
+retain their existing path. This uses the existing content-module ABI and
+32-word controls; it does not add more voices, target assignments or per-note
+storage.
 
 ## SRC interface specification
 
@@ -1902,32 +1946,39 @@ Column origins are 0, 31, 62 and 93. Center values in their cell, with at least 
 
 Always prioritize actual note names over a guessed chord label. Format MIDI note zero as `C-1`, not as an empty slot; use an explicit validity mask. Use `--` only for an absent note. Four-character pitches such as `C#-1` fit the slot; MIDI 127 is `G9`. Keep an unambiguous MIDI-number readout available in setup. Abbreviate or omit a long chord name and preserve slash bass where possible; do not scroll the note strip or hide a pitch to fit a title.
 
-### Control labels and value formatting
+### Current control labels and value formatting
 
-The physical ordering in the preceding control table is unchanged. The reference uses compact legends `VOICE`, `OCTS`, `RESTART` and `SOURCE`; full names appear in focus feedback. Encoder letters are conveyed by their fixed positions, not repeated on every pixel cell.
+The mockup's original ordering and legends are historical. The current page table above is authoritative; encoder letters are conveyed by their fixed positions. Native font, cells, numeric formatting and hold-SRC values follow the accepted DTII UI contract.
 
 | Control | Normal cell | Behavior and focus formatting |
 | --- | --- | --- |
-| TUNE / LEVEL | Native compact numeric value | Keep native range, adjustment and storage; show native precise value in focus |
-| CHORD | `MAJ`, `MIN7`, `SUS2`, `ADD9`, `USER` | Full chord type in focus; read-only `AUTO` in KEYBOARD PLAY, read-only `USER` in KEYBOARD LEARN TO ROOT |
-| VOICE | `CLOSE`, `OPEN`, `INV1`, `INV2`, `LEAD` | Full voicing name in focus; read-only `--` in KEYBOARD PLAY; read-only `ASLRN` in KEYBOARD LEARN TO ROOT, with AS LEARNED focus |
-| COLOR / DRIFT | 0..127 | Preserve exact macro value; optional qualitative endpoint legend without claiming a measured spectral value |
-| STRUM | `OFF` or e.g. `32ms` | Proposed 0..500 ms total spread; map the stored macro through a documented curve; `--` in KEYBOARD PLAY |
-| ARP MIX | `PAD`, `ARP` or rounded percent | Percent is the arp contribution; endpoints map exactly to 0/127; focus shows the continuous PAD-to-ARP marker |
+| TUNE / LEV | Native compact numeric value | SOUND A/H only; retain native range, adjustment, storage and precise show-values rendering |
+| CHRD | `PLAY`, `MAJ`, `MIN7`, `SUS2`, `ADD9`, `USER`, etc. | One list selects PLAY or a ROOT chord type; no read-only AUTO trap |
+| VOIC | `CLS`, `OPEN`, `INV1`, `INV2` | Read-only `--` in PLAY and `LRND` for learned USER intervals |
+| COLR / DRFT | 0..127 | COLR lives on legacy TONE A; DRFT remains SOUND E |
+| STRM | `OFF` or a millisecond count | 0..500 ms total spread; read-only `--` in PLAY |
+| MIX | `PAD`, `ARP` or rounded percent | Percent is the arp contribution; endpoints map exactly to 0/127 |
 | RATE | `1/16`, `1/8T`, or `1STP` | Show only divisions supported by the active timing capability; step-only builds label master steps honestly |
-| ORDER | `UP`, `DOWN`, `UP/DN`, `PLAY`, `RAND` | `PLAY` means input order, not keyboard mode; focus says AS PLAYED |
-| OCTS | `1OCT`..`3OCT` | No octave animation or implicit chord transposition |
+| ORDR | `UP`, `DOWN`, `UPDN`, `PLAY`, `RND` | `PLAY` means input order, not keyboard mode |
+| OCTS | `-3`..`+3`, with `0` at center | Additional arp octaves below or above the played octave; never both directions, and never pad transposition |
 | GATE | Percentage | Exact implemented range appears in the descriptor; round for the cell, retain stored precision |
 | SWING | `50%` straight to rounded `88%` | Existing DSP macro 0..75 alternates interval weights `100+n` / `100-n`, giving 50..87.5% of the pair to its first interval; the cell rounds to whole percent. Master-step timing shows `--` and consumes the turn |
-| RESTART | `TRIG`, `PATT`, `CONT` | Full descriptions in focus: phrase/trig, pattern, continuous |
-| LATCH | `OFF` or `ON` | This is the enabled keyboard setting; the separate L badge distinguishes an active retained phrase; read-only `--` in SEQUENCER |
-| SOURCE | `KEYS` or `SEQ` | Changing this starts the instance reset described above; it is not a live-input blend |
+| RST | `TRIG`, `PATT`, `CONT` | Phrase/trig, pattern or continuous restart |
+| CLK | `LOCAL`, `GRID`, `PHASE` | ARP G selects local tempo, master-step grid or phase timing |
+| BPM | 30..300, or `--` | ARP H edits local tempo only while CLK is LOCAL |
+| WAVE | `VELVT`, `REED`, `ANLG`, `GLASS`, `VOCAL`, `ORGAN`, `METAL`, `FM` | SOUND D selects the sound family/table in one list |
+| POS | `1.00`..`8.00` | Wavetable TONE A is the single position control |
 
-Discrete enum controls advance one choice per detent, clamp at their endpoints and do not accelerate across multiple choices. Continuous controls retain verified native coarse/fine behavior where applicable. Do not introduce encoder-click or capacitive-touch gestures. Never write an unsupported value and merely draw it as unavailable.
+Discrete enum controls advance one choice per four raw encoder ticks, clamp at their endpoints and do not accelerate with speed. Continuous custom controls retain their bounded scales; native TUNE/LEV retain stock modifier behavior. No custom encoder-click or capacitive-touch gestures are exposed. Never write an unsupported value and merely draw it as unavailable.
 
-Arp settings remain editable while ARP MIX is PAD, so a performer can prepare the next movement. Their values remain normal, while the MOVEMENT heading says `ARP OFF`. Changing them does not silently turn the arp up. Disabled controls consume turn/reset gestures without changing saved values, sending a configuration revision or creating a p-lock. Brief focus feedback says `YOUR NOTES` for the three disabled PLAY controls, `AS LEARNED` for CHORD/VOICE in LEARN TO ROOT, and `KEYS ONLY` for LATCH in SEQUENCER; leave the mode badge visible. Setup explains the mode-specific controls and selects the learned shape slot explicitly.
+Arp settings remain editable while MIX is PAD, so a performer can prepare the next movement without turning the arp up. Disabled controls consume turns without changing saved values or publishing a configuration revision. VOIC and STRM explain that a chord must be selected in PLAY; USER voicing explains that its intervals were learned. Blank cells have no hidden controls. Setup selects the learned shape slot explicitly and contains scan clock/restart and wheel assignments; latch has no page, menu or retained ownership state.
 
-### Performance feedback
+### Historical performance-feedback mockup
+
+This subsection records the original bitmap proposal, not the current native
+SRC painter. Current note, pedal and arp details are in the separate STATUS
+view. The old L badge shown in the source artwork is obsolete; current ownership
+contains physical-key and sustain-pedal flags only.
 
 On SOUND, show the detected/generated chord at left, such as `Cmaj7`, `Dm7` or `C/E`. A pending quantized chord uses a rightmost `>` marker beside the current name until the DSP commits the new chord revision; never replace the displayed note slots with the future chord early. With no admitted notes, show `NO NOTES`; if only release tails remain, show `RELEASE` and empty note slots. These are note/lifetime indicators, not audio meters: a finished AHD envelope, zero sustain or mute can make held notes inaudible.
 
@@ -1993,12 +2044,12 @@ the UI receiver must additionally enforce its wall-clock freshness deadline.
 | Word | Fast payload meaning |
 | --- | --- |
 | 0 | Publication DSP block |
-| 1 | Kind bits 30..31 (`0` fast); track 0..3; source 4..5; mode 6..7; pedal/latch-enabled/latch-active/pending-chord bits 8..11; quiet/ramp/fault/learn-active bits 12..15; pitch-valid mask 16..19; active foreground count 20..22; total releasing-group count 23..25 (foreground, shared tails and arp); arp gate/audible bits 26..27; bits 28..29 reserved |
+| 1 | Kind bits 30..31 (`0` fast); track 0..3; source 4..5; mode 6..7; pedal bit 8; former latch bits 9..10 reserved zero; pending-chord bit 11; quiet/ramp/fault/learn-active bits 12..15; pitch-valid mask 16..19; active foreground count 20..22; total releasing-group count 23..25 (foreground, shared tails and arp); arp gate/audible bits 26..27; bits 28..29 reserved |
 | 2 | Instance generation |
 | 3 | Applied effective-control revision, including firmware-backed values |
 | 4 | Applied chord revision |
 | 5 | Four admitted MIDI pitches, one byte each; validity comes from word 1 |
-| 6 | Four membership bytes: key, pedal, latch flags plus stable source-tone identity within the chord revision |
+| 6 | Four membership bytes: key/pedal flags in bits 0..1, former latch flag bit 2 reserved zero, with the existing stable source-tone identity packing unchanged |
 | 7 | Actual arp pitch bits 0..7; pitch-valid bit 8; source-match-valid bit 9; source-tone index bits 10..11; reserved bits 12..15; bounded ordinal bits 16..31. Source-match-valid means the arp source revision equals word 4; generate packed masks in SDK |
 | 8 | Applied arp mix, unique physically held count, eligible-but-excluded count, and reserved byte |
 | 9 | Clock mode (LOCAL/GRID/PHASE), state (0 local, 1 waiting, 2 running, 3 lost, 4 stopped), provider bits (bit0 grid, bit1 phase), and applied rate ID, one byte each |
@@ -2022,9 +2073,9 @@ consumer is enabled on-device.
 
 ### UI acceptance
 
-Use a pure bitmap renderer with host fixtures for all six reference frames, plus NO NOTES, RELEASE, pedal down with no notes, latch enabled but empty, fifth key, pending chord, pending encoder value, LINK LOST and VOICE ERR. Check exact pixel bounds and independent field truncation at native resolution; the enlarged reference is not a substitute for native-font readability.
+Use native SRC renderer fixtures for every current family/page, plus NO NOTES, RELEASE, pedal down with no notes, fifth key, pending chord, pending encoder value, LINK LOST and VOICE ERR in STATUS. Check that legacy latch bits never produce a label or ownership mark. Check exact pixel bounds and independent field truncation at native resolution; the original enlarged mockup is not a substitute for native-font readability.
 
-Exercise every encoder on both pages and every disabled PLAY/LEARN/SEQUENCER control; assert storage values and DSP revisions as well as pixels. Verify source/mode badges and capture ownership, MIDI note zero, long accidental/octave names, missing-clock capabilities, and source/rate changes while notes are held. Check an arp gate spanning a chord change: the actual pitch remains visible, but no mismatched source slot is inverted. Separate requested/applied/saved states in delayed-ACK and failed-save scenarios. Drop, duplicate and reorder detail fragments; reject invalid framing and old LEARN sessions, and prove timeout recovery without blanking fresh fast notes.
+Exercise every encoder on all current pages, including blank cells, disabled PLAY/LEARN controls, synchronized-clock BPM and grid-clock SWNG; assert storage values and DSP revisions as well as pixels. Verify mode and capture ownership, MIDI note zero, long accidental/octave names, missing-clock capabilities, and source/rate changes while notes are held. Check an arp gate spanning a chord change: the actual pitch remains visible in STATUS, but no mismatched source slot is highlighted. Separate requested/applied/saved states in delayed-ACK and failed-save scenarios. Drop, duplicate and reorder detail fragments; reject invalid framing and old LEARN sessions, and prove timeout recovery without blanking fresh fast notes.
 
 In running firmware, prove page persistence against `mf_srcpage`, SRC and UP/DOWN behavior, FUNC+SRC machine selection, focus expiry, return from AMP/FLTR, rapid switching between CANOPY and stock tracks, key repeat and modal ownership. A late status fragment or turn event must never show or modify the wrong track. Confirm the actual native header/page-dot geometry before accepting the layout, then check OLED readability and knob correspondence on hardware.
 
@@ -2065,7 +2116,7 @@ cannot reconstruct physical key ownership, so the release does not duplicate
 LEARN capture in DSP telemetry. The SRC page stops animation under the modal;
 DSP telemetry continues to own applied audio values, notes and arp state.
 
-The native SRC adapter maps SOUND and TONE A/H to stock TUNE/LEVEL parameter
+The native SRC adapter maps SOUND A/H to stock TUNE/LEVEL parameter
 codes and forwards their native modifier behavior. The current custom list
 controls use four raw encoder ticks per choice without acceleration; continuous
 custom controls retain their existing bounded scales. Encoder presses on custom
@@ -2158,7 +2209,11 @@ Stage 1 is complete at its emulator acceptance boundary. The declared policy's
 these are instruction counts, not a measured hardware CPU budget. Stage 6 owns
 hardware timing and release approval.
 
-## Stage 2 implementation
+## Stage 2 implementation checkpoint (historical)
+
+This records the completed Stage 2 behavior. Latch was subsequently removed
+from the keyboard mapper, arp settings and presentation on 2026-11-10; the
+current ownership rules above supersede that part of this checkpoint.
 
 The optional single-instance adapter now owns a bounded CF musical mapper above
 its physical MIDI ledger. PLAY, ROOT + TYPE, LEARN TO ROOT, latch, twelve selector
@@ -2279,7 +2334,7 @@ Details and evidence are in the
 | --- | --- | --- |
 | 0 | Pin MIDI boundaries and transport allocation on 1.17; define V2 capability | USB and DIN observation/fallthrough, upload intact, no overlapping forward/reply claims |
 | 1 | V2 lifecycle and simple sine voices, explicit keyboard route | Hold C-E, add G, release E: C/G remain continuous in final output; pedal and low-then-high velocity pass |
-| 2 | Bounded pool, PLAY, ROOT + TYPE, LEARN TO ROOT, latch and settings menu | Deterministic ownership, silent selectors, capture/transposition, panic and failure recovery |
+| 2 | Bounded pool, PLAY, ROOT + TYPE, LEARN TO ROOT and settings menu | Deterministic key/pedal ownership, silent selectors, capture/transposition, panic and failure recovery; historical latch behavior is retired |
 | 3 | Pad oscillator families, local envelopes, drift and stock filter/FX integration | Pitch/aliasing/headroom checks, bounded memory/instructions, musical sustained/retrigger tests |
 | 4 | Master-grid arp, blend/strum; then finer clock/local BPM | Correct note order/gates, chord commit, stop/restart, clock-loss and tempo-change behavior |
 | 5 — complete | Presets, named display and two SRC pages | Host and booted DT2 1.17 acceptance: revision agreement, stable IDs, persistence errors, unaffected stock views |
@@ -2312,7 +2367,7 @@ Factory data occupy 185,440 bytes. Frame level calibration happens offline;
 filtered levels retain the same gain, and there is no per-note automatic gain.
 
 The engine retains four held pad groups, one arp group and the existing shared
-release-tail pool. Note identity, velocity, sustain, latch, bend, drift and
+release-tail pool. Note identity, velocity, sustain pedal, bend, drift and
 stealing stay with the existing owners. Same-pitch arp onsets inherit phase and
 timbre-envelope history from their pad owner. Table changes use one bounded
 transition at a time; further requests replace the pending destination instead
@@ -2326,14 +2381,14 @@ signed envelope, velocity and CC1 amounts shape position without changing the
 amplitude envelope. Modulation amounts default to zero. CC1 is scoped by USB/DIN
 port and channel; CC121 resets the route's wheel, and CC120 retains it.
 
-TONE is the third native SRC page: `TUNE / WAVE / POS / DEP` above
-`RATE / SHAP / RST / LEV`. Native TUNE, source LEV, dedicated track LEVEL/DATA
-and held-SRC show-values keep their firmware presentation and behavior. SOUND D
-aliases POS for a wavetable choice; legacy COLOR remains remembered. WAVE
-combines VELVT/REED and all five factory tables as specified above, while the
-persisted family and table fields remain separate. TONE C-G are inactive for
-VELVT/REED. WAVETABLE TIMBRE retains the clock and extended modulation controls
-without a duplicate table selector. The native page vector must actually
+TONE is the third native SRC page: `POS / DEP / HZ or RATE / SHAP` above
+`ENV / ATK / REL / VEL`. SOUND A/H retain native TUNE/source LEV; dedicated
+track LEVEL/DATA and held-SRC show-values keep their firmware behavior across
+pages. WAVE lives only on SOUND D and combines VELVT/REED, all five factory
+tables and FM, while the persisted family and table fields remain separate.
+Legacy COLR remains remembered on TONE A, with B-H unused for VELVT/REED.
+MODULATION setup retains scan clock/restart and signed wheel assignments.
+Position has no duplicate on SOUND or WT FM. The native page vector must actually
 allocate space for three entries; enlarging only its reported end pointer is
 forbidden.
 
@@ -2379,21 +2434,21 @@ without acceleration. Continuous controls are smoothed.
 
 ### SRC presentation
 
-SOUND D is DEP while FM is selected. The existing ARP page is unchanged.
+TONE A is DEP while FM is selected. SOUND retains the common source selector.
 FM ENV is a fourth SRC page, available only for FM. The native page vector must
 own four entries; extending its end pointer without allocating capacity is
 forbidden. Leaving FM removes the envelope page from navigation.
 
 | Knob | FM TONE | FM ENV |
 | --- | --- | --- |
-| A | Native TUNE | ATK |
-| B | WAVE | DEC |
-| C | ALG | SUS |
-| D | BAL | REL |
+| A | DEP | ATK |
+| B | ALG | DEC |
+| C | BAL | SUS |
+| D | FDBK | REL |
 | E | RTA | ENV |
 | F | RTB | VEL |
-| G | FDBK | WHEL |
-| H | Native LEV | Native LEV |
+| G | — | — |
+| H | — | — |
 
 FM ENV changes timbre, not the note's amplitude envelope. Its signed amount,
 velocity and routed wheel amounts add to base DEP and clamp to the supported
@@ -2509,20 +2564,20 @@ WT FM. Its layout is:
 
 | Encoder | Control | Meaning |
 | --- | --- | --- |
-| A | TUNE | Stock source tuning, including native held-SRC values |
-| B | DEP | FM depth, 0–100%; finer response near zero |
-| C | RAT | Modulator frequency relative to the played note |
-| D | ENV | Signed timbre-envelope contribution to FM depth |
-| E | ATK | Timbre-envelope attack |
-| F | REL | Timbre-envelope release |
-| G | WHEL | Signed MIDI mod-wheel contribution to FM depth |
-| H | LEV | Stock source level |
+| A | DEP | FM depth, 0–100%; finer response near zero |
+| B | RAT | Modulator frequency relative to the played note |
+| C | ENV | Signed timbre-envelope contribution to FM depth |
+| D–H | — | Unused |
+
+TUNE and LEV remain on SOUND. Shared timbre ATK/REL live on TONE alongside
+position, scanning and its envelope amount. The signed wheel contribution is
+SETTINGS > DIGIKIT > CANOPY > MODULATION > WHEEL TO WT FM.
 
 RAT uses the same four raw encoder ticks per choice as WAVE and SHAP. Choices
 are 0.25, 0.50, 0.75, 1.00, 1.25, sqrt(2), 1.50, sqrt(3), 2.00, 2.50, 3.00,
 4.00, 5.00, 6.00, 7.00 and 8.00. ENV and WHEL range from −100% to +100%.
 ATK/REL are the existing wavetable timbre envelope: they also affect position
-when the position-envelope amount is enabled in WAVETABLE TIMBRE. The stock
+when the position-envelope amount is enabled on TONE. The stock
 AMP page continues to control each note's loudness independently.
 
 DEP zero with neutral ENV/WHEL retains the original wavetable audio. Positive
@@ -2584,7 +2639,7 @@ Use generated SDK constants and extend existing helpers. Core runtime/adapters r
 | `tests/support/machine_rig.py` | V2 event-stream conformance support |
 | `tests/regression/` | Bounded running-firmware keyboard, persistence, timing and coexistence scenarios |
 
-Required behavior tests include repeated same-note presses, stale note-off after stealing, four-note replacement with tails, pedal/latch interactions, selector/root ordering, route edits with held notes, channels on tracks 1 and 16, wrong epochs, full queues, ACK loss/replay, malformed configuration, missing provider and fault recovery. Explicitly test press C, reroute/reset, press C again, old C-off, new C-off: the old release must not kill the new note. Every failure must leave unrelated tracks and upload functional.
+Required behavior tests include repeated same-note presses, stale note-off after stealing, four-note replacement with tails, held-key/pedal interactions, key-up release in PLAY and ROOT across PANEL/USB/DIN, migration of old latch-on presets to zero, selector/root ordering, route edits with held notes, channels on tracks 1 and 16, wrong epochs, full queues, ACK loss/replay, malformed configuration, missing provider and fault recovery. Explicitly test press C, reroute/reset, press C again, old C-off, new C-off: the old release must not kill the new note. Every failure must leave unrelated tracks and upload functional.
 
 Timing tests cover keyboard input while stopped, repeated PLAY/STOP, pattern changes, clock loss/recovery, non-default master lengths/scales and external clock before those modes are advertised. Existing pattern-position proofs at one tempo/default pattern do not establish all these cases.
 

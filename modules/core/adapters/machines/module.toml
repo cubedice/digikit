@@ -281,6 +281,7 @@ from = { anchor = "cf.machine.fn.type_reader", len = 48 }
 [[object]]
 path = "build/machines-dt2.dko.json"
 sources = ["src/cf/dt2/machines.s", "src/cf/dt2/src-pages.c"]
+optional = ["instrument_mod_param"]
 place = "cf.expansion"
 devices = ["dt2"]
 

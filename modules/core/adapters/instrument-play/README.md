@@ -7,19 +7,21 @@ hardware release approval. The development policy admits one instance with a
 Instruction-test limits are not a measured hardware cycle budget.
 
 The native UI revision uses the stock TUNE, source LEV and track LEV paths on
-SOUND, with native fonts and bounded custom cells. ARP H aliases SOUND G's MIX.
-Hold SRC uses the firmware's momentary values state. Detailed notes, latch,
+SOUND, with native fonts and bounded custom cells. ARP G/H edit clock/local BPM.
+Hold SRC uses the firmware's momentary values state. Detailed notes,
 pedal and clock state are under `DIGIKIT > MODULES > CANOPY > SETTINGS > STATUS`.
 See the [accepted UI contract](../../../../docs/design/canopy-ui-review.md).
 
-SOUND B / CHRD now selects PLAY or any generated chord directly; TONE B / WAVE
+SOUND B / CHRD now selects PLAY or any generated chord directly; SOUND D / WAVE
 selects Velvet, Reed, one of the five wavetables or FM. CHRD is a presentation of
 the mode/chord fields; WAVE has its own view-only identity so it cannot alias
 the FM algorithm field. Discrete lists accumulate four raw ticks per item without acceleration.
 Mode transitions retire old note ownership; root chord changes update held notes.
 Family transitions retain the held DSP voices and invalidate queued SRC edits.
-The global setup entry is now CANOPY, with INPUT, CHORD LEARN, SOUND SETUP,
-WAVETABLE TIMBRE and PRESETS submenus. Duplicate performance controls were removed.
+The global setup entry is CANOPY, with INPUT, CHORD LEARN, MODULATION and PRESETS.
+MODULATION holds scan clock/restart and the three wheel amounts. The complete
+position envelope is on wavetable TONE. TUNE/LEV are exclusive to SOUND A/H;
+unused cells on the other pages cannot edit stock source parameters.
 
 The DTII 1.17 KeyboardView bridge intercepts resolved performance notes before
 stock mono audition. It retains native key-up closures and uses a separate PANEL
@@ -88,20 +90,22 @@ CLOSE, OPEN, INVERSION 1 and INVERSION 2 are available. A chord outside MIDI
 0-127 is rejected as a whole. A missing custom shape produces silence and an
 EMPTY status. Live chord/voicing edits retain the tokens of unchanged pitches.
 
-LATCH retains a released phrase. After all physical keys are up, a new press
-starts its replacement and subsequent rolled notes join it. Replacement clears
-old pedal membership. Turning latch off retains only physical/pedal-owned notes.
+Latch ownership is removed. A released physical key starts its note's release
+unless held by the sustain pedal; arp candidates follow the same ownership.
+Control slot 12 is reserved zero. Old CPST v1-v5 records may contain latch 0/1;
+decode discards that setting and subsequent saves write zero without changing
+other sound controls. Malformed former latch values are still rejected.
 CC1, CC64, CC120, CC121, CC123 and per-route pitch bend retain their defined roles.
 The mapper handles pedal ownership; bend and wheel are forwarded once to the DSP.
 CC121 also emits a zero wheel value for its USB/DIN route; CC120 preserves it.
 Unsupported controllers still follow the existing stock fallthrough policy.
 
 In CANOPY > CHORD LEARN, choose one of eight SHAPE SLOT values, then LEARN TO ROOT.
-Capture auditions in isolated PLAY with latch disabled, accumulating up to four unique pitches even
+Capture auditions in isolated PLAY, accumulating up to four unique pitches even
 after release. The fifth distinct pitch reports FULL. SAVE checks the displayed
 session/revision, rejects an empty or changed capture, and stores ascending
 intervals relative to its lowest note. CANCEL or NO preserves the prior shape.
-Both exits restore the previous mode/latch and invalidate held-key ownership.
+Both exits restore the previous mode and invalidate held-key ownership.
 After saving, select SOUND B / CHRD = USER to play the learned shape.
 For example C-G-B-E above C saves 0,7,11,16; root D plays D-A-C#-F#.
 
@@ -110,7 +114,7 @@ shared settings store. Validation covers length, version, checksum, reserved
 bytes, counts, range and ordering before applying any template. RAM save is
 immediate; a UI-task tick performs the durable write without holding the MIDI
 critical section. Failure retains RAM and dirty state; RETRY SHAPE SAVE retries.
-Learned templates and saved presets persist across reboot. Keyboard mode, latch,
+Learned templates and saved presets persist across reboot. Keyboard mode,
 voicing and sound controls start at defaults until you load a preset. External
 MIDI starts disabled unless SAVE ROUTING was used; saved routing is restored
 after instrument admission, with activation still gated by the DSP handshake.
@@ -184,10 +188,33 @@ artifact names above. Instruction tests measure bounded CF work separately from
 SHARC rendering. These checks do not establish hardware timing or release approval.
 
 
-## Pad sound setup (Stage 3)
+## Stock MOD integration
+
+CANOPY's six native custom SRC slots are fixed per source family. Mirrors
+26/27/28/31/32/33 map to COLOR/DRIFT/ARP MIX/STRUM/GATE/SWING for Velvet/Reed;
+POSITION/SCAN DEPTH/SCAN RATE/TIMBRE ENV/WT FM DEPTH/WT FM ENVELOPE for
+wavetables; and FM DEPTH/FM BALANCE/FM FEEDBACK/FM ENVELOPE/FM ATTACK/FM RELEASE
+for FM. The optional `instrument_mod_param` hook supplies native destination
+descriptors only for the admitted instrument type and a live generation. Other
+machines retain their normal lookup. Family labels publish with the control
+snapshot; the SRC knob pages remain independent of these six carrier slots.
+
+Admission initializes the six unused Sound mirrors at their neutral `0x4000`.
+The stock MOD engine produces the movement. Before each callback, the adapter
+reads the completed stock frame, verifies the carrier type, and applies bounded
+offsets to a scratch copy of a CPSB bank. Its revision and schema stay unchanged;
+the acknowledged base bank and preset values are never edited. A neutral frame
+uses the original bank directly. Scalar duplicates, the sync scan-rate range
+and GRID's no-swing constraint remain valid. No new content-module ABI or
+persistent configuration fields are required.
+
+Native TUNE/LEVEL modulation remains stock. Custom Sound/project persistence,
+parameter locks and arbitrary target reassignment are outside this change.
+
+## Pad sound setup (Stage 3, historical)
 
 The table below documents the earlier local envelope. Current CANOPY uses the
-track AMP page per note through the opt-in V6 input. SOUND SETUP contains an AMP
+track AMP page per note through the opt-in V6 input. The earlier SOUND SETUP contained an AMP
 page reminder and the arp clock/BPM settings; its duplicate amplitude attack and
 release controls have been removed. Legacy preset values remain stored for
 compatibility with the earlier input layouts. Native AHD and ADSR snapshots use
@@ -206,9 +233,10 @@ The final five KEYBOARD rows control the pad while notes remain held:
 | ATTACK | 0..127 maps to `10 + 14*value` milliseconds | 5 = 80 ms |
 | RELEASE | 0..127 maps to `40 + 64*value` milliseconds from full level | 15 = 1000 ms |
 
-The Stage 5 SOUND/MOVEMENT pages expose the performance controls; ATTACK and
-RELEASE remain in setup. Four explicit presets save the complete custom bank
-and an embedded learned shape. They are not native Sound/project parameters.
+The current SOUND/ARP/TONE pages supersede this early setup layout. Native AMP
+owns amplitude attack/release; the former SOUND SETUP group is removed. Four
+explicit presets save the complete custom bank and an embedded learned shape.
+They are not native Sound/project parameters.
 Stock filter, level, pan and FX
 continue downstream of the instrument. Use a sustained stock AMP shape for
 independent keyboard notes; stock AMP remains a shared master shape.
@@ -257,7 +285,7 @@ independent legacy COLOR, wavetable and FM settings, while reading versions
 1/2/3 without changing their previous sound. Full ranges, layout and migration
 rules are in the [FM contract](../../../../docs/design/canopy.md#four-operator-fm-extension-cpsa).
 
-FM uses SOUND D for DEP and a family-specific TONE page. A conditional fourth
+FM uses TONE A for DEP and a family-specific TONE page. A conditional fourth
 FM ENV page exposes the timbre ADSR and signed modulation amounts. The native
 page vector owns four entries; leaving FM returns navigation to three pages.
 Native TUNE, source LEV, track LEVEL and held-SRC values retain stock semantics.

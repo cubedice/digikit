@@ -10,6 +10,7 @@
 #include "routing.h"
 #include "src-control.h"
 #include "src-clock.h"
+#include "src-mod.h"
 #include "../../../midi-events/src/cf/bridge.h"
 extern uint32_t dkrt_instrument_type(void);
 extern uint32_t dkrt_instrument_generation(void);
@@ -43,13 +44,13 @@ static int wt[12]={0,0,0,10,0,0,0,100,5,15,100,100};
 static int fm[13]={32,0,50,3,8,0,5,40,50,15,100,100,100};
 static int wtfm[4]={0,3,100,100};
 uint32_t instrument_src_pages(void) { return pad_family>=2 ? 4 : 3; }
-uint32_t instrument_src_tune_page(uint32_t page) { return page==0 || page==2 || (page==3 && pad_family==2); }
+uint32_t instrument_src_tune_page(uint32_t page) { return page==0; }
 static dk_ui_menu *tone_menu;
-static dk_ui_menu *input_menu, *shape_menu, *sound_menu;
+static dk_ui_menu *input_menu, *shape_menu;
 static uint32_t pad_dirty=1;
 static void pad_changed(void *ctx,int value) { (void)ctx; (void)value; pad_dirty=1; }
 static KbState keyboard;
-static int keyboard_initialized, mode, latch, type, voicing, selector_octave=1;
+static int keyboard_initialized, mode, type, voicing, selector_octave=1;
 static int selector_channel, slot=1, storage_result, save_pending;
 static uint32_t shown_session, shown_revision, refreshed_revision, refreshed_status;
 static uint32_t shown_main=UINT32_MAX;
@@ -204,17 +205,6 @@ static int quarantined(void)
         if (mi_ledger.routes[i].track==0 && mi_ledger.routes[i].quarantined) return 1;
     return 0;
 }
-static const char *const arp_clocks[]={"LOCAL BPM","MASTER GRID","MASTER PHASE"};
-static const char *const arp_clock_labels[]={"CLOCK: LOCAL BPM","CLOCK: MASTER GRID","CLOCK: MASTER PHASE"};
-static void arp_clock_done(void *ctx,int value)
-{
-    (void)ctx; if(value<0 || value>2) return;
-    arp_clock=value; arp_rate=value==1 ? 1 : 4;
-    if(value==1) arp_swing=0;
-    pad_changed(0,value); if(sound_menu) dk_ui_refresh(sound_menu);
-}
-static void arp_clock_choice(void *ctx,int value)
-{ (void)ctx; (void)value; dk_ui_choice("ARP CLOCK",arp_clocks,3,arp_clock_done,0); }
 /* Snapshot on the UI task under the mapper lock. Routes and performance state
  * are deliberately absent. Presets include the effective custom shape, not a
  * mutable library slot number. */
@@ -224,7 +214,7 @@ static void preset_snapshot(CpPreset *p)
     uint16_t v[16]={(uint16_t)keyboard.type,(uint16_t)keyboard.voicing,
         (uint16_t)pad_color,(uint16_t)pad_drift,(uint16_t)pad_strum,(uint16_t)arp_mix,
         (uint16_t)arp_rate,(uint16_t)arp_order,(uint16_t)(arp_octaves+3),(uint16_t)arp_gate,
-        (uint16_t)arp_swing,(uint16_t)arp_restart,(uint16_t)keyboard.latch,0,
+        (uint16_t)arp_swing,(uint16_t)arp_restart,0,0,
         (uint16_t)pad_attack,(uint16_t)pad_release};
     for(uint32_t i=0;i<16;++i) p->control[i]=v[i];
     for(uint32_t i=0;i<12;++i) p->control[16+i]=(uint16_t)wt[i];
@@ -277,7 +267,9 @@ int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint3
     case CP_GATE: arp_gate=v; break;
     case CP_SWING: arp_swing=v; break;
     case CP_RESTART: arp_restart=v; break;
-    case CP_LATCH: latch=v; kb_latch(&keyboard,v); break;
+    case CS_CLOCK:
+        arp_clock=src_state.clock; arp_rate=src_state.value[CP_RATE]; arp_swing=src_state.value[CP_SWING]; break;
+    case CS_BPM: arp_bpm=(int)cs_choice_value(&src_state,CS_BPM); break;
     case CS_WAVE:
         pad_family=(int)((src_state.metadata>>4)&3u);
         pad_color=src_state.legacy_color;
@@ -351,7 +343,6 @@ static void status_fill(dk_ui_menu *m,void *ctx)
     status_pair(m,snapshot.mode==KB_PLAY?"PLAY":snapshot.mode==KB_ROOT?"ROOT":"LEARN",d.heading);
     status_pair(m,d.notes[0],d.notes[1]); status_pair(m,d.notes[2],d.notes[3]);
     int invalid=d.fault==1 || d.fault==2;
-    dk_ui_text(m,invalid?"LATCH --":d.latch==2?"LATCH HOLDING":d.latch?"LATCH ON":"LATCH OFF");
     dk_ui_text(m,invalid?"PEDAL --":d.pedal?"PEDAL DOWN":"PEDAL UP");
     snapshot.page[0]=1; cv_build(&d,&snapshot,&src_status,now,"","",preset_result || storage_result);
     dk_ui_text(m,d.heading);
@@ -398,7 +389,6 @@ static void preset_load(void *ctx,int value)
     instrument_sound_suspend();
     mode=keyboard.mode=p.mode; type=keyboard.type=(uint8_t)p.control[CP_CHORD];
     voicing=keyboard.voicing=(uint8_t)p.control[CP_VOICING];
-    latch=keyboard.latch=(uint8_t)p.control[CP_LATCH];
     keyboard.preset_shape.count=p.shape.count;
     for(uint32_t i=0;i<4;++i) keyboard.preset_shape.intervals[i]=p.shape.intervals[i];
     keyboard.preset_shape_active=1;
@@ -443,29 +433,39 @@ static void scan_clock_done(void *ctx,int value)
 }
 static void scan_clock_choice(void *ctx,int value)
 { (void)ctx; (void)value; dk_ui_choice("SCAN CLOCK",scan_clocks,2,scan_clock_done,0); }
+static const char *const scan_restarts[]={"FREE","TRIG","PATT"};
+static void scan_restart_done(void *ctx,int value)
+{
+    (void)ctx; if(value<0 || value>2) return;
+    wt[CP_WT_RESET-16]=value; pad_changed(0,0); if(tone_menu) dk_ui_refresh(tone_menu);
+}
+static void scan_restart_choice(void *ctx,int value)
+{ (void)ctx; (void)value; dk_ui_choice("SCAN RESTART",scan_restarts,3,scan_restart_done,0); }
 /* Biased amount storage is an explicit wire detail; the menu exposes a signed
  * amount, including a neutral zero, rather than unexplained 0..200 values. */
-static int env_amount,velocity_amount,wheel_amount;
+static int wheel_amount,fm_wheel_amount,wtfm_wheel_amount;
 static void amount_changed(void *ctx,int value)
 {
     uint32_t id=(uint32_t)(uintptr_t)ctx;
-    if(id==CP_WT_ENV || id==CP_WT_VELOCITY || id==CP_WT_WHEEL) wt[id-16]=value+100;
+    /* The FM wheel and WT wheel share a wire ID in their different banks.
+     * Menu contexts identify the bank explicitly. */
+    if(id==0) wt[CP_WT_WHEEL-16]=value+100;
+    else if(id==1) fm[CP_FM_WHEEL-15]=value+100;
+    else if(id==2) wtfm[CP_WTFM_WHEEL-28]=value+100;
     pad_changed(0,0);
 }
 static void tone_fill(dk_ui_menu *m,void *ctx)
 {
     (void)ctx;
-    env_amount=wt[CP_WT_ENV-16]-100; velocity_amount=wt[CP_WT_VELOCITY-16]-100; wheel_amount=wt[CP_WT_WHEEL-16]-100;
-    dk_ui_text(m,pad_family==2?"WAVETABLE TIMBRE":"SELECT WAVE: TONE B");
+    wheel_amount=wt[CP_WT_WHEEL-16]-100; fm_wheel_amount=fm[CP_FM_WHEEL-15]-100;
+    wtfm_wheel_amount=wtfm[CP_WTFM_WHEEL-28]-100;
     dk_ui_action(m,scan_clocks[wt[CP_WT_CLOCK-16]],scan_clock_choice,0,0);
-    dk_ui_value(m,"ENV AMOUNT",&env_amount,-100,100,amount_changed,(void *)(uintptr_t)CP_WT_ENV);
-    dk_ui_value(m,"TIMBRE ATTACK",&wt[CP_WT_ATTACK-16],0,127,pad_changed,0);
-    dk_ui_value(m,"TIMBRE RELEASE",&wt[CP_WT_RELEASE-16],0,127,pad_changed,0);
-    dk_ui_value(m,"VELOCITY TO POS",&velocity_amount,-100,100,amount_changed,(void *)(uintptr_t)CP_WT_VELOCITY);
-    dk_ui_value(m,"WHEEL TO POS",&wheel_amount,-100,100,amount_changed,(void *)(uintptr_t)CP_WT_WHEEL);
-    dk_ui_text(m,"AMOUNTS: PERCENT OF TABLE");
+    dk_ui_action(m,scan_restarts[wt[CP_WT_RESET-16]],scan_restart_choice,0,0);
+    dk_ui_value(m,"WHEEL TO POS",&wheel_amount,-100,100,amount_changed,0);
+    dk_ui_value(m,"WHEEL TO FM",&fm_wheel_amount,-100,100,amount_changed,(void *)(uintptr_t)1);
+    dk_ui_value(m,"WHEEL TO WT FM",&wtfm_wheel_amount,-100,100,amount_changed,(void *)(uintptr_t)2);
 }
-static const dk_ui_menu_desc tone_desc={.name="canopy-tone",.title="WAVETABLE TIMBRE",.fill=tone_fill};
+static const dk_ui_menu_desc tone_desc={.name="canopy-tone",.title="CANOPY MODULATION",.fill=tone_fill};
 static void input_fill(dk_ui_menu *m, void *ctx)
 {
     (void)ctx;
@@ -495,14 +495,6 @@ static void shape_fill(dk_ui_menu *m,void *ctx)
     dk_ui_text(m,"PLAY SHAPE: CHRD USER");
 }
 static const dk_ui_menu_desc shape_desc={.name="canopy-shapes",.title="CANOPY CHORD LEARN",.fill=shape_fill};
-static void sound_fill(dk_ui_menu *m,void *ctx)
-{
-    (void)ctx;
-    dk_ui_text(m,"ENVELOPE: AMP PAGE");
-    dk_ui_action(m,arp_clock_labels[arp_clock],arp_clock_choice,0,0);
-    dk_ui_value(m,"LOCAL BPM",&arp_bpm,30,300,pad_changed,0);
-}
-static const dk_ui_menu_desc sound_desc={.name="canopy-sound",.title="CANOPY SOUND SETUP",.fill=sound_fill};
 static void fill(dk_ui_menu *m,void *ctx)
 {
     (void)ctx;
@@ -510,10 +502,8 @@ static void fill(dk_ui_menu *m,void *ctx)
     if(input_menu) dk_ui_submenu(m,"INPUT",input_menu);
     if(!shape_menu) shape_menu=dk_ui_menu_new(&shape_desc);
     if(shape_menu) dk_ui_submenu(m,"CHORD LEARN",shape_menu);
-    if(!sound_menu) sound_menu=dk_ui_menu_new(&sound_desc);
-    if(sound_menu) dk_ui_submenu(m,"SOUND SETUP",sound_menu);
     if(!tone_menu) tone_menu=dk_ui_menu_new(&tone_desc);
-    if(tone_menu) dk_ui_submenu(m,"WAVETABLE TIMBRE",tone_menu);
+    if(tone_menu) dk_ui_submenu(m,"MODULATION",tone_menu);
     if(!preset_menu) preset_menu=dk_ui_menu_new(&preset_desc);
     if(preset_menu) dk_ui_submenu(m,"PRESETS",preset_menu);
 }
@@ -618,7 +608,7 @@ void instrument_play_tick(void)
         refreshed_revision=keyboard.revision; refreshed_status=keyboard.status; dk_ui_refresh(learn_menu);
     }
     ip_keyboard_status[0]=keyboard.mode; ip_keyboard_status[1]=keyboard.type;
-    ip_keyboard_status[2]=keyboard.latch; ip_keyboard_status[3]=keyboard.capture_count;
+    ip_keyboard_status[2]=0; ip_keyboard_status[3]=keyboard.capture_count;
     ip_keyboard_status[4]=keyboard.session; ip_keyboard_status[5]=keyboard.revision;
     ip_keyboard_status[6]=keyboard.status; ip_keyboard_status[7]=keyboard.dirty;
     ip_keyboard_status[8]=(uint32_t)storage_result;
@@ -634,6 +624,7 @@ void instrument_play_tick(void)
     /* The DSP bank and its presentation values come from one locked snapshot.
      * The same revision owns SRC pending markers and the audio configuration. */
     CpPreset current; src_requested(&current);
+    instrument_mod_publish(current.family);
     const uint16_t *v=src_state.value;
     uint32_t values[32]={11|((uint32_t)current.mode<<8)|(src_state.native_tune<<16),current.family,
         v[CP_COLOR],v[CP_DRIFT],v[CP_ATTACK],v[CP_RELEASE],v[CP_ARP_MIX],current.bpm,

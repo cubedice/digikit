@@ -7,8 +7,10 @@ DTII 1.17 `core/instrument-play` adapter; ordinary firmware cannot admit it.
 The engine supports Velvet/Reed, factory wavetable and four-operator FM families,
 drift, wavetable FM and independent note envelopes controlled by the stock AMP page. FM adds
 a fourth, conditional FM ENV page; wavetable sounds instead expose WT FM.
-The current source requires matching CPSB firmware and package builds; the installation
-and acceptance results below describe the preceding wavetable revision.
+The current source requires matching CPSB firmware and package builds. The
+2026-11-10 compact controls and native MOD revision is a local candidate; it has
+not been installed on the physical DTII. The installation and acceptance results
+below describe the preceding revisions.
 Full Stage 5 and Stage 6 wavetable acceptance passed in the emulator with matching
 CPS9 firmware and package builds, including Overloop recording, crossfades,
 transfers and shared release tails. The matching wavetable firmware and module
@@ -36,7 +38,7 @@ Only track 1 is admitted. Other tracks and channels retain stock behavior.
 four pending-replacement records in a caller-owned 256-byte bank.
 Each note has its own token, gate, oscillator phase, velocity and amplitude envelope.
 With matching V7 firmware and package builds, the stock AMP page controls each
-note's AHD or ADSR shape. SOUND SETUP points to that page. The earlier linear
+note's AHD or ADSR shape. The earlier linear
 attack/release fields remain available only to legacy fallback inputs. Output is
 mono, in 32-sample blocks at 48 kHz. A normalized sine rotator supplies the fundamental
 and finite second/third harmonic families; harmonics fade before Nyquist.
@@ -79,41 +81,60 @@ source LEV and track LEVEL retain their existing scales.
 on SRC. Presets still store the original mode, chord, family and table fields;
 existing sounds need no conversion beyond the existing preset migration.
 
-SETTINGS > DIGIKIT > CANOPY contains five short groups: INPUT for connections
-and selector keys; CHORD LEARN for custom shapes; SOUND SETUP for the AMP-page
-reminder and arp clock/BPM; WAVETABLE TIMBRE for scan clock and expression;
-and PRESETS for save/load. Performance controls are no longer duplicated there.
+SETTINGS > DIGIKIT > CANOPY contains four groups: INPUT for connections and
+selector keys; CHORD LEARN for custom shapes; MODULATION for scan clock/restart
+and wheel amounts; and PRESETS for save/load. ARP G/H select clock and local BPM.
+Latch is removed: releasing a key starts its release unless the sustain pedal
+holds it. Older presets load with their former latch setting discarded.
+
+## Stock MOD destinations
+
+The stock MOD page offers six CANOPY SRC targets. Their names follow the current
+WAVE sound type; no extra assignment menu is needed.
+
+| Sound type | Six SRC targets |
+| --- | --- |
+| Velvet / Reed | COLOR, DRIFT, ARP MIX, STRUM, GATE, SWING |
+| Wavetable | POSITION, SCAN DEPTH, SCAN RATE, TIMBRE ENV, WT FM DEPTH, WT FM ENVELOPE |
+| FM | FM DEPTH, FM BALANCE, FM FEEDBACK, FM ENVELOPE, FM ATTACK, FM RELEASE |
+
+Choose a target with MOD's DEST control, then set its LFO depth and timing as
+usual. Modulation is added to the knob value within that parameter's range;
+turning it off restores the unchanged base value. It does not write movement
+into a preset. Scan rate follows the selected free/synced range; GRID clock
+keeps arp swing disabled. Native TUNE and LEVEL remain native destinations.
+Changing WAVE also changes the meaning of any of these six active SRC routes.
+Native Sound/project persistence of CANOPY's custom base controls and parameter
+locks are separate work; exposing MOD targets does not add them.
 
 ## Wavetable controls
 
-Press SRC to cycle SOUND, ARP and TONE. **TONE B / WAVE** selects VELVT,
+Press SRC to cycle SOUND, ARP and TONE. **SOUND D / WAVE** selects VELVT,
 REED, ANLG, GLASS, VOCAL, ORGAN, METAL or FM directly. The first two are the original
 synth sounds; the next five are wavetables. FM has its own TONE layout and a
 conditional fourth FM ENV page; wavetables add the fourth WT FM page described below. There is no separate engine menu.
-TONE C-G apply to wavetables and show `--` for Velvet/Reed; their remembered
-values return when a wavetable is selected.
+Velvet/Reed have COLR on TONE A; their other TONE cells are unused. Wavetable
+position and its modulation share the complete TONE page.
 
 | Encoder | TONE control | Meaning |
 | --- | --- | --- |
-| A | TUNE | Stock DTII tuning, shared with SOUND |
-| B | WAVE | VELVT, REED, ANLG, GLASS, VOCAL, ORGAN, METAL or FM |
-| C | POS | Continuous position 1.00-8.00 through eight related waves |
-| D | DEP | Scan depth 0-100%; full depth reaches 3.5 frames either side |
-| E | HZ / RATE | 0.01-10.00 under HZ, or four bars through 1/16 with tempo sync |
-| F | SHAP | Sine, triangle or smooth random scan |
-| G | RST | Free-running, phrase restart or pattern restart |
-| H | LEV | Stock source level, shared with SOUND |
+| A | POS | Continuous position 1.00-8.00 through eight related waves |
+| B | DEP | Scan depth 0-100%; full depth reaches 3.5 frames either side |
+| C | HZ / RATE | 0.01-10.00 under HZ, or the available tempo divisions |
+| D | SHAP | Sine, triangle or smooth random scan |
+| E | ENV | Signed envelope amount to position |
+| F | ATK | Position-envelope attack |
+| G | REL | Position-envelope release |
+| H | VEL | Signed velocity amount to position |
 
 DEP starts at zero; raise it to hear automatic scanning. To keep a sound, use
 CANOPY SETUP > PRESETS > SAVE CURRENT SOUND.
 
-SOUND D becomes a POS shortcut. It does not overwrite the remembered legacy
-COLOR setting. Dedicated LEVEL/DATA remains the stock track-level control;
+TUNE and LEV appear only on SOUND A/H. Dedicated LEVEL/DATA remains the stock track-level control;
 holding SRC uses the native show-values presentation. No second level scale is added.
 
-The WAVETABLE TIMBRE setup submenu selects the scan clock and provides a
-separate timbre envelope with attack/release and signed envelope, velocity and
-wheel amounts. These modulation amounts default to zero. Position modulation
+The MODULATION submenu selects scan clock/restart and signed wheel amounts for
+position, standalone FM and wavetable FM. These amounts default to zero. Position modulation
 clamps at the table ends. Mod wheel follows its USB/DIN channel; CC121 clears
 that route's wheel, while CC120 stops sound without changing wheel position.
 
@@ -138,24 +159,24 @@ outside this custom preset format.
 
 ## Playing FM
 
-On TONE, turn B / WAVE past METAL to FM. CHRD still selects PLAY or a generated
-chord on SOUND. SOUND D becomes DEP: low values are soft and simple, higher
+On SOUND, turn D / WAVE past METAL to FM. CHRD still selects PLAY or a generated
+chord on SOUND. TONE A becomes DEP: low values are soft and simple, higher
 values add harmonic complexity. Turning WAVE away from FM remembers its settings
 and restores the other source's own COLOR/POS and modulation parameters.
 
 | Knob | FM TONE | FM ENV |
 | --- | --- | --- |
-| A | Native TUNE | Timbre attack |
-| B | WAVE | Timbre decay |
-| C | ALG | Timbre sustain |
-| D | BAL between tones X/Y | Timbre release |
+| A | DEP | Timbre attack |
+| B | ALG | Timbre decay |
+| C | BAL between tones X/Y | Timbre sustain |
+| D | FDBK on modulator B | Timbre release |
 | E | RTA, modulator A ratio | Signed ENV amount |
 | F | RTB, modulator B ratio | Signed VEL-to-depth amount |
-| G | FDBK on modulator B | Signed WHEL-to-depth amount |
-| H | Native source LEV | Native source LEV |
+| G | — | — |
+| H | — | — |
 
 Press SRC to cycle SOUND, ARP, TONE and FM ENV. The fourth page is omitted when
-another source is selected. TUNE/LEV, dedicated LEVEL/DATA and held-SRC values use
+another source is selected. TUNE/LEV on SOUND, dedicated LEVEL/DATA and held-SRC values use
 the native drawing and scales. WAVE, ALG and ratio choices use four raw encoder
 ticks per item. MIX continues to mean pad versus arp; BAL means FM tone X versus Y.
 
@@ -192,7 +213,7 @@ the [FM design](../../../docs/design/canopy.md#four-operator-fm-extension-cpsa).
 The earlier legacy fixture owns sixteen separate voice banks and a 256-byte staging bank.
 Each track additionally has a 256-byte controller record with 32 route pedal bits and
 four deferred-token/route pairs; a separate 256-byte staging record makes pedal and
-voice changes commit together. CC64 values 64�127 hold released keys; 0�63 release
+voice changes commit together. CC64 values 64–127 hold released keys; 0–63 release
 only deferred tokens from that route. CC121 centers that route's bend and clears its pedal ownership
 without releasing physically held keys. Reset clears pedal state for the affected
 track (all tracks on epoch reset). Deferred tokens match current foreground or
@@ -395,10 +416,11 @@ without changing their original sound; old CPS5/CPS6/CPS7 banks remain accepted.
 
 ## Movement controls (CPS5 compatibility)
 
-The ARP page exposes MIX (0 pad, 127 arp), RATE (1..8 notes/quarter), gate percent
+The ARP page exposes RATE (1..8 notes/quarter), gate percent
 (1..100), UP/DOWN/UP-DOWN/AS-PLAYED/RANDOM, signed octave spread (-3..+3),
-swing (0..75), TRIG/PATTERN/CONTINUE restart and latch. CANOPY > SOUND SETUP
-selects LOCAL BPM, MASTER GRID or MASTER PHASE clock and local tempo (30..300).
+swing (0..75), TRIG/PATTERN/CONTINUE restart, clock and local tempo (30..300).
+SOUND G controls MIX (0 pad, 127 arp). ARP G selects LOCAL BPM, MASTER GRID or
+MASTER PHASE clock; ARP H edits local BPM while LOCAL is selected.
 SOUND F controls STRUM MS (0..500). In MASTER GRID, the
 rate becomes a whole-step multiple and swing is disabled. Clock changes
 restart timing observation. Setup values currently return to defaults at boot.
@@ -445,19 +467,15 @@ change level across notes. Set MIX to PAD when comparing the pad alone.
 
 ## FM on wavetable sounds
 
-Choose ANLG, GLASS, VOCAL, ORGAN or METAL with WAVE on TONE, then press SRC
-again to reach WT FM. Position and scanning stay on TONE.
+Choose ANLG, GLASS, VOCAL, ORGAN or METAL with WAVE on SOUND, then cycle SRC
+to WT FM. Position, scanning and the shared timbre envelope stay on TONE.
 
 | Knob | Label | Function |
 | --- | --- | --- |
-| A | TUNE | Stock tuning |
-| B | DEP | FM depth, 0-100% |
-| C | RAT | Modulator-to-note frequency ratio, 0.25-8.00 |
-| D | ENV | Timbre envelope to FM depth, -100% to +100% |
-| E | ATK | Timbre-envelope attack |
-| F | REL | Timbre-envelope release |
-| G | WHEL | Mod wheel to FM depth, -100% to +100% |
-| H | LEV | Stock source level |
+| A | DEP | FM depth, 0-100% |
+| B | RAT | Modulator-to-note frequency ratio, 0.25-8.00 |
+| C | ENV | Timbre envelope to FM depth, -100% to +100% |
+| D–H | — | Unused; TUNE/LEV stay on SOUND, ATK/REL on TONE, WHEL in MODULATION |
 
 Start with DEP around 30 and RAT 1.00 or 2.00. Increase DEP for a stronger
 change; noninteger ratios give more metallic timbres. RAT uses the same slower

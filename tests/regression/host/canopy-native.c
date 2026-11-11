@@ -8,7 +8,7 @@ void mf_src_free(uint8_t *p) { (void)p; assert(0); }
 uint32_t mf_native_page_count(uint32_t type, uint32_t ordinary) { (void)type; return ordinary; }
 static CsState state;
 uint32_t instrument_src_pages(void) { return cs_pages(&state); }
-uint32_t instrument_src_tune_page(uint32_t page) { return page==0 || page==2 || (page==3 && ((state.metadata>>4)&3)==2); }
+uint32_t instrument_src_tune_page(uint32_t page) { return page==0; }
 static uint32_t selected,alternate,now=100,type_id=9,generation=1,stock_turns,stock_keys,invalidations,polls;
 static uint32_t manager[16],node[4],vtable[60],modal[24],modal_node[4];
 static uint32_t focus_mask,texts,graphs,toasts;
@@ -101,7 +101,7 @@ static void clear_paint(uint8_t *canvas)
 static void protected_pixels(const uint8_t *canvas,int native_tune)
 {
     for(int y=0;y<64;++y) for(int x=0;x<128;++x)
-        if(y<11 || x<23 || x>=124 || (native_tune && y<37 && x<48) || (y>=38 && x>=101))
+        if(y<11 || x<23 || x>=124 || (native_tune && ((y<37 && x<48) || (y>=38 && x>=101))))
             assert(canvas[y*128+x]==0xaa);
 }
 int main(int argc,char **argv)
@@ -120,66 +120,62 @@ int main(int argc,char **argv)
         now=139; ip_src_update((uint8_t *)v); assert(!invalidations);
         now=140; ip_src_update((uint8_t *)v); assert(invalidations==1);
     } else if(!strcmp(argv[1],"tone")) {
-        cs_metadata(&state,2u<<4); v[0x90/4]=2; context((uint8_t *)v);
-        assert(ip_src_parameter((uint8_t *)v,0)==0xca && ip_src_parameter((uint8_t *)v,7)==0xd1);
-        assert(ip_src_parameter((uint8_t *)v,8)==10 && ip_src_parameter((uint8_t *)v,2)==0);
-        event((uint8_t *)e,1,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7);
-        event((uint8_t *)e,8,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7);
-        event((uint8_t *)e,3,350,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e);
-        assert(state.value[CP_WT_POS]==350 && stock_turns==2);
+        real_display=1; cs_metadata(&state,2u<<4); v[0x90/4]=2; context((uint8_t *)v);
+        for(unsigned i=0;i<8;++i) assert(ip_src_parameter((uint8_t *)v,i)==0);
+        assert(ip_src_parameter((uint8_t *)v,8)==10);
+        event((uint8_t *)e,1,350,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e);
+        assert(state.value[CP_WT_POS]==350 && !stock_turns);
+        event((uint8_t *)e,8,100,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e);
+        assert(state.value[CP_WT_VELOCITY]==200 && !stock_turns);
+        focus_mask=0; clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
+        const char *labels[]={"POS","DEP","HZ","SHAP","ENV","ATK","REL","VEL"};
+        for(unsigned i=0;i<8;++i) assert(!strcmp(label_text[i],labels[i]));
+        protected_pixels(canvas,0);
         for(unsigned i=0;i<3;++i) {
-            event((uint8_t *)e,2,1,i,0); ip_src_turn((uint8_t *)v,(uint8_t *)e);
-            assert(state.value[CP_WT_TABLE]==0);
+            event((uint8_t *)e,4,1,i,0); ip_src_turn((uint8_t *)v,(uint8_t *)e);
+            assert(state.value[CP_WT_SHAPE]==0);
         }
-        event((uint8_t *)e,2,1,1000,1); ip_src_turn((uint8_t *)v,(uint8_t *)e);
-        assert(state.value[CP_WT_TABLE]==1 && stock_turns==2);
-        event((uint8_t *)e,2,4,1001,0); ip_src_turn((uint8_t *)v,(uint8_t *)e);
-        assert(state.value[CP_WT_TABLE]==2 && stock_turns==2);
-        ip_src_draw((uint8_t *)v,canvas);
-        for(int y=0;y<64;++y) for(int x=0;x<128;++x)
-            if(y<11 || x<23 || x>=124 || (y<37 && x<48) || (y>=38 && x>=101))
-                assert(canvas[y*128+x]==0xaa);
+        event((uint8_t *)e,4,1,1000,1); ip_src_turn((uint8_t *)v,(uint8_t *)e);
+        assert(state.value[CP_WT_SHAPE]==1 && !stock_turns);
+        event((uint8_t *)e,4,4,1001,0); ip_src_turn((uint8_t *)v,(uint8_t *)e);
+        assert(state.value[CP_WT_SHAPE]==2 && !stock_turns);
+        for(unsigned key=41;key<=48;++key) { e[3]=key; assert(ip_src_key((uint8_t *)v,(uint8_t *)e)==1); }
     } else if(!strcmp(argv[1],"wavetable-fm")) {
         real_display=1; cs_metadata(&state,2u<<4); v[0x90/4]=3; context((uint8_t *)v);
         assert(mf_src_page_count(type_id)==4);
         state.value[CP_WTFM_DEPTH]=100; state.value[CP_WTFM_RATIO]=15;
         state.value[CP_WTFM_ENV]=0; state.value[CP_WTFM_WHEEL]=200;
-        state.value[CP_WT_ATTACK]=127; state.value[CP_WT_RELEASE]=127;
         clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
-        const char *labels[]={"","DEP","RAT","ENV","ATK","REL","WHEL",""};
+        const char *labels[]={"DEP","RAT","ENV","","","","",""};
         for(unsigned i=0;i<8;++i) assert(!strcmp(label_text[i],labels[i]));
-        assert(!strcmp(body_text[2],"8.00") && graph_mask==0x7a);
-        protected_pixels(canvas,1);
+        assert(!strcmp(body_text[1],"8.00") && graph_mask==5);
+        protected_pixels(canvas,0);
         v[0x190/4]=0x01010101; clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
-        const char *values[]={"","100%","8.00","-100%","127","127","+100%",""};
+        const char *values[]={"100%","8.00","-100%","","","","",""};
         for(unsigned i=0;i<8;++i) assert(!strcmp(label_text[i],values[i]));
-        protected_pixels(canvas,1);
-        assert(ip_src_parameter((uint8_t *)v,0)==0xca && ip_src_parameter((uint8_t *)v,7)==0xd1);
-        assert(ip_src_parameter((uint8_t *)v,8)==10 && ip_src_parameter((uint8_t *)v,1)==0);
-        event((uint8_t *)e,1,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7);
-        event((uint8_t *)e,8,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7);
-        event((uint8_t *)e,9,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7 && stock_turns==3);
-        event((uint8_t *)e,3,-3,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e); assert(state.value[CP_WTFM_RATIO]==15);
-        event((uint8_t *)e,3,-1,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e); assert(state.value[CP_WTFM_RATIO]==14);
-        e[3]=41; assert(ip_src_key((uint8_t *)v,(uint8_t *)e)==7);
-        e[3]=48; assert(ip_src_key((uint8_t *)v,(uint8_t *)e)==7);
-        e[3]=42; assert(ip_src_key((uint8_t *)v,(uint8_t *)e)==1);
+        protected_pixels(canvas,0);
+        for(unsigned i=0;i<8;++i) assert(ip_src_parameter((uint8_t *)v,i)==0);
+        assert(ip_src_parameter((uint8_t *)v,8)==10);
+        event((uint8_t *)e,1,-1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==1 && state.value[CP_WTFM_DEPTH]==99);
+        event((uint8_t *)e,8,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==1 && !stock_turns);
+        event((uint8_t *)e,9,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7 && stock_turns==1);
+        event((uint8_t *)e,2,-3,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e); assert(state.value[CP_WTFM_RATIO]==15);
+        event((uint8_t *)e,2,-1,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e); assert(state.value[CP_WTFM_RATIO]==14);
+        for(unsigned key=41;key<=48;++key) { e[3]=key; assert(ip_src_key((uint8_t *)v,(uint8_t *)e)==1); }
     } else if(!strcmp(argv[1],"fm-envelope")) {
         cs_metadata(&state,3u<<4); v[0x90/4]=3; context((uint8_t *)v);
         assert(mf_src_page_count(type_id)==4);
-        assert(ip_src_parameter((uint8_t *)v,0)==0 && ip_src_parameter((uint8_t *)v,7)==0xd1);
+        for(unsigned i=0;i<8;++i) assert(ip_src_parameter((uint8_t *)v,i)==0);
         assert(ip_src_parameter((uint8_t *)v,8)==10);
         event((uint8_t *)e,1,12,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e);
         assert(state.value[CP_FM_ATTACK]==17 && !stock_turns);
-        event((uint8_t *)e,8,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7 && stock_turns==1);
-        event((uint8_t *)e,9,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7 && stock_turns==2);
+        event((uint8_t *)e,8,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==1 && !stock_turns);
+        event((uint8_t *)e,9,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7 && stock_turns==1);
         v[0x190/4]=0x01010101; ip_src_draw((uint8_t *)v,canvas);
-        assert(!strcmp(label_text[0],"64"));
-        for(int y=0;y<64;++y) for(int x=0;x<128;++x)
-            if(y<11 || x<23 || x>=124 || (y>=38 && x>=101)) assert(canvas[y*128+x]==0xaa);
+        assert(!strcmp(label_text[0],"64")); protected_pixels(canvas,0);
         cs_metadata(&state,2u<<4); context((uint8_t *)v);
         assert(mf_src_page_count(type_id)==4 && v[0x90/4]==3);
-        assert(ip_src_parameter((uint8_t *)v,0)==0xca);
+        assert(ip_src_parameter((uint8_t *)v,0)==0);
         cs_metadata(&state,0); context((uint8_t *)v);
         assert(mf_src_page_count(type_id)==3 && v[0x90/4]==2);
     } else if(!strcmp(argv[1],"fm-presentation")) {
@@ -187,16 +183,16 @@ int main(int argc,char **argv)
         state.value[CP_FM_ALG]=3; state.value[CP_FM_BAL]=100;
         state.value[CP_FM_RTA]=0; state.value[CP_FM_RTB]=15; state.value[CP_FM_FB]=100;
         clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
-        const char *tone_labels[]={"","WAVE","ALG","BAL","RTA","RTB","FDBK",""};
+        const char *tone_labels[]={"DEP","ALG","BAL","FDBK","RTA","RTB","",""};
         for(unsigned i=0;i<8;++i) assert(!strcmp(label_text[i],tone_labels[i]));
-        assert(!strcmp(body_text[1],"FM") && !strcmp(body_text[2],"CHAIN"));
+        assert(!strcmp(body_text[1],"CHAIN"));
         assert(!strcmp(body_text[4],"0.25") && !strcmp(body_text[5],"8.00"));
-        assert(graph_mask==0x48 && graph_value[3]==127 && graph_value[6]==127);
-        protected_pixels(canvas,1);
+        assert(graph_mask==0x0d && graph_value[2]==127 && graph_value[3]==127);
+        protected_pixels(canvas,0);
         v[0x190/4]=0x01010101; clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
-        const char *tone_values[]={"","FM","CHAIN","100%","0.25","8.00","100%",""};
+        const char *tone_values[]={"32","CHAIN","100%","100%","0.25","8.00","",""};
         for(unsigned i=0;i<8;++i) assert(!strcmp(label_text[i],tone_values[i]));
-        assert(graph_mask==0x48); protected_pixels(canvas,1);
+        assert(graph_mask==0x0d); protected_pixels(canvas,0);
         state.value[CP_FM_RTA]=5; state.value[CP_FM_RTB]=7;
         clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
         assert(!strcmp(label_text[4],"1.41") && !strcmp(label_text[5],"1.73"));
@@ -206,31 +202,31 @@ int main(int argc,char **argv)
         const uint16_t envelope[]={127,127,100,127,0,100,200};
         for(unsigned i=0;i<7;++i) state.value[CP_FM_ATTACK+i]=envelope[i];
         clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
-        const char *env_labels[]={"ATK","DEC","SUS","REL","ENV","VEL","WHEL",""};
+        const char *env_labels[]={"ATK","DEC","SUS","REL","ENV","VEL","",""};
         for(unsigned i=0;i<8;++i) assert(!strcmp(label_text[i],env_labels[i]));
-        assert(graph_mask==0x7f && graph_value[4]==0 && graph_value[5]==63 && graph_value[6]==127);
+        assert(graph_mask==0x3f && graph_value[4]==0 && graph_value[5]==63);
         assert(canvas[20*128+24]==0); /* FM ENV A is custom, not protected TUNE. */
         protected_pixels(canvas,0);
         v[0x190/4]=0x01010101; clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
-        const char *env_values[]={"127","127","100%","127","-100%","0%","+100%",""};
+        const char *env_values[]={"127","127","100%","127","-100%","0%","",""};
         for(unsigned i=0;i<8;++i) { assert(!strcmp(label_text[i],env_values[i])); assert(strlen(label_text[i])<=5); }
-        assert(graph_mask==0x7f); protected_pixels(canvas,0);
-        assert(ip_src_parameter((uint8_t *)v,0)==0 && ip_src_parameter((uint8_t *)v,7)==0xd1);
+        assert(graph_mask==0x3f); protected_pixels(canvas,0);
+        assert(ip_src_parameter((uint8_t *)v,0)==0 && ip_src_parameter((uint8_t *)v,7)==0);
         assert(ip_src_parameter((uint8_t *)v,8)==10);
-        event((uint8_t *)e,8,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7);
-        event((uint8_t *)e,9,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7 && stock_turns==2);
+        event((uint8_t *)e,8,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==1);
+        event((uint8_t *)e,9,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7 && stock_turns==1);
     } else if(!strcmp(argv[1],"routing")) {
         assert(ip_src_parameter((uint8_t *)v,0)==0xca);
         assert(ip_src_parameter((uint8_t *)v,7)==0xd1);
         assert(ip_src_parameter((uint8_t *)v,2)==0);
         assert(ip_src_parameter((uint8_t *)v,8)==10);
-        event((uint8_t *)e,4,3,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==1);
-        assert(state.value[CP_COLOR]==67 && !stock_turns);
+        event((uint8_t *)e,5,3,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==1);
+        assert(state.value[CP_DRIFT]==3 && !stock_turns);
         event((uint8_t *)e,1,3,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7);
         assert(stock_turns==1);
         event((uint8_t *)e,2,3,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e);
         assert(state.value[CP_CHORD]==0 && stock_turns==1);
-        selected=1; context((uint8_t *)v); event((uint8_t *)e,4,3,0,0);
+        selected=1; context((uint8_t *)v); event((uint8_t *)e,5,3,0,0);
         assert(ip_src_parameter((uint8_t *)v,0)==1000);
         assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7 && stock_turns==2);
     } else if(!strcmp(argv[1],"values")) {
@@ -239,12 +235,12 @@ int main(int argc,char **argv)
         assert(!strcmp(label_text[1],"64"));
         v[0x190/4]=0;ip_src_draw((uint8_t *)v,canvas);
         assert(!strcmp(label_text[1],"COLR"));
-        event((uint8_t *)e,4,1,0,0);ip_src_turn((uint8_t *)v,(uint8_t *)e);
-        ip_src_draw((uint8_t *)v,canvas);assert(!strcmp(label_text[3],"64") && toasts==1);
-        focus_mask=0;ip_src_draw((uint8_t *)v,canvas);assert(!strcmp(label_text[3],"COLR"));
+        event((uint8_t *)e,5,1,0,0);ip_src_turn((uint8_t *)v,(uint8_t *)e);
+        ip_src_draw((uint8_t *)v,canvas);assert(!strcmp(label_text[4],"64") && toasts==1);
+        focus_mask=0;ip_src_draw((uint8_t *)v,canvas);assert(!strcmp(label_text[4],"COLR"));
         v[0x90/4]=1;context((uint8_t *)v);assert(ip_src_parameter((uint8_t *)v,8)==10);
         event((uint8_t *)e,8,12,0,0);ip_src_turn((uint8_t *)v,(uint8_t *)e);
-        assert(state.value[CP_ARP_MIX]==12 && !stock_turns);
+        assert(cs_choice_value(&state,CS_BPM)==132 && !stock_turns);
     } else if(!strcmp(argv[1],"delayed")) {
         event((uint8_t *)e,4,3,0,0); v[0x90/4]=1;
         ip_src_turn((uint8_t *)v,(uint8_t *)e);
@@ -253,9 +249,9 @@ int main(int argc,char **argv)
         ip_src_turn((uint8_t *)v,(uint8_t *)e); assert(!stock_turns);
     } else if(!strcmp(argv[1],"overflow")) {
         uint32_t events[65][6];
-        for(unsigned i=0;i<65;++i) event((uint8_t *)events[i],4,1,0,0);
-        ip_src_turn((uint8_t *)v,(uint8_t *)events[0]); assert(state.value[CP_COLOR]==64);
-        ip_src_turn((uint8_t *)v,(uint8_t *)events[64]); assert(state.value[CP_COLOR]==65);
+        for(unsigned i=0;i<65;++i) event((uint8_t *)events[i],5,1,0,0);
+        ip_src_turn((uint8_t *)v,(uint8_t *)events[0]); assert(state.value[CP_DRIFT]==0);
+        ip_src_turn((uint8_t *)v,(uint8_t *)events[64]); assert(state.value[CP_DRIFT]==1);
     } else if(!strcmp(argv[1],"tick")) {
         v[0]=(uint32_t)(uintptr_t)vtable; vtable[4]=(uint32_t)(uintptr_t)ip_src_draw;
         node[0]=(uint32_t)(uintptr_t)((uint8_t *)manager+0x14); node[2]=(uint32_t)(uintptr_t)v;

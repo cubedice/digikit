@@ -15,7 +15,7 @@ ports = ["dt2-1.17"]
 "dt2-1.17" = "experimental"
 [[object]]
 path = "build/play-dsp.dko.json"
-sources = ["src/dsp/play.s", "src/dsp/reset-protected.s", "src/dsp/carrier.s"]
+sources = ["src/dsp/play.s", "src/dsp/modulation.s", "src/dsp/reset-protected.s", "src/dsp/carrier.s"]
 place = "dsp.l2"
 devices = ["dt2"]
 [object.externs]
@@ -25,6 +25,7 @@ _mi_velocity_next = "dsp.voice.site.velocity_operand.next"
 _iv_amp_attack_table = "dsp.voice.site.amp_attack_table"
 _iv_amp_decay_table = "dsp.voice.site.amp_decay_table"
 _iv_amp_hold_table = "dsp.voice.site.amp_hold_table"
+_iv_mod_frame = "dsp.voice.value.frame_base"
 [[op]]
 op = "hook"
 hook = "dsp.voice.hook.envelope_workspace"
@@ -40,11 +41,34 @@ to = "_mi_velocity_entry"
 
 [[object]]
 path = "build/play-cf.dko.json"
-sources = ["src/cf/control.c", "src/cf/keyboard.c", "src/cf/preset.c", "src/cf/src-state.c", "src/cf/status.c", "src/cf/src-display.c", "src/cf/src-clock.c", "src/cf/src-native.c", "src/cf/panel.c", "src/cf/panel.s", "src/cf/sound.c", "src/cf/sound-load.s", "src/cf/view.s"]
+sources = ["src/cf/control.c", "src/cf/keyboard.c", "src/cf/preset.c", "src/cf/src-state.c", "src/cf/src-mod.c", "src/cf/src-mod.s", "src/cf/status.c", "src/cf/src-display.c", "src/cf/src-clock.c", "src/cf/src-native.c", "src/cf/panel.c", "src/cf/panel.s", "src/cf/sound.c", "src/cf/sound-load.s", "src/cf/view.s"]
 place = "cf.expansion"
 devices = ["dt2"]
 [object.externs]
 ip_view_next = "hook.cf.machine.fn.selection_build.tail"
+ip_mod_color = "params.ip_mod_color.index"
+ip_mod_drift = "params.ip_mod_drift.index"
+ip_mod_mix = "params.ip_mod_mix.index"
+ip_mod_strum = "params.ip_mod_strum.index"
+ip_mod_gate = "params.ip_mod_gate.index"
+ip_mod_swing = "params.ip_mod_swing.index"
+ip_mod_position = "params.ip_mod_position.index"
+ip_mod_scan_depth = "params.ip_mod_scan_depth.index"
+ip_mod_scan_rate = "params.ip_mod_scan_rate.index"
+ip_mod_timbre_env = "params.ip_mod_timbre_env.index"
+ip_mod_wtfm_depth = "params.ip_mod_wtfm_depth.index"
+ip_mod_wtfm_env = "params.ip_mod_wtfm_env.index"
+ip_mod_fm_depth = "params.ip_mod_fm_depth.index"
+ip_mod_balance = "params.ip_mod_balance.index"
+ip_mod_feedback = "params.ip_mod_feedback.index"
+ip_mod_fm_env = "params.ip_mod_fm_env.index"
+ip_mod_fm_attack = "params.ip_mod_fm_attack.index"
+ip_mod_fm_release = "params.ip_mod_fm_release.index"
+ip_mod_track_type = "cf.machine.site.instrument_mod_type_row_literal"
+ip_mod_split_next = "hook.cf.machine.site.instrument_mod_split.return"
+ip_mod_split_skip = "cf.machine.site.instrument_mod_split_skip"
+ip_mod_recombine_next = "hook.cf.machine.site.instrument_mod_recombine.return"
+ip_mod_recombine_skip = "cf.machine.site.instrument_mod_recombine_skip"
 ip_view_build = "cf.machine.fn.selection_build"
 ip_project = "cf.project.fn.singleton"
 ip_kit = "cf.project.fn.active_kit"
@@ -76,6 +100,14 @@ ip_panel_stock_key = "cf.page.site.instrument_panel_key"
 ip_panel_stock_detach = "cf.page.site.instrument_panel_detach"
 ip_panel_active = "cf.page.site.instrument_panel_active"
 ip_panel_stock_toggle = "cf.page.site.instrument_panel_toggle"
+[[op]]
+op = "hook"
+hook = "cf.machine.hook.instrument_mod_split"
+to = "ip_mod_split"
+[[op]]
+op = "hook"
+hook = "cf.machine.hook.instrument_mod_recombine"
+to = "ip_mod_recombine"
 [[op]]
 op = "write"
 anchor = "cf.page.site.instrument_panel_toggle_call"
@@ -163,3 +195,203 @@ op = "write"
 anchor = "cf.page.site.instrument_src_detach_slot"
 value = "ip_src_detach"
 width = 4
+
+# Six native Sound modulation slots, with family-specific destination names.
+
+[[entry]]
+registry = "params"
+id = "ip_mod_color"
+name = "Color"
+short = "COLR"
+template = 0xd1
+slot = 1
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_drift"
+name = "Drift"
+short = "DRFT"
+template = 0xd1
+slot = 2
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_mix"
+name = "Arp mix"
+short = "MIX"
+template = 0xd1
+slot = 3
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_strum"
+name = "Strum"
+short = "STRM"
+template = 0xd1
+slot = 4
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_gate"
+name = "Arp gate"
+short = "GATE"
+template = 0xd1
+slot = 5
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_swing"
+name = "Arp swing"
+short = "SWNG"
+template = 0xd1
+slot = 6
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_position"
+name = "Wavetable position"
+short = "POS"
+template = 0xd1
+slot = 1
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_scan_depth"
+name = "Scan depth"
+short = "SCAN"
+template = 0xd1
+slot = 2
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_scan_rate"
+name = "Scan rate"
+short = "RATE"
+template = 0xd1
+slot = 3
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_timbre_env"
+name = "Timbre envelope"
+short = "ENV"
+template = 0xd1
+slot = 4
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_wtfm_depth"
+name = "WT FM depth"
+short = "DEP"
+template = 0xd1
+slot = 5
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_wtfm_env"
+name = "WT FM envelope"
+short = "ENV"
+template = 0xd1
+slot = 6
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_fm_depth"
+name = "FM depth"
+short = "DEP"
+template = 0xd1
+slot = 1
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_balance"
+name = "FM balance"
+short = "BAL"
+template = 0xd1
+slot = 2
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_feedback"
+name = "FM feedback"
+short = "FDBK"
+template = 0xd1
+slot = 3
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_fm_env"
+name = "FM envelope"
+short = "ENV"
+template = 0xd1
+slot = 4
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_fm_attack"
+name = "FM attack"
+short = "ATK"
+template = 0xd1
+slot = 5
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_fm_release"
+name = "FM release"
+short = "REL"
+template = 0xd1
+slot = 6
+min = 0
+max = 0x7f00
+default = 0x4000

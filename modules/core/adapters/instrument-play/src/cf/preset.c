@@ -1,5 +1,5 @@
 #include "preset.h"
-static const uint16_t maximum[CP_CONTROLS]={11,3,127,127,500,127,8,4,6,100,75,2,1,0,127,127,4,700,100,1000,2,2,1,200,127,127,200,200,100,15,200,200};
+static const uint16_t maximum[CP_CONTROLS]={11,3,127,127,500,127,8,4,6,100,75,2,0,0,127,127,4,700,100,1000,2,2,1,200,127,127,200,200,100,15,200,200};
 static const uint16_t minimum[CP_CONTROLS]={0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0};
 void cp_wavetable_defaults(uint16_t controls[CP_CONTROLS])
 {
@@ -89,6 +89,10 @@ int cp_decode(CpPreset *out,const uint8_t *b,uint32_t length)
     cp_wavetable_defaults(p.control);
     cp_fm_defaults(p.fm);
     for(uint32_t i=0;i<16;++i) p.control[i]=(uint16_t)((uint32_t)b[8+2*i]*256+b[9+2*i]);
+    /* Every previous CPST version allowed latch 0/1. Accept that field only
+     * within its original range, then discard it before active validation. */
+    if(p.control[CP_RESERVED12]>1) return -1;
+    p.control[CP_RESERVED12]=0;
     if(!legacy) for(uint32_t i=0;i<12;++i) p.control[16+i]=(uint16_t)((uint32_t)b[64+2*i]*256+b[65+2*i]);
     if(legacy && b[40]>1) return -1;
     if(!legacy && !fm && b[40]>2) return -1;

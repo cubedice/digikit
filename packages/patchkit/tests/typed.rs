@@ -41,11 +41,13 @@ fn digest_without_dsp(syx: &[u8]) -> String {
 /// DT2 moved 2026-11-09 for four-page native vectors. Substituting only the DT2
 /// machines object from 640dc649 reproduced the previous f3c01683 pin exactly;
 /// the current object changes section 3 only (+20 bytes), reproducing df87acb4.
+/// DT2 moved 2026-11-10 for the optional instrument MOD parameter callback in
+/// the machines adapter's parameter-code hook (section 3 only; DN2 unchanged).
 const PINS: &[(&str, &str, &str)] = &[
     (
         "Digitakt_II_OS1.17.syx",
         "test/patched-pluck",
-        "df87acb4809e1a20a5d1070fac82b3c6c226663bc1c03a8c7ad328bfcd6b3e8d",
+        "e4ddef1a40cb2a5df3254a9a5f1acb47d2f862843d1b71ce6b8f045c41c2d38a",
     ),
     (
         "Digitone_II_OS1.12.syx",
