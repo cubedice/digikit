@@ -8,9 +8,9 @@ The engine supports Velvet/Reed, factory wavetable and four-operator FM families
 drift, wavetable FM and independent note envelopes controlled by the stock AMP page. FM adds
 a fourth, conditional FM ENV page; wavetable sounds instead expose WT FM.
 The current source requires matching CPSB firmware and package builds. The
-2026-11-10 compact controls and native MOD revision is a local candidate; it has
-not been installed on the physical DTII. The installation and acceptance results
-below describe the preceding revisions.
+2026-11-10 compact controls and native MOD revision is installed on the physical
+DTII (image ID `481b2b9a4fcddf5e`, finding 120 and its handover); the
+installation and acceptance results below describe the preceding revisions.
 Full Stage 5 and Stage 6 wavetable acceptance passed in the emulator with matching
 CPS9 firmware and package builds, including Overloop recording, crossfades,
 transfers and shared release tails. The matching wavetable firmware and module
