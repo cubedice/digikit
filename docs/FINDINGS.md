@@ -226,6 +226,11 @@ CANOPY DSP: [block rendering](findings/122-canopy-dsp-block-rendering.md) (**[D]
 wavetable and FM voices render a block at a time; worst callback 99,849 to
 77,017 instructions; bit-identical in all 1,164 CANOPY DSP tests).
 
+CANOPY trig locks: [DT2 1.17 lock storage and the packed design](findings/123-canopy-trig-locks.md)
+(**[D]**, lane layout and set/clear/save/load/playback routines; values
+unclamped 0..0x7fff; five safe SRC slots; trigs and CANOPY's own knobs do not
+reach CANOPY yet **[O]**).
+
 CANOPY tracks: [any track, up to four at once](findings/121-canopy-any-track.md)
 (**[D]**, per-track stock row/frame/kit strides, DSP slots bound by reset
 hints, per-track carrier ownership, status focus; four-busy-instance DSP load
