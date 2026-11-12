@@ -8,6 +8,7 @@
 .EXTERN _mi_envelope_next;
 .EXTERN _mi_carrier_flags;
 .EXTERN _mi_native_owner_valid;
+.EXTERN _mi_native_owner_track;
 .EXTERN _mi_native_owner_stamp;
 .EXTERN _mi_post_owner_valid;
 .EXTERN _mi_post_amp;
@@ -75,9 +76,10 @@ _me_found:
     // Native per-note AMP has already shaped this track's completed block.
     // Only the admitted stereo pair and the stock in-place 32-sample call
     // may skip this one stage; its configured record and later gain stay intact.
-    R3 = 1;
-    COMP(R4, R3);
-    IF GT JUMP _me_owned_flags;
+    R3 = LSHIFT R4 BY -1;
+    R2 = DM(_mi_native_owner_track);
+    COMP(R3, R2);
+    IF NE JUMP _me_owned_flags;
     R3 = DM(_mi_native_owner_valid);
     R3 = PASS R3;
     IF EQ JUMP _me_owned_flags;

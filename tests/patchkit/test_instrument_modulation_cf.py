@@ -85,6 +85,7 @@ uint32_t dkrt_instrument_generation(void) {{ return *(volatile uint32_t *){CONTR
             "_mf_spt": TYPE_FN,
             "ip_admission": CONTROL + 8,
             "ip_mod_track_type": CONTROL + 40,
+            "ip_track": CONTROL + 48,
             **{f"ip_mod_{name}": 0x300 + index for index, name in enumerate(NAMES)},
         },
         [
@@ -164,14 +165,18 @@ def test_sampler_bank_aliases_are_not_exposed_for_canopy(mapped, mirror):
 
 @pytest.mark.parametrize("site,track_register", [("split", 7), ("recombine", 6)])
 @pytest.mark.parametrize(
-    "track,generation,admitted,source_type,frame_type,bypass",
+    "track,owner,generation,admitted,source_type,frame_type,bypass",
     [
-        (0, 9, 1, 20, 20, True),
-        (1, 9, 1, 20, 20, False),
-        (0, 0, 1, 20, 20, False),
-        (0, 9, 0, 20, 20, False),
-        (0, 9, 1, 21, 20, False),
-        (0, 9, 1, 20, 0, False),
+        (0, 0, 9, 1, 20, 20, True),
+        (11, 11, 9, 1, 20, 20, True),
+        (1, 0, 9, 1, 20, 20, False),
+        (0, 11, 9, 1, 20, 20, False),
+        (11, 0xFFFFFFFF, 9, 1, 20, 20, False),
+        (0, 0, 0, 1, 20, 20, False),
+        (0, 0, 9, 0, 20, 20, False),
+        (0, 0, 9, 1, 21, 20, False),
+        (0, 0, 9, 1, 20, 0, False),
+        (11, 11, 9, 1, 20, 0, False),
     ],
 )
 def test_sampler_conversion_is_bypassed_only_for_current_admitted_track(
@@ -179,6 +184,7 @@ def test_sampler_conversion_is_bypassed_only_for_current_admitted_track(
     site,
     track_register,
     track,
+    owner,
     generation,
     admitted,
     source_type,
@@ -188,14 +194,18 @@ def test_sampler_conversion_is_bypassed_only_for_current_admitted_track(
     admission = [admitted, SOUND, 0, 0, 0, source_type, 0, 0]
     source = bytearray(128)
     struct.pack_into(">H", source, 0x5A, 0x6500)
-    memory = {
-        CONTROL: be32(20)
+    # The type-row literal names track 0's SRAM row; rows are 0x9a bytes apart.
+    control = bytearray(64 + 0x9A * 16)
+    control[:52] = (
+        be32(20)
         + be32(generation)
         + b"".join(be32(v) for v in admission)
-        + be32(CONTROL + 44)
-        + bytes([frame_type]),
-        SOUND: bytes(source),
-    }
+        + be32(CONTROL + 64)
+        + be32(0)
+        + be32(owner)
+    )
+    control[64 + 0x9A * track] = frame_type
+    memory = {CONTROL: bytes(control), SOUND: bytes(source)}
     result = mapped.run_case(
         "ip_mod_" + site,
         mem=memory,

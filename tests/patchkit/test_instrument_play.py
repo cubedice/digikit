@@ -57,7 +57,7 @@ def playback_object():
 .PKDATA _iv_amp_decay_table, 512;
 .PKDATA _iv_amp_hold_table, 512;
 .PKDATA _test_amp_record, 44;
-.PKDATA _iv_mod_frame, 1024;
+.PKDATA _iv_mod_frame, 2048; // sixteen 0x60-byte parameter rows follow byte 0xda
 .PKDATA _test_state, 2976;
 .PKDATA _test_packet, 128;
 .PKDATA _test_metadata, 24;
@@ -240,11 +240,11 @@ def playback(playback_object):
         put("_test_packet", packet)
         return call(1, R4=symbols["_test_packet"])
 
-    def configure(generation=1, values=(1,), revision=1, schema=None, **regs):
+    def configure(generation=1, values=(1,), revision=1, schema=None, track=0, **regs):
         put(
             "_test_metadata",
             [
-                0,
+                track,
                 generation,
                 revision,
                 0,
@@ -270,9 +270,10 @@ def playback(playback_object):
         put("_test_values", values)
         return call(2, R4=symbols["_test_values"], R8=symbols["_test_metadata"], **regs)
 
-    def events(batch, generation=1, revision=1):
+    def events(batch, generation=1, revision=1, track=0):
         put(
-            "_test_packet", wire_packet(batch, generation=generation, revision=revision)
+            "_test_packet",
+            wire_packet(batch, generation=generation, revision=revision, track=track),
         )
         return call(3, R4=symbols["_test_packet"])
 
@@ -1318,3 +1319,53 @@ def test_canopy_status_output_flows_through_protected_carrier(playback):
     put("_instrument_session", [0])
     call(0)
     assert get("_instrument_ui_status")[0] == 0
+
+
+def test_instance_binds_to_the_reset_track_and_renders_only_there(playback):
+    call, put, get, reset, configure, events, symbols = playback
+    # The first reset while unconfigured binds the instance to its track.
+    assert reset(track=11) == 1
+    assert get("_iv_track") == [11]
+    call(0)
+    assert configure(track=0) == 0  # configuration names the bound track only
+    assert configure(track=11) == 1
+    call(0)
+    assert get("_iv_input", 3)[2] == 11  # status word 1 and packets carry the track
+    assert events([(1, 1, 60, 100, 0, 0)]) == 0
+    assert events([(1, 1, 60, 100, 0, 0)], track=11) == 1
+    call(0)
+    rendered = get("_iv_output", 32)
+    assert any(rendered)
+    put("_test_output", [7] * 32)
+    call(4, R2=0, R8=symbols["_test_output"])
+    assert get("_test_output", 32) == [0] * 32  # the same type elsewhere is silent
+    call(4, R2=11, R8=symbols["_test_output"])
+    assert get("_test_output", 32) == rendered
+    owners = get("_mi_velocity_owners", 32)
+    assert owners[22] == get("_mi_carrier_stamp")[0] and owners[23] == 1
+    # Another track's reset is only acknowledged while this one is configured.
+    assert reset(track=3) == 1
+    assert get("_iv_track") == [11] and get("_iv_revision") == [1]
+    assert configure(track=3, revision=2) == 0
+
+
+def test_instance_rebinds_after_its_own_reset_once_silent(playback):
+    call, put, get, reset, configure, events, _ = playback
+    assert reset(track=11) == 1
+    call(0)
+    assert configure(track=11) == 1
+    call(0)
+    assert events([(1, 1, 60, 100, 0, 0)], track=11) == 1
+    call(0)
+    assert reset(track=11) == 1  # the CF resets the old track first
+    assert get("_iv_revision") == [0]
+    for _ in range(400):
+        call(0)
+        if get("_iv_active") == [0]:
+            break
+    assert get("_iv_active") == [0]
+    assert reset(track=2) == 1  # then binds the new one
+    assert get("_iv_track") == [2]
+    assert configure(track=2) == 1
+    call(0)
+    assert get("_iv_input", 3)[2] == 2

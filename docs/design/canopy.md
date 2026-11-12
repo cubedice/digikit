@@ -2199,7 +2199,8 @@ DETACH before DSP allocation release; published CF storage remains until reboot.
 Acceptance: `tests/regression/runtime/canopy-stage1.test.ts` passes in 347.66 s;
 log `out/canopy-stage1-live.log`, PCM and fits `out/canopy-stage1*`.
 The package uses V2 reset/process entries, not a stock type-1 shadow. The adapter
-is optional, DTII-only, one instance, track 1, boot-only, with disabled-by-default
+is optional, DTII-only, one instance, track 1 (since 2026-11-11 the lowest track
+carrying the instrument, finding 121), boot-only, with disabled-by-default
 nonpersistent route settings. Development installation uses the upload/selection
 protocol; the generic module-browser fit calculator remains V1-only. General
 module browsing, coexistence and hardware release proof are not implied.
@@ -2346,8 +2347,9 @@ CANOPY/Overloop/upload test pass. Physical Overloop capture, live window edits,
 USB partial releases, sustain messages and replaced-note release checks pass.
 The connected DIN keyboard demonstrated C-E-G to C-G ownership, four-note chords
 and complete release. A bounded USB stress run passed 1,440 note events and four
-verified 32 KiB uploads with no guard faults. One keyboard instrument on track 1
-remains the admitted configuration. Calibrated ingress-to-final-output latency,
+verified 32 KiB uploads with no guard faults. One keyboard instrument on one
+track (track 1 at that time; any track since finding 121) remains the admitted
+configuration. Calibrated ingress-to-final-output latency,
 worst-case DSP budget, and broader transition/recovery qualification remain open;
 a physical sustain pedal is unavailable. See the
 [physical findings](../findings/81-canopy-stage6-hardware.md) and

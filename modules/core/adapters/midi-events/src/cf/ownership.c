@@ -82,7 +82,7 @@ int mi_route(MiLedger *m, uint32_t port, uint32_t channel, uint32_t track,
              uint32_t generation, int sequencer)
 {
     MiRoute *r;
-    if (port > MI_PANEL || channel >= 16 || (port==MI_PANEL && (channel || track)) ||
+    if (port > MI_PANEL || channel >= 16 || (port==MI_PANEL && channel) ||
         (track >= MI_TRACKS && track != MI_NONE) ||
         (track != MI_NONE && (generation == 0 || generation != m->generations[track]))) return -1;
     r = &m->routes[port * 16 + channel];
@@ -193,6 +193,7 @@ int mi_panel_down(MiLedger *m,uint32_t key,uint32_t note,uint32_t velocity)
     if(key>=16 || note>127 || !velocity || velocity>127) return 0;
     MiRoute *r=&m->routes[32];
     if(r->track==MI_NONE) { r->track=0; r->generation=m->generations[0]; }
+    uint32_t track=r->track;
     if(r->quarantined) return 1;
     uint32_t free=MI_KEYS;
     for(uint32_t i=0;i<MI_KEYS;++i) {
@@ -202,10 +203,10 @@ int mi_panel_down(MiLedger *m,uint32_t key,uint32_t note,uint32_t velocity)
     }
     if(free==MI_KEYS || !m->next_token) { overflow(m); return 1; }
     MiKey *k=&m->keys[free];
-    k->token=m->next_token++; k->generation=m->generations[0]; k->identity=key;
-    k->track=0; k->port=MI_PANEL; k->channel=0; k->note=(uint8_t)note;
+    k->token=m->next_token++; k->generation=m->generations[track]; k->identity=key;
+    k->track=(uint8_t)track; k->port=MI_PANEL; k->channel=0; k->note=(uint8_t)note;
     k->tombstone=!r->enabled || !!m->reset_mask; k->used=1;
-    if(!k->tombstone) emit(m,k->token,k->generation,0,MI_NOTE_ON,MI_PANEL,0,k->note,(uint8_t)velocity);
+    if(!k->tombstone) emit(m,k->token,k->generation,(uint8_t)track,MI_NOTE_ON,MI_PANEL,0,k->note,(uint8_t)velocity);
     return 1;
 }
 void mi_panel_up(MiLedger *m,uint32_t key)
@@ -213,7 +214,7 @@ void mi_panel_up(MiLedger *m,uint32_t key)
     for(uint32_t i=0;i<MI_KEYS;++i) {
         MiKey *k=&m->keys[i];
         if(!k->used || k->port!=MI_PANEL || k->identity!=key) continue;
-        if(!k->tombstone) emit(m,k->token,k->generation,0,MI_NOTE_OFF,MI_PANEL,0,k->note,0);
+        if(!k->tombstone) emit(m,k->token,k->generation,k->track,MI_NOTE_OFF,MI_PANEL,0,k->note,0);
         k->used=0;
     }
 }
@@ -225,8 +226,9 @@ void mi_panel_cancel(MiLedger *m)
         if(k->used && k->port==MI_PANEL) { active|=!k->tombstone; k->tombstone=1; }
     }
     /* Also clear latched/released panel notes. No USB/DIN controller changes. */
+    uint32_t track=m->routes[32].track<MI_TRACKS ? m->routes[32].track : 0;
     if(active || m->routes[32].enabled)
-        emit(m,0,m->generations[0],0,MI_CC,MI_PANEL,0,120,0);
+        emit(m,0,m->generations[track],(uint8_t)track,MI_CC,MI_PANEL,0,120,0);
 }
 
 int mi_peek(MiLedger *m, MiEvent *out)

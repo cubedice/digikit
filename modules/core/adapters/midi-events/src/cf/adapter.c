@@ -238,7 +238,7 @@ int mi_route_enable(uint32_t port, uint32_t channel, uint32_t track, int sequenc
 {
     uint32_t sr;
     int result = -2;
-    if (port > MI_PANEL || channel >= 16 || (port==MI_PANEL && (channel || track)) ||
+    if (port > MI_PANEL || channel >= 16 || (port==MI_PANEL && channel) ||
         track >= MI_TRACKS || !instrument_midi_ready) return -1;
     sr = dkrt_irq_mask();
     initialize();
@@ -264,7 +264,7 @@ int mi_panel_key(uint32_t key,uint32_t note,uint32_t velocity,int down)
     uint32_t sr=dkrt_irq_mask(); int result=1;
     initialize();
     if(!reset_seen) {
-        if(mi_ledger.routes[32].enabled) revalidate_track(0);
+        if(mi_ledger.routes[32].enabled) revalidate_track(mi_ledger.routes[32].track);
         if(down) result=mi_panel_down(&mi_ledger,key,note,velocity);
         else mi_panel_up(&mi_ledger,key);
     }

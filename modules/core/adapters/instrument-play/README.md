@@ -1,7 +1,9 @@
 # Persistent instrument playback adapter
 
-Development-only DTII OS 1.17 adapter for one admitted V2 instance on track 1
-(the zero-based DSP track 0). It is not in a default patch set. There is no
+Development-only DTII OS 1.17 adapter for one admitted V2 instance on the
+lowest kit track whose Sound carries the instrument type (any of the sixteen
+tracks; `ip_track` publishes it, 0xffffffff when none). It is not in a default
+patch set. There is no
 hardware release approval. The development policy admits one instance with a
 2976-byte state ceiling and declared 100000/1600 process/reset ceilings.
 Instruction-test limits are not a measured hardware cycle budget.
@@ -26,8 +28,9 @@ unused cells on the other pages cannot edit stock source parameters.
 The DTII 1.17 KeyboardView bridge intercepts resolved performance notes before
 stock mono audition. It retains native key-up closures and uses a separate PANEL
 owner through PLAY/ROOT/LEARN. Local keys do not require enabling external MIDI.
-Only the admitted CANOPY on track 1 is consumed; stock machines delegate to the
-original handlers. Leaving keyboard mode or selecting another track cancels the
+Only the admitted CANOPY on its own track is consumed; stock machines and other
+tracks delegate to the original handlers. Leaving keyboard mode or selecting
+another track cancels the
 panel phrase without canceling external notes. This is local audition support,
 not qualification of native pattern recording or sequencer polyphony.
 

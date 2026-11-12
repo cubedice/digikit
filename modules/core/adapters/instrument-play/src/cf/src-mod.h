@@ -10,6 +10,7 @@ uint32_t instrument_mod_param(uint32_t type, uint32_t mirror);
  * The six otherwise unused native SRC values are bipolar modulation carriers,
  * not the persistent CANOPY base values. */
 void instrument_mod_defaults(uint32_t source);
-/* Called only for track zero by the two stock frame-conversion shims. */
-int instrument_mod_carrier(void);
+/* Called by the two stock frame-conversion shims with the track they convert;
+ * true only for the admitted track's live instrument. */
+int instrument_mod_carrier(uint32_t track);
 #endif

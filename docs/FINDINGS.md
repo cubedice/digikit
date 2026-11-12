@@ -221,3 +221,8 @@ stock bitcrusher; per-note envelope factoring and post-effects application).
 CANOPY controls: [compact SRC pages, latch removal and native MOD](findings/120-canopy-controls-modulation.md)
 (**[D]/[V]**, fixed six targets per source family, immutable base controls and
 narrow independently checked firmware-hook ABI; physical installation pending).
+
+CANOPY tracks: [admission on any track](findings/121-canopy-any-track.md)
+(**[D]**, per-track stock row/frame/kit strides, transport binding to the
+instrument's track and DSP track adoption; emulator proof and installation
+recorded with the handover).

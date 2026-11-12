@@ -1,14 +1,15 @@
 /* DT2 1.17: mirror28 is a full-width CANOPY MOD carrier. Stock sampler
  * bank/slot splitting and recombination would discard its upper six bits.
- * Leave every other track/type on its exact displaced instruction path. */
+ * Leave every other track/type on its exact displaced instruction path.
+ * The split loop keeps its track in d7, the recombine loop in d6. */
     .text
     .globl ip_mod_split
 ip_mod_split:
-    tst.l   %d7
-    bne.s   1f
     lea     -16(%sp),%sp
     movem.l %d0-%d1/%a0-%a1,(%sp)
+    move.l  %d7,-(%sp)
     jsr     instrument_mod_carrier
+    addq.l  #4,%sp
     tst.l   %d0
     beq.s   2f
     movem.l (%sp),%d0-%d1/%a0-%a1
@@ -22,11 +23,11 @@ ip_mod_split:
 
     .globl ip_mod_recombine
 ip_mod_recombine:
-    tst.l   %d6
-    bne.s   1f
     lea     -16(%sp),%sp
     movem.l %d0-%d1/%a0-%a1,(%sp)
+    move.l  %d6,-(%sp)
     jsr     instrument_mod_carrier
+    addq.l  #4,%sp
     tst.l   %d0
     beq.s   2f
     movem.l (%sp),%d0-%d1/%a0-%a1

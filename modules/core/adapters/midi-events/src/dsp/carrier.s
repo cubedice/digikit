@@ -120,6 +120,8 @@ _mi_carrier_unowned:
 // Single-instance native-AMP opt-in, renewed only by a completed V6 process.
 .PKDATA _mi_native_owner_valid, 4;
 .PKDATA _mi_native_owner_stamp, 4;
+// The owner's track (its stereo pair is voices 2t and 2t+1), published with the opt-in.
+.PKDATA _mi_native_owner_track, 4;
 // V7 gain output is core-owned and shared by the admitted stereo pair only.
 .PKDATA _mi_post_owner_valid, 4;
 .PKDATA _mi_post_amp, 128;

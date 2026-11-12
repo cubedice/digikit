@@ -150,7 +150,8 @@ int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8])
     if (!count && !s->update) return 0;
     for (i=0;i<count;++i) {
         const MiEvent *e=&in[i];
-        if (e->epoch!=s->epoch || e->generation!=s->generation || e->track ||
+        /* The transport batches one track; the caller routes only the admitted one here. */
+        if (e->epoch!=s->epoch || e->generation!=s->generation ||
             e->port>MI_PANEL || e->channel>15 || e->note>127 || e->value>127 ||
             (e->port==MI_PANEL && (e->channel || (e->kind>MI_NOTE_OFF &&
                 !(e->kind==MI_CC && e->note==120)))) ||

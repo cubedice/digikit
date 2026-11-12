@@ -246,3 +246,25 @@ uint32_t mi_test_ring_wrap(void)
     CHECK(!m.count && !m.overruns);
     return 0;
 }
+
+uint32_t mi_test_panel_track(void)
+{
+    MiLedger m;
+    MiEvent e;
+    mi_init(&m);
+    /* The local panel routes to the instrument's track, not always track 0. */
+    CHECK(mi_route(&m, MI_PANEL, 1, 10, m.generations[10], 0) == -1);
+    CHECK(mi_route(&m, MI_PANEL, 0, 10, m.generations[10], 0) == 0);
+    CHECK(mi_panel_down(&m, 3, 65, 88)); e = take(&m);
+    CHECK(e.kind == MI_NOTE_ON && e.track == 10 && e.port == MI_PANEL && e.note == 65);
+    CHECK(e.generation == m.generations[10] && e.token);
+    mi_panel_up(&m, 3); e = take(&m);
+    CHECK(e.kind == MI_NOTE_OFF && e.track == 10 && e.note == 65);
+    CHECK(mi_panel_down(&m, 4, 67, 88)); (void)take(&m);
+    mi_panel_cancel(&m); e = take(&m);
+    CHECK(e.kind == MI_CC && e.track == 10 && e.note == 120 && e.generation == m.generations[10]);
+    /* A reset of that track retires the panel route like any other. */
+    mi_reset_track(&m, 10);
+    CHECK(!m.routes[32].enabled && !mi_peek(&m, &e));
+    return 0;
+}

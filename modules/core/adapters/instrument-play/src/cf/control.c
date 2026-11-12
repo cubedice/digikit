@@ -18,10 +18,16 @@ extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
 extern int instrument_sound_prepare(int allow_refresh);
 extern uint32_t instrument_sound_tune(void);
+/* The track carrying the instrument Sound (sound.c), 0xffffffff when none. */
+extern volatile uint32_t ip_track;
 static const uint32_t limits[8] = {0x49525031,1,1,100000,1600,8,128,2976};
 const uint32_t *instrument_runtime_policy(void) { return limits; }
 static int enabled, usb=1, din=1, channel=1;
 static uint32_t phase, prepared, healthy, fault_generation;
+/* The track the transport was last reset for; configuration and routes use it.
+ * It follows ip_track through an explicit reset so the DSP can rebind. */
+static uint32_t bound_track=0xffffffffu;
+static uint32_t ledger_track(void) { return bound_track<MI_TRACKS ? bound_track : 0; }
 int instrument_play_faulted(uint32_t generation) { return generation && fault_generation == generation; }
 volatile uint32_t ip_control[8];
 static dk_ui_menu *menu;
@@ -32,8 +38,9 @@ static uint32_t listed_type;
 int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
 {
     return healthy && prepared && (phase == 2 || phase == 3) &&
-        track == 0 && epoch == mi_ledger.epoch && generation == mi_ledger.generations[0] &&
-        mi_transport.applied[0] != 0 && !mi_ledger.reset_mask && !mi_transport.faults;
+        track < MI_TRACKS && track == bound_track && track == ip_track &&
+        epoch == mi_ledger.epoch && generation == mi_ledger.generations[track] &&
+        mi_transport.applied[track] != 0 && !mi_ledger.reset_mask && !mi_transport.faults;
 }
 /* Stage 3 setup. Updates use the existing atomic configuration channel,
  * retain note ownership, and coalesce knob motion while an ACK is pending. */
@@ -79,18 +86,25 @@ static int src_initialized;
 void instrument_sound_suspend(void)
 {
     if (keyboard_initialized && keyboard.mode==KB_LEARN) kb_learn_cancel(&keyboard);
-    prepared=0; mi_instance_reset(0); phase=1;
+    /* Reset the bound track; before any binding, bind the instrument's track
+     * here so the ledger generation boundary exists for the next refresh. */
+    uint32_t track=bound_track<MI_TRACKS ? bound_track : ip_track;
+    if (track<MI_TRACKS) { bound_track=track; mi_instance_reset(track); }
+    prepared=0; phase=1;
 }
 
 int instrument_keyboard_events(uint32_t track, uint32_t epoch, uint32_t generation,
     const MiEvent *input, uint32_t count, MiEvent *output)
 {
     uint32_t i;
-    if (track) { for (i=0;i<count;++i) mi_event_copy(&output[i],&input[i]); return (int)count; }
+    if (track != ip_track) { for (i=0;i<count;++i) mi_event_copy(&output[i],&input[i]); return (int)count; }
     if (!keyboard_initialized) return -1;
     if (keyboard.epoch!=epoch || keyboard.generation!=generation)
         kb_reset(&keyboard,epoch,generation);
-    return kb_process(&keyboard,input,count,output);
+    int mapped=kb_process(&keyboard,input,count,output);
+    /* The mapper is track-agnostic; the wire batch names the admitted track. */
+    for (i=0;mapped>0 && i<(uint32_t)mapped;++i) output[i].track=(uint8_t)track;
+    return mapped;
 }
 static void changed(void *ctx, int value)
 {
@@ -123,7 +137,7 @@ static void panic(void *ctx,int value)
     (void)ctx; (void)value;
     uint32_t sr=dkrt_irq_mask();
     kb_learn_cancel(&keyboard); instrument_sound_suspend();
-    kb_reset(&keyboard,mi_ledger.epoch,mi_ledger.generations[0]);
+    kb_reset(&keyboard,mi_ledger.epoch,mi_ledger.generations[ledger_track()]);
     dkrt_irq_restore(sr);
     dk_ui_toast("PANIC - RELEASE HELD KEYS");
 }
@@ -202,7 +216,7 @@ static void retry_save(void *ctx,int value) { (void)ctx; (void)value; save_pendi
 static int quarantined(void)
 {
     for (uint32_t i=0;i<MI_ROUTES;++i)
-        if (mi_ledger.routes[i].track==0 && mi_ledger.routes[i].quarantined) return 1;
+        if (mi_ledger.routes[i].track==bound_track && mi_ledger.routes[i].quarantined) return 1;
     return 0;
 }
 /* Snapshot on the UI task under the mapper lock. Routes and performance state
@@ -236,9 +250,9 @@ static void src_requested(CpPreset *current)
 uint32_t instrument_src_context(uint32_t track,uint32_t page,int visible)
 {
     CpPreset current; src_requested(&current);
-    uint32_t generation=mi_ledger.generations[0];
+    uint32_t generation=ip_track<MI_TRACKS ? mi_ledger.generations[ip_track] : 0;
     uint32_t token=cs_context(&src_state,track,generation,
-        visible && track==0 && keyboard_initialized && dkrt_instrument_type(),page,
+        visible && track<MI_TRACKS && track==ip_track && keyboard_initialized && dkrt_instrument_type(),page,
         keyboard.mode,(uint32_t)arp_clock,keyboard.mode==KB_ROOT && keyboard.type==10,
         keyboard.mode==KB_LEARN || (learn_menu && dk_ui_is_open(learn_menu)));
     is_select(&src_status,track,generation,keyboard.mode,keyboard.mode==KB_LEARN ? keyboard.session : 0);
@@ -332,20 +346,29 @@ static void status_fill(dk_ui_menu *m,void *ctx)
 {
     (void)ctx;
     uint32_t now=instrument_src_now();
-    (void)instrument_src_context(0,src_state.page[0],0);
+    uint32_t track=ip_track<MI_TRACKS ? ip_track : 0;
+    (void)instrument_src_context(track,src_state.page[track],0);
     instrument_src_poll(now);
     CsState snapshot;
     for(uint32_t i=0;i<sizeof(snapshot);++i)
         ((volatile uint8_t *)&snapshot)[i]=((const volatile uint8_t *)&src_state)[i];
-    snapshot.focus=0; snapshot.page[0]=0;
+    snapshot.focus=0; snapshot.track=track; snapshot.page[track]=0;
     CvDisplay d; cv_build(&d,&snapshot,&src_status,now,"","",preset_result || storage_result);
     uint32_t sr=dkrt_irq_mask(); cv_ownership(&d,&src_status,&keyboard,now); dkrt_irq_restore(sr);
     status_pair(m,snapshot.mode==KB_PLAY?"PLAY":snapshot.mode==KB_ROOT?"ROOT":"LEARN",d.heading);
     status_pair(m,d.notes[0],d.notes[1]); status_pair(m,d.notes[2],d.notes[3]);
     int invalid=d.fault==1 || d.fault==2;
     dk_ui_text(m,invalid?"PEDAL --":d.pedal?"PEDAL DOWN":"PEDAL UP");
-    snapshot.page[0]=1; cv_build(&d,&snapshot,&src_status,now,"","",preset_result || storage_result);
+    snapshot.page[track]=1; cv_build(&d,&snapshot,&src_status,now,"","",preset_result || storage_result);
     dk_ui_text(m,d.heading);
+    /* The carrier track, as the panel numbers it (T1..T16). */
+    char where[9]={'T','R','A','C','K',' ','-','-',0};
+    if(ip_track<MI_TRACKS) {
+        uint32_t n=ip_track+1;
+        if(n>=10) { where[6]='1'; where[7]=(char)('0'+n-10); }
+        else { where[6]=(char)('0'+n); where[7]=0; }
+    }
+    dk_ui_text(m,where);
     status_draw_at=now;
 }
 /* VerticalMenuView reserves a narrow left title column. */
@@ -480,9 +503,9 @@ static void input_fill(dk_ui_menu *m, void *ctx)
     dk_ui_action(m,"RECOVER KEYBOARD",recover,0,0);
     dk_ui_text(m, quarantined() ? "RELEASE KEYS / RECOVER" : mi_transport.faults ? "RECOVER OR RESTART" :
         keyboard.status==KB_RANGE ? "CHORD OUT OF RANGE" :
-        keyboard.status==KB_EMPTY ? "CUSTOM SHAPE EMPTY" : phase == 3 ? "READY" : "SELECT CANOPY ON T1");
+        keyboard.status==KB_EMPTY ? "CUSTOM SHAPE EMPTY" : phase == 3 ? "READY" : "SELECT CANOPY ON A TRACK");
     if(route_result) dk_ui_text(m,"ROUTING NOT SAVED");
-    dk_ui_text(m,"PANEL: SELECT T1 / KEYS");
+    dk_ui_text(m,"PANEL: ITS TRACK / KEYS");
 }
 static const dk_ui_menu_desc input_desc={.name="canopy-input",.title="CANOPY INPUT",.fill=input_fill};
 static void shape_fill(dk_ui_menu *m,void *ctx)
@@ -645,31 +668,39 @@ void instrument_play_tick(void)
         if (phase == 2 || phase == 3) instrument_sound_suspend();
         goto publish;
     }
-    if (!phase) { mi_instance_reset(0); phase=1; }
-    if (phase==3 && (mi_ledger.reset_mask || !mi_transport.applied[0])) instrument_sound_suspend();
+    if (!phase) phase=1;
+    if (phase==3 && (mi_ledger.reset_mask || !mi_transport.applied[ledger_track()] ||
+        ip_track!=bound_track)) instrument_sound_suspend();
     {
         int result=instrument_sound_prepare(phase == 1 && !mi_ledger.reset_mask);
         if (result < 0) instrument_sound_suspend();
         else prepared=(uint32_t)result;
     }
-    if (phase == 1 && prepared && !mi_ledger.reset_mask &&
-        !mi_config_submit(0,src_state.revision,0x43505342,values,32)) { phase=2; pad_dirty=0; }
-    if (phase==3 && src_state.revision>mi_transport.applied[0] &&
-        !mi_config_submit(0,src_state.revision,0x43505342,values,32)) pad_dirty=0;
-    if (phase == 2 && instrument_midi_ready(0,mi_ledger.epoch,mi_ledger.generations[0])) {
-        if (!mi_route_enable(MI_PANEL,0,0,0) &&
-            (!enabled || !usb || !mi_route_enable(0,(uint32_t)channel-1,0,0)) &&
-            (!enabled || !din || !mi_route_enable(1,(uint32_t)channel-1,0,0)) &&
+    /* Bind the transport to the instrument's track before its first
+     * configuration there. The reset ACK gates the submission below; the old
+     * track was already reset by the suspension that preceded this change. */
+    if (phase == 1 && prepared && ip_track<MI_TRACKS && bound_track!=ip_track) {
+        bound_track=ip_track; mi_instance_reset(bound_track);
+    }
+    uint32_t track=ledger_track();
+    if (phase == 1 && prepared && bound_track==ip_track && !mi_ledger.reset_mask &&
+        !mi_config_submit(track,src_state.revision,0x43505342,values,32)) { phase=2; pad_dirty=0; }
+    if (phase==3 && src_state.revision>mi_transport.applied[track] &&
+        !mi_config_submit(track,src_state.revision,0x43505342,values,32)) pad_dirty=0;
+    if (phase == 2 && instrument_midi_ready(track,mi_ledger.epoch,mi_ledger.generations[track])) {
+        if (!mi_route_enable(MI_PANEL,0,track,0) &&
+            (!enabled || !usb || !mi_route_enable(0,(uint32_t)channel-1,track,0)) &&
+            (!enabled || !din || !mi_route_enable(1,(uint32_t)channel-1,track,0)) &&
             (!enabled || keyboard.mode!=KB_ROOT || !selector_channel ||
-             ((!usb || !mi_route_enable(0,(uint32_t)selector_channel-1,0,0)) &&
-              (!din || !mi_route_enable(1,(uint32_t)selector_channel-1,0,0))))) phase=3;
+             ((!usb || !mi_route_enable(0,(uint32_t)selector_channel-1,track,0)) &&
+              (!din || !mi_route_enable(1,(uint32_t)selector_channel-1,track,0))))) phase=3;
         else instrument_sound_suspend();
     }
 publish:
     ip_control[0]=phase; ip_control[1]=(uint32_t)enabled;
     ip_control[2]=healthy; ip_control[3]=prepared;
     ip_control[4]=mi_transport.faults; ip_control[5]=mi_ledger.reset_mask;
-    ip_control[6]=mi_transport.applied[0]; ip_control[7]=dkrt_instrument_type();
+    ip_control[6]=mi_transport.applied[ledger_track()]; ip_control[7]=dkrt_instrument_type();
     uint32_t view=keyboard.type | ((uint32_t)keyboard.mode<<4) | ((uint32_t)keyboard.status<<6) |
         (phase<<9) | ((uint32_t)!!storage_result<<12) | ((uint32_t)keyboard.dirty<<13) |
         ((uint32_t)(quarantined() || mi_transport.faults)<<14);

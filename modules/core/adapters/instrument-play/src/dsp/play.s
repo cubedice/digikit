@@ -1,5 +1,7 @@
-// Stage 1: one admitted row, one instance, track 0. Transport callbacks run
-// under the saved early-frame scalar context. No module callback is a V1 voice.
+// One admitted row, one instance, on the track the transport bound (_iv_track:
+// adopted by the first reset while unconfigured, then fixed until re-bound).
+// Transport callbacks run under the saved early-frame scalar context. No
+// module callback is a V1 voice.
 // Events are copied once, consumed once by process, then removed from the ABI.
 .SECTION/PM seg_pmco;
 .GLOBAL _instrument_reset;
@@ -22,6 +24,7 @@
 .EXTERN _mi_carrier_rendered;
 .EXTERN _mi_envelope_records;
 .EXTERN _mi_native_owner_valid;
+.EXTERN _mi_native_owner_track;
 .EXTERN _mi_native_owner_stamp;
 .EXTERN _mi_post_owner_valid;
 .EXTERN _mi_post_amp;
@@ -68,6 +71,8 @@ _instrument_carrier_prepare:
     IF EQ JUMP _iv_quiet;
     CALL _iv_position;
     I0 = _iv_input;
+    R0 = DM(_iv_track); // status word1 bits0..3: the bound track
+    DM(2, I0) = R0;
     R0 = DM(_ir_process_flags);
     R1 = FEXT R0 BY 0:1;
     R1 = PASS R1;
@@ -158,6 +163,8 @@ _iv_post_ready:
     // The shared AMP may be skipped only after this native block completed.
     R2 = DM(_iv_native_valid);
     DM(_mi_native_owner_valid) = R2;
+    R2 = DM(_iv_track);
+    DM(_mi_native_owner_track) = R2;
     R2 = DM(_mi_carrier_stamp);
     DM(_mi_native_owner_stamp) = R2;
     R1 = 1;
@@ -165,7 +172,7 @@ _iv_post_ready:
     DM(_iv_active) = R0;
     R10 = DM(_iv_revision);
     R10 = R10 OR R0;
-    R4 = 0;
+    R4 = DM(_iv_track);
     CALL _mi_velocity_prepare;
     RTS;
 _iv_quiet:
@@ -471,13 +478,28 @@ _iv_phase_fresh:
 _instrument_reset:
     DM(_iv_packet) = R4;
     I0 = R4;
-    R0 = DM(8, I0);
-    R0 = PASS R0;
-    IF EQ JUMP _iv_reset_owned;
     R0 = DM(2, I0);
     R1 = DM(_mi_epoch);
     COMP(R0, R1);
-    IF NE JUMP _iv_reset_owned;
+    IF NE JUMP _iv_reset_owned; // a new epoch silences every instance
+    R0 = DM(8, I0);
+    R1 = DM(_iv_track);
+    COMP(R0, R1);
+    IF EQ JUMP _iv_reset_owned;
+    // Another track binds this instance only while it is unconfigured and
+    // silent: the CF resets the old track first and waits for its ACK.
+    R1 = DM(_iv_revision);
+    R1 = PASS R1;
+    IF NE JUMP _iv_reset_inactive;
+    R1 = DM(_iv_active);
+    R1 = PASS R1;
+    IF NE JUMP _iv_reset_inactive;
+    R1 = 15;
+    COMP(R0, R1);
+    IF GT JUMP _iv_reset_inactive;
+    DM(_iv_track) = R0;
+    JUMP _iv_reset_owned;
+_iv_reset_inactive:
     R0 = 1;
     RTS; // inactive tracks still acknowledge the transport's all-track reset
 _iv_reset_owned:
@@ -495,7 +517,8 @@ _iv_reset_identity:
     R0 = DM(_iv_packet);
     I0 = R0;
     R0 = DM(8, I0);
-    R0 = PASS R0;
+    R1 = DM(_iv_track);
+    COMP(R0, R1);
     IF NE JUMP _iv_reset_unconfigured;
     R0 = DM(9, I0);
     DM(_iv_generation) = R0;
@@ -524,8 +547,9 @@ _iv_live_config:
     R0 = DM(_iv_metadata);
     I0 = R0;
     R0 = DM(0, I0);
-    R0 = PASS R0;
-    IF NE JUMP _iv_no;
+    R1 = DM(_iv_track);
+    COMP(R0, R1);
+    IF NE JUMP _iv_no; // configuration belongs to the bound track only
     R0 = DM(1, I0);
     R1 = DM(_iv_generation);
     COMP(R0, R1);
@@ -1154,8 +1178,9 @@ _iv_reset_bad:
 // Raw stock-carrier ABI: copy the already-rendered block, never advance DSP
 // twice. The stock wrapper duplicates this for the odd stereo voice.
 _iv_voice_render:
-    R0 = PASS R2;
-    IF NE JUMP _iv_voice_silent;
+    R0 = DM(_iv_track);
+    COMP(R2, R0);
+    IF NE JUMP _iv_voice_silent; // the same type on another track stays silent
     I0 = _iv_output;
     I1 = R8;
     R1 = 32;
@@ -1164,7 +1189,7 @@ _iv_voice_copy:
     DM(I1, M6) = R0;
     R1 = R1 - 1;
     IF NE JUMP _iv_voice_copy;
-    R4 = 0;
+    R4 = DM(_iv_track);
     R8 = DM(_iv_active);
     R10 = DM(_iv_revision);
     CALL _mi_carrier_rendered;
@@ -1368,6 +1393,7 @@ _iv_voice_zero:
 .VAR _iv_wt_duplicate_14 = 4;
 .VAR _iv_wt_duplicate_15 = 5;
 .VAR _iv_generation = 0;
+.VAR _iv_track = 0;
 .VAR _iv_revision = 0;
 .VAR _iv_active = 0;
 .VAR _iv_result = 0;

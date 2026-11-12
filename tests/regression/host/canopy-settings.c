@@ -9,6 +9,7 @@ struct dk_ui_menu {
 MiLedger mi_ledger;
 MiTransport mi_transport;
 volatile uint32_t ip_view;
+volatile uint32_t ip_track;
 static struct dk_ui_menu menus[12];
 static unsigned menu_count, masked, unsafe_io, token=1;
 static int exists, staged, put_error, flush_error, open_error;

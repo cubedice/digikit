@@ -8,6 +8,7 @@
 #include "dk_fw_text.h"
 #include "dk_fw_view.h"
 extern uint32_t dkrt_instrument_type(void),dkrt_instrument_generation(void);
+extern volatile uint32_t ip_track;
 extern uint32_t ip_src_type(uint8_t *);
 extern uint32_t ip_src_track(uint32_t);
 extern uint8_t ip_src_alternate(uint32_t);
@@ -45,7 +46,7 @@ static uint32_t context(uint8_t *view)
         mf_src_unregister(owner_type,owner_generation); owner_type=0;
     }
     uint32_t track=ip_src_track(word(view,0x74)),page=word(view,0x90),pages=instrument_src_pages();
-    int owns=type>=7 && type<32 && gen && track==0 && ip_src_type(view)==type &&
+    int owns=type>=7 && type<32 && gen && track<16 && track==ip_track && ip_src_type(view)==type &&
         !ip_src_alternate(word(view,0x6c));
     if(owns) {
         if(restore_pending) {
@@ -135,7 +136,7 @@ void ip_src_attach(uint8_t *view,uint8_t *manager)
 {
     uint32_t gen=dkrt_instrument_generation();
     ip_src_stock_attach(view,manager);
-    if(saved_valid && saved_generation==gen && ip_src_track(word(view,0x74))==0 &&
+    if(saved_valid && saved_generation==gen && ip_src_track(word(view,0x74))==ip_track &&
         ip_src_type(view)==dkrt_instrument_type()) {
         restore_page=saved_page; restore_pending=1;
         *(uint32_t *)(view+0x90)=saved_page;

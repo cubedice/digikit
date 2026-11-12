@@ -1,7 +1,7 @@
 #ifndef DK_INSTRUMENT_SRC_CONTROL_H
 #define DK_INSTRUMENT_SRC_CONTROL_H
 #include "src-display.h"
-/* UI-task bridge. Track zero is the only currently admitted carrier. Context
+/* UI-task bridge. The admitted carrier is the track in ip_track. Context
  * must be refreshed on selection/mode/page boundaries before dispatching input.
  * Neither this bridge nor the model retains borrowed firmware view pointers. */
 uint32_t instrument_src_context(uint32_t track,uint32_t page,int visible);

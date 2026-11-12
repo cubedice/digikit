@@ -22,9 +22,10 @@ int dk_ui_toast(const char *text) { assert(text[0]); ++toasts;return 0; }
 void instrument_src_feedback(char out[32],uint32_t encoder) { cv_feedback(out,&state,encoder); }
 uint8_t *dk_fw_view_brain_instance(void) { return (uint8_t *)manager; }
 uint8_t *dk_fw_view_brain_view_manager(uint8_t *brain) { return brain; }
+volatile uint32_t ip_track;
 uint32_t dkrt_instrument_type(void) { return type_id; }
 uint32_t dkrt_instrument_generation(void) { return generation; }
-uint32_t ip_src_type(uint8_t *v) { (void)v; return selected?0:type_id; }
+uint32_t ip_src_type(uint8_t *v) { (void)v; return selected==ip_track?type_id:0; }
 uint32_t ip_src_track(uint32_t p) { (void)p; return selected; }
 uint8_t ip_src_alternate(uint32_t p) { (void)p; return (uint8_t)alternate; }
 uint32_t instrument_src_now(void) { return now; }
@@ -271,6 +272,12 @@ int main(int argc,char **argv)
     } else if(!strcmp(argv[1],"track")) {
         v[0x90/4]=1; context((uint8_t *)v); selected=1; context((uint8_t *)v);
         v[0x90/4]=0; selected=0; context((uint8_t *)v); assert(v[0x90/4]==1);
+        /* Ownership follows the instrument's track, not track 1. */
+        ip_track=5; selected=5; v[0x90/4]=2;
+        assert(context((uint8_t *)v) && ip_src_debug[0]==5);
+        ip_track=0; assert(!context((uint8_t *)v));
+        ip_track=5; selected=0; assert(!context((uint8_t *)v));
+        ip_track=0xffffffffu; assert(!context((uint8_t *)v)); ip_track=0; selected=0;
     } else if(!strcmp(argv[1],"alternate")) {
         alternate=1; context((uint8_t *)v); event((uint8_t *)e,4,3,0,0);
         assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7);

@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include "../../../midi-events/src/cf/bridge.h"
 extern uint32_t dkrt_instrument_type(void);
+extern volatile uint32_t ip_track;
 extern uint8_t *ip_panel_track_object(uint32_t,uint32_t);
 extern uint32_t ip_panel_track_type(uint8_t *);
 extern uint32_t ip_panel_selected_track(uint32_t);
@@ -21,7 +22,7 @@ void ip_panel_on(uint8_t *view,uint32_t key,uint32_t track,uint32_t pitch,
     uint32_t velocity,uint32_t a,uint32_t b,uint32_t c)
 {
     uint32_t type=dkrt_instrument_type();
-    uint8_t *object=track==0 && type>=7 && type<32 ? ip_panel_track_object(word(view,0xa4),track) : 0;
+    uint8_t *object=track<16 && track==ip_track && type>=7 && type<32 ? ip_panel_track_object(word(view,0xa4),track) : 0;
     if(object && ip_panel_track_type(object)==type && key<16 && ip_panel_active(word(view,0xa0))) {
         if(panel_view && panel_view!=view) mi_panel_release();
         panel_view=view;
@@ -42,7 +43,7 @@ void ip_panel_off(uint8_t *view,uint32_t key)
 void ip_panel_update(uint8_t *view)
 {
     if(panel_view==view && (!ip_panel_active(word(view,0xa0)) ||
-        ip_panel_selected_track(word(view,0xa0))!=0)) {
+        ip_panel_selected_track(word(view,0xa0))!=ip_track)) {
         mi_panel_release(); panel_view=0; ++ip_panel_debug[6];
     }
     /* The pinned stock KeyboardView update is an empty return. Unlike a

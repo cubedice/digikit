@@ -10,6 +10,7 @@
 .GLOBAL _iv_modulate;
 .EXTERN _iv_mod_frame;
 .EXTERN _ir_process_rows;
+.EXTERN _iv_track;
 _iv_modulate:
     R0 = R4;
     R1 = 32;
@@ -21,9 +22,22 @@ _iv_modulate:
     R2 = 11;
     COMP(R1, R2);
     IF NE JUMP _iv_mod_invalid; // Older diagnostic schemas stay unchanged.
-    I0 = _iv_mod_frame;
-    R1 = DM(37, I0); // frame byte0x94, track-zero type in the low halfword
-    R1 = FEXT R1 BY 0:16;
+    // Frame halfword 74 + track (byte 0x94 + 2t) holds that track's type.
+    R1 = DM(_iv_track);
+    R2 = 74;
+    R1 = R1 + R2;
+    R2 = LSHIFT R1 BY 1;
+    R3 = 0xfffffffc;
+    R2 = R2 AND R3;
+    R3 = _iv_mod_frame;
+    R2 = R2 + R3;
+    I0 = R2;
+    R2 = DM(0, I0);
+    R3 = FEXT R1 BY 0:1;
+    R3 = LSHIFT R3 BY 4;
+    R3 = -R3;
+    R2 = LSHIFT R2 BY R3;
+    R1 = FEXT R2 BY 0:16;
     I1 = _ir_process_rows;
     R2 = DM(2, I1);
     COMP(R1, R2);
@@ -44,8 +58,12 @@ _iv_mod_current:
     I1 = _iv_mod_delta;
     R10 = 6;
     R11 = 0;
+    R12 = DM(_iv_track);
+    R13 = 48; // stock frame parameters: 48 halfwords (0x60 bytes) per track
+    R12 = R12 * R13 (SSI);
 _iv_mod_read:
     R2 = DM(I0, M6);
+    R2 = R2 + R12;
     R3 = FEXT R2 BY 0:1;
     R3 = LSHIFT R3 BY 4;
     R3 = -R3;

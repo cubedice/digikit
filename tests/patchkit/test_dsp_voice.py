@@ -750,3 +750,38 @@ def test_optional_v2_carrier_table_preserves_legacy_priority(monkeypatch, legacy
     out = rig.call(0)
     assert stops_at(out, RETURN_SW), out["halt"]
     context_intact(out)
+
+
+@pytest.mark.parametrize("track", [0, 10, 15])
+def test_a_v2_instrument_row_is_reached_on_every_track_without_legacy_rows(track):
+    """The trusted V2 table (`_instrument_voice_rows`) takes part in voice 0's mask, so an admitted instrument sounds on
+    any track, not only on the voice that always takes the full path."""
+    from support.dsp_voice_rig import CORE_BASE, core_externs
+
+    rig = Rig()
+    v2 = TABLE + 0x800  # past the legacy table's 17 rows
+    externs = core_externs()
+    externs["_instrument_voice_rows"] = v2
+    rig.core_linked = pk_sharc.link(rig.core, CORE_BASE, externs)
+    rig.dm[nw(TABLE)] = 0  # no legacy row: the cheap path applies to every other voice
+    for k in range(2 * 24):
+        rig.dm[nw(v2) + k] = 0
+    rig.dm[nw(v2)] = TYPE
+    rig.dm[nw(v2) + 1] = rig.render_pc
+    rig.set_type(track, TYPE)
+    rig.set_note(track, 60)
+    v = 2 * track
+    rig.rec_word(v, 0x1B8, 1)
+    beat = rig.call(0, extra_reads={"mask": (nw(MASK), 1)}, mask=0)
+    assert beat["mask"][0] == 1 << TYPE, hex(beat["mask"][0])
+    out = rig.call(v, mask=beat["mask"][0])
+    assert stops_at(out, RETURN_SW), out["halt"]
+    assert any(w not in (0, None) for w in out["out"])
+    if track:
+        # the old mask (legacy table only) skipped this voice
+        old = rig.call(v, mask=0)
+        assert stops_at(old, STOCK_BP), old["halt"]
+    # an unpublished V2 row (type 0) leaves the mask as the legacy table's
+    rig.dm[nw(v2)] = 0
+    empty = rig.call(0, extra_reads={"mask": (nw(MASK), 1)}, mask=0)
+    assert empty["mask"][0] == 0

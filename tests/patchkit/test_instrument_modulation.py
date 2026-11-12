@@ -35,12 +35,14 @@ def bank(family):
     return controls
 
 
-def frame(playback, lane=None, raw=0x4000, machine=20):
+def frame(playback, lane=None, raw=0x4000, machine=20, track=0):
+    """Stock frame copy: type halfword 74 + track, parameters 48 halfwords per track."""
     put = playback[1]
-    words = [0] * 256
-    words[37] = machine
+    words = [0] * 512
+    words[(74 + track) // 2] |= machine << (16 * ((74 + track) & 1))
     for index, halfword in enumerate(MIRRORS):
         value = raw if lane is None or lane == index else 0x4000
+        halfword += 48 * track
         words[halfword // 2] |= value << (16 * (halfword & 1))
     put("_iv_mod_frame", words)
 
@@ -268,3 +270,24 @@ def test_native_modulation_changes_sounding_pcm_without_config_revision_or_note_
     put("_instrument_session", [0])
     call(0)
     assert get("_iv_output", 32) == [0] * 32
+
+
+def test_bound_track_reads_its_own_frame_row(playback):
+    call, put, get, reset, configure, _, symbols = playback
+    controls = bank(2)
+    assert reset(track=11) == 1
+    assert configure(values=controls, track=11) == 1
+    # Track 0's row carries the type and an offset; track 11's row is stock.
+    frame(playback, 0, 0x6000, track=0)
+    call(0)
+    call(0)
+    assert get("_iv_mod_ready") == [0]
+    assert get("_iv_input", 10)[9] == symbols["_iv_controls"]
+    frame(playback, 0, 0x6000, track=11)
+    call(0)
+    assert get("_iv_input", 10)[9] == symbols["_iv_controls"]  # first block primes
+    call(0)
+    assert get("_iv_input", 10)[9] == symbols["_iv_mod_controls"]
+    pointer, values = effective(playback, controls)
+    assert pointer == symbols["_iv_mod_controls"]
+    assert values[17] >> 16 != controls[17] >> 16

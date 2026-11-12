@@ -2,8 +2,11 @@
 extern uint32_t dkrt_instrument_type(void);
 extern uint32_t dkrt_instrument_generation(void);
 extern volatile uint32_t ip_admission[8];
-/* The verified LEA operand holds the SRAM row address. Extern mappings name
- * anchors; load the operand before reading the current track-type byte. */
+extern volatile uint32_t ip_track;
+/* The verified LEA operand holds the SRAM row address of track 0. Extern
+ * mappings name anchors; load the operand before reading the current
+ * track-type byte. DT2 1.17 outgoing machine rows are 0x9a bytes per track
+ * (the stock refresh copies 0x9a bytes from Sound+0xa2 to row+0x9a*track). */
 extern const uint32_t ip_mod_track_type;
 #define ROW(n) extern const uint8_t ip_mod_##n
 ROW(color); ROW(drift); ROW(mix); ROW(strum); ROW(gate); ROW(swing);
@@ -33,12 +36,12 @@ uint32_t instrument_mod_param(uint32_t type,uint32_t mirror)
     return UINT32_MAX;
 }
 
-int instrument_mod_carrier(void)
+int instrument_mod_carrier(uint32_t track)
 {
     uint32_t type=dkrt_instrument_type();
-    return type>=16 && ip_admission[0] && ip_admission[5]==type &&
+    return track<16 && track==ip_track && type>=16 && ip_admission[0] && ip_admission[5]==type &&
         dkrt_instrument_generation() &&
-        *(volatile const uint8_t *)(uintptr_t)ip_mod_track_type==type;
+        *(volatile const uint8_t *)(uintptr_t)(ip_mod_track_type+0x9au*track)==type;
 }
 
 void instrument_mod_defaults(uint32_t source)

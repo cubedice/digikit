@@ -22,7 +22,7 @@ This is not a hardware-qualified release.
 
 Build and pack with `patchkit build digikit/canopy` and
 `patchkit pack digikit/canopy --device dt2 -o out/patch/canopy-dt2.dkm` through
-the repository's Python wrapper. Select CANOPY on track 1. In firmware containing
+the repository's Python wrapper. Select CANOPY on any one track. In firmware containing
 the adapter, SETTINGS > DIGIKIT > CANOPY > INPUT opens USB/DIN,
 channel and EXTERNAL MIDI settings. The built-in KEYBOARD/TRIG route is available on
 the admitted track without enabling external MIDI.
@@ -32,7 +32,10 @@ calculator remains V1-only. External MIDI starts disabled unless you previously 
 saved routing is restored after CANOPY is admitted and ready. Learned chord
 templates and saved presets persist. Keyboard mode and sound controls start at
 defaults until you load a preset.
-Only track 1 is admitted. Other tracks and channels retain stock behavior.
+One track is admitted: the lowest track whose machine is CANOPY. A second CANOPY
+on a higher track stays silent with the stock TUNE/LEV page until the lower one
+is replaced; moving the instrument re-admits it on the new track. Other tracks
+and channels retain stock behavior.
 
 `src/dsp/voice.s` implements four foreground notes, two short release tails and
 four pending-replacement records in a caller-owned 256-byte bank.
