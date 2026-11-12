@@ -37,5 +37,7 @@ void mi_transport_recover(void);
 /* UI-confirmed keys-up recovery for FIFO/ACK exhaustion within a still-trusted
  * bound DSP session. Never clears reset/boot-trust failure. */
 int mi_keyboard_recover(void);
-void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record);
+/* Frame ISR: `frame` is the stock frame about to be sent (sequencer trigs). */
+void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record,
+                            const volatile uint16_t *frame);
 #endif

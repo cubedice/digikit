@@ -16,9 +16,9 @@ import { acknowledgedPanel } from './panel-ack.ts';
 // Sequencer trigs and trig parameter locks on a CANOPY track (finding 123).
 // Asserts the stock lock facts the packed design relies on: a held turn of a
 // stock knob records a lock that playback applies; locks on the machine
-// slots CANOPY does not use play back unclamped, 0..0x7fff. Current CANOPY
-// behaviour (trigs do not reach it; its own knobs ignore a held turn) is
-// logged to out/canopy-plock/probe.json, not asserted.
+// slots CANOPY does not use play back unclamped, 0..0x7fff. Sequencer trigs
+// play CANOPY notes and release them. The rest of CANOPY's behaviour is
+// logged to out/canopy-plock/probe.json.
 vi.setConfig({ hookTimeout: 600_000 });
 
 const options = liveOptions('dt2');
@@ -188,6 +188,9 @@ test('CANOPY track trig locks: stock lock storage and playback', { timeout: 900_
   await key('PLAY');
   await watch('play-trigs', 15_000);
   await key('STOP');
+  const played = log['play-trigs'] as { tokens: [number, number][] };
+  expect(played.tokens.length, 'sequencer trigs start CANOPY notes').toBeGreaterThan(0);
+  await expect.poll(async () => (await voices()).filter((v) => v.gate === 1).length, { timeout: 30_000 }).toBe(0);
   await session.client.call('pcm.tap', { action: 'capture_stop' });
   const raw = fs.readFileSync(capture);
   let energy = 0;

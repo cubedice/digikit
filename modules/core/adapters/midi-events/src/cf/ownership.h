@@ -77,6 +77,12 @@ int mi_message(MiLedger *m, uint32_t port, const uint8_t *msg, uint32_t len);
 int mi_panel_down(MiLedger *m, uint32_t key, uint32_t note, uint32_t velocity, uint32_t track);
 void mi_panel_up(MiLedger *m, uint32_t key);
 void mi_panel_cancel(MiLedger *m);
+/* Sequencer trigs on a local-key track (panel_mask): one note per track, as
+ * stock audio tracks are monophonic. A trig releases the track's previous
+ * sequencer note first; panel cancel leaves sequencer notes sounding. */
+#define MI_SEQ_KEY 0x100u
+int mi_seq_trig(MiLedger *m, uint32_t track, uint32_t note, uint32_t velocity);
+void mi_seq_release(MiLedger *m, uint32_t track);
 /* Peek leaves the ring intact for retransmission. ACK must match its exact head
  * sequence; a duplicate or stale ACK cannot consume a different message. */
 int mi_peek(MiLedger *m, MiEvent *out);

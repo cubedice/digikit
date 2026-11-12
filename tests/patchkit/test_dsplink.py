@@ -262,8 +262,9 @@ static void mark(uint32_t tx, uint32_t entry, uint32_t count, uint16_t value) {
     for (uint32_t i=0; i<count; ++i)
         *(volatile uint16_t *)(tx + 4*(entry+i) + 2) = value;
 }
-void instrument_write_frame(uint32_t tx, uint32_t entry, const volatile uint16_t *rec) {
-    (void)rec;
+void instrument_write_frame(uint32_t tx, uint32_t entry, const volatile uint16_t *rec,
+                            const volatile uint16_t *frame) {
+    (void)rec; (void)frame;
     mark(tx, entry, 64, 0xb66b);
 }
 """

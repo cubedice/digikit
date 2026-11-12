@@ -57,7 +57,30 @@ static void revalidate_routes(void)
     }
 }
 
-void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record)
+/* Sequencer trigs on instrument tracks: the stock frame about to be sent
+ * (DT2 1.17, big-endian halfwords; finding 04) carries the trig mask (word
+ * 0x11), release mask (0x12), all-voice reset (0x15), pitch note<<8 (1 + t)
+ * and velocity<<8 (0x1a + t). Each frame is sent once, so each trig is seen
+ * once. Only tracks taking local keys (panel_mask) are played. */
+static void sequencer_frame(const volatile uint16_t *frame)
+{
+    uint32_t tracks = mi_ledger.panel_mask, trigs, releases, t;
+    if (!frame) return;
+    trigs = frame[0x11]; releases = frame[0x12];
+    if (frame[0x15]) releases = 0xffffu;
+    for (t = 0; t < MI_TRACKS; ++t) {
+        if (releases & (1u << t)) mi_seq_release(&mi_ledger, t);
+        if (!(trigs & (1u << t)) || !(tracks & (1u << t))) continue;
+        uint32_t note = frame[1u + t] >> 8, velocity = frame[0x1au + t] >> 8;
+        if (note > 127u) note = 127u;
+        if (velocity > 127u) velocity = 127u;
+        if (!velocity) velocity = 1u;
+        mi_seq_trig(&mi_ledger, t, note, velocity);
+    }
+}
+
+void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record,
+                            const volatile uint16_t *frame)
 {
     uint32_t reply[MT_REPLY_WORDS], i, sr;
     const uint32_t *packet, *observed;
@@ -65,6 +88,7 @@ void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_
     if (!tx || (tx & 3u) || entry != 0x9fcu/2u) return;
     sr = dkrt_irq_mask();
     initialize();
+    if (!reset_seen) sequencer_frame(frame);
     if (reset_seen) {
         for (i = 0; i < MT_WORDS; ++i) {
             queue[2u*(entry+2u*i)+1u] = 0;

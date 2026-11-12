@@ -298,7 +298,7 @@ uint32_t session_boundary(const uint32_t *words, uint32_t step) {
         record[h]=(uint16_t)words[i]; record[h+1]=(uint16_t)(words[i]>>16);
         out[i]=0xccccccccu;
     }
-    instrument_write_frame((uintptr_t)queue,0x9fc/2,record);
+    instrument_write_frame((uintptr_t)queue,0x9fc/2,record,0);
     int result=mi_registry_reply(out,16);
     if (step < 2) {
         if (result!=16) return 100+step*1000+result;

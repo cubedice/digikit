@@ -124,7 +124,7 @@ extern volatile u32 dl_rec_lit; /* the literal of the handler's first `pea`: the
 extern void pp_write_frame(u32 tx_queue, u32 suffix_entry) __attribute__((weak));
 /* A persistent-instrument provider requires pattern-position and supplies its
  * matching DSP reply symbol. No waits/allocations; called from the frame ISR. */
-extern void instrument_write_frame(u32 tx_queue, u32 entry, const volatile u16 *rec)
+extern void instrument_write_frame(u32 tx_queue, u32 entry, const volatile u16 *rec, const volatile u16 *frame)
     __attribute__((weak));
 
 static u32 word_at(const u8 *p)
@@ -443,7 +443,7 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
         pp_write_frame(tx, total - 2u * DL_POSITION_WORDS);
         if (instrument_write_frame) {
             words -= DL_INSTRUMENT_WORDS;
-            instrument_write_frame(tx, total - 2u * (DL_POSITION_WORDS + DL_INSTRUMENT_WORDS), rec);
+            instrument_write_frame(tx, total - 2u * (DL_POSITION_WORDS + DL_INSTRUMENT_WORDS), rec, src);
         }
         /* Position snapshots are sent even while the acknowledged link is idle. */
         if (st != DL_START && st != DL_BUSY && !l->ending && !l->dirty)

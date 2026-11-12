@@ -268,3 +268,42 @@ uint32_t mi_test_panel_track(void)
     CHECK(!m.routes[32].enabled && !mi_peek(&m, &e));
     return 0;
 }
+
+uint32_t mi_test_sequencer_notes(void)
+{
+    MiLedger m;
+    MiEvent e;
+    mi_init(&m);
+    /* Trigs on a track without local keys are not played. */
+    CHECK(!mi_seq_trig(&m, 10, 60, 100) && !mi_peek(&m, &e));
+    CHECK(mi_route(&m, MI_PANEL, 0, 10, m.generations[10], 0) == 0);
+    CHECK(mi_seq_trig(&m, 10, 60, 100)); e = take(&m);
+    CHECK(e.kind == MI_NOTE_ON && e.track == 10 && e.port == MI_PANEL && !e.channel);
+    CHECK(e.note == 60 && e.value == 100 && e.token);
+    uint32_t first = e.token;
+    /* Monophonic like a stock audio track: the next trig releases it first. */
+    CHECK(mi_seq_trig(&m, 10, 64, 90)); e = take(&m);
+    CHECK(e.kind == MI_NOTE_OFF && e.token == first && e.note == 60);
+    e = take(&m);
+    CHECK(e.kind == MI_NOTE_ON && e.note == 64 && e.token != first);
+    uint32_t second = e.token;
+    /* Leaving keyboard mode releases held panel keys one by one and keeps
+     * the sequencer note (no route-wide all-notes-off). */
+    CHECK(mi_panel_down(&m, 3, 67, 80, 10)); e = take(&m);
+    uint32_t key = e.token;
+    mi_panel_cancel(&m); e = take(&m);
+    CHECK(e.kind == MI_NOTE_OFF && e.token == key && e.note == 67);
+    CHECK(!mi_peek(&m, &e));
+    mi_panel_up(&m, 3); CHECK(!mi_peek(&m, &e));
+    /* The release mask ends it; with nothing sequenced cancel is route-wide. */
+    mi_seq_release(&m, 10); e = take(&m);
+    CHECK(e.kind == MI_NOTE_OFF && e.token == second && e.note == 64);
+    mi_seq_release(&m, 10); CHECK(!mi_peek(&m, &e));
+    mi_panel_cancel(&m); e = take(&m);
+    CHECK(e.kind == MI_CC && e.note == 120 && e.track == 10);
+    /* A reset retires the track: its sequencer note gets no off, later trigs no on. */
+    CHECK(mi_seq_trig(&m, 10, 60, 100)); (void)take(&m);
+    mi_reset_track(&m, 10);
+    CHECK(!mi_seq_trig(&m, 10, 62, 100));
+    return 0;
+}

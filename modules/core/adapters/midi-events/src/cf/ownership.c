@@ -252,20 +252,60 @@ void mi_panel_up(MiLedger *m,uint32_t key)
         k->used=0;
     }
 }
+/* Sequencer keys share the panel route (the mapper and the DSP treat them as
+ * local keys) under identities no panel key uses. */
+static int seq_key(const MiKey *k) { return k->port==MI_PANEL && k->identity>=MI_SEQ_KEY; }
 void mi_panel_cancel(MiLedger *m)
 {
-    uint32_t tracks=m->panel_mask;
+    uint32_t tracks=m->panel_mask, sequenced=0;
+    for(uint32_t i=0;i<MI_KEYS;++i) {
+        const MiKey *k=&m->keys[i];
+        if(k->used && seq_key(k) && !k->tombstone && k->track<MI_TRACKS) sequenced|=1u<<k->track;
+    }
     for(uint32_t i=0;i<MI_KEYS;++i) {
         MiKey *k=&m->keys[i];
-        if(k->used && k->port==MI_PANEL) {
-            if(!k->tombstone && k->track<MI_TRACKS) tracks|=1u<<k->track;
+        if(k->used && k->port==MI_PANEL && !seq_key(k)) {
+            if(!k->tombstone && k->track<MI_TRACKS) {
+                tracks|=1u<<k->track;
+                /* A sounding sequencer note keeps the route: release this
+                 * key alone instead of the route-wide all-notes-off. */
+                if(sequenced&(1u<<k->track))
+                    emit(m,k->token,k->generation,k->track,MI_NOTE_OFF,MI_PANEL,0,k->note,0);
+            }
             k->tombstone=1;
         }
     }
     /* Also clear released panel notes on every panel instrument track.
      * No USB/DIN controller changes. */
     for(uint32_t t=0;t<MI_TRACKS;++t)
-        if(tracks&(1u<<t)) emit(m,0,m->generations[t],(uint8_t)t,MI_CC,MI_PANEL,0,120,0);
+        if((tracks&(1u<<t)) && !(sequenced&(1u<<t)))
+            emit(m,0,m->generations[t],(uint8_t)t,MI_CC,MI_PANEL,0,120,0);
+}
+
+void mi_seq_release(MiLedger *m, uint32_t track)
+{
+    for(uint32_t i=0;i<MI_KEYS;++i) {
+        MiKey *k=&m->keys[i];
+        if(!k->used || !seq_key(k) || k->identity!=MI_SEQ_KEY+track) continue;
+        if(!k->tombstone) emit(m,k->token,k->generation,k->track,MI_NOTE_OFF,MI_PANEL,0,k->note,0);
+        k->used=0;
+    }
+}
+
+int mi_seq_trig(MiLedger *m, uint32_t track, uint32_t note, uint32_t velocity)
+{
+    if(track>=MI_TRACKS || note>127 || !velocity || velocity>127) return 0;
+    mi_seq_release(m,track);
+    if(!(m->panel_mask&(1u<<track)) || m->reset_mask || m->routes[32].quarantined) return 0;
+    uint32_t free=MI_KEYS;
+    for(uint32_t i=0;i<MI_KEYS && free==MI_KEYS;++i) if(!m->keys[i].used) free=i;
+    if(free==MI_KEYS || !m->next_token) { overflow(m); return 0; }
+    MiKey *k=&m->keys[free];
+    k->token=m->next_token++; k->generation=m->generations[track]; k->identity=MI_SEQ_KEY+track;
+    k->track=(uint8_t)track; k->port=MI_PANEL; k->channel=0; k->note=(uint8_t)note;
+    k->tombstone=0; k->used=1;
+    emit(m,k->token,k->generation,(uint8_t)track,MI_NOTE_ON,MI_PANEL,0,k->note,(uint8_t)velocity);
+    return 1;
 }
 
 int mi_peek(MiLedger *m, MiEvent *out)
