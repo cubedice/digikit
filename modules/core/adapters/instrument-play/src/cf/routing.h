@@ -30,4 +30,25 @@ static int cr_decode(CrRoute *out,const uint8_t *b,uint32_t n)
     if(!cr_valid(&r)) return -1;
     *out=r; return 0;
 }
+/* Per-track external channels (0: the routing CHANNEL), saved with SAVE
+ * ROUTING under its own key so the version 1 routing record stays unchanged. */
+enum { CC_BYTES=20 };
+static int cc_encode(const uint8_t channels[16],uint8_t b[CC_BYTES])
+{
+    for(uint32_t i=0;i<16;++i) if(channels[i]>16) return -1;
+    b[0]='C'; b[1]='C'; b[2]=1; b[3]=0;
+    uint8_t a=0;
+    for(uint32_t i=0;i<16;++i) { b[4+i]=channels[i]; a+=channels[i]; }
+    b[3]=(uint8_t)(0x5a^a);
+    return 0;
+}
+static int cc_decode(uint8_t out[16],const uint8_t *b,uint32_t n)
+{
+    if(n!=CC_BYTES || b[0]!='C' || b[1]!='C' || b[2]!=1) return -1;
+    uint8_t a=0;
+    for(uint32_t i=0;i<16;++i) { if(b[4+i]>16) return -1; a+=b[4+i]; }
+    if(b[3]!=(uint8_t)(0x5a^a)) return -1;
+    for(uint32_t i=0;i<16;++i) out[i]=b[4+i];
+    return 0;
+}
 #endif

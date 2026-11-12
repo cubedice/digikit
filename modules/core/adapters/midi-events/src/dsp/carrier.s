@@ -117,11 +117,10 @@ _mi_carrier_unowned:
 .SECTION/DM seg_dmda;
 .PKDATA _mi_carrier_active, 64;
 .PKDATA _mi_carrier_pairs, 192;
-// Single-instance native-AMP opt-in, renewed only by a completed V6 process.
-.PKDATA _mi_native_owner_valid, 4;
-.PKDATA _mi_native_owner_stamp, 4;
-// The owner's track (its stereo pair is voices 2t and 2t+1), published with the opt-in.
-.PKDATA _mi_native_owner_track, 4;
-// V7 gain output is core-owned and shared by the admitted stereo pair only.
-.PKDATA _mi_post_owner_valid, 4;
-.PKDATA _mi_post_amp, 128;
+// Per-track native-AMP opt-in (stereo pair 2t/2t+1): the carrier stamp of the
+// frame in which that track's V6 process completed, 0 for none. Cleared every
+// frame by _mi_carrier_begin; written only by the instrument adapter.
+.PKDATA _mi_native_owner, 64;
+// Per-track V7 common gains: the address of the owner's 32 gains, 0 for none.
+// Read only together with a current native owner of the same track.
+.PKDATA _mi_post_ptr, 64;

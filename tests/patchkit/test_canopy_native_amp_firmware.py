@@ -59,13 +59,16 @@ def test_shared_amp_hook_changes_only_current_native_output(
     )
     reference = stock.configure_from_dispatcher(reference, **config)
     hooked = stock.configure_from_dispatcher(hooked, **config)
-    stock.put(hooked, symbols["_mi_native_owner_valid"], ownership != "v5")
-    stock.put(hooked, symbols["_mi_post_owner_valid"], ownership != "native")
-    for i in range(32):
-        stock.put(hooked, symbols["_mi_post_amp"] + 4 * i, stock.bits(0.5))
+    # Per-track owner tables, track 0: the native owner's stamp and its gains.
+    gains_at = symbols["_probe_post_gains"]
     stock.put(
-        hooked, symbols["_mi_native_owner_stamp"], 40 if ownership == "stale" else 41
+        hooked,
+        symbols["_mi_native_owner"],
+        0 if ownership == "v5" else 40 if ownership == "stale" else 41,
     )
+    stock.put(hooked, symbols["_mi_post_ptr"], 0 if ownership == "native" else gains_at)
+    for i in range(32):
+        stock.put(hooked, gains_at + 4 * i, stock.bits(0.5))
     stock.put(hooked, symbols["_mi_carrier_stamp"], 41)
     pairs = symbols["_mi_carrier_pairs"]
     stock.put(hooked, pairs, 41)
@@ -148,10 +151,10 @@ def test_post_amp_keeps_late_release_exponential_after_actual_stock_bit_reductio
         record = stock.record(runner)
         q = -_float(stock.get(runner, 0x26AF30 + 4 * record[4]))
         assert 0 < q < 1
+        gains_at = symbols["_probe_post_gains"]
         for name, value in (
-            ("_mi_native_owner_valid", 1),
-            ("_mi_native_owner_stamp", 41),
-            ("_mi_post_owner_valid", int(post)),
+            ("_mi_native_owner", 41),
+            ("_mi_post_ptr", gains_at if post else 0),
             ("_mi_carrier_stamp", 41),
         ):
             stock.put(runner, symbols[name], value)
@@ -168,7 +171,7 @@ def test_post_amp_keeps_late_release_exponential_after_actual_stock_bit_reductio
                     stock.BUFFER + 4 * i,
                     stock.bits(source if post else source * gain),
                 )
-                stock.put(runner, symbols["_mi_post_amp"] + 4 * i, stock.bits(gain))
+                stock.put(runner, gains_at + 4 * i, stock.bits(gain))
             runner = _bit_reduce(runner, raw_br)
             reduced = [
                 _float(stock.get(runner, stock.BUFFER + 4 * i)) for i in range(32)
@@ -194,7 +197,7 @@ def test_post_amp_keeps_late_release_exponential_after_actual_stock_bit_reductio
         if post:
             assert peaks[1] / peaks[0] == pytest.approx(q ** (48000 * 4), rel=2e-6)
             for i in range(32):
-                stock.put(runner, symbols["_mi_post_amp"] + 4 * i, 0)
+                stock.put(runner, gains_at + 4 * i, 0)
             runner = stock.call(runner, stock.ENVELOPE)
             assert [stock.get(runner, stock.BUFFER + 4 * i) for i in range(32)] == [
                 0

@@ -7,11 +7,8 @@
 .GLOBAL _mi_envelope_entry;
 .EXTERN _mi_envelope_next;
 .EXTERN _mi_carrier_flags;
-.EXTERN _mi_native_owner_valid;
-.EXTERN _mi_native_owner_track;
-.EXTERN _mi_native_owner_stamp;
-.EXTERN _mi_post_owner_valid;
-.EXTERN _mi_post_amp;
+.EXTERN _mi_native_owner;
+.EXTERN _mi_post_ptr;
 _mi_envelope_entry:
     DM(_me_sv_r0) = R0;
     DM(_me_sv_r1) = R1;
@@ -74,16 +71,17 @@ _me_found:
     COMP(R2, R3);
     IF EQ JUMP _me_restore;
     // Native per-note AMP has already shaped this track's completed block.
-    // Only the admitted stereo pair and the stock in-place 32-sample call
-    // may skip this one stage; its configured record and later gain stay intact.
+    // Only an admitted stereo pair (its track's owner stamp is this frame's)
+    // and the stock in-place 32-sample call may skip this one stage; its
+    // configured record and later gain stay intact.
     R3 = LSHIFT R4 BY -1;
-    R2 = DM(_mi_native_owner_track);
-    COMP(R3, R2);
-    IF NE JUMP _me_owned_flags;
-    R3 = DM(_mi_native_owner_valid);
+    R3 = LSHIFT R3 BY 2;
+    R2 = _mi_native_owner;
+    R3 = R3 + R2;
+    I0 = R3;
+    R3 = DM(0, I0);
     R3 = PASS R3;
     IF EQ JUMP _me_owned_flags;
-    R3 = DM(_mi_native_owner_stamp);
     COMP(R3, R11);
     IF NE JUMP _me_owned_flags;
     R3 = DM(_me_sv_r12);
@@ -130,11 +128,16 @@ _me_restore:
     MODIFY(I7, -16) (NW); // displaced first instruction of DT2 1.17 0x1cbb57
     JUMP _mi_envelope_next;
 _me_native:
-    R0 = DM(_mi_post_owner_valid);
+    R0 = LSHIFT R4 BY -1;
+    R0 = LSHIFT R0 BY 2;
+    R1 = _mi_post_ptr;
+    R0 = R0 + R1;
+    I1 = R0;
+    R0 = DM(0, I1);
     R0 = PASS R0;
     IF EQ JUMP _me_native_restore; // V6 retains its original shared-AMP bypass.
     I0 = R8;
-    I1 = _mi_post_amp;
+    I1 = R0;
     L1 = 0;
     M6 = 1;
     R2 = 32;

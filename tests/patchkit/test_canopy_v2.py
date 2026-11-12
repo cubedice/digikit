@@ -156,8 +156,8 @@ _test_no_capture:
     return linked, sections, initial, obj, symbols, request.param
 
 
-@pytest.fixture
-def canopy(canopy_object):
+def make_canopy(canopy_object):
+    """One independent simulated DSP memory and its call helper."""
     linked, sections, initial, obj, symbols, protected = canopy_object
     dm = dict(initial)
     dm.update({0x20015000 // 4 + i: 0 for i in range(13)})
@@ -346,6 +346,11 @@ def canopy(canopy_object):
         return result
 
     return call
+
+
+@pytest.fixture
+def canopy(canopy_object):
+    return make_canopy(canopy_object)
 
 
 def note(token, pitch, velocity=100, off=False, owner=0):
@@ -3675,3 +3680,69 @@ def test_fm_live_ratio_bandwidth_taper_is_sample_linear(canopy):
     assert max(abs(a - b) for a, b in zip(actual, expected, strict=True)) < 0.00002
     # This witness would fail if the new cap were applied at the block edge.
     assert max(abs(a - b) for a, b in zip(actual, abrupt, strict=True)) > 0.001
+
+
+def _isolation_schedule():
+    """Two differently configured instances: wavetable PM with arp, FM with arp."""
+    a = dict(
+        controls=wavetable_fm_controls(
+            fm_depth=60, table=2, position=345, depth=100, rate=1000, shape=2, mix=64
+        ),
+        native=native_amp(),
+        post_amp=True,
+        state=0x20050000,
+        track=0,
+    )
+    b = dict(
+        controls=fm_controls(algorithm=2, feedback=40, mix=96),
+        native=native_amp(attack=1 / 16, sustain=0.8),
+        post_amp=True,
+        state=0x20054000,
+        track=10,
+    )
+    events_a = [
+        [note(i + 1, 48 + 7 * i) for i in range(4)],
+        [],
+        [note(2, 55, 0, off=True)],
+        [],
+        [note(5, 64)],
+        [],
+        [note(1, 48, 0, off=True), note(3, 62, 0, off=True)],
+        [],
+    ]
+    events_b = [
+        [note(1, 62), note(2, 69)],
+        [note(3, 74)],
+        [],
+        [note(1, 62, 0, off=True)],
+        [],
+        [note(4, 57, 90)],
+        [],
+        [note(2, 69, 0, off=True)],
+    ]
+    return a, b, events_a, events_b
+
+
+def _isolation_trace(result):
+    return (
+        result["regs"]["R0"],
+        list(result["out"]),
+        list(result["common_amp"]),
+        list(result["state"]),
+    )
+
+
+def test_two_instances_interleaved_match_each_instance_alone(canopy_object):
+    """Several admitted instances share the module's scratch globals. Each block
+    of one instance must be bit-identical whether or not another instance, with
+    other notes, family and arp, ran between its blocks."""
+    a, b, events_a, events_b = _isolation_schedule()
+    alone_a, alone_b = make_canopy(canopy_object), make_canopy(canopy_object)
+    expected_a = [_isolation_trace(alone_a(e, **a)) for e in events_a]
+    expected_b = [_isolation_trace(alone_b(e, **b)) for e in events_b]
+    shared = make_canopy(canopy_object)
+    for block, (ea, eb) in enumerate(zip(events_a, events_b, strict=True)):
+        assert _isolation_trace(shared(ea, **a)) == expected_a[block], ("A", block)
+        assert _isolation_trace(shared(eb, **b)) == expected_b[block], ("B", block)
+    assert any(any(trace[1]) for trace in expected_a)
+    assert any(any(trace[1]) for trace in expected_b)

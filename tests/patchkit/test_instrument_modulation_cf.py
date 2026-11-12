@@ -57,6 +57,11 @@ def mapped(tmp_path_factory, src_allocator):
 #include <stdint.h>
 uint32_t dkrt_instrument_type(void) {{ return *(volatile uint32_t *){CONTROL:#x}; }}
 uint32_t dkrt_instrument_generation(void) {{ return *(volatile uint32_t *){CONTROL + 4:#x}; }}
+/* sound.c stand-in: one admitted instance (state [0], type [5]) on track ip_track. */
+int instrument_sound_admitted(uint32_t track) {{
+    const volatile uint32_t *a = (const volatile uint32_t *){CONTROL + 8:#x};
+    return track == *(volatile uint32_t *){CONTROL + 48:#x} && a[0] && a[5] == dkrt_instrument_type();
+}}
 """)
     return pk_cfunit.CfUnit(
         SYX,
@@ -83,9 +88,7 @@ uint32_t dkrt_instrument_generation(void) {{ return *(volatile uint32_t *){CONTR
             "_mf_rows": ROWS,
             "_mf_list_stock": STOCK_LIST,
             "_mf_spt": TYPE_FN,
-            "ip_admission": CONTROL + 8,
             "ip_mod_track_type": CONTROL + 40,
-            "ip_track": CONTROL + 48,
             **{f"ip_mod_{name}": 0x300 + index for index, name in enumerate(NAMES)},
         },
         [

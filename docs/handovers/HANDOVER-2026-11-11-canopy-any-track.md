@@ -1,6 +1,6 @@
 # CANOPY on any track
 
-Branch: `codex/short-loop-proof`, uncommitted on top of `b48df9c8`.
+Branch: `codex/short-loop-proof`, commit `680c2134` on top of `b48df9c8`; superseded for installation by the [four-instance handover](HANDOVER-2026-11-12-canopy-multi.md).
 
 Why: on the physical DTII, pattern A02 held CANOPY on track 11 and showed the
 stock TUNE/LEV page in silence, because the adapter only admitted track 1

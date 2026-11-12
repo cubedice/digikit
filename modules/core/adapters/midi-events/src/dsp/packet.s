@@ -176,8 +176,13 @@ _mi_reset_packet:
     R0 = DM(9, I0);
     R0 = PASS R0;
     IF EQ JUMP _mi_bad;
-    MODIFY(I0, 10) (NW);
-    R8 = 22;
+    // Word 10: optional instance slot hint (0 none, 1..15); the rest is padding.
+    R0 = DM(10, I0);
+    R0 = LSHIFT R0 BY -4;
+    R0 = PASS R0;
+    IF NE JUMP _mi_bad;
+    MODIFY(I0, 11) (NW);
+    R8 = 21;
 _mi_padding:
     R8 = PASS R8;
     IF EQ JUMP _mi_good;

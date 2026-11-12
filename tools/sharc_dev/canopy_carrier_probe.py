@@ -70,6 +70,8 @@ def carrier_policy(blob, *, velocity_hook=False):
             )
         )
         + "\n.PKDATA _mi_epoch, 4;\n"
+        # Stands in for the instrument adapter's per-slot V7 gains (_mi_post_ptr).
+        + ".PKDATA _probe_post_gains, 128;\n"
     )
     address = 0x20094000
     sections, initial = {}, {}

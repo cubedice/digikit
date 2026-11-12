@@ -1,8 +1,10 @@
-// One admitted row, one instance, on the track the transport bound (_iv_track:
-// adopted by the first reset while unconfigured, then fixed until re-bound).
-// Transport callbacks run under the saved early-frame scalar context. No
-// module callback is a V1 voice.
-// Events are copied once, consumed once by process, then removed from the ABI.
+// One admitted row with up to four instances ("slots"), each bound to one
+// track by an explicit slot hint in the transport reset (packet word 10).
+// Every entry point loads its slot's working set (the scalar _iv_* symbols
+// below), runs the single-instance logic unchanged, then stores the slot.
+// Slot k uses registry instance k: state base + k * stride. Transport
+// callbacks run under the saved early-frame scalar context. No module callback
+// is a V1 voice. Events are copied once, consumed once by process, then removed.
 .SECTION/PM seg_pmco;
 .GLOBAL _instrument_reset;
 .GLOBAL _instrument_configure;
@@ -10,6 +12,8 @@
 .GLOBAL _instrument_carrier_prepare;
 .GLOBAL _iv_voice_render;
 .GLOBAL _iv_reset_row;
+.GLOBAL _iv_slot_load;
+.GLOBAL _iv_slot_store;
 .EXTERN _ir_rows;
 .EXTERN _ir_process_rows;
 .EXTERN _ir_process_flags;
@@ -23,11 +27,8 @@
 .EXTERN _mi_velocity_prepare;
 .EXTERN _mi_carrier_rendered;
 .EXTERN _mi_envelope_records;
-.EXTERN _mi_native_owner_valid;
-.EXTERN _mi_native_owner_track;
-.EXTERN _mi_native_owner_stamp;
-.EXTERN _mi_post_owner_valid;
-.EXTERN _mi_post_amp;
+.EXTERN _mi_native_owner;
+.EXTERN _mi_post_ptr;
 .EXTERN _mi_carrier_stamp;
 .EXTERN _iv_amp_attack_table;
 .EXTERN _iv_amp_decay_table;
@@ -39,13 +40,9 @@
 .EXTERN _iv_mod_ready;
 
 // This adapter is absent from ordinary images. Linking it is the trusted
-// single-instance capability; binding the session must precede lifecycle work.
+// instrument capability; binding the session must precede lifecycle work.
 _instrument_carrier_prepare:
     R0 = 0;
-    DM(_mi_native_owner_valid) = R0;
-    DM(_mi_post_owner_valid) = R0;
-    DM(_iv_post_requested) = R0;
-    DM(_iv_native_valid) = R0;
     DM(_instrument_ui_status) = R0;
     I0 = _ir_rows;
     R0 = DM(0, I0);
@@ -54,18 +51,66 @@ _instrument_carrier_prepare:
     DM(_instrument_play_status + 4) = R0;
     R0 = DM(_instrument_session);
     R0 = PASS R0;
-    IF EQ JUMP _iv_quiet;
+    IF EQ JUMP _iv_quiet_all;
     R0 = 1;
     DM(_ir_lifecycle_ready) = R0;
     CALL _iv_admitted;
     R0 = PASS R0;
-    IF EQ JUMP _iv_quiet;
+    IF EQ JUMP _iv_quiet_all;
     I0 = _ir_process_rows;
     R0 = DM(2, I0);
     I1 = _instrument_voice_rows;
     R1 = _iv_voice_render;
     DM(1, I1) = R1;
     DM(0, I1) = R0; // publish the admitted type last; never shadow a stock type
+    R0 = 0;
+    DM(_iv_loop) = R0;
+_iv_prepare_slot:
+    R4 = DM(_iv_loop);
+    CALL _iv_slot_bound;
+    R0 = PASS R0;
+    IF EQ JUMP _iv_prepare_next;
+    R4 = DM(_iv_loop);
+    CALL _iv_slot_load;
+    CALL _iv_run_slot;
+    CALL _iv_slot_store;
+_iv_prepare_next:
+    R0 = DM(_iv_loop);
+    R0 = R0 + 1;
+    DM(_iv_loop) = R0;
+    R1 = DM(_iv_slot_count);
+    COMP(R0, R1);
+    IF LT JUMP _iv_prepare_slot;
+    RTS;
+
+// Session loss or a lost row identity silences and unconfigures every slot.
+_iv_quiet_all:
+    R0 = 0;
+    DM(_iv_loop) = R0;
+_iv_quiet_slot:
+    R4 = DM(_iv_loop);
+    CALL _iv_slot_bound;
+    R0 = PASS R0;
+    IF EQ JUMP _iv_quiet_next;
+    R4 = DM(_iv_loop);
+    CALL _iv_slot_load;
+    CALL _iv_quiet;
+    CALL _iv_slot_store;
+_iv_quiet_next:
+    R0 = DM(_iv_loop);
+    R0 = R0 + 1;
+    DM(_iv_loop) = R0;
+    R1 = 4;
+    COMP(R0, R1);
+    IF LT JUMP _iv_quiet_slot;
+    RTS;
+
+// One slot's block. Working set loaded; returns through RTS on every path.
+_iv_run_slot:
+    R0 = 0;
+    DM(_iv_post_requested) = R0;
+    DM(_iv_native_valid) = R0;
+    DM(_iv_ui_sink) = R0;
     R0 = DM(_iv_generation);
     R0 = PASS R0;
     IF EQ JUMP _iv_quiet;
@@ -81,7 +126,7 @@ _instrument_carrier_prepare:
     DM(0, I0) = R0;
     R0 = 96;
     DM(1, I0) = R0;
-    R0 = _instrument_ui_status;
+    R0 = _iv_ui_sink;
     DM(22, I0) = R0;
     R0 = 13;
     DM(23, I0) = R0;
@@ -108,11 +153,12 @@ _instrument_carrier_prepare:
     DM(0, I0) = R0;
     R0 = 136;
     DM(1, I0) = R0;
-    R0 = _mi_post_amp;
+    R0 = DM(_iv_post_buf);
     DM(32, I0) = R0;
     R0 = 32;
     DM(33, I0) = R0;
-    I1 = _mi_post_amp;
+    R0 = DM(_iv_post_buf);
+    I1 = R0;
     R0 = 0x7fc00000;
     LCNTR = 32, DO _iv_post_clear UNTIL LCE;
 _iv_post_clear:
@@ -138,7 +184,7 @@ _iv_no_status:
     IF EQ R1 = R0;
     DM(11, I0) = R1;
     R4 = 0;
-    R5 = 0;
+    R5 = DM(_iv_slot); // registry instance ordinal: this slot's own state
     R8 = _iv_input;
     CALL _ir_process_protected;
     DM(_iv_result) = R0;
@@ -150,23 +196,46 @@ _iv_no_status:
     R4 = _iv_controls;
     R8 = _iv_input;
     CALL _iv_mod_status;
+    // Only the focused slot (the selected track on the CF) reaches the link.
+    R0 = DM(_iv_slot);
+    R1 = DM(_iv_focus);
+    COMP(R0, R1);
+    IF NE JUMP _iv_status_done;
+    I0 = _iv_ui_sink;
+    I1 = _instrument_ui_status;
+    R2 = 13;
+_iv_status_copy:
+    R0 = DM(I0, M6);
+    DM(I1, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _iv_status_copy;
+_iv_status_done:
+    // Every block rewrites this track's owner entries: a value when valid, else 0.
     R1 = DM(_iv_post_requested);
     R1 = PASS R1;
-    IF EQ JUMP _iv_post_ready;
+    R4 = 0;
+    IF EQ JUMP _iv_post_put;
     CALL _iv_post_normalize;
     R0 = PASS R0;
     IF LT JUMP _iv_post_fault;
+    R4 = 0;
     R0 = DM(_iv_native_valid);
-    DM(_mi_post_owner_valid) = R0;
-_iv_post_ready:
-    R0 = DM(_iv_result);
+    R0 = PASS R0;
+    IF EQ JUMP _iv_post_put;
+    R4 = DM(_iv_post_buf);
+_iv_post_put:
+    R8 = _mi_post_ptr;
+    CALL _iv_owner_put;
     // The shared AMP may be skipped only after this native block completed.
-    R2 = DM(_iv_native_valid);
-    DM(_mi_native_owner_valid) = R2;
-    R2 = DM(_iv_track);
-    DM(_mi_native_owner_track) = R2;
-    R2 = DM(_mi_carrier_stamp);
-    DM(_mi_native_owner_stamp) = R2;
+    R4 = 0;
+    R0 = DM(_iv_native_valid);
+    R0 = PASS R0;
+    IF EQ JUMP _iv_native_put;
+    R4 = DM(_mi_carrier_stamp);
+_iv_native_put:
+    R8 = _mi_native_owner;
+    CALL _iv_owner_put;
+    R0 = DM(_iv_result);
     R1 = 1;
     R0 = R1 - R0; // ACTIVE=0, QUIET=1
     DM(_iv_active) = R0;
@@ -178,9 +247,8 @@ _iv_post_ready:
 _iv_quiet:
     R0 = 0;
     DM(_iv_mod_ready) = R0;
-    DM(_mi_native_owner_valid) = R0;
-    DM(_mi_post_owner_valid) = R0;
-    DM(_instrument_ui_status) = R0;
+    CALL _iv_owner_clear;
+    R0 = 0;
     DM(_iv_active) = R0;
     DM(_iv_revision) = R0;
     I0 = _iv_input;
@@ -203,10 +271,177 @@ _iv_post_fault:
     DM(0, I0) = R0;
     JUMP _iv_quiet;
 
+// Per-track owner tables (core/midi-events carrier.s), cleared every frame.
+// R4=value, R8=table. Writes table[_iv_track]; clobbers R0/R1/I0.
+_iv_owner_put:
+    R0 = DM(_iv_track);
+    R1 = LSHIFT R0 BY -4; // unsigned: tracks 0..15 only (unbound is 0xffffffff)
+    R1 = PASS R1;
+    IF NE RTS;
+    R0 = LSHIFT R0 BY 2;
+    R0 = R0 + R8;
+    I0 = R0;
+    DM(0, I0) = R4;
+    RTS;
+_iv_owner_clear:
+    R4 = 0;
+    R8 = _mi_native_owner;
+    CALL _iv_owner_put;
+    R4 = 0;
+    R8 = _mi_post_ptr;
+    JUMP _iv_owner_put;
+
+// ---- slots ----
+// Slot storage: 8 scalars, then input(34) output(32) events(48) controls(32):
+// 154 words in a 160-word (640-byte) stride. The bound track lives outside in
+// _iv_slot_tracks (0xffffffff: unbound); slot 0 starts bound to track 0.
+// R4=slot. R0=1 when bound and below the admitted count, else 0.
+_iv_slot_bound:
+    R0 = 0;
+    R1 = DM(_iv_slot_count);
+    COMP(R4, R1);
+    IF GE RTS;
+    R1 = LSHIFT R4 BY 2;
+    R2 = _iv_slot_tracks;
+    R1 = R1 + R2;
+    I0 = R1;
+    R1 = DM(0, I0);
+    R2 = LSHIFT R1 BY -4; // unsigned: an unbound slot holds 0xffffffff
+    R2 = PASS R2;
+    IF NE RTS;
+    R0 = 1;
+    RTS;
+// R4=track. R0=slot bound to it, or -1. Clobbers R1/I0.
+_iv_find_slot:
+    R0 = 0;
+    I0 = _iv_slot_tracks;
+_iv_find_next:
+    R1 = DM(_iv_slot_count);
+    COMP(R0, R1);
+    IF GE JUMP _iv_find_none;
+    R1 = DM(I0, M6);
+    COMP(R1, R4);
+    IF EQ RTS;
+    R0 = R0 + 1;
+    JUMP _iv_find_next;
+_iv_find_none:
+    R0 = -1;
+    RTS;
+// R4=slot -> I0 slot storage base. Clobbers R0/R1.
+_iv_slot_base:
+    R0 = 640;
+    R0 = R4 * R0 (SSI);
+    R1 = _iv_slots;
+    R0 = R0 + R1;
+    I0 = R0;
+    RTS;
+// R4=slot. Working set <- slot. Clobbers R0..R2/I0..I2.
+_iv_slot_load:
+    DM(_iv_slot) = R4;
+    R0 = LSHIFT R4 BY 7; // 32 gains per slot
+    R1 = _iv_post_slots;
+    R0 = R0 + R1;
+    DM(_iv_post_buf) = R0;
+    R0 = LSHIFT R4 BY 2;
+    R1 = _iv_slot_tracks;
+    R0 = R0 + R1;
+    I0 = R0;
+    R0 = DM(0, I0);
+    DM(_iv_track) = R0;
+    CALL _iv_slot_base;
+    R0 = DM(0, I0);
+    DM(_iv_generation) = R0;
+    R0 = DM(1, I0);
+    DM(_iv_revision) = R0;
+    R0 = DM(2, I0);
+    DM(_iv_active) = R0;
+    R0 = DM(3, I0);
+    DM(_iv_result) = R0;
+    R0 = DM(4, I0);
+    DM(_iv_post_requested) = R0;
+    R0 = DM(5, I0);
+    DM(_iv_native_valid) = R0;
+    R0 = DM(6, I0);
+    DM(_iv_mod_ready) = R0;
+    R0 = DM(7, I0);
+    DM(_iv_control_count) = R0;
+    I1 = I0;
+    MODIFY(I1, 8) (NW);
+    I2 = _iv_input;
+    R2 = 34;
+    CALL _iv_copy;
+    I2 = _iv_output;
+    R2 = 32;
+    CALL _iv_copy;
+    I2 = _iv_events;
+    R2 = 48;
+    CALL _iv_copy;
+    I2 = _iv_controls;
+    R2 = 32;
+    CALL _iv_copy;
+    // A never-configured slot starts from the legacy one-word bank (count 1,
+    // value 1), exactly as the single-instance adapter's initial data did.
+    R0 = DM(_iv_control_count);
+    R0 = PASS R0;
+    IF NE RTS;
+    R0 = 1;
+    DM(_iv_control_count) = R0;
+    DM(_iv_controls) = R0;
+    RTS;
+// Slot <- working set (slot from the last load). Clobbers R0..R4/I0..I2.
+_iv_slot_store:
+    R4 = DM(_iv_slot);
+    R0 = LSHIFT R4 BY 2;
+    R1 = _iv_slot_tracks;
+    R0 = R0 + R1;
+    I0 = R0;
+    R0 = DM(_iv_track);
+    DM(0, I0) = R0;
+    CALL _iv_slot_base;
+    R0 = DM(_iv_generation);
+    DM(0, I0) = R0;
+    R0 = DM(_iv_revision);
+    DM(1, I0) = R0;
+    R0 = DM(_iv_active);
+    DM(2, I0) = R0;
+    R0 = DM(_iv_result);
+    DM(3, I0) = R0;
+    R0 = DM(_iv_post_requested);
+    DM(4, I0) = R0;
+    R0 = DM(_iv_native_valid);
+    DM(5, I0) = R0;
+    R0 = DM(_iv_mod_ready);
+    DM(6, I0) = R0;
+    R0 = DM(_iv_control_count);
+    DM(7, I0) = R0;
+    I2 = I0;
+    MODIFY(I2, 8) (NW);
+    I1 = _iv_input;
+    R2 = 34;
+    CALL _iv_copy_out;
+    I1 = _iv_output;
+    R2 = 32;
+    CALL _iv_copy_out;
+    I1 = _iv_events;
+    R2 = 48;
+    CALL _iv_copy_out;
+    I1 = _iv_controls;
+    R2 = 32;
+    JUMP _iv_copy_out;
+// Copy R2 words from I1 to I2; both advance. Clobbers R0/R2.
+_iv_copy:
+_iv_copy_out:
+    R0 = DM(I1, M6);
+    DM(I2, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _iv_copy;
+    RTS;
+
 // V7 preserves the callback's shaped PCM, then moves its common gain past
 // stock bit reduction. Validate the entire borrowed output before publication.
 _iv_post_normalize:
-    I1 = _mi_post_amp;
+    R0 = DM(_iv_post_buf);
+    I1 = R0;
     R2 = 32;
 _iv_post_validate:
     R0 = DM(I1, M6);
@@ -225,7 +460,8 @@ _iv_post_gain_ok:
     R0 = PASS R0;
     IF EQ JUMP _iv_post_ok;
     I0 = _iv_output;
-    I1 = _mi_post_amp;
+    R0 = DM(_iv_post_buf);
+    I1 = R0;
     R6 = 32;
 _iv_post_sample:
     R0 = DM(I0, M5);
@@ -305,6 +541,13 @@ _iv_amp_snapshot:
     R0 = DM(_mi_envelope_records);
     R0 = PASS R0;
     IF EQ RTS;
+    R1 = DM(_iv_track); // the even voice record of this slot's track
+    R2 = LSHIFT R1 BY -4;
+    R2 = PASS R2;
+    IF NE RTS;
+    R2 = 88;
+    R1 = R1 * R2 (SSI);
+    R0 = R0 + R1;
     I0 = R0;
     R4 = DM(6, I0);
     R1 = 1;
@@ -475,38 +718,102 @@ _iv_phase_fresh:
 
 // A receiver reset can precede CREATE. Such a reset establishes only transport
 // identity; no callback or state pointer is used until the admitted row is ready.
+// Word 10 is an optional slot hint 1..4: the CF binds that slot to the track
+// (after resetting the slot's previous track). Without a hint the slot already
+// bound to the track is reset; a new epoch resets every bound slot. Tracks
+// without a slot are acknowledged as inactive.
 _instrument_reset:
     DM(_iv_packet) = R4;
-    I0 = R4;
+    CALL _iv_slot_limit;
+    R0 = DM(_iv_packet);
+    I0 = R0;
+    R0 = DM(10, I0);
+    R0 = PASS R0;
+    IF EQ JUMP _iv_reset_lookup;
+    R1 = DM(_iv_slot_count);
+    COMP(R0, R1);
+    IF GT JUMP _iv_reset_inactive; // a hint beyond the admitted instances binds nothing
+    R4 = R0 - 1;
+    R1 = DM(8, I0);
+    // A track has one slot: unbind any other slot that still names it.
+    R2 = 0;
+    I2 = _iv_slot_tracks;
+_iv_reset_unbind:
+    R3 = DM(0, I2);
+    COMP(R3, R1);
+    IF NE JUMP _iv_reset_unbind_next;
+    COMP(R2, R4);
+    IF EQ JUMP _iv_reset_unbind_next;
+    R3 = 0xffffffff;
+    DM(0, I2) = R3;
+_iv_reset_unbind_next:
+    MODIFY(I2, 1) (NW);
+    R2 = R2 + 1;
+    R3 = 4;
+    COMP(R2, R3);
+    IF LT JUMP _iv_reset_unbind;
+    R2 = LSHIFT R4 BY 2;
+    R3 = _iv_slot_tracks;
+    R2 = R2 + R3;
+    I1 = R2;
+    DM(0, I1) = R1;
+    JUMP _iv_reset_target;
+_iv_reset_lookup:
+    R4 = DM(8, I0);
+    CALL _iv_find_slot;
+    R4 = R0;
+_iv_reset_target:
+    DM(_iv_reset_slot) = R4; // -1 when no slot belongs to this track
+    R0 = DM(_iv_packet);
+    I0 = R0;
     R0 = DM(2, I0);
     R1 = DM(_mi_epoch);
     COMP(R0, R1);
-    IF NE JUMP _iv_reset_owned; // a new epoch silences every instance
-    R0 = DM(8, I0);
-    R1 = DM(_iv_track);
-    COMP(R0, R1);
-    IF EQ JUMP _iv_reset_owned;
-    // Another track binds this instance only while it is unconfigured and
-    // silent: the CF resets the old track first and waits for its ACK.
-    R1 = DM(_iv_revision);
-    R1 = PASS R1;
-    IF NE JUMP _iv_reset_inactive;
-    R1 = DM(_iv_active);
-    R1 = PASS R1;
-    IF NE JUMP _iv_reset_inactive;
-    R1 = 15;
-    COMP(R0, R1);
-    IF GT JUMP _iv_reset_inactive;
-    DM(_iv_track) = R0;
-    JUMP _iv_reset_owned;
+    IF NE JUMP _iv_reset_epoch; // a new epoch silences every instance
+    R4 = DM(_iv_reset_slot);
+    R4 = PASS R4;
+    IF LT JUMP _iv_reset_inactive;
+    CALL _iv_slot_load;
+    CALL _iv_reset_owned;
+    DM(_iv_call_result) = R0;
+    CALL _iv_slot_store;
+    R0 = DM(_iv_call_result);
+    RTS;
 _iv_reset_inactive:
     R0 = 1;
     RTS; // inactive tracks still acknowledge the transport's all-track reset
+_iv_reset_epoch:
+    R0 = 1;
+    DM(_iv_call_result) = R0;
+    R0 = 0;
+    DM(_iv_loop) = R0;
+_iv_reset_epoch_slot:
+    R4 = DM(_iv_loop);
+    CALL _iv_slot_bound;
+    R0 = PASS R0;
+    IF EQ JUMP _iv_reset_epoch_next;
+    R4 = DM(_iv_loop);
+    CALL _iv_slot_load;
+    CALL _iv_reset_owned;
+    R0 = PASS R0;
+    IF NE JUMP _iv_reset_epoch_store;
+    DM(_iv_call_result) = R0;
+_iv_reset_epoch_store:
+    CALL _iv_slot_store;
+_iv_reset_epoch_next:
+    R0 = DM(_iv_loop);
+    R0 = R0 + 1;
+    DM(_iv_loop) = R0;
+    R1 = 4;
+    COMP(R0, R1);
+    IF LT JUMP _iv_reset_epoch_slot;
+    R0 = DM(_iv_call_result);
+    RTS;
+// One slot, working set loaded. R0=1 applied, 0 rejected.
 _iv_reset_owned:
     R0 = 0;
     DM(_iv_mod_ready) = R0;
-    DM(_mi_native_owner_valid) = R0;
-    DM(_mi_post_owner_valid) = R0;
+    CALL _iv_owner_clear;
     CALL _iv_admitted;
     R0 = PASS R0;
     IF EQ JUMP _iv_reset_identity;
@@ -527,12 +834,39 @@ _iv_reset_unconfigured:
     DM(_iv_revision) = R0;
     I0 = _iv_input;
     DM(8, I0) = R0;
+    R0 = DM(_iv_track); // normalized events match the bound track from now on
+    DM(2, I0) = R0;
     R0 = 1;
+    RTS;
+// _iv_slot_count = the row's instance count clamped to 1..4. Clobbers R0/R1/I0.
+_iv_slot_limit:
+    I0 = _ir_rows;
+    R0 = DM(3, I0);
+    R1 = 1;
+    COMP(R0, R1);
+    IF LT R0 = PASS R1;
+    R1 = 4;
+    COMP(R0, R1);
+    IF GT R0 = PASS R1;
+    DM(_iv_slot_count) = R0;
     RTS;
 
 _instrument_configure:
     DM(_iv_values) = R4;
     DM(_iv_metadata) = R8;
+    I0 = R8;
+    R4 = DM(0, I0); // configuration names its track
+    CALL _iv_find_slot;
+    R4 = R0;
+    R4 = PASS R4;
+    IF LT JUMP _iv_no;
+    CALL _iv_slot_load;
+    CALL _iv_configure_slot;
+    DM(_iv_call_result) = R0;
+    CALL _iv_slot_store;
+    R0 = DM(_iv_call_result);
+    RTS;
+_iv_configure_slot:
     CALL _iv_admitted;
     R0 = PASS R0;
     IF EQ JUMP _iv_no;
@@ -648,7 +982,7 @@ _iv_native_config:
     R1 = FEXT R0 BY 0:8;
     COMP(R1, R2);
     IF NE JUMP _iv_no;
-    R1 = FEXT R0 BY 10:6;
+    R1 = FEXT R0 BY 10:5; // bit 15 is the CF focus flag, removed below
     R1 = PASS R1;
     IF NE JUMP _iv_no;
     R1 = LSHIFT R0 BY -16;
@@ -1088,6 +1422,17 @@ _iv_config_word:
     DM(I2, M6) = R0;
     R2 = R2 - 1;
     IF NE JUMP _iv_config_word;
+    // The CF flags the instance on its selected track: only that slot's
+    // status reaches the link. The flag is not part of the module's bank.
+    R0 = DM(_iv_controls);
+    R1 = FEXT R0 BY 15:1;
+    R0 = BCLR R0 BY 15;
+    DM(_iv_controls) = R0;
+    R1 = PASS R1;
+    IF EQ JUMP _iv_config_unfocused;
+    R1 = DM(_iv_slot);
+    DM(_iv_focus) = R1;
+_iv_config_unfocused:
     R0 = DM(2, I0);
     DM(_iv_revision) = R0;
     R0 = 1;
@@ -1095,6 +1440,20 @@ _iv_config_word:
 
 _instrument_events:
     DM(_iv_packet) = R4;
+    I0 = R4;
+    R4 = DM(10, I0);
+    R4 = FEXT R4 BY 10:4; // the batch track (every event names the same track)
+    CALL _iv_find_slot;
+    R4 = R0;
+    R4 = PASS R4;
+    IF LT JUMP _iv_no;
+    CALL _iv_slot_load;
+    CALL _iv_events_slot;
+    DM(_iv_call_result) = R0;
+    CALL _iv_slot_store;
+    R0 = DM(_iv_call_result);
+    RTS;
+_iv_events_slot:
     CALL _iv_admitted;
     R0 = PASS R0;
     IF EQ JUMP _iv_no;
@@ -1126,7 +1485,14 @@ _iv_admitted:
     R0 = DM(3, I0);
     R1 = 1;
     COMP(R0, R1);
-    IF NE JUMP _iv_no;
+    IF LT JUMP _iv_no;
+    R1 = 16;
+    COMP(R0, R1);
+    IF GT JUMP _iv_no;
+    R1 = 4;
+    COMP(R0, R1);
+    IF GT R0 = PASS R1;
+    DM(_iv_slot_count) = R0;
     I1 = _ir_process_rows;
     R0 = DM(0, I1);
     R1 = DM(1, I0);
@@ -1146,17 +1512,29 @@ _iv_admitted:
     R0 = 1;
     RTS;
 
+// Resets the loaded slot's registry instance: state base + slot * stride.
 _iv_reset_row:
     R0 = 0;
     DM(_iv_mod_ready) = R0;
-    DM(_mi_native_owner_valid) = R0;
-    DM(_mi_post_owner_valid) = R0;
+    CALL _iv_owner_clear;
     CALL _iv_admitted;
     R0 = PASS R0;
     IF EQ JUMP _iv_reset_bad;
+    R0 = DM(_iv_slot);
+    R1 = DM(_iv_slot_count);
+    COMP(R0, R1);
+    IF GE JUMP _iv_reset_bad;
     I0 = _ir_rows;
-    R4 = DM(4, I0);
     R5 = DM(5, I0);
+    R1 = LSHIFT R5 BY 2;
+    R2 = 7;
+    R1 = R1 + R2;
+    R2 = 0xfffffff8;
+    R1 = R1 AND R2; // the admission stride: state bytes rounded to 8
+    R0 = DM(_iv_slot);
+    R1 = R0 * R1 (SSI);
+    R4 = DM(4, I0);
+    R4 = R4 + R1;
     R6 = DM(6, I0);
     R7 = DM(7, I0);
     R12 = DM(8, I0);
@@ -1176,27 +1554,37 @@ _iv_reset_bad:
     RTS;
 
 // Raw stock-carrier ABI: copy the already-rendered block, never advance DSP
-// twice. The stock wrapper duplicates this for the odd stereo voice.
+// twice. The stock wrapper duplicates this for the odd stereo voice. R2 is the
+// voice's track; a track without a slot (the same type beyond the admitted
+// instances) renders silence.
 _iv_voice_render:
-    R0 = DM(_iv_track);
-    COMP(R2, R0);
-    IF NE JUMP _iv_voice_silent; // the same type on another track stays silent
-    I0 = _iv_output;
-    I1 = R8;
+    DM(_iv_render_out) = R8;
+    DM(_iv_render_track) = R2;
+    R4 = R2;
+    CALL _iv_find_slot;
+    R0 = PASS R0;
+    IF LT JUMP _iv_voice_silent;
+    R4 = R0;
+    CALL _iv_slot_base;
+    I1 = I0;
+    MODIFY(I1, 42) (NW); // slot output
+    R0 = DM(_iv_render_out);
+    I2 = R0;
     R1 = 32;
 _iv_voice_copy:
-    R0 = DM(I0, M6);
-    DM(I1, M6) = R0;
+    R0 = DM(I1, M6);
+    DM(I2, M6) = R0;
     R1 = R1 - 1;
     IF NE JUMP _iv_voice_copy;
-    R4 = DM(_iv_track);
-    R8 = DM(_iv_active);
-    R10 = DM(_iv_revision);
+    R4 = DM(_iv_render_track);
+    R8 = DM(2, I0); // slot active
+    R10 = DM(1, I0); // slot revision
     CALL _mi_carrier_rendered;
     R0 = 0;
     JUMP (M13, I13);
 _iv_voice_silent:
-    I0 = R8;
+    R0 = DM(_iv_render_out);
+    I0 = R0;
     R1 = 32;
     R0 = 0;
 _iv_voice_zero:
@@ -1394,6 +1782,23 @@ _iv_voice_zero:
 .VAR _iv_wt_duplicate_15 = 5;
 .VAR _iv_generation = 0;
 .VAR _iv_track = 0;
+// Slots: storage, bound tracks (slot 0 starts on track 0), focus and scratch.
+.PKBSS _iv_slots, 2560;
+.PKBSS _iv_post_slots, 512;
+.VAR _iv_slot_tracks = 0;
+.VAR _iv_slot_tracks_1 = 0xffffffff;
+.VAR _iv_slot_tracks_2 = 0xffffffff;
+.VAR _iv_slot_tracks_3 = 0xffffffff;
+.VAR _iv_slot_count = 1;
+.VAR _iv_slot = 0;
+.VAR _iv_focus = 0;
+.PKBSS _iv_post_buf, 4;
+.PKBSS _iv_loop, 4;
+.PKBSS _iv_call_result, 4;
+.PKBSS _iv_reset_slot, 4;
+.PKBSS _iv_render_out, 4;
+.PKBSS _iv_render_track, 4;
+.PKDATA _iv_ui_sink, 52;
 .VAR _iv_revision = 0;
 .VAR _iv_active = 0;
 .VAR _iv_result = 0;

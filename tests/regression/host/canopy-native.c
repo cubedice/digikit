@@ -23,6 +23,8 @@ void instrument_src_feedback(char out[32],uint32_t encoder) { cv_feedback(out,&s
 uint8_t *dk_fw_view_brain_instance(void) { return (uint8_t *)manager; }
 uint8_t *dk_fw_view_brain_view_manager(uint8_t *brain) { return brain; }
 volatile uint32_t ip_track;
+int instrument_track_owned(uint32_t t) { return t==ip_track; }
+void instrument_select_track(uint32_t t) { (void)t; }
 uint32_t dkrt_instrument_type(void) { return type_id; }
 uint32_t dkrt_instrument_generation(void) { return generation; }
 uint32_t ip_src_type(uint8_t *v) { (void)v; return selected==ip_track?type_id:0; }

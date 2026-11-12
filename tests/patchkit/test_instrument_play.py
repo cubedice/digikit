@@ -58,7 +58,7 @@ def playback_object():
 .PKDATA _iv_amp_hold_table, 512;
 .PKDATA _test_amp_record, 44;
 .PKDATA _iv_mod_frame, 2048; // sixteen 0x60-byte parameter rows follow byte 0xda
-.PKDATA _test_state, 2976;
+.PKDATA _test_state, 11904; // four 2976-byte instances
 .PKDATA _test_packet, 128;
 .PKDATA _test_metadata, 24;
 .PKDATA _test_values, 128;
@@ -234,9 +234,11 @@ def playback(playback_object):
         call.last_instructions = result["instructions"]
         return result["regs"]["R0"]
 
-    def reset(generation=1, track=0):
+    def reset(generation=1, track=0, slot=None, epoch=1):
         packet = [0] * 32
-        packet[2], packet[8], packet[9] = 1, track, generation
+        packet[2], packet[8], packet[9] = epoch, track, generation
+        if slot is not None:
+            packet[10] = slot + 1  # the CF's explicit instance slot hint
         put("_test_packet", packet)
         return call(1, R4=symbols["_test_packet"])
 
@@ -293,7 +295,7 @@ def test_opted_in_output_is_borrowed_per_block_and_revoked_with_session(playback
     )
     call(0)
     assert get("_iv_input", 24)[:2] == [5, 96]
-    assert get("_iv_input", 24)[22:] == [symbols["_instrument_ui_status"], 13]
+    assert get("_iv_input", 24)[22:] == [symbols["_iv_ui_sink"], 13]
     status = get("_instrument_ui_status", 13)
     assert status[:2] == [1, 5] and status[12] == 13
     assert events([(1, 1, 60, 100, 0, 0)]) == 1
@@ -341,7 +343,7 @@ def test_native_amp_snapshot_uses_stock_configuration_without_mutating_it(playba
         0,
     ]
     assert get("_test_amp_record", 11) == record
-    assert get("_mi_native_owner_valid") == [1], {
+    assert get("_mi_native_owner") == [41], {
         name: get(name, count)
         for name, count in (
             ("_iv_native_valid", 1),
@@ -351,7 +353,7 @@ def test_native_amp_snapshot_uses_stock_configuration_without_mutating_it(playba
             ("_instrument_ui_status", 13),
         )
     }
-    assert get("_mi_native_owner_stamp") == [41]
+    assert get("_mi_native_owner") == [41]
     record[1], record[3], record[4], record[5], record[6] = 127, 0, 11, 0, 1
     put("_test_amp_record", record)
     call(0)
@@ -369,7 +371,7 @@ def test_native_amp_snapshot_uses_stock_configuration_without_mutating_it(playba
     put("_ir_process_flags", [1])
     call(0)
     assert get("_iv_input", 2) == [5, 96]
-    assert get("_mi_native_owner_valid") == [0]
+    assert get("_mi_native_owner") == [0]
 
 
 @pytest.mark.parametrize(
@@ -391,26 +393,26 @@ def test_invalid_native_amp_snapshot_cannot_enable_shared_bypass(
 ):
     call, put, get, _, record = _native_amp_fixture(playback)
     call(0)
-    assert get("_mi_native_owner_valid") == [1]
+    assert get("_mi_native_owner") == [41]
     record[field] = value
     put("_test_amp_record", record)
     call(0)
     assert get("_iv_input", 32)[24] == 0
-    assert get("_mi_native_owner_valid") == [0]
+    assert get("_mi_native_owner") == [0]
 
 
 def test_missing_native_snapshot_and_lost_session_revoke_shared_bypass(playback):
     call, put, get, _, _ = _native_amp_fixture(playback)
     call(0)
-    assert get("_mi_native_owner_valid") == [1]
+    assert get("_mi_native_owner") == [41]
     put("_mi_envelope_records", [0])
     call(0)
     assert get("_iv_input", 32)[24] == 0
-    assert get("_mi_native_owner_valid") == [0]
-    put("_mi_native_owner_valid", [1])
+    assert get("_mi_native_owner") == [0]
+    put("_mi_native_owner", [41])
     put("_instrument_session", [0])
     call(0)
-    assert get("_mi_native_owner_valid") == [0]
+    assert get("_mi_native_owner") == [0]
 
 
 def _post_amp_fixture(playback):
@@ -442,15 +444,15 @@ def test_post_amp_negotiates_and_normalizes_completed_blocks(playback, result, g
     call(0)
     packet = get("_iv_input", 34)
     assert packet[:2] == [7, 136]
-    assert packet[32:] == [symbols["_mi_post_amp"], 32]
-    assert get("_mi_post_amp", 32) == [bits(g) for g in gains]
+    assert packet[32:] == [symbols["_iv_post_slots"], 32]
+    assert get("_iv_post_slots", 32) == [bits(g) for g in gains]
     output = [
         struct.unpack("<f", x.to_bytes(4, "little"))[0] for x in get("_iv_output", 32)
     ]
     assert output == pytest.approx([0 if not g else -1 for g in gains], abs=2e-7)
-    assert get("_mi_post_owner_valid") == [1]
-    assert get("_mi_native_owner_valid") == [1]
-    assert get("_mi_native_owner_stamp") == [41]
+    assert get("_mi_post_ptr") == [playback[-1]["_iv_post_slots"]]
+    assert get("_mi_native_owner") == [41]
+    assert get("_mi_native_owner") == [41]
     assert get("_test_amp_record", 11) == record
 
 
@@ -460,7 +462,7 @@ def test_post_amp_accepts_existing_normalized_output_bound(playback, sample):
     put("_test_post_gains", [bits(0.1)] * 32)
     put("_test_post_samples", [bits(sample * 0.1)] * 32)
     call(0)
-    assert get("_mi_post_owner_valid") == [1]
+    assert get("_mi_post_ptr") == [playback[-1]["_iv_post_slots"]]
     assert get("_iv_output", 32) == [bits(sample)] * 32
 
 
@@ -469,7 +471,7 @@ def test_post_amp_normalizes_subnormal_pcm_with_normal_gain(playback):
     put("_test_post_gains", [0x00800000] * 32)
     put("_test_post_samples", [0x80400000] * 32)
     call(0)
-    assert get("_mi_post_owner_valid") == [1]
+    assert get("_mi_post_ptr") == [playback[-1]["_iv_post_slots"]]
     assert get("_iv_output", 32) == [bits(-0.5)] * 32
 
 
@@ -490,7 +492,7 @@ def test_post_amp_normalizes_subnormal_pcm_with_normal_gain(playback):
 def test_post_amp_rejects_bad_or_incomplete_outputs_and_revokes_owner(playback, kind):
     call, put, get, bits, _ = _post_amp_fixture(playback)
     call(0)
-    assert get("_mi_post_owner_valid") == [1]
+    assert get("_mi_post_ptr") == [playback[-1]["_iv_post_slots"]]
     if kind in ("partial", "missing"):
         put("_test_post_count", [31 if kind == "partial" else 0])
     elif kind == "failed":
@@ -506,8 +508,8 @@ def test_post_amp_rejects_bad_or_incomplete_outputs_and_revokes_owner(playback, 
         }[kind]
         put("_test_post_gains", [bits(0.25)] * 31 + [bad])
     call(0)
-    assert get("_mi_post_owner_valid") == [0]
-    assert get("_mi_native_owner_valid") == [0]
+    assert get("_mi_post_ptr") == [0]
+    assert get("_mi_native_owner") == [0]
     assert get("_iv_output", 32) == [0] * 32
     assert get("_ir_rows")[0] == 5
 
@@ -516,7 +518,7 @@ def test_post_amp_rejects_bad_or_incomplete_outputs_and_revokes_owner(playback, 
 def test_post_amp_ownership_expires_without_valid_native_completion(playback, kind):
     call, put, get, bits, _ = _post_amp_fixture(playback)
     call(0)
-    assert get("_mi_post_owner_valid") == [1]
+    assert get("_mi_post_ptr") == [playback[-1]["_iv_post_slots"]]
     if kind == "snapshot":
         put("_mi_envelope_records", [0])
         put("_test_post_gains", [bits(1.0)] * 32)
@@ -524,7 +526,7 @@ def test_post_amp_ownership_expires_without_valid_native_completion(playback, ki
         put("_instrument_session", [0])
     elif kind == "reset":
         assert playback[3]() == 1
-        assert get("_mi_post_owner_valid") == [0]
+        assert get("_mi_post_ptr") == [0]
         return
     else:
         put("_ir_process_flags", [3])
@@ -534,7 +536,7 @@ def test_post_amp_ownership_expires_without_valid_native_completion(playback, ki
             [2, 9, 20, symbols["_test_status_process"], 0xB90000, 0xBC0000, 8, 32],
         )
     call(0)
-    assert get("_mi_post_owner_valid") == [0]
+    assert get("_mi_post_ptr") == [0]
     if kind == "snapshot":
         assert get("_iv_output", 32) == [bits(-0.125)] * 32
 
@@ -1324,7 +1326,7 @@ def test_canopy_status_output_flows_through_protected_carrier(playback):
 def test_instance_binds_to_the_reset_track_and_renders_only_there(playback):
     call, put, get, reset, configure, events, symbols = playback
     # The first reset while unconfigured binds the instance to its track.
-    assert reset(track=11) == 1
+    assert reset(track=11, slot=0) == 1
     assert get("_iv_track") == [11]
     call(0)
     assert configure(track=0) == 0  # configuration names the bound track only
@@ -1351,7 +1353,7 @@ def test_instance_binds_to_the_reset_track_and_renders_only_there(playback):
 
 def test_instance_rebinds_after_its_own_reset_once_silent(playback):
     call, put, get, reset, configure, events, _ = playback
-    assert reset(track=11) == 1
+    assert reset(track=11, slot=0) == 1
     call(0)
     assert configure(track=11) == 1
     call(0)
@@ -1364,8 +1366,145 @@ def test_instance_rebinds_after_its_own_reset_once_silent(playback):
         if get("_iv_active") == [0]:
             break
     assert get("_iv_active") == [0]
-    assert reset(track=2) == 1  # then binds the new one
+    assert reset(track=2, slot=0) == 1  # then binds the new one
     assert get("_iv_track") == [2]
     assert configure(track=2) == 1
     call(0)
     assert get("_iv_input", 3)[2] == 2
+
+
+SLOT_WORDS = 160  # 8 scalars, input 34, output 32, events 48, controls 32, padding
+SLOT_OUTPUT, SLOT_CONTROLS = 42, 122
+
+
+def _four_instances(playback):
+    """Widen the admitted row to four registry instances (one state block each)."""
+    _, put, get, _, _, _, symbols = playback
+    row = get("_ir_rows", 16)
+    row[3], row[7] = 4, symbols["_test_state"] + 4 * 2976
+    put("_ir_rows", row)
+
+
+def _slot(get, index):
+    words = get("_iv_slots", 4 * SLOT_WORDS)
+    return words[index * SLOT_WORDS : (index + 1) * SLOT_WORDS]
+
+
+def test_slots_bind_by_hint_and_render_only_their_own_tracks(playback):
+    call, put, get, reset, configure, events, symbols = playback
+    _four_instances(playback)
+    assert reset(track=3, slot=0) == 1
+    assert reset(track=9, slot=2) == 1
+    assert get("_iv_slot_tracks", 4) == [3, 0xFFFFFFFF, 9, 0xFFFFFFFF]
+    call(0)
+    assert configure(track=3) == 1
+    assert configure(track=9) == 1
+    call(0)
+    assert events([(1, 1, 60, 100, 0, 0)], track=3) == 1
+    assert events([(1, 1, 67, 100, 0, 0)], track=9) == 1
+    call(0)
+    first, third = _slot(get, 0), _slot(get, 2)
+    out3 = first[SLOT_OUTPUT : SLOT_OUTPUT + 32]
+    out9 = third[SLOT_OUTPUT : SLOT_OUTPUT + 32]
+    assert any(out3) and any(out9) and out3 != out9
+    # Each slot drives its own registry instance: state base + slot * 2976.
+    state = get("_test_state", 4 * 744)
+    tokens = [
+        {state[744 * k + i] for i in range(0, 32, 8) if state[744 * k + i]}
+        for k in range(4)
+    ]
+    assert tokens == [{1}, set(), {1}, set()]
+    for track, expected in ((3, out3), (9, out9), (5, [0] * 32)):
+        put("_test_output", [7] * 32)
+        call(4, R2=track, R8=symbols["_test_output"])
+        assert get("_test_output", 32) == expected, track
+    owners = get("_mi_velocity_owners", 32)
+    assert owners[6] == owners[18] == get("_mi_carrier_stamp")[0]
+    assert owners[7] == owners[19] == 1
+
+
+def test_unbound_tracks_reject_configuration_and_events(playback):
+    call, _, get, reset, configure, events, _ = playback
+    _four_instances(playback)
+    assert reset(track=3, slot=1) == 1
+    call(0)
+    assert configure(track=5) == 0
+    assert configure(track=3) == 1
+    assert events([(1, 1, 60, 100, 0, 0)], track=5) == 0
+    assert events([(1, 1, 60, 100, 0, 0)], track=3) == 1
+
+
+def test_hint_beyond_the_admitted_instances_binds_nothing(playback):
+    _, _, get, reset, _, _, _ = playback
+    assert reset(track=5, slot=1) == 1  # the row admits one instance
+    assert get("_iv_slot_tracks", 4) == [0, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF]
+
+
+def test_new_epoch_reset_unconfigures_every_slot(playback):
+    call, _, get, reset, configure, events, _ = playback
+    _four_instances(playback)
+    assert reset(track=3, slot=0) == 1
+    assert reset(track=9, slot=1) == 1
+    call(0)
+    assert configure(track=3) == 1 and configure(track=9) == 1
+    call(0)
+    assert [_slot(get, k)[1] for k in (0, 1)] == [1, 1]
+    assert reset(track=3, epoch=2, generation=2) == 1
+    assert [_slot(get, k)[1] for k in (0, 1)] == [0, 0]
+    assert [_slot(get, k)[0] for k in (0, 1)] == [2, 1]
+
+
+def test_focus_flag_selects_the_status_slot_and_never_reaches_the_module(playback):
+    from test_canopy_v2 import wavetable_fm_controls
+
+    call, put, get, reset, configure, _, _ = playback
+    _four_instances(playback)
+    put("_ir_process_flags", [1])
+    assert reset(track=3, slot=0) == 1
+    assert reset(track=9, slot=1) == 1
+    call(0)
+    values = wavetable_fm_controls()
+    assert configure(track=3, values=values) == 1
+    flagged = list(values)
+    flagged[0] |= 0x8000
+    assert configure(track=9, values=flagged) == 1
+    assert get("_iv_focus") == [1]
+    assert _slot(get, 1)[SLOT_CONTROLS] == values[0]  # flag stripped before the module
+    call(0)
+    status = get("_instrument_ui_status", 13)
+    assert status[0] == 1 and status[2] & 15 == 9, status  # ready, block, kind/track
+    assert configure(track=3, values=flagged, revision=2) == 1
+    call(0)
+    status = get("_instrument_ui_status", 13)
+    assert status[0] == 1 and status[2] & 15 == 3, status
+    # An unflagged configuration of the focused slot keeps the focus.
+    assert configure(track=3, values=values, revision=3) == 1
+    assert get("_iv_focus") == [0]
+
+
+def test_binding_a_track_unbinds_its_previous_slot(playback):
+    call, _, get, reset, configure, _, _ = playback
+    _four_instances(playback)
+    assert reset(track=3, slot=0) == 1
+    assert reset(track=3, slot=2) == 1  # the CF moved the track to another instance
+    assert get("_iv_slot_tracks", 4) == [0xFFFFFFFF, 0xFFFFFFFF, 3, 0xFFFFFFFF]
+    call(0)
+    assert configure(track=3) == 1
+    assert _slot(get, 2)[1] == 1 and _slot(get, 0)[1] == 0
+
+
+def test_unbound_slots_are_never_processed_or_published(playback):
+    """An unbound slot holds track 0xffffffff, which must not pass a signed
+    track check: it is neither processed nor allowed to touch owner tables."""
+    call, put, get, reset, configure, _, _ = playback
+    _four_instances(playback)
+    assert reset(track=3, slot=0) == 1
+    call(0)
+    assert configure(track=3) == 1
+    assert reset(track=3, slot=1) == 1  # slot 0 keeps generation 1 but is unbound
+    put("_mi_native_owner", [0] * 16)
+    unbound = _slot(get, 0)
+    call(0)
+    assert get("_ir_rows")[0] == 3  # no callback fault quarantined the row
+    assert get("_iv_slot_tracks", 4) == [0xFFFFFFFF, 3, 0xFFFFFFFF, 0xFFFFFFFF]
+    assert _slot(get, 0) == unbound  # never loaded, processed or stored

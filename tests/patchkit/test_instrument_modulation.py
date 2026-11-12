@@ -150,7 +150,7 @@ def test_previous_frame_is_neutral_after_reset_row_loss_and_type_changes(playbac
     assert reset(track=1) == 1
     assert get("_iv_mod_ready") == [1]
     # The module's own reset invalidates even an unchanged generation.
-    assert call(7) == 0
+    assert reset() == 1
     assert get("_iv_mod_ready") == [0]
     neutral_then_modulated()
     frame(playback, 0, 0x6000, machine=0)
@@ -275,7 +275,7 @@ def test_native_modulation_changes_sounding_pcm_without_config_revision_or_note_
 def test_bound_track_reads_its_own_frame_row(playback):
     call, put, get, reset, configure, _, symbols = playback
     controls = bank(2)
-    assert reset(track=11) == 1
+    assert reset(track=11, slot=0) == 1
     assert configure(values=controls, track=11) == 1
     # Track 0's row carries the type and an offset; track 11's row is stock.
     frame(playback, 0, 0x6000, track=0)

@@ -1052,7 +1052,7 @@ _cv_bad:
 .VAR _canopy_descriptor_1 = 2;
 .VAR _canopy_descriptor_2 = 48;
 .VAR _canopy_descriptor_3 = 7; // V7 native AMP plus borrowed status/common-envelope outputs.
-.VAR _canopy_descriptor_4 = 1;
+.VAR _canopy_descriptor_4 = 4; // instances (tracks); state and process are per instance
 .VAR _canopy_descriptor_5 = 2976;
 .VAR _canopy_descriptor_6 = 8;
 .VAR _canopy_descriptor_7 = 32;

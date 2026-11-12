@@ -24,6 +24,9 @@ _iv_modulate:
     IF NE JUMP _iv_mod_invalid; // Older diagnostic schemas stay unchanged.
     // Frame halfword 74 + track (byte 0x94 + 2t) holds that track's type.
     R1 = DM(_iv_track);
+    R2 = LSHIFT R1 BY -4; // unsigned: only tracks 0..15 have a frame row
+    R2 = PASS R2;
+    IF NE JUMP _iv_mod_invalid;
     R2 = 74;
     R1 = R1 + R2;
     R2 = LSHIFT R1 BY 1;

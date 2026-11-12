@@ -11,6 +11,6 @@ uint32_t instrument_mod_param(uint32_t type, uint32_t mirror);
  * not the persistent CANOPY base values. */
 void instrument_mod_defaults(uint32_t source);
 /* Called by the two stock frame-conversion shims with the track they convert;
- * true only for the admitted track's live instrument. */
+ * true only for a track whose admitted instance owns its live instrument. */
 int instrument_mod_carrier(uint32_t track);
 #endif

@@ -12,10 +12,11 @@ import { captureRemoteOled } from './remote.ts';
 import { openDigikitMenu } from './runtime-menu.ts';
 import { waitInstrumentReady } from './instrument-ready.ts';
 import { acknowledgedPanel } from './panel-ack.ts';
+import { waitEmulated } from './waits.ts';
 
-// CANOPY on any track: the adapter admits the lowest kit track whose Sound
-// carries the instrument type, owns that track's SRC page and panel keys,
-// renders audio there, and rebinds when the instrument moves.
+// CANOPY on any track, several at once (finding 121): each of the four lowest
+// kit tracks whose Sound carries the instrument type gets its own instance,
+// SRC page, panel keys, MIDI route and audio; a fifth stays stock and silent.
 vi.setConfig({ hookTimeout: 600_000 });
 
 const options = liveOptions('dt2');
@@ -41,7 +42,7 @@ afterAll(() => {
   fs.rmSync(owned, { recursive: true });
 });
 const h = withSession({ ...options, card: cardSeed, dsp: 'sharc', restart: false });
-test('CANOPY is admitted, displayed and audible on track 11, then follows the instrument to track 1', async () => {
+test('CANOPY runs on any track, and up to four instances play at once', async () => {
   const root = repoRoot(),
     image = path.resolve(root, process.env.CANOPY_TRACK_IMAGE ?? 'out/patch/canopy-any-track-release.syx');
   const plan: RuntimePlan = JSON.parse(fs.readFileSync(image.replace(/\.syx$/, '.plan.json'), 'utf8'));
@@ -80,12 +81,18 @@ test('CANOPY is admitted, displayed and audible on track 11, then follows the in
   const row = await peek(planSymbol(plan, '_ir_rows'), 64);
   expect(row.readUInt32LE(0)).toBe(3);
   const state = row.readUInt32LE(16);
-  const voices = async () => {
-    const b = await peek(state, 192);
+  expect(row.readUInt32LE(12), 'the row admits four instances').toBe(4);
+  // Registry instance i (DSP slot i) keeps its state at base + i * 2976.
+  const voicesOf = async (instance: number) => {
+    const b = await peek(state + instance * 2976, 192);
     return Array.from({ length: 6 }, (_, i) => ({ token: b.readUInt32LE(i * 32), gate: b.readUInt32LE(i * 32 + 4) }))
       .filter((v) => v.token !== 0 && !(v.gate & 4))
       .sort((a, b) => a.token - b.token);
   };
+  const voices = () => voicesOf(0);
+  const NONE = 0xffffffff;
+  const tracks = () => Promise.all([0, 1, 2, 3].map((i) => cf('ip_tracks', i)));
+  const phases = () => Promise.all([0, 1, 2, 3].map((i) => cf('ip_control', i * 8)));
   const dspTrack = async () => (await peek(planSymbol(plan, '_iv_track'), 4)).readUInt32LE();
   const { tap: key, edge } = acknowledgedPanel(session);
   const artifacts = path.join(root, 'out/canopy-any-track');
@@ -117,10 +124,10 @@ test('CANOPY is admitted, displayed and audible on track 11, then follows the in
       ['_iv_active', 4],
       ['_iv_track', 4],
       ['_iv_revision', 4],
-      ['_mi_native_owner_track', 4],
-      ['_mi_native_owner_valid', 4],
-      ['_mi_native_owner_stamp', 4],
-      ['_mi_post_owner_valid', 4],
+      ['_mi_native_owner', 64],
+      ['_mi_post_ptr', 64],
+      ['_iv_slot_tracks', 16],
+      ['_iv_focus', 4],
       ['_mi_carrier_stamp', 4],
       ['_mi_carrier_pairs', 192],
       ['_mi_carrier_active', 64],
@@ -153,6 +160,7 @@ test('CANOPY is admitted, displayed and audible on track 11, then follows the in
     await key('YES');
     await key('YES');
   };
+  const waitInstrumentTicks = () => waitEmulated(session, 1500);
   const srcOwnership = async (track: number) => {
     await selectTrack(track + 1);
     await key('SRC');
@@ -162,7 +170,7 @@ test('CANOPY is admitted, displayed and audible on track 11, then follows the in
 
   // No track carries the instrument: nothing is admitted or bound.
   expect(await cf('ip_track')).toBe(0xffffffff);
-  expect(await cf('ip_control')).toBe(1);
+  expect(await phases(), 'every instance is free and idle').toEqual([0, 0, 0, 0]);
 
   await selectTrack(11);
   await chooseCanopy();
@@ -245,20 +253,99 @@ test('CANOPY is admitted, displayed and audible on track 11, then follows the in
   await expect.poll(async () => (await voices()).length, { timeout: 60_000 }).toBe(0);
   console.info('CANOPY any-track: panel and USB notes sound on track 11');
 
-  // A second CANOPY on a lower track moves the single instance there.
+  // A second CANOPY on a lower track adds a second instance; track 11 keeps the first.
   await selectTrack(1);
   await chooseCanopy();
-  await expect.poll(() => cf('ip_track'), { timeout: 60_000 }).toBe(0);
-  await expect.poll(() => cf('ip_control'), { timeout: 60_000 }).toBe(3);
-  await expect.poll(dspTrack, { timeout: 30_000 }).toBe(0);
+  await expect.poll(tracks, { timeout: 60_000 }).toEqual([10, 0, NONE, NONE]);
+  await expect.poll(phases, { timeout: 60_000 }).toEqual([3, 3, 0, 0]);
   expect(await srcOwnership(0)).not.toBe(0);
-  expect(await srcOwnership(10)).toBe(0);
-  await captureRemoteOled(session, 'canopy-track-11-after-move');
-  await session.client.call('midi.usb.in', { bytes: [0x90, 64, 100] });
-  await expect.poll(async () => (await voices()).length, { timeout: 30_000 }).toBe(1);
-  await session.client.call('midi.usb.in', { bytes: [0x80, 64, 0] });
-  await expect.poll(async () => (await voices()).length, { timeout: 60_000 }).toBe(0);
+  expect(await srcOwnership(10)).not.toBe(0);
+  expect(await srcOwnership(1)).toBe(0);
+  await captureRemoteOled(session, 'canopy-multi-track-1-src');
+  console.info('CANOPY multi: tracks 11 and 1 admitted together');
+
+  // Both play at once: USB channel 1 stays with track 11 (it was routed
+  // first), while the panel keys play the selected track 1.
+  const pairs = async () => {
+    const b = await peek(planSymbol(plan, '_mi_carrier_pairs'), 192);
+    return [0, 10].map((t) => b.readUInt32LE((3 * t + 2) * 4));
+  };
+  const multiCapture = path.join(artifacts, 'multi.f32le');
+  await selectTrack(1);
+  await key('KEYBOARD');
+  let load: unknown;
+  try {
+    await edge('TRIG 9', true);
+    await expect.poll(async () => (await voicesOf(1)).filter((v) => v.gate === 1).length, { timeout: 30_000 }).toBe(1);
+    await session.client.call('midi.usb.in', { bytes: [0x90, 60, 100, 0x90, 64, 100, 0x90, 67, 100] });
+    await expect.poll(async () => (await voicesOf(0)).length, { timeout: 30_000 }).toBe(3);
+    expect((await voicesOf(1)).filter((v) => v.gate === 1).length, 'track 1 still holds its panel note').toBe(1);
+    // Both tracks' voices rendered through their own slots in the same frame.
+    await expect.poll(pairs, { timeout: 30_000 }).toEqual([1, 1]);
+    await session.client.call('pcm.tap', { action: 'capture', path: multiCapture });
+    capturing = true;
+    await session.client.call('pcm.tap', { action: 'start' });
+    await expect
+      .poll(
+        async () => {
+          const r = await session.client.call<{ samples: number; non_finite: number }>('pcm.tap', {
+            action: 'report',
+          });
+          expect(r.non_finite).toBe(0);
+          return r.samples;
+        },
+        { timeout: 60_000 },
+      )
+      .toBeGreaterThanOrEqual(48_000);
+    await session.client.call('pcm.tap', { action: 'capture_stop' });
+    capturing = false;
+    load = ((await session.status()) as { load?: unknown }).load;
+  } finally {
+    await edge('TRIG 9', false);
+    await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0, 0x80, 64, 0, 0x80, 67, 0] });
+  }
+  await key('KEYBOARD');
+  const multiRaw = fs.readFileSync(multiCapture);
+  const multiFrames = Math.floor(multiRaw.length / 8);
+  let multiEnergy = 0;
+  for (let frame = Math.max(0, multiFrames - 8192); frame < multiFrames; frame++) {
+    const l = multiRaw.readFloatLE(frame * 8),
+      r = multiRaw.readFloatLE(frame * 8 + 4);
+    multiEnergy += l * l + r * r;
+  }
+  const multiRms = Math.sqrt(multiEnergy / (2 * Math.min(multiFrames, 8192)));
+  expect(multiRms, 'two instances render at once').toBeGreaterThan(1e-4);
+  fs.writeFileSync(path.join(artifacts, 'multi-load.json'), JSON.stringify({ multiRms, load }, null, 2));
+  console.info('CANOPY multi: tracks 11 and 1 sounded together', { multiRms, load });
+  await expect.poll(async () => (await voicesOf(0)).length + (await voicesOf(1)).length, { timeout: 60_000 }).toBe(0);
+
+  // Two more instances; a fifth CANOPY above them stays stock and silent.
+  for (const [n, expected] of [
+    [5, [10, 0, 4, NONE]],
+    [7, [10, 0, 4, 6]],
+  ] as const) {
+    await selectTrack(n);
+    await chooseCanopy();
+    await expect.poll(tracks, { timeout: 60_000 }).toEqual(expected);
+  }
+  await expect.poll(phases, { timeout: 60_000 }).toEqual([3, 3, 3, 3]);
+  await selectTrack(13);
+  await chooseCanopy();
+  await waitInstrumentTicks();
+  expect(await tracks()).toEqual([10, 0, 4, 6]);
+  expect(await srcOwnership(12)).toBe(0);
+  await captureRemoteOled(session, 'canopy-multi-fifth-stock');
+  for (const t of [0, 4, 6, 10]) expect(await srcOwnership(t), `track ${t + 1}`).not.toBe(0);
+
+  // The DSP status focus follows the selected CANOPY track.
+  const focus = async () => (await peek(planSymbol(plan, '_iv_focus'), 4)).readUInt32LE();
+  await selectTrack(7);
+  await key('SRC');
+  await expect.poll(focus, { timeout: 30_000 }).toBe(3);
+  await selectTrack(11);
+  await key('SRC');
+  await expect.poll(focus, { timeout: 30_000 }).toBe(0);
   expect(await cf('ip_control', 4)).toBe(0);
-  await session.expectNoFault('CANOPY on any track');
-  console.info('CANOPY any-track: instance followed the instrument to track 1');
+  await session.expectNoFault('CANOPY on several tracks');
+  console.info('CANOPY multi: four instances admitted, fifth stock, focus follows selection');
 }, 900_000);

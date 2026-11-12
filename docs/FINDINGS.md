@@ -222,7 +222,7 @@ CANOPY controls: [compact SRC pages, latch removal and native MOD](findings/120-
 (**[D]/[V]**, fixed six targets per source family, immutable base controls and
 narrow independently checked firmware-hook ABI; physical installation pending).
 
-CANOPY tracks: [admission on any track](findings/121-canopy-any-track.md)
-(**[D]**, per-track stock row/frame/kit strides, transport binding to the
-instrument's track and DSP track adoption; emulator proof and installation
-recorded with the handover).
+CANOPY tracks: [any track, up to four at once](findings/121-canopy-any-track.md)
+(**[D]**, per-track stock row/frame/kit strides, DSP slots bound by reset
+hints, per-track carrier ownership, status focus; four-busy-instance DSP load
+open **[O]**).

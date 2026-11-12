@@ -438,7 +438,8 @@ test('audio submission and SRC pending markers share the full configuration revi
   expect((first!.values as number[])[2]).toBe(100);
   expect(unchanged!.revision).toBe(first!.revision);
   expect(mode!.revision as number).toBeGreaterThan(first!.revision as number);
-  expect((mode!.values as number[])[0]).toBe(0x4000010b);
+  // Bit 15 flags the DSP status focus (the selected instance); the adapter strips it.
+  expect((mode!.values as number[])[0]).toBe(0x4000810b);
   expect(tempo!.revision as number).toBeGreaterThan(mode!.revision as number);
   expect((tempo!.values as number[])[7]).toBe(140);
 });

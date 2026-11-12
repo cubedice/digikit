@@ -1,8 +1,7 @@
 #include "src-mod.h"
 extern uint32_t dkrt_instrument_type(void);
 extern uint32_t dkrt_instrument_generation(void);
-extern volatile uint32_t ip_admission[8];
-extern volatile uint32_t ip_track;
+#include "instances.h"
 /* The verified LEA operand holds the SRAM row address of track 0. Extern
  * mappings name anchors; load the operand before reading the current
  * track-type byte. DT2 1.17 outgoing machine rows are 0x9a bytes per track
@@ -39,7 +38,7 @@ uint32_t instrument_mod_param(uint32_t type,uint32_t mirror)
 int instrument_mod_carrier(uint32_t track)
 {
     uint32_t type=dkrt_instrument_type();
-    return track<16 && track==ip_track && type>=16 && ip_admission[0] && ip_admission[5]==type &&
+    return track<16 && type>=16 && instrument_sound_admitted(track) &&
         dkrt_instrument_generation() &&
         *(volatile const uint8_t *)(uintptr_t)(ip_mod_track_type+0x9au*track)==type;
 }

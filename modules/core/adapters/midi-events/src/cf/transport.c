@@ -145,6 +145,7 @@ assemble:
     if (kind == MT_RESET) {
         t->words[8] = track;
         t->words[9] = t->generation;
+        t->words[10] = m->reset_slot[track]; /* instance slot hint, 0 none */
     } else if (kind == MT_CONFIG_CHUNK || kind == MT_CONFIG_COMMIT) {
         t->words[5] = t->config_revision;
         t->words[8] = track;

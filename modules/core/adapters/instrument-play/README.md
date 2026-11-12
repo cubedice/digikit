@@ -1,12 +1,24 @@
 # Persistent instrument playback adapter
 
-Development-only DTII OS 1.17 adapter for one admitted V2 instance on the
-lowest kit track whose Sound carries the instrument type (any of the sixteen
-tracks; `ip_track` publishes it, 0xffffffff when none). It is not in a default
-patch set. There is no
-hardware release approval. The development policy admits one instance with a
-2976-byte state ceiling and declared 100000/1600 process/reset ceilings.
-Instruction-test limits are not a measured hardware cycle budget.
+Development-only DTII OS 1.17 adapter for up to four admitted V2 instances,
+one per kit track whose Sound carries the instrument type (any of the sixteen
+tracks). The four lowest such tracks are admitted; an instance keeps its track
+while that track stays wanted, and a freed instance takes the next wanted track
+with its sound settings retained. `ip_tracks[4]` publishes the bound tracks and
+`ip_track` the lowest (0xffffffff when none). It is not in a default patch set.
+There is no hardware release approval. The development policy admits four
+instances, each with a 2976-byte state ceiling and declared 100000/1600
+process/reset ceilings (400000 process in total). Instruction-test limits are
+not a measured hardware cycle budget; four simultaneous worst-case instances
+can exceed a DSP block (finding 121).
+
+Instance i is DSP slot i and registry instance i. A reset with word 10 = i+1
+binds the slot to the reset's track; the CF flags the selected track's instance
+with bit 15 of control word 0 so its status reaches INPUT/STATUS. The UI edits
+the selected track's instance; each instance keeps its own sound settings, SRC
+state, status and MIDI CHANNEL (saved under `canopy/channels/v1`). A channel
+already played by a lower instance is skipped and INPUT shows CHANNEL IN USE.
+Learned shapes are shared.
 
 The native UI revision uses the stock TUNE, source LEV and track LEV paths on
 SOUND, with native fonts and bounded custom cells. ARP G/H edit clock/local BPM.
@@ -28,8 +40,8 @@ unused cells on the other pages cannot edit stock source parameters.
 The DTII 1.17 KeyboardView bridge intercepts resolved performance notes before
 stock mono audition. It retains native key-up closures and uses a separate PANEL
 owner through PLAY/ROOT/LEARN. Local keys do not require enabling external MIDI.
-Only the admitted CANOPY on its own track is consumed; stock machines and other
-tracks delegate to the original handlers. Leaving keyboard mode or selecting
+Keys play the admitted CANOPY on the selected track; stock machines and
+tracks without an instance delegate to the original handlers. Leaving keyboard mode or selecting
 another track cancels the
 panel phrase without canceling external notes. This is local audition support,
 not qualification of native pattern recording or sequencer polyphony.

@@ -22,20 +22,25 @@ This is not a hardware-qualified release.
 
 Build and pack with `patchkit build digikit/canopy` and
 `patchkit pack digikit/canopy --device dt2 -o out/patch/canopy-dt2.dkm` through
-the repository's Python wrapper. Select CANOPY on any one track. In firmware containing
+the repository's Python wrapper. Select CANOPY on any track, or on up to four tracks. In firmware containing
 the adapter, SETTINGS > DIGIKIT > CANOPY > INPUT opens USB/DIN,
-channel and EXTERNAL MIDI settings. The built-in KEYBOARD/TRIG route is available on
-the admitted track without enabling external MIDI.
+channel and EXTERNAL MIDI settings; CHANNEL belongs to the selected track's instance.
+The built-in KEYBOARD/TRIG route plays the selected admitted track without enabling
+external MIDI.
 Enable the corresponding stock MIDI receive ports as well. Development
 installation uses the upload/selection protocol; the generic module-browser fit
 calculator remains V1-only. External MIDI starts disabled unless you previously used SAVE ROUTING;
 saved routing is restored after CANOPY is admitted and ready. Learned chord
 templates and saved presets persist. Keyboard mode and sound controls start at
 defaults until you load a preset.
-One track is admitted: the lowest track whose machine is CANOPY. A second CANOPY
-on a higher track stays silent with the stock TUNE/LEV page until the lower one
-is replaced; moving the instrument re-admits it on the new track. Other tracks
-and channels retain stock behavior.
+Up to four tracks are admitted at once: the four lowest tracks whose machine is
+CANOPY, each with its own instance, sound settings, SRC pages and MIDI channel.
+A fifth CANOPY on a higher track stays silent with the stock TUNE/LEV page until
+one of the four is replaced. An instance keeps its track while the track stays
+CANOPY; a freed instance takes the next CANOPY track. If two instances use the
+same MIDI channel, the lower track plays it and the other shows CHANNEL IN USE.
+Other tracks and channels retain stock behavior. Four simultaneous worst-case
+sounds can exceed the DSP block time (finding 121).
 
 `src/dsp/voice.s` implements four foreground notes, two short release tails and
 four pending-replacement records in a caller-owned 256-byte bank.

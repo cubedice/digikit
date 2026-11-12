@@ -105,3 +105,100 @@ The proof's track-11 capture shows the CANOPY ARP page (RATE/ORDR/OCTS/GATE,
 SWNG/RST/CLK/BPM) beside SMP 11, and track 1 the stock Oneshot page.
 Compiled Stage 5 and Stage 6 pass on the same image (`cdebb602…7d6`), so
 track-1 behaviour and Overloop coexistence are unchanged.
+
+## Several instances at once (2026-11-12)
+
+Status: **[D]** unit and emulator coverage below; one reader; not yet on hardware.
+
+**Engine isolation [D].** Two differently configured CANOPY instances
+(wavetable PM with arp, FM with arp), interleaved block by block on the SHARC
+simulator, produce bit-identical output, V7 gains and state to each instance
+run alone, in direct and protected dispatch
+(`test_two_instances_interleaved_match_each_instance_alone`). The module's
+global data is per-call scratch; the engine needed no change.
+
+**Admission.** The runtime policy word `tracks` is the admitted instance count
+(1..16); its process and state words are per-instance ceilings, so the total
+process budget and the descriptor's allocation limit scale with it
+(`pending.rs`), and the load registry's track limit is that count
+(`instrument.rs`). The adapter policy admits four; CANOPY's descriptor
+declares four instances, so admission allocates four 2976-byte states at the
+8-byte stride and reserves 4 x 100,000 process instructions.
+
+**Which tracks.** `sound.c` scans the kit once per UI tick: the four lowest
+tracks whose Sound carries the instrument type are wanted; an instance keeps
+its track while that track stays wanted, freed instances take newly wanted
+tracks (lowest first) and keep their sound settings. A fifth CANOPY above the
+four stays stock and silent; one added below them takes an instance from the
+highest. Scans pause during in-place Sound loads and scheduled pattern
+hand-overs, as admission already did.
+
+**DSP slots.** The play adapter keeps four slots (154 words each: lifecycle
+scalars, process input, output, events, controls) plus per-slot V7 gains. Every
+entry point loads its slot into the unchanged single-instance working set, runs,
+and stores it; slot k calls the registry with instance ordinal k (state base +
+k x stride). The CF binds slot k to a track with a reset whose word 10 carries
+the hint k+1 (`mi_reset_bind`, validator: word 10 < 16, padding from word 11);
+binding unbinds any other slot naming that track. Without a hint a reset
+targets the slot already bound to its track; a new epoch resets every bound
+slot; other tracks are acknowledged as inactive. Unbound slots hold track
+0xffffffff, which every bound check tests unsigned (an earlier signed `COMP`
+let such a slot be processed and quarantine the row; fixed and covered).
+
+**Per-track carrier state.** `_mi_native_owner[16]` (the stamp of the frame in
+which a track's native block completed) and `_mi_post_ptr[16]` (that owner's
+V7 gains) replace the single owner flags; `_mi_carrier_begin` clears both every
+frame and each slot rewrites its own entries every block. The envelope
+interposer matches the voice pair (`voice >> 1`) to its own entry. The native
+AMP snapshot now reads the record of the slot's own track (record 2t, 88 bytes
+per track): the single-track change had read track 1's AMP page for every
+track **[C]** (found while generalising; the any-track proof only checked
+audibility).
+
+**Status focus.** Only one 12-word status record reaches the link every other
+block. The CF flags the instance on its selected track with bit 15 of control
+word 0; the adapter clears the bit before validation and the module, records
+the slot as focus and copies only that slot's status to `_instrument_ui_status`
+(the others write a scratch sink). A focus change bumps that instance's
+revision so its bank is resent with the flag.
+
+**ColdFire.** `control.c` holds per-instance sound settings, keyboard mapper,
+SRC state (`src_state[i]`), status (`src_status[i]`), lifecycle and MIDI
+channel; the UI acts on the selected track's instance (set by the SRC view and
+the keyboard view), the tick services each instance, and the MIDI mapper finds
+the instance for its batch track. PANIC releases every instance. Learned shapes
+are one shared library. Panel keys name their track (`mi_panel_down(...,
+track)`, panel enabled per track by `panel_mask`). External MIDI: EXTERNAL
+MIDI, USB, DIN and the selector are shared; CHANNEL is per track (saved under
+`canopy/channels/v1`, default the version 1 CHANNEL); a channel already played
+by a lower instance is skipped and INPUT shows CHANNEL IN USE.
+
+### Results
+
+| Check | Result |
+| --- | --- |
+| DSP play (slots, binding, focus, unbound slots), modulation, native AMP firmware, carrier | 316 passed, 1 skipped |
+| CANOPY V2 incl. two-instance isolation (subset run) | 8 passed |
+| Voice wrapper, guard, sine | 175 passed |
+| Host C drivers (native view, panel, keyboard, settings/presets) | 167 passed |
+| midi-events ledger crate (incl. per-track panel) | 26 passed |
+| Runtime Rust host tests | 54 passed |
+| Emulator proof `canopy-track.test.ts` on `canopy-multi-release` | passed: track 11, then tracks 1, 5 and 7 admitted (`ip_tracks` [10, 0, 4, 6]); a fifth on track 13 stays stock; tracks 11 and 1 sound at once (USB on 11, panel on 1; both carrier pairs published in one frame; output RMS 0.0517); DSP focus follows the selected track |
+| Compiled Stage 5 and Stage 6 on `canopy-multi-release` | passed (494 s, 489 s) |
+
+The 25 `test_midi_events.py` failures in this run (registration window, loader
+tail boundaries, composed frame) fail identically on the previous commit: their
+extern tables lack `_fx_diag` and `_fm_enabled`, added to the linked sources
+earlier. They are not caused by this change.
+
+### DSP load [D]
+
+With two instances sounding (simple notes), the emulator's meter reported
+236,524 busy DSP instructions per block: 35.5 % model, 40.2 % real nominal,
+49.9 % real high, 41.1 % peak (`out/canopy-any-track/multi-load.json`). The
+bounded worst case of one instance is about 98,000 instructions per block
+(finding 117). Four instances all at that worst case would add about 390,000
+to the stock engine's ~211,000, exceeding the 666,667-instruction block at
+the high real estimate. Typical sounds are far below the worst case, but four
+simultaneous worst-case wavetable-PM patches with arps can overload the DSP.
+Qualifying four busy instances on hardware remains open **[O]**.

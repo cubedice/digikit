@@ -12,6 +12,27 @@ void mi_init(MiLedger *m)
     m->next_token = m->next_sequence = 1;
 }
 
+/* Route 32 mirrors the lowest panel track, so legacy route scans (overflow,
+ * recovery, quarantine) still see it. A quarantined panel stays disabled. */
+static void panel_sync(MiLedger *m)
+{
+    MiRoute *r = &m->routes[32];
+    for (uint32_t t = 0; t < MI_TRACKS; ++t)
+        if (m->panel_mask & (1u << t)) {
+            r->track = (uint8_t)t; r->generation = m->generations[t];
+            r->enabled = !r->quarantined;
+            return;
+        }
+    r->enabled = 0;
+}
+
+void mi_reset_bind(MiLedger *m, uint32_t track, uint32_t slot)
+{
+    if (track >= MI_TRACKS || slot >= 15) return;
+    m->reset_slot[track] = (uint8_t)(slot + 1);
+    mi_reset_track(m, track);
+}
+
 void mi_reset_track(MiLedger *m, uint32_t track)
 {
     uint32_t i;
@@ -26,6 +47,8 @@ void mi_reset_track(MiLedger *m, uint32_t track)
             m->keys[i].tombstone = 1;
     for (i = 0; i < MI_ROUTES; ++i)
         if (m->routes[i].track == track) m->routes[i].enabled = 0;
+    m->panel_mask &= ~(1u << track);
+    panel_sync(m);
     /* The transport must service reset_mask ahead of the ring and discard
      * queued events for the old generation; this never frees physical keys. */
 }
@@ -35,6 +58,7 @@ int mi_reset_ack(MiLedger *m, uint32_t epoch, uint32_t track, uint32_t generatio
     if (epoch != m->epoch || track >= MI_TRACKS || !generation || generation != m->generations[track] ||
         !(m->reset_mask & (1u << track))) return 0;
     m->reset_mask &= ~(1u << track);
+    m->reset_slot[track] = 0;
     return 1;
 }
 
@@ -44,12 +68,15 @@ static void overflow(MiLedger *m)
     if (m->overruns != UINT32_MAX) ++m->overruns;
     /* Losing one ring event breaks ownership, so reset all admitted instances.
      * Quarantine all configured routes: untracked presses cannot be paired. */
+    uint32_t panels = m->panel_mask;
     for (i = 0; i < MI_ROUTES; ++i) {
         if (m->routes[i].track < MI_TRACKS) {
             mi_reset_track(m, m->routes[i].track);
             m->routes[i].quarantined = 1;
         }
     }
+    for (i = 0; i < MI_TRACKS; ++i)
+        if (panels & (1u << i)) mi_reset_track(m, i);
     m->head = m->count = 0;
 }
 
@@ -61,6 +88,7 @@ void mi_recover(MiLedger *m)
      * allowed to erase unpaired tombstones after capacity exhaustion. */
     for (i = 0; i < MI_ROUTES; ++i)
         if (m->routes[i].track < MI_TRACKS) resets |= 1u << m->routes[i].track;
+    resets |= m->panel_mask;
     mi_init(m);
     m->epoch = epoch + 1;
     m->reset_mask = resets;
@@ -82,6 +110,15 @@ int mi_route(MiLedger *m, uint32_t port, uint32_t channel, uint32_t track,
              uint32_t generation, int sequencer)
 {
     MiRoute *r;
+    if (port == MI_PANEL && !channel && track < MI_TRACKS) {
+        /* The panel is enabled per instrument track; keys name their track. */
+        if (generation == 0 || generation != m->generations[track]) return -1;
+        if (m->routes[32].quarantined) return -2;
+        if ((m->panel_mask | m->reset_mask) & (1u << track)) return -2;
+        m->panel_mask |= 1u << track;
+        panel_sync(m);
+        return 0;
+    }
     if (port > MI_PANEL || channel >= 16 || (port==MI_PANEL && channel) ||
         (track >= MI_TRACKS && track != MI_NONE) ||
         (track != MI_NONE && (generation == 0 || generation != m->generations[track]))) return -1;
@@ -188,13 +225,10 @@ int mi_message(MiLedger *m, uint32_t port, const uint8_t *msg, uint32_t len)
     return 1;
 }
 
-int mi_panel_down(MiLedger *m,uint32_t key,uint32_t note,uint32_t velocity)
+int mi_panel_down(MiLedger *m,uint32_t key,uint32_t note,uint32_t velocity,uint32_t track)
 {
-    if(key>=16 || note>127 || !velocity || velocity>127) return 0;
-    MiRoute *r=&m->routes[32];
-    if(r->track==MI_NONE) { r->track=0; r->generation=m->generations[0]; }
-    uint32_t track=r->track;
-    if(r->quarantined) return 1;
+    if(key>=16 || note>127 || !velocity || velocity>127 || track>=MI_TRACKS) return 0;
+    if(m->routes[32].quarantined) return 1;
     uint32_t free=MI_KEYS;
     for(uint32_t i=0;i<MI_KEYS;++i) {
         MiKey *k=&m->keys[i];
@@ -205,7 +239,7 @@ int mi_panel_down(MiLedger *m,uint32_t key,uint32_t note,uint32_t velocity)
     MiKey *k=&m->keys[free];
     k->token=m->next_token++; k->generation=m->generations[track]; k->identity=key;
     k->track=(uint8_t)track; k->port=MI_PANEL; k->channel=0; k->note=(uint8_t)note;
-    k->tombstone=!r->enabled || !!m->reset_mask; k->used=1;
+    k->tombstone=!(m->panel_mask&(1u<<track)) || !!m->reset_mask; k->used=1;
     if(!k->tombstone) emit(m,k->token,k->generation,(uint8_t)track,MI_NOTE_ON,MI_PANEL,0,k->note,(uint8_t)velocity);
     return 1;
 }
@@ -220,15 +254,18 @@ void mi_panel_up(MiLedger *m,uint32_t key)
 }
 void mi_panel_cancel(MiLedger *m)
 {
-    int active=0;
+    uint32_t tracks=m->panel_mask;
     for(uint32_t i=0;i<MI_KEYS;++i) {
         MiKey *k=&m->keys[i];
-        if(k->used && k->port==MI_PANEL) { active|=!k->tombstone; k->tombstone=1; }
+        if(k->used && k->port==MI_PANEL) {
+            if(!k->tombstone && k->track<MI_TRACKS) tracks|=1u<<k->track;
+            k->tombstone=1;
+        }
     }
-    /* Also clear latched/released panel notes. No USB/DIN controller changes. */
-    uint32_t track=m->routes[32].track<MI_TRACKS ? m->routes[32].track : 0;
-    if(active || m->routes[32].enabled)
-        emit(m,0,m->generations[track],(uint8_t)track,MI_CC,MI_PANEL,0,120,0);
+    /* Also clear released panel notes on every panel instrument track.
+     * No USB/DIN controller changes. */
+    for(uint32_t t=0;t<MI_TRACKS;++t)
+        if(tracks&(1u<<t)) emit(m,0,m->generations[t],(uint8_t)t,MI_CC,MI_PANEL,0,120,0);
 }
 
 int mi_peek(MiLedger *m, MiEvent *out)

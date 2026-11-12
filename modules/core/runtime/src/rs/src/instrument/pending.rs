@@ -48,6 +48,8 @@ pub unsafe extern "C" fn dkrt_instrument_generation() -> u32 {
 
 // Admission policy is supplied only by the trusted firmware adapter, never a
 // DKM. Eight words: magic, version, tracks, process, reset, depth, stack, state.
+// Tracks (1..16) is the admitted instance count; process and state are the
+// per-instance ceilings, so the total budget and allocation scale with it.
 extern "C" { fn instrument_runtime_policy() -> *const u32; fn instrument_play_faulted(generation: u32) -> i32; }
 pub(crate) unsafe fn policy() -> Option<[u32; 8]> {
     if core::hint::black_box(instrument_runtime_policy as usize) == 0 { return None; }
@@ -55,7 +57,7 @@ pub(crate) unsafe fn policy() -> Option<[u32; 8]> {
     if ptr.is_null() { return None; }
     let mut words = [0; 8];
     for (i, value) in words.iter_mut().enumerate() { *value = core::ptr::read_volatile(ptr.add(i)); }
-    if words[0] != 0x49525031 || words[1] != 1 || words[2] != 1 ||
+    if words[0] != 0x49525031 || words[1] != 1 || !(1..=16).contains(&words[2]) ||
         words[3] == 0 || words[3] > 100000 || words[4] == 0 || words[4] > 10000 ||
         words[5] == 0 || words[5] > 8 || words[6] == 0 || words[6] > 128 ||
         words[7] == 0 || words[7] > 4096 { return None; }
@@ -63,7 +65,9 @@ pub(crate) unsafe fn policy() -> Option<[u32; 8]> {
 }
 pub(crate) unsafe fn descriptor_limits() -> Option<instrument_descriptor::Limits> {
     let p = policy()?;
-    Some(instrument_descriptor::Limits { state_bytes: p[7], cycles_process: p[3],
+    // The descriptor's allocation covers every instance at the 8-byte stride.
+    let state_bytes = ((p[7] + 7) & !7).checked_mul(p[2])?;
+    Some(instrument_descriptor::Limits { state_bytes, cycles_process: p[3],
         cycles_reset: p[4], call_depth: p[5], stack_bytes: p[6] })
 }
 pub(crate) unsafe fn occupied() -> bool { (&*core::ptr::addr_of!(PENDING)).is_some() }
@@ -192,7 +196,8 @@ unsafe fn prepare(owner: &mut Owner, p: &mut Pending, ledger: &mut instrument_lo
     let Ok(section) = Section::parse(bytes, crate::device(), bounds) else { return E_FORMAT; };
     let Ok(types) = crate::assign::resolve_instruments(&section, p.selection) else { return E_FORMAT; };
     let limits = Limits { l2: Range { start: 0x20000000, end: 0x20080000 },
-        reset_frame: 20000, reset_overhead: 1000, process_total: policy[3],
+        reset_frame: 20000, reset_overhead: 1000,
+        process_total: policy[3].saturating_mul(policy[2]),
         call_depth: policy[5], stack_bytes: policy[6] };
     let output = core::slice::from_raw_parts_mut(p.output as *mut u8, p.output_size as usize);
     let Ok(plan) = owner.admit(p.rec as u32, &section, types.as_slice(), &limits,

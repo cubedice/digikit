@@ -9,17 +9,29 @@
 .EXTERN _mi_carrier_active;
 .EXTERN _mi_carrier_publish;
 .EXTERN _mi_velocity_owners;
-.EXTERN _mi_native_owner_valid;
-.EXTERN _mi_post_owner_valid;
+.EXTERN _mi_native_owner;
+.EXTERN _mi_post_ptr;
 _mi_carrier_begin:
     R0 = DM(_mi_carrier_stamp);
     R0 = R0 + 1;
     DM(_mi_carrier_stamp) = R0;
+    R0 = 0;
+    I0 = _mi_native_owner;
+    R1 = 16;
+_mi_native_expire:
+    DM(0, I0) = R0;
+    MODIFY(I0, 1) (NW);
+    R1 = R1 - 1;
+    IF NE JUMP _mi_native_expire;
+    I0 = _mi_post_ptr;
+    R1 = 16;
+_mi_post_expire:
+    DM(0, I0) = R0;
+    MODIFY(I0, 1) (NW);
+    R1 = R1 - 1;
+    IF NE JUMP _mi_post_expire;
     I0 = _mi_carrier_pairs;
     R1 = 16;
-    R0 = 0;
-    DM(_mi_native_owner_valid) = R0;
-    DM(_mi_post_owner_valid) = R0;
 _mi_carrier_expire:
     DM(2, I0) = R0;
     MODIFY(I0, 3) (NW);

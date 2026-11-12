@@ -5,6 +5,8 @@ static uint8_t view[0x200],other[0x200],object[4];
 static uint32_t machine=9,selected,downs,ups,cancels,original_on,original_off,detaches;
 static uint8_t active=1;
 volatile uint32_t ip_track;
+int instrument_track_owned(uint32_t t) { return t==ip_track; }
+void instrument_select_track(uint32_t t) { (void)t; }
 uint32_t dkrt_instrument_type(void) { return 9; }
 uint8_t *ip_panel_track_object(uint32_t manager,uint32_t track)
 { (void)manager;assert(track==ip_track);return object; }
@@ -18,8 +20,8 @@ void ip_panel_original_on(uint8_t *v,uint32_t key,uint32_t track,uint32_t pitch,
 void ip_panel_original_off(uint8_t *v,uint32_t key) { assert(v==view && key==3);++original_off; }
 uint32_t ip_panel_stock_key(uint8_t *v,uint8_t *e) { (void)e;assert(v==view);return 17; }
 void ip_panel_stock_detach(uint8_t *v,uint8_t *m) { (void)m;assert(v==view || v==other);++detaches; }
-int mi_panel_key(uint32_t key,uint32_t note,uint32_t velocity,int down)
-{ assert(key==3);if(down) { assert(note==65 && velocity==88);++downs; } else ++ups;return 1; }
+int mi_panel_key(uint32_t key,uint32_t note,uint32_t velocity,int down,uint32_t track)
+{ (void)track;assert(key==3);if(down) { assert(note==65 && velocity==88);++downs; } else ++ups;return 1; }
 void mi_panel_release(void) { ++cancels; }
 int main(void)
 {

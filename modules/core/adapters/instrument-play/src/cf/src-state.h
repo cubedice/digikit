@@ -22,6 +22,7 @@ void cs_init(CsState *);
 void cs_sync(CsState *,const uint16_t values[CP_CONTROLS]);
 void cs_import(CsState *,const CpPreset *);
 void cs_metadata(CsState *,uint32_t metadata);
+void cs_touch(CsState *);
 void cs_native_tune(CsState *,uint32_t raw);
 uint32_t cs_context(CsState *,uint32_t track,uint32_t generation,int visible,
     uint32_t page,uint32_t mode,uint32_t clock,int learned,int modal);

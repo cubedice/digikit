@@ -152,6 +152,12 @@ void cs_metadata(CsState *s,uint32_t metadata)
     if(changed_family) activate(s);
     ++s->revision; s->pending=UINT32_MAX;
 }
+/* A new configuration revision with unchanged values: resends the bank (the
+ * instance became the DSP status focus). Pending markers are unaffected. */
+void cs_touch(CsState *s)
+{
+    if(s->revision!=UINT32_MAX) ++s->revision;
+}
 void cs_import(CsState *s,const CpPreset *p)
 {
     /* Choose the incoming family before range-checking its active bank. Never

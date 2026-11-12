@@ -53,7 +53,7 @@ int main(void)
         if(!strcmp(cmd,"on") || !strcmp(cmd,"off") || !strcmp(cmd,"cc") || !strcmp(cmd,"bend")) {
             uint8_t bytes[3]={(uint8_t)((!strcmp(cmd,"on")?0x90:!strcmp(cmd,"off")?0x80:!strcmp(cmd,"cc")?0xb0:0xe0)|a),(uint8_t)c,(uint8_t)d};
             result=mi_message(&ledger,b,bytes,3);
-        } else if(!strcmp(cmd,"panelon")) result=mi_panel_down(&ledger,a,b,c);
+        } else if(!strcmp(cmd,"panelon")) result=mi_panel_down(&ledger,a,b,c,0);
         else if(!strcmp(cmd,"paneloff")) mi_panel_up(&ledger,a);
         else if(!strcmp(cmd,"panelcancel")) mi_panel_cancel(&ledger);
         else if(!strcmp(cmd,"tick") || !strcmp(cmd,"hold")) {

@@ -259,13 +259,28 @@ void mi_instance_reset(uint32_t track)
     dkrt_irq_restore(sr);
 }
 
-int mi_panel_key(uint32_t key,uint32_t note,uint32_t velocity,int down)
+void mi_instance_bind(uint32_t track, uint32_t slot)
+{
+    uint32_t sr = dkrt_irq_mask();
+    initialize();
+    mi_reset_bind(&mi_ledger, track, slot);
+    dkrt_irq_restore(sr);
+}
+
+uint32_t mi_route_track(uint32_t port, uint32_t channel)
+{
+    if (port > 1 || channel >= 16) return MI_NONE;
+    const MiRoute *r = &mi_ledger.routes[port * 16u + channel];
+    return r->enabled ? r->track : MI_NONE;
+}
+
+int mi_panel_key(uint32_t key,uint32_t note,uint32_t velocity,int down,uint32_t track)
 {
     uint32_t sr=dkrt_irq_mask(); int result=1;
     initialize();
     if(!reset_seen) {
-        if(mi_ledger.routes[32].enabled) revalidate_track(mi_ledger.routes[32].track);
-        if(down) result=mi_panel_down(&mi_ledger,key,note,velocity);
+        if(down && track<MI_TRACKS && (mi_ledger.panel_mask&(1u<<track))) revalidate_track(track);
+        if(down) result=mi_panel_down(&mi_ledger,key,note,velocity,track);
         else mi_panel_up(&mi_ledger,key);
     }
     dkrt_irq_restore(sr); return result;

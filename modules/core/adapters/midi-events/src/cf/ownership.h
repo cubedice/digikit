@@ -36,6 +36,12 @@ typedef struct {
     MiEvent events[MI_EVENTS];
     uint32_t head, count, next_token, next_sequence;
     uint32_t reset_mask, overruns, epoch, generations[MI_TRACKS];
+    /* Tracks whose instrument accepts local panel keys (route 32 mirrors the
+     * lowest one). Each panel key carries its own track. */
+    uint32_t panel_mask;
+    /* One-shot instance slot hint (slot + 1) for the next reset of a track,
+     * cleared by its ACK. Zero leaves the DSP's existing binding. */
+    uint8_t reset_slot[MI_TRACKS];
 } MiLedger;
 
 /* Volatile byte copy keeps freestanding CF code independent of libc helpers. */
@@ -54,6 +60,8 @@ int mi_route(MiLedger *m, uint32_t port, uint32_t channel, uint32_t track,
 /* Invalidate an instance, retaining FIFO tombstones. Disables its routes and
  * requests a priority reset, independent of ordinary ring capacity. */
 void mi_reset_track(MiLedger *m, uint32_t track);
+/* Reset a track and bind DSP instance slot `slot` (0-based) to it. */
+void mi_reset_bind(MiLedger *m, uint32_t track, uint32_t slot);
 int mi_reset_ack(MiLedger *m, uint32_t epoch, uint32_t track, uint32_t generation);
 /* Explicit panic/recovery with physical keys released; no automatic recovery
  * from lost ownership. Reset ACK and a subsequent route call are still needed. */
@@ -66,7 +74,7 @@ int mi_session_begin(MiLedger *m);
 int mi_message(MiLedger *m, uint32_t port, const uint8_t *msg, uint32_t len);
 /* Resolved local keys have an identity independent of pitch. Key-up releases
  * exactly the pitches captured at key-down, including across scale changes. */
-int mi_panel_down(MiLedger *m, uint32_t key, uint32_t note, uint32_t velocity);
+int mi_panel_down(MiLedger *m, uint32_t key, uint32_t note, uint32_t velocity, uint32_t track);
 void mi_panel_up(MiLedger *m, uint32_t key);
 void mi_panel_cancel(MiLedger *m);
 /* Peek leaves the ring intact for retransmission. ACK must match its exact head
