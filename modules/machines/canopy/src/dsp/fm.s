@@ -382,6 +382,8 @@ _fm_render:
     DM(_fm_i4) = R0;
     R0 = L4;
     DM(_fm_l4) = R0;
+    R0 = M4;
+    DM(_fm_m4) = R0;
     R0 = 0;
     L4 = R0;
     R0 = DM(0,I0);
@@ -895,25 +897,129 @@ _fm_wheel:
     DM(-14,I4) = R0;
     R0 = DM(31,I0);
     DM(-16,I4) = R0;
+    // FM renders a block at a time: the per-sample operations of the former
+    // sample body run in passes over 12-word control records in _fm_ctl
+    // (stride M4 = 12): 0 modulation scale, 1 amplitude, 2 timbre envelope,
+    // 3..11 the graph/ratio ramps (record words 32..40 after the sample's
+    // step). Every float operation keeps its operand order, so the output is
+    // bit-identical; only the schedule and the call overhead change.
+    M4 = 12;
+    // Pass E: timbre envelope. The stage changes at most twice in a block, so
+    // release and sustain blocks run without per-sample branches.
+    I1 = _fm_ctl;
+    MODIFY(I1,2) (NW); // envelope word at offset 0
+    F8 = DM(5,I0);
+    R0 = DM(_fm_held);
+    R0 = PASS R0;
+    IF EQ JUMP _fm_env_release;
+    R0 = DM(6,I0);
+    R0 = PASS R0;
+    IF EQ JUMP _fm_env_attack;
+    R1 = 1;
+    COMP(R0,R1);
+    IF EQ JUMP _fm_env_decay;
+    F8 = DM(_fm_sustain);
+    LCNTR = 8, DO _fm_env_sustain_last UNTIL LCE;
+    DM(I1,M4) = F8;
+    DM(I1,M4) = F8;
+    DM(I1,M4) = F8;
+_fm_env_sustain_last:
+    DM(I1,M4) = F8;
+    JUMP _fm_env_done;
+_fm_env_release:
+    F9 = DM(_fm_release);
+    F11 = 0.0;
+    LCNTR = 16, DO _fm_env_release_last UNTIL LCE;
+    F8 = F8 + F9;
+    F8 = MAX(F8,F11);
+    DM(I1,M4) = F8;
+    F8 = F8 + F9;
+    F8 = MAX(F8,F11);
+_fm_env_release_last:
+    DM(I1,M4) = F8;
+    R0 = 3;
+    DM(6,I0) = R0;
+    JUMP _fm_env_done;
+_fm_env_attack:
     R13 = 32;
+    F9 = DM(_fm_attack);
+    F11 = 1.0;
+_fm_env_attack_sample:
+    F8 = F8 + F9;
+    COMP(F8,F11);
+    IF LT JUMP _fm_env_attack_keep;
+    F8 = F11;
+    R0 = 1;
+    DM(6,I0) = R0;
+    DM(I1,M4) = F8;
+    R13 = R13 - 1;
+    IF EQ JUMP _fm_env_done;
+    JUMP _fm_env_decay_from;
+_fm_env_attack_keep:
+    DM(I1,M4) = F8;
+    R13 = R13 - 1;
+    IF NE JUMP _fm_env_attack_sample;
+    JUMP _fm_env_done;
+_fm_env_decay:
+    R13 = 32;
+_fm_env_decay_from:
+    F9 = DM(_fm_decay);
+    F11 = DM(_fm_sustain);
+_fm_env_decay_sample:
+    F8 = F8 + F9;
+    COMP(F8,F11);
+    IF GT JUMP _fm_env_decay_keep;
+    F8 = F11;
+    R0 = 2;
+    DM(6,I0) = R0;
+    DM(I1,M4) = F8;
+    R13 = R13 - 1;
+    IF EQ JUMP _fm_env_done;
+_fm_env_hold_rest:
+    // Sustain reached inside the block: the remaining samples hold it.
+    DM(I1,M4) = F8;
+    R13 = R13 - 1;
+    IF NE JUMP _fm_env_hold_rest;
+    JUMP _fm_env_done;
+_fm_env_decay_keep:
+    DM(I1,M4) = F8;
+    R13 = R13 - 1;
+    IF NE JUMP _fm_env_decay_sample;
+_fm_env_done:
+    DM(5,I0) = F8;
+    // Pass C: amplitude, key-tracking scale and smoothed depth per sample.
+    F5 = DM(_fm_key_step);
+    F8 = DM(8,I0);
+    F9 = DM(_fm_env_amount);
+    F10 = DM(_fm_base_depth);
+    F2 = 0.0;
+    F7 = 1.0;
+    F11 = 0.004158;
+    F12 = 0.6366197724; // maximum 4 radians expressed as cycles
+    I1 = _fm_ctl;
     R0 = DM(_cp_amp_native);
     R0 = PASS R0;
-    IF NE JUMP _fm_native_begin;
-_fm_sample:
-    F0 = DM(_fm_key_step);
-    F3 = F3 + F0;
-    F0 = DM(_fm_r10);
-    F4 = F4 + F0;
-    F0 = 0.0;
-    F4 = MAX(F4,F0);
-    F0 = 1.0;
-    F4 = MIN(F4,F0);
-    CALL _fm_sample_body;
-    R13 = R13 - 1;
-    IF NE JUMP _fm_sample;
-    JUMP _fm_samples_done;
-_fm_native_begin:
-    // Keep the envelope cursor outside the oscillator's three active DAGs.
+    IF NE JUMP _fm_ctl_native;
+    F6 = DM(_fm_r10);
+    LCNTR = 32, DO _fm_ctl_last UNTIL LCE;
+    F3 = F3 + F5;
+    F4 = F4 + F6;
+    F4 = MAX(F4,F2);
+    F4 = MIN(F4,F7), F0 = DM(2,I1);
+    F0 = F0 * F9, DM(1,I1) = F4;
+    F0 = F0 + F10;
+    F0 = MAX(F0,F2);
+    F0 = MIN(F0,F7);
+    F0 = F0 - F8;
+    F0 = F0 * F11;
+    F8 = F0 + F8;
+    F0 = F8 * F3;
+    F0 = F0 * F12;
+_fm_ctl_last:
+    DM(I1,M4) = F0;
+    JUMP _fm_ctl_done;
+_fm_ctl_native:
+    // Keep the envelope cursor outside the oscillator's active DAGs.
     // Preserve the caller's complete I3 addressing context, including L3.
     R0 = I3;
     DM(_fm_amp_i3) = R0;
@@ -922,18 +1028,309 @@ _fm_native_begin:
     R0 = 0;
     L3 = R0;
     I3 = _cp_amp_samples;
-_fm_native_sample:
-    F0 = DM(_fm_key_step);
-    F3 = F3 + F0;
+    LCNTR = 32, DO _fm_ctl_native_last UNTIL LCE;
+    F3 = F3 + F5;
     F4 = DM(I3,M6);
-    CALL _fm_sample_body;
-    R13 = R13 - 1;
-    IF NE JUMP _fm_native_sample;
+    F0 = DM(2,I1);
+    F0 = F0 * F9, DM(1,I1) = F4;
+    F0 = F0 + F10;
+    F0 = MAX(F0,F2);
+    F0 = MIN(F0,F7);
+    F0 = F0 - F8;
+    F0 = F0 * F11;
+    F8 = F0 + F8;
+    F0 = F8 * F3;
+    F0 = F0 * F12;
+_fm_ctl_native_last:
+    DM(I1,M4) = F0;
     R0 = DM(_fm_amp_i3);
     I3 = R0;
     R0 = DM(_fm_amp_l3);
     L3 = R0;
     F4 = DM(_cp_amp_end);
+_fm_ctl_done:
+    DM(8,I0) = F8;
+    DM(_fm_r7) = F4;
+    // Pass R: the nine graph/ratio ramps advance by their per-block steps.
+    F0 = DM(32,I0);
+    F1 = DM(33,I0);
+    F2 = DM(34,I0);
+    F3 = DM(35,I0);
+    F4 = DM(36,I0);
+    F8 = DM(_fm_step32);
+    F9 = DM(_fm_step33);
+    F10 = DM(_fm_step34);
+    F11 = DM(_fm_step35);
+    F12 = DM(_fm_step36);
+    I1 = _fm_ctl;
+    MODIFY(I1,7) (NW); // ramp of word 36 at offset 0
+    LCNTR = 32, DO _fm_ramp_a_last UNTIL LCE;
+    F0 = F0 + F8;
+    F1 = F1 + F9, DM(-4,I1) = F0;
+    F2 = F2 + F10, DM(-3,I1) = F1;
+    F3 = F3 + F11, DM(-2,I1) = F2;
+    F4 = F4 + F12, DM(-1,I1) = F3;
+_fm_ramp_a_last:
+    DM(I1,M4) = F4;
+    DM(32,I0) = F0;
+    DM(33,I0) = F1;
+    DM(34,I0) = F2;
+    DM(35,I0) = F3;
+    DM(36,I0) = F4;
+    F0 = DM(37,I0);
+    F1 = DM(38,I0);
+    F2 = DM(39,I0);
+    F3 = DM(40,I0);
+    F8 = DM(_fm_step37);
+    F9 = DM(_fm_step38);
+    F10 = DM(_fm_step39);
+    F11 = DM(_fm_step40);
+    I1 = _fm_ctl;
+    MODIFY(I1,11) (NW); // ramp of word 40 at offset 0
+    LCNTR = 32, DO _fm_ramp_b_last UNTIL LCE;
+    F0 = F0 + F8;
+    F1 = F1 + F9, DM(-3,I1) = F0;
+    F2 = F2 + F10, DM(-2,I1) = F1;
+    F3 = F3 + F11, DM(-1,I1) = F2;
+_fm_ramp_b_last:
+    DM(I1,M4) = F3;
+    DM(37,I0) = F0;
+    DM(38,I0) = F1;
+    DM(39,I0) = F2;
+    DM(40,I0) = F3;
+    // Pass O: the operator graph, two internal samples per output sample, into
+    // the halfband history pairs (odd at offset 0, even at 1). Phases and the
+    // delayed B output stay in registers for the block.
+    F5 = 2.0;
+    F6 = 1024.0;
+    R14 = _fm_sines;
+    R15 = 1023;
+    F10 = DM(_fm_increment);
+    F12 = DM(_fm_feedback_scale);
+    F3 = DM(2,I0); // phase A
+    F4 = DM(3,I0); // phase B
+    F7 = DM(4,I0); // phase X/Y
+    F8 = DM(7,I0); // B output
+    I2 = _fm_ctl;
+    I4 = _fm_hist;
+    MODIFY(I4,30) (NW);
+    LCNTR = 32, DO _fm_osc_last UNTIL LCE;
+    F9 = DM(I2,M4); // modulation scale; I2 -> next record, ramps at -9..-1
+    F1 = DM(-4,I2); // ratio A
+    F13 = F1 * F10, F1 = DM(-3,I2); // ratio A x increment for both samples; ratio B
+    F3 = F3 + F13; // phase A
+    F1 = F1 * F10;
+    F4 = F4 + F1; // phase B
+    F7 = F7 + F10, F1 = DM(-1,I2); // phase X/Y; feedback
+    // B delayed self feedback; one internal sample delay bounds recursion.
+    F0 = F8 * F1;
+    F0 = F0 * F12;
+    F0 = F0 + F4;
+    F0 = F0 + F5;
+    F0 = F0 * F6;
+    R2 = TRUNC F0;
+    F1 = FLOAT R2;
+    R2 = R2 AND R15;
+    R2 = LSHIFT R2 BY 2;
+    R2 = R2 + R14;
+    I1 = R2;
+    F0 = F0 - F1, F1 = DM(0,I1);
+    F2 = DM(1,I1);
+    F2 = F2 - F1;
+    F0 = F0 * F2;
+    F0 = F0 + F1, F1 = DM(-9,I2); // B->A;
+    F0 = F0 * F1, R8 = R0; // F8 = B
+    F0 = F0 * F9;
+    F0 = F0 + F3;
+    F0 = F0 + F5;
+    F0 = F0 * F6;
+    R2 = TRUNC F0;
+    F1 = FLOAT R2;
+    R2 = R2 AND R15;
+    R2 = LSHIFT R2 BY 2;
+    R2 = R2 + R14;
+    I1 = R2;
+    F0 = F0 - F1, F1 = DM(0,I1);
+    F2 = DM(1,I1);
+    F2 = F2 - F1;
+    F0 = F0 * F2;
+    F0 = F0 + F1, F1 = DM(-8,I2); // A->X;
+    F0 = F0 * F1, F1 = DM(-7,I2); // B->X
+    F1 = F1 * F8;
+    F0 = F0 + F1;
+    F0 = F0 * F9;
+    F0 = F0 + F7;
+    F0 = F0 + F5;
+    F0 = F0 * F6;
+    R2 = TRUNC F0;
+    F1 = FLOAT R2;
+    R2 = R2 AND R15;
+    R2 = LSHIFT R2 BY 2;
+    R2 = R2 + R14;
+    I1 = R2;
+    F0 = F0 - F1, F1 = DM(0,I1);
+    F2 = DM(1,I1);
+    F2 = F2 - F1;
+    F0 = F0 * F2;
+    F0 = F0 + F1, F1 = DM(-5,I2); // X->Y;
+    F0 = F0 * F1, F11 = F0; // normalized pre-level X tap: BAL never changes modulation
+    F1 = DM(-6,I2); // B->Y
+    F1 = F1 * F8;
+    F0 = F0 + F1;
+    F0 = F0 * F9;
+    F0 = F0 + F7;
+    F0 = F0 + F5;
+    F0 = F0 * F6;
+    R2 = TRUNC F0;
+    F1 = FLOAT R2;
+    R2 = R2 AND R15;
+    R2 = LSHIFT R2 BY 2;
+    R2 = R2 + R14;
+    I1 = R2;
+    F0 = F0 - F1, F1 = DM(0,I1);
+    F2 = DM(1,I1);
+    F2 = F2 - F1;
+    F0 = F0 * F2;
+    F0 = F0 + F1;
+    F0 = F0 - F11, F1 = DM(-2,I2); // balance
+    F0 = F0 * F1;
+    F0 = F0 + F11;
+    DM(0,I4) = F0; // odd internal sample
+    F1 = DM(-3,I2); // ratio B
+    F3 = F3 + F13; // phase A
+    F1 = F1 * F10;
+    F4 = F4 + F1; // phase B
+    F7 = F7 + F10, F1 = DM(-1,I2); // phase X/Y; feedback
+    // B delayed self feedback; one internal sample delay bounds recursion.
+    F0 = F8 * F1;
+    F0 = F0 * F12;
+    F0 = F0 + F4;
+    F0 = F0 + F5;
+    F0 = F0 * F6;
+    R2 = TRUNC F0;
+    F1 = FLOAT R2;
+    R2 = R2 AND R15;
+    R2 = LSHIFT R2 BY 2;
+    R2 = R2 + R14;
+    I1 = R2;
+    F0 = F0 - F1, F1 = DM(0,I1);
+    F2 = DM(1,I1);
+    F2 = F2 - F1;
+    F0 = F0 * F2;
+    F0 = F0 + F1, F1 = DM(-9,I2); // B->A;
+    F0 = F0 * F1, R8 = R0; // F8 = B
+    F0 = F0 * F9;
+    F0 = F0 + F3;
+    F0 = F0 + F5;
+    F0 = F0 * F6;
+    R2 = TRUNC F0;
+    F1 = FLOAT R2;
+    R2 = R2 AND R15;
+    R2 = LSHIFT R2 BY 2;
+    R2 = R2 + R14;
+    I1 = R2;
+    F0 = F0 - F1, F1 = DM(0,I1);
+    F2 = DM(1,I1);
+    F2 = F2 - F1;
+    F0 = F0 * F2;
+    F0 = F0 + F1, F1 = DM(-8,I2); // A->X;
+    F0 = F0 * F1, F1 = DM(-7,I2); // B->X
+    F1 = F1 * F8;
+    F0 = F0 + F1;
+    F0 = F0 * F9;
+    F0 = F0 + F7;
+    F0 = F0 + F5;
+    F0 = F0 * F6;
+    R2 = TRUNC F0;
+    F1 = FLOAT R2;
+    R2 = R2 AND R15;
+    R2 = LSHIFT R2 BY 2;
+    R2 = R2 + R14;
+    I1 = R2;
+    F0 = F0 - F1, F1 = DM(0,I1);
+    F2 = DM(1,I1);
+    F2 = F2 - F1;
+    F0 = F0 * F2;
+    F0 = F0 + F1, F1 = DM(-5,I2); // X->Y;
+    F0 = F0 * F1, F11 = F0; // normalized pre-level X tap: BAL never changes modulation
+    F1 = DM(-6,I2); // B->Y
+    F1 = F1 * F8;
+    F0 = F0 + F1;
+    F0 = F0 * F9;
+    F0 = F0 + F7;
+    F0 = F0 + F5;
+    F0 = F0 * F6;
+    R2 = TRUNC F0;
+    F1 = FLOAT R2;
+    R2 = R2 AND R15;
+    R2 = LSHIFT R2 BY 2;
+    R2 = R2 + R14;
+    I1 = R2;
+    F0 = F0 - F1, F1 = DM(0,I1);
+    F2 = DM(1,I1);
+    F2 = F2 - F1;
+    F0 = F0 * F2;
+    F0 = F0 + F1;
+    F0 = F0 - F11, F1 = DM(-2,I2); // balance
+    F0 = F0 * F1;
+    F0 = F0 + F11;
+    DM(1,I4) = F0; // even internal sample
+_fm_osc_last:
+    MODIFY(I4,2) (NW);
+    DM(2,I0) = F3;
+    DM(3,I0) = F4;
+    DM(4,I0) = F7;
+    DM(7,I0) = F8;
+    // Pass D: halfband decimation (even taps symmetric; the odd branch is only
+    // the centre coefficient), amplitude and gain into the output.
+    R0 = I0;
+    DM(_fm_rec) = R0;
+    I0 = _fm_ctl;
+    MODIFY(I0,1) (NW); // amplitude word at offset 0
+    I1 = _fm_halfband;
+    I4 = _fm_hist;
+    MODIFY(I4,30) (NW);
+    R0 = DM(_fm_r8);
+    I2 = R0;
+    F5 = DM(_fm_gain);
+    F6 = 0.5;
+    LCNTR = 32, DO _fm_dec_last UNTIL LCE;
+    F0 = DM(1,I4); // even sample
+    F1 = DM(-29,I4);
+    F0 = F0 + F1, F2 = DM(0,I1);
+    F7 = F0 * F2, F0 = DM(-1,I4);
+    F1 = DM(-27,I4);
+    F0 = F0 + F1, F2 = DM(1,I1);
+    F0 = F0 * F2, F1 = DM(-25,I4);
+    F7 = F7 + F0, F0 = DM(-3,I4);
+    F0 = F0 + F1, F2 = DM(2,I1);
+    F0 = F0 * F2, F1 = DM(-23,I4);
+    F7 = F7 + F0, F0 = DM(-5,I4);
+    F0 = F0 + F1, F2 = DM(3,I1);
+    F0 = F0 * F2, F1 = DM(-21,I4);
+    F7 = F7 + F0, F0 = DM(-7,I4);
+    F0 = F0 + F1, F2 = DM(4,I1);
+    F0 = F0 * F2, F1 = DM(-19,I4);
+    F7 = F7 + F0, F0 = DM(-9,I4);
+    F0 = F0 + F1, F2 = DM(5,I1);
+    F0 = F0 * F2, F1 = DM(-17,I4);
+    F7 = F7 + F0, F0 = DM(-11,I4);
+    F0 = F0 + F1, F2 = DM(6,I1);
+    F0 = F0 * F2, F1 = DM(-15,I4);
+    F7 = F7 + F0, F0 = DM(-13,I4);
+    F0 = F0 + F1, F2 = DM(7,I1);
+    F0 = F0 * F2, F1 = DM(-14,I4);
+    F7 = F7 + F0;
+    F0 = F6 * F1;
+    F7 = F7 + F0, F4 = DM(I0,M4); // amplitude
+    MODIFY(I4,2) (NW);
+    F7 = F7 * F4;
+    F7 = F7 * F5, F0 = DM(I2,M5);
+    F7 = F7 + F0;
+_fm_dec_last:
+    DM(I2,M6) = F7;
+    R0 = DM(_fm_rec);
+    I0 = R0;
 _fm_samples_done:
     R0 = DM(-1,I4);
     DM(9,I0) = R0;
@@ -981,235 +1378,7 @@ _fm_samples_done:
     DM(30,I0) = R0;
     R0 = DM(-16,I4);
     DM(31,I0) = R0;
-    DM(_fm_r7) = F4;
     JUMP _fm_wrap_phases;
-_fm_sample_body:
-    R0 = DM(_fm_held);
-    R0 = PASS R0;
-    IF EQ JUMP _fm_release_env;
-    R0 = DM(6,I0);
-    R0 = PASS R0;
-    IF EQ JUMP _fm_attack_env;
-    R1 = 1;
-    COMP(R0,R1);
-    IF EQ JUMP _fm_decay_env;
-    F0 = DM(_fm_sustain);
-    JUMP _fm_env_ready;
-_fm_attack_env:
-    F0 = DM(5,I0);
-    F1 = DM(_fm_attack);
-    F0 = F0 + F1;
-    F1 = 1.0;
-    COMP(F0,F1);
-    IF LT JUMP _fm_env_ready;
-    F0 = F1;
-    R1 = 1;
-    DM(6,I0) = R1;
-    JUMP _fm_env_ready;
-_fm_decay_env:
-    F0 = DM(5,I0);
-    F1 = DM(_fm_decay);
-    F0 = F0 + F1;
-    F1 = DM(_fm_sustain);
-    COMP(F0,F1);
-    IF GT JUMP _fm_env_ready;
-    F0 = F1;
-    R1 = 2;
-    DM(6,I0) = R1;
-    JUMP _fm_env_ready;
-_fm_release_env:
-    F0 = DM(5,I0);
-    F1 = DM(_fm_release);
-    F0 = F0 + F1;
-    F1 = 0.0;
-    F0 = MAX(F0,F1);
-    R1 = 3;
-    DM(6,I0) = R1;
-_fm_env_ready:
-    F1 = DM(_fm_env_amount);
-    F0 = F0 * F1, DM(5,I0) = F0;
-    F1 = DM(_fm_base_depth);
-    F0 = F0 + F1;
-    F1 = 0.0;
-    F0 = MAX(F0,F1);
-    F1 = 1.0;
-    F0 = MIN(F0,F1), F1 = DM(8,I0);
-    F0 = F0 - F1;
-    F2 = 0.004158;
-    F0 = F0 * F2;
-    F0 = F0 + F1;
-    F0 = F0 * F3, DM(8,I0) = F0;
-    F1 = 0.6366197724; // maximum4 radians expressed as cycles
-    F0 = F0 * F1;
-    F9 = F0;
-    I1 = I0;
-    MODIFY(I1,32) (NW);
-    F0 = DM(32,I0);
-    F1 = DM(_fm_step32);
-    F0 = F0 + F1, F2 = DM(1,I1);
-    F1 = DM(_fm_step33);
-    F2 = F2 + F1, DM(0,I1) = F0;
-    F0 = DM(34,I0);
-    F1 = DM(_fm_step34);
-    F0 = F0 + F1, DM(1,I1) = F2;
-    F2 = DM(35,I0);
-    F1 = DM(_fm_step35);
-    F2 = F2 + F1, DM(2,I1) = F0;
-    F0 = DM(36,I0);
-    F1 = DM(_fm_step36);
-    F0 = F0 + F1, DM(3,I1) = F2;
-    F2 = DM(37,I0);
-    F1 = DM(_fm_step37);
-    F2 = F2 + F1, DM(4,I1) = F0;
-    F0 = DM(38,I0);
-    F1 = DM(_fm_step38);
-    F0 = F0 + F1, DM(5,I1) = F2;
-    F2 = DM(39,I0);
-    F1 = DM(_fm_step39);
-    F2 = F2 + F1, DM(6,I1) = F0;
-    F0 = DM(40,I0);
-    F1 = DM(_fm_step40);
-    F0 = F0 + F1, DM(7,I1) = F2;
-    DM(40,I0) = F0;
-    // Bias the record pointer so parallel loads fit signed six-bit offsets.
-    MODIFY(I0,32) (NW);
-    R7 = 2; // F7 is free until the FIR accumulator starts
-_fm_oversample:
-    F1 = DM(5,I0);
-    F1 = F1 * F10, F0 = DM(-30,I0);
-    F0 = F0 + F1, F1 = DM(6,I0);
-    DM(-30,I0) = F0;
-    F1 = F1 * F10, F0 = DM(-29,I0);
-    F0 = F0 + F1, F2 = DM(-28,I0);
-    DM(-29,I0) = F0;
-    F0 = F2 + F10, F1 = DM(8,I0);
-    DM(-28,I0) = F0;
-    // B delayed self feedback; one internal sample delay bounds recursion.
-    F0 = DM(-25,I0);
-    F0 = F0 * F1;
-    F0 = F0 * F12, F1 = DM(-29,I0);
-    F0 = F0 + F1;
-    // Phase remains nonnegative; PM offset >-1cycle. Bias2 avoids signedfloor.
-    F0 = F0 + F5;
-    F0 = F0 * F6;
-    R2 = TRUNC F0;
-    F1 = FLOAT R2;
-    R2 = R2 AND R15;
-    R2 = LSHIFT R2 BY 2;
-    R2 = R2 + R14;
-    I1 = R2;
-    // Parallel compute uses the old F1; the load supplies the next operation.
-    F0 = F0 - F1, F1 = DM(0,I1);
-    F2 = DM(1,I1);
-    F2 = F2 - F1;
-    F0 = F0 * F2;
-    F0 = F0 + F1, F1 = DM(0,I0); // B->A
-    R8 = PASS R0, DM(-25,I0) = R0;
-    F0 = F0 * F1;
-    F0 = F0 * F9, F1 = DM(-30,I0);
-    F0 = F0 + F1;
-    // Phase remains nonnegative; PM offset >-1cycle. Bias2 avoids signedfloor.
-    F0 = F0 + F5;
-    F0 = F0 * F6;
-    R2 = TRUNC F0;
-    F1 = FLOAT R2;
-    R2 = R2 AND R15;
-    R2 = LSHIFT R2 BY 2;
-    R2 = R2 + R14;
-    I1 = R2;
-    F0 = F0 - F1, F1 = DM(0,I1);
-    F2 = DM(1,I1);
-    F2 = F2 - F1;
-    F0 = F0 * F2;
-    F0 = F0 + F1, F1 = DM(1,I0); // A->X
-    F0 = F0 * F1, F1 = DM(2,I0); // B->X
-    F1 = F1 * F8;
-    F0 = F0 + F1;
-    F0 = F0 * F9, F1 = DM(-28,I0);
-    F0 = F0 + F1;
-    // Phase remains nonnegative; PM offset >-1cycle. Bias2 avoids signedfloor.
-    F0 = F0 + F5;
-    F0 = F0 * F6;
-    R2 = TRUNC F0;
-    F1 = FLOAT R2;
-    R2 = R2 AND R15;
-    R2 = LSHIFT R2 BY 2;
-    R2 = R2 + R14;
-    I1 = R2;
-    F0 = F0 - F1, F1 = DM(0,I1);
-    F2 = DM(1,I1);
-    F2 = F2 - F1;
-    F0 = F0 * F2;
-    F0 = F0 + F1, F1 = DM(4,I0); // X->Y
-    F11 = F0; // normalized pre-level X tap: BAL never changes modulation
-    F0 = F0 * F1, F1 = DM(3,I0); // B->Y
-    F1 = F1 * F8;
-    F0 = F0 + F1;
-    F0 = F0 * F9, F1 = DM(-28,I0);
-    F0 = F0 + F1;
-    // Phase remains nonnegative; PM offset >-1cycle. Bias2 avoids signedfloor.
-    F0 = F0 + F5;
-    F0 = F0 * F6;
-    R2 = TRUNC F0;
-    F1 = FLOAT R2;
-    R2 = R2 AND R15;
-    R2 = LSHIFT R2 BY 2;
-    R2 = R2 + R14;
-    I1 = R2;
-    F0 = F0 - F1, F1 = DM(0,I1);
-    F2 = DM(1,I1);
-    F2 = F2 - F1;
-    F0 = F0 * F2;
-    F0 = F0 + F1;
-    F0 = F0 - F11, F1 = DM(7,I0);
-    F0 = F0 * F1;
-    F0 = F0 + F11;
-    R7 = R7 - 1;
-    IF NE JUMP _fm_first_internal;
-    DM(1,I4) = F0; // even sample; F0 keeps it for the first tap
-    JUMP _fm_decimate;
-_fm_first_internal:
-    DM(0,I4) = F0;
-    JUMP _fm_oversample;
-_fm_decimate:
-    MODIFY(I0,-32) (NW);
-    // Halfband even taps symmetric; odd branch is only the center coefficient.
-    I1 = _fm_halfband;
-    F1 = DM(-29,I4);
-    F0 = F0 + F1, F2 = DM(0,I1);
-    F7 = F0 * F2, F0 = DM(-1,I4);
-    F1 = DM(-27,I4);
-    F0 = F0 + F1, F2 = DM(1,I1);
-    F0 = F0 * F2, F1 = DM(-25,I4);
-    F7 = F7 + F0, F0 = DM(-3,I4);
-    F0 = F0 + F1, F2 = DM(2,I1);
-    F0 = F0 * F2, F1 = DM(-23,I4);
-    F7 = F7 + F0, F0 = DM(-5,I4);
-    F0 = F0 + F1, F2 = DM(3,I1);
-    F0 = F0 * F2, F1 = DM(-21,I4);
-    F7 = F7 + F0, F0 = DM(-7,I4);
-    F0 = F0 + F1, F2 = DM(4,I1);
-    F0 = F0 * F2, F1 = DM(-19,I4);
-    F7 = F7 + F0, F0 = DM(-9,I4);
-    F0 = F0 + F1, F2 = DM(5,I1);
-    F0 = F0 * F2, F1 = DM(-17,I4);
-    F7 = F7 + F0, F0 = DM(-11,I4);
-    F0 = F0 + F1, F2 = DM(6,I1);
-    F0 = F0 * F2, F1 = DM(-15,I4);
-    F7 = F7 + F0, F0 = DM(-13,I4);
-    F0 = F0 + F1, F2 = DM(7,I1);
-    F0 = F0 * F2, F1 = DM(-14,I4);
-    F7 = F7 + F0;
-    F0 = 0.5;
-    F0 = F0 * F1;
-    F7 = F7 + F0;
-    MODIFY(I4,2) (NW);
-    F7 = F7 * F4;
-    F0 = DM(_fm_gain);
-    F7 = F7 * F0, F0 = DM(I2,M5);
-    F7 = F7 + F0;
-    DM(I2,M6) = F7;
-    RTS;
 _fm_wrap_phases:
     F0 = DM(2,I0);
     CALL _fm_wrap;
@@ -1238,6 +1407,8 @@ _fm_wrap_phases:
     I4 = R0;
     R0 = DM(_fm_l4);
     L4 = R0;
+    R0 = DM(_fm_m4);
+    M4 = R0;
     R0 = DM(_fm_r0);
     R1 = DM(_fm_r1);
     R2 = DM(_fm_r2);
@@ -1342,6 +1513,8 @@ _fm_sine_wrapped:
 .VAR _fm_i0 = 0;
 .VAR _fm_i4 = 0;
 .VAR _fm_l4 = 0;
+.VAR _fm_m4 = 0;
+.VAR _fm_rec = 0;
 .VAR _fm_i1 = 0;
 .VAR _fm_i2 = 0;
 .VAR _fm_low = 0;
@@ -1830,3 +2003,4 @@ _fm_sine_wrapped:
 
 .VAR _fm_key_step = 0;
 .PKBSS _fm_hist, 376; // 47 (odd, even) pairs: 15 history + 32 samples
+.PKBSS _fm_ctl, 1536; // 32 control records of 12 words

@@ -382,9 +382,9 @@ with the transport proof. `test_canopy_v2.py` checks it both directly and throug
 the protected registry dispatcher, including paired held-voice phase/gain state,
 independent velocity and bend, sustain, malformed batches and reset isolation.
 CPS3 accepts family, color, drift, attack and release. CPS1 retains the historical
-sine diagnostic. Wavetable voices render a block at a time (`_wt_render_block`,
-finding 122); the worst process callback is 89,255 of the 100,000-instruction
-ceiling. Descriptor budgets remain provisional; destructive reset
+sine diagnostic. Wavetable and FM voices render a block at a time
+(`_wt_render_block`, the FM passes in `fm.s`; finding 122); the worst process
+callback is 77,017 of the 100,000-instruction ceiling. Descriptor budgets remain provisional; destructive reset
 requires carrier quiescence. The optional adapter packages and admits the V2
 instrument through the normal module protocol.
 

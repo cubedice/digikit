@@ -56,7 +56,15 @@ The worst callback fell from 99,849 to 89,255 instructions (wavetable 99,386 to
 changes: `out/patch/canopy-opt-release.dkm` (file sha256 `d33f58dc…84df`) with the same
 image. The four-instance proof and compiled Stages 5 and 6 pass with it
 (`out/canopy-opt-proof.log`, `out/canopy-opt-stage5.log`,
-`out/canopy-opt-stage6.log`). The installer below now installs this package.
+`out/canopy-opt-stage6.log`).
+
+FM block rendering followed (same finding, section "FM block rendering"): FM
+voices render in five passes with the envelope-stage branching hoisted, the
+worst callback falls to 77,017 (FM handoff), bit-identical again in all 1,164
+tests. Package `out/patch/canopy-fm-release.dkm` (file sha256
+`15acf3ec…eb7d9`), same image; the four-instance proof and compiled Stages 5
+and 6 pass with it (`out/canopy-fm-*.log`). The installer below now installs
+this package.
 
 ## Open
 
