@@ -1,12 +1,15 @@
 #ifndef DK_INSTRUMENT_SRC_CONTROL_H
 #define DK_INSTRUMENT_SRC_CONTROL_H
 #include "src-display.h"
-/* UI-task bridge. Track zero is the only currently admitted carrier. Context
+/* UI-task bridge. The admitted carrier is the track in ip_track. Context
  * must be refreshed on selection/mode/page boundaries before dispatching input.
  * Neither this bridge nor the model retains borrowed firmware view pointers. */
 uint32_t instrument_src_context(uint32_t track,uint32_t page,int visible);
+uint32_t instrument_src_pages(void);
+uint32_t instrument_src_tune_page(uint32_t page);
 int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint32_t now_ms);
 void instrument_src_display(CvDisplay *,uint32_t now_ms,const char *tune,const char *level);
+void instrument_src_feedback(char out[32],uint32_t encoder);
 /* Drain telemetry on the UI task independently of the paint cadence. */
 void instrument_src_poll(uint32_t now_ms);
 /* Reserved for the authenticated status demultiplexer, not registry ACKs. */

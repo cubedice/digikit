@@ -93,6 +93,31 @@ def test_plan_helpers(tmp_path):
     assert arena_safety.plan_allow_pc(plan) == "0x%x-0x%x" % (lo, lo + 0x1000)
 
 
+@pytest.mark.parametrize("device,stage_size", [("dt2", 0x40000), ("dn2", 0x10000)])
+def test_menu_dma_holes_follow_the_device_stage_and_keep_other_buffers(
+    device, stage_size
+):
+    plan = digikit_menu_proof.Plan(
+        {
+            "symbols": {
+                f"core/runtime@0.1.0:{name}": address
+                for name, address in (
+                    ("DKRT_STAGE", 0x20000),
+                    ("DKRT_SECBUF", 0x10000),
+                    ("DKRT_STORE_PEEK", 0x11000),
+                    ("DKRT_SETTINGS", 0x70000),
+                )
+            }
+        }
+    )
+    assert digikit_menu_proof.dma_holes(plan, device) == [
+        (0x10000, 512),
+        (0x11000, 512),
+        (0x20000, stage_size),
+        (0x70000, 16 * 512),
+    ]
+
+
 def test_peek_parsers(tmp_path):
     (tmp_path / "probe.stdout").write_text(
         '{"peek_at":"0x47e8c100","t":5,"value":Some(7)}\n{"peek_at":"0x47e8c100","t":9,"value":None}\n'

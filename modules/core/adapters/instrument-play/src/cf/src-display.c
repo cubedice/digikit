@@ -25,26 +25,87 @@ void cv_note(char out[6],uint32_t note,int valid)
     else out[at++]=(char)('0'+note/12-1);
     out[at]=0;
 }
-static const char *const labels[18]={"CHORD","VOICING","COLOR","DRIFT","STRUM","ARP MIX",
-    "RATE","ORDER","OCTAVES","GATE","SWING","RESTART","LATCH","SOURCE","ATTACK","RELEASE","TUNE","LEVEL"};
+static const char *const labels[37]={"CHORD","VOICING","COLOR","DRIFT","STRUM","ARP MIX",
+    "RATE","ORDER","OCTAVES","GATE","SWING","RESTART","","SOURCE","ATTACK","RELEASE",
+    "WAVE","POSITION","SCAN DEPTH","SCAN RATE","SCAN SHAPE","SCAN RESTART","SCAN CLOCK",
+    "TIMBRE ENV","TIMBRE ATTACK","TIMBRE RELEASE","VELOCITY","MOD WHEEL",
+    "WT FM DEPTH","WT FM RATIO","WT FM ENVELOPE","WT FM MOD WHEEL","TUNE","LEVEL","WAVE","ARP CLOCK","LOCAL BPM"};
+static const char *const fm_labels[12]={"ALGORITHM","CARRIER BALANCE","PAIR A RATIO","PAIR B RATIO",
+    "FEEDBACK","FM ATTACK","FM DECAY","FM SUSTAIN","FM RELEASE","FM ENVELOPE","FM VELOCITY","FM MOD WHEEL"};
+static int fm_mode(const CsState *s) { return ((s->metadata>>4)&3)==3; }
+static int pending(const CsState *s,uint32_t id)
+{ return id>=CS_WAVE && id<=CS_BPM ? !!s->pending : id==CS_TUNE ? !!s->native_tune_pending : id<CP_CONTROLS && !!(s->pending&(1u<<id)); }
+static const char *label(const CsState *s,uint32_t id)
+{ return fm_mode(s) && id==CP_COLOR ? "FM DEPTH" : fm_mode(s) && id>=16 && id<28 ? fm_labels[id-16] : labels[id]; }
 static void value(char out[8],const CsState *s,uint32_t id,const char *tune,const char *level)
 {
     static const char *const chord[]={"MAJ","MAJ6","SUS2","MIN6","MIN","SUS4","ADD9","DOM7","DIM","MIN7","USER","MAJ7"};
-    static const char *const voice[]={"CLOSE","OPEN","INV1","INV2"};
-    static const char *const order[]={"UP","DOWN","UP/DN","PLAY","RND"};
+    static const char *const voice[]={"CLS","OPEN","INV1","INV2"};
+    static const char *const order[]={"UP","DOWN","UPDN","PLAY","RND"};
     static const char *const restart[]={"TRIG","PATT","CONT"};
     static const char *const rate[]={"--","1/4","1/8","1/8T","1/16","5/Q","1/16T","7/Q","1/32"};
     if(id==CS_TUNE || id==CS_LEVEL) { text(out,8,id==CS_TUNE?tune:level); return; }
+    if(id==CS_CLOCK) { static const char *const clocks[]={"LOCAL","GRID","PHASE"}; text(out,8,clocks[s->clock]); return; }
+    if(id==CS_BPM) { if(s->clock) text(out,8,"--"); else number(out,cs_choice_value(s,id)); return; }
+    if(id==CS_NONE) { out[0]=0; return; }
+    if(id==CS_WAVE) {
+        static const char *const waves[]={"VELVT","REED","ANLG","GLASS","VOCAL","ORGAN","METAL","FM"};
+        uint32_t wave=cs_choice_value(s,id);
+        text(out,8,wave<8?waves[wave]:"--"); return;
+    }
     uint32_t n=s->value[id]; const char *v=0;
-    if(id==CP_CHORD) v=s->mode==KB_PLAY?"AUTO":s->learned?"USER":n<12?chord[n]:"--";
-    else if(id==CP_VOICING) v=s->mode==KB_PLAY?"--":s->learned?"ASLRN":n<4?voice[n]:"--";
+    if(id==CP_WTFM_RATIO) {
+        static const char *const ratios[]={"0.25","0.50","0.75","1.00","1.25","1.41","1.50","1.73","2.00","2.50","3.00","4.00","5.00","6.00","7.00","8.00"};
+        text(out,8,n<16?ratios[n]:"--"); return;
+    }
+    if(id==CP_WTFM_DEPTH) { unit(out,n,"%"); return; }
+    if(id==CP_WTFM_ENV || id==CP_WTFM_WHEEL) {
+        if(n==100) text(out,8,"0%");
+        else { out[0]=n<100?'-':'+'; unit(out+1,n<100?100-n:n-100,"%"); }
+        return;
+    }
+    if(fm_mode(s) && id>=16 && id<28) {
+        if(id==CP_FM_ALG) { static const char *const alg[]={"TWIN","STACK","SUM","CHAIN"}; text(out,8,n<4?alg[n]:"--"); }
+        else if(id==CP_FM_RTA || id==CP_FM_RTB) {
+            static const char *const ratios[]={"0.25","0.50","0.75","1.00","1.25","1.41","1.50","1.73","2.00","2.50","3.00","4.00","5.00","6.00","7.00","8.00"};
+            text(out,8,n<16?ratios[n]:"--");
+        } else if(id>=CP_FM_ENV) {
+            if(n==100) text(out,8,"0%");
+            else { out[0]=n<100?'-':'+'; unit(out+1,n<100?100-n:n-100,"%"); }
+        } else if(id==CP_FM_BAL || id==CP_FM_FB || id==CP_FM_SUSTAIN) unit(out,n,"%");
+        else number(out,n);
+        return;
+    }
+    if(id>=CP_WT_TABLE && id<CP_CONTROLS && ((s->metadata>>4)&3)!=2) { text(out,8,"--"); return; }
+    if(id==CP_WT_POS) { out[0]=(char)('1'+n/100); out[1]='.'; out[2]=(char)('0'+n/10%10); out[3]=(char)('0'+n%10); out[4]=0; return; }
+    if(id==CP_WT_DEPTH) { unit(out,n,"%"); return; }
+    if(id==CP_WT_ENV || id==CP_WT_VELOCITY || id==CP_WT_WHEEL) {
+        if(n==100) text(out,8,"0%");
+        else { out[0]=n<100?'-':'+'; unit(out+1,n<100?100-n:n-100,"%"); }
+        return;
+    }
+    if(id==CP_WT_RATE) {
+        if(s->value[CP_WT_CLOCK]) {
+            static const char *const divisions[]={"--","4BAR","2BAR","1BAR","1/2","1/4","1/8","1/16"};
+            text(out,8,n<=7?divisions[n]:"--"); return;
+        }
+        number(out,n/100); uint32_t at=length(out,7); out[at++]='.';
+        out[at++]=(char)('0'+n/10%10); out[at++]=(char)('0'+n%10); out[at]=0; return;
+    }
+    if(id==CP_WT_SHAPE) { static const char *const shapes[]={"SINE","TRI","RAND"}; text(out,8,n<3?shapes[n]:"--"); return; }
+    if(id==CP_WT_RESET) { static const char *const resets[]={"FREE","TRIG","PATT"}; text(out,8,n<3?resets[n]:"--"); return; }
+    if(id==CP_CHORD) v=s->mode==KB_PLAY?"PLAY":n<12?chord[n]:"--";
+    else if(id==CP_VOICING) v=s->mode==KB_PLAY?"--":s->learned?"LRND":n<4?voice[n]:"--";
     else if(id==CP_STRUM && s->mode==KB_PLAY) v="--";
-    else if(id==CP_STRUM) { if(!n) v="OFF"; else { unit(out,n,"ms"); return; } }
+    else if(id==CP_STRUM) { if(!n) v="OFF"; else { number(out,n); return; } }
     else if(id==CP_RATE) {
         if(s->clock==1) { unit(out,n,"STP"); return; }
         v=n<=8?rate[n]:"--";
     }
-    else if(id==CP_OCTAVES) { unit(out,n,"OCT"); return; }
+    else if(id==CP_OCTAVES) {
+        if(n==3) v="0";
+        else { out[0]=n<3?'-':'+'; number(out+1,n<3?3-n:n-3); return; }
+    }
     else if(id==CP_GATE) { unit(out,n,"%"); return; }
     else if(id==CP_SWING) {
         if(s->clock==1) v="--";
@@ -55,10 +116,50 @@ static void value(char out[8],const CsState *s,uint32_t id,const char *tune,cons
     else if(id==CP_ORDER) v=n<5?order[n]:"--";
     else if(id==CP_RESTART) v=n<3?restart[n]:"--";
     else if(id==CP_SOURCE) v="KEYS";
-    else if(id==CP_LATCH) v=n?"ON":"OFF";
     else if(id==CP_ARP_MIX && (n==0 || n==127)) v=n?"ARP":"PAD";
     else if(id==CP_ARP_MIX) { unit(out,(n*100+63)/127,"%"); return; }
     if(v) text(out,6,v); else number(out,n);
+}
+void cv_feedback(char out[32],const CsState *s,uint32_t encoder)
+{
+    static const char *const names[]={"Chord","Voicing","Color","Drift","Strum","Arp Mix",
+        "Rate","Order","Octaves","Gate","Swing","Restart","","Source","Attack","Release",
+        "Wave","Position","Scan Depth","Scan Rate","Scan Shape","Scan Restart","Scan Clock",
+        "Timbre Env","Timbre Attack","Timbre Release","Velocity","Mod Wheel",
+        "WT FM Depth","WT FM Ratio","WT FM Envelope","WT FM Mod Wheel"};
+    uint32_t id=cs_mapped_control(s,encoder);
+    out[0]=0;
+    if(id>=CP_CONTROLS && id!=CS_WAVE && id!=CS_CLOCK && id!=CS_BPM) return;
+    if(id>=CP_WT_TABLE && id<CP_CONTROLS && ((s->metadata>>4)&3)<2) { text(out,32,"WAVE: CHOOSE ANLG TO FM"); return; }
+    if(s->mode==KB_PLAY && (id==CP_VOICING || id==CP_STRUM)) {
+        text(out,32,"CHRD: CHOOSE A CHORD FIRST"); return;
+    }
+    if(s->learned && id==CP_VOICING) {
+        text(out,32,"ROOT: LEARNED VOICING"); return;
+    }
+    if(s->clock==1 && id==CP_SWING) { text(out,32,"SWING: PHASE CLOCK NEEDED"); return; }
+    if(s->clock && id==CS_BPM) { text(out,32,"BPM: USE THE MASTER TEMPO"); return; }
+    const char *name=id==CS_WAVE ? "Wave" : id==CS_CLOCK ? "Arp Clock" : id==CS_BPM ? "Local BPM" : fm_mode(s) && (id==CP_COLOR || id>=16) ? label(s,id) : names[id];
+    text(out,32,name); uint32_t at=length(out,31); out[at++]='=';
+    static const char *const voicings[]={"Closed","Open","Inversion 1","Inversion 2"};
+    static const char *const orders[]={"Up","Down","Up/Down","As Played","Random"};
+    static const char *const restarts[]={"Trigger","Pattern","Continuous"};
+    char v[8]; value(v,s,id,"","");
+    const char *full=v; uint32_t n=id<CP_CONTROLS ? s->value[id] : 0;
+    if(id==CS_WAVE) {
+        static const char *const waves[]={"VELVET","REED","ANALOG","GLASS","VOCAL","ORGAN","METAL","FM"};
+        uint32_t wave=cs_choice_value(s,id); if(wave<8) full=waves[wave];
+    }
+    else if((id==CP_WTFM_RATIO || (fm_mode(s) && (id==CP_FM_RTA || id==CP_FM_RTB))) && (n==5 || n==7)) full=n==5?"SQRT2":"SQRT3";
+    else if(id==CP_CHORD && s->mode==KB_PLAY) full="PLAY (YOUR NOTES)";
+    else if(id==CP_VOICING && n<4) full=voicings[n];
+    else if(id==CP_ORDER && n<5) full=orders[n];
+    else if(id==CP_RESTART && n<3) full=restarts[n];
+    text(out+at,32-at,full);
+    at=length(out,31);
+    if(!fm_mode(s) && id==CP_WT_RATE && !s->value[CP_WT_CLOCK]) { text(out+at,32-at," Hz"); at=length(out,31); }
+    if(id==CP_STRUM && s->value[id]) { text(out+at,32-at," ms"); at=length(out,31); }
+    if(pending(s,id)) text(out+at,32-at,"*");
 }
 static void chord_name(char out[22],const uint8_t *pitch,uint32_t count)
 {
@@ -81,7 +182,7 @@ static void chord_name(char out[22],const uint8_t *pitch,uint32_t count)
 }
 void cv_ownership(CvDisplay *d,const IsStatus *s,const KbState *k,uint32_t now)
 {
-    if(!is_detail_confirmed(s,now) || s->detail_schema!=2 ||
+    if(!is_detail_confirmed(s,now) || s->detail_schema<2 ||
         s->generation!=k->generation || s->mode!=k->mode) return;
     for(uint32_t slot=0;slot<4;++slot) {
         if(!(s->fast[1]&(1u<<(16+slot)))) continue;
@@ -95,10 +196,9 @@ void cv_ownership(CvDisplay *d,const IsStatus *s,const KbState *k,uint32_t now)
         if(!token) continue;
         for(uint32_t v=0;v<4;++v) if(k->voices[v].token==token && k->voices[v].note==pitch)
             for(uint32_t i=0;i<MI_KEYS;++i) if(k->keys[i].token && k->keys[i].token==k->voices[v].source)
-                d->membership[rank]=(uint8_t)((!!k->keys[i].held) | ((!!k->keys[i].pedal)<<1) | ((!!k->keys[i].latched)<<2));
+                d->membership[rank]=(uint8_t)((!!k->keys[i].held) | ((!!k->keys[i].pedal)<<1));
     }
-    d->pedal=(uint8_t)!!k->pedals; d->latch=k->latch?1:0;
-    for(uint32_t i=0;i<MI_KEYS;++i) if(k->keys[i].token && k->keys[i].latched) d->latch=2;
+    d->pedal=(uint8_t)!!k->pedals;
 }
 void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
     const char *tune,const char *level,int save_error)
@@ -107,17 +207,32 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
     uint32_t page=s->page[s->track<16?s->track:0];
     int fresh=is_fresh(status,now) && status->track==s->track && status->generation==s->generation && status->mode==s->mode;
     for(uint32_t i=0;i<8;++i) {
-        uint32_t id=cs_control(page,i);
-        if(id>=18) continue;
-        text(d->label[i],8,id==CP_VOICING?"VOICE":id==CP_OCTAVES?"OCTS":labels[id]);
+        uint32_t id=cs_mapped_control(s,i);
+        if(id>CS_BPM) continue;
+        static const char *const short_labels[]={"CHRD","VOIC","COLR","DRFT","STRM","MIX",
+            "RATE","ORDR","OCTS","GATE","SWNG","RST","","SRC","ATK","REL",
+            "TABL","POS","DEP","RATE","SHAP","RST","CLK","ENV","ATK","REL","VEL","WHEL",
+            "DEP","RAT","ENV","WHEL","TUNE","LEV","WAVE","CLK","BPM"};
+        static const char *const fm_short[]={"ALG","BAL","RTA","RTB","FDBK","ATK","DEC","SUS","REL","ENV","VEL","WHEL"};
+        const char *short_label=fm_mode(s) && id==CP_COLOR ? "DEP" : fm_mode(s) && id>=16 && id<28 ? fm_short[id-16] : short_labels[id];
+        text(d->label[i],8,!fm_mode(s) && id==CP_WT_RATE && !s->value[CP_WT_CLOCK]?"HZ":short_label);
         value(d->value[i],s,id,tune,level);
-        if(id<=CS_TUNE && (!fresh || !is_detail_confirmed(status,now) || (s->pending&(1u<<id)))) d->pending|=(uint8_t)(1u<<i);
+        if((id<CS_TUNE || id>=CS_WAVE) && (!fresh || !is_detail_confirmed(status,now) ||
+            pending(s,id))) d->pending|=(uint8_t)(1u<<i);
+        if(id==CP_COLOR || id==CP_DRIFT || id==CP_ARP_MIX || id==CP_GATE || id==CP_SWING ||
+            (id==CP_STRUM && s->mode!=KB_PLAY) ||
+            (((s->metadata>>4)&3)==2 && (id==CP_WT_POS || id==CP_WT_DEPTH ||
+                id==CP_WT_ATTACK || id==CP_WT_RELEASE || id==CP_WT_ENV || id==CP_WT_VELOCITY || id==CP_WTFM_DEPTH || id==CP_WTFM_ENV || id==CP_WTFM_WHEEL)) ||
+            (fm_mode(s) && id>=16 && id<28 && id!=CP_FM_ALG && id!=CP_FM_RTA && id!=CP_FM_RTB)) {
+            uint32_t max=id>=CP_WT_TABLE ? cs_choice_max(s,id) : id==CP_GATE?100:id==CP_SWING?75:id==CP_STRUM?500:127;
+            d->rotary|=(uint8_t)(1u<<i); d->knob[i]=(uint8_t)(s->value[id]*127/max);
+        }
     }
     text(d->mode,6,s->mode==KB_PLAY?"K:PLY":s->mode==KB_ROOT?"K:RT":"K:LRN");
     for(uint32_t i=0;i<4;++i) cv_note(d->notes[i],0,0);
-    if(!fresh) { text(d->heading,22,"LINK LOST"); return; }
+    if(!fresh) { d->fault=1; text(d->heading,22,"LINK LOST"); return; }
     uint32_t flags=status->fast[1],count=(flags>>20)&7;
-    d->latch=(flags&(1u<<10))?2:(flags&(1u<<9))?1:0; d->pedal=(uint8_t)((flags>>8)&1);
+    d->pedal=(uint8_t)((flags>>8)&1);
     uint8_t pitches[4],ids[4]; uint32_t n=0;
     for(uint32_t i=0;i<4;++i) if(flags&(1u<<(16+i))) {
         uint8_t pitch=(uint8_t)(status->fast[5]>>(i*8)); uint32_t at=n;
@@ -125,25 +240,29 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
         pitches[at]=pitch; ids[at]=(uint8_t)i; ++n;
     }
     for(uint32_t i=0;i<n;++i) {
-        cv_note(d->notes[i],pitches[i],1); d->membership[i]=(uint8_t)(status->fast[6]>>(ids[i]*8))&7;
+        cv_note(d->notes[i],pitches[i],1); d->membership[i]=(uint8_t)(status->fast[6]>>(ids[i]*8))&3;
         uint32_t identity=(status->fast[6]>>(ids[i]*8+3))&3;
         if((flags&(1u<<27)) && (status->fast[7]&512) && ((status->fast[7]>>10)&3)==identity) d->highlight|=(uint8_t)(1u<<i);
     }
-    if(flags&(1u<<14)) { d->highlight=0; text(d->heading,22,"VOICE ERR"); return; }
-    if(save_error) { text(d->heading,22,"NOT SAVED"); return; }
+    if(flags&(1u<<14)) { d->fault=2; d->highlight=0; text(d->heading,22,"VOICE ERR"); return; }
+    if(save_error) { d->fault=3; text(d->heading,22,"NOT SAVED"); return; }
     uint32_t clock=(status->fast[9]>>8)&255;
     if(clock==IS_CLOCK_WAIT || clock==IS_CLOCK_LOST || clock==IS_CLOCK_STOPPED)
         d->highlight=0;
+    if((status->fast[8]&255) && clock==IS_CLOCK_LOST) {
+        d->fault=4; text(d->heading,22,"CLK LOST"); return;
+    }
     if(cs_focused(s,now)) {
         d->focused=1; d->highlight=0;
         uint32_t id=s->focus_id;
-        if(s->mode==KB_PLAY && (id==CP_CHORD || id==CP_VOICING || id==CP_STRUM)) text(d->heading,22,"YOUR NOTES");
-        else if(s->learned && (id==CP_CHORD || id==CP_VOICING)) text(d->heading,22,"AS LEARNED");
-        else if(id<18) {
-            text(d->heading,22,labels[id]); uint32_t at=length(d->heading,21);
+        if(s->mode==KB_PLAY && id==CP_CHORD) text(d->heading,22,"PLAY YOUR NOTES");
+        else if(s->mode==KB_PLAY && (id==CP_VOICING || id==CP_STRUM)) text(d->heading,22,"CHOOSE CHRD FIRST");
+        else if(s->learned && id==CP_VOICING) text(d->heading,22,"AS LEARNED");
+        else if(id<=CS_BPM) {
+            text(d->heading,22,label(s,id)); uint32_t at=length(d->heading,21);
             d->heading[at++]=' '; char v[8]; value(v,s,id,tune,level); text(d->heading+at,22-at,v);
             at=length(d->heading,21);
-            if(id<=CS_TUNE && (s->pending&(1u<<id)) && at+1<22) text(d->heading+at,22-at,"*");
+            if(pending(s,id) && at+1<22) text(d->heading+at,22-at,"*");
         }
         if(id==CP_ARP_MIX) { d->mix_bar=1; d->mix_requested=(uint8_t)s->value[id]; d->mix_applied=(uint8_t)status->fast[8]; }
         return;
@@ -152,6 +271,8 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
     else if(page && (status->fast[8]&255) && clock==IS_CLOCK_LOST) text(d->heading,22,"CLK LOST");
     else if(page && (status->fast[8]&255) && clock==IS_CLOCK_WAIT) text(d->heading,22,"WAIT CLK");
     else if(!count) text(d->heading,22,(flags&(7u<<23))?"RELEASE":"NO NOTES");
+    else if(page==3) text(d->heading,22,fm_mode(s)?"FM ENVELOPE":"WAVETABLE FM");
+    else if(page==2) text(d->heading,22,fm_mode(s)?"FM":((s->metadata>>4)&3)==2?"WAVETABLE":((s->metadata>>4)&3)==1?"REED":"VELVET");
     else if(!page) chord_name(d->heading,pitches,n);
     else if(!(status->fast[8]&255)) text(d->heading,22,"ARP OFF");
     else if(status->fast[7]&256) { text(d->heading,22,"ARP "); cv_note(d->heading+4,status->fast[7]&255,1); }
@@ -163,90 +284,5 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
         if(excluded && at+5<22) {
             d->heading[at++]=' '; d->heading[at++]='+'; number(d->heading+at,excluded);
         }
-    }
-}
-/* Small original 3x5 glyphs, row-major packed bits. The larger 5x7 face uses
- * replicated strokes; all strings are bounded and each cell clips separately. */
-static uint16_t glyph(char c)
-{
-    static const uint16_t digits[]={0x7b6f,0x2492,0x73e7,0x73cf,0x5bc9,0x79cf,0x79ef,0x7249,0x7bef,0x7bcf};
-    static const uint16_t letters[]={0x2bed,0x6bae,0x7927,0x6b6e,0x79a7,0x79a4,0x796f,0x5bed,0x7497,
-        0x124e,0x5bad,0x4927,0x5fed,0x5ffd,0x7b6f,0x7be4,0x7b7b,0x7bad,0x79cf,0x7492,
-        0x5b6f,0x5b6a,0x5bfd,0x5aad,0x5a92,0x72a7};
-    if(c>='0' && c<='9') return digits[c-'0'];
-    if(c>='A' && c<='Z') return letters[c-'A'];
-    if(c=='m') return 0x01fd;
-    if(c=='a') return 0x03df;
-    if(c=='j') return 0x024e;
-    if(c=='s') return 0x078f;
-    if(c=='u') return 0x016f;
-    if(c=='d') return 0x13ef;
-    if(c=='i') return 0x2092;
-    if(c=='b') return 0x49ae;
-    if(c=='#') return 0x5f7d;
-    if(c==':') return 0x0410;
-    if(c=='.') return 0x0002;
-    if(c=='-') return 0x01c0;
-    if(c=='/') return 0x12a4;
-    if(c=='+') return 0x05d0;
-    if(c=='*') return 0x0baa;
-    if(c=='%') return 0x52a5;
-    if(c=='>') return 0x4454;
-    return 0;
-}
-static void pixel(uint8_t *p,int x,int y,int set)
-{
-    if(x<0 || x>=124 || y<10 || y>=64) return;
-    uint32_t i=(uint32_t)y*16+(uint32_t)x/8; uint8_t mask=(uint8_t)(128u>>(x&7));
-    if(set) p[i]|=mask; else p[i]&=(uint8_t)~mask;
-}
-static void draw(uint8_t *p,const char *s,int x,int y,int large,int right)
-{
-    int width=large?5:3,height=large?7:5;
-    for(uint32_t n=0;s[n] && n<22;++n,x+=width+1) {
-        uint16_t g=glyph(s[n]);
-        for(int row=0;row<height;++row) for(int col=0;col<width;++col)
-            if(x+col<right && (g&(1u<<(14-(row*5/height)*3-col*3/width)))) pixel(p,x+col,y+row,1);
-    }
-}
-void cv_paint(uint8_t p[1024],const CvDisplay *d)
-{
-    for(int y=10;y<64;++y) for(int x=0;x<124;++x) pixel(p,x,y,0);
-    for(uint32_t i=0;i<8;++i) {
-        int x=(int)(i%4)*31,y=i<4?11:48;
-        uint32_t chars=length(d->value[i],7); int large=chars<=5;
-        int inset=(31-(int)chars*(large?6:4)+1)/2;
-        draw(p,d->label[i],x,y,0,x+30); draw(p,d->value[i],x+inset,y+7,large,x+30);
-        if(d->pending&(1u<<i)) draw(p,"*",x+28,y,0,x+31);
-    }
-    draw(p,d->heading,2,28,1,79); draw(p,d->mode,80,29,0,100);
-    draw(p,"L",103,29,0,108); draw(p,"P",115,29,0,120);
-    if(d->latch==1) {
-        for(int x=101;x<109;++x) { pixel(p,x,27,1); pixel(p,x,35,1); }
-        for(int y=27;y<=35;++y) { pixel(p,101,y,1); pixel(p,108,y,1); }
-    }
-    for(uint32_t i=0;i<4;++i) {
-        if(d->focused) break;
-        int x=(int)i*31;
-        draw(p,d->notes[i],x+2,37,1,x+30);
-        for(int col=2;col<26;++col) {
-            int line=(d->membership[i]&1) || ((d->membership[i]&2) && !(col&1)) ||
-                (!(d->membership[i]&3) && (d->membership[i]&4) && col>=10 && col<18);
-            if(line) pixel(p,x+col,45,1);
-        }
-        if(d->highlight&(1u<<i)) for(int y=36;y<45;++y) for(int col=1;col<27;++col) {
-            int px=x+col; uint32_t at=(uint32_t)y*16+(uint32_t)px/8; p[at]^=(uint8_t)(128u>>(px&7));
-        }
-    }
-    if(d->latch==2 || d->pedal) for(int y=27;y<=35;++y) for(int x=101;x<=121;++x) {
-        if((x<=109 && d->latch==2) || (x>=113 && d->pedal)) p[y*16+x/8]^=(uint8_t)(128u>>(x&7));
-    }
-    if(d->mix_bar) {
-        for(int y=36;y<46;++y) for(int x=0;x<124;++x) pixel(p,x,y,0);
-        draw(p,"PAD",2,38,0,20); draw(p,"ARP",110,38,0,124);
-        for(int x=21;x<=103;++x) pixel(p,x,42,1);
-        int requested=21+d->mix_requested*82/127,applied=21+d->mix_applied*82/127;
-        for(int y=37;y<44;++y) pixel(p,applied,y,1);
-        pixel(p,requested,36,1); pixel(p,requested-1,35,1); pixel(p,requested+1,35,1);
     }
 }

@@ -229,6 +229,19 @@ Device suites (`test:stock`, `test:fx*`, the Nx `test-device` and `test-conforma
 - DT2 card samples at `out/runs/patchkit/samples`.
 - plusdrive: `test-device` builds it through `plusdrive-format:cli` (`dist/plusdrive/plusdrive`, also `DIGI_PLUSDRIVE`). The gate builds it before samples-live.
 
+For DT2's generated DSP blocks, run `mise run perf:aot -- dt2 --card-image /absolute/path/test-card.img`
+with a prepared sample card and the stock 1.17 inputs. This prepares the card's ready snapshot, profiles playback,
+generates `out/native/dt2-audio/gen`, and registers the core by packed DSP-image SHA-256 in
+`out/native/gen-index.json`. With both devices' generated cores available, run
+`pnpm nx:pilot run digi-control:daemons` before the device target. For a DT2-only setup, use
+`uv run python -m tools.devtools.verify_build daemons --device dt2 --env-out out/dt2-daemons.json`
+and set `DIGI_EMUD_DT2` to the path under that key in the emitted JSON before launching the test.
+Use the rebuilt manifest or update any explicit `DIGI_EMUD_DT2` override; an already pinned binary does not
+gain generated blocks when the registry changes. The launchers check the generated-core fingerprint;
+regenerate stale cores instead of setting `DIGI_ALLOW_STALE_GEN`. `SHARC_GEN_DIR` overrides image-based
+selection. `SHARC_AOT=0` disables generated blocks, but does not by itself disable the other fast tiers;
+check execution-tier counters when comparing configurations.
+
 FX route and track SEND acceptance runs in the device tests of the owning modules (`modules/**/tests/*.device.test.ts`)
 with `pnpm nx:pilot run <module-id>:test-device`. `tests/regression/runtime` keeps the shared helpers only. The legacy Python `fxroute` and `fxroutes` scenarios are retired;
 their offline data and comparison helpers remain.
@@ -236,10 +249,21 @@ their offline data and comparison helpers remain.
 Details of the runtime and module fixtures: [tests/regression/README.md](../tests/regression/README.md).
 FX coverage: [tests/regression/scenarios/README.md](../tests/regression/scenarios/README.md).
 All device suites share `tests/regression/vitest.config.ts` with the projects `stock`,
-`runtime`, `conformance`, `fx-dn2` and `fx-dt2`. A device project runs one file at a time. Moved tests
+`runtime`, `conformance`, `fx-dn2` and `fx-dt2`. The `stock`, `runtime` and `conformance` projects can run
+independent files in parallel, bounded by `REGRESSION_JOBS` (default 2; the Nx launcher derives it from its CPU budget).
+Projects configured with `singleFork`, including `fx-dn2` and `fx-dt2`, remain serial. Each parallel file must
+own its daemon, mutable card state and artifact paths. Keep commands and dependent assertions ordered within
+one session; `test.concurrent` or concurrent panel commands against a shared device do not provide isolation. Moved tests
 import helpers as `@digi/regression/<path under tests/regression>` and packages as `@digi/test-support`,
 `@digi/dk-session` and `@digi/control-client`; the config and `tsconfig.json` resolve them for files
 under `modules/` and `tests/conformance/`.
+
+For linear controls, `runtime/encoder-value.ts` supports opt-in `{ maxStep: N }` to send several detents
+in one acknowledged packet. The default is one detent; keep discrete lists and sensitivity checks at that
+default. Choose a packet size within the panel helper's limit, including any caller-side scaling. Every
+packet still awaits native input acknowledgement and the caller's settled configuration read before the
+next packet. Unexpected movement fails, and `maxTurns` counts packets, including filtered ones. Batching
+reduces round trips without removing those checks or running device commands concurrently.
 
 ## Layout
 

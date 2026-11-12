@@ -24,7 +24,7 @@ int main(void)
     while(scanf("%31s",command)==1) {
         if(!strcmp(command,"config")) {
             CmConfig c;
-            if(scanf("%u%u%u%u%u%u%u%u%u%u",&c.clock,&c.rate,&c.order,&c.octaves,
+            if(scanf("%u%u%u%d%u%u%u%u%u%u",&c.clock,&c.rate,&c.order,&c.octaves,
                 &c.gate,&c.swing,&c.restart,&c.bpm,&c.strum,&c.mix)!=10) return 2;
             int r=cm_configure(&state,&c); if(r) output(r);
         } else if(!strcmp(command,"chord")) {

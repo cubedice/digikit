@@ -35,6 +35,7 @@ import sys
 from tools import python_env
 from tools.coldfire import arena_safety, panel_script
 from tools.device.dkproto import SETTINGS_SECTORS
+from tools.patchkit import pk_device
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 GOLDEN = ROOT / "tests" / "golden" / "digikit_menu_frames.json"
@@ -157,6 +158,20 @@ class Plan:
             if k.endswith(":" + name):
                 return v
         raise KeyError(name)
+
+
+def dma_holes(plan: Plan, device: str) -> list[tuple[int, int]]:
+    """Only the device's full staging allocation and known card-read buffers."""
+    holes = [
+        (plan.addr("DKRT_STAGE"), pk_device.limits(device).stage_bytes),
+        (plan.addr("DKRT_SECBUF"), 512),
+    ]
+    for name in ("DKRT_STORE_PEEK", "DKRT_STORE_FP", "DKRT_SETTINGS_HDR"):
+        with contextlib.suppress(KeyError):
+            holes.append((plan.addr(name), 512))
+    with contextlib.suppress(KeyError):
+        holes.append((plan.addr("DKRT_SETTINGS"), SETTINGS_SECTORS * 512))
+    return sorted(holes)
 
 
 def peek(facts_dir: pathlib.Path, addr: int) -> int | None:
@@ -628,23 +643,7 @@ def main(argv=None) -> int:
     st = plan.addr("DKRT_STATE")
     # the whole of cf.expansion except the runtime's staging buffer: the card read lands there by DMA, by design
     lo, hi = arena_safety.expansion(image)
-    stage = plan.addr("DKRT_STAGE")
-    secbuf = plan.addr(
-        "DKRT_SECBUF"
-    )  # the selection record's 512-byte read buffer: a DMA target as well
-    holes = [(stage, 64 * 1024), (secbuf, 512)]
-    for name in (
-        "DKRT_STORE_PEEK",
-        "DKRT_STORE_FP",
-        "DKRT_SETTINGS_HDR",
-    ):  # the store's header and fingerprint sectors, the settings record's header sector: DMA targets too
-        with contextlib.suppress(Exception):  # an image without them
-            holes.append((plan.addr(name), 512))
-    with contextlib.suppress(
-        Exception
-    ):  # the settings record's RAM copy: the boot's card read of the settings area
-        holes.append((plan.addr("DKRT_SETTINGS"), SETTINGS_SECTORS * 512))
-    holes.sort()
+    holes = dma_holes(plan, DEVICE[image][0])
     ranges, at = [], lo
     for start, size in holes:
         if start > at:

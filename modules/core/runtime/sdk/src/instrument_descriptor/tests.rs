@@ -39,13 +39,22 @@ fn instrument_descriptor_decodes_mixed_endianness_and_stride() {
     assert!(records(&reversed, &image, &[], limits()).is_err());
 }
 #[test]
-fn instrument_descriptor_status_output_is_explicit_and_unknown_flags_fail() {
+fn instrument_descriptor_capabilities_require_predecessors_and_reject_unknown_bits() {
     let (table, mut image) = fixture();
-    let flags = |image: &[u8]| records(&table, image, &[], limits()).unwrap()[0].unwrap().descriptor.flags;
+    let flags = |image: &[u8]| {
+        records(&table, image, &[], limits()).unwrap()[0]
+            .unwrap()
+            .descriptor
+            .flags
+    };
     assert_eq!(flags(&image), 0);
     image[28..32].copy_from_slice(&STATUS_OUTPUT.to_le_bytes());
     assert_eq!(flags(&image), STATUS_OUTPUT);
-    for flags in [2u32, 3, u32::MAX] {
+    image[28..32].copy_from_slice(&(STATUS_OUTPUT | NATIVE_AMP).to_le_bytes());
+    assert_eq!(flags(&image), STATUS_OUTPUT | NATIVE_AMP);
+    image[28..32].copy_from_slice(&(STATUS_OUTPUT | NATIVE_AMP | POST_AMP).to_le_bytes());
+    assert_eq!(flags(&image), STATUS_OUTPUT | NATIVE_AMP | POST_AMP);
+    for flags in [2u32, 4, 5, 6, 8, 15, u32::MAX] {
         image[28..32].copy_from_slice(&flags.to_le_bytes());
         assert_eq!(records(&table, &image, &[], limits()), Err(Error::Flags));
     }

@@ -853,7 +853,7 @@ fn known_reg(cf: bool, r: &str) -> bool {
     matches!(r, "astat" | "mode1" | "px")
         || matches!(
             split_reg(r),
-            Some(("r" | "i" | "m" | "l" | "b", 0..=15)) | Some(("ustat", 1..=4))
+            Some(("r" | "s" | "i" | "m" | "l" | "b", 0..=15)) | Some(("ustat", 1..=4))
         )
 }
 

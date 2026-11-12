@@ -118,6 +118,27 @@ fn rows_follow_reservations_and_eight_byte_stride_without_publication() {
 }
 
 #[test]
+fn capability_dependencies_are_checked_before_admitting_any_row() {
+    let (loads, ticket, grant) = setup();
+    let mut specs = [spec(17, 0x20020000), spec(18, 0x20020020)];
+    for flags in [0, 1, 3, 7] {
+        specs[1].flags = flags;
+        let plan = prepare(&loads, ticket, &grant, &specs, &limits()).unwrap();
+        assert_eq!(plan.rows()[0].unwrap().flags, 0);
+        assert_eq!(plan.rows()[1].unwrap().flags, flags);
+    }
+    for flags in [2, 4, 5, 6, 8, 15, u32::MAX] {
+        specs[1].flags = flags;
+        assert_eq!(
+            failure(&loads, ticket, &grant, &specs, &limits()),
+            Error::Budget
+        );
+        assert_eq!(loads.lookup(17), None);
+        assert_eq!(loads.lookup(18), None);
+    }
+}
+
+#[test]
 fn whole_batch_rejects_overlap_bounds_alignment_and_overflow() {
     let (loads, ticket, grant) = setup();
     for (base, bytes) in [

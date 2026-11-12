@@ -1,4 +1,4 @@
-//! Bounded decoding of V2 descriptors and DKDS5 instrument records. No addresses
+//! Bounded decoding of V2 descriptors and DKDS7 instrument records. No addresses
 //! are dereferenced, allocations made, or runtime capabilities enabled. Decoded
 //! callbacks are image offsets, NOT proof of executable instruction boundaries.
 
@@ -7,6 +7,17 @@ pub const VERSION: u32 = 2;
 pub const DESC_BYTES: usize = 48;
 /// Opt in to the V5 borrowed status-output extension. Unknown bits fail closed.
 pub const STATUS_OUTPUT: u32 = 1;
+/// Opt in to the V6 native AMP snapshot. Requires STATUS_OUTPUT.
+pub const NATIVE_AMP: u32 = 2;
+/// Opt in to V7 gains at the stock AMP position. Requires STATUS_OUTPUT | NATIVE_AMP.
+pub const POST_AMP: u32 = 4;
+
+pub const fn valid_flags(flags: u32) -> bool {
+    flags == 0
+        || flags == STATUS_OUTPUT
+        || flags == (STATUS_OUTPUT | NATIVE_AMP)
+        || flags == (STATUS_OUTPUT | NATIVE_AMP | POST_AMP)
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct Limits {
@@ -98,7 +109,7 @@ impl Descriptor {
         if w(0) != MAGIC || w(1) != VERSION || w(2) != DESC_BYTES as u32 {
             return Err(Error::Header);
         }
-        if w(3) & !STATUS_OUTPUT != 0 {
+        if !valid_flags(w(3)) {
             return Err(Error::Flags);
         }
         if !(1..=16).contains(&w(4)) || !(1..=8).contains(&w(6)) || !(1..=32).contains(&w(7)) {
@@ -150,7 +161,7 @@ pub struct Record {
 }
 
 /// Decode an exact BE record table and LE image descriptors, using checked
-/// slices from a separately validated DKDS5 header. Relocations are BE 8-byte
+/// slices from a separately validated DKDS7 header. Relocations are BE 8-byte
 /// entries. This validates their bounds and keeps descriptors immutable; the
 /// caller still validates relocation classes/import indices and section layout.
 /// Returned records occupy a fixed eight-slot array in file order.
@@ -222,7 +233,7 @@ pub struct Executable {
     pub end: u32,
 }
 
-/// DKDS6 text ranges, sorted and nonoverlapping. These are section boundaries,
+/// DKDS8 text ranges, sorted and nonoverlapping. These are section boundaries,
 /// not a disassembly or a proof of control flow / declared callback budgets.
 pub fn executable_ranges(
     table: &[u8],

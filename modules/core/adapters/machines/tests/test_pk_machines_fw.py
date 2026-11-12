@@ -116,10 +116,34 @@ def tables():
 
 
 @pytest.fixture(scope="module")
-def unit():
+def src_allocator(tmp_path_factory):
+    path = tmp_path_factory.mktemp("src-vector") / "allocator.c"
+    path.write_text(f"""
+#include <stdint.h>
+uint8_t *mf_src_alloc(uint32_t bytes) {{
+    volatile uint32_t *stats=(uint32_t *){ALLOC_STATS:#x};
+    ++stats[1]; stats[4]=bytes;
+    return stats[0] ? 0 : (uint8_t *){GROWN_PAGES:#x};
+}}
+void mf_src_free(uint8_t *p) {{
+    volatile uint32_t *stats=(uint32_t *){ALLOC_STATS:#x};
+    ++stats[2]; stats[3]=(uint32_t)p;
+}}
+void mf_test_type(uint32_t type) {{ *(uint32_t *){TYPE_FN + 2:#x}=type; }}
+""")
+    return path
+
+
+@pytest.fixture(scope="module")
+def unit(src_allocator):
     return pk_cfunit.CfUnit(
         SYX,
-        [SRC, SRC.with_name("src-pages.c"), ROOT / "tests/fixtures/native-page-absent.s"],
+        [
+            SRC,
+            SRC.with_name("src-pages.c"),
+            ROOT / "tests/fixtures/native-page-absent.s",
+            src_allocator,
+        ],
         STUBS,
         {
             "_mf_first": FIRST,
@@ -128,11 +152,14 @@ def unit():
             "_mf_rows": ROWS,
             "_mf_list_stock": STOCK_LIST,
             "_mf_spt": TYPE_FN,
+            "instrument_mod_param": 0,
         },
         [
             "mf_srcpage",
             "mf_src_register",
             "mf_src_unregister",
+            "mf_src_apply_pages",
+            "mf_test_type",
             "mf_dispatch",
             "mf_list_entry",
             "mf_rank",
@@ -248,16 +275,22 @@ GAP = row("", "", [0] * 8 + [0x0A], 0, 0xFFFFFFFF)
 
 
 @pytest.fixture(scope="module")
-def gap_unit():
+def gap_unit(src_allocator):
     # rows: XSlice (7), a gap (8: nobody selected it), Pluck (9)
     return pk_cfunit.CfUnit(
         SYX,
-        [SRC, SRC.with_name("src-pages.c"), ROOT / "tests/fixtures/native-page-absent.s"],
+        [
+            SRC,
+            SRC.with_name("src-pages.c"),
+            ROOT / "tests/fixtures/native-page-absent.s",
+            src_allocator,
+        ],
         STUBS,
         {
             "_mf_first": FIRST,
             "_mf_count": 3,
             "_mf_entries": 2,
+            "instrument_mod_param": 0,
             "_mf_rows": ROWS,
             "_mf_list_stock": STOCK_LIST,
             "_mf_spt": TYPE_FN,
@@ -489,6 +522,8 @@ def type_fn(t):
 
 VIEW = 0x47EC5000  # a stand-in SourcePageView: +0x7c begin, +0x80 end of the page vector, +0x90 the page index
 PAGES = VIEW + 0x200  # the vector's storage: two 4-byte entries
+GROWN_PAGES = VIEW + 0x500
+ALLOC_STATS = VIEW + 0x600  # fail, allocation calls, free calls, freed pointer, size
 
 
 def view_mem(end_entries, idx):
@@ -497,7 +532,12 @@ def view_mem(end_entries, idx):
     mem[0x80:0x84] = be32(PAGES + 4 * end_entries)
     mem[0x84:0x88] = be32(PAGES + 8)
     mem[0x90:0x94] = be32(idx)
-    return {VIEW: bytes(mem)}
+    return {
+        VIEW: bytes(mem),
+        PAGES - 4: b"".join(be32(v) for v in (0xFEEDFACE, 7, 11, 0xFEEDFACE)),
+        GROWN_PAGES - 4: b"".join(be32(v) for v in (0xFEEDFACE, 0, 0, 0, 0xFEEDFACE)),
+        ALLOC_STATS: bytes(20),
+    }
 
 
 def run_src_page(unit, typ, end_entries, idx):
@@ -557,7 +597,10 @@ def capability_case(unit, typ=18, fields=(1, 16, 2, 7), idx=1, capacity=2):
 
 def page_state(result):
     b = result.reads[0]
-    return (int.from_bytes(b[4:8], "big") - PAGES) // 4, int.from_bytes(b[20:24], "big")
+    return (
+        (int.from_bytes(b[4:8], "big") - int.from_bytes(b[:4], "big")) // 4,
+        int.from_bytes(b[20:24], "big"),
+    )
 
 
 def test_explicit_src_capability_survives_draw_and_requires_matching_revocation(unit):
@@ -582,7 +625,7 @@ def test_explicit_src_capability_survives_draw_and_requires_matching_revocation(
 
 @pytest.mark.parametrize(
     "fields",
-    [(2, 16, 2, 7), (1, 12, 2, 7), (1, 16, 3, 7), (1, 16, 0, 7), (1, 16, 2, 0)],
+    [(2, 16, 2, 7), (1, 12, 2, 7), (1, 16, 5, 7), (1, 16, 0, 7), (1, 16, 2, 0)],
 )
 def test_invalid_src_capability_does_not_enable_second_page(unit, fields):
     memory, address, draw = capability_case(unit, fields=fields)
@@ -613,6 +656,170 @@ def test_src_capability_bounds_index_and_never_extends_storage(
     )
     assert page_state(painted) == expected
     assert int.from_bytes(painted.reads[0][8:12], "big") == PAGES + 4 * capacity
+
+
+def vector_words(blob):
+    return [int.from_bytes(blob[i : i + 4], "big") for i in range(0, len(blob), 4)]
+
+
+@pytest.mark.parametrize(
+    "idx,expected", [(0, 0), (1, 1), (2, 2), (3, 0), (0xFFFFFFFF, 0)]
+)
+def test_three_src_pages_grow_native_owned_storage_once(unit, idx, expected):
+    memory, address, draw = capability_case(unit, fields=(1, 16, 3, 7), idx=idx)
+    draw["reads"] += [(PAGES - 4, 16), (GROWN_PAGES - 4, 20), (ALLOC_STATS, 20)]
+    registered, first, repeated = unit.run_cases(
+        memory,
+        [{"routine": "mf_src_register", "stack": [unit.rts, 18, address]}, draw, draw],
+    )
+    assert registered.d[0] == 0
+    for painted in (first, repeated):
+        assert page_state(painted) == (3, expected)
+        assert vector_words(painted.reads[0])[:3] == [
+            GROWN_PAGES,
+            GROWN_PAGES + 12,
+            GROWN_PAGES + 12,
+        ]
+        assert vector_words(painted.reads[1]) == [0xFEEDFACE, 7, 11, 0xFEEDFACE]
+        assert vector_words(painted.reads[2]) == [0xFEEDFACE, 7, 11, 7, 0xFEEDFACE]
+        assert vector_words(painted.reads[3]) == [0, 1, 1, PAGES, 12]
+        assert painted.stub == "_mf_spa" and painted.a[2] == VIEW
+        assert painted.stack[0] == 0xAAAA
+
+
+@pytest.mark.parametrize("capacity", [2, 3])
+@pytest.mark.parametrize(
+    "idx,expected", [(0, 0), (2, 2), (3, 3), (4, 0), (0xFFFFFFFF, 0)]
+)
+def test_four_src_pages_preserve_existing_ids_and_grow_only_once(
+    unit, capacity, idx, expected
+):
+    memory, address, draw = capability_case(
+        unit, fields=(1, 16, 4, 7), idx=idx, capacity=capacity
+    )
+    old = [0xFEEDFACE, 7, 11] + ([13] if capacity == 3 else []) + [0xFEEDFACE]
+    memory[PAGES - 4] = b"".join(be32(v) for v in old)
+    memory[GROWN_PAGES - 4] = be32(0xFEEDFACE) + bytes(16) + be32(0xFEEDFACE)
+    draw["reads"] += [
+        (PAGES - 4, len(old) * 4),
+        (GROWN_PAGES - 4, 24),
+        (ALLOC_STATS, 20),
+    ]
+    registered, first, repeated = unit.run_cases(
+        memory,
+        [{"routine": "mf_src_register", "stack": [unit.rts, 18, address]}, draw, draw],
+    )
+    assert registered.d[0] == 0
+    for painted in (first, repeated):
+        assert page_state(painted) == (4, expected)
+        assert vector_words(painted.reads[0])[:3] == [
+            GROWN_PAGES,
+            GROWN_PAGES + 16,
+            GROWN_PAGES + 16,
+        ]
+        assert vector_words(painted.reads[1]) == old
+        assert vector_words(painted.reads[2]) == [
+            0xFEEDFACE,
+            7,
+            11,
+            13 if capacity == 3 else 7,
+            7,
+            0xFEEDFACE,
+        ]
+        assert vector_words(painted.reads[3]) == [0, 1, 1, PAGES, 16]
+        assert painted.stub == "_mf_spa" and painted.a[2] == VIEW
+        assert painted.stack[0] == 0xAAAA
+
+
+@pytest.mark.parametrize("pages", [3, 4])
+def test_src_vector_allocation_failure_preserves_native_storage(unit, pages):
+    memory, address, draw = capability_case(unit, fields=(1, 16, pages, 7), idx=2)
+    memory[ALLOC_STATS] = be32(1) + bytes(16)
+    draw["reads"] += [(PAGES - 4, 16), (GROWN_PAGES - 4, 20), (ALLOC_STATS, 20)]
+    _, painted = unit.run_cases(
+        memory,
+        [{"routine": "mf_src_register", "stack": [unit.rts, 18, address]}, draw],
+    )
+    assert page_state(painted) == (1, 0)
+    assert vector_words(painted.reads[0])[:3] == [PAGES, PAGES + 4, PAGES + 8]
+    assert vector_words(painted.reads[1]) == [0xFEEDFACE, 7, 11, 0xFEEDFACE]
+    assert vector_words(painted.reads[2]) == [0xFEEDFACE, 0, 0, 0, 0xFEEDFACE]
+    assert vector_words(painted.reads[3]) == [1, 1, 0, 0, pages * 4]
+
+
+@pytest.mark.parametrize("pages", [3, 4])
+def test_grown_src_vector_restores_stock_and_ordinary_machine_policy(unit, pages):
+    memory, address, draw = capability_case(
+        unit, fields=(1, 16, pages, 7), idx=pages - 1
+    )
+    draw["reads"] += [(ALLOC_STATS, 20)]
+    _, three, _, stock, _, ordinary, _, returned = unit.run_cases(
+        memory,
+        [
+            {"routine": "mf_src_register", "stack": [unit.rts, 18, address]},
+            draw,
+            {"routine": "mf_test_type", "stack": [unit.rts, 0]},
+            draw,
+            {"routine": "mf_test_type", "stack": [unit.rts, 19]},
+            draw,
+            {"routine": "mf_test_type", "stack": [unit.rts, 18]},
+            draw,
+        ],
+    )
+    assert page_state(three) == (pages, pages - 1)
+    assert page_state(stock) == (2, 0)
+    assert page_state(ordinary) == (1, 0)
+    assert page_state(returned) == (pages, 0)
+    for painted in (three, stock, ordinary, returned):
+        assert vector_words(painted.reads[0])[0::2][:2] == [
+            GROWN_PAGES,
+            GROWN_PAGES + pages * 4,
+        ]
+        assert vector_words(painted.reads[1]) == [0, 1, 1, PAGES, pages * 4]
+
+
+def test_src_hook_preserves_larger_native_capacity_and_page_ids(unit):
+    memory, address, draw = capability_case(
+        unit, fields=(1, 16, 3, 7), idx=2, capacity=4
+    )
+    original = [0xFEEDFACE, 7, 11, 13, 17, 0xFEEDFACE]
+    memory[PAGES - 4] = b"".join(be32(v) for v in original)
+    draw["reads"] += [(PAGES - 4, 24), (ALLOC_STATS, 20)]
+    _, painted = unit.run_cases(
+        memory,
+        [{"routine": "mf_src_register", "stack": [unit.rts, 18, address]}, draw],
+    )
+    assert page_state(painted) == (3, 2)
+    assert vector_words(painted.reads[0])[:3] == [PAGES, PAGES + 12, PAGES + 16]
+    assert vector_words(painted.reads[1]) == original
+    assert vector_words(painted.reads[2]) == [0] * 5
+
+
+def test_four_page_owner_can_hide_and_restore_fourth_page_without_reallocation(unit):
+    memory, address, draw = capability_case(unit, fields=(1, 16, 4, 7), idx=3)
+    three_address = address + 16
+    memory[three_address] = b"".join(be32(v) for v in (1, 16, 3, 7))
+    draw["reads"] += [(ALLOC_STATS, 20)]
+    _, four, _, three, _, returned = unit.run_cases(
+        memory,
+        [
+            {"routine": "mf_src_register", "stack": [unit.rts, 18, address]},
+            draw,
+            {"routine": "mf_src_register", "stack": [unit.rts, 18, three_address]},
+            draw,
+            {"routine": "mf_src_register", "stack": [unit.rts, 18, address]},
+            draw,
+        ],
+    )
+    assert page_state(four) == (4, 3)
+    assert page_state(three) == (3, 0)
+    assert page_state(returned) == (4, 0)
+    for painted in (four, three, returned):
+        assert vector_words(painted.reads[0])[0::2][:2] == [
+            GROWN_PAGES,
+            GROWN_PAGES + 16,
+        ]
+        assert vector_words(painted.reads[1]) == [0, 1, 1, PAGES, 16]
 
 
 def test_src_registration_cannot_replace_another_live_generation(unit):

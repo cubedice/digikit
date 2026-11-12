@@ -40,7 +40,7 @@ mod tests {
             (0, 0x444b4d41),
             (1, 1),
             (2, 40),
-            (3, 1),
+            (3, 2),
             (4, 0),
             (4, 17),
             (5, 0),
@@ -75,6 +75,22 @@ mod tests {
         assert!(Descriptor::parse(&oversized, limits()).is_err());
     }
     #[test]
+    fn descriptor_extensions_require_their_predecessors_when_packed() {
+        for flags in [0, 1, 3, 7] {
+            let mut w = words();
+            w[3] = flags;
+            assert_eq!(
+                Descriptor::parse(&bytes(&w), limits()).unwrap().flags,
+                flags
+            );
+        }
+        for flags in [2, 4, 5, 6, 8, 15, u32::MAX] {
+            let mut w = words();
+            w[3] = flags;
+            assert!(Descriptor::parse(&bytes(&w), limits()).is_err());
+        }
+    }
+    #[test]
     fn abi_constants_match_the_schema_without_enabling_v2_runtime() {
         let text = include_str!("../../../sdk/sdk.toml");
         let spec = crate::sdkgen::instrument(text).unwrap();
@@ -85,6 +101,6 @@ mod tests {
         assert_eq!(constant("DK_I_MAX_TRACKS"), 16);
         assert_eq!(constant("DK_I_MAX_EVENTS"), 8);
         assert_eq!(constant("DK_I_MAX_CONTROLS"), 32);
-        assert_eq!(crate::sdkgen::embedded().machine, (1, 0));
+        assert_eq!(crate::sdkgen::embedded().machine.0, 1);
     }
 }

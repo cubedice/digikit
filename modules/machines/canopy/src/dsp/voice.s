@@ -14,6 +14,14 @@
 .GLOBAL _cp_note_off;
 .GLOBAL _cp_render;
 .EXTERN _cp_tuning;
+.EXTERN _wt_begin_slot;
+.EXTERN _wt_render_block;
+.EXTERN _wt_blk;
+.EXTERN _wt_enabled;
+.EXTERN _wt_r6;
+.EXTERN _wt_r7;
+.EXTERN _fm_enabled;
+.EXTERN _fm_render;
 _cp_note_on:
     R8 = PASS R8;
     IF EQ JUMP _cp_reject;
@@ -148,7 +156,11 @@ _cp_queue_replacement:
     RTS;
 _cp_save_tail:
     R11 = I2;
+    R0 = R3;
+    R1 = R11;
+    CALL _cp_amp_copy_staged;
     I1 = R3;
+    I2 = R11;
     R2 = 8;
 _cp_copy_tail:
     R0 = DM(I1, M6);
@@ -260,10 +272,14 @@ _cp_release_one:
     IF NE JUMP _cp_reject;
     JUMP _cp_release;
 _cp_render_one:
+    R0 = _cp_post_arp;
+    DM(_cp_post_lane) = R0;
     R0 = 1;
     DM(_cp_render_count) = R0;
     JUMP _cp_render_begin;
 _cp_render:
+    R0 = _cp_post_pad;
+    DM(_cp_post_lane) = R0;
     R0 = 6;
     DM(_cp_render_count) = R0;
 _cp_render_begin:
@@ -300,6 +316,8 @@ _cp_render_owned:
     // Keep the shared carrier held for the whole block containing a tail's
     // final samples. QUIET is safe only on the following empty block.
     R15 = 1;
+    CALL _cp_amp_begin;
+    CALL _cp_post_collect;
     F2 = DM(2, I0); // oscillator x,y
     F3 = DM(3, I0);
     F4 = DM(4, I0); // rotation sin,cos
@@ -340,6 +358,13 @@ _cp_render_samples:
     F0 = F4 * F0;
     F5 = F5 - F0;
     F4 = F9;
+    R0 = DM(_fm_enabled);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_legacy_samples;
+    CALL _fm_render;
+    JUMP _cp_samples_done;
+_cp_legacy_samples:
+    CALL _wt_begin_slot;
     // Harmonics fade out BEFORE Nyquist, using the bent/drifted coefficient.
     F0 = 0.05;
     F12 = F5 - F0;
@@ -369,19 +394,39 @@ _cp_render_samples:
     F9 = F9 * F0;
     DM(_cp_h3) = F9;
     I2 = R8;
+    R0 = DM(_wt_enabled);
+    R0 = PASS R0;
+    IF NE JUMP _cp_block_samples;
     R13 = 32;
+    R0 = DM(_cp_amp_native);
+    R0 = PASS R0;
+    IF NE JUMP _cp_native_samples;
 _cp_sample:
+    F7 = F7 + F10;
+    F0 = 0.0;
+    F7 = MAX(F7, F0);
+    F0 = 1.0;
+    F7 = MIN(F7, F0);
+    CALL _cp_sample_body;
+    R13 = R13 - 1;
+    IF NE JUMP _cp_sample;
+    JUMP _cp_samples_done;
+_cp_native_samples:
+    I1 = _cp_amp_samples;
+_cp_native_sample:
+    F7 = DM(I1, M6);
+    CALL _cp_sample_body;
+    R13 = R13 - 1;
+    IF NE JUMP _cp_native_sample;
+    F7 = DM(_cp_amp_end);
+    JUMP _cp_samples_done;
+_cp_sample_body:
     F0 = DM(_cp_h2step);
     F12 = F12 + F0;
     F0 = DM(_cp_h3);
     F1 = DM(_cp_h3step);
     F0 = F0 + F1;
     DM(_cp_h3) = F0;
-    F7 = F7 + F10;
-    F0 = 0.0;
-    F7 = MAX(F7, F0);
-    F0 = 1.0;
-    F7 = MIN(F7, F0);
     F0 = F2 * F5;
     F1 = F3 * F4;
     F9 = F0 + F1;
@@ -412,8 +457,115 @@ _cp_sample:
     F1 = DM(I2, M5);
     F0 = F0 + F1;
     DM(I2, M6) = F0;
-    R13 = R13 - 1;
-    IF NE JUMP _cp_sample;
+    RTS;
+_cp_block_samples:
+    // Wavetable voices render a block at a time with the per-sample operations
+    // of the pad body: this oscillator fills word 4 of the _wt_blk records,
+    // _wt_render_block replaces it with the wavetable output, and the amp
+    // stage below accumulates it into the output. Keeps I0, R8, R11, R14, R15,
+    // F2/F3 and leaves F7 as the per-sample loops do; M4 is restored.
+    DM(_cp_keep_r8) = R8;
+    DM(_cp_keep_r11) = R11;
+    DM(_cp_keep_r14) = R14;
+    DM(_cp_keep_r15) = R15;
+    R0 = I0;
+    DM(_cp_keep_i0) = R0;
+    R0 = M4;
+    DM(_cp_keep_m4) = R0;
+    M4 = 8;
+    DM(_cp_keep_f6) = F6;
+    DM(_cp_keep_f7) = F7;
+    DM(_cp_keep_f10) = F10;
+    F13 = DM(_cp_h2step);
+    F14 = DM(_cp_h3);
+    F15 = DM(_cp_h3step);
+    F8 = 2.0;
+    F11 = 4.0;
+    F6 = 3.0;
+    I1 = _wt_blk;
+    MODIFY(I1,4) (NW);
+    LCNTR = 32, DO _cp_block_osc UNTIL LCE;
+    F12 = F12 + F13;
+    F14 = F14 + F15;
+    F0 = F2 * F5;
+    F1 = F3 * F4;
+    F9 = F0 + F1;
+    F0 = F3 * F5;
+    F1 = F2 * F4;
+    F3 = F0 - F1;
+    F2 = F9;
+    F0 = F2 * F3;
+    F0 = F0 * F8;
+    F0 = F0 * F12;
+    F9 = F2 + F0;
+    F0 = F2 * F2;
+    F0 = F0 * F11;
+    F0 = F6 - F0;
+    F0 = F0 * F2;
+    F0 = F0 * F14;
+    F0 = F9 + F0;
+_cp_block_osc:
+    DM(I1,M4) = F0;
+    DM(_cp_h3) = F14;
+    DM(_cp_keep_x) = F2;
+    DM(_cp_keep_y) = F3;
+    CALL _wt_render_block;
+    F6 = DM(_cp_keep_f6);
+    F7 = DM(_cp_keep_f7);
+    F10 = DM(_cp_keep_f10);
+    F11 = DM(_cp_level);
+    R8 = DM(_cp_keep_r8);
+    I2 = R8;
+    I1 = _wt_blk;
+    MODIFY(I1,4) (NW);
+    R0 = DM(_cp_amp_native);
+    R0 = PASS R0;
+    IF NE JUMP _cp_block_native;
+    F12 = 0.0;
+    F13 = 1.0;
+    LCNTR = 32, DO _cp_block_amp UNTIL LCE;
+    F7 = F7 + F10;
+    F7 = MAX(F7, F12);
+    F7 = MIN(F7, F13);
+    F0 = DM(I1,M4);
+    F0 = F0 * F6;
+    F0 = F0 * F7;
+    F0 = F0 * F11;
+    F1 = DM(I2,M5);
+    F0 = F0 + F1;
+_cp_block_amp:
+    DM(I2,M6) = F0;
+    DM(_wt_r6) = F6;
+    DM(_wt_r7) = F7;
+    JUMP _cp_block_done;
+_cp_block_native:
+    I0 = _cp_amp_samples;
+    LCNTR = 32, DO _cp_block_native_amp UNTIL LCE;
+    F7 = DM(I0,M6);
+    F0 = DM(I1,M4);
+    F0 = F0 * F6;
+    F0 = F0 * F7;
+    F0 = F0 * F11;
+    F1 = DM(I2,M5);
+    F0 = F0 + F1;
+_cp_block_native_amp:
+    DM(I2,M6) = F0;
+    DM(_wt_r6) = F6;
+    DM(_wt_r7) = F7;
+    F7 = DM(_cp_amp_end);
+_cp_block_done:
+    R0 = DM(_cp_keep_m4);
+    M4 = R0;
+    R0 = DM(_cp_keep_i0);
+    I0 = R0;
+    R8 = DM(_cp_keep_r8);
+    R11 = DM(_cp_keep_r11);
+    R14 = DM(_cp_keep_r14);
+    R15 = DM(_cp_keep_r15);
+    F2 = DM(_cp_keep_x);
+    F3 = DM(_cp_keep_y);
+    JUMP _cp_samples_done;
+_cp_samples_done:
     // One Newton normalization step per block bounds float32 rotation drift.
     F0 = F2 * F2;
     F1 = F3 * F3;
@@ -430,6 +582,17 @@ _cp_sample:
     F0 = 0.0;
     COMP(F7, F0);
     IF GT JUMP _cp_active;
+    // A held native ADSR at zero sustain remains a logical chord owner.
+    R0 = DM(_cp_amp_native);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_retire;
+    R0 = DM(1, I0);
+    R1 = 3;
+    R0 = R0 AND R1;
+    R1 = 1;
+    COMP(R0, R1);
+    IF EQ JUMP _cp_active;
+_cp_retire:
     R0 = 0;
     DM(0, I0) = R0;
     JUMP _cp_render_next;
@@ -561,12 +724,385 @@ _cp_retune_store:
     RTS;
 .SECTION/DM seg_dmda;
 .VAR _cp_pending_bend = 0;
+.PKBSS _cp_keep_r8, 4;
+.PKBSS _cp_keep_r11, 4;
+.PKBSS _cp_keep_r14, 4;
+.PKBSS _cp_keep_r15, 4;
+.PKBSS _cp_keep_i0, 4;
+.PKBSS _cp_keep_m4, 4;
+.PKBSS _cp_keep_f6, 4;
+.PKBSS _cp_keep_f7, 4;
+.PKBSS _cp_keep_f10, 4;
+.PKBSS _cp_keep_x, 4;
+.PKBSS _cp_keep_y, 4;
 .GLOBAL _cp_native_tune;
 .VAR _cp_native_tune = 0;
 .GLOBAL _cp_tune_changed;
 .VAR _cp_tune_changed = 0;
 .GLOBAL _cp_v2_instance;
 .VAR _cp_v2_instance = 0;
+
+// Native AMP sidecars occupy the previously reserved instance words716..743:
+// seven {token, phase, hold_samples, mode} records for six pad/tail slots and arp.
+// Amplitude remains in voice word7. No register or history is shared across calls.
+.SECTION/PM seg_pmco;
+.GLOBAL _cp_amp_begin;
+.GLOBAL _cp_amp_copy;
+.GLOBAL _cp_amp_mode;
+.GLOBAL _cp_amp_state;
+.GLOBAL _cp_amp_input;
+.GLOBAL _cp_amp_native;
+.GLOBAL _cp_amp_end;
+.GLOBAL _cp_amp_samples;
+.GLOBAL _cp_amp_samples_end;
+// R0=physical voice address -> I1=sidecar. Scratch R0..2 only.
+_cp_amp_record_for:
+    R2 = DM(_cp_amp_state);
+    R0 = R0 - R2;
+    R1 = 544;
+    COMP(R0, R1);
+    R1 = 192;
+    IF EQ R0 = R1;
+    R0 = LSHIFT R0 BY -1;
+    R1 = 2864;
+    R0 = R0 + R1;
+    R0 = R0 + R2;
+    I1 = R0;
+    RTS;
+// Preserve a native envelope when its oscillator record moves into a shared tail.
+// R0=source, R1=destination. Scratch R0..2,I0/I1; I2 and onset arguments survive.
+// Packed pad events operate on their atomic staging bank. Its sidecars are
+// snapshotted and committed with that bank, so a rejected batch changes neither.
+_cp_amp_copy_staged:
+    R2 = DM(_cp_amp_mode);
+    R2 = PASS R2;
+    IF EQ RTS;
+    R0 = R0 - R4;
+    R1 = R1 - R4;
+    R0 = LSHIFT R0 BY -1;
+    R1 = LSHIFT R1 BY -1;
+    R2 = _cp_amp_staging;
+    R0 = R0 + R2;
+    R1 = R1 + R2;
+    I0 = R0;
+    I1 = R1;
+    JUMP _cp_amp_copy_words;
+_cp_amp_copy:
+    R2 = DM(_cp_amp_mode);
+    R2 = PASS R2;
+    IF EQ RTS;
+    DM(_cp_amp_copy_dst) = R1;
+    CALL _cp_amp_record_for;
+    R0 = I1;
+    DM(_cp_amp_copy_src) = R0;
+    R0 = DM(_cp_amp_copy_dst);
+    CALL _cp_amp_record_for;
+    R0 = DM(_cp_amp_copy_src);
+    I0 = R0;
+_cp_amp_copy_words:
+    R0 = DM(0, I0);
+    DM(0, I1) = R0;
+    R0 = DM(1, I0);
+    DM(1, I1) = R0;
+    R0 = DM(2, I0);
+    DM(2, I1) = R0;
+    R0 = DM(3, I0);
+    DM(3, I1) = R0;
+    RTS;
+// Called before oscillator registers are loaded. Preserves I0,R8,R11..15.
+// Stable phases use hardware loops; the shared buffer is consumed immediately.
+_cp_amp_begin:
+    R0 = 0;
+    DM(_cp_amp_native) = R0;
+    R0 = DM(_cp_amp_mode);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R0 = DM(1, I0);
+    R1 = 3;
+    R0 = R0 AND R1;
+    DM(_cp_amp_gate) = R0;
+    R1 = 2;
+    COMP(R0, R1);
+    IF EQ RTS; // Lifecycle reset/steal always retains the bounded64-sample ramp.
+    R0 = I0;
+    CALL _cp_amp_record_for;
+    I2 = I1;
+    R0 = DM(_cp_amp_input);
+    I1 = R0;
+    F6 = DM(25, I1);
+    R0 = DM(26, I1);
+    DM(_cp_amp_hold) = R0;
+    F7 = DM(27, I1);
+    F9 = DM(28, I1);
+    F10 = DM(29, I1);
+    R0 = DM(30, I1);
+    DM(_cp_amp_options) = R0;
+    F4 = DM(7, I0);
+    R0 = DM(0, I0);
+    R1 = DM(0, I2);
+    COMP(R0, R1);
+    IF NE JUMP _cp_amp_new;
+    R0 = DM(3, I2);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_amp_new;
+    R1 = DM(_cp_amp_mode);
+    COMP(R0, R1);
+    IF NE JUMP _cp_amp_mode_changed;
+    R3 = DM(1, I2);
+    R5 = DM(2, I2);
+    JUMP _cp_amp_gate_ready;
+_cp_amp_new:
+    R0 = DM(0, I0);
+    DM(0, I2) = R0;
+    F4 = 0.0;
+    R0 = DM(_cp_amp_options);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_amp_mode_changed;
+    F0 = 0.5;
+    F4 = F6 * F0;
+    F0 = 1.0;
+    COMP(F6, F0);
+    IF EQ F4 = F0;
+_cp_amp_mode_changed:
+    // A mode edit preserves the current level and starts the new shape there.
+    R3 = 2;
+    R5 = 0;
+    R0 = DM(_cp_amp_mode);
+    DM(3, I2) = R0;
+_cp_amp_gate_ready:
+    R0 = DM(_cp_amp_gate);
+    R0 = PASS R0;
+    IF NE JUMP _cp_amp_generate;
+    R0 = DM(_cp_amp_mode);
+    R1 = 2;
+    COMP(R0, R1);
+    IF EQ JUMP _cp_amp_note_release;
+    R0 = DM(_cp_amp_hold);
+    R1 = -1;
+    COMP(R0, R1);
+    IF NE JUMP _cp_amp_generate; // Finite AHD follows its own hold, even after keyup.
+_cp_amp_note_release:
+    R3 = 4;
+_cp_amp_generate:
+    I1 = _cp_amp_samples;
+    R2 = 32;
+_cp_amp_phase:
+    R0 = 2;
+    COMP(R3, R0);
+    IF EQ JUMP _cp_amp_attack;
+    R0 = 3;
+    COMP(R3, R0);
+    IF EQ JUMP _cp_amp_hold_phase;
+    R0 = 1;
+    COMP(R3, R0);
+    IF EQ JUMP _cp_amp_decay;
+    // The stock envelope outputs its old amplitude before advancing it.
+    LCNTR = R2, DO _cp_amp_release_last UNTIL LCE;
+_cp_amp_release_last:
+    F4 = F4 * F10, DM(I1, M6) = F4;
+    // Finite exponential tails retire below -140dB; q=1 remains infinite.
+    F0 = 1.0;
+    COMP(F10, F0);
+    IF EQ JUMP _cp_amp_done;
+    F0 = 0.0000001;
+    COMP(F4, F0);
+    IF GE JUMP _cp_amp_done;
+    F4 = 0.0;
+    JUMP _cp_amp_done;
+_cp_amp_attack:
+    F1 = 1.0;
+    COMP(F4, F1);
+    IF GE JUMP _cp_amp_attack_finished;
+    F0 = FLOAT R2;
+    F0 = F0 * F6;
+    F0 = F0 + F4;
+    // Repeated float additions can reach unity before the multiplied estimate.
+    // Reserve more than 32 rounding ulps for the exact phase-boundary loop.
+    F1 = 0.999996;
+    COMP(F0, F1);
+    F1 = 1.0;
+    IF GT JUMP _cp_amp_attack_boundary;
+    LCNTR = R2, DO _cp_amp_attack_last UNTIL LCE;
+        F4 = F4 + F6, DM(I1, M6) = F4;
+_cp_amp_attack_last:
+        F4 = MIN(F4, F1);
+    JUMP _cp_amp_done;
+_cp_amp_attack_boundary:
+    COMP(F4, F1);
+    IF GE JUMP _cp_amp_attack_finished;
+    F4 = F4 + F6, DM(I1, M6) = F4;
+    F4 = MIN(F4, F1);
+    R2 = R2 - 1;
+    IF NE JUMP _cp_amp_attack_boundary;
+    JUMP _cp_amp_done;
+_cp_amp_attack_finished:
+    R3 = 1;
+    R0 = DM(_cp_amp_mode);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _cp_amp_phase;
+    R3 = 3;
+    R5 = 0;
+_cp_amp_hold_phase:
+    F4 = 1.0;
+    R0 = DM(_cp_amp_hold);
+    R1 = -1;
+    COMP(R0, R1);
+    IF EQ JUMP _cp_amp_hold_infinite;
+    R0 = R0 - R5;
+    IF LE JUMP _cp_amp_hold_finished;
+    R0 = MIN(R0, R2);
+    LCNTR = R0, DO _cp_amp_hold_last UNTIL LCE;
+_cp_amp_hold_last:
+    DM(I1, M6) = F4;
+    R5 = R5 + R0;
+    R2 = R2 - R0;
+    IF EQ JUMP _cp_amp_done;
+_cp_amp_hold_finished:
+    R3 = 4;
+    JUMP _cp_amp_phase;
+_cp_amp_hold_infinite:
+    LCNTR = R2, DO _cp_amp_infinite_last UNTIL LCE;
+_cp_amp_infinite_last:
+    DM(I1, M6) = F4;
+    JUMP _cp_amp_done;
+_cp_amp_decay:
+    F0 = 1.0;
+    F0 = F0 - F7;
+    F0 = F0 * F9;
+    LCNTR = R2, DO _cp_amp_decay_last UNTIL LCE;
+        F4 = F4 * F7, DM(I1, M6) = F4;
+_cp_amp_decay_last:
+        F4 = F4 + F0;
+_cp_amp_done:
+    DM(1, I2) = R3;
+    DM(2, I2) = R5;
+    DM(_cp_amp_end) = F4;
+    R0 = 1;
+    DM(_cp_amp_native) = R0;
+    RTS;
+.SECTION/DM seg_dmda;
+.VAR _cp_amp_mode = 0;
+.VAR _cp_amp_state = 0;
+.VAR _cp_amp_input = 0;
+.VAR _cp_amp_native = 0;
+.VAR _cp_amp_end = 0;
+.VAR _cp_amp_gate = 0;
+.VAR _cp_amp_hold = 0;
+.VAR _cp_amp_options = 0;
+.VAR _cp_amp_copy_src = 0;
+.VAR _cp_amp_copy_dst = 0;
+.PKBSS _cp_amp_staging, 96;
+.VAR _cp_amp_samples = 0;
+.VAR _cp_amp_sample1 = 0;
+.VAR _cp_amp_sample2 = 0;
+.VAR _cp_amp_sample3 = 0;
+.VAR _cp_amp_sample4 = 0;
+.VAR _cp_amp_sample5 = 0;
+.VAR _cp_amp_sample6 = 0;
+.VAR _cp_amp_sample7 = 0;
+.VAR _cp_amp_sample8 = 0;
+.VAR _cp_amp_sample9 = 0;
+.VAR _cp_amp_sample10 = 0;
+.VAR _cp_amp_sample11 = 0;
+.VAR _cp_amp_sample12 = 0;
+.VAR _cp_amp_sample13 = 0;
+.VAR _cp_amp_sample14 = 0;
+.VAR _cp_amp_sample15 = 0;
+.VAR _cp_amp_sample16 = 0;
+.VAR _cp_amp_sample17 = 0;
+.VAR _cp_amp_sample18 = 0;
+.VAR _cp_amp_sample19 = 0;
+.VAR _cp_amp_sample20 = 0;
+.VAR _cp_amp_sample21 = 0;
+.VAR _cp_amp_sample22 = 0;
+.VAR _cp_amp_sample23 = 0;
+.VAR _cp_amp_sample24 = 0;
+.VAR _cp_amp_sample25 = 0;
+.VAR _cp_amp_sample26 = 0;
+.VAR _cp_amp_sample27 = 0;
+.VAR _cp_amp_sample28 = 0;
+.VAR _cp_amp_sample29 = 0;
+.VAR _cp_amp_sample30 = 0;
+.VAR _cp_amp_sample31 = 0;
+.VAR _cp_amp_samples_end = 0;
+
+// V7 borrows one common-envelope output. The original audio remains enveloped;
+// the adapter removes this common factor before track FX and restores it at AMP.
+// Per-lane maxima preserve relative polyphonic envelopes. Blend combines them
+// with the exact audio mix, so a muted pad cannot hold an audible arp tail open.
+.GLOBAL _cp_post_output;
+.GLOBAL _cp_post_init;
+.VAR _cp_post_output = 0;
+.VAR _cp_post_lane = 0;
+.PKBSS _cp_post_pad, 128;
+.PKBSS _cp_post_arp, 128;
+.SECTION/PM seg_pmco;
+_cp_post_init:
+    R0 = DM(_cp_post_output);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R1 = DM(_cp_amp_mode);
+    R1 = PASS R1;
+    IF NE JUMP _cp_post_clear;
+    // An unavailable native snapshot retains the entire legacy AMP path.
+    I1 = R0;
+    F0 = 1.0;
+    LCNTR = 32, DO _cp_post_unity_last UNTIL LCE;
+_cp_post_unity_last:
+    DM(I1,M6) = F0;
+    R0 = 0;
+    DM(_cp_post_output) = R0;
+    RTS;
+_cp_post_clear:
+    I1 = _cp_post_pad;
+    I2 = _cp_post_arp;
+    R0 = 0;
+    .NOCOMPRESS;
+    LCNTR = 32, DO _cp_post_clear_last UNTIL LCE;
+        DM(I1,M6) = R0;
+_cp_post_clear_last:
+        DM(I2,M6) = R0;
+    .COMPRESS;
+    RTS;
+// Before oscillator registers are loaded: preserve I0,R8,R11..15.
+_cp_post_collect:
+    R0 = DM(_cp_post_output);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R0 = DM(_cp_post_lane);
+    I2 = R0;
+    R0 = DM(_cp_amp_native);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_post_ramp;
+    I1 = _cp_amp_samples;
+    .NOCOMPRESS;
+    LCNTR = 32, DO _cp_post_max_last UNTIL LCE;
+        F0 = DM(I1,M6);
+        F1 = DM(I2,M5);
+        F0 = MAX(F0,F1);
+_cp_post_max_last:
+        DM(I2,M6) = F0;
+    .COMPRESS;
+    RTS;
+_cp_post_ramp:
+    // Native bypass happens only for lifecycle/steal ramps under V7 mode1/2.
+    // Match the renderer's update-before-output order, including its final zero.
+    F2 = DM(7,I0);
+    F3 = -0.015625;
+    F5 = 0.0;
+    F6 = 1.0;
+    .NOCOMPRESS;
+    LCNTR = 32, DO _cp_post_ramp_last UNTIL LCE;
+        F2 = F2 + F3, F1 = DM(I2,M5);
+        F2 = MAX(F2,F5);
+        F2 = MIN(F2,F6);
+        F0 = MAX(F2,F1);
+_cp_post_ramp_last:
+        DM(I2,M6) = F0;
+    .COMPRESS;
+    RTS;
+.SECTION/DM seg_dmda;
 
 // Scalar call workspace. V2 loads these from the current instance each block;
 // no persistent voice ownership lives here. Legacy kernel probes use sine.

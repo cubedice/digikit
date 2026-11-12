@@ -105,11 +105,13 @@ const uint32_t *mt_prepare_mapped(MiTransport *t, MiLedger *m,
     } else {
         if (t->faults) return 0;
         /* Publish a pending UI edit before consuming a new controller. This
-         * keeps an eight-note voicing diff plus bend within packet capacity. */
-        if (transform && revisions[0]) {
-            int result=transform(0,m->epoch,m->generations[0],input,0,output);
-            if (result<0 || result>8) { mapping_fault(m,0); return 0; }
-            if (result) { track=0; kind=MT_EVENTS; count=(uint32_t)result; goto assemble; }
+         * keeps an eight-note voicing diff plus bend within packet capacity.
+         * Only configured tracks are asked; the mapper owns at most one. */
+        for (track=0; transform && track<MI_TRACKS; ++track) {
+            if (!revisions[track]) continue;
+            int result=transform(track,m->epoch,m->generations[track],input,0,output);
+            if (result<0 || result>8) { mapping_fault(m,track); return 0; }
+            if (result) { kind=MT_EVENTS; count=(uint32_t)result; goto assemble; }
         }
         int present=mi_peek(m,&first);
         if (!present) return 0;
@@ -143,6 +145,7 @@ assemble:
     if (kind == MT_RESET) {
         t->words[8] = track;
         t->words[9] = t->generation;
+        t->words[10] = m->reset_slot[track]; /* instance slot hint, 0 none */
     } else if (kind == MT_CONFIG_CHUNK || kind == MT_CONFIG_COMMIT) {
         t->words[5] = t->config_revision;
         t->words[8] = track;

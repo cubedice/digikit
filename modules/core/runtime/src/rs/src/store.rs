@@ -96,7 +96,7 @@ pub unsafe fn open_in(scratch: *mut u8, buf: *mut u8, cap: usize) -> Result<Tabl
 
 /// `open_in` with the runtime's own buffers (the staging buffer and the peek sector).
 pub unsafe fn open() -> Result<Table, i32> {
-    open_in(scratch(), stage(), STAGE_BYTES)
+    open_in(scratch(), stage(), stage_bytes())
 }
 
 /// Look `path` up. Leaves garbage in the staging buffer (the table is scanned through it); the result is by value.
@@ -113,7 +113,7 @@ pub unsafe fn find(path: *const u8) -> Result<File, i32> {
 unsafe fn find_unlocked(path: *const u8) -> Result<File, i32> {
     let t = open()?;
     let (io, lay) = (reader(), layout());
-    match store::find(&io, &lay, &t.h, stage(), STAGE_BYTES, path)? {
+    match store::find(&io, &lay, &t.h, stage(), stage_bytes(), path)? {
         Some((_, e)) if e.kind == KIND_FILE => Ok(File { first: e.first, size: e.size, sha: e.sha }),
         _ => Err(E_NOT_FOUND),
     }
@@ -139,7 +139,8 @@ pub unsafe fn read_head(f: &File, head: &mut [u8; 64]) -> Result<(), i32> {
 
 /// Read the file `f` into the staging buffer and check the table's file hash. The file is then at `stage()`.
 pub unsafe fn load_to_stage(f: &File) -> i32 {
-    let r = capacity::stage_fit(f.size, STAGE_BYTES as u32);
+    let capacity = stage_bytes();
+    let r = capacity::stage_fit(f.size, capacity as u32);
     if r != OK {
         return r;
     }
@@ -258,7 +259,7 @@ unsafe fn list_unlocked(prefix: *const u8, out: *mut DkrtStoreEntry, max: u32) -
     let r = store::stable(&io, &lay, fp, || {
         let t = open()?;
         let mut n = 0u32;
-        let r = store::scan(&io, &lay, &t.h, stage(), STAGE_BYTES, |_, e| {
+        let r = store::scan(&io, &lay, &t.h, stage(), stage_bytes(), |_, e| {
             let en = store::entry_of(e);
             let len = store::path_len(e);
             if en.kind != KIND_FILE || en.size == 0 || len >= 64 || len < plen {

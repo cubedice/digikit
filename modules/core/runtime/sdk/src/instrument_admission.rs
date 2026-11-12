@@ -97,6 +97,11 @@ impl Plan {
     pub fn rows(&self) -> &[Option<Row>; MAX_ROWS] {
         &self.rows
     }
+    /// Image, BSS and alignment bytes sent before the instance states. The
+    /// allocator grant, not the file size, determines this transfer extent.
+    pub fn upload_bytes(&self) -> Option<u32> {
+        self.grant.state.start.checked_sub(self.grant.image.start)
+    }
 }
 
 fn pc(byte: u32) -> u32 {
@@ -199,7 +204,7 @@ pub fn prepare(
             || spec.max_events > 8
             || spec.max_controls == 0
             || spec.max_controls > 32
-            || spec.flags & !crate::instrument_descriptor::STATUS_OUTPUT != 0
+            || !crate::instrument_descriptor::valid_flags(spec.flags)
         {
             return Err(Error::Budget);
         }

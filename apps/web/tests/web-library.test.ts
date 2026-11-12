@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { test } from 'vitest';
-import { createWebLibrary } from '../src/transfer/web-library.ts';
+import { createWebLibrary, type ShippedModule } from '../src/transfer/web-library.ts';
 
 const sha = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
 /** A .dkm header: magic, a name at 0x40 and a version at 0x34; the rest zero. */
@@ -27,8 +27,9 @@ const index = {
   ],
 };
 
-function setup(overrides: Record<string, Uint8Array> = {}) {
+function setup(overrides: Record<string, Uint8Array> = {}, catalog: { modules: ShippedModule[] } = index) {
   const asked: string[] = [];
+  const texts: string[] = [];
   const lib = createWebLibrary({
     bytes: async (p) => {
       asked.push(p);
@@ -36,9 +37,13 @@ function setup(overrides: Record<string, Uint8Array> = {}) {
       if (!b) throw new Error(`${p}: 404`);
       return b;
     },
-    text: async (p) => (p === 'index.json' ? JSON.stringify(index) : `text of ${p}`),
+    text: async (p) => {
+      texts.push(p);
+      return p === 'index.json' ? JSON.stringify(catalog) : `text of ${p}`;
+    },
+    url: (p) => `/site/modules/${p}`,
   });
-  return { ...lib, asked };
+  return { ...lib, asked, texts };
 }
 
 test('the library lists the shipped files of the device and reads them', async () => {
@@ -73,4 +78,26 @@ test('the sources are known after a scan and read from the site', async () => {
   await library.scan('dt2');
   assert.deepEqual(source.files('test/sine'), ['module.toml', 'src/module.c']);
   assert.equal(await source.read('test/sine', 'src/module.c'), 'text of src/test/sine/src/module.c');
+  assert.equal(source.download!('test/sine', 'src/module.c'), undefined);
+});
+
+test('large sources stay listed and downloadable without fetching text for preview', async () => {
+  const catalog = {
+    modules: [
+      {
+        ...index.modules[0],
+        source: [...index.modules[0].source, 'src/table.s'],
+        sourceDownloads: { 'src/table.s': 1426504 },
+      },
+    ],
+  };
+  const { library, source, texts } = setup({}, catalog);
+  await library.scan('dt2');
+  assert.ok(source.files('test/sine').includes('src/table.s'));
+  assert.deepEqual(source.download!('test/sine', 'src/table.s'), {
+    url: '/site/modules/src/test/sine/src/table.s',
+    size: 1426504,
+  });
+  await assert.rejects(source.read('test/sine', 'src/table.s'), /available as a download/);
+  assert.deepEqual(texts, ['index.json']);
 });

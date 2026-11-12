@@ -21,6 +21,7 @@ use core::ptr::addr_of_mut;
 use dkrt_sdk::sel::{Record, MAP_N};
 use dkrt_sdk::sticky::{assign, clean, in_range, Event, MAX_KEYS};
 use dkrt_sdk::*;
+use dkrt_sdk::device::{DYN_TYPE_FIRST, DYN_TYPE_LAST};
 
 /// The boot's assignment, peekable by the proof tools (`DKRT_ASSIGN`): `magic` "DKAS", `n` machines planned, `dirty` 1 when the map changed.
 #[repr(C, align(4))]

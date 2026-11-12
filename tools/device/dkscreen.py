@@ -71,15 +71,19 @@ def rtmidi_screenshot(mi: Any, mo: Any, wait: float = 3.0, seq: int = 1) -> byte
         pass
     mo.send_message(list(request_frame(seq)))
     end = time.monotonic() + wait
+    buf = bytearray()
     while time.monotonic() < end:
         m = mi.get_message()
         if not m:
             time.sleep(0.003)
             continue
-        msg = bytes(m[0])
-        p = devrpc.parse_reply(msg)
-        if p and p[0] == SCREENSHOT:
-            return decode(msg)
+        # WinMM/RtMidi delivers a 1194-byte screen reply in 1024-byte
+        # fragments. Preserve them until F7 instead of dropping both pieces.
+        buf += bytes(m[0])
+        for msg in split_messages(buf):
+            p = devrpc.parse_reply(msg)
+            if p and p[0] == SCREENSHOT:
+                return decode(msg)
     raise TimeoutError("no Screenshot reply from the device")
 
 

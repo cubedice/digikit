@@ -12,6 +12,21 @@
 .EXTERN _cp_blend;
 .EXTERN _cp_tune_changed;
 .EXTERN _cp_v2_instance;
+.EXTERN _cp_amp_copy;
+.GLOBAL _ca_prepare;
+// Remember the foreground phases before the pad renders this block. The arp
+// renders afterwards; using the pad's advanced phase would offset it by 32
+// samples. This scratch belongs to one synchronous process call, not a voice.
+_ca_prepare:
+    I0 = R4;
+    I1 = _ca_pad_start;
+    R2 = 32;
+_ca_copy_pad_start:
+    R0 = DM(I0, M6);
+    DM(I1, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _ca_copy_pad_start;
+    RTS;
 _ca_process:
     DM(_ca_state) = R4;
     DM(_ca_input) = R8;
@@ -38,6 +53,8 @@ _ca_native_tuned:
     DM(_ca_restart) = R0;
     R0 = 1;
     DM(_ca_octaves) = R0;
+    R0 = 12;
+    DM(_ca_octave_step) = R0;
     R0 = DM(10, I2);
     R1 = 16;
     COMP(R0, R1);
@@ -52,6 +69,23 @@ _arp_full_controls:
     DM(_ca_order) = R0;
     R0 = DM(11, I1);
     DM(_ca_octaves) = R0;
+    R0 = DM(0, I1);
+    R0 = FEXT R0 BY 0:8;
+    R1 = 8;
+    COMP(R0, R1);
+    IF LT JUMP _ca_span_ready;
+    // CPS8: biased -3..+3 additional octaves, only one direction at a time.
+    R0 = DM(11, I1);
+    R1 = 3;
+    R0 = R0 - R1;
+    R1 = 12;
+    R0 = PASS R0;
+    IF LT R1 = -R1;
+    DM(_ca_octave_step) = R1;
+    R0 = ABS R0;
+    R0 = R0 + 1;
+    DM(_ca_octaves) = R0;
+_ca_span_ready:
     R0 = DM(12, I1);
     DM(_ca_swing) = R0;
     R0 = DM(13, I1);
@@ -227,11 +261,15 @@ _ca_stop_next:
     R0 = 2;
     DM(1, I2) = R0;
 _ca_render:
+    R0 = 0;
+    DM(_ca_rendered) = R0;
     CALL _ca_try_start;
     R4 = DM(_ca_voice);
     R8 = _ca_pcm;
     CALL _cp_render_one;
     DM(_ca_active) = R0;
+    R0 = 1;
+    DM(_ca_rendered) = R0;
     CALL _ca_try_start;
     R1 = DM(_ca_active);
     R0 = R0 OR R1;
@@ -281,10 +319,59 @@ _ca_try_start:
     DM(19, I2) = R0;
     R0 = DM(20, I2);
     DM(21, I2) = R0;
+    CALL _ca_align_phase;
     R0 = 1;
     RTS;
 _ca_no_start:
     R0 = 0;
+    RTS;
+// A base-octave retrigger shares its held owner's oscillator phase. Independent
+// reset phases otherwise cancel at intermediate PAD/ARP mixes according to
+// pitch and onset time. Match both identity and actual tuned rotation: octave
+// extensions and stale/replaced owners keep their independent phase. Drift
+// remains independent after onset, as before. If a ramp completed during this
+// render, the new group first sounds next block and needs the end phase instead.
+_ca_align_phase:
+    R0 = DM(_ca_voice);
+    I1 = R0;
+    R8 = DM(19, I1);
+    R0 = DM(_ca_rendered);
+    R0 = PASS R0;
+    IF NE JUMP _ca_phase_after;
+    I0 = _ca_pad_start;
+    JUMP _ca_phase_find;
+_ca_phase_after:
+    R0 = DM(_ca_state);
+    I0 = R0;
+_ca_phase_find:
+    R10 = 4;
+_ca_phase_owner:
+    R0 = DM(0, I0);
+    COMP(R0, R8);
+    IF NE JUMP _ca_phase_next;
+    R0 = DM(1, I0);
+    R1 = 3;
+    R0 = R0 AND R1;
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE RTS;
+    R0 = DM(4, I0);
+    R1 = DM(4, I1);
+    COMP(R0, R1);
+    IF NE RTS;
+    R0 = DM(5, I0);
+    R1 = DM(5, I1);
+    COMP(R0, R1);
+    IF NE RTS;
+    R0 = DM(2, I0);
+    DM(2, I1) = R0;
+    R0 = DM(3, I0);
+    DM(3, I1) = R0;
+    RTS;
+_ca_phase_next:
+    MODIFY(I0, 8) (NW);
+    R10 = R10 - 1;
+    IF NE JUMP _ca_phase_owner;
     RTS;
 // A delayed onset cannot outlive its candidate. Live bend follows the active
 // candidate without changing its oscillator phase or envelope.
@@ -394,7 +481,7 @@ _ca_find_owner:
 _ca_found_owner:
     R0 = DM(1, I0);
     R12 = FEXT R0 BY 8:7;
-    R0 = FEXT R0 BY 0:5;
+    R0 = FEXT R0 BY 0:6;
     R0 = LSHIFT R0 BY 2;
     R1 = 372; // controller bank + 29 route-bend words
     R0 = R0 + R1;
@@ -422,7 +509,7 @@ _ca_candidate_next:
     COMP(R0, R1);
     IF LT JUMP _ca_candidate;
     RTS;
-// Expand at most four admitted notes to at most twelve octave candidates.
+// Expand at most four admitted notes to at most sixteen octave candidates.
 _ca_expand:
     R0 = DM(_ca_count);
     DM(_ca_base_count) = R0;
@@ -436,11 +523,11 @@ _ca_octave:
 _ca_expand_note:
     R11 = PASS R11;
     IF EQ JUMP _ca_next_octave;
-    R0 = LSHIFT R10 BY 3;
-    R1 = LSHIFT R10 BY 2;
-    R0 = R0 + R1;
+    R1 = DM(_ca_octave_step);
+    R0 = R10 * R1 (SSI);
     R1 = DM(0, I0);
     R12 = R0 + R1;
+    IF LT JUMP _ca_expand_next;
     R1 = 127;
     COMP(R12, R1);
     IF GT JUMP _ca_expand_next;
@@ -468,55 +555,121 @@ _ca_next_octave:
     R10 = R10 + 1;
     JUMP _ca_octave;
 _ca_sort:
-    R10 = DM(_ca_count);
-_ca_sort_pass:
+    // Stable insertion sort with the comparator of the earlier bubble sort, so
+    // the order (equal keys keep expansion order) is unchanged. A record that
+    // must move is held in _ca_hold while larger records shift up one place.
+    // Only the five payload words move; the three padding words stay put.
+    // R8: 0 sorts by pitch; +1/-1 sorts by octave (sign of the octave step),
+    // then by unsigned token serial (admission order within each octave).
+    // Scratch R0..3, R8..12, I0 (as before); I1 is left untouched.
+    R8 = DM(_ca_order);
+    R9 = 3;
+    COMP(R8, R9);
+    R8 = 0;
+    IF NE JUMP _ca_sort_mode;
+    R8 = 1;
+    R0 = DM(_ca_octave_step);
+    R0 = PASS R0;
+    IF LT R8 = -R8;
+_ca_sort_mode:
+    R9 = DM(_ca_count);
+    R12 = 1;
     I0 = _ca_notes;
-    R11 = DM(_ca_count);
-    R11 = R11 - 1;
-    IF LE RTS;
-_ca_sort_pair:
-    R0 = DM(_ca_order);
-    R1 = 3;
-    COMP(R0, R1);
-    IF EQ JUMP _ca_sort_admission;
+_ca_sort_next:
+    // I0 = record i-1. R10/R11 = key of record i.
+    COMP(R12, R9);
+    IF GE RTS;
+    R8 = PASS R8;
+    IF NE JUMP _ca_sort_key_octave;
+    R10 = DM(8, I0);
     R0 = DM(0, I0);
-    R1 = DM(8, I0);
-    JUMP _ca_sort_compare;
-_ca_sort_admission:
-    // Octaves ascend, admission order within each octave. Token serials
-    // are unsigned and never wrap within an ownership generation.
+    COMP(R0, R10);
+    IF LE JUMP _ca_sort_in_place;
+    JUMP _ca_sort_hold;
+_ca_sort_key_octave:
+    R10 = DM(8, I0);
+    R0 = DM(12, I0);
+    R10 = R10 - R0;
+    R10 = R10 * R8 (SSI);
+    R11 = DM(10, I0);
+    R0 = 0x80000000;
+    R11 = R11 XOR R0;
+    CALL _ca_sort_greater;
+    IF LE JUMP _ca_sort_in_place;
+_ca_sort_hold:
+    R0 = DM(8, I0);
+    DM(_ca_hold) = R0;
+    R0 = DM(9, I0);
+    DM(_ca_hold_1) = R0;
+    R0 = DM(10, I0);
+    DM(_ca_hold_2) = R0;
+    R0 = DM(11, I0);
+    DM(_ca_hold_3) = R0;
+    R0 = DM(12, I0);
+    DM(_ca_hold_4) = R0;
+    R3 = R12;
+_ca_sort_shift:
+    // Record j-1 (at I0) is greater than the held record: move it to j.
+    R0 = DM(0, I0);
+    DM(8, I0) = R0;
+    R0 = DM(1, I0);
+    DM(9, I0) = R0;
+    R0 = DM(2, I0);
+    DM(10, I0) = R0;
+    R0 = DM(3, I0);
+    DM(11, I0) = R0;
+    R0 = DM(4, I0);
+    DM(12, I0) = R0;
+    R3 = R3 - 1;
+    IF EQ JUMP _ca_sort_place;
+    MODIFY(I0, -8) (NW);
+    R8 = PASS R8;
+    IF NE JUMP _ca_sort_shift_octave;
+    R0 = DM(0, I0);
+    COMP(R0, R10);
+    IF GT JUMP _ca_sort_shift;
+    JUMP _ca_sort_after;
+_ca_sort_shift_octave:
+    CALL _ca_sort_greater;
+    IF GT JUMP _ca_sort_shift;
+_ca_sort_after:
+    // Record j-1 stays; the held record goes to j, one past I0.
+    MODIFY(I0, 8) (NW);
+_ca_sort_place:
+    R0 = DM(_ca_hold);
+    DM(0, I0) = R0;
+    R0 = DM(_ca_hold_1);
+    DM(1, I0) = R0;
+    R0 = DM(_ca_hold_2);
+    DM(2, I0) = R0;
+    R0 = DM(_ca_hold_3);
+    DM(3, I0) = R0;
+    R0 = DM(_ca_hold_4);
+    DM(4, I0) = R0;
+    // Continue with record i+1: I0 = record i.
+    R0 = LSHIFT R12 BY 5;
+    R1 = _ca_notes;
+    R0 = R0 + R1;
+    I0 = R0;
+    R12 = R12 + 1;
+    JUMP _ca_sort_next;
+_ca_sort_in_place:
+    MODIFY(I0, 8) (NW);
+    R12 = R12 + 1;
+    JUMP _ca_sort_next;
+// Octave-mode comparison of the record at I0 with the key R10/R11; sets the
+// flags of COMP(record, key) on the first differing part (GT: record later).
+_ca_sort_greater:
     R0 = DM(0, I0);
     R1 = DM(4, I0);
     R0 = R0 - R1;
-    R1 = DM(8, I0);
-    R2 = DM(12, I0);
-    R1 = R1 - R2;
-    COMP(R0, R1);
-    IF NE JUMP _ca_sort_compare;
+    R0 = R0 * R8 (SSI);
+    COMP(R0, R10);
+    IF NE RTS;
     R0 = DM(2, I0);
-    R1 = DM(10, I0);
-    R2 = 0x80000000;
-    R0 = R0 XOR R2;
-    R1 = R1 XOR R2;
-_ca_sort_compare:
-    COMP(R0, R1);
-    IF LE JUMP _ca_sorted;
-    R12 = 5;
-_ca_swap:
-    R0 = DM(0, I0);
-    R1 = DM(8, I0);
-    DM(0, I0) = R1;
-    DM(8, I0) = R0;
-    MODIFY(I0, 1) (NW);
-    R12 = R12 - 1;
-    IF NE JUMP _ca_swap;
-    MODIFY(I0, -5) (NW);
-_ca_sorted:
-    MODIFY(I0, 8) (NW);
-    R11 = R11 - 1;
-    IF NE JUMP _ca_sort_pair;
-    R10 = R10 - 1;
-    IF NE JUMP _ca_sort_pass;
+    R1 = 0x80000000;
+    R0 = R0 XOR R1;
+    COMP(R0, R11);
     RTS;
 // Phase units are BPM*notes/quarter per block. Pair thresholds sum to 180000.
 // Swing changes are latched only on complete pair boundaries.
@@ -913,6 +1066,9 @@ _ca_tail_word:
     DM(I0, M6) = R0;
     R2 = R2 - 1;
     IF NE JUMP _ca_tail_word;
+    R0 = DM(_ca_voice);
+    R1 = R10;
+    CALL _cp_amp_copy;
     I0 = R10;
     R0 = 4;
     DM(1, I0) = R0;
@@ -967,14 +1123,22 @@ _ca_tail_next:
 .PKBSS _ca_count, 4;
 .PKBSS _ca_slot, 4;
 .PKBSS _ca_active, 4;
-.PKBSS _ca_notes, 384;
+.PKBSS _ca_rendered, 4;
+.PKBSS _ca_pad_start, 128;
+.PKBSS _ca_notes, 512;
 .PKBSS _ca_pcm, 128;
 
 .PKBSS _ca_bend_note, 4;
 .PKBSS _ca_bend_value, 4;
 
 .PKBSS _ca_order, 4;
+.PKBSS _ca_hold, 4;
+.PKBSS _ca_hold_1, 4;
+.PKBSS _ca_hold_2, 4;
+.PKBSS _ca_hold_3, 4;
+.PKBSS _ca_hold_4, 4;
 .PKBSS _ca_octaves, 4;
+.PKBSS _ca_octave_step, 4;
 .PKBSS _ca_swing, 4;
 .PKBSS _ca_base_count, 4;
 .PKBSS _ca_phase, 4;

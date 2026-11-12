@@ -1,4 +1,4 @@
-//! Allocation-free DKDS6 section validation for instrument-only loads. Mixed
+//! Allocation-free DKDS8 section validation for instrument-only loads. Mixed
 //! legacy voice/effect sections are deliberately rejected until their lifecycle
 //! can be admitted atomically with V2. This module enables no device capability.
 use crate::instrument_admission::Packed;
@@ -38,7 +38,7 @@ impl<'a> Section<'a> {
     pub fn parse(bytes: &'a [u8], device: u32, limits: descriptor::Limits) -> Result<Self, Error> {
         if bytes.len() < 0x50
             || word(bytes, 0) != 0x444b4453
-            || word(bytes, 4) != 6
+            || word(bytes, 4) != 8
             || word(bytes, 0x3c) != 0
         {
             return Err(Error::Header);

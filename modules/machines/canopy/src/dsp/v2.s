@@ -5,10 +5,25 @@
 .GLOBAL _canopy_process;
 .EXTERN _cp_apply_packed;
 .EXTERN _cp_render;
+.EXTERN _ca_prepare;
 .EXTERN _cp_retune_all;
 .EXTERN _cp_native_tune;
 .EXTERN _cp_v2_instance;
 .EXTERN _cp_tune_changed;
+.EXTERN _wt_validate;
+.EXTERN _wt_prepare;
+.EXTERN _wt_finish;
+.EXTERN _wt_state;
+.EXTERN _fm_prepare;
+.EXTERN _fm_validate;
+.EXTERN _fm_finish;
+.EXTERN _fm_output;
+.EXTERN _fm_bank;
+.EXTERN _cp_amp_mode;
+.EXTERN _cp_amp_state;
+.EXTERN _cp_amp_input;
+.EXTERN _cp_post_output;
+.EXTERN _cp_post_init;
 _canopy_reset:
     R0 = PASS R8;
     IF LE JUMP _cv_bad;
@@ -19,9 +34,12 @@ _canopy_reset:
     COMP(R8, R0);
     IF EQ JUMP _cv_replace;
     I0 = R4;
-    R1 = 200;
+    R1 = 186;
     R0 = 0;
 _cv_reset_clear:
+    DM(I0, M6) = R0;
+    DM(I0, M6) = R0;
+    DM(I0, M6) = R0;
     DM(I0, M6) = R0;
     R1 = R1 - 1;
     IF NE JUMP _cv_reset_clear;
@@ -59,10 +77,38 @@ _cv_clear_movement:
     DM(I0, M6) = R0;
     R1 = R1 - 1;
     IF NE JUMP _cv_clear_movement;
+    // Keep WT phase/envelope/transition history through the 64-sample tail.
+    // Controller ownership resets immediately, including every wheel route.
+    R0 = 1056;
+    R0 = R4 + R0;
+    I0 = R0;
+    R1 = 32;
+    R0 = 0;
+_cv_clear_wheel:
+    DM(I0, M6) = R0;
+    R1 = R1 - 1;
+    IF NE JUMP _cv_clear_wheel;
+    // Reset tails use the independent bounded ramp, so native identities can
+    // retire now. A new generation may safely reuse the same token afterwards.
+    I0 = R4;
+    MODIFY(I0,716) (NW);
+    LCNTR = 28, DO _cv_replace_amp_clear UNTIL LCE;
+_cv_replace_amp_clear:
+    DM(I0,M6) = R0;
+    I0 = R4;
+    R0 = 1;
+    DM(263, I0) = R0;
+    R0 = 0;
     JUMP (M13, I13);
 _canopy_process:
     DM(_cv_state) = R4;
     DM(_cv_input) = R8;
+    DM(_wt_state) = R4;
+    DM(_cp_amp_state) = R4;
+    DM(_cp_amp_input) = R8;
+    R0 = 0;
+    DM(_cp_amp_mode) = R0;
+    DM(_cp_post_output) = R0;
     I2 = R8;
     R0 = DM(0, I2);
     R1 = 2;
@@ -76,7 +122,99 @@ _canopy_process:
     IF EQ JUMP _cv_v4;
     R1 = 5;
     COMP(R0, R1);
+    IF EQ JUMP _cv_v5;
+    R1 = 7;
+    COMP(R0, R1);
+    IF EQ JUMP _cv_v7;
+    R1 = 6;
+    COMP(R0, R1);
     IF NE JUMP _cv_bad;
+    R0 = I2;
+    R1 = 0x200fdf80;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = DM(1, I2);
+    R1 = 128;
+    COMP(R0, R1);
+    IF NE JUMP _cv_bad;
+    JUMP _cv_amp_fields;
+_cv_v7:
+    R0 = I2;
+    R1 = 0x200fdf78;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = DM(1,I2);
+    R1 = 136;
+    COMP(R0,R1);
+    IF NE JUMP _cv_bad;
+    R0 = DM(33,I2);
+    R1 = 32;
+    COMP(R0,R1);
+    IF NE JUMP _cv_bad;
+    R0 = DM(32,I2);
+    R1 = 3;
+    R1 = R0 AND R1;
+    IF NE JUMP _cv_bad;
+    R1 = 0x20000000;
+    COMP(R0,R1);
+    IF LT JUMP _cv_bad;
+    R1 = 0x200fdf80;
+    COMP(R0,R1);
+    IF GT JUMP _cv_bad;
+    DM(_cp_post_output) = R0;
+_cv_amp_fields:
+    R0 = DM(24, I2);
+    R1 = 2;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    R0 = DM(31, I2);
+    R0 = PASS R0;
+    IF NE JUMP _cv_bad;
+    R0 = DM(30, I2);
+    R1 = 1;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    R0 = DM(24, I2);
+    R0 = PASS R0;
+    IF EQ JUMP _cv_v6_ready;
+    R0 = DM(26, I2);
+    R1 = -1;
+    COMP(R0, R1);
+    IF EQ JUMP _cv_amp_coefficients;
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+_cv_amp_coefficients:
+    // Positive IEEE float encodings order all bounded coefficients directly.
+    R0 = DM(25, I2);
+    R0 = PASS R0;
+    IF LE JUMP _cv_bad;
+    R1 = 0x3f800000;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = DM(27, I2);
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = DM(28, I2);
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = DM(29, I2);
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+_cv_v6_ready:
+    R0 = DM(24, I2);
+    DM(_cp_amp_mode) = R0;
+    JUMP _cv_status_input;
+_cv_v5:
     R0 = I2;
     R1 = 0x200fdfa0;
     COMP(R0, R1);
@@ -85,6 +223,7 @@ _canopy_process:
     R1 = 96;
     COMP(R0, R1);
     IF NE JUMP _cv_bad;
+_cv_status_input:
     R0 = DM(23, I2);
     R1 = 13;
     COMP(R0, R1);
@@ -102,8 +241,8 @@ _canopy_process:
     I0 = R0;
     R0 = 0;
     DM(0, I0) = R0;
-    R0 = 96;
-    R1 = 96;
+    R0 = DM(1, I2);
+    R1 = R0;
     JUMP _cv_size;
 _cv_v4:
     R0 = I2;
@@ -177,6 +316,44 @@ _cv_six_controls:
     I0 = R0;
     R0 = DM(0, I0);
     R1 = FEXT R0 BY 0:8;
+    R2 = 11;
+    COMP(R1, R2);
+    IF EQ JUMP _cv_ten_controls;
+    R2 = 10;
+    COMP(R1, R2);
+    IF EQ JUMP _cv_ten_controls;
+    R2 = 9;
+    COMP(R1, R2);
+    IF NE JUMP _cv_check_eight;
+    R4 = DM(9, I2);
+    CALL _wt_validate;
+    R0 = PASS R0;
+    IF EQ JUMP _cv_bad;
+    R0 = DM(_cv_input);
+    I2 = R0;
+    R0 = DM(0, I0);
+    JUMP _cv_seven_controls;
+_cv_ten_controls:
+    R4 = DM(9, I2);
+    R0 = DM(1, I0);
+    R1 = 3;
+    COMP(R0, R1);
+    IF NE JUMP _cv_ten_wt;
+    CALL _fm_validate;
+    JUMP _cv_ten_result;
+_cv_ten_wt:
+    CALL _wt_validate;
+_cv_ten_result:
+    R0 = PASS R0;
+    IF EQ JUMP _cv_bad;
+    R0 = DM(_cv_input);
+    I2 = R0;
+    R0 = DM(0, I0);
+    JUMP _cv_seven_controls;
+_cv_check_eight:
+    R2 = 8;
+    COMP(R1, R2);
+    IF EQ JUMP _cv_seven_controls;
     R2 = 7;
     COMP(R1, R2);
     IF EQ JUMP _cv_seven_controls;
@@ -301,12 +478,25 @@ _cv_five_body:
     R0 = PASS R0;
     IF LT JUMP _cv_bad;
     R0 = DM(11, I0);
+    R2 = DM(0, I0);
+    R2 = FEXT R2 BY 0:8;
+    R1 = 8;
+    COMP(R2, R1);
+    IF GE JUMP _cv_spread_range;
     R1 = 1;
     COMP(R0, R1);
     IF LT JUMP _cv_bad;
     R1 = 3;
     COMP(R0, R1);
     IF GT JUMP _cv_bad;
+    JUMP _cv_spread_ok;
+_cv_spread_range:
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+    R1 = 6;
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+_cv_spread_ok:
     R0 = DM(12, I0);
     R1 = 75;
     COMP(R0, R1);
@@ -349,9 +539,32 @@ _cv_four_controls:
     IF NE JUMP _cv_bad;
 _cv_four_body:
     R0 = DM(1, I0);
+    R1 = DM(0, I0);
+    R1 = FEXT R1 BY 0:8;
+    R2 = 11;
+    COMP(R1,R2);
+    IF EQ JUMP _cv_fm_family;
+    R2 = 10;
+    COMP(R1,R2);
+    IF EQ JUMP _cv_fm_family;
+    R2 = 9;
+    COMP(R1, R2);
+    IF EQ JUMP _cv_wt_family;
     R0 = LSHIFT R0 BY -1;
     R0 = PASS R0;
     IF NE JUMP _cv_bad;
+    JUMP _cv_family_ok;
+_cv_fm_family:
+    R1 = 3;
+    JUMP _cv_family_max;
+_cv_wt_family:
+    R1 = 2;
+_cv_family_max:
+    COMP(R0, R1);
+    IF GT JUMP _cv_bad;
+    R0 = PASS R0;
+    IF LT JUMP _cv_bad;
+_cv_family_ok:
     R0 = DM(7, I0);
     R1 = 30;
     COMP(R0, R1);
@@ -414,7 +627,7 @@ _cv_events:
     R1 = FEXT R0 BY 0:8;
     R2 = 7;
     COMP(R1, R2);
-    IF NE JUMP _cv_tune_ready;
+    IF LT JUMP _cv_tune_ready; // CPS7 and CPS8 have native tune.
     R0 = LSHIFT R0 BY -16;
     R1 = 0x4000;
     R0 = R0 - R1;
@@ -446,9 +659,26 @@ _cv_event:
     R0 = DM(5, I0);
     R0 = PASS R0;
     IF NE JUMP _cv_bad;
+    // PANEL owns route 32 (port 2, channel 0). It has notes and scoped
+    // all-sound-off only; it must never alias an external pedal/bend bank.
+    R0 = 0x200;
+    COMP(R5, R0);
+    IF NE JUMP _cv_external_owner;
+    R0 = 2;
+    COMP(R3, R0);
+    IF LE JUMP _cv_owner_ok;
+    R0 = 3;
+    COMP(R3, R0);
+    IF NE JUMP _cv_bad;
+    R0 = 120;
+    COMP(R7, R0);
+    IF NE JUMP _cv_bad;
+    JUMP _cv_owner_ok;
+_cv_external_owner:
     R0 = 0xfffffef0;
     R0 = R5 AND R0;
     IF NE JUMP _cv_bad;
+_cv_owner_ok:
     R0 = 15;
     R10 = R5 AND R0;
     R10 = LSHIFT R10 BY 6;
@@ -546,6 +776,19 @@ _cv_phrase_only:
     R0 = R0 OR R1;
     IF NE JUMP _cv_bad;
 _cv_render:
+    R0 = DM(_cp_amp_mode);
+    R0 = PASS R0;
+    IF NE JUMP _cv_amp_ready;
+    // Returning to a legacy input invalidates native identities. A later valid
+    // snapshot starts each still-owned note coherently instead of resuming stale AMP.
+    R0 = DM(_cv_state);
+    I0 = R0;
+    MODIFY(I0,716) (NW);
+    R0 = 0;
+    LCNTR = 28, DO _cv_amp_clear UNTIL LCE;
+_cv_amp_clear:
+    DM(I0,M6) = R0;
+_cv_amp_ready:
     R0 = 1;
     DM(_cp_v2_instance) = R0;
     R0 = 0;
@@ -593,10 +836,21 @@ _cv_retuned:
 _cv_seeded:
     R0 = 1;
     DM(3, I0) = R0;
+    R4 = DM(_cv_state);
+    R8 = DM(_cv_input);
+    CALL _fm_prepare;
+    R0 = DM(_cv_input);
+    I2 = R0;
     CALL _cv_sound;
     R4 = DM(_cv_state);
     R8 = DM(_cv_input);
+    CALL _wt_prepare;
+    R4 = DM(_cv_state);
+    R8 = DM(_cv_input);
     CALL _cs_prepare;
+    CALL _cp_post_init;
+    R4 = DM(_cv_state);
+    CALL _ca_prepare;
     R0 = DM(_cv_input);
     I2 = R0;
     R8 = DM(5, I2);
@@ -611,6 +865,9 @@ _cv_seeded:
     IF LT JUMP _cv_audio_bad;
     R3 = DM(_cv_pad_active);
     R3 = R0 OR R3;
+    CALL _fm_finish;
+    CALL _wt_finish;
+    CALL _fm_output;
     R0 = DM(_cv_input);
     I0 = R0;
     R0 = DM(5, I0);
@@ -669,6 +926,9 @@ _cv_sound:
     F0 = 0.08; // 6 simultaneous groups * (1+.35+.2) * .08 < .75
     DM(_cp_level) = F0;
     R0 = DM(9, I2);
+    R1 = DM(_fm_bank);
+    R1 = PASS R1;
+    IF NE R0 = R1;
     I1 = R0;
     R0 = DM(_cv_state);
     R1 = 528;
@@ -697,6 +957,8 @@ _cv_sound:
     F2 = F2 + F0;
     DM(0, I0) = F2;
     R0 = DM(1, I1);
+    R1 = 1;
+    R0 = MIN(R0, R1);
     F0 = FLOAT R0;
     F3 = DM(3, I0);
     F0 = F0 - F3;
@@ -789,13 +1051,13 @@ _cv_bad:
 .VAR _canopy_descriptor = 0x444b4954;
 .VAR _canopy_descriptor_1 = 2;
 .VAR _canopy_descriptor_2 = 48;
-.VAR _canopy_descriptor_3 = 1; // V5 status output for the native SRC adapter.
-.VAR _canopy_descriptor_4 = 1;
-.VAR _canopy_descriptor_5 = 800;
+.VAR _canopy_descriptor_3 = 7; // V7 native AMP plus borrowed status/common-envelope outputs.
+.VAR _canopy_descriptor_4 = 4; // instances (tracks); state and process are per instance
+.VAR _canopy_descriptor_5 = 2976;
 .VAR _canopy_descriptor_6 = 8;
 .VAR _canopy_descriptor_7 = 32;
 .VAR _canopy_descriptor_8 = 100000;
-.VAR _canopy_descriptor_9 = 1000;
+.VAR _canopy_descriptor_9 = 1600;
 .VAR _canopy_descriptor_10 = 8;
 .VAR _canopy_descriptor_11 = 128;
 

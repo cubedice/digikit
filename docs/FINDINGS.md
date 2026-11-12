@@ -215,3 +215,36 @@ occupied regions and the remaining production ownership questions.
 DTII physical DSP reset: [active SPI/DMA quiescence and retained ownership](findings/79-dt2-dsp-reset.md) (**[D]**, physical measurement passed; power-cycle recovery and Overloop restoration verified).
 
 CANOPY SRC foundation: [explicit page capability and DT2 input interfaces](findings/80-canopy-src-pages.md) (**[D]**, ColdFire component proof; rendered pages and booted UI acceptance remain open).
+
+CANOPY native UI revision: [native SRC controls and resolved panel ownership](findings/115-canopy-native-ui.md)
+(**[D]/[O]**, native control paths, default pixel comparison, separate panel source,
+USER exit, directional octave spread, fragmented physical screenshots and pad/arp phase interaction).
+
+Overloop reply ownership: [separate status from immediate FX diagnostics](findings/116-overloop-reply-ownership.md)
+(**[D]/[O]**, fixed carrier allocation and component regression; running coexistence recheck pending).
+
+CANOPY wavetable FM: [phase modulation, corrected interior-frame budget coverage and bounded DSP evidence](findings/117-canopy-wavetable-fm.md)
+(**[D]**, CPSB controls and unchanged polyphony/state size; strict interior/AHD
+instruction witnesses, exact neutral PCM and bounded spectrum checks;
+matching compiled UI/audio/preset acceptance passes).
+
+DTII emulator test execution: [device-specific generated DSP blocks and bounded test optimizations](findings/118-dt2-emulator-test-execution.md)
+(**[D]**, paired stock-sample execution preserves exact audio and DSP state;
+acknowledged encoder batching and streamed card hashing reduce test overhead).
+
+CANOPY release ordering: [native AMP after stock track effects](findings/119-canopy-post-fx-amp.md)
+(**[D]/[O]**, physical release plateau reproduced and explained by the actual
+stock bitcrusher; per-note envelope factoring and post-effects application).
+
+CANOPY controls: [compact SRC pages, latch removal and native MOD](findings/120-canopy-controls-modulation.md)
+(**[D]/[V]**, fixed six targets per source family, immutable base controls and
+narrow independently checked firmware-hook ABI; physical installation pending).
+
+CANOPY DSP: [block rendering](findings/122-canopy-dsp-block-rendering.md) (**[D]**,
+wavetable and FM voices render a block at a time; worst callback 99,849 to
+77,017 instructions; bit-identical in all 1,164 CANOPY DSP tests).
+
+CANOPY tracks: [any track, up to four at once](findings/121-canopy-any-track.md)
+(**[D]**, per-track stock row/frame/kit strides, DSP slots bound by reset
+hints, per-track carrier ownership, status focus; four-busy-instance DSP load
+open **[O]**).

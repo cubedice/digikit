@@ -9,6 +9,7 @@ use dkrt_sdk::{*, instrument_admission::{Limits, Range}, instrument_descriptor,
 pub(crate) struct Pending {
     pub rec: usize,
     pub selection: u32,
+    pub image_size: u32,
     pub reg: u32,
     pub reg_size: u32,
     pub section: u32,
@@ -47,6 +48,8 @@ pub unsafe extern "C" fn dkrt_instrument_generation() -> u32 {
 
 // Admission policy is supplied only by the trusted firmware adapter, never a
 // DKM. Eight words: magic, version, tracks, process, reset, depth, stack, state.
+// Tracks (1..16) is the admitted instance count; process and state are the
+// per-instance ceilings, so the total budget and allocation scale with it.
 extern "C" { fn instrument_runtime_policy() -> *const u32; fn instrument_play_faulted(generation: u32) -> i32; }
 pub(crate) unsafe fn policy() -> Option<[u32; 8]> {
     if core::hint::black_box(instrument_runtime_policy as usize) == 0 { return None; }
@@ -54,7 +57,7 @@ pub(crate) unsafe fn policy() -> Option<[u32; 8]> {
     if ptr.is_null() { return None; }
     let mut words = [0; 8];
     for (i, value) in words.iter_mut().enumerate() { *value = core::ptr::read_volatile(ptr.add(i)); }
-    if words[0] != 0x49525031 || words[1] != 1 || words[2] != 1 ||
+    if words[0] != 0x49525031 || words[1] != 1 || !(1..=16).contains(&words[2]) ||
         words[3] == 0 || words[3] > 100000 || words[4] == 0 || words[4] > 10000 ||
         words[5] == 0 || words[5] > 8 || words[6] == 0 || words[6] > 128 ||
         words[7] == 0 || words[7] > 4096 { return None; }
@@ -62,7 +65,9 @@ pub(crate) unsafe fn policy() -> Option<[u32; 8]> {
 }
 pub(crate) unsafe fn descriptor_limits() -> Option<instrument_descriptor::Limits> {
     let p = policy()?;
-    Some(instrument_descriptor::Limits { state_bytes: p[7], cycles_process: p[3],
+    // The descriptor's allocation covers every instance at the 8-byte stride.
+    let state_bytes = ((p[7] + 7) & !7).checked_mul(p[2])?;
+    Some(instrument_descriptor::Limits { state_bytes, cycles_process: p[3],
         cycles_reset: p[4], call_depth: p[5], stack_bytes: p[6] })
 }
 pub(crate) unsafe fn occupied() -> bool { (&*core::ptr::addr_of!(PENDING)).is_some() }
@@ -74,10 +79,10 @@ pub(crate) unsafe fn queue(mut p: Pending) {
     *addr_of_mut!(PENDING) = Some(p);
 }
 impl Pending {
-    pub(crate) fn new(rec: usize, selection: u32, reg: u32, reg_size: u32,
+    pub(crate) fn new(rec: usize, selection: u32, image_size: u32, reg: u32, reg_size: u32,
         section: u32, section_size: u32, output: u32, output_size: u32,
         init: u32, menu: u32, mask: u32, fns: [u32; SLOTS]) -> Self {
-        Self { rec, selection, reg, reg_size, section, section_size, output,
+        Self { rec, selection, image_size, reg, reg_size, section, section_size, output,
             output_size, init, menu, mask, fns, phase: 0, ticket: None, result: E_DSP_XFER, reported: false, type_no: 0, was_live: false }
     }
     unsafe fn discard(&mut self, result: i32) {
@@ -153,7 +158,7 @@ unsafe fn tick_inner(owner: &mut Owner, link: LinkProgress, now: u32) {
                 let old = crate::loader::BOOT_IDX;
                 crate::loader::BOOT_IDX = p.selection;
                 let result = crate::loader::publish_cf(p.rec, p.reg as *const u8,
-                    p.reg_size, p.init, p.mask, &p.fns);
+                    p.reg_size, p.image_size, p.init, p.mask, &p.fns);
                 crate::loader::BOOT_IDX = old;
                 if result == OK {
                     (*addr_of_mut!(crate::DKRT_MENUS))[p.rec] = p.menu;
@@ -191,14 +196,40 @@ unsafe fn prepare(owner: &mut Owner, p: &mut Pending, ledger: &mut instrument_lo
     let Ok(section) = Section::parse(bytes, crate::device(), bounds) else { return E_FORMAT; };
     let Ok(types) = crate::assign::resolve_instruments(&section, p.selection) else { return E_FORMAT; };
     let limits = Limits { l2: Range { start: 0x20000000, end: 0x20080000 },
-        reset_frame: 20000, reset_overhead: 1000, process_total: policy[3],
+        reset_frame: 20000, reset_overhead: 1000,
+        process_total: policy[3].saturating_mul(policy[2]),
         call_depth: policy[5], stack_bytes: policy[6] };
     let output = core::slice::from_raw_parts_mut(p.output as *mut u8, p.output_size as usize);
     let Ok(plan) = owner.admit(p.rec as u32, &section, types.as_slice(), &limits,
         ledger, output, |_| None) else { return E_DSP_XFER; };
     p.type_no = types.as_slice()[0];
     p.ticket = Some(plan.ticket());
-    if owner.begin(plan, output, now, 2000).is_err() { return E_DSP_XFER; }
+    let Some(budget) = plan.upload_bytes().and_then(upload_budget) else { return E_DSP_XFER; };
+    if owner.begin_with_upload_budget(plan, output, now, 2000, budget).is_err() { return E_DSP_XFER; }
     p.phase = 2;
     OK
+}
+
+// Preserve the old 64-KiB / 2000-UI-pass allowance per upload page. Include
+// zero fill and alignment from the admitted grant, and never exceed the
+// executable L2 window. Metadata and recovery retain their separate limits.
+fn upload_budget(bytes: u32) -> Option<u32> {
+    if bytes == 0 || bytes > 0x80000 { return None; }
+    bytes.checked_add(0xffff)?.checked_div(0x10000)?.checked_mul(2000)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::upload_budget;
+
+    #[test]
+    fn upload_budget_covers_admitted_image_and_zero_fill_with_a_fixed_ceiling() {
+        for (bytes, budget) in [(1, 2000), (65536, 2000), (65537, 4000),
+            (207368 + 2240, 8000), (0x80000, 16000)] {
+            assert_eq!(upload_budget(bytes), Some(budget));
+        }
+        for bytes in [0, 0x80001, u32::MAX] {
+            assert_eq!(upload_budget(bytes), None);
+        }
+    }
 }

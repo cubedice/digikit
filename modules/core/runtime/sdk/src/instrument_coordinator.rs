@@ -136,6 +136,21 @@ impl<'image, T: Transport> Coordinator<'image, T> {
         now: u32,
         budget: u32,
     ) -> Result<(), Error> {
+        self.begin_with_upload_budget(plan, image, now, budget, budget)
+    }
+
+    /// Give a large image/BSS upload its own whole-phase deadline. All later
+    /// metadata/initialization phases and uncertain-write drainage retain
+    /// `budget`; neither deadline is restarted by individual chunk progress.
+    #[inline(never)]
+    pub fn begin_with_upload_budget(
+        &mut self,
+        plan: Plan,
+        image: &'image [u8],
+        now: u32,
+        budget: u32,
+        upload_budget: u32,
+    ) -> Result<(), Error> {
         if self.blocked.is_some() {
             return Err(Error::Blocked);
         }
@@ -158,7 +173,7 @@ impl<'image, T: Transport> Coordinator<'image, T> {
         {
             return Err(Error::Budget);
         }
-        let phase = upload::PumpState::new(now, budget).ok_or(Error::Budget)?;
+        let phase = upload::PumpState::with_drain_budget(now, upload_budget, budget).ok_or(Error::Budget)?;
         // No new traffic has started, but an adopted driver must also be idle.
         if !self.driver.is_idle() {
             self.blocked = Some(Failure::Link);

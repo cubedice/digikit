@@ -19,6 +19,7 @@ beforeAll(() => {
       '-fsanitize=undefined',
       path.join(import.meta.dirname, 'canopy-src.c'),
       path.join(source, 'src-state.c'),
+      path.join(source, 'preset.c'),
       path.join(source, 'status.c'),
       path.join(source, 'src-display.c'),
       path.join(source, 'src-clock.c'),
@@ -33,8 +34,22 @@ afterAll(() => {
 });
 test.each([
   'controls',
+  'wavetable',
+  'wavetable-status',
+  'wavetable-fm',
+  'wavetable-fm-status',
+  'list-small-turns',
+  'list-isolation',
+  'list-context',
+  'choice-chord',
+  'choice-wave',
+  'fm-controls',
+  'fm-import',
+  'fm-status',
+  'signed-spread',
   'stale',
   'readonly',
+  'user-chord-exit',
   'clamp',
   'focus',
   'applied',
@@ -59,7 +74,7 @@ test.each([
   'display-capacity',
   'duplicate-tone',
   'display-focus',
-  'pixels',
+  'native-presentation',
 ])('SRC controls and telemetry: %s', (scenario) => {
   expect(execFileSync(binary, [scenario], { encoding: 'utf8', timeout: 2000 }).trim()).toBe('ok');
 });

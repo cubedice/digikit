@@ -5,7 +5,9 @@
 #include "src-clock.h"
 #include "../../../../adapters/machines/src/cf/dt2/src-pages.h"
 #include "dk_fw_draw.h"
+#include "dk_fw_text.h"
 #include "dk_fw_view.h"
+#include "instances.h"
 extern uint32_t dkrt_instrument_type(void),dkrt_instrument_generation(void);
 extern uint32_t ip_src_type(uint8_t *);
 extern uint32_t ip_src_track(uint32_t);
@@ -19,11 +21,15 @@ extern uint32_t ip_src_stock_event(uint8_t *,uint8_t *);
 extern void ip_src_stock_attach(uint8_t *,uint8_t *),ip_src_stock_detach(uint8_t *,uint8_t *);
 extern int32_t ip_src_value(uint8_t *,uint32_t,uint8_t *);
 extern void ip_src_tune_format(int32_t,char *),ip_src_level_format(int32_t,char *);
+extern void ip_src_focus_touch(uint8_t *,uint32_t);
+extern uint8_t ip_src_focus_active(uint8_t *,uint32_t);
+extern const uint32_t ip_src_label_font;
+extern int dk_ui_toast(const char *);
 static uint32_t owner_type,owner_generation,published,last_draw;
 static uint32_t saved_generation,saved_page,saved_valid;
 static uint32_t restore_pending,restore_page,was_owned;
-static uint8_t pixels[1024];
 static CvDisplay display;
+static uint32_t shown_fault;
 typedef struct { uint8_t *event; uint32_t token; } Captured;
 static Captured captured[64];
 static uint32_t cursor;
@@ -39,21 +45,25 @@ static uint32_t context(uint8_t *view)
     if(owner_type && (type!=owner_type || gen!=owner_generation)) {
         mf_src_unregister(owner_type,owner_generation); owner_type=0;
     }
-    uint32_t track=ip_src_track(word(view,0x74)),page=word(view,0x90);
-    int owns=type>=7 && type<32 && gen && track==0 && ip_src_type(view)==type &&
-        !ip_src_alternate(word(view,0x6c));
+    uint32_t track=ip_src_track(word(view,0x74)),page=word(view,0x90),pages=instrument_src_pages();
+    int alternate=ip_src_alternate(word(view,0x6c));
+    /* The SRC page's track is the UI selection for menus, presets and focus. */
+    if(!alternate && track<16) instrument_select_track(track);
+    int owns=type>=7 && type<32 && gen && track<16 && instrument_track_owned(track) &&
+        ip_src_type(view)==type && !alternate;
     if(owns) {
         if(restore_pending) {
             page=restore_page; *(uint32_t *)(view+0x90)=page;
         } else if(!was_owned && saved_valid && saved_generation==gen) {
             page=saved_page; *(uint32_t *)(view+0x90)=page;
         }
-        MfSrcCapability cap={MF_SRC_ABI,sizeof(cap),2,gen};
+        if(page>=pages) { page=2; *(uint32_t *)(view+0x90)=page; }
+        MfSrcCapability cap={MF_SRC_ABI,sizeof(cap),pages,gen};
         if(mf_src_register(type,&cap)) owns=0;
         else { owner_type=type; owner_generation=gen; }
-        saved_generation=gen; saved_page=page>1?0:page; saved_valid=1;
+        saved_generation=gen; saved_page=page; saved_valid=1;
     }
-    if(page>1) page=0;
+    if(page>=pages) page=0;
     was_owned=(uint32_t)owns;
     published=instrument_src_context(track,page,owns);
     ip_src_debug[0]=track; ip_src_debug[1]=page; ip_src_debug[2]=published;
@@ -92,26 +102,44 @@ void ip_src_draw(uint8_t *view,uint8_t *canvas)
     if(raw>=0x400 && raw<=0x7c00) ip_src_tune_format(raw,tune);
     raw=ip_src_value(view,0xd1,&flags);
     if(raw>=0 && raw<=0x7f00) ip_src_level_format(raw,level);
-    instrument_src_display(&display,instrument_src_now(),tune,level); cv_paint(pixels,&display);
-    /* Native values/formatting, bounded cells: never retain stock widget
-     * fragments whose geometry differs from this page. */
-    for(int y=10;y<64;++y) {
-        int x=0;
-        while(x<124) {
-            int start=x,ink=!!(pixels[y*16+x/8]&(128u>>(x&7)));
-            do { ++x; } while(x<124 &&
-                !!(pixels[y*16+x/8]&(128u>>(x&7)))==ink);
-            /* Negative ink XORs the existing firmware pixels; use set/clear. */
-            dk_fw_draw_fill_rect(canvas,start,63-y,x-1,63-y,ink);
+    instrument_src_display(&display,instrument_src_now(),tune,level);
+    uint32_t page=word(view,0x90);
+    for(uint32_t i=0;i<8;++i) {
+        /* The firmware already painted SOUND A/H and the track column.
+         * Custom cells never clear or redraw any part of those controls. */
+        if(page==0 && (i==0 || i==7)) continue;
+        int32_t x=24+26*(int32_t)(i%4),y=i<4?27:0;
+        dk_fw_draw_fill_rect(canvas,x-1,y,x+21,y+25,0);
+        if(display.rotary&(1u<<i)) {
+            /* Reuse the device's native encoder template (CFADE) with a
+             * supplied value, without reading/writing its Sound slot.
+             * Accessor and state are borrowed only for this paint call. */
+            uint32_t *vt=(uint32_t *)pointer(view,0);
+            uint8_t *(*access)(uint8_t *,uint32_t,int32_t)=(void *)(uintptr_t)vt[0xc4/4];
+            uint8_t *a=access(view,0xcc,-1);
+            uint32_t *av=(uint32_t *)pointer(a,0);
+            void (*draw)(uint8_t *,uint32_t,int32_t,uint32_t,uint8_t *,uint8_t *,int32_t,int32_t)=
+                (void *)(uintptr_t)av[0x60/4];
+            draw(a,0xcc,(int32_t)display.knob[i]<<8,0,view+0xb4+20*i,canvas,x,y+7);
+        } else {
+            dk_fw_text_draw_box(canvas,(uint8_t *)(uintptr_t)ip_src_label_font,
+                x+9,y+14,1,0,0,"%s",display.value[i]);
         }
+        /* 0x190 is the firmware's show-values state; native edit focus uses
+         * its own countdown. Do not implement another SRC key/timer policy. */
+        int values=view[0x190] || ip_src_focus_active(view+0x94,i);
+        dk_fw_text_draw_box(canvas,(uint8_t *)(uintptr_t)ip_src_label_font,
+            x+9,y,1,0,0,"%s",values?display.value[i]:display.label[i]);
     }
+    if(display.fault && display.fault!=shown_fault) dk_ui_toast(display.heading);
+    shown_fault=display.fault;
     last_draw=instrument_src_now(); ++ip_src_debug[3];
 }
 void ip_src_attach(uint8_t *view,uint8_t *manager)
 {
     uint32_t gen=dkrt_instrument_generation();
     ip_src_stock_attach(view,manager);
-    if(saved_valid && saved_generation==gen && ip_src_track(word(view,0x74))==0 &&
+    if(saved_valid && saved_generation==gen && instrument_track_owned(ip_src_track(word(view,0x74))) &&
         ip_src_type(view)==dkrt_instrument_type()) {
         restore_page=saved_page; restore_pending=1;
         *(uint32_t *)(view+0x90)=saved_page;
@@ -169,8 +197,7 @@ uint32_t ip_src_key(uint8_t *view,uint8_t *event)
     uint32_t token=context(view),key=word(event,12),page=word(view,0x90);
     published=0;
     (void)instrument_src_context(ip_src_debug[0],page,0);
-    if(token && key>=41 && key<=48 &&
-        (page || (key!=41 && key!=48))) return 1;
+    if(token && key>=41 && key<=48 && (page!=0 || (key!=48 && key!=41))) return 1;
     return ip_src_stock_key(view,event);
 }
 uint32_t ip_src_turn(uint8_t *view,uint8_t *event)
@@ -186,6 +213,12 @@ uint32_t ip_src_turn(uint8_t *view,uint8_t *event)
     int result=instrument_src_encoder(captured_token,encoder-1,(int32_t)word(event,16),instrument_src_now());
     ip_src_debug[11]=(uint32_t)result;
     if(result==CS_NATIVE) return ip_src_stock_turn(view,event);
+    if(result!=CS_STALE) {
+        ip_src_focus_touch(view+0x94,encoder-1);
+        char feedback[32]; instrument_src_feedback(feedback,encoder-1);
+        if(display.fault) dk_ui_toast(display.heading);
+        else if(feedback[0]) dk_ui_toast(feedback);
+    }
     if(result==CS_EDIT) ++ip_src_debug[5];
     if(result==CS_STALE) ++ip_src_debug[6];
     dk_fw_view_invalidate(view); return 1;
@@ -196,9 +229,13 @@ uint32_t ip_src_parameter(uint8_t *view,uint32_t encoder)
 {
     /* V2 has no legacy DK_PARAM descriptor. Keep the native editing path,
      * including modifier handling and Sound persistence, for SOUND A/H. */
-    if(context(view) && !word(view,0x90)) {
-        if(encoder==0) return 0xca;
-        if(encoder==7) return 0xd1;
+    if(context(view)) {
+        if(encoder==8) return 10;
+        if(word(view,0x90)==0) {
+            if(encoder==0) return 0xca;
+            if(encoder==7) return 0xd1;
+        }
+        if(encoder<8) return 0; /* custom cell: no hidden Sound parameter */
     }
     return ip_src_stock_parameter(view,encoder);
 }

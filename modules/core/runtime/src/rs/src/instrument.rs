@@ -138,7 +138,11 @@ pub unsafe fn bind_once() {
         OWNER = Some(Coordinator::new(
             Driver::new(transport, buffer),
             replies,
-            Loads::new(if probe::present() || pending::policy().is_some() { 1 } else { 0 }),
+            Loads::new(match pending::policy() {
+                Some(policy) => policy[2],
+                None if probe::present() => 1,
+                None => 0,
+            }),
         ));
     }
 }

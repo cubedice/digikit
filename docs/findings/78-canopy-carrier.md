@@ -1622,3 +1622,122 @@ Stage 4 is complete at the functional emulator boundary. Hardware load,
 USB/DIN keyboard latency, coexistence and release approval remain Stage 6.
 No physical firmware/module/settings changes were made. Stage 5 (presets and
 named SRC pages) is the next implementation stage.
+
+## CPS9 validation and inherited circular addressing (2026-11-08)
+
+[D] The factory-wavetable integration loaded and published its instrument, then
+the DSP stopped during the first CPS9 configuration. With firmware SHA256
+`cd86b53cbd07e44f3fa4673f766b752bfba613ac6b821873298711555a8f78aa`, the current
+emulator reported an unknown conditional branch at `0xbd0cae`: the `IF NE`
+after the duplicate-value comparison in `_iv_wt_presentation`. The CF guard
+subsequently invalidated the session after 900 blocks without a new heartbeat.
+The guard record was a consequence of the DSP stop, not an upload failure.
+
+The new table walker saved I3-I7 but inherited L3-L6. With circular buffering
+enabled, postincrement through those borrowed DAGs can wrap into unrelated
+memory. In particular, L6 changes traversal of the duplicate-index table; a bad
+index then produces an unknown comparison operand. A focused regression with
+only L6 nonzero reproduces the unknown-predicate stop in the previous source.
+The complete before-fix context matrix records four failures and eleven passes
+in `out/canopy-wavetable-dag-red.log`.
+
+The validator now preserves and clears L3-L6 for its linear table reads, then
+restores them on both acceptance and rejection. I3-I6 are restored; all base
+registers and the stack DAG I7/B7/L7 remain untouched. M6 is already pinned to
+one by the outer MIDI block wrapper. The regression checks valid and malformed
+banks under linear, fully circular, and L6-only contexts, including exact
+I/L/B/MODE1 and modifier preservation.
+
+[D] A further audit found that temporarily borrowing I7 for the duplicate read
+was unsafe even if restored on exit. Interrupts remain enabled in this Audio
+Task hook. The DTII 1.17 kernel context-save code at 0xb88291 adjusts I7 by
+-0x81 words, and the interrupt prologue at 0xb888d8 writes through DM(I7,M7) before
+setting I6 from I7. An interrupt during the duplicate read could therefore
+write into the configuration bank. The validator now uses permitted scratch I0
+for that direct read and reloads its metadata pointer before successful
+revision publication. It never repurposes I7. Two accepted/rejected-path
+regressions inspect I7/B7/L7 after every executed instruction, as well as
+checking atomic bank/revision publication. These are source/database and
+emulator observations, not a physical-device qualification.
+
+## Native AMP per-note bridge (2026-11-09)
+
+[D] The old shared-carrier policy cannot implement native AMP release for a
+polyphonic source. It starts stock release only when CANOPY reports QUIET, after
+the local amplitude envelopes have already ended. Finite stock AHD can instead
+finish while CANOPY still owns held notes; later notes produce no idle-to-active
+edge and the shared envelope remains silent. Retriggering that shared envelope
+for every note would also reshape the notes already sounding.
+
+The opt-in V6 process input carries native AMP parameters to each independent
+note envelope. Descriptor flag 2 requires status flag 1; legacy descriptors keep
+their existing input and shared-envelope behavior. Input words 24..31 are mode
+(1 AHD, 2 ADSR, 0 unavailable), positive attack increment, hold sample count
+(`0xffffffff` for infinite), positive decay multiplier, sustain float, positive
+release multiplier, restart option bit 0, and reserved zero. The early-frame
+adapter reads the previous completed stock configuration, at most one 32-sample
+block old. The same dispatcher task configures the stock record later; this is
+not an independently running writer. Invalid mode, index or sustain disables
+the native snapshot for that block. Mode and validity publish last, and the
+shared bypass becomes eligible only after the module process call succeeds.
+
+[D] DTII 1.17's envelope at `0x1cbb57` uses an eleven-word record: attack, hold,
+decay, sustain, release, restart/fade flag, mode, phase, word 8, hold counter,
+and negative amplitude. The original tables resolve to `0x26ad30` (attack),
+`0x26af30` (decay/release), and `0x26b130` (hold). Defining positive amplitude
+`A = -record[10]`, the kernel outputs old A before advancing it. Attack adds the
+negated attack-table value and clamps at one. AHD then holds for its sample
+count and releases by `A *= q`; ADSR uses `A = q*A + (1-q)*sustain` and its own
+release q after note-off. Finite AHD ignores early note-off; HOLD 127 releases
+on note-off. Decay/release 127 has q=1. Native AHD configuration sets sustain to
+zero and release index equal to decay. The nonzero restart flag starts attack at
+half an increment, except attack index zero starts at one. Record word 5 also
+belongs to the stock gain path and must not be neutralized or overwritten.
+
+The AMP hook skips only the current owned track-0 stereo pair, with a current
+successful V6 marker, equal input/output pointers and the stock 32-sample call
+shape. It restores the saved context and executes the normal C-call epilogue.
+The record, PCM and later gain/filter/pan/FX processing remain intact. Every
+frame expires the marker; missing ownership, stale stamps, old descriptors and
+other call shapes retain the original stock envelope path.
+
+[D] `tests/patchkit/test_canopy_native_amp_firmware.py` executes the actual pinned
+stock configuration and envelope instructions. Eight cases compare 1,024
+samples per curve against CANOPY's helper, covering finite AHD with early
+note-off, infinite HOLD, ADSR independent release, restart, and infinite release
+through direct/protected fixtures. Eight more cases overlay the production hook
+on the original firmware and prove native PCM/record preservation plus exact
+stock PCM/record equality for V5, unowned and stale ownership in both modes.
+All 16 pass in `out/canopy-amp-stock-final.log` (7.68 seconds). Broader component
+and compiled integration checks are still pending at this entry; this is not a
+hardware or final capacity qualification.
+
+## Native AMP compiled acceptance (2026-11-09)
+
+[D] The final firmware and CANOPY package pass the native AMP-page/audio proof
+in `out/canopy-amp-compiled-final.log` (one test, 1,531.50 seconds). The scoped
+`CANOPY_NATIVE_AMP_ONLY=1` path uses the existing Stage 6 entry but returns after
+AMP acceptance; it does not repeat full FM/Overloop/upload coexistence.
+`out/canopy-native-amp.json` contains the configuration and audio measurements.
+
+ADSR REL 0 produces held/tail RMS 0.01067338 / 0.000000866 and retires its voice.
+REL 80 produces held/tail RMS 0.01068884 / 0.00918942; the released voice's
+amplitude falls from 0.903626 to 0.811827 across the tail recording. The requested
+ColdFire Sound value remains 0x5000, the stock DSP index remains 80 and the V6
+release coefficient remains finite, bits 0x3f7fff03, before and during playback.
+The helper reads both sides because a transient DSP index during a knob edit
+alone does not establish the final requested value.
+
+With finite AHD, the first note becomes silent while its key remains held. A
+second note then produces peak 0.01587683 and RMS 0.00693397 while the first
+held token remains at amplitude zero. This exercises the reported silent-retrigger
+case through the compiled adapter and final audio output. Cleanup and fault
+checks pass. The controls are set through the native AMP page.
+
+Firmware SHA256:
+`c79992858ae3ea81aef58b04c70b17956e9458418ded803f5a2b14221a9d9f99`.
+Module whole-file SHA256:
+`1fb39ab17c6a98c0b88f51cffbeef4d24a5aabe2380e4ead588203eab2cc93e4`.
+These are emulator results, not physical qualification. The
+[native AMP handover](../handovers/HANDOVER-2026-11-09-canopy-native-amp.md)
+records component checks, processing ceilings and the still-failing wider gate.

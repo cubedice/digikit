@@ -9,12 +9,12 @@ enum { KB_OK, KB_FULL, KB_RANGE, KB_EMPTY, KB_STALE, KB_EXHAUSTED };
 typedef struct { uint8_t count, intervals[4]; } KbShape;
 typedef struct {
     uint32_t token;
-    uint8_t note, velocity, port, channel, held, pedal, latched, stolen;
+    uint8_t note, velocity, port, channel, held, pedal, stolen;
 } KbKey;
 typedef struct { uint32_t source, token; uint8_t note, velocity, port, channel; } KbVoice;
 typedef struct {
     uint32_t epoch, generation, next_token, pedals, session, revision, phrase;
-    uint8_t mode, previous_mode, latch, previous_latch, type, voicing, selector_base, selector_channel;
+    uint8_t mode, previous_mode, type, voicing, selector_base, selector_channel;
     uint8_t slot, capture_count, capture[4], status, dirty, update;
     KbShape shapes[8];
     /* Loaded preset owns its shape by value; selecting a library slot releases
@@ -29,7 +29,6 @@ void kb_reset(KbState *s, uint32_t epoch, uint32_t generation);
 /* Inputs: zero to eight note events, or one controller. At most eight output
  * changes. Negative return requests a priority reset; never send partial output. */
 int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8]);
-void kb_latch(KbState *s, int enabled);
 int kb_learn_begin(KbState *s);
 int kb_learn_save(KbState *s, uint32_t session, uint32_t revision);
 void kb_learn_cancel(KbState *s);

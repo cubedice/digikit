@@ -28,13 +28,13 @@ void cm_init(CmState *s,uint32_t seed)
     clear(s,sizeof(*s));
     s->random=seed ? seed : 1;
     s->next_token=1;
-    s->config.rate=1; s->config.octaves=1; s->config.gate=50;
+    s->config.rate=1; s->config.gate=50;
     s->config.bpm=120;
 }
 int cm_configure(CmState *s,const CmConfig *c)
 {
     if(c->clock>CM_LOCAL || c->order>CM_RANDOM || c->restart>CM_CONTINUE ||
-       !c->octaves || c->octaves>3 || !c->gate || c->gate>100 || c->swing>75 ||
+       c->octaves < -3 || c->octaves>3 || !c->gate || c->gate>100 || c->swing>75 ||
        c->bpm<30 || c->bpm>300 || c->strum>750 || c->mix>127 || !c->rate ||
        (c->clock==CM_MASTER ? c->rate>16 || c->swing!=0 :
         c->rate!=1 && c->rate!=2 && c->rate!=3 && c->rate!=4 && c->rate!=6 && c->rate!=8))
@@ -98,17 +98,18 @@ static void chord(CmState *s,const CmInput *in,CmEvent *out,uint32_t *n)
 }
 static void onset(CmState *s,CmEvent *out,uint32_t *n)
 {
-    CmNote notes[12]; uint32_t count=0;
-    for(uint32_t oct=0;oct<s->config.octaves;++oct)
+    CmNote notes[16]; uint32_t count=0;
+    int32_t span=s->config.octaves<0 ? -s->config.octaves : s->config.octaves;
+    for(int32_t oct=0;oct<=span;++oct)
         for(uint32_t i=0;i<s->count;++i) {
-            uint32_t pitch=s->chord[i].note+12*oct;
-            if(pitch>127) continue; /* omit unplayable octave extensions */
+            int32_t pitch=s->chord[i].note+12*oct*(s->config.octaves<0 ? -1 : 1);
+            if(pitch<0 || pitch>127) continue; /* omit unplayable octave extensions */
             copy(&notes[count],&s->chord[i],sizeof(CmNote));
             notes[count++].note=(uint8_t)pitch;
         }
     if(!count || !s->config.mix) return;
     if(s->config.order!=CM_AS_PLAYED) {
-        /* Stable bounded insertion sort (at most twelve candidates). */
+        /* Stable bounded insertion sort (at most sixteen candidates). */
         for(uint32_t i=1;i<count;++i) {
             CmNote v; copy(&v,&notes[i],sizeof(v)); uint32_t j=i;
             while(j && notes[j-1].note>v.note) {
@@ -140,7 +141,8 @@ int cm_tick(CmState *s,const CmInput *in,CmEvent out[CM_MAX_EVENTS])
     if(s->initialized && in->block-s->block!=1) return -1;
     for(uint32_t i=0;i<in->count;++i) {
         const CmNote *v=&in->notes[i];
-        if(!v->token || v->note>127 || !v->velocity || v->velocity>127 || v->port>1 || v->channel>15)
+        if(!v->token || v->note>127 || !v->velocity || v->velocity>127 || v->port>2 || v->channel>15 ||
+            (v->port==2 && v->channel))
             return -1;
         for(uint32_t j=0;j<i;++j) if(in->notes[j].token==v->token) return -1;
     }

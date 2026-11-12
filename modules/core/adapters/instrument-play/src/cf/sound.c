@@ -1,140 +1,222 @@
-/* DT2 1.17, admitted track-zero carrier. No cached audition Sound.
- * Layout follows stock track_type and its Sound getter (finding 78). */
+/* DT2 1.17, admitted carriers on up to IP_INSTANCES kit tracks whose Sound
+ * carries the instrument type. No cached audition Sound. Layout follows stock
+ * track_type and its Sound getter (finding 78): kit track objects at +0x6c,
+ * stride 0x3c0. Every instance keeps its own admission identity (finding 121). */
 #include <stdint.h>
 #include "timing.h"
+#include "src-mod.h"
+#include "instances.h"
 extern uint32_t dkrt_instrument_type(void);
 extern uint32_t ip_project(void);
 extern uint32_t ip_kit(uint32_t project);
 extern void ip_refresh(uint32_t source, uint32_t track);
 extern uint32_t pp_current_pattern(void);
 extern volatile uint32_t pp_position[16];
-/* state, current source, refresh count, pattern, invalidations, machine type */
-volatile uint32_t ip_admission[8];
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
-extern void instrument_sound_suspend(void);
-/* [6] active in-place loads; [7] observed loads of the tracked Sound. */
-static IpStartTiming start_timing;
-static uint32_t last_project, last_kit, last_source, last_pattern, last_type;
+volatile uint32_t ip_admission[IP_INSTANCES * 8];
+volatile uint32_t ip_tracks[IP_INSTANCES] = {IP_NONE, IP_NONE, IP_NONE, IP_NONE};
+volatile uint32_t ip_track = IP_NONE;
+typedef struct {
+    IpStartTiming timing;
+    uint32_t project, kit, source, pattern, type, track;
+} IpSeen;
+static IpSeen seen[IP_INSTANCES];
 
 static int ram(uint32_t p)
 {
     return p >= 0x42000000u && p < 0x48000000u && !(p & 3u);
 }
 
-static uint32_t sound(uint32_t *project, uint32_t *kit)
+static uint32_t kit_now(uint32_t *project)
 {
-    uint32_t track, table, getter, source;
-    *project=ip_project();
+    *project = ip_project();
     if (!ram(*project)) return 0;
-    *kit=ip_kit(*project);
-    if (!ram(*kit)) return 0;
-    track=*kit+0x6c; /* track 0; stock stride for other tracks is 0x3c0 */
-    table=*(const uint32_t *)(uintptr_t)track;
+    uint32_t kit = ip_kit(*project);
+    return ram(kit) ? kit : 0;
+}
+
+/* The Sound of kit track t, or zero. */
+static uint32_t track_sound(uint32_t kit, uint32_t t)
+{
+    if (!kit || t >= 16) return 0;
+    uint32_t track = kit + 0x6c + 0x3c0u * t;
+    uint32_t table = *(const uint32_t *)(uintptr_t)track;
     if (table < 0x40000400u || table >= 0x40400000u || (table & 3u)) return 0;
-    getter=*(const uint32_t *)(uintptr_t)(table+0x28);
+    uint32_t getter = *(const uint32_t *)(uintptr_t)(table + 0x28);
     if (getter < 0x40000400u || getter >= 0x40400000u || (getter & 1u)) return 0;
-    source=((uint32_t (*)(uint32_t))(uintptr_t)getter)(track);
+    uint32_t source = ((uint32_t (*)(uint32_t))(uintptr_t)getter)(track);
     return ram(source) ? source : 0;
 }
 
-uint32_t instrument_sound_tune(void)
+/* A scheduled destination pattern is not yet the sounding identity: do not
+ * call its getters until the committed boundary catches up. */
+static int switching(void)
 {
-    uint32_t project=0,kit=0,source=sound(&project,&kit);
-    uint32_t type=dkrt_instrument_type();
-    if(!source || !type || *(const uint8_t *)(uintptr_t)(source+0xa2)!=type) return 0x4000;
+    uint32_t sr = dkrt_irq_mask();
+    uint32_t pattern = pp_current_pattern(), running = pp_position[14] == 1;
+    uint32_t flags = pp_position[5], committed = pp_position[6];
+    dkrt_irq_restore(sr);
+    return running && (flags & 3) == 3 && committed && pattern != committed;
+}
+
+/* Once per UI tick. An instance keeps its track while that track still
+ * carries the instrument among the lowest IP_INSTANCES such tracks; freed
+ * instances take newly qualifying tracks, lowest track first, keeping their
+ * sound settings. In-place loads and pattern hand-overs keep the old set. */
+void instrument_sound_scan(void)
+{
+    for (uint32_t i = 0; i < IP_INSTANCES; ++i)
+        if (ip_admission[i * 8 + 6]) return;
+    if (switching()) return;
+    uint32_t project = 0, kit = kit_now(&project), type = dkrt_instrument_type();
+    uint32_t want = 0, count = 0;
+    for (uint32_t t = 0; type && kit && t < 16 && count < IP_INSTANCES; ++t) {
+        uint32_t source = track_sound(kit, t);
+        if (source && *(const uint8_t *)(uintptr_t)(source + 0xa2) == type) {
+            want |= 1u << t;
+            ++count;
+        }
+    }
+    uint32_t sr = dkrt_irq_mask();
+    for (uint32_t i = 0; i < IP_INSTANCES; ++i) {
+        uint32_t t = ip_tracks[i];
+        if (t < 16 && (want & (1u << t))) want &= ~(1u << t);
+        else ip_tracks[i] = IP_NONE;
+    }
+    for (uint32_t t = 0; t < 16 && want; ++t) {
+        if (!(want & (1u << t))) continue;
+        for (uint32_t i = 0; i < IP_INSTANCES; ++i)
+            if (ip_tracks[i] == IP_NONE) { ip_tracks[i] = t; break; }
+        want &= ~(1u << t);
+    }
+    uint32_t lowest = IP_NONE;
+    for (uint32_t i = 0; i < IP_INSTANCES; ++i)
+        if (ip_tracks[i] < lowest) lowest = ip_tracks[i];
+    ip_track = lowest;
+    dkrt_irq_restore(sr);
+}
+
+uint32_t instrument_sound_tune(uint32_t instance)
+{
+    uint32_t project = 0;
+    if (instance >= IP_INSTANCES) return 0x4000;
+    uint32_t source = track_sound(kit_now(&project), ip_tracks[instance]);
+    uint32_t type = dkrt_instrument_type();
+    if (!source || !type || *(const uint8_t *)(uintptr_t)(source + 0xa2) != type) return 0x4000;
     /* DT2 1.17 parameter 0xca: native Sound slot25, signed 8.8 semitones
-     * biased by 0x4000. Read the current Sound, never the selected UI track. */
-    uint32_t raw=*(const uint16_t *)(uintptr_t)(source+0x14+25*2);
-    return raw>=0x400 && raw<=0x7c00 ? raw : 0x4000;
+     * biased by 0x4000. Read this instance's Sound, never the selected UI track. */
+    uint32_t raw = *(const uint16_t *)(uintptr_t)(source + 0x14 + 25 * 2);
+    return raw >= 0x400 && raw <= 0x7c00 ? raw : 0x4000;
+}
+
+int instrument_sound_admitted(uint32_t track)
+{
+    uint32_t type = dkrt_instrument_type();
+    if (track >= 16 || !type) return 0;
+    for (uint32_t i = 0; i < IP_INSTANCES; ++i)
+        if (ip_tracks[i] == track && ip_admission[i * 8] && ip_admission[i * 8 + 5] == type)
+            return 1;
+    return 0;
 }
 
 /* -1: close routes/reset before another refresh; 0: wait; 1: prepared.
  * Poll even while configuration is in flight. Never refresh in an old generation.
  * The deserializer hook brackets in-place loads of the tracked Sound. */
-int instrument_sound_prepare(int allow_refresh)
+int instrument_sound_prepare(uint32_t instance, int allow_refresh)
 {
-    if (ip_admission[6]) return 0;
-    uint32_t sr=dkrt_irq_mask();
-    uint32_t pattern=pp_current_pattern(), running=pp_position[14] == 1;
-    uint32_t flags=pp_position[5], committed=pp_position[6], block=pp_position[12];
+    if (instance >= IP_INSTANCES) return 0;
+    volatile uint32_t *a = &ip_admission[instance * 8];
+    IpSeen *last = &seen[instance];
+    if (a[6]) return 0;
+    uint32_t sr = dkrt_irq_mask();
+    uint32_t pattern = pp_current_pattern(), running = pp_position[14] == 1;
+    uint32_t flags = pp_position[5], committed = pp_position[6], block = pp_position[12];
     dkrt_irq_restore(sr);
     /* A scheduled destination is not yet the sounding identity. Do not even
      * call its getter until the committed boundary catches up. */
     if (running && (flags & 3) == 3 && committed && pattern != committed) {
-        (void)ip_start_hold(&start_timing,running,1,block,0);
-        return ip_admission[0] ? 1 : 0;
+        (void)ip_start_hold(&last->timing, running, 1, block, 0);
+        return a[0] ? 1 : 0;
     }
-    uint32_t project=0, kit=0;
-    uint32_t source=sound(&project,&kit);
-    uint32_t type=source ? *(const uint8_t *)(uintptr_t)(source+0xa2) : UINT32_MAX;
-    uint32_t same=ip_admission[0] && project == last_project && kit == last_kit &&
-        source == last_source && pattern == last_pattern && type == last_type &&
-        type == dkrt_instrument_type();
-    int hold=ip_start_hold(&start_timing,running,(flags & 3) == 3 && committed,block,same);
+    uint32_t project = 0, kit = kit_now(&project), track = ip_tracks[instance];
+    uint32_t source = track_sound(kit, track);
+    uint32_t type = source ? *(const uint8_t *)(uintptr_t)(source + 0xa2) : UINT32_MAX;
+    uint32_t same = a[0] && project == last->project && kit == last->kit &&
+        source == last->source && pattern == last->pattern && type == last->type &&
+        track == last->track && type == dkrt_instrument_type();
+    int hold = ip_start_hold(&last->timing, running, (flags & 3) == 3 && committed, block, same);
     if (running) {
         if ((flags & 3) != 3 || !committed) {
             /* START can precede its first committed boundary. Preserve only
              * the already verified identity, for a bounded observation window. */
             if (hold) return 1;
             /* Unknown timing cannot authorize a new generation. */
-            if (ip_admission[0]) {
-                ip_admission[0]=0;
-                ++ip_admission[4];
+            if (a[0]) {
+                a[0] = 0;
+                ++a[4];
                 return -1;
             }
             return 0;
         }
     }
-    uint32_t changed=project != last_project || kit != last_kit ||
-        source != last_source || pattern != last_pattern || type != last_type;
-    /* A committed switch within this project retains the instrument instance.
-     * Refresh the destination stock carrier, but do not reset the MIDI ledger,
+    uint32_t changed = project != last->project || kit != last->kit ||
+        source != last->source || pattern != last->pattern || type != last->type ||
+        track != last->track;
+    /* A committed switch within this project retains the instance when the
+     * destination keeps the instrument on the same track. Refresh the
+     * destination stock carrier, but do not reset the MIDI ledger,
      * configuration, oscillators or controllers. Same-pattern Sound loads still
-     * invalidate through the deserializer hook; project/machine changes reset.
-     * Stage 1 has one fixed configuration and one admitted dynamic type. */
-    uint32_t retain=ip_admission[0] && pattern && last_pattern &&
-        pattern != last_pattern && project == last_project &&
-        source && kit && type == dkrt_instrument_type() && type == last_type;
-    last_project=project; last_kit=kit; last_source=source;
-    last_pattern=pattern; last_type=type;
-    ip_admission[1]=source;
-    ip_admission[3]=pattern;
-    ip_admission[5]=type;
+     * invalidate through the deserializer hook; project/machine/track changes
+     * reset. One fixed configuration and one admitted dynamic type. */
+    uint32_t retain = a[0] && pattern && last->pattern &&
+        pattern != last->pattern && project == last->project &&
+        source && kit && type == dkrt_instrument_type() && type == last->type &&
+        track == last->track;
+    last->project = project; last->kit = kit; last->source = source;
+    last->pattern = pattern; last->type = type; last->track = track;
+    a[1] = source;
+    a[3] = pattern;
+    a[5] = type;
     if (retain) {
-        ip_refresh(source,0);
-        ++ip_admission[2];
+        instrument_mod_defaults(source);
+        ip_refresh(source, track);
+        ++a[2];
         return 1;
     }
-    if (changed && ip_admission[0]) {
-        ip_admission[0]=0;
-        ++ip_admission[4];
+    if (changed && a[0]) {
+        a[0] = 0;
+        ++a[4];
         return -1;
     }
-    if (ip_admission[0]) return 1;
+    if (a[0]) return 1;
     if (!allow_refresh || !source || (type == 0 || type != dkrt_instrument_type()) || !pattern ||
         pp_current_pattern() != pattern) return 0;
-    ip_refresh(source,0);
-    ++ip_admission[2];
-    ip_admission[0]=1;
+    instrument_mod_defaults(source);
+    ip_refresh(source, track);
+    ++a[2];
+    a[0] = 1;
     return 1;
 }
 
 /* Called before the stock deserializer writes the destination. No Sound data is
- * copied here. An unrelated destination cannot reset this track. The cookie
- * pairs end with begin even if selected identity changes during the load. */
+ * copied here. An unrelated destination cannot reset any instance. The cookie
+ * (a mask of matched instances) pairs end with begin even if identities change. */
 uint32_t ip_sound_begin(uint32_t destination, uint32_t record)
 {
-    uint32_t sr=dkrt_irq_mask(), cookie=0;
-    if (destination && record && destination == ip_admission[1] &&
-        *(const uint32_t *)(uintptr_t)(record+4) == 3) {
-        ++ip_admission[6];
-        ++ip_admission[7];
-        cookie=1;
-        if (ip_admission[0]) {
-            ip_admission[0]=0;
-            ++ip_admission[4];
-            instrument_sound_suspend();
+    uint32_t sr = dkrt_irq_mask(), cookie = 0;
+    if (destination && record && *(const uint32_t *)(uintptr_t)(record + 4) == 3) {
+        for (uint32_t i = 0; i < IP_INSTANCES; ++i) {
+            volatile uint32_t *a = &ip_admission[i * 8];
+            if (destination != a[1]) continue;
+            ++a[6];
+            ++a[7];
+            cookie |= 1u << i;
+            if (a[0]) {
+                a[0] = 0;
+                ++a[4];
+                instrument_sound_suspend(i);
+            }
         }
     }
     dkrt_irq_restore(sr);
@@ -143,7 +225,8 @@ uint32_t ip_sound_begin(uint32_t destination, uint32_t record)
 
 void ip_sound_end(uint32_t cookie)
 {
-    uint32_t sr=dkrt_irq_mask();
-    if (cookie && ip_admission[6]) --ip_admission[6];
+    uint32_t sr = dkrt_irq_mask();
+    for (uint32_t i = 0; i < IP_INSTANCES; ++i)
+        if ((cookie & (1u << i)) && ip_admission[i * 8 + 6]) --ip_admission[i * 8 + 6];
     dkrt_irq_restore(sr);
 }

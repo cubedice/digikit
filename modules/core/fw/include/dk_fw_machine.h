@@ -11,6 +11,8 @@
 /* cf.machine.fn.list.entry: no sig yet */
 /* cf.machine.fn.name.long: no sig yet */
 /* cf.machine.fn.permit: no sig yet */
+/* cf.machine.fn.refresh_track: no sig yet */
+/* cf.machine.fn.selection_build: no sig yet */
 /* cf.machine.fn.type_page.count: no sig yet */
 /* cf.machine.fn.type_reader: no sig yet */
 /* Table of the machine list: one long per stock machine type (28 bytes on DT2, 20 on DN2), read by the machine list builder; core/machines copies it with the added types inserted. */

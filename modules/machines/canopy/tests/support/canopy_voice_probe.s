@@ -1,17 +1,22 @@
 // Test-only raw voice adapter. This exposes CANOPY's pre-AMP output through
 // core/dsp-voice without pretending to arm the stock carrier or implement V2.
-#include "../../modules/machines/canopy/src/dsp/voice.s"
-#include "../../modules/machines/canopy/src/dsp/tuning.s"
-#include "../../modules/machines/canopy/src/dsp/instrument.s"
-#include "../../modules/core/adapters/midi-events/src/dsp/carrier.s"
-#include "../../modules/core/adapters/midi-events/src/dsp/envelope.s"
-#include "../../modules/core/adapters/midi-events/src/dsp/workspace.s"
-#include "../../modules/core/adapters/midi-events/src/dsp/carrier-frame.s"
-#include "../../modules/core/adapters/midi-events/src/dsp/velocity.s"
-#include "../../modules/core/adapters/midi-events/src/dsp/velocity-entry.s"
-#include "../../modules/machines/canopy/src/dsp/carrier-prepare.s"
-#include "../../modules/core/adapters/midi-events/src/dsp/block.s"
-#include "../../modules/machines/canopy/src/dsp/render.s"
+#include "../../src/dsp/voice.s"
+#include "../../src/dsp/fm.s"
+#include "../../src/dsp/fm-tables.s"
+#include "../../src/dsp/wavetable.s"
+#include "../../src/dsp/wavetables.s"
+#include "../../src/dsp/tuning.s"
+#include "../../src/dsp/events.s"
+#include "../../src/dsp/instrument.s"
+#include "../../../../core/adapters/midi-events/src/dsp/carrier.s"
+#include "../../../../core/adapters/midi-events/src/dsp/envelope.s"
+#include "../../../../core/adapters/midi-events/src/dsp/workspace.s"
+#include "../../../../core/adapters/midi-events/src/dsp/carrier-frame.s"
+#include "../../../../core/adapters/midi-events/src/dsp/velocity.s"
+#include "../../../../core/adapters/midi-events/src/dsp/velocity-entry.s"
+#include "../../src/dsp/carrier-prepare.s"
+#include "../../../../core/adapters/midi-events/src/dsp/block.s"
+#include "../../src/dsp/render.s"
 .SECTION/PM seg_pmco;
 .GLOBAL _mi_workspace_next;
 .GLOBAL _mi_velocity_next;
@@ -21,6 +26,9 @@ _mi_workspace_next:
     RTS;
 .GLOBAL _mi_receive;
 .GLOBAL _mi_reply_build;
+.GLOBAL _instrument_registry_block;
+_instrument_registry_block:
+    RTS; // registry admission has a separate production-adapter fixture
 _mi_receive:
     RTS; // packet behavior has separate receiver/consumer integration tests
 _mi_reply_build:

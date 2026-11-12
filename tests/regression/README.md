@@ -1,8 +1,11 @@
 # @digi/regression
 
 Vitest suites that drive the emulator daemon (`emud`) through `@digi/test-support` and `@digi/control-client`.
-All device suites share one config, `vitest.config.ts`, with named projects. Device projects run one file at a
-time (the stock project may run files in parallel, `REGRESSION_JOBS`, set by the Nx launcher from its budget, default 2).
+All device suites share one config, `vitest.config.ts`, with named projects. The `stock`, `runtime` and
+`conformance` projects can run independent files in parallel, bounded by `REGRESSION_JOBS` (default 2,
+set by the Nx launcher from its CPU budget). Projects configured with `singleFork`, including `fx-dn2`
+and `fx-dt2`, remain serial. Each parallel file owns its daemon, mutable card state and artifact paths;
+commands within a shared session remain ordered. See [test concurrency and control batching](../../docs/TESTING.md#inputs).
 
 ## Layout
 

@@ -44,3 +44,21 @@ def test_png_is_scaled_and_has_the_frame_size():
         int.from_bytes(png[16:20], "big") == 256
         and int.from_bytes(png[20:24], "big") == 128
     )
+
+
+@pytest.mark.parametrize("chunk", [64, 1024, 4096])
+def test_rtmidi_screen_reassembles_driver_fragments(chunk):
+    shadow = bytes(range(256)) * 4
+    wire = reply(S.HEADER + shadow)
+
+    class Port:
+        pending = []
+
+        def get_message(self):
+            return (self.pending.pop(0), 0.0) if self.pending else None
+
+        def send_message(self, request):
+            self.pending = [wire[i : i + chunk] for i in range(0, len(wire), chunk)]
+
+    port = Port()
+    assert S.rtmidi_screenshot(port, port) == shadow

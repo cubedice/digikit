@@ -180,6 +180,26 @@ _dv_mkl:
     R0 = R0 OR R2;
     JUMP _dv_mkl;
 _dv_mke:
+    // The optional trusted V2 table (`_dv_scan_v2`, same row form) adds its types too: without them every voice but voice 0
+    // would take the cheap path, and an instrument could only sound on track 0. Absent (0), the mask is the legacy table's.
+    R1 = _instrument_voice_rows;
+    R1 = PASS R1;
+    IF EQ JUMP _dv_mkd;
+    I4 = R1;
+_dv_mkv:
+    R1 = DM(0, I4);
+    MODIFY(I4, 24) (NW);
+    R1 = PASS R1;
+    IF EQ JUMP _dv_mkd;
+    IF LT JUMP _dv_mkv;
+    R2 = 31;
+    COMP(R1, R2);
+    IF GT R1 = PASS R2;
+    R2 = 1;
+    R2 = LSHIFT R2 BY R1;
+    R0 = R0 OR R2;
+    JUMP _dv_mkv;
+_dv_mkd:
     DM(_dv_mask) = R0;
     R0 = 0;                               // v
 _dv_nodiag:

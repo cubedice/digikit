@@ -20,7 +20,16 @@ def floats(words):
 @pytest.fixture(scope="module")
 def engine():
     source = "\n".join(
-        (SOURCE / name).read_text() for name in ("voice.s", "tuning.s", "blend.s")
+        (SOURCE / name).read_text()
+        for name in (
+            "voice.s",
+            "fm.s",
+            "fm-tables.s",
+            "tuning.s",
+            "blend.s",
+            "wavetable.s",
+            "wavetables.s",
+        )
     )
     source += """
 .SECTION/PM seg_pmco;
@@ -45,7 +54,7 @@ _cp_test_loop:
 .VAR _cp_test_bank = 0;
 """
     obj = pk_sharc.assemble(source)
-    sections, initial, address = {}, {}, 0x20020000
+    sections, initial, address = {}, {}, 0x200A0000
     for name, (blob, align, _) in obj.data.items():
         address = (address + align - 1) // align * align
         sections[name] = address
@@ -362,6 +371,23 @@ def test_pad_spectrum_is_bounded_before_nyquist(engine, family, note):
     ]
     assert max(abs(a - b) for a, b in zip(pcm, expected, strict=True)) < 0.0001
     assert all(math.isfinite(x) and abs(x) < 0.125 for x in pcm)
+
+
+@pytest.mark.parametrize("family", ["velvet", "reed"])
+def test_equal_velocity_chromatic_play_notes_have_even_sustained_gain(engine, family):
+    second, third = (0, -1 / 9) if family == "velvet" else (0.35, 0.2)
+    rms = []
+    for note in range(48, 85):
+        call = engine(
+            dict(second_start=second, third_start=third, level=0.08, attack=1.0)
+        )
+        call("note_on", 1, note, 100)
+        _, _, pcm = call("render_many", blocks=512)
+        rms.append(math.sqrt(sum(x * x for x in pcm) / len(pcm)))
+    spread_db = 20 * math.log10(max(rms) / min(rms))
+    print(f"{family}: equal-velocity MIDI 48..84 RMS spread {spread_db:.4f} dB")
+    assert min(rms) > 0.04
+    assert spread_db < 0.15
 
 
 def test_pad_full_pool_and_fast_retrigger_keep_fixed_headroom(engine):

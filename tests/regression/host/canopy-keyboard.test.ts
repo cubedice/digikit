@@ -73,6 +73,68 @@ function run(commands: string): State[] {
     .map((line) => JSON.parse(line) as State);
 }
 const notes = (s: State) => s.voices.map((v) => v[0]).sort((a, b) => a! - b!);
+
+test('PANEL keys retain independent ownership beside identical USB and DIN pitches', () => {
+  const [held, panelUp, usbUp, released] = run(
+    'panelon 0 60 90\non 0 0 60 80\non 0 1 60 70\ntick\npaneloff 0\ntick\noff 0 0 60 0\ntick\noff 0 1 60 0\ntick',
+  );
+  expect(held!.voices.map((v) => v[3]).sort()).toEqual([0, 1, 2]);
+  expect(panelUp!.voices.map((v) => v[3]).sort()).toEqual([0, 1]);
+  expect(usbUp!.voices.map((v) => v[3])).toEqual([1]);
+  expect(released!.voices).toEqual([]);
+});
+
+test('PANEL release uses physical key identity through octave and scale changes', () => {
+  const [held, remaining, released] = run(
+    'panelon 0 60 90\npanelon 1 64 90\npanelon 2 67 90\npanelon 0 72 90\ntick\npaneloff 1\ntick\npaneloff 0\npaneloff 2\ntick',
+  );
+  expect(notes(held!)).toEqual([60, 64, 67]);
+  expect(notes(remaining!)).toEqual([60, 67]);
+  expect(released!.voices).toEqual([]);
+});
+
+test('PANEL cancel clears local voices without releasing MIDI or sharing its pedal', () => {
+  const [held, cancelled, afterOldUp] = run(
+    'cc 0 0 64 127\ntick\npanelon 0 60 90\non 0 0 64 90\ntick\npanelcancel\ntick\npaneloff 0\ntick',
+  ).slice(1);
+  expect(notes(held!)).toEqual([60, 64]);
+  expect(notes(cancelled!)).toEqual([64]);
+  expect(afterOldUp!.voices).toEqual(cancelled!.voices);
+  const [released, clear] = run('cc 0 0 64 127\ntick\npanelon 0 67 90\npaneloff 0\ntick\npanelcancel\ntick').slice(1);
+  expect(released!.voices).toEqual([]);
+  expect(clear!.voices).toEqual([]);
+});
+
+test.each([0, 1])('mode %i releases every panel, USB and DIN phrase on key-up without pedal', (mode) => {
+  for (const route of ['panel', 'usb', 'din']) {
+    const on = route === 'panel' ? 'panelon 0 60 90' : `on 0 ${route === 'usb' ? 0 : 1} 60 90`;
+    const off = route === 'panel' ? 'paneloff 0' : `off 0 ${route === 'usb' ? 0 : 1} 60 0`;
+    const [held, released, idle] = run(`mode ${mode}\n${on}\ntick\n${off}\ntick\ntick`);
+    expect(notes(held!)).toEqual(mode === 1 ? [60, 64, 67] : [60]);
+    expect(released!.voices).toEqual([]);
+    expect(released!.packet[1]! >>> 8).toBe(mode === 1 ? 3 : 1);
+    expect(idle!.voices).toEqual([]);
+    expect(idle!.packet).toEqual([]);
+  }
+});
+
+test('PANEL generation tombstones cannot release a fresh same-pitch key', () => {
+  const [old, fresh, afterOldUp, clear] = run(
+    'panelon 0 60 90\ntick\nreset\npanelon 1 60 90\ntick\npaneloff 0\ntick\npaneloff 1\ntick',
+  );
+  expect(notes(old!)).toEqual([60]);
+  expect(notes(fresh!)).toEqual([60]);
+  expect(afterOldUp!.voices).toEqual(fresh!.voices);
+  expect(clear!.voices).toEqual([]);
+});
+
+test('PANEL runs ROOT and LEARN without a MIDI selector channel', () => {
+  const [root, up] = run('mode 1\nselector 0\npanelon 0 60 100\ntick\npaneloff 0\ntick');
+  expect(notes(root!)).toEqual([60, 64, 67]);
+  expect(up!.voices).toEqual([]);
+  const [learned] = run('learn\npanelon 0 60 90\npanelon 1 64 90\npanelon 2 67 90\ntick');
+  expect(learned!.capture).toEqual([60, 64, 67]);
+});
 test('PLAY preserves exact token, velocity and phase identity of untouched notes', () => {
   const [a, b, c] = run('on 0 0 60 40\non 0 0 64 90\ntick\non 0 0 67 127\ntick\noff 0 0 64 0\ntick');
   expect(notes(a!)).toEqual([60, 64]);
@@ -103,15 +165,25 @@ test('reset tombstone absorbs old C-off after fresh C-on', () => {
   const states = run('on 0 0 60 90\nreset\non 0 0 60 110\noff 0 0 60 0\noff 0 0 60 0\ntick');
   expect(states[0]!.voices).toEqual([]);
 });
-test('pedal, latch replacement and latch off retain only current ownership', () => {
+test('sustain pedal retains released notes through new keys and releases only pedal ownership', () => {
   const states = run(
-    'latch 1\non 0 0 60 90\non 0 0 64 90\ntick\ncc 0 0 64 127\ntick\noff 0 0 60 0\noff 0 0 64 0\ntick\non 0 0 62 100\ntick\non 0 0 65 100\ntick\nlatch 0\ntick\noff 0 0 62 0\noff 0 0 65 0\ntick\ncc 0 0 64 0\ntick',
+    'on 0 0 60 90\non 0 0 64 90\ntick\ncc 0 0 64 127\ntick\noff 0 0 60 0\noff 0 0 64 0\ntick\non 0 0 62 100\ntick\non 0 0 65 100\ntick\ncc 0 0 64 0\ntick\noff 0 0 62 0\noff 0 0 65 0\ntick',
   );
   expect(notes(states[2]!)).toEqual([60, 64]);
-  expect(notes(states[3]!)).toEqual([62]);
+  expect(notes(states[3]!)).toEqual([60, 62, 64]);
+  expect(notes(states[4]!)).toEqual([60, 62, 64, 65]);
   expect(notes(states[5]!)).toEqual([62, 65]);
-  expect(notes(states[6]!)).toEqual([62, 65]);
-  expect(notes(states[7]!)).toEqual([]);
+  expect(notes(states[6]!)).toEqual([]);
+});
+
+test.each([0, 1])('ROOT sustain on port %i keeps the chord until pedal-up after its root key is released', (port) => {
+  const [held, pedal, released, clear] = run(
+    `mode 1\non 0 ${port} 60 90\ntick\ncc 0 ${port} 64 127\ntick\noff 0 ${port} 60 0\ntick\ncc 0 ${port} 64 0\ntick`,
+  );
+  expect(notes(held!)).toEqual([60, 64, 67]);
+  expect(pedal!.voices).toEqual(held!.voices);
+  expect(released!.voices).toEqual(held!.voices);
+  expect(clear!.voices).toEqual([]);
 });
 test('same-batch selectors run before roots and remain silent, with last-root priority', () => {
   const states = run(
@@ -182,13 +254,45 @@ test('lost ACK deadline resets ownership rather than replaying a fresh chord', (
   expect(b!.reset).not.toBe(0);
   expect(b!.packet[1]).toBe(2);
 });
-test('CC123 honors pedal, CC121 releases it and centers bend, CC120 clears latch', () => {
+test('CC123 honors pedal, CC121 releases it and centers bend, CC120 clears held voices', () => {
   const states = run(
-    'on 0 0 60 90\ntick\ncc 0 0 64 127\ntick\ncc 0 0 123 0\ntick\ncc 0 0 121 0\ntick\nlatch 1\non 0 0 64 90\ntick\ncc 0 0 120 0\ntick',
+    'on 0 0 60 90\ntick\ncc 0 0 64 127\ntick\ncc 0 0 123 0\ntick\ncc 0 0 121 0\ntick\non 0 0 64 90\ntick\ncc 0 0 120 0\ntick',
   );
   expect(notes(states[2]!)).toEqual([60]);
   expect(notes(states[3]!)).toEqual([]);
   expect(notes(states[5]!)).toEqual([]);
+});
+
+test('mod wheel retains its external route through PLAY and ROOT without changing voices or phrase', () => {
+  for (const mode of [0, 1])
+    for (const port of [0, 1])
+      for (const channel of [0, 15]) {
+        const [held, wheel, retry, acked, unchanged] = run(
+          `mode ${mode}\non ${channel} ${port} 60 100\ntick\ncc ${channel} ${port} 1 93\nhold\nhold\ntick\nsnapshot`,
+        );
+        expect(wheel!.voices).toEqual(held!.voices);
+        expect(wheel!.packet[4]).toBe(held!.packet[4]);
+        expect(wheel!.packet[1]).toBe(5 | (1 << 8));
+        expect(wheel!.packet[8]).toBe(0);
+        expect(wheel!.packet[10]).toBe(3 | (port << 4) | (channel << 6) | (1 << 14) | (93 << 21));
+        expect(retry!.packet).toEqual(wheel!.packet);
+        expect(acked!.packet).toEqual(wheel!.packet);
+        expect(unchanged!.queued).toBe(0);
+        expect(unchanged!.voices).toEqual(held!.voices);
+      }
+});
+
+test('controller reset clears only the route wheel while preserving held notes; sound off retains wheel', () => {
+  const [held, reset, panic] = run('on 15 1 60 90\ntick\ncc 15 1 121 0\ntick\ncc 15 1 120 0\ntick');
+  expect(reset!.voices).toEqual(held!.voices);
+  expect(reset!.packet[1]).toBe(5 | (2 << 8));
+  expect(reset!.packet[8]).toBe(0);
+  expect(reset!.packet[11]).toBe(0);
+  expect(reset!.packet[10]).toBe(4 | (1 << 4) | (15 << 6) | (64 << 21));
+  expect(reset!.packet[13]).toBe(3 | (1 << 4) | (15 << 6) | (1 << 14));
+  expect(panic!.voices).toEqual([]);
+  expect(panic!.packet[1]).toBe(5 | (1 << 8));
+  expect(panic!.packet[10]).toBe(3 | (1 << 4) | (15 << 6) | (120 << 14));
 });
 test('output-token exhaustion requests priority reset without partial send', () => {
   const [s] = run('token 0\non 0 0 60 90\ntick');
@@ -232,6 +336,16 @@ test('a live voicing edit emits an output-only packet without consuming queued p
   expect(c!.queued).toBe(1);
 });
 
+test.each([1, 2, 3])('USER keeps learned intervals while retaining generated voicing %i', (voicing) => {
+  const states = run(
+    `mode 1\nvoicing ${voicing}\nlearn\non 0 0 60 90\non 0 0 67 90\non 0 0 76 90\ntick\n` +
+      'save\ntype 10\non 0 0 62 90\ntick\ntype 0\ntick',
+  );
+  expect(notes(states.at(-2)!)).toEqual([62, 69, 78]);
+  const generated = voicing === 1 ? [62, 69, 78] : voicing === 2 ? [66, 69, 74] : [69, 74, 78];
+  expect(notes(states.at(-1)!)).toEqual(generated);
+});
+
 test('panic and controller reset fall back across ports without exceeding eight commands', () => {
   for (const cc of [120, 121]) {
     const states = run(
@@ -260,12 +374,13 @@ test('valid checksum cannot conceal malformed template fields', () => {
   }
 });
 
-test('LEARN isolates latch and restores it on cancel', () => {
-  const states = run(
-    'latch 1\nlearn\non 0 0 60 90\ntick\noff 0 0 60 0\ntick\ncancel\non 0 0 64 90\ntick\noff 0 0 64 0\ntick',
-  );
+test('LEARN remembers released notes without holding them and restores normal key-up on cancel', () => {
+  const states = run('learn\non 0 0 60 90\ntick\noff 0 0 60 0\ntick\ncancel\non 0 0 64 90\ntick\noff 0 0 64 0\ntick');
   expect(states[1]!.voices).toEqual([]);
-  expect(notes(states[3]!)).toEqual([64]);
+  expect(states[1]!.capture).toEqual([60]);
+  expect(notes(states[2]!)).toEqual([64]);
+  expect(states[2]!.mode).toBe(0);
+  expect(states[3]!.voices).toEqual([]);
 });
 
 interface SettingsState {
@@ -284,6 +399,36 @@ function settings(commands: string): SettingsState[] {
     .split('\n')
     .map((s) => JSON.parse(s) as SettingsState);
 }
+test('Status wraps a long mode/chord pair without clipping either part', () => {
+  const rows = JSON.parse(
+    execFileSync(settingsBinary, {
+      input: 'statuswrap\n',
+      encoding: 'utf8',
+      timeout: 2000,
+    }),
+  );
+  expect(rows).toEqual(['ROOT', 'C#maj7/G# +123']);
+});
+test('CANOPY Settings exposes bounded native Status rows and clears stale performance state', () => {
+  const [fresh, stale] = execFileSync(settingsBinary, {
+    input: 'statusview 1\nstatusview 0\n',
+    encoding: 'utf8',
+    timeout: 2000,
+  })
+    .trim()
+    .split('\n')
+    .map((s) => JSON.parse(s) as { owns: number; foreign: number; entry: string; visible: number; rows: string[] });
+  expect(fresh!.owns).toBe(1);
+  expect(fresh!.foreign).toBe(0);
+  expect(fresh!.entry).toBe('STATUS');
+  expect(fresh!.visible).toBe(0);
+  expect(fresh!.rows.slice(1, 4)).toEqual(['C#-1 D#-1', 'G#-1 A#-1', 'PEDAL DOWN']);
+  expect(fresh!.rows.some((row) => row.includes('LATCH'))).toBe(false);
+  expect(fresh!.rows.every((row) => row.length < 24)).toBe(true);
+  expect(stale!.rows[0]).toContain('LINK LOST');
+  expect(stale!.rows.slice(1, 4)).toEqual(['-- --', '-- --', 'PEDAL --']);
+  expect(stale!.rows.some((row) => row.includes('LATCH'))).toBe(false);
+});
 test('SAVE is RAM-immediate, card-deferred, restores after restart and never performs I/O under IRQ mask', () => {
   const [ram, durable, restored] = settings(
     'learn\nkey 60\nkey 67\ntick\nsave\nsnapshot\ntick\nsnapshot\nrestart\nsnapshot',
@@ -348,23 +493,32 @@ test('source or fault suspension cancels isolated capture and preserves saved me
 });
 
 test('direct controller plus unflushed UI diff fails within its output buffer', () => {
-  const [s] = run(
-    'mode 1\nlearn\non 0 0 60 90\non 0 0 61 90\non 0 0 62 90\non 0 0 63 90\ntick\nsave\ntype 11\non 0 0 60 90\ntick\ntype 10\nvoicing 3\ndirectcc 120\nsnapshot',
-  ).slice(-1);
+  const states = run(
+    'mode 1\nlearn\non 0 0 60 90\non 0 0 61 90\non 0 0 62 90\non 0 0 63 90\ntick\nsave\n' +
+      'type 11\nvoicing 3\non 0 0 60 90\ntick\ntype 10\ndirectcc 120\nsnapshot',
+  );
+  const before = states.at(-2)!;
+  const s = states.at(-1)!;
+  // The generated inversion shares no pitch with learned [60,61,62,63].
+  // Four offs, four ons and the other route's controller require nine outputs.
+  expect(notes(before)).toEqual([67, 71, 72, 76]);
   expect(s!.result).toBe(-1);
+  expect(s.voices).toEqual(before.voices);
 });
 
-test('mapped phrases survive retry and same-chord latch replacement commits without note retrigger', () => {
-  const [a, release, b, retry] = run(
-    'mode 1\nlatch 1\non 0 0 60 90\ntick\noff 0 0 60 0\ntick\non 0 0 60 90\nhold\nhold',
+test('mapped phrases survive retry and overlapping same roots commit without note retrigger', () => {
+  const [a, b, retry, acked, release, clear] = run(
+    'mode 1\non 0 0 60 90\ntick\non 0 0 60 90\nhold\nhold\ntick\noff 0 0 60 0\ntick\noff 0 0 60 0\ntick',
   );
   expect(release!.voices).toEqual(a!.voices);
   expect(b!.voices).toEqual(a!.voices);
+  expect(acked!.packet).toEqual(b!.packet);
   expect(b!.packet[1]).toBe(5 | (1 << 8));
   expect(b!.packet[10]).toBe(5); // metadata-only commit
   expect(b!.packet[4]! >>> 31).toBe(1);
   expect(b!.packet[4]! & 0x7fffffff).toBe((a!.packet[4]! & 0x7fffffff) + 1);
   expect(retry!.packet).toEqual(b!.packet);
+  expect(clear!.voices).toEqual([]);
 });
 
 test('PLAY chord edits retain phrase while fresh attack after silence advances it', () => {

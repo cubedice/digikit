@@ -190,7 +190,7 @@ desc = [
     "u32 magic // DK_I_MAGIC",
     "u32 version // DK_INSTRUMENT_V2",
     "u32 size_bytes // DK_I_DESC_BYTES",
-    "u32 flags // Bit 0: V5 status-output capability; other bits must be zero",
+    "u32 flags // Bit0: V5 status; bit1: V6 native AMP; bit2: V7 post-AMP gains; each bit requires all lower bits; other bits zero",
     "u32 tracks // 1..DK_I_MAX_TRACKS isolated instances",
     "u32 state_bytes // Nonzero bytes per track, multiple of four; zeroed only at creation",
     "u32 max_events // 1..DK_I_MAX_EVENTS events consumed atomically per block",
@@ -1747,7 +1747,7 @@ dsp_area_bytes = 524288  # the 17-bit word offset of a core/dsp-link chunk reach
 param_rows = 16     # parameter rows core/dynreg reserves (tied to its manifest by packages/patchkit/tests/devdata.rs)
 page_rows = 8       # page rows core/dynreg reserves (Digitone II)
 machine_rows = 8    # run-time machine types core/dynreg reserves (tied to its manifest by packages/patchkit/tests/devdata.rs)
-stage_bytes = 65536  # the runtime's staging buffer: the largest .dkm file (patchkit refuses a larger one)
+stage_bytes = 262144 # maximum per-device staging buffer; pack and runtime enforce the selected device's smaller limit
 
 [limits.format]     # format limits of the `.dkm` loader (packages/dkneeds, modules/core/runtime/src/rs/src/loader.rs, dsp.rs, arena.rs); generated into every language
                     # (`patchkit gen`: dkneeds::NAME, dkproto.py, gen_proto.ts). Also generated, from other keys: MAX_VOICES ([limits.max] machine_rows) and MAX_FX ([limits.max] fx_slots).

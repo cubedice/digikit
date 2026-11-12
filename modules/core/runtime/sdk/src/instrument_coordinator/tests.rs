@@ -29,6 +29,8 @@ struct Wire {
     reject: u32,
     starts: u32,
     polls: u32,
+    pending_polls_per_write: u32,
+    pending_polls: u32,
     snapshots: u32,
     source: Option<(u32, u32, *const u8, usize)>,
     words: [u32; 16],
@@ -56,6 +58,7 @@ unsafe impl Transport for Link {
             }
             assert!(w.source.is_none());
             w.starts += 1;
+            w.pending_polls = w.pending_polls_per_write;
             w.source = Some((window, dest, source, bytes as usize));
             (0, w.starts)
         })
@@ -70,6 +73,10 @@ unsafe impl Transport for Link {
             }
             if w.mode == 3 {
                 return -1;
+            }
+            if w.pending_polls != 0 {
+                w.pending_polls -= 1;
+                return 0;
             }
             let (window, dest, source, bytes) = w.source.take().unwrap();
             let data = unsafe { core::slice::from_raw_parts(source, bytes) };
@@ -350,9 +357,13 @@ struct Fixture {
     ticket: Ticket,
     offsets: [u32; 1],
     lengths: [u32; 1],
+    ledger_bytes: u32,
 }
 impl Fixture {
     fn new() -> Self {
+        Self::sized(300, 300)
+    }
+    fn sized(image_bytes: u32, bss_bytes: u32) -> Self {
         WIRE.with_borrow_mut(|w| {
             *w = Wire {
                 mode: 1,
@@ -376,18 +387,19 @@ impl Fixture {
             )
             .unwrap();
         let (mut offsets, mut lengths) = ([0], [0]);
+        let ledger_bytes = (image_bytes + bss_bytes + 127).max(2048) & !63;
         let grant = loads
             .reserve_memory(
                 ticket,
                 &mut Ledger {
                     base: 0x20010000,
-                    bytes: 2048,
+                    bytes: ledger_bytes,
                     offsets: &mut offsets,
                     lengths: &mut lengths,
                 },
                 &MemoryRequest {
-                    image_bytes: 300,
-                    bss_bytes: 300,
+                    image_bytes,
+                    bss_bytes,
                     state_bytes: 64,
                     align: 16,
                 },
@@ -454,6 +466,7 @@ impl Fixture {
             ticket,
             offsets,
             lengths,
+            ledger_bytes,
         }
     }
     fn begin(&mut self, now: u32, budget: u32) {
@@ -466,7 +479,7 @@ impl Fixture {
             self.ticket,
             &mut Ledger {
                 base: 0x20010000,
-                bytes: 2048,
+                bytes: self.ledger_bytes,
                 offsets: &mut self.offsets,
                 lengths: &mut self.lengths,
             },
@@ -507,6 +520,105 @@ fn moved_owner_keeps_buffer_and_drives_all_rows_before_publishing() {
         assert_eq!(w.image.len(), 600);
         assert_eq!(w.operations, [(1, 4, 0), (2, 6, 0), (3, 4, 1), (4, 6, 1), (5, 2, 0), (6, 2, 1)]);
     });
+}
+
+#[test]
+fn large_upload_budget_completes_canopy_sized_image_with_pending_polls() {
+    static LARGE_IMAGE: [u8; 207368] = [0xa5; 207368];
+    for enlarged in [false, true] {
+        let mut f = Fixture::sized(LARGE_IMAGE.len() as u32, 2240);
+        let plan = f.plan.take().unwrap();
+        assert_eq!(plan.upload_bytes(), Some(209608));
+        WIRE.with_borrow_mut(|w| w.pending_polls_per_write = 1);
+        if enlarged {
+            f.owner.begin_with_upload_budget(plan, &LARGE_IMAGE, 0, 2000, 8000).unwrap();
+        } else {
+            f.owner.begin(plan, &LARGE_IMAGE, 0, 2000).unwrap();
+        }
+        let result = f.run(0, 8100);
+        if enlarged {
+            assert_eq!(result, Progress::Complete {
+                command: Command::Publish(f.ticket), recovered: None,
+            });
+            WIRE.with_borrow(|w| {
+                assert_eq!(w.image.len(), 209608);
+                assert_eq!(&w.image[..LARGE_IMAGE.len()], &LARGE_IMAGE);
+                assert!(w.image[LARGE_IMAGE.len()..].iter().all(|&b| b == 0));
+            });
+        } else {
+            assert_eq!(result, Progress::Complete {
+                command: Command::Release(f.ticket), recovered: Some(Failure::Timeout),
+            });
+            WIRE.with_borrow(|w| assert!(w.image.len() < 209608));
+            f.release().unwrap();
+        }
+    }
+}
+
+#[test]
+fn larger_upload_deadline_keeps_short_drain_bound_and_retains_pending_source() {
+    let mut f = Fixture::new();
+    WIRE.with_borrow_mut(|w| w.mode = 0);
+    f.owner.begin_with_upload_budget(f.plan.take().unwrap(), &IMAGE, 0, 20, 80).unwrap();
+    for now in 0..100 {
+        assert_eq!(f.owner.tick(now), Progress::Pending);
+    }
+    assert_eq!(f.owner.tick(100), Progress::Blocked(Failure::Timeout));
+    assert!(f.release().is_err());
+    WIRE.with_borrow(|w| {
+        assert_eq!(w.starts, 1);
+        assert!(w.operations.is_empty());
+        let (_, _, source, bytes) = w.source.unwrap();
+        assert_eq!(unsafe { core::slice::from_raw_parts(source, bytes) }, &IMAGE[..256]);
+    });
+    let polls = WIRE.with_borrow(|w| w.polls);
+    assert_eq!(f.owner.tick(1000), Progress::Blocked(Failure::Timeout));
+    WIRE.with_borrow(|w| assert_eq!(w.polls, polls));
+}
+
+#[test]
+fn larger_upload_budget_does_not_extend_install_initialize_or_detach() {
+    const PHASE_BUDGET: u32 = 60;
+    for initialize in [false, true] {
+        let mut f = Fixture::new();
+        f.owner.begin_with_upload_budget(f.plan.take().unwrap(), &IMAGE, 0, PHASE_BUDGET, 8000).unwrap();
+        let mut phase_at = 0;
+        for now in 0..100 {
+            assert_eq!(f.owner.tick(now), Progress::Pending);
+            let phase = &f.owner.job.as_ref().unwrap().phase;
+            if if initialize { matches!(phase, Phase::Initialize(_)) }
+                else { matches!(phase, Phase::Install(_)) } {
+                phase_at = now;
+                break;
+            }
+        }
+        assert!(phase_at > 0);
+        WIRE.with_borrow_mut(|w| w.silent = true);
+        for now in phase_at + 1..phase_at + PHASE_BUDGET {
+            assert_eq!(f.owner.tick(now), Progress::Pending);
+        }
+        assert_eq!(f.owner.tick(phase_at + PHASE_BUDGET), Progress::Pending);
+        assert!(matches!(&f.owner.job.as_ref().unwrap().phase, Phase::Detach(_)));
+        for now in phase_at + PHASE_BUDGET + 1..phase_at + 2 * PHASE_BUDGET {
+            assert_eq!(f.owner.tick(now), Progress::Pending);
+        }
+        assert_eq!(f.owner.tick(phase_at + 2 * PHASE_BUDGET), Progress::Blocked(Failure::Timeout));
+        assert!(f.release().is_err());
+        assert!(f.owner.loads().lookup(17).is_none());
+    }
+}
+
+#[test]
+fn invalid_upload_or_phase_budget_starts_no_transfer() {
+    for bad in [0, 0x80000000, u32::MAX] {
+        for (phase, upload) in [(bad, 8000), (2000, bad)] {
+            let mut f = Fixture::new();
+            assert_eq!(f.owner.begin_with_upload_budget(f.plan.take().unwrap(), &IMAGE, 0, phase, upload),
+                Err(Error::Budget));
+            assert_eq!(f.owner.loads.start(f.ticket), Ok(Command::SendImage(f.ticket)));
+            WIRE.with_borrow(|w| assert_eq!((w.starts, w.polls, w.snapshots), (0, 0, 0)));
+        }
+    }
 }
 
 #[test]

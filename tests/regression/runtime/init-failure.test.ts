@@ -2,7 +2,10 @@ import fs from 'node:fs';
 import { LOG_KIND } from '@digi/dk-session/gen_proto';
 import { expect, test } from 'vitest';
 import { withSession } from '../support.ts';
-import { liveOptions, liveProtocol, moduleArtifact, settleLive } from './live.ts';
+import { liveOptions } from './devices.ts';
+import { liveProtocol } from './protocol.ts';
+import { moduleArtifact } from './install.ts';
+import { waitEmulated } from './waits.ts';
 
 // CF publication and command ownership need the real loader, but no DSP code.
 const handle = withSession({ ...liveOptions('dt2'), dsp: 'zero', runtime: {}, restart: false });
@@ -10,7 +13,7 @@ const handle = withSession({ ...liveOptions('dt2'), dsp: 'zero', runtime: {}, re
 test('failed initialization removes service handlers before freeing the module', async () => {
   const session = handle.session;
   const dk = liveProtocol(session);
-  await settleLive(session);
+  await waitEmulated(session, 12_000);
   const bytes = fs.readFileSync(moduleArtifact(session.options.device, 'test/svc-init-fail'));
   const storePath = 'modules/svc-init-fail.dkm';
   await dk.put(storePath, bytes);

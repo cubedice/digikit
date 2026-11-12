@@ -28,6 +28,38 @@ CANOPY's native adapter now registers this capability only for its admitted
 track and live generation. It revokes its old generation before registering a
 replacement. Unregistered machines retain their original page policy.
 
+### Three-page native storage extension [D]
+
+The capability now permits three pages for CANOPY's wavetable TONE page. A
+count of three cannot safely fit in the original two-entry allocation. The
+draw hook calls `mf_src_apply_pages`, which grows a two-entry native vector
+to twelve bytes using the firmware's existing allocation/free pair. It copies
+both original IDs, appends the first (knob) page ID, publishes the replacement,
+then frees the original storage. Repeat draws reuse that allocation. A null
+allocation leaves the original vector intact and bounds the selected page to
+its existing count. A larger existing capacity and its page IDs are preserved.
+
+This ownership follows the current DT2 1.17 bytes: ParameterPageView constructor
+`0x4006b260` allocates the vector at `0x4006b334` through `0x4011ebd0`, a thunk
+to the existing `cf.mem.fn.new` anchor at `0x4011e954`. SourcePageView's temporary
+vector cleanup at `0x400175de` calls `0x4011ebdc`, a thunk to
+`cf.mem.fn.free` at `0x4011eb5a`. ParameterPageView destructor `0x40199f08`
+loads the current vector begin at `0x40199f62` and frees it through that same
+thunk at `0x40199f6a`; it will therefore free the replacement allocation normally.
+No static or module-owned storage is installed in the firmware object.
+
+Returning to a stock machine restores two visible entries and clamps a stale
+third-page index to zero. Ordinary added machines restore one. The allocation
+capacity remains three until the native view is destroyed, avoiding repeated
+growth/shrink operations during track switches. No new native parameter slots
+are introduced and the V1 module page ABI remains unchanged.
+
+The owner component suite `tests/patchkit/test_pk_machines_fw.py` passes all
+34 cases on the ColdFire core, including allocation failure, repeated draw,
+index bounds, stock/ordinary transitions, preservation of a larger native
+capacity, original page IDs and allocation guard bytes. This component result
+does not establish booted navigation, pixel comparison or physical acceptance.
+
 ## View and encoder layout [D]
 
 On DT2 1.17, SourcePageView constructor `0x4001753a` stores:

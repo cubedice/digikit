@@ -1,6 +1,6 @@
 // DTII instrument reply: entries 11/12 in rows 21..28. The stock record is
-// 0xabc bytes; its full copy reaches CF. ACK/diagnostics (0..12), Overloop
-// (13..20), other row entries, header and trailer remain untouched.
+// 0xabc bytes; its full copy reaches CF. ACK/diagnostics (0..16), Overloop
+// (17..20,29..31), other row entries, header and trailer remain untouched.
 // Uses only the block-tail wrapper's already-saved/free registers.
 .SECTION/PM seg_pmco;
 _dl_instrument_status:

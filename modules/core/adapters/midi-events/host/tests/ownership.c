@@ -130,13 +130,40 @@ uint32_t mi_test_messages(void)
     CHECK(!mi_message(&m, 1, sysex, sizeof(sysex)));
     CHECK(!mi_message(&m, 1, &realtime, 1));
     CHECK(!mi_message(&m, 1, 0, 3));
-    CHECK(!message(&m, 1, 0xbf, 1, 127));
+    CHECK(!message(&m, 1, 0xbf, 2, 127));
     CHECK(message(&m, 1, 0x9f, 0, 127)); e = take(&m);
     CHECK(e.note == 0 && e.track == 15 && e.port == 1 && e.channel == 15);
     CHECK(message(&m, 1, 0xef, 127, 127)); e = take(&m);
     CHECK(e.kind == MI_BEND && e.token == 0 && ((e.value << 7) | e.note) == 16383);
     CHECK(message(&m, 1, 0xbf, 64, 127)); e = take(&m);
     CHECK(e.kind == MI_CC && e.note == 64 && e.value == 127);
+    return 0;
+}
+
+uint32_t mi_test_mod_wheel(void)
+{
+    MiLedger m; MiEvent e;
+    mi_init(&m);
+    CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
+    CHECK(mi_route(&m, 1, 15, 15, 1, 0) == 0);
+    CHECK(message(&m, 0, 0xb0, 1, 0)); e = take(&m);
+    CHECK(e.kind == MI_CC && !e.token && !e.track && !e.port && !e.channel);
+    CHECK(e.note == 1 && !e.value);
+    CHECK(message(&m, 1, 0xbf, 1, 127)); e = take(&m);
+    CHECK(e.kind == MI_CC && !e.token && e.track == 15 && e.port == 1 && e.channel == 15);
+    CHECK(e.note == 1 && e.value == 127);
+    /* Unclaimed routes and PANEL must retain their existing MIDI behavior. */
+    CHECK(!message(&m, 1, 0xb0, 1, 64));
+    CHECK(!message(&m, MI_PANEL, 0xb0, 1, 64));
+    CHECK(!message(&m, 0, 0xb0, 1, 128));
+    CHECK(!mi_peek(&m, &e));
+    mi_reset_track(&m, 0);
+    CHECK(message(&m, 0, 0xb0, 1, 64));
+    CHECK(!m.count);
+    CHECK(mi_reset_ack(&m, m.epoch, 0, m.generations[0]));
+    CHECK(mi_route(&m, 0, 0, 0, m.generations[0], 1) == 0);
+    CHECK(message(&m, 0, 0xb0, 1, 64));
+    CHECK(!mi_peek(&m, &e));
     return 0;
 }
 
@@ -217,5 +244,27 @@ uint32_t mi_test_ring_wrap(void)
         last = e.sequence;
     }
     CHECK(!m.count && !m.overruns);
+    return 0;
+}
+
+uint32_t mi_test_panel_track(void)
+{
+    MiLedger m;
+    MiEvent e;
+    mi_init(&m);
+    /* The local panel routes to the instrument's track, not always track 0. */
+    CHECK(mi_route(&m, MI_PANEL, 1, 10, m.generations[10], 0) == -1);
+    CHECK(mi_route(&m, MI_PANEL, 0, 10, m.generations[10], 0) == 0);
+    CHECK(mi_panel_down(&m, 3, 65, 88, 10)); e = take(&m);
+    CHECK(e.kind == MI_NOTE_ON && e.track == 10 && e.port == MI_PANEL && e.note == 65);
+    CHECK(e.generation == m.generations[10] && e.token);
+    mi_panel_up(&m, 3); e = take(&m);
+    CHECK(e.kind == MI_NOTE_OFF && e.track == 10 && e.note == 65);
+    CHECK(mi_panel_down(&m, 4, 67, 88, 10)); (void)take(&m);
+    mi_panel_cancel(&m); e = take(&m);
+    CHECK(e.kind == MI_CC && e.track == 10 && e.note == 120 && e.generation == m.generations[10]);
+    /* A reset of that track retires the panel route like any other. */
+    mi_reset_track(&m, 10);
+    CHECK(!m.routes[32].enabled && !mi_peek(&m, &e));
     return 0;
 }

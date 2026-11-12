@@ -13,6 +13,7 @@ extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
 
 #define MAGIC 0x4f564c31u
+#define WIRE_MAGIC 0x4f564c32u
 #define OVERLOOP_ID 0xca1bu
 #define MAX_FRAMES 1048544u
 
@@ -32,12 +33,20 @@ void loop_ui_tick(void) {
     if (loop_ui_age < 120) ++loop_ui_age;
     if (!p) return;
     uint32_t sr = dkrt_irq_mask();
-    for (uint32_t j = 0; j < 16; ++j) {
-        uint32_t off = (0x1c + 0x54 * (13 + j / 2) + 0x44 + (j & 1) * 4) / 2;
+    for (uint32_t j = 0; j < 14; ++j) {
+        /* OVL2 stays in established spare cells: FX diagnostics own rows1..16
+         * (including immediate writes into both rings), instruments21..28. */
+        uint32_t row = j < 8 ? 17 + j / 2 : 29 + (j - 8) / 2;
+        uint32_t off = (0x1c + 0x54 * row + 0x44 + (j & 1) * 4) / 2;
         words[j] = p[off] | ((uint32_t)p[off + 1] << 16);
     }
     dkrt_irq_restore(sr);
-    if (words[0] != MAGIC || words[2] > 3 || words[3] > MAX_FRAMES ||
+    if (words[0] != WIRE_MAGIC || (words[7] & 0xff808080u)) return;
+    words[0] = MAGIC;
+    words[14] = (words[7] >> 8) & 127u;
+    words[15] = (words[7] >> 16) & 127u;
+    words[7] &= 127u;
+    if (words[2] > 3 || words[3] > MAX_FRAMES ||
         words[4] > MAX_FRAMES || words[7] > 127 || words[8] > 128 ||
         words[9] > 128 || words[10] > 3 || words[11] > 128 ||
         words[12] > MAX_FRAMES || words[13] > MAX_FRAMES ||

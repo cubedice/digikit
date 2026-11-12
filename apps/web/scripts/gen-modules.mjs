@@ -40,6 +40,8 @@ const byParts = (a, b) => {
 };
 
 const GALLERY = 'build/gen/gallery.json';
+// Match Python Path.read_text() in patchkit.bundle on LF and CRLF checkouts.
+const bundleText = (path) => readFileSync(path, 'utf8').replace(/\r\n?/g, '\n');
 
 /**
  * `patchkit build DIR...` over the given content-module directories: builds their stale objects into the cache.
@@ -103,7 +105,7 @@ export function buildModuleData(root = repoRoot) {
   const ports = readdirSync(join(root, 'devices', 'ports'))
     .filter((f) => f.endsWith('.toml'))
     .sort()
-    .map((f) => readFileSync(join(root, 'devices', 'ports', f), 'utf8'));
+    .map((f) => bundleText(join(root, 'devices', 'ports', f)));
   // the module roots in the order of tools/patchkit/modroots.py REPO_ROOTS; the tests use the fixtures
   // The published site leaves out the test fixtures: only the site's tests use them, and some need the Rust toolchain for ColdFire.
   const roots = process.env.DIGI_SITE_NO_FIXTURES ? ['modules'] : ['modules', join('tests', 'fixtures', 'modules')];
@@ -124,19 +126,19 @@ export function buildModuleData(root = repoRoot) {
     for (const r of d.registry ?? [])
       if (r.index_table) files[r.index_table] = readFileSync(join(dir, r.index_table), 'utf8');
     // `patchkit gen`: machines and parameters, for the page
-    if (existsSync(join(dir, GALLERY))) files[GALLERY] = readFileSync(join(dir, GALLERY), 'utf8');
+    if (existsSync(join(dir, GALLERY))) files[GALLERY] = bundleText(join(dir, GALLERY));
     modules.push({ manifest: text, files });
   }
   // the device files with a [modules] section: the knob models the typed module sections are lowered with
   const devices = readdirSync(join(root, 'devices'))
     .filter((f) => f.endsWith('.toml'))
     .sort()
-    .map((f) => readFileSync(join(root, 'devices', f), 'utf8'))
+    .map((f) => bundleText(join(root, 'devices', f)))
     .filter((t) => 'modules' in parse(t));
   return { bundle: { ports, modules, devices } };
 }
 
-const SOURCE_MAX = 256 * 1024;
+const SOURCE_PREVIEW_MAX = 256 * 1024;
 
 /** The files of a module that the site shows: module.toml, README.md and src/** (text only), relative to the module, sorted. */
 function sourceFiles(dir) {
@@ -156,6 +158,20 @@ function sourceFiles(dir) {
   };
   if (existsSync(join(dir, 'src'))) walkSrc('src');
   return out;
+}
+
+/** Preserve every build source; large generated tables download without entering the text viewer. */
+export function shipSources(dir, out) {
+  const source = sourceFiles(dir);
+  const sourceDownloads = {};
+  for (const f of source) {
+    const bytes = readFileSync(join(dir, f));
+    if (bytes.length > SOURCE_PREVIEW_MAX) sourceDownloads[f] = bytes.length;
+    const to = join(out, f);
+    mkdirSync(dirname(to), { recursive: true });
+    writeFileSync(to, bytes);
+  }
+  return { source, sourceDownloads };
 }
 
 const sha256 = (b) => createHash('sha256').update(b).digest('hex');
@@ -214,14 +230,7 @@ export function shipModules(out, root = repoRoot) {
       devices[dev] = { file: `${dev}/${leaf}.dkm`, size: bytes.length, sha256: sha256(bytes) };
     }
     if (!Object.keys(devices).length) continue;
-    const files = sourceFiles(dir);
-    for (const f of files) {
-      const bytes = readFileSync(join(dir, f));
-      if (bytes.length > SOURCE_MAX) throw new Error(`${m.id}/${f} is too large to show (${bytes.length} bytes)`);
-      const to = join(out, 'src', m.id, f);
-      mkdirSync(dirname(to), { recursive: true });
-      writeFileSync(to, bytes);
-    }
+    const sources = shipSources(dir, join(out, 'src', m.id));
     modules.push({
       id: m.id,
       name: m.name,
@@ -229,7 +238,7 @@ export function shipModules(out, root = repoRoot) {
       kind: m.category,
       version: m.version,
       devices,
-      source: files,
+      ...sources,
     });
   }
   const index = { modules };

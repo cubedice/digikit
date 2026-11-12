@@ -80,7 +80,12 @@ test('the shipped modules: the index describes them, the sources hold no build o
       m.source.every((f) => /^(module\.toml|README\.md|LICENSE[^/]*|src\/|examples\/)/.test(f)),
       m.id,
     );
-    for (const f of m.source) assert.ok(existsSync(join(out, 'src', m.id, f)), `${m.id}/${f}`);
+    for (const f of m.source) {
+      const path = join(out, 'src', m.id, f);
+      assert.ok(existsSync(path), `${m.id}/${f}`);
+      if (m.sourceDownloads[f]) assert.equal(statSync(path).size, m.sourceDownloads[f]);
+      else assert.ok(statSync(path).size <= 256 * 1024, `${m.id}/${f}: inline preview is bounded`);
+    }
     assert.ok(!existsSync(join(out, 'src', m.id, 'build')));
     for (const d of Object.values(m.devices)) {
       const bytes = readFileSync(join(out, d.file));

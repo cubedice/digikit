@@ -202,6 +202,27 @@ pub unsafe fn read_sectors(
     OK
 }
 
+/// Read a complete extent into caller-owned storage using bounded native reads.
+/// Validate the entire extent before the first read. After an I/O failure the
+/// caller must discard the partially filled buffer rather than publish it.
+/// `buf` is 16-byte aligned and owns `cap` bytes, including sector padding.
+pub unsafe fn read_extent(io: &Io, lay: &Layout, rel: u32, count: u32, buf: *mut u8, cap: usize) -> i32 {
+    if count == 0 || rel >= lay.sectors || count > lay.sectors - rel || count as usize > cap / 512 {
+        return E_BAD_STORE;
+    }
+    let mut done = 0;
+    while done < count {
+        let chunk = core::cmp::min(count - done, MAX_IO_SECTORS);
+        let offset = done as usize * 512;
+        let r = read_sectors(io, lay, rel + done, chunk, buf.add(offset), cap - offset);
+        if r != OK {
+            return r;
+        }
+        done += chunk;
+    }
+    OK
+}
+
 /// The store sector where `count` sectors of a file start, `sector` sectors into it (`first` and `size` are the file's table entry). The
 /// range must lie inside the file rounded up to whole sectors, and `count` is 1 to `MAX_IO_SECTORS`: `E_RANGE` otherwise. A file's sectors
 /// are contiguous.

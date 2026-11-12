@@ -60,6 +60,61 @@ typedef struct dk_instrument_in_v5 {
     uint32_t status_words;
 } dk_instrument_in_v5;
 
+/* V6 is sent only to descriptors with STATUS_OUTPUT | NATIVE_AMP.
+ * V2..V5 remain valid fallback inputs. A valid native AMP snapshot lets an
+ * instrument apply the track's envelope per note; the adapter then bypasses
+ * the shared carrier envelope for that successfully rendered block only.
+ * All appended fields are scalars, with no firmware addresses or lifetime.
+ * mode: 0 unavailable (use legacy/shared AMP), 1 AHD, 2 ADSR.
+ * Attack is a positive per-sample increment. Decay/release are multipliers
+ * in [0,1]; hold is a sample count or UINT32_MAX for gate-controlled hold.
+ * AHD snapshots have sustain=0 and release_multiplier=decay_multiplier.
+ * options bit0 reflects native amplitude restart; other bits/reserved are0.
+ * A callback must validate the snapshot before using it. Native coefficients
+ * may change between blocks, including during a sounding note. */
+#define DK_INSTRUMENT_NATIVE_AMP 2u
+#define DK_INSTRUMENT_INPUT_V6 6u
+#define DK_INSTRUMENT_INPUT_V6_BYTES 128u
+typedef struct dk_instrument_in_v6 {
+    dk_instrument_in_v5 base;
+    uint32_t amp_mode;
+    float amp_attack_increment;
+    uint32_t amp_hold_samples;
+    float amp_decay_multiplier;
+    float amp_sustain;
+    float amp_release_multiplier;
+    uint32_t amp_options;
+    uint32_t reserved;
+} dk_instrument_in_v6;
+
+/* V7 is sent only to descriptors with STATUS_OUTPUT | NATIVE_AMP | POST_AMP.
+ * V2..V6 remain valid fallback inputs. post_amp is an adapter-owned, aligned
+ * L2 output buffer of exactly 32 per-sample common gains in [0,1]. The ordinary
+ * mono output retains its per-note envelopes; these gains are not audio. The
+ * adapter normalizes output/gain (zero gain produces zero), then applies the
+ * gain in place of shared AMP at the original stock AMP position for the owned
+ * stereo pair. Normalized audio must be finite with magnitude at most 8.
+ * The gain buffer is disjoint from the input, ordinary output, status, events,
+ * controls and instance state.
+ * The adapter initializes every gain to NaN before each callback. The callback
+ * must write all 32 finite gains, even when returning QUIET. The adapter uses
+ * them only after a successful process result and complete validation. With an
+ * unavailable native snapshot (mode=0), return legacy PCM and unity gains; the
+ * adapter retains the shared AMP path without normalization or post-AMP gain.
+ * The pointer is borrowed for this call only.
+ * POST_AMP requires both STATUS_OUTPUT and NATIVE_AMP; supported descriptor
+ * flags are exactly 0, 1, 3 and 7. */
+#define DK_INSTRUMENT_POST_AMP 4u
+#define DK_INSTRUMENT_INPUT_V7 7u
+#define DK_INSTRUMENT_INPUT_V7_BYTES 136u
+#define DK_INSTRUMENT_POST_AMP_SAMPLES 32u
+
+typedef struct dk_instrument_in_v7 {
+    dk_instrument_in_v6 base;
+    float *post_amp;
+    uint32_t post_amp_samples;
+} dk_instrument_in_v7;
+
 /* ID is a C identifier, unique among all instruments, machines and effects.
  * Required initializers: .name, .short_name, .reset, .process and .desc.
  * Callbacks and descriptor name SHARC+ symbols in this module, not CF pointers. */
