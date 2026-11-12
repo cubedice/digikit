@@ -74,13 +74,18 @@ this package.
   layering of one channel across tracks.
 - Panel keys and the SRC pages act on the selected track only.
 
-## Installation
+## Installation (done 2026-11-12)
 
-Not installed; needs the user's approval. `out/canopy-multi-install.py` and
-`out/canopy-multi-install-all.py` are the reviewed any-track installer with the
-new image, the optimized CANOPY package, their proof logs and a new backup
-folder (old image `481b2b9a4fcddf5e`, preset 4 rule unchanged; the CANOPY
-package is uploaded because it differs).
-They replace the never-run any-track installer. Run from the repository root
-on Windows: `py -3.12 -m out.canopy-multi-install backup`, then
-`py -3.12 -m out.canopy-multi-install-all`.
+Installed on the user's DTII at their request with `out/canopy-multi-install.py`
+(`backup`, then `out/canopy-multi-install-all.py`): image `cb16bc2a…4b2b68`
+(image ID `481b2b9a4fcddf5e` → `92cd1727dc38a399`) and CANOPY package
+`canopy-fm-release.dkm` (`15acf3ec…eb7d9`, uploaded and read back before the
+flash). The flash was accepted and the device returned on the new image. The
+current sound was saved over preset 4 (it still held the previous installation's
+preservation copy) and reloaded after the reboot. Readback: CANOPY, Overloop and
+remote loaded with no faults or disabled guards, Overloop and remote packages
+unchanged, every saved setting and the external MIDI routing (USB/DIN on)
+unchanged. Screenshots show pattern A02 track 11 on CANOPY's native ARP page
+(before the install the same track showed the stock TUNE/LEV page). Report:
+`out/canopy-multi-hardware-installed.json`; backup, screenshots and the previous
+modules: `out/canopy-multi-install-backup/`. No physical audio capture was made.
