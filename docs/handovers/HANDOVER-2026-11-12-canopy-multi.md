@@ -46,6 +46,18 @@ play at once. Design, stock facts and results are in
   `cbec91c4…96d5e4` (differs from the DTII's `19fafa65…`), Overloop
   `748e3044…` unchanged. Build: `out/build-multi-release.sh` (WSL).
 
+## DSP block rendering (later the same day)
+
+The user then asked for the bit-identical DSP optimizations: wavetable voices
+render a block at a time, the FM halfband history uses a block buffer, and the
+arp sorts by stable insertion ([finding 122](../findings/122-canopy-dsp-block-rendering.md)).
+The worst callback fell from 99,849 to 89,255 instructions (wavetable 99,386 to
+69,909), bit-identical in all 1,164 CANOPY DSP tests. Only the CANOPY package
+changes: `out/patch/canopy-opt-release.dkm` (file sha256 `d33f58dc…84df`) with the same
+image. The four-instance proof and compiled Stages 5 and 6 pass with it
+(`out/canopy-opt-proof.log`, `out/canopy-opt-stage5.log`,
+`out/canopy-opt-stage6.log`). The installer below now installs this package.
+
 ## Open
 
 - Four simultaneous worst-case instances (wavetable PM with arps) can exceed
@@ -58,8 +70,9 @@ play at once. Design, stock facts and results are in
 
 Not installed; needs the user's approval. `out/canopy-multi-install.py` and
 `out/canopy-multi-install-all.py` are the reviewed any-track installer with the
-new image, package, logs and backup folder (old image `481b2b9a4fcddf5e`,
-preset 4 rule unchanged; the CANOPY package is uploaded because it differs).
+new image, the optimized CANOPY package, their proof logs and a new backup
+folder (old image `481b2b9a4fcddf5e`, preset 4 rule unchanged; the CANOPY
+package is uploaded because it differs).
 They replace the never-run any-track installer. Run from the repository root
 on Windows: `py -3.12 -m out.canopy-multi-install backup`, then
 `py -3.12 -m out.canopy-multi-install-all`.

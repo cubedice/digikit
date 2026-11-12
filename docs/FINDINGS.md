@@ -222,6 +222,10 @@ CANOPY controls: [compact SRC pages, latch removal and native MOD](findings/120-
 (**[D]/[V]**, fixed six targets per source family, immutable base controls and
 narrow independently checked firmware-hook ABI; physical installation pending).
 
+CANOPY DSP: [block rendering](findings/122-canopy-dsp-block-rendering.md) (**[D]**,
+worst callback 99,849 to 89,255 instructions, wavetable 99,386 to 69,909;
+bit-identical in all 1,164 CANOPY DSP tests).
+
 CANOPY tracks: [any track, up to four at once](findings/121-canopy-any-track.md)
 (**[D]**, per-track stock row/frame/kit strides, DSP slots bound by reset
 hints, per-track carrier ownership, status focus; four-busy-instance DSP load

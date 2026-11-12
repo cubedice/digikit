@@ -555,78 +555,121 @@ _ca_next_octave:
     R10 = R10 + 1;
     JUMP _ca_octave;
 _ca_sort:
-    R10 = DM(_ca_count);
+    // Stable insertion sort with the comparator of the earlier bubble sort, so
+    // the order (equal keys keep expansion order) is unchanged. A record that
+    // must move is held in _ca_hold while larger records shift up one place.
+    // Only the five payload words move; the three padding words stay put.
+    // R8: 0 sorts by pitch; +1/-1 sorts by octave (sign of the octave step),
+    // then by unsigned token serial (admission order within each octave).
+    // Scratch R0..3, R8..12, I0 (as before); I1 is left untouched.
     R8 = DM(_ca_order);
     R9 = 3;
-_ca_sort_pass:
-    I0 = _ca_notes;
-    // Each pass leaves the highest remaining candidate in its final position.
-    R11 = R10;
-    R11 = R11 - 1;
-    IF LE RTS;
-    R3 = 0;
-_ca_sort_pair:
     COMP(R8, R9);
-    IF EQ JUMP _ca_sort_admission;
+    R8 = 0;
+    IF NE JUMP _ca_sort_mode;
+    R8 = 1;
+    R0 = DM(_ca_octave_step);
+    R0 = PASS R0;
+    IF LT R8 = -R8;
+_ca_sort_mode:
+    R9 = DM(_ca_count);
+    R12 = 1;
+    I0 = _ca_notes;
+_ca_sort_next:
+    // I0 = record i-1. R10/R11 = key of record i.
+    COMP(R12, R9);
+    IF GE RTS;
+    R8 = PASS R8;
+    IF NE JUMP _ca_sort_key_octave;
+    R10 = DM(8, I0);
     R0 = DM(0, I0);
-    R1 = DM(8, I0);
-    JUMP _ca_sort_compare;
-_ca_sort_admission:
-    // Octaves ascend, admission order within each octave. Token serials
-    // are unsigned and never wrap within an ownership generation.
+    COMP(R0, R10);
+    IF LE JUMP _ca_sort_in_place;
+    JUMP _ca_sort_hold;
+_ca_sort_key_octave:
+    R10 = DM(8, I0);
+    R0 = DM(12, I0);
+    R10 = R10 - R0;
+    R10 = R10 * R8 (SSI);
+    R11 = DM(10, I0);
+    R0 = 0x80000000;
+    R11 = R11 XOR R0;
+    CALL _ca_sort_greater;
+    IF LE JUMP _ca_sort_in_place;
+_ca_sort_hold:
+    R0 = DM(8, I0);
+    DM(_ca_hold) = R0;
+    R0 = DM(9, I0);
+    DM(_ca_hold_1) = R0;
+    R0 = DM(10, I0);
+    DM(_ca_hold_2) = R0;
+    R0 = DM(11, I0);
+    DM(_ca_hold_3) = R0;
+    R0 = DM(12, I0);
+    DM(_ca_hold_4) = R0;
+    R3 = R12;
+_ca_sort_shift:
+    // Record j-1 (at I0) is greater than the held record: move it to j.
+    R0 = DM(0, I0);
+    DM(8, I0) = R0;
+    R0 = DM(1, I0);
+    DM(9, I0) = R0;
+    R0 = DM(2, I0);
+    DM(10, I0) = R0;
+    R0 = DM(3, I0);
+    DM(11, I0) = R0;
+    R0 = DM(4, I0);
+    DM(12, I0) = R0;
+    R3 = R3 - 1;
+    IF EQ JUMP _ca_sort_place;
+    MODIFY(I0, -8) (NW);
+    R8 = PASS R8;
+    IF NE JUMP _ca_sort_shift_octave;
+    R0 = DM(0, I0);
+    COMP(R0, R10);
+    IF GT JUMP _ca_sort_shift;
+    JUMP _ca_sort_after;
+_ca_sort_shift_octave:
+    CALL _ca_sort_greater;
+    IF GT JUMP _ca_sort_shift;
+_ca_sort_after:
+    // Record j-1 stays; the held record goes to j, one past I0.
+    MODIFY(I0, 8) (NW);
+_ca_sort_place:
+    R0 = DM(_ca_hold);
+    DM(0, I0) = R0;
+    R0 = DM(_ca_hold_1);
+    DM(1, I0) = R0;
+    R0 = DM(_ca_hold_2);
+    DM(2, I0) = R0;
+    R0 = DM(_ca_hold_3);
+    DM(3, I0) = R0;
+    R0 = DM(_ca_hold_4);
+    DM(4, I0) = R0;
+    // Continue with record i+1: I0 = record i.
+    R0 = LSHIFT R12 BY 5;
+    R1 = _ca_notes;
+    R0 = R0 + R1;
+    I0 = R0;
+    R12 = R12 + 1;
+    JUMP _ca_sort_next;
+_ca_sort_in_place:
+    MODIFY(I0, 8) (NW);
+    R12 = R12 + 1;
+    JUMP _ca_sort_next;
+// Octave-mode comparison of the record at I0 with the key R10/R11; sets the
+// flags of COMP(record, key) on the first differing part (GT: record later).
+_ca_sort_greater:
     R0 = DM(0, I0);
     R1 = DM(4, I0);
     R0 = R0 - R1;
-    R1 = DM(8, I0);
-    R2 = DM(12, I0);
-    R1 = R1 - R2;
-    R2 = DM(_ca_octave_step);
-    R2 = PASS R2;
-    IF GE JUMP _ca_sort_octaves;
-    R0 = -R0;
-    R1 = -R1;
-_ca_sort_octaves:
-    COMP(R0, R1);
-    IF NE JUMP _ca_sort_compare;
+    R0 = R0 * R8 (SSI);
+    COMP(R0, R10);
+    IF NE RTS;
     R0 = DM(2, I0);
-    R1 = DM(10, I0);
-    R2 = 0x80000000;
-    R0 = R0 XOR R2;
-    R1 = R1 XOR R2;
-_ca_sort_compare:
-    COMP(R0, R1);
-    IF LE JUMP _ca_sorted;
-    R3 = 1;
-_ca_swap:
-    // Five payload words move together; the three padding words stay untouched.
-    R0 = DM(0, I0);
-    R1 = DM(8, I0);
-    DM(0, I0) = R1;
-    DM(8, I0) = R0;
-    R0 = DM(1, I0);
-    R1 = DM(9, I0);
-    DM(1, I0) = R1;
-    DM(9, I0) = R0;
-    R0 = DM(2, I0);
-    R1 = DM(10, I0);
-    DM(2, I0) = R1;
-    DM(10, I0) = R0;
-    R0 = DM(3, I0);
-    R1 = DM(11, I0);
-    DM(3, I0) = R1;
-    DM(11, I0) = R0;
-    R0 = DM(4, I0);
-    R1 = DM(12, I0);
-    DM(4, I0) = R1;
-    DM(12, I0) = R0;
-_ca_sorted:
-    MODIFY(I0, 8) (NW);
-    R11 = R11 - 1;
-    IF NE JUMP _ca_sort_pair;
-    R3 = PASS R3;
-    IF EQ RTS;
-    R10 = R10 - 1;
-    IF NE JUMP _ca_sort_pass;
+    R1 = 0x80000000;
+    R0 = R0 XOR R1;
+    COMP(R0, R11);
     RTS;
 // Phase units are BPM*notes/quarter per block. Pair thresholds sum to 180000.
 // Swing changes are latched only on complete pair boundaries.
@@ -1089,6 +1132,11 @@ _ca_tail_next:
 .PKBSS _ca_bend_value, 4;
 
 .PKBSS _ca_order, 4;
+.PKBSS _ca_hold, 4;
+.PKBSS _ca_hold_1, 4;
+.PKBSS _ca_hold_2, 4;
+.PKBSS _ca_hold_3, 4;
+.PKBSS _ca_hold_4, 4;
 .PKBSS _ca_octaves, 4;
 .PKBSS _ca_octave_step, 4;
 .PKBSS _ca_swing, 4;

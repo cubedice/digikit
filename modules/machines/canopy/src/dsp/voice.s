@@ -15,7 +15,11 @@
 .GLOBAL _cp_render;
 .EXTERN _cp_tuning;
 .EXTERN _wt_begin_slot;
-.EXTERN _wt_tick;
+.EXTERN _wt_render_block;
+.EXTERN _wt_blk;
+.EXTERN _wt_enabled;
+.EXTERN _wt_r6;
+.EXTERN _wt_r7;
 .EXTERN _fm_enabled;
 .EXTERN _fm_render;
 _cp_note_on:
@@ -390,6 +394,9 @@ _cp_legacy_samples:
     F9 = F9 * F0;
     DM(_cp_h3) = F9;
     I2 = R8;
+    R0 = DM(_wt_enabled);
+    R0 = PASS R0;
+    IF NE JUMP _cp_block_samples;
     R13 = 32;
     R0 = DM(_cp_amp_native);
     R0 = PASS R0;
@@ -443,7 +450,6 @@ _cp_sample_body:
     F1 = DM(_cp_h3);
     F0 = F0 * F1;
     F0 = F9 + F0;
-    CALL _wt_tick;
     F0 = F0 * F6;
     F0 = F0 * F7;
     F1 = DM(_cp_level);
@@ -452,6 +458,113 @@ _cp_sample_body:
     F0 = F0 + F1;
     DM(I2, M6) = F0;
     RTS;
+_cp_block_samples:
+    // Wavetable voices render a block at a time with the per-sample operations
+    // of the pad body: this oscillator fills word 4 of the _wt_blk records,
+    // _wt_render_block replaces it with the wavetable output, and the amp
+    // stage below accumulates it into the output. Keeps I0, R8, R11, R14, R15,
+    // F2/F3 and leaves F7 as the per-sample loops do; M4 is restored.
+    DM(_cp_keep_r8) = R8;
+    DM(_cp_keep_r11) = R11;
+    DM(_cp_keep_r14) = R14;
+    DM(_cp_keep_r15) = R15;
+    R0 = I0;
+    DM(_cp_keep_i0) = R0;
+    R0 = M4;
+    DM(_cp_keep_m4) = R0;
+    M4 = 8;
+    DM(_cp_keep_f6) = F6;
+    DM(_cp_keep_f7) = F7;
+    DM(_cp_keep_f10) = F10;
+    F13 = DM(_cp_h2step);
+    F14 = DM(_cp_h3);
+    F15 = DM(_cp_h3step);
+    F8 = 2.0;
+    F11 = 4.0;
+    F6 = 3.0;
+    I1 = _wt_blk;
+    MODIFY(I1,4) (NW);
+    LCNTR = 32, DO _cp_block_osc UNTIL LCE;
+    F12 = F12 + F13;
+    F14 = F14 + F15;
+    F0 = F2 * F5;
+    F1 = F3 * F4;
+    F9 = F0 + F1;
+    F0 = F3 * F5;
+    F1 = F2 * F4;
+    F3 = F0 - F1;
+    F2 = F9;
+    F0 = F2 * F3;
+    F0 = F0 * F8;
+    F0 = F0 * F12;
+    F9 = F2 + F0;
+    F0 = F2 * F2;
+    F0 = F0 * F11;
+    F0 = F6 - F0;
+    F0 = F0 * F2;
+    F0 = F0 * F14;
+    F0 = F9 + F0;
+_cp_block_osc:
+    DM(I1,M4) = F0;
+    DM(_cp_h3) = F14;
+    DM(_cp_keep_x) = F2;
+    DM(_cp_keep_y) = F3;
+    CALL _wt_render_block;
+    F6 = DM(_cp_keep_f6);
+    F7 = DM(_cp_keep_f7);
+    F10 = DM(_cp_keep_f10);
+    F11 = DM(_cp_level);
+    R8 = DM(_cp_keep_r8);
+    I2 = R8;
+    I1 = _wt_blk;
+    MODIFY(I1,4) (NW);
+    R0 = DM(_cp_amp_native);
+    R0 = PASS R0;
+    IF NE JUMP _cp_block_native;
+    F12 = 0.0;
+    F13 = 1.0;
+    LCNTR = 32, DO _cp_block_amp UNTIL LCE;
+    F7 = F7 + F10;
+    F7 = MAX(F7, F12);
+    F7 = MIN(F7, F13);
+    F0 = DM(I1,M4);
+    F0 = F0 * F6;
+    F0 = F0 * F7;
+    F0 = F0 * F11;
+    F1 = DM(I2,M5);
+    F0 = F0 + F1;
+_cp_block_amp:
+    DM(I2,M6) = F0;
+    DM(_wt_r6) = F6;
+    DM(_wt_r7) = F7;
+    JUMP _cp_block_done;
+_cp_block_native:
+    I0 = _cp_amp_samples;
+    LCNTR = 32, DO _cp_block_native_amp UNTIL LCE;
+    F7 = DM(I0,M6);
+    F0 = DM(I1,M4);
+    F0 = F0 * F6;
+    F0 = F0 * F7;
+    F0 = F0 * F11;
+    F1 = DM(I2,M5);
+    F0 = F0 + F1;
+_cp_block_native_amp:
+    DM(I2,M6) = F0;
+    DM(_wt_r6) = F6;
+    DM(_wt_r7) = F7;
+    F7 = DM(_cp_amp_end);
+_cp_block_done:
+    R0 = DM(_cp_keep_m4);
+    M4 = R0;
+    R0 = DM(_cp_keep_i0);
+    I0 = R0;
+    R8 = DM(_cp_keep_r8);
+    R11 = DM(_cp_keep_r11);
+    R14 = DM(_cp_keep_r14);
+    R15 = DM(_cp_keep_r15);
+    F2 = DM(_cp_keep_x);
+    F3 = DM(_cp_keep_y);
+    JUMP _cp_samples_done;
 _cp_samples_done:
     // One Newton normalization step per block bounds float32 rotation drift.
     F0 = F2 * F2;
@@ -611,6 +724,17 @@ _cp_retune_store:
     RTS;
 .SECTION/DM seg_dmda;
 .VAR _cp_pending_bend = 0;
+.PKBSS _cp_keep_r8, 4;
+.PKBSS _cp_keep_r11, 4;
+.PKBSS _cp_keep_r14, 4;
+.PKBSS _cp_keep_r15, 4;
+.PKBSS _cp_keep_i0, 4;
+.PKBSS _cp_keep_m4, 4;
+.PKBSS _cp_keep_f6, 4;
+.PKBSS _cp_keep_f7, 4;
+.PKBSS _cp_keep_f10, 4;
+.PKBSS _cp_keep_x, 4;
+.PKBSS _cp_keep_y, 4;
 .GLOBAL _cp_native_tune;
 .VAR _cp_native_tune = 0;
 .GLOBAL _cp_tune_changed;

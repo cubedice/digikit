@@ -1,6 +1,8 @@
 # 117: CANOPY wavetable phase modulation
 
-DT2 OS 1.17, 2026-11-09. **[D]** The acceptance ceilings remain **100,000
+DT2 OS 1.17, 2026-11-09. Counts below are for that build; block rendering
+later cut the worst wavetable block to 69,909 with bit-identical output
+(finding 122). **[D]** The acceptance ceilings remain **100,000
 instructions per 32-sample process callback** and **1,600 per reset**. The
 revised interior-frame stress measured 97,524 instructions directly and 97,888
 through the protected dispatcher; reset measured 1,131. These are bounded

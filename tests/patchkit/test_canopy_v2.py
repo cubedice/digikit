@@ -2973,13 +2973,24 @@ def test_wavetable_fm_negative_roundoff_cannot_read_past_phase_endpoint(canopy_o
         [1, wt_bits(0.75), wt_bits(1), wt_bits(0.00001), 0, 0]
     ):
         memory[history // 4 + index] = word
+    # The block pass reads each sample's envelope and phase from its records
+    # (zero here) and publishes the last read phase.
     result = pk_sharc.run_call(
         linked,
-        "_wt_pm_tick",
-        regs={"M5": 0, "M6": 1, "M13": 0, "MODE1": 0x1011800},
+        "_wt_pm_block",
+        regs={
+            "M4": 8,
+            "M5": 0,
+            "M6": 1,
+            "M13": 0,
+            "L0": 0,
+            "L1": 0,
+            "L2": 0,
+            "MODE1": 0x1011800,
+        },
         dm_words=memory,
         reads={"phase": (symbols["_wt_read_phase"] // 4, 1)},
-        max_steps=1000,
+        max_steps=5000,
     )
     assert result["halt"]["reason"] == "breakpoint"
     # The negative PM offset is smaller than half an ulp below 1. Wrapping
