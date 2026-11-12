@@ -9888,121 +9888,142 @@
   },
   {
    "addend": 0,
-   "offset": 66,
+   "offset": 64,
    "section": ".text.ip_panel_on",
    "symbol": "instrument_track_owned",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 98,
+   "offset": 92,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_track_object",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 114,
+   "offset": 106,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_track_type",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 140,
+   "offset": 128,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_active",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 152,
+   "offset": 150,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_live_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 162,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.ip_panel_recorded",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 214,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_original_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 222,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_trig_held",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 234,
    "section": ".text.ip_panel_on",
    "symbol": ".sec..bss.panel_view",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 166,
+   "offset": 248,
    "section": ".text.ip_panel_on",
    "symbol": ".sec..data.panel_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 174,
+   "offset": 256,
    "section": ".text.ip_panel_on",
    "symbol": "mi_panel_release",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 182,
+   "offset": 264,
    "section": ".text.ip_panel_on",
    "symbol": ".sec..bss.panel_view",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 188,
+   "offset": 270,
    "section": ".text.ip_panel_on",
    "symbol": ".sec..data.panel_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 194,
+   "offset": 276,
    "section": ".text.ip_panel_on",
    "symbol": "instrument_select_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 212,
+   "offset": 294,
    "section": ".text.ip_panel_on",
    "symbol": ".sec..bss.ip_panel_debug",
    "type": "cf.32"
   },
   {
    "addend": 8,
-   "offset": 218,
+   "offset": 300,
    "section": ".text.ip_panel_on",
    "symbol": ".sec..bss.ip_panel_debug",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 226,
+   "offset": 308,
    "section": ".text.ip_panel_on",
    "symbol": ".sec..bss.ip_panel_debug",
    "type": "cf.32"
   },
   {
    "addend": 16,
-   "offset": 232,
+   "offset": 314,
    "section": ".text.ip_panel_on",
    "symbol": ".sec..bss.ip_panel_debug",
    "type": "cf.32"
   },
   {
    "addend": 20,
-   "offset": 238,
+   "offset": 320,
    "section": ".text.ip_panel_on",
    "symbol": ".sec..bss.ip_panel_debug",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 262,
+   "offset": 344,
    "section": ".text.ip_panel_on",
    "symbol": "mi_panel_key",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 314,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_original_on",
    "type": "cf.32"
   },
   {
@@ -12571,10 +12592,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffdc48d7047c246f0028262f002c242f0030282f00342a2f00382f6f003c00182f6f0040001c2f6f004400204eb9000000002c00700fb082650000ce2f024eb900000000588f4a80670000be200672185f80b280650000b22f022f2a00a44eb900000000508f4a806700009e2f004eb900000000588fbc806600008e700fb083650000862f2a00a04eb900000000588f4a0067742039000000004a806712b5c06608b4b90000000067064eb9000000002f0223ca0000000023c2000000004eb9000000002f42003c2f4500342f44003052b90000000023c300000000720123c20000000023c40000000023c5000000002f43002c2f4100384cef047c00044fef00284ef9000000002f4500382f4400342f4200302f43002c2f4a00284cd7047c2f6f002000442f6f001c00402f6f0018003c4fef00244ef900000000",
+   "hex": "4fefffdc48d7047c246f0028262f002c242f0030282f00342a2f00382f6f003c00182f6f0040001c2f6f004400204eb9000000002c00700fb082656a2f024eb900000000588f4a80675c200672185f80b28065522f022f2a00a44eb900000000508f4a8067402f004eb900000000588fbc806632700fb083652c2f2a00a04eb900000000588f4a00671c2c2a00984a8667562f064eb900000000588f4a00673a52b9000000002f4500382f4400342f4200302f43002c2f4a00284cd7047c2f6f002000442f6f001c00402f6f0018003c4fef00244ef9000000002f064eb900000000588f4a0066b82039000000004a806712b5c06608b4b90000000067064eb9000000002f0223ca0000000023c2000000004eb9000000002f42003c2f4500342f44003052b90000000023c300000000720123c20000000023c40000000023c5000000002f43002c2f4100384cef047c00044fef00284ef900000000",
    "kind": "text",
    "name": ".text.ip_panel_on",
-   "size": 318
+   "size": 348
   },
   {
    "align": 2,
@@ -12610,6 +12631,13 @@
    "kind": "text",
    "name": ".text.ip_panel_detach",
    "size": 60
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.ip_panel_recorded",
+   "size": 4
   },
   {
    "align": 2,
@@ -12717,7 +12745,7 @@
    "size": 128
   }
  ],
- "source_sha256": "abc2eaa3b21ac927d9ba53c775af9ce59e9f4226b66a9ec1b50708bc067588c7",
+ "source_sha256": "de861cd1b14d123f8bb940a6d3e544866c3b7bddc639cd1b92b2bbf1c43bb3d1",
  "symbols": [
   {
    "global": false,
@@ -12813,6 +12841,12 @@
    "global": false,
    "name": ".sec..bss.ip_panel_debug",
    "section": ".bss.ip_panel_debug",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.ip_panel_recorded",
+   "section": ".bss.ip_panel_recorded",
    "value": 0
   },
   {
@@ -15127,6 +15161,12 @@
   },
   {
    "global": true,
+   "name": "ip_panel_live_record",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "ip_panel_off",
    "section": ".text.ip_panel_off",
    "value": 0
@@ -15160,6 +15200,12 @@
    "name": "ip_panel_original_on",
    "section": ".text",
    "value": 116
+  },
+  {
+   "global": true,
+   "name": "ip_panel_recorded",
+   "section": ".bss.ip_panel_recorded",
+   "value": 0
   },
   {
    "global": true,
@@ -15200,6 +15246,12 @@
   {
    "global": true,
    "name": "ip_panel_track_type",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_trig_held",
    "section": null,
    "value": 0
   },
@@ -16456,8 +16508,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "10307",
-  "isa_check": "6f6a4e791225836cad382eec43acb6afc58b1ac0f330dae8ac587e1f46a86e4e",
+  "instructions_redecoded": "10321",
+  "isa_check": "0e5570ec9743e731ba70bb590d99a79ca261167007143cefcede491dad51fee5",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

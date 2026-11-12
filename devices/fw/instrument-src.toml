@@ -361,3 +361,21 @@ rule = { kind = "cf_window_hash", search_len = 32, offset = 0, len = 6, sha256 =
 mark = "D"
 users = ["core/instrument-play"]
 doc = "DT2 OS1.17 native keyboard enable transition; exact unique window."
+
+[[site]]
+name = "cf.page.site.instrument_live_record"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 16, offset = 0, len = 6, sha256 = "01e4f0729fbb03b378fd86e75f4af59b41318a4005e24b4970e27de69c83a9cd" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 sequencer UI state (KeyboardView +0x98, SRC view +0x6c): live recording, i.e. transport playing and the record byte at +0x271; finding 123."
+
+[[site]]
+name = "cf.page.site.instrument_trig_held"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 80, offset = 0, len = 6, sha256 = "7440c2d00ae0c6d79bb2c23cc5ba8e51f1e9a22641f8300bb516e813073aaa53" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 sequencer UI state: a trig is held within the pattern length (128-bit held-step mask at +0x258); finding 123."

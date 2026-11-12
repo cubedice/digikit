@@ -100,6 +100,8 @@ ip_panel_stock_key = "cf.page.site.instrument_panel_key"
 ip_panel_stock_detach = "cf.page.site.instrument_panel_detach"
 ip_panel_active = "cf.page.site.instrument_panel_active"
 ip_panel_stock_toggle = "cf.page.site.instrument_panel_toggle"
+ip_panel_live_record = "cf.page.site.instrument_live_record"
+ip_panel_trig_held = "cf.page.site.instrument_trig_held"
 [[op]]
 op = "hook"
 hook = "cf.machine.hook.instrument_mod_split"

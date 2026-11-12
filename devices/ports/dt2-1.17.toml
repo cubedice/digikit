@@ -3949,6 +3949,26 @@ len = 6
 sha256 = "5cdd74296132edc3942cd0787bb9bf2877118efeef5dd4f2ae55ae9e843aa780"
 
 [[anchor]]
+name = "cf.page.site.instrument_live_record"
+cpu = "cf"
+kind = "code"
+addr = 0x4005ad40
+len = 6
+sha256 = "1076a62ac21d9af2cc8e5c59dcff8877014ae88eb43c1c1e6f7d0d900a2fc8f5"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.instrument_trig_held"
+cpu = "cf"
+kind = "code"
+addr = 0x4005b336
+len = 6
+sha256 = "90ab58e17b7b96f8970081ad71e17e29f16dda1e297d963b9ca4d69eb44add3c"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+
+[[anchor]]
 name = "dsp.voice.site.amp_attack_table"
 cpu = "sharc"
 kind = "value"

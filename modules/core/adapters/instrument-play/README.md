@@ -43,8 +43,10 @@ owner through PLAY/ROOT/LEARN. Local keys do not require enabling external MIDI.
 Keys play the admitted CANOPY on the selected track; stock machines and
 tracks without an instance delegate to the original handlers. Leaving keyboard mode or selecting
 another track cancels the
-panel phrase without canceling external notes. This is local audition support,
-not qualification of native pattern recording or sequencer polyphony.
+panel phrase without canceling external notes. While the sequencer live
+records or a trig is held, presses on a CANOPY track go to the stock note action
+instead, which records them; its audition and later playback reach CANOPY as
+sequencer trigs (core/midi-events), one note per track (finding 123).
 
 The early-frame transport callbacks copy normalized events into an owned input
 buffer. The admitted process callback runs once per frame; the raw stock-carrier

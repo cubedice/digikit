@@ -3,7 +3,9 @@
 #include "../../../modules/core/adapters/instrument-play/src/cf/panel.c"
 static uint8_t view[0x200],other[0x200],object[4];
 static uint32_t machine=9,selected,downs,ups,cancels,original_on,original_off,detaches;
-static uint8_t active=1;
+static uint8_t active=1,live,held;
+uint8_t ip_panel_live_record(uint32_t seq) { assert(seq==0x1234);return live; }
+uint8_t ip_panel_trig_held(uint32_t seq) { assert(seq==0x1234);return held; }
 volatile uint32_t ip_track;
 int instrument_track_owned(uint32_t t) { return t==ip_track; }
 void instrument_select_track(uint32_t t) { (void)t; }
@@ -54,5 +56,12 @@ int main(void)
     ip_panel_update(view);assert(cancels==5);
     selected=0;ip_panel_update(view);assert(cancels==6);
     ip_track=0xffffffffu;ip_panel_on(view,3,10,65,88,5,6,7);assert(downs==6 && original_on==5);
+    /* Live recording or a held trig: the stock note action records the press. */
+    ip_track=0;selected=0;*(uint32_t *)(view+0x98)=0x1234;
+    live=1;ip_panel_on(view,3,0,65,88,5,6,7);assert(original_on==6 && downs==6 && ip_panel_recorded==1);
+    live=0;held=1;ip_panel_on(view,3,0,65,88,5,6,7);assert(original_on==7 && downs==6 && ip_panel_recorded==2);
+    held=0;ip_panel_on(view,3,0,65,88,5,6,7);assert(original_on==7 && downs==7 && ip_panel_recorded==2);
+    /* Foreign tracks never ask the sequencer. */
+    live=1;machine=0;ip_panel_on(view,3,0,65,88,5,6,7);assert(original_on==8 && ip_panel_recorded==2);
     puts("ok");return 0;
 }
