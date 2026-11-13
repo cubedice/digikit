@@ -563,6 +563,7 @@ void instrument_src_display_locked(CvDisplay *out,uint32_t now,const char *tune,
     instrument_src_display(out,now,tune,level);
     CsState shown; lock_state(&shown,snapshot);
     cv_build(out,&shown,STS(cur),now,tune,level,preset_result || storage_result);
+    out->locked=cv_lock_mask(&shown,snapshot);
     uint32_t sr=dkrt_irq_mask();
     cv_ownership(out,STS(cur),&cur->keyboard,now);
     dkrt_irq_restore(sr);
@@ -858,8 +859,17 @@ static void tick_instance(uint32_t i,const IpInst *ui)
         return;
     }
     if (!in->phase) in->phase=1;
-    if (in->phase==3 && (mi_ledger.reset_mask || in->bound!=in->track ||
-        !mi_transport.applied[in->bound])) instrument_sound_suspend(i);
+    /* Another track's reset can cancel an in-flight configuration. If that
+     * happens while this instance is in phase 2, its commit will never arrive;
+     * restart the handshake rather than waiting forever for an applied bank. */
+    uint32_t reset_sr=dkrt_irq_mask();
+    if ((in->phase==2 || in->phase==3) &&
+        (mi_ledger.reset_mask || in->bound!=in->track ||
+         (in->phase==3 && !mi_transport.applied[in->bound]) ||
+         (in->phase==2 && !mi_transport.applied[in->bound] &&
+          (!mi_transport.config_active || mi_transport.config_track!=in->bound))))
+        instrument_sound_suspend(i);
+    dkrt_irq_restore(reset_sr);
     {
         int result=instrument_sound_prepare(i,in->phase == 1 && !mi_ledger.reset_mask);
         if (result < 0) instrument_sound_suspend(i);
@@ -995,6 +1005,15 @@ void instrument_play_tick(void)
     }
     for(uint32_t i=0;i<IP_INSTANCES;++i) tick_instance(i,ui);
     cur=ui;
+    /* The DSP publishes continuously, including while another page or the
+     * preset menu covers SRC. Drain every UI tick; otherwise its bounded
+     * queue can overflow during a menu visit and the display may never catch
+     * up. Keep the track/generation check even when no SRC view is visible. */
+    if(ui->track<MI_TRACKS && focus<IP_INSTANCES) {
+        is_select(STS(ui),ui->track,mi_ledger.generations[ui->track],ui->keyboard.mode,
+            ui->keyboard.mode==KB_LEARN ? ui->keyboard.session : 0);
+        instrument_src_poll(instrument_src_now());
+    }
     ip_keyboard_status[0]=cur->keyboard.mode; ip_keyboard_status[1]=cur->keyboard.type;
     ip_keyboard_status[2]=0; ip_keyboard_status[3]=cur->keyboard.capture_count;
     ip_keyboard_status[4]=cur->keyboard.session; ip_keyboard_status[5]=cur->keyboard.revision;

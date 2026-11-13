@@ -135,6 +135,9 @@ test('CANOPY plays and records trig locks', { timeout: 900_000 }, async () => {
       src: await Promise.all(Array.from({ length: 12 }, (_, i) => cf('ip_src_debug', i))),
     };
     await turn(2, 20); // SOUND B = COLOR in the four-page layout
+    // CvDisplay.locked follows the byte fields at offset 201. Encoder B's
+    // COLOR lock must be visible while this step is held.
+    await expect.poll(() => byteAt(planSymbol(plan, 'display') + 201), { timeout: 30_000 }).toBe(2);
     log.heldAfter = {
       src: await Promise.all(Array.from({ length: 12 }, (_, i) => cf('ip_src_debug', i))),
       state: await Promise.all(Array.from({ length: 12 }, (_, i) => cf('src_state', i))),

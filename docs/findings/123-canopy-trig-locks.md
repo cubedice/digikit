@@ -167,3 +167,24 @@ sidebands, source-bank overlays, and native MOD on top of a locked value.
 This image has not been installed or tested on physical hardware.
 
 Still to qualify: real-device behavior and the unqualified slot-28 loader path.
+
+## SRC lock feedback and preset-menu status
+
+On DT2 1.17 the custom SRC controls display values from the held step's
+packed snapshot. The control highlight uses the mapped parameter ID of the
+effective source family; native TUNE and LEV remain with the stock renderer.
+Controls covered by a shared diagram highlight their label instead of filling
+the diagram. Host tests exercise the mapping and the native inversion draw.
+The SRC button's physical red blink remains a separate LED-layer integration.
+
+The DSP status producer continues while the preset menu covers SRC. The UI
+tick now drains the bounded status queue for its selected track, retaining the
+track and generation checks. A separate interrupted configuration could leave
+an instance waiting indefinitely: a reset on another track cancels an active
+configuration transaction. A phase-2 instance now re-enters the reset and
+configuration handshake if its transaction disappears, with the observation
+and transition protected from the audio interrupt. Host tests cover an active
+transaction, cancellation, and a reset on another track. A four-instance
+emulator run saved and loaded a preset and played a panel note afterward. [D]
+These results do not establish the cause of a particular hardware LINK LOST or
+prove its recovery on a physical device. [O]

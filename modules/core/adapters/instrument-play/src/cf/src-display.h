@@ -2,10 +2,11 @@
 #define DK_CANOPY_SRC_DISPLAY_H
 #include "src-state.h"
 #include "status.h"
+#include "src-lock-event.h"
 typedef struct {
     char label[8][8], value[8][8], heading[22], mode[6], notes[4][6];
     uint8_t pending, membership[4], highlight, pedal, mix_bar, mix_requested, mix_applied, focused;
-    uint8_t knob[8], rotary, fault;
+    uint8_t knob[8], rotary, fault, locked;
     uint16_t raw[CP_CONTROLS];
     uint8_t page, family, fresh, note_count, pitches[4], clock_state, arp_note, arp_active, focus_id;
     char playing[22];
@@ -18,6 +19,8 @@ void cv_build(CvDisplay *,const CsState *,const IsStatus *,uint32_t now_ms,
 void cv_note(char out[6],uint32_t note,int valid);
 /* Full native toast text for a custom edit; never used for native TUNE/LEV. */
 void cv_feedback(char out[32],const CsState *,uint32_t encoder);
+/* Visible custom controls with a lock in the held step's effective bank. */
+uint8_t cv_lock_mask(const CsState *,const IlpSnapshot *);
 /* Caller supplies a locked mapper snapshot. Match full token and pitch, never
  * just a pitch or a slot reused by another performance generation. */
 void cv_ownership(CvDisplay *,const IsStatus *,const KbState *,uint32_t now_ms);

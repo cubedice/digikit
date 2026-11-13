@@ -29,8 +29,9 @@ int instrument_src_lock_step(uint32_t t,uint32_t e,int32_t d,uint32_t now,const 
 { (void)s; return cs_lock_step(&state,t,e,d,now,v,0,n); }
 void instrument_src_lock_feedback(char out[32],uint32_t e,const IlpSnapshot *s,uint32_t c,uint32_t v)
 { (void)e; (void)s; (void)c; (void)v; out[0]=0; }
+void instrument_src_display(CvDisplay *,uint32_t,const char *,const char *);
 void instrument_src_display_locked(CvDisplay *d,uint32_t t,const char *tune,const char *level,const IlpSnapshot *s)
-{ (void)d; (void)t; (void)tune; (void)level; (void)s; assert(0); }
+{ instrument_src_display(d,t,tune,level); d->locked=cv_lock_mask(&state,s); }
 uint8_t *mf_src_alloc(uint32_t bytes) { (void)bytes; assert(0); return 0; }
 void mf_src_free(uint8_t *p) { (void)p; assert(0); }
 uint32_t mf_native_page_count(uint32_t type, uint32_t ordinary) { (void)type; return ordinary; }
@@ -120,7 +121,7 @@ int32_t dk_fw_text_draw_box(uint8_t *p,uint8_t *font,int32_t x,int32_t y,int32_t
 }
 void dk_fw_draw_fill_rect(uint8_t *p,int32_t x0,int32_t y0,int32_t x1,int32_t y1,int32_t color)
 {
-    assert(x0>=23 && x1<124 && y0>=0 && y1<53 && (color==0 || color==1));
+    assert(x0>=23 && x1<124 && y0>=0 && y1<53 && (color==-1 || color==0 || color==1));
     for(int y=y0;y<=y1;++y) for(int x=x0;x<=x1;++x) {
         uint8_t *px=&p[(63-y)*128+x];
         if(color<0) *px^=1; else *px=(uint8_t)(color&1);
@@ -173,6 +174,17 @@ int main(int argc,char **argv)
         test_marked=0;
         assert(lock_clear((uint8_t *)v,1,steps)==1);
         assert(test_marked==1 && test_locks[4][0]==-1 && state.value[CP_COLOR]==64);
+    } else if(!strcmp(argv[1],"lock-paint")) {
+        for(unsigned step=0;step<128;++step)
+            for(unsigned lane=0;lane<ILP_LANES;++lane) test_locks[step][lane]=-1;
+        real_display=1;v[0x6c/4]=(uint32_t)(uintptr_t)seq_object;v[0x90/4]=2;
+        seq_object[0x258/4]=1u<<4;test_held=1;context((uint8_t *)v);
+        clear_paint(canvas);ip_src_draw((uint8_t *)v,canvas);
+        uint8_t before[8192];memcpy(before,canvas,sizeof(before));
+        uint16_t packed;assert(ilp_pack(2,84,&packed));test_locks[4][0]=packed;
+        clear_paint(canvas);ip_src_draw((uint8_t *)v,canvas);
+        assert(canvas[20*128+52]!=(before[20*128+52]));
+        assert(canvas[20*128+80]==before[20*128+80]);
     } else if(!strcmp(argv[1],"paint")) {
         for(int y=0;y<64;++y) for(int x=0;x<128;++x)
             if(y<11 || x<23 || x>=124 || (y<37 && x<48) || (y>=38 && x>=101))
@@ -273,6 +285,17 @@ int main(int argc,char **argv)
         event((uint8_t *)e,4,-1,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e); assert(state.value[CP_WTFM_RATIO]==14);
         for(unsigned key=41;key<=48;++key) { e[3]=key; assert(ip_src_key((uint8_t *)v,(uint8_t *)e)==1); }
     } else if(!strcmp(argv[1],"fm-envelope")) {
+        CvDisplay env={0};env.focus_id=CS_NONE;env.raw[CP_FM_SUSTAIN]=100;
+        /* Zero attack must remain vertical for every release value. */
+        for(unsigned rel=0;rel<128;rel+=rel==0?1:rel==1?63:63) {
+            env.raw[CP_FM_RELEASE]=(uint16_t)rel;
+            memset(canvas,0,sizeof(canvas));diagram_envelope(canvas,&env,1);
+            for(int y=16;y<28;++y) assert(canvas[y*128+24] && !canvas[y*128+25]);
+        }
+        /* An instant release is vertical at the right edge, even when all
+         * envelope times are at zero. */
+        env.raw[CP_FM_RELEASE]=0;memset(canvas,0,sizeof(canvas));diagram_envelope(canvas,&env,1);
+        for(int y=16;y<28;++y) assert(canvas[y*128+121]);
         cs_metadata(&state,3u<<4); v[0x90/4]=3; context((uint8_t *)v);
         assert(mf_src_page_count(type_id)==4);
         for(unsigned i=0;i<8;++i) assert(ip_src_parameter((uint8_t *)v,i)==0);
@@ -281,7 +304,7 @@ int main(int argc,char **argv)
         assert(state.value[CP_FM_ATTACK]==17 && !stock_turns);
         event((uint8_t *)e,8,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==1 && !stock_turns);
         event((uint8_t *)e,9,1,0,0); assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7 && stock_turns==1);
-        v[0x190/4]=0x01010101; ip_src_draw((uint8_t *)v,canvas);
+        v[0x190/4]=0x01010101; clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
         assert(!strcmp(label_text[0],"64")); protected_pixels(canvas,0);
         cs_metadata(&state,2u<<4); context((uint8_t *)v);
         assert(mf_src_page_count(type_id)==4 && v[0x90/4]==3);

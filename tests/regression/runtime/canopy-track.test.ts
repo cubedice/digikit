@@ -13,6 +13,7 @@ import { openDigikitMenu } from './runtime-menu.ts';
 import { waitInstrumentReady } from './instrument-ready.ts';
 import { acknowledgedPanel } from './panel-ack.ts';
 import { waitEmulated } from './waits.ts';
+import { menuSelection } from './menu-selection.ts';
 
 // CANOPY on any track, several at once (finding 121): each of the four lowest
 // kit tracks whose Sound carries the instrument type gets its own instance,
@@ -345,7 +346,31 @@ test('CANOPY runs on any track, and up to four instances play at once', async ()
   await selectTrack(11);
   await key('SRC');
   await expect.poll(focus, { timeout: 30_000 }).toBe(0);
+  // Loading a preset resets one instance while other configurations and the
+  // status stream are active. Every track must become playable again.
+  const menu = menuSelection(session, plan, 'core/instrument-play', key);
+  await openDigikitMenu(key);
+  await key('YES');
+  await menu('menu', 3);
+  await key('YES');
+  await menu('preset_menu', 2);
+  await key('YES');
+  await expect.poll(async () => (await cf('preset_present')) >>> 24, { timeout: 30_000 }).toBe(1);
+  await waitEmulated(session, 1000); // longer than the bounded status FIFO
+  await menu('preset_menu', 3);
+  await key('YES');
+  await expect.poll(phases, { timeout: 60_000 }).toEqual([3, 3, 3, 3]);
+  for (let i = 0; i < 4; i++) await key('NO');
+  await selectTrack(11);
+  await key('KEYBOARD');
+  try {
+    await edge('TRIG 9', true);
+    await expect.poll(async () => (await voicesOf(0)).filter((v) => v.gate === 1).length, { timeout: 30_000 }).toBe(1);
+  } finally {
+    await edge('TRIG 9', false);
+  }
+  await key('KEYBOARD');
   expect(await cf('ip_control', 4)).toBe(0);
   await session.expectNoFault('CANOPY on several tracks');
   console.info('CANOPY multi: four instances admitted, fifth stock, focus follows selection');
-}, 900_000);
+}, 1_200_000);

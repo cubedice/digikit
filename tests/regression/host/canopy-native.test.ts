@@ -54,6 +54,7 @@ afterAll(() => {
 });
 test.each([
   'held-lock',
+  'lock-paint',
   'live-lock',
   'paint',
   'diagrams',

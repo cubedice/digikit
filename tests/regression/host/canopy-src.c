@@ -38,7 +38,20 @@ int main(int argc,char **argv)
     CsState ui; cs_init(&ui);
     uint32_t token=cs_context(&ui,0,12,1,0,KB_ROOT,0,0,0),id=255;
     ui.pending=0; ui.native_tune_pending=0; /* Fixture starts after an applied initial bank. */
-    if(!strcmp(scenario,"trig-lock-edit")) {
+    if(!strcmp(scenario,"lock-indicators")) {
+        IlpSnapshot locks={0};locks.count=3;
+        locks.pair[0].id=2;locks.pair[1].id=ILP_FM_DEPTH;locks.pair[2].id=ILP_NOTE_FIRST;
+        cs_context(&ui,0,12,1,2,KB_ROOT,0,0,0);
+        assert(cv_lock_mask(&ui,&locks)==(1u<<1));
+        cs_metadata(&ui,3u<<4);
+        assert(cv_lock_mask(&ui,&locks)==(1u<<1));
+        locks.pair[1].id=ILP_FM_FIRST; /* FM algorithm is encoder C. */
+        assert(cv_lock_mask(&ui,&locks)==(1u<<2));
+        cs_context(&ui,0,12,1,3,KB_ROOT,0,0,0);
+        locks.pair[0].id=ILP_FM_FIRST+5; /* FM attack on encoder A. */
+        assert(cv_lock_mask(&ui,&locks)==1);
+        assert(!cv_lock_mask(&ui,0));
+    } else if(!strcmp(scenario,"trig-lock-edit")) {
         token=cs_context(&ui,0,12,1,2,KB_ROOT,0,0,0);
         uint32_t next=0,revision=ui.revision,pending=ui.pending;
         /* Lock editing has its own current value and must not change the

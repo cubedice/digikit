@@ -33,6 +33,20 @@ static const char *const labels[37]={"CHORD","VOICING","COLOR","DRIFT","STRUM","
 static const char *const fm_labels[12]={"ALGORITHM","CARRIER BALANCE","PAIR A RATIO","PAIR B RATIO",
     "FEEDBACK","FM ATTACK","FM DECAY","FM SUSTAIN","FM RELEASE","FM ENVELOPE","FM VELOCITY","FM MOD WHEEL"};
 static int fm_mode(const CsState *s) { return ((s->metadata>>4)&3)==3; }
+uint8_t cv_lock_mask(const CsState *s,const IlpSnapshot *locks)
+{
+    uint32_t family=(s->metadata>>4)&3,mask=0;
+    if(!locks) return 0;
+    for(uint32_t i=0;i<8;++i) {
+        uint32_t control=cs_mapped_control(s,i);
+        if(control==CS_TUNE || control==CS_LEVEL || control==CS_NONE) continue;
+        uint32_t id=ilp_id_for(family,control);
+        if(id==UINT32_MAX) continue;
+        for(uint32_t j=0;j<locks->count && j<ILP_LANES;++j)
+            if(locks->pair[j].id==id) { mask|=1u<<i; break; }
+    }
+    return (uint8_t)mask;
+}
 static int pending(const CsState *s,uint32_t id)
 { return id==CS_WAVE ? !!s->pending : id==CS_TUNE ? !!s->native_tune_pending : id<CP_CONTROLS && !!(s->pending&(1u<<id)); }
 static const char *label(const CsState *s,uint32_t id)

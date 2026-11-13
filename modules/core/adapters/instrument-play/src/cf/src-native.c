@@ -168,18 +168,18 @@ static int native_index(const CvDisplay *d,uint32_t id)
 { return d->raw[id]<128 ? d->raw[id] : 127; }
 static void diagram_envelope(uint8_t *b,const CvDisplay *d,int fm)
 {
-    uint32_t attack=canopy_env_weight[0][native_index(d,fm?CP_FM_ATTACK:CP_WT_ATTACK)];
-    uint32_t release=canopy_env_weight[1][native_index(d,fm?CP_FM_RELEASE:CP_WT_RELEASE)];
+    uint32_t attack=canopy_env_weight[0][native_index(d,fm?CP_FM_ATTACK:CP_WT_ATTACK)]-canopy_env_weight[0][0];
+    uint32_t release=canopy_env_weight[1][native_index(d,fm?CP_FM_RELEASE:CP_WT_RELEASE)]-canopy_env_weight[1][0];
     uint32_t decay=0,sustain=100;
     if(fm) {
         sustain=d->raw[CP_FM_SUSTAIN]; if(sustain>100) sustain=100;
-        decay=(canopy_env_weight[0][native_index(d,CP_FM_DECAY)]*diagram_sqrt((100-sustain)*100))/100;
+        decay=((canopy_env_weight[0][native_index(d,CP_FM_DECAY)]-canopy_env_weight[0][0])*diagram_sqrt((100-sustain)*100))/100;
         release=(release*diagram_sqrt(sustain*100))/100;
     }
     uint32_t available=fm?72:39,total=attack+decay+release;
     int x0=24,x1=x0+(int)(total?(available*attack+total/2)/total:0);
-    int x2=x1+(int)(total?(available*decay+total/2)/total:0);
-    int end=fm?121:71,hold=fm?25:8,x3=x2+hold;
+    int x2=x0+(int)(total?(available*(attack+decay)+total/2)/total:0);
+    int end=fm?121:71,x3=total?end-(int)((available*release+total/2)/total):end;
     if(x3>end) x3=end;
     int y=fm?29-(int)((16*sustain+50)/100):13;
     diagram_line(b,x0,29,x1,13);
@@ -465,6 +465,12 @@ void ip_src_draw(uint8_t *view,uint8_t *canvas)
             int values=view[0x190] || ip_src_focus_active(view+0x94,i);
             dk_fw_text_draw_box(canvas,(uint8_t *)(uintptr_t)ip_src_label_font,
                 x+9,y,1,0,0,"%s",values?display.value[i]:display.label[i]);
+        }
+        if(display.locked&(1u<<i)) {
+            /* Stock parameter locks invert the control's value box. Shared
+             * diagrams occupy that space, so invert their label instead. */
+            if(mask&(1u<<i)) dk_fw_draw_fill_rect(canvas,x,y,x+20,y+5,-1);
+            else dk_fw_draw_fill_rect(canvas,x-1,y+6,x+21,y+24,-1);
         }
     }
     diagram_draw(canvas,&display);

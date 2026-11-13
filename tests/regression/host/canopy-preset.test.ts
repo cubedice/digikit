@@ -48,6 +48,21 @@ function run(binary: string, commands: string): Record<string, unknown>[] {
     .split('\n')
     .map((s) => JSON.parse(s) as Record<string, unknown>);
 }
+test('CANOPY drains status while its preset menu is open', () => {
+  const [result] = run(settings, 'presetpoll');
+  expect(result).toMatchObject({ open: 1, track: 0 });
+  expect(result!.reads).toBeGreaterThan(0);
+});
+test('CANOPY retries an interrupted configuration without disturbing one still in flight', () => {
+  const [cancelled, active, otherTrack, resetting] = run(
+    settings,
+    'confighandshake 0\nconfighandshake 1\nconfighandshake 2\nconfighandshake 3',
+  );
+  expect(cancelled).toEqual({ phase: 1, resets: 1 });
+  expect(active).toEqual({ phase: 2, resets: 0 });
+  expect(otherTrack).toEqual({ phase: 1, resets: 1 });
+  expect(resetting).toEqual({ phase: 1, resets: 1 });
+});
 test('preset byte record restores stable controls and the embedded shape', () => {
   expect(run(codec, 'decode 144\nsnapshot')[0]).toEqual({
     result: 0,
