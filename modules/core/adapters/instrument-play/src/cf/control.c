@@ -68,8 +68,8 @@ static void instance_defaults(IpInst *in)
     static const int fm0[13]={32,0,50,3,8,0,5,40,50,15,100,100,100};
     static const int wtfm0[4]={0,3,100,100};
     in->pad_family=0; in->pad_color=64; in->pad_drift=0; in->pad_attack=5; in->pad_release=15;
-    in->arp_mix=0; in->arp_bpm=120; in->arp_rate=4; in->arp_gate=50;
-    in->arp_order=0; in->arp_octaves=0; in->arp_swing=0; in->arp_clock=0; in->arp_restart=0;
+    in->arp_mix=0; in->arp_bpm=CP_ARP_BPM_RESERVED; in->arp_rate=4; in->arp_gate=50;
+    in->arp_order=0; in->arp_octaves=0; in->arp_swing=0; in->arp_clock=CP_ARP_CLOCK; in->arp_restart=0;
     in->pad_strum=0;
     for(uint32_t i=0;i<12;++i) in->wt[i]=wt0[i];
     for(uint32_t i=0;i<13;++i) in->fm[i]=fm0[i];
@@ -373,8 +373,8 @@ static void preset_snapshot(const IpInst *in,CpPreset *p)
     for(uint32_t i=0;i<12;++i) p->control[16+i]=(uint16_t)in->wt[i];
     for(uint32_t i=0;i<13;++i) p->fm[i]=(uint16_t)in->fm[i];
     for(uint32_t i=0;i<4;++i) p->control[28+i]=(uint16_t)in->wtfm[i];
-    p->bpm=(uint16_t)in->arp_bpm; p->family=(uint8_t)in->pad_family;
-    p->mode=k->mode; p->clock=(uint8_t)in->arp_clock;
+    p->bpm=CP_ARP_BPM_RESERVED; p->family=(uint8_t)in->pad_family;
+    p->mode=k->mode; p->clock=CP_ARP_CLOCK;
     const KbShape *shape=k->preset_shape_active ? &k->preset_shape : &k->shapes[k->slot];
     p->shape.count=shape->count;
     for(uint32_t i=0;i<4;++i) p->shape.intervals[i]=shape->intervals[i];
@@ -426,9 +426,6 @@ int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint3
     case CP_GATE: cur->arp_gate=v; break;
     case CP_SWING: cur->arp_swing=v; break;
     case CP_RESTART: cur->arp_restart=v; break;
-    case CS_CLOCK:
-        cur->arp_clock=s->clock; cur->arp_rate=s->value[CP_RATE]; cur->arp_swing=s->value[CP_SWING]; break;
-    case CS_BPM: cur->arp_bpm=(int)cs_choice_value(s,CS_BPM); break;
     case CS_WAVE:
         cur->pad_family=(int)((s->metadata>>4)&3u);
         cur->pad_color=s->legacy_color;
@@ -491,7 +488,7 @@ int instrument_src_lock_target(uint32_t encoder,const IlpSnapshot *snapshot,uint
     CsState shown; lock_state(&shown,snapshot);
     uint32_t control=cs_mapped_control(&shown,encoder);
     if(control==CS_TUNE || control==CS_LEVEL) return CS_NATIVE;
-    if((control>=CP_CONTROLS && control!=CS_WAVE && control!=CS_CLOCK && control!=CS_BPM) ||
+    if((control>=CP_CONTROLS && control!=CS_WAVE) ||
        control==CP_RESERVED12 || control==CP_SOURCE) return CS_READONLY;
     uint32_t wire=ilp_id_for(family_of(&shown),control);
     if(wire==UINT32_MAX) return CS_READONLY;
@@ -522,11 +519,7 @@ static void lock_show(CsState *shown,uint32_t control,uint32_t value)
         shown->value[CP_COLOR]=family==3 ? shown->fm[0] : shown->legacy_color;
         for(uint32_t i=0;i<12;++i) shown->value[16+i]=family==3 ? shown->fm[1+i] : shown->wavetable[i];
         if(value>=2 && value<7) shown->value[CP_WT_TABLE]=(uint16_t)(value-2);
-    } else if(control==CS_CLOCK) {
-        shown->clock=(uint8_t)value;
-        shown->metadata=(shown->metadata&~12u)|(value<<2);
-    } else if(control==CS_BPM) shown->metadata=(shown->metadata&~0xffff00u)|(value<<8);
-    else if(control<CP_CONTROLS) shown->value[control]=(uint16_t)value;
+    } else if(control<CP_CONTROLS) shown->value[control]=(uint16_t)value;
 }
 static void lock_state(CsState *shown,const IlpSnapshot *snapshot)
 {
@@ -610,7 +603,9 @@ static int preset_dirty(void)
     if(cp_encode(&p,b) || !(preset_present & (1u<<(preset_slot-1)))) return 1;
     /* Compare current encodings: migrating a V1 preset alone is not an edit. */
     CpPreset saved; uint8_t canonical[CP_RECORD_BYTES];
-    if(cp_decode(&saved,preset_records[preset_slot-1],CP_RECORD_BYTES) || cp_encode(&saved,canonical)) return 1;
+    if(cp_decode(&saved,preset_records[preset_slot-1],CP_RECORD_BYTES)) return 1;
+    saved.clock=CP_ARP_CLOCK; saved.bpm=CP_ARP_BPM_RESERVED;
+    if(cp_encode(&saved,canonical)) return 1;
     for(uint32_t i=0;i<CP_RECORD_BYTES;++i)
         if(b[i]!=canonical[i]) return 1;
     return 0;
@@ -654,7 +649,7 @@ static void preset_load(void *ctx,int value)
     for(uint32_t i=0;i<12;++i) in->wt[i]=p.control[16+i];
     for(uint32_t i=0;i<13;++i) in->fm[i]=p.fm[i];
     for(uint32_t i=0;i<4;++i) in->wtfm[i]=p.control[28+i];
-    in->pad_family=p.family; in->arp_clock=p.clock; in->arp_bpm=p.bpm; in->pad_dirty=1;
+    in->pad_family=p.family; in->arp_clock=CP_ARP_CLOCK; in->arp_bpm=CP_ARP_BPM_RESERVED; in->pad_dirty=1;
     preset_pending=0;
     dkrt_irq_restore(sr);
     dk_ui_toast("PRESET LOADED - PRESS NEW KEYS");

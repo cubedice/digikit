@@ -10,7 +10,8 @@
 //
 // Wire words 0..15 at receive byte 0xa7c:
 // 0 PPOS magic, 1 version, 2 CF transmit sequence, 3 event sequence,
-// 4 observed epoch, 5 flags (bit 0 valid, bit 1 running), 6 opaque pattern,
+// 4 observed epoch, 5 flags (bit0 valid, bit1 running, bit2 stale;
+// v4 bits16..31 selected tempo in 1/120 BPM), 6 opaque pattern,
 // 7 native master step, 8 length (0 = unknown), 9 reserved (v2) / phase (v3), 10 snapshot CF block,
 // 11 raw scheduler clock, 12 transmit CF block, 13 next step, 14 raw transport,
 // 15 XOR of words 0..14 and PP_CHECK_SALT. Semantics belong to the CF hook.
@@ -75,6 +76,9 @@ _pp_block_entry:
     COMP(R0, R1);
     IF EQ JUMP _pp_wire_version_ok;
     R1 = 3;
+    COMP(R0, R1);
+    IF EQ JUMP _pp_wire_version_ok;
+    R1 = 4;
     COMP(R0, R1);
     IF NE JUMP _pp_bad;
 _pp_wire_version_ok:
@@ -182,30 +186,39 @@ _pp_copy:
     R0 = DM(_pattern_position_info + 72);
     R1 = R0 + 1;
     DM(_pattern_position_info + 72) = R1;
-    // Wire v3 adds phase without changing the legacy position ABI. Its
+    // Wire v3/v4 add phase/tempo without changing the legacy position ABI. Its
     // checksum is normalized too, so old clients see a coherent v2 record.
     R0 = 0;
     DM(_pattern_clock_info) = R0;
     R0 = DM(1, I1);
     R1 = 3;
     COMP(R0, R1);
+    IF EQ JUMP _pp_clock_version;
+    R1 = 4;
+    COMP(R0, R1);
     IF NE JUMP _pp_publish;
+_pp_clock_version:
+    R2 = 2;
+    R2 = R0 XOR R2; // normalize version in the legacy checksum
     R0 = DM(9, I1);
     DM(_pattern_clock_info + 8) = R0;
     R1 = DM(15, I1);
     R1 = R1 XOR R0;
     R0 = DM(5, I1);
-    R2 = 4;
-    R0 = R0 AND R2;
+    R3 = 0xfffffffc;
+    R0 = R0 AND R3; // strip staleness and tempo from legacy flags/checksum
     R1 = R1 XOR R0;
-    R0 = 1; // 3 XOR 2
-    R1 = R1 XOR R0;
+    R1 = R1 XOR R2;
     DM(15, I1) = R1;
     R0 = 2;
     DM(1, I1) = R0;
     R0 = 0;
     DM(9, I1) = R0;
     R0 = 1;
+    R1 = 6; // wire 4 XOR legacy 2
+    COMP(R2, R1);
+    R1 = 2;
+    IF EQ R0 = R1;
     DM(_pattern_clock_info + 4) = R0;
     R0 = DM(11, I1);
     DM(_pattern_clock_info + 12) = R0;
@@ -213,6 +226,22 @@ _pp_copy:
     R1 = 3;
     R1 = R0 AND R1;
     DM(5, I1) = R1; // legacy position retains stock freewheel semantics
+    R3 = 0;
+    R2 = DM(_pattern_clock_info + 4);
+    R4 = 2;
+    COMP(R2, R4);
+    IF NE JUMP _pp_clock_tempo_ready;
+    R3 = LSHIFT R0 BY -16;
+    R2 = 3600;
+    COMP(R3, R2);
+    IF LT JUMP _pp_clock_tempo_bad;
+    R2 = 36000;
+    COMP(R3, R2);
+    IF LE JUMP _pp_clock_tempo_ready;
+_pp_clock_tempo_bad:
+    R3 = 0;
+_pp_clock_tempo_ready:
+    R3 = LSHIFT R3 BY 16;
     R2 = 4;
     R0 = R0 AND R2;
     IF NE JUMP _pp_clock_stale;
@@ -221,6 +250,7 @@ _pp_copy:
 _pp_clock_stale:
     R0 = 0;
 _pp_clock_flags:
+    R0 = R0 OR R3;
     DM(_pattern_clock_info + 16) = R0;
     R0 = DM(16, I1);
     DM(_pattern_clock_info + 20) = R0;

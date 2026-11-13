@@ -4,7 +4,7 @@ static const uint16_t high[CP_CONTROLS]={11,3,127,127,500,127,8,4,6,100,75,2,0,0
 static const uint16_t fm_high[12]={3,100,15,15,100,127,127,100,127,200,200,200};
 static const uint8_t controls[4][8]={
     {CS_TUNE,CP_CHORD,CP_VOICING,CS_WAVE,CP_DRIFT,CP_STRUM,CP_ARP_MIX,CS_LEVEL},
-    {CP_RATE,CP_ORDER,CP_OCTAVES,CP_GATE,CP_SWING,CP_RESTART,CS_CLOCK,CS_BPM},
+    {CP_RATE,CP_ORDER,CP_OCTAVES,CP_GATE,CP_SWING,CP_RESTART,CS_NONE,CS_NONE},
     {CP_WT_POS,CP_WT_DEPTH,CP_WT_RATE,CP_WT_SHAPE,CP_WT_ENV,CP_WT_ATTACK,CP_WT_RELEASE,CP_WT_VELOCITY},
     {CP_FM_ATTACK,CP_FM_DECAY,CP_FM_SUSTAIN,CP_FM_RELEASE,CP_FM_ENV,CP_FM_VELOCITY,CS_NONE,CS_NONE}
 };
@@ -36,7 +36,7 @@ static void list_reset(CsState *s)
 }
 static int is_list(const CsState *s,uint32_t control)
 {
-    if(control==CS_WAVE || control==CS_CLOCK) return 1;
+    if(control==CS_WAVE) return 1;
     if(control==CP_WTFM_RATIO) return 1;
     if(family(s)==3 && control>=16 && control<28) return control==CP_FM_ALG || control==CP_FM_RTA || control==CP_FM_RTB;
     return control==CP_CHORD || control==CP_VOICING || control==CP_RATE ||
@@ -61,7 +61,8 @@ void cs_init(CsState *s)
 {
     for(uint32_t i=0;i<sizeof(*s);++i) ((volatile uint8_t *)s)[i]=0;
     cp_wavetable_defaults(s->value);
-    s->token=1; s->revision=1; s->focus_id=CS_NONE; s->metadata=120u<<8;
+    s->token=1; s->revision=1; s->focus_id=CS_NONE;
+    s->clock=CP_ARP_CLOCK; s->metadata=(CP_ARP_BPM_RESERVED<<8)|(CP_ARP_CLOCK<<2);
     s->native_tune=0x4000;
     s->value[CP_COLOR]=64; s->value[CP_RATE]=4; s->value[CP_OCTAVES]=3;
     s->value[CP_GATE]=50; s->value[CP_ATTACK]=5; s->value[CP_RELEASE]=15;
@@ -71,7 +72,10 @@ void cs_init(CsState *s)
 uint32_t cs_context(CsState *s,uint32_t track,uint32_t generation,int visible,
     uint32_t page,uint32_t mode,uint32_t clock,int learned,int modal)
 {
-    if(track>=16 || page>=cs_pages(s) || mode>KB_LEARN || clock>2) { visible=0; track=0; page=0; }
+    /* Legacy callers/presets may still supply the removed selector. ARP has
+     * one clock domain now; its tempo comes from the pattern. */
+    clock=CP_ARP_CLOCK;
+    if(track>=16 || page>=cs_pages(s) || mode>KB_LEARN) { visible=0; track=0; page=0; }
     if(s->track!=track || s->generation!=generation || s->visible!=!!visible ||
         s->page[track]!=page || s->mode!=mode || s->clock!=clock ||
         s->learned!=!!learned || s->modal!=!!modal) {
@@ -121,8 +125,8 @@ uint32_t cs_mapped_control(const CsState *s,uint32_t encoder)
 uint32_t cs_choice_value(const CsState *s,uint32_t control)
 {
     if(control==CP_CHORD) return s->mode==KB_PLAY ? 0 : 1u+s->value[CP_CHORD];
-    if(control==CS_CLOCK) return s->clock;
-    if(control==CS_BPM) return (s->metadata>>8)&0xffff;
+    if(control==CS_CLOCK) return CP_ARP_CLOCK;
+    if(control==CS_BPM) return CP_ARP_BPM_RESERVED;
     if(control==CS_WAVE) {
         uint32_t f=family(s);
         return f<2 ? f : f==3 ? 7 : 2u+s->value[CP_WT_TABLE];
@@ -165,7 +169,7 @@ void cs_import(CsState *s,const CpPreset *p)
     s->legacy_color=p->control[CP_COLOR];
     for(uint32_t i=0;i<12;++i) s->wavetable[i]=p->control[16+i];
     for(uint32_t i=0;i<13;++i) s->fm[i]=p->fm[i];
-    cs_metadata(s,p->mode|((uint32_t)p->clock<<2)|((uint32_t)p->family<<4)|((uint32_t)p->bpm<<8));
+    cs_metadata(s,p->mode|(CP_ARP_CLOCK<<2)|((uint32_t)p->family<<4)|(CP_ARP_BPM_RESERVED<<8));
     uint16_t active[CP_CONTROLS];
     for(uint32_t i=0;i<CP_CONTROLS;++i) active[i]=p->control[i];
     if(p->family==3) {
@@ -194,8 +198,7 @@ static int move(CsState *s,uint32_t token,uint32_t encoder,int32_t *detents,uint
     if((control>=16 && control<CP_CONTROLS && family(s)<2) || control==CP_SOURCE || (s->mode==KB_PLAY &&
         (control==CP_VOICING || control==CP_STRUM)) ||
         /* A learned shape fixes its voicing, not the choice of chord. */
-        (s->learned && control==CP_VOICING) ||
-        (s->clock==1 && control==CP_SWING) || (s->clock && control==CS_BPM)) return CS_READONLY;
+        (s->learned && control==CP_VOICING)) return CS_READONLY;
     /* Clamp before addition; even a malformed INT_MIN event cannot overflow. */
     uint32_t maximum=cs_choice_max(s,control),
         current=current_override ? *current_override : cs_choice_value(s,control);
@@ -243,18 +246,12 @@ int cs_edit(CsState *s,uint32_t token,uint32_t encoder,int32_t detents,uint32_t 
         learned=(uint8_t)(next==11);
         metadata=(metadata&~3u)|mode;
     } else if(control==CS_WAVE) metadata=(metadata&~0x30u)|((next<2 ? next : next==7 ? 3u : 2u)<<4);
-    else if(control==CS_CLOCK) metadata=(metadata&~12u)|(next<<2);
-    else if(control==CS_BPM) metadata=(metadata&~0xffff00u)|(next<<8);
     int context_changed=mode!=s->mode || learned!=s->learned || ((metadata^s->metadata)&0x3c);
     if(context_changed && s->token==UINT32_MAX) { s->visible=0; return CS_READONLY; }
     if(control==CP_CHORD) {
         if(next) s->value[control]=(uint16_t)(next-1);
     } else if(control<CP_CONTROLS) s->value[control]=(uint16_t)next;
     s->mode=mode; s->learned=learned; s->metadata=metadata;
-    if(control==CS_CLOCK) {
-        s->clock=(uint8_t)next; s->value[CP_RATE]=next==1 ? 1 : 4;
-        if(next==1) s->value[CP_SWING]=0;
-    }
     if(control==CS_WAVE) {
         activate(s);
         if(next>=2 && next<7) s->value[CP_WT_TABLE]=(uint16_t)(next-2);

@@ -119,15 +119,20 @@ void pp_write_frame_impl(u32 queue, u32 suffix) {
     u32 sum = 0x7b91d6e3;
     for (u32 i = 0; i < 15; ++i) sum ^= pp_position[i];
     pp_position[15] = sum;
-    /* Wire v3 adds musical phase in reserved word 9. Keep the public CF
+    /* Wire v4 adds the selected stock tempo (1/120 BPM) in flag bits16..31.
+     * It remains available while stopped. Wire v3 added musical phase in
+     * reserved word 9. Keep the public CF
      * position record at ABI 2. The receiver normalizes it for old effects
      * and publishes a separate versioned clock capability. */
     u32 phase = U32(0x80004880);
     u32 stale = pp_clock_fresh(transport, U32(0x429368d6), U32(0x402b6800),
         U32(0xfc07000c), U32(0x44e086e4), U32(0x44e086d4), U32(0x44e086dc)) ? 0 : 4;
-    u32 wire_sum = sum ^ 2 ^ 3 ^ phase ^ stale;
+    u32 tempo = U32(0x402b67fc);
+    if (tempo < 3600 || tempo > 36000) tempo = 0;
+    u32 clock_flags = stale | (tempo << 16);
+    u32 wire_sum = sum ^ 2 ^ 4 ^ phase ^ clock_flags;
     for (u32 i = 0; i < 16; ++i) {
-        u32 v = i == 1 ? 3 : i == 5 ? pp_position[5] | stale : i == 9 ? phase : i == 15 ? wire_sum : pp_position[i];
+        u32 v = i == 1 ? 4 : i == 5 ? pp_position[5] | clock_flags : i == 9 ? phase : i == 15 ? wire_sum : pp_position[i];
         out[0] = (u16)v;
         out[2] = (u16)(v >> 16);
         out += 4;

@@ -693,13 +693,34 @@ _iv_transport_known:
     R0 = DM(1, I1);
     R1 = 1;
     COMP(R0, R1);
+    IF EQ JUMP _iv_clock_provider;
+    R1 = 2;
+    COMP(R0, R1);
     IF NE RTS;
+    // Version2 carries selected stock tempo, also while explicitly stopped.
+    // Never manufacture running/valid phase from this independent capability.
+    R0 = DM(4, I1);
+    R0 = LSHIFT R0 BY -16;
+    R1 = 3600;
+    COMP(R0, R1);
+    IF LT JUMP _iv_clock_provider;
+    R1 = 36000;
+    COMP(R0, R1);
+    IF GT JUMP _iv_clock_provider;
+    R0 = LSHIFT R0 BY 16;
+    R1 = 0x800;
+    R0 = R0 OR R1;
+    R1 = DM(_iv_timing_meta);
+    R0 = R0 OR R1;
+    DM(_iv_timing_meta) = R0;
+_iv_clock_provider:
     R0 = DM(_iv_timing_meta);
     R1 = 0x200;
     R0 = R0 OR R1;
     DM(_iv_timing_meta) = R0;
     R0 = DM(4, I1);
     R1 = 3;
+    R0 = R0 AND R1;
     COMP(R0, R1);
     IF EQ JUMP _iv_phase_fresh;
     R0 = 0;

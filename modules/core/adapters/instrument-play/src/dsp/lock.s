@@ -376,27 +376,8 @@ _iv_lock_overlay_next:
     IF NE JUMP _iv_lock_overlay_advance;
     JUMP _iv_lock_overlay_table;
 _iv_lock_overlay_global:
-    R0 = 35;
-    COMP(R9, R0);
-    IF EQ JUMP _iv_lock_overlay_clock;
-    R0 = 36;
-    COMP(R9, R0);
-    IF NE JUMP _iv_lock_overlay_advance;
-    R0 = 30;
-    COMP(R8, R0);
-    IF LT R8 = R0;
-    R0 = 300;
-    COMP(R8, R0);
-    IF GT R8 = R0;
-    I0 = _iv_lock_controls;
-    DM(7, I0) = R8;
-    JUMP _iv_lock_overlay_advance;
-_iv_lock_overlay_clock:
-    R0 = 2;
-    COMP(R8, R0);
-    IF GT R8 = R0;
-    I0 = _iv_lock_controls;
-    DM(13, I0) = R8;
+    // Retired CLOCK/BPM IDs remain decodable for old projects, but cannot
+    // override the pattern clock. WAVE is handled before this value pass.
     JUMP _iv_lock_overlay_advance;
 _iv_lock_overlay_fm:
     R0 = 3;

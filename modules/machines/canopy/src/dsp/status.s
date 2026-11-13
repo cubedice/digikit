@@ -101,6 +101,19 @@ _cu_clock_same:
     DM(195, I2) = R1;
     JUMP _cu_clock_pack;
 _cu_clock_stopped:
+    // The arp runs from the selected pattern tempo while transport is stopped.
+    // Report RUNNING only after the scheduler accepted that coherent frame.
+    R1 = DM(12, I3);
+    R2 = 0x800;
+    R1 = R1 AND R2;
+    IF EQ JUMP _cu_clock_stopped_legacy;
+    R1 = DM(162, I2);
+    R2 = 2;
+    COMP(R1, R2);
+    IF NE JUMP _cu_clock_pack;
+    R6 = 2;
+    JUMP _cu_clock_pack;
+_cu_clock_stopped_legacy:
     R6 = 4;
     R1 = 0;
     DM(195, I2) = R1;

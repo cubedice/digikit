@@ -235,3 +235,7 @@ CANOPY tracks: [any track, up to four at once](findings/121-canopy-any-track.md)
 (**[D]**, per-track stock row/frame/kit strides, DSP slots bound by reset
 hints, per-track carrier ownership, status focus; four-busy-instance DSP load
 open **[O]**).
+
+CANOPY arp: [pattern tempo, stopped playing and onset continuity](findings/124-canopy-pattern-arp.md)
+(**[D]**, automatic pattern timing, removal of local BPM/clock controls, and
+a short arp onset ramp for zero-attack sounds).

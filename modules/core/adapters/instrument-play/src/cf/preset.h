@@ -18,6 +18,9 @@ enum {
     CP_FM_FB=20, CP_FM_ATTACK=21, CP_FM_DECAY=22, CP_FM_SUSTAIN=23,
     CP_FM_RELEASE=24, CP_FM_ENV=25, CP_FM_VELOCITY=26, CP_FM_WHEEL=27
 };
+/* Preserve CPST/CPS storage positions for older sounds, but never restore the
+ * retired local-tempo or grid-clock modes into a live CANOPY instance. */
+enum { CP_ARP_CLOCK=2, CP_ARP_BPM_RESERVED=120 };
 typedef struct {
     uint16_t control[CP_CONTROLS];
     uint16_t bpm;

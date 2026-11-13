@@ -344,6 +344,17 @@ def test_lock_overlay_preserves_base_and_combines_with_native_mod(playback):
     assert get("_test_values", 32) == bank
 
 
+def test_retired_arp_clock_and_bpm_locks_cannot_override_pattern_tempo(playback):
+    call, put, get, _, _, _, symbols = playback
+    bank = wavetable_fm_controls()
+    bank[7], bank[13] = 120, 2
+    put("_test_values", bank)
+    put("_iv_lock_slots", [2, (35 << 10), (36 << 10) | 300, 0, 0, 0])
+    call(12, R4=symbols["_test_values"])
+    assert get("_iv_lock_controls", 32) == bank
+    assert get("_test_values", 32) == bank
+
+
 def test_wave_lock_carries_the_remembered_fm_bank_without_changing_base(playback):
     call, put, get, _, _, _, symbols = playback
     base = wavetable_fm_controls()
@@ -889,7 +900,13 @@ def test_position_snapshot_reaches_input_and_rejects_gaps(playback):
     assert get("_iv_input", 18)[12:17] == [0] * 5
 
 
-def test_v5_timing_metadata_distinguishes_stop_loss_and_missing_provider(playback):
+@pytest.mark.parametrize(
+    "clock_version,tempo",
+    [(1, 0), (2, 0), (2, 3599), (2, 3600), (2, 12240), (2, 36000), (2, 36001)],
+)
+def test_v5_timing_metadata_distinguishes_stop_loss_and_missing_provider(
+    playback, clock_version, tempo
+):
     call, put, get, reset, configure, _, _ = playback
     reset()
     call(0)
@@ -920,16 +937,30 @@ def test_v5_timing_metadata_distinguishes_stop_loss_and_missing_provider(playbac
     put("_pattern_position_info", position)
     call(0)
     assert get("_iv_input", 24)[12] == 0x103
-    put("_pattern_clock_info", [0x50434C4B, 1, 10, 5, 3, 101, 9, 7])
+    packed_tempo = tempo << 16
+    tempo_flags = (
+        packed_tempo | 0x800 if clock_version == 2 and 3600 <= tempo <= 36000 else 0
+    )
+    put(
+        "_pattern_clock_info",
+        [0x50434C4B, clock_version, 10, 5, packed_tempo | 3, 101, 9, 7],
+    )
     call(0)
-    assert get("_iv_input", 24)[12] == 0x303
-    put("_pattern_clock_info", [0x50434C4B, 1, 10, 5, 0, 101, 9, 7])
+    assert get("_iv_input", 24)[12] == tempo_flags | 0x303
+    put(
+        "_pattern_clock_info",
+        [0x50434C4B, clock_version, 10, 5, packed_tempo, 101, 9, 7],
+    )
     call(0)
-    assert get("_iv_input", 24)[12] == 0x300  # Lost sync, transport still running.
+    assert (
+        get("_iv_input", 24)[12] == tempo_flags | 0x300
+    )  # Lost sync, transport still running.
     position[5], position[14] = 0, 0
     put("_pattern_position_info", position)
     call(0)
-    assert get("_iv_input", 24)[12] == 0x700  # Explicit STOP, providers still exist.
+    assert (
+        get("_iv_input", 24)[12] == tempo_flags | 0x700
+    )  # Explicit STOP, providers still exist.
     position[19] = 2
     put("_pattern_position_info", position)
     call(0)

@@ -1,5 +1,11 @@
 # CANOPY: native DTII interface proposal
 
+Current ARP revision (2026-11-12): A–F are RATE, ORDR, OCTS, GATE, SWNG and RST.
+G/H are blank. The arp always follows the current pattern tempo and is playable
+from held keyboard notes while the track or sequencer is stopped. There is no
+local BPM or clock selector. This supersedes the historical ARP mockup below;
+the current control contract is in [the technical design](canopy.md#controls-and-display).
+
 Status: **implemented; compiled UI/audio acceptance passed, 2026-11-06**.
 The native renderer, level mapping, Status menu and local-panel bridge are
 implemented. The acceptance evidence below distinguishes measured results from

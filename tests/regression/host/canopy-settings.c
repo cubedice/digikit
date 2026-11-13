@@ -191,6 +191,14 @@ int main(void)
         else if(!strcmp(cmd,"presetsave")) preset_save(0,0);
         else if(!strcmp(cmd,"presetload")) preset_load(0,0);
         else if(!strcmp(cmd,"presetslot")) preset_slot=value;
+        else if(!strcmp(cmd,"legacyarp")) {
+            CpPreset p; preset_snapshot(cur,&p);
+            p.clock=(uint8_t)value; p.bpm=237; p.control[CP_RATE]=6;
+            if(cp_encode(&p,preset_card[preset_slot-1])) return 2;
+            memcpy(preset_records[preset_slot-1],preset_card[preset_slot-1],CP_RECORD_BYTES);
+            preset_present|=1u<<(preset_slot-1);
+            preset_exists|=1u<<(preset_slot-1); preset_bytes[preset_slot-1]=CP_RECORD_BYTES;
+        }
         else if(!strcmp(cmd,"family")) { pad_family=value; pad_changed(0,value); }
         else if(!strcmp(cmd,"scanclock")) scan_clock_done(0,value);
         else if(!strcmp(cmd,"color")) { pad_color=value; pad_changed(0,value); }

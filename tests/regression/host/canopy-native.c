@@ -297,8 +297,23 @@ int main(int argc,char **argv)
         ip_src_draw((uint8_t *)v,canvas);assert(!strcmp(label_text[4],"64") && toasts==1);
         focus_mask=0;ip_src_draw((uint8_t *)v,canvas);assert(!strcmp(label_text[4],"COLR"));
         v[0x90/4]=1;context((uint8_t *)v);assert(ip_src_parameter((uint8_t *)v,8)==10);
+        uint32_t revision=state.revision;
         event((uint8_t *)e,8,12,0,0);ip_src_turn((uint8_t *)v,(uint8_t *)e);
-        assert(cs_choice_value(&state,CS_BPM)==132 && !stock_turns);
+        assert(cs_choice_value(&state,CS_BPM)==120 && state.revision==revision && !stock_turns);
+        /* Earlier checks intentionally use the all-COLR display stub. Switch
+         * to the real model to prove retired controls are blank, and seed the
+         * canvas to verify their old labels/graphics are actually erased. */
+        real_display=1; focus_mask=0;
+        for(unsigned values=0;values<2;++values) {
+            v[0x190/4]=values?0x01010101:0;
+            clear_paint(canvas); ip_src_draw((uint8_t *)v,canvas);
+            for(unsigned cell=6;cell<8;++cell) {
+                assert(!label_text[cell][0] && !body_text[cell][0] && !(graph_mask&(1u<<cell)));
+                for(unsigned y=38;y<64;++y) for(unsigned x=23+26*(cell%4);x<=45+26*(cell%4);++x)
+                    assert(canvas[y*128+x]==0);
+            }
+            protected_pixels(canvas,0);
+        }
     } else if(!strcmp(argv[1],"delayed")) {
         event((uint8_t *)e,4,3,0,0); v[0x90/4]=1;
         ip_src_turn((uint8_t *)v,(uint8_t *)e);

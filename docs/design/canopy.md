@@ -1,8 +1,9 @@
 # CANOPY technical design
 
-Current control revision (2026-11-10): SOUND B combines PLAY and chord selection;
+Current control revision (2026-11-12): SOUND B combines PLAY and chord selection;
 SOUND D combines the two original sounds, five factory wavetables and FM. TUNE
-and LEV appear only on SOUND. ARP G/H edit clock/local BPM; position and its
+and LEV appear only on SOUND. ARP always uses the pattern tempo and supports
+keyboard playing while stopped; G/H are blank. Position and its
 envelope share wavetable TONE, and wheel amounts move to MODULATION settings.
 Latch is removed, including migration of older presets to latch-off. Six fixed
 SRC targets per sound type connect to the stock MOD page; the implementation
@@ -1784,11 +1785,25 @@ ARP MIX blends sustained pad and the separate arp group. Candidate notes come fr
 
 Support UP, DOWN, UP/DOWN without duplicate endpoints, AS PLAYED and seeded RANDOM; a signed spread of -3..+3 additional octaves in one direction; and bounded gate duration. Zero uses the played octave only. Each arp event has its own internal token. Gate changes release only arp ownership. Initially STRUM applies only to generated ROOT + TYPE, LEARN TO ROOT and SEQUENCER chords: it schedules their pad-tone onsets across a bounded interval and cancels pending old-chord onsets when the chord revision changes. PLAY always preserves immediate individual key onsets; adding a played note cannot cancel a still-held earlier note.
 
-The first clocked proof uses committed master-step boundaries and integer multiples from Overloop's existing bridge. Do not infer BPM, per-track swing or a sample timestamp from its raw scheduler deadline. Faster divisions, triplets and swing require a versioned tempo/phase extension with measured behavior on internal and external clock. Represent subdivision phase rationally, so triplet rounding does not accumulate drift. Swing moves alternating events while preserving each pair's total duration.
+The arp uses the firmware's musical phase while playing and the current pattern
+tempo while stopped. The timing provider supplies that tempo; the arp advances
+its own phase per audio block without requiring the track sequencer to run.
+There is one timing choice: use the DTII TEMPO control to
+change speed. Do not infer BPM, per-track swing or a sample timestamp from the
+raw scheduler deadline. Represent subdivision phase rationally, so triplet
+rounding does not accumulate drift. Swing moves alternating events while
+preserving each pair's total duration.
 
-Restart choices are TRIG, PATTERN and CONTINUE. In KEYBOARD mode TRIG means the beginning of a new phrase, not each added chord tone. PATTERN follows the committed pattern generation. CONTINUE preserves ordinal/phase across chord updates, while transport reset creates a new clock generation. Quantize pending changes against the clock source actually selected.
+Restart choices are TRIG, PATTERN and CONTINUE. In KEYBOARD mode TRIG means the beginning of a new phrase, not each added chord tone. PATTERN follows the committed pattern generation. CONTINUE preserves ordinal/phase across chord updates, while transport reset creates a new clock generation. Quantize pending changes against the pattern clock.
 
-While stopped, direct keyboard pads remain playable. ARP G selects LOCAL, GRID or PHASE clock; ARP H edits 30..300 local BPM and is inactive with a synchronized clock. External sync does not silently fall back to local BPM on clock loss. A stale clock releases the current arp gate and pauses scheduling. Transport STOP cancels sequencer notes, pending strums and synchronized arp events; keyboard held/pedal notes retain their ownership. PANIC clears them all.
+While stopped, direct keyboard pads and arpeggios remain playable from held or
+pedal-sustained notes. ARP G/H are blank and have no hidden controls. Old preset
+clock/local-BPM fields retain their storage positions but are ignored on load;
+the saved RATE selection becomes a musical division and is not reset. Running
+external sync does not silently fall back to a saved local BPM on clock loss.
+A stale running clock releases the current arp gate and pauses scheduling.
+Transport STOP cancels sequencer note ownership; keyboard held/pedal notes
+retain their ownership and can continue through the arp. PANIC clears them all.
 
 On a pattern switch that keeps CANOPY on the same track, retain KEYBOARD tokens and oscillator state, then apply the destination's firmware-backed controls. The carrier fixture now retains its instance on a compatible pattern change within the same project and refreshes the destination stock carrier without resetting MIDI ownership. Same-pattern Sound replacement, machine changes, project changes and unknown running timing still invalidate admission. General production retention remains a release requirement; this fixture has one fixed sine configuration and shadows WERP on track 0. Initially the extra module controls remain at the current CANOPY configuration/preset; they do not acquire destination-pattern values automatically. If the machine changes, reset that instance. In SEQUENCER mode the destination's committed trigs and lengths own the generated chord. Tie, retrig, microtiming and note-length behavior need event-source tests; root pitch alone cannot supply a complete gate lifecycle.
 
@@ -1811,8 +1826,8 @@ cell positions. Detailed note and ownership information remains in STATUS.
 | D | WAVE | GATE | SHAP |
 | E | DRFT | SWNG | ENV |
 | F | STRM | RST | ATK |
-| G | MIX | CLK | REL |
-| H | LEV | BPM | VEL |
+| G | MIX | — | REL |
+| H | LEV | — | VEL |
 
 SOUND B is one ordered list: `PLAY`, `MAJ`, `MAJ6`, `SUS2`, `MIN6`, `MIN`,
 `SUS4`, `ADD9`, `DOM7`, `DIM`, `MIN7`, `USER`, `MAJ7`. PLAY sounds the notes
@@ -1958,14 +1973,12 @@ The mockup's original ordering and legends are historical. The current page tabl
 | COLR / DRFT | 0..127 | COLR lives on legacy TONE A; DRFT remains SOUND E |
 | STRM | `OFF` or a millisecond count | 0..500 ms total spread; read-only `--` in PLAY |
 | MIX | `PAD`, `ARP` or rounded percent | Percent is the arp contribution; endpoints map exactly to 0/127 |
-| RATE | `1/16`, `1/8T`, or `1STP` | Show only divisions supported by the active timing capability; step-only builds label master steps honestly |
+| RATE | `1/16`, `1/8T`, etc. | Musical division of the current pattern tempo, including while stopped |
 | ORDR | `UP`, `DOWN`, `UPDN`, `PLAY`, `RND` | `PLAY` means input order, not keyboard mode |
 | OCTS | `-3`..`+3`, with `0` at center | Additional arp octaves below or above the played octave; never both directions, and never pad transposition |
 | GATE | Percentage | Exact implemented range appears in the descriptor; round for the cell, retain stored precision |
-| SWING | `50%` straight to rounded `88%` | Existing DSP macro 0..75 alternates interval weights `100+n` / `100-n`, giving 50..87.5% of the pair to its first interval; the cell rounds to whole percent. Master-step timing shows `--` and consumes the turn |
+| SWING | `50%` straight to rounded `88%` | Existing DSP macro 0..75 alternates interval weights `100+n` / `100-n`, giving 50..87.5% of the pair to its first interval; the cell rounds to whole percent |
 | RST | `TRIG`, `PATT`, `CONT` | Phrase/trig, pattern or continuous restart |
-| CLK | `LOCAL`, `GRID`, `PHASE` | ARP G selects local tempo, master-step grid or phase timing |
-| BPM | 30..300, or `--` | ARP H edits local tempo only while CLK is LOCAL |
 | WAVE | `VELVT`, `REED`, `ANLG`, `GLASS`, `VOCAL`, `ORGAN`, `METAL`, `FM` | SOUND D selects the sound family/table in one list |
 | POS | `1.00`..`8.00` | Wavetable TONE A is the single position control |
 
@@ -1993,16 +2006,20 @@ On MOVEMENT, show `ARP G4` for the actual current arp pitch, including octave ex
 | Condition | Heading or feedback | Animation |
 | --- | --- | --- |
 | Valid chord, arp mix at PAD | `ARP OFF` on MOVEMENT | Note ownership updates only |
-| Ready but synchronized transport stopped | `STOPPED` | No arp cursor |
+| Keyboard notes held while transport stopped | `ARP G4`, etc. | Arp cursor continues at the pattern tempo |
 | External sync selected, no valid clock yet | `WAIT CLK` | No arp cursor; keyboard pad remains playable |
 | Previously running external clock is lost | `CLK LOST` | Release arp gate, freeze no stale active highlight |
-| Timing capability missing | `GRID ONLY` when a finer setting is attempted | Supported master-step choices remain usable |
+| Timing capability missing | `WAIT CLK` | No arp cursor; keyboard pad remains playable |
 | DSP telemetry stale or wrong generation | `LINK LOST`, note slots `--` | Stop all note/arp animation; retain labeled control values as unconfirmed |
 | Instance fault | `VOICE ERR` | Clear note highlights; PANIC and setup remain reachable |
 | Pending configuration | Small `*` next to focused requested value | Show pending until applied revision is acknowledged |
 | Save failure | `NOT SAVED` after the save action | Current sound remains; retry through setup |
 
-Clock source (LOCAL/INTERNAL/EXTERNAL) and exact state are shown in RATE focus and setup. The normal heading reserves space for the actionable state or note. Fault/stale status has priority over knob focus; a pending save notice must not conceal a voice fault. A stale snapshot must not be presented as an empty, healthy instrument.
+The pattern clock is automatic and is not a source selector in RATE focus or
+setup. The normal heading reserves space for the actionable state or note.
+Fault/stale status has priority over knob focus; a pending save notice must not
+conceal a voice fault. A stale snapshot must not be presented as an empty,
+healthy instrument.
 
 ### Encoder focus and input routing
 
@@ -2052,7 +2069,7 @@ the UI receiver must additionally enforce its wall-clock freshness deadline.
 | 6 | Four membership bytes: key/pedal flags in bits 0..1, former latch flag bit 2 reserved zero, with the existing stable source-tone identity packing unchanged |
 | 7 | Actual arp pitch bits 0..7; pitch-valid bit 8; source-match-valid bit 9; source-tone index bits 10..11; reserved bits 12..15; bounded ordinal bits 16..31. Source-match-valid means the arp source revision equals word 4; generate packed masks in SDK |
 | 8 | Applied arp mix, unique physically held count, eligible-but-excluded count, and reserved byte |
-| 9 | Clock mode (LOCAL/GRID/PHASE), state (0 local, 1 waiting, 2 running, 3 lost, 4 stopped), provider bits (bit0 grid, bit1 phase), and applied rate ID, one byte each |
+| 9 | Clock mode (current PATTERN = 2; legacy LOCAL/GRID remain wire-compatible), state (0 local, 1 waiting, 2 running, 3 lost, 4 stopped), provider bits (bit0 grid, bit1 phase), and applied rate ID, one byte each. Stopped transport with a valid pattern-tempo arp reports state 2 |
 | 10 | Last fault code and saturating overrun count, sixteen bits each |
 | 11 | Selected-track detail revision |
 
@@ -2075,7 +2092,18 @@ consumer is enabled on-device.
 
 Use native SRC renderer fixtures for every current family/page, plus NO NOTES, RELEASE, pedal down with no notes, fifth key, pending chord, pending encoder value, LINK LOST and VOICE ERR in STATUS. Check that legacy latch bits never produce a label or ownership mark. Check exact pixel bounds and independent field truncation at native resolution; the original enlarged mockup is not a substitute for native-font readability.
 
-Exercise every encoder on all current pages, including blank cells, disabled PLAY/LEARN controls, synchronized-clock BPM and grid-clock SWNG; assert storage values and DSP revisions as well as pixels. Verify mode and capture ownership, MIDI note zero, long accidental/octave names, missing-clock capabilities, and source/rate changes while notes are held. Check an arp gate spanning a chord change: the actual pitch remains visible in STATUS, but no mismatched source slot is highlighted. Separate requested/applied/saved states in delayed-ACK and failed-save scenarios. Drop, duplicate and reorder detail fragments; reject invalid framing and old LEARN sessions, and prove timeout recovery without blanking fresh fast notes.
+Exercise every encoder on all current pages, including blank ARP G/H cells and
+disabled PLAY/LEARN controls; assert storage values and DSP revisions as well
+as pixels. Load old local/grid/phase presets and verify that all use pattern
+tempo without dirtying the sound. Verify playing the arp while stopped and
+changes to the normal TEMPO control. Verify mode and capture ownership, MIDI
+note zero, long accidental/octave names, missing-clock capabilities, and
+source/rate changes while notes are held. Check an arp gate spanning a chord
+change: the actual pitch remains visible in STATUS, but no mismatched source
+slot is highlighted. Separate requested/applied/saved states in delayed-ACK and
+failed-save scenarios. Drop, duplicate and reorder detail fragments; reject
+invalid framing and old LEARN sessions, and prove timeout recovery without
+blanking fresh fast notes.
 
 In running firmware, prove page persistence against `mf_srcpage`, SRC and UP/DOWN behavior, FUNC+SRC machine selection, focus expiry, return from AMP/FLTR, rapid switching between CANOPY and stock tracks, key repeat and modal ownership. A late status fragment or turn event must never show or modify the wrong track. Confirm the actual native header/page-dot geometry before accepting the layout, then check OLED readability and knob correspondence on hardware.
 

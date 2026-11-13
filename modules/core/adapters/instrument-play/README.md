@@ -21,7 +21,8 @@ already played by a lower instance is skipped and INPUT shows CHANNEL IN USE.
 Learned shapes are shared.
 
 The native UI revision uses the stock TUNE, source LEV and track LEV paths on
-SOUND, with native fonts and bounded custom cells. ARP G/H edit clock/local BPM.
+SOUND, with native fonts and bounded custom cells. ARP follows the pattern tempo
+and remains playable from the keyboard while stopped; G/H are blank.
 Hold SRC uses the firmware's momentary values state. Detailed notes,
 pedal and clock state are under `DIGIKIT > MODULES > CANOPY > SETTINGS > STATUS`.
 See the [accepted UI contract](../../../../docs/design/canopy-ui-review.md).
@@ -152,8 +153,11 @@ The shared store may independently retry a failed write, but the preset UI does
 not claim confirmation until its own successful save.
 
 Each version-2 `canopy/preset/1` through `canopy/preset/4` value is 64 bytes.
-It includes stable logical control IDs 0-15, family, keyboard mode, local BPM,
-clock source, and the custom shape by value. It excludes routing, native TUNE/
+It includes stable logical control IDs 0-15, family, keyboard mode, the legacy
+BPM/clock storage positions, and the custom shape by value. Current loads and
+saves normalize those retired fields to the pattern clock and a reserved BPM
+placeholder; they cannot select a separate tempo. Migration alone does not mark
+the sound as edited. It excludes routing, native TUNE/
 LEVEL, held keys, pedal membership, tokens, phase and pointers. Loading does not
 overwrite any of the eight learned library slots. Selecting a different shape
 slot or completing LEARN releases the preset shape override.
@@ -232,7 +236,7 @@ parameter locks and arbitrary target reassignment are outside this change.
 
 The table below documents the earlier local envelope. Current CANOPY uses the
 track AMP page per note through the opt-in V6 input. The earlier SOUND SETUP contained an AMP
-page reminder and the arp clock/BPM settings; its duplicate amplitude attack and
+page reminder; arp clock/BPM settings are removed, and its duplicate amplitude attack and
 release controls have been removed. Legacy preset values remain stored for
 compatibility with the earlier input layouts. Native AHD and ADSR snapshots use
 the stock coefficient tables, with separate per-note phase and hold counters.

@@ -328,15 +328,33 @@ int main(int argc,char **argv)
         for(unsigned i=1;i<8;++i) assert(cs_edit(&ui,token,i,12,10,&id)==CS_READONLY);
         token=cs_context(&ui,0,12,1,1,KB_ROOT,0,0,0);
         assert(cs_edit(&ui,token,0,4,30,&id)==CS_EDIT && id==CP_RATE && ui.value[id]==5);
-        assert(cs_edit(&ui,token,7,21,30,&id)==CS_EDIT && id==CS_BPM && cs_choice_value(&ui,id)==141);
-        assert(cs_edit(&ui,token,6,3,30,&id)==CS_READONLY && ui.clock==0);
-        assert(cs_edit(&ui,token,6,1,30,&id)==CS_EDIT && ui.clock==1 && ui.value[CP_RATE]==1);
-        assert(cs_edit(&ui,token,7,1,30,&id)==CS_STALE); token=ui.token;
-        assert(cs_edit(&ui,token,7,1,30,&id)==CS_READONLY && cs_choice_value(&ui,CS_BPM)==141);
-        assert(cs_edit(&ui,token,6,4,30,&id)==CS_EDIT && ui.clock==2 && ui.value[CP_RATE]==4);
-        token=ui.token; assert(cs_edit(&ui,token,6,-8,30,&id)==CS_EDIT && ui.clock==0);
-        token=ui.token; assert(cs_edit(&ui,token,7,INT32_MIN,30,&id)==CS_EDIT && cs_choice_value(&ui,CS_BPM)==30);
-        assert(cs_edit(&ui,token,7,INT32_MAX,30,&id)==CS_EDIT && cs_choice_value(&ui,CS_BPM)==300);
+        uint32_t revision=ui.revision,metadata=ui.metadata,pending=ui.pending;
+        for(unsigned encoder=6;encoder<8;++encoder) {
+            assert(cs_edit(&ui,token,encoder,INT32_MAX,30,&id)==CS_READONLY && id==CS_NONE);
+            assert(cs_edit(&ui,token,encoder,INT32_MIN,30,&id)==CS_READONLY && id==CS_NONE);
+            uint32_t next=123;
+            assert(cs_lock_step(&ui,token,encoder,1,30,0,&id,&next)==CS_READONLY && next==123);
+        }
+        assert(ui.revision==revision && ui.metadata==metadata && ui.pending==pending && ui.token==token);
+        assert(ui.value[CP_RATE]==5 && ui.clock==2);
+    } else if(!strcmp(scenario,"pattern-tempo-import")) {
+        CpPreset p={0}; p.control[CP_RATE]=6; p.control[CP_GATE]=50;
+        cp_wavetable_defaults(p.control); cp_fm_defaults(p.fm);
+        CvDisplay d; char feedback[32];
+        for(unsigned old_clock=0;old_clock<3;++old_clock) {
+            p.clock=(uint8_t)old_clock; p.bpm=old_clock ? 300 : 30;
+            cs_import(&ui,&p); token=cs_context(&ui,0,12,1,1,KB_PLAY,old_clock,0,0);
+            assert(ui.clock==2 && ((ui.metadata>>2)&3)==2 && ((ui.metadata>>8)&0xffff)==120);
+            assert(ui.value[CP_RATE]==6);
+            assert(cs_edit(&ui,token,4,1,30,&id)==CS_EDIT && id==CP_SWING);
+            cv_build(&d,&ui,&status,now,"0","100",0);
+            assert(!strcmp(d.value[0],"1/16T"));
+            for(unsigned encoder=6;encoder<8;++encoder) {
+                assert(!d.label[encoder][0] && !d.value[encoder][0]);
+                cv_feedback(feedback,&ui,encoder); assert(!feedback[0]);
+                assert(!(d.pending&(1u<<encoder)) && !(d.rotary&(1u<<encoder)));
+            }
+        }
         assert(ui.value[CP_ARP_MIX]==0 && ui.value[CP_RESERVED12]==0);
     } else if(!strcmp(scenario,"signed-spread")) {
         token=cs_context(&ui,0,12,1,1,KB_PLAY,0,0,0);
@@ -364,7 +382,7 @@ int main(int argc,char **argv)
         token=cs_context(&ui,0,12,1,0,KB_ROOT,0,1,0);
         assert(cs_edit(&ui,token,2,1,0,&id)==CS_READONLY);
         token=cs_context(&ui,0,12,1,1,KB_ROOT,1,0,0);
-        assert(cs_edit(&ui,token,4,1,0,&id)==CS_READONLY);
+        assert(cs_edit(&ui,token,4,1,0,&id)==CS_EDIT);
         token=cs_context(&ui,0,12,1,0,KB_ROOT,0,0,1);
         for(unsigned i=0;i<8;++i) assert(cs_edit(&ui,token,i,1,0,&id)==CS_READONLY);
         assert(!cs_focused(&ui,0));
@@ -496,7 +514,7 @@ int main(int argc,char **argv)
         assert(!strcmp(display.value[0],"1/16T") && !strcmp(display.value[4],"88%"));
         cs_context(&ui,0,12,1,1,KB_ROOT,1,0,0);
         cv_build(&display,&ui,&status,now,"-12","100",0);
-        assert(!strcmp(display.value[0],"6STP") && !strcmp(display.value[4],"--"));
+        assert(!strcmp(display.value[0],"1/16T") && !strcmp(display.value[4],"88%"));
     } else if(!strcmp(scenario,"display-capacity")) {
         CvDisplay display; start(); ++fast[0];
         fast[1]=(7u<<16)|(3u<<20)|(1u<<11);
@@ -574,7 +592,7 @@ int main(int argc,char **argv)
         cv_feedback(feedback,&ui,1);assert(!strcmp(feedback,"Chord=PLAY (YOUR NOTES)"));
         cs_context(&ui,0,12,1,1,KB_ROOT,0,0,0);
         cv_build(&display,&ui,&status,now,"0","100",0);
-        assert(!strcmp(display.label[7],"BPM") && !strcmp(display.label[6],"CLK"));
+        assert(!display.label[7][0] && !display.label[6][0]);
     } else { fprintf(stderr,"unknown scenario %s\n",scenario); return 2; }
     puts("ok"); return 0;
 }

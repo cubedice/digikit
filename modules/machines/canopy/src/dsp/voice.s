@@ -830,6 +830,24 @@ _cp_amp_begin:
     R0 = DM(_cp_amp_input);
     I1 = R0;
     F6 = DM(25, I1);
+    // Arp retriggers inherit an already-running owner's phase, which may be
+    // at a waveform peak. Give their AMP onset a minimum 64-sample de-click
+    // ramp (1.33ms at 48kHz). Slower selected attacks and every pad envelope
+    // retain their native timing. Copied arp tails keep the same attack rate.
+    R0 = I0;
+    R1 = DM(_cp_amp_state);
+    R0 = R0 - R1;
+    R1 = 544;
+    COMP(R0, R1);
+    IF EQ JUMP _cp_amp_arp_attack;
+    R0 = DM(1, I0);
+    R1 = 4;
+    R0 = R0 AND R1;
+    IF EQ JUMP _cp_amp_attack_ready;
+_cp_amp_arp_attack:
+    F0 = 0.015625;
+    F6 = MIN(F6, F0);
+_cp_amp_attack_ready:
     R0 = DM(26, I1);
     DM(_cp_amp_hold) = R0;
     F7 = DM(27, I1);

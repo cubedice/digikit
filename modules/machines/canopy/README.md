@@ -91,7 +91,12 @@ existing sounds need no conversion beyond the existing preset migration.
 
 SETTINGS > DIGIKIT > CANOPY contains four groups: INPUT for connections and
 selector keys; CHORD LEARN for custom shapes; MODULATION for scan clock/restart
-and wheel amounts; and PRESETS for save/load. ARP G/H select clock and local BPM.
+and wheel amounts; and PRESETS for save/load. The arp follows the current pattern
+tempo, including while the sequencer is stopped. ARP G/H are blank; adjust tempo
+with the DTII's normal TEMPO control.
+Arpeggiated notes have a minimum 64-sample onset ramp (about 1.33 ms) to prevent
+clicks when AMP ATT is zero. Slower AMP attacks, release times and the pad's
+own envelope are unchanged.
 Latch is removed: releasing a key starts its release unless the sustain pedal
 holds it. Older presets load with their former latch setting discarded.
 
@@ -109,8 +114,8 @@ WAVE sound type; no extra assignment menu is needed.
 Choose a target with MOD's DEST control, then set its LFO depth and timing as
 usual. Modulation is added to the knob value within that parameter's range;
 turning it off restores the unchanged base value. It does not write movement
-into a preset. Scan rate follows the selected free/synced range; GRID clock
-keeps arp swing disabled. Native TUNE and LEVEL remain native destinations.
+into a preset. Scan rate follows the selected free/synced range. Native TUNE and
+LEVEL remain native destinations.
 Changing WAVE also changes the meaning of any of these six active SRC routes.
 Native Sound/project persistence of CANOPY's custom base controls remains
 separate from the custom presets.
@@ -429,7 +434,8 @@ any duplicated SRC value that disagrees with its audio setting. STRUM must
 match the truncated milliseconds-to-DSP-block conversion; SOURCE remains KEYS.
 
 Both banks come from one locked snapshot with the SRC requested revision.
-Mode, clock, family and BPM also advance that revision. Transport ACKs still
+Mode and family also advance that revision. Pattern tempo is supplied directly
+by the timing provider, independent of the sound's revision. Transport ACKs still
 cannot clear pending markers without a matching DSP-applied bank. The status
 producer and native SRC attachment are implemented; full Stage 5 wavetable
 acceptance has passed in the emulator. Current wavetable builds require the
@@ -447,16 +453,18 @@ ambiguous OCT suffix. Current wavetable builds require matching CPS9 firmware
 and DKM. V1 presets migrate
 without changing their original sound; old CPS5/CPS6/CPS7 banks remain accepted.
 
-## Movement controls (CPS5 compatibility)
+## Movement controls
 
 The ARP page exposes RATE (1..8 notes/quarter), gate percent
 (1..100), UP/DOWN/UP-DOWN/AS-PLAYED/RANDOM, signed octave spread (-3..+3),
-swing (0..75), TRIG/PATTERN/CONTINUE restart, clock and local tempo (30..300).
-SOUND G controls MIX (0 pad, 127 arp). ARP G selects LOCAL BPM, MASTER GRID or
-MASTER PHASE clock; ARP H edits local BPM while LOCAL is selected.
-SOUND F controls STRUM MS (0..500). In MASTER GRID, the
-rate becomes a whole-step multiple and swing is disabled. Clock changes
-restart timing observation. Setup values currently return to defaults at boot.
+swing (0..75), and TRIG/PATTERN/CONTINUE restart. The arp always follows the
+current pattern tempo; there is no separate local BPM or clock selector.
+SOUND G controls MIX (0 pad, 127 arp). SOUND F controls STRUM MS (0..500).
+ARP G/H are blank. RATE uses musical divisions, including triplets, and SWNG
+is available without changing clock modes. Keyboard-held and sustained notes
+can arpeggiate while the track or sequencer is stopped; starting playback joins
+the pattern clock. Change the speed with the normal DTII TEMPO control.
+Setup values currently return to defaults at boot.
 
 Generated chords can spread their onsets over the strum interval; PLAY keys
 remain immediate. A new committed chord cancels obsolete delayed onsets while
@@ -464,24 +472,28 @@ preserving sounding common notes. TRIG means a new phrase, not each added key.
 CONTINUE keeps timing across chord changes, including a gap with no held keys.
 Arp gates never release pad owners. The lanes share two bounded release tails.
 
-The sixteen-word CPS5 layout is version, family, color, drift, attack, release,
-mix, local BPM, rate, gate, order, octaves, swing, clock, restart, strum blocks.
+The historical sixteen-word CPS5 layout is version, family, color, drift, attack,
+release, mix, local BPM, rate, gate, order, octaves, swing, clock, restart, strum
+blocks. Current preset/configuration records retain the clock/BPM positions for
+compatibility, but loading an older sound ignores its former local tempo and
+clock choice. RATE keeps its saved numeric selection and now always denotes a
+musical division. This migration alone does not mark a preset as unsaved.
 Strum uses 1500 blocks/second internally. CPS1/CPS3/CPS4 remain accepted.
 CPS5 used 768-byte instances and CPS9 used 1,184 bytes; the current CPSB
 instance is 2,976 bytes for all source families.
 Use the matching instrument-play firmware policy.
-Both MASTER modes wait for a complete observed boundary interval before playing.
-MASTER PHASE uses the firmware's musical clock for 1..8 notes/quarter, including
-triplets, and pair-preserving swing; MASTER GRID counts whole native master
-steps. Neither mode falls back to local BPM. Missing frames, skipped boundaries,
-large phase corrections and overdue boundaries silence the arp while preserving
-held pad ownership. Recovery requires another complete boundary interval.
-Minor backward clock corrections wait until phase catches up, avoiding duplicate
-notes. STOP silences master arp; LOCAL remains independently playable.
-The matched adapter forwards optional input V4 (88 bytes); old V2/V3 input is
-accepted, but cannot drive MASTER PHASE. Descriptor and reset ABI remain V2.
+The current arp uses the firmware's musical clock for 1..8 notes/quarter,
+including triplets and pair-preserving swing. While stopped, the arp advances
+from the pattern tempo supplied by the timing provider, so keyboard playing
+does not require PLAY.
+Missing or invalid running-clock data pauses the arp while preserving held pad
+ownership; it does not select a saved local tempo. Minor backward clock
+corrections wait until phase catches up, avoiding duplicate notes.
+The matched adapter supplies selected tempo and timing capabilities on V5+
+input. Old V2/V3 input remains accepted for compatibility, but cannot drive the
+current pattern-tempo arp. Descriptor and reset ABI remain V2.
 
-Stage 4 is complete at the functional emulator boundary: menu/audio, both master
+The earlier Stage 4 build passed its functional emulator boundary: menu/audio, both master
 modes, local arp, strum, USB/DIN loss and recovery, and changed tempo/scale pass.
 A lost external clock stays latched across timestamp wrap until a new pulse.
 See the design and Stage 4 handover for artifact-specific evidence. Hardware
@@ -497,6 +509,13 @@ owner. This avoids pitch-dependent cancellation from resetting the arp oscillato
 independently. Its gate, envelope and drift remain independent; octave extensions
 keep their own pitch and phase. Native filtering, AMP and send effects can still
 change level across notes. Set MIX to PAD when comparing the pad alone.
+
+The arp's native AMP onset has a 64-sample minimum ramp. The rendered regression
+in `test_canopy_arp_attack.py` compares zero-attack PCM with an explicit ramp for
+additive, wavetable, FM and wavetable-FM sources in AHD/ADSR modes. Its 28 checks
+also cover restart initialization, slower attacks, pad envelopes, release and
+an unfinished attack moved into a shared tail. This is DSP-core verification;
+the updated onset has not been measured on physical hardware.
 
 ## FM on wavetable sounds
 

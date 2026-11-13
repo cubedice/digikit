@@ -1,0 +1,20 @@
+{
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "name": "canopy-arp-tests",
+  "tags": ["test-only"],
+  "implicitDependencies": ["digikit/canopy"],
+  "metadata": {
+    "runtimeAcceptance": [
+      {
+        "files": ["arp.device.test.ts"],
+        "modules": ["digikit/canopy"],
+        "patchModules": ["core/instrument-play", "core/digikit-menu", "core/health"]
+      }
+    ]
+  },
+  "targets": {
+    "test-device": {
+      "cache": false
+    }
+  }
+}

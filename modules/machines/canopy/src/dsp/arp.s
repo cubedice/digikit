@@ -923,12 +923,20 @@ _ca_fine:
     R0 = DM(_ca_input);
     I1 = R0;
     R0 = DM(0, I1);
+    R1 = 5;
+    COMP(R0, R1);
+    IF LT JUMP _ca_fine_version;
+    R1 = DM(12, I1);
+    R2 = 0x400;
+    R1 = R1 AND R2;
+    IF NE JUMP _ca_stopped;
+_ca_fine_version:
     R1 = 4;
     COMP(R0, R1);
     IF LT JUMP _ca_master_lost; // V5 retains the V4 phase fields.
     R1 = 5;
     COMP(R0, R1);
-    IF NE JUMP _ca_fine_capable;
+    IF LT JUMP _ca_fine_capable; // V5/V6/V7 all carry capability flags.
     R0 = DM(12, I1);
     R1 = 0x200;
     R0 = R0 AND R1;
@@ -940,6 +948,9 @@ _ca_fine_capable:
     COMP(R0, R1);
     IF NE JUMP _ca_master_lost;
     R0 = DM(26, I2);
+    R1 = 2;
+    COMP(R0, R1);
+    IF GE JUMP _ca_fine_observe; // Rejoin the next pattern boundary after STOP.
     R0 = PASS R0;
     IF EQ JUMP _ca_fine_observe;
     R0 = DM(13, I1);
@@ -1033,6 +1044,73 @@ _ca_fine_observe:
     R0 = DM(20, I1);
     DM(33, I2) = R0;
     JUMP _ca_master_observe;
+
+// An explicitly stopped transport still supplies its selected stock tempo.
+// Use the same musical phase units as the running clock (BPM*120*2/block),
+// retaining fractional BPM, triplet carry, swing and gates. Missing frames or
+// a lost external clock never authorize this path. State26=2 marks STOP mode.
+_ca_stopped:
+    R0 = DM(12, I1);
+    R1 = 0xd03;
+    R2 = R0 AND R1;
+    R1 = 0xd00;
+    COMP(R2, R1);
+    IF NE JUMP _ca_master_lost;
+    R3 = LSHIFT R0 BY -16;
+    R1 = 3600;
+    COMP(R3, R1);
+    IF LT JUMP _ca_master_lost;
+    R1 = 36000;
+    COMP(R3, R1);
+    IF GT JUMP _ca_master_lost;
+    R0 = DM(4, I1);
+    R1 = DM(26, I2);
+    R2 = 2;
+    COMP(R1, R2);
+    IF LT JUMP _ca_stopped_fresh;
+    R2 = 3;
+    COMP(R1, R2);
+    IF EQ JUMP _ca_stopped_recover;
+    R1 = DM(29, I2);
+    R1 = R0 - R1;
+    R2 = 1;
+    COMP(R1, R2);
+    IF NE JUMP _ca_stopped_lost;
+    JUMP _ca_stopped_fresh;
+_ca_stopped_recover:
+    R1 = DM(29, I2);
+    R1 = R0 - R1;
+    IF LE JUMP _ca_stopped_lost;
+_ca_stopped_fresh:
+    DM(29, I2) = R0;
+    R0 = 2;
+    DM(26, I2) = R0;
+    DM(34, I2) = R0;
+    R0 = DM(11, I2);
+    R0 = PASS R0;
+    IF EQ JUMP _ca_first;
+    R0 = DM(_ca_controls);
+    I1 = R0;
+    R0 = LSHIFT R3 BY 1;
+    R1 = DM(8, I1);
+    R0 = R0 * R1 (SSI);
+    R1 = DM(10, I2);
+    R0 = R0 + R1;
+    JUMP _ca_phase_ready;
+_ca_stopped_lost:
+    // Keep the rejected frame stamp: repeated stale frames cannot restart
+    // the arp every other callback after clearing the active clock.
+    R1 = DM(29, I2);
+    R1 = R0 - R1;
+    IF LE JUMP _ca_stopped_lost_stamp;
+    DM(29, I2) = R0;
+_ca_stopped_lost_stamp:
+    R0 = 3;
+    DM(26, I2) = R0;
+    DM(34, I2) = R0;
+    R0 = 0;
+    DM(30, I2) = R0;
+    JUMP _ca_disable_clock;
 
 // Share exactly the same two tail slots as the four pad foreground owners.
 // If neither is free, keep the existing bounded same-slot steal ramp.

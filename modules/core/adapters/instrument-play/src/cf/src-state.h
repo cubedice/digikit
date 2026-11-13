@@ -3,6 +3,7 @@
 #ifndef DK_CANOPY_SRC_STATE_H
 #define DK_CANOPY_SRC_STATE_H
 #include "preset.h"
+/* CLOCK/BPM keep their old packed-lock IDs; neither is an editable control. */
 enum { CS_TUNE=32, CS_LEVEL=33, CS_WAVE=34, CS_CLOCK=35, CS_BPM=36, CS_NONE=255, CS_FOCUS_MS=750, CS_LIST_TICKS=4 };
 enum { CS_STALE=-1, CS_READONLY=0, CS_EDIT=1, CS_NATIVE=2 };
 typedef struct {

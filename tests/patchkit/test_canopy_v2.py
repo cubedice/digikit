@@ -127,6 +127,13 @@ _test_no_capture:
     I0 = R1;
     R1 = 0;
     DM(8, I0) = R1;
+    R1 = DM(_test_advance_clock);
+    R1 = PASS R1;
+    IF EQ JUMP _test_clock_done;
+    R1 = DM(4, I0);
+    R1 = R1 + 1;
+    DM(4, I0) = R1;
+_test_clock_done:
     R1 = DM(_test_loop_left);
     R1 = R1 - 1;
     DM(_test_loop_left) = R1;
@@ -136,6 +143,7 @@ _test_no_capture:
 .PKBSS _test_loop_left, 4;
 .PKBSS _test_loop_state, 4;
 .PKBSS _test_loop_input, 4;
+.PKBSS _test_advance_clock, 4;
 """
     obj = pk_sharc.assemble(source)
     sections, initial, address = {}, {}, 0x20060000
@@ -181,7 +189,9 @@ def make_canopy(canopy_object):
         native=None,
         post_amp=False,
         input_base=0x20011000,
+        advance_clock=False,
     ):
+        dm[symbols["_test_advance_clock"] // 4] = int(advance_clock)
         dm.update({state // 4 + i: v for i, v in (state_edits or {}).items()})
         words = [
             2,
@@ -709,6 +719,9 @@ def test_post_amp_blend_excludes_muted_lanes_and_keeps_arp_tail(canopy, mix):
     )
     assert any(tail["state"][slot * 8 + 1] & 4 for slot in (4, 5))
     assert all(0 <= wt_float(v) <= 1 for v in tail["common_amp"])
+    # Complete the replacement arp's two-block onset guard before checking
+    # blend endpoints at full sustain.
+    canopy(native=amp, controls=controls, post_amp=True)
     # The pad has finished its native envelope while an independently owned
     # arp remains audible. Exact blend endpoints must exclude the muted lane.
     slot = next(slot for slot in range(4) if first["state"][slot * 8] == 1)
@@ -844,10 +857,10 @@ def test_native_amp_arp_tail_continues_finite_ahd_without_restarting(canopy):
     base[6], base[15] = 127, 0
     controls = presentation_controls(base)
     amp = native_amp(mode=1, attack=1, hold=1000, release=0.5)
-    before = canopy([note(1, 60)], controls=controls, native=amp)
+    before = canopy([note(1, 60)], controls=controls, native=amp, blocks=3)
     assert before["state"][136] == 1
     prior_phase, prior_count = before["state"][741:743]
-    assert prior_phase == 3 and prior_count == 31
+    assert prior_phase == 3 and prior_count == 32
     after = canopy(controls=controls, native=amp, state_edits={146: 89999})
     tails = [slot for slot in (4, 5) if after["state"][slot * 8 + 1] & 4]
     assert len(tails) == 1 and after["state"][136] == 2
@@ -1100,16 +1113,19 @@ def test_v5_status_clock_acquisition_loss_stop_and_recovery(canopy, clock):
     assert sample(794, 4) == 2
 
 
-def test_v5_fine_clock_does_not_schedule_without_phase_provider(canopy):
+@pytest.mark.parametrize("version,size", [(5, 96), (6, 128), (7, 136)])
+def test_v5_fine_clock_does_not_schedule_without_phase_provider(canopy, version, size):
     controls = presentation_controls(base=FINE)
     for block, boundary in [(0, 1), (188, 2), (376, 3)]:
         r = canopy(
             [note(1, 60)] if not block else [],
             controls=controls,
+            native=[0] * 8 if version >= 6 else None,
+            post_amp=version == 7,
             edits={
-                **position(block, boundary, flags=0x103),
-                0: 5,
-                1: 96,
+                **position(block, boundary, flags=0x903 | (14400 << 16)),
+                0: version,
+                1: size,
                 20: (boundary - 1) * 5400000,
                 21: (boundary - 1) * 5400000,
             },
@@ -1774,6 +1790,129 @@ def test_fine_master_swing_and_tempo_change(canopy):
     assert onsets[4] - onsets[2] == 10800000
 
 
+def stopped_pattern(block=0, tempo=14400):
+    """Coherent selected stock tempo (BPM*120), with transport stopped."""
+    return {0: 5, 1: 96, 4: block, 12: 0xF00 | (tempo << 16)}
+
+
+@pytest.mark.parametrize("tempo,rate", [(3600, 1), (16441, 3), (36000, 8)])
+def test_pattern_arp_plays_stopped_at_fractional_stock_tempo(canopy, tempo, rate):
+    controls = FINE[:8] + (rate,) + FINE[9:]
+    r = canopy(
+        [note(1, 60), note(2, 64), note(3, 67)],
+        controls=controls,
+        edits=stopped_pattern(tempo=tempo),
+        blocks=600,
+        advance_clock=True,
+    )
+    elapsed = 599 * 2 * tempo * rate
+    assert r["state"][149] == 1 + elapsed // 21600000
+    assert r["state"][146] == elapsed % 21600000
+    assert set(voices(r)) == {1, 2, 3}
+    assert r["state"][162] == r["state"][170] == 2
+
+
+def test_pattern_arp_stopped_gate_swing_live_tempo_and_note_release(canopy):
+    controls = FINE[:8] + (4,) + FINE[9:12] + (50,) + FINE[13:]
+    r = canopy(
+        [note(1, 60)],
+        controls=controls,
+        edits=stopped_pattern(),
+        blocks=140,
+        advance_clock=True,
+    )
+    assert r["state"][149] == 1 and r["state"][137] == 1
+    r = canopy(controls=controls, edits=stopped_pattern(140))
+    assert r["state"][137] == 1
+    r = canopy(controls=controls, edits=stopped_pattern(141))
+    assert r["state"][137] == 0  # halfway through the long swung interval
+    # Double the pattern tempo without resetting the accumulated phase.
+    r = canopy(
+        controls=controls,
+        edits=stopped_pattern(142, 28800),
+        blocks=71,
+        advance_clock=True,
+    )
+    assert r["state"][149] == 2 and r["state"][146] == 201600
+    r = canopy(
+        controls=controls,
+        edits=stopped_pattern(213, 28800),
+        blocks=47,
+        advance_clock=True,
+    )
+    assert r["state"][149] == 3 and r["state"][146] == 230400
+    r = canopy(
+        [note(1, 60, off=True)],
+        controls=controls,
+        edits=stopped_pattern(260),
+        blocks=600,
+        advance_clock=True,
+    )
+    assert r["state"][149] == 3 and r["state"][136] == 0
+    assert not voices(r)
+
+
+def test_pattern_arp_stop_preserves_phase_and_start_rejoins_grid(canopy):
+    controls = FINE
+    canopy([note(1, 60), note(2, 64)], controls=controls, edits=phase_position(0, 0))
+    canopy(controls=controls, edits=phase_position(5400000, 18))
+    before = canopy(controls=controls, edits=phase_position(5700000, 19))
+    stopped = canopy(controls=controls, edits=stopped_pattern(20))
+    assert stopped["state"][149] == before["state"][149] == 1
+    assert stopped["state"][146] == before["state"][146] + 14400 * 2 * 3
+    resumed = canopy(controls=controls, edits=phase_position(6000000, 21))
+    assert resumed["state"][149] == 1 and resumed["state"][147] == 0
+    r = canopy(controls=controls, edits=phase_position(10800000, 37))
+    assert r["state"][149] == 2 and r["state"][151] == 64
+    assert set(voices(r)) == {1, 2}
+
+
+@pytest.mark.parametrize("flags", [0x700, 0xB00, 0xB02, 0xF00, 0xF00 | (36001 << 16)])
+def test_pattern_arp_requires_explicit_stop_and_valid_stock_tempo(canopy, flags):
+    canopy([note(1, 60)], controls=FINE, edits=stopped_pattern())
+    for block in range(1, 5):
+        r = canopy(controls=FINE, edits={**stopped_pattern(block), 12: flags})
+    assert r["state"][147] == r["state"][136] == 0
+    assert voices(r)[1][1] == 1
+
+
+def test_pattern_arp_stopped_missing_frame_does_not_catch_up(canopy):
+    canopy([note(1, 60)], controls=FINE, edits=stopped_pattern())
+    r = canopy(controls=FINE, edits=stopped_pattern(20))
+    assert r["state"][149] == 1 and r["state"][147] == 0
+    r = canopy(controls=FINE, edits=stopped_pattern(21))
+    assert r["state"][149] == 2 and r["state"][146] == 0
+
+
+@pytest.mark.parametrize("frames", [[10, 10, 10, 10], [9, 10, 9, 10]])
+def test_pattern_arp_stopped_repeated_frame_stays_silent_until_fresh(canopy, frames):
+    canopy([note(1, 60)], controls=FINE, edits=stopped_pattern(10))
+    for frame in frames:
+        r = canopy(controls=FINE, edits=stopped_pattern(frame))
+        assert r["state"][149] == 1 and r["state"][147] == 0
+    assert r["state"][136] == 0 and voices(r)[1][1] == 1
+    r = canopy(controls=FINE, edits=stopped_pattern(11))
+    assert r["state"][149] == 2 and r["state"][146] == 0
+
+
+def test_pattern_arp_stopped_frame_wrap_and_lost_stop_rejoins_running(canopy):
+    canopy([note(1, 60)], controls=FINE, edits=stopped_pattern(0xFFFFFFFF))
+    r = canopy(controls=FINE, edits=stopped_pattern(0))
+    assert r["state"][149] == 1 and r["state"][146] == 86400
+    r = canopy(controls=FINE, edits=stopped_pattern(0))
+    assert r["state"][162] == 3
+    r = canopy(controls=FINE, edits=phase_position(5400000, 1))
+    assert r["state"][149] == 1 and r["state"][147] == 0
+    r = canopy(controls=FINE, edits=phase_position(10800000, 19))
+    assert r["state"][149] == 2 and r["state"][162] == 1
+
+
+def test_pattern_arp_stopped_status_reports_running(canopy):
+    controls = presentation_controls(base=FINE)
+    r = canopy([note(1, 60)], controls=controls, edits=stopped_pattern())
+    assert (r["status"][10] >> 8) & 255 == 2
+
+
 @pytest.mark.parametrize("restart,expected", [(0, 60), (1, 60), (2, 64)])
 def test_fine_master_restart_and_phase_discontinuity(canopy, restart, expected):
     controls = FINE[:14] + (restart, 0)
@@ -1914,13 +2053,27 @@ def test_explicit_phrase_restarts_arp_without_retriggering_common_pad(
     assert all(v[1] == 1 for v in voices(r).values())
 
 
-def test_pattern_identity_change_restarts_local_arp_mid_pattern(canopy):
+@pytest.mark.parametrize("version,size", [(3, 80), (5, 96), (6, 128), (7, 136)])
+def test_pattern_identity_change_restarts_local_arp_mid_pattern(canopy, version, size):
     controls = STRUM[:6] + (127,) + STRUM[7:14] + (1, 0)
-    timing = {**mapped(), 12: 3, 13: 1, 14: 10, 15: 4, 19: 0x43170000}
-    canopy([note(1, 60), note(2, 64)], controls=controls, edits=timing)
-    canopy(controls=controls, edits=timing, state_edits={146: 89999})
-    r = canopy(controls=controls, edits={**timing, 19: 0x43180000})
+    timing = {
+        **mapped(),
+        0: version,
+        1: size,
+        12: (0xB03 | (14400 << 16)) if version >= 5 else 3,
+        13: 1,
+        14: 10,
+        15: 4,
+        19: 0x43170000,
+    }
+    kwargs = {"native": [0] * 8 if version >= 6 else None, "post_amp": version == 7}
+    canopy([note(1, 60), note(2, 64)], controls=controls, edits=timing, **kwargs)
+    before = canopy(controls=controls, edits=timing, state_edits={146: 89999}, **kwargs)
+    assert before["state"][151] == 64
+    r = canopy(controls=controls, edits={**timing, 19: 0x43180000}, **kwargs)
     assert r["state"][151] == 60
+    assert r["state"][149] == before["state"][149] + 1
+    assert set(voices(r)) == {1, 2}
 
 
 @pytest.mark.parametrize("canopy_object", [True], indirect=True)
@@ -2725,14 +2878,32 @@ def test_wavetable_master_clock_generation_change_reobserves_without_free_phase_
     assert wt_float(r["state"][239]) == pytest.approx(0.02, rel=1e-6)
 
 
-def test_wavetable_v5_master_requires_fine_clock_capability(canopy):
+@pytest.mark.parametrize("version,size", [(5, 96), (6, 128), (7, 136)])
+def test_wavetable_v5_master_requires_fine_clock_capability(canopy, version, size):
     controls = wavetable_controls(rate=5, clock=1)
-    timing = {0: 5, 1: 96, 12: 3, 13: 1, 14: 1, 15: 0, 16: 16, 20: 1000, 21: 100}
-    canopy([note(1, 60)], controls=controls, edits=timing)
-    r = canopy(controls=controls, edits={**timing, 20: 217000})
+    flags = 0x903 | (14400 << 16)
+    timing = {
+        0: version,
+        1: size,
+        12: flags,
+        13: 1,
+        14: 1,
+        15: 0,
+        16: 16,
+        20: 1000,
+        21: 100,
+    }
+    kwargs = {"native": [0] * 8 if version >= 6 else None, "post_amp": version == 7}
+    canopy([note(1, 60)], controls=controls, edits=timing, **kwargs)
+    r = canopy(controls=controls, edits={**timing, 20: 217000}, **kwargs)
     assert r["state"][239] == 0
-    canopy(controls=controls, edits={**timing, 12: 515, 20: 217000})
-    r = canopy(controls=controls, edits={**timing, 12: 515, 20: 433000})
+    canopy(controls=controls, edits={**timing, 12: flags | 0x200, 20: 217000}, **kwargs)
+    r = canopy(
+        controls=controls, edits={**timing, 12: flags | 0x200, 20: 433000}, **kwargs
+    )
+    assert wt_float(r["state"][239]) == pytest.approx(0.01, rel=1e-6)
+    # Losing the capability freezes scan even if a stale phase keeps advancing.
+    r = canopy(controls=controls, edits={**timing, 20: 649000}, **kwargs)
     assert wt_float(r["state"][239]) == pytest.approx(0.01, rel=1e-6)
 
 

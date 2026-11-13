@@ -34,6 +34,7 @@ afterAll(() => {
 });
 test.each([
   'controls',
+  'pattern-tempo-import',
   'trig-lock-edit',
   'wavetable',
   'wavetable-status',
