@@ -52,11 +52,8 @@ static int recording(const uint8_t *view)
 typedef struct { uint8_t used,pitch,track; } RecKey;
 static RecKey rec_keys[16];
 static uint8_t group_pitch[4],group_count;
-static void group_add(uint32_t track,uint32_t pitch)
+static void group_append(uint32_t pitch)
 {
-    uint32_t held=0;
-    for(uint32_t i=0;i<16;++i) held+=rec_keys[i].used && rec_keys[i].track==track;
-    if(!held) group_count=0;
     for(uint32_t i=0;i<group_count;++i) if(group_pitch[i]==pitch) {
         /* Move a repeated pitch to the newest position. */
         for(uint32_t j=i;j+1<group_count;++j) group_pitch[j]=group_pitch[j+1];
@@ -65,11 +62,27 @@ static void group_add(uint32_t track,uint32_t pitch)
     if(group_count==4) { for(uint32_t j=0;j<3;++j) group_pitch[j]=group_pitch[j+1]; --group_count; }
     group_pitch[group_count++]=(uint8_t)pitch;
 }
+static void group_add(uint32_t track,uint32_t pitch)
+{
+    uint32_t held=0;
+    for(uint32_t i=0;i<16;++i) held+=rec_keys[i].used && rec_keys[i].track==track;
+    if(!held) group_count=0;
+    group_append(pitch);
+}
+/* Step-record keys still waiting for their committed note (see below). */
+enum { COMMITS=16, WAITING=4, WAIT_MS=500 };
+typedef struct { uint8_t key,released; uint32_t group; } Waiting;
+static Waiting waiting[WAITING];
+static uint32_t waiting_count,waiting_track,commit_until,step_group,stored_group;
+static volatile uint32_t commit_track=IP_NONE;
+static int waiting_has(uint32_t key);
+static void waiting_release(uint32_t key);
 static void rec_release(uint32_t key)
 {
     if(key>=16 || !rec_keys[key].used) return;
     uint32_t track=rec_keys[key].track; rec_keys[key].used=0;
     for(uint32_t i=0;i<16;++i) if(rec_keys[i].used && rec_keys[i].track==track) return;
+    if(waiting_count && waiting_track==track) return;
     mi_seq_mute(track,0);
 }
 static void rec_release_all(void) { for(uint32_t i=0;i<16;++i) rec_release(i); }
@@ -193,18 +206,26 @@ void ip_panel_off(uint8_t *view,uint32_t key)
     /* Consume tombstones even after track/machine/mode changes. Stock owns
      * its own vector and still receives releases for non-CANOPY auditions. */
     if(key<16) { (void)mi_panel_key(key,0,0,0,panel_track); ++ip_panel_debug[1]; }
+    if(key<16 && waiting_has(key)) {
+        /* Released before its note was committed: the commit still counts. */
+        waiting_release(key); commit_until=instrument_src_now()+WAIT_MS;
+    }
     if(key<16 && rec_keys[key].used) {
+        uint32_t track=rec_keys[key].track;
         rec_release(key);
-        watch_until=instrument_src_now()+WATCH_MS;
+        /* Only live recording commits later than its keys' releases. */
+        if(track!=commit_track) watch_until=instrument_src_now()+WATCH_MS;
     }
     ip_panel_original_off(view,key);
 }
-static void step_pending(void);
+static void step_commits(void);
 /* UI task (instrument_play_tick). */
 void ip_panel_tick(void)
 {
-    step_pending();
+    step_commits();
     if(!watch_active) return;
+    /* Step-record entries are taken from their commits, not by this watch. */
+    if(watch_track==commit_track) { watch_active=0; return; }
     const uint8_t *p=pattern_object();
     uint32_t track=watch_track,held=0;
     for(uint32_t i=0;i<16;++i) held+=rec_keys[i].used && rec_keys[i].track==track;
@@ -241,58 +262,102 @@ static int step_recording(uint8_t *view,uint32_t *track_out)
     if(!object || ip_panel_track_type(object)!=type) return 0;
     *track_out=track; return 1;
 }
-static uint32_t entry_list[128];
-static uint16_t entry_trig[128];
-/* A key whose entry has not appeared yet: resolved by the next key event or
- * UI tick (the stock handler may commit it after returning). */
-static uint32_t pending_key=16,pending_track,pending_at;
-static uint8_t *pending_view;
-/* Step-entry diagnostics: trig-key events, in step recording, entries found
- * at once, entries found later, last event flags, last code, pendings set,
- * pendings expired. */
+/* Every stock note commit goes through the note-list writer
+ * 0x400392be(editor, track, step, records) (hooked below); records are 4-byte
+ * {note, velocity, ...} items. While a step-recorded chord is being entered on
+ * a CANOPY track, each commit is queued here, in order, and the UI tick takes
+ * them: a commit's note belongs to the oldest key still waiting for its note.
+ * The commit can follow the key event, and simultaneous presses commit one
+ * after another, so neither key order nor timing can lose a note. */
+extern void ip_note_list_original(uint8_t *,uint32_t,uint32_t,uint32_t *);
+extern uint32_t dkrt_irq_mask(void);
+extern void dkrt_irq_restore(uint32_t);
+typedef struct { uint8_t track,step,note; } Commit;
+static Commit commits[COMMITS];
+static volatile uint32_t commit_head,commit_count;
+static uint32_t waiting_at;
+static uint8_t *waiting_view;
+/* Step-entry diagnostics: trig-key events, entries started, commits queued,
+ * commits used, commits dropped, last commit note, waits expired, last code. */
 volatile uint32_t ip_panel_step[8];
-/* After the stock handler: the step whose note list changed is this key's
- * entry; its note joins the chord group, sounds on CANOPY and the group's
- * other notes are stored on that step. */
-static int step_entry(uint8_t *view,uint32_t key,uint32_t track,const uint8_t *p)
+void ip_note_list_write(uint8_t *editor,uint32_t track,uint32_t step,uint32_t *records)
 {
-    for(uint32_t s=0;s<128;++s) {
-        if(note_signature(p,track,s)==entry_list[s] && trig_word(p,track,s)==entry_trig[s]) continue;
-        int32_t note=step_note(p,track,s);
-        if(!(trig_word(p,track,s)&1u) || note<0) continue;
-        if(!rec_keys[key].used) {
-            group_add(track,(uint32_t)note);
-            rec_keys[key].used=1; rec_keys[key].track=(uint8_t)track;
-        }
-        rec_keys[key].pitch=(uint8_t)note;
-        ++ip_panel_recorded;
-        uint32_t steps[4];
-        steps[0]=steps[1]=steps[2]=steps[3]=0;
-        steps[s>>5]=1u<<(s&31);
-        store_chord(steps,track,(uint32_t)note);
-        ip_panel_chord[0]=s;
-        /* A live watch on this track must not take the same entry again. */
-        if(watch_active && watch_track==track) { watch_list[s]=note_signature(p,track,s); watch_trig[s]=trig_word(p,track,s); }
-        panel_play(view,key,track,(uint32_t)note,100);
-        return 1;
+    uint32_t note=128;
+    if(records && track==commit_track && step<128) {
+        const uint8_t *first=(const uint8_t *)(uintptr_t)records[0],*end=(const uint8_t *)(uintptr_t)records[1];
+        if(first && first<end && first[0]<128) note=first[0];
     }
+    /* Publish only after the stock writer has finished updating the pattern. */
+    ip_note_list_original(editor,track,step,records);
+    if(note<128) {
+        uint32_t sr=dkrt_irq_mask();
+        if(track==commit_track && commit_count<COMMITS) {
+            Commit *c=&commits[(commit_head+commit_count)%COMMITS];
+            c->track=(uint8_t)track; c->step=(uint8_t)step; c->note=(uint8_t)note;
+            ++commit_count; ++ip_panel_step[2];
+        } else if(track==commit_track) ++ip_panel_step[4];
+        dkrt_irq_restore(sr);
+    }
+}
+static int waiting_has(uint32_t key)
+{
+    for(uint32_t i=0;i<waiting_count;++i) if(waiting[i].key==key && !waiting[i].released) return 1;
     return 0;
 }
-static void step_mute_end(uint32_t track)
+static void waiting_release(uint32_t key)
 {
-    for(uint32_t i=0;i<16;++i) if(rec_keys[i].used && rec_keys[i].track==track) return;
-    mi_seq_mute(track,0);
+    for(uint32_t i=0;i<waiting_count;++i) if(waiting[i].key==key && !waiting[i].released) { waiting[i].released=1; return; }
 }
-/* Resolve a pending entry against its baseline; expire it after 500 ms. */
-static void step_pending(void)
+static uint32_t keys_held(uint32_t track)
 {
-    if(pending_key>=16) return;
-    const uint8_t *p=pattern_object();
-    if(p && pending_view && step_entry(pending_view,pending_key,pending_track,p)) {
-        ++ip_panel_step[3]; pending_key=16; return;
+    uint32_t held=0;
+    for(uint32_t i=0;i<16;++i) held+=rec_keys[i].used && rec_keys[i].track==track;
+    return held;
+}
+/* UI task: each queued commit, in order. Its note belongs to the oldest key
+ * still waiting (that key now sounds it); a commit after its key's release
+ * still joins the chord. The chord's other notes go on the committed step. */
+static void step_commits(void)
+{
+    uint32_t now=instrument_src_now();
+    /* Chord locks address the selected track. Discard pending entries after
+     * changing tracks, machines, or leaving step-record mode. */
+    uint32_t current_track=IP_NONE;
+    if(commit_track<16 && waiting_view &&
+       (!step_recording(waiting_view,&current_track) || current_track!=commit_track)) {
+        uint32_t sr=dkrt_irq_mask(); commit_count=0; commit_head=0; dkrt_irq_restore(sr);
+        waiting_count=0; mi_seq_mute(commit_track,0); commit_track=IP_NONE;
+        return;
     }
-    if((int32_t)(instrument_src_now()-pending_at)>=500) {
-        ++ip_panel_step[7]; pending_key=16; step_mute_end(pending_track);
+    for(;;) {
+        uint32_t sr=dkrt_irq_mask();
+        if(!commit_count) { dkrt_irq_restore(sr); break; }
+        Commit c=commits[commit_head];
+        commit_head=(commit_head+1)%COMMITS; --commit_count;
+        dkrt_irq_restore(sr);
+        if(c.track!=commit_track || (int32_t)(now-commit_until)>0 || !waiting_count || waiting_track!=c.track) continue;
+        Waiting w=waiting[0];
+        for(uint32_t i=1;i<waiting_count;++i) waiting[i-1]=waiting[i];
+        --waiting_count;
+        if(stored_group!=w.group) { group_count=0; stored_group=w.group; }
+        group_append(c.note);
+        if(!w.released) { rec_keys[w.key].used=1; rec_keys[w.key].pitch=c.note; rec_keys[w.key].track=c.track; }
+        ++ip_panel_recorded; ++ip_panel_step[3]; ip_panel_step[5]=c.note;
+        uint32_t steps[4];
+        steps[0]=steps[1]=steps[2]=steps[3]=0; /* no memset in this image */
+        steps[c.step>>5]=1u<<(c.step&31);
+        store_chord(steps,c.track,c.note);
+        ip_panel_chord[0]=c.step;
+        /* A live watch on this track must not take the same entry again. */
+        const uint8_t *p=pattern_object();
+        if(p && watch_active && watch_track==c.track) {
+            watch_list[c.step]=note_signature(p,c.track,c.step); watch_trig[c.step]=trig_word(p,c.track,c.step);
+        }
+        if(!w.released && waiting_view) panel_play(waiting_view,w.key,c.track,c.note,100);
+    }
+    if(waiting_count && (int32_t)(now-commit_until)>=0) { ip_panel_step[6]+=waiting_count; waiting_count=0; }
+    if(commit_track<16 && !waiting_count && !keys_held(commit_track)) {
+        mi_seq_mute(commit_track,0); commit_track=IP_NONE;
     }
 }
 void ip_panel_update(uint8_t *view)
@@ -320,26 +385,29 @@ uint32_t ip_panel_key_event(uint8_t *view,uint8_t *event)
 {
     /* Trig keys are codes 0x19..0x28 (physical keys 0..15). */
     uint32_t key=event ? word(event,0xc)-0x19u : 16u,track=IP_NONE;
-    const uint8_t *p=key<16 ? pattern_object() : 0;
-    step_pending();
-    int entry=p && step_recording(view,&track);
-    if(key<16) { ++ip_panel_step[0]; ip_panel_step[4]=word(event,0x10); ip_panel_step[5]=word(event,0xc); }
-    /* A held key's further events (its release) are not new entries. */
-    if(entry && rec_keys[key].used) entry=0;
+    step_commits();
+    /* Firmware flags: bit 0 is press, bit 3 is auto-repeat, bit 4 is
+     * release. The note-off callback may run before the release event. */
+    uint32_t flags=event ? word(event,0x10) : 0;
+    int entry=key<16 && (flags&1u) && !(flags&8u) && step_recording(view,&track);
+    if(key<16) { ++ip_panel_step[0]; ip_panel_step[7]=word(event,0xc); }
+    /* A held or waiting key's further events (its release) are not entries. */
+    if(entry && (rec_keys[key].used || waiting_has(key) || waiting_count>=WAITING)) entry=0;
     if(entry) {
-        ++ip_panel_step[1];
-        for(uint32_t s=0;s<128;++s) { entry_list[s]=note_signature(p,track,s); entry_trig[s]=trig_word(p,track,s); }
+        if(waiting_count && waiting_track!=track) waiting_count=0;
+        uint32_t held=keys_held(track);
+        for(uint32_t i=0;i<waiting_count;++i) held+=!waiting[i].released && waiting_track==track;
+        if(!held) ++step_group;
+        waiting[waiting_count].key=(uint8_t)key; waiting[waiting_count].released=0;
+        waiting[waiting_count++].group=step_group; waiting_track=track;
+        waiting_view=view; waiting_at=instrument_src_now();
+        commit_track=track; commit_until=waiting_at+WAIT_MS;
         /* The stock audition of the entry would sound it a second time. */
         mi_seq_mute(track,1);
+        ++ip_panel_step[1];
     }
     uint32_t result=ip_panel_stock_key(view,event);
-    if(entry) {
-        if(step_entry(view,key,track,p)) ++ip_panel_step[2];
-        else {
-            pending_key=key; pending_track=track; pending_view=view;
-            pending_at=instrument_src_now(); ++ip_panel_step[6];
-        }
-    }
+    step_commits();
     ip_panel_update(view);
     return result;
 }

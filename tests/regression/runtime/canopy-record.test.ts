@@ -360,16 +360,20 @@ test('CANOPY records keyboard presses', { timeout: 900_000 }, async () => {
   await waitEmulated(session, 4_000); // the mode message takes the first presses
   shot('record-step-mode');
   const stepStoresBefore = await cf('ip_panel_chord', 3);
+  const startedBefore = await cf('ip_panel_step', 1);
+  const expiredBefore = await cf('ip_panel_step', 6);
   let stepChord: number[] = [];
   await edge('KEYBOARD', true);
   try {
     await waitEmulated(session, 200);
     const stepHeld: string[] = [];
     try {
+      // Pressed back to back, as a hand plays a chord: the entries are
+      // written after the key events, so presses arrive before earlier
+      // entries appear.
       for (const k of ['TRIG 10', 'TRIG 12', 'TRIG 14']) {
         await edge(k, true);
         stepHeld.push(k);
-        await waitEmulated(session, 100);
       }
       stepChord = await together(600);
     } finally {
@@ -385,6 +389,8 @@ test('CANOPY records keyboard presses', { timeout: 900_000 }, async () => {
   console.info('step recording', JSON.stringify(log.stepRecording));
   expect(stepChord, 'held step-record keys sound together').toEqual([62, 65, 69]);
   expect(stepDiag[3] - stepStoresBefore, 'each entry stored its chord').toBe(3);
+  expect(stepEvents[1] - startedBefore, 'releases do not start extra entries').toBe(3);
+  expect(stepEvents[6] - expiredBefore, 'all entries were matched to their commits').toBe(0);
   expect(stepDiag[1], 'the last entry holds the two other keys').toBe(2);
   expect(stepDiag[2], 'chord-note locks written').toBe(1);
   await key('RECORD'); // leave step recording

@@ -6,6 +6,23 @@ recording gives no sound or one note instead of the chord, step recording
 enters single notes. Evidence and layouts are in
 [finding 125](../findings/125-canopy-recording.md).
 
+## Rapid step-entry follow-up
+
+The earlier step-record fix could miss notes when several keys were pressed
+before the UI observed the first commit. The adapter now queues completed
+stock note-list writes and pairs them with pending key presses. It retains
+released keys' queue positions, ignores release and repeat events, and
+discards pending writes when the recording mode or selected track changes.
+The host regression covers these cases, including re-pressing a key before
+its prior commit. The candidate uses `out/patch/canopy-step-record-final.syx`
+and the existing `out/patch/canopy-four-page.dkm`; it has passed firmware
+preflight. On that final image, `canopy-record.test.ts` passes: a rapid
+D/F/A press sounds and plays back as a chord, with three started entries,
+three matching commits, no queue drops and no expired waits. The focused
+native suite (17 tests) and CANOPY patchkit integration suite (25 tests) pass.
+The DTII still runs the earlier `e8c7cd7103116212` image; this follow-up has
+not been installed or tested on hardware.
+
 Fixed and verified in the emulator (`out/patch/canopy-chord-rec.syx` with the
 unchanged `out/patch/canopy-four-page.dkm`):
 

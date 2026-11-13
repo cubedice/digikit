@@ -11,3 +11,8 @@ ip_panel_original_off:
     lea -24(%sp),%sp
     movem.l %d2/%a2-%a6,(%sp)
     jmp ip_panel_off_resume
+    .globl ip_note_list_original
+ip_note_list_original:
+    link.w %a6,#-56
+    movem.l %d2-%d7/%a2-%a5,(%sp)
+    jmp ip_note_list_resume

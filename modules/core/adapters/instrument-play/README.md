@@ -45,9 +45,11 @@ Keys play the admitted CANOPY on the selected track; stock machines and
 tracks without an instance delegate to the original handlers. Leaving keyboard mode or selecting
 another track cancels the
 panel phrase without canceling external notes. While the sequencer live
-records, step records or a trig is held, presses on a CANOPY track go to the
-stock note action, which records them, and still play on CANOPY's panel path;
-the stock audition of a held recorded key is muted on the frame path. The other
+records or a trig is held, presses on a CANOPY track go to the stock note
+action and still play on CANOPY's panel path. Step recording enters notes via
+the stock note-list writer instead; the adapter queues its completed entries
+so quickly played chords and delayed releases retain their order. The stock
+audition of a held recorded key is muted on the frame path. The other
 keys held with a recorded press are stored on its step as chord-note locks
 (IDs 53..55), which the mapper plays with the trig's note; live recording
 commits after the key event, so the UI tick watches the track's note list for

@@ -106,6 +106,12 @@ reload, pattern copy, running transition, live sweep, two tracks) passes on
 the same image after moving its knob to SOUND B, COLOR in the four-page
 layout.
 
+On the rapid-entry follow-up image `out/patch/canopy-step-record-final.syx`,
+the same test presses D, F and A back to back without inter-key delays. All
+three sound and play back together; the hook reports three started entries,
+three commits, zero drops and zero expired waits. This is an emulator result;
+the follow-up has not been installed or measured on the physical DTII. [D]
+
 ## Changes
 
 - **Page ownership.** `+0x268` no longer revokes it.
@@ -124,12 +130,14 @@ layout.
   track is still held joins the group; the group closes when all are up.
 - **Held trig.** A press with held trigs stores the group's other notes on
   the held steps at once, relative to the pressed note.
-- **Step recording.** Around each KeyboardView key event in step recording
-  on a CANOPY track, the adapter compares the track's note lists before and
-  after the stock handler. The step whose list changed is the key's entry:
-  its note joins the group, sounds on CANOPY's panel path (stock audition
-  muted while keys are held) and the group's other notes are stored on that
-  step. The key's release arrives through the note-off hook as usual.
+- **Step recording.** The note-list writer at `0x400392be` reports completed
+  note commits to a bounded queue while a CANOPY step entry is pending. The
+  UI consumes commits in key-press order, sounds held keys on the panel path
+  and stores the other notes as chord locks. Released keys retain their place
+  in the queue without sounding again, including when a key is pressed again
+  before its earlier commit. A pending entry expires after 500 ms; switching
+  tracks, machines or recording modes discards it instead of writing locks
+  on the wrong track. The stock audition is muted while keys are held.
 - **Live recording.** Because the commit follows the key event,
   the adapter's UI tick (`ip_panel_tick`) watches the track's note lists
   (head index and up to four chained notes) and trig words while a group is recorded and for 1.5 s after its last

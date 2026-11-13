@@ -3979,6 +3979,21 @@ mark = "D"
 rule = "fw/instrument-src:cf_window_hash"
 
 [[anchor]]
+name = "cf.page.site.instrument_note_list_write"
+cpu = "cf"
+kind = "code"
+addr = 0x400392be
+len = 8
+sha256 = "ffde53d71a15b4ca76d035c5d36db846efa2f20dbff56b3c6efc911dcf99f9d7"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+
+[[hook]]
+name = "cf.page.hook.instrument_note_list_write"
+site = "cf.page.site.instrument_note_list_write"
+mode = "replace"
+
+[[anchor]]
 name = "cf.page.site.instrument_lock_get"
 cpu = "cf"
 kind = "code"

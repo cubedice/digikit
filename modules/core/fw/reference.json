@@ -8674,6 +8674,37 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x400392be",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 pattern note-list writer (editor, track, step, records vector of 4-byte {note, velocity, ...}); every recorded note commits through it; finding 125.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_note_list_write",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x4004af88",
             "len": 6
           }
@@ -19813,7 +19844,7 @@
       "name": "midi"
     },
     {
-      "count": 90,
+      "count": 91,
       "cpu": "cf",
       "file": "devices/fw/instrument-src.toml",
       "meaning": "parameter and FX pages",

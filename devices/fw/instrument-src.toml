@@ -390,6 +390,15 @@ users = ["core/instrument-play"]
 doc = "DT2 OS1.17 sequencer UI state: step recording, i.e. record mode (+0x269) with the step-record byte at +0x272 (set by RECORD + STOP); finding 125."
 
 [[site]]
+name = "cf.page.site.instrument_note_list_write"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 0, len = 8, sha256 = "b03e5c55da3152a554640e4e767deca25f816ccf01b6b05f9a8568bccb58a4a5" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 pattern note-list writer (editor, track, step, records vector of 4-byte {note, velocity, ...}); every recorded note commits through it; finding 125."
+
+[[site]]
 name = "cf.page.site.instrument_lock_get"
 cpu = "cf"
 devices = ["dt2"]
