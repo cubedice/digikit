@@ -3,13 +3,13 @@ static const uint16_t low[CP_CONTROLS]={0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1,
 static const uint16_t high[CP_CONTROLS]={11,3,127,127,500,127,8,4,6,100,75,2,0,0,127,127,4,700,100,1000,2,2,1,200,127,127,200,200,100,15,200,200};
 static const uint16_t fm_high[12]={3,100,15,15,100,127,127,100,127,200,200,200};
 static const uint8_t controls[4][8]={
-    {CS_TUNE,CP_CHORD,CP_VOICING,CS_WAVE,CP_DRIFT,CP_STRUM,CP_ARP_MIX,CS_LEVEL},
+    {CS_TUNE,CP_CHORD,CP_VOICING,CP_STRUM,CS_NONE,CS_NONE,CP_ARP_MIX,CS_LEVEL},
     {CP_RATE,CP_ORDER,CP_OCTAVES,CP_GATE,CP_SWING,CP_RESTART,CS_NONE,CS_NONE},
-    {CP_WT_POS,CP_WT_DEPTH,CP_WT_RATE,CP_WT_SHAPE,CP_WT_ENV,CP_WT_ATTACK,CP_WT_RELEASE,CP_WT_VELOCITY},
-    {CP_FM_ATTACK,CP_FM_DECAY,CP_FM_SUSTAIN,CP_FM_RELEASE,CP_FM_ENV,CP_FM_VELOCITY,CS_NONE,CS_NONE}
+    {CS_WAVE,CP_WT_POS,CP_WT_DEPTH,CP_WT_RATE,CP_WT_SHAPE,CP_DRIFT,CP_WT_CLOCK,CP_WT_RESET},
+    {CP_WT_ATTACK,CP_WT_RELEASE,CP_WTFM_DEPTH,CP_WTFM_RATIO,CP_WT_ENV,CP_WTFM_ENV,CP_WT_VELOCITY,CS_NONE}
 };
 static uint32_t family(const CsState *s) { return (s->metadata>>4)&3; }
-uint32_t cs_pages(const CsState *s) { return family(s)>=2 ? 4 : 3; }
+uint32_t cs_pages(const CsState *s) { (void)s; return 4; }
 static void remember(CsState *s)
 {
     if(family(s)==3) {
@@ -42,7 +42,7 @@ static int is_list(const CsState *s,uint32_t control)
     return control==CP_CHORD || control==CP_VOICING || control==CP_RATE ||
         control==CP_ORDER || control==CP_OCTAVES || control==CP_RESTART ||
         control==CP_WT_SHAPE ||
-        control==CP_WT_RESET || (control==CP_WT_RATE && s->value[CP_WT_CLOCK]);
+        control==CP_WT_RESET || control==CP_WT_CLOCK || (control==CP_WT_RATE && s->value[CP_WT_CLOCK]);
 }
 static int32_t list_steps(CsState *s,uint32_t encoder,uint32_t control,int32_t movement)
 {
@@ -108,15 +108,22 @@ uint32_t cs_control(uint32_t page,uint32_t encoder)
 { return page<4 && encoder<8 ? controls[page][encoder] : CS_NONE; }
 uint32_t cs_mapped_control(const CsState *s,uint32_t encoder)
 {
-    if(family(s)==2 && s->page[s->track]==3 && encoder<8) {
-        static const uint8_t wtfm[8]={CP_WTFM_DEPTH,CP_WTFM_RATIO,CP_WTFM_ENV,CS_NONE,CS_NONE,CS_NONE,CS_NONE,CS_NONE};
-        return wtfm[encoder];
-    }
+    if(encoder>=8) return CS_NONE;
     if(s->page[s->track]==2 && encoder<8) {
-        if(family(s)<2) return encoder==0 ? CP_COLOR : CS_NONE;
+        if(family(s)<2) {
+            static const uint8_t legacy[8]={CS_WAVE,CP_COLOR,CP_DRIFT,CS_NONE,CS_NONE,CS_NONE,CS_NONE,CS_NONE};
+            return legacy[encoder];
+        }
         if(family(s)==3) {
-            static const uint8_t fmtone[8]={CP_COLOR,CP_FM_ALG,CP_FM_BAL,CP_FM_FB,CP_FM_RTA,CP_FM_RTB,CS_NONE,CS_NONE};
+            static const uint8_t fmtone[8]={CS_WAVE,CP_COLOR,CP_FM_ALG,CP_FM_BAL,CP_FM_RTA,CP_FM_RTB,CP_FM_FB,CP_DRIFT};
             return fmtone[encoder];
+        }
+    }
+    if(s->page[s->track]==3) {
+        if(family(s)<2) return CS_NONE;
+        if(family(s)==3) {
+            static const uint8_t fmenv[8]={CP_FM_ATTACK,CP_FM_DECAY,CP_FM_SUSTAIN,CP_FM_RELEASE,CP_FM_ENV,CP_FM_VELOCITY,CS_NONE,CS_NONE};
+            return fmenv[encoder];
         }
     }
     uint32_t id=cs_control(s->page[s->track],encoder);
@@ -250,7 +257,14 @@ int cs_edit(CsState *s,uint32_t token,uint32_t encoder,int32_t detents,uint32_t 
     if(context_changed && s->token==UINT32_MAX) { s->visible=0; return CS_READONLY; }
     if(control==CP_CHORD) {
         if(next) s->value[control]=(uint16_t)(next-1);
-    } else if(control<CP_CONTROLS) s->value[control]=(uint16_t)next;
+    } else if(control<CP_CONTROLS) {
+        s->value[control]=(uint16_t)next;
+        if(family(s)==2 && control==CP_WT_CLOCK) {
+            s->value[CP_WT_RATE]=(uint16_t)(next ? 3 : 10);
+            s->pending|=1u<<CP_WT_RATE;
+            list_reset(s);
+        }
+    }
     s->mode=mode; s->learned=learned; s->metadata=metadata;
     if(control==CS_WAVE) {
         activate(s);

@@ -151,7 +151,7 @@ test('CANOPY arp uses pattern tempo and plays held keys while stopped', { timeou
   await srcPage(1);
   expect(await settled(6)).toBe(4); // 1/16
   expect(await settled(10)).toBe(0); // straight swing
-  const beforeBlank = await bank();
+  const beforePreview = await bank();
   const revision = await cf('src_state', 3);
   await turn(7, -30);
   await turn(8, 30);
@@ -164,10 +164,10 @@ test('CANOPY arp uses pattern tempo and plays held keys while stopped', { timeou
   } finally {
     await edge('SRC', false);
   }
-  expect(await cf('src_state', 3), 'blank G/H do not edit or publish configuration').toBe(revision);
-  expect(await bank()).toEqual(beforeBlank);
-  expect(beforeBlank[13]).toBe(2);
-  console.info('CANOPY arp: blank G/H preserve the configuration');
+  expect(await cf('src_state', 3), 'read-only G/H do not edit or publish configuration').toBe(revision);
+  expect(await bank()).toEqual(beforePreview);
+  expect(beforePreview[13]).toBe(2);
+  console.info('CANOPY arp: the read-only preview preserves the configuration');
   await key('STOP');
   await expect.poll(() => word(0x43164f94), { timeout: 30_000 }).not.toBe(1);
 

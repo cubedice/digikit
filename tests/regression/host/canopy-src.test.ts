@@ -34,6 +34,7 @@ afterAll(() => {
 });
 test.each([
   'controls',
+  'four-page-layout',
   'pattern-tempo-import',
   'trig-lock-edit',
   'wavetable',

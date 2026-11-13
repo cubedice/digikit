@@ -135,7 +135,7 @@ int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
         epoch == mi_ledger.epoch && generation == mi_ledger.generations[track] &&
         mi_transport.applied[track] != 0 && !mi_ledger.reset_mask && !mi_transport.faults;
 }
-uint32_t instrument_src_pages(void) { return cur->pad_family>=2 ? 4 : 3; }
+uint32_t instrument_src_pages(void) { return 4; }
 uint32_t instrument_src_tune_page(uint32_t page) { return page==0; }
 static dk_ui_menu *tone_menu;
 static dk_ui_menu *input_menu, *shape_menu;
@@ -426,6 +426,12 @@ int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint3
     case CP_GATE: cur->arp_gate=v; break;
     case CP_SWING: cur->arp_swing=v; break;
     case CP_RESTART: cur->arp_restart=v; break;
+    case CP_WT_CLOCK:
+        if(cur->pad_family==2) {
+            cur->wt[CP_WT_CLOCK-16]=v;
+            cur->wt[CP_WT_RATE-16]=s->value[CP_WT_RATE];
+        } else cur->fm[CP_FM_DECAY-15]=v;
+        break;
     case CS_WAVE:
         cur->pad_family=(int)((s->metadata>>4)&3u);
         cur->pad_color=s->legacy_color;
@@ -533,6 +539,10 @@ static void lock_state(CsState *shown,const IlpSnapshot *snapshot)
         uint32_t control=ilp_control_for(family_of(shown),snapshot->pair[i].id);
         if(control!=UINT32_MAX) lock_show(shown,control,snapshot->pair[i].value);
     }
+    /* The DSP clamps a free-Hz rate to the last sync division when a clock
+     * lock enables SYNC. The held-step view must show that effective value. */
+    if(family_of(shown)==2 && shown->value[CP_WT_CLOCK] && shown->value[CP_WT_RATE]>7)
+        shown->value[CP_WT_RATE]=7;
 }
 void instrument_src_lock_feedback(char out[32],uint32_t encoder,const IlpSnapshot *snapshot,uint32_t control,uint32_t value)
 {

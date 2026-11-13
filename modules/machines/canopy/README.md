@@ -5,8 +5,11 @@ This directory contains the four-note pad instrument with movement, presets and 
 reset/process callbacks and an assigned machine type. It requires the optional
 DTII 1.17 `core/instrument-play` adapter; ordinary firmware cannot admit it.
 The engine supports Velvet/Reed, factory wavetable and four-operator FM families,
-drift, wavetable FM and independent note envelopes controlled by the stock AMP page. FM adds
-a fourth, conditional FM ENV page; wavetable sounds instead expose WT FM.
+drift, wavetable FM and independent note envelopes controlled by the stock AMP page.
+SRC has four pages for all sources: KEYS, ARP, SOUND and ENV. ENV shapes timbre;
+the stock AMP page shapes loudness.
+This four-page revision is a local firmware candidate and has not yet been
+installed on the physical DTII.
 The current source requires matching CPSB firmware and package builds. The
 2026-11-10 compact controls and native MOD revision is installed on the physical
 DTII (image ID `481b2b9a4fcddf5e`, finding 120 and its handover); the
@@ -72,7 +75,7 @@ MIDI port/channel.
 
 ## Playing and selecting sounds
 
-**SOUND B / CHRD** selects PLAY or a generated chord, including USER. PLAY sounds
+**KEYS B / CHRD** selects PLAY or a generated chord, including USER. PLAY sounds
 exactly the notes you press; choosing a chord switches to root-note playing.
 Turn CHRD fully left to return to PLAY.
 Changing between PLAY and root mode releases the previous phrase; press new
@@ -90,9 +93,10 @@ on SRC. Presets still store the original mode, chord, family and table fields;
 existing sounds need no conversion beyond the existing preset migration.
 
 SETTINGS > DIGIKIT > CANOPY contains four groups: INPUT for connections and
-selector keys; CHORD LEARN for custom shapes; MODULATION for scan clock/restart
-and wheel amounts; and PRESETS for save/load. The arp follows the current pattern
-tempo, including while the sequencer is stopped. ARP G/H are blank; adjust tempo
+selector keys; CHORD LEARN for custom shapes; MODULATION for wheel amounts and
+scan settings; and PRESETS for save/load. The arp follows the current pattern
+tempo, including while the sequencer is stopped. ARP G/H show a read-only
+note/order preview; adjust tempo
 with the DTII's normal TEMPO control.
 Arpeggiated notes have a minimum 64-sample onset ramp (about 1.33 ms) to prevent
 clicks when AMP ATT is zero. Slower AMP attacks, release times and the pad's
@@ -145,28 +149,31 @@ qualified on hardware. See
 
 ## Wavetable controls
 
-Press SRC to cycle SOUND, ARP and TONE. **SOUND D / WAVE** selects VELVT,
-REED, ANLG, GLASS, VOCAL, ORGAN, METAL or FM directly. The first two are the original
-synth sounds; the next five are wavetables. FM has its own TONE layout and a
-conditional fourth FM ENV page; wavetables add the fourth WT FM page described below. There is no separate engine menu.
-Velvet/Reed have COLR on TONE A; their other TONE cells are unused. Wavetable
-position and its modulation share the complete TONE page.
+Press SRC to cycle KEYS, ARP, SOUND and ENV. **SOUND A / WAVE** selects VELVT,
+REED, ANLG, GLASS, VOCAL, ORGAN, METAL or FM directly. The first two are the
+original synth sounds; the next five are wavetables. Velvet/Reed use SOUND B
+for COLR and C for DRFT. The envelope page explains that their volume shape is
+on AMP.
 
-| Encoder | TONE control | Meaning |
+| Encoder | Wavetable SOUND | Wavetable ENV |
 | --- | --- | --- |
-| A | POS | Continuous position 1.00-8.00 through eight related waves |
-| B | DEP | Scan depth 0-100%; full depth reaches 3.5 frames either side |
-| C | HZ / RATE | 0.01-10.00 under HZ, or the available tempo divisions |
-| D | SHAP | Sine, triangle or smooth random scan |
-| E | ENV | Signed envelope amount to position |
-| F | ATK | Position-envelope attack |
-| G | REL | Position-envelope release |
-| H | VEL | Signed velocity amount to position |
+| A | WAVE, source/table | ATK, shared timbre attack |
+| B | POS, 1.00–8.00 | REL, shared timbre release |
+| C | DEP, scan depth | FM, base wavetable-FM depth |
+| D | HZ or RATE, scan speed | RAT, FM ratio |
+| E | SHAP, scan waveform | PENV, envelope to position |
+| F | DRFT | FENV, envelope to FM depth |
+| G | CLK, free or synchronized scan | VEL, velocity to position |
+| H | RST, scan restart | Read-only envelope routing |
+
+The eight marks show table frames, the cursor shows base POS, and the bracket
+shows the scan range. Full DEP reaches 3.5 frames either side before clamping.
+The ENV attack and release drive both PENV and FENV; they do not control AMP.
 
 DEP starts at zero; raise it to hear automatic scanning. To keep a sound, use
 CANOPY SETUP > PRESETS > SAVE CURRENT SOUND.
 
-TUNE and LEV appear only on SOUND A/H. Dedicated LEVEL/DATA remains the stock track-level control;
+TUNE and source LEV appear only on KEYS A/H. Dedicated LEVEL/DATA remains the stock track-level control;
 holding SRC uses the native show-values presentation. No second level scale is added.
 
 The MODULATION submenu selects scan clock/restart and signed wheel amounts for
@@ -195,24 +202,23 @@ outside this custom preset format.
 
 ## Playing FM
 
-On SOUND, turn D / WAVE past METAL to FM. CHRD still selects PLAY or a generated
-chord on SOUND. TONE A becomes DEP: low values are soft and simple, higher
+On SOUND, turn A / WAVE past METAL to FM. CHRD still selects PLAY or a generated
+chord on KEYS. SOUND B becomes DEP: low values are soft and simple, higher
 values add harmonic complexity. Turning WAVE away from FM remembers its settings
 and restores the other source's own COLOR/POS and modulation parameters.
 
-| Knob | FM TONE | FM ENV |
+| Knob | FM SOUND | FM ENV |
 | --- | --- | --- |
-| A | DEP | Timbre attack |
-| B | ALG | Timbre decay |
-| C | BAL between tones X/Y | Timbre sustain |
-| D | FDBK on modulator B | Timbre release |
+| A | WAVE | Timbre attack |
+| B | DEP | Timbre decay |
+| C | ALG | Timbre sustain |
+| D | BAL between tones X/Y | Timbre release |
 | E | RTA, modulator A ratio | Signed ENV amount |
 | F | RTB, modulator B ratio | Signed VEL-to-depth amount |
-| G | — | — |
-| H | — | — |
+| G | FDBK on modulator B | Read-only routing |
+| H | DRFT | Read-only routing |
 
-Press SRC to cycle SOUND, ARP, TONE and FM ENV. The fourth page is omitted when
-another source is selected. TUNE/LEV on SOUND, dedicated LEVEL/DATA and held-SRC values use
+The routing graph changes with ALG. TUNE/LEV on KEYS, dedicated LEVEL/DATA and held-SRC values use
 the native drawing and scales. WAVE, ALG and ratio choices use four raw encoder
 ticks per item. MIX continues to mean pad versus arp; BAL means FM tone X versus Y.
 
@@ -459,8 +465,8 @@ The ARP page exposes RATE (1..8 notes/quarter), gate percent
 (1..100), UP/DOWN/UP-DOWN/AS-PLAYED/RANDOM, signed octave spread (-3..+3),
 swing (0..75), and TRIG/PATTERN/CONTINUE restart. The arp always follows the
 current pattern tempo; there is no separate local BPM or clock selector.
-SOUND G controls MIX (0 pad, 127 arp). SOUND F controls STRUM MS (0..500).
-ARP G/H are blank. RATE uses musical divisions, including triplets, and SWNG
+KEYS G controls MIX (0 pad, 127 arp). KEYS D controls STRUM MS (0..500).
+ARP G/H show the current note/order. RATE uses musical divisions, including triplets, and SWNG
 is available without changing clock modes. Keyboard-held and sustained notes
 can arpeggiate while the track or sequencer is stopped; starting playback joins
 the pattern clock. Change the speed with the normal DTII TEMPO control.
@@ -520,19 +526,22 @@ the updated onset has not been measured on physical hardware.
 ## FM on wavetable sounds
 
 Choose ANLG, GLASS, VOCAL, ORGAN or METAL with WAVE on SOUND, then cycle SRC
-to WT FM. Position, scanning and the shared timbre envelope stay on TONE.
+to ENV. Position and scanning remain on SOUND.
 
 | Knob | Label | Function |
 | --- | --- | --- |
-| A | DEP | FM depth, 0-100% |
-| B | RAT | Modulator-to-note frequency ratio, 0.25-8.00 |
-| C | ENV | Timbre envelope to FM depth, -100% to +100% |
-| D–H | — | Unused; TUNE/LEV stay on SOUND, ATK/REL on TONE, WHEL in MODULATION |
+| A/B | ATK/REL | Shared timbre-envelope attack and release |
+| C | FM | FM depth, 0-100% |
+| D | RAT | Modulator-to-note frequency ratio, 0.25-8.00 |
+| E | PENV | Timbre envelope to position |
+| F | FENV | Timbre envelope to FM depth, -100% to +100% |
+| G | VEL | Velocity to position |
+| H | — | Read-only routing; wheel amounts remain in MODULATION |
 
-Start with DEP around 30 and RAT 1.00 or 2.00. Increase DEP for a stronger
+Start with FM around 30 and RAT 1.00 or 2.00. Increase FM for a stronger
 change; noninteger ratios give more metallic timbres. RAT uses the same slower
-selection as WAVE/SHAP. With DEP, ENV and WHEL at zero the original wavetable
-sound is preserved. Positive ENV or WHEL can add FM even with DEP at zero.
+selection as WAVE/SHAP. With FM, FENV and WHEL at zero the original wavetable
+sound is preserved. Positive FENV or WHEL can add FM even with FM at zero.
 High notes and ratios use less modulation to control excess high-frequency energy.
 
 ATK/REL share the existing wavetable timbre envelope, including its use for

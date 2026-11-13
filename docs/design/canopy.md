@@ -1,6 +1,10 @@
 # CANOPY technical design
 
-Current control revision (2026-11-12): SOUND B combines PLAY and chord selection;
+The current SRC page map and diagrams are in the
+[four-page UI design](canopy-ui-review.md#review-proposal-three-groups-four-src-pages-2026-11-12).
+The older layout and its acceptance records below describe earlier revisions.
+
+Previous control revision (2026-11-12): SOUND B combines PLAY and chord selection;
 SOUND D combines the two original sounds, five factory wavetables and FM. TUNE
 and LEV appear only on SOUND. ARP always uses the pattern tempo and supports
 keyboard playing while stopped; G/H are blank. Position and its

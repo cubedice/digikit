@@ -54,6 +54,7 @@ test.each([
   'held-lock',
   'live-lock',
   'paint',
+  'diagrams',
   'tone',
   'wavetable-fm',
   'fm-envelope',

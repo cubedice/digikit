@@ -8,6 +8,8 @@
 #include "dk_fw_text.h"
 #include "dk_fw_view.h"
 #include "instances.h"
+#include "src-waves.h"
+#include "src-envelope.h"
 extern uint32_t dkrt_instrument_type(void),dkrt_instrument_generation(void);
 extern uint32_t ip_src_type(uint8_t *);
 extern uint32_t ip_src_track(uint32_t);
@@ -124,6 +126,290 @@ static uint32_t take(uint8_t *event)
     }
     return 0;
 }
+/* Diagrams use top-left display coordinates. The firmware primitive uses a
+ * bottom-left origin; every shape remains inside the custom SRC body. */
+static void diagram_box(uint8_t *b,int x,int y,int w,int h,int ink)
+{
+    if(w>0 && h>0) dk_fw_draw_fill_rect(b,x,64-y-h,x+w-1,63-y,ink);
+}
+static void diagram_line(uint8_t *b,int x0,int y0,int x1,int y1)
+{
+    if(y0==y1) { int lo=x0<x1?x0:x1,hi=x0>x1?x0:x1; diagram_box(b,lo,y0,hi-lo+1,1,1); return; }
+    if(x0==x1) { int lo=y0<y1?y0:y1,hi=y0>y1?y0:y1; diagram_box(b,x0,lo,1,hi-lo+1,1); return; }
+    int dx=x1>x0?x1-x0:x0-x1,dy=y1>y0?y1-y0:y0-y1;
+    int sx=x0<x1?1:-1,sy=y0<y1?1:-1,err=dx-dy;
+    for(;;) {
+        diagram_box(b,x0,y0,1,1,1);
+        if(x0==x1 && y0==y1) break;
+        int e=2*err;
+        if(e>-dy) { err-=dy; x0+=sx; }
+        if(e<dx) { err+=dx; y0+=sy; }
+    }
+}
+static void diagram_rect(uint8_t *b,int x,int y,int w,int h)
+{
+    diagram_box(b,x,y,w,1,1); diagram_box(b,x,y+h-1,w,1,1);
+    diagram_box(b,x,y,1,h,1); diagram_box(b,x+w-1,y,1,h,1);
+}
+static void diagram_text(uint8_t *b,int x,int y,const char *text)
+{ dk_fw_text_draw_box(b,(uint8_t *)(uintptr_t)ip_src_label_font,x,59-y,1,0,0,"%s",text); }
+static void diagram_node(uint8_t *b,int x,int y)
+{ diagram_box(b,x-1,y-1,3,3,1); diagram_box(b,x,y,1,1,0); }
+static uint32_t diagram_sqrt(uint32_t n)
+{
+    uint32_t result=0,bit=1u<<30;
+    while(bit>n) bit>>=2;
+    while(bit) { if(n>=result+bit) { n-=result+bit; result=(result>>1)+bit; } else result>>=1; bit>>=2; }
+    return result;
+}
+static int native_index(const CvDisplay *d,uint32_t id)
+{ return d->raw[id]<128 ? d->raw[id] : 127; }
+static void diagram_envelope(uint8_t *b,const CvDisplay *d,int fm)
+{
+    uint32_t attack=canopy_env_weight[0][native_index(d,fm?CP_FM_ATTACK:CP_WT_ATTACK)];
+    uint32_t release=canopy_env_weight[1][native_index(d,fm?CP_FM_RELEASE:CP_WT_RELEASE)];
+    uint32_t decay=0,sustain=100;
+    if(fm) {
+        sustain=d->raw[CP_FM_SUSTAIN]; if(sustain>100) sustain=100;
+        decay=(canopy_env_weight[0][native_index(d,CP_FM_DECAY)]*diagram_sqrt((100-sustain)*100))/100;
+        release=(release*diagram_sqrt(sustain*100))/100;
+    }
+    uint32_t available=fm?72:39,total=attack+decay+release;
+    int x0=24,x1=x0+(int)(total?(available*attack+total/2)/total:0);
+    int x2=x1+(int)(total?(available*decay+total/2)/total:0);
+    int end=fm?121:71,hold=fm?25:8,x3=x2+hold;
+    if(x3>end) x3=end;
+    int y=fm?29-(int)((16*sustain+50)/100):13;
+    diagram_line(b,x0,29,x1,13);
+    if(fm) diagram_line(b,x1,13,x2,y);
+    else x2=x1;
+    diagram_line(b,x2,y,x3,y); diagram_line(b,x3,y,end,29);
+    if(d->focus_id==(fm?CP_FM_ATTACK:CP_WT_ATTACK)) diagram_line(b,x0,30,x1,14);
+    if(fm && d->focus_id==CP_FM_DECAY) diagram_line(b,x1,14,x2,y+1);
+    if(fm && d->focus_id==CP_FM_SUSTAIN) diagram_line(b,x2,y+1,x3,y+1);
+    if(d->focus_id==(fm?CP_FM_RELEASE:CP_WT_RELEASE)) diagram_line(b,x3,y+1,end,30);
+    diagram_node(b,x1,13);
+    if(fm) diagram_node(b,x2,y);
+    diagram_node(b,x3,y);
+    if(x3+1<124) for(int j=12;j<30;j+=2) diagram_box(b,x3+1,j,1,1,1);
+}
+static void diagram_keyboard(uint8_t *b,const CvDisplay *d)
+{
+    static const uint8_t white[]={0,2,4,5,7,9,11},black[]={1,3,6,8,10},after[]={0,1,3,4,5};
+    uint32_t pcs=0;
+    if(d->fresh && d->fault!=2) for(uint32_t i=0;i<d->note_count && i<4;++i) pcs|=1u<<(d->pitches[i]%12);
+    for(int i=0;i<7;++i) {
+        int x=24+7*i; diagram_rect(b,x,40,7,17);
+        if(pcs&(1u<<white[i])) diagram_box(b,x+1,50,5,6,1);
+    }
+    for(int i=0;i<5;++i) {
+        int x=28+7*after[i]; diagram_box(b,x,40,5,10,0); diagram_rect(b,x,40,5,9);
+        if(pcs&(1u<<black[i])) diagram_box(b,x+1,41,3,7,1);
+    }
+    char caption[10]; uint32_t i=0;
+    const char *s=!d->fresh?"LINK LOST":d->fault==2?"VOICE ERR":d->playing;
+    while(i<9 && s[i]) { caption[i]=s[i]; ++i; } caption[i]=0;
+    diagram_text(b,48,59,caption);
+    diagram_text(b,78,40,"P"); diagram_text(b,93,40,"A");
+    diagram_line(b,77,50,95,50); diagram_line(b,77,48,77,52); diagram_line(b,95,48,95,52);
+    int pos=77+(18*d->raw[CP_ARP_MIX]+63)/127;
+    diagram_box(b,pos-1,47,3,7,1);
+}
+static void diagram_keys(uint8_t *b,const CvDisplay *d)
+{
+    diagram_text(b,85,14,d->value[2]);
+    if(d->value[2][0]!='-') for(int i=0;i<4;++i) {
+        int x=78+5*i,y=27-2*i;
+        diagram_line(b,x,y,x+2,y); diagram_line(b,x+2,y-3,x+2,y);
+    }
+    if(d->value[3][0]=='-') diagram_text(b,111,19,"--");
+    else for(int i=0;i<4;++i) {
+        int stride=d->raw[CP_STRUM] ? 1+(int)(2*d->raw[CP_STRUM]/500) : 0;
+        int y=14+4*i,x=103+stride*i;
+        diagram_box(b,x,y,3,2,1); diagram_line(b,x+4,y,120,y);
+    }
+    diagram_keyboard(b,d);
+}
+static void diagram_arp(uint8_t *b,const CvDisplay *d)
+{
+    uint32_t order=d->raw[CP_ORDER],oct=d->raw[CP_OCTAVES],gate=d->raw[CP_GATE],swing=d->raw[CP_SWING];
+    if(oct>6) oct=6;
+    if(order>=3) diagram_text(b,59,19,order==3?"PLAY":"RND");
+    else for(int i=0;i<4;++i) {
+        int rank=order==1?3-i:order==2?(i<2?i:3-i):i;
+        diagram_line(b,51+4*i,28-4*rank,54+4*i,28-4*rank);
+    }
+    diagram_text(b,85,14,d->value[2]);
+    for(int i=0;i<3;++i) {
+        int y=oct<3?19+4*i:oct>3?27-4*i:23;
+        diagram_line(b,77+6*i,y,83+6*i,y);
+        if(i<2 && oct!=3) diagram_line(b,83+6*i,y,83+6*i,oct<3?y+4:y-4);
+    }
+    int width=(int)((17*gate+50)/100); if(width<1) width=1;
+    diagram_line(b,102,27,104,27); diagram_line(b,104,27,104,17);
+    diagram_line(b,104,17,104+width,17); diagram_line(b,104+width,17,104+width,27);
+    diagram_line(b,104+width,27,121,27);
+    int middle=25+(int)((17*(100+swing)+100)/200); if(middle>41) middle=41;
+    diagram_line(b,24,52,43,52);
+    diagram_line(b,25,44,25,52); diagram_line(b,middle,44,middle,52); diagram_line(b,42,44,42,52);
+    diagram_box(b,26,45,middle-26,2,1); diagram_box(b,middle+1,45,42-middle-1,2,1);
+    diagram_text(b,59,43,d->value[5]); diagram_line(b,51,52,66,52);
+    diagram_line(b,51,49,51,52); diagram_line(b,64,50,53,50); diagram_line(b,53,50,54,49);
+    if(order>=3) diagram_text(b,98,47,order==3?"PLAY":"RND");
+    else {
+      uint8_t candidates[16]; uint32_t count=0;
+      if(order<2 && d->fresh && d->fault!=2) {
+        uint32_t spread=oct<3?3-oct:oct-3;
+        for(uint32_t o=0;o<=spread;++o) for(uint32_t k=0;k<d->note_count && k<4;++k) {
+            int pitch=(int)d->pitches[k]+(oct<3?-12:12)*(int)o;
+            if(pitch<0 || pitch>127) continue;
+            uint32_t at=count;
+            while(at && candidates[at-1]>(uint8_t)pitch) { candidates[at]=candidates[at-1]; --at; }
+            candidates[at]=(uint8_t)pitch; ++count;
+        }
+      }
+      for(int i=0,marked=0;i<8;++i) {
+        int rank=order==1?7-i:order==2?(i<4?i:7-i):i;
+        int y=54-2*rank;
+        uint32_t step=0;
+        if(count) {
+            step=(uint32_t)i%count;
+            if(order==1) step=count-1-step;
+            int range=candidates[count-1]-candidates[0];
+            y=range ? 54-14*(candidates[step]-candidates[0])/range : 47;
+        }
+        diagram_line(b,76+6*i,y,79+6*i,y);
+        /* Mark only an actual candidate from the fresh, pitch-sorted set. */
+        if(count && d->arp_active && d->raw[CP_ARP_MIX] &&
+           d->clock_state!=IS_CLOCK_LOST && d->clock_state!=IS_CLOCK_WAIT &&
+           d->clock_state!=IS_CLOCK_STOPPED && !marked) {
+            if(candidates[step]==d->arp_note) { diagram_rect(b,75+6*i,y-2,6,5); marked=1; }
+        }
+      }
+    }
+    if(!d->fresh) diagram_text(b,98,59,"LINK LOST");
+    else if(d->fault==2) diagram_text(b,98,59,"VOICE ERR");
+    else if(!d->raw[CP_ARP_MIX]) diagram_text(b,98,59,"ARP OFF");
+    else if(!d->note_count) diagram_text(b,98,59,"NO NOTES");
+    else if(d->clock_state==IS_CLOCK_LOST) diagram_text(b,98,59,"CLK LOST");
+    else if(d->clock_state==IS_CLOCK_WAIT) diagram_text(b,98,59,"WAIT CLK");
+    else if(d->clock_state==IS_CLOCK_STOPPED) diagram_text(b,98,59,"STOPPED");
+    else if(d->arp_active) { char note[6]; cv_note(note,d->arp_note,1); diagram_text(b,98,59,note); }
+    else diagram_text(b,98,59,"ARP --");
+}
+static void diagram_wavetable(uint8_t *b,const CvDisplay *d)
+{
+    uint32_t table=d->raw[CP_WT_TABLE],position=d->raw[CP_WT_POS],depth=d->raw[CP_WT_DEPTH];
+    if(table>4) table=4;
+    if(position>700) position=700;
+    if(depth>100) depth=100;
+    uint32_t frame=position/100,fraction=position%100,next=frame<7?frame+1:frame;
+    int samples[74],peak=1;
+    for(int i=0;i<74;++i) {
+        samples[i]=((int)canopy_preview_waves[table][frame][i]*(int)(100-fraction)+
+            (int)canopy_preview_waves[table][next][i]*(int)fraction)/100;
+        int abs=samples[i]<0?-samples[i]:samples[i]; if(abs>peak) peak=abs;
+    }
+    int magnitude=(6*(samples[0]<0?-samples[0]:samples[0])+peak/2)/peak;
+    int last=20+(samples[0]<0?magnitude:-magnitude);
+    for(int i=1;i<74;++i) {
+        magnitude=(6*(samples[i]<0?-samples[i]:samples[i])+peak/2)/peak;
+        int y=20+(samples[i]<0?magnitude:-magnitude);
+        diagram_line(b,48+i,last,49+i,y); last=y;
+    }
+    diagram_line(b,49,29,121,29);
+    for(int i=0;i<8;++i) {
+        int x=49+(72*i+3)/7; diagram_line(b,x,28,x,30);
+    }
+    int x=49+(int)((72*position+350)/700),radius=(int)((72*depth+100)/200);
+    int lo=x-radius,hi=x+radius; if(lo<49) lo=49; if(hi>121) hi=121;
+    diagram_line(b,lo,12,hi,12); diagram_line(b,lo,12,lo,14); diagram_line(b,hi,12,hi,14);
+    diagram_line(b,x,13,x,30); diagram_box(b,x-1,27,3,3,1);
+    /* The scan-shape glyph is qualitative; RAND intentionally promises no
+     * future random trajectory. */
+    if(d->raw[CP_WT_SHAPE]==2) diagram_text(b,33,46,"RAND");
+    else {
+        static const int8_t sine[]={0,2,4,5,5,4,2,0,-2,-4,-5,-5,-4,-2,0,1,0,0};
+        for(int i=1;i<18;++i) {
+            int a=d->raw[CP_WT_SHAPE] ? (i-1<9 ? (i-1)*5/4 : (17-(i-1))*5/4)-5 : sine[i-1];
+            int c=d->raw[CP_WT_SHAPE] ? (i<9 ? i*5/4 : (17-i)*5/4)-5 : sine[i];
+            diagram_line(b,24+i,48-a,25+i,48-c);
+        }
+    }
+}
+static void diagram_operator(uint8_t *b,int x,int y,const char *name)
+{ diagram_rect(b,x,y,13,8); diagram_text(b,x+6,y+2,name); }
+static void diagram_fm(uint8_t *b,const CvDisplay *d)
+{
+    uint32_t alg=d->raw[CP_FM_ALG];
+    diagram_operator(b,50,12,"A"); diagram_operator(b,104,12,"B");
+    diagram_operator(b,50,23,"X"); diagram_operator(b,104,23,"Y");
+    diagram_text(b,82,13,d->value[2]);
+    if(alg==0) { diagram_line(b,56,20,56,22); diagram_line(b,110,20,110,22); }
+    else if(alg==1) { /* B -> A -> X; Y is clean. */
+        diagram_line(b,56,11,110,11); diagram_box(b,56,12,1,1,1); diagram_line(b,56,20,56,22);
+    } else if(alg==2) { /* A+B -> X; Y is clean. */
+        diagram_line(b,56,20,56,22); diagram_line(b,103,19,64,22);
+    } else { /* B -> A -> X -> Y. */
+        diagram_line(b,56,11,110,11); diagram_box(b,56,12,1,1,1); diagram_line(b,56,20,56,22);
+        diagram_line(b,63,27,103,27);
+        diagram_line(b,100,26,102,27); diagram_line(b,100,28,102,27);
+    }
+    if(alg!=3) { diagram_line(b,63,27,103,27); }
+    int balance=76+(int)((18*d->raw[CP_FM_BAL]+50)/100);
+    diagram_box(b,balance-1,25,2,5,1);
+    /* Feedback loop on B. */
+    diagram_line(b,117,13,120,13); diagram_line(b,120,13,120,19); diagram_line(b,120,19,117,19);
+}
+static void diagram_legacy(uint8_t *b,const CvDisplay *d)
+{
+    static const int8_t wave[]={0,2,4,6,7,7,6,5,4,3,3,3,3,2,0,-2,-4,-6,-7,-7,-6,-5,-4,-3,-3,-3,-3,-2,0};
+    for(int i=1;i<92;++i) {
+        int a=wave[(i-1)*28/91],c=wave[i*28/91];
+        if(d->family) {
+            int pa=(i-1)*28/91,pc=i*28/91;
+            a=pa<14 ? 7-pa : pa-21;
+            c=pc<14 ? 7-pc : pc-21;
+        }
+        diagram_line(b,26+i,48-a,27+i,48-c);
+    }
+    diagram_text(b,73,59,d->family?"REED":"VELVET");
+}
+static void diagram_routing(uint8_t *b,int wt)
+{
+    if(wt) {
+        diagram_text(b,110,40,"ENV"); diagram_line(b,110,46,110,50);
+        diagram_line(b,103,50,118,50); diagram_line(b,103,50,103,52); diagram_line(b,118,50,118,52);
+        diagram_text(b,104,54,"P"); diagram_text(b,118,54,"F");
+    } else {
+        diagram_text(b,82,42,"ENV"); diagram_line(b,93,44,101,44); diagram_line(b,100,43,101,44); diagram_text(b,110,42,"FM");
+        diagram_text(b,82,53,"AMP"); diagram_line(b,93,55,101,55); diagram_line(b,100,54,101,55); diagram_text(b,111,53,"VOL");
+    }
+}
+static uint32_t diagram_mask(uint32_t page,uint32_t family)
+{
+    if(page==0) return 0x7c;
+    if(page==1) return 0xfe;
+    if(page==2) return family==2?0x1e:family==3?0x0e:0xf8;
+    return family==2?0x83:family==3?0xcf:0xff;
+}
+static void diagram_draw(uint8_t *b,const CvDisplay *d)
+{
+    if(d->page==0) diagram_keys(b,d);
+    else if(d->page==1) diagram_arp(b,d);
+    else if(d->page==2) {
+        if(d->family==2) diagram_wavetable(b,d);
+        else if(d->family==3) diagram_fm(b,d);
+        else diagram_legacy(b,d);
+    } else if(d->family==2) { diagram_envelope(b,d,0); diagram_routing(b,1); }
+    else if(d->family==3) { diagram_envelope(b,d,1); diagram_routing(b,0); }
+    else {
+        diagram_text(b,73,17,d->family?"REED":"VELVET");
+        diagram_text(b,73,29,"TONE ON SOUND");
+        diagram_text(b,73,43,"VOLUME ENVELOPE");
+        diagram_text(b,73,52,"ON AMP");
+    }
+}
 void ip_src_draw(uint8_t *view,uint8_t *canvas)
 {
     uint32_t token=context(view);
@@ -144,13 +430,19 @@ void ip_src_draw(uint8_t *view,uint8_t *canvas)
         instrument_src_display_locked(&display,instrument_src_now(),tune,level,&locked);
     } else instrument_src_display(&display,instrument_src_now(),tune,level);
     uint32_t page=word(view,0x90);
+    uint32_t mask=diagram_mask(page,display.family);
+    if(page==0) {
+        dk_fw_draw_fill_rect(canvas,49,27,123,52,0);
+        dk_fw_draw_fill_rect(canvas,23,0,100,25,0);
+    } else dk_fw_draw_fill_rect(canvas,23,0,123,52,0);
     for(uint32_t i=0;i<8;++i) {
         /* The firmware already painted SOUND A/H and the track column.
          * Custom cells never clear or redraw any part of those controls. */
         if(page==0 && (i==0 || i==7)) continue;
         int32_t x=24+26*(int32_t)(i%4),y=i<4?27:0;
-        dk_fw_draw_fill_rect(canvas,x-1,y,x+21,y+25,0);
-        if(display.rotary&(1u<<i)) {
+        if(mask&(1u<<i)) {
+            /* The shared diagram is painted after all parameter labels. */
+        } else if(display.rotary&(1u<<i)) {
             /* Reuse the device's native encoder template (CFADE) with a
              * supplied value, without reading/writing its Sound slot.
              * Accessor and state are borrowed only for this paint call. */
@@ -167,10 +459,13 @@ void ip_src_draw(uint8_t *view,uint8_t *canvas)
         }
         /* 0x190 is the firmware's show-values state; native edit focus uses
          * its own countdown. Do not implement another SRC key/timer policy. */
-        int values=view[0x190] || ip_src_focus_active(view+0x94,i);
-        dk_fw_text_draw_box(canvas,(uint8_t *)(uintptr_t)ip_src_label_font,
-            x+9,y,1,0,0,"%s",values?display.value[i]:display.label[i]);
+        if(display.label[i][0]) {
+            int values=view[0x190] || ip_src_focus_active(view+0x94,i);
+            dk_fw_text_draw_box(canvas,(uint8_t *)(uintptr_t)ip_src_label_font,
+                x+9,y,1,0,0,"%s",values?display.value[i]:display.label[i]);
+        }
     }
+    diagram_draw(canvas,&display);
     if(display.fault && display.fault!=shown_fault) dk_ui_toast(display.heading);
     shown_fault=display.fault;
     last_draw=instrument_src_now(); ++ip_src_debug[3];

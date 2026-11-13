@@ -2,7 +2,8 @@
 
 ## Review proposal: three groups, four SRC pages (2026-11-12)
 
-**Status: design for review; not implemented or installed.** The user approved
+**Status: implemented as a local firmware candidate; physical-device and full
+pixel-comparison acceptance remain open.** The user approved
 four pages arranged into three groups: **KEYS + ARP**, **SOUND**, and **ENV**.
 This section supersedes the historical layout recommendations below. It keeps
 all current synthesis controls, removes duplicate performance controls from the
@@ -30,9 +31,9 @@ firmware-derived bitmap or font data enters Git:
 - [Render manifest](../../out/design/canopy-src-groups/manifest.json).
 
 Each display design is a **128 × 64, one-bit pixel layout**. Enlargements use
-nearest-neighbor scaling. These are proposed final layouts, not screenshots of
-an implemented or installed revision. Pixel-perfect rendering of the proposal
-does not substitute for the firmware capture/comparison acceptance below.
+nearest-neighbor scaling. The review boards are design renderings, not
+screenshots of the implementation. They do not substitute for the firmware
+capture/comparison acceptance below.
 
 The board uses a representative test-pattern header from the native captures;
 actual pattern and sound text remains firmware-owned. The example note markers
@@ -40,6 +41,15 @@ are a fixed playing-state illustration, not a device recording. The rendered
 TUNE, source LEV, track strip and header regions have zero differing pixels
 against their local stock reference images in both normal and held-SRC views.
 The native five-pixel parameter font also passes an exact TUNE-label comparison.
+
+Implementation check: a DTII 1.17 coupled emulator captured all four pages
+and the Velvet, wavetable and FM variants under `out/canopy-longboot/dt2/`.
+At the captured default settings, the complete KEYS TUNE cell, source LEV
+cell and track strip each matched the stock reference with zero pixel changes.
+Those captures preceded the final wavetable rounding and voice-fault display
+corrections, which do not touch the native controls. The later source passed
+the focused host controls/renderer tests and rebuilt the ColdFire object.
+Held-SRC and other values still require the full firmware pixel matrix below.
 
 Visual references are the
 [Digitakt II AMP page](https://www.elektron.se/wp-content/uploads/2025/07/Digitakt-2-User-Manual_ENG_OS1.15A_250708.pdf#page=56)
