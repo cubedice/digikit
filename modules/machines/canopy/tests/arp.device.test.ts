@@ -215,6 +215,18 @@ test('CANOPY arp uses pattern tempo and plays held keys while stopped', { timeou
   for (const note of notes) await midi([0x90, note, 100]);
   await expect.poll(async () => (await arp()).serial, { timeout: 60_000 }).toBeGreaterThan(2);
   log.stopped120 = await measureStopped(120);
+  await srcPage(0);
+  const stoppedKnobBefore = await arp();
+  for (let i = 0; i < 10; ++i) await turn(8, i % 2 ? 4 : -4); // native SRC LEV
+  await expect.poll(async () => (await arp()).serial, { timeout: 90_000 }).toBeGreaterThan(stoppedKnobBefore.serial + 2);
+  const stoppedKnobAfter = await arp();
+  const stoppedKnobElapsed = stoppedKnobAfter.block - stoppedKnobBefore.block -
+    (stoppedKnobAfter.phase - stoppedKnobBefore.phase) / (2 * 120 * 120 * 4);
+  const stoppedKnobExpected = ((stoppedKnobAfter.serial - stoppedKnobBefore.serial) * 90000) / (120 * 4);
+  log.stoppedKnob = { before: stoppedKnobBefore, after: stoppedKnobAfter, elapsed: stoppedKnobElapsed, expected: stoppedKnobExpected };
+  expect(stoppedKnobAfter.mode).toBe(2);
+  expect(stoppedKnobAfter.status).toBe(2);
+  expect(Math.abs(stoppedKnobElapsed - stoppedKnobExpected), 'moving SRC level preserves stopped arp timing').toBeLessThanOrEqual(2);
   log.stopped180 = await measureStopped(180);
   console.info('CANOPY arp: stopped timing follows stock 120/180 BPM', log.stopped120, log.stopped180);
   expect(await cf('src_state', 3), 'tempo follows the pattern without editing the sound').toBe(revision);
@@ -223,8 +235,10 @@ test('CANOPY arp uses pattern tempo and plays held keys while stopped', { timeou
   await expect.poll(() => word(0x43164f94), { timeout: 30_000 }).toBe(1);
   await expect.poll(async () => (await arp()).mode, { timeout: 90_000 }).toBe(1);
   const playing = await arp();
+  for (let i = 0; i < 10; ++i) await turn(8, i % 2 ? 4 : -4);
   await expect.poll(async () => (await arp()).serial, { timeout: 90_000 }).toBeGreaterThan(playing.serial + 3);
   log.playing = { before: playing, after: await arp(), flags: await inputFlags() };
+  expect((await arp()).mode, 'moving SRC level keeps the playing arp synchronized').toBe(1);
   await key('STOP');
   await expect.poll(async () => (await arp()).mode, { timeout: 30_000 }).toBe(2);
   const stoppedAgain = await arp();
