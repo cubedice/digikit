@@ -175,7 +175,13 @@ packed snapshot. The control highlight uses the mapped parameter ID of the
 effective source family; native TUNE and LEV remain with the stock renderer.
 Controls covered by a shared diagram highlight their label instead of filling
 the diagram. Host tests exercise the mapping and the native inversion draw.
-The SRC button's physical red blink remains a separate LED-layer integration.
+In a DT2 1.17 emulator comparison, a held step with a native SRC LEV lock
+alternated the SRC LED between white and off; the released step remained
+white. A held CANOPY step with a packed SRC lock remained white. The stock
+LEV lock was planted in the disposable emulator pattern, while the CANOPY
+lock was recorded with the panel. [D] Making the LED indicate packed locks
+remains a separate integration task, and the comparison is not a physical
+device measurement. [O]
 
 The DSP status producer continues while the preset menu covers SRC. The UI
 tick now drains the bounded status queue for its selected track, retaining the
