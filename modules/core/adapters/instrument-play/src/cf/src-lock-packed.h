@@ -10,7 +10,12 @@
 enum { ILP_ID_LIMIT=62, ILP_POSITION=17, ILP_RATE=19,
        /* IDs 40..52 distinguish the remembered FM bank from WT/legacy
         * controls that reuse the same CP_* numbers. */
-       ILP_FM_DEPTH=40, ILP_FM_FIRST=41, ILP_FM_LAST=52 };
+       ILP_FM_DEPTH=40, ILP_FM_FIRST=41, ILP_FM_LAST=52,
+       /* IDs 53..55 are the second to fourth notes of a recorded chord,
+        * each an interval of -48..+48 semitones from the trig's note (value
+        * minus ILP_NOTE_CENTER). The CF mapper consumes them; they never
+        * reach the DSP bank. */
+       ILP_NOTE_FIRST=53, ILP_NOTE_LAST=55, ILP_NOTE_CENTER=48, ILP_NOTE_MAX=96 };
 
 /* Returns 1 on success. On failure output arguments remain untouched. The
  * Caller additionally validates the parameter against its active sound family

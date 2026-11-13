@@ -52,7 +52,7 @@ int main(void)
     const int max[ILP_ID_LIMIT]={12,3,127,127,500,127,8,4,6,100,75,2,0,0,127,127,
         4,700,100,1000,2,2,1,200,127,127,200,200,100,15,200,200,
         -1,-1,7,2,300,-1,-1,-1,127,3,100,15,15,100,127,127,100,127,200,200,200,
-        -1,-1,-1,-1,-1,-1,-1,-1,-1};
+        96,96,96,-1,-1,-1,-1,-1,-1};
     /* Every valid control/value pair round-trips, including the long WT
      * ranges and the separate FM bank. Stock UI locks never match the tag. */
     for(uint32_t id=0;id<ILP_ID_LIMIT;++id) {
@@ -266,5 +266,57 @@ int main(void)
     input.kind=MI_NOTE_ON; input.token=2; input.note=62;
     assert(kb_process_locked(&keyboard,&input,1,output)==1 && output[0].note==62);
     assert(keyboard.mode==KB_PLAY && keyboard.voicing==0);
+
+    /* A recorded chord: the trig's note plus chord-note locks (IDs 53..55,
+     * interval + 48). It plays exactly those notes, even when the Sound is a
+     * ROOT chord, and releases them together. */
+    kb_init(&keyboard); kb_reset(&keyboard,1,1);
+    keyboard.mode=KB_ROOT; keyboard.type=4;
+    input=(MiEvent){0};
+    input.epoch=1; input.generation=1; input.token=10; input.kind=MI_NOTE_ON;
+    input.port=MI_PANEL; input.note=67; input.value=100;
+    input.lock_valid=1; input.lock_count=3;
+    input.locks[0]=(uint16_t)((53u<<10)|(48u-7u)); /* C below G */
+    input.locks[1]=(uint16_t)((2u<<10)|84u);       /* COLOR, for the DSP */
+    input.locks[2]=(uint16_t)((54u<<10)|(48u-3u)); /* E */
+    assert(kb_process_locked(&keyboard,&input,1,output)==3);
+    assert(output[0].note==67 && output[1].note==60 && output[2].note==64);
+    for(unsigned i=0;i<3;++i) assert(output[i].kind==MI_NOTE_ON && output[i].value==100);
+    assert(keyboard.mode==KB_ROOT && keyboard.type==4 && !keyboard.stage_count);
+    input.kind=MI_NOTE_OFF; input.lock_valid=0; input.lock_count=0;
+    assert(kb_process_locked(&keyboard,&input,1,output)==3);
+    for(unsigned i=0;i<3;++i) assert(output[i].kind==MI_NOTE_OFF);
+    /* An unlocked trig in the same Sound still plays its ROOT chord. */
+    input.kind=MI_NOTE_ON; input.token=11; input.note=60;
+    assert(kb_process_locked(&keyboard,&input,1,output)==3);
+    assert(output[0].note==60 && output[1].note==63 && output[2].note==67);
+    input.kind=MI_NOTE_OFF;
+    assert(kb_process_locked(&keyboard,&input,1,output)==3);
+    /* Unison and out-of-range notes are dropped; a duplicate ID or a value
+     * past +48 rejects the event. */
+    keyboard.mode=KB_PLAY;
+    input.kind=MI_NOTE_ON; input.token=12; input.note=120; input.lock_valid=1; input.lock_count=3;
+    input.locks[0]=(uint16_t)((53u<<10)|48u);
+    input.locks[1]=(uint16_t)((54u<<10)|(48u+12u));
+    input.locks[2]=(uint16_t)((55u<<10)|(48u-5u));
+    assert(kb_process_locked(&keyboard,&input,1,output)==2);
+    assert(output[0].note==120 && output[1].note==115);
+    input.kind=MI_NOTE_OFF; input.lock_valid=0;
+    assert(kb_process_locked(&keyboard,&input,1,output)==2);
+    input.kind=MI_NOTE_ON; input.token=13; input.note=60; input.lock_valid=1; input.lock_count=2;
+    input.locks[0]=(uint16_t)((53u<<10)|52u); input.locks[1]=(uint16_t)((53u<<10)|55u);
+    assert(kb_process_locked(&keyboard,&input,1,output)==-1);
+    input.lock_count=1; input.locks[0]=(uint16_t)((55u<<10)|97u);
+    assert(kb_process_locked(&keyboard,&input,1,output)==-1);
+
+    /* The DSP sideband carries only DSP locks: chord-note IDs stay on the CF. */
+    mi_init(&ledger); mt_init(&transport);
+    assert(mi_route(&ledger,MI_PANEL,0,1,1,0)==0 && mi_seq_trig(&ledger,1,67,100));
+    uint16_t mixed[3]={(uint16_t)((53u<<10)|41u),(uint16_t)((2u<<10)|84u),(uint16_t)((54u<<10)|45u)};
+    assert(mi_seq_attach_locks(&ledger,1,mixed,3));
+    packet=mt_prepare(&transport,&ledger,revisions,0);
+    assert(packet && transport.lock_valid && transport.lock_count==1 && transport.locks[0]==mixed[1]);
+    assert(ml_encode(&transport,packet,side) && ml_decode(side,packet,decoded,&n,source_out,&source_valid));
+    assert(n==1 && decoded[0]==mixed[1]);
     return 0;
 }

@@ -37,6 +37,8 @@ beforeAll(() => {
       '-Wextra',
       '-Werror',
       '-fsanitize=undefined',
+      '-fno-pie',
+      '-no-pie',
       path.join(import.meta.dirname, 'canopy-panel.c'),
       '-o',
       panelBinary,

@@ -18,6 +18,8 @@
 /* Mapper-only phrase commit; never accepted from physical MIDI. */
 #define MI_COMMIT 5u
 #define MI_LOCKS 5u
+/* Lock IDs from here are consumed by the CF mapper and stay off the DSP wire. */
+#define MI_LOCK_MAPPER_FIRST 53u
 #define MI_SOURCE_VALUES 17u
 
 typedef struct {

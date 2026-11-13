@@ -381,6 +381,15 @@ users = ["core/instrument-play"]
 doc = "DT2 OS1.17 sequencer UI state: a trig is held within the pattern length (128-bit held-step mask at +0x258); finding 123."
 
 [[site]]
+name = "cf.page.site.instrument_step_record"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 16, offset = 0, len = 6, sha256 = "ebbc6f3f77a944b3ac9f94afda3ce2322df7958574d46ea818fcad242a0c4feb" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 sequencer UI state: step recording, i.e. record mode (+0x269) with the step-record byte at +0x272 (set by RECORD + STOP); finding 125."
+
+[[site]]
 name = "cf.page.site.instrument_lock_get"
 cpu = "cf"
 devices = ["dt2"]

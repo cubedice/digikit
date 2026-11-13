@@ -141,6 +141,13 @@ static dk_ui_menu *tone_menu;
 static dk_ui_menu *input_menu, *shape_menu;
 static void pad_changed(void *ctx,int value) { (void)ctx; (void)value; cur->pad_dirty=1; }
 static int keyboard_initialized, storage_result, save_pending;
+/* Held keys sound as separate notes (PLAY), so a recorded press stores the
+ * other held keys as its chord. A ROOT chord is recorded by its root alone. */
+int instrument_track_plays_keys(uint32_t track)
+{
+    const IpInst *in=for_track(track);
+    return in && keyboard_initialized && in->keyboard.mode==KB_PLAY;
+}
 static uint32_t shown_session, shown_revision, refreshed_revision, refreshed_status;
 static uint32_t shown_main=UINT32_MAX;
 static dk_ui_menu *learn_menu;
@@ -878,8 +885,9 @@ void instrument_play_tick(void)
 {
     ip_init();
 #if defined(__m68k__)
-    extern void instrument_src_tick(void);
+    extern void instrument_src_tick(void),ip_panel_tick(void);
     instrument_src_tick();
+    ip_panel_tick(); /* recorded chords: steps committed after the key event */
     if(status_menu && dk_ui_is_open(status_menu)) {
         uint32_t now=instrument_src_now();
         /* Drain at the UI tick cadence, independently of the slower repaint.

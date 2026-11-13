@@ -65,9 +65,17 @@ static void revalidate_routes(void)
  * 0x11), release mask (0x12), all-voice reset (0x15), pitch note<<8 (1 + t)
  * and velocity<<8 (0x1a + t). Each frame is sent once, so each trig is seen
  * once. Only tracks taking local keys (panel_mask) are played. */
+static uint32_t seq_muted;
+void mi_seq_mute(uint32_t track,int on)
+{
+    if(track>=MI_TRACKS) return;
+    uint32_t sr=dkrt_irq_mask();
+    if(on) seq_muted|=1u<<track; else seq_muted&=~(1u<<track);
+    dkrt_irq_restore(sr);
+}
 static void sequencer_frame(const volatile uint16_t *frame)
 {
-    uint32_t tracks = mi_ledger.panel_mask, trigs, releases, t;
+    uint32_t tracks = mi_ledger.panel_mask & ~seq_muted, trigs, releases, t;
     if (!frame) return;
     trigs = frame[0x11]; releases = frame[0x12];
     if (frame[0x15]) releases = 0xffffu;

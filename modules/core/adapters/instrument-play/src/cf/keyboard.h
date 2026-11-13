@@ -7,9 +7,17 @@
 enum { KB_PLAY, KB_ROOT, KB_LEARN };
 enum { KB_OK, KB_FULL, KB_RANGE, KB_EMPTY, KB_STALE, KB_EXHAUSTED };
 typedef struct { uint8_t count, intervals[4]; } KbShape;
+/* A key may carry up to three further notes of a recorded chord, as signed
+ * intervals from its own note (sequencer trigs with chord-note locks). */
+#define KB_EXTRA 3u
+/* Packed lock wire IDs of those notes (src-lock-packed.h ILP_NOTE_*). */
+#define KB_LOCK_NOTE_FIRST 53u
+#define KB_LOCK_NOTE_CENTER 48u
 typedef struct {
     uint32_t token;
     uint8_t note, velocity, port, channel, held, pedal, stolen;
+    uint8_t extra_count;
+    int8_t extra[KB_EXTRA];
 } KbKey;
 typedef struct { uint32_t source, token; uint8_t note, velocity, port, channel; } KbVoice;
 typedef struct {
@@ -23,6 +31,9 @@ typedef struct {
     uint8_t preset_shape_active;
     KbKey keys[MI_KEYS];
     KbVoice voices[4];
+    /* Chord notes for the key the current locked event creates. */
+    uint8_t stage_count;
+    int8_t stage[KB_EXTRA];
 } KbState;
 void kb_init(KbState *s);
 void kb_reset(KbState *s, uint32_t epoch, uint32_t generation);
@@ -30,7 +41,8 @@ void kb_reset(KbState *s, uint32_t epoch, uint32_t generation);
  * changes. Negative return requests a priority reset; never send partial output. */
 int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8]);
 /* Apply chord/voicing locks only while resolving a sequencer note; retain the
- * accepted keyboard settings and normal ownership of all generated voices. */
+ * accepted keyboard settings and normal ownership of all generated voices.
+ * Chord-note locks (IDs 53..55) make that note play its recorded chord. */
 int kb_process_locked(KbState *s,const MiEvent *in,uint32_t count,MiEvent out[8]);
 int kb_learn_begin(KbState *s);
 int kb_learn_save(KbState *s, uint32_t session, uint32_t revision);

@@ -9790,6 +9790,37 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x4005ad8c",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 sequencer UI state: step recording, i.e. record mode (+0x269) with the step-record byte at +0x272 (set by RECORD + STOP); finding 125.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_step_record",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x4005b336",
             "len": 6
           }
@@ -19782,7 +19813,7 @@
       "name": "midi"
     },
     {
-      "count": 89,
+      "count": 90,
       "cpu": "cf",
       "file": "devices/fw/instrument-src.toml",
       "meaning": "parameter and FX pages",

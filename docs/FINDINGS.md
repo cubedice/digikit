@@ -239,3 +239,8 @@ open **[O]**).
 CANOPY arp: [pattern tempo, stopped playing and onset continuity](findings/124-canopy-pattern-arp.md)
 (**[D]**, automatic pattern timing, removal of local BPM/clock controls, and
 a short arp onset ramp for zero-attack sounds).
+
+CANOPY recording: [held-trig page, live chords and step recording](findings/125-canopy-recording.md)
+(**[D]**, sequencer byte +0x268 is the held-trig edit mark, not another
+context; recording modes; the pattern's per-step note list; recorded chords
+as chord-note locks; how step recording takes keyboard notes **[O]**).

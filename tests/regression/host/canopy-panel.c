@@ -3,9 +3,49 @@
 #include "../../../modules/core/adapters/instrument-play/src/cf/panel.c"
 static uint8_t view[0x200],other[0x200],object[4];
 static uint32_t machine=9,selected,downs,ups,cancels,original_on,original_off,detaches;
-static uint8_t active=1,live,held;
-uint8_t ip_panel_live_record(uint32_t seq) { assert(seq==0x1234);return live; }
-uint8_t ip_panel_trig_held(uint32_t seq) { assert(seq==0x1234);return held; }
+static uint8_t active=1,live,held,step_record;
+static uint32_t seq_object[0x100];
+#define SEQ ((uint32_t)(uintptr_t)seq_object)
+uint8_t ip_panel_live_record(uint32_t seq) { assert(seq==SEQ);return live; }
+uint8_t ip_panel_trig_held(uint32_t seq) { assert(seq==SEQ);return held; }
+uint8_t ip_panel_step_record(uint32_t seq) { assert(seq==SEQ);return step_record; }
+/* A fake pattern object (finding 125): trig words per track, the note-list
+ * entries at +0x6a50 and the head index per (track, step) at +0x12a50. The
+ * recorder commits after the key event; commit() models that write. */
+static uint8_t pattern[0x1dc00];
+static uint32_t entries,clock_ms=1000;
+uint32_t pp_current_pattern(void) { return (uint32_t)(uintptr_t)pattern; }
+uint32_t instrument_src_now(void) { return clock_ms; }
+static void commit(uint32_t track,uint32_t step,uint32_t note)
+{
+    uint8_t *trig=pattern+0x6a5*track+2*step; trig[1]|=1;
+    uint8_t *e=pattern+0x6a50+6*entries; e[0]=(uint8_t)track; e[1]=(uint8_t)step; e[2]=(uint8_t)note;
+    uint8_t *h=pattern+0x12a50+2*(128*track+step); h[0]=(uint8_t)(entries>>8); h[1]=(uint8_t)entries;
+    uint8_t *n=pattern+0x13a50+2*entries; n[0]=n[1]=0xff;
+    ++entries;
+}
+/* The stock recorder adding a note to a step's existing list (same head). */
+static void append(uint32_t track,uint32_t step,uint32_t note)
+{
+    const uint8_t *h=pattern+0x12a50+2*(128*track+step);
+    uint32_t at=(uint32_t)((h[0]<<8)|h[1]);
+    for(;;) { uint8_t *n=pattern+0x13a50+2*at; if(n[0]==0xff) { n[0]=(uint8_t)(entries>>8); n[1]=(uint8_t)entries; break; } at=(uint32_t)((n[0]<<8)|n[1]); }
+    uint8_t *e=pattern+0x6a50+6*entries; e[0]=(uint8_t)track; e[1]=(uint8_t)step; e[2]=(uint8_t)note;
+    uint8_t *n=pattern+0x13a50+2*entries; n[0]=n[1]=0xff;
+    ++entries;
+}
+static void heads_empty(void) { for(unsigned i=0;i<16*128;++i) pattern[0x12a50+2*i]=pattern[0x12a51+2*i]=0xff; }
+static int plays_keys=1;
+int instrument_track_plays_keys(uint32_t t) { (void)t; return plays_keys; }
+static uint32_t chord_steps[4],chord_count,chord_calls,mutes;
+static int8_t chord[3];
+int instrument_record_chord(const uint32_t steps[4],const int8_t *intervals,uint32_t count)
+{
+    for(int i=0;i<4;++i) chord_steps[i]=steps[i];
+    for(uint32_t i=0;i<count;++i) chord[i]=intervals[i];
+    chord_count=count; ++chord_calls; return 1;
+}
+void mi_seq_mute(uint32_t track,int on) { assert(track<16); mutes=on ? mutes|(1u<<track) : mutes&~(1u<<track); }
 volatile uint32_t ip_track;
 int instrument_track_owned(uint32_t t) { return t==ip_track; }
 void instrument_select_track(uint32_t t) { (void)t; }
@@ -18,12 +58,16 @@ uint8_t ip_panel_active(uint32_t manager) { (void)manager;return active; }
 void ip_panel_stock_toggle(uint32_t manager) { (void)manager;active^=1; }
 void ip_panel_original_on(uint8_t *v,uint32_t key,uint32_t track,uint32_t pitch,uint32_t velocity,
     uint32_t a,uint32_t b,uint32_t c)
-{ assert(v==view && key==3 && (track<=1 || track==10) && pitch==65 && velocity==88 && a==5 && b==6 && c==7);++original_on; }
-void ip_panel_original_off(uint8_t *v,uint32_t key) { assert(v==view && key==3);++original_off; }
+{
+    assert(v==view && key<16 && (track<=1 || track==10) && velocity==88 && a==5 && b==6 && c==7);
+    assert(key!=3 || pitch==65);
+    ++original_on;
+}
+void ip_panel_original_off(uint8_t *v,uint32_t key) { assert(v==view && key<16); ++original_off; }
 uint32_t ip_panel_stock_key(uint8_t *v,uint8_t *e) { (void)e;assert(v==view);return 17; }
 void ip_panel_stock_detach(uint8_t *v,uint8_t *m) { (void)m;assert(v==view || v==other);++detaches; }
 int mi_panel_key(uint32_t key,uint32_t note,uint32_t velocity,int down,uint32_t track)
-{ (void)track;assert(key==3);if(down) { assert(note==65 && velocity==88);++downs; } else ++ups;return 1; }
+{ (void)track;assert(key<16);if(down) { assert((key!=3 || note==65) && velocity==88);++downs; } else ++ups;return 1; }
 void mi_panel_release(void) { ++cancels; }
 int main(void)
 {
@@ -56,12 +100,69 @@ int main(void)
     ip_panel_update(view);assert(cancels==5);
     selected=0;ip_panel_update(view);assert(cancels==6);
     ip_track=0xffffffffu;ip_panel_on(view,3,10,65,88,5,6,7);assert(downs==6 && original_on==5);
-    /* Live recording or a held trig: the stock note action records the press. */
-    ip_track=0;selected=0;*(uint32_t *)(view+0x98)=0x1234;
-    live=1;ip_panel_on(view,3,0,65,88,5,6,7);assert(original_on==6 && downs==6 && ip_panel_recorded==1);
-    live=0;held=1;ip_panel_on(view,3,0,65,88,5,6,7);assert(original_on==7 && downs==6 && ip_panel_recorded==2);
-    held=0;ip_panel_on(view,3,0,65,88,5,6,7);assert(original_on==7 && downs==7 && ip_panel_recorded==2);
+    /* Live recording, step recording or a held trig: the stock note action
+     * records the press and CANOPY still plays it, with the stock audition
+     * muted on the frame path while the key is held. */
+    heads_empty();
+    ip_track=0;selected=0;*(uint32_t *)(view+0x98)=SEQ;
+    live=1;ip_panel_on(view,3,0,65,88,5,6,7);
+    assert(original_on==6 && downs==7 && ip_panel_recorded==1 && mutes==1);
+    ip_panel_off(view,3);assert(!mutes);
+    live=0;step_record=1;ip_panel_on(view,3,0,65,88,5,6,7);
+    assert(original_on==7 && downs==8 && ip_panel_recorded==2);
+    ip_panel_off(view,3);
+    /* A held trig takes the note at once: a lone key clears chord notes. */
+    step_record=0;held=1;seq_object[0x258/4]=1u<<4;ip_panel_on(view,3,0,65,88,5,6,7);
+    assert(original_on==8 && downs==9 && ip_panel_recorded==3);
+    assert(chord_calls==1 && !chord_count && chord_steps[0]==(1u<<4));
+    ip_panel_off(view,3);
+    /* Held C, E, G on a held trig: each press stores the earlier keys. */
+    ip_panel_on(view,9,0,60,88,5,6,7);ip_panel_on(view,11,0,64,88,5,6,7);
+    assert(chord_calls==3 && chord_count==1 && chord[0]==-4);
+    ip_panel_on(view,13,0,67,88,5,6,7);
+    assert(chord_calls==4 && chord_count==2 && chord[0]==-3 && chord[1]==-7);
+    ip_panel_off(view,9);ip_panel_off(view,11);ip_panel_off(view,13);
+    seq_object[0x258/4]=0;held=0;
+    ip_panel_on(view,3,0,65,88,5,6,7);assert(original_on==11 && downs==13 && ip_panel_recorded==6);
+    ip_panel_off(view,3);
+    clock_ms+=2000;ip_panel_tick();
+    /* Live recording commits each trig and its note list after the key
+     * event. A committed step whose note belongs to the held group gets the
+     * group's other notes, relative to that note, on the next UI tick. */
+    live=1;chord_calls=0;
+    ip_panel_on(view,9,0,60,88,5,6,7);ip_panel_on(view,11,0,64,88,5,6,7);ip_panel_on(view,13,0,67,88,5,6,7);
+    ip_panel_tick();assert(!chord_calls);
+    commit(0,6,67);ip_panel_tick();
+    assert(chord_calls==1 && chord_steps[0]==(1u<<6) && chord_count==2 && chord[0]==-3 && chord[1]==-7);
+    ip_panel_tick();assert(chord_calls==1); /* unchanged steps are not rewritten */
+    commit(0,7,60);ip_panel_tick();
+    assert(chord_calls==2 && chord_steps[0]==(1u<<7) && chord_count==2 && chord[0]==7 && chord[1]==4);
+    commit(0,8,50);ip_panel_tick();assert(chord_calls==2); /* not a held note */
+    /* A note added to step 7's list (same head) is seen as a change. */
+    append(0,7,64);ip_panel_tick();
+    assert(chord_calls==3 && chord_steps[0]==(1u<<7) && chord[0]==7 && chord[1]==4);
+    /* The watch outlives the release briefly, then stops. */
+    ip_panel_off(view,9);ip_panel_off(view,11);ip_panel_off(view,13);assert(!mutes);
+    clock_ms+=1000;commit(0,9,64);ip_panel_tick();
+    assert(chord_calls==4 && chord_steps[0]==(1u<<9) && chord[0]==3 && chord[1]==-4);
+    clock_ms+=1000;ip_panel_tick();commit(0,10,64);ip_panel_tick();assert(chord_calls==4);
+    /* A ROOT chord sound records its root alone (clears chord notes). */
+    plays_keys=0;
+    ip_panel_on(view,9,0,60,88,5,6,7);ip_panel_on(view,11,0,64,88,5,6,7);
+    commit(0,11,64);ip_panel_tick();
+    assert(chord_calls==5 && !chord_count && chord_steps[0]==(1u<<11));
+    ip_panel_off(view,9);ip_panel_off(view,11);
+    clock_ms+=2000;ip_panel_tick();plays_keys=1;
+    /* Another selected track stops the watch: locks address the UI track. */
+    ip_panel_on(view,9,0,60,88,5,6,7);ip_panel_on(view,11,0,64,88,5,6,7);
+    selected=1;commit(0,12,64);ip_panel_tick();assert(chord_calls==5);
+    selected=0;ip_panel_off(view,9);ip_panel_off(view,11);
+    /* Leaving keyboard mode releases recorded keys and their mute. */
+    ip_panel_on(view,9,0,60,88,5,6,7);assert(mutes==1);
+    ip_panel_toggle(0);assert(!active && !mutes);
+    ip_panel_toggle(0);live=0;
     /* Foreign tracks never ask the sequencer. */
-    live=1;machine=0;ip_panel_on(view,3,0,65,88,5,6,7);assert(original_on==8 && ip_panel_recorded==2);
+    live=1;machine=0;unsigned before=original_on,recorded=ip_panel_recorded;
+    ip_panel_on(view,3,0,65,88,5,6,7);assert(original_on==before+1 && ip_panel_recorded==recorded);
     puts("ok");return 0;
 }

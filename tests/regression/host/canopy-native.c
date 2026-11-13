@@ -401,9 +401,22 @@ int main(int argc,char **argv)
         ip_track=5; selected=0; assert(!context((uint8_t *)v));
         ip_track=0xffffffffu; assert(!context((uint8_t *)v)); ip_track=0; selected=0;
     } else if(!strcmp(argv[1],"alternate")) {
-        alternate=1; context((uint8_t *)v); event((uint8_t *)e,4,3,0,0);
-        assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==7);
-        generation=2; context((uint8_t *)v); assert(mf_src_page_count(type_id)==1);
+        /* Sequencer byte +0x268 is the held-trig "edited" mark that the
+         * first lock edit sets until release. CANOPY keeps its page then. */
+        alternate=1; assert(context((uint8_t *)v)); event((uint8_t *)e,4,3,0,0);
+        assert(ip_src_turn((uint8_t *)v,(uint8_t *)e)==1 && !stock_turns);
+        for(unsigned step=0;step<128;++step)
+            for(unsigned lane=0;lane<ILP_LANES;++lane) test_locks[step][lane]=-1;
+        v[0x6c/4]=(uint32_t)(uintptr_t)seq_object; v[0x90/4]=2; test_held=1;
+        uint32_t steps[4]={1u<<4,0,0,0},token=context((uint8_t *)v);
+        assert(token); e[4]=20;
+        assert(lock_turn((uint8_t *)v,(uint8_t *)e,token,1,steps,4)==1);
+        assert(context((uint8_t *)v) && test_locks[4][0]!=-1 && !stock_turns);
+        test_held=0; alternate=0;
+        /* A new generation drops the old page registration on a view that
+         * no longer owns the instrument (another track selected). */
+        selected=1; generation=2; context((uint8_t *)v); assert(mf_src_page_count(type_id)==1);
+        selected=0;
     } else return 2;
     puts("ok"); return 0;
 }

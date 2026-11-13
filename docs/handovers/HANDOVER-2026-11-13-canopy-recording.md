@@ -1,0 +1,34 @@
+# CANOPY recording fixes
+
+Branch `codex/short-loop-proof`. Three reports on the installed four-page build
+(DTII image `1d4953c4df3f3193`): a held step blanks CANOPY's SRC page, live
+recording gives no sound or one note instead of the chord, step recording
+enters single notes. Evidence and layouts are in
+[finding 125](../findings/125-canopy-recording.md).
+
+Fixed and verified in the emulator (`out/patch/canopy-chord-rec.syx` with the
+unchanged `out/patch/canopy-four-page.dkm`):
+
+- Held step: sequencer byte `+0x268` (held-trig edit mark) no longer revokes
+  CANOPY's page; the held step's locks are drawn and edited by CANOPY.
+- Live recording: recorded presses also play on CANOPY's panel path (all held
+  keys), with the stock audition muted on the frame path; chords are stored as
+  chord-note locks (packed IDs 53..55) once the stock recorder commits the
+  step, and play back as chords.
+- `canopy-record.test.ts` (extended) and `canopy-lock.test.ts` (knob moved to
+  SOUND B, COLOR in the four-page layout) pass; host suites pass except the
+  seven pre-existing `canopy-preset.test.ts` failures that also fail on the
+  previous commit (they still assume the retired SRC layout).
+
+Open:
+
+- Step recording (RECORD + STOP): in the emulator no keyboard press entered a
+  note, with or without KEYBOARD; how the user enters notes there is unknown.
+  The panel bridge now treats step recording (`0x4005ad8c`) as recording, so
+  if presses reach the KeyboardView note action there they are recorded,
+  sounded and their chord stored; this path is not measured.
+- Physical hardware: not installed. A new installer must be prepared from
+  `out/canopy-four-page-install.py` (old ID `1d4953c4df3f3193`) and needs the
+  user's approval.
+- KEYBOARD mode is off after entering grid recording; users must re-enable it
+  to play notes there.

@@ -134,7 +134,7 @@ test('CANOPY plays and records trig locks', { timeout: 900_000 }, async () => {
       held: seq ? await Promise.all(Array.from({ length: 4 }, (_, i) => word(seq + 0x258 + i * 4))) : [],
       src: await Promise.all(Array.from({ length: 12 }, (_, i) => cf('ip_src_debug', i))),
     };
-    await turn(1, 20);
+    await turn(2, 20); // SOUND B = COLOR in the four-page layout
     log.heldAfter = {
       src: await Promise.all(Array.from({ length: 12 }, (_, i) => cf('ip_src_debug', i))),
       state: await Promise.all(Array.from({ length: 12 }, (_, i) => cf('src_state', i))),
@@ -209,7 +209,7 @@ test('CANOPY plays and records trig locks', { timeout: 900_000 }, async () => {
   await key('RECORD');
   await edge('TRIG 5', true);
   try {
-    await key('PUSH A');
+    await key('PUSH B');
   } finally {
     await edge('TRIG 5', false);
   }
@@ -303,7 +303,7 @@ test('CANOPY plays and records trig locks', { timeout: 900_000 }, async () => {
   const liveBase = await cf('src_state', 8);
   await modified('RECORD', 'PLAY');
   await expect.poll(() => pos(5), { timeout: 60_000 }).toBe(3);
-  await turn(1, 10);
+  await turn(2, 10);
   await key('STOP');
   log.liveState = {
     before: liveBase,
@@ -353,7 +353,7 @@ test('CANOPY plays and records trig locks', { timeout: 900_000 }, async () => {
   await key('TRIG 1');
   await edge('TRIG 1', true);
   try {
-    await turn(1, 10);
+    await turn(2, 10);
   } finally {
     await edge('TRIG 1', false);
   }

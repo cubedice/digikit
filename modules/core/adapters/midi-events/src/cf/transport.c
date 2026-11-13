@@ -132,8 +132,11 @@ const uint32_t *mt_prepare_mapped(MiTransport *t, MiLedger *m,
         }
         if(consumed && input[0].lock_valid) {
             if(input[0].lock_count>MI_LOCKS) { mapping_fault(m,track); return 0; }
-            lock_valid=1; lock_count=input[0].lock_count;
-            for(i=0;i<lock_count;++i) locks[i]=input[0].locks[i];
+            lock_valid=1;
+            /* IDs from MI_LOCK_MAPPER_FIRST are for the CF mapper only
+             * (recorded chord notes); the DSP sideband never carries them. */
+            for(i=0;i<input[0].lock_count;++i)
+                if((input[0].locks[i]>>10)<MI_LOCK_MAPPER_FIRST) locks[lock_count++]=input[0].locks[i];
             if(input[0].source_valid) {
                 source_valid=1;
                 for(i=0;i<MI_SOURCE_VALUES;++i) source[i]=input[0].source[i];

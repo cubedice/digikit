@@ -3969,6 +3969,16 @@ mark = "D"
 rule = "fw/instrument-src:cf_window_hash"
 
 [[anchor]]
+name = "cf.page.site.instrument_step_record"
+cpu = "cf"
+kind = "code"
+addr = 0x4005ad8c
+len = 6
+sha256 = "fee18a6ce285cc804c0f092294500a9c7badc2980eaf66c909e3e9f82326b05a"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+
+[[anchor]]
 name = "cf.page.site.instrument_lock_get"
 cpu = "cf"
 kind = "code"

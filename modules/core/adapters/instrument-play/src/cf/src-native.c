@@ -82,11 +82,13 @@ static uint32_t context(uint8_t *view)
         mf_src_unregister(owner_type,owner_generation); owner_type=0;
     }
     uint32_t track=ip_src_track(word(view,0x74)),page=word(view,0x90),pages=instrument_src_pages();
-    int alternate=ip_src_alternate(word(view,0x6c));
-    /* The SRC page's track is the UI selection for menus, presets and focus. */
-    if(!alternate && track<16) instrument_select_track(track);
+    /* The SRC page's track is the UI selection for menus, presets and focus.
+     * Sequencer byte +0x268 (ip_src_alternate) is not another context: it is
+     * the held-trig "edited" mark that the first lock edit sets until the
+     * trig is released. The page stays CANOPY's while a trig is held. */
+    if(track<16) instrument_select_track(track);
     int owns=type>=7 && type<32 && gen && track<16 && instrument_track_owned(track) &&
-        ip_src_type(view)==type && !alternate;
+        ip_src_type(view)==type;
     if(owns) {
         if(restore_pending) {
             page=restore_page; *(uint32_t *)(view+0x90)=page;
@@ -583,6 +585,23 @@ static uint32_t lock_turn(uint8_t *view,uint8_t *event,uint32_t token,uint32_t e
         ++ip_src_debug[5];
     }
     dk_fw_view_invalidate(view); return 1;
+}
+/* Panel recording (panel.c): the other notes of a recorded chord, as chord-note
+ * locks on the steps the stock note action recorded on the current track.
+ * Fewer notes clear the remaining chord-note locks, so a single re-recorded
+ * note replaces an earlier chord. */
+int instrument_record_chord(const uint32_t steps[4],const int8_t *intervals,uint32_t count)
+{
+    int result=1;
+    for(uint32_t i=0;i<=ILP_NOTE_LAST-ILP_NOTE_FIRST;++i) {
+        int r=i<count ?
+            ilp_store_edit_steps(&lock_store,steps,ILP_NOTE_FIRST+i,(uint32_t)(intervals[i]+ILP_NOTE_CENTER),0) :
+            ilp_store_edit_steps(&lock_store,steps,ILP_NOTE_FIRST+i,0,1);
+        if(r<0 && result>0) result=r;
+    }
+    if(result<0) dk_ui_toast(result==ILP_FULL || result==ILP_STORAGE_FULL ? "LOCKS FULL - CHORD CUT" :
+        "CHORD NOT RECORDED");
+    return result;
 }
 /* Holding a trig and pressing a CANOPY encoder clears that control's lock. */
 static int lock_clear(uint8_t *view,uint32_t encoder,const uint32_t steps[4])
