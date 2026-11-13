@@ -27,8 +27,12 @@ Open:
   The panel bridge now treats step recording (`0x4005ad8c`) as recording, so
   if presses reach the KeyboardView note action there they are recorded,
   sounded and their chord stored; this path is not measured.
-- Physical hardware: not installed. A new installer must be prepared from
-  `out/canopy-four-page-install.py` (old ID `1d4953c4df3f3193`) and needs the
-  user's approval.
+- Physical hardware: installed on the DTII on 2026-11-13 at the user's request
+  (image `1d4953c4df3f3193` -> `ab2cd5ce545be167`; report
+  `out/canopy-chord-rec-hardware-installed.json`). Current sound kept in preset
+  4 and restored; settings, routing and module health unchanged. After the
+  flash the device hung on "Success! Rebooting" (the old image's soft reset did
+  not fire; finding 75 lists the real-device reset as open); a power cycle
+  booted the new image. Listening tests on hardware are the user's.
 - KEYBOARD mode is off after entering grid recording; users must re-enable it
   to play notes there.
