@@ -1,5 +1,290 @@
 # CANOPY: native DTII interface proposal
 
+## Review proposal: three groups, four SRC pages (2026-11-12)
+
+**Status: design for review; not implemented or installed.** The user approved
+four pages arranged into three groups: **KEYS + ARP**, **SOUND**, and **ENV**.
+This section supersedes the historical layout recommendations below. It keeps
+all current synthesis controls, removes duplicate performance controls from the
+main view, and gives otherwise unused cells a small diagram that explains the
+sound. It does not change the synthesis, modulation, preset, or trig-lock
+behavior.
+
+The physical SRC cycle is **KEYS → ARP → SOUND → ENV → KEYS**, for every source.
+KEYS and ARP are the playing group; SOUND chooses and shapes the oscillator;
+ENV changes its timbre over a note. Keep the normal page dots and stock SRC
+press/hold distinction. There is no new navigation gesture, encoder-push menu,
+or alternate meaning for holding SRC. Input routing, learned-shape management,
+wheel assignments, and preset management stay in their existing settings
+groups. Chord selection and the ordinary synthesis controls are on SRC.
+
+### Rendered review set
+
+The review artifacts live in the ignored output directory so that no
+firmware-derived bitmap or font data enters Git:
+
+- [Main four-page board](../../out/design/canopy-src-groups/main-board.png).
+- [Wavetable variants](../../out/design/canopy-src-groups/wavetable-board.png).
+- [Native show-values examples](../../out/design/canopy-src-groups/values-board.png).
+- [Pixel-size preview](../../out/design/canopy-src-groups/index.html).
+- [Render manifest](../../out/design/canopy-src-groups/manifest.json).
+
+Each display design is a **128 × 64, one-bit pixel layout**. Enlargements use
+nearest-neighbor scaling. These are proposed final layouts, not screenshots of
+an implemented or installed revision. Pixel-perfect rendering of the proposal
+does not substitute for the firmware capture/comparison acceptance below.
+
+The board uses a representative test-pattern header from the native captures;
+actual pattern and sound text remains firmware-owned. The example note markers
+are a fixed playing-state illustration, not a device recording. The rendered
+TUNE, source LEV, track strip and header regions have zero differing pixels
+against their local stock reference images in both normal and held-SRC views.
+The native five-pixel parameter font also passes an exact TUNE-label comparison.
+
+Visual references are the
+[Digitakt II AMP page](https://www.elektron.se/wp-content/uploads/2025/07/Digitakt-2-User-Manual_ENG_OS1.15A_250708.pdf#page=56)
+for connected envelope segments and the
+[Digitone II FM Tone pages](https://www.elektron.se/wp-content/uploads/2026/10/Digitone-2-User-Manual_ENG_OS1.12_261008.pdf#page=89)
+for operator routing and grouped timbre controls. These are visual references,
+not claims that CANOPY uses the same synthesis architecture. Exact DTII pixels
+come from the local OS1.17 captures, rather than the older DTII manual.
+
+### Shared visual and interaction rules
+
+- Preserve the native header, track identity, dedicated track-level strip,
+  page dots, fonts, focus feedback, and control-cell anchors. Diagrams occupy
+  only the explicitly allocated custom cells; none may overwrite protected
+  native areas.
+- Keep exact stock **TUNE at KEYS A** and **LEV at KEYS H**. The dedicated
+  LEVEL/DATA knob edits native track level on all four pages. Source LEV and
+  track level retain their distinct roles and exact stock focus strings;
+  neither graphic is an audio meter.
+- Use normal labels under graphics. Holding SRC retains the graphics and
+  substitutes parameter values in the native label positions. Read-only
+  graphics stay read-only; do not invent a value or encoder target for them.
+- Discrete lists retain four raw knob ticks per choice and no acceleration.
+  Custom turning feedback supplies the full parameter name and formatted
+  value. Native TUNE/LEV feedback and modifiers remain unchanged.
+- Holding a trig and turning a control edits its lock; pressing that encoder
+  while holding a trig clears the lock. Graphic-only cells consume custom
+  turns/presses without changing a sound or creating a lock. They are not
+  shortcuts to hidden editors.
+- Draw applied note/arp telemetry only when it is fresh and belongs to the
+  selected instance. Show **NO NOTES** or **RELEASE** when appropriate; clear
+  active-note markers and show **LINK LOST** for stale telemetry. Never leave
+  a last-known note highlighted as though it were still playing. Parameter
+  diagrams depict configured shapes, not fabricated signal measurements.
+
+### Group 1: KEYS and ARP
+
+KEYS makes the relationship between the keyboard, generated chord, and pad/arp
+blend visible. There is no root-key encoder: the root is the note the player
+supplies. CHRD is the single mode/shape selector; adding a separate keyboard
+mode control would duplicate its current behavior.
+
+| Encoder | KEYS | Behavior and picture |
+| --- | --- | --- |
+| A | TUNE | Exact native stock tuning widget, range, formatting, focus and modifiers. |
+| B | CHRD | PLAY sounds the pressed notes. MAJ, MAJ6, SUS2, MIN6, MIN, SUS4, ADD9, DOM7, DIM, MIN7, USER and MAJ7 generate their selected shape from a played root. Turning to PLAY remains available from USER. |
+| C | VOIC | CLS, OPEN, INV1 or INV2; unavailable in PLAY. USER retains its learned voicing and shows LRND. |
+| D | STRM | OFF or 1–500 ms total spread from the first to last generated chord note; unavailable in PLAY. A staggered-note glyph explains the time offset. |
+| E/F | Read-only keyboard and chord | One combined region shows held/generated pitch-class keys, root/chord identification, and note ownership from fresh telemetry. It is a compact playing aid, not a root-setting control or audio meter. |
+| G | MIX | Native-style horizontal crossfader between PAD and ARP. Its thumb represents the configured blend, with PAD at 0 and ARP at 127; intermediate feedback uses the current percentage format. |
+| H | LEV | Exact native stock source-level widget and Sample Level feedback. |
+
+The keyboard picture explains what CHRD did to the input. In PLAY it represents
+the actual admitted notes. In root modes it represents the generated voicing;
+the root/chord caption distinguishes that from an arbitrary keyboard chord.
+Show a literal note description when recognition is ambiguous. Do not invent a
+chord name from an incomplete or stale set. The compact keys show pitch classes;
+the existing detailed Status view remains the place for every absolute note and
+ownership detail.
+
+ARP holds the timing and traversal controls together. A compact rising/falling
+note path explains order and octave direction; an active marker uses real arp
+telemetry, while the outline can show the configured traversal when idle.
+
+| Encoder | ARP | Behavior and picture |
+| --- | --- | --- |
+| A | RATE | Pattern-tempo divisions: 1/4, 1/8, 1/8T, 1/16, 5/Q, 1/16T, 7/Q and 1/32. Use pulse spacing, not an independent BPM readout. |
+| B | ORDR | UP, DOWN, UPDN, PLAY (As Played) or RND; the path shape follows the selected ordering. Random mode must not depict a promised future sequence. |
+| C | OCTS | −3…+3 octave spread. Zero is only the played octave; positive adds octaves above and negative below, never both directions at once. |
+| D | GATE | 1–100%; a pulse-width glyph distinguishes note-on duration from step spacing. |
+| E | SWNG | Existing swing behavior and display scale; straight timing displays 50%. Alternating interval spacing illustrates the offset. |
+| F | RST | TRIG, PATT or CONT. A return marker explains whether the note path restarts for a phrase, a pattern, or continues. |
+| G/H | Read-only arp preview | Combined note/order diagram, current arp note when valid, and clock/no-note state. No extra MIX or tempo control. |
+
+The arp always uses pattern BPM and can play held notes while the sequencer is
+stopped. A stopped transport therefore does not imply an inactive arp. Show
+**ARP OFF** when MIX is at PAD; distinguish no held notes from missing clock
+information. RATE and SWNG diagrams are explanatory settings pictures, not a
+replacement clock source.
+
+### Group 2: SOUND
+
+WAVE consistently occupies A and remains one source/table selector: VELVT,
+REED, ANLG, GLASS, VOCAL, ORGAN, METAL or FM. It preserves the remembered
+settings of each source family. It has no relationship to keyboard mode.
+
+| Encoder | Wavetable SOUND | Standalone FM SOUND | Velvet/Reed SOUND |
+| --- | --- | --- | --- |
+| A | WAVE | WAVE | WAVE |
+| B | POS | DEP | COLR |
+| C | DEP | ALG | DRFT |
+| D | RATE, or HZ in free mode | BAL | Read-only waveform region |
+| E | SHAP | RTA | Read-only waveform region |
+| F | DRFT | RTB | Read-only waveform region |
+| G | CLK | FDBK | Read-only waveform region |
+| H | RST | DRFT | Read-only waveform region |
+
+For wavetables, the eight-frame strip and cursor explain **POS 1.00–8.00**.
+Above it, draw a normalized cycle of the selected table interpolated at the
+configured base position, before scanning, envelope modulation or FM. It is a
+source-shape illustration, not a scope. The GLASS rendering uses the actual
+factory coefficients interpolated at position 3.25.
+The centered scan span explains **DEP 0–100%**; full depth reaches 3.5 frames
+on either side before the table-end clamp. Keep the configured base cursor
+distinct from any optional applied-position indicator. A SHAP mini-wave shows
+SINE, TRI or smooth RAND scanning. RATE is **0.01–10.00 Hz** under FREE, or
+4BAR, 2BAR, 1BAR, 1/2, 1/4, 1/8 or 1/16 under SYNC. CLK directly exposes the
+existing scan clock selector, and RST exposes FREE, TRIG or PATT scan restart.
+These are the wavetable scan settings, not new arp clock settings. Retain the
+current change-of-clock defaults: 0.10 Hz for FREE, 1BAR for SYNC.
+
+For standalone FM, the ALG cell uses a small operator connection diagram
+inspired by Elektron's FM pages. TWIN, STACK, SUM and CHAIN must draw the
+implemented connections; feedback returns to modulator B. DEP means harmonic
+modulation depth, not output volume. BAL illustrates **tone X ↔ tone Y**,
+distinct from KEYS MIX's **PAD ↔ ARP**. RTA and RTB are frequency multipliers:
+0.25, 0.50, 0.75, 1.00, 1.25, √2, 1.50, √3, 2, 2.50, 3, 4, 5, 6, 7 and 8.
+Keep the existing compact numerical formatting and √2/√3 focus explanation.
+
+Velvet/Reed use the spare region for a qualitative family waveform. COLR and
+DRFT remain editable. Do not introduce position, FM, or scan controls for
+sources that do not implement them. The waveform is a synthesis explanation,
+not a live scope or a measured audio trace.
+
+### Group 3: ENV
+
+ENV is a **timbre envelope**, while the existing AMP page remains the loudness
+envelope. Native AMP-style geometry and segment handles communicate time and
+shape without implying that ENV controls the note's audible release. Keep the
+existing numerical ranges; ATK/DEC/REL are 0–127 control values, not invented
+millisecond readouts. Both engines' current timbre envelopes use straight
+segments. Draw their attack, decay and release widths using the square root of
+each actual stage duration, normalized to the available graph width. This
+keeps long releases legible without pretending the horizontal axis is linear
+time. The held segment has a fixed illustrative width; a dotted boundary marks
+note-off. Sustain height remains proportional to its value. Snap endpoints to
+the pixel grid; zero-time segments are vertical.
+
+| Encoder | Standalone FM ENV | Wavetable ENV |
+| --- | --- | --- |
+| A | ATK, first segment of the shared ADSR graph | ATK, rising segment of the combined A/B AR graph |
+| B | DEC, falling segment toward sustain | REL, falling segment of the combined A/B AR graph |
+| C | SUS, 0–100% held level | FM, base wavetable-FM depth 0–100% |
+| D | REL, release segment | RAT, wavetable-FM frequency ratio |
+| E | ENV, signed envelope-to-FM-depth amount | PENV, signed envelope-to-position amount |
+| F | VEL, signed velocity-to-FM-depth amount | FENV, signed envelope-to-wavetable-FM-depth amount |
+| G | Read-only routing diagram | VEL, signed velocity-to-position amount |
+| H | Read-only routing diagram | Read-only shared-envelope routing symbol |
+
+FM draws one ADSR curve across A–D. A focus or turn highlights the affected
+segment without moving its native parameter label/value anchor. The G/H diagram
+contrasts **ENV → FM** with **AMP → VOL** so that brightness release and volume
+release are visibly separate. ENV and VEL amounts retain their signed
+−100%…+100% scale, with zero as neutral.
+
+Wavetable draws an **AR envelope with a held plateau**, not an ADSR envelope.
+It has no decay or sustain parameter. The same AR trajectory feeds PENV and
+FENV: changing ATK or REL affects both enabled destinations. The routing symbol
+shows this split to POS and FM; the two amount controls remain independent.
+FM at C adds modulation to the selected wavetable, and RAT chooses its frequency
+multiplier from the existing sixteen-entry ratio list. VEL still affects
+position, not FM depth. All three signed amounts retain −100%…+100% with zero
+neutral. Wheel amounts stay in MODULATION settings as previously requested.
+
+Velvet/Reed retain the fourth page position but show a source-specific
+**AMP SHAPES VOLUME** explanation in the custom body. No dummy envelope,
+inactive numeric knobs, or new synthesis parameters are added. TUNE, source
+LEV, and track level are not repeated as spare-cell fillers on SOUND or ENV.
+
+### State, migration, and implementation boundaries
+
+This is a page-map and drawing change. Keep stable parameter identities,
+preset bytes, family-specific remembered banks, six native MOD destinations,
+and packed trig-lock IDs. In particular, WAVE must continue choosing both
+family and table through its existing selector identity. The new PENV/FENV
+labels distinguish already separate amounts; they do not create new controls.
+Moving CLK and wavetable RST onto SOUND exposes the existing settings and must
+not produce a second copy of either value.
+
+Page indices can keep their current roles: 0 becomes KEYS, 1 remains ARP,
+2 becomes SOUND, and 3 becomes ENV. Legacy sources gain a descriptive page 3,
+so navigation has a stable four-page cycle across source changes. Moving a
+control between encoders must preserve held-trig lock editing and clearing,
+live recording, native MOD lookup, preset restore, track ownership, focus
+invalidation, and pending/applied revision handling. Refresh source-specific
+drawings atomically when WAVE changes; never show a previous family's labels
+against the new family's values.
+
+Fresh data is required only for live note/arp markers. Native level/tuning
+controls and static parameter diagrams remain responsive without telemetry.
+Pending custom changes may use the existing bounded feedback marker, but never
+add it to native TUNE/LEV text. Faults must remain legible within the custom
+region and cannot be represented by a fake note, meter, or endlessly moving
+cursor.
+
+### Pixel and behavior acceptance for implementation
+
+The layout contract uses inclusive pixel bounds, origin at the upper left:
+
+| Region | Pixel placement |
+| --- | --- |
+| Native header | x0–127, y0–9 |
+| Native track/track-level strip | x0–21, y10–63 |
+| Custom body | x22–123, y10–63 |
+| Native page indicators | x124–127 |
+| Encoder column centers | x33, 59, 85, 111 |
+| Top labels or held values | y32–36, native five-pixel font |
+| Bottom labels or held values | y59–63, native five-pixel font |
+| Protected KEYS TUNE cell | x23–45, y11–36 |
+| Protected KEYS source LEV cell | x101–123, y38–63 |
+
+Combined diagrams may span their allocated cells; labels/values still use the
+individual encoder anchors. Keep all custom cell text within 23 pixels and
+put longer explanations in native turning feedback. Keyboard/root, arp state,
+and routing captions are read-only and do not turn into fake values under SRC.
+
+1. Capture every page at 128 × 64 in normal and held-SRC states, for FM,
+   wavetable and both legacy sources. Use the render manifest as the proposed
+   layout reference; use unpatched OS1.17 captures as the native-pixel oracle.
+2. Require zero differing pixels in protected native header/track/level/page
+   regions after accounting for actual page-state content, plus the complete
+   KEYS A/H cells at identical settings. Test neutral, fractional, negative,
+   and endpoint TUNE and 0/intermediate/127 source and track levels. Preserve
+   native focus strings, timers, modifier behavior and label/value baselines.
+3. Check diagram bounds, native font glyphs, clipping, all four page dots,
+   graphics-versus-values mode, pending feedback, and source changes. No
+   antialiasing, stretched text, one-pixel spill, or graphics over H's label.
+4. Exercise PLAY, each generated chord family, USER, unavailable VOIC/STRM,
+   ambiguous notes, zero notes, release-only state, arp while stopped,
+   octave extremes, random order, stale telemetry and clock loss. A diagram
+   must not falsely imply a sounding voice or future random note.
+5. Validate WT boundary positions/depth, both scan clocks and reset modes,
+   all FM algorithms, ratio endpoints, signed modulation extrema and neutral
+   amounts. WT must show one shared AR; standalone FM must show its actual
+   ADSR. Neither can replace or falsely describe the stock AMP envelope.
+6. Run preserved-value/preset, MOD, held-trig/live-lock, encoder-clear,
+   track-switch, source-switch and SRC press/hold acceptance with the compiled
+   firmware/module pair. Review final emulator captures and then the physical
+   device before claiming an installed pixel match.
+
+## Historical proposal and implementation record
+
+The remainder records earlier layouts and their investigation. Its status and
+placement statements apply to those revisions, not to the new proposal above.
+
 Current ARP revision (2026-11-12): A–F are RATE, ORDR, OCTS, GATE, SWNG and RST.
 G/H are blank. The arp always follows the current pattern tempo and is playable
 from held keyboard notes while the track or sequencer is stopped. There is no
