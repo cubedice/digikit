@@ -27,8 +27,9 @@ Open:
   wrapper now detects each entry from the step's note list, sounds it and
   stores the held chord (finding 125). Emulator-verified (commit `0efa0ead`):
   a held D, F, A sounds together, is stored and plays back as the chord.
-  Not yet installed on the DTII (it runs `ab2cd5ce545be167`, commit
-  `37010d88`); flashing needs the user's go-ahead.
+  Installed on the DTII at the user's request (image `ab2cd5ce545be167` ->
+  `e8c7cd7103116212`; report `out/canopy-steprec-hardware-installed.json`);
+  the device rebooted by itself this time.
 - Physical hardware: installed on the DTII on 2026-11-13 at the user's request
   (image `1d4953c4df3f3193` -> `ab2cd5ce545be167`; report
   `out/canopy-chord-rec-hardware-installed.json`). Current sound kept in preset
