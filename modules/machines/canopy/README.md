@@ -112,8 +112,30 @@ turning it off restores the unchanged base value. It does not write movement
 into a preset. Scan rate follows the selected free/synced range; GRID clock
 keeps arp swing disabled. Native TUNE and LEVEL remain native destinations.
 Changing WAVE also changes the meaning of any of these six active SRC routes.
-Native Sound/project persistence of CANOPY's custom base controls and parameter
-locks are separate work; exposing MOD targets does not add them.
+Native Sound/project persistence of CANOPY's custom base controls remains
+separate from the custom presets.
+
+## CANOPY trig locks
+
+With the matching experimental DTII 1.17 firmware, enter grid recording,
+hold a trig, and turn a CANOPY SRC control to set its value on that step.
+The held step displays its locked values. Hold the trig and press that control's
+encoder to clear its lock. TUNE and LEV use the normal DTII lock behavior.
+CANOPY controls can also be recorded while live recording is active.
+
+The lock is an absolute value and native MOD is applied on top of it. WAVE
+locks use the remembered controls for the selected sound family; CHRD and VOIC
+locks affect the triggered phrase. CANOPY locks are applied when a note trig
+plays; a lock-only step does not change a currently sounding phrase. Up to five
+CANOPY controls can be locked on one step, subject to the pattern's shared
+80-lane limit. If a required carrier
+lane already contains another kind of lock, CANOPY leaves it alone and reports
+that the slot is in use. A full pattern is also reported.
+
+The emulator has exercised held-step recording, playback, clearing and a project
+save/reload. This feature has not yet been qualified on hardware; live
+recording and pattern changes still need end-to-end qualification. See
+[finding 123](../../../docs/findings/123-canopy-trig-locks.md).
 
 ## Wavetable controls
 

@@ -59,7 +59,10 @@ _mi_skip_check:
     IF NE JUMP _mi_bad;
 _mi_event_kind:
     R1 = R1 OR R11;
-    COMP(R0, R1); // exactly EVENTS/MAPPED | count << 8
+    R2 = FEXT R0 BY 12:1; // lock sideband paired to this exact packet
+    R2 = LSHIFT R2 BY 12;
+    R1 = R1 OR R2;
+    COMP(R0, R1); // EVENTS/MAPPED | count << 8 | optional lock flag
     IF NE JUMP _mi_bad;
     R5 = PASS R5;
     IF EQ JUMP _mi_bad;

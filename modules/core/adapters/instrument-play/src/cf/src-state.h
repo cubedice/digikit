@@ -34,6 +34,11 @@ uint32_t cs_mapped_control(const CsState *,uint32_t encoder);
 uint32_t cs_choice_value(const CsState *,uint32_t control);
 uint32_t cs_choice_max(const CsState *,uint32_t control);
 int cs_edit(CsState *,uint32_t token,uint32_t encoder,int32_t detents,uint32_t now_ms,uint32_t *id);
+/* A trig-lock edit of the control under `encoder` from `current` (its locked
+ * value): cs_edit's checks, bounds and list stepping, without changing the
+ * bank or its revision. CS_EDIT leaves the new value in *next. */
+int cs_lock_step(CsState *,uint32_t token,uint32_t encoder,int32_t detents,uint32_t now_ms,
+    uint32_t current,uint32_t *id,uint32_t *next);
 int cs_focused(const CsState *,uint32_t now_ms);
 /* A complete effective bank from the DSP, never a transport receipt. Values
  * must match before a pending marker is cleared; delayed ACKs are harmless. */

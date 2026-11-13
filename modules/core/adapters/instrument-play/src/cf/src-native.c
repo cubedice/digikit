@@ -25,9 +25,21 @@ extern void ip_src_focus_touch(uint8_t *,uint32_t);
 extern uint8_t ip_src_focus_active(uint8_t *,uint32_t);
 extern const uint32_t ip_src_label_font;
 extern int dk_ui_toast(const char *);
+/* Sequencer UI state (finding 123): SRC view +0x6c, as KeyboardView +0x98. */
+extern uint8_t ip_panel_trig_held(uint32_t),ip_panel_live_record(uint32_t);
+/* Stock held-trig editor marks the gesture as an edit before touching locks.
+ * Without this, releasing a short-held trig may toggle it and erase its locks. */
+extern void ip_lock_mark_edited(uint32_t,uint32_t);
+/* SoundParameterSet lock calls on the current track ("this" is unused). */
+extern int32_t ip_lock_get(uint32_t,uint32_t,uint32_t);
+extern uint8_t ip_lock_set(uint32_t,uint32_t,uint32_t,uint32_t),ip_lock_clear(uint32_t,uint32_t,uint32_t);
+/* adda.l #state,a0 before the per-track step store at +0x15b (literal at +2). */
+extern const uint8_t ip_seq_step[];
 static uint32_t owner_type,owner_generation,published,last_draw;
 static uint32_t saved_generation,saved_page,saved_valid;
 static uint32_t restore_pending,restore_page,was_owned;
+static uint32_t live_control=CS_NONE,live_value;
+static uint32_t live_track=UINT32_MAX,live_token;
 static CvDisplay display;
 static uint32_t shown_fault;
 typedef struct { uint8_t *event; uint32_t token; } Captured;
@@ -35,10 +47,32 @@ static Captured captured[64];
 static uint32_t cursor;
 volatile uint32_t ip_src_debug[12];
 volatile uint32_t ip_src_refresh[8];
+static int trig_held(const uint8_t *view);
+static uint32_t lock_steps(uint8_t *view,uint32_t steps[4]);
 static uint32_t word(const uint8_t *p,uint32_t offset)
 { return *(const uint32_t *)(p+offset); }
 static uint8_t *pointer(const uint8_t *p,uint32_t offset)
 { return (uint8_t *)(uintptr_t)word(p,offset); }
+static int32_t lock_get(void *ctx,uint32_t code,uint32_t step)
+{ (void)ctx; return ip_lock_get(0,code,step); }
+static int lock_set(void *ctx,uint32_t code,uint32_t step,uint32_t value)
+{ (void)ctx; return ip_lock_set(0,code,value,step); }
+static int lock_remove(void *ctx,uint32_t code,uint32_t step)
+{ (void)ctx; return ip_lock_clear(0,code,step); }
+static const IlpStorage lock_store={0,lock_get,lock_set,lock_remove};
+static void lock_snapshot(uint32_t step,IlpSnapshot *snapshot)
+{
+    static const uint8_t codes[ILP_LANES]={0xcb,0xcc,0xce,0xcf,0xd0};
+    snapshot->count=0;
+    for(uint32_t i=0;i<ILP_LANES;++i) {
+        uint32_t id,value;
+        if(ilp_unpack(ip_lock_get(0,codes[i],step),&id,&value)) {
+            snapshot->pair[snapshot->count].id=(uint16_t)id;
+            snapshot->pair[snapshot->count].value=(uint16_t)value;
+            ++snapshot->count;
+        }
+    }
+}
 static uint32_t context(uint8_t *view)
 {
     uint32_t type=dkrt_instrument_type(),gen=dkrt_instrument_generation();
@@ -102,7 +136,13 @@ void ip_src_draw(uint8_t *view,uint8_t *canvas)
     if(raw>=0x400 && raw<=0x7c00) ip_src_tune_format(raw,tune);
     raw=ip_src_value(view,0xd1,&flags);
     if(raw>=0 && raw<=0x7f00) ip_src_level_format(raw,level);
-    instrument_src_display(&display,instrument_src_now(),tune,level);
+    uint32_t steps[4],first=trig_held(view) ? lock_steps(view,steps) : 128;
+    IlpSnapshot locked;
+    if(first<128) {
+        /* A held trig shows what it plays: its locks, else the Sound. */
+        lock_snapshot(first,&locked);
+        instrument_src_display_locked(&display,instrument_src_now(),tune,level,&locked);
+    } else instrument_src_display(&display,instrument_src_now(),tune,level);
     uint32_t page=word(view,0x90);
     for(uint32_t i=0;i<8;++i) {
         /* The firmware already painted SOUND A/H and the track column.
@@ -155,6 +195,8 @@ void ip_src_detach(uint8_t *view,uint8_t *manager)
 void ip_src_update(uint8_t *view)
 {
     ip_src_stock_update(view);
+    uint32_t seq=word(view,0x6c);
+    if(!seq || !ip_panel_live_record(seq)) live_control=CS_NONE;
     if(context(view) && instrument_src_now()-last_draw>=40) dk_fw_view_invalidate(view);
 }
 void instrument_src_tick(void)
@@ -192,9 +234,82 @@ void instrument_src_tick(void)
     }
     was_owned=0; published=0; (void)instrument_src_context(ip_src_debug[0],ip_src_debug[1],0);
 }
+/* Packed trig locks. Grid recording: the held trigs (128-bit mask at
+ * +0x258, below the pattern length). Live recording: the track's current
+ * step. Returns the first step, or 128 when neither applies. */
+static int trig_held(const uint8_t *view)
+{ uint32_t seq=word(view,0x6c); return seq && ip_panel_trig_held(seq); }
+static uint32_t lock_steps(uint8_t *view,uint32_t steps[4])
+{
+    uint32_t seq=word(view,0x6c);
+    steps[0]=steps[1]=steps[2]=steps[3]=0;
+    if(!seq) return 128;
+    if(trig_held(view)) {
+        for(uint32_t i=0;i<4;++i) steps[i]=word((const uint8_t *)(uintptr_t)seq,0x258+4*i);
+        for(uint32_t s=0;s<128;++s) if(steps[s>>5]>>(s&31)&1u) return s;
+        return 128;
+    }
+    uint32_t track=ip_src_debug[0];
+    if(track>=16 || !ip_panel_live_record(seq)) return 128;
+    const uint8_t *state=(const uint8_t *)(uintptr_t)*(const uint32_t *)(ip_seq_step+2);
+    uint32_t step=state[0x15b+track];
+    if(step>=128) return 128;
+    steps[step>>5]=1u<<(step&31);
+    return step;
+}
+/* A live-recording sweep continues from its last value across steps. */
+static uint32_t lock_turn(uint8_t *view,uint8_t *event,uint32_t token,uint32_t encoder,
+    const uint32_t steps[4],uint32_t first)
+{
+    uint32_t control=0,id=0,base=0,next=0,current=0;
+    IlpSnapshot snapshot; lock_snapshot(first,&snapshot);
+    int result=instrument_src_lock_target(encoder,&snapshot,&control,&id,&base);
+    if(result==CS_NATIVE) return ip_src_stock_turn(view,event);
+    int held=trig_held(view);
+    if(result==CS_EDIT) {
+        if(held) ip_lock_mark_edited(word(view,0x6c),1);
+        int found=ilp_store_read(&lock_store,first,id,&current);
+        if(found<0) { dk_ui_toast("LOCK SLOT IN USE"); return 1; }
+        if(!found) current=base;
+        if(!held && live_control==id && live_track==ip_src_debug[0] && live_token==token) current=live_value;
+        result=instrument_src_lock_step(token,encoder,(int32_t)word(event,16),instrument_src_now(),&snapshot,current,&next);
+    } else if(result==CS_READONLY) dk_ui_toast("NOT LOCKABLE");
+    if(result==CS_EDIT) {
+        int written=ilp_store_edit_steps(&lock_store,steps,id,next,0);
+        if(written!=1) dk_ui_toast(written==ILP_ROLLBACK_FAILED ? "LOCK RESTORE FAILED" :
+            written==ILP_FULL || written==ILP_STORAGE_FULL ? "LOCKS FULL" : "LOCK SLOT IN USE");
+        else {
+            live_control=held ? CS_NONE : id; live_value=next;
+            live_track=ip_src_debug[0]; live_token=token;
+            char feedback[32]; instrument_src_lock_feedback(feedback,encoder,&snapshot,control,next);
+            if(feedback[0]) dk_ui_toast(feedback);
+        }
+        ip_src_focus_touch(view+0x94,encoder);
+        ++ip_src_debug[5];
+    }
+    dk_fw_view_invalidate(view); return 1;
+}
+/* Holding a trig and pressing a CANOPY encoder clears that control's lock. */
+static int lock_clear(uint8_t *view,uint32_t encoder,const uint32_t steps[4])
+{
+    uint32_t control,id,base;
+    uint32_t first=128;
+    for(uint32_t s=0;s<128;++s) if(steps[s>>5]>>(s&31)&1u) { first=s; break; }
+    if(first==128) return 0;
+    IlpSnapshot snapshot; lock_snapshot(first,&snapshot);
+    if(instrument_src_lock_target(encoder,&snapshot,&control,&id,&base)!=CS_EDIT) return 0;
+    ip_lock_mark_edited(word(view,0x6c),1);
+    int result=ilp_store_edit_steps(&lock_store,steps,id,0,1);
+    if(result<0) dk_ui_toast(result==ILP_ROLLBACK_FAILED ? "LOCK RESTORE FAILED" : "LOCK SLOT IN USE");
+    return 1;
+}
 uint32_t ip_src_key(uint8_t *view,uint8_t *event)
 {
-    uint32_t token=context(view),key=word(event,12),page=word(view,0x90);
+    uint32_t token=context(view),key=word(event,12),page=word(view,0x90),steps[4];
+    if(token && key>=41 && key<=48 && trig_held(view) &&
+        lock_steps(view,steps)<128 && lock_clear(view,key-41,steps)) {
+        dk_fw_view_invalidate(view); return 1;
+    }
     published=0;
     (void)instrument_src_context(ip_src_debug[0],page,0);
     if(token && key>=41 && key<=48 && (page!=0 || (key!=48 && key!=41))) return 1;
@@ -210,6 +325,9 @@ uint32_t ip_src_turn(uint8_t *view,uint8_t *event)
         return ip_src_stock_turn(view,event);
     }
     if(encoder<1 || encoder>8) return ip_src_stock_turn(view,event);
+    uint32_t steps[4],first=lock_steps(view,steps);
+    if(first<128) return lock_turn(view,event,captured_token,encoder-1,steps,first);
+    live_control=CS_NONE;
     int result=instrument_src_encoder(captured_token,encoder-1,(int32_t)word(event,16),instrument_src_now());
     ip_src_debug[11]=(uint32_t)result;
     if(result==CS_NATIVE) return ip_src_stock_turn(view,event);

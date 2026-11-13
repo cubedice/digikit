@@ -193,10 +193,24 @@ int instrument_keyboard_events(uint32_t track, uint32_t epoch, uint32_t generati
     if (!keyboard_initialized) return -1;
     if (in->keyboard.epoch!=epoch || in->keyboard.generation!=generation)
         kb_reset(&in->keyboard,epoch,generation);
-    int mapped=kb_process(&in->keyboard,input,count,output);
+    int mapped=kb_process_locked(&in->keyboard,input,count,output);
     /* The mapper is track-agnostic; the wire batch names the admitted track. */
     for (i=0;mapped>0 && i<(uint32_t)mapped;++i) output[i].track=(uint8_t)track;
     return mapped;
+}
+/* Capture the requested source's remembered bank with the trig, before any
+ * later UI edit or packet retry. Caller already holds the MIDI IRQ lock. */
+int instrument_lock_source(uint32_t track,uint32_t wave,uint16_t out[MI_SOURCE_VALUES])
+{
+    IpInst *in=for_track(track);
+    if(!in || !out || wave>7) return 0;
+    const CsState *s=SRC(in);
+    int fm=wave==7;
+    out[0]=fm ? s->fm[0] : s->legacy_color;
+    for(uint32_t i=0;i<12;++i) out[1+i]=fm ? s->fm[1+i] : s->wavetable[i];
+    for(uint32_t i=0;i<4;++i) out[13+i]=s->value[28+i];
+    if(wave>=2 && wave<7) out[1]=(uint16_t)(wave-2);
+    return 1;
 }
 /* Global routing edits re-route every instance; mode, chord, voicing and shape
  * slot belong to the selected instance. */
@@ -466,6 +480,83 @@ int instrument_src_receive(const uint32_t words[IS_WORDS],uint32_t now)
 { return initialized ? is_receive(STS(focused()),words,now) : -1; }
 void instrument_src_feedback(char out[32],uint32_t encoder)
 { cv_feedback(out,SRC(cur),encoder); }
+static uint32_t family_of(const CsState *s) { return (s->metadata>>4)&3u; }
+static void lock_state(CsState *shown,const IlpSnapshot *snapshot);
+int instrument_src_lock_target(uint32_t encoder,const IlpSnapshot *snapshot,uint32_t *control_out,uint32_t *id,uint32_t *base)
+{
+    if(!initialized) return CS_STALE;
+    CsState *s=SRC(cur);
+    (void)instrument_src_context(s->track,s->page[s->track<16?s->track:0],s->visible);
+    s=SRC(cur);
+    CsState shown; lock_state(&shown,snapshot);
+    uint32_t control=cs_mapped_control(&shown,encoder);
+    if(control==CS_TUNE || control==CS_LEVEL) return CS_NATIVE;
+    if((control>=CP_CONTROLS && control!=CS_WAVE && control!=CS_CLOCK && control!=CS_BPM) ||
+       control==CP_RESERVED12 || control==CP_SOURCE) return CS_READONLY;
+    uint32_t wire=ilp_id_for(family_of(&shown),control);
+    if(wire==UINT32_MAX) return CS_READONLY;
+    *control_out=control; *id=wire;
+    *base=cs_choice_value(&shown,control);
+    return CS_EDIT;
+}
+int instrument_src_lock_step(uint32_t token,uint32_t encoder,int32_t detents,uint32_t now,
+    const IlpSnapshot *snapshot,uint32_t current,uint32_t *next)
+{
+    if(!initialized) return CS_STALE;
+    CsState shown; lock_state(&shown,snapshot);
+    int result=cs_lock_step(&shown,token,encoder,detents,now,current,0,next);
+    CsState *s=SRC(cur);
+    s->focus=shown.focus; s->focus_id=shown.focus_id; s->focus_at=shown.focus_at;
+    for(uint32_t i=0;i<8;++i) { s->list_delta[i]=shown.list_delta[i]; s->list_id[i]=shown.list_id[i]; }
+    return result;
+}
+static void lock_show(CsState *shown,uint32_t control,uint32_t value)
+{
+    if(control==CP_CHORD) {
+        shown->mode=value ? KB_ROOT : KB_PLAY;
+        shown->learned=(uint8_t)(value==11);
+        if(value) shown->value[control]=(uint16_t)(value-1);
+    } else if(control==CS_WAVE) {
+        uint32_t family=value<2 ? value : value==7 ? 3 : 2;
+        shown->metadata=(shown->metadata&~0x30u)|(family<<4);
+        shown->value[CP_COLOR]=family==3 ? shown->fm[0] : shown->legacy_color;
+        for(uint32_t i=0;i<12;++i) shown->value[16+i]=family==3 ? shown->fm[1+i] : shown->wavetable[i];
+        if(value>=2 && value<7) shown->value[CP_WT_TABLE]=(uint16_t)(value-2);
+    } else if(control==CS_CLOCK) {
+        shown->clock=(uint8_t)value;
+        shown->metadata=(shown->metadata&~12u)|(value<<2);
+    } else if(control==CS_BPM) shown->metadata=(shown->metadata&~0xffff00u)|(value<<8);
+    else if(control<CP_CONTROLS) shown->value[control]=(uint16_t)value;
+}
+static void lock_state(CsState *shown,const IlpSnapshot *snapshot)
+{
+    for(uint32_t i=0;i<sizeof(*shown);++i)
+        ((volatile uint8_t *)shown)[i]=((const volatile uint8_t *)SRC(cur))[i];
+    if(!snapshot) return;
+    for(uint32_t i=0;i<snapshot->count && i<ILP_LANES;++i)
+        if(snapshot->pair[i].id==CS_WAVE) lock_show(shown,CS_WAVE,snapshot->pair[i].value);
+    for(uint32_t i=0;i<snapshot->count && i<ILP_LANES;++i) {
+        if(snapshot->pair[i].id==CS_WAVE) continue;
+        uint32_t control=ilp_control_for(family_of(shown),snapshot->pair[i].id);
+        if(control!=UINT32_MAX) lock_show(shown,control,snapshot->pair[i].value);
+    }
+}
+void instrument_src_lock_feedback(char out[32],uint32_t encoder,const IlpSnapshot *snapshot,uint32_t control,uint32_t value)
+{
+    CsState shown; lock_state(&shown,snapshot);
+    lock_show(&shown,control,value);
+    cv_feedback(out,&shown,encoder);
+}
+void instrument_src_display_locked(CvDisplay *out,uint32_t now,const char *tune,const char *level,
+    const IlpSnapshot *snapshot)
+{
+    instrument_src_display(out,now,tune,level);
+    CsState shown; lock_state(&shown,snapshot);
+    cv_build(out,&shown,STS(cur),now,tune,level,preset_result || storage_result);
+    uint32_t sr=dkrt_irq_mask();
+    cv_ownership(out,STS(cur),&cur->keyboard,now);
+    dkrt_irq_restore(sr);
+}
 static void status_pair(dk_ui_menu *m,const char *a,const char *b)
 {
     const char *first=a,*second=b;

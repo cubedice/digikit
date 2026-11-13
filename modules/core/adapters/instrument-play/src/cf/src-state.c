@@ -179,11 +179,15 @@ void cs_native_tune(CsState *s,uint32_t raw)
     if(raw<0x400 || raw>0x7c00 || raw==s->native_tune || s->revision==UINT32_MAX) return;
     s->native_tune=raw; ++s->revision; s->native_tune_pending=1;
 }
-int cs_edit(CsState *s,uint32_t token,uint32_t encoder,int32_t detents,uint32_t now,uint32_t *id)
+/* The checks and bounded stepping shared by bank and trig-lock edits, from
+ * `current`. CS_EDIT leaves the movement in *detents; nothing else returns
+ * CS_EDIT. Only focus and list remainders change. */
+static int move(CsState *s,uint32_t token,uint32_t encoder,int32_t *detents,uint32_t now,
+    uint32_t *id,const uint32_t *current_override)
 {
-    if(!token || token!=s->token || !s->generation || !s->visible || encoder>=8 || !detents) return CS_STALE;
+    if(!token || token!=s->token || !s->generation || !s->visible || encoder>=8 || !*detents) return CS_STALE;
     uint32_t control=cs_mapped_control(s,encoder);
-    if(id) *id=control;
+    *id=control;
     if(s->modal || s->mode==KB_LEARN || control==CS_NONE) return CS_READONLY;
     s->focus=1; s->focus_id=(uint8_t)control; s->focus_at=now;
     if(control==CS_TUNE || control==CS_LEVEL) return CS_NATIVE;
@@ -193,21 +197,45 @@ int cs_edit(CsState *s,uint32_t token,uint32_t encoder,int32_t detents,uint32_t 
         (s->learned && control==CP_VOICING) ||
         (s->clock==1 && control==CP_SWING) || (s->clock && control==CS_BPM)) return CS_READONLY;
     /* Clamp before addition; even a malformed INT_MIN event cannot overflow. */
-    uint32_t maximum=cs_choice_max(s,control),current=cs_choice_value(s,control);
-    int discrete=is_list(s,control);
-    if(discrete) {
+    uint32_t maximum=cs_choice_max(s,control),
+        current=current_override ? *current_override : cs_choice_value(s,control);
+    int32_t d=*detents;
+    if(is_list(s,control)) {
         /* Turning further into an endpoint must not bank motion that makes the
          * next reversal feel delayed or causes a later external edit to jump. */
-        if((detents>0 && current>=maximum) || (detents<0 && current<=minimum(s,control))) {
+        if((d>0 && current>=maximum) || (d<0 && current<=minimum(s,control))) {
             s->list_delta[encoder]=0; return CS_READONLY;
         }
-        detents=list_steps(s,encoder,control,detents);
+        d=list_steps(s,encoder,control,d);
     } else { s->list_delta[encoder]=0; s->list_id[encoder]=CS_NONE; }
     int32_t room=(int32_t)maximum-(int32_t)current;
-    if(detents>room) detents=room;
+    if(d>room) d=room;
     room=(int32_t)minimum(s,control)-(int32_t)current;
-    if(detents<room) detents=room;
-    if(!detents || s->revision==UINT32_MAX) return CS_READONLY;
+    if(d<room) d=room;
+    if(!d || s->revision==UINT32_MAX) return CS_READONLY;
+    *detents=d;
+    return CS_EDIT;
+}
+int cs_lock_step(CsState *s,uint32_t token,uint32_t encoder,int32_t detents,uint32_t now,
+    uint32_t current,uint32_t *id,uint32_t *next)
+{
+    uint32_t control=CS_NONE;
+    int result=move(s,token,encoder,&detents,now,&control,&current);
+    if(id) *id=control;
+    if(result!=CS_EDIT) return result;
+    *next=(uint32_t)((int32_t)current+detents);
+    if(is_list(s,control) && (*next==cs_choice_max(s,control) || *next==minimum(s,control)))
+        s->list_delta[encoder]=0;
+    return CS_EDIT;
+}
+int cs_edit(CsState *s,uint32_t token,uint32_t encoder,int32_t detents,uint32_t now,uint32_t *id)
+{
+    uint32_t control=CS_NONE;
+    int result=move(s,token,encoder,&detents,now,&control,0);
+    if(id && result!=CS_STALE) *id=control;
+    if(result!=CS_EDIT) return result;
+    uint32_t maximum=cs_choice_max(s,control),current=cs_choice_value(s,control);
+    int discrete=is_list(s,control);
     uint32_t next=(uint32_t)((int32_t)current+detents),metadata=s->metadata;
     uint8_t mode=s->mode,learned=s->learned;
     if(control==CP_CHORD) {

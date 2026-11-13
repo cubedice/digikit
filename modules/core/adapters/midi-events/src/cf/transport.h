@@ -11,6 +11,7 @@
 #define MT_CONFIG_COMMIT 4u
 /* Mapped batch: word 4 is phrase identity, high bit marks generated chords. */
 #define MT_MAPPED 5u
+#define MT_LOCKED 0x1000u /* exact paired sideband required for this note batch */
 #define MT_CONFIG_WORDS 64u
 #define MT_CHUNK_WORDS 16u
 #define MT_STALL_BLOCKS 900u
@@ -32,6 +33,11 @@ typedef struct {
     uint32_t config_schema, config_words, config_chunk, config_check;
     uint32_t applied[MI_TRACKS];
     uint32_t heartbeat_seen, heartbeat, heartbeat_block;
+    /* Retained alongside the pending note packet, not yet emitted on wire. */
+    uint32_t lock_valid, lock_count;
+    uint16_t locks[MI_LOCKS];
+    uint32_t source_valid;
+    uint16_t source[MI_SOURCE_VALUES];
 } MiTransport;
 void mt_init(MiTransport *t);
 /* Returns a retained immutable packet, or null when idle/faulted. Revision zero

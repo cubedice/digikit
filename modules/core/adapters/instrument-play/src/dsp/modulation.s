@@ -217,7 +217,11 @@ _iv_mod_status:
     R0 = DM(9, I0);
     R1 = _iv_mod_controls;
     COMP(R0, R1);
+    IF EQ JUMP _iv_mod_status_scratch;
+    R1 = _iv_lock_controls;
+    COMP(R0, R1);
     IF NE RTS;
+_iv_mod_status_scratch:
     R0 = DM(0, I0);
     R1 = 5;
     COMP(R0, R1);

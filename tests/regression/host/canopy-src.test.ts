@@ -34,6 +34,7 @@ afterAll(() => {
 });
 test.each([
   'controls',
+  'trig-lock-edit',
   'wavetable',
   'wavetable-status',
   'wavetable-fm',

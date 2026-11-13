@@ -3,10 +3,37 @@
 #include <string.h>
 #include <stdarg.h>
 #include "../../../modules/core/adapters/instrument-play/src/cf/src-native.c"
+static CsState state;
+static uint32_t test_held,test_marked,seq_object[0xa0];
+static int32_t test_locks[128][ILP_LANES];
+static int lock_index(uint32_t code)
+{
+    static const uint8_t codes[ILP_LANES]={0xcb,0xcc,0xce,0xcf,0xd0};
+    for(int i=0;i<ILP_LANES;++i) if(code==codes[i]) return i;
+    assert(0); return 0;
+}
+const uint8_t ip_seq_step[6]={0};
+uint8_t ip_panel_trig_held(uint32_t seq) { (void)seq; return (uint8_t)test_held; }
+uint8_t ip_panel_live_record(uint32_t seq) { (void)seq; return 0; }
+void ip_lock_mark_edited(uint32_t seq,uint32_t edited)
+{ assert(seq==(uint32_t)(uintptr_t)seq_object && edited==1); ++test_marked; }
+int32_t ip_lock_get(uint32_t a,uint32_t b,uint32_t c)
+{ (void)a; assert(c<128); return test_locks[c][lock_index(b)]; }
+uint8_t ip_lock_set(uint32_t a,uint32_t b,uint32_t c,uint32_t d)
+{ (void)a; assert(d<128); test_locks[d][lock_index(b)]=(int32_t)c; return 1; }
+uint8_t ip_lock_clear(uint32_t a,uint32_t b,uint32_t c)
+{ (void)a; assert(c<128); test_locks[c][lock_index(b)]=-1; return 1; }
+int instrument_src_lock_target(uint32_t e,const IlpSnapshot *s,uint32_t *c,uint32_t *id,uint32_t *b)
+{ (void)s; assert(e==0); *c=CP_COLOR; *id=2; *b=state.value[CP_COLOR]; return CS_EDIT; }
+int instrument_src_lock_step(uint32_t t,uint32_t e,int32_t d,uint32_t now,const IlpSnapshot *s,uint32_t v,uint32_t *n)
+{ (void)s; return cs_lock_step(&state,t,e,d,now,v,0,n); }
+void instrument_src_lock_feedback(char out[32],uint32_t e,const IlpSnapshot *s,uint32_t c,uint32_t v)
+{ (void)e; (void)s; (void)c; (void)v; out[0]=0; }
+void instrument_src_display_locked(CvDisplay *d,uint32_t t,const char *tune,const char *level,const IlpSnapshot *s)
+{ (void)d; (void)t; (void)tune; (void)level; (void)s; assert(0); }
 uint8_t *mf_src_alloc(uint32_t bytes) { (void)bytes; assert(0); return 0; }
 void mf_src_free(uint8_t *p) { (void)p; assert(0); }
 uint32_t mf_native_page_count(uint32_t type, uint32_t ordinary) { (void)type; return ordinary; }
-static CsState state;
 uint32_t instrument_src_pages(void) { return cs_pages(&state); }
 uint32_t instrument_src_tune_page(uint32_t page) { return page==0; }
 static uint32_t selected,alternate,now=100,type_id=9,generation=1,stock_turns,stock_keys,invalidations,polls;
@@ -114,7 +141,35 @@ int main(int argc,char **argv)
     accessor[0]=(uint32_t)(uintptr_t)accessor_vtable;accessor_vtable[0x60/4]=(uint32_t)(uintptr_t)graph;
     cs_init(&state); memset(canvas,0xaa,sizeof(canvas));
     ip_src_draw((uint8_t *)v,canvas);
-    if(!strcmp(argv[1],"paint")) {
+    if(!strcmp(argv[1],"live-lock")) {
+        for(unsigned step=0;step<128;++step)
+            for(unsigned lane=0;lane<ILP_LANES;++lane) test_locks[step][lane]=-1;
+        v[0x6c/4]=(uint32_t)(uintptr_t)seq_object; v[0x90/4]=2;
+        uint32_t token=context((uint8_t *)v),steps[4]={1u<<4,0,0,0};
+        e[4]=20;
+        assert(lock_turn((uint8_t *)v,(uint8_t *)e,token,0,steps,4)==1);
+        steps[0]=1u<<5;
+        assert(lock_turn((uint8_t *)v,(uint8_t *)e,token,0,steps,5)==1);
+        uint32_t id,value;
+        assert(ilp_unpack(test_locks[4][0],&id,&value) && id==2 && value==84);
+        assert(ilp_unpack(test_locks[5][0],&id,&value) && id==2 && value==104);
+        assert(!test_marked && state.value[CP_COLOR]==64);
+        ip_src_update((uint8_t *)v); /* leaving live record ends the sweep */
+        assert(live_control==CS_NONE);
+    } else if(!strcmp(argv[1],"held-lock")) {
+        for(unsigned step=0;step<128;++step)
+            for(unsigned lane=0;lane<ILP_LANES;++lane) test_locks[step][lane]=-1;
+        v[0x6c/4]=(uint32_t)(uintptr_t)seq_object; v[0x90/4]=2;
+        test_held=1; uint32_t token=context((uint8_t *)v),steps[4]={1u<<4,0,0,0};
+        e[4]=20;
+        assert(lock_turn((uint8_t *)v,(uint8_t *)e,token,0,steps,4)==1);
+        uint32_t id,value;
+        assert(test_marked==1 && ilp_unpack(test_locks[4][0],&id,&value));
+        assert(id==2 && value==84 && state.value[CP_COLOR]==64);
+        test_marked=0;
+        assert(lock_clear((uint8_t *)v,0,steps)==1);
+        assert(test_marked==1 && test_locks[4][0]==-1 && state.value[CP_COLOR]==64);
+    } else if(!strcmp(argv[1],"paint")) {
         for(int y=0;y<64;++y) for(int x=0;x<128;++x)
             if(y<11 || x<23 || x>=124 || (y<37 && x<48) || (y>=38 && x>=101))
                 assert(canvas[y*128+x]==0xaa);

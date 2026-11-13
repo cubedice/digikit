@@ -161,7 +161,16 @@ def test_composed_frame_preserves_context(mode, consumer, carrier, valid_positio
         source += "\n" + (MOD / f"src/dsp/{name}.s").read_text()
     if consumer:
         canopy = ROOT / "modules/machines/canopy/src/dsp"
-        for name in ("voice", "tuning", "events", "instrument"):
+        for name in (
+            "voice",
+            "tuning",
+            "events",
+            "instrument",
+            "wavetable",
+            "wavetables",
+            "fm",
+            "fm-tables",
+        ):
             source += "\n" + (canopy / f"{name}.s").read_text()
     if carrier:
         for name in ("carrier", "carrier-frame", "velocity", "envelope", "workspace"):
@@ -794,6 +803,8 @@ _test_return:
         "panel_bend",
         "panel_mod_wheel",
         "reserved",
+        "locked_note",
+        "locked_reserved",
         "mixed_track",
         "padding",
         "reset_track",
@@ -814,6 +825,7 @@ def test_packet_validation_on_sharc(packet_validator, case):
         "last_sequence",
         "panel_note",
         "panel_cancel",
+        "locked_note",
     }
     if case in {"reset", "reset_track", "reset_padding"}:
         words[1] = 2
@@ -857,6 +869,8 @@ def test_packet_validation_on_sharc(packet_validator, case):
         "mixed_track": (13, words[13] | (1 << 10)),
         "padding": (31, 1),
         "reset_padding": (31, 1),
+        "locked_note": (1, 1 | (1 << 8) | (1 << 12)),
+        "locked_reserved": (1, 1 | (1 << 8) | (1 << 13)),
     }
     if case in changes:
         at, value = changes[case]
@@ -919,12 +933,17 @@ def link_receiver_object():
 
 
 @pytest.mark.parametrize(
-    "position,instrument,capacity",
-    [(False, False, 171), (True, False, 155), (True, True, 123)],
+    "position,instrument,locks,capacity",
+    [
+        (False, False, False, 171),
+        (True, False, False, 155),
+        (True, True, False, 123),
+        (True, True, True, 105),
+    ],
 )
 @pytest.mark.parametrize("oversize", [False, True])
 def test_dsp_loader_enforces_each_optional_tail_boundary(
-    link_receiver_object, position, instrument, capacity, oversize
+    link_receiver_object, position, instrument, locks, capacity, oversize
 ):
     obj, syms, initial = link_receiver_object
     rx, reply, frame, mailbox, back = (
@@ -943,10 +962,13 @@ def test_dsp_loader_enforces_each_optional_tail_boundary(
         "_dl_irows": 0,
         "_dl_iwords": 0,
         "_dv_diag": 0,
+        "_fx_diag": 0,
+        "_fx_rec": 0,
         "_dv_rec": 0,
         "_loop_ui_status": 0,
         "_pattern_position_info": mailbox if position else 0,
         "_instrument_reply": mailbox if instrument else 0,
+        "_iv_lock_stage": mailbox if locks else 0,
         **syms,
     }
     linked = pk_sharc.link(obj, 0xB90000, externs)
@@ -1434,10 +1456,13 @@ def test_v2_registration_window_is_bounded(
         "_dl_irows": base,
         "_dl_iwords": target + 64,
         "_dv_diag": 0,
+        "_fx_diag": 0,
+        "_fx_rec": 0,
         "_dv_rec": 0,
         "_loop_ui_status": 0,
         "_pattern_position_info": 0,
         "_instrument_reply": 0,
+        "_iv_lock_stage": 0,
         **syms,
     }
     linked = pk_sharc.link(obj, 0xB90000, externs)

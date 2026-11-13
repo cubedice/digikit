@@ -15,7 +15,7 @@ ports = ["dt2-1.17"]
 "dt2-1.17" = "experimental"
 [[object]]
 path = "build/play-dsp.dko.json"
-sources = ["src/dsp/play.s", "src/dsp/modulation.s", "src/dsp/reset-protected.s", "src/dsp/carrier.s"]
+sources = ["src/dsp/play.s", "src/dsp/modulation.s", "src/dsp/lock.s", "src/dsp/reset-protected.s", "src/dsp/carrier.s"]
 place = "dsp.l2"
 devices = ["dt2"]
 [object.externs]
@@ -41,7 +41,7 @@ to = "_mi_velocity_entry"
 
 [[object]]
 path = "build/play-cf.dko.json"
-sources = ["src/cf/control.c", "src/cf/keyboard.c", "src/cf/preset.c", "src/cf/src-state.c", "src/cf/src-mod.c", "src/cf/src-mod.s", "src/cf/status.c", "src/cf/src-display.c", "src/cf/src-clock.c", "src/cf/src-native.c", "src/cf/panel.c", "src/cf/panel.s", "src/cf/sound.c", "src/cf/sound-load.s", "src/cf/view.s"]
+sources = ["src/cf/control.c", "src/cf/keyboard.c", "src/cf/preset.c", "src/cf/src-state.c", "src/cf/src-lock-packed.c", "src/cf/src-lock-event.c", "src/cf/src-lock-capture.c", "src/cf/src-lock-capture.s", "src/cf/src-mod.c", "src/cf/src-mod.s", "src/cf/status.c", "src/cf/src-display.c", "src/cf/src-clock.c", "src/cf/src-native.c", "src/cf/panel.c", "src/cf/panel.s", "src/cf/sound.c", "src/cf/sound-load.s", "src/cf/view.s"]
 place = "cf.expansion"
 devices = ["dt2"]
 [object.externs]
@@ -102,6 +102,23 @@ ip_panel_active = "cf.page.site.instrument_panel_active"
 ip_panel_stock_toggle = "cf.page.site.instrument_panel_toggle"
 ip_panel_live_record = "cf.page.site.instrument_live_record"
 ip_panel_trig_held = "cf.page.site.instrument_trig_held"
+ip_lock_mark_edited = "cf.page.site.instrument_lock_mark_edited"
+ip_lock_get = "cf.page.site.instrument_lock_get"
+ip_lock_set = "cf.page.site.instrument_lock_set"
+ip_lock_clear = "cf.page.site.instrument_lock_clear"
+ip_seq_step = "cf.page.site.instrument_seq_step"
+ip_lock_due_1_next = "hook.cf.page.site.instrument_lock_due_1.return"
+ip_lock_due_1_skip = "cf.page.site.instrument_lock_skip_1"
+ip_lock_due_2_next = "hook.cf.page.site.instrument_lock_due_2.return"
+ip_lock_due_2_skip = "cf.page.site.instrument_lock_skip_2"
+[[op]]
+op = "hook"
+hook = "cf.page.hook.instrument_lock_due_1"
+to = "ip_lock_due_1"
+[[op]]
+op = "hook"
+hook = "cf.page.hook.instrument_lock_due_2"
+to = "ip_lock_due_2"
 [[op]]
 op = "hook"
 hook = "cf.machine.hook.instrument_mod_split"

@@ -16,7 +16,7 @@ beforeAll(() => {
     [
       'canopy-settings.c',
       settings,
-      ['keyboard.c', 'src-state.c', 'status.c', 'src-display.c'].map((f) => path.join(source, f)),
+      ['keyboard.c', 'src-state.c', 'src-lock-packed.c', 'status.c', 'src-display.c'].map((f) => path.join(source, f)),
     ],
   ] as const) {
     execFileSync(

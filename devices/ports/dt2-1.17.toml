@@ -3969,6 +3969,106 @@ mark = "D"
 rule = "fw/instrument-src:cf_window_hash"
 
 [[anchor]]
+name = "cf.page.site.instrument_lock_get"
+cpu = "cf"
+kind = "code"
+addr = 0x4003bfdc
+len = 6
+sha256 = "3d2695518d50d9d1cd4ed14fd391ccd9891f2ff58024327022f13b891dc99927"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.instrument_lock_set"
+cpu = "cf"
+kind = "code"
+addr = 0x4003c040
+len = 6
+sha256 = "83943a457e502817312a444113fe15cd721607c35c36eeef2965c26186506801"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.instrument_lock_clear"
+cpu = "cf"
+kind = "code"
+addr = 0x4003c0ac
+len = 6
+sha256 = "3d2695518d50d9d1cd4ed14fd391ccd9891f2ff58024327022f13b891dc99927"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.instrument_seq_step"
+cpu = "cf"
+kind = "code"
+addr = 0x400d7372
+len = 6
+sha256 = "5fab6bb358aa84bda3851b773a19f4e00af8950ac39edd921fd713e2ebe77872"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.instrument_lock_due_1"
+cpu = "cf"
+kind = "code"
+addr = 0x4002e348
+len = 6
+sha256 = "1707a7e50eeeb542c1a318de02adb1c83cec34c3d8b5b58620438bf51874a0f8"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.instrument_lock_mark_edited"
+cpu = "cf"
+kind = "code"
+addr = 0x4005ab18
+len = 6
+sha256 = "51d1223b8e84b10fe2319b5f4d0d8e5fda92c0d5d4116ad6aa7150523cdd801e"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.instrument_lock_due_2"
+cpu = "cf"
+kind = "code"
+addr = 0x4002e5c2
+len = 6
+sha256 = "1707a7e50eeeb542c1a318de02adb1c83cec34c3d8b5b58620438bf51874a0f8"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.instrument_lock_skip_1"
+cpu = "cf"
+kind = "code"
+addr = 0x4002e362
+len = 6
+sha256 = "4490e823f2408323441ba915f077f069fd716890e28f16eb3be8b3e619175ac5"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.instrument_lock_skip_2"
+cpu = "cf"
+kind = "code"
+addr = 0x4002e5dc
+len = 6
+sha256 = "9ea2b8ea44a537a4fca5c342926cd0684b2571fba8c1f1bc0a529ead8845bacd"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+
+[[hook]]
+name = "cf.page.hook.instrument_lock_due_1"
+site = "cf.page.site.instrument_lock_due_1"
+mode = "replace"
+
+[[hook]]
+name = "cf.page.hook.instrument_lock_due_2"
+site = "cf.page.site.instrument_lock_due_2"
+mode = "replace"
+
+[[anchor]]
 name = "dsp.voice.site.amp_attack_table"
 cpu = "sharc"
 kind = "value"

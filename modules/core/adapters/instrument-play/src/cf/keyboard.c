@@ -226,6 +226,28 @@ int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8])
     s->update=0;
     return (int)used;
 }
+int kb_process_locked(KbState *s,const MiEvent *in,uint32_t count,MiEvent out[8])
+{
+    if(count!=1 || !in || !in[0].lock_valid || s->mode==KB_LEARN)
+        return kb_process(s,in,count,out);
+    if(in[0].kind!=MI_NOTE_ON || in[0].port!=MI_PANEL || in[0].lock_count>MI_LOCKS) return -1;
+    uint8_t old_mode=s->mode,old_type=s->type,old_voicing=s->voicing;
+    uint32_t chord=UINT32_MAX,voicing=UINT32_MAX;
+    for(uint32_t i=0;i<in[0].lock_count;++i) {
+        uint32_t id=in[0].locks[i]>>10,value=in[0].locks[i]&1023u;
+        if(id==0) { if(chord!=UINT32_MAX || value>12) return -1; chord=value; }
+        if(id==1) { if(voicing!=UINT32_MAX || value>3) return -1; voicing=value; }
+    }
+    if(chord!=UINT32_MAX) {
+        s->mode=chord ? KB_ROOT : KB_PLAY;
+        if(chord) s->type=(uint8_t)(chord-1);
+    }
+    if(voicing!=UINT32_MAX) s->voicing=(uint8_t)voicing;
+    int result=kb_process(s,in,count,out);
+    if(chord!=UINT32_MAX) { s->mode=old_mode; s->type=old_type; }
+    if(voicing!=UINT32_MAX) s->voicing=old_voicing;
+    return result;
+}
 int kb_learn_begin(KbState *s)
 {
     if (s->mode==KB_LEARN || s->session==UINT32_MAX) return -1;

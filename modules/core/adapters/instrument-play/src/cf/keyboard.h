@@ -29,6 +29,9 @@ void kb_reset(KbState *s, uint32_t epoch, uint32_t generation);
 /* Inputs: zero to eight note events, or one controller. At most eight output
  * changes. Negative return requests a priority reset; never send partial output. */
 int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8]);
+/* Apply chord/voicing locks only while resolving a sequencer note; retain the
+ * accepted keyboard settings and normal ownership of all generated voices. */
+int kb_process_locked(KbState *s,const MiEvent *in,uint32_t count,MiEvent out[8]);
 int kb_learn_begin(KbState *s);
 int kb_learn_save(KbState *s, uint32_t session, uint32_t revision);
 void kb_learn_cancel(KbState *s);

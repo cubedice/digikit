@@ -152,6 +152,10 @@ static int emit(MiLedger *m, uint32_t token, uint32_t gen, uint8_t track,
     e->channel = channel;
     e->note = note;
     e->value = value;
+    e->lock_valid=0; e->lock_count=0;
+    for(uint32_t j=0;j<MI_LOCKS;++j) e->locks[j]=0;
+    e->source_valid=0;
+    for(uint32_t j=0;j<MI_SOURCE_VALUES;++j) e->source[j]=0;
     ++m->count; /* publish last, while caller holds its critical section */
     return 1;
 }
@@ -308,6 +312,28 @@ int mi_seq_trig(MiLedger *m, uint32_t track, uint32_t note, uint32_t velocity)
     return 1;
 }
 
+int mi_seq_attach_locks(MiLedger *m,uint32_t track,const uint16_t *locks,uint32_t count)
+{
+    if(!m || track>=MI_TRACKS || count>MI_LOCKS || (count && !locks) || !m->count) return 0;
+    MiEvent *e=&m->events[(m->head+m->count-1u)%MI_EVENTS];
+    if(e->track!=track || e->kind!=MI_NOTE_ON || e->port!=MI_PANEL ||
+       e->epoch!=m->epoch || e->generation!=m->generations[track]) return 0;
+    for(uint32_t i=0;i<count;++i) e->locks[i]=locks[i];
+    for(uint32_t i=count;i<MI_LOCKS;++i) e->locks[i]=0;
+    e->lock_count=(uint8_t)count; e->lock_valid=1;
+    return 1;
+}
+int mi_seq_attach_source(MiLedger *m,uint32_t track,const uint16_t source[MI_SOURCE_VALUES])
+{
+    if(!m || !source || track>=MI_TRACKS || !m->count) return 0;
+    MiEvent *e=&m->events[(m->head+m->count-1u)%MI_EVENTS];
+    if(e->track!=track || e->kind!=MI_NOTE_ON || !e->lock_valid ||
+       e->epoch!=m->epoch || e->generation!=m->generations[track]) return 0;
+    for(uint32_t i=0;i<MI_SOURCE_VALUES;++i) e->source[i]=source[i];
+    e->source_valid=1;
+    return 1;
+}
+
 int mi_peek(MiLedger *m, MiEvent *out)
 {
     if (m->reset_mask || !out) return 0; /* reset has reserved priority */
@@ -324,6 +350,10 @@ int mi_peek(MiLedger *m, MiEvent *out)
         out->token = e->token; out->generation = e->generation;
         out->kind = e->kind; out->port = e->port; out->channel = e->channel;
         out->track = e->track; out->note = e->note; out->value = e->value;
+        out->lock_valid=e->lock_valid; out->lock_count=e->lock_count;
+        for(uint32_t i=0;i<MI_LOCKS;++i) out->locks[i]=e->locks[i];
+        out->source_valid=e->source_valid;
+        for(uint32_t i=0;i<MI_SOURCE_VALUES;++i) out->source[i]=e->source[i];
     }
     return 1;
 }

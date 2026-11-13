@@ -6,9 +6,10 @@ stock lock lanes of SRC slots its machine does not use. Static reading of the
 stock MAIN image (one reader, **[D]**) and emulator measurements
 (`tests/regression/runtime/canopy-plock.test.ts` on `canopy-multi-release` +
 `canopy-fm-release`, **[D]**). Sequencer trigs (stage 1) and keyboard
-recording (stage 2) are implemented; knob locks (stage 3) are not.
+recording (stage 2) are implemented; the packed knob-lock implementation and
+its remaining qualification are described below.
 
-## Current behaviour [D]
+## Baseline behaviour before stage 3 [D]
 
 | Gesture on a CANOPY track | Result |
 | --- | --- |
@@ -118,12 +119,48 @@ tracks do; several held keys record the last one only. The held-trig case
 
 ## Open [O]
 
-- **Which trig is held.** CANOPY's knob handler must know the held step(s)
-  (and grid versus live recording). The stock path passes the step into
-  `SoundParameterSet` vfunc 17 from a caller reached through the vtable; not
-  traced. Alternative: route held turns of CANOPY's knobs through the stock
-  SRC handler on a slot's code and rewrite the value in a hook on
-  `0x40040702` for CANOPY tracks and slots 26..33.
-- Clearing a CANOPY lock from the panel, live recording of knob moves, and
-  display of locked values on CANOPY's pages.
-- Slot 28's loader behaviour; the step-1 planted lock.
+### Stage 3: packed absolute locks [D]
+
+Five stock lock indices (26, 27, 31, 32 and 33) carry CANOPY values; index 28
+is not used because its sample-loader behavior has not been qualified. Each
+15-bit value has a `01` low-bit tag and a 13-bit dense index selecting one of
+6,321 control/value combinations. FM and WT controls have separate IDs. Stock
+UI values use `value << 8` and cannot collide, but arbitrary values written by
+other software can match the tag; this is not a cryptographic ownership marker.
+There are at most five CANOPY values on one step and the pattern's existing
+80-lane limit still applies. Multi-step editing validates all steps first and
+rolls back completed writes on a storage failure.
+
+The stock held-step edit path calls `0x4005ab18(sequencer_view, 1)` before
+editing a parameter lock. This marks the held gesture as an edit at view byte
+`+0x268`. Omitting that call caused some short holds to toggle the trig off on
+release, erasing the newly recorded lock. CANOPY calls the same routine before
+turning or clearing a held-step control. **[D]**
+
+The stock sequencer prepares events ahead of time. Capturing locks at its
+collector (`0x400d6d14`) lost association with the note: a later event could
+overwrite the snapshot. DT2 1.17's audio ISR applies the *due* event through
+`0x400d9368`, called at `0x4002e358` and `0x4002e5d2`. The preceding pointer
+checks (`0x4002e348` and `0x4002e5c2`) also see events without lock lists, so
+a later unlocked event supersedes an earlier lock in the same block. Tagged
+entries are removed before the stock carrier sees them and paired with the
+corresponding frame trig. Capture is gated on an admitted,
+ready instrument. A checksummed sideband binds the snapshot to the MIDI packet
+identity, track and generation; the DSP overlays it on a private copy of the
+sound and then applies native modulation. A WAVE lock carries the target
+family's remembered settings in the same snapshot.
+
+In the emulator, a real held-step panel turn recorded COLOR 84 on step 5 while
+leaving the Sound's COLOR at 64. A playback trace observed the tagged value
+arrive at the DSP as 84 and the following unlocked trig return to 64
+(`out/canopy-packed-final-proof.log`); the same proof cleared the lock by
+pressing its encoder while holding the step and restored the exact packed value
+by reloading the saved project. Host checks exercise all encoded ranges,
+storage rejection and rollback, queued note retries, chord mapping, damaged
+sidebands, source-bank overlays, and native MOD on top of a locked value.
+This image has not been installed or tested on physical hardware.
+
+Still to qualify: real-device behavior, copy/paste and pattern changes,
+multi-track interactions, live recording through the panel, and the
+unqualified slot-28 loader path. Stock copy operations use the same lane
+storage but have not yet been measured end to end for these tagged values.

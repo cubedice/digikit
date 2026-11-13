@@ -38,7 +38,20 @@ int main(int argc,char **argv)
     CsState ui; cs_init(&ui);
     uint32_t token=cs_context(&ui,0,12,1,0,KB_ROOT,0,0,0),id=255;
     ui.pending=0; ui.native_tune_pending=0; /* Fixture starts after an applied initial bank. */
-    if(!strcmp(scenario,"wavetable")) {
+    if(!strcmp(scenario,"trig-lock-edit")) {
+        token=cs_context(&ui,0,12,1,2,KB_ROOT,0,0,0);
+        uint32_t next=0,revision=ui.revision,pending=ui.pending;
+        /* Lock editing has its own current value and must not change the
+         * underlying sound bank, its revision, or pending telemetry. */
+        assert(cs_lock_step(&ui,token,0,5,100,70,&id,&next)==CS_EDIT);
+        assert(id==CP_COLOR && next==75 && ui.value[CP_COLOR]==64);
+        assert(ui.revision==revision && ui.pending==pending);
+        assert(cs_lock_step(&ui,token,0,INT32_MAX,100,126,&id,&next)==CS_EDIT && next==127);
+        assert(cs_lock_step(&ui,token,0,INT32_MIN,100,1,&id,&next)==CS_EDIT && next==0);
+        next=123;
+        assert(cs_lock_step(&ui,token+1,0,1,100,64,&id,&next)==CS_STALE && next==123);
+        assert(ui.value[CP_COLOR]==64 && ui.revision==revision && ui.pending==pending);
+    } else if(!strcmp(scenario,"wavetable")) {
         CvDisplay d; char feedback[32]; start();
         cs_metadata(&ui,(120u<<8)|(2u<<4)); token=cs_context(&ui,0,12,1,2,KB_PLAY,0,0,0);
         assert(cs_edit(&ui,token,0,350,0,&id)==CS_EDIT && id==CP_WT_POS && ui.value[id]==350);

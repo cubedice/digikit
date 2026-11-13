@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 from support.paths import REPO_ROOT
-from test_canopy_v2 import wire_packet
+from test_canopy_v2 import fm_controls, wavetable_fm_controls, wire_packet
 
 from tools.patchkit import patchkit, pk_sharc, pk_toolchains
 
@@ -36,7 +36,7 @@ def playback_object():
     )
     for module, names in (
         ("instrument-registry", ("process", "process-protected", "input", "lifecycle")),
-        ("instrument-play", ("play", "modulation", "reset-protected")),
+        ("instrument-play", ("play", "modulation", "lock", "reset-protected")),
         ("midi-events", ("packet", "carrier", "carrier-frame", "velocity")),
     ):
         source += "\n" + "\n".join(
@@ -59,7 +59,7 @@ def playback_object():
 .PKDATA _test_amp_record, 44;
 .PKDATA _iv_mod_frame, 2048; // sixteen 0x60-byte parameter rows follow byte 0xda
 .PKDATA _test_state, 11904; // four 2976-byte instances
-.PKDATA _test_packet, 128;
+.PKDATA _test_packet_block, 200; // eighteen-word sideband immediately before packet
 .PKDATA _test_metadata, 24;
 .PKDATA _test_values, 128;
 .PKDATA _test_output, 128;
@@ -117,6 +117,10 @@ _test_status_process:
         "_iv_modulate",
         "_iv_reset_row",
         "_iv_mod_status",
+        "_iv_lock_stage",
+        "_iv_lock_commit",
+        "_iv_lock_clear",
+        "_iv_lock_overlay",
     ]
     for i, entry in enumerate(entries):
         source += f"""
@@ -147,6 +151,7 @@ _test_{i}:
         )
         at += len(blob) + 64
     symbols = {n: sections[sec] + off for n, (sec, off, _) in obj.data_symbols.items()}
+    symbols["_test_packet"] = symbols["_test_packet_block"] + 72
     linked = pk_sharc.link(obj, 0xB90000, symbols)
     symbols["_test_status_process"] = linked.symbols["_test_status_process"]
     symbols["_test_post_process"] = linked.symbols["_test_post_process"]
@@ -280,6 +285,102 @@ def playback(playback_object):
         return call(3, R4=symbols["_test_packet"])
 
     return call, put, get, reset, configure, events, symbols
+
+
+def test_locked_event_sideband_is_checked_before_slot_commit(playback):
+    call, put, get, _, _, _, symbols = playback
+    packet = wire_packet([(1, 1, 60, 100, 0, 0)], generation=1, revision=1, track=0)
+    packet[1] |= 0x1000
+    side = [
+        0x434C4B31,
+        packet[2],
+        packet[3],
+        packet[9],
+        2 << 8,
+        ((19 << 10) | 1000) << 16 | ((17 << 10) | 700),
+        0,
+        0,
+    ] + [0] * 10
+    a, b = 0x6C6F636B, 0x74726967
+    for value in side[:17]:
+        a = (a + value) & 0xFFFFFFFF
+        b = (b + a) & 0xFFFFFFFF
+    side[17] = a ^ b
+    put("_test_packet_block", side + packet)
+    assert call(9, R4=symbols["_test_packet"]) == 1
+    assert get("_iv_lock_slots", 6) == [0] * 6
+    call(10)
+    assert get("_iv_lock_slots", 3) == [2, (17 << 10) | 700, (19 << 10) | 1000]
+    # A damaged sideband is rejected without replacing the last snapshot.
+    side[5] ^= 1
+    put("_test_packet_block", side + packet)
+    assert call(9, R4=symbols["_test_packet"]) == 0
+    call(10)
+    assert get("_iv_lock_slots", 3) == [2, (17 << 10) | 700, (19 << 10) | 1000]
+    call(11)
+    assert get("_iv_lock_slots") == [0]
+
+
+def test_lock_overlay_preserves_base_and_combines_with_native_mod(playback):
+    call, put, get, _, _, _, symbols = playback
+    bank = wavetable_fm_controls()
+    bank[0] = (bank[0] & ~255) | 11
+    bank[1] = 2
+    put("_test_values", bank)
+    put(
+        "_iv_lock_slots", [3, (2 << 10) | 90, (17 << 10) | 700, (19 << 10) | 1000, 0, 0]
+    )
+    assert call(12, R4=symbols["_test_values"]) == symbols["_iv_lock_controls"]
+    effective = get("_iv_lock_controls", 32)
+    assert get("_test_values", 32) == bank
+    assert effective[18] & 65535 == 90 and effective[2] == 90
+    assert effective[17] >> 16 == 700 and effective[19] >> 16 == 1000
+    # Neutral native MOD keeps the locked bank; clearing restores the base.
+    assert (
+        call(6, R4=symbols["_iv_lock_controls"], R8=32) == symbols["_iv_lock_controls"]
+    )
+    call(11)
+    assert call(12, R4=symbols["_test_values"]) == symbols["_test_values"]
+    assert get("_test_values", 32) == bank
+
+
+def test_wave_lock_carries_the_remembered_fm_bank_without_changing_base(playback):
+    call, put, get, _, _, _, symbols = playback
+    base = wavetable_fm_controls()
+    base[0] = (base[0] & ~255) | 11
+    base[1] = 2
+    fm = fm_controls()
+    source = [fm[2]] + [word >> 16 for word in fm[16:32]]
+    packet = wire_packet([(1, 1, 60, 100, 0, 0)], generation=1, revision=1, track=0)
+    packet[1] |= 0x1000
+    side = [
+        0x434C4B31,
+        packet[2],
+        packet[3],
+        packet[9],
+        (1 << 16) | (1 << 8),
+        (34 << 10) | 7,
+        0,
+        0,
+    ]
+    for index in range(0, 17, 2):
+        side.append(
+            source[index] | ((source[index + 1] if index + 1 < 17 else 0) << 16)
+        )
+    a, b = 0x6C6F636B, 0x74726967
+    for value in side:
+        a = (a + value) & 0xFFFFFFFF
+        b = (b + a) & 0xFFFFFFFF
+    side.append(a ^ b)
+    put("_test_packet_block", side + packet)
+    assert call(9, R4=symbols["_test_packet"]) == 1
+    call(10)
+    put("_test_values", base)
+    assert call(12, R4=symbols["_test_values"]) == symbols["_iv_lock_controls"]
+    effective = get("_iv_lock_controls", 32)
+    assert effective[1] == 3 and effective[2] == source[0]
+    assert [word >> 16 for word in effective[16:32]] == source[1:]
+    assert get("_test_values", 32) == base
 
 
 def test_opted_in_output_is_borrowed_per_block_and_revoked_with_session(playback):

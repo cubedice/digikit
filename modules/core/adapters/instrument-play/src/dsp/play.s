@@ -171,6 +171,8 @@ _iv_no_status:
     R0 = _iv_events;
     DM(7, I0) = R0;
     R4 = _iv_controls;
+    CALL _iv_lock_overlay;
+    R4 = R0;
     R8 = DM(_iv_control_count);
     CALL _iv_modulate;
     I0 = _iv_input;
@@ -811,6 +813,7 @@ _iv_reset_epoch_next:
     RTS;
 // One slot, working set loaded. R0=1 applied, 0 rejected.
 _iv_reset_owned:
+    CALL _iv_lock_clear;
     R0 = 0;
     DM(_iv_mod_ready) = R0;
     CALL _iv_owner_clear;
@@ -1465,11 +1468,16 @@ _iv_events_slot:
     R0 = PASS R0;
     IF NE JUMP _iv_no; // never overwrite an unconsumed batch
     R4 = DM(_iv_packet);
+    CALL _iv_lock_stage;
+    R0 = PASS R0;
+    IF EQ JUMP _iv_no;
+    R4 = DM(_iv_packet);
     R8 = _iv_input;
     R12 = DM(_mi_epoch);
     CALL _ir_normalize_packet;
     R0 = PASS R0;
     IF LE JUMP _iv_no;
+    CALL _iv_lock_commit;
     R0 = 1;
     RTS;
 _iv_no:
@@ -1514,6 +1522,7 @@ _iv_admitted:
 
 // Resets the loaded slot's registry instance: state base + slot * stride.
 _iv_reset_row:
+    CALL _iv_lock_clear;
     R0 = 0;
     DM(_iv_mod_ready) = R0;
     CALL _iv_owner_clear;

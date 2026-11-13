@@ -10,6 +10,9 @@ extern void dl_reset_begin(void) __attribute__((weak));
 extern int dl_reset_quiesce(void) __attribute__((weak));
 extern int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
     __attribute__((weak));
+extern int instrument_lock_take(uint32_t track,uint16_t out[MI_LOCKS]) __attribute__((weak));
+extern void instrument_lock_discard(void) __attribute__((weak));
+extern int instrument_lock_source(uint32_t track,uint32_t wave,uint16_t out[MI_SOURCE_VALUES]) __attribute__((weak));
 
 MiLedger mi_ledger;
 MiTransport mi_transport;
@@ -75,8 +78,21 @@ static void sequencer_frame(const volatile uint16_t *frame)
         if (note > 127u) note = 127u;
         if (velocity > 127u) velocity = 127u;
         if (!velocity) velocity = 1u;
-        mi_seq_trig(&mi_ledger, t, note, velocity);
+        if(mi_seq_trig(&mi_ledger, t, note, velocity) && instrument_lock_take) {
+            uint16_t locks[MI_LOCKS];
+            int count=instrument_lock_take(t,locks);
+            /* No due lock event means this note uses the unmodified sound. */
+            if(count<0) count=0;
+            if(count>=0 && count<=(int)MI_LOCKS && mi_seq_attach_locks(&mi_ledger,t,locks,(uint32_t)count)) {
+                for(int i=0;i<count;++i) if((locks[i]>>10)==34) {
+                    uint16_t source[MI_SOURCE_VALUES];
+                    if(!instrument_lock_source || !instrument_lock_source(t,locks[i]&1023u,source) ||
+                       !mi_seq_attach_source(&mi_ledger,t,source)) mi_reset_track(&mi_ledger,t);
+                }
+            }
+        }
     }
+    if(instrument_lock_discard) instrument_lock_discard();
 }
 
 void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record,
@@ -89,6 +105,7 @@ void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_
     sr = dkrt_irq_mask();
     initialize();
     if (!reset_seen) sequencer_frame(frame);
+    else if (instrument_lock_discard) instrument_lock_discard();
     if (reset_seen) {
         for (i = 0; i < MT_WORDS; ++i) {
             queue[2u*(entry+2u*i)+1u] = 0;
