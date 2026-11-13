@@ -64,10 +64,14 @@ void ip_panel_original_on(uint8_t *v,uint32_t key,uint32_t track,uint32_t pitch,
     ++original_on;
 }
 void ip_panel_original_off(uint8_t *v,uint32_t key) { assert(v==view && key<16); ++original_off; }
-uint32_t ip_panel_stock_key(uint8_t *v,uint8_t *e) { (void)e;assert(v==view);return 17; }
+/* Step recording: the stock key handler writes the entry itself. */
+static int stock_step=-1; static uint8_t stock_note;
+static void commit(uint32_t track,uint32_t step,uint32_t note);
+uint32_t ip_panel_stock_key(uint8_t *v,uint8_t *e)
+{ (void)e;assert(v==view); if(stock_step>=0) commit(0,(uint32_t)stock_step,stock_note); return 17; }
 void ip_panel_stock_detach(uint8_t *v,uint8_t *m) { (void)m;assert(v==view || v==other);++detaches; }
 int mi_panel_key(uint32_t key,uint32_t note,uint32_t velocity,int down,uint32_t track)
-{ (void)track;assert(key<16);if(down) { assert((key!=3 || note==65) && velocity==88);++downs; } else ++ups;return 1; }
+{ (void)track;assert(key<16);if(down) { assert((key!=3 || note==65) && (velocity==88 || velocity==100));++downs; } else ++ups;return 1; }
 void mi_panel_release(void) { ++cancels; }
 int main(void)
 {
@@ -161,6 +165,46 @@ int main(void)
     ip_panel_on(view,9,0,60,88,5,6,7);assert(mutes==1);
     ip_panel_toggle(0);assert(!active && !mutes);
     ip_panel_toggle(0);live=0;
+    /* Step recording with KEYBOARD held: the stock key handler writes each
+     * key's note on the cursor step (rewriting it while keys are held) and
+     * never calls the note action. CANOPY reads the entry, sounds it, mutes
+     * the stock audition and stores the held group's other notes there. */
+    {
+        uint32_t ev[8]={0};
+        step_record=1;live=0;chord_calls=0;
+        unsigned on=original_on,d=downs;
+        ev[3]=0x19+8;stock_step=20;stock_note=60;
+        assert(ip_panel_key_event(view,(uint8_t *)ev)==17);
+        assert(chord_calls==1 && chord_steps[0]==(1u<<20) && !chord_count && downs==d+1 && mutes==1);
+        ev[3]=0x19+10;stock_note=64;ip_panel_key_event(view,(uint8_t *)ev);
+        assert(chord_calls==2 && chord_count==1 && chord[0]==-4 && downs==d+2);
+        ev[3]=0x19+12;stock_note=67;ip_panel_key_event(view,(uint8_t *)ev);
+        assert(chord_calls==3 && chord_count==2 && chord[0]==-3 && chord[1]==-7 && downs==d+3);
+        /* Releases write nothing; the mute ends with the last held key. */
+        stock_step=-1;ev[3]=0x19+8;ip_panel_key_event(view,(uint8_t *)ev);ip_panel_off(view,8);
+        assert(chord_calls==3 && mutes==1);
+        ip_panel_off(view,10);ip_panel_off(view,12);assert(!mutes && original_on==on);
+        /* The next entry starts a new group: a lone note clears chord notes. */
+        ev[3]=0x19+9;stock_step=21;stock_note=62;ip_panel_key_event(view,(uint8_t *)ev);
+        assert(chord_calls==4 && chord_steps[0]==(1u<<21) && !chord_count);
+        stock_step=-1;ip_panel_off(view,9);assert(!mutes);
+        /* A press that writes nothing (e.g. KEYBOARD itself) changes nothing. */
+        ev[3]=0x12;ip_panel_key_event(view,(uint8_t *)ev);assert(chord_calls==4 && !mutes);
+        /* Entries committed after the handler returns resolve on the next
+         * UI tick or key event, against the baseline of their own press. */
+        stock_step=-1;d=downs;
+        ev[3]=0x19+8;ip_panel_key_event(view,(uint8_t *)ev);assert(chord_calls==4 && mutes==1);
+        commit(0,23,60);ip_panel_tick();
+        assert(chord_calls==5 && chord_steps[0]==(1u<<23) && !chord_count && downs==d+1);
+        ev[3]=0x19+10;ip_panel_key_event(view,(uint8_t *)ev);
+        commit(0,23,64);ev[3]=0x12;ip_panel_key_event(view,(uint8_t *)ev);
+        assert(chord_calls==6 && chord_count==1 && chord[0]==-4 && downs==d+2);
+        ip_panel_off(view,8);ip_panel_off(view,10);assert(!mutes);
+        /* An entry that never appears expires and ends the mute. */
+        ev[3]=0x19+11;ip_panel_key_event(view,(uint8_t *)ev);assert(mutes==1);
+        clock_ms+=600;ip_panel_tick();assert(!mutes && chord_calls==6);
+        step_record=0;
+    }
     /* Foreign tracks never ask the sequencer. */
     live=1;machine=0;unsigned before=original_on,recorded=ip_panel_recorded;
     ip_panel_on(view,3,0,65,88,5,6,7);assert(original_on==before+1 && ip_panel_recorded==recorded);

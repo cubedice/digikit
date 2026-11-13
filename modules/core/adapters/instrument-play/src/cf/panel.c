@@ -199,15 +199,18 @@ void ip_panel_off(uint8_t *view,uint32_t key)
     }
     ip_panel_original_off(view,key);
 }
+static void step_pending(void);
 /* UI task (instrument_play_tick). */
 void ip_panel_tick(void)
 {
+    step_pending();
     if(!watch_active) return;
     const uint8_t *p=pattern_object();
     uint32_t track=watch_track,held=0;
     for(uint32_t i=0;i<16;++i) held+=rec_keys[i].used && rec_keys[i].track==track;
     /* Lock writes address the UI's current track: only while it is ours. */
     if(!p || !panel_view || ip_panel_selected_track(word(panel_view,0xa0))!=track) { watch_active=0; return; }
+    if(!held && (int32_t)(instrument_src_now()-watch_until)>=0) { watch_active=0; return; }
     for(uint32_t s=0;s<128;++s) {
         uint32_t list=note_signature(p,track,s);
         uint16_t trig=trig_word(p,track,s);
@@ -223,10 +226,80 @@ void ip_panel_tick(void)
         ip_panel_chord[0]=s;
         watch_list[s]=note_signature(p,track,s); watch_trig[s]=trig_word(p,track,s);
     }
-    if(!held && (int32_t)(instrument_src_now()-watch_until)>=0) watch_active=0;
+}
+/* Step recording (finding 125): with KEYBOARD held, a trig key writes its
+ * note on the cursor step at once, inside the stock KeyboardView key handler,
+ * without the note action (ip_panel_on). Each further held key rewrites the
+ * same step's note, and the cursor advances when the keys are released. */
+static int step_recording(uint8_t *view,uint32_t *track_out)
+{
+    uint32_t seq=word(view,0x98),type=dkrt_instrument_type();
+    if(!seq || !ip_panel_step_record(seq) || type<7 || type>=32) return 0;
+    uint32_t track=ip_panel_selected_track(word(view,0xa0));
+    if(track>=16 || !instrument_track_owned(track)) return 0;
+    uint8_t *object=ip_panel_track_object(word(view,0xa4),track);
+    if(!object || ip_panel_track_type(object)!=type) return 0;
+    *track_out=track; return 1;
+}
+static uint32_t entry_list[128];
+static uint16_t entry_trig[128];
+/* A key whose entry has not appeared yet: resolved by the next key event or
+ * UI tick (the stock handler may commit it after returning). */
+static uint32_t pending_key=16,pending_track,pending_at;
+static uint8_t *pending_view;
+/* Step-entry diagnostics: trig-key events, in step recording, entries found
+ * at once, entries found later, last event flags, last code, pendings set,
+ * pendings expired. */
+volatile uint32_t ip_panel_step[8];
+/* After the stock handler: the step whose note list changed is this key's
+ * entry; its note joins the chord group, sounds on CANOPY and the group's
+ * other notes are stored on that step. */
+static int step_entry(uint8_t *view,uint32_t key,uint32_t track,const uint8_t *p)
+{
+    for(uint32_t s=0;s<128;++s) {
+        if(note_signature(p,track,s)==entry_list[s] && trig_word(p,track,s)==entry_trig[s]) continue;
+        int32_t note=step_note(p,track,s);
+        if(!(trig_word(p,track,s)&1u) || note<0) continue;
+        if(!rec_keys[key].used) {
+            group_add(track,(uint32_t)note);
+            rec_keys[key].used=1; rec_keys[key].track=(uint8_t)track;
+        }
+        rec_keys[key].pitch=(uint8_t)note;
+        ++ip_panel_recorded;
+        uint32_t steps[4];
+        steps[0]=steps[1]=steps[2]=steps[3]=0;
+        steps[s>>5]=1u<<(s&31);
+        store_chord(steps,track,(uint32_t)note);
+        ip_panel_chord[0]=s;
+        /* A live watch on this track must not take the same entry again. */
+        if(watch_active && watch_track==track) { watch_list[s]=note_signature(p,track,s); watch_trig[s]=trig_word(p,track,s); }
+        panel_play(view,key,track,(uint32_t)note,100);
+        return 1;
+    }
+    return 0;
+}
+static void step_mute_end(uint32_t track)
+{
+    for(uint32_t i=0;i<16;++i) if(rec_keys[i].used && rec_keys[i].track==track) return;
+    mi_seq_mute(track,0);
+}
+/* Resolve a pending entry against its baseline; expire it after 500 ms. */
+static void step_pending(void)
+{
+    if(pending_key>=16) return;
+    const uint8_t *p=pattern_object();
+    if(p && pending_view && step_entry(pending_view,pending_key,pending_track,p)) {
+        ++ip_panel_step[3]; pending_key=16; return;
+    }
+    if((int32_t)(instrument_src_now()-pending_at)>=500) {
+        ++ip_panel_step[7]; pending_key=16; step_mute_end(pending_track);
+    }
 }
 void ip_panel_update(uint8_t *view)
 {
+    uint32_t step_track;
+    /* KEYBOARD is only held during step entry: keep the entered notes. */
+    if(panel_view==view && step_recording(view,&step_track) && step_track==panel_track) return;
     if(panel_view==view && (!ip_panel_active(word(view,0xa0)) ||
         ip_panel_selected_track(word(view,0xa0))!=panel_track)) {
         mi_panel_release(); rec_release_all(); panel_view=0; ++ip_panel_debug[6];
@@ -245,7 +318,28 @@ void ip_panel_toggle(uint32_t manager)
 }
 uint32_t ip_panel_key_event(uint8_t *view,uint8_t *event)
 {
+    /* Trig keys are codes 0x19..0x28 (physical keys 0..15). */
+    uint32_t key=event ? word(event,0xc)-0x19u : 16u,track=IP_NONE;
+    const uint8_t *p=key<16 ? pattern_object() : 0;
+    step_pending();
+    int entry=p && step_recording(view,&track);
+    if(key<16) { ++ip_panel_step[0]; ip_panel_step[4]=word(event,0x10); ip_panel_step[5]=word(event,0xc); }
+    /* A held key's further events (its release) are not new entries. */
+    if(entry && rec_keys[key].used) entry=0;
+    if(entry) {
+        ++ip_panel_step[1];
+        for(uint32_t s=0;s<128;++s) { entry_list[s]=note_signature(p,track,s); entry_trig[s]=trig_word(p,track,s); }
+        /* The stock audition of the entry would sound it a second time. */
+        mi_seq_mute(track,1);
+    }
     uint32_t result=ip_panel_stock_key(view,event);
+    if(entry) {
+        if(step_entry(view,key,track,p)) ++ip_panel_step[2];
+        else {
+            pending_key=key; pending_track=track; pending_view=view;
+            pending_at=instrument_src_now(); ++ip_panel_step[6];
+        }
+    }
     ip_panel_update(view);
     return result;
 }

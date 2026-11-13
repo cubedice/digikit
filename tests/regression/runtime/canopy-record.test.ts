@@ -346,4 +346,69 @@ test('CANOPY records keyboard presses', { timeout: 900_000 }, async () => {
   console.info('chord playback', playedChord);
   for (const n of [60, 64, 67]) expect(playedChord, `chord note ${n} plays back with the others`).toContain(n);
   await expect.poll(async () => (await voices()).filter((v) => v.gate === 1).length, { timeout: 30_000 }).toBe(0);
+
+  // Step recording (RECORD + STOP) enters notes with KEYBOARD held: the stock
+  // key handler writes each key on the cursor step without the note action.
+  // A held D, F, A (TRIG 10, 12, 14) sounds together on CANOPY and is stored
+  // on its step, which plays back as that chord.
+  await edge('RECORD', true);
+  try {
+    await key('STOP');
+  } finally {
+    await edge('RECORD', false);
+  }
+  await waitEmulated(session, 4_000); // the mode message takes the first presses
+  shot('record-step-mode');
+  const stepStoresBefore = await cf('ip_panel_chord', 3);
+  let stepChord: number[] = [];
+  await edge('KEYBOARD', true);
+  try {
+    await waitEmulated(session, 200);
+    const stepHeld: string[] = [];
+    try {
+      for (const k of ['TRIG 10', 'TRIG 12', 'TRIG 14']) {
+        await edge(k, true);
+        stepHeld.push(k);
+        await waitEmulated(session, 100);
+      }
+      stepChord = await together(600);
+    } finally {
+      for (const k of stepHeld.reverse()) await edge(k, false);
+    }
+  } finally {
+    await edge('KEYBOARD', false);
+  }
+  await waitEmulated(session, 500);
+  const stepDiag = await Promise.all([0, 1, 2, 3].map((i) => cf('ip_panel_chord', i)));
+  const stepEvents = await Promise.all([0, 1, 2, 3, 4, 5, 6, 7].map((i) => cf('ip_panel_step', i)));
+  log.stepRecording = { stepChord, stepDiag, stepEvents };
+  console.info('step recording', JSON.stringify(log.stepRecording));
+  expect(stepChord, 'held step-record keys sound together').toEqual([62, 65, 69]);
+  expect(stepDiag[3] - stepStoresBefore, 'each entry stored its chord').toBe(3);
+  expect(stepDiag[1], 'the last entry holds the two other keys').toBe(2);
+  expect(stepDiag[2], 'chord-note locks written').toBe(1);
+  await key('RECORD'); // leave step recording
+  await waitEmulated(session, 1_000);
+  await key('PLAY');
+  const stepPlayed: number[][] = [];
+  {
+    let done = false;
+    const elapsed = waitEmulated(session, 9_000).then(() => {
+      done = true;
+    });
+    while (!done) {
+      const g = (await voices()).filter((v) => v.gate === 1 && v.hz > 0).map((v) => Math.round(semitone(v.hz)));
+      if (g.length) stepPlayed.push(g.sort((a, b) => a - b));
+      await delay(30);
+    }
+    await elapsed;
+  }
+  await key('STOP');
+  log.stepPlayback = stepPlayed.filter((g) => g.length >= 3);
+  console.info('step playback', JSON.stringify(log.stepPlayback));
+  expect(
+    stepPlayed.some((g) => [62, 65, 69].every((n) => g.includes(n))),
+    'the step-recorded chord plays back',
+  ).toBe(true);
+  await expect.poll(async () => (await voices()).filter((v) => v.gate === 1).length, { timeout: 30_000 }).toBe(0);
 });

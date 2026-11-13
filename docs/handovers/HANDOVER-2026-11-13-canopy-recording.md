@@ -22,11 +22,10 @@ unchanged `out/patch/canopy-four-page.dkm`):
 
 Open:
 
-- Step recording (RECORD + STOP): in the emulator no keyboard press entered a
-  note, with or without KEYBOARD; how the user enters notes there is unknown.
-  The panel bridge now treats step recording (`0x4005ad8c`) as recording, so
-  if presses reach the KeyboardView note action there they are recorded,
-  sounded and their chord stored; this path is not measured.
+- Step recording (RECORD + STOP, notes entered with KEYBOARD held): entries
+  bypass the note action, so the first install did not cover them. The key
+  wrapper now detects each entry from the step's note list, sounds it and
+  stores the held chord (finding 125); see below for verification state.
 - Physical hardware: installed on the DTII on 2026-11-13 at the user's request
   (image `1d4953c4df3f3193` -> `ab2cd5ce545be167`; report
   `out/canopy-chord-rec-hardware-installed.json`). Current sound kept in preset

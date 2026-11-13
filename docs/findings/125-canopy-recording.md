@@ -42,13 +42,21 @@ ten times in 300 ms and showed the locked value (COLOR 84).
 
 The page key handler `0x400786ae` reads RECORD (key `0x13`) and STOP (`0x15`)
 held and sets step recording through `0x4005ad9c` at `0x40078ac4`; the
-display shows "Step Rec: Standard". Measured in the emulator: KEYBOARD mode is
-off after RECORD (trig keys toggle steps), and turning it back on inside step
-recording did not make key presses reach the KeyboardView note action
-(`0x4005cee2`), nor did plain, long or chorded presses write anything to the
-pattern. With KEYBOARD held, a trig key placed a trig at step 8 with the
-track's default note. How the stock step recorder takes keyboard notes is
-**[O]**.
+display shows "Step Rec: Standard". KEYBOARD mode is off after RECORD (trig
+keys toggle steps).
+
+### Step recording takes notes with KEYBOARD held [D]
+
+Notes are entered by holding KEYBOARD and pressing trig keys (the user's
+workflow; the KeyboardView key handler `0x4005dc58` accepts trig keys in step
+recording only with KEYBOARD, key `0x12`, held). Measured on a CANOPY track:
+each press writes a trig with that key's note on the cursor step inside the
+key handler (C, D, E as single presses went to steps 0, 1, 2); while keys
+stay held, each further key rewrites the same step's note (a held C, E, G left
+step 3 with G only), and the cursor advances after the release. The
+KeyboardView note action `0x4005cee2` is not called (CANOPY's note hook saw no
+press) but its note-off is, once per released key. The stock audition sounded
+one note at a time.
 
 ## Live recording [D]
 
@@ -116,7 +124,13 @@ layout.
   track is still held joins the group; the group closes when all are up.
 - **Held trig.** A press with held trigs stores the group's other notes on
   the held steps at once, relative to the pressed note.
-- **Live (and step) recording.** Because the commit follows the key event,
+- **Step recording.** Around each KeyboardView key event in step recording
+  on a CANOPY track, the adapter compares the track's note lists before and
+  after the stock handler. The step whose list changed is the key's entry:
+  its note joins the group, sounds on CANOPY's panel path (stock audition
+  muted while keys are held) and the group's other notes are stored on that
+  step. The key's release arrives through the note-off hook as usual.
+- **Live recording.** Because the commit follows the key event,
   the adapter's UI tick (`ip_panel_tick`) watches the track's note lists
   (head index and up to four chained notes) and trig words while a group is recorded and for 1.5 s after its last
   release. A step whose list or trig changes, whose trig is set and whose
