@@ -132,9 +132,10 @@ CANOPY controls can be locked on one step, subject to the pattern's shared
 lane already contains another kind of lock, CANOPY leaves it alone and reports
 that the slot is in use. A full pattern is also reported.
 
-The emulator has exercised held-step recording, playback, clearing and a project
-save/reload. This feature has not yet been qualified on hardware; live
-recording and pattern changes still need end-to-end qualification. See
+The emulator has exercised held-step and live recording, playback, clearing,
+project save/reload, copying patterns, switching patterns while stopped and
+playing, and separate locks on two tracks. This feature has not yet been
+qualified on hardware. See
 [finding 123](../../../docs/findings/123-canopy-trig-locks.md).
 
 ## Wavetable controls

@@ -153,14 +153,17 @@ family's remembered settings in the same snapshot.
 In the emulator, a real held-step panel turn recorded COLOR 84 on step 5 while
 leaving the Sound's COLOR at 64. A playback trace observed the tagged value
 arrive at the DSP as 84 and the following unlocked trig return to 64
-(`out/canopy-packed-final-proof.log`); the same proof cleared the lock by
+(`out/canopy-packed-multitrack-proof.log`); the same proof cleared the lock by
 pressing its encoder while holding the step and restored the exact packed value
-by reloading the saved project. Host checks exercise all encoded ranges,
+by reloading the saved project. Copying the pattern to a second slot and
+switching back preserved the same value in both patterns. A running transition
+also delivered the destination pattern's lock after the boundary committed.
+During live recording, a knob turn wrote another tagged value while the Sound's
+base value stayed unchanged. A second CANOPY track recorded and played its own
+lock without changing the first track's value.
+Host checks exercise all encoded ranges,
 storage rejection and rollback, queued note retries, chord mapping, damaged
 sidebands, source-bank overlays, and native MOD on top of a locked value.
 This image has not been installed or tested on physical hardware.
 
-Still to qualify: real-device behavior, copy/paste and pattern changes,
-multi-track interactions, live recording through the panel, and the
-unqualified slot-28 loader path. Stock copy operations use the same lane
-storage but have not yet been measured end to end for these tagged values.
+Still to qualify: real-device behavior and the unqualified slot-28 loader path.

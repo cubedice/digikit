@@ -233,4 +233,159 @@ test('CANOPY plays and records trig locks', { timeout: 900_000 }, async () => {
     (await byteAt(loadedLocks + loadedLane * 0x102 + 11));
   log.reloaded = { loadedPattern, loadedLane, loadedValue };
   expect(loadedValue, 'project reload preserves the exact packed value').toBe(atStep5);
+
+  const modified = async (modifier: string, name: string) => {
+    await edge(modifier, true);
+    try {
+      await key(name);
+    } finally {
+      await edge(modifier, false);
+    }
+  };
+  // Copy A01 to A02 while stopped; stock pattern operations must preserve the
+  // tagged value on the destination as well as on return to the source.
+  await modified('FUNC', 'RECORD');
+  await modified('PTN', 'TRIG 2');
+  await expect.poll(() => word(0x4316501c), { timeout: 60_000 }).not.toBe(loadedPattern);
+  await modified('FUNC', 'STOP');
+  const copiedPattern = (await word(0x4316501c)) >>> 0;
+  const copiedLocks = copiedPattern + 0x17e50;
+  const copiedLane = await byteAt(copiedLocks + 0x50a0 + 26);
+  expect(copiedLane, 'pattern paste restores the CANOPY lock lane').toBeLessThan(80);
+  const copiedValue =
+    ((await byteAt(copiedLocks + copiedLane * 0x102 + 10)) << 8) |
+    (await byteAt(copiedLocks + copiedLane * 0x102 + 11));
+  expect(copiedValue, 'pattern paste preserves the packed value').toBe(atStep5);
+  await modified('PTN', 'TRIG 1');
+  await expect.poll(() => word(0x4316501c), { timeout: 60_000 }).toBe(loadedPattern);
+  const returnedLane = await byteAt(loadedLocks + 0x50a0 + 26);
+  expect(returnedLane).toBeLessThan(80);
+  const returnedValue =
+    ((await byteAt(loadedLocks + returnedLane * 0x102 + 10)) << 8) |
+    (await byteAt(loadedLocks + returnedLane * 0x102 + 11));
+  log.copied = { copiedPattern, copiedLane, copiedValue, returnedLane, returnedValue };
+  expect(returnedValue, 'switching back preserves the source lock').toBe(atStep5);
+
+  // Switch during playback and wait for the committed destination, not merely
+  // the earlier lookahead selection. The copied step must still reach the DSP.
+  const pos = (index: number) => cf('pp_position', index);
+  await key('PLAY');
+  await expect.poll(() => pos(5), { timeout: 60_000 }).toBe(3);
+  await expect.poll(() => pos(6), { timeout: 60_000 }).toBe(loadedPattern);
+  await modified('PTN', 'TRIG 2');
+  await expect.poll(() => pos(6), { timeout: 120_000 }).toBe(copiedPattern);
+  const capturesAtBoundary = await cf('ip_lock_capture_debug', 10);
+  await expect.poll(() => cf('ip_lock_capture_debug', 10), { timeout: 120_000 }).toBeGreaterThan(capturesAtBoundary);
+  await expect
+    .poll(
+      async () => {
+        const result = await session.client.call<{ hex: string; unknown: number }>('dsp.peek', {
+          addr: slotAddr,
+          len: 8,
+        });
+        if (result.unknown) return null;
+        const value = Buffer.from(result.hex, 'hex');
+        return [value.readUInt32LE(0), value.readUInt32LE(4)];
+      },
+      { timeout: 120_000 },
+    )
+    .toEqual([1, (2 << 10) | 84]);
+  await modified('PTN', 'TRIG 1');
+  await expect.poll(() => pos(6), { timeout: 120_000 }).toBe(loadedPattern);
+  await key('STOP');
+  expect(await cf('ip_lock_capture_error')).toBe(0);
+
+  // Record a sweep from the panel while transport runs. The track's current
+  // step receives a new absolute COLOR lock; the Sound remains unchanged.
+  await key('SRC');
+  for (let i = 0; i < 5 && (await cf('ip_src_debug', 1)) !== 2; i++) await key('SRC');
+  expect(await cf('ip_src_debug', 1)).toBe(2);
+  const liveBase = await cf('src_state', 8);
+  await modified('RECORD', 'PLAY');
+  await expect.poll(() => pos(5), { timeout: 60_000 }).toBe(3);
+  await turn(1, 10);
+  await key('STOP');
+  log.liveState = {
+    before: liveBase,
+    after: await cf('src_state', 8),
+    src: await Promise.all(Array.from({ length: 12 }, (_, i) => cf('ip_src_debug', i))),
+  };
+  expect(await cf('src_state', 8), 'live lock recording preserves the base sound').toBe(liveBase);
+  const livePattern = (await word(0x4316501c)) >>> 0;
+  const liveLocks = livePattern + 0x17e50;
+  const liveLane = await byteAt(liveLocks + 0x50a0 + 26);
+  expect(liveLane).toBeLessThan(80);
+  const values: number[] = [];
+  for (let step = 0; step < 128; step++) {
+    const address = liveLocks + liveLane * 0x102 + 2 + 2 * step;
+    const raw = ((await byteAt(address)) << 8) | (await byteAt(address + 1));
+    if (raw !== 0xffff) values.push(raw);
+  }
+  log.live = { liveLane, values };
+  expect(
+    values.some((value) => value !== atStep5 && (value & 3) === 1),
+    'live turn records a new lock',
+  ).toBe(true);
+
+  // A second CANOPY track has its own pattern lanes and DSP lock slot.
+  const firstTrackValue =
+    ((await byteAt(liveLocks + liveLane * 0x102 + 10)) << 8) | (await byteAt(liveLocks + liveLane * 0x102 + 11));
+  await selectTrack(2);
+  await chooseCanopy();
+  await expect
+    .poll(
+      async () => {
+        const tracks = await Promise.all(Array.from({ length: 4 }, (_, i) => cf('ip_tracks', i)));
+        return tracks.includes(1);
+      },
+      { timeout: 60_000 },
+    )
+    .toBe(true);
+  const tracks = await Promise.all(Array.from({ length: 4 }, (_, i) => cf('ip_tracks', i)));
+  const secondSlot = tracks.indexOf(1);
+  expect(secondSlot).toBeGreaterThanOrEqual(0);
+  await expect.poll(() => cf('ip_admission', secondSlot * 8), { timeout: 60_000 }).toBe(1);
+  await key('SRC');
+  for (let i = 0; i < 5 && (await cf('ip_src_debug', 1)) !== 2; i++) await key('SRC');
+  expect(await cf('ip_src_debug', 0)).toBe(1);
+  expect(await cf('ip_src_debug', 1)).toBe(2);
+  await key('RECORD');
+  await key('TRIG 1');
+  await edge('TRIG 1', true);
+  try {
+    await turn(1, 10);
+  } finally {
+    await edge('TRIG 1', false);
+  }
+  await key('RECORD');
+  const secondPattern = (await word(0x4316501c)) >>> 0;
+  const secondLocks = secondPattern + 0x17e50;
+  const secondLane = await byteAt(secondLocks + 0x50a0 + 71 + 26);
+  expect(secondLane, 'second track owns its own lock lane').toBeLessThan(80);
+  const secondValue =
+    ((await byteAt(secondLocks + secondLane * 0x102 + 2)) << 8) | (await byteAt(secondLocks + secondLane * 0x102 + 3));
+  expect(secondValue).toBe(365); // COLOR 74 encoded as (17 + 74) * 4 + 1
+  const firstLaneAfter = await byteAt(secondLocks + 0x50a0 + 26);
+  expect(firstLaneAfter).toBeLessThan(80);
+  const firstValueAfter =
+    ((await byteAt(secondLocks + firstLaneAfter * 0x102 + 10)) << 8) |
+    (await byteAt(secondLocks + firstLaneAfter * 0x102 + 11));
+  expect(firstValueAfter, 'second track editing preserves first track lock').toBe(firstTrackValue);
+  await key('PLAY');
+  await expect
+    .poll(
+      async () => {
+        const result = await session.client.call<{ hex: string; unknown: number }>('dsp.peek', {
+          addr: slotAddr + secondSlot * 96,
+          len: 8,
+        });
+        if (result.unknown) return null;
+        const value = Buffer.from(result.hex, 'hex');
+        return [value.readUInt32LE(0), value.readUInt32LE(4)];
+      },
+      { timeout: 120_000 },
+    )
+    .toEqual([1, (2 << 10) | 74]);
+  await key('STOP');
+  log.secondTrack = { tracks, secondSlot, secondLane, secondValue, firstValueAfter };
 });
