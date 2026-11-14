@@ -17,10 +17,39 @@ Neither these offsets nor the stock TUNE/LEV fields are available as arbitrary
 payload without changing their behavior.
 
 An individual fixed-width encoding of the current 32 custom controls uses 176
-bits; the remembered FM bank uses another 83 bits. These 259 bits exclude the selected
-family, keyboard mode, embedded learned shape, version and corruption detection.
-The 14 unused 16-bit record slots do not fit that encoding, and have no runtime
-mapping. The 64 by 12-byte sample-related area in a Sound
+bits; the remembered FM bank uses another 83 bits. Together with the selected
+family, keyboard mode and an embedded shape, a snapshot uses 293 bits. On the
+DTII 1.17 image, the 69 unique entries of the save permutation at `0x40213a50`
+leave 21 zero-filled parameter slots among positions 0..89: 4, 8, 12, 16, 20,
+24, 28, 32 and 77..89. The first eight map to dummy runtime parameter 0 in the
+load permutation at `0x40213b64`; the last 13 are outside the load loop. These
+42 serialized bytes can hold a versioned compact snapshot with an integrity
+check. They do not provide backing storage for the running Sound: the firmware
+overwrites the eight dummy entries while loading and zeroes all 21 while saving.
+Writing and reading these positions would require serializer hooks, and their
+effect on stock firmware and every Sound lifecycle still needs proof.
+
+`sound-codec.c` is an unlinked feasibility experiment: it round-trips all
+current controls, remembered FM settings and the embedded shape in 42 bytes.
+The host test covers boundary values, independently varied configurations and
+every single-bit corruption; the firmware-map test checks the actual 1.17
+permutations against the image hash. Neither test exercises stock Sound
+ownership, saving, copying, or boot. The experiment does not implement
+persistence or change the device's Sound format.
+
+One possible RAM association is a 16-bit shadow-pool handle in runtime Sound
+parameter 0, the dummy written by the eight padding entries. A loader hook would
+attach it only after stock deserialization completes, and a save hook would
+replace the transient handle in serialized slot 0 before filling the padding.
+This needs proof that generic fallback setters, resets and every clipboard or
+Sound-copy path cannot clobber or lose the handle. Copies need immutable shared
+snapshots and copy-on-write; pool exhaustion and reclamation must not discard
+state still referenced by any kit, Sound pool, or clipboard. Decode can occur
+before CANOPY's dynamic type is registered, so validation and publication
+cannot assume the type is available during the boot deserializer call. Runtime
+indices 69 and 70 are unavailable because `core/fxsend` uses them.
+
+The 64 by 12-byte sample-related area in a Sound
 record is not proven unused or safe to repurpose; doing so could corrupt sample
 or slice settings when the Sound changes machine.
 
