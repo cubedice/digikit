@@ -304,17 +304,32 @@ int main(int argc,char **argv)
             memset(canvas,0,sizeof(canvas));diagram_envelope(canvas,&env,1);
             for(int y=16;y<28;++y) assert(canvas[y*128+48] && !canvas[y*128+49]);
         }
-        /* An instant release is vertical at the right edge, even when all
+        /* An instant release is vertical at the sustain corner, even when all
          * envelope times are at zero. */
         env.raw[CP_FM_RELEASE]=0;memset(canvas,0,sizeof(canvas));diagram_envelope(canvas,&env,1);
-        for(int y=16;y<28;++y) assert(canvas[y*128+98]);
+        for(int y=16;y<28;++y) assert(canvas[y*128+64]);
+        /* The horizontal sustain has a constant width as decay changes;
+         * locate its two hollow nodes in the painted graph. */
+        for(unsigned level=20;level<=80;level+=30) for(unsigned dec=0;dec<=127;dec+=dec==0?64:63) {
+            env.raw[CP_FM_SUSTAIN]=(uint16_t)level;env.raw[CP_FM_DECAY]=(uint16_t)dec;
+            memset(canvas,0,sizeof(canvas));diagram_envelope(canvas,&env,1);
+            int y=29-(int)((16*level+50)/100),nodes[2],count=0;
+            for(int x=47;x<100 && count<2;++x)
+                if(!canvas[y*128+x] && canvas[y*128+x-1] && canvas[y*128+x+1] &&
+                    canvas[(y-1)*128+x-1] && canvas[(y-1)*128+x] && canvas[(y-1)*128+x+1] &&
+                    canvas[(y+1)*128+x-1] && canvas[(y+1)*128+x] && canvas[(y+1)*128+x+1]) nodes[count++]=x;
+            assert(count==2 && nodes[1]-nodes[0]==16);
+        }
         env.raw[CP_FM_SUSTAIN]=60;env.raw[CP_FM_DECAY]=50;
         memset(canvas,0,sizeof(canvas));diagram_envelope(canvas,&env,1);
         uint8_t middle[18*47];
+        int corner=0;
+        for(int x=50;x<123;++x) if(canvas[12*128+x]) { corner=x-1; break; }
+        assert(corner>51);
         for(int y=12;y<30;++y) for(int x=50;x<97;++x) middle[(y-12)*47+x-50]=canvas[y*128+x];
         env.raw[CP_FM_ATTACK]=127;env.raw[CP_FM_RELEASE]=127;
         memset(canvas,0,sizeof(canvas));diagram_envelope(canvas,&env,1);
-        for(int y=12;y<30;++y) for(int x=50;x<97;++x) assert(middle[(y-12)*47+x-50]==canvas[y*128+x]);
+        for(int y=12;y<30;++y) for(int x=50;x<corner-1;++x) assert(middle[(y-12)*47+x-50]==canvas[y*128+x]);
         cs_metadata(&state,3u<<4); v[0x90/4]=3; context((uint8_t *)v);
         assert(mf_src_page_count(type_id)==4);
         for(unsigned i=0;i<8;++i) assert(ip_src_parameter((uint8_t *)v,i)==0);

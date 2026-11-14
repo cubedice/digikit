@@ -182,13 +182,14 @@ static void diagram_envelope(uint8_t *b,const CvDisplay *d,int fm)
     int x2=x0+(int)(total?(available*(attack+decay)+total/2)/total:0);
     int end=71,x3=total?end-(int)((available*release+total/2)/total):end;
     if(fm) {
-        /* Keep the peak and sustain/release corner fixed. The outer attack
-         * and release feet move independently; decay changes only its knee. */
+        /* Attack/release only move their feet. Decay moves the sustain
+         * segment as a whole, keeping its length fixed. */
         uint32_t amax=canopy_env_weight[0][127]-canopy_env_weight[0][0];
         uint32_t rmax=canopy_env_weight[1][127]-canopy_env_weight[1][0];
-        x1=48; x3=98;
+        x1=48;
         x0=x1-(int)((24*attack+amax/2)/amax);
-        x2=x1+(int)((42*decay+amax/2)/amax);
+        x2=x1+(int)((34*decay+amax/2)/amax);
+        x3=x2+16;
         end=x3+(int)((23*release+rmax/2)/rmax);
     }
     if(x3>end) x3=end;
