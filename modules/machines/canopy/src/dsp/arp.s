@@ -258,6 +258,7 @@ _ca_stop_next:
     R0 = 0;
     DM(11, I2) = R0;
     DM(14, I2) = R0;
+    DM(37, I2) = R0; // clear the bounded missing-provider hold
     R0 = 2;
     DM(1, I2) = R0;
 _ca_render:
@@ -909,6 +910,13 @@ _ca_master_observe:
     DM(30, I2) = R0;
     JUMP _ca_disable_clock;
 _ca_master_lost:
+    // Keep the last accepted stopped-frame stamp across malformed/expired
+    // provider frames too. Otherwise a stale stopped frame could restart the
+    // arp immediately after the clock was rejected.
+    R0 = DM(26, I2);
+    R1 = 2;
+    COMP(R0, R1);
+    IF GE JUMP _ca_stopped_lost_stamp;
     R0 = 0;
     DM(26, I2) = R0;
     DM(30, I2) = R0;
@@ -927,9 +935,15 @@ _ca_fine:
     COMP(R0, R1);
     IF LT JUMP _ca_fine_version;
     R1 = DM(12, I1);
+    R1 = PASS R1;
+    IF EQ JUMP _ca_fine_absent;
     R2 = 0x400;
     R1 = R1 AND R2;
     IF NE JUMP _ca_stopped;
+    // Running phase is supplied directly; its bounded discontinuity check
+    // handles the elapsed gap. STOP needs the count until its stamp is checked.
+    R2 = 0;
+    DM(37, I2) = R2;
 _ca_fine_version:
     R1 = 4;
     COMP(R0, R1);
@@ -1045,10 +1059,45 @@ _ca_fine_observe:
     DM(33, I2) = R0;
     JUMP _ca_master_observe;
 
+// A rejected/missed transport frame carries no provider or STOP/expiry flags.
+// Preserve an observed, acquired, or stopped clock for at most two audio blocks
+// without advancing phase or scheduling a note; the next valid phase catches
+// up, subject to the stopped stamp or running discontinuity checks.
+// Explicit STOP and a present but expired provider never enter this path.
+_ca_fine_absent:
+    R0 = DM(26, I2);
+    R1 = 1;
+    COMP(R0, R1);
+    IF EQ JUMP _ca_fine_hold_status;
+    R1 = 2;
+    COMP(R0, R1);
+    IF NE JUMP _ca_master_lost;
+_ca_fine_hold_status:
+    R0 = DM(34, I2);
+    R1 = 1;
+    COMP(R0, R1);
+    IF EQ JUMP _ca_fine_hold;
+    R1 = 2;
+    COMP(R0, R1);
+    IF NE JUMP _ca_master_lost;
+_ca_fine_hold:
+    R0 = DM(37, I2);
+    R0 = R0 + 1;
+    DM(37, I2) = R0;
+    R1 = 2;
+    COMP(R0, R1);
+    IF LE JUMP _ca_render;
+    R0 = DM(26, I2);
+    R1 = 2;
+    COMP(R0, R1);
+    IF EQ JUMP _ca_stopped_lost_stamp;
+    JUMP _ca_master_lost;
+
 // An explicitly stopped transport still supplies its selected stock tempo.
 // Use the same musical phase units as the running clock (BPM*120*2/block),
-// retaining fractional BPM, triplet carry, swing and gates. Missing frames or
-// a lost external clock never authorize this path. State26=2 marks STOP mode.
+// retaining fractional BPM, triplet carry, swing and gates. A missing frame
+// never authorizes this path: only a valid stopped frame can catch up a short
+// gap. A lost external clock fails closed. State26=2 marks STOP mode.
 _ca_stopped:
     R0 = DM(12, I1);
     R1 = 0xd03;
@@ -1064,6 +1113,7 @@ _ca_stopped:
     COMP(R3, R1);
     IF GT JUMP _ca_master_lost;
     R0 = DM(4, I1);
+    R4 = 1;
     R1 = DM(26, I2);
     R2 = 2;
     COMP(R1, R2);
@@ -1073,9 +1123,11 @@ _ca_stopped:
     IF EQ JUMP _ca_stopped_recover;
     R1 = DM(29, I2);
     R1 = R0 - R1;
-    R2 = 1;
+    R2 = DM(37, I2);
+    R2 = R2 + 1;
     COMP(R1, R2);
     IF NE JUMP _ca_stopped_lost;
+    R4 = R1;
     JUMP _ca_stopped_fresh;
 _ca_stopped_recover:
     R1 = DM(29, I2);
@@ -1083,6 +1135,8 @@ _ca_stopped_recover:
     IF LE JUMP _ca_stopped_lost;
 _ca_stopped_fresh:
     DM(29, I2) = R0;
+    R1 = 0;
+    DM(37, I2) = R1;
     R0 = 2;
     DM(26, I2) = R0;
     DM(34, I2) = R0;
@@ -1092,6 +1146,7 @@ _ca_stopped_fresh:
     R0 = DM(_ca_controls);
     I1 = R0;
     R0 = LSHIFT R3 BY 1;
+    R0 = R0 * R4 (SSI);
     R1 = DM(8, I1);
     R0 = R0 * R1 (SSI);
     R1 = DM(10, I2);

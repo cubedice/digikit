@@ -1796,6 +1796,113 @@ def test_fine_master_backward_correction_loss_and_recovery(canopy):
     assert voices(r)[1][1] == 1
 
 
+def test_fine_master_short_provider_gap_preserves_grid_and_sequence(canopy):
+    """Two absent wire frames must not replay or advance a held chord early."""
+    controls = FINE[:8] + (8,) + FINE[9:]
+    continuous_state, gapped_state = 0x20050000, 0x20054000
+
+    def frame(block, ticks, available=True):
+        return {
+            **phase_position(ticks, block),
+            0: 5,
+            1: 96,
+            12: ((36000 << 16) | 0xB03) if available else 0,
+        }
+
+    notes = [note(1, 60), note(2, 64), note(3, 67)]
+    for state in (continuous_state, gapped_state):
+        for block in range(19):
+            first = canopy(notes if block == 0 else (), controls=controls,
+                           state=state, edits=frame(block, block * 300000))
+        assert first['state'][149] == 1 and first['state'][151] == 60
+    for block in range(19, 30):
+        ticks = block * 300000
+        uninterrupted = canopy(controls=controls, state=continuous_state, edits=frame(block, ticks))
+        intermittent = canopy(
+            controls=controls, state=gapped_state,
+            edits=frame(block, ticks, available=block not in (21, 22)),
+        )
+        if block in (21, 22):
+            assert intermittent['state'][173] == block - 20, (block, intermittent['state'][160:174])
+            assert intermittent['state'][170] == 2, (block, intermittent['state'][160:174])
+        if block >= 23:
+            assert intermittent['state'][149] == uninterrupted['state'][149], (block, intermittent['state'][136:174], uninterrupted['state'][136:174])
+            assert intermittent['state'][151] == uninterrupted['state'][151], block
+            assert intermittent['state'][146] == uninterrupted['state'][146], block
+    assert uninterrupted['state'][149] == intermittent['state'][149] == 2
+    assert uninterrupted['state'][151] == intermittent['state'][151] == 64
+
+
+def test_fine_master_short_gaps_during_initial_observation_acquire(canopy):
+    """A fresh boundary can acquire after short gaps without an early note."""
+    controls = presentation_controls(base=FINE)
+    reference_state, gapped_state = 0x20050000, 0x20054000
+    notes = [note(1, 60), note(2, 64), note(3, 67)]
+    for block in range(19):
+        for state in (reference_state, gapped_state):
+            missing = state == gapped_state and block in (4, 5, 10, 11, 16, 17)
+            timing = {**phase_position(block * 300000, block), 0: 5, 1: 96,
+                      12: 0 if missing else (36000 << 16) | 0xB03}
+            result = canopy(notes if block == 0 else (), controls=controls,
+                            state=state, edits=timing,
+                            state_edits={188: 0} if missing else None)
+            if block < 18:
+                assert result['state'][149] == 0
+                if missing:
+                    assert result['state'][170] == 1
+                    assert not result['status'][2] & 0x40000000
+                    assert (result['status'][10] >> 8) & 255 == 1
+            else:
+                assert result['state'][149] == 1 and result['state'][151] == 60
+                assert result['state'][170] == 2
+
+
+def test_fine_master_missing_provider_before_acquisition_fails_closed(canopy):
+    controls = presentation_controls(base=FINE)
+    result = canopy(
+        [note(1, 60)], controls=controls,
+        edits={**phase_position(0, 0), 0: 5, 1: 96, 12: 0},
+    )
+    assert result['state'][173] == 0
+    assert result['state'][170] == 3 and result['state'][147] == 0
+    assert result['state'][149] == 0
+
+
+@pytest.mark.parametrize('transition', ['expired', 'stop', 'long', 'discontinuity'])
+def test_fine_master_provider_gap_remains_bounded(canopy, transition):
+    """The hold cannot turn STOP, expiry or a bad clock into a local clock."""
+    controls = presentation_controls(base=FINE)
+    tempo = 36000 << 16
+
+    def frame(block, ticks, flags):
+        return {**phase_position(ticks, block), 0: 5, 1: 96, 12: flags}
+
+    canopy([note(1, 60)], controls=controls, edits=frame(0, 0, tempo | 0xB03))
+    started = canopy(controls=controls, edits=frame(1, 5400000, tempo | 0xB03))
+    assert started['state'][149] == 1 and started['state'][170] == 2
+    held = canopy(controls=controls, edits=frame(2, 5472000, 0))
+    assert held['state'][173] == 1 and held['state'][149] == 1
+    assert (held['status'][10] >> 8) & 255 == 2
+    if transition == 'long':
+        held = canopy(controls=controls, edits=frame(3, 5544000, 0))
+        assert held['state'][173] == 2 and held['state'][170] == 2
+        result = canopy(controls=controls, edits=frame(4, 5616000, 0))
+        assert result['state'][173] == 0 and result['state'][170] == 3
+        assert result['state'][147] == 0
+    elif transition == 'expired':
+        result = canopy(controls=controls, edits=frame(3, 5544000, tempo | 0xB00))
+        assert result['state'][173] == 0 and result['state'][170] == 3
+        assert result['state'][147] == 0
+    elif transition == 'stop':
+        result = canopy(controls=controls, edits=frame(3, 5544000, tempo | 0xF00))
+        assert result['state'][173] == 0 and result['state'][162] == 2
+        assert result['state'][170] == 2
+    else:
+        result = canopy(controls=controls, edits=frame(3, 7200000, tempo | 0xB03))
+        assert result['state'][173] == 0 and result['state'][170] == 1
+        assert result['state'][147] == 0 and result['state'][149] == 1
+
+
 def test_fine_master_swing_and_tempo_change(canopy):
     controls = FINE[:8] + (4,) + FINE[9:12] + (50,) + FINE[13:]
     serial, ticks, onsets = 0, 0, []
@@ -1931,6 +2038,73 @@ def test_pattern_arp_stopped_missing_frame_does_not_catch_up(canopy):
     assert r["state"][149] == 1 and r["state"][147] == 0
     r = canopy(controls=FINE, edits=stopped_pattern(21))
     assert r["state"][149] == 2 and r["state"][146] == 0
+
+
+def test_pattern_arp_stopped_short_provider_gaps_preserve_tempo_and_sequence(canopy):
+    controls = presentation_controls(base=FINE[:8] + (8,) + FINE[9:])
+    reference, gapped = 0x20050000, 0x20054000
+    notes = [note(1, 60), note(2, 64), note(3, 67)]
+    # Cross the 50% gate and the next onset with absent provider frames.
+    gaps = {9, 10, 18, 19, 37, 38}
+    for block in range(42):
+        timing = stopped_pattern(block, 36000)
+        expected = canopy(notes if block == 0 else (), controls=controls,
+                          state=reference, edits=timing)
+        actual = canopy(notes if block == 0 else (), controls=controls,
+                        state=gapped, edits={**timing, 12: 0} if block in gaps else timing)
+        if block in gaps:
+            assert actual['state'][170] == 2
+            if block == 19:
+                assert expected['state'][137] == 0 and actual['state'][137] == 1
+            if block == 38:
+                assert expected['state'][149] == 2 and actual['state'][149] == 1
+        else:
+            assert actual['state'][170] == 2
+            assert actual['state'][146] == expected['state'][146], block
+            assert actual['state'][149] == expected['state'][149], block
+            assert actual['state'][151] == expected['state'][151], block
+            if block in (20, 39):
+                assert actual['state'][137] == expected['state'][137]
+    assert actual['state'][149] == 2 and actual['state'][151] == 64
+
+
+@pytest.mark.parametrize('transition', ['long', 'expired', 'invalid_tempo', 'stale', 'stamp_jump'])
+def test_pattern_arp_stopped_provider_gap_fails_closed(canopy, transition):
+    controls = presentation_controls(base=FINE)
+    canopy([note(1, 60)], controls=controls, edits=stopped_pattern(0))
+    first = canopy(controls=controls, edits={**stopped_pattern(1), 12: 0})
+    assert first['state'][170] == 2 and first['state'][149] == 1
+    if transition == 'long':
+        canopy(controls=controls, edits={**stopped_pattern(2), 12: 0})
+        result = canopy(controls=controls, edits={**stopped_pattern(3), 12: 0})
+    elif transition == 'expired':
+        result = canopy(controls=controls, edits={**stopped_pattern(2), 12: (14400 << 16) | 0x700})
+    elif transition == 'invalid_tempo':
+        result = canopy(controls=controls, edits=stopped_pattern(2, 36001))
+    elif transition == 'stale':
+        result = canopy(controls=controls, edits=stopped_pattern(0))
+    else:
+        result = canopy(controls=controls, edits=stopped_pattern(4))
+    assert result['state'][170] == 3
+    assert result['state'][147] == 0 and result['state'][149] == 1
+
+
+@pytest.mark.parametrize('flags', [
+    (14400 << 16) | 0x700,  # stopped, but expired
+    (36001 << 16) | 0xF00,  # stopped, but tempo is invalid
+    (14400 << 16) | 0xB00,  # running provider lacks valid clock flags
+])
+def test_pattern_arp_stopped_bad_provider_cannot_restart_stale_frame(canopy, flags):
+    controls = presentation_controls(base=FINE)
+    initial = canopy([note(1, 60)], controls=controls, edits=stopped_pattern(10))
+    assert initial['state'][149] == 1 and initial['state'][170] == 2
+    rejected = canopy(controls=controls, edits={**stopped_pattern(11), 12: flags})
+    assert rejected['state'][170] == 3 and rejected['state'][147] == 0
+    for _ in range(3):
+        stale = canopy(controls=controls, edits=stopped_pattern(10))
+        assert stale['state'][170] == 3 and stale['state'][149] == 1
+    fresh = canopy(controls=controls, edits=stopped_pattern(11))
+    assert fresh['state'][170] == 2 and fresh['state'][149] == 2
 
 
 @pytest.mark.parametrize("frames", [[10, 10, 10, 10], [9, 10, 9, 10]])

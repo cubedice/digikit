@@ -78,6 +78,38 @@ overwritten, reused, or copied. A settings record keyed by track or by project
 slot would therefore conflate different Sounds and cannot be presented as
 native Sound persistence. See [finding 110](../findings/110-project-identity.md).
 
+## Runtime ownership investigation
+
+DTII 1.17 saves a Sound through `0x400dba94(record, sound, flag)`. Its first
+parameter permutation entry is zero, so it writes runtime parameter 0 to
+record `+0x1c`; the 21 proposed extension slots do not include this slot.
+The stock loader repeatedly writes parameter 0 from padding while reading a
+record. A proposed in-memory handle there would therefore need to be installed
+only after a successful load and removed from the serialized dummy slot after
+a save. The handle must never be assumed valid merely because a Sound address
+matches an earlier object.
+
+The live 1.17 kit table begins at `0x426532b8` with `0x5574` bytes per kit;
+its Sounds have `0x450`-byte stride. The live Sound pool is addressed at
+`0x4291377a + index * 0x450`. These ranges are not a complete list of owners:
+at `0x4005339c` the firmware allocates a heap object and copies a full Sound
+into it, and the pattern undo path at `0x400443be` copies a complete kit into
+heap-backed storage. Other paths use stack-local Sound copies, such as
+`0x40045686` and `0x400456ae`. A Sound handle naturally follows those raw
+copies, but immutable snapshots and copy-on-write alone do not say when a
+snapshot can be reclaimed. Scanning only the live kit and pool tables could
+reclaim a snapshot that an undo or clipboard object still holds.
+
+One snapshot path (`0x40047dd0` through `0x40047eb2`) copies a Sound, then
+conditionally substitutes locked values for indices 0 through 70. Its getter
+at `0x400405ce` accepts index 0. A handle in parameter 0 is therefore not yet
+proved to survive every stock Sound operation. Parameter indices 69 and 70
+are not an alternative: DigiKit's FX-send implementation uses both. The
+remaining design must identify and bound all copied owners, handle allocation
+failure and reuse without aliases, and verify boot ordering; loading may occur
+before the instrument's dynamic type is registered. These observations are
+static reads of the 1.17 image, not runtime proof.
+
 ## Required proof before integration
 
 1. Identify Sound-owned RAM and serialized storage that can hold the complete

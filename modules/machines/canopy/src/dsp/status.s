@@ -119,6 +119,18 @@ _cu_clock_stopped_legacy:
     DM(195, I2) = R1;
     JUMP _cu_clock_pack;
 _cu_clock_missing:
+    // A one- or two-block provider hold retains the acquired phase and gate.
+    // The scheduler fails closed and clears this marker on a longer outage.
+    R1 = DM(173, I2);
+    R1 = PASS R1;
+    IF EQ JUMP _cu_clock_missing_unheld;
+    R1 = DM(170, I2);
+    R2 = 2;
+    COMP(R1, R2);
+    IF NE JUMP _cu_clock_missing_unheld;
+    R6 = 2;
+    JUMP _cu_clock_pack;
+_cu_clock_missing_unheld:
     R1 = DM(195, I2);
     R1 = PASS R1;
     R2 = 3;
