@@ -151,14 +151,14 @@ fn repeated_or_zero_lease_poison_owner_without_further_provider_calls() {
 
 #[test]
 fn stale_release_and_boot_invalidation_never_retry_or_reclaim() {
-    let mut driver = Driver::new(api(), Box::leak(Box::new([0; 256])));
+    let mut driver = Driver::new(api(), Box::leak(Box::new([0; crate::instrument_image::CHUNK])));
     assert_eq!(driver.claim_link(), Ok(true));
     STATE.with_borrow_mut(|s| s.release_result = -2);
     assert_eq!(driver.release_link(), Err(Error::Uncertain));
     assert_eq!(driver.claim_link(), Err(Error::Uncertain));
     assert_eq!(driver.release_link(), Err(Error::Uncertain));
     STATE.with_borrow(|s| assert_eq!(s.calls, [1, 1, 0, 0]));
-    let mut driver = Driver::new(api(), Box::leak(Box::new([0; 256])));
+    let mut driver = Driver::new(api(), Box::leak(Box::new([0; crate::instrument_image::CHUNK])));
     assert_eq!(driver.claim_link(), Ok(true));
     driver.invalidate_boot();
     assert_eq!(driver.release_link(), Err(Error::Uncertain));

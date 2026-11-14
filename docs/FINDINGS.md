@@ -244,3 +244,7 @@ CANOPY recording: [held-trig page, live chords and step recording](findings/125-
 (**[D]**, sequencer byte +0x268 is the held-trig edit mark, not another
 context; recording modes; the pattern's per-step note list; recorded chords
 as chord-note locks; how step recording takes keyboard notes **[O]**).
+
+CANOPY loading: [boot transfers and their size](findings/126-canopy-boot-loading.md)
+(**[D]/[O]**, larger acknowledged image transfers reduce loader scheduling
+overhead; physical boot-time improvement not yet measured).

@@ -5,7 +5,9 @@ use crate::instrument_admission::Grant;
 use crate::instrument_load::{Command, Loads};
 use crate::instrument_registry::{Error as LoadError, Ticket};
 
-const CHUNK: usize = 256;
+/// Larger transfers amortize the UI task's scheduling and acknowledgement
+/// overhead while keeping the link's in-flight source bounded and stable.
+pub const CHUNK: usize = 4096;
 static ZERO: [u8; CHUNK] = [0; CHUNK];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

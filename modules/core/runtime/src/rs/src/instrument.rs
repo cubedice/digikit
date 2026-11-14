@@ -18,8 +18,8 @@ static mut OWNER: Option<Owner> = None;
 #[used]
 static mut EXPECT_SESSION: Option<ExpectSession> = None;
 #[repr(C, align(16))]
-struct Buffer([u8; 256]);
-static mut BUFFER: Buffer = Buffer([0; 256]);
+struct Buffer([u8; dkrt_sdk::instrument_image::CHUNK]);
+static mut BUFFER: Buffer = Buffer([0; dkrt_sdk::instrument_image::CHUNK]);
 
 /// Emulator-only bootstrap diagnostic: phase (idle/acquire/bind/release/bound/
 /// blocked), token, start tick. No retry, admission, or capability publication.

@@ -20,7 +20,7 @@ fn setup(image_bytes: u32, bss_bytes: u32) -> (Loads, Ticket, Grant, [u32; 2], [
             ticket,
             &mut Ledger {
                 base: 0x20010000,
-                bytes: 1024,
+                bytes: if image_bytes > 1024 { (CHUNK * 3) as u32 } else { 1024 },
                 offsets: &mut offsets,
                 lengths: &mut lengths,
             },
@@ -36,10 +36,10 @@ fn setup(image_bytes: u32, bss_bytes: u32) -> (Loads, Ticket, Grant, [u32; 2], [
 }
 #[test]
 fn instrument_image_retries_and_clears_bss_before_initialization() {
-    let (mut loads, t, grant, _, _) = setup(300, 300);
-    let image = [0x5a; 300];
+    let (mut loads, t, grant, _, _) = setup((CHUNK + 44) as u32, 300);
+    let image = [0x5a; CHUNK + 44];
     let receipt = crate::instrument_mailbox::Installed::test_receipt(t);
-    let mut memory = [0xee; 640];
+    let mut memory = [0xee; CHUNK + 384];
     let mut transfer = Transfer::begin(&mut loads, t, &grant, &image, true).unwrap();
     assert_eq!(transfer.finish(&mut loads, &receipt), Err(Error::NotReady));
     let mut writes = 0;
@@ -52,10 +52,10 @@ fn instrument_image_retries_and_clears_bss_before_initialization() {
         assert_eq!(transfer.acknowledged(&loads, ack), Err(Error::WrongAck));
         writes += 1;
     }
-    assert_eq!(writes, 4);
-    assert_eq!(&memory[..300], &image);
-    assert!(memory[300..600].iter().all(|&b| b == 0));
-    assert!(memory[600..].iter().all(|&b| b == 0xee));
+    assert_eq!(writes, 3);
+    assert_eq!(&memory[..image.len()], &image);
+    assert!(memory[image.len()..image.len() + 300].iter().all(|&b| b == 0));
+    assert!(memory[image.len() + 300..].iter().all(|&b| b == 0xee));
     assert!(transfer.install_ticket(&loads).is_ok());
     let other = loads
         .reserve(
