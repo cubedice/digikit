@@ -94,6 +94,27 @@ test('CANOPY runs on any track, and up to four instances play at once', async ()
   const NONE = 0xffffffff;
   const tracks = () => Promise.all([0, 1, 2, 3].map((i) => cf('ip_tracks', i)));
   const phases = () => Promise.all([0, 1, 2, 3].map((i) => cf('ip_control', i * 8)));
+  // IsStatus is 638 bytes on the two-byte-aligned ColdFire ABI: 632 bytes
+  // of words, five validity bytes, and one byte of trailing padding.
+  const statusOf = async (slot: number) => {
+    const base = planSymbol(plan, 'src_status') + slot * 638;
+    return {
+      track: await word(base + 4),
+      block: await word(base + 16),
+      reportedTrack: (await word(base + 20)) & 15,
+      valid: (await word(base + 632)) >>> 24,
+    };
+  };
+  const expectLiveStatus = async (slot: number, track: number) => {
+    await expect
+      .poll(() => statusOf(slot), { timeout: 30_000 })
+      .toMatchObject({ track, reportedTrack: track, valid: 1 });
+    const first = await statusOf(slot);
+    await waitEmulated(session, 500);
+    const second = await statusOf(slot);
+    expect(second).toMatchObject({ track, reportedTrack: track, valid: 1 });
+    expect(second.block, `track ${track + 1} status stream advances`).toBeGreaterThan(first.block);
+  };
   const dspTrack = async () => (await peek(planSymbol(plan, '_iv_track'), 4)).readUInt32LE();
   const { tap: key, edge } = acknowledgedPanel(session);
   const artifacts = path.join(root, 'out/canopy-any-track');
@@ -283,6 +304,7 @@ test('CANOPY runs on any track, and up to four instances play at once', async ()
     expect((await voicesOf(1)).filter((v) => v.gate === 1).length, 'track 1 still holds its panel note').toBe(1);
     // Both tracks' voices rendered through their own slots in the same frame.
     await expect.poll(pairs, { timeout: 30_000 }).toEqual([1, 1]);
+    await expectLiveStatus(1, 0);
     await session.client.call('pcm.tap', { action: 'capture', path: multiCapture });
     capturing = true;
     await session.client.call('pcm.tap', { action: 'start' });
@@ -343,9 +365,11 @@ test('CANOPY runs on any track, and up to four instances play at once', async ()
   await selectTrack(7);
   await key('SRC');
   await expect.poll(focus, { timeout: 30_000 }).toBe(3);
+  await expectLiveStatus(3, 6);
   await selectTrack(11);
   await key('SRC');
   await expect.poll(focus, { timeout: 30_000 }).toBe(0);
+  await expectLiveStatus(0, 10);
   // Loading a preset resets one instance while other configurations and the
   // status stream are active. Every track must become playable again.
   const menu = menuSelection(session, plan, 'core/instrument-play', key);

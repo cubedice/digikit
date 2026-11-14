@@ -7039,7 +7039,7 @@
   },
   {
    "addend": 0,
-   "offset": 162,
+   "offset": 166,
    "section": ".text.is_poll",
    "symbol": ".sec..text.is_receive",
    "type": "cf.32"
@@ -16162,10 +16162,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffb848d7441c2c6f004c42af00144a2e027c6710202f005090ae026c0c8000000095633e42ae02784283280f7442068400000018486f00144878000c2f04206f00604e904fef000c4a80661a70012d6f0050026c1d40027c4cd7441c4fef00484e75760160c472fdb280660e42ae0278428353824a8266bc6006720cb2806708420042ae027860cc4a8367e6307c00e0b1ef001465dc2f2e026c2f042f0e4eb9000000004fef000c60c8",
+   "hex": "4fefffb848d7441c2c6f004c42af00144a2e027c6710202f005090ae026c0c8000000095634242ae02784283280f243c00000082068400000018486f00144878000c2f04206f00604e904fef000c4a80661a70012d6f0050026c1d40027c4cd7441c4fef00484e75760160c072fdb280660e42ae0278428353824a8266bc6006720cb2806708420042ae027860cc4a8367e6307c00e0b1ef001465dc2f2e026c2f042f0e4eb9000000004fef000c60c8",
    "kind": "text",
    "name": ".text.is_poll",
-   "size": 172
+   "size": 176
   },
   {
    "align": 2,
@@ -17379,7 +17379,7 @@
    "size": 128
   }
  ],
- "source_sha256": "6e01a0dfdb27e11164f118e650ebd977714f8408e95af11efe474ea736eded53",
+ "source_sha256": "c77983292dcfeb554fc5c52b4a8446e860cb965272cf4e299b1a7fae1e63f1b5",
  "symbols": [
   {
    "global": false,
@@ -22451,7 +22451,7 @@
   "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
   "instructions_redecoded": "15949",
-  "isa_check": "d79b6f8570dadb2ee6b35b9cbae947d1c40b96367b9e5e155294203c4bae39fb",
+  "isa_check": "3eba13912229df72f620c01b4ab14455ea8f298d914e29430121d8b9d27b08f0",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

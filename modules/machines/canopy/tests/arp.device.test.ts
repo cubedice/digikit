@@ -283,6 +283,28 @@ test('CANOPY arp uses pattern tempo and plays held keys while stopped', { timeou
   await expect.poll(async () => (await arp()).serial, { timeout: 90_000 }).toBeGreaterThan(playing.serial + 3);
   log.playing = { before: playing, after: await arp(), flags: await inputFlags() };
   expect((await arp()).mode, 'moving SRC level keeps the playing arp synchronized').toBe(1);
+  // Measure running tempo, not just whether the serial advances. The block
+  // stamp is the last committed pattern boundary, so each endpoint can lag
+  // by at most one 1/16 boundary. Also verify the actual chord note advances:
+  // repeated phrase resets can increment serial while replaying the root.
+  await srcPage(1);
+  for (const restart of [0, 2]) {
+    await encoderValue(
+      (delta) => turn(6, delta),
+      () => settled(11),
+      restart,
+    );
+    await expect.poll(async () => (await arp()).status, { timeout: 90_000 }).toBe(2);
+    const first = await arp();
+    await expect.poll(async () => (await arp()).serial, { timeout: 90_000 }).toBeGreaterThanOrEqual(first.serial + 8);
+    const last = await arp();
+    const count = last.serial - first.serial;
+    const expected = (count * 90000) / (180 * 4);
+    expect(Math.abs(last.block - first.block - expected), `running mode ${restart} tempo`).toBeLessThan(150);
+    expect(notes, `running mode ${restart} first note belongs to the held chord`).toContain(first.note);
+    expect(notes[(notes.indexOf(first.note) + count) % notes.length], `running mode ${restart} note order`).toBe(last.note);
+    log[`playingRestart${restart}`] = { first, last, expected };
+  }
   await key('STOP');
   await expect.poll(async () => (await arp()).mode, { timeout: 30_000 }).toBe(2);
   const stoppedAgain = await arp();

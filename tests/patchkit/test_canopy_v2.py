@@ -1836,6 +1836,31 @@ def test_pattern_arp_plays_stopped_at_fractional_stock_tempo(canopy, tempo, rate
     assert r["state"][162] == r["state"][170] == 2
 
 
+@pytest.mark.parametrize("restart", [0, 2])
+def test_stopped_arp_advances_with_stable_phrase_and_only_restarts_on_new_phrase(
+    canopy, restart
+):
+    controls = FINE[:8] + (8,) + FINE[9:14] + (restart, 0)
+    timing = {**stopped_pattern(tempo=21600), 18: 0x80000001}
+    r = canopy(
+        [note(1, 60), note(2, 64), note(3, 67)],
+        controls=controls,
+        edits=timing,
+        blocks=190,
+        advance_clock=True,
+    )
+    assert r["state"][149] == 4
+    assert r["state"][151] == 60
+    r = canopy(
+        controls=controls,
+        edits={**stopped_pattern(190, 21600), 18: 0x80000002},
+    )
+    if restart == 0:
+        assert r["state"][149] == 5 and r["state"][151] == 60
+    else:
+        assert r["state"][149] == 4
+
+
 def test_pattern_arp_stopped_gate_swing_live_tempo_and_note_release(canopy):
     controls = FINE[:8] + (4,) + FINE[9:12] + (50,) + FINE[13:]
     r = canopy(

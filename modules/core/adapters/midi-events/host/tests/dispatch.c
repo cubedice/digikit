@@ -182,11 +182,18 @@ uint32_t mi_test_dispatch(void)
         CHECK(mi_status_reply(ui,14,&age)==0);
         /* Identical wire heartbeat is not published twice. */
         publish_reply(queue,record,r,0); CHECK(mi_status_reply(ui,14,&age)==0);
-        for(uint32_t h=10;h<75;++h) { r[2]=h; publish_reply(queue,record,r,0); }
+        /* 100 status messages span 133 ms at the real 750 Hz maximum. A
+         * healthy UI pause inside the freshness deadline must not overflow. */
+        for(uint32_t h=10;h<110;++h) { r[2]=h; publish_reply(queue,record,r,0); }
+        for(uint32_t h=0;h<100;++h) {
+            CHECK(mi_status_reply(ui,14,&age)==12 && age==100-h);
+        }
+        CHECK(mi_status_reply(ui,14,&age)==0);
+        for(uint32_t h=110;h<239;++h) { r[2]=h; publish_reply(queue,record,r,0); }
         CHECK(mi_status_reply(ui,14,&age)==-3);
         CHECK(mi_status_reply(ui,14,&age)==12 && age==1);
         CHECK(mi_status_reply(ui,14,&age)==0);
-        r[2]=75; publish_reply(queue,record,r,0); /* queued at trust loss below */
+        r[2]=239; publish_reply(queue,record,r,0); /* queued at trust loss below */
         for(i=0;i<16;++i) r[i]=legacy[i];
     }
     /* A backwards, otherwise valid heartbeat invalidates registry trust even

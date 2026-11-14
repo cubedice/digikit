@@ -2086,7 +2086,7 @@ Use a 150 ms initial freshness threshold for matching fast telemetry, measured o
 The CF consumer conservatively timestamps queued messages at its previous empty
 FIFO poll, never at dequeue time. The first poll after selection, a 150 ms UI
 stall, or reported FIFO loss discards the backlog before establishing a new
-arrival-time lower bound. A drain is bounded to 66 reads (64 entries, a loss
+arrival-time lower bound. A drain is bounded to 130 reads (128 entries, a loss
 notification and the empty observation); failure to reach empty invalidates the
 bound. Audio-frame age is an additional rejection check, not a substitute for
 the independent UI clock. The native view must supply that clock before the

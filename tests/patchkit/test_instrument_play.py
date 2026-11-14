@@ -1555,6 +1555,38 @@ def test_slots_bind_by_hint_and_render_only_their_own_tracks(playback):
     assert owners[7] == owners[19] == 1
 
 
+def test_concurrent_slots_receive_same_clock_snapshot(playback):
+    """Track iteration must not advance, consume, or overwrite the shared clock."""
+    call, put, get, reset, configure, _, _ = playback
+    _four_instances(playback)
+    assert reset(track=3, slot=0) == 1
+    assert reset(track=9, slot=2) == 1
+    call(0)
+    assert configure(track=3) == 1
+    assert configure(track=9) == 1
+    put("_ir_process_flags", [1])
+    position = [
+        0x50504F53, 2, 30, 9, 7, 3, 0x43170000, 4, 16, 0,
+        100, 0, 100, 5, 1, 0, 101, 0, 30, 1,
+    ]
+    put("_pattern_position_info", position)
+    put("_pattern_clock_info", [0x50434C4B, 2, 12345, 12000, (14400 << 16) | 3, 101, 9, 7])
+    call(0)
+    first, third = _slot(get, 0), _slot(get, 2)
+    # Input[2] is track-specific; timing and clock phase are shared.
+    assert first[8 + 2] == 3 and third[8 + 2] == 9
+    for index in (4, 12, 13, 14, 15, 16, 19, 20, 21):
+        assert first[8 + index] == third[8 + index]
+    assert first[8 + 12] == (14400 << 16) | 0xB03
+    assert first[8 + 20 : 8 + 22] == [12345, 12000]
+    # A genuinely missed transport frame invalidates the same shared clock
+    # in both slots; processing one cannot repair or clear it for the other.
+    position[19] = 2
+    put("_pattern_position_info", position)
+    call(0)
+    assert _slot(get, 0)[8 + 12] == _slot(get, 2)[8 + 12] == 0
+
+
 def test_unbound_tracks_reject_configuration_and_events(playback):
     call, _, get, reset, configure, events, _ = playback
     _four_instances(playback)

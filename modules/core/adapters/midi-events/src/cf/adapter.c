@@ -22,7 +22,9 @@ static uint32_t frame_block;
 static uint32_t registry_reply[MT_REPLY_WORDS];
 static uint32_t registry_reply_valid;
 static MtReplyGuard registry_guard;
-enum { STATUS_QUEUE=64, STATUS_WORDS=12 };
+/* Status arrives at most once per two 32-sample frames (750/s at 48 kHz).
+ * Cover the UI receiver's 150 ms freshness window even during busy redraws. */
+enum { STATUS_QUEUE=128, STATUS_WORDS=12 };
 static uint32_t status_words[STATUS_QUEUE][STATUS_WORDS],status_at[STATUS_QUEUE];
 static uint32_t status_head,status_count,status_lost;
 

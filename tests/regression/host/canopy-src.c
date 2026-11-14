@@ -294,12 +294,16 @@ int main(int argc,char **argv)
         assert(!status.fast_valid && status.poll_valid && !queued);
         queued=1; is_poll(&status,120,read_status);
         assert(status.fast_at==100 && is_fresh(&status,249) && !is_fresh(&status,250));
+        /* A 133 ms UI gap can accumulate 100 status messages. The bounded
+         * consumer must drain all of them and retain the arrival bound. */
+        queued=100; is_poll(&status,253,read_status);
+        assert(!queued && status.fast_valid && status.fast_at==120 && status.poll_valid);
         /* A stopped audio callback cannot age the queued frame counter. A UI
          * stall must nevertheless discard it, without stamping it fresh. */
-        queued=1; is_poll(&status,300,read_status); assert(!status.fast_valid);
-        queued=1; is_poll(&status,310,read_status); assert(status.fast_at==300);
-        queue_age=225; queued=1; is_poll(&status,320,read_status);
-        assert(status.fast_at==300);
+        queued=1; is_poll(&status,403,read_status); assert(!status.fast_valid);
+        queued=1; is_poll(&status,413,read_status); assert(status.fast_at==403);
+        queue_age=225; queued=1; is_poll(&status,423,read_status);
+        assert(status.fast_at==403);
     } else if(!strcmp(scenario,"poll-loss")) {
         start(); is_poll(&status,100,read_status);
         queued=1; is_poll(&status,110,read_status); assert(status.fast_valid);
