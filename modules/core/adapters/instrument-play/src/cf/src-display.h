@@ -15,6 +15,9 @@ typedef struct {
  * by their firmware owners; this code never invents a second TUNE/LEVEL scale. */
 void cv_build(CvDisplay *,const CsState *,const IsStatus *,uint32_t now_ms,
     const char *native_tune,const char *native_level,int save_error);
+void cv_build_owner(CvDisplay *,const CsState *,const IsStatus *,uint32_t now_ms,
+    const char *native_tune,const char *native_level,int save_error,uint32_t owner_mode);
+void cv_preview_notes(CvDisplay *,const uint8_t *pitches,uint32_t count);
 /* Four-byte output including terminator, or five for C#-1. MIDI zero is valid. */
 void cv_note(char out[6],uint32_t note,int valid);
 /* Full native toast text for a custom edit; never used for native TUNE/LEV. */

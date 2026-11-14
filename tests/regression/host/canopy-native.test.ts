@@ -60,6 +60,7 @@ test.each([
   'diagrams',
   'tone',
   'wavetable-fm',
+  'chord-preview',
   'fm-envelope',
   'fm-presentation',
   'routing',

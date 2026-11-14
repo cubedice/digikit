@@ -10,7 +10,7 @@ export interface InstrumentLoadProgress {
  * interpreter or RPC. The enclosing test supplies the total wall-time bound. */
 export async function waitInstrumentReady(
   word: (symbol: string, index: number) => Promise<number>,
-  { hangMs = 60_000, pollMs = 1000 } = {},
+  { hangMs = 30_000, pollMs = 250 } = {},
 ): Promise<InstrumentLoadProgress> {
   let last: InstrumentLoadProgress | undefined;
   let marker: string | undefined;
@@ -37,7 +37,7 @@ export async function waitInstrumentReady(
       throw new Error(`Instrument load failed: ${JSON.stringify(current)}`);
     }
     // DlLink words: accepted request identity, acknowledged chunk count, END
-    // frames remaining. Individual 256-byte writes reset their chunk counters.
+    // frames remaining. Each acknowledged image write resets its chunk counters.
     const next = JSON.stringify([current.file[0], current.link[18], current.link[8], current.link[15]]);
     if (next !== marker) {
       marker = next;

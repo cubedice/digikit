@@ -44,6 +44,8 @@ int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8]);
  * accepted keyboard settings and normal ownership of all generated voices.
  * Chord-note locks (IDs 53..55) make that note play its recorded chord. */
 int kb_process_locked(KbState *s,const MiEvent *in,uint32_t count,MiEvent out[8]);
+/* Resolve a held trig in caller-owned scratch without changing live voices. */
+int kb_preview_locked(KbState *scratch,uint8_t note,const uint16_t *locks,uint32_t count,uint8_t pitches[4]);
 int kb_learn_begin(KbState *s);
 int kb_learn_save(KbState *s, uint32_t session, uint32_t revision);
 void kb_learn_cancel(KbState *s);

@@ -40,21 +40,25 @@ def test_zero_attack_pad_matches_short_declick_pcm(
     def render(attack):
         synth = make_canopy(canopy_object)
         amp = native_amp(mode=mode, attack=attack, sustain=1, options=options)
-        return [
+        blocks = [
             synth(
                 [note(1, 60, velocity=127)],
                 controls=source_controls(family, 0),
                 native=amp,
                 post_amp=True,
-            ),
-            synth(controls=source_controls(family, 0), native=amp, post_amp=True),
+            )
         ]
+        blocks.extend(
+            synth(controls=source_controls(family, 0), native=amp, post_amp=True)
+            for _ in range(7)
+        )
+        return blocks
 
-    instant, reference = render(1), render(1 / 64)
+    instant, reference = render(1), render(1 / 256)
     assert [block["out"] for block in instant] == [block["out"] for block in reference]
     gains = [wt_float(word) for block in instant for word in block["common_amp"]]
     assert gains == pytest.approx(
-        [min(1, (i + options * 0.5) / 64) for i in range(64)], abs=1e-7
+        [min(1, (i + options * 0.5) / 256) for i in range(256)], abs=1e-7
     )
 
 
@@ -91,24 +95,24 @@ def test_zero_attack_arp_matches_short_declick_pcm(
                 native=native_amp(mode=mode, attack=attack, sustain=1, options=options),
                 post_amp=True,
             )
-            for _ in range(2)
+            for _ in range(7)
         )
         assert blocks[0]["state"][136] != 0
         assert set(voices(blocks[-1])) == {1}
         return blocks
 
     instant = render(1)
-    reference = render(1 / 128)
+    reference = render(1 / 256)
     assert [block["out"] for block in instant] == [block["out"] for block in reference]
     samples = [wt_float(word) for block in instant for word in block["out"]]
     assert all(math.isfinite(sample) and abs(sample) < 1 for sample in samples)
     peak = max(abs(sample) for sample in samples)
     assert peak > 0.005
-    # The first sample is silent, or <=1/128 of the instantaneous waveform
+    # The first sample is silent, or <=1/256 of the instantaneous waveform
     # under stock restart initialization; both eliminate a full-level edge.
     assert abs(samples[0]) < peak / 32
     gains = [wt_float(word) for block in instant for word in block["common_amp"]]
-    expected = [min(1, (i + options * 0.5) / 128) for i in range(96)]
+    expected = [min(1, (i + options * 0.5) / 256) for i in range(256)]
     assert gains == pytest.approx(expected, abs=1e-7)
     record_property("peak", peak)
     record_property("initial_jump", abs(samples[0]))
@@ -118,7 +122,7 @@ def test_zero_attack_arp_matches_short_declick_pcm(
     )
 
 
-@pytest.mark.parametrize("attack", [1 / 256, 1 / 1024])
+@pytest.mark.parametrize("attack", [1 / 512, 1 / 1024])
 @pytest.mark.parametrize("options", [0, 1])
 def test_arp_retains_slower_selected_attack_and_pad_minimum(canopy, attack, options):
     controls = source_controls("additive", 127)
@@ -141,13 +145,13 @@ def test_arp_retains_slower_selected_attack_and_pad_minimum(canopy, attack, opti
         native=native_amp(attack=1, sustain=1, options=options),
         state=0x20054000,
     )
-    assert wt_float(voices(r)[2][7]) == pytest.approx(0.5 + options / 128)
+    assert wt_float(voices(r)[2][7]) == pytest.approx(0.125 + options / 512)
 
 
 def test_arp_onset_guard_does_not_change_adsr_release(canopy):
     controls = source_controls("additive", 127)
     amp = native_amp(attack=1, sustain=1, release=0.99)
-    canopy([note(1, 60)], controls=controls, native=amp, blocks=4)
+    canopy([note(1, 60)], controls=controls, native=amp, blocks=8)
     r = canopy(controls=controls, native=amp, state_edits={146: 45000})
     assert r["state"][137] == 0
     assert [wt_float(word) for word in r["amp_curve"]] == pytest.approx(
@@ -160,12 +164,12 @@ def test_arp_ahd_tail_keeps_partial_onset_when_replaced(canopy):
     controls = source_controls("additive", 127)
     amp = native_amp(mode=1, attack=1, hold=1000)
     first = canopy([note(1, 60)], controls=controls, native=amp)
-    assert wt_float(first["state"][143]) == 0.25
+    assert wt_float(first["state"][143]) == 0.125
     second = canopy(controls=controls, native=amp, state_edits={146: 89999})
     tail = next(slot for slot in (4, 5) if second["state"][slot * 8 + 1] & 4)
-    assert wt_float(second["state"][tail * 8 + 7]) == 0.5
+    assert wt_float(second["state"][tail * 8 + 7]) == 0.25
     # The saved tail continues its ramp without jumping or restarting.
     assert [wt_float(word) for word in second["amp_curve"]] == pytest.approx(
-        [(32 + i) / 128 for i in range(32)], abs=1e-7
+        [(32 + i) / 256 for i in range(32)], abs=1e-7
     )
-    assert wt_float(second["state"][143]) == 0.25
+    assert wt_float(second["state"][143]) == 0.125

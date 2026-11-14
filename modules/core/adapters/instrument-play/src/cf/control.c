@@ -7,6 +7,7 @@
 #pragma GCC optimize ("no-jump-tables", "no-tree-loop-distribute-patterns")
 #endif
 #include <stdint.h>
+#include <stddef.h>
 #include <dk/ui.h>
 #include "keyboard.h"
 #include "preset.h"
@@ -562,11 +563,29 @@ void instrument_src_display_locked(CvDisplay *out,uint32_t now,const char *tune,
 {
     instrument_src_display(out,now,tune,level);
     CsState shown; lock_state(&shown,snapshot);
-    cv_build(out,&shown,STS(cur),now,tune,level,preset_result || storage_result);
+    cv_build_owner(out,&shown,STS(cur),now,tune,level,preset_result || storage_result,SRC(cur)->mode);
     out->locked=cv_lock_mask(&shown,snapshot);
     uint32_t sr=dkrt_irq_mask();
     cv_ownership(out,STS(cur),&cur->keyboard,now);
     dkrt_irq_restore(sr);
+}
+void instrument_src_preview_step(CvDisplay *out,const IlpSnapshot *snapshot,int32_t note)
+{
+    if(!snapshot || note<0 || note>127 || out->page || snapshot->count>MI_LOCKS) return;
+    /* Private UI scratch keeps held-step rendering out of live ownership. */
+    static KbState scratch;
+    uint32_t sr=dkrt_irq_mask();
+    /* Only configuration and chord templates precede keys. The preview resets
+     * its own key/voice ledger, so never copy that large live ledger while
+     * interrupts are masked. */
+    for(uint32_t i=0;i<offsetof(KbState,keys);++i)
+        ((volatile uint8_t *)&scratch)[i]=((const volatile uint8_t *)&cur->keyboard)[i];
+    dkrt_irq_restore(sr);
+    uint16_t locks[MI_LOCKS]; uint8_t pitches[4];
+    for(uint32_t i=0;i<snapshot->count;++i)
+        locks[i]=(uint16_t)((snapshot->pair[i].id<<10)|snapshot->pair[i].value);
+    int count=kb_preview_locked(&scratch,(uint8_t)note,locks,snapshot->count,pitches);
+    if(count>0) cv_preview_notes(out,pitches,(uint32_t)count);
 }
 static void status_pair(dk_ui_menu *m,const char *a,const char *b)
 {

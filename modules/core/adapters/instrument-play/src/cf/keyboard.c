@@ -279,6 +279,24 @@ int kb_process_locked(KbState *s,const MiEvent *in,uint32_t count,MiEvent out[8]
     if(voicing!=UINT32_MAX) s->voicing=old_voicing;
     return result;
 }
+int kb_preview_locked(KbState *s,uint8_t pitch,const uint16_t *locks,uint32_t count,uint8_t pitches[4])
+{
+    if(!s || !pitches || count>MI_LOCKS || (count && !locks) || s->mode==KB_LEARN) return -1;
+    kb_reset(s,1,1);
+    s->selector_base=255; s->selector_channel=MI_NONE;
+    MiEvent in; MiEvent out[8]; zero(&in,sizeof(in));
+    in.epoch=1; in.generation=1; in.token=1; in.kind=MI_NOTE_ON;
+    in.port=MI_PANEL; in.note=pitch; in.value=100; in.lock_valid=1; in.lock_count=(uint8_t)count;
+    for(uint32_t i=0;i<count;++i) in.locks[i]=locks[i];
+    int n=kb_process_locked(s,&in,1,out); if(n<0) return -1;
+    uint32_t found=0;
+    for(int i=0;i<n && found<4;++i) if(out[i].kind==MI_NOTE_ON) {
+        uint8_t p=out[i].note; uint32_t at=found++;
+        while(at && pitches[at-1]>p) { pitches[at]=pitches[at-1]; --at; }
+        pitches[at]=p;
+    }
+    return (int)found;
+}
 int kb_learn_begin(KbState *s)
 {
     if (s->mode==KB_LEARN || s->session==UINT32_MAX) return -1;

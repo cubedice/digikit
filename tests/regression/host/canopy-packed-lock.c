@@ -279,6 +279,14 @@ int main(void)
     input.locks[0]=(uint16_t)((53u<<10)|(48u-7u)); /* C below G */
     input.locks[1]=(uint16_t)((2u<<10)|84u);       /* COLOR, for the DSP */
     input.locks[2]=(uint16_t)((54u<<10)|(48u-3u)); /* E */
+    KbState preview=keyboard; uint8_t preview_notes[4]={0};
+    assert(kb_preview_locked(&preview,67,input.locks,3,preview_notes)==3);
+    assert(preview_notes[0]==60 && preview_notes[1]==64 && preview_notes[2]==67);
+    assert(keyboard.mode==KB_ROOT && keyboard.type==4 && !keyboard.keys[0].token);
+    preview=keyboard;
+    uint16_t chord_lock[2]={1,(uint16_t)((1u<<10)|1u)};
+    assert(kb_preview_locked(&preview,60,chord_lock,2,preview_notes)==3);
+    assert(preview_notes[0]==60 && preview_notes[1]==67 && preview_notes[2]==76);
     assert(kb_process_locked(&keyboard,&input,1,output)==3);
     assert(output[0].note==67 && output[1].note==60 && output[2].note==64);
     for(unsigned i=0;i<3;++i) assert(output[i].kind==MI_NOTE_ON && output[i].value==100);

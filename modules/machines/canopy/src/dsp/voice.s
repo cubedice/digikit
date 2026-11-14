@@ -830,26 +830,11 @@ _cp_amp_begin:
     R0 = DM(_cp_amp_input);
     I1 = R0;
     F6 = DM(25, I1);
-    // New pad notes can begin away from a zero crossing too, especially in FM
-    // and wavetable families. Limit very fast AMP attacks to 64 samples.
-    // Arp retriggers inherit an already-running phase and get 128 samples;
-    // both preserve slower selected attacks and copied arp tails.
-    F0 = 0.015625;
+    // Keep very fast onsets gradual even for a waveform already near its peak.
+    // A 256-sample minimum is 5.33 ms at 48 kHz; slower selected attacks and
+    // copied arp tails retain their own timing.
+    F0 = 0.00390625;
     F6 = MIN(F6, F0);
-    R0 = I0;
-    R1 = DM(_cp_amp_state);
-    R0 = R0 - R1;
-    R1 = 544;
-    COMP(R0, R1);
-    IF EQ JUMP _cp_amp_arp_attack;
-    R0 = DM(1, I0);
-    R1 = 4;
-    R0 = R0 AND R1;
-    IF EQ JUMP _cp_amp_attack_ready;
-_cp_amp_arp_attack:
-    F0 = 0.0078125;
-    F6 = MIN(F6, F0);
-_cp_amp_attack_ready:
     R0 = DM(26, I1);
     DM(_cp_amp_hold) = R0;
     F7 = DM(27, I1);

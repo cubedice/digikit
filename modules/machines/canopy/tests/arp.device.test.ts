@@ -132,6 +132,38 @@ test('CANOPY arp uses pattern tempo and plays held keys while stopped', { timeou
     for (let i = 0; i < 4 && (await cf('ip_src_debug', 1)) !== page; i++) await key('SRC');
     expect(await cf('ip_src_debug', 1)).toBe(page);
   };
+  // A held, manually placed step must preview its locked chord on KEYS,
+  // using the track's inherited NOTE rather than an invented default pitch.
+  await key(1); // TRIG parameter page
+  await waitEmulatedFrames(session, 4500); // let the page-change message clear
+  const pattern = await word(0x4316501c);
+  const byteAt = async (address: number) => ((await word(address & ~3)) >>> ((3 - (address & 3)) * 8)) & 0xff;
+  const originalRoot = await byteAt(pattern + 0x485);
+  for (let i = 0; i < 3; i++) {
+    await turn(1, -20);
+    await waitEmulatedFrames(session, 300);
+  }
+  const rootNote = await byteAt(pattern + 0x485);
+  expect(rootNote, 'track NOTE changed').toBeLessThan(originalRoot);
+  await key('SRC');
+  await srcPage(0);
+  await key('RECORD');
+  await key('TRIG 1');
+  await edge('TRIG 1', true);
+  try {
+    const display = planSymbol(plan, 'display');
+    await turn(2, 20); // CHRD
+    await expect.poll(() => byteAt(display + 201), { timeout: 30_000 }).toBe(2);
+    await expect
+      .poll(async () => Promise.all(Array.from({ length: 3 }, (_, i) => byteAt(display + 270 + i))), {
+        timeout: 30_000,
+      })
+      .toEqual([rootNote, rootNote + 3, rootNote + 7]);
+  } finally {
+    await edge('TRIG 1', false);
+  }
+  await key('TRIG 1'); // remove the fixture before the arp timing checks
+  await key('RECORD');
   await openDigikitMenu(key);
   await key('YES'); // CANOPY
   await key('YES'); // INPUT
@@ -218,15 +250,27 @@ test('CANOPY arp uses pattern tempo and plays held keys while stopped', { timeou
   await srcPage(0);
   const stoppedKnobBefore = await arp();
   for (let i = 0; i < 10; ++i) await turn(8, i % 2 ? 4 : -4); // native SRC LEV
-  await expect.poll(async () => (await arp()).serial, { timeout: 90_000 }).toBeGreaterThan(stoppedKnobBefore.serial + 2);
+  await expect
+    .poll(async () => (await arp()).serial, { timeout: 90_000 })
+    .toBeGreaterThan(stoppedKnobBefore.serial + 2);
   const stoppedKnobAfter = await arp();
-  const stoppedKnobElapsed = stoppedKnobAfter.block - stoppedKnobBefore.block -
+  const stoppedKnobElapsed =
+    stoppedKnobAfter.block -
+    stoppedKnobBefore.block -
     (stoppedKnobAfter.phase - stoppedKnobBefore.phase) / (2 * 120 * 120 * 4);
   const stoppedKnobExpected = ((stoppedKnobAfter.serial - stoppedKnobBefore.serial) * 90000) / (120 * 4);
-  log.stoppedKnob = { before: stoppedKnobBefore, after: stoppedKnobAfter, elapsed: stoppedKnobElapsed, expected: stoppedKnobExpected };
+  log.stoppedKnob = {
+    before: stoppedKnobBefore,
+    after: stoppedKnobAfter,
+    elapsed: stoppedKnobElapsed,
+    expected: stoppedKnobExpected,
+  };
   expect(stoppedKnobAfter.mode).toBe(2);
   expect(stoppedKnobAfter.status).toBe(2);
-  expect(Math.abs(stoppedKnobElapsed - stoppedKnobExpected), 'moving SRC level preserves stopped arp timing').toBeLessThanOrEqual(2);
+  expect(
+    Math.abs(stoppedKnobElapsed - stoppedKnobExpected),
+    'moving SRC level preserves stopped arp timing',
+  ).toBeLessThanOrEqual(2);
   log.stopped180 = await measureStopped(180);
   console.info('CANOPY arp: stopped timing follows stock 120/180 BPM', log.stopped120, log.stopped180);
   expect(await cf('src_state', 3), 'tempo follows the pattern without editing the sound').toBe(revision);

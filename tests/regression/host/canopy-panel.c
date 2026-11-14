@@ -123,6 +123,9 @@ int main(void)
      * records the press and CANOPY still plays it, with the stock audition
      * muted on the frame path while the key is held. */
     heads_empty();
+    pattern[0x485]=60;pattern[0x6a5+0x485]=70;
+    assert(ip_panel_step_note(0,6)==60 && ip_panel_step_note(1,6)==70);
+    assert(ip_panel_step_note(16,0)==-1 && ip_panel_step_note(0,128)==-1);
     ip_track=0;selected=0;*(uint32_t *)(view+0x98)=SEQ;
     live=1;ip_panel_on(view,3,0,65,88,5,6,7);
     assert(original_on==6 && downs==7 && ip_panel_recorded==1 && mutes==1);
@@ -151,7 +154,7 @@ int main(void)
     live=1;chord_calls=0;
     ip_panel_on(view,9,0,60,88,5,6,7);ip_panel_on(view,11,0,64,88,5,6,7);ip_panel_on(view,13,0,67,88,5,6,7);
     ip_panel_tick();assert(!chord_calls);
-    commit(0,6,67);ip_panel_tick();
+    commit(0,6,67);assert(ip_panel_step_note(0,6)==67 && ip_panel_step_note(1,6)==70);ip_panel_tick();
     assert(chord_calls==1 && chord_steps[0]==(1u<<6) && chord_count==2 && chord[0]==-3 && chord[1]==-7);
     ip_panel_tick();assert(chord_calls==1); /* unchanged steps are not rewritten */
     commit(0,7,60);ip_panel_tick();

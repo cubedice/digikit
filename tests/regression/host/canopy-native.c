@@ -15,6 +15,9 @@ static int lock_index(uint32_t code)
 const uint8_t ip_seq_step[6]={0};
 uint8_t ip_panel_trig_held(uint32_t seq) { (void)seq; return (uint8_t)test_held; }
 uint8_t ip_panel_live_record(uint32_t seq) { (void)seq; return 0; }
+int32_t ip_panel_step_note(uint32_t track,uint32_t step) { (void)track; (void)step; return -1; }
+void instrument_src_preview_step(CvDisplay *d,const IlpSnapshot *s,int32_t note)
+{ (void)d; (void)s; (void)note; }
 void ip_lock_mark_edited(uint32_t seq,uint32_t edited)
 { assert(seq==(uint32_t)(uintptr_t)seq_object && edited==1); ++test_marked; }
 int32_t ip_lock_get(uint32_t a,uint32_t b,uint32_t c)
@@ -284,18 +287,34 @@ int main(int argc,char **argv)
         event((uint8_t *)e,4,-3,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e); assert(state.value[CP_WTFM_RATIO]==15);
         event((uint8_t *)e,4,-1,0,0); ip_src_turn((uint8_t *)v,(uint8_t *)e); assert(state.value[CP_WTFM_RATIO]==14);
         for(unsigned key=41;key<=48;++key) { e[3]=key; assert(ip_src_key((uint8_t *)v,(uint8_t *)e)==1); }
+    } else if(!strcmp(argv[1],"chord-preview")) {
+        CsState shown=state; IsStatus status={0}; CvDisplay d;
+        shown.mode=KB_ROOT; shown.generation=1; shown.track=0;
+        status.mode=KB_PLAY; status.generation=1; status.track=0; status.fast_valid=1; status.fast_at=now;
+        cv_build_owner(&d,&shown,&status,now,"0","127",0,KB_PLAY);
+        assert(d.fresh && d.fault!=1);
+        const uint8_t notes[3]={60,64,67}; cv_preview_notes(&d,notes,3);
+        assert(d.note_count==3 && !strcmp(d.playing,"C") && !strcmp(d.heading,"C"));
+        assert(d.pitches[0]==60 && d.pitches[1]==64 && d.pitches[2]==67);
     } else if(!strcmp(argv[1],"fm-envelope")) {
         CvDisplay env={0};env.focus_id=CS_NONE;env.raw[CP_FM_SUSTAIN]=100;
         /* Zero attack must remain vertical for every release value. */
         for(unsigned rel=0;rel<128;rel+=rel==0?1:rel==1?63:63) {
             env.raw[CP_FM_RELEASE]=(uint16_t)rel;
             memset(canvas,0,sizeof(canvas));diagram_envelope(canvas,&env,1);
-            for(int y=16;y<28;++y) assert(canvas[y*128+24] && !canvas[y*128+25]);
+            for(int y=16;y<28;++y) assert(canvas[y*128+48] && !canvas[y*128+49]);
         }
         /* An instant release is vertical at the right edge, even when all
          * envelope times are at zero. */
         env.raw[CP_FM_RELEASE]=0;memset(canvas,0,sizeof(canvas));diagram_envelope(canvas,&env,1);
-        for(int y=16;y<28;++y) assert(canvas[y*128+121]);
+        for(int y=16;y<28;++y) assert(canvas[y*128+98]);
+        env.raw[CP_FM_SUSTAIN]=60;env.raw[CP_FM_DECAY]=50;
+        memset(canvas,0,sizeof(canvas));diagram_envelope(canvas,&env,1);
+        uint8_t middle[18*47];
+        for(int y=12;y<30;++y) for(int x=50;x<97;++x) middle[(y-12)*47+x-50]=canvas[y*128+x];
+        env.raw[CP_FM_ATTACK]=127;env.raw[CP_FM_RELEASE]=127;
+        memset(canvas,0,sizeof(canvas));diagram_envelope(canvas,&env,1);
+        for(int y=12;y<30;++y) for(int x=50;x<97;++x) assert(middle[(y-12)*47+x-50]==canvas[y*128+x]);
         cs_metadata(&state,3u<<4); v[0x90/4]=3; context((uint8_t *)v);
         assert(mf_src_page_count(type_id)==4);
         for(unsigned i=0;i<8;++i) assert(ip_src_parameter((uint8_t *)v,i)==0);

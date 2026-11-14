@@ -333,7 +333,7 @@ test('CANOPY records keyboard presses', { timeout: 900_000 }, async () => {
   log.chordRecording = { heldChord, chordDiag, block: block.toString(16), recordedSteps, lanes, stores };
   console.info('chord recording', JSON.stringify(log.chordRecording));
   expect(heldChord, 'all held keys sound together while recording').toEqual([60, 64, 67]);
-  expect(chordDiag[3] - capturesBefore, 'a committed step received the chord').toBeGreaterThanOrEqual(1);
+  expect(chordDiag[3]! - capturesBefore, 'a committed step received the chord').toBeGreaterThanOrEqual(1);
   expect(chordDiag[1], 'the last stored chord holds the two other held keys').toBe(2);
   expect(chordDiag[2], 'chord-note locks written').toBe(1);
   await key('STOP');
@@ -388,9 +388,9 @@ test('CANOPY records keyboard presses', { timeout: 900_000 }, async () => {
   log.stepRecording = { stepChord, stepDiag, stepEvents };
   console.info('step recording', JSON.stringify(log.stepRecording));
   expect(stepChord, 'held step-record keys sound together').toEqual([62, 65, 69]);
-  expect(stepDiag[3] - stepStoresBefore, 'each entry stored its chord').toBe(3);
-  expect(stepEvents[1] - startedBefore, 'releases do not start extra entries').toBe(3);
-  expect(stepEvents[6] - expiredBefore, 'all entries were matched to their commits').toBe(0);
+  expect(stepDiag[3]! - stepStoresBefore, 'each entry stored its chord').toBe(3);
+  expect(stepEvents[1]! - startedBefore, 'releases do not start extra entries').toBe(3);
+  expect(stepEvents[6]! - expiredBefore, 'all entries were matched to their commits').toBe(0);
   expect(stepDiag[1], 'the last entry holds the two other keys').toBe(2);
   expect(stepDiag[2], 'chord-note locks written').toBe(1);
   await key('RECORD'); // leave step recording

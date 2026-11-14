@@ -29,6 +29,7 @@ extern const uint32_t ip_src_label_font;
 extern int dk_ui_toast(const char *);
 /* Sequencer UI state (finding 123): SRC view +0x6c, as KeyboardView +0x98. */
 extern uint8_t ip_panel_trig_held(uint32_t),ip_panel_live_record(uint32_t);
+extern int32_t ip_panel_step_note(uint32_t,uint32_t);
 /* Stock held-trig editor marks the gesture as an edit before touching locks.
  * Without this, releasing a short-held trig may toggle it and erase its locks. */
 extern void ip_lock_mark_edited(uint32_t,uint32_t);
@@ -176,10 +177,20 @@ static void diagram_envelope(uint8_t *b,const CvDisplay *d,int fm)
         decay=((canopy_env_weight[0][native_index(d,CP_FM_DECAY)]-canopy_env_weight[0][0])*diagram_sqrt((100-sustain)*100))/100;
         release=(release*diagram_sqrt(sustain*100))/100;
     }
-    uint32_t available=fm?72:39,total=attack+decay+release;
+    uint32_t available=39,total=attack+decay+release;
     int x0=24,x1=x0+(int)(total?(available*attack+total/2)/total:0);
     int x2=x0+(int)(total?(available*(attack+decay)+total/2)/total:0);
-    int end=fm?121:71,x3=total?end-(int)((available*release+total/2)/total):end;
+    int end=71,x3=total?end-(int)((available*release+total/2)/total):end;
+    if(fm) {
+        /* Keep the peak and sustain/release corner fixed. The outer attack
+         * and release feet move independently; decay changes only its knee. */
+        uint32_t amax=canopy_env_weight[0][127]-canopy_env_weight[0][0];
+        uint32_t rmax=canopy_env_weight[1][127]-canopy_env_weight[1][0];
+        x1=48; x3=98;
+        x0=x1-(int)((24*attack+amax/2)/amax);
+        x2=x1+(int)((42*decay+amax/2)/amax);
+        end=x3+(int)((23*release+rmax/2)/rmax);
+    }
     if(x3>end) x3=end;
     int y=fm?29-(int)((16*sustain+50)/100):13;
     diagram_line(b,x0,29,x1,13);
@@ -430,6 +441,7 @@ void ip_src_draw(uint8_t *view,uint8_t *canvas)
         /* A held trig shows what it plays: its locks, else the Sound. */
         lock_snapshot(first,&locked);
         instrument_src_display_locked(&display,instrument_src_now(),tune,level,&locked);
+        if(display.page==0) instrument_src_preview_step(&display,&locked,ip_panel_step_note(ip_src_debug[0],first));
     } else instrument_src_display(&display,instrument_src_now(),tune,level);
     uint32_t page=word(view,0x90);
     uint32_t mask=diagram_mask(page,display.family);

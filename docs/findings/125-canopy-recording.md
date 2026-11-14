@@ -79,7 +79,7 @@ The active pattern object (`*0x4316501c`):
 
 | Offset | Content |
 | --- | --- |
-| `+0x6a5 * track` | track block: big-endian trig word at `+2 * step` (bit 0 = trig), per-step byte arrays at `+0x100`, `+0x180`, `+0x200`, `+0x280`, `+0x300`, `+0x380`, `+0x400` (0xff = default) |
+| `+0x6a5 * track` | track block: big-endian trig word at `+2 * step` (bit 0 = trig), per-step byte arrays at `+0x100`, `+0x180`, `+0x200`, `+0x280`, `+0x300`, `+0x380`, `+0x400` (0xff = default); byte `+0x485` is the track's inherited NOTE |
 | `+0x6a50` | note list, 0x11400 bytes (cleared as one block by `0x400459e0`): 8192 entries of 6 bytes `{track, step, note, velocity, ?, ?}` |
 | `+0x12a50` | head entry index of `(track, step)`, s16 at `2 * (128 * track + step)`, negative = none |
 | `+0x13a50` | next entry index, s16 per entry, `0xffff` ends a list |
@@ -93,6 +93,12 @@ note `0xff`, so a trig has four note slots (the shape of the MIDI machine's
 chord notes); the recorded audio-track trigs used the first only. All seven
 per-step byte arrays of those trigs stayed `0xff`, and the steps had no lock
 lane: the note list is where a recorded trig's note lives.
+
+A manually placed trig instead had `0xff` in its note entry. On track 1,
+turning the stock TRIG page NOTE from 60 to 57 changed pattern track byte
+`+0x485` from 60 to 57. The held-step chord preview uses that inherited byte
+when the step has no explicit note; the other track offsets follow the same
+track-block stride. [D]
 
 ## Results on the fixed image [D]
 

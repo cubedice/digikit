@@ -207,12 +207,12 @@ void cv_ownership(CvDisplay *d,const IsStatus *s,const KbState *k,uint32_t now)
     }
     d->pedal=(uint8_t)!!k->pedals;
 }
-void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
-    const char *tune,const char *level,int save_error)
+void cv_build_owner(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
+    const char *tune,const char *level,int save_error,uint32_t owner_mode)
 {
     for(uint32_t i=0;i<sizeof(*d);++i) ((volatile uint8_t *)d)[i]=0;
     uint32_t page=s->page[s->track<16?s->track:0];
-    int fresh=is_fresh(status,now) && status->track==s->track && status->generation==s->generation && status->mode==s->mode;
+    int fresh=is_fresh(status,now) && status->track==s->track && status->generation==s->generation && status->mode==owner_mode;
     d->page=(uint8_t)page; d->family=(uint8_t)((s->metadata>>4)&3); d->fresh=(uint8_t)fresh;
     d->focus_id=cs_focused(s,now)?s->focus_id:CS_NONE;
     for(uint32_t i=0;i<CP_CONTROLS;++i) d->raw[i]=s->value[i];
@@ -310,4 +310,23 @@ void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
             d->heading[at++]=' '; d->heading[at++]='+'; number(d->heading+at,excluded);
         }
     }
+}
+void cv_build(CvDisplay *d,const CsState *s,const IsStatus *status,uint32_t now,
+    const char *tune,const char *level,int save_error)
+{ cv_build_owner(d,s,status,now,tune,level,save_error,s->mode); }
+
+void cv_preview_notes(CvDisplay *d,const uint8_t *pitches,uint32_t count)
+{
+    if(!d->fresh || d->fault==2 || !pitches || !count || count>4) return;
+    d->note_count=(uint8_t)count; d->highlight=0;
+    for(uint32_t i=0;i<4;++i) {
+        d->pitches[i]=i<count?pitches[i]:0; d->membership[i]=0;
+        cv_note(d->notes[i],d->pitches[i],i<count);
+    }
+    chord_name(d->playing,pitches,count);
+    if(d->playing[0]=='N') {
+        text(d->playing,22,d->notes[0]);
+        if(count>1) { uint32_t at=length(d->playing,18); d->playing[at++]='+'; number(d->playing+at,count-1); }
+    }
+    if(!d->page && !d->focused && !d->fault) text(d->heading,22,d->playing);
 }

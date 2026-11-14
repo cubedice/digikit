@@ -22,6 +22,7 @@ void instrument_src_lock_feedback(char out[32],uint32_t encoder,const IlpSnapsho
 /* instrument_src_display showing the held trig's absolute packed locks. */
 void instrument_src_display_locked(CvDisplay *,uint32_t now_ms,const char *tune,const char *level,
     const IlpSnapshot *snapshot);
+void instrument_src_preview_step(CvDisplay *,const IlpSnapshot *,int32_t note);
 /* Drain telemetry on the UI task independently of the paint cadence. */
 void instrument_src_poll(uint32_t now_ms);
 /* Reserved for the authenticated status demultiplexer, not registry ACKs. */

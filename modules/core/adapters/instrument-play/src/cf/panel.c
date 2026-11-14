@@ -121,6 +121,17 @@ static int32_t step_note(const uint8_t *p,uint32_t track,uint32_t step)
     const uint8_t *e=p+NL_ENTRIES+6*(uint32_t)head;
     return e[0]==track && e[1]==step && e[2]<128 ? e[2] : -1;
 }
+/* Read the selected step's explicit root, or the track NOTE inherited by
+ * ordinary trigs (DT2 1.17 pattern track byte +0x485). */
+int32_t ip_panel_step_note(uint32_t track,uint32_t step)
+{
+    const uint8_t *p=pattern_object();
+    if(!p || track>=16 || step>=128) return -1;
+    int32_t note=step_note(p,track,step);
+    if(note>=0) return note;
+    note=p[TRACK_BYTES*track+0x485];
+    return note<128 ? note : -1;
+}
 /* The other notes of the chord group, newest first, as intervals from the
  * recorded note; at most three (CANOPY sounds four notes). */
 static uint32_t chord_intervals(uint32_t track,uint32_t pitch,int8_t out[3])
