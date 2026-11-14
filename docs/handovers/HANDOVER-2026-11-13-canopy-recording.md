@@ -6,6 +6,19 @@ recording gives no sound or one note instead of the chord, step recording
 enters single notes. Evidence and layouts are in
 [finding 125](../findings/125-canopy-recording.md).
 
+## Latest hardware installation
+
+Installed the onset, FM envelope and held-step chord-preview update on the DTII
+at the user's request. The firmware image changed from `ae201859f2e5246c` to
+`bf49e4f08419374c`; the updated CANOPY package and the unchanged Overloop and
+remote packages were read back and verified. All three modules reported zero
+faults after reboot, and CANOPY's instrument row was admitted. The user's
+current sound was preserved in the previously authorized preset 4 and
+restored; settings and USB/DIN routing were verified unchanged. The backup and
+installation report are in `out/canopy-onset-chord-install-backup/` and
+`out/canopy-onset-chord-hardware-installed.json`. The new onset ramp has not
+yet been auditioned on the physical device. [D]
+
 ## Rapid step-entry follow-up
 
 The earlier step-record fix could miss notes when several keys were pressed
