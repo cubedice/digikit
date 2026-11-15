@@ -60,7 +60,7 @@ unsafe impl Transport for Mock {
     }
 }
 fn driver() -> Driver<Mock> {
-    Driver::new(Mock::new(), Box::leak(Box::new([0; 256])))
+    Driver::new(Mock::new(), Box::leak(Box::new([0; crate::instrument_image::CHUNK])))
 }
 fn ticket(loads: &mut Loads) -> crate::instrument_registry::Ticket {
     loads
@@ -215,7 +215,7 @@ fn instrument_transport_rejects_invalid_shapes_and_repeated_accepted_ids() {
     let mut loads = Loads::new(16);
     let t = ticket(&mut loads);
     let mut driver = driver();
-    for data in [&[][..], &[1; 3][..], &[1; 260][..]] {
+    for data in [&[][..], &[1; 3][..], &[1; image::CHUNK + 4][..]] {
         assert_eq!(
             driver.start_image(&write(t, data)),
             Err(Error::InvalidWrite)
@@ -269,7 +269,7 @@ fn instrument_transport_calls_the_tagged_c_abi() {
         1
     }
     let api = unsafe { Api::new(send, poll) };
-    let mut driver = Driver::new(api, Box::leak(Box::new([0; 256])));
+    let mut driver = Driver::new(api, Box::leak(Box::new([0; crate::instrument_image::CHUNK])));
     let mut words = [0; 16];
     words[0] = 0x49524731;
     let write = mailbox::Write {

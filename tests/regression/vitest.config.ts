@@ -63,6 +63,7 @@ export default defineConfig({
         },
       },
       {
+        extends: true,
         test: {
           name: 'runtime',
           include: [

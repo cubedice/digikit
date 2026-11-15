@@ -42,8 +42,16 @@ typedef struct dk_instrument_in_v4 {
  * valid inputs. It retains V4's layout, with zero timing fields when absent.
  * V5 timing flags retain valid/running in bits0/1 and add provider information:
  * bit8 coherent grid provider, bit9 phase provider, bit10 explicitly stopped.
- * These high bits never authorize scheduling: use the low valid/running bits
- * and the required provider capability. They are absent from V2..V4 inputs.
+ * A version2 clock provider additionally supplies bit11 selected-tempo valid
+ * and bits16..31 tempo in 1/120 BPM (3600..36000). The tempo remains available
+ * while explicitly stopped, allowing an instrument's held-key arpeggiator to
+ * advance at the selected pattern/master BPM independently of transport.
+ * Tempo availability does not make a running external clock healthy: phase
+ * scheduling still requires low valid/running bits and its provider. A skipped
+ * frame clears grid/phase/stopped capabilities but retains an authenticated
+ * selected tempo. A rejected or missing frame clears all capabilities; tempo
+ * consumers may retain their last accepted BPM independently of phase health.
+ * These high bits are absent from V2..V4 inputs.
  * status is an adapter-owned, aligned L2 buffer of exactly 13 words: ready,
  * then twelve normalized UI payload words. The adapter clears ready before
  * every process call. A successful callback may fill all payload words then

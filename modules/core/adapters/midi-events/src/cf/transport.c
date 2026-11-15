@@ -64,7 +64,9 @@ const uint32_t *mt_prepare(MiTransport *t, MiLedger *m,
 const uint32_t *mt_prepare_mapped(MiTransport *t, MiLedger *m,
     const uint32_t revisions[MI_TRACKS], uint32_t block, MtTransform transform)
 {
-    uint32_t i, kind, track, count = 0, consumed = 0;
+    uint32_t i, kind, track, count = 0, consumed = 0, lock_valid=0, lock_count=0, source_valid=0;
+    uint16_t locks[MI_LOCKS];
+    uint16_t source[MI_SOURCE_VALUES];
     MiEvent first, input[8], output[8];
     first.sequence=0; first.track=0;
     if (t->epoch != m->epoch) {
@@ -122,8 +124,23 @@ const uint32_t *mt_prepare_mapped(MiTransport *t, MiLedger *m,
             const MiEvent *e=&m->events[(m->head+i)%MI_EVENTS];
             if (e->epoch!=m->epoch || e->track!=track ||
                 e->generation!=m->generations[track] || e->sequence!=first.sequence+i) break;
+            /* A sequencer snapshot belongs to one source note, even if the
+             * chord mapper later emits several audible notes. */
+            if(i && (first.lock_valid || e->lock_valid)) break;
             if (transform && i && (first.kind>MI_NOTE_OFF || e->kind>MI_NOTE_OFF)) break;
             mi_event_copy(&input[consumed++],e);
+        }
+        if(consumed && input[0].lock_valid) {
+            if(input[0].lock_count>MI_LOCKS) { mapping_fault(m,track); return 0; }
+            lock_valid=1;
+            /* IDs from MI_LOCK_MAPPER_FIRST are for the CF mapper only
+             * (recorded chord notes); the DSP sideband never carries them. */
+            for(i=0;i<input[0].lock_count;++i)
+                if((input[0].locks[i]>>10)<MI_LOCK_MAPPER_FIRST) locks[lock_count++]=input[0].locks[i];
+            if(input[0].source_valid) {
+                source_valid=1;
+                for(i=0;i<MI_SOURCE_VALUES;++i) source[i]=input[0].source[i];
+            }
         }
         if (transform) {
             int result=transform(track,m->epoch,m->generations[track],input,consumed,output);
@@ -136,6 +153,10 @@ const uint32_t *mt_prepare_mapped(MiTransport *t, MiLedger *m,
         }
     }
 assemble:
+    t->lock_valid=lock_valid; t->lock_count=lock_count;
+    for(i=0;i<MI_LOCKS;++i) t->locks[i]=i<lock_count ? locks[i] : 0;
+    t->source_valid=source_valid;
+    for(i=0;i<MI_SOURCE_VALUES;++i) t->source[i]=source_valid ? source[i] : 0;
     for (i = 0; i < MT_WORDS; ++i) t->words[i] = 0;
     t->words[0] = MT_MAGIC;
     t->words[2] = m->epoch;
@@ -184,7 +205,7 @@ assemble:
             mapping_fault(m,track); return 0;
         }
     }
-    t->words[1] = kind | (count << 8);
+    t->words[1] = kind | (count << 8) | (lock_valid ? MT_LOCKED : 0u);
     t->words[7] = mt_check(t->words);
     t->pending = kind; t->count = consumed; t->sent_block = block;
     return t->words;

@@ -226,7 +226,7 @@ fn instrument_provider_composes_tagged_write_drainage_with_registry_reply() {
             pending: false,
             polls: 0,
         },
-        std::boxed::Box::leak(std::boxed::Box::new([0; 256])),
+        std::boxed::Box::leak(std::boxed::Box::new([0; crate::instrument_image::CHUNK])),
     );
     let mut reply = replies(good);
     for _ in 0..3 {

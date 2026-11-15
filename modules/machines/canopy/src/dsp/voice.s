@@ -830,6 +830,11 @@ _cp_amp_begin:
     R0 = DM(_cp_amp_input);
     I1 = R0;
     F6 = DM(25, I1);
+    // Keep very fast onsets gradual even for a waveform already near its peak.
+    // A 256-sample minimum is 5.33 ms at 48 kHz; slower selected attacks and
+    // copied arp tails retain their own timing.
+    F0 = 0.00390625;
+    F6 = MIN(F6, F0);
     R0 = DM(26, I1);
     DM(_cp_amp_hold) = R0;
     F7 = DM(27, I1);

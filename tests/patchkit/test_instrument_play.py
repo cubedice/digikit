@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 from support.paths import REPO_ROOT
-from test_canopy_v2 import wire_packet
+from test_canopy_v2 import fm_controls, wavetable_fm_controls, wire_packet
 
 from tools.patchkit import patchkit, pk_sharc, pk_toolchains
 
@@ -36,7 +36,7 @@ def playback_object():
     )
     for module, names in (
         ("instrument-registry", ("process", "process-protected", "input", "lifecycle")),
-        ("instrument-play", ("play", "modulation", "reset-protected")),
+        ("instrument-play", ("play", "modulation", "lock", "reset-protected")),
         ("midi-events", ("packet", "carrier", "carrier-frame", "velocity")),
     ):
         source += "\n" + "\n".join(
@@ -59,7 +59,7 @@ def playback_object():
 .PKDATA _test_amp_record, 44;
 .PKDATA _iv_mod_frame, 2048; // sixteen 0x60-byte parameter rows follow byte 0xda
 .PKDATA _test_state, 11904; // four 2976-byte instances
-.PKDATA _test_packet, 128;
+.PKDATA _test_packet_block, 200; // eighteen-word sideband immediately before packet
 .PKDATA _test_metadata, 24;
 .PKDATA _test_values, 128;
 .PKDATA _test_output, 128;
@@ -117,6 +117,10 @@ _test_status_process:
         "_iv_modulate",
         "_iv_reset_row",
         "_iv_mod_status",
+        "_iv_lock_stage",
+        "_iv_lock_commit",
+        "_iv_lock_clear",
+        "_iv_lock_overlay",
     ]
     for i, entry in enumerate(entries):
         source += f"""
@@ -147,6 +151,7 @@ _test_{i}:
         )
         at += len(blob) + 64
     symbols = {n: sections[sec] + off for n, (sec, off, _) in obj.data_symbols.items()}
+    symbols["_test_packet"] = symbols["_test_packet_block"] + 72
     linked = pk_sharc.link(obj, 0xB90000, symbols)
     symbols["_test_status_process"] = linked.symbols["_test_status_process"]
     symbols["_test_post_process"] = linked.symbols["_test_post_process"]
@@ -280,6 +285,113 @@ def playback(playback_object):
         return call(3, R4=symbols["_test_packet"])
 
     return call, put, get, reset, configure, events, symbols
+
+
+def test_locked_event_sideband_is_checked_before_slot_commit(playback):
+    call, put, get, _, _, _, symbols = playback
+    packet = wire_packet([(1, 1, 60, 100, 0, 0)], generation=1, revision=1, track=0)
+    packet[1] |= 0x1000
+    side = [
+        0x434C4B31,
+        packet[2],
+        packet[3],
+        packet[9],
+        2 << 8,
+        ((19 << 10) | 1000) << 16 | ((17 << 10) | 700),
+        0,
+        0,
+    ] + [0] * 10
+    a, b = 0x6C6F636B, 0x74726967
+    for value in side[:17]:
+        a = (a + value) & 0xFFFFFFFF
+        b = (b + a) & 0xFFFFFFFF
+    side[17] = a ^ b
+    put("_test_packet_block", side + packet)
+    assert call(9, R4=symbols["_test_packet"]) == 1
+    assert get("_iv_lock_slots", 6) == [0] * 6
+    call(10)
+    assert get("_iv_lock_slots", 3) == [2, (17 << 10) | 700, (19 << 10) | 1000]
+    # A damaged sideband is rejected without replacing the last snapshot.
+    side[5] ^= 1
+    put("_test_packet_block", side + packet)
+    assert call(9, R4=symbols["_test_packet"]) == 0
+    call(10)
+    assert get("_iv_lock_slots", 3) == [2, (17 << 10) | 700, (19 << 10) | 1000]
+    call(11)
+    assert get("_iv_lock_slots") == [0]
+
+
+def test_lock_overlay_preserves_base_and_combines_with_native_mod(playback):
+    call, put, get, _, _, _, symbols = playback
+    bank = wavetable_fm_controls()
+    bank[0] = (bank[0] & ~255) | 11
+    bank[1] = 2
+    put("_test_values", bank)
+    put(
+        "_iv_lock_slots", [3, (2 << 10) | 90, (17 << 10) | 700, (19 << 10) | 1000, 0, 0]
+    )
+    assert call(12, R4=symbols["_test_values"]) == symbols["_iv_lock_controls"]
+    effective = get("_iv_lock_controls", 32)
+    assert get("_test_values", 32) == bank
+    assert effective[18] & 65535 == 90 and effective[2] == 90
+    assert effective[17] >> 16 == 700 and effective[19] >> 16 == 1000
+    # Neutral native MOD keeps the locked bank; clearing restores the base.
+    assert (
+        call(6, R4=symbols["_iv_lock_controls"], R8=32) == symbols["_iv_lock_controls"]
+    )
+    call(11)
+    assert call(12, R4=symbols["_test_values"]) == symbols["_test_values"]
+    assert get("_test_values", 32) == bank
+
+
+def test_retired_arp_clock_and_bpm_locks_cannot_override_pattern_tempo(playback):
+    call, put, get, _, _, _, symbols = playback
+    bank = wavetable_fm_controls()
+    bank[7], bank[13] = 120, 2
+    put("_test_values", bank)
+    put("_iv_lock_slots", [2, (35 << 10), (36 << 10) | 300, 0, 0, 0])
+    call(12, R4=symbols["_test_values"])
+    assert get("_iv_lock_controls", 32) == bank
+    assert get("_test_values", 32) == bank
+
+
+def test_wave_lock_carries_the_remembered_fm_bank_without_changing_base(playback):
+    call, put, get, _, _, _, symbols = playback
+    base = wavetable_fm_controls()
+    base[0] = (base[0] & ~255) | 11
+    base[1] = 2
+    fm = fm_controls()
+    source = [fm[2]] + [word >> 16 for word in fm[16:32]]
+    packet = wire_packet([(1, 1, 60, 100, 0, 0)], generation=1, revision=1, track=0)
+    packet[1] |= 0x1000
+    side = [
+        0x434C4B31,
+        packet[2],
+        packet[3],
+        packet[9],
+        (1 << 16) | (1 << 8),
+        (34 << 10) | 7,
+        0,
+        0,
+    ]
+    for index in range(0, 17, 2):
+        side.append(
+            source[index] | ((source[index + 1] if index + 1 < 17 else 0) << 16)
+        )
+    a, b = 0x6C6F636B, 0x74726967
+    for value in side:
+        a = (a + value) & 0xFFFFFFFF
+        b = (b + a) & 0xFFFFFFFF
+    side.append(a ^ b)
+    put("_test_packet_block", side + packet)
+    assert call(9, R4=symbols["_test_packet"]) == 1
+    call(10)
+    put("_test_values", base)
+    assert call(12, R4=symbols["_test_values"]) == symbols["_iv_lock_controls"]
+    effective = get("_iv_lock_controls", 32)
+    assert effective[1] == 3 and effective[2] == source[0]
+    assert [word >> 16 for word in effective[16:32]] == source[1:]
+    assert get("_test_values", 32) == base
 
 
 def test_opted_in_output_is_borrowed_per_block_and_revoked_with_session(playback):
@@ -788,7 +900,13 @@ def test_position_snapshot_reaches_input_and_rejects_gaps(playback):
     assert get("_iv_input", 18)[12:17] == [0] * 5
 
 
-def test_v5_timing_metadata_distinguishes_stop_loss_and_missing_provider(playback):
+@pytest.mark.parametrize(
+    "clock_version,tempo",
+    [(1, 0), (2, 0), (2, 3599), (2, 3600), (2, 12240), (2, 36000), (2, 36001)],
+)
+def test_v5_timing_metadata_distinguishes_stop_loss_and_missing_provider(
+    playback, clock_version, tempo
+):
     call, put, get, reset, configure, _, _ = playback
     reset()
     call(0)
@@ -819,20 +937,137 @@ def test_v5_timing_metadata_distinguishes_stop_loss_and_missing_provider(playbac
     put("_pattern_position_info", position)
     call(0)
     assert get("_iv_input", 24)[12] == 0x103
-    put("_pattern_clock_info", [0x50434C4B, 1, 10, 5, 3, 101, 9, 7])
+    packed_tempo = tempo << 16
+    tempo_flags = (
+        packed_tempo | 0x800 if clock_version == 2 and 3600 <= tempo <= 36000 else 0
+    )
+    put(
+        "_pattern_clock_info",
+        [0x50434C4B, clock_version, 10, 5, packed_tempo | 3, 101, 9, 7],
+    )
     call(0)
-    assert get("_iv_input", 24)[12] == 0x303
-    put("_pattern_clock_info", [0x50434C4B, 1, 10, 5, 0, 101, 9, 7])
+    assert get("_iv_input", 24)[12] == tempo_flags | 0x303
+    put(
+        "_pattern_clock_info",
+        [0x50434C4B, clock_version, 10, 5, packed_tempo, 101, 9, 7],
+    )
     call(0)
-    assert get("_iv_input", 24)[12] == 0x300  # Lost sync, transport still running.
+    assert (
+        get("_iv_input", 24)[12] == tempo_flags | 0x300
+    )  # Lost sync, transport still running.
     position[5], position[14] = 0, 0
     put("_pattern_position_info", position)
     call(0)
-    assert get("_iv_input", 24)[12] == 0x700  # Explicit STOP, providers still exist.
+    assert (
+        get("_iv_input", 24)[12] == tempo_flags | 0x700
+    )  # Explicit STOP, providers still exist.
     position[19] = 2
     put("_pattern_position_info", position)
     call(0)
-    assert get("_iv_input", 24)[12] == 0  # Missing frame, not an explicit STOP.
+    # A newly accepted snapshot still supplies its selected BPM, but a gap
+    # cannot establish transport state, grid continuity or a valid phase.
+    assert get("_iv_input", 24)[12] == tempo_flags
+    assert get("_iv_input", 24)[13:17] == [0] * 4
+    assert get("_iv_input", 24)[19:22] == [0] * 3
+
+
+@pytest.mark.parametrize("transport", [0, 1])
+@pytest.mark.parametrize("phase_flags", [0, 3])
+def test_tempo_update_survives_skipped_frames_without_reviving_phase(
+    playback, transport, phase_flags
+):
+    call, put, get, reset, configure, _, _ = playback
+    reset()
+    call(0)
+    assert configure() == 1
+    put("_ir_process_flags", [1])
+    position = [
+        0x50504F53,
+        2,
+        30,
+        9,
+        7,
+        3,
+        0x43170000,
+        4,
+        16,
+        0,
+        100,
+        0,
+        100,
+        5,
+        transport,
+        0,
+        101,
+        0,
+        30,
+        1,
+    ]
+    put("_pattern_position_info", position)
+    put(
+        "_pattern_clock_info",
+        [
+            0x50434C4B,
+            2,
+            12345,
+            12000,
+            (14400 << 16) | phase_flags,
+            101,
+            9,
+            7,
+        ],
+    )
+    call(0)
+    assert get("_iv_input", 24)[12] >> 16 == 14400
+
+    # The next authenticated record has a new BPM and a transmit-sequence gap.
+    position[2], position[16], position[19] = 38, 109, 8
+    put("_pattern_position_info", position)
+    put(
+        "_pattern_clock_info",
+        [
+            0x50434C4B,
+            2,
+            23456,
+            22000,
+            (21600 << 16) | phase_flags,
+            109,
+            9,
+            7,
+        ],
+    )
+    call(0)
+    timing = get("_iv_input", 24)
+    assert timing[4] == 109
+    assert timing[12] == (21600 << 16) | 0x800
+    assert timing[13:17] == [0] * 4
+    assert timing[19:22] == [0] * 3
+
+    # A rejected receiver record is not a newly authenticated BPM update.
+    position[0] = 0
+    put("_pattern_position_info", position)
+    call(0)
+    assert get("_iv_input", 24)[12] == 0
+
+    # Likewise, a new position with a bad clock header/version cannot add BPM.
+    position[0] = 0x50504F53
+    put("_pattern_position_info", position)
+    for magic, version in ((0, 2), (0x50434C4B, 1), (0x50434C4B, 99)):
+        put(
+            "_pattern_clock_info",
+            [
+                magic,
+                version,
+                23456,
+                22000,
+                (21600 << 16) | phase_flags,
+                109,
+                9,
+                7,
+            ],
+        )
+        call(0)
+        assert get("_iv_input", 24)[12] == 0
 
 
 @pytest.mark.parametrize("version", [6, 7, 8])
@@ -1421,6 +1656,61 @@ def test_slots_bind_by_hint_and_render_only_their_own_tracks(playback):
     owners = get("_mi_velocity_owners", 32)
     assert owners[6] == owners[18] == get("_mi_carrier_stamp")[0]
     assert owners[7] == owners[19] == 1
+
+
+def test_concurrent_slots_receive_same_clock_snapshot(playback):
+    """Track iteration must not advance, consume, or overwrite the shared clock."""
+    call, put, get, reset, configure, _, _ = playback
+    _four_instances(playback)
+    assert reset(track=3, slot=0) == 1
+    assert reset(track=9, slot=2) == 1
+    call(0)
+    assert configure(track=3) == 1
+    assert configure(track=9) == 1
+    put("_ir_process_flags", [1])
+    position = [
+        0x50504F53,
+        2,
+        30,
+        9,
+        7,
+        3,
+        0x43170000,
+        4,
+        16,
+        0,
+        100,
+        0,
+        100,
+        5,
+        1,
+        0,
+        101,
+        0,
+        30,
+        1,
+    ]
+    put("_pattern_position_info", position)
+    put(
+        "_pattern_clock_info",
+        [0x50434C4B, 2, 12345, 12000, (14400 << 16) | 3, 101, 9, 7],
+    )
+    call(0)
+    first, third = _slot(get, 0), _slot(get, 2)
+    # Input[2] is track-specific; timing and clock phase are shared.
+    assert first[8 + 2] == 3 and third[8 + 2] == 9
+    for index in (4, 12, 13, 14, 15, 16, 19, 20, 21):
+        assert first[8 + index] == third[8 + index]
+    assert first[8 + 12] == (14400 << 16) | 0xB03
+    assert first[8 + 20 : 8 + 22] == [12345, 12000]
+    # A transmit gap removes phase/transport from both slots while preserving
+    # the newly accepted BPM; processing one cannot consume it for the other.
+    position[19] = 2
+    put("_pattern_position_info", position)
+    call(0)
+    assert _slot(get, 0)[8 + 12] == _slot(get, 2)[8 + 12] == (14400 << 16) | 0x800
+    for index in (13, 14, 15, 16, 19, 20, 21):
+        assert _slot(get, 0)[8 + index] == _slot(get, 2)[8 + index] == 0
 
 
 def test_unbound_tracks_reject_configuration_and_events(playback):

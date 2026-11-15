@@ -38,3 +38,23 @@ record. Only the separate clock flags become zero. Accepted MIDI pulse age
 expires after three estimated periods, bounded to 40..500 ms. An external-source
 latch prevents stock freewheel/fallback from silently reviving instrument arp;
 STOP or clock receive OFF clears it. Pulse return allows fresh observation.
+
+## Selected tempo while stopped (wire v4)
+
+Wire v4 also carries the selected DT2 stock tempo in flag bits 16..31, in units
+of 1/120 BPM. The value is sampled from the same interrupt-masked audio frame as
+phase and transport state, and is available before PLAY and while stopped.
+Only values from 3600 to 36000 (30 to 300 BPM) are published; invalid values
+produce no tempo capability. This is the stock pattern/master tempo, not a
+separate instrument setting.
+
+The receiver accepts wire v2/v3/v4. It removes the tempo bits and normalizes
+the version, reserved word and checksum of the public ABI 2 position record,
+preserving existing effects. `_pattern_clock_info` retains its 32-byte size;
+version 2 carries tempo in its flags' high 16 bits. Its low flags continue to
+describe phase health independently: a lost external clock still clears them.
+An invalid frame clears the record's magic and flags. The instrument adapter
+additionally rejects skipped frames, and forwards a validated tempo to V5+
+inputs through timing flag bit 11 and bits 16..31. Explicit STOP is distinct
+from missing or stale running clock, so CANOPY can play held-key arpeggios while
+stopped without silently falling back after external pulse loss.

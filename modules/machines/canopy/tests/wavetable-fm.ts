@@ -18,14 +18,14 @@ export async function proveWavetableFm(ui: {
   await ui.page(3);
   expect((await ui.bank()).slice(28).map((v) => v >>> 16)).toEqual([0, 3, 100, 100]);
   // RAT is a discrete list with the same four-tick movement as WAVE/SHAP.
-  await ui.turn(2, 1);
+  await ui.turn(4, 1);
   expect(await ui.read(29)).toBe(3);
-  await ui.turn(2, 3);
+  await ui.turn(4, 3);
   expect(await ui.read(29)).toBe(4);
   for (const [encoder, control, value] of [
-    [1, 28, 35],
-    [2, 29, 8],
-    [3, 30, 125],
+    [3, 28, 35],
+    [4, 29, 8],
+    [6, 30, 125],
   ] as const) {
     await ui.set(encoder, control, value);
     expect(await ui.read(control)).toBe(value);
@@ -33,9 +33,8 @@ export async function proveWavetableFm(ui: {
   expect(await ui.ownership()).toEqual(owner);
   await ui.capture('canopy-wavetable-fm');
   await ui.values('canopy-wavetable-fm-values');
-  await ui.page(2);
-  await ui.set(6, 24, 10);
-  await ui.set(7, 25, 25);
+  await ui.set(1, 24, 10);
+  await ui.set(2, 25, 25);
   const beforeLevel = await ui.bank();
   const full = await ui.audio('wavetable-fm-full');
   expect(full).toBeGreaterThan(1e-5);
@@ -47,8 +46,8 @@ export async function proveWavetableFm(ui: {
   await ui.page(2);
   const position = await ui.read(17);
   const scan = await ui.read(18);
-  await ui.set(1, 17, position + 25);
-  await ui.set(2, 18, scan + 10);
+  await ui.set(2, 17, position + 25);
+  await ui.set(3, 18, scan + 10);
   expect(await ui.ownership()).toEqual(owner);
   const moved = await ui.audio('wavetable-fm-scan');
   expect(moved).toBeGreaterThan(1e-5);

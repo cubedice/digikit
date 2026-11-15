@@ -127,6 +127,13 @@ _test_no_capture:
     I0 = R1;
     R1 = 0;
     DM(8, I0) = R1;
+    R1 = DM(_test_advance_clock);
+    R1 = PASS R1;
+    IF EQ JUMP _test_clock_done;
+    R1 = DM(4, I0);
+    R1 = R1 + 1;
+    DM(4, I0) = R1;
+_test_clock_done:
     R1 = DM(_test_loop_left);
     R1 = R1 - 1;
     DM(_test_loop_left) = R1;
@@ -136,6 +143,7 @@ _test_no_capture:
 .PKBSS _test_loop_left, 4;
 .PKBSS _test_loop_state, 4;
 .PKBSS _test_loop_input, 4;
+.PKBSS _test_advance_clock, 4;
 """
     obj = pk_sharc.assemble(source)
     sections, initial, address = {}, {}, 0x20060000
@@ -181,7 +189,9 @@ def make_canopy(canopy_object):
         native=None,
         post_amp=False,
         input_base=0x20011000,
+        advance_clock=False,
     ):
+        dm[symbols["_test_advance_clock"] // 4] = int(advance_clock)
         dm.update({state // 4 + i: v for i, v in (state_edits or {}).items()})
         words = [
             2,
@@ -367,7 +377,7 @@ def voices(result):
 
 def native_amp(
     mode=2,
-    attack=1 / 64,
+    attack=1 / 256,
     hold=0xFFFFFFFF,
     decay=0.9,
     sustain=0.5,
@@ -395,15 +405,15 @@ def test_native_amp_attack_outputs_previous_level_and_releases_independently(can
     amp = native_amp()
     r = canopy([note(1, 60)], native=amp)
     assert [wt_float(v) for v in r["amp_curve"]] == pytest.approx(
-        [i / 64 for i in range(32)], abs=1e-7
+        [i / 256 for i in range(32)], abs=1e-7
     )
-    assert wt_float(voices(r)[1][7]) == pytest.approx(0.5)
+    assert wt_float(voices(r)[1][7]) == pytest.approx(0.125)
     r = canopy([note(2, 67)], native=amp)
-    assert wt_float(voices(r)[1][7]) == pytest.approx(1.0)
-    assert wt_float(voices(r)[2][7]) == pytest.approx(0.5)
+    assert wt_float(voices(r)[1][7]) == pytest.approx(0.25)
+    assert wt_float(voices(r)[2][7]) == pytest.approx(0.125)
     r = canopy([note(1, 60, off=True)], native=amp)
-    assert wt_float(voices(r)[1][7]) == pytest.approx(0.8**32, rel=2e-6)
-    assert wt_float(voices(r)[2][7]) == pytest.approx(1.0)
+    assert wt_float(voices(r)[1][7]) == pytest.approx(0.25 * 0.8**32, rel=2e-6)
+    assert wt_float(voices(r)[2][7]) == pytest.approx(0.25)
 
 
 def test_native_amp_slow_attack_crosses_at_repeated_float_boundary(canopy):
@@ -486,7 +496,7 @@ def test_native_amp_shapes_all_sources_and_preserves_zero_sustain_owner(canopy, 
         "fm": fm_controls(),
     }[family]
     amp = native_amp(attack=1, decay=0, sustain=0, release=0.5)
-    r = canopy([note(1, 60)], controls=controls, native=amp)
+    r = canopy([note(1, 60)], controls=controls, native=amp, blocks=9)
     assert 1 in voices(r) and voices(r)[1][1] == 1
     assert voices(r)[1][7] == 0
     assert r["regs"]["R0"] == 0
@@ -501,14 +511,25 @@ def test_native_amp_finite_ahd_continues_after_keyup_and_retrigger_is_independen
     amp = native_amp(mode=1, attack=1, hold=40, release=0.5)
     first = canopy([note(1, 60)], native=amp)
     curve = [wt_float(v) for v in first["amp_curve"]]
-    assert curve == [0.0] + [1.0] * 31
+    assert curve == [i / 256 for i in range(32)]
     r = canopy([note(1, 60, off=True)] if off else [], native=amp)
     assert [wt_float(v) for v in r["amp_curve"]] == pytest.approx(
-        [1.0] * 9 + [0.5**i for i in range(23)], abs=1e-7
+        [i / 256 for i in range(32, 64)], abs=1e-7
     )
-    assert wt_float(r["amp_end"][0]) == pytest.approx(0.5**23, rel=1e-6)
+    for block in range(2, 8):
+        r = canopy(native=amp)
+        assert [wt_float(v) for v in r["amp_curve"]] == [
+            i / 256 for i in range(32 * block, 32 * (block + 1))
+        ]
+    r = canopy(native=amp)
+    assert [wt_float(v) for v in r["amp_curve"]] == [1.0] * 32
+    r = canopy(native=amp)
+    assert [wt_float(v) for v in r["amp_curve"]] == pytest.approx(
+        [1.0] * 8 + [0.5**i for i in range(24)], abs=1e-7
+    )
+    assert wt_float(r["amp_end"][0]) == 0.0  # below the voice retirement threshold
     r = canopy([note(2, 67)], native=amp)
-    assert 2 in voices(r) and wt_float(voices(r)[2][7]) == 1.0
+    assert 2 in voices(r) and wt_float(voices(r)[2][7]) == 0.125
 
 
 @pytest.fixture(scope="module")
@@ -608,10 +629,14 @@ def test_native_amp_release_attenuates_rendered_audio_through_tail(
         level = wt_float(wt_bits(level * q))
     assert wt_float(voices(later)[1][7]) == level
     assert voices(later)[1][1] == 0
-    assert wt_float(voices(later)[2][7]) == 1
+    assert wt_float(voices(later)[2][7]) == 0.125
     assert voices(later)[2][1] == 1
     if post_amp:
-        assert [wt_float(v) for v in later["common_amp"]] == [previous_level] + [1] * 31
+        expected_gain = []
+        for i in range(32):
+            expected_gain.append(max(previous_level, i / 256))
+            previous_level = wt_float(wt_bits(previous_level * q))
+        assert [wt_float(v) for v in later["common_amp"]] == expected_gain
 
 
 @pytest.mark.parametrize("mode", [0, 1, 2])
@@ -622,7 +647,13 @@ def test_post_amp_quiet_and_zero_sustain_fill_the_complete_borrow(canopy, mode):
     assert empty["common_amp"] == [wt_bits(1 if mode == 0 else 0)] * 32
     if mode == 0:
         return
-    held = canopy([note(1, 60)], native=amp, post_amp=True, blocks=2)
+    held = canopy([note(1, 60)], native=amp, post_amp=True, blocks=10)
+    if mode == 1:
+        # The immediate AHD release has reached silence after its attack.
+        assert held["out"] == [0] * 32
+        assert held["common_amp"] == [0] * 32
+        assert voices(held)[1][1] == 1
+        return
     assert held["out"] == held["common_amp"] == [0] * 32
     assert voices(held)[1][1] == 1
     released = canopy([note(1, 60, off=True)], native=amp, post_amp=True)
@@ -647,12 +678,12 @@ def test_post_amp_rejects_invalid_borrow_before_admitting_notes(canopy, index, v
 def test_post_amp_v7_packet_normalization_reaches_kernel(canopy):
     result = canopy(
         packet=wire_packet([(1, 1, 60, 100, 0, 0)]),
-        native=native_amp(attack=1 / 64),
+        native=native_amp(attack=1 / 256),
         post_amp=True,
     )
     assert result["regs"]["R0"] == 0
     assert set(voices(result)) == {1}
-    assert [wt_float(v) for v in result["common_amp"]] == [i / 64 for i in range(32)]
+    assert [wt_float(v) for v in result["common_amp"]] == [i / 256 for i in range(32)]
 
 
 def test_post_amp_lane_buffers_resolve_to_distinct_data_storage(canopy, canopy_object):
@@ -660,7 +691,7 @@ def test_post_amp_lane_buffers_resolve_to_distinct_data_storage(canopy, canopy_o
     pad, arp = (symbols[name] for name in ("_cp_post_pad", "_cp_post_arp"))
     assert min(pad, arp) >= 0x20000000 and max(pad, arp) + 128 <= 0x200FE000
     assert abs(pad - arp) >= 128
-    result = canopy([note(1, 60)], native=native_amp(attack=1 / 64), post_amp=True)
+    result = canopy([note(1, 60)], native=native_amp(attack=1 / 256), post_amp=True)
 
     def values(name, count):
         section, offset, _ = obj.data_symbols[name]
@@ -670,7 +701,7 @@ def test_post_amp_lane_buffers_resolve_to_distinct_data_storage(canopy, canopy_o
     # never redirect either lane's immediate pointer into instruction memory.
     assert values("_cp_post_lane", 1) == [arp]
     assert [wt_float(v) for v in values("_cp_post_pad", 32)] == [
-        i / 64 for i in range(32)
+        i / 256 for i in range(32)
     ]
     assert values("_cp_post_arp", 32) == [0] * 32
     assert result["common_amp"] == values("_cp_post_pad", 32)
@@ -709,6 +740,10 @@ def test_post_amp_blend_excludes_muted_lanes_and_keeps_arp_tail(canopy, mix):
     )
     assert any(tail["state"][slot * 8 + 1] & 4 for slot in (4, 5))
     assert all(0 <= wt_float(v) <= 1 for v in tail["common_amp"])
+    # Complete the replacement arp's onset guard before checking
+    # blend endpoints at full sustain.
+    for _ in range(7):
+        canopy(native=amp, controls=controls, post_amp=True)
     # The pad has finished its native envelope while an independently owned
     # arp remains audible. Exact blend endpoints must exclude the muted lane.
     slot = next(slot for slot in range(4) if first["state"][slot * 8] == 1)
@@ -759,7 +794,7 @@ def test_post_amp_polyphony_tracks_the_loudest_independent_envelope(canopy, fami
         "fm": fm_controls(),
         "wavetable_fm": wavetable_fm_controls(fm_depth=75),
     }[family]
-    amp = native_amp(attack=1 / 64, decay=1, sustain=1, release=0.95)
+    amp = native_amp(attack=1 / 256, decay=1, sustain=1, release=0.95)
     first = canopy(
         [note(i + 1, 48 + 7 * i) for i in range(3)],
         controls=controls,
@@ -781,7 +816,7 @@ def test_post_amp_polyphony_tracks_the_loudest_independent_envelope(canopy, fami
     )
     level, q, expected = wt_float(wt_bits(0.9)), wt_float(wt_bits(0.95)), []
     for sample in range(32):
-        expected.append(max(level, sample / 64, wt_float(wt_bits(0.1))))
+        expected.append(max(level, sample / 256, wt_float(wt_bits(0.1))))
         level = wt_float(wt_bits(level * q))
     assert [wt_float(v) for v in result["common_amp"]] == expected
     assert len(voices(result)) == 4
@@ -791,7 +826,7 @@ def test_post_amp_polyphony_tracks_the_loudest_independent_envelope(canopy, fami
 
 def test_native_amp_infinite_release_yields_to_bounded_reset(canopy):
     amp = native_amp(mode=1, attack=1, release=1)
-    canopy([note(1, 60)], native=amp)
+    canopy([note(1, 60)], native=amp, blocks=8)
     r = canopy([note(1, 60, off=True)], native=amp, blocks=4)
     assert wt_float(voices(r)[1][7]) == 1.0
     reset = canopy(reset=2)
@@ -800,27 +835,27 @@ def test_native_amp_infinite_release_yields_to_bounded_reset(canopy):
     assert not voices(r)
     fresh = canopy([note(1, 60)], native=amp, generation=2)
     assert wt_float(fresh["amp_curve"][0]) == 0.0
-    assert wt_float(voices(fresh)[1][7]) == 1.0
+    assert wt_float(voices(fresh)[1][7]) == 0.125
 
 
-@pytest.mark.parametrize("attack,initial", [(1.0, 1.0), (1 / 64, 1 / 128)])
+@pytest.mark.parametrize("attack,initial", [(1.0, 1 / 512), (1 / 64, 1 / 512)])
 def test_native_amp_restart_option_initializes_each_onset(canopy, attack, initial):
     r = canopy([note(1, 60)], native=native_amp(attack=attack, options=1))
     assert wt_float(r["amp_curve"][0]) == initial
 
 
 def test_native_amp_fallback_and_mode_changes_do_not_resume_stale_phase(canopy):
-    amp = native_amp(attack=1 / 64)
+    amp = native_amp(attack=1 / 256)
     first = canopy([note(1, 60)], native=amp)
-    assert wt_float(voices(first)[1][7]) == 0.5
+    assert wt_float(voices(first)[1][7]) == 0.125
     legacy = canopy(native=[0] * 8)
     assert legacy["state"][716:] == [0] * 28
     fresh = canopy(native=amp)
     assert wt_float(fresh["amp_curve"][0]) == 0.0
-    assert wt_float(voices(fresh)[1][7]) == 0.5
-    changed = canopy(native=native_amp(mode=1, attack=1 / 64, hold=40))
-    assert wt_float(changed["amp_curve"][0]) == 0.5
-    assert wt_float(voices(changed)[1][7]) == 1.0
+    assert wt_float(voices(fresh)[1][7]) == 0.125
+    changed = canopy(native=native_amp(mode=1, attack=1 / 256, hold=40))
+    assert wt_float(changed["amp_curve"][0]) == 0.125
+    assert wt_float(voices(changed)[1][7]) == 0.25
 
 
 @pytest.mark.parametrize("family", ["legacy", "wavetable", "fm"])
@@ -844,10 +879,10 @@ def test_native_amp_arp_tail_continues_finite_ahd_without_restarting(canopy):
     base[6], base[15] = 127, 0
     controls = presentation_controls(base)
     amp = native_amp(mode=1, attack=1, hold=1000, release=0.5)
-    before = canopy([note(1, 60)], controls=controls, native=amp)
+    before = canopy([note(1, 60)], controls=controls, native=amp, blocks=9)
     assert before["state"][136] == 1
     prior_phase, prior_count = before["state"][741:743]
-    assert prior_phase == 3 and prior_count == 31
+    assert prior_phase == 3 and prior_count == 32
     after = canopy(controls=controls, native=amp, state_edits={146: 89999})
     tails = [slot for slot in (4, 5) if after["state"][slot * 8 + 1] & 4]
     assert len(tails) == 1 and after["state"][136] == 2
@@ -863,7 +898,7 @@ def test_native_amp_arp_tail_continues_finite_ahd_without_restarting(canopy):
 
 def test_native_amp_pad_steal_copies_phase_and_overrides_infinite_release(canopy):
     amp = native_amp(attack=1, sustain=1, release=1)
-    before = canopy([note(i + 1, 60 + 3 * i) for i in range(4)], native=amp)
+    before = canopy([note(i + 1, 60 + 3 * i) for i in range(4)], native=amp, blocks=8)
     source = next(slot for slot in range(4) if before["state"][slot * 8] == 1)
     metadata = before["state"][716 + source * 4 : 720 + source * 4]
     after = canopy([note(5, 74)], native=amp)
@@ -877,7 +912,7 @@ def test_native_amp_pad_steal_copies_phase_and_overrides_infinite_release(canopy
 
 def test_native_amp_rejected_steal_batch_preserves_envelope_metadata(canopy):
     amp = native_amp(attack=1, sustain=1, release=1)
-    before = canopy([note(i + 1, 60 + 3 * i) for i in range(4)], native=amp)
+    before = canopy([note(i + 1, 60 + 3 * i) for i in range(4)], native=amp, blocks=8)
     # The first event steals a rendered voice into a tail; duplicate admission
     # fails inside the staged event engine, after that metadata has moved.
     rejected = canopy([note(5, 74), note(5, 76)], native=amp)
@@ -885,7 +920,9 @@ def test_native_amp_rejected_steal_batch_preserves_envelope_metadata(canopy):
     assert rejected["state"] == before["state"]
     after = canopy([note(5, 74)], native=amp)
     tail = next(slot for slot in (4, 5) if after["state"][slot * 8] == 1)
-    assert after["state"][716 + tail * 4 : 720 + tail * 4] == [1, 1, 0, 2]
+    source = next(slot for slot in range(4) if before["state"][slot * 8] == 1)
+    metadata = before["state"][716 + source * 4 : 720 + source * 4]
+    assert after["state"][716 + tail * 4 : 720 + tail * 4] == [*metadata[:3], 2]
 
 
 @pytest.mark.parametrize(
@@ -927,7 +964,7 @@ def test_native_amp_v6_input_bounds_and_status(canopy):
 def test_native_amp_v6_packet_normalization_reaches_kernel(canopy):
     r = canopy(packet=wire_packet([(1, 1, 60, 100, 0, 0)]), native=native_amp())
     assert r["regs"]["R0"] == 0 and 1 in voices(r)
-    assert wt_float(voices(r)[1][7]) == 0.5
+    assert wt_float(voices(r)[1][7]) == 0.125
 
 
 @pytest.mark.parametrize(
@@ -1100,20 +1137,44 @@ def test_v5_status_clock_acquisition_loss_stop_and_recovery(canopy, clock):
     assert sample(794, 4) == 2
 
 
-def test_v5_fine_clock_does_not_schedule_without_phase_provider(canopy):
+@pytest.mark.parametrize("version,size", [(5, 96), (6, 128), (7, 136)])
+def test_v5_pattern_tempo_schedules_without_phase_provider(canopy, version, size):
+    controls = presentation_controls(base=FINE)
+    r = canopy(
+        [note(1, 60), note(2, 64)],
+        controls=controls,
+        native=[0] * 8 if version >= 6 else None,
+        post_amp=version == 7,
+        edits={0: version, 1: size, 12: 0x800 | (14400 << 16)},
+        blocks=600,
+        advance_clock=True,
+    )
+    elapsed = 599 * 2 * 14400 * 3
+    assert r["state"][149] == 1 + elapsed // 21600000
+    assert r["state"][146] == elapsed % 21600000
+    assert r["state"][170] == 2
+
+
+@pytest.mark.parametrize("version,size", [(5, 96), (6, 128), (7, 136)])
+def test_v5_pattern_arp_rejects_uncapable_phase_without_tempo(canopy, version, size):
     controls = presentation_controls(base=FINE)
     for block, boundary in [(0, 1), (188, 2), (376, 3)]:
         r = canopy(
-            [note(1, 60)] if not block else [],
+            [note(1, 60)] if block == 0 else (),
             controls=controls,
+            native=[0] * 8 if version >= 6 else None,
+            post_amp=version == 7,
             edits={
                 **position(block, boundary, flags=0x103),
-                0: 5,
-                1: 96,
+                0: version,
+                1: size,
+                # Stale phase words can appear plausible and advance, but
+                # only grid timing is advertised and no BPM has been accepted.
                 20: (boundary - 1) * 5400000,
                 21: (boundary - 1) * 5400000,
             },
         )
+        assert r["state"][149] == 0 and r["state"][147] == 0
         assert r["state"][136] == 0
         assert (r["status"][10] >> 8) & 255 == 1
         assert (r["status"][10] >> 16) & 255 == 1
@@ -1756,6 +1817,138 @@ def test_fine_master_backward_correction_loss_and_recovery(canopy):
     assert voices(r)[1][1] == 1
 
 
+def test_fine_master_short_provider_gap_preserves_grid_and_sequence(canopy):
+    """Two absent wire frames must not replay or advance a held chord early."""
+    controls = FINE[:8] + (8,) + FINE[9:]
+    continuous_state, gapped_state = 0x20050000, 0x20054000
+
+    def frame(block, ticks, available=True):
+        return {
+            **phase_position(ticks, block),
+            0: 5,
+            1: 96,
+            12: 0x303 if available else 0,
+        }
+
+    notes = [note(1, 60), note(2, 64), note(3, 67)]
+    for state in (continuous_state, gapped_state):
+        for block in range(19):
+            first = canopy(
+                notes if block == 0 else (),
+                controls=controls,
+                state=state,
+                edits=frame(block, block * 300000),
+            )
+        assert first["state"][149] == 1 and first["state"][151] == 60
+    for block in range(19, 30):
+        ticks = block * 300000
+        uninterrupted = canopy(
+            controls=controls, state=continuous_state, edits=frame(block, ticks)
+        )
+        intermittent = canopy(
+            controls=controls,
+            state=gapped_state,
+            edits=frame(block, ticks, available=block not in (21, 22)),
+        )
+        if block in (21, 22):
+            assert intermittent["state"][173] == block - 20, (
+                block,
+                intermittent["state"][160:174],
+            )
+            assert intermittent["state"][170] == 2, (
+                block,
+                intermittent["state"][160:174],
+            )
+        if block >= 23:
+            assert intermittent["state"][149] == uninterrupted["state"][149], (
+                block,
+                intermittent["state"][136:174],
+                uninterrupted["state"][136:174],
+            )
+            assert intermittent["state"][151] == uninterrupted["state"][151], block
+            assert intermittent["state"][146] == uninterrupted["state"][146], block
+    assert uninterrupted["state"][149] == intermittent["state"][149] == 2
+    assert uninterrupted["state"][151] == intermittent["state"][151] == 64
+
+
+def test_fine_master_short_gaps_during_initial_observation_acquire(canopy):
+    """A fresh boundary can acquire after short gaps without an early note."""
+    controls = presentation_controls(base=FINE)
+    reference_state, gapped_state = 0x20050000, 0x20054000
+    notes = [note(1, 60), note(2, 64), note(3, 67)]
+    for block in range(19):
+        for state in (reference_state, gapped_state):
+            missing = state == gapped_state and block in (4, 5, 10, 11, 16, 17)
+            timing = {
+                **phase_position(block * 300000, block),
+                0: 5,
+                1: 96,
+                12: 0 if missing else 0x303,
+            }
+            result = canopy(
+                notes if block == 0 else (),
+                controls=controls,
+                state=state,
+                edits=timing,
+                state_edits={188: 0} if missing else None,
+            )
+            if block < 18:
+                assert result["state"][149] == 0
+                if missing:
+                    assert result["state"][170] == 1
+                    assert not result["status"][2] & 0x40000000
+                    assert (result["status"][10] >> 8) & 255 == 1
+            else:
+                assert result["state"][149] == 1 and result["state"][151] == 60
+                assert result["state"][170] == 2
+
+
+def test_fine_master_missing_provider_before_acquisition_fails_closed(canopy):
+    controls = presentation_controls(base=FINE)
+    result = canopy(
+        [note(1, 60)],
+        controls=controls,
+        edits={**phase_position(0, 0), 0: 5, 1: 96, 12: 0},
+    )
+    assert result["state"][173] == 0
+    assert result["state"][170] == 3 and result["state"][147] == 0
+    assert result["state"][149] == 0
+
+
+@pytest.mark.parametrize("transition", ["expired", "stop", "long", "discontinuity"])
+def test_fine_master_provider_gap_remains_bounded(canopy, transition):
+    """The hold cannot turn STOP, expiry or a bad clock into a local clock."""
+    controls = presentation_controls(base=FINE)
+
+    def frame(block, ticks, flags):
+        return {**phase_position(ticks, block), 0: 5, 1: 96, 12: flags}
+
+    canopy([note(1, 60)], controls=controls, edits=frame(0, 0, 0x303))
+    started = canopy(controls=controls, edits=frame(1, 5400000, 0x303))
+    assert started["state"][149] == 1 and started["state"][170] == 2
+    held = canopy(controls=controls, edits=frame(2, 5472000, 0))
+    assert held["state"][173] == 1 and held["state"][149] == 1
+    assert (held["status"][10] >> 8) & 255 == 2
+    if transition == "long":
+        held = canopy(controls=controls, edits=frame(3, 5544000, 0))
+        assert held["state"][173] == 2 and held["state"][170] == 2
+        result = canopy(controls=controls, edits=frame(4, 5616000, 0))
+        assert result["state"][173] == 0 and result["state"][170] == 3
+        assert result["state"][147] == 0
+    elif transition == "expired":
+        result = canopy(controls=controls, edits=frame(3, 5544000, 0x300))
+        assert result["state"][173] == 0 and result["state"][170] == 3
+        assert result["state"][147] == 0
+    elif transition == "stop":
+        result = canopy(controls=controls, edits=frame(3, 5544000, 0x700))
+        assert result["state"][173] == 0 and result["state"][147] == 0
+        assert (result["status"][10] >> 8) & 255 == 4
+    else:
+        result = canopy(controls=controls, edits=frame(3, 7200000, 0x303))
+        assert result["state"][173] == 0 and result["state"][170] == 1
+        assert result["state"][147] == 0 and result["state"][149] == 1
+
+
 def test_fine_master_swing_and_tempo_change(canopy):
     controls = FINE[:8] + (4,) + FINE[9:12] + (50,) + FINE[13:]
     serial, ticks, onsets = 0, 0, []
@@ -1772,6 +1965,287 @@ def test_fine_master_swing_and_tempo_change(canopy):
     assert onsets[:5] == [5400000, 13800000, 16200000, 24600000, 27000000]
     # Alternating long/short pairs retain their exact musical total across tempo change.
     assert onsets[4] - onsets[2] == 10800000
+
+
+def stopped_pattern(block=0, tempo=14400):
+    """Coherent selected stock tempo (BPM*120), with transport stopped."""
+    return {0: 5, 1: 96, 4: block, 12: 0xF00 | (tempo << 16)}
+
+
+@pytest.mark.parametrize("tempo,rate", [(3600, 1), (16441, 3), (36000, 8)])
+def test_pattern_arp_plays_stopped_at_fractional_stock_tempo(canopy, tempo, rate):
+    controls = FINE[:8] + (rate,) + FINE[9:]
+    r = canopy(
+        [note(1, 60), note(2, 64), note(3, 67)],
+        controls=controls,
+        edits=stopped_pattern(tempo=tempo),
+        blocks=600,
+        advance_clock=True,
+    )
+    elapsed = 599 * 2 * tempo * rate
+    assert r["state"][149] == 1 + elapsed // 21600000
+    assert r["state"][146] == elapsed % 21600000
+    assert set(voices(r)) == {1, 2, 3}
+    assert r["state"][162] == 4 and r["state"][170] == 2
+
+
+@pytest.mark.parametrize("restart", [0, 2])
+def test_stopped_arp_advances_with_stable_phrase_and_only_restarts_on_new_phrase(
+    canopy, restart
+):
+    controls = FINE[:8] + (8,) + FINE[9:14] + (restart, 0)
+    timing = {**stopped_pattern(tempo=21600), 18: 0x80000001}
+    r = canopy(
+        [note(1, 60), note(2, 64), note(3, 67)],
+        controls=controls,
+        edits=timing,
+        blocks=190,
+        advance_clock=True,
+    )
+    assert r["state"][149] == 4
+    assert r["state"][151] == 60
+    r = canopy(
+        controls=controls,
+        edits={**stopped_pattern(190, 21600), 18: 0x80000002},
+    )
+    if restart == 0:
+        assert r["state"][149] == 5 and r["state"][151] == 60
+    else:
+        assert r["state"][149] == 4
+
+
+def test_pattern_arp_stopped_gate_swing_live_tempo_and_note_release(canopy):
+    controls = FINE[:8] + (4,) + FINE[9:12] + (50,) + FINE[13:]
+    r = canopy(
+        [note(1, 60)],
+        controls=controls,
+        edits=stopped_pattern(),
+        blocks=140,
+        advance_clock=True,
+    )
+    assert r["state"][149] == 1 and r["state"][137] == 1
+    r = canopy(controls=controls, edits=stopped_pattern(140))
+    assert r["state"][137] == 1
+    r = canopy(controls=controls, edits=stopped_pattern(141))
+    assert r["state"][137] == 0  # halfway through the long swung interval
+    # Double the pattern tempo without resetting the accumulated phase.
+    r = canopy(
+        controls=controls,
+        edits=stopped_pattern(142, 28800),
+        blocks=71,
+        advance_clock=True,
+    )
+    assert r["state"][149] == 2 and r["state"][146] == 201600
+    r = canopy(
+        controls=controls,
+        edits=stopped_pattern(213, 28800),
+        blocks=47,
+        advance_clock=True,
+    )
+    assert r["state"][149] == 3 and r["state"][146] == 230400
+    r = canopy(
+        [note(1, 60, off=True)],
+        controls=controls,
+        edits=stopped_pattern(260),
+        blocks=600,
+        advance_clock=True,
+    )
+    assert r["state"][149] == 3 and r["state"][136] == 0
+    assert not voices(r)
+
+
+@pytest.mark.parametrize("restart", [0, 2], ids=["trig", "continue"])
+def test_pattern_arp_transport_and_phase_churn_do_not_reset_cadence(canopy, restart):
+    controls = presentation_controls(base=FINE[:8] + (8,) + FINE[9:14] + (restart, 0))
+    notes = [note(1, 60), note(2, 64), note(3, 67)]
+    serial, onsets = 0, []
+    for block in range(120):
+        # PLAY/STOP, missing phase, backward corrections, generation changes,
+        # and repeated/wrapped transport stamps do not change audio time.
+        flags = (0xF00, 0xB03, 0x800, 0, 0xB00, 0xF00)[block % 6]
+        r = canopy(
+            notes if block == 0 else (),
+            controls=controls,
+            edits={
+                **stopped_pattern(block if block % 5 else 0xFFFFFFFF, 36000),
+                12: flags | ((36000 << 16) if flags else 0),
+                13: block // 3 + 1,
+                14: (block * 97) & 0xFFFFFFFF,
+                15: block % 16,
+                18: 0x80000001,
+                20: (0xFFFFFFFF - block * 172900) & 0xFFFFFFFF,
+                21: block * 100000,
+            },
+            state_edits={188: 0},
+        )
+        elapsed = block * 2 * 36000 * 8
+        assert r["state"][146] == elapsed % 21600000, block
+        assert r["state"][149] == 1 + elapsed // 21600000, block
+        assert r["state"][147] == 1 and r["state"][170] == 2, block
+        assert (r["status"][10] >> 8) & 255 == 2, block
+        if r["state"][149] != serial:
+            serial = r["state"][149]
+            onsets.append((block, r["state"][151]))
+    assert onsets == [(0, 60), (38, 64), (75, 67), (113, 60)]
+
+
+@pytest.mark.parametrize("flags", [0x800, 0x801, 0x802, 0x803, 0xB00, 0xF00])
+def test_pattern_arp_accepts_tempo_regardless_transport_flags(canopy, flags):
+    controls = presentation_controls(base=FINE)
+    r = canopy(
+        [note(1, 60), note(2, 64)],
+        controls=controls,
+        edits={**stopped_pattern(tempo=21600), 12: flags | (21600 << 16)},
+        blocks=350,
+        advance_clock=True,
+    )
+    elapsed = 349 * 2 * 21600 * 3
+    assert r["state"][149] == 1 + elapsed // 21600000
+    assert r["state"][146] == elapsed % 21600000
+    assert r["state"][170] == 2
+
+
+@pytest.mark.parametrize(
+    "flags",
+    [
+        0,  # no provider
+        0x700 | (30000 << 16),  # expired phase with no tempo capability
+        0xF00,  # zero tempo
+        0xB03 | (3599 << 16),  # below the selected-tempo range
+        0xF00 | (36001 << 16),  # above the selected-tempo range
+    ],
+)
+def test_pattern_arp_retains_last_tempo_through_provider_outage(canopy, flags):
+    controls = presentation_controls(base=FINE)
+    canopy([note(1, 60), note(2, 64)], controls=controls, edits=stopped_pattern())
+    # More than an entire quarter note with no usable provider: gates and
+    # subsequent notes still follow the last selected 120 BPM precisely.
+    r = canopy(
+        controls=controls,
+        edits={**stopped_pattern(1), 12: flags},
+        blocks=800,
+        advance_clock=True,
+    )
+    elapsed = 800 * 2 * 14400 * 3
+    assert r["state"][149] == 1 + elapsed // 21600000
+    assert r["state"][146] == elapsed % 21600000
+    assert r["state"][170] == 2
+    r = canopy(
+        controls=controls,
+        edits={**stopped_pattern(801), 12: flags},
+        state_edits={188: 0},
+    )
+    assert (r["status"][10] >> 8) & 255 == 2
+    # A new, valid BPM is accepted immediately without a replay or phase reset.
+    r = canopy(controls=controls, edits=stopped_pattern(802, 21600))
+    elapsed += 2 * 14400 * 3 + 2 * 21600 * 3
+    assert r["state"][149] == 1 + elapsed // 21600000
+    assert r["state"][146] == elapsed % 21600000
+
+
+@pytest.mark.parametrize(
+    "flags", [0, 0x800, 0xF00 | (3599 << 16), 0xB00 | (36001 << 16)]
+)
+def test_pattern_arp_cannot_invent_tempo_before_first_valid_value(canopy, flags):
+    r = canopy(
+        [note(1, 60)],
+        controls=FINE,
+        edits={**stopped_pattern(), 12: flags},
+        blocks=20,
+        advance_clock=True,
+    )
+    assert r["state"][149] == 0 and r["state"][147] == 0
+    r = canopy(controls=FINE, edits=stopped_pattern(20))
+    assert r["state"][149] == 1 and r["state"][146] == 0
+
+
+def test_pattern_arp_provider_gaps_preserve_gate_and_note_sequence(canopy):
+    controls = presentation_controls(base=FINE[:8] + (8,) + FINE[9:])
+    reference, gapped = 0x20050000, 0x20054000
+    notes = [note(1, 60), note(2, 64), note(3, 67)]
+    # One outage crosses both the 50% gate and the next note onset.
+    for block in range(42):
+        timing = stopped_pattern(block, 36000)
+        expected = canopy(
+            notes if block == 0 else (),
+            controls=controls,
+            state=reference,
+            edits=timing,
+        )
+        actual = canopy(
+            notes if block == 0 else (),
+            controls=controls,
+            state=gapped,
+            edits={**timing, 12: 0} if 9 <= block <= 38 else timing,
+        )
+        assert actual["state"][170] == 2
+        assert actual["state"][146] == expected["state"][146], block
+        assert actual["state"][149] == expected["state"][149], block
+        assert actual["state"][151] == expected["state"][151], block
+        assert actual["state"][137] == expected["state"][137], block
+    assert actual["state"][149] == 2 and actual["state"][151] == 64
+
+
+def test_pattern_arp_cached_tempo_is_per_instance(canopy):
+    controls = FINE[:8] + (8,) + FINE[9:]
+    # Different cached tempos make cross-track scratch leakage observable even
+    # when both tracks subsequently lose their timing provider together.
+    for state, tempo in [(0x20050000, 14400), (0x20054000, 21600)]:
+        canopy(
+            [note(1, 60), note(2, 64)],
+            state=state,
+            controls=controls,
+            edits=stopped_pattern(tempo=tempo),
+        )
+    for batch in range(3):
+        for state, tempo in [(0x20050000, 14400), (0x20054000, 21600)]:
+            r = canopy(
+                state=state,
+                controls=controls,
+                edits={**stopped_pattern(1 + batch * 80), 12: 0},
+                blocks=80,
+                advance_clock=True,
+            )
+            elapsed = (batch + 1) * 80 * 2 * tempo * 8
+            assert r["state"][149] == 1 + elapsed // 21600000
+            assert r["state"][146] == elapsed % 21600000
+            assert r["state"][170] == 2
+
+
+@pytest.mark.parametrize("idle", ["no_keys", "mix_zero"])
+def test_pattern_arp_remembers_selected_tempo_before_a_phrase(canopy, idle):
+    controls = FINE[:8] + (8,) + FINE[9:14] + (0, 0)
+    muted = controls[:6] + (0,) + controls[7:]
+    canopy(
+        controls=muted if idle == "mix_zero" else controls,
+        edits=stopped_pattern(tempo=21600),
+    )
+    r = canopy(
+        [note(1, 60), note(2, 64)],
+        controls=controls,
+        edits={**stopped_pattern(1), 12: 0},
+        blocks=190,
+        advance_clock=True,
+    )
+    elapsed = 189 * 2 * 21600 * 8
+    assert r["state"][149] == 1 + elapsed // 21600000
+    assert r["state"][146] == elapsed % 21600000
+    assert r["state"][170] == 2
+
+
+def test_pattern_arp_frame_stamp_repeats_jumps_and_wrap_are_not_time(canopy):
+    canopy([note(1, 60)], controls=FINE, edits=stopped_pattern(0xFFFFFFFF))
+    for call, stamp in enumerate([0, 0, 0xFFFFFFFF, 500, 20], start=1):
+        r = canopy(controls=FINE, edits=stopped_pattern(stamp))
+        assert r["state"][149] == 1
+        assert r["state"][146] == call * 86400
+        assert r["state"][170] == 2
+
+
+def test_pattern_arp_stopped_status_reports_running(canopy):
+    controls = presentation_controls(base=FINE)
+    r = canopy([note(1, 60)], controls=controls, edits=stopped_pattern())
+    assert (r["status"][10] >> 8) & 255 == 2
 
 
 @pytest.mark.parametrize("restart,expected", [(0, 60), (1, 60), (2, 64)])
@@ -1914,13 +2388,27 @@ def test_explicit_phrase_restarts_arp_without_retriggering_common_pad(
     assert all(v[1] == 1 for v in voices(r).values())
 
 
-def test_pattern_identity_change_restarts_local_arp_mid_pattern(canopy):
+@pytest.mark.parametrize("version,size", [(3, 80), (5, 96), (6, 128), (7, 136)])
+def test_pattern_identity_change_restarts_local_arp_mid_pattern(canopy, version, size):
     controls = STRUM[:6] + (127,) + STRUM[7:14] + (1, 0)
-    timing = {**mapped(), 12: 3, 13: 1, 14: 10, 15: 4, 19: 0x43170000}
-    canopy([note(1, 60), note(2, 64)], controls=controls, edits=timing)
-    canopy(controls=controls, edits=timing, state_edits={146: 89999})
-    r = canopy(controls=controls, edits={**timing, 19: 0x43180000})
+    timing = {
+        **mapped(),
+        0: version,
+        1: size,
+        12: (0xB03 | (14400 << 16)) if version >= 5 else 3,
+        13: 1,
+        14: 10,
+        15: 4,
+        19: 0x43170000,
+    }
+    kwargs = {"native": [0] * 8 if version >= 6 else None, "post_amp": version == 7}
+    canopy([note(1, 60), note(2, 64)], controls=controls, edits=timing, **kwargs)
+    before = canopy(controls=controls, edits=timing, state_edits={146: 89999}, **kwargs)
+    assert before["state"][151] == 64
+    r = canopy(controls=controls, edits={**timing, 19: 0x43180000}, **kwargs)
     assert r["state"][151] == 60
+    assert r["state"][149] == before["state"][149] + 1
+    assert set(voices(r)) == {1, 2}
 
 
 @pytest.mark.parametrize("canopy_object", [True], indirect=True)
@@ -2725,14 +3213,32 @@ def test_wavetable_master_clock_generation_change_reobserves_without_free_phase_
     assert wt_float(r["state"][239]) == pytest.approx(0.02, rel=1e-6)
 
 
-def test_wavetable_v5_master_requires_fine_clock_capability(canopy):
+@pytest.mark.parametrize("version,size", [(5, 96), (6, 128), (7, 136)])
+def test_wavetable_v5_master_requires_fine_clock_capability(canopy, version, size):
     controls = wavetable_controls(rate=5, clock=1)
-    timing = {0: 5, 1: 96, 12: 3, 13: 1, 14: 1, 15: 0, 16: 16, 20: 1000, 21: 100}
-    canopy([note(1, 60)], controls=controls, edits=timing)
-    r = canopy(controls=controls, edits={**timing, 20: 217000})
+    flags = 0x903 | (14400 << 16)
+    timing = {
+        0: version,
+        1: size,
+        12: flags,
+        13: 1,
+        14: 1,
+        15: 0,
+        16: 16,
+        20: 1000,
+        21: 100,
+    }
+    kwargs = {"native": [0] * 8 if version >= 6 else None, "post_amp": version == 7}
+    canopy([note(1, 60)], controls=controls, edits=timing, **kwargs)
+    r = canopy(controls=controls, edits={**timing, 20: 217000}, **kwargs)
     assert r["state"][239] == 0
-    canopy(controls=controls, edits={**timing, 12: 515, 20: 217000})
-    r = canopy(controls=controls, edits={**timing, 12: 515, 20: 433000})
+    canopy(controls=controls, edits={**timing, 12: flags | 0x200, 20: 217000}, **kwargs)
+    r = canopy(
+        controls=controls, edits={**timing, 12: flags | 0x200, 20: 433000}, **kwargs
+    )
+    assert wt_float(r["state"][239]) == pytest.approx(0.01, rel=1e-6)
+    # Losing the capability freezes scan even if a stale phase keeps advancing.
+    r = canopy(controls=controls, edits={**timing, 20: 649000}, **kwargs)
     assert wt_float(r["state"][239]) == pytest.approx(0.01, rel=1e-6)
 
 

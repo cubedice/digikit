@@ -53,7 +53,7 @@ def linked():
     )
 
 
-def execute(linked, tmp_path, events):
+def execute(linked, tmp_path, events, *, tempo=0, transport=1):
     binary = Path(
         os.environ.get("DIGIKIT_CF_SCRIPT", ROOT / "target/release/examples/cf_script")
     )
@@ -70,7 +70,7 @@ def execute(linked, tmp_path, events):
     def word(addr, n):
         return {"op": "poke", "addr": addr, "hex": struct.pack(">I", n).hex()}
 
-    ops += [word(0x43164F94, 1), word(0x40966840, 100)]
+    ops += [word(0x43164F94, transport), word(0x40966840, 100), word(0x402B67FC, tempo)]
     original = b"".join(struct.pack(">HH", 0xA000 + i, 0x5555) for i in range(64))
     ops += [{"op": "poke", "addr": QUEUE, "hex": original.hex()}]
     for index, (function, args) in enumerate(events):
@@ -130,7 +130,7 @@ def execute(linked, tmp_path, events):
     for w in words[:15]:
         checksum ^= w
     assert words[9] == int(rows["phase"]["hex"], 16)
-    assert words[15] == checksum and words[:2] == [0x50504F53, 3]
+    assert words[15] == checksum and words[:2] == [0x50504F53, 4]
     return words, rows
 
 
@@ -140,6 +140,17 @@ def observe(clock, step, start=0):
 
 def due(clock, kind=5, block=9):
     return ("pp_commit", [clock, kind, block])
+
+
+@pytest.mark.parametrize("tempo", [0, 3599, 3600, 12240, 36000, 36001, 0xFFFFFFFF])
+@pytest.mark.parametrize("transport", [0, 1])
+def test_selected_tempo_is_sampled_while_running_and_stopped(
+    linked, tmp_path, tempo, transport
+):
+    words, _ = execute(linked, tmp_path, [], tempo=tempo, transport=transport)
+    expected = tempo if 3600 <= tempo <= 36000 else 0
+    assert words[5] == (expected << 16) | (2 if transport else 0)
+    assert words[14] == transport
 
 
 def test_external_clock_expiry_latches_until_stop_and_handles_wrap(linked, tmp_path):

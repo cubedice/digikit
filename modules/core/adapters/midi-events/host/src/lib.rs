@@ -9,6 +9,7 @@ mod tests {
         fn mi_test_panic() -> u32;
         fn mi_test_reset_presses() -> u32;
         fn mi_test_panel_track() -> u32;
+        fn mi_test_sequencer_notes() -> u32;
         fn mi_test_token_wrap() -> u32;
         fn mi_test_ring_wrap() -> u32;
         fn mi_test_dispatch() -> u32;
@@ -85,6 +86,7 @@ mod tests {
     );
     case!(token_wrap_requires_new_epoch, mi_test_token_wrap);
     case!(panel_routes_to_the_instrument_track, mi_test_panel_track);
+    case!(sequencer_trigs_play_local_notes_monophonically, mi_test_sequencer_notes);
     case!(ring_reuse_does_not_accept_stale_acks, mi_test_ring_wrap);
     case!(
         usb_and_din_share_ownership_without_consuming_upload_or_clock,

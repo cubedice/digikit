@@ -123,7 +123,7 @@ pub enum Progress {
 
 pub struct Driver<T> {
     transport: T,
-    buffer: &'static mut [u8; 256],
+    buffer: &'static mut [u8; image::CHUNK],
     pending: Option<(u32, Target)>,
     last_id: u32,
     uncertain: bool,
@@ -137,7 +137,7 @@ impl<T: Transport> Driver<T> {
     }
     /// The buffer is dedicated for this driver's lifetime and cannot be reclaimed
     /// by dropping it, even if the transport is still reading it. No allocator.
-    pub fn new(transport: T, buffer: &'static mut [u8; 256]) -> Self {
+    pub fn new(transport: T, buffer: &'static mut [u8; image::CHUNK]) -> Self {
         Self {
             transport,
             buffer,
@@ -164,7 +164,7 @@ impl<T: Transport> Driver<T> {
         self.available()?;
         let n = write.data.len();
         if n == 0
-            || n > 256
+            || n > image::CHUNK
             || n % 4 != 0
             || n != write.ack.bytes as usize
             || write.ack.address % 4 != 0

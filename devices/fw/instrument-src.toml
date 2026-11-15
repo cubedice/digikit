@@ -361,3 +361,142 @@ rule = { kind = "cf_window_hash", search_len = 32, offset = 0, len = 6, sha256 =
 mark = "D"
 users = ["core/instrument-play"]
 doc = "DT2 OS1.17 native keyboard enable transition; exact unique window."
+
+[[site]]
+name = "cf.page.site.instrument_live_record"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 16, offset = 0, len = 6, sha256 = "01e4f0729fbb03b378fd86e75f4af59b41318a4005e24b4970e27de69c83a9cd" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 sequencer UI state (KeyboardView +0x98, SRC view +0x6c): live recording, i.e. transport playing and the record byte at +0x271; finding 123."
+
+[[site]]
+name = "cf.page.site.instrument_trig_held"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 80, offset = 0, len = 6, sha256 = "7440c2d00ae0c6d79bb2c23cc5ba8e51f1e9a22641f8300bb516e813073aaa53" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 sequencer UI state: a trig is held within the pattern length (128-bit held-step mask at +0x258); finding 123."
+
+[[site]]
+name = "cf.page.site.instrument_step_record"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 16, offset = 0, len = 6, sha256 = "ebbc6f3f77a944b3ac9f94afda3ce2322df7958574d46ea818fcad242a0c4feb" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 sequencer UI state: step recording, i.e. record mode (+0x269) with the step-record byte at +0x272 (set by RECORD + STOP); finding 125."
+
+[[site]]
+name = "cf.page.site.instrument_note_list_write"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 0, len = 8, sha256 = "b03e5c55da3152a554640e4e767deca25f816ccf01b6b05f9a8568bccb58a4a5" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 pattern note-list writer (editor, track, step, records vector of 4-byte {note, velocity, ...}); every recorded note commits through it; finding 125."
+
+[[site]]
+name = "cf.page.site.instrument_lock_get"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 312, offset = 0, len = 6, sha256 = "58d9db571f1ea439c6be05a26a7a904a0df5fa82c89c0651bd12a7bc379bb4e7" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 SoundParameterSet vfunc 16 (this unused, code, step): the current track's lock value or -1; finding 123. The window spans vfuncs 16..18 and 4 bytes beyond, the only one of three identical copies that is unique."
+
+[[site]]
+name = "cf.page.site.instrument_lock_set"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 312, offset = 100, len = 6, sha256 = "58d9db571f1ea439c6be05a26a7a904a0df5fa82c89c0651bd12a7bc379bb4e7" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 SoundParameterSet vfunc 17 (this unused, code, value, step): sets a lock on the current track; 0 when all 80 lanes are used or the step is beyond the pattern; finding 123."
+
+[[site]]
+name = "cf.page.site.instrument_lock_clear"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 312, offset = 208, len = 6, sha256 = "58d9db571f1ea439c6be05a26a7a904a0df5fa82c89c0651bd12a7bc379bb4e7" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 SoundParameterSet vfunc 18 (this unused, code, step): clears a lock on the current track; finding 123."
+
+[[site]]
+name = "cf.page.site.instrument_seq_step"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 16, offset = 2, len = 6, sha256 = "b11952f3288124caceb94a8b72d75754291a116abff2be11218edad40106b8da" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 sequencer: adda.l of the state base whose byte +0x15b + track holds the track's current step (stored before each trig); the literal is at +2; finding 123."
+
+[[site]]
+name = "cf.page.site.instrument_lock_due_1"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 48, offset = 16, len = 6, sha256 = "6473886f90ee5e1ece589636ab9a3288fce0f8c38bc20711e7e460a350332e17" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 audio ISR due-event lock pointer check on the non-note path. Finding 123."
+
+[[site]]
+name = "cf.page.site.instrument_lock_mark_edited"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 48, offset = 16, len = 6, sha256 = "1348b6d8966ee73ed0a7c151731356b75fd5bae34245305cadc4d0e3af704d7e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 held-trig edit marker (sequencer view, boolean); stock parameter-lock edits set it before changing values. Finding 123."
+
+[[site]]
+name = "cf.page.site.instrument_lock_due_2"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 48, offset = 16, len = 6, sha256 = "2d3637c8659c7e91bc0e66577a61b869323bc029daf32fc6a90cebec2a636419" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 audio ISR due-note lock pointer check. Finding 123."
+
+[[site]]
+name = "cf.page.site.instrument_lock_skip_1"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 48, offset = 16, len = 6, sha256 = "6ecd08a3d5cdc1ed3908c0cccb846531be657c2dfe1bbd98de5568d741845f91" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 non-note continuation when the event has no lock list."
+
+[[site]]
+name = "cf.page.site.instrument_lock_skip_2"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 48, offset = 16, len = 6, sha256 = "c2ad4179ec63130b15bc2b083fd6af9e3bf0b39cc7764c0f93a3c84f720f4150" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 note continuation when the event has no lock list."
+
+[[hook]]
+name = "cf.page.hook.instrument_lock_due_1"
+site = "cf.page.site.instrument_lock_due_1"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = ["d2", "a0"], clobbers = ["d0", "ccr"] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "Capture due lock lists, including absence, before replaying the stock pointer check."
+
+[[hook]]
+name = "cf.page.hook.instrument_lock_due_2"
+site = "cf.page.site.instrument_lock_due_2"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = ["d2", "a0"], clobbers = ["d0", "ccr"] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "Capture due note lock lists, including absence, before replaying the stock pointer check."

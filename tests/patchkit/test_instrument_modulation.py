@@ -62,6 +62,22 @@ def effective(playback, controls):
     return pointer, values
 
 
+def test_native_modulation_is_applied_on_top_of_the_step_lock(playback):
+    call, put, get, _, _, _, symbols = playback
+    controls = bank(0)
+    put("_test_values", controls)
+    put("_iv_lock_slots", [1, (2 << 10) | 40, 0, 0, 0, 0])
+    frame(playback, 0, 0x6000)
+    locked = call(12, R4=symbols["_test_values"])
+    assert locked == symbols["_iv_lock_controls"]
+    assert get("_iv_lock_controls", 32)[18] & 65535 == 40
+    assert call(6, R4=locked, R8=32) == symbols["_iv_mod_controls"]
+    effective_bank = get("_iv_mod_controls", 32)
+    assert effective_bank[18] & 65535 == 103
+    assert effective_bank[2] == 103
+    assert get("_test_values", 32) == controls
+
+
 @pytest.mark.parametrize("family", range(4))
 @pytest.mark.parametrize("lane", range(6))
 def test_every_family_lane_changes_its_real_control_and_stays_valid(

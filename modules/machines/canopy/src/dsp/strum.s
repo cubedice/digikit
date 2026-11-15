@@ -60,6 +60,7 @@ _cs_transport:
 _cs_pattern:
     R0 = DM(12, I0);
     R1 = 3;
+    R0 = R0 AND R1; // V5+ also carries provider, STOP and selected-tempo bits.
     COMP(R0, R1);
     IF NE JUMP _cs_note_batch;
     R0 = DM(_cs_restart);

@@ -24,7 +24,7 @@ static void publish_reply(uint16_t *queue, uint16_t *record, uint32_t *r, int co
         uint32_t h = (0x1cu + 0x54u*(21u+i/2u)+0x44u+(i&1u)*4u)/2u;
         record[h] = (uint16_t)r[i]; record[h+1] = (uint16_t)(r[i]>>16);
     }
-    instrument_write_frame((uintptr_t)queue, 0x9fc/2, record);
+    instrument_write_frame((uintptr_t)queue, 0x9fc/2, record, 0);
 }
 uint32_t mi_test_dispatch(void)
 {
@@ -74,7 +74,7 @@ uint32_t mi_test_dispatch(void)
     CHECK(mi_ledger.generations[0] == 2); /* no repeated generation churn */
     /* Frame-time revocation catches a quiet keyboard and queued old events. */
     for (i = 0; i < 0x55e*2; ++i) queue[i] = 0;
-    instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0);
+    instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0, 0);
     CHECK(mi_ledger.reset_mask == ((1u << 15) | 1u));
     CHECK(!mi_ledger.routes[16].enabled);
     CHECK(mi_transport.pending == MT_RESET);
@@ -86,9 +86,9 @@ uint32_t mi_test_dispatch(void)
     mi_transport.epoch = mi_ledger.epoch;
     mi_instance_reset(0);
     for (i = 0; i < 0x55e*2; ++i) queue[i] = 0xcccc;
-    instrument_write_frame((uintptr_t)queue, 1, 0);
+    instrument_write_frame((uintptr_t)queue, 1, 0, 0);
     for (i = 0; i < 0x55e*2; ++i) CHECK(queue[i] == 0xcccc);
-    instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0);
+    instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0, 0);
     CHECK(mi_transport.pending == MT_RESET);
     for (i = 0; i < 0x55e*2; ++i) {
         uint32_t entry = i/2;
@@ -108,7 +108,7 @@ uint32_t mi_test_dispatch(void)
         uint32_t h = (0x1cu + 0x54u*(21u+i/2u)+0x44u+(i&1u)*4u)/2u;
         record[h] = (uint16_t)r[i]; record[h+1] = (uint16_t)(r[i]>>16);
     }
-    instrument_write_frame((uintptr_t)queue, 0x9fc/2, record);
+    instrument_write_frame((uintptr_t)queue, 0x9fc/2, record, 0);
     CHECK(!mi_ledger.reset_mask && !mi_transport.pending && mi_transport.heartbeat_seen);
     for (i = 0; i < MT_WORDS; ++i) {
         uint32_t at = 2u*(0x9fc/2+2*i)+1;
@@ -182,11 +182,18 @@ uint32_t mi_test_dispatch(void)
         CHECK(mi_status_reply(ui,14,&age)==0);
         /* Identical wire heartbeat is not published twice. */
         publish_reply(queue,record,r,0); CHECK(mi_status_reply(ui,14,&age)==0);
-        for(uint32_t h=10;h<75;++h) { r[2]=h; publish_reply(queue,record,r,0); }
+        /* 100 status messages span 133 ms at the real 750 Hz maximum. A
+         * healthy UI pause inside the freshness deadline must not overflow. */
+        for(uint32_t h=10;h<110;++h) { r[2]=h; publish_reply(queue,record,r,0); }
+        for(uint32_t h=0;h<100;++h) {
+            CHECK(mi_status_reply(ui,14,&age)==12 && age==100-h);
+        }
+        CHECK(mi_status_reply(ui,14,&age)==0);
+        for(uint32_t h=110;h<239;++h) { r[2]=h; publish_reply(queue,record,r,0); }
         CHECK(mi_status_reply(ui,14,&age)==-3);
         CHECK(mi_status_reply(ui,14,&age)==12 && age==1);
         CHECK(mi_status_reply(ui,14,&age)==0);
-        r[2]=75; publish_reply(queue,record,r,0); /* queued at trust loss below */
+        r[2]=239; publish_reply(queue,record,r,0); /* queued at trust loss below */
         for(i=0;i<16;++i) r[i]=legacy[i];
     }
     /* A backwards, otherwise valid heartbeat invalidates registry trust even
@@ -205,8 +212,36 @@ uint32_t mi_test_dispatch(void)
     mi_transport_recover();
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == -2);
     publish_reply(queue, record, r, 0);
-    instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0);
+    instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0, 0);
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == -2);
+    /* Sequencer trigs: the stock frame's trig/release masks, pitch and
+     * velocity play local notes on tracks that take panel keys only. */
+    {
+        uint16_t frame[0x401];
+        for (i = 0; i < 0x401; ++i) frame[i] = 0;
+        mi_init(&mi_ledger);
+        CHECK(mi_route(&mi_ledger, MI_PANEL, 0, 10, mi_ledger.generations[10], 0) == 0);
+        mi_transport.applied[10] = 1; /* configured: frame-time revalidation keeps it */
+        frame[0x11] = (1u << 10) | (1u << 3);
+        frame[1 + 10] = 62u << 8; frame[0x1a + 10] = 100u << 8;
+        frame[1 + 3] = 60u << 8; frame[0x1a + 3] = 100u << 8;
+        instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0, frame);
+        CHECK(mi_peek(&mi_ledger, &e) && e.kind == MI_NOTE_ON && e.track == 10);
+        CHECK(e.port == MI_PANEL && e.note == 62 && e.value == 100);
+        CHECK(mi_ack(&mi_ledger, e.epoch, e.sequence) && !mi_peek(&mi_ledger, &e));
+        frame[0x11] = 0; frame[0x12] = 1u << 10;
+        instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0, frame);
+        CHECK(mi_peek(&mi_ledger, &e) && e.kind == MI_NOTE_OFF && e.track == 10 && e.note == 62);
+        CHECK(mi_ack(&mi_ledger, e.epoch, e.sequence));
+        /* The all-voice reset word releases every sequencer note. */
+        frame[0x12] = 0; frame[0x11] = 1u << 10;
+        instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0, frame);
+        CHECK(mi_peek(&mi_ledger, &e) && e.kind == MI_NOTE_ON);
+        CHECK(mi_ack(&mi_ledger, e.epoch, e.sequence));
+        frame[0x11] = 0; frame[0x15] = 0xffff;
+        instrument_write_frame((uintptr_t)queue, 0x9fc/2, 0, frame);
+        CHECK(mi_peek(&mi_ledger, &e) && e.kind == MI_NOTE_OFF && e.track == 10);
+    }
     CHECK(masks == restores);
     return 0;
 }

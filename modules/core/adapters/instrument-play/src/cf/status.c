@@ -110,9 +110,9 @@ void is_poll(IsStatus *s,uint32_t now,IsRead read)
     uint32_t words[IS_WORDS],age=0;
     int accept=s->poll_valid && now-s->poll_at<IS_TIMEOUT_MS;
     if(!accept) invalidate(s);
-    /* The adapter has 64 entries plus a possible loss notification. Bounded
+    /* The adapter has 128 entries plus a possible loss notification. Bounded
      * even if the audio interrupt continues publishing during this drain. */
-    for(uint32_t i=0;i<66;++i) {
+    for(uint32_t i=0;i<130;++i) {
         int result=read(words,IS_WORDS,&age);
         if(!result) { s->poll_at=now; s->poll_valid=1; return; }
         if(result==-3) { invalidate(s); accept=0; continue; }

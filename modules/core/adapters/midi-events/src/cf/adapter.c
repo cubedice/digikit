@@ -10,6 +10,9 @@ extern void dl_reset_begin(void) __attribute__((weak));
 extern int dl_reset_quiesce(void) __attribute__((weak));
 extern int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
     __attribute__((weak));
+extern int instrument_lock_take(uint32_t track,uint16_t out[MI_LOCKS]) __attribute__((weak));
+extern void instrument_lock_discard(void) __attribute__((weak));
+extern int instrument_lock_source(uint32_t track,uint32_t wave,uint16_t out[MI_SOURCE_VALUES]) __attribute__((weak));
 
 MiLedger mi_ledger;
 MiTransport mi_transport;
@@ -19,7 +22,9 @@ static uint32_t frame_block;
 static uint32_t registry_reply[MT_REPLY_WORDS];
 static uint32_t registry_reply_valid;
 static MtReplyGuard registry_guard;
-enum { STATUS_QUEUE=64, STATUS_WORDS=12 };
+/* Status arrives at most once per two 32-sample frames (750/s at 48 kHz).
+ * Cover the UI receiver's 150 ms freshness window even during busy redraws. */
+enum { STATUS_QUEUE=128, STATUS_WORDS=12 };
 static uint32_t status_words[STATUS_QUEUE][STATUS_WORDS],status_at[STATUS_QUEUE];
 static uint32_t status_head,status_count,status_lost;
 
@@ -57,7 +62,51 @@ static void revalidate_routes(void)
     }
 }
 
-void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record)
+/* Sequencer trigs on instrument tracks: the stock frame about to be sent
+ * (DT2 1.17, big-endian halfwords; finding 04) carries the trig mask (word
+ * 0x11), release mask (0x12), all-voice reset (0x15), pitch note<<8 (1 + t)
+ * and velocity<<8 (0x1a + t). Each frame is sent once, so each trig is seen
+ * once. Only tracks taking local keys (panel_mask) are played. */
+static uint32_t seq_muted;
+void mi_seq_mute(uint32_t track,int on)
+{
+    if(track>=MI_TRACKS) return;
+    uint32_t sr=dkrt_irq_mask();
+    if(on) seq_muted|=1u<<track; else seq_muted&=~(1u<<track);
+    dkrt_irq_restore(sr);
+}
+static void sequencer_frame(const volatile uint16_t *frame)
+{
+    uint32_t tracks = mi_ledger.panel_mask & ~seq_muted, trigs, releases, t;
+    if (!frame) return;
+    trigs = frame[0x11]; releases = frame[0x12];
+    if (frame[0x15]) releases = 0xffffu;
+    for (t = 0; t < MI_TRACKS; ++t) {
+        if (releases & (1u << t)) mi_seq_release(&mi_ledger, t);
+        if (!(trigs & (1u << t)) || !(tracks & (1u << t))) continue;
+        uint32_t note = frame[1u + t] >> 8, velocity = frame[0x1au + t] >> 8;
+        if (note > 127u) note = 127u;
+        if (velocity > 127u) velocity = 127u;
+        if (!velocity) velocity = 1u;
+        if(mi_seq_trig(&mi_ledger, t, note, velocity) && instrument_lock_take) {
+            uint16_t locks[MI_LOCKS];
+            int count=instrument_lock_take(t,locks);
+            /* No due lock event means this note uses the unmodified sound. */
+            if(count<0) count=0;
+            if(count>=0 && count<=(int)MI_LOCKS && mi_seq_attach_locks(&mi_ledger,t,locks,(uint32_t)count)) {
+                for(int i=0;i<count;++i) if((locks[i]>>10)==34) {
+                    uint16_t source[MI_SOURCE_VALUES];
+                    if(!instrument_lock_source || !instrument_lock_source(t,locks[i]&1023u,source) ||
+                       !mi_seq_attach_source(&mi_ledger,t,source)) mi_reset_track(&mi_ledger,t);
+                }
+            }
+        }
+    }
+    if(instrument_lock_discard) instrument_lock_discard();
+}
+
+void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record,
+                            const volatile uint16_t *frame)
 {
     uint32_t reply[MT_REPLY_WORDS], i, sr;
     const uint32_t *packet, *observed;
@@ -65,6 +114,8 @@ void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_
     if (!tx || (tx & 3u) || entry != 0x9fcu/2u) return;
     sr = dkrt_irq_mask();
     initialize();
+    if (!reset_seen) sequencer_frame(frame);
+    else if (instrument_lock_discard) instrument_lock_discard();
     if (reset_seen) {
         for (i = 0; i < MT_WORDS; ++i) {
             queue[2u*(entry+2u*i)+1u] = 0;

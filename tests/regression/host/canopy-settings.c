@@ -35,7 +35,7 @@ static uint8_t route_card[CR_BYTES],route_staged[CR_BYTES];
 static int route_exists,route_staged_valid;
 static uint8_t channels_card[CC_BYTES],channels_staged[CC_BYTES];
 static int channels_exists,channels_staged_valid;
-static uint32_t admitted=1,route_calls;
+static uint32_t admitted=1,route_calls,status_reads;
 static uint32_t config_words[32],config_revision,config_schema,config_count;
 static int preset_index(const char *key)
 {
@@ -57,7 +57,7 @@ void mi_instance_bind(uint32_t track,uint32_t slot) { (void)slot; mi_instance_re
 uint32_t mi_route_track(uint32_t p,uint32_t c) { (void)p; (void)c; return MI_NONE; }
 int mi_registry_reply(uint32_t *out,uint32_t words) { (void)out; (void)words; return 0; }
 int mi_status_reply(uint32_t *out,uint32_t words,uint32_t *age)
-{ (void)out; (void)words; (void)age; return 0; }
+{ (void)out; (void)words; (void)age; ++status_reads; return 0; }
 int mi_config_submit(uint32_t a,uint32_t b,uint32_t c,const uint32_t *d,uint32_t e)
 {
     (void)a; config_revision=b; config_schema=c; config_count=e;
@@ -190,7 +190,31 @@ int main(void)
                 enabled,usb,din,(int)channel_of(cur),selector_octave,selector_channel,route_result,route_pending,route_restore,route_calls,unsafe_io);
         else if(!strcmp(cmd,"presetsave")) preset_save(0,0);
         else if(!strcmp(cmd,"presetload")) preset_load(0,0);
+        else if(!strcmp(cmd,"presetpoll")) {
+            if(!preset_menu) preset_menu=dk_ui_menu_new(&preset_desc);
+            dk_ui_open(preset_menu); status_reads=0; instrument_play_tick();
+            printf("{\"reads\":%u,\"open\":%d,\"track\":%u}\n",
+                status_reads,dk_ui_is_open(preset_menu),src_status.track);
+        }
+        else if(!strcmp(cmd,"confighandshake")) {
+            IpInst *in=&inst[0];
+            cur=in; in->track=in->bound=0; phase=2; prepared=1; healthy=1;
+            mi_transport.applied[0]=0; mi_transport.config_active=value==1;
+            mi_transport.config_track=value==2 ? 1 : 0;
+            if(value==2) mi_transport.config_active=1;
+            mi_ledger.reset_mask=value==3 ? 2 : 0;
+            uint32_t before=mi_ledger.generations[0]; tick_instance(0,in);
+            printf("{\"phase\":%u,\"resets\":%u}\n",phase,mi_ledger.generations[0]-before);
+        }
         else if(!strcmp(cmd,"presetslot")) preset_slot=value;
+        else if(!strcmp(cmd,"legacyarp")) {
+            CpPreset p; preset_snapshot(cur,&p);
+            p.clock=(uint8_t)value; p.bpm=237; p.control[CP_RATE]=6;
+            if(cp_encode(&p,preset_card[preset_slot-1])) return 2;
+            memcpy(preset_records[preset_slot-1],preset_card[preset_slot-1],CP_RECORD_BYTES);
+            preset_present|=1u<<(preset_slot-1);
+            preset_exists|=1u<<(preset_slot-1); preset_bytes[preset_slot-1]=CP_RECORD_BYTES;
+        }
         else if(!strcmp(cmd,"family")) { pad_family=value; pad_changed(0,value); }
         else if(!strcmp(cmd,"scanclock")) scan_clock_done(0,value);
         else if(!strcmp(cmd,"color")) { pad_color=value; pad_changed(0,value); }

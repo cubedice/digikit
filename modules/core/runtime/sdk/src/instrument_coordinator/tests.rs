@@ -456,7 +456,7 @@ impl Fixture {
                 .into_parts()
                 .1;
         let owner = Coordinator::new(
-            Driver::new(Link, Box::leak(Box::new([0; 256]))),
+            Driver::new(Link, Box::leak(Box::new([0; crate::instrument_image::CHUNK]))),
             replies,
             loads,
         );
@@ -533,7 +533,7 @@ fn large_upload_budget_completes_canopy_sized_image_with_pending_polls() {
         if enlarged {
             f.owner.begin_with_upload_budget(plan, &LARGE_IMAGE, 0, 2000, 8000).unwrap();
         } else {
-            f.owner.begin(plan, &LARGE_IMAGE, 0, 2000).unwrap();
+            f.owner.begin(plan, &LARGE_IMAGE, 0, 100).unwrap();
         }
         let result = f.run(0, 8100);
         if enlarged {
@@ -544,6 +544,8 @@ fn large_upload_budget_completes_canopy_sized_image_with_pending_polls() {
                 assert_eq!(w.image.len(), 209608);
                 assert_eq!(&w.image[..LARGE_IMAGE.len()], &LARGE_IMAGE);
                 assert!(w.image[LARGE_IMAGE.len()..].iter().all(|&b| b == 0));
+                // 51 image writes, one zero-fill write, and 18 mailbox writes.
+                assert_eq!(w.starts, 70);
             });
         } else {
             assert_eq!(result, Progress::Complete {
@@ -569,7 +571,7 @@ fn larger_upload_deadline_keeps_short_drain_bound_and_retains_pending_source() {
         assert_eq!(w.starts, 1);
         assert!(w.operations.is_empty());
         let (_, _, source, bytes) = w.source.unwrap();
-        assert_eq!(unsafe { core::slice::from_raw_parts(source, bytes) }, &IMAGE[..256]);
+        assert_eq!(unsafe { core::slice::from_raw_parts(source, bytes) }, &IMAGE[..]);
     });
     let polls = WIRE.with_borrow(|w| w.polls);
     assert_eq!(f.owner.tick(1000), Progress::Blocked(Failure::Timeout));
@@ -709,7 +711,7 @@ fn undrained_timeout_retains_source_and_blocks_all_further_work() {
         let (_, _, source, bytes) = w.source.unwrap();
         assert_eq!(
             unsafe { core::slice::from_raw_parts(source, bytes) },
-            &IMAGE[..256]
+            &IMAGE[..]
         );
     });
 }
@@ -974,7 +976,7 @@ fn admission_owner() -> Coordinator<'static, Link> {
         .into_parts()
         .1;
     Coordinator::new(
-        Driver::new(Link, Box::leak(Box::new([0; 256]))),
+        Driver::new(Link, Box::leak(Box::new([0; crate::instrument_image::CHUNK]))),
         replies,
         Loads::new(16),
     )
@@ -1405,7 +1407,7 @@ fn detected_boot_loss_stops_upload_before_polling_or_reusing_its_buffer() {
         let (_, _, ptr, bytes) = w.source.unwrap();
         assert_eq!(
             unsafe { core::slice::from_raw_parts(ptr, bytes) },
-            &IMAGE[..256]
+            &IMAGE[..]
         );
         assert!(w.operations.is_empty());
     });

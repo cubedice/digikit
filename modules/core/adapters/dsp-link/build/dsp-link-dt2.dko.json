@@ -200,143 +200,136 @@
   },
   {
    "addend": 0,
-   "offset": 167,
+   "offset": 166,
+   "section": "seg_pmco",
+   "symbol": "_iv_lock_stage",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 176,
    "section": "seg_pmco",
    "symbol": "_dl_range",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 174,
+   "offset": 183,
    "section": "seg_pmco",
    "symbol": "_dl_win1",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 180,
+   "offset": 189,
    "section": "seg_pmco",
    "symbol": "_dl_area",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 183,
+   "offset": 192,
    "section": "seg_pmco",
    "symbol": "_dl_wdone",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 189,
+   "offset": 198,
    "section": "seg_pmco",
    "symbol": "_dl_win2",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 192,
+   "offset": 201,
    "section": "seg_pmco",
    "symbol": "_dl_vcount",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 202,
+   "offset": 211,
    "section": "seg_pmco",
    "symbol": "_dl_vrows",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 205,
+   "offset": 214,
    "section": "seg_pmco",
    "symbol": "_dl_wdone",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 211,
+   "offset": 220,
    "section": "seg_pmco",
    "symbol": "_dl_win3",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 214,
+   "offset": 223,
    "section": "seg_pmco",
    "symbol": "_dl_fcount",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 224,
+   "offset": 233,
    "section": "seg_pmco",
    "symbol": "_dl_frows",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 227,
+   "offset": 236,
    "section": "seg_pmco",
    "symbol": "_dl_wdone",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 230,
+   "offset": 239,
    "section": "seg_pmco",
    "symbol": "_dl_iwords",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 234,
+   "offset": 243,
    "section": "seg_pmco",
    "symbol": "_dl_range",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 241,
+   "offset": 250,
    "section": "seg_pmco",
    "symbol": "_dl_range",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 248,
+   "offset": 257,
    "section": "seg_pmco",
    "symbol": "_dl_range",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 251,
+   "offset": 260,
    "section": "seg_pmco",
    "symbol": "_dl_irows",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 255,
+   "offset": 264,
    "section": "seg_pmco",
    "symbol": "_dl_range",
    "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 262,
-   "section": "seg_pmco",
-   "symbol": "_dl_range",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 265,
-   "section": "seg_pmco",
-   "symbol": "_dl_wbase",
-   "type": "sharc.abs32"
   },
   {
    "addend": 0,
@@ -347,364 +340,378 @@
   },
   {
    "addend": 0,
-   "offset": 281,
-   "section": "seg_pmco",
-   "symbol": "_dl_sumdone",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 311,
-   "section": "seg_pmco",
-   "symbol": "_dl_good",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 314,
-   "section": "seg_pmco",
-   "symbol": "_dl_nerr",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 318,
-   "section": "seg_pmco",
-   "symbol": "_dl_nerr",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 321,
-   "section": "seg_pmco",
-   "symbol": "_dl_ack",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 327,
+   "offset": 274,
    "section": "seg_pmco",
    "symbol": "_dl_wbase",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 335,
+   "offset": 280,
    "section": "seg_pmco",
-   "symbol": "_dl_copied",
+   "symbol": "_dl_range",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 347,
+   "offset": 290,
    "section": "seg_pmco",
-   "symbol": "_dl_cum",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 351,
-   "section": "seg_pmco",
-   "symbol": "_dl_cum",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 359,
-   "section": "seg_pmco",
-   "symbol": "_dl_ack",
+   "symbol": "_dl_sumdone",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 514,
+   "offset": 320,
    "section": "seg_pmco",
-   "symbol": "_dl_status",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 517,
-   "section": "seg_pmco",
-   "symbol": "_dl_ack",
+   "symbol": "_dl_good",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 522,
-   "section": "seg_pmco",
-   "symbol": "_dl_status",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 525,
-   "section": "seg_pmco",
-   "symbol": "_dl_xid",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 529,
-   "section": "seg_pmco",
-   "symbol": "_dl_out",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 540,
-   "section": "seg_pmco",
-   "symbol": "_dl_cum",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 552,
-   "section": "seg_pmco",
-   "symbol": "_dl_status",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 560,
+   "offset": 323,
    "section": "seg_pmco",
    "symbol": "_dl_nerr",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 573,
+   "offset": 327,
+   "section": "seg_pmco",
+   "symbol": "_dl_nerr",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 330,
+   "section": "seg_pmco",
+   "symbol": "_dl_ack",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 336,
+   "section": "seg_pmco",
+   "symbol": "_dl_wbase",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 344,
+   "section": "seg_pmco",
+   "symbol": "_dl_copied",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 356,
+   "section": "seg_pmco",
+   "symbol": "_dl_cum",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 360,
+   "section": "seg_pmco",
+   "symbol": "_dl_cum",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 368,
+   "section": "seg_pmco",
+   "symbol": "_dl_ack",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 523,
+   "section": "seg_pmco",
+   "symbol": "_dl_status",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 526,
+   "section": "seg_pmco",
+   "symbol": "_dl_ack",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 531,
+   "section": "seg_pmco",
+   "symbol": "_dl_status",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 534,
+   "section": "seg_pmco",
+   "symbol": "_dl_xid",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 538,
+   "section": "seg_pmco",
+   "symbol": "_dl_out",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 549,
+   "section": "seg_pmco",
+   "symbol": "_dl_cum",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 561,
+   "section": "seg_pmco",
+   "symbol": "_dl_status",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 569,
+   "section": "seg_pmco",
+   "symbol": "_dl_nerr",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 582,
    "section": "seg_pmco",
    "symbol": "_dl_beat",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 577,
+   "offset": 586,
    "section": "seg_pmco",
    "symbol": "_dl_beat",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 587,
+   "offset": 596,
    "section": "seg_pmco",
    "symbol": "_dv_diag",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 591,
+   "offset": 600,
    "section": "seg_pmco",
    "symbol": "_dl_novd",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 706,
+   "offset": 715,
    "section": "seg_pmco",
    "symbol": "_dv_rec",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 719,
+   "offset": 728,
    "section": "seg_pmco",
    "symbol": "_dk_step",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 724,
+   "offset": 733,
    "section": "seg_pmco",
    "symbol": "_fx_diag",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 728,
+   "offset": 737,
    "section": "seg_pmco",
    "symbol": "_dl_nofx",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 768,
+   "offset": 777,
    "section": "seg_pmco",
    "symbol": "_fx_rec",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 781,
+   "offset": 790,
    "section": "seg_pmco",
    "symbol": "_dk_step",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 786,
+   "offset": 795,
    "section": "seg_pmco",
    "symbol": "_dk_step",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 794,
+   "offset": 803,
    "section": "seg_pmco",
    "symbol": "_dk_step",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 797,
+   "offset": 806,
    "section": "seg_pmco",
    "symbol": "_dk_rec",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 808,
+   "offset": 817,
    "section": "seg_pmco",
    "symbol": "_dk_rec",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 811,
+   "offset": 820,
    "section": "seg_pmco",
    "symbol": "_dl_loop_status",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 814,
+   "offset": 823,
    "section": "seg_pmco",
    "symbol": "_dl_instrument_status",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 817,
+   "offset": 826,
    "section": "seg_pmco",
    "symbol": "_dl_svm5",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 822,
+   "offset": 831,
    "section": "seg_pmco",
    "symbol": "_dl_svm6",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 827,
+   "offset": 836,
    "section": "seg_pmco",
    "symbol": "_dl_svl2",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 832,
+   "offset": 841,
    "section": "seg_pmco",
    "symbol": "_dl_svl3",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 837,
+   "offset": 846,
    "section": "seg_pmco",
    "symbol": "_dl_sv0",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 840,
+   "offset": 849,
    "section": "seg_pmco",
    "symbol": "_dl_sv3",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 843,
+   "offset": 852,
    "section": "seg_pmco",
    "symbol": "_dl_sv4",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 846,
+   "offset": 855,
    "section": "seg_pmco",
    "symbol": "_dl_sv5",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 849,
+   "offset": 858,
    "section": "seg_pmco",
    "symbol": "_dl_sv6",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 852,
+   "offset": 861,
    "section": "seg_pmco",
    "symbol": "_dl_back",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 855,
+   "offset": 864,
    "section": "seg_pmco",
    "symbol": "_loop_ui_status",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 859,
+   "offset": 868,
    "section": "seg_pmco",
    "symbol": "_dl_loop_status_return",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 870,
+   "offset": 879,
    "section": "seg_pmco",
    "symbol": "_dl_loop_status_return",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 885,
+   "offset": 894,
    "section": "seg_pmco",
    "symbol": "_dl_loop_status_return",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 970,
+   "offset": 979,
    "section": "seg_pmco",
    "symbol": "_dl_loop_status_return",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 973,
+   "offset": 982,
    "section": "seg_pmco",
    "symbol": "_instrument_reply",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 977,
+   "offset": 986,
    "section": "seg_pmco",
    "symbol": "_dl_instrument_status_return",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 1066,
+   "offset": 1075,
    "section": "seg_pmco",
    "symbol": "_dl_instrument_status_return",
    "type": "sharc.abs24"
@@ -713,10 +720,10 @@
  "sections": [
   {
    "align": 8,
-   "hex": "0011000000000311000000000411000000000511000000000611000000007e723f800011000000007f723f000011000000003f733f000011000000003f733f80001100000000a50f0000a60f0100b20f0000b30f0000089c7d00830f0408800130103e70bf099a97030f0000ffff8401a304030f00005cd143c32006000000003e021018da909e973e0210084e5b44c200060000000003100000000043c3000600000000050f000400008401e505200600000000ddc2200600000000041100000000830f0000031100000000031100000000031100000000050f000400008401e505000600000000830f00000311000000003e0600000000031000000000850f020035c3220600000000031000000000d3c32006000000003e0210105e113e0210206e40830fab00000f00000000840f9b0000c2607080010000000f00000000840f7b0000c260708001000053c32406000000003e0210000a9e00c2200600000000030f02000000040f000000003e0600000000830f010003c3200600000000030f000000003e02000043043e020000330334c0040f000000003e0600000000830f020003c3200600000000030f000000003e02000043043e020000330334c0040f000000003e0600000000030f0000000033c20006000000003f703f89539533c2040600000000000f0200000030c3240600000000040f0000000044c2000600000000800f0300840140002006000000000411000000008001561443c32406000000003ac24ac28001e3138001341455c20006000000003f71bf87050d00000900be57000000003e01000003133e0100003414ff70bf89840143233e02000005028001f0103e703f09509503c300060000000003100000000033c50311000000003e06000000003e0200000602031000000000800130103e703f0955c2000600000000050d00000600be5700000000be550080000003100000000033c5031100000000050f000200008401e5050006000000000217000000000010030000e0030f3fffbf3f3e0104000300030fc00000c03e01040003130311030000e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011030000e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e02300030060311030000e0000c002806000000000000000000000000000011030000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000830f01000311000000003e0600000000830f030003110000000003100000000033c20006000000007e713f02850f6000800154147e703f090410000000003e0200004410050f0000d1a584015414b4950410000000003e0200004408840134140510000000003e020000551084015414b4957e71bf013f703f8900100000000000c500110000000008952e00000f2000a6d108952d00030f0000000033c20006000000003f70bf890896000000a5000042000896010000a5000043000896020000a5000057000896030000a5000058000896040000a500006c000896050000a500006d000896060000a5000081000896070000a5000082000896080000a5000096000896090000a50000970008960a0000a50000ab0008960b0000a50000ac0008960c0000a50000c00008960d0000a50000c10008960e0000a50000d50008960f0000a50000d6000896100000a50000ea000896110000a50000eb000896120000a50000ff000896130000a5000000010896140000a5000014010896150000a500001501030f000000003f70bf8908960000089701007e713f0008970000000f0000000008970200030f0000000033c20006000000003f70bf890896000000a5000029010896040000a500003e010896050000a500003f0108960100040f0000ffff04cc089682023e020000551005cd00a5000053010896030000a500006901030f000000003f70bf8908960000089701007e713f0008970000000f000000000897020000100000000000a500002a01830f000003110000000000100000000000a5000068017e713f0000a5000054010011000000003e06000000003e06000000000010000000003e70bf120010000000003e703f130010000000003e703f190010000000003e70bf190010000000000310000000000410000000000510000000000610000000003e0600000000000f0000000000c20006000000003e70bf0908960000030f564f314c03c32006000000000896070008968e0108960f028401031554cd860f80ff56cc2006000000003e02000033083e02000044108401031554cd7e71bf013f703f89000f564f324c00a500007d010896010000a500007e010896020000a5000092010896030000a5000093010896040000a50000a7010896050000a50000a8010896060000a50000bc0105a50000bd010896080000a5000079020896090000a500007a0208960a0000a500008e0208960b0000a500008f0208960c0000a50000a30208960d0000a50000a4023e0600000000000f0000000000c20006000000003e70bf097e71bf013f703f890896000000a50000d1010896010000a50000d2010896020000a50000e6010896030000a50000e7010896040000a50000fb010896050000a50000fc010896060000a5000010020896070000a5000011020896080000a5000025020896090000a50000260208960a0000a500003a0208960b0000a500003b0208960c0000a500004f0208960d0000a50000500208960e0000a50000640208960f0000a5000065023e0600000000",
+   "hex": "0011000000000311000000000411000000000511000000000611000000007e723f800011000000007f723f000011000000003f733f000011000000003f733f80001100000000a50f0000a60f0100b20f0000b30f0000089c7d00830f0408800130103e70bf099a97030f0000ffff8401a304030f00005cd143c32006000000003e021018da909e973e0210084e5b44c200060000000003100000000043c3000600000000050f000400008401e505200600000000ddc2200600000000041100000000830f0000031100000000031100000000031100000000050f000400008401e505000600000000830f00000311000000003e0600000000031000000000850f020035c3220600000000031000000000d3c32006000000003e0210105e113e0210206e40830fab00000f00000000840f9b0000c2607080010000000f00000000840f7b0000c2607080010000000f00000000840f690000c260708001000053c32406000000003e0210000a9e00c2200600000000030f02000000040f000000003e0600000000830f010003c3200600000000030f000000003e02000043043e020000330334c0040f000000003e0600000000830f020003c3200600000000030f000000003e02000043043e020000330334c0040f000000003e0600000000030f0000000033c20006000000003f703f89539533c2040600000000000f0200000030c3240600000000040f0000000044c2000600000000800f0300840140002006000000000411000000008001561443c32406000000003ac24ac28001e3138001341455c20006000000003f71bf87050d00000900be57000000003e01000003133e0100003414ff70bf89840143233e02000005028001f0103e703f09509503c300060000000003100000000033c50311000000003e06000000003e0200000602031000000000800130103e703f0955c2000600000000050d00000600be5700000000be550080000003100000000033c5031100000000050f000200008401e5050006000000000217000000000010030000e0030f3fffbf3f3e0104000300030fc00000c03e01040003130311030000e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011030000e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e02300030060311030000e0000c002806000000000000000000000000000011030000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000830f01000311000000003e0600000000830f030003110000000003100000000033c20006000000007e713f02850f6000800154147e703f090410000000003e0200004410050f0000d1a584015414b4950410000000003e0200004408840134140510000000003e020000551084015414b4957e71bf013f703f8900100000000000c500110000000008952e00000f2000a6d108952d00030f0000000033c20006000000003f70bf890896000000a5000042000896010000a5000043000896020000a5000057000896030000a5000058000896040000a500006c000896050000a500006d000896060000a5000081000896070000a5000082000896080000a5000096000896090000a50000970008960a0000a50000ab0008960b0000a50000ac0008960c0000a50000c00008960d0000a50000c10008960e0000a50000d50008960f0000a50000d6000896100000a50000ea000896110000a50000eb000896120000a50000ff000896130000a5000000010896140000a5000014010896150000a500001501030f000000003f70bf8908960000089701007e713f0008970000000f0000000008970200030f0000000033c20006000000003f70bf890896000000a5000029010896040000a500003e010896050000a500003f0108960100040f0000ffff04cc089682023e020000551005cd00a5000053010896030000a500006901030f000000003f70bf8908960000089701007e713f0008970000000f000000000897020000100000000000a500002a01830f000003110000000000100000000000a5000068017e713f0000a5000054010011000000003e06000000003e06000000000010000000003e70bf120010000000003e703f130010000000003e703f190010000000003e70bf190010000000000310000000000410000000000510000000000610000000003e0600000000000f0000000000c20006000000003e70bf0908960000030f564f314c03c32006000000000896070008968e0108960f028401031554cd860f80ff56cc2006000000003e02000033083e02000044108401031554cd7e71bf013f703f89000f564f324c00a500007d010896010000a500007e010896020000a5000092010896030000a5000093010896040000a50000a7010896050000a50000a8010896060000a50000bc0105a50000bd010896080000a5000079020896090000a500007a0208960a0000a500008e0208960b0000a500008f0208960c0000a50000a30208960d0000a50000a4023e0600000000000f0000000000c20006000000003e70bf097e71bf013f703f890896000000a50000d1010896010000a50000d2010896020000a50000e6010896030000a50000e7010896040000a50000fb010896050000a50000fc010896060000a5000010020896070000a5000011020896080000a5000025020896090000a50000260208960a0000a500003a0208960b0000a500003b0208960c0000a500004f0208960d0000a50000500208960e0000a50000640208960f0000a5000065023e0600000000",
    "kind": "text",
    "name": "seg_pmco",
-   "size": 2138
+   "size": 2156
   },
   {
    "align": 8,
@@ -733,25 +740,25 @@
    "size": 524288
   }
  ],
- "source_sha256": "c9c801ca5c59b242cecf466a6e1a3aaa9f2f861c0b332c6c20bffd655b6ab6e2",
+ "source_sha256": "a8b1a8bd5711786678881ecd7312682802781bbab13732101161c32cf79e8627",
  "symbols": [
   {
    "global": false,
    "name": "_dl_ack",
    "section": "seg_pmco",
-   "value": 525
+   "value": 534
   },
   {
    "global": false,
    "name": "_dl_copied",
    "section": "seg_pmco",
-   "value": 347
+   "value": 356
   },
   {
    "global": false,
    "name": "_dl_good",
    "section": "seg_pmco",
-   "value": 324
+   "value": 333
   },
   {
    "global": true,
@@ -763,31 +770,31 @@
    "global": false,
    "name": "_dl_instrument_status",
    "section": "seg_pmco",
-   "value": 973
+   "value": 982
   },
   {
    "global": false,
    "name": "_dl_instrument_status_return",
    "section": "seg_pmco",
-   "value": 817
+   "value": 826
   },
   {
    "global": false,
    "name": "_dl_loop_status",
    "section": "seg_pmco",
-   "value": 855
+   "value": 864
   },
   {
    "global": false,
    "name": "_dl_loop_status_return",
    "section": "seg_pmco",
-   "value": 814
+   "value": 823
   },
   {
    "global": false,
    "name": "_dl_nofx",
    "section": "seg_pmco",
-   "value": 786
+   "value": 795
   },
   {
    "global": false,
@@ -799,19 +806,19 @@
    "global": false,
    "name": "_dl_novd",
    "section": "seg_pmco",
-   "value": 724
+   "value": 733
   },
   {
    "global": false,
    "name": "_dl_out",
    "section": "seg_pmco",
-   "value": 569
+   "value": 578
   },
   {
    "global": false,
    "name": "_dl_range",
    "section": "seg_pmco",
-   "value": 520
+   "value": 529
   },
   {
    "global": false,
@@ -823,31 +830,31 @@
    "global": false,
    "name": "_dl_sumdone",
    "section": "seg_pmco",
-   "value": 300
+   "value": 309
   },
   {
    "global": false,
    "name": "_dl_wdone",
    "section": "seg_pmco",
-   "value": 265
+   "value": 274
   },
   {
    "global": false,
    "name": "_dl_win1",
    "section": "seg_pmco",
-   "value": 186
+   "value": 195
   },
   {
    "global": false,
    "name": "_dl_win2",
    "section": "seg_pmco",
-   "value": 208
+   "value": 217
   },
   {
    "global": false,
    "name": "_dl_win3",
    "section": "seg_pmco",
-   "value": 230
+   "value": 239
   },
   {
    "global": false,
@@ -1031,6 +1038,12 @@
   },
   {
    "global": true,
+   "name": "_iv_lock_stage",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "_loop_ui_status",
    "section": null,
    "value": 0
@@ -1043,7 +1056,7 @@
   }
  ],
  "toolchain": {
-  "instructions_redecoded": "432",
+  "instructions_redecoded": "436",
   "selache_rev": "02d6d785b8e3a125ab237a00bb89503aff835f5d"
  }
 }

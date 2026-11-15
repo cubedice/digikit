@@ -5,8 +5,11 @@ This directory contains the four-note pad instrument with movement, presets and 
 reset/process callbacks and an assigned machine type. It requires the optional
 DTII 1.17 `core/instrument-play` adapter; ordinary firmware cannot admit it.
 The engine supports Velvet/Reed, factory wavetable and four-operator FM families,
-drift, wavetable FM and independent note envelopes controlled by the stock AMP page. FM adds
-a fourth, conditional FM ENV page; wavetable sounds instead expose WT FM.
+drift, wavetable FM and independent note envelopes controlled by the stock AMP page.
+SRC has four pages for all sources: KEYS, ARP, SOUND and ENV. ENV shapes timbre;
+the stock AMP page shapes loudness.
+This four-page revision is a local firmware candidate and has not yet been
+installed on the physical DTII.
 The current source requires matching CPSB firmware and package builds. The
 2026-11-10 compact controls and native MOD revision is installed on the physical
 DTII (image ID `481b2b9a4fcddf5e`, finding 120 and its handover); the
@@ -72,7 +75,7 @@ MIDI port/channel.
 
 ## Playing and selecting sounds
 
-**SOUND B / CHRD** selects PLAY or a generated chord, including USER. PLAY sounds
+**KEYS B / CHRD** selects PLAY or a generated chord, including USER. PLAY sounds
 exactly the notes you press; choosing a chord switches to root-note playing.
 Turn CHRD fully left to return to PLAY.
 Changing between PLAY and root mode releases the previous phrase; press new
@@ -90,8 +93,14 @@ on SRC. Presets still store the original mode, chord, family and table fields;
 existing sounds need no conversion beyond the existing preset migration.
 
 SETTINGS > DIGIKIT > CANOPY contains four groups: INPUT for connections and
-selector keys; CHORD LEARN for custom shapes; MODULATION for scan clock/restart
-and wheel amounts; and PRESETS for save/load. ARP G/H select clock and local BPM.
+selector keys; CHORD LEARN for custom shapes; MODULATION for wheel amounts and
+scan settings; and PRESETS for save/load. The arp follows the current pattern
+tempo, including while the sequencer is stopped. ARP G/H show a read-only
+note/order preview; adjust tempo
+with the DTII's normal TEMPO control.
+Arpeggiated notes have a minimum 64-sample onset ramp (about 1.33 ms) to prevent
+clicks when AMP ATT is zero. Slower AMP attacks, release times and the pad's
+own envelope are unchanged.
 Latch is removed: releasing a key starts its release unless the sustain pedal
 holds it. Older presets load with their former latch setting discarded.
 
@@ -109,36 +118,62 @@ WAVE sound type; no extra assignment menu is needed.
 Choose a target with MOD's DEST control, then set its LFO depth and timing as
 usual. Modulation is added to the knob value within that parameter's range;
 turning it off restores the unchanged base value. It does not write movement
-into a preset. Scan rate follows the selected free/synced range; GRID clock
-keeps arp swing disabled. Native TUNE and LEVEL remain native destinations.
+into a preset. Scan rate follows the selected free/synced range. Native TUNE and
+LEVEL remain native destinations.
 Changing WAVE also changes the meaning of any of these six active SRC routes.
-Native Sound/project persistence of CANOPY's custom base controls and parameter
-locks are separate work; exposing MOD targets does not add them.
+Native Sound/project persistence of CANOPY's custom base controls remains
+separate from the custom presets.
+
+## CANOPY trig locks
+
+With the matching experimental DTII 1.17 firmware, enter grid recording,
+hold a trig, and turn a CANOPY SRC control to set its value on that step.
+The held step displays its locked values. Hold the trig and press that control's
+encoder to clear its lock. TUNE and LEV use the normal DTII lock behavior.
+CANOPY controls can also be recorded while live recording is active.
+
+The lock is an absolute value and native MOD is applied on top of it. WAVE
+locks use the remembered controls for the selected sound family; CHRD and VOIC
+locks affect the triggered phrase. CANOPY locks are applied when a note trig
+plays; a lock-only step does not change a currently sounding phrase. Up to five
+CANOPY controls can be locked on one step, subject to the pattern's shared
+80-lane limit. If a required carrier
+lane already contains another kind of lock, CANOPY leaves it alone and reports
+that the slot is in use. A full pattern is also reported.
+
+The emulator has exercised held-step and live recording, playback, clearing,
+project save/reload, copying patterns, switching patterns while stopped and
+playing, and separate locks on two tracks. This feature has not yet been
+qualified on hardware. See
+[finding 123](../../../docs/findings/123-canopy-trig-locks.md).
 
 ## Wavetable controls
 
-Press SRC to cycle SOUND, ARP and TONE. **SOUND D / WAVE** selects VELVT,
-REED, ANLG, GLASS, VOCAL, ORGAN, METAL or FM directly. The first two are the original
-synth sounds; the next five are wavetables. FM has its own TONE layout and a
-conditional fourth FM ENV page; wavetables add the fourth WT FM page described below. There is no separate engine menu.
-Velvet/Reed have COLR on TONE A; their other TONE cells are unused. Wavetable
-position and its modulation share the complete TONE page.
+Press SRC to cycle KEYS, ARP, SOUND and ENV. **SOUND A / WAVE** selects VELVT,
+REED, ANLG, GLASS, VOCAL, ORGAN, METAL or FM directly. The first two are the
+original synth sounds; the next five are wavetables. Velvet/Reed use SOUND B
+for COLR and C for DRFT. The envelope page explains that their volume shape is
+on AMP.
 
-| Encoder | TONE control | Meaning |
+| Encoder | Wavetable SOUND | Wavetable ENV |
 | --- | --- | --- |
-| A | POS | Continuous position 1.00-8.00 through eight related waves |
-| B | DEP | Scan depth 0-100%; full depth reaches 3.5 frames either side |
-| C | HZ / RATE | 0.01-10.00 under HZ, or the available tempo divisions |
-| D | SHAP | Sine, triangle or smooth random scan |
-| E | ENV | Signed envelope amount to position |
-| F | ATK | Position-envelope attack |
-| G | REL | Position-envelope release |
-| H | VEL | Signed velocity amount to position |
+| A | WAVE, source/table | ATK, shared timbre attack |
+| B | POS, 1.00–8.00 | REL, shared timbre release |
+| C | DEP, scan depth | FM, base wavetable-FM depth |
+| D | HZ or RATE, scan speed | RAT, FM ratio |
+| E | SHAP, scan waveform | PENV, envelope to position |
+| F | DRFT | FENV, envelope to FM depth |
+| G | CLK, free or synchronized scan | VEL, velocity to position |
+| H | RST, scan restart | Read-only envelope routing |
+
+The eight marks show table frames, the cursor shows base POS, and the bracket
+shows the scan range. Full DEP reaches 3.5 frames either side before clamping.
+The ENV attack and release drive both PENV and FENV; they do not control AMP.
 
 DEP starts at zero; raise it to hear automatic scanning. To keep a sound, use
 CANOPY SETUP > PRESETS > SAVE CURRENT SOUND.
 
-TUNE and LEV appear only on SOUND A/H. Dedicated LEVEL/DATA remains the stock track-level control;
+TUNE and source LEV appear only on KEYS A/H. Dedicated LEVEL/DATA remains the stock track-level control;
 holding SRC uses the native show-values presentation. No second level scale is added.
 
 The MODULATION submenu selects scan clock/restart and signed wheel amounts for
@@ -167,24 +202,23 @@ outside this custom preset format.
 
 ## Playing FM
 
-On SOUND, turn D / WAVE past METAL to FM. CHRD still selects PLAY or a generated
-chord on SOUND. TONE A becomes DEP: low values are soft and simple, higher
+On SOUND, turn A / WAVE past METAL to FM. CHRD still selects PLAY or a generated
+chord on KEYS. SOUND B becomes DEP: low values are soft and simple, higher
 values add harmonic complexity. Turning WAVE away from FM remembers its settings
 and restores the other source's own COLOR/POS and modulation parameters.
 
-| Knob | FM TONE | FM ENV |
+| Knob | FM SOUND | FM ENV |
 | --- | --- | --- |
-| A | DEP | Timbre attack |
-| B | ALG | Timbre decay |
-| C | BAL between tones X/Y | Timbre sustain |
-| D | FDBK on modulator B | Timbre release |
+| A | WAVE | Timbre attack |
+| B | DEP | Timbre decay |
+| C | ALG | Timbre sustain |
+| D | BAL between tones X/Y | Timbre release |
 | E | RTA, modulator A ratio | Signed ENV amount |
 | F | RTB, modulator B ratio | Signed VEL-to-depth amount |
-| G | — | — |
-| H | — | — |
+| G | FDBK on modulator B | Read-only routing |
+| H | DRFT | Read-only routing |
 
-Press SRC to cycle SOUND, ARP, TONE and FM ENV. The fourth page is omitted when
-another source is selected. TUNE/LEV on SOUND, dedicated LEVEL/DATA and held-SRC values use
+The routing graph changes with ALG. TUNE/LEV on KEYS, dedicated LEVEL/DATA and held-SRC values use
 the native drawing and scales. WAVE, ALG and ratio choices use four raw encoder
 ticks per item. MIX continues to mean pad versus arp; BAL means FM tone X versus Y.
 
@@ -406,7 +440,8 @@ any duplicated SRC value that disagrees with its audio setting. STRUM must
 match the truncated milliseconds-to-DSP-block conversion; SOURCE remains KEYS.
 
 Both banks come from one locked snapshot with the SRC requested revision.
-Mode, clock, family and BPM also advance that revision. Transport ACKs still
+Mode and family also advance that revision. Pattern tempo is supplied directly
+by the timing provider, independent of the sound's revision. Transport ACKs still
 cannot clear pending markers without a matching DSP-applied bank. The status
 producer and native SRC attachment are implemented; full Stage 5 wavetable
 acceptance has passed in the emulator. Current wavetable builds require the
@@ -424,16 +459,19 @@ ambiguous OCT suffix. Current wavetable builds require matching CPS9 firmware
 and DKM. V1 presets migrate
 without changing their original sound; old CPS5/CPS6/CPS7 banks remain accepted.
 
-## Movement controls (CPS5 compatibility)
+## Movement controls
 
 The ARP page exposes RATE (1..8 notes/quarter), gate percent
 (1..100), UP/DOWN/UP-DOWN/AS-PLAYED/RANDOM, signed octave spread (-3..+3),
-swing (0..75), TRIG/PATTERN/CONTINUE restart, clock and local tempo (30..300).
-SOUND G controls MIX (0 pad, 127 arp). ARP G selects LOCAL BPM, MASTER GRID or
-MASTER PHASE clock; ARP H edits local BPM while LOCAL is selected.
-SOUND F controls STRUM MS (0..500). In MASTER GRID, the
-rate becomes a whole-step multiple and swing is disabled. Clock changes
-restart timing observation. Setup values currently return to defaults at boot.
+swing (0..75), and TRIG/PATTERN/CONTINUE restart. The arp always follows the
+current pattern tempo; there is no separate local BPM or clock selector.
+KEYS G controls MIX (0 pad, 127 arp). KEYS D controls STRUM MS (0..500).
+ARP G/H show the current note/order. RATE uses musical divisions, including triplets, and SWNG
+is available without changing clock modes. Keyboard-held and sustained notes
+can arpeggiate while the track or sequencer is stopped. PLAY and STOP preserve
+the arp's timing; PATTERN restart still restarts on a valid pattern boundary.
+Change the speed with the normal DTII TEMPO control.
+Setup values currently return to defaults at boot.
 
 Generated chords can spread their onsets over the strum interval; PLAY keys
 remain immediate. A new committed chord cancels obsolete delayed onsets while
@@ -441,24 +479,29 @@ preserving sounding common notes. TRIG means a new phrase, not each added key.
 CONTINUE keeps timing across chord changes, including a gap with no held keys.
 Arp gates never release pad owners. The lanes share two bounded release tails.
 
-The sixteen-word CPS5 layout is version, family, color, drift, attack, release,
-mix, local BPM, rate, gate, order, octaves, swing, clock, restart, strum blocks.
+The historical sixteen-word CPS5 layout is version, family, color, drift, attack,
+release, mix, local BPM, rate, gate, order, octaves, swing, clock, restart, strum
+blocks. Current preset/configuration records retain the clock/BPM positions for
+compatibility, but loading an older sound ignores its former local tempo and
+clock choice. RATE keeps its saved numeric selection and now always denotes a
+musical division. This migration alone does not mark a preset as unsaved.
 Strum uses 1500 blocks/second internally. CPS1/CPS3/CPS4 remain accepted.
 CPS5 used 768-byte instances and CPS9 used 1,184 bytes; the current CPSB
 instance is 2,976 bytes for all source families.
 Use the matching instrument-play firmware policy.
-Both MASTER modes wait for a complete observed boundary interval before playing.
-MASTER PHASE uses the firmware's musical clock for 1..8 notes/quarter, including
-triplets, and pair-preserving swing; MASTER GRID counts whole native master
-steps. Neither mode falls back to local BPM. Missing frames, skipped boundaries,
-large phase corrections and overdue boundaries silence the arp while preserving
-held pad ownership. Recovery requires another complete boundary interval.
-Minor backward clock corrections wait until phase catches up, avoiding duplicate
-notes. STOP silences master arp; LOCAL remains independently playable.
-The matched adapter forwards optional input V4 (88 bytes); old V2/V3 input is
-accepted, but cannot drive MASTER PHASE. Descriptor and reset ABI remain V2.
+The current arp advances once per audio block at the selected pattern tempo,
+for 1..8 notes/quarter including triplets and pair-preserving swing. It uses
+the same clock while stopped and playing, so keyboard playing does not require
+PLAY. Missing position updates retain the last valid BPM and do not pause,
+restart or accelerate notes. Tempo changes preserve the accumulated musical
+phase. If external timing disappears, the arp continues at the last received
+tempo until the DTII supplies a new one; it does not wait for pattern phase.
+Before any valid BPM has arrived, no tempo is invented.
+The matched adapter supplies selected tempo and timing capabilities on V5+
+input. Old V2/V3 input remains accepted for compatibility, but cannot drive the
+current pattern-tempo arp. Descriptor and reset ABI remain V2.
 
-Stage 4 is complete at the functional emulator boundary: menu/audio, both master
+The earlier Stage 4 build passed its functional emulator boundary: menu/audio, both master
 modes, local arp, strum, USB/DIN loss and recovery, and changed tempo/scale pass.
 A lost external clock stays latched across timestamp wrap until a new pulse.
 See the design and Stage 4 handover for artifact-specific evidence. Hardware
@@ -475,22 +518,32 @@ independently. Its gate, envelope and drift remain independent; octave extension
 keep their own pitch and phase. Native filtering, AMP and send effects can still
 change level across notes. Set MIX to PAD when comparing the pad alone.
 
+The arp's native AMP onset has a 64-sample minimum ramp. The rendered regression
+in `test_canopy_arp_attack.py` compares zero-attack PCM with an explicit ramp for
+additive, wavetable, FM and wavetable-FM sources in AHD/ADSR modes. Its 28 checks
+also cover restart initialization, slower attacks, pad envelopes, release and
+an unfinished attack moved into a shared tail. This is DSP-core verification;
+the updated onset has not been measured on physical hardware.
+
 ## FM on wavetable sounds
 
 Choose ANLG, GLASS, VOCAL, ORGAN or METAL with WAVE on SOUND, then cycle SRC
-to WT FM. Position, scanning and the shared timbre envelope stay on TONE.
+to ENV. Position and scanning remain on SOUND.
 
 | Knob | Label | Function |
 | --- | --- | --- |
-| A | DEP | FM depth, 0-100% |
-| B | RAT | Modulator-to-note frequency ratio, 0.25-8.00 |
-| C | ENV | Timbre envelope to FM depth, -100% to +100% |
-| D–H | — | Unused; TUNE/LEV stay on SOUND, ATK/REL on TONE, WHEL in MODULATION |
+| A/B | ATK/REL | Shared timbre-envelope attack and release |
+| C | FM | FM depth, 0-100% |
+| D | RAT | Modulator-to-note frequency ratio, 0.25-8.00 |
+| E | PENV | Timbre envelope to position |
+| F | FENV | Timbre envelope to FM depth, -100% to +100% |
+| G | VEL | Velocity to position |
+| H | — | Read-only routing; wheel amounts remain in MODULATION |
 
-Start with DEP around 30 and RAT 1.00 or 2.00. Increase DEP for a stronger
+Start with FM around 30 and RAT 1.00 or 2.00. Increase FM for a stronger
 change; noninteger ratios give more metallic timbres. RAT uses the same slower
-selection as WAVE/SHAP. With DEP, ENV and WHEL at zero the original wavetable
-sound is preserved. Positive ENV or WHEL can add FM even with DEP at zero.
+selection as WAVE/SHAP. With FM, FENV and WHEL at zero the original wavetable
+sound is preserved. Positive FENV or WHEL can add FM even with FM at zero.
 High notes and ratios use less modulation to control excess high-frequency energy.
 
 ATK/REL share the existing wavetable timbre envelope, including its use for

@@ -16,7 +16,7 @@ beforeAll(() => {
     [
       'canopy-settings.c',
       settings,
-      ['keyboard.c', 'src-state.c', 'status.c', 'src-display.c'].map((f) => path.join(source, f)),
+      ['keyboard.c', 'src-state.c', 'src-lock-packed.c', 'status.c', 'src-display.c'].map((f) => path.join(source, f)),
     ],
   ] as const) {
     execFileSync(
@@ -48,6 +48,21 @@ function run(binary: string, commands: string): Record<string, unknown>[] {
     .split('\n')
     .map((s) => JSON.parse(s) as Record<string, unknown>);
 }
+test('CANOPY drains status while its preset menu is open', () => {
+  const [result] = run(settings, 'presetpoll');
+  expect(result).toMatchObject({ open: 1, track: 0 });
+  expect(result!.reads).toBeGreaterThan(0);
+});
+test('CANOPY retries an interrupted configuration without disturbing one still in flight', () => {
+  const [cancelled, active, otherTrack, resetting] = run(
+    settings,
+    'confighandshake 0\nconfighandshake 1\nconfighandshake 2\nconfighandshake 3',
+  );
+  expect(cancelled).toEqual({ phase: 1, resets: 1 });
+  expect(active).toEqual({ phase: 2, resets: 0 });
+  expect(otherTrack).toEqual({ phase: 1, resets: 1 });
+  expect(resetting).toEqual({ phase: 1, resets: 1 });
+});
 test('preset byte record restores stable controls and the embedded shape', () => {
   expect(run(codec, 'decode 144\nsnapshot')[0]).toEqual({
     result: 0,
@@ -211,6 +226,8 @@ test('compact menus keep non-SRC settings accessible and omit duplicate performa
     'COLOR',
     'DRIFT',
     'ARP MIX',
+    'ARP CLOCK',
+    'LOCAL BPM',
     'NOTES / Q',
     'ARP GATE',
     'UP',
@@ -228,7 +245,7 @@ test('compact menus keep non-SRC settings accessible and omit duplicate performa
   const values = config!.values as number[];
   expect(values[4]).toBe(5); // Legacy preset fields remain readable, not menu controls.
   expect(values[5]).toBe(15);
-  expect(values[7]).toBe(141);
+  expect(values[7]).toBe(120); // Blank ARP H cannot change the compatibility field.
   expect(values.slice(23, 28).map((v) => v >>> 16)).toEqual([60, 45, 60, 120, 70]);
   expect(values[31]! >>> 16).toBe(80);
 });
@@ -440,8 +457,27 @@ test('audio submission and SRC pending markers share the full configuration revi
   expect(mode!.revision as number).toBeGreaterThan(first!.revision as number);
   // Bit 15 flags the DSP status focus (the selected instance); the adapter strips it.
   expect((mode!.values as number[])[0]).toBe(0x4000810b);
-  expect(tempo!.revision as number).toBeGreaterThan(mode!.revision as number);
-  expect((tempo!.values as number[])[7]).toBe(140);
+  // An old in-memory local BPM cannot alter the fixed pattern clock or dirty SRC.
+  expect(tempo!.revision).toBe(mode!.revision);
+  expect((tempo!.values as number[])[7]).toBe(120);
+  expect((tempo!.values as number[])[13]).toBe(2);
+});
+
+test.each([0, 1, 2])('loading former arp clock %i uses pattern tempo and leaves the retired knobs blank', (clock) => {
+  const [loaded, state, afterTurn, saved, restored] = run(
+    settings,
+    `legacyarp ${clock}\npresetload\nconfig\npresetstate\nsrcpage 1\nsrcturn 6 -1000\nsrcturn 7 1000\nconfig\n` +
+      'presetsave\ntick\nconfig\npresetload\nconfig',
+  );
+  const values = loaded!.values as number[];
+  expect(values[7]).toBe(120);
+  expect(values[8]).toBe(6);
+  expect(values[13]).toBe(2);
+  expect(state).toMatchObject({ dirty: 0, unsafe: 0 });
+  expect(afterTurn!.revision).toBe(loaded!.revision);
+  expect(afterTurn!.values).toEqual(values);
+  expect(saved!.values).toEqual(values);
+  expect(restored!.values).toEqual(values);
 });
 
 test.each([1, 2])('legacy v%i initializes wavetable defaults without selecting it', (version) => {

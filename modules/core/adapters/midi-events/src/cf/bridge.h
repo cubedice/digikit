@@ -7,6 +7,9 @@ int mi_channel_message(const uint8_t *msg, uint32_t len, uint32_t source);
 /* Internal core handoff, serialized with MIDI and the frame ISR. */
 int mi_route_enable(uint32_t port, uint32_t channel, uint32_t track, int sequencer);
 int mi_panel_key(uint32_t key,uint32_t note,uint32_t velocity,int down,uint32_t track);
+/* While a recorded panel key on `track` is held, its frame trigs (the stock
+ * audition of that press) are not played: the panel path already sounds it. */
+void mi_seq_mute(uint32_t track,int on);
 /* Reset `track` and bind DSP instance slot `slot` to it on that reset. */
 void mi_instance_bind(uint32_t track, uint32_t slot);
 /* The track an enabled USB (0) / DIN (1) channel route plays, or MI_NONE. */
@@ -37,5 +40,7 @@ void mi_transport_recover(void);
 /* UI-confirmed keys-up recovery for FIFO/ACK exhaustion within a still-trusted
  * bound DSP session. Never clears reset/boot-trust failure. */
 int mi_keyboard_recover(void);
-void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record);
+/* Frame ISR: `frame` is the stock frame about to be sent (sequencer trigs). */
+void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record,
+                            const volatile uint16_t *frame);
 #endif

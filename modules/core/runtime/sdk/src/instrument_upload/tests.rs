@@ -95,7 +95,7 @@ impl Fixture {
             .unwrap();
         let state = Rc::new(State::default());
         state.mode.set(1);
-        let driver = Driver::new(Link(state.clone()), Box::leak(Box::new([0; 256])));
+        let driver = Driver::new(Link(state.clone()), Box::leak(Box::new([0; crate::instrument_image::CHUNK])));
         Self {
             loads,
             ticket,
@@ -131,11 +131,11 @@ fn instrument_upload_chunks_image_and_zero_fill_but_does_not_initialize() {
     let mut f = Fixture::new();
     let mut transfer = Transfer::begin(&mut f.loads, f.ticket, &f.grant, &IMAGE, true).unwrap();
     let mut upload = Upload::new(&mut f.driver, &mut transfer, &mut f.loads, 0, 30).unwrap();
-    for now in 0..8 {
+    for now in 0..4 {
         assert_eq!(upload.tick(now), Progress::Pending);
     }
-    assert_eq!(upload.tick(8), Progress::ReadyToInstall);
-    assert_eq!(upload.tick(9), Progress::Finished);
+    assert_eq!(upload.tick(4), Progress::ReadyToInstall);
+    assert_eq!(upload.tick(5), Progress::Finished);
     drop(upload);
     assert!(transfer.install_ticket(&f.loads).is_ok());
     let bytes = f.state.bytes.borrow();
@@ -268,12 +268,12 @@ fn instrument_upload_deadline_wins_over_final_ack_and_invalid_budgets_do_not_sen
         assert!(Upload::new(&mut f.driver, &mut transfer, &mut f.loads, 0, budget).is_none());
     }
     assert_eq!(f.state.starts.get(), 0);
-    let mut upload = Upload::new(&mut f.driver, &mut transfer, &mut f.loads, 0, 7).unwrap();
-    for now in 0..7 {
+    let mut upload = Upload::new(&mut f.driver, &mut transfer, &mut f.loads, 0, 3).unwrap();
+    for now in 0..3 {
         assert_eq!(upload.tick(now), Progress::Pending);
     }
     assert_eq!(
-        upload.tick(7),
+        upload.tick(3),
         Progress::Recover {
             cause: Failure::Timeout,
             command: Command::Detach(f.ticket)

@@ -336,7 +336,7 @@ _wt_scan_master:
     IF LT JUMP _wt_scan_hold;
     R1 = 5;
     COMP(R0, R1);
-    IF NE JUMP _wt_master_capable;
+    IF LT JUMP _wt_master_capable; // V5/V6/V7 all carry capability flags.
     R0 = DM(12, I2);
     R1 = 512;
     R0 = R0 AND R1;

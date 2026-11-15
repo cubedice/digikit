@@ -30,6 +30,29 @@ _ca_copy_pad_start:
 _ca_process:
     DM(_ca_state) = R4;
     DM(_ca_input) = R8;
+    // Tempo is a setting, not a transport edge. Keep the latest authenticated
+    // BPM even with MIX=0 or no held keys, so the next phrase can start during
+    // a missing position frame. Word173 is BPM*120 (3600..36000), or the legacy
+    // phase-only provider's bounded hold count (0..2).
+    I1 = R8;
+    R0 = DM(0, I1);
+    R1 = 5;
+    COMP(R0, R1);
+    IF LT JUMP _ca_tempo_cached;
+    R0 = DM(12, I1);
+    R1 = 0x800;
+    R1 = R0 AND R1;
+    IF EQ JUMP _ca_tempo_cached;
+    R0 = LSHIFT R0 BY -16;
+    R1 = 3600;
+    COMP(R0, R1);
+    IF LT JUMP _ca_tempo_cached;
+    R1 = 36000;
+    COMP(R0, R1);
+    IF GT JUMP _ca_tempo_cached;
+    I0 = R4;
+    DM(173, I0) = R0;
+_ca_tempo_cached:
     R0 = 544;
     R0 = R4 + R0;
     DM(_ca_voice) = R0;
@@ -258,6 +281,13 @@ _ca_stop_next:
     R0 = 0;
     DM(11, I2) = R0;
     DM(14, I2) = R0;
+    // A new phrase keeps the selected BPM; only the legacy hold is cleared.
+    R1 = DM(37, I2);
+    R2 = 3600;
+    COMP(R1, R2);
+    IF GE JUMP _ca_disabled_tempo_kept;
+    DM(37, I2) = R0;
+_ca_disabled_tempo_kept:
     R0 = 2;
     DM(1, I2) = R0;
 _ca_render:
@@ -922,13 +952,33 @@ _ca_master_lost:
 _ca_fine:
     R0 = DM(_ca_input);
     I1 = R0;
+    R3 = DM(37, I2);
+    R1 = 3600;
+    COMP(R3, R1);
+    IF GE JUMP _ca_tempo;
     R0 = DM(0, I1);
+    R1 = 5;
+    COMP(R0, R1);
+    IF LT JUMP _ca_fine_version;
+    R1 = DM(12, I1);
+    R2 = 0x800;
+    R2 = R1 AND R2;
+    IF NE JUMP _ca_master_lost; // malformed BPM before any valid tempo
+    R1 = PASS R1;
+    IF EQ JUMP _ca_fine_absent;
+    R2 = 0x400;
+    R1 = R1 AND R2;
+    IF NE JUMP _ca_master_lost;
+    // Legacy phase-only provider. Current providers use the BPM path above.
+    R2 = 0;
+    DM(37, I2) = R2;
+_ca_fine_version:
     R1 = 4;
     COMP(R0, R1);
     IF LT JUMP _ca_master_lost; // V5 retains the V4 phase fields.
     R1 = 5;
     COMP(R0, R1);
-    IF NE JUMP _ca_fine_capable;
+    IF LT JUMP _ca_fine_capable; // V5/V6/V7 all carry capability flags.
     R0 = DM(12, I1);
     R1 = 0x200;
     R0 = R0 AND R1;
@@ -1033,6 +1083,59 @@ _ca_fine_observe:
     R0 = DM(20, I1);
     DM(33, I2) = R0;
     JUMP _ca_master_observe;
+
+// A rejected/missed transport frame carries no provider or STOP/expiry flags.
+// Preserve a legacy observed/acquired clock for at most two audio blocks
+// without advancing phase or scheduling a note; the next valid phase catches
+// up, subject to the running discontinuity checks.
+// Explicit STOP and a present but expired provider never enter this path.
+_ca_fine_absent:
+    R0 = DM(26, I2);
+    R1 = 1;
+    COMP(R0, R1);
+    IF EQ JUMP _ca_fine_hold_status;
+    R1 = 2;
+    COMP(R0, R1);
+    IF NE JUMP _ca_master_lost;
+_ca_fine_hold_status:
+    R0 = DM(34, I2);
+    R1 = 1;
+    COMP(R0, R1);
+    IF EQ JUMP _ca_fine_hold;
+    R1 = 2;
+    COMP(R0, R1);
+    IF NE JUMP _ca_master_lost;
+_ca_fine_hold:
+    R0 = DM(37, I2);
+    R0 = R0 + 1;
+    DM(37, I2) = R0;
+    R1 = 2;
+    COMP(R0, R1);
+    IF LE JUMP _ca_render;
+    JUMP _ca_master_lost;
+
+// One audio-clock accumulator for STOP and PLAY. Provider sequence, pattern
+// phase and transport flags never determine elapsed time. Missing updates keep
+// the last valid BPM; a later BPM change applies once, without a catch-up burst.
+// Word162=4 identifies this tempo scheduler; word165 is its latest block stamp.
+_ca_tempo:
+    R0 = DM(4, I1);
+    DM(29, I2) = R0;
+    R0 = 4;
+    DM(26, I2) = R0;
+    R0 = 2;
+    DM(34, I2) = R0;
+    R0 = DM(11, I2);
+    R0 = PASS R0;
+    IF EQ JUMP _ca_first;
+    R0 = DM(_ca_controls);
+    I1 = R0;
+    R0 = LSHIFT R3 BY 1;
+    R1 = DM(8, I1);
+    R0 = R0 * R1 (SSI);
+    R1 = DM(10, I2);
+    R0 = R0 + R1;
+    JUMP _ca_phase_ready;
 
 // Share exactly the same two tail slots as the four pad foreground owners.
 // If neither is free, keep the existing bounded same-slot steal ramp.

@@ -331,7 +331,7 @@ permit emission, on odd heartbeats. Even heartbeats retain the ordinary reply.
 Absent or unready mailboxes retain legacy behavior. The playback adapter must
 own and validate this mailbox; a producer is not installed by this change.
 
-The CF adapter copies fresh authenticated messages into a bounded 64-entry FIFO.
+The CF adapter copies fresh authenticated messages into a bounded 128-entry FIFO.
 `mi_status_reply` copies twelve words plus their age in CF frame callbacks;
 it retains no caller pointer. Overflow discards the interrupted queue and
 reports -3 once before newer messages. Reset/trust loss clears it and reports

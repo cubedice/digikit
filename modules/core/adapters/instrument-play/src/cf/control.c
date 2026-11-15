@@ -7,6 +7,7 @@
 #pragma GCC optimize ("no-jump-tables", "no-tree-loop-distribute-patterns")
 #endif
 #include <stdint.h>
+#include <stddef.h>
 #include <dk/ui.h>
 #include "keyboard.h"
 #include "preset.h"
@@ -68,8 +69,8 @@ static void instance_defaults(IpInst *in)
     static const int fm0[13]={32,0,50,3,8,0,5,40,50,15,100,100,100};
     static const int wtfm0[4]={0,3,100,100};
     in->pad_family=0; in->pad_color=64; in->pad_drift=0; in->pad_attack=5; in->pad_release=15;
-    in->arp_mix=0; in->arp_bpm=120; in->arp_rate=4; in->arp_gate=50;
-    in->arp_order=0; in->arp_octaves=0; in->arp_swing=0; in->arp_clock=0; in->arp_restart=0;
+    in->arp_mix=0; in->arp_bpm=CP_ARP_BPM_RESERVED; in->arp_rate=4; in->arp_gate=50;
+    in->arp_order=0; in->arp_octaves=0; in->arp_swing=0; in->arp_clock=CP_ARP_CLOCK; in->arp_restart=0;
     in->pad_strum=0;
     for(uint32_t i=0;i<12;++i) in->wt[i]=wt0[i];
     for(uint32_t i=0;i<13;++i) in->fm[i]=fm0[i];
@@ -135,12 +136,19 @@ int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
         epoch == mi_ledger.epoch && generation == mi_ledger.generations[track] &&
         mi_transport.applied[track] != 0 && !mi_ledger.reset_mask && !mi_transport.faults;
 }
-uint32_t instrument_src_pages(void) { return cur->pad_family>=2 ? 4 : 3; }
+uint32_t instrument_src_pages(void) { return 4; }
 uint32_t instrument_src_tune_page(uint32_t page) { return page==0; }
 static dk_ui_menu *tone_menu;
 static dk_ui_menu *input_menu, *shape_menu;
 static void pad_changed(void *ctx,int value) { (void)ctx; (void)value; cur->pad_dirty=1; }
 static int keyboard_initialized, storage_result, save_pending;
+/* Held keys sound as separate notes (PLAY), so a recorded press stores the
+ * other held keys as its chord. A ROOT chord is recorded by its root alone. */
+int instrument_track_plays_keys(uint32_t track)
+{
+    const IpInst *in=for_track(track);
+    return in && keyboard_initialized && in->keyboard.mode==KB_PLAY;
+}
 static uint32_t shown_session, shown_revision, refreshed_revision, refreshed_status;
 static uint32_t shown_main=UINT32_MAX;
 static dk_ui_menu *learn_menu;
@@ -193,10 +201,24 @@ int instrument_keyboard_events(uint32_t track, uint32_t epoch, uint32_t generati
     if (!keyboard_initialized) return -1;
     if (in->keyboard.epoch!=epoch || in->keyboard.generation!=generation)
         kb_reset(&in->keyboard,epoch,generation);
-    int mapped=kb_process(&in->keyboard,input,count,output);
+    int mapped=kb_process_locked(&in->keyboard,input,count,output);
     /* The mapper is track-agnostic; the wire batch names the admitted track. */
     for (i=0;mapped>0 && i<(uint32_t)mapped;++i) output[i].track=(uint8_t)track;
     return mapped;
+}
+/* Capture the requested source's remembered bank with the trig, before any
+ * later UI edit or packet retry. Caller already holds the MIDI IRQ lock. */
+int instrument_lock_source(uint32_t track,uint32_t wave,uint16_t out[MI_SOURCE_VALUES])
+{
+    IpInst *in=for_track(track);
+    if(!in || !out || wave>7) return 0;
+    const CsState *s=SRC(in);
+    int fm=wave==7;
+    out[0]=fm ? s->fm[0] : s->legacy_color;
+    for(uint32_t i=0;i<12;++i) out[1+i]=fm ? s->fm[1+i] : s->wavetable[i];
+    for(uint32_t i=0;i<4;++i) out[13+i]=s->value[28+i];
+    if(wave>=2 && wave<7) out[1]=(uint16_t)(wave-2);
+    return 1;
 }
 /* Global routing edits re-route every instance; mode, chord, voicing and shape
  * slot belong to the selected instance. */
@@ -359,8 +381,8 @@ static void preset_snapshot(const IpInst *in,CpPreset *p)
     for(uint32_t i=0;i<12;++i) p->control[16+i]=(uint16_t)in->wt[i];
     for(uint32_t i=0;i<13;++i) p->fm[i]=(uint16_t)in->fm[i];
     for(uint32_t i=0;i<4;++i) p->control[28+i]=(uint16_t)in->wtfm[i];
-    p->bpm=(uint16_t)in->arp_bpm; p->family=(uint8_t)in->pad_family;
-    p->mode=k->mode; p->clock=(uint8_t)in->arp_clock;
+    p->bpm=CP_ARP_BPM_RESERVED; p->family=(uint8_t)in->pad_family;
+    p->mode=k->mode; p->clock=CP_ARP_CLOCK;
     const KbShape *shape=k->preset_shape_active ? &k->preset_shape : &k->shapes[k->slot];
     p->shape.count=shape->count;
     for(uint32_t i=0;i<4;++i) p->shape.intervals[i]=shape->intervals[i];
@@ -412,9 +434,12 @@ int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint3
     case CP_GATE: cur->arp_gate=v; break;
     case CP_SWING: cur->arp_swing=v; break;
     case CP_RESTART: cur->arp_restart=v; break;
-    case CS_CLOCK:
-        cur->arp_clock=s->clock; cur->arp_rate=s->value[CP_RATE]; cur->arp_swing=s->value[CP_SWING]; break;
-    case CS_BPM: cur->arp_bpm=(int)cs_choice_value(s,CS_BPM); break;
+    case CP_WT_CLOCK:
+        if(cur->pad_family==2) {
+            cur->wt[CP_WT_CLOCK-16]=v;
+            cur->wt[CP_WT_RATE-16]=s->value[CP_WT_RATE];
+        } else cur->fm[CP_FM_DECAY-15]=v;
+        break;
     case CS_WAVE:
         cur->pad_family=(int)((s->metadata>>4)&3u);
         cur->pad_color=s->legacy_color;
@@ -466,6 +491,102 @@ int instrument_src_receive(const uint32_t words[IS_WORDS],uint32_t now)
 { return initialized ? is_receive(STS(focused()),words,now) : -1; }
 void instrument_src_feedback(char out[32],uint32_t encoder)
 { cv_feedback(out,SRC(cur),encoder); }
+static uint32_t family_of(const CsState *s) { return (s->metadata>>4)&3u; }
+static void lock_state(CsState *shown,const IlpSnapshot *snapshot);
+int instrument_src_lock_target(uint32_t encoder,const IlpSnapshot *snapshot,uint32_t *control_out,uint32_t *id,uint32_t *base)
+{
+    if(!initialized) return CS_STALE;
+    CsState *s=SRC(cur);
+    (void)instrument_src_context(s->track,s->page[s->track<16?s->track:0],s->visible);
+    s=SRC(cur);
+    CsState shown; lock_state(&shown,snapshot);
+    uint32_t control=cs_mapped_control(&shown,encoder);
+    if(control==CS_TUNE || control==CS_LEVEL) return CS_NATIVE;
+    if((control>=CP_CONTROLS && control!=CS_WAVE) ||
+       control==CP_RESERVED12 || control==CP_SOURCE) return CS_READONLY;
+    uint32_t wire=ilp_id_for(family_of(&shown),control);
+    if(wire==UINT32_MAX) return CS_READONLY;
+    *control_out=control; *id=wire;
+    *base=cs_choice_value(&shown,control);
+    return CS_EDIT;
+}
+int instrument_src_lock_step(uint32_t token,uint32_t encoder,int32_t detents,uint32_t now,
+    const IlpSnapshot *snapshot,uint32_t current,uint32_t *next)
+{
+    if(!initialized) return CS_STALE;
+    CsState shown; lock_state(&shown,snapshot);
+    int result=cs_lock_step(&shown,token,encoder,detents,now,current,0,next);
+    CsState *s=SRC(cur);
+    s->focus=shown.focus; s->focus_id=shown.focus_id; s->focus_at=shown.focus_at;
+    for(uint32_t i=0;i<8;++i) { s->list_delta[i]=shown.list_delta[i]; s->list_id[i]=shown.list_id[i]; }
+    return result;
+}
+static void lock_show(CsState *shown,uint32_t control,uint32_t value)
+{
+    if(control==CP_CHORD) {
+        shown->mode=value ? KB_ROOT : KB_PLAY;
+        shown->learned=(uint8_t)(value==11);
+        if(value) shown->value[control]=(uint16_t)(value-1);
+    } else if(control==CS_WAVE) {
+        uint32_t family=value<2 ? value : value==7 ? 3 : 2;
+        shown->metadata=(shown->metadata&~0x30u)|(family<<4);
+        shown->value[CP_COLOR]=family==3 ? shown->fm[0] : shown->legacy_color;
+        for(uint32_t i=0;i<12;++i) shown->value[16+i]=family==3 ? shown->fm[1+i] : shown->wavetable[i];
+        if(value>=2 && value<7) shown->value[CP_WT_TABLE]=(uint16_t)(value-2);
+    } else if(control<CP_CONTROLS) shown->value[control]=(uint16_t)value;
+}
+static void lock_state(CsState *shown,const IlpSnapshot *snapshot)
+{
+    for(uint32_t i=0;i<sizeof(*shown);++i)
+        ((volatile uint8_t *)shown)[i]=((const volatile uint8_t *)SRC(cur))[i];
+    if(!snapshot) return;
+    for(uint32_t i=0;i<snapshot->count && i<ILP_LANES;++i)
+        if(snapshot->pair[i].id==CS_WAVE) lock_show(shown,CS_WAVE,snapshot->pair[i].value);
+    for(uint32_t i=0;i<snapshot->count && i<ILP_LANES;++i) {
+        if(snapshot->pair[i].id==CS_WAVE) continue;
+        uint32_t control=ilp_control_for(family_of(shown),snapshot->pair[i].id);
+        if(control!=UINT32_MAX) lock_show(shown,control,snapshot->pair[i].value);
+    }
+    /* The DSP clamps a free-Hz rate to the last sync division when a clock
+     * lock enables SYNC. The held-step view must show that effective value. */
+    if(family_of(shown)==2 && shown->value[CP_WT_CLOCK] && shown->value[CP_WT_RATE]>7)
+        shown->value[CP_WT_RATE]=7;
+}
+void instrument_src_lock_feedback(char out[32],uint32_t encoder,const IlpSnapshot *snapshot,uint32_t control,uint32_t value)
+{
+    CsState shown; lock_state(&shown,snapshot);
+    lock_show(&shown,control,value);
+    cv_feedback(out,&shown,encoder);
+}
+void instrument_src_display_locked(CvDisplay *out,uint32_t now,const char *tune,const char *level,
+    const IlpSnapshot *snapshot)
+{
+    instrument_src_display(out,now,tune,level);
+    CsState shown; lock_state(&shown,snapshot);
+    cv_build_owner(out,&shown,STS(cur),now,tune,level,preset_result || storage_result,SRC(cur)->mode);
+    out->locked=cv_lock_mask(&shown,snapshot);
+    uint32_t sr=dkrt_irq_mask();
+    cv_ownership(out,STS(cur),&cur->keyboard,now);
+    dkrt_irq_restore(sr);
+}
+void instrument_src_preview_step(CvDisplay *out,const IlpSnapshot *snapshot,int32_t note)
+{
+    if(!snapshot || note<0 || note>127 || out->page || snapshot->count>MI_LOCKS) return;
+    /* Private UI scratch keeps held-step rendering out of live ownership. */
+    static KbState scratch;
+    uint32_t sr=dkrt_irq_mask();
+    /* Only configuration and chord templates precede keys. The preview resets
+     * its own key/voice ledger, so never copy that large live ledger while
+     * interrupts are masked. */
+    for(uint32_t i=0;i<offsetof(KbState,keys);++i)
+        ((volatile uint8_t *)&scratch)[i]=((const volatile uint8_t *)&cur->keyboard)[i];
+    dkrt_irq_restore(sr);
+    uint16_t locks[MI_LOCKS]; uint8_t pitches[4];
+    for(uint32_t i=0;i<snapshot->count;++i)
+        locks[i]=(uint16_t)((snapshot->pair[i].id<<10)|snapshot->pair[i].value);
+    int count=kb_preview_locked(&scratch,(uint8_t)note,locks,snapshot->count,pitches);
+    if(count>0) cv_preview_notes(out,pitches,(uint32_t)count);
+}
 static void status_pair(dk_ui_menu *m,const char *a,const char *b)
 {
     const char *first=a,*second=b;
@@ -519,7 +640,9 @@ static int preset_dirty(void)
     if(cp_encode(&p,b) || !(preset_present & (1u<<(preset_slot-1)))) return 1;
     /* Compare current encodings: migrating a V1 preset alone is not an edit. */
     CpPreset saved; uint8_t canonical[CP_RECORD_BYTES];
-    if(cp_decode(&saved,preset_records[preset_slot-1],CP_RECORD_BYTES) || cp_encode(&saved,canonical)) return 1;
+    if(cp_decode(&saved,preset_records[preset_slot-1],CP_RECORD_BYTES)) return 1;
+    saved.clock=CP_ARP_CLOCK; saved.bpm=CP_ARP_BPM_RESERVED;
+    if(cp_encode(&saved,canonical)) return 1;
     for(uint32_t i=0;i<CP_RECORD_BYTES;++i)
         if(b[i]!=canonical[i]) return 1;
     return 0;
@@ -563,7 +686,7 @@ static void preset_load(void *ctx,int value)
     for(uint32_t i=0;i<12;++i) in->wt[i]=p.control[16+i];
     for(uint32_t i=0;i<13;++i) in->fm[i]=p.fm[i];
     for(uint32_t i=0;i<4;++i) in->wtfm[i]=p.control[28+i];
-    in->pad_family=p.family; in->arp_clock=p.clock; in->arp_bpm=p.bpm; in->pad_dirty=1;
+    in->pad_family=p.family; in->arp_clock=CP_ARP_CLOCK; in->arp_bpm=CP_ARP_BPM_RESERVED; in->pad_dirty=1;
     preset_pending=0;
     dkrt_irq_restore(sr);
     dk_ui_toast("PRESET LOADED - PRESS NEW KEYS");
@@ -755,8 +878,17 @@ static void tick_instance(uint32_t i,const IpInst *ui)
         return;
     }
     if (!in->phase) in->phase=1;
-    if (in->phase==3 && (mi_ledger.reset_mask || in->bound!=in->track ||
-        !mi_transport.applied[in->bound])) instrument_sound_suspend(i);
+    /* Another track's reset can cancel an in-flight configuration. If that
+     * happens while this instance is in phase 2, its commit will never arrive;
+     * restart the handshake rather than waiting forever for an applied bank. */
+    uint32_t reset_sr=dkrt_irq_mask();
+    if ((in->phase==2 || in->phase==3) &&
+        (mi_ledger.reset_mask || in->bound!=in->track ||
+         (in->phase==3 && !mi_transport.applied[in->bound]) ||
+         (in->phase==2 && !mi_transport.applied[in->bound] &&
+          (!mi_transport.config_active || mi_transport.config_track!=in->bound))))
+        instrument_sound_suspend(i);
+    dkrt_irq_restore(reset_sr);
     {
         int result=instrument_sound_prepare(i,in->phase == 1 && !mi_ledger.reset_mask);
         if (result < 0) instrument_sound_suspend(i);
@@ -782,8 +914,9 @@ void instrument_play_tick(void)
 {
     ip_init();
 #if defined(__m68k__)
-    extern void instrument_src_tick(void);
+    extern void instrument_src_tick(void),ip_panel_tick(void);
     instrument_src_tick();
+    ip_panel_tick(); /* recorded chords: steps committed after the key event */
     if(status_menu && dk_ui_is_open(status_menu)) {
         uint32_t now=instrument_src_now();
         /* Drain at the UI tick cadence, independently of the slower repaint.
@@ -891,6 +1024,15 @@ void instrument_play_tick(void)
     }
     for(uint32_t i=0;i<IP_INSTANCES;++i) tick_instance(i,ui);
     cur=ui;
+    /* The DSP publishes continuously, including while another page or the
+     * preset menu covers SRC. Drain every UI tick; otherwise its bounded
+     * queue can overflow during a menu visit and the display may never catch
+     * up. Keep the track/generation check even when no SRC view is visible. */
+    if(ui->track<MI_TRACKS && focus<IP_INSTANCES) {
+        is_select(STS(ui),ui->track,mi_ledger.generations[ui->track],ui->keyboard.mode,
+            ui->keyboard.mode==KB_LEARN ? ui->keyboard.session : 0);
+        instrument_src_poll(instrument_src_now());
+    }
     ip_keyboard_status[0]=cur->keyboard.mode; ip_keyboard_status[1]=cur->keyboard.type;
     ip_keyboard_status[2]=0; ip_keyboard_status[3]=cur->keyboard.capture_count;
     ip_keyboard_status[4]=cur->keyboard.session; ip_keyboard_status[5]=cur->keyboard.revision;

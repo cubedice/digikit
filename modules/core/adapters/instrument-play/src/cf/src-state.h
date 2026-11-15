@@ -3,6 +3,7 @@
 #ifndef DK_CANOPY_SRC_STATE_H
 #define DK_CANOPY_SRC_STATE_H
 #include "preset.h"
+/* CLOCK/BPM keep their old packed-lock IDs; neither is an editable control. */
 enum { CS_TUNE=32, CS_LEVEL=33, CS_WAVE=34, CS_CLOCK=35, CS_BPM=36, CS_NONE=255, CS_FOCUS_MS=750, CS_LIST_TICKS=4 };
 enum { CS_STALE=-1, CS_READONLY=0, CS_EDIT=1, CS_NATIVE=2 };
 typedef struct {
@@ -34,6 +35,11 @@ uint32_t cs_mapped_control(const CsState *,uint32_t encoder);
 uint32_t cs_choice_value(const CsState *,uint32_t control);
 uint32_t cs_choice_max(const CsState *,uint32_t control);
 int cs_edit(CsState *,uint32_t token,uint32_t encoder,int32_t detents,uint32_t now_ms,uint32_t *id);
+/* A trig-lock edit of the control under `encoder` from `current` (its locked
+ * value): cs_edit's checks, bounds and list stepping, without changing the
+ * bank or its revision. CS_EDIT leaves the new value in *next. */
+int cs_lock_step(CsState *,uint32_t token,uint32_t encoder,int32_t detents,uint32_t now_ms,
+    uint32_t current,uint32_t *id,uint32_t *next);
 int cs_focused(const CsState *,uint32_t now_ms);
 /* A complete effective bank from the DSP, never a transport receipt. Values
  * must match before a pending marker is cleared; delayed ACKs are harmless. */

@@ -212,6 +212,7 @@ def built():
         "dl_stock_send": BASE + 0x100,
         "pp_write_frame": 0,
         "instrument_write_frame": 0,
+        "instrument_write_lock_frame": 0,
     }
     return front_end.cf_link(
         [MOD / "src/cf/dsp-link.c"], BASE, syms, [MOD / "build/gen"]
@@ -245,32 +246,38 @@ pp_write_frame:
         "dl_rec_lit": RECLIT,
         "dl_stock_send": BASE + 0x100,
         "instrument_write_frame": 0,
+        "instrument_write_lock_frame": 0,
     }
     return front_end.cf_link(
         [MOD / "src/cf/dsp-link.c", stub], BASE, syms, [MOD / "build/gen"]
     )
 
 
-@pytest.fixture(scope="module", params=[False, True])
+@pytest.fixture(scope="module", params=[(False, False), (True, False), (True, True)])
 def built_instrument(request, tmp_path_factory):
     if pk_toolchains.m68k_bin("gcc") is None:
         pytest.skip("m68k toolchain not installed")
-    position = request.param
+    position, locks = request.param
     stub = tmp_path_factory.mktemp("instrument-writer") / "writer.c"
     source = """#include <stdint.h>
 static void mark(uint32_t tx, uint32_t entry, uint32_t count, uint16_t value) {
     for (uint32_t i=0; i<count; ++i)
         *(volatile uint16_t *)(tx + 4*(entry+i) + 2) = value;
 }
-void instrument_write_frame(uint32_t tx, uint32_t entry, const volatile uint16_t *rec) {
-    (void)rec;
+void instrument_write_frame(uint32_t tx, uint32_t entry, const volatile uint16_t *rec,
+                            const volatile uint16_t *frame) {
+    (void)rec; (void)frame;
     mark(tx, entry, 64, 0xb66b);
 }
 """
     if position:
         source += "void pp_write_frame(uint32_t tx, uint32_t entry) { mark(tx, entry, 32, 0xa55a); }\n"
+    if locks:
+        source += "void instrument_write_lock_frame(uint32_t tx, uint32_t entry) { mark(tx, entry, 36, 0xc77c); }\n"
     stub.write_text(source)
     syms = {"_dl_area": AREA, "dl_tx_lit": TXLIT, "dl_rec_lit": RECLIT}
+    if not locks:
+        syms["instrument_write_lock_frame"] = 0
     if not position:
         syms["pp_write_frame"] = 0
     return (
@@ -278,6 +285,7 @@ void instrument_write_frame(uint32_t tx, uint32_t entry, const volatile uint16_t
             [MOD / "src/cf/dsp-link.c", stub], BASE, syms, [MOD / "build/gen"]
         ),
         position,
+        locks,
     )
 
 
@@ -372,12 +380,15 @@ def test_position_writer_runs_while_link_idle_and_stays_in_its_suffix(
 def test_instrument_writer_preserves_position_and_every_other_idle_byte(
     machine, built_instrument
 ):
-    built, position = built_instrument
+    built, position, locks = built_instrument
     original = bytes([0xCC]) * (0x55E * 4)
     tick = call(built, "dl_tick", [0x802, 0, 0xABC, 0], [(TXQ, len(original))])
     result = run(machine, built, {TXQ: original}, [tick])[0].reads[0]
     expected = bytearray(original)
     if position:
+        if locks:
+            for entry in range(0x9B4 // 2, 0x9FC // 2):
+                expected[entry * 4 + 2 : entry * 4 + 4] = b"\xc7\x7c"
         for entry in range(0x9FC // 2, 0xA7C // 2):
             expected[entry * 4 + 2 : entry * 4 + 4] = b"\xb6\x6b"
         for entry in range(0xA7C // 2, 0xABC // 2):
@@ -389,7 +400,7 @@ def test_instrument_writer_preserves_position_and_every_other_idle_byte(
 def test_instrument_allocation_reduces_loader_chunks_or_rejects_missing_position(
     machine, built_instrument
 ):
-    built, position = built_instrument
+    built, position, locks = built_instrument
     ln, src = built.symbols["dl_link"], DATA + 0x4000
     data = bytes((i * 7 + 3) & 255 for i in range(1024))
     original = bytes([0xCC]) * (0x55E * 4)
@@ -407,11 +418,14 @@ def test_instrument_allocation_reduces_loader_chunks_or_rejects_missing_position
         assert status["state"] == 3 and status["err"] == 101
         assert result.reads[1] == original
         return
-    assert status["cap"] == 123
+    cap = 105 if locks else 123
+    assert status["cap"] == cap
     words = tail_words(result.reads[1], 0x402, 174)
-    assert (words[1] >> 17) & 255 == 123
-    assert words[2:125] == list(struct.unpack("<123I", data[:492]))
-    assert words[125] == check_word(words[:125])
+    assert (words[1] >> 17) & 255 == cap
+    assert words[2 : 2 + cap] == list(struct.unpack(f"<{cap}I", data[: 4 * cap]))
+    assert words[2 + cap] == check_word(words[: 2 + cap])
+    if locks:
+        assert words[108:126] == [0xC77CC77C] * 18
     assert words[126:158] == [0xB66BB66B] * 32
     assert words[158:] == [0xA55AA55A] * 16
     # Loader and both providers only write data halves, never command halves.

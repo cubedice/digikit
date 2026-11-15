@@ -171,6 +171,8 @@ _iv_no_status:
     R0 = _iv_events;
     DM(7, I0) = R0;
     R4 = _iv_controls;
+    CALL _iv_lock_overlay;
+    R4 = R0;
     R8 = DM(_iv_control_count);
     CALL _iv_modulate;
     I0 = _iv_input;
@@ -625,8 +627,9 @@ _iv_amp_hold_store:
     RTS;
 
 // Borrow a coherent position snapshot only at the saved early-block boundary.
-// Reject wrong ABI, invalid wire state or a missed frame. The receive counter
-// remains a block clock even when transport is stopped or position is invalid.
+// Reject wrong ABI or invalid wire state. A missed frame with a new accepted
+// snapshot may update BPM, but cannot supply grid/phase continuity. The receive
+// counter remains a block clock even when transport or position is invalid.
 _iv_position:
     R0 = 0;
     DM(_iv_timing_meta) = R0;
@@ -656,17 +659,23 @@ _iv_position:
     R1 = 2;
     COMP(R0, R1);
     IF NE RTS;
+    CALL _iv_tempo_snapshot;
+    I1 = _pattern_position_info;
     R0 = DM(19, I1);
     R1 = 1;
     COMP(R0, R1);
     IF GT RTS;
-    R0 = 0x100; // Coherent grid provider, independent of running/valid.
+    R0 = DM(_iv_timing_meta);
+    R1 = 0x100; // Coherent grid provider, independent of running/valid.
+    R0 = R0 OR R1;
     DM(_iv_timing_meta) = R0;
     R0 = DM(14, I1); // Firmware transport state, not boundary validity.
     R1 = 1;
     COMP(R0, R1);
     IF EQ JUMP _iv_transport_known;
-    R0 = 0x500; // Explicitly stopped.
+    R0 = DM(_iv_timing_meta);
+    R1 = 0x400; // Explicitly stopped.
+    R0 = R0 OR R1;
     DM(_iv_timing_meta) = R0;
 _iv_transport_known:
     R0 = DM(5, I1);
@@ -691,13 +700,18 @@ _iv_transport_known:
     R0 = DM(1, I1);
     R1 = 1;
     COMP(R0, R1);
+    IF EQ JUMP _iv_clock_provider;
+    R1 = 2;
+    COMP(R0, R1);
     IF NE RTS;
+_iv_clock_provider:
     R0 = DM(_iv_timing_meta);
     R1 = 0x200;
     R0 = R0 OR R1;
     DM(_iv_timing_meta) = R0;
     R0 = DM(4, I1);
     R1 = 3;
+    R0 = R0 AND R1;
     COMP(R0, R1);
     IF EQ JUMP _iv_phase_fresh;
     R0 = 0;
@@ -712,6 +726,33 @@ _iv_phase_fresh:
     DM(0, I0) = R0;
     R0 = 88;
     DM(1, I0) = R0;
+    RTS;
+
+// The receiver publishes PCLK alongside each authenticated position snapshot.
+// Its version2 selected BPM is independent of phase health and transmit gaps.
+// Publish only tempo here; continuity checks above own all transport flags.
+_iv_tempo_snapshot:
+    I1 = _pattern_clock_info;
+    R0 = DM(0, I1);
+    R1 = 0x50434c4b;
+    COMP(R0, R1);
+    IF NE RTS;
+    R0 = DM(1, I1);
+    R1 = 2;
+    COMP(R0, R1);
+    IF NE RTS;
+    R0 = DM(4, I1);
+    R0 = LSHIFT R0 BY -16;
+    R1 = 3600;
+    COMP(R0, R1);
+    IF LT RTS;
+    R1 = 36000;
+    COMP(R0, R1);
+    IF GT RTS;
+    R0 = LSHIFT R0 BY 16;
+    R1 = 0x800;
+    R0 = R0 OR R1;
+    DM(_iv_timing_meta) = R0;
     RTS;
 
 .PKBSS _iv_timing_meta, 4;
@@ -811,6 +852,7 @@ _iv_reset_epoch_next:
     RTS;
 // One slot, working set loaded. R0=1 applied, 0 rejected.
 _iv_reset_owned:
+    CALL _iv_lock_clear;
     R0 = 0;
     DM(_iv_mod_ready) = R0;
     CALL _iv_owner_clear;
@@ -1465,11 +1507,16 @@ _iv_events_slot:
     R0 = PASS R0;
     IF NE JUMP _iv_no; // never overwrite an unconsumed batch
     R4 = DM(_iv_packet);
+    CALL _iv_lock_stage;
+    R0 = PASS R0;
+    IF EQ JUMP _iv_no;
+    R4 = DM(_iv_packet);
     R8 = _iv_input;
     R12 = DM(_mi_epoch);
     CALL _ir_normalize_packet;
     R0 = PASS R0;
     IF LE JUMP _iv_no;
+    CALL _iv_lock_commit;
     R0 = 1;
     RTS;
 _iv_no:
@@ -1514,6 +1561,7 @@ _iv_admitted:
 
 // Resets the loaded slot's registry instance: state base + slot * stride.
 _iv_reset_row:
+    CALL _iv_lock_clear;
     R0 = 0;
     DM(_iv_mod_ready) = R0;
     CALL _iv_owner_clear;

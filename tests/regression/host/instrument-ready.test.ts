@@ -38,9 +38,9 @@ test.each([6, 9])('terminal phase %i immediately reports file and all 24 link wo
 test('an unchanged pending transfer fails at its no-progress deadline', async () => {
   const state = snapshot();
   const failed = expect(waitInstrumentReady(reader(() => state))).rejects.toThrow(
-    `Instrument load made no progress for 60000 ms: ${JSON.stringify(state)}`,
+    `Instrument load made no progress for 30000 ms: ${JSON.stringify(state)}`,
   );
-  await vi.advanceTimersByTimeAsync(60_000);
+  await vi.advanceTimersByTimeAsync(30_000);
   await failed;
   expect(vi.getTimerCount()).toBe(0);
 });
@@ -49,14 +49,14 @@ test.each(['phase', 'serial', 'acked', 'ending'] as const)(
   '%s progress keeps a slow transfer alive beyond one watchdog interval',
   async (field) => {
     const read = reader(() => {
-      const step = Math.floor(Date.now() / 40_000);
+      const step = Math.floor(Date.now() / 20_000);
       const state = snapshot(step >= 4 ? 3 : 2);
       if (field === 'phase') state.file[0] = [0, 1, 2, 7, 3][Math.min(step, 4)]!;
       else state.link[{ serial: 18, acked: 8, ending: 15 }[field]] = field === 'ending' ? 6 - step : step;
       return state;
     });
     const done = expect(waitInstrumentReady(read)).resolves.toMatchObject({ file: [3, 0, -35, 2] });
-    await vi.advanceTimersByTimeAsync(160_000);
+    await vi.advanceTimersByTimeAsync(80_000);
     await done;
     expect(vi.getTimerCount()).toBe(0);
   },
@@ -66,7 +66,7 @@ test('a memory RPC that never answers cannot bypass the watchdog', async () => {
   const failed = expect(waitInstrumentReady(() => new Promise<number>(() => {}))).rejects.toThrow(
     'Instrument load progress read failed',
   );
-  await vi.advanceTimersByTimeAsync(60_000);
+  await vi.advanceTimersByTimeAsync(30_000);
   await failed;
   expect(vi.getTimerCount()).toBe(0);
 });

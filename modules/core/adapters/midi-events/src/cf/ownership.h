@@ -17,10 +17,20 @@
 #define MI_BEND 4u
 /* Mapper-only phrase commit; never accepted from physical MIDI. */
 #define MI_COMMIT 5u
+#define MI_LOCKS 5u
+/* Lock IDs from here are consumed by the CF mapper and stay off the DSP wire. */
+#define MI_LOCK_MAPPER_FIRST 53u
+#define MI_SOURCE_VALUES 17u
 
 typedef struct {
     uint32_t epoch, sequence, token, generation;
     uint8_t kind, port, channel, track, note, value;
+    /* Private sequencer snapshot retained with the source note until ACK.
+     * Other events always have lock_valid=0. Pairs are id:6/value:10. */
+    uint8_t lock_valid, lock_count;
+    uint16_t locks[MI_LOCKS];
+    uint8_t source_valid;
+    uint16_t source[MI_SOURCE_VALUES];
 } MiEvent;
 typedef struct {
     uint32_t token, generation, identity;
@@ -77,6 +87,16 @@ int mi_message(MiLedger *m, uint32_t port, const uint8_t *msg, uint32_t len);
 int mi_panel_down(MiLedger *m, uint32_t key, uint32_t note, uint32_t velocity, uint32_t track);
 void mi_panel_up(MiLedger *m, uint32_t key);
 void mi_panel_cancel(MiLedger *m);
+/* Sequencer trigs on a local-key track (panel_mask): one note per track, as
+ * stock audio tracks are monophonic. A trig releases the track's previous
+ * sequencer note first; panel cancel leaves sequencer notes sounding. */
+#define MI_SEQ_KEY 0x100u
+int mi_seq_trig(MiLedger *m, uint32_t track, uint32_t note, uint32_t velocity);
+/* Attach an exact step snapshot to the just-enqueued sequencer note. Caller
+ * holds the ledger lock. An empty snapshot explicitly clears previous locks. */
+int mi_seq_attach_locks(MiLedger *m,uint32_t track,const uint16_t *locks,uint32_t count);
+int mi_seq_attach_source(MiLedger *m,uint32_t track,const uint16_t source[MI_SOURCE_VALUES]);
+void mi_seq_release(MiLedger *m, uint32_t track);
 /* Peek leaves the ring intact for retransmission. ACK must match its exact head
  * sequence; a duplicate or stale ACK cannot consume a different message. */
 int mi_peek(MiLedger *m, MiEvent *out);

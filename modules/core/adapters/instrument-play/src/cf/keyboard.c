@@ -73,6 +73,8 @@ static int note(KbState *s, const MiEvent *e)
     KbKey *k=&s->keys[free];
     k->token=e->token; k->note=e->note; k->velocity=e->value;
     k->port=e->port; k->channel=e->channel; k->held=1;
+    k->extra_count=s->stage_count;
+    for (i=0;i<KB_EXTRA;++i) k->extra[i]=i<s->stage_count ? s->stage[i] : 0;
     if (s->mode==KB_LEARN) capture(s,e->note);
     return 0;
 }
@@ -103,17 +105,31 @@ static uint32_t desired(KbState *s, KbVoice v[4])
         {3,0,3,7}, {3,0,5,7}, {4,0,4,7,14}, {4,0,4,7,10},
         {3,0,3,6}, {4,0,3,7,10}, {0}, {4,0,4,7,11}
     };
-    uint32_t i,n=0; KbKey *root=0;
+    uint32_t i,j,n=0; KbKey *root=0;
     zero(v,4*sizeof(*v));
     for (i=0;i<MI_KEYS;++i) if (active(&s->keys[i])) {
         KbKey *k=&s->keys[i];
         if (s->mode!=KB_ROOT) {
             if (n==4) break;
             voice(&v[n++],k->token,k->note,k);
+            /* A recorded chord adds its other notes after its own. */
+            for (j=0;j<k->extra_count && j<KB_EXTRA && n<4;++j) {
+                int32_t pitch=(int32_t)k->note+k->extra[j];
+                if (pitch>=0 && pitch<=127) voice(&v[n++],k->token,(uint8_t)pitch,k);
+            }
         } else if (!root || (k->held && !root->held) ||
             (k->held==root->held && k->token>root->token)) root=k;
     }
     if (!root) return n;
+    if (root->extra_count) {
+        /* A recorded chord plays its notes, not the Sound's chord shape. */
+        voice(&v[n++],0,root->note,root);
+        for (j=0;j<root->extra_count && j<KB_EXTRA && n<4;++j) {
+            int32_t pitch=(int32_t)root->note+root->extra[j];
+            if (pitch>=0 && pitch<=127) voice(&v[n++],0,(uint8_t)pitch,root);
+        }
+        return n;
+    }
     const uint8_t *intervals=shapes[s->type]+1;
     n=shapes[s->type][0];
     if (s->type==10) {
@@ -225,6 +241,61 @@ int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8])
         out[i].sequence=s->phrase | (s->mode==KB_ROOT ? 0x80000000u : 0);
     s->update=0;
     return (int)used;
+}
+int kb_process_locked(KbState *s,const MiEvent *in,uint32_t count,MiEvent out[8])
+{
+    if(count!=1 || !in || !in[0].lock_valid || s->mode==KB_LEARN)
+        return kb_process(s,in,count,out);
+    if(in[0].kind!=MI_NOTE_ON || in[0].port!=MI_PANEL || in[0].lock_count>MI_LOCKS) return -1;
+    uint8_t old_mode=s->mode,old_type=s->type,old_voicing=s->voicing;
+    uint32_t chord=UINT32_MAX,voicing=UINT32_MAX,seen=0;
+    int8_t extra[KB_EXTRA]; uint32_t extras=0;
+    for(uint32_t i=0;i<in[0].lock_count;++i) {
+        uint32_t id=in[0].locks[i]>>10,value=in[0].locks[i]&1023u;
+        if(id==0) { if(chord!=UINT32_MAX || value>12) return -1; chord=value; }
+        if(id==1) { if(voicing!=UINT32_MAX || value>3) return -1; voicing=value; }
+        if(id>=KB_LOCK_NOTE_FIRST && id<KB_LOCK_NOTE_FIRST+KB_EXTRA) {
+            uint32_t bit=1u<<(id-KB_LOCK_NOTE_FIRST);
+            if((seen&bit) || value>2u*KB_LOCK_NOTE_CENTER) return -1;
+            seen|=bit;
+            int8_t interval=(int8_t)((int32_t)value-(int32_t)KB_LOCK_NOTE_CENTER);
+            int duplicate=!interval;
+            for(uint32_t j=0;j<extras;++j) if(extra[j]==interval) duplicate=1;
+            if(!duplicate) extra[extras++]=interval;
+        }
+    }
+    if(chord!=UINT32_MAX) {
+        s->mode=chord ? KB_ROOT : KB_PLAY;
+        if(chord) s->type=(uint8_t)(chord-1);
+    }
+    /* Recorded notes play as recorded, whatever the step's chord choice. */
+    if(extras) s->mode=KB_PLAY;
+    if(voicing!=UINT32_MAX) s->voicing=(uint8_t)voicing;
+    s->stage_count=(uint8_t)extras;
+    for(uint32_t j=0;j<KB_EXTRA;++j) s->stage[j]=j<extras ? extra[j] : 0;
+    int result=kb_process(s,in,count,out);
+    s->stage_count=0;
+    if(chord!=UINT32_MAX || extras) { s->mode=old_mode; s->type=old_type; }
+    if(voicing!=UINT32_MAX) s->voicing=old_voicing;
+    return result;
+}
+int kb_preview_locked(KbState *s,uint8_t pitch,const uint16_t *locks,uint32_t count,uint8_t pitches[4])
+{
+    if(!s || !pitches || count>MI_LOCKS || (count && !locks) || s->mode==KB_LEARN) return -1;
+    kb_reset(s,1,1);
+    s->selector_base=255; s->selector_channel=MI_NONE;
+    MiEvent in; MiEvent out[8]; zero(&in,sizeof(in));
+    in.epoch=1; in.generation=1; in.token=1; in.kind=MI_NOTE_ON;
+    in.port=MI_PANEL; in.note=pitch; in.value=100; in.lock_valid=1; in.lock_count=(uint8_t)count;
+    for(uint32_t i=0;i<count;++i) in.locks[i]=locks[i];
+    int n=kb_process_locked(s,&in,1,out); if(n<0) return -1;
+    uint32_t found=0;
+    for(int i=0;i<n && found<4;++i) if(out[i].kind==MI_NOTE_ON) {
+        uint8_t p=out[i].note; uint32_t at=found++;
+        while(at && pitches[at-1]>p) { pitches[at]=pitches[at-1]; --at; }
+        pitches[at]=p;
+    }
+    return (int)found;
 }
 int kb_learn_begin(KbState *s)
 {

@@ -244,7 +244,25 @@ CANOPY DSP: [block rendering](findings/122-canopy-dsp-block-rendering.md) (**[D]
 wavetable and FM voices render a block at a time; worst callback 99,849 to
 77,017 instructions; bit-identical in all 1,164 CANOPY DSP tests).
 
+CANOPY trig locks: [DT2 1.17 lock storage and the packed design](findings/123-canopy-trig-locks.md)
+(**[D]**, lane layout and set/clear/save/load/playback routines; values
+unclamped 0..0x7fff; five safe SRC slots; trigs and CANOPY's own knobs do not
+reach CANOPY yet **[O]**).
+
 CANOPY tracks: [any track, up to four at once](findings/121-canopy-any-track.md)
 (**[D]**, per-track stock row/frame/kit strides, DSP slots bound by reset
 hints, per-track carrier ownership, status focus; four-busy-instance DSP load
 open **[O]**).
+
+CANOPY arp: [pattern tempo, stopped playing and onset continuity](findings/124-canopy-pattern-arp.md)
+(**[D]**, automatic pattern timing, removal of local BPM/clock controls, and
+a short arp onset ramp for zero-attack sounds).
+
+CANOPY recording: [held-trig page, live chords and step recording](findings/125-canopy-recording.md)
+(**[D]**, sequencer byte +0x268 is the held-trig edit mark, not another
+context; recording modes; the pattern's per-step note list; recorded chords
+as chord-note locks; how step recording takes keyboard notes **[O]**).
+
+CANOPY loading: [boot transfers and their size](findings/126-canopy-boot-loading.md)
+(**[D]/[O]**, larger acknowledged image transfers reduce loader scheduling
+overhead; physical boot-time improvement not yet measured).

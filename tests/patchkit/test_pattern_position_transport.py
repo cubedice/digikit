@@ -235,3 +235,23 @@ def test_phase_extension_normalizes_legacy_position(receiver, mode, stale):
     assert receive(receiver, wire(), clock=True)[1][0] == 0
     words[15] ^= 1
     assert receive(receiver, words, clock=True)[1][0] == 0
+
+
+@pytest.mark.parametrize("tempo", [0, 3599, 3600, 12240, 36000, 36001, 65535])
+@pytest.mark.parametrize("flags", [0, 3, 7])
+def test_selected_tempo_preserves_legacy_position_and_clock_health(
+    receiver, tempo, flags
+):
+    words = wire()
+    words[1], words[9], words[5] = 4, 0xFFFF1234, (tempo << 16) | flags
+    words[14] = 0 if not flags else 1
+    words[15] = reduce(xor, words[:15], SALT)
+    record, clock = receive(receiver, words, clock=True)
+    legacy = words[:15]
+    legacy[1], legacy[9], legacy[5] = 2, 0, flags & 3
+    assert record[:16] == legacy + [reduce(xor, legacy, SALT)]
+    expected_tempo = tempo if 3600 <= tempo <= 36000 else 0
+    expected_flags = (expected_tempo << 16) | (0 if flags & 4 else flags & 3)
+    assert clock == [0x50434C4B, 2, 0xFFFF1234, words[11], expected_flags]
+    words[15] ^= 1
+    assert receive(receiver, words, clock=True)[1][0] == 0
