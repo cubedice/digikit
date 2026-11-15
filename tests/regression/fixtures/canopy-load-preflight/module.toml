@@ -1,0 +1,32 @@
+[module]
+id = "test/canopy-load-preflight"
+version = "0.1.0"
+name = "CANOPY card load guard proof"
+category = "test"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Unsafe emulator-only project load guard; never install on hardware."
+requires = ["test/canopy-sound-proof"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+# Replace the four-byte jsr plus the complete following two-byte instruction.
+# The trampoline replays that instruction before returning to the wrapper.
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = -608080
+width = 2
+value = 0x4ef9
+expect_sha256 = "2f54804a23c29e43ac65121ac129e86e6cf105d9c2d4e28a772d47ef99ac69ce"
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = -608078
+width = 4
+value = "canopy_proof_card_load_guard"
+expect_sha256 = "0e542ad6584ba15093b45e0c6ab57c44d0038ee38d6645e41c0537367a6ba2ad"

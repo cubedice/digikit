@@ -320,8 +320,8 @@ static void diagram_wavetable(uint8_t *b,const CvDisplay *d)
     uint32_t frame=position/100,fraction=position%100,next=frame<7?frame+1:frame;
     int samples[74],peak=1;
     for(int i=0;i<74;++i) {
-        samples[i]=((int)canopy_preview_waves[table][frame][i]*(int)(100-fraction)+
-            (int)canopy_preview_waves[table][next][i]*(int)fraction)/100;
+        samples[i]=(canopy_preview_value(table,frame,(unsigned)i)*(int)(100-fraction)+
+            canopy_preview_value(table,next,(unsigned)i)*(int)fraction)/100;
         int abs=samples[i]<0?-samples[i]:samples[i]; if(abs>peak) peak=abs;
     }
     int magnitude=(6*(samples[0]<0?-samples[0]:samples[0])+peak/2)/peak;

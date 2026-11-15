@@ -1,0 +1,21 @@
+[module]
+id = "test/canopy-integrated-proof"
+version = "0.1.0"
+name = "CANOPY integrated snapshot transaction proof"
+category = "test"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Disposable emulator public-input transaction experiment; never install on hardware."
+requires = ["test/canopy-sound-proof"]
+conflicts = ["test/canopy-worker-refill", "test/canopy-live-proof"]
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/integrated-proof.dko.json"
+sources = ["src/cf/fixture.c", "../canopy-two-phase/cf-probe.s", "../canopy-two-phase/two-phase.c", "../canopy-two-phase/credit-refill.c", "../canopy-credits/boundary-credits.c"]
+place = "cf.expansion"
+devices = ["dt2"]

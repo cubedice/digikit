@@ -1,0 +1,58 @@
+[module]
+id = "test/canopy-bank-preflight"
+version = "0.1.0"
+name = "CANOPY bank preflight proof"
+category = "test"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Synthetic emulator-only bank guard; never install on hardware."
+requires = ["test/instrument-play-proof"]
+conflicts = ["test/canopy-sound-proof"]
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/bank-preflight.dko.json"
+sources = ["src/cf/fixture.c", "src/cf/guard.s", "../../../../modules/core/adapters/instrument-play/src/cf/sound-pool.c"]
+place = "cf.expansion"
+devices = ["dt2"]
+[object.externs]
+fw_alloc = "cf.mem.fn.new"
+fw_free = "cf.mem.fn.free"
+
+# Register the test tick on successful Sound deserialization without writing
+# any Sound byte. The original fxpages common exit remains in place.
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0x446
+width = 2
+value = 0x4ef9
+expect_sha256 = "5e5be2db18c49bd9863ac94af1ee2a6b6fbe6df2a2033e188c545979a0148880"
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0x448
+width = 4
+value = "canopy_bank_loaded_entry"
+expect_sha256 = "6c0d287789e87236d281a393457e991356e2a14bfd2f8ba09f57b2f3cfd1bf56"
+
+# 1.17 bank-loader entry. The trampoline replays the complete eight-byte
+# prologue; it guards only the fixture's own synthetic destination.
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0x47e
+width = 2
+value = 0x4ef9
+expect_sha256 = "5e5be2db18c49bd9863ac94af1ee2a6b6fbe6df2a2033e188c545979a0148880"
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0x480
+width = 4
+value = "canopy_bank_guard"
+expect_sha256 = "695af9582e13e10a1de25040e80563d7c8ce8c7e49fea0e278fa90e45c62c149"

@@ -68,3 +68,32 @@ int sc_decode(CpPreset *out,const uint8_t in[SC_BYTES])
     for(uint32_t i=0;i<sizeof(p);++i) ((volatile uint8_t *)out)[i]=((const volatile uint8_t *)&p)[i];
     return 0;
 }
+
+/* The stock v3 Sound writer zeroes these 21 halfwords. The stock reader maps
+ * the first eight to dummy parameter 0 and ignores the last thirteen. They
+ * are not a runtime Sound home. */
+static uint32_t sound_offset(uint32_t i)
+{
+    uint32_t slot=i<8 ? 4*(i+1) : 77+(i-8);
+    return 0x1c+2*slot;
+}
+int sc_sound_record_write(uint8_t *record,uint32_t length,const CpPreset *p)
+{
+    uint8_t payload[SC_BYTES];
+    if(!record || length<0x455 || sc_encode(p,payload)) return -1;
+    for(uint32_t i=0;i<21;++i) {
+        uint32_t at=sound_offset(i);
+        record[at]=payload[2*i]; record[at+1]=payload[2*i+1];
+    }
+    return 0;
+}
+int sc_sound_record_read(CpPreset *out,const uint8_t *record,uint32_t length)
+{
+    uint8_t payload[SC_BYTES];
+    if(!out || !record || length<0x455) return -1;
+    for(uint32_t i=0;i<21;++i) {
+        uint32_t at=sound_offset(i);
+        payload[2*i]=record[at]; payload[2*i+1]=record[at+1];
+    }
+    return sc_decode(out,payload);
+}

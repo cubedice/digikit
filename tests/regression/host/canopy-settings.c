@@ -25,6 +25,7 @@ MiTransport mi_transport;
 volatile uint32_t ip_view;
 volatile uint32_t ip_track;
 volatile uint32_t ip_tracks[IP_INSTANCES]={0,IP_NONE,IP_NONE,IP_NONE};
+volatile uint32_t ip_admission[IP_INSTANCES*8];
 static struct dk_ui_menu menus[12];
 static unsigned menu_count, masked, unsafe_io, token=1;
 static int exists, staged, put_error, flush_error, open_error;
@@ -332,6 +333,26 @@ int main(void)
             for(unsigned t=0;t<MI_TRACKS;++t) track_channel[t]=0;
             keyboard_initialized=0; instrument_play_tick();
         }
+#ifdef DK_CANOPY_SOUND_PROOF
+        else if(!strcmp(cmd,"soundstateproof")) {
+            CpPreset p,unchanged; uint32_t generation=0;
+            memset(&p,0x5a,sizeof(p)); memcpy(&unchanged,&p,sizeof(p));
+            ip_admission[0]=1; ip_admission[1]=0x123400; ip_admission[4]=7; ip_admission[5]=admitted; ip_admission[6]=0;
+            cur->voicing=keyboard.voicing=2;
+            int bad_snapshot=instrument_sound_snapshot(0,0x999900,&p,&generation);
+            int preserved=!memcmp(&p,&unchanged,sizeof(p)) && generation==0;
+            int saved=instrument_sound_snapshot(0,0x123400,&p,&generation);
+            cur->voicing=keyboard.voicing=0;
+            int bad_generation=instrument_sound_restore(0,0x123400,generation+1,&p);
+            int bad_sound=instrument_sound_restore(0,0x999900,generation,&p);
+            ip_admission[6]=1;
+            int during_load=instrument_sound_restore(0,0x123400,generation,&p);
+            ip_admission[6]=0;
+            int restored=instrument_sound_restore(0,0x123400,generation,&p);
+            printf("{\"badSnapshot\":%d,\"preserved\":%d,\"saved\":%d,\"generation\":%u,\"badGeneration\":%d,\"badSound\":%d,\"duringLoad\":%d,\"restored\":%d,\"voicing\":%u,\"masked\":%u}\n",
+                bad_snapshot,preserved,saved,generation,bad_generation,bad_sound,during_load,restored,keyboard.voicing,masked);
+        }
+#endif
         else if(!strcmp(cmd,"snapshot")) {
             printf("{\"mode\":%u,\"dirty\":%u,\"status\":%u,\"storage\":%d,\"pending\":%d,\"exists\":%d,\"unsafe\":%u,\"shape\":[",
                 keyboard.mode,keyboard.dirty,keyboard.status,storage_result,save_pending,exists,unsafe_io);
@@ -339,4 +360,5 @@ int main(void)
             puts("]}");
         } else return 2;
     }
+    return 0;
 }

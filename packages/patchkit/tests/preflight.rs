@@ -80,6 +80,39 @@ fn a_patched_image_passes_and_says_which_sections_changed() {
 }
 
 #[test]
+fn replay_metadata_is_accepted_only_for_the_exact_relinked_image() {
+    let Some(r) = rig() else { return };
+    let mut lib = Library::scan_repo_for(&root(), false, Some(&[])).unwrap();
+    lib.lower(&Models::from_dir(&root().join("devices")).unwrap())
+        .unwrap();
+    let ids = lib
+        .with_requires(&["core/runtime".into(), "core/health".into()])
+        .unwrap()
+        .0;
+    let replay = apply::apply(&r.stock, &r.reg, &lib, &ids).unwrap();
+    assert_eq!(replay.syx, r.patched);
+    let out = patchkit::preflight::preflight_relinked(
+        &r.patched,
+        &r.reg,
+        &r.known,
+        &|_| Some(r.stock.clone()),
+        &replay,
+    );
+    assert!(out.passed(), "{}", failed(&out));
+    let mut changed = r.patched.clone();
+    changed[100] ^= 1;
+    let out = patchkit::preflight::preflight_relinked(
+        &changed,
+        &r.reg,
+        &r.known,
+        &|_| Some(r.stock.clone()),
+        &replay,
+    );
+    assert!(!out.passed());
+    assert!(failed(&out).contains("relinked image differs"));
+}
+
+#[test]
 fn a_stock_image_is_refused_as_not_patched() {
     let Some(r) = rig() else { return };
     let o = run(&r, &r.stock, true);

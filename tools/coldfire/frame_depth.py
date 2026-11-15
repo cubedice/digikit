@@ -9,8 +9,8 @@ every `jsr`/`bsr` the pushed bytes plus the return address are added to the call
 object's relocations). Not followed: calls through a register or memory (reported as `indirect`), and the firmware
 functions the object imports (reported by name with the depth at the call, so the caller can add what the firmware's own
 function needs, measured with `DIGI_STACK_WATCH`, docs/INSTRUMENTATION.md). Branches are not followed: the scan is straight
-through the function, which over-counts a frame that is released and pushed again on another path and cannot under-count
-a `lea`-built frame (gcc allocates the whole frame in the prologue). Recursion is cut (and reported).
+through the function and can over-count or under-count call depths when separate paths release frames or return. It is
+an aid to investigation, not an upper bound. Recursion is cut (and reported).
 """
 
 from __future__ import annotations
@@ -73,7 +73,13 @@ def scan(sec: dict, relocs: list[dict]) -> Fn:
         ):
             sp -= _num(g.group(1))
         elif m == "link" and (g := re.fullmatch(r"a\d,#(-?\$?[0-9a-f]+)", o)):
-            sp += 4 - _num(g.group(1))
+            displacement = _num(g.group(1))
+            # Capstone prints a negative 16-bit LINK displacement as its
+            # unsigned hexadecimal representation (e.g. #$fd20).  Interpret
+            # the encoded word as signed before applying it to SP.
+            if mn.endswith(".w") and 0x8000 <= displacement <= 0xffff:
+                displacement -= 0x10000
+            sp += 4 - displacement
         elif m == "unlk":
             sp = max(0, sp - 4)
         elif m == "pea" or (m == "move" and o.endswith(",-(a7)")):

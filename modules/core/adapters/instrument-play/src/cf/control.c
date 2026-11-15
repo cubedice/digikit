@@ -16,6 +16,9 @@
 #include "src-clock.h"
 #include "src-mod.h"
 #include "instances.h"
+#ifdef DK_CANOPY_SOUND_PROOF
+#include "sound-state.h"
+#endif
 #include "../../../midi-events/src/cf/bridge.h"
 extern uint32_t dkrt_instrument_type(void);
 extern uint32_t dkrt_instrument_generation(void);
@@ -58,6 +61,24 @@ CsState src_state[IP_INSTANCES];
 IsStatus src_status[IP_INSTANCES];
 static IpInst inst[IP_INSTANCES];
 static IpInst *cur=&inst[0];
+#ifdef DK_CANOPY_SOUND_PROOF
+/* An emulator-only, separately linked fixture may request a post-admission
+ * tick. No production module sets this; never use it for persistence. */
+static void (*sound_proof_tick)(void);
+void instrument_sound_proof_set(void (*tick)(void)) { sound_proof_tick=tick; }
+static int proof_live_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint32_t now);
+static int proof_live_keyboard(uint32_t track,uint32_t epoch,uint32_t generation,
+    const MiEvent *input,uint32_t count,MiEvent *output);
+static IpSoundProofPrepare sound_transaction_prepare;
+static IpSoundProofAttach sound_transaction_attach;
+static void *sound_transaction_context;
+static uint8_t sound_transaction_busy;
+enum { PROOF_UI_PRESET, PROOF_UI_SHAPE, PROOF_UI_MENU };
+/* 1 preserves the unregistered callback, 0 committed, negative refused.
+ * -2 denotes forbidden re-entry: no nested UI refresh/toast is allowed. */
+static int proof_live_ui(uint32_t operation,int value,const CpPreset *preset);
+static int proof_live_learn(uint32_t session,uint32_t revision);
+#endif
 static uint32_t selected=IP_NONE, focus=IP_NONE, initialized;
 #define IDX(p) ((uint32_t)((p)-inst))
 #define SRC(p) (&src_state[IDX(p)])
@@ -190,8 +211,8 @@ static void suspend_all(void)
         if(inst[i].track<MI_TRACKS || inst[i].phase) instrument_sound_suspend(i);
 }
 
-int instrument_keyboard_events(uint32_t track, uint32_t epoch, uint32_t generation,
-    const MiEvent *input, uint32_t count, MiEvent *output)
+static int keyboard_events_raw(uint32_t track,uint32_t epoch,uint32_t generation,
+    const MiEvent *input,uint32_t count,MiEvent *output,int allow_selector)
 {
     uint32_t i;
     /* The instance admitted for this track maps its keys; the transport only
@@ -201,10 +222,25 @@ int instrument_keyboard_events(uint32_t track, uint32_t epoch, uint32_t generati
     if (!keyboard_initialized) return -1;
     if (in->keyboard.epoch!=epoch || in->keyboard.generation!=generation)
         kb_reset(&in->keyboard,epoch,generation);
+#ifdef DK_CANOPY_SOUND_PROOF
+    int mapped=allow_selector ? kb_process_locked(&in->keyboard,input,count,output) :
+        kb_process_locked_selector(&in->keyboard,input,count,output,0);
+#else
+    (void)allow_selector;
     int mapped=kb_process_locked(&in->keyboard,input,count,output);
+#endif
     /* The mapper is track-agnostic; the wire batch names the admitted track. */
     for (i=0;mapped>0 && i<(uint32_t)mapped;++i) output[i].track=(uint8_t)track;
     return mapped;
+}
+int instrument_keyboard_events(uint32_t track,uint32_t epoch,uint32_t generation,
+    const MiEvent *input,uint32_t count,MiEvent *output)
+{
+#ifdef DK_CANOPY_SOUND_PROOF
+    return proof_live_keyboard(track,epoch,generation,input,count,output);
+#else
+    return keyboard_events_raw(track,epoch,generation,input,count,output,1);
+#endif
 }
 /* Capture the requested source's remembered bank with the trig, before any
  * later UI edit or packet retry. Caller already holds the MIDI IRQ lock. */
@@ -286,8 +322,16 @@ static void shapes_share(const IpInst *from)
 static void learn_close(void *ctx,int save)
 {
     (void)ctx;
+#ifdef DK_CANOPY_SOUND_PROOF
+    if(sound_transaction_busy) return;
+#endif
     uint32_t sr=dkrt_irq_mask();
     int result=0;
+#ifdef DK_CANOPY_SOUND_PROOF
+    int transaction=save ? proof_live_learn(shown_session,shown_revision) : 1;
+    if(transaction!=1) result=transaction;
+    else {
+#endif
     if (save) result=kb_learn_save(&cur->keyboard,shown_session,shown_revision);
     else kb_learn_cancel(&cur->keyboard);
     if (!result) {
@@ -295,8 +339,18 @@ static void learn_close(void *ctx,int save)
         instrument_sound_suspend(IDX(cur));
         if (save) save_pending=1;
     }
+#ifdef DK_CANOPY_SOUND_PROOF
+    }
+#endif
     dkrt_irq_restore(sr);
-    if (result) { dk_ui_toast("CAPTURE CHANGED OR EMPTY"); dk_ui_refresh(learn_menu); }
+    if (result) {
+#ifdef DK_CANOPY_SOUND_PROOF
+        dk_ui_toast(transaction!=1 ? "SAVE REFUSED - RETRY" : "CAPTURE CHANGED OR EMPTY");
+#else
+        dk_ui_toast("CAPTURE CHANGED OR EMPTY");
+#endif
+        dk_ui_refresh(learn_menu);
+    }
     else { dk_ui_close(learn_menu); if(save) dk_ui_toast("LEARNED - UNSAVED"); }
 }
 /* We close explicitly: consume NO so the stock handler cannot close twice. */
@@ -409,7 +463,7 @@ uint32_t instrument_src_context(uint32_t track,uint32_t page,int visible)
     is_select(STS(in),track,generation,in->keyboard.mode,in->keyboard.mode==KB_LEARN ? in->keyboard.session : 0);
     return token;
 }
-int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint32_t now)
+static int src_encoder_raw(uint32_t token,uint32_t encoder,int32_t detents,uint32_t now)
 {
     if(!initialized) return CS_STALE;
     /* A queued event can outlive a preset load or sound reset without another
@@ -453,6 +507,14 @@ int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint3
     }
     cur->pad_dirty=1; dkrt_irq_restore(sr);
     return result;
+}
+int instrument_src_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint32_t now)
+{
+#ifdef DK_CANOPY_SOUND_PROOF
+    return proof_live_encoder(token,encoder,detents,now);
+#else
+    return src_encoder_raw(token,encoder,detents,now);
+#endif
 }
 /* Only the focused instance's status reaches the link (the DSP publishes the
  * flagged slot), so drain into that instance. */
@@ -660,9 +722,437 @@ static void preset_select(void *ctx,int value)
     (void)ctx; (void)value;
     if(preset_menu) dk_ui_refresh(preset_menu);
 }
+/* Publish a validated snapshot at one reset boundary. The caller holds the
+ * mapper lock. */
+static void preset_apply_locked(IpInst *in,const CpPreset *p)
+{
+    instrument_sound_suspend(IDX(in));
+    in->mode=in->keyboard.mode=p->mode; in->type=in->keyboard.type=(uint8_t)p->control[CP_CHORD];
+    in->voicing=in->keyboard.voicing=(uint8_t)p->control[CP_VOICING];
+    in->keyboard.preset_shape.count=p->shape.count;
+    for(uint32_t i=0;i<4;++i) in->keyboard.preset_shape.intervals[i]=p->shape.intervals[i];
+    in->keyboard.preset_shape_active=1;
+    in->pad_color=p->control[CP_COLOR]; in->pad_drift=p->control[CP_DRIFT];
+    in->pad_strum=p->control[CP_STRUM]; in->arp_mix=p->control[CP_ARP_MIX];
+    in->arp_rate=p->control[CP_RATE]; in->arp_order=p->control[CP_ORDER]; in->arp_octaves=(int)p->control[CP_OCTAVES]-3;
+    in->arp_gate=p->control[CP_GATE]; in->arp_swing=p->control[CP_SWING]; in->arp_restart=p->control[CP_RESTART];
+    in->pad_attack=p->control[CP_ATTACK]; in->pad_release=p->control[CP_RELEASE];
+    for(uint32_t i=0;i<12;++i) in->wt[i]=p->control[16+i];
+    for(uint32_t i=0;i<13;++i) in->fm[i]=p->fm[i];
+    for(uint32_t i=0;i<4;++i) in->wtfm[i]=p->control[28+i];
+    in->pad_family=p->family; in->arp_clock=CP_ARP_CLOCK; in->arp_bpm=CP_ARP_BPM_RESERVED; in->pad_dirty=1;
+}
+#ifdef DK_CANOPY_SOUND_PROOF
+/* Must hold the mapper lock. A source address alone is not an identity: an
+ * in-place load invalidates admission and advances its generation. */
+static int sound_admission_owned(uint32_t i,uint32_t sound,uint32_t generation)
+{
+    if(!initialized || !keyboard_initialized || i>=IP_INSTANCES || !sound) return 0;
+    volatile const uint32_t *a=&ip_admission[i*8];
+    return a[0] && !a[6] && a[1]==sound && a[4]==generation && a[5] &&
+        a[5]==dkrt_instrument_type() &&
+        inst[i].track<MI_TRACKS && inst[i].track==ip_tracks[i];
+}
+static int sound_state_owned(uint32_t i,uint32_t sound,uint32_t generation)
+{ return sound_admission_owned(i,sound,generation) && inst[i].keyboard.mode!=KB_LEARN; }
+int instrument_sound_snapshot(uint32_t i,uint32_t sound,CpPreset *out,uint32_t *generation)
+{
+    if(!out || !generation || i>=IP_INSTANCES) return -1;
+    uint32_t sr=dkrt_irq_mask(), gen=ip_admission[i*8+4];
+    CpPreset p;
+    int ok=sound_state_owned(i,sound,gen);
+    if(ok) preset_snapshot(&inst[i],&p);
+    dkrt_irq_restore(sr);
+    if(!ok || !cp_valid(&p) || p.clock!=CP_ARP_CLOCK || p.bpm!=CP_ARP_BPM_RESERVED) return -1;
+    for(uint32_t n=0;n<sizeof(p);++n) ((uint8_t *)out)[n]=((const uint8_t *)&p)[n];
+    *generation=gen;
+    return 0;
+}
+int instrument_sound_proof_snapshot(uint32_t i,uint32_t sound,uint32_t generation,CpPreset *out)
+{
+    if(!out || i>=IP_INSTANCES) return -1;
+    uint32_t sr=dkrt_irq_mask();
+    if(!sound_admission_owned(i,sound,generation)) { dkrt_irq_restore(sr); return -1; }
+    CpPreset p; preset_snapshot(&inst[i],&p);
+    /* LEARN is temporary performance/UI state. Its accepted Sound still has
+     * the previous mode and effective shape until SAVE commits all owners. */
+    if(inst[i].keyboard.mode==KB_LEARN) p.mode=inst[i].keyboard.previous_mode;
+    if(!cp_valid(&p) || p.clock!=CP_ARP_CLOCK || p.bpm!=CP_ARP_BPM_RESERVED) {
+        dkrt_irq_restore(sr); return -1;
+    }
+    for(uint32_t n=0;n<sizeof(p);++n) ((volatile uint8_t *)out)[n]=((const uint8_t *)&p)[n];
+    dkrt_irq_restore(sr); return 0;
+}
+int instrument_sound_restore(uint32_t i,uint32_t sound,uint32_t generation,const CpPreset *p)
+{
+    if(!p || !cp_valid(p) || p->clock!=CP_ARP_CLOCK || p->bpm!=CP_ARP_BPM_RESERVED) return -1;
+    uint32_t sr=dkrt_irq_mask();
+    int ok=sound_state_owned(i,sound,generation);
+    if(ok) preset_apply_locked(&inst[i],p);
+    dkrt_irq_restore(sr);
+    return ok ? 0 : -1;
+}
+/* Test-only preset-load transaction. The preset has already been decoded;
+ * preparation must not mutate the Sound, and publication must be infallible
+ * while the mapper lock remains held. Only opt-in proof registration wires
+ * the real preset LOAD callback to this helper. */
+int instrument_sound_proof_apply(uint32_t i,uint32_t sound,uint32_t generation,const CpPreset *p,
+    int (*prepare)(void *,const CpPreset *),void (*attach)(void *),void *context)
+{
+    if(!p || !prepare || !attach || i>=IP_INSTANCES || !cp_valid(p) ||
+       p->clock!=CP_ARP_CLOCK || p->bpm!=CP_ARP_BPM_RESERVED) return -1;
+    uint32_t sr=dkrt_irq_mask();
+    int ok=sound_state_owned(i,sound,generation) && cur==&inst[i];
+    if(ok && !prepare(context,p)) {
+        preset_apply_locked(&inst[i],p);
+        attach(context);
+    } else ok=0;
+    dkrt_irq_restore(sr);
+    return ok ? 0 : -1;
+}
+/* A single preset and shape are enough to preview a shared-library save: only
+ * the source's mode/effective shape and the peers' effective shapes change.
+ * No full keyboard/instance copy goes on either the stack or in this scratch.
+ * The mapper lock serializes callers; busy also rejects callback re-entry. */
+static struct { CpPreset preset; KbShape shape; uint8_t busy; } proof_learn_scratch;
+int instrument_sound_proof_learn(uint32_t source,uint32_t sound,uint32_t generation,
+    uint32_t session,uint32_t revision,
+    int (*prepare)(void *,uint32_t,uint32_t,uint32_t,const CpPreset *),
+    void (*attach)(void *,uint32_t),void *context)
+{
+    if(!prepare || !attach || source>=IP_INSTANCES) return -1;
+    uint32_t sr=dkrt_irq_mask(),affected=0;
+    if(proof_learn_scratch.busy) { dkrt_irq_restore(sr); return -1; }
+    proof_learn_scratch.busy=1;
+    if(cur!=&inst[source] || !sound_admission_owned(source,sound,generation) ||
+        cur->bound!=cur->track) goto refuse;
+    KbState *learner=&cur->keyboard;
+    if(learner->mode!=KB_LEARN || learner->session!=session || learner->revision!=revision ||
+        !learner->capture_count || learner->capture_count>4 || learner->slot>=8) goto refuse;
+    /* Preview the actual kb_learn_save result without mutating its status on
+     * refusal. The real save remains the commit operation below. */
+    proof_learn_scratch.shape.count=learner->capture_count;
+    for(uint32_t n=0;n<4;++n) proof_learn_scratch.shape.intervals[n]=
+        n<learner->capture_count ? learner->capture[n]-learner->capture[0] : 0;
+    for(uint32_t i=0;i<IP_INSTANCES;++i) {
+        IpInst *in=&inst[i]; KbState *k=&in->keyboard;
+        if(in->track>=MI_TRACKS) continue;
+        const KbShape *shape=&proof_learn_scratch.shape;
+        if(i!=source) {
+            if(k->preset_shape_active) continue;
+            if(k->slot>=8) goto refuse;
+            /* shapes_share copies all eight slots. Compare the actual future
+             * effective shape, including a divergent peer's other slot and
+             * PLAY/ordinary ROOT modes which still persist that shape. */
+            if(k->slot!=learner->slot) shape=&learner->shapes[k->slot];
+            const KbShape *old=&k->shapes[k->slot];
+            int differs=old->count!=shape->count;
+            for(uint32_t n=0;n<4;++n) differs|=old->intervals[n]!=shape->intervals[n];
+            if(!differs) continue;
+        }
+        uint32_t peer_sound=ip_admission[8*i+1],peer_generation=ip_admission[8*i+4];
+        if(!sound_admission_owned(i,peer_sound,peer_generation) || in->bound!=in->track ||
+            (i!=source && k->mode==KB_LEARN)) goto refuse;
+        CpPreset *p=&proof_learn_scratch.preset;
+        preset_snapshot(in,p);
+        if(i==source) p->mode=learner->previous_mode;
+        p->shape.count=shape->count;
+        for(uint32_t n=0;n<4;++n) p->shape.intervals[n]=shape->intervals[n];
+        if(!cp_valid(p) || prepare(context,i,peer_sound,peer_generation,p)) goto refuse;
+        affected|=1u<<i;
+    }
+    /* Each prepare only stages immutable bytes and verifies its reservation;
+     * it must not alter live state. The uninterrupted lock keeps validation
+     * valid for this real save and every infallible attachment. */
+    if(kb_learn_save(learner,session,revision)) goto refuse;
+    shapes_share(cur);
+    instrument_sound_suspend(source);
+    save_pending=1;
+    for(uint32_t i=0;i<IP_INSTANCES;++i) if(affected & (1u<<i)) attach(context,i);
+    proof_learn_scratch.busy=0;
+    dkrt_irq_restore(sr);
+    return 0;
+refuse:
+    proof_learn_scratch.busy=0;
+    dkrt_irq_restore(sr);
+    return -1;
+}
+/* The menu writes the signed 1-based backing before calling changed(). Keep
+ * that staging separate from the accepted keyboard slot during preparation,
+ * so refusal cannot expose a new slot or drop a loaded preset override. */
+static struct { CpPreset preset; uint8_t busy; } proof_shape_scratch;
+int instrument_sound_proof_shape_slot(uint32_t i,uint32_t sound,uint32_t generation,int slot,
+    int (*prepare)(void *,const CpPreset *),void (*attach)(void *),void *context)
+{
+    if(i>=IP_INSTANCES) return -1;
+    uint32_t sr=dkrt_irq_mask();
+    if(proof_shape_scratch.busy) { dkrt_irq_restore(sr); return -1; }
+    proof_shape_scratch.busy=1;
+    IpInst *in=&inst[i]; KbState *k=&in->keyboard;
+    if(!initialized || !keyboard_initialized || k->slot>=8 || in->slot!=slot) goto refuse;
+    /* Only undo the matching staged request, never a newer backing value.
+     * The accepted keyboard slot is authoritative even if focus or admission
+     * changed between the menu write and this callback. */
+    in->slot=(int)k->slot+1;
+    if(!prepare || !attach || slot<1 || slot>8 || cur!=in ||
+        !sound_state_owned(i,sound,generation) || in->bound!=in->track) goto refuse;
+    CpPreset *p=&proof_shape_scratch.preset;
+    preset_snapshot(in,p);
+    /* changed() preserves the mapper's selected chord, but reapplies these
+     * two UI fields. Include that actual callback behavior in the preview. */
+    p->mode=(uint8_t)in->mode; p->control[CP_VOICING]=(uint8_t)in->voicing;
+    if(k->slot!=(uint8_t)(slot-1)) {
+        const KbShape *shape=&k->shapes[slot-1];
+        p->shape.count=shape->count;
+        for(uint32_t n=0;n<4;++n) p->shape.intervals[n]=shape->intervals[n];
+    }
+    if(!cp_valid(p) || prepare(context,p)) goto refuse;
+    in->slot=slot;
+    /* Preserve the real override rule, selector/routing updates and all
+     * instance reset boundaries. No part of changed() runs on refusal. */
+    changed(0,slot);
+    attach(context);
+    proof_shape_scratch.busy=0;
+    dkrt_irq_restore(sr);
+    return 0;
+refuse:
+    proof_shape_scratch.busy=0;
+    dkrt_irq_restore(sr);
+    return -1;
+}
+int instrument_sound_proof_defaults(uint32_t i,uint32_t sound,uint32_t generation,
+    int (*claim)(void *),void *context)
+{
+    /* Use the ordinary SRC initializer for its canonical defaults instead of
+     * keeping a second list of values in the persistence experiment. This is
+     * called from the UI tick, never the audio/MIDI interrupt. */
+    if(!claim) return -1;
+    CsState defaults;
+    CpPreset p;
+    cs_init(&defaults);
+    for(uint32_t n=0;n<sizeof(p);++n) ((volatile uint8_t *)&p)[n]=0;
+    for(uint32_t n=0;n<CP_CONTROLS;++n) p.control[n]=defaults.value[n];
+    for(uint32_t n=0;n<13;++n) p.fm[n]=defaults.fm[n];
+    p.bpm=CP_ARP_BPM_RESERVED; p.clock=CP_ARP_CLOCK; p.mode=KB_PLAY;
+    if(!cp_valid(&p)) return -1;
+    uint32_t sr=dkrt_irq_mask();
+    int ok=sound_state_owned(i,sound,generation) && !claim(context);
+    if(ok) {
+        preset_apply_locked(&inst[i],&p);
+        /* Default Sounds use the shared learned-shape library, just as a new
+         * keyboard does, instead of overriding it with an empty embedded USER. */
+        inst[i].keyboard.preset_shape_active=0;
+        inst[i].keyboard.slot=0; inst[i].slot=1;
+    }
+    dkrt_irq_restore(sr);
+    return ok ? 0 : -1;
+}
+/* Test-only experiment: preview a real SRC encoder edit in a
+ * copied SRC state, prepare its snapshot in already-reserved memory, then
+ * apply the same edit and attach its handle without releasing the mapper lock.
+ * Opt-in proof registration wires this to the emulator UI, never production.
+ * The critical section's latency remains unproved. */
+int instrument_sound_proof_edit(uint32_t i,uint32_t sound,uint32_t generation,
+    uint32_t token,uint32_t encoder,int32_t detents,uint32_t now,
+    int (*prepare)(void *,const CpPreset *),void (*attach)(void *),void *context)
+{
+    if(!prepare || !attach || i>=IP_INSTANCES) return -1;
+    uint32_t sr=dkrt_irq_mask();
+    if(!sound_state_owned(i,sound,generation) || cur!=&inst[i]) { dkrt_irq_restore(sr); return -1; }
+    CpPreset current;
+    uint32_t track=inst[i].track, page=SRC(&inst[i])->page[track];
+    (void)instrument_src_context(track,page,1);
+    preset_snapshot(&inst[i],&current);
+    /* Freestanding proof builds do not link libc; a large structure
+     * assignment can otherwise lower to an unresolved memcpy call. */
+    CsState preview;
+    volatile uint8_t *dst=(volatile uint8_t *)&preview;
+    const volatile uint8_t *src=(const volatile uint8_t *)SRC(&inst[i]);
+    for(uint32_t n=0;n<sizeof(preview);++n) dst[n]=src[n];
+    uint32_t id=CS_NONE;
+    int step=cs_edit(&preview,token,encoder,detents,now,&id);
+    if(step!=CS_EDIT) {
+        /* Keep list-detent remainders and native-control dispatch exactly as
+         * the ordinary encoder path does; no Sound snapshot is consumed. */
+        int result=src_encoder_raw(token,encoder,detents,now);
+        dkrt_irq_restore(sr); return result;
+    }
+    for(uint32_t n=0;n<16;++n) current.control[n]=preview.value[n];
+    current.control[CP_COLOR]=preview.legacy_color;
+    for(uint32_t n=0;n<12;++n) current.control[16+n]=preview.wavetable[n];
+    for(uint32_t n=0;n<13;++n) current.fm[n]=preview.fm[n];
+    for(uint32_t n=28;n<CP_CONTROLS;++n) current.control[n]=preview.value[n];
+    current.mode=preview.mode; current.family=(uint8_t)((preview.metadata>>4)&3u);
+    if(!cp_valid(&current) || prepare(context,&current)) { dkrt_irq_restore(sr); return -1; }
+    if(src_encoder_raw(token,encoder,detents,now)!=CS_EDIT) { dkrt_irq_restore(sr); return -1; }
+    attach(context);
+    dkrt_irq_restore(sr);
+    return CS_EDIT;
+}
+/* Mapper-serialized scratch avoids putting the complete sound and an event
+ * batch on the interrupt stack. This proof is never called without the mapper
+ * lock and cannot be re-entered while it is in use. */
+static CpPreset proof_midi_scratch;
+int instrument_sound_proof_midi(uint32_t i,uint32_t sound,uint32_t sound_generation,
+    uint32_t epoch,uint32_t midi_generation,const MiEvent *input,uint32_t count,MiEvent *output,
+    int (*prepare)(void *,const CpPreset *),void (*attach)(void *),void *context,int *refused)
+{
+    if(!output || !prepare || !attach || !refused || i>=IP_INSTANCES ||
+        !sound_state_owned(i,sound,sound_generation)) return -1;
+    *refused=0;
+    IpInst *in=&inst[i]; KbState *k=&in->keyboard;
+    uint32_t track=in->track;
+    if(k->epoch!=epoch || k->generation!=midi_generation) kb_reset(k,epoch,midi_generation);
+    /* Most input cannot persistently change the chord. Skip the additional
+     * validation/snapshot path for it, including all controllers and releases. */
+    if(k->mode!=KB_ROOT || !count || (count==1 && input && input[0].kind!=MI_NOTE_ON))
+        return keyboard_events_raw(track,epoch,midi_generation,input,count,output,1);
+    uint32_t desired;
+    if(kb_selector_candidate(k,input,count,&desired))
+        return keyboard_events_raw(track,epoch,midi_generation,input,count,output,1);
+    if(desired==k->type) return keyboard_events_raw(track,epoch,midi_generation,input,count,output,1);
+    preset_snapshot(in,&proof_midi_scratch); proof_midi_scratch.control[CP_CHORD]=(uint16_t)desired;
+    if(!cp_valid(&proof_midi_scratch) || prepare(context,&proof_midi_scratch)) {
+        /* Filter only selectors: musical note-ons and every release still
+         * reach the ordinary mapper, even on persistence backpressure. */
+        *refused=1;
+        return keyboard_events_raw(track,epoch,midi_generation,input,count,output,0);
+    }
+    int mapped=keyboard_events_raw(track,epoch,midi_generation,input,count,output,1);
+    if(k->type==desired) attach(context);
+    return mapped;
+}
+/* A separately linked emulator fixture may opt the actual public SRC/MIDI
+ * and persistent UI entry points into these transactions. Production has neither this
+ * registration nor dispatch. No allocator, storage pool, or hook installation
+ * is hidden in this adapter: the fixture must pre-reserve immutable entries. */
+int instrument_sound_proof_set_transactions(IpSoundProofPrepare prepare,IpSoundProofAttach attach,void *context)
+{
+    if((prepare==0)!=(attach==0)) return -1;
+    uint32_t sr=dkrt_irq_mask();
+    if(sound_transaction_busy) { dkrt_irq_restore(sr); return -1; }
+    sound_transaction_prepare=prepare;
+    sound_transaction_attach=attach;
+    sound_transaction_context=prepare ? context : 0;
+    dkrt_irq_restore(sr);
+    return 0;
+}
+typedef struct { uint32_t instance,sound,generation; } ProofLiveOwner;
+static int proof_live_prepare(void *context,const CpPreset *preset)
+{
+    const ProofLiveOwner *owner=context;
+    return sound_transaction_prepare(sound_transaction_context,owner->instance,
+        owner->sound,owner->generation,preset);
+}
+static void proof_live_attach(void *context)
+{
+    const ProofLiveOwner *owner=context;
+    sound_transaction_attach(sound_transaction_context,owner->instance,owner->sound,owner->generation);
+}
+static int proof_live_ui(uint32_t operation,int value,const CpPreset *preset)
+{
+    uint32_t sr=dkrt_irq_mask();
+    if(!sound_transaction_prepare) { dkrt_irq_restore(sr); return 1; }
+    if(sound_transaction_busy) {
+        /* dk_ui_value already staged this signed backing before dispatch. */
+        if(operation==PROOF_UI_SHAPE && cur->slot==value && cur->keyboard.slot<8)
+            cur->slot=(int)cur->keyboard.slot+1;
+        dkrt_irq_restore(sr); return -2;
+    }
+    sound_transaction_busy=1;
+    uint32_t i=IDX(cur);
+    ProofLiveOwner owner={i,ip_admission[8*i+1],ip_admission[8*i+4]};
+    int result=-1;
+    if(operation==PROOF_UI_SHAPE) {
+        /* This helper also restores a staged value on stale admission. */
+        result=instrument_sound_proof_shape_slot(i,owner.sound,owner.generation,value,
+            proof_live_prepare,proof_live_attach,&owner);
+    } else if(cur->bound==cur->track) {
+        if(operation==PROOF_UI_PRESET)
+            result=instrument_sound_proof_apply(i,owner.sound,owner.generation,preset,
+                proof_live_prepare,proof_live_attach,&owner);
+        else if(operation>=PROOF_UI_MENU && operation<=PROOF_UI_MENU+IP_PROOF_WTFM_WHEEL)
+            result=instrument_sound_proof_menu(i,owner.sound,owner.generation,operation-PROOF_UI_MENU,value,
+                proof_live_prepare,proof_live_attach,&owner);
+    }
+    sound_transaction_busy=0; dkrt_irq_restore(sr); return result;
+}
+/* A shared learned shape can change several accepted Sounds. Keep only the
+ * prepared owner tuples; the callbacks own their separate snapshot staging. */
+static struct { uint32_t sound[IP_INSTANCES],generation[IP_INSTANCES],mask; } proof_live_batch;
+static int proof_live_prepare_many(void *context,uint32_t i,uint32_t sound,uint32_t generation,const CpPreset *p)
+{
+    (void)context;
+    if(i>=IP_INSTANCES || (proof_live_batch.mask&(1u<<i))) return -1;
+    if(sound_transaction_prepare(sound_transaction_context,i,sound,generation,p)) return -1;
+    proof_live_batch.sound[i]=sound; proof_live_batch.generation[i]=generation;
+    proof_live_batch.mask|=1u<<i; return 0;
+}
+static void proof_live_attach_many(void *context,uint32_t i)
+{
+    (void)context;
+    sound_transaction_attach(sound_transaction_context,i,proof_live_batch.sound[i],proof_live_batch.generation[i]);
+}
+static int proof_live_learn(uint32_t session,uint32_t revision)
+{
+    uint32_t sr=dkrt_irq_mask();
+    if(!sound_transaction_prepare) { dkrt_irq_restore(sr); return 1; }
+    if(sound_transaction_busy) { dkrt_irq_restore(sr); return -2; }
+    sound_transaction_busy=1; proof_live_batch.mask=0;
+    uint32_t i=IDX(cur);
+    int result=instrument_sound_proof_learn(i,ip_admission[8*i+1],ip_admission[8*i+4],session,revision,
+        proof_live_prepare_many,proof_live_attach_many,0);
+    sound_transaction_busy=0; dkrt_irq_restore(sr); return result;
+}
+static int proof_live_encoder(uint32_t token,uint32_t encoder,int32_t detents,uint32_t now)
+{
+    uint32_t sr=dkrt_irq_mask();
+    if(!sound_transaction_prepare) {
+        int result=src_encoder_raw(token,encoder,detents,now);
+        dkrt_irq_restore(sr); return result;
+    }
+    if(sound_transaction_busy || !initialized) { dkrt_irq_restore(sr); return CS_STALE; }
+    sound_transaction_busy=1;
+    uint32_t i=IDX(cur);
+    ProofLiveOwner owner={i,ip_admission[8*i+1],ip_admission[8*i+4]};
+    int result=instrument_sound_proof_edit(i,owner.sound,owner.generation,token,encoder,detents,now,
+        proof_live_prepare,proof_live_attach,&owner);
+    sound_transaction_busy=0;
+    dkrt_irq_restore(sr);
+    return result;
+}
+static int proof_live_keyboard(uint32_t track,uint32_t epoch,uint32_t generation,
+    const MiEvent *input,uint32_t count,MiEvent *output)
+{
+    uint32_t sr=dkrt_irq_mask();
+    if(sound_transaction_busy) { dkrt_irq_restore(sr); return -1; }
+    IpInst *in=for_track(track);
+    if(!sound_transaction_prepare || !in || !keyboard_initialized || in->keyboard.mode!=KB_ROOT) {
+        int result=keyboard_events_raw(track,epoch,generation,input,count,output,1);
+        dkrt_irq_restore(sr); return result;
+    }
+    sound_transaction_busy=1;
+    uint32_t i=IDX(in);
+    ProofLiveOwner owner={i,ip_admission[8*i+1],ip_admission[8*i+4]};
+    int refused=0,result;
+    if(!sound_state_owned(i,owner.sound,owner.generation) || in->bound!=track) {
+        /* While admission is unavailable, refuse only persistent selector
+         * changes. Ordinary notes/controllers and releases still reach the
+         * real mapper, so a pending Sound cannot leave held notes behind. */
+        result=keyboard_events_raw(track,epoch,generation,input,count,output,0);
+    } else result=instrument_sound_proof_midi(i,owner.sound,owner.generation,epoch,generation,
+        input,count,output,proof_live_prepare,proof_live_attach,&owner,&refused);
+    sound_transaction_busy=0;
+    dkrt_irq_restore(sr);
+    return result;
+}
+#endif
 static void preset_load(void *ctx,int value)
 {
     (void)ctx; (void)value; CpPreset p;
+#ifdef DK_CANOPY_SOUND_PROOF
+    if(sound_transaction_busy) return;
+#endif
     if(cur->keyboard.mode==KB_LEARN) { dk_ui_toast("CLOSE LEARN FIRST"); return; }
     if(!(preset_present & (1u<<(preset_slot-1))) ||
         cp_decode(&p,preset_records[preset_slot-1],CP_RECORD_BYTES)) {
@@ -672,24 +1162,16 @@ static void preset_load(void *ctx,int value)
     IpInst *in=cur;
     /* One reset boundary prevents notes from observing a partial sound change.
      * The physical ledger retains old-key tombstones. */
-    instrument_sound_suspend(IDX(in));
-    in->mode=in->keyboard.mode=p.mode; in->type=in->keyboard.type=(uint8_t)p.control[CP_CHORD];
-    in->voicing=in->keyboard.voicing=(uint8_t)p.control[CP_VOICING];
-    in->keyboard.preset_shape.count=p.shape.count;
-    for(uint32_t i=0;i<4;++i) in->keyboard.preset_shape.intervals[i]=p.shape.intervals[i];
-    in->keyboard.preset_shape_active=1;
-    in->pad_color=p.control[CP_COLOR]; in->pad_drift=p.control[CP_DRIFT];
-    in->pad_strum=p.control[CP_STRUM]; in->arp_mix=p.control[CP_ARP_MIX];
-    in->arp_rate=p.control[CP_RATE]; in->arp_order=p.control[CP_ORDER]; in->arp_octaves=(int)p.control[CP_OCTAVES]-3;
-    in->arp_gate=p.control[CP_GATE]; in->arp_swing=p.control[CP_SWING]; in->arp_restart=p.control[CP_RESTART];
-    in->pad_attack=p.control[CP_ATTACK]; in->pad_release=p.control[CP_RELEASE];
-    for(uint32_t i=0;i<12;++i) in->wt[i]=p.control[16+i];
-    for(uint32_t i=0;i<13;++i) in->fm[i]=p.fm[i];
-    for(uint32_t i=0;i<4;++i) in->wtfm[i]=p.control[28+i];
-    in->pad_family=p.family; in->arp_clock=CP_ARP_CLOCK; in->arp_bpm=CP_ARP_BPM_RESERVED; in->pad_dirty=1;
-    preset_pending=0;
+    int result=0;
+#ifdef DK_CANOPY_SOUND_PROOF
+    int transaction=proof_live_ui(PROOF_UI_PRESET,0,&p);
+    if(transaction!=1) result=transaction;
+    else
+#endif
+        preset_apply_locked(in,&p);
+    if(!result) preset_pending=0;
     dkrt_irq_restore(sr);
-    dk_ui_toast("PRESET LOADED - PRESS NEW KEYS");
+    dk_ui_toast(result ? "LOAD REFUSED - RETRY" : "PRESET LOADED - PRESS NEW KEYS");
     if(preset_menu) dk_ui_refresh(preset_menu);
 }
 static void preset_fill(dk_ui_menu *m,void *ctx)
@@ -715,26 +1197,46 @@ static void route_save(void *ctx,int value)
     route_pending=1;
 }
 static const char *const scan_clocks[]={"FREE HZ","TEMPO SYNC"};
+static void scan_clock_apply(int value)
+{
+    cur->wt[CP_WT_CLOCK-16]=value; cur->wt[CP_WT_RATE-16]=value?3:10;
+    pad_changed(0,0);
+}
 static void scan_clock_done(void *ctx,int value)
 {
     (void)ctx; if(value<0 || value>1) return;
-    cur->wt[CP_WT_CLOCK-16]=value; cur->wt[CP_WT_RATE-16]=value?3:10;
-    pad_changed(0,0); if(tone_menu) dk_ui_refresh(tone_menu);
+#ifdef DK_CANOPY_SOUND_PROOF
+    int transaction=proof_live_ui(PROOF_UI_MENU+IP_PROOF_SCAN_CLOCK,value,0);
+    if(transaction==-2) return;
+    if(transaction<0) dk_ui_toast("CHANGE REFUSED - RETRY");
+    if(transaction==1)
+#endif
+        scan_clock_apply(value);
+    if(tone_menu) dk_ui_refresh(tone_menu);
 }
 static void scan_clock_choice(void *ctx,int value)
 { (void)ctx; (void)value; dk_ui_choice("SCAN CLOCK",scan_clocks,2,scan_clock_done,0); }
 static const char *const scan_restarts[]={"FREE","TRIG","PATT"};
+static void scan_restart_apply(int value)
+{ cur->wt[CP_WT_RESET-16]=value; pad_changed(0,0); }
 static void scan_restart_done(void *ctx,int value)
 {
     (void)ctx; if(value<0 || value>2) return;
-    cur->wt[CP_WT_RESET-16]=value; pad_changed(0,0); if(tone_menu) dk_ui_refresh(tone_menu);
+#ifdef DK_CANOPY_SOUND_PROOF
+    int transaction=proof_live_ui(PROOF_UI_MENU+IP_PROOF_SCAN_RESET,value,0);
+    if(transaction==-2) return;
+    if(transaction<0) dk_ui_toast("CHANGE REFUSED - RETRY");
+    if(transaction==1)
+#endif
+        scan_restart_apply(value);
+    if(tone_menu) dk_ui_refresh(tone_menu);
 }
 static void scan_restart_choice(void *ctx,int value)
 { (void)ctx; (void)value; dk_ui_choice("SCAN RESTART",scan_restarts,3,scan_restart_done,0); }
 /* Biased amount storage is an explicit wire detail; the menu exposes a signed
  * amount, including a neutral zero, rather than unexplained 0..200 values. */
 static int wheel_amount,fm_wheel_amount,wtfm_wheel_amount;
-static void amount_changed(void *ctx,int value)
+static void amount_apply(void *ctx,int value)
 {
     uint32_t id=(uint32_t)(uintptr_t)ctx;
     /* The FM wheel and WT wheel share a wire ID in their different banks.
@@ -744,6 +1246,68 @@ static void amount_changed(void *ctx,int value)
     else if(id==2) cur->wtfm[CP_WTFM_WHEEL-28]=value+100;
     pad_changed(0,0);
 }
+static void amount_changed(void *ctx,int value)
+{
+#ifdef DK_CANOPY_SOUND_PROOF
+    uint32_t id=(uint32_t)(uintptr_t)ctx;
+    int transaction=id<=2 ? proof_live_ui(PROOF_UI_MENU+IP_PROOF_WT_WHEEL+id,value,0) : -1;
+    if(transaction!=1) {
+        wheel_amount=cur->wt[CP_WT_WHEEL-16]-100;
+        fm_wheel_amount=cur->fm[CP_FM_WHEEL-15]-100;
+        wtfm_wheel_amount=cur->wtfm[CP_WTFM_WHEEL-28]-100;
+        if(transaction==-2) return;
+        if(transaction<0) dk_ui_toast("CHANGE REFUSED - RETRY");
+        if(tone_menu) dk_ui_refresh(tone_menu);
+        return;
+    }
+#endif
+    amount_apply(ctx,value);
+}
+#ifdef DK_CANOPY_SOUND_PROOF
+/* The menu's bank is explicit: WT and FM reuse a wire ID, but changing an
+ * inactive bank must not edit the active family. Only a single prospective
+ * preset is retained; mapper exclusion and busy guard protect the scratch. */
+static struct { CpPreset preset; uint8_t busy; } proof_menu_scratch;
+int instrument_sound_proof_menu(uint32_t i,uint32_t sound,uint32_t generation,
+    uint32_t setting,int value,
+    int (*prepare)(void *,const CpPreset *),void (*attach)(void *),void *context)
+{
+    if(!prepare || !attach || i>=IP_INSTANCES || setting>IP_PROOF_WTFM_WHEEL) return -1;
+    if(setting==IP_PROOF_SCAN_CLOCK ? value<0 || value>1 :
+       setting==IP_PROOF_SCAN_RESET ? value<0 || value>2 : value<-100 || value>100) return -1;
+    uint32_t sr=dkrt_irq_mask();
+    if(proof_menu_scratch.busy) { dkrt_irq_restore(sr); return -1; }
+    proof_menu_scratch.busy=1;
+    if(!sound_state_owned(i,sound,generation) || cur!=&inst[i] || cur->bound!=cur->track) goto refuse;
+    CpPreset *p=&proof_menu_scratch.preset;
+    preset_snapshot(cur,p);
+    switch(setting) {
+    case IP_PROOF_SCAN_CLOCK:
+        p->control[CP_WT_CLOCK]=(uint16_t)value;
+        p->control[CP_WT_RATE]=value?3:10;
+        break;
+    case IP_PROOF_SCAN_RESET: p->control[CP_WT_RESET]=(uint16_t)value; break;
+    case IP_PROOF_WT_WHEEL: p->control[CP_WT_WHEEL]=(uint16_t)(value+100); break;
+    case IP_PROOF_FM_WHEEL: p->fm[CP_FM_WHEEL-15]=(uint16_t)(value+100); break;
+    case IP_PROOF_WTFM_WHEEL: p->control[CP_WTFM_WHEEL]=(uint16_t)(value+100); break;
+    }
+    if(!cp_valid(p) || prepare(context,p)) goto refuse;
+    /* The ordinary menu and this proof call the same setters. The clock/rate
+     * pair and its snapshot attach are covered by one uninterrupted lock.
+     * UI refresh/toasts remain the caller's work after this function returns. */
+    if(setting==IP_PROOF_SCAN_CLOCK) scan_clock_apply(value);
+    else if(setting==IP_PROOF_SCAN_RESET) scan_restart_apply(value);
+    else amount_apply((void *)(uintptr_t)(setting-IP_PROOF_WT_WHEEL),value);
+    attach(context);
+    proof_menu_scratch.busy=0;
+    dkrt_irq_restore(sr);
+    return 0;
+refuse:
+    proof_menu_scratch.busy=0;
+    dkrt_irq_restore(sr);
+    return -1;
+}
+#endif
 static void tone_fill(dk_ui_menu *m,void *ctx)
 {
     (void)ctx;
@@ -777,10 +1341,23 @@ static void input_fill(dk_ui_menu *m, void *ctx)
     dk_ui_text(m,"PANEL: ITS TRACK / KEYS");
 }
 static const dk_ui_menu_desc input_desc={.name="canopy-input",.title="CANOPY INPUT",.fill=input_fill};
+static void shape_changed(void *ctx,int value)
+{
+#ifdef DK_CANOPY_SOUND_PROOF
+    int transaction=proof_live_ui(PROOF_UI_SHAPE,value,0);
+    if(transaction!=1) {
+        if(transaction==-2) return;
+        if(transaction<0) dk_ui_toast("CHANGE REFUSED - RETRY");
+        if(shape_menu) dk_ui_refresh(shape_menu);
+        return;
+    }
+#endif
+    changed(ctx,value);
+}
 static void shape_fill(dk_ui_menu *m,void *ctx)
 {
     (void)ctx;
-    dk_ui_value(m,"SHAPE SLOT",&cur->slot,1,8,changed,0);
+    dk_ui_value(m,"SHAPE SLOT",&cur->slot,1,8,shape_changed,0);
     dk_ui_action(m,"LEARN TO ROOT",learn_begin,0,0);
     dk_ui_text(m,storage_result ? "SHAPES NOT SAVED" : cur->keyboard.dirty ? "SAVE PENDING" : "SHAPES SAVED");
     dk_ui_action(m,"RETRY SHAPE SAVE",retry_save,0,0);
@@ -1024,6 +1601,9 @@ void instrument_play_tick(void)
     }
     for(uint32_t i=0;i<IP_INSTANCES;++i) tick_instance(i,ui);
     cur=ui;
+#ifdef DK_CANOPY_SOUND_PROOF
+    if(sound_proof_tick) sound_proof_tick();
+#endif
     /* The DSP publishes continuously, including while another page or the
      * preset menu covers SRC. Drain every UI tick; otherwise its bounded
      * queue can overflow during a menu visit and the display may never catch

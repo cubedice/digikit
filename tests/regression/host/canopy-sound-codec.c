@@ -9,6 +9,37 @@ static const uint16_t low[32]={[CP_RATE]=1,[CP_GATE]=1,[CP_WT_RATE]=1};
 static const uint16_t fm_high[13]={127,3,100,15,15,100,127,127,100,127,200,200,200};
 static uint32_t random_state=1;
 static uint32_t next(void) { random_state=random_state*1664525u+1013904223u; return random_state; }
+static void record_roundtrip(const CpPreset *p)
+{
+    uint8_t record[0x455],before[0x455],expected[CP_RECORD_BYTES],actual[CP_RECORD_BYTES];
+    for(uint32_t i=0;i<sizeof(record);++i) record[i]=(uint8_t)next();
+    memcpy(before,record,sizeof(record));
+    assert(!sc_sound_record_write(record,sizeof(record),p));
+    for(uint32_t i=0;i<sizeof(record);++i) {
+        uint32_t in_padding=0;
+        for(uint32_t n=0;n<21;++n) {
+            uint32_t slot=n<8 ? 4*(n+1) : 77+n-8;
+            uint32_t pos=0x1c+2*slot;
+            if(i==pos || i==pos+1) in_padding=1;
+        }
+        if(!in_padding) assert(record[i]==before[i]);
+    }
+    CpPreset got,unchanged;
+    assert(!sc_sound_record_read(&got,record,sizeof(record)));
+    assert(!cp_encode(p,expected) && !cp_encode(&got,actual));
+    assert(!memcmp(expected,actual,sizeof(actual)));
+    /* A corrupt or truncated record never publishes a partial configuration. */
+    memset(&unchanged,0x5a,sizeof(unchanged));
+    memcpy(&got,&unchanged,sizeof(got));
+    record[0x1c+2*4]^=1;
+    assert(sc_sound_record_read(&got,record,sizeof(record))<0);
+    assert(!memcmp(&got,&unchanged,sizeof(got)));
+    assert(sc_sound_record_read(&got,record,sizeof(record)-1)<0);
+    assert(!memcmp(&got,&unchanged,sizeof(got)));
+    memcpy(before,record,sizeof(record));
+    assert(sc_sound_record_write(record,sizeof(record)-1,p)<0);
+    assert(!memcmp(record,before,sizeof(record)));
+}
 static void roundtrip(const CpPreset *p)
 {
     uint8_t packed[SC_BYTES],a[CP_RECORD_BYTES],b[CP_RECORD_BYTES];
@@ -34,6 +65,7 @@ int main(void)
     cp_wavetable_defaults(p.control); cp_fm_defaults(p.fm);
     p.control[CP_RATE]=4; p.control[CP_OCTAVES]=3; p.control[CP_GATE]=50;
     roundtrip(&p);
+    record_roundtrip(&p);
     for(uint32_t i=0;i<32;++i) for(uint32_t endpoint=0;endpoint<2;++endpoint) {
         CpPreset boundary=p;
         boundary.control[i]=endpoint ? high[i] : low[i];
@@ -57,6 +89,7 @@ int main(void)
         p.shape.intervals[2]=(uint8_t)(31+sample%30);
         p.shape.intervals[3]=(uint8_t)(61+sample%67);
         roundtrip(&p);
+        record_roundtrip(&p);
     }
     uint8_t out[SC_BYTES]; memset(out,0x5a,sizeof(out));
     p.control[CP_GATE]=0;

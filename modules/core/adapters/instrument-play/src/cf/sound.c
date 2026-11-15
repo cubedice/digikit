@@ -22,6 +22,24 @@ typedef struct {
     uint32_t project, kit, source, pattern, type, track;
 } IpSeen;
 static IpSeen seen[IP_INSTANCES];
+#ifdef DK_CANOPY_SOUND_PROOF
+/* Disposable emulator experiment only. The callback can allocate and is not
+ * safe for production: this observes only the UI scan, after stock may have
+ * replaced or copied a Sound, and has no failure or concurrency protocol. */
+static void (*proof_leave)(uint32_t);
+void instrument_sound_proof_set_leave(void (*callback)(uint32_t)) { proof_leave=callback; }
+/* Emulator-only hooks around the real in-place-load bracket. A separate test
+ * wrapper understands the high-bit refusal cookie; stock's wrapper does not.
+ * These callbacks are not a production failure or lifecycle protocol. */
+static int (*proof_load_before)(uint32_t,uint32_t,uint32_t,uint32_t);
+static int (*proof_load_after)(uint32_t,uint32_t);
+void instrument_sound_proof_set_load(
+    int (*before)(uint32_t,uint32_t,uint32_t,uint32_t),
+    int (*after)(uint32_t,uint32_t))
+{
+    uint32_t sr=dkrt_irq_mask(); proof_load_before=before; proof_load_after=after; dkrt_irq_restore(sr);
+}
+#endif
 
 static int ram(uint32_t p)
 {
@@ -78,6 +96,13 @@ void instrument_sound_scan(void)
             ++count;
         }
     }
+#ifdef DK_CANOPY_SOUND_PROOF
+    if (proof_leave) for (uint32_t i = 0; i < IP_INSTANCES; ++i) {
+        uint32_t t = ip_tracks[i], old = ip_admission[i * 8 + 1];
+        if (ip_admission[i * 8] && old && t < 16 &&
+            (!(want & (1u << t)) || track_sound(kit, t) != old)) proof_leave(old);
+    }
+#endif
     uint32_t sr = dkrt_irq_mask();
     for (uint32_t i = 0; i < IP_INSTANCES; ++i) {
         uint32_t t = ip_tracks[i];
@@ -206,6 +231,20 @@ uint32_t ip_sound_begin(uint32_t destination, uint32_t record)
 {
     uint32_t sr = dkrt_irq_mask(), cookie = 0;
     if (destination && record && *(const uint32_t *)(uintptr_t)(record + 4) == 3) {
+#ifdef DK_CANOPY_SOUND_PROOF
+        if (proof_load_before) {
+            uint32_t match=IP_INSTANCES;
+            for (uint32_t i=0;i<IP_INSTANCES;++i) {
+                volatile uint32_t *a=&ip_admission[i*8];
+                if(destination!=a[1]) continue;
+                if(a[6] || match!=IP_INSTANCES) { dkrt_irq_restore(sr); return 0x80000000u; }
+                if(a[0]) match=i;
+            }
+            if(match!=IP_INSTANCES && proof_load_before(match,destination,record,ip_admission[match*8+4])) {
+                dkrt_irq_restore(sr); return 0x80000000u;
+            }
+        }
+#endif
         for (uint32_t i = 0; i < IP_INSTANCES; ++i) {
             volatile uint32_t *a = &ip_admission[i * 8];
             if (destination != a[1]) continue;
@@ -230,3 +269,14 @@ void ip_sound_end(uint32_t cookie)
         if ((cookie & (1u << i)) && ip_admission[i * 8 + 6]) --ip_admission[i * 8 + 6];
     dkrt_irq_restore(sr);
 }
+
+#ifdef DK_CANOPY_SOUND_PROOF
+/* Used only by the proof wrapper which supplies the actual stock result.
+ * A failed after-callback leaves the existing loading guard in place. */
+void ip_sound_proof_end(uint32_t cookie,uint32_t result)
+{
+    uint32_t sr=dkrt_irq_mask();
+    if(proof_load_after && cookie && proof_load_after(cookie,result)) { dkrt_irq_restore(sr); return; }
+    ip_sound_end(cookie); dkrt_irq_restore(sr);
+}
+#endif

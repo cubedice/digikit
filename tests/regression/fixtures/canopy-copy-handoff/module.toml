@@ -1,0 +1,38 @@
+[module]
+id = "test/canopy-copy-handoff"
+version = "0.1.0"
+name = "CANOPY Sound clipboard handoff proof"
+category = "test"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Unsafe emulator-only global memcpy handoff; never install on hardware."
+requires = ["test/canopy-sound-proof"]
+conflicts = ["test/canopy-copy-probe"]
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+# Same complete stock instructions as the non-mutating observation fixture.
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0x5afd6
+width = 2
+value = 0x4ef9
+expect_sha256 = "d6f718c1086a221db7b9e2c0bd473331b7546204e6293ab8b774c5c10a0a80e9"
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0x5afd8
+width = 4
+value = "canopy_proof_copy_entry"
+expect_sha256 = "9a85996715ab5eabc14b0f79d193834ae307c7f99759c1d94ffd00e98c72ce82"
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0x5afdc
+width = 2
+value = 0x4e71
+expect_sha256 = "b4c43b50bf245bd727623e3c775a8fcfb8d823d00b57dd65f7f79dd33f126315"

@@ -59,6 +59,27 @@ meet the two-audio-block tolerance with correct held-chord order; the firmware
 and protected-call guard report no faults. The acceptance uses a disposable
 emulator card and does not install or test the physical device.
 
+**[D] Hardware installation (2026-11-14).** Installed the BPM scheduler and
+matched instrument-play adapter on the DTII. New image `c645c99507518679`
+includes the prior PRISM phrase-routing and memory-reservation components;
+CANOPY, Overloop, remote and PRISM all loaded without reported faults. The new
+CANOPY package, the four original package files and DigiKit settings were
+verified after boot. The backup and report are in
+`out/canopy-bpm-install-backup-20261114-165648/`. The original CANOPY module
+is retained separately; the selected updated package is
+`modules/canopy-bpm.dkm`. No physical listening or MIDI timing measurement
+was performed during this installation.
+
+The exact installed image and package also passed the CANOPY arp emulator
+acceptance (`out/canopy-bpm-coexist-emulator.log`), and the firmware passed a
+relink-based preflight (`out/canopy-bpm-relink-preflight.log`). A fresh link
+reproduced the image byte for byte and supplied executable ranges so that the
+ISA scan did not mistake a PRISM storage descriptor for an instruction. This
+check trusts the source objects' section classifications; ordinary preflight
+remains unchanged. The rebuilt PRISM baseline's DSP section matched the prior
+installed image, while its main processor section differed, so exact
+reproduction of the entire prior image is not claimed.
+
 The following original design and hardware-gap measurements are historical;
 their two-callback hold limit does not apply to the current BPM scheduler.
 
