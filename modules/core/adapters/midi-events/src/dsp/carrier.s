@@ -42,8 +42,8 @@ _mi_carrier_unpublish:
 // R0/R1=flags, R2=1 iff a current owned pair was found. No state writes.
 // Missing/stale/unowned records preserve THIS voice's stock flags verbatim.
 _mi_carrier_flags:
-    R0 = R12;
-    R1 = R9;
+    R0 = PASS R12;
+    R1 = PASS R9;
     R2 = 32;
     COMP(R4, R2);
     IF GE JUMP _mi_carrier_miss;
@@ -74,15 +74,15 @@ _mi_carrier_miss:
     RTS;
 
 _mi_carrier_step:
-    R0 = R12;
-    R1 = R9;
+    R0 = PASS R12;
+    R1 = PASS R9;
     R2 = 16;
     COMP(R4, R2);
     IF GE RTS;
     R2 = 0;
     COMP(R4, R2);
     IF LT RTS;
-    R2 = R4;
+    R2 = PASS R4;
     R2 = LSHIFT R2 BY 2;
     R3 = _mi_carrier_active;
     R2 = R2 + R3;
@@ -98,14 +98,14 @@ _mi_carrier_step:
     R3 = 1;
     DM(I0, M5) = R3;
     COMP(R2, R0);
-    IF EQ R0 = R3;
+    IF EQ R0 = PASS R3;
     RTS;
 _mi_carrier_quiet:
     R3 = 0;
     DM(I0, M5) = R3;
     COMP(R2, R3);
     R3 = 1;
-    IF NE R1 = R3;
+    IF NE R1 = PASS R3;
     RTS;
 _mi_carrier_unowned:
     // The stock owner resumes its own lifecycle. Forget our transition history

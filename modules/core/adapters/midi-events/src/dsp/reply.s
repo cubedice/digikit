@@ -106,8 +106,8 @@ _mr_status_copy:
 _mr_checksum:
     I0 = _instrument_reply;
     MODIFY(I0, 1) (NW);
-    R1 = R6;
-    R2 = R1;
+    R1 = PASS R6;
+    R2 = PASS R1;
     R3 = 14;
 _mr_sum:
     R0 = DM(I0, M6);
@@ -118,7 +118,7 @@ _mr_sum:
     R0 = R1 XOR R2;
     DM(I0, M5) = R0;
     I0 = _instrument_reply;
-    R0 = R6;
+    R0 = PASS R6;
     DM(0, I0) = R0;
     RTS;
 .SECTION/DM seg_dmda;

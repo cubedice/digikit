@@ -4,85 +4,120 @@
  "relocs": [
   {
    "addend": 0,
-   "offset": 134,
-   "section": ".text",
-   "symbol": "exc_hook_lit",
-   "type": "cf.32"
-  },
-  {
-   "addend": 110,
-   "offset": 172,
-   "section": ".text",
-   "symbol": ".sec..text",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 10,
-   "section": ".text",
-   "symbol": "dkrt_tick",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 24,
+   "offset": 22,
    "section": ".text",
    "symbol": "fw_queue_pop",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 38,
+   "offset": 28,
    "section": ".text",
-   "symbol": "dkrt_boot",
+   "symbol": "fx_controls_tick",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 40,
+   "section": ".text",
+   "symbol": "loop_ui_tick",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 52,
    "section": ".text",
+   "symbol": "dkrt_tick",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 66,
+   "section": ".text",
+   "symbol": "dkrt_boot",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 80,
+   "section": ".text",
    "symbol": "dkrt_boot_next",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 78,
-   "section": ".text",
-   "symbol": "dkrt_midi_rx",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 100,
-   "section": ".text",
-   "symbol": "dkrt_midi_next",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 106,
    "section": ".text",
+   "symbol": "dkrt_midi_dispatch",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 128,
+   "section": ".text",
+   "symbol": "dkrt_midi_next",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 134,
+   "section": ".text",
    "symbol": "dkrt_midi_ret",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 126,
+   "offset": 154,
    "section": ".text",
    "symbol": "dkrt_exc",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 162,
+   "section": ".text",
+   "symbol": "exc_hook_lit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 138,
+   "offset": 200,
+   "section": ".text",
+   "symbol": ".sec..text",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 22,
+   "section": ".text.dkrt_midi_dispatch",
+   "symbol": "mi_channel_message",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 52,
+   "section": ".text.dkrt_midi_dispatch",
+   "symbol": "dkrt_midi_rx",
    "type": "cf.32"
   }
  ],
  "sections": [
   {
    "align": 4,
-   "hex": "4feffff048d703034eb9000000004cd703034fef00104ef9000000004feffff048d703034eb9000000004cd703034fef00104ef9000000004feffff048d703032f2f00182f2f00182f2f00184eb9000000004fef000c4a804cd703034fef001066064ef9000000004ef9000000004fefffd448d77cfc2f0f2f2f00344eb90000000060fe203c00000000672e2040205020080480400000000c8008000000641a22080281000000036610223c00000000b2906706208170014e7570004e75",
+   "hex": "4feffff048d703034eba00104cd703034fef00104ef900000000203c00000000670420404e90203c00000000670420404e904ef9000000004feffff048d703034eb9000000004cd703034fef00104ef9000000004feffff048d703032f2f00182f2f00182f2f00184eb9000000004fef000c4a804cd703034fef001066064ef9000000004ef9000000004fefffd448d77cfc2f0f2f2f00344eb90000000060fe203c00000000672e2040205020080480400000000c8008000000641a22080281000000036610223c00000000b2906706208170014e7570004e754e71",
    "kind": "text",
    "name": ".text",
-   "size": 190
+   "size": 220
+  },
+  {
+   "align": 2,
+   "hex": "4feffff448d7001c242f0010262f0014282f001841f9000000004a88661a2f4400182f4300142f4200104cd7001c4fef000c4ef9000000002f042f032f024e904fef000c4a8067d64cd7001c70014fef000c4e75",
+   "kind": "text",
+   "name": ".text.dkrt_midi_dispatch",
+   "size": 84
   }
  ],
- "source_sha256": "808dc1421e808622b324d9972a73b8a03d8600841df9bb3e04a0557b0684fb03",
+ "source_sha256": "acb35d0af57ba6fcad3442afede1df307ecc992b8699c392dcca4fda16c58446",
  "symbols": [
   {
    "global": false,
@@ -94,7 +129,7 @@
    "global": true,
    "name": "dkplat_exc_install",
    "section": ".text",
-   "value": 132
+   "value": 160
   },
   {
    "global": true,
@@ -106,13 +141,19 @@
    "global": true,
    "name": "dkrt_boot_hook",
    "section": ".text",
-   "value": 28
+   "value": 56
   },
   {
    "global": true,
    "name": "dkrt_boot_next",
    "section": null,
    "value": 0
+  },
+  {
+   "global": false,
+   "name": "dkrt_control_tick",
+   "section": ".text",
+   "value": 26
   },
   {
    "global": true,
@@ -124,7 +165,7 @@
    "global": true,
    "name": "dkrt_exc_hook",
    "section": ".text",
-   "value": 110
+   "value": 138
   },
   {
    "global": true,
@@ -134,9 +175,15 @@
   },
   {
    "global": true,
+   "name": "dkrt_midi_dispatch",
+   "section": ".text.dkrt_midi_dispatch",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "dkrt_midi_hook",
    "section": ".text",
-   "value": 56
+   "value": 84
   },
   {
    "global": true,
@@ -173,14 +220,32 @@
    "name": "fw_queue_pop",
    "section": null,
    "value": 0
+  },
+  {
+   "global": true,
+   "name": "fx_controls_tick",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "loop_ui_tick",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_channel_message",
+   "section": null,
+   "value": 0
   }
  ],
  "toolchain": {
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "50",
-  "isa_check": "88809bafe6b010a650a34b04405d33968909b2ac5c959b9c1eba0eae4ab68a16",
+  "instructions_redecoded": "85",
+  "isa_check": "4aa0d2ac18da84322fd2d49eddff6a85c443c04dc60569ac9664b477c55a256a",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

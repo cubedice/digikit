@@ -13,6 +13,13 @@ requires = ["core/instrument-play"]
 conflicts = []
 [targets]
 "dt2-1.17" = "experimental"
+
+# The machine, declared by builder calls in init (src/module.c). `instrument = true`: a persistent V2 instrument whose DSP entry points are
+# _canopy_reset and _canopy_process and whose descriptor is _canopy_descriptor (patchkit packs a version 7/8 DSP section).
+[[machine]]
+id = "canopy"
+instrument = true
+
 [[object]]
 path = "build/canopy-cf.dko.json"
 sources = ["src/module.c"]

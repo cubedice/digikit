@@ -39,7 +39,7 @@ _mi_envelope_next:
 .GLOBAL _cp_voice_probe;
 .EXTERN _cp_render_track;
 _cp_voice_probe:
-    R4 = R2; // raw wrapper supplies the track separately from the voice record
+    R4 = PASS R2; // raw wrapper supplies the track separately from the voice record
     CALL _cp_render_track;
     DM(_cp_probe_active) = R0;
     R0 = 0;

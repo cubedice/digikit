@@ -45,7 +45,13 @@ typedef struct dk_instrument_desc {
     uint32_t stack_bytes;               /* Multiple of four, bounded by the loading device */
 } dk_instrument_desc;
 
-/* Proposed SHARC call: I13 return address, R4 instance state, R8 input (or reset reason), result R0. Same saved-register rules as V1. A process call consumes all events atomically before rendering; negative result faults the instance. Ordinary note-on never clears state. Borrowed input pointers remain valid only during the call. */
+/* Proposed SHARC call: I13 return address, R4 instance state, R8 input (or reset reason), result R0. Same saved-register rules as V1. A process call consumes all events atomically before rendering; negative result faults the instance. Ordinary note-on never clears state. Borrowed input pointers remain valid only during the call.
+   Registers (the table is sdk/dsp/REGISTERS.md):
+   clobber (free to use): R0-R15, I0-I5, I12, M1-M4, B3, MR, PX, ASTAT, STKY, LCNTR, USTAT1, USTAT2, USTAT3, USTAT4, PX1, PX2, BFFWRP, BFF_HI, BFF_LO
+   keep (save before the first write, restore before every return): I6, I8-I11, I14, I15, M0, M8-M12, M14, M15, B0-B2, B4-B6, B8-B15, L0-L5, L8-L15, S0-S15, MODE1, MODE2
+   stack (the stack pointer: changes only by balanced pushes and pops (post-modify with M6 or M7, or MODIFY by a constant), holds its entry value at every return, is never loaded with another address): I7, PCSTK, PCSTKP
+   never_write (no write at all: the stock interrupt code reads these at any instruction): B7, L6, L7, M5, M6, M7, M13, IMASK, IMASKP, IRPTL, MMASK, TPERIOD, TCOUNT, FLAGS
+   entry: I12 is the entry address (it may be overwritten), I13 the return address (keep). */
 
 /* Adapter reset; no note-on reset. Returns zero on success, negative on fault. Reason is CREATE=1, REPLACE=2, RECOVER=3 or UNLOAD=4. */
 int32_t instrument_reset(void *state, uint32_t reason);

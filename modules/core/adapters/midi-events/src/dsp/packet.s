@@ -97,7 +97,7 @@ _mi_sequence_valid:
     R7 = DM(10, I0);
     R7 = FEXT R7 BY 10:4;
     MODIFY(I0, 8) (NW);
-    R8 = R5;
+    R8 = PASS R5;
 _mi_event:
     R9 = DM(I0, M6); // token
     R0 = DM(I0, M6); // generation
@@ -138,7 +138,7 @@ _mi_external_source:
     R1 = 4;
     R2 = 5;
     COMP(R11, R2);
-    IF EQ R1 = R2;
+    IF EQ R1 = PASS R2;
     COMP(R0, R1);
     IF GT JUMP _mi_bad;
     COMP(R0, R2);
@@ -202,7 +202,7 @@ _mi_bad:
     RTS;
 
 _mi_config_packet:
-    R10 = R0; // CHUNK or COMMIT
+    R10 = PASS R0; // CHUNK or COMMIT
     R0 = DM(4, I0);
     R0 = PASS R0;
     IF NE JUMP _mi_bad;
@@ -251,7 +251,7 @@ _mi_config_packet:
     IF LT JUMP _mi_bad;
     R0 = 16;
     COMP(R8, R0);
-    IF GT R8 = R0;
+    IF GT R8 = PASS R0;
     COMP(R7, R8);
     IF NE JUMP _mi_bad;
     JUMP _mi_config_padding;

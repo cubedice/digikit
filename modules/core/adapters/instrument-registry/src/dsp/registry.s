@@ -22,7 +22,7 @@ _instrument_registry_block:
     R1 = 0x49524731;
     COMP(R0, R1);
     IF NE RTS;
-    R2 = R1;
+    R2 = PASS R1;
     R3 = 1;
     MODIFY(I0, 1) (NW);
 _ir_sum:
@@ -143,8 +143,8 @@ _ir_start:
     R0 = 6;
     COMP(R7, R0);
     IF EQ JUMP _ir_install;
-    R4 = R8;
-    R8 = R7;
+    R4 = PASS R8;
+    R8 = PASS R7;
     CALL _ir_row_begin;
     R0 = PASS R0;
     IF EQ JUMP _ir_poll;
@@ -173,7 +173,7 @@ _ir_install_zero:
     R3 = R3 - 1;
     IF NE JUMP _ir_install_zero;
     I1 = _ir_snapshot;
-    R4 = R8;
+    R4 = PASS R8;
     R0 = DM(_ir_ticket + 12);
     R1 = 6;
     COMP(R0, R1);

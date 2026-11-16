@@ -242,7 +242,7 @@ _cv_status_input:
     R0 = 0;
     DM(0, I0) = R0;
     R0 = DM(1, I2);
-    R1 = R0;
+    R1 = PASS R0;
     JUMP _cv_size;
 _cv_v4:
     R0 = I2;
@@ -928,7 +928,7 @@ _cv_sound:
     R0 = DM(9, I2);
     R1 = DM(_fm_bank);
     R1 = PASS R1;
-    IF NE R0 = R1;
+    IF NE R0 = PASS R1;
     I1 = R0;
     R0 = DM(_cv_state);
     R1 = 528;
@@ -1001,7 +1001,7 @@ _cv_drift:
     F0 = F0 * F1;
     F1 = 1.0;
     F0 = F0 - F1;
-    F3 = F0;
+    F3 = PASS F0;
     R0 = DM(3, I1);
     F0 = FLOAT R0;
     F1 = 0.0000227467; // <=5 cents; less at high pitches

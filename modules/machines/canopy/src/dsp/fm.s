@@ -51,7 +51,7 @@ _fm_validate_loop:
     R6 = 11;
     COMP(R5,R6);
     R6 = 0;
-    IF NE R3 = R6;
+    IF NE R3 = PASS R6;
 _fm_validate_limit:
     COMP(R1,R3);
     IF GT JUMP _fm_invalid;
@@ -154,11 +154,11 @@ _fm_fade:
     COMP(R4,R5);
     F1 = 0.0;
     F2 = -0.0078125;
-    IF EQ F1 = F2;
+    IF EQ F1 = PASS F2;
     R5 = 2;
     COMP(R4,R5);
     F2 = 0.0078125;
-    IF EQ F1 = F2;
+    IF EQ F1 = PASS F2;
     DM(_fm_fade_step) = F1;
     F0 = DM(713,I0);
     DM(_fm_fade_start) = F0;
@@ -202,7 +202,7 @@ _fm_unpack:
     I1 = _fm_controls;
     R0 = DM(0,I1);
     R0 = LSHIFT R0 BY 2;
-    R1 = R0;
+    R1 = PASS R0;
     R0 = LSHIFT R0 BY 2;
     R0 = R0 + R1;
     R1 = _fm_graphs;
@@ -399,7 +399,7 @@ _fm_render:
     R2 = I0;
     COMP(R1,R2);
     R1 = 256;
-    IF EQ R0 = R1;
+    IF EQ R0 = PASS R1;
     DM(_fm_lane) = R0;
     R0 = DM(_fm_state);
     I1 = R0;
@@ -704,7 +704,7 @@ _fm_snapshot_done:
     F2 = 1.0;
     F1 = MAX(F1,F2);
     F3 = F1 * F0; // q = largest current/requested operator frequency /96000
-    F1 = F3;
+    F1 = PASS F3;
     F2 = 0.18;
     F1 = F2 - F1;
     F2 = 8.0;
@@ -826,7 +826,7 @@ _fm_wheel:
     F3 = DM(47,I0);
     F1 = 0.0;
     COMP(F3,F1);
-    IF LT F3 = F0;
+    IF LT F3 = PASS F0;
     F1 = F0 - F3;
     F2 = 0.03125;
     F1 = F1 * F2;
@@ -839,7 +839,7 @@ _fm_wheel:
     R1 = 1;
     COMP(R0,R1);
     R0 = 0;
-    IF EQ R0 = R1;
+    IF EQ R0 = PASS R1;
     DM(_fm_held) = R0;
     F4 = DM(_fm_r7);
     F0 = DM(_fm_r6);
@@ -948,7 +948,7 @@ _fm_env_attack_sample:
     F8 = F8 + F9;
     COMP(F8,F11);
     IF LT JUMP _fm_env_attack_keep;
-    F8 = F11;
+    F8 = PASS F11;
     R0 = 1;
     DM(6,I0) = R0;
     DM(I1,M4) = F8;
@@ -969,7 +969,7 @@ _fm_env_decay_sample:
     F8 = F8 + F9;
     COMP(F8,F11);
     IF GT JUMP _fm_env_decay_keep;
-    F8 = F11;
+    F8 = PASS F11;
     R0 = 2;
     DM(6,I0) = R0;
     DM(I1,M4) = F8;

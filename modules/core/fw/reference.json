@@ -4,6 +4,56 @@
       "at": {
         "dn2-1.11": [
           {
+            "addr": "0x40114d94",
+            "len": 4
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40115074",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40113700",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_draw_bitmap_clear",
+        "rust": "dkfw::draw::bitmap_clear"
+      },
+      "cpu": "cf",
+      "doc": "Clears the 32-bit row bands of a Bitmap to `value` (0: black); the intro's frame callbacks of the stock scene tables call it as (bitmap, 0, 1) before they draw.",
+      "file": "devices/fw/draw.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.draw.fn.bitmap_clear",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void (u8 *bitmap, u32 value, u32 flags)",
+      "subsystem": "draw",
+      "users": [
+        "core/introblank"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
             "addr": "0x401157fc",
             "len": 4
           }
@@ -26,7 +76,7 @@
         "rust": "dkfw::draw::blit"
       },
       "cpu": "cf",
-      "doc": "Copies a 1 bpp Bitmap `src` onto `dst` at x, y, clipped; when `centre` is not 0, x, y is the centre of `src`. Bitmap: +4 width, +8 height, +0xc 32-bit row bands, data pointer at +0x14.",
+      "doc": "Copies a 1 bpp Bitmap `src` onto `dst` at x, y, clipped; when `centre` is not 0, x, y is the centre of `src`. Bitmap: +4 width, +8 height, +0xc 32-bit row bands, +0x10 pixel pointer, +0x14 mask pointer.",
       "file": "devices/fw/draw.toml",
       "kind": "fn",
       "mark": "D",
@@ -453,42 +503,6 @@
     },
     {
       "at": {
-        "dn2-1.12": [
-          {
-            "addr": "0x400cfb0e",
-            "len": 4
-          }
-        ]
-      },
-      "bindings": {
-        "c": "dk_fw_link_bulk_send",
-        "rust": "dkfw::link::bulk_send"
-      },
-      "cpu": "cf",
-      "devices": [
-        "dn2"
-      ],
-      "doc": "DN2 1.12 native LP0 tag plus 1024-word sender (finding 92). Locks the boot-initialized mutex; unbounded hardware-readiness wait. Emulator-only diagnostic use, format 1 sends numeric source words least-significant byte first.",
-      "file": "devices/fw/link.toml",
-      "kind": "fn",
-      "mark": "D",
-      "name": "cf.link.fn.bulk_send",
-      "rule": {
-        "dn2": {
-          "kind": "cf_func",
-          "len": 4,
-          "offset": 0
-        }
-      },
-      "sig": "void (u32 tag, const u32 *source, u32 format)",
-      "subsystem": "link",
-      "users": [
-        "core/dsp-lp0-proof"
-      ],
-      "was": []
-    },
-    {
-      "at": {
         "dn2-1.11": [
           {
             "addr": "0x400cf7be",
@@ -570,7 +584,6 @@
       "sig": "u8 *(u8 *destination, const u8 *source, u32 length)",
       "subsystem": "link",
       "users": [
-        "core/dsp-lp0-proof",
         "core/sample-pool"
       ],
       "was": []
@@ -721,7 +734,6 @@
       "site": "cf.link.site.boot_wire_size",
       "subsystem": "link",
       "users": [
-        "core/dsp-lp0-proof",
         "core/sample-pool"
       ],
       "was": []
@@ -767,7 +779,6 @@
       "site": "cf.link.site.reply_copy",
       "subsystem": "link",
       "users": [
-        "core/dsp-lp0-proof",
         "core/sample-pool"
       ],
       "was": []
@@ -900,7 +911,6 @@
       },
       "subsystem": "link",
       "users": [
-        "core/dsp-lp0-proof",
         "core/sample-pool"
       ],
       "was": []
@@ -932,7 +942,6 @@
       },
       "subsystem": "link",
       "users": [
-        "core/dsp-lp0-proof",
         "core/sample-pool"
       ],
       "was": []
@@ -6641,7 +6650,7 @@
       "site": "cf.midi.site.rx",
       "subsystem": "midi",
       "users": [
-        "core/runtime"
+        "core/platform"
       ],
       "was": []
     },
@@ -6748,7 +6757,7 @@
         ]
       },
       "cpu": "cf",
-      "doc": "The 6-byte router call `jsr (A0)` in the MIDI task for a gathered USB SysEx message (arguments on the stack); core/runtime hooks it to take the message or continue after the call.",
+      "doc": "The 6-byte router call `jsr (A0)` in the MIDI task for a gathered USB SysEx message (arguments on the stack); core/platform hooks it to give the message to the runtime or continue after the call.",
       "file": "devices/fw/midi.toml",
       "kind": "site",
       "mark": "D",
@@ -6767,7 +6776,7 @@
       },
       "subsystem": "midi",
       "users": [
-        "core/runtime"
+        "core/platform"
       ],
       "was": [
         "dkrt.hook.midi_rx"
@@ -7046,9 +7055,21 @@
     },
     {
       "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40030e66",
+            "len": 4
+          }
+        ],
         "dn2-1.12": [
           {
             "addr": "0x40030e66",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40035cca",
             "len": 4
           }
         ]
@@ -7059,9 +7080,10 @@
       },
       "cpu": "cf",
       "devices": [
+        "dt2",
         "dn2"
       ],
-      "doc": "DN2 track sound from the source view's sounds reference (view+0x78) and track, as used by its draw and parameter mapper.",
+      "doc": "`Sound *f(Kit *, int track)`: the Sound value object of a track (track clamped to 0..15; kit + 0x6c + 0x3c0 * track). DN2 uses it with the source view's sounds reference (view+0x78) in its draw and parameter mapper; core/runtime uses it with the active kit. Its vtable slot 0x28 returns the sound record, whose s16 parameter words start at +0x14. DT2 1.17 0x40035cca, DN2 1.12 0x40030e66.",
       "file": "devices/fw/page.toml",
       "kind": "fn",
       "mark": "D",
@@ -7071,12 +7093,18 @@
           "kind": "cf_func",
           "len": 4,
           "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
         }
       },
       "sig": "u8 *(u8 *sounds, u32 track)",
       "subsystem": "page",
       "users": [
-        "core/machines"
+        "core/machines",
+        "core/runtime"
       ],
       "was": []
     },
@@ -12237,6 +12265,60 @@
       "at": {
         "dn2-1.11": [
           {
+            "addr": "0x4003e40e",
+            "len": 4
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x4003e40e",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40041d18",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_project_settings",
+        "rust": "dkfw::project::settings"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2",
+        "dn2"
+      ],
+      "doc": "`ProjectSettings *f(Project *)`: project + 0x30. Pass it to `cf.page.fn.view_track` to get the selected track.",
+      "file": "devices/fw/project.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.project.fn.settings",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "u32 (u32 project)",
+      "subsystem": "project",
+      "users": [
+        "core/runtime"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
             "addr": "0x4018a97a",
             "len": 4
           }
@@ -12453,6 +12535,78 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400015a0",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_rtos_mutex_lock",
+        "rust": "dkfw::rtos::mutex_lock"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Lock a recursive owner-aware mutex (FUN_400015a0 on DT2 1.17): a task that holds it takes it again without blocking. Task context only.",
+      "file": "devices/fw/rtos.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.rtos.fn.mutex_lock",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void (u32 *mutex)",
+      "subsystem": "rtos",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400016d2",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_rtos_mutex_unlock",
+        "rust": "dkfw::rtos::mutex_unlock"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Unlock a mutex of mutex_lock (FUN_400016d2 on DT2 1.17). Task context only.",
+      "file": "devices/fw/rtos.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.rtos.fn.mutex_unlock",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void (u32 *mutex)",
+      "subsystem": "rtos",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x40001928",
@@ -12496,7 +12650,7 @@
       },
       "subsystem": "rtos",
       "users": [
-        "core/runtime"
+        "core/platform"
       ],
       "was": [
         "dkrt.fw.queue_pop"
@@ -12552,9 +12706,165 @@
     },
     {
       "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40001398",
+            "len": 4
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40001398",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40001398",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_rtos_sem_init",
+        "rust": "dkfw::rtos::sem_init"
+      },
+      "cpu": "cf",
+      "doc": "Semaphore init (0x40001398 on all three images). A semaphore is 8 bytes: +0 count or flag, +4 the one waiting TCB (one waiter only). No static initialiser.",
+      "file": "devices/fw/rtos.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.rtos.fn.sem_init",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void (u32 *sem, u32 count)",
+      "subsystem": "rtos",
+      "users": [
+        "core/runtime"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x4000141a",
+            "len": 4
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x4000141a",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4000141a",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_rtos_sem_pend",
+        "rust": "dkfw::rtos::sem_pend"
+      },
+      "cpu": "cf",
+      "doc": "Binary semaphore pend (0x4000141a on all three images): if the flag is set it clears it and returns, else the task blocks (trap #0). No timeout; task context only.",
+      "file": "devices/fw/rtos.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.rtos.fn.sem_pend",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void (u32 *sem)",
+      "subsystem": "rtos",
+      "users": [
+        "core/runtime"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x4000155c",
+            "len": 4
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x4000155c",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4000155c",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_rtos_sem_post",
+        "rust": "dkfw::rtos::sem_post"
+      },
+      "cpu": "cf",
+      "doc": "Binary semaphore post (0x4000155c on all three images): masks SR, sets the flag, readies the waiter and forces the reschedule interrupt. ISR-safe (the DTIM1 interrupt posts the sleep semaphore this way). Posts coalesce: the waiter must drain its work after each wake. Shares its hash with cf.rtos.fn.task_start (ordinal 2).",
+      "file": "devices/fw/rtos.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.rtos.fn.sem_post",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void (u32 *sem)",
+      "subsystem": "rtos",
+      "users": [
+        "core/runtime"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.12": [
           {
             "addr": "0x4013492c",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40136544",
             "len": 4
           }
         ]
@@ -12564,10 +12874,7 @@
         "rust": "dkfw::rtos::sleep_us"
       },
       "cpu": "cf",
-      "devices": [
-        "dn2"
-      ],
-      "doc": "DN2 1.12 stock short sleep (DT2 pair 0x40136544): locks its own mutex, loads timer DTIM1 (prescaler 0x84, about 1 MHz) with `us` and blocks the task on a semaphore until the timer interrupt. Task context only. Eight stock callers; the LP0 sender waits 100 after each page with it.",
+      "doc": "Stock short sleep (DT2 1.17 0x40136544, DN2 1.12 0x4013492c, DN2 1.11 0x4013464c; DT2 stock name dtim1_sleep_100us): locks its own mutex, loads timer DTIM1 (prescaler 0x84, about 1 MHz) with `us` and blocks the task on a semaphore until the timer interrupt. Task context only. The LP0 sender waits 100 after each page with it; the runtime's I/O task uses it for delays (the kernel has no timed pend).",
       "file": "devices/fw/rtos.toml",
       "kind": "fn",
       "mark": "D",
@@ -12577,12 +12884,118 @@
           "kind": "cf_func",
           "len": 4,
           "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
         }
       },
       "sig": "void (u32 us)",
       "subsystem": "rtos",
       "users": [
-        "core/sample-pool"
+        "core/sample-pool",
+        "core/runtime"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x400012c8",
+            "len": 4
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x400012c8",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x400012c8",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_rtos_task_create",
+        "rust": "dkfw::rtos::task_create"
+      },
+      "cpu": "cf",
+      "doc": "Kernel task init (0x400012c8 on DT2 1.17, DN2 1.12 and DN2 1.11; the kernel is byte-identical): fills the caller's TCB (at least 0x54 bytes) for priority `prio` (0 to 15, higher wins; above 15 overwrites the current-TCB pointer) and builds the first RTE frame at the top of the caller's stack (entry gets no argument and must never return). Writes only the TCB and the stack; returns 1. The task runs after cf.rtos.fn.task_start. Stock creates tasks this way from the boot thread and, after the scheduler runs, from the main-OS task (the progress screen).",
+      "file": "devices/fw/rtos.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.rtos.fn.task_create",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "i32 (u32 tcb, u32 entry, u32 prio, u32 stack, u32 size)",
+      "subsystem": "rtos",
+      "users": [
+        "core/runtime"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40001314",
+            "len": 4
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40001314",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40001314",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_rtos_task_start",
+        "rust": "dkfw::rtos::task_start"
+      },
+      "cpu": "cf",
+      "doc": "Kernel task start (0x40001314 on all three images): links the TCB into its priority's ready ring under SR 0x2700; does not reschedule. The hash is shared by three identical wrappers (0x40001314, 0x4000132c, 0x4000155c), hence the ordinal.",
+      "file": "devices/fw/rtos.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.rtos.fn.task_start",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void (u32 tcb)",
+      "subsystem": "rtos",
+      "users": [
+        "core/runtime"
       ],
       "was": []
     },
@@ -12661,6 +13074,50 @@
       "at": {
         "dn2-1.11": [
           {
+            "addr": "0x400d3bae"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x400d3d12"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x400d183a"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2",
+        "dn2"
+      ],
+      "doc": "The intro setup function, before it reads its scene table argument from (0x24,sp); a hook that writes another table pointer there changes the whole intro.",
+      "file": "devices/fw/rtos.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "cf.rtos.hook.intro_setup.table_arg",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "a0",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.rtos.site.intro_setup.table_arg",
+      "subsystem": "rtos",
+      "users": [
+        "core/introblank"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
             "addr": "0x4002ed34"
           }
         ],
@@ -12705,7 +13162,7 @@
       "site": "cf.rtos.site.main_os_task",
       "subsystem": "rtos",
       "users": [
-        "core/runtime"
+        "core/platform"
       ],
       "was": []
     },
@@ -12786,7 +13243,7 @@
       },
       "subsystem": "rtos",
       "users": [
-        "core/runtime"
+        "core/platform"
       ],
       "was": [
         "dkrt.fw.exc_hook_lit"
@@ -12843,6 +13300,51 @@
       "at": {
         "dn2-1.11": [
           {
+            "addr": "0x400d3bae",
+            "len": 6
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x400d3d12",
+            "len": 6
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x400d183a",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "The load of the scene table argument in the intro setup function (`move.l (0x24,sp),d0; movea.l d0,a0`, 6 bytes); the hook may change the argument on the stack.",
+      "file": "devices/fw/rtos.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.rtos.site.intro_setup.table_arg",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 8
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 8
+        }
+      },
+      "subsystem": "rtos",
+      "users": [
+        "core/introblank"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
             "addr": "0x4002ed34",
             "len": 8
           }
@@ -12880,12 +13382,110 @@
       },
       "subsystem": "rtos",
       "users": [
-        "core/runtime"
+        "core/platform"
       ],
       "was": [
         "cf.rtos.site.boot",
         "dkrt.hook.boot"
       ]
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x4664acdc",
+            "len": 4
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x4664bcdc",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x47db3f64",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_rtos_current_tcb",
+        "rust": "dkfw::rtos::CURRENT_TCB"
+      },
+      "cpu": "cf",
+      "doc": "The kernel's current-TCB pointer variable (DT2 1.17 0x47db3f64, DN2 1.12 0x4664bcdc: the literal that cf.rtos.fn.sem_pend loads first; it stores the value as the semaphore's waiting task). Read the word at this address to learn which task runs now; the kernel is byte-identical on all three images.",
+      "file": "devices/fw/rtos.toml",
+      "kind": "value",
+      "mark": "D",
+      "name": "cf.rtos.value.current_tcb",
+      "rule": {
+        "dn2": {
+          "kind": "cf_literal",
+          "len": 4,
+          "offset": 20
+        },
+        "dt2": {
+          "kind": "cf_literal",
+          "len": 4,
+          "offset": 20
+        }
+      },
+      "subsystem": "rtos",
+      "users": [
+        "core/runtime"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x42c4bacc",
+            "len": 4
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x42c4cacc",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x43153a00",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_rtos_intro_entry",
+        "rust": "dkfw::rtos::INTRO_ENTRY"
+      },
+      "cpu": "cf",
+      "doc": "The intro's current-entry pointer: {callback, frame count} in the scene table, NULL when no intro runs (DT2 0x43153a00, DN2 0x42c4cacc).",
+      "file": "devices/fw/rtos.toml",
+      "kind": "value",
+      "mark": "D",
+      "name": "cf.rtos.value.intro_entry",
+      "rule": {
+        "dn2": {
+          "kind": "cf_literal",
+          "len": 4,
+          "offset": 116
+        },
+        "dt2": {
+          "kind": "cf_literal",
+          "len": 4,
+          "offset": 116
+        }
+      },
+      "subsystem": "rtos",
+      "users": [
+        "core/runtime"
+      ],
+      "was": []
     },
     {
       "at": {
@@ -13342,7 +13942,8 @@
       "subsystem": "storage",
       "users": [
         "core/digikit-menu",
-        "core/runtime"
+        "core/runtime",
+        "core/sdhc-large"
       ],
       "was": [
         "cf.menu.fn.blk_read",
@@ -13396,7 +13997,8 @@
       "sig": "i32 (u32 sector, u32 bytes, const u8 *buf)",
       "subsystem": "storage",
       "users": [
-        "core/runtime"
+        "core/runtime",
+        "core/sdhc-large"
       ],
       "was": [
         "cf.storage.fn.block_write",
@@ -13525,7 +14127,8 @@
       "subsystem": "storage",
       "users": [
         "core/file-catalog-proof",
-        "core/runtime"
+        "core/runtime",
+        "core/plusdrive-write"
       ],
       "was": []
     },
@@ -13562,7 +14165,620 @@
       "subsystem": "storage",
       "users": [
         "core/file-catalog-proof",
-        "core/runtime"
+        "core/runtime",
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015a6aa",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_event_post",
+        "rust": "dkfw::storage::event_post"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Post a file-system event (FUN_4015a6aa) into the 32-entry ring and wake its consumer: kind 2 after a write, kind 3 after the close hash (a = inode word +8, b = inode id) (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.event.post",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void (u32 kind, u32 a, u32 b)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015bfc4",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_file_any_open",
+        "rust": "dkfw::storage::file_any_open"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Nonzero when any inode's bit is set in the open-file bitmap (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.file.any_open",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "i32 ()",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40157078",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_file_delete",
+        "rust": "dkfw::storage::file_delete"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Delete a file and free its pages: 0, -1 for a missing path or an open file (open bitmap) (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.file.delete",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "i32 (const u8 *path)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015b3aa",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_file_hash",
+        "rust": "dkfw::storage::file_hash"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Read the whole open file back and store its hash (hashlittle, seed 0x43fa243a; hash|1 in the inode) and hash-table page: 0 or -1. Holds the filesystem mutex for the read-back; call before path.close (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.file.hash",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "i32 (u32 *handle)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015bf92",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_file_id_open",
+        "rust": "dkfw::storage::file_id_open"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Nonzero when the inode's bit is set in the open-file bitmap 0x46f4ded0 (any reader or writer holds it open). No mutex (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.file.id_open",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "i32 (u32 inode_id)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015af4c",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_file_info",
+        "rust": "dkfw::storage::file_info"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Four words: id, stored hash|1, size incl. the 16-byte trailer, record counter. -1 when the leaf is missing or not hashed (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.file.info",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "i32 (const u8 *path, u32 *out)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40156ffc",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_file_link",
+        "rust": "dkfw::storage::file_link"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Add a second directory entry for an existing file (FUN_40156b00 with limit check 1; the sibling of file.rename that does not remove the old entry): the inode's link count goes 1 to 2 and is written through before the entry. 0 or -1. A name of a file whose count is 2 can be deleted with file.delete without freeing the data (finding 120). The adapter calls it only to make the two-names state for its power-cut test.",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.file.link",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "i32 (const u8 *old_path, const u8 *new_path)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015746e",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_file_mkdir",
+        "rust": "dkfw::storage::file_mkdir"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Create one folder level; the parent must exist: 0, -1 when the leaf exists or a name character is invalid (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.file.mkdir",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "i32 (const u8 *path)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015813c",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_file_page_find",
+        "rust": "dkfw::storage::file_page_find"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Extent lookup FUN_4015813c: the low byte is 1 and *phys is the card page of file page `page` (32 KiB units; card sector = phys * 0x40 + the data base site); 0 when the page is past the extents. No mutex (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.file.page_find",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "u32 (u8 *inode, u32 page, u32 *phys)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40156f6c",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_file_rename",
+        "rust": "dkfw::storage::file_rename"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Path rename under the filesystem mutex (FUN_40156b00 adds the new directory entry for the same inode, then FUN_40156e94 removes the old one): 0, -1 when the source is missing, a folder or open (a destination that exists was not tested: callers delete it first). The inode id and hash stay (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.file.rename",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "i32 (const u8 *old_path, const u8 *new_path)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40158810",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_file_reserve",
+        "rust": "dkfw::storage::file_reserve"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Reserve pages for [offset, offset+bytes) of an open file: 0, -1 when the card cannot hold them (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.file.reserve",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "i32 (u32 *handle, u32 offset, u32 bytes)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40157192",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_file_rmdir",
+        "rust": "dkfw::storage::file_rmdir"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Remove an empty folder: 0 or -1 (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.file.rmdir",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "i32 (const u8 *path)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015866a",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_file_write",
+        "rust": "dkfw::storage::file_write"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Write `bytes` at handle.pos and advance it; the byte count, -1 when the card is full. Reserves 32 KiB pages, a whole page goes straight from a 16-byte aligned `buf`. Task context; takes the filesystem mutex (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.file.write",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "i32 (const u8 *buf, u32 bytes, u32 *handle)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015b0ee",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_hash_table_rebuild",
+        "rust": "dkfw::storage::hash_table_rebuild"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Rebuild the RAM content-hash table (FUN_4015b0ee) from the 44 hash pages on the card and the RAM inodes, and sort it; the close hash calls it after each hash page update. Call under the filesystem mutex (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.hash_table.rebuild",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void ()",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015b92a",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_inode_get",
+        "rust": "dkfw::storage::inode_get"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Inode cache lookup FUN_4015b92a (DT2 1.17): the cached 0x80-byte inode of inode_id with its use count raised, read from the card when it is not cached; 0 for an id out of range. No mutex: call it under the filesystem mutex and release it with inode.put (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.inode.get",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "u8 *(u32 inode_id)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015b846",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_inode_put",
+        "rust": "dkfw::storage::inode_put"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Release an inode of inode.get (FUN_4015b846): lowers its use count. No mutex (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.inode.put",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void (u8 *inode)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015b868",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_inode_write",
+        "rust": "dkfw::storage::inode_write"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Inode write-back FUN_4015b868: reads the inode's 32 KiB card page, replaces the 0x80-byte inode and writes the page through (synchronous). No mutex (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.inode.write",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void (u8 *inode)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
       ],
       "was": []
     },
@@ -13599,7 +14815,8 @@
       "subsystem": "storage",
       "users": [
         "core/runtime",
-        "core/sample-pool"
+        "core/sample-pool",
+        "core/plusdrive-write"
       ],
       "was": []
     },
@@ -13636,7 +14853,8 @@
       "subsystem": "storage",
       "users": [
         "core/runtime",
-        "core/sample-pool"
+        "core/sample-pool",
+        "core/plusdrive-write"
       ],
       "was": []
     },
@@ -13709,6 +14927,162 @@
       "subsystem": "storage",
       "users": [
         "core/runtime"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x4012c89c"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4012e1d8"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "As the write's chunk hook. Jump site+12.",
+      "file": "devices/fw/storage.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.storage.hook.block_read.clamp_chunk",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "d1",
+          "d5",
+          "ccr"
+        ],
+        "in": [
+          "d2",
+          "d3",
+          "d5"
+        ]
+      },
+      "site": "cf.storage.site.block_read.clamp_chunk",
+      "subsystem": "storage",
+      "users": [
+        "core/sdhc-large"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x4012c88e"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4012e1ca"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "As the write's entry hook. Jump site+6.",
+      "file": "devices/fw/storage.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.storage.hook.block_read.clamp_entry",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "d1",
+          "ccr"
+        ],
+        "in": [
+          "d2",
+          "d3"
+        ]
+      },
+      "site": "cf.storage.site.block_read.clamp_entry",
+      "subsystem": "storage",
+      "users": [
+        "core/sdhc-large"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x4012ca82"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4012e3be"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "D5 = min(D2, limit) with the run-time limit of the entry hook (D3 is the buffer of the chunk to come). Jump site+12.",
+      "file": "devices/fw/storage.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.storage.hook.block_write.clamp_chunk",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "d1",
+          "d5",
+          "ccr"
+        ],
+        "in": [
+          "d2",
+          "d3",
+          "d5"
+        ]
+      },
+      "site": "cf.storage.site.block_write.clamp_chunk",
+      "subsystem": "storage",
+      "users": [
+        "core/sdhc-large"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x4012ca74"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4012e3b0"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "Compare D2 with the run-time limit instead of 0x10000. The limit is 0x7fc00 (1022 blocks) only while the switch is on, the whole transfer lies inside the registered range, the buffer is 16-byte aligned and the length a multiple of 512; else 0x10000. Jump site+6.",
+      "file": "devices/fw/storage.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.storage.hook.block_write.clamp_entry",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "d1",
+          "ccr"
+        ],
+        "in": [
+          "d2",
+          "d3"
+        ]
+      },
+      "site": "cf.storage.site.block_write.clamp_entry",
+      "subsystem": "storage",
+      "users": [
+        "core/sdhc-large"
       ],
       "was": []
     },
@@ -13810,6 +15184,198 @@
     },
     {
       "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x4012c89c",
+            "len": 12
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4012e1d8",
+            "len": 12
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "Block read chunk loop (twelve bytes, same shape as the write's).",
+      "file": "devices/fw/storage.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.storage.site.block_read.clamp_chunk",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 12,
+          "offset": 34
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 12,
+          "offset": 34
+        }
+      },
+      "subsystem": "storage",
+      "users": [
+        "core/sdhc-large"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x4012c88e",
+            "len": 6
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4012e1ca",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "Block read entry: `cmpi.l #0x10000,D2` (six bytes; same shape as the write).",
+      "file": "devices/fw/storage.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.storage.site.block_read.clamp_entry",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 20
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 20
+        }
+      },
+      "subsystem": "storage",
+      "users": [
+        "core/sdhc-large"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x4012ca82",
+            "len": 12
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4012e3be",
+            "len": 12
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "Block write chunk loop: `cmpi.l #0x10000,D2; ble; moveq 1,D5; swap D5` (twelve bytes; D5 = D2 before): the chunk size is min(D2, limit).",
+      "file": "devices/fw/storage.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.storage.site.block_write.clamp_chunk",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 12,
+          "offset": 34
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 12,
+          "offset": 34
+        }
+      },
+      "subsystem": "storage",
+      "users": [
+        "core/sdhc-large"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x4012ca74",
+            "len": 6
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4012e3b0",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "Block write entry: `cmpi.l #0x10000,D2` (six bytes; D2 = bytes, D3 = buffer), then `ble`: a larger transfer is split into 64 KiB calls.",
+      "file": "devices/fw/storage.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.storage.site.block_write.clamp_entry",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 20
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 20
+        }
+      },
+      "subsystem": "storage",
+      "users": [
+        "core/sdhc-large"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40155cb6",
+            "len": 4
+          }
+        ]
+      },
+      "bind": "static",
+      "bindings": {
+        "c": "dk_fw_storage_data_sector_base",
+        "rust": "dkfw::storage::DATA_SECTOR_BASE"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The 4-byte literal of the card sector of data page 0 (0x5ee180 on 1.17): page p of the +Drive is at sector base + p * 0x40 (the page write-back FUN_40155c34) (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.storage.site.data_sector_base",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 130
+        }
+      },
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dt2-1.17": [
           {
             "addr": "0x4012d5c2",
@@ -13898,6 +15464,186 @@
       "subsystem": "storage",
       "users": [
         "core/storage-fault-proof"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015b3be",
+            "len": 4
+          }
+        ]
+      },
+      "bind": "static",
+      "bindings": {
+        "c": "dk_fw_storage_fs_mutex",
+        "rust": "dkfw::storage::FS_MUTEX"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The 4-byte literal of the filesystem mutex address (0x46f4deb0 on 1.17), the `pea` before the lock call in file.hash (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.storage.site.fs_mutex",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 20
+        }
+      },
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015b26e",
+            "len": 4
+          }
+        ]
+      },
+      "bind": "static",
+      "bindings": {
+        "c": "dk_fw_storage_hash_page_buf",
+        "rust": "dkfw::storage::HASH_PAGE_BUF"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The 4-byte literal of the 32 KiB scratch buffer (0x406658c0 on 1.17) in which the close hash FUN_4015b1e8 updates a hash page; used under the filesystem mutex (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.storage.site.hash_page_buf",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 134
+        }
+      },
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015b286",
+            "len": 4
+          }
+        ]
+      },
+      "bind": "static",
+      "bindings": {
+        "c": "dk_fw_storage_hash_page_sector",
+        "rust": "dkfw::storage::HASH_PAGE_SECTOR"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The 4-byte literal of the card sector of the first hash page (0x5ee980 on 1.17): the page of inode id is at sector + (id >> 13) * 0x40, word id & 0x1fff holds hash|1 (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.storage.site.hash_page_sector",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 158
+        }
+      },
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015b246",
+            "len": 4
+          }
+        ]
+      },
+      "bind": "static",
+      "bindings": {
+        "c": "dk_fw_storage_hash_read_buf",
+        "rust": "dkfw::storage::HASH_READ_BUF"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The 4-byte literal of the 32 KiB scratch buffer (0x4066d8c0 on 1.17) that the close hash FUN_4015b1e8 reads the file into; free for a caller that holds the filesystem mutex (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.storage.site.hash_read_buf",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 94
+        }
+      },
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4015af5e",
+            "len": 4
+          }
+        ]
+      },
+      "bind": "static",
+      "bindings": {
+        "c": "dk_fw_storage_mounted",
+        "rust": "dkfw::storage::MOUNTED"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The 4-byte address literal of the filesystem's mounted flag (0x44f2bd68 on 1.17): every path function starts with `tst.l (flag)`; nonzero after FUN_4015a72c mounted the +Drive (finding 120).",
+      "file": "devices/fw/storage.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.storage.site.mounted",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 18
+        }
+      },
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
       ],
       "was": []
     },
@@ -14549,6 +16295,529 @@
     },
     {
       "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x40287af0",
+            "len": 280
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4029ef80",
+            "len": 280
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_usb_port_table",
+        "rust": "dkfw::usb::PORT_TABLE"
+      },
+      "cpu": "cf",
+      "doc": "The USB port table, 0x28 bytes an entry (+0 connect callback, +4 disconnect callback, +8 device descriptor, +0xC configuration pointer, +0x10 its length, +0x24 high-speed flag), the pointer operand at +0x22 of the mode switch `FUN_40006c16`. Entry 2 is USB MIDI. DT2 1.17 0x4029ef80, DN2 1.12 0x40287af0. RAM at run time.",
+      "file": "devices/fw/usb.toml",
+      "kind": "data",
+      "mark": "D",
+      "name": "cf.usb.data.port_table",
+      "rule": {
+        "dn2": {
+          "kind": "cf_ptr",
+          "len": 280,
+          "offset": 34
+        },
+        "dt2": {
+          "kind": "cf_ptr",
+          "len": 280,
+          "offset": 34
+        }
+      },
+      "subsystem": "usb",
+      "users": [
+        "core/usb-bulk"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x400059aa",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x400059aa",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_usb_cancel_ep",
+        "rust": "dkfw::usb::cancel_ep"
+      },
+      "cpu": "cf",
+      "doc": "Cancel and free every transfer descriptor queued on endpoint queue `index` (`FUN_400059aa`, 0x400059aa); each one's cancel callback (+0x28) is called.",
+      "file": "devices/fw/usb.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.usb.fn.cancel_ep",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void (u32 index)",
+      "subsystem": "usb",
+      "users": [
+        "core/usb-bulk"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x400043e2",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x400043e2",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_usb_connect",
+        "rust": "dkfw::usb::connect"
+      },
+      "cpu": "cf",
+      "doc": "The connect body of the USB MIDI port (`FUN_400043e2`, 0x400043e2): sets the EP1 queue heads, ENDPTCTRL1 and primes EP1 OUT.",
+      "file": "devices/fw/usb.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.usb.fn.connect",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void (u32 hs)",
+      "subsystem": "usb",
+      "users": [
+        "core/usb-bulk"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x4000436e",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4000436e",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_usb_disconnect",
+        "rust": "dkfw::usb::disconnect"
+      },
+      "cpu": "cf",
+      "doc": "The disconnect callback of the USB MIDI port (`FUN_4000436e`, 0x4000436e): clears ENDPTCTRL1, flushes EP1 (an unbounded poll on ENDPTFLUSH), cancels both EP1 queues.",
+      "file": "devices/fw/usb.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.usb.fn.disconnect",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void ()",
+      "subsystem": "usb",
+      "users": [
+        "core/usb-bulk"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x40005a86",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40005a86",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_usb_queue_td",
+        "rust": "dkfw::usb::queue_td"
+      },
+      "cpu": "cf",
+      "doc": "Queue a transfer descriptor on endpoint queue `index` = endpoint + 4 * direction (IN = 1) and prime it (`FUN_40005a86`, 0x40005a86).",
+      "file": "devices/fw/usb.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.usb.fn.queue_td",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "i32 (u32 index, u8 *dtd)",
+      "subsystem": "usb",
+      "users": [
+        "core/usb-bulk"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x40006bc6",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40006bc6",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_usb_restart",
+        "rust": "dkfw::usb::restart"
+      },
+      "cpu": "cf",
+      "doc": "Start the USB device again when the stop delay has ended (`FUN_40006bc6`, 0x40006bc6); the second half of a re-enumeration.",
+      "file": "devices/fw/usb.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.usb.fn.restart",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void ()",
+      "subsystem": "usb",
+      "users": [
+        "core/usb-bulk"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x40006bac",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40006bac",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_usb_stop",
+        "rust": "dkfw::usb::stop"
+      },
+      "cpu": "cf",
+      "doc": "Stop the USB device (`FUN_40006bac`, 0x40006bac): clears USBCMD.RS, calls the port's disconnect callback and starts a 30-tick delay; the first half of a re-enumeration.",
+      "file": "devices/fw/usb.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.usb.fn.stop",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void ()",
+      "subsystem": "usb",
+      "users": [
+        "core/usb-bulk"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x40005764",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40005764",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_usb_td_alloc",
+        "rust": "dkfw::usb::td_alloc"
+      },
+      "cpu": "cf",
+      "doc": "Take a dTD from the pool of 32 bulk and interrupt descriptors (`FUN_40005764`, 0x40005764); non-blocking, safe in the ISR; 0 when the pool is empty. Its hash is shared with `FUN_400056be`: the ordinal picks this one.",
+      "file": "devices/fw/usb.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.usb.fn.td_alloc",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "u8 *()",
+      "subsystem": "usb",
+      "users": [
+        "core/usb-bulk"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x40006c52"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40006c52"
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_usb_init_hook",
+        "gas": "dk_fw_usb_init_hook",
+        "rust": "dkfw::usb::InitHook"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2",
+        "dn2"
+      ],
+      "doc": "Entry of the USB init, before it starts the controller; the point where the adapter extends the USB AUDIO/MIDI port entry. Runs in the boot thread and in interrupt context.",
+      "file": "devices/fw/usb.toml",
+      "handler": {
+        "args": [],
+        "sig": "void ()"
+      },
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "cf.usb.hook.init",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": []
+      },
+      "sig": "void ()",
+      "site": "cf.usb.site.init",
+      "subsystem": "usb",
+      "users": [
+        "core/usb-bulk-audio"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x40006c52",
+            "len": 6
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40006c52",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "The entry of the USB init `FUN_40006c52(port)` (0x40006c52 on DT2 1.17 and DN2 1.12), a 6-byte prologue `move.l d2,-(sp); move.l (4,sp),d2`. It runs at boot and again from the firmware tick after a controller reset.",
+      "file": "devices/fw/usb.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.usb.site.init",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "usb",
+      "users": [
+        "core/usb-bulk-audio"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x4058f2a8",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40965a60",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_usb_active_port",
+        "rust": "dkfw::usb::ACTIVE_PORT"
+      },
+      "cpu": "cf",
+      "doc": "The active USB port index (u32): 2 USB MIDI, 5 USB AUDIO/MIDI, 6 Overbridge; written by the mode switch `FUN_40006c16` and at boot by `FUN_40006c52`. DT2 1.17 0x40965a60, DN2 1.12 0x4058f2a8. RAM at run time.",
+      "file": "devices/fw/usb.toml",
+      "kind": "value",
+      "mark": "D",
+      "name": "cf.usb.value.active_port",
+      "rule": {
+        "dn2": {
+          "kind": "cf_literal",
+          "len": 4,
+          "offset": 20
+        },
+        "dt2": {
+          "kind": "cf_literal",
+          "len": 4,
+          "offset": 20
+        }
+      },
+      "subsystem": "usb",
+      "users": [
+        "core/usb-bulk"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x4058f280",
+            "len": 4
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40965a38",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_usb_restart_delay",
+        "rust": "dkfw::usb::RESTART_DELAY"
+      },
+      "cpu": "cf",
+      "doc": "The restart delay of the USB mode switch (u32): the stop (`FUN_40006bac`) sets it to 30, the USB tick `FUN_4000713e` counts it down (one a tick, about 33 ms) and calls the restart (`FUN_40006bc6`) when it reaches 0. Non-zero while a stop waits to restart. The operand of the tick's first read. DT2 1.17 0x40965a38, DN2 1.12 0x4058f280. RAM at run time.",
+      "file": "devices/fw/usb.toml",
+      "kind": "value",
+      "mark": "D",
+      "name": "cf.usb.value.restart_delay",
+      "rule": {
+        "dn2": {
+          "kind": "cf_literal",
+          "len": 4,
+          "offset": 10
+        },
+        "dt2": {
+          "kind": "cf_literal",
+          "len": 4,
+          "offset": 10
+        }
+      },
+      "subsystem": "usb",
+      "users": [
+        "core/usb-bulk"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dt2-1.17": [
           {
             "addr": "0x40135db4"
@@ -15151,7 +17420,7 @@
       "site": "cf.view.site.ui_loop",
       "subsystem": "view",
       "users": [
-        "core/runtime"
+        "core/platform"
       ],
       "was": []
     },
@@ -15177,7 +17446,7 @@
         ]
       },
       "cpu": "cf",
-      "doc": "The `jsr` at the top of the UI task's event loop that pops the next event; core/runtime retargets it to run its per-pass tick.",
+      "doc": "The `jsr` at the top of the UI task's event loop that pops the next event; core/platform retargets it to run the runtime's per-pass tick.",
       "file": "devices/fw/view.toml",
       "kind": "site",
       "mark": "D",
@@ -15196,7 +17465,7 @@
       },
       "subsystem": "view",
       "users": [
-        "core/runtime"
+        "core/platform"
       ],
       "was": [
         "dkrt.hook.ui_loop"
@@ -15812,7 +18081,6 @@
       },
       "subsystem": "cache",
       "users": [
-        "core/dsp-lp0-proof",
         "core/sample-pool"
       ],
       "was": []
@@ -15852,7 +18120,6 @@
       "site": "dsp.cache.site.cache_enable",
       "subsystem": "cache",
       "users": [
-        "core/dsp-lp0-proof",
         "core/sample-pool"
       ],
       "was": []
@@ -15885,8 +18152,279 @@
       },
       "subsystem": "cache",
       "users": [
-        "core/dsp-lp0-proof",
         "core/sample-pool"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x283860f4",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "After the frame copy of every block; the hook point for rewriting track parameters in the frame copy before the stock code reads them.",
+      "file": "devices/fw/dsp/frame.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "dsp.frame.hook.frame_rx.copy_block",
+      "regs": {
+        "clobbers": [
+          "astat"
+        ],
+        "in": []
+      },
+      "site": "dsp.frame.site.frame_rx.copy_block",
+      "subsystem": "frame",
+      "users": [
+        "core/overdrive"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x28385910",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "After the conditional frame copy; the hook point for rewriting track parameters in the frame copy before the stock code reads them.",
+      "file": "devices/fw/dsp/frame.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "dsp.frame.hook.frame_rx.copy_cond",
+      "regs": {
+        "clobbers": [
+          "astat"
+        ],
+        "in": []
+      },
+      "site": "dsp.frame.site.frame_rx.copy_cond",
+      "subsystem": "frame",
+      "users": [
+        "core/overdrive"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x28385934",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The per-track unpack of a voice's parameters from the frame copy; the hook point for changing a track's frame words before the stock unpack reads them.",
+      "file": "devices/fw/dsp/frame.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "retarget",
+      "name": "dsp.frame.hook.frame_rx.unpack_call_a",
+      "regs": {
+        "clobbers": [
+          "r0-r2",
+          "i4",
+          "astat"
+        ],
+        "in": [
+          "r8",
+          "r12"
+        ],
+        "modes": {
+          "l4": 0
+        }
+      },
+      "site": "dsp.frame.site.frame_rx.unpack_call_a",
+      "subsystem": "frame",
+      "users": [
+        "core/dsp-voice"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x28385952",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The second per-track unpack call; hooked together with dsp.frame.hook.frame_rx.unpack_call_a.",
+      "file": "devices/fw/dsp/frame.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "retarget",
+      "name": "dsp.frame.hook.frame_rx.unpack_call_b",
+      "regs": {
+        "clobbers": [
+          "r0-r2",
+          "i4",
+          "astat"
+        ],
+        "in": [
+          "r8",
+          "r12"
+        ],
+        "modes": {
+          "l4": 0
+        }
+      },
+      "site": "dsp.frame.site.frame_rx.unpack_call_b",
+      "subsystem": "frame",
+      "users": [
+        "core/dsp-voice"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x283860f4",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The instruction after the copy of the ColdFire frame that the frame consumer makes near the end of every block.",
+      "file": "devices/fw/dsp/frame.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.frame.site.frame_rx.copy_block",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 1366
+        }
+      },
+      "subsystem": "frame",
+      "users": [
+        "core/overdrive"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x28385910",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The instruction after the frame consumer's conditional copy of the ColdFire frame into the DSP's frame copy.",
+      "file": "devices/fw/dsp/frame.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.frame.site.frame_rx.copy_cond",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 356
+        }
+      },
+      "subsystem": "frame",
+      "users": [
+        "core/overdrive"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x28385934",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The frame consumer's first CALL of the per-track unpack (dsp.voice.fn.track_unpack), R12 = the track, R8 = a voice of it.",
+      "file": "devices/fw/dsp/frame.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.frame.site.frame_rx.unpack_call_a",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 374
+        }
+      },
+      "subsystem": "frame",
+      "users": [
+        "core/dsp-voice"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x28385952",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The frame consumer's second CALL of the per-track unpack, for the track's other voice.",
+      "file": "devices/fw/dsp/frame.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.frame.site.frame_rx.unpack_call_b",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 389
+        }
+      },
+      "subsystem": "frame",
+      "users": [
+        "core/dsp-voice"
       ],
       "was": []
     },
@@ -16347,7 +18885,6 @@
       },
       "subsystem": "link",
       "users": [
-        "core/dsp-lp0-proof",
         "core/sample-pool"
       ],
       "was": []
@@ -16380,7 +18917,6 @@
       },
       "subsystem": "link",
       "users": [
-        "core/dsp-lp0-proof",
         "core/sample-pool"
       ],
       "was": []
@@ -16413,7 +18949,6 @@
       },
       "subsystem": "link",
       "users": [
-        "core/dsp-lp0-proof",
         "core/sample-pool"
       ],
       "was": []
@@ -16548,7 +19083,6 @@
       },
       "subsystem": "link",
       "users": [
-        "core/dsp-lp0-proof",
         "core/sample-pool"
       ],
       "was": []
@@ -16579,7 +19113,6 @@
       },
       "subsystem": "link",
       "users": [
-        "core/dsp-lp0-proof",
         "core/sample-pool"
       ],
       "was": []
@@ -17328,6 +19861,38 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x283967b0",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The overdrive stage (FUN_1cb3d8), called for each track and for the master: y = clamp(drive x, -1, 1), then y (2 - |y|) three times, out = x + mix (y - x), drive and mix ramped across the block from its record; C convention (R4 record, R8 in, R12 out, the sample count at DM(1, I6)).",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "dsp.voice.fn.overdrive",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/overdrive"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x20004a36",
@@ -17461,6 +20026,38 @@
       "name": "dsp.voice.fn.shaper",
       "rule": {
         "dn2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/dsp-voice"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x283849d2",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "FUN_1c24e9, the per-track unpack (R12 = the track, R8 = a voice): it turns the track's words of the frame copy into the voice's parameters; knob 7's word (byte 0xec + 0x60 t, low half) becomes the voice chain's level.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "dsp.voice.fn.track_unpack",
+      "rule": {
+        "dt2": {
           "kind": "sharc_func",
           "len": 6,
           "offset": 0
@@ -17619,6 +20216,110 @@
       "subsystem": "voice",
       "users": [
         "core/dsp-voice"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838d8b2",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The chain driver's CALL of the overdrive stage for a track; the hook point for another per-track overdrive (the master's calls stay).",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "retarget",
+      "name": "dsp.voice.hook.chain.overdrive_call",
+      "regs": {
+        "clobbers": [
+          "r0-r2",
+          "r4",
+          "r8",
+          "r12",
+          "i4",
+          "astat"
+        ],
+        "in": [
+          "r4",
+          "r8",
+          "r12",
+          "r14",
+          "i6",
+          "i7"
+        ],
+        "modes": {
+          "l3": 0,
+          "l4": 0,
+          "l5": 0,
+          "m14": 1,
+          "m6": 1,
+          "simd": false
+        }
+      },
+      "site": "dsp.voice.site.chain.overdrive_call",
+      "subsystem": "voice",
+      "users": [
+        "core/overdrive"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838e70e",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The other per-track CALL of the overdrive stage (out-of-line code of the chain driver); hooked together with dsp.voice.hook.chain.overdrive_call.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "retarget",
+      "name": "dsp.voice.hook.chain_ool.overdrive_call",
+      "regs": {
+        "clobbers": [
+          "r0-r2",
+          "r4",
+          "r8",
+          "r12",
+          "i4",
+          "astat"
+        ],
+        "in": [
+          "r4",
+          "r8",
+          "r12",
+          "r14",
+          "i6",
+          "i7"
+        ],
+        "modes": {
+          "l3": 0,
+          "l4": 0,
+          "l5": 0,
+          "m14": 1,
+          "m6": 1,
+          "simd": false
+        }
+      },
+      "site": "dsp.voice.site.chain_ool.overdrive_call",
+      "subsystem": "voice",
+      "users": [
+        "core/overdrive"
       ],
       "was": []
     },
@@ -18977,6 +21678,70 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x2838d8b2",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "A CALL of the overdrive stage in the per-voice chain driver (FUN_1c642a), one of the two per-track overdrive calls; the voice is 32 - R14 (the driver counts the 32 voices down).",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.chain.overdrive_call",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 2095
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/overdrive"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838e70e",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The other per-track CALL of the overdrive stage, in the chain driver's out-of-line code (FUN_1c71ec, finding 06); R14 as at dsp.voice.site.chain.overdrive_call.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.chain_ool.overdrive_call",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 411
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/overdrive"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x283976ae",
             "len": 6,
             "pm": true
@@ -20123,7 +22888,8 @@
       },
       "subsystem": "voice",
       "users": [
-        "core/dsp-voice"
+        "core/dsp-voice",
+        "core/overdrive"
       ],
       "was": [
         "dsp.voice.frame_base"
@@ -20151,6 +22917,36 @@
         "dt2": {
           "kind": "sharc_literal",
           "offset": 447
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/dsp-voice"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x24f0ec",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The voices' release bytes: byte v is 1 for about one block after voice v's note-off (FUN_1c6056 stores it, the trigger path stores 0), 0x40 bytes past the trigger latch whose literal the rule reads.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "value",
+      "mark": "D",
+      "name": "dsp.voice.value.release_latch",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_literal",
+          "offset": 320
         }
       },
       "subsystem": "voice",
@@ -20272,7 +23068,7 @@
   ],
   "subsystems": [
     {
-      "count": 4,
+      "count": 5,
       "cpu": "cf",
       "file": "devices/fw/draw.toml",
       "meaning": "pixels, rectangles, bitmaps, the screen",
@@ -20286,7 +23082,7 @@
       "name": "input"
     },
     {
-      "count": 14,
+      "count": 13,
       "cpu": "cf",
       "file": "devices/fw/link.toml",
       "meaning": "the ColdFire side of the DSP link: block interrupt, frame call, records",
@@ -20342,14 +23138,14 @@
       "name": "pattern"
     },
     {
-      "count": 6,
+      "count": 7,
       "cpu": "cf",
       "file": "devices/fw/project.toml",
       "meaning": "the project object, kits, tracks, serialisation",
       "name": "project"
     },
     {
-      "count": 13,
+      "count": 24,
       "cpu": "cf",
       "file": "devices/fw/rtos.toml",
       "meaning": "tasks, queues, mutexes, idle, interrupts, the reset and boot path",
@@ -20363,7 +23159,7 @@
       "name": "samples"
     },
     {
-      "count": 16,
+      "count": 47,
       "cpu": "cf",
       "file": "devices/fw/storage.toml",
       "meaning": "block device reads and writes, the boot record",
@@ -20389,6 +23185,13 @@
       "file": "devices/fw/text.toml",
       "meaning": "fonts and text drawing",
       "name": "text"
+    },
+    {
+      "count": 12,
+      "cpu": "cf",
+      "file": "devices/fw/usb.toml",
+      "meaning": "the USB device engine: port table, connect and disconnect callbacks, endpoint queues, mode switch",
+      "name": "usb"
     },
     {
       "count": 6,
@@ -20417,6 +23220,13 @@
       "file": "devices/fw/dsp/cache.toml",
       "meaning": "cache configuration and startup ranges",
       "name": "cache"
+    },
+    {
+      "count": 8,
+      "cpu": "sharc",
+      "file": "devices/fw/dsp/frame.toml",
+      "meaning": "the frame orchestrator",
+      "name": "frame"
     },
     {
       "count": 10,
@@ -20454,7 +23264,7 @@
       "name": "pattern"
     },
     {
-      "count": 92,
+      "count": 99,
       "cpu": "sharc",
       "file": "devices/fw/dsp/voice.toml",
       "meaning": "voice rendering",

@@ -40,7 +40,7 @@ _cp_blend_sample:
     F2 = F2 + F0;
     JUMP _cp_blend_output;
 _cp_blend_exact:
-    F2 = F3;
+    F2 = PASS F3;
 _cp_blend_output:
     F0 = F5 - F2;
     F1 = DM(I0, M5);
@@ -89,7 +89,7 @@ _cp_post_blend_sample:
     F2 = F2 + F0;
     JUMP _cp_post_blend_output;
 _cp_post_blend_exact:
-    F2 = F3;
+    F2 = PASS F3;
 _cp_post_blend_output:
     F0 = F5 - F2;
     F1 = DM(I0,M5);

@@ -67,7 +67,7 @@ _cp_find_slot:
     R0 = DM(0, I0);
     R1 = DM(0, I1);
     R1 = PASS R1;
-    IF NE R0 = R1; // pending replacement is the current foreground owner
+    IF NE R0 = PASS R1; // pending replacement is the current foreground owner
     R0 = PASS R0;
     IF NE JUMP _cp_oldest;
     R3 = I0;
@@ -84,7 +84,7 @@ _cp_oldest:
     R0 = R0 AND R1;
     R1 = 1;
     COMP(R0, R1);
-    IF NE R15 = R1;
+    IF NE R15 = PASS R1;
 _cp_compare_candidate:
     R14 = DM(7, I0); // nonnegative float bits sort by envelope magnitude
     R6 = PASS R6;
@@ -102,9 +102,9 @@ _cp_compare_age:
     IF GE JUMP _cp_next_slot;
 _cp_choose_oldest:
     R6 = I0;
-    R7 = R10;
-    R5 = R15;
-    R13 = R14;
+    R7 = PASS R10;
+    R5 = PASS R15;
+    R13 = PASS R14;
 _cp_next_slot:
     MODIFY(I0, 8) (NW);
     MODIFY(I1, 4) (NW);
@@ -112,7 +112,7 @@ _cp_next_slot:
     IF NE JUMP _cp_find_slot;
     R3 = PASS R3;
     IF NE JUMP _cp_start;
-    R3 = R6;
+    R3 = PASS R6;
     R0 = R3 - R4;
     R0 = LSHIFT R0 BY -1;
     R1 = 192;
@@ -156,8 +156,8 @@ _cp_queue_replacement:
     RTS;
 _cp_save_tail:
     R11 = I2;
-    R0 = R3;
-    R1 = R11;
+    R0 = PASS R3;
+    R1 = PASS R11;
     CALL _cp_amp_copy_staged;
     I1 = R3;
     I2 = R11;
@@ -261,7 +261,7 @@ _cp_start_one:
     R0 = DM(0, I0);
     R0 = PASS R0;
     IF NE JUMP _cp_reject; // never overwrite an audible group
-    R3 = R4;
+    R3 = PASS R4;
     JUMP _cp_start;
 _cp_release_one:
     I0 = R4;
@@ -291,7 +291,7 @@ _cp_clear_output:
     R1 = R1 - 1;
     IF NE JUMP _cp_clear_output;
     I0 = R4;
-    R11 = R4;
+    R11 = PASS R4;
     R14 = DM(_cp_render_count);
     R15 = 0;
 _cp_render_slot:
@@ -357,7 +357,7 @@ _cp_render_samples:
     F5 = F5 * F1;
     F0 = F4 * F0;
     F5 = F5 - F0;
-    F4 = F9;
+    F4 = PASS F9;
     R0 = DM(_fm_enabled);
     R0 = PASS R0;
     IF EQ JUMP _cp_legacy_samples;
@@ -433,7 +433,7 @@ _cp_sample_body:
     F0 = F3 * F5;
     F1 = F2 * F4;
     F3 = F0 - F1;
-    F2 = F9;
+    F2 = PASS F9;
     // sin(2p)=2xy; sin(3p)=x(3-4x*x). Finite additive spectra,
     // not a clipped/waveshaped oscillator with unbounded high harmonics.
     F0 = F2 * F3;
@@ -493,7 +493,7 @@ _cp_block_samples:
     F0 = F3 * F5;
     F1 = F2 * F4;
     F3 = F0 - F1;
-    F2 = F9;
+    F2 = PASS F9;
     F0 = F2 * F3;
     F0 = F0 * F8;
     F0 = F0 * F12;
@@ -615,8 +615,8 @@ _cp_render_next:
     R0 = DM(0, I1);
     R0 = PASS R0;
     IF EQ JUMP _cp_advance_slot;
-    R13 = R8;
-    R8 = R0;
+    R13 = PASS R8;
+    R8 = PASS R0;
     R12 = DM(1, I1);
     R9 = DM(2, I1);
     R0 = DM(3, I1);
@@ -628,13 +628,13 @@ _cp_render_next:
     R0 = DM(_cp_native_tune);
     R0 = R0 OR R9;
     IF NE CALL _cp_retune;
-    R8 = R13;
+    R8 = PASS R13;
     R15 = 1;
 _cp_advance_slot:
     MODIFY(I0, 8) (NW);
     R14 = R14 - 1;
     IF NE JUMP _cp_render_slot;
-    R0 = R15;
+    R0 = PASS R15;
     RTS;
 
 // I0=voice slot, R12=base MIDI note, R9=signed bend [-8192,8191].
@@ -652,13 +652,13 @@ _cp_retune:
     R0 = R0 AND R1;
     R1 = 0;
     COMP(R10, R1);
-    IF LT R0 = R1;
-    IF LT R10 = R1;
+    IF LT R0 = PASS R1;
+    IF LT R10 = PASS R1;
     R1 = 127;
     COMP(R10, R1);
     R2 = 0;
-    IF GE R0 = R2;
-    IF GT R10 = R1;
+    IF GE R0 = PASS R2;
+    IF GT R10 = PASS R1;
     R0 = LSHIFT R0 BY 4;
     R9 = R9 + R0;
     R0 = LSHIFT R10 BY 3;
@@ -717,7 +717,7 @@ _cp_retune:
     F0 = F7 * F3;
     F1 = F6 * F2;
     F7 = F0 - F1;
-    F6 = F4;
+    F6 = PASS F4;
 _cp_retune_store:
     DM(4, I0) = R6;
     DM(5, I0) = R7;
@@ -762,7 +762,7 @@ _cp_amp_record_for:
     R1 = 544;
     COMP(R0, R1);
     R1 = 192;
-    IF EQ R0 = R1;
+    IF EQ R0 = PASS R1;
     R0 = LSHIFT R0 BY -1;
     R1 = 2864;
     R0 = R0 + R1;
@@ -867,7 +867,7 @@ _cp_amp_new:
     F4 = F6 * F0;
     F0 = 1.0;
     COMP(F6, F0);
-    IF EQ F4 = F0;
+    IF EQ F4 = PASS F0;
 _cp_amp_mode_changed:
     // A mode edit preserves the current level and starts the new shape there.
     R3 = 2;

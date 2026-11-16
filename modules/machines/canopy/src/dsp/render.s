@@ -10,9 +10,9 @@
 .EXTERN _mi_carrier_rendered;
 _cp_voice_render:
     DM(_cp_render_index) = R2;
-    R4 = R2;
+    R4 = PASS R2;
     CALL _cp_render_track;
-    R8 = R0;
+    R8 = PASS R0;
     R4 = DM(_cp_render_index);
     R0 = LSHIFT R4 BY 2;
     R1 = _cp_ready;

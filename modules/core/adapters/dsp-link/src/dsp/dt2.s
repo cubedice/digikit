@@ -11,7 +11,11 @@
 // zero-initialised bss of a module live in the area together.
 #include "device-dt2.inc"
 // A present position provider owns the last 16 words. R0/R4 are scratch at this check; the next instruction overwrites ASTAT.
-#define DL_POSITION_EXTERN .EXTERN _pattern_position_info; .EXTERN _instrument_reply; .EXTERN _iv_lock_stage;
+// One declaration per line: patchkit's undeclared-symbol check reads `.EXTERN` at the start of a source line.
+.EXTERN _pattern_position_info;
+.EXTERN _instrument_reply;
+.EXTERN _iv_lock_stage;
+#define DL_POSITION_EXTERN
 // Transport reserves 16 position and 32 packet words; the optional lock
 // receiver reserves another 18. Three words belong to each transfer header.
 #define DL_POSITION_LIMIT R0 = _pattern_position_info; R4 = DL_TAIL_WORDS - 19; R0 = PASS R0; IF NE R3 = R4; R0 = _instrument_reply; R4 = DL_TAIL_WORDS - 51; R0 = PASS R0; IF NE R3 = R4; R0 = _iv_lock_stage; R4 = DL_TAIL_WORDS - 69; R0 = PASS R0; IF NE R3 = R4;

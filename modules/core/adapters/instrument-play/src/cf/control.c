@@ -8,7 +8,7 @@
 #endif
 #include <stdint.h>
 #include <stddef.h>
-#include <dk/ui.h>
+#include <dk/platform/ui.h>
 #include "keyboard.h"
 #include "preset.h"
 #include "routing.h"
@@ -23,6 +23,15 @@
 #include "sound-state.h"
 #endif
 #include "../../../midi-events/src/cf/bridge.h"
+
+extern dk_ui *dk_ui_core_handle(void);
+static dk_ui *ui(void)
+{
+    static dk_ui *h;
+    if (!h)
+        h = dk_ui_core_handle();
+    return h;
+}
 extern uint32_t dkrt_instrument_type(void);
 extern uint32_t dkrt_instrument_generation(void);
 extern uint32_t dkrt_irq_mask(void);
@@ -33,7 +42,7 @@ static const uint32_t limits[8] = {0x49525031,1,IP_INSTANCES,100000,1600,8,128,2
 const uint32_t *instrument_runtime_policy(void) { return limits; }
 /* Device routing, shared by every instance. CHANNEL is the default for a track
  * without its own channel (track_channel 0). */
-static int enabled, usb=1, din=1, channel=1, selector_octave=1, selector_channel;
+static int32_t enabled, usb=1, din=1, channel=1, selector_octave=1, selector_channel;
 static uint8_t track_channel[MI_TRACKS];
 static uint32_t healthy, fault_generation;
 int instrument_play_faulted(uint32_t generation) { return generation && fault_generation == generation; }
@@ -56,7 +65,7 @@ typedef struct {
     int arp_order, arp_octaves, arp_swing, arp_clock, arp_restart, pad_strum;
     int wt[12], fm[13], wtfm[4];
     uint32_t pad_dirty;
-    int mode, type, voicing, slot;
+    int32_t mode, type, voicing, slot;
     KbState keyboard;
 } IpInst;
 /* Exported for the proofs: element 0 is instance 0. */
@@ -164,7 +173,7 @@ uint32_t instrument_src_pages(void) { return 4; }
 uint32_t instrument_src_tune_page(uint32_t page) { return page==0; }
 static dk_ui_menu *tone_menu;
 static dk_ui_menu *input_menu, *shape_menu;
-static void pad_changed(void *ctx,int value) { (void)ctx; (void)value; cur->pad_dirty=1; }
+static void pad_changed(void *ctx,int32_t value) { (void)ctx; (void)value; cur->pad_dirty=1; }
 static int keyboard_initialized, storage_result, save_pending;
 /* Held keys sound as separate notes (PLAY), so a recorded press stores the
  * other held keys as its chord. A ROOT chord is recorded by its root alone. */
@@ -186,7 +195,7 @@ static const char shape_key[]="canopy/shapes/v1";
 static const char *const preset_keys[CP_SLOTS]={"canopy/preset/1","canopy/preset/2","canopy/preset/3","canopy/preset/4"};
 static uint8_t preset_records[CP_SLOTS][CP_RECORD_BYTES], preset_present;
 static uint8_t preset_write[CP_RECORD_BYTES];
-static int preset_slot=1, preset_result, preset_pending;
+static int32_t preset_slot=1, preset_result, preset_pending;
 static dk_ui_menu *preset_menu;
 static const char route_key[]="canopy/routes/v1";
 static const char channels_key[]="canopy/channels/v1";
@@ -261,7 +270,7 @@ int instrument_lock_source(uint32_t track,uint32_t wave,uint16_t out[MI_SOURCE_V
 }
 /* Global routing edits re-route every instance; mode, chord, voicing and shape
  * slot belong to the selected instance. */
-static void changed(void *ctx, int value)
+static void changed(void *ctx, int32_t value)
 {
     (void)ctx; (void)value;
     uint32_t sr=dkrt_irq_mask();
@@ -281,8 +290,8 @@ static void changed(void *ctx, int value)
     dkrt_irq_restore(sr);
 }
 /* The CHANNEL row edits the selected CANOPY track's channel. */
-static int ui_channel=1;
-static void channel_changed(void *ctx,int value)
+static int32_t ui_channel=1;
+static void channel_changed(void *ctx,int32_t value)
 {
     (void)value;
     if(cur->track<MI_TRACKS) track_channel[cur->track]=(uint8_t)ui_channel;
@@ -299,7 +308,7 @@ static void chord_apply(uint32_t next_mode,uint32_t next_type)
     cur->keyboard.update=1;
 }
 /* PANIC releases every instance. */
-static void panic(void *ctx,int value)
+static void panic(void *ctx,int32_t value)
 {
     (void)ctx; (void)value;
     uint32_t sr=dkrt_irq_mask();
@@ -311,7 +320,7 @@ static void panic(void *ctx,int value)
         kb_reset(&in->keyboard,mi_ledger.epoch,mi_ledger.generations[t]);
     }
     dkrt_irq_restore(sr);
-    dk_ui_toast("PANIC - RELEASE HELD KEYS");
+    dk_ui_toast(ui(), "PANIC - RELEASE HELD KEYS");
 }
 /* Learned shapes are one library shared by every instance. */
 static void shapes_share(const IpInst *from)
@@ -322,7 +331,7 @@ static void shapes_share(const IpInst *from)
         inst[i].keyboard.dirty=from->keyboard.dirty;
     }
 }
-static void learn_close(void *ctx,int save)
+static void learn_close(void *ctx,int32_t save)
 {
     (void)ctx;
 #ifdef DK_CANOPY_SOUND_PROOF
@@ -348,20 +357,20 @@ static void learn_close(void *ctx,int save)
     dkrt_irq_restore(sr);
     if (result) {
 #ifdef DK_CANOPY_SOUND_PROOF
-        dk_ui_toast(transaction!=1 ? "SAVE REFUSED - RETRY" : "CAPTURE CHANGED OR EMPTY");
+        dk_ui_toast(ui(), transaction!=1 ? "SAVE REFUSED - RETRY" : "CAPTURE CHANGED OR EMPTY");
 #else
-        dk_ui_toast("CAPTURE CHANGED OR EMPTY");
+        dk_ui_toast(ui(), "CAPTURE CHANGED OR EMPTY");
 #endif
-        dk_ui_refresh(learn_menu);
+        dk_ui_menu_refresh(learn_menu);
     }
-    else { dk_ui_close(learn_menu); if(save) dk_ui_toast("LEARNED - UNSAVED"); }
+    else { dk_ui_menu_close(learn_menu); if(save) dk_ui_toast(ui(), "LEARNED - UNSAVED"); }
 }
 /* We close explicitly: consume NO so the stock handler cannot close twice. */
-static int learn_back(void *ctx) { learn_close(ctx,0); return 1; }
+static int32_t learn_back(void *ctx) { learn_close(ctx,0); return 1; }
 /* YES saves from every visible row. NO is handled by learn_back; it must not
  * depend on which informational row the native list currently selects. */
 static void learn_row(dk_ui_menu *m,const char *text)
-{ dk_ui_action(m,text,learn_close,0,1); }
+{ dk_ui_menu_add_action(m,text,learn_close,0,1); }
 static void learn_fill(dk_ui_menu *m,void *ctx)
 {
     (void)ctx;
@@ -389,33 +398,33 @@ static void learn_fill(dk_ui_menu *m,void *ctx)
 }
 static const dk_ui_menu_desc learn_desc={.name="canopy-learn",.title="LEARN TO ROOT",
     .flags=DK_UI_LIST,.fill=learn_fill,.back=learn_back};
-static void learn_begin(void *ctx,int value)
+static void learn_begin(void *ctx,int32_t value)
 {
     (void)ctx; (void)value;
-    if (!learn_menu) learn_menu=dk_ui_menu_new(&learn_desc);
-    if (!learn_menu) { dk_ui_toast("CANNOT OPEN LEARN"); return; }
+    if (!learn_menu) learn_menu=dk_ui_menu_new(ui(), &learn_desc);
+    if (!learn_menu) { dk_ui_toast(ui(), "CANNOT OPEN LEARN"); return; }
     uint32_t sr=dkrt_irq_mask();
     int result=-1;
     if (cur->keyboard.mode!=KB_LEARN && cur->keyboard.session!=UINT32_MAX) {
         instrument_sound_suspend(IDX(cur)); result=kb_learn_begin(&cur->keyboard);
     }
     dkrt_irq_restore(sr);
-    if (!result && dk_ui_open(learn_menu)) learn_close(0,0);
+    if (!result && dk_ui_menu_open(learn_menu)) learn_close(0,0);
 }
-static void recover_done(void *ctx,int yes)
+static void recover_done(void *ctx,int32_t yes)
 {
     (void)ctx; if (!yes) return;
     if (fault_generation==dkrt_instrument_generation() || mi_keyboard_recover()) {
-        dk_ui_toast("RESTART REQUIRED"); return;
+        dk_ui_toast(ui(), "RESTART REQUIRED"); return;
     }
     panic(0,0);
 }
-static void recover(void *ctx,int value)
+static void recover(void *ctx,int32_t value)
 {
     (void)ctx; (void)value;
-    dk_ui_confirm("RECOVER KEYBOARD", "Release ALL keyboard keys and pedals. Ready?",recover_done,0);
+    dk_ui_confirm(ui(), "RECOVER KEYBOARD", "Release ALL keyboard keys and pedals. Ready?",recover_done,0);
 }
-static void retry_save(void *ctx,int value) { (void)ctx; (void)value; save_pending=1; }
+static void retry_save(void *ctx,int32_t value) { (void)ctx; (void)value; save_pending=1; }
 static int quarantined(const IpInst *in)
 {
     for (uint32_t i=0;i<MI_ROUTES;++i)
@@ -462,7 +471,7 @@ uint32_t instrument_src_context(uint32_t track,uint32_t page,int visible)
     uint32_t token=cs_context(SRC(in),track,generation,
         visible && for_track(track)==in && keyboard_initialized && dkrt_instrument_type(),page,
         in->keyboard.mode,(uint32_t)in->arp_clock,in->keyboard.mode==KB_ROOT && in->keyboard.type==10,
-        in->keyboard.mode==KB_LEARN || (learn_menu && dk_ui_is_open(learn_menu)));
+        in->keyboard.mode==KB_LEARN || (learn_menu && dk_ui_menu_is_open(learn_menu)));
     is_select(STS(in),track,generation,in->keyboard.mode,in->keyboard.mode==KB_LEARN ? in->keyboard.session : 0);
     return token;
 }
@@ -662,8 +671,8 @@ static void status_pair(dk_ui_menu *m,const char *a,const char *b)
     row[at]=0;
     /* The native right column fits 18 parameter-font characters. Keep long
      * chord/bass names and excluded-note counts whole on a separate row. */
-    if(at>18) { dk_ui_text(m,first); dk_ui_text(m,second); }
-    else dk_ui_text(m,row);
+    if(at>18) { dk_ui_menu_add_text(m,first); dk_ui_menu_add_text(m,second); }
+    else dk_ui_menu_add_text(m,row);
 }
 static void status_fill(dk_ui_menu *m,void *ctx)
 {
@@ -683,9 +692,9 @@ static void status_fill(dk_ui_menu *m,void *ctx)
     status_pair(m,snapshot.mode==KB_PLAY?"PLAY":snapshot.mode==KB_ROOT?"ROOT":"LEARN",d.heading);
     status_pair(m,d.notes[0],d.notes[1]); status_pair(m,d.notes[2],d.notes[3]);
     int invalid=d.fault==1 || d.fault==2;
-    dk_ui_text(m,invalid?"PEDAL --":d.pedal?"PEDAL DOWN":"PEDAL UP");
+    dk_ui_menu_add_text(m,invalid?"PEDAL --":d.pedal?"PEDAL DOWN":"PEDAL UP");
     snapshot.page[track]=1; cv_build(&d,&snapshot,STS(in),now,"","",preset_result || storage_result);
-    dk_ui_text(m,d.heading);
+    dk_ui_menu_add_text(m,d.heading);
     /* The carrier track, as the panel numbers it (T1..T16). */
     char where[9]={'T','R','A','C','K',' ','-','-',0};
     if(in->track<MI_TRACKS) {
@@ -693,7 +702,7 @@ static void status_fill(dk_ui_menu *m,void *ctx)
         if(n>=10) { where[6]='1'; where[7]=(char)('0'+n-10); }
         else { where[6]=(char)('0'+n); where[7]=0; }
     }
-    dk_ui_text(m,where);
+    dk_ui_menu_add_text(m,where);
     status_draw_at=now;
 }
 /* VerticalMenuView reserves a narrow left title column. */
@@ -712,18 +721,18 @@ static int preset_dirty(void)
         if(b[i]!=canonical[i]) return 1;
     return 0;
 }
-static void preset_save(void *ctx,int value)
+static void preset_save(void *ctx,int32_t value)
 {
     (void)ctx; (void)value;
-    if(cur->keyboard.mode==KB_LEARN) { dk_ui_toast("CLOSE LEARN FIRST"); return; }
+    if(cur->keyboard.mode==KB_LEARN) { dk_ui_toast(ui(), "CLOSE LEARN FIRST"); return; }
     CpPreset p; preset_snapshot(cur,&p);
-    if(cp_encode(&p,preset_write)) { dk_ui_toast("INVALID SOUND - NOT SAVED"); return; }
+    if(cp_encode(&p,preset_write)) { dk_ui_toast(ui(), "INVALID SOUND - NOT SAVED"); return; }
     preset_pending=preset_slot;
 }
-static void preset_select(void *ctx,int value)
+static void preset_select(void *ctx,int32_t value)
 {
     (void)ctx; (void)value;
-    if(preset_menu) dk_ui_refresh(preset_menu);
+    if(preset_menu) dk_ui_menu_refresh(preset_menu);
 }
 /* Publish a validated snapshot at one reset boundary. The caller holds the
  * mapper lock. */
@@ -1259,16 +1268,16 @@ static int proof_live_keyboard(uint32_t track,uint32_t epoch,uint32_t generation
     return result;
 }
 #endif
-static void preset_load(void *ctx,int value)
+static void preset_load(void *ctx,int32_t value)
 {
     (void)ctx; (void)value; CpPreset p;
 #ifdef DK_CANOPY_SOUND_PROOF
     if(sound_transaction_busy) return;
 #endif
-    if(cur->keyboard.mode==KB_LEARN) { dk_ui_toast("CLOSE LEARN FIRST"); return; }
+    if(cur->keyboard.mode==KB_LEARN) { dk_ui_toast(ui(), "CLOSE LEARN FIRST"); return; }
     if(!(preset_present & (1u<<(preset_slot-1))) ||
         cp_decode(&p,preset_records[preset_slot-1],CP_RECORD_BYTES)) {
-        dk_ui_toast("PRESET EMPTY OR INVALID"); return;
+        dk_ui_toast(ui(), "PRESET EMPTY OR INVALID"); return;
     }
     uint32_t sr=dkrt_irq_mask();
     IpInst *in=cur;
@@ -1283,20 +1292,20 @@ static void preset_load(void *ctx,int value)
         preset_apply_locked(in,&p);
     if(!result) preset_pending=0;
     dkrt_irq_restore(sr);
-    dk_ui_toast(result ? "LOAD REFUSED - RETRY" : "PRESET LOADED - PRESS NEW KEYS");
-    if(preset_menu) dk_ui_refresh(preset_menu);
+    dk_ui_toast(ui(), result ? "LOAD REFUSED - RETRY" : "PRESET LOADED - PRESS NEW KEYS");
+    if(preset_menu) dk_ui_menu_refresh(preset_menu);
 }
 static void preset_fill(dk_ui_menu *m,void *ctx)
 {
     (void)ctx;
-    dk_ui_value(m,"PRESET",&preset_slot,1,CP_SLOTS,preset_select,0);
-    dk_ui_text(m,preset_result ? "NOT SAVED - RETRY SAVE" : preset_dirty() ? "UNSAVED CHANGES" : "SAVED");
-    dk_ui_action(m,"SAVE CURRENT SOUND",preset_save,0,0);
-    dk_ui_action(m,"LOAD SAVED SOUND",preset_load,0,0);
-    dk_ui_text(m,"ROUTING IS NOT IN PRESETS");
+    dk_ui_menu_add_value(m,"PRESET",&preset_slot,1,CP_SLOTS,preset_select,0);
+    dk_ui_menu_add_text(m,preset_result ? "NOT SAVED - RETRY SAVE" : preset_dirty() ? "UNSAVED CHANGES" : "SAVED");
+    dk_ui_menu_add_action(m,"SAVE CURRENT SOUND",preset_save,0,0);
+    dk_ui_menu_add_action(m,"LOAD SAVED SOUND",preset_load,0,0);
+    dk_ui_menu_add_text(m,"ROUTING IS NOT IN PRESETS");
 }
 static const dk_ui_menu_desc preset_desc={.name="canopy-presets",.title="CANOPY PRESETS",.fill=preset_fill};
-static void route_save(void *ctx,int value)
+static void route_save(void *ctx,int32_t value)
 {
     (void)ctx; (void)value;
     /* Version 1 keeps the selected track's channel as the default, so a
@@ -1304,7 +1313,7 @@ static void route_save(void *ctx,int value)
     CrRoute r={(uint8_t)enabled,(uint8_t)usb,(uint8_t)din,(uint8_t)channel_of(cur),
         (uint8_t)(selector_octave+1),(uint8_t)selector_channel};
     if(cr_encode(&r,route_write) || cc_encode(track_channel,channels_write)) {
-        dk_ui_toast("INVALID ROUTING - NOT SAVED"); return;
+        dk_ui_toast(ui(), "INVALID ROUTING - NOT SAVED"); return;
     }
     route_pending=1;
 }
@@ -1314,41 +1323,41 @@ static void scan_clock_apply(int value)
     cur->wt[CP_WT_CLOCK-16]=value; cur->wt[CP_WT_RATE-16]=value?3:10;
     pad_changed(0,0);
 }
-static void scan_clock_done(void *ctx,int value)
+static void scan_clock_done(void *ctx,int32_t value)
 {
     (void)ctx; if(value<0 || value>1) return;
 #ifdef DK_CANOPY_SOUND_PROOF
     int transaction=proof_live_ui(PROOF_UI_MENU+IP_PROOF_SCAN_CLOCK,value,0);
     if(transaction==-2) return;
-    if(transaction<0) dk_ui_toast("CHANGE REFUSED - RETRY");
+    if(transaction<0) dk_ui_toast(ui(), "CHANGE REFUSED - RETRY");
     if(transaction==1)
 #endif
         scan_clock_apply(value);
-    if(tone_menu) dk_ui_refresh(tone_menu);
+    if(tone_menu) dk_ui_menu_refresh(tone_menu);
 }
-static void scan_clock_choice(void *ctx,int value)
-{ (void)ctx; (void)value; dk_ui_choice("SCAN CLOCK",scan_clocks,2,scan_clock_done,0); }
+static void scan_clock_choice(void *ctx,int32_t value)
+{ (void)ctx; (void)value; dk_ui_choice(ui(), "SCAN CLOCK",scan_clocks,2,scan_clock_done,0); }
 static const char *const scan_restarts[]={"FREE","TRIG","PATT"};
 static void scan_restart_apply(int value)
 { cur->wt[CP_WT_RESET-16]=value; pad_changed(0,0); }
-static void scan_restart_done(void *ctx,int value)
+static void scan_restart_done(void *ctx,int32_t value)
 {
     (void)ctx; if(value<0 || value>2) return;
 #ifdef DK_CANOPY_SOUND_PROOF
     int transaction=proof_live_ui(PROOF_UI_MENU+IP_PROOF_SCAN_RESET,value,0);
     if(transaction==-2) return;
-    if(transaction<0) dk_ui_toast("CHANGE REFUSED - RETRY");
+    if(transaction<0) dk_ui_toast(ui(), "CHANGE REFUSED - RETRY");
     if(transaction==1)
 #endif
         scan_restart_apply(value);
-    if(tone_menu) dk_ui_refresh(tone_menu);
+    if(tone_menu) dk_ui_menu_refresh(tone_menu);
 }
-static void scan_restart_choice(void *ctx,int value)
-{ (void)ctx; (void)value; dk_ui_choice("SCAN RESTART",scan_restarts,3,scan_restart_done,0); }
+static void scan_restart_choice(void *ctx,int32_t value)
+{ (void)ctx; (void)value; dk_ui_choice(ui(), "SCAN RESTART",scan_restarts,3,scan_restart_done,0); }
 /* Biased amount storage is an explicit wire detail; the menu exposes a signed
  * amount, including a neutral zero, rather than unexplained 0..200 values. */
-static int wheel_amount,fm_wheel_amount,wtfm_wheel_amount;
-static void amount_apply(void *ctx,int value)
+static int32_t wheel_amount,fm_wheel_amount,wtfm_wheel_amount;
+static void amount_apply(void *ctx,int32_t value)
 {
     uint32_t id=(uint32_t)(uintptr_t)ctx;
     /* The FM wheel and WT wheel share a wire ID in their different banks.
@@ -1358,7 +1367,7 @@ static void amount_apply(void *ctx,int value)
     else if(id==2) cur->wtfm[CP_WTFM_WHEEL-28]=value+100;
     pad_changed(0,0);
 }
-static void amount_changed(void *ctx,int value)
+static void amount_changed(void *ctx,int32_t value)
 {
 #ifdef DK_CANOPY_SOUND_PROOF
     uint32_t id=(uint32_t)(uintptr_t)ctx;
@@ -1368,8 +1377,8 @@ static void amount_changed(void *ctx,int value)
         fm_wheel_amount=cur->fm[CP_FM_WHEEL-15]-100;
         wtfm_wheel_amount=cur->wtfm[CP_WTFM_WHEEL-28]-100;
         if(transaction==-2) return;
-        if(transaction<0) dk_ui_toast("CHANGE REFUSED - RETRY");
-        if(tone_menu) dk_ui_refresh(tone_menu);
+        if(transaction<0) dk_ui_toast(ui(), "CHANGE REFUSED - RETRY");
+        if(tone_menu) dk_ui_menu_refresh(tone_menu);
         return;
     }
 #endif
@@ -1425,42 +1434,42 @@ static void tone_fill(dk_ui_menu *m,void *ctx)
     (void)ctx;
     wheel_amount=cur->wt[CP_WT_WHEEL-16]-100; fm_wheel_amount=cur->fm[CP_FM_WHEEL-15]-100;
     wtfm_wheel_amount=cur->wtfm[CP_WTFM_WHEEL-28]-100;
-    dk_ui_action(m,scan_clocks[cur->wt[CP_WT_CLOCK-16]],scan_clock_choice,0,0);
-    dk_ui_action(m,scan_restarts[cur->wt[CP_WT_RESET-16]],scan_restart_choice,0,0);
-    dk_ui_value(m,"WHEEL TO POS",&wheel_amount,-100,100,amount_changed,0);
-    dk_ui_value(m,"WHEEL TO FM",&fm_wheel_amount,-100,100,amount_changed,(void *)(uintptr_t)1);
-    dk_ui_value(m,"WHEEL TO WT FM",&wtfm_wheel_amount,-100,100,amount_changed,(void *)(uintptr_t)2);
+    dk_ui_menu_add_action(m,scan_clocks[cur->wt[CP_WT_CLOCK-16]],scan_clock_choice,0,0);
+    dk_ui_menu_add_action(m,scan_restarts[cur->wt[CP_WT_RESET-16]],scan_restart_choice,0,0);
+    dk_ui_menu_add_value(m,"WHEEL TO POS",&wheel_amount,-100,100,amount_changed,0);
+    dk_ui_menu_add_value(m,"WHEEL TO FM",&fm_wheel_amount,-100,100,amount_changed,(void *)(uintptr_t)1);
+    dk_ui_menu_add_value(m,"WHEEL TO WT FM",&wtfm_wheel_amount,-100,100,amount_changed,(void *)(uintptr_t)2);
 }
 static const dk_ui_menu_desc tone_desc={.name="canopy-tone",.title="CANOPY MODULATION",.fill=tone_fill};
 static void input_fill(dk_ui_menu *m, void *ctx)
 {
     (void)ctx;
     ui_channel=(int)channel_of(cur);
-    dk_ui_toggle(m, "EXTERNAL MIDI", &enabled, changed, 0);
-    dk_ui_toggle(m, "USB", &usb, changed, 0);
-    dk_ui_toggle(m, "DIN", &din, changed, 0);
-    dk_ui_value(m, "CHANNEL", &ui_channel, 1, 16, channel_changed, 0);
-    dk_ui_action(m,"SAVE ROUTING",route_save,0,0);
-    dk_ui_value(m,"SELECTOR OCTAVE",&selector_octave,-1,8,changed,0);
-    dk_ui_value(m,"SELECT CH (0=SAME)",&selector_channel,0,16,changed,0);
-    dk_ui_action(m,"PANIC",panic,0,0);
-    dk_ui_action(m,"RECOVER KEYBOARD",recover,0,0);
-    dk_ui_text(m, quarantined(cur) ? "RELEASE KEYS / RECOVER" : mi_transport.faults ? "RECOVER OR RESTART" :
+    dk_ui_menu_add_toggle(m, "EXTERNAL MIDI", &enabled, changed, 0);
+    dk_ui_menu_add_toggle(m, "USB", &usb, changed, 0);
+    dk_ui_menu_add_toggle(m, "DIN", &din, changed, 0);
+    dk_ui_menu_add_value(m, "CHANNEL", &ui_channel, 1, 16, channel_changed, 0);
+    dk_ui_menu_add_action(m,"SAVE ROUTING",route_save,0,0);
+    dk_ui_menu_add_value(m,"SELECTOR OCTAVE",&selector_octave,-1,8,changed,0);
+    dk_ui_menu_add_value(m,"SELECT CH (0=SAME)",&selector_channel,0,16,changed,0);
+    dk_ui_menu_add_action(m,"PANIC",panic,0,0);
+    dk_ui_menu_add_action(m,"RECOVER KEYBOARD",recover,0,0);
+    dk_ui_menu_add_text(m, quarantined(cur) ? "RELEASE KEYS / RECOVER" : mi_transport.faults ? "RECOVER OR RESTART" :
         cur->keyboard.status==KB_RANGE ? "CHORD OUT OF RANGE" :
         cur->keyboard.status==KB_EMPTY ? "CUSTOM SHAPE EMPTY" :
         cur->conflict ? "CHANNEL IN USE" : cur->phase == 3 ? "READY" : "SELECT CANOPY ON A TRACK");
-    if(route_result) dk_ui_text(m,"ROUTING NOT SAVED");
-    dk_ui_text(m,"PANEL: ITS TRACK / KEYS");
+    if(route_result) dk_ui_menu_add_text(m,"ROUTING NOT SAVED");
+    dk_ui_menu_add_text(m,"PANEL: ITS TRACK / KEYS");
 }
 static const dk_ui_menu_desc input_desc={.name="canopy-input",.title="CANOPY INPUT",.fill=input_fill};
-static void shape_changed(void *ctx,int value)
+static void shape_changed(void *ctx,int32_t value)
 {
 #ifdef DK_CANOPY_SOUND_PROOF
     int transaction=proof_live_ui(PROOF_UI_SHAPE,value,0);
     if(transaction!=1) {
         if(transaction==-2) return;
-        if(transaction<0) dk_ui_toast("CHANGE REFUSED - RETRY");
-        if(shape_menu) dk_ui_refresh(shape_menu);
+        if(transaction<0) dk_ui_toast(ui(), "CHANGE REFUSED - RETRY");
+        if(shape_menu) dk_ui_menu_refresh(shape_menu);
         return;
     }
 #endif
@@ -1469,24 +1478,24 @@ static void shape_changed(void *ctx,int value)
 static void shape_fill(dk_ui_menu *m,void *ctx)
 {
     (void)ctx;
-    dk_ui_value(m,"SHAPE SLOT",&cur->slot,1,8,shape_changed,0);
-    dk_ui_action(m,"LEARN TO ROOT",learn_begin,0,0);
-    dk_ui_text(m,storage_result ? "SHAPES NOT SAVED" : cur->keyboard.dirty ? "SAVE PENDING" : "SHAPES SAVED");
-    dk_ui_action(m,"RETRY SHAPE SAVE",retry_save,0,0);
-    dk_ui_text(m,"PLAY SHAPE: CHRD USER");
+    dk_ui_menu_add_value(m,"SHAPE SLOT",&cur->slot,1,8,shape_changed,0);
+    dk_ui_menu_add_action(m,"LEARN TO ROOT",learn_begin,0,0);
+    dk_ui_menu_add_text(m,storage_result ? "SHAPES NOT SAVED" : cur->keyboard.dirty ? "SAVE PENDING" : "SHAPES SAVED");
+    dk_ui_menu_add_action(m,"RETRY SHAPE SAVE",retry_save,0,0);
+    dk_ui_menu_add_text(m,"PLAY SHAPE: CHRD USER");
 }
 static const dk_ui_menu_desc shape_desc={.name="canopy-shapes",.title="CANOPY CHORD LEARN",.fill=shape_fill};
 static void fill(dk_ui_menu *m,void *ctx)
 {
     (void)ctx;
-    if(!input_menu) input_menu=dk_ui_menu_new(&input_desc);
-    if(input_menu) dk_ui_submenu(m,"INPUT",input_menu);
-    if(!shape_menu) shape_menu=dk_ui_menu_new(&shape_desc);
-    if(shape_menu) dk_ui_submenu(m,"CHORD LEARN",shape_menu);
-    if(!tone_menu) tone_menu=dk_ui_menu_new(&tone_desc);
-    if(tone_menu) dk_ui_submenu(m,"MODULATION",tone_menu);
-    if(!preset_menu) preset_menu=dk_ui_menu_new(&preset_desc);
-    if(preset_menu) dk_ui_submenu(m,"PRESETS",preset_menu);
+    if(!input_menu) input_menu=dk_ui_menu_new(ui(), &input_desc);
+    if(input_menu) dk_ui_menu_add_submenu(m,"INPUT",input_menu);
+    if(!shape_menu) shape_menu=dk_ui_menu_new(ui(), &shape_desc);
+    if(shape_menu) dk_ui_menu_add_submenu(m,"CHORD LEARN",shape_menu);
+    if(!tone_menu) tone_menu=dk_ui_menu_new(ui(), &tone_desc);
+    if(tone_menu) dk_ui_menu_add_submenu(m,"MODULATION",tone_menu);
+    if(!preset_menu) preset_menu=dk_ui_menu_new(ui(), &preset_desc);
+    if(preset_menu) dk_ui_menu_add_submenu(m,"PRESETS",preset_menu);
 }
 static const dk_ui_menu_desc desc = {.name="instrument-keyboard",.title="CANOPY SETUP",.fill=fill};
 /* CANOPY is the only admitted instrument policy today. The menu asks with a
@@ -1497,21 +1506,21 @@ int dk_app_instrument_module_settings(const uint8_t *name,dk_ui_menu *parent)
     if(!name || !dkrt_instrument_type()) return 0;
     for(uint32_t i=0;i<sizeof(id);++i) if(name[i]!=(uint8_t)id[i]) return 0;
     if(!parent) return 1;
-    if(!status_menu) status_menu=dk_ui_menu_new(&status_desc);
-    if(status_menu) dk_ui_submenu(parent,"STATUS",status_menu);
-    if(!menu) menu=dk_ui_menu_new(&desc);
-    if(menu) dk_ui_submenu(parent,"SETUP",menu);
-    dk_ui_text(parent,"LEVEL/DATA: TRACK LEVEL");
-    dk_ui_text(parent,"SOUND H: SAMPLE LEVEL");
-    dk_ui_text(parent,"SRC HOLD: SHOW VALUES");
+    if(!status_menu) status_menu=dk_ui_menu_new(ui(), &status_desc);
+    if(status_menu) dk_ui_menu_add_submenu(parent,"STATUS",status_menu);
+    if(!menu) menu=dk_ui_menu_new(ui(), &desc);
+    if(menu) dk_ui_menu_add_submenu(parent,"SETUP",menu);
+    dk_ui_menu_add_text(parent,"LEVEL/DATA: TRACK LEVEL");
+    dk_ui_menu_add_text(parent,"SOUND H: SAMPLE LEVEL");
+    dk_ui_menu_add_text(parent,"SRC HOLD: SHOW VALUES");
     return 1;
 }
 void dk_app_instrument_settings_rows(dk_ui_menu *parent)
 {
-    if (!menu) menu=dk_ui_menu_new(&desc);
-    if (menu) dk_ui_submenu(parent, "CANOPY", menu);
-    if (!status_menu) status_menu=dk_ui_menu_new(&status_desc);
-    if (status_menu) dk_ui_submenu(parent,"CANOPY STATUS",status_menu);
+    if (!menu) menu=dk_ui_menu_new(ui(), &desc);
+    if (menu) dk_ui_menu_add_submenu(parent, "CANOPY", menu);
+    if (!status_menu) status_menu=dk_ui_menu_new(ui(), &status_desc);
+    if (status_menu) dk_ui_menu_add_submenu(parent,"CANOPY STATUS",status_menu);
 }
 /* Enable this instance's panel and external routes. A channel already played
  * by another instance (the lower track keeps it) is skipped and reported. */
@@ -1607,12 +1616,12 @@ void instrument_play_tick(void)
     extern void instrument_src_tick(void),ip_panel_tick(void);
     instrument_src_tick();
     ip_panel_tick(); /* recorded chords: steps committed after the key event */
-    if(status_menu && dk_ui_is_open(status_menu)) {
+    if(status_menu && dk_ui_menu_is_open(status_menu)) {
         uint32_t now=instrument_src_now();
         /* Drain at the UI tick cadence, independently of the slower repaint.
          * Waiting 100 ms to drain can overflow the bounded telemetry ring. */
         instrument_src_poll(now);
-        if(now-status_draw_at>=100) dk_ui_refresh(status_menu);
+        if(now-status_draw_at>=100) dk_ui_menu_refresh(status_menu);
     }
 #endif
     uint32_t reply[16];
@@ -1655,8 +1664,8 @@ void instrument_play_tick(void)
         if(!route_result) route_result=dkrt_settings_put(channels_key,channels_write,sizeof(channels_write));
         if(!route_result) route_result=dkrt_settings_flush();
         route_pending=0;
-        dk_ui_toast(route_result ? "ROUTING IN RAM - SAVE FAILED" : "ROUTING SAVED");
-        if(input_menu && dk_ui_is_open(input_menu)) dk_ui_refresh(input_menu);
+        dk_ui_toast(ui(), route_result ? "ROUTING IN RAM - SAVE FAILED" : "ROUTING SAVED");
+        if(input_menu && dk_ui_menu_is_open(input_menu)) dk_ui_menu_refresh(input_menu);
     }
     if(preset_pending) {
         uint32_t index=(uint32_t)preset_pending-1;
@@ -1669,8 +1678,8 @@ void instrument_play_tick(void)
             preset_present|=(uint8_t)(1u<<index);
         }
         preset_pending=0;
-        dk_ui_toast(preset_result ? "SOUND IN RAM - SAVE FAILED" : "PRESET SAVED");
-        if(preset_menu && dk_ui_is_open(preset_menu)) dk_ui_refresh(preset_menu);
+        dk_ui_toast(ui(), preset_result ? "SOUND IN RAM - SAVE FAILED" : "PRESET SAVED");
+        if(preset_menu && dk_ui_menu_is_open(preset_menu)) dk_ui_menu_refresh(preset_menu);
     }
     if (save_pending) {
         uint8_t record[KB_RECORD_BYTES];
@@ -1681,11 +1690,11 @@ void instrument_play_tick(void)
             for(uint32_t i=0;i<IP_INSTANCES;++i) inst[i].keyboard.dirty=0;
         }
         save_pending=0;
-        dk_ui_toast(storage_result ? "SHAPE IN RAM - SAVE FAILED" : "SHAPES SAVED");
+        dk_ui_toast(ui(), storage_result ? "SHAPE IN RAM - SAVE FAILED" : "SHAPES SAVED");
     }
-    if (learn_menu && dk_ui_is_open(learn_menu) && cur->keyboard.mode!=KB_LEARN) dk_ui_close(learn_menu);
-    if (learn_menu && dk_ui_is_open(learn_menu) && (refreshed_revision!=cur->keyboard.revision || refreshed_status!=cur->keyboard.status)) {
-        refreshed_revision=cur->keyboard.revision; refreshed_status=cur->keyboard.status; dk_ui_refresh(learn_menu);
+    if (learn_menu && dk_ui_menu_is_open(learn_menu) && cur->keyboard.mode!=KB_LEARN) dk_ui_menu_close(learn_menu);
+    if (learn_menu && dk_ui_menu_is_open(learn_menu) && (refreshed_revision!=cur->keyboard.revision || refreshed_status!=cur->keyboard.status)) {
+        refreshed_revision=cur->keyboard.revision; refreshed_status=cur->keyboard.status; dk_ui_menu_refresh(learn_menu);
     }
     uint32_t itype=dkrt_instrument_type();
     /* V2 publication completes after the stock view's boot constructor.
@@ -1746,9 +1755,9 @@ void instrument_play_tick(void)
         (cur->phase<<9) | ((uint32_t)!!storage_result<<12) | ((uint32_t)cur->keyboard.dirty<<13) |
         ((uint32_t)(quarantined(cur) || mi_transport.faults)<<14) | ((uint32_t)cur->conflict<<15) |
         (IDX(cur)<<16);
-    if ((!learn_menu || !dk_ui_is_open(learn_menu)) && shown_main!=view) {
+    if ((!learn_menu || !dk_ui_menu_is_open(learn_menu)) && shown_main!=view) {
         shown_main=view;
-        if(input_menu && dk_ui_is_open(input_menu)) dk_ui_refresh(input_menu);
-        if(shape_menu && dk_ui_is_open(shape_menu)) dk_ui_refresh(shape_menu);
+        if(input_menu && dk_ui_menu_is_open(input_menu)) dk_ui_menu_refresh(input_menu);
+        if(shape_menu && dk_ui_menu_is_open(shape_menu)) dk_ui_menu_refresh(shape_menu);
     }
 }

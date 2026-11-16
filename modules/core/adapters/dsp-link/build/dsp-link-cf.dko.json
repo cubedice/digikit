@@ -284,13 +284,6 @@
   },
   {
    "addend": 0,
-   "offset": 6,
-   "section": ".text.dl_set_tick_cb",
-   "symbol": ".sec..bss.dl_tick_cb",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
    "offset": 2,
    "section": ".text.dl_tick_cb_drop",
    "symbol": ".sec..bss.dl_tick_cb",
@@ -1135,6 +1128,20 @@
    "section": ".text.dl_tick",
    "symbol": ".sec..bss.dl_link",
    "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": ".text.dk_dsp_link_open",
+   "symbol": ".sec..bss.dl_token",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 8,
+   "section": ".text.dk_dsp_link_set_tick",
+   "symbol": ".sec..bss.dl_tick_cb",
+   "type": "cf.32"
   }
  ],
  "sections": [
@@ -1179,13 +1186,6 @@
    "kind": "text",
    "name": ".text.write_chunk.constprop.0",
    "size": 298
-  },
-  {
-   "align": 2,
-   "hex": "41ef000423d0000000004e75",
-   "kind": "text",
-   "name": ".text.dl_set_tick_cb",
-   "size": 12
   },
   {
    "align": 2,
@@ -1287,6 +1287,27 @@
   },
   {
    "align": 2,
+   "hex": "206f00084aaf0004660470d04e754a8867f820bc00000000428060f0",
+   "kind": "text",
+   "name": ".text.dk_dsp_link_open",
+   "size": 28
+  },
+  {
+   "align": 2,
+   "hex": "41ef0008428023d0000000004e75",
+   "kind": "text",
+   "name": ".text.dk_dsp_link_set_tick",
+   "size": 14
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.dl_token",
+   "size": 4
+  },
+  {
+   "align": 2,
    "hex": "",
    "kind": "bss",
    "name": ".bss.dl_reset_hw",
@@ -1307,7 +1328,7 @@
    "size": 96
   }
  ],
- "source_sha256": "74e6e5d2dc1f5dd34ac2b1b1e6828b450372f304c886f687d14d435b44bd9bcd",
+ "source_sha256": "0a667e69aa7e0dffce1e690e395f1f3528af4449fed22f6afc426d229b75d978",
  "symbols": [
   {
    "global": false,
@@ -1325,6 +1346,12 @@
    "global": false,
    "name": ".sec..bss.dl_tick_cb",
    "section": ".bss.dl_tick_cb",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.dl_token",
+   "section": ".bss.dl_token",
    "value": 0
   },
   {
@@ -1391,6 +1418,18 @@
    "global": false,
    "name": "can_send",
    "section": ".text.can_send",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dk_dsp_link_open",
+   "section": ".text.dk_dsp_link_open",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dk_dsp_link_set_tick",
+   "section": ".text.dk_dsp_link_set_tick",
    "value": 0
   },
   {
@@ -1491,12 +1530,6 @@
   },
   {
    "global": true,
-   "name": "dl_set_tick_cb",
-   "section": ".text.dl_set_tick_cb",
-   "value": 0
-  },
-  {
-   "global": true,
    "name": "dl_stock_send",
    "section": null,
    "value": 0
@@ -1517,6 +1550,12 @@
    "global": true,
    "name": "dl_tick_cb_drop",
    "section": ".text.dl_tick_cb_drop",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "dl_token",
+   "section": ".bss.dl_token",
    "value": 0
   },
   {
@@ -1570,10 +1609,10 @@
  ],
  "toolchain": {
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
-  "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
+  "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "864",
-  "isa_check": "29c9e00c2389aa19b6a6328efa1bdabb72dc86a2ea134c15b00fa69a48b2ea75",
+  "instructions_redecoded": "875",
+  "isa_check": "cf3d065a11c43c2d1bfa429a30ed91a1eb0ded9f2612d192fec41d841e458653",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

@@ -27,7 +27,7 @@ _mi_velocity_prepare:
 // unowned snapshots pass stock through. Neutral is stock curve 0's 127/128.
 // Scalar; clobbers R0..3,I0. Does not alter the stock cache or other gain inputs.
 _mi_velocity_select:
-    R0 = R8;
+    R0 = PASS R8;
     R1 = 0;
     COMP(R4, R1);
     IF LT RTS;

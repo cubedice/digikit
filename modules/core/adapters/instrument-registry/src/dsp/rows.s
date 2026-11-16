@@ -271,7 +271,7 @@ _irr_active:
     R0 = 4;
     COMP(R1, R0);
     IF NE JUMP _irr_limit;
-    R2 = R3; // detach only instances whose CREATE was attempted
+    R2 = PASS R3; // detach only instances whose CREATE was attempted
 _irr_limit:
     R3 = DM(11, I0);
     R0 = PASS R3;

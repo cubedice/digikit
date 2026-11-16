@@ -223,7 +223,7 @@ _ir_process_packet:
     DM(_if_input) = R8;
     DM(_if_packet) = R12;
     DM(_if_epoch) = R9;
-    R0 = R8;
+    R0 = PASS R8;
     R1 = 3;
     R1 = R0 AND R1;
     IF NE JUMP _in_bad;

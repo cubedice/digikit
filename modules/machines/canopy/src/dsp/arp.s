@@ -177,7 +177,7 @@ _ca_have_members:
 _ca_phase_ready:
     DM(_ca_phase) = R0;
     CALL _ca_threshold;
-    R1 = R0;
+    R1 = PASS R0;
     R0 = DM(_ca_phase);
     COMP(R0, R1);
     IF GE JUMP _ca_due;
@@ -419,7 +419,7 @@ _ca_member:
     R1 = DM(18, I2);
     COMP(R0, R1);
     R1 = 1;
-    IF EQ R11 = R1;
+    IF EQ R11 = PASS R1;
     R1 = DM(19, I2);
     COMP(R0, R1);
     IF NE JUMP _ca_member_next;
@@ -637,7 +637,7 @@ _ca_sort_hold:
     DM(_ca_hold_3) = R0;
     R0 = DM(12, I0);
     DM(_ca_hold_4) = R0;
-    R3 = R12;
+    R3 = PASS R12;
 _ca_sort_shift:
     // Record j-1 (at I0) is greater than the held record: move it to j.
     R0 = DM(0, I0);
@@ -1170,7 +1170,7 @@ _ca_tail_word:
     R2 = R2 - 1;
     IF NE JUMP _ca_tail_word;
     R0 = DM(_ca_voice);
-    R1 = R10;
+    R1 = PASS R10;
     CALL _cp_amp_copy;
     I0 = R10;
     R0 = 4;

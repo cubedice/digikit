@@ -2,7 +2,8 @@
  * Command 0x3f: empty = snapshot, RSET = assert while SPI is running,
  * RLSE = attempt release after an assertion. Whole-device restart is required
  * afterwards: releasing the DSP pin does not reload its firmware. */
-#include <dk/api.h>
+#include <dk/core/module.h>
+#include <dk/platform/host.h>
 typedef uint32_t u32;
 typedef uint8_t u8;
 static u32 fired;
@@ -17,7 +18,9 @@ static void snapshot(u32 offset) {
     reads[offset+7] = *(volatile u8 *)0x402a1b58u;
     reads[offset+6] = *(volatile u8 *)(reads[offset+7] ? 0xec094020u : 0xec09401du);
 }
-static int32_t command(u32 cmd, u32 seq, const u8 *body, u32 len, u8 *out) {
+static int32_t command(u32 cmd, u32 seq, const void *request, u32 len, void *reply) {
+    const u8 *body = request;
+    u8 *out = reply;
     u32 i, value;
     (void)cmd; (void)seq;
     if (len) {
@@ -45,4 +48,5 @@ static int32_t command(u32 cmd, u32 seq, const u8 *body, u32 len, u8 *out) {
     }
     return 96;
 }
-int32_t dkm_init(const dk_api *api) { return api->register_cmds(0x3f,1,command); }
+static int32_t init(dk_module_ctx *ctx) { (void)ctx; return dk_host_register(0x3f,1,command); }
+const dk_module_def dk_module = {.init = init};

@@ -172,7 +172,7 @@ _iv_no_status:
     DM(7, I0) = R0;
     R4 = _iv_controls;
     CALL _iv_lock_overlay;
-    R4 = R0;
+    R4 = PASS R0;
     R8 = DM(_iv_control_count);
     CALL _iv_modulate;
     I0 = _iv_input;
@@ -183,7 +183,7 @@ _iv_no_status:
     // A reset tail renders before configuration. No new events are admitted.
     R1 = DM(_iv_revision);
     R1 = PASS R1;
-    IF EQ R1 = R0;
+    IF EQ R1 = PASS R0;
     DM(11, I0) = R1;
     R4 = 0;
     R5 = DM(_iv_slot); // registry instance ordinal: this slot's own state
@@ -620,7 +620,7 @@ _iv_amp_hold_store:
     R1 = 0;
     R2 = 1;
     R0 = PASS R0;
-    IF NE R1 = R2;
+    IF NE R1 = PASS R2;
     DM(30, I1) = R1;
     DM(24, I1) = R4;
     DM(_iv_native_valid) = R2;
@@ -802,7 +802,7 @@ _iv_reset_unbind_next:
 _iv_reset_lookup:
     R4 = DM(8, I0);
     CALL _iv_find_slot;
-    R4 = R0;
+    R4 = PASS R0;
 _iv_reset_target:
     DM(_iv_reset_slot) = R4; // -1 when no slot belongs to this track
     R0 = DM(_iv_packet);
@@ -899,7 +899,7 @@ _instrument_configure:
     I0 = R8;
     R4 = DM(0, I0); // configuration names its track
     CALL _iv_find_slot;
-    R4 = R0;
+    R4 = PASS R0;
     R4 = PASS R4;
     IF LT JUMP _iv_no;
     CALL _iv_slot_load;
@@ -1421,20 +1421,20 @@ _iv_four_validate:
     R1 = 5;
     COMP(R0, R1);
     R1 = 16;
-    IF EQ R2 = R1;
+    IF EQ R2 = PASS R1;
     R0 = FEXT R0 BY 0:8;
     R1 = 6;
     COMP(R0, R1);
     R1 = 32;
-    IF EQ R2 = R1;
+    IF EQ R2 = PASS R1;
     R1 = 7;
     COMP(R0, R1);
     R1 = 32;
-    IF EQ R2 = R1;
+    IF EQ R2 = PASS R1;
     R1 = 8;
     COMP(R0, R1);
     R1 = 32;
-    IF EQ R2 = R1;
+    IF EQ R2 = PASS R1;
     JUMP _iv_config_copy;
 _iv_legacy_config:
     R0 = DM(5, I0);
@@ -1486,7 +1486,7 @@ _instrument_events:
     R4 = DM(10, I0);
     R4 = FEXT R4 BY 10:4; // the batch track (every event names the same track)
     CALL _iv_find_slot;
-    R4 = R0;
+    R4 = PASS R0;
     R4 = PASS R4;
     IF LT JUMP _iv_no;
     CALL _iv_slot_load;
@@ -1608,11 +1608,11 @@ _iv_reset_bad:
 _iv_voice_render:
     DM(_iv_render_out) = R8;
     DM(_iv_render_track) = R2;
-    R4 = R2;
+    R4 = PASS R2;
     CALL _iv_find_slot;
     R0 = PASS R0;
     IF LT JUMP _iv_voice_silent;
-    R4 = R0;
+    R4 = PASS R0;
     CALL _iv_slot_base;
     I1 = I0;
     MODIFY(I1, 42) (NW); // slot output

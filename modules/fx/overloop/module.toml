@@ -9,11 +9,18 @@ status = "experimental"
 summary = "Arms at a selected pattern step, records a chosen step count once, and crossfades the frozen stereo loop."
 dynamic = true
 ports = ["dt2-1.17"]
-requires = []
+# The DSP reads the loop buffer (core/loop-storage) and the pattern position (core/pattern-position); the knob handoff and the
+# display are core/loop-controls and core/loop-display, which require the position adapter.
+requires = ["core/loop-storage", "core/loop-display"]
 conflicts = []
 
 [targets]
 "dt2-1.17" = "experimental"
+
+# The effect, declared by builder calls in init (src/module.c); its DSP symbols are _bl_process and _bl_desc.
+[[fx]]
+id = "loop"
+dsp = "bl"
 
 [[object]]
 path = "build/overloop-dsp.dko.json"

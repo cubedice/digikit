@@ -4,21 +4,21 @@
  "relocs": [],
  "sections": [
   {
+   "align": 4,
+   "hex": "00000002646e3200000000010000009700016a7c0000001000000002fc07000c07de29000000006540000000466c00004671200047fe100000000000000000000000000000000000008000000261a00000010000444b494d47494431000000000000000000000000000000000000000000000000000000000000000000000000",
+   "kind": "data",
+   "name": ".rodata",
+   "size": 128
+  },
+  {
    "align": 16,
    "hex": "",
    "kind": "bss",
    "name": ".bss",
    "size": 65536
-  },
-  {
-   "align": 4,
-   "hex": "00000002646e32000000000240000000466c00004671200047fe100000000000000000000000000000000000008000000261a00000010000444b494d47494431000000000000000000000000000000000000000000000000000000000000000000000000",
-   "kind": "data",
-   "name": ".rodata",
-   "size": 100
   }
  ],
- "source_sha256": "abccf0d2683cffc69395f86f8ee6720f1e853c12fc49ccc9faa95873a4d2d647",
+ "source_sha256": "7b172dce350aaea0208e38ce855373309cd1d1d3917cfbea62648d0905792c13",
  "symbols": [
   {
    "global": true,
@@ -40,59 +40,101 @@
   },
   {
    "global": true,
+   "name": "dkrt_dsp_headroom",
+   "section": ".rodata",
+   "value": 16
+  },
+  {
+   "global": true,
+   "name": "dkrt_dsp_voices",
+   "section": ".rodata",
+   "value": 20
+  },
+  {
+   "global": true,
    "name": "dkrt_files_fs",
    "section": ".rodata",
-   "value": 88
+   "value": 116
   },
   {
    "global": true,
    "name": "dkrt_image_id",
    "section": ".rodata",
-   "value": 64
+   "value": 92
   },
   {
    "global": true,
    "name": "dkrt_peek_n",
    "section": ".rodata",
-   "value": 8
+   "value": 24
   },
   {
    "global": true,
    "name": "dkrt_peek_ranges",
    "section": ".rodata",
-   "value": 12
+   "value": 40
   },
   {
    "global": true,
    "name": "dkrt_sample_fs",
    "section": ".rodata",
-   "value": 72
+   "value": 100
+  },
+  {
+   "global": true,
+   "name": "dkrt_sample_path_max",
+   "section": ".rodata",
+   "value": 12
+  },
+  {
+   "global": true,
+   "name": "dkrt_samples_in_store",
+   "section": ".rodata",
+   "value": 8
+  },
+  {
+   "global": true,
+   "name": "dkrt_sound_words",
+   "section": ".rodata",
+   "value": 36
+  },
+  {
+   "global": true,
+   "name": "dkrt_span_clock",
+   "section": ".rodata",
+   "value": 28
+  },
+  {
+   "global": true,
+   "name": "dkrt_span_clock_hz",
+   "section": ".rodata",
+   "value": 32
   },
   {
    "global": true,
    "name": "dkrt_stage_bytes",
    "section": ".rodata",
-   "value": 52
+   "value": 80
   },
   {
    "global": true,
    "name": "dkrt_store_first",
    "section": ".rodata",
-   "value": 44
+   "value": 72
   },
   {
    "global": true,
    "name": "dkrt_store_sectors",
    "section": ".rodata",
-   "value": 48
+   "value": 76
   }
  ],
  "toolchain": {
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
-  "cflags": "-mcpu=54418 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
+  "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
   "instructions_redecoded": "0",
-  "isa_check": "b5a9769df0d8663dd871584a578bdfbcbc76e122d932b9eb8cf1bc5293390bca",
+  "isa_check": "b4bc30348cd255d4bff1b3fb9e66dda2bb3d94148232522a743f914577bee6a0",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

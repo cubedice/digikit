@@ -52,7 +52,7 @@ _ir_reset_instance:
     COMP(R8, R0);
     IF NE JUMP _irl_call;
     I0 = R4;
-    R2 = R5;
+    R2 = PASS R5;
     R0 = 0;
 _irl_clear:
     DM(I0, M6) = R0;
