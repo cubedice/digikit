@@ -1,0 +1,49 @@
+{
+  "effects": [
+    {
+      "id": "loop",
+      "knobs": [
+        {
+          "default": 0,
+          "display": 0,
+          "max": 1,
+          "min": 0,
+          "name": "Capture once",
+          "short": "REC"
+        },
+        {
+          "default": 0,
+          "display": 0,
+          "max": 127,
+          "min": 0,
+          "name": "Start step (zero based)",
+          "short": "START"
+        },
+        {
+          "default": 0,
+          "display": 0,
+          "max": 1,
+          "min": 0,
+          "name": "Loop crossfade",
+          "short": "FADE"
+        },
+        {
+          "default": 0,
+          "display": 0,
+          "max": 127,
+          "min": 0,
+          "name": "Steps (0 = pattern)",
+          "short": "LENGTH"
+        }
+      ],
+      "mix": 127,
+      "tab": "OVL",
+      "title": "Overloop"
+    }
+  ],
+  "machines": [],
+  "module": "digikit/overloop",
+  "params": {
+    "dt2": []
+  }
+}

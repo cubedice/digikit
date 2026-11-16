@@ -2,7 +2,10 @@
 // the runtime's `MODULE_COMMIT` event, read the record block it names and decode it with `patchkit records --json`.
 //
 //   node tools/devtools/commit_records.ts --device dn2|dt2 --module ID --dkm FILE.dkm --patchkit BIN [--binary DIGI_EMUD]
-//        [--debug-dkm FILE.dkm] [--emulated-ms 60000]
+//        [--debug-dkm FILE.dkm] [--patch-set NAME] [--emulated-ms 60000]
+//
+// --patch-set names the patch set of the device file the image is patched with (default `emulator`): a module that requires a core module
+// the `emulator` set lacks (module.toml `[conformance] patch_set`) is refused at load without it.
 //
 // Prints one JSON object on stdout: { module, latched: [mask per machine], commit: {index, machineRows, paramRows, pageRows, addr, size}, records: {counts, params, ...} }.
 // `module:check` (tools/patchkit/pk_modcheck.py) writes `[uses]` and the gallery params from it; conformance reads its cases from it.
@@ -27,13 +30,14 @@ const { values } = parseArgs({
     module: { type: 'string' },
     dkm: { type: 'string' },
     'debug-dkm': { type: 'string' },
+    'patch-set': { type: 'string', default: 'emulator' },
     patchkit: { type: 'string' },
     binary: { type: 'string' },
     'emulated-ms': { type: 'string', default: '60000' },
   },
 });
 const usage =
-  'usage: commit_records.ts --device dn2|dt2 --module ID --dkm FILE.dkm --patchkit BIN [--binary DIGI_EMUD] [--debug-dkm FILE.dkm] [--emulated-ms N]';
+  'usage: commit_records.ts --device dn2|dt2 --module ID --dkm FILE.dkm --patchkit BIN [--binary DIGI_EMUD] [--debug-dkm FILE.dkm] [--patch-set NAME] [--emulated-ms N]';
 if ((values.device !== 'dn2' && values.device !== 'dt2') || !values.module || !values.dkm || !values.patchkit) {
   throw new Error(usage);
 }
@@ -75,7 +79,7 @@ try {
     binary,
     runDir,
     ...(samples ? { card: samples } : {}),
-    runtime: { patchSet: 'emulator' },
+    runtime: { patchSet: values['patch-set'] },
   });
   const s = session;
   // a runtime session runs freely: the daemon advances emulated time by itself, so the protocol waits in wall time

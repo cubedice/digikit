@@ -621,7 +621,7 @@ A change in a machine or effect module, `core/dsp-voice`, `core/fx` or the kit s
 The suites do not run a persistent V2 instrument (`[[machine]] instrument = true`: no voice entry) or a module whose
 module.toml says why the rig cannot run it, `[conformance] rig_skip = "<why>"` (its DSP reads data of a core module that the rig does
 not place); such a module's own tests run its DSP. `[conformance] patch_set = "<set>"` names the patch set the module's load cell
-(`tests/conformance`) boots, for a module that needs a patched-in core module the `emulator` set lacks.
+(`tests/conformance`) and `module:check`'s commit stage boot, for a module that needs a patched-in core module the `emulator` set lacks.
 
 ### SHARC-only rig (`sharc-rig`, T1g slice)
 

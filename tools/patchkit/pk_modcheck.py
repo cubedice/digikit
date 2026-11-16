@@ -256,6 +256,9 @@ def _measure(mid: str, devices: list[str]) -> dict[str, dict]:
     from tools.patchkit import patchkit, pk_committed
 
     per: dict[str, dict] = {}
+    # a module that requires a core module the `emulator` set lacks names the patch set its load cell boots (docs/TESTING.md)
+    manifest = tomllib.loads((modroots.module_dir(mid) / "module.toml").read_text(encoding="utf-8"))
+    patch_set = manifest.get("conformance", {}).get("patch_set")
     with tempfile.TemporaryDirectory(prefix="pk-commit-") as tmp:
         for dev in devices:
             out = Path(tmp) / f"{mid.rsplit('/', 1)[-1]}-{dev}.dkm"
@@ -275,7 +278,13 @@ def _measure(mid: str, devices: list[str]) -> dict[str, dict]:
                     f"packing digikit/debug for {dev} failed:\n{(d.stderr or '').strip()}"
                 )
             per[dev] = pk_committed.committed(
-                mid, dev, out, str(patchkit.binary()), _daemon(dev), debug_dkm=dbg
+                mid,
+                dev,
+                out,
+                str(patchkit.binary()),
+                _daemon(dev),
+                debug_dkm=dbg,
+                patch_set=patch_set,
             )
     return per
 
