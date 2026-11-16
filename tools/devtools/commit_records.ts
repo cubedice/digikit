@@ -31,16 +31,20 @@ const { values } = parseArgs({
     dkm: { type: 'string' },
     'debug-dkm': { type: 'string' },
     'patch-set': { type: 'string', default: 'emulator' },
+    dsp: { type: 'string', default: 'zero' },
     patchkit: { type: 'string' },
     binary: { type: 'string' },
     'emulated-ms': { type: 'string', default: '60000' },
   },
 });
 const usage =
-  'usage: commit_records.ts --device dn2|dt2 --module ID --dkm FILE.dkm --patchkit BIN [--binary DIGI_EMUD] [--debug-dkm FILE.dkm] [--patch-set NAME] [--emulated-ms N]';
+  'usage: commit_records.ts --device dn2|dt2 --module ID --dkm FILE.dkm --patchkit BIN [--binary DIGI_EMUD] [--debug-dkm FILE.dkm] [--patch-set NAME] [--dsp zero|sharc] [--emulated-ms N]';
 if ((values.device !== 'dn2' && values.device !== 'dt2') || !values.module || !values.dkm || !values.patchkit) {
   throw new Error(usage);
 }
+if (values.dsp !== 'zero' && values.dsp !== 'sharc') throw new Error(usage);
+// A persistent V2 instrument commits only after its DSP acknowledged the instance: such a module needs the real DSP (`--dsp sharc`).
+const dsp: 'zero' | 'sharc' = values.dsp;
 const device: Device = values.device;
 
 /** Runs the patchkit binary BIN with stdin input (this tool is no Nx task, so it spawns the binary itself). */
@@ -75,7 +79,7 @@ try {
   session = await Session.start({
     device,
     firmware: FIRMWARE[device],
-    dsp: 'zero',
+    dsp,
     binary,
     runDir,
     ...(samples ? { card: samples } : {}),
@@ -101,7 +105,7 @@ try {
   }
   await dk.select(paths);
   await dk.restart();
-  await dk.waitForBoot();
+  await dk.waitForBoot(undefined, dsp === 'sharc' ? 180_000 : undefined);
   const events = new Events(dk, s, { bootStart: LOG_KIND.BOOT_START });
   await events.listen({ fromBoot: true });
   const modules = await dk.modules();

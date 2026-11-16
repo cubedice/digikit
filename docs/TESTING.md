@@ -345,7 +345,7 @@ A module keeps its tests in its own folder, `modules/<kind>/<name>/tests/`. No l
   (`modules/core/runtime/tests/project.json`) with CF-only service commands and settings in nested
   `core/runtime-service-tests` and `core/runtime-settings-tests` (`service-commands/project.json` and
   `settings/project.json`). Each owner's `test-device` runs its files;
-  `mise run module:check core/runtime` discovers and runs all owners serially.
+  `mise run module:check core/runtime` discovers all owners and runs them through Nx (several at once, within the launcher's budget and the emulator slots).
   `pnpm nx:pilot run <module-id>:test-device` runs one module's files; `pnpm nx:pilot run <module-id>:test-conformance`
   loads the module through the shared conformance suite. Uploadable modules without a DSP image run
   with the zero SSI peer and no SHARC audio session; modules with DSP images retain coupled execution
@@ -593,7 +593,7 @@ by `patchkit needs` against real modules and fixtures. `modules/core/apps/digiki
 
 `mise run module:check NAME [--device dt2|dn2]` (NAME: `<author/name>` or the name alone) selects the suite by
 module type and runs the module's own Python tests. A module with `tests/**/*.device.test.ts` files gets
-Nx `test-device` targets (inferred by `tools/nx/modules.mjs`, read from the Nx graph); `module:check` runs all owners serially after Python success, propagates a
+Nx `test-device` targets (inferred by `tools/nx/modules.mjs`, read from the Nx graph); `module:check` runs all owners through Nx after Python success (several at once, within the launcher's budget and the emulator slots; `DIGI_NX_PARALLEL=1` runs them one at a time), propagates a
 failure, and reports size/fit only after both stages pass. With no Python tests, the existing source
 check still precedes the owned targets. Frequency shifter owns the exact existing TypeScript shifter
 suite on both devices, including when `--device` limits other checks. Its daemons and ready inputs
@@ -620,7 +620,9 @@ A change in a machine or effect module, `core/dsp-voice`, `core/fx` or the kit s
 
 The suites do not run a persistent V2 instrument (`[[machine]] instrument = true`: no voice entry) or a module whose
 module.toml says why the rig cannot run it, `[conformance] rig_skip = "<why>"` (its DSP reads data of a core module that the rig does
-not place); such a module's own tests run its DSP. `[conformance] patch_set = "<set>"` names the patch set the module's load cell
+not place); such a module's own tests run its DSP. No suite then measures its `dsp_cost_voice` or `dsp_cost_fx`: its own tests check
+every block they run against the cost in `[uses.<device>]` (Overloop: `modules/fx/overloop/tests/test_overloop.py`), and
+`patchkit uses set --id ID --device DEV --dsp-cost-fx N` writes it. `[conformance] patch_set = "<set>"` names the patch set the module's load cell
 (`tests/conformance`) and `module:check`'s commit stage boot, for a module that needs a patched-in core module the `emulator` set lacks.
 The load cell expects no runtime voice row of a V2 instrument: core/instrument-play publishes its row in its own table.
 

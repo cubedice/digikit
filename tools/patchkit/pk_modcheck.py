@@ -261,6 +261,12 @@ def _measure(mid: str, devices: list[str]) -> dict[str, dict]:
         (modroots.module_dir(mid) / "module.toml").read_text(encoding="utf-8")
     )
     patch_set = manifest.get("conformance", {}).get("patch_set")
+    # a persistent V2 instrument commits after its DSP acknowledged the instance: its measuring boot runs the real DSP
+    dsp = (
+        "sharc"
+        if any(m.get("instrument") for m in manifest.get("machine", []))
+        else None
+    )
     with tempfile.TemporaryDirectory(prefix="pk-commit-") as tmp:
         for dev in devices:
             out = Path(tmp) / f"{mid.rsplit('/', 1)[-1]}-{dev}.dkm"
@@ -287,6 +293,7 @@ def _measure(mid: str, devices: list[str]) -> dict[str, dict]:
                 _daemon(dev),
                 debug_dkm=dbg,
                 patch_set=patch_set,
+                dsp=dsp,
             )
     return per
 
@@ -413,7 +420,8 @@ def own_device_targets(mid: str) -> list[str]:
 
 
 def run_device_targets(mid: str, targets: list[str], device: str | None = None) -> int:
-    """Resolve the device inputs once, then schedule all owned suites serially through Nx. Without DEVICE both devices run through each
+    """Resolve the device inputs once, then schedule all owned suites through Nx: the launcher's job budget and the machine-wide emulator
+    slots (tools/devtools/emu-slot.mjs) bound how many run at once, as in the gate. Without DEVICE both devices run through each
     project's `test-device-all`. With DEVICE only that device's inputs are resolved (a missing image of the other device does not matter) and
     only the run halves of the owners run: `test-device-all--<file>--<device>`, or `test-device-all--<device>` in a project with one test file;
     with none, there is nothing to run and the result is 0."""
@@ -468,7 +476,6 @@ def run_device_targets(mid: str, targets: list[str], device: str | None = None) 
             ",".join(names),
             "--projects",
             ",".join(projects),
-            "--parallel=1",
         ],
         cwd=ROOT,
         env=python_env({**os.environ, **binaries}),
