@@ -150,7 +150,8 @@ pub unsafe fn load_to_stage(f: &File) -> i32 {
     if !crate::store_writer::acquire() {
         return E_BUSY;
     }
-    let r = store::read_sectors(&reader(), &layout(), f.first, sectors, buf, stage_bytes());
+    // a stage over 64 KiB (the DT2's) takes several native reads: `read_extent` bounds each at MAX_IO_SECTORS (an empty file reads nothing)
+    let r = if sectors == 0 { OK } else { store::read_extent(&reader(), &layout(), f.first, sectors, buf, capacity) };
     crate::store_writer::unlock();
     if r != OK {
         return r;

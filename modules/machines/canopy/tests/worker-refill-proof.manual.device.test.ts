@@ -4,7 +4,8 @@ import { afterAll, beforeAll, expect, onTestFinished, test, vi } from 'vitest';
 import { repoRoot } from '@digi/test-support';
 import { withSession } from '@digi/regression/support.ts';
 import { liveOptions } from '@digi/regression/runtime/devices.ts';
-import { planSymbol, prepareRuntimePlanOffline } from '@digi/regression/runtime/runtime-plan.ts';
+import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
+import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
@@ -37,7 +38,7 @@ if (process.env.DIGI_CANOPY_WORKER_REFILL === '1') {
     fs.mkdirSync(artifacts, { recursive: true });
     const evidence: Record<string, unknown> = {};
     onTestFinished(() => fs.writeFileSync(path.join(artifacts, 'probe.json'), JSON.stringify(evidence, null, 2)));
-    const { syx, plan } = await prepareRuntimePlanOffline(
+    const { syx, plan } = await prepareRuntimePlanModulesOffline(
       session.options, session.runDir, artifacts,
       ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_admission', 'canopy_sound_proof',
         'canopy_memory_probe_entry', 'worker_refill_tick', 'worker_refill_test'],

@@ -4,7 +4,8 @@ import { afterAll, beforeAll, expect, onTestFinished, test, vi } from 'vitest';
 import { repoRoot, Session } from '@digi/test-support';
 import { withSession } from '@digi/regression/support.ts';
 import { liveOptions } from '@digi/regression/runtime/devices.ts';
-import { planSymbol, prepareRuntimePlanOffline } from '@digi/regression/runtime/runtime-plan.ts';
+import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
+import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
@@ -42,7 +43,7 @@ if (process.env.DIGI_CANOPY_INTEGRATED_PROOF === '1') {
       const artifacts = path.join(repoRoot(), 'out/canopy-integrated-proof', path.basename(session.runDir));
       fs.mkdirSync(artifacts, { recursive: true });
       const evidence: Record<string, unknown> = {};
-      const { syx, plan } = await prepareRuntimePlanOffline(session.options, session.runDir, artifacts,
+      const { syx, plan } = await prepareRuntimePlanModulesOffline(session.options, session.runDir, artifacts,
         ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_admission', 'ip_src_debug', 'src_state',
           'canopy_sound_proof', 'canopy_memory_probe_entry', 'canopy_integrated_tick', 'canopy_integrated_test'],
         { modules: ['test/instrument-play-proof', 'core/digikit-menu', 'core/health',

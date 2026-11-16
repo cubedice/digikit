@@ -4,7 +4,8 @@ import { repoRoot } from '@digi/test-support';
 import { expect, onTestFinished, test, vi } from 'vitest';
 import { withSession } from '@digi/regression/support.ts';
 import { liveOptions } from '@digi/regression/runtime/devices.ts';
-import { planSymbol, prepareRuntimePlanOffline } from '@digi/regression/runtime/runtime-plan.ts';
+import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
+import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
@@ -23,7 +24,7 @@ if (process.env.DIGI_CANOPY_OPAQUE_PROOF === '1') {
     fs.mkdirSync(artifacts, { recursive: true });
     const evidence: Record<string, unknown> = {};
     onTestFinished(() => fs.writeFileSync(path.join(artifacts, 'probe.json'), JSON.stringify(evidence, null, 2)));
-    const { syx, plan } = await prepareRuntimePlanOffline(session.options, session.runDir, artifacts,
+    const { syx, plan } = await prepareRuntimePlanModulesOffline(session.options, session.runDir, artifacts,
       ['DKRT_BOOT', 'canopy_opaque_result'],
       { modules: ['core/digikit-menu', 'core/health', 'test/canopy-opaque-proof'] });
     await session.client.firmwareLoad({ syx, base_sha256: plan.base.syx_sha256, start: 'auto', force: true,

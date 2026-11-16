@@ -7,7 +7,7 @@ import { withSession } from '@digi/regression/support.ts';
 import { liveOptions } from '@digi/regression/runtime/devices.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { planSymbol, prepareRuntimePlanOffline } from '@digi/regression/runtime/runtime-plan.ts';
+import { planSymbol, prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { waitEmulated } from '@digi/regression/runtime/waits.ts';
@@ -52,7 +52,7 @@ test(checkWorkingBoot ? 'working-state restart restores each CANOPY track SRC so
   console.info('CANOPY persistence evidence:', artifacts);
   const log: Record<string, unknown> = {};
   onTestFinished(() => fs.writeFileSync(path.join(artifacts, 'probe.json'), JSON.stringify(log, null, 2)));
-  const { syx, plan } = await prepareRuntimePlanOffline(
+  const { syx, plan } = await prepareRuntimePlanListedOffline(
     session.options,
     session.runDir,
     artifacts,

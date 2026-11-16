@@ -7,7 +7,7 @@ import { withSession } from '@digi/regression/support.ts';
 import { liveOptions } from '@digi/regression/runtime/devices.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { planSymbol, prepareRuntimePlanOffline, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
+import { planSymbol, prepareRuntimePlanListedOffline, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { openDigikitMenu } from '@digi/regression/runtime/runtime-menu.ts';
@@ -53,7 +53,7 @@ test('CANOPY arp follows BPM across stopped and playing transport', { timeout: 9
   // The shared helper verifies generated-image identity before the daemon load.
   const prepared = process.env.CANOPY_ARP_IMAGE
     ? undefined
-    : await prepareRuntimePlanOffline(
+    : await prepareRuntimePlanListedOffline(
         session.options,
         session.runDir,
         artifacts,

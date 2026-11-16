@@ -7,7 +7,8 @@ import { withSession } from '@digi/regression/support.ts';
 import { liveOptions } from '@digi/regression/runtime/devices.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { planSymbol, prepareRuntimePlanOffline } from '@digi/regression/runtime/runtime-plan.ts';
+import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
+import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
@@ -45,7 +46,7 @@ test.skipIf(!enabled)('save an edited CANOPY state for Sound-copy instruction tr
     fs.mkdirSync(artifacts, { recursive: true });
     const evidence: Record<string, unknown> = {};
     onTestFinished(() => fs.writeFileSync(path.join(artifacts, 'probe.json'), JSON.stringify(evidence, null, 2)));
-    const { syx, plan } = await prepareRuntimePlanOffline(
+    const { syx, plan } = await prepareRuntimePlanModulesOffline(
       session.options, session.runDir, artifacts,
       ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_admission', 'ip_src_debug', 'src_state', 'canopy_sound_proof', 'canopy_copy_probe_match'],
       { modules: ['test/instrument-play-proof', 'core/digikit-menu', 'core/health', 'test/canopy-sound-proof', 'test/canopy-copy-probe'] },
