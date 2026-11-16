@@ -1,5 +1,9 @@
 #include "ownership.h"
-#define CHECK(c) do { if (!(c)) return __LINE__; } while (0)
+#define CHECK(c)                                                                                   \
+    do {                                                                                           \
+        if (!(c))                                                                                  \
+            return __LINE__;                                                                       \
+    } while (0)
 
 static int message(MiLedger *m, uint32_t port, uint8_t status, uint8_t a, uint8_t b)
 {
@@ -9,13 +13,15 @@ static int message(MiLedger *m, uint32_t port, uint8_t status, uint8_t a, uint8_
 static MiEvent take(MiLedger *m)
 {
     MiEvent e = {0};
-    if (mi_peek(m, &e)) mi_ack(m, e.epoch, e.sequence);
+    if (mi_peek(m, &e))
+        mi_ack(m, e.epoch, e.sequence);
     return e;
 }
 
 uint32_t mi_test_session_keys(void)
 {
-    MiLedger m; MiEvent old, fresh, off;
+    MiLedger m;
+    MiEvent old, fresh, off;
     mi_init(&m);
     CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
     CHECK(message(&m, 0, 0x90, 60, 90));
@@ -72,18 +78,21 @@ uint32_t mi_test_reroute(void)
     MiEvent old, fresh, off;
     mi_init(&m);
     CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
-    message(&m, 0, 0x90, 60, 90); old = take(&m);
+    message(&m, 0, 0x90, 60, 90);
+    old = take(&m);
     mi_reset_track(&m, 0);
     CHECK(m.reset_mask == 1 && m.generations[0] == 2);
     CHECK(mi_route(&m, 0, 0, 0, 2, 0) == -2);
     CHECK(!mi_reset_ack(&m, m.epoch, 0, 1));
     CHECK(mi_reset_ack(&m, m.epoch, 0, 2));
     CHECK(mi_route(&m, 0, 0, 15, 1, 0) == 0);
-    message(&m, 0, 0x90, 60, 90); fresh = take(&m);
+    message(&m, 0, 0x90, 60, 90);
+    fresh = take(&m);
     CHECK(fresh.track == 15 && fresh.token != old.token);
     message(&m, 0, 0x80, 60, 0);
     CHECK(!mi_peek(&m, &off));
-    message(&m, 0, 0x80, 60, 0); off = take(&m);
+    message(&m, 0, 0x80, 60, 0);
+    off = take(&m);
     CHECK(off.token == fresh.token && off.track == 15);
     return 0;
 }
@@ -96,7 +105,8 @@ uint32_t mi_test_overflow(void)
     mi_init(&m);
     CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
     CHECK(mi_route(&m, 1, 15, 15, 1, 0) == 0);
-    for (i = 0; i < MI_EVENTS; ++i) CHECK(message(&m, 0, 0xb0, 64, 127));
+    for (i = 0; i < MI_EVENTS; ++i)
+        CHECK(message(&m, 0, 0xb0, 64, 127));
     CHECK(m.count == MI_EVENTS);
     CHECK(message(&m, 0, 0x90, 60, 90));
     CHECK(m.overruns == 1 && m.reset_mask == 0x8001 && !m.count);
@@ -109,7 +119,10 @@ uint32_t mi_test_overflow(void)
     CHECK(m.epoch == epoch + 1 && m.reset_mask == 0x8001);
     CHECK(mi_reset_ack(&m, m.epoch, 0, 1) && mi_reset_ack(&m, m.epoch, 15, 1));
     CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
-    for (i = 0; i < MI_KEYS; ++i) { message(&m, 0, 0x90, 60, 90); take(&m); }
+    for (i = 0; i < MI_KEYS; ++i) {
+        message(&m, 0, 0x90, 60, 90);
+        take(&m);
+    }
     CHECK(message(&m, 0, 0x90, 60, 90));
     CHECK(m.overruns == 2 && m.routes[0].quarantined);
     return 0;
@@ -131,25 +144,31 @@ uint32_t mi_test_messages(void)
     CHECK(!mi_message(&m, 1, &realtime, 1));
     CHECK(!mi_message(&m, 1, 0, 3));
     CHECK(!message(&m, 1, 0xbf, 2, 127));
-    CHECK(message(&m, 1, 0x9f, 0, 127)); e = take(&m);
+    CHECK(message(&m, 1, 0x9f, 0, 127));
+    e = take(&m);
     CHECK(e.note == 0 && e.track == 15 && e.port == 1 && e.channel == 15);
-    CHECK(message(&m, 1, 0xef, 127, 127)); e = take(&m);
+    CHECK(message(&m, 1, 0xef, 127, 127));
+    e = take(&m);
     CHECK(e.kind == MI_BEND && e.token == 0 && ((e.value << 7) | e.note) == 16383);
-    CHECK(message(&m, 1, 0xbf, 64, 127)); e = take(&m);
+    CHECK(message(&m, 1, 0xbf, 64, 127));
+    e = take(&m);
     CHECK(e.kind == MI_CC && e.note == 64 && e.value == 127);
     return 0;
 }
 
 uint32_t mi_test_mod_wheel(void)
 {
-    MiLedger m; MiEvent e;
+    MiLedger m;
+    MiEvent e;
     mi_init(&m);
     CHECK(mi_route(&m, 0, 0, 0, 1, 0) == 0);
     CHECK(mi_route(&m, 1, 15, 15, 1, 0) == 0);
-    CHECK(message(&m, 0, 0xb0, 1, 0)); e = take(&m);
+    CHECK(message(&m, 0, 0xb0, 1, 0));
+    e = take(&m);
     CHECK(e.kind == MI_CC && !e.token && !e.track && !e.port && !e.channel);
     CHECK(e.note == 1 && !e.value);
-    CHECK(message(&m, 1, 0xbf, 1, 127)); e = take(&m);
+    CHECK(message(&m, 1, 0xbf, 1, 127));
+    e = take(&m);
     CHECK(e.kind == MI_CC && !e.token && e.track == 15 && e.port == 1 && e.channel == 15);
     CHECK(e.note == 1 && e.value == 127);
     /* Unclaimed routes and PANEL must retain their existing MIDI behavior. */
@@ -173,13 +192,19 @@ uint32_t mi_test_panic(void)
     MiEvent fresh, e;
     uint32_t cc;
     for (cc = 120; cc <= 123; cc += 3) {
-        mi_init(&m); mi_route(&m, 0, 0, 0, 1, 0);
-        message(&m, 0, 0x90, 60, 90); take(&m);
-        message(&m, 0, 0xb0, (uint8_t)cc, 0); e = take(&m);
+        mi_init(&m);
+        mi_route(&m, 0, 0, 0, 1, 0);
+        message(&m, 0, 0x90, 60, 90);
+        take(&m);
+        message(&m, 0, 0xb0, (uint8_t)cc, 0);
+        e = take(&m);
         CHECK(e.kind == MI_CC && e.note == cc);
-        message(&m, 0, 0x90, 60, 90); fresh = take(&m);
-        message(&m, 0, 0x80, 60, 0); CHECK(!mi_peek(&m, &e));
-        message(&m, 0, 0x80, 60, 0); e = take(&m);
+        message(&m, 0, 0x90, 60, 90);
+        fresh = take(&m);
+        message(&m, 0, 0x80, 60, 0);
+        CHECK(!mi_peek(&m, &e));
+        message(&m, 0, 0x80, 60, 0);
+        e = take(&m);
         CHECK(e.token == fresh.token && e.kind == MI_NOTE_OFF);
     }
     return 0;
@@ -189,26 +214,36 @@ uint32_t mi_test_reset_presses(void)
 {
     MiLedger m;
     MiEvent fresh, e;
-    mi_init(&m); mi_route(&m, 0, 0, 0, 1, 0);
+    mi_init(&m);
+    mi_route(&m, 0, 0, 0, 1, 0);
     message(&m, 0, 0x90, 55, 90); /* queued event must be discarded after reset */
     mi_reset_track(&m, 0);
     message(&m, 0, 0x90, 60, 90); /* ignored while waiting for reset */
     CHECK(!mi_peek(&m, &e));
-    mi_reset_ack(&m, m.epoch, 0, 2); mi_route(&m, 0, 0, 0, 2, 0);
+    mi_reset_ack(&m, m.epoch, 0, 2);
+    mi_route(&m, 0, 0, 0, 2, 0);
     CHECK(!mi_peek(&m, &e));
-    message(&m, 0, 0x90, 60, 90); fresh = take(&m);
-    message(&m, 0, 0x80, 60, 0); CHECK(!mi_peek(&m, &e));
-    message(&m, 0, 0x80, 60, 0); e = take(&m);
+    message(&m, 0, 0x90, 60, 90);
+    fresh = take(&m);
+    message(&m, 0, 0x80, 60, 0);
+    CHECK(!mi_peek(&m, &e));
+    message(&m, 0, 0x80, 60, 0);
+    e = take(&m);
     CHECK(e.token == fresh.token);
-    mi_reset_track(&m, 0); mi_reset_ack(&m, m.epoch, 0, 3);
+    mi_reset_track(&m, 0);
+    mi_reset_ack(&m, m.epoch, 0, 3);
     mi_route(&m, 0, 0, 0, 3, 1);
     message(&m, 0, 0x90, 60, 90);
     CHECK(!mi_peek(&m, &e));
-    mi_reset_track(&m, 0); mi_reset_ack(&m, m.epoch, 0, 4);
+    mi_reset_track(&m, 0);
+    mi_reset_ack(&m, m.epoch, 0, 4);
     mi_route(&m, 0, 0, 0, 4, 0);
-    message(&m, 0, 0x90, 60, 90); fresh = take(&m);
-    message(&m, 0, 0x80, 60, 0); CHECK(!mi_peek(&m, &e));
-    message(&m, 0, 0x80, 60, 0); e = take(&m);
+    message(&m, 0, 0x90, 60, 90);
+    fresh = take(&m);
+    message(&m, 0, 0x80, 60, 0);
+    CHECK(!mi_peek(&m, &e));
+    message(&m, 0, 0x80, 60, 0);
+    e = take(&m);
     CHECK(e.token == fresh.token);
     return 0;
 }
@@ -217,9 +252,11 @@ uint32_t mi_test_token_wrap(void)
 {
     MiLedger m;
     MiEvent e;
-    mi_init(&m); mi_route(&m, 0, 0, 0, 1, 0);
+    mi_init(&m);
+    mi_route(&m, 0, 0, 0, 1, 0);
     m.next_token = UINT32_MAX;
-    message(&m, 0, 0x90, 60, 90); e = take(&m);
+    message(&m, 0, 0x90, 60, 90);
+    e = take(&m);
     CHECK(e.token == UINT32_MAX);
     message(&m, 0, 0x90, 64, 90);
     CHECK(m.reset_mask == 1 && m.routes[0].quarantined);
@@ -232,15 +269,18 @@ uint32_t mi_test_ring_wrap(void)
     MiLedger m;
     MiEvent e;
     uint32_t i, last = 0;
-    mi_init(&m); mi_route(&m, 0, 0, 0, 1, 0);
+    mi_init(&m);
+    mi_route(&m, 0, 0, 0, 1, 0);
     for (i = 0; i < 1024; ++i) {
         message(&m, 0, 0x90, (uint8_t)(i % 128), 90);
         CHECK(!mi_ack(&m, m.epoch, last));
-        e = take(&m); CHECK(e.kind == MI_NOTE_ON && e.sequence > last);
+        e = take(&m);
+        CHECK(e.kind == MI_NOTE_ON && e.sequence > last);
         last = e.sequence;
         message(&m, 0, 0x80, (uint8_t)(i % 128), 0);
         CHECK(!mi_ack(&m, m.epoch, last));
-        e = take(&m); CHECK(e.kind == MI_NOTE_OFF && e.sequence > last);
+        e = take(&m);
+        CHECK(e.kind == MI_NOTE_OFF && e.sequence > last);
         last = e.sequence;
     }
     CHECK(!m.count && !m.overruns);
@@ -255,13 +295,17 @@ uint32_t mi_test_panel_track(void)
     /* The local panel routes to the instrument's track, not always track 0. */
     CHECK(mi_route(&m, MI_PANEL, 1, 10, m.generations[10], 0) == -1);
     CHECK(mi_route(&m, MI_PANEL, 0, 10, m.generations[10], 0) == 0);
-    CHECK(mi_panel_down(&m, 3, 65, 88, 10)); e = take(&m);
+    CHECK(mi_panel_down(&m, 3, 65, 88, 10));
+    e = take(&m);
     CHECK(e.kind == MI_NOTE_ON && e.track == 10 && e.port == MI_PANEL && e.note == 65);
     CHECK(e.generation == m.generations[10] && e.token);
-    mi_panel_up(&m, 3); e = take(&m);
+    mi_panel_up(&m, 3);
+    e = take(&m);
     CHECK(e.kind == MI_NOTE_OFF && e.track == 10 && e.note == 65);
-    CHECK(mi_panel_down(&m, 4, 67, 88, 10)); (void)take(&m);
-    mi_panel_cancel(&m); e = take(&m);
+    CHECK(mi_panel_down(&m, 4, 67, 88, 10));
+    (void)take(&m);
+    mi_panel_cancel(&m);
+    e = take(&m);
     CHECK(e.kind == MI_CC && e.track == 10 && e.note == 120 && e.generation == m.generations[10]);
     /* A reset of that track retires the panel route like any other. */
     mi_reset_track(&m, 10);
@@ -277,32 +321,41 @@ uint32_t mi_test_sequencer_notes(void)
     /* Trigs on a track without local keys are not played. */
     CHECK(!mi_seq_trig(&m, 10, 60, 100) && !mi_peek(&m, &e));
     CHECK(mi_route(&m, MI_PANEL, 0, 10, m.generations[10], 0) == 0);
-    CHECK(mi_seq_trig(&m, 10, 60, 100)); e = take(&m);
+    CHECK(mi_seq_trig(&m, 10, 60, 100));
+    e = take(&m);
     CHECK(e.kind == MI_NOTE_ON && e.track == 10 && e.port == MI_PANEL && !e.channel);
     CHECK(e.note == 60 && e.value == 100 && e.token);
     uint32_t first = e.token;
     /* Monophonic like a stock audio track: the next trig releases it first. */
-    CHECK(mi_seq_trig(&m, 10, 64, 90)); e = take(&m);
+    CHECK(mi_seq_trig(&m, 10, 64, 90));
+    e = take(&m);
     CHECK(e.kind == MI_NOTE_OFF && e.token == first && e.note == 60);
     e = take(&m);
     CHECK(e.kind == MI_NOTE_ON && e.note == 64 && e.token != first);
     uint32_t second = e.token;
     /* Leaving keyboard mode releases held panel keys one by one and keeps
      * the sequencer note (no route-wide all-notes-off). */
-    CHECK(mi_panel_down(&m, 3, 67, 80, 10)); e = take(&m);
+    CHECK(mi_panel_down(&m, 3, 67, 80, 10));
+    e = take(&m);
     uint32_t key = e.token;
-    mi_panel_cancel(&m); e = take(&m);
+    mi_panel_cancel(&m);
+    e = take(&m);
     CHECK(e.kind == MI_NOTE_OFF && e.token == key && e.note == 67);
     CHECK(!mi_peek(&m, &e));
-    mi_panel_up(&m, 3); CHECK(!mi_peek(&m, &e));
+    mi_panel_up(&m, 3);
+    CHECK(!mi_peek(&m, &e));
     /* The release mask ends it; with nothing sequenced cancel is route-wide. */
-    mi_seq_release(&m, 10); e = take(&m);
+    mi_seq_release(&m, 10);
+    e = take(&m);
     CHECK(e.kind == MI_NOTE_OFF && e.token == second && e.note == 64);
-    mi_seq_release(&m, 10); CHECK(!mi_peek(&m, &e));
-    mi_panel_cancel(&m); e = take(&m);
+    mi_seq_release(&m, 10);
+    CHECK(!mi_peek(&m, &e));
+    mi_panel_cancel(&m);
+    e = take(&m);
     CHECK(e.kind == MI_CC && e.note == 120 && e.track == 10);
     /* A reset retires the track: its sequencer note gets no off, later trigs no on. */
-    CHECK(mi_seq_trig(&m, 10, 60, 100)); (void)take(&m);
+    CHECK(mi_seq_trig(&m, 10, 60, 100));
+    (void)take(&m);
     mi_reset_track(&m, 10);
     CHECK(!mi_seq_trig(&m, 10, 62, 100));
     return 0;

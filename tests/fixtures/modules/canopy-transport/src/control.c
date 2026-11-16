@@ -11,62 +11,72 @@ volatile uint32_t cp_transport_proof[12];
 
 int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
 {
-    return carrier_prepared && (phase == 2 || phase == 3) && track == 0 && epoch == mi_ledger.epoch &&
-        generation == mi_ledger.generations[0] && mi_transport.applied[0] == 1 &&
-        !mi_ledger.reset_mask && !mi_transport.faults;
+    return carrier_prepared && (phase == 2 || phase == 3) && track == 0 &&
+           epoch == mi_ledger.epoch && generation == mi_ledger.generations[0] &&
+           mi_transport.applied[0] == 1 && !mi_ledger.reset_mask && !mi_transport.faults;
 }
 
 /* The Sound loader closes admission before mutating the current object. */
 void canopy_carrier_suspend(void)
 {
-    carrier_prepared=0;
+    carrier_prepared = 0;
     mi_instance_reset(0);
-    phase=1;
+    phase = 1;
 }
 
 void fx_controls_tick(void)
 {
-    uint32_t sr, value=1, reply[MT_REPLY_WORDS];
+    uint32_t sr, value = 1, reply[MT_REPLY_WORDS];
     /* Combining with test/instrument-session must never admit legacy routes
      * before the emulator explicitly requests and receives a bound session. */
     if (&isp_request) {
-        int result=mi_registry_reply(reply, MT_REPLY_WORDS);
-        if (result == -2) { carrier_prepared=0; phase=4; }
-        if (result != MT_REPLY_WORDS || reply[0] != MT_SESSION_REPLY_MAGIC ||
-            !isp_request || reply[12] != isp_request || phase == 4) goto publish;
+        int result = mi_registry_reply(reply, MT_REPLY_WORDS);
+        if (result == -2) {
+            carrier_prepared = 0;
+            phase = 4;
+        }
+        if (result != MT_REPLY_WORDS || reply[0] != MT_SESSION_REPLY_MAGIC || !isp_request ||
+            reply[12] != isp_request || phase == 4)
+            goto publish;
     }
-    if (!canopy_carrier_prepare) carrier_prepared=1;
+    if (!canopy_carrier_prepare)
+        carrier_prepared = 1;
     else if (phase) {
-        int prepared=canopy_carrier_prepare(phase == 1 && !mi_ledger.reset_mask);
+        int prepared = canopy_carrier_prepare(phase == 1 && !mi_ledger.reset_mask);
         if (prepared < 0) {
             canopy_carrier_suspend();
-        } else carrier_prepared=(uint32_t)prepared;
+        } else
+            carrier_prepared = (uint32_t)prepared;
     }
     if (!phase) {
         /* Initializes the bridge, but cannot admit a route before a heartbeat. */
-        (void)mi_route_enable(0,0,0,0);
+        (void)mi_route_enable(0, 0, 0, 0);
         /* Session arming already reset every track in the new epoch. */
-        if (!&isp_request) mi_instance_reset(0);
-        phase=1;
+        if (!&isp_request)
+            mi_instance_reset(0);
+        phase = 1;
     } else if (phase == 1) {
-        if (carrier_prepared && !mi_config_submit(0,1,0x43505331,&value,1)) phase=2;
-    } else if (phase == 2 && instrument_midi_ready(0,mi_ledger.epoch,mi_ledger.generations[0])) {
-        if (!mi_route_enable(0,0,0,0) && !mi_route_enable(1,0,0,0)) phase=3;
-        else phase=4; /* Explicit test failure; never spin on partial admission. */
+        if (carrier_prepared && !mi_config_submit(0, 1, 0x43505331, &value, 1))
+            phase = 2;
+    } else if (phase == 2 && instrument_midi_ready(0, mi_ledger.epoch, mi_ledger.generations[0])) {
+        if (!mi_route_enable(0, 0, 0, 0) && !mi_route_enable(1, 0, 0, 0))
+            phase = 3;
+        else
+            phase = 4; /* Explicit test failure; never spin on partial admission. */
     }
 publish:
-    sr=dkrt_irq_mask();
-    cp_transport_proof[0]=phase;
-    cp_transport_proof[1]=mi_transport.heartbeat_seen;
-    cp_transport_proof[2]=mi_transport.heartbeat;
-    cp_transport_proof[3]=mi_transport.faults;
-    cp_transport_proof[4]=mi_ledger.reset_mask;
-    cp_transport_proof[5]=mi_transport.applied[0];
-    cp_transport_proof[6]=mi_transport.pending;
-    cp_transport_proof[7]=mi_ledger.count;
-    cp_transport_proof[8]=mi_transport.next_message;
-    cp_transport_proof[9]=mi_ledger.next_token;
-    cp_transport_proof[10]=mi_ledger.generations[0];
-    cp_transport_proof[11]=mi_ledger.epoch;
+    sr = dkrt_irq_mask();
+    cp_transport_proof[0] = phase;
+    cp_transport_proof[1] = mi_transport.heartbeat_seen;
+    cp_transport_proof[2] = mi_transport.heartbeat;
+    cp_transport_proof[3] = mi_transport.faults;
+    cp_transport_proof[4] = mi_ledger.reset_mask;
+    cp_transport_proof[5] = mi_transport.applied[0];
+    cp_transport_proof[6] = mi_transport.pending;
+    cp_transport_proof[7] = mi_ledger.count;
+    cp_transport_proof[8] = mi_transport.next_message;
+    cp_transport_proof[9] = mi_ledger.next_token;
+    cp_transport_proof[10] = mi_ledger.generations[0];
+    cp_transport_proof[11] = mi_ledger.epoch;
     dkrt_irq_restore(sr);
 }

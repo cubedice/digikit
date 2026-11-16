@@ -3,7 +3,7 @@
 #define CANOPY_TWO_PHASE_H
 #include <stdint.h>
 #include "../../../../modules/core/adapters/instrument-play/src/cf/sound-pool.h"
-enum { TP_BATCH_MAX=4 };
+enum { TP_BATCH_MAX = 4 };
 typedef struct {
     /* True only in task context with interrupts enabled. */
     int (*task_ready)(void *);
@@ -15,7 +15,7 @@ typedef struct {
      * compiler and CPU ordering. Every IRQ-side publish/read and every pool
      * observer must use the same exclusion; IRQ must never take task lock. */
     uint32_t (*mask_irq)(void *);
-    void (*restore_irq)(void *,uint32_t);
+    void (*restore_irq)(void *, uint32_t);
     void *context;
 } TpSync;
 /* Reserve at most four consecutive unpublished handles. Slabs are allocated
@@ -24,5 +24,5 @@ typedef struct {
  * this call. A matching release function is required for rollback.
  * This assumes single-core IRQ preemption, no DMA writer and a quiescent
  * allocator/lifetime protocol. No real-time or hardware safety claim. */
-int tp_reserve_batch(SpPool *pool,const TpSync *sync,uint32_t count,uint16_t *first);
+int tp_reserve_batch(SpPool *pool, const TpSync *sync, uint32_t count, uint16_t *first);
 #endif

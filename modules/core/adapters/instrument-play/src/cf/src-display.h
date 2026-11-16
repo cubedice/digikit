@@ -8,23 +8,25 @@ typedef struct {
     uint8_t pending, membership[4], highlight, pedal, mix_bar, mix_requested, mix_applied, focused;
     uint8_t knob[8], rotary, fault, locked;
     uint16_t raw[CP_CONTROLS];
-    uint8_t page, family, fresh, note_count, pitches[4], clock_state, arp_note, arp_active, focus_id;
+    uint8_t page, family, fresh, note_count, pitches[4], clock_state, arp_note, arp_active,
+        focus_id;
     char playing[22];
 } CvDisplay;
 /* Snapshot in, bounded presentation out. Native values are already formatted
  * by their firmware owners; this code never invents a second TUNE/LEVEL scale. */
-void cv_build(CvDisplay *,const CsState *,const IsStatus *,uint32_t now_ms,
-    const char *native_tune,const char *native_level,int save_error);
-void cv_build_owner(CvDisplay *,const CsState *,const IsStatus *,uint32_t now_ms,
-    const char *native_tune,const char *native_level,int save_error,uint32_t owner_mode);
-void cv_preview_notes(CvDisplay *,const uint8_t *pitches,uint32_t count);
+void cv_build(CvDisplay *, const CsState *, const IsStatus *, uint32_t now_ms,
+              const char *native_tune, const char *native_level, int save_error);
+void cv_build_owner(CvDisplay *, const CsState *, const IsStatus *, uint32_t now_ms,
+                    const char *native_tune, const char *native_level, int save_error,
+                    uint32_t owner_mode);
+void cv_preview_notes(CvDisplay *, const uint8_t *pitches, uint32_t count);
 /* Four-byte output including terminator, or five for C#-1. MIDI zero is valid. */
-void cv_note(char out[6],uint32_t note,int valid);
+void cv_note(char out[6], uint32_t note, int valid);
 /* Full native toast text for a custom edit; never used for native TUNE/LEV. */
-void cv_feedback(char out[32],const CsState *,uint32_t encoder);
+void cv_feedback(char out[32], const CsState *, uint32_t encoder);
 /* Visible custom controls with a lock in the held step's effective bank. */
-uint8_t cv_lock_mask(const CsState *,const IlpSnapshot *);
+uint8_t cv_lock_mask(const CsState *, const IlpSnapshot *);
 /* Caller supplies a locked mapper snapshot. Match full token and pitch, never
  * just a pitch or a slot reused by another performance generation. */
-void cv_ownership(CvDisplay *,const IsStatus *,const KbState *,uint32_t now_ms);
+void cv_ownership(CvDisplay *, const IsStatus *, const KbState *, uint32_t now_ms);
 #endif

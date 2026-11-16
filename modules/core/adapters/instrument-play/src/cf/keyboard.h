@@ -6,7 +6,9 @@
 #include "../../../midi-events/src/cf/ownership.h"
 enum { KB_PLAY, KB_ROOT, KB_LEARN };
 enum { KB_OK, KB_FULL, KB_RANGE, KB_EMPTY, KB_STALE, KB_EXHAUSTED };
-typedef struct { uint8_t count, intervals[4]; } KbShape;
+typedef struct {
+    uint8_t count, intervals[4];
+} KbShape;
 /* A key may carry up to three further notes of a recorded chord, as signed
  * intervals from its own note (sequencer trigs with chord-note locks). */
 #define KB_EXTRA 3u
@@ -19,7 +21,10 @@ typedef struct {
     uint8_t extra_count;
     int8_t extra[KB_EXTRA];
 } KbKey;
-typedef struct { uint32_t source, token; uint8_t note, velocity, port, channel; } KbVoice;
+typedef struct {
+    uint32_t source, token;
+    uint8_t note, velocity, port, channel;
+} KbVoice;
 typedef struct {
     uint32_t epoch, generation, next_token, pedals, session, revision, phrase;
     uint8_t mode, previous_mode, type, voicing, selector_base, selector_channel;
@@ -43,16 +48,18 @@ int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8]);
 /* Apply chord/voicing locks only while resolving a sequencer note; retain the
  * accepted keyboard settings and normal ownership of all generated voices.
  * Chord-note locks (IDs 53..55) make that note play its recorded chord. */
-int kb_process_locked(KbState *s,const MiEvent *in,uint32_t count,MiEvent out[8]);
+int kb_process_locked(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8]);
 #ifdef DK_CANOPY_SOUND_PROOF
 /* The selector proof must validate exactly the same inputs and selector rules
  * as the mapper. A refused selector is consumed silently while all other
  * input, particularly note-offs, retains its ordinary behavior. */
-int kb_selector_candidate(const KbState *s,const MiEvent *in,uint32_t count,uint32_t *type);
-int kb_process_locked_selector(KbState *s,const MiEvent *in,uint32_t count,MiEvent out[8],int allow);
+int kb_selector_candidate(const KbState *s, const MiEvent *in, uint32_t count, uint32_t *type);
+int kb_process_locked_selector(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8],
+                               int allow);
 #endif
 /* Resolve a held trig in caller-owned scratch without changing live voices. */
-int kb_preview_locked(KbState *scratch,uint8_t note,const uint16_t *locks,uint32_t count,uint8_t pitches[4]);
+int kb_preview_locked(KbState *scratch, uint8_t note, const uint16_t *locks, uint32_t count,
+                      uint8_t pitches[4]);
 int kb_learn_begin(KbState *s);
 int kb_learn_save(KbState *s, uint32_t session, uint32_t revision);
 void kb_learn_cancel(KbState *s);

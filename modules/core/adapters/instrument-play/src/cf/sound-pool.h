@@ -7,11 +7,21 @@
 /* A 89-entry slab fits a 4 KiB buddy block, including each entry's state. */
 /* The emulator experiment reserves the top two values for Sound lifecycle
  * states; neither can alias an immutable snapshot handle. */
-enum { SP_PER_SLAB=89, SP_MAX_HANDLES=0xfffd, SP_LOAD_ERROR=0xfffe, SP_PENDING_DEFAULT=0xffff,
-    SP_SLABS=(SP_MAX_HANDLES+SP_PER_SLAB-1)/SP_PER_SLAB, SP_BUCKETS=256 };
+enum {
+    SP_PER_SLAB = 89,
+    SP_MAX_HANDLES = 0xfffd,
+    SP_LOAD_ERROR = 0xfffe,
+    SP_PENDING_DEFAULT = 0xffff,
+    SP_SLABS = (SP_MAX_HANDLES + SP_PER_SLAB - 1) / SP_PER_SLAB,
+    SP_BUCKETS = 256
+};
 typedef void *(*SpAlloc)(uint32_t size, void *context);
 typedef void (*SpFree)(void *memory, void *context);
-typedef struct { uint8_t bytes[SC_BYTES]; uint16_t next; uint8_t ready; } SpEntry;
+typedef struct {
+    uint8_t bytes[SC_BYTES];
+    uint16_t next;
+    uint8_t ready;
+} SpEntry;
 typedef struct {
     SpEntry *slab[SP_SLABS];
     uint16_t bucket[SP_BUCKETS];

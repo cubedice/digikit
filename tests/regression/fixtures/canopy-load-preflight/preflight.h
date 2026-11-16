@@ -16,7 +16,6 @@ typedef struct {
  * allocation and the firmware allocator's locks are safe. These conditions
  * have not been proven at all DTII load entry points. */
 int canopy_load_begin(CanopyLoadPreflight *load, SpPool *pool, uint32_t count);
-int canopy_load_publish(CanopyLoadPreflight *load, const uint8_t bytes[SC_BYTES],
-                        uint16_t *handle);
+int canopy_load_publish(CanopyLoadPreflight *load, const uint8_t bytes[SC_BYTES], uint16_t *handle);
 void canopy_load_end(CanopyLoadPreflight *load);
 #endif

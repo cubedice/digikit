@@ -57,16 +57,17 @@ typedef struct {
 /* Volatile byte copy keeps freestanding CF code independent of libc helpers. */
 static inline void mi_event_copy(MiEvent *to, const MiEvent *from)
 {
-    volatile uint8_t *d=(volatile uint8_t *)to;
-    const volatile uint8_t *s=(const volatile uint8_t *)from;
-    for (uint32_t i=0;i<sizeof(*to);++i) d[i]=s[i];
+    volatile uint8_t *d = (volatile uint8_t *)to;
+    const volatile uint8_t *s = (const volatile uint8_t *)from;
+    for (uint32_t i = 0; i < sizeof(*to); ++i)
+        d[i] = s[i];
 }
 void mi_init(MiLedger *m);
 /* Disable/reset the old track before publishing a route. Returns -1 for invalid
  * input, -2 while quarantined. Caller must obtain DSP reset ACK before enabling
  * the new generation. track=MI_NONE removes a route. */
-int mi_route(MiLedger *m, uint32_t port, uint32_t channel, uint32_t track,
-             uint32_t generation, int sequencer);
+int mi_route(MiLedger *m, uint32_t port, uint32_t channel, uint32_t track, uint32_t generation,
+             int sequencer);
 /* Invalidate an instance, retaining FIFO tombstones. Disables its routes and
  * requests a priority reset, independent of ordinary ring capacity. */
 void mi_reset_track(MiLedger *m, uint32_t track);
@@ -94,8 +95,8 @@ void mi_panel_cancel(MiLedger *m);
 int mi_seq_trig(MiLedger *m, uint32_t track, uint32_t note, uint32_t velocity);
 /* Attach an exact step snapshot to the just-enqueued sequencer note. Caller
  * holds the ledger lock. An empty snapshot explicitly clears previous locks. */
-int mi_seq_attach_locks(MiLedger *m,uint32_t track,const uint16_t *locks,uint32_t count);
-int mi_seq_attach_source(MiLedger *m,uint32_t track,const uint16_t source[MI_SOURCE_VALUES]);
+int mi_seq_attach_locks(MiLedger *m, uint32_t track, const uint16_t *locks, uint32_t count);
+int mi_seq_attach_source(MiLedger *m, uint32_t track, const uint16_t source[MI_SOURCE_VALUES]);
 void mi_seq_release(MiLedger *m, uint32_t track);
 /* Peek leaves the ring intact for retransmission. ACK must match its exact head
  * sequence; a duplicate or stale ACK cannot consume a different message. */

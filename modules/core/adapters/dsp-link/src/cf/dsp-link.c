@@ -55,9 +55,10 @@ typedef unsigned char u8;
 #define DL_WINDOW 12u
 #define DL_STALL_FRAMES 900u /* 0.6 s without progress */
 #define DL_END_FRAMES 6u
-#define DL_POSITION_WORDS 16u /* optional DT2 per-frame sideband; never part of a code-channel chunk */
+#define DL_POSITION_WORDS                                                                          \
+    16u /* optional DT2 per-frame sideband; never part of a code-channel chunk */
 #define DL_INSTRUMENT_WORDS 32u /* immediately before position; paired with the DSP-side limit */
-#define DL_LOCK_WORDS 18u /* optional note-locked sideband before instrument packet */
+#define DL_LOCK_WORDS 18u       /* optional note-locked sideband before instrument packet */
 
 #define DL_IDLE 0u
 #define DL_BUSY 1u
@@ -100,11 +101,11 @@ typedef struct DlLink {
     u32 ending;
     u32 dirty;
     u32 win; /* the window of the transfer (appended: the order of the fields above is read by tests) */
-    u32 serial; /* nonzero accepted-request identity; never wraps within a boot */
-    u32 lease; /* exclusive UI-task transaction owner, 0 permits legacy starts */
+    u32 serial;       /* nonzero accepted-request identity; never wraps within a boot */
+    u32 lease;        /* exclusive UI-task transaction owner, 0 permits legacy starts */
     u32 lease_serial; /* nonwrapping boot-local ownership generation */
-    u32 revoked; /* sticky reset after link use; no completion/drainage claim */
-    u32 pad[2]; /* 96 bytes: whole 16-byte cache lines, no code shares a written line */
+    u32 revoked;      /* sticky reset after link use; no completion/drainage claim */
+    u32 pad[2];       /* 96 bytes: whole 16-byte cache lines, no code shares a written line */
 } DlLink;
 
 DlLink dl_link __attribute__((aligned(16)));
@@ -129,9 +130,9 @@ extern volatile u32
 extern void pp_write_frame(u32 tx_queue, u32 suffix_entry) __attribute__((weak));
 /* A persistent-instrument provider requires pattern-position and supplies its
  * matching DSP reply symbol. No waits/allocations; called from the frame ISR. */
-extern void instrument_write_frame(u32 tx_queue, u32 entry, const volatile u16 *rec, const volatile u16 *frame)
-    __attribute__((weak));
-extern void instrument_write_lock_frame(u32 tx_queue,u32 entry) __attribute__((weak));
+extern void instrument_write_frame(u32 tx_queue, u32 entry, const volatile u16 *rec,
+                                   const volatile u16 *frame) __attribute__((weak));
+extern void instrument_write_lock_frame(u32 tx_queue, u32 entry) __attribute__((weak));
 
 static u32 word_at(const u8 *p)
 {
@@ -157,7 +158,8 @@ static int can_send(u32 lease)
 {
     DlLink *l = &dl_link;
     u32 st = l->state;
-    if (l->revoked) return -2;
+    if (l->revoked)
+        return -2;
     if (lease != l->lease)
         return lease ? -2 : -1;
     if (st == DL_BUSY || st == DL_START || l->ending)
@@ -209,12 +211,14 @@ void dl_reset_begin(void)
  * FIFOs until both engines report stopped. State 2 is terminal: hold DSP reset.
  * [state, polls, old MCR, old SR, old RX CSR, old TX CSR, final SR, final CSRs]. */
 volatile u32 dl_reset_hw[8];
-int dl_reset_quiesce_regs(volatile u32 *mcr, volatile u32 *sr,
-                          volatile u8 *cerq, volatile u16 *rx, volatile u16 *tx)
+int dl_reset_quiesce_regs(volatile u32 *mcr, volatile u32 *sr, volatile u8 *cerq, volatile u16 *rx,
+                          volatile u16 *tx)
 {
     u32 i, status, channels;
-    if (!dl_link.revoked) return 0;
-    if (dl_reset_hw[0]) return (int)dl_reset_hw[0];
+    if (!dl_link.revoked)
+        return 0;
+    if (dl_reset_hw[0])
+        return (int)dl_reset_hw[0];
     dl_reset_hw[2] = *mcr;
     dl_reset_hw[3] = *sr;
     dl_reset_hw[4] = *rx;
@@ -243,9 +247,9 @@ int dl_reset_quiesce_regs(volatile u32 *mcr, volatile u32 *sr,
 
 int dl_reset_quiesce(void)
 {
-    return dl_reset_quiesce_regs((volatile u32 *)0xec038000u,
-        (volatile u32 *)0xec03802cu, (volatile u8 *)0xfc044019u,
-        (volatile u16 *)0xfc04539eu, (volatile u16 *)0xfc0453beu);
+    return dl_reset_quiesce_regs((volatile u32 *)0xec038000u, (volatile u32 *)0xec03802cu,
+                                 (volatile u8 *)0xfc044019u, (volatile u16 *)0xfc04539eu,
+                                 (volatile u16 *)0xfc0453beu);
 }
 
 static int send_area(u32 lease, u32 dst_l2, const void *buf, u32 len)
@@ -278,7 +282,8 @@ static int send_window(u32 lease, u32 win, u32 dst_word, const void *buf, u32 le
     int ready = can_send(lease);
     if (ready)
         return ready;
-    if (win == 0u || win > 3u || (len & 3u) || len == 0u || dst_word >= DL_AREA_MAX_WORDS || buf == 0)
+    if (win == 0u || win > 3u || (len & 3u) || len == 0u || dst_word >= DL_AREA_MAX_WORDS ||
+        buf == 0)
         return -2;
     if (l->serial == 0xffffffffu)
         return -2;
@@ -433,7 +438,8 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
     (void)src;
     if (cb)
         cb(rec);
-    if (!pp_write_frame && !instrument_write_frame && st != DL_START && st != DL_BUSY && !l->ending && !l->dirty)
+    if (!pp_write_frame && !instrument_write_frame && st != DL_START && st != DL_BUSY &&
+        !l->ending && !l->dirty)
         return;
     tx = dl_tx_lit;
     e0 = ((u32)len / 2u + 1u) & ~1u;
@@ -441,7 +447,8 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
     words = (total > e0 + 2u && total < 0x600u) ? (total - e0) / 2u : 0u;
     if (pp_write_frame || instrument_write_frame) {
         /* The provider is DT2 1.17 only. Reject another geometry before writing a single queue halfword. */
-        if (len != 0x802 || reclen != 0xabc || words != 174u || !tx || (tx & 3u) || !pp_write_frame) {
+        if (len != 0x802 || reclen != 0xabc || words != 174u || !tx || (tx & 3u) ||
+            !pp_write_frame) {
             if (!l->revoked && (st == DL_START || st == DL_BUSY))
                 finish(l, DL_ERROR, DL_E_GEOMETRY);
             return;
@@ -450,10 +457,12 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
         pp_write_frame(tx, total - 2u * DL_POSITION_WORDS);
         if (instrument_write_frame) {
             words -= DL_INSTRUMENT_WORDS;
-            instrument_write_frame(tx, total - 2u * (DL_POSITION_WORDS + DL_INSTRUMENT_WORDS), rec, src);
+            instrument_write_frame(tx, total - 2u * (DL_POSITION_WORDS + DL_INSTRUMENT_WORDS), rec,
+                                   src);
             if (instrument_write_lock_frame) {
                 words -= DL_LOCK_WORDS;
-                instrument_write_lock_frame(tx,total-2u*(DL_POSITION_WORDS+DL_INSTRUMENT_WORDS+DL_LOCK_WORDS));
+                instrument_write_lock_frame(
+                    tx, total - 2u * (DL_POSITION_WORDS + DL_INSTRUMENT_WORDS + DL_LOCK_WORDS));
             }
         }
         /* Position snapshots are sent even while the acknowledged link is idle. */
@@ -463,7 +472,8 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
     if (l->revoked) {
         /* Suppress future chunks and END packets; old ACKs cannot complete the
          * request. This clears the next queue image, not an active DMA frame. */
-        if (words >= 1u && tx && !(tx & 3u)) put_word(tx, e0, 0, 0);
+        if (words >= 1u && tx && !(tx & 3u))
+            put_word(tx, e0, 0, 0);
         l->dirty = 0;
         return;
     }

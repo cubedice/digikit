@@ -3,6 +3,7 @@
  * Word 2 is reserved; allocation bounds come from the runtime provider.
  * No device UI or module-store ingress. */
 uint32_t ilp_input[67];
-uintptr_t instrument_load_probe(void) {
+uintptr_t instrument_load_probe(void)
+{
     return (uintptr_t)ilp_input;
 }

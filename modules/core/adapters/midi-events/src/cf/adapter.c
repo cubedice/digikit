@@ -4,15 +4,16 @@
 #include "bridge.h"
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
-extern int instrument_keyboard_events(uint32_t, uint32_t, uint32_t,
-    const MiEvent *, uint32_t, MiEvent *) __attribute__((weak));
+extern int instrument_keyboard_events(uint32_t, uint32_t, uint32_t, const MiEvent *, uint32_t,
+                                      MiEvent *) __attribute__((weak));
 extern void dl_reset_begin(void) __attribute__((weak));
 extern int dl_reset_quiesce(void) __attribute__((weak));
 extern int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
     __attribute__((weak));
-extern int instrument_lock_take(uint32_t track,uint16_t out[MI_LOCKS]) __attribute__((weak));
+extern int instrument_lock_take(uint32_t track, uint16_t out[MI_LOCKS]) __attribute__((weak));
 extern void instrument_lock_discard(void) __attribute__((weak));
-extern int instrument_lock_source(uint32_t track,uint32_t wave,uint16_t out[MI_SOURCE_VALUES]) __attribute__((weak));
+extern int instrument_lock_source(uint32_t track, uint32_t wave, uint16_t out[MI_SOURCE_VALUES])
+    __attribute__((weak));
 
 MiLedger mi_ledger;
 MiTransport mi_transport;
@@ -24,9 +25,9 @@ static uint32_t registry_reply_valid;
 static MtReplyGuard registry_guard;
 /* Status arrives at most once per two 32-sample frames (750/s at 48 kHz).
  * Cover the UI receiver's 150 ms freshness window even during busy redraws. */
-enum { STATUS_QUEUE=128, STATUS_WORDS=12 };
-static uint32_t status_words[STATUS_QUEUE][STATUS_WORDS],status_at[STATUS_QUEUE];
-static uint32_t status_head,status_count,status_lost;
+enum { STATUS_QUEUE = 128, STATUS_WORDS = 12 };
+static uint32_t status_words[STATUS_QUEUE][STATUS_WORDS], status_at[STATUS_QUEUE];
+static uint32_t status_head, status_count, status_lost;
 
 static void initialize(void)
 {
@@ -43,9 +44,9 @@ static void initialize(void)
  * retains physical-key tombstones and uses the reserved reset path. */
 static void revalidate_track(uint32_t track)
 {
-    if (track < MI_TRACKS && (!instrument_midi_ready ||
-        !mi_transport.applied[track] ||
-        !instrument_midi_ready(track, mi_ledger.epoch, mi_ledger.generations[track])))
+    if (track < MI_TRACKS &&
+        (!instrument_midi_ready || !mi_transport.applied[track] ||
+         !instrument_midi_ready(track, mi_ledger.epoch, mi_ledger.generations[track])))
         mi_reset_track(&mi_ledger, track);
 }
 
@@ -54,8 +55,7 @@ static void revalidate_routes(void)
     uint32_t i, seen = 0;
     for (i = 0; i < MI_ROUTES; ++i) {
         MiRoute *route = &mi_ledger.routes[i];
-        if (route->enabled && route->track < MI_TRACKS &&
-            !(seen & (1u << route->track))) {
+        if (route->enabled && route->track < MI_TRACKS && !(seen & (1u << route->track))) {
             seen |= 1u << route->track;
             revalidate_track(route->track);
         }
@@ -68,41 +68,59 @@ static void revalidate_routes(void)
  * and velocity<<8 (0x1a + t). Each frame is sent once, so each trig is seen
  * once. Only tracks taking local keys (panel_mask) are played. */
 static uint32_t seq_muted;
-void mi_seq_mute(uint32_t track,int on)
+void mi_seq_mute(uint32_t track, int on)
 {
-    if(track>=MI_TRACKS) return;
-    uint32_t sr=dkrt_irq_mask();
-    if(on) seq_muted|=1u<<track; else seq_muted&=~(1u<<track);
+    if (track >= MI_TRACKS)
+        return;
+    uint32_t sr = dkrt_irq_mask();
+    if (on)
+        seq_muted |= 1u << track;
+    else
+        seq_muted &= ~(1u << track);
     dkrt_irq_restore(sr);
 }
 static void sequencer_frame(const volatile uint16_t *frame)
 {
     uint32_t tracks = mi_ledger.panel_mask & ~seq_muted, trigs, releases, t;
-    if (!frame) return;
-    trigs = frame[0x11]; releases = frame[0x12];
-    if (frame[0x15]) releases = 0xffffu;
+    if (!frame)
+        return;
+    trigs = frame[0x11];
+    releases = frame[0x12];
+    if (frame[0x15])
+        releases = 0xffffu;
     for (t = 0; t < MI_TRACKS; ++t) {
-        if (releases & (1u << t)) mi_seq_release(&mi_ledger, t);
-        if (!(trigs & (1u << t)) || !(tracks & (1u << t))) continue;
+        if (releases & (1u << t))
+            mi_seq_release(&mi_ledger, t);
+        if (!(trigs & (1u << t)) || !(tracks & (1u << t)))
+            continue;
         uint32_t note = frame[1u + t] >> 8, velocity = frame[0x1au + t] >> 8;
-        if (note > 127u) note = 127u;
-        if (velocity > 127u) velocity = 127u;
-        if (!velocity) velocity = 1u;
-        if(mi_seq_trig(&mi_ledger, t, note, velocity) && instrument_lock_take) {
+        if (note > 127u)
+            note = 127u;
+        if (velocity > 127u)
+            velocity = 127u;
+        if (!velocity)
+            velocity = 1u;
+        if (mi_seq_trig(&mi_ledger, t, note, velocity) && instrument_lock_take) {
             uint16_t locks[MI_LOCKS];
-            int count=instrument_lock_take(t,locks);
+            int count = instrument_lock_take(t, locks);
             /* No due lock event means this note uses the unmodified sound. */
-            if(count<0) count=0;
-            if(count>=0 && count<=(int)MI_LOCKS && mi_seq_attach_locks(&mi_ledger,t,locks,(uint32_t)count)) {
-                for(int i=0;i<count;++i) if((locks[i]>>10)==34) {
-                    uint16_t source[MI_SOURCE_VALUES];
-                    if(!instrument_lock_source || !instrument_lock_source(t,locks[i]&1023u,source) ||
-                       !mi_seq_attach_source(&mi_ledger,t,source)) mi_reset_track(&mi_ledger,t);
-                }
+            if (count < 0)
+                count = 0;
+            if (count >= 0 && count <= (int)MI_LOCKS &&
+                mi_seq_attach_locks(&mi_ledger, t, locks, (uint32_t)count)) {
+                for (int i = 0; i < count; ++i)
+                    if ((locks[i] >> 10) == 34) {
+                        uint16_t source[MI_SOURCE_VALUES];
+                        if (!instrument_lock_source ||
+                            !instrument_lock_source(t, locks[i] & 1023u, source) ||
+                            !mi_seq_attach_source(&mi_ledger, t, source))
+                            mi_reset_track(&mi_ledger, t);
+                    }
             }
         }
     }
-    if(instrument_lock_discard) instrument_lock_discard();
+    if (instrument_lock_discard)
+        instrument_lock_discard();
 }
 
 void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_t *record,
@@ -111,15 +129,18 @@ void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_
     uint32_t reply[MT_REPLY_WORDS], i, sr;
     const uint32_t *packet, *observed;
     volatile uint16_t *queue = (volatile uint16_t *)tx;
-    if (!tx || (tx & 3u) || entry != 0x9fcu/2u) return;
+    if (!tx || (tx & 3u) || entry != 0x9fcu / 2u)
+        return;
     sr = dkrt_irq_mask();
     initialize();
-    if (!reset_seen) sequencer_frame(frame);
-    else if (instrument_lock_discard) instrument_lock_discard();
+    if (!reset_seen)
+        sequencer_frame(frame);
+    else if (instrument_lock_discard)
+        instrument_lock_discard();
     if (reset_seen) {
         for (i = 0; i < MT_WORDS; ++i) {
-            queue[2u*(entry+2u*i)+1u] = 0;
-            queue[2u*(entry+2u*i+1u)+1u] = 0;
+            queue[2u * (entry + 2u * i) + 1u] = 0;
+            queue[2u * (entry + 2u * i + 1u) + 1u] = 0;
         }
         dkrt_irq_restore(sr);
         return;
@@ -133,34 +154,44 @@ void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_
      * Missing, reordered or invalid traffic retains the existing invalidation
      * behavior, and the bound-session guard remains authoritative. */
     if (registry_guard.invalid || !mt_reply_valid(observed) ||
-        (registry_guard.expected && !registry_guard.ready)) registry_reply_valid=0;
-    else if (reply[0]!=MT_STATUS_REPLY_MAGIC) {
-        registry_reply_valid=reply[4]==0x49525231u;
+        (registry_guard.expected && !registry_guard.ready))
+        registry_reply_valid = 0;
+    else if (reply[0] != MT_STATUS_REPLY_MAGIC) {
+        registry_reply_valid = reply[4] == 0x49525231u;
         if (registry_reply_valid)
-            for (i = 0; i < MT_REPLY_WORDS; ++i) registry_reply[i] = reply[i];
+            for (i = 0; i < MT_REPLY_WORDS; ++i)
+                registry_reply[i] = reply[i];
     }
-    int progress=mt_reply_tick_guarded(&mi_transport, &mi_ledger, record ? observed : 0, frame_block, &registry_guard);
-    if(registry_guard.invalid || mi_transport.faults) status_head=status_count=status_lost=0;
-    else if(progress>0 && observed && observed[0]==MT_STATUS_REPLY_MAGIC && registry_guard.ready) {
-        if(status_count==STATUS_QUEUE) {
+    int progress = mt_reply_tick_guarded(&mi_transport, &mi_ledger, record ? observed : 0,
+                                         frame_block, &registry_guard);
+    if (registry_guard.invalid || mi_transport.faults)
+        status_head = status_count = status_lost = 0;
+    else if (progress > 0 && observed && observed[0] == MT_STATUS_REPLY_MAGIC &&
+             registry_guard.ready) {
+        if (status_count == STATUS_QUEUE) {
             /* Discard the interrupted transfer, not arbitrary fragment bytes.
              * Report loss once before exposing any newer message. */
-            status_head=status_count=0; status_lost=1;
+            status_head = status_count = 0;
+            status_lost = 1;
         }
-        uint32_t slot=(status_head+status_count)&(STATUS_QUEUE-1);
-        for(i=0;i<STATUS_WORDS;++i) status_words[slot][i]=observed[3+i];
-        status_at[slot]=frame_block; ++status_count;
+        uint32_t slot = (status_head + status_count) & (STATUS_QUEUE - 1);
+        for (i = 0; i < STATUS_WORDS; ++i)
+            status_words[slot][i] = observed[3 + i];
+        status_at[slot] = frame_block;
+        ++status_count;
     }
     revalidate_routes();
-    packet = registry_guard.expected && (!registry_guard.ready || registry_guard.invalid) ? 0 :
-        mt_prepare_mapped(&mi_transport, &mi_ledger, mi_transport.applied, frame_block, instrument_keyboard_events);
+    packet = registry_guard.expected && (!registry_guard.ready || registry_guard.invalid)
+                 ? 0
+                 : mt_prepare_mapped(&mi_transport, &mi_ledger, mi_transport.applied, frame_block,
+                                     instrument_keyboard_events);
     ++frame_block;
     /* Queue entries contain command/data halfwords. Only data halves belong to
      * this callback. Write zeros when idle so old accepted packets do not recur. */
     for (i = 0; i < MT_WORDS; ++i) {
         uint32_t word = packet ? packet[i] : 0;
-        queue[2u*(entry+2u*i)+1u] = (uint16_t)word;
-        queue[2u*(entry+2u*i+1u)+1u] = (uint16_t)(word >> 16);
+        queue[2u * (entry + 2u * i) + 1u] = (uint16_t)word;
+        queue[2u * (entry + 2u * i + 1u) + 1u] = (uint16_t)(word >> 16);
     }
     dkrt_irq_restore(sr);
 }
@@ -172,12 +203,14 @@ void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_
 void mi_dsp_reset_begin(void)
 {
     uint32_t sr = dkrt_irq_mask();
-    if (dl_reset_begin) dl_reset_begin();
-    if (dl_reset_quiesce) (void)dl_reset_quiesce();
+    if (dl_reset_begin)
+        dl_reset_begin();
+    if (dl_reset_quiesce)
+        (void)dl_reset_quiesce();
     if (initialized && !reset_seen) {
         reset_seen = 1;
         registry_reply_valid = 0;
-        status_head=status_count=status_lost=0;
+        status_head = status_count = status_lost = 0;
         registry_guard.invalid = 1;
         mi_recover(&mi_ledger);
         mt_init(&mi_transport);
@@ -199,29 +232,41 @@ int mi_registry_reply(uint32_t *out, uint32_t words)
 {
     uint32_t sr, i;
     int result = 0;
-    if (!out || words < MT_REPLY_WORDS) return -1;
+    if (!out || words < MT_REPLY_WORDS)
+        return -1;
     sr = dkrt_irq_mask();
-    if (registry_guard.invalid) result = -2;
+    if (registry_guard.invalid)
+        result = -2;
     else if (registry_reply_valid) {
-        for (i = 0; i < MT_REPLY_WORDS; ++i) out[i] = registry_reply[i];
+        for (i = 0; i < MT_REPLY_WORDS; ++i)
+            out[i] = registry_reply[i];
         result = MT_REPLY_WORDS;
     }
     dkrt_irq_restore(sr);
     return result;
 }
 
-int mi_status_reply(uint32_t *out,uint32_t words,uint32_t *age_blocks)
+int mi_status_reply(uint32_t *out, uint32_t words, uint32_t *age_blocks)
 {
-    if(!out || words<STATUS_WORDS || !age_blocks) return -1;
-    uint32_t sr=dkrt_irq_mask(); int result=0;
-    if(reset_seen || registry_guard.invalid) result=-2;
-    else if(status_lost) { status_lost=0; result=-3; }
-    else if(status_count) {
-        for(uint32_t i=0;i<STATUS_WORDS;++i) out[i]=status_words[status_head][i];
-        *age_blocks=frame_block-status_at[status_head];
-        status_head=(status_head+1)&(STATUS_QUEUE-1); --status_count; result=STATUS_WORDS;
+    if (!out || words < STATUS_WORDS || !age_blocks)
+        return -1;
+    uint32_t sr = dkrt_irq_mask();
+    int result = 0;
+    if (reset_seen || registry_guard.invalid)
+        result = -2;
+    else if (status_lost) {
+        status_lost = 0;
+        result = -3;
+    } else if (status_count) {
+        for (uint32_t i = 0; i < STATUS_WORDS; ++i)
+            out[i] = status_words[status_head][i];
+        *age_blocks = frame_block - status_at[status_head];
+        status_head = (status_head + 1) & (STATUS_QUEUE - 1);
+        --status_count;
+        result = STATUS_WORDS;
     }
-    dkrt_irq_restore(sr); return result;
+    dkrt_irq_restore(sr);
+    return result;
 }
 
 /* UI-task preparation only; does not send a bind or advertise readiness. */
@@ -233,7 +278,7 @@ int mi_registry_expect_session(uint32_t token, uint32_t sequence)
     result = mt_reply_guard_expect(&registry_guard, token, sequence, frame_block);
     if (!result) {
         registry_reply_valid = 0;
-        status_head=status_count=status_lost=0;
+        status_head = status_count = status_lost = 0;
         /* Never carry legacy MIDI ACK/configuration identity into the new
          * session. Retain physical-key tombstones through the epoch change. */
         if (mi_session_begin(&mi_ledger)) {
@@ -247,15 +292,18 @@ int mi_registry_expect_session(uint32_t token, uint32_t sequence)
     return result;
 }
 
-int mi_config_submit(uint32_t track, uint32_t revision, uint32_t schema,
-                     const uint32_t *values, uint32_t count)
+int mi_config_submit(uint32_t track, uint32_t revision, uint32_t schema, const uint32_t *values,
+                     uint32_t count)
 {
     uint32_t sr = dkrt_irq_mask();
     int result;
     initialize();
-    result = reset_seen || (registry_guard.expected && (!registry_guard.ready || registry_guard.invalid)) ||
-        !mi_transport.heartbeat_seen || mi_transport.faults ? -2 :
-        mt_config_begin(&mi_transport, &mi_ledger, track, revision, schema, values, count);
+    result =
+        reset_seen ||
+                (registry_guard.expected && (!registry_guard.ready || registry_guard.invalid)) ||
+                !mi_transport.heartbeat_seen || mi_transport.faults
+            ? -2
+            : mt_config_begin(&mi_transport, &mi_ledger, track, revision, schema, values, count);
     dkrt_irq_restore(sr);
     return result;
 }
@@ -264,7 +312,10 @@ void mi_transport_recover(void)
 {
     uint32_t sr = dkrt_irq_mask();
     initialize();
-    if (reset_seen) { dkrt_irq_restore(sr); return; }
+    if (reset_seen) {
+        dkrt_irq_restore(sr);
+        return;
+    }
     registry_reply_valid = 0;
     registry_guard.invalid = 1; /* recovery cannot establish a new DSP boot */
     mi_recover(&mi_ledger);
@@ -275,29 +326,35 @@ void mi_transport_recover(void)
 
 int mi_keyboard_recover(void)
 {
-    uint32_t sr=dkrt_irq_mask();
+    uint32_t sr = dkrt_irq_mask();
     initialize();
-    if (reset_seen || !registry_guard.ready || registry_guard.invalid || mi_ledger.epoch==UINT32_MAX) {
-        dkrt_irq_restore(sr); return -1;
+    if (reset_seen || !registry_guard.ready || registry_guard.invalid ||
+        mi_ledger.epoch == UINT32_MAX) {
+        dkrt_irq_restore(sr);
+        return -1;
     }
     mi_recover(&mi_ledger);
-    mt_init(&mi_transport); mi_transport.epoch=mi_ledger.epoch;
-    dkrt_irq_restore(sr); return 0;
+    mt_init(&mi_transport);
+    mi_transport.epoch = mi_ledger.epoch;
+    dkrt_irq_restore(sr);
+    return 0;
 }
 
 int mi_route_enable(uint32_t port, uint32_t channel, uint32_t track, int sequencer)
 {
     uint32_t sr;
     int result = -2;
-    if (port > MI_PANEL || channel >= 16 || (port==MI_PANEL && channel) ||
-        track >= MI_TRACKS || !instrument_midi_ready) return -1;
+    if (port > MI_PANEL || channel >= 16 || (port == MI_PANEL && channel) || track >= MI_TRACKS ||
+        !instrument_midi_ready)
+        return -1;
     sr = dkrt_irq_mask();
     initialize();
-    if (!reset_seen && (!registry_guard.expected || (registry_guard.ready && !registry_guard.invalid)) &&
+    if (!reset_seen &&
+        (!registry_guard.expected || (registry_guard.ready && !registry_guard.invalid)) &&
         mi_transport.heartbeat_seen && !mi_transport.faults && mi_transport.applied[track] &&
         instrument_midi_ready(track, mi_ledger.epoch, mi_ledger.generations[track]))
-        result = mi_route(&mi_ledger, port, channel, track,
-                          mi_ledger.generations[track], sequencer);
+        result =
+            mi_route(&mi_ledger, port, channel, track, mi_ledger.generations[track], sequencer);
     dkrt_irq_restore(sr);
     return result;
 }
@@ -320,26 +377,33 @@ void mi_instance_bind(uint32_t track, uint32_t slot)
 
 uint32_t mi_route_track(uint32_t port, uint32_t channel)
 {
-    if (port > 1 || channel >= 16) return MI_NONE;
+    if (port > 1 || channel >= 16)
+        return MI_NONE;
     const MiRoute *r = &mi_ledger.routes[port * 16u + channel];
     return r->enabled ? r->track : MI_NONE;
 }
 
-int mi_panel_key(uint32_t key,uint32_t note,uint32_t velocity,int down,uint32_t track)
+int mi_panel_key(uint32_t key, uint32_t note, uint32_t velocity, int down, uint32_t track)
 {
-    uint32_t sr=dkrt_irq_mask(); int result=1;
+    uint32_t sr = dkrt_irq_mask();
+    int result = 1;
     initialize();
-    if(!reset_seen) {
-        if(down && track<MI_TRACKS && (mi_ledger.panel_mask&(1u<<track))) revalidate_track(track);
-        if(down) result=mi_panel_down(&mi_ledger,key,note,velocity,track);
-        else mi_panel_up(&mi_ledger,key);
+    if (!reset_seen) {
+        if (down && track < MI_TRACKS && (mi_ledger.panel_mask & (1u << track)))
+            revalidate_track(track);
+        if (down)
+            result = mi_panel_down(&mi_ledger, key, note, velocity, track);
+        else
+            mi_panel_up(&mi_ledger, key);
     }
-    dkrt_irq_restore(sr); return result;
+    dkrt_irq_restore(sr);
+    return result;
 }
 void mi_panel_release(void)
 {
-    uint32_t sr=dkrt_irq_mask();
-    if(initialized && !reset_seen) mi_panel_cancel(&mi_ledger);
+    uint32_t sr = dkrt_irq_mask();
+    if (initialized && !reset_seen)
+        mi_panel_cancel(&mi_ledger);
     dkrt_irq_restore(sr);
 }
 
@@ -347,14 +411,19 @@ int mi_channel_message(const uint8_t *msg, uint32_t len, uint32_t source)
 {
     uint32_t sr, port;
     int consumed;
-    if (!initialized || reset_seen || len != 3 || !msg) return 0;
-    if (source == 2 || source == 4) port = 0;      /* USB cable 0 */
-    else if (source == 8 || source == 16) port = 1; /* DIN */
-    else return 0;
+    if (!initialized || reset_seen || len != 3 || !msg)
+        return 0;
+    if (source == 2 || source == 4)
+        port = 0; /* USB cable 0 */
+    else if (source == 8 || source == 16)
+        port = 1; /* DIN */
+    else
+        return 0;
     sr = dkrt_irq_mask();
     if (msg[0] >= 0x80u && msg[0] < 0xf0u) {
         MiRoute *route = &mi_ledger.routes[port * 16u + (msg[0] & 15u)];
-        if (route->enabled) revalidate_track(route->track);
+        if (route->enabled)
+            revalidate_track(route->track);
     }
     consumed = mi_message(&mi_ledger, port, msg, len);
     dkrt_irq_restore(sr);

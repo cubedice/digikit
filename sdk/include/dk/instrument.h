@@ -126,10 +126,9 @@ typedef struct dk_instrument_in_v7 {
 /* ID is a C identifier, unique among all instruments, machines and effects.
  * Required initializers: .name, .short_name, .reset, .process and .desc.
  * Callbacks and descriptor name SHARC+ symbols in this module, not CF pointers. */
-#define DK_INSTRUMENT(ID, ...)                                                   \
-    DK_DESC_OVERRIDE_BEGIN                                                      \
-    static const dk_desc_instrument dk_desc_instrument_##ID DK_DESC = {           \
-        .kind = DK_DESC_INSTRUMENT, .size = sizeof(dk_desc_instrument), .id = #ID,  \
-        __VA_ARGS__};                                                           \
+#define DK_INSTRUMENT(ID, ...)                                                                     \
+    DK_DESC_OVERRIDE_BEGIN                                                                         \
+    static const dk_desc_instrument dk_desc_instrument_##ID DK_DESC = {                            \
+        .kind = DK_DESC_INSTRUMENT, .size = sizeof(dk_desc_instrument), .id = #ID, __VA_ARGS__};   \
     DK_DESC_OVERRIDE_END
 #endif

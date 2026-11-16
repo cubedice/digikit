@@ -7,6 +7,7 @@ extern int dkrt_midi_rx(const uint8_t *, uint32_t, uint32_t);
 
 int dkrt_midi_dispatch(const uint8_t *msg, uint32_t len, uint32_t source)
 {
-    if (mi_channel_message && mi_channel_message(msg, len, source)) return 1;
+    if (mi_channel_message && mi_channel_message(msg, len, source))
+        return 1;
     return dkrt_midi_rx(msg, len, source);
 }

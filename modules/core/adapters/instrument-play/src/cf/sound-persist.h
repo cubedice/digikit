@@ -15,5 +15,5 @@ void ip_sa_tick(void);
 /* control.c: publish the current state of every bound instance whose Sound
  * lies wholly in [lo, hi), before stock observes those Sounds. Any context;
  * masks interrupts itself. */
-void instrument_sound_flush(uintptr_t lo,uintptr_t hi);
+void instrument_sound_flush(uintptr_t lo, uintptr_t hi);
 #endif

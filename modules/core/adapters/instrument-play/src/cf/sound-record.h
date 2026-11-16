@@ -14,16 +14,16 @@
 #define DK_CANOPY_SOUND_RECORD_H
 #include <stdint.h>
 #include "preset.h"
-enum { SR_BYTES=40, SR_SLOTS=20, SR_FORMAT=0xc1 };
+enum { SR_BYTES = 40, SR_SLOTS = 20, SR_FORMAT = 0xc1 };
 /* 0 on success. Only normalized current state (cp_valid, current clock). */
-int sr_encode(const CpPreset *p,uint8_t out[SR_BYTES]);
+int sr_encode(const CpPreset *p, uint8_t out[SR_BYTES]);
 /* 0 on success; anything invalid leaves *out untouched. */
-int sr_decode(CpPreset *out,const uint8_t in[SR_BYTES]);
+int sr_decode(CpPreset *out, const uint8_t in[SR_BYTES]);
 /* Nonzero for an extension of any CANOPY format, valid or not. Such bytes
  * are carried with their Sound unchanged; only format 1 decodes. */
 int sr_present(const uint8_t in[SR_BYTES]);
 /* Record offset of extension halfword i (0..SR_SLOTS-1). */
 uint32_t sr_offset(uint32_t i);
-void sr_gather(const uint8_t *record,uint8_t out[SR_BYTES]);
-void sr_scatter(uint8_t *record,const uint8_t in[SR_BYTES]);
+void sr_gather(const uint8_t *record, uint8_t out[SR_BYTES]);
+void sr_scatter(uint8_t *record, const uint8_t in[SR_BYTES]);
 #endif

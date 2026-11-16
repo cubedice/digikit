@@ -6,18 +6,18 @@ extern MiTransport mi_transport;
 int mi_channel_message(const uint8_t *msg, uint32_t len, uint32_t source);
 /* Internal core handoff, serialized with MIDI and the frame ISR. */
 int mi_route_enable(uint32_t port, uint32_t channel, uint32_t track, int sequencer);
-int mi_panel_key(uint32_t key,uint32_t note,uint32_t velocity,int down,uint32_t track);
+int mi_panel_key(uint32_t key, uint32_t note, uint32_t velocity, int down, uint32_t track);
 /* While a recorded panel key on `track` is held, its frame trigs (the stock
  * audition of that press) are not played: the panel path already sounds it. */
-void mi_seq_mute(uint32_t track,int on);
+void mi_seq_mute(uint32_t track, int on);
 /* Reset `track` and bind DSP instance slot `slot` to it on that reset. */
 void mi_instance_bind(uint32_t track, uint32_t slot);
 /* The track an enabled USB (0) / DIN (1) channel route plays, or MI_NONE. */
 uint32_t mi_route_track(uint32_t port, uint32_t channel);
 void mi_panel_release(void);
 void mi_instance_reset(uint32_t track);
-int mi_config_submit(uint32_t track, uint32_t revision, uint32_t schema,
-                     const uint32_t *values, uint32_t count);
+int mi_config_submit(uint32_t track, uint32_t revision, uint32_t schema, const uint32_t *values,
+                     uint32_t count);
 /* Last framed registry reply: 16 copied, 0 unavailable, -1 bad capacity,
  * -2 boot trust lost (sticky until cold boot).
  * Output unchanged on 0 or errors. Does not prove freshness or a matching transaction. */
@@ -26,7 +26,7 @@ int mi_registry_reply(uint32_t *out, uint32_t words);
  * empty, -1 bad arguments, -2 trust lost, -3 dropped fragments (retry snapshot).
  * age_blocks is measured at pop, not a freshness assertion. All outputs remain
  * untouched on nonpositive returns. The caller checks generation and UI time. */
-int mi_status_reply(uint32_t *out,uint32_t words,uint32_t *age_blocks);
+int mi_status_reply(uint32_t *out, uint32_t words, uint32_t *age_blocks);
 /* Arm the one-shot expected BIND_SESSION identity before the first write.
  * Does not send a command; clears the cached reply on success. Return codes
  * match mt_reply_guard_expect. The loader must also enforce a UI-clock deadline. */

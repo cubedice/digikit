@@ -32,7 +32,10 @@ typedef struct {
     uint32_t revision, phrase, generated, count;
     CmNote notes[4];
 } CmInput;
-typedef struct { uint32_t kind, lane; CmNote note; } CmEvent;
+typedef struct {
+    uint32_t kind, lane;
+    CmNote note;
+} CmEvent;
 typedef struct {
     CmConfig config;
     CmNote pads[4], pending[4], chord[4], arp;
