@@ -47,6 +47,20 @@ ported branch replaces it only after review, and that needs a force push.
 - The branch's C (133 files) is formatted with the pinned clang-format 22.1.4. Whitespace only: the byte hash of every
   committed object (`tools/nx/object-hash.mjs`) is unchanged; the nine rebuilt objects changed only `source_sha256`.
 
+## Fixed after the merge gate
+
+- b41db8e4: CANOPY's `src-waves.h` and `src-envelope.h` are its generators' output again and listed in
+  `.clang-format-ignore` (`test_ui_tables.py` compares them with the generator); `play-cf`'s bytes did not change. The
+  Python tests that expected a 256 KiB stage expect DT2 160 KiB and DN2 64 KiB (`test_pk_device`, `test_patchkit_dkrt`,
+  `test_patchkit_dkrt_machine`, `test_digikit_menu`). `test_pk_machines` accepts an extern that names another
+  subsystem's rule (the native SRC page list grows through `cf.mem.fn.new` and `cf.mem.fn.free`). The mailbox lifecycle
+  test's reserved-word case uses status flags 2: 0, 1, 3 and 7 are legal.
+- fd4d7bb4: upstream's Transfer source panel offers a source over 256 KiB as a download (`TransferSource.download`, the
+  web fetchers' URL); the bundler already kept CANOPY's 708 KB `wavetables.s` out of the text viewer.
+- Upstream's `samples-store-live` device test: 547daf4e made the store listing report the payload size and keep the
+  stored size (payload and trailer) in `stored`, and left the test comparing `size` with the stored length. The branch
+  changes neither file, so the DN2 half fails on main too (not run there). It now checks both fields.
+
 ## Behaviour change
 
 - Overloop's knobs: an effect param of a builder call goes on the next knob and sets the word of its position, and the SDK
@@ -69,23 +83,46 @@ ported branch replaces it only after review, and that needs a force push.
 - patchkit, dkneeds, dksharc and the runtime host tests; `prims.rs` did not finish within 900 s on this machine (a
   timeout, not a failure).
 
+## Merge gate (fd4d7bb4, 2026-11-16, WSL, DT2 1.17 and DN2 1.12)
+
+`mise run test` (affected from main) ran for 101 minutes: 349 tasks passed, 19 failed and 8 did not run behind them.
+Passed: `digikit/canopy` and `digikit/overloop` `test-conformance`, `@digi/sharc-rig-kit:test-conformance-rig`,
+`core/dsp-voice:test-rig`, and 84 DN2 device halves (among them `core/fx`, `core/fxpages`, `core/dynfx` fx-chain,
+`core/digikit-menu`, `digikit/shot`, `digikit/pluck`, `tools/bootscreen`). No failure is in code the port changed:
+
+- `patchkit apply` killed at 30 s (no stderr), 9 tasks: the load cells of `digikit/probe`, `digikit/freqshift`,
+  `tom/tb303`, `digikit/shot`, `fadedlimes/bd` and `fadedlimes/analog`, `core/fx` fx-send DT2, and `core/dynfx` fx-reuse
+  on both devices. The checkout is on C:, which WSL reads through drvfs: `apply --set emulator` takes 9.2 s there
+  (1.2 s of CPU) and 1.4 s from a copy of the tree on WSL's own disk, with identical bytes. With seven emulators
+  running it passes 30 s.
+- Load timeouts: `@digi/web:test-wasm` (every case over 120 s, 98 minutes in all), `tools/nx/tests/selection.test.ts`
+  (`spawnSync pnpm ETIMEDOUT`), `gate-fast-roots:fixtures` (a wall-clock timeout building the DN2 reset fixture) and
+  `tests/devtools/test_test_outcomes.py` (18/18 alone). The PGO profiles are missing here, so the daemons run without
+  PGO (about 30% slower DSP).
+- Upstream or this machine: the `sharc-native` test `fast_mode1_write_that_enables_interrupts_matches_the_interpreter`
+  (the branch does not touch `packages/emulator/sharc`); `patchkit.wasm is small` (over 2.5 MiB: main's is 2,666,749
+  bytes, this branch's 2,683,417); `gate-fx-dn2` `fx-no-aot` and `tier-quick` (`E2BIG`: `SHARC_FAST_REGIONS` is 568 KB,
+  over Linux's 128 KiB limit for one environment string); `digiemu-desktop:rust-tests` (no `libdbus-1-dev` in WSL);
+  `test_snapread` (the local snapshots are memory-only) and `test_pk_current` (no `out/cfdb/dt2-1.17-emac.sqlite`).
+- Upstream's `samples-store-live` DN2 half: fixed above; it passes alone.
+- `core/runtime-storage-tests` DT2 (`no reply to MidiRpc 11` after 41 s): it passes alone, in 16 s.
+
 ## Open
 
-- Not run: the affected gate (`mise run test`) and `mise run test:full` on this branch, and `module:check canopy`. The
-  last is not tried: its commit stage waits for `MODULE_COMMIT`, which a V2 instrument should log only once its DSP
-  acknowledges the instance, and the stage boots with a zero DSP.
-- Disk: a session refuses to start under 50 GB free on C:. `dist/session-cache` grows with every conformance key (8 GB
-  for this branch's); `out/cache` and three cached card images under `dist/session-cache/dt2-0/cards` were deleted on
-  2026-11-16 to make room (both rebuild on demand).
-- `expectRuntimeReady` re-runs `patchkit apply` with a 30 s timeout: under load (the all-modules rig run beside it) the
-  `canopy-overloop` set took longer and the CANOPY cell failed there. Run the cells on an idle machine.
+- Not run: `mise run test:full` on this branch, a gate pass of the failures above on an idle machine or a checkout on
+  WSL's disk, and `module:check canopy`. The last is not tried: its commit stage waits for `MODULE_COMMIT`, which a V2
+  instrument should log only once its DSP acknowledges the instance, and the stage boots with a zero DSP.
+- Disk: a session refuses to start under 50 GB free. A card image is the whole 24.8 GB card, sparse: on NTFS through
+  WSL (C: or D:) it is fully allocated and its build passes plusdrive's 30 to 60 s timeouts, so `dist/session-cache` is
+  a symlink to `~/.cache/digikit/session-cache` on WSL's ext4 disk (about 140 MB with the cards). `out/cache`, the old
+  card images and a 580 GB session cache on D: were deleted on 2026-11-16 (all rebuild on demand).
+- `expectRuntimeReady` and the FX fixtures run `patchkit apply` with a 30 s timeout (`runtime/patchkit-exec.ts`): on this
+  machine that holds only on an idle machine or with the checkout on WSL's disk (see the gate above).
 - Overloop is not run by the rig's effect suite (`rig_skip`): its DSP reads `core/loop-storage`'s and
   `core/pattern-position`'s data, which the rig does not place. Its own tests run it with stand-ins. A rig fixture for
   those two would remove the exemption.
-- No DN2 firmware on this machine: nothing ran on DN2, and the kit's `stereo.test.ts` fails without the DN2 section
-  (`out/sections/dn2-1.12`).
 - `patchkit needs` reports CANOPY's DSP section as malformed: the legacy reader refuses version 7 and 8 sections, as on
   the branch before the port, so the device menu shows no needs for CANOPY. `needs_of_v2` reads them.
-- Not ported from the branch: the web app's bundle changes (CRLF normalisation, large-source downloads; upstream
-  reworked those files, so `SourcePanel.tsx` is main's again).
+- Not ported from the branch: the web bundle's CRLF normalisation (upstream reworked those files). Large-source
+  downloads are ported (fd4d7bb4).
 - Hardware: not installed.
