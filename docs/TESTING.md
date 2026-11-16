@@ -622,6 +622,7 @@ The suites do not run a persistent V2 instrument (`[[machine]] instrument = true
 module.toml says why the rig cannot run it, `[conformance] rig_skip = "<why>"` (its DSP reads data of a core module that the rig does
 not place); such a module's own tests run its DSP. `[conformance] patch_set = "<set>"` names the patch set the module's load cell
 (`tests/conformance`) and `module:check`'s commit stage boot, for a module that needs a patched-in core module the `emulator` set lacks.
+The load cell expects no runtime voice row of a V2 instrument: core/instrument-play publishes its row in its own table.
 
 ### SHARC-only rig (`sharc-rig`, T1g slice)
 

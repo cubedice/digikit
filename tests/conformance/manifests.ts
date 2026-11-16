@@ -13,6 +13,9 @@ export interface RuntimeModule {
   ports?: string[];
   /** `[conformance] patch_set`: the patch set the load cell boots, for a module that needs a patched-in core module the `emulator` set lacks. */
   patchSet?: string;
+  /** A persistent V2 instrument (`[[machine]] instrument = true`): core/instrument-play publishes its voice row in its own table, so the
+   * runtime's registry holds none. */
+  instrument?: boolean;
 }
 
 /** The `[module]` table of a module.toml as flat key -> raw value text (only the keys read below). */
@@ -53,7 +56,11 @@ function readModule(manifest: string, scoped = false): RuntimeModule | undefined
   if (typeof id !== 'string' || !/^[^/\s]+\/[^/\s]+$/.test(id)) {
     throw new Error(`${manifest}: invalid module id`);
   }
-  const doc = parse(text) as { module?: { ports?: unknown }; conformance?: { patch_set?: unknown } };
+  const doc = parse(text) as {
+    module?: { ports?: unknown };
+    conformance?: { patch_set?: unknown };
+    machine?: { instrument?: unknown }[];
+  };
   const ports = scoped ? table.ports : doc.module?.ports;
   if (ports !== undefined && (!Array.isArray(ports) || !ports.every((port) => typeof port === 'string'))) {
     throw new Error(`${manifest}: ports must be an array of strings`);
@@ -69,6 +76,7 @@ function readModule(manifest: string, scoped = false): RuntimeModule | undefined
     dsp: dynamic === true && type !== 'service',
     ports: (ports as string[] | undefined) ?? [],
     ...(patchSet === undefined ? {} : { patchSet }),
+    ...(doc.machine?.some((machine) => machine.instrument === true) ? { instrument: true } : {}),
   };
 }
 

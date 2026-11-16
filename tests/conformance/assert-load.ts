@@ -79,7 +79,12 @@ export async function expectModuleLoad(
     expect(loaded.needs, 'loader reports the runtime version the prepared module needs').toBe(bytes.readUInt32BE(0x30) & 0x7fffffff);
     if (module.dsp) {
       expect(loaded.dsp_len, 'module DSP image was allocated').toBeGreaterThan(0);
-      if (module.type === 'machine') {
+      if (module.type === 'machine' && module.instrument) {
+        // core/instrument-play publishes a V2 instrument's voice row in its own table when a track admits it (the module's own device tests
+        // play it); the runtime's registry holds none
+        expect(loaded.rows, 'a V2 instrument has no legacy DSP voice row').toBe(0);
+        expect(loaded.types, 'machine has a published firmware type').toHaveLength(1);
+      } else if (module.type === 'machine') {
         expect(loaded.rows, 'machine has a published DSP voice row').toBeGreaterThan(0);
         expect(loaded.types, 'machine has a published firmware type').toHaveLength(1);
       }
