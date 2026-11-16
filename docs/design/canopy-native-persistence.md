@@ -467,7 +467,7 @@ emulator boot from the card produced after that forced restart stalled before
 instrument initialization in `digi-session-MvdVt2`; that combined sequence
 is not a passing cold-power-cycle test. **[D][O]**
 
-The opt-in `pattern-ownership.device.test.ts` exercises the related live
+The opt-in `pattern-ownership.manual.device.test.ts` exercises the related live
 handoff: edit CANOPY independently on A01 and A02, save the project, then
 return to A01. The production baseline retained A02's chord and strum on A01
 (`out/canopy-pattern-ownership/digi-session-hTvgJd/probe.json`). The isolated

@@ -2,7 +2,7 @@
 
 Disposable DTII 1.17 emulator only; never install this fixture on hardware.
 Set `DIGI_CANOPY_LIVE_PROOF=1` when running the named device test
-`modules/machines/canopy/tests/live-transaction-proof.device.test.ts` with the
+`modules/machines/canopy/tests/live-transaction-proof.manual.device.test.ts` with the
 existing regression Vitest configuration and DTII runtime inputs.
 
 The test selects CANOPY on two tracks, then registers the proof-only public
