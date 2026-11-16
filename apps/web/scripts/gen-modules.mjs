@@ -163,6 +163,7 @@ function sourceFiles(dir) {
 /** Preserve every build source; large generated tables download without entering the text viewer. */
 export function shipSources(dir, out) {
   const source = sourceFiles(dir);
+  /** @type {Record<string, number>} */
   const sourceDownloads = {};
   for (const f of source) {
     const bytes = readFileSync(join(dir, f));

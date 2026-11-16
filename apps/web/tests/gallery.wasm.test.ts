@@ -3,7 +3,7 @@
 // of the gallery's build step is gallery.test.ts.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { parse } from 'smol-toml';
 import { test } from 'vitest';

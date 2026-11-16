@@ -73,6 +73,7 @@ export function createWebEnv(app: () => TransferApp): { env: TransferEnv; usable
   const { library, source } = createWebLibrary({
     bytes: async (path) => new Uint8Array(await (await fetchOk(`${BASE}modules/${path}`)).arrayBuffer()),
     text: async (path) => (await fetchOk(`${BASE}modules/${path}`)).text(),
+    url: (path) => `${BASE}modules/${path}`,
   });
 
   const webEnv: TransferEnv = {
