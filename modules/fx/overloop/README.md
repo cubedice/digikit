@@ -29,7 +29,7 @@ A capture includes the audio block at its opening boundary and excludes the bloc
 
 The reservation remains 8 MiB; usable audio is 1,048,544 stereo float32 frames (about 21.84 seconds at 48 kHz), followed by a guard. At 120 BPM this holds 128 normal-speed steps. If a requested recording runs past capacity, it aborts to live audio; it never presents a truncated take as a complete loop. The length knob changes capture duration, not the allocator reservation.
 
-Build and package using `mise run module:build -- modules/fx/overloop` and `mise run module:pack -- digikit/overloop --device dt2`. The capture consumer is exercised by `tests/patchkit/test_overloop.py`; the event bridge has separate ColdFire and DSP tests.
+Build and package using `mise run module:build -- modules/fx/overloop` and `mise run module:pack -- digikit/overloop --device dt2`. The capture consumer is exercised by `modules/fx/overloop/tests/test_overloop.py`; the event bridge has separate ColdFire and DSP tests.
 
 The named `overloop` firmware patch set includes the required adapters: `mise run patch -- --firmware firmware/Digitakt_II_OS1.17.syx --set overloop -o out/patch/overloop-dt2.syx`.
 

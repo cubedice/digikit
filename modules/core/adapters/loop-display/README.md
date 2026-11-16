@@ -23,6 +23,6 @@ The native title remains above the performance page. Layout uses top-left coordi
 
 Parameter IDs remain REC=0, START=1, FADE=2, LENGTH=3. Physical encoder positions are A REC, B START, C LENGTH, D FADE, so saved kits retain their meaning.
 
-Component checks: `tests/patchkit/test_loop_display.py`, `tests/patchkit/test_overloop.py`. Running-firmware scenario: `tests/regression/runtime/overloop-display.test.ts`, using the `overloop` patch set and a separately prepared `out/regression/modules/dt2/overloop.dkm`. Hardware behavior is unverified.
+Component checks: `tests/patchkit/test_loop_display.py`, `modules/fx/overloop/tests/test_overloop.py`. Running-firmware scenario: `modules/fx/overloop/tests/display.manual.device.test.ts`, using the `overloop` patch set and a separately prepared `out/regression/modules/dt2/overloop.dkm`. Hardware behavior is unverified.
 
 Run the experimental device scenario with `pnpm --filter @digi/regression test:overloop` after preparing the daemon, ready inputs, synthetic sample card and DKM as described in `docs/TESTING.md`. It is a separate Vitest project so normal runtime acceptance does not require experimental firmware or a DTII-only module.

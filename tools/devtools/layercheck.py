@@ -712,6 +712,18 @@ SC_RUNTIME_TEST = (
     "modules/core/runtime/tests/capacity/inferred/inferred-needs.device.test.ts"
 )
 SC_RUNTIME_PROJECT = "modules/core/runtime/tests/capacity/inferred/project.json"
+# This checker and its test name the module sources that the include exceptions
+# above (CANOPY_INCLUDES, CARRIER_INCLUDES) grant to the two fixtures.
+SC_CHECKER = ("tools/devtools/layercheck.py", "tests/devtools/test_layercheck.py")
+# core/instrument-play's admission policy serves one instrument, CANOPY. The runtime
+# does not tell an adapter which loaded module provides the admitted instrument, so
+# the adapter's settings hook (dk_app_instrument_module_settings) and its host
+# harness compare that module's id. Only these files and only this id; remove the
+# exception once the runtime publishes the instrument's module record.
+SC_POLICY_ID = {
+    "modules/core/adapters/instrument-play/src/cf/control.c": "digikit/canopy",
+    "tests/regression/host/canopy-settings.c": "digikit/canopy",
+}
 SC_SKIP_DIRS = {".git", "out", "node_modules", "target", "firmware", ".venv", "dist"}
 SC_HINT = (
     "move the test or model into the module's tests/ directory, use a fixture module (tests/fixtures/modules), "
@@ -1108,6 +1120,7 @@ def sc_hits(root: Path, mods: list[Module]) -> list[tuple[str, int, Module, str]
             f.endswith(".md")
             or f.startswith(SC_ALLOWED_PREFIXES)
             or f == SC_RUNTIME_TEST
+            or f in SC_CHECKER
         ):
             continue
         data = (root / f).read_bytes()
@@ -1124,7 +1137,7 @@ def sc_hits(root: Path, mods: list[Module]) -> list[tuple[str, int, Module, str]
                     text[:start] + re.sub(r"[^\n]", " ", text[start:end]) + text[end:]
                 )
         for m, d, pat in pats:
-            if f.startswith(d + "/"):
+            if f.startswith(d + "/") or SC_POLICY_ID.get(f) == m.id:
                 continue
             for n, line in enumerate(text.splitlines(), 1):
                 if pat.search(line):

@@ -3,6 +3,7 @@
 These assertions do not prove that either call site is exhaustive or safe to
 hook. In particular, the second caller does not inspect the load result.
 """
+
 import hashlib
 import tomllib
 from pathlib import Path
@@ -18,7 +19,7 @@ def test_project_load_callers_handle_results_differently():
     )
 
     def code(address, length):
-        return main[address - 0x40000400:address - 0x40000400 + length].hex()
+        return main[address - 0x40000400 : address - 0x40000400 + length].hex()
 
     # Card wrapper calls its loader, saves d0's low byte, then branches on it.
     assert code(0x40046C62, 4) == "4ebafca2"
@@ -29,7 +30,9 @@ def test_project_load_callers_handle_results_differently():
 
     # The opt-in fixture replaces exactly the call and the next instruction.
     fixture = tomllib.loads(
-        (root / "tests/regression/fixtures/canopy-load-preflight/module.toml").read_text()
+        (
+            root / "tests/regression/fixtures/canopy-load-preflight/module.toml"
+        ).read_text()
     )
     for op in fixture["op"]:
         address = 0x400DB3B2 + op["offset"]
@@ -47,7 +50,7 @@ def test_memory_project_command_does_not_offer_checked_refusal():
     )
 
     def code(address, length):
-        return main[address - 0x40000400:address - 0x40000400 + length].hex()
+        return main[address - 0x40000400 : address - 0x40000400 + length].hex()
 
     # Dispatcher compares command 0x1d before preparing a 0xdd9604-byte buffer.
     assert code(0x400D5198, 8) == "701db0816600080c"

@@ -47,4 +47,4 @@ def test_frame_scan_follows_lea_and_calls():
 def test_frame_scan_sign_extends_link_word_displacement():
     # link.w a6,#-0x2e0; unlk a6; rts. Capstone renders #$fd20.
     f = frame_depth.scan(_sec(".text.f", "4e56fd20" + "4e5e" + "4e75"), [])
-    assert f.ext == 0x2e0 + 4
+    assert f.ext == 0x2E0 + 4

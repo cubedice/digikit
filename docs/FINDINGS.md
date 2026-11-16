@@ -266,3 +266,8 @@ as chord-note locks; how step recording takes keyboard notes **[O]**).
 CANOPY loading: [boot transfers and their size](findings/126-canopy-boot-loading.md)
 (**[D]/[O]**, larger acknowledged image transfers reduce loader scheduling
 overhead; physical boot-time improvement not yet measured).
+
+CANOPY persistence: [Sound settings outside Sound memory](findings/127-canopy-sound-persistence.md)
+(**[D]/[O]**, a 40-byte extension in record halfwords stock zero-fills and never
+loads; an association store that follows whole-Sound memcpy/memset, loads,
+initialization and machine changes; emulator only, not on hardware).

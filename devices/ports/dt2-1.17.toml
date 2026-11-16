@@ -593,6 +593,16 @@ mark = "D"
 rule = "fw/machine:cf_window_hash"
 
 [[anchor]]
+name = "cf.machine.site.sound_init_slices"
+cpu = "cf"
+kind = "code"
+addr = 0x400e65c8
+len = 8
+sha256 = "4e2540c6152ba4c987223c9545c937af9070b5db5d1a1cf1d76735b9b06436f9"
+mark = "D"
+rule = "fw/machine:cf_window_hash"
+
+[[anchor]]
 name = "cf.machine.site.sound_load_type_bound"
 cpu = "cf"
 kind = "code"
@@ -601,6 +611,26 @@ len = 2
 sha256 = "ce7b207f44bdfcb4050755ac2969bf23f44a92ef9c1139df06caf97b9b3aedd1"
 mark = "D"
 rule = "fw/machine:cf_func"
+
+[[anchor]]
+name = "cf.machine.site.sound_serialize"
+cpu = "cf"
+kind = "code"
+addr = 0x400dba94
+len = 8
+sha256 = "3e47fdc2a5af6492a822beaa4ccd4bb53d5f5b2111c689c9f6f1cca2a3df15e2"
+mark = "D"
+rule = "fw/machine:cf_window_hash"
+
+[[anchor]]
+name = "cf.machine.site.sound_type_write"
+cpu = "cf"
+kind = "code"
+addr = 0x4005179e
+len = 6
+sha256 = "be539814216e4bf860d53540d1e63928e9fec4ce677019d6c9040aacdd9ea3b9"
+mark = "D"
+rule = "fw/machine:cf_window_hash"
 
 [[anchor]]
 name = "cf.machine.site.srcpage"
@@ -2427,6 +2457,26 @@ mark = "D"
 rule = "fw/project:cf_func"
 
 [[anchor]]
+name = "cf.project.site.kit_table_lit"
+cpu = "cf"
+kind = "code"
+addr = 0x4003407c
+len = 4
+sha256 = "f685f969fed357082c24f05f28b02823565ea14e012a30bf86dd9c8e2128d0bc"
+mark = "D"
+rule = "fw/project:cf_window_hash"
+
+[[anchor]]
+name = "cf.project.site.sound_pool_lit"
+cpu = "cf"
+kind = "code"
+addr = 0x4012029c
+len = 4
+sha256 = "3dfce52325aa14689fb6bceeeef74045eaa2e8a0829e614d111c1be19f179d70"
+mark = "D"
+rule = "fw/project:cf_window_hash"
+
+[[anchor]]
 name = "cf.rtos.fn.create_main"
 cpu = "cf"
 kind = "data"
@@ -3224,6 +3274,36 @@ mark = "D"
 rule = "fw/text:cf_func"
 
 [[anchor]]
+name = "cf.util.site.bzero"
+cpu = "cf"
+kind = "code"
+addr = 0x40135db4
+len = 8
+sha256 = "b6d4ea324aa1bdfb0e13550aa3d42a8a706492aa3867a3f9171afb3777617471"
+mark = "D"
+rule = "fw/util:cf_window_hash"
+
+[[anchor]]
+name = "cf.util.site.memcpy"
+cpu = "cf"
+kind = "code"
+addr = 0x40136388
+len = 8
+sha256 = "bb19a1dbec6b271e7f1b1669acbf01ed93b42e2545a2db01fea716fda4a47905"
+mark = "D"
+rule = "fw/util:cf_window_hash"
+
+[[anchor]]
+name = "cf.util.site.memset"
+cpu = "cf"
+kind = "code"
+addr = 0x401363d0
+len = 8
+sha256 = "ea0436f1081dbf044018fd259935863fcd60f42f50593d70ea509f89168c5aca"
+mark = "D"
+rule = "fw/util:cf_window_hash"
+
+[[anchor]]
 name = "cf.usb.data.port_table"
 cpu = "cf"
 kind = "data"
@@ -3967,6 +4047,21 @@ site = "cf.machine.site.sound_deserialize"
 mode = "replace"
 
 [[hook]]
+name = "cf.machine.hook.sound_init_slices"
+site = "cf.machine.site.sound_init_slices"
+mode = "replace"
+
+[[hook]]
+name = "cf.machine.hook.sound_serialize"
+site = "cf.machine.site.sound_serialize"
+mode = "replace"
+
+[[hook]]
+name = "cf.machine.hook.sound_type_write"
+site = "cf.machine.site.sound_type_write"
+mode = "replace"
+
+[[hook]]
 name = "cf.machine.hook.srcpage"
 site = "cf.machine.site.srcpage"
 mode = "replace"
@@ -4136,6 +4231,21 @@ mode = "replace"
 name = "cf.test.hook.kit_vfunc_12"
 site = "cf.test.fn.kit_vfunc_12"
 mode = "before"
+
+[[hook]]
+name = "cf.util.hook.bzero"
+site = "cf.util.site.bzero"
+mode = "replace"
+
+[[hook]]
+name = "cf.util.hook.memcpy"
+site = "cf.util.site.memcpy"
+mode = "replace"
+
+[[hook]]
+name = "cf.util.hook.memset"
+site = "cf.util.site.memset"
+mode = "replace"
 
 [[hook]]
 name = "cf.usb.hook.init"

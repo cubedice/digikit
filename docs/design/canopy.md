@@ -1687,7 +1687,7 @@ No sustained-AMP workaround should be required to play the keyboard.
 Prove that the engine does not kill the custom renderer prematurely at its own envelope termination, and that stock shared velocity is neutral. A low-velocity first note must not reduce the volume of a later high-velocity note. Inspect both module output and final track output.
 
 The raw-adapter component probe in
-[test_canopy_carrier.py](../../tests/patchkit/test_canopy_carrier.py) now exercises
+[test_canopy_carrier.py](../../modules/machines/canopy/tests/test_canopy_carrier.py) now exercises
 the sine kernel through the production voice wrapper. It checks inactive-track
 rendering, stock retrigger independence, stereo-copy state preservation and
 restarting after local QUIET. This is pre-AMP evidence only: the test does not run
@@ -2228,7 +2228,7 @@ and compares the same pitch at velocities 40 and 127 while DIN G stays held.
 An injected callback-generation fault must produce silence and acknowledged
 DETACH before DSP allocation release; published CF storage remains until reboot.
 
-Acceptance: `tests/regression/runtime/canopy-stage1.test.ts` passes in 347.66 s;
+Acceptance: `modules/machines/canopy/tests/stage1.manual.device.test.ts` passes in 347.66 s;
 log `out/canopy-stage1-live.log`, PCM and fits `out/canopy-stage1*`.
 The package uses V2 reset/process entries, not a stock type-1 shadow. The adapter
 is optional, DTII-only, one instance, track 1 (since 2026-11-11 the lowest track

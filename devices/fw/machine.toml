@@ -502,6 +502,26 @@ users = ["core/machines"]
 doc = "Sixth of six DT2 sites that read the per-type byte table (38 bytes); core/machines rewrites the type bound (moveq at +1) and the table reference (+0x22) for the added types."
 
 [[site]]
+name = "cf.machine.site.sound_init_slices"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 0, sha256 = "cf35a7997302535c3d204e1be781c69fae5ce542c5396acc147689084e905806", len = 8 }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 Sound initializer, after its type helper: `clr.l 0x13c(a2); lea 0x140(a2),a2` with a2 the Sound being reset; the slice table is cleared next."
+
+[[hook]]
+name = "cf.machine.hook.sound_init_slices"
+site = "cf.machine.site.sound_init_slices"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = ["a2"], clobbers = [] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "Sees every Sound the initializer resets; the hook preserves all registers and replays both displaced instructions, which set the stock CCR."
+
+[[site]]
 name = "cf.machine.site.sound_load_type_bound"
 was = ["cf.machine.site.persist", "cf.machines.persist"]
 cpu = "cf"
@@ -510,6 +530,46 @@ rule.dn2 = { kind = "cf_func", hash = "f766c42c6be0674aadb1177f3f536367", offset
 mark = "D"
 users = ["core/machines"]
 doc = "The immediate of `(u8)(type + 1) < imm` in the sound loader (+0x9c); core/machines raises it by the added machine count so a stored added type survives loading."
+
+[[site]]
+name = "cf.machine.site.sound_serialize"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 0, sha256 = "b67cc69a0d3b19076274334855d74b6e3222242e620d28af81ed938cfccbf89f", len = 8 }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 v3 Sound writer prologue, `bool f(record *dst, Sound *src, u32 flag)`: `lea -0x24(sp),sp; movem.l d2-d5/a2-a6,(sp)`. It zero-fills record positions 0..89 before writing 69 parameters."
+
+[[hook]]
+name = "cf.machine.hook.sound_serialize"
+site = "cf.machine.site.sound_serialize"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "Wraps the Sound writer: the hook replays the displaced prologue, calls the stock body and returns its result unchanged."
+
+[[site]]
+name = "cf.machine.site.sound_type_write"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 0, sha256 = "eebb3e964695493fc4c923470e3a1afa224677795334d4709bcbee6cdaca57b7", len = 6 }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 track machine change: `move.b d2,0xa2(a0); cmp.l d6,d2` with a0 the track's Sound, d2 the new and d6 the old type."
+
+[[hook]]
+name = "cf.machine.hook.sound_type_write"
+site = "cf.machine.site.sound_type_write"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = ["a0", "d2", "d6"], clobbers = [] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "Sees a direct machine-type write; the hook preserves all registers and replays the write and the compare, whose flags stock tests next."
 
 [[site]]
 name = "cf.machine.site.srcpage"

@@ -1,14 +1,22 @@
 /* DT2 1.17 deserializer wrapper. C ABI args: destination, serialized Sound.
  * Keep the stock result and all callee-saved registers; bracket the whole call.
- * The original eight-byte prologue is replayed only by ip_sound_original. */
+ * The original eight-byte prologue is replayed only by ip_sound_original.
+ * A 40-byte frame keeps the record's CANOPY extension (sound-persist.c) from
+ * before the stock body until its result is known; the store learns the
+ * result before ip_sound_end lets an instance readmit the Sound. */
     .text
     .even
     .globl ip_sound_entry
 ip_sound_entry:
-    lea -16(%sp),%sp
+    lea -56(%sp),%sp
     movem.l %d2-%d3/%a2-%a3,(%sp)
-    move.l 20(%sp),%a2
-    move.l 24(%sp),%a3
+    move.l 60(%sp),%a2
+    move.l 64(%sp),%a3
+    pea 16(%sp)
+    move.l %a3,-(%sp)
+    move.l %a2,-(%sp)
+    jsr ip_sa_load_begin
+    lea 12(%sp),%sp
     move.l %a3,-(%sp)
     move.l %a2,-(%sp)
     jsr ip_sound_begin
@@ -19,12 +27,17 @@ ip_sound_entry:
     bsr.w ip_sound_original
     addq.l #8,%sp
     move.l %d0,%d3
+    pea 16(%sp)
+    move.l %d3,-(%sp)
+    move.l %a2,-(%sp)
+    jsr ip_sa_load_end
+    lea 12(%sp),%sp
     move.l %d2,-(%sp)
     jsr ip_sound_end
     addq.l #4,%sp
     move.l %d3,%d0
     movem.l (%sp),%d2-%d3/%a2-%a3
-    lea 16(%sp),%sp
+    lea 56(%sp),%sp
     rts
 ip_sound_original:
     lea -32(%sp),%sp

@@ -12,17 +12,15 @@ import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 
-// Unregistered emulator-only clipboard handoff proof. The experimental
-// modules are unsafe for hardware. Passing this test does not prove all copy paths.
+// CANOPY Sound persistence (finding 127): one track Sound copy and paste with
+// the stock panel. The paste must carry the settings at copy time. Passing
+// this test does not prove all copy paths.
 vi.setConfig({ hookTimeout: 600_000 });
-const enabled = process.env.DIGI_CANOPY_COPY_HANDOFF === '1';
-if (enabled) {
 const options = liveOptions('dt2', { fresh: true });
 const fixtureRoot = fs.realpathSync(path.join(repoRoot(), 'out'));
-const cardSeed = enabled ? fs.mkdtempSync(path.join(fixtureRoot, 'canopy-copy-handoff-card-')) : undefined;
+const cardSeed = fs.mkdtempSync(path.join(fixtureRoot, 'canopy-copy-handoff-card-'));
 const moduleFile = moduleArtifact('dt2', 'digikit/canopy');
 beforeAll(() => {
-  if (!cardSeed) return;
   for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
     fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
   const modules = path.join(cardSeed, 'digikit', 'modules');
@@ -30,7 +28,6 @@ beforeAll(() => {
   fs.copyFileSync(moduleFile, path.join(modules, 'canopy.dkm'));
 });
 afterAll(() => {
-  if (!cardSeed) return;
   const owned = fs.realpathSync(cardSeed);
   if (path.dirname(owned) !== fixtureRoot || !path.basename(owned).startsWith('canopy-copy-handoff-card-'))
     throw new Error('Refusing to remove an unowned card fixture');
@@ -38,7 +35,7 @@ afterAll(() => {
 });
 const h = withSession({ ...options, card: cardSeed, dsp: 'sharc', restart: false });
 
-test.skipIf(!enabled)('copy an edited CANOPY Sound to another track with its settings',
+test('copy an edited CANOPY Sound to another track with its settings',
   { timeout: 900_000 }, async () => {
     const session = h.session;
     const artifacts = path.join(repoRoot(), 'out/canopy-copy-handoff', path.basename(session.runDir));
@@ -47,8 +44,9 @@ test.skipIf(!enabled)('copy an edited CANOPY Sound to another track with its set
     onTestFinished(() => fs.writeFileSync(path.join(artifacts, 'probe.json'), JSON.stringify(evidence, null, 2)));
     const { syx, plan } = await prepareRuntimePlanOffline(
       session.options, session.runDir, artifacts,
-      ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_admission', 'ip_src_debug', 'src_state', 'canopy_sound_proof'],
-      { modules: ['test/instrument-play-proof', 'core/digikit-menu', 'core/health', 'test/canopy-sound-proof', 'test/canopy-copy-handoff'] },
+      ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_admission', 'ip_src_debug', 'src_state',
+        'ip_sa_info', 'ip_sa_stats'],
+      { modules: ['core/instrument-play', 'core/digikit-menu', 'core/health'] },
     );
     await session.client.firmwareLoad({ syx, base_sha256: plan.base.syx_sha256, start: 'auto', force: true,
       auto_no: true, card: session.cardPath });
@@ -106,14 +104,16 @@ test.skipIf(!enabled)('copy an edited CANOPY Sound to another track with its set
 
     // DTII track copy and paste, with the TRIG held while RECORD/STOP is
     // pressed. The observed stock copy goes through memcpy of 0x450 bytes.
+    const copies = async () => cf('ip_sa_stats', 0); // SA_STAT_COPIES
+    const copiesBefore = await copies();
     await edge('TRK', true);
     await edge('TRIG 1', true);
     try { await key('RECORD'); } finally {
       await edge('TRIG 1', false);
       await edge('TRK', false);
     }
-    await expect.poll(() => cf('canopy_sound_proof', 7), { timeout: 30_000 }).toBeGreaterThan(0);
-    evidence.copyCount = await cf('canopy_sound_proof', 7);
+    await expect.poll(copies, { timeout: 30_000 }).toBeGreaterThan(copiesBefore);
+    evidence.copyCount = await copies();
     // Change the source after copying; destination must receive the snapshot,
     // not the later live value or a pointer to mutable source state.
     await turn(2, 4);
@@ -143,8 +143,9 @@ test.skipIf(!enabled)('copy an edited CANOPY Sound to another track with its set
     };
     await expect.poll(targetValues, { timeout: 30_000 }).toEqual(evidence.edited);
     evidence.pasted = await targetValues();
+    evidence.persistence = {
+      info: await Promise.all(Array.from({ length: 8 }, (_, i) => cf('ip_sa_info', i))),
+      stats: await Promise.all(Array.from({ length: 9 }, (_, i) => cf('ip_sa_stats', i))),
+    };
     await session.expectNoFault('CANOPY Sound copy handoff');
   });
-} else {
-  test.skip('CANOPY Sound copy handoff proof is opt-in', () => {});
-}

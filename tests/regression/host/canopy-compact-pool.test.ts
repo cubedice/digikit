@@ -10,11 +10,21 @@ test('compact immutable raw pool reserves atomically and never changes published
     const root = path.resolve(import.meta.dirname, '../../..');
     const fixture = path.join(root, 'tests/regression/fixtures/canopy-raw-store');
     const executable = path.join(directory, 'compact-pool');
-    execFileSync('cc', [
-      '-std=c11', '-Wall', '-Wextra', '-Werror', '-fsanitize=undefined',
-      path.join(fixture, 'compact-pool-test.c'), path.join(fixture, 'compact-pool.c'),
-      '-o', executable,
-    ], { timeout: 20_000 });
+    execFileSync(
+      'cc',
+      [
+        '-std=c11',
+        '-Wall',
+        '-Wextra',
+        '-Werror',
+        '-fsanitize=undefined',
+        path.join(fixture, 'compact-pool-test.c'),
+        path.join(fixture, 'compact-pool.c'),
+        '-o',
+        executable,
+      ],
+      { timeout: 20_000 },
+    );
     expect(() => execFileSync(executable, { timeout: 10_000 })).not.toThrow();
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });

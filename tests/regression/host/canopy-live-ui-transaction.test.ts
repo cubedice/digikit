@@ -10,16 +10,33 @@ const executable = path.join(directory, 'live-ui-transaction');
 beforeAll(() => {
   const root = path.resolve(import.meta.dirname, '../../..');
   const source = path.join(root, 'modules/core/adapters/instrument-play/src/cf');
-  execFileSync('cc', [
-    '-std=c11', '-DDK_CANOPY_SOUND_PROOF=1', '-Wall', '-Wextra', '-Werror', '-fsanitize=undefined',
-    '-I', path.join(root, 'sdk/include'),
-    path.join(import.meta.dirname, 'canopy-live-ui-transaction.c'),
-    ...[
-      'keyboard.c', 'preset.c', 'src-state.c', 'src-lock-packed.c', 'status.c',
-      'src-display.c', 'sound-codec.c', 'sound-pool.c',
-    ].map((file) => path.join(source, file)),
-    '-o', executable,
-  ], { timeout: 20_000 });
+  execFileSync(
+    'cc',
+    [
+      '-std=c11',
+      '-DDK_CANOPY_SOUND_PROOF=1',
+      '-Wall',
+      '-Wextra',
+      '-Werror',
+      '-fsanitize=undefined',
+      '-I',
+      path.join(root, 'sdk/include'),
+      path.join(import.meta.dirname, 'canopy-live-ui-transaction.c'),
+      ...[
+        'keyboard.c',
+        'preset.c',
+        'src-state.c',
+        'src-lock-packed.c',
+        'status.c',
+        'src-display.c',
+        'sound-codec.c',
+        'sound-pool.c',
+      ].map((file) => path.join(source, file)),
+      '-o',
+      executable,
+    ],
+    { timeout: 20_000 },
+  );
 });
 
 afterAll(() => fs.rmSync(directory, { recursive: true, force: true }));

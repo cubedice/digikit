@@ -296,9 +296,9 @@ requires the public V2 contract, carrier/AMP proof and supported controllers.
 Run its concrete SHARC instruction-core checks with:
 
 ```sh
-uv run python -m pytest tests/patchkit/test_canopy_voice.py -q
-uv run python -m pytest tests/patchkit/test_canopy_instrument.py -q
-uv run python -m pytest tests/patchkit/test_canopy_carrier.py -q
+uv run python -m pytest modules/machines/canopy/tests/test_canopy_voice.py -q
+uv run python -m pytest modules/machines/canopy/tests/test_canopy_instrument.py -q
+uv run python -m pytest modules/machines/canopy/tests/test_canopy_carrier.py -q
 ```
 
 The tests check independent phase/velocity/release, exact token handling, capacity,

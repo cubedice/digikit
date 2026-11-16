@@ -15,17 +15,14 @@ import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { cardAfter, overlayRecords } from '@digi/regression/runtime/write-safety.ts';
 import { bootInfo, currentRecord, recordsIn } from '@digi/regression/runtime/card-kit.ts';
 
-// EXPERIMENTAL, NOT REGISTERED until the cold-boot and production fix pass.
-// A stock project on a disposable DTII card. All edits and saves are native
-// panel actions; the test reads requested values but never fabricates state.
+// CANOPY Sound persistence (finding 127): a stock project on a disposable DTII
+// card, two CANOPY tracks edited independently, a native project save, then a
+// fresh emulator from the saved card and a native project load. All edits and
+// saves are native panel actions; the test reads requested values but never
+// fabricates state. DIGI_CANOPY_WORKING_BOOT=1 instead checks a working-state
+// restart that asks DigiKit's restart to run the stock serializer.
 vi.setConfig({ hookTimeout: 600_000 });
-const enabled = process.env.DIGI_CANOPY_PERSIST_TEST === '1' || process.env.DIGI_CANOPY_SOUND_PROOF === '1';
-if (enabled) {
 const options = liveOptions('dt2', { fresh: true });
-// Opt-in emulator-only experiment; the default remains the production baseline.
-const useUnsafeSoundProof = process.env.DIGI_CANOPY_SOUND_PROOF === '1';
-const useUnsafeCopyProof = useUnsafeSoundProof && process.env.DIGI_CANOPY_COPY_PROOF === '1';
-const useUnsafeLoadGuard = useUnsafeSoundProof && process.env.DIGI_CANOPY_LOAD_GUARD === '1';
 const checkWorkingBoot = process.env.DIGI_CANOPY_WORKING_BOOT === '1';
 const fixtureRoot = fs.realpathSync(path.join(repoRoot(), 'out'));
 const cardSeed = fs.mkdtempSync(path.join(fixtureRoot, 'canopy-persist-card-'));
@@ -59,8 +56,9 @@ test(checkWorkingBoot ? 'working-state restart restores each CANOPY track SRC so
     session.options,
     session.runDir,
     artifacts,
-    ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_src_debug', 'src_state', ...(useUnsafeSoundProof ? ['canopy_sound_proof'] : []), ...(useUnsafeLoadGuard ? ['canopy_load_guard'] : []), ...(checkWorkingBoot ? ['DKRT_SAVE_MODE'] : [])],
-    { modules: [useUnsafeSoundProof ? 'test/instrument-play-proof' : 'core/instrument-play', 'core/digikit-menu', 'core/health', ...(useUnsafeSoundProof ? ['test/canopy-sound-proof'] : []), ...(useUnsafeCopyProof ? ['test/canopy-copy-handoff'] : []), ...(useUnsafeLoadGuard ? ['test/canopy-load-preflight'] : [])] },
+    ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_src_debug', 'src_state', 'ip_sa_info', 'ip_sa_stats',
+      ...(checkWorkingBoot ? ['DKRT_SAVE_MODE'] : [])],
+    { modules: ['core/instrument-play', 'core/digikit-menu', 'core/health'] },
   );
   expect(createHash('sha256').update(fs.readFileSync(syx)).digest('hex')).toBe(plan.output?.syx_sha256);
   await session.client.firmwareLoad({
@@ -85,6 +83,12 @@ test(checkWorkingBoot ? 'working-state restart restores each CANOPY track SRC so
   };
   await waitInstrumentReady(cf);
   await expectRuntimeUi(session, plan, artifacts, { afterEpoch: firstEpoch, timeout: 180_000 });
+  // Production persistence counters (sound-persist.c): store state and copies seen.
+  const persistence = async () => ({
+    info: await Promise.all(Array.from({ length: 8 }, (_, i) => cf('ip_sa_info', i))),
+    stats: await Promise.all(Array.from({ length: 9 }, (_, i) => cf('ip_sa_stats', i))),
+  });
+  log.persistenceAtReady = await persistence();
   const { tap: key, edge, turn } = acknowledgedPanel(session);
   const track = async (n: number) => {
     await edge('TRK', true);
@@ -146,33 +150,7 @@ test(checkWorkingBoot ? 'working-state restart restores each CANOPY track SRC so
   await waitEmulated(session, 300);
   await key('YES'); // slot 001
   await waitEmulated(session, 3500); // allow the stock card write to finish
-  if (useUnsafeSoundProof)
-    log.proofAfterSave = await Promise.all(Array.from({ length: 8 }, (_, i) => cf('canopy_sound_proof', i)));
-  if (useUnsafeLoadGuard) {
-    // Deliberately make working state different from the saved project; force
-    // the guard to refuse before entering the card loader and check that the
-    // current sounds are still present. This tests one stock caller only.
-    await track(1);
-    await expect.poll(() => cf('ip_src_debug', 0), { timeout: 30_000 }).toBe(0);
-    await turn(2, 12);
-    const working = [await sound(1), await sound(2)];
-    expect(working[0]).not.toEqual(first);
-    // Fail the second slab allocation so the first must be freed by the
-    // firmware deallocator before the guard refuses the load.
-    await session.client.call('mem.cf.poke', { addr: planSymbol(plan, 'canopy_load_guard'), value: 2 });
-    await key('SETTINGS');
-    await waitEmulated(session, 300);
-    for (let i = 0; i < 3; ++i) { await key('YES'); await waitEmulated(session, 500); }
-    await key('YES');
-    await waitEmulated(session, 6000);
-    log.guardRefusal = await Promise.all(Array.from({ length: 11 }, (_, i) => cf('canopy_load_guard', i)));
-    expect((log.guardRefusal as number[])[1]).toBeGreaterThan(0);
-    expect((log.guardRefusal as number[])[2]).toBeGreaterThan(0);
-    expect((log.guardRefusal as number[])[9], 'one allocation was deliberately failed').toBe(1);
-    expect((log.guardRefusal as number[])[10], 'the new slab was freed').toBe(1);
-    expect([await sound(1), await sound(2)], 'refused load leaves edited working sounds intact').toEqual(working);
-    await session.client.call('mem.cf.poke', { addr: planSymbol(plan, 'canopy_load_guard'), value: 0 });
-  }
+  log.persistenceAfterSave = await persistence();
   if (checkWorkingBoot) {
     // Experimental positive control: ask DigiKit's restart to invoke the
     // stock working-state serializer and boot-record writer. This is NOT its
@@ -254,23 +232,10 @@ test(checkWorkingBoot ? 'working-state restart restores each CANOPY track SRC so
     return tracks.includes(0) && tracks.includes(1);
   }, { timeout: 60_000 }).toBe(true);
   log.tracksAfterPowerCycle = await Promise.all(Array.from({ length: 4 }, (_, i) => cf('ip_tracks', i)));
-  if (useUnsafeSoundProof)
-    log.proofAfterLoad = await Promise.all(Array.from({ length: 8 }, (_, i) => cf('canopy_sound_proof', i)));
-  if (useUnsafeLoadGuard) {
-    log.guardAfterLoad = await Promise.all(Array.from({ length: 9 }, (_, i) => cf('canopy_load_guard', i)));
-    const guard = log.guardAfterLoad as number[];
-    expect(guard[1], 'card guard entered').toBeGreaterThan(0);
-    expect(guard[2], 'card guard did not refuse').toBe(0);
-    expect(guard[3], 'loaded snapshots used reserved handles').toBeGreaterThan(0);
-    expect(guard[4], 'card guard completed').toBeGreaterThan(0);
-    expect(guard[7], 'unused reservations were returned').toBeGreaterThan(0);
-    expect(guard[8], 'tail cancellation succeeded').toBe(0);
-    expect(guard[6], 'only published snapshots consumed handles').toBe(guard[5]! + guard[3]!);
-  }
+  log.persistenceAfterLoad = await persistence();
   log.after = [await sound(1), await sound(2)];
   expect(log.after, 'saved per-track CHRD, VOIC and STRUM survive reboot').toEqual(log.before);
+  const after = log.persistenceAfterLoad as { info: number[] };
+  expect(after.info[4], 'the load restored both saved extensions').toBeGreaterThanOrEqual(2);
   await session.expectNoFault('CANOPY native project reboot');
 });
-} else {
-  test.skip('CANOPY persistence experiment is opt-in', () => {});
-}

@@ -238,12 +238,49 @@ def run_call(
     others: tuple[Linked, ...] = (),
     read_regs: tuple[str, ...] = (),
     extra_breaks: tuple[int, ...] = (),
+    backend: str = "python",
 ) -> dict[str, object]:
     """Run ``entry`` (a symbol) to its RTS on the concrete core and return registers and memory reads.
 
     ``dm_words`` maps normal-word DM addresses (L2: 0x08000000 up) to values to poke before the run;
     ``reads`` maps a result name to (normal-word address, word count). Floats are passed as raw bits.
+    ``backend``: "python" (the Python core), "native" (the native core, see NativeCallSession) or "check" (both,
+    failing on any difference); ``session_backend()`` picks one. ``extra_breaks`` needs the Python core.
     """
+    args = (
+        linked,
+        entry,
+        regs,
+        dm_words,
+        reads,
+        max_steps,
+        return_sw,
+        others,
+        read_regs,
+    )
+    if backend == "python" or extra_breaks:
+        return _run_call_python(*args, extra_breaks)
+    if backend == "native":
+        return _run_call_native(*args)
+    if backend == "check":
+        expected = _run_call_python(*args, extra_breaks)
+        _check_same(f"run_call {entry}", expected, _run_call_native(*args))
+        return expected
+    raise PkSharcError(f"unknown backend {backend!r}")
+
+
+def _run_call_python(
+    linked: Linked,
+    entry: str,
+    regs: dict[str, int] | None = None,
+    dm_words: dict[int, int] | None = None,
+    reads: dict[str, tuple[int, int]] | None = None,
+    max_steps: int = 100000,
+    return_sw: int = 0xB9F000,
+    others: tuple[Linked, ...] = (),
+    read_regs: tuple[str, ...] = (),
+    extra_breaks: tuple[int, ...] = (),
+) -> dict[str, object]:
     from tools.sharc_dev import sharc_run
     from tools.sharc_dev import sharc_trace as st
     from tools.sharc_dev.sharcldr import LoadedMemory
@@ -325,7 +362,11 @@ class CallSession:
     block after block uses this instead of copying its state in and out of every call.
 
     ``base_memory`` optionally supplies an immutable original image. Linked code overlays it last; sessions with a base image
-    retain the Runner-local decode cache so that different images cannot share decoded instructions."""
+    retain the Runner-local decode cache so that different images cannot share decoded instructions.
+
+    ``fresh_registers`` starts every call from the registers of a new core, as ``run_call`` does, while DM still carries over:
+    a rig that used ``run_call`` and copied its memory in and out of every call gets the same register semantics without the
+    copies. ``fork`` gives an independent session with a copy of this one's DM, so a shared image is poked once."""
 
     def __init__(
         self,
@@ -333,10 +374,19 @@ class CallSession:
         return_sw: int,
         breaks: tuple[int, ...] = (),
         base_memory: LoadedMemory | None = None,
+        fresh_registers: bool = False,
     ) -> None:
         from tools.sharc_dev import sharc_run
         from tools.sharc_dev.sharcldr import LoadedMemory
 
+        self._args = (
+            list(linked),
+            return_sw,
+            tuple(breaks),
+            base_memory,
+            fresh_registers,
+        )
+        self.fresh_registers = fresh_registers
         self._st = sharc_run.st
         self._run = sharc_run
         self.return_sw = return_sw
@@ -369,9 +419,29 @@ class CallSession:
         )
         if base_memory is None:
             self.runner._cache = _DECODE_CACHES.setdefault(cache_key, {})
+        # The new core's state: the register file a fresh_registers call starts from.
+        self._initial = self.runner.state
         self.symbols: dict[str, int] = {}
         for obj in linked:
             self.symbols.update(obj.symbols)
+
+    def fork(
+        self, backend: str = "python"
+    ) -> CallSession | NativeCallSession | CheckedSession:
+        """An independent session on the same code with a copy of this one's DM (its registers are a new core's).
+        BACKEND "native" runs its calls on the native core (NativeCallSession; fresh_registers sessions only),
+        "check" on both (CheckedSession); ``session_backend()`` picks one."""
+        if backend == "native":
+            return NativeCallSession(self, _require_native())
+        if backend == "check":
+            return CheckedSession(
+                self.fork("python"), NativeCallSession(self, _require_native())
+            )
+        if backend != "python":
+            raise PkSharcError(f"unknown backend {backend!r}")
+        other = CallSession(*self._args)
+        other.runner.state.overlay.update(self.runner.state.overlay)
+        return other
 
     def record_stores(self) -> None:
         """Log every DM store of the following calls (address, width, PC) in ``stores`` (canonical DM byte addresses). Pokes and
@@ -427,26 +497,30 @@ class CallSession:
 
         st, runner = self._st, self.runner
         old = runner.state
-        new_uregs = dict(old.uregs)
+        # fresh_registers: every field but DM from the new core's state (registers, MMRs, accumulators, banks).
+        base = self._initial if self.fresh_registers else old
+        new_uregs = dict(base.uregs)
         for key, value in regs.items():
             new_uregs[st._seed_code(key)] = st._seed_value(value)
         state = dataclasses.replace(
-            old,
+            base,
+            overlay=old.overlay,
+            trace=[] if self.fresh_registers else old.trace,
             pc_sw=self.symbols[entry],
             uregs=new_uregs,
             call_stack=[self.return_sw],
             pc_stack=(
-                [0x01000000 | (self.return_sw & 0xFFFFFF)] if old.stack_model else []
+                [0x01000000 | (self.return_sw & 0xFFFFFF)] if base.stack_model else []
             ),
             pc_stack_pending=-1,
             pc_stack_requested=-1,
             loops=[],
             loop_depth=0,
-            loop_slots=list(old.loop_slots),
+            loop_slots=list(base.loop_slots),
             status_stack=[],
-            mmrs=dict(old.mmrs),
-            special=dict(old.special),
-            bank_alt=dict(old.bank_alt),
+            mmrs=dict(base.mmrs),
+            special=dict(base.special),
+            bank_alt=dict(base.bank_alt),
             pending=None,
             stopped=None,
         )  # the overlay (DM written so far) is shared, not copied
@@ -490,3 +564,281 @@ class CallSession:
                 for n in names
             },
         }
+
+
+NATIVE_HINT = "mise run gen:native-lib (SHARC_NATIVE_LIB overrides)"
+_NATIVE_LIBRARY: list[str | None] = []
+_NATIVE_CORES: dict[bytes, object] = {}
+REG_NAMES = (
+    "R0",
+    "R1",
+    "R2",
+    "R4",
+    "R5",
+    "R6",
+    "R7",
+    "R8",
+    "R9",
+    "R10",
+    "R11",
+    "R12",
+    "R13",
+    "I0",
+)
+
+
+def native_library() -> str | None:
+    """The native SHARC+ library to run calls on, or None when it is not built or is stale for this tree."""
+    if not _NATIVE_LIBRARY:
+        from tools.sharc_dev import sharc_transpile_run as nr
+
+        library: str | None = nr.DEFAULT_LIB
+        try:
+            if not library or not Path(library).is_file():
+                raise nr.NativeLibraryUnusable(library or "")
+            nr.NativeCore(nr.pack_image(None), library)  # refuses a stale library
+        except (nr.NativeLibraryUnusable, OSError):
+            library = None
+        _NATIVE_LIBRARY.append(library)
+    return _NATIVE_LIBRARY[0]
+
+
+def session_backend() -> str:
+    """The backend for run_call and CallSession.fork: PK_SHARC_BACKEND (python, native, check or auto; default
+    auto). auto is native when a current native library exists, else python; check runs both and fails on any
+    difference. The cores share their semantics (tools/sharc_dev/sharc_core); native is far faster on long calls."""
+    import os
+
+    wanted = os.environ.get("PK_SHARC_BACKEND", "auto")
+    if wanted not in ("python", "native", "check", "auto"):
+        raise PkSharcError(
+            f"PK_SHARC_BACKEND={wanted!r}: python, native, check or auto"
+        )
+    if wanted == "auto":
+        return "native" if native_library() is not None else "python"
+    return wanted
+
+
+def _require_native() -> str:
+    library = native_library()
+    if library is None:
+        raise PkSharcError(f"no usable native SHARC library: {NATIVE_HINT}")
+    return library
+
+
+def _check_same(label: str, expected: object, actual: object) -> None:
+    if expected == actual:
+        return
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        keys = sorted(
+            str(k)
+            for k in expected.keys() | actual.keys()
+            if expected.get(k) != actual.get(k)
+        )
+        raise PkSharcError(f"{label}: the native and Python cores differ in {keys}")
+    raise PkSharcError(
+        f"{label}: the native and Python cores differ ({expected!r} != {actual!r})"
+    )
+
+
+def _native_byte(addr: int) -> int:
+    """The DM byte address a normal-word address names (memory._dm_read/_dm_write's mapping)."""
+    from tools.sharc_dev.sharc_core.addressing import normal_word_to_byte
+
+    mapped = normal_word_to_byte(addr)
+    return addr if mapped is None else mapped
+
+
+def _native_run(core, data, template, return_sw: int, max_steps: int):
+    """Run CORE's call until it reaches RETURN_SW (a breakpoint, as the Python core stops) or MAX_STEPS. An
+    instruction the native core traps on runs on the Python core (state through TEMPLATE's configuration) and the
+    state moves back. (halt, instructions, fallbacks by trap reason)."""
+    from tools.sharc_dev import sharc_run
+    from tools.sharc_dev import sharc_transpile_run as nr
+
+    done, fallbacks = 0, {}
+    while True:
+        if done >= max_steps:
+            return sharc_run.Halt("max-steps", core.pc()), done, fallbacks
+        done += core.run(max_steps - done)
+        if done >= max_steps:
+            continue
+        if core.pc() == return_sw:
+            return sharc_run.Halt("breakpoint", return_sw), done, fallbacks
+        reason = (core.halt_reason or "trap").split(" at ")[0]
+        fallbacks[reason] = fallbacks.get(reason, 0) + 1
+        runner = nr._runner_for(nr.to_python(core, template), data)
+        try:
+            runner.step()
+        except sharc_run.Halt as stop:
+            nr.to_native(core, runner.state)
+            core.set_option(nr.OPT_RUNTIME_DECODE, True)
+            return stop, done, fallbacks
+        done += 1
+        nr.to_native(core, runner.state)
+        core.set_option(nr.OPT_RUNTIME_DECODE, True)
+
+
+def _native_regs(core, names: tuple[str, ...]) -> dict[str, int | None]:
+    from tools.sharc_dev import sharc_trace as st
+
+    return {n: getattr(core.get_reg(st.UREG_CODES[n]), "value", None) for n in names}
+
+
+def _run_call_native(
+    linked: Linked,
+    entry: str,
+    regs: dict[str, int] | None,
+    dm_words: dict[int, int] | None,
+    reads: dict[str, tuple[int, int]] | None,
+    max_steps: int,
+    return_sw: int,
+    others: tuple[Linked, ...],
+    read_regs: tuple[str, ...],
+) -> dict[str, object]:
+    """run_call on the native core: a new core's state (registers and an empty DM), the pokes, the call."""
+    from tools.sharc_dev import sharc_run
+    from tools.sharc_dev import sharc_transpile_run as nr
+    from tools.sharc_dev.sharcldr import LoadedMemory
+
+    library = _require_native()
+    blocks, data = [], b""
+    for i, obj in enumerate((linked, *others)):
+        blocks.append(
+            {
+                "target_address": SW_ALIAS_BASE + 2 * obj.base_sw,
+                "byte_count": len(obj.code_boot),
+                "fill": False,
+                "payload_offset": len(data),
+                "payload_len": len(obj.code_boot),
+                "index": i,
+            }
+        )
+        data += obj.code_boot
+    mem = LoadedMemory(data, blocks)
+    key = hashlib.sha256(
+        repr([(b["target_address"], b["byte_count"]) for b in blocks]).encode() + data
+    ).digest()
+    core = _NATIVE_CORES.get(key)
+    if core is None:
+        core = _NATIVE_CORES[key] = nr.NativeCore(nr.pack_image(mem), library)
+    # The Python core's start state for this call; loading it resets the native core, DM included.
+    runner = sharc_run.Runner(
+        mem, linked.symbols[entry], regs=regs or {}, breakpoints=[return_sw]
+    )
+    runner.state.call_stack.append(return_sw)
+    nr.to_native(core, runner.state)
+    core.set_option(nr.OPT_RUNTIME_DECODE, True)
+    for addr, word in (dm_words or {}).items():
+        if (
+            core.poke(_native_byte(addr), (word & 0xFFFFFFFF).to_bytes(4, "little"), 4)
+            != 1
+        ):
+            raise PkSharcError(f"cannot poke DM word {addr:#x}")
+    halt, done, _ = _native_run(core, mem, runner.state, return_sw, max_steps)
+    out: dict[str, object] = {
+        "halt": halt.to_json(),
+        "instructions": done,
+        "final_pc_sw": core.pc(),
+    }
+    for name, (addr, count) in (reads or {}).items():
+        out[name] = [core.peek(_native_byte(addr + k), 4) for k in range(count)]
+    out["regs"] = _native_regs(core, (*REG_NAMES, *read_regs))
+    return out
+
+
+class NativeCallSession:
+    """A fresh_registers CallSession whose calls run on the native SHARC+ core.
+
+    The native core (packages/emulator/sharc) is generated from the same semantics as the Python core
+    (tools/sharc_dev/sharc_core). DM moves into it once, from the session it forks, and stays there; ``poke`` and
+    ``peek`` reach it in normal-word addresses as CallSession's do. Every call starts from a new core's registers.
+    An instruction the native core traps on (a form it does not run natively) runs on the Python core, and the
+    state moves back. Watchpoint recording and ``fork`` stay on CallSession."""
+
+    def __init__(self, source: CallSession, library: str) -> None:
+        from tools.sharc_dev import sharc_transpile_run as nr
+
+        if not source.fresh_registers:
+            raise PkSharcError("a native session needs a fresh_registers source")
+        self._nr = nr
+        self._st = source._st
+        self.return_sw = source.return_sw
+        self.symbols = dict(source.symbols)
+        self._data = source.runner.data
+        self._initial = source._initial
+        self._template = source.runner.state
+        self.core = nr.NativeCore(nr.pack_image(self._data), library)
+        nr.to_native(self.core, self._template)
+        self.core.set_option(nr.OPT_RUNTIME_DECODE, True)
+        self._codes = sorted(set(self._st.UREG_CODES.values()))
+        self._special = sum(
+            1 << i
+            for i, name in enumerate(nr.SPECIAL_SLOTS)
+            if name in self._initial.special
+        )
+        # Instructions the Python core ran for this session, by trap reason.
+        self.fallbacks: dict[str, int] = {}
+
+    def poke(self, addr: int, word: int) -> None:
+        if (
+            self.core.poke(
+                _native_byte(addr), (word & 0xFFFFFFFF).to_bytes(4, "little"), 4
+            )
+            != 1
+        ):
+            raise PkSharcError(f"cannot poke DM word {addr:#x}")
+
+    def peek(self, addr: int) -> int | None:
+        return self.core.peek(_native_byte(addr), 4)
+
+    def call(
+        self,
+        entry: str,
+        regs: dict[str, int],
+        max_steps: int = 100000,
+        read_regs: tuple[str, ...] = (),
+    ) -> dict[str, object]:
+        st, core = self._st, self.core
+        seeded = {st._seed_code(k): st._seed_value(v) for k, v in regs.items()}
+        for code in self._codes:
+            core.set_reg(
+                code,
+                seeded.get(code, self._initial.uregs.get(code, st.Unknown("reset"))),
+            )
+        core.set_option(self._nr.OPT_SPECIAL_PRESENT, self._special)
+        core.fresh_call(self.symbols[entry], self.return_sw)
+        halt, done, fallbacks = _native_run(
+            core, self._data, self._template, self.return_sw, max_steps
+        )
+        for reason, count in fallbacks.items():
+            self.fallbacks[reason] = self.fallbacks.get(reason, 0) + count
+        return {
+            "halt": halt.to_json(),
+            "instructions": done,
+            "final_pc_sw": core.pc(),
+            "regs": _native_regs(core, (*REG_NAMES, *read_regs)),
+        }
+
+
+class CheckedSession:
+    """Two sessions forked from one, Python and native, driven together: every call's result and every peek must
+    agree (PK_SHARC_BACKEND=check). The Python session's values are returned."""
+
+    def __init__(self, python: CallSession, native: NativeCallSession) -> None:
+        self.python, self.native = python, native
+        self.symbols = python.symbols
+
+    def poke(self, addr: int, word: int) -> None:
+        self.python.poke(addr, word)
+        self.native.poke(addr, word)
+
+    def peek(self, addr: int) -> int | None:
+        value = self.python.peek(addr)
+        _check_same(f"peek {addr:#x}", value, self.native.peek(addr))
+        return value
+
+    def call(self, entry: str, regs: dict[str, int], **kwargs) -> dict[str, object]:
+        result = self.python.call(entry, regs, **kwargs)
+        _check_same(f"call {entry}", result, self.native.call(entry, regs, **kwargs))
+        return result

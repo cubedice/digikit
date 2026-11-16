@@ -10,12 +10,22 @@ test('project-load preflight reserves all storage before publishing snapshots', 
     const root = path.resolve(import.meta.dirname, '../../..');
     const proof = path.join(root, 'tests/regression/fixtures/canopy-load-preflight');
     const executable = path.join(directory, 'preflight');
-    execFileSync('cc', [
-      '-std=c11', '-Wall', '-Wextra', '-Werror', '-fsanitize=undefined',
-      path.join(proof, 'preflight-test.c'), path.join(proof, 'preflight.c'),
-      path.join(root, 'modules/core/adapters/instrument-play/src/cf/sound-pool.c'),
-      '-o', executable,
-    ], { timeout: 20_000 });
+    execFileSync(
+      'cc',
+      [
+        '-std=c11',
+        '-Wall',
+        '-Wextra',
+        '-Werror',
+        '-fsanitize=undefined',
+        path.join(proof, 'preflight-test.c'),
+        path.join(proof, 'preflight.c'),
+        path.join(root, 'modules/core/adapters/instrument-play/src/cf/sound-pool.c'),
+        '-o',
+        executable,
+      ],
+      { timeout: 20_000 },
+    );
     expect(() => execFileSync(executable, { timeout: 10_000 })).not.toThrow();
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });

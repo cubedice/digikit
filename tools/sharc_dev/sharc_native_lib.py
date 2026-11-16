@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Build the firmware-free native SHARC library (crate packages/emulator/sharc).
 
-    uv run python -m tools.sharc_dev.sharc_native_lib
+    uv run python -m tools.sharc_dev.sharc_native_lib [--ensure]
 
 Builds the cdylib ``sharc_native`` against the shared core in
 ``out/native/shared-core/gen`` (``mise run gen:core``) into
 ``out/native/shared-core/target``. The tests in tests/sharc/semantics and
-tests/sharc/generation load it; no firmware is needed.
+tests/sharc/generation load it, and pk_sharc runs calls on it; no firmware is
+needed. --ensure first regenerates the shared core when it is missing or its
+CORE_FINGERPRINT differs from the sources (otherwise it is left alone, so cargo
+rebuilds only what changed): the python-tests gate target runs it.
 """
 
 from __future__ import annotations
@@ -15,6 +18,8 @@ import argparse
 import pathlib
 import subprocess
 import sys
+
+import tools
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
@@ -30,9 +35,43 @@ def library_path() -> pathlib.Path:
     return SHARED / "target/release" / f"libsharc_native.{suffix}"
 
 
+def generated_current(gen: pathlib.Path) -> bool:
+    """Whether GEN holds a shared core made from the current sources."""
+    try:
+        have = (gen / digi_env.CORE_FINGERPRINT_FILE).read_text().strip()
+    except OSError:
+        return False
+    return have == digi_env.core_fingerprint()
+
+
 def main(argv: list[str]) -> int:
-    argparse.ArgumentParser(description=__doc__.splitlines()[0]).parse_args(argv)
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument(
+        "--ensure",
+        action="store_true",
+        help="regenerate the shared core first when it is missing or stale (as mise run gen:core)",
+    )
+    args = ap.parse_args(argv)
     gen = SHARED / "gen"
+    if args.ensure and not generated_current(gen):
+        print("sharc_native_lib: regenerating the shared core", file=sys.stderr)
+        code = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "tools.sharc_dev.sharc_transpile",
+                "--strict",
+                "--out",
+                str(gen),
+                "--work",
+                str(SHARED / "work"),
+            ],
+            cwd=ROOT,
+            env=tools.python_env(),
+            check=False,
+        ).returncode
+        if code:
+            return code
     if not gen.is_dir():
         print(
             f"sharc_native_lib: shared core is missing: {gen}\n"

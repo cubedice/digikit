@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from modules.machines.canopy.tools.ui_tables import header as envelope_preview_header
-from tools.patchkit.canopy_wavetables import preview_header
+from modules.machines.canopy.tools.wavetables import preview_header
 
 
 def test_src_preview_tables_match_factory_wave_and_envelope_data():

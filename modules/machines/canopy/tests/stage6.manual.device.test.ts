@@ -1,0 +1,731 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { repoRoot, withinRuntimeDeadline } from '@digi/test-support';
+
+import { expect, onTestFinished, test } from 'vitest';
+import { withSession } from '@digi/regression/support.ts';
+import { liveOptions } from '@digi/regression/runtime/devices.ts';
+import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
+import { waitEmulated } from '@digi/regression/runtime/waits.ts';
+import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
+import { planSymbol, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
+import { captureRemoteOled as captureOled } from '@digi/regression/runtime/remote.ts';
+import { liveArtifacts } from '@digi/regression/runtime/artifacts.ts';
+import { openDigikitMenu } from '@digi/regression/runtime/runtime-menu.ts';
+import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
+import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
+import { turnAppliedControl } from '@digi/regression/runtime/encoder-applied.ts';
+import { encoderValue } from '@digi/regression/runtime/encoder-value.ts';
+import { canopyControls } from '@digi/regression/runtime/canopy-controls.ts';
+import { proveCanopyNativeAmp } from '@digi/regression/runtime/canopy-native-amp.ts';
+import { analysisJson } from '@digi/regression/runtime/fx-live.ts';
+import { pageKit } from '@digi/regression/runtime/fx-pages-ui.ts';
+import type { FxProfile } from '@digi/regression/runtime/fx-session.ts';
+
+async function captureRemoteOled(...args: Parameters<typeof captureOled>) {
+  await captureOled(...args);
+  const destination = path.join(repoRoot(), 'out/canopy-controls-mod-ui');
+  fs.mkdirSync(destination, { recursive: true });
+  fs.copyFileSync(
+    path.join(liveArtifacts(args[0], 'remote-input'), `${args[1]}.png`),
+    path.join(destination, `${args[1]}.png`),
+  );
+}
+
+/** Exercise the stock destination picker and LFO against the actual callback
+ * bank, without changing base controls or held-note ownership. */
+async function proveCanopyModulation(ui: {
+  key: (name: string) => Promise<void>;
+  modPage: () => Promise<void>;
+  turn: (encoder: number, delta: number) => Promise<void>;
+  wait: (milliseconds: number) => Promise<void>;
+  sound: (index: number) => Promise<number>;
+  base: () => Promise<number[]>;
+  effective: () => Promise<number[]>;
+  ownership: () => Promise<unknown>;
+  checkBaseDisplay: () => Promise<void>;
+  capture: (name: string) => Promise<unknown>;
+  audio: (name: string) => Promise<unknown>;
+}) {
+  const base = await ui.base();
+  const owners = await ui.ownership();
+  expect(await ui.effective(), 'neutral MOD preserves every base control').toEqual(base);
+  await ui.modPage();
+  // Native Sound stores DEST in its big-endian high byte (Q8.8 selector). The
+  // stock picker lists the SRC group as TUNE, LEV and then the six custom slots;
+  // the arrow keys move one item per press while the popup is open, whereas
+  // encoder ticks are accelerated. The confirmation toast swallows panel input.
+  const order = [0, 25, 34, 26, 27, 28, 31, 32, 33];
+  const selectDestination = async (mirror: number) => {
+    const current = await ui.sound(4);
+    const from = order.indexOf(current >> 8),
+      to = order.indexOf(mirror);
+    expect(from, `MOD destination 0x${current.toString(16)} is in the SRC group order`).toBeGreaterThanOrEqual(0);
+    expect(to).toBeGreaterThanOrEqual(0);
+    await ui.turn(4, 1); // opens the destination popup on the current item
+    await ui.wait(200);
+    for (let i = 0; i < Math.abs(to - from); i++) await ui.key(to > from ? 'DOWN' : 'UP');
+    await ui.key('YES');
+    await ui.wait(4000);
+    expect(await ui.sound(4), `MOD destination ${mirror}`).toBe(mirror << 8);
+  };
+  await selectDestination(26);
+  await ui.capture('canopy-native-mod-position');
+  // The factory fixture has a free-running sine LFO and bipolar DEP midpoint.
+  const initialDepth = await ui.sound(8);
+  expect(initialDepth).toBe(0x4000);
+  for (let attempt = 0; attempt < 32 && (await ui.sound(8)) < 0x5000; attempt++) await ui.turn(8, 30);
+  expect(await ui.sound(8)).toBeGreaterThanOrEqual(0x5000);
+  const positions: number[] = [];
+  for (let i = 0; i < 12; i++) {
+    await ui.wait(75);
+    positions.push((await ui.effective())[17]! >>> 16);
+  }
+  expect(Math.max(...positions) - Math.min(...positions), 'native LFO moves WT position').toBeGreaterThan(10);
+  expect(await ui.base()).toEqual(base);
+  expect(await ui.ownership()).toEqual(owners);
+  await ui.audio('native-mod-wavetable');
+  await ui.checkBaseDisplay();
+  await ui.modPage();
+  // Mirror 28 normally passes through stock sample-ID conversion. Exercise its
+  // full carrier range in real firmware, not only the first modulation lane.
+  await selectDestination(28);
+  await ui.capture('canopy-native-mod-scan-rate');
+  const scanRates: number[] = [];
+  for (let i = 0; i < 12; i++) {
+    await ui.wait(75);
+    scanRates.push((await ui.effective())[19]! >>> 16);
+  }
+  expect(Math.max(...scanRates) - Math.min(...scanRates), 'native LFO moves WT scan rate').toBeGreaterThan(0);
+  expect(await ui.base()).toEqual(base);
+  expect(await ui.ownership()).toEqual(owners);
+  await selectDestination(0);
+  await ui.wait(100);
+  expect(await ui.effective()).toEqual(base);
+  expect(await ui.base()).toEqual(base);
+  return { positions, scanRates, destinations: [26, 28], initialDepth, depth: await ui.sound(8) };
+}
+
+const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
+test(
+  'CANOPY wavetable and FM, four-note arp and shared tails coexist with Overloop and uploads',
+  async () => {
+    const root = repoRoot(),
+      image = path.resolve(root, process.env.CANOPY_COEXIST_IMAGE ?? 'out/patch/canopy-stage6.syx');
+    const plan: RuntimePlan = JSON.parse(fs.readFileSync(image.replace(/\.syx$/, '.plan.json'), 'utf8'));
+    expect(createHash('sha256').update(fs.readFileSync(image)).digest('hex')).toBe(plan.output?.syx_sha256);
+    expect(plan.modules.some((m) => m.startsWith('test/canopy'))).toBe(false);
+    // Resolve static helper prerequisites before the costly firmware/bank load.
+    const readyArtifacts = path.join(root, 'out/canopy-stage6-ready');
+    fs.mkdirSync(readyArtifacts, { recursive: true });
+    const fxProfile = await analysisJson<FxProfile>(
+      'tools.patchkit.pk_digikit_fxroutes',
+      ['profile', '--device', 'dt2'],
+      readyArtifacts,
+      'fx-profile',
+    );
+    const { session } = h;
+    await session.client.firmwareLoad({
+      syx: image,
+      base_sha256: plan.base.syx_sha256,
+      start: 'auto',
+      force: true,
+      auto_no: true,
+      card: session.cardPath,
+    });
+    await session.client.call('run.mode', { mode: 'free' });
+    const dk = liveProtocol(session),
+      file = fs.readFileSync(path.resolve(root, process.env.CANOPY_COEXIST_PACKAGE ?? 'out/patch/canopy-stage6.dkm'));
+    await dk.put('modules/canopy.dkm', file);
+    expect(await dk.verifyFile('modules/canopy.dkm', file)).toBe(true);
+    const loop = fs.readFileSync(
+      path.resolve(root, process.env.OVERLOOP_COEXIST_PACKAGE ?? 'out/patch/overloop-stage6.dkm'),
+    );
+    await dk.put('modules/overloop.dkm', loop);
+    expect(await dk.verifyFile('modules/overloop.dkm', loop)).toBe(true);
+    await dk.select(['modules/canopy.dkm', 'modules/overloop.dkm']);
+    const beforeRestart = (await session.status()).epoch;
+    if (typeof beforeRestart !== 'number') throw new Error('Missing pre-restart epoch');
+    await dk.restart();
+    await dk.waitForBoot(undefined, 180_000);
+    const word = async (address: number) => {
+      const value = await session.client.memPeek(address);
+      if (value === null) throw new Error(`Unreadable firmware word at ${address.toString(16)}`);
+      return value;
+    };
+    const cf = (name: string, i = 0) => word(planSymbol(plan, name) + 4 * i);
+    const diagnostic = async () => {
+      const values: Record<string, unknown> = {};
+      const deadline = Date.now() + 20_000;
+      const capture = async (name: string, read: () => Promise<unknown>) => {
+        try {
+          values[name] = await withinRuntimeDeadline(deadline, read);
+        } catch (error) {
+          values[name] = { error: String(error) };
+        }
+      };
+      await Promise.all([
+        // Queue the compact liveness/DSP reads before the individual CF words.
+        capture('status', () => session.status()),
+        capture('audio_report', () => session.client.call('audio.report')),
+        capture('diagnostics', () => session.client.call('diagnostics')),
+        ...(
+          [
+            ['_ir_rows', 64],
+            ['_ir_process_rows', 32],
+            ['_iv_result', 32],
+            ['_mi_heartbeat', 32],
+            ['_iv_input', 128],
+            ['_iv_mod_frame', 256],
+            ['_iv_controls', 128],
+            ['_iv_mod_controls', 128],
+            ['_iv_mod_delta', 24],
+            ['_mi_native_owner', 64],
+            ['_mi_post_ptr', 64],
+            ['_pattern_position_info', 80],
+            ['_instrument_reply', 64],
+            ['_loop_ui_status', 64],
+            ['_fx_diag', 32],
+            ['_fx_blk', 4],
+            ['fx.rows', 288],
+          ] as const
+        ).map(([name, len]) =>
+          capture(name, () =>
+            session.client.call('dsp.peek', {
+              addr: planSymbol(plan, name),
+              len,
+            }),
+          ),
+        ),
+        ...(
+          [
+            ['DKRT_BOOT', 20],
+            ['DKRT_INSTRUMENT_FILE', 4],
+            ['DKRT_INSTRUMENT_SESSION', 4],
+            ['dl_link', 24],
+            ['mt_guard_fault', 5],
+            ['registry_guard', 8],
+            ['frame_block', 1],
+            ['loop_ui_snapshot', 16],
+            ['loop_ui_age', 1],
+            ['loop_ui_updates', 1],
+            ['ip_control', 8],
+            ['ip_src_debug', 12],
+            ['ip_src_refresh', 8],
+            ['src_state', 48],
+            ['src_status', 160],
+          ] as const
+        ).map(([name, n]) => capture(name, () => Promise.all(Array.from({ length: n }, (_, i) => cf(name, i))))),
+      ]);
+      fs.writeFileSync(path.join(root, 'out/canopy-stage6-state.json'), JSON.stringify(values, null, 2));
+      return values;
+    };
+    try {
+      await waitInstrumentReady(cf);
+    } catch (error) {
+      await diagnostic();
+      throw error;
+    }
+
+    expect((await dk.modules()).map((m) => m.name)).toContain('digikit/canopy');
+    expect(await cf('ip_control', 1)).toBe(0); // routes always start disabled
+    const peek = async (addr: number, len: number) => {
+      const r = await session.client.call<{ hex: string; unknown: number }>('dsp.peek', { addr, len });
+      expect(r.unknown).toBe(0);
+      return Buffer.from(r.hex, 'hex');
+    };
+    const row = await peek(planSymbol(plan, '_ir_rows'), 64);
+    expect(row.readUInt32LE(0)).toBe(3);
+    const state = row.readUInt32LE(16);
+    onTestFinished(async () => {
+      // Evidence is independent and best effort: a failed screenshot must neither
+      // skip the instance dump nor replace the failure that triggered cleanup.
+      const captures = [
+        [
+          'instance',
+          async () => {
+            const instance = await withinRuntimeDeadline(Date.now() + 20_000, () =>
+              session.client.call('dsp.peek', { addr: state, len: 2976 }),
+            ).catch((error: unknown) => ({ error: String(error) }));
+            fs.writeFileSync(path.join(root, 'out/canopy-stage6-instance.json'), JSON.stringify(instance));
+          },
+        ],
+        ['state', diagnostic],
+        ['OLED', () => captureRemoteOled(session, 'canopy-stage6-finish')],
+      ] as const;
+      const results = await Promise.allSettled(captures.map(([, capture]) => capture()));
+      results.forEach((result, index) => {
+        if (result.status === 'rejected')
+          console.warn(`CANOPY final ${captures[index]![0]} capture failed:`, result.reason);
+      });
+    });
+    const voices = async () => {
+      const b = await peek(state, 192);
+      return Array.from({ length: 6 }, (_, i) => ({
+        slot: i,
+        token: b.readUInt32LE(i * 32),
+        gate: b.readUInt32LE(i * 32 + 4),
+      }))
+        .filter((v) => v.token !== 0 && !(v.gate & 4))
+        .sort((a, b) => a.token - b.token);
+    };
+    const { tap: key, edge, turn } = acknowledgedPanel(session);
+    await expectRuntimeUi(session, plan, readyArtifacts, {
+      afterEpoch: beforeRestart,
+      timeout: 180_000,
+    });
+    const loopKit = pageKit(session, fxProfile);
+    // Select the admitted machine using the stock machine chooser.
+    await edge('FUNC', true);
+    try {
+      await key('SRC');
+    } finally {
+      await edge('FUNC', false);
+    }
+    for (let i = 0; i < 20; i++) await key('DOWN');
+    fs.writeFileSync(
+      path.join(root, 'out/canopy-stage6-chooser.json'),
+      JSON.stringify(await session.client.framebufferGet({ data: true, hash: true })),
+    );
+    await key('YES');
+    await key('YES');
+    await openDigikitMenu(key);
+    await key('YES'); // CANOPY setup
+    await key('YES'); // INPUT
+    await key('YES'); // ENABLE
+    await expect.poll(() => cf('ip_control', 1), { timeout: 10_000 }).toBe(1);
+    await expect.poll(() => cf('ip_control'), { timeout: 30_000 }).toBe(3);
+    for (let i = 0; i < 4; i++) await key('NO');
+    expect(await cf('ip_admission', 5)).toBe(await cf('ip_control', 7));
+    // Stock receive-port settings are independent of the instrument route.
+    // Set the emulator fixture to receive both ports, as in the carrier proofs.
+    for (const [addr, value] of [
+      [0x429368ca, 3],
+      [0x42936872, 0],
+      [0x429368d6, 1],
+    ] as const) {
+      const bytes = Buffer.alloc(4);
+      bytes.writeUInt32BE(value);
+      await session.client.call('mem.cf.write', { addr, hex: bytes.toString('hex') });
+    }
+    // CANOPY and the coexistence package selected with it (modules/overloop.dkm, verified above), nothing else.
+    const loaded = (await dk.modules()).map((m) => m.name);
+    expect(loaded).toHaveLength(2);
+    expect(loaded).toContain('digikit/canopy');
+    const rawBank = async () => {
+      const b = await peek(planSymbol(plan, '_iv_controls'), 128);
+      return Array.from({ length: 32 }, (_, i) => b.readUInt32LE(i * 4));
+    };
+    const toneBank = async () => (await rawBank()).slice(16, 28).map((v) => v >>> 16);
+    const controls = canopyControls(cf, rawBank);
+    const srcPage = async (page: number) => {
+      for (let i = 0; i < 4 && (await cf('ip_src_debug', 1)) !== page; i++) await key('SRC');
+      expect(await cf('ip_src_debug', 1)).toBe(page);
+    };
+    await key('SRC');
+    await srcPage(0);
+    await turnAppliedControl(session, 7, async () => (await rawBank())[21]! & 65535, 0);
+    await proveCanopyNativeAmp(session, plan, state, root);
+    if (process.env.CANOPY_NATIVE_AMP_ONLY === '1') return;
+    await key('SRC');
+    await srcPage(0);
+    await encoderValue(
+      (delta) => turn(4, delta * 4),
+      async () => {
+        const table = await controls.settled(16),
+          family = (await rawBank())[1]!;
+        return family < 2 ? family : table + 2;
+      },
+      2, // ANALOG is selected directly from WAVE, without an engine menu.
+    );
+    await expect.poll(async () => (await rawBank())[1], { timeout: 15000 }).toBe(2);
+    expect((await rawBank())[0]! & 255).toBe(11);
+    await srcPage(0);
+    // Panel flushes clamp at 30 detents: await each applied step before the next.
+    await turnAppliedControl(session, 7, async () => (await rawBank())[21]! & 65535, 64); // equal pad/arp mix
+    await srcPage(2);
+    await turnAppliedControl(session, 1, async () => (await toneBank())[1]!, 350); // center position 4.50
+    await turnAppliedControl(session, 2, async () => (await toneBank())[2]!, 50); // moving held chords
+    const wheelRoutes = async () => {
+      const b = await peek(state + 264 * 4, 32 * 4);
+      return Array.from({ length: 32 }, (_, i) => b.readUInt32LE(i * 4));
+    };
+    await session.client.call('midi.usb.in', { bytes: [0xb0, 1, 91] });
+    await session.client.call('midi.in', { bytes: [0xb0, 1, 37] });
+    const expectedWheels = Array.from({ length: 32 }, (_, i) => (i === 0 ? 91 : i === 16 ? 37 : 0));
+    await expect.poll(wheelRoutes, { timeout: 30000 }).toEqual(expectedWheels);
+    await session.client.call('midi.usb.in', { bytes: [0xb1, 1, 127, 0xb0, 120, 0] });
+    await waitEmulated(session, 100);
+    expect(await wheelRoutes(), 'unclaimed channel and all-sound-off preserve routed wheels').toEqual(expectedWheels);
+    await session.client.call('midi.usb.in', { bytes: [0xb0, 121, 0] });
+    expectedWheels[0] = 0;
+    await expect.poll(wheelRoutes, { timeout: 30000 }).toEqual(expectedWheels);
+    const notes = [48, 55, 60, 64];
+    for (const [i, note] of notes.entries())
+      await session.client.call(i < 2 ? 'midi.usb.in' : 'midi.in', { bytes: [0x90, note, 100] });
+    await expect.poll(async () => (await voices()).length, { timeout: 30000 }).toBe(4);
+    let held = await voices();
+    await session.client.call('midi.usb.in', { bytes: [0xb0, 1, 91] });
+    expectedWheels[0] = 91;
+    await expect.poll(wheelRoutes, { timeout: 30000 }).toEqual(expectedWheels);
+    expect(await voices(), 'wheel changes do not replace held ownership').toEqual(held);
+    const aux = await peek(state + 200 * 4, 32 * 4);
+    const heldRoutes = Array.from({ length: 8 }, (_, i) => ({
+      token: aux.readUInt32LE(i * 16),
+      route: aux.readUInt32LE(i * 16 + 8),
+    }))
+      .filter((v) => !(v.route & 256) && held.some((h) => h.token === v.token))
+      .map((v) => v.route)
+      .sort((a, b) => a - b);
+    expect(heldRoutes).toEqual([0, 0, 16, 16]);
+    const arp = async () => {
+      const b = await peek(state + 544, 80);
+      return { token: b.readUInt32LE(0), gate: b.readUInt32LE(4), serial: b.readUInt32LE(52) };
+    };
+    await expect.poll(async () => (await arp()).serial, { timeout: 30000 }).toBeGreaterThan(0);
+    const loopWord = (i: number) => cf('loop_ui_snapshot', i);
+    const turnUntil = async (enc: number, delta: number, reached: () => Promise<boolean>) => {
+      for (let i = 0; i < 40 && !(await reached()); i++) {
+        await session.client.inputTurn(enc, delta);
+        await waitEmulated(session, 50);
+      }
+      expect(await reached()).toBe(true);
+    };
+    const observations: Record<string, unknown>[] = [];
+    const counters = async () => {
+      const status = await session.status();
+      const tiers = status.audio?.dsp_tiers as Record<string, unknown> | undefined;
+      const instructions = Number(tiers?.instructions),
+        idle = Number(tiers?.idle_skip),
+        audioSeconds = Number(tiers?.audio_s);
+      expect(Number.isFinite(instructions) && Number.isFinite(idle) && Number.isFinite(audioSeconds)).toBe(true);
+      return { instructions, idle, audioSeconds, frames: status.audio?.frames, load: status.load };
+    };
+    const audio = async (name: string, during?: () => Promise<void>) => {
+      const file = path.join(root, `out/canopy-stage6-${name}.f32le`);
+      const before = await counters();
+      await session.client.call('pcm.tap', { action: 'capture', path: file });
+      await session.client.call('pcm.tap', { action: 'start' });
+      await during?.();
+      await expect
+        .poll(
+          async () => {
+            const r = await session.client.call<{ samples: number; non_finite: number }>('pcm.tap', {
+              action: 'report',
+            });
+            expect(r.non_finite).toBe(0);
+            return r.samples;
+          },
+          { timeout: 60000 },
+        )
+        .toBeGreaterThanOrEqual(24000);
+      await session.client.call('pcm.tap', { action: 'capture_stop' });
+      const after = await counters();
+      const seconds = after.audioSeconds - before.audioSeconds;
+      expect(seconds).toBeGreaterThan(0);
+      observations.push({
+        name,
+        before,
+        after,
+        dspInstructions: after.instructions - before.instructions,
+        dspBusyInstructionsPerAudioSecond:
+          (after.instructions - before.instructions - (after.idle - before.idle)) / seconds,
+      });
+      const raw = fs.readFileSync(file);
+      let energy = 0,
+        peak = 0;
+      const start = Math.max(0, raw.length - 8192 * 8);
+      for (let i = 0; i < raw.length; i += 4) {
+        const value = raw.readFloatLE(i);
+        expect(Number.isFinite(value)).toBe(true);
+        if (i >= start) energy += value * value;
+        peak = Math.max(peak, Math.abs(value));
+      }
+      const rms = Math.sqrt(energy / ((raw.length - start) / 4));
+      expect(rms).toBeGreaterThan(1e-5);
+      expect(peak).toBeLessThan(1);
+      return { rms, peak };
+    };
+    onTestFinished(async () => {
+      await session.client.call('pcm.tap', { action: 'capture_stop' });
+    });
+    const live = await audio('live');
+    await captureRemoteOled(session, 'canopy-stage6-wavetable-tone');
+    const sound = await cf('ip_admission', 1);
+    // Every [MOD] press advances the LFO page (1/3, 2/3, 3/3), also when it
+    // arrives from another page; the transient page title cannot be read back.
+    let modPresses = 0;
+    const modPage = async () => {
+      do {
+        await key('MOD');
+        modPresses += 1;
+      } while (modPresses % 3 !== 1);
+      await waitEmulated(session, 200);
+    };
+    const nativeModulation = await proveCanopyModulation({
+      key,
+      modPage,
+      turn,
+      wait: (milliseconds) => waitEmulated(session, milliseconds),
+      sound: async (index) => {
+        const address = sound + 0x14 + index * 2;
+        const packed = await word(address & ~3);
+        return address & 2 ? packed & 65535 : packed >>> 16;
+      },
+      base: rawBank,
+      effective: async () => {
+        const input = await peek(planSymbol(plan, '_iv_input'), 44);
+        const bank = await peek(input.readUInt32LE(36), 128);
+        return Array.from({ length: 32 }, (_, i) => bank.readUInt32LE(i * 4));
+      },
+      ownership: voices,
+      checkBaseDisplay: async () => {
+        await srcPage(2);
+        await expect.poll(() => cf('src_state', 4), { timeout: 30000 }).toBe(0);
+        await captureRemoteOled(session, 'canopy-native-mod-base-values');
+      },
+      capture: (name) => captureRemoteOled(session, name),
+      audio,
+    });
+    console.info('CANOPY native MOD:', nativeModulation);
+    await key('STOP');
+    await edge('FUNC', true);
+    try {
+      await key('FX');
+    } finally {
+      await edge('FUNC', false);
+    }
+    for (let i = 0; i < 4; i++) await key('UP');
+    for (let i = 0; i < 3; i++) await key('DOWN');
+    await expect.poll(() => loopWord(0), { timeout: 15000 }).toBe(0x4f564c31);
+    await turnUntil(3, 8, async () => (await loopWord(15)) >= 8);
+    await turnUntil(1, 8, async () => (await loopWord(2)) === 3);
+    await key('PLAY');
+    await expect.poll(() => loopWord(2), { timeout: 15000, interval: 100 }).toBe(1);
+    // Real runtime protocol transfer while the DSP records and four notes remain held.
+    const payload = Buffer.from(Array.from({ length: 32768 }, (_, i) => (i * 29) & 255));
+    await dk.put('stage6/transfer.bin', payload);
+    expect(await dk.verifyFile('stage6/transfer.bin', payload)).toBe(true);
+    await expect.poll(() => loopWord(2), { timeout: 180000, interval: 200 }).toBe(2);
+    await key('STOP');
+    expect(await voices()).toEqual(held);
+    const frames = await loopWord(3);
+    expect(frames).toBeGreaterThan(32);
+    await turnUntil(3, -4, async () => (await loopWord(15)) <= 2);
+    if (!(await loopWord(15))) await turnUntil(3, 1, async () => (await loopWord(15)) > 0);
+    await expect.poll(() => loopWord(13), { timeout: 10000 }).toBeLessThan(frames);
+    await turnUntil(2, 1, async () => (await loopWord(14)) > 0);
+    await expect.poll(() => loopWord(12), { timeout: 10000 }).toBeGreaterThan(0);
+    // Physical D edits logical parameter 2. Native FX controls use a fine raw
+    // scale; settle their kit value before waiting for the DSP publication.
+    const halfFadeRaw = await loopKit.setRaw('ENC D', 2, 0x4200);
+    expect(halfFadeRaw, 'Overloop half fade: raw target 0x4200, minimum 0x4000').toBeGreaterThanOrEqual(0x4000);
+    await expect
+      .poll(() => loopWord(6), {
+        timeout: 30_000,
+        message: `Overloop half fade publishes gain >= 0.5 after raw 0x${halfFadeRaw.toString(16)} (target 0x4200)`,
+      })
+      .toBeGreaterThanOrEqual(0x3f000000);
+    await key('SRC');
+    await srcPage(2);
+    const replacements = [67, 71, 74, 79];
+    const originalTokens = new Set(held.map((voice) => voice.token));
+    const replacementState = async () => {
+      // The six sounding slots and four pending records precede the controller
+      // bank. Its ten ownership records retain the base note and input route.
+      const b = await peek(state, 512);
+      const owners = Array.from({ length: 10 }, (_, i) => ({
+        token: b.readUInt32LE(292 + i * 8),
+        note: (b.readUInt32LE(296 + i * 8) >>> 8) & 127,
+        route: b.readUInt32LE(296 + i * 8) & 255,
+      }));
+      const replacementOwner = (token: number) =>
+        owners.find(
+          (owner) =>
+            owner.token === token &&
+            token !== 0 &&
+            !originalTokens.has(token) &&
+            owner.route === 0 &&
+            replacements.includes(owner.note),
+        );
+      const slots = Array.from({ length: 6 }, (_, slot) => ({
+        slot,
+        token: b.readUInt32LE(slot * 32),
+        gate: b.readUInt32LE(slot * 32 + 4),
+      }));
+      const onsets = slots
+        .filter((voice) => voice.slot < 4 && voice.gate === 1)
+        .flatMap((voice) => {
+          const owner = replacementOwner(voice.token);
+          return owner ? [{ ...voice, note: owner.note }] : [];
+        });
+      const pending = Array.from({ length: 4 }, (_, slot) => ({
+        slot,
+        token: b.readUInt32LE(192 + slot * 16),
+        note: b.readUInt32LE(196 + slot * 16),
+      })).filter((voice) => replacementOwner(voice.token)?.note === voice.note);
+      return { slots, onsets, pending };
+    };
+    let tailWitness:
+      | (Awaited<ReturnType<typeof replacementState>> & {
+          resetPads: number[];
+          originalTokens: number[];
+          arpToken: number;
+          arpGate: number;
+          steps: number;
+        })
+      | undefined;
+    const transitions = await audio('wavetable-fm-loop-transitions', async () => {
+      await srcPage(0);
+      for (let table = 1; table <= 4; table++) {
+        // A long Overloop recording can leave the native encoder idle filter
+        // armed. Drain each packet and its configuration before retrying a detent.
+        await encoderValue(
+          (delta) => turn(4, delta * 4),
+          () => controls.settled(16),
+          table,
+        );
+        expect((await toneBank())[0]).toBe(table);
+        await waitEmulated(session, 50);
+        expect(await voices()).toEqual(held);
+      }
+      await encoderValue(
+        (delta) => turn(4, delta * 4),
+        async () => {
+          const table = await controls.settled(16),
+            family = (await rawBank())[1]!;
+          return family === 3 ? 7 : family < 2 ? family : table + 2;
+        },
+        7,
+      );
+      expect((await rawBank())[1]).toBe(3);
+      expect(await voices()).toEqual(held);
+      await srcPage(2);
+      await turnAppliedControl(session, 1, async () => (await rawBank())[2]!, 127);
+      await turnAppliedControl(session, 4, async () => (await toneBank())[4]!, 100);
+      for (const algorithm of [0, 1, 2, 3]) {
+        await encoderValue(
+          (delta) => turn(2, delta * 4),
+          () => controls.settled(16),
+          algorithm,
+        );
+        expect((await rawBank())[1]).toBe(3);
+        expect(await voices()).toEqual(held);
+        await waitEmulated(session, 100);
+        expect(await cf('mt_guard_fault')).toBe(0);
+      }
+      await captureRemoteOled(session, 'canopy-stage6-fm-tone');
+      const serial = (await arp()).serial;
+      await expect.poll(async () => (await arp()).serial, { timeout: 30000 }).toBeGreaterThan(serial);
+      // Shared release tails last at most 64 samples. Observe bounded instruction
+      // slices while paused so a wall-time poll cannot skip the entire event.
+      // Only normal MIDI input is injected; no voice or scheduler state is edited.
+      await session.client.call('run.mode', { mode: 'paused' });
+      try {
+        await session.client.call('midi.usb.in', { bytes: replacements.flatMap((n) => [0x90, n, 100]), chunk: 12 });
+        for (let steps = 1; steps <= 256 && !tailWitness; steps++) {
+          await session.client.step(44_000, { timeout_wall_s: 30 });
+          const snapshot = await replacementState(),
+            a = await arp();
+          const resetPads = snapshot.slots
+            .filter((voice) => originalTokens.has(voice.token) && voice.gate === 2)
+            .map((voice) => voice.token);
+          if (
+            snapshot.slots[4]!.token &&
+            snapshot.slots[5]!.token &&
+            a.token &&
+            resetPads.length &&
+            snapshot.onsets.length + snapshot.pending.length > 0
+          ) {
+            // A steal must involve an original pad token and a newly admitted
+            // replacement identity. With both shared tails busy, the old pad
+            // ramps in its foreground slot before the pending onset can start.
+            expect(snapshot.slots[4]!.gate & 6).not.toBe(0);
+            expect(snapshot.slots[5]!.gate & 6).not.toBe(0);
+            tailWitness = {
+              ...snapshot,
+              resetPads,
+              originalTokens: [...originalTokens],
+              arpToken: a.token,
+              arpGate: a.gate,
+              steps,
+            };
+          }
+        }
+        expect(
+          tailWitness,
+          'a new replacement identity overlaps an old pad reset ramp, both shared tails and arp',
+        ).toBeDefined();
+      } finally {
+        await session.client.call('run.mode', { mode: 'free' });
+      }
+      await expect
+        .poll(async () => (await replacementState()).onsets.map((voice) => voice.note).sort((a, b) => a - b), {
+          timeout: 30000,
+          message: 'all four foreground voices are the requested USB replacements after their ramps',
+        })
+        .toEqual(replacements);
+      await waitEmulated(session, 100);
+      const replacementVoices = (await replacementState()).onsets;
+      expect(replacementVoices.map((voice) => voice.note).sort((a, b) => a - b)).toEqual(replacements);
+      expect(new Set(replacementVoices.map((voice) => voice.token)).size).toBe(4);
+      held = await voices();
+      expect(held).toHaveLength(4);
+      expect(await cf('mt_guard_fault')).toBe(0);
+    });
+    await edge('FUNC', true);
+    try {
+      await key('FX');
+    } finally {
+      await edge('FUNC', false);
+    }
+    for (let i = 0; i < 4; i++) await key('UP');
+    for (let i = 0; i < 3; i++) await key('DOWN');
+    await loopKit.maximum('ENC D', 2);
+    const fullFadeRaw = await loopKit.raw(2);
+    expect(fullFadeRaw, 'Overloop full fade: raw target 0x7f00').toBe(0x7f00);
+    await expect
+      .poll(() => loopWord(6), {
+        timeout: 30_000,
+        message: `Overloop full fade publishes loop-side gain after raw 0x${fullFadeRaw.toString(16)} (target 0x7f00)`,
+      })
+      .toBeGreaterThanOrEqual(0x3f7f0000);
+    const loopAudio = await audio('loop');
+    for (const note of [...notes, ...replacements]) {
+      await session.client.call('midi.usb.in', { bytes: [0x80, note, 0] });
+      await session.client.call('midi.in', { bytes: [0x80, note, 0] });
+    }
+    // The native AMP proof explicitly left ADSR/SUS=127/REL=0 selected.
+    await waitEmulated(session, 100);
+    await expect.poll(async () => (await voices()).length, { timeout: 30000 }).toBe(0);
+    const released = await audio('loop-after-release');
+    expect(await dk.verifyFile('stage6/transfer.bin', payload)).toBe(true);
+    expect(await cf('mt_guard_fault')).toBe(0);
+    expect(await cf('ip_control', 4)).toBe(0);
+    await session.expectNoFault('CANOPY wavetable/FM and Overloop with active uploads and shared tails');
+    fs.writeFileSync(
+      path.join(root, 'out/canopy-stage6-coexistence.json'),
+      JSON.stringify(
+        {
+          live,
+          nativeModulation,
+          transitions,
+          loopAudio,
+          released,
+          frames,
+          held,
+          tailWitness,
+          wheelRoutes: expectedWheels,
+          heldRoutes,
+          observations,
+          qualification:
+            'Emulated integration and raw instruction observations only; neither a paired performance benchmark nor a silicon capacity qualification.',
+        },
+        null,
+        2,
+      ),
+    );
+  },
+  45 * 60_000,
+);

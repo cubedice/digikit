@@ -248,9 +248,11 @@ int main(void)
             src_result=instrument_src_encoder(src_token,knob,delta,100);
         }
         else if(!strcmp(cmd,"srcstate")) {
+            /* srcstate [encoder]: "value" is that encoder's display (default 0). */
             CvDisplay display; instrument_src_display(&display,100,"0","100");
+            unsigned shown=value>0 && value<8 ? (unsigned)value : 0u;
             printf("{\"result\":%d,\"color\":%d,\"mix\":%d,\"rate\":%d,\"type\":%u,\"dirty\":%u,\"value\":\"%s\",\"heading\":\"%s\"}\n",
-                src_result,pad_color,arp_mix,arp_rate,keyboard.type,pad_dirty,display.value[0],display.heading);
+                src_result,pad_color,arp_mix,arp_rate,keyboard.type,pad_dirty,display.value[shown],display.heading);
         }
         else if(!strcmp(cmd,"statuswrap")) {
             struct dk_ui_menu status={0};
@@ -260,7 +262,7 @@ int main(void)
         else if(!strcmp(cmd,"statusview")) {
             struct dk_ui_menu parent={0};
             int owns=dk_app_instrument_module_settings((const uint8_t *)"digikit/canopy",&parent);
-            int foreign=dk_app_instrument_module_settings((const uint8_t *)"digikit/overloop",0);
+            int foreign=dk_app_instrument_module_settings((const uint8_t *)"test/other-module",0);
             (void)instrument_src_context(0,0,0);
             instrument_src_poll(100);
             src_status.fast_valid=(uint8_t)value; src_status.fast_at=100;

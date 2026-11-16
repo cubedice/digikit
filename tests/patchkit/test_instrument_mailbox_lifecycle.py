@@ -351,11 +351,25 @@ def test_process_binding_is_owned_and_cannot_change_after_initialization(schedul
     assert result["process"] == expected
 
 
-@pytest.mark.parametrize("index,value", [
-    (3, 4), (4, 10), (7, 0), (7, 256), (8, 0), (8, 0x7fffffff),
-    (9, 0), (10, 0x00bc0001), (11, 0), (11, 9), (12, 0), (12, 33),
-    (13, 1), (14, 1),
-])
+@pytest.mark.parametrize(
+    "index,value",
+    [
+        (3, 4),
+        (4, 10),
+        (7, 0),
+        (7, 256),
+        (8, 0),
+        (8, 0x7FFFFFFF),
+        (9, 0),
+        (10, 0x00BC0001),
+        (11, 0),
+        (11, 9),
+        (12, 0),
+        (12, 33),
+        (13, 1),
+        (14, 1),
+    ],
+)
 def test_invalid_process_binding_does_not_publish_metadata(scheduler, index, value):
     words = process_command(scheduler)
     words[index] = value

@@ -16,6 +16,9 @@
 #include "src-clock.h"
 #include "src-mod.h"
 #include "instances.h"
+#if defined(__m68k__)
+#include "sound-persist.h"
+#endif
 #ifdef DK_CANOPY_SOUND_PROOF
 #include "sound-state.h"
 #endif
@@ -742,6 +745,115 @@ static void preset_apply_locked(IpInst *in,const CpPreset *p)
     for(uint32_t i=0;i<4;++i) in->wtfm[i]=p->control[28+i];
     in->pad_family=p->family; in->arp_clock=CP_ARP_CLOCK; in->arp_bpm=CP_ARP_BPM_RESERVED; in->pad_dirty=1;
 }
+
+#if defined(__m68k__)
+/* Sound persistence (sound-persist.h). Each instance follows the Sound it is
+ * admitted on: it adopts that Sound's CANOPY extension when it binds, or when
+ * stock replaces the Sound under it (a load, paste or reset advances the
+ * slot's sequence number), and publishes its own state back whenever that
+ * state changes. A Sound without an extension keeps the instance's current
+ * state, as every Sound did before persistence, and the instance claims it.
+ * An extension that does not decode (another format, corruption) is left in
+ * place, unchanged, until the instance's state changes.
+ * Target only: host tests that include this file run without the store, which
+ * has its own host test; CANOPY's persistence device tests cover it. */
+typedef struct { uintptr_t sound; uint32_t seq; CpPreset state; uint8_t bound; } IpSaBind;
+static IpSaBind sa_bind[IP_INSTANCES];
+static void persist_snapshot(const IpInst *in,CpPreset *p)
+{
+    preset_snapshot(in,p);
+    /* LEARN is temporary; its Sound keeps the mode it had before. */
+    if(in->keyboard.mode==KB_LEARN) p->mode=in->keyboard.previous_mode;
+}
+static void copy_state(CpPreset *d,const CpPreset *s)
+{
+    for(uint32_t n=0;n<sizeof(*d);++n) ((volatile uint8_t *)d)[n]=((const uint8_t *)s)[n];
+}
+/* Every field the record extension carries (bpm and clock are fixed). */
+static int same_state(const CpPreset *a,const CpPreset *b)
+{
+    for(uint32_t n=0;n<CP_CONTROLS;++n) if(a->control[n]!=b->control[n]) return 0;
+    for(uint32_t n=0;n<13;++n) if(a->fm[n]!=b->fm[n]) return 0;
+    if(a->family!=b->family || a->mode!=b->mode || a->shape.count!=b->shape.count) return 0;
+    for(uint32_t n=0;n<4;++n) if(a->shape.intervals[n]!=b->shape.intervals[n]) return 0;
+    return 1;
+}
+/* Interrupts masked. Instance i is admitted on sound, with no load in flight. */
+static int sa_owned(uint32_t i,uintptr_t sound)
+{
+    volatile const uint32_t *a=&ip_admission[i*8];
+    uint32_t type=dkrt_instrument_type();
+    return sound && a[0] && !a[6] && a[1]==sound && type &&
+        *(const volatile uint8_t *)(sound+0xa2)==type;
+}
+/* Publish instance i's state to its bound Sound if it changed and nothing
+ * else has replaced that Sound since. owned: still admitted on it (else the
+ * instance is leaving it, and the Sound must still carry the type). */
+static void sa_publish(uint32_t i,int owned)
+{
+    SaStore *s=ip_sa_store();
+    IpSaBind *b=&sa_bind[i];
+    if(!s || !b->bound) return;
+    CpPreset now; persist_snapshot(&inst[i],&now);
+    if(same_state(&now,&b->state)) return;
+    uint8_t payload[SR_BYTES];
+    if(sr_encode(&now,payload)) return;
+    uint32_t sr=dkrt_irq_mask();
+    uint32_t type=dkrt_instrument_type();
+    int mine=b->bound && sa_seq(s,b->sound)==b->seq &&
+        (owned ? sa_owned(i,b->sound) : type && *(const volatile uint8_t *)(b->sound+0xa2)==type);
+    if(mine) { b->seq=sa_put(s,b->sound,payload); copy_state(&b->state,&now); }
+    dkrt_irq_restore(sr);
+}
+void instrument_sound_flush(uintptr_t lo,uintptr_t hi)
+{
+    if(!initialized || !keyboard_initialized) return;
+    for(uint32_t i=0;i<IP_INSTANCES;++i) {
+        const IpSaBind *b=&sa_bind[i];
+        if(b->bound && b->sound>=lo && b->sound+SA_SOUND<=hi) sa_publish(i,1);
+    }
+}
+/* UI task, after the admission step of instance i. */
+static void sa_follow(uint32_t i)
+{
+    SaStore *s=ip_sa_ensure();
+    IpSaBind *b=&sa_bind[i];
+    if(!s || !keyboard_initialized) return;
+    uint32_t sr=dkrt_irq_mask();
+    uintptr_t sound=ip_admission[i*8+1];
+    int owned=sa_owned(i,sound);
+    uint32_t seq=owned ? sa_seq(s,sound) : 0;
+    int same=b->bound && b->sound==sound && b->seq==seq;
+    dkrt_irq_restore(sr);
+    if(!owned || sa_slot(s,sound)<0) return;
+    if(same) { sa_publish(i,1); return; }
+    if(b->bound && b->sound!=sound) sa_publish(i,0);
+    uint8_t payload[SR_BYTES];
+    CpPreset want,now;
+    sr=dkrt_irq_mask();
+    int have=sa_get(s,sound,payload,&seq);
+    dkrt_irq_restore(sr);
+    int decoded=have && !sr_decode(&want,payload);
+    persist_snapshot(&inst[i],&now);
+    if(decoded && !same_state(&want,&now)) {
+        sr=dkrt_irq_mask();
+        if(sa_owned(i,sound) && sa_seq(s,sound)==seq) preset_apply_locked(&inst[i],&want);
+        else decoded=-1;
+        dkrt_irq_restore(sr);
+        if(decoded<0) return;   /* replaced meanwhile: adopt on the next tick */
+    }
+    /* A Sound without an extension is claimed with the state it sounds with. */
+    uint8_t claim[SR_BYTES];
+    int claiming=!have && !sr_encode(&now,claim);
+    sr=dkrt_irq_mask();
+    b->sound=sound; b->seq=seq; copy_state(&b->state,decoded ? &want : &now); b->bound=1;
+    if(claiming && sa_owned(i,sound) && sa_seq(s,sound)==seq) b->seq=sa_put(s,sound,claim);
+    dkrt_irq_restore(sr);
+}
+#else
+static void sa_follow(uint32_t i) { (void)i; }
+static void ip_sa_tick(void) {}
+#endif
 #ifdef DK_CANOPY_SOUND_PROOF
 /* Must hold the mapper lock. A source address alone is not an identity: an
  * in-place load invalidates admission and advances its generation. */
@@ -1471,6 +1583,7 @@ static void tick_instance(uint32_t i,const IpInst *ui)
         if (result < 0) instrument_sound_suspend(i);
         else in->prepared=(uint32_t)result;
     }
+    sa_follow(i);
     /* Bind DSP slot i to the instance's track before its first configuration
      * there. The reset ACK gates the submission below; the old track was
      * already released by the suspension that preceded this change. */
@@ -1591,6 +1704,7 @@ void instrument_play_tick(void)
     else if (count == 16) healthy=reply[0] == MT_PLAY_REPLY_MAGIC &&
         reply[13] == 3 && reply[14] == dkrt_instrument_generation();
     instrument_sound_scan();
+    ip_sa_tick();
     for(uint32_t i=0;i<IP_INSTANCES;++i) inst[i].track=ip_tracks[i];
     IpInst *ui=ui_target();
     /* Status focus follows the UI target; a revision bump resends its bank

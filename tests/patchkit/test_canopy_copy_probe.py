@@ -39,7 +39,10 @@ def test_observation_patch_replaces_the_pinned_complete_stock_entry():
     ]
     for op in ops:
         start = 0x400DB3B2 + op["offset"] - 0x40000400
-        assert hashlib.sha256(main[start : start + op["width"]]).hexdigest() == op["expect_sha256"]
+        assert (
+            hashlib.sha256(main[start : start + op["width"]]).hexdigest()
+            == op["expect_sha256"]
+        )
 
 
 @pytest.mark.skipif(

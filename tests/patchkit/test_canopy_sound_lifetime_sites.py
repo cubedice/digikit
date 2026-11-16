@@ -39,7 +39,10 @@ def test_proof_invalidation_patches_match_stock_instructions():
         (root / "tests/regression/fixtures/canopy-sound-proof/module.toml").read_text()
     )
     ops = fixture["op"]
-    for addr, symbol in ((0x400E65C8, "ip_sound_init_gap"), (0x4005179E, "ip_sound_type_gap")):
+    for addr, symbol in (
+        (0x400E65C8, "ip_sound_init_gap"),
+        (0x4005179E, "ip_sound_type_gap"),
+    ):
         offset = addr - 0x400DB3B2
         branch = next(op for op in ops if op["offset"] == offset)
         destination = next(op for op in ops if op["offset"] == offset + 2)
@@ -47,4 +50,7 @@ def test_proof_invalidation_patches_match_stock_instructions():
         assert destination["value"] == symbol and destination["width"] == 4
         for op in (branch, destination):
             start = 0x400DB3B2 + op["offset"] - 0x40000400
-            assert hashlib.sha256(main[start : start + op["width"]]).hexdigest() == op["expect_sha256"]
+            assert (
+                hashlib.sha256(main[start : start + op["width"]]).hexdigest()
+                == op["expect_sha256"]
+            )

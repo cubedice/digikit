@@ -77,7 +77,7 @@ def scan(sec: dict, relocs: list[dict]) -> Fn:
             # Capstone prints a negative 16-bit LINK displacement as its
             # unsigned hexadecimal representation (e.g. #$fd20).  Interpret
             # the encoded word as signed before applying it to SP.
-            if mn.endswith(".w") and 0x8000 <= displacement <= 0xffff:
+            if mn.endswith(".w") and 0x8000 <= displacement <= 0xFFFF:
                 displacement -= 0x10000
             sp += 4 - displacement
         elif m == "unlk":

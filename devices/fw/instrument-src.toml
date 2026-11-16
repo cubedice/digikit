@@ -398,6 +398,17 @@ mark = "D"
 users = ["core/instrument-play"]
 doc = "DT2 OS1.17 pattern note-list writer (editor, track, step, records vector of 4-byte {note, velocity, ...}); every recorded note commits through it; finding 125."
 
+[[hook]]
+name = "cf.page.hook.instrument_note_list_write"
+site = "cf.page.site.instrument_note_list_write"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "C ABI wrapper of the note-list writer; ip_note_list_original replays the displaced link and register save."
+
 [[site]]
 name = "cf.page.site.instrument_lock_get"
 cpu = "cf"

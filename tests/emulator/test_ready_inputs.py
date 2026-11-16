@@ -36,13 +36,18 @@ def test_card_cache_key_streams_content_without_reading_whole_image(
 
     monkeypatch.setattr(Path, "read_bytes", bounded_read_bytes)
     monkeypatch.setattr(
-        ready, "build_examples", lambda: (_ for _ in ()).throw(
+        ready,
+        "build_examples",
+        lambda: (_ for _ in ()).throw(
             AssertionError("a matching cached card must not rebuild")
-        )
+        ),
     )
-    assert ready.main([
-        "dt2", "--syx", str(syx), "--out", str(output), "--card-image", str(card)
-    ]) == 0
+    assert (
+        ready.main(
+            ["dt2", "--syx", str(syx), "--out", str(output), "--card-image", str(card)]
+        )
+        == 0
+    )
     assert f"ready_dir={cached}" in capsys.readouterr().out
     source = json.loads((cached / "SOURCE.json").read_text())
     assert source["card_image"] == str(card)

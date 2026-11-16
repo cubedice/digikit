@@ -106,8 +106,9 @@ test('active preset validation rejects attempts to save a nonzero reserved latch
 test('SRC encoder edits use the real preset/configuration bank without enabling arp', () => {
   const [edited, restored, stale, movement] = run(
     settings,
-    'srcpage 2\nsrcturn 0 12\nsrcstate\npresetsave\ntick\ncolor 10\npresetload\nsrcstate\n' +
-      'srcturn 0 1\nsrcstate\nsrcpage 1\nsrcturn 0 4\nsrcstate',
+    // SOUND page: COLOR is encoder 1 for the legacy families.
+    'srcpage 2\nsrcturn 1 12\nsrcstate 1\npresetsave\ntick\ncolor 10\npresetload\nsrcstate 1\n' +
+      'srcturn 1 1\nsrcstate 1\nsrcpage 1\nsrcturn 0 4\nsrcstate',
   );
   expect(edited).toMatchObject({ result: 1, color: 76, value: '76', dirty: 1, heading: 'LINK LOST' });
   expect(restored).toMatchObject({ color: 76, value: '76' });
@@ -118,7 +119,7 @@ test('SRC encoder edits use the real preset/configuration bank without enabling 
 test('SRC waits for a full list step and cannot edit sound values during LEARN', () => {
   const [play, modal, closed] = run(
     settings,
-    'srcpage 0\nsrcturn 1 1\nsrcstate\nlearn\nsrcpage 2\nsrcturn 0 10\nsrcstate\n' + 'back\nsrcturn 0 10\nsrcstate',
+    'srcpage 0\nsrcturn 1 1\nsrcstate\nlearn\nsrcpage 2\nsrcturn 1 10\nsrcstate\n' + 'back\nsrcturn 1 10\nsrcstate',
   );
   expect(play).toMatchObject({ result: 0, type: 0 });
   expect(modal).toMatchObject({ result: 0, color: 64 });
@@ -176,9 +177,10 @@ test('CHRD changes performance mode with one reset and changes root types live',
 test('CHRD modes and WAVE families survive preset save without changing routing', () => {
   const [reed, wave, legacy, restored, routes, direct] = run(
     settings,
-    'channel 4\nsrcpage 0\nsrcturn 1 4\nsrcpage 0\nsrcturn 3 4\nconfig\n' +
-      'srcpage 0\nsrcturn 3 16\nconfig\npresetsave\ntick\n' +
-      'srcpage 0\nsrcturn 3 -20\nconfig\npresetload\nconfig\nroutestate\n' +
+    // CHRD is KEYS encoder 1; WAVE is SOUND encoder 0.
+    'channel 4\nsrcpage 0\nsrcturn 1 4\nsrcpage 2\nsrcturn 0 4\nconfig\n' +
+      'srcpage 2\nsrcturn 0 16\nconfig\npresetsave\ntick\n' +
+      'srcpage 2\nsrcturn 0 -20\nconfig\npresetload\nconfig\nroutestate\n' +
       'srcpage 0\nsrcturn 1 -4\npresetsave\ntick\nmode 1\npresetload\nvoices',
   );
   expect((reed!.values as number[])[1]).toBe(1);
@@ -195,7 +197,8 @@ test('compact menus keep non-SRC settings accessible and omit duplicate performa
   const [layout, route, config] = run(
     settings,
     'menus\nmenuset 0 0 1\nmenuset 0 3 9\nmenuset 0 5 2\nmenuset 0 6 6\n' +
-      'srcpage 1\nsrcturn 7 21\nfamily 2\nsrcpage 2\nsrcturn 4 -40\nsrcturn 5 40\nsrcturn 6 45\nsrcturn 7 20\n' +
+      // Wavetable ENV page: ATTACK 0, RELEASE 1, ENV 4, VELOCITY 6.
+      'srcpage 1\nsrcturn 7 21\nfamily 2\nsrcpage 3\nsrcturn 4 -40\nsrcturn 0 40\nsrcturn 1 45\nsrcturn 6 20\n' +
       'menuset 2 2 -30\nmenuset 2 3 60\nmenuset 2 4 -20\n' +
       'routestate\nconfig',
   );
@@ -489,8 +492,9 @@ test.each([1, 2])('legacy v%i initializes wavetable defaults without selecting i
 test('wavetable presets retain position, modulation and legacy color independently', () => {
   const [saved, restored, legacy] = run(
     settings,
-    'family 2\nsrcpage 2\nsrcturn 0 350\nsrcturn 1 55\nconfig\npresetsave\ntick\n' +
-      'srcpage 2\nsrcturn 0 200\ncolor 20\npresetload\nconfig\nfamily 0\nsrcpage 2\nsrcstate',
+    // Wavetable SOUND page: POS 1, DEPTH 2; legacy SOUND page: COLOR 1.
+    'family 2\nsrcpage 2\nsrcturn 1 350\nsrcturn 2 55\nconfig\npresetsave\ntick\n' +
+      'srcpage 2\nsrcturn 1 200\ncolor 20\npresetload\nconfig\nfamily 0\nsrcpage 2\nsrcstate 1',
   );
   expect((saved!.values as number[])[1]).toBe(2);
   expect((saved!.values as number[])[17]! >>> 16).toBe(350);
@@ -502,7 +506,8 @@ test('wavetable presets retain position, modulation and legacy color independent
 test('sync scan rate uses its own clock domain and clamps to musical divisions', () => {
   const [sync, free] = run(
     settings,
-    'family 2\nscanclock 1\nsrcpage 2\nsrcturn 2 1000\nconfig\nscanclock 0\nsrcpage 2\nsrcturn 2 1000\nconfig',
+    // Wavetable SOUND page: RATE is encoder 3.
+    'family 2\nscanclock 1\nsrcpage 2\nsrcturn 3 1000\nconfig\nscanclock 0\nsrcpage 2\nsrcturn 3 1000\nconfig',
   );
   expect((sync!.values as number[])[19]! >>> 16).toBe(7);
   expect((sync!.values as number[])[22]! >>> 16).toBe(1);
@@ -571,9 +576,11 @@ test.each([
 test('FM and wavetable sound memories survive source changes and v5 preset save/load', () => {
   const [wavetable, fm, recalled, legacy, wtAgain] = run(
     settings,
-    'color 77\nfamily 2\nsrcpage 2\nsrcturn 0 650\nsrcturn 2 989\nconfig\n' +
-      'srcpage 0\nsrcturn 3 20\nsrcpage 2\nsrcturn 1 12\nsrcturn 4 48\nsrcturn 5 28\n' +
-      'srcpage 2\nsrcturn 0 67\nsrcpage 3\nsrcturn 0 13\nsrcturn 2 25\nconfig\npresetsave\ntick\n' +
+    // Wavetable SOUND: POS 1, RATE 3. WAVE (SOUND 0) to FM; FM SOUND: COLOR 1,
+    // ALG 2, RTA 4, RTB 5; FM ENV: ATTACK 0, SUSTAIN 2.
+    'color 77\nfamily 2\nsrcpage 2\nsrcturn 1 650\nsrcturn 3 989\nconfig\n' +
+      'srcpage 2\nsrcturn 0 20\nsrcpage 2\nsrcturn 2 12\nsrcturn 4 48\nsrcturn 5 28\n' +
+      'srcpage 2\nsrcturn 1 67\nsrcpage 3\nsrcturn 0 13\nsrcturn 2 25\nconfig\npresetsave\ntick\n' +
       'family 0\ncolor 10\npresetload\nconfig\nfamily 0\nconfig\nfamily 2\nconfig',
   );
   const words = fm!.values as number[];
@@ -617,9 +624,11 @@ test.each([
 test('wavetable FM shares timbre timing, preserves scanning and recalls its controls across FM and legacy sounds', () => {
   const [wave, changed, recalled, legacy, standalone, returned] = run(
     settings,
-    'family 2\nsrcpage 2\nsrcturn 0 350\nsrcturn 1 45\nsrcturn 2 30\nsrcturn 5 40\nsrcturn 6 30\n' +
-      'srcpage 3\nsrcturn 0 65\nsrcturn 1 20\nsrcturn 2 -60\nmenus\nmenuset 2 4 75\nconfig\npresetsave\ntick\n' +
-      'srcpage 3\nsrcturn 0 -20\nconfig\npresetload\nconfig\nfamily 0\nconfig\nfamily 3\nconfig\nfamily 2\nconfig',
+    // Wavetable SOUND: POS 1, DEPTH 2, RATE 3; ENV: ATTACK 0, RELEASE 1,
+    // WT FM DEPTH 2, RATIO 3, WT FM ENV 5.
+    'family 2\nsrcpage 2\nsrcturn 1 350\nsrcturn 2 45\nsrcturn 3 30\nsrcpage 3\nsrcturn 0 40\nsrcturn 1 30\n' +
+      'srcpage 3\nsrcturn 2 65\nsrcturn 3 20\nsrcturn 5 -60\nmenus\nmenuset 2 4 75\nconfig\npresetsave\ntick\n' +
+      'srcpage 3\nsrcturn 2 -20\nconfig\npresetload\nconfig\nfamily 0\nconfig\nfamily 3\nconfig\nfamily 2\nconfig',
   ).slice(1);
   const words = wave!.values as number[];
   expect(words[0]! & 255).toBe(11);

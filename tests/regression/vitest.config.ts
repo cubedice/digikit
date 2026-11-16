@@ -87,13 +87,8 @@ export default defineConfig({
             'runtime/instrument-session.test.ts',
             'runtime/instrument-load.test.ts',
             'runtime/instrument-file.test.ts',
-            'runtime/canopy-stage1.test.ts',
-            'runtime/canopy-stage3.test.ts',
-            'runtime/canopy-stage4-local.test.ts',
-            'runtime/canopy-stage4.test.ts',
             'runtime/canopy-clock.test.ts',
             'runtime/dsp-reset.test.ts',
-            'runtime/overloop-display.test.ts',
             'runtime/canopy-transport.test.ts',
             'runtime/canopy-carrier.test.ts',
             'runtime/canopy-reload.test.ts',
@@ -146,46 +141,6 @@ export default defineConfig({
       },
       {
         test: {
-          name: 'canopy-stage4',
-          include: ['runtime/canopy-stage4.test.ts'],
-          pool: 'forks',
-          ...serial,
-          testTimeout: 1500000,
-          hookTimeout: 300000,
-        },
-      },
-      {
-        test: {
-          name: 'canopy-stage4-local',
-          include: ['runtime/canopy-stage4-local.test.ts'],
-          pool: 'forks',
-          ...serial,
-          testTimeout: 900_000,
-          hookTimeout: 300_000,
-        },
-      },
-      {
-        test: {
-          name: 'canopy-stage3',
-          include: ['runtime/canopy-stage3.test.ts'],
-          pool: 'forks',
-          ...serial,
-          testTimeout: 600_000,
-          hookTimeout: 300_000,
-        },
-      },
-      {
-        test: {
-          name: 'canopy-stage1',
-          include: ['runtime/canopy-stage1.test.ts'],
-          pool: 'forks',
-          ...serial,
-          testTimeout: 600_000,
-          hookTimeout: 300_000,
-        },
-      },
-      {
-        test: {
           name: 'instrument-file',
           include: ['runtime/instrument-file.test.ts'],
           pool: 'forks',
@@ -221,16 +176,6 @@ export default defineConfig({
           pool: 'forks',
           ...serial,
           testTimeout: 120_000,
-          hookTimeout: 150_000,
-        },
-      },
-      {
-        test: {
-          // Experimental firmware and a DTII-only DKM, prepared separately.
-          name: 'overloop',
-          include: ['runtime/overloop-display.test.ts'],
-          pool: 'forks',
-          testTimeout: 360_000,
           hookTimeout: 150_000,
         },
       },

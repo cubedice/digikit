@@ -35,16 +35,21 @@ def main() -> None:
         encoding="utf-8",
     )
     text = (adapter / "module.toml").read_text(encoding="utf-8")
-    text = text.replace('id = "core/instrument-play"', 'id = "test/instrument-play-proof"', 1)
+    text = text.replace(
+        'id = "core/instrument-play"', 'id = "test/instrument-play-proof"', 1
+    )
     text = text.replace('category = "core"', 'category = "test"', 1)
-    text = text.replace('conflicts = [', 'conflicts = ["core/instrument-play", ', 1)
+    text = text.replace("conflicts = [", 'conflicts = ["core/instrument-play", ', 1)
 
     def source(match: re.Match[str]) -> str:
         relative = match.group(1)
         path = (
-            wrapper if relative == "src/cf/control.c"
-            else keyboard_wrapper if relative == "src/cf/keyboard.c"
-            else sound_wrapper if relative == "src/cf/sound.c"
+            wrapper
+            if relative == "src/cf/control.c"
+            else keyboard_wrapper
+            if relative == "src/cf/keyboard.c"
+            else sound_wrapper
+            if relative == "src/cf/sound.c"
             else adapter / relative
         )
         return '"' + path.as_posix() + '"'

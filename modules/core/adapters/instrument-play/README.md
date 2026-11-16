@@ -67,7 +67,7 @@ CANOPY retains oscillator phase while releasing its voices over at most 64 sampl
 configuration waits for that tail before accepting new ownership. CREATE, RECOVER
 and UNLOAD still clear CANOPY state. Inactive tracks acknowledge transport resets.
 
-Instruction-level checks are in `tests/patchkit/test_instrument_play.py`, with
+Instruction-level checks are in `modules/machines/canopy/tests/test_instrument_play.py`, with
 stock dispatch coverage in `tests/patchkit/test_dsp_voice.py`. The separate integrated
 acceptance for earlier CANOPY builds passed uploaded V2 admission, stock selection,
 explicit routing, final stereo continuity, pedal, velocity and fault retirement.
@@ -88,7 +88,7 @@ closes admission and requests acknowledged DETACH before releasing DSP storage;
 published CF code/metadata remain retained until reboot for existing readers.
 The adapter has its own UI tick and does not take Overloop's control callback.
 
-`tests/regression/runtime/canopy-stage1.test.ts` is the integrated acceptance.
+`modules/machines/canopy/tests/stage1.manual.device.test.ts` is the integrated acceptance.
 Prepare `out/patch/canopy-stage3.syx` from `core/instrument-play,core/digikit-menu`
 and `out/patch/canopy-dt2.dkm` from `digikit/canopy` before running the dedicated
 `canopy-stage1` Vitest project. It requires the preflighted coupled DT2 daemon
@@ -210,7 +210,7 @@ Idle calls do no pool scan. No allocation, card access or UI calls run in this p
 
 Host scenarios execute the production C engine, transport and UI callbacks in
 `tests/regression/host/canopy-keyboard.test.ts`; the combined Stage 1/2 acceptance
-remains in `tests/regression/runtime/canopy-stage1.test.ts` and uses the
+remains in `modules/machines/canopy/tests/stage1.manual.device.test.ts` and uses the
 artifact names above. Instruction tests measure bounded CF work separately from
 SHARC rendering. These checks do not establish hardware timing or release approval.
 
@@ -342,7 +342,7 @@ parameter editor and bounded custom value cells; the remaining controls use
 stable preset IDs. The adapter captures queued encoder ownership at dispatch
 and excludes stock tracks, alternate context and opaque modals.
 
-Stage 5 acceptance is `tests/regression/runtime/canopy-stage5.test.ts`. The earlier
+Stage 5 acceptance is `modules/machines/canopy/tests/stage5.manual.device.test.ts`. The earlier
 native-UI checkpoint used `out/patch/canopy-stage5-native.syx` and the matching
 `out/patch/canopy-stage5-native.dkm`; these are not the FM artifacts. The
 [FM handover](../../../../docs/handovers/HANDOVER-2026-11-09-canopy-fm.md) records

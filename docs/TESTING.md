@@ -196,7 +196,7 @@ Tests that lack an input skip with a reason; `pytest -rs` lists them.
 | Sections `out/sections/<image>/` | `uv run python -m tools.firmware.extract firmware/SYX -o out/sections/<image>`. |
 | SHARC database `out/sharcdb/<image>.sqlite` | `uv run python -m tools.sharc_dev.sharcdb build out/sections/*/section_7_BLOB.bin`. |
 | ColdFire dump `out/ghidra/<image>-emac` and cfdb | Needs Ghidra: `tools.coldfire.ghidradump`, then `tools.coldfire.cfdb build`. |
-| Native SHARC library, shared core | `mise run gen:native-lib` (firmware-free); `SHARC_NATIVE_LIB` overrides. `mise run gen:core` builds the generated core. |
+| Native SHARC library, shared core | `mise run gen:native-lib` (firmware-free); `SHARC_NATIVE_LIB` overrides. `mise run gen:core` builds the generated core. `tools:python-tests` builds it first (`tools:sharc-native-lib`: `sharc_native_lib --ensure` regenerates the core only when its fingerprint is stale). |
 | Module toolchains in `out/tools` | `mise run patch:toolchains` (about 15 min); `uv run python -m tools.patchkit.pk_toolchains status`. Selache builds `selas`, `seld` and `seldump` only: `selcc` does not compile at the pinned revision, and only two tests use it (they skip without it). On Apple silicon with an Intel Homebrew in `/usr/local`, the m68k build compiles for x86_64 (`CC`/`CXX` with `-arch x86_64`) so it links the Homebrew libraries; set `CC` and `CXX` yourself to override. |
 | Objects of content modules and fixtures in `out/cache/dko` | Not committed. The Rust tests that scan the repository (`Library::scan_repo`), `module:pack`, the workbench app's library read (it packs the run-time modules of a device in-process), `dk:run`, `dk:dev` and the web gallery build the stale ones on demand (`patchkit build` does it by hand). Without the m68k-elf toolchain the Rust tests that need them print `SKIP` and return. A checkout with an empty `out/` passes after the first build. |
 | Ready inputs | `mise run emu:ready -- dt2` or `-- dn2` (about 2 min). Its helpers build against the shared core (`mise run gen:core` first; `SHARC_GEN_DIR` overrides). It writes to the directories in `tools/emulator/ready_inputs.json`; the patchkit harness and the device tests read the same file. `DIGI_PK_READY_<DEV>_<VER>` overrides the directory for the harness and the tests. |
@@ -395,11 +395,23 @@ without running it.
   its tests compile public headers and fixtures only.
 - `tools:python-checks` and `tools:python-tests` run on changes to tools, tests, modules, sdk, devices, Python and
   Cargo manifests, and the patchkit, dkneeds, control and plusdrive packages. `python-checks` runs ruff, ruff
-  format, mypy, layercheck and `patchkit gen --check`. `python-tests` first runs
+  format, mypy, layercheck and `patchkit gen --check`. `python-tests` depends on `tools:sharc-native-lib`
+  (the native SHARC library, about 1 s when current) and first runs
   `tests/patchkit/test_pk_current.py` (module and port staleness), then the Python test files that
   `tools/devtools/py_select.py` selects by the diff: the gate test (`PY_GATE`), the `PY_SUITES` the
   change triggers, the tests that reach a changed module in the import graph, and the changed tests.
-  One process runs one file.
+  One process runs one file, with a one-hour timeout; a file that declares `# python-tests shards: N`
+  on a line of its own runs as N shards
+  (`tools/devtools/pytest_shard.py`, `--shard I/N`), each its own process with its own timeout.
+  Declare shards in a file when it nears the timeout.
+- Tests that run DSP code through `pk_sharc` can run it on the native SHARC core: `run_call(..., backend=)`
+  and `CallSession.fork(backend)` take `pk_sharc.session_backend()`, which is `native` when the native
+  library is built and current (`mise run gen:native-lib`) and `python` otherwise. CANOPY's DSP tests
+  use it: `test_canopy_v2.py` runs its 911 cases in 86 s in one process instead of 84 minutes.
+  `PK_SHARC_BACKEND=python|native|check` overrides it; `check` runs every call on both cores and fails
+  on any difference in results or memory. To move a test file onto the native core, pass it check
+  and then native alone: a test that hooks the Python core (a patched `Runner.step`) sets
+  `PK_SHARC_BACKEND=python` for itself.
 - Inputs name the toolchain by version (runtime inputs such as the pinned `rustup run <version> rustc -vV`, node versions), not by
   `mise.toml`, so task edits in `mise-tasks.toml` do not select every project.
 - If the selection is wider or narrower than the change can reach, fix the inputs and edges in

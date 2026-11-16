@@ -588,7 +588,9 @@ impl Module {
         let manifest: Manifest = toml::from_str(manifest_text)?;
         manifest.validate_header()?;
         if manifest.instrument_old.is_some() {
-            return Err(err!("[[instrument]] is not read: declare V2 instruments with DK_INSTRUMENT in C (sdk/include/dk/instrument.h)"));
+            return Err(err!(
+                "[[instrument]] is not read: declare V2 instruments with DK_INSTRUMENT in C (sdk/include/dk/instrument.h)"
+            ));
         }
         let mut objects = vec![];
         let mut all = manifest_text.to_string();

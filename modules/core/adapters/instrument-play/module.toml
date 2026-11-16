@@ -41,7 +41,7 @@ to = "_mi_velocity_entry"
 
 [[object]]
 path = "build/play-cf.dko.json"
-sources = ["src/cf/control.c", "src/cf/keyboard.c", "src/cf/preset.c", "src/cf/src-state.c", "src/cf/src-lock-packed.c", "src/cf/src-lock-event.c", "src/cf/src-lock-capture.c", "src/cf/src-lock-capture.s", "src/cf/src-mod.c", "src/cf/src-mod.s", "src/cf/status.c", "src/cf/src-display.c", "src/cf/src-clock.c", "src/cf/src-native.c", "src/cf/panel.c", "src/cf/panel.s", "src/cf/sound.c", "src/cf/sound-load.s", "src/cf/view.s"]
+sources = ["src/cf/control.c", "src/cf/keyboard.c", "src/cf/preset.c", "src/cf/src-state.c", "src/cf/src-lock-packed.c", "src/cf/src-lock-event.c", "src/cf/src-lock-capture.c", "src/cf/src-lock-capture.s", "src/cf/src-mod.c", "src/cf/src-mod.s", "src/cf/status.c", "src/cf/src-display.c", "src/cf/src-clock.c", "src/cf/src-native.c", "src/cf/panel.c", "src/cf/panel.s", "src/cf/sound.c", "src/cf/sound-load.s", "src/cf/sound-record.c", "src/cf/sound-assoc.c", "src/cf/sound-persist.c", "src/cf/sound-persist.s", "src/cf/view.s"]
 place = "cf.expansion"
 devices = ["dt2"]
 [object.externs]
@@ -74,6 +74,16 @@ ip_project = "cf.project.fn.singleton"
 ip_kit = "cf.project.fn.active_kit"
 ip_refresh = "cf.machine.fn.refresh_track"
 ip_sound_resume = "hook.cf.machine.site.sound_deserialize.return"
+ip_save_resume = "hook.cf.machine.site.sound_serialize.return"
+ip_init_resume = "hook.cf.machine.site.sound_init_slices.return"
+ip_type_resume = "hook.cf.machine.site.sound_type_write.return"
+ip_memcpy_resume = "hook.cf.util.site.memcpy.return"
+ip_memset_resume = "hook.cf.util.site.memset.return"
+ip_bzero_resume = "hook.cf.util.site.bzero.return"
+ip_kit_table_lit = "cf.project.site.kit_table_lit"
+ip_sound_pool_lit = "cf.project.site.sound_pool_lit"
+fw_alloc = "cf.mem.fn.new"
+fw_free = "cf.mem.fn.free"
 ip_src_type = "cf.machine.fn.current_track_type"
 ip_src_track = "cf.page.site.instrument_src_track"
 ip_src_alternate = "cf.page.site.instrument_src_alternate"
@@ -166,6 +176,33 @@ width = 4
 op = "hook"
 hook = "cf.machine.hook.sound_deserialize"
 to = "ip_sound_entry"
+
+# CANOPY Sound persistence (sound-persist.c): the record extension in the
+# Sound writer, whole-Sound copies and fills, initialization and type changes.
+[[op]]
+op = "hook"
+hook = "cf.machine.hook.sound_serialize"
+to = "ip_save_entry"
+[[op]]
+op = "hook"
+hook = "cf.machine.hook.sound_init_slices"
+to = "ip_init_site"
+[[op]]
+op = "hook"
+hook = "cf.machine.hook.sound_type_write"
+to = "ip_type_site"
+[[op]]
+op = "hook"
+hook = "cf.util.hook.memcpy"
+to = "ip_memcpy_entry"
+[[op]]
+op = "hook"
+hook = "cf.util.hook.memset"
+to = "ip_memset_entry"
+[[op]]
+op = "hook"
+hook = "cf.util.hook.bzero"
+to = "ip_bzero_entry"
 
 [[op]]
 op = "hook"

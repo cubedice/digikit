@@ -134,3 +134,95 @@ def test_every_stock_shift_immediate_passes_the_check(image, tmp_path):
     verdicts = pk_sharc._sharc(["shift-check", str(words)]).splitlines()
     bad = [(hex(sw), v) for (sw, _), v in zip(rows, verdicts, strict=True) if v != "ok"]
     assert len(rows) > 1000 and bad == []
+
+
+# --- CallSession: fresh registers per call and forks of a shared image ---
+
+BUMP = """
+.SECTION/PM seg_pmco;
+.GLOBAL _bump;
+_bump:
+    R1 = R1 + 1;
+    I0 = R4;
+    DM(0, I0) = R1;
+    R0 = R1;
+    RTS;
+"""
+
+
+def test_call_session_fresh_registers_match_run_call():
+    _, linked = pk_sharc.build(BUMP, BASE, {})
+    first = {"R4": BUF, "R1": 5}
+    carried = pk_sharc.CallSession([linked], HOOK)
+    fresh = pk_sharc.CallSession([linked], HOOK, fresh_registers=True)
+    for sess in (carried, fresh):
+        assert sess.call("_bump", first)["regs"]["R0"] == 6
+    # R1 is not given: a session keeps the last call's, a fresh core does not.
+    assert carried.call("_bump", {"R4": BUF})["regs"]["R0"] == 7
+    alone = pk_sharc.run_call(
+        linked, "_bump", regs={"R4": BUF}, reads={"out": (BUF, 1)}, return_sw=HOOK
+    )
+    again = fresh.call("_bump", {"R4": BUF})
+    assert again["regs"] == alone["regs"] and again["halt"] == alone["halt"]
+    assert again["regs"]["R0"] != 7
+    # DM still carries over: the word the call stored stays.
+    assert fresh.peek(BUF) == alone["out"][0]
+
+
+def test_call_session_forks_do_not_share_memory():
+    _, linked = pk_sharc.build(BUMP, BASE, {})
+    image = pk_sharc.CallSession([linked], HOOK, fresh_registers=True)
+    image.poke(BUF + 1, 123)
+    a, b = image.fork(), image.fork()
+    assert a.peek(BUF + 1) == b.peek(BUF + 1) == 123
+    assert a.call("_bump", {"R4": BUF, "R1": 1})["regs"]["R0"] == 2
+    b.poke(BUF + 1, 7)
+    assert (a.peek(BUF), a.peek(BUF + 1)) == (2, 123)
+    assert (b.peek(BUF), b.peek(BUF + 1)) == (None, 7)
+    assert image.peek(BUF) is None and image.peek(BUF + 1) == 123
+
+
+# --- the native core behind run_call and CallSession (skipped without the native library) ---
+
+needs_native = pytest.mark.skipif(
+    pk_sharc.native_library() is None,
+    reason=f"native SHARC library not built: {pk_sharc.NATIVE_HINT}",
+)
+
+
+@needs_native
+def test_native_run_call_matches_python():
+    _, linked = pk_sharc.build(BUMP, BASE, {})
+    args = dict(
+        regs={"R4": BUF, "R1": 41},
+        dm_words={BUF + 1: 7},
+        reads={"out": (BUF, 3)},
+        return_sw=HOOK,
+    )
+    python = pk_sharc.run_call(linked, "_bump", **args)
+    assert python["out"] == [42, 7, None]
+    assert pk_sharc.run_call(linked, "_bump", backend="native", **args) == python
+    assert pk_sharc.run_call(linked, "_bump", backend="check", **args) == python
+
+
+@needs_native
+def test_native_session_matches_python_and_keeps_its_memory():
+    _, linked = pk_sharc.build(BUMP, BASE, {})
+    image = pk_sharc.CallSession([linked], HOOK, fresh_registers=True)
+    image.poke(BUF + 1, 123)
+    python, native = image.fork("python"), image.fork("native")
+    for regs in ({"R4": BUF, "R1": 5}, {"R4": BUF}, {"R4": BUF + 2, "R1": 40}):
+        assert native.call("_bump", regs) == python.call("_bump", regs)
+    assert [native.peek(BUF + i) for i in range(4)] == [
+        python.peek(BUF + i) for i in range(4)
+    ]
+    assert native.fallbacks == {}
+    checked = image.fork("check")
+    assert checked.call("_bump", {"R4": BUF, "R1": 1})["regs"]["R0"] == 2
+
+
+def test_check_reports_which_results_differ():
+    with pytest.raises(pk_sharc.PkSharcError, match=r"differ in \['instructions'\]"):
+        pk_sharc._check_same(
+            "call", {"instructions": 5, "regs": {}}, {"instructions": 6, "regs": {}}
+        )

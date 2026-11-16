@@ -2394,6 +2394,103 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x400e65c8"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Sees every Sound the initializer resets; the hook preserves all registers and replays both displaced instructions, which set the stock CCR.",
+      "file": "devices/fw/machine.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.machine.hook.sound_init_slices",
+      "regs": {
+        "clobbers": [],
+        "in": [
+          "a2"
+        ]
+      },
+      "site": "cf.machine.site.sound_init_slices",
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400dba94"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Wraps the Sound writer: the hook replays the displaced prologue, calls the stock body and returns its result unchanged.",
+      "file": "devices/fw/machine.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.machine.hook.sound_serialize",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.machine.site.sound_serialize",
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005179e"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Sees a direct machine-type write; the hook preserves all registers and replays the write and the compare, whose flags stock tests next.",
+      "file": "devices/fw/machine.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.machine.hook.sound_type_write",
+      "regs": {
+        "clobbers": [],
+        "in": [
+          "a0",
+          "d2",
+          "d6"
+        ]
+      },
+      "site": "cf.machine.site.sound_type_write",
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x40016ebc"
           }
         ]
@@ -3871,6 +3968,37 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400e65c8",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 Sound initializer, after its type helper: `clr.l 0x13c(a2); lea 0x140(a2),a2` with a2 the Sound being reset; the slice table is cleared next.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.sound_init_slices",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x400dd286",
@@ -3916,6 +4044,68 @@
         "cf.machine.site.persist",
         "cf.machines.persist"
       ]
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400dba94",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 v3 Sound writer prologue, `bool f(record *dst, Sound *src, u32 flag)`: `lea -0x24(sp),sp; movem.l d2-d5/a2-a6,(sp)`. It zero-fills record positions 0..89 before writing 69 parameters.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.sound_serialize",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005179e",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 track machine change: `move.b d2,0xa2(a0); cmp.l d6,d2` with a0 the track's Sound, d2 the new and d6 the old type.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.sound_type_write",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
     },
     {
       "at": {
@@ -7518,6 +7708,39 @@
         ]
       },
       "site": "cf.page.site.instrument_lock_due_2",
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400392be"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "C ABI wrapper of the note-list writer; ip_note_list_original replays the displaced link and register save.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.page.hook.instrument_note_list_write",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.page.site.instrument_note_list_write",
       "subsystem": "page",
       "users": [
         "core/instrument-play"
@@ -12117,6 +12340,68 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4003407c",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 literal of `addi.l #kits,d0` after `muls.l #0x5574`: the live kit table (pattern k's kit at kits + k*0x5574, its track t Sound at +0x34 + t*0x450).",
+      "file": "devices/fw/project.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.project.site.kit_table_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 2
+        }
+      },
+      "subsystem": "project",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012029c",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 literal of `addi.l #pool,d0` after `muls.l #0x450` with the index bounded to 127: the 128-entry Sound pool.",
+      "file": "devices/fw/project.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.project.site.sound_pool_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 2
+        }
+      },
+      "subsystem": "project",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x4002e8d0",
@@ -14259,6 +14544,198 @@
       "subsystem": "text",
       "users": [
         "core/ui"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40135db4"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Replaces the bzero entry; the hook replays both displaced instructions before resuming.",
+      "file": "devices/fw/util.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.util.hook.bzero",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.util.site.bzero",
+      "subsystem": "util",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40136388"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Replaces the memcpy entry; the hook replays both displaced instructions before resuming and returns the destination in d0.",
+      "file": "devices/fw/util.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.util.hook.memcpy",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.util.site.memcpy",
+      "subsystem": "util",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401363d0"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Replaces the memset entry; the hook replays both displaced instructions before resuming.",
+      "file": "devices/fw/util.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.util.hook.memset",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.util.site.memset",
+      "subsystem": "util",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40135db4",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 stock bzero entry, `void f(void *p, u32 n)`: `movea.l 4(sp),a0; move.l 8(sp),d0`. The Sound initializer clears slice tables with it.",
+      "file": "devices/fw/util.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.util.site.bzero",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "util",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40136388",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 stock memcpy entry, `void *f(void *d, const void *s, u32 n)`: `movea.l 4(sp),a1; movea.l 8(sp),a0`. Whole Sound, kit and clipboard copies call it.",
+      "file": "devices/fw/util.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.util.site.memcpy",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "util",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401363d0",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 stock memset entry, `void *f(void *d, int c, u32 n)`: `movea.l 8(sp),a0; mvz.b 11(sp),d0` (a0 is reloaded from 4(sp) next).",
+      "file": "devices/fw/util.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.util.site.memset",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "util",
+      "users": [
+        "core/instrument-play"
       ],
       "was": []
     },
@@ -19816,7 +20293,7 @@
       "name": "link"
     },
     {
-      "count": 90,
+      "count": 96,
       "cpu": "cf",
       "file": "devices/fw/machine.toml",
       "meaning": "the machine framework: dispatch, names, per-type tables, the run-time registry",
@@ -19844,7 +20321,7 @@
       "name": "midi"
     },
     {
-      "count": 91,
+      "count": 92,
       "cpu": "cf",
       "file": "devices/fw/instrument-src.toml",
       "meaning": "parameter and FX pages",
@@ -19865,7 +20342,7 @@
       "name": "pattern"
     },
     {
-      "count": 4,
+      "count": 6,
       "cpu": "cf",
       "file": "devices/fw/project.toml",
       "meaning": "the project object, kits, tracks, serialisation",
@@ -19912,6 +20389,13 @@
       "file": "devices/fw/text.toml",
       "meaning": "fonts and text drawing",
       "name": "text"
+    },
+    {
+      "count": 6,
+      "cpu": "cf",
+      "file": "devices/fw/util.toml",
+      "meaning": "anything that fits nowhere else",
+      "name": "util"
     },
     {
       "count": 11,

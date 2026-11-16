@@ -9,7 +9,7 @@ extern const u32 fxpages_info[];
 extern volatile u32 pp_position[];
 extern u32 pp_current_pattern(void);
 #define U32(a) (*(volatile u32 *)(a))
-#define OVERLOOP_ID 0xca1bu /* register::effect_id("digikit/overloop", "loop") */
+#define OVERLOOP_ID 0xca1bu /* register::effect_id of the Overloop module id and its effect id "loop" */
 
 static u32 have, row, pattern, target, pending, last_array, last_load;
 static u32 awaiting_load, handoff_boundary;

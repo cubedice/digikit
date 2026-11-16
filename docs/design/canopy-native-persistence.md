@@ -1,10 +1,21 @@
 # CANOPY Sound persistence investigation
 
-CANOPY's custom SRC state currently resides in the admitted instrument instances,
-not in the Elektron Sound. Saving a CANOPY preset is explicit; a project save or
-restart does not serialize those values. A pattern change deliberately retains
-the previous instance configuration, even if the destination Sound is different.
-Consequently a boot-only restore would not supply ordinary Sound semantics.
+**Status (2026-11-15):** the production adapter now persists CANOPY settings
+with the Sound through a record extension and an association store outside
+Sound memory; see [finding 127](../findings/127-canopy-sound-persistence.md).
+This document records the investigation that led there. The emulator-only
+fixtures below that rely on the `Sound + 0x13a` handle are superseded: they
+patch the same instructions the production hooks now own (the Sound writer
+entry `0x400dba94`, the initializer site `0x400e65c8`, the type write
+`0x4005179e`, the memcpy entry `0x40136388`), so they cannot be combined with
+the current adapter.
+
+Before that change, CANOPY's custom SRC state resided in the admitted instrument
+instances, not in the Elektron Sound. Saving a CANOPY preset was explicit; a
+project save or restart did not serialize those values. A pattern change
+deliberately retained the previous instance configuration, even if the
+destination Sound was different. Consequently a boot-only restore would not
+supply ordinary Sound semantics.
 
 **Correction:** the experimental 16-bit handle at Sound `+0x13a` is not safe.
 The stock initializer writes `1` to `+0x13a`, and the machine refresh copies
@@ -19,8 +30,9 @@ outside Sound memory is sketched in
 
 ## Reproducing the persistence failure
 
-The unregistered DTII device test
+The DTII device test
 [`persistence.device.test.ts`](../../modules/machines/canopy/tests/persistence.device.test.ts)
+(registered since finding 127; it used to need `DIGI_CANOPY_PERSIST_TEST=1`)
 edits CHRD, VOIC and STRUM on two independently admitted CANOPY tracks, uses the
 stock panel to save the project, and starts a new emulator on the resulting
 disposable card. It checks that the saved card selects CANOPY and that CANOPY
@@ -30,7 +42,7 @@ including the built CANOPY module and DTII 1.17 firmware. From the repository
 root, run:
 
 ```sh
-DIGI_CANOPY_PERSIST_TEST=1 mise exec -- pnpm --filter @digi/regression exec vitest run --project runtime ../../modules/machines/canopy/tests/persistence.device.test.ts
+mise exec -- pnpm --filter @digi/regression exec vitest run --project runtime ../../modules/machines/canopy/tests/persistence.device.test.ts
 ```
 
 On the unfixed implementation the comparison fails: track 1's
