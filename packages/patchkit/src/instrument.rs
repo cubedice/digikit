@@ -101,6 +101,5 @@ mod tests {
         assert_eq!(constant("DK_I_MAX_TRACKS"), 16);
         assert_eq!(constant("DK_I_MAX_EVENTS"), 8);
         assert_eq!(constant("DK_I_MAX_CONTROLS"), 32);
-        assert_eq!(crate::sdkgen::embedded().machine.0, 1);
     }
 }

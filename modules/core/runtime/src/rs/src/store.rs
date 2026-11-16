@@ -4,7 +4,7 @@
 //! scanned through the staging buffer.
 
 use crate::hash32;
-use crate::{DKRT_STAGE, STAGE_BYTES};
+use crate::{stage_bytes, DKRT_STAGE};
 use core::ptr::{addr_of, addr_of_mut, read_volatile, write_volatile};
 use dkrt_sdk::store::{self, Hdr, Io, Layout, Table, KIND_FILE};
 use dkrt_sdk::*;
@@ -150,7 +150,7 @@ pub unsafe fn load_to_stage(f: &File) -> i32 {
     if !crate::store_writer::acquire() {
         return E_BUSY;
     }
-    let r = store::read_sectors(&reader(), &layout(), f.first, sectors, buf, STAGE_BYTES);
+    let r = store::read_sectors(&reader(), &layout(), f.first, sectors, buf, stage_bytes());
     crate::store_writer::unlock();
     if r != OK {
         return r;

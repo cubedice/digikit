@@ -10,16 +10,16 @@ pub(crate) struct Pending {
     pub rec: usize,
     pub selection: u32,
     pub image_size: u32,
-    pub reg: u32,
-    pub reg_size: u32,
+    /// The copy of the file's keys table (`complete` reads the machine keys from it).
+    pub keys: u32,
+    pub keys_size: u32,
     pub section: u32,
     pub section_size: u32,
     pub output: u32,
     pub output_size: u32,
     pub init: u32,
+    pub tick: u32,
     pub menu: u32,
-    pub mask: u32,
-    pub fns: [u32; SLOTS],
     phase: u32,
     ticket: Option<Ticket>,
     result: i32,
@@ -71,19 +71,17 @@ pub(crate) unsafe fn descriptor_limits() -> Option<instrument_descriptor::Limits
         cycles_reset: p[4], call_depth: p[5], stack_bytes: p[6] })
 }
 pub(crate) unsafe fn occupied() -> bool { (&*core::ptr::addr_of!(PENDING)).is_some() }
-pub(crate) unsafe fn slots_busy(mask: u32) -> bool {
-    (&*core::ptr::addr_of!(PENDING)).as_ref().is_some_and(|p| p.mask & mask != 0)
-}
 pub(crate) unsafe fn queue(mut p: Pending) {
     p.phase = 0; p.ticket = None;
     *addr_of_mut!(PENDING) = Some(p);
 }
 impl Pending {
-    pub(crate) fn new(rec: usize, selection: u32, image_size: u32, reg: u32, reg_size: u32,
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn new(rec: usize, selection: u32, image_size: u32, keys: u32, keys_size: u32,
         section: u32, section_size: u32, output: u32, output_size: u32,
-        init: u32, menu: u32, mask: u32, fns: [u32; SLOTS]) -> Self {
-        Self { rec, selection, image_size, reg, reg_size, section, section_size, output,
-            output_size, init, menu, mask, fns, phase: 0, ticket: None, result: E_DSP_XFER, reported: false, type_no: 0, was_live: false }
+        init: u32, tick: u32, menu: u32) -> Self {
+        Self { rec, selection, image_size, keys, keys_size, section, section_size, output,
+            output_size, init, tick, menu, phase: 0, ticket: None, result: E_DSP_XFER, reported: false, type_no: 0, was_live: false }
     }
     unsafe fn discard(&mut self, result: i32) {
         // Only before admission or after release_memory, never on uncertainty.
@@ -91,7 +89,7 @@ impl Pending {
         crate::st().modules[self.rec].used = 0;
         (*addr_of_mut!(crate::DKRT_MENUS))[self.rec] = 0;
         self.report(result);
-        crate::table::check();
+        crate::invariants::check();
     }
     unsafe fn report(&mut self, result: i32) {
         self.result = result;
@@ -155,15 +153,12 @@ unsafe fn tick_inner(owner: &mut Owner, link: LinkProgress, now: u32) {
         match owner.tick(now) {
             Progress::Complete { command: Command::Publish(ticket), recovered: None }
                 if p.phase == 2 && Some(ticket) == p.ticket => {
-                let old = crate::loader::BOOT_IDX;
-                crate::loader::BOOT_IDX = p.selection;
-                let result = crate::loader::publish_cf(p.rec, p.reg as *const u8,
-                    p.reg_size, p.image_size, p.init, p.mask, &p.fns);
-                crate::loader::BOOT_IDX = old;
+                let result = crate::loader::publish_v2(p.rec, p.keys as *const u8, p.keys_size,
+                    p.init, p.tick, p.image_size, p.selection);
                 if result == OK {
                     (*addr_of_mut!(crate::DKRT_MENUS))[p.rec] = p.menu;
                     p.report(OK);
-                    crate::table::check();
+                    crate::invariants::check();
                     // Release only the link: published code/state remain owned.
                     p.phase = if owner.request_link_release(now, 2000).is_ok() { 7 } else { 9 };
                 } else {

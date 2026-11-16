@@ -56,3 +56,11 @@ dkrt_stage_bytes:
     .ascii "DKIMGID1"
 dkrt_image_id:
     .long 0, 0
+
+    /* The device owns its staging allocation (DN2 64 KiB, [limits] stage_bytes of the device file): patchkit reserves this bss
+     * with the object and the boot loader clears it. The Rust object takes its address and dkrt_stage_bytes; native reads stay <= 64 KiB. */
+    .section .bss
+    .balign 16
+    .globl DKRT_STAGE
+DKRT_STAGE:
+    .space LIMIT_STAGE_BYTES

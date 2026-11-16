@@ -142,6 +142,10 @@ pub struct IdRef {
     /// which the keys hash and `module_ids.h` names its constant from.
     #[serde(default)]
     pub dsp: Option<String>,
+    /// A persistent V2 instrument (core/instrument-play), not a V1 voice: a `[[machine]]` only. Its DSP entry points are `_<prefix>_reset` and
+    /// `_<prefix>_process` and its descriptor `_<prefix>_descriptor`; the section is version 7 or 8 (`dkmdsp`), which the runtime takes on its V2 path.
+    #[serde(default)]
+    pub instrument: bool,
 }
 
 impl IdRef {
@@ -587,11 +591,6 @@ impl Module {
     ) -> Result<Module> {
         let manifest: Manifest = toml::from_str(manifest_text)?;
         manifest.validate_header()?;
-        if manifest.instrument_old.is_some() {
-            return Err(err!(
-                "[[instrument]] is not read: declare V2 instruments with DK_INSTRUMENT in C (sdk/include/dk/instrument.h)"
-            ));
-        }
         let mut objects = vec![];
         let mut all = manifest_text.to_string();
         for o in &manifest.object {

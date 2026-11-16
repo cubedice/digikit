@@ -3,7 +3,7 @@
 use crate::platform::{self, device};
 use crate::plan;
 use crate::platform::st;
-use crate::state::{init_once, MAX_MODULES, STAGE_BYTES};
+use crate::state::{init_once, stage_bytes, MAX_MODULES};
 use crate::handlers::services;
 use crate::{arena, boot, card, fault, dlog, dsp, settings, speed, store, watch};
 use core::ptr::{addr_of, read_volatile};
@@ -126,7 +126,7 @@ pub unsafe extern "C" fn dkrt_capacity(out: *mut DkrtCap, max: u32) -> u32 {
         }
         i += 1;
     }
-    let stage = STAGE_BYTES as u32;
+    let stage = stage_bytes() as u32;
     // the store: its area in KiB (0 when the card is too small for it), and what the headers say is used (a card with no header: nothing)
     let st_total = if card::state() == CARD_TOO_SMALL { 0 } else { store::layout().limit() / 2 };
     let st_used = match store::seen() {

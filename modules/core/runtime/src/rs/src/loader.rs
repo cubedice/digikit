@@ -64,6 +64,10 @@ unsafe fn load_inner(path: *const u8) -> i32 {
     if !EARLY {
         return E_BOOT_ONLY;
     }
+    // a V2 instrument transaction drains or owns the DSP link (instrument.rs): no other load starts until it is done
+    if crate::instrument::legacy_policy() != dkrt_sdk::instrument_coordinator::LegacyPolicy::Run {
+        return E_DSP_XFER;
+    }
     let found = match store::find(path) {
         Ok(f) => f,
         Err(e) => return e,
@@ -199,7 +203,25 @@ unsafe fn load_inner(path: *const u8) -> i32 {
     // the DSP section, if any
     let (dsp_off, dsp_size) = (rd32(f.add(H_DSP_OFF)), rd32(f.add(H_DSP_SIZE)));
     let mut job = dsp::Job::empty();
-    if dsp_size != 0 {
+    // A version 7 or 8 section holds persistent V2 instruments (core/instrument-play): the runtime's V2 owner admits and loads it
+    // (instrument/pending.rs); the CF side is published only after the DSP acknowledges the instance.
+    let v2 = dsp_size >= 8
+        && in_file(dsp_off, dsp_size, size)
+        && rd32(f.add(dsp_off as usize + dkneeds::DSP_H_MAGIC as usize)) == dkneeds::DSP_MAGIC
+        && matches!(rd32(f.add(dsp_off as usize + dkneeds::DSP_H_VERSION as usize)), 7 | 8);
+    let mut output_size = 0;
+    if v2 {
+        if crate::instrument::pending::policy().is_none() || crate::instrument::pending::occupied() {
+            return E_CONTRACT;
+        }
+        let bytes = core::slice::from_raw_parts(f.add(dsp_off as usize), dsp_size as usize);
+        let Some(limits) = crate::instrument::pending::descriptor_limits() else { return E_CONTRACT; };
+        let Ok(section) = instrument_section::Section::parse(bytes, crate::device(), limits) else { return E_FORMAT; };
+        if crate::assign::resolve_instruments(&section, BOOT_IDX).is_err() {
+            return E_FORMAT;
+        }
+        output_size = section.memory_request().image_bytes;
+    } else if dsp_size != 0 {
         let r = dsp::check(f, dsp_off, dsp_size, size, &mut job);
         if r != OK {
             return r;
@@ -218,18 +240,28 @@ unsafe fn load_inner(path: *const u8) -> i32 {
 
     // ---- allocate, copy, relocate, zero bss ----
     // The DSP range, the relocated DSP image and the voice rows come first: nothing else is allocated yet if they fail.
-    if dsp_size != 0 {
+    // A V2 load keeps copies of its keys table and DSP section, and the output buffer of its relocated image, in its own
+    // CF allocation: the staging buffer is reused by the next selected module before the V2 owner finishes.
+    let keys_at = (total + 15) & !15;
+    let section_at = keys_at + ((reg_size + 15) & !15);
+    let output_at = section_at + ((dsp_size + 15) & !15);
+    let allocation = if v2 { output_at.checked_add(output_size).unwrap_or(u32::MAX) } else { total };
+    if dsp_size != 0 && !v2 {
         let r = dsp::reserve(rec, &job);
         if r != OK {
             return r;
         }
     }
-    let mem = arena::alloc(total);
+    let mem = arena::alloc(allocation);
     if mem.is_null() {
-        if dsp_size != 0 {
+        if dsp_size != 0 && !v2 {
             dsp::cancel(rec);
         }
         return E_NOMEM;
+    }
+    if v2 {
+        core::ptr::copy_nonoverlapping(reg, mem.add(keys_at as usize), reg_size as usize);
+        core::ptr::copy_nonoverlapping(f.add(dsp_off as usize), mem.add(section_at as usize), dsp_size as usize);
     }
     let base = mem as u32;
     i = 0;
@@ -277,12 +309,32 @@ unsafe fn load_inner(path: *const u8) -> i32 {
     m.version = rd32(f.add(H_VERSION));
     (*addr_of_mut!(crate::DKRT_MODULE_RUNTIME))[rec] = needs & !crate::FLAG_TRACE;
     m.base = base;
-    m.size = total;
+    m.size = allocation;
     m.fini = if fini == NONE { 0 } else { base + fini };
     crate::entry::bind(rec);
     (*addr_of_mut!(crate::DKRT_MENUS))[rec] = if menu == NONE { 0 } else { base + menu };
     let initaddr = if init == NONE { 0 } else { base + init };
     let tickaddr = if tick == NONE { 0 } else { base + tick };
+    if v2 {
+        let menuaddr = (*addr_of_mut!(crate::DKRT_MENUS))[rec];
+        (*addr_of_mut!(crate::DKRT_MENUS))[rec] = 0;
+        m.used = 2; // occupied, not published
+        crate::instrument::pending::queue(crate::instrument::pending::Pending::new(
+            rec,
+            read_volatile(addr_of!(BOOT_IDX)),
+            image_size,
+            base + keys_at,
+            reg_size,
+            base + section_at,
+            dsp_size,
+            base + output_at,
+            output_size,
+            initaddr,
+            tickaddr,
+            menuaddr,
+        ));
+        return LOADING;
+    }
     if dsp_size != 0 {
         // the CF part goes live now (rows in place before the machine view is built); the DSP code and the voice rows follow
         // when the frames flow
@@ -323,6 +375,26 @@ unsafe fn load_inner(path: *const u8) -> i32 {
 /// The end of a load, shared by the immediate and the DSP path (both run in the boot hook; docs/plans/sdk.md 6.3): `init` runs first and its builder calls are collected; then the commit checks them, fills the
 /// voice rows' ranges, writes the registry rows and keeps the record block. Anything that fails undoes what `init` did and writes no row.
 unsafe fn complete(rec: usize, keys: &crate::collect::KeysCopy, init: u32, tick: u32, image_size: u32) -> i32 {
+    complete_owned(rec, keys, init, tick, image_size, true)
+}
+
+/// Publish a V2 instrument's CF side (instrument/pending.rs, after the DSP acknowledged the instance): `init` and the commit of
+/// [`complete`], from the keys table the load kept, for the selection it was loaded for. Storage belongs to the V2 owner: a
+/// failure undoes what `init` did but releases no DSP or module memory (the owner detaches before it reclaims them).
+pub(crate) unsafe fn publish_v2(rec: usize, keys: *const u8, keys_size: u32, init: u32, tick: u32, image_size: u32, selection: u32) -> i32 {
+    let keys = match crate::collect::KeysCopy::from_bytes(core::slice::from_raw_parts(keys, keys_size as usize)) {
+        Ok(k) => k,
+        Err(e) => return e,
+    };
+    // deferred publication can follow other selected modules: the machine keys resolve for the selection of this load
+    let old = read_volatile(addr_of!(BOOT_IDX));
+    *addr_of_mut!(BOOT_IDX) = selection;
+    let r = complete_owned(rec, &keys, init, tick, image_size, false);
+    *addr_of_mut!(BOOT_IDX) = old;
+    r
+}
+
+unsafe fn complete_owned(rec: usize, keys: &crate::collect::KeysCopy, init: u32, tick: u32, image_size: u32, release_dsp: bool) -> i32 {
     let s = st();
     let owner = rec as u8 + 1;
     crate::files::init_begin(rec);
@@ -333,7 +405,7 @@ unsafe fn complete(rec: usize, keys: &crate::collect::KeysCopy, init: u32, tick:
         crate::module_cmds::release_cmds(owner);
         crate::dlog::release_sinks(rec);
         crate::registry::remove(owner);
-        if !dsp::release(rec) || held {
+        if (release_dsp && !dsp::release(rec)) || held {
             return E_BUSY;
         }
         r

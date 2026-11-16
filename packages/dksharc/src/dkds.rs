@@ -19,6 +19,12 @@ pub const VERSION_1: u32 = DSP_V1;
 pub const VERSION_3: u32 = DSP_V3;
 pub const VERSION_4: u32 = DSP_V4;
 pub const VERSION_5: u32 = DSP_V5;
+/// Persistent V2 instruments (core/instrument-play): the header grows to `HEADER_INSTRUMENT` bytes with the instrument table at 0x40/0x44.
+pub const VERSION_7: u32 = 7;
+/// Version 7 and the sorted executable ranges of the image at 0x48/0x4c.
+pub const VERSION_8: u32 = 8;
+/// Header bytes of a version 7 or 8 section.
+pub const HEADER_INSTRUMENT: usize = 0x50;
 
 /// A DSP section: its bytes and its version (magic and version are checked).
 #[derive(Clone, Copy, Debug)]
@@ -57,8 +63,11 @@ impl<'a> Dkds<'a> {
             return Err("not a DSP section (magic)".into());
         }
         let version = be32(bytes, DSP_H_VERSION as usize);
-        if !(VERSION_1..=VERSION_5).contains(&version) {
+        if !(VERSION_1..=VERSION_5).contains(&version) && version != VERSION_7 && version != VERSION_8 {
             return Err(format!("DSP section version {version}"));
+        }
+        if version >= VERSION_7 && bytes.len() < HEADER_INSTRUMENT {
+            return Err("truncated V7/V8 header".into());
         }
         Ok(Dkds { bytes, version })
     }
@@ -106,7 +115,7 @@ impl<'a> Dkds<'a> {
     pub fn voice_len(&self) -> usize {
         match self.version {
             VERSION_1 => VOICE_LEN_V1,
-            VERSION_3..=VERSION_5 => VOICE_LEN_V3,
+            VERSION_3..=VERSION_5 | VERSION_7 | VERSION_8 => VOICE_LEN_V3,
             _ => VOICE_LEN,
         }
     }

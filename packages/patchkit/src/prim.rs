@@ -363,7 +363,10 @@ pub fn collect<'a>(lib: &'a Library, order: &[String], dev: &str) -> Result<Acti
                 m.id()
             ));
         }
-        crate::typed::require_supported_instruments(&m.manifest)?;
+        // a V2 instrument has no static lowering: only the runtime's V2 path admits it
+        if let Some(x) = m.manifest.machines.iter().find(|x| x.instrument) {
+            return Err(err!("{}: instrument {:?} is loaded at run time only", m.id(), x.id));
+        }
         if crate::typed::has_typed(&m.manifest) && !m.manifest.lowered {
             return Err(err!(
                 "{}: typed sections were not lowered (load the library with the device models)",

@@ -216,18 +216,6 @@ pub struct MachineDef {
     pub stereo: bool,
 }
 
-/// Experimental persistent-instrument declaration. Deliberately separate from
-/// VoiceDef: reset/process must not acquire V1 note-on clearing semantics.
-#[derive(Clone, Debug, Serialize)]
-pub struct InstrumentDef {
-    pub id: String,
-    pub name: String,
-    pub short: String,
-    pub reset: String,
-    pub process: String,
-    pub desc: String,
-}
-
 /// A parameter of a machine (a `DK_PARAM` record). `min`, `max` and `default` are raw: the knob unit times 256.
 #[derive(Clone, Debug, Serialize)]
 pub struct ParamDef {
@@ -372,63 +360,7 @@ pub struct FxKnob {
 }
 
 pub fn has_typed(m: &Manifest) -> bool {
-    !(m.instrument.is_empty()
-        && m.machine.is_empty()
-        && m.param.is_empty()
-        && m.page.is_empty()
-        && m.voice.is_empty())
-}
-
-/// Do not silently drop V2 declarations when producing V1 rows or firmware.
-pub fn require_supported_instruments(m: &Manifest) -> Result<()> {
-    if let Some(i) = m.instrument.first() {
-        return Err(err!(
-            "{}: instrument {} requires V2 registration and runtime capability, which are not implemented for static lowering",
-            m.module.id,
-            i.id
-        ));
-    }
-    Ok(())
-}
-
-/// Runtime-only Stage 1 declaration lowering. CF machine-list metadata is shared
-/// with V1, but no V1 voice entry, callback or state allocation is synthesized.
-/// Static firmware lowering stays closed until it has an equivalent lifecycle.
-pub fn resolve_runtime(m: &Manifest, models: &Models, dev: &str) -> Result<Vec<DevResolved>> {
-    if m.instrument.is_empty() {
-        return resolve(m, models);
-    }
-    if !m.module.dynamic
-        || dev != "dt2"
-        || m.module.ports != ["dt2-1.17"]
-        || !m
-            .module
-            .requires
-            .iter()
-            .any(|r| r == "core/instrument-play")
-        || m.instrument.len() != 1
-        || !m.machine.is_empty()
-        || !m.voice.is_empty()
-        || !m.param.is_empty()
-        || !m.page.is_empty()
-    {
-        return Err(err!(
-            "{}: instrument requires V2 registration and runtime capability: one DT2 1.17 instrument, core/instrument-play, and no V1 declarations",
-            m.module.id
-        ));
-    }
-    let i = &m.instrument[0];
-    let mut metadata = m.clone();
-    metadata.instrument.clear();
-    metadata.machine.push(MachineDef {
-        stereo: false,
-        id: i.id.clone(),
-        name: i.name.clone(),
-        short: i.short.clone(),
-    });
-    let mut resolved = resolve(&metadata, models)?;
-    resolved.retain(|r| r.dev == dev);
-    Ok(resolved)
+    !(m.machine.is_empty() && m.param.is_empty() && m.page.is_empty() && m.voice.is_empty())
 }
 
 // ---- resolution ----------------------------------------------------------------------------------------------
@@ -601,7 +533,6 @@ pub fn resolve(m: &Manifest, models: &Models) -> Result<Vec<DevResolved>> {
     if !m.native_page.is_empty() && !m.module.dynamic {
         return Err(err!("native callback pages require a run-time machine"));
     }
-    require_supported_instruments(m)?;
     let who = m.module.id.as_str();
     let mut out = vec![];
     if m.machine.is_empty() {

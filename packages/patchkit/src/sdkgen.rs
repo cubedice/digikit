@@ -17,6 +17,10 @@ pub const PY_OUT: &str = "tools/device/dklog_kinds.py";
 pub const INC_OUT: &str = "sdk/dsp/contract/dk_machine.inc";
 /// The generated SHARC+ include of the FX contract, relative to the repository root.
 pub const FX_INC_OUT: &str = "sdk/dsp/contract/dk_fx.inc";
+/// The generated SHARC+ include and C views of the experimental V2 instrument layout (`[instrument]`), relative to the repository root.
+pub const INSTRUMENT_INC_OUT: &str = "sdk/dsp/contract/dk_instrument.inc";
+pub const C_INSTRUMENT_OUT: &str = "sdk/include/dk/gen/instrument_consts.h";
+pub const C_INSTRUMENT_VIEW_OUT: &str = "sdk/include/dk/gen/instrument.h";
 /// The generated C header of the machine contract's numbers, relative to the repository root.
 pub const C_MACHINE_OUT: &str = "sdk/include/dk/gen/machine_consts.h";
 /// The generated C header of the FX contract's numbers, relative to the repository root.
@@ -2345,6 +2349,7 @@ fn instrument_h(sdk: &Sdk) -> Result<String> {
         ],
         &v.fns,
         &sdk.instrument.c,
+        &register_comment(sdk),
     ))
 }
 
