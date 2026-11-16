@@ -1,4 +1,4 @@
-# 125: CANOPY recording: held-trig page, live chords and step recording
+# CANOPY recording: held-trig page, live chords and step recording
 
 DT2 OS 1.17, 2026-11-13. Three user reports on the installed four-page build
 (image `1d4953c4df3f3193`): holding a step to set a p-lock blanks CANOPY's

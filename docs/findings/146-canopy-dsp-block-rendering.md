@@ -1,4 +1,4 @@
-# 122: CANOPY DSP block rendering
+# CANOPY DSP block rendering
 
 DT2 OS 1.17, 2026-11-12. **[D]** The worst CANOPY process callback over all
 ceiling tests fell from **99,849 to 77,017 instructions** per 32-sample block

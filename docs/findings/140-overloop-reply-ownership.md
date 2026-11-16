@@ -1,4 +1,4 @@
-# 116: Overloop status and immediate FX diagnostics
+# Overloop status and immediate FX diagnostics
 
 DT2 OS 1.17, 2026-11-08. **[D]** Static diagnosis, component regression and full
 running-firmware emulator coexistence passed. No hardware installation.

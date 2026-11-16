@@ -279,7 +279,7 @@ Add an opt-in V2 contract in `sdk/sdk.toml`, generate its C/assembly bindings, a
 The semantic contract below now has an experimental binary layout in
 `sdk/sdk.toml` under `[instrument]`, with generated C and assembly bindings in
 `sdk/include/dk/gen/instrument.h`, `sdk/include/dk/gen/instrument_consts.h` and
-`sdk/asm/dk_instrument.inc`. The input is 72 bytes; the separate `DKIT` descriptor
+`sdk/dsp/contract/dk_instrument.inc`. The input is 72 bytes; the separate `DKIT` descriptor
 is 48 bytes. Normalized events have six 32-bit words and require zero sample
 offset. The descriptor declares track count, per-track state, bounded events and
 controls, and process/reset instruction, call-depth and stack budgets.

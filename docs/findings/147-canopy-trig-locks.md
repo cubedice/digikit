@@ -1,4 +1,4 @@
-# 123: CANOPY trig locks: DT2 1.17 lock storage and the packed design
+# CANOPY trig locks: DT2 1.17 lock storage and the packed design
 
 DT2 OS 1.17, 2026-11-12. Investigation for parameter locks (p-locks) on CANOPY
 tracks, "option A, packed form": CANOPY stores its own (knob, value) pairs in

@@ -8,7 +8,7 @@ prerequisite for arming a loop at a selected pattern step. It does not change `d
 quantized capture. Its record describes firmware state; sample-accurate alignment needs separate evidence.
 
 Implementation and ABI: `modules/core/adapters/pattern-position/README.md`, `sdk/include/dk/pattern_position.h`,
-`sdk/asm/dk_pattern_position.inc`. Firmware, extracted sections, emulator cards, traces and PCM remain under ignored
+`sdk/dsp/contract/dk_pattern_position.inc`. Firmware, extracted sections, emulator cards, traces and PCM remain under ignored
 local paths. No instrument was flashed.
 
 ## Resolved stock state

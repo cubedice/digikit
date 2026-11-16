@@ -10,7 +10,7 @@
 
 **[D]** The DTII DSP return is 0xabc bytes: 0x1c header, 32 rows of 0x54 bytes, 0x20 trailer. The mailbox uses entries 11/12 (byte offsets 0x44/0x48) of rows 13–20. ACK uses row 0 and existing diagnostics use rows 1–12. The mailbox is read on the same DSP core after effect processing. The CF task copies the driver's reply under a brief interrupt mask, converting low-half-first words. This extension is absent on DNII, whose reply layout carries audio.
 
-**[D]** The SDK contract is `sdk/asm/dk_loop_status.inc`; its ABI and ownership are documented in `modules/core/adapters/loop-display/README.md`. The module publishes actual mode, capture/window lengths, playhead and smoothed gain. The UI does not infer recorder state from REC or read the audio buffer. A missing or stalled heartbeat produces NO STATUS and a live-only fader.
+**[D]** The SDK contract is `sdk/dsp/contract/dk_loop_status.inc`; its ABI and ownership are documented in `modules/core/adapters/loop-display/README.md`. The module publishes actual mode, capture/window lengths, playhead and smoothed gain. The UI does not infer recorder state from REC or read the audio buffer. A missing or stalled heartbeat produces NO STATUS and a live-only fader.
 
 **[D]** Component checks execute compiled ColdFire and assembled SHARC code. They cover byte preservation outside all sixteen reply slots, absent provider, word ordering, freshness timeout, wrapped window pixels, audible fade fallback and visible-view invalidation. Module conformance passes 33 tests with one skip; the focused display/capture/transport suite passes 47 tests. The corrected empty-page screenshot is `out/runs/overloop-ui/dt2/overloop-idle.png`.
 

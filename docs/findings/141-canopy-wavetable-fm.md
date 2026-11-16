@@ -1,4 +1,4 @@
-# 117: CANOPY wavetable phase modulation
+# CANOPY wavetable phase modulation
 
 DT2 OS 1.17, 2026-11-09. Counts below are for that build; block rendering
 later cut the worst wavetable block to 69,909 with bit-identical output

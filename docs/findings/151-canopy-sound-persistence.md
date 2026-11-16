@@ -1,4 +1,4 @@
-# 127. CANOPY Sound persistence outside Sound memory
+# CANOPY Sound persistence outside Sound memory
 
 CANOPY's own SRC settings (32 controls, the remembered FM bank, family,
 keyboard mode and the effective chord shape) now travel with the Elektron

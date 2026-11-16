@@ -1,4 +1,4 @@
-# 126. CANOPY boot loading and transfer size
+# CANOPY boot loading and transfer size
 
 CANOPY's installed DT2 package contains a 226,260-byte DSP image and 5,800
 bytes of BSS. At boot the V2 instrument loader transfers the image and clears
@@ -24,6 +24,14 @@ is retained for the entire in-flight transfer, as before. [D]
 The DT2 1.17 firmware and CANOPY module built with the larger buffer. The
 `canopy-arp-tests:test-device` emulator acceptance loaded CANOPY and passed
 keyboard playback, tempo, transport and panel-encoder checks. [D]
+
+With 16-bit factory wavetables (two samples to a word, `src/dsp/wavetable.s`
+scales the crossfaded table output by 2^-14 once, exact for every stored
+sample) the packed DT2 module is 147,352 bytes, with a 132,292-byte DSP image
+and the same 5,800 bytes of BSS: 33 image writes and two BSS writes at 4,096
+bytes, 35 transfers instead of 58. The DT2 staging buffer, which holds the
+whole file while it loads, is 160 KiB (240 KiB with the float tables). The five
+registered `canopy-arp-tests` files pass on the DT2 with this package. [D]
 
 The time from power-on to a playable track depends on the rest of firmware
 boot, UI task scheduling and the physical link. A paired physical measurement

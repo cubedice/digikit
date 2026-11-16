@@ -1,4 +1,4 @@
-# 118: DT2 emulator test execution
+# DT2 emulator test execution
 
 DT2 OS 1.17, 2026-11-09. **[D]** The ceiling is the work this change does
 not accelerate: reference ColdFire execution, generated-block fallbacks, startup,
