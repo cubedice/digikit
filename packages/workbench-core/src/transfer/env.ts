@@ -36,8 +36,6 @@ export interface TransferSource {
   files(id: string): string[];
   /** The text of one of them. */
   read(id: string, path: string): Promise<string>;
-  /** A source too large to preview; the complete file remains available to download. */
-  download?(id: string, path: string): { url: string; size: number } | undefined;
 }
 
 /** The `[files]` table of a module.toml: the files the module owns under `data/<module id>/` and how the page shows them. */
