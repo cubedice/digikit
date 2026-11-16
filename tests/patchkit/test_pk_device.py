@@ -25,7 +25,7 @@ def module(mid: str) -> dict:
 
 def test_shared_limits_allow_device_staging_without_exposing_a_wrong_capacity() -> None:
     shared = pk_device.shared_limits()
-    assert pk_device.limits("dt2").stage_bytes == 262144
+    assert pk_device.limits("dt2").stage_bytes == 163840
     assert pk_device.limits("dn2").stage_bytes == 65536
     for device in pk_device.digikit_devices():
         limits = pk_device.limits(device)

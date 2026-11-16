@@ -374,7 +374,7 @@ def test_process_binding_is_owned_and_cannot_change_after_initialization(schedul
         (11, 9),
         (12, 0),
         (12, 33),
-        (13, 1),
+        (13, 2),  # the status flags are cumulative: 0, 1, 3 or 7
         (14, 1),
     ],
 )

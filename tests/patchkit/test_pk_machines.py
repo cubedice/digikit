@@ -72,6 +72,14 @@ def test_framework_rules_are_declared_once_per_site():
     assert len(keys) == len(set(keys))
     # every anchor a hook, write, section or extern of the manifest names has a rule for each device it is active on
     rules = {(r["name"], dev) for r in machine_rules for dev in r.get("devices", [])}
+    # an extern may name another subsystem's rule (a native SRC page list of more than two pages grows through
+    # cf.mem.fn.new and cf.mem.fn.free); a rule without a device filter holds on every device
+    rules |= {
+        (r["name"], dev)
+        for r in port_resolve.fw_rules(REPO_ROOT)
+        if not r["name"].startswith(("cf.machine.", "dsp.machine."))
+        for dev in r.get("devices") or ["dt2", "dn2"]
+    }
     named = set()
     for op in m["op"]:
         named.add((op.get("anchor"), tuple(op.get("devices", ["dt2", "dn2"]))))
