@@ -43,6 +43,9 @@ def registry_object():
             **symbols,
             "_mi_epoch": 0x20040000,
             "_mi_message": 0x20040004,
+            # optional (core/instrument-play): absent, the reply carries no play status
+            "_instrument_play_status": 0,
+            "_instrument_ui_status": 0,
         },
     )
     return linked, symbols, initial

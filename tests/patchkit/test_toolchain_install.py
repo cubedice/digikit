@@ -131,6 +131,7 @@ def test_codegen_readiness_requires_native_backend_and_jit(
     tmp_path, monkeypatch, platform, suffix
 ):
     monkeypatch.setattr(T.sys, "platform", platform)
+    monkeypatch.setattr(T, "DARWIN", platform == "darwin")
     monkeypatch.setattr(T, "CG_DIR", tmp_path / "cg")
     monkeypatch.setattr(T, "M68K_PREFIX", tmp_path / "m68k")
     assembler = T.M68K_PREFIX / "bin/m68k-elf-as"
@@ -159,6 +160,7 @@ def test_codegen_jit_publication_checks_native_artifact(
     tmp_path, monkeypatch, platform, name
 ):
     monkeypatch.setattr(T.sys, "platform", platform)
+    monkeypatch.setattr(T, "DARWIN", platform == "darwin")
     build, links = tmp_path / "build", tmp_path / "jitlib"
     with pytest.raises(SystemExit, match="did not produce"):
         T._publish_codegen_jit(build, links)
