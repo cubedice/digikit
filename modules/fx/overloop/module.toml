@@ -35,14 +35,16 @@ place = "cf.expansion"
 
 # The load cell boots the patch set with core/loop-storage and core/loop-display. The rig does not run the effect: its DSP reads the
 # loop buffer of core/loop-storage and the position of core/pattern-position, which the rig does not place; tests/test_overloop.py runs
-# it on the effect adapter with stand-ins for both (tests/fx_provider.py).
+# it on the effect adapter with stand-ins for both (tests/fx_provider.py) and holds every block to dsp_cost_fx of [uses.dt2].
 [conformance]
 patch_set = "overloop"
 rig_skip = "reads core/loop-storage and core/pattern-position data the rig does not place"
 
 # One effect record (0x1a4, its page and params inline) after the 16-byte header: no machine, param or page rows.
+# dsp_cost_fx: the costliest hook call (core/fx and the effect) of the scenarios in tests/test_overloop.py, in instructions.
 [uses.dt2]
 machine_rows = 0
 param_rows = 0
 page_rows = 0
 record_bytes = 436
+dsp_cost_fx = 2606

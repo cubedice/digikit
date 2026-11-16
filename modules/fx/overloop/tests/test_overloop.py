@@ -4,6 +4,7 @@ separate integration proof. No arbitrary scheduler-to-audio offset is applied.
 """
 
 import json
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -16,7 +17,18 @@ MODULE = Path(__file__).resolve().parents[1]
 LIVE = (0.625,) * 32 + (-0.375,) * 32
 
 
+# The rig's effect suite does not run Overloop ([conformance] rig_skip), so nothing measures its `dsp_cost_fx` there. The boot planner,
+# the menu and `patchkit fit` budget the DSP with [uses.dt2] dsp_cost_fx (instructions of one hook call: core/fx and the effect), so
+# the declared cost must cover the costliest block these tests run. Set it with `patchkit uses set --id digikit/overloop --device dt2
+# --dsp-cost-fx N`.
+DSP_COST_FX = tomllib.loads((MODULE / "module.toml").read_text())["uses"]["dt2"][
+    "dsp_cost_fx"
+]
+
+
 class Player:
+    worst = 0  # instructions of the costliest block of any player so far
+
     def __init__(self, *, start=4, length=0):
         self.rig = OverloopRig(record_stores=True)
         self.tx, self.seq, self.step = 0, 1, 3
@@ -58,6 +70,11 @@ class Player:
             self.rig.set_row_word(0, P0 + k, f2w(value))
         result = self.rig.block(samples, ctx=None if hostile else "friendly")
         assert result.returned, result.halt
+        # every block of every scenario here is within the cost the module declares (see DSP_COST_FX)
+        assert result.instructions <= DSP_COST_FX, (
+            f"a block of {result.instructions} instructions, [uses.dt2] dsp_cost_fx = {DSP_COST_FX}"
+        )
+        Player.worst = max(Player.worst, result.instructions)
         assert not result.ctx_bad and not result.regs_bad
         assert self.rig.row_word(0, NFAULT) == 0
         assert not self.rig.foreign_stores(0)
@@ -256,6 +273,28 @@ def test_live_window_uses_recorded_boundaries_and_rotates_without_recapture():
     p.params[3] = 127
     p.block()
     assert p.state(30) == 352  # no unrecorded samples exposed
+
+
+def test_the_declared_dsp_cost_is_the_cost_of_a_take():
+    """A take from idle to a faded loop with a moved window stays within the declared cost (`Player.block` checks every block), and
+    the declared cost is no more than a quarter above it: a stale high number would make the planner refuse loads that fit."""
+    Player.worst = 0
+    p = Player(length=3)
+    p.start()
+    second = (0.25,) * 32 + (-0.25,) * 32
+    for step in (5, 6, 7):
+        for _ in range(3):
+            p.block(samples=second)
+        p.block(step=step, samples=second)
+    assert p.state(0) == 2  # the take is closed: the loop plays
+    for fade, start, length in ((1.0, 5, 1), (0.5, 6, 2), (1.0, 4, 0), (0.0, 4, 127)):
+        p.params[1:] = [float(start), fade, float(length)]
+        for _ in range(8):
+            p.block(samples=(0.0,) * 64)
+    p.block(hostile=True)
+    assert Player.worst * 5 >= DSP_COST_FX * 4, (
+        f"worst block {Player.worst}, declared {DSP_COST_FX}"
+    )
 
 
 def test_complete_take_closes_on_destination_first_step():
