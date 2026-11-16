@@ -608,7 +608,13 @@ def python_tests_command(
         "3600",
     ]  # catches hangs, not slow files
     shards = [f"--shard={f}={n}" for f, n in shard_counts(files).items()]
-    return [*cmd, *shards, "--jobs", str(jobs if jobs is not None else python_jobs()), *files]
+    return [
+        *cmd,
+        *shards,
+        "--jobs",
+        str(jobs if jobs is not None else python_jobs()),
+        *files,
+    ]
 
 
 def python_jobs() -> int:

@@ -149,9 +149,18 @@ fn bound_session_drives_install_initialize_and_rejected_init_detach() {
             offsets: &mut offsets,
             lengths: &mut lengths,
         };
-        assert!(matches!(owner.admit(0, &section, &[20], &admission_limits(),
-            &mut ledger, output, |_| Some(0xb80000)),
-            Err(AdmissionError::Coordinator(Error::Busy))));
+        assert!(matches!(
+            owner.admit(
+                0,
+                &section,
+                &[20],
+                &admission_limits(),
+                &mut ledger,
+                output,
+                |_| Some(0xb80000)
+            ),
+            Err(AdmissionError::Coordinator(Error::Busy))
+        ));
         assert_eq!(ledger.lengths[0], 0);
         for now in 3..9 {
             assert_eq!(owner.tick(now), Progress::Pending);
@@ -161,8 +170,17 @@ fn bound_session_drives_install_initialize_and_rejected_init_detach() {
         // Exercise the actual handoff between bootstrap and a later load.
         owner.request_link_release(10, 100).unwrap();
         assert_eq!(owner.tick_link(11, true), LinkProgress::Released);
-        let plan = owner.admit(0, &section, &[20], &admission_limits(),
-            &mut ledger, output, |_| Some(0xb80000)).unwrap();
+        let plan = owner
+            .admit(
+                0,
+                &section,
+                &[20],
+                &admission_limits(),
+                &mut ledger,
+                output,
+                |_| Some(0xb80000),
+            )
+            .unwrap();
         let ticket = plan.ticket();
         owner.request_link(12, 100).unwrap();
         assert_eq!(owner.tick_link(13, true), LinkProgress::Owned);
@@ -456,7 +474,10 @@ impl Fixture {
                 .into_parts()
                 .1;
         let owner = Coordinator::new(
-            Driver::new(Link, Box::leak(Box::new([0; crate::instrument_image::CHUNK]))),
+            Driver::new(
+                Link,
+                Box::leak(Box::new([0; crate::instrument_image::CHUNK])),
+            ),
             replies,
             loads,
         );
@@ -518,7 +539,17 @@ fn moved_owner_keeps_buffer_and_drives_all_rows_before_publishing() {
         assert_eq!(&w.image[..300], &IMAGE);
         assert!(w.image[300..].iter().all(|&b| b == 0));
         assert_eq!(w.image.len(), 600);
-        assert_eq!(w.operations, [(1, 4, 0), (2, 6, 0), (3, 4, 1), (4, 6, 1), (5, 2, 0), (6, 2, 1)]);
+        assert_eq!(
+            w.operations,
+            [
+                (1, 4, 0),
+                (2, 6, 0),
+                (3, 4, 1),
+                (4, 6, 1),
+                (5, 2, 0),
+                (6, 2, 1)
+            ]
+        );
     });
 }
 
@@ -531,15 +562,21 @@ fn large_upload_budget_completes_canopy_sized_image_with_pending_polls() {
         assert_eq!(plan.upload_bytes(), Some(209608));
         WIRE.with_borrow_mut(|w| w.pending_polls_per_write = 1);
         if enlarged {
-            f.owner.begin_with_upload_budget(plan, &LARGE_IMAGE, 0, 2000, 8000).unwrap();
+            f.owner
+                .begin_with_upload_budget(plan, &LARGE_IMAGE, 0, 2000, 8000)
+                .unwrap();
         } else {
             f.owner.begin(plan, &LARGE_IMAGE, 0, 100).unwrap();
         }
         let result = f.run(0, 8100);
         if enlarged {
-            assert_eq!(result, Progress::Complete {
-                command: Command::Publish(f.ticket), recovered: None,
-            });
+            assert_eq!(
+                result,
+                Progress::Complete {
+                    command: Command::Publish(f.ticket),
+                    recovered: None,
+                }
+            );
             WIRE.with_borrow(|w| {
                 assert_eq!(w.image.len(), 209608);
                 assert_eq!(&w.image[..LARGE_IMAGE.len()], &LARGE_IMAGE);
@@ -548,9 +585,13 @@ fn large_upload_budget_completes_canopy_sized_image_with_pending_polls() {
                 assert_eq!(w.starts, 70);
             });
         } else {
-            assert_eq!(result, Progress::Complete {
-                command: Command::Release(f.ticket), recovered: Some(Failure::Timeout),
-            });
+            assert_eq!(
+                result,
+                Progress::Complete {
+                    command: Command::Release(f.ticket),
+                    recovered: Some(Failure::Timeout),
+                }
+            );
             WIRE.with_borrow(|w| assert!(w.image.len() < 209608));
             f.release().unwrap();
         }
@@ -561,7 +602,9 @@ fn large_upload_budget_completes_canopy_sized_image_with_pending_polls() {
 fn larger_upload_deadline_keeps_short_drain_bound_and_retains_pending_source() {
     let mut f = Fixture::new();
     WIRE.with_borrow_mut(|w| w.mode = 0);
-    f.owner.begin_with_upload_budget(f.plan.take().unwrap(), &IMAGE, 0, 20, 80).unwrap();
+    f.owner
+        .begin_with_upload_budget(f.plan.take().unwrap(), &IMAGE, 0, 20, 80)
+        .unwrap();
     for now in 0..100 {
         assert_eq!(f.owner.tick(now), Progress::Pending);
     }
@@ -571,7 +614,10 @@ fn larger_upload_deadline_keeps_short_drain_bound_and_retains_pending_source() {
         assert_eq!(w.starts, 1);
         assert!(w.operations.is_empty());
         let (_, _, source, bytes) = w.source.unwrap();
-        assert_eq!(unsafe { core::slice::from_raw_parts(source, bytes) }, &IMAGE[..]);
+        assert_eq!(
+            unsafe { core::slice::from_raw_parts(source, bytes) },
+            &IMAGE[..]
+        );
     });
     let polls = WIRE.with_borrow(|w| w.polls);
     assert_eq!(f.owner.tick(1000), Progress::Blocked(Failure::Timeout));
@@ -583,13 +629,18 @@ fn larger_upload_budget_does_not_extend_install_initialize_or_detach() {
     const PHASE_BUDGET: u32 = 60;
     for initialize in [false, true] {
         let mut f = Fixture::new();
-        f.owner.begin_with_upload_budget(f.plan.take().unwrap(), &IMAGE, 0, PHASE_BUDGET, 8000).unwrap();
+        f.owner
+            .begin_with_upload_budget(f.plan.take().unwrap(), &IMAGE, 0, PHASE_BUDGET, 8000)
+            .unwrap();
         let mut phase_at = 0;
         for now in 0..100 {
             assert_eq!(f.owner.tick(now), Progress::Pending);
             let phase = &f.owner.job.as_ref().unwrap().phase;
-            if if initialize { matches!(phase, Phase::Initialize(_)) }
-                else { matches!(phase, Phase::Install(_)) } {
+            if if initialize {
+                matches!(phase, Phase::Initialize(_))
+            } else {
+                matches!(phase, Phase::Install(_))
+            } {
                 phase_at = now;
                 break;
             }
@@ -600,11 +651,17 @@ fn larger_upload_budget_does_not_extend_install_initialize_or_detach() {
             assert_eq!(f.owner.tick(now), Progress::Pending);
         }
         assert_eq!(f.owner.tick(phase_at + PHASE_BUDGET), Progress::Pending);
-        assert!(matches!(&f.owner.job.as_ref().unwrap().phase, Phase::Detach(_)));
+        assert!(matches!(
+            &f.owner.job.as_ref().unwrap().phase,
+            Phase::Detach(_)
+        ));
         for now in phase_at + PHASE_BUDGET + 1..phase_at + 2 * PHASE_BUDGET {
             assert_eq!(f.owner.tick(now), Progress::Pending);
         }
-        assert_eq!(f.owner.tick(phase_at + 2 * PHASE_BUDGET), Progress::Blocked(Failure::Timeout));
+        assert_eq!(
+            f.owner.tick(phase_at + 2 * PHASE_BUDGET),
+            Progress::Blocked(Failure::Timeout)
+        );
         assert!(f.release().is_err());
         assert!(f.owner.loads().lookup(17).is_none());
     }
@@ -615,9 +672,15 @@ fn invalid_upload_or_phase_budget_starts_no_transfer() {
     for bad in [0, 0x80000000, u32::MAX] {
         for (phase, upload) in [(bad, 8000), (2000, bad)] {
             let mut f = Fixture::new();
-            assert_eq!(f.owner.begin_with_upload_budget(f.plan.take().unwrap(), &IMAGE, 0, phase, upload),
-                Err(Error::Budget));
-            assert_eq!(f.owner.loads.start(f.ticket), Ok(Command::SendImage(f.ticket)));
+            assert_eq!(
+                f.owner
+                    .begin_with_upload_budget(f.plan.take().unwrap(), &IMAGE, 0, phase, upload),
+                Err(Error::Budget)
+            );
+            assert_eq!(
+                f.owner.loads.start(f.ticket),
+                Ok(Command::SendImage(f.ticket))
+            );
             WIRE.with_borrow(|w| assert_eq!((w.starts, w.polls, w.snapshots), (0, 0, 0)));
         }
     }
@@ -976,7 +1039,10 @@ fn admission_owner() -> Coordinator<'static, Link> {
         .into_parts()
         .1;
     Coordinator::new(
-        Driver::new(Link, Box::leak(Box::new([0; crate::instrument_image::CHUNK]))),
+        Driver::new(
+            Link,
+            Box::leak(Box::new([0; crate::instrument_image::CHUNK])),
+        ),
         replies,
         Loads::new(16),
     )
@@ -1060,7 +1126,10 @@ fn admitted_section_uses_shared_ledger_and_publishes_only_after_initialization()
                 WIRE.with_borrow(|w| {
                     assert_eq!(&w.image[..64], &output[..]);
                     assert_eq!(&w.image[64..], &[0; 8]);
-                    assert_eq!(w.operations.iter().map(|x| x.1).collect::<Vec<_>>(), [4, 6, 2]);
+                    assert_eq!(
+                        w.operations.iter().map(|x| x.1).collect::<Vec<_>>(),
+                        [4, 6, 2]
+                    );
                 });
                 return;
             }
@@ -1626,8 +1695,17 @@ fn bound_session_loss_during_upload_retains_memory_and_pending_source() {
         offsets: &mut offsets,
         lengths: &mut lengths,
     };
-    let plan = owner.admit(0, &section, &[20], &admission_limits(),
-        &mut ledger, output, |_| Some(0xb80000)).unwrap();
+    let plan = owner
+        .admit(
+            0,
+            &section,
+            &[20],
+            &admission_limits(),
+            &mut ledger,
+            output,
+            |_| Some(0xb80000),
+        )
+        .unwrap();
     let ticket = plan.ticket();
     owner.begin(plan, output, 10, 100).unwrap();
     assert_eq!(owner.tick(11), Progress::Pending);
@@ -1648,34 +1726,55 @@ fn bound_session_loss_during_upload_retains_memory_and_pending_source() {
     WIRE.with_borrow(|w| {
         assert_eq!((w.starts, w.polls, w.snapshots), counts);
         let (_, _, pointer, count) = w.source.unwrap();
-        assert_eq!(unsafe { core::slice::from_raw_parts(pointer, count) }, output);
+        assert_eq!(
+            unsafe { core::slice::from_raw_parts(pointer, count) },
+            output
+        );
         assert_eq!(w.operations, [(1, 5, 0)]);
         assert_eq!(w.releases, 0);
         assert!(w.owned);
     });
 }
 
-
 fn published_session_owner() -> (Coordinator<'static, Link>, Ticket, [u32; 1], [u32; 1]) {
     use crate::instrument_section::{tests as section_test, Section};
     let mut owner = bootstrap_owner();
     unsafe { owner.begin_session(expect_session, 0x10203040, 2, 100) }.unwrap();
-    for now in 3..10 { owner.tick(now); }
+    for now in 3..10 {
+        owner.tick(now);
+    }
     assert!(owner.session_bound());
     let bytes = section_test::fixture();
     let section = Section::parse(&bytes, 1, section_test::limits()).unwrap();
     let output = Box::leak(Box::new([0; 64]));
     let mut offsets = [0];
     let mut lengths = [0];
-    let mut ledger = Ledger { base: 0x20010000, bytes: 512,
-        offsets: &mut offsets, lengths: &mut lengths };
-    let plan = owner.admit(0, &section, &[20], &admission_limits(),
-        &mut ledger, output, |_| Some(0xb80000)).unwrap();
+    let mut ledger = Ledger {
+        base: 0x20010000,
+        bytes: 512,
+        offsets: &mut offsets,
+        lengths: &mut lengths,
+    };
+    let plan = owner
+        .admit(
+            0,
+            &section,
+            &[20],
+            &admission_limits(),
+            &mut ledger,
+            output,
+            |_| Some(0xb80000),
+        )
+        .unwrap();
     let ticket = plan.ticket();
     owner.begin(plan, output, 10, 100).unwrap();
     for now in 11..100 {
-        if owner.tick(now) == (Progress::Complete {
-            command: Command::Publish(ticket), recovered: None }) {
+        if owner.tick(now)
+            == (Progress::Complete {
+                command: Command::Publish(ticket),
+                recovered: None,
+            })
+        {
             return (owner, ticket, offsets, lengths);
         }
     }
@@ -1685,8 +1784,12 @@ fn published_session_owner() -> (Coordinator<'static, Link>, Ticket, [u32; 1], [
 #[test]
 fn published_retirement_retains_memory_until_exact_detach_ack() {
     let (mut owner, ticket, mut offsets, mut lengths) = published_session_owner();
-    let mut ledger = Ledger { base: 0x20010000, bytes: 512,
-        offsets: &mut offsets, lengths: &mut lengths };
+    let mut ledger = Ledger {
+        base: 0x20010000,
+        bytes: 512,
+        offsets: &mut offsets,
+        lengths: &mut lengths,
+    };
     assert_eq!(owner.retire(ticket, 100, 0), Err(Error::Budget));
     assert!(owner.loads().lookup(20).is_some());
     owner.retire(ticket, 100, 100).unwrap();
@@ -1699,16 +1802,26 @@ fn published_retirement_retains_memory_until_exact_detach_ack() {
     for now in 101..200 {
         match owner.tick(now) {
             Progress::Pending => assert_eq!(ledger.lengths[0], 128),
-            Progress::Complete { command: Command::Release(done), recovered: None } => {
+            Progress::Complete {
+                command: Command::Release(done),
+                recovered: None,
+            } => {
                 assert_eq!(done, ticket);
                 owner.release_memory(ticket, &mut ledger).unwrap();
                 assert_eq!(ledger.lengths[0], 0);
                 assert_eq!(owner.process_reserved(), 0);
-                assert!(matches!(owner.retire(ticket, now, 100), Err(Error::Load(_))));
+                assert!(matches!(
+                    owner.retire(ticket, now, 100),
+                    Err(Error::Load(_))
+                ));
                 owner.request_link_release(now, 100).unwrap();
                 assert_eq!(owner.tick_link(now + 1, true), LinkProgress::Released);
-                WIRE.with_borrow(|w| assert_eq!(w.operations.iter().map(|x| (x.0, x.1)).collect::<Vec<_>>(),
-                    [(1, 5), (2, 4), (3, 6), (4, 2), (5, 3)]));
+                WIRE.with_borrow(|w| {
+                    assert_eq!(
+                        w.operations.iter().map(|x| (x.0, x.1)).collect::<Vec<_>>(),
+                        [(1, 5), (2, 4), (3, 6), (4, 2), (5, 3)]
+                    )
+                });
                 return;
             }
             other => panic!("unexpected retirement: {other:?}"),
@@ -1721,8 +1834,12 @@ fn published_retirement_retains_memory_until_exact_detach_ack() {
 fn retirement_failure_cannot_release_or_retry_live_storage() {
     for loss in 0..3 {
         let (mut owner, ticket, mut offsets, mut lengths) = published_session_owner();
-        let mut ledger = Ledger { base: 0x20010000, bytes: 512,
-            offsets: &mut offsets, lengths: &mut lengths };
+        let mut ledger = Ledger {
+            base: 0x20010000,
+            bytes: 512,
+            offsets: &mut offsets,
+            lengths: &mut lengths,
+        };
         owner.retire(ticket, 100, 20).unwrap();
         WIRE.with_borrow_mut(|w| match loss {
             0 => w.reject = 3,
@@ -1731,7 +1848,10 @@ fn retirement_failure_cannot_release_or_retry_live_storage() {
         });
         let mut blocked = false;
         for now in 101..150 {
-            if matches!(owner.tick(now), Progress::Blocked(_)) { blocked = true; break; }
+            if matches!(owner.tick(now), Progress::Blocked(_)) {
+                blocked = true;
+                break;
+            }
         }
         assert!(blocked);
         assert_eq!(owner.retire(ticket, 150, 20), Err(Error::Blocked));
@@ -1740,7 +1860,11 @@ fn retirement_failure_cannot_release_or_retry_live_storage() {
         assert_eq!(ledger.lengths[0], 128);
         assert!(owner.process_reserved() > 0);
         assert!(owner.loads().lookup(20).is_none());
-        WIRE.with_borrow_mut(|w| { w.reject = 0; w.silent = false; w.boot_lost = false; });
+        WIRE.with_borrow_mut(|w| {
+            w.reject = 0;
+            w.silent = false;
+            w.boot_lost = false;
+        });
         assert!(matches!(owner.tick(151), Progress::Blocked(_)));
     }
 }

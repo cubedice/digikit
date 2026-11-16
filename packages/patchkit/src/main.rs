@@ -1463,7 +1463,8 @@ mod selection_tests {
             .unwrap()
             .parent()
             .unwrap();
-        let (lib, ids) = library_for_apply(root, &[], vec!["core/pattern-position".into()]).unwrap();
+        let (lib, ids) =
+            library_for_apply(root, &[], vec!["core/pattern-position".into()]).unwrap();
         assert!(ids.iter().any(|id| id == "core/dsp-link"));
         assert!(!lib.get("core/pattern-position").unwrap().objects.is_empty());
         assert!(lib.get("test/dyn-demo").unwrap().objects.is_empty());

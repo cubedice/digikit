@@ -334,7 +334,9 @@ fn dsp<B: Bytes>(
         VOICE_V1
     } else if version == DSP_V2 {
         VOICE_V2
-    } else if (DSP_V3..=DSP_V5).contains(&version) || (matches!(version, 7 | 8) && instruments.is_some()) {
+    } else if (DSP_V3..=DSP_V5).contains(&version)
+        || (matches!(version, 7 | 8) && instruments.is_some())
+    {
         // 7 and 8: persistent V2 instruments (voices as version 3); only a V2-aware reader takes them
         VOICE_V3
     } else {

@@ -175,7 +175,8 @@ impl Registry {
     }
 
     pub(crate) fn reserved_entries(
-        &self, ticket: Ticket,
+        &self,
+        ticket: Ticket,
     ) -> Result<[Option<Entry>; MAX_ROWS], Error> {
         let mut entries = [None; MAX_ROWS];
         let mut found = false;

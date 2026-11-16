@@ -1,5 +1,5 @@
 //! Allocation-free V2 accounting. No registry or DSP dispatch is enabled here.
-use super::{Bytes, Error, inside, word};
+use super::{inside, word, Bytes, Error};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct InstrumentNeeds {

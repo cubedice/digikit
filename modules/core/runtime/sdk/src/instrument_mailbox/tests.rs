@@ -417,9 +417,15 @@ fn run_install_scenario(cancel_after: Option<u32>) {
     assert!(mailbox.take_installed().is_none());
     let process = transfer(&mut mailbox);
     assert_eq!(process[5], 6);
-    assert_eq!(process[7..15], [18, spec.process_sw, 0xb88000, 0xb88080, 8, 32, 1, 0]);
+    assert_eq!(
+        process[7..15],
+        [18, spec.process_sw, 0xb88000, 0xb88080, 8, 32, 1, 0]
+    );
     let old_capabilities = response(&mailbox, 0, 7);
-    assert_eq!(mailbox.reply(&old_capabilities, &mut loads), Err(Error::MissingCapability));
+    assert_eq!(
+        mailbox.reply(&old_capabilities, &mut loads),
+        Err(Error::MissingCapability)
+    );
     assert!(mailbox.take_installed().is_none());
     let process_reply = response(&mailbox, 0, 15);
     assert_eq!(mailbox.reply(&process_reply, &mut loads), Ok(None));

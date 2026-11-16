@@ -679,30 +679,46 @@ fn v2_accumulates_multiple_instruments_and_rejects_duplicate_types() {
     assert_eq!(n.base.dsp_area, 1152);
 }
 
-
 #[test]
 fn v2_reads_are_bounded_and_io_failures_propagate() {
-    struct Probe<'a> { bytes: &'a [u8], fail_at: Option<u32> }
+    struct Probe<'a> {
+        bytes: &'a [u8],
+        fail_at: Option<u32>,
+    }
     impl Bytes for Probe<'_> {
-        fn size(&self) -> u32 { self.bytes.len() as u32 }
+        fn size(&self) -> u32 {
+            self.bytes.len() as u32
+        }
         fn read(&mut self, at: u32, out: &mut [u8]) -> bool {
             let end = at as usize + out.len();
             assert!(end <= self.bytes.len(), "out-of-bounds read {at}");
-            if self.fail_at == Some(at) { return false; }
+            if self.fail_at == Some(at) {
+                return false;
+            }
             out.copy_from_slice(&self.bytes[at as usize..end]);
             true
         }
     }
     let good = dkm(4, 0, &[], &dsp_section_v7());
     for cut in 0..good.len() {
-        let mut probe = Probe { bytes: &good[..cut], fail_at: None };
+        let mut probe = Probe {
+            bytes: &good[..cut],
+            fail_at: None,
+        };
         assert!(needs_of_v2(&mut probe).is_err());
     }
     for at in 0..good.len() {
-        let mut f = good.clone(); f[at] ^= 0xff;
-        let _ = needs_of_v2(&mut Probe { bytes: &f, fail_at: None });
+        let mut f = good.clone();
+        f[at] ^= 0xff;
+        let _ = needs_of_v2(&mut Probe {
+            bytes: &f,
+            fail_at: None,
+        });
     }
-    let mut probe = Probe { bytes: &good, fail_at: Some(HEADER + 112) };
+    let mut probe = Probe {
+        bytes: &good,
+        fail_at: Some(HEADER + 112),
+    };
     assert_eq!(needs_of_v2(&mut probe), Err(Error::Unreadable));
 }
 

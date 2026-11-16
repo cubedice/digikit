@@ -164,9 +164,16 @@ impl Mailbox {
             mask |= 1 << row.index;
             metadata[row.index as usize].copy_from_slice(&row.words[3..11]);
             let pc = |byte| 0x00b8_0000 + (byte - 0x2000_0000) / 2;
-            process_metadata[row.index as usize] = [row.type_no, row.process_sw,
-                pc(row.process_text.start), pc(row.process_text.end),
-                row.max_events, row.max_controls, row.flags, 0];
+            process_metadata[row.index as usize] = [
+                row.type_no,
+                row.process_sw,
+                pc(row.process_text.start),
+                pc(row.process_text.end),
+                row.max_events,
+                row.max_controls,
+                row.flags,
+                0,
+            ];
         }
         if mask != rows {
             return Err(Error::InvalidPlan);
@@ -273,13 +280,19 @@ impl Mailbox {
             b = b.wrapping_add(a);
         }
         let identity_valid = match session {
-            Some(token) => token != 0 && matches!(words[0], 0x494ea102 | 0x494ea103) && words[12] == token,
+            Some(token) => {
+                token != 0 && matches!(words[0], 0x494ea102 | 0x494ea103) && words[12] == token
+            }
             None => words[0] == 0x494ea101 && words[12] == 0,
         };
         if !identity_valid
             || words[4] != 0x49525231
             || words[15] != a ^ b
-            || if words[0] == 0x494ea103 { words[13] > 6 || (words[13] != 0 && words[14] == 0) } else { words[13..15] != [0; 2] }
+            || if words[0] == 0x494ea103 {
+                words[13] > 6 || (words[13] != 0 && words[14] == 0)
+            } else {
+                words[13..15] != [0; 2]
+            }
         {
             return Err(Error::InvalidReply);
         }
@@ -345,7 +358,9 @@ impl Mailbox {
         self.sequence += 1; // whole batch checked for exhaustion in begin
         p.sequence = self.sequence;
         p.row = p.rows.trailing_zeros();
-        if p.operation == 6 { p.operation = 4; }
+        if p.operation == 6 {
+            p.operation = 4;
+        }
         p.stage = CLEAR;
         self.pending = Some(p);
         Ok(None)

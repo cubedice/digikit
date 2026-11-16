@@ -95,7 +95,10 @@ impl Fixture {
             .unwrap();
         let state = Rc::new(State::default());
         state.mode.set(1);
-        let driver = Driver::new(Link(state.clone()), Box::leak(Box::new([0; crate::instrument_image::CHUNK])));
+        let driver = Driver::new(
+            Link(state.clone()),
+            Box::leak(Box::new([0; crate::instrument_image::CHUNK])),
+        );
         Self {
             loads,
             ticket,

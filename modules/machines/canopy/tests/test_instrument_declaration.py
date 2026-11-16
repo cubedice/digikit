@@ -1,10 +1,8 @@
 """Pack CANOPY, a `[[machine]]` with `instrument = true`, and inspect its V2 DSP section."""
 
-
 from canopy_paths import MODULE
 
 from tools.patchkit import patchkit
-
 
 
 def test_canopy_package_keeps_v2_callbacks_separate_from_v1(tmp_path):

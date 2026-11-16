@@ -365,7 +365,11 @@ pub fn collect<'a>(lib: &'a Library, order: &[String], dev: &str) -> Result<Acti
         }
         // a V2 instrument has no static lowering: only the runtime's V2 path admits it
         if let Some(x) = m.manifest.machines.iter().find(|x| x.instrument) {
-            return Err(err!("{}: instrument {:?} is loaded at run time only", m.id(), x.id));
+            return Err(err!(
+                "{}: instrument {:?} is loaded at run time only",
+                m.id(),
+                x.id
+            ));
         }
         if crate::typed::has_typed(&m.manifest) && !m.manifest.lowered {
             return Err(err!(

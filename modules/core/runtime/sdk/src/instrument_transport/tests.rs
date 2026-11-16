@@ -60,7 +60,10 @@ unsafe impl Transport for Mock {
     }
 }
 fn driver() -> Driver<Mock> {
-    Driver::new(Mock::new(), Box::leak(Box::new([0; crate::instrument_image::CHUNK])))
+    Driver::new(
+        Mock::new(),
+        Box::leak(Box::new([0; crate::instrument_image::CHUNK])),
+    )
 }
 fn ticket(loads: &mut Loads) -> crate::instrument_registry::Ticket {
     loads
@@ -269,7 +272,10 @@ fn instrument_transport_calls_the_tagged_c_abi() {
         1
     }
     let api = unsafe { Api::new(send, poll) };
-    let mut driver = Driver::new(api, Box::leak(Box::new([0; crate::instrument_image::CHUNK])));
+    let mut driver = Driver::new(
+        api,
+        Box::leak(Box::new([0; crate::instrument_image::CHUNK])),
+    );
     let mut words = [0; 16];
     words[0] = 0x49524731;
     let write = mailbox::Write {

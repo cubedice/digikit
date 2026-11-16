@@ -117,7 +117,10 @@ impl Fixture {
                 .into_parts()
                 .1;
         Self {
-            driver: Driver::new(Link(state.clone()), Box::leak(Box::new([0; crate::instrument_image::CHUNK]))),
+            driver: Driver::new(
+                Link(state.clone()),
+                Box::leak(Box::new([0; crate::instrument_image::CHUNK])),
+            ),
             state,
             mailbox,
             loads,

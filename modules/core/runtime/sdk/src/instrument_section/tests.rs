@@ -272,6 +272,9 @@ fn rejects_sample_and_old_experimental_formats() {
     for version in [5, 6, 7] {
         let mut bytes = fixture();
         put(&mut bytes, 4, version);
-        assert!(matches!(Section::parse(&bytes, 1, limits()), Err(Error::Header)));
+        assert!(matches!(
+            Section::parse(&bytes, 1, limits()),
+            Err(Error::Header)
+        ));
     }
 }

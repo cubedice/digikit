@@ -206,7 +206,14 @@ pub unsafe fn read_sectors(
 /// Validate the entire extent before the first read. After an I/O failure the
 /// caller must discard the partially filled buffer rather than publish it.
 /// `buf` is 16-byte aligned and owns `cap` bytes, including sector padding.
-pub unsafe fn read_extent(io: &Io, lay: &Layout, rel: u32, count: u32, buf: *mut u8, cap: usize) -> i32 {
+pub unsafe fn read_extent(
+    io: &Io,
+    lay: &Layout,
+    rel: u32,
+    count: u32,
+    buf: *mut u8,
+    cap: usize,
+) -> i32 {
     if count == 0 || rel >= lay.sectors || count > lay.sectors - rel || count as usize > cap / 512 {
         return E_BAD_STORE;
     }

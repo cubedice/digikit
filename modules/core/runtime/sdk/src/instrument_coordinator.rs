@@ -173,7 +173,8 @@ impl<'image, T: Transport> Coordinator<'image, T> {
         {
             return Err(Error::Budget);
         }
-        let phase = upload::PumpState::with_drain_budget(now, upload_budget, budget).ok_or(Error::Budget)?;
+        let phase = upload::PumpState::with_drain_budget(now, upload_budget, budget)
+            .ok_or(Error::Budget)?;
         // No new traffic has started, but an adopted driver must also be idle.
         if !self.driver.is_idle() {
             self.blocked = Some(Failure::Link);
@@ -293,8 +294,9 @@ impl<'image, T: Transport> Coordinator<'image, T> {
                         recovered: None,
                     };
                 }
-                exchange::Progress::Blocked(cause)
-                | exchange::Progress::Recover { cause, .. } => cause,
+                exchange::Progress::Blocked(cause) | exchange::Progress::Recover { cause, .. } => {
+                    cause
+                }
                 _ => Failure::Protocol,
             };
             if cause == Failure::Boot {
@@ -493,10 +495,7 @@ impl<T: crate::instrument_lease::LeaseTransport> Coordinator<'_, T> {
         if self.blocked.is_some() {
             return Err(crate::instrument_lease::Error::Uncertain);
         }
-        if self.job.is_some()
-            || self.retirement.is_some()
-            || self.session_pending()
-        {
+        if self.job.is_some() || self.retirement.is_some() || self.session_pending() {
             return Err(crate::instrument_lease::Error::Busy);
         }
         let result = self.driver.claim_link();
@@ -512,10 +511,7 @@ impl<T: crate::instrument_lease::LeaseTransport> Coordinator<'_, T> {
         if self.blocked.is_some() {
             return Err(crate::instrument_lease::Error::Uncertain);
         }
-        if self.job.is_some()
-            || self.retirement.is_some()
-            || self.session_pending()
-        {
+        if self.job.is_some() || self.retirement.is_some() || self.session_pending() {
             return Err(crate::instrument_lease::Error::Busy);
         }
         let result = self.driver.release_link();

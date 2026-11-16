@@ -422,7 +422,9 @@ fn pack_inner(
     limits: crate::instrument::Limits,
 ) -> Result<(Vec<u8>, bool)> {
     if !instruments.is_empty() && tracks.is_some() {
-        return Err(err!("instrument and sample declarations cannot share a DSP section"));
+        return Err(err!(
+            "instrument and sample declarations cannot share a DSP section"
+        ));
     }
     let mut gate = false;
     if obj.arch != "sharc" {
@@ -733,11 +735,19 @@ fn pack_inner(
         let reset = entry_of(&instrument.reset)?;
         let process = entry_of(&instrument.process)?;
         if !matches!(defined.get(instrument.desc.as_str()), Some(("data", _))) {
-            return Err(err!("instrument descriptor {} must be a defined data symbol", instrument.desc));
+            return Err(err!(
+                "instrument descriptor {} must be a defined data symbol",
+                instrument.desc
+            ));
         }
         let desc = u32::try_from(linked.symbols[instrument.desc.as_str()] - L2_BYTE_BASE as u64)
             .map_err(|_| err!("instrument descriptor offset overflow"))?;
-        ins.push(Instrument { type_no: instrument.type_no, reset, process, desc });
+        ins.push(Instrument {
+            type_no: instrument.type_no,
+            reset,
+            process,
+            desc,
+        });
     }
     let mut executable = vec![];
     if !ins.is_empty() {
@@ -746,8 +756,10 @@ fn pack_inner(
                 continue;
             }
             executable.push((
-                u32::try_from(start - L2_BYTE_BASE as u64).map_err(|_| err!("text range overflow"))?,
-                u32::try_from(end - L2_BYTE_BASE as u64).map_err(|_| err!("text range overflow"))?,
+                u32::try_from(start - L2_BYTE_BASE as u64)
+                    .map_err(|_| err!("text range overflow"))?,
+                u32::try_from(end - L2_BYTE_BASE as u64)
+                    .map_err(|_| err!("text range overflow"))?,
             ));
         }
         executable.sort_unstable();
@@ -820,7 +832,11 @@ impl DspSection {
                 .get(at..end)
                 .filter(|_| at % 4 == 0)
                 .ok_or_else(|| err!("instrument descriptor outside image or unaligned"))?;
-            if self.relocs.iter().any(|r| (r.offset as u64) < end as u64 && r.offset as u64 + 6 > at as u64) {
+            if self
+                .relocs
+                .iter()
+                .any(|r| (r.offset as u64) < end as u64 && r.offset as u64 + 6 > at as u64)
+            {
                 return Err(err!("instrument descriptor overlaps a relocation"));
             }
             allocation += crate::instrument::Descriptor::parse(bytes, limits)
@@ -830,7 +846,8 @@ impl DspSection {
         if allocation > limits.state_bytes as u64 {
             return Err(err!("aggregate instrument state exceeds admission limits"));
         }
-        let mut total = (self.image.len() as u128 + self.bss as u128).div_ceil(8) * 8 + allocation as u128;
+        let mut total =
+            (self.image.len() as u128 + self.bss as u128).div_ceil(8) * 8 + allocation as u128;
         for v in &self.voices {
             total += v.voices as u128 * (v.state_bytes as u128).div_ceil(8) * 8;
         }
@@ -990,9 +1007,12 @@ impl DspSection {
         }
         for i in &self.instruments {
             let at = i.desc as usize;
-            n += crate::instrument::Descriptor::parse(&self.image[at..at + crate::instrument::DESC_BYTES], FORMAT_LIMITS)
-                .expect("validated instrument descriptor")
-                .allocation_bytes;
+            n += crate::instrument::Descriptor::parse(
+                &self.image[at..at + crate::instrument::DESC_BYTES],
+                FORMAT_LIMITS,
+            )
+            .expect("validated instrument descriptor")
+            .allocation_bytes;
         }
         n.div_ceil(GRANULE) * GRANULE
     }
@@ -1186,8 +1206,9 @@ impl DspSection {
                 return Err(err!("invalid executable range count"));
             }
             let table = d.range(get(f, 0x48), count * 8)?;
-            let ranges = dkrt_sdk::instrument_descriptor::executable_ranges(table, image_size as u32)
-                .map_err(|e| err!("executable ranges: {e:?}"))?;
+            let ranges =
+                dkrt_sdk::instrument_descriptor::executable_ranges(table, image_size as u32)
+                    .map_err(|e| err!("executable ranges: {e:?}"))?;
             dkrt_sdk::instrument_descriptor::validate_executables(
                 d.range(get(f, 0x40), instruments.len() * INSTRUMENT_LEN)?,
                 &ranges,
