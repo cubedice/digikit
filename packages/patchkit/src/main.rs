@@ -847,15 +847,11 @@ plan.json {}",
                     serde_json::json!({ "error": e.0 })
                 });
                 if !json {
-                    match patchkit::dkm::needs(&raw) {
+                    match patchkit::dkm::needs_v2(&raw) {
                         Ok(n) => println!(
                             "{f}: file_size {}, {}",
-                            n.file_size,
-                            n.fields()
-                                .iter()
-                                .map(|(k, v)| format!("{} {v}", k.to_lowercase()))
-                                .collect::<Vec<_>>()
-                                .join(", ")
+                            n.base.file_size,
+                            patchkit::dkm::needs_text(&n)
                         ),
                         Err(e) => println!("{f}: no needs: {}", e.0),
                     }
@@ -922,15 +918,8 @@ plan.json {}",
                 d.bss,
                 d.align
             );
-            match patchkit::dkm::needs(&raw) {
-                Ok(n) => println!(
-                    "needs     {}",
-                    n.fields()
-                        .iter()
-                        .map(|(n, v)| format!("{} {v}", n.to_lowercase()))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
+            match patchkit::dkm::needs_v2(&raw) {
+                Ok(n) => println!("needs     {}", patchkit::dkm::needs_text(&n)),
                 Err(e) => println!("needs     none ({})", e.0),
             }
             println!("relocs    {}", d.relocs.len());

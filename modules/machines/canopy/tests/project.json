@@ -11,7 +11,8 @@
     "runtimeAcceptance": [
       {
         "files": [
-          "arp.device.test.ts"
+          "arp.device.test.ts",
+          "needs.device.test.ts"
         ],
         "modules": [
           "digikit/canopy"

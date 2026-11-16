@@ -16,6 +16,12 @@ const RECORD: u32 = 16;
 const DESC: u32 = 48;
 const MAX_ROWS: u32 = 8;
 
+/// The descriptor's flag word as the loader's decoder takes it (`instrument_descriptor::valid_flags` of the runtime SDK): the status
+/// output, then the native AMP snapshot, then the gains at the stock AMP position, each on top of the one before. Keep in step with it.
+fn valid_flags(flags: u32) -> bool {
+    flags == 0 || flags == 1 || flags == 3 || flags == 7
+}
+
 pub(super) fn read<B: Bytes>(src: &mut B, off: u32, size: u32) -> Result<InstrumentNeeds, Error> {
     let v8 = word(src, off + 4)? == 8;
     if size < HEADER
@@ -145,7 +151,7 @@ pub(super) fn read<B: Bytes>(src: &mut B, off: u32, size: u32) -> Result<Instrum
         if d[0] != 0x444b4954
             || d[1] != 2
             || d[2] != DESC
-            || d[3] != 0
+            || !valid_flags(d[3])
             || d[4] == 0
             || d[4] > 16
             || d[5] == 0

@@ -5,7 +5,7 @@
 use crate::{DKRT_PATHS, MAX_MODULES, PLATFORM, device, init_once, st, store};
 use dkrt_abi::platform::Tasking;
 use core::ptr::{addr_of, addr_of_mut, write_volatile};
-use dkneeds::{Bytes, needs_of};
+use dkneeds::{Bytes, needs_of_v2};
 use dkrt_fit as fit;
 use dkrt_sdk::*;
 
@@ -188,8 +188,10 @@ pub unsafe extern "C" fn dkrt_scan(out: *mut DkrtScan, max: u32) -> i32 {
                 size: le.size,
                 held: u32::MAX,
             };
-            if let Ok(nd) = needs_of(&mut f) {
-                fit::set_scan_needs(o, &nd);
+            // A file of persistent V2 instruments has the same resources as any other, as the loader's V2 path takes them (its one
+            // arena block). Its instrument rows and tracks are not in the entry: the loader's V2 owner admits them.
+            if let Ok(nd) = needs_of_v2(&mut f) {
+                fit::set_scan_needs(o, &nd.base);
             }
         }
         count += 1;

@@ -22,18 +22,43 @@ pub use gen_limits::*;
 mod instrument;
 pub use instrument::InstrumentNeeds;
 
-/// Experimental accounting, not a runtime capability or a successful admission.
-/// Keep separate from `Needs`: current scan/fit protocol has no instrument rows.
+/// The needs of a file of persistent V2 instruments: the resources of `Needs` as the loader's V2 path takes them, and the
+/// instrument rows beside them. Not an admission: the loader's V2 owner checks the contract, the descriptors and the DSP.
+/// Keep separate from `Needs`: the scan and fit protocol of the runtime's menu has no instrument rows, so the menu takes `base`
+/// and leaves the rows and tracks to the loader.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct V2Needs {
     pub base: Needs,
     pub instruments: InstrumentNeeds,
 }
 
-/// Inspect legacy or V2 files without treating persistent instruments as voices.
-/// Current runtime callers must keep using `needs_of`, which refuses V2.
+/// The needs of any file the loader takes: a V2 file's persistent instruments are not voices, and a file without them has the
+/// needs of `needs_of`. The runtime's scan (the DIGIKIT menu) and the hosts read with this; `needs_of` refuses a V2 section.
+///
+/// The arena of a V2 file is what `loader::load` allocates for it: one block that holds the module (image and bss), copies of its
+/// keys table and of its whole DSP section, and the output buffer of the relocated DSP image, each rounded to 16. The block stays
+/// for as long as the module is loaded, and there is no separate transfer block (`arena_xfer` is 0).
 pub fn needs_of_v2<B: Bytes>(src: &mut B) -> Result<V2Needs, Error> {
-    needs_impl(src, true)
+    let mut n = needs_impl(src, true)?;
+    if n.instruments.rows != 0 {
+        let total = word(src, H_IMAGE_SIZE)?
+            .checked_add(word(src, H_BSS)?)
+            .ok_or(Error::Sizes)?;
+        let dsp_off = word(src, H_DSP_OFF)?;
+        let pad = |v: u32| v.checked_add(15).map(|v| v & !15);
+        let allocation = pad(total)
+            .and_then(|at| at.checked_add(pad(word(src, H_REG_SIZE).ok()?)?))
+            .and_then(|at| at.checked_add(pad(word(src, H_DSP_SIZE).ok()?)?))
+            .and_then(|at| at.checked_add(word(src, dsp_off + DSP_H_IMAGE_SIZE).ok()?))
+            .ok_or(Error::Sizes)?;
+        // `needs_impl` counted the block of image and bss; the record block of the keys table stays
+        let module = arena_block(total).ok_or(Error::Sizes)?;
+        n.base.arena = (n.base.arena - module)
+            .checked_add(arena_block(allocation).ok_or(Error::Sizes)?)
+            .ok_or(Error::Sizes)?;
+        n.base.arena_xfer = 0;
+    }
+    Ok(n)
 }
 
 // The layout of the `.dkm` header and of its DSP section (`MAGIC`, `FORMAT`, `H_*`, `DSP_*`, `VOICE_*`, `FX_*`) is `[format]` of sdk/sdk.toml, in `gen_limits`.

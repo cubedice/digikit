@@ -239,8 +239,17 @@ separate instrument row, track-instance and aligned state-byte counts, using
 bounded stack storage and checked 32-bit arithmetic. It validates descriptor
 structure and table bounds, but does not check signatures, imports, relocation
 contents or device-specific cycle/stack admission limits. It is not a load check.
-The normal `needs_of` entry point still rejects V7/V8, keeping the scan/fit ABI and
-capacity protocol unchanged until V2 registry integration is complete.
+Its arena figure is the loader's V2 allocation: one block for the module's image and bss, copies of its keys table and
+of the whole DSP section, and the output buffer of the relocated DSP image, each rounded to 16; the block stays while the
+module is loaded and `arena_xfer` is 0 (CANOPY on the DT2: 279 600 bytes of arena, 150 016 of DSP area). The descriptor's
+flag word follows the loader's decoder (0, 1, 3 or 7). The runtime's scan (the MODULES page of the DIGIKIT menu) and the
+hosts read with it: `patchkit needs` and `dump`, the wasm `pk_needs`, and through them `dk run`, `module:check` and the
+Transfer page give a V2 file its needs, the hosts with `INSTRUMENT_ROWS`, `INSTRUMENT_TRACKS` and `INSTRUMENT_STATE` beside
+the CAPACITY names. The scan entry and the fit rule have no instrument rows: the loader's V2 owner admits the rows and
+tracks, so a verdict covers memory and the rows of `Needs` only. `modules/machines/canopy/tests/needs.device.test.ts`
+compares the needs with CAPACITY after a load and reads the MODULES row.
+`needs_of`, the reader without instruments, still rejects V7/V8; the scan/fit ABI and the capacity protocol are
+unchanged (no instrument rows in either).
 
 The SDK's `instrument_section::Section` reader validates a complete DKDS8
 instrument-only section without allocation and returns bounded slices and memory
