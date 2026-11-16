@@ -270,280 +270,280 @@
   },
   {
    "addend": 4,
-   "offset": 371,
+   "offset": 370,
    "section": "seg_pmco",
    "symbol": "_pattern_clock_info",
    "type": "sharc.abs32"
   },
   {
    "addend": 12,
-   "offset": 376,
+   "offset": 375,
    "section": "seg_pmco",
    "symbol": "_pattern_clock_info",
    "type": "sharc.abs32"
   },
   {
    "addend": 4,
-   "offset": 389,
+   "offset": 388,
    "section": "seg_pmco",
    "symbol": "_pattern_clock_info",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 395,
+   "offset": 394,
    "section": "seg_pmco",
    "symbol": "_pp_clock_tempo_ready",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 404,
+   "offset": 403,
    "section": "seg_pmco",
    "symbol": "_pp_clock_tempo_bad",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 411,
+   "offset": 410,
    "section": "seg_pmco",
    "symbol": "_pp_clock_tempo_ready",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 422,
+   "offset": 421,
    "section": "seg_pmco",
    "symbol": "_pp_clock_stale",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 426,
+   "offset": 425,
    "section": "seg_pmco",
    "symbol": "_pp_clock_flags",
    "type": "sharc.abs24"
   },
   {
    "addend": 16,
-   "offset": 432,
+   "offset": 431,
    "section": "seg_pmco",
    "symbol": "_pattern_clock_info",
    "type": "sharc.abs32"
   },
   {
    "addend": 20,
-   "offset": 437,
+   "offset": 436,
    "section": "seg_pmco",
    "symbol": "_pattern_clock_info",
    "type": "sharc.abs32"
   },
   {
    "addend": 24,
-   "offset": 442,
+   "offset": 441,
    "section": "seg_pmco",
    "symbol": "_pattern_clock_info",
    "type": "sharc.abs32"
   },
   {
    "addend": 28,
-   "offset": 447,
+   "offset": 446,
    "section": "seg_pmco",
    "symbol": "_pattern_clock_info",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 453,
+   "offset": 452,
    "section": "seg_pmco",
    "symbol": "_pattern_clock_info",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 459,
+   "offset": 458,
    "section": "seg_pmco",
    "symbol": "_pattern_position_info",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 462,
+   "offset": 461,
    "section": "seg_pmco",
    "symbol": "_pp_restore",
    "type": "sharc.abs24"
   },
   {
    "addend": 68,
-   "offset": 465,
+   "offset": 464,
    "section": "seg_pmco",
    "symbol": "_pattern_position_info",
    "type": "sharc.abs32"
   },
   {
    "addend": 68,
-   "offset": 469,
+   "offset": 468,
    "section": "seg_pmco",
    "symbol": "_pattern_position_info",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 474,
+   "offset": 473,
    "section": "seg_pmco",
    "symbol": "_pattern_position_info",
    "type": "sharc.abs32"
   },
   {
    "addend": 20,
-   "offset": 477,
+   "offset": 476,
    "section": "seg_pmco",
    "symbol": "_pattern_position_info",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 480,
+   "offset": 479,
    "section": "seg_pmco",
    "symbol": "_pattern_clock_info",
    "type": "sharc.abs32"
   },
   {
    "addend": 16,
-   "offset": 483,
+   "offset": 482,
    "section": "seg_pmco",
    "symbol": "_pattern_clock_info",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 486,
+   "offset": 485,
    "section": "seg_pmco",
    "symbol": "_instrument_block",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 490,
+   "offset": 489,
    "section": "seg_pmco",
    "symbol": "_pp_no_instrument",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 493,
+   "offset": 492,
    "section": "seg_pmco",
    "symbol": "_instrument_block",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 496,
+   "offset": 495,
    "section": "seg_pmco",
    "symbol": "_pp_sv_i0",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 501,
+   "offset": 500,
    "section": "seg_pmco",
    "symbol": "_pp_sv_i1",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 506,
+   "offset": 505,
    "section": "seg_pmco",
    "symbol": "_pp_sv_l0",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 511,
+   "offset": 510,
    "section": "seg_pmco",
    "symbol": "_pp_sv_l1",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 516,
+   "offset": 515,
    "section": "seg_pmco",
    "symbol": "_pp_sv_mode1",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 521,
+   "offset": 520,
    "section": "seg_pmco",
    "symbol": "_pp_sv_stkyx",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 526,
+   "offset": 525,
    "section": "seg_pmco",
    "symbol": "_pp_sv_stkyy",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 531,
+   "offset": 530,
    "section": "seg_pmco",
    "symbol": "_pp_sv_astaty",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 536,
+   "offset": 535,
    "section": "seg_pmco",
    "symbol": "_pp_sv_astatx",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 541,
+   "offset": 540,
    "section": "seg_pmco",
    "symbol": "_pp_sv_r1",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 544,
+   "offset": 543,
    "section": "seg_pmco",
    "symbol": "_pp_sv_r2",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 547,
+   "offset": 546,
    "section": "seg_pmco",
    "symbol": "_pp_sv_r3",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 550,
+   "offset": 549,
    "section": "seg_pmco",
    "symbol": "_pp_sv_r4",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 553,
+   "offset": 552,
    "section": "seg_pmco",
    "symbol": "_pp_sv_r5",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 556,
+   "offset": 555,
    "section": "seg_pmco",
    "symbol": "_pp_sv_r0",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 559,
+   "offset": 558,
    "section": "seg_pmco",
    "symbol": "_pp_block_back",
    "type": "sharc.abs24"
@@ -552,10 +552,10 @@
  "sections": [
   {
    "align": 8,
-   "hex": "0011000000000111000000000211000000000311000000000411000000000511000000003e713f000011000000003e713f800011000000003e733f000011000000003e733f800011000000003f773f000011000000007f773f000011000000007f773f80001100000000be773f00001100000000be773f80001100000000221420000020b00f0000b10f000000100000000010c50111000000003f713f80810f7c0a800101123f703f0808900000010f5050534f01c320060000000008900100810f020001c3000600000000810f030001c3000600000000810f040001c32006000000003f703f08030f917be3d6089000008401302434c2089001008401302434c2089002008401302434c2089003008401302434c2089004008401302434c2089005008401302434c2089006008401302434c2089007008401302434c2089008008401302434c2089009008401302434c208900a008401302434c208900b008401302434c208900c008401302434c208900d008401302434c208900e008401302434c208900f0003c32006000000003f703f080890020001100000000011c20006000000000110000000008001012333c20006000000000206000000003e0600000000830f0000800f0100001100000000031100000000800f00000011000000003f703f08110f0000000008900100089301000890020008930200089003000893030008900400089304000890050008930500089006000893060008900700089307000890080008930800089009000893090008900a0008930a0008900b0008930b0008900c0008930c0008900d0008930d0008900e0008930e0008900f0008930f0000100000000010c5011100000000800f000000110000000008920100810f030001c3000600000000810f040001c3200600000000820f0200840102220892090000110000000008928f0010ce08920500830ffcff03cc10ce12ce08938f00800f020008930100800f000008930900800f0100810f060021c3810f020000010200101000110000000008920b0000110000000008920500810f03008401010108938500830f0000021000000000840f020024c32006000000003e02007830f0820f100e32c3020600000000020f0000a08c32c3040600000000830f00003e0200003310820f040002cc20060000000001c23e0600000000800f000003cd001100000000089210000011000000000892030000110000000008920400001100000000000f43504b4c001100000000000f5050534f0011000000003e060000000000100000000010c5011100000000800f0000001100000000001100000000001100000000001100000000000f0000000000c2000600000000be06000000000010000000003e703f080010000000003e70bf080010000000003e703f180010000000003e70bf180010000000003e703f390010000000003e703f3c0010000000003e70bf3c0010000000003e70bf3b0010000000003e703f3b0110000000000210000000000310000000000410000000000510000000000010000000003e0600000000",
+   "hex": "0011000000000111000000000211000000000311000000000411000000000511000000003e713f000011000000003e713f800011000000003e733f000011000000003e733f800011000000003f773f000011000000007f773f000011000000007f773f80001100000000be773f00001100000000be773f80001100000000221420000020b00f0000b10f000000100000000010c50111000000003f713f80810f7c0a800101123f703f0808900000010f5050534f01c320060000000008900100810f020001c3000600000000810f030001c3000600000000810f040001c32006000000003f703f08030f917be3d6089000008401302434c2089001008401302434c2089002008401302434c2089003008401302434c2089004008401302434c2089005008401302434c2089006008401302434c2089007008401302434c2089008008401302434c2089009008401302434c208900a008401302434c208900b008401302434c208900c008401302434c208900d008401302434c208900e008401302434c208900f0003c32006000000003f703f080890020001100000000011c20006000000000110000000008001012333c20006000000000206000000003e0600000000830f0000800f0100001100000000031100000000800f00000011000000003f703f08110f0000000008900100089301000890020008930200089003000893030008900400089304000890050008930500089006000893060008900700089307000890080008930800089009000893090008900a0008930a0008900b0008930b0008900c0008930c0008900d0008930d0008900e0008930e0008900f0008930f0000100000000010c5011100000000800f000000110000000008920100810f030001c3000600000000810f040001c3200600000000820f0200840102220892090000110000000008928f0010ce08920500830ffcff03cc10ce12ce08938f00800f020008930100800f000008930900800f0100810f060021c3810f020000703f8000110000000008920b0000110000000008920500810f03008401010108938500830f0000021000000000840f020024c32006000000003e02007830f0820f100e32c3020600000000020f0000a08c32c3040600000000830f00003e0200003310820f040002cc20060000000001c23e0600000000800f000003cd001100000000089210000011000000000892030000110000000008920400001100000000000f43504b4c001100000000000f5050534f0011000000003e060000000000100000000010c5011100000000800f0000001100000000001100000000001100000000001100000000000f0000000000c2000600000000be06000000000010000000003e703f080010000000003e70bf080010000000003e703f180010000000003e70bf180010000000003e703f390010000000003e703f3c0010000000003e70bf3c0010000000003e70bf3b0010000000003e703f3b0110000000000210000000000310000000000410000000000510000000000010000000003e0600000000",
    "kind": "text",
    "name": "seg_pmco",
-   "size": 1124
+   "size": 1122
   },
   {
    "align": 4,
@@ -684,13 +684,13 @@
    "size": 8
   }
  ],
- "source_sha256": "51fa6c8d57c794ea24a4b1c96398247a102a38ba07ccd42bf458068575d88ce0",
+ "source_sha256": "7e907c5e641bfdcf359af2e0e3104248d78dbdcd6372ac8f6fa0a8a06d256397",
  "symbols": [
   {
    "global": false,
    "name": "_pp_bad",
    "section": "seg_pmco",
-   "value": 465
+   "value": 464
   },
   {
    "global": true,
@@ -702,25 +702,25 @@
    "global": false,
    "name": "_pp_clock_flags",
    "section": "seg_pmco",
-   "value": 431
+   "value": 430
   },
   {
    "global": false,
    "name": "_pp_clock_stale",
    "section": "seg_pmco",
-   "value": 429
+   "value": 428
   },
   {
    "global": false,
    "name": "_pp_clock_tempo_bad",
    "section": "seg_pmco",
-   "value": 414
+   "value": 413
   },
   {
    "global": false,
    "name": "_pp_clock_tempo_ready",
    "section": "seg_pmco",
-   "value": 416
+   "value": 415
   },
   {
    "global": false,
@@ -744,19 +744,19 @@
    "global": false,
    "name": "_pp_no_instrument",
    "section": "seg_pmco",
-   "value": 496
+   "value": 495
   },
   {
    "global": false,
    "name": "_pp_publish",
    "section": "seg_pmco",
-   "value": 456
+   "value": 455
   },
   {
    "global": false,
    "name": "_pp_restore",
    "section": "seg_pmco",
-   "value": 486
+   "value": 485
   },
   {
    "global": false,

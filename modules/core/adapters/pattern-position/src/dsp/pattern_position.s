@@ -218,7 +218,7 @@ _pp_clock_version:
     R1 = 6; // wire 4 XOR legacy 2
     COMP(R2, R1);
     R1 = 2;
-    IF EQ R0 = PASS R1;
+    IF EQ R0 = R1;
     DM(_pattern_clock_info + 4) = R0;
     R0 = DM(11, I1);
     DM(_pattern_clock_info + 12) = R0;

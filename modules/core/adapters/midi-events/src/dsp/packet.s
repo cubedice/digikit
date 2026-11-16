@@ -138,7 +138,7 @@ _mi_external_source:
     R1 = 4;
     R2 = 5;
     COMP(R11, R2);
-    IF EQ R1 = PASS R2;
+    IF EQ R1 = R2;
     COMP(R0, R1);
     IF GT JUMP _mi_bad;
     COMP(R0, R2);
@@ -251,7 +251,7 @@ _mi_config_packet:
     IF LT JUMP _mi_bad;
     R0 = 16;
     COMP(R8, R0);
-    IF GT R8 = PASS R0;
+    IF GT R8 = R0;
     COMP(R7, R8);
     IF NE JUMP _mi_bad;
     JUMP _mi_config_padding;

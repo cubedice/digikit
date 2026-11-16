@@ -51,7 +51,7 @@ _fm_validate_loop:
     R6 = 11;
     COMP(R5,R6);
     R6 = 0;
-    IF NE R3 = PASS R6;
+    IF NE R3 = R6;
 _fm_validate_limit:
     COMP(R1,R3);
     IF GT JUMP _fm_invalid;
@@ -154,11 +154,11 @@ _fm_fade:
     COMP(R4,R5);
     F1 = 0.0;
     F2 = -0.0078125;
-    IF EQ F1 = PASS F2;
+    IF EQ R1 = R2;
     R5 = 2;
     COMP(R4,R5);
     F2 = 0.0078125;
-    IF EQ F1 = PASS F2;
+    IF EQ R1 = R2;
     DM(_fm_fade_step) = F1;
     F0 = DM(713,I0);
     DM(_fm_fade_start) = F0;
@@ -399,7 +399,7 @@ _fm_render:
     R2 = I0;
     COMP(R1,R2);
     R1 = 256;
-    IF EQ R0 = PASS R1;
+    IF EQ R0 = R1;
     DM(_fm_lane) = R0;
     R0 = DM(_fm_state);
     I1 = R0;
@@ -826,7 +826,7 @@ _fm_wheel:
     F3 = DM(47,I0);
     F1 = 0.0;
     COMP(F3,F1);
-    IF LT F3 = PASS F0;
+    IF LT R3 = R0;
     F1 = F0 - F3;
     F2 = 0.03125;
     F1 = F1 * F2;
@@ -839,7 +839,7 @@ _fm_wheel:
     R1 = 1;
     COMP(R0,R1);
     R0 = 0;
-    IF EQ R0 = PASS R1;
+    IF EQ R0 = R1;
     DM(_fm_held) = R0;
     F4 = DM(_fm_r7);
     F0 = DM(_fm_r6);

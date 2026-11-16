@@ -67,7 +67,7 @@ _cp_find_slot:
     R0 = DM(0, I0);
     R1 = DM(0, I1);
     R1 = PASS R1;
-    IF NE R0 = PASS R1; // pending replacement is the current foreground owner
+    IF NE R0 = R1; // pending replacement is the current foreground owner
     R0 = PASS R0;
     IF NE JUMP _cp_oldest;
     R3 = I0;
@@ -84,7 +84,7 @@ _cp_oldest:
     R0 = R0 AND R1;
     R1 = 1;
     COMP(R0, R1);
-    IF NE R15 = PASS R1;
+    IF NE R15 = R1;
 _cp_compare_candidate:
     R14 = DM(7, I0); // nonnegative float bits sort by envelope magnitude
     R6 = PASS R6;
@@ -652,13 +652,13 @@ _cp_retune:
     R0 = R0 AND R1;
     R1 = 0;
     COMP(R10, R1);
-    IF LT R0 = PASS R1;
-    IF LT R10 = PASS R1;
+    IF LT R0 = R1;
+    IF LT R10 = R1;
     R1 = 127;
     COMP(R10, R1);
     R2 = 0;
-    IF GE R0 = PASS R2;
-    IF GT R10 = PASS R1;
+    IF GE R0 = R2;
+    IF GT R10 = R1;
     R0 = LSHIFT R0 BY 4;
     R9 = R9 + R0;
     R0 = LSHIFT R10 BY 3;
@@ -762,7 +762,7 @@ _cp_amp_record_for:
     R1 = 544;
     COMP(R0, R1);
     R1 = 192;
-    IF EQ R0 = PASS R1;
+    IF EQ R0 = R1;
     R0 = LSHIFT R0 BY -1;
     R1 = 2864;
     R0 = R0 + R1;
@@ -867,7 +867,7 @@ _cp_amp_new:
     F4 = F6 * F0;
     F0 = 1.0;
     COMP(F6, F0);
-    IF EQ F4 = PASS F0;
+    IF EQ R4 = R0;
 _cp_amp_mode_changed:
     // A mode edit preserves the current level and starts the new shape there.
     R3 = 2;

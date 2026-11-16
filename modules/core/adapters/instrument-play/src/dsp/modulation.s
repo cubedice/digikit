@@ -82,7 +82,7 @@ _iv_mod_read:
     R1 = 0x7f00;
     COMP(R2, R1);
     R1 = 0x4000;
-    IF GT R2 = PASS R1;
+    IF GT R2 = R1;
     R2 = R2 - R1;
     DM(I1, M6) = R2;
     R11 = R11 OR R2;
@@ -139,7 +139,7 @@ _iv_mod_lane:
     R0 = LSHIFT R0 BY -16;
     R0 = PASS R0;
     R1 = 7;
-    IF NE R7 = PASS R1;
+    IF NE R7 = R1;
     JUMP _iv_mod_apply;
 _iv_mod_pad_constraint:
     R1 = 2;
@@ -170,9 +170,9 @@ _iv_mod_apply:
     R8 = TRUNC F8;
     R1 = R1 + R8;
     COMP(R1, R6);
-    IF LT R1 = PASS R6;
+    IF LT R1 = R6;
     COMP(R1, R7);
-    IF GT R1 = PASS R7;
+    IF GT R1 = R7;
     R2 = 0xffff;
     R2 = LSHIFT R2 BY R5;
     R2 = NOT R2;

@@ -928,7 +928,7 @@ _cv_sound:
     R0 = DM(9, I2);
     R1 = DM(_fm_bank);
     R1 = PASS R1;
-    IF NE R0 = PASS R1;
+    IF NE R0 = R1;
     I1 = R0;
     R0 = DM(_cv_state);
     R1 = 528;

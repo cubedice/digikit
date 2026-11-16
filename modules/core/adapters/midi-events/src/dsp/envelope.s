@@ -187,7 +187,7 @@ _me_native_restore:
     R12 = DM(_me_sv_r12);
     R0 = DM(_me_sv_r0);
     // Match the stock C-call epilogue without reserving its unused locals.
-    I12 = DM(I6, M7);
+    I12 = DM(M7, I6);
     JUMP (M14, I12) (DB);
     NOP;
     RFRAME;

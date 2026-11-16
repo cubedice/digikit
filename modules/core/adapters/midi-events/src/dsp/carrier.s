@@ -98,14 +98,14 @@ _mi_carrier_step:
     R3 = 1;
     DM(I0, M5) = R3;
     COMP(R2, R0);
-    IF EQ R0 = PASS R3;
+    IF EQ R0 = R3;
     RTS;
 _mi_carrier_quiet:
     R3 = 0;
     DM(I0, M5) = R3;
     COMP(R2, R3);
     R3 = 1;
-    IF NE R1 = PASS R3;
+    IF NE R1 = R3;
     RTS;
 _mi_carrier_unowned:
     // The stock owner resumes its own lifecycle. Forget our transition history

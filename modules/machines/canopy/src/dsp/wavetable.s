@@ -43,7 +43,7 @@ _wt_validate_control:
     R6 = 11;
     COMP(R5,R6);
     R6 = 0;
-    IF NE R3 = PASS R6;
+    IF NE R3 = R6;
 _wt_validate_limit:
     COMP(R1, R3);
     IF GT JUMP _wt_invalid;
@@ -87,7 +87,7 @@ _wt_prepare:
     R0 = DM(9, I1);
     R1 = DM(_fm_bank);
     R1 = PASS R1;
-    IF NE R0 = PASS R1;
+    IF NE R0 = R1;
     I2 = R0;
     R0 = DM(0, I2);
     R0 = FEXT R0 BY 0:8;
@@ -114,7 +114,7 @@ _wt_version_ready:
     COMP(R0, R1);
     R0 = 0;
     R1 = 1;
-    IF EQ R0 = PASS R1;
+    IF EQ R0 = R1;
     DM(_wt_enabled) = R0;
     F0 = FLOAT R0;
     F1 = DM(232, I0);
@@ -133,7 +133,7 @@ _wt_version_ready:
     R1 = DM(232, I0);
     R2 = 0x35800000;
     COMP(R1, R2);
-    IF GT R0 = PASS R1;
+    IF GT R0 = R1;
     DM(_wt_enabled) = R0;
     R0 = DM(_wt_enabled);
     R0 = PASS R0;
@@ -175,7 +175,7 @@ _wt_expr_snapshot:
     F1 = DM(233, I0);
     R3 = DM(234, I0);
     R3 = PASS R3;
-    IF EQ F1 = PASS F0;
+    IF EQ R1 = R0;
     F0 = F0 - F1;
     F2 = 0.0327838995;
     F0 = F0 * F2;
@@ -256,7 +256,7 @@ _wt_count_held:
     R0 = R0 AND R1;
     R1 = 1;
     COMP(R0, R1);
-    IF EQ R3 = PASS R1;
+    IF EQ R3 = R1;
 _wt_count_next:
     MODIFY(I2, 8) (NW);
     R2 = R2 - 1;
@@ -905,7 +905,7 @@ _wt_wheel_ready:
     F1 = DM(248, I2);
     R4 = DM(_wt_is_new);
     R4 = PASS R4;
-    IF NE F1 = PASS F0;
+    IF NE R1 = R0;
     DM(_wt_note_position) = F1;
     // Also publish a new owner's initial expression for a same-block arp.
     R3 = DM(_wt_aux);
@@ -1536,7 +1536,7 @@ _wt_pm_block:
     COMP(F0, F1);
     IF GE JUMP _wt_pm_depth_kept;
     COMP(F2, F3);
-    IF EQ F0 = PASS F3;
+    IF EQ R0 = R3;
 _wt_pm_depth_kept:
     F8 = PASS F0;
     F9 = F9 + F14;

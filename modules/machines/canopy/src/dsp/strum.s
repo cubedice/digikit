@@ -205,11 +205,11 @@ _cs_rank_next:
     R4 = 2;
     COMP(R0, R4);
     F2 = 0.5;
-    IF EQ F1 = PASS F2;
+    IF EQ R1 = R2;
     R4 = 3;
     COMP(R0, R4);
     F2 = 0.33333334;
-    IF EQ F1 = PASS F2;
+    IF EQ R1 = R2;
     R0 = DM(_cs_strum);
     F2 = FLOAT R0;
     F2 = F2 * F1;

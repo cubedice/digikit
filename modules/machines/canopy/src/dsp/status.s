@@ -150,7 +150,7 @@ _cu_clock_missing_unheld:
     R1 = DM(195, I2);
     R1 = PASS R1;
     R2 = 3;
-    IF NE R6 = PASS R2;
+    IF NE R6 = R2;
 _cu_clock_pack:
     R6 = LSHIFT R6 BY 8;
     R0 = R0 OR R6;
@@ -342,7 +342,7 @@ _cu_compare:
     R1 = DM(0, I1);
     COMP(R0, R1);
     R2 = 1;
-    IF NE R6 = PASS R2;
+    IF NE R6 = R2;
     DM(I1, M6) = R0;
     R7 = R7 - 1;
     IF NE JUMP _cu_compare;
@@ -350,7 +350,7 @@ _cu_compare:
     R1 = DM(194, I2);
     COMP(R0, R1);
     R2 = 1;
-    IF NE R6 = PASS R2;
+    IF NE R6 = R2;
     DM(194, I2) = R0;
     R6 = PASS R6;
     IF EQ JUMP _cu_revision;
@@ -368,7 +368,7 @@ _cu_revision:
     R2 = 88;
     COMP(R1, R2);
     R2 = 0;
-    IF GE R1 = PASS R2;
+    IF GE R1 = R2;
     DM(188, I2) = R1;
     R1 = 4;
     R1 = R0 AND R1;
@@ -383,15 +383,15 @@ _cu_detail:
     R3 = 9;
     COMP(R2, R3);
     R3 = 0x30b00;
-    IF EQ R1 = PASS R3;
+    IF EQ R1 = R3;
     R3 = 10;
     COMP(R2,R3);
     R3 = 0x40b00;
-    IF EQ R1 = PASS R3;
+    IF EQ R1 = R3;
     R3 = 11;
     COMP(R2,R3);
     R3 = 0x50b00;
-    IF EQ R1 = PASS R3;
+    IF EQ R1 = R3;
     R1 = R0 OR R1;
     DM(5, I4) = R1;
     R1 = DM(2, I3);

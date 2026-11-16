@@ -397,7 +397,7 @@ _iv_lock_overlay_legacy:
 _iv_lock_overlay_chord:
     R0 = 12;
     COMP(R8, R0);
-    IF GT R8 = PASS R0;
+    IF GT R8 = R0;
     I0 = _iv_lock_controls;
     R0 = DM(0, I0);
     R1 = 0xfffffcff;
@@ -430,9 +430,9 @@ _iv_lock_overlay_table:
     R7 = DM(3, I0);
     R11 = DM(4, I0);
     COMP(R8, R6);
-    IF LT R8 = PASS R6;
+    IF LT R8 = R6;
     COMP(R8, R7);
-    IF GT R8 = PASS R7;
+    IF GT R8 = R7;
     R0 = LSHIFT R4 BY 2;
     R1 = _iv_lock_controls;
     R0 = R0 + R1;

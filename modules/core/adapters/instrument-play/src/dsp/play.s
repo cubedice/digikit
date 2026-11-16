@@ -183,7 +183,7 @@ _iv_no_status:
     // A reset tail renders before configuration. No new events are admitted.
     R1 = DM(_iv_revision);
     R1 = PASS R1;
-    IF EQ R1 = PASS R0;
+    IF EQ R1 = R0;
     DM(11, I0) = R1;
     R4 = 0;
     R5 = DM(_iv_slot); // registry instance ordinal: this slot's own state
@@ -620,7 +620,7 @@ _iv_amp_hold_store:
     R1 = 0;
     R2 = 1;
     R0 = PASS R0;
-    IF NE R1 = PASS R2;
+    IF NE R1 = R2;
     DM(30, I1) = R1;
     DM(24, I1) = R4;
     DM(_iv_native_valid) = R2;
@@ -1421,20 +1421,20 @@ _iv_four_validate:
     R1 = 5;
     COMP(R0, R1);
     R1 = 16;
-    IF EQ R2 = PASS R1;
+    IF EQ R2 = R1;
     R0 = FEXT R0 BY 0:8;
     R1 = 6;
     COMP(R0, R1);
     R1 = 32;
-    IF EQ R2 = PASS R1;
+    IF EQ R2 = R1;
     R1 = 7;
     COMP(R0, R1);
     R1 = 32;
-    IF EQ R2 = PASS R1;
+    IF EQ R2 = R1;
     R1 = 8;
     COMP(R0, R1);
     R1 = 32;
-    IF EQ R2 = PASS R1;
+    IF EQ R2 = R1;
     JUMP _iv_config_copy;
 _iv_legacy_config:
     R0 = DM(5, I0);

@@ -34,11 +34,19 @@ _storage_copy: DM(I1, M6) = R0;
 .VAR _storage_desc6 = 0;
 """
 LIVE = (0.625,) * 32 + (-0.375,) * 32
+# Instructions of core/fx around one process call at most (a fade block: copy, output check, crossfade; measured 855 with an
+# effect of 210), and an effect's own share of the headroom: the budget the retired Python FX conformance applied.
+FX_ADAPTER_MAX = 900
+
+
+def fx_budget() -> int:
+    """Instructions of one process call: the headroom of the tighter device shared by FX_MAX effects."""
+    return min(pk_conform.budget(d).headroom for d in pk_conform.DEVICES) // pk_conform.FX_MAX
 
 
 def test_doubling_loop_storage_exceeds_the_current_activation_budget(tmp_path):
     """Both sizes fit and return; only the larger initial clear exceeds budget."""
-    budget = pk_conform.fx_budget() + pk_conform.FX_ADAPTER_MAX
+    budget = fx_budget() + FX_ADAPTER_MAX
     activation_costs = []
     steady_costs = []
     for milliseconds, state_bytes in ((250, 96_064), (500, 192_064)):

@@ -107,7 +107,7 @@ _ci_event_loop:
     R1 = 32;
     COMP(R2, R1);
     R1 = 0;
-    IF EQ R3 = PASS R1; // PANEL has no sustain controller.
+    IF EQ R3 = R1; // PANEL has no sustain controller.
     DM(_ci_route_mask) = R3;
     R1 = FEXT R0 BY 0:4;
     R12 = FEXT R0 BY 14:7;
@@ -198,7 +198,7 @@ _ci_find_deferred_slot:
     R0 = DM(0, I0);
     R1 = DM(0, I1);
     R1 = PASS R1;
-    IF NE R0 = PASS R1;
+    IF NE R0 = R1;
     COMP(R0, R8);
     IF EQ JUMP _ci_store_deferred;
     MODIFY(I0, 8) (NW);

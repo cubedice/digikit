@@ -1,7 +1,7 @@
-"""Overloop's conformance provider: test memory for its required storage import.
+"""Overloop's rig provider: test memory for its required storage import.
 
-The shared FX conformance worker loads this file (tests/fx_provider.py of a
-module) and uses its `Rig` in place of the plain rig.
+test_overloop.py builds its rig from this file (`OverloopRig` in place of the
+plain FX rig): the loop buffer and pattern position records the DSP imports.
 
 This supplies test memory, not proof of firmware ownership. Unknown imports
 still fail resolution. The provider record is read-only; only the audio and its

@@ -136,7 +136,7 @@ _bl_provider_ready:
     R2 = 0;
     R3 = 1;
     COMP(F0, F1);
-    IF GE R2 = PASS R3;
+    IF GE R2 = R3;
     R3 = DM(BL_REC, I5);
     DM(BL_REC, I5) = R2;
     R0 = DM(BL_MODE, I5);
@@ -214,7 +214,7 @@ _bl_timing:
     R3 = R3 + R2;
     R0 = 0;
     COMP(R3, R1);
-    IF GE R3 = PASS R0;
+    IF GE R3 = R0;
     R0 = DM(7, I4);
     COMP(R0, R3);
     IF NE JUMP _bl_save_timing;
@@ -306,7 +306,7 @@ _bl_store_timing:
     R0 = DM(20, I5);
     R1 = DM(8, I4);
     R0 = PASS R0;
-    IF EQ R0 = PASS R1;
+    IF EQ R0 = R1;
     DM(21, I5) = R0;
     R2 = 128;
     COMP(R0, R2);
@@ -467,7 +467,7 @@ _bl_window:
     F0 = MIN(F2, F11);
     R0 = TRUNC F0;
     R0 = PASS R0;
-    IF EQ R0 = PASS R1;
+    IF EQ R0 = R1;
     R0 = MIN(R0, R1);
     R0 = R0 + R4;
     R3 = 0;
@@ -501,7 +501,7 @@ _bl_window_ready:
         R2 = DM(BL_FRAME_COUNT, I5);
         R1 = R0 - R2;
         COMP(R0, R2);
-        IF GE R0 = PASS R1;
+        IF GE R0 = R1;
         R12 = PASS R0;
         R1 = LSHIFT R0 BY 2;
         R3 = DM(BL_AUDIO_ADDRESS, I5);

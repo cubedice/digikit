@@ -1,29 +1,30 @@
 """Execute the native parameter-code hook, including ABI and default isolation."""
 
+import importlib.util
 import struct
 
 import pytest
 from support.paths import REPO_ROOT
 from support.words import be32
-from test_pk_machines_fw import (
-    COUNT,
-    FIRST,
-    ROWS,
-    SRC,
-    STOCK_LIST,
-    STUBS,
-    SYX,
-    TYPE_FN,
-    tables,
-)
-from test_pk_machines_fw import (
-    pytestmark as pytestmark,
-)
-from test_pk_machines_fw import (
-    src_allocator as src_allocator,
-)
 
 from tools.patchkit import pk_cfunit
+
+
+def _machines_fw():
+    """The firmware fixtures of core/machines' own test (it moved into the module), loaded by path."""
+    path = REPO_ROOT / "modules/core/adapters/machines/tests/test_pk_machines_fw.py"
+    spec = importlib.util.spec_from_file_location("machines_fw_fixtures", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_fw = _machines_fw()
+COUNT, FIRST, ROWS, SRC, STOCK_LIST = _fw.COUNT, _fw.FIRST, _fw.ROWS, _fw.SRC, _fw.STOCK_LIST
+STUBS, SYX, TYPE_FN, tables = _fw.STUBS, _fw.SYX, _fw.TYPE_FN, _fw.tables
+pytestmark = _fw.pytestmark
+src_allocator = _fw.src_allocator
 
 CONTROL = 0x47ED1000
 SOUND = 0x47ED2000

@@ -419,7 +419,7 @@ _ca_member:
     R1 = DM(18, I2);
     COMP(R0, R1);
     R1 = 1;
-    IF EQ R11 = PASS R1;
+    IF EQ R11 = R1;
     R1 = DM(19, I2);
     COMP(R0, R1);
     IF NE JUMP _ca_member_next;
