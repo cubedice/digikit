@@ -6339,28 +6339,35 @@
   },
   {
    "addend": 40,
-   "offset": 40,
+   "offset": 58,
    "section": ".text._RNvNtCsfkM9bNBZYFx_4dkrt8settings17module_stored_key",
    "symbol": ".sec..bss.DKRT_STATE",
    "type": "cf.32"
   },
   {
    "addend": 44,
-   "offset": 74,
+   "offset": 70,
    "section": ".text._RNvNtCsfkM9bNBZYFx_4dkrt8settings17module_stored_key",
    "symbol": ".sec..bss.DKRT_STATE",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 90,
+   "offset": 86,
    "section": ".text._RNvNtCsfkM9bNBZYFx_4dkrt8settings17module_stored_key",
    "symbol": "_RNvNtCshk6VFhnzcgJ_8dkrt_abi3mem8cstr_len",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 138,
+   "offset": 100,
+   "section": ".text._RNvNtCsfkM9bNBZYFx_4dkrt8settings17module_stored_key",
+   "symbol": ".sec..text._RNvNtCsfkM9bNBZYFx_4dkrt8settings6key_of",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 128,
    "section": ".text._RNvNtCsfkM9bNBZYFx_4dkrt8settings17module_stored_key",
    "symbol": "_RNvNtCs92V59aRzjov_8dkrt_sdk8settings10module_key",
    "type": "cf.32"
@@ -37581,13 +37588,41 @@
   {
    "addend": 0,
    "offset": 8,
+   "section": ".text.dkrt_settings_get",
+   "symbol": ".sec..text._RNvNtCsfkM9bNBZYFx_4dkrt5state9init_once",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 32,
+   "section": ".text.dkrt_settings_get",
+   "symbol": ".sec..text._RNvNtCsfkM9bNBZYFx_4dkrt8settings6key_of",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 50,
+   "section": ".text.dkrt_settings_get",
+   "symbol": ".sec..text._RNvNtCsfkM9bNBZYFx_4dkrt8settings3get",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
    "section": ".text.dkrt_settings_put",
    "symbol": ".sec..text._RNvNtCsfkM9bNBZYFx_4dkrt5state9init_once",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 54,
+   "offset": 24,
+   "section": ".text.dkrt_settings_put",
+   "symbol": ".sec..text._RNvNtCsfkM9bNBZYFx_4dkrt8settings6key_of",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 44,
    "section": ".text.dkrt_settings_put",
    "symbol": ".sec..text._RNvNtCsfkM9bNBZYFx_4dkrt8settings3put",
    "type": "cf.32"
@@ -51687,6 +51722,13 @@
   },
   {
    "align": 2,
+   "hex": "206f000442814a301800670852817030b08166f220084e75",
+   "kind": "text",
+   "name": ".text._RNvNtCsfkM9bNBZYFx_4dkrt8settings6key_of",
+   "size": 24
+  },
+  {
+   "align": 2,
    "hex": "3039000000007202b3804a4056c044804e75",
    "kind": "text",
    "name": ".text._RNvNtNtCsfkM9bNBZYFx_4dkrt10instrument7pending8occupied",
@@ -53164,10 +53206,10 @@
   },
   {
    "align": 2,
-   "hex": "4feffff42f0e2f022c48202f00184a8067207208b280651a4aaf001c6714538074344c02080041f9000000004ab00800661670be72013c812d400002200e241f2c5f4fef000c4e750680000000002f4000084878001f2f004eb900000000508f4281206f001c4a301800670852817430b48166ee2f2f00202f012f2f00242f002f2f001841ef00224eb9000000004fef00144a6f000e679a202f001042416096",
+   "hex": "4feffff02f0e2c48202f00184a8067067208b280641470be72013c812d400002200e2c5f4fef00104e754aaf001c67e6538072344c01080041f9000000004ab0080067d20680000000002f4000044878001f2f004eb9000000002f4000102f2f00244eb900000000588f2f2f00282f012f002f2f001c2f2f001c41ef002a4eb9000000004fef001c4a6f000e6788202f001042416084",
    "kind": "text",
    "name": ".text._RNvNtCsfkM9bNBZYFx_4dkrt8settings17module_stored_key",
-   "size": 160
+   "size": 150
   },
   {
    "align": 2,
@@ -55467,10 +55509,17 @@
   },
   {
    "align": 2,
-   "hex": "2f0a246f00084eb900000000202f00100c8000000400622a42804a320800670852807230b28066f22f2f00102f2f00102f002f0a4eb9000000004fef0010245f4e7570bb60f8",
+   "hex": "2f0e2c6f000c4eb9000000004a8e672e4aaf001066044def00042f2f00084eb900000000588f2f2f00102f0e2f012f004eb9000000004fef00102c5f4e754aaf001066064def000460d070be60ec",
+   "kind": "text",
+   "name": ".text.dkrt_settings_get",
+   "size": 78
+  },
+  {
+   "align": 2,
+   "hex": "4eb900000000202f000c0c800000040062242f2f00044eb900000000588f2f2f000c2f2f000c2f012f004eb9000000004fef00104e7570bb60fa",
    "kind": "text",
    "name": ".text.dkrt_settings_put",
-   "size": 70
+   "size": 58
   },
   {
    "align": 2,
@@ -60548,7 +60597,7 @@
    "size": 24
   }
  ],
- "source_sha256": "77ee0b1197203d1a2121a6543885cacb3eecf64a7abe454002efbe2b1e6a6690",
+ "source_sha256": "0061063db8e215a498a577f414e41959a56678b9c9f3b8c3b9310ac5a0202baf",
  "symbols": [
   {
    "global": false,
@@ -65910,6 +65959,12 @@
   },
   {
    "global": false,
+   "name": ".sec..text._RNvNtCsfkM9bNBZYFx_4dkrt8settings6key_of",
+   "section": ".text._RNvNtCsfkM9bNBZYFx_4dkrt8settings6key_of",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..text._RNvNtCsfkM9bNBZYFx_4dkrt8settings6remove",
    "section": ".text._RNvNtCsfkM9bNBZYFx_4dkrt8settings6remove",
    "value": 0
@@ -69594,6 +69649,12 @@
   },
   {
    "global": true,
+   "name": "dkrt_settings_get",
+   "section": ".text.dkrt_settings_get",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "dkrt_settings_put",
    "section": ".text.dkrt_settings_put",
    "value": 0
@@ -69882,9 +69943,9 @@
   }
  ],
  "toolchain": {
-  "exports": "DKRT_ARENA DKRT_ASSIGN DKRT_AUX_TASK DKRT_BOOT DKRT_CARD DKRT_CRASH DKRT_CTXS DKRT_DSP DKRT_DSP_STOPPED DKRT_HEALTH DKRT_INSTRUMENT_BINDING DKRT_INSTRUMENT_FILE DKRT_INSTRUMENT_LOAD DKRT_INSTRUMENT_SESSION DKRT_IO_TASK DKRT_LOG DKRT_LOG_COUNT DKRT_MAILBOX DKRT_MENUS DKRT_MODULE_RUNTIME DKRT_PATHS DKRT_PD_CUT DKRT_POLLS DKRT_POLL_OWNER DKRT_REG DKRT_SAVE_MODE DKRT_SDK_BUF DKRT_SECBUF DKRT_SESSION_IDLE DKRT_SET DKRT_SETTINGS DKRT_SETTINGS_HDR DKRT_STABLE_BLOCKS DKRT_STATE DKRT_STORE_CAP DKRT_STORE_FP DKRT_STORE_PEEK DKRT_TABLE_BAD DKRT_TICKS DKRT_UI_START DKRT_UPLOAD_BUF DKRT_UPLOAD_COUNT DKRT_UPLOAD_CUT DKRT_UPLOAD_DROPPED DKRT_UPLOAD_FLIP DKRT_UPLOAD_LAST DKRT_UPLOAD_TEAR DKRT_UPLOAD_WRITES dk_debug_log_sink_set dk_log_event dk_sink_set dk_span_sink_set dkrt_aux_run dkrt_aux_wait dkrt_blocks dkrt_boot dkrt_boot_info dkrt_capacity dkrt_diag dkrt_exc dkrt_fit dkrt_fx dkrt_health dkrt_instrument_generation dkrt_instrument_type dkrt_io_wake dkrt_job_cancel dkrt_job_post dkrt_load dkrt_midi_rx dkrt_module dkrt_module_header dkrt_page_key dkrt_page_turn dkrt_poll_add dkrt_poll_remove dkrt_pool_done dkrt_pool_lost dkrt_project_changed dkrt_restart dkrt_scan dkrt_scan_reads dkrt_selection_get dkrt_selection_set dkrt_settings_flush dkrt_settings_put dkrt_speed_flags dkrt_status dkrt_store_lease dkrt_store_read dkrt_store_stat dkrt_store_unlease dkrt_tick",
-  "instructions_redecoded": "80932",
-  "isa_check": "9ad8b7afae9b482a2fa68dc10e38df3ce1171784a10d63b6dd72976328f16725",
+  "exports": "DKRT_ARENA DKRT_ASSIGN DKRT_AUX_TASK DKRT_BOOT DKRT_CARD DKRT_CRASH DKRT_CTXS DKRT_DSP DKRT_DSP_STOPPED DKRT_HEALTH DKRT_INSTRUMENT_BINDING DKRT_INSTRUMENT_FILE DKRT_INSTRUMENT_LOAD DKRT_INSTRUMENT_SESSION DKRT_IO_TASK DKRT_LOG DKRT_LOG_COUNT DKRT_MAILBOX DKRT_MENUS DKRT_MODULE_RUNTIME DKRT_PATHS DKRT_PD_CUT DKRT_POLLS DKRT_POLL_OWNER DKRT_REG DKRT_SAVE_MODE DKRT_SDK_BUF DKRT_SECBUF DKRT_SESSION_IDLE DKRT_SET DKRT_SETTINGS DKRT_SETTINGS_HDR DKRT_STABLE_BLOCKS DKRT_STATE DKRT_STORE_CAP DKRT_STORE_FP DKRT_STORE_PEEK DKRT_TABLE_BAD DKRT_TICKS DKRT_UI_START DKRT_UPLOAD_BUF DKRT_UPLOAD_COUNT DKRT_UPLOAD_CUT DKRT_UPLOAD_DROPPED DKRT_UPLOAD_FLIP DKRT_UPLOAD_LAST DKRT_UPLOAD_TEAR DKRT_UPLOAD_WRITES dk_debug_log_sink_set dk_log_event dk_sink_set dk_span_sink_set dkrt_aux_run dkrt_aux_wait dkrt_blocks dkrt_boot dkrt_boot_info dkrt_capacity dkrt_diag dkrt_exc dkrt_fit dkrt_fx dkrt_health dkrt_instrument_generation dkrt_instrument_type dkrt_io_wake dkrt_job_cancel dkrt_job_post dkrt_load dkrt_midi_rx dkrt_module dkrt_module_header dkrt_page_key dkrt_page_turn dkrt_poll_add dkrt_poll_remove dkrt_pool_done dkrt_pool_lost dkrt_project_changed dkrt_restart dkrt_scan dkrt_scan_reads dkrt_selection_get dkrt_selection_set dkrt_settings_flush dkrt_settings_get dkrt_settings_put dkrt_speed_flags dkrt_status dkrt_store_lease dkrt_store_read dkrt_store_stat dkrt_store_unlease dkrt_tick",
+  "instructions_redecoded": "80953",
+  "isa_check": "d66febdaf5fb60d68579b92819db74d327f544179af047d329e846a3edebf355",
   "libgccjit_gcc": "37ea7cd851f04ee6a313c5067c9fde9328f876aa",
   "rustc": "rustc 1.101.0-nightly (6f5da406b 2026-10-10)",
   "rustc_codegen_gcc": "a7d8a5227b520187e3d93c1f7fc01dd1ba8659cf",

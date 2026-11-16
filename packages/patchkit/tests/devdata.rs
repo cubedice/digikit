@@ -76,7 +76,7 @@ fn the_runtime_constants_are_the_device_files_numbers() {
         !rs.contains("LIMIT_STAGE_BYTES"),
         "staging is allocated by the selected device object"
     );
-    for (dev, bytes) in [("dt2", 245760), ("dn2", 65536)] {
+    for (dev, bytes) in [("dt2", 163840), ("dn2", 65536)] {
         assert_eq!(facts.stage_bytes(dev).unwrap(), bytes);
         assert!(
             get(&format!("build/gen/device-{dev}.inc"))

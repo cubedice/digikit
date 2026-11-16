@@ -224,14 +224,14 @@ _wt_crossfade_advance:
 _wt_crossfade_ready:
     R0 = DM(235, I0);
     DM(_wt_table_a) = R0;
-    R1 = 37088; // 9272 words per factory table
+    R1 = 18544; // 9272 16-bit samples per factory table
     R1 = R0 * R1 (SSI);
     R2 = _wt_factory;
     R1 = R1 + R2;
     DM(_wt_table_base_a) = R1;
     R0 = DM(236, I0);
     DM(_wt_table_b) = R0;
-    R1 = 37088;
+    R1 = 18544;
     R1 = R0 * R1 (SSI);
     R2 = _wt_factory;
     R1 = R1 + R2;
@@ -1004,7 +1004,7 @@ _wt_render_block:
     F2 = FLOAT R1;
     F0 = F0 - F2;
     R1 = R1 * R7 (SSI), DM(2,I0) = F0;
-    R1 = LSHIFT R1 BY 2;
+    R1 = LSHIFT R1 BY 1; // frame offset in 16-bit samples, as bytes
 _wt_control_last:
     DM(I0,M4) = R1;
     DM(_wt_scan_cursor) = F8;
@@ -1013,7 +1013,7 @@ _wt_control_last:
     DM(_wt_read_phase) = F10;
     DM(_wt_env) = F11;
     DM(_wt_frame_mix) = F0;
-    R1 = LSHIFT R1 BY -2;
+    R1 = LSHIFT R1 BY -1;
     DM(_wt_frame) = R1;
     R0 = DM(_wt_aux);
     I1 = R0;
@@ -1025,9 +1025,9 @@ _wt_control_last:
     // Pass 3: table reads. Each table's address is its mip offset and base
     // folded into one constant; integer sums are unchanged by reassociation.
     R0 = DM(_wt_offset_a);
-    R0 = LSHIFT R0 BY 2;
+    R0 = LSHIFT R0 BY 1;
     R1 = DM(_wt_offset_b);
-    R1 = LSHIFT R1 BY 2;
+    R1 = LSHIFT R1 BY 1;
     R2 = DM(_wt_table_base_a);
     R10 = R0 + R2;
     R11 = R1 + R2;
@@ -1049,24 +1049,30 @@ _wt_control_last:
     R3 = TRUNC F2;
     F4 = FLOAT R3;
     F4 = F2 - F4;
-    R3 = LSHIFT R3 BY 2;
+    R3 = LSHIFT R3 BY 1;
     R14 = R3 + R0;
     F2 = F9 * F1;
     R3 = TRUNC F2;
     F5 = FLOAT R3;
     F5 = F2 - F5;
-    R3 = LSHIFT R3 BY 2;
+    R3 = LSHIFT R3 BY 1;
     R15 = R3 + R0;
     R1 = R14 + R10;
     R2 = R15 + R11, I1 = R1;
     I2 = R2;
-    R3 = 32452; // final frame 7*1159 words, as bytes: no read past the table
+    R3 = 16226; // final frame 7*1159 samples, as bytes: no read past the table
     COMP(R0, R3);
     IF EQ JUMP _wt_two_final;
-    F0 = DM(0,I1);
-    F1 = DM(1,I1);
-    F1 = F1 - F0, F2 = DM(0,I2);
-    F1 = F4 * F1, F3 = DM(1,I2);
+    R0 = DM(M5,I1) (SWSE);
+    R1 = DM(M6,I1) (SWSE);
+    R2 = DM(M5,I2) (SWSE);
+    R3 = DM(M6,I2) (SWSE);
+    F0 = FLOAT R0;
+    F1 = FLOAT R1;
+    F2 = FLOAT R2;
+    F3 = FLOAT R3;
+    F1 = F1 - F0;
+    F1 = F4 * F1;
     F0 = F1 + F0;
     F3 = F3 - F2;
     F3 = F5 * F3;
@@ -1075,12 +1081,18 @@ _wt_control_last:
     F2 = F2 * F6;
     F0 = F2 + F0;
     DM(-3,I0) = F0; // first frame; the next frame follows
-    MODIFY(I1,1159) (NW);
-    MODIFY(I2,1159) (NW);
-    F0 = DM(0,I1);
-    F1 = DM(1,I1);
-    F1 = F1 - F0, F2 = DM(0,I2);
-    F1 = F4 * F1, F3 = DM(1,I2);
+    MODIFY(I1,2318); // the next frame: 1159 samples of 2 bytes
+    MODIFY(I2,2318);
+    R0 = DM(M5,I1) (SWSE);
+    R1 = DM(M6,I1) (SWSE);
+    R2 = DM(M5,I2) (SWSE);
+    R3 = DM(M6,I2) (SWSE);
+    F0 = FLOAT R0;
+    F1 = FLOAT R1;
+    F2 = FLOAT R2;
+    F3 = FLOAT R3;
+    F1 = F1 - F0;
+    F1 = F4 * F1;
     F0 = F1 + F0;
     F3 = F3 - F2;
     F3 = F5 * F3;
@@ -1096,10 +1108,16 @@ _wt_control_last:
     R1 = R14 + R12;
     R2 = R15 + R13, I1 = R1;
     I2 = R2;
-    F0 = DM(0,I1);
-    F1 = DM(1,I1);
-    F1 = F1 - F0, F2 = DM(0,I2);
-    F1 = F4 * F1, F3 = DM(1,I2);
+    R0 = DM(M5,I1) (SWSE);
+    R1 = DM(M6,I1) (SWSE);
+    R2 = DM(M5,I2) (SWSE);
+    R3 = DM(M6,I2) (SWSE);
+    F0 = FLOAT R0;
+    F1 = FLOAT R1;
+    F2 = FLOAT R2;
+    F3 = FLOAT R3;
+    F1 = F1 - F0;
+    F1 = F4 * F1;
     F0 = F1 + F0;
     F3 = F3 - F2;
     F3 = F5 * F3;
@@ -1108,12 +1126,18 @@ _wt_control_last:
     F2 = F2 * F6;
     F0 = F2 + F0;
     DM(-2,I0) = F0; // first frame; the next frame follows
-    MODIFY(I1,1159) (NW);
-    MODIFY(I2,1159) (NW);
-    F0 = DM(0,I1);
-    F1 = DM(1,I1);
-    F1 = F1 - F0, F2 = DM(0,I2);
-    F1 = F4 * F1, F3 = DM(1,I2);
+    MODIFY(I1,2318); // the next frame: 1159 samples of 2 bytes
+    MODIFY(I2,2318);
+    R0 = DM(M5,I1) (SWSE);
+    R1 = DM(M6,I1) (SWSE);
+    R2 = DM(M5,I2) (SWSE);
+    R3 = DM(M6,I2) (SWSE);
+    F0 = FLOAT R0;
+    F1 = FLOAT R1;
+    F2 = FLOAT R2;
+    F3 = FLOAT R3;
+    F1 = F1 - F0;
+    F1 = F4 * F1;
     F0 = F1 + F0;
     F3 = F3 - F2;
     F3 = F5 * F3;
@@ -1127,10 +1151,16 @@ _wt_control_last:
     F0 = F0 + F1;
     JUMP _wt_two_join;
 _wt_two_final:
-    F0 = DM(0,I1);
-    F1 = DM(1,I1);
-    F1 = F1 - F0, F2 = DM(0,I2);
-    F1 = F4 * F1, F3 = DM(1,I2);
+    R0 = DM(M5,I1) (SWSE);
+    R1 = DM(M6,I1) (SWSE);
+    R2 = DM(M5,I2) (SWSE);
+    R3 = DM(M6,I2) (SWSE);
+    F0 = FLOAT R0;
+    F1 = FLOAT R1;
+    F2 = FLOAT R2;
+    F3 = FLOAT R3;
+    F1 = F1 - F0;
+    F1 = F4 * F1;
     F0 = F1 + F0;
     F3 = F3 - F2;
     F3 = F5 * F3;
@@ -1142,10 +1172,16 @@ _wt_two_final:
     R1 = R14 + R12;
     R2 = R15 + R13, I1 = R1;
     I2 = R2;
-    F0 = DM(0,I1);
-    F1 = DM(1,I1);
-    F1 = F1 - F0, F2 = DM(0,I2);
-    F1 = F4 * F1, F3 = DM(1,I2);
+    R0 = DM(M5,I1) (SWSE);
+    R1 = DM(M6,I1) (SWSE);
+    R2 = DM(M5,I2) (SWSE);
+    R3 = DM(M6,I2) (SWSE);
+    F0 = FLOAT R0;
+    F1 = FLOAT R1;
+    F2 = FLOAT R2;
+    F3 = FLOAT R3;
+    F1 = F1 - F0;
+    F1 = F4 * F1;
     F0 = F1 + F0;
     F3 = F3 - F2;
     F3 = F5 * F3;
@@ -1165,24 +1201,30 @@ _wt_tables_one:
     R3 = TRUNC F2;
     F4 = FLOAT R3;
     F4 = F2 - F4;
-    R3 = LSHIFT R3 BY 2;
+    R3 = LSHIFT R3 BY 1;
     R14 = R3 + R0;
     F2 = F9 * F1;
     R3 = TRUNC F2;
     F5 = FLOAT R3;
     F5 = F2 - F5;
-    R3 = LSHIFT R3 BY 2;
+    R3 = LSHIFT R3 BY 1;
     R15 = R3 + R0;
     R1 = R14 + R10;
     R2 = R15 + R11, I1 = R1;
     I2 = R2;
-    R3 = 32452; // final frame 7*1159 words, as bytes: no read past the table
+    R3 = 16226; // final frame 7*1159 samples, as bytes: no read past the table
     COMP(R0, R3);
     IF EQ JUMP _wt_one_final;
-    F0 = DM(0,I1);
-    F1 = DM(1,I1);
-    F1 = F1 - F0, F2 = DM(0,I2);
-    F1 = F4 * F1, F3 = DM(1,I2);
+    R0 = DM(M5,I1) (SWSE);
+    R1 = DM(M6,I1) (SWSE);
+    R2 = DM(M5,I2) (SWSE);
+    R3 = DM(M6,I2) (SWSE);
+    F0 = FLOAT R0;
+    F1 = FLOAT R1;
+    F2 = FLOAT R2;
+    F3 = FLOAT R3;
+    F1 = F1 - F0;
+    F1 = F4 * F1;
     F0 = F1 + F0;
     F3 = F3 - F2;
     F3 = F5 * F3;
@@ -1191,12 +1233,18 @@ _wt_tables_one:
     F2 = F2 * F6;
     F0 = F2 + F0;
     DM(-3,I0) = F0; // first frame; the next frame follows
-    MODIFY(I1,1159) (NW);
-    MODIFY(I2,1159) (NW);
-    F0 = DM(0,I1);
-    F1 = DM(1,I1);
-    F1 = F1 - F0, F2 = DM(0,I2);
-    F1 = F4 * F1, F3 = DM(1,I2);
+    MODIFY(I1,2318); // the next frame: 1159 samples of 2 bytes
+    MODIFY(I2,2318);
+    R0 = DM(M5,I1) (SWSE);
+    R1 = DM(M6,I1) (SWSE);
+    R2 = DM(M5,I2) (SWSE);
+    R3 = DM(M6,I2) (SWSE);
+    F0 = FLOAT R0;
+    F1 = FLOAT R1;
+    F2 = FLOAT R2;
+    F3 = FLOAT R3;
+    F1 = F1 - F0;
+    F1 = F4 * F1;
     F0 = F1 + F0;
     F3 = F3 - F2;
     F3 = F5 * F3;
@@ -1210,10 +1258,16 @@ _wt_tables_one:
     F0 = F0 + F1;
     JUMP _wt_one_join;
 _wt_one_final:
-    F0 = DM(0,I1);
-    F1 = DM(1,I1);
-    F1 = F1 - F0, F2 = DM(0,I2);
-    F1 = F4 * F1, F3 = DM(1,I2);
+    R0 = DM(M5,I1) (SWSE);
+    R1 = DM(M6,I1) (SWSE);
+    R2 = DM(M5,I2) (SWSE);
+    R3 = DM(M6,I2) (SWSE);
+    F0 = FLOAT R0;
+    F1 = FLOAT R1;
+    F2 = FLOAT R2;
+    F3 = FLOAT R3;
+    F1 = F1 - F0;
+    F1 = F4 * F1;
     F0 = F1 + F0;
     F3 = F3 - F2;
     F3 = F5 * F3;
@@ -1237,13 +1291,15 @@ _wt_blend:
     R1 = DM(_wt_table_base_a);
     COMP(R0, R1);
     IF EQ JUMP _wt_blend_one;
+    F2 = 0.00006103515625; // 2^-14: the 16-bit table scale
     LCNTR = 32, DO _wt_blend_two_last UNTIL LCE;
     F8 = F8 + F12;
-    F9 = F9 + F13, F1 = DM(1,I0); // table A sample
-    F0 = DM(2,I0); // table B sample
+    F9 = F9 + F13, F1 = DM(1,I0); // table A sample (x 2^14)
+    F0 = DM(2,I0); // table B sample (x 2^14)
     F0 = F0 - F1;
     F0 = F0 * F9;
-    F0 = F0 + F1, F1 = DM(0,I0); // pad oscillator
+    F0 = F0 + F1;
+    F0 = F0 * F2, F1 = DM(0,I0); // unit scale; pad oscillator
     F0 = F0 - F1;
     F0 = F0 * F8;
     F0 = F0 + F1;
@@ -1251,10 +1307,12 @@ _wt_blend_two_last:
     DM(I0,M4) = F0;
     JUMP _wt_blend_done;
 _wt_blend_one:
+    F2 = 0.00006103515625; // 2^-14: the 16-bit table scale
     LCNTR = 32, DO _wt_blend_one_last UNTIL LCE;
     F8 = F8 + F12;
     F9 = F9 + F13, F1 = DM(0,I0); // pad oscillator
-    F0 = DM(1,I0); // table A sample
+    F0 = DM(1,I0); // table A sample (x 2^14)
+    F0 = F0 * F2;
     F0 = F0 - F1;
     F0 = F0 * F8;
     F0 = F0 + F1;

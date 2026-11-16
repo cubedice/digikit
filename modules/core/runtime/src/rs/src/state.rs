@@ -19,7 +19,7 @@ pub struct Arena(pub [u8; ARENA_BYTES]);
 pub static mut DKRT_ARENA: Arena = Arena([0; ARENA_BYTES]);
 extern "C" {
     /// The staging buffer of a `.dkm` file (and the store directory): device-owned (`src/cf/<dev>/device.s`), 16-byte aligned, its
-    /// size `dkrt_stage_bytes` ([limits] stage_bytes of the device file: DT2 256 KiB, DN2 64 KiB). Rust uses its address only.
+    /// size `dkrt_stage_bytes` ([limits] stage_bytes of the device file: DT2 160 KiB, DN2 64 KiB). Rust uses its address only.
     pub static mut DKRT_STAGE: u8;
     static dkrt_stage_bytes: u32;
 }

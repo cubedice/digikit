@@ -57,7 +57,7 @@ dkrt_stage_bytes:
 dkrt_image_id:
     .long 0, 0
 
-    /* The device owns its staging allocation (DT2 256 KiB for factory wavetable modules, [limits] stage_bytes of the device file): patchkit reserves this bss
+    /* The device owns its staging allocation (DT2 160 KiB for CANOPY with its factory wavetables, [limits] stage_bytes of the device file): patchkit reserves this bss
      * with the object and the boot loader clears it. The Rust object takes its address and dkrt_stage_bytes; native reads stay <= 64 KiB. */
     .section .bss
     .balign 16

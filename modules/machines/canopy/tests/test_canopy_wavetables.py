@@ -4,7 +4,15 @@ import numpy as np
 import pytest
 from canopy_paths import DSP
 
-from modules.machines.canopy.tools.wavetables import MIPS, TABLE_NAMES, assembly, frames
+from modules.machines.canopy.tools.wavetables import (
+    MIPS,
+    SCALE,
+    TABLE_NAMES,
+    assembly,
+    dequantized,
+    frames,
+    quantized,
+)
 
 
 @pytest.fixture(scope="module")
@@ -61,3 +69,15 @@ def test_factory_tables_and_frames_are_audibly_distinct(library):
     for i, wave in enumerate(endings):
         for other in endings[i + 1 :]:
             assert np.sqrt(np.mean((wave - other) ** 2)) > 0.02
+
+
+def test_16_bit_samples_round_the_waves_and_pack_two_to_a_word(library):
+    for table in range(len(TABLE_NAMES)):
+        for frame, q_frame, d_frame in zip(library[table], quantized(table), dequantized(table), strict=True):
+            for wave, q, d in zip(frame, q_frame, d_frame, strict=True):
+                assert max(abs(v) for v in q) < 0x8000
+                assert max(abs(a - b) for a, b in zip(wave, d, strict=True)) <= 0.5 / SCALE
+    # the first word holds sample 0 in its low half and sample 1 in its high half
+    first = quantized(0)[0][0]
+    word = int(assembly().split("_wt_factory = 0x")[1][:8], 16)
+    assert (word & 0xFFFF, word >> 16) == (first[0] & 0xFFFF, first[1] & 0xFFFF)
