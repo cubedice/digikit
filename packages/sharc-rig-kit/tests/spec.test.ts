@@ -64,6 +64,24 @@ sources = ["src/dsp/pad.s"]
 `,
   );
   write(
+    'skipped/module.toml',
+    `[module]
+id = "zzt/skipped"
+type = "fx"
+category = "fx"
+
+[[fx]]
+id = "needs-core"
+
+[[object]]
+path = "build/fx.dko.json"
+sources = ["src/dsp/nc.s"]
+
+[conformance]
+rig_skip = "reads data of a core module"
+`,
+  );
+  write(
     'fx/module.toml',
     `[module]
 id = "zzt/fx"
@@ -116,6 +134,11 @@ describe('machineSpec', () => {
   it('is null for a device the module does not port to, and for a module that is no machine', () => {
     expect(machineSpec('zzt/mach', 'dn2')).toBeNull();
     expect(machineSpec('zzt/fx', 'dt2')).toBeNull();
+  });
+
+  it('is null for a module whose manifest says the rig does not run it', () => {
+    expect(fxSpec('zzt/skipped')).toBeNull();
+    expect(fxSpecs().map((s) => s.module)).not.toContain('zzt/skipped');
   });
 
   it('is null for a persistent V2 instrument, which has no voice and needs no gallery', () => {

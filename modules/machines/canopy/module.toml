@@ -32,6 +32,10 @@ sources = ["src/dsp/voice.s",
 place = "dsp.l2"
 devices = ["dt2"]
 
+# The load cell boots the patch set with core/instrument-play (the V2 owner), core/loop-storage and core/loop-display.
+[conformance]
+patch_set = "canopy-overloop"
+
 # The rows init commits (src/module.c: one machine, no pages or params), counted from the builder calls: record_bytes is the 16-byte
 # header and a machine record (0x6c), as packages/patchkit/src/dkmsynth.rs record_bytes computes it. Without them the commit refuses (E_DECL_USES).
 [uses.dt2]

@@ -42,13 +42,10 @@ export const FX_NEGATIVE: Record<string, string> = {
   'test/fx-nan': 'guard stepped in',
   'test/dyn-fx-nan': 'guard stepped in',
 };
-/** Fixtures of the runtime's fault tests that the suite does not run, and effects whose DSP reads data of a core module that the rig does
- * not place: Overloop reads the loop buffer of core/loop-storage and the position of core/pattern-position (`_loop_buffer_info`,
- * `_pattern_position_info`); modules/fx/overloop/tests runs it on the effect adapter with stand-ins for both. */
-const FX_SKIP = new Set(['test/dyn-fx-hang', 'digikit/overloop']);
-/** Fixtures that declare a machine and that the suite does not run: test/canopy-carrier is a raw renderer that stands in for stock type 1
- * in CANOPY's carrier proof (modules/machines/canopy/tests/test_canopy_carrier.py). */
-const MACHINE_SKIP = new Set(['test/commit-demo', 'test/canopy-carrier']);
+/** Fixtures of the runtime's fault tests that the suite does not run. */
+const FX_SKIP = new Set(['test/dyn-fx-hang']);
+/** Fixtures that declare a machine and that the suite does not run. */
+const MACHINE_SKIP = new Set(['test/commit-demo']);
 
 export class ConformError extends Error {}
 
@@ -212,6 +209,14 @@ function typeNumber(mid: string, man: Toml, device: string, literal: string | nu
   throw new ConformError(`${mid}: no machine type for ${key} in core/machines types.toml [${device}]`);
 }
 
+/** `[conformance] rig_skip = "<why>"`: a module the rig cannot run (its DSP needs what the rig does not place); its own tests run it. */
+function rigSkipped(man: Toml): boolean {
+  const why = man.conformance?.rig_skip;
+  if (why !== undefined && (typeof why !== 'string' || !why.trim()))
+    throw new ConformError(`${man.module?.id}: [conformance] rig_skip names why the rig does not run the module`);
+  return why !== undefined;
+}
+
 function readGallery(moddir: string, mid: string, hint: string): Toml {
   const file = path.join(moddir, 'build/gen/gallery.json');
   if (!existsSync(file)) throw new ConformError(`${mid}: no build/gen/gallery.json: run ${hint}`);
@@ -276,7 +281,7 @@ export function machineSpec(mid: string, device: Device): MachineSpec | null {
   const ports: string[] = man.module?.ports ?? [];
   if (ports.length && !ports.some((p) => p.split('-')[0] === device)) return null;
   // a persistent V2 instrument (`instrument = true`) has no voice: its reset and process entries are checked by its own tests
-  if (man.machine?.some((m: Toml) => m.instrument === true)) return null;
+  if (man.machine?.some((m: Toml) => m.instrument === true) || rigSkipped(man)) return null;
   const row = entryRow(man);
   if (!row) return null;
   const sources = dspSources(man, moddir, device);
@@ -333,6 +338,7 @@ export function fxSpec(mid: string): FxSpec | null {
   if (mid.split('/')[0] === 'core') return null;
   const moddir = moduleDir(mid);
   const man = manifest(moddir);
+  if (rigSkipped(man)) return null;
   const sources = () => [...new Set(DEVICES.flatMap((d) => dspSources(man, moddir, d)))];
   for (const e of man.entry ?? [])
     if (e.registry === 'fx' && typeof e.pc === 'string') {

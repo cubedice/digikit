@@ -62,3 +62,7 @@ to = "_mi_velocity_entry"
 op = "hook"
 hook = "cf.machine.hook.sound_deserialize"
 to = "cp_sound_entry"
+
+# A raw renderer that stands in for stock type 1 in CANOPY's carrier proof, not a machine of its own.
+[conformance]
+rig_skip = "a raw stand-in for stock type 1 in a carrier proof"
