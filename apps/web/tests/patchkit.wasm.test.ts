@@ -271,6 +271,7 @@ test.skipIf(!existsSync(wasmPath))(
     // a refusal is a message, not a trap
     const [bp, bl] = put(Buffer.from(JSON.stringify({ sources: ['.SECTION/PM seg_pmco;\nDM(15, I4) = I0;\n'] })));
     assert.equal(x.pk_sharc_object(bp, bl), 1);
-    assert.match(text(x.pk_err_ptr, x.pk_err_len), /the ISA does not allow/);
+    // patchkit's own report of the assembler's refusal, with its line (the wording after it is Selache's)
+    assert.match(text(x.pk_err_ptr, x.pk_err_len), /^selas failed:\nselas: line 2: /);
   },
 );
