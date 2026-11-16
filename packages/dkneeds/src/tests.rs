@@ -715,9 +715,13 @@ fn v2_reads_are_bounded_and_io_failures_propagate() {
             fail_at: None,
         });
     }
+    // the first word of the instrument table (0x40 of the section holds its offset): the file has a header table before the section
+    let at = |off: usize| u32::from_be_bytes(good[off..off + 4].try_into().unwrap());
+    let dsp_off = at(H_DSP_OFF as usize);
+    let table = dsp_off + at(dsp_off as usize + 0x40);
     let mut probe = Probe {
         bytes: &good,
-        fail_at: Some(HEADER + 112),
+        fail_at: Some(table),
     };
     assert_eq!(needs_of_v2(&mut probe), Err(Error::Unreadable));
 }
