@@ -41,4 +41,4 @@ mise run patch:preflight -- out/patch/overloop-dt2.syx
 mise run module:pack -- digikit/overloop --device dt2
 ```
 
-Running-firmware emulator tests verified the UI knobs, a complete 96,000-frame stereo capture of a 16-step pattern at 120 BPM, and a one-step capture beginning at START 4 (step 5). Both complete captures matched the effect input byte for byte. Held REC preserved the buffer after STOP. Boundaries are quantized to 32-sample audio blocks. Non-default pattern lengths/scales, external clock, swing and hardware remain unverified; see `docs/findings/76-pattern-position.md` for evidence and scope.
+Running-firmware emulator tests verified the UI knobs, a complete 96,000-frame stereo capture of a 16-step pattern at 120 BPM, and a one-step capture beginning at START 4 (step 5). Both complete captures matched the effect input byte for byte. Held REC preserved the buffer after STOP. Boundaries are quantized to 32-sample audio blocks. Non-default pattern lengths/scales, external clock, swing and hardware remain unverified; see `docs/findings/133-pattern-position.md` for evidence and scope.

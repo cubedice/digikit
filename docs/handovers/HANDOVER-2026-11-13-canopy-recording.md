@@ -4,7 +4,7 @@ Branch `codex/short-loop-proof`. Three reports on the installed four-page build
 (DTII image `1d4953c4df3f3193`): a held step blanks CANOPY's SRC page, live
 recording gives no sound or one note instead of the chord, step recording
 enters single notes. Evidence and layouts are in
-[finding 125](../findings/125-canopy-recording.md).
+[finding 149](../findings/149-canopy-recording.md).
 
 ## Latest hardware installation
 
@@ -55,7 +55,7 @@ Open:
 - Step recording (RECORD + STOP, notes entered with KEYBOARD held): entries
   bypass the note action, so the first install did not cover them. The key
   wrapper now detects each entry from the step's note list, sounds it and
-  stores the held chord (finding 125). Emulator-verified (commit `0efa0ead`):
+  stores the held chord (finding 149). Emulator-verified (commit `0efa0ead`):
   a held D, F, A sounds together, is stored and plays back as the chord.
   Installed on the DTII at the user's request (image `ab2cd5ce545be167` ->
   `e8c7cd7103116212`; report `out/canopy-steprec-hardware-installed.json`);

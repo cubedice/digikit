@@ -13,7 +13,7 @@ import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { canopyPanel } from './canopy-panel.ts';
 
-// MANUAL, NOT IN THE GATE: blocked by the emulator (finding 127). CANOPY Sound
+// MANUAL, NOT IN THE GATE: blocked by the emulator (finding 151). CANOPY Sound
 // persistence through a pattern SysEx dump. DTII 1.17 sends a project or a
 // pattern (with its kit), not a single Sound, so the pattern holding two CANOPY
 // tracks is sent over USB with the stock SYSEX SEND, both tracks are changed,
@@ -98,7 +98,7 @@ test('CANOPY settings travel with the Sound through a pattern SysEx dump', { tim
   // With this image the firmware sends the dump on USB at once (no SELECT
   // INTERFACE). midi.usb.out drains what it hands its USB transmit function:
   // {bytes: count, hex}; the first call starts the capture. The emulator does not
-  // model the USB peripheral, and the send stops after 4032 bytes (finding 127).
+  // model the USB peripheral, and the send stops after 4032 bytes (finding 151).
   const usbOut = async () =>
     [...Buffer.from(((await session.client.call('midi.usb.out')) as { hex: string }).hex, 'hex')];
   await usbOut();

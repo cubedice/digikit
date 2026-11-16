@@ -14,7 +14,7 @@
 
 **[D]** Component checks execute compiled ColdFire and assembled SHARC code. They cover byte preservation outside all sixteen reply slots, absent provider, word ordering, freshness timeout, wrapped window pixels, audible fade fallback and visible-view invalidation. Module conformance passes 33 tests with one skip; the focused display/capture/transport suite passes 47 tests. The corrected empty-page screenshot is `out/runs/overloop-ui/dt2/overloop-idle.png`.
 
-**[O]** Hardware display timing and audio load remain unverified. Earlier capture/audio comparison evidence is in `76-pattern-position.md`; it predates this display adapter.
+**[O]** Hardware display timing and audio load remain unverified. Earlier capture/audio comparison evidence is in `133-pattern-position.md`; it predates this display adapter.
 
 **[D]** The dedicated Vitest `overloop` scenario passed on the current rebuilt daemon and a freshly generated shared core. It installed the DKM through the normal protocol, armed through encoder A, recorded a short phrase, changed LENGTH through C and START through B, reached loop gain through D, observed a moving cursor, and checked that leaving/reopening the page stops/resumes its paints. No guest-memory writes were used. The current interpreter is slow enough that the initial 128-step fixture exceeded the original wall-clock timeout; the acceptance case now sets a short phrase before arming. The test runner reported one passing test in 198.49 seconds. Its local shell wrapper, edited while the process was running, subsequently reported a shell error; this does not count as a clean outer-command result.
 

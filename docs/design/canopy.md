@@ -58,7 +58,7 @@ position, retaining each note's relative envelope inside the polyphonic mix.
 Focused regressions and the full compiled playback/coexistence proof pass,
 including measured release after bit reduction at the stock coefficient rate.
 The implementation, artifacts and remaining qualification are recorded in
-[release ordering](../findings/119-canopy-post-fx-amp.md). It requires a matching
+[release ordering](../findings/143-canopy-post-fx-amp.md). It requires a matching
 firmware/module pair. The V7 pair was installed on 2026-11-10, with identity,
 module readback and preserved settings verified; see its installation handover.
 
@@ -94,7 +94,7 @@ dereference the empty cached source or directly force the DSP type mirror.
 The acceptance scenario must select CANOPY and play its first keyboard note
 without a panel audition or sequencer trig, then repeat after Sound/pattern
 replacement. Keep routes closed when initialization or confirmation fails.
-See the [measured admission boundary](../findings/78-canopy-carrier.md).
+See the [measured admission boundary](../findings/135-canopy-carrier.md).
 
 The carrier integration now has an optional early-frame expiry callback and an
 internal CANOPY render entry that publishes shared stereo envelope controls.
@@ -1429,7 +1429,7 @@ processor fixtures: a patcher integration test generates registry firmware and
 requires explicit section-7 zero writes over all boot-owned session/registry
 state and MIDI identity counters. It passes. DTII 1.17 reset assertion/release
 call sites are also resolved from local image bytes; see
-[finding 78](../findings/78-canopy-carrier.md). The remaining reset work is a
+[finding 135](../findings/135-canopy-carrier.md). The remaining reset work is a
 pre-assertion CF invalidation boundary, early-boot initialization safety and a
 live reset with pending transfers. The current emulator's snapshot reset does
 not establish those properties. Focused documentation checks pass; staged
@@ -1556,7 +1556,7 @@ DSP reset asserted and requires a whole-device restart.
 [D] The 2026-10-31 physical DTII experiment passed on image
 `7eed7aa5661f7981`: reset entered during active SPI with RX DMA ACTIVE,
 quiesced in one poll, retained link ownership, and kept both DMA addresses
-stable across three later snapshots. See [hardware reset evidence](../findings/79-dt2-dsp-reset.md).
+stable across three later snapshots. See [hardware reset evidence](../findings/136-dt2-dsp-reset.md).
 This closes the active-transfer quiescence measurement for the hooked reset
 path. USB commands stopped responding after the measurement, including software
 restart. Physical power cycling restored USB; Overloop-only selection, removal
@@ -1629,7 +1629,7 @@ and independent releases after exact-token binding and configuration. The bound
 case passes in 66.34 seconds; legacy delivery passes in 60.48 seconds. A redundant
 fixture reset discovered in the first bound run has been removed: session arming
 already resets every track. See the bound-session MIDI section in
-[carrier findings](../findings/78-canopy-carrier.md). This is delivery to configured
+[carrier findings](../findings/135-canopy-carrier.md). This is delivery to configured
 test banks, not public V2 installation/initialization or final CANOPY audio.
 
 The coordinator now has an explicit retirement path for successfully published
@@ -1694,7 +1694,7 @@ restarting after local QUIET. This is pre-AMP evidence only: the test does not r
 the stock envelope, gain or mixer stages. The probe is not a V2 registration or a
 production carrier implementation.
 
-A [firmware component probe](../findings/78-canopy-carrier.md) now establishes a
+A [firmware component probe](../findings/135-canopy-carrier.md) now establishes a
 sustained path through the stock envelope for 48,000 samples with synthetic
 state, followed by release and retrigger. Sample activation and envelope state
 are separate; calling the sample arm routine alone does not establish AMP wakeup.
@@ -2174,7 +2174,7 @@ The fixture enables private DSP lifecycle readiness after session binding; norma
 firmware still has no public V2 admission, machine route or audio dispatch.
 The live proof also exposed and fixed recursive ColdFire byte-swap lowering in
 descriptor decoding. All 167 SDK cases pass. See
-[the measured lifecycle result](../findings/78-canopy-carrier.md).
+[the measured lifecycle result](../findings/135-canopy-carrier.md).
 
 ### Admitted process dispatch checkpoint
 
@@ -2232,7 +2232,7 @@ Acceptance: `modules/machines/canopy/tests/stage1.manual.device.test.ts` passes 
 log `out/canopy-stage1-live.log`, PCM and fits `out/canopy-stage1*`.
 The package uses V2 reset/process entries, not a stock type-1 shadow. The adapter
 is optional, DTII-only, one instance, track 1 (since 2026-11-11 the lowest track
-carrying the instrument, finding 121), boot-only, with disabled-by-default
+carrying the instrument, finding 145), boot-only, with disabled-by-default
 nonpersistent route settings. Development installation uses the upload/selection
 protocol; the generic module-browser fit calculator remains V1-only. General
 module browsing, coexistence and hardware release proof are not implied.
@@ -2380,11 +2380,11 @@ USB partial releases, sustain messages and replaced-note release checks pass.
 The connected DIN keyboard demonstrated C-E-G to C-G ownership, four-note chords
 and complete release. A bounded USB stress run passed 1,440 note events and four
 verified 32 KiB uploads with no guard faults. One keyboard instrument on one
-track (track 1 at that time; any track since finding 121) remains the admitted
+track (track 1 at that time; any track since finding 145) remains the admitted
 configuration. Calibrated ingress-to-final-output latency,
 worst-case DSP budget, and broader transition/recovery qualification remain open;
 a physical sustain pedal is unavailable. See the
-[physical findings](../findings/81-canopy-stage6-hardware.md) and
+[physical findings](../findings/138-canopy-stage6-hardware.md) and
 [Stage 6 handover](../handovers/HANDOVER-2026-11-02-canopy-stage6.md).
 
 Stage 1 is a go/no-go gate. A beautiful pad sound with shared-note cutoff is a failed keyboard instrument. The detailed two-page UI must not delay that proof. Do not expand into extra oscillator types or recognition heuristics while MIDI/AMP ownership remains unresolved.

@@ -105,7 +105,7 @@ input and paint adapters are complete. V1 declaration rules are unchanged.
 re-decoded and the DN2 object is unchanged. Static input tracing also identified
 the separate encoder interface at SourcePageView+4; primary View slot 3 must not
 be replaced as an encoder handler. See the
-[SRC findings](../findings/80-canopy-src-pages.md) for exact measured layouts.
+[SRC findings](../findings/137-canopy-src-pages.md) for exact measured layouts.
 
 Stage 5 remains incomplete. The next implementation must connect the painter
 and input adapter, preserve native TUNE/LEVEL and stored custom values, provide

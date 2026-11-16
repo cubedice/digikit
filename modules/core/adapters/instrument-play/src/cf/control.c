@@ -1,5 +1,5 @@
 /* UI-task policy and setup for up to IP_INSTANCES admitted keyboard instruments,
- * one per kit track (finding 121). Instance i is DSP slot i. The UI (SRC page,
+ * one per kit track (finding 145). Instance i is DSP slot i. The UI (SRC page,
  * menus, presets, panel keys) acts on `cur`, the instance on the selected track;
  * the tick services every instance; the MIDI mapper finds its own by track. */
 #if defined(__m68k__) && defined(__GNUC__)

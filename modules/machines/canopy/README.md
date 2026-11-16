@@ -12,7 +12,7 @@ This four-page revision is a local firmware candidate and has not yet been
 installed on the physical DTII.
 The current source requires matching CPSB firmware and package builds. The
 2026-11-10 compact controls and native MOD revision is installed on the physical
-DTII (image ID `481b2b9a4fcddf5e`, finding 120 and its handover); the
+DTII (image ID `481b2b9a4fcddf5e`, finding 144 and its handover); the
 installation and acceptance results below describe the preceding revisions.
 Full Stage 5 and Stage 6 wavetable acceptance passed in the emulator with matching
 CPS9 firmware and package builds, including Overloop recording, crossfades,
@@ -43,7 +43,7 @@ one of the four is replaced. An instance keeps its track while the track stays
 CANOPY; a freed instance takes the next CANOPY track. If two instances use the
 same MIDI channel, the lower track plays it and the other shows CHANNEL IN USE.
 Other tracks and channels retain stock behavior. Four simultaneous worst-case
-sounds can exceed the DSP block time (finding 121).
+sounds can exceed the DSP block time (finding 145).
 
 `src/dsp/voice.s` implements four foreground notes, two short release tails and
 four pending-replacement records in a caller-owned 256-byte bank.
@@ -61,7 +61,7 @@ the note suddenly ends. Each note retains its relative envelope within the
 polyphonic mix; pad/arp blending and bounded voice-stealing fades are included.
 The core firmware and CANOPY package must both support V7. The older installed
 V6 pair does not contain this correction. Evidence and qualification status:
-[release ordering](../../../docs/findings/119-canopy-post-fx-amp.md).
+[release ordering](../../../docs/findings/143-canopy-post-fx-amp.md).
 
 Note-on rejects duplicate tokens and invalid notes/velocities without changing
 existing notes. Note-off matches the exact token and releases only that
@@ -145,7 +145,7 @@ The emulator has exercised held-step and live recording, playback, clearing,
 project save/reload, copying patterns, switching patterns while stopped and
 playing, and separate locks on two tracks. This feature has not yet been
 qualified on hardware. See
-[finding 123](../../../docs/findings/123-canopy-trig-locks.md).
+[finding 147](../../../docs/findings/147-canopy-trig-locks.md).
 
 ## Wavetable controls
 
@@ -371,7 +371,7 @@ batch drains through a real DSP ACK. Persistent bank/readiness storage is loaded
 as zero-initialized data, fixing unknown boot state exposed by this test. The
 fixture installs no renderer and proves no audio. Its preflight currently flags
 tuning-table data as instructions; it must not be flashed. See the
-[carrier findings](../../../docs/findings/78-canopy-carrier.md) and
+[carrier findings](../../../docs/findings/135-canopy-carrier.md) and
 [regression commands](../../../tests/regression/README.md).
 
 The separate `test/canopy-carrier` fixture now exercises the raw renderer and
@@ -394,7 +394,7 @@ and checks transition PCM against a source-only sine prediction on both channels
 The fixed-Sound pattern-continuity bound passes. Browser,
 kit and paste coverage, broader transport cases and arbitrary-control audio continuity remain unproven. Public V2 initialization, broader Sound/control behavior
 and final-output continuity remain open. See the
-[carrier findings](../../../docs/findings/78-canopy-carrier.md) for measured results.
+[carrier findings](../../../docs/findings/135-canopy-carrier.md) for measured results.
 
 The extended booted carrier proof also compares velocity-127 G after velocity-24
 C with G started from silence. Their final-output RMS ratio is 0.9999787403;
@@ -417,7 +417,7 @@ the protected registry dispatcher, including paired held-voice phase/gain state,
 independent velocity and bend, sustain, malformed batches and reset isolation.
 CPS3 accepts family, color, drift, attack and release. CPS1 retains the historical
 sine diagnostic. Wavetable and FM voices render a block at a time
-(`_wt_render_block`, the FM passes in `fm.s`; finding 122); the worst process
+(`_wt_render_block`, the FM passes in `fm.s`; finding 146); the worst process
 callback is 77,017 of the 100,000-instruction ceiling. Descriptor budgets remain provisional; destructive reset
 requires carrier quiescence. The optional adapter packages and admits the V2
 instrument through the normal module protocol.

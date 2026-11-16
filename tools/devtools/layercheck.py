@@ -714,7 +714,7 @@ SC_RUNTIME_TEST = (
 SC_RUNTIME_PROJECT = "modules/core/runtime/tests/capacity/inferred/project.json"
 # This checker and its test name the module sources that the include exceptions
 # above (CANOPY_INCLUDES, CARRIER_INCLUDES) grant to the two fixtures.
-SC_CHECKER = ("tools/devtools/layercheck.py", "tests/devtools/test_layercheck.py")
+SC_CHECKER = ("tools/devtools/layercheck.py",)
 # core/instrument-play's admission policy serves one instrument, CANOPY. The runtime
 # does not tell an adapter which loaded module provides the admitted instrument, so
 # the adapter's settings hook (dk_app_instrument_module_settings) and its host

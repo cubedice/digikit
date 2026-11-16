@@ -10,7 +10,7 @@ There is no hardware release approval. The development policy admits four
 instances, each with a 2976-byte state ceiling and declared 100000/1600
 process/reset ceilings (400000 process in total). Instruction-test limits are
 not a measured hardware cycle budget; four simultaneous worst-case instances
-can exceed a DSP block (finding 121).
+can exceed a DSP block (finding 145).
 
 Instance i is DSP slot i and registry instance i. A reset with word 10 = i+1
 binds the slot to the reset's track; the CF flags the selected track's instance
@@ -53,7 +53,7 @@ audition of a held recorded key is muted on the frame path. The other
 keys held with a recorded press are stored on its step as chord-note locks
 (IDs 53..55), which the mapper plays with the trig's note; live recording
 commits after the key event, so the UI tick watches the track's note list for
-the committed steps (findings 123 and 125).
+the committed steps (findings 147 and 125).
 
 The early-frame transport callbacks copy normalized events into an owned input
 buffer. The admitted process callback runs once per frame; the raw stock-carrier

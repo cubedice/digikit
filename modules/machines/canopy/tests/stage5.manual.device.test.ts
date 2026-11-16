@@ -559,7 +559,7 @@ test(
     expect(await cf('ip_keyboard_status')).toBe(1);
     for (const chord of [10, 9, 10, 11]) {
       // The stock idle filter can consume the first packet after a long menu
-      // visit (finding 78). Drain each actual input and its configuration before
+      // visit (finding 135). Drain each actual input and its configuration before
       // deciding whether another single detent is necessary.
       await setControl(2, 0, chord);
       expect((await bank())[16]).toBe(chord);

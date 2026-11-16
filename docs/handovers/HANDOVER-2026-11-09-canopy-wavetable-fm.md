@@ -59,7 +59,7 @@ The expanded 36-case budget matrix now passes. The strict protected maximum
 is 97,888 / 100,000 instructions; an additional AHD witness takes 97,806 and
 reaches decay in all seven envelope sidecars. Both reset in 1,131 / 1,600
 instructions. These are bounded emulator counts, not hardware CPU percentages.
-See [finding 117](../findings/117-canopy-wavetable-fm.md) for the corrected
+See [finding 141](../findings/141-canopy-wavetable-fm.md) for the corrected
 fixture, exact arithmetic ordering and measured limits.
 
 [D] The final historical neutral-PCM comparison against `b816958f` passes all
@@ -118,7 +118,7 @@ instruction counts. Median paired DSP CPU cost is 0.07936948 of AOT-off cost
 (about 12.60 times faster for that DSP workload). ColdFire remains reference
 execution; other fast-tier settings are held fixed. This is backend evidence,
 not the CANOPY full-suite duration. See
-[finding 118](../findings/118-dt2-emulator-test-execution.md) and
+[finding 142](../findings/142-dt2-emulator-test-execution.md) and
 `out/canopy-dt2-aot-paired/receipt.json`. The pinned daemon is identified in
 `out/canopy-dt2-aot-daemons.json`; its audited key is
 `e9f803af54e6bf533c229af822fa2d1cf46d9d98425352b82686fd62e3ca0f9a`.

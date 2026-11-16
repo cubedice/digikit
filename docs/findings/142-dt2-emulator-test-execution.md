@@ -150,7 +150,7 @@ The paired result is **stock-sample backend equivalence**. Patched or dynamicall
 loaded module code may fall back to the interpreter. Separately, the complete
 compiled CANOPY UI/audio/preset test passed with this daemon in **403.12 seconds**
 (398.354 seconds in its test body), using the exact frozen firmware and module
-recorded in [finding 117](117-canopy-wavetable-fm.md). Log:
+recorded in [finding 141](141-canopy-wavetable-fm.md). Log:
 `out/canopy-wtfm-optimized-ui.log`. Its fresh receipt includes wavetable FM,
 all four standalone-FM algorithms, native levels, source memory and CPST v5
 recall. The first generic-core run timed out after 60 minutes; differences in

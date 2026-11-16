@@ -89,7 +89,7 @@ export function acknowledgedPanel(session: PanelSession, { timeoutMs = 30_000, p
     if (pressFailed) throw pressError;
   }
 
-  /** A turn may be filtered without producing a view event (finding 78).
+  /** A turn may be filtered without producing a view event (finding 135).
    * Wait for the UART decoder, its pending-count flush, and the UI handler;
    * input_pending alone only acknowledges the UART delivery. The two literals
    * are inside the hashed decoder (finding 58): +0x10 is the encoder map and

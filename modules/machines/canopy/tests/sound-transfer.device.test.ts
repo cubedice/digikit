@@ -13,7 +13,7 @@ import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { cardAfter, overlayRecords } from '@digi/regression/runtime/write-safety.ts';
 import { canopyPanel } from './canopy-panel.ts';
 
-// CANOPY Sound persistence through the stock preset transfers (finding 127):
+// CANOPY Sound persistence through the stock preset transfers (finding 151):
 // a track Sound saved into the project's preset pool and loaded from it onto
 // another track and back, and a track Sound saved to the +Drive preset library
 // and loaded onto another track, in the same session and after a power cycle.

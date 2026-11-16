@@ -27,7 +27,7 @@ extern void ip_src_focus_touch(uint8_t *,uint32_t);
 extern uint8_t ip_src_focus_active(uint8_t *,uint32_t);
 extern const uint32_t ip_src_label_font;
 extern int dk_ui_toast(const char *);
-/* Sequencer UI state (finding 123): SRC view +0x6c, as KeyboardView +0x98. */
+/* Sequencer UI state (finding 147): SRC view +0x6c, as KeyboardView +0x98. */
 extern uint8_t ip_panel_trig_held(uint32_t),ip_panel_live_record(uint32_t);
 extern int32_t ip_panel_step_note(uint32_t,uint32_t);
 /* Stock held-trig editor marks the gesture as an edit before touching locks.

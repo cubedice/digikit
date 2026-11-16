@@ -54,7 +54,7 @@ remain open.
   actual AMP-page path separately.
 - Actual stock-firmware instruction comparisons: 16 passed
   (`out/canopy-amp-stock-final.log`), covering native curves and native/legacy
-  hook isolation. See [finding 78](../findings/78-canopy-carrier.md).
+  hook isolation. See [finding 135](../findings/135-canopy-carrier.md).
 - Native-envelope regressions: 90 passed (`out/canopy-amp-native-final.log`),
   including fallback, native tuning, three sound families, repeated AHD,
   independent release, reset, stealing, rejected-event rollback and hostile

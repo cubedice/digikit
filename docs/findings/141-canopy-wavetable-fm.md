@@ -2,7 +2,7 @@
 
 DT2 OS 1.17, 2026-11-09. Counts below are for that build; block rendering
 later cut the worst wavetable block to 69,909 with bit-identical output
-(finding 122). **[D]** The acceptance ceilings remain **100,000
+(finding 146). **[D]** The acceptance ceilings remain **100,000
 instructions per 32-sample process callback** and **1,600 per reset**. The
 revised interior-frame stress measured 97,524 instructions directly and 97,888
 through the protected dispatcher; reset measured 1,131. These are bounded
@@ -141,6 +141,6 @@ and whole module SHA-256
 `d6ba479cc701212ad8e49df3754d5b2617fc75d4a7fcd205136ad82c078448de`.
 The first compiled run exceeded its 60-minute overall timeout; it remains a
 failed run. Its setup and cache warmth differ, so the final duration is not a
-paired whole-suite speedup claim. [Finding 118](118-dt2-emulator-test-execution.md)
+paired whole-suite speedup claim. [Finding 142](142-dt2-emulator-test-execution.md)
 records the separate paired backend comparison. No physical installation or
 new hardware performance proof is claimed here.

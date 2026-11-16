@@ -87,7 +87,7 @@ The existing fine clock uses 21,600,000 ticks per quarter note. The stock
 selected-tempo word at `0x402b67fc` is in units of 1/120 BPM; twice this value
 is the musical advance per 32-sample audio block at 48 kHz. Earlier static
 and emulator evidence is recorded in
-[finding 78](78-canopy-carrier.md#fine-clock-integration-and-pulse-freshness).
+[finding 135](135-canopy-carrier.md#fine-clock-integration-and-pulse-freshness).
 
 The timing provider now transports that tempo in the same checked frame as
 the pattern clock. The public position record remains ABI 2 for existing

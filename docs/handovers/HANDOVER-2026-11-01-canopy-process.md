@@ -227,7 +227,7 @@ ownership, asynchronous chooser refresh and V3 DSP fault feedback connect the
 normal loader to the shared carrier. The integrated acceptance passes (347.66 s):
 normal upload/readback/restart, assigned machine selection, USB/DIN C-E/add G/
 release E final stereo continuity including transitions, pedal ownership,
-independent velocity and callback-fault detach/reclamation. See finding 78 and
+independent velocity and callback-fault detach/reclamation. See finding 135 and
 out/canopy-stage1-live.log. All Stage 1 checklist items are now checked.
 
 The reply guard uses an eight-record exact-copy cache, not a numeric backward

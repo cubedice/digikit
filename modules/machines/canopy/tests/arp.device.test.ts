@@ -335,7 +335,7 @@ test('CANOPY arp follows BPM across stopped and playing transport', { timeout: 9
     await expect.poll(async () => (await arp()).tempo120, { timeout: 30_000 }).toBe(bpm * 120);
   };
   const measureTempo = async (bpm: number, playing: boolean) => {
-    // 0x402b67fc is the stock current tempo, in BPM*120 (finding 78).
+    // 0x402b67fc is the stock current tempo, in BPM*120 (finding 135).
     await setTempo(bpm);
     expect((await inputFlags()) & 0x800, 'selected BPM is available independently of phase health').toBe(0x800);
     expect((await word(0x43164f94)) === 1, 'stock transport matches the measured state').toBe(playing);

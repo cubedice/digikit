@@ -2,7 +2,7 @@
 
 **Status (2026-11-15):** the production adapter now persists CANOPY settings
 with the Sound through a record extension and an association store outside
-Sound memory; see [finding 127](../findings/127-canopy-sound-persistence.md).
+Sound memory; see [finding 151](../findings/151-canopy-sound-persistence.md).
 This document records the investigation that led there. The emulator-only
 fixtures below that rely on the `Sound + 0x13a` handle are superseded: they
 patch the same instructions the production hooks now own (the Sound writer
@@ -32,7 +32,7 @@ outside Sound memory is sketched in
 
 The DTII device test
 [`persistence.device.test.ts`](../../modules/machines/canopy/tests/persistence.device.test.ts)
-(registered since finding 127; it used to need `DIGI_CANOPY_PERSIST_TEST=1`)
+(registered since finding 151; it used to need `DIGI_CANOPY_PERSIST_TEST=1`)
 edits CHRD, VOIC and STRUM on two independently admitted CANOPY tracks, uses the
 stock panel to save the project, and starts a new emulator on the resulting
 disposable card. It checks that the saved card selects CANOPY and that CANOPY

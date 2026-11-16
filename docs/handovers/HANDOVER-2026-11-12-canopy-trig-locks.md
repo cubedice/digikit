@@ -3,7 +3,7 @@
 Branch `codex/short-loop-proof`, starting at `5c35b33d`. Stage 1 (sequencer
 trigs) and stage 2 (keyboard live recording) were committed before this work.
 The packed stage 3 work is committed on this branch; see
-[finding 123](../findings/123-canopy-trig-locks.md) for format and evidence.
+[finding 147](../findings/147-canopy-trig-locks.md) for format and evidence.
 
 The old six-MOD-offset experiment in `src-lock.c`/`.h` is no longer included
 in the module. The active implementation stores absolute values in five

@@ -15,7 +15,7 @@ import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { cardAfter, overlayRecords } from '@digi/regression/runtime/write-safety.ts';
 import { bootInfo, currentRecord, recordsIn } from '@digi/regression/runtime/card-kit.ts';
 
-// CANOPY Sound persistence (finding 127): a stock project on a disposable DTII
+// CANOPY Sound persistence (finding 151): a stock project on a disposable DTII
 // card, two CANOPY tracks edited independently, a native project save, then a
 // fresh emulator from the saved card and a native project load. All edits and
 // saves are native panel actions; the test reads requested values but never

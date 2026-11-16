@@ -9,7 +9,7 @@ static uint32_t seq_object[0x100];
 uint8_t ip_panel_live_record(uint32_t seq) { assert(seq==SEQ);return live; }
 uint8_t ip_panel_trig_held(uint32_t seq) { assert(seq==SEQ);return held; }
 uint8_t ip_panel_step_record(uint32_t seq) { assert(seq==SEQ);return step_record; }
-/* A fake pattern object (finding 125): trig words per track, the note-list
+/* A fake pattern object (finding 149): trig words per track, the note-list
  * entries at +0x6a50 and the head index per (track, step) at +0x12a50. The
  * recorder commits after the key event; commit() models that write. */
 static uint8_t pattern[0x1dc00];

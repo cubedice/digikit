@@ -12,7 +12,7 @@ import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 
-// CANOPY Sound persistence (finding 127): one track Sound copy and paste with
+// CANOPY Sound persistence (finding 151): one track Sound copy and paste with
 // the stock panel. The paste must carry the settings at copy time. Passing
 // this test does not prove all copy paths.
 vi.setConfig({ hookTimeout: 600_000 });

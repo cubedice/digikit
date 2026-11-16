@@ -8655,7 +8655,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 sequencer UI state (KeyboardView +0x98, SRC view +0x6c): live recording, i.e. transport playing and the record byte at +0x271; finding 123.",
+      "doc": "DT2 OS1.17 sequencer UI state (KeyboardView +0x98, SRC view +0x6c): live recording, i.e. transport playing and the record byte at +0x271; finding 147.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -8686,7 +8686,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 SoundParameterSet vfunc 18 (this unused, code, step): clears a lock on the current track; finding 123.",
+      "doc": "DT2 OS1.17 SoundParameterSet vfunc 18 (this unused, code, step): clears a lock on the current track; finding 147.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -8717,7 +8717,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 1.17 audio ISR due-event lock pointer check on the non-note path. Finding 123.",
+      "doc": "DT2 1.17 audio ISR due-event lock pointer check on the non-note path. Finding 147.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -8748,7 +8748,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 1.17 audio ISR due-note lock pointer check. Finding 123.",
+      "doc": "DT2 1.17 audio ISR due-note lock pointer check. Finding 147.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -8779,7 +8779,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 SoundParameterSet vfunc 16 (this unused, code, step): the current track's lock value or -1; finding 123. The window spans vfuncs 16..18 and 4 bytes beyond, the only one of three identical copies that is unique.",
+      "doc": "DT2 OS1.17 SoundParameterSet vfunc 16 (this unused, code, step): the current track's lock value or -1; finding 147. The window spans vfuncs 16..18 and 4 bytes beyond, the only one of three identical copies that is unique.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -8810,7 +8810,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 1.17 held-trig edit marker (sequencer view, boolean); stock parameter-lock edits set it before changing values. Finding 123.",
+      "doc": "DT2 1.17 held-trig edit marker (sequencer view, boolean); stock parameter-lock edits set it before changing values. Finding 147.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -8841,7 +8841,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 SoundParameterSet vfunc 17 (this unused, code, value, step): sets a lock on the current track; 0 when all 80 lanes are used or the step is beyond the pattern; finding 123.",
+      "doc": "DT2 OS1.17 SoundParameterSet vfunc 17 (this unused, code, value, step): sets a lock on the current track; 0 when all 80 lanes are used or the step is beyond the pattern; finding 147.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -8934,7 +8934,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 pattern note-list writer (editor, track, step, records vector of 4-byte {note, velocity, ...}); every recorded note commits through it; finding 125.",
+      "doc": "DT2 OS1.17 pattern note-list writer (editor, track, step, records vector of 4-byte {note, velocity, ...}); every recorded note commits through it; finding 149.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -9368,7 +9368,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 sequencer: adda.l of the state base whose byte +0x15b + track holds the track's current step (stored before each trig); the literal is at +2; finding 123.",
+      "doc": "DT2 OS1.17 sequencer: adda.l of the state base whose byte +0x15b + track holds the track's current step (stored before each trig); the literal is at +2; finding 147.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -10081,7 +10081,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 sequencer UI state: step recording, i.e. record mode (+0x269) with the step-record byte at +0x272 (set by RECORD + STOP); finding 125.",
+      "doc": "DT2 OS1.17 sequencer UI state: step recording, i.e. record mode (+0x269) with the step-record byte at +0x272 (set by RECORD + STOP); finding 149.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -10112,7 +10112,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 sequencer UI state: a trig is held within the pattern length (128-bit held-step mask at +0x258); finding 123.",
+      "doc": "DT2 OS1.17 sequencer UI state: a trig is held within the pattern length (128-bit held-step mask at +0x258); finding 147.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -13179,7 +13179,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DTII 1.17 GPIO DSP reset helper entry. Low argument byte nonzero asserts reset; zero releases it. First six bytes save D2 and load the argument byte; continuation must preserve the stack. See finding 78.",
+      "doc": "DTII 1.17 GPIO DSP reset helper entry. Low argument byte nonzero asserts reset; zero releases it. First six bytes save D2 and load the argument byte; continuation must preserve the stack. See finding 135.",
       "file": "devices/fw/rtos.toml",
       "kind": "site",
       "mark": "D",
@@ -21752,7 +21752,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "Stock envelope entry, MODIFY(I7, -16) (NW), at DT2 1.17 PC 0x1cbb57. See finding 78.",
+      "doc": "Stock envelope entry, MODIFY(I7, -16) (NW), at DT2 1.17 PC 0x1cbb57. See finding 135.",
       "file": "devices/fw/dsp/voice.toml",
       "kind": "site",
       "mark": "D",
@@ -21816,7 +21816,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "Dispatcher MODIFY(I1, 0xd604), deriving the envelope bank from the live workspace. See finding 78.",
+      "doc": "Dispatcher MODIFY(I1, 0xd604), deriving the envelope bank from the live workspace. See finding 135.",
       "file": "devices/fw/dsp/voice.toml",
       "kind": "site",
       "mark": "D",
@@ -22768,7 +22768,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 1.17 PC 0x1c6a2e, after latched velocity is loaded into R1 and before gain multiplication. Displaced instruction sets R7=1. See finding 78.",
+      "doc": "DT2 1.17 PC 0x1c6a2e, after latched velocity is loaded into R1 and before gain multiplication. Displaced instruction sets R7=1. See finding 135.",
       "file": "devices/fw/dsp/voice.toml",
       "kind": "site",
       "mark": "D",

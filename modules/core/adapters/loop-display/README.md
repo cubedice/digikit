@@ -2,7 +2,7 @@
 
 Experimental DTII OS 1.17 adapter for one `digikit/overloop` instance. Include `core/loop-display` in the firmware, or use the `overloop` patch set. Overloop 0.4 requires its DSP import, so updating only the DKM on older firmware fails to load rather than silently losing the display.
 
-The adapter owns a 64-byte DSP mailbox, `_loop_ui_status`. Overloop publishes it at the end of each audio block; the DTII DSP-link sender encodes it into fourteen spare words at row offsets `+0x44/+0x48` in rows 17–20 and 29–31. The `OVL2` carrier packs the three 0–127 START/LENGTH values into one word; the mailbox and public UI snapshot remain sixteen-word `OVL1` records. The existing ACK, diagnostic and instrument reply rows, header, trailer, and all other bytes are preserved. DNII has no such return extension. Both firmware sender and reader must be updated together; the Overloop DKM ABI is unchanged. See [reply ownership](../../../../docs/findings/116-overloop-reply-ownership.md).
+The adapter owns a 64-byte DSP mailbox, `_loop_ui_status`. Overloop publishes it at the end of each audio block; the DTII DSP-link sender encodes it into fourteen spare words at row offsets `+0x44/+0x48` in rows 17–20 and 29–31. The `OVL2` carrier packs the three 0–127 START/LENGTH values into one word; the mailbox and public UI snapshot remain sixteen-word `OVL1` records. The existing ACK, diagnostic and instrument reply rows, header, trailer, and all other bytes are preserved. DNII has no such return extension. Both firmware sender and reader must be updated together; the Overloop DKM ABI is unchanged. See [reply ownership](../../../../docs/findings/140-overloop-reply-ownership.md).
 
 | Word | Meaning |
 | --- | --- |

@@ -1,5 +1,5 @@
 /* Emulator-only DT2 1.17, track zero, WERP shadow. No cached audition source.
- * Layout follows stock track_type and its Sound getter (finding 78).
+ * Layout follows stock track_type and its Sound getter (finding 135).
  * This is not a production V2 lifecycle or general Sound/pattern initializer. */
 #include <stdint.h>
 extern uint32_t cp_project(void);

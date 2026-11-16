@@ -36,7 +36,7 @@ devices = ["dt2"]
 rule = { kind = "sharc_func", reloc_hash = "47f65f5034040ec69829448cd833243cef4ad84cecabddae61f8849d3f70f7be", offset = 0x60, len = 6 }
 mark = "D"
 users = ["core/midi-events"]
-doc = "Dispatcher MODIFY(I1, 0xd604), deriving the envelope bank from the live workspace. See finding 78."
+doc = "Dispatcher MODIFY(I1, 0xd604), deriving the envelope bank from the live workspace. See finding 135."
 
 [[site]]
 name = "dsp.voice.site.envelope_workspace.next"
@@ -65,7 +65,7 @@ devices = ["dt2"]
 rule = { kind = "sharc_func", reloc_hash = "114679288698acb0c7c3106f77fc7afe6fee15a6d5f8eea0dc5f1e5b950489c8", offset = 0, len = 6 }
 mark = "D"
 users = ["core/midi-events"]
-doc = "Stock envelope entry, MODIFY(I7, -16) (NW), at DT2 1.17 PC 0x1cbb57. See finding 78."
+doc = "Stock envelope entry, MODIFY(I7, -16) (NW), at DT2 1.17 PC 0x1cbb57. See finding 135."
 
 [[site]]
 name = "dsp.voice.site.envelope_entry.next"
@@ -94,7 +94,7 @@ devices = ["dt2"]
 rule = { kind = "sharc_func", reloc_hash = "47f65f5034040ec69829448cd833243cef4ad84cecabddae61f8849d3f70f7be", offset = 0x604, len = 6 }
 mark = "D"
 users = ["core/midi-events"]
-doc = "DT2 1.17 PC 0x1c6a2e, after latched velocity is loaded into R1 and before gain multiplication. Displaced instruction sets R7=1. See finding 78."
+doc = "DT2 1.17 PC 0x1c6a2e, after latched velocity is loaded into R1 and before gain multiplication. Displaced instruction sets R7=1. See finding 135."
 
 [[site]]
 name = "dsp.voice.site.velocity_operand.next"

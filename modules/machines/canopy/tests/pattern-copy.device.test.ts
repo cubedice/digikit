@@ -12,7 +12,7 @@ import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 
-// CANOPY Sound persistence (finding 127): two CANOPY tracks on two patterns
+// CANOPY Sound persistence (finding 151): two CANOPY tracks on two patterns
 // with different settings, a project save, a return to the first pattern, then
 // pattern copy, a further source edit, paste and undo with the stock panel.
 vi.setConfig({ hookTimeout: 600_000 });

@@ -13,7 +13,7 @@ investigation runs (`guard.set`/`guard.report` of the DT2 daemon; logs in
 
 `0x4005ab0e` returns byte `+0x268` of the sequencer UI object (SRC view
 `+0x6c`, KeyboardView `+0x98`). Its only writers are `0x4005ab18` (the
-routine finding 123 calls before a held-step edit) and the object's
+routine finding 147 calls before a held-step edit) and the object's
 initialiser `0x4005bb66`. `0x4005ab76` clears the held mask at `+0x258` and
 the mark together. Every stock caller of `0x4005ab0e` in the SRC page
 (`0x40017c44`, `0x40017f3e`, `0x40018648`, `0x400187dc`) tests it together
@@ -25,7 +25,7 @@ turned.
 The stage 5 adapter named it `instrument_src_alternate` and treated a set
 byte as a foreign context, dropping CANOPY's ownership of the SRC page. So a
 held step alone, and any lock edit on it (CANOPY's own held-step edits call
-`0x4005ab18`, finding 123), made the page fall back to the stock painter,
+`0x4005ab18`, finding 147), made the page fall back to the stock painter,
 which has nothing to draw for CANOPY's machine type: the reported blank page.
 Further turns then went to the stock handler. The adapter now ignores the
 byte for ownership. Measured on the fixed image: with step 5 held and COLOR
@@ -61,7 +61,7 @@ one note at a time.
 ## Live recording [D]
 
 From KEYBOARD mode, RECORD + PLAY keeps KEYBOARD on and each press reaches
-the note action, which CANOPY hands to the stock recorder (finding 123). The
+the note action, which CANOPY hands to the stock recorder (finding 147). The
 stock audition of a press reaches CANOPY as a sequencer trig, and a track
 plays one sequencer note at a time: holding C, E and G sounded each note in
 turn, never the chord, and each recorded step kept one note.
@@ -84,7 +84,7 @@ The active pattern object (`*0x4316501c`):
 | `+0x12a50` | head entry index of `(track, step)`, s16 at `2 * (128 * track + step)`, negative = none |
 | `+0x13a50` | next entry index, s16 per entry, `0xffff` ends a list |
 | `+0x17a50` | note-list allocation word |
-| `+0x17e50` | lock lanes (finding 123) |
+| `+0x17e50` | lock lanes (finding 147) |
 
 `0x400392be(editor, track, step, records)` replaces a step's list with a
 vector of 4-byte records `{note, velocity, ?, ?}`. A live-recorded press of A

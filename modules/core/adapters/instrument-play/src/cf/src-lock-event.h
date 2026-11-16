@@ -1,4 +1,4 @@
-/* Pure event-list filter for DT2 1.17 (finding 123). The caller must establish
+/* Pure event-list filter for DT2 1.17 (finding 147). The caller must establish
  * that this event belongs to an admitted CANOPY track and serialize access. */
 #ifndef DK_INSTRUMENT_SRC_LOCK_EVENT_H
 #define DK_INSTRUMENT_SRC_LOCK_EVENT_H

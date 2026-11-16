@@ -13,7 +13,7 @@ import { acknowledgedPanel } from './panel-ack.ts';
 import { loadPanelProject, savePanelProject } from './project-kit.ts';
 
 // Panel recording and note-paired absolute playback of a packed CANOPY lock
-// (finding 123, stage 3). This uses a disposable emulator card and image.
+// (finding 147, stage 3). This uses a disposable emulator card and image.
 vi.setConfig({ hookTimeout: 600_000 });
 
 const options = liveOptions('dt2');
@@ -106,7 +106,7 @@ test('CANOPY plays and records trig locks', { timeout: 900_000 }, async () => {
   await key('TRIG 5');
   await key('RECORD');
 
-  // Lock storage (finding 123): the active pattern (*0x4316501c) holds 80
+  // Lock storage (finding 147): the active pattern (*0x4316501c) holds 80
   // lanes of 0x102 bytes {index, track, 128 x s16} at +0x17e50, the lane map
   // at +0x50a0 (track * 71 + index), step counts at +0x5510 (track * 128 + step).
   const byteAt = async (a: number) => {

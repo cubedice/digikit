@@ -15,7 +15,7 @@ import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { menuSelection } from '@digi/regression/runtime/menu-selection.ts';
 
-// CANOPY on any track, several at once (finding 121): each of the four lowest
+// CANOPY on any track, several at once (finding 145): each of the four lowest
 // kit tracks whose Sound carries the instrument type gets its own instance,
 // SRC page, panel keys, MIDI route and audio; a fifth stays stock and silent.
 vi.setConfig({ hookTimeout: 600_000 });

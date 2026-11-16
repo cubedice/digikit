@@ -214,7 +214,7 @@ machine descriptor is installed. It is excluded from the normal runtime suite.
 
 This image is emulator-only: current firmware preflight reports two tuning-table
 data values as instructions. Keep the preflight failure visible; do not flash or
-bypass it. Details are in the [carrier findings](../../docs/findings/78-canopy-carrier.md).
+bypass it. Details are in the [carrier findings](../../docs/findings/135-canopy-carrier.md).
 
 ## CANOPY carrier proof
 
@@ -289,7 +289,7 @@ and other UI load paths are not covered. The separate
 `tests/patchkit/test_canopy_sound_load.py` component proof runs the real stock
 deserializer with synthetic records, including unrelated and rejected loads.
 This remains emulator acceptance; the carrier fixture is not a hardware release.
-See the [carrier findings](../../docs/findings/78-canopy-carrier.md).
+See the [carrier findings](../../docs/findings/135-canopy-carrier.md).
 
 The `canopy-carrier` project's `runtime/canopy-panic.test.ts` has a four-minute
 body ceiling. It sends USB CC123 under sustain, then USB CC120 while DIN holds a

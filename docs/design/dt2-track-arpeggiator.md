@@ -395,11 +395,11 @@ scheduling. Release acceptance includes:
   first implement the keyboard/USER pool and existing sequencer editing well.
 - [CANOPY UI review](canopy-ui-review.md): deliberate enums, ARP controls and
   clear separation of played notes from generated notes.
-- [CANOPY pattern-clock finding](../findings/124-canopy-pattern-arp.md):
+- [CANOPY pattern-clock finding](../findings/148-canopy-pattern-arp.md):
   pattern BPM, stopped clock behavior and instrument-specific onset ramp.
-- [CANOPY recording finding](../findings/125-canopy-recording.md): native
+- [CANOPY recording finding](../findings/149-canopy-recording.md): native
   four-note records, distinct recording paths and packed chord storage.
-- [Native keyboard/UI finding](../findings/115-canopy-native-ui.md) and
+- [Native keyboard/UI finding](../findings/139-canopy-native-ui.md) and
   [instrument-play adapter](../../modules/core/adapters/instrument-play/README.md):
   resolved panel pitches, ownership and current learned-shape limitations.
 - [UI rules](ui-rules.md): native lists, action completion and cancel behavior.

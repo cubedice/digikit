@@ -21,7 +21,12 @@ export const runtimeModules: readonly RuntimeModule[] = loadRuntimeModules(repoR
 });
 
 // A module that needs a patched-in core module the `emulator` set does not carry loads on the set that does (its `requires`).
-const PATCH_SET: Record<string, string> = { 'digikit/usb-fast': 'device' };
+const PATCH_SET: Record<string, string> = {
+  'digikit/usb-fast': 'device',
+  // core/instrument-play (the V2 owner) and core/loop-storage + core/loop-display
+  'digikit/canopy': 'canopy-overloop',
+  'digikit/overloop': 'overloop',
+};
 
 // Each cell starts its own daemon. Sessions of a worker reuse one cached run dir (fast boot);
 // the store starts empty in every cell.

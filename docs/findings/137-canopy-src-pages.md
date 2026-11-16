@@ -163,7 +163,7 @@ DT2 1.17 function `0x400cc8b2` extends the wrapping DTCN0 counter
 `0x400cc970` divides that accumulator by 132000000 to obtain seconds.
 Registration at `0x400cca0c` passes the update callback and interval128 to
 `0x40002aa4`. Prior passive physical measurements are recorded in
-[CANOPY carrier](78-canopy-carrier.md).
+[CANOPY carrier](135-canopy-carrier.md).
 
 The instrument adapter reads all four words under the IRQ mask, includes the
 unaccumulated counter delta, and converts outside the mask. It does not write
