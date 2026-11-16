@@ -5,7 +5,7 @@ import { button, repoRoot } from '@digi/test-support';
 import { expect, onTestFinished, test } from 'vitest';
 import { withSession } from '../support.ts';
 import { liveOptions } from './devices.ts';
-import { settleUi } from './waits.ts';
+import { waitEmulated } from './waits.ts';
 import { captureRemoteOled } from './remote.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 
@@ -41,7 +41,7 @@ test('committed master grid follows internal and paced external clock', async ()
     card: session.cardPath,
   });
   await session.client.call('run.mode', { mode: 'free' });
-  await settleUi(session);
+  await waitEmulated(session, 12_000); // the DT2 UI settle the harness helper waited before c223679e
   const key = async (name: string) => {
     await session.client.inputButton(button(name), true);
     await delay(200);

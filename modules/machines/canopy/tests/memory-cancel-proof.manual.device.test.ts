@@ -61,7 +61,7 @@ if (process.env.DIGI_CANOPY_MEMORY_CANCEL === '1') {
         return value >>> 0;
       };
       await waitInstrumentReady(word);
-      await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, timeout: 180_000 });
+      await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, emulatedMs: 180_000 });
       // Successful stock deserialization registers sound-proof's UI tick.
       await expect.poll(() => word('canopy_sound_proof', 0), { timeout: 60_000 }).toBeGreaterThan(0);
       // Give the refusal a real edited CANOPY Sound to preserve.

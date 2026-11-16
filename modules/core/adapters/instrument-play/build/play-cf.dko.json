@@ -10910,6 +10910,20 @@
   },
   {
    "addend": 0,
+   "offset": 2,
+   "section": ".text.toast",
+   "symbol": "dk_ui_core_handle",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 14,
+   "section": ".text.toast",
+   "symbol": "dk_ui_toast",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 12,
    "section": ".text.lock_remove",
    "symbol": "ip_lock_clear",
@@ -11528,7 +11542,7 @@
    "addend": 0,
    "offset": 1394,
    "section": ".text.ip_src_draw",
-   "symbol": "dk_ui_toast",
+   "symbol": ".sec..text.toast",
    "type": "cf.32"
   },
   {
@@ -12606,7 +12620,7 @@
    "addend": 0,
    "offset": 108,
    "section": ".text.instrument_record_chord",
-   "symbol": "dk_ui_toast",
+   "symbol": ".sec..text.toast",
    "type": "cf.32"
   },
   {
@@ -12718,7 +12732,7 @@
    "addend": 0,
    "offset": 354,
    "section": ".text.ip_src_key",
-   "symbol": "dk_ui_toast",
+   "symbol": ".sec..text.toast",
    "type": "cf.32"
   },
   {
@@ -12851,7 +12865,7 @@
    "addend": 0,
    "offset": 364,
    "section": ".text.ip_src_turn",
-   "symbol": "dk_ui_toast",
+   "symbol": ".sec..text.toast",
    "type": "cf.32"
   },
   {
@@ -12921,7 +12935,7 @@
    "addend": 0,
    "offset": 500,
    "section": ".text.ip_src_turn",
-   "symbol": "dk_ui_toast",
+   "symbol": ".sec..text.toast",
    "type": "cf.32"
   },
   {
@@ -12949,7 +12963,7 @@
    "addend": 0,
    "offset": 568,
    "section": ".text.ip_src_turn",
-   "symbol": "dk_ui_toast",
+   "symbol": ".sec..text.toast",
    "type": "cf.32"
   },
   {
@@ -13089,7 +13103,7 @@
    "addend": 0,
    "offset": 832,
    "section": ".text.ip_src_turn",
-   "symbol": "dk_ui_toast",
+   "symbol": ".sec..text.toast",
    "type": "cf.32"
   },
   {
@@ -18241,6 +18255,13 @@
   },
   {
    "align": 2,
+   "hex": "4eb9000000002f2f00042f004eb900000000508f4e75",
+   "kind": "text",
+   "name": ".text.toast",
+   "size": 22
+  },
+  {
+   "align": 2,
    "hex": "2f2f000c2f2f000c42a74eb9000000004fef000c71804e75",
    "kind": "text",
    "name": ".text.lock_remove",
@@ -19374,7 +19395,7 @@
    "size": 332
   }
  ],
- "source_sha256": "76aa5be4990ad21a05c379e8c12a9e2c4228714b2730c34352a91f4dbe51b4b1",
+ "source_sha256": "bfbbc7fa1e01eafce76e967a3f922d70a4603a45b785cce78569d6c82f4c0b55",
  "symbols": [
   {
    "global": false,
@@ -21534,6 +21555,12 @@
    "global": false,
    "name": ".sec..text.tick",
    "section": ".text.tick",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.toast",
+   "section": ".text.toast",
    "value": 0
   },
   {
@@ -24898,6 +24925,12 @@
   },
   {
    "global": false,
+   "name": "toast",
+   "section": ".text.toast",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "tone_desc",
    "section": ".rodata.tone_desc",
    "value": 0
@@ -25099,8 +25132,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "18388",
-  "isa_check": "63bd9270841c6162f1eb2cdfaea4f35a69c5626010e6ff552fe0ffd1175a6ce5",
+  "instructions_redecoded": "18394",
+  "isa_check": "2ebec6b47658836e4a8ab6bd45b7b19af791544d12999f2b56423ee9f990647c",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

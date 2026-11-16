@@ -79,7 +79,7 @@ describeOn('dt2', 'CANOPY Sound transfer on the DT2', () => {
     await dk.waitForBoot(undefined, 180_000);
     let p = canopyPanel(session, plan);
     await waitInstrumentReady(p.cf);
-    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: firstEpoch, timeout: 180_000 });
+    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: firstEpoch, emulatedMs: 180_000 });
 
     // Two CANOPY tracks with different settings.
     await p.chooseCanopy(1);
@@ -130,7 +130,7 @@ describeOn('dt2', 'CANOPY Sound transfer on the DT2', () => {
     await boot(savedCard);
     p = canopyPanel(session, plan);
     await waitInstrumentReady(p.cf);
-    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: coldEpoch, timeout: 180_000 });
+    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: coldEpoch, emulatedMs: 180_000 });
     expect((await liveProtocol(session).modules()).map((m) => m.name)).toContain('digikit/canopy');
     await p.chooseCanopy(3);
     const fresh = await p.sound(3);

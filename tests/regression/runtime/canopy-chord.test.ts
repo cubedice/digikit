@@ -5,7 +5,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { button, repoRoot } from '@digi/test-support';
 import { expect, onTestFinished, test } from 'vitest';
 import { withSession } from '../support.ts';
-import { settleUi } from './waits.ts';
+import { waitEmulated } from './waits.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 import { chordWindow, voiceChange } from './chord-continuity.ts';
 
@@ -62,7 +62,7 @@ test('held C and G preserve phase and gain while E is released', async () => {
     }
   };
   await expect.poll(() => word(0), { timeout: 30_000 }).toBe(1);
-  await settleUi(session);
+  await waitEmulated(session, 12_000); // the DT2 UI settle the harness helper waited before c223679e
   for (const [addr, value] of [
     [0x429368ca, 3],
     [0x42936872, 0],

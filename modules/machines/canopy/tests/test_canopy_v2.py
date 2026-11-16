@@ -3066,7 +3066,9 @@ def test_wavetable_rendered_samples_match_independent_interpolation_and_spectral
     import numpy as np
 
     from modules.machines.canopy.tools.wavetables import MIPS
-    from modules.machines.canopy.tools.wavetables import dequantized as frames  # the 16-bit samples the DSP plays
+    from modules.machines.canopy.tools.wavetables import (
+        dequantized as frames,  # the 16-bit samples the DSP plays
+    )
 
     controls = wavetable_controls(table=1, position=350)
     r = canopy(
@@ -3549,7 +3551,9 @@ def test_wavetable_fm_samples_match_independent_phase_modulated_table(canopy, ta
     import math
 
     from modules.machines.canopy.tools.wavetables import MIPS
-    from modules.machines.canopy.tools.wavetables import dequantized as frames  # the 16-bit samples the DSP plays
+    from modules.machines.canopy.tools.wavetables import (
+        dequantized as frames,  # the 16-bit samples the DSP plays
+    )
 
     controls = wavetable_fm_controls(fm_depth=40, ratio=3, table=table, position=350)
     amp = native_amp(attack=1, decay=1, sustain=1)

@@ -21,7 +21,13 @@ def _machines_fw():
 
 
 _fw = _machines_fw()
-COUNT, FIRST, ROWS, SRC, STOCK_LIST = _fw.COUNT, _fw.FIRST, _fw.ROWS, _fw.SRC, _fw.STOCK_LIST
+COUNT, FIRST, ROWS, SRC, STOCK_LIST = (
+    _fw.COUNT,
+    _fw.FIRST,
+    _fw.ROWS,
+    _fw.SRC,
+    _fw.STOCK_LIST,
+)
 STUBS, SYX, TYPE_FN, tables = _fw.STUBS, _fw.SYX, _fw.TYPE_FN, _fw.tables
 pytestmark = _fw.pytestmark
 src_allocator = _fw.src_allocator

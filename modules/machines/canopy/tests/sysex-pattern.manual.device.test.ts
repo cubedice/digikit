@@ -87,7 +87,7 @@ describeOn('dt2', 'CANOPY pattern SysEx on the DT2', () => {
     await dk.waitForBoot(undefined, 180_000);
     const p = canopyPanel(session, plan);
     await waitInstrumentReady(p.cf);
-    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: firstEpoch, timeout: 180_000 });
+    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: firstEpoch, emulatedMs: 180_000 });
 
     await p.chooseCanopy(1);
     const a = await p.edit(1, 20, 12, 16);

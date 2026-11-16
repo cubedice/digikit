@@ -66,7 +66,7 @@ static void attach_learn(void *context,uint32_t i);
 static int prepare_learn(void *context,uint32_t i,uint32_t sound,uint32_t generation,const CpPreset *p)
 {
     LearnTransaction *tx=context;
-    assert(masked && i<IP_INSTANCES && dk_ui_is_open(learn_menu));
+    assert(masked && i<IP_INSTANCES && dk_ui_menu_is_open(learn_menu));
     if(tx->probe_reentry && !tx->reentries) {
         ++tx->reentries;
         LearnOwner *source=&tx->owners[0];
@@ -92,7 +92,7 @@ static int prepare_learn(void *context,uint32_t i,uint32_t sound,uint32_t genera
 static void attach_learn(void *context,uint32_t i)
 {
     LearnTransaction *tx=context;
-    assert(masked && (tx->prepared_mask & (1u<<i)) && dk_ui_is_open(learn_menu));
+    assert(masked && (tx->prepared_mask & (1u<<i)) && dk_ui_menu_is_open(learn_menu));
     if(!tx->commits) {
         /* Actual kb_learn_save/shapes_share must already agree with every
          * prepared snapshot before the first owner handle is published. */
@@ -111,13 +111,13 @@ static int save_transaction(LearnTransaction *tx)
 {
     tx->prepares=tx->commits=tx->prepared_mask=0;
     memset(tx->detach,0,sizeof(tx->detach));
-    assert(!masked && learn_menu && dk_ui_is_open(learn_menu));
+    assert(!masked && learn_menu && dk_ui_menu_is_open(learn_menu));
     LearnOwner *source=&tx->owners[0];
     int result=instrument_sound_proof_learn(0,source->sound,source->generation,
         shown_session,shown_revision,prepare_learn,attach_learn,tx);
     /* The helper deliberately leaves UI work to its caller outside the lock. */
-    assert(!masked && dk_ui_is_open(learn_menu));
-    if(!result) dk_ui_close(learn_menu);
+    assert(!masked && dk_ui_menu_is_open(learn_menu));
+    if(!result) dk_ui_menu_close(learn_menu);
     return result;
 }
 
@@ -146,10 +146,10 @@ static void input_note(uint8_t note)
 static void capture_chord(void)
 {
     learn_begin(0,0);
-    assert(learn_menu && dk_ui_is_open(learn_menu) && cur->keyboard.mode==KB_LEARN);
+    assert(learn_menu && dk_ui_menu_is_open(learn_menu) && cur->keyboard.mode==KB_LEARN);
     /* Deliberately unsorted input exercises the actual keyboard capture path. */
     input_note(69); input_note(60); input_note(65);
-    dk_ui_refresh(learn_menu);
+    dk_ui_menu_refresh(learn_menu);
     assert(cur->keyboard.capture_count==3 && cur->keyboard.capture[0]==60 &&
         cur->keyboard.capture[1]==65 && cur->keyboard.capture[2]==69);
     assert(shown_session==cur->keyboard.session && shown_revision==cur->keyboard.revision);
@@ -218,7 +218,7 @@ static void remember(const LearnTransaction *tx,Unchanged *before)
     memcpy(before->entries,tx->entries,sizeof(tx->entries));
     memcpy(before->owners,tx->owners,sizeof(tx->owners));
     before->pool_count=tx->pool.count;
-    before->pending=save_pending; before->menu_open=dk_ui_is_open(learn_menu);
+    before->pending=save_pending; before->menu_open=dk_ui_menu_is_open(learn_menu);
 }
 static void unchanged(const LearnTransaction *tx,const Unchanged *before)
 {
@@ -229,13 +229,13 @@ static void unchanged(const LearnTransaction *tx,const Unchanged *before)
     assert(!memcmp(before->entries,tx->entries,sizeof(tx->entries)));
     assert(!memcmp(before->owners,tx->owners,sizeof(tx->owners)));
     assert(before->pool_count==tx->pool.count && before->pending==save_pending);
-    assert(before->menu_open==dk_ui_is_open(learn_menu));
+    assert(before->menu_open==dk_ui_menu_is_open(learn_menu));
     assert(!tx->commits && !masked && !unsafe_io);
 }
 static void check_saved(const LearnTransaction *tx,unsigned affected)
 {
     const uint8_t intervals[4]={0,5,9,0};
-    assert(save_pending && !dk_ui_is_open(learn_menu) && !masked && !unsafe_io);
+    assert(save_pending && !dk_ui_menu_is_open(learn_menu) && !masked && !unsafe_io);
     assert(!inst[0].keyboard.preset_shape_active && inst[0].keyboard.mode==KB_ROOT);
     for(uint32_t i=0;i<IP_INSTANCES;++i) {
         uint8_t actual[SC_BYTES],stored[SC_BYTES];
@@ -311,7 +311,7 @@ static void stale_capture(void)
     remember(&tx,&before);
     assert(save_transaction(&tx)<0 && !tx.prepares);
     unchanged(&tx,&before);
-    dk_ui_refresh(learn_menu);
+    dk_ui_menu_refresh(learn_menu);
     assert(!save_transaction(&tx) && tx.prepares==2 && tx.commits==2);
     assert(inst[0].keyboard.shapes[0].count==4 &&
         inst[0].keyboard.shapes[0].intervals[3]==12);

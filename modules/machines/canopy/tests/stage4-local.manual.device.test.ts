@@ -7,7 +7,7 @@ import { expect, onTestFinished, test } from 'vitest';
 import { withSession } from '@digi/regression/support.ts';
 import { liveOptions } from '@digi/regression/runtime/devices.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
-import { settleUi } from '@digi/regression/runtime/waits.ts';
+import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { planSymbol, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 import { openDigikitMenu } from '@digi/regression/runtime/runtime-menu.ts';
 
@@ -87,7 +87,7 @@ test('CANOPY local arp through setup, MIDI and final audio', async () => {
     await session.client.inputButton(button(name), false);
     await delay(settle);
   };
-  await settleUi(session);
+  await waitEmulated(session, 12_000); // the DT2 UI settle the harness helper waited before c223679e
   // Select the admitted machine using the stock machine chooser.
   await session.client.inputButton(button('FUNC'), true);
   try {

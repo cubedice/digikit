@@ -21,6 +21,7 @@ beforeAll(() => {
       '-fno-pie',
       '-no-pie',
       '-I' + path.join(root, 'modules/core/fw/include'),
+      '-I' + path.join(root, 'sdk/include'),
       path.join(import.meta.dirname, 'canopy-native.c'),
       ...['src-state.c', 'src-display.c', 'src-lock-packed.c', 'status.c', 'preset.c'].map((p) => path.join(src, p)),
       path.join(root, 'modules/core/adapters/machines/src/cf/dt2/src-pages.c'),

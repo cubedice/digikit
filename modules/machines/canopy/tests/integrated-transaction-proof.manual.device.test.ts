@@ -79,7 +79,7 @@ if (process.env.DIGI_CANOPY_INTEGRATED_PROOF === '1') {
         fs.writeFileSync(path.join(artifacts, 'probe.json'), JSON.stringify(evidence, null, 2));
       });
       await waitInstrumentReady(word);
-      await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, timeout: 180_000 });
+      await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, emulatedMs: 180_000 });
       const { tap, edge, turn } = acknowledgedPanel(session);
       const selectTrack = async (track: number) => {
         await edge('TRK', true);
@@ -253,7 +253,7 @@ if (process.env.DIGI_CANOPY_INTEGRATED_PROOF === '1') {
         auto_no: true, card: savedCard });
       await coldSession.client.call('run.mode', { mode: 'free' });
       await waitInstrumentReady(coldWord);
-      await expectRuntimeUi(coldSession, plan, artifacts, { afterEpoch: coldEpoch, timeout: 180_000 });
+      await expectRuntimeUi(coldSession, plan, artifacts, { afterEpoch: coldEpoch, emulatedMs: 180_000 });
       evidence.coldModules = await liveProtocol(coldSession).modules();
       expect((evidence.coldModules as { name: string }[]).map((m) => m.name)).toContain('digikit/canopy');
       expect(await coldWord('canopy_integrated_test', 3), 'new emulator starts with no live-transaction commands').toBe(0);

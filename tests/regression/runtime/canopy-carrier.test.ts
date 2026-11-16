@@ -5,7 +5,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { button, repoRoot } from '@digi/test-support';
 import { expect, test } from 'vitest';
 import { withSession } from '../support.ts';
-import { settleUi } from './waits.ts';
+import { waitEmulated } from './waits.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 
 const h = withSession({
@@ -90,7 +90,7 @@ test('live carrier renders held keys and retires each release independently', as
     await expect.poll(async () => (await pcmReport()).samples, { timeout: 30_000 }).toBeGreaterThanOrEqual(24_000);
     expect((await pcmReport()).non_finite).toBe(0);
   };
-  await settleUi(session);
+  await waitEmulated(session, 12_000); // the DT2 UI settle the harness helper waited before c223679e
   await quietWindow('idle');
   const shot = async (name: string) =>
     fs.writeFileSync(

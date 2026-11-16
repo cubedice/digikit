@@ -119,7 +119,7 @@ test('CANOPY runs on any track, and up to four instances play at once', async ()
   const { tap: key, edge } = acknowledgedPanel(session);
   const artifacts = path.join(root, 'out/canopy-any-track');
   fs.mkdirSync(artifacts, { recursive: true });
-  await expectRuntimeUi(session, plan, artifacts, { afterEpoch: beforeRestart, timeout: 180_000 });
+  await expectRuntimeUi(session, plan, artifacts, { afterEpoch: beforeRestart, emulatedMs: 180_000 });
   const dump = async (label: string) => {
     const values: Record<string, unknown> = {};
     for (const [name, n] of [

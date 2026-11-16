@@ -30,7 +30,7 @@ if (process.env.DIGI_CANOPY_OPAQUE_PROOF === '1') {
     await session.client.firmwareLoad({ syx, base_sha256: plan.base.syx_sha256, start: 'auto', force: true,
       auto_no: true, card: session.cardPath });
     await session.client.call('run.mode', { mode: 'free' });
-    await expectRuntimeUi(session, plan, artifacts, { timeout: 180_000 });
+    await expectRuntimeUi(session, plan, artifacts, { emulatedMs: 180_000 });
     evidence.modules = await liveProtocol(session).modules();
     expect((evidence.modules as { name: string }[]).map((m) => m.name)).not.toContain('digikit/canopy');
     const word = async (index: number) => {

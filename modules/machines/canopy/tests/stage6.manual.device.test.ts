@@ -273,7 +273,7 @@ test(
     const { tap: key, edge, turn } = acknowledgedPanel(session);
     await expectRuntimeUi(session, plan, readyArtifacts, {
       afterEpoch: beforeRestart,
-      timeout: 180_000,
+      emulatedMs: 180_000,
     });
     const loopKit = pageKit(session, fxProfile);
     // Select the admitted machine using the stock machine chooser.

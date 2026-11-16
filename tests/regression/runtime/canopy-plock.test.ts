@@ -102,7 +102,7 @@ test('CANOPY track trig locks: stock lock storage and playback', { timeout: 900_
   const { tap: key, edge } = acknowledgedPanel(session);
   const artifacts = path.join(root, 'out/canopy-plock');
   fs.mkdirSync(artifacts, { recursive: true });
-  await expectRuntimeUi(session, plan, artifacts, { afterEpoch: beforeRestart, timeout: 180_000 });
+  await expectRuntimeUi(session, plan, artifacts, { afterEpoch: beforeRestart, emulatedMs: 180_000 });
   const log: Record<string, unknown> = {};
   const shot = (name: string) =>
     execFileSync(

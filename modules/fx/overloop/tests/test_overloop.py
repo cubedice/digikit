@@ -3,12 +3,16 @@ Synthetic position records isolate the consumer; firmware event alignment is a
 separate integration proof. No arbitrary scheduler-to-audio offset is applied.
 """
 
+import json
+from pathlib import Path
+
 import pytest
 from fx_provider import BASE, OverloopRig, external_word
 from support.fx_rig import NFAULT, P0, f2w, nw
 
 from tools.patchkit import overloop_ref as R
 
+MODULE = Path(__file__).resolve().parents[1]
 LIVE = (0.625,) * 32 + (-0.375,) * 32
 
 
@@ -296,18 +300,19 @@ def test_corrupt_storage_fails_before_audio_access(kind):
     assert result.master == LIVE and not p.rig.audio_events()
 
 
-def test_current_sdk_declares_four_knobs_without_building_unrelated_modules():
-    from tools.patchkit.pk_conform import fx_records
-
-    (fx,) = fx_records("digikit/overloop")
-    assert fx["id"] == "loop" and fx["route"] == "master"
-    assert [(k["short"], k["position"]) for k in fx["knob"]] == [
-        ("REC", 0),
-        ("START", 1),
-        ("FADE", 3),
-        ("LENGTH", 2),
+def test_the_committed_knobs_follow_the_dsp_words():
+    """`module:check` writes build/gen/gallery.json from the records `init` committed. A builder-call effect param goes on the next knob and
+    sets the word of its position, so the knobs are the DSP's words in order: REC, START, FADE, LENGTH (the declarations before the builder
+    calls put LENGTH on the third knob and FADE on the fourth)."""
+    gallery = json.loads((MODULE / "build/gen/gallery.json").read_text())
+    (fx,) = gallery["effects"]
+    assert fx["id"] == "loop" and fx["mix"] == 127
+    assert [(k["short"], k["min"], k["max"], k["default"]) for k in fx["knobs"]] == [
+        ("REC", 0, 1, 0),
+        ("START", 0, 127, 0),
+        ("FADE", 0, 1, 0),
+        ("LENGTH", 0, 127, 0),
     ]
-    assert fx["knob"][3]["default"] == 0 and fx["knob"][3]["max"] == 127
 
 
 def test_ui_snapshot_reports_actual_capture_and_live_window():

@@ -74,7 +74,7 @@ test('CANOPY plays and records trig locks', { timeout: 900_000 }, async () => {
   const { tap: key, edge, turn } = acknowledgedPanel(session);
   const artifacts = path.join(root, 'out/canopy-lock');
   fs.mkdirSync(artifacts, { recursive: true });
-  await expectRuntimeUi(session, plan, artifacts, { afterEpoch: beforeRestart, timeout: 180_000 });
+  await expectRuntimeUi(session, plan, artifacts, { afterEpoch: beforeRestart, emulatedMs: 180_000 });
   const log: Record<string, unknown> = {};
   onTestFinished(() => fs.writeFileSync(path.join(artifacts, 'probe.json'), JSON.stringify(log, null, 2)));
   const selectTrack = async (n: number) => {

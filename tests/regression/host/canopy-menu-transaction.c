@@ -49,7 +49,7 @@ static int prepare_menu(void *context,const CpPreset *p)
 {
     MenuTransaction *tx=context;
     uint8_t live[SC_BYTES];
-    assert(masked && dk_ui_is_open(tone_menu));
+    assert(masked && dk_ui_menu_is_open(tone_menu));
     bytes_current(live);
     assert(!memcmp(live,tx->before,sizeof(live)) && cur->pad_dirty==tx->before_dirty);
     ++tx->prepares;
@@ -67,7 +67,7 @@ static void attach_menu(void *context)
 {
     MenuTransaction *tx=context;
     uint8_t live[SC_BYTES];
-    assert(masked && tx->prepares==1 && dk_ui_is_open(tone_menu));
+    assert(masked && tx->prepares==1 && dk_ui_menu_is_open(tone_menu));
     bytes_current(live);
     assert(!memcmp(live,tx->staged,sizeof(live)) && cur->pad_dirty==1);
     assert(!ss_edit(&tx->pool,&tx->handle,0x100,tx->expected,tx->reserved,tx->staged));
@@ -92,8 +92,8 @@ static void setup(MenuTransaction *tx,int family,uint32_t capacity)
     bytes_current(bytes);
     assert(!ss_init(&tx->pool,tx->entries,capacity) && !ss_reserve(&tx->pool,&reservation));
     assert(!ss_create(&tx->pool,reservation,0x100,&tx->handle,bytes));
-    tone_menu=dk_ui_menu_new(&tone_desc);
-    assert(tone_menu && !dk_ui_open(tone_menu));
+    tone_menu=dk_ui_menu_new(ui(),&tone_desc);
+    assert(tone_menu && !dk_ui_menu_open(tone_menu));
 }
 static int edit(MenuTransaction *tx,uint32_t setting,int value)
 {
@@ -108,8 +108,8 @@ static int edit(MenuTransaction *tx,uint32_t setting,int value)
     if(setting==IP_PROOF_FM_WHEEL) fm_wheel_amount=value;
     if(setting==IP_PROOF_WTFM_WHEEL) wtfm_wheel_amount=value;
     int result=instrument_sound_proof_menu(0,0x123400,7,setting,value,prepare_menu,attach_menu,tx);
-    assert(!masked && dk_ui_is_open(tone_menu));
-    dk_ui_refresh(tone_menu);
+    assert(!masked && dk_ui_menu_is_open(tone_menu));
+    dk_ui_menu_refresh(tone_menu);
     assert(wheel_amount==cur->wt[CP_WT_WHEEL-16]-100 &&
         fm_wheel_amount==cur->fm[CP_FM_WHEEL-15]-100 &&
         wtfm_wheel_amount==cur->wtfm[CP_WTFM_WHEEL-28]-100);

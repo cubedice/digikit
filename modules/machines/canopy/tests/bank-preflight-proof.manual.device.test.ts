@@ -56,7 +56,7 @@ if (process.env.DIGI_CANOPY_BANK_PREFLIGHT === '1') {
       return value >>> 0;
     };
     await waitInstrumentReady(word);
-    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, timeout: 180_000 });
+    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, emulatedMs: 180_000 });
     await expect.poll(() => word('canopy_bank_loads'), { timeout: 60_000 }).toBeGreaterThan(0);
     await session.client.call('mem.cf.poke', { addr: planSymbol(plan, 'canopy_bank_test'), value: 1 });
     await expect.poll(() => word('canopy_bank_test'), { timeout: 180_000 }).toBe(2);

@@ -226,7 +226,7 @@ test(
     fs.mkdirSync(readyArtifacts, { recursive: true });
     await expectRuntimeUi(session, plan, readyArtifacts, {
       afterEpoch: beforeRestart,
-      timeout: 180_000,
+      emulatedMs: 180_000,
     });
     console.info('CANOPY: restarted runtime UI ready');
     // Select the admitted machine using the stock machine chooser.

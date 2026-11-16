@@ -1,6 +1,7 @@
 /* DT2 1.17 native SRC adapter. Vtable entries and event dispatch are pinned
  * by image hashes. Untouched interfaces remain stock; no View is retained. */
 #include <stdint.h>
+#include <dk/platform/ui.h>
 #include "src-control.h"
 #include "src-clock.h"
 #include "../../../../adapters/machines/src/cf/dt2/src-pages.h"
@@ -26,7 +27,9 @@ extern void ip_src_tune_format(int32_t,char *),ip_src_level_format(int32_t,char 
 extern void ip_src_focus_touch(uint8_t *,uint32_t);
 extern uint8_t ip_src_focus_active(uint8_t *,uint32_t);
 extern const uint32_t ip_src_label_font;
-extern int dk_ui_toast(const char *);
+extern dk_ui *dk_ui_core_handle(void);
+/* A toast on the core UI (the handle core/ui owns, as control.c takes it). */
+static void toast(const char *text) { dk_ui_toast(dk_ui_core_handle(), text); }
 /* Sequencer UI state (finding 147): SRC view +0x6c, as KeyboardView +0x98. */
 extern uint8_t ip_panel_trig_held(uint32_t),ip_panel_live_record(uint32_t);
 extern int32_t ip_panel_step_note(uint32_t,uint32_t);
@@ -487,7 +490,7 @@ void ip_src_draw(uint8_t *view,uint8_t *canvas)
         }
     }
     diagram_draw(canvas,&display);
-    if(display.fault && display.fault!=shown_fault) dk_ui_toast(display.heading);
+    if(display.fault && display.fault!=shown_fault) toast(display.heading);
     shown_fault=display.fault;
     last_draw=instrument_src_now(); ++ip_src_debug[3];
 }
@@ -585,20 +588,20 @@ static uint32_t lock_turn(uint8_t *view,uint8_t *event,uint32_t token,uint32_t e
     if(result==CS_EDIT) {
         if(held) ip_lock_mark_edited(word(view,0x6c),1);
         int found=ilp_store_read(&lock_store,first,id,&current);
-        if(found<0) { dk_ui_toast("LOCK SLOT IN USE"); return 1; }
+        if(found<0) { toast("LOCK SLOT IN USE"); return 1; }
         if(!found) current=base;
         if(!held && live_control==id && live_track==ip_src_debug[0] && live_token==token) current=live_value;
         result=instrument_src_lock_step(token,encoder,(int32_t)word(event,16),instrument_src_now(),&snapshot,current,&next);
-    } else if(result==CS_READONLY) dk_ui_toast("NOT LOCKABLE");
+    } else if(result==CS_READONLY) toast("NOT LOCKABLE");
     if(result==CS_EDIT) {
         int written=ilp_store_edit_steps(&lock_store,steps,id,next,0);
-        if(written!=1) dk_ui_toast(written==ILP_ROLLBACK_FAILED ? "LOCK RESTORE FAILED" :
+        if(written!=1) toast(written==ILP_ROLLBACK_FAILED ? "LOCK RESTORE FAILED" :
             written==ILP_FULL || written==ILP_STORAGE_FULL ? "LOCKS FULL" : "LOCK SLOT IN USE");
         else {
             live_control=held ? CS_NONE : id; live_value=next;
             live_track=ip_src_debug[0]; live_token=token;
             char feedback[32]; instrument_src_lock_feedback(feedback,encoder,&snapshot,control,next);
-            if(feedback[0]) dk_ui_toast(feedback);
+            if(feedback[0]) toast(feedback);
         }
         ip_src_focus_touch(view+0x94,encoder);
         ++ip_src_debug[5];
@@ -618,7 +621,7 @@ int instrument_record_chord(const uint32_t steps[4],const int8_t *intervals,uint
             ilp_store_edit_steps(&lock_store,steps,ILP_NOTE_FIRST+i,0,1);
         if(r<0 && result>0) result=r;
     }
-    if(result<0) dk_ui_toast(result==ILP_FULL || result==ILP_STORAGE_FULL ? "LOCKS FULL - CHORD CUT" :
+    if(result<0) toast(result==ILP_FULL || result==ILP_STORAGE_FULL ? "LOCKS FULL - CHORD CUT" :
         "CHORD NOT RECORDED");
     return result;
 }
@@ -633,7 +636,7 @@ static int lock_clear(uint8_t *view,uint32_t encoder,const uint32_t steps[4])
     if(instrument_src_lock_target(encoder,&snapshot,&control,&id,&base)!=CS_EDIT) return 0;
     ip_lock_mark_edited(word(view,0x6c),1);
     int result=ilp_store_edit_steps(&lock_store,steps,id,0,1);
-    if(result<0) dk_ui_toast(result==ILP_ROLLBACK_FAILED ? "LOCK RESTORE FAILED" : "LOCK SLOT IN USE");
+    if(result<0) toast(result==ILP_ROLLBACK_FAILED ? "LOCK RESTORE FAILED" : "LOCK SLOT IN USE");
     return 1;
 }
 uint32_t ip_src_key(uint8_t *view,uint8_t *event)
@@ -667,8 +670,8 @@ uint32_t ip_src_turn(uint8_t *view,uint8_t *event)
     if(result!=CS_STALE) {
         ip_src_focus_touch(view+0x94,encoder-1);
         char feedback[32]; instrument_src_feedback(feedback,encoder-1);
-        if(display.fault) dk_ui_toast(display.heading);
-        else if(feedback[0]) dk_ui_toast(feedback);
+        if(display.fault) toast(display.heading);
+        else if(feedback[0]) toast(feedback);
     }
     if(result==CS_EDIT) ++ip_src_debug[5];
     if(result==CS_STALE) ++ip_src_debug[6];

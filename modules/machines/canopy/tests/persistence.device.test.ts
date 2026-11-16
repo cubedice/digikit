@@ -83,7 +83,7 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
       return value >>> 0;
     };
     await waitInstrumentReady(cf);
-    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: firstEpoch, timeout: 180_000 });
+    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: firstEpoch, emulatedMs: 180_000 });
     // Production persistence counters (sound-persist.c): store state and copies seen.
     const persistence = async () => ({
       info: await Promise.all(Array.from({ length: 8 }, (_, i) => cf('ip_sa_info', i))),
@@ -161,7 +161,7 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
       await dk.restart();
       await dk.waitForBoot(undefined, 180_000);
       await waitInstrumentReady(cf);
-      await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, timeout: 180_000 });
+      await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, emulatedMs: 180_000 });
       await expect.poll(async () => {
         const tracks = await Promise.all(Array.from({ length: 4 }, (_, i) => cf('ip_tracks', i)));
         log.workingBootTracks = tracks;
@@ -201,7 +201,7 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
     });
     await session.client.call('run.mode', { mode: 'free' });
     await waitInstrumentReady(cf);
-    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: savedEpoch, timeout: 180_000 });
+    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: savedEpoch, emulatedMs: 180_000 });
     await expect.poll(async () => {
       log.coldBoot = await bootInfo(session, plan);
       const boot = log.coldBoot as { count: number; results: number[] };

@@ -100,7 +100,7 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
       await session.client.call('mem.cf.write', { addr, hex: bytes.toString('hex') });
     };
     await waitInstrumentReady(cf);
-    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: beforeRestart, timeout: 180_000 });
+    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: beforeRestart, emulatedMs: 180_000 });
     const { tap: key, edge, turn } = acknowledgedPanel(session);
     await edge('TRK', true);
     try {

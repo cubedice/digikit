@@ -5,7 +5,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { button, repoRoot } from '@digi/test-support';
 import { expect, test } from 'vitest';
 import { withSession } from '../support.ts';
-import { settleUi } from './waits.ts';
+import { waitEmulated } from './waits.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 
 const h = withSession({
@@ -68,7 +68,7 @@ test('temporary pattern reload invalidates the same Sound before fresh MIDI admi
       JSON.stringify(await session.client.framebufferGet({ data: true, hash: true })),
     );
   await expect.poll(() => word(0), { timeout: 30_000 }).toBe(1);
-  await settleUi(session);
+  await waitEmulated(session, 12_000); // the DT2 UI settle the harness helper waited before c223679e
   for (const [addr, value] of [
     [0x429368ca, 3],
     [0x42936872, 0],

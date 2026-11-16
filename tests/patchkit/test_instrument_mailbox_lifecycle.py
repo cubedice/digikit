@@ -72,7 +72,15 @@ _test_fail:
         name: sections[sec] + off for name, (sec, off, _) in obj.data_symbols.items()
     }
     linked = pk_sharc.link(
-        obj, 0xB90000, {**symbols, "_mi_epoch": 0x20040000, "_mi_message": 0x20040004, "_instrument_play_status": 0, "_instrument_ui_status": 0}
+        obj,
+        0xB90000,
+        {
+            **symbols,
+            "_mi_epoch": 0x20040000,
+            "_mi_message": 0x20040004,
+            "_instrument_play_status": 0,
+            "_instrument_ui_status": 0,
+        },
     )
     return linked, symbols, initial, reads
 

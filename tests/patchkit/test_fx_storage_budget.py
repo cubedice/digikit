@@ -41,7 +41,10 @@ FX_ADAPTER_MAX = 900
 
 def fx_budget() -> int:
     """Instructions of one process call: the headroom of the tighter device shared by FX_MAX effects."""
-    return min(pk_conform.budget(d).headroom for d in pk_conform.DEVICES) // pk_conform.FX_MAX
+    return (
+        min(pk_conform.budget(d).headroom for d in pk_conform.DEVICES)
+        // pk_conform.FX_MAX
+    )
 
 
 def test_doubling_loop_storage_exceeds_the_current_activation_budget(tmp_path):

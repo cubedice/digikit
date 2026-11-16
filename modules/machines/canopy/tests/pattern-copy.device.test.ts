@@ -64,7 +64,7 @@ describeOn('dt2', 'CANOPY pattern copy on the DT2', () => {
     };
     const cf = (name: string, index = 0) => word(planSymbol(plan, name) + 4 * index);
     await waitInstrumentReady(cf);
-    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, timeout: 180_000 });
+    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, emulatedMs: 180_000 });
     const { tap: key, edge, turn } = acknowledgedPanel(session);
     const focusTrack = async (track: number) => {
       await edge('TRK', true);

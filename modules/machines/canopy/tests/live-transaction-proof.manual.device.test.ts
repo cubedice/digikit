@@ -61,7 +61,7 @@ if (process.env.DIGI_CANOPY_LIVE_PROOF === '1') {
         return v >>> 0;
       };
       await waitInstrumentReady(word);
-      await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, timeout: 180_000 });
+      await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, emulatedMs: 180_000 });
       const { tap, edge, turn } = acknowledgedPanel(session);
       const selectTrack = async (track: number) => {
         await edge('TRK', true);

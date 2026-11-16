@@ -13,6 +13,10 @@
    "owner": "python:tools/devtools",
    "purpose": "Overrides the CPU budget of an Nx launcher run (positive integer)"
   },
+  "DIGI_CANOPY_COPY_CF_CALL": {
+   "owner": "python:tests/patchkit",
+   "purpose": "Path to a prebuilt cf_call runner for the CANOPY copy-probe trampoline test (the test skips without it)"
+  },
   "DIGI_CARD_CACHE": {
    "owner": "ts:packages/test-support",
    "purpose": "Directory of shared content-named card images for device tests (default dist/session-cache/cards)"

@@ -19,6 +19,42 @@ pub mod card {
 pub mod dlog {
     pub const INFO: u16 = 0;
     pub fn ev(_: u16, _: u16, _: [u32; 5]) {}
+    /// No module is running: the module API of settings.rs refuses (`E_NOT_FOUND`), which this test does not use.
+    pub fn current_source() -> u8 {
+        0
+    }
+}
+pub mod files {
+    pub unsafe fn in_init(_: usize) -> bool {
+        false
+    }
+}
+/// The store lock of the runtime: this test is single-threaded, so it is always free.
+pub mod store_writer {
+    pub unsafe fn acquire() -> bool {
+        true
+    }
+    pub fn unlock() {}
+}
+pub const MAX_MODULES: usize = 1;
+pub struct ModuleRec {
+    pub used: u32,
+    pub name: [u8; 32],
+}
+pub struct State {
+    pub modules: [ModuleRec; MAX_MODULES],
+}
+static mut STATE: State = State {
+    modules: [ModuleRec {
+        used: 0,
+        name: [0; 32],
+    }],
+};
+pub fn st() -> &'static mut State {
+    unsafe { &mut *std::ptr::addr_of_mut!(STATE) }
+}
+pub unsafe fn cstr_len(a: *const u8, max: usize) -> usize {
+    (0..max).find(|&i| *a.add(i) == 0).unwrap_or(max)
 }
 pub mod store {
     pub fn open() -> Result<(), i32> {

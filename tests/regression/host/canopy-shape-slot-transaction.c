@@ -48,7 +48,7 @@ static int prepare_shape(void *context,const CpPreset *p)
 {
     ShapeTransaction *tx=context;
     uint8_t actual[SC_BYTES];
-    assert(masked && dk_ui_is_open(shape_menu));
+    assert(masked && dk_ui_menu_is_open(shape_menu));
     assert(inst[0].slot==(int)inst[0].keyboard.slot+1);
     bytes_current(actual);
     assert(!memcmp(actual,tx->before,sizeof(actual)));
@@ -66,7 +66,7 @@ static void attach_shape(void *context)
 {
     ShapeTransaction *tx=context;
     uint8_t actual[SC_BYTES];
-    assert(masked && tx->prepares==1 && dk_ui_is_open(shape_menu));
+    assert(masked && tx->prepares==1 && dk_ui_menu_is_open(shape_menu));
     bytes_current(actual);
     assert(!memcmp(actual,tx->staged,sizeof(actual)));
     assert(!ss_edit(&tx->pool,&tx->handle,0x100,tx->expected,tx->reserved,tx->staged));
@@ -100,8 +100,8 @@ static void setup(ShapeTransaction *tx,uint32_t capacity)
     bytes_current(bytes);
     assert(!ss_init(&tx->pool,tx->entries,capacity) && !ss_reserve(&tx->pool,&reserved));
     assert(!ss_create(&tx->pool,reserved,0x100,&tx->handle,bytes));
-    shape_menu=dk_ui_menu_new(&shape_desc);
-    assert(shape_menu && !dk_ui_open(shape_menu));
+    shape_menu=dk_ui_menu_new(ui(),&shape_desc);
+    assert(shape_menu && !dk_ui_menu_open(shape_menu));
 }
 static int select_slot(ShapeTransaction *tx,int slot)
 {
@@ -110,7 +110,7 @@ static int select_slot(ShapeTransaction *tx,int slot)
     bytes_current(tx->before);
     inst[0].slot=slot; /* Real dk_ui_value writes its signed backing first. */
     int result=instrument_sound_proof_shape_slot(0,0x123400,7,slot,prepare_shape,attach_shape,tx);
-    assert(!masked && dk_ui_is_open(shape_menu));
+    assert(!masked && dk_ui_menu_is_open(shape_menu));
     /* No refresh can repair this backing: shape_fill points at the same int.
      * The transaction itself must already have accepted or restored it. */
     assert(inst[0].slot==(int)inst[0].keyboard.slot+1);

@@ -65,7 +65,7 @@ describeOn('dt2', 'CANOPY Sound copy on the DT2', () => {
       };
       const cf = (name: string, index = 0) => word(planSymbol(plan, name) + 4 * index);
       await waitInstrumentReady(cf);
-      await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, timeout: 180_000 });
+      await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, emulatedMs: 180_000 });
       const { tap: key, edge, turn } = acknowledgedPanel(session);
       await edge('TRK', true);
       try { await key('TRIG 1'); } finally { await edge('TRK', false); }

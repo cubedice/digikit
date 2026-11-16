@@ -6,13 +6,13 @@ import { expect } from 'vitest';
 import { installModule, moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { liveArtifacts } from '@digi/regression/runtime/artifacts.ts';
 import { runtimeTests } from '@digi/regression/runtime/ready.ts';
-import { settleUi, tap } from '@digi/regression/runtime/waits.ts';
+import { waitEmulated, tap } from '@digi/regression/runtime/waits.ts';
 import { planSymbol, prepareRuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 
 runtimeTests(
   'Overloop display follows capture, live window edits, and page visibility',
   async ({ session, dk }) => {
-    await settleUi(session);
+    await waitEmulated(session, 12_000); // the DT2 UI settle the harness helper waited before c223679e
     const artifacts = liveArtifacts(session, 'overloop-display');
     const plan = await prepareRuntimePlan(session, artifacts, ['loop_ui_snapshot', 'loop_ui_paints']);
     await installModule(dk, 'digikit/overloop', moduleArtifact('dt2', 'digikit/overloop'));
@@ -80,5 +80,5 @@ runtimeTests(
     await expect.poll(paints, { timeout: 5000 }).toBeGreaterThan(hidden!);
     await session.expectNoFault('Overloop performance display');
   },
-  { devices: ['dt2'], patchSet: 'overloop', timeout: 360_000 },
+  { devices: ['dt2'], patchSet: 'overloop' },
 );

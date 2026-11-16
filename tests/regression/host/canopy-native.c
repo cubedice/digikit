@@ -50,7 +50,10 @@ static uint32_t real_display,graph_mask,graph_value[8];
 const uint32_t ip_src_label_font=123;
 void ip_src_focus_touch(uint8_t *tracker,uint32_t index) { (void)tracker; focus_mask|=1u<<index; }
 uint8_t ip_src_focus_active(uint8_t *tracker,uint32_t index) { (void)tracker;return !!(focus_mask&(1u<<index)); }
-int dk_ui_toast(const char *text) { assert(text[0]); ++toasts;return 0; }
+int32_t dk_ui_toast(dk_ui *ui,const char *text) { assert(ui && text[0]); ++toasts;return 0; }
+struct dk_ui { int unused; };
+static struct dk_ui host_ui;
+dk_ui *dk_ui_core_handle(void) { return &host_ui; }
 void instrument_src_feedback(char out[32],uint32_t encoder) { cv_feedback(out,&state,encoder); }
 uint8_t *dk_fw_view_brain_instance(void) { return (uint8_t *)manager; }
 uint8_t *dk_fw_view_brain_view_manager(uint8_t *brain) { return brain; }

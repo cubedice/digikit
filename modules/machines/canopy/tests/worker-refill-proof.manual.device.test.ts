@@ -60,7 +60,7 @@ if (process.env.DIGI_CANOPY_WORKER_REFILL === '1') {
       return value >>> 0;
     };
     await waitInstrumentReady(word);
-    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, timeout: 180_000 });
+    await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, emulatedMs: 180_000 });
     await expect.poll(() => word('canopy_sound_proof'), { timeout: 60_000 }).toBeGreaterThan(0);
     const command = planSymbol(plan, 'worker_refill_test');
     await session.client.call('mem.cf.poke', { addr: planSymbol(plan, 'canopy_memory_probe_entry'), value: planSymbol(plan, 'worker_refill_tick') });

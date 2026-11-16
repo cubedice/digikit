@@ -64,7 +64,7 @@ static void accepted_bytes(const UiTransaction *tx,uint32_t i,uint8_t out[SC_BYT
 static int prepare_ui(void *context,uint32_t i,uint32_t sound,uint32_t generation,const CpPreset *p)
 {
     UiTransaction *tx=context;
-    assert(masked && i<IP_INSTANCES && tx->active_menu && dk_ui_is_open(tx->active_menu));
+    assert(masked && i<IP_INSTANCES && tx->active_menu && dk_ui_menu_is_open(tx->active_menu));
     assert(!tx->attaches && !(tx->prepared_mask & (1u<<i)));
     ++tx->prepares;
     UiOwner *o=&tx->owner[i];
@@ -86,7 +86,7 @@ static int prepare_ui(void *context,uint32_t i,uint32_t sound,uint32_t generatio
 static void attach_ui(void *context,uint32_t i,uint32_t sound,uint32_t generation)
 {
     UiTransaction *tx=context;
-    assert(masked && i<IP_INSTANCES && tx->active_menu && dk_ui_is_open(tx->active_menu));
+    assert(masked && i<IP_INSTANCES && tx->active_menu && dk_ui_menu_is_open(tx->active_menu));
     assert(tx->prepared_mask==tx->expected_mask && (tx->prepared_mask & (1u<<i)));
     assert(!(tx->attached_mask & (1u<<i)));
     /* All real changes, including shared learned shapes, precede the first
@@ -109,7 +109,7 @@ static void reserve_ui(UiTransaction *tx,uint32_t i)
 }
 static void begin_action(UiTransaction *tx,dk_ui_menu *active,unsigned expected_mask)
 {
-    assert(!masked && active && dk_ui_is_open(active));
+    assert(!masked && active && dk_ui_menu_is_open(active));
     tx->active_menu=active; tx->expected_mask=expected_mask;
     tx->prepares=tx->attaches=tx->prepared_mask=tx->attached_mask=0;
 }
@@ -120,7 +120,7 @@ static int row(dk_ui_menu *m,const char *label)
 }
 static void press(dk_ui_menu *m,const char *label)
 {
-    assert(!masked && m && dk_ui_is_open(m));
+    assert(!masked && m && dk_ui_menu_is_open(m));
     int i=row(m,label);
     assert(m->rows[i].fn && !m->rows[i].value);
     m->rows[i].fn(m->rows[i].ctx,m->rows[i].arg);
@@ -128,7 +128,7 @@ static void press(dk_ui_menu *m,const char *label)
 }
 static void set_value(dk_ui_menu *m,const char *label,int value)
 {
-    assert(!masked && m && dk_ui_is_open(m));
+    assert(!masked && m && dk_ui_menu_is_open(m));
     int i=row(m,label);
     assert(m->rows[i].fn && m->rows[i].value);
     assert(value>=m->rows[i].low && value<=m->rows[i].high);
@@ -232,13 +232,13 @@ static void unchanged(const UiTransaction *tx,const Before *before)
     assert(before->restore==route_restore && before->selector==selector_channel);
     assert(before->wheel==wheel_amount && before->fm_wheel==fm_wheel_amount && before->wtfm_wheel==wtfm_wheel_amount);
     assert(!memcmp(before->pending_preset,preset_write,sizeof(preset_write)));
-    assert(!tx->attaches && dk_ui_is_open(tx->active_menu));
+    assert(!tx->attaches && dk_ui_menu_is_open(tx->active_menu));
     matches(tx);
 }
 static void open_preset(void)
 {
-    preset_menu=dk_ui_menu_new(&preset_desc);
-    assert(preset_menu && !dk_ui_open(preset_menu));
+    preset_menu=dk_ui_menu_new(ui(),&preset_desc);
+    assert(preset_menu && !dk_ui_menu_open(preset_menu));
 }
 static void install_preset(void)
 {
@@ -261,13 +261,13 @@ static void preset_load_transaction(void)
     assert(tx.prepares==1 && tx.attaches==1 && tx.owner[0].handle==next && !preset_pending);
     assert(cur->keyboard.mode==KB_PLAY && cur->pad_family==3 && cur->pad_color==93 && cur->pad_strum==19);
     assert(cur->keyboard.preset_shape_active && cur->keyboard.preset_shape.intervals[1]==5);
-    assert(cur->phase==1 && !cur->prepared && dk_ui_is_open(preset_menu));
+    assert(cur->phase==1 && !cur->prepared && dk_ui_menu_is_open(preset_menu));
     matches(&tx);
 }
 static void open_tone(void)
 {
-    tone_menu=dk_ui_menu_new(&tone_desc);
-    assert(tone_menu && !dk_ui_open(tone_menu));
+    tone_menu=dk_ui_menu_new(ui(),&tone_desc);
+    assert(tone_menu && !dk_ui_menu_open(tone_menu));
 }
 static void tone_edit(UiTransaction *tx,unsigned setting,int value)
 {
@@ -285,7 +285,7 @@ static void tone_edit(UiTransaction *tx,unsigned setting,int value)
         static const char *const labels[]={"WHEEL TO POS","WHEEL TO FM","WHEEL TO WT FM"};
         set_value(tone_menu,labels[setting-IP_PROOF_WT_WHEEL],value);
     }
-    assert(!masked && !unsafe_io && dk_ui_is_open(tone_menu));
+    assert(!masked && !unsafe_io && dk_ui_menu_is_open(tone_menu));
     /* No test-side refresh repairs rejected signed staging. */
     assert(wheel_amount==cur->wt[CP_WT_WHEEL-16]-100);
     assert(fm_wheel_amount==cur->fm[CP_FM_WHEEL-15]-100);
@@ -316,8 +316,8 @@ static void modulation_refuse_and_retry(int family,int fail_after_prepare)
 }
 static void open_shape(void)
 {
-    shape_menu=dk_ui_menu_new(&shape_desc);
-    assert(shape_menu && !dk_ui_open(shape_menu));
+    shape_menu=dk_ui_menu_new(ui(),&shape_desc);
+    assert(shape_menu && !dk_ui_menu_open(shape_menu));
 }
 static void shape_transaction(int same_slot)
 {
@@ -335,7 +335,7 @@ static void shape_transaction(int same_slot)
     set_value(shape_menu,"SHAPE SLOT",same_slot ? 1 : 2);
     assert(tx.prepares==1 && tx.attaches==1 && cur->slot==(int)cur->keyboard.slot+1);
     assert(cur->keyboard.preset_shape_active==same_slot && cur->keyboard.slot==(same_slot ? 0 : 1));
-    assert(!route_restore && !selector_channel && dk_ui_is_open(shape_menu));
+    assert(!route_restore && !selector_channel && dk_ui_menu_is_open(shape_menu));
     for(uint32_t i=0;i<IP_INSTANCES;++i) {
         assert(inst[i].phase==1 && !inst[i].prepared && mi_ledger.generations[i]==12+i);
         assert(inst[i].keyboard.selector_base==36 && inst[i].keyboard.selector_channel==MI_NONE);
@@ -353,9 +353,9 @@ static void input_note(uint8_t note)
 static void capture_chord(UiTransaction *tx)
 {
     open_shape(); begin_action(tx,shape_menu,0); press(shape_menu,"LEARN TO ROOT");
-    assert(learn_menu && dk_ui_is_open(learn_menu) && cur->keyboard.mode==KB_LEARN);
+    assert(learn_menu && dk_ui_menu_is_open(learn_menu) && cur->keyboard.mode==KB_LEARN);
     assert(!tx->prepares && !tx->attaches);
-    input_note(69); input_note(60); input_note(65); dk_ui_refresh(learn_menu);
+    input_note(69); input_note(60); input_note(65); dk_ui_menu_refresh(learn_menu);
     assert(cur->keyboard.capture_count==3 && cur->keyboard.capture[0]==60 &&
         cur->keyboard.capture[1]==65 && cur->keyboard.capture[2]==69);
     assert(shown_session==cur->keyboard.session && shown_revision==cur->keyboard.revision);
@@ -366,7 +366,7 @@ static void capture_chord(UiTransaction *tx)
 static void check_learned(const UiTransaction *tx,unsigned affected)
 {
     assert(tx->prepared_mask==affected && tx->attached_mask==affected);
-    assert(save_pending && !dk_ui_is_open(learn_menu) && cur->keyboard.mode==KB_ROOT);
+    assert(save_pending && !dk_ui_menu_is_open(learn_menu) && cur->keyboard.mode==KB_ROOT);
     assert(!cur->keyboard.preset_shape_active && inst[2].keyboard.preset_shape_active);
     assert(inst[1].keyboard.mode==KB_PLAY && inst[1].keyboard.type==0);
     for(uint32_t i=0;i<IP_INSTANCES;++i) {
@@ -413,9 +413,9 @@ static void disabled_callbacks(void)
     assert(cur->wt[CP_WT_WHEEL-16]==50 && cur->fm[CP_FM_WHEEL-15]==125 && cur->wtfm[CP_WTFM_WHEEL-28]==25);
     open_shape(); set_value(shape_menu,"SHAPE SLOT",2);
     assert(cur->keyboard.slot==1 && !cur->keyboard.preset_shape_active);
-    press(shape_menu,"LEARN TO ROOT"); input_note(60); input_note(67); dk_ui_refresh(learn_menu);
+    press(shape_menu,"LEARN TO ROOT"); input_note(60); input_note(67); dk_ui_menu_refresh(learn_menu);
     begin_action(&tx,learn_menu,0); press(learn_menu,"YES SAVE / NO CANCEL");
-    assert(!dk_ui_is_open(learn_menu) && save_pending && cur->keyboard.mode==KB_PLAY);
+    assert(!dk_ui_menu_is_open(learn_menu) && save_pending && cur->keyboard.mode==KB_PLAY);
     assert(cur->keyboard.shapes[1].count==2 && cur->keyboard.shapes[1].intervals[1]==7);
     assert(!tx.prepares && !tx.attaches); originals_unchanged(&tx);
 }
