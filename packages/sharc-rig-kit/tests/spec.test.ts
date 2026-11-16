@@ -46,6 +46,24 @@ sample_records = "_mo_pool"
     }),
   );
   write(
+    'inst/module.toml',
+    `[module]
+id = "zzt/inst"
+type = "machine"
+category = "machines"
+dynamic = true
+ports = ["dt2-1.17"]
+
+[[machine]]
+id = "pad"
+instrument = true
+
+[[object]]
+path = "build/dsp.dko.json"
+sources = ["src/dsp/pad.s"]
+`,
+  );
+  write(
     'fx/module.toml',
     `[module]
 id = "zzt/fx"
@@ -98,6 +116,11 @@ describe('machineSpec', () => {
   it('is null for a device the module does not port to, and for a module that is no machine', () => {
     expect(machineSpec('zzt/mach', 'dn2')).toBeNull();
     expect(machineSpec('zzt/fx', 'dt2')).toBeNull();
+  });
+
+  it('is null for a persistent V2 instrument, which has no voice and needs no gallery', () => {
+    expect(machineSpec('zzt/inst', 'dt2')).toBeNull();
+    expect(machineSpecs().map((s) => s.module)).not.toContain('zzt/inst');
   });
 
   it('lists the machines of the module roots, the negative fixtures apart', () => {

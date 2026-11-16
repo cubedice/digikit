@@ -42,10 +42,13 @@ export const FX_NEGATIVE: Record<string, string> = {
   'test/fx-nan': 'guard stepped in',
   'test/dyn-fx-nan': 'guard stepped in',
 };
-/** Fixtures of the runtime's fault tests that the suite does not run. */
-const FX_SKIP = new Set(['test/dyn-fx-hang']);
-/** Fixtures that declare a machine and that the suite does not run. */
-const MACHINE_SKIP = new Set(['test/commit-demo']);
+/** Fixtures of the runtime's fault tests that the suite does not run, and effects whose DSP reads data of a core module that the rig does
+ * not place: Overloop reads the loop buffer of core/loop-storage and the position of core/pattern-position (`_loop_buffer_info`,
+ * `_pattern_position_info`); modules/fx/overloop/tests runs it on the effect adapter with stand-ins for both. */
+const FX_SKIP = new Set(['test/dyn-fx-hang', 'digikit/overloop']);
+/** Fixtures that declare a machine and that the suite does not run: test/canopy-carrier is a raw renderer that stands in for stock type 1
+ * in CANOPY's carrier proof (modules/machines/canopy/tests/test_canopy_carrier.py). */
+const MACHINE_SKIP = new Set(['test/commit-demo', 'test/canopy-carrier']);
 
 export class ConformError extends Error {}
 
@@ -272,6 +275,8 @@ export function machineSpec(mid: string, device: Device): MachineSpec | null {
   const man = manifest(moddir);
   const ports: string[] = man.module?.ports ?? [];
   if (ports.length && !ports.some((p) => p.split('-')[0] === device)) return null;
+  // a persistent V2 instrument (`instrument = true`) has no voice: its reset and process entries are checked by its own tests
+  if (man.machine?.some((m: Toml) => m.instrument === true)) return null;
   const row = entryRow(man);
   if (!row) return null;
   const sources = dspSources(man, moddir, device);
