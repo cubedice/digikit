@@ -71,6 +71,8 @@ export const ADAPTER: Record<string, number> = {
   _dv_trig_params: DIAG + 0x500, // 128 words: per voice/slot latch snapshots
   _dv_gate: DIAG + 0x700, // 16 words: the per-track gate (machine contract 1.6)
 };
+/** `_dv_v2_scan`: set while voice 0 scans core/instrument-play's V2 table after the legacy one; the wrapper clears it every block */
+export const V2_SCAN = DIAG + 0x740;
 export const VOICE_ROW = 24; // words of a registry row
 export const RING_A = 0x200a0000; // stand-ins for the two reply records (the breadcrumbs are written into both)
 export const RING_B = 0x200a2000;
@@ -93,6 +95,9 @@ export function coreExterns(): Record<string, number> {
     _dv_rec: REC_PTRS,
     _dv_mask: MASK,
     _dv_g: GUARD,
+    // optional (module.toml `optional`): patchkit links it as 0 without core/instrument-play, and 0 keeps the legacy table alone
+    _instrument_voice_rows: 0,
+    _dv_v2_scan: V2_SCAN,
     ...ADAPTER,
   };
 }
@@ -123,14 +128,14 @@ interface VoiceBuild {
 
 const builds = new Map<string, VoiceBuild>();
 
-function build(defines: readonly string[], r: VoiceRoutine): VoiceBuild {
-  const key = JSON.stringify([[...defines].sort(), r.text, r.base, r.symbol]);
+function build(defines: readonly string[], r: VoiceRoutine, externs: Record<string, number> = {}): VoiceBuild {
+  const key = JSON.stringify([[...defines].sort(), r.text, r.base, r.symbol, Object.entries(externs).sort()]);
   let b = builds.get(key);
   if (!b) {
     const moddir = path.resolve(path.dirname(VOICE_CORE), '../..');
     const text = applyConditionals(readFileSync(VOICE_CORE, 'utf8'), [...defines]);
     const coreObj = assemble(expandIncludes(text, [...sharcIncludeDirs(moddir), path.dirname(VOICE_CORE)]));
-    const core = link(coreObj, CORE_BASE, coreExterns());
+    const core = link(coreObj, CORE_BASE, { ...coreExterns(), ...externs });
     const routine = link(assemble(r.text), r.base, r.externs(core.symbols));
     b = { core, routine, renderPc: routine.symbols[r.symbol]! };
     builds.set(key, b);
@@ -155,6 +160,8 @@ export interface VoiceOptions {
   defines?: readonly string[];
   routine?: VoiceRoutine;
   open?: RigOpener;
+  /** wrapper externs that replace those of `coreExterns` (e.g. `_instrument_voice_rows`, the trusted V2 table of core/instrument-play) */
+  externs?: Record<string, number>;
 }
 
 const READ_REGS = [
@@ -202,12 +209,17 @@ export class VoiceRig {
 
   constructor(o: VoiceOptions = {}) {
     this.ctxRng = new PyRandom(o.seed ?? 0xd1617);
-    this.b = build(o.defines ?? [], o.routine ?? sineRoutine());
+    this.b = build(o.defines ?? [], o.routine ?? sineRoutine(), o.externs);
     this.coreSymbols = this.b.core.symbols;
     this.coreChecked = this.b.core.checked ?? 0;
     this.routineChecked = this.b.routine.checked ?? 0;
     this.open = o.open ?? realRig;
     this.reset();
+  }
+
+  /** The entry of the routine the wrapper calls (what a registry row holds for it). */
+  get renderPc(): number {
+    return this.b.renderPc;
   }
 
   /** The wrapper with the raw sine routine. */
@@ -232,6 +244,7 @@ export class VoiceRig {
     zero(DIAG, 32);
     zero(GUARD, 32);
     zero(ADAPTER._dv_st!, 16); // no track has written R (machine contract 1.2)
+    zero(V2_SCAN, 1);
     [1, 2, 4, 5, 255, 255, 255, 255].forEach((w, k) => this.dm.set(nw(ADAPTER._dv_slots!) + k, w)); // the DT2 knob positions
   }
 

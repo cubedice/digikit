@@ -637,3 +637,54 @@ describe('core/dsp-voice raw sine routine on the rig', () => {
     expect(out.instructions).toBeLessThan(6);
   });
 });
+
+/** The trusted V2 table of core/instrument-play (`_instrument_voice_rows`, rows of the legacy form) past the legacy table's 17 rows. */
+const V2 = TABLE + 0x800;
+
+function v2Rig(): VoiceRig {
+  const rig = VoiceRig.sine({ externs: { _instrument_voice_rows: V2 } });
+  for (let k = 0; k < 2 * 24; k++) rig.dm.set(nw(V2) + k, 0);
+  return rig;
+}
+
+describe('core/dsp-voice with the V2 instrument table on the rig', () => {
+  it.each([false, true])('the V2 table keeps the legacy priority (legacy row of the same type: %s)', async (legacyMatch) => {
+    const rig = v2Rig();
+    const kind = legacyMatch ? TYPE : 20;
+    rig.dm.set(nw(V2), kind);
+    // an invalid V2 entry must not preempt the valid legacy row of the same type
+    rig.dm.set(nw(V2) + 1, legacyMatch ? 0xdead : rig.renderPc);
+    rig.setType(0, kind);
+    const out = await rig.call(0);
+    expect(stopsAt(out, RETURN_SW), out.halt).toBe(true);
+    contextIntact(out);
+  });
+
+  it.each([0, 10, 15])('a V2 row is reached on track %i without a legacy row', async (track) => {
+    // voice 0 builds the mask with the V2 table too, so an admitted instrument sounds on any track, not only on the voice that always
+    // takes the full path
+    const rig = v2Rig();
+    rig.dm.set(nw(TABLE), 0); // no legacy row: the cheap path applies to every other voice
+    rig.dm.set(nw(V2), TYPE);
+    rig.dm.set(nw(V2) + 1, rig.renderPc);
+    rig.setType(track, TYPE);
+    rig.setNote(track, 60);
+    const v = 2 * track;
+    rig.recWord(v, 0x1b8, 1);
+    const reads: Record<string, [number, number]> = { mask: [nw(MASK), 1] };
+    const beat = await rig.call(0, { reads, mask: 0 });
+    expect(beat.reads.mask![0]).toBe(1 << TYPE);
+    const out = await rig.call(v, { mask: beat.reads.mask![0]! });
+    expect(stopsAt(out, RETURN_SW), out.halt).toBe(true);
+    expect(any(out.reads.out)).toBe(true);
+    if (track) {
+      // the mask of the legacy table alone skips this voice
+      const old = await rig.call(v, { mask: 0 });
+      expect(stopsAt(old, STOCK_BP), old.halt).toBe(true);
+    }
+    // an unpublished V2 row (type 0) leaves the mask as the legacy table's
+    rig.dm.set(nw(V2), 0);
+    const empty = await rig.call(0, { reads, mask: 0 });
+    expect(empty.reads.mask![0]).toBe(0);
+  });
+});
