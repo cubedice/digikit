@@ -63,7 +63,7 @@ void pu_context(PhraseUi *s, uint32_t active, uint32_t generation)
 {
     if (generation != s->generation) {
         pu_leave(s);
-        s->page = 0;
+        s->page = PH_PAGE_DELAY;
         s->generation = generation;
     }
     if (!active && s->active)
@@ -210,7 +210,7 @@ uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
         return PU_OWN;
     }
     if ((key == PU_UP || key == PU_DOWN) && first && !modified(s)) {
-        s->page = (s->page + (key == PU_DOWN ? 1 : 3)) & 3;
+        s->page = (s->page + (key == PU_DOWN ? 1 : PH_PAGES - 1)) % PH_PAGES;
         mark(s->owned, key, 1);
         for (uint32_t i = 0; i < 9; ++i)
             s->detent[i] = 0;
@@ -225,11 +225,13 @@ uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
 }
 uint32_t pu_parameter(uint32_t page, uint32_t encoder)
 {
-    static const uint8_t mapping[4][8] = {{0, 1, 2, 3, 4, 5, 255, 255},
-                                          {6, 7, 8, 9, 10, 11, 255, 255},
-                                          {12, 13, 14, 15, 255, 255, 255, 255},
-                                          {16, 17, 18, 19, 255, 255, 255, 255}};
-    return page < 4 && encoder < 8 ? mapping[page][encoder] : 255;
+    static const uint8_t mapping[PH_PAGES][8] = {
+        {0, 1, 2, 3, 4, 5, 255, 255},
+        {6, 7, 8, 9, 10, 11, 255, 255},
+        {12, 13, 14, 15, 255, 255, 255, 255},
+        {16, 17, 18, 19, 255, 255, 255, 255},
+        {PH_P_TIME, PH_P_FDBK, PH_P_MODE, PH_P_SKEW, PH_P_WOW, PH_P_DRIV, PH_P_BAL, 255}};
+    return page < PH_PAGES && encoder < 8 ? mapping[page][encoder] : 255;
 }
 static uint32_t maximum(uint32_t p)
 {
@@ -245,6 +247,10 @@ static uint32_t maximum(uint32_t p)
         return 96;
     if (p == PH_P_SHAP)
         return 3;
+    if (p == PH_P_MODE)
+        return 2;
+    if (p == PH_P_TIME)
+        return PH_TIME_CHOICES - 1;
     return 127;
 }
 uint32_t pu_turn(PhraseUi *s, uint32_t encoder, int32_t delta)
@@ -274,7 +280,8 @@ uint32_t pu_turn(PhraseUi *s, uint32_t encoder, int32_t delta)
     }
     if (p >= PH_PARAM_COUNT)
         return PU_OWN;
-    if ((p == PH_P_REC || p == PH_P_FROM || p == PH_P_RATE || p == PH_P_SHAP || p == PH_P_MASK)) {
+    if ((p == PH_P_REC || p == PH_P_FROM || p == PH_P_RATE || p == PH_P_SHAP || p == PH_P_MASK ||
+         p == PH_P_TIME || p == PH_P_MODE)) {
         /* A long accelerated event never skips several discrete choices. */
         if (delta > 4)
             delta = 4;
@@ -331,6 +338,29 @@ void pu_format(char out[16], uint32_t p, uint32_t raw)
     static const char *rates[] = {"OFF",  "1/1",  "1/2",  "1/4",   "1/8",   "1/16", "1/32",
                                   "1/64", "1/4T", "1/8T", "1/16T", "1/32T", "1/64T"};
     static const char *shapes[] = {"SOFT", "TRI", "RISE", "FALL"};
+    static const char *times[PH_TIME_CHOICES] = {"1/32", "1/16T", "1/32.", "1/16", "1/8T", "1/16.",
+                                                 "1/8",  "1/4T",  "1/8.",  "1/4",  "1/2T", "1/4.",
+                                                 "1/2",  "1/2.",  "1BAR",  "2BAR"};
+    static const char *modes[] = {"FWD", "REV", "HOLD"};
+    if (p == PH_P_TIME) {
+        copy(out, times[raw < PH_TIME_CHOICES ? raw : 0]);
+        return;
+    }
+    if (p == PH_P_MODE) {
+        copy(out, modes[raw <= 2 ? raw : 0]);
+        return;
+    }
+    if (p == PH_P_SKEW || p == PH_P_BAL) {
+        /* Both sides alike in the middle; SKEW names the longer side, BAL the louder part. */
+        if (raw == 64) {
+            copy(out, p == PH_P_SKEW ? "EVEN" : "BOTH");
+            return;
+        }
+        char *s = out;
+        *s++ = p == PH_P_SKEW ? (raw < 64 ? 'L' : 'R') : (raw < 64 ? 'D' : 'G');
+        number(s, raw < 64 ? 64 - raw : raw - 64);
+        return;
+    }
     if (p == PH_P_REC) {
         copy(out, raw ? "ON" : "OFF");
         return;
@@ -398,7 +428,8 @@ void pu_format(char out[16], uint32_t p, uint32_t raw)
         return;
     }
     if (p == PH_P_STRT || p == PH_P_LEN || p == PH_P_SPRY || p == PH_P_JITR || p == PH_P_POS ||
-        p == PH_P_REVR || p == PH_P_WDTH || p == PH_P_DIFF || p == PH_P_FADE) {
+        p == PH_P_REVR || p == PH_P_WDTH || p == PH_P_DIFF || p == PH_P_FADE || p == PH_P_FDBK ||
+        p == PH_P_WOW || p == PH_P_DRIV) {
         copy(number(out, (raw * 100 + 63) / 127), "%");
         return;
     }

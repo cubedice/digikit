@@ -38,6 +38,10 @@ static u32 limit(u32 p)
 {
     if (p == PH_P_REC || p == PH_P_FROM)
         return 1;
+    if (p == PH_P_MODE)
+        return 2;
+    if (p == PH_P_TIME)
+        return PH_TIME_CHOICES - 1;
     if (p == PH_P_TAKE || p == PH_P_CUE || p == PH_P_SCAN)
         return 128;
     if (p == PH_P_STRT)
@@ -65,8 +69,13 @@ static void defaults(void)
     raw[PH_P_DEC] = 40;
     raw[PH_P_LPF] = 127;
     raw[PH_P_MASK] = 1;
-    for (u32 i = PH_P_GAIN0; i < PH_PARAM_COUNT; ++i)
+    for (u32 i = PH_P_GAIN0; i <= PH_P_EXT_GAIN; ++i)
         raw[i] = 127;
+    /* The tape: a dotted eighth, a third of the way up the feedback, both sides alike, head and grains both full. */
+    raw[PH_P_TIME] = 8;
+    raw[PH_P_FDBK] = 45;
+    raw[PH_P_SKEW] = 64;
+    raw[PH_P_BAL] = 64;
 }
 static void save(void)
 {
@@ -75,7 +84,7 @@ static void save(void)
     uint8_t value[4 + PH_PARAM_COUNT * 4];
     value[0] = 'P';
     value[1] = 'H';
-    value[2] = 1;
+    value[2] = 2;
     value[3] = PH_PARAM_COUNT;
     for (u32 i = 0; i < PH_PARAM_COUNT; ++i) {
         u32 v = (i == PH_P_REC || i == PH_P_FADE) ? 0 : raw[i];
@@ -89,7 +98,7 @@ static void load(void)
     uint8_t value[4 + PH_PARAM_COUNT * 4];
     defaults();
     if (dkrt_settings_get(key, value, sizeof(value)) != (int)sizeof(value) || value[0] != 'P' ||
-        value[1] != 'H' || value[2] != 1 || value[3] != PH_PARAM_COUNT)
+        value[1] != 'H' || value[2] != 2 || value[3] != PH_PARAM_COUNT)
         return;
     for (u32 i = 0; i < PH_PARAM_COUNT; ++i) {
         u32 v = 0;
@@ -109,6 +118,25 @@ static float pitch(u32 n)
     for (u32 i = 0; i < n; ++i)
         v *= 1.02930223664f;
     return v;
+}
+/* A 0..127 control as a signed ten-bit field of the packed tape word. CENTRED: 64 is 0 and the ends are -512 and 511
+ * (the ends switch a side off exactly); else 0..127 is 0..508. */
+static u32 field(u32 value, u32 centred)
+{
+    int v = centred ? (value >= 127 ? 511 : ((int)value - 64) * 8) : (int)value * 4;
+    return (u32)v & 0x3ffu;
+}
+/* The delay in frames for the TIME choice at TEMPO (BPM * 120): ticks * 3 600 000 / tempo, in integers (this runs
+ * in the block interrupt). Without a tempo the last value stays. The engine bounds it to its tape. */
+static u32 tape_time = 24000;
+static u32 tape_frames(u32 tempo)
+{
+    static const u16 ticks[PH_TIME_CHOICES] = {12, 16, 18,  24,  32,  36,  48,  64,
+                                               72, 96, 128, 144, 192, 288, 384, 768};
+    u32 choice = raw[PH_P_TIME];
+    if (tempo && choice < PH_TIME_CHOICES)
+        tape_time = (u32)ticks[choice] * 3600000u / tempo;
+    return tape_time;
 }
 static void publish(void)
 {
@@ -160,6 +188,12 @@ static void publish(void)
     float hp = (float)raw[PH_P_HPF] / 127.0f, lp = (float)raw[PH_P_LPF] / 127.0f;
     W(PH_C_HPF_COEFF, bits(hp * hp * 0.55f));
     W(PH_C_LPF_COEFF, bits(lp * lp * 0.99f + 0.01f));
+    /* The tape head. TIME is filled in per block from the tempo (tape_frames). */
+    W(PH_C_TAPE_FEEDBACK, bits((float)raw[PH_P_FDBK] * (1.1f / 127.0f)));
+    W(PH_C_TAPE_PACK, (raw[PH_P_MODE] == 1 ? PH_TAPE_FLIP : 0) |
+                          (raw[PH_P_MODE] == 2 ? PH_TAPE_HOLD : 0) | field(raw[PH_P_SKEW], 1) << 2 |
+                          field(raw[PH_P_WOW], 0) << 12 | field(raw[PH_P_BAL], 1) << 22);
+    W(PH_C_DRIVE, bits((float)raw[PH_P_DRIV] / 127.0f));
     W(PH_C_OWNER_ROW, row_index);
     W(PH_C_OWNER_GENERATION, generation);
 #undef W
@@ -238,7 +272,9 @@ int32_t dkrt_phrase_action(u32 a)
     action = a;
     ++command;
     raw[PH_P_REC] = a == PH_ACTION_ARM;
-    if (a == PH_ACTION_CLEAR) {
+    /* CLEAR drops the held phrase; MIX stays, because the effect runs without one. After a routing fault it still
+     * takes MIX down and cancels a retry, as every safety path does. */
+    if (a == PH_ACTION_CLEAR && (route_fault_seen || route_rearm_pending)) {
         raw[PH_P_FADE] = 0;
         route_rearm_pending = 0;
     }
@@ -252,15 +288,15 @@ int32_t dkrt_phrase_set(u32 i, u32 value)
     if (i == PH_P_REC)
         return dkrt_phrase_action(value ? PH_ACTION_ARM : PH_ACTION_CANCEL);
     u32 st = status[PH_S_STATE / 4];
-    if ((i == PH_P_MASK || i >= PH_P_GAIN0) &&
-        (raw[PH_P_REC] || st == PH_ARMED || st == PH_RECORDING))
+    u32 input = i == PH_P_MASK || (i >= PH_P_GAIN0 && i <= PH_P_EXT_GAIN);
+    if (input && (raw[PH_P_REC] || st == PH_ARMED || st == PH_RECORDING))
         return -2;
     if (value > limit(i))
         value = limit(i);
     if (i == PH_P_LEN && !value)
         value = 1;
-    if (i == PH_P_FADE && value &&
-        (!reply_frame || frame - reply_frame >= 750 || !status[PH_S_HELD_FRAMES / 4]))
+    /* MIX needs a live engine, not a held phrase: the effect is on whenever it is loaded. */
+    if (i == PH_P_FADE && value && (!reply_frame || frame - reply_frame >= 750))
         value = 0;
     if (raw[i] == value)
         return 0;
@@ -276,7 +312,7 @@ int32_t dkrt_phrase_set(u32 i, u32 value)
         }
     }
     raw[i] = value;
-    if (i == PH_P_MASK || i >= PH_P_GAIN0)
+    if (input)
         ++selection;
     publish();
     if (i != PH_P_FADE)
@@ -448,6 +484,7 @@ static void timing(u32 *c, const u32 *p, u32 period, u32 origin)
     c[PH_C_LENGTH / 4] = p[8];
     c[PH_C_STEP_SEQUENCE / 4] = p[3];
     c[PH_C_TEMPO_120 / 4] = tempo;
+    c[PH_C_TAPE_TIME / 4] = tape_frames(tempo);
 }
 void phrase_write_frame(u32 queue, u32 entry, const volatile u16 *rec)
 {

@@ -13,7 +13,28 @@ _prism_grain:
 _pg_clear_output: DM(I0,M6) = R0;
     R0 = DM(PS_HELD_FRAMES,I5);
     R0 = PASS R0;
-    IF EQ RTS;
+    IF NE JUMP _pg_held;
+    // No phrase: the grains read the tape. Their window is its newest part, two seconds at most, ending one block
+    // behind the write position (PS_TEMP6, in frames; 0 when there is too little tape for a grain).
+    R0 = 0;
+    DM(PS_TEMP6,I5) = R0;
+    R0 = DM(PS_ROLL_BANK,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _pg_voices;
+    R0 = DM(PS_VALID_BLOCKS,I5);
+    R0 = LSHIFT R0 BY 5;
+    R1 = 64;
+    R0 = R0 - R1;
+    R1 = 96000;
+    COMP(R0,R1);
+    IF GT R0 = PASS R1;
+    R1 = 256;
+    COMP(R0,R1);
+    IF LT JUMP _pg_voices;
+    DM(PS_TEMP6,I5) = R0;
+    CALL _pg_schedule;
+    JUMP _pg_voices;
+_pg_held:
     // Crop proportions are live, bounded to the committed take. Preserve a
     // safe minimum; never make an interpolated read outside the crop.
     F8 = FLOAT R0;
@@ -107,6 +128,7 @@ _pg_scan_store:
     DM(PS_SCAN,I5) = R2;
     CALL _pg_schedule;
 
+_pg_voices:
     R0 = I5;
     R1 = PS_GRAINS * 4;
     R2 = R0 + R1;
@@ -210,7 +232,8 @@ _pg_launch:
     DM(PG_BANK,I4) = R0;
     R0 = DM(PS_HELD_START,I5);
     DM(PG_START,I4) = R0;
-    R0 = DM(PS_HELD_FRAMES,I5);
+    // PG_FRAMES is the window of a grain on the tape. A grain of the held phrase follows the live crop: no window.
+    R0 = 0;
     DM(PG_FRAMES,I4) = R0;
     R0 = DM(PC_SHAPE,I5);
     R1 = 3;
@@ -244,6 +267,9 @@ _pg_reverse_done:
     F1 = F0 * F3;
     F0 = DM(PC_POS,I5);
     F2 = F0 + F1;
+    R0 = DM(PS_HELD_FRAMES,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _pg_place_tape;
     R0 = DM(PS_CROP_LENGTH,I5);
     F1 = FLOAT R0;
     F0 = F2 * F1;
@@ -251,6 +277,64 @@ _pg_reverse_done:
     F3 = F0 + F2;
     DM(PG_PHASE,I4) = R3;
     DM(PG_ORIGIN,I4) = R3;
+    JUMP _pg_placed;
+_pg_place_tape:
+    // On the tape POS runs from the newest audio (0) to the oldest of the window (1). The grain's whole read, its
+    // length times its speed, lies inside the window, so it reads only tape that was written before it started.
+    R0 = 0;
+    F2 = MAX(F2,F0);
+    R0 = 0x3f800000;
+    F2 = MIN(F2,F0);
+    R0 = DM(PG_DURATION,I4);
+    F0 = FLOAT R0;
+    F1 = DM(PG_RATE,I4);
+    F3 = -F1;
+    F1 = MAX(F1,F3);
+    F0 = F0 * F1;
+    R1 = 0x40800000;
+    F0 = F0 + F1; // the read span
+    R1 = DM(PS_TEMP6,I5);
+    F1 = FLOAT R1; // the window
+    F3 = F1 - F0;
+    R4 = 0;
+    COMP(F3,F4);
+    IF GT JUMP _pg_tape_fits;
+    // The window is shorter than this grain's read: no grain this time.
+    R0 = 0;
+    DM(PG_REMAIN,I4) = R0;
+    RTS;
+_pg_tape_fits:
+    R4 = 0x3f800000;
+    F4 = F4 - F2;
+    F3 = F3 * F4;
+    F4 = DM(PG_RATE,I4);
+    R5 = 0;
+    COMP(F4,F5);
+    IF GE JUMP _pg_tape_forward;
+    // A reverse grain starts at the far end of its read.
+    F3 = F3 + F0;
+    R5 = 0x3f800000;
+    F4 = F1 - F5;
+    F3 = MIN(F3,F4);
+_pg_tape_forward:
+    DM(PG_PHASE,I4) = R3;
+    DM(PG_ORIGIN,I4) = R3;
+    R0 = DM(PS_ROLL_BANK,I5);
+    DM(PG_BANK,I4) = R0;
+    R0 = DM(PS_TEMP6,I5);
+    DM(PG_FRAMES,I4) = R0;
+    R1 = DM(PS_WRITE_BLOCK,I5);
+    R1 = LSHIFT R1 BY 5;
+    R2 = 32;
+    R1 = R1 - R2;
+    R1 = R1 - R0;
+    R1 = PASS R1;
+    IF GE JUMP _pg_tape_start;
+    R2 = DM(PS_CAPACITY,I5);
+    R1 = R1 + R2;
+_pg_tape_start:
+    DM(PG_START,I4) = R1;
+_pg_placed:
     CALL _pg_random;
     F1 = DM(PC_WIDTH,I5);
     F2 = F0 * F1;
@@ -298,6 +382,13 @@ _pg_random:
     RTS;
 
 _pg_render:
+    // A grain on the tape reads its own window; a grain of a phrase the live crop of that phrase.
+    R1 = DM(PG_FRAMES,I4);
+    R1 = PASS R1;
+    IF EQ JUMP _pg_phrase_crop;
+    R0 = 0;
+    JUMP _pg_crop;
+_pg_phrase_crop:
     R0 = DM(PG_OLD,I4);
     R0 = PASS R0;
     IF NE JUMP _pg_old_crop;

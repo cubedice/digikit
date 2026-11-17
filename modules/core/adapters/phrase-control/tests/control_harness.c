@@ -283,7 +283,7 @@ int main(void)
     u32 s[32] = {0}, out[32] = {0};
     u16 wire[0xabc / 2] = {0};
     s[0] = PH_STATUS_MAGIC;
-    s[1] = 1;
+    s[1] = PH_VERSION;
     s[PH_S_HEARTBEAT / 4] = 77;
     s[PH_S_SEQ_END / 4] = 77;
     s[PH_S_OWNER_GENERATION / 4] = generation;

@@ -77,6 +77,7 @@ _pc_selection_only:
     COMP(R0,R1);
     IF EQ JUMP _pc_clock;
 _pc_reset_history:
+    CALL _pc_retire_tape;
     R0 = DM(PC_SELECTION,I5);
     DM(PS_SELECTION,I5) = R0;
     R0 = DM(PC_EPOCH,I5);
@@ -474,6 +475,30 @@ _pc_first_other:
     DM(PS_HANDOFF,I5) = R0;
     RTS;
 
+// The tape starts again from its first block: the grains that read it fade out over their next 32 samples instead of
+// reading a window the new tape is being written into. Uses R0, R1, R4 and I3.
+_pc_retire_tape:
+    R0 = I5;
+    R1 = PS_GRAINS * 4;
+    R0 = R0 + R1;
+    I3 = R0;
+    R4 = PRISM_GRAINS;
+_pc_retire_tape_next:
+    R0 = DM(PG_FRAMES,I3);
+    R0 = PASS R0;
+    IF EQ JUMP _pc_retire_tape_skip;
+    R0 = DM(PG_REMAIN,I3);
+    R1 = 32;
+    COMP(R0,R1);
+    IF LE JUMP _pc_retire_tape_skip;
+    DM(PG_REMAIN,I3) = R1;
+    DM(PG_RETIRE,I3) = R1;
+_pc_retire_tape_skip:
+    MODIFY(I3,PRISM_GRAIN_WORDS) (NW);
+    R4 = R4 - 1;
+    IF GT JUMP _pc_retire_tape_next;
+    RTS;
+
 _pc_write:
     R0 = DM(PS_ROLL_BANK,I5);
     R0 = PASS R0;
@@ -481,6 +506,15 @@ _pc_write:
     R0 = DM(PC_MASK,I5);
     R0 = PASS R0;
     IF EQ RTS;
+    // HOLD stops the tape: the head loops what is on it (tape.s). A take in progress keeps writing.
+    R0 = DM(PT_MODE,I5);
+    R1 = PT_HOLD;
+    COMP(R0,R1);
+    IF NE JUMP _pc_write_run;
+    R0 = DM(PS_MODE,I5);
+    R0 = PASS R0;
+    IF EQ RTS;
+_pc_write_run:
     // Record phase before writing this block. Stereo planes and the metadata
     // tail are disjoint; every sample we later expose was written here.
     R0 = DM(PS_WRITE_BLOCK,I5);
@@ -500,11 +534,20 @@ _pc_write:
     R2 = R3 + R1;
     I2 = R2;
     I0 = DM(PS_INPUT,I5);
+    // The tape takes the input and the head's feedback of this block (read from older tape, so never from these frames).
+    R0 = I5;
+    R1 = PT_FEEDBACK * 4;
+    R0 = R0 + R1;
+    I3 = R0;
     LCNTR = 32, DO _pc_write_left UNTIL LCE;
-        R0 = DM(I0,M6);
+        F0 = DM(I0,M6);
+        F1 = DM(I3,M6);
+        F0 = F0 + F1;
 _pc_write_left: DM(I1,M6) = R0;
     LCNTR = 32, DO _pc_write_right UNTIL LCE;
-        R0 = DM(I0,M6);
+        F0 = DM(I0,M6);
+        F1 = DM(I3,M6);
+        F0 = F0 + F1;
 _pc_write_right: DM(I2,M6) = R0;
     R0 = DM(PS_WRITE_BLOCK,I5);
     R1 = R0 + 1;

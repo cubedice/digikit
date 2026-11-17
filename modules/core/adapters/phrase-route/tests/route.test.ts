@@ -362,9 +362,9 @@ test('full FADE replaces held sources while capture and original USB buffers rem
   near(samples('full', 'original').slice(64, 128), 0.5, 0);
   near(samples('full', 'return'), 1.125, 0);
 });
-test.each([0, 0.1, 0.5, 0.9, 1])('FADE %s has the equal-power curve and preserves unselected sources', (fade) => {
-  near(samples(`fade${fade}`, 'mirror').slice(0, 64), Math.cos((Math.PI * fade) / 2));
-  near(samples(`fade${fade}`, 'wet'), Math.sin((Math.PI * fade) / 2));
+test.each([0, 0.1, 0.5, 0.9, 1])('MIX %s: the wet rises over the first half, the sources fall over the second', (fade) => {
+  near(samples(`fade${fade}`, 'mirror').slice(0, 64), Math.sin((Math.PI * Math.min(1, 2 - 2 * fade)) / 2));
+  near(samples(`fade${fade}`, 'wet'), Math.sin((Math.PI * Math.min(1, 2 * fade)) / 2));
   near(samples(`fade${fade}`, 'mirror').slice(64, 128), 0.75, 0);
 });
 test('pending source selection never takes over the held recording’s dry ownership', () => {
@@ -375,7 +375,13 @@ test('pending source selection never takes over the held recording’s dry owner
 test.each([0, 0.25, 0.5, 1])('handoff %s restores old-only sources and attenuates new-only sources', (mix) => {
   [mix, 0, 1 - mix, 1].forEach((gain, i) => near(samples(`handoff${mix}`, 'mirror').slice(i * 64, (i + 1) * 64), gain));
 });
-test.each(['fault1', 'fault2', 'fault3', 'fault4', 'disabled', 'invalid', 'unloaded', 'empty'])(
+test('without a held phrase the effect stays on: the sources its tape records give way, the wet passes', () => {
+  near(samples('empty', 'mirror').slice(0, 64), 0, 0);
+  near(samples('empty', 'wet'), 1);
+  expect(words('empty', 'actualFade')).toEqual([0x3f800000]);
+  expect(words('empty', 'routeFault')).toEqual([0]);
+});
+test.each(['fault1', 'fault2', 'fault3', 'fault4', 'disabled', 'invalid', 'unloaded'])(
   '%s fails open to LIVE independently of the module',
   (name) => {
     near(samples(name, 'mirror').slice(0, 64), 0.25, 0);

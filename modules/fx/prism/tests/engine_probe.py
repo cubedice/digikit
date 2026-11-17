@@ -19,7 +19,7 @@ from tools.sharc_dev.sharc_core.addressing import byte_to_normal_word
 HERE = Path(__file__).parent
 SOURCES = tuple(
     HERE.parent / "src/dsp" / name
-    for name in ("prism.s", "capture.s", "grain.s", "space.s")
+    for name in ("prism.s", "capture.s", "tape.s", "grain.s", "space.s")
 )
 BANKS = (0x9AA2B9C8, 0x9B22B9C8)
 FRAMES = 512
@@ -43,7 +43,7 @@ class Probe(FxRig):
         )
         self.phase = self.beat = self.sequence = self.command = 0
         self.control = [0] * 64
-        self.control[0:3] = [0x50484331, 1, 256]
+        self.control[0:3] = [0x50484331, 2, 256]
         self.control[4] = self.control[8] = 1
         self.control[10:14] = [1, 1, 1, 7]
         self.control[17] = 16
@@ -55,6 +55,8 @@ class Probe(FxRig):
         self.control[36] = f2w(1)
         self.control[56] = 7
         self.control[57] = 14400
+        # The tape head is off unless a case turns the balance (word 60, bits 22..31) away from "grains only".
+        self.control[60] = 511 << 22
         for bank in BANKS:
             word = external_word(bank)
             for index in range(FRAMES * 2):
@@ -181,6 +183,8 @@ class Probe(FxRig):
             "faults": self.row_word(0, NFAULT),
             "diagnostics": diagnostics,
             "outputBits": [f2w(value) for value in output],
+            "tape": [self.state_word(0, 1296 + index) for index in range(23)],
+            "head": [w2f(self.state_word(0, 1328 + index)) for index in range(64)],
             "grains": [
                 [self.state_word(0, 128 + 16 * slot + index) for index in range(16)]
                 for slot in range(8)

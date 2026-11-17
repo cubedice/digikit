@@ -6,7 +6,7 @@ category = "fx"
 type = "fx"
 author = "digikit"
 status = "experimental"
-summary = "Capture selected sources and transform a held stereo phrase into clocked grains."
+summary = "Tape delay and grains on selected sources, with an optional recorded phrase."
 dynamic = true
 ports = ["dt2-1.17"]
 # The DSP imports the phrase control (core/phrase-control), its status mailbox and the two-bank lease of core/loop-storage; the
@@ -29,7 +29,7 @@ place = "cf.expansion"
 
 [[object]]
 path = "build/prism-dsp.dko.json"
-sources = ["src/dsp/prism.s", "src/dsp/capture.s", "src/dsp/grain.s", "src/dsp/space.s"]
+sources = ["src/dsp/prism.s", "src/dsp/capture.s", "src/dsp/tape.s", "src/dsp/grain.s", "src/dsp/space.s"]
 place = "dsp.l2"
 devices = ["dt2"]
 

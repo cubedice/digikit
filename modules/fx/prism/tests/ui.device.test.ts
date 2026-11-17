@@ -29,7 +29,7 @@ describeOn('dt2', 'DTII PRISM native performance pages', () => {
     requireAudible: false,
   });
 
-  test('one global entry contains four pages, remembers position and owns the input overlay', async () => {
+  test('one global entry contains five pages, remembers position and owns the input overlay', async () => {
     const { fixture, plan, artifacts } = context;
     const runtime = fixture.runtime;
     const state = await inspectFxBoot(runtime, plan, ['digikit/prism'], artifacts, 'boot');
@@ -52,7 +52,9 @@ describeOn('dt2', 'DTII PRISM native performance pages', () => {
       const diagnostic = await Promise.all(Array.from({ length: 8 }, (_, i) => word(session, binding + 4 * i)));
       expect(active, `phrase owns the selected FX page; binding=${JSON.stringify(diagnostic)}`).not.toBe(0);
     }
-    expect(await page()).toBe(0);
+    expect(await page(), 'a fresh owner shows DELAY').toBe(4);
+    await tap(session, 'DOWN', 80);
+    expect(await page(), 'LOOP follows DELAY').toBe(0);
     const nativePage = await word(session, debug + 28);
     const pictures: string[] = [];
     for (const [i, name] of ['loop', 'grain', 'move', 'space'].entries()) {
@@ -87,9 +89,9 @@ describeOn('dt2', 'DTII PRISM native performance pages', () => {
     }
     await tap(session, 'DOWN', 80);
     const wrappedPage = await page();
-    if (wrappedPage !== 0) {
+    if (wrappedPage !== 4) {
       await shot(session, artifacts, 'after-values-navigation');
-      expect(wrappedPage, 'local DOWN after held-FX wraps to LOOP').toBe(0);
+      expect(wrappedPage, 'local DOWN after held-FX goes on to DELAY').toBe(4);
     }
     await tap(session, 'UP', 80);
     expect(await page()).toBe(3);
