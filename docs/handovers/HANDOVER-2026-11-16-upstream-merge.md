@@ -96,6 +96,33 @@ Run again at 5f6338f1 with nothing else on the machine, all passing: the static 
 task) and `core/sdhc-large:test-device` on both devices. `tools:python-tests` was not run again as a task: its five tests of
 the list above passed by name. The full gate was not repeated.
 
+## Upstream 257a3770 (2026-11-17): tried, not merged
+
+Upstream main moved 202 commits past 839a43e1 (the R12 batch: R12 prep, R12-5 `fx.dks`, R12-6 `machines.dks`, R12-7, the
+T2 test lanes, the fixture consolidation). A trial merge into `integrate/upstream-r12` gave 17 conflicts and was aborted; the
+branch is unchanged. All from one read of upstream's tree [D]:
+
+- **Neither blocker is on upstream main.** The lifecycle hooks (`module_begin`, `module_commit`; RS-C) and the DSP section of
+  a service (R12-8) are built on upstream branches (`rs/core-leftovers`, `r12-8/slice`) and wait, with B1, for one shared
+  device gate (upstream's `HANDOVER-2026-11-17-late.md`). The service crate and the installable adapters stay blocked.
+- **The fork's hooks sit in code that moved.** The machine and effect hooks left the image adapters for service files that
+  the runtime loads from the card (`modules/core/services/machines/dks/src/hooks-dt2.s`, `services/fx/dks/src/hooks.rs`);
+  they reach the image through the words of `machines_info` and the info table. Three of them carry fork code:
+  `mf_typearg` (the call of `instrument_mod_param`, CANOPY's modulation destinations), `mf_srcpage` (the SRC pages of
+  `src-pages.c`) and `fxp_graph` (the call of `loop_ui_paint`, Overloop's page). Each needs its image function as a table
+  word and the call written again in the service's routine; the service ABI hash changes.
+- **CANOPY and Overloop then need the service files.** A module with machine or page kinds gets a hard need on
+  `machines.dks`, and `fx.dks` loads only when a selected module needs it. Their cards, on the device and in about thirty
+  test files, must hold the bound services.
+- Upstream changed 33 files of the runtime's Rust, 24 of patchkit and 69 fixture files, and deleted 2451 lines of
+  `tools/patchkit`; 55 files changed on both sides merge without a textual conflict and are unproven.
+- The next upstream batch touches the same code again: B1 changes how every hook routine exits (`dk_tail`, `dk_exit`,
+  `dk_ret`), RS-C the loader's commit path, R12-8 splits `core/dsp-voice` and takes 64 bytes and a slot block of
+  `core/dsp-link` (the fork changed both adapters).
+
+Estimate: one to two days with the DT2 proofs of CANOPY and Overloop, and a part of it again after B1, RS-C and R12-8.
+Payoff now: the fork is current for the days until that batch lands; no item of the list above is unblocked.
+
 ## Not done, and why
 
 - **The instrument code as a service crate.** About 10 000 lines of `instrument_*` live in `dkrt-sdk` and the owner in the
