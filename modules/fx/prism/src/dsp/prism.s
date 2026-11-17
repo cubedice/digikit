@@ -6,6 +6,8 @@
 
 .SECTION/PM seg_pmco;
 .GLOBAL _prism_process;
+.EXTERN _prism_tape;
+.EXTERN _prism_mix;
 .EXTERN _prism_capture;
 .EXTERN _prism_grain;
 .EXTERN _prism_space;
@@ -69,6 +71,15 @@ _prism_finite_control:
     MODIFY(I3,1) (NW);
     R3 = R3 - 1;
     IF GT JUMP _prism_finite_control;
+    // The tape's float controls lie apart: feedback and drive (the time and the packed word are integers).
+    R0 = DM(PC_FDBK,I5);
+    R2 = R0 AND R1;
+    COMP(R2,R1);
+    IF EQ JUMP _prism_bad_link;
+    R0 = DM(PC_DRIVE,I5);
+    R2 = R0 AND R1;
+    COMP(R2,R1);
+    IF EQ JUMP _prism_bad_link;
 
     I4 = _phrase_storage_info;
     R0 = DM(PH_STORAGE_MAGIC_OFF / 4,I4);
@@ -76,7 +87,7 @@ _prism_finite_control:
     COMP(R0,R1);
     IF NE JUMP _prism_bad_storage;
     R0 = DM(PH_STORAGE_VERSION / 4,I4);
-    R1 = PH_VERSION;
+    R1 = PH_STORAGE_FORMAT;
     COMP(R0,R1);
     IF NE JUMP _prism_bad_storage;
     R6 = DM(PH_STORAGE_BANK0 / 4,I4);
@@ -177,8 +188,11 @@ _prism_initialize:
     R0 = DM(PC_PHASE,I5);
     DM(PS_PREV_PHASE,I5) = R0;
 _prism_run:
+    // The head reads the tape as the last block left it and makes this block's feedback; capture then writes the block.
+    CALL _prism_tape;
     CALL _prism_capture;
     CALL _prism_grain;
+    CALL _prism_mix;
     CALL _prism_space;
     CALL _prism_publish;
     R0 = DK_FX_OK;

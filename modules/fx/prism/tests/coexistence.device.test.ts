@@ -180,6 +180,10 @@ describeOn('dt2', 'DTII PRISM alongside CANOPY and Overloop', () => {
 
     await openPrismPage(session, planSymbol(plan, 'phrase_ui_debug'));
     expect(await cf('phrase_ui_debug', 6), 'PRISM owns its native page').not.toBe(0);
+    expect(await cf('phrase_ui_debug', 1), 'a fresh owner shows DELAY').toBe(4);
+    // This test is about the held phrase beside Overloop: the tape head off (BAL at the grains), then LOOP.
+    await setPhrase(45, 'ENC G', 127);
+    await tap(session, 'DOWN', 80);
     expect(await cf('phrase_ui_debug', 1)).toBe(0);
     await setPhrase(2, 'ENC C', 1);
     const secondAudio = await audio('canopy-to-prism', () => setPhrase(0, 'ENC A', 1, true));

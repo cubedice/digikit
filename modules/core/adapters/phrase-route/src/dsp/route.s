@@ -140,9 +140,11 @@ _phr_no_owner:
     R1 = DM(_phr_heartbeat);
     COMP(R0,R1);
     IF EQ JUMP _phr_fault;
+    // The effect is on whenever it is loaded. With a held phrase its sources are the phrase's (and, in a handoff, the
+    // last phrase's); without one they are the sources its tape is recording now.
     R0 = DM(_phrase_status + PH_S_HELD_FRAMES);
     R0 = PASS R0;
-    IF EQ JUMP _phr_live;
+    IF EQ JUMP _phr_tape_sources;
     R0 = DM(_phrase_status + PH_S_HELD_MASK);
     R1 = PH_INPUT_MASK;
     R0 = R0 AND R1;
@@ -150,6 +152,13 @@ _phr_no_owner:
     R0 = DM(_phrase_status + PH_S_OLD_MASK);
     R0 = R0 AND R1;
     DM(_phr_old_mask) = R0;
+    JUMP _phr_sources;
+_phr_tape_sources:
+    R0 = DM(_phr_mask);
+    DM(_phr_new_mask) = R0;
+    DM(_phr_old_mask) = R0;
+_phr_sources:
+    R0 = DM(_phr_old_mask);
     R1 = DM(_phr_new_mask);
     R0 = R0 OR R1;
     IF EQ JUMP _phr_live;
@@ -163,11 +172,17 @@ _phr_no_owner:
     CALL _phr_unit;
     DM(_phrase_status + PH_S_FADE) = R0;
     DM(_phr_fade) = R0;
+    // MIX: the wet comes up over the first half, where the sources stay whole; over the second half the sources give way.
+    R1 = 0x3f800000;
+    F0 = F0 + F0;
+    F0 = MIN(F0,F1);
     CALL _phr_sin;
     DM(_phr_wet_target) = R0;
     R0 = DM(_phr_fade);
     R1 = 0x3f800000;
     F0 = F1 - F0;
+    F0 = F0 + F0;
+    F0 = MIN(F0,F1);
     CALL _phr_sin;
     DM(_phr_dry_target) = R0;
     I0 = _fx_scratch;

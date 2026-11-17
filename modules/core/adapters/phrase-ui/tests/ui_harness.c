@@ -43,6 +43,9 @@ static void init(PhraseUi *s)
     for (uint32_t i = PH_P_GAIN0; i < PH_PARAM_COUNT; ++i)
         raw[i] = 100;
     pu_context(s, 33, 1);
+    /* A fresh owner shows DELAY; the cases of the four older pages start on LOOP. */
+    assert(s->page == PH_PAGE_DELAY);
+    s->page = PH_PAGE_LOOP;
     s->fresh = 1;
 }
 static void navigation(void)
@@ -50,7 +53,10 @@ static void navigation(void)
     PhraseUi s;
     init(&s);
     tap(&s, PU_UP);
+    assert(s.page == PH_PAGE_DELAY); /* the page before LOOP */
+    tap(&s, PU_UP);
     assert(s.page == 3);
+    tap(&s, PU_DOWN);
     tap(&s, PU_DOWN);
     assert(!s.page);
     tap(&s, PU_DOWN);
@@ -73,7 +79,7 @@ static void navigation(void)
     tap(&s, PU_NO);
     assert(!s.overlay && s.page == 1);
     pu_context(&s, 33, 2);
-    assert(!s.page);
+    assert(s.page == PH_PAGE_DELAY);
 }
 static void sources(void)
 {
@@ -328,7 +334,7 @@ static void rendering(void)
     PhraseUi s;
     init(&s);
     PhraseCanvas c = {0, draw_box, draw_text, draw_knob};
-    for (uint32_t page = 0; page < 4; ++page)
+    for (uint32_t page = 0; page < PH_PAGES; ++page)
         for (uint32_t st = 0; st <= PH_HANDOFF; ++st) {
             s.page = page;
             s.status[PH_S_STATE / 4] = st;

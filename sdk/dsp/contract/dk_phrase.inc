@@ -1,6 +1,6 @@
-// Phrase capture/control ABI v1. Pure numeric definitions, shared by C/SHARC.
+// Phrase capture/control ABI v2 (v2: the tape delay words, FADE as the MIX of an always-on effect). Pure numeric definitions, shared by C/SHARC.
 // PH_C_*, PH_S_* and PH_STORAGE_* are BYTE offsets (DM(n,Ix) uses words).
-#define PH_VERSION 1
+#define PH_VERSION 2
 #define PH_CONTROL_MAGIC 0x50484331
 #define PH_STATUS_MAGIC 0x50485331
 #define PH_STORAGE_MAGIC 0x50484231
@@ -9,6 +9,8 @@
 #define PH_CHECK_SALT 0x73509c21
 #define PH_CONTROL_WORDS 64
 #define PH_STATUS_WORDS 32
+// The storage descriptor has its own format number: it did not change with version 2 of the control.
+#define PH_STORAGE_FORMAT 1
 #define PH_STORAGE_MAGIC_OFF 0
 #define PH_STORAGE_VERSION 4
 #define PH_STORAGE_BANK0 8
@@ -57,7 +59,16 @@
 #define PH_C_OWNER_ROW 220
 #define PH_C_OWNER_GENERATION 224
 #define PH_C_TEMPO_120 228
-#define PH_C_RESERVED 232
+// The tape delay (version 2). TIME is the delay in whole frames (integer), FEEDBACK 0..1.1 (float), DRIVE 0..1 (float).
+// PACK is an integer: bit 0 FLIP (reverse head), bit 1 HOLD (the tape stops and the head loops), then three signed
+// ten-bit fields, 0 neutral: bits 2..11 SKEW (-512 left longer .. 511 right longer), bits 12..21 WOW (0..511 used),
+// bits 22..31 BALANCE (-512 delay only .. 0 both .. 511 grains only).
+#define PH_C_TAPE_TIME 232
+#define PH_C_TAPE_FEEDBACK 236
+#define PH_C_TAPE_PACK 240
+#define PH_C_DRIVE 244
+#define PH_TAPE_FLIP 1
+#define PH_TAPE_HOLD 2
 #define PH_C_SEQ_END 248
 #define PH_C_CHECK 252
 #define PH_S_MAGIC 0
@@ -148,4 +159,22 @@
 #define PH_P_MASK 21
 #define PH_P_GAIN0 22
 #define PH_P_EXT_GAIN 38
-#define PH_PARAM_COUNT 39
+// The tape delay's controls (version 2), behind the gains so that the earlier numbers stay.
+// MODE: 0 forward, 1 reverse (the head's FLIP), 2 hold (the tape stops and the head loops).
+#define PH_P_TIME 39
+#define PH_P_FDBK 40
+#define PH_P_MODE 41
+#define PH_P_SKEW 42
+#define PH_P_WOW 43
+#define PH_P_DRIV 44
+#define PH_P_BAL 45
+#define PH_PARAM_COUNT 46
+// The pages of the panel: DELAY comes first and is the page a fresh owner shows; the others keep their numbers.
+#define PH_PAGE_LOOP 0
+#define PH_PAGE_GRAIN 1
+#define PH_PAGE_MOVE 2
+#define PH_PAGE_SPACE 3
+#define PH_PAGE_DELAY 4
+#define PH_PAGES 5
+// TIME is a list of note lengths, in 1/96 of a quarter note (PH_TIME_TICKS in the control provider).
+#define PH_TIME_CHOICES 16

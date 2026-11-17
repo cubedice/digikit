@@ -29,10 +29,20 @@ type Observation = {
   faults: number;
   diagnostics: unknown[];
   grains: number[][];
+  /** The tape head's state words (prism.h PT_*, from PS_TAPE) and its output of the last block (32 left, 32 right). */
+  tape: number[];
+  head: number[];
+  outputBits: number[];
   audio?: number[][];
 };
 type Report = Record<string, { budget: number; steps: Observation[] }>;
 const held: Command[] = [{}, { action: 1 }, { repeat: 4, audio: true }];
+// The packed tape word with the balance at "head only" (-511 in bits 22..31); add 1 for FLIP, 2 for HOLD, 4 * skew.
+const HEAD_ONLY = 513 * 2 ** 22;
+/** One block of a 3 kHz tone (16 frames a cycle), the same on both sides and continuous from block to block. */
+const TONE = Array.from({ length: 64 }, (_, i) => 0.5 * Math.sin((2 * Math.PI * (i % 32)) / 16));
+/** Block BLOCK of a ramp of 1/1024 a frame, the same on both sides. */
+const RAMP = (block: number) => Array.from({ length: 64 }, (_, i) => (32 * block + (i % 32)) / 1024);
 const restartChanges: { name: string; changed: Record<number, number> }[] = [
   { name: 'pattern', changed: { 12: 3, 13: 7 } },
   { name: 'missedEpoch', changed: { 12: 4, 13: 23 } },
@@ -191,6 +201,87 @@ const cases: { name: string; commands: Command[] }[] = [
   { name: 'badStorage', commands: [{ storage: { 3: 0x9aa2b9c8 } }] },
   { name: 'badLease', commands: [...held, { storage: { 2: 0x9a22b9c8 } }] },
   { name: 'badFloat', commands: [...held, { set: { 21: 0x7fc00001 } }] },
+  // ---- the tape head. Word 58 TIME (frames), 59 FDBK, 60 the packed word (bit 0 FLIP, bit 1 HOLD, then SKEW, WOW and
+  // BALANCE as signed ten-bit fields), 61 DRIVE. The test banks hold 512 frames (16 blocks).
+  {
+    name: 'tapeEcho',
+    commands: [
+      { set: { 58: 64, 60: HEAD_ONLY }, samples: 1 / 64 },
+      ...Array.from({ length: 7 }, (_, i) => ({ samples: (i + 2) / 64 })),
+    ],
+  },
+  {
+    name: 'tapeFeedback',
+    commands: [
+      { set: { 58: 64, 59: bits(0.5), 60: HEAD_ONLY }, samples: TONE, repeat: 8 },
+      ...Array.from({ length: 8 }, () => ({ samples: 0 })),
+    ],
+  },
+  {
+    name: 'tapeNoFeedback',
+    commands: [{ set: { 58: 64, 60: HEAD_ONLY }, samples: TONE, repeat: 8 }, { samples: 0, repeat: 3 }, { samples: 0 }],
+  },
+  {
+    name: 'tapeHold',
+    commands: [
+      { set: { 58: 128, 60: HEAD_ONLY } },
+      ...Array.from({ length: 9 }, (_, i) => ({ samples: (i + 2) / 64 })),
+      { set: { 60: HEAD_ONLY + 2 }, samples: 0.9 },
+      ...Array.from({ length: 6 }, () => ({ samples: 0.9 })),
+    ],
+  },
+  {
+    name: 'tapeReverse',
+    commands: [
+      { set: { 58: 64, 60: HEAD_ONLY + 1 }, samples: RAMP(0) },
+      ...Array.from({ length: 11 }, (_, i) => ({ samples: RAMP(i + 1) })),
+    ],
+  },
+  {
+    name: 'tapeGlide',
+    commands: [
+      { set: { 58: 64, 60: HEAD_ONLY }, samples: TONE, repeat: 8 },
+      { set: { 58: 96 }, samples: TONE, repeat: 8 },
+      { samples: TONE, repeat: 300 },
+    ],
+  },
+  {
+    name: 'tapeSkew',
+    commands: [{ set: { 58: 64, 60: HEAD_ONLY + 511 * 4 }, samples: TONE, repeat: 10 }],
+  },
+  {
+    name: 'tapeReset',
+    commands: [
+      { set: { 58: 64, 60: HEAD_ONLY }, samples: TONE, repeat: 8 },
+      { set: { 10: 2, 11: 4 }, samples: TONE },
+      { samples: TONE },
+      { samples: TONE, repeat: 6 },
+    ],
+  },
+  {
+    name: 'tapeDrive',
+    commands: [{ set: { 58: 64, 60: HEAD_ONLY, 61: bits(1) }, samples: TONE, repeat: 10 }],
+  },
+  // Without a phrase the grains read the tape (the default packed word of the probe is "grains only").
+  { name: 'tapeGrains', commands: [{ samples: TONE, repeat: 12 }, { samples: TONE, repeat: 40 }, { samples: TONE }] },
+  {
+    name: 'tapeGrainsReset',
+    commands: [{ samples: TONE, repeat: 40 }, { set: { 10: 2, 11: 4 }, samples: TONE }, { samples: TONE }],
+  },
+  {
+    name: 'tapeGrainsExtreme',
+    commands: [
+      { set: { 23: 24000, 25: bits(4), 27: bits(1), 29: bits(1), 31: bits(1) }, samples: TONE, repeat: 60 },
+      { set: { 25: bits(0.25), 31: bits(0) }, samples: TONE, repeat: 60 },
+      // short grains whose read just fits the window, backwards and forwards, from its far end
+      { set: { 23: 240, 25: bits(1.5), 31: bits(1) }, samples: TONE, repeat: 60 },
+      { set: { 31: bits(0) }, samples: TONE, repeat: 60 },
+    ],
+  },
+  {
+    name: 'tapeWithGrains',
+    commands: [...held, { set: { 58: 64, 59: bits(1.1), 60: 3 }, repeat: 40 }, { set: { 60: 0 }, repeat: 40 }],
+  },
 ];
 
 let report: Report;
@@ -451,5 +542,118 @@ describe('PRISM real SHARC engine', () => {
     expect(step.faults).toBe(1);
     expect(step.status[5]).toBe(0);
     expect(step.status[8]).toBe(0);
+  });
+
+  // ---- the tape head ----
+  const headPeak = (step: Observation) => Math.max(...step.head.map(Math.abs));
+  test('the head plays the tape TIME frames late, exactly, on both sides', () => {
+    const steps = report.tapeEcho!.steps;
+    // too little tape for the first blocks: silence, and a head that is not readable
+    expect(steps[1]!.head).toEqual(Array(64).fill(0));
+    expect(steps[1]!.tape[11]).toBe(0);
+    // block 8 plays block 6 (64 frames are two blocks)
+    expect(last('tapeEcho').head).toEqual(Array(64).fill(6 / 64));
+    expect(last('tapeEcho').tape[11]).toBe(1);
+    // the head alone is the effect's output (balance at the head, no drive, SPACE open)
+    expect(last('tapeEcho').outputBits).toEqual(Array(64).fill(bits(6 / 64)));
+    // no feedback: the tape advanced one block a call
+    expect(last('tapeEcho').state[10]).toBe(8);
+  });
+  test('feedback writes the filtered head back onto the tape: repeats decay, and without feedback they end', () => {
+    const steps = report.tapeFeedback!.steps;
+    // after the input stops, each generation (two blocks) is quieter than the one before
+    // step 0 is the eight blocks of tone; steps 1 to 8 are the silent blocks
+    const generations = [2, 4, 6, 8].map((index) => headPeak(steps[index]!));
+    for (let i = 1; i < generations.length; i++) {
+      expect(generations[i]!).toBeGreaterThan(0.01);
+      expect(generations[i]! / generations[i - 1]!).toBeGreaterThan(0.3);
+      expect(generations[i]! / generations[i - 1]!).toBeLessThan(0.55);
+    }
+    expect(headPeak(last('tapeNoFeedback'))).toBe(0);
+  });
+  test('feedback above 1 is held by the limiter', () => {
+    for (const step of report.tapeWithGrains!.steps) {
+      expect(step.finite).toBe(true);
+      expect(step.peak).toBeLessThan(4);
+    }
+  });
+  test('HOLD stops the tape and loops its last TIME frames', () => {
+    const steps = report.tapeHold!.steps;
+    const after = last('tapeHold');
+    // the write position and the history stand still from the block after HOLD is seen
+    expect(after.state[9]).toBe(steps[11]!.state[9]);
+    expect(after.state[10]).toBe(steps[11]!.state[10]);
+    expect(after.tape[10]).toBe(2);
+    // the input after HOLD (0.9) never reaches the head: every sample is one of the tape's values, scaled by the
+    // edge of the loop
+    const peak = headPeak(after);
+    expect(peak).toBeGreaterThan(0.05);
+    expect(peak).toBeLessThanOrEqual(11 / 64 + 1e-6);
+    // and the loop repeats: 128 frames are four blocks
+    expect(steps[16]!.head).toEqual(steps[12]!.head);
+  });
+  test('FLIP plays each segment backwards', () => {
+    const head = last('tapeReverse').head.slice(0, 32);
+    expect(last('tapeReverse').tape[10]).toBe(1);
+    // away from a segment edge, each sample is the frame before the last one: the ramp runs down by 1/1024
+    const steps = head.slice(1).map((value, i) => head[i]! - value);
+    expect(steps.filter((step) => Math.abs(step - 1 / 1024) < 1e-6).length).toBeGreaterThanOrEqual(8);
+  });
+  test('a change of TIME glides: the delay moves at most half a frame per sample and arrives', () => {
+    const steps = report.tapeGlide!.steps;
+    const delay = (step: Observation) => step.tape[0]! + new Float32Array(new Uint32Array([step.tape[1]!]).buffer)[0]!;
+    expect(delay(steps[0]!)).toBe(64);
+    const early = delay(steps[1]!);
+    expect(early).toBeGreaterThan(64);
+    expect(early).toBeLessThan(96);
+    expect(early - 64).toBeLessThanOrEqual(8 * 32 * 0.5);
+    expect(Math.abs(delay(last('tapeGlide')) - 96)).toBeLessThan(1);
+    expect(headPeak(last('tapeGlide'))).toBeGreaterThan(0.3);
+  });
+  test('SKEW lengthens one side only', () => {
+    const tape = last('tapeSkew').tape;
+    expect(tape[0]).toBe(64);
+    expect(tape[4]).toBeGreaterThanOrEqual(95);
+    expect(tape[4]).toBeLessThanOrEqual(96);
+  });
+  test('a history reset runs the head to zero in one block and resumes when the tape is long enough again', () => {
+    const steps = report.tapeReset!.steps;
+    expect(headPeak(steps[0]!)).toBeGreaterThan(0.3);
+    // the block after the reset: no readable tape, a ramp from the last sample to zero
+    expect(steps[2]!.tape[11]).toBe(0);
+    expect(Math.abs(steps[2]!.head[31]!)).toBeLessThan(1e-6);
+    expect(headPeak(last('tapeReset'))).toBeGreaterThan(0.3);
+    expect(last('tapeReset').tape[11]).toBe(1);
+  });
+  test('DRIVE saturates the output below 4/3', () => {
+    const peak = last('tapeDrive').peak;
+    expect(peak).toBeGreaterThan(0.9);
+    expect(peak).toBeLessThanOrEqual(4 / 3 + 1e-6);
+  });
+  test('without a phrase the grains read windows of the tape', () => {
+    const steps = report.tapeGrains!.steps;
+    const active = (step: Observation) => step.grains.filter((grain) => grain[0]! > 0);
+    expect(steps[0]!.state[13], 'no phrase is held').toBe(0);
+    const sounding = [steps[1]!, steps[2]!].flatMap(active);
+    expect(sounding.length).toBeGreaterThan(0);
+    for (const grain of sounding) {
+      // its bank is the rolling bank, its window lies in it and holds the grain's whole read
+      expect(grain[6]).toBe(steps[1]!.state[8]);
+      expect(grain[8]).toBeGreaterThanOrEqual(256);
+      expect(grain[8]).toBeLessThanOrEqual(448);
+      expect(grain[7]).toBeLessThan(512);
+    }
+    expect(Math.max(steps[1]!.peak, steps[2]!.peak)).toBeGreaterThan(0.01);
+  });
+  test('a history reset fades the tape grains out at once', () => {
+    const steps = report.tapeGrainsReset!.steps;
+    for (const grain of steps[1]!.grains) if (grain[8]) expect(grain[0]).toBeLessThanOrEqual(32);
+    for (const grain of steps[2]!.grains) if (grain[8]) expect(grain[0]).toBeLessThanOrEqual(0);
+  });
+  test('tape grains at the extremes of size, pitch, spray and reverse stay inside written tape', () => {
+    for (const step of report.tapeGrainsExtreme!.steps) {
+      expect(step.finite).toBe(true);
+      expect(step.diagnostics).toEqual([]);
+    }
   });
 });

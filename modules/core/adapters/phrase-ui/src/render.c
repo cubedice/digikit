@@ -133,6 +133,10 @@ static uint32_t normalize(uint32_t p, uint32_t v)
         return v * 127 / 12;
     if (p == PH_P_SHAP)
         return v * 127 / 3;
+    if (p == PH_P_TIME)
+        return v * 127 / (PH_TIME_CHOICES - 1);
+    if (p == PH_P_MODE)
+        return v * 127 / 2;
     if (p == PH_P_TUNE)
         return v * 127 / 96;
     if (p == PH_P_SCAN || p == PH_P_TAKE || p == PH_P_CUE)
@@ -154,7 +158,7 @@ static void crop(const PhraseUi *s, const PhraseCanvas *c, int x, int y, int wid
 }
 void pu_render_header(const PhraseUi *s, const PhraseCanvas *c)
 {
-    static const char *pages[] = {"LOOP", "GRAIN", "MOVE", "SPACE"};
+    static const char *pages[PH_PAGES] = {"LOOP", "GRAIN", "MOVE", "SPACE", "DELAY"};
     char title[7];
     const char *name = s->title ? s->title : "PHRASE";
     uint32_t title_len = 0;
@@ -165,10 +169,11 @@ void pu_render_header(const PhraseUi *s, const PhraseCanvas *c)
     title[title_len] = 0;
     box(c, 0, 0, 128, 10, 0);
     text(c, 15, 1, title, 1);
-    text(c, 49, 1, s->overlay ? "INPUT" : pages[s->page & 3], 1);
+    text(c, 49, 1, s->overlay ? "INPUT" : pages[s->page < PH_PAGES ? s->page : 0], 1);
     text(c, 91, 1, state(s), 1);
     if (!s->overlay) {
-        char p[4] = {(char)('1' + s->page), '/', '4', 0};
+        /* DELAY is the first page the panel shows; the others follow in their order. */
+        char p[4] = {(char)('1' + (s->page + 1) % PH_PAGES), '/', (char)('0' + PH_PAGES), 0};
         text(c, 119, 1, p, 1);
     } else if (differs(s))
         text(c, 123, 1, "*", 1);
@@ -176,9 +181,10 @@ void pu_render_header(const PhraseUi *s, const PhraseCanvas *c)
 }
 void pu_render(const PhraseUi *s, const PhraseCanvas *c)
 {
-    static const char *labels[] = {"REC",  "FROM", "TAKE", "CUE",  "STRT", "LEN", "SIZE",
-                                   "RATE", "TUNE", "SHAP", "SPRY", "JITR", "POS", "SCAN",
-                                   "REVR", "WDTH", "DIFF", "DEC",  "HPF",  "LPF"};
+    static const char *first[] = {"REC",  "FROM", "TAKE", "CUE",  "STRT", "LEN", "SIZE",
+                                  "RATE", "TUNE", "SHAP", "SPRY", "JITR", "POS", "SCAN",
+                                  "REVR", "WDTH", "DIFF", "DEC",  "HPF",  "LPF"};
+    static const char *tape[] = {"TIME", "FDBK", "MODE", "SKEW", "WOW", "DRIV", "BAL"};
     box(c, 0, 0, 128, 64, 0);
     pu_render_header(s, c);
     fader(s, c);
@@ -194,13 +200,16 @@ void pu_render(const PhraseUi *s, const PhraseCanvas *c)
         uint32_t v = dkrt_phrase_get(p);
         char value[16];
         pu_format(value, p, v);
+        const char *label = p < 20                            ? first[p]
+                            : p >= PH_P_TIME && p <= PH_P_BAL ? tape[p - PH_P_TIME]
+                                                              : "";
         if (p == PH_P_REC || p == PH_P_FROM || p == PH_P_RATE || p == PH_P_SHAP || p == PH_P_TAKE ||
-            p == PH_P_CUE)
+            p == PH_P_CUE || p == PH_P_TIME || p == PH_P_MODE)
             text(c, x, y + 5, value, 1);
         else
             c->knob(c->context, i, normalize(p, v));
-        text(c, x, y + 20,
-             (s->show_values || (s->focus_ticks && s->focus == p)) ? value : labels[p], 1);
+        text(c, x, y + 20, (s->show_values || (s->focus_ticks && s->focus == p)) ? value : label,
+             1);
     }
     /* G/H never contain a second volume knob. H is always the IN action. */
     uint32_t mask = s->status[PH_S_HELD_MASK / 4];
@@ -212,8 +221,10 @@ void pu_render(const PhraseUi *s, const PhraseCanvas *c)
             box(c, x + 1, y, 1, 1, 1);
     }
     text(c, 111, 59, differs(s) ? "IN*" : "IN", 1);
-    for (int i = 0; i < 4; ++i)
-        box(c, 125, 15 + 11 * i, 2, i == (int)s->page ? 7 : 2, 1);
+    for (int i = 0; i < PH_PAGES; ++i)
+        box(c, 125, 14 + 9 * i, 2, i == (int)((s->page + 1) % PH_PAGES) ? 6 : 2, 1);
+    if (s->page == PH_PAGE_DELAY)
+        return; /* seven controls: no diagram */
     if (s->page == 0) {
         crop(s, c, 76, 42, 21);
         uint32_t tenths = s->status[PH_S_CROP_LEN / 4] / 4800;

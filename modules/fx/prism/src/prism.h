@@ -104,7 +104,42 @@
 #define PS_SPACE_LINE1 528
 #define PS_SPACE_LINE2 784
 #define PS_SPACE_LINE3 1040
-#define PRISM_STATE_BYTES 5184
+/* The tape delay (tape.s): one stereo head on the rolling bank. Per channel the delay in frames (integer and fraction, slewed
+ * for the tape glide), the counter and length of a reverse segment or of a held loop; the feedback filters; then the head's
+ * output of this block and the feedback the write adds to the tape (32 left, 32 right each). */
+#define PS_TAPE 1296
+#define PT_DINT_L (PS_TAPE + 0)
+#define PT_DFRAC_L (PS_TAPE + 1)
+#define PT_COUNT_L (PS_TAPE + 2)
+#define PT_LENGTH_L (PS_TAPE + 3)
+#define PT_DINT_R (PS_TAPE + 4)
+#define PT_DFRAC_R (PS_TAPE + 5)
+#define PT_COUNT_R (PS_TAPE + 6)
+#define PT_LENGTH_R (PS_TAPE + 7)
+#define PT_LAST_L (PS_TAPE + 8)
+#define PT_LAST_R (PS_TAPE + 9)
+#define PT_MODE (PS_TAPE + 10)
+#define PT_READABLE (PS_TAPE + 11)
+#define PT_LFO (PS_TAPE + 12)
+#define PT_LP_L (PS_TAPE + 13)
+#define PT_LP_R (PS_TAPE + 14)
+#define PT_HP_X_L (PS_TAPE + 15)
+#define PT_HP_Y_L (PS_TAPE + 16)
+#define PT_HP_X_R (PS_TAPE + 17)
+#define PT_HP_Y_R (PS_TAPE + 18)
+#define PT_FDBK (PS_TAPE + 19)
+#define PT_GAIN_DELAY (PS_TAPE + 20)
+#define PT_GAIN_GRAIN (PS_TAPE + 21)
+#define PT_DRIVE (PS_TAPE + 22)
+#define PT_OUT (PS_TAPE + 32)
+#define PT_FEEDBACK (PS_TAPE + 96)
+#define PRISM_STATE_BYTES 5824
+/* Head modes (PT_MODE). */
+#define PT_FORWARD 0
+#define PT_REVERSE 1
+#define PT_HOLD 2
+/* The shortest delay: a head never reads the block being written (32 frames) or its interpolation neighbour. */
+#define PRISM_TAPE_MIN 48
 #define PRISM_HANDOFF_BLOCKS 30
 #define PRISM_MIN_CROP 32
 #define PC_ENABLED (PS_CONTROL + PH_C_ENABLED / 4)
@@ -139,5 +174,9 @@
 #define PC_HPF (PS_CONTROL + PH_C_HPF_COEFF / 4)
 #define PC_LPF (PS_CONTROL + PH_C_LPF_COEFF / 4)
 #define PC_OWNER (PS_CONTROL + PH_C_OWNER_GENERATION / 4)
+#define PC_TIME (PS_CONTROL + PH_C_TAPE_TIME / 4)
+#define PC_FDBK (PS_CONTROL + PH_C_TAPE_FEEDBACK / 4)
+#define PC_TAPE (PS_CONTROL + PH_C_TAPE_PACK / 4)
+#define PC_DRIVE (PS_CONTROL + PH_C_DRIVE / 4)
 
 #endif

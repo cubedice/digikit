@@ -270,7 +270,7 @@ def _build(
         storage = struct.pack(
             "<6I",
             PH["PH_STORAGE_MAGIC"],
-            PH["PH_VERSION"],
+            PH["PH_STORAGE_FORMAT"],
             *PHRASE_BANKS,
             PHRASE_BANK_BYTES,
             PHRASE_FRAMES,

@@ -29,7 +29,9 @@ const metrics = (file: string) => {
     peak = Math.max(peak, Math.abs(sample));
     energy += sample * sample;
   }
-  return { samples: samples.length, peak, rms: Math.sqrt(energy / Math.max(1, samples.length)), nonfinite };
+  // the first sample at a quarter of the peak: where the sound starts in the capture
+  const onset = samples.findIndex((sample) => Math.abs(sample) > peak / 4);
+  return { samples: samples.length, peak, rms: Math.sqrt(energy / Math.max(1, samples.length)), nonfinite, onset };
 };
 
 describeOn('dt2', 'DTII PRISM capture through the patched audio path', () => {
@@ -120,6 +122,28 @@ describeOn('dt2', 'DTII PRISM capture through the patched audio path', () => {
     await tap(session, 'PLAY', 80);
     await openPrismPage(session, planSymbol(plan, 'phrase_ui_debug'));
     expect(await value(21), 'only track 1 is selected for capture').toBe(1);
+
+    // The effect is on without a phrase. DELAY is the page it opens on: one echo of the selected track a sixteenth
+    // later (no feedback). At full MIX the track itself is gone and the echo alone is heard, later than the note.
+    await set(39, 'ENC A', 3, true);
+    await set(40, 'ENC B', 0);
+    const tapeClock = await control();
+    const sixteenth = (24 * 3_600_000) / tapeClock[57]!;
+    expect(tapeClock[58], 'TIME is a sixteenth at the stock tempo, in frames').toBe(Math.floor(sixteenth));
+    const plain = await sound('tape-off', 1);
+    await set(20, 'LEVEL', 127);
+    await advance(session, 400);
+    const echoed = await sound('tape-echo', 1);
+    expect(float((await status())[23]!), 'the router passes the effect without a held phrase').toBeGreaterThan(0.99);
+    expect((await status())[8], 'no phrase is held').toBe(0);
+    record(artifacts, 'tape-echo-report', { plain, echoed, frames: tapeClock[58] });
+    expect(echoed.rms, 'the echo carries the note').toBeGreaterThan(plain.rms * 0.3);
+    expect(echoed.onset - plain.onset, 'and starts after it').toBeGreaterThan(2000);
+    await set(20, 'LEVEL', 0);
+
+    // The rest is about the held phrase: the head off (BAL at the grains), then LOOP.
+    await set(45, 'ENC G', 127);
+    await tap(session, 'DOWN', 80);
     await set(2, 'ENC C', 1); // TAKE = one actual master-step interval.
     await tap(session, 'DOWN', 80);
     await set(6, 'ENC A', 96); // Long, overlapping grains make the wet return observable.
