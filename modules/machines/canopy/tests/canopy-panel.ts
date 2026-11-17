@@ -5,8 +5,9 @@ import type { Session } from '@digi/test-support';
 import { expect } from 'vitest';
 import { planSymbol, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
+import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
+import { REDRAW, SETTLE } from '@digi/regression/runtime/fx-live.ts';
 
 export type Sound = { mode: number; chord: number; voicing: number; strum: number };
 // PRESET menu, left column: LOAD (+Drive), SAVE (+Drive), MANAGE, POOL.
@@ -75,7 +76,7 @@ export function canopyPanel(session: Session, plan: RuntimePlan) {
     if (voicing) await turn(3, voicing);
     if (strum) await turn(4, strum);
     await expect.poll(() => sound(n), { timeout: 30_000 }).not.toEqual(before);
-    await waitEmulated(session, 300);
+    await sessionRt(session).ui.wait({ ms: 300, why: REDRAW });
     return sound(n);
   };
   let shots = 0;
@@ -84,12 +85,12 @@ export function canopyPanel(session: Session, plan: RuntimePlan) {
   // cursor does not matter.
   const presetMenu = async (entry: number, name: string) => {
     await key('PRESET');
-    await waitEmulated(session, 300);
+    await sessionRt(session).ui.wait({ ms: 300, why: REDRAW });
     for (let i = 0; i < 4; i++) await key('UP');
     for (let i = 0; i < entry; i++) await key('DOWN');
     await shot(`${name}-menu`);
     await key('YES');
-    await waitEmulated(session, 600);
+    await sessionRt(session).ui.wait({ ms: 600, why: REDRAW });
   };
   const listTop = async () => {
     for (let i = 0; i < 8; i++) await key('UP');
@@ -98,16 +99,16 @@ export function canopyPanel(session: Session, plan: RuntimePlan) {
   const confirmSave = async (name: string) => {
     await shot(`${name}-name`);
     await key('YES');
-    await waitEmulated(session, 600);
+    await sessionRt(session).ui.wait({ ms: 600, why: REDRAW });
     await shot(`${name}-tags`);
     await key('YES');
-    await waitEmulated(session, 3500); // a +Drive save writes the card
+    await sessionRt(session).ui.wait({ ms: 3500, why: SETTLE }); // a +Drive save writes the card
     await shot(`${name}-saved`);
   };
   const leaveMenus = async () => {
     for (let i = 0; i < 3; i++) {
       await key('NO');
-      await waitEmulated(session, 250);
+      await sessionRt(session).ui.wait({ ms: 250, why: REDRAW });
     }
   };
   // Track n's Sound into pool slot 001 (empty: SAVE TO HERE is the first action).
@@ -116,10 +117,10 @@ export function canopyPanel(session: Session, plan: RuntimePlan) {
     await presetMenu(PRESET_POOL, 'pool-save');
     await listTop();
     await key('RIGHT');
-    await waitEmulated(session, 400);
+    await sessionRt(session).ui.wait({ ms: 400, why: REDRAW });
     await shot('pool-save-actions');
     await key('YES');
-    await waitEmulated(session, 600);
+    await sessionRt(session).ui.wait({ ms: 600, why: REDRAW });
     await confirmSave('pool-save');
     await leaveMenus();
   };
@@ -129,13 +130,13 @@ export function canopyPanel(session: Session, plan: RuntimePlan) {
     await presetMenu(PRESET_POOL, `pool-load-t${n}`);
     await listTop();
     await key('RIGHT');
-    await waitEmulated(session, 400);
+    await sessionRt(session).ui.wait({ ms: 400, why: REDRAW });
     await shot(`pool-load-t${n}-actions`);
     await key('YES');
-    await waitEmulated(session, 600);
+    await sessionRt(session).ui.wait({ ms: 600, why: REDRAW });
     await shot(`pool-load-t${n}-confirm`); // LOAD PRESET TO TRACK? CONFIRM Y/N
     await key('YES');
-    await waitEmulated(session, 1500);
+    await sessionRt(session).ui.wait({ ms: 1500, why: SETTLE });
     await shot(`pool-load-t${n}-done`);
     await leaveMenus();
   };
@@ -145,7 +146,7 @@ export function canopyPanel(session: Session, plan: RuntimePlan) {
     await presetMenu(PRESET_SAVE, 'drive-save');
     await listTop();
     await key('YES');
-    await waitEmulated(session, 600);
+    await sessionRt(session).ui.wait({ ms: 600, why: REDRAW });
     await confirmSave('drive-save');
     await leaveMenus();
   };
@@ -153,28 +154,28 @@ export function canopyPanel(session: Session, plan: RuntimePlan) {
   const driveLoad = async (n: number, name = `drive-load-t${n}`) => {
     await track(n);
     await presetMenu(PRESET_LOAD, name);
-    await waitEmulated(session, 900);
+    await sessionRt(session).ui.wait({ ms: 900, why: REDRAW });
     await listTop();
     await shot(`${name}-list`);
     await key('YES');
-    await waitEmulated(session, 1500);
+    await sessionRt(session).ui.wait({ ms: 1500, why: SETTLE });
     await shot(`${name}-done`);
     await leaveMenus();
   };
   // SETTINGS > SYSEX DUMP (fifth row) > SYSEX SEND or SYSEX RECEIVE.
   const sysexMenu = async (receive: boolean, name: string) => {
     await key('SETTINGS');
-    await waitEmulated(session, 500);
+    await sessionRt(session).ui.wait({ ms: 500, why: REDRAW });
     for (let i = 0; i < 8; i++) await key('UP');
     for (let i = 0; i < 4; i++) await key('DOWN');
     await key('YES');
-    await waitEmulated(session, 600);
+    await sessionRt(session).ui.wait({ ms: 600, why: REDRAW });
     await key('UP');
     await key('UP');
     if (receive) await key('DOWN');
     await shot(`${name}-menu`);
     await key('YES');
-    await waitEmulated(session, 600);
+    await sessionRt(session).ui.wait({ ms: 600, why: REDRAW });
   };
   // SYSEX SEND > PATTERN > the first pattern (A01). The stock emulator image asks
   // SELECT INTERFACE (USB, USB+MIDI) next; with the CANOPY runtime the firmware
@@ -186,10 +187,10 @@ export function canopyPanel(session: Session, plan: RuntimePlan) {
     await listTop();
     await shot('sysex-send-pattern');
     await key('YES');
-    await waitEmulated(session, 600);
+    await sessionRt(session).ui.wait({ ms: 600, why: REDRAW });
     await shot('sysex-send-interface');
     await key('YES');
-    await waitEmulated(session, 300);
+    await sessionRt(session).ui.wait({ ms: 300, why: REDRAW });
   };
   // SYSEX RECEIVE > PATTERN > the first pattern (A01): waits for the dump.
   const sysexReceivePattern = async () => {
@@ -198,7 +199,7 @@ export function canopyPanel(session: Session, plan: RuntimePlan) {
     await listTop();
     await shot('sysex-receive-pattern');
     await key('YES');
-    await waitEmulated(session, 600);
+    await sessionRt(session).ui.wait({ ms: 600, why: REDRAW });
     await shot('sysex-receive-waiting');
   };
   const persistence = async () => ({

@@ -9,11 +9,12 @@ import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { planSymbol, prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
+import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
+import { SETTLE } from '@digi/regression/runtime/fx-live.ts';
 
 describeOn('dt2', 'CANOPY Sound copy on the DT2', () => {
-  // CANOPY Sound persistence (finding 151): one track Sound copy and paste with
+  // CANOPY Sound persistence (finding 351): one track Sound copy and paste with
   // the stock panel. The paste must carry the settings at copy time. Passing
   // this test does not prove all copy paths.
   vi.setConfig({ hookTimeout: 600_000 });
@@ -128,7 +129,7 @@ describeOn('dt2', 'CANOPY Sound copy on the DT2', () => {
       }
       await edge('TRK', true);
       try { await key('TRIG 2'); } finally { await edge('TRK', false); }
-      await waitEmulated(session, 1000);
+      await sessionRt(session).ui.wait({ ms: 1000, why: SETTLE });
       const targetInstance = async () => {
         const tracks = await Promise.all(Array.from({ length: 4 }, (_, i) => cf('ip_tracks', i)));
         return tracks.indexOf(1);

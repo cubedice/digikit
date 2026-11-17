@@ -56,12 +56,13 @@ extern "C" {
     fn dkpw_abort();
     fn dkpw_delete();
     fn dkpw_recover();
+    fn dkpw_commit();
     fn dkpw_staging();
 }
 
 /// The version of the sample-pool adapter's plug-in point (`dkrt_pool.h`) and of the staged writer's (`dkrt_pdw.h`) the runtime speaks.
 pub const DKPOOL_VERSION: u32 = 1;
-pub const DKPW_VERSION: u32 = 1;
+pub const DKPW_VERSION: u32 = 2;
 
 /// The real platform: a zero-sized type, so a call through it costs what the direct call cost.
 pub struct RealPlatform;
@@ -181,6 +182,26 @@ impl Platform for RealPlatform {
         }
         #[cfg(test)]
         let _ = (start, len, dkrt_flush as unsafe extern "C" fn(u32, u32));
+    }
+
+    unsafe fn read_code(&self, addr: u32, out: &mut [u8]) {
+        let src = addr as *const u8;
+        let mut i = 0;
+        while i < out.len() {
+            out[i] = read_volatile(src.add(i));
+            i += 1;
+        }
+    }
+    unsafe fn write_code(&self, addr: u32, bytes: &[u8]) {
+        let dst = addr as *mut u8;
+        let mut i = 0;
+        while i < bytes.len() {
+            write_volatile(dst.add(i), bytes[i]);
+            i += 1;
+        }
+    }
+    unsafe fn write_word(&self, addr: u32, value: u32) {
+        write_volatile(addr as *mut u32, value)
     }
 
     unsafe fn block_read(&self, sector: u32, bytes: u32, buf: *mut u8) -> i32 {
@@ -354,6 +375,7 @@ impl StagedWriter for RealPlatform {
                     && core::hint::black_box(dkpw_abort as *const () as usize) != 0
                     && core::hint::black_box(dkpw_delete as *const () as usize) != 0
                     && core::hint::black_box(dkpw_recover as *const () as usize) != 0
+                    && core::hint::black_box(dkpw_commit as *const () as usize) != 0
                     && core::hint::black_box(dkpw_version as *const () as usize) != 0
                     && core::hint::black_box(dkpw_staging as *const () as usize) != 0;
                 write_volatile(addr_of_mut!(PD_STATE), if here && dkpw_version() == DKPW_VERSION { 1 } else { 2 });

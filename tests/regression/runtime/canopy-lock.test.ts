@@ -11,9 +11,10 @@ import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 import { waitInstrumentReady } from './instrument-ready.ts';
 import { acknowledgedPanel } from './panel-ack.ts';
 import { loadPanelProject, savePanelProject } from './project-kit.ts';
+import { sessionRt } from './port-compat.ts';
 
 // Panel recording and note-paired absolute playback of a packed CANOPY lock
-// (finding 147, stage 3). This uses a disposable emulator card and image.
+// (finding 347, stage 3). This uses a disposable emulator card and image.
 vi.setConfig({ hookTimeout: 600_000 });
 
 const options = liveOptions('dt2');
@@ -106,7 +107,7 @@ test('CANOPY plays and records trig locks', { timeout: 900_000 }, async () => {
   await key('TRIG 5');
   await key('RECORD');
 
-  // Lock storage (finding 147): the active pattern (*0x4316501c) holds 80
+  // Lock storage (finding 347): the active pattern (*0x4316501c) holds 80
   // lanes of 0x102 bytes {index, track, 128 x s16} at +0x17e50, the lane map
   // at +0x50a0 (track * 71 + index), step counts at +0x5510 (track * 128 + step).
   const byteAt = async (a: number) => {
@@ -159,7 +160,7 @@ test('CANOPY plays and records trig locks', { timeout: 900_000 }, async () => {
   console.info('recorded COLOR lock', log.panelLock);
 
   // Save the pattern with the tagged value, then verify its reload below.
-  await savePanelProject(session);
+  await savePanelProject(sessionRt(session));
   await key('SRC');
   for (let i = 0; i < 5 && (await cf('ip_src_debug', 1)) !== 2; i++) await key('SRC');
   expect(await cf('ip_src_debug', 1)).toBe(2);
@@ -226,7 +227,7 @@ test('CANOPY plays and records trig locks', { timeout: 900_000 }, async () => {
   expect(clearedValue, 'pushing the held control clears the lock').toBe(0xffff);
   expect(await cf('src_state', 8), 'clearing preserves the base sound').toBe(colorBefore);
 
-  await loadPanelProject(session, { health: false });
+  await loadPanelProject(sessionRt(session), { health: false });
   const loadedPattern = (await word(0x4316501c)) >>> 0;
   const loadedLocks = loadedPattern + 0x17e50;
   const loadedLane = await byteAt(loadedLocks + 0x50a0 + 26);

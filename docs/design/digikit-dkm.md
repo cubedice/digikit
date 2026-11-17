@@ -1,6 +1,6 @@
 # The `.dkm` module file
 
-Status: built, 2026-10-16 (packer `packages/patchkit/src/dkm.rs`, loader `modules/core/runtime/src/rs/src/loader.rs`). Plan:
+Status: built, 2026-10-16 (packer `packages/patchkit/src/dkm.rs`, loader `modules/core/runtime/src/rs/src/loader/mod.rs`). Plan:
 `docs/plans/digikit-runtime.md` (Module file, Load sequence). Runtime: `docs/design/digikit-runtime.md`. Store the file lives in:
 `docs/design/digikit-store.md`.
 
@@ -31,7 +31,8 @@ file; the loaded image starts at a 16-byte aligned file offset.
 | 0x10 | 32 | sha256 of the whole file with these 32 bytes read as zeros |
 | 0x30 | 4 | `runtime`: the runtime version the module needs, packed `major << 16 \| minor << 8 \| patch`: the newest `since` of the imports it links (0 when it links none). The loader refuses (`E_CONTRACT`) a module whose version has another major or minor than the runtime's (`dkrt_sdk::RUNTIME_VERSION`) or a higher patch (0.x semver). Bit 31 is the **trace flag**: the module was packed with `patchkit pack --trace` (built with `DK_TRACE`); the loader ignores it, the DIGIKIT menu shows `TRACE` for the module (`dkrt_module_header` `flags`), `dkm-info` prints it. A version never reaches bit 31 |
 | 0x34 | 4 | module version, `major << 16 \| minor << 8 \| patch` |
-| 0x38 | 8 | reserved, zero (earlier formats had the (major, minor) pairs of the api, machine, fx and service contracts here; the one version is at 0x30) |
+| 0x38 | 4 | `role`: 0 a module (`.dkm`), 1 a service (`.dks`); another word is `E_FORMAT` (earlier formats had the (major, minor) pairs of the api, machine, fx and service contracts here; the one version is at 0x30) |
+| 0x3c | 4 | `H_SVC_ABI`: the ABI fingerprint of a service file, the value of its data symbol `dk_svc_abi` (`dkrt_abi::service::SVC_ABI`, emitted by `dkrt-svc-rt`'s `service!`); 0 for a module and for a file that uses neither interface B nor C. A word that is not 0 and differs from the runtime's (INFO bytes 41 to 44, capability `SVC_ABI`) is `E_SVC_ABI` |
 | 0x40 | 32 | name, NUL padded |
 | 0x60 | 4 | `image_off` (multiple of 16) |
 | 0x64 | 4 | `image_size`: text and data, as the patch-time linker lays them out at base 0 |
@@ -241,15 +242,24 @@ structure and table bounds, but does not check signatures, imports, relocation
 contents or device-specific cycle/stack admission limits. It is not a load check.
 Its arena figure is the loader's V2 allocation: one block for the module's image and bss, copies of its keys table and
 of the whole DSP section, and the output buffer of the relocated DSP image, each rounded to 16; the block stays while the
-module is loaded and `arena_xfer` is 0 (CANOPY on the DT2: 279 600 bytes of arena, 150 016 of DSP area). The descriptor's
-flag word follows the loader's decoder (0, 1, 3 or 7). The runtime's scan (the MODULES page of the DIGIKIT menu) and the
+module is loaded and `arena_xfer` is 0 (CANOPY on the DT2: 279 600 bytes of arena, 150 016 of DSP area). The rules of the
+format are defined once, in `dkneeds::instrument`: the header's tables and their order, the limits, the twelve words of a
+descriptor (its flag word is 0, 1, 3 or 7), a text range and a callback. The loader's validator
+(`dkrt_sdk::instrument_section`) takes them from there and adds what only a device judges (the device word, imports,
+relocations, admission limits); it refuses a version 7 section and V1 voices or effects beside instruments, which the needs
+reader still takes. A test of the SDK crate edits every word of the canonical section (`dkneeds::fixtures::v2_section`,
+also used by the tests of `dkneeds` and patchkit) and holds both readers to one answer. The runtime's scan (the MODULES page of the DIGIKIT menu) and the
 hosts read with it: `patchkit needs` and `dump`, the wasm `pk_needs`, and through them `dk run`, `module:check` and the
-Transfer page give a V2 file its needs, the hosts with `INSTRUMENT_ROWS`, `INSTRUMENT_TRACKS` and `INSTRUMENT_STATE` beside
-the CAPACITY names. The scan entry and the fit rule have no instrument rows: the loader's V2 owner admits the rows and
-tracks, so a verdict covers memory and the rows of `Needs` only. `modules/machines/canopy/tests/needs.device.test.ts`
+Transfer page give a V2 file its needs. The types and the track instances of its instruments are resources like the rows:
+`INSTRUMENT_ROWS` and `INSTRUMENT_TRACKS` are fields of `Needs`, CAPACITY kinds 17 and 18 (`[capacity.kinds]`) and resources 7
+and 8 of a module's `USES` (`[records.resources]`), which the packer writes from the DSP section (a module does not declare them).
+The fit rule (`dkrt_fit`), the boot plan and the menu's scan (`DkrtScan.need_instrument_rows`, `need_instrument_tracks`) count
+them: a file with more tracks than the firmware adapter admits, or a second file of instruments in one selection, is refused
+before it loads (`E_PLAN_FIT` with the kind), and the Transfer page and the menu say so. The owner takes one file of instruments
+a boot: the `largest` of `INSTRUMENT_ROWS` is what a file can still take, 0 once one is taken. A device without the adapter
+reports 0 rows. `INSTRUMENT_STATE` (bytes, a part of `DSP_AREA`) is said by the hosts only. `modules/machines/canopy/tests/needs.device.test.ts`
 compares the needs with CAPACITY after a load and reads the MODULES row.
-`needs_of`, the reader without instruments, still rejects V7/V8; the scan/fit ABI and the capacity protocol are
-unchanged (no instrument rows in either).
+`needs_of`, the reader without instruments, still rejects V7/V8.
 
 The SDK's `instrument_section::Section` reader validates a complete DKDS8
 instrument-only section without allocation and returns bounded slices and memory

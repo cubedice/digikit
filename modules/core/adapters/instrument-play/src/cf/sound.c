@@ -1,7 +1,7 @@
 /* DT2 1.17, admitted carriers on up to IP_INSTANCES kit tracks whose Sound
  * carries the instrument type. No cached audition Sound. Layout follows stock
  * track_type and its Sound getter (finding 135): kit track objects at +0x6c,
- * stride 0x3c0. Every instance keeps its own admission identity (finding 145). */
+ * stride 0x3c0. Every instance keeps its own admission identity (finding 345). */
 #include <stdint.h>
 #include "timing.h"
 #include "src-mod.h"

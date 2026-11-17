@@ -4,6 +4,7 @@
 use crate::instrument_admission::Packed;
 use crate::instrument_descriptor::{self as descriptor, Record};
 use crate::instrument_load::MemoryRequest;
+use dkneeds::instrument as format;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
@@ -36,10 +37,10 @@ impl<'a> Section<'a> {
     /// format bounds, not import resolution, instruction boundaries, relocated
     /// address validity, exclusive ownership or callback budget enforcement.
     pub fn parse(bytes: &'a [u8], device: u32, limits: descriptor::Limits) -> Result<Self, Error> {
-        if bytes.len() < 0x50
-            || word(bytes, 0) != 0x444b4453
-            || word(bytes, 4) != 8
-            || word(bytes, 0x3c) != 0
+        if bytes.len() < format::SECTION_HEADER as usize
+            || word(bytes, 0) != dkneeds::DSP_MAGIC
+            || word(bytes, dkneeds::DSP_H_VERSION as usize) != 8
+            || word(bytes, format::H_RESERVED as usize) != 0
         {
             return Err(Error::Header);
         }
@@ -62,29 +63,27 @@ impl<'a> Section<'a> {
         }
         let nimport = word(bytes, 0x28);
         let nreloc = word(bytes, 0x20);
-        let nrecord = word(bytes, 0x44);
-        let ntext = word(bytes, 0x4c);
+        let nrecord = word(bytes, format::H_INSTRUMENT_N as usize);
+        let ntext = word(bytes, format::H_TEXT_N as usize);
         if nimport > 32
             || nreloc > 4096
-            || !(1..=8).contains(&nrecord)
-            || !(1..=32).contains(&ntext)
+            || !(1..=format::MAX_INSTRUMENTS).contains(&nrecord)
+            || !(1..=format::MAX_TEXT_RANGES).contains(&ntext)
         {
             return Err(Error::Layout);
         }
-        let mut end = 0x50usize;
-        for (at, count, stride) in [
-            (0x24, nimport, 32),
-            (0x1c, nreloc, 8),
-            (0x2c, 0, 64),
-            (0x34, 0, 64),
-            (0x40, nrecord, 16),
-            (0x48, ntext, 8),
-        ] {
-            if word(bytes, at) as usize != end {
+        // the format's tables in file order (the V1 voice and effect tables are empty: `Mixed` above), then the text table
+        let mut end = format::SECTION_HEADER as usize;
+        for (at, count_at, stride) in format::TABLES.into_iter().chain([(
+            format::H_TEXT_OFF,
+            format::H_TEXT_N,
+            format::TEXT_RANGE_BYTES,
+        )]) {
+            if word(bytes, at as usize) as usize != end {
                 return Err(Error::Layout);
             }
             end = end
-                .checked_add(count as usize * stride)
+                .checked_add(word(bytes, count_at as usize) as usize * stride as usize)
                 .ok_or(Error::Layout)?;
             if end > bytes.len() {
                 return Err(Error::Layout);
@@ -105,8 +104,16 @@ impl<'a> Section<'a> {
         };
         let imports = table(0x24, nimport, 32);
         let relocations = table(0x1c, nreloc, 8);
-        let records = table(0x40, nrecord, 16);
-        let executable = table(0x48, ntext, 8);
+        let records = table(
+            format::H_INSTRUMENT_OFF as usize,
+            nrecord,
+            format::RECORD_BYTES as usize,
+        );
+        let executable = table(
+            format::H_TEXT_OFF as usize,
+            ntext,
+            format::TEXT_RANGE_BYTES as usize,
+        );
         let image = &bytes[image_at..];
         for (i, name) in imports.chunks_exact(32).enumerate() {
             let nul = name.iter().position(|&b| b == 0).ok_or(Error::Import)?;
@@ -133,9 +140,10 @@ impl<'a> Section<'a> {
                 || (class != 2 && import != 0)
                 || (kind == 0 && class == 1)
                 || offset % 2 != 0
-                || !ranges.iter().flatten().any(|r| {
-                    offset >= r.start && offset.checked_add(6).is_some_and(|end| end <= r.end)
-                })
+                || !ranges
+                    .iter()
+                    .flatten()
+                    .any(|r| format::in_text(offset, r.start, r.end))
             {
                 return Err(Error::Relocation);
             }

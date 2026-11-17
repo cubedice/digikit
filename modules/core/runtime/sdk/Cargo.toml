@@ -7,3 +7,10 @@ publish = false
 [lib]
 path = "src/lib.rs"
 
+# dkneeds has no dependencies and builds for ColdFire; it holds the format rules of a V2 instrument section (dkneeds::instrument).
+[dependencies]
+dkneeds = { path = "../../../../packages/dkneeds" }
+
+[dev-dependencies]
+dkneeds = { path = "../../../../packages/dkneeds", features = ["fixtures"] }
+

@@ -14,6 +14,9 @@
           "arp.device.test.ts",
           "needs.device.test.ts"
         ],
+        "devices": [
+          "dt2"
+        ],
         "modules": [
           "digikit/canopy"
         ],
@@ -33,6 +36,9 @@
           "copy-handoff.device.test.ts",
           "pattern-copy.device.test.ts",
           "sound-transfer.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
         ],
         "modules": [
           "digikit/canopy"

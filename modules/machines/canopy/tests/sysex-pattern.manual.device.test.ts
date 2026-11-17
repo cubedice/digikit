@@ -9,12 +9,12 @@ import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { canopyPanel } from './canopy-panel.ts';
+import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
 describeOn('dt2', 'CANOPY pattern SysEx on the DT2', () => {
-  // MANUAL, NOT IN THE GATE: blocked by the emulator (finding 151). CANOPY Sound
+  // MANUAL, NOT IN THE GATE: blocked by the emulator (finding 351). CANOPY Sound
   // persistence through a pattern SysEx dump. DTII 1.17 sends a project or a
   // pattern (with its kit), not a single Sound, so the pattern holding two CANOPY
   // tracks is sent over USB with the stock SYSEX SEND, both tracks are changed,
@@ -99,7 +99,7 @@ describeOn('dt2', 'CANOPY pattern SysEx on the DT2', () => {
     // With this image the firmware sends the dump on USB at once (no SELECT
     // INTERFACE). midi.usb.out drains what it hands its USB transmit function:
     // {bytes: count, hex}; the first call starts the capture. The emulator does not
-    // model the USB peripheral, and the send stops after 4032 bytes (finding 151).
+    // model the USB peripheral, and the send stops after 4032 bytes (finding 351).
     const usbOut = async () =>
       [...Buffer.from(((await session.client.call('midi.usb.out')) as { hex: string }).hex, 'hex')];
     await usbOut();

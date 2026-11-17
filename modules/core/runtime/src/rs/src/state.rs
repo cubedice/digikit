@@ -9,6 +9,8 @@ use dkrt_sdk::*;
 /// static object of any module can overlap it, and the reset-path loader zeroes it.
 pub const ARENA_BYTES: usize = dkrt_sdk::device::LIMIT_ARENA_BYTES as usize;
 pub use dkrt_abi::MAX_MODULES;
+/// Records of the loader: the module records (`DKRT_STATE.modules`, `MAX_MODULES`) and the records of provider files, after them (`loader/records.rs`).
+pub const REC_MAX: usize = MAX_MODULES + dkrt_sdk::PROVIDER_MAX;
 pub const LOG_ENTRIES: usize = 16;
 pub const STATE_MAGIC: u32 = 0x444b_5254; // "DKRT"
 

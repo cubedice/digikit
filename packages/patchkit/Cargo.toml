@@ -56,3 +56,4 @@ dkprof = { path = "../dkprof" }
 
 [dev-dependencies]
 machine = { path = "../emulator/machine" }
+dkneeds = { path = "../dkneeds", features = ["fixtures"] }

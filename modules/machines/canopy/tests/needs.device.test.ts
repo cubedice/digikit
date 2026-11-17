@@ -9,9 +9,10 @@ import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { planSymbol, prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { openDigikitMenu } from '@digi/regression/runtime/runtime-menu.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { patchkit } from '@digi/regression/runtime/patchkit.ts';
+import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
+import { openDigikitMenu } from '@digi/regression/runtime/flows/menu.ts';
 
 /**
  * What a load of CANOPY takes is what its file says (docs/design/digikit-dkm.md, "Needs are inferred"). CANOPY is a file of persistent
@@ -76,20 +77,28 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
     await expectRuntimeUi(session, plan, artifacts, { afterEpoch: beforeRestart, emulatedMs: 180_000 });
 
     // CANOPY is the only module of this boot: the arena holds its one V2 block and its record block, the DSP area its image,
-    // bss and track states. The instrument rows are the loader's: no voice row is taken.
+    // bss and track states. Its instruments take instrument rows and tracks (CAPACITY has them as kinds), and no voice row.
     const needs = JSON.parse((await patchkit(['needs', '--json', moduleFile])).stdout)[moduleFile] as Record<string, number>;
     const capacity = await dk.capacity();
     fs.writeFileSync(path.join(artifacts, 'needs.json'), JSON.stringify({ needs, capacity }, null, 2));
     const used = (kind: string) => capacity[kind]!.used;
-    expect(
-      { ARENA: used('ARENA'), DSP_AREA: used('DSP_AREA'), MACHINE_ROWS: used('MACHINE_ROWS'), VOICE_ROWS: used('VOICE_ROWS') },
-      'the load takes what the needs say',
-    ).toEqual({ ARENA: needs.ARENA, DSP_AREA: needs.DSP_AREA, MACHINE_ROWS: needs.MACHINE_ROWS, VOICE_ROWS: 0 });
+    const kinds = ['ARENA', 'DSP_AREA', 'MACHINE_ROWS', 'VOICE_ROWS', 'INSTRUMENT_ROWS', 'INSTRUMENT_TRACKS'];
+    expect(Object.fromEntries(kinds.map((k) => [k, used(k)])), 'the load takes what the needs say').toEqual({
+      ARENA: needs.ARENA,
+      DSP_AREA: needs.DSP_AREA,
+      MACHINE_ROWS: needs.MACHINE_ROWS,
+      VOICE_ROWS: 0,
+      INSTRUMENT_ROWS: needs.INSTRUMENT_ROWS,
+      INSTRUMENT_TRACKS: needs.INSTRUMENT_TRACKS,
+    });
     expect([needs.ARENA_XFER, needs.INSTRUMENT_ROWS, needs.INSTRUMENT_TRACKS]).toEqual([0, 1, 4]);
+    // the firmware adapter admits four tracks, and CANOPY takes them; a boot takes one file of instruments, so no row is left to a second
+    const rows = capacity.INSTRUMENT_ROWS!;
+    expect([capacity.INSTRUMENT_TRACKS!.limit, rows.limit > rows.used, rows.largest]).toEqual([4, true, 0]);
 
     // SETTINGS > DIGIKIT > MODULES (the last row): the scan gives the file its kind and its memory, not a dash and its file size
     const { tap: key } = acknowledgedPanel(session);
-    await openDigikitMenu(key);
+    await openDigikitMenu({ ...sessionRt(session), dk });
     for (let i = 0; i < 8; i++) await key('DOWN');
     await key('YES');
     await expect.poll(() => word(planSymbol(plan, 'DK_LOAD_N')), { timeout: 60_000 }).toBe(1);

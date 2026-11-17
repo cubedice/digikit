@@ -1,13 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { setTimeout as delay } from 'node:timers/promises';
 import { button, encoder } from '@digi/test-support';
 import { expect } from 'vitest';
 import { installModule, moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { liveArtifacts } from '@digi/regression/runtime/artifacts.ts';
 import { runtimeTests } from '@digi/regression/runtime/ready.ts';
-import { waitEmulated, tap } from '@digi/regression/runtime/waits.ts';
 import { planSymbol, prepareRuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
+import { tap, waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
 runtimeTests(
   'Overloop display follows capture, live window edits, and page visibility',
@@ -16,7 +15,7 @@ runtimeTests(
     const artifacts = liveArtifacts(session, 'overloop-display');
     const plan = await prepareRuntimePlan(session, artifacts, ['loop_ui_snapshot', 'loop_ui_paints']);
     await installModule(dk, 'digikit/overloop', moduleArtifact('dt2', 'digikit/overloop'));
-    await delay(3000);
+    await waitEmulated(session, 3000);
     const base = planSymbol(plan, 'loop_ui_snapshot');
     const word = async (index: number) => (await session.client.memPeek(base + index * 4))!;
     const paints = () => session.client.memPeek(planSymbol(plan, 'loop_ui_paints'));
@@ -32,7 +31,7 @@ runtimeTests(
     const turnUntil = async (name: string, delta: number, reached: () => Promise<boolean>) => {
       for (let i = 0; i < 40 && !(await reached()); i++) {
         await session.client.inputTurn(encoder(name), delta);
-        await delay(200);
+        await waitEmulated(session, 200);
       }
       if (!(await reached())) await shot(`${name}-timeout`);
       expect(await reached(), `${name} reaches its DSP parameter`).toBe(true);
@@ -74,7 +73,7 @@ runtimeTests(
     await expect.poll(() => shot('cursor-2'), { timeout: 5000, interval: 130 }).not.toBe(moving);
     await key('UP');
     const hidden = await paints();
-    await delay(1200);
+    await waitEmulated(session, 1200);
     expect(await paints()).toBe(hidden);
     await key('DOWN');
     await expect.poll(paints, { timeout: 5000 }).toBeGreaterThan(hidden!);

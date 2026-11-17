@@ -7,12 +7,10 @@ import { expect, onTestFinished, test } from 'vitest';
 import { withSession } from '@digi/regression/support.ts';
 import { liveOptions } from '@digi/regression/runtime/devices.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { planSymbol, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 import { captureRemoteOled as captureOled } from '@digi/regression/runtime/remote.ts';
 import { liveArtifacts } from '@digi/regression/runtime/artifacts.ts';
-import { openDigikitMenu } from '@digi/regression/runtime/runtime-menu.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { turnAppliedControl } from '@digi/regression/runtime/encoder-applied.ts';
@@ -22,6 +20,7 @@ import { proveCanopyNativeAmp } from '@digi/regression/runtime/canopy-native-amp
 import { analysisJson } from '@digi/regression/runtime/fx-live.ts';
 import { pageKit } from '@digi/regression/runtime/fx-pages-ui.ts';
 import type { FxProfile } from '@digi/regression/runtime/fx-session.ts';
+import { openDigikitMenu, sessionRt, waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
 async function captureRemoteOled(...args: Parameters<typeof captureOled>) {
   await captureOled(...args);
@@ -275,7 +274,7 @@ test(
       afterEpoch: beforeRestart,
       emulatedMs: 180_000,
     });
-    const loopKit = pageKit(session, fxProfile);
+    const loopKit = pageKit(sessionRt(session), fxProfile);
     // Select the admitted machine using the stock machine chooser.
     await edge('FUNC', true);
     try {

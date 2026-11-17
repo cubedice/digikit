@@ -156,6 +156,8 @@
 #define DKRT_E_PLAN_KEY (-77)            /* the boot plan refused the module: another module of the selection has the same key for a kind */
 #define DKRT_E_PLAN_FIT (-78)            /* the boot plan refused the module: its uses do not fit what the earlier modules of the selection left */
 #define DKRT_E_DECL_KIND (-79)           /* a service declared a record kind that the header table does not carry, or with another length */
+#define DKRT_E_SVC_ABI (-81)             /* a service file was built for another runtime ABI (its header word H_SVC_ABI differs from the runtime's fingerprint) */
+#define DKRT_E_HOOK_STOCK (-82)          /* a hook site of a service does not hold the stock bytes the bind recorded (another firmware, or a patched site): the service is refused before its init */
 
 /* Module states (DkrtBootInfo.states), from [load.state] of sdk/sdk.toml. */
 #define DKRT_STATE_SELECTED 0            /* in the selection, not planned yet */
@@ -184,6 +186,8 @@
 #define DKRT_CAPK_SEND_SLOTS 14
 #define DKRT_CAPK_DSP_COST 15
 #define DKRT_CAPK_DSP_VOICES 16
+#define DKRT_CAPK_INSTRUMENT_ROWS 17
+#define DKRT_CAPK_INSTRUMENT_TRACKS 18
 
 /* dkrt_status result. The caller owns the memory; the layout only grows at the end. */
 typedef struct DkrtStatus {
@@ -306,7 +310,7 @@ typedef struct DkrtBootInfo {
     uint32_t stable;                             /* 1 once the boot counter is back to 0: after STABLE_BLOCKS DSP blocks of UI loop in a normal boot, at the first UI-loop pass in a safe boot */
     uint8_t needs[DKRT_SEL_MAX][DKRT_NEEDS_LEN]; /* per selected module with result E_IMPORT: the first module its imports need that is not in the image, without the `core/` prefix (usb-bulk); empty otherwise */
     uint8_t states[DKRT_SEL_MAX];                /* per selected module: its STATE_* ([load.state] of sdk/sdk.toml); a selection index at or above count is STATE_SELECTED */
-    uint32_t detail[DKRT_SEL_MAX][2];            /* per selected module with state STATE_REFUSED: what the plan refused on (E_PLAN_KIND the kind; E_PLAN_OWNER the kind, slot or hook site; E_PLAN_KEY the kind and the key; E_PLAN_FIT the CAPK_* kind); zeros otherwise */
+    uint32_t detail[DKRT_SEL_MAX][2];            /* per selected module with state STATE_REFUSED: what the plan refused on (E_PLAN_KIND the kind; E_MISSING the name hash of the service whose provider is missing or did not load; E_PLAN_OWNER the kind, slot or hook site; E_PLAN_KEY the kind and the key; E_PLAN_FIT the CAPK_* kind); zeros otherwise */
 } DkrtBootInfo;
 
 /* dkrt_diag result (finding 46): what the debug log and the card check found. The caller owns the memory; the layout only grows at the end. */
@@ -356,6 +360,8 @@ typedef struct DkrtScan {
     uint32_t need_fx_slots;
     uint32_t need_dsp_cost_voice;                /* the module's DSP cost of one voice, instructions per block (header table, USES; 0: none) */
     uint32_t need_dsp_cost_fx;                   /* the module's DSP cost of its effects, instructions per block (0: none) */
+    uint32_t need_instrument_rows;               /* types of persistent V2 instruments in the DSP section (0: none) */
+    uint32_t need_instrument_tracks;             /* their track instances */
 } DkrtScan;
 
 /* The fit verdict of one DkrtScan entry. wont is 1 when the module does not fit next to the ticked ones; then short_* is the first short resource (a CAPK_* kind, what the module needs and what is free) and the texts say it. mem is the memory the module takes (arena and DSP area) as text. */
@@ -496,7 +502,7 @@ _Static_assert(offsetof(DkrtDiag, fault_rows) == 72, "DkrtDiag.fault_rows");
 _Static_assert(offsetof(DkrtDiag, fault_text) == 76, "DkrtDiag.fault_text");
 _Static_assert(sizeof(DkrtModuleHeader) == 4, "DkrtModuleHeader size");
 _Static_assert(offsetof(DkrtModuleHeader, version) == 0, "DkrtModuleHeader.version");
-_Static_assert(sizeof(DkrtScan) == 124, "DkrtScan size");
+_Static_assert(sizeof(DkrtScan) == 132, "DkrtScan size");
 _Static_assert(offsetof(DkrtScan, path) == 0, "DkrtScan.path");
 _Static_assert(offsetof(DkrtScan, first) == 64, "DkrtScan.first");
 _Static_assert(offsetof(DkrtScan, size) == 68, "DkrtScan.size");
@@ -513,6 +519,8 @@ _Static_assert(offsetof(DkrtScan, need_page_rows) == 108, "DkrtScan.need_page_ro
 _Static_assert(offsetof(DkrtScan, need_fx_slots) == 112, "DkrtScan.need_fx_slots");
 _Static_assert(offsetof(DkrtScan, need_dsp_cost_voice) == 116, "DkrtScan.need_dsp_cost_voice");
 _Static_assert(offsetof(DkrtScan, need_dsp_cost_fx) == 120, "DkrtScan.need_dsp_cost_fx");
+_Static_assert(offsetof(DkrtScan, need_instrument_rows) == 124, "DkrtScan.need_instrument_rows");
+_Static_assert(offsetof(DkrtScan, need_instrument_tracks) == 128, "DkrtScan.need_instrument_tracks");
 _Static_assert(sizeof(DkrtFitRow) == 96, "DkrtFitRow size");
 _Static_assert(offsetof(DkrtFitRow, wont) == 0, "DkrtFitRow.wont");
 _Static_assert(offsetof(DkrtFitRow, short_kind) == 4, "DkrtFitRow.short_kind");

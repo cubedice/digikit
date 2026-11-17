@@ -10,11 +10,12 @@ import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { planSymbol, prepareRuntimePlanListedOffline, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { openDigikitMenu } from '@digi/regression/runtime/runtime-menu.ts';
 import { canopyControls } from '@digi/regression/runtime/canopy-controls.ts';
 import { encoderValue } from '@digi/regression/runtime/encoder-value.ts';
-import { waitEmulatedFrames } from '@digi/regression/runtime/waits.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
+import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
+import { REDRAW, SETTLE } from '@digi/regression/runtime/fx-live.ts';
+import { openDigikitMenu } from '@digi/regression/runtime/flows/menu.ts';
 
 describeOn('dt2', 'CANOPY arp on the DT2', () => {
   // Full DTII 1.17 firmware, real panel input and MIDI, with a disposable card.
@@ -136,13 +137,13 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
     // A held, manually placed step must preview its locked chord on KEYS,
     // using the track's inherited NOTE rather than an invented default pitch.
     await key(1); // TRIG parameter page
-    await waitEmulatedFrames(session, 4500); // let the page-change message clear
+    await sessionRt(session).ui.wait({ ms: 3000, why: SETTLE }); // let the page-change message clear
     const pattern = await word(0x4316501c);
     const byteAt = async (address: number) => ((await word(address & ~3)) >>> ((3 - (address & 3)) * 8)) & 0xff;
     const originalRoot = await byteAt(pattern + 0x485);
     for (let i = 0; i < 3; i++) {
       await turn(1, -20);
-      await waitEmulatedFrames(session, 300);
+      await sessionRt(session).ui.wait({ ms: 200, why: REDRAW });
     }
     const rootNote = await byteAt(pattern + 0x485);
     expect(rootNote, 'track NOTE changed').toBeLessThan(originalRoot);
@@ -208,7 +209,7 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
     await key('SRC');
     await expect.poll(() => cf('ip_src_debug', 3), { timeout: 30_000 }).toBeGreaterThan(drawsBeforeReturn);
     await srcPage(0);
-    await openDigikitMenu(key);
+    await openDigikitMenu({ ...sessionRt(session), dk });
     await key('YES'); // CANOPY
     await key('YES'); // INPUT
     await key('YES'); // ENABLE
@@ -412,7 +413,7 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
     for (const note of notes) await midi([0x80, note, 0]);
     await expect.poll(async () => (await arp()).token, { timeout: 90_000 }).toBe(0);
     const released = (await arp()).serial;
-    await waitEmulatedFrames(session, 375);
+    await sessionRt(session).ui.wait({ ms: 250, why: REDRAW });
     expect((await arp()).serial, 'released notes stop generating arp events').toBe(released);
     expect(await cf('ip_control')).toBe(3);
     expect(await cf('mt_guard_fault')).toBe(0);

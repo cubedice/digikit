@@ -10,8 +10,8 @@ import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
+import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
 // This failing-baseline regression is not registered for ordinary device runs.
 // DIGI_CANOPY_PATTERN_PROOF selects unsafe emulator-only modules, never hardware.

@@ -75,6 +75,7 @@ pub const CAP_FILEHASH: u32 = 1 << 12;
 pub const CAP_RENAME: u32 = 1 << 13;
 pub const CAP_READBACK: u32 = 1 << 14;
 pub const CAP_LOADS: u32 = 1 << 15;
+pub const CAP_SVC_ABI: u32 = 1 << 16;
 pub const CAPK_MODULES: u8 = 1;
 pub const CAPK_SELECTION: u8 = 2;
 pub const CAPK_ARENA: u8 = 3;
@@ -91,8 +92,10 @@ pub const CAPK_SETTINGS: u8 = 13;
 pub const CAPK_SEND_SLOTS: u8 = 14;
 pub const CAPK_DSP_COST: u8 = 15;
 pub const CAPK_DSP_VOICES: u8 = 16;
+pub const CAPK_INSTRUMENT_ROWS: u8 = 17;
+pub const CAPK_INSTRUMENT_TRACKS: u8 = 18;
 /// Every CAPACITY kind in the order of its number: the runtime answers each one.
-pub const CAP_KINDS: [u8; 16] = [
+pub const CAP_KINDS: [u8; 18] = [
     CAPK_MODULES,
     CAPK_SELECTION,
     CAPK_ARENA,
@@ -109,9 +112,11 @@ pub const CAP_KINDS: [u8; 16] = [
     CAPK_SEND_SLOTS,
     CAPK_DSP_COST,
     CAPK_DSP_VOICES,
+    CAPK_INSTRUMENT_ROWS,
+    CAPK_INSTRUMENT_TRACKS,
 ];
 /// The resources a fit looks at: name, kind and what a person calls it.
-pub const CAP_FIT: [(&str, u8, &str); 12] = [
+pub const CAP_FIT: [(&str, u8, &str); 14] = [
     ("MODULES", CAPK_MODULES, "module records"),
     ("SELECTION", CAPK_SELECTION, "selection paths"),
     ("ARENA", CAPK_ARENA, "CPU memory"),
@@ -124,6 +129,8 @@ pub const CAP_FIT: [(&str, u8, &str); 12] = [
     ("FX_SLOTS", CAPK_FX_SLOTS, "effect slots"),
     ("DSP_COST", CAPK_DSP_COST, "DSP load"),
     ("DSP_VOICES", CAPK_DSP_VOICES, "DSP voices"),
+    ("INSTRUMENT_ROWS", CAPK_INSTRUMENT_ROWS, "instrument rows"),
+    ("INSTRUMENT_TRACKS", CAPK_INSTRUMENT_TRACKS, "instrument tracks"),
 ];
 /// The command ranges a module may register, as (first, last).
 pub const RANGES: [(u8, u8); 10] = [

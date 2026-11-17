@@ -9,13 +9,12 @@ import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { planSymbol, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
-import { openDigikitMenu } from '@digi/regression/runtime/runtime-menu.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { menuSelection } from '@digi/regression/runtime/menu-selection.ts';
+import { openDigikitMenu, waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
-// CANOPY on any track, several at once (finding 145): each of the four lowest
+// CANOPY on any track, several at once (finding 345): each of the four lowest
 // kit tracks whose Sound carries the instrument type gets its own instance,
 // SRC page, panel keys, MIDI route and audio; a fifth stays stock and silent.
 vi.setConfig({ hookTimeout: 600_000 });

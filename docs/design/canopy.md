@@ -58,7 +58,7 @@ position, retaining each note's relative envelope inside the polyphonic mix.
 Focused regressions and the full compiled playback/coexistence proof pass,
 including measured release after bit reduction at the stock coefficient rate.
 The implementation, artifacts and remaining qualification are recorded in
-[release ordering](../findings/143-canopy-post-fx-amp.md). It requires a matching
+[release ordering](../findings/343-canopy-post-fx-amp.md). It requires a matching
 firmware/module pair. The V7 pair was installed on 2026-11-10, with identity,
 module readback and preserved settings verified; see its installation handover.
 
@@ -1556,7 +1556,7 @@ DSP reset asserted and requires a whole-device restart.
 [D] The 2026-10-31 physical DTII experiment passed on image
 `7eed7aa5661f7981`: reset entered during active SPI with RX DMA ACTIVE,
 quiesced in one poll, retained link ownership, and kept both DMA addresses
-stable across three later snapshots. See [hardware reset evidence](../findings/136-dt2-dsp-reset.md).
+stable across three later snapshots. See [hardware reset evidence](../findings/336-dt2-dsp-reset.md).
 This closes the active-transfer quiescence measurement for the hooked reset
 path. USB commands stopped responding after the measurement, including software
 restart. Physical power cycling restored USB; Overloop-only selection, removal
@@ -2232,7 +2232,7 @@ Acceptance: `modules/machines/canopy/tests/stage1.manual.device.test.ts` passes 
 log `out/canopy-stage1-live.log`, PCM and fits `out/canopy-stage1*`.
 The package uses V2 reset/process entries, not a stock type-1 shadow. The adapter
 is optional, DTII-only, one instance, track 1 (since 2026-11-11 the lowest track
-carrying the instrument, finding 145), boot-only, with disabled-by-default
+carrying the instrument, finding 345), boot-only, with disabled-by-default
 nonpersistent route settings. Development installation uses the upload/selection
 protocol; the generic module-browser fit calculator remains V1-only. General
 module browsing, coexistence and hardware release proof are not implied.
@@ -2380,11 +2380,11 @@ USB partial releases, sustain messages and replaced-note release checks pass.
 The connected DIN keyboard demonstrated C-E-G to C-G ownership, four-note chords
 and complete release. A bounded USB stress run passed 1,440 note events and four
 verified 32 KiB uploads with no guard faults. One keyboard instrument on one
-track (track 1 at that time; any track since finding 145) remains the admitted
+track (track 1 at that time; any track since finding 345) remains the admitted
 configuration. Calibrated ingress-to-final-output latency,
 worst-case DSP budget, and broader transition/recovery qualification remain open;
 a physical sustain pedal is unavailable. See the
-[physical findings](../findings/138-canopy-stage6-hardware.md) and
+[physical findings](../findings/338-canopy-stage6-hardware.md) and
 [Stage 6 handover](../handovers/HANDOVER-2026-11-02-canopy-stage6.md).
 
 Stage 1 is a go/no-go gate. A beautiful pad sound with shared-note cutoff is a failed keyboard instrument. The detailed two-page UI must not delay that proof. Do not expand into extra oscillator types or recognition heuristics while MIDI/AMP ownership remains unresolved.

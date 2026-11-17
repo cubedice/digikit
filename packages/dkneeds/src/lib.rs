@@ -19,13 +19,15 @@ mod gen_limits;
 /// The loader's format limits, from `[limits.format]` of sdk/sdk.toml (`HEADER`, `DSP_HEADER`, `MAX_RECORDS`, `MAX_RELOCS`, `MAX_IMPORTS`,
 /// `MAX_CF_IMPORTS`, `MAX_VOICES`, `MAX_FX`, `MAX_STATE_VOICES`, `MAX_STATE_BYTES`, `GRANULE`, `DSP_SLACK`, `ARENA_HDR`).
 pub use gen_limits::*;
-mod instrument;
+pub mod instrument;
 pub use instrument::InstrumentNeeds;
+#[cfg(any(test, feature = "fixtures"))]
+pub mod fixtures;
 
 /// The needs of a file of persistent V2 instruments: the resources of `Needs` as the loader's V2 path takes them, and the
 /// instrument rows beside them. Not an admission: the loader's V2 owner checks the contract, the descriptors and the DSP.
-/// Keep separate from `Needs`: the scan and fit protocol of the runtime's menu has no instrument rows, so the menu takes `base`
-/// and leaves the rows and tracks to the loader.
+/// `base` holds the rows and tracks too (`instrument_rows`, `instrument_tracks`): the fit rule, the boot plan and the menu's scan read
+/// them there. `instruments` adds the state bytes, which are part of `base.dsp_area`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct V2Needs {
     pub base: Needs,
@@ -57,6 +59,9 @@ pub fn needs_of_v2<B: Bytes>(src: &mut B) -> Result<V2Needs, Error> {
             .checked_add(arena_block(allocation).ok_or(Error::Sizes)?)
             .ok_or(Error::Sizes)?;
         n.base.arena_xfer = 0;
+        // the rows and tracks are resources of the fit rule and of the boot plan (CAPK_INSTRUMENT_ROWS, CAPK_INSTRUMENT_TRACKS)
+        n.base.instrument_rows = n.instruments.rows;
+        n.base.instrument_tracks = n.instruments.tracks;
     }
     Ok(n)
 }
@@ -141,13 +146,17 @@ pub struct Needs {
     pub dsp_cost_voice: u32,
     /// DSP instructions per block of the module's effects (the header table's `DSP_COST_FX`; 0: none). The broker adds them up.
     pub dsp_cost_fx: u32,
+    /// Types of persistent V2 instruments in the DSP section (version 7 or 8; 0: none). Their owner takes one file of instruments a boot.
+    pub instrument_rows: u32,
+    /// Their track instances (the sum of the descriptors' tracks).
+    pub instrument_tracks: u32,
 }
 
 impl Needs {
     /// (name, value) of every field except `file_size`, the names of CAPACITY's kinds with their rows: `ARENA`, `ARENA_XFER`, `DSP_AREA`,
-    /// `DSP_ALIGN`, `MACHINE_ROWS`, `VOICE_ROWS`, `PARAM_ROWS`, `PAGE_ROWS`, `FX_SLOTS`, `DSP_COST_VOICE`, `DSP_COST_FX` (the last two are the module's own
-    /// cost, [records.resources]). The hosts (the wasm export, the command line) say them so.
-    pub fn fields(&self) -> [(&'static str, u32); 11] {
+    /// `DSP_ALIGN`, `MACHINE_ROWS`, `VOICE_ROWS`, `PARAM_ROWS`, `PAGE_ROWS`, `FX_SLOTS`, `DSP_COST_VOICE`, `DSP_COST_FX` (these two are the module's own
+    /// cost, [records.resources]), `INSTRUMENT_ROWS`, `INSTRUMENT_TRACKS`. The hosts (the wasm export, the command line) say them so.
+    pub fn fields(&self) -> [(&'static str, u32); 13] {
         [
             ("ARENA", self.arena),
             ("ARENA_XFER", self.arena_xfer),
@@ -160,6 +169,8 @@ impl Needs {
             ("FX_SLOTS", self.fx_slots),
             ("DSP_COST_VOICE", self.dsp_cost_voice),
             ("DSP_COST_FX", self.dsp_cost_fx),
+            ("INSTRUMENT_ROWS", self.instrument_rows),
+            ("INSTRUMENT_TRACKS", self.instrument_tracks),
         ]
     }
 
@@ -190,6 +201,20 @@ fn word<B: Bytes>(src: &mut B, at: u32) -> Result<u32, Error> {
 /// `off + len` lies in `size` (the loader's `in_file`), without overflow.
 fn inside(off: u32, len: u32, size: u32) -> bool {
     off <= size && len <= size - off
+}
+
+/// The instrument needs of a bare DSP section of version 7 or 8 (not a whole `.dkm`): what [`needs_of_v2`] reads of a file's section. For the tests
+/// that hold the needs reader and the loader's validator to the same answer.
+pub fn instrument_section_needs(section: &[u8]) -> Result<InstrumentNeeds, Error> {
+    let mut src = section;
+    let mut needs = Needs::default();
+    let mut instruments = InstrumentNeeds::default();
+    let size = u32::try_from(section.len()).map_err(|_| Error::Sizes)?;
+    dsp(&mut src, 0, size, &mut needs, Some(&mut instruments))?;
+    if instruments.rows == 0 {
+        return Err(Error::Dsp);
+    }
+    Ok(instruments)
 }
 
 /// The needs of the file `src` reads: see the module's text. `Err` for a file the loader would refuse for its format, or one that cannot be read.
@@ -274,10 +299,11 @@ fn keys_table<B: Bytes>(src: &mut B, off: u32, size: u32, n: &mut Needs) -> Resu
         return Err(Error::Register);
     }
     if u32::from_be_bytes([head[0], head[1], head[2], head[3]]) != keys::MAGIC
-        || u16::from_be_bytes([head[4], head[5]]) != keys::VERSION
+        || !(1..=keys::VERSION).contains(&u16::from_be_bytes([head[4], head[5]]))
     {
         return Err(Error::Register);
     }
+    let version = u16::from_be_bytes([head[4], head[5]]);
     let entries = u16::from_be_bytes([head[6], head[7]]) as usize;
     let mut at = keys::HEAD as u32;
     let mut last = 0u16;
@@ -290,7 +316,12 @@ fn keys_table<B: Bytes>(src: &mut B, off: u32, size: u32, n: &mut Needs) -> Resu
         let tg = u16::from_be_bytes([e[0], e[1]]);
         let count = u16::from_be_bytes([e[2], e[3]]) as u32;
         let len = u32::from_be_bytes([e[4], e[5], e[6], e[7]]);
-        if !(keys::tag::NEEDS..=keys::tag::RESOURCES).contains(&tg)
+        let top = if version >= 2 {
+            keys::tag::BIND
+        } else {
+            keys::tag::RESOURCES
+        };
+        if !(keys::tag::NEEDS..=top).contains(&tg)
             || tg <= last
             || len % 4 != 0
             || len > size - at - e.len() as u32
@@ -360,7 +391,7 @@ fn dsp<B: Bytes>(
     } else if version == DSP_V2 {
         VOICE_V2
     } else if (DSP_V3..=DSP_V5).contains(&version)
-        || (matches!(version, 7 | 8) && instruments.is_some())
+        || (instrument::is_instrument_version(version) && instruments.is_some())
     {
         // 7 and 8: persistent V2 instruments (voices as version 3); only a V2-aware reader takes them
         VOICE_V3
@@ -488,7 +519,7 @@ fn dsp<B: Bytes>(
         total = total.checked_add((state + 7) & !7).ok_or(Error::Dsp)?;
         i += 1;
     }
-    if version == 7 || version == 8 {
+    if instrument::is_instrument_version(version) {
         let allocation = instrument::read(src, off, size)?;
         total = total
             .checked_add(allocation.state_bytes)

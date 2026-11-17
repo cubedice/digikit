@@ -379,7 +379,7 @@ complete acceptance lane passed: Stage 5's first chord encoder packet after a
 long idle never reached the native handler; Stage 6's first LENGTH adjustment
 changed the kit but Overloop showed NO STATUS. The former matches the documented
 stock encoder idle filter; the latter exposed an existing collision between
-immediate FX breadcrumbs and Overloop's reply carrier. Finding 140 records the
+immediate FX breadcrumbs and Overloop's reply carrier. Finding 340 records the
 carrier relocation and independent image/slot review. The next acceptance run
 must use the rebuilt firmware, not the earlier b089 image.
 
@@ -388,7 +388,7 @@ The corrected candidate is `out/patch/canopy-wavetable-loop-carrier.syx`, SHA256
 Its matching plan and preflight pass are recorded in
 `out/canopy-wavetable-loop-preflight.log`. The DKM remains `73bb61df...`.
 The final carrier/component cases passed all 25 checks (24 in the first run,
-one after fixing reply-buffer placement in the test fixture; finding 140).
+one after fixing reply-buffer placement in the test fixture; finding 340).
 The input helper now acknowledges the native decoder and UI consumption of each
 turn before considering another detent, then waits for the requested revision
 and exact DSP value. Both acceptance lanes reuse this for small custom-control
@@ -400,7 +400,7 @@ The carrier correction is committed as `d1e45d65`. A second agent independently
 decoded the candidate image and confirmed all 212 inline writes and 640
 relocations across DSP-link, loop-display and instrument-play, with matching
 source digests and object/plan hashes. The prior stack fix is unchanged outside
-relocation operands. See finding 140 for the bounded scope of this audit.
+relocation operands. See finding 340 for the bounded scope of this audit.
 
 The OVL2 run passed the complete Stage 5 acceptance in 2,334 seconds. This covers
 native page cycling and held values, panel chords and independent release,

@@ -9,11 +9,12 @@ import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { planSymbol, prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
+import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
+import { REDRAW, SETTLE } from '@digi/regression/runtime/fx-live.ts';
 
 describeOn('dt2', 'CANOPY pattern copy on the DT2', () => {
-  // CANOPY Sound persistence (finding 151): two CANOPY tracks on two patterns
+  // CANOPY Sound persistence (finding 351): two CANOPY tracks on two patterns
   // with different settings, a project save, a return to the first pattern, then
   // pattern copy, a further source edit, paste and undo with the stock panel.
   vi.setConfig({ hookTimeout: 600_000 });
@@ -103,7 +104,7 @@ describeOn('dt2', 'CANOPY pattern copy on the DT2', () => {
     const changePattern = async (trig: 1 | 2, expectedKit: number) => {
       await selectPattern(trig);
       await expect.poll(kit, { timeout: 60_000 }).toBe(expectedKit);
-      await waitEmulated(session, 1000);
+      await sessionRt(session).ui.wait({ ms: 1000, why: SETTLE });
       await expect.poll(async () =>
         (await Promise.all(Array.from({ length: 4 }, (_, i) => cf('ip_tracks', i)))).includes(0),
       { timeout: 60_000 }).toBe(true);
@@ -143,9 +144,9 @@ describeOn('dt2', 'CANOPY pattern copy on the DT2', () => {
     // Seed the two distinct sounds before exercising the pattern clipboard.
     await edge('FUNC', true);
     try { await key('SETTINGS'); } finally { await edge('FUNC', false); }
-    await waitEmulated(session, 300);
+    await sessionRt(session).ui.wait({ ms: 300, why: REDRAW });
     await key('YES');
-    await waitEmulated(session, 3500);
+    await sessionRt(session).ui.wait({ ms: 3500, why: SETTLE });
 
     await changePattern(1, kit1);
     await expect.poll(() => values(), { timeout: 30_000 }).toEqual(evidence.first);
@@ -169,7 +170,7 @@ describeOn('dt2', 'CANOPY pattern copy on the DT2', () => {
     const counters = async () => Promise.all(Array.from({ length: 9 }, (_, i) => cf('ip_sa_stats', i)));
     evidence.beforeCopy = await counters();
     await modified('FUNC', 'RECORD');
-    await waitEmulated(session, 1000);
+    await sessionRt(session).ui.wait({ ms: 1000, why: SETTLE });
     evidence.afterCopy = await counters();
     // A copy must retain the values at copy time, even if the source changes.
     await turn(2, 4);
@@ -184,14 +185,14 @@ describeOn('dt2', 'CANOPY pattern copy on the DT2', () => {
     await changePattern(2, kit2);
     evidence.beforePaste = await values();
     await modified('FUNC', 'STOP');
-    await waitEmulated(session, 2000);
+    await sessionRt(session).ui.wait({ ms: 2000, why: SETTLE });
     evidence.afterPaste = await values();
     evidence.afterPasteCounters = await counters();
     await expect.poll(() => values(2), { timeout: 30_000 }).toEqual(evidence.copyTimeTrack2);
     evidence.afterPasteTrack2 = await values(2);
     // FUNC+STOP a second time performs stock undo paste.
     await modified('FUNC', 'STOP');
-    await waitEmulated(session, 2000);
+    await sessionRt(session).ui.wait({ ms: 2000, why: SETTLE });
     evidence.afterUndo = await values();
     evidence.afterUndoCounters = await counters();
     await expect.poll(() => values(2), { timeout: 30_000 }).toEqual(evidence.secondTrack2);

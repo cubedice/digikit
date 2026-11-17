@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { setTimeout as delay } from 'node:timers/promises';
 import { repoRoot, withinRuntimeDeadline } from '@digi/test-support';
 import { CMD } from '@digi/dk-session/gen_proto';
 import { afterAll, beforeAll, expect, onTestFinished, test, vi } from 'vitest';
@@ -9,18 +8,17 @@ import { withSession } from '@digi/regression/support.ts';
 import { timePhase, timingContext } from '@digi/regression/timing.ts';
 import { liveOptions } from '@digi/regression/runtime/devices.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { planSymbol, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 import { captureRemoteOled as captureOled } from '@digi/regression/runtime/remote.ts';
 import { liveArtifacts } from '@digi/regression/runtime/artifacts.ts';
-import { openDigikitMenu } from '@digi/regression/runtime/runtime-menu.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { menuSelection } from '@digi/regression/runtime/menu-selection.ts';
 import { encoderValue } from '@digi/regression/runtime/encoder-value.ts';
 import { canopyControls } from '@digi/regression/runtime/canopy-controls.ts';
 import { proveWavetableFm } from './wavetable-fm.ts';
+import { openDigikitMenu, waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
 async function captureRemoteOled(...args: Parameters<typeof captureOled>) {
   await captureOled(...args);
@@ -493,14 +491,14 @@ test(
       } finally {
         await edge('TRK', false);
       }
-      await delay(1000);
+      await waitEmulated(session, 1000);
     };
     const beforeStock = await bank();
     await selectedTrack(2);
     expect(await cf('ip_src_debug', 2)).toBe(0);
     const paints = await cf('ip_src_debug', 3);
     await session.client.inputTurn(1, 2);
-    await delay(1000);
+    await waitEmulated(session, 1000);
     expect(await bank()).toEqual(beforeStock);
     expect(await cf('ip_src_debug', 3)).toBe(paints);
     await captureRemoteOled(session, 'canopy-stage5-stock-track');
@@ -509,7 +507,7 @@ test(
     await srcPage(0);
     for (const note of [60, 64, 67]) await session.client.call('midi.usb.in', { bytes: [0x90, note, 100] });
     await expect.poll(async () => (await voices()).length, { timeout: 15000 }).toBe(3);
-    await delay(1500);
+    await waitEmulated(session, 1500);
     await captureRemoteOled(session, 'canopy-stage5-notes');
     expect(await cf('ip_src_debug', 5)).toBeGreaterThan(0);
     await openDigikitMenu(key);
@@ -540,7 +538,7 @@ test(
     const hiddenPaints = await cf('ip_src_debug', 3),
       hiddenColor = (await bank())[18];
     await session.client.inputTurn(4, 4);
-    await delay(1000);
+    await waitEmulated(session, 1000);
     expect((await bank())[18]).toBe(hiddenColor);
     expect(await cf('ip_src_debug', 3)).toBe(hiddenPaints);
     for (const note of [60, 67, 71, 76]) await session.client.call('midi.usb.in', { bytes: [0x90, note, 100] });
@@ -624,7 +622,7 @@ test(
       .poll(
         async () => {
           await session.client.inputTurn(1, 8);
-          await delay(500);
+          await waitEmulated(session, 500);
           return nativeTune();
         },
         { timeout: 15000, interval: 500 },
@@ -639,7 +637,7 @@ test(
       .poll(
         async () => {
           await session.client.inputTurn(8, -8);
-          await delay(500);
+          await waitEmulated(session, 500);
           return (await word(sound + 0x58)) >>> 16;
         },
         { timeout: 15000, interval: 500 },

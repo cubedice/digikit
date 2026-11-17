@@ -22,7 +22,7 @@ RUNTIME = ROOT / "modules/core/runtime"
 DEMO = ROOT / "tests/fixtures/modules/dyn-demo"
 
 
-@pytest.mark.parametrize("device,stage_end", [("dt2", 0x48000), ("dn2", 0x30000)])
+@pytest.mark.parametrize("device,stage_end", [("dt2", 0x45000), ("dn2", 0x30000)])
 def test_write_watch_excludes_the_full_device_stage_and_no_neighbor(device, stage_end):
     plan = {
         "base": {"device": device},

@@ -14,7 +14,7 @@ import { cardAfter, overlayRecords } from '@digi/regression/runtime/write-safety
 import { canopyPanel } from './canopy-panel.ts';
 
 describeOn('dt2', 'CANOPY Sound transfer on the DT2', () => {
-  // CANOPY Sound persistence through the stock preset transfers (finding 151):
+  // CANOPY Sound persistence through the stock preset transfers (finding 351):
   // a track Sound saved into the project's preset pool and loaded from it onto
   // another track and back, and a track Sound saved to the +Drive preset library
   // and loaded onto another track, in the same session and after a power cycle.

@@ -14,11 +14,15 @@ dkrt-fit = { path = "../../fit" }
 dkrt-link = { path = "../../link" }
 dkrt-svc-fx = { path = "../../../services/fx" }
 dkrt-svc-machines = { path = "../../../services/machines" }
+dkrt-svc-samples = { path = "../../../services/samples" }
 dkneeds = { path = "../../../../../packages/dkneeds" }
 dkfw = { path = "../../../fw/rs" }
 
 [dev-dependencies]
 dkrt-test-support = { path = "../../test-support" }
+dkneeds = { path = "../../../../../packages/dkneeds", features = ["fixtures"] }
+dkrt-svc-rt = { path = "../../svc-rt" }
+dkrt-svc-lfo = { path = "../../../services/lfo" }
 
 # This crate sits inside the repository's cargo workspace but is built on its own (`patchkit build`).
 [workspace]

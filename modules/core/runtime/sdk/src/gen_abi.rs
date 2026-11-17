@@ -96,6 +96,8 @@ pub const FIT_BRIEF: usize = 32;
 pub const FIT_MEM: usize = 8;
 /// Paths of the selection (`[limits.max] modules` of sdk/sdk.toml).
 pub const SEL_MAX: usize = 8;
+/// Provider slots of the boot plan (`[limits.format] provider_max` of sdk/sdk.toml), separate from the selection.
+pub const PROVIDER_MAX: usize = 6;
 
 /// dkrt_status result. The caller owns the memory; the layout only grows at the end.
 #[repr(C)]
@@ -371,7 +373,7 @@ pub struct DkrtBootInfo {
     pub needs: [[u8; NEEDS_LEN]; SEL_MAX],
     /// per selected module: its STATE_* ([load.state] of sdk/sdk.toml); a selection index at or above count is STATE_SELECTED
     pub states: [u8; SEL_MAX],
-    /// per selected module with state STATE_REFUSED: what the plan refused on (E_PLAN_KIND the kind; E_PLAN_OWNER the kind, slot or hook site; E_PLAN_KEY the kind and the key; E_PLAN_FIT the CAPK_* kind); zeros otherwise
+    /// per selected module with state STATE_REFUSED: what the plan refused on (E_PLAN_KIND the kind; E_MISSING the name hash of the service whose provider is missing or did not load; E_PLAN_OWNER the kind, slot or hook site; E_PLAN_KEY the kind and the key; E_PLAN_FIT the CAPK_* kind); zeros otherwise
     pub detail: [[u32; 2]; SEL_MAX],
 }
 const _: () = assert!(size_of::<DkrtBootInfo>() == 248, "DkrtBootInfo size");
@@ -496,8 +498,12 @@ pub struct DkrtScan {
     pub need_dsp_cost_voice: u32,
     /// the module's DSP cost of its effects, instructions per block (0: none)
     pub need_dsp_cost_fx: u32,
+    /// types of persistent V2 instruments in the DSP section (0: none)
+    pub need_instrument_rows: u32,
+    /// their track instances
+    pub need_instrument_tracks: u32,
 }
-const _: () = assert!(size_of::<DkrtScan>() == 124, "DkrtScan size");
+const _: () = assert!(size_of::<DkrtScan>() == 132, "DkrtScan size");
 const _: () = assert!(offset_of!(DkrtScan, path) == 0, "DkrtScan.path");
 const _: () = assert!(offset_of!(DkrtScan, first) == 64, "DkrtScan.first");
 const _: () = assert!(offset_of!(DkrtScan, size) == 68, "DkrtScan.size");
@@ -514,6 +520,8 @@ const _: () = assert!(offset_of!(DkrtScan, need_page_rows) == 108, "DkrtScan.nee
 const _: () = assert!(offset_of!(DkrtScan, need_fx_slots) == 112, "DkrtScan.need_fx_slots");
 const _: () = assert!(offset_of!(DkrtScan, need_dsp_cost_voice) == 116, "DkrtScan.need_dsp_cost_voice");
 const _: () = assert!(offset_of!(DkrtScan, need_dsp_cost_fx) == 120, "DkrtScan.need_dsp_cost_fx");
+const _: () = assert!(offset_of!(DkrtScan, need_instrument_rows) == 124, "DkrtScan.need_instrument_rows");
+const _: () = assert!(offset_of!(DkrtScan, need_instrument_tracks) == 128, "DkrtScan.need_instrument_tracks");
 
 /// The fit verdict of one DkrtScan entry. wont is 1 when the module does not fit next to the ticked ones; then short_* is the first short resource (a CAPK_* kind, what the module needs and what is free) and the texts say it. mem is the memory the module takes (arena and DSP area) as text.
 #[repr(C)]

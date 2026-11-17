@@ -4,7 +4,7 @@ Branch `codex/short-loop-proof`. The user asked for CANOPY's settings to persist
 with the Sound and chose the real design over a boot cache or stopping. The
 production adapter `core/instrument-play` now stores CANOPY's SRC settings
 outside Sound memory and writes them into saved Sound records; see
-[finding 151](../findings/151-canopy-sound-persistence.md). Emulator only. The
+[finding 351](../findings/351-canopy-sound-persistence.md). Emulator only. The
 DTII still runs `bf49e4f08419374c` (the 2026-11-13 onset and chord-preview
 install); nothing from this work is installed.
 
@@ -103,7 +103,7 @@ finding for the values and the menu paths. Shared panel steps are in
   leaves alone), each note-off in the phase its case names; 20/20 pass.
   `test_canopy_v2` pins the 256-sample ramp itself.
 - SysEx is blocked in the emulator: a pattern dump stops after 4032 bytes
-  because USB transmit completion is not modelled (finding 151).
+  because USB transmit completion is not modelled (finding 351).
   `sysex-pattern.manual.device.test.ts` is ready for when it is; modelling it
   means finding what the firmware waits on after the USB transmit function
   that `midi.usb.out` observes, and raising it in `packages/emulator`.
@@ -128,7 +128,7 @@ finding for the values and the menu paths. Shared panel steps are in
 - Not exercised: kit reload, machine change and back (expected: the
   instance's state is kept, as before), and LEARN during a save.
 - Copies made by code other than memcpy/memset/bzero are not followed. The
-  write-watch inventory of the pattern-copy test found none (finding 151);
+  write-watch inventory of the pattern-copy test found none (finding 351);
   operations outside that test are not inventoried yet
   (`out/run-persist-ww.sh TEST NAME`, `out/sidetable_ww_report.py LOG`).
 - The superseded `+0x13a` fixtures (`tests/regression/fixtures/canopy-*`,

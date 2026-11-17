@@ -43,4 +43,5 @@ test('Sound and kit copies defer MIDI selector edits at each copy chunk', () => 
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
-});
+  // the compile with the sanitizer takes over 5 s beside a running gate: the limit is the two bounds above
+}, 45_000);

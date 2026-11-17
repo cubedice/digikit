@@ -34,6 +34,8 @@ struct Link {
     accepted: u32,
     polls: u32,
     no_fx_info: bool,
+    /// The tick callback drop (`dl_tick_cb_drop`) must name the seeded module's range after its `fini`; off for tests of the loader over fakes.
+    strict_tick_drop: bool,
     events: Vec<Event>,
 }
 static mut LINK: Link = Link {
@@ -43,6 +45,7 @@ static mut LINK: Link = Link {
     accepted: 0,
     polls: 0,
     no_fx_info: false,
+    strict_tick_drop: true,
     events: Vec::new(),
 };
 
@@ -161,6 +164,7 @@ unsafe fn seed(completion: Completion, fx: bool, published: bool, queued: bool) 
         accepted: 0,
         polls: 0,
         no_fx_info: false,
+        strict_tick_drop: true,
         events: Vec::new(),
     };
     let s = st();
@@ -478,28 +482,6 @@ pub extern "C" fn dl_diag(_: *mut u32, _: u32) -> i32 {
     0
 }
 
-// The sample backing plug-in point, absent in this host fixture (version 0 is refused).
-#[no_mangle]
-pub extern "C" fn dkpool_version() -> u32 {
-    0
-}
-#[no_mangle]
-pub extern "C" fn dkpool_load(_: u32, _: *const u8, _: *const u8, _: *mut u8) -> i32 {
-    -48
-}
-#[no_mangle]
-pub extern "C" fn dkpool_release(_: *const u8) {}
-#[no_mangle]
-pub extern "C" fn dkpool_check(_: *const u8) -> i32 {
-    -15
-}
-#[no_mangle]
-pub extern "C" fn dkpool_free_frames() -> u32 {
-    0
-}
-#[no_mangle]
-pub extern "C" fn dkpool_tick() {}
-
 // core/sdhc-large, absent in this host fixture.
 #[no_mangle]
 pub extern "C" fn sdhc_large_range(_: u32, _: u32) {}
@@ -536,13 +518,12 @@ pub extern "C" fn dkpw_recover(_: *mut u32) -> i32 {
     -48
 }
 #[no_mangle]
+pub extern "C" fn dkpw_commit() -> i32 {
+    0
+}
+#[no_mangle]
 pub extern "C" fn dkpw_staging() -> *const u8 {
     b"/.dkstage\0".as_ptr()
-}
-
-#[no_mangle]
-pub extern "C" fn dkpool_cancel(_: u32) {
-    panic!("host cleanup tests have no pending sample-pool requests")
 }
 
 // No firmware file systems or DSP tick callback are installed in this host fixture.
@@ -562,10 +543,24 @@ pub static dkrt_files_fs: [u32; 3] = [0; 3];
 pub static dkrt_store_first: u32 = 0;
 #[no_mangle]
 pub static dkrt_store_sectors: u32 = 0;
+/// The firmware adapter of persistent instruments (core/instrument-play) is not in a host test: no policy, so the loader admits no V2 section.
+#[no_mangle]
+pub extern "C" fn instrument_runtime_policy() -> *const u32 {
+    core::ptr::null()
+}
 #[no_mangle]
 pub extern "C" fn dl_tick_cb_drop(start: u32, end: u32) {
-    assert_eq!((start, end), (CF, CF + 256));
-    unsafe { assert!(LINK.events.contains(&Event::Fini)); }
+    unsafe {
+        if LINK.strict_tick_drop {
+            assert_eq!((start, end), (CF, CF + 256));
+            assert!(LINK.events.contains(&Event::Fini));
+        }
+    }
+}
+
+/// The loader tests over fakes use other addresses and no seeded link: the tick callback drop is not checked.
+pub(crate) fn lenient_tick_drop() {
+    unsafe { LINK.strict_tick_drop = false }
 }
 
 /// The other firmware anchors that the platform tests keep reachable: nothing in the host tests may write the card or send MIDI through them

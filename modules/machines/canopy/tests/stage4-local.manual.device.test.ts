@@ -1,15 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { setTimeout as delay } from 'node:timers/promises';
 import { button, repoRoot } from '@digi/test-support';
 import { expect, onTestFinished, test } from 'vitest';
 import { withSession } from '@digi/regression/support.ts';
 import { liveOptions } from '@digi/regression/runtime/devices.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { planSymbol, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
-import { openDigikitMenu } from '@digi/regression/runtime/runtime-menu.ts';
+import { openDigikitMenu, waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
 const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
 test('CANOPY local arp through setup, MIDI and final audio', async () => {
@@ -83,9 +81,9 @@ test('CANOPY local arp through setup, MIDI and final audio', async () => {
   };
   const key = async (name: string, settle = 500) => {
     await session.client.inputButton(button(name), true);
-    await delay(200);
+    await waitEmulated(session, 200);
     await session.client.inputButton(button(name), false);
-    await delay(settle);
+    await waitEmulated(session, settle);
   };
   await waitEmulated(session, 12_000); // the DT2 UI settle the harness helper waited before c223679e
   // Select the admitted machine using the stock machine chooser.
@@ -131,7 +129,7 @@ test('CANOPY local arp through setup, MIDI and final audio', async () => {
   const turn = async (enc: number, delta: number, count = 1) => {
     for (let i = 0; i < count; i++) {
       await session.client.inputTurn(enc, delta);
-      await delay(250);
+      await waitEmulated(session, 250);
     }
   };
   const adjust = async (index: number, target: number) => {

@@ -9,7 +9,7 @@ import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runti
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
+import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
 // Never register for hardware. A native project load supplies a valid stock
 // Sound record, then four isolated synthetic Sound load/save calls use it.

@@ -11,9 +11,12 @@ pub const MAX_STATE_BYTES: u32 = 16777216;
 pub const GRANULE: u32 = 64;
 pub const DSP_SLACK: u32 = 8;
 pub const ARENA_HDR: u32 = 16;
-pub const COLLECT_BYTES: u32 = 7206;
+pub const COLLECT_BYTES: u32 = 7486;
 pub const TABLE_MAGIC: u32 = 1145787458;
-pub const TABLE_VERSION: u32 = 1;
+pub const TABLE_VERSION: u32 = 2;
+pub const PROVIDER_MAX: u32 = 6;
+pub const BIND_MAX: u32 = 24;
+pub const INSTALL_SITES: u32 = 48;
 pub const MAX_VOICES: u32 = 8;
 pub const MAX_FX: u32 = 4;
 
@@ -47,8 +50,10 @@ pub const H_SHA: u32 = 16;
 pub const H_RUNTIME: u32 = 48;
 /// Header word: the module's version.
 pub const H_VERSION: u32 = 52;
-/// Header word: reserved.
-pub const H_RESERVED: u32 = 56;
+/// Header word: the role (0 module, 1 service).
+pub const H_ROLE: u32 = 56;
+/// Header word: the ABI fingerprint of a service file (`dk_svc_abi`, the `dkrt-abi` boundary hash); 0 for a module and for a file that uses neither interface B nor C.
+pub const H_SVC_ABI: u32 = 60;
 /// Header: the module name, NAME_LEN bytes.
 pub const H_NAME: u32 = 64;
 /// Header word: ColdFire image offset.
@@ -264,14 +269,18 @@ pub const RES_PAGE_ROWS: u32 = 3;
 pub const RES_RECORD_BYTES: u32 = 4;
 pub const RES_DSP_COST_VOICE: u32 = 5;
 pub const RES_DSP_COST_FX: u32 = 6;
+pub const RES_INSTRUMENT_ROWS: u32 = 7;
+pub const RES_INSTRUMENT_TRACKS: u32 = 8;
 /// The resources of a module's `uses` in the order of their ids: (id, name).
-pub const RESOURCES: [(u32, &str); 6] = [
+pub const RESOURCES: [(u32, &str); 8] = [
     (RES_MACHINE_ROWS, "machine_rows"),
     (RES_PARAM_ROWS, "param_rows"),
     (RES_PAGE_ROWS, "page_rows"),
     (RES_RECORD_BYTES, "record_bytes"),
     (RES_DSP_COST_VOICE, "dsp_cost_voice"),
     (RES_DSP_COST_FX, "dsp_cost_fx"),
+    (RES_INSTRUMENT_ROWS, "instrument_rows"),
+    (RES_INSTRUMENT_TRACKS, "instrument_tracks"),
 ];
 
 /// The `[fx]` contract of sdk/sdk.toml (the numbers of <dk/gen/fx_consts.h>).

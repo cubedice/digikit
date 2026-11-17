@@ -4708,6 +4708,7 @@
       "sig": "void (u8 *p)",
       "subsystem": "mem",
       "users": [
+        "core/plusdrive-write",
         "core/runtime"
       ],
       "was": [
@@ -4761,6 +4762,7 @@
       "subsystem": "mem",
       "users": [
         "core/digikit-menu",
+        "core/plusdrive-write",
         "core/runtime"
       ],
       "was": [
@@ -8655,7 +8657,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 sequencer UI state (KeyboardView +0x98, SRC view +0x6c): live recording, i.e. transport playing and the record byte at +0x271; finding 147.",
+      "doc": "DT2 OS1.17 sequencer UI state (KeyboardView +0x98, SRC view +0x6c): live recording, i.e. transport playing and the record byte at +0x271; finding 347.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -8686,7 +8688,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 SoundParameterSet vfunc 18 (this unused, code, step): clears a lock on the current track; finding 147.",
+      "doc": "DT2 OS1.17 SoundParameterSet vfunc 18 (this unused, code, step): clears a lock on the current track; finding 347.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -8717,7 +8719,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 1.17 audio ISR due-event lock pointer check on the non-note path. Finding 147.",
+      "doc": "DT2 1.17 audio ISR due-event lock pointer check on the non-note path. Finding 347.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -8748,7 +8750,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 1.17 audio ISR due-note lock pointer check. Finding 147.",
+      "doc": "DT2 1.17 audio ISR due-note lock pointer check. Finding 347.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -8779,7 +8781,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 SoundParameterSet vfunc 16 (this unused, code, step): the current track's lock value or -1; finding 147. The window spans vfuncs 16..18 and 4 bytes beyond, the only one of three identical copies that is unique.",
+      "doc": "DT2 OS1.17 SoundParameterSet vfunc 16 (this unused, code, step): the current track's lock value or -1; finding 347. The window spans vfuncs 16..18 and 4 bytes beyond, the only one of three identical copies that is unique.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -8810,7 +8812,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 1.17 held-trig edit marker (sequencer view, boolean); stock parameter-lock edits set it before changing values. Finding 147.",
+      "doc": "DT2 1.17 held-trig edit marker (sequencer view, boolean); stock parameter-lock edits set it before changing values. Finding 347.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -8841,7 +8843,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 SoundParameterSet vfunc 17 (this unused, code, value, step): sets a lock on the current track; 0 when all 80 lanes are used or the step is beyond the pattern; finding 147.",
+      "doc": "DT2 OS1.17 SoundParameterSet vfunc 17 (this unused, code, value, step): sets a lock on the current track; 0 when all 80 lanes are used or the step is beyond the pattern; finding 347.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -8934,7 +8936,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 pattern note-list writer (editor, track, step, records vector of 4-byte {note, velocity, ...}); every recorded note commits through it; finding 149.",
+      "doc": "DT2 OS1.17 pattern note-list writer (editor, track, step, records vector of 4-byte {note, velocity, ...}); every recorded note commits through it; finding 349.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -9368,7 +9370,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 sequencer: adda.l of the state base whose byte +0x15b + track holds the track's current step (stored before each trig); the literal is at +2; finding 147.",
+      "doc": "DT2 OS1.17 sequencer: adda.l of the state base whose byte +0x15b + track holds the track's current step (stored before each trig); the literal is at +2; finding 347.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -10081,7 +10083,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 sequencer UI state: step recording, i.e. record mode (+0x269) with the step-record byte at +0x272 (set by RECORD + STOP); finding 149.",
+      "doc": "DT2 OS1.17 sequencer UI state: step recording, i.e. record mode (+0x269) with the step-record byte at +0x272 (set by RECORD + STOP); finding 349.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -10112,7 +10114,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17 sequencer UI state: a trig is held within the pattern length (128-bit held-step mask at +0x258); finding 147.",
+      "doc": "DT2 OS1.17 sequencer UI state: a trig is held within the pattern length (128-bit held-step mask at +0x258); finding 347.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -14200,6 +14202,42 @@
         }
       },
       "sig": "void (u32 kind, u32 a, u32 b)",
+      "subsystem": "storage",
+      "users": [
+        "core/plusdrive-write"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401581dc",
+            "len": 4
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_storage_file_alloc_pages",
+        "rust": "dkfw::storage::file_alloc_pages"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Page allocation FUN_401581dc (DT2 1.17): allocates `pages` card pages for file pages [first_page, first_page + pages) of the inode, first fit from the bitmap start 0xa7a (hint 0), and adds one extent per allocation (FUN_40157c68, FUN_40155974); stops silently when no page is free. It does not write the inode back (inode.write does) and does not count free pages first, which file.reserve does (FUN_40155f84, bit by bit). Call under the filesystem mutex with an inode of inode.get. Pass hint 0 (finding 120, finding 134).",
+      "file": "devices/fw/storage.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.storage.fn.file.alloc_pages",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "sig": "void (u8 *inode, u32 first_page, u32 pages, u8 hint)",
       "subsystem": "storage",
       "users": [
         "core/plusdrive-write"
@@ -23159,7 +23197,7 @@
       "name": "samples"
     },
     {
-      "count": 47,
+      "count": 48,
       "cpu": "cf",
       "file": "devices/fw/storage.toml",
       "meaning": "block device reads and writes, the boot record",

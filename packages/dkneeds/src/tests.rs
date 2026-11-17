@@ -165,6 +165,38 @@ fn the_dsp_cost_comes_from_the_uses_of_the_keys_table() {
 }
 
 #[test]
+fn the_menu_reader_accepts_a_version_2_table() {
+    let uses = [keys::Use {
+        resource: crate::RES_MACHINE_ROWS,
+        count: 3,
+    }];
+    let stock = [1u8, 2, 3];
+    let table = keys::Table {
+        uses: &uses,
+        slots: &[keys::Slot {
+            id: 1,
+            flags: 0,
+            entry: 0x40,
+        }],
+        provides: &[keys::Pair { a: 5, b: 1 }],
+        bind: &[keys::Bind {
+            site: 6,
+            addr: 0x1000,
+            tramp: 0x20,
+            stock: &stock,
+        }],
+        ..Default::default()
+    };
+    let mut t = vec![0u8; keys::table_size(&table)];
+    keys::write_table(&table, &mut t).unwrap();
+    assert_eq!(t[5], 2);
+    assert_eq!(of(&dkm(4, 0, &t, &[])).unwrap().machine_rows, 3);
+    // another version is refused
+    t[5] = 3;
+    assert_eq!(of(&dkm(4, 0, &t, &[])), Err(Error::Register));
+}
+
+#[test]
 fn a_dsp_section_takes_a_range_a_block_and_voice_rows() {
     // image 8, bss 100, three states of 20 (24 each) of one voice record: 108 -> 112, + 72 = 184, granule 192
     let f = dkm(4, 0, &[], &dsp_section(3, 8, 100, &[(20, 3)]));
@@ -274,6 +306,8 @@ fn the_fields_have_the_capacity_names() {
         fx_slots: 10,
         dsp_cost_voice: 11,
         dsp_cost_fx: 12,
+        instrument_rows: 13,
+        instrument_tracks: 14,
     };
     let f = n.fields();
     assert_eq!(f[0], ("ARENA", 2));
@@ -281,7 +315,11 @@ fn the_fields_have_the_capacity_names() {
     assert_eq!((f[9], f[10]), (("DSP_COST_VOICE", 11), ("DSP_COST_FX", 12)));
     assert_eq!(
         f.iter().map(|x| x.1).sum::<u32>(),
-        2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + 11 + 12
+        2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + 11 + 12 + 13 + 14
+    );
+    assert_eq!(
+        (f[11], f[12]),
+        (("INSTRUMENT_ROWS", 13), ("INSTRUMENT_TRACKS", 14))
     );
 }
 
@@ -547,7 +585,41 @@ fn sample_track_record_v5_needs_kind_2_zero_blocks_and_no_overlap() {
     assert_eq!(of(&dkm(4, 0, &[], &dsp)), Err(Error::Dsp));
 }
 
-/// Canonical V7 section: two independent track states, no V1 voices.
+/// The canonical section of version 8 (`fixtures::v2_section`, shared with the loader's validator and patchkit) has needs: one row, two tracks
+/// of align8(12) state bytes. The tests below it edit a version 7 section, which only this reader takes.
+#[test]
+fn the_canonical_v2_section_has_needs() {
+    let section = crate::fixtures::v2_section();
+    assert_eq!(
+        instrument_section_needs(&section),
+        Ok(InstrumentNeeds {
+            rows: 1,
+            tracks: 2,
+            state_bytes: 32
+        })
+    );
+    let file = dkm(4, 0, &[], &section);
+    let n = needs_of_v2(&mut file.as_slice()).unwrap();
+    assert_eq!(
+        n.instruments,
+        InstrumentNeeds {
+            rows: 1,
+            tracks: 2,
+            state_bytes: 32
+        }
+    );
+    // align64(image 64 + bss 8 + the two states)
+    assert_eq!((n.base.dsp_area, n.base.voice_rows), (128, 0));
+    // the rows and tracks are resources of the fit rule: `Needs` holds them, and says them by CAPACITY's names
+    assert_eq!((n.base.instrument_rows, n.base.instrument_tracks), (1, 2));
+    assert_eq!(
+        n.base.fields()[11..],
+        [("INSTRUMENT_ROWS", 1), ("INSTRUMENT_TRACKS", 2)]
+    );
+    assert!(needs_of(&mut file.as_slice()).is_err());
+}
+
+/// A version 7 section (no text table): two independent track states, no V1 voices.
 fn dsp_section_v7() -> Vec<u8> {
     let mut s = vec![0u8; 160];
     for (at, value) in [

@@ -5,7 +5,7 @@ import { withSession } from '../support.ts';
 import { liveOptions } from './devices.ts';
 import { liveProtocol } from './protocol.ts';
 import { moduleArtifact } from './install.ts';
-import { waitEmulated } from './waits.ts';
+import { waitEmulated } from './port-compat.ts';
 
 // CF publication and command ownership need the real loader, but no DSP code.
 const handle = withSession({ ...liveOptions('dt2'), dsp: 'zero', runtime: {}, restart: false });

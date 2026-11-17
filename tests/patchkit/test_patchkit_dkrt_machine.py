@@ -94,7 +94,7 @@ def test_dsp_section_is_deterministic_and_relocates_like_the_reference(tmp_path)
     assert r.returncode != 0
 
 
-@pytest.mark.parametrize("device,stage_end", [("dt2", 0x48000), ("dn2", 0x30000)])
+@pytest.mark.parametrize("device,stage_end", [("dt2", 0x45000), ("dn2", 0x30000)])
 def test_runtime_watch_env_preserves_dma_holes_and_sequential_mode(
     tmp_path, monkeypatch, device, stage_end
 ):
