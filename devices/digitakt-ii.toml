@@ -132,7 +132,7 @@ span_clock_hz = 132000000
 modules = 8
 machine_rows = 8
 arena_bytes = 524288
-stage_bytes = 163840 # 160 KiB: CANOPY with its 16-bit factory wavetables (147320 bytes) fits; the CANOPY patch set needs the rest of cf.expansion. Native card reads remain capped at 64 KiB
+stage_bytes = 151552 # 148 KiB: CANOPY with its 16-bit factory wavetables (147352 bytes) fits with 4200 to spare; the CANOPY patch set (`canopy-overloop`) needs the rest of cf.expansion and has about 4 KiB left there. Native card reads remain capped at 64 KiB
 fx_slots = 3   # effects in the chain; core/dynfx reserves this many free effect rows for run-time effects (at most DK_FX_MAX = 4)
 send_slots = 2 # of them effects that run on a send bus (core/fx send route, the send page of the FX key: one knob each; at most the entries of [fx] send_indices)
 param_rows = 16

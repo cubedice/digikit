@@ -688,7 +688,8 @@ test('buildView with services: a library module lists its services with their st
   const shot = (await libraryModule(needing('someone/shot', ['fx']), needsOf))!;
   dev.files.set('modules/shot.dkm', shot.bytes);
   const view = await buildView(session(dev), [pluck, shot], depsOf([fx, machines]));
-  const rows = Object.fromEntries(view.modules.map((r) => [r.id, r]));
+  // `id` is null for a card file that matches no built module: keyed by its path then, so the rows keep their type
+  const rows = Object.fromEntries(view.modules.map((r) => [r.id ?? r.path, r] as const));
   assert.deepEqual(
     rows['someone/pluck'].services?.map((r) => [r.stem, r.state]),
     [
