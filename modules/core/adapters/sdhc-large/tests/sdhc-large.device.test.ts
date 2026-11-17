@@ -13,7 +13,8 @@ import { word, SETTLE } from '@digi/regression/runtime/fx-live.ts';
  * core/sdhc-large through the real writers, driven over the usb-fast bulk link (the emulator's usb.bulk.in / usb.bulk.out).
  * DN2: the store writer registers its data buffer, so one 1022-block piece of an upload is one firmware block-write call (one card command); with the
  * switch off (usb-fast STATUS 'S' 3 0) the same piece is the firmware's 64 KiB split (nine calls: the call and its eight pieces). DT2: the +Drive writes go through the
- * firmware's own file code (no registered buffer: all stock) and `hash_fast` reads one 32 KiB page per call: nothing is raised.
+ * firmware's own file code (no registered buffer: all stock). The close hash (`hash_fast` of core/plusdrive-write) reads the file back in runs of
+ * four 32 KiB pages from a buffer it registers: the 32 pages of a file are 8 raised reads with the switch on, and 64 KiB pieces with it off.
  * DN2: the close reads the file back in 256 KiB pieces from a registered buffer (raised reads) with the switch on, 64 KiB without.
  * The adapter counts the calls of the firmware's block write and read (sdhc_large_ctl key 1; here read from its RAM). Data read back from the card equals what was sent.
  */
@@ -72,7 +73,7 @@ for (const device of DEVICES) {
 
     test(
       dt2
-        ? 'the +Drive writes and the hash_fast reads stay stock'
+        ? 'the +Drive writes stay stock and the hash_fast readback is raised; the switch off gives 64 KiB reads'
         : 'a registered 1022-block piece of an upload is one card command and the readback is raised; the switch off gives the 64 KiB split and 64 KiB reads, and the data is the same',
       async () => {
         const { dk, bulk } = await boot();
@@ -96,8 +97,8 @@ for (const device of DEVICES) {
 
         if (dt2) {
           expect([on[1], off[1], again[1]], 'no block write of the +Drive path is raised').toEqual([0, 0, 0]);
-          // hash_fast reads one 32 KiB page per call: no read is raised
-          expect([on[3], off[3], again[3]], 'no read exceeds 32 KiB').toEqual([0, 0, 0]);
+          // hash_fast reads runs of four pages (128 KiB) from its registered buffer: 2 * PIECE bytes and the trailer are 32 pages, 8 runs
+          expect([on[3], off[3], again[3]], 'the readback runs are raised reads only with the switch on').toEqual([8, 0, 8]);
         } else {
           expect(on[1], 'switch on: the two data pieces are the raised block writes').toBe(2);
           expect(off[1], 'switch off: none').toBe(0);

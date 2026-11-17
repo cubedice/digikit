@@ -64,8 +64,39 @@ def test_the_sdk_record_code_passes_its_own_tests(tmp_path):
         pytest.skip("rustc not found")
     exe = tmp_path / "sdk_test"
     sdk = RUNTIME / "sdk/src/lib.rs"
+    # the SDK's one dependency (it has none itself), with the fixtures its tests read
+    needs = tmp_path / "libdkneeds.rlib"
     r = subprocess.run(
-        [rustc, "--edition", "2021", "--test", str(sdk), "-o", str(exe)],
+        [
+            rustc,
+            "--edition",
+            "2021",
+            "--crate-name",
+            "dkneeds",
+            "--crate-type",
+            "rlib",
+            "--cfg",
+            'feature="fixtures"',
+            str(ROOT / "packages/dkneeds/src/lib.rs"),
+            "-o",
+            str(needs),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0, r.stderr
+    r = subprocess.run(
+        [
+            rustc,
+            "--edition",
+            "2021",
+            "--test",
+            str(sdk),
+            "--extern",
+            f"dkneeds={needs}",
+            "-o",
+            str(exe),
+        ],
         capture_output=True,
         text=True,
     )

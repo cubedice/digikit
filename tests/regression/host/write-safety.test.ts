@@ -47,7 +47,7 @@ const check = (device: Device, sectors: number[], policy: SafetyPolicy = 'defaul
 };
 
 test.each([
-  ['dt2', '1.17', 0x28000], // [limits] stage_bytes of devices/digitakt-ii.toml: 160 KiB
+  ['dt2', '1.17', 0x25000], // [limits] stage_bytes of devices/digitakt-ii.toml: 148 KiB
   ['dn2', '1.12', 0x10000],
 ] as const)('DMA watch excludes the full %s stage and keeps its neighbors watched', (device, version, stageSize) => {
   const stage = 0x47f00000;

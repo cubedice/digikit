@@ -54,6 +54,43 @@ Facts from this work:
 - [D] After the capacity change the CANOPY set leaves 3056 bytes of `cf.expansion` on the DT2, and the staging buffer has
   4184 bytes over CANOPY's file. Both margins are small: the next growth of the runtime or of CANOPY needs room from somewhere.
 
+## The gate on the branch head (e1b68035, 2026-11-17)
+
+`mise run test` with `DIGI_GATE_BASE=upstream/main` in the WSL worktree, `out/` and the Python environment on WSL's disk,
+empty Nx cache, the load-adaptive slot limit: 89.9 minutes, 454 tasks, 11 failed. The static checks passed before it.
+`gate-card:card`, `gate-fx-dt2:fx-dt2`, `digikit/canopy:test-conformance` and `patchkit:device-images`, which failed in the
+first gate on the merge, passed.
+
+Caused by the integration commits, fixed in the commit after this gate, each failing test run again and passing:
+
+- Six tests pin the DT2 staging size, and 84f28442 changed it without them: `tests/patchkit/test_pk_device.py`,
+  `test_patchkit_dkrt.py`, `test_patchkit_dkrt_machine.py`, `modules/core/apps/digikit-menu/tests/test_digikit_menu.py`,
+  `tests/regression/host/write-safety.test.ts`, `packages/patchkit/tests/devdata.rs` (tasks `tools:python-tests`,
+  `regression:test-host`, `patchkit:rust-tests`, `gate-rust-modules:rust-tests`).
+- Two tests compile `dkrt-sdk` with `rustc` alone, and since 7fce7308 it depends on `dkneeds`:
+  `tests/regression/host/settings-retry.test.ts` and `test_the_sdk_record_code_passes_its_own_tests`
+  (`tests/patchkit/test_patchkit_dkrt_boot.py`). Both build `dkneeds` first (it has no dependencies) and pass it with `--extern`.
+- `tests/regression/host/canopy-copy-guard.test.ts` compiles with the sanitizer and took 5.3 s beside the gate, over Vitest's
+  5 s default. Its limit is 45 s.
+- `modules/core/runtime/build/runtime.dko.json` had the `source_sha256` of an earlier source; the gate's build wrote the
+  current one. Code and symbols are the same.
+
+Upstream's own:
+
+- [D] `core/sdhc-large:test-device--dt2` expected no large read on the DT2 (`[0, 0, 0]`) and measured `[8, 0, 8]`. Upstream's
+  daeecd28 made the close hash of `core/plusdrive-write` read back in runs of four 32 KiB pages from a buffer it registers with
+  `core/sdhc-large` (`pdw.c`, lever D1); the test's expectation is older. The 32 pages of the test's file are 8 runs. The fork's
+  test expects `[8, 0, 8]` and passes. Not run on upstream's tree.
+
+Not from the port, as before: `gate-fx-dn2:fx-no-aot` and `gate-fx-dn2:tier-quick` (argument list too long),
+`digiemu-desktop:rust-tests` (no libdbus headers), `gate-fast-roots:fixtures` (the DN2 reset fixture does not boot in 90 s),
+`tests/firmware/test_snapread.py` and `tests/patchkit/test_pk_current.py` (local data). New in this list: [D]
+`test_sample_pool_core.py` and `test_sample_pool_dn2.py` print a call's result and the struct it fills in one `printf`, so the
+order of evaluation decides; with this machine's `cc` (GCC 14) the struct is read first and the test fails.
+
+Under load only: `nx-tools:test-host` (`selection.test.ts`, a 10 s hook) and `@digi/web:test-wasm` (two tests over their
+120 s limit: 190 s and 315 s). `core/sdhc-large:test-device` and `gate-fast-roots:fast-roots` did not run (dependencies).
+
 ## Not done, and why
 
 - **The instrument code as a service crate.** About 10 000 lines of `instrument_*` live in `dkrt-sdk` and the owner in the
@@ -74,5 +111,7 @@ Facts from this work:
   addresses, runtime slimming, R12-8) all touch the runtime's size.
 - [O] Upstream work that will meet the fork's code: runtime slimming C1 to C4 (the loader's commit path, which `publish_v2`
   uses), R12-8 (DSP dispatch; `core/instrument-play`), B1 (hook exits through `dk_tail`, `dk_exit`, `dk_ret`).
-- [O] `gate-card:card` cannot pass in a worktree whose `out` is a link to drvfs (the daemon's control socket; port handover).
+- [C] `gate-card:card` failed only while `out` was on the Windows drive (the daemon's control socket; port handover). `out/` and
+  `.venv` are now on WSL's disk (`~/digikit-data`), linked from both checkouts, and the task passes. Windows programs cannot
+  open `out/` any more.
 - Hardware: nothing installed.

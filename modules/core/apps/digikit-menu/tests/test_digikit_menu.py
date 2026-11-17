@@ -93,7 +93,7 @@ def test_plan_helpers(tmp_path):
     assert arena_safety.plan_allow_pc(plan) == "0x%x-0x%x" % (lo, lo + 0x1000)
 
 
-@pytest.mark.parametrize("device,stage_size", [("dt2", 0x28000), ("dn2", 0x10000)])
+@pytest.mark.parametrize("device,stage_size", [("dt2", 0x25000), ("dn2", 0x10000)])
 def test_menu_dma_holes_follow_the_device_stage_and_keep_other_buffers(
     device, stage_size
 ):
