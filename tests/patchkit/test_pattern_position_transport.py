@@ -119,7 +119,9 @@ def receiver():
         for name, (sec, offset, _global) in obj.data_symbols.items()
     }
     linked = pk_sharc.link(
-        obj, BASE, {"_pp_block_back": BACK, "_instrument_block": 0, **syms}
+        obj,
+        BASE,
+        {"_pp_block_back": BACK, "_instrument_block": 0, "_phrase_receive": 0, **syms},
     )
     return linked, syms, dm
 

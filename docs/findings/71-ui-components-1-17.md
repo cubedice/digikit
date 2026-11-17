@@ -66,7 +66,8 @@ ViewController is the view manager. It sits at Brain+0x40 **[D]**. `mgr_of`
 | per-view tick | 0x4011c93c | about 100 bytes **[O]** | size |
 | generic dispatch walk | 0x4011c41a | 0x4011dd8e | size |
 | encoder dispatch | 0x4011c674 | 0x4011dfe8 | size |
-| key dispatch | 0x4011c4e8 | 0x4011de5c | size |
+| +16 observer dispatch (not primary keys) | 0x4011c4e8 | 0x4011de5c | size; DTII interface checked |
+| primary key dispatch | 0x4011c79c | not resolved | DTII callback checked, 2026-11-13 |
 
 - invalidate: `if(!this[0x17]){this[0x14]=1; if(this[0x2c]) mgr[0x20]=1}`
   **[D]**.
@@ -119,8 +120,15 @@ manager, +0x30 closing, +0x34 and +0x40 attach and detach callback vectors
   finding 58 **[D]**.
 - The encoder event is posted by the constructor at 0x40030b64 (mislabelled
   `EncoderEvent::ctor`). Encoder dispatch is 0x4011c674 **[D]**.
-- Key dispatch 0x4011c4e8 has no direct caller. It runs through the
-  std::function list at Brain+0x94, run by 0x40030bd0 **[D]**.
+- Primary key dispatch is **0x4011c79c**, cdecl(manager, KeyEvent*). It
+  first checks the native per-key owner map, then builds callback
+  `0x4011b568`, which calls the view's primary vtable slot 2 **[D]**.
+  The earlier identification of `0x4011c4e8` as the primary key dispatcher
+  was incorrect: its callback `0x4011b58a` invokes the secondary interface
+  at `view+0x10`. A bounded PRISM native UI run on 2026-11-13 delivered
+  ordinary panel keys to FxPageView but recorded zero entries at
+  `0x4011c4e8` **[O]**. Do not use that secondary entry to claim TRIG
+  gestures before the native grid/keyboard views.
 - KeyEvent ctor 0x40114904. Fields: +0xc code, +0x10 flags (bit 0 valid,
   bit 1 press, getters 0x40114a28 and 0x40114a18), +0x14 **[D]**. EncoderEvent
   vtable 0x401f10bc, ctor 0x401119b8 **[D]**.

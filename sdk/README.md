@@ -66,6 +66,81 @@ The build passes these search paths, in this order:
 
 A header in the module's `src/` is shared by C and SHARC+ sources. Use only decimal `#define`s and `//` comments on their own line: the SHARC+ assembler keeps a trailing comment in the macro text.
 
+## Experimental phrase effects
+
+`dsp/contract/dk_phrase_imports.inc` declares the public DSP imports for one captured-phrase
+effect: the coherent control mailbox, status mailbox and two-bank audio lease.
+It includes `dsp/contract/dk_phrase.inc`, whose byte offsets and constants are also shared
+with C through `<dk/phrase.h>`. These are adapter data exports, not ColdFire
+function imports in `sdk.toml`.
+
+Importing `_phrase_control_info` requests exclusive phrase routing. The runtime
+requires exactly one FX and no voice records, the control and routing providers,
+and no existing phrase owner. It reserves that ownership before publishing the
+FX row and revokes it before unloading the row. Missing capabilities reject the
+load. The first supported port is DTII 1.17; these experimental headers do not
+imply availability on other devices or firmware.
+
+The engine receives selected stereo input before FADE and returns wet audio.
+The adapter applies FADE, preserves unselected sources, and owns the `PH_S_FADE`
+and `PH_S_ROUTE_FAULT` status words. The engine must leave both intact and publish
+coherent, generation-tagged status. The storage descriptor supplies two distinct
+stereo banks; validate its bounds and capacity, initialize frames before exposing
+them, and never reuse a held bank while a grain still reads it. Neither bank may
+alias the legacy loop lease. `_phrase_route_info` is the runtime's internal
+provider-presence marker; content engines use the public control capability.
+
+## Declaring an effect
+
+An effect declares itself, its parameters and its page in a C file of the module, with `DK_FX`, `DK_FX_PARAM` and `DK_PAGE`
+from `<dk/fx.h>`. This is `modules/fx/freqshift/src/module.c`:
+
+```c
+#include <dk/fx.h>
+#include "freqshift.h"
+
+DK_FX(fshift, .process = "_fs_process", .desc = "_fs_desc",
+      .mix = 127, .route = DK_ROUTE_SEND, .routes = DK_ROUTE_SEND | DK_ROUTE_MASTER);
+DK_FX_PARAM(fshift, FSHIFT_SHIFT_WORD, "Freq Shift", "SHIFT", DK_BIPOLAR, -64, 63, 0);
+DK_PAGE(fshift, "FSH", "Freq Shifter", DK_KNOB_AT(FSHIFT_SHIFT_WORD, 0));
+```
+
+List the file as an `[[object]]` in `module.toml`. `patchkit pack` reads the records; the device never sees them.
+`patchkit desc MODULE_ID` prints them. The fields and rules are in
+[docs/MODULE-AUTHORING.md](../docs/MODULE-AUTHORING.md), section 5.4.
+
+## Declaring a machine
+
+A machine is declared the same way, with `DK_MACHINE`, `DK_PARAM` and `DK_PAGE` from `<dk/machine.h>`.
+This is `modules/machines/pluck/src/module.c`:
+
+```c
+#include <dk/machine.h>
+
+DK_MACHINE(pluck, .name = "Pluck", .short_name = "PLK", .render = "_pk_render",
+           .note_on = "_pk_note_on", .desc = "_pk_desc");
+DK_PARAM(pluck, 0, pluck_decay, "Decay", "DECAY", 0, 127, 64);
+DK_PARAM(pluck, 1, pluck_pick, "Pick position", "PICK", 0, 127, 32);
+DK_PARAM(pluck, 2, pluck_bright, "Brightness", "BRIGHT", 0, 127, 80);
+DK_PARAM(pluck, 3, pluck_color, "Excitation colour", "COLOR", 0, 127, 40);
+DK_PAGE(pluck, "PLUCK", "Pluck", DK_KNOB(0), DK_KNOB(1), DK_KNOB(2), DK_KNOB(3));
+```
+
+Parameter values are knob units 0 to 127. The stored word is the value times 256. The DSP symbols are required: a machine has no data-only form.
+A machine has at most 4 parameters, in word order, and one page with `DK_KNOB` only. The adapter places word w on a fixed knob.
+The rules are in [docs/MODULE-AUTHORING.md](../docs/MODULE-AUTHORING.md), sections 5.2 and 5.3.
+
+`DK_PARAM_GLYPH(machine, word, GLYPH)` (in `<dk/page.h>`) sets the knob look of a parameter. Without it the glyph is `DK_GLYPH_ENCODER`:
+
+| Glyph | Range |
+| --- | --- |
+| `DK_GLYPH_ENCODER` (default) | 0 .. 127 |
+| `DK_GLYPH_FADER` | 0 .. 127 |
+| `DK_GLYPH_PAN` | 0 .. 127 (centre 64, shows L/R) |
+| `DK_GLYPH_ONOFF` | 0 .. 1 |
+| `DK_GLYPH_TUNE` | 4 .. 124 (centre 64, one unit = one semitone) |
+| `DK_GLYPH_PLAY` | 0 .. 3 (REV, REV.L, FWD.L, FWD; the Digitone II shows 0 .. 3) |
+
 ## Tracing
 
 Trace marks tell you where a module was when it faulted or hung. They are opt-in and cost nothing when off.

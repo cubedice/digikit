@@ -31,6 +31,7 @@
 .GLOBAL _pp_block_entry;
 .EXTERN _pp_block_back;
 .EXTERN _instrument_block;
+.EXTERN _phrase_receive;
 
 _pp_block_entry:
     DM(_pp_sv_r0) = R0;
@@ -274,6 +275,11 @@ _pp_bad:
     DM(_pattern_clock_info) = R0;
     DM(_pattern_clock_info + 16) = R0;
 _pp_restore:
+    R0 = _phrase_receive;
+    R0 = PASS R0;
+    IF EQ JUMP _pp_no_phrase;
+    CALL _phrase_receive;
+_pp_no_phrase:
     R0 = _instrument_block;
     R0 = PASS R0;
     IF EQ JUMP _pp_no_instrument;

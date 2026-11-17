@@ -10,6 +10,8 @@ use dkrt_svc_fx::fxpage;
 use dkrt_svc_fx::records::Fx;
 use dkrt_test_support::{Call, FakeCore};
 
+include!("phrase_stubs.rs");
+
 // `fxpage::info` reads the stub `fxpages_info` of this binary: no magic, so an image without effect pages.
 #[no_mangle]
 pub extern "C" fn fxpages_info() {}

@@ -132,7 +132,7 @@ span_clock_hz = 132000000
 [limits]
 modules = 8
 machine_rows = 8
-arena_bytes = 524288
+arena_bytes = 491520 # 480 KiB: the fork gives 32 KiB of the arena to the firmware region, so the CANOPY, Overloop and PRISM adapters fit together on the Digitakt II (one runtime image, so both devices)
 stage_bytes = 65536
 fx_slots = 3   # effects in the chain; core/dynfx reserves this many free effect rows for run-time effects (at most DK_FX_MAX = 4)
 send_slots = 1 # effects that run on a send bus (core/fx send route, the send page of the FX key: one knob each; at most the entries of [fx] send_indices)

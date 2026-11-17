@@ -67,6 +67,20 @@
   },
   {
    "addend": 0,
+   "offset": 20,
+   "section": ".text.pp_period",
+   "symbol": ".sec..rodata.ticks.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 52,
+   "section": ".text.pattern_period",
+   "symbol": ".sec..text.pp_period",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 34,
    "section": ".text.pp_clock_fresh",
    "symbol": ".sec..bss.external_expired",
@@ -131,120 +145,134 @@
   {
    "addend": 0,
    "offset": 20,
-   "section": ".text.pp_observe",
+   "section": ".text.pp_observe_scaled",
    "symbol": ".sec..bss.generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 26,
-   "section": ".text.pp_observe",
+   "section": ".text.pp_observe_scaled",
    "symbol": ".sec..bss.valid",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 32,
-   "section": ".text.pp_observe",
+   "section": ".text.pp_observe_scaled",
    "symbol": ".sec..bss.count",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 38,
-   "section": ".text.pp_observe",
+   "section": ".text.pp_observe_scaled",
    "symbol": ".sec..bss.head",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 46,
-   "section": ".text.pp_observe",
-   "symbol": ".sec..bss.seen",
+   "offset": 44,
+   "section": ".text.pp_observe_scaled",
+   "symbol": ".sec..bss.committed_period",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 52,
-   "section": ".text.pp_observe",
-   "symbol": ".sec..bss.last_step",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 62,
-   "section": ".text.pp_observe",
-   "symbol": ".sec..bss.last_pattern",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 74,
-   "section": ".text.pp_observe",
-   "symbol": ".sec..bss.count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 86,
-   "section": ".text.pp_observe",
-   "symbol": ".sec..bss.valid",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 92,
-   "section": ".text.pp_observe",
-   "symbol": ".sec..bss.count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 100,
-   "section": ".text.pp_observe",
+   "section": ".text.pp_observe_scaled",
    "symbol": ".sec..bss.seen",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 108,
-   "section": ".text.pp_observe",
+   "offset": 58,
+   "section": ".text.pp_observe_scaled",
    "symbol": ".sec..bss.last_step",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 120,
-   "section": ".text.pp_observe",
+   "offset": 68,
+   "section": ".text.pp_observe_scaled",
    "symbol": ".sec..bss.last_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 142,
-   "section": ".text.pp_observe",
-   "symbol": ".sec..bss.head",
+   "offset": 80,
+   "section": ".text.pp_observe_scaled",
+   "symbol": ".sec..bss.count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 92,
+   "section": ".text.pp_observe_scaled",
+   "symbol": ".sec..bss.valid",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 98,
+   "section": ".text.pp_observe_scaled",
+   "symbol": ".sec..bss.count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 106,
+   "section": ".text.pp_observe_scaled",
+   "symbol": ".sec..bss.seen",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 114,
+   "section": ".text.pp_observe_scaled",
+   "symbol": ".sec..bss.last_step",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 126,
+   "section": ".text.pp_observe_scaled",
+   "symbol": ".sec..bss.last_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 148,
-   "section": ".text.pp_observe",
-   "symbol": ".sec..bss.pending",
+   "section": ".text.pp_observe_scaled",
+   "symbol": ".sec..bss.head",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 154,
-   "section": ".text.pp_observe",
+   "section": ".text.pp_observe_scaled",
+   "symbol": ".sec..bss.pending",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 160,
+   "section": ".text.pp_observe_scaled",
    "symbol": ".sec..bss.generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 214,
-   "section": ".text.pp_observe",
+   "offset": 228,
+   "section": ".text.pp_observe_scaled",
    "symbol": ".sec..bss.count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 28,
+   "section": ".text.pp_observe",
+   "symbol": ".sec..text.pp_observe_scaled",
    "type": "cf.32"
   },
   {
@@ -319,72 +347,128 @@
   },
   {
    "addend": 32,
-   "offset": 148,
+   "offset": 152,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 36,
-   "offset": 154,
+   "offset": 158,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 40,
-   "offset": 160,
+   "offset": 164,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 172,
+   "offset": 176,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.valid",
    "type": "cf.32"
   },
   {
+   "addend": 0,
+   "offset": 186,
+   "section": ".text.pp_commit",
+   "symbol": ".sec..bss.committed_period",
+   "type": "cf.32"
+  },
+  {
    "addend": 44,
-   "offset": 182,
+   "offset": 192,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 188,
+   "offset": 198,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.head",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 196,
+   "offset": 206,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.valid",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 202,
+   "offset": 212,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.count",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 54,
-   "section": ".text.pp_snapshot",
-   "symbol": ".sec..text.pp_observe",
+   "offset": 18,
+   "section": ".text.pp_phrase_timing",
+   "symbol": ".sec..text.pattern_period",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 16,
+   "offset": 30,
+   "section": ".text.pp_phrase_timing",
+   "symbol": ".sec..bss.committed_phase",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 44,
+   "section": ".text.pp_phrase_timing",
+   "symbol": ".sec..bss.committed_period",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 32,
+   "section": ".text.pp_snapshot",
+   "symbol": ".sec..text.pattern_period",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 66,
+   "section": ".text.pp_snapshot",
+   "symbol": ".sec..text.pp_observe_scaled",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 4,
+   "section": ".text.pp_due",
+   "symbol": ".sec..bss.pp_position",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 24,
    "section": ".text.pp_due",
    "symbol": ".sec..text.pp_commit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 34,
+   "section": ".text.pp_due",
+   "symbol": ".sec..bss.pp_position",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 48,
+   "section": ".text.pp_due",
+   "symbol": ".sec..bss.committed_phase",
    "type": "cf.32"
   },
   {
@@ -503,6 +587,20 @@
   },
   {
    "align": 2,
+   "hex": "202f00087201b2af000467127206b280651441f90000000020300c004e75203c005265c060f6428060f2",
+   "kind": "text",
+   "name": ".text.pp_period",
+   "size": 42
+  },
+  {
+   "align": 2,
+   "hex": "202f000422000681c00000000c8107fe2484630442804e750800000066f62040d1fc0001db7a121073812f0171a8ffff2f004eb900000000508f60da",
+   "kind": "text",
+   "name": ".text.pattern_period",
+   "size": 60
+  },
+  {
+   "align": 2,
    "hex": "2f0a2f027401202f000c226f001c222f0020206f0024b48066064aaf0010661442b900000000700142b900000000241f245f4e754ab900000000663245ef0014082a0001000367e6700123c00000000023c90000000042804ab90000000066ce601a91c86030207c03ef1480603ab3f90000000067e023c900000000200874175380b48065dc24084c42100120410c81014fb18062d041f08a00b1fc005091006406207c00509100202f00189089b1c055c154c073017100448123c10000000044806000ff6a",
    "kind": "text",
    "name": ".text.pp_clock_fresh",
@@ -510,17 +608,24 @@
   },
   {
    "align": 2,
-   "hex": "4feffff448d70c04222f001c4aaf0010675052b90000000042b90000000042b90000000042b900000000740123c20000000023c100000000206f001823c800000000b2af0020640c2279000000007010b089663442b90000000042b900000000601c4ab90000000067c0b2b90000000066b8202f0018b0b90000000066ac4cd70c044fef000c4e752009740fd0b90000000045f90000000047f90000000041ef0014c08274184c020800242f001825930804266f002025900800258208082581080c258b08104aaf00106710720752892581081423c90000000060a2720560ee",
+   "hex": "4feffff448d7040c222f001c4aaf0010675652b90000000042b90000000042b90000000042b90000000042b900000000760123c30000000023c100000000226f001823c900000000b2af0020640c2439000000007010b082663442b90000000042b900000000601c4ab90000000067c0b2b90000000066b8202f0018b0b90000000066ac4cd7040c4fef000c4e752002760fd0b90000000041f90000000045f90000000043ef0014c083761c4c030800262f001821920804246f002021910800218308082181080c218a08104aaf001067187207d1c0528221410014216f0024001823c200000000609a720560e6",
    "kind": "text",
-   "name": ".text.pp_observe",
-   "size": 224
+   "name": ".text.pp_observe_scaled",
+   "size": 238
   },
   {
    "align": 2,
-   "hex": "2f032f022439000000004a82670000c0203900000000721841f9000000004c001800224126318800222f000c92836b00009eb6af000c6600008a222f0010b2b098146600008a4ab900000000670c222f0014b2b9000000006768d1c952b90000000043e80004528023d10000000043e80008538223c20000000023d10000000043e8000c23d10000000041e80010222f001423d00000000042b90000000023c100000000720fc280700123c000000000226f000c23c90000000023c100000000600c42b90000000042b900000000241f261f4e75",
+   "hex": "2f3c005265c02f2f00182f2f00182f2f00182f2f00182f2f00184eb9000000004fef00184e75",
+   "kind": "text",
+   "name": ".text.pp_observe",
+   "size": 38
+  },
+  {
+   "align": 2,
+   "hex": "2f032f022439000000004a82670000ca203900000000721c41f9000000004c001800224126318800222f000c92836b0000a8b6af000c66000094222f0010b2b09814660000944ab900000000670c222f0014b2b9000000006772d1c952b90000000043e80004528023d10000000043e80008538223c20000000023d10000000043e8000c23d10000000043e8001041e80018222f001423d10000000042b90000000023c100000000720fc280700123c000000000226f000c23d00000000023c90000000023c100000000600c42b90000000042b900000000241f261f4e75",
    "kind": "text",
    "name": ".text.pp_commit",
-   "size": 212
+   "size": 222
   },
   {
    "align": 2,
@@ -531,17 +636,24 @@
   },
   {
    "align": 2,
-   "hex": "20394316501c22002f020681c00000000c8107fe248a632a91c8327943164f9c223943158f7c2f083f0942672f002f012f2f00184eb9000000004fef0014241f4e757201c28020410800000066ca7379431651307401b4816d0e2240d3fc0001db747351b4816cb2204160ae",
+   "hex": "7001b0b943164f9467202f394316501c4eb900000000588f206f000443f9000000002080215100044e7520390000000060e6",
    "kind": "text",
-   "name": ".text.pp_snapshot",
-   "size": 108
+   "name": ".text.pp_phrase_timing",
+   "size": 50
   },
   {
    "align": 2,
-   "hex": "2f39409668402f2f000c2f2f000c4eb9000000004fef000c4e75",
+   "hex": "2f032f0224394316501c20020680c00000000c8007fe248a633642832f024eb900000000307943164f9c223943158f7c2f002f033f0842672f022f012f2f00244eb9000000004fef001c241f261f4e757601c6820802000066c07179431651307201b2806d0e2042d1fc0001db747150b2806ca8260060a4",
+   "kind": "text",
+   "name": ".text.pp_snapshot",
+   "size": 120
+  },
+  {
+   "align": 2,
+   "hex": "2f022439000000002f39409668402f2f00102f2f00104eb9000000004fef000cb4b900000000670c207c8000488023d000000000241f4e75",
    "kind": "text",
    "name": ".text.pp_due",
-   "size": 26
+   "size": 56
   },
   {
    "align": 2,
@@ -549,6 +661,27 @@
    "kind": "text",
    "name": ".text.pp_write_frame_impl",
    "size": 386
+  },
+  {
+   "align": 2,
+   "hex": "002932e00036ee80005265c0006ddd0000a4cb800149970002932e00",
+   "kind": "data",
+   "name": ".rodata.ticks.0",
+   "size": 28
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.committed_phase",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.committed_period",
+   "size": 4
   },
   {
    "align": 2,
@@ -632,11 +765,23 @@
    "hex": "",
    "kind": "bss",
    "name": ".bss.pending",
-   "size": 384
+   "size": 448
   }
  ],
- "source_sha256": "d4229940d5c3c089049ca5161afae632583421cd4f80571f36d25e62bbdd2731",
+ "source_sha256": "6a51f4bb292117fb4d8b5b9de16de112f3a2322411cf85eb1debb7c8861e3ad9",
  "symbols": [
+  {
+   "global": false,
+   "name": ".sec..bss.committed_period",
+   "section": ".bss.committed_period",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.committed_phase",
+   "section": ".bss.committed_phase",
+   "value": 0
+  },
   {
    "global": false,
    "name": ".sec..bss.count",
@@ -711,6 +856,18 @@
   },
   {
    "global": false,
+   "name": ".sec..rodata.ticks.0",
+   "section": ".rodata.ticks.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.pattern_period",
+   "section": ".text.pattern_period",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..text.pp_clock_fresh",
    "section": ".text.pp_clock_fresh",
    "value": 0
@@ -723,8 +880,26 @@
   },
   {
    "global": false,
-   "name": ".sec..text.pp_observe",
-   "section": ".text.pp_observe",
+   "name": ".sec..text.pp_observe_scaled",
+   "section": ".text.pp_observe_scaled",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.pp_period",
+   "section": ".text.pp_period",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "committed_period",
+   "section": ".bss.committed_period",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "committed_phase",
+   "section": ".bss.committed_phase",
    "value": 0
   },
   {
@@ -777,6 +952,12 @@
   },
   {
    "global": false,
+   "name": "pattern_period",
+   "section": ".text.pattern_period",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "pending",
    "section": ".bss.pending",
    "value": 0
@@ -809,6 +990,24 @@
    "global": true,
    "name": "pp_observe",
    "section": ".text.pp_observe",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "pp_observe_scaled",
+   "section": ".text.pp_observe_scaled",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "pp_period",
+   "section": ".text.pp_period",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "pp_phrase_timing",
+   "section": ".text.pp_phrase_timing",
    "value": 0
   },
   {
@@ -891,6 +1090,12 @@
   },
   {
    "global": false,
+   "name": "ticks.0",
+   "section": ".rodata.ticks.0",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "valid",
    "section": ".bss.valid",
    "value": 0
@@ -900,8 +1105,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "388",
-  "isa_check": "599ee0e4c933b7b0ff2bbfaff8a21feb28c94acc9dd785ae704a4200acf86de3",
+  "instructions_redecoded": "459",
+  "isa_check": "0e018e0fd8d03cfa87fed0e786764c009d17ea83a9eb6dec3aa9c56b75512da5",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

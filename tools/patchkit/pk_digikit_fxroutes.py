@@ -29,6 +29,7 @@ def profile(device: str) -> dict[str, Any]:
     store = pk_device.store_of(device)
     return {
         "track_type_word": M.TRACK_OBJ_WORD,
+        "track_type_stride": 0x450 if device == "dt2" else 0,
         "value_classes": CLASSES[device],
         "selection": {"copy_a": store.sel_a, "copy_b": store.sel_b},
         "fx_slots": limits.fx_slots,

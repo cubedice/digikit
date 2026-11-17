@@ -10,12 +10,24 @@ typedef unsigned char u8;
 #define U16(a) (*(volatile u16 *)(a))
 #define N 16
 struct marker {
-    u32 clock, generation, pattern, step, length, kind;
+    u32 clock, generation, pattern, step, length, kind, period;
 };
 static struct marker pending[N];
 static u32 head, count, generation, seen, last_step, last_pattern, valid;
 volatile u32 pp_position[16];
 static u32 external_seen, external_expired, external_stamp;
+static u32 committed_period;
+#ifndef PP_QUEUE_TEST
+static u32 committed_phase;
+#endif
+
+/* DTII 1.17 master scheduler: advanced mode uses six900000-tick pulses.
+ * Common mode uses the pattern scale. This is musical time, not audio time. */
+u32 pp_period(u32 mode, u32 scale)
+{
+    static const u32 ticks[7] = {2700000, 3600000, 5400000, 7200000, 10800000, 21600000, 43200000};
+    return mode == 1 ? 5400000 : scale < 7 ? ticks[scale] : 0;
+}
 
 /* Stock transport may freewheel after MIDI clock disappears. Keep that
  * behavior for position clients, but expire the separate instrument clock.
@@ -49,11 +61,12 @@ u32 pp_clock_fresh(u32 transport, u32 receive, u32 sources, u32 now, u32 last, u
 }
 
 /* Exported pure entry points also allow deterministic queue tests. */
-void pp_observe(u32 start, u32 clock, u32 pattern, u32 step, u32 length)
+void pp_observe_scaled(u32 start, u32 clock, u32 pattern, u32 step, u32 length, u32 period)
 {
     if (start) {
         ++generation;
         head = count = seen = valid = 0;
+        committed_period = 0;
     }
     if (seen && step == last_step && pattern == last_pattern)
         return;
@@ -72,7 +85,14 @@ void pp_observe(u32 start, u32 clock, u32 pattern, u32 step, u32 length)
     m->step = step;
     m->length = length;
     m->kind = start ? 7 : 5;
+    m->period = period;
     ++count;
+}
+
+/* Existing queue-test/consumer entry retains normal-scale semantics. */
+void pp_observe(u32 start, u32 clock, u32 pattern, u32 step, u32 length)
+{
+    pp_observe_scaled(start, clock, pattern, step, length, 5400000);
 }
 
 void pp_commit(u32 clock, u32 kind, u32 block)
@@ -101,6 +121,7 @@ void pp_commit(u32 clock, u32 kind, u32 block)
     pp_position[9] = 0;
     pp_position[10] = block;
     pp_position[11] = clock;
+    committed_period = m->period;
     head = (head + 1) & (N - 1);
     --count;
     valid = 1;
@@ -110,6 +131,21 @@ void pp_commit(u32 clock, u32 kind, u32 block)
 u32 pp_current_pattern(void)
 {
     return U32(0x4316501c);
+}
+
+static u32 pattern_period(u32 pattern)
+{
+    if (pattern < 0x40000000 || pattern > 0x47fe2484 || (pattern & 1))
+        return 0;
+    return pp_period(*(volatile u8 *)(pattern + 0x1db79), *(volatile u8 *)(pattern + 0x1db7a));
+}
+
+/* Called in the same audio ISR after pp_write_frame. Staging with the nominal
+ * marker keeps a pending pattern/scale change from reaching capture early. */
+void pp_phrase_timing(u32 *out)
+{
+    out[0] = U32(0x43164f94) == 1 ? committed_period : pattern_period(pp_current_pattern());
+    out[1] = committed_phase;
 }
 
 void pp_snapshot(u32 start)
@@ -122,12 +158,16 @@ void pp_snapshot(u32 start)
         if (n > 1)
             length = (u32)n;
     }
-    pp_observe(start, U32(0x43158f7c), pattern, U16(0x43164f9c), length);
+    pp_observe_scaled(start, U32(0x43158f7c), pattern, U16(0x43164f9c), length,
+                      pattern_period(pattern));
 }
 
 void pp_due(u32 clock, u32 kind)
 {
+    u32 before = pp_position[3];
     pp_commit(clock, kind, U32(0x40966840));
+    if (pp_position[3] != before)
+        committed_phase = U32(0x80004880);
 }
 
 void pp_write_frame_impl(u32 queue, u32 suffix)

@@ -1091,12 +1091,22 @@ pub fn apply_with(
         for (hi, h) in stg.hooks.iter().enumerate() {
             if h.module.id() == id && h.run {
                 let who = format!("{id}: hook {} tail", h.anchor.name);
+                // ColdFire executable tails must own complete 16-byte cache
+                // lines. Adjacent writable object/registry data otherwise
+                // dirties an executable line without an instruction-cache
+                // flush, even though no instruction bytes were modified.
+                // SHARC retains its byte-addressed 8-byte placement rule.
+                let (tail_size, tail_align) = if h.cpu == SHARC {
+                    (h.tail_len, 8)
+                } else {
+                    (h.tail_len.div_ceil(16) * 16, 16)
+                };
                 tail_at[hi] = Some(take_region(
                     &mut allocs,
                     port,
                     &h.place,
-                    h.tail_len,
-                    if h.cpu == SHARC { 8 } else { 4 },
+                    tail_size,
+                    tail_align,
                     &who,
                 )?);
             }

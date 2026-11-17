@@ -126,7 +126,8 @@ def test_patched_image_boots_and_the_module_runs_in_place(fw, base_sha, tmp_path
 @pytest.mark.parametrize("fw", ["Digitakt_II_OS1.17.syx"])
 def test_machines_shims_live_in_the_expansion_region_not_the_cave(fw, tmp_path):
     """The native core executes from DDR (finding 07): core/machines keeps its code in cf.expansion and the flash cave holds
-    the expansion loader only (56 bytes), however many machines are added."""
+    the expansion loader only (56 bytes of code, 76 with the padding that starts its data on a new cache line), however many
+    machines are added."""
     firmware = config.stock(fw)
     if not firmware.exists():
         pytest.skip(f"{fw} missing")
@@ -143,5 +144,5 @@ def test_machines_shims_live_in_the_expansion_region_not_the_cave(fw, tmp_path):
         plan_path,
     )
     regions = json.loads(plan_path.read_text())["regions"]
-    assert regions["cf.flash_cave"][0] <= 56, regions
+    assert regions["cf.flash_cave"][0] <= 76, regions
     assert regions["cf.expansion"][0] > 600, regions

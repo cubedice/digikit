@@ -118,8 +118,9 @@ export const DKM_HEADER = 160;
 /** The header and the 8-byte header table of a module with no machine, effect or key, up to the next multiple of 16 (where the image starts). */
 export const DKM_FIXTURE_HEADER = DKM_HEADER + 16;
 export const MAX_VOICES = 8; // voices of one DSP section
-/** The synthetic module's code: `moveq #0,d0; rts`. */
-export const CODE = 4;
+/** The synthetic module's code with data or bss behind it: `moveq #0,d0; rts` and the rest of its cache line (patchkit starts the first
+ * section that is not code on a new 16-byte line). A module of the stub alone has a 4-byte image; its arena block is the same. */
+export const CODE = 16;
 
 /** What a set of synthetic modules is computed from: the device's limits, its run-time machine type range and the arena and DSP area addresses. */
 export interface Geometry {

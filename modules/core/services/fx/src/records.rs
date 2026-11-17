@@ -2,7 +2,7 @@
 //! section. The registry walker (`registry.rs`) and the DSP loader (`dsp/mod.rs`) call them through `handlers::Service`.
 use crate::{fxpage, fxsend};
 use dkrt_abi::core_api::CoreApi;
-use dkrt_abi::dsp::{DspSec, MAX_FX};
+use dkrt_abi::dsp::{DspSec, Job, MAX_FX};
 use dkrt_abi::mem::rd32;
 use dkrt_abi::registry::each;
 use dkrt_abi::service::{tick_phase, ApplyCtx, CheckCtx, Claim, Declare, RowWrite, Service};
@@ -70,6 +70,7 @@ impl<C: CoreApi> Service<C> for Fx {
     unsafe fn tick(core: &C, phase: u32) {
         if phase == tick_phase::LATE {
             fxpage::tick(core);
+            crate::phrase::tick();
         }
     }
 
@@ -104,7 +105,15 @@ impl<C: CoreApi> Service<C> for Fx {
     }
 
     unsafe fn dsp_check_sections(core: &C, sec: &DspSec) -> i32 {
-        crate::dsp::check_sections(core, sec)
+        let r = crate::dsp::check_sections(core, sec);
+        if r != OK {
+            return r;
+        }
+        crate::phrase::check(core, sec)
+    }
+
+    unsafe fn dsp_admit(_core: &C, job: &Job) -> i32 {
+        crate::phrase::admit(job)
     }
 
     unsafe fn dsp_check_rows(core: &C, sec: &DspSec) -> i32 {
@@ -116,6 +125,7 @@ impl<C: CoreApi> Service<C> for Fx {
     }
 
     unsafe fn dsp_release(core: &C, rec: usize) {
+        crate::phrase::remove(rec as u8 + 1);
         crate::dsp::release(core, rec)
     }
 

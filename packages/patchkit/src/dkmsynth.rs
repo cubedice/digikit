@@ -381,10 +381,11 @@ mod tests {
         );
         let d = Dkm::parse(&f).unwrap();
         assert_eq!(d.name, "cap/a");
-        // the loader allocates image + bss: code 4 + pad 100
-        assert_eq!((d.image.len(), d.bss), (104, 4096));
+        // The four-byte stub owns a full cache line before writable padding.
+        assert_eq!((d.image.len(), d.bss), (116, 4096));
         assert_eq!(&d.image[..4], &[0x70, 0x00, 0x4e, 0x75]);
-        assert!(d.image[4..].iter().all(|b| *b == 0xa5));
+        assert!(d.image[4..16].iter().all(|b| *b == 0));
+        assert!(d.image[16..].iter().all(|b| *b == 0xa5));
         assert_eq!(d.init, Some(0));
         assert!(d.register.len() == dkneeds::keys::HEAD && d.dsp.is_empty());
         // deterministic

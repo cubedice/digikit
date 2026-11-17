@@ -1,13 +1,13 @@
 [module]
 id = "core/loop-storage"
-version = "0.1.0"
+version = "0.2.0"
 name = "Loop storage reservation"
 category = "core"
 role = "adapter"
 type = "framework"
 author = "digikit"
 status = "experimental"
-summary = "Reserves 8 MiB of DT2 1.17 DSP sample memory by reducing the stock sample allocator capacity to 392 MiB."
+summary = "Reserves 24 MiB of DT2 1.17 sample memory: the existing 8 MiB loop buffer and two independent 8 MiB phrase banks; the sample pool is 376 MiB."
 requires = []
 conflicts = []
 ports = ["dt2-1.17"]
@@ -34,7 +34,7 @@ devices = ["dt2"]
 op = "write"
 anchor = "cf.main"
 offset = 0x1536e2
-value = 0x18800400
+value = 0x17800400
 width = 4
 
 # Empty free-space getter.
@@ -42,7 +42,7 @@ width = 4
 op = "write"
 anchor = "cf.main"
 offset = 0x1536f2
-value = 0x18800000
+value = 0x17800000
 width = 4
 
 # Total-capacity getter.
@@ -50,7 +50,7 @@ width = 4
 op = "write"
 anchor = "cf.main"
 offset = 0x1536fc
-value = 0x18800000
+value = 0x17800000
 width = 4
 
 # Allocation at the end of a nonempty pool (also used by preflight).
@@ -58,7 +58,7 @@ width = 4
 op = "write"
 anchor = "cf.main"
 offset = 0x15430c
-value = 0x18800400
+value = 0x17800400
 width = 4
 
 # Preflight for the first allocation.
@@ -66,7 +66,7 @@ width = 4
 op = "write"
 anchor = "cf.main"
 offset = 0x154364
-value = 0x18800000
+value = 0x17800000
 width = 4
 
 # The loader's first allocation.
@@ -74,7 +74,7 @@ width = 4
 op = "write"
 anchor = "cf.main"
 offset = 0x1546ec
-value = 0x18800000
+value = 0x17800000
 width = 4
 
 [[claim]]
@@ -82,3 +82,6 @@ resource = "dt2.sample-pool.capacity"
 
 [[claim]]
 resource = "dt2.sample-pool.loop-buffer"
+
+[[claim]]
+resource = "dt2.sample-pool.phrase-banks"
