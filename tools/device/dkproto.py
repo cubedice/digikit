@@ -49,6 +49,8 @@ RESOURCE: dict[str, int] = {
     "RECORD_BYTES": 4,
     "DSP_COST_VOICE": 5,
     "DSP_COST_FX": 6,
+    "INSTRUMENT_ROWS": 7,
+    "INSTRUMENT_TRACKS": 8,
 }
 
 CMD: dict[str, int] = {
@@ -292,6 +294,8 @@ CAPACITY_KINDS: dict[str, int] = {
     "SEND_SLOTS": 14,
     "DSP_COST": 15,
     "DSP_VOICES": 16,
+    "INSTRUMENT_ROWS": 17,
+    "INSTRUMENT_TRACKS": 18,
 }
 
 SETTINGS_SECTORS = 16  # one copy of the settings record

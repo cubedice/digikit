@@ -269,14 +269,18 @@ pub const RES_PAGE_ROWS: u32 = 3;
 pub const RES_RECORD_BYTES: u32 = 4;
 pub const RES_DSP_COST_VOICE: u32 = 5;
 pub const RES_DSP_COST_FX: u32 = 6;
+pub const RES_INSTRUMENT_ROWS: u32 = 7;
+pub const RES_INSTRUMENT_TRACKS: u32 = 8;
 /// The resources of a module's `uses` in the order of their ids: (id, name).
-pub const RESOURCES: [(u32, &str); 6] = [
+pub const RESOURCES: [(u32, &str); 8] = [
     (RES_MACHINE_ROWS, "machine_rows"),
     (RES_PARAM_ROWS, "param_rows"),
     (RES_PAGE_ROWS, "page_rows"),
     (RES_RECORD_BYTES, "record_bytes"),
     (RES_DSP_COST_VOICE, "dsp_cost_voice"),
     (RES_DSP_COST_FX, "dsp_cost_fx"),
+    (RES_INSTRUMENT_ROWS, "instrument_rows"),
+    (RES_INSTRUMENT_TRACKS, "instrument_tracks"),
 ];
 
 /// The `[fx]` contract of sdk/sdk.toml (the numbers of <dk/gen/fx_consts.h>).

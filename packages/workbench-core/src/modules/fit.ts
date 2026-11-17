@@ -7,8 +7,8 @@
 export type Caps = Record<string, { limit: number; used: number; largest: number }>;
 
 /** The needs of a .dkm as `dkneeds` infers them: `file_size` and these fields (`Needs::fields` in packages/dkneeds). Missing = 0.
- * A file of persistent V2 instruments also names `INSTRUMENT_ROWS`, `INSTRUMENT_TRACKS` and `INSTRUMENT_STATE` (bytes); the fit rule
- * does not read them: the loader's V2 owner admits the rows and tracks. */
+ * `INSTRUMENT_ROWS` and `INSTRUMENT_TRACKS` are the types and track instances of persistent V2 instruments, which the fit rule holds
+ * against the CAPACITY kinds of the same names; a file of them also names `INSTRUMENT_STATE` (bytes, a part of `DSP_AREA`). */
 export type Needs = { file_size?: number } & Partial<
   Record<
     | 'ARENA'

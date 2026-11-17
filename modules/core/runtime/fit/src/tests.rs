@@ -53,7 +53,81 @@ fn needs(v: &Value) -> Needs {
         fx_slots: g("FX_SLOTS"),
         dsp_cost_voice: g("DSP_COST_VOICE"),
         dsp_cost_fx: g("DSP_COST_FX"),
+        instrument_rows: g("INSTRUMENT_ROWS"),
+        instrument_tracks: g("INSTRUMENT_TRACKS"),
     }
+}
+
+/// Persistent V2 instruments: their types and track instances are counted like rows, and their owner takes one file of them a boot.
+#[test]
+fn a_boot_takes_one_file_of_instruments_and_counts_its_tracks() {
+    let c = |kind: u8, limit: u32| DkrtCap {
+        kind: kind as u32,
+        limit,
+        used: 0,
+        largest: limit,
+    };
+    let file = |rows: u32, tracks: u32| Needs {
+        instrument_rows: rows,
+        instrument_tracks: tracks,
+        ..Needs::default()
+    };
+    let short = |kind: u8, need: u32, free: u32| Some(Short { kind, need, free });
+    // the registry holds 8 types, the firmware adapter admits 4 tracks
+    let mut caps = [c(CAPK_INSTRUMENT_ROWS, 8), c(CAPK_INSTRUMENT_TRACKS, 4)];
+    assert_eq!(
+        fits_now(&file(1, 5), &caps),
+        short(CAPK_INSTRUMENT_TRACKS, 5, 4)
+    );
+    assert_eq!(
+        fits_now(&file(9, 1), &caps),
+        short(CAPK_INSTRUMENT_ROWS, 9, 8)
+    );
+    assert_eq!(fits_now(&file(1, 4), &caps), None);
+    take(&file(1, 2), &mut caps);
+    assert_eq!((caps[0].used, caps[0].largest, caps[1].used), (1, 0, 2));
+    // rows and tracks are left, but no second file takes a row
+    assert_eq!(
+        fits_now(&file(1, 1), &caps),
+        short(CAPK_INSTRUMENT_ROWS, 1, 0)
+    );
+    // a module without instruments is not held to them
+    assert_eq!(fits_now(&Needs::default(), &caps), None);
+    // the next boot starts with nothing loaded
+    empty(&mut caps);
+    assert_eq!(fits_now(&file(8, 4), &caps), None);
+    // a device without the firmware adapter reports no row
+    assert_eq!(
+        fits_now(
+            &file(1, 1),
+            &[c(CAPK_INSTRUMENT_ROWS, 0), c(CAPK_INSTRUMENT_TRACKS, 0)]
+        ),
+        short(CAPK_INSTRUMENT_ROWS, 1, 0)
+    );
+    // a capacity from before the kinds is not judged: the loader's owner decides
+    assert_eq!(fits_now(&file(1, 1), &[]), None);
+    // the texts of the two kinds
+    let mut out = [0u8; 24];
+    short_text(
+        &mut out,
+        &Short {
+            kind: CAPK_INSTRUMENT_ROWS,
+            need: 1,
+            free: 0,
+        },
+        false,
+    );
+    assert_eq!(text(&out), "INSTR 1 > 0 FREE");
+    short_text(
+        &mut out,
+        &Short {
+            kind: CAPK_INSTRUMENT_TRACKS,
+            need: 5,
+            free: 4,
+        },
+        true,
+    );
+    assert_eq!(text(&out), "TRACKS 5>4");
 }
 
 /// The vector's `want` as (resource name, need, free).
@@ -70,6 +144,8 @@ fn short_name(s: &Short) -> &'static str {
         "PAGE_ROWS",
         "FX_SLOTS",
         "DSP_COST",
+        "INSTRUMENT_ROWS",
+        "INSTRUMENT_TRACKS",
     ]
     .into_iter()
     .find(|n| kind(n) == s.kind)

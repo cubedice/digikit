@@ -532,8 +532,10 @@ def needs_lines(dkm: bytes, dev: str) -> list[str]:
             ("pages", "PAGE_ROWS"),
             ("DSP load per voice", "DSP_COST_VOICE"),
             ("DSP load of effects", "DSP_COST_FX"),
+            ("instruments", "INSTRUMENT_ROWS"),
+            ("instrument tracks", "INSTRUMENT_TRACKS"),
         )
-        if n[k]
+        if n.get(k)
     )
     caps = device_caps(dev)
     short = dkneeds.fit(caps, [n], empty=True)["each"][0]

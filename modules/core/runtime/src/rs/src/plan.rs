@@ -211,6 +211,8 @@ fn needs_of_uses(t: &Keys) -> fit::Needs {
         page_rows: t.page_rows(),
         dsp_cost_voice: t.dsp_cost_voice(),
         dsp_cost_fx: t.dsp_cost_fx(),
+        instrument_rows: t.instrument_rows(),
+        instrument_tracks: t.instrument_tracks(),
         arena: if rb != 0 { dkneeds::arena_block(rb).unwrap_or(u32::MAX) } else { 0 },
         ..fit::Needs::default()
     }
@@ -977,6 +979,35 @@ mod tests {
         assert_eq!(p.verdicts[..2], [Verdict::Accepted, Verdict::Refused(Reason::Fit(CAPK_DSP_COST))]);
         // a capacity without the DSP entries (an older runtime) is not judged
         assert_eq!(run(&[Some(voice(u32::MAX))]).verdicts[0], Verdict::Accepted);
+    }
+
+    #[test]
+    fn a_selection_takes_one_file_of_persistent_instruments() {
+        use dkneeds::{RES_INSTRUMENT_ROWS, RES_INSTRUMENT_TRACKS};
+        // a file with one instrument type of `tracks` track instances (the packer writes these uses from the DSP section)
+        let file = |tracks: u32| {
+            bytes(&Table {
+                uses: &[Use { resource: RES_INSTRUMENT_ROWS, count: 1 }, Use { resource: RES_INSTRUMENT_TRACKS, count: tracks }],
+                ..KEEP
+            })
+        };
+        let with = |rows: u32, tracks: u32| {
+            let c = |kind: u8, limit: u32| DkrtCap { kind: kind as u32, limit, used: 0, largest: limit };
+            let mut v = caps();
+            v.push(c(CAPK_INSTRUMENT_ROWS, rows));
+            v.push(c(CAPK_INSTRUMENT_TRACKS, tracks));
+            v
+        };
+        // rows and tracks are left after the first file, but the owner takes one file a boot; a module without instruments loads
+        let p = run_with(&[Some(file(4)), Some(file(1)), Some(bytes(&KEEP))], with(8, 16));
+        assert_eq!(p.verdicts[..3], [Verdict::Accepted, Verdict::Refused(Reason::Fit(CAPK_INSTRUMENT_ROWS)), Verdict::Accepted]);
+        assert_eq!(p.verdicts[1].result(), E_PLAN_FIT);
+        // more track instances than the firmware adapter admits
+        assert_eq!(run_with(&[Some(file(5))], with(8, 4)).verdicts[0], Verdict::Refused(Reason::Fit(CAPK_INSTRUMENT_TRACKS)));
+        // a device without the adapter has no row
+        assert_eq!(run_with(&[Some(file(1))], with(0, 0)).verdicts[0], Verdict::Refused(Reason::Fit(CAPK_INSTRUMENT_ROWS)));
+        // a capacity without the kinds is not judged: the loader's owner decides
+        assert_eq!(run(&[Some(file(1))]).verdicts[0], Verdict::Accepted);
     }
 
     #[test]

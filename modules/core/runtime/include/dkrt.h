@@ -186,6 +186,8 @@
 #define DKRT_CAPK_SEND_SLOTS 14
 #define DKRT_CAPK_DSP_COST 15
 #define DKRT_CAPK_DSP_VOICES 16
+#define DKRT_CAPK_INSTRUMENT_ROWS 17
+#define DKRT_CAPK_INSTRUMENT_TRACKS 18
 
 /* dkrt_status result. The caller owns the memory; the layout only grows at the end. */
 typedef struct DkrtStatus {
@@ -358,6 +360,8 @@ typedef struct DkrtScan {
     uint32_t need_fx_slots;
     uint32_t need_dsp_cost_voice;                /* the module's DSP cost of one voice, instructions per block (header table, USES; 0: none) */
     uint32_t need_dsp_cost_fx;                   /* the module's DSP cost of its effects, instructions per block (0: none) */
+    uint32_t need_instrument_rows;               /* types of persistent V2 instruments in the DSP section (0: none) */
+    uint32_t need_instrument_tracks;             /* their track instances */
 } DkrtScan;
 
 /* The fit verdict of one DkrtScan entry. wont is 1 when the module does not fit next to the ticked ones; then short_* is the first short resource (a CAPK_* kind, what the module needs and what is free) and the texts say it. mem is the memory the module takes (arena and DSP area) as text. */
@@ -498,7 +502,7 @@ _Static_assert(offsetof(DkrtDiag, fault_rows) == 72, "DkrtDiag.fault_rows");
 _Static_assert(offsetof(DkrtDiag, fault_text) == 76, "DkrtDiag.fault_text");
 _Static_assert(sizeof(DkrtModuleHeader) == 4, "DkrtModuleHeader size");
 _Static_assert(offsetof(DkrtModuleHeader, version) == 0, "DkrtModuleHeader.version");
-_Static_assert(sizeof(DkrtScan) == 124, "DkrtScan size");
+_Static_assert(sizeof(DkrtScan) == 132, "DkrtScan size");
 _Static_assert(offsetof(DkrtScan, path) == 0, "DkrtScan.path");
 _Static_assert(offsetof(DkrtScan, first) == 64, "DkrtScan.first");
 _Static_assert(offsetof(DkrtScan, size) == 68, "DkrtScan.size");
@@ -515,6 +519,8 @@ _Static_assert(offsetof(DkrtScan, need_page_rows) == 108, "DkrtScan.need_page_ro
 _Static_assert(offsetof(DkrtScan, need_fx_slots) == 112, "DkrtScan.need_fx_slots");
 _Static_assert(offsetof(DkrtScan, need_dsp_cost_voice) == 116, "DkrtScan.need_dsp_cost_voice");
 _Static_assert(offsetof(DkrtScan, need_dsp_cost_fx) == 120, "DkrtScan.need_dsp_cost_fx");
+_Static_assert(offsetof(DkrtScan, need_instrument_rows) == 124, "DkrtScan.need_instrument_rows");
+_Static_assert(offsetof(DkrtScan, need_instrument_tracks) == 128, "DkrtScan.need_instrument_tracks");
 _Static_assert(sizeof(DkrtFitRow) == 96, "DkrtFitRow size");
 _Static_assert(offsetof(DkrtFitRow, wont) == 0, "DkrtFitRow.wont");
 _Static_assert(offsetof(DkrtFitRow, short_kind) == 4, "DkrtFitRow.short_kind");

@@ -595,6 +595,16 @@ impl<'a> Keys<'a> {
         self.use_of(crate::RES_DSP_COST_FX)
     }
 
+    /// Types of persistent V2 instruments the module's DSP section holds (the packer counts them); 0: none.
+    pub fn instrument_rows(&self) -> u32 {
+        self.use_of(crate::RES_INSTRUMENT_ROWS)
+    }
+
+    /// Their track instances.
+    pub fn instrument_tracks(&self) -> u32 {
+        self.use_of(crate::RES_INSTRUMENT_TRACKS)
+    }
+
     /// The key groups, in file order: (record kind, its keys).
     pub fn key_groups(&self) -> impl Iterator<Item = (u32, impl Iterator<Item = u32> + 'a)> + 'a {
         let me = *self;

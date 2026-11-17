@@ -250,12 +250,16 @@ relocations, admission limits); it refuses a version 7 section and V1 voices or 
 reader still takes. A test of the SDK crate edits every word of the canonical section (`dkneeds::fixtures::v2_section`,
 also used by the tests of `dkneeds` and patchkit) and holds both readers to one answer. The runtime's scan (the MODULES page of the DIGIKIT menu) and the
 hosts read with it: `patchkit needs` and `dump`, the wasm `pk_needs`, and through them `dk run`, `module:check` and the
-Transfer page give a V2 file its needs, the hosts with `INSTRUMENT_ROWS`, `INSTRUMENT_TRACKS` and `INSTRUMENT_STATE` beside
-the CAPACITY names. The scan entry and the fit rule have no instrument rows: the loader's V2 owner admits the rows and
-tracks, so a verdict covers memory and the rows of `Needs` only. `modules/machines/canopy/tests/needs.device.test.ts`
+Transfer page give a V2 file its needs. The types and the track instances of its instruments are resources like the rows:
+`INSTRUMENT_ROWS` and `INSTRUMENT_TRACKS` are fields of `Needs`, CAPACITY kinds 17 and 18 (`[capacity.kinds]`) and resources 7
+and 8 of a module's `USES` (`[records.resources]`), which the packer writes from the DSP section (a module does not declare them).
+The fit rule (`dkrt_fit`), the boot plan and the menu's scan (`DkrtScan.need_instrument_rows`, `need_instrument_tracks`) count
+them: a file with more tracks than the firmware adapter admits, or a second file of instruments in one selection, is refused
+before it loads (`E_PLAN_FIT` with the kind), and the Transfer page and the menu say so. The owner takes one file of instruments
+a boot: the `largest` of `INSTRUMENT_ROWS` is what a file can still take, 0 once one is taken. A device without the adapter
+reports 0 rows. `INSTRUMENT_STATE` (bytes, a part of `DSP_AREA`) is said by the hosts only. `modules/machines/canopy/tests/needs.device.test.ts`
 compares the needs with CAPACITY after a load and reads the MODULES row.
-`needs_of`, the reader without instruments, still rejects V7/V8; the scan/fit ABI and the capacity protocol are
-unchanged (no instrument rows in either).
+`needs_of`, the reader without instruments, still rejects V7/V8.
 
 The SDK's `instrument_section::Section` reader validates a complete DKDS8
 instrument-only section without allocation and returns bounded slices and memory

@@ -62,6 +62,8 @@ export const RESOURCE = {
   RECORD_BYTES: 4,
   DSP_COST_VOICE: 5,
   DSP_COST_FX: 6,
+  INSTRUMENT_ROWS: 7,
+  INSTRUMENT_TRACKS: 8,
 } as const;
 
 export const CMD = {
@@ -264,6 +266,8 @@ export const CAPACITY_KINDS = {
   SEND_SLOTS: 14,
   DSP_COST: 15,
   DSP_VOICES: 16,
+  INSTRUMENT_ROWS: 17,
+  INSTRUMENT_TRACKS: 18,
 } as const;
 
 /** What a person calls a capacity kind a fit looks at, by kind number. */
@@ -280,6 +284,8 @@ export const CAPACITY_LABELS: Record<number, string> = {
   10: 'effect slots',
   15: 'DSP load',
   16: 'DSP voices',
+  17: 'instrument rows',
+  18: 'instrument tracks',
 };
 
 /** The `kind` of a LOG event. */

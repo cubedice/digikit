@@ -50,17 +50,13 @@ pub fn needs_v2(f: &[u8]) -> Result<V2Needs> {
     dkneeds::needs_of_v2(&mut &f[..]).map_err(|e| err!("{}", e.text()))
 }
 
-/// (name, value) of a V2 section's instrument needs, in the style of [`Needs::fields`]; empty for a file without instruments. The fit
-/// rule does not read them: the loader's V2 owner admits the rows and tracks.
+/// (name, value) of what a V2 section's instruments need beyond [`Needs::fields`] (which has their rows and tracks): the state bytes, a
+/// part of `DSP_AREA`. Empty for a file without instruments.
 pub fn instrument_fields(n: &InstrumentNeeds) -> Vec<(&'static str, u32)> {
     if *n == InstrumentNeeds::default() {
         return vec![];
     }
-    vec![
-        ("INSTRUMENT_ROWS", n.rows),
-        ("INSTRUMENT_TRACKS", n.tracks),
-        ("INSTRUMENT_STATE", n.state_bytes),
-    ]
+    vec![("INSTRUMENT_STATE", n.state_bytes)]
 }
 
 /// The needs of a file as JSON, for the command line and the wasm export: `file_size` and the CAPACITY names of [`Needs::fields`], then
@@ -243,10 +239,12 @@ fn service_kinds(service: &str, init: u32) -> Vec<dkneeds::keys::KindDecl> {
 /// The header table to write: `reg` is the table the caller built (empty: a module that takes and keeps nothing) with the `NEEDS` entry replaced by
 /// the needs of `imports`.
 ///
-/// `provides` and `exports` are added to the ones of `reg`; a table with any `PROVIDES` is written as version 2.
+/// `provides` and `exports` are added to the ones of `reg`; a table with any `PROVIDES` is written as version 2. `uses_add` are uses the packer
+/// counts itself (the persistent instruments of the DSP section); they replace an entry of the same resource in `reg`.
 fn table_with_needs(
     reg: &[u8],
     imports: &[&str],
+    uses_add: &[dkneeds::keys::Use],
     provides: &[dkneeds::keys::Pair],
     exports_add: &[dkneeds::keys::Pair],
     hooks_add: &[dkneeds::keys::Pair],
@@ -286,6 +284,9 @@ fn table_with_needs(
             groups.push((kind, ks.collect()));
         }
     }
+    uses.retain(|u: &dkneeds::keys::Use| !uses_add.iter().any(|a| a.resource == u.resource));
+    uses.extend_from_slice(uses_add);
+    uses.sort_by_key(|u| u.resource);
     exports.extend_from_slice(exports_add);
     hooks.extend_from_slice(hooks_add);
     kinds.extend_from_slice(kinds_add);
@@ -653,9 +654,21 @@ fn pack_inner(
             )
         }
     };
+    // The persistent V2 instruments of the DSP section are uses of the module: their types and their track instances
+    // (`RES_INSTRUMENT_ROWS`, `RES_INSTRUMENT_TRACKS`). A module does not declare them; the boot plan reads them from the table.
+    let mut instrument_uses = vec![];
+    if let Ok(n) = dkneeds::instrument_section_needs(dsp) {
+        for (resource, count) in [
+            (dkneeds::RES_INSTRUMENT_ROWS, n.rows),
+            (dkneeds::RES_INSTRUMENT_TRACKS, n.tracks),
+        ] {
+            instrument_uses.push(dkneeds::keys::Use { resource, count });
+        }
+    }
     let table = table_with_needs(
         reg,
         &imports,
+        &instrument_uses,
         &provides,
         &svc_exports,
         &svc_hooks,
@@ -1330,14 +1343,26 @@ mod tests {
         assert_eq!(j["DSP_AREA"], 128);
         assert_eq!(j["INSTRUMENT_ROWS"], 1);
         assert_eq!(j["INSTRUMENT_TRACKS"], 2);
+        // the packer wrote them as uses of the module, for the boot plan
+        let parsed = Dkm::parse(&f).unwrap();
+        let table = dkneeds::keys::Keys::parse(&parsed.register).unwrap();
+        assert_eq!((table.instrument_rows(), table.instrument_tracks()), (1, 2));
         assert_eq!(j["INSTRUMENT_STATE"], 32);
         assert!(
             needs_text(&n).ends_with("instrument_rows 1, instrument_tracks 2, instrument_state 32")
         );
         // a file without instruments says nothing of them
         let old = pack_keys(Some(&object()), &[], &dsp_section(100, 3), &opts()).unwrap();
-        assert!(needs_json(&old).unwrap().get("INSTRUMENT_ROWS").is_none());
-        assert!(!needs_text(&needs_v2(&old).unwrap()).contains("instrument"));
+        let j = needs_json(&old).unwrap();
+        assert_eq!(
+            (&j["INSTRUMENT_ROWS"], &j["INSTRUMENT_TRACKS"]),
+            (&0.into(), &0.into())
+        );
+        assert!(j.get("INSTRUMENT_STATE").is_none());
+        assert!(!needs_text(&needs_v2(&old).unwrap()).contains("instrument_state"));
+        let parsed = Dkm::parse(&old).unwrap();
+        let table = dkneeds::keys::Keys::parse(&parsed.register).unwrap();
+        assert_eq!(table.instrument_rows(), 0);
     }
 
     #[test]

@@ -26,8 +26,8 @@ pub mod fixtures;
 
 /// The needs of a file of persistent V2 instruments: the resources of `Needs` as the loader's V2 path takes them, and the
 /// instrument rows beside them. Not an admission: the loader's V2 owner checks the contract, the descriptors and the DSP.
-/// Keep separate from `Needs`: the scan and fit protocol of the runtime's menu has no instrument rows, so the menu takes `base`
-/// and leaves the rows and tracks to the loader.
+/// `base` holds the rows and tracks too (`instrument_rows`, `instrument_tracks`): the fit rule, the boot plan and the menu's scan read
+/// them there. `instruments` adds the state bytes, which are part of `base.dsp_area`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct V2Needs {
     pub base: Needs,
@@ -59,6 +59,9 @@ pub fn needs_of_v2<B: Bytes>(src: &mut B) -> Result<V2Needs, Error> {
             .checked_add(arena_block(allocation).ok_or(Error::Sizes)?)
             .ok_or(Error::Sizes)?;
         n.base.arena_xfer = 0;
+        // the rows and tracks are resources of the fit rule and of the boot plan (CAPK_INSTRUMENT_ROWS, CAPK_INSTRUMENT_TRACKS)
+        n.base.instrument_rows = n.instruments.rows;
+        n.base.instrument_tracks = n.instruments.tracks;
     }
     Ok(n)
 }
@@ -143,13 +146,17 @@ pub struct Needs {
     pub dsp_cost_voice: u32,
     /// DSP instructions per block of the module's effects (the header table's `DSP_COST_FX`; 0: none). The broker adds them up.
     pub dsp_cost_fx: u32,
+    /// Types of persistent V2 instruments in the DSP section (version 7 or 8; 0: none). Their owner takes one file of instruments a boot.
+    pub instrument_rows: u32,
+    /// Their track instances (the sum of the descriptors' tracks).
+    pub instrument_tracks: u32,
 }
 
 impl Needs {
     /// (name, value) of every field except `file_size`, the names of CAPACITY's kinds with their rows: `ARENA`, `ARENA_XFER`, `DSP_AREA`,
-    /// `DSP_ALIGN`, `MACHINE_ROWS`, `VOICE_ROWS`, `PARAM_ROWS`, `PAGE_ROWS`, `FX_SLOTS`, `DSP_COST_VOICE`, `DSP_COST_FX` (the last two are the module's own
-    /// cost, [records.resources]). The hosts (the wasm export, the command line) say them so.
-    pub fn fields(&self) -> [(&'static str, u32); 11] {
+    /// `DSP_ALIGN`, `MACHINE_ROWS`, `VOICE_ROWS`, `PARAM_ROWS`, `PAGE_ROWS`, `FX_SLOTS`, `DSP_COST_VOICE`, `DSP_COST_FX` (these two are the module's own
+    /// cost, [records.resources]), `INSTRUMENT_ROWS`, `INSTRUMENT_TRACKS`. The hosts (the wasm export, the command line) say them so.
+    pub fn fields(&self) -> [(&'static str, u32); 13] {
         [
             ("ARENA", self.arena),
             ("ARENA_XFER", self.arena_xfer),
@@ -162,6 +169,8 @@ impl Needs {
             ("FX_SLOTS", self.fx_slots),
             ("DSP_COST_VOICE", self.dsp_cost_voice),
             ("DSP_COST_FX", self.dsp_cost_fx),
+            ("INSTRUMENT_ROWS", self.instrument_rows),
+            ("INSTRUMENT_TRACKS", self.instrument_tracks),
         ]
     }
 

@@ -306,6 +306,8 @@ fn the_fields_have_the_capacity_names() {
         fx_slots: 10,
         dsp_cost_voice: 11,
         dsp_cost_fx: 12,
+        instrument_rows: 13,
+        instrument_tracks: 14,
     };
     let f = n.fields();
     assert_eq!(f[0], ("ARENA", 2));
@@ -313,7 +315,11 @@ fn the_fields_have_the_capacity_names() {
     assert_eq!((f[9], f[10]), (("DSP_COST_VOICE", 11), ("DSP_COST_FX", 12)));
     assert_eq!(
         f.iter().map(|x| x.1).sum::<u32>(),
-        2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + 11 + 12
+        2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + 11 + 12 + 13 + 14
+    );
+    assert_eq!(
+        (f[11], f[12]),
+        (("INSTRUMENT_ROWS", 13), ("INSTRUMENT_TRACKS", 14))
     );
 }
 
@@ -604,6 +610,12 @@ fn the_canonical_v2_section_has_needs() {
     );
     // align64(image 64 + bss 8 + the two states)
     assert_eq!((n.base.dsp_area, n.base.voice_rows), (128, 0));
+    // the rows and tracks are resources of the fit rule: `Needs` holds them, and says them by CAPACITY's names
+    assert_eq!((n.base.instrument_rows, n.base.instrument_tracks), (1, 2));
+    assert_eq!(
+        n.base.fields()[11..],
+        [("INSTRUMENT_ROWS", 1), ("INSTRUMENT_TRACKS", 2)]
+    );
     assert!(needs_of(&mut file.as_slice()).is_err());
 }
 

@@ -27,6 +27,24 @@ static mut BUFFER: Buffer = Buffer([0; dkrt_sdk::instrument_image::CHUNK]);
 #[no_mangle]
 pub static mut DKRT_INSTRUMENT_SESSION: [u32; 3] = [0; 3];
 
+/// CAPACITY of persistent instruments (`CAPK_INSTRUMENT_ROWS`, `CAPK_INSTRUMENT_TRACKS`): (rows limit, rows used, rows a file can still
+/// take) and (tracks limit, tracks used). The limits are the registry's rows and the tracks the firmware adapter's policy admits; zeros
+/// without the adapter. A boot takes one file of instruments (`pending::occupied`): after it, no file takes a row.
+pub unsafe fn capacity() -> ((u32, u32, u32), (u32, u32)) {
+    let Some(policy) = pending::policy() else {
+        return ((0, 0, 0), (0, 0));
+    };
+    let rows_limit = dkrt_sdk::instrument_registry::MAX_ROWS as u32;
+    let (mut rows_used, mut tracks_used) = (0, 0);
+    if let Some(owner) = (&*core::ptr::addr_of!(OWNER)).as_ref() {
+        let c = owner.loads().capacity();
+        rows_used = c.rows_used;
+        tracks_used = c.tracks_used;
+    }
+    let open = if pending::occupied() { 0 } else { rows_limit.saturating_sub(rows_used) };
+    ((rows_limit, rows_used, open), (policy[2], tracks_used))
+}
+
 /// UI-task only. Without all providers, legacy scheduling is unchanged.
 pub unsafe fn legacy_policy() -> LegacyPolicy {
     match (&*core::ptr::addr_of!(OWNER)).as_ref() {

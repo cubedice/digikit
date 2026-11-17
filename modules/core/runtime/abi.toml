@@ -487,6 +487,8 @@ fields = [
     "u32 need_fx_slots",
     "u32 need_dsp_cost_voice // the module's DSP cost of one voice, instructions per block (header table, USES; 0: none)",
     "u32 need_dsp_cost_fx // the module's DSP cost of its effects, instructions per block (0: none)",
+    "u32 need_instrument_rows // types of persistent V2 instruments in the DSP section (0: none)",
+    "u32 need_instrument_tracks // their track instances",
 ]
 
 [[struct]]

@@ -15,9 +15,6 @@
 //! (the next boot loads them into an empty runtime), and a host checks against CAPACITY as the device reports it.
 #![no_std]
 
-/// Explicit V2 accounting; legacy scan/fit entry points remain unchanged.
-pub mod instruments;
-
 use dkrt_sdk::proto::*;
 use dkrt_sdk::{DkrtCap, DkrtFitOut, DkrtScan, SCAN_COMPAT, SCAN_MAX, SCAN_NEEDS};
 
@@ -32,7 +29,7 @@ pub struct Short {
 }
 
 /// The order the first short resource is looked for in: the loader's own order of refusals, with the slots first.
-const ORDER: [u8; 11] = [
+const ORDER: [u8; 13] = [
     CAPK_STAGE,
     CAPK_MODULES,
     CAPK_SELECTION,
@@ -43,6 +40,8 @@ const ORDER: [u8; 11] = [
     CAPK_PARAM_ROWS,
     CAPK_PAGE_ROWS,
     CAPK_FX_SLOTS,
+    CAPK_INSTRUMENT_ROWS,
+    CAPK_INSTRUMENT_TRACKS,
     CAPK_DSP_COST,
 ];
 
@@ -143,6 +142,11 @@ pub fn fits_now(n: &Needs, caps: &[DkrtCap]) -> Option<Short> {
             (n.page_rows, free(&c))
         } else if kind == CAPK_FX_SLOTS {
             (n.fx_slots, free(&c))
+        } else if kind == CAPK_INSTRUMENT_ROWS {
+            // the owner of persistent instruments takes one file of them a boot: `largest` is what a file can still take (0 once one is taken)
+            (n.instrument_rows, free(&c).min(c.largest))
+        } else if kind == CAPK_INSTRUMENT_TRACKS {
+            (n.instrument_tracks, free(&c))
         } else {
             // the DSP load: what this module adds, against what the headroom has left
             let Some((voices, headroom, used, largest)) = dsp_state(caps) else {
@@ -202,6 +206,16 @@ pub fn take(n: &Needs, caps: &mut [DkrtCap]) {
     use_(CAPK_PARAM_ROWS, n.param_rows);
     use_(CAPK_PAGE_ROWS, n.page_rows);
     use_(CAPK_FX_SLOTS, n.fx_slots);
+    use_(CAPK_INSTRUMENT_ROWS, n.instrument_rows);
+    use_(CAPK_INSTRUMENT_TRACKS, n.instrument_tracks);
+    if n.instrument_rows != 0 {
+        // one file of instruments a boot: no further file takes a row
+        for c in caps.iter_mut() {
+            if c.kind == CAPK_INSTRUMENT_ROWS as u32 {
+                c.largest = 0;
+            }
+        }
+    }
     // the DSP load: `largest` is the state of the per-voice maximum, `used` the whole load
     if let Some((voices, _, used, largest)) = dsp_state(caps) {
         let (load, top) = dsp_after(voices, used, largest, n.dsp_cost_voice, n.dsp_cost_fx);
@@ -297,6 +311,8 @@ pub fn scan_needs(e: &DkrtScan) -> Needs {
         fx_slots: e.need_fx_slots,
         dsp_cost_voice: e.need_dsp_cost_voice,
         dsp_cost_fx: e.need_dsp_cost_fx,
+        instrument_rows: e.need_instrument_rows,
+        instrument_tracks: e.need_instrument_tracks,
     }
 }
 
@@ -314,6 +330,8 @@ pub fn set_scan_needs(e: &mut DkrtScan, n: &Needs) {
     e.need_fx_slots = n.fx_slots;
     e.need_dsp_cost_voice = n.dsp_cost_voice;
     e.need_dsp_cost_fx = n.dsp_cost_fx;
+    e.need_instrument_rows = n.instrument_rows;
+    e.need_instrument_tracks = n.instrument_tracks;
     e.flags |= SCAN_NEEDS;
 }
 
@@ -366,9 +384,9 @@ pub fn size_k(out: &mut [u8], n: u32) {
 }
 
 /// The names of the CAPACITY kinds a fit can be short of, by kind number (0 and the kinds that cannot be short: empty).
-const SHORT_NAME: [&str; 17] = [
+const SHORT_NAME: [&str; 19] = [
     "", "MODULES", "SELECTED", "CPU", "FILE", "DSP", "MACHINES", "VOICES", "PARAMS", "PAGES", "FX",
-    "", "", "", "", "DSP LOAD", "",
+    "", "", "", "", "DSP LOAD", "", "INSTR", "TRACKS",
 ];
 
 /// What is short, in K for bytes and as numbers for rows and slots (the need rounded up, what is free rounded down): `DSP 400K > 254K FREE`, in a

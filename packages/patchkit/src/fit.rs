@@ -75,6 +75,17 @@ fn needs_of(v: &Value) -> Result<Needs> {
         fx_slots: g("FX_SLOTS")?,
         dsp_cost_voice: g("DSP_COST_VOICE")?,
         dsp_cost_fx: g("DSP_COST_FX")?,
+        // a request from before the instrument kinds has neither: none
+        instrument_rows: if v.get("INSTRUMENT_ROWS").is_some() {
+            g("INSTRUMENT_ROWS")?
+        } else {
+            0
+        },
+        instrument_tracks: if v.get("INSTRUMENT_TRACKS").is_some() {
+            g("INSTRUMENT_TRACKS")?
+        } else {
+            0
+        },
     })
 }
 
