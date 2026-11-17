@@ -123,6 +123,50 @@ branch is unchanged. All from one read of upstream's tree [D]:
 Estimate: one to two days with the DT2 proofs of CANOPY and Overloop, and a part of it again after B1, RS-C and R12-8.
 Payoff now: the fork is current for the days until that batch lands; no item of the list above is unblocked.
 
+## PRISM on `main`, the interrupt stack and the install (`port/prism`, 2026-11-17)
+
+PRISM (the phrase effect of `lane/prism`, 19c4d307) is ported onto `main`'s module contract and service structure. All
+from this session: emulator checks [D], one hardware install [D].
+
+- **The port.** The module `modules/fx/prism` declares its effect by builder calls; the adapters `core/phrase-control`,
+  `core/phrase-route` and `core/phrase-ui` are new; the effect service (`modules/core/services/fx/src/phrase.rs`) holds the
+  exclusive phrase route (one effect, no voices, `_phrase_route_info` exported); `core/dsp-link` carries the 64-word phrase
+  suffix. Patch sets `phrase` and `canopy-overloop-prism`; finding 352.
+- **Space.** The module arena is 491 520 bytes on both devices (was 524 288): the four-module image did not fit
+  `cf.expansion` otherwise. The install image uses 1 387 696 of 1 396 736 bytes (9040 free) [D].
+- **Cache-line rule (from PRISM).** patchkit aligns ColdFire executable objects to 16 bytes and starts the first section that
+  is not code on a new line. A synthetic module's stub is therefore 16 bytes when data or bss follows
+  (`tests/regression/runtime/synth.ts` `CODE`), and the expansion loader in the flash cave takes 76 bytes.
+- **Loader deadlock [C].** The port of the instrument code to `main` refused every legacy DSP transfer while the V2 instrument
+  policy was not `Run`, so a DSP module queued behind CANOPY never finished and CANOPY's load timed out (cause 101).
+  `link.rs` now refuses in `Drain` only when no legacy load is in progress or waiting. `main` had no test of CANOPY with a
+  second DSP module; `modules/fx/prism/tests/coexistence.device.test.ts` loads CANOPY, Overloop, PRISM and remote.
+- **Overloop's knobs.** On this contract the knobs follow the parameter words: FADE is on encoder C and LENGTH on D (they
+  were the other way round before the port to `main`).
+- **The block interrupt on small stacks.** Finding 353: the kept crash record of the device (`PC 40000458`) is the `rte` of
+  the task switch; the fork's block-interrupt path reached 1860 of the 2048 bytes of the firmware's timer task through 1224
+  bytes of locals in `mt_prepare_mapped`. The buffers are static now (888 bytes).
+- **Gate.** `mise run test` on 0cfc3afc: 12 failed tasks. Caused by the port and fixed: `core/runtime-capacity-tests` on
+  both devices (the stub size), `nx-tools:test-host` (device pins of the PRISM tests), `tools:python-tests`
+  (`test_canopy_midi_frame`, `test_patchkit_expansion`). Passed alone afterwards (load): `core/phrase-control:test-host`,
+  `core/dynfx` `fx-reuse` on DN2, `core/runtime-tests` `transfer-live` on DN2, `@digi/web:test-wasm`. As before the port:
+  `gate-fx-dn2` (two tasks), `gate-fast-roots:fixtures`, `digiemu-desktop:rust-tests`, `test_snapread`, `test_pk_current`,
+  the sample-pool Python tests. After the last changes: the subset `A:core/instrument-play A:core/phrase-ui` passes; the
+  full gate was not run again.
+- **Hardware (one DT2, 2026-11-17).** Image `fcc26c589be6556d` (sha256 `c2c3726d…`, byte-identical to the image of the
+  coexistence test), runtime 0.8.3, over the OS upgrade RPC. The card's store had version 3: after the flash the runtime
+  listed no files and loaded nothing, the settings record and the selection were kept, and the first upload made a
+  version 4 store (as `store-format.device.test.ts` says). The four packages were uploaded and verified; all four load
+  with no faults, `DSP_AREA` 164 608 used, settings unchanged. One thing to know: the restart sent right after the upload
+  came up in safe mode, because the boot after the flash had run less than the 30 s stable period and the earlier crash
+  had left one boot counted; the next restart loaded the modules. Wait 30 s after a boot before the next restart.
+  No audio was captured from the device and no long run was made.
+- **Ghidra.** A Ghidra dump and cfdb database of DT2 1.17 now exist on this machine (`out/ghidra/dt2-1.17-emac`,
+  `out/cfdb/dt2-1.17-emac.sqlite`). Ghidra 12.2 needs Java 25; `tools/coldfire/ghidra/install-coldfire-emac.sh` links
+  into a macOS path, so on Linux the language is compiled with `support/sleigh` and linked into
+  `~/.config/ghidra/ghidra_<version>_PUBLIC/Extensions` by hand; `pyghidra` comes from Ghidra's own wheels with
+  `uv run --with`.
+
 ## Not done, and why
 
 - **The instrument code as a service crate.** About 10 000 lines of `instrument_*` live in `dkrt-sdk` and the owner in the
@@ -146,4 +190,5 @@ Payoff now: the fork is current for the days until that batch lands; no item of 
 - [C] `gate-card:card` failed only while `out` was on the Windows drive (the daemon's control socket; port handover). `out/` and
   `.venv` are now on WSL's disk (`~/digikit-data`), linked from both checkouts, and the task passes. Windows programs cannot
   open `out/` any more.
-- Hardware: nothing installed.
+- Hardware: see the section on PRISM and the install above. [O] a run of hours on the device; [O] a stack of the fork's own
+  for its block-interrupt work (finding 353).
