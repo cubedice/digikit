@@ -5,8 +5,8 @@ import type { Session } from '@digi/test-support';
 import { expect } from 'vitest';
 import { planSymbol, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
+import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
 export type Sound = { mode: number; chord: number; voicing: number; strum: number };
 // PRESET menu, left column: LOAD (+Drive), SAVE (+Drive), MANAGE, POOL.

@@ -9,8 +9,8 @@ import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { planSymbol, prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
+import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
 describeOn('dt2', 'CANOPY Sound copy on the DT2', () => {
   // CANOPY Sound persistence (finding 151): one track Sound copy and paste with

@@ -9,9 +9,9 @@ import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { planSymbol, prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { openDigikitMenu } from '@digi/regression/runtime/runtime-menu.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { patchkit } from '@digi/regression/runtime/patchkit.ts';
+import { openDigikitMenu } from '@digi/regression/runtime/port-compat.ts';
 
 /**
  * What a load of CANOPY takes is what its file says (docs/design/digikit-dkm.md, "Needs are inferred"). CANOPY is a file of persistent

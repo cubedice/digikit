@@ -12,7 +12,7 @@ import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 import { execFileSync } from 'node:child_process';
 import { waitInstrumentReady } from './instrument-ready.ts';
 import { acknowledgedPanel } from './panel-ack.ts';
-import { waitEmulated } from './waits.ts';
+import { waitEmulated } from './port-compat.ts';
 
 // Recording keyboard presses on a CANOPY track (findings 147 and 125). While
 // the sequencer live records, CANOPY hands KEYBOARD presses to the stock note

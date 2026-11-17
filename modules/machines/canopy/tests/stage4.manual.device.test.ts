@@ -1,16 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { setTimeout as delay } from 'node:timers/promises';
 import { button, repoRoot } from '@digi/test-support';
 import { expect, onTestFinished, test } from 'vitest';
 import { withSession } from '@digi/regression/support.ts';
 import { liveOptions } from '@digi/regression/runtime/devices.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { planSymbol, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
-import { openDigikitMenu } from '@digi/regression/runtime/runtime-menu.ts';
+import { openDigikitMenu, waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
 const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
 test('CANOPY movement through MIDI, setup, master transport and final audio', async () => {
@@ -99,9 +97,9 @@ test('CANOPY movement through MIDI, setup, master transport and final audio', as
   };
   const key = async (name: string, settle = 500) => {
     await session.client.inputButton(button(name), true);
-    await delay(200);
+    await waitEmulated(session, 200);
     await session.client.inputButton(button(name), false);
-    await delay(settle);
+    await waitEmulated(session, settle);
   };
   await waitEmulated(session, 12_000); // the DT2 UI settle the harness helper waited before c223679e
   // Select the admitted machine using the stock machine chooser.
@@ -148,7 +146,7 @@ test('CANOPY movement through MIDI, setup, master transport and final audio', as
   const turn = async (enc: number, delta: number, count = 1) => {
     for (let i = 0; i < count; i++) {
       await session.client.inputTurn(enc, delta);
-      await delay(250);
+      await waitEmulated(session, 250);
     }
   };
   const adjust = async (index: number, target: number) => {
@@ -265,7 +263,7 @@ test('CANOPY movement through MIDI, setup, master transport and final audio', as
       await expect.poll(async () => (await arp()).token, { timeout: 30000 }).toBe(0);
       expect(await voices()).toEqual(ownership);
       const stoppedSerial = (await arp()).serial;
-      await delay(3000);
+      await waitEmulated(session, 3000);
       expect((await arp()).serial).toBe(stoppedSerial);
       await key('PLAY');
       await expect.poll(async () => (await arp()).serial, { timeout: 90000 }).toBeGreaterThan(stoppedSerial);
@@ -283,7 +281,7 @@ test('CANOPY movement through MIDI, setup, master transport and final audio', as
         await expect.poll(async () => (await arp()).token, { timeout: 30000 }).toBe(0);
         expect(await voices()).toEqual(ownership);
         const lostSerial = (await arp()).serial;
-        await delay(3000);
+        await waitEmulated(session, 3000);
         expect((await arp()).serial).toBe(lostSerial);
         await session.client.call('midi.usb.in', {
           bytes: [...Array(96).fill(0xf8), 0xfc],
@@ -370,7 +368,7 @@ test('CANOPY movement through MIDI, setup, master transport and final audio', as
   await expect.poll(async () => (await voices()).some((v) => v.gate === 9), { timeout: 30000 }).toBe(true);
   await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0] });
   await expect.poll(async () => (await voices()).length, { timeout: 30000 }).toBe(0);
-  await delay(3000);
+  await waitEmulated(session, 3000);
   expect(await voices()).toEqual([]);
   expect(await cf('ip_control')).toBe(3);
   console.log('generated strum and release cancellation accepted');

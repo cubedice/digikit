@@ -5,9 +5,9 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { button, repoRoot } from '@digi/test-support';
 import { expect, onTestFinished, test } from 'vitest';
 import { withSession } from '../support.ts';
-import { waitEmulated } from './waits.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 import { chordWindow, voiceChange } from './chord-continuity.ts';
+import { waitEmulated } from './port-compat.ts';
 
 const h = withSession({
   device: 'dt2',

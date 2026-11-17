@@ -9,9 +9,9 @@ import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { canopyPanel } from './canopy-panel.ts';
+import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
 describeOn('dt2', 'CANOPY pattern SysEx on the DT2', () => {
   // MANUAL, NOT IN THE GATE: blocked by the emulator (finding 151). CANOPY Sound

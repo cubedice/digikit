@@ -11,9 +11,9 @@ import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.t
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { cardAfter } from '@digi/regression/runtime/write-safety.ts';
 import { currentRecord, recordsIn } from '@digi/regression/runtime/card-kit.ts';
+import { waitEmulated, wallGuard } from '@digi/regression/runtime/port-compat.ts';
 
 // Opt-in disposable emulator only. Public mapper batches use the same pool as
 // the deserializer; this does not claim complete Sound ownership or hardware safety.
@@ -69,7 +69,7 @@ if (process.env.DIGI_CANOPY_INTEGRATED_PROOF === '1') {
           try {
             evidence[name] = await Promise.race([
               fn(),
-              new Promise<never>((_, reject) => setTimeout(() => reject(new Error('diagnostic timeout')), 5000)),
+              wallGuard(5000, 'diagnostic timeout'),
             ]);
           } catch (error) { evidence[name] = String(error); }
         };
@@ -237,11 +237,11 @@ if (process.env.DIGI_CANOPY_INTEGRATED_PROOF === '1') {
         try {
           evidence.coldFinalStatus = await Promise.race([
             coldSession.status(),
-            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('cold status timeout')), 5000)),
+            wallGuard(5000, 'cold status timeout'),
           ]);
           evidence.coldFinalProof = await Promise.race([
             Promise.all(Array.from({ length: 8 }, (_, i) => coldWord('canopy_sound_proof', i))),
-            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('cold proof timeout')), 5000)),
+            wallGuard(5000, 'cold proof timeout'),
           ]);
         } catch (error) { evidence.coldDiagnosticError = String(error); }
         fs.writeFileSync(path.join(artifacts, 'probe.json'), JSON.stringify(evidence, null, 2));

@@ -10,10 +10,10 @@ import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { planSymbol, prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { waitEmulated } from '@digi/regression/runtime/waits.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { cardAfter, overlayRecords } from '@digi/regression/runtime/write-safety.ts';
 import { bootInfo, currentRecord, recordsIn } from '@digi/regression/runtime/card-kit.ts';
+import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
 describeOn('dt2', 'CANOPY persistence on the DT2', () => {
   // CANOPY Sound persistence (finding 151): a stock project on a disposable DTII

@@ -10,11 +10,10 @@ import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { planSymbol, prepareRuntimePlanListedOffline, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { openDigikitMenu } from '@digi/regression/runtime/runtime-menu.ts';
 import { canopyControls } from '@digi/regression/runtime/canopy-controls.ts';
 import { encoderValue } from '@digi/regression/runtime/encoder-value.ts';
-import { waitEmulatedFrames } from '@digi/regression/runtime/waits.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
+import { openDigikitMenu, waitEmulatedFrames } from '@digi/regression/runtime/port-compat.ts';
 
 describeOn('dt2', 'CANOPY arp on the DT2', () => {
   // Full DTII 1.17 firmware, real panel input and MIDI, with a disposable card.

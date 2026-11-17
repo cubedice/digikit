@@ -3,10 +3,10 @@ import path from 'node:path';
 import type { Session } from '@digi/test-support';
 import { expect } from 'vitest';
 import { acknowledgedPanel } from './panel-ack.ts';
-import { memory } from './panel.ts';
+import { memory } from './memory.ts';
 import { portAnchor } from './device-data.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
-import { waitEmulated } from './waits.ts';
+import { waitEmulated } from './port-compat.ts';
 
 /** Exercise the stock AMP page and final audio through the compiled adapter. */
 export async function proveCanopyNativeAmp(session: Session, plan: RuntimePlan, state: number, root: string) {
