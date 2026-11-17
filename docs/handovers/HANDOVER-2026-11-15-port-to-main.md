@@ -60,6 +60,36 @@ ported branch replaces it only after review, and that needs a force push.
 - Upstream's `samples-store-live` device test: 547daf4e made the store listing report the payload size and keep the
   stored size (payload and trailer) in `stored`, and left the test comparing `size` with the stored length. The branch
   changes neither file, so the DN2 half fails on main too (not run there). It now checks both fields.
+- 14e7a29b, upstream's wasm test: da426d17 pinned Selache 967c1d1e, which words the refusal of `DM(15, I4) = I0`
+  differently (`I0 cannot be stored through its own DAG`); the test matched the old text. It now checks patchkit's own
+  report (`selas failed`, the line).
+
+## Gaps closed on 2026-11-16
+
+- V2 needs. `needs_of_v2` refused CANOPY's real file: it wanted descriptor flags 0, and the loader's decoder takes 0, 1,
+  3 or 7 (CANOPY has 7). It also counted the legacy arena (the module block and a transfer block), while `loader::load`
+  keeps one block for a V2 file: the module, copies of its keys table and DSP section, and the output buffer of the
+  relocated image. Both follow the loader now. The hosts read with it (`patchkit needs` and `dump`, the wasm `pk_needs`),
+  so `dk run` no longer refuses CANOPY as a file the loader does not accept and `module:check` no longer prints "the
+  loader refuses the file". The runtime's scan reads with it too, so the MODULES page gives CANOPY a kind, its memory and
+  a fit verdict, and counts it when another module is ticked beside it. The scan entry and the fit rule still have no
+  instrument rows: the loader's V2 owner admits those. `modules/machines/canopy/tests/needs.device.test.ts` (DT2)
+  compares the needs with CAPACITY after a load (arena 279 600, DSP area 150 016, one machine row, no voice row) and
+  reads the MODULES row. The runtime object grew by about 4 KiB; the `emulator` set of both devices and the
+  `canopy-overloop` set of the DT2 still apply.
+- Overloop's DSP cost. The rig's effect suite skips Overloop, so nothing measured `dsp_cost_fx` and the boot planner
+  budgeted it as free. `[uses.dt2] dsp_cost_fx = 2606` is the costliest hook call of the scenarios in
+  `tests/test_overloop.py`, which now holds every block to it. A rig fixture was not built: with a stand-in position
+  record the rig would run only the idle path.
+- `module:check` on a V2 instrument: the commit stage boots the real DSP for a module with `[[machine]] instrument = true`
+  (`commit_records.ts --dsp sharc`), because such a module commits only after its DSP acknowledged the instance.
+  `module:check canopy --device dt2` ran to the end for the first time: one machine row and 124 record bytes committed
+  (`[uses.dt2]` unchanged), 1394 Python tests, the six DT2 device files, "fits an empty device". It wrote CANOPY's
+  `build/gen/gallery.json`.
+- `module:check` runs a module's device files through Nx without `--parallel=1` (the launcher's budget and the emulator
+  slots bound it): CANOPY's six files took 19.5 minutes one by one.
+- The web bundle's CRLF normalisation was already ported with fd4d7bb4 (`bundleText` in `gen-modules.mjs`, the three
+  call sites of the branch).
 
 ## Behaviour change
 
@@ -97,8 +127,8 @@ Passed: `digikit/canopy` and `digikit/overloop` `test-conformance`, `@digi/sharc
   running it passes 30 s.
 - Load timeouts: `@digi/web:test-wasm` (every case over 120 s, 98 minutes in all), `tools/nx/tests/selection.test.ts`
   (`spawnSync pnpm ETIMEDOUT`), `gate-fast-roots:fixtures` (a wall-clock timeout building the DN2 reset fixture) and
-  `tests/devtools/test_test_outcomes.py` (18/18 alone). The PGO profiles are missing here, so the daemons run without
-  PGO (about 30% slower DSP).
+  `tests/devtools/test_test_outcomes.py` (18/18 alone). The daemons run without PGO here (about 30% slower DSP; see PGO
+  below).
 - Upstream or this machine: the `sharc-native` test `fast_mode1_write_that_enables_interrupts_matches_the_interpreter`
   (the branch does not touch `packages/emulator/sharc`); `patchkit.wasm is small` (over 2.5 MiB: main's is 2,666,749
   bytes, this branch's 2,683,417); `gate-fx-dn2` `fx-no-aot` and `tier-quick` (`E2BIG`: `SHARC_FAST_REGIONS` is 568 KB,
@@ -107,11 +137,45 @@ Passed: `digikit/canopy` and `digikit/overloop` `test-conformance`, `@digi/sharc
 - Upstream's `samples-store-live` DN2 half: fixed above; it passes alone.
 - `core/runtime-storage-tests` DT2 (`no reply to MidiRpc 11` after 41 s): it passes alone, in 16 s.
 
+The same gate from a worktree on WSL's ext4 disk (`~/digikit-ext4`, branch `lane/ext4`, d6b2e207; it shares the clone's Nx
+cache, `out/` and the virtualenv) took 39 minutes: 359 passed, 9 failed. The `patchkit apply` timeouts and the storage
+and sample-store failures were gone. Of the nine:
+
+- `core/dynfx` fx-reuse DN2 (`no new boot within 90 s`) and `nx-tools:test-host` pass alone on the idle machine: load.
+- `@digi/web:test-wasm`: 72 of 74 cases pass alone. The two left were the assembler wording (fixed above) and the size
+  check (upstream).
+- `gate-fast-roots:fixtures` fails alone too: after the DN2 soft restart a 5 s emulated step does not end within its
+  300 s wall limit (about 2.9 s emulated, 4.0e9 instructions). It fails the same way, at the same point, with the image
+  patched from main's modules (`DIGI_REPO_ROOT` on an archive of 70d8313f, the same daemon), and with its output on
+  ext4: not the port, not NTFS. Open upstream or on this machine.
+- `tools:python-tests`: `test_test_outcomes.py::test_end_to_end` gives a pytest process 2 s per file and fails under
+  load (18/18 alone); `test_snapread` and `test_pk_current` as above.
+- `sharc-native`, the two `E2BIG` targets and `digiemu-desktop` as above.
+
+At 613ce553 (the gap fixes; the runtime object changed, so every device test ran again) the static checks pass and the
+gate from the worktree took 91 minutes with 14 failures, then 30 minutes with 8 on a second run that replayed the passed
+tasks and used three emulator slots (`DIGI_EMU_SLOTS=3`). The first run ran out of memory: WSL had its default 15 GB,
+and seven emulators beside the builds gave `Cannot allocate memory` (`DSP image`, `CF snapshot`, the DT2 ready step),
+which failed `tom/tb303:test-conformance`, `gate-smoke`, `gate-dt2-tone`, `gate-fx-dt2`, `core/runtime-storage-tests`
+DT2 and the 120 s cases of `@digi/web:test-wasm`. All of these pass in the second run. `.wslconfig` now gives WSL 24 GB
+and 16 GB of swap. The eight left:
+
+- `gate-card:card` is the worktree's: the run directory `~/digikit-ext4/out/runs/card-check/<stamp>/run` is short enough
+  for the daemon to put its control socket there (`socket_path`, 100 bytes), and `out` is a link to C: (drvfs), which
+  has no Unix sockets (`Operation not supported`). From the C: checkout the path is too long and the socket goes to
+  `TMPDIR`. `card_check --run-dir` on ext4 passes (three tracks, no underruns).
+- `tools:python-tests`: `test_snapread` and `test_pk_current` as above. `test_pk_machines_dn2_fw.py` failed one case in
+  the first run and `test_patchkit_cmodules.py` one in the second, each passing in the other; both files pass alone
+  (18 passed).
+- `@digi/web:test-wasm`: only the size check (73 of 74 cases pass; the assembler wording is fixed).
+- `sharc-native`, the two `E2BIG` targets, `gate-fast-roots:fixtures` and `digiemu-desktop` as above.
+
+PGO: the gate's "profile is missing" warning is wrong on this host. `native_pgo.supported_host()` is aarch64 macOS only:
+`train` refuses here and the builds read no profile, so the daemons always run without PGO on Linux.
+
 ## Open
 
-- Not run: `mise run test:full` on this branch, a gate pass of the failures above on an idle machine or a checkout on
-  WSL's disk, and `module:check canopy`. The last is not tried: its commit stage waits for `MODULE_COMMIT`, which a V2
-  instrument should log only once its DSP acknowledges the instance, and the stage boots with a zero DSP.
+- Not run: `mise run test:full` on this branch.
 - Disk: a session refuses to start under 50 GB free. A card image is the whole 24.8 GB card, sparse: on NTFS through
   WSL (C: or D:) it is fully allocated and its build passes plusdrive's 30 to 60 s timeouts, so `dist/session-cache` is
   a symlink to `~/.cache/digikit/session-cache` on WSL's ext4 disk (about 140 MB with the cards). `out/cache`, the old
@@ -119,10 +183,12 @@ Passed: `digikit/canopy` and `digikit/overloop` `test-conformance`, `@digi/sharc
 - `expectRuntimeReady` and the FX fixtures run `patchkit apply` with a 30 s timeout (`runtime/patchkit-exec.ts`): on this
   machine that holds only on an idle machine or with the checkout on WSL's disk (see the gate above).
 - Overloop is not run by the rig's effect suite (`rig_skip`): its DSP reads `core/loop-storage`'s and
-  `core/pattern-position`'s data, which the rig does not place. Its own tests run it with stand-ins. A rig fixture for
-  those two would remove the exemption.
-- `patchkit needs` reports CANOPY's DSP section as malformed: the legacy reader refuses version 7 and 8 sections, as on
-  the branch before the port, so the device menu shows no needs for CANOPY. `needs_of_v2` reads them.
-- Not ported from the branch: the web bundle's CRLF normalisation (upstream reworked those files). Large-source
-  downloads are ported (fd4d7bb4).
+  `core/pattern-position`'s data, which the rig does not place. Its own tests run it with stand-ins and bound its cost.
+- The scan and fit protocol has no instrument rows or tracks: two V2 files ticked together get a verdict on memory only,
+  and the loader refuses the second. A capacity kind for them would close it (an ABI change).
+- Gate failures that cannot pass on this machine and are not the port's: the `patchkit.wasm` size limit, the two `E2BIG`
+  targets, the `sharc-native` `fast_mode1` test, `digiemu-desktop` (libdbus), `test_snapread`, `test_pk_current`, and the
+  DN2 reset fixture of `gate-fast-roots`.
+- A worktree whose `out` is a link to drvfs cannot hold a daemon's control socket in a short run directory
+  (`gate-card`): `socket_path` could fall back to `TMPDIR` when the bind is refused.
 - Hardware: not installed.
