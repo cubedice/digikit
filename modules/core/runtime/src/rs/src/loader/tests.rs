@@ -25,6 +25,10 @@ enum Ev {
     AddRow(usize, *const dkrt_abi::service::ServiceRow),
     Remove(usize),
     AbiOk(u32),
+    /// `admit_instruments`: the bytes of the section and the selection index.
+    Admit(usize, u32),
+    /// `queue_instruments`.
+    Queue(InstrumentLoad),
 }
 
 /// What the init of the module does.
@@ -54,6 +58,9 @@ struct FakeImages {
     /// The n-th alloc (from 1) returns `None`.
     fail_alloc: Option<u32>,
     init: Init,
+    /// The owner of persistent V2 instruments: whether it is idle, and its answer to a section (`tests/v2.rs`). The default is a device without one.
+    v2_idle: bool,
+    v2_admit: Result<u32, i32>,
     log: Vec<Ev>,
 }
 
@@ -163,6 +170,16 @@ impl Images for FakeImages {
     unsafe fn enter_fini(&mut self, rec: usize, fini: u32, _: *const Ctx) {
         self.log.push(Ev::Fini(rec, fini));
     }
+    unsafe fn instruments_idle(&mut self) -> bool {
+        self.v2_idle
+    }
+    unsafe fn admit_instruments(&mut self, section: &[u8], selection: u32) -> Result<u32, i32> {
+        self.log.push(Ev::Admit(section.len(), selection));
+        self.v2_admit
+    }
+    unsafe fn queue_instruments(&mut self, load: InstrumentLoad) {
+        self.log.push(Ev::Queue(load));
+    }
 }
 
 struct FakeRegistry {
@@ -250,6 +267,8 @@ fn module_file() -> Vec<u8> {
     module_file_with(&[], &[])
 }
 
+mod v2;
+
 type Fake = Loader<FakePlatform, FakeImages, FakeRegistry>;
 
 /// A loader in the boot phase over one file, with the runtime tables cleared.
@@ -266,7 +285,7 @@ unsafe fn loader_of(init: Init, file: Vec<u8>) -> Fake {
     crate::cleanup_tests::lenient_tick_drop();
     let mut files = BTreeMap::new();
     files.insert(PATH[..PATH.len() - 1].to_vec(), file);
-    let imgs = FakeImages { files, staged: Vec::new(), live: Vec::new(), allocs: 0, fail_alloc: None, init, log: Vec::new() };
+    let imgs = FakeImages { files, staged: Vec::new(), live: Vec::new(), allocs: 0, fail_alloc: None, init, v2_idle: true, v2_admit: Err(E_CONTRACT), log: Vec::new() };
     let reg = FakeRegistry { abi: true, add_result: OK, log: Vec::new(), asked: Default::default() };
     let mut l = Loader::new(FakePlatform::new(profiles::DT2), imgs, reg);
     l.phase = Phase::Boot;

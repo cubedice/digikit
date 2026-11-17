@@ -18,7 +18,28 @@ pub struct Block {
     pub addr: u32,
 }
 
-/// Where a module's bytes come from and where they go: the file store, the runtime's import table, the arena and the calls into module code.
+/// A file of persistent V2 instruments after the loader placed it, handed to their owner (`Images::queue_instruments`). The addresses are in the
+/// module's arena block: the copies of the keys table and of the DSP section, and the output buffer of the relocated DSP image.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct InstrumentLoad {
+    pub rec: usize,
+    /// The selection index the file was loaded for.
+    pub selection: u32,
+    pub image_size: u32,
+    pub keys: u32,
+    pub keys_size: u32,
+    pub section: u32,
+    pub section_size: u32,
+    pub output: u32,
+    pub output_size: u32,
+    /// The addresses of `init`, `tick` and `menu` (0: none); the owner publishes them with the CF side (`Loader::publish_v2`).
+    pub init: u32,
+    pub tick: u32,
+    pub menu: u32,
+}
+
+/// Where a module's bytes come from and where they go: the file store, the runtime's import table, the arena, the calls into module code and the owner
+/// of persistent V2 instruments.
 pub trait Images {
     /// Read the file at the NUL-terminated store `path` into the staging buffer. Errors are the loader's result codes (`E_NOT_FOUND`, `E_SHA`, ...).
     unsafe fn stage(&mut self, path: *const u8) -> Result<Staged, i32>;
@@ -39,6 +60,18 @@ pub trait Images {
     /// Call `init` of module record `rec` (the address `init` in module memory) with its context; its result.
     unsafe fn enter_init(&mut self, rec: usize, init: u32, ctx: *const Ctx) -> i32;
     unsafe fn enter_fini(&mut self, rec: usize, fini: u32, ctx: *const Ctx);
+    /// The owner of persistent V2 instruments (core/instrument-play) drains or owns the DSP link during a transaction: no load starts until this is
+    /// true. Without an owner it always is.
+    unsafe fn instruments_idle(&mut self) -> bool {
+        true
+    }
+    /// Admit the version 7 or 8 DSP section of the staged file, for selection index `selection`: the bytes of the output buffer its relocated image
+    /// takes, or the refusal (`E_CONTRACT`: no owner, or it has a load in flight; `E_FORMAT`: a section or machine keys it does not take).
+    unsafe fn admit_instruments(&mut self, _section: &[u8], _selection: u32) -> Result<u32, i32> {
+        Err(dkrt_sdk::E_CONTRACT)
+    }
+    /// Hand the placed load to the owner. It transfers the DSP side over the UI-loop passes and then publishes the CF side.
+    unsafe fn queue_instruments(&mut self, _load: InstrumentLoad) {}
 }
 
 /// The registry of what a loaded file publishes (R12-4): the rows of a service file, and the rows of a module's records.
@@ -101,6 +134,43 @@ impl Images for RealImages {
             let call: unsafe extern "C" fn(*const Ctx) = core::mem::transmute(fini as usize);
             crate::dlog::call_fini(rec, call, ctx);
         }
+    }
+    unsafe fn instruments_idle(&mut self) -> bool {
+        crate::instrument::legacy_policy() == dkrt_sdk::instrument_coordinator::LegacyPolicy::Run
+    }
+    unsafe fn admit_instruments(&mut self, section: &[u8], selection: u32) -> Result<u32, i32> {
+        use crate::instrument::pending;
+        // the admission policy comes from the firmware adapter only; one V2 file at a time
+        if pending::policy().is_none() || pending::occupied() {
+            return Err(dkrt_sdk::E_CONTRACT);
+        }
+        let Some(limits) = pending::descriptor_limits() else {
+            return Err(dkrt_sdk::E_CONTRACT);
+        };
+        let Ok(section) = dkrt_sdk::instrument_section::Section::parse(section, crate::device(), limits) else {
+            return Err(dkrt_sdk::E_FORMAT);
+        };
+        if crate::assign::resolve_instruments(&section, selection).is_err() {
+            return Err(dkrt_sdk::E_FORMAT);
+        }
+        Ok(section.memory_request().image_bytes)
+    }
+    unsafe fn queue_instruments(&mut self, l: InstrumentLoad) {
+        use crate::instrument::pending;
+        pending::queue(pending::Pending::new(
+            l.rec,
+            l.selection,
+            l.image_size,
+            l.keys,
+            l.keys_size,
+            l.section,
+            l.section_size,
+            l.output,
+            l.output_size,
+            l.init,
+            l.tick,
+            l.menu,
+        ));
     }
 }
 

@@ -40,7 +40,7 @@ mod seams;
 #[cfg(test)]
 mod tests;
 use image::in_file;
-pub use seams::{Block, Images, RealImages, RealRegistry, Registry, Staged};
+pub use seams::{Block, Images, InstrumentLoad, RealImages, RealRegistry, Registry, Staged};
 
 /// The index the log shows for a provider file (`MOD_LOAD` and the events of its load): not a selection index, and not `u32::MAX` (no load running).
 pub const PROVIDER_IDX: u32 = 0xffff_fffe;
@@ -278,7 +278,7 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
             return E_BOOT_ONLY;
         }
         // a V2 instrument transaction drains or owns the DSP link (instrument.rs): no other load starts until it is done
-        if crate::instrument::legacy_policy() != dkrt_sdk::instrument_coordinator::LegacyPolicy::Run {
+        if !self.m.instruments_idle() {
             return E_DSP_XFER;
         }
         let staged = match self.m.stage(path) {
@@ -358,25 +358,20 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
         // the DSP section, if any
         let (dsp_off, dsp_size) = (rd32(f.add(H_DSP_OFF)), rd32(f.add(H_DSP_SIZE)));
         let mut job = dsp::Job::empty();
-        // A version 7 or 8 section holds persistent V2 instruments (core/instrument-play): the runtime's V2 owner admits and loads it
-        // (instrument/pending.rs); the CF side is published only after the DSP acknowledges the instance. A service file has none
-        // (`service_check` refuses a DSP section).
+        // A version 7 or 8 section holds persistent V2 instruments (core/instrument-play): their owner admits and loads it
+        // (`Images::admit_instruments`, instrument/pending.rs on the device); the CF side is published only after the DSP acknowledges
+        // the instance. A service file has none (`service_check` refuses a DSP section).
         let v2 = dsp_size >= 8
             && in_file(dsp_off, dsp_size, size)
             && rd32(f.add(dsp_off as usize + dkneeds::DSP_H_MAGIC as usize)) == dkneeds::DSP_MAGIC
             && dkneeds::instrument::is_instrument_version(rd32(f.add(dsp_off as usize + dkneeds::DSP_H_VERSION as usize)));
         let mut output_size = 0;
         if v2 {
-            if crate::instrument::pending::policy().is_none() || crate::instrument::pending::occupied() {
-                return E_CONTRACT;
-            }
             let bytes = core::slice::from_raw_parts(f.add(dsp_off as usize), dsp_size as usize);
-            let Some(limits) = crate::instrument::pending::descriptor_limits() else { return E_CONTRACT; };
-            let Ok(section) = instrument_section::Section::parse(bytes, crate::device(), limits) else { return E_FORMAT; };
-            if crate::assign::resolve_instruments(&section, BOOT_IDX).is_err() {
-                return E_FORMAT;
-            }
-            output_size = section.memory_request().image_bytes;
+            output_size = match self.m.admit_instruments(bytes, read_volatile(addr_of!(BOOT_IDX))) {
+                Ok(n) => n,
+                Err(e) => return e,
+            };
         } else if dsp_size != 0 {
             let r = dsp::check(f, dsp_off, dsp_size, size, &mut job);
             if r != OK {
@@ -487,20 +482,20 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
         let tickaddr = if tick == NONE { 0 } else { base + tick };
         if v2 {
             m.used = 2; // occupied, not published
-            crate::instrument::pending::queue(crate::instrument::pending::Pending::new(
+            self.m.queue_instruments(InstrumentLoad {
                 rec,
-                read_volatile(addr_of!(BOOT_IDX)),
+                selection: read_volatile(addr_of!(BOOT_IDX)),
                 image_size,
-                base + keys_at,
-                reg_size,
-                base + section_at,
-                dsp_size,
-                base + output_at,
+                keys: base + keys_at,
+                keys_size: reg_size,
+                section: base + section_at,
+                section_size: dsp_size,
+                output: base + output_at,
                 output_size,
-                initaddr,
-                tickaddr,
-                menuaddr,
-            ));
+                init: initaddr,
+                tick: tickaddr,
+                menu: menuaddr,
+            });
             return LOADING;
         }
         if dsp_size != 0 {

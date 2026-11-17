@@ -20,6 +20,7 @@ dkfw = { path = "../../../fw/rs" }
 
 [dev-dependencies]
 dkrt-test-support = { path = "../../test-support" }
+dkneeds = { path = "../../../../../packages/dkneeds", features = ["fixtures"] }
 dkrt-svc-rt = { path = "../../svc-rt" }
 dkrt-svc-lfo = { path = "../../../services/lfo" }
 
