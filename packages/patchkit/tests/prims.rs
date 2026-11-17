@@ -890,6 +890,80 @@ fn a_coldfire_hook_jumps_and_the_tail_runs_the_displaced_instructions() {
 }
 
 #[test]
+fn coldfire_hook_tails_do_not_share_cache_lines_with_adjacent_writable_objects() {
+    need_image!(DT2);
+    let leading = json!({
+        "format": 1, "arch": "cf", "source_sha256": "0".repeat(64),
+        "sections": [{"name": ".bss", "kind": "bss", "align": 4, "size": 4, "hex": ""}],
+        "symbols": [{"name": "_leading", "section": ".bss", "value": 0, "global": true}],
+        "relocs": []
+    });
+    let mut before = cf_obj();
+    // Whole-line code followed by twelve writable bytes reproduces the PRISM
+    // UI layout: the next generated tail used to start inside that BSS line.
+    before["sections"][0]["size"] = json!(16);
+    before["sections"][0]["hex"] = json!("4e75".repeat(8));
+    before["sections"].as_array_mut().unwrap().push(json!({
+        "name": ".bss", "kind": "bss", "align": 4, "size": 12, "hex": ""
+    }));
+    before["symbols"].as_array_mut().unwrap().push(json!({
+        "name": "_before", "section": ".bss", "value": 0, "global": true
+    }));
+    let after = json!({
+        "format": 1, "arch": "cf", "source_sha256": "0".repeat(64),
+        "sections": [{"name": ".bss", "kind": "bss", "align": 4, "size": 4, "hex": ""}],
+        "symbols": [{"name": "_after", "section": ".bss", "value": 0, "global": true}],
+        "relocs": []
+    });
+    let lib = library(vec![
+        module(
+            "t/a",
+            "",
+            "[[object]]\npath = \"x.json\"\nplace = \"cf.expansion\"\n",
+            Some(leading),
+        ),
+        module(
+            "t/h",
+            "requires = [\"t/a\"]",
+            &hook_body("t.plain.hook", ""),
+            Some(before),
+        ),
+        module(
+            "t/z",
+            "requires = [\"t/h\"]",
+            "[[object]]\npath = \"x.json\"\nplace = \"cf.expansion\"\n",
+            Some(after),
+        ),
+    ]);
+    let out = run_on(DT2, &hook_reg(), &lib, &["t/a", "t/h", "t/z"]).unwrap();
+    let leading = sym(&out, "t/a", "_leading");
+    let code = sym(&out, "t/h", "_f");
+    let tail = sym(&out, "t/h", "hook.t.plain.tail");
+    let prior = sym(&out, "t/h", "_before");
+    let next = sym(&out, "t/z", "_after");
+    let bytes = read_cf(&out, tail, 14); // displaced eight bytes plus JMP.L
+    assert_eq!(&bytes[8..10], &[0x4e, 0xf9]);
+    assert_eq!(code % 16, 0);
+    assert!(
+        (leading + 3) / 16 < code / 16,
+        "preceding writable object shares a code line"
+    );
+    assert!(
+        (code + 15) / 16 < prior / 16,
+        "object BSS shares a code line"
+    );
+    assert_eq!(tail % 16, 0);
+    assert!(
+        (prior + 11) / 16 < tail / 16,
+        "preceding BSS shares a code line"
+    );
+    assert!(
+        (tail + 13) / 16 < next / 16,
+        "following BSS shares a code line"
+    );
+}
+
+#[test]
 fn a_replace_hook_leaves_no_tail() {
     need_image!(DT2);
     let lib = library(vec![module(

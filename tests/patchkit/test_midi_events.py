@@ -822,6 +822,8 @@ def test_dsp_loader_enforces_each_optional_tail_boundary(
         "_pattern_position_info": mailbox if position else 0,
         "_instrument_reply": mailbox if instrument else 0,
         "_iv_lock_stage": mailbox if locks else 0,
+        "_phrase_control_info": 0,
+        "_phrase_reply": 0,
         **syms,
     }
     linked = pk_sharc.link(obj, 0xB90000, externs)
@@ -1316,6 +1318,8 @@ def test_v2_registration_window_is_bounded(
         "_pattern_position_info": 0,
         "_instrument_reply": 0,
         "_iv_lock_stage": 0,
+        "_phrase_control_info": 0,
+        "_phrase_reply": 0,
         **syms,
     }
     linked = pk_sharc.link(obj, 0xB90000, externs)

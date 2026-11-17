@@ -386,11 +386,19 @@ pub unsafe fn apply<C: CoreApi>(core: &C, owner: u8, b: *const u8) -> i32 {
     s.owner[k] = owner;
     rebuild_list(inf);
     fxsend::apply(core, k, owner, s.tab[k].as_ptr());
+    crate::phrase::bind(
+        core,
+        k,
+        crate::dsp::fx_first_row(core) + k as u32,
+        iw(inf, w::FIRST) + k as u32,
+        s.title[k].as_ptr(),
+    );
     OK
 }
 
 /// Give back the pages of module `owner`: out of the list first, then the rows back to the reserved state.
 pub unsafe fn remove<C: CoreApi>(core: &C, owner: u8) {
+    crate::phrase::remove(owner);
     let inf = info(core);
     if inf.is_null() {
         return;
@@ -551,7 +559,7 @@ unsafe fn values<C: CoreApi>(core: &C, inf: *const u32) {
     s.polls = s.polls.wrapping_add(1);
     k = 0;
     while k < MAX_FX {
-        if s.owner[k] != 0 {
+        if s.owner[k] != 0 && !crate::phrase::is_row(k) {
             let mut j = 0;
             while j < WORDS {
                 if has_word(s, k, j) {

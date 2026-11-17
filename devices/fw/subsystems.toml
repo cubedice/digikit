@@ -28,6 +28,7 @@ util = "anything that fits nowhere else"
 [dsp]
 cache = "cache configuration and startup ranges"
 pattern = "master-pattern position transport before rendering"
+phrase = "selective phrase capture and replacement routing"
 frame = "the frame orchestrator"
 voice = "voice rendering"
 fx = "the effect chain: sends, returns, buses"

@@ -727,6 +727,12 @@ SC_POLICY_ID = {
     "modules/core/adapters/instrument-play/src/cf/control.c": "digikit/canopy",
     "tests/regression/host/canopy-settings.c": "digikit/canopy",
 }
+# The fork's hardware image runs three content modules together (CANOPY, Overloop, PRISM: patch set `canopy-overloop-prism`
+# of devices/digitakt-ii.toml). One device test loads all three, and its acceptance record lists them: only these two files.
+SC_COEXISTENCE = (
+    "modules/fx/prism/tests/coexistence.device.test.ts",
+    "modules/fx/prism/project.json",
+)
 SC_SKIP_DIRS = {".git", "out", "node_modules", "target", "firmware", ".venv", "dist"}
 SC_HINT = (
     "move the test or model into the module's tests/ directory, use a fixture module (tests/fixtures/modules), "
@@ -1124,6 +1130,7 @@ def sc_hits(root: Path, mods: list[Module]) -> list[tuple[str, int, Module, str]
             f.endswith(".md")
             or f.startswith(SC_ALLOWED_PREFIXES)
             or f == SC_RUNTIME_TEST
+            or f in SC_COEXISTENCE
             or f in SC_CHECKER
         ):
             continue

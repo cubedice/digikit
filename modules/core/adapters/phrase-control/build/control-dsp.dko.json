@@ -1,0 +1,424 @@
+{
+ "arch": "sharc",
+ "format": 1,
+ "relocs": [
+  {
+   "addend": 0,
+   "offset": 16,
+   "section": "seg_pmco",
+   "symbol": "_ph_rx_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 24,
+   "section": "seg_pmco",
+   "symbol": "_ph_rx_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 32,
+   "section": "seg_pmco",
+   "symbol": "_ph_rx_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 40,
+   "section": "seg_pmco",
+   "symbol": "_ph_rx_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 43,
+   "section": "seg_pmco",
+   "symbol": "_ph_last_sequence",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 51,
+   "section": "seg_pmco",
+   "symbol": "_ph_rx_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 69,
+   "section": "seg_pmco",
+   "symbol": "_ph_rx_check",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 75,
+   "section": "seg_pmco",
+   "symbol": "_ph_rx_bad",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 78,
+   "section": "seg_pmco",
+   "symbol": "_ph_last_sequence",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 83,
+   "section": "seg_pmco",
+   "symbol": "_phrase_control_info",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 99,
+   "section": "seg_pmco",
+   "symbol": "_ph_rx_copy",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 107,
+   "section": "seg_pmco",
+   "symbol": "_phrase_control_info",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 16,
+   "offset": 110,
+   "section": "seg_pmco",
+   "symbol": "_phrase_control_info",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 114,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_phase",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 124,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_phase",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 16,
+   "offset": 128,
+   "section": "seg_pmco",
+   "symbol": "_phrase_control_info",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 135,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_saved_l5",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 143,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_page",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 146,
+   "section": "seg_pmco",
+   "symbol": "_phrase_status",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 149,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_snapshot",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 165,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_latch",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 168,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_serial",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 172,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_serial",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 176,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_serial",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 4,
+   "offset": 186,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_packet",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 192,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_packet",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 203,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_snapshot",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 212,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_packet",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 234,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_payload",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 237,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_packet",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 240,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_offsets",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 266,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_emit",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 269,
+   "section": "seg_pmco",
+   "symbol": "_ph_reply_saved_l5",
+   "type": "sharc.abs32"
+  }
+ ],
+ "sections": [
+  {
+   "align": 8,
+   "hex": "3f713f80810fb408800101157e703f803e703f0808908000020f4850314312c320060000000008908100820f010012c320060000000008908200820f000112c32006000000000890830008903e0112c3200600000000021000000000800112257e703f8122c2040600000000030f5073219c840f3f0008900001840132257e70bf8180150000010044c62406000000000890000132c32006000000000111000000003e703f08110f00000000840f4000089000010893000180150000010081150000010044c62406000000003e0a00000000800f0000001100000000001100000000be0a00100000000000c5830f0300840103057e703f80001100000000800a03100000000033c2800a7e73bf81031100000000b50f0000830f010003c3200600000000120f00000000130f00000000830f2000089400020897000282150000010083150000010033c624060000000003100000000033c503110000000000c60310000000003e0200003302840130157e70bf81031100000000030f485031520311000000003e02000030053e020000400480013410030f00000000800103157e703f803e703f09030f00000000840f0800800134157e70bf89830f0c00089400020897000282150000010083150000010033c6240600000000130f00000000150f00000000830f0e00089a00027e713f00800104157e703f827e703f09089600020895000283150000010085150000010033c62406000000000310000000003f70bf9abe0a010001000100",
+   "kind": "text",
+   "name": "seg_pmco",
+   "size": 556
+  },
+  {
+   "align": 8,
+   "hex": "f4050000f8050000480600004c0600009c060000a0060000f0060000f4060000e4090000e8090000380a00003c0a00008c0a0000900a0000",
+   "kind": "data",
+   "name": "seg_dmda",
+   "size": 56
+  },
+  {
+   "align": 4,
+   "hex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "kind": "data",
+   "name": "pkdata__phrase_control_info",
+   "size": 256
+  },
+  {
+   "align": 4,
+   "hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "kind": "data",
+   "name": "pkdata__phrase_status",
+   "size": 128
+  },
+  {
+   "align": 4,
+   "hex": "00000000",
+   "kind": "data",
+   "name": "pkdata__ph_last_sequence",
+   "size": 4
+  },
+  {
+   "align": 4,
+   "hex": "00000000",
+   "kind": "data",
+   "name": "pkdata__ph_reply_phase",
+   "size": 4
+  },
+  {
+   "align": 4,
+   "hex": "00000000",
+   "kind": "data",
+   "name": "pkdata__ph_reply_serial",
+   "size": 4
+  },
+  {
+   "align": 4,
+   "hex": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "kind": "data",
+   "name": "pkdata__ph_reply_snapshot",
+   "size": 144
+  },
+  {
+   "align": 4,
+   "hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "kind": "data",
+   "name": "pkdata__ph_reply_packet",
+   "size": 56
+  },
+  {
+   "align": 4,
+   "hex": "00000000",
+   "kind": "data",
+   "name": "pkdata__ph_reply_saved_l5",
+   "size": 4
+  }
+ ],
+ "source_sha256": "477e1578eb57e8e26029500a6a1dfa6ae371e2185e23e0610302fc5d05dfb263",
+ "symbols": [
+  {
+   "global": false,
+   "name": "_ph_reply_emit",
+   "section": "seg_pmco",
+   "value": 245
+  },
+  {
+   "global": false,
+   "name": "_ph_reply_latch",
+   "section": "seg_pmco",
+   "value": 154
+  },
+  {
+   "global": false,
+   "name": "_ph_reply_page",
+   "section": "seg_pmco",
+   "value": 175
+  },
+  {
+   "global": false,
+   "name": "_ph_reply_payload",
+   "section": "seg_pmco",
+   "value": 223
+  },
+  {
+   "global": false,
+   "name": "_ph_rx_bad",
+   "section": "seg_pmco",
+   "value": 105
+  },
+  {
+   "global": false,
+   "name": "_ph_rx_check",
+   "section": "seg_pmco",
+   "value": 59
+  },
+  {
+   "global": false,
+   "name": "_ph_rx_copy",
+   "section": "seg_pmco",
+   "value": 88
+  },
+  {
+   "global": true,
+   "name": "_phrase_receive",
+   "section": "seg_pmco",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_phrase_reply",
+   "section": "seg_pmco",
+   "value": 114
+  },
+  {
+   "global": true,
+   "name": "_ph_last_sequence",
+   "section": "pkdata__ph_last_sequence",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "_ph_reply_offsets",
+   "section": "seg_dmda",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_ph_reply_packet",
+   "section": "pkdata__ph_reply_packet",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_ph_reply_phase",
+   "section": "pkdata__ph_reply_phase",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_ph_reply_saved_l5",
+   "section": "pkdata__ph_reply_saved_l5",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_ph_reply_serial",
+   "section": "pkdata__ph_reply_serial",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_ph_reply_snapshot",
+   "section": "pkdata__ph_reply_snapshot",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_phrase_control_info",
+   "section": "pkdata__phrase_control_info",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_phrase_status",
+   "section": "pkdata__phrase_status",
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "instructions_redecoded": "126",
+  "selache_rev": "967c1d1e4d02e41f483181964f0ba333558a1fa7"
+ }
+}

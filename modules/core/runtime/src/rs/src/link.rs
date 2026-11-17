@@ -10,9 +10,19 @@ pub struct DspTransport;
 
 impl Transport for DspTransport {
     unsafe fn send(&mut self, win: u32, dst: u32, buf: *const u8, len: u32) -> Sent {
-        // A V2 instrument transaction drains or owns the link (instrument.rs): no legacy transfer starts, the queue keeps it.
-        if crate::instrument::legacy_policy() != dkrt_sdk::instrument_coordinator::LegacyPolicy::Run {
-            return Sent::Refused;
+        // A V2 instrument transaction drains or owns the link (instrument.rs). While it owns the link nothing of the legacy side is sent; the
+        // queue keeps it. While it drains, the module loads already queued must finish: they are what the drain waits for (`instrument::tick`
+        // takes the link only when the loader is idle with nothing waiting), so their transfers go on. With the loader idle a drain holds
+        // every other transfer (a live effect value), as before the queue (`fx_word_start`).
+        match crate::instrument::legacy_policy() {
+            dkrt_sdk::instrument_coordinator::LegacyPolicy::Run => {}
+            dkrt_sdk::instrument_coordinator::LegacyPolicy::Drain => {
+                let d = crate::dsp::ds();
+                if d.phase == crate::dsp::PH_IDLE && d.nwait == 0 {
+                    return Sent::Refused;
+                }
+            }
+            dkrt_sdk::instrument_coordinator::LegacyPolicy::Pause => return Sent::Refused,
         }
         // What the loader did before the queue: the area send (`dl_send`) answered -2 (retained or a bad destination) with a failure, and every other
         // refusal, a word write included, was tried again until the loader's guard ended it. A retained state therefore holds word writes; it fails area sends.

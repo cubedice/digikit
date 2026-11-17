@@ -12,19 +12,25 @@
   },
   {
    "align": 8,
-   "hex": "4655424c01000000c8b9a29c00008000",
+   "hex": "4655424c01000000c8b9a29c000080003142485001000000c8b9a29bc8b9229c0000800000c00f00",
    "kind": "data",
    "name": "seg_dmda",
-   "size": 16
+   "size": 40
   }
  ],
- "source_sha256": "c65cf4bd3cca7d535a718e0057e703fd1937b8a5eae0c6cc14c191f76c466923",
+ "source_sha256": "eb0843d4c76ee98307c80e051ba30c6efd7ec06bc8ede36bb3981c3b5712be22",
  "symbols": [
   {
    "global": true,
    "name": "_loop_buffer_info",
    "section": "seg_dmda",
    "value": 0
+  },
+  {
+   "global": true,
+   "name": "_phrase_storage_info",
+   "section": "seg_dmda",
+   "value": 16
   }
  ],
  "toolchain": {

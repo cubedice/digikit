@@ -40,7 +40,14 @@ def test_sample_offset_bias_and_preview_boundary():
     assert proof.BUFFER_BYTES >= 16 * 48_000 * 2 * 4  # four bars at 60 BPM
     # Relative pages, not absolute CF offsets: the last legal pool page ends
     # exactly at the reservation, and the reservation ends before preview.
-    assert proof.DSP_SAMPLE_BASE + (0x187FF + 1) * 4096 == proof.BUFFER_BASE
+    assert proof.DSP_SAMPLE_BASE + (0x177FF + 1) * 4096 == proof.PHRASE_BANK0
+    assert proof.PHRASE_BANK0 + proof.PHRASE_BANK_BYTES == proof.PHRASE_BANK1
+    assert proof.PHRASE_BANK1 + proof.PHRASE_BANK_BYTES == proof.BUFFER_BASE
+    assert proof.cf_offset_to_dsp(0x17800400) == proof.PHRASE_BANK0
+    assert proof.cf_offset_to_dsp(0x18000400) == proof.PHRASE_BANK1
+    assert proof.PHRASE_BANK_FRAMES % 32 == 0
+    audio_and_stamps = proof.PHRASE_BANK_FRAMES * 8 + proof.PHRASE_BANK_FRAMES // 32 * 4
+    assert proof.PHRASE_BANK_BYTES - audio_and_stamps == 2048
     assert proof.DSP_SAMPLE_BASE + 0x19000 * 4096 == proof.PREVIEW_BASE
     with pytest.raises(ValueError, match="start at"):
         proof.cf_offset_to_dsp(0x3FF)
@@ -92,6 +99,18 @@ def test_packed_provider_descriptor_matches_reserved_interval():
     section = next(s for s in obj["sections"] if s["name"] == symbol["section"])
     words = struct.unpack_from("<4I", bytes.fromhex(section["hex"]), symbol["value"])
     assert words == (0x4C425546, 1, proof.BUFFER_BASE, proof.BUFFER_BYTES)
+
+    symbol = next(s for s in obj["symbols"] if s["name"] == "_phrase_storage_info")
+    section = next(s for s in obj["sections"] if s["name"] == symbol["section"])
+    words = struct.unpack_from("<6I", bytes.fromhex(section["hex"]), symbol["value"])
+    assert words == (
+        0x50484231,
+        1,
+        proof.PHRASE_BANK0,
+        proof.PHRASE_BANK1,
+        proof.PHRASE_BANK_BYTES,
+        proof.PHRASE_BANK_FRAMES,
+    )
 
 
 def test_optional_storage_export_uses_direct_global_name():

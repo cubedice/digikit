@@ -75,6 +75,8 @@ def composed_frame(
         "_pp_block_back": 0xB9F000,
         "_instrument_play_status": 0,
         "_instrument_ui_status": 0,
+        # no phrase effect in the frame: core/pattern-position skips the call of an absent receiver
+        "_phrase_receive": 0,
     }
     if carrier:
         externs["_mi_envelope_next"] = 0

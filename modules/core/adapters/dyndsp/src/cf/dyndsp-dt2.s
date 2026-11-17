@@ -25,7 +25,7 @@ dyndsp_info:
     .long   _dd_vfirst
     .long   DYN_TYPES
     .long   _dd_vcount
-    .long   8
+    .long   12
     .asciz  "_dv_exp2"
     .space  28 - 9
     .long   _dv_exp2
@@ -54,3 +54,19 @@ dyndsp_info:
     .asciz  "_loop_ui_status"
     .space  28 - 16
     .long   _loop_ui_status
+
+    .asciz  "_phrase_storage_info"
+    .space  7
+    .long   _phrase_storage_info
+
+    .asciz  "_phrase_control_info"
+    .space  7
+    .long   _phrase_control_info
+
+    .asciz  "_phrase_status"
+    .space  13
+    .long   _phrase_status
+
+    .asciz  "_phrase_route_info"
+    .space  9
+    .long   _phrase_route_info

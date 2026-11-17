@@ -83,6 +83,38 @@
       "id": "instrument-play",
       "roots": ["core/instrument-play", "core/digikit-menu", "core/health"],
       "devices": ["dt2"]
+    },
+    {
+      "id": "prism",
+      "roots": [
+        "core/runtime",
+        "core/dynreg",
+        "core/dyndsp",
+        "core/dynfx",
+        "core/phrase-ui",
+        "core/phrase-route",
+        "core/digikit-menu",
+        "core/health"
+      ],
+      "devices": ["dt2"]
+    },
+    {
+      "id": "prism-coexist",
+      "roots": [
+        "core/runtime",
+        "core/dynreg",
+        "core/dyndsp",
+        "core/dynfx",
+        "core/input",
+        "core/instrument-play",
+        "core/loop-storage",
+        "core/loop-display",
+        "core/phrase-ui",
+        "core/phrase-route",
+        "core/digikit-menu",
+        "core/health"
+      ],
+      "devices": ["dt2"]
     }
   ]
 }

@@ -22,7 +22,7 @@ import {
   type PreparedRuntimePlan,
   type RuntimePlan,
 } from './runtime-plan.ts';
-import { runtimeSafety, runtimeWatchEnv } from './write-safety.ts';
+import { runtimeSafety, runtimeWatchEnv, type SafetyPolicy } from './write-safety.ts';
 
 const exec = promisify(execFile);
 const root = repoRoot();
@@ -30,6 +30,7 @@ export interface FxProfile {
   fx_slots: number;
   send_slots: number;
   track_type_word: number;
+  track_type_stride?: number;
   value_classes: number;
   selection: { copy_a: number; copy_b: number };
   settings: { copy_a: number; copy_b: number };
@@ -65,7 +66,7 @@ export interface PreparedFxSessionOptions {
     modules: string[];
     inventory: string[];
     symbols: string[];
-    policy: 'default' | 'fx-kit' | 'fx-routes';
+    policy: SafetyPolicy;
   };
   initial: string;
   presets: Record<string, FxCardPreset>;
@@ -204,7 +205,7 @@ export async function selectSine(runtime: Rt, profile: FxProfile): Promise<void>
 export function withPreparedFxSession(device: Device, scope: string, config: PreparedFxSessionOptions) {
   if (!Object.hasOwn(config.presets, config.initial)) throw new Error(`unknown initial route preset ${config.initial}`);
   const { name, inventory, modules, symbols, policy } = config.image;
-  if (policy !== 'default' && policy !== 'fx-kit' && policy !== 'fx-routes')
+  if (policy !== 'default' && policy !== 'settings' && policy !== 'fx-kit' && policy !== 'fx-routes')
     throw new Error('prepared FX image requires an explicit safety policy');
   let prepared: PreparedRuntimePlan;
   let profile: FxProfile;

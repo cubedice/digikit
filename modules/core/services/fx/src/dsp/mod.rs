@@ -13,6 +13,11 @@ unsafe fn fxiw<C: CoreApi>(core: &C, k: usize) -> u32 {
 }
 
 /// Effect rows the image reserves for run-time effects (0 without `core/dynfx`).
+/// The first physical effect row of the image's reserved rows (`dynfx_info`).
+pub unsafe fn fx_first_row<C: CoreApi>(core: &C) -> u32 {
+    fxiw(core, F_FIRST)
+}
+
 pub unsafe fn fx_free_rows<C: CoreApi>(core: &C) -> u32 {
     if core.fx_info().is_null() {
         0
@@ -96,7 +101,11 @@ pub unsafe fn fx_flags_of<C: CoreApi>(core: &C, k: usize) -> u32 {
 /// Set the MIX word an effect row publishes (before its rows go out) and the defaults of its parameter words are the record's.
 pub unsafe fn fx_set_mix<C: CoreApi>(core: &C, k: usize, bits: u32) {
     if k < MAX_FX {
-        core.dsp().fx_mix[k] = bits;
+        core.dsp().fx_mix[k] = if crate::phrase::is_row(k) {
+            MIX_ONE
+        } else {
+            bits
+        };
     }
 }
 
@@ -104,7 +113,7 @@ pub unsafe fn fx_set_mix<C: CoreApi>(core: &C, k: usize, bits: u32) {
 pub unsafe fn fx_set_route<C: CoreApi>(core: &C, k: usize, route: u32, amt: [u32; 4]) {
     if k < MAX_FX {
         let d = core.dsp();
-        d.fx_route[k] = route;
+        d.fx_route[k] = if crate::phrase::is_row(k) { 2 } else { route };
         d.fx_amt[k] = amt;
     }
 }
@@ -263,6 +272,7 @@ pub(crate) unsafe fn claim<C: CoreApi>(core: &C, c: &mut Claim) {
     let mut fclaimed = 0u32;
     let mut f = 0;
     let mut frow = 0;
+    let phrase = crate::phrase::wanted(job);
     while f < job.nfx as usize {
         while frow < MAX_FX && (d.fx_owner[frow] != 0 || (frow as u32) >= fx_free_rows(core)) {
             frow += 1;
@@ -282,6 +292,11 @@ pub(crate) unsafe fn claim<C: CoreApi>(core: &C, c: &mut Claim) {
         d.fx_amt[frow] = [0; 4];
         d.fx_flags[frow] = rd32(e.add(FX_FLAGS as usize));
         d.fx_owner[frow] = rec as u8 + 1;
+        if phrase {
+            // the phrase effect's row: its route is the phrase route from the first publication on
+            crate::phrase::reserve(rec as u8 + 1, frow);
+            d.fx_route[frow] = 2;
+        }
         d.fx_pub[frow] = 0;
         fclaimed |= 1 << frow;
         frow += 1;

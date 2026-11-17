@@ -1,0 +1,31 @@
+[module]
+id = "core/phrase-control"
+version = "0.1.0"
+name = "Phrase FX control transport"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Exclusive phrase FX controls, musical timing and coherent status transport."
+ports = ["dt2-1.17"]
+requires = ["core/pattern-position", "core/fxpages"]
+conflicts = []
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/control-cf.dko.json"
+sources = ["src/control.c"]
+place = "cf.expansion"
+devices = ["dt2"]
+
+[[object]]
+path = "build/control-dsp.dko.json"
+sources = ["src/dsp/control.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+
+[[claim]]
+resource = "dt2.frame-tail.phrase"

@@ -1,0 +1,90 @@
+{
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "name": "digikit/prism",
+  "metadata": {
+    "runtimeAcceptance": [
+      {
+        "files": [
+          "tests/ui.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "modules": [
+          "digikit/prism"
+        ],
+        "patchModules": [
+          "core/phrase-ui",
+          "core/phrase-route",
+          "core/digikit-menu",
+          "core/health"
+        ],
+        "plusdrive": true,
+        "tags": [
+          "S:fx",
+          "A:core/phrase-ui",
+          "A:core/phrase-route"
+        ]
+      },
+      {
+        "files": [
+          "tests/capture.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "modules": [
+          "digikit/prism",
+          "test/sine"
+        ],
+        "patchModules": [
+          "core/phrase-ui",
+          "core/phrase-route",
+          "core/digikit-menu",
+          "core/health"
+        ],
+        "plusdrive": true,
+        "tags": [
+          "S:fx",
+          "A:core/phrase-ui",
+          "A:core/phrase-route"
+        ]
+      },
+      {
+        "files": [
+          "tests/coexistence.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "modules": [
+          "digikit/canopy",
+          "digikit/overloop",
+          "digikit/prism",
+          "digikit/remote"
+        ],
+        "patchModules": [
+          "core/input",
+          "core/instrument-play",
+          "core/loop-storage",
+          "core/loop-display",
+          "core/phrase-ui",
+          "core/phrase-route",
+          "core/digikit-menu",
+          "core/health"
+        ],
+        "plusdrive": true,
+        "tags": [
+          "S:fx",
+          "A:core/phrase-ui",
+          "A:core/phrase-route"
+        ]
+      }
+    ]
+  },
+  "targets": {
+    "test-device": {
+      "cache": false
+    }
+  }
+}

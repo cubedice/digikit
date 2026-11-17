@@ -1,0 +1,48 @@
+[module]
+id = "digikit/prism"
+version = "0.1.0"
+name = "PRISM"
+category = "fx"
+type = "fx"
+author = "digikit"
+status = "experimental"
+summary = "Capture selected sources and transform a held stereo phrase into clocked grains."
+dynamic = true
+ports = ["dt2-1.17"]
+# The DSP imports the phrase control (core/phrase-control), its status mailbox and the two-bank lease of core/loop-storage; the
+# pages and the input selection are core/phrase-ui and the selective routing is core/phrase-route, which require the control.
+requires = ["core/phrase-ui", "core/phrase-route"]
+conflicts = []
+
+[targets]
+"dt2-1.17" = "experimental"
+
+# The effect, declared by builder calls in init (src/module.c); its DSP symbols are _prism_process and _prism_desc.
+[[fx]]
+id = "prism"
+dsp = "prism"
+
+[[object]]
+path = "build/prism-cf.dko.json"
+sources = ["src/module.c"]
+place = "cf.expansion"
+
+[[object]]
+path = "build/prism-dsp.dko.json"
+sources = ["src/dsp/prism.s", "src/dsp/capture.s", "src/dsp/grain.s", "src/dsp/space.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+
+# The load cell boots the patch set with the phrase adapters. The rig does not run the effect: its DSP reads the control mailbox
+# of core/phrase-control and the phrase banks of core/loop-storage, which the rig does not place; tests/engine.test.ts runs the
+# engine with stand-ins for both (tests/provider.s).
+[conformance]
+patch_set = "phrase"
+rig_skip = "reads core/phrase-control and core/loop-storage data the rig does not place"
+
+# One effect record (0x1a4, its page inline) after the 16-byte header: no machine, param or page rows.
+[uses.dt2]
+machine_rows = 0
+param_rows = 0
+page_rows = 0
+record_bytes = 436

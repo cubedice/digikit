@@ -575,6 +575,14 @@ pub extern "C" fn midi_send(_: u32, _: *const u8, _: u32) {
 }
 #[no_mangle]
 pub extern "C" fn fxpages_info() {}
+/// The optional phrase symbols of the image (core/phrase-ui, core/phrase-control) that the fx service links: present here, so
+/// `dkrt_svc_fx::phrase::available()` is true in this binary; no test of the runtime loads a module that imports the phrase control.
+#[no_mangle]
+pub unsafe extern "C" fn phrase_bind(_: u32, _: u32, _: u32, _: *const u8, _: *const u8) {}
+#[no_mangle]
+pub unsafe extern "C" fn phrase_control_tick() {}
+#[no_mangle]
+pub unsafe extern "C" fn phrase_ui_tick() {}
 
 #[export_name = "cf.storage.fn.block.read"]
 pub extern "C" fn block_read(_: u32, _: u32, _: *mut u8) -> i32 {

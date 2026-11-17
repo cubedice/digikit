@@ -15,7 +15,7 @@ const SETTINGS_SECTORS = 16;
 // Kit-library sector ranges of the firmware (hi exclusive), allowed by the fx-kit and fx-routes policies.
 export const KIT_AREAS: Record<Device, [number, number][]> = { dt2: [[0x16000, 0x17000]], dn2: [[0x2000, 0x2100]] };
 
-export type SafetyPolicy = 'default' | 'fx-kit' | 'fx-routes';
+export type SafetyPolicy = 'default' | 'settings' | 'fx-kit' | 'fx-routes';
 
 export function* overlayRecords(blob: Buffer) {
   if (blob.length % RECORD) throw new Error(`overlay size ${blob.length} is not a multiple of ${RECORD}`);
@@ -209,13 +209,15 @@ export function runtimeWatchEnv(planFile: string, out: string): Record<string, s
 }
 
 function runtimePolicy(device: Device, name: SafetyPolicy) {
-  if (name !== 'default' && name !== 'fx-kit' && name !== 'fx-routes')
+  if (name !== 'default' && name !== 'settings' && name !== 'fx-kit' && name !== 'fx-routes')
     throw new Error(`unknown runtime safety policy: ${String(name)}`);
   const store = cardStore(device);
   return {
     name,
-    firmware_areas: name === 'default' ? [] : KIT_AREAS[device],
-    store_extra: name === 'fx-routes' ? [store.setA, store.setB] : [],
+    firmware_areas: name === 'fx-kit' || name === 'fx-routes' ? KIT_AREAS[device] : [],
+    // These scenarios persist a record that fits in the first sector of each
+    // settings copy. Other sectors remain forbidden, even within that copy.
+    store_extra: name === 'settings' || name === 'fx-routes' ? [store.setA, store.setB] : [],
   };
 }
 

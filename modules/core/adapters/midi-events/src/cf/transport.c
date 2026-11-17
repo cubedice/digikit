@@ -84,9 +84,12 @@ const uint32_t *mt_prepare_mapped(MiTransport *t, MiLedger *m, const uint32_t re
 {
     uint32_t i, kind, track, count = 0, consumed = 0, lock_valid = 0, lock_count = 0,
                              source_valid = 0;
-    uint16_t locks[MI_LOCKS];
-    uint16_t source[MI_SOURCE_VALUES];
-    MiEvent first, input[8], output[8];
+    /* The batch buffers are static, not locals: 17 events are 1224 bytes, and this runs in the block interrupt on the stack
+     * of whichever task it interrupted. The firmware's timer task has 2048 bytes; with these as locals the interrupt reached
+     * 1860 of them (docs/findings/353). The one caller is the frame callback of the block interrupt, which does not nest. */
+    static uint16_t locks[MI_LOCKS];
+    static uint16_t source[MI_SOURCE_VALUES];
+    static MiEvent first, input[8], output[8];
     first.sequence = 0;
     first.track = 0;
     if (t->epoch != m->epoch) {

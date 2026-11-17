@@ -30,6 +30,10 @@ fn align_up(x: u64, a: u64) -> u64 {
 
 const KIND_ORDER: [&str; 3] = ["text", "data", "bss"];
 
+fn cf_executable(obj: &Dko) -> bool {
+    obj.arch == "cf" && obj.sections.iter().any(|s| s.kind == "text" && s.size != 0)
+}
+
 fn ordered(obj: &Dko) -> Vec<&DkoSection> {
     let mut v: Vec<&DkoSection> = obj.sections.iter().collect();
     v.sort_by_key(|s| KIND_ORDER.iter().position(|k| *k == s.kind).unwrap_or(9));
@@ -40,14 +44,28 @@ fn ordered(obj: &Dko) -> Vec<&DkoSection> {
 /// strictest alignment it needs. Used by the allocator before the base is known.
 pub fn footprint(obj: &Dko) -> (u64, u64) {
     let sharc = obj.arch == "sharc";
+    let cf_code = cf_executable(obj);
     let mut at = 0u64;
-    let mut max_align = if sharc { 8 } else { 4 };
+    let mut max_align = if sharc {
+        8
+    } else if cf_code {
+        16
+    } else {
+        4
+    };
+    let mut was_text = false;
     for s in ordered(obj) {
+        if cf_code && was_text && s.kind != "text" {
+            at = align_up(at, 16);
+        }
         let al = section_align(obj, s);
         max_align = max_align.max(al);
         at = align_up(at, al) + s.size as u64;
+        was_text = s.kind == "text";
     }
-    at = align_up(at, 4);
+    // A following writable primitive must not share the last executable
+    // object's cache line, including objects containing only code.
+    at = align_up(at, if cf_code { 16 } else { 4 });
     (at, max_align)
 }
 
@@ -80,6 +98,7 @@ fn link_impl(
     relocate: bool,
 ) -> Result<Linked> {
     let sharc = obj.arch == "sharc";
+    let cf_code = cf_executable(obj);
     let (_, max_align) = footprint(obj);
     if !base.is_multiple_of(max_align) {
         return Err(err!("object base {base:#x} is not aligned to {max_align}"));
@@ -90,7 +109,13 @@ fn link_impl(
     let mut bss_start: Option<u64> = None;
     let mut bss_size = 0u64;
     let mut text_ranges = vec![];
+    let mut was_text = false;
     for s in ordered(obj) {
+        // Keep functions packed at their declared alignment, but isolate
+        // writable data/BSS from the final ColdFire instruction cache line.
+        if cf_code && was_text && s.kind != "text" {
+            at = align_up(at, 16);
+        }
         at = align_up(at, section_align(obj, s));
         place.insert(&s.name, at);
         if s.kind == "text" {
@@ -110,6 +135,7 @@ fn link_impl(
             image.extend_from_slice(&crate::error::unhex(&s.hex)?);
         }
         at += s.size as u64;
+        was_text = s.kind == "text";
     }
     if sharc {
         image.resize(align_up(image.len() as u64, 4) as usize, 0);
@@ -317,6 +343,10 @@ mod tests {
             0xB8_0000 + 0x1_AB80 / 2 + 3,
             "text symbols are short-word pcs"
         );
+        assert_eq!(footprint(&o), (16, 8));
+        let unaligned_cf_line = link(&o, 0x2001_ab88, &ext).unwrap();
+        assert_eq!(unaligned_cf_line.symbols["gain"], 0x2001_ab88 + 12);
+        assert_eq!(unaligned_cf_line.image.len(), 16);
     }
 
     #[test]
@@ -366,10 +396,69 @@ mod tests {
         let l = link(&o, 0x4700_0000, &BTreeMap::new()).unwrap();
         assert_eq!(
             l.image.len(),
-            4,
-            "payload padded to the (word aligned) bss start"
+            16,
+            "payload padded to the first cache line after executable text"
         );
         assert_eq!(l.bss_size, 10);
-        assert_eq!(l.symbols["b"], 0x4700_0004 + 4);
+        assert_eq!(l.symbols["b"], 0x4700_0010 + 4);
+        assert_eq!(footprint(&o), (32, 16));
+    }
+
+    #[test]
+    fn cf_executable_objects_isolate_writable_cache_lines_without_padding_functions() {
+        let o = obj(
+            "cf",
+            vec![
+                sec("first", "text", 2, &[0x4e, 0x75]),
+                sec("second", "text", 2, &[0x4e, 0x75]),
+                sec("mutable", "data", 4, &[1, 2, 3, 4]),
+            ],
+            vec![
+                sym("second", Some("second"), 0),
+                sym("mutable", Some("mutable"), 0),
+            ],
+            vec![],
+        );
+        assert_eq!(footprint(&o), (32, 16));
+        assert!(
+            define(&o, 0x4700_0004)
+                .unwrap_err()
+                .0
+                .contains("not aligned to 16")
+        );
+        let l = link(&o, 0x4700_0010, &BTreeMap::new()).unwrap();
+        assert_eq!(
+            l.symbols["second"], 0x4700_0012,
+            "do not align each function to a cache line"
+        );
+        assert_eq!(l.symbols["mutable"], 0x4700_0020);
+        assert_eq!(&l.image[16..20], &[1, 2, 3, 4]);
+        assert!(
+            l.text_ranges
+                .iter()
+                .all(|(_, end)| (end - 1) / 16 < l.symbols["mutable"] / 16)
+        );
+        let code_only = obj(
+            "cf",
+            vec![sec("t", "text", 2, &[0x4e, 0x75])],
+            vec![],
+            vec![],
+        );
+        assert_eq!(
+            footprint(&code_only),
+            (16, 16),
+            "protect a following writable primitive"
+        );
+        let data_only = obj(
+            "cf",
+            vec![sec("d", "data", 4, &[1, 2, 3, 4])],
+            vec![],
+            vec![],
+        );
+        assert_eq!(
+            footprint(&data_only),
+            (4, 4),
+            "data-only objects need no instruction-cache padding"
+        );
     }
 }

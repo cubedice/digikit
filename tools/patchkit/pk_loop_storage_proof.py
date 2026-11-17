@@ -25,10 +25,14 @@ MAIN_SHA = "a1e7b657b705eba1a19d81c33c1e11ba9c409816447ad74005d7bbf36da6d964"
 MAIN_BASE = 0x40000400
 CF_BIAS = 0x400
 STOCK_BYTES = 0x19000000
-POOL_BYTES = 0x18800000
-BUFFER_BYTES = STOCK_BYTES - POOL_BYTES
+POOL_BYTES = 0x17800000
+BUFFER_BYTES = 0x00800000
+PHRASE_BANK_BYTES = 0x00800000
+PHRASE_BANK_FRAMES = 1_032_192
 DSP_SAMPLE_BASE = 0x8422B9C8
-BUFFER_BASE = DSP_SAMPLE_BASE + POOL_BYTES
+PHRASE_BANK0 = DSP_SAMPLE_BASE + POOL_BYTES
+PHRASE_BANK1 = PHRASE_BANK0 + PHRASE_BANK_BYTES
+BUFFER_BASE = PHRASE_BANK1 + PHRASE_BANK_BYTES
 PREVIEW_BASE = DSP_SAMPLE_BASE + STOCK_BYTES
 PATCH_SITES = {
     0x40153AE2: (STOCK_BYTES + CF_BIAS, POOL_BYTES + CF_BIAS),
@@ -201,6 +205,10 @@ def main() -> int:
         "patched_sha256": hashlib.sha256(args.patched.read_bytes()).hexdigest(),
         "buffer_base": BUFFER_BASE,
         "buffer_bytes": BUFFER_BYTES,
+        "phrase_bank_bases": [PHRASE_BANK0, PHRASE_BANK1],
+        "phrase_bank_bytes": PHRASE_BANK_BYTES,
+        "phrase_bank_frames": PHRASE_BANK_FRAMES,
+        "sample_pool_bytes": POOL_BYTES,
         "scope": "Real ColdFire allocator helpers with synthetic records; no sample-load integration",
         "runs": {},
     }

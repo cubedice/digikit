@@ -11,5 +11,6 @@ extern crate std;
 pub mod dsp;
 pub mod fxpage;
 pub mod fxsend;
+pub mod phrase;
 pub mod records;
 pub mod slots;

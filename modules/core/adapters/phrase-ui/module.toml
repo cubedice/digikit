@@ -1,0 +1,91 @@
+[module]
+id = "core/phrase-ui"
+version = "0.1.0"
+name = "Phrase FX performance pages"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Four nested phrase pages and a performance input selection overlay."
+requires = ["core/phrase-control", "core/fxpages", "core/ui"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/phrase-ui-cf.dko.json"
+sources = ["src/model.c", "src/render.c", "src/native.c"]
+place = "cf.expansion"
+devices = ["dt2"]
+
+[object.externs]
+phrase_stock_draw = "cf.page.site.phrase_fx_draw"
+phrase_stock_help_draw = "cf.page.site.phrase_help_draw"
+phrase_stock_key = "cf.page.site.phrase_fx_key"
+phrase_stock_key_dispatch = "hook.cf.page.site.phrase_key_dispatch.tail"
+phrase_stock_turn = "cf.page.site.phrase_fx_turn"
+phrase_stock_led = "hook.cf.page.site.phrase_led_set.tail"
+phrase_label_font = "cf.page.site.instrument_label_font"
+phrase_focus_touch = "cf.page.site.instrument_focus_touch"
+phrase_focus_active = "cf.page.site.instrument_focus_active"
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.phrase_fx_draw_slot"
+value = "phrase_view_draw"
+width = 4
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.phrase_fx_key_slot"
+value = "phrase_view_key"
+width = 4
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.phrase_fx_turn_slot"
+value = "phrase_view_turn"
+width = 4
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.phrase_fx_encoder_slot"
+value = "phrase_encoder_interface"
+width = 4
+
+[[claim]]
+resource = "cf.page.site.phrase_fx_draw_slot"
+[[claim]]
+resource = "cf.page.site.phrase_fx_key_slot"
+[[claim]]
+resource = "cf.page.site.phrase_fx_turn_slot"
+[[claim]]
+resource = "cf.page.site.phrase_fx_encoder_slot"
+
+[[op]]
+op = "hook"
+hook = "cf.page.hook.phrase_led_set"
+to = "phrase_led_set"
+
+[[claim]]
+resource = "cf.page.site.phrase_led_set"
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.phrase_help_draw_slot"
+value = "phrase_help_draw"
+width = 4
+
+[[claim]]
+resource = "cf.page.site.phrase_help_draw_slot"
+
+[[op]]
+op = "hook"
+hook = "cf.page.hook.phrase_key_dispatch"
+to = "phrase_key_dispatch"
+
+[[claim]]
+resource = "cf.page.site.phrase_key_dispatch"

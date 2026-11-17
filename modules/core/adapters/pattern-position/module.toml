@@ -53,7 +53,7 @@ resource = "dt2.sequencer.tick.countdown"
 [[object]]
 path = "build/pattern-position-dsp.dko.json"
 sources = ["src/dsp/pattern_position.s"]
-optional = ["_instrument_block"]
+optional = ["_instrument_block", "_phrase_receive"]
 place = "dsp.l2"
 devices = ["dt2"]
 
