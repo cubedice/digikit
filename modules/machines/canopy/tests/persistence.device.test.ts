@@ -13,7 +13,8 @@ import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { cardAfter, overlayRecords } from '@digi/regression/runtime/write-safety.ts';
 import { bootInfo, currentRecord, recordsIn } from '@digi/regression/runtime/card-kit.ts';
-import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
+import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
+import { REDRAW, SETTLE } from '@digi/regression/runtime/fx-live.ts';
 
 describeOn('dt2', 'CANOPY persistence on the DT2', () => {
   // CANOPY Sound persistence (finding 351): a stock project on a disposable DTII
@@ -148,9 +149,9 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
     // FUNC+SETTINGS is the stock SAVE PROJECT shortcut (roundtrip.device.test).
     await edge('FUNC', true);
     try { await key('SETTINGS'); } finally { await edge('FUNC', false); }
-    await waitEmulated(session, 300);
+    await sessionRt(session).ui.wait({ ms: 300, why: REDRAW });
     await key('YES'); // slot 001
-    await waitEmulated(session, 3500); // allow the stock card write to finish
+    await sessionRt(session).ui.wait({ ms: 3500, why: SETTLE }); // allow the stock card write to finish
     log.persistenceAfterSave = await persistence();
     if (checkWorkingBoot) {
       // Experimental positive control: ask DigiKit's restart to invoke the
@@ -211,7 +212,7 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
     const coldModules = await liveProtocol(session).modules();
     log.coldModules = coldModules;
     expect(coldModules.map((module) => module.name)).toContain('digikit/canopy');
-    await waitEmulated(session, 1000); // allow admission of any project restored by the normal boot
+    await sessionRt(session).ui.wait({ ms: 1000, why: SETTLE }); // allow admission of any project restored by the normal boot
     log.tracksBeforeProjectLoad = await Promise.all(Array.from({ length: 4 }, (_, i) => cf('ip_tracks', i)));
     if ((log.tracksBeforeProjectLoad as number[]).includes(0) && (log.tracksBeforeProjectLoad as number[]).includes(1))
       log.valuesBeforeProjectLoad = [await sound(1), await sound(2)];
@@ -220,13 +221,13 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
     // This proves the project was loaded from the saved card before admission.
     const coldPanel = acknowledgedPanel(session);
     await coldPanel.tap('SETTINGS');
-    await waitEmulated(session, 300);
+    await sessionRt(session).ui.wait({ ms: 300, why: REDRAW });
     for (let i = 0; i < 3; i++) {
       await coldPanel.tap('YES');
-      await waitEmulated(session, 500);
+      await sessionRt(session).ui.wait({ ms: 500, why: REDRAW });
     }
     await coldPanel.tap('YES');
-    await waitEmulated(session, 6000);
+    await sessionRt(session).ui.wait({ ms: 6000, why: SETTLE });
     await session.expectNoFault('saved CANOPY project loaded');
     await expect.poll(async () => {
       const tracks = await Promise.all(Array.from({ length: 4 }, (_, i) => cf('ip_tracks', i)));

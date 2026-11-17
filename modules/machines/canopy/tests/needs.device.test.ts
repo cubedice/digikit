@@ -11,7 +11,8 @@ import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.t
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { patchkit } from '@digi/regression/runtime/patchkit.ts';
-import { openDigikitMenu } from '@digi/regression/runtime/port-compat.ts';
+import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
+import { openDigikitMenu } from '@digi/regression/runtime/flows/menu.ts';
 
 /**
  * What a load of CANOPY takes is what its file says (docs/design/digikit-dkm.md, "Needs are inferred"). CANOPY is a file of persistent
@@ -97,7 +98,7 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
 
     // SETTINGS > DIGIKIT > MODULES (the last row): the scan gives the file its kind and its memory, not a dash and its file size
     const { tap: key } = acknowledgedPanel(session);
-    await openDigikitMenu(key);
+    await openDigikitMenu({ ...sessionRt(session), dk });
     for (let i = 0; i < 8; i++) await key('DOWN');
     await key('YES');
     await expect.poll(() => word(planSymbol(plan, 'DK_LOAD_N')), { timeout: 60_000 }).toBe(1);

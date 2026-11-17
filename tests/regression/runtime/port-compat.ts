@@ -1,7 +1,5 @@
-import { emulatorClock, panelInput, waitClock, type Session } from '@digi/test-support';
-import type { TestRuntime } from '../support.ts';
+import { emulatorClock, waitClock, type Session } from '@digi/test-support';
 import { timePhase } from '../timing.ts';
-import { Ui } from './ui.ts';
 
 /**
  * The fixed waits and panel steps that CANOPY's and Overloop's device tests were written against, on the present wait API, so those
@@ -50,21 +48,7 @@ export async function openDigikitMenu(tap: Tap, checkpoint?: (name: string) => P
   await checkpoint?.('digikit-main');
 }
 
-/** The wait API over a session a test started itself (`withSession`), for the flows that take `rt`. Its waits are not recorded. */
-export function sessionRt(session: Session): Pick<TestRuntime, 'session' | 'ui' | 'clock'> {
-  const clock = emulatorClock(session);
-  return {
-    session,
-    clock,
-    ui: new Ui(
-      panelInput(session, clock),
-      clock,
-      () => undefined,
-      () => {},
-      session,
-    ),
-  };
-}
+export { sessionRt } from './session-rt.ts';
 
 /** Rejects after `ms` of wall time with `message`: a guard against a call that hangs, never the length of a wait. */
 export function wallGuard(ms: number, message: string): Promise<never> {
