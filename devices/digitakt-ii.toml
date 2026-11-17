@@ -132,7 +132,7 @@ span_clock_hz = 132000000
 modules = 8
 machine_rows = 8
 arena_bytes = 524288
-stage_bytes = 65536
+stage_bytes = 163840 # 160 KiB: CANOPY with its 16-bit factory wavetables (147320 bytes) fits; the CANOPY patch set needs the rest of cf.expansion. Native card reads remain capped at 64 KiB
 fx_slots = 3   # effects in the chain; core/dynfx reserves this many free effect rows for run-time effects (at most DK_FX_MAX = 4)
 send_slots = 2 # of them effects that run on a send bus (core/fx send route, the send page of the FX key: one knob each; at most the entries of [fx] send_indices)
 param_rows = 16
@@ -216,6 +216,10 @@ device-introblank = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages",
 sample-tracks = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/sample-pool"]
 # `emulator` plus core/overdrive (the OVR TYPE device test).
 overdrive-tracks = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/sample-pool", "core/overdrive"]
+
+overloop = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/loop-storage", "core/loop-display"]
+# Experimental CANOPY + Overloop qualification image; install both DKMs separately.
+canopy-overloop = ["core/digikit-menu", "core/health", "core/input", "core/instrument-play", "core/loop-storage", "core/loop-display"]
 
 # The input backend core/input uses to press keys and turn encoders from software (docs/plans/remote-control.md). The profile chooses; `panel-uart`: the panel
 # MCU's UART packets are decoded by the firmware's own key and encoder decoders, which core/input calls (anchors by hash in the port files).

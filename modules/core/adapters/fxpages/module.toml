@@ -42,6 +42,7 @@ uses = ["DEVICE_ID", "LIMIT_FX_SLOTS", "FX_KIT_PTR", "FX_ARRAY_OFF", "FX_PAGE_FI
 [[object]]
 path = "build/fxpages-dt2.dko.json"
 sources = ["src/cf/fxpages-dt2.s"]
+optional = ["loop_ui_paint"]
 place = "cf.expansion"
 devices = ["dt2"]
 

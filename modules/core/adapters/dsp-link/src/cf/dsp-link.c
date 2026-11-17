@@ -13,10 +13,15 @@
  * stalls. Format and the DSP side: src/dsp/dsp-link.inc.
  *
  * Interface for the runtime (C ABI, no struct results):
- *   int dl_send(u32 dst_l2, const void *buf, u32 len);   0 started; -1 busy; -2 bad destination or size
- *   int dl_send_win(u32 win, u32 dst_word, const void *buf, u32 len);   the same into window `win` (1: the voices registry, 2: the effect rows of core/fx),
+ *   int dl_send(u32 dst_l2, const void *buf, u32 len);   0 started; -1 busy; -2 bad request or exhausted identity counter
+ *   int dl_send_win(u32 win, u32 dst_word, const void *buf, u32 len);   the same into window `win` (1: voice rows, 2: effect rows, 3: optional V2 registration data),
  *       the destination in words from the start of the window; the DSP checks it against the window's size (status 3)
  *   int dl_poll(DlStatus *st);                           the state (DL_IDLE, DL_BUSY, DL_DONE, DL_ERROR), and *st filled
+ *   int dl_send_tagged(u32 win, u32 dst, const void *buf, u32 len, u32 *ticket); returns the accepted identity
+ *   int dl_poll_tagged(u32 ticket, DlStatus *st); -1 mismatch; 0 pending; 1 terminal and END frames drained
+ *   int dl_claim(u32 *lease); 0 acquired; -1 busy; -2 null output/exhausted counter
+ *   int dl_release(u32 lease); 0 released; -1 not drained; -2 stale/zero lease
+ *   int dl_send_owned(u32 lease, u32 win, u32 dst, const void *buf, u32 len, u32 *ticket);
  *   int dl_diag(u32 *out, u32 n);                        the DSP's diagnostic words of the last block (layout: README.md and
  *       src/dsp/dsp-link.inc); returns the number of words written (at most n, at most DL_DG_WORDS), -1 when the image has no record
  *       address, -2 when the reply carries no diagnostic block (core/dsp-voice absent from the image, or the DSP halted
@@ -50,6 +55,10 @@ typedef unsigned char u8;
 #define DL_WINDOW 12u
 #define DL_STALL_FRAMES 900u /* 0.6 s without progress */
 #define DL_END_FRAMES 6u
+#define DL_POSITION_WORDS                                                                          \
+    16u /* optional DT2 per-frame sideband; never part of a code-channel chunk */
+#define DL_INSTRUMENT_WORDS 32u /* immediately before position; paired with the DSP-side limit */
+#define DL_LOCK_WORDS 18u       /* optional note-locked sideband before instrument packet */
 
 #define DL_IDLE 0u
 #define DL_BUSY 1u
@@ -60,6 +69,7 @@ typedef unsigned char u8;
 #define DL_E_RANGE 3u /* the DSP refused the destination (its status 3) */
 #define DL_E_TIMEOUT 100u
 #define DL_E_GEOMETRY 101u
+#define DL_E_RESET 102u
 
 typedef struct DlStatus {
     u32 state;
@@ -91,8 +101,11 @@ typedef struct DlLink {
     u32 ending;
     u32 dirty;
     u32 win; /* the window of the transfer (appended: the order of the fields above is read by tests) */
-    u32 pad
-        [2]; /* 80 bytes: the state fills whole 16-byte cache lines, no code shares a line it writes to (flush check) */
+    u32 serial;       /* nonzero accepted-request identity; never wraps within a boot */
+    u32 lease;        /* exclusive UI-task transaction owner, 0 permits legacy starts */
+    u32 lease_serial; /* nonwrapping boot-local ownership generation */
+    u32 revoked;      /* sticky reset after link use; no completion/drainage claim */
+    u32 pad[2];       /* 96 bytes: whole 16-byte cache lines, no code shares a written line */
 } DlLink;
 
 DlLink dl_link __attribute__((aligned(16)));
@@ -112,6 +125,14 @@ extern volatile u32
     dl_tx_lit; /* the literal of the driver's `lea tx_queue,a0`: the queue's address */
 extern volatile u32
     dl_rec_lit; /* the literal of the handler's first `pea`: the address of the reply record copy (dl_diag) */
+/* A direct optional patchkit symbol, zero without core/pattern-position. Weak keeps the compiler's null check.
+ * The callback writes exactly DL_POSITION_WORDS at the supplied halfword entry; it cannot wait or allocate. */
+extern void pp_write_frame(u32 tx_queue, u32 suffix_entry) __attribute__((weak));
+/* A persistent-instrument provider requires pattern-position and supplies its
+ * matching DSP reply symbol. No waits/allocations; called from the frame ISR. */
+extern void instrument_write_frame(u32 tx_queue, u32 entry, const volatile u16 *rec,
+                                   const volatile u16 *frame) __attribute__((weak));
+extern void instrument_write_lock_frame(u32 tx_queue, u32 entry) __attribute__((weak));
 
 static u32 word_at(const u8 *p)
 {
@@ -130,16 +151,120 @@ static void put_word(u32 tx, u32 e0, u32 j, u32 v)
     put_half(tx, e0 + 2u * j + 1u, v >> 16);
 }
 
-int dl_send(u32 dst_l2, const void *buf, u32 len)
+/* Leases cover entire transactions, including idle gaps awaiting a DSP reply.
+ * All producer calls remain serialized on the UI task. The ISR never claims,
+ * releases or changes ownership; a timeout does not implicitly release it. */
+static int can_send(u32 lease)
+{
+    DlLink *l = &dl_link;
+    u32 st = l->state;
+    if (l->revoked)
+        return -2;
+    if (lease != l->lease)
+        return lease ? -2 : -1;
+    if (st == DL_BUSY || st == DL_START || l->ending)
+        return -1;
+    return 0;
+}
+
+int dl_claim(u32 *lease)
+{
+    DlLink *l = &dl_link;
+    if (!lease || l->revoked || l->lease_serial == 0xffffffffu)
+        return -2;
+    if (l->lease || can_send(0))
+        return -1;
+    l->lease_serial++;
+    l->lease = l->lease_serial;
+    *lease = l->lease;
+    return 0;
+}
+
+int dl_release(u32 lease)
+{
+    DlLink *l = &dl_link;
+    if (l->revoked || !lease || lease != l->lease)
+        return -2;
+    if (can_send(lease))
+        return -1;
+    l->lease = 0;
+    return 0;
+}
+
+/* Called with interrupts masked before DSP reset assertion. Cold boot before
+ * any use is harmless. Preserve the source/lease/identity and never manufacture
+ * a terminal drained result: a frame already owned by DMA may still exist. */
+void dl_reset_begin(void)
+{
+    DlLink *l = &dl_link;
+    if (!l->revoked && (l->serial || l->lease_serial)) {
+        l->revoked = 1;
+        l->err = DL_E_RESET;
+        l->state = DL_BUSY;
+    }
+}
+
+/* MCF54418RM rev 5, chapters 19 and 40. Called with CPU interrupts masked.
+ * Revocation prevents the periodic driver from rearming channels 28/29. DMA
+ * itself is asynchronous: disabling requests does not cancel a current minor
+ * loop, and HALT takes effect after the current serial frame. Never flush the
+ * FIFOs until both engines report stopped. State 2 is terminal: hold DSP reset.
+ * [state, polls, old MCR, old SR, old RX CSR, old TX CSR, final SR, final CSRs]. */
+volatile u32 dl_reset_hw[8];
+int dl_reset_quiesce_regs(volatile u32 *mcr, volatile u32 *sr, volatile u8 *cerq, volatile u16 *rx,
+                          volatile u16 *tx)
+{
+    u32 i, status, channels;
+    if (!dl_link.revoked)
+        return 0;
+    if (dl_reset_hw[0])
+        return (int)dl_reset_hw[0];
+    dl_reset_hw[2] = *mcr;
+    dl_reset_hw[3] = *sr;
+    dl_reset_hw[4] = *rx;
+    dl_reset_hw[5] = *tx;
+    *cerq = 28;
+    *cerq = 29;
+    *mcr = *mcr | 1u; /* HALT; preserve configuration */
+    for (i = 0; i < 65536u; ++i) {
+        status = *sr;
+        channels = (u32)*rx | (u32)*tx;
+        channels |= ((u32)rx[-5] | rx[-1] | tx[-5] | tx[-1]) & 0x8000u;
+        dl_reset_hw[1] = i + 1;
+        dl_reset_hw[6] = status;
+        dl_reset_hw[7] = channels;
+        /* START or ACTIVE, plus unexpected scatter/gather or major/minor linking:
+         * this path supports only the stock independent DSPI descriptors. */
+        if (!(status & 0x40000000u) && !(channels & 0x8071u)) {
+            *mcr = *mcr | 0xc00u; /* CLR_TXF | CLR_RXF while halted */
+            dl_reset_hw[0] = 1;
+            return 1;
+        }
+    }
+    dl_reset_hw[0] = 2;
+    return 2;
+}
+
+int dl_reset_quiesce(void)
+{
+    return dl_reset_quiesce_regs((volatile u32 *)0xec038000u, (volatile u32 *)0xec03802cu,
+                                 (volatile u8 *)0xfc044019u, (volatile u16 *)0xfc04539eu,
+                                 (volatile u16 *)0xfc0453beu);
+}
+
+static int send_area(u32 lease, u32 dst_l2, const void *buf, u32 len)
 {
     u32 lo = (u32)_dl_area;
     DlLink *l = &dl_link;
-    u32 st = l->state;
-    if (st == DL_BUSY || st == DL_START || l->ending)
-        return -1;
+    int ready = can_send(lease);
+    if (ready)
+        return ready;
     if ((dst_l2 & 3u) || (len & 3u) || len == 0u || dst_l2 < lo || dst_l2 - lo >= DL_AREA_BYTES ||
         len > DL_AREA_BYTES - (dst_l2 - lo) || buf == 0)
         return -2;
+    if (l->serial == 0xffffffffu)
+        return -2;
+    l->serial++;
     l->win = 0;
     l->buf = (u32)buf;
     l->dst_off = (dst_l2 - lo) >> 2;
@@ -151,15 +276,18 @@ int dl_send(u32 dst_l2, const void *buf, u32 len)
     return 0;
 }
 
-int dl_send_win(u32 win, u32 dst_word, const void *buf, u32 len)
+static int send_window(u32 lease, u32 win, u32 dst_word, const void *buf, u32 len)
 {
     DlLink *l = &dl_link;
-    u32 st = l->state;
-    if (st == DL_BUSY || st == DL_START || l->ending)
-        return -1;
-    if (win == 0u || win > 2u || (len & 3u) || len == 0u || dst_word >= DL_AREA_MAX_WORDS ||
+    int ready = can_send(lease);
+    if (ready)
+        return ready;
+    if (win == 0u || win > 3u || (len & 3u) || len == 0u || dst_word >= DL_AREA_MAX_WORDS ||
         buf == 0)
         return -2;
+    if (l->serial == 0xffffffffu)
+        return -2;
+    l->serial++;
     l->win = win;
     l->buf = (u32)buf;
     l->dst_off = dst_word;
@@ -171,11 +299,34 @@ int dl_send_win(u32 win, u32 dst_word, const void *buf, u32 len)
     return 0;
 }
 
+int dl_send(u32 dst_l2, const void *buf, u32 len)
+{
+    return send_area(0, dst_l2, buf, len);
+}
+
+int dl_send_win(u32 win, u32 dst_word, const void *buf, u32 len)
+{
+    return send_window(0, win, dst_word, buf, len);
+}
+
+/* Same request identity and poll API as tagged sends. No unowned fallback:
+ * a stale lease cannot enter a later owner's transaction, even while idle. */
+int dl_send_owned(u32 lease, u32 win, u32 dst, const void *buf, u32 len, u32 *ticket)
+{
+    int result;
+    if (!lease || !ticket)
+        return -2;
+    result = win == 0u ? send_area(lease, dst, buf, len) : send_window(lease, win, dst, buf, len);
+    if (result == 0)
+        *ticket = dl_link.serial;
+    return result;
+}
+
 int dl_poll(DlStatus *s)
 {
     DlLink *l = &dl_link;
     u32 st = l->state;
-    if (st == DL_START)
+    if (l->revoked || st == DL_START)
         st = DL_BUSY;
     s->state = st;
     s->err = l->err;
@@ -185,6 +336,34 @@ int dl_poll(DlStatus *s)
     s->resent = l->resent;
     s->nerr = l->nerr;
     return (int)st;
+}
+
+/* Single UI-task producer, like dl_send. All accepted requests, including legacy
+ * ones, consume an identity. Rejection leaves the caller's ticket untouched.
+ * Window 0 takes an L2 byte address; other windows take a word offset. */
+int dl_send_tagged(u32 win, u32 dst, const void *buf, u32 len, u32 *ticket)
+{
+    int result;
+    if (!ticket)
+        return -2;
+    result = win == 0u ? dl_send(dst, buf, len) : dl_send_win(win, dst, buf, len);
+    if (result == 0)
+        *ticket = dl_link.serial;
+    return result;
+}
+
+/* -1: stale/zero identity or null output (output untouched); 0: pending;
+ * 1: this request is terminal AND its END frames have drained. Inspect s->state
+ * to distinguish DONE from ERROR. This proves link drainage, not row lifecycle.
+ * The UI task serializes starts/polls; the ISR may only advance the current job.
+ * A timeout in the caller must not be treated as a drained return here. */
+int dl_poll_tagged(u32 ticket, DlStatus *s)
+{
+    int state;
+    if (!ticket || ticket != dl_link.serial || !s)
+        return -1;
+    state = dl_poll(s);
+    return !dl_link.revoked && (state == DL_DONE || state == DL_ERROR) && dl_link.ending == 0u;
 }
 
 /* Record byte offset of diagnostic word j: slot row 1 + j / 2 (0x1c + 0x54 row), +0x44 for even j, +0x48 for odd j (words 14 and 15 are in row 8, 16 and 17 in row 9, 22 and 23 in row 12, 24 and 25 in row 13, 30 and 31 in row 16). */
@@ -259,12 +438,45 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
     (void)src;
     if (cb)
         cb(rec);
-    if (st != DL_START && st != DL_BUSY && !l->ending && !l->dirty)
+    if (!pp_write_frame && !instrument_write_frame && st != DL_START && st != DL_BUSY &&
+        !l->ending && !l->dirty)
         return;
     tx = dl_tx_lit;
     e0 = ((u32)len / 2u + 1u) & ~1u;
     total = (u32)reclen / 2u;
     words = (total > e0 + 2u && total < 0x600u) ? (total - e0) / 2u : 0u;
+    if (pp_write_frame || instrument_write_frame) {
+        /* The provider is DT2 1.17 only. Reject another geometry before writing a single queue halfword. */
+        if (len != 0x802 || reclen != 0xabc || words != 174u || !tx || (tx & 3u) ||
+            !pp_write_frame) {
+            if (!l->revoked && (st == DL_START || st == DL_BUSY))
+                finish(l, DL_ERROR, DL_E_GEOMETRY);
+            return;
+        }
+        words -= DL_POSITION_WORDS;
+        pp_write_frame(tx, total - 2u * DL_POSITION_WORDS);
+        if (instrument_write_frame) {
+            words -= DL_INSTRUMENT_WORDS;
+            instrument_write_frame(tx, total - 2u * (DL_POSITION_WORDS + DL_INSTRUMENT_WORDS), rec,
+                                   src);
+            if (instrument_write_lock_frame) {
+                words -= DL_LOCK_WORDS;
+                instrument_write_lock_frame(
+                    tx, total - 2u * (DL_POSITION_WORDS + DL_INSTRUMENT_WORDS + DL_LOCK_WORDS));
+            }
+        }
+        /* Position snapshots are sent even while the acknowledged link is idle. */
+        if (st != DL_START && st != DL_BUSY && !l->ending && !l->dirty)
+            return;
+    }
+    if (l->revoked) {
+        /* Suppress future chunks and END packets; old ACKs cannot complete the
+         * request. This clears the next queue image, not an active DMA frame. */
+        if (words >= 1u && tx && !(tx & 3u))
+            put_word(tx, e0, 0, 0);
+        l->dirty = 0;
+        return;
+    }
     if (st == DL_START) {
         if (words < 4u) {
             l->cap = 0;

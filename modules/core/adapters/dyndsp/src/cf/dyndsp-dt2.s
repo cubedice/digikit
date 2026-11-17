@@ -25,7 +25,7 @@ dyndsp_info:
     .long   _dd_vfirst
     .long   DYN_TYPES
     .long   _dd_vcount
-    .long   4
+    .long   8
     .asciz  "_dv_exp2"
     .space  28 - 9
     .long   _dv_exp2
@@ -38,3 +38,19 @@ dyndsp_info:
     .asciz  "_dk_step"
     .space  28 - 9
     .long   _dk_step
+    | Optional experimental storage provider. A missing provider resolves to 0:
+    | dsp_symbol then refuses an importing module with E_DSP_IMPORT.
+    .asciz  "_loop_buffer_info"
+    .space  28 - 18
+    .long   _loop_buffer_info
+    | Optional per-frame transport snapshot. Missing provider fails an import before allocation.
+    .asciz  "_pattern_position_info"
+    .space  28 - 23
+    .long   _pattern_position_info
+    | Optional destination-kit handoff adapter, required by Overloop 0.3+.
+    .asciz  "_loop_controls_info"
+    .space  28 - 20
+    .long   _loop_controls_info
+    .asciz  "_loop_ui_status"
+    .space  28 - 16
+    .long   _loop_ui_status

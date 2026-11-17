@@ -131,3 +131,47 @@ The cases of one scenario boot in threads (`Ctx.parallel`). In `test:changed` (c
   (their bytes changed only through the SDK constants).
 - **READ (runtime 0.2.4).** A new SysEx command READ (0x16, capability bit 7) returns up to 768 bytes of a store file (path, offset, length; reply: file size and the bytes), so hosts can read a `.dkm` header and later download files; see `docs/design/digikit-upload.md`. **[D]** Checked in the `upload-quick` scenario (DT2): header, a range across a sector boundary, the 768 cap, the end of the file, the whole file, and the three refusals.
 - **VERIFY (runtime 0.2.4).** VERIFY (0x17, capability bit 8) returns the sha256 of a store file computed by the device from a fresh card read; hosts compare it with the local hash after an upload. **[D]** Checked in `upload-quick` (DT2): equal to the local sha256, a missing file refused.
+
+## Per-device staging for factory tables (2026-11-08)
+
+**[D]** CANOPY's factory wavetable data exceed the old 64 KiB file staging limit.
+DT2 now declares 262,144 bytes; DN2 retains 65,536 bytes. The SDK maximum is
+262,144 bytes, while `pack --device` enforces the selected device's own limit.
+The shared Rust runtime no longer allocates one fixed-size stage: each existing
+device assembly object reserves its aligned `DKRT_STAGE` BSS and exposes the
+matching `dkrt_stage_bytes`. Patchkit's normal object placement and reset-loader
+zeroing cover the allocation. The net DT2 buffer increase is 196,608 bytes; DN2's
+allocation is unchanged. This does not enlarge the module arena or DSP window.
+
+**[D]** Increasing the allocation alone was insufficient: the previous loader
+issued one `read_sectors` request, which refuses more than 128 sectors. The new
+`read_extent` validates the complete range/capacity first, then reads at most
+128 sectors per native request. The loader still verifies the complete file's
+SHA-256 before publication. Any partial I/O failure returns an error.
+
+Focused host checks passed: 53 runtime cleanup tests; 41 SDK store tests,
+including 129/424/512-sector extents, guards, short buffers and second-read
+failure; and selected profile-generation and large-package tests. The package
+test accepts a factory-sized payload for DT2, refuses it for DN2, and refuses a
+payload above DT2's limit. These are host results, not physical-device capacity
+or reset measurements; firmware placement and card-boot acceptance remain part
+of the complete CANOPY image checks.
+
+**[D]** The compiled CANOPY integration exposed a second limit: its 207,368-byte
+DSP image plus 2,240-byte zero fill needs 820 separate writes. The original
+2,000-UI-pass upload deadline expired while transfers were still advancing
+(serials 786 and 804), followed by acknowledged recovery. UI passes are not
+milliseconds and their cadence varies with queued input. Increasing the test's
+wall-time wait did not fix this firmware deadline.
+
+The upload allowance now scales with the admitted image/BSS/alignment extent:
+2,000 UI passes per rounded-up 64 KiB, bounded by the existing 512 KiB executable
+L2 window to 16,000 passes. CANOPY receives 8,000. The allowance covers the whole
+upload and never resets per chunk. Metadata installation, initialization,
+detach and uncertain-write drainage retain their separate 2,000-pass bounds.
+The legacy coordinator API retains its original equal-budget behavior.
+
+Focused validation passed 44 coordinator tests, seven upload tests and 54 runtime
+tests, including large transfers, stalled writes, recovery, overflow rejection
+and unchanged later-phase deadlines. Independent source review found no defect;
+this is not a second firmware-byte audit or physical timing proof.

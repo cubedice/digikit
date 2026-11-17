@@ -211,10 +211,27 @@ pub unsafe fn area_stats() -> (u32, u32) {
     (total - used, largest)
 }
 
+/// Borrow the actual shared image/state ledger for V2 admission and release.
+/// UI-task only: the caller must own the DSP link lease before mutating it and
+/// keep the module record reserved until acknowledged detach/release. Never use
+/// legacy `cancel`/`release` for a V2 reservation. No caller-supplied area address.
+pub unsafe fn instrument_ledger() -> Option<instrument_load::Ledger<'static>> {
+    if info().is_null() {
+        return None;
+    }
+    let base = iw(I_AREA);
+    let bytes = iw(I_AREA_BYTES);
+    if bytes == 0 || base < 0x2000_0000 || base.checked_add(bytes).is_none_or(|end| end > 0x200f_e000) {
+        return None;
+    }
+    let d = ds();
+    Some(instrument_load::Ledger { base, bytes, offsets: &mut d.mod_off, lengths: &mut d.mod_len })
+}
+
 /// First fit: the lowest offset whose byte address is `align`-aligned and whose `len` bytes touch no other range.
 pub(crate) unsafe fn alloc_range(len: u32, align: u32) -> Option<u32> {
     let d = ds();
-    capacity::first_fit(iw(I_AREA), iw(I_AREA_BYTES), &d.mod_off, &d.mod_len, len, align)
+    dsp_memory::first_fit(iw(I_AREA), iw(I_AREA_BYTES), len, align, &d.mod_off, &d.mod_len)
 }
 
 // ---- checking a section --------------------------------------------------------------------------------------------------
@@ -592,6 +609,10 @@ pub unsafe fn step() -> Advance {
 
 /// `step` over a given list of services.
 pub(crate) unsafe fn step_with(l: ServiceTable) -> Advance {
+    // a V2 instrument transaction owns the DSP link (instrument.rs): legacy loads wait
+    if crate::instrument::legacy_policy() == dkrt_sdk::instrument_coordinator::LegacyPolicy::Pause {
+        return Advance::Pending;
+    }
     let d = ds();
     if d.magic != STATE_MAGIC {
         return Advance::Pending;
@@ -715,4 +736,11 @@ pub unsafe fn state() -> u32 {
 #[cfg(test)]
 pub(super) unsafe fn cleanup_test_first_fit(len: u32, align: u32) -> Option<u32> {
     alloc_range(len, align)
+}
+
+/// Includes unpublished legacy reservations, not merely visible machines.
+pub unsafe fn type_is_free(t: u32) -> bool {
+    let d = ds();
+    (TYPE_FIRST..=TYPE_LAST).contains(&t)
+        && !d.row_owner.iter().zip(d.row_type.iter()).any(|(&owner, &ty)| owner != 0 && ty == t)
 }

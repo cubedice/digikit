@@ -1,0 +1,89 @@
+[module]
+id = "test/canopy-sound-proof"
+version = "0.1.0"
+name = "CANOPY Sound persistence proof"
+category = "test"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Unsafe emulator-only Sound lifecycle experiment; never install on hardware."
+requires = ["test/instrument-play-proof"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/proof.dko.json"
+sources = ["src/cf/proof.c", "src/cf/proof.s", "../../../../modules/core/adapters/instrument-play/src/cf/sound-codec.c", "../../../../modules/core/adapters/instrument-play/src/cf/sound-pool.c", "../../../../modules/core/adapters/instrument-play/src/cf/sound-lifetime.s"]
+place = "cf.expansion"
+devices = ["dt2"]
+[object.externs]
+fw_alloc = "cf.mem.fn.new"
+fw_free = "cf.mem.fn.free"
+
+# The existing loader entry wrapper and fxpages exit hook remain in place.
+# Replace only its successful-path stack cleanup and return-value setup.
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0x446
+width = 2
+value = 0x4ef9
+expect_sha256 = "5e5be2db18c49bd9863ac94af1ee2a6b6fbe6df2a2033e188c545979a0148880"
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0x448
+width = 4
+value = "canopy_proof_load_entry"
+expect_sha256 = "6c0d287789e87236d281a393457e991356e2a14bfd2f8ba09f57b2f3cfd1bf56"
+
+# Writer entry: replay its full eight-byte prologue in the fixture trampoline.
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0x6e2
+width = 2
+value = 0x4ef9
+expect_sha256 = "5e5be2db18c49bd9863ac94af1ee2a6b6fbe6df2a2033e188c545979a0148880"
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0x6e4
+width = 4
+value = "canopy_proof_save_entry"
+expect_sha256 = "35768fc814c7dcb166cee133181271b7ff808089f71744c0247b7f76d9c9a92d"
+
+# Candidate in-memory handle invalidations. These two sites do not establish
+# complete Sound ownership; this remains an emulator-only experiment.
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0xb216
+width = 2
+value = 0x4ef9
+expect_sha256 = "2d6040bf72fe8bb73e65d8708ccd55d1d985ba280f255d8c0b2d97241e558ff2"
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0xb218
+width = 4
+value = "ip_sound_init_gap"
+expect_sha256 = "bb6798678813d80a8f1967a75d36b92c4b11514685987b50563b87719f064b63"
+
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = -564244
+width = 2
+value = 0x4ef9
+expect_sha256 = "a34d106e3ff1122227397fde39d67b1c2744f893c5a33af40f378c893cc0b134"
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = -564242
+width = 4
+value = "ip_sound_type_gap"
+expect_sha256 = "f42405786052edfc01e4151071a32483a8a5ef0ccddc19622f2f5315f2faf915"

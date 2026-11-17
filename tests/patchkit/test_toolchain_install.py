@@ -1,0 +1,182 @@
+"""Resume partial compiler installs instead of mistaking wrappers for a toolchain."""
+
+import io
+import tarfile
+
+import pytest
+
+from tools.coldfire import isacheck
+from tools.patchkit import pk_toolchains as T
+
+
+def fake_install(tmp_path, monkeypatch, *, missing=(), library=False, tree=False):
+    prefix = tmp_path / "m68k-elf"
+    (prefix / "bin").mkdir(parents=True)
+    for name in ("gcc", "as", "ld", "ar", "ranlib", "nm", "objcopy"):
+        if name not in missing:
+            (prefix / "bin" / f"m68k-elf-{name}").touch()
+    if library:
+        (prefix / "lib").mkdir()
+        (prefix / "lib" / T.LIBGCC_CF_NAME).touch()
+    makefile = tmp_path / "build/gcc/m68k-elf/libgcc/Makefile"
+    if tree:
+        makefile.parent.mkdir(parents=True)
+        makefile.touch()
+    monkeypatch.setattr(T, "TOOLS", tmp_path)
+    monkeypatch.setattr(T, "M68K_PREFIX", prefix)
+    monkeypatch.setattr(T, "fetch", lambda url: tmp_path / url.rsplit("/", 1)[-1])
+    monkeypatch.setattr(T, "unpack", lambda path: path)
+    monkeypatch.setattr(
+        T,
+        "m68k_dependency_prefixes",
+        lambda: dict.fromkeys(("gmp", "mpfr", "libmpc", "isl", "zstd"), "/usr"),
+    )
+    configured = set()
+
+    def run(command, cwd=None, env=None):
+        if command[0].endswith("/configure") or command[0].endswith("\\configure"):
+            configured.add(cwd.name)
+            if cwd.name == "gcc":
+                makefile.parent.mkdir(parents=True, exist_ok=True)
+                makefile.touch()
+
+    def build_library():
+        assert makefile.exists(), "library build attempted without its GCC build tree"
+
+    monkeypatch.setattr(T, "run", run)
+    monkeypatch.setattr(T, "build_libgcc_cf", build_library)
+    return configured
+
+
+def test_proof_wrappers_do_not_skip_required_compiler_build(tmp_path, monkeypatch):
+    configured = fake_install(tmp_path, monkeypatch, missing=("ar", "ranlib"))
+    T.build_m68k()
+    assert configured == {"binutils", "gcc"}
+
+
+def test_complete_install_does_not_require_retained_build_tree(tmp_path, monkeypatch):
+    configured = fake_install(tmp_path, monkeypatch, library=True)
+    checked = []
+    monkeypatch.setattr(isacheck, "check_file", lambda path: checked.append(path))
+    T.build_m68k()
+    assert not configured
+    assert checked == [T.M68K_PREFIX / "lib" / T.LIBGCC_CF_NAME]
+
+
+def test_existing_library_validation_failure_is_not_skipped(tmp_path, monkeypatch):
+    fake_install(tmp_path, monkeypatch, library=True)
+
+    def reject(path):
+        raise isacheck.IsaError("invalid instruction")
+
+    monkeypatch.setattr(isacheck, "check_file", reject)
+    with pytest.raises(isacheck.IsaError, match="invalid instruction"):
+        T.build_m68k()
+
+
+def test_existing_gcc_tree_can_finish_missing_coldfire_library(tmp_path, monkeypatch):
+    configured = fake_install(tmp_path, monkeypatch, tree=True)
+    T.build_m68k()
+    assert not configured
+
+
+def source_archive(tmp_path):
+    archive = tmp_path / "gcc-test.tar.xz"
+    with tarfile.open(archive, "w:xz") as tar:
+        for name in ("configure", "gcc/source.c"):
+            member = tarfile.TarInfo(f"gcc-test/{name}")
+            member.size = 4
+            tar.addfile(member, io.BytesIO(b"test"))
+    return archive
+
+
+def test_partial_extraction_is_repaired_and_complete_cache_reused(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(T, "TOOLS", tmp_path)
+    archive = source_archive(tmp_path)
+    source = tmp_path / "src/gcc-test"
+    source.mkdir(parents=True)
+    (source / "configure").touch()  # Even this file alone is not a full extraction.
+    assert T.unpack(archive) == source
+    assert (source / "gcc/source.c").read_bytes() == b"test"
+    with monkeypatch.context() as m:
+        m.setattr(tarfile, "open", lambda *a, **kw: pytest.fail("cache re-extracted"))
+        assert T.unpack(archive) == source
+    (source / "configure").unlink()
+    T.unpack(archive)
+    assert (source / "configure").read_bytes() == b"test"
+
+
+def test_interrupted_extraction_is_not_marked_complete(tmp_path, monkeypatch):
+    monkeypatch.setattr(T, "TOOLS", tmp_path)
+    archive = source_archive(tmp_path)
+
+    def interrupted(tar, path, **kwargs):
+        (path / "gcc-test").mkdir()
+        raise OSError("interrupted extraction")
+
+    with monkeypatch.context() as m:
+        m.setattr(tarfile.TarFile, "extractall", interrupted)
+        with pytest.raises(OSError, match="interrupted"):
+            T.unpack(archive)
+    assert not (tmp_path / "src/gcc-test/.digikit-extracted-sha256").exists()
+    source = T.unpack(archive)
+    assert (source / "configure").is_file()
+    assert (source / "gcc/source.c").is_file()
+
+
+@pytest.mark.parametrize("platform,suffix", [("linux", ".so"), ("darwin", ".dylib")])
+def test_codegen_readiness_requires_native_backend_and_jit(
+    tmp_path, monkeypatch, platform, suffix
+):
+    monkeypatch.setattr(T.sys, "platform", platform)
+    monkeypatch.setattr(T, "DARWIN", platform == "darwin")
+    monkeypatch.setattr(T, "CG_DIR", tmp_path / "cg")
+    monkeypatch.setattr(T, "M68K_PREFIX", tmp_path / "m68k")
+    assembler = T.M68K_PREFIX / "bin/m68k-elf-as"
+    assembler.parent.mkdir(parents=True)
+    assembler.touch()
+    backend = (
+        T.CG_DIR / "rustc_codegen_gcc/target/debug" / f"librustc_codegen_gcc{suffix}"
+    )
+    backend.parent.mkdir(parents=True)
+    backend.touch()
+    assert T.codegen_gcc_backend() == backend
+    assert not T.codegen_gcc_ready()
+    jit = T.CG_DIR / "jitlib/libgccjit.so"
+    jit.parent.mkdir()
+    jit.write_bytes(b"native jit")
+    assert T.codegen_gcc_ready()
+    backend.unlink()
+    backend.with_suffix(".dylib" if suffix == ".so" else ".so").touch()
+    assert not T.codegen_gcc_ready()
+
+
+@pytest.mark.parametrize(
+    "platform,name", [("linux", "libgccjit.so"), ("darwin", "libgccjit.0.dylib")]
+)
+def test_codegen_jit_publication_checks_native_artifact(
+    tmp_path, monkeypatch, platform, name
+):
+    monkeypatch.setattr(T.sys, "platform", platform)
+    monkeypatch.setattr(T, "DARWIN", platform == "darwin")
+    build, links = tmp_path / "build", tmp_path / "jitlib"
+    with pytest.raises(SystemExit, match="did not produce"):
+        T._publish_codegen_jit(build, links)
+    assert not links.exists()
+    source = build / "gcc" / name
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"native jit")
+    T._publish_codegen_jit(build, links)
+    assert (links / "libgccjit.so").read_bytes() == b"native jit"
+    T._publish_codegen_jit(build, links)  # resumable without a dangling marker
+    assert (links / "libgccjit.so").resolve() == source.resolve()
+
+
+def test_linux_codegen_dependencies_do_not_call_homebrew(monkeypatch):
+    monkeypatch.setattr(T.sys, "platform", "linux")
+    monkeypatch.setattr(
+        T, "brew_prefix", lambda _: pytest.fail("Homebrew called on Linux")
+    )
+    assert set(T.m68k_dependency_prefixes().values()) == {"/usr"}

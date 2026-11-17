@@ -329,7 +329,7 @@ fn run(a: Args) -> Result<()> {
                 None => vec![],
             };
             let reg = registry(&a.root)?;
-            let (lib, ids) = if cmd == "apply" {
+            let (lib, ids) = if cmd == "apply" || !ids.is_empty() {
                 library_for_apply(&a.root, rest, ids)?
             } else {
                 let lib = library(&a.root, rest)?;
@@ -847,15 +847,11 @@ plan.json {}",
                     serde_json::json!({ "error": e.0 })
                 });
                 if !json {
-                    match patchkit::dkm::needs(&raw) {
+                    match patchkit::dkm::needs_v2(&raw) {
                         Ok(n) => println!(
                             "{f}: file_size {}, {}",
-                            n.file_size,
-                            n.fields()
-                                .iter()
-                                .map(|(k, v)| format!("{} {v}", k.to_lowercase()))
-                                .collect::<Vec<_>>()
-                                .join(", ")
+                            n.base.file_size,
+                            patchkit::dkm::needs_text(&n)
                         ),
                         Err(e) => println!("{f}: no needs: {}", e.0),
                     }
@@ -922,15 +918,8 @@ plan.json {}",
                 d.bss,
                 d.align
             );
-            match patchkit::dkm::needs(&raw) {
-                Ok(n) => println!(
-                    "needs     {}",
-                    n.fields()
-                        .iter()
-                        .map(|(n, v)| format!("{} {v}", n.to_lowercase()))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
+            match patchkit::dkm::needs_v2(&raw) {
+                Ok(n) => println!("needs     {}", patchkit::dkm::needs_text(&n)),
                 Err(e) => println!("needs     none ({})", e.0),
             }
             println!("relocs    {}", d.relocs.len());
@@ -1449,5 +1438,34 @@ uses = ["DEVICE_ID"]
         root.module("modules", "test/dependency", &["test/selected"], false);
         assert!(library_for_apply(&root.0, &[], vec!["test/selected".into()]).is_err());
         assert!(!cache_dir(&root.0).exists());
+    }
+}
+
+#[cfg(test)]
+mod selection_tests {
+    use super::*;
+
+    #[test]
+    fn selected_framework_resolves_dependencies_without_building_rust_fixture() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
+        let (lib, ids) =
+            library_for_apply(root, &[], vec!["core/pattern-position".into()]).unwrap();
+        assert!(ids.iter().any(|id| id == "core/dsp-link"));
+        assert!(!lib.get("core/pattern-position").unwrap().objects.is_empty());
+        assert!(lib.get("test/dyn-demo").unwrap().objects.is_empty());
+    }
+
+    #[test]
+    fn unknown_selection_is_rejected_before_building_content() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
+        assert!(library_for_apply(root, &[], vec!["missing/module".into()]).is_err());
     }
 }

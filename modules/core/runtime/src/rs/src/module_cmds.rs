@@ -30,7 +30,7 @@ pub(crate) unsafe fn cmd_modules(seq: u32, body: *const u8, blen: usize) -> i32 
     let mut total = 0u8;
     let mut i = 0;
     while i < crate::MAX_MODULES {
-        if s.modules[i].used != 0 {
+        if s.modules[i].used == 1 {
             total += 1;
         }
         i += 1;
@@ -42,7 +42,7 @@ pub(crate) unsafe fn cmd_modules(seq: u32, body: *const u8, blen: usize) -> i32 
     i = start;
     while i < crate::MAX_MODULES {
         let m = &s.modules[i];
-        if m.used == 0 {
+        if m.used != 1 {
             i += 1;
             continue;
         }

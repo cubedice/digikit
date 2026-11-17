@@ -8,21 +8,26 @@ use dkrt_sdk::*;
 /// Arena bytes. A sub-region of `cf.expansion` that is part of this object's bss: patchkit places it with the object, so no
 /// static object of any module can overlap it, and the reset-path loader zeroes it.
 pub const ARENA_BYTES: usize = dkrt_sdk::device::LIMIT_ARENA_BYTES as usize;
-/// Staging buffer for a `.dkm` file (and the store directory): files are at most this size in v0.
-pub const STAGE_BYTES: usize = dkrt_sdk::device::LIMIT_STAGE_BYTES as usize;
 pub use dkrt_abi::MAX_MODULES;
 pub const LOG_ENTRIES: usize = 16;
 pub const STATE_MAGIC: u32 = 0x444b_5254; // "DKRT"
 
 #[repr(C, align(16))]
 pub struct Arena(pub [u8; ARENA_BYTES]);
-#[repr(C, align(16))]
-pub struct Stage(pub [u8; STAGE_BYTES]);
 
 #[no_mangle]
 pub static mut DKRT_ARENA: Arena = Arena([0; ARENA_BYTES]);
-#[no_mangle]
-pub static mut DKRT_STAGE: Stage = Stage([0; STAGE_BYTES]);
+extern "C" {
+    /// The staging buffer of a `.dkm` file (and the store directory): device-owned (`src/cf/<dev>/device.s`), 16-byte aligned, its
+    /// size `dkrt_stage_bytes` ([limits] stage_bytes of the device file: DT2 160 KiB, DN2 64 KiB). Rust uses its address only.
+    pub static mut DKRT_STAGE: u8;
+    static dkrt_stage_bytes: u32;
+}
+
+/// Bytes of `DKRT_STAGE`: files are at most this size.
+pub fn stage_bytes() -> usize {
+    unsafe { core::ptr::read_volatile(core::ptr::addr_of!(dkrt_stage_bytes)) as usize }
+}
 
 #[repr(C)]
 #[derive(Clone, Copy)]

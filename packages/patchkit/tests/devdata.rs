@@ -72,6 +72,18 @@ fn the_runtime_constants_are_the_device_files_numbers() {
         !rs.contains("LIMIT_FX_SLOTS"),
         "the effect slots differ per device"
     );
+    assert!(
+        !rs.contains("LIMIT_STAGE_BYTES"),
+        "staging is allocated by the selected device object"
+    );
+    for (dev, bytes) in [("dt2", 163840), ("dn2", 65536)] {
+        assert_eq!(facts.stage_bytes(dev).unwrap(), bytes);
+        assert!(
+            get(&format!("build/gen/device-{dev}.inc"))
+                .contains(&format!(".equ LIMIT_STAGE_BYTES, {bytes:#x} "))
+        );
+    }
+    assert!(facts.stage_bytes("missing").is_err());
     let dn2 = get("build/gen/device-dn2.inc");
     assert!(dn2.contains(".equ DEVICE_ID, 0x2 "), "{dn2}");
     // the effect slots and the DSP area are read by other modules: their generated files hold them

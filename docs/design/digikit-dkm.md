@@ -19,7 +19,7 @@ deterministic: the same object gives the same bytes.
 
 ## Format
 
-All integers are big endian. The file is at most 64 KiB in v0 (the runtime's staging buffer). Offsets are from the start of the
+All integers are big endian. The file must fit the device's staging buffer: DT2 permits 256 KiB and DN2 64 KiB. Each device object owns an aligned allocation of exactly that size; the runtime reads larger files in native reads of at most 64 KiB, then verifies the complete SHA-256 before loading. Offsets are from the start of the
 file; the loaded image starts at a 16-byte aligned file offset.
 
 | Offset | Size | Field |
@@ -185,6 +185,102 @@ failed or timed out), `E_DSP_DEVICE` -36, `E_DSP_TYPE` -37 (a voice key that has
 The DSP's per-type **selector** word (which render path a track uses) is not set by this section: the selector of a run-time type is
 type 0's (finding 30). A machine that clones SAMPLE, like `pluck`, is right already.
 
+### Experimental persistent instruments (DKDS 7 and 8)
+
+The November 5 upstream rebase reserves DKDS 5 for upstream sample banks and
+track tables. Instrument formats are now 7 (metadata only) and 8 (executable
+ranges); pre-rebase instrument files using 5/6 must be rebuilt. The live V2
+loader accepts only 8. Descriptor declaration kind 13 identifies instruments;
+upstream sample declaration kinds 6/7 are unchanged. Sample declarations and
+instruments cannot share one DSP section. The historical rollout notes below
+describe the initial host implementation, before live registration was added.
+
+The host packer emits version 8 for V2 instruments and can still read version 7. The shipped runtime
+does not yet support it. The experimental `dkneeds::needs_of_v2` entry point can
+account for its memory requirements. The outer DKM requests **machine contract 2.0**;
+the runtime still advertises 1.0, so its contract check rejects these files before
+allocation. Public module packing remains disabled pending registration/dispatch.
+
+V7 extends the header from 0x40 to 0x50 bytes: u32 instrument table offset at
+0x40, u32 count at 0x44, and zero reserved words at 0x48/0x4c. The count is 1..8.
+The existing voice and effect records retain their V4 layouts. Tables appear in
+canonical order: header, imports, relocations, voices, effects, instruments,
+zero padding to 16 bytes, image. The host parser rejects other layouts, trailing
+bytes, overlapping tables and nonzero reserved bytes. V1-V4 output is unchanged.
+
+V8 retains the 0x50-byte header and uses 0x48/0x4c for an executable-range table
+offset and count (1..32). This table follows the instrument records, before the
+16-byte image alignment padding. Each entry is two big-endian u32 image byte
+offsets: start and exclusive end. The packer derives these from the linker's text
+sections, preserving gaps between sections. Ranges must be sorted, nonoverlapping,
+two-byte aligned, at least six bytes long and entirely within the image. Each
+instrument callback must fit a full six-byte instruction inside one range;
+descriptors must not overlap any range. The SDK decoder, host parser and
+experimental resource reader enforce these checks. These are section bounds,
+not proof of instruction boundaries, valid control flow, or execution budgets.
+V7 retains zero at 0x48/0x4c and has no executable-boundary assurance. Neither
+version is admitted by the current runtime; V1–V4 serialization is unchanged.
+
+Each instrument record is four big-endian words: machine type, reset callback
+image byte offset, process callback image byte offset, descriptor image byte
+offset. Zero is a valid callback offset. Both callbacks must have a full six-byte
+instruction within the image and be two-byte aligned; the packer requires global
+text symbols. The descriptor is 48 little-endian bytes of the separate DKIT V2
+layout, four-byte aligned, entirely in initialized data, without overlapping
+relocations. Types must be unique across instruments and V1 voices.
+
+State storage is `tracks * align8(state_bytes)` per instrument, after existing
+image/BSS, voice and effect storage; the total is rounded to 64 bytes. Descriptor
+validation checks arithmetic overflow and caller-supplied admission ceilings,
+including aggregate instrument state. Host parsing checks format bounds only;
+real device admission must apply device-specific ceilings. No V2 records are
+counted as V1 voice rows. `needs_of_v2` returns existing resource totals plus
+separate instrument row, track-instance and aligned state-byte counts, using
+bounded stack storage and checked 32-bit arithmetic. It validates descriptor
+structure and table bounds, but does not check signatures, imports, relocation
+contents or device-specific cycle/stack admission limits. It is not a load check.
+Its arena figure is the loader's V2 allocation: one block for the module's image and bss, copies of its keys table and
+of the whole DSP section, and the output buffer of the relocated DSP image, each rounded to 16; the block stays while the
+module is loaded and `arena_xfer` is 0 (CANOPY on the DT2: 279 600 bytes of arena, 150 016 of DSP area). The descriptor's
+flag word follows the loader's decoder (0, 1, 3 or 7). The runtime's scan (the MODULES page of the DIGIKIT menu) and the
+hosts read with it: `patchkit needs` and `dump`, the wasm `pk_needs`, and through them `dk run`, `module:check` and the
+Transfer page give a V2 file its needs, the hosts with `INSTRUMENT_ROWS`, `INSTRUMENT_TRACKS` and `INSTRUMENT_STATE` beside
+the CAPACITY names. The scan entry and the fit rule have no instrument rows: the loader's V2 owner admits the rows and
+tracks, so a verdict covers memory and the rows of `Needs` only. `modules/machines/canopy/tests/needs.device.test.ts`
+compares the needs with CAPACITY after a load and reads the MODULES row.
+`needs_of`, the reader without instruments, still rejects V7/V8; the scan/fit ABI and the capacity protocol are
+unchanged (no instrument rows in either).
+
+The SDK's `instrument_section::Section` reader validates a complete DKDS8
+instrument-only section without allocation and returns bounded slices and memory
+requirements for admission. It checks canonical layout, padding, import names,
+relocation fields and text containment in addition to descriptors. Mixed legacy
+voice/effect sections are rejected by this reader pending coordinated lifecycle
+support. This reader is not yet called by the live loader and does not resolve
+imports, apply relocations, publish rows or enable a V2 device capability.
+
+`Section::relocate_into` prepares a checked copy in caller-owned memory. It
+resolves each import name once through a trusted resolver and preflights all
+fixups before writing. Missing imports, overlapping fixup instructions, invalid
+placement and address overflow leave the output unchanged. Internal text/data
+addresses use checked base shifts; abs32 import fields encode signed 32-bit
+addends, while abs24 import addends are unsigned as required by packing. The full
+image/BSS/state extent must fit DTII L2. The operation does not initialize BSS,
+transfer bytes, install rows or establish transport quiescence.
+
+The internal V2 registry reserves all types of a module in one transaction.
+Publication requires completion of DSP initialization; retirement hides the rows
+but holds their capacity until DSP detachment is acknowledged. Module-slot and
+generation tickets prevent stale completions from affecting reused rows. The
+explicit V2 fit API rejects missing instrument capacity and updates planning
+snapshots only if both instrument and legacy resources fit. These library paths
+are not connected to loader transfers yet; they do not enable V2 capability.
+The V2 transfer controller requires image acknowledgement followed by a separate
+initialization acknowledgement before publication. Once sending starts, rollback
+requires confirmed detachment; a timeout retains rows and memory. Detachment must
+also drain earlier writes before memory can be reused. The existing V1 loader's
+early ColdFire publication ordering is not suitable for this V2 path.
+
 ## What the loader checks, in order (nothing is written to the arena before the last one)
 
 1. Store: header, table checksum, the path, the table's file hash of the file (`E_NOT_FOUND`, `E_BAD_STORE`, `E_SHA`, `E_TOO_BIG`).
@@ -206,7 +302,7 @@ implementation of it. The runtime's loader is checked in the emulator (`tools/pa
 
 ## Open
 
-- Streaming load for files over 64 KiB; compression.
+- Streaming load for files above the device staging limit; compression.
 - Signing: the sha256 is an integrity check, not authentication (the store is on the user's own card).
 - Pages and `own_dsp` machine records (Digitone II, lane B).
 - The selector word of a run-time type (finding 32, open).

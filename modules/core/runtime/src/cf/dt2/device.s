@@ -47,9 +47,20 @@ dkrt_store_first:
     .globl dkrt_store_sectors
 dkrt_store_sectors:
     .long STORE_SECTORS
+    .globl dkrt_stage_bytes
+dkrt_stage_bytes:
+    .long LIMIT_STAGE_BYTES
     /* The image id (docs/design/digikit-upload.md, INFO): the marker, then 8 bytes that patchkit stamps when it makes the image
      * (packages/patchkit/src/imageid.rs). Zero in the object; INFO reports them. */
     .globl dkrt_image_id
     .ascii "DKIMGID1"
 dkrt_image_id:
     .long 0, 0
+
+    /* The device owns its staging allocation (DT2 160 KiB for CANOPY with its factory wavetables, [limits] stage_bytes of the device file): patchkit reserves this bss
+     * with the object and the boot loader clears it. The Rust object takes its address and dkrt_stage_bytes; native reads stay <= 64 KiB. */
+    .section .bss
+    .balign 16
+    .globl DKRT_STAGE
+DKRT_STAGE:
+    .space LIMIT_STAGE_BYTES

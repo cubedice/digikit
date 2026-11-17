@@ -172,9 +172,46 @@ pub fn sections(m: &Module, name: &str, device: &str, dsp_obj: Option<&Dko>) -> 
     };
     let mut voices = vec![];
     let mut fxs = vec![];
+    let mut instruments = vec![];
     let mut stereo = false;
     let mut tracks: Option<SampleTracksDef> = None;
-    for x in &mf.machines {
+    if let Some(y) = mf.fxs.iter().find(|y| y.instrument) {
+        return Err(err!(
+            "{id}: effect {:?}: `instrument` is for a [[machine]]",
+            y.id
+        ));
+    }
+    for x in mf.machines.iter().filter(|x| x.instrument) {
+        let (c, src) = x.dsp_prefix();
+        let what = format!("instrument {:?} (DSP symbol prefix {c:?} from {src})", x.id);
+        // the V2 lifecycle exists on the DTII 1.17 only, through core/instrument-play
+        if device != "dt2"
+            || !mf
+                .module
+                .requires
+                .iter()
+                .any(|r| r == "core/instrument-play")
+        {
+            return Err(err!(
+                "{id}: {what}: a V2 instrument needs device dt2 and `requires = [\"core/instrument-play\"]`"
+            ));
+        }
+        let (reset, process, desc) = (
+            format!("_{c}_reset"),
+            format!("_{c}_process"),
+            format!("_{c}_descriptor"),
+        );
+        require(obj, id, &what, &reset, "text")?;
+        require(obj, id, &what, &process, "text")?;
+        require(obj, id, &what, &desc, "data")?;
+        instruments.push(dkmdsp::InstrumentSpec {
+            type_no: crate::register::machine_key(name, &x.id),
+            reset,
+            process,
+            desc,
+        });
+    }
+    for x in mf.machines.iter().filter(|x| !x.instrument) {
         let (c, src) = x.dsp_prefix();
         let what = format!("machine {:?} (DSP symbol prefix {c:?} from {src})", x.id);
         let render = format!("_{c}_render");
@@ -251,13 +288,34 @@ pub fn sections(m: &Module, name: &str, device: &str, dsp_obj: Option<&Dko>) -> 
             route: dkmdsp::ROUTE_MASTER,
         });
     }
-    let (dsp, gate) = dkmdsp::pack_with_gate(
-        obj,
-        crate::register::device_id(device)?,
-        &voices,
-        &fxs,
-        tracks.as_ref(),
-    )?;
+    let (dsp, gate) = if instruments.is_empty() {
+        dkmdsp::pack_with_gate(
+            obj,
+            crate::register::device_id(device)?,
+            &voices,
+            &fxs,
+            tracks.as_ref(),
+        )?
+    } else {
+        if !fxs.is_empty() || tracks.is_some() {
+            return Err(err!(
+                "{id}: a V2 instrument cannot share a file with effects or a sample pool"
+            ));
+        }
+        let dev = crate::register::device_id(device)?;
+        let dsp = dkmdsp::pack_with_instruments(
+            obj,
+            dev,
+            &voices,
+            &fxs,
+            &instruments,
+            dkmdsp::FORMAT_LIMITS,
+        )?;
+        // refuse a section the owning runtime cannot admit before a file is written
+        dkrt_sdk::instrument_section::Section::parse(&dsp, dev, dkmdsp::FORMAT_LIMITS)
+            .map_err(|e| err!("{id}: V2 runtime section: {e:?}"))?;
+        (dsp, false)
+    };
     let mk: Vec<u32> = mf
         .machines
         .iter()

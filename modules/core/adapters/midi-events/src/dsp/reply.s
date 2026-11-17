@@ -1,0 +1,127 @@
+// Bootstrap ACK-only reply, not the final CANOPY UI status schema.
+// Called once per DSP block after receive/application. Scratch R0..R6/I0/I1;
+// caller pins non-SIMD, L0/L1=0 and M5=0/M6=1.
+// Magic is published last; checksum covers words 0..14. DSP-link copies this
+// mailbox to the reply rows at the end of the same block.
+.SECTION/PM seg_pmco;
+.GLOBAL _mi_reply_build;
+.EXTERN _mi_epoch;
+.EXTERN _mi_message;
+.EXTERN _instrument_reply;
+.EXTERN _instrument_registry_reply;
+.EXTERN _instrument_session;
+.EXTERN _instrument_play_status;
+.EXTERN _instrument_ui_status;
+_mi_reply_build:
+    I0 = _instrument_reply;
+    R0 = 0;
+    DM(0, I0) = R0;
+    R0 = DM(_mi_epoch);
+    DM(1, I0) = R0;
+    R0 = DM(_mi_message);
+    DM(2, I0) = R0;
+    R0 = DM(_mi_heartbeat);
+    R0 = R0 + 1;
+    DM(_mi_heartbeat) = R0;
+    DM(3, I0) = R0;
+    MODIFY(I0, 4) (NW);
+    R0 = 0;
+    R3 = 11;
+_mr_clear:
+    DM(I0, M6) = R0;
+    R3 = R3 - 1;
+    IF NE JUMP _mr_clear;
+    R0 = _instrument_registry_reply;
+    R0 = PASS R0;
+    IF EQ JUMP _mr_registry_done;
+    I1 = R0;
+    I0 = _instrument_reply;
+    MODIFY(I0, 4) (NW);
+    R3 = 8;
+_mr_registry_copy:
+    R0 = DM(I1, M6);
+    DM(I0, M6) = R0;
+    R3 = R3 - 1;
+    IF NE JUMP _mr_registry_copy;
+_mr_registry_done:
+    // Version 2 echoes the one-shot bound session in word 12 on every block,
+    // independently of registry ACK replacement. Unbound/absent stays version 1.
+    R6 = 0x494ea101;
+    R0 = _instrument_session;
+    R0 = PASS R0;
+    IF EQ JUMP _mr_session_done;
+    I1 = R0;
+    R0 = DM(0, I1);
+    R0 = PASS R0;
+    IF EQ JUMP _mr_session_done;
+    I0 = _instrument_reply;
+    DM(12, I0) = R0;
+    R6 = 0x494ea102;
+    R0 = _instrument_play_status;
+    R0 = PASS R0;
+    IF EQ JUMP _mr_session_done;
+    I1 = R0;
+    R0 = DM(0, I1);
+    DM(13, I0) = R0;
+    R0 = DM(1, I1);
+    DM(14, I0) = R0;
+    R6 = 0x494ea103;
+_mr_session_done:
+    // Status is a different frame kind, never an ACK. The mailbox is optional
+    // and owned by the process adapter: ready word followed by 12 immutable
+    // normalized words. Only a healthy bound row may publish it. Alternate
+    // with the ordinary frame so lifecycle and MIDI ACK progress is retained.
+    R0 = 0x494ea103;
+    COMP(R6, R0);
+    IF NE JUMP _mr_checksum;
+    I0 = _instrument_reply;
+    R0 = DM(13, I0);
+    R1 = 3;
+    COMP(R0, R1);
+    IF NE JUMP _mr_checksum;
+    R0 = DM(_mi_heartbeat);
+    R1 = 1;
+    R0 = R0 AND R1;
+    IF EQ JUMP _mr_checksum;
+    R0 = _instrument_ui_status;
+    R0 = PASS R0;
+    IF EQ JUMP _mr_checksum;
+    I1 = R0;
+    R0 = DM(I1, M6);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _mr_checksum;
+    R0 = DM(12, I0);
+    DM(1, I0) = R0;
+    R0 = DM(_mi_heartbeat);
+    DM(2, I0) = R0;
+    MODIFY(I0, 3) (NW);
+    R3 = 12;
+_mr_status_copy:
+    R0 = DM(I1, M6);
+    DM(I0, M6) = R0;
+    R3 = R3 - 1;
+    IF NE JUMP _mr_status_copy;
+    R6 = 0x494ea104;
+_mr_checksum:
+    I0 = _instrument_reply;
+    MODIFY(I0, 1) (NW);
+    R1 = PASS R6;
+    R2 = PASS R1;
+    R3 = 14;
+_mr_sum:
+    R0 = DM(I0, M6);
+    R1 = R1 + R0;
+    R2 = R2 + R1;
+    R3 = R3 - 1;
+    IF NE JUMP _mr_sum;
+    R0 = R1 XOR R2;
+    DM(I0, M5) = R0;
+    I0 = _instrument_reply;
+    R0 = PASS R6;
+    DM(0, I0) = R0;
+    RTS;
+.SECTION/DM seg_dmda;
+.GLOBAL _mi_heartbeat;
+.VAR _mi_heartbeat = 0;
+.PKBSS _instrument_reply, 64;

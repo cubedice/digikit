@@ -16,7 +16,21 @@
     .even
     .globl dkrt_loop_hook
 dkrt_loop_hook:
-    dk_fw_view_ui_loop_hook dkrt_tick, fw_queue_pop
+    dk_fw_view_ui_loop_hook dkrt_control_tick, fw_queue_pop
+
+/* Optional adapter policies run before the runtime reads destination knobs (fx_controls_tick: core/loop-controls,
+ * loop_ui_tick: core/loop-display; zero when the adapter is absent). Kept outside Rust so an adapter does not
+ * require rebuilding the runtime. */
+dkrt_control_tick:
+    move.l  #fx_controls_tick,%d0
+    beq.s   1f
+    move.l  %d0,%a0
+    jsr     (%a0)
+1:  move.l  #loop_ui_tick,%d0
+    beq.s   2f
+    move.l  %d0,%a0
+    jsr     (%a0)
+2:  jmp     dkrt_tick
 
 
 /* dkrt_boot_hook: the hook at the entry of the main-OS task (a `hook` op: the displaced prologue, `link a6,#-0xa8; movem.l ...`,
@@ -28,9 +42,10 @@ dkrt_boot_hook:
 
 /* dkrt_midi_hook: the hook in the MIDI task's dispatch of a gathered USB SysEx message (docs/design/digikit-upload.md). At the hook the
  * stack holds the router's arguments, pushed by the task: 0(sp) = message, 4(sp) = length, 8(sp) = source; the displaced instructions
- * (`movea.l (0,A2,D1*4),A0; jsr (A0)`) call the router. d0/d1/a0/a1 are saved (D1 is live: it indexes the router table). dkrt_midi_rx
- * returns 1 for our messages: continue at dkrt_midi_ret (after the call, where the task pops its arguments and frees the blocks), else
- * run the displaced instructions in dkrt_midi_next. movem and lea leave the condition codes alone. */
+ * (`movea.l (0,A2,D1*4),A0; jsr (A0)`) call the router. d0/d1/a0/a1 are saved (D1 is live: it indexes the router table). dkrt_midi_dispatch
+ * (midi_dispatch.c) composes the optional channel adapter and dkrt_midi_rx. A claimed message returns 1: continue at dkrt_midi_ret (after
+ * the call, where the task pops its arguments and frees the blocks), else run the displaced instructions in dkrt_midi_next. movem and lea
+ * leave the condition codes alone. */
     .globl dkrt_midi_hook
 dkrt_midi_hook:
     lea     -16(%sp),%sp
@@ -38,7 +53,7 @@ dkrt_midi_hook:
     move.l  24(%sp),-(%sp)      /* source */
     move.l  24(%sp),-(%sp)      /* length */
     move.l  24(%sp),-(%sp)      /* message */
-    jsr     dkrt_midi_rx
+    jsr     dkrt_midi_dispatch
     lea     12(%sp),%sp
     tst.l   %d0
     movem.l (%sp),%d0-%d1/%a0-%a1

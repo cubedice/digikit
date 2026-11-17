@@ -26,12 +26,18 @@
       "inputs": ["pythonGate"],
       "options": { "command": "uv run python -m tools.devtools.py_select checks", "cwd": "." }
     },
+    "sharc-native-lib": {
+      "executor": "nx:run-commands",
+      "description": "The firmware-free native SHARC library for python-tests: pk_sharc runs DSP test calls on it (session_backend) and the native SHARC tests load it. Regenerates the shared core only when its CORE_FINGERPRINT is stale, then cargo builds what changed (about 1 s when current, 35 s after a sharc_core change).",
+      "cache": false,
+      "options": { "command": "uv run python -m tools.sharc_dev.sharc_native_lib --ensure", "cwd": "." }
+    },
     "python-tests": {
       "executor": "nx:run-commands",
       "description": "py_select picks the tests from the diff against DIGI_GATE_BASE; tests/patchkit/test_pk_current.py always runs. The first step builds the cf_call example that some tests need (pk_cfcall.build_example; a no-op when current). Selected only for changes in the scope of python-checks.",
       "cache": false,
       "parallelism": true,
-      "dependsOn": ["digi-control:daemons"],
+      "dependsOn": ["digi-control:daemons", "sharc-native-lib"],
       "inputs": ["pythonGate"],
       "options": {
         "command": "DIGI_JOBS=2 uv run python -c \"from tools.patchkit import pk_cfcall; pk_cfcall.build_example()\" && uv run python -m tools.devtools.py_select run --base ${DIGI_GATE_BASE:-main}",

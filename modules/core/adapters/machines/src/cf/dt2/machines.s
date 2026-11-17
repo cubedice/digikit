@@ -274,6 +274,25 @@ mf_clone5:
 | saved here too).
     .globl mf_typearg
 mf_typearg:
+    | Optional persistent-instrument mapping. It supplies only its owned SRC
+    | slots; all other tracks, slots and absent adapters take the old path.
+    move.l  #instrument_mod_param,%d0
+    tst.l   %d0
+    beq.s   8f
+    lea     -16(%sp),%sp
+    movem.l %d0-%d1/%a0-%a1,(%sp)
+    move.l  %a0,-(%sp)
+    move.l  0x24(%sp),-(%sp)
+    jsr     instrument_mod_param
+    addq.l  #8,%sp
+    cmpi.l  #-1,%d0
+    beq.s   6f
+    movem.l 4(%sp),%d1/%a0-%a1
+    lea     16(%sp),%sp
+    jmp     _mf_x_typearg
+6:  movem.l (%sp),%d0-%d1/%a0-%a1
+    lea     16(%sp),%sp
+8:
     move.l  0x10(%sp),%d0
     subi.l  #_mf_first,%d0
     cmpi.l  #_mf_count,%d0
@@ -308,13 +327,17 @@ mf_typearg:
 | view, for SAMPLE, WERP, STRETCH, REPITCH, SLICED SMP and MANUAL SLICE). The page dots (the shared `ParameterPageView::vfunc_4`
 | and `SourcePageView::vfunc_4`) and the page keys (`ParameterPageView::vfunc_2`, which flips only when the vector holds more
 | than one entry) read that vector; the sample view draws nothing for a type 7 or higher, whose knobs are its own (finding 50).
-| An added machine therefore has ONE SRC page: at the start of `SourcePageView::vfunc_4` the vector is cut to SRC_PAGES entries
+| An added machine defaults to ONE SRC page: at the start of `SourcePageView::vfunc_4` the vector is cut to SRC_PAGES entries
 | and the page index is 0 when the track's type is an added one, and a stock type gets its two entries back. The key of the next
 | page then does nothing and no dots are drawn. SRC_PAGES is 1: the engine has only ten parameter slots (sound-array slots 25 to
 | 34) and the knob page reads eight of them, so a second knob page has no slots to show (docs/findings/50). Site (8 bytes, the
 | first test of the function): `tst.l 0x90(A2); beq.w T`; a2 = the view, d2 = the draw context. T (an anchor, `_mf_spa`) is the
 | knob-page branch; the stock path goes on at site + 8. `_mf_spt` is `FUN_4005f6bc` (the type as a signed long, -1 without a
 | track). d0, d1, a0, a1 are free at the site (the prologue saved d3 .. d7, a3 .. a6).
+| A core adapter may opt a ready painter/input implementation into up to four
+| pages via src-pages.h. mf_src_apply_pages grows the native-owned vector with
+| its native allocator when needed; it never extends end beyond capacity.
+| This does not enlarge the V1 parameter ABI.
     .equ    SRC_PAGES,  1
     .equ    SRC_STOCK,  2           | entries of the stock vector
     .globl mf_srcpage
@@ -324,26 +347,19 @@ mf_srcpage:
     addq.l  #4,%sp
     cmpi.l  #_mf_first,%d0
     blt.s   1f
-    move.l  #SRC_PAGES,-(%sp)
     move.l  %d0,-(%sp)
-    jsr     mf_native_page_count
+    jsr     mf_src_page_count
+    addq.l  #4,%sp
+    move.l  %d0,-(%sp)
+    move.l  %a2,-(%sp)
+    jsr     mf_src_apply_pages
     addq.l  #8,%sp
-    move.l  %d0,%d1
-    lsl.l   #2,%d1
-    add.l   0x7c(%a2),%d1
-    move.l  %d1,0x80(%a2)            | existing capacity is two entries; no allocation or vector growth
-    cmp.l   0x90(%a2),%d0
-    bhi.s   4f
-    clr.l   0x90(%a2)
-4:  jmp     _mf_spa
-1:  move.l  0x80(%a2),%d0           | any other type: the stock vector again if an added type cut it
-    sub.l   0x7c(%a2),%d0
-    subq.l  #4 * SRC_PAGES,%d0
-    bne.s   2f
-    move.l  0x7c(%a2),%d1
-    addi.l  #4 * SRC_STOCK,%d1
-    move.l  %d1,0x80(%a2)
-2:  tst.l   0x90(%a2)
+    jmp     _mf_spa
+1:  pea     SRC_STOCK
+    move.l  %a2,-(%sp)
+    jsr     mf_src_apply_pages
+    addq.l  #8,%sp
+    tst.l   0x90(%a2)
     beq.w   3f
     jmp     _mf_sp + 8
 3:  jmp     _mf_spa

@@ -88,6 +88,10 @@ pub mod machine {
 
     // cf.machine.fn.permit: no sig yet
 
+    // cf.machine.fn.refresh_track: no sig yet
+
+    // cf.machine.fn.selection_build: no sig yet
+
     // cf.machine.fn.type_page.count: no sig yet
 
     // cf.machine.fn.type_reader: no sig yet

@@ -142,6 +142,10 @@ pub struct IdRef {
     /// which the keys hash and `module_ids.h` names its constant from.
     #[serde(default)]
     pub dsp: Option<String>,
+    /// A persistent V2 instrument (core/instrument-play), not a V1 voice: a `[[machine]]` only. Its DSP entry points are `_<prefix>_reset` and
+    /// `_<prefix>_process` and its descriptor `_<prefix>_descriptor`; the section is version 7 or 8 (`dkmdsp`), which the runtime takes on its V2 path.
+    #[serde(default)]
+    pub instrument: bool,
 }
 
 impl IdRef {

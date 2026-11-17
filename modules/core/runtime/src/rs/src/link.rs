@@ -10,6 +10,10 @@ pub struct DspTransport;
 
 impl Transport for DspTransport {
     unsafe fn send(&mut self, win: u32, dst: u32, buf: *const u8, len: u32) -> Sent {
+        // A V2 instrument transaction drains or owns the link (instrument.rs): no legacy transfer starts, the queue keeps it.
+        if crate::instrument::legacy_policy() != dkrt_sdk::instrument_coordinator::LegacyPolicy::Run {
+            return Sent::Refused;
+        }
         // What the loader did before the queue: the area send (`dl_send`) answered -2 (retained or a bad destination) with a failure, and every other
         // refusal, a word write included, was tried again until the loader's guard ended it. A retained state therefore holds word writes; it fails area sends.
         if win == 0 {

@@ -192,7 +192,7 @@ fn main() {
                 println!(
                     "{}",
                     json!({"op": name, "tag": tag, "icount": emu.icount(), "ok": r.finished && r.error.is_none(), "d0": r.d[0],
-                           "insns": r.insns, "error": r.error})
+                           "insns": r.insns, "error": r.error, "pc": r.pc, "d": r.d, "a": r.a})
                 );
             }
             "button" => {

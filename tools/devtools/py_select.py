@@ -568,11 +568,31 @@ def python_tests_passed(out_dir: Path) -> str | None:
     return None if passed > 0 else "nothing passed (0 tests passed)"
 
 
+# A test file too slow for one process declares `# python-tests shards: N` on a line of its own:
+# python-tests runs it as N shards (tools/devtools/pytest_shard.py), in parallel with the other files and with
+# its own timeout per shard. The file owns the declaration, so a module's tests stay in the module.
+SHARD_DECLARATION = re.compile(r"^# python-tests shards: (\d+)\b", re.M)
+
+
+def shard_counts(files: list[str]) -> dict[str, int]:
+    """The shard count each of FILES declares, for those that declare more than one."""
+    counts: dict[str, int] = {}
+    for f in files:
+        try:
+            text = (ROOT / f).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        found = SHARD_DECLARATION.search(text)
+        if found and int(found.group(1)) > 1:
+            counts[f] = int(found.group(1))
+    return counts
+
+
 def python_tests_command(
     out: Path, files: list[str], jobs: int | None = None
 ) -> list[str]:
-    """The per-file runner for the python-tests step (one pytest process per file; JOBS files at
-    once, default python_jobs())."""
+    """The per-file runner for the python-tests step (one pytest process per file, or per shard of a
+    file that declares shards; JOBS at once, default python_jobs())."""
     cmd = [
         *PY,
         "-m",
@@ -587,7 +607,14 @@ def python_tests_command(
         "--timeout",
         "3600",
     ]  # catches hangs, not slow files
-    return [*cmd, "--jobs", str(jobs if jobs is not None else python_jobs()), *files]
+    shards = [f"--shard={f}={n}" for f, n in shard_counts(files).items()]
+    return [
+        *cmd,
+        *shards,
+        "--jobs",
+        str(jobs if jobs is not None else python_jobs()),
+        *files,
+    ]
 
 
 def python_jobs() -> int:

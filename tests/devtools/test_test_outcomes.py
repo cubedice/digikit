@@ -151,6 +151,42 @@ class RunModeTest(unittest.TestCase):
             self.assertEqual(res[("test_skip.py", "::test_s")][0], "skipped")
             self.assertIn("TIMEOUT", all_xml.read_text())
 
+    def test_shards_run_every_case_once(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp) / "root"
+            out = Path(tmp) / "out"
+            root.mkdir()
+            cases = "".join(f"def test_{i}():\n    pass\n\n\n" for i in range(5))
+            (root / "test_many.py").write_text(cases)
+            (root / "test_one.py").write_text("def test_a():\n    pass\n")
+            rc = test_outcomes.main([
+                "run", "--out", str(out), "--root", str(root), "--check",
+                "--shard", "test_many.py=2", "--shard", "test_one.py=3", ".",
+            ])  # fmt: skip
+            self.assertEqual(rc, 0)
+            names = sorted(
+                key[1] for key in test_outcomes.read_outcomes(out / "all.xml")
+            )
+            self.assertEqual(names, [*(f"::test_{i}" for i in range(5)), "::test_a"])
+            rows = (out / "summary.tsv").read_text().splitlines()[1:]
+            self.assertEqual(
+                sorted(row.split("\t")[0] for row in rows),
+                [
+                    "test_many.py[shard 1/2]",
+                    "test_many.py[shard 2/2]",
+                    "test_one.py[shard 1/3]",
+                    "test_one.py[shard 2/3]",
+                    "test_one.py[shard 3/3]",
+                ],
+            )
+            # Two of test_one.py's shards hold nothing; they pass, like the one that runs it.
+            self.assertTrue(all(row.split("\t")[2] == "0" for row in rows))
+
+    def test_bad_shard_is_a_usage_error(self) -> None:
+        with TemporaryDirectory() as tmp:
+            args = ["run", "--out", str(Path(tmp) / "o"), "--root", tmp, "."]
+            self.assertEqual(test_outcomes.main([*args[:5], "--shard", "x=0", "."]), 2)
+
     def test_check(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp) / "root"

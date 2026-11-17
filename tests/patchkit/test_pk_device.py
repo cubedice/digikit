@@ -5,7 +5,9 @@ constants current; these tests keep the hand-written parts of the modules consis
 from __future__ import annotations
 
 import tomllib
+from dataclasses import replace
 
+import pytest
 from support.paths import REPO_ROOT
 
 from tools.device import dkproto
@@ -19,6 +21,41 @@ TYPES = tomllib.loads(
 
 def module(mid: str) -> dict:
     return tomllib.loads((modroots.module_dir(mid) / "module.toml").read_text())
+
+
+def test_shared_limits_allow_device_staging_without_exposing_a_wrong_capacity() -> None:
+    shared = pk_device.shared_limits()
+    assert pk_device.limits("dt2").stage_bytes == 163840
+    assert pk_device.limits("dn2").stage_bytes == 65536
+    for device in pk_device.digikit_devices():
+        limits = pk_device.limits(device)
+        assert shared.modules == limits.modules
+        assert shared.machine_rows == limits.machine_rows
+        assert shared.arena_bytes == limits.arena_bytes
+        assert shared.param_rows == limits.param_rows
+    with pytest.raises(AttributeError):
+        _ = shared.stage_bytes
+
+
+@pytest.mark.parametrize(
+    "field", ["modules", "machine_rows", "arena_bytes", "param_rows"]
+)
+def test_shared_limits_still_reject_different_runtime_capacities(
+    monkeypatch, field
+) -> None:
+    original = pk_device.limits
+
+    def different_limits(device):
+        value = original(device)
+        return (
+            replace(value, **{field: getattr(value, field) + 1})
+            if device == "dt2"
+            else value
+        )
+
+    monkeypatch.setattr(pk_device, "limits", different_limits)
+    with pytest.raises(RuntimeError, match=rf"\[limits\] {field} differs"):
+        pk_device.shared_limits()
 
 
 def test_the_store_geometry_is_the_device_files() -> None:

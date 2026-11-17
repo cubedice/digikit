@@ -1,0 +1,91 @@
+[module]
+id = "core/pattern-position"
+version = "0.2.0"
+name = "Pattern position transport"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Commits DT2 1.17 timed master-step events and publishes their position before DSP render."
+requires = ["core/dsp-link"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/pattern-position-cf.dko.json"
+sources = ["src/cf/pattern_position.s", "src/cf/boundary.c"]
+
+place = "cf.expansion"
+devices = ["dt2"]
+
+[object.externs]
+pp_stock_step = "cf.pattern.site.step_fn"
+pp_start_back = "hook.cf.pattern.site.start.return"
+pp_tick_back = "hook.cf.pattern.site.tick.return"
+pp_start_due_back = "hook.cf.pattern.site.start_due.return"
+
+# Pinned DT2 1.17 MAIN SHA-256:
+# a1e7b657b705eba1a19d81c33c1e11ba9c409816447ad74005d7bbf36da6d964
+# Both sites store the countdown while SR is 0x2700. The hooks replay that
+# store, preserve the live registers, and return to the stock SR restoration.
+# Each named anchor is resolved by a unique instruction-window hash, with no
+# firmware bytes in the rule. The port also pins the whole firmware image.
+[[op]]
+op = "hook"
+hook = "cf.pattern.hook.start"
+to = "pp_start_hook"
+
+[[op]]
+op = "hook"
+hook = "cf.pattern.hook.tick"
+to = "pp_seq_hook"
+
+[[claim]]
+resource = "dt2.sequencer.start.countdown"
+
+[[claim]]
+resource = "dt2.sequencer.tick.countdown"
+
+[[object]]
+path = "build/pattern-position-dsp.dko.json"
+sources = ["src/dsp/pattern_position.s"]
+optional = ["_instrument_block"]
+place = "dsp.l2"
+devices = ["dt2"]
+
+[object.externs]
+_pp_block_back = "hook.dsp.pattern.site.block_entry.tail"
+
+[[op]]
+op = "hook"
+hook = "dsp.pattern.hook.block_entry"
+to = "_pp_block_entry"
+
+[[claim]]
+resource = "dsp.pattern.site.block_entry"
+
+[[claim]]
+resource = "dt2.frame-tail.position"
+
+# In the stock DT2 1.17 handler, I3 has just been loaded from DM(I6-3),
+# the current receive ring. The displaced instruction sets I4 to a dispatch
+# table; command dispatch and audio rendering follow. This is before core/fx.
+[[op]]
+op = "hook"
+hook = "cf.pattern.hook.step_due"
+to = "pp_step_due_hook"
+
+[[claim]]
+resource = "cf.pattern.site.step_due"
+
+[[op]]
+op = "hook"
+hook = "cf.pattern.hook.start_due"
+to = "pp_start_due_hook"
+
+[[claim]]
+resource = "cf.pattern.site.start_due"

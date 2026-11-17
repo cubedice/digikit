@@ -1,0 +1,513 @@
+[[site]]
+name = "cf.page.site.instrument_src_draw_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 240, offset = 16, len = 4, sha256 = "4204bce86fba9924c347375a882db841cf44ade9d851c918e55c3e04d80f583e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration draw_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_key_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 240, offset = 8, len = 4, sha256 = "4204bce86fba9924c347375a882db841cf44ade9d851c918e55c3e04d80f583e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration key_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_update_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 240, offset = 44, len = 4, sha256 = "4204bce86fba9924c347375a882db841cf44ade9d851c918e55c3e04d80f583e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration update_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_turn_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 240, offset = 68, len = 4, sha256 = "4204bce86fba9924c347375a882db841cf44ade9d851c918e55c3e04d80f583e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration turn_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_encoder_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 12, offset = 8, len = 4, sha256 = "58c1845cdcc8e177195df996d2378e95928096f255af4075adaae614808f16bb" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration encoder_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_draw"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "9b9509ec01838a18bfc606b5bb4962078418507d254f70b99017070dd24d15e2" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration draw; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_key"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "fba0123c17090034b80b6654407a1996dbe64ed8837cd1315d99c51501785181" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration key; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_update"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "a665f801431c5bb0863f893fb5c24a64797422f20c207f1e7c3b22bd59664f9e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration update; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_turn"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "2c1de6fc2cbce442d0e8f1108d0395d8f31ff420eae140878bda97991ab82ae8" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration turn; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_event_dispatch"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "ab3fef36f8f2773f98aa6d6f5a96468be2a54e267d6643701a1e064f7ea47ccc" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration event_dispatch; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_event_call"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 22, offset = 10, len = 6, sha256 = "2a5239f61f1ad2c0e491a7418b5483d1c39bdcdf36d91e85aece20cce55e5a87" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration event_call; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_track"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 96, offset = 0, len = 6, sha256 = "cb113ec57e15d78c92ac7291cdbffaf283c0a137a78d3f527b8495546a8e7bbf" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration track; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_alternate"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 96, offset = 0, len = 6, sha256 = "544bcf14862feee44a8a25cc2e3b58122115575006c98d9012d246daff7d1bbe" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration alternate; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_attach_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 240, offset = 20, len = 4, sha256 = "4204bce86fba9924c347375a882db841cf44ade9d851c918e55c3e04d80f583e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration attach_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_detach_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 240, offset = 28, len = 4, sha256 = "4204bce86fba9924c347375a882db841cf44ade9d851c918e55c3e04d80f583e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration detach_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_attach"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "e963f8e360ad18bf8b0fc40cbbd36dbbb68919d3db6a3f59913e4cf0dfcb0cdf" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration attach; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_detach"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "5584261d60e11a4e62b3ce0d83c22aaf582decfee288815bc262fd2698cf45b2" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration detach; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_value"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "59bb0edbda44472e0b8dc9b3e32aadfb86c4485e5bd85fd23cd54ad2e6389532" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration value; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_tune_format"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "bc85b18e1639f5ebe5763f51bc4661b0e556228ffe058e978a71662bf37ba37f" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration tune_format; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_level_format"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "133c878139d9ffea252ac373ae7644e25e7d676816a5888032d2559f338e842f" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration level_format; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_parameter_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 240, offset = 188, len = 4, sha256 = "4204bce86fba9924c347375a882db841cf44ade9d851c918e55c3e04d80f583e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration parameter_slot; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_src_parameter"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "d07cbd161d5dd4c5756da644046b332e793bfb5a25d1ab437383873554d6979b" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 SRC integration parameter; bounded static image inspection, retained stock ABI."
+
+[[site]]
+name = "cf.page.site.instrument_focus_touch"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "0c251e8c677aa8c6f2b73eb1e07297986e802bb7a8a04ffb3a1c51db332034b9" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17: Native encoder focus refresh: void(tracker, index); no parameter write."
+
+[[site]]
+name = "cf.page.site.instrument_focus_active"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "940d567a80eb1d3a878fb103c84e8117c89cceedc3aeffd4b96e39573d801faa" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17: Native encoder focus query: u8(tracker, index)."
+
+[[site]]
+name = "cf.page.site.instrument_label_font"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 40, offset = 28, len = 4, sha256 = "d4ee676e0e09fc816841e8bbe5afbdc1da8c528551ff28e8bc17a4393ff23b3e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17: Font pointer operand in the native widget label/value drawing path."
+
+[[site]]
+name = "cf.page.site.instrument_panel_on"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "0b41a93b0f9edd48d59c5270fbcb2e5054cbf4098df2e00efce4bdd4d174b153" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window."
+
+[[site]]
+name = "cf.page.site.instrument_panel_off"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 8, sha256 = "82f5fdd8ea4994c2c50ace534167e8167b2f5297cbb672a66d586a797e7ec055" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window."
+
+[[site]]
+name = "cf.page.site.instrument_panel_track_object"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 0, len = 6, sha256 = "30de3f7e5f6f08c76aaa4a9b5aa3c74738aef3d9e93262273bf8b5c6ced97a8d" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window."
+
+[[site]]
+name = "cf.page.site.instrument_panel_track_type"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 160, offset = 64, len = 6, sha256 = "4b77305a061c90b42043759e1975860cd9a58f2974b1ac7402ec1764a66d77b4" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window."
+
+[[site]]
+name = "cf.page.site.instrument_panel_selected_track"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 160, offset = 64, len = 6, sha256 = "c8adc30c6e7d1d925049c34cd01a44ce799349db30286b953f769a2cfa26fa52" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window."
+
+[[site]]
+name = "cf.page.site.instrument_panel_key"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "e20f38b45d42c838ddd157b0be670cd4c7319b091fa530692bc8ad4269acda70" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window."
+
+[[site]]
+name = "cf.page.site.instrument_panel_detach"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "5584261d60e11a4e62b3ce0d83c22aaf582decfee288815bc262fd2698cf45b2" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window."
+
+[[site]]
+name = "cf.page.site.instrument_panel_key_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 72, offset = 8, len = 4, sha256 = "ff4ecf66845c20229b6b3cc1feb042eb7631285aed5e531117ef75a52e305c1e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window."
+
+[[site]]
+name = "cf.page.site.instrument_panel_detach_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 72, offset = 28, len = 4, sha256 = "ff4ecf66845c20229b6b3cc1feb042eb7631285aed5e531117ef75a52e305c1e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window."
+
+[[hook]]
+name = "cf.page.hook.instrument_panel_on"
+site = "cf.page.site.instrument_panel_on"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "C ABI wrapper; stock entry replayed on fallthrough."
+
+[[hook]]
+name = "cf.page.hook.instrument_panel_off"
+site = "cf.page.site.instrument_panel_off"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "C ABI wrapper; stock entry replayed on fallthrough."
+
+[[site]]
+name = "cf.page.site.instrument_panel_update_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 72, offset = 44, len = 4, sha256 = "ff4ecf66845c20229b6b3cc1feb042eb7631285aed5e531117ef75a52e305c1e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "KeyboardView update slot; stock target 0x4011afd2 is an empty RTS. Observe selection changes handled by another view."
+
+[[site]]
+name = "cf.page.site.instrument_panel_active"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 80, offset = 0, len = 6, sha256 = "732369a9cc2e9e35364f29f8dc8ba1061e54136547a580b44f27c6ea04a2c812" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 native keyboard enable transition; exact unique window."
+
+[[site]]
+name = "cf.page.site.instrument_panel_toggle"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 96, offset = 0, len = 8, sha256 = "ab34215c99260f228794efe1ffb6feb701b0e6c289b0eae7cd4ab8f1e91c32d9" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 native keyboard enable transition; exact unique window."
+
+[[site]]
+name = "cf.page.site.instrument_panel_toggle_call"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 0, len = 6, sha256 = "d0c469fae496d2fab7c3fa62a2a867e9478e8491edc8f153c7d0c609e6ff5951" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 native keyboard enable transition; exact unique window."
+
+[[site]]
+name = "cf.page.site.instrument_live_record"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 16, offset = 0, len = 6, sha256 = "01e4f0729fbb03b378fd86e75f4af59b41318a4005e24b4970e27de69c83a9cd" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 sequencer UI state (KeyboardView +0x98, SRC view +0x6c): live recording, i.e. transport playing and the record byte at +0x271; finding 147."
+
+[[site]]
+name = "cf.page.site.instrument_trig_held"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 80, offset = 0, len = 6, sha256 = "7440c2d00ae0c6d79bb2c23cc5ba8e51f1e9a22641f8300bb516e813073aaa53" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 sequencer UI state: a trig is held within the pattern length (128-bit held-step mask at +0x258); finding 147."
+
+[[site]]
+name = "cf.page.site.instrument_step_record"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 16, offset = 0, len = 6, sha256 = "ebbc6f3f77a944b3ac9f94afda3ce2322df7958574d46ea818fcad242a0c4feb" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 sequencer UI state: step recording, i.e. record mode (+0x269) with the step-record byte at +0x272 (set by RECORD + STOP); finding 149."
+
+[[site]]
+name = "cf.page.site.instrument_note_list_write"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 0, len = 8, sha256 = "b03e5c55da3152a554640e4e767deca25f816ccf01b6b05f9a8568bccb58a4a5" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 pattern note-list writer (editor, track, step, records vector of 4-byte {note, velocity, ...}); every recorded note commits through it; finding 149."
+
+[[hook]]
+name = "cf.page.hook.instrument_note_list_write"
+site = "cf.page.site.instrument_note_list_write"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "C ABI wrapper of the note-list writer; ip_note_list_original replays the displaced link and register save."
+
+[[site]]
+name = "cf.page.site.instrument_lock_get"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 312, offset = 0, len = 6, sha256 = "58d9db571f1ea439c6be05a26a7a904a0df5fa82c89c0651bd12a7bc379bb4e7" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 SoundParameterSet vfunc 16 (this unused, code, step): the current track's lock value or -1; finding 147. The window spans vfuncs 16..18 and 4 bytes beyond, the only one of three identical copies that is unique."
+
+[[site]]
+name = "cf.page.site.instrument_lock_set"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 312, offset = 100, len = 6, sha256 = "58d9db571f1ea439c6be05a26a7a904a0df5fa82c89c0651bd12a7bc379bb4e7" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 SoundParameterSet vfunc 17 (this unused, code, value, step): sets a lock on the current track; 0 when all 80 lanes are used or the step is beyond the pattern; finding 147."
+
+[[site]]
+name = "cf.page.site.instrument_lock_clear"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 312, offset = 208, len = 6, sha256 = "58d9db571f1ea439c6be05a26a7a904a0df5fa82c89c0651bd12a7bc379bb4e7" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 SoundParameterSet vfunc 18 (this unused, code, step): clears a lock on the current track; finding 147."
+
+[[site]]
+name = "cf.page.site.instrument_seq_step"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 16, offset = 2, len = 6, sha256 = "b11952f3288124caceb94a8b72d75754291a116abff2be11218edad40106b8da" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 OS1.17 sequencer: adda.l of the state base whose byte +0x15b + track holds the track's current step (stored before each trig); the literal is at +2; finding 147."
+
+[[site]]
+name = "cf.page.site.instrument_lock_due_1"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 48, offset = 16, len = 6, sha256 = "6473886f90ee5e1ece589636ab9a3288fce0f8c38bc20711e7e460a350332e17" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 audio ISR due-event lock pointer check on the non-note path. Finding 147."
+
+[[site]]
+name = "cf.page.site.instrument_lock_mark_edited"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 48, offset = 16, len = 6, sha256 = "1348b6d8966ee73ed0a7c151731356b75fd5bae34245305cadc4d0e3af704d7e" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 held-trig edit marker (sequencer view, boolean); stock parameter-lock edits set it before changing values. Finding 147."
+
+[[site]]
+name = "cf.page.site.instrument_lock_due_2"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 48, offset = 16, len = 6, sha256 = "2d3637c8659c7e91bc0e66577a61b869323bc029daf32fc6a90cebec2a636419" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 audio ISR due-note lock pointer check. Finding 147."
+
+[[site]]
+name = "cf.page.site.instrument_lock_skip_1"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 48, offset = 16, len = 6, sha256 = "6ecd08a3d5cdc1ed3908c0cccb846531be657c2dfe1bbd98de5568d741845f91" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 non-note continuation when the event has no lock list."
+
+[[site]]
+name = "cf.page.site.instrument_lock_skip_2"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 48, offset = 16, len = 6, sha256 = "c2ad4179ec63130b15bc2b083fd6af9e3bf0b39cc7764c0f93a3c84f720f4150" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 note continuation when the event has no lock list."
+
+[[hook]]
+name = "cf.page.hook.instrument_lock_due_1"
+site = "cf.page.site.instrument_lock_due_1"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = ["d2", "a0"], clobbers = ["d0", "ccr"] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "Capture due lock lists, including absence, before replaying the stock pointer check."
+
+[[hook]]
+name = "cf.page.hook.instrument_lock_due_2"
+site = "cf.page.site.instrument_lock_due_2"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = ["d2", "a0"], clobbers = ["d0", "ccr"] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "Capture due note lock lists, including absence, before replaying the stock pointer check."

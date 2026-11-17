@@ -78,6 +78,11 @@
     {
       "id": "fx-kit-persist",
       "roots": ["core/runtime", "core/dynfx", "core/fxpages"]
+    },
+    {
+      "id": "instrument-play",
+      "roots": ["core/instrument-play", "core/digikit-menu", "core/health"],
+      "devices": ["dt2"]
     }
   ]
 }

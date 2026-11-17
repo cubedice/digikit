@@ -4,3 +4,6 @@ sdk/include/dk/core/status.h
 modules/core/fw/include/dk_fw_*.h
 modules/core/runtime/include/dkrt.h
 **/build/gen/**
+# Written by CANOPY's tools (ui_tables.py, wavetables.py); test_ui_tables.py compares them with the generator output.
+modules/core/adapters/instrument-play/src/cf/src-waves.h
+modules/core/adapters/instrument-play/src/cf/src-envelope.h

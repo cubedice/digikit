@@ -5,14 +5,27 @@
  "sections": [
   {
    "align": 4,
-   "hex": "00000002646e3200000000010000009700016a7c0000001000000002fc07000c07de29000000006540000000466c00004671200047fe100000000000000000000000000000000000008000000261a000444b494d47494431000000000000000000000000000000000000000000000000000000000000000000000000",
+   "hex": "00000002646e3200000000010000009700016a7c0000001000000002fc07000c07de29000000006540000000466c00004671200047fe100000000000000000000000000000000000008000000261a00000010000444b494d47494431000000000000000000000000000000000000000000000000000000000000000000000000",
    "kind": "data",
    "name": ".rodata",
-   "size": 124
+   "size": 128
+  },
+  {
+   "align": 16,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss",
+   "size": 65536
   }
  ],
- "source_sha256": "0b171f74c3f4f304031b016022bf6fc154318b63f1053b5aab751595a31ee421",
+ "source_sha256": "7b172dce350aaea0208e38ce855373309cd1d1d3917cfbea62648d0905792c13",
  "symbols": [
+  {
+   "global": true,
+   "name": "DKRT_STAGE",
+   "section": ".bss",
+   "value": 0
+  },
   {
    "global": true,
    "name": "dkrt_device_id",
@@ -41,13 +54,13 @@
    "global": true,
    "name": "dkrt_files_fs",
    "section": ".rodata",
-   "value": 112
+   "value": 116
   },
   {
    "global": true,
    "name": "dkrt_image_id",
    "section": ".rodata",
-   "value": 88
+   "value": 92
   },
   {
    "global": true,
@@ -65,7 +78,7 @@
    "global": true,
    "name": "dkrt_sample_fs",
    "section": ".rodata",
-   "value": 96
+   "value": 100
   },
   {
    "global": true,
@@ -99,6 +112,12 @@
   },
   {
    "global": true,
+   "name": "dkrt_stage_bytes",
+   "section": ".rodata",
+   "value": 80
+  },
+  {
+   "global": true,
    "name": "dkrt_store_first",
    "section": ".rodata",
    "value": 72
@@ -115,7 +134,7 @@
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
   "instructions_redecoded": "0",
-  "isa_check": "e27a0e6b2fec0fb473905517bff50ac76dcf650c04368cbe83e5aa9a0ffb4637",
+  "isa_check": "b4bc30348cd255d4bff1b3fb9e66dda2bb3d94148232522a743f914577bee6a0",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

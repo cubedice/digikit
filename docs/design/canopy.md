@@ -1,0 +1,2682 @@
+# CANOPY technical design
+
+The current SRC page map and diagrams are in the
+[four-page UI design](canopy-ui-review.md#review-proposal-three-groups-four-src-pages-2026-11-12).
+The older layout and its acceptance records below describe earlier revisions.
+
+Previous control revision (2026-11-12): SOUND B combines PLAY and chord selection;
+SOUND D combines the two original sounds, five factory wavetables and FM. TUNE
+and LEV appear only on SOUND. ARP always uses the pattern tempo and supports
+keyboard playing while stopped; G/H are blank. Position and its
+envelope share wavetable TONE, and wheel amounts move to MODULATION settings.
+Latch is removed, including migration of older presets to latch-off. Six fixed
+SRC targets per sound type connect to the stock MOD page; the implementation
+does not add a separate target-assignment menu. This control revision is a
+local candidate and has not been installed on the physical DTII. The
+[current controls](#controls-and-display), [wavetable extension](#factory-wavetable-extension-cps9)
+and [FM extension](#four-operator-fm-extension-cpsa) define the existing sources.
+[Wavetable FM](#wavetable-fm-integration-cpsb) adds per-note modulation of each
+selected table while preserving position/scanning, with a fourth WT FM SRC page
+and backward-compatible CPST v5 presets. Its DSP implementation and focused
+checks are complete; the matching compiled UI/audio/preset proof passes in
+403.12 seconds with the verified DT2 emulator and acknowledged control batches. The
+[WT-FM handover](../handovers/HANDOVER-2026-11-09-canopy-wavetable-fm.md) records
+the corresponding evidence and matching artifacts. That earlier pair was installed on the
+physical DTII; identity, module readback, saved presets/routing and module health
+are verified. Physical sound/timing qualification remains open.
+
+The standalone FM implementation and focused emulator acceptance are complete. The
+[FM handover](../handovers/HANDOVER-2026-11-09-canopy-fm.md) records DSP, sound-quality,
+compiled UI/preset, native-pixel and Overloop results, plus outstanding wider-gate
+failures. Physical FM sound/timing qualification remains open. Earlier dated
+stage results remain evidence for their corresponding builds.
+
+The earlier V6 native AMP correction passes its focused emulator checks.
+The track AMP page shapes each CANOPY note independently. The earlier local
+attack/release plus shared AMP design
+can end source audio before the native release, and can leave later AHD notes
+behind an already finished shared envelope. V6 supplies a validated scalar
+snapshot of the stock AMP coefficients to the instrument; each note keeps its
+own attack/hold/decay/sustain/release state. Only a successfully rendered native
+AMP block bypasses the shared carrier envelope. Filter, levels, pan and effects
+remain stock. SOUND SETUP no longer duplicates AMP attack/release; old preset
+fields remain readable for compatibility. Earlier shared-AMP descriptions below
+are historical. Focused regressions and the compiled native-knob/audio proof pass,
+including a measured finite ADSR release and a new audible AHD note after an
+earlier held key finishes. Both matching firmware and module builds are required.
+The [native AMP handover](../handovers/HANDOVER-2026-11-09-canopy-native-amp.md)
+records the evidence and wider-gate failures. The matching firmware and module
+were installed on the DTII at the user's request; device identity, module health
+and preserved settings were verified. Physical sound/timing qualification remains
+open.
+
+The subsequent physical release report exposed an effects-order defect: native
+per-note AMP ran before stock bit reduction, which could turn a fading note
+into a constant-volume quantization residue. The current V7 correction carries
+a common envelope through the track effects and applies it at the stock AMP
+position, retaining each note's relative envelope inside the polyphonic mix.
+Focused regressions and the full compiled playback/coexistence proof pass,
+including measured release after bit reduction at the stock coefficient rate.
+The implementation, artifacts and remaining qualification are recorded in
+[release ordering](../findings/143-canopy-post-fx-amp.md). It requires a matching
+firmware/module pair. The V7 pair was installed on 2026-11-10, with identity,
+module readback and preserved settings verified; see its installation handover.
+
+Status: Stage 5 implementation and DTII OS 1.17 emulator acceptance complete,
+2026-11-02. The admitted CANOPY pad instrument has explicit presets, live
+SOUND/MOVEMENT pages, native TUNE/LEVEL editing and revision-bound display
+updates. The integrated test passes LEARN, durable preset save/load, held-note
+retuning, page navigation and stock-track isolation. Stage 6 hardware latency
+and worst-case CPU qualification remain open; physical Overloop coexistence
+passed on November 3. This is not a hardware release. Evidence is in the
+[Stage 5 handover](../handovers/HANDOVER-2026-11-01-canopy-stage5.md).
+
+The implementation uses [instrument MIDI ownership](../../modules/core/adapters/midi-events/README.md),
+[the admitted playback adapter](../../modules/core/adapters/instrument-play/README.md)
+and the [CANOPY sine kernel](../../modules/machines/canopy/README.md).
+Earlier fixture checkpoints below remain historical evidence; the current
+completion checklist and acceptance table define the next work.
+
+CANOPY is a keyboard-playable pad instrument on one audio track, with four independently articulated chord tones and an arpeggiator blended over the pad. PLAY sounds the notes the player actually presses. ROOT + TYPE generates a chord from a root key and a silent chord-selector key. LEARN TO ROOT captures a voicing for later transposition. Sequencer mode plays a chord from a stock note trig.
+
+The enabling change is a versioned track-instrument interface with individual note events and persistent state. A MIDI queue attached to today's monophonic machine interface is insufficient: the firmware can restart or stop the entire track on each key event. Prove independent key release through the final audio output before building the full synthesizer or screen.
+
+Implementation payoff is a playable harmonic instrument that coexists with Overloop. Confidence is high in chord generation and the bounded DSP engine, moderate in the required MIDI and track-lifecycle integration, and lower in automatic Sound/pattern persistence for extra settings. The complete implementation is multi-day work. The gates below keep uncertain firmware work ahead of expensive UI and synthesis work.
+
+## Scope and decisions
+
+Admission must initialize the stock track configuration before consuming keyboard
+events. The cold-boot proof found no cached stock Sound source before the first
+audition; acknowledging the separate CPS1 configuration is insufficient. Resolve
+the selected Sound from the live project/kit, validate its track and instance,
+publish its stock configuration, and wait for matching DSP readiness. Do not
+dereference the empty cached source or directly force the DSP type mirror.
+The acceptance scenario must select CANOPY and play its first keyboard note
+without a panel audition or sequencer trig, then repeat after Sound/pattern
+replacement. Keep routes closed when initialization or confirmation fails.
+See the [measured admission boundary](../findings/135-canopy-carrier.md).
+
+The carrier integration now has an optional early-frame expiry callback and an
+internal CANOPY render entry that publishes shared stereo envelope controls.
+Connected instruction-core tests cover frame/render/envelope handoff and reset
+retirement. ACTIVE includes the final block of tail samples, with release on the
+next empty block. A dispatcher shim now captures the live workspace's envelope
+bank; the firmware probe checks it against the stock computation and relocation.
+Normal hook installation, shared envelope configuration and final mixer proof
+remain open; this checkpoint does not provide a playable machine or enable routes.
+
+The firmware probe now uses the original DSP configuration caller and executes a
+connected C/E/G note-and-release scenario through the real stock envelope in one
+memory image. This closes the component gap between synthesized audio and AMP,
+while live configuration delivery, neutral downstream velocity and final mixer
+output remain required. Stock AMP remains a master shape; sustained proof settings
+do not change the release design's treatment of user AMP controls.
+
+The carrier probe also measures stock downstream gain and all five shared
+velocity curves. Curve 0 produces a constant 127/128 factor across key velocities,
+making it a candidate for the required neutral shared velocity. The probe now
+follows the velocity latch into the gain coefficient builder, preserving separate
+control attenuation and silence. Updating only the incoming cache leaves the
+latched value unchanged. A proof hook now substitutes only the owned velocity
+operand before gain construction, using a post-receive snapshot of admitted
+instances and actual kernel tails/pending notes. Stereo/context component tests
+and the original scalar gain builder pass. The connected musical proof now runs
+through stock scalar audio gain as well, keeping the owned chord's gain stable
+while shared velocity changes. The hook has resolved firmware declarations but
+remains uninstalled. Preserve LEVEL and modulation, and prove final output
+separately; live scheduling and changing-control smoothing remain open.
+
+The musical proof also traverses the conditional ramp after gain. Controlled
+31/32-sample cases establish that it fades only when a transition byte and an
+envelope configuration flag are both set. The proof's zero configuration flag
+preserves chord audio. The live control/event meanings remain unresolved, so this
+does not yet establish arbitrary Sound compatibility or justify bypassing the ramp.
+
+The incoming DSP track-trigger mask sets that per-voice byte, and a machine-type
+change forces the fade configuration flag on. Preserve that machine-change fade.
+ColdFire component tests now execute the production USB/DIN trampolines and
+confirm that owned keys select the consumed continuation, including velocity-zero
+releases and reset tombstones, with arguments/registers preserved. Readiness is
+injected and the continuations are test observers; live parser-to-trigger-frame
+delivery remains open. These checks do not enable keyboard routes or satisfy the
+final-output gate.
+
+- Ship a DTII-only experimental module, proposed ID `digikit/canopy`, with an explicitly required new runtime capability. Keep existing V1 machines compatible.
+- Support four foreground pad notes. Additional fixed slots handle one arp note and two shared release tails. Voice count never grows with release time.
+- Use internal envelopes and velocity for individual notes. Retain the stock filter, level, pan, mute and FX routing. Treat the stock AMP envelope as a shared master shape, subject to the lifecycle proof below.
+- Make KEYBOARD and SEQUENCER explicit source choices. Do not merge their ownership implicitly in the first version.
+- Start with four existing machine knobs and a module setup menu. Deliver the two SRC pages through a separate, versioned UI/control extension.
+- Save extended settings as explicit DigiKit presets first. Automatic Elektron Sound/project persistence and parameter-lock support require separate proofs.
+- Defer MPE, arbitrary MIDI CC mapping, internal MIDI-track routing, DNII support, rootless-chord guessing and more than four foreground notes.
+
+## Existing interfaces and required changes
+
+| Area | Present implementation | Required extension |
+| --- | --- | --- |
+| Voice input | V1 supplies one pitch, velocity, block count and mono output buffer | Track identity, event batches, instance lifetime, effective controls and transport |
+| Voice lifetime | Stock note-on initializes the machine; inactive stock voices skip its renderer | Wake on events; render through independent releases; reset only at instance boundaries |
+| MIDI receive | Runtime owns a gathered USB-message router hook used for upload | Compose an optional channel-message handler; establish DIN coverage on 1.17 |
+| Machine controls | Four custom words at B/C/E/F; TUNE and LEVEL remain stock | Versioned extended bank and page-to-parameter mapping |
+| Pattern timing | Overloop bridge publishes committed master-grid boundaries | Validated finer clock for subdivisions, triplets and swing |
+| Settings | Device-wide runtime store, called on the UI task; no public DKM settings API | Bounded module-owned settings access and explicit presets |
+
+Source evidence: [machine ABI](../../sdk/include/dk/gen/machine.h), [DTII profile](../../devices/digitakt-ii.toml), [machine adapter](../../modules/core/adapters/dsp-voice/src/dsp/dsp-voice.s), [MIDI declarations](../../devices/fw/midi.toml), [upload analysis](../findings/43-digikit-upload.md), [typed descriptor validation](../../packages/patchkit/src/typed.rs), [module authoring](../MODULE-AUTHORING.md), [pattern-position ABI](../../sdk/include/dk/pattern_position.h), and [settings implementation](../../modules/core/runtime/src/rs/src/settings.rs).
+
+The USB hook's declaration still describes SysEx. Pinned 1.17 component execution
+now confirms that the cable-0 byte parser also queues complete channel messages,
+including fragmented/running-status notes and interleaved clock. Static task
+inspection places the existing hook after the USB receive-enable and auto-channel
+tests. A separate zero-DSP Vitest scenario now observes both USB and DIN messages
+at the stock task hooks in booted firmware, checks ordinary/auto channels and
+receive-enable settings, and forwards every message to the stock router. This
+closes ingress reachability for those cases. A separate coupled CANOPY transport fixture now proves owned USB/DIN notes and
+independent releases through the actual DSP acknowledgements. It installs no
+renderer, so the final-output chain remains unproved; no new SDK API is published.
+
+## Architecture and ownership
+
+```mermaid
+flowchart TD
+    K[USB or DIN keyboard] --> R[Existing MIDI parser and router hook]
+    Q[Committed sequencer events] --> N[Core note routing adapter]
+    R --> N
+    N --> L[Bounded event transport in DSP link]
+    U[Setup menu and SRC controls] --> C[Versioned configuration snapshot]
+    C --> L
+    L --> V[V2 track instrument adapter]
+    V --> P[CANOPY note pool and arp]
+    P --> A[Shared track AMP and filter]
+    A --> F[Track mix and FX including Overloop]
+    P --> T[Bounded status snapshot]
+    T --> U
+```
+
+Follow the [repository layers](../ARCHITECTURE.md). Core adapters own firmware addresses, routing, gates and physical transport. CANOPY accesses only generated SDK contracts. Do not let content code write firmware voice records or inspect undocumented frame offsets.
+
+Proposed new children under `modules/core/adapters/` are `midi-events` for routing and `machine-controls` for extended pages/control state. Extend the existing `dsp-voice`, `dsp-link`, `pattern-position` and `dyndsp` adapters rather than installing competing hooks at their sites. Add the content machine as child `canopy` under `modules/machines/`.
+
+Keep MIDI routing/ownership in the core control path, outside the UI task's redraw cadence. CANOPY owns its keyboard modes, chord generation, oscillator, envelope, arp and voice-allocation state on the DSP; the framework does not hard-code CANOPY chord tables or selector mappings. Chord naming and display formatting run on the UI side from immutable status snapshots. The UI is never the audio scheduler.
+
+## MIDI routing and event ownership
+
+### Ingress
+
+Extend the runtime-owned receive hook with an optional adapter callback before the uploader's short-message/SysEx filter. Preserve the original consumed/fallthrough paths and buffer cleanup. Never patch this hook twice.
+
+The first route is explicit and exclusive: `(input port, MIDI channel) -> CANOPY track`. A route becomes active only when that track has a loaded, healthy CANOPY instance. Unclaimed traffic, stock tracks, MIDI clock and upload SysEx retain their existing routing. Handle valid channel messages after the firmware parser has normalized the byte stream; do not add a second byte parser in an interrupt.
+
+USB and DIN are separate acceptance cases. A directly attached DIN keyboard is the standalone target; USB tests use a host forwarding MIDI. Support for native Auto Channel follows an independently verified target resolver. It is not inferred from a guessed selected-track field.
+
+Claimed Note On/Off messages must be consumed before stock per-key voice handling. Otherwise each note could restart the whole pad or alter its shared velocity. This may also bypass native live recording: the initial keyboard mode does not promise recording polyphonic chords into an audio-track pattern. Sequencer root/chord programming remains a separate path.
+
+In SEQUENCER source mode, consume and ignore fresh claimed keyboard performance notes, pedal and bend; still drain previously owned note-offs and accept PANIC. In KEYBOARD mode, suppress stock sequencer note/gate rearming for that CANOPY track before it can restart the shared AMP. Parameter changes continue through their supported paths. Source selection must govern both event routes and stock carrier handling.
+
+### Ownership ledger
+
+Maintain a bounded ledger keyed by input port, channel and note, with press order, velocity, destination track and routing generation. Note-off follows the destination recorded at note-on, even if the selected track changes. Repeated note-ons at the same pitch receive separate tokens, paired FIFO with note-offs. Bound repeated-note counts; overflow invokes controlled reset rather than wrapping.
+
+MIDI ownership and DSP slots are separate. A stolen note's later note-off must not release the note that replaced its slot. Token matching occurs before changing an envelope. Keep physical key state distinct from sustained, sounding and stolen states. Sustain means CC64 pedal ownership; there is no latch ownership.
+
+Routing edits, source/mode changes, project load, machine removal and faults advance the affected instance generation. Clear its sounding state with a short bounded ramp and invalidate pending old-generation events. Preserve bounded tombstones for outstanding physical presses until their matching note-offs arrive; these releases remain consumed and never redirect to a new track. Tombstones take part in the FIFO pairing even if a fresh same-pitch press has a new destination. Re-enable sounding input with fresh presses after such a reset. If ownership/tombstone capacity is exhausted, quarantine that route until an explicit reset with keys released instead of discarding ownership and guessing.
+
+### Controller rules
+
+| Event | Behavior |
+| --- | --- |
+| Note On velocity 0 | Normalize to Note Off |
+| CC64 below/above 64 | Pedal up/down; pedal up releases deferred notes whose physical keys are up |
+| CC120 | Panic the route: clear keys, pedal and arp, with only the emergency de-click ramp |
+| CC123 | Release all physical keys; ordinary sustain rules still apply |
+| CC121 | Reset controllers, including pedal and channel bend; release pedal-only notes |
+| Pitch bend | Shared channel bend, initially fixed at +/-2 semitones, applied once after note/chord generation |
+| Explicit PANIC | Clear all CANOPY ownership and tails, even if no MIDI message arrives |
+
+Implement only claimed supported controllers; document the fallthrough policy for others. Use MIDI Active Sensing timeout only after that stream has actually enabled it. A DIN cable unplug cannot generally be detected. An internal bridge heartbeat timeout is independent of keyboard inactivity, so a deliberately held note does not expire just because no MIDI arrives.
+
+## Keyboard modes
+
+### PLAY
+
+Every accepted note-on starts its own voice immediately, subject to the fixed four-note foreground limit. Note-off starts only that voice's release unless the sustain pedal holds it. Preserve the played pitches, octave spread and velocities. Generated-chord VOICING does not rearrange PLAY notes. The admitted set of at most four tones also supplies chord recognition and arp candidates; a stolen, still-held key stays in the ownership ledger but is excluded from all three until pressed again. Publish the excluded count so the display can show `+N` instead of implying unlimited keyboard polyphony.
+
+Chord recognition is display-only in this mode. After 35 ms without a note-set change, compare the pitch-class mask with a small dictionary of exact chord templates and their inversions. Prefer a root present in the played set and an exact template; use the previous equally valid interpretation to reduce flicker. Show the lowest sounding pitch as the bass in slash notation. If interpretation is ambiguous, show note names. Display updates do not delay notes, quantize them or retune them.
+
+Recognize major, minor, sus2, sus4, fifth, sixth, major seventh, minor seventh, dominant seventh and add9. Avoid an expensive probabilistic recognizer. Repeated notes and octave duplicates affect voicing display but not pitch-class matching. Distinguish physical/pedal notes from old audio release tails; tails do not change the detected chord.
+
+### ROOT + TYPE
+
+A configurable selector octave is silent. White keys C/D/E/F/G/A/B select major/minor/sus2/sus4/dominant7/minor7/major7. Assign the five black keys major6/minor6/add9/diminished/custom. Key names are relative to the selected octave, with MIDI note numbers shown in setup to avoid octave-label ambiguity.
+
+An optional dedicated selector-channel route allows a second controller or keyboard zone to choose types without reserving an octave on the root-playing channel. Route roles are explicit configuration; root and selector roles cannot overlap ambiguously for the same port/channel/note. Both still use the same ownership and silent-selector handling.
+
+Selector note-on selects a remembered chord type; its note-off remains consumed and silent. Other keys supply roots, using last-pressed-root priority. Releasing the current root restores the most recent still-held root, or a pedal-held root if no physical root remains. With neither, the generated chord releases. A selector update rebuilds the chord from the current root and never becomes an audible note.
+
+When a selector and root arrive together, apply selector changes first within the same DSP batch. Cross-block ordering remains event order, with smooth reassignment. In PAD mode apply changes immediately. With quantized chord changes enabled, stage the entire new chord and commit at the next arp event, never one interval at a time.
+
+Offer close/open voicings and explicit inversions. Optional voice leading searches bounded octave/inversion candidates to minimize total pitch movement, preserving common tones where possible. Apply it only to generated chords. Reject a generated voicing that cannot fit the supported pitch range; never clamp several out-of-range tones onto the same pitch silently.
+
+### LEARN TO ROOT
+
+LEARN opens a capture session. Collect up to four unique physically played notes, preserving octave spacing; excess notes show a capacity message. SAVE commits the set relative to its lowest captured note. CHORD names remain informational: an inferred root must not silently change the transposition anchor.
+
+For capture C-G-B-E, store offsets 0, 7, 11, 16. Playing D as root gives D-A-C#-F# with the same voicing. CANCEL leaves the previous shape intact. Learning auditions use ordinary PLAY voices. SAVE updates RAM immediately and queues explicit persistence outside the MIDI task.
+
+Library slots are templates. A saved preset embeds its learned intervals by value, so editing a library slot cannot alter existing presets unexpectedly.
+
+### Sustain and note release
+
+There is no latch mode. A note remains owned while its physical key or sustain
+pedal holds it. Key-up starts release otherwise; arp membership follows that
+ownership and excludes release tails. Learning may retain captured pitch data
+after key-up, but it never keeps the audition voice held. Existing presets with
+latch enabled load with it disabled; reserved control slot 12 is always saved
+as zero. Sustain does not allocate additional hidden voices.
+
+## Versioned instrument interface
+
+Add an opt-in V2 contract in `sdk/sdk.toml`, generate its C/assembly bindings, and extend descriptor parsing, DKM packing, runtime validation, DSP registration and conformance together. Never enlarge `dk_voice_in` or reinterpret V1 descriptors in place. A V2 module must fail to load with a clear capability error on old firmware.
+
+The semantic contract below now has an experimental binary layout in
+`sdk/sdk.toml` under `[instrument]`, with generated C and assembly bindings in
+`sdk/include/dk/gen/instrument.h`, `sdk/include/dk/gen/instrument_consts.h` and
+`sdk/dsp/contract/dk_instrument.inc`. The input is 72 bytes; the separate `DKIT` descriptor
+is 48 bytes. Normalized events have six 32-bit words and require zero sample
+offset. The descriptor declares track count, per-track state, bounded events and
+controls, and process/reset instruction, call-depth and stack budgets.
+
+`packages/patchkit/src/instrument.rs` validates descriptor sizes, reserved flags,
+limits and aligned per-track allocation with overflow checks. These are declared
+admission bounds, not measured CPU performance. The V1 packer explicitly rejects
+this magic rather than interpreting it as a V1 voice. Existing V1 layouts and the
+advertised machine contract remain unchanged at 1.0.
+
+This is a serialization checkpoint, not completed V2 registration. Remaining:
+runtime registry/capacity integration and validation/allocation; DSP callback dispatch and
+lifecycle ownership; conversion of the sine fixture and conformance checks.
+The `DK_INSTRUMENT` C macro and `.dk.desc` record kind 6 now declare reset/process
+callbacks and their descriptor as distinct typed instruments. Reading a dynamic
+module preserves these declarations for `patchkit desc`; duplicate instrument IDs,
+collisions with V1 machine/effect IDs and missing names/symbols are rejected. V1
+parameter/page ownership remains unchanged. Device resolution/packing and direct
+static application explicitly reject instruments until V2 runtime support exists.
+This prevents either silently dropping a declaration or interpreting it as a V1
+voice. The `test/instrument-declaration` fixture compiles a real C macro and checks
+inspection plus pack refusal; it contains no playable DSP machine. Validation:
+14 descriptor-reader tests, nine SDK-generation tests, ten existing typed-machine
+tests and the ColdFire C-to-CLI integration test pass. Logs are under
+`out/canopy-v2-records-*`.
+
+The host DSP packer now serializes separate instrument records in experimental
+DKDS version 5. Reset/process callbacks must resolve to global text symbols, the
+descriptor to initialized data. Parsing checks bounded counts, descriptor budgets,
+aggregate allocation, duplicate types (including V1 collisions), table layout and
+reserved bytes. A V5 DKM requests machine contract 2.0, while the current runtime
+still advertises 1.0 and rejects that major version before allocation. This is a
+format/header proof, not an emulator load proof. The normal `dkneeds::needs_of` resource
+checker also continues to reject V5; do not interpret host serialization as a
+loadable module. Public module packing remains guarded. Next: connect the runtime
+instrument registry to loader transactions and the capacity protocol, then implement
+callback dispatch.
+The experimental `dkneeds::needs_of_v2` API now computes V2 memory requirements
+without allocation: total DSP storage plus separate instrument rows, track
+instances and state bytes. Legacy scan/fit callers remain on `needs_of`, which
+rejects V5. This avoids losing an instrument requirement in the old capacity ABI.
+The parser checks descriptors, table layout, duplicate types and overflow;
+cycle/stack ceilings and full load validation remain the runtime's responsibility.
+Accounting validation: 14 `dkneeds` tests, ten DSP packer tests (including a real
+V2 file/accounting cross-check), and nine existing runtime-fit tests pass. Logs
+are under `out/canopy-v2-needs*.log`. The two edited design documents have no stale
+references. No emulator/device admission is claimed by this checkpoint.
+Validation: ten DSP serialization tests and seven DKM compatibility tests pass
+(`out/canopy-v5-tests.log` and `out/canopy-v5-dkm-tests.log`). The required
+changed-file check passes layering but still reports the existing 256 stale
+references in 78 files.
+
+V2 registration bookkeeping is now implemented in
+`modules/core/runtime/sdk/src/instrument_registry.rs`. A single loader task owns
+eight fixed rows and a caller-supplied track-instance limit. A whole module is
+reserved atomically, remains invisible until publication, and is hidden from new
+admissions when retirement starts. Reserved and retiring rows continue to consume
+capacity. Failed reservations leave no partial rows; rollback is allowed only
+before publication and after any in-flight DSP work is quiescent. Retiring rows
+are released only after the matching DSP detach/reset completion, never timeout.
+Tickets bind the module slot and a monotonic generation; stale completions cannot
+publish or release a replacement. Generation exhaustion fails closed.
+
+`modules/core/runtime/fit/src/instruments.rs` checks the separately reported V2
+row/instance capacity plus existing resources. Missing V2 capacity is unsupported,
+not unlimited. Planning consumes both snapshots only after every requirement fits.
+It does not reserve the live registry or change the existing scan/fit ABI.
+
+These are tested library components, not wired loader or DSP publication paths.
+The loader still rejects contract 2.0. Remaining integration must validate device
+type ranges and V1/V2 conflicts, reserve memory and rows together, bind transfer
+ACKs to tickets, publish after reset/initialization, and keep failed or timed-out
+retirements quarantined. Full live initialization, DSP dispatch and public module
+packing remain disabled. Five registry lifecycle tests and twelve fit tests
+(including the nine existing cases) pass; logs are in
+`out/canopy-v2-registry.log` and `out/canopy-v2-registry-fit.log`. The changed design
+references pass their focused path check. No ColdFire or emulator execution of
+these new lifecycle components has been claimed.
+
+`modules/core/runtime/sdk/src/instrument_load.rs` now owns the registry through a
+bounded transfer state machine. It emits commands for image transfer,
+initialization, publication, detachment and storage release. Image transfer and
+initialization require separate ordered acknowledgements carrying the reservation
+ticket. A pre-transfer cancellation releases immediately; after transfer starts,
+cancellation requires DSP detachment. Timeouts quarantine the reservation, and
+late image/initialization acknowledgements cannot publish it. A late matching
+detach completion may release it only after the transport has drained earlier
+writes and callbacks. Repeated/stale completions cannot release a replacement.
+
+The live loader's V1 path currently publishes ColdFire registrations before its
+DSP transfer completes. Do not reuse that ordering for V2. The new state machine
+is tested with the actual registry and capacity planner, but its commands are not
+yet connected to DSP-link. Next: implement V2 DSP row/reset transport, bind its
+acknowledgements to these commands, and then connect staged-file admission and
+memory ownership. Contract 2.0 remains disabled until those paths work together.
+Validation: nine transfer/registry tests and twelve fit tests pass, including
+interleaved owners, cancellation at each transfer stage, stale completions and
+retained capacity after timeout. Logs: `out/canopy-v2-load.log` and
+`out/canopy-v2-load-fit.log`. These are host tests, not DSP transport acceptance.
+
+DSP-link now carries optional V2 registration data through window 3. The existing
+ColdFire sender encodes the fourth window, and both SHARC receivers use optional
+`_dl_irows`/`_dl_iwords` provider bounds. Absent, misaligned, zero-sized or oversized
+providers fail closed; each write must fit the declared region. Existing frame
+suffixes and reply allocations are unchanged. Component tests execute the actual
+sender and receiver. The optional DTII `core/instrument-registry` provider now supplies a 16-word
+query-only command mailbox. `_dl_iwords` points to its word-count constant.
+Committed, checksummed commands carry a strictly increasing sequence plus owner,
+generation and row. Malformed or stale commands retain the previous reply.
+QUERY reports zero capabilities; INITIALIZE and DETACH return unsupported, never
+a successful lifecycle acknowledgement. The block wrapper invokes the provider
+and copies its eight-word reply into existing instrument reply words 4..11,
+covered by the existing reply checksum. No extra SPI reply rows are allocated.
+See [mailbox protocol](../../modules/core/adapters/instrument-registry/README.md).
+Next: implement bounded DSP initialization/reset and detachment, then connect the
+load controller to these acknowledgements. No instrument rows are published yet.
+Validation: 13 SHARC component cases (seven V2-window and six existing suffix-bound
+cases) and the ColdFire window-encoding test pass. DSP-link rebuilds for DTII and
+DNII; its CF and both DSP objects re-decode and check current. Logs are under
+`out/canopy-v2-window-*.log`. This is processor-core execution, not hardware proof.
+The changed-file check also passes 193 host tests (16 skipped), formatting, types
+and layering; its remaining failure is the existing 256 stale references.
+
+Mailbox checkpoint validation: 15 command/reply cases pass, including malformed
+input, checksum failure, unsupported operations, replay and sequence exhaustion.
+The 18 composed-frame cases pass with the optional provider present alongside the
+carrier or absent, preserving processor context. Three standalone reply cases and
+13 DSP-link window/suffix cases also pass. DTII/DNII DSP-link, DTII MIDI-events
+and the new DTII registry objects rebuild, re-decode and check current. Logs:
+`out/canopy-registry-final.log` (49 passing component cases) and
+`out/canopy-registry-build.log`. The changed-file check passes formatting, types
+and layering; it reports the existing 256 stale references and one unrelated
+minimum-delay timer assertion (192 host tests passed, 16 skipped). That timer
+test passes an isolated rerun in `out/canopy-registry-timing-recheck.log`. Changed
+document references pass. Hardware validation remains outstanding.
+
+The internal no-std mailbox client now binds loader commands to exact physical
+rows, serializes clear/body/commit writes, and validates complete replies before
+advancing. A module with several rows publishes or releases only after all rows
+acknowledge the matching operation. Partial failure quarantines the entire module;
+recovery requires the caller to drain prior writes and start a fresh detach.
+Sequence exhaustion rejects the whole batch, and late or mismatched replies cannot
+complete another row or a cancelled initialization. Owner IDs are bounded to the
+mailbox's 32 module slots. The current DSP bootstrap still rejects lifecycle work;
+successful lifecycle replies in client tests are synthetic. Live SPI scheduling,
+DSP reset/detach implementation and staged-file admission are still outstanding.
+Validation: 14 targeted SDK registry/load/mailbox host tests pass; log
+`out/canopy-mailbox-client.log`. Changed documentation references pass. The
+changed-file check passes layering and reports only the existing 256 stale
+references (`out/canopy-mailbox-client-changed.log`). No device or ColdFire
+execution is claimed.
+
+An internal SHARC V2 single-instance reset worker is now implemented in
+`modules/core/adapters/instrument-registry/src/dsp/lifecycle.s`. It validates the
+state extent, callback range and reset reason before any write/call, clears state
+only for CREATE, and accepts only a zero callback result. Its current clearing
+limit is 1024 words per call. It is not yet connected to mailbox commands: trusted
+row metadata, owned allocation bounds, reset-budget admission, complete callback
+context protection and per-track scheduling remain required. The earlier CANOPY
+event-reset hook is not ABI-compatible with this worker. No new V2 capability is
+advertised and no lifecycle success is acknowledged by the bootstrap provider.
+Validation: 29 SHARC component cases pass (`out/canopy-reset-worker.log`); the
+registry adapter rebuilds, re-decodes all 130 instructions and checks current
+(`out/canopy-reset-worker-build.log`). These are processor-core tests with a
+synthetic V2 callback, not live firmware or hardware acceptance. The changed-file
+check passes 193 host tests (16 skipped), formatting, types and layering; its only
+failure is the existing 256 stale references. Changed document references pass.
+
+The DSP now has an internal eight-row lifecycle table and begin/tick routines in
+`modules/core/adapters/instrument-registry/src/dsp/rows.s`. Initialization and
+detachment reset at most one track instance per tick. Completion follows the last
+callback return; failures retain the owner/generation and attempted-instance count.
+Partial initialization detaches only attempted instances, including a faulted
+callback that may have written state. Detach retries preserve ownership; completed
+rows retain a tombstone until trusted admission explicitly reuses them. READY does
+not yet publish audio dispatch. Production admission does not populate these rows,
+and mailbox commands still report lifecycle operations unsupported. Full callback
+context protection and mailbox scheduling remain the next integration work.
+Validation: 20 SHARC row lifecycle cases pass (`out/canopy-row-lifecycle.log`),
+including partial initialization, detach failure/retry, cancellation, stale owners
+and malformed metadata. The registry adapter rebuilds, re-decodes 281 instructions
+and checks current (`out/canopy-row-lifecycle-build.log`). Changed document
+references, formatting, types and layering pass. The changed-file check reports
+the existing 256 stale references and the recurring minimum-delay timer failure
+(192 host tests passed, 16 skipped); that timer test passes an isolated rerun in
+`out/canopy-row-lifecycle-timing.log`.
+
+A protected row-tick boundary is now implemented in
+`modules/core/adapters/instrument-registry/src/dsp/protected.s`. It preserves V2
+callback scratch context, both 80-bit multiplier accumulators, addressing lengths
+and arithmetic mode/status while pinning the callback ABI. B3 is restored before
+I3; accumulator guard words are restored after middle words. Entry must already be
+non-SIMD and callbacks must comply with the ABI. The boundary is non-reentrant.
+The actual row lifecycle component tests now execute through it. This supplies
+the context protection needed for mailbox integration, but mailbox scheduling,
+trusted admission and audio dispatch are still disconnected. Validation: four
+context-preservation cases and 20 protected row lifecycle cases pass
+(`out/canopy-protected-tests.log`); the adapter rebuilds, re-decodes 503 instructions
+and checks current (`out/canopy-protected-build.log`). The changed-file check
+passes 193 host tests (16 skipped), types and layering. Its import-format finding
+was fixed and both changed test files pass Ruff check/format on recheck; the
+existing 256 stale references remain. Changed documentation references pass.
+No hardware proof is claimed.
+
+The mailbox now schedules protected row work and emits delayed lifecycle replies.
+It snapshots sequence/owner/generation/operation/row, consumes the sequence, and
+runs at most one protected row tick per frame. While pending it preserves the
+previous reply and ignores mutable command bytes. READY/DETACHED produce success;
+row identity/phase rejection produces status 3 and callback/metadata faults produce
+status 4, retaining owned rows. Replays do not rerun callbacks. An internal
+cold-boot-zero `_ir_lifecycle_ready` gate keeps production lifecycle work disabled;
+only future trusted admission may enable it after validating rows and budgets.
+No production admission path sets it, no audio dispatch is published, and the
+loader still rejects V2. Remaining work: owned image/state admission, live SPI
+client integration and dispatch. Processor tests seed admission only in fixtures.
+Validation: 40 mailbox/lifecycle/shared-frame component cases pass in
+`out/canopy-mailbox-scheduler.log`, including real protected row execution with
+synthetic callbacks. The expanded eight-case lifecycle suite also covers failed
+detach and new-sequence retry (`out/canopy-mailbox-lifecycle-final.log`). The adapter
+rebuilds, re-decodes 558 instructions and checks current
+(`out/canopy-mailbox-scheduler-build.log`). Changed documentation, formatting,
+types and layering pass. The changed-file check reports the existing 256 stale
+references and recurring timer assertion (192 host tests passed, 16 skipped); the
+timer passes an isolated rerun (`out/canopy-mailbox-scheduler-timing.log`). No
+device or hardware acceptance is claimed.
+
+An internal admission planner in `modules/core/runtime/sdk/src/instrument_admission.rs`
+now validates ticket-bound allocator grants against reserved physical rows before
+transfer. It checks exact type coverage, L2/image/state bounds, non-overlap,
+executable callback extents, instance allocation and declared budgets. It produces
+inert fixed-size row metadata only after the whole batch succeeds. The trusted
+caller must still obtain exclusive grants, validate instruction boundaries and
+supply remaining resource ceilings; the planner neither allocates nor enables the
+DSP gate. Live allocator/SPI integration and V1/builtin type exclusion remain open.
+
+This exposed a stride mismatch: descriptor allocation rounds each state to eight
+bytes, while the row worker previously advanced by the raw state size. The worker
+now uses the same rounded stride and preserves padding. A processor regression
+covers three 12-byte states at 16-byte intervals through the protected lifecycle.
+Validation: 19 admission/registry/load/mailbox Rust tests pass
+(`out/canopy-admission.log`), and 29 protected row/mailbox DSP cases pass
+(`out/canopy-admission-dsp.log`). The registry adapter rebuilds and re-decodes
+560 instructions (`out/canopy-admission-build.log`). Focused documentation checks
+pass. The changed-file check passes 193 host tests (16 skipped), formatting,
+layering and types; it fails only on the existing pathcheck baseline of 256 stale
+references in 78 files (`out/canopy-admission-changed.log`). No live admission is
+claimed.
+
+The live runtime now calls a shared, allocation-free DSP first-fit search over its
+existing per-module offset/length ledger. This is the common pool used by legacy
+voices and effects; future V2 reservations must use the same ledger rather than
+an independent allocator. The search preserves absolute-address alignment and
+lowest-gap reuse, and rejects overflowing, overlapping or out-of-bounds ledger
+entries before returning a candidate. It does not reserve or free a range: the
+single loader still owns ledger updates and must retain pending allocations.
+Four host tests pass, including exhaustive comparison against a byte-by-byte
+oracle for 131,072 small fragmented-pool requests
+(`out/canopy-memory-tests.log`). The integrated runtime passes a release host
+compiler check (`out/canopy-memory-runtime-check.log`). The ColdFire rebuild is
+blocked because Rust-for-ColdFire is not installed (`out/canopy-memory-build.log`);
+no rebuilt runtime artifact or device validation is claimed. V2 grant creation,
+row installation and live SPI sequencing remain disconnected. Focused documentation
+and layering checks pass; the changed-file check fails only on the existing 256
+stale path references in 78 files (`out/canopy-memory-changed.log`).
+
+The V2 load controller now supports ticket-bound memory reservations through a
+borrowed view of the shared DSP allocation ledger. It claims one range for image,
+BSS, alignment and instance states, derives image/state grants from that range,
+and leaves the ledger unchanged on rejection. Legacy allocations remain occupied.
+Memory-backed tickets enter a release-pending phase after pre-transfer cancellation
+or completed detach. The owner slot stays busy until `release_memory` verifies the
+exact generation and recorded range and clears the ledger entry. Timeouts, partial
+mailbox completion and stale releases cannot free the allocation. Calls without
+memory reservations retain the existing component behavior.
+Validation: 25 targeted SDK tests pass (`out/canopy-memory-lifetime-tests.log`),
+including derived-grant admission, other-module coexistence, rollback/retry,
+quarantine, changed-ledger rejection and a two-row mailbox detach. The integrated
+runtime passes a release host check (`out/canopy-memory-lifetime-runtime.log`).
+The live loader does not call these reservation APIs yet: it must pass its actual
+ledger, retain the CF record through release and bypass legacy unreserve on every
+V2 error path. DKDS5 parsing, row installation and live SPI integration remain
+open. The missing Rust-for-ColdFire toolchain still prevents a device build.
+Focused documentation and layering checks pass; the changed-file check fails only
+on the existing 256 stale references in 78 files
+(`out/canopy-memory-lifetime-changed.log`).
+
+Descriptor decoding is now shared no-std code in the runtime SDK; the host
+packer uses that same implementation for the 48-byte V2 descriptor, admission
+ceilings and eight-byte instance allocation. A bounded DKDS5 instrument-record
+reader decodes BE records and LE descriptors into eight fixed slots. It rejects
+truncation, duplicate/invalid keys, unaligned or out-of-image callbacks,
+descriptor relocation overlap, and excessive aggregate state. It takes separately
+bounded table/image/relocation slices; it does not validate the complete DKDS5
+header, resolve keys/imports, relocate code or reserve memory.
+The existing DKDS5 records do not preserve executable-section boundaries.
+Image-range validation alone cannot establish that a callback belongs to code;
+the loader still needs validated executable metadata before admission. The new
+reader deliberately returns image offsets and does not manufacture a code grant.
+Validation: 28 SDK tests and ten selected packer/schema tests pass, including
+actual packed DKDS5 bytes read by the SDK decoder (`out/canopy-decoder-sdk.log`,
+`out/canopy-decoder-packer.log`). The runtime passes a release host check
+(`out/canopy-decoder-runtime.log`). Device admission remains disabled.
+Focused documentation and layering checks pass; the changed-file check fails only
+on the existing 256 stale references in 78 files (`out/canopy-decoder-changed.log`).
+
+Experimental DKDS6 now preserves the linker's executable section ranges in a
+bounded table. It reuses the 0x50-byte header, with table offset/count at 0x48/0x4c
+and up to 32 sorted start/end pairs after the instrument records. The packer
+emits V6 for new V2 images; host parsing still round-trips older DKDS5 without
+inventing executable ranges, and legacy V1-V4 output stays unchanged. Both formats
+continue to request machine contract 2.0 and remain rejected by normal admission.
+The shared SDK decoder and experimental resource checker reject overlapping or
+out-of-image ranges, callbacks outside text or crossing a section end, and
+descriptors overlapping text. Text boundaries are not a proof of instruction
+boundaries, control flow or budget compliance. The live loader must still consume
+this metadata and install rows through the pending admission/SPI integration.
+Validation: 29 SDK tests, 11 DSP packer tests and eight selected resource-reader
+tests pass (`out/canopy-executable-sdk.log`, `out/canopy-executable-packer.log`,
+`out/canopy-executable-needs.log`). The runtime host check passes
+(`out/canopy-executable-runtime.log`); no ColdFire build or device capability is
+claimed while its toolchain and live dispatch remain unavailable. Focused docs
+and layering checks pass; the changed-file check fails only on the existing 256
+stale references in 78 files (`out/canopy-executable-changed.log`).
+
+Packed-metadata admission now composes the DKDS6 record/range decoders with the
+allocator grant and reserved load ticket. It checks exact image extent and
+resolved-type coverage, verifies descriptor track counts against reservations,
+places each type's state using descriptor allocation sizes, and derives SHARC
+callback PCs from the allocated image base. Reset and process may occupy separate
+text sections; reset rows retain only reset bounds, while the inert plan retains
+process bounds separately. No encompassing range spans a gap or data section.
+The caller still supplies header-bounded slices and resolved types, with builtin
+and V1 conflict checks, relocation/import validation and instruction-boundary
+proof required before live loading. The operation neither allocates nor writes
+DSP memory, and leaves failed reservations available for cancellation.
+Validation: 32 targeted SDK tests and the runtime release host check pass
+(`out/canopy-packed-sdk.log`, `out/canopy-packed-runtime.log`). Tests compose real
+memory reservations with mixed-endian records, split text sections, reversed
+physical-row order, aligned state layout and rejected metadata/type/phase changes.
+Live loader calls, row publication, SPI integration and device proof remain open.
+Focused docs and layering checks pass; the changed-file check fails only on the
+existing 256 stale references in 78 files (`out/canopy-packed-changed.log`).
+
+A bounded no-std whole-section DKDS6 reader now validates the canonical header,
+device, table order/counts, zero padding, exact image extent, imports and relocation
+metadata before exposing slices. It checks nonempty NUL-padded unique import
+names, relocation kinds/classes/import indices and text-range containment, then
+uses shared descriptor/range decoding. Image/BSS/state sizing is checked before
+returning a memory request and a view suitable for packed admission. The reader
+accepts instrument-only sections; mixed V1 voice/effect loads are rejected until
+their coordinated lifecycle is implemented. Legacy loading remains separate.
+Validation: 35 SDK tests, real packed-file compatibility and the runtime host
+check pass (`out/canopy-section-sdk.log`, `out/canopy-section-packer.log`,
+`out/canopy-section-runtime.log`). Tests cover parsing through reservation and row
+planning, every truncation, byte mutations, aliases, invalid counts, import and
+relocation errors, and trailing data. This establishes format validation, not
+actual import resolution, relocation results, instruction boundaries, row writes
+or transport readiness; live loader integration and device proof remain open.
+The three parser cases pass again after final source-encoding cleanup
+(`out/canopy-section-final.log`). Focused documentation and layering checks pass;
+the changed-file check fails only on the existing 256 stale references in 78 files
+(`out/canopy-section-changed.log`).
+
+Validated instrument sections can now prepare a relocated image in caller-owned
+storage without allocation or SPI activity. The relocator checks placement of the
+entire image/BSS/state allocation in DTII L2, resolves each import exactly once
+through a trusted callback, rejects overlapping fixup instructions and validates
+all address arithmetic before copying any bytes. A missing import, invalid
+placement, short output or late fixup error leaves the output unchanged. Internal
+addresses use checked rebasing; abs32 import addends use signed arithmetic, while
+abs24 retains the packer's unsigned-addend contract. Opcode parcels are preserved.
+Validation: 39 targeted SDK tests pass, including late-failure atomicity, signed
+addends, overlap rejection and output preservation (`out/canopy-relocation-sdk.log`).
+A real packed fixture produces byte-identical output to the host reference
+relocator (`out/canopy-relocation-packer.log`), and the runtime host check passes
+(`out/canopy-relocation-runtime.log`). The live firmware export resolver is not
+connected yet. Image transfer/BSS initialization, row installation and SPI-driven
+lifecycle remain pending; no installable module or device proof is claimed.
+Focused docs and layering checks pass; the changed-file check fails only on the
+existing 256 stale references in 78 files (`out/canopy-relocation-changed.log`).
+
+A ticket-bound image transfer controller now sequences the relocated image,
+BSS zero-fill and alignment padding in at-most-256-byte writes. It validates the
+exact allocator-recorded image/state grant before starting, borrows the immutable
+image for stable retries, and binds each ACK to the ticket generation and exact
+destination span. Duplicate or mismatched ACKs do not advance. Instance states
+are not cleared by this transfer; their CREATE reset remains DSP-owned.
+Initialization is offered only after image/zero-fill ACKs and a caller-confirmed
+row-installation ACK. Transfer failure quarantines the load and requests detach;
+external cancellation stops further writes. The caller must still drive real
+SPI, prove write drainage before detach and retain the borrowed source until link
+reads have stopped. The controller does not establish those facts itself.
+Validation: 43 targeted SDK tests and the runtime host check pass
+(`out/canopy-image-sdk.log`, `out/canopy-image-runtime.log`). Tests verify exact
+image/zero contents, untouched state, retries, invalid grants, stale spans,
+row-install gating and retained allocation through failed-transfer cleanup.
+Firmware export lookup, row installation and actual SPI calls remain unconnected;
+CANOPY is not installable and no device build is claimed. Focused docs and layering
+checks pass; the changed-file check fails only on the existing 256 stale references
+in 78 files (`out/canopy-image-changed.log`).
+
+The DSP now has an internal row-install entry for the next transport integration.
+It consumes a caller-owned immutable snapshot, validates owner/generation, complete
+aligned state allocation, reset instruction extent and clean lifecycle fields,
+then copies metadata and publishes RESERVED last. It accepts only an empty row
+or a detached row with a strictly newer unsigned generation; reserved, initializing,
+ready, detaching and faulted rows cannot be overwritten. Invalid input leaves
+all rows and instance state untouched. Installation invokes no callback.
+At that checkpoint the entry was not exposed through a transport window: the trusted
+caller must provide private non-aliasing snapshot storage, enforce exclusive
+allocation and callback budgets, drain image writes and serialize install/tick.
+Bounds checking alone cannot prove those properties. An acknowledged mailbox
+install command and its loader sequencing were still pending; the image
+controller still took a caller-confirmed row-install boolean. Lifecycle capability
+remains disabled, and CANOPY is not installable.
+Validation: 86 focused DSP tests pass, including complete install/init/detach/reuse,
+unsigned generation boundaries, malformed snapshots with no writes and odd-sized
+state strides (`out/canopy-row-install-tests.log`). The registry artifact rebuilds
+and passes its current-file check (`out/canopy-row-install-build.log`). Focused
+documentation checks pass. The changed-file preflight passes lint, layering, host
+tests and types; its only failure is the existing 256 stale references in 78 files
+(`out/canopy-row-install-changed.log`).
+
+The next checkpoint connects INSTALL (operation 4) to the existing 16-word mailbox.
+Words 7..14 carry row fields 3..10; the DSP constructs phase/owner/generation and
+zero lifecycle fields in a private snapshot before invoking the installer. It
+acknowledges only the completed row installation, advertises capability bit 2 only
+under the existing trusted-admission gate, and leaves callback work to INITIALIZE.
+The SDK binds the admission plan to the exact allocated grant and physical rows,
+requires acknowledged image/BSS writes first, and emits an opaque ticket-bound
+receipt only after every row succeeds. The image controller now requires that
+receipt instead of the preceding checkpoint's boolean. Transfer ACKs, missing
+capabilities and stale row replies cannot authorize initialization.
+Real SPI driving, firmware export lookup, trusted enablement and audio dispatch
+remain unconnected. Failed partial installation stays quarantined; cleanup for
+never-installed rows needs an explicit protocol before release can be supported.
+No playable DKM or hardware acceptance is implied.
+Validation: 44 SDK tests and 90 focused DSP tests pass, including multi-row receipts,
+rejected/missing-capability replies, gated installation, no writes on rejection,
+replay and install-to-initialize sequencing. Composed MIDI tests pass (84 passed,
+three skipped); the runtime host check and rebuilt registry current-file check
+also pass. Logs: `out/canopy-install-mailbox-{sdk,dsp,frame,runtime,build}.log`.
+Focused docs, lint, layering, host tests and types pass. The changed-file check
+fails only on the existing 256 stale references in 78 files
+(`out/canopy-install-mailbox-changed.log`).
+
+Partial-install cleanup now uses DETACH for every reserved row, including rows
+that never installed. EMPTY or strictly older DETACHED rows become cleared
+tombstones for the cancelled ticket without any callback or state-memory write.
+The retained generation blocks delayed installation even under a newer command
+sequence; another active owner and stale/wrapped generations remain rejected.
+The scheduler also acknowledges already-detached rows without an invalid extra
+tick, allowing lost-reply recovery. The SDK still requires transport drainage and
+every matching detach reply before releasing the original allocator grant.
+This closes the preceding checkpoint's never-installed-row cleanup gap at the
+component level; live SPI integration and trusted admission remain pending.
+Validation: 45 SDK tests pass; DSP row/mailbox/registry/protection checks pass,
+including the additional mixed installed/missing-row scenario. Composed MIDI
+checks pass (84 passed, three skipped), and the rebuilt registry is current.
+Logs: `out/canopy-partial-install-{sdk,dsp,mailbox,frame,build}.log`.
+Focused docs, lint, layering, host tests and types pass. The changed-file check
+fails only on the existing 256 stale references in 78 files
+(`out/canopy-partial-install-changed.log`).
+
+The production ColdFire DSP-link now has tagged start/poll entry points for live
+loader integration. Every accepted transfer, including legacy starts, consumes
+a nonwrapping host-side identity. A tagged poll rejects stale identities without
+changing the output, and reports drainage only after terminal status and all END
+frames. This distinguishes an image/mailbox write from a replacement request and
+provides an actual transport predicate for the SDK's drainage requirement. The
+wire format and legacy status layout remain unchanged. The V2 runtime coordinator
+has not yet been wired to these entry points; registry replies remain separately
+required before installation or initialization may advance.
+Validation: five new ColdFire execution tests pass, covering success/error END
+frame drainage, replacement by a legacy request, untouched outputs on rejection,
+busy/invalid starts and identity exhaustion. The DSP-link regression file passes
+(28 passed, two skipped), and all DSP-link artifacts pass their current-file check.
+Logs: `out/canopy-link-ticket-{tests,regression,build}.log`.
+Focused docs, lint, layering, host tests and types pass. The changed-file check
+fails only on the existing 256 stale references in 78 files
+(`out/canopy-link-ticket-changed.log`).
+
+A bounded no-std transport driver now connects the image/mailbox controllers to
+the tagged link C ABI through supplied provider functions. It owns a dedicated
+static 256-byte buffer, copies image bytes and encodes mailbox words little-endian,
+retains the exact target with the accepted transfer ID, and waits for drainage
+before producing an opaque controller completion. Drained errors never ACK;
+uncertain identity or unexpected transport results freeze the buffer until reboot.
+Moving/dropping the driver cannot invalidate the source of an accepted transfer.
+Validation: 51 SDK tests and the runtime host check pass
+(`out/canopy-transport-sdk.log`, `out/canopy-transport-runtime.log`). New tests cover
+buffer retention, busy retries, endian encoding, exact-span advancement, mailbox
+ACK gating, drained failure, stale/repeated identity, malformed writes and the C
+ABI binding via host stubs. Actual provider resolution, boot-owned driver storage,
+registry reply ingestion and the top-level live V2 coordinator remain pending.
+No ColdFire runtime rebuild or live V2 firmware load is claimed.
+Focused documentation and layering checks pass. The changed-file preflight fails
+only on the existing 256 stale references in 78 files
+(`out/canopy-transport-changed.log`).
+
+Registry reply ingestion checkpoint: the CF MIDI receiver now accepts the optional
+IRR1 block in reply words 4..11 while preserving zero-reserved words 12..14,
+outer checksum, MIDI epoch and heartbeat checks. Previously its reserved-word
+validation rejected every registry-bearing reply, preventing MIDI ACK progress.
+The adapter caches the complete validated 16-word reply and exposes
+`mi_registry_reply` as a bounded UI-task copy under the frame publisher's IRQ
+lock. Missing/bad frames and explicit transport recovery invalidate the cache;
+no firmware record pointer escapes the frame callback. Registry bootstrap does
+not depend on the MIDI epoch. This is a framing snapshot, not freshness or
+transaction acceptance: the coordinator must still match the mailbox sequence,
+owner, generation, operation and row and enforce timeouts/reboot recovery.
+Actual provider binding and the top-level V2 load coordinator remain pending.
+Validation: all 87 MIDI component tests and 20 native MIDI host tests pass,
+including an actual SHARC-produced registry reply consumed by ColdFire and the
+snapshot capacity/corruption/recovery cases. The CF adapter is rebuilt and its
+current-artifact check passes. Logs: `out/canopy-reply-tests.log`,
+`out/canopy-reply-host.log`, `out/canopy-reply-build.log`. Focused documentation
+checks pass; the changed-file preflight fails only on the existing stale-path
+baseline (`out/canopy-reply-changed.log`).
+
+The SDK now has an all-or-nothing optional-provider binding for tagged send,
+tagged poll and the CF registry snapshot getter. Missing entries return no
+binding without calling any provider. The unsafe binding boundary requires
+validated entries from one boot and serialized UI-task ownership; symbol
+presence alone is not a capability. Its reply adapter owns a private stack copy,
+accepts only an exact 16-word result and feeds the mailbox validator. Unavailable
+or mismatched transactions remain waiting without resetting any deadline;
+provider errors, malformed replies, rejected operations and missing capabilities
+remain explicit errors. Mailbox validation now also rejects nonzero reserved
+reply words 12..14. Load transitions still require drained writes and matching
+DSP replies. Actual firmware symbol resolution, boot-owned driver storage,
+timeout/reboot handling and the live V2 coordinator are still pending; this is
+an SDK integration boundary, not an activated runtime path.
+Validation: 56 SDK instrument tests and the runtime host compile check pass
+(`out/canopy-provider-sdk.log`, `out/canopy-provider-runtime.log`). New cases cover
+all optional-symbol combinations, no provider calls during binding, exact-length
+snapshot handling, transaction and capability rejection, reserved fields, and a
+combined clear/body/commit transfer with terminal-but-undrained link status before
+the matching registry reply. Focused documentation checks pass. No ColdFire Rust
+runtime rebuild or hardware load is claimed.
+The changed-file preflight passes layering and fails only on the existing 256
+stale references in 78 files (`out/canopy-provider-changed.log`).
+
+
+A bounded SDK exchange pump now holds exclusive borrows of the tagged driver,
+mailbox, reply adapter and load registry while driving an already-started mailbox
+transaction. One wrapping monotonic deadline covers every row, busy retry and
+missing/stale reply. It never refreshes the deadline on traffic. Expiry stops
+new writes and starts a separate bounded drain period. Once the accepted write
+drains, its completion is discarded and the mailbox quarantines the load and
+returns a fresh detach command. Only that detach's matching DSP replies may
+release resources. An uncertain link identity or expired drain period blocks the
+exchange with its buffer and allocation retained; further ticks do no work.
+Dropping the pump is not cancellation or cleanup. The owner must retain the same
+boot-local controllers and recover them, never recreate identities to retry.
+The pump does not detect reboot or wire the firmware scheduler. It covers mailbox
+transactions, not image-transfer deadlines. Live provider resolution, boot-owned
+storage, image orchestration and whole-boot invalidation remain pending.
+Validation: 65 SDK instrument tests and the runtime host compile check pass
+(`out/canopy-exchange-sdk.log`, `out/canopy-exchange-runtime.log`). Nine new
+exchange cases cover success, busy/missing replies, rollover, deadline-edge late
+success, stuck drainage, drained failure versus unknown identity, invalid reply
+recovery, invalid construction, and timeout through fresh detach completion.
+Focused documentation checks pass. No live runtime or hardware activation is
+claimed.
+Changed-file preflight passes layering and fails only on the existing 256 stale
+references in 78 files (`out/canopy-exchange-changed.log`).
+
+
+The SDK now also pumps image/BSS transfers with one deadline across chunks,
+zero fills and busy retries. Success returns ReadyToInstall only after every
+exact write has drained; it cannot initialize or publish a module. Timeout stops
+new writes, waits a bounded drain period, discards late ACKs and quarantines the
+allocation through Transfer::failed before returning a detach request. Unknown
+transfer identity or stuck drainage blocks without releasing storage. Tests use
+the actual allocation ledger and confirm release_memory still refuses reuse.
+Both pumps now expose explicit boot invalidation. It permanently disables the
+old driver and, for mailbox transactions, the cached reply adapter. No further
+provider calls or replies can advance that pump, even after dropping it. Storage
+is retained because observing a boot change alone does not prove outstanding
+source reads stopped. This hook is not automatic reboot detection or whole-boot
+teardown. Live firmware binding, boot-owned controller storage, validated reboot
+observation and a complete load coordinator remain pending.
+Validation: 73 SDK instrument tests and the runtime host compile check pass
+(`out/canopy-upload-sdk.log`, `out/canopy-upload-runtime.log`). New tests cover
+chunked image/zero fill, busy retry rollover, timeout with late ACK, stuck drain,
+unknown transfer identity, drained error, final-ACK deadline precedence, invalid
+budgets, retained allocator grants, and permanent link/reply invalidation.
+Focused documentation checks pass. No ColdFire Rust build or device load is
+claimed.
+Changed-file preflight passes layering and fails only on the existing 256 stale
+references in 78 files (`out/canopy-upload-changed.log`).
+
+
+The production CF registry snapshot now has an independent heartbeat trust
+guard. It accepts forward progress and wraparound before MIDI epoch admission;
+valid backward movement, a stalled/missing heartbeat for MT_STALL_BLOCKS or an
+explicit transport recovery permanently invalidates the registry snapshot for
+that CF boot. Getter result -2 copies no bytes. The SDK reply adapter latches
+this result, and the exchange invalidates its driver and blocks rather than
+sending a blind detach or freeing storage. This closes the gap where the MIDI
+watchdog rejected a heartbeat but registry consumers could still read an old
+otherwise valid reply. Corrupt frames never reset the guard's liveness deadline.
+These are conservative trust-loss signals, not a unique DSP reboot identity.
+An unobserved reset that resumes with an apparently forward counter remains
+ambiguous; absent frame callbacks require the UI deadlines. Runtime binding and
+an explicit boot/session identity handshake remain open; no automatic reload or
+active V2 capability is enabled.
+Validation: 87 MIDI component tests, 20 MIDI host tests, all 113 SDK tests and
+the runtime host compile check pass. The production CF adapter is rebuilt and
+its artifact check passes. Logs: `out/canopy-boottrust-cf.log`,
+`out/canopy-boottrust-host.log`, `out/canopy-boottrust-build.log`,
+`out/canopy-boottrust-runtime.log`. Focused documentation checks pass. Toolchain
+status still reports codegen_gcc unavailable (`out/canopy-boottrust-toolchains.log`),
+so no ColdFire Rust runtime rebuild or live V2 activation is claimed.
+Changed-file preflight passes its host, type, formatting and layering checks;
+only the existing stale-reference baseline fails (`out/canopy-boottrust-changed.log`).
+
+
+ColdFire Rust build unblock: the backend installer now uses system development
+libraries on Linux/WSL, applies the libgccjit Darwin patch and Apple libc++
+workaround only on macOS, and publishes links only after the native JIT artifact
+exists. Both Python and native Patchkit now select the host backend library
+suffix rather than always requiring a dylib. Eleven installer tests and the
+native Patchkit backend-readiness test pass (`out/canopy-linux-toolchain-python.log`,
+`out/canopy-linux-toolchain-rust.log`). The actual pinned bootstrap log is
+`out/canopy-codegen-bootstrap.log`; bootstrap completion and a ColdFire runtime
+build are separate required checks, not established by these host tests.
+The pinned nightly installed, but GCC checkout on the Windows-mounted drive was
+still waiting on filesystem I/O after ten minutes. That bootstrap was stopped
+without deleting its source cache. `DIGIKIT_CODEGEN_DIR` now selects an absolute
+WSL-native build directory for both Python and native Patchkit; the default stays
+under out/tools. The local ignored environment points to the WSL user cache.
+Installer tests and the native readiness test pass again after this change.
+Focused lint/docs and preflight layering pass; the required preflight fails only
+on the existing 256 stale references in 78 files
+(`out/canopy-linux-toolchain-changed.log`).
+
+
+The Linux-native backend bootstrap now completes successfully: pinned libgccjit
+and rustc_codegen_gcc are installed under the WSL cache selected by
+DIGIKIT_CODEGEN_DIR (`out/canopy-codegen-native.log`). The production ColdFire
+runtime builds with this backend; Patchkit re-decodes 31,690 instructions and
+all runtime objects pass the current-source check
+(`out/canopy-runtime-coldfire-build.log`, `out/canopy-runtime-coldfire-check.log`).
+This removes the missing-toolchain blocker. It does not activate the V2 loader;
+its provider binding, coordinator and boot/session identity still need live
+integration and acceptance.
+Runtime module check: one pass (Digitakt II), one skip (Digitone II), including
+patched runtime boot and INFO responses through the existing coupled daemon
+(`out/canopy-runtime-coldfire-module.log`). The framework is intentionally not a
+single-object DKM, so the module check's pack-size line is not an install target.
+Focused documentation checks pass. The required changed-file preflight passes
+its host checks and fails only on the existing 256 stale references in 78 files
+(`out/canopy-runtime-coldfire-changed.log`).
+
+
+The SDK now owns a complete admitted-load transaction in `Coordinator`: its
+load ledger, tagged driver, reply reader and mailbox stay together for the DSP
+boot. Upload and exchange pumps keep reference-free phase state, allowing UI
+calls to borrow the controllers for one tick without restarting their deadlines.
+The coordinator uploads image/BSS, installs every row, consumes the opaque install
+receipt, then initializes every row before returning Publish. Its deadlines cover
+each entire phase, with a separate bounded drain period on timeout.
+
+Recoverable upload/install/initialization failures drive one fresh detach batch.
+Only its validated completion returns Release, and freeing memory still requires
+the caller's original shared ledger. Failed detach, uncertain link identity and
+undrained writes block further work while retaining storage. Explicit boot loss
+or the reply provider's boot-invalidated result stops all provider calls and
+prevents allocator release, even after an earlier Release result. No cancellation
+or whole-boot reset is inferred from dropping this owner.
+
+This is an SDK coordinator, not yet a firmware UI-loop integration. It adopts
+pre-admitted reservations and a borrowed relocated image; live admission,
+optional-symbol resolution, exclusive scheduling against legacy DSP loads,
+boot/session identity and revocation of already-published MIDI routes remain
+required. Its read-only load ledger is bookkeeping, not a live readiness signal.
+
+Validation: all 123 SDK tests pass, including ten coordinator cases exercising
+multi-row install/init order, a moved owner with a retained source pointer,
+wrapping deadlines, busy transport, rejected install/init, missing replies,
+failed detach, unknown transfer identity and boot loss. Logs:
+`out/canopy-coordinator-sdk.log`. The ColdFire runtime rebuild and current-source
+checks pass (`out/canopy-coordinator-build.log`,
+`out/canopy-coordinator-check.log`). Its decoded artifact changes only the source
+hash: the coordinator is not yet called from the firmware runtime, so this is not
+a device execution test of the coordinator. Focused documentation checks pass.
+Required preflight passes layering, host tests, formatting and types; it fails
+only on the existing 256 stale references in 78 files
+(`out/canopy-coordinator-changed.log`).
+
+The ColdFire DSP-link now provides exclusive transaction leases. Claiming an
+idle, drained channel returns a nonwrapping boot-local lease; owned sends require
+that exact lease and still use tagged transfer completion. Legacy and unowned
+starts return busy for the whole lease, including registry-reply gaps. Stale
+release/send requests cannot affect a later owner, and release refuses START,
+BUSY and outstanding END frames. Neither errors nor timeouts release ownership.
+The on-wire protocol and SHARC objects are unchanged.
+
+This supplies the physical-write boundary needed by the firmware scheduler. The
+runtime must still keep legacy load/FX state machines out of their between-write
+poll/start paths before claiming, hold the lease through V2 completion/recovery,
+and retain it on blocked/boot-invalidated outcomes. Provider binding, scheduling
+and explicit boot/session identity remain open; no V2 capability is activated.
+Validation: the rebuilt ColdFire object passes all 37 DSP-link tests, with two
+firmware-dependent skips (`out/canopy-link-lease-tests.log`). Nine added cases
+execute the lease API on the ColdFire core, covering normal/error END drainage,
+legacy exclusion, every transfer window, stale owners and exhausted generations.
+The SHARC objects are unchanged (`out/canopy-link-lease-build.log`).
+Python lint, formatting, focused docs and preflight host/types/layer checks pass.
+Required preflight fails only on the existing 256 stale references in 78 files
+(`out/canopy-link-lease-changed.log`).
+
+
+
+The SDK coordinator now accepts an owned DSP-link transport. `OwnedProviders`
+binds claim, release, owned send, tagged poll and reply snapshot as one complete
+set without invoking any provider. `OwnedApi` retains its lease and the last
+accepted lease generation across transactions, forwards the lease on every send,
+and never releases on drop. Zero/reused leases or uncertain release results
+permanently stop that owner; ordinary busy acquisition is retryable.
+
+The scheduler-facing coordinator methods allow claim/release only between jobs.
+An unowned transport cannot begin a load. Ownership remains through every upload,
+install, initialize and recovery phase, including idle reply gaps. A busy release
+keeps ownership and disallows new sends until release succeeds; uncertain release
+blocks the coordinator and allocator reuse. Boot-invalidated/blocked jobs cannot
+release or reacquire. Claim/release are explicit UI-task calls; acquisition and
+release retry deadlines, legacy poller suspension, firmware optional-symbol
+resolution and boot/session identity still belong to the pending live scheduler.
+This does not enable the machine or advertise V2 support.
+
+Validation: all 131 SDK tests pass (`out/canopy-owned-link-sdk.log`), including
+all 32 optional-provider combinations, C ABI lease/request forwarding, busy and
+stale ownership, retained ownership on drop/boot loss, coordinator exclusion of
+mid-job release and failed-release prevention of memory reuse.
+ColdFire runtime build and current-source checks pass
+(`out/canopy-owned-link-build.log`, `out/canopy-owned-link-check.log`). The runtime
+artifact changes only its source hash because these SDK entry points are not yet
+called by the firmware scheduler; no device execution of this integration is
+claimed.
+Focused docs and required preflight layering, host tests, formatting and types
+pass. Preflight fails only on the existing 256 stale references in 78 files
+(`out/canopy-owned-link-changed.log`).
+
+
+
+The firmware runtime now resolves the five optional V2 provider symbols on its
+first UI-loop pass: claim, release, owned send, tagged poll and registry reply.
+The SDK's boot-local binding checks every address before forming any function
+pointer, stores a complete set only, and can hand it off at most once. Missing
+symbols remain unavailable for that entire ColdFire boot; a later call cannot
+silently rebind after a DSP fault. Binding itself never invokes a provider or
+acquires DSP-link, so legacy loading and FX traffic continue normally.
+
+`DKRT_INSTRUMENT_BINDING` exposes a three-word diagnostic header (attempted,
+present-symbol bitmask, bound-at-boot) ahead of the private provider storage.
+Presence/binding is not lifecycle capability or boot-identity proof. The live
+scheduler must still quiesce legacy transactions, consume the provider set,
+manage acquisition/release deadlines, and revoke readiness on DSP boot loss.
+No V2 module admission or MIDI route is enabled by this binding.
+
+Validation: all 133 SDK tests pass (`out/canopy-runtime-binding-sdk.log`). The
+ColdFire runtime rebuild and current-source check pass, with 31,818 instructions
+re-decoded (`out/canopy-runtime-binding-build.log`,
+`out/canopy-runtime-binding-check.log`). Unlike the preceding SDK-only changes,
+this checkpoint adds executable code to the actual firmware UI path.
+The runtime module check passes for DTII (one pass, one DNII skip), covering
+boot/INFO, patched reopen and restart with stable inputs
+(`out/canopy-runtime-binding-module-stable.log`). An earlier run passed boot/INFO
+but failed its cache-hit assertion after a manifest comment changed mid-run;
+the stable rerun resolves that failure. This remains the default runtime set,
+not an end-to-end V2 instrument load. Focused documentation references pass.
+Required changed-file preflight passes layering, host tests, formatting and
+types; its only failure is the existing 256 stale references in 78 files
+(`out/canopy-runtime-binding-changed.log`).
+
+
+The coordinator now owns bounded scheduler handoffs for DSP-link acquisition
+and release. Acquisition waits for the caller's legacy-idle proof before making
+any claim call; one deadline includes both logical legacy drainage and physical
+link-busy retries. Release is allowed only between complete jobs and retains
+ownership while the provider is busy. Repeated requests cannot renew either
+deadline. Timeout, ambiguous release or boot invalidation blocks further calls
+and preserves the lease and allocations; only an explicit Released result lets
+legacy producers resume. Unbounded claim/release helpers are now private.
+
+Five new coordinator scenarios cover legacy wait/claim retries, successful load
+and release, deadline wraparound, release timeout, invalid budgets, and boot loss
+in both waiting states. All 138 SDK tests pass (`out/canopy-handoff-sdk.log`).
+The firmware scheduler still needs to supply the logical legacy-idle proof,
+stop new legacy load/FX transactions, and own the coordinator and its buffer.
+This checkpoint does not enable V2 admission or establish DSP boot identity.
+The ColdFire rebuild and current-source check pass
+(`out/canopy-handoff-build.log`, `out/canopy-handoff-check.log`); the executable
+is unchanged and only its SDK source fingerprint changes.
+Focused documentation references pass. Required preflight passes layering,
+host tests, formatting and types; only the existing 256 stale references in
+78 files fail (`out/canopy-handoff-changed.log`).
+
+The firmware now consumes the optional provider set into one boot-owned
+coordinator and aligned 256-byte transfer buffer. The coordinator starts with
+zero admitted instances; no V2 module can load just because providers exist.
+Its handoff tick runs after legacy DSP loading, FX parameters and FX sends, so
+all four idle conditions (loader phase, queued loads, parameter transfer and
+send transfer) must clear before a lease claim. Physical END drainage remains
+the DSP-link provider's responsibility.
+
+The coordinator's Run/Drain/Pause policy is wired into the real runtime. Drain
+allows queued legacy jobs and outstanding FX polls to finish, rejects new
+legacy admissions and blocks new FX word writes. Pause stops legacy loader and
+FX polling; only successful release restores Run. SDK tests cover the policy
+through acquisition, a complete load, busy release, ambiguous release and boot
+invalidation. All 140 SDK tests pass (`out/canopy-legacy-gate-sdk.log`).
+
+The firmware has no admission path requesting this handoff yet: provider setup
+and idle tick are live, while active ownership transitions are SDK-tested.
+V2 image/allocator admission, live boot-trust invalidation and publication remain
+pending; this does not advertise V2 support or make CANOPY playable.
+ColdFire rebuild and current-source checks pass (32,249 decoded instructions;
+`out/canopy-legacy-gate-build.log`, `out/canopy-legacy-gate-check.log`). The runtime
+module check passes DTII boot/INFO/reopen/restart, with DNII skipped
+(`out/canopy-legacy-gate-module.log`: one pass, one skip). This default-set
+regression check does not exercise an active V2 load.
+Focused documentation references pass. Required preflight passes layering,
+host tests, formatting and types; it fails only on the existing 256 stale
+references in 78 files (`out/canopy-legacy-gate-changed.log`).
+
+The coordinator now prepares a parsed DKDS6 section through one admission
+operation: resolve type reservations, reserve the caller's shared ledger range,
+validate the packed plan, and relocate into caller-owned CF storage. Preparation
+never calls the link or publishes a machine. Count, allocation, plan and import
+failures unwind pre-transfer rows and memory; a consumed generation is not reused.
+A prepared ticket can be cancelled only before transfer. A changed cleanup ledger
+blocks the owner without clearing someone else's range. Admission and cancellation
+are refused during active jobs, ownership handoffs or lost boot trust.
+
+All 144 SDK tests pass (`out/canopy-admit-sdk.log`). The composed-path test uses
+a parsed section alongside an unrelated occupied ledger range, then drives
+upload, INSTALL and INIT through the coordinator's transport harness. Publication
+appears only after INIT; its uploaded bytes and BSS are checked. Failure tests
+prove reservation cleanup, unchanged output, no link calls, retry by the same
+owner/type, stale-phase cancellation refusal, and changed-ledger preservation.
+
+The firmware caller must still supply type resolution checked against builtin/V1
+registries, remaining callback budgets, the actual shared ledger, persistent CF
+image storage and verified DSP boot identity. The runtime's zero-instance gate
+remains closed; these composed host tests are not an active firmware V2 load.
+The ColdFire rebuild/current-source checks pass (`out/canopy-admit-build.log`,
+`out/canopy-admit-check.log`). Executable code remains unchanged; only the source
+fingerprint updates because the firmware caller does not yet invoke admission.
+Focused documentation references pass. Required preflight passes layering,
+host tests, formatting and types, failing only on the existing 256 stale
+references in 78 files (`out/canopy-admit-changed.log`).
+
+Coordinator admission now reserves aggregate V2 process cost, rather than
+checking each module against the same independent allowance. A plan retains its
+checked per-instance process sum; each owner/generation retains that cost from
+successful preparation through publication, cancellation or recovery. The supplied
+process ceiling is the total V2 allowance after legacy reservations, and existing
+V2 charges are subtracted before planning the next image. Failed preparation
+charges nothing. Only successful pre-transfer cancellation or validated detach
+followed by shared-memory release returns the charge; boot loss and failed cleanup
+retain it. Externally adopted loads without accounting cannot silently consume
+zero budget, and an uncharged plan cannot join an active accounted ledger.
+
+All 147 SDK tests pass (`out/canopy-budget-sdk.log`), including combined-limit
+rejection, exact-fit admission, cancellation reuse, lower-ceiling refusal,
+publication retention, failed-INIT recovery through detach/memory release, and
+refusal of unaccounted adopted reservations. These are declared instruction-cost
+budgets, not measurements of actual callback execution time. Firmware type mapping,
+boot identity and the closed admission gate still require integration.
+The ColdFire rebuild/current-source checks pass (32,261 decoded instructions;
+`out/canopy-budget-build.log`, `out/canopy-budget-check.log`). The coordinator
+storage initialization changes executable code. Default runtime DTII boot, INFO,
+reopen and restart pass, with DNII skipped (`out/canopy-budget-module.log`: one
+pass, one skip). This is a runtime regression check, not an active V2 load.
+Focused documentation references pass. Required preflight passes layering,
+host tests, formatting and types; only the existing 256 stale references in
+78 files fail (`out/canopy-budget-changed.log`).
+
+V2 machine keys now have a selection-scoped resolver. It borrows the boot
+assignment table with an explicit saved selection index instead of consulting
+the mutable current-load index. Both hashed and pinned keys must be declared by
+that selected module; ambiguous declarations, unassigned/out-of-range numbers,
+occupied legacy rows and two records resolving to the same type are rejected.
+The result preserves descriptor order and is returned only as a complete batch.
+
+The firmware assignment adapter supplies the existing sticky table and device
+range, and checks both CF machine rows (owner or nonempty name) and legacy DSP
+reservations, including unpublished owners. Missing CF registry data fails closed.
+This adapter is ready for the pending V2 loader caller; it is not invoked by the
+current boot loader, and existing legacy assignment behavior is unchanged.
+
+All 152 SDK tests pass (`out/canopy-types-sdk.log`). Five new cases cover saved
+selection lookup, declared pinned keys, ambiguity/malformed maps, exhausted or
+stock assignments, and duplicate resolved types. The composed admission-to-INIT
+test now consumes resolver output. Actual firmware invocation, DSP boot identity
+and enabling the admission gate remain open.
+The ColdFire rebuild and current-source check pass (`out/canopy-types-build.log`,
+`out/canopy-types-check.log`). The executable is unchanged; only its source
+fingerprint updates because these new firmware adapters are not called yet.
+Focused documentation references pass. Required preflight passes layering, host
+tests, formatting and types; only the existing 256 stale references in 78 files
+fail (`out/canopy-types-changed.log`).
+
+The coordinator now observes the reply provider's sticky boot-trust loss before
+every transfer tick and every ownership-handoff tick, including idle and release
+states. Previously that loss was observed only when awaiting a mailbox reply,
+so an upload could continue after the guard had already detected a restart.
+A loss now invalidates the owner before another link send/poll/claim/release;
+allocations, budgets, leases and any in-flight source buffer remain retained.
+Malformed provider return lengths/errors block the owner as a reply failure.
+Subsequent ticks make no further provider or link calls.
+
+The bounded probe copies into local scratch storage without consuming a mailbox
+ACK. Missing/current snapshots establish neither identity nor readiness, and only
+the existing drained mailbox validator may publish. The firmware already calls
+the handoff tick on each UI pass, so a bound provider's revocation is now observed
+there even without a V2 job. The optional provider boundary is unchanged.
+
+All 156 SDK tests pass (`out/canopy-boot-probe-sdk.log`). New cases cover revocation
+before acquisition, while owned but idle, before release, and before the next
+upload poll; malformed getter results and probe-without-publication are covered.
+This closes a revocation gap but does not solve the heartbeat ambiguity: an
+unobserved DSP restart can still look forward. An explicit boot/session handshake
+and its reset-path proof remain required before enabling firmware V2 admission.
+ColdFire rebuild/current-source checks pass (32,361 decoded instructions;
+`out/canopy-boot-probe-build.log`, `out/canopy-boot-probe-check.log`). The default
+runtime DTII boot/INFO/reopen/restart check passes, with DNII skipped
+(`out/canopy-boot-probe-module.log`: one pass, one skip); this does not exercise
+a V2 load or prove DSP restart detection on hardware.
+Focused documentation validation passes. Required changed-file preflight passes
+layering, 193 host tests (16 skipped), formatting and types; it fails only on the
+existing 256 stale references in 78 files
+(`out/canopy-boot-probe-changed.log`).
+
+The DSP half of session binding now implements BIND_SESSION (operation 5) with
+owner/row zero and the nonzero challenge in generation. It binds once while
+lifecycle admission is disabled; it cannot replace/renew an existing token and
+grants no capabilities. Valid binds and checksummed stale commits are consumed,
+including rejected/replayed binds, so clearing private session/sequence storage
+does not re-execute a retained command. Bound replies use outer version
+`0x494ea102` and carry the token in word 12 on every block, independently of the
+registry ACK. Unbound or absent registry providers retain the original frame.
+
+This is not yet wired to CF admission. Existing CF/SDK validators deliberately
+reject the new reply version, and production does not issue binds. Next implement
+the bounded one-shot CF bootstrap and sticky expected-token validation, then
+prove initialization on every supported DSP reset path and drainage of old
+writes. Clearing session/sequence storage in a processor-component test does not
+establish that hardware reset behavior. No challenge reuse, automatic rebind or
+V2 capability advertisement is permitted on an uncertain outcome.
+The registry/MIDI component run passes 113 tests; a subsequent focused registry,
+row and protected-lifecycle run passes 101 tests, including rejection of binding
+after lifecycle admission. Both DSP artifacts rebuild and pass current-source
+checks; focused documentation validation passes. Logs are
+`out/canopy-session-dsp.log`, `out/canopy-session-lifecycle.log`,
+`out/canopy-session-build.log` and `out/canopy-session-check.log`.
+Required preflight passes Python lint/format, layering, host tests, formatting
+and types; only the existing 256 stale references in 78 files fail
+(`out/canopy-session-changed.log`).
+
+The CF reply guard now supports an explicitly armed one-shot session expectation.
+`mi_registry_expect_session(token, sequence)` serializes arming with the frame
+publisher and clears cached registry replies. Before a successful bind, armed
+getters return no snapshot. The first fresh version-2 frame must match the token
+and complete successful BIND_SESSION identity, including zero status/capabilities.
+Thereafter registry ACK replacement is allowed but token change, downgrade,
+backward heartbeat or expiry permanently revokes the guard. Repeated arming
+cannot renew a deadline; malformed frames cannot refresh liveness or establish
+identity. Deadline checks run before accepting a late fresh frame.
+
+The bind deadline and heartbeat watchdog use CF frame blocks. A UI-clock deadline
+and actual one-shot bind sender remain required, as does DSP reset-path proof.
+MIDI event ACKs and the SDK mailbox still reject version 2; no V2 route, lifecycle
+capability or firmware load is enabled. The component suite exchanges an actual
+SHARC-produced version-2 frame with compiled ColdFire validation, while adapter
+checks cover cache clearing, withheld snapshots and sticky invalidation.
+Validation: 21 host cases and all 87 MIDI processor-component cases pass. After
+adding adapter snapshot assertions, the host suite and focused ColdFire boundary
+test pass again. The CF adapter rebuilds (1,709 decoded instructions), and both
+MIDI artifacts pass current-source checks. Logs: `out/canopy-session-guard-host.log`,
+`out/canopy-session-guard-cf.log`, `out/canopy-session-guard-dispatch.log`,
+`out/canopy-session-guard-build.log` and `out/canopy-session-guard-check.log`.
+Focused documentation checks pass. Required preflight passes Python lint/format,
+layering, host tests, formatting and types; only the existing 256 stale references
+in 78 files fail (`out/canopy-session-guard-changed.log`).
+
+The owning SDK coordinator now drives the one-shot bind exchange. Its unsafe
+`begin_session` entry requires the validated CF expectation provider, exclusive
+link ownership, an idle driver and no admitted rows. It reserves from the same
+nonwrapping mailbox sequence namespace and arms the CF guard before the first
+write. Tick sends clear/body/commit through the existing retained driver buffer,
+advancing only on the matching drained transfer completion, then validates the
+full version-2 bind reply and checksum. Transport completion alone never marks
+the session bound. One monotonic UI-task deadline covers all writes, busy starts
+and ACK waiting; link-handoff ticks also enforce it when transfer ticks stop.
+
+Repeated starts cannot rearm or renew the exchange. Arm failure, lost boot trust,
+link failure, malformed/mismatched ACK or expiry blocks the owner and retains
+its lease and any pending source buffer. There is no blind detach, rebind or
+timeout-driven reuse. A successful bind can release the drained lease, but this
+checkpoint refuses image admission/start on session-bearing owners: lifecycle
+mailbox and MIDI version-2 support still need integration. Legacy pre-session
+component paths retain their existing behavior; the live runtime's zero-instance
+gate remains closed.
+
+This is coordinator integration, not an automatically started firmware bind.
+Optional expectation-provider resolution, invoking the handshake from the live
+loader, a composed CF-to-DSP bind proof, and DSP reset-path coverage remain open.
+The SDK tests exercise production coordinator/driver logic with simulated link
+and reply providers; they do not establish live transport or restart behavior.
+Validation: all 162 SDK tests pass (`out/canopy-bind-sdk.log`), including exact
+write drainage, shared sequence allocation, lost ACK, valid-checksum wrong token,
+wraparound timeout, arm failures and retained ownership after link failures.
+ColdFire rebuild/current-source checks pass (32,377 decoded instructions;
+`out/canopy-bind-build.log`, `out/canopy-bind-check.log`). The default DTII runtime
+boot/INFO/reopen/restart check passes, with DNII skipped
+(`out/canopy-bind-module.log`: one pass, one skip); this does not run a live bind.
+Focused documentation checks pass. Required preflight passes layering, host tests,
+formatting and types; it fails only on the existing 256 stale references in 78
+files (`out/canopy-bind-changed.log`).
+
+Firmware provider binding now requires six optional symbols, including
+`mi_registry_expect_session`. The typed expectation callback is consumed together
+with the transport/snapshot provider set and retained by the firmware owner; the
+complete diagnostic presence mask is now 63. Missing symbols remain unavailable
+for the whole CF boot, including an older adapter with no expectation callback.
+Binding still calls none of the providers and does not initiate a session.
+
+A new processor-boundary test executes BIND_SESSION and a subsequent QUERY in the
+production SHARC registry, builds their actual reply frames, and passes those
+words through the compiled CF record reader, frame publisher, session guard and
+registry snapshot getter. It then injects loss of DSP session/sequence storage,
+checks permanent getter revocation, and replays the old bound frame to confirm
+that neither old data nor another arm request restores trust. This crosses the
+registry-to-snapshot boundary; it does not drive the coordinator writes through
+physical SPI, emulate a real hardware reset, or automatically start a live bind.
+Those remaining integration/reset checks still gate CANOPY admission.
+Validation: all 162 SDK tests pass, including all 64 provider-presence masks and
+atomic one-time consumption (`out/canopy-bind-provider-sdk.log`). The new DSP-to-CF
+snapshot test passes (`out/canopy-bind-provider-cross.log`). Runtime rebuild and
+current-source checks pass at 32,416 decoded instructions; the retained callback
+storage is present in the object. Default DTII boot/INFO/reopen/restart passes
+with DNII skipped (`out/canopy-bind-provider-module.log`: one pass, one skip).
+This default boot check does not initiate a session.
+Focused documentation validation passes. Required preflight passes Python lint
+and formatting, layering, host tests, formatting and types; only the existing
+256 stale references in 78 files fail (`out/canopy-bind-provider-changed.log`).
+
+The emulator-only `test/instrument-session` fixture now supplies an explicit
+bootstrap trigger. The runtime acquires the existing owned link, arms the CF
+reply guard, sends the one-shot bind, waits for its acknowledged session and
+releases the drained channel. Diagnostic phases are idle, acquiring, binding,
+releasing, bound and blocked (0..5). Each handoff/exchange has a 2,000-UI-tick
+budget; the CF frame watchdog is independent. The trigger is sampled once and
+cannot retry or rearm within the CF boot. Normal images omit this provider;
+`Loads::new(0)` and the DSP admission flag stay disabled.
+
+The live boot exposed an initialization gap hidden by zero-filled component
+fixtures: SHARC `.PKBSS` reserves space but does not load zeros. The registry
+mailbox, reply, pending flag, admission flag, session token and row table now use
+`.PKDATA`, giving the boot stream explicit initial values. Scratch buffers still
+use reserved storage and are written before use. This corrects the earlier
+assumption that reserved session storage was initialized by loading the image;
+it does not establish the behavior of DSP-only reset paths.
+
+The same live test reached a second target-only failure: mailbox serialization
+using `to_le_bytes()` linked a ColdFire `__bswapsi2` implementation whose call
+relocated back to itself. The first write recursively consumed the UI stack.
+Serialization now uses explicit volatile byte stores into the driver's private
+buffer, preventing the backend from folding the writes into that helper.
+The bootstrap tick entry point also avoids linking the unused image-load path;
+the UI phase dispatcher uses branches rather than an inline jump table.
+
+Validation: the new running-firmware TypeScript bootstrap test passes in 66.1 s
+(`out/canopy-live-session-test.log`), including zero initial session, expected
+bound token, drained lease release, disabled admission and refusal to rearm.
+All 162 SDK tests and 28 registry processor tests pass
+(`out/canopy-live-session-sdk.log`, `out/canopy-live-session-registry-test.log`).
+The rebuilt runtime passes instruction validation at 33,266 instructions; runtime,
+registry and fixture artifacts match their current sources. The compiled runtime
+has no `__bswapsi2` relocations. This proves the initial exchange through the
+emulated physical link, not DSP-only restart or hardware reset behavior.
+Default DTII runtime boot/INFO/reopen/restart also passes (one pass, one DNII
+skip; `out/canopy-live-session-module.log`).
+
+Required changed-file preflight passes layering, 193 host tests (16 skipped),
+formatting and types. Its only failure is the existing 256 stale references in
+78 files (`out/canopy-live-session-changed.log`); focused checks of the edited
+documentation pass. No device installation or public V2 capability is implied.
+
+Live revocation now has a separate emulator-only fixture,
+`test/instrument-session-loss`. Its protected block callback waits 2,048 DSP
+blocks after observing the bind, clears only the session token for 64 blocks,
+and then restores the original token while retaining the original registry ACK.
+The callback runs before the production reply builder; the real reply transport,
+CF guard and UI coordinator observe the loss. The regression checks permanent
+blocked state, no new transfer identity, no renewed lease or admission, and no
+rearm even after the old valid-looking token/ACK returns and UI ticks advance.
+The normal bootstrap fixture remains free of fault injection.
+
+This is deliberately partial-state loss, not a DSP reset. The control daemon
+currently offers DSP memory inspection but no independent hardware-reset action;
+`SharcRenderer::reset` restores a prepared start state rather than exercising the
+firmware's reset line/boot protocol. All supported DSP-only restart paths still
+need validation before enabling admission. Do not substitute this injected loss
+or a whole-machine snapshot restore for that evidence.
+
+Validation: both running-firmware session cases pass (64.2 s normal binding,
+93.4 s injected loss/replay; `out/canopy-session-loss-live.log`). The loss fixture
+build passes all 36 instruction decodes. Its sole private import is restricted
+by exact fixture ID, directory, object, source list and symbol in the layering
+checker; other private state remains forbidden.
+
+All 26 layering tests pass. Focused documentation and current-artifact checks
+pass. Required preflight passes layering, Python lint/format/types, related-host
+selection, JS lint/format and TypeScript checks. It remains red on the existing
+256 stale references in 78 files and five broader verification-tool failures:
+`test_mise_tasks_of_the_repo_resolve` does not expect the already-present
+`patch:toolchains` task, while four FX-tier cases require the absent DNII 1.11
+analysis database. The latter suite has 222 passes and five failures; its task
+routing and database-dependent code are unchanged by this checkpoint. See
+`out/canopy-session-loss-changed.log` and `out/canopy-session-loss-layers-test.log`.
+
+The SDK reply provider now retains the token from a successful bootstrap ACK
+and uses it to validate subsequent lifecycle replies. Bound replies require V2
+framing, that exact nonzero token, zero reserved fields and the full checksum
+before transaction matching. Unbound callers retain the V1 contract. A second
+bootstrap validation invalidates the provider permanently; it cannot replace the
+identity. Host coverage verifies wrong-token/downgrade rejection without pending
+load mutation, same-session delayed replies and successful publication. All 163
+SDK tests pass (`out/canopy-session-replies-host.log`). This adds reply validation
+only: the coordinator still refuses image loads/admission after binding, and
+production lifecycle capabilities remain disabled pending reset-path proof.
+The rebuilt runtime passes current-artifact checks and both running-firmware
+session regressions (normal bind and permanent loss/replay revocation;
+`out/canopy-session-replies-live.log`). Required staged preflight passes its
+selected host, layering, lint, formatting and type checks; its only failure is
+the existing stale-reference baseline (`out/canopy-session-replies-changed.log`).
+
+
+The shipped boot-image initialization is now checked independently of zeroed
+processor fixtures: a patcher integration test generates registry firmware and
+requires explicit section-7 zero writes over all boot-owned session/registry
+state and MIDI identity counters. It passes. DTII 1.17 reset assertion/release
+call sites are also resolved from local image bytes; see
+[finding 135](../findings/135-canopy-carrier.md). The remaining reset work is a
+pre-assertion CF invalidation boundary, early-boot initialization safety and a
+live reset with pending transfers. The current emulator's snapshot reset does
+not establish those properties. Focused documentation checks pass; staged
+preflight passes Python lint/format and layering, with only the existing 256
+stale references in 78 files failing (`out/canopy-boot-initialization-changed.log`).
+
+The CF adapter now exposes an internal reset-assertion notification boundary,
+`mi_dsp_reset_begin`. Before first adapter use it leaves the initial boot alone;
+after use it permanently invalidates the registry snapshot, clears MIDI routes
+and pending transport state, and suppresses frame payloads. Repeated notification
+is idempotent; MIDI recovery, configuration, routing and replayed replies cannot
+resume the adapter in that CF boot. Stock MIDI messages fall through. This code
+requires expansion data/BSS initialization and does not access the UI coordinator
+or claim to abort physical DMA. The firmware GPIO hook is not connected yet.
+
+All 29 registry processor tests pass, including both token-loss and explicit
+reset notification through the compiled ColdFire adapter. The reset case uses
+an otherwise valid bound reply, verifies cleared payload halves and preserved
+command halves, checks cleared routes, rejects recovery/rearm and repeats the
+notification without changing the epoch. Initial-before-use notification is
+also exercised. The 21 MIDI host tests and current-source adapter build checks
+pass. Staged preflight passes lint, formatting, layering and types; it reports
+the existing 256 stale references in 78 files and one unchanged web timer test
+failure (192 host passes, 16 skips). That timer test passes when rerun alone
+with the repository host configuration (`out/canopy-reset-notify-timer.log`).
+Focused documentation checks pass. The fixture now explicitly aligns its transmit queue to four
+bytes as required by the production callback; two-byte C array alignment had
+made the earlier layout-dependent test fail. Log: `out/canopy-reset-notify-cf.log`.
+
+The reset notification is now connected to the DTII 1.17 GPIO helper through
+`cf.rtos.hook.dsp_reset`. The declaration hashes the helper's complete 112-byte
+window, and the port resolver locates its six-byte entry at `0x400cd01c`.
+The wrapper preserves D0/D1/A0/A1 and the argument/return stack, calls the
+notification only for a nonzero low argument byte, then enters the generated
+tail to execute the displaced D2 save and argument load. Expansion code/data/BSS
+is copied/cleared by `core/expansion` on the reset path before this boot task
+runs; the notification does not require UI-owner initialization. The hook covers
+calls through this helper, not direct GPIO writes or autonomous DSP resets.
+
+Two processor/anchor tests pass: the declaration matches current image bytes,
+and the assembled wrapper tolerates a callback that clobbers all volatile
+registers while preserving the stock argument and callee-saved D2. Cases include
+zero, nonzero, high-byte-only values and repeated assert/release calls. These
+are ABI component proofs, not electrical reset or pending-DMA cancellation.
+The adapter builds and all 1,771 instructions decode; its artifacts are current.
+The full SDK generator still fails on the existing unrelated
+`dsp.voice.hook.velocity_operand` declaration's `s7` register; no callable SDK
+binding is needed for this port hook. Logs: `out/canopy-reset-hook-cf.log`,
+`out/canopy-reset-hook-build.log` and `out/canopy-reset-hook-gen.log`.
+Both running-firmware session regressions pass with the hook installed (63.9 s
+normal bind, 93.0 s token loss/replay; `out/canopy-reset-hook-live.log`). This
+establishes compatibility of the patched image with those flows, not that the
+emulator exercised GPIO reset or canceled an in-flight transfer.
+Staged preflight passes 193 host tests (16 skipped), layering, Python lint/format,
+JS formatting and type checks. Its only failure is the existing 256 stale
+references in 78 files (`out/canopy-reset-hook-changed.log`).
+
+
+
+Reset assertion now also reaches the optional `dl_reset_begin` sender boundary
+inside the same interrupt mask. Once the link has issued a transfer or lease,
+reset permanently revokes it for the CF boot. The sender retains its request
+identity, source pointer and lease; rejects claims, releases and all new sends;
+and reports BUSY with reset error 102 rather than a falsely drained completion.
+Subsequent frame ticks clear the code-channel magic and do not process old ACKs
+or emit more payload/END chunks. The new sticky flag uses a former padding word,
+preserving the 96-byte link layout and prior field offsets. Initial reset before
+any link use remains harmless, including when the MIDI adapter is not initialized.
+
+This stops future software emission and resource reuse; it does not retract a
+frame already owned by DMA or prove the hardware reset has stopped reception.
+The DSP-only reset and receiver/DMA timing acceptance therefore remains open.
+The sender processor suite passes 41 cases (two skips), including reset at START,
+BUSY, END drainage and already-drained phases followed by repeated valid stale
+ACKs. These cases check zero code-channel magic, retained source/lease/identity,
+unresolved polls, idempotent notification and rejection of new producer requests.
+All 29 registry processor cases also pass; the reset case now links the actual
+sender and verifies that the MIDI reset callback revokes its pending owned
+request. Both adapter artifacts pass current-source checks. Logs:
+`out/canopy-reset-link-cf.log`, `out/canopy-reset-link-boundary.log` and
+`out/canopy-reset-link-check.log`.
+Both running-firmware session regressions pass with the reset-aware sender
+(64.1 s bind, 92.8 s loss/replay; `out/canopy-reset-link-live.log`).
+Staged preflight passes 193 host tests (16 skips), layering, lint, formatting
+and types. Only the existing 256 stale references in 78 files fail
+(`out/canopy-reset-link-changed.log`).
+
+
+
+
+The composed reset boundary now executes the shipped assembly hook, MIDI
+adapter and sender together. The registry processor scenario checks sender
+revocation at entry to a stand-in for the stock tail, before the reset helper
+would run; it also checks a release argument with a nonzero upper byte leaves
+both the session and pending transfer usable. Repeated assertions remain
+terminal and idempotent. Together with the exact displaced-prologue/ABI checks,
+all 31 focused cases pass (`out/canopy-reset-composed.log`). This is processor
+integration evidence, not a physical reset experiment.
+
+The current emulator cannot close the remaining DMA/reset gate: its GPIO model
+implements the SD continuity gate, not DSP reset wiring, and its DSPI2 exchange
+completes synchronously in the board register-write path. An artificial session
+latch clear or a renderer state reload does not establish interruption of an
+active hardware transfer. The physical experiment below supplies evidence for
+the hooked DTII reset path; it does not validate the emulator reset model.
+Do not enable V2 admission on the strength of the composed callback test.
+
+The hardware gap now has an implemented quiescence path: the periodic frame
+hook refuses stock DMA rearm after revocation; the reset callback disables the
+DSPI2 channel requests, halts serial transfers, and waits for START/ACTIVE and
+TXRXS to clear before flushing FIFOs. Unexpected DMA chaining or a bounded-wait
+timeout keeps reset release blocked. Source ownership stays retained in both
+cases. This is terminal recovery through a whole-device restart, not automatic
+DSP reload. The eight-word `dl_reset_hw` diagnostic preserves the measured state.
+
+A DTII-only `test/dsp-reset-probe` service and
+`tools.device.dsp_reset_probe` runner prepare the physical proof. The runner
+checks exact firmware identity and reset-hook bytes, requires an already-used
+link, requests reset only while SPI is active, then checks stopped DMA addresses
+and the asserted GPIO over later snapshots. It writes the results even on
+failure. The probe never triggers automatically at boot; it intentionally leaves
+DSP reset asserted and requires a whole-device restart.
+
+[D] The 2026-10-31 physical DTII experiment passed on image
+`7eed7aa5661f7981`: reset entered during active SPI with RX DMA ACTIVE,
+quiesced in one poll, retained link ownership, and kept both DMA addresses
+stable across three later snapshots. See [hardware reset evidence](../findings/136-dt2-dsp-reset.md).
+This closes the active-transfer quiescence measurement for the hooked reset
+path. USB commands stopped responding after the measurement, including software
+restart. Physical power cycling restored USB; Overloop-only selection, removal
+of the diagnostic, and a subsequent normal boot are verified without reported
+crash or module faults. The original Overloop bytes match the backup.
+The original Overloop module remains backed up under `out/dt2-before-reset-proof`.
+This result does not enable V2 admission or prove automatic DSP restart.
+
+The SDK coordinator now continues from a bound session into image upload,
+INSTALL and INITIALIZE, instead of treating any session as permanently busy.
+Pending bootstrap still blocks preparation and upload. Bind, install, initialize
+and recovery detach share the same nonwrapping sequence namespace; the existing
+reply provider checks the bound version-2 token for lifecycle replies. The
+bootstrap-only runtime tick remains separate, and normal firmware still uses
+`Loads::new(0)` with no public V2 loading or routing.
+
+SDK tests now cover bind, release/reacquire, admission, image/BSS drainage,
+install, successful initialization/publication, and rejected initialization
+followed by acknowledged detach before memory release. A session-loss case
+interrupts an actual pending host-test upload: the coordinator retains the
+source buffer and memory, blocks publication, and refuses release or revival
+when the old bind reply reappears. All 165 SDK tests pass
+(`out/canopy-bound-init-sdk.log`). This is host integration evidence with simulated
+providers; live DSP lifecycle admission and version-2 MIDI routing remain open.
+The ColdFire runtime rebuild validates 33,325 decoded instructions and all runtime
+artifacts are current. Changed-file preflight passes 200 host tests (16 skipped),
+layering, formatting and types; its only failure is the existing 256 stale
+references in 78 files. Focused documentation validation passes. Logs:
+`out/canopy-bound-init-build.log`, `out/canopy-bound-init-check.log` and
+`out/canopy-bound-init-changed.log`.
+
+The CF MIDI bridge now accepts version-2 ACKs through the existing one-shot
+session guard. Arming moves MIDI to a fresh epoch and clears old configuration
+and heartbeat state while preserving physical-key tombstones. Until the exact
+bind ACK establishes readiness, the adapter publishes zero packet data and
+refuses configuration and routes. Once bound, reset/configuration/event ACKs must
+retain the token and match the current MIDI epoch/message. Session revocation
+faults MIDI immediately and keeps forward packet data zero even if old valid
+replies return. The separate consumer-ready callback and committed configuration
+remain mandatory before route enable; normal firmware still exposes no V2 machine.
+
+Validation: 22 host cases pass. The ColdFire component run executes the same
+ownership/adapter cases, including configuration commit and note ACKs after bind,
+wrong-session revocation, and an actual SHARC-built version-2 reply. The first
+attempt exposed missing optional reset symbols in that standalone test linker;
+they now resolve to zero, matching a firmware without DSP-link. The corrected
+component run passes. The adapter rebuild validates 1,891 decoded instructions;
+CF and DSP artifacts are current. Both live emulator session tests pass (63.9 s
+normal binding, 92.0 s token-loss/replay). These live tests establish bootstrap
+and revocation, not live version-2 note delivery to an admitted instrument.
+Logs: `out/canopy-session-midi-host.log`, `out/canopy-session-midi-cf.log`,
+`out/canopy-session-midi-build.log`, `out/canopy-session-midi-check.log` and
+`out/canopy-session-midi-live.log`.
+Required changed-file preflight passes 200 host tests (16 skipped), Python lint
+and format, layering, formatting and types. Only the existing 256 stale references
+in 78 files fail; both changed documents pass focused pathcheck.
+See `out/canopy-session-midi-changed.log`.
+
+Session arming now uses a dedicated epoch transition instead of explicit
+keys-up recovery. The earlier implementation incorrectly erased physical-key
+tombstones despite the claim above. The corrected path retains key tokens and
+route quarantine, discards old queued events, and requires reset acknowledgements
+for all tracks in the new epoch. A shared host/ColdFire regression holds a key
+across that transition, plays the same pitch again, and proves that the stale
+release cannot stop the new note. All 23 host cases and the ColdFire component
+case pass. The adapter rebuild validates 1,930 decoded instructions.
+
+The booted CANOPY transport fixture now also proves USB and DIN note delivery
+and independent releases after exact-token binding and configuration. The bound
+case passes in 66.34 seconds; legacy delivery passes in 60.48 seconds. A redundant
+fixture reset discovered in the first bound run has been removed: session arming
+already resets every track. See the bound-session MIDI section in
+[carrier findings](../findings/135-canopy-carrier.md). This is delivery to configured
+test banks, not public V2 installation/initialization or final CANOPY audio.
+
+The coordinator now has an explicit retirement path for successfully published
+loads. It removes lookup visibility before sending DETACH, serializes retirement
+against admission, upload and link handoff, and retains memory and processing
+budget until a matching completion. Rejected detach, timeout and boot/session
+loss block further retirement and release. All 167 SDK tests pass, including a
+bound-session install/initialize/retire cycle with monotonic mailbox sequences
+and three retirement failure cases. This closes a host lifecycle gap needed by
+the next live installation probe; that probe is not yet implemented.
+
+Only after those pieces pass together may a build advertise V2 support.
+
+Validation of this checkpoint: two descriptor-validation tests, nine SDK-generation
+tests and seven DSP-packer tests pass. A freestanding ColdFire compilation verifies
+both struct sizes and all 30 field offsets against the generated constants. The
+full `patchkit gen` command writes the SDK files but then fails in the existing
+firmware declaration validation at `dsp.voice.hook.velocity_operand` (unknown
+register `s7`); the independent SDK current-file test passes. No V2 runtime,
+installation or hardware acceptance is implied by these checks.
+
+The input semantics are:
+
+| Input | Meaning |
+| --- | --- |
+| Version and size | Reject incompatible layouts before dereferencing fields |
+| Track and instance generation | Stable owner for state and queued events |
+| DSP block counter and output | One mono 32-frame block, plus absolute block identity |
+| Global tune and bend | Separate from key pitches; do not apply stock TUNE twice |
+| Event list and count | Bounded normalized events, matched to this generation |
+| Effective control snapshot | Revision, bounded parameter count and immutable values |
+| Transport snapshot | Validity, run generation, timing capability and clock position |
+| Shared gate state | Adapter lifecycle information, separate from individual gates |
+
+Events carry kind, source ownership, token, pitch, velocity and an optional sample offset. Initially every offset is zero: delivery at the next accepted block is the supported timing. Merely reserving an offset field does not establish sample-accurate MIDI timestamps. Raw MIDI tokens originate on CF; CANOPY creates separate internal generated-pad/arp tokens keyed to the source phrase generation and tone index. These namespaces cannot collide, and a raw key release changes only the mode state that owns its generated notes.
+
+Use `reset(state, reason)` on instance creation or explicit reset, and `process(state, input)` for event handling plus rendering. Ordinary note-on does not clear state. `process` reports ACTIVE or QUIET; QUIET requires no audible release, arp gate or pending de-click ramp. Pending events wake a quiet instance before the stock inactive-voice shortcut.
+
+The adapter supports up to the device's 16 track instances. Four internal foreground notes are a CANOPY allocator limit, not the descriptor's track-instance count. Keep per-track state isolated and preserve existing SHARC register, memory and finite-output guards.
+
+## Track activation and shared AMP
+
+The first firmware proof uses sine tones and this lifecycle:
+
+1. An idle-to-active event starts the stock track carrier and shared AMP once, using a neutral shared velocity multiplier.
+2. Further key events reach only the V2 state; they do not restart the stock AMP, reset oscillator state or change a global note-velocity multiplier.
+3. Individual note-offs start local releases. The adapter keeps the stock render path alive while any internal voice, pedal-held note, arp gate or release remains active.
+4. Only QUIET permits deactivating the stock track carrier. New events can wake it without a stock sample trig.
+
+The initial proof used separate local attack/release controls with a shared stock
+AMP envelope. The native AMP correction supersedes this: the track AMP page
+controls each note, including AHD's finite hold and decay and ADSR's gated release.
+No sustained-AMP workaround should be required to play the keyboard.
+
+Prove that the engine does not kill the custom renderer prematurely at its own envelope termination, and that stock shared velocity is neutral. A low-velocity first note must not reduce the volume of a later high-velocity note. Inspect both module output and final track output.
+
+The raw-adapter component probe in
+[test_canopy_carrier.py](../../modules/machines/canopy/tests/test_canopy_carrier.py) now exercises
+the sine kernel through the production voice wrapper. It checks inactive-track
+rendering, stock retrigger independence, stereo-copy state preservation and
+restarting after local QUIET. This is pre-AMP evidence only: the test does not run
+the stock envelope, gain or mixer stages. The probe is not a V2 registration or a
+production carrier implementation.
+
+A [firmware component probe](../findings/135-canopy-carrier.md) now establishes a
+sustained path through the stock envelope for 48,000 samples with synthetic
+state, followed by release and retrigger. Sample activation and envelope state
+are separate; calling the sample arm routine alone does not establish AMP wakeup.
+Normal configuration, live flag ownership and final mixer output remain open.
+
+The internal adapter carrier policy now emits per-track wake/release edges from
+ACTIVE/QUIET and passes stock flags through for unowned tracks. Component tests
+connect it to the real kernel's release lifetime; the firmware probe separately
+feeds its output into the stock-configured envelope. Repeated stock trigger/release
+flags do not restart or cut off an owned hold. The eventual hook must evaluate
+the policy once per track and apply its result to both stereo voices. It remains
+unlinked in normal firmware until frame integration and final-output proof pass.
+The stereo handoff now has explicit publish/read entry points: a single track
+publication stores the edge pair with a block stamp, and both voice reads return
+that pair without consuming it. Missing or stale publications preserve stock flags.
+
+The envelope entry interposer is now component-tested, including register/status
+preservation and stock fallback. The firmware probe overlays its entry jump in
+memory and enters through the original stock address for 1,500 held blocks. The
+hook applies the actual published flags before resuming stock envelope code.
+The harness still copies publications between separate producer and firmware
+cores; live frame publication, manifest wiring and the full mixer remain open.
+
+Complete the carrier work in this order:
+
+1. Resolve the activation call and downstream envelope/gain initialization on the
+   supplied DT2 1.17 image. Trace the normal caller's required frame, modifier and
+   record state; setting ACTIVE alone is not an activation contract.
+2. Add an adapter-owned V2 transition path: wake once from QUIET, retain through
+   local releases and queued replacements, and retire both stereo records only
+   after QUIET. Keep ordinary note admission out of the stock retrigger path.
+3. Prove final output with a sustained stock AMP: quiet wake, a low-velocity note
+   followed by a high-velocity note, independent releases, held notes beyond a
+   stock sample lifetime, reset tails, and wake again after silence. Compare
+   pre-AMP and final output to identify any shared velocity scaling.
+4. Check LEVEL, mute, pan, filter and FX routing in the same running-firmware
+   proof, plus an adjacent stock track and Overloop coexistence. Publish readiness
+   only after the lifecycle works through the real frame and MIDI paths.
+
+If a sustained carrier cannot provide the required lifetime, investigate an explicit V2-only unity envelope multiplier. This requires a separate pinned firmware hook and proof that LEVEL, pan, mute, filter and FX remain effective. Do not bypass the whole gain chain or ship keyboard mode under a silent compromise. Failure of both approaches blocks the full instrument; a root-only prototype can remain experimental but is not completion of this design.
+
+## Transport alongside Overloop
+
+The [DSP-link implementation](../../modules/core/adapters/dsp-link/README.md), [pattern-position provider](../../modules/core/adapters/pattern-position/README.md) and [Overloop display](../../modules/core/adapters/loop-display/README.md) already share forward/reply transport. Centralize any new allocation in DSP-link and its receiver. Preserve the pattern-position suffix and its ABI.
+
+The DTII profile describes 174 spare forward words. Pattern position reserves the final 16. A candidate additional reservation is 32 words immediately before those 16: eight header words plus eight three-word event records. With the loader's existing three-word header, its maximum payload would become 123 words when both bridges are enabled. Confirm this calculation against the actual sender and receiver before assigning bytes; update both bounds and all upload chunk calculations together.
+
+Proposed eight-word event-batch header fields are magic/version, message kind/count, stream epoch, ordered message sequence, first event sequence, required configuration revision, oldest enqueue block and integrity check. Event sequence is `first + index`; individual ingress timestamps remain in diagnostic logs. Group a batch by destination track and required configuration revision. Each three-word event contains the CF-assigned note token, instance generation, and packed arguments. Allocate argument bits as kind 4, normalized port 2, channel 4, track 4, note 7, value 7 and reserved 4. CF is the only note-token allocator; Note Off carries the exact Note On token. The DSP never reconstructs FIFO identity independently. Wrap a token counter only through a new instance generation after draining/resetting its old events.
+
+Define argument interpretation by event kind: NOTE uses note/velocity, CC uses controller/value, and BEND combines the two seven-bit fields into the full 14-bit value. Non-note events reserve token zero. Configuration/routing metadata travels in typed control packets, not truncated MIDI fields.
+
+All packet kinds share one ordered message sequence and cumulative ACK, separate from runtime-loader ACK. Tagged CONFIG_CHUNK payloads carry target track, instance generation, configuration revision, chunk index and total byte length before bounded chunk data. Assemble into a second buffer; CONFIG_COMMIT validates the complete length/schema/checksum and swaps the revision atomically before acknowledgement. Chunk acknowledgements mean buffered, not applied. Dependent note batches wait behind the commit and declare its required revision. Retries of chunks/commits are idempotent. A mismatch requests resynchronization instead of rendering notes against the wrong shape. Priority reset aborts any incomplete transaction. A per-track reset advances that instance generation; whole-stream resynchronization advances the separate stream epoch.
+
+Reserve sixteen return words as a candidate: four for magic/version, stream epoch, accepted message sequence and DSP heartbeat; twelve for a typed status payload. The SRC interface section below assigns the fast-status fields and a bounded selected-track detail format. Publish ACK every DSP block independently of UI work. Without a detail transfer, rotate fast status across track instances once per block. During a detail transfer alternate fast status and detail fragments, so all sixteen fast records refresh within thirty-two blocks. The UI selects only matching track/generation snapshots and suppresses stale animation; track selection must never briefly display another track's notes.
+
+Allocate these return words only after proving unused space and full copy-path coverage. Rows after 20 are candidates: Overloop owns rows 13-20, and earlier rows contain ACK/diagnostics. A second mailbox cannot simply use those existing rows. Lack of verified return capacity blocks stage 0 just as lack of forward capacity does.
+
+Use a preallocated 128-event CF ring as a starting bound, at most eight events per forward batch. The MIDI task publishes complete entries before advancing the producer index; the audio sender consumes them under a short documented synchronization protocol. UI configuration/routing commands go through a serialized control handoff, not an unsynchronized second ring producer. No heap allocation, file access or logging loops in the MIDI/audio paths.
+
+Retain batches until ACK, suppress replays and use wrap-safe sequence comparisons. Retransmission must not retrigger notes. A priority reset/epoch record has reserved capacity outside the ordinary event ring and is repeated until its own reset acknowledgement. Overflow, an unrecoverable sequence gap or a stale bridge heartbeat causes a short ramp to silence, clears sounding ownership while preserving physical-press tombstones, and requires fresh key presses after reset acknowledgement. Do not attempt an incomplete reconstruction of a held chord. Drop late old-epoch events and expose an overrun diagnostic. A receiver accepts a newer reset epoch even when normal in-order delivery is stalled.
+
+At 48 kHz, 32 samples are about 0.667 ms. That is block quantization, not measured end-to-end latency. Set an initial target below 10 ms added median latency and 15 ms at the 99th percentile under the defined coexistence workload; measure from completed MIDI message ingress to final audio onset, separately from a controller's own scanning/USB/DIN transmission. Verify large event bursts, retransmission, configuration transfer and loader uploads. Adjust reservations before promising these targets.
+
+The existing early DSP receive hook also needs composition through one owner. Do not install a second hook over pattern position. Test CANOPY, Overloop capture/playback/status and a module upload together, including byte preservation outside every declared allocation.
+
+## DSP engine and bounded resource use
+
+The maximum is seven tone groups per track: four foreground pad groups, one current arp group and two release groups shared by pad and arp. At two oscillators per group the ceiling is fourteen oscillators, including transitions. This is a proposed ceiling, not a measured capacity.
+
+Use small band-limited wavetable families with interpolation, or an equivalently bounded oscillator proven across the supported pitch range. COLOR morphs between rounded and brighter spectra. DRIFT changes pitch/tone coefficients at control rate with deterministic per-instance seeds. Compute expensive pitch coefficients on events or control changes, and smooth gain/color changes in the sample loop. No allocation or full-spectrum analysis occurs there.
+
+On note release, keep its foreground slot until needed or migrate it to a free release slot. Reclaim the quietest releasing slot first, then the oldest release. A fifth held note steals the oldest foreground note; mark its token stolen so its later note-off is harmless. Do not resurrect stolen held notes automatically when another key is released.
+
+When stealing a non-silent slot, fade it for at most 64 samples before initializing its replacement, or use an already available tail slot. The new note can therefore incur a bounded steal delay. A four-note chord replacement can retain only two independent old tails; other displaced notes use the short steal ramp. Arp releases compete for the same pool. Long releases never allocate more groups.
+
+Use conservative fixed headroom for the maximum pool and smooth PAD/ARP mixing; avoid instantaneous gain normalization when the note count changes. Guard finite values and the SDK level bound. At pure PAD/ARP endpoints, skip inaudible synthesis where possible while preserving event, envelope and clock state.
+
+Keep persistent state within 4 KiB per track and confirm total placement against
+other loaded modules. The original additive design targeted 64 KiB of shared
+tables/buffers; the accepted factory-wavetable extension supersedes that shared
+target and uses the admitted 512 KiB L2 range. Report the complete module image,
+scratch and instance footprint for each new engine. Preserve the four-note musical
+limit while fitting the existing callback ceiling.
+
+Current conformance derives approximately 12,140 added instructions per track/block for a 16-track DTII case; see [conformance](../../tools/patchkit/pk_conform.py). That projection is not available headroom with Overloop. Count event processing, four simultaneous attacks, arp transitions and tails inside the same bounded block budget. Do not spend the old whole-device note-on allowance independently on every track.
+
+For unrestricted track assignment, prove the maximum 16-track case alongside stock filtering/FX and then the supported Overloop workload. If it cannot fit, enforce a measured instance limit at track activation with a visible error; loading one DKM does not limit the number of tracks using it. Performance evidence states the ceiling first and uses the repository's paired A/B workflow. No silicon performance claim follows from oscillator counts alone.
+
+## Arpeggiator and transport behavior
+
+ARP MIX blends sustained pad and the separate arp group. Candidate notes come from admitted physical/pedal membership in PLAY and from the generated chord in the other modes. Audio release tails and stolen keys outside the admitted four are excluded. The arp operates on a committed chord revision; a mid-step chord edit takes effect at the next scheduled note.
+
+Support UP, DOWN, UP/DOWN without duplicate endpoints, AS PLAYED and seeded RANDOM; a signed spread of -3..+3 additional octaves in one direction; and bounded gate duration. Zero uses the played octave only. Each arp event has its own internal token. Gate changes release only arp ownership. Initially STRUM applies only to generated ROOT + TYPE, LEARN TO ROOT and SEQUENCER chords: it schedules their pad-tone onsets across a bounded interval and cancels pending old-chord onsets when the chord revision changes. PLAY always preserves immediate individual key onsets; adding a played note cannot cancel a still-held earlier note.
+
+The arp uses the firmware's musical phase while playing and the current pattern
+tempo while stopped. The timing provider supplies that tempo; the arp advances
+its own phase per audio block without requiring the track sequencer to run.
+There is one timing choice: use the DTII TEMPO control to
+change speed. Do not infer BPM, per-track swing or a sample timestamp from the
+raw scheduler deadline. Represent subdivision phase rationally, so triplet
+rounding does not accumulate drift. Swing moves alternating events while
+preserving each pair's total duration.
+
+Restart choices are TRIG, PATTERN and CONTINUE. In KEYBOARD mode TRIG means the beginning of a new phrase, not each added chord tone. PATTERN follows the committed pattern generation. CONTINUE preserves ordinal/phase across chord updates, while transport reset creates a new clock generation. Quantize pending changes against the pattern clock.
+
+While stopped, direct keyboard pads and arpeggios remain playable from held or
+pedal-sustained notes. ARP G/H are blank and have no hidden controls. Old preset
+clock/local-BPM fields retain their storage positions but are ignored on load;
+the saved RATE selection becomes a musical division and is not reset. Running
+external sync does not silently fall back to a saved local BPM on clock loss.
+A stale running clock releases the current arp gate and pauses scheduling.
+Transport STOP cancels sequencer note ownership; keyboard held/pedal notes
+retain their ownership and can continue through the arp. PANIC clears them all.
+
+On a pattern switch that keeps CANOPY on the same track, retain KEYBOARD tokens and oscillator state, then apply the destination's firmware-backed controls. The carrier fixture now retains its instance on a compatible pattern change within the same project and refreshes the destination stock carrier without resetting MIDI ownership. Same-pattern Sound replacement, machine changes, project changes and unknown running timing still invalidate admission. General production retention remains a release requirement; this fixture has one fixed sine configuration and shadows WERP on track 0. Initially the extra module controls remain at the current CANOPY configuration/preset; they do not acquire destination-pattern values automatically. If the machine changes, reset that instance. In SEQUENCER mode the destination's committed trigs and lengths own the generated chord. Tie, retrig, microtiming and note-length behavior need event-source tests; root pitch alone cannot supply a complete gate lifecycle.
+
+## Controls and display
+
+The current layout uses three native SRC pages, plus WT FM for a wavetable or
+FM ENV when the standalone FM source is selected.
+The table below shows the original/wavetable layout; the
+[FM layout](#src-presentation) uses DEP on TONE A and FM controls on TONE.
+The stock header, track-level
+column, page dots, TUNE and source LEV retain their existing drawing, editing and
+hold-SRC values behavior. Custom parameters use the native parameter font and
+cell positions. Detailed note and ownership information remains in STATUS.
+
+| Encoder | SOUND | ARP | TONE |
+| --- | --- | --- | --- |
+| A | TUNE | RATE | POS |
+| B | CHRD | ORDR | DEP |
+| C | VOIC | OCTS | HZ / RATE |
+| D | WAVE | GATE | SHAP |
+| E | DRFT | SWNG | ENV |
+| F | STRM | RST | ATK |
+| G | MIX | — | REL |
+| H | LEV | — | VEL |
+
+SOUND B is one ordered list: `PLAY`, `MAJ`, `MAJ6`, `SUS2`, `MIN6`, `MIN`,
+`SUS4`, `ADD9`, `DOM7`, `DIM`, `MIN7`, `USER`, `MAJ7`. PLAY sounds the notes
+actually pressed; it is an editable choice, not an `AUTO` field that cannot be
+left. Every other choice selects ROOT + TYPE and its chord. Changing between
+PLAY and ROOT uses the existing ownership reset and requires fresh key presses.
+Changing chord type while already in ROOT updates the held root through the
+existing mapper. Choosing or leaving USER preserves its learned intervals;
+USER is not labelled with a library slot number because a preset can embed its
+own shape. VOIC and STRM remain unavailable in PLAY; learned USER voicing is
+fixed. The LEARN modal owns input and prevents all hidden SRC edits.
+
+SOUND D is one ordered list: `VELVT`, `REED`, `ANLG`, `GLASS`, `VOCAL`, `ORGAN`,
+`METAL`, `FM`. The first two choices select the original synthesis families;
+the next five select the corresponding wavetable and the last selects FM. No separate engine
+chooser is required. VELVT/REED have COLR on TONE A and unused B-H cells.
+The five wavetables have the complete position layout above. TONE A edits DEP
+for FM, whose other controls are below. COLOR, POS
+and FM DEP retain independent values when switching sounds.
+
+Discrete lists use four raw encoder ticks per choice with no time-based
+acceleration. Partial movement accumulates only for the same control/context;
+direction reversals, page/ownership changes and external value changes clear
+the remainder. Lists clamp at their endpoints and discard excess endpoint
+movement. This applies to CHRD, VOIC, arp RATE/ORDR/OCTS/RST/CLK,
+WAVE/SHAP/RST, FM ALG/RTA/RTB and tempo-synchronized wavetable RATE. Continuous macros retain
+their existing scales. Stock TUNE/LEV and LEVEL/DATA keep native behavior.
+
+The module settings contain SETUP beside the separate STATUS view. The global
+DigiKit menu labels the same setup entry CANOPY, replacing the ambiguous
+KEYBOARD label. SETUP contains four short groups:
+
+| Group | Controls |
+| --- | --- |
+| INPUT | EXTERNAL MIDI, USB, DIN, CHANNEL, SAVE ROUTING, SELECTOR OCTAVE, selector channel, PANIC, RECOVER, readiness and panel hints |
+| CHORD LEARN | Shape slot, LEARN TO ROOT, shape-save status/retry and the reminder to select CHRD USER |
+| MODULATION | Scan clock/restart, wheel to position, wheel to FM and wheel to wavetable FM |
+| PRESETS | Preset slot, saved/dirty state and explicit SAVE/LOAD |
+
+Setup removes duplicate performance-page controls and the separate engine/table
+selectors. Learning, loading a preset and changing input mode retain their
+existing note-lifecycle rules.
+
+Keep logical parameter identities separate from their displayed choices.
+CHRD still stores `CP_CHORD` 0..11 plus the existing keyboard-mode metadata;
+the displayed PLAY+12 list is not a new preset enumeration. WAVE stores
+family 0..3 and the remembered `CP_WT_TABLE` 0..4, changing the active sound
+atomically. Selecting VELVT/REED retains the last table and its modulation values.
+FM settings are remembered separately. WAVE uses view-only ID 34 so it cannot
+collide with FM ALG at active ID 16; it is not a serialized parameter.
+`CP_SOURCE` 13 remains the reserved keyboard event-source field; it does not
+store WAVE. Logical IDs 0..15 retain their established meanings except COLOR
+becomes DEP in FM and old latch ID 12 is reserved zero. IDs 16..27 select the active wavetable or FM bank. IDs 28..31
+hold the independent wavetable FM controls; native TUNE/LEV use view IDs 32/33.
+
+All custom controls use the validated 32-word CPSB configuration and explicit
+CPST v5 preset service, with legacy decoding retained. TUNE and LEV retain native Sound backing. Requested values may
+appear immediately, but pending feedback clears only for a matching applied
+generation and complete revision. A family change invalidates previously
+captured encoder ownership because TONE A changes its meaning; a delayed
+COLR turn must not become a POS or FM DEP edit. Other machines use their stock handlers,
+and page changes alone never change the sound.
+
+### Native MOD targets
+
+The user selected six fixed targets per sound type. MOD's existing DEST picker
+uses the six custom SRC mirrors (26, 27, 28, 31, 32 and 33), with names following
+the active WAVE family:
+
+| Slot | Velvet / Reed | Wavetable | FM |
+| --- | --- | --- | --- |
+| 1 | Color | Position | Depth |
+| 2 | Drift | Scan depth | Balance |
+| 3 | Arp mix | Scan rate | Feedback |
+| 4 | Strum | Timbre envelope amount | Envelope amount |
+| 5 | Arp gate | Wavetable FM depth | Attack |
+| 6 | Arp swing | Wavetable FM envelope amount | Release |
+
+The normal LFO controls set timing and bipolar depth. At zero depth the exact
+base bank reaches the instrument. Active modulation adds a bounded offset to
+the current knob value in a private per-block bank; it never edits the preset or
+the acknowledged base bank. Deselecting the destination restores the original
+value. Native TUNE and LEVEL keep their stock paths. Choosing a different WAVE
+family changes the meaning of each active SRC route, so an LFO aimed at
+wavetable position becomes FM depth when switching to FM.
+
+Scan rate modulation respects FREE HZ versus TEMPO SYNC ranges. GRID keeps arp
+swing at zero. Timbre envelope amounts retain their signed zero at stored 100.
+The descriptors expose native carrier offsets, not a second copy of the SRC
+knob values. The SRC display and saved presets show the base controls, while
+audio consumes the effective bank. Custom parameter locks and native
+Sound/project persistence are separate work.
+
+The adapter validates the active carrier type and CPSB schema before reading
+the completed stock frame. Ordinary machines and legacy instrument schemas
+retain their existing path. This uses the existing content-module ABI and
+32-word controls; it does not add more voices, target assignments or per-note
+storage.
+
+## SRC interface specification
+
+**Accepted native layout (2026-11-06):** the [native DTII UI contract](canopy-ui-review.md)
+supersedes the layout below. The implementation now preserves native TUNE/LEV,
+fonts and hold-SRC values, maps LEVEL/DATA to native track level, adds Status,
+and bridges resolved local keyboard notes through distinct PANEL ownership.
+The combined CHRD/WAVE controls specified above supersede the earlier control
+selection instructions while retaining that native layout contract.
+The following original layout remains historical; acceptance evidence and open
+physical checks are tracked in the new contract and its implementation handover.
+
+### Reference screens and pixel layout
+
+![CANOPY SRC design showing PLAY, generated chords, arpeggiator, encoder focus, LEARN and clock wait](assets/canopy-src-ui.png)
+
+The [editable vector reference](assets/canopy-src-ui.svg) contains six original design frames, each drawn on a 128 by 64 one-bit grid and enlarged by an integer factor. These are interface mockups, not firmware captures. The top ten rows illustrate the native header; exact placement of the native track/title/transport content must be checked on the pinned firmware. The custom painter must not erase or replace existing transport or track information to imitate the illustration.
+
+Use white pixels on black with no antialiasing, grayscale, color coding or tiny musical-symbol font. Draw custom content within x=0..123, y=10..63. Reserve x=124..127 for native page dots and y=0..9 for the native header. The page titles are CANOPY SOUND and CANOPY MOVEMENT, shortened to SND/MOV where the native title formatter requires it; the native page indicator shows 1/2 or 2/2.
+
+| Region | Pixel bounds | Content |
+| --- | --- | --- |
+| A-D labels | y=11..15, four 31-pixel columns | Three-by-five bitmap font, four-pixel advance; at most seven characters |
+| A-D values | y=18..24, same columns | Five-by-seven font, six-pixel advance; at most five characters |
+| Performance heading | x=2..77, y=28..34 | Chord name on SOUND; current arp pitch or clock state on MOVEMENT |
+| Source and mode | x=80..99, y=29..33 | `K:PLY`, `K:RT`, `K:LRN` or `SEQ` |
+| Latch and pedal | x=102..120, y=28..35 | Fixed L/P badges; never move other text when they change |
+| Four note slots | x=0..123, y=37..45 | One pitch label per 31-pixel column, plus ownership marks |
+| E-H labels | y=48..52, four columns | Same label font and limits as A-D |
+| E-H values | y=55..61, same columns | Same value font and limits as A-D |
+
+Column origins are 0, 31, 62 and 93. Center values in their cell, with at least one pixel of horizontal margin. Font measurement must precede drawing. Clip each cell independently rather than letting a long string spill into a neighboring control. The custom bitmap alphabet must include lowercase chord suffixes, `#`, `b`, `:`, `%`, `/`, `+`, `-`, `*` and `>`; reuse existing project glyphs where suitable and add missing glyphs explicitly.
+
+Always prioritize actual note names over a guessed chord label. Format MIDI note zero as `C-1`, not as an empty slot; use an explicit validity mask. Use `--` only for an absent note. Four-character pitches such as `C#-1` fit the slot; MIDI 127 is `G9`. Keep an unambiguous MIDI-number readout available in setup. Abbreviate or omit a long chord name and preserve slash bass where possible; do not scroll the note strip or hide a pitch to fit a title.
+
+### Current control labels and value formatting
+
+The mockup's original ordering and legends are historical. The current page table above is authoritative; encoder letters are conveyed by their fixed positions. Native font, cells, numeric formatting and hold-SRC values follow the accepted DTII UI contract.
+
+| Control | Normal cell | Behavior and focus formatting |
+| --- | --- | --- |
+| TUNE / LEV | Native compact numeric value | SOUND A/H only; retain native range, adjustment, storage and precise show-values rendering |
+| CHRD | `PLAY`, `MAJ`, `MIN7`, `SUS2`, `ADD9`, `USER`, etc. | One list selects PLAY or a ROOT chord type; no read-only AUTO trap |
+| VOIC | `CLS`, `OPEN`, `INV1`, `INV2` | Read-only `--` in PLAY and `LRND` for learned USER intervals |
+| COLR / DRFT | 0..127 | COLR lives on legacy TONE A; DRFT remains SOUND E |
+| STRM | `OFF` or a millisecond count | 0..500 ms total spread; read-only `--` in PLAY |
+| MIX | `PAD`, `ARP` or rounded percent | Percent is the arp contribution; endpoints map exactly to 0/127 |
+| RATE | `1/16`, `1/8T`, etc. | Musical division of the current pattern tempo, including while stopped |
+| ORDR | `UP`, `DOWN`, `UPDN`, `PLAY`, `RND` | `PLAY` means input order, not keyboard mode |
+| OCTS | `-3`..`+3`, with `0` at center | Additional arp octaves below or above the played octave; never both directions, and never pad transposition |
+| GATE | Percentage | Exact implemented range appears in the descriptor; round for the cell, retain stored precision |
+| SWING | `50%` straight to rounded `88%` | Existing DSP macro 0..75 alternates interval weights `100+n` / `100-n`, giving 50..87.5% of the pair to its first interval; the cell rounds to whole percent |
+| RST | `TRIG`, `PATT`, `CONT` | Phrase/trig, pattern or continuous restart |
+| WAVE | `VELVT`, `REED`, `ANLG`, `GLASS`, `VOCAL`, `ORGAN`, `METAL`, `FM` | SOUND D selects the sound family/table in one list |
+| POS | `1.00`..`8.00` | Wavetable TONE A is the single position control |
+
+Discrete enum controls advance one choice per four raw encoder ticks, clamp at their endpoints and do not accelerate with speed. Continuous custom controls retain their bounded scales; native TUNE/LEV retain stock modifier behavior. No custom encoder-click or capacitive-touch gestures are exposed. Never write an unsupported value and merely draw it as unavailable.
+
+Arp settings remain editable while MIX is PAD, so a performer can prepare the next movement without turning the arp up. Disabled controls consume turns without changing saved values or publishing a configuration revision. VOIC and STRM explain that a chord must be selected in PLAY; USER voicing explains that its intervals were learned. Blank cells have no hidden controls. Setup selects the learned shape slot explicitly and contains scan clock/restart and wheel assignments; latch has no page, menu or retained ownership state.
+
+### Historical performance-feedback mockup
+
+This subsection records the original bitmap proposal, not the current native
+SRC painter. Current note, pedal and arp details are in the separate STATUS
+view. The old L badge shown in the source artwork is obsolete; current ownership
+contains physical-key and sustain-pedal flags only.
+
+On SOUND, show the detected/generated chord at left, such as `Cmaj7`, `Dm7` or `C/E`. A pending quantized chord uses a rightmost `>` marker beside the current name until the DSP commits the new chord revision; never replace the displayed note slots with the future chord early. With no admitted notes, show `NO NOTES`; if only release tails remain, show `RELEASE` and empty note slots. These are note/lifetime indicators, not audio meters: a finished AHD envelope, zero sustain or mute can make held notes inaudible.
+
+The four slots show the admitted voicing, sorted by pitch for a stable visual order. Keep an explicit mapping from displayed slot to the underlying note token, so AS PLAYED arp order and repeated-pitch notes still highlight correctly. A solid underline means physical-key ownership; a dotted underline means pedal-only ownership; a short centered underline means latch-only ownership. Use physical > pedal > latch precedence when multiple flags apply. Generated chords inherit the ownership of their root phrase. Old release tails are counted separately and never enter the chord label or arp pool.
+
+A fifth eligible key can steal an admitted voice as specified above. Show `+N` beside the chord or a compact capacity message when eligible-but-excluded keys remain. Recognition and arp both follow the same admitted set of at most four notes; the display must not name a larger chord that the pad cannot play. Counts track unique eligible pitches for this indicator; repeated-note tokens retain their own release pairing.
+
+For KEYBOARD, L is plain when latch is off, outlined when enabled but no phrase is retained, and inverted while a latched phrase is active. P is plain when the routed pedal is up and inverted while down, even if no note is sounding. Both badges are plain in SEQUENCER because keyboard latch and pedal do not own sequencer gates. No flashing is needed for either badge.
+
+On MOVEMENT, show `ARP G4` for the actual current arp pitch, including octave expansion. Invert the source tone's note slot only while its arp gate is active, the applied arp contribution is nonzero and its source chord revision matches the displayed chord revision. If the chord changes before the next arp event, retain the actual arp-pitch heading but suppress slot inversion until the source-match-valid flag is set. The slot label remains the base chord tone (e.g. A3) while the heading can show A4; this makes the octave relationship explicit. A scheduled but inaudible arp does not pretend to be an audio cursor.
+
+| Condition | Heading or feedback | Animation |
+| --- | --- | --- |
+| Valid chord, arp mix at PAD | `ARP OFF` on MOVEMENT | Note ownership updates only |
+| Keyboard notes held while transport stopped | `ARP G4`, etc. | Arp cursor continues at the pattern tempo |
+| External sync selected, no valid clock yet | `WAIT CLK` | No arp cursor; keyboard pad remains playable |
+| Previously running external clock is lost | `CLK LOST` | Release arp gate, freeze no stale active highlight |
+| Timing capability missing | `WAIT CLK` | No arp cursor; keyboard pad remains playable |
+| DSP telemetry stale or wrong generation | `LINK LOST`, note slots `--` | Stop all note/arp animation; retain labeled control values as unconfirmed |
+| Instance fault | `VOICE ERR` | Clear note highlights; PANIC and setup remain reachable |
+| Pending configuration | Small `*` next to focused requested value | Show pending until applied revision is acknowledged |
+| Save failure | `NOT SAVED` after the save action | Current sound remains; retry through setup |
+
+The pattern clock is automatic and is not a source selector in RATE focus or
+setup. The normal heading reserves space for the actionable state or note.
+Fault/stale status has priority over knob focus; a pending save notice must not
+conceal a voice fault. A stale snapshot must not be presented as an empty,
+healthy instrument.
+
+### Encoder focus and input routing
+
+A real encoder turn opens a 750 ms focus view within y=27..45; each additional turn restarts the timer. It replaces the central chord/note area only, preserving both rows of knobs, native header, page dots, source/mode and L/P badges. Use x=2..77 for the full or measured-abbreviated parameter/value heading. A second line shows a useful value explanation or endpoint marker. For ARP MIX, draw PAD at x=2, ARP at x=110 and the marker between x=21..103, matching reference frame 4. Resume the ordinary note view when the timer expires.
+
+Show the requested value immediately after a turn. While its configuration revision is pending, add `*`; the blend marker and note/arp status continue to represent applied DSP state. Remove the marker only on matching applied revision, not merely a transport ACK. If focus expires while pending, retain a small pending marker in that cell's label area. Distinguish this from preset dirtiness: durability appears in setup/save feedback, not as the same star on all live controls.
+
+Plain SRC cycles SOUND/MOVEMENT; native UP/DOWN page navigation is retained. Store the selected page as temporary per-track UI state, not as a musical parameter. On returning to a CANOPY track restore its page, initially SOUND. Leaving for AMP/FLTR or switching tracks cancels focus. Consume the page-switch event once; repeated key-down/held SRC must not repeatedly flip pages unless native behavior deliberately supplies repeat events.
+
+Preserve FUNC+SRC for MACHINE selection. Preserve stock transport, trig keys, TRK selection and modifier combinations. Do not assign YES to setup or learning from the ordinary SRC page: added-machine YES/sample-picker handling remains an open firmware input question. Initial setup/LEARN access stays at DIGIKIT > MODULES > CANOPY > SETTINGS. Do not route a delayed turn captured for one page/generation into a different page or track after a mode switch.
+
+The existing `mf_srcpage` hook resets added machines to one page on each draw. Extend it with the explicit multiple-page capability for CANOPY, leaving existing machines on their current path. Then provide page-specific paint, encoder and formatter dispatch. See [SRC page analysis](../findings/50-dt2-src-second-page.md), [input routing](../findings/71-ui-components-1-17.md) and the [current machine hook](../../modules/core/adapters/machines/src/cf/dt2/machines.s). This is a required implementation dependency, not only a mockup detail.
+
+### LEARN dialog
+
+The setup LEARN action opens an opaque modal with its own native title. Show the destination shape slot, unique captured count `0/4`..`4/4`, four captured pitches, and the lowest-note anchor labeled ROOT. The dialog uses the complete y=10..63 content area; the background SRC page stops animation. It owns YES SAVE and NO CANCEL only while visible. Encoder movement must not change hidden SRC parameters.
+
+Capture is a separate session with a monotonic ID and revision. On entry, release the previous performance phrase and begin an isolated PLAY audition; selectors are ordinary notes here. Captured membership accumulates across key releases and is independent of pedal/audio release tails. Duplicate pitches do not consume another slot. A fifth unique pitch leaves the first four intact and shows FULL. Empty capture disables YES and shows `PLAY 1-4 NOTES` when attempted. NO discards the session without overwriting its previous saved shape.
+
+YES commits exactly the displayed capture revision to the selected slot; if a new note changed capture after that revision, refresh the dialog before accepting another YES. On commit show LEARNED/UNSAVED immediately; show SAVED only after durable completion. A failed write keeps the new working shape and offers retry in setup. Closing releases audition voices, restores the preceding SRC page/mode and requires fresh presses; it does not unexpectedly switch the input source or turn on latch. Preserve tombstones for keys still physically held. Mode-specific selection of the learned shape remains explicit.
+
+### Status payload and redraw contract
+
+Freeze the fast-status payload at twelve words, using the following packing. All identity/revision fields use wrapping unsigned comparisons; a flag is not a replacement for a generation check.
+
+The implemented transport envelope uses sixteen words: magic `0x494ea104`,
+bound-session token, heartbeat, twelve payload words, checksum. This supersedes
+the earlier proposal to carry four ACK/heartbeat words alongside every payload:
+that proposal left no room for both session authentication and checksum. Status
+frames alternate with ordinary ACK frames, only after binding and while the row
+is ready. Thus ordinary ACKs remain available every two DSP blocks while status
+is active; a status frame never acknowledges a configuration or MIDI event.
+No status frame can bind a session. An absent/unready status producer preserves
+the existing ordinary frame cadence. Fast/detail rotation occurs within status
+slots, rather than replacing the lifecycle ACK path. The CF queue is bounded to
+64 messages, reports overflow explicitly and retains authenticated arrival age;
+the UI receiver must additionally enforce its wall-clock freshness deadline.
+
+| Word | Fast payload meaning |
+| --- | --- |
+| 0 | Publication DSP block |
+| 1 | Kind bits 30..31 (`0` fast); track 0..3; source 4..5; mode 6..7; pedal bit 8; former latch bits 9..10 reserved zero; pending-chord bit 11; quiet/ramp/fault/learn-active bits 12..15; pitch-valid mask 16..19; active foreground count 20..22; total releasing-group count 23..25 (foreground, shared tails and arp); arp gate/audible bits 26..27; bits 28..29 reserved |
+| 2 | Instance generation |
+| 3 | Applied effective-control revision, including firmware-backed values |
+| 4 | Applied chord revision |
+| 5 | Four admitted MIDI pitches, one byte each; validity comes from word 1 |
+| 6 | Four membership bytes: key/pedal flags in bits 0..1, former latch flag bit 2 reserved zero, with the existing stable source-tone identity packing unchanged |
+| 7 | Actual arp pitch bits 0..7; pitch-valid bit 8; source-match-valid bit 9; source-tone index bits 10..11; reserved bits 12..15; bounded ordinal bits 16..31. Source-match-valid means the arp source revision equals word 4; generate packed masks in SDK |
+| 8 | Applied arp mix, unique physically held count, eligible-but-excluded count, and reserved byte |
+| 9 | Clock mode (current PATTERN = 2; legacy LOCAL/GRID remain wire-compatible), state (0 local, 1 waiting, 2 running, 3 lost, 4 stopped), provider bits (bit0 grid, bit1 phase), and applied rate ID, one byte each. Stopped transport with a valid pattern-tempo arp reports state 2 |
+| 10 | Last fault code and saturating overrun count, sixteen bits each |
+| 11 | Selected-track detail revision |
+
+A separate typed DETAIL fragment uses the same twelve-word payload: publication block; kind/track; instance generation; detail revision; framing; associated applied-control revision; then six data words. Framing packs fragment index in bits 0..7, total fragments in 8..15, detail schema version in 16..23 and reserved zero in 24..31. Freeze schema 1 at exactly 64 snapshot words, with unused fields zeroed: eleven fragments indexed 0..10, the final fragment carrying four snapshot words and two zero padding words. It contains the full effective control bank, pending chord revision, LEARN session/capture revision, captured pitches/validity/count/anchor/full flag and shape revision. The CF side owns requested and durable-store revisions locally; do not pretend DSP ACK acknowledges card storage.
+
+Transmit details only for the selected track or active LEARN dialog, at most 25 completed snapshots per second. A source snapshot remains immutable until its fragments complete; coalesce intervening requests. Alternate fast/status detail frames during a transfer to retain the thirty-two-block fast refresh bound. CF publishes a completed detail snapshot only after every fragment matches track, instance, revision, schema and expected length; reject invalid indices, counts or padding. Validate LEARN session identity and capture revision against the current dialog before publishing its capture fields. Discard incomplete/stale fragments on track/mode/session changes. After 150 ms without completion, discard that assembly and request a fresh snapshot through the ordinary control stream, with at most one retry per 150 ms. Keep the last matching complete controls marked unconfirmed while recovering; missing details must not disable retry or invalidate fresh fast notes. No new reply rows are claimed by this multiplexing.
+
+Use a 150 ms initial freshness threshold for matching fast telemetry, measured on the UI clock. After it expires, stop animation and display LINK LOST; a paused UI loop does not infer a DSP fault until it can recheck fresh data. Detail freshness is checked separately and does not blank valid fast notes while a new detail snapshot is assembling. Paint only at most every 40 ms for animation, with immediate input/fault redraw permitted. Copy bounded data under a short lock/mask; format and draw after releasing it. Retain no firmware view pointers or DSP buffer pointers across updates.
+
+The CF consumer conservatively timestamps queued messages at its previous empty
+FIFO poll, never at dequeue time. The first poll after selection, a 150 ms UI
+stall, or reported FIFO loss discards the backlog before establishing a new
+arrival-time lower bound. A drain is bounded to 130 reads (128 entries, a loss
+notification and the empty observation); failure to reach empty invalidates the
+bound. Audio-frame age is an additional rejection check, not a substitute for
+the independent UI clock. The native view must supply that clock before the
+consumer is enabled on-device.
+
+### UI acceptance
+
+Use native SRC renderer fixtures for every current family/page, plus NO NOTES, RELEASE, pedal down with no notes, fifth key, pending chord, pending encoder value, LINK LOST and VOICE ERR in STATUS. Check that legacy latch bits never produce a label or ownership mark. Check exact pixel bounds and independent field truncation at native resolution; the original enlarged mockup is not a substitute for native-font readability.
+
+Exercise every encoder on all current pages, including blank ARP G/H cells and
+disabled PLAY/LEARN controls; assert storage values and DSP revisions as well
+as pixels. Load old local/grid/phase presets and verify that all use pattern
+tempo without dirtying the sound. Verify playing the arp while stopped and
+changes to the normal TEMPO control. Verify mode and capture ownership, MIDI
+note zero, long accidental/octave names, missing-clock capabilities, and
+source/rate changes while notes are held. Check an arp gate spanning a chord
+change: the actual pitch remains visible in STATUS, but no mismatched source
+slot is highlighted. Separate requested/applied/saved states in delayed-ACK and
+failed-save scenarios. Drop, duplicate and reorder detail fragments; reject
+invalid framing and old LEARN sessions, and prove timeout recovery without
+blanking fresh fast notes.
+
+In running firmware, prove page persistence against `mf_srcpage`, SRC and UP/DOWN behavior, FUNC+SRC machine selection, focus expiry, return from AMP/FLTR, rapid switching between CANOPY and stock tracks, key repeat and modal ownership. A late status fragment or turn event must never show or modify the wrong track. Confirm the actual native header/page-dot geometry before accepting the layout, then check OLED readability and knob correspondence on hardware.
+
+## Persistence and automation
+
+The runtime settings store is device-wide and shared: 8 KiB total, with a 1024-byte maximum value. Introduce bounded namespaced access for content modules, or an explicitly scoped core settings owner. Keep all store reads/writes on the UI task. MIDI handlers publish pending changes only.
+
+Start with eight learned shape templates and four explicit CANOPY presets, within a 1536-byte requested namespace quota including record overhead. Check shared capacity before accepting a save. Store schema version, control values, normalized intervals and optional captured velocity ratios. Persist routes separately from patch sounds. Never save held keys, sustain state, live tokens, pending events, arp phase or pointers.
+
+Each preset embeds its learned shape by value. Validate record length, version, note count, interval ranges and parameter ranges before applying a complete revision. An invalid load leaves the current working configuration untouched. A failed save keeps the current audible configuration dirty/unsaved and preserves the previous durable copy; it does not roll back sound parameters later. Report unsaved/dirty/error states accurately; an in-RAM update is not a durable save. Use the existing deferred dual-copy persistence and its error reporting.
+
+The first release distinguishes scopes explicitly:
+
+| State | Initial persistence contract |
+| --- | --- |
+| Stock TUNE/LEVEL | Existing firmware Sound backing and native parameter editing |
+| All sixteen CANOPY controls and learned shapes | Explicit DigiKit preset save/load; no automatic Sound/pattern association |
+| MIDI routing | Device setup, restored only after valid CANOPY instances register |
+| Sound/pattern copy, p-locks and LFO modulation of new fields | Not promised until their integration passes dedicated tests |
+
+For full Sound/project integration, first prove stable identities and save/load/copy/paste/reload paths. A RAM Sound pointer or a pattern number is not a persistent key. Define behavior for missing modules and old schema versions before extending native serialization or adding a project sidecar. Keep that work separately releasable; do not imply that an attractive SRC page establishes native persistence.
+
+### V2 implementation decisions
+
+The earlier four-value native mapping described the V1 experiment. The shipped
+V2 declaration has no legacy `DK_PARAM` table; its sixteen stable control IDs
+live in one explicit preset bank. Reusing sample-machine slots for a subset of
+that bank would create two conflicting persistence owners. All custom controls
+therefore use the same validated preset service. TUNE and LEVEL retain their
+native Sound backing; loading a CANOPY preset leaves those two values alone.
+Full native Sound/project serialization remains the separately listed later
+stage, including copy/paste and modulation qualification.
+
+LEARN capture is owned by the ColdFire keyboard mapper, which sees physical
+key ownership before chord normalization. The opaque setup modal reads that
+bounded capture and binds SAVE to its session and revision. DSP note gates
+cannot reconstruct physical key ownership, so the release does not duplicate
+LEARN capture in DSP telemetry. The SRC page stops animation under the modal;
+DSP telemetry continues to own applied audio values, notes and arp state.
+
+The native SRC adapter maps SOUND A/H to stock TUNE/LEVEL parameter
+codes and forwards their native modifier behavior. The current custom list
+controls use four raw encoder ticks per choice without acceleration; continuous
+custom controls retain their existing bounded scales. Encoder presses on custom
+controls are consumed; no unverified stock reset gesture is exposed. Logical
+control IDs stay independent of visual knob order.
+
+The internal CPS7 bank keeps 32 words: word0 contains version7 in bits0..7,
+keyboard mode in bits8..9, zero in bits10..15, and native TUNE raw8.8 in bits16..31.
+The raw value is biased by0x4000 and bounded to0x0400..0x7c00. Words1..31 retain
+CPS6 meaning. Applied detail word16 reports the exact native TUNE value, allowing
+the pending marker to clear only for the matching generation and revision.
+The 800-byte instance uses words197..199 for transpose and active arp pitch/bend.
+Pitch changes preserve held voice identity; native LEVEL stays downstream in
+the stock voice path. DSP/schema changes do not alter the explicit preset format.
+
+## Booted loader proof
+
+An emulator-only `test/instrument-load` fixture now drives the real coordinator
+through DKDS6 parsing, admission, DSP image upload, INSTALL, CREATE, publication,
+DETACH and memory/link release. The DT2 1.17 test checks uploaded bytes and callback
+state, and releases the 128-byte allocation only after acknowledged detach.
+The fixture enables private DSP lifecycle readiness after session binding; normal
+firmware still has no public V2 admission, machine route or audio dispatch.
+The live proof also exposed and fixed recursive ColdFire byte-swap lowering in
+descriptor decoding. All 167 SDK cases pass. See
+[the measured lifecycle result](../findings/135-canopy-carrier.md).
+
+### Admitted process dispatch checkpoint
+
+The coordinator now requires separate INSTALL and INSTALL_PROCESS acknowledgements
+before CREATE and publication. The DSP binds each process entry and its event/control
+limits to the reserved owner/generation. A protected dispatcher checks READY state,
+selects the admitted instance stride, and quarantines callback faults while retaining
+state for retirement. Fault output is silenced. Adapter input/output buffers may live
+throughout bootable L2; this does not enlarge the dynamic image/state allocation.
+
+CANOPY now has V2 reset/process callbacks using allocator-owned 528-byte instances
+and normalized six-word events. They validate a complete event batch before applying
+it. Direct and protected processor tests cover C/E, add G, release E, sustain, per-note
+velocity, route-specific bend, reset isolation, generation rejection and bounded
+stealing. A paired instance reference checks that C/G oscillator state and gain remain
+identical through E's onset/release. This is kernel evidence, not final-output acceptance.
+The callback currently requires neutral tuning and one fixed PLAY control; its provisional
+descriptor limits are not release admission budgets. Reset clears an instance immediately;
+carrier quiescence/ramping must precede destructive lifecycle resets.
+
+The booted uploaded-process test passes: CREATE, installed process entry, output
+write and instance mutation, then acknowledged DETACH before memory release.
+That uses a small diagnostic callback, not CANOPY final PCM.
+
+The core packet adapter now validates ordered packets, checks epoch/track/instance
+generation/revision, normalizes the full batch and preclears output before dispatch.
+The booted load fixture exercises this path with a diagnostic callback. These callbacks
+are not yet connected to a public machine package, live route owner or final carrier dispatch. No stage completion is claimed by this checkpoint.
+
+### Stage 1 completion checklist
+
+- [x] Booted upload, CREATE, publication, DETACH and allocator release.
+- [x] Sine-bank keyboard ownership, pedal and independent velocity in the carrier fixture.
+- [x] Exact C-E, add G, release E sequence measured in final stereo PCM: settled
+  C/G phase and amplitude persist, and E disappears. This does not establish
+  uninterrupted samples throughout the release transient.
+- [x] Replace the fixture's stock type-1 shadow with the admitted V2 process entry.
+- [x] Connect normalized MIDI/configuration input and instance state to that process ABI
+  in the single-instance adapter; instruction-level checks pass. Booted integrated
+  audio acceptance remains separate below.
+- [x] Connect supported machine registration, explicit keyboard route and shared carrier ownership.
+- [x] Run the complete Stage 1 acceptance through that integrated path, including
+  transition-sample continuity, pedal, velocity and fault retirement.
+
+The integrated test uploads and reads back the actual CANOPY DKM, restarts,
+waits for CREATE/publication, selects its assigned type through the stock
+chooser and enables the keyboard route through SETTINGS > DIGIKIT > KEYBOARD.
+It captures final stereo PCM for C-E, add G, release E, checks every transition
+sample for discontinuities/missing blocks, checks independent pedal ownership,
+and compares the same pitch at velocities 40 and 127 while DIN G stays held.
+An injected callback-generation fault must produce silence and acknowledged
+DETACH before DSP allocation release; published CF storage remains until reboot.
+
+Acceptance: `modules/machines/canopy/tests/stage1.manual.device.test.ts` passes in 347.66 s;
+log `out/canopy-stage1-live.log`, PCM and fits `out/canopy-stage1*`.
+The package uses V2 reset/process entries, not a stock type-1 shadow. The adapter
+is optional, DTII-only, one instance, track 1 (since 2026-11-11 the lowest track
+carrying the instrument, finding 145), boot-only, with disabled-by-default
+nonpersistent route settings. Development installation uses the upload/selection
+protocol; the generic module-browser fit calculator remains V1-only. General
+module browsing, coexistence and hardware release proof are not implied.
+
+Stage 1 is complete at its emulator acceptance boundary. The declared policy's
+100000/1000 process/reset ceilings exceed the tested 17732/411 instruction cases;
+these are instruction counts, not a measured hardware CPU budget. Stage 6 owns
+hardware timing and release approval.
+
+## Stage 2 implementation checkpoint (historical)
+
+This records the completed Stage 2 behavior. Latch was subsequently removed
+from the keyboard mapper, arp settings and presentation on 2026-11-10; the
+current ownership rules above supersede that part of this checkpoint.
+
+The optional single-instance adapter now owns a bounded CF musical mapper above
+its physical MIDI ledger. PLAY, ROOT + TYPE, LEARN TO ROOT, latch, twelve selector
+types, four fixed voicings, eight learned-shape slots, SAVE/CANCEL, PANIC and
+explicit keys-up recovery are implemented in the KEYBOARD setup menu. The
+existing four-voice/two-tail sine DSP and neutral control schema are unchanged.
+The mapper retains audible tokens for common tones; physical tokens remain in
+the ingress ledger, including stolen-key and reset tombstones. Mapped output and
+source-event retirement counts are separate and retries reuse immutable packets.
+
+Learned templates persist in one validated 48-byte namespaced settings record.
+Saving is RAM-immediate and card-deferred to the UI task; failure retains dirty
+state and exposes retry. Route/enable/mode/latch settings intentionally start at
+defaults after reboot. Presets, chord-name recognition/display, optional automatic
+voice leading and the final SRC pages remain later presentation/musical work;
+Stage 2 exposes the fixed close/open/inversion choices. There is no arp or pad
+oscillator claim in this stage.
+
+See [the adapter guide](../../modules/core/adapters/instrument-play/README.md)
+for exact selectors, ownership behavior, storage and recovery controls.
+Stage 2 is complete at its functional emulator acceptance boundary. The combined
+menu/audio test passes normal admission, independent-note continuity, silent
+selectors, common-tone continuity, four-note learning, durable settings readback,
+transposition, PANIC with old-release protection, NO cancellation and callback
+fault retirement with responsive USB. The final defensive output-buffer guard
+also passes the 29-case focused host suite and actual CF instruction probe.
+Hardware timing, coexistence and release approval remain Stage 6.
+
+## Stage 3 implementation
+
+The pad engine uses a bounded additive alternative to wavetables: one normalized
+rotator per group supplies the fundamental and analytic second/third harmonics.
+Velvet morphs toward a rounded odd-harmonic spectrum; Reed adds even and odd
+harmonics. Pitch-dependent weights taper harmonics to zero before Nyquist, using
+the current bend/drift coefficient. MIDI 0..127 and +/-2-semitone bend remain the
+supported range. There are four foreground groups and two shared release tails;
+the seventh arp group belongs to Stage 4, not this stage.
+
+CPS3 transports six validated integer words atomically. Setup exposes family,
+color, drift, attack and release without resetting held ownership. Color/family
+use 20 ms smoothing and per-sample interpolation. A seeded 6.667-second triangle
+changes pitch at block rate, up to five cents with reduced excursion at high
+pitches, with opposite signs for alternating tokens. Base tuning never accumulates
+drift. Local attack is 10..1788 ms, release 40..8168 ms from full amplitude, with
+80/1000 ms defaults. Reset tails retain tone/modulation through their 64-sample
+fade. No dynamic allocation, per-sample pitch calculation or spectrum analysis
+occurs in the renderer.
+
+A fixed 0.08 gain gives an analytic full six-group bound below 0.75. It does not
+change with the number of held notes. Instance state is 544 bytes; shared tuning
+and envelope tables occupy 2560 bytes. Current single-instance admission remains
+in force; these figures do not qualify sixteen instances or hardware CPU time.
+Non-finite or over-level output is silenced and faults the callback before the
+stock chain. The protected callback's declared ceilings remain 100000 process instructions
+and 1000 reset instructions; observed Stage 3 maxima are 20830 and 423 in the
+bounded component workload. State canaries and interleaved-instance tests pass.
+
+Pitch/spectral comparisons cover both families at MIDI 0, 60, 100, 110, 119 and
+127; other checks cover long sine holds/releases, full-pool retriggers, maximum
+drift, envelope endpoints, invalid controls and live configuration preservation.
+Stage 3 is complete at the functional emulator boundary. Running-firmware
+acceptance passes live family/color/drift/release changes with retained ownership,
+stock filter close/reopen, and reverb after the module output becomes silent.
+The full keyboard/learning/storage/panic/fault-retirement regression also passes.
+The final output guard is separately verified in direct/protected instruction
+tests; the live runs used the preceding otherwise-identical pad DKM. Exact
+artifacts and evidence versions are in the
+[Stage 3 handover](../handovers/HANDOVER-2026-11-01-canopy-stage3.md).
+Hardware coexistence remains Stage 6; Stage 4 is in progress.
+
+## Stage 4 implementation status
+
+Stage 4 is **complete at the functional emulator acceptance boundary**.
+The production DSP now implements UP, DOWN, UP/DOWN, AS PLAYED and deterministic
+RANDOM, one to three octaves, local rational timing and pair-preserving swing,
+TRIG/PATTERN/CONTINUE restart, generated-chord strum and a smoothed PAD/ARP blend.
+The seventh oscillator uses the same two release-tail slots as the four pad
+owners. Busy replacement still has a bounded 64-sample ramp. CONTINUE retains
+phase across empty membership; release tails never become arp candidates.
+
+CPS5 applies sixteen controls atomically through KEYBOARD setup. Named SRC
+pages and presets remain Stage 5. Instance storage is 768 bytes; the package
+requires the matching adapter admission policy. Optional process-input V3 adds
+explicit committed phrase/generated metadata and opaque pattern identity to
+the unchanged V2 prefix. Sample offsets are not repurposed. Immutable mapped
+packet retries and metadata-only same-chord phrase commits preserve ownership.
+The C movement policy remains an executable reference, not a runtime caller.
+
+MASTER GRID schedules whole committed master-step multiples. MASTER PHASE uses
+optional process-input V4 (88 bytes) carrying firmware phase and the committed
+boundary deadline, at 21600000 ticks/quarter. Integer phase carry supports
+subdivisions and swing independently of native master scale. Both modes wait
+for a complete observed interval and fail quiet on missing timing. Minor
+backward corrections do not count time twice; large jumps reobserve.
+
+The stock sequencer can freewheel after external MIDI pulses disappear. A
+separate instrument-clock freshness policy observes the stock source mask and
+last accepted pulse timestamp. It expires after three estimated pulse periods,
+bounded to 40..500 ms, and requires fresh pulses until STOP or clock receive is
+disabled. The legacy position ABI and its freewheel behavior remain unchanged.
+
+Running-firmware acceptance passes both master modes through the settings menu,
+final audio, stopped/held-note silence and restart, USB pulse loss and slower
+recovery, local note order/octave controls, and generated strum cancellation.
+The final provider additionally passes DIN loss/recovery, a seven-step cycle at
+double master scale, and exact phase progression independent of that scale.
+The long-counter-wrap latch has CF-core coverage; the final provider passes the
+DIN run. The full musical run used the otherwise-identical preceding provider.
+Artifact hashes and evidence boundaries are recorded in the Stage 4 handover.
+Hardware and coexistence remain Stage 6.
+
+Details and evidence are in the
+[Stage 4 handover](../handovers/HANDOVER-2026-11-01-canopy-stage4.md).
+
+## Implementation stages and acceptance
+
+| Stage | Work | Exit evidence |
+| --- | --- | --- |
+| 0 | Pin MIDI boundaries and transport allocation on 1.17; define V2 capability | USB and DIN observation/fallthrough, upload intact, no overlapping forward/reply claims |
+| 1 | V2 lifecycle and simple sine voices, explicit keyboard route | Hold C-E, add G, release E: C/G remain continuous in final output; pedal and low-then-high velocity pass |
+| 2 | Bounded pool, PLAY, ROOT + TYPE, LEARN TO ROOT and settings menu | Deterministic key/pedal ownership, silent selectors, capture/transposition, panic and failure recovery; historical latch behavior is retired |
+| 3 | Pad oscillator families, local envelopes, drift and stock filter/FX integration | Pitch/aliasing/headroom checks, bounded memory/instructions, musical sustained/retrigger tests |
+| 4 | Master-grid arp, blend/strum; then finer clock/local BPM | Correct note order/gates, chord commit, stop/restart, clock-loss and tempo-change behavior |
+| 5 — complete | Presets, named display and two SRC pages | Host and booted DT2 1.17 acceptance: revision agreement, stable IDs, persistence errors, unaffected stock views |
+| 6 | Coexistence, admitted instance count and hardware release proof | CANOPY + Overloop + uploads; worst-case CPU; real keyboard latency and lifetime checks |
+| Later | Native Sound/project extension, automation and internal MIDI-track chords | Dedicated round-trip, copy/paste, p-lock/LFO and routing proofs |
+
+Stage 6 progress, 2026-11-03: the combined emulator test and physical
+CANOPY/Overloop/upload test pass. Physical Overloop capture, live window edits,
+USB partial releases, sustain messages and replaced-note release checks pass.
+The connected DIN keyboard demonstrated C-E-G to C-G ownership, four-note chords
+and complete release. A bounded USB stress run passed 1,440 note events and four
+verified 32 KiB uploads with no guard faults. One keyboard instrument on one
+track (track 1 at that time; any track since finding 145) remains the admitted
+configuration. Calibrated ingress-to-final-output latency,
+worst-case DSP budget, and broader transition/recovery qualification remain open;
+a physical sustain pedal is unavailable. See the
+[physical findings](../findings/138-canopy-stage6-hardware.md) and
+[Stage 6 handover](../handovers/HANDOVER-2026-11-02-canopy-stage6.md).
+
+Stage 1 is a go/no-go gate. A beautiful pad sound with shared-note cutoff is a failed keyboard instrument. The detailed two-page UI must not delay that proof. Do not expand into extra oscillator types or recognition heuristics while MIDI/AMP ownership remains unresolved.
+
+## Factory wavetable extension (CPS9)
+
+WAVETABLE is a third engine family alongside the unchanged Velvet/Reed renderer.
+It uses five original factory tables (ANALOG, GLASS, VOCAL, ORGAN, METAL), each
+with eight phase-aligned frames. POS selects a continuous 1.00-8.00 position;
+adjacent frames interpolate, and modulation clamps at the ends. The assets use
+seven band-limited levels per frame, with lengths 512/256/128/64/64/64/64 and
+harmonic ceilings 64/32/16/8/4/2/1. Guard samples permit bounded interpolation.
+Factory data occupy 185,440 bytes. Frame level calibration happens offline;
+filtered levels retain the same gain, and there is no per-note automatic gain.
+
+The engine retains four held pad groups, one arp group and the existing shared
+release-tail pool. Note identity, velocity, sustain pedal, bend, drift and
+stealing stay with the existing owners. Same-pitch arp onsets inherit phase and
+timbre-envelope history from their pad owner. Table changes use one bounded
+transition at a time; further requests replace the pending destination instead
+of allocating extra oscillators. Rendering performs no heap or card operations.
+
+A shared scan runs free at 0.01-10 Hz or follows master timing at four bars,
+two bars, one bar, half, quarter, eighth or sixteenth. Sine, triangle and smooth
+random shapes support free, phrase and pattern restart. DEP 100% means a
+3.5-frame excursion on either side of POS. Separate timbre attack/release and
+signed envelope, velocity and CC1 amounts shape position without changing the
+amplitude envelope. Modulation amounts default to zero. CC1 is scoped by USB/DIN
+port and channel; CC121 resets the route's wheel, and CC120 retains it.
+
+TONE is the third native SRC page: `POS / DEP / HZ or RATE / SHAP` above
+`ENV / ATK / REL / VEL`. SOUND A/H retain native TUNE/source LEV; dedicated
+track LEVEL/DATA and held-SRC show-values keep their firmware behavior across
+pages. WAVE lives only on SOUND D and combines VELVT/REED, all five factory
+tables and FM, while the persisted family and table fields remain separate.
+Legacy COLR remains remembered on TONE A, with B-H unused for VELVT/REED.
+MODULATION setup retains scan clock/restart and signed wheel assignments.
+Position has no duplicate on SOUND or WT FM. The native page vector must actually
+allocate space for three entries; enlarging only its reported end pointer is
+forbidden.
+
+CPS9 retains the 128-byte control transport: the first sixteen words contain
+audio controls, the low halves of the next sixteen retain old presentation IDs,
+and twelve high halves carry the new controls. An entire bank is validated before
+publication. Detail schema 3 unpacks 28 controls plus native tune into the
+existing 64-word telemetry record. CPST v3 is 96 bytes and includes factory-table
+version 1; v1/v2 records receive neutral wavetable defaults. Presets remain
+explicit DigiKit sound slots, separate from native Sound/project data.
+
+User-table import, hard sync and PWM are later extensions. Wavetable
+implementation requires fresh sound-quality, instruction-bound, native-page and
+CANOPY/Overloop coexistence checks; earlier additive-engine acceptance does not
+qualify the new renderer. Physical release qualification remains a separate gate.
+
+## Four-operator FM extension (CPSA)
+
+FM is family 3 and the eighth WAVE choice, after METAL. Keyboard mode, chord
+selection, ownership, arp, native tuning and native volume controls remain shared
+with the other sources. FM is implemented as phase modulation using four sine
+operators. The modulators A/B have independent ratios; the audible taps X/Y
+follow the played fundamental. The fixed evaluation order is B, A, X, Y.
+
+| ALG | Modulation connections | Audible taps |
+| --- | --- | --- |
+| TWIN | A to X, B to Y | X, Y |
+| STACK | B to A to X | X, clean Y |
+| SUM | A and B to X | X, clean Y |
+| CHAIN | B to A to X to Y | X, Y |
+
+BAL blends only the final X/Y taps. CHAIN takes normalized X before BAL,
+amplitude envelopes, velocity loudness and native level; a volume edit must not
+change the modulation index. Feedback is a bounded delayed path on B. DEP scales
+the graph edges with per-algorithm calibration. Algorithms share one acyclic
+graph and smooth its edge gains, avoiding a second four-operator renderer.
+
+RTA/RTB use the ordered ratios 0.25, 0.5, 0.75, 1, 1.25, sqrt(2), 1.5,
+sqrt(3), 2, 2.5, 3, 4, 5, 6, 7 and 8. The source retains phase while
+ratios/tuning change. Drift and pitch bend move the base note coherently.
+The source selector, algorithm and ratios use four raw encoder ticks per choice,
+without acceleration. Continuous controls are smoothed.
+
+### SRC presentation
+
+TONE A is DEP while FM is selected. SOUND retains the common source selector.
+FM ENV is a fourth SRC page, available only for FM. The native page vector must
+own four entries; extending its end pointer without allocating capacity is
+forbidden. Leaving FM removes the envelope page from navigation.
+
+| Knob | FM TONE | FM ENV |
+| --- | --- | --- |
+| A | DEP | ATK |
+| B | ALG | DEC |
+| C | BAL | SUS |
+| D | FDBK | REL |
+| E | RTA | ENV |
+| F | RTB | VEL |
+| G | — | — |
+| H | — | — |
+
+FM ENV changes timbre, not the note's amplitude envelope. Its signed amount,
+velocity and routed wheel amounts add to base DEP and clamp to the supported
+index range. Zero modulation amounts are neutral. ATK/DEC use a full-scale rate
+of `10 + 14 * value` milliseconds; REL uses `40 + 64 * value` milliseconds.
+Decay/release duration scales with the envelope distance traversed. The SRC
+page displays their raw 0..127 values. Sustained common notes retain
+their history; arp voices with matching pitch and drift inherit their owner's
+phase and timbre history. Released and
+stolen voices retain the history required by their existing release ramps.
+
+WAVE is a view-only identity, distinct from FM ALG despite both using the first
+engine parameter position. Native TUNE/LEV, dedicated track LEVEL/DATA and held
+SRC show-values retain stock presentation and semantics. MIX remains exclusively
+pad/arp balance. Switching sources remembers legacy COLOR, all wavetable
+parameters, and FM DEP plus its twelve engine parameters independently.
+
+### Transport and presets
+
+CPSA magic is `0x43505341`; the low header version is 10. Its 32-word size and
+common/duplicate fields match CPS9. The twelve upper halves of words 16..27
+contain the selected family's parameters. Family 0..2 retains wavetable field
+interpretation; family 3 selects the FM table below. Upper halves 28..31 remain
+zero. Validation and publication are atomic. CPS9 retains its old family 0..2
+contract and must never reinterpret old fields as FM.
+
+| Active ID | FM meaning | Range | Default |
+| --- | --- | --- | --- |
+| 2 | DEP (common audio word 2) | 0..127 | 32 |
+| 16 | ALG | 0..3 | 0 |
+| 17 | BAL | 0..100 | 50 |
+| 18 | RTA | 0..15 | 3 (1x) |
+| 19 | RTB | 0..15 | 8 (2x) |
+| 20 | FDBK | 0..100 | 0 |
+| 21 | ATK | 0..127 | 5 |
+| 22 | DEC | 0..127 | 40 |
+| 23 | SUS | 0..100 | 50 |
+| 24 | REL | 0..127 | 15 |
+| 25 | ENV | 0..200, biased by 100 | 100 (zero) |
+| 26 | VEL | 0..200, biased by 100 | 100 (zero) |
+| 27 | WHEL | 0..200, biased by 100 | 100 (zero) |
+
+Detail schema 4 publishes the active bank with the same 28-control/native-tune
+layout as schema 3. Old schemas cannot acknowledge FM controls. Family metadata,
+controls and revision must agree before clearing pending feedback.
+
+CPST v4 is 128 bytes. Existing common and remembered wavetable fields retain
+their offsets through byte 91. Base COLOR remains the remembered legacy value.
+FM DEP occupies bytes 92..93; twelve FM values occupy 94..117; FM format version
+1 is byte 118; bytes 119..123 are canonical zero; checksum is bytes 124..127.
+Versions 1/2/3 load with neutral/default FM parameters and retain their original
+sound. Loading does not rewrite storage. Saving writes v4, which older firmware
+must reject. All remembered banks are validated, including inactive families.
+These explicit presets do not add native Sound/project persistence or p-locks.
+
+### Implementation and acceptance boundaries
+
+Dispatch to the selected renderer before expensive oscillator work. A family
+transition must not overlap two wavetable paths and FM; queue only the latest
+requested destination. If overlapping renderers exceed the existing process
+ceiling, use a bounded fade-out/fade-in while retaining note ownership, and
+document the brief level dip. Never silently reduce polyphony or raise ceilings.
+
+The renderer uses a 2x internal rate, an interpolated 1,024-entry sine table and
+a 31-tap halfband decimator. Oversampling alone does not make FM alias-free.
+Pitch-dependent depth limiting uses `q = max(1, ratioA, ratioB) * frequency / 96000`
+and multiplies the index by `clamp((0.18 - q) * 8, 0, 1) * min(1, 0.007 / q)`.
+The ratio bound includes both requested and currently smoothed ratios, preventing
+a downward ratio edit from briefly exposing the old high-frequency operator at
+the new, larger index. Full depth remains available through 672 Hz maximum
+carrier/operator frequency; higher notes and ratios become progressively gentler.
+This taper applies to modulation depth, not final loudness or feedback strength.
+Each voice interpolates its depth scale across one 32-sample block when the
+target changes. This avoids a block-edge step; for up to 0.67 ms the scale can
+differ from its steady-state bound. Feedback retains its separate original
+high-frequency attenuation and is not multiplied by the additional `0.007 / q`
+depth cap.
+
+At integer ratios with feedback off, executed-render spectral checks require
+energy outside harmonic bins below -35 dB for the selected stress matrix. This
+is a bounded audible-band test, not an alias-free claim. Delayed feedback can
+produce nonperiodic spectra, so that harmonic-bin test does not qualify feedback
+quality. Full-feedback lifecycle tests instead check finite output, headroom,
+ownership and processing bounds; physical sound/timing qualification stays open.
+
+Four foreground groups, one arp group and two shared tails are retained. Each
+voice owns its control ramps and signal history. Matching-pitch/drift arp inheritance
+copies the parent's pre-render signal state; transposed or oppositely detuned onsets preserve their own
+phase/filter state while inheriting timbre and route controls. Route-scoped
+wheel/reset semantics and generation/lane ownership are preserved; token alone
+is insufficient for auxiliary history. The 2,976-byte persistent state is
+separate from callback-local snapshot scratch.
+
+Acceptance requires executed-kernel tests for pitch, envelopes, modulation,
+gain/headroom, source transitions, tails, reused tokens and finite output;
+instruction bounds at maximum event and voice load; compiled native SRC/preset
+tests; and CANOPY/Overloop coexistence. Physical sound/timing qualification is a
+separate result and must not be inferred from emulator passes. Wavetable
+carriers, richer operator waveforms and independent operator envelopes are
+follow-on features, outside this first FM implementation.
+
+## Wavetable FM integration (CPSB)
+
+The five factory wavetable sounds gain a per-note sine phase modulator. The
+selected, morphing table is the carrier: FM changes its read phase before both
+frame and mip interpolation. POS, scanning, table changes, note tuning, drift
+and the arpeggiator keep their existing roles. This is a separate, bounded
+two-operator path; the four-operator TWIN/STACK/SUM/CHAIN source remains available
+as the final WAVE choice.
+
+Selecting ANLG, GLASS, VOCAL, ORGAN or METAL exposes a fourth native SRC page,
+WT FM. Its layout is:
+
+| Encoder | Control | Meaning |
+| --- | --- | --- |
+| A | DEP | FM depth, 0–100%; finer response near zero |
+| B | RAT | Modulator frequency relative to the played note |
+| C | ENV | Signed timbre-envelope contribution to FM depth |
+| D–H | — | Unused |
+
+TUNE and LEV remain on SOUND. Shared timbre ATK/REL live on TONE alongside
+position, scanning and its envelope amount. The signed wheel contribution is
+SETTINGS > DIGIKIT > CANOPY > MODULATION > WHEEL TO WT FM.
+
+RAT uses the same four raw encoder ticks per choice as WAVE and SHAP. Choices
+are 0.25, 0.50, 0.75, 1.00, 1.25, sqrt(2), 1.50, sqrt(3), 2.00, 2.50, 3.00,
+4.00, 5.00, 6.00, 7.00 and 8.00. ENV and WHEL range from −100% to +100%.
+ATK/REL are the existing wavetable timbre envelope: they also affect position
+when the position-envelope amount is enabled on TONE. The stock
+AMP page continues to control each note's loudness independently.
+
+DEP zero with neutral ENV/WHEL retains the original wavetable audio. Positive
+ENV or WHEL can introduce FM from DEP zero; negative amounts subtract from the
+base depth, clamped at zero. USB/DIN wheel modulation stays scoped to its note
+route. The default is DEP 0, RAT 1.00, ENV 0 and WHEL 0. Source changes retain
+this bank separately from the standalone FM controls.
+
+The renderer leaves the unmodulated carrier phase authoritative. It adds a
+continuous sine phase offset of up to one radian before pitch-dependent taper,
+with a quadratic depth curve and approximately 5 ms depth/ratio smoothing.
+Mip selection accounts for both current and requested modulation; higher notes
+and ratios progressively reduce FM depth. This is a bandwidth-management
+policy, not a claim that arbitrary phase-modulated wavetables are alias-free.
+Matching-frequency arp onsets inherit the parent's beginning-of-block modulator
+history; independent pitches retain their own phase. Steals, tails, source
+changes and generation replacement must retain or invalidate that history with
+the corresponding note owner.
+
+The persistent instance remains 2,976 bytes. Eight six-word histories reuse the
+otherwise reserved words 41–46 of each standalone-FM history; only one source
+runs at a time. Callback snapshots are separate scratch. The published process
+and reset ceilings remain 100,000 and 1,600 instructions respectively.
+
+CPSB has magic `0x43505342`, header version 11 and the existing 32-word transport
+size. Upper halfwords 28–31 carry DEP (0–100), RAT (0–15), ENV and WHEL (0–200,
+100 means zero). Every family carries these remembered settings; only the
+wavetable renderer consumes them. CPS9/CPSA still require those halfwords to be
+zero. Detail schema 5 echoes all 32 custom controls and moves native TUNE to
+word 42, preserving note-ownership words 38–41. Native tuning has its own pending
+flag, so control 31 cannot collide with it or require an undefined 32-bit shift.
+
+CPST v5 is 144 bytes. It retains v4 field offsets through byte 119, adds four
+big-endian uint16 values at 120–127 and the WT-FM version byte at 128, requires
+zero padding through 139, and stores the checksum at 140–143. Versions 1–4 load
+with neutral WT-FM defaults and retain their original wavetable/FM settings.
+Loading does not rewrite the saved record; the next explicit save writes v5.
+Routing and native TUNE/LEV/LEVEL remain outside this sound preset.
+
+Acceptance covers exact neutral-output comparison against the prior kernel,
+an independent phase-modulated waveform reference, live depth/ratio and scan
+edits, route ownership, arp inheritance, source reentry, preset migration and
+maximum event/voice/table-transition load. Compiled native-page tests exercise
+the real controls and held-SRC display. Hardware sound and timing qualification
+remain separate from emulator results.
+
+## Tests and code owners
+
+Use generated SDK constants and extend existing helpers. Core runtime/adapters retain their repository language conventions; content declarations/control code use C and DSP uses SHARC assembly. New device scenarios use TypeScript/Vitest. Reference-model tests must drive the shipped control logic or compare its executed results, rather than test a disconnected mock alone.
+
+| Owner | Planned changes |
+| --- | --- |
+| `devices/fw/` and `devices/ports/` | New 1.17 MIDI, lifecycle and SRC declarations, hash-resolved anchors |
+| `sdk/sdk.toml` and generated bindings | V2 instrument/events/control descriptors, settings capabilities |
+| `packages/patchkit/` | Descriptor validation, capability/version errors, packing and tests |
+| `modules/core/runtime/` | Optional MIDI callback composition, namespaced settings, loader checks |
+| `modules/core/adapters/` | Note routing, composed transport, V2 lifetime, controls/views and clock extension |
+| `modules/machines/` | New CANOPY declaration, DSP, control logic, player documentation and tests |
+| `tests/support/machine_rig.py` | V2 event-stream conformance support |
+| `tests/regression/` | Bounded running-firmware keyboard, persistence, timing and coexistence scenarios |
+
+Required behavior tests include repeated same-note presses, stale note-off after stealing, four-note replacement with tails, held-key/pedal interactions, key-up release in PLAY and ROOT across PANEL/USB/DIN, migration of old latch-on presets to zero, selector/root ordering, route edits with held notes, channels on tracks 1 and 16, wrong epochs, full queues, ACK loss/replay, malformed configuration, missing provider and fault recovery. Explicitly test press C, reroute/reset, press C again, old C-off, new C-off: the old release must not kill the new note. Every failure must leave unrelated tracks and upload functional.
+
+Timing tests cover keyboard input while stopped, repeated PLAY/STOP, pattern changes, clock loss/recovery, non-default master lengths/scales and external clock before those modes are advertised. Existing pattern-position proofs at one tempo/default pattern do not establish all these cases.
+
+Audio checks inspect both the module output and final output: phase continuity of untouched notes, independent velocity/release, no NaNs or escaped writes, de-click transitions, unsupported-pitch handling and finite headroom. Test maximum simultaneous events plus rendering in one block. Keep V1 PLUCK and stock-machine fallthrough regression tests.
+
+Use the owner's module check and filtered runtime/module suites while implementing; inspect the routed merge gate before integration as required by [testing](../TESTING.md). Run actual hardware USB/DIN keyboard checks after emulator gates. Keep component, running-firmware and hardware evidence distinct; the implementation status above records which gates remain open.

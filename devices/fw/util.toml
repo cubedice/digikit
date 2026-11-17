@@ -1,0 +1,62 @@
+# util: anything that fits nowhere else
+# Names follow <cpu>.<subsystem>.<kind>.<name>; was = former names, for reading older docs, never resolved (docs/design/firmware-decls.md).
+
+[[site]]
+name = "cf.util.site.bzero"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 0, sha256 = "c57a0852159fe15f79ed368d8a9743ca85cbf515dff2a8c614ae330d64d8256e", len = 8 }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 stock bzero entry, `void f(void *p, u32 n)`: `movea.l 4(sp),a0; move.l 8(sp),d0`. The Sound initializer clears slice tables with it."
+
+[[hook]]
+name = "cf.util.hook.bzero"
+site = "cf.util.site.bzero"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "Replaces the bzero entry; the hook replays both displaced instructions before resuming."
+
+[[site]]
+name = "cf.util.site.memcpy"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 0, sha256 = "aa62669567b6baf77789a00d9e6271b4bf2f2b62665c47bfda856b83903c90fe", len = 8 }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 stock memcpy entry, `void *f(void *d, const void *s, u32 n)`: `movea.l 4(sp),a1; movea.l 8(sp),a0`. Whole Sound, kit and clipboard copies call it."
+
+[[hook]]
+name = "cf.util.hook.memcpy"
+site = "cf.util.site.memcpy"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "Replaces the memcpy entry; the hook replays both displaced instructions before resuming and returns the destination in d0."
+
+[[site]]
+name = "cf.util.site.memset"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 0, sha256 = "4c5160d786b165d469d227fde78578a7963c69eb79ae296aba6c2ec93e132abe", len = 8 }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 stock memset entry, `void *f(void *d, int c, u32 n)`: `movea.l 8(sp),a0; mvz.b 11(sp),d0` (a0 is reloaded from 4(sp) next)."
+
+[[hook]]
+name = "cf.util.hook.memset"
+site = "cf.util.site.memset"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "Replaces the memset entry; the hook replays both displaced instructions before resuming."

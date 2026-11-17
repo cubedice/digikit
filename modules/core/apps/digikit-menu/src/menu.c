@@ -17,6 +17,8 @@
 #include <dk_ui_core.h>
 #include <dk/gen/limits.h>
 #include "dkrt.h"
+extern void dk_app_instrument_settings_rows(dk_ui_menu *) __attribute__((weak));
+extern int dk_app_instrument_module_settings(const uint8_t *, dk_ui_menu *) __attribute__((weak));
 
 #define MAX_ENT DKRT_SCAN_MAX
 #define MAX_FXR 4
@@ -609,6 +611,8 @@ static void fill_main(dk_ui_menu *m, void *ctx)
         safe_reason(&t, g_boot.reason);
         dk_ui_menu_add_action(m, t.b, safe_notice, 0, 0);
     }
+    if (dk_app_instrument_settings_rows)
+        dk_app_instrument_settings_rows(m);
     dk_ui_menu_add_submenu(m, "ABOUT", g_about);
     dk_ui_menu_add_action(m, "HEALTH", open_health, 0, 0);
     dk_ui_menu_add_submenu(m, "MEMORY", g_mem);
@@ -1226,7 +1230,11 @@ static int settings_module(int row, DkrtModule *mod)
         return -1;
     for (uint32_t k = 0; k < MAX_SET && dkrt_module(k, mod) == DKRT_OK; k++)
         if (same_text(g_ent[row].path, mod->path, 63))
-            return mod->menu && mod->state == DKRT_MOD_LOADED ? (int)k : -1;
+            return mod->state == DKRT_MOD_LOADED &&
+                           (mod->menu || (dk_app_instrument_module_settings &&
+                                          dk_app_instrument_module_settings(mod->name, 0)))
+                       ? (int)k
+                       : -1;
     return -1;
 }
 
@@ -1234,8 +1242,12 @@ static int settings_module(int row, DkrtModule *mod)
 static void fill_settings(dk_ui_menu *m, void *ctx)
 {
     static DkrtModule mod;
-    if (dkrt_module((uint32_t)(uintptr_t)ctx, &mod) == DKRT_OK && mod.menu)
-        DK_CALL_MENU(mod.menu, mod.ctx, m);
+    if (dkrt_module((uint32_t)(uintptr_t)ctx, &mod) == DKRT_OK && mod.state == DKRT_MOD_LOADED) {
+        if (mod.menu)
+            DK_CALL_MENU(mod.menu, mod.ctx, m);
+        else if (dk_app_instrument_module_settings)
+            dk_app_instrument_module_settings(mod.name, m);
+    }
 }
 
 static void panel_settings(void *ctx, int32_t row)

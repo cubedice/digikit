@@ -1,0 +1,41 @@
+{
+  "machines": [
+    {
+      "devices": {
+        "dt2": {
+          "clone_of": 0,
+          "knobs": [
+            {
+              "slot": 0,
+              "stock": 202
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "slot": 7,
+              "stock": 209
+            }
+          ],
+          "level": 10,
+          "name": "CANOPY",
+          "own_dsp": false,
+          "page": null,
+          "position": null,
+          "short": "CANOPY",
+          "type": null
+        }
+      },
+      "id": "canopy",
+      "name": "CANOPY",
+      "short": "CANOPY"
+    }
+  ],
+  "module": "digikit/canopy",
+  "params": {
+    "dt2": []
+  }
+}

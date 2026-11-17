@@ -3,11 +3,98 @@
 `core/dsp-link` is a framework module: it lets the digikit runtime send bytes (DSP code and data) to the DSP while
 the device runs. Nothing changes for the player. It ran on a Digitakt II (OS 1.17), where `fx/freqshift` loaded through it and ran (2026-10-30, finding 91); the Digitone II has run it in the emulator only.
 
+## Optional V2 registration window
+
+`dl_send_win(3, dst_word, buf, len)` now addresses a provider-owned registration
+region. The optional SHARC symbols `_dl_irows` (aligned byte address) and
+`_dl_iwords` (address of a word-count constant) define it. Both DTII and DNII receivers reject writes
+without a valid provider, beyond its declared size, or when its size exceeds the
+device's DSP-link area. The ordinary upload, voice and effect windows are unchanged.
+This uses the existing two window bits and ACK channel; it consumes no extra frame
+or reply words. A transfer ACK confirms bytes only, not reset/initialization.
+
+The experimental `core/instrument-registry` provider exposes a query-only mailbox
+on DTII. It is not enabled by default. Publication, reset completion, detachment
+and matching loader tickets still require the V2 lifecycle implementation. Do not publish an instrument
+on a data-transfer ACK alone.
+
+## Transfer identity and drainage
+
+The optional V2 loader can use `dl_send_tagged(win, dst, buf, len, ticket_out)`.
+Window 0 uses an L2 byte destination; windows 1..3 use word offsets. Successful
+starts return zero and write a nonzero request ID. Busy returns -1; invalid
+arguments or exhausted IDs return -2. Failed starts leave `ticket_out` unchanged.
+Every accepted request, including legacy `dl_send` and `dl_send_win`, advances
+this ID. It never wraps during a boot; exhaustion requires reboot.
+
+`dl_poll_tagged(ticket, status)` returns -1 for a zero/stale ticket or null output
+without writing the output, zero while pending, and one only when that exact
+request has reached DONE or ERROR **and all END frames have drained**. Inspect
+`status.state` to distinguish success from failure. A caller timeout is not proof
+of drainage. Legacy `dl_poll` behavior and the status layout are unchanged.
+
+Starts and polls must be serialized on the UI task; the frame ISR only advances
+the current request. The source stays valid through transfer completion. The
+new request ID is host-side bookkeeping, distinct from the small on-wire chunk
+ID, and does not alter the frame format. A drained transfer confirms neither
+row installation nor reset completion: V2 still needs the registry reply.
+The V2 runtime coordinator is not yet wired to these entry points.
+
+## Exclusive transaction ownership
+
+`dl_claim(lease_out)` acquires an idle, drained code channel for one UI-task
+transaction. It returns zero and a nonzero lease, -1 when owned/busy/draining,
+or -2 for null output or exhausted lease IDs. Failure leaves output untouched.
+Lease generations never wrap or reuse an ID within a ColdFire boot.
+
+While leased, legacy `dl_send`, `dl_send_win` and unowned `dl_send_tagged` return
+busy, including between transfers while the owner awaits a registry reply.
+`dl_send_owned(lease, win, dst, buf, len, ticket_out)` requires the current lease
+and returns a normal tagged request ID; `dl_poll_tagged` still proves drainage.
+A zero/stale lease or null ticket output returns -2 without starting a write.
+Claiming ownership does not consume a transfer ID or change the wire protocol.
+
+`dl_release(lease)` returns zero only for the current lease after START/BUSY and
+all END frames have finished. It returns -1 while undrained, -2 for zero/stale
+leases. Transfer errors and timeouts never release ownership automatically.
+On lost boot trust or uncertain drainage, retain ownership until whole-boot
+recovery; do not release merely because the caller's deadline expired.
+
+These calls serialize physical writes, not the runtime's entire job queue.
+The future UI scheduler must finish or suspend legacy load/FX transactions before
+claiming, keep their pollers paused while owned, and release only when the V2
+coordinator permits it. No live coordinator binding is enabled by this API.
+
+## Optional DTII instrument allocation
+
+An optional `instrument_write_frame(tx_queue, entry, rec)` provider reserves 32
+forward words at ring byte `0x9fc`, immediately before pattern position's 16-word
+suffix at `0xa7c`. It must require `core/pattern-position` and export the matching
+16-word DSP mailbox `_instrument_reply`. Without those providers the existing
+allocations remain unchanged. This is transport space for the proposed V2
+instrument interface, not an implemented event protocol or playable machine.
+
+The ColdFire sender rejects an instrument provider without pattern position or
+the exact DTII frame geometry before writing anything. Both sender and DSP loader
+limit upload payloads to 123 words with the instrument allocation, 155 with only
+pattern position, and 171 with neither. The callback runs even while uploads are
+idle, may touch only its 32 data words, and must not allocate or wait. `entry` is
+the first queue halfword entry; `rec` is the previous reply copy.
+
+The DTII block tail copies `_instrument_reply` into entries 11/12 of rows 21-28
+(record word offsets 465/466 through 612/613). This preserves loader ACK row 0,
+diagnostics rows 1-12 and Overloop rows 13-20. No such allocation exists on DNII.
+The pinned DTII driver passes the complete requested reply length to `memcpy`;
+the test checks its actual instruction bytes. This is static copy-path evidence,
+not a live DMA or hardware proof. Component tests execute the production CF
+sender and SHARC writer/loader, checking allocation bounds and unchanged words
+outside the reservation. Live coexistence and the event protocol remain open.
+
 - Firmware: Digitakt II 1.17 and Digitone II 1.12 (the same anchor rules on both).
 - What it adds: a hook on the ColdFire's per-block frame sender (to put a chunk in the unused end of the frame) and a hook
   at the end of the DSP's block handler (to take the chunk, copy it into a reserved area of free L2 (512 KiB on the Digitakt II, 320 KiB on the Digitone II), and
   acknowledge). The ColdFire interface is `dl_send(dst_l2, buf, len)`, `dl_send_win(win, dst_word, buf, len)` (window 1: the voices registry of
-  `core/dsp-voice`, window 2: the effect rows of `core/fx`, one word at a time) and `dl_poll(status)` (C ABI).
+  `core/dsp-voice`, window 2: the effect rows of `core/fx`, window 3: optional V2 registration data) and `dl_poll(status)` (C ABI).
 - Speed: about 960 KB/s on the Digitakt II and 72 KB/s on the Digitone II; with no transfer it costs the DSP about 90
   instructions per block (about 0.04 % of a block's cycles: 24 for the link itself, 23 to pin and restore M5, M6, L2 and L3, 43 for
   the diagnostic words below and the record addresses; findings 45 and 48).
@@ -78,3 +165,27 @@ the device runs. Nothing changes for the player. It ran on a Digitakt II (OS 1.1
 Design, measurements and open points: [docs/findings/31-dsp-link.md](../../../../docs/findings/31-dsp-link.md) and, for the windows and
 the wider chunk header, [docs/findings/32-runtime-dsp-machines.md](../../../../docs/findings/32-runtime-dsp-machines.md). Proof:
 `uv run python -m tools.patchkit.pk_dsplink proof --device dt2|dn2`; tests: `tests/test_dsplink.py`.
+
+
+## DSP reset revocation
+
+The DTII reset hook calls `dl_reset_begin` with interrupts masked. Before the
+link has ever issued a request or lease this is a no-op. After use it permanently
+revokes the sender for that CF boot: no new claim/send/release succeeds, the
+source and lease remain retained, and tagged polls remain unresolved (BUSY,
+error 102). Old ACKs cannot convert the request to a drained completion.
+The periodic frame hook now returns before the stock sender, preventing DMA
+rearming. Direct sender ticks still clear sideband magic. The DTII reset callback
+also disables eDMA requests 28/29 and sets DSPI2 HALT. A bounded 65,536-poll wait
+requires SPI TXRXS and both DMA START/ACTIVE bits to clear, rejecting linked or
+scatter/gather descriptors, before flushing both FIFOs. A timeout retains HALT
+and suppresses subsequent DSP reset release. Neither outcome releases ownership
+or resumes V2 admission; whole-device restart is required.
+
+`dl_reset_hw` records eight words: result (0 unused, 1 stopped, 2 timed out), poll
+count, initial MCR/SR/RX-CSR/TX-CSR, final SR, and combined final DMA status. The
+register sequence follows MCF54418RM rev 5 chapters 19/40. Processor tests verify
+success and timeout decisions; physical validation uses the explicit
+`test/dsp-reset-probe` service and `tools.device.dsp_reset_probe`. The probe is
+read-only unless RSET is sent, and leaves the DSP reset asserted after testing.
+The hook covers the identified DTII GPIO helper, not every possible reset source.

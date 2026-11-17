@@ -1,0 +1,24 @@
+[module]
+id = "test/canopy-worker-refill"
+version = "0.1.0"
+name = "CANOPY worker refill experiment"
+category = "test"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Disposable worker-task credit refill experiment; never install on hardware."
+requires = ["test/canopy-sound-proof"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/worker-refill.dko.json"
+sources = ["src/cf/fixture.c", "../canopy-two-phase/cf-probe.s", "../canopy-two-phase/two-phase.c", "../canopy-two-phase/credit-refill.c", "../canopy-credits/boundary-credits.c"]
+place = "cf.expansion"
+devices = ["dt2"]
+[object.externs]
+fw_alloc = "cf.mem.fn.new"
+fw_free = "cf.mem.fn.free"

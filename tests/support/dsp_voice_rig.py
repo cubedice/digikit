@@ -75,6 +75,7 @@ def core_externs() -> dict[str, int]:
         "_fw_param_rec": PARAM_REC,
         "_fw_release_latch": RELEASE,
         "_fw_unpack": UNPACK_BP,
+        "_instrument_voice_rows": 0,
         "_dv_table": TABLE,
         "_dv_diag": DIAG,
         "_dv_sv_l4": SV_L4,
@@ -84,6 +85,7 @@ def core_externs() -> dict[str, int]:
         "_dv_rec": REC_PTRS,
         "_dv_mask": MASK,
         "_dv_g": GUARD,
+        "_dv_v2_scan": DIAG + 0x120,
         **ADAPTER,
     }
 

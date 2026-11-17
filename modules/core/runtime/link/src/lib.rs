@@ -293,6 +293,11 @@ impl<T: Transport> Link<T> {
         }
     }
 
+    /// A transfer is in flight (sent, not yet settled by `pump`).
+    pub fn in_flight(&self) -> bool {
+        self.flight.kind != F_NONE
+    }
+
     pub fn errors(&self) -> u32 {
         self.stats.live_errors
     }

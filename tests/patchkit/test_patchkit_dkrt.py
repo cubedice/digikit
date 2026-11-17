@@ -22,6 +22,23 @@ RUNTIME = ROOT / "modules/core/runtime"
 DEMO = ROOT / "tests/fixtures/modules/dyn-demo"
 
 
+@pytest.mark.parametrize("device,stage_end", [("dt2", 0x48000), ("dn2", 0x30000)])
+def test_write_watch_excludes_the_full_device_stage_and_no_neighbor(device, stage_end):
+    plan = {
+        "base": {"device": device},
+        "writes": [],
+        "symbols": {
+            "core/runtime@0.1.0:DKRT_STAGE": 0x20000,
+            "core/runtime@0.1.0:DKRT_STATE": 0x1000,
+            "core/runtime@0.1.0:DKRT_MAILBOX": 0x2000,
+            "core/runtime@0.1.0:DKRT_ARENA": 0x80000,
+            "core/runtime@0.1.0:DKRT_SECBUF": 0x70000,
+        },
+    }
+    ranges = pk_dkrt.watch_ranges(pk_dkrt.runtime_ranges(plan), 0x1000, 0x100000)
+    assert ranges == [(0x1000, 0x20000), (stage_end, 0x70000), (0x70200, 0x100000)]
+
+
 def test_objects_are_current_and_plain_coldfire():
     # core/runtime's objects are committed; the demo's is built into out/cache/dko
     for path in (

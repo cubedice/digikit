@@ -1,0 +1,58 @@
+{
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "name": "canopy-arp-tests",
+  "tags": [
+    "test-only"
+  ],
+  "implicitDependencies": [
+    "digikit/canopy"
+  ],
+  "metadata": {
+    "runtimeAcceptance": [
+      {
+        "files": [
+          "arp.device.test.ts",
+          "needs.device.test.ts"
+        ],
+        "modules": [
+          "digikit/canopy"
+        ],
+        "patchModules": [
+          "core/instrument-play",
+          "core/digikit-menu",
+          "core/health"
+        ],
+        "tags": [
+          "S:machines",
+          "A:core/instrument-play"
+        ]
+      },
+      {
+        "files": [
+          "persistence.device.test.ts",
+          "copy-handoff.device.test.ts",
+          "pattern-copy.device.test.ts",
+          "sound-transfer.device.test.ts"
+        ],
+        "modules": [
+          "digikit/canopy"
+        ],
+        "patchModules": [
+          "core/instrument-play",
+          "core/digikit-menu",
+          "core/health"
+        ],
+        "tags": [
+          "S:machines",
+          "A:core/instrument-play",
+          "C:state"
+        ]
+      }
+    ]
+  },
+  "targets": {
+    "test-device": {
+      "cache": false
+    }
+  }
+}

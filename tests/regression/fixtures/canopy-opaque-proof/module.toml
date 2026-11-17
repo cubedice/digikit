@@ -1,0 +1,53 @@
+[module]
+id = "test/canopy-opaque-proof"
+version = "0.1.0"
+name = "CANOPY opaque Sound record proof"
+category = "test"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Synthetic emulator-only Sound roundtrip; never install on hardware."
+requires = ["core/runtime"]
+conflicts = ["test/canopy-sound-proof"]
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/opaque-proof.dko.json"
+sources = ["src/cf/proof.c", "src/cf/proof.s", "../canopy-raw-store/raw-store.c", "../../../../modules/core/adapters/instrument-play/src/cf/sound-pool.c"]
+place = "cf.expansion"
+devices = ["dt2"]
+[object.externs]
+fw_alloc = "cf.mem.fn.new"
+fw_free = "cf.mem.fn.free"
+
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0x446
+width = 2
+value = 0x4ef9
+expect_sha256 = "5e5be2db18c49bd9863ac94af1ee2a6b6fbe6df2a2033e188c545979a0148880"
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0x448
+width = 4
+value = "canopy_opaque_load_entry"
+expect_sha256 = "6c0d287789e87236d281a393457e991356e2a14bfd2f8ba09f57b2f3cfd1bf56"
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0x6e2
+width = 2
+value = 0x4ef9
+expect_sha256 = "5e5be2db18c49bd9863ac94af1ee2a6b6fbe6df2a2033e188c545979a0148880"
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = 0x6e4
+width = 4
+value = "canopy_opaque_save_entry"
+expect_sha256 = "35768fc814c7dcb166cee133181271b7ff808089f71744c0247b7f76d9c9a92d"

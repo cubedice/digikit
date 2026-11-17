@@ -159,6 +159,8 @@ function externsFixed(device: string): Record<string, number> {
     _fw_release_latch: RELEASE,
     _fw_unpack: UNPACK_BP,
     _dv_table: TABLE,
+    // optional in core/dsp-voice's module.toml: patchkit links it as 0 without core/instrument-play, and 0 keeps the legacy voice table alone
+    _instrument_voice_rows: 0,
   };
   if (device === 'dn2') STEREO_STANDINS.forEach((n, i) => (fixed[n] = STOCK_BP + 0x10 + 4 * i));
   return fixed;

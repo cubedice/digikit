@@ -6,7 +6,7 @@
 //! record needs. A power cut in the write leaves the current copy valid. Unloaded modules keep their entries (nothing is removed but by `remove`).
 //!
 //! Callers: the UI task (the menu, `core/fxpages`) and the mailbox test commands. Not for interrupts or the MIDI task: the record is one buffer.
-//! The C ABI for core modules is `dkrt_settings_put` and `dkrt_settings_flush` (the menu's).
+//! The C ABI for core modules is `dkrt_settings_get`, `dkrt_settings_put` and `dkrt_settings_flush` (the menu's, core/instrument-play's).
 //! A `.dkm` module uses `dk_settings_open`, `dk_settings_get`, `dk_settings_put` and `dk_settings_remove` (`module_*` below): the runtime
 //! stores its keys as `<module name>/<key>`, so a module reaches its own prefix only. There is no task check: `dk_settings_put` and `dk_settings_remove`
 //! must be called from the UI task (a menu, `tick`, `init`), not from a host command handler (MIDI task) or an interrupt.
@@ -334,6 +334,20 @@ pub unsafe extern "C" fn dkrt_settings_put(key: *const u8, value: *const u8, len
     put(key_of(key), core::slice::from_raw_parts(value, len as usize))
 }
 
+/// `dkrt_settings_get(key, buf, cap)`: the value of `key` (NUL-terminated) into `buf` (`cap` bytes): its length, or `E_SET_NOKEY`, `E_SET_VALUE`
+/// (`cap` too small: nothing is written), `E_SET_KEY`, `E_SET_OFF`. For core modules: `core/instrument-play` restores CANOPY's shapes, presets and
+/// routes with it at the first UI pass. UI task.
+#[no_mangle]
+pub unsafe extern "C" fn dkrt_settings_get(key: *const u8, buf: *mut u8, cap: u32) -> i32 {
+    crate::init_once();
+    if buf.is_null() && cap != 0 {
+        return E_SET_KEY;
+    }
+    let mut none = [0u8; 0];
+    let out: &mut [u8] = if cap == 0 { &mut none } else { core::slice::from_raw_parts_mut(buf, cap as usize) };
+    get(key_of(key), out)
+}
+
 // ---- the API of a .dkm module (api 1.9) --------------------------------------------------------------------------------------
 
 /// `dk_settings_open`: the module's handle, only inside its `init` (the check of `dk_files_open`). The handle is the module's record index + 1: the
@@ -417,7 +431,10 @@ pub unsafe fn flush_if_dirty() -> i32 {
     if state().off != 0 {
         return E_SET_OFF;
     }
-    if state().dirty == 0 {
+    // Automatic retries can stop after a card error, but the RAM record still
+    // differs from the last durable copy. An explicit SAVE/RETRY must attempt
+    // that write again; returning OK here would falsely acknowledge persistence.
+    if state().dirty == 0 && state().last_result == OK {
         return OK;
     }
     flush()

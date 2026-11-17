@@ -45,6 +45,7 @@ shared = [
 "C:boot" = ["dkrt::boot", "dkrt::intro", "dkrt::safe_mode", "dkrt::safe_screen"]
 "C:loading" = [
   "dkrt::loader",
+  "dkrt::instrument",  # the V2 owner of persistent instruments (core/instrument-play): admission, upload, publication
   "dkrt::plan",
   "dkrt::scan",
   "dkrt::collect",

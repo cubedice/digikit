@@ -60,11 +60,12 @@ async function expectSamplesStore({ session }: PatchedSession): Promise<void> {
     );
     const listing = await dev.list('drums');
     check(
-      'the folder lists the file with the size sent',
+      'the folder lists the file: the payload size, and the size sent (payload and trailer) as stored',
       listing.length === 1 &&
         listing[0]!.name === 'test' &&
         listing[0]!.kind === 'file' &&
-        listing[0]!.size === prep.stored.length,
+        listing[0]!.size === prep.bytes.length &&
+        listing[0]!.stored === prep.stored.length,
       JSON.stringify(listing),
     );
     check(
@@ -122,7 +123,10 @@ async function expectSamplesStore({ session }: PatchedSession): Promise<void> {
     }
     check(
       'after the restart the file is still listed',
-      again?.length === 1 && again[0]!.name === 'test' && again[0]!.size === prep.stored.length,
+      again?.length === 1 &&
+        again[0]!.name === 'test' &&
+        again[0]!.size === prep.bytes.length &&
+        again[0]!.stored === prep.stored.length,
       JSON.stringify(again),
     );
     const after = await dev.verify('drums', prep);

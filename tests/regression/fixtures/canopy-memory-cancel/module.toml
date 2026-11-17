@@ -1,0 +1,52 @@
+[module]
+id = "test/canopy-memory-cancel"
+version = "0.1.0"
+name = "CANOPY memory recall cancellation experiment"
+category = "test"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Unsafe synthetic-command emulator experiment; never install on hardware."
+requires = ["test/canopy-sound-proof"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/memory-cancel.dko.json"
+sources = ["src/cf/fixture.c", "src/cf/guard.s"]
+place = "cf.expansion"
+devices = ["dt2"]
+
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = -24960
+width = 2
+value = 0x4ef9
+expect_sha256 = "76a957b0dbd26a7a283c6af7d57f9ab0ccf066decb624191d86205569e024b39"
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = -24958
+width = 4
+value = "canopy_memory_cancel_guard"
+expect_sha256 = "4e05e2b924bd98a7e221bd0368fe989876420113f1d681129a06d642c176ca1b"
+
+# Enter the stock temporary-buffer cleanup while observing this one refusal.
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = -24622
+width = 2
+value = 0x4ef9
+expect_sha256 = "ad69657fa5f7a9f4c954e7ae1292191b9767d30b44940e0b7233310460419328"
+[[op]]
+op = "write"
+anchor = "cf.machine.site.sound_deserialize"
+offset = -24620
+width = 4
+value = "canopy_memory_cleanup_probe"
+expect_sha256 = "37ff060885c4b7677e3443e8deba164a3295fc3af62fcbbf55e9742f2b49f8ff"

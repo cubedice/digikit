@@ -1,0 +1,1396 @@
+// CANOPY bounded harmonic pad kernel. Internal ABI, not a loadable V1 machine.
+// Bank: four foreground + two tail slots, each 32 bytes:
+// {token, gate, x, y, sin(w), cos(w), gain, envelope}; then four 16-byte
+// pending replacements {token,note,velocity,signed_bend}. 256 bytes per track.
+// R4=bank for all calls; note_on: R8=nonzero token,R12=MIDI note,R9=velocity.
+// note_off: R8=token. render: R8=32-float output. Returns R0=1 accepted/active,
+// 0 rejected/quiet. Scratch R0..15,I0..2; L0..2=0,M5=0,M6=1, non-SIMD floats.
+// Gate 2 is the reset/steal ramp (at most 64 samples). Reclaim the quietest
+// release first, otherwise the oldest token (CF tokens increase per epoch).
+// A silent new onset needs no
+// tail. Both tails busy => queue a replacement behind its own 64-sample ramp.
+.SECTION/PM seg_pmco;
+.GLOBAL _cp_note_on;
+.GLOBAL _cp_note_off;
+.GLOBAL _cp_render;
+.EXTERN _cp_tuning;
+.EXTERN _wt_begin_slot;
+.EXTERN _wt_render_block;
+.EXTERN _wt_blk;
+.EXTERN _wt_enabled;
+.EXTERN _wt_r6;
+.EXTERN _wt_r7;
+.EXTERN _fm_enabled;
+.EXTERN _fm_render;
+_cp_note_on:
+    R8 = PASS R8;
+    IF EQ JUMP _cp_reject;
+    R0 = LSHIFT R12 BY -7;
+    R0 = PASS R0;
+    IF NE JUMP _cp_reject;
+    R0 = LSHIFT R9 BY -7;
+    R0 = PASS R0;
+    IF NE JUMP _cp_reject;
+    R9 = PASS R9;
+    IF EQ JUMP _cp_reject;
+    I0 = R4;
+    R2 = 6;
+_cp_unique_token:
+    R0 = DM(1, I0);
+    R1 = 4;
+    R0 = R0 AND R1;
+    IF NE JUMP _cp_unique_next;
+    R0 = DM(0, I0);
+    COMP(R0, R8);
+    IF EQ JUMP _cp_reject;
+_cp_unique_next:
+    MODIFY(I0, 8) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _cp_unique_token;
+    R2 = 4;
+_cp_unique_pending:
+    R0 = DM(0, I0);
+    COMP(R0, R8);
+    IF EQ JUMP _cp_reject;
+    MODIFY(I0, 4) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _cp_unique_pending;
+    I0 = R4;
+    R0 = 192;
+    R0 = R4 + R0;
+    I1 = R0;
+    R2 = 4;
+    R3 = 0;
+    R6 = 0;
+    R5 = 0;
+_cp_find_slot:
+    R0 = DM(0, I0);
+    R1 = DM(0, I1);
+    R1 = PASS R1;
+    IF NE R0 = R1; // pending replacement is the current foreground owner
+    R0 = PASS R0;
+    IF NE JUMP _cp_oldest;
+    R3 = I0;
+    JUMP _cp_next_slot;
+_cp_oldest:
+    R1 = 0x80000000;
+    R10 = R0 XOR R1;
+    R15 = 0;
+    R1 = DM(0, I1);
+    R1 = PASS R1;
+    IF NE JUMP _cp_compare_candidate; // queued onset remains a held owner
+    R0 = DM(1, I0);
+    R1 = 7;
+    R0 = R0 AND R1;
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE R15 = R1;
+_cp_compare_candidate:
+    R14 = DM(7, I0); // nonnegative float bits sort by envelope magnitude
+    R6 = PASS R6;
+    IF EQ JUMP _cp_choose_oldest;
+    COMP(R15, R5);
+    IF GT JUMP _cp_choose_oldest; // releasing before held
+    IF LT JUMP _cp_next_slot;
+    R15 = PASS R15;
+    IF EQ JUMP _cp_compare_age;
+    COMP(R14, R13);
+    IF LT JUMP _cp_choose_oldest;
+    IF GT JUMP _cp_next_slot;
+_cp_compare_age:
+    COMP(R10, R7);
+    IF GE JUMP _cp_next_slot;
+_cp_choose_oldest:
+    R6 = I0;
+    R7 = PASS R10;
+    R5 = PASS R15;
+    R13 = PASS R14;
+_cp_next_slot:
+    MODIFY(I0, 8) (NW);
+    MODIFY(I1, 4) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _cp_find_slot;
+    R3 = PASS R3;
+    IF NE JUMP _cp_start;
+    R3 = PASS R6;
+    R0 = R3 - R4;
+    R0 = LSHIFT R0 BY -1;
+    R1 = 192;
+    R0 = R0 + R1;
+    R0 = R4 + R0;
+    I2 = R0;
+    R0 = DM(0, I2);
+    R0 = PASS R0;
+    IF NE JUMP _cp_queue_replacement;
+    I0 = R3;
+    R0 = DM(7, I0);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_start; // an unrendered onset is silent; no tail required
+    R0 = 128;
+    R0 = R4 + R0;
+    I2 = R0;
+    R2 = 2;
+_cp_find_tail:
+    R0 = DM(0, I2);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_save_tail;
+    MODIFY(I2, 8) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _cp_find_tail;
+    R0 = R3 - R4;
+    R0 = LSHIFT R0 BY -1;
+    R1 = 192;
+    R0 = R0 + R1;
+    R0 = R4 + R0;
+    I2 = R0;
+_cp_queue_replacement:
+    DM(0, I2) = R8;
+    DM(1, I2) = R12;
+    DM(2, I2) = R9;
+    R0 = 0;
+    DM(3, I2) = R0;
+    I0 = R3;
+    R0 = 2;
+    DM(1, I0) = R0;
+    R0 = 1;
+    RTS;
+_cp_save_tail:
+    R11 = I2;
+    R0 = PASS R3;
+    R1 = PASS R11;
+    CALL _cp_amp_copy_staged;
+    I1 = R3;
+    I2 = R11;
+    R2 = 8;
+_cp_copy_tail:
+    R0 = DM(I1, M6);
+    DM(I2, M6) = R0;
+    R2 = R2 - 1;
+    IF NE JUMP _cp_copy_tail;
+    I2 = R11;
+    R0 = 2;
+    DM(1, I2) = R0;
+_cp_start:
+    I0 = R3;
+    DM(0, I0) = R8;
+    R0 = 1;
+    DM(1, I0) = R0;
+    R0 = 0;
+    DM(2, I0) = R0;
+    DM(7, I0) = R0;
+    F0 = 1.0;
+    DM(3, I0) = R0;
+    R0 = LSHIFT R12 BY 3;
+    R1 = _cp_tuning;
+    R0 = R0 + R1;
+    I1 = R0;
+    R0 = DM(0, I1);
+    DM(4, I0) = R0;
+    R0 = DM(1, I1);
+    DM(5, I0) = R0;
+    F0 = FLOAT R9;
+    F1 = 0.007874015748;
+    F0 = F0 * F1;
+    DM(6, I0) = R0;
+    R0 = 1;
+    RTS;
+_cp_note_off:
+    R8 = PASS R8;
+    IF EQ JUMP _cp_reject;
+    R0 = 192;
+    R0 = R4 + R0;
+    I0 = R0;
+    R2 = 4;
+_cp_release_pending:
+    R0 = DM(0, I0);
+    COMP(R0, R8);
+    IF EQ JUMP _cp_cancel_pending;
+    MODIFY(I0, 4) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _cp_release_pending;
+    I0 = R4;
+    R2 = 6;
+_cp_find_release:
+    R0 = DM(1, I0);
+    R1 = 4;
+    R0 = R0 AND R1;
+    IF NE JUMP _cp_release_next;
+    R0 = DM(0, I0);
+    COMP(R0, R8);
+    IF EQ JUMP _cp_release;
+_cp_release_next:
+    MODIFY(I0, 8) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _cp_find_release;
+    JUMP _cp_reject;
+_cp_cancel_pending:
+    R0 = 0;
+    DM(0, I0) = R0;
+    R0 = 1;
+    RTS;
+_cp_release:
+    R0 = DM(1, I0);
+    R1 = 2;
+    COMP(R0, R1);
+    IF EQ JUMP _cp_release_done; // do not lengthen a reset ramp
+    R0 = 0;
+    DM(1, I0) = R0;
+_cp_release_done:
+    R0 = 1;
+    RTS;
+_cp_reject:
+    R0 = 0;
+    RTS;
+// Single-group entry is for the independent arp owner. The caller owns its
+// 32-byte slot and shared-tail allocation; no extra foreground bank exists.
+.GLOBAL _cp_render_one;
+.GLOBAL _cp_start_one;
+.GLOBAL _cp_release_one;
+_cp_start_one:
+    R0 = PASS R8;
+    IF EQ JUMP _cp_reject;
+    R0 = LSHIFT R12 BY -7;
+    R0 = PASS R0;
+    IF NE JUMP _cp_reject;
+    R0 = LSHIFT R9 BY -7;
+    R0 = PASS R0;
+    IF NE JUMP _cp_reject;
+    R9 = PASS R9;
+    IF EQ JUMP _cp_reject;
+    I0 = R4;
+    R0 = DM(0, I0);
+    R0 = PASS R0;
+    IF NE JUMP _cp_reject; // never overwrite an audible group
+    R3 = PASS R4;
+    JUMP _cp_start;
+_cp_release_one:
+    I0 = R4;
+    R0 = DM(0, I0);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_reject;
+    COMP(R0, R8);
+    IF NE JUMP _cp_reject;
+    JUMP _cp_release;
+_cp_render_one:
+    R0 = _cp_post_arp;
+    DM(_cp_post_lane) = R0;
+    R0 = 1;
+    DM(_cp_render_count) = R0;
+    JUMP _cp_render_begin;
+_cp_render:
+    R0 = _cp_post_pad;
+    DM(_cp_post_lane) = R0;
+    R0 = 6;
+    DM(_cp_render_count) = R0;
+_cp_render_begin:
+    I2 = R8;
+    R0 = 0;
+    R1 = 32;
+_cp_clear_output:
+    DM(I2, M6) = R0;
+    R1 = R1 - 1;
+    IF NE JUMP _cp_clear_output;
+    I0 = R4;
+    R11 = PASS R4;
+    R14 = DM(_cp_render_count);
+    R15 = 0;
+_cp_render_slot:
+    R0 = DM(1, I0);
+    R1 = 8;
+    R0 = R0 AND R1;
+    IF NE JUMP _cp_advance_slot;
+    // Bit 2 marks an arp-owned shared tail. Only the single-group renderer
+    // renders that lane; the pad-bank walk leaves it for the arp mixer.
+    R0 = DM(_cp_render_count);
+    R1 = 1;
+    COMP(R0, R1);
+    IF EQ JUMP _cp_render_owned;
+    R0 = DM(1, I0);
+    R1 = 4;
+    R0 = R0 AND R1;
+    IF NE JUMP _cp_advance_slot;
+_cp_render_owned:
+    R0 = DM(0, I0);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_render_next;
+    // Keep the shared carrier held for the whole block containing a tail's
+    // final samples. QUIET is safe only on the following empty block.
+    R15 = 1;
+    CALL _cp_amp_begin;
+    CALL _cp_post_collect;
+    F2 = DM(2, I0); // oscillator x,y
+    F3 = DM(3, I0);
+    F4 = DM(4, I0); // rotation sin,cos
+    F5 = DM(5, I0);
+    F6 = DM(6, I0);
+    F7 = DM(7, I0);
+    R0 = DM(1, I0);
+    R1 = 3;
+    R0 = R0 AND R1;
+    F10 = DM(_cp_attack); // per-note linear attack
+    R1 = 2;
+    COMP(R0, R1);
+    IF EQ JUMP _cp_reset_ramp;
+    R0 = PASS R0;
+    IF NE JUMP _cp_render_samples;
+    F10 = DM(_cp_release_step);
+    JUMP _cp_render_samples;
+_cp_reset_ramp:
+    F10 = -0.015625; // bounded de-click ramp on lifecycle reset
+_cp_render_samples:
+    // Drift is a bounded small rotation of the base pitch coefficients. Never
+    // accumulate it into tuning; MIDI bend continues to own the base rotation.
+    R1 = DM(0, I0);
+    R9 = 1;
+    R1 = R1 AND R9;
+    F0 = DM(_cp_drift);
+    IF EQ F0 = -F0;
+    F0 = F0 * F4;
+    F1 = F0 * F0;
+    F9 = 0.5;
+    F1 = F1 * F9;
+    F9 = 1.0;
+    F1 = F9 - F1;
+    F9 = F4 * F1;
+    F12 = F5 * F0;
+    F9 = F9 + F12;
+    F5 = F5 * F1;
+    F0 = F4 * F0;
+    F5 = F5 - F0;
+    F4 = PASS F9;
+    R0 = DM(_fm_enabled);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_legacy_samples;
+    CALL _fm_render;
+    JUMP _cp_samples_done;
+_cp_legacy_samples:
+    CALL _wt_begin_slot;
+    // Harmonics fade out BEFORE Nyquist, using the bent/drifted coefficient.
+    F0 = 0.05;
+    F12 = F5 - F0;
+    F0 = 4.0;
+    F12 = F12 * F0;
+    F1 = 0.0;
+    F12 = MAX(F12, F1);
+    F1 = 1.0;
+    F12 = MIN(F12, F1);
+    F0 = DM(_cp_second_step);
+    F0 = F12 * F0;
+    DM(_cp_h2step) = F0;
+    F0 = DM(_cp_second_start);
+    F12 = F12 * F0;
+    F0 = 0.5;
+    F9 = F5 - F0;
+    F0 = 4.0;
+    F9 = F9 * F0;
+    F0 = 0.0;
+    F9 = MAX(F9, F0);
+    F0 = 1.0;
+    F9 = MIN(F9, F0);
+    F0 = DM(_cp_third_step);
+    F0 = F9 * F0;
+    DM(_cp_h3step) = F0;
+    F0 = DM(_cp_third_start);
+    F9 = F9 * F0;
+    DM(_cp_h3) = F9;
+    I2 = R8;
+    R0 = DM(_wt_enabled);
+    R0 = PASS R0;
+    IF NE JUMP _cp_block_samples;
+    R13 = 32;
+    R0 = DM(_cp_amp_native);
+    R0 = PASS R0;
+    IF NE JUMP _cp_native_samples;
+_cp_sample:
+    F7 = F7 + F10;
+    F0 = 0.0;
+    F7 = MAX(F7, F0);
+    F0 = 1.0;
+    F7 = MIN(F7, F0);
+    CALL _cp_sample_body;
+    R13 = R13 - 1;
+    IF NE JUMP _cp_sample;
+    JUMP _cp_samples_done;
+_cp_native_samples:
+    I1 = _cp_amp_samples;
+_cp_native_sample:
+    F7 = DM(I1, M6);
+    CALL _cp_sample_body;
+    R13 = R13 - 1;
+    IF NE JUMP _cp_native_sample;
+    F7 = DM(_cp_amp_end);
+    JUMP _cp_samples_done;
+_cp_sample_body:
+    F0 = DM(_cp_h2step);
+    F12 = F12 + F0;
+    F0 = DM(_cp_h3);
+    F1 = DM(_cp_h3step);
+    F0 = F0 + F1;
+    DM(_cp_h3) = F0;
+    F0 = F2 * F5;
+    F1 = F3 * F4;
+    F9 = F0 + F1;
+    F0 = F3 * F5;
+    F1 = F2 * F4;
+    F3 = F0 - F1;
+    F2 = PASS F9;
+    // sin(2p)=2xy; sin(3p)=x(3-4x*x). Finite additive spectra,
+    // not a clipped/waveshaped oscillator with unbounded high harmonics.
+    F0 = F2 * F3;
+    F1 = 2.0;
+    F0 = F0 * F1;
+    F0 = F0 * F12;
+    F9 = F2 + F0;
+    F0 = F2 * F2;
+    F1 = 4.0;
+    F0 = F0 * F1;
+    F1 = 3.0;
+    F0 = F1 - F0;
+    F0 = F0 * F2;
+    F1 = DM(_cp_h3);
+    F0 = F0 * F1;
+    F0 = F9 + F0;
+    F0 = F0 * F6;
+    F0 = F0 * F7;
+    F1 = DM(_cp_level);
+    F0 = F0 * F1;
+    F1 = DM(I2, M5);
+    F0 = F0 + F1;
+    DM(I2, M6) = F0;
+    RTS;
+_cp_block_samples:
+    // Wavetable voices render a block at a time with the per-sample operations
+    // of the pad body: this oscillator fills word 4 of the _wt_blk records,
+    // _wt_render_block replaces it with the wavetable output, and the amp
+    // stage below accumulates it into the output. Keeps I0, R8, R11, R14, R15,
+    // F2/F3 and leaves F7 as the per-sample loops do; M4 is restored.
+    DM(_cp_keep_r8) = R8;
+    DM(_cp_keep_r11) = R11;
+    DM(_cp_keep_r14) = R14;
+    DM(_cp_keep_r15) = R15;
+    R0 = I0;
+    DM(_cp_keep_i0) = R0;
+    R0 = M4;
+    DM(_cp_keep_m4) = R0;
+    M4 = 8;
+    DM(_cp_keep_f6) = F6;
+    DM(_cp_keep_f7) = F7;
+    DM(_cp_keep_f10) = F10;
+    F13 = DM(_cp_h2step);
+    F14 = DM(_cp_h3);
+    F15 = DM(_cp_h3step);
+    F8 = 2.0;
+    F11 = 4.0;
+    F6 = 3.0;
+    I1 = _wt_blk;
+    MODIFY(I1,4) (NW);
+    LCNTR = 32, DO _cp_block_osc UNTIL LCE;
+    F12 = F12 + F13;
+    F14 = F14 + F15;
+    F0 = F2 * F5;
+    F1 = F3 * F4;
+    F9 = F0 + F1;
+    F0 = F3 * F5;
+    F1 = F2 * F4;
+    F3 = F0 - F1;
+    F2 = PASS F9;
+    F0 = F2 * F3;
+    F0 = F0 * F8;
+    F0 = F0 * F12;
+    F9 = F2 + F0;
+    F0 = F2 * F2;
+    F0 = F0 * F11;
+    F0 = F6 - F0;
+    F0 = F0 * F2;
+    F0 = F0 * F14;
+    F0 = F9 + F0;
+_cp_block_osc:
+    DM(I1,M4) = F0;
+    DM(_cp_h3) = F14;
+    DM(_cp_keep_x) = F2;
+    DM(_cp_keep_y) = F3;
+    CALL _wt_render_block;
+    F6 = DM(_cp_keep_f6);
+    F7 = DM(_cp_keep_f7);
+    F10 = DM(_cp_keep_f10);
+    F11 = DM(_cp_level);
+    R8 = DM(_cp_keep_r8);
+    I2 = R8;
+    I1 = _wt_blk;
+    MODIFY(I1,4) (NW);
+    R0 = DM(_cp_amp_native);
+    R0 = PASS R0;
+    IF NE JUMP _cp_block_native;
+    F12 = 0.0;
+    F13 = 1.0;
+    LCNTR = 32, DO _cp_block_amp UNTIL LCE;
+    F7 = F7 + F10;
+    F7 = MAX(F7, F12);
+    F7 = MIN(F7, F13);
+    F0 = DM(I1,M4);
+    F0 = F0 * F6;
+    F0 = F0 * F7;
+    F0 = F0 * F11;
+    F1 = DM(I2,M5);
+    F0 = F0 + F1;
+_cp_block_amp:
+    DM(I2,M6) = F0;
+    DM(_wt_r6) = F6;
+    DM(_wt_r7) = F7;
+    JUMP _cp_block_done;
+_cp_block_native:
+    I0 = _cp_amp_samples;
+    LCNTR = 32, DO _cp_block_native_amp UNTIL LCE;
+    F7 = DM(I0,M6);
+    F0 = DM(I1,M4);
+    F0 = F0 * F6;
+    F0 = F0 * F7;
+    F0 = F0 * F11;
+    F1 = DM(I2,M5);
+    F0 = F0 + F1;
+_cp_block_native_amp:
+    DM(I2,M6) = F0;
+    DM(_wt_r6) = F6;
+    DM(_wt_r7) = F7;
+    F7 = DM(_cp_amp_end);
+_cp_block_done:
+    R0 = DM(_cp_keep_m4);
+    M4 = R0;
+    R0 = DM(_cp_keep_i0);
+    I0 = R0;
+    R8 = DM(_cp_keep_r8);
+    R11 = DM(_cp_keep_r11);
+    R14 = DM(_cp_keep_r14);
+    R15 = DM(_cp_keep_r15);
+    F2 = DM(_cp_keep_x);
+    F3 = DM(_cp_keep_y);
+    JUMP _cp_samples_done;
+_cp_samples_done:
+    // One Newton normalization step per block bounds float32 rotation drift.
+    F0 = F2 * F2;
+    F1 = F3 * F3;
+    F0 = F0 + F1;
+    F1 = 0.5;
+    F0 = F0 * F1;
+    F1 = 1.5;
+    F0 = F1 - F0;
+    F2 = F2 * F0;
+    F3 = F3 * F0;
+    DM(2, I0) = F2;
+    DM(3, I0) = F3;
+    DM(7, I0) = F7;
+    F0 = 0.0;
+    COMP(F7, F0);
+    IF GT JUMP _cp_active;
+    // A held native ADSR at zero sustain remains a logical chord owner.
+    R0 = DM(_cp_amp_native);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_retire;
+    R0 = DM(1, I0);
+    R1 = 3;
+    R0 = R0 AND R1;
+    R1 = 1;
+    COMP(R0, R1);
+    IF EQ JUMP _cp_active;
+_cp_retire:
+    R0 = 0;
+    DM(0, I0) = R0;
+    JUMP _cp_render_next;
+_cp_active:
+    R15 = 1;
+_cp_render_next:
+    R0 = 2;
+    COMP(R14, R0);
+    IF LE JUMP _cp_advance_slot;
+    R0 = DM(0, I0);
+    R0 = PASS R0;
+    IF NE JUMP _cp_advance_slot;
+    R3 = I0;
+    R0 = R3 - R11;
+    R0 = LSHIFT R0 BY -1;
+    R1 = 192;
+    R0 = R0 + R1;
+    R0 = R11 + R0;
+    I1 = R0;
+    R0 = DM(0, I1);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_advance_slot;
+    R13 = PASS R8;
+    R8 = PASS R0;
+    R12 = DM(1, I1);
+    R9 = DM(2, I1);
+    R0 = DM(3, I1);
+    DM(_cp_pending_bend) = R0;
+    R0 = 0;
+    DM(0, I1) = R0;
+    CALL _cp_start;
+    R9 = DM(_cp_pending_bend);
+    R0 = DM(_cp_native_tune);
+    R0 = R0 OR R9;
+    IF NE CALL _cp_retune;
+    R8 = PASS R13;
+    R15 = 1;
+_cp_advance_slot:
+    MODIFY(I0, 8) (NW);
+    R14 = R14 - 1;
+    IF NE JUMP _cp_render_slot;
+    R0 = PASS R15;
+    RTS;
+
+// I0=voice slot, R12=base MIDI note, R9=signed bend [-8192,8191].
+// +/-2 semitones. Preserve phase/envelope/gain and R8,R11..15,I0.
+// Scratch R0..7,R9..10,I1, flags. Rotation by a small delta avoids large-angle
+// approximations. exp fifth-order; sin fifth-order; cos sixth-order.
+.GLOBAL _cp_retune;
+.EXTERN _cp_angles;
+_cp_retune:
+    R0 = DM(_cp_native_tune);
+    R1 = -8;
+    R10 = ASHIFT R0 BY R1;
+    R10 = R12 + R10;
+    R1 = 255;
+    R0 = R0 AND R1;
+    R1 = 0;
+    COMP(R10, R1);
+    IF LT R0 = R1;
+    IF LT R10 = R1;
+    R1 = 127;
+    COMP(R10, R1);
+    R2 = 0;
+    IF GE R0 = R2;
+    IF GT R10 = R1;
+    R0 = LSHIFT R0 BY 4;
+    R9 = R9 + R0;
+    R0 = LSHIFT R10 BY 3;
+    R1 = _cp_tuning;
+    R0 = R0 + R1;
+    I1 = R0;
+    F6 = DM(0, I1);
+    F7 = DM(1, I1);
+    R9 = PASS R9;
+    IF EQ JUMP _cp_retune_store;
+    F0 = FLOAT R9;
+    F1 = 0.00001410211549; // ln(2)/(6*8192)
+    F0 = F0 * F1;
+    F1 = 0.008333333333;
+    F1 = F1 * F0;
+    F2 = 0.04166666667;
+    F1 = F1 + F2;
+    F1 = F1 * F0;
+    F2 = 0.1666666667;
+    F1 = F1 + F2;
+    F1 = F1 * F0;
+    F2 = 0.5;
+    F1 = F1 + F2;
+    F1 = F1 * F0;
+    F2 = 1.0;
+    F1 = F1 + F2;
+    F1 = F1 * F0; // exp(x)-1 directly, avoiding cancellation near center
+    R0 = LSHIFT R10 BY 2;
+    R2 = _cp_angles;
+    R0 = R0 + R2;
+    I1 = R0;
+    F0 = DM(0, I1);
+    F0 = F0 * F1; // delta radians/sample
+    F1 = F0 * F0;
+    F2 = 0.008333333333;
+    F2 = F2 * F1;
+    F3 = -0.1666666667;
+    F2 = F2 + F3;
+    F2 = F2 * F1;
+    F3 = 1.0;
+    F2 = F2 + F3;
+    F2 = F2 * F0; // sin(delta)
+    F3 = -0.001388888889;
+    F3 = F3 * F1;
+    F4 = 0.04166666667;
+    F3 = F3 + F4;
+    F3 = F3 * F1;
+    F4 = -0.5;
+    F3 = F3 + F4;
+    F3 = F3 * F1;
+    F4 = 1.0;
+    F3 = F3 + F4; // cos(delta)
+    F0 = F6 * F3;
+    F1 = F7 * F2;
+    F4 = F0 + F1;
+    F0 = F7 * F3;
+    F1 = F6 * F2;
+    F7 = F0 - F1;
+    F6 = PASS F4;
+_cp_retune_store:
+    DM(4, I0) = R6;
+    DM(5, I0) = R7;
+    RTS;
+.SECTION/DM seg_dmda;
+.VAR _cp_pending_bend = 0;
+.PKBSS _cp_keep_r8, 4;
+.PKBSS _cp_keep_r11, 4;
+.PKBSS _cp_keep_r14, 4;
+.PKBSS _cp_keep_r15, 4;
+.PKBSS _cp_keep_i0, 4;
+.PKBSS _cp_keep_m4, 4;
+.PKBSS _cp_keep_f6, 4;
+.PKBSS _cp_keep_f7, 4;
+.PKBSS _cp_keep_f10, 4;
+.PKBSS _cp_keep_x, 4;
+.PKBSS _cp_keep_y, 4;
+.GLOBAL _cp_native_tune;
+.VAR _cp_native_tune = 0;
+.GLOBAL _cp_tune_changed;
+.VAR _cp_tune_changed = 0;
+.GLOBAL _cp_v2_instance;
+.VAR _cp_v2_instance = 0;
+
+// Native AMP sidecars occupy the previously reserved instance words716..743:
+// seven {token, phase, hold_samples, mode} records for six pad/tail slots and arp.
+// Amplitude remains in voice word7. No register or history is shared across calls.
+.SECTION/PM seg_pmco;
+.GLOBAL _cp_amp_begin;
+.GLOBAL _cp_amp_copy;
+.GLOBAL _cp_amp_mode;
+.GLOBAL _cp_amp_state;
+.GLOBAL _cp_amp_input;
+.GLOBAL _cp_amp_native;
+.GLOBAL _cp_amp_end;
+.GLOBAL _cp_amp_samples;
+.GLOBAL _cp_amp_samples_end;
+// R0=physical voice address -> I1=sidecar. Scratch R0..2 only.
+_cp_amp_record_for:
+    R2 = DM(_cp_amp_state);
+    R0 = R0 - R2;
+    R1 = 544;
+    COMP(R0, R1);
+    R1 = 192;
+    IF EQ R0 = R1;
+    R0 = LSHIFT R0 BY -1;
+    R1 = 2864;
+    R0 = R0 + R1;
+    R0 = R0 + R2;
+    I1 = R0;
+    RTS;
+// Preserve a native envelope when its oscillator record moves into a shared tail.
+// R0=source, R1=destination. Scratch R0..2,I0/I1; I2 and onset arguments survive.
+// Packed pad events operate on their atomic staging bank. Its sidecars are
+// snapshotted and committed with that bank, so a rejected batch changes neither.
+_cp_amp_copy_staged:
+    R2 = DM(_cp_amp_mode);
+    R2 = PASS R2;
+    IF EQ RTS;
+    R0 = R0 - R4;
+    R1 = R1 - R4;
+    R0 = LSHIFT R0 BY -1;
+    R1 = LSHIFT R1 BY -1;
+    R2 = _cp_amp_staging;
+    R0 = R0 + R2;
+    R1 = R1 + R2;
+    I0 = R0;
+    I1 = R1;
+    JUMP _cp_amp_copy_words;
+_cp_amp_copy:
+    R2 = DM(_cp_amp_mode);
+    R2 = PASS R2;
+    IF EQ RTS;
+    DM(_cp_amp_copy_dst) = R1;
+    CALL _cp_amp_record_for;
+    R0 = I1;
+    DM(_cp_amp_copy_src) = R0;
+    R0 = DM(_cp_amp_copy_dst);
+    CALL _cp_amp_record_for;
+    R0 = DM(_cp_amp_copy_src);
+    I0 = R0;
+_cp_amp_copy_words:
+    R0 = DM(0, I0);
+    DM(0, I1) = R0;
+    R0 = DM(1, I0);
+    DM(1, I1) = R0;
+    R0 = DM(2, I0);
+    DM(2, I1) = R0;
+    R0 = DM(3, I0);
+    DM(3, I1) = R0;
+    RTS;
+// Called before oscillator registers are loaded. Preserves I0,R8,R11..15.
+// Stable phases use hardware loops; the shared buffer is consumed immediately.
+_cp_amp_begin:
+    R0 = 0;
+    DM(_cp_amp_native) = R0;
+    R0 = DM(_cp_amp_mode);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R0 = DM(1, I0);
+    R1 = 3;
+    R0 = R0 AND R1;
+    DM(_cp_amp_gate) = R0;
+    R1 = 2;
+    COMP(R0, R1);
+    IF EQ RTS; // Lifecycle reset/steal always retains the bounded64-sample ramp.
+    R0 = I0;
+    CALL _cp_amp_record_for;
+    I2 = I1;
+    R0 = DM(_cp_amp_input);
+    I1 = R0;
+    F6 = DM(25, I1);
+    // Keep very fast onsets gradual even for a waveform already near its peak.
+    // A 256-sample minimum is 5.33 ms at 48 kHz; slower selected attacks and
+    // copied arp tails retain their own timing.
+    F0 = 0.00390625;
+    F6 = MIN(F6, F0);
+    R0 = DM(26, I1);
+    DM(_cp_amp_hold) = R0;
+    F7 = DM(27, I1);
+    F9 = DM(28, I1);
+    F10 = DM(29, I1);
+    R0 = DM(30, I1);
+    DM(_cp_amp_options) = R0;
+    F4 = DM(7, I0);
+    R0 = DM(0, I0);
+    R1 = DM(0, I2);
+    COMP(R0, R1);
+    IF NE JUMP _cp_amp_new;
+    R0 = DM(3, I2);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_amp_new;
+    R1 = DM(_cp_amp_mode);
+    COMP(R0, R1);
+    IF NE JUMP _cp_amp_mode_changed;
+    R3 = DM(1, I2);
+    R5 = DM(2, I2);
+    JUMP _cp_amp_gate_ready;
+_cp_amp_new:
+    R0 = DM(0, I0);
+    DM(0, I2) = R0;
+    F4 = 0.0;
+    R0 = DM(_cp_amp_options);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_amp_mode_changed;
+    F0 = 0.5;
+    F4 = F6 * F0;
+    F0 = 1.0;
+    COMP(F6, F0);
+    IF EQ R4 = R0;
+_cp_amp_mode_changed:
+    // A mode edit preserves the current level and starts the new shape there.
+    R3 = 2;
+    R5 = 0;
+    R0 = DM(_cp_amp_mode);
+    DM(3, I2) = R0;
+_cp_amp_gate_ready:
+    R0 = DM(_cp_amp_gate);
+    R0 = PASS R0;
+    IF NE JUMP _cp_amp_generate;
+    R0 = DM(_cp_amp_mode);
+    R1 = 2;
+    COMP(R0, R1);
+    IF EQ JUMP _cp_amp_note_release;
+    R0 = DM(_cp_amp_hold);
+    R1 = -1;
+    COMP(R0, R1);
+    IF NE JUMP _cp_amp_generate; // Finite AHD follows its own hold, even after keyup.
+_cp_amp_note_release:
+    R3 = 4;
+_cp_amp_generate:
+    I1 = _cp_amp_samples;
+    R2 = 32;
+_cp_amp_phase:
+    R0 = 2;
+    COMP(R3, R0);
+    IF EQ JUMP _cp_amp_attack;
+    R0 = 3;
+    COMP(R3, R0);
+    IF EQ JUMP _cp_amp_hold_phase;
+    R0 = 1;
+    COMP(R3, R0);
+    IF EQ JUMP _cp_amp_decay;
+    // The stock envelope outputs its old amplitude before advancing it.
+    LCNTR = R2, DO _cp_amp_release_last UNTIL LCE;
+_cp_amp_release_last:
+    F4 = F4 * F10, DM(I1, M6) = F4;
+    // Finite exponential tails retire below -140dB; q=1 remains infinite.
+    F0 = 1.0;
+    COMP(F10, F0);
+    IF EQ JUMP _cp_amp_done;
+    F0 = 0.0000001;
+    COMP(F4, F0);
+    IF GE JUMP _cp_amp_done;
+    F4 = 0.0;
+    JUMP _cp_amp_done;
+_cp_amp_attack:
+    F1 = 1.0;
+    COMP(F4, F1);
+    IF GE JUMP _cp_amp_attack_finished;
+    F0 = FLOAT R2;
+    F0 = F0 * F6;
+    F0 = F0 + F4;
+    // Repeated float additions can reach unity before the multiplied estimate.
+    // Reserve more than 32 rounding ulps for the exact phase-boundary loop.
+    F1 = 0.999996;
+    COMP(F0, F1);
+    F1 = 1.0;
+    IF GT JUMP _cp_amp_attack_boundary;
+    LCNTR = R2, DO _cp_amp_attack_last UNTIL LCE;
+        F4 = F4 + F6, DM(I1, M6) = F4;
+_cp_amp_attack_last:
+        F4 = MIN(F4, F1);
+    JUMP _cp_amp_done;
+_cp_amp_attack_boundary:
+    COMP(F4, F1);
+    IF GE JUMP _cp_amp_attack_finished;
+    F4 = F4 + F6, DM(I1, M6) = F4;
+    F4 = MIN(F4, F1);
+    R2 = R2 - 1;
+    IF NE JUMP _cp_amp_attack_boundary;
+    JUMP _cp_amp_done;
+_cp_amp_attack_finished:
+    R3 = 1;
+    R0 = DM(_cp_amp_mode);
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _cp_amp_phase;
+    R3 = 3;
+    R5 = 0;
+_cp_amp_hold_phase:
+    F4 = 1.0;
+    R0 = DM(_cp_amp_hold);
+    R1 = -1;
+    COMP(R0, R1);
+    IF EQ JUMP _cp_amp_hold_infinite;
+    R0 = R0 - R5;
+    IF LE JUMP _cp_amp_hold_finished;
+    R0 = MIN(R0, R2);
+    LCNTR = R0, DO _cp_amp_hold_last UNTIL LCE;
+_cp_amp_hold_last:
+    DM(I1, M6) = F4;
+    R5 = R5 + R0;
+    R2 = R2 - R0;
+    IF EQ JUMP _cp_amp_done;
+_cp_amp_hold_finished:
+    R3 = 4;
+    JUMP _cp_amp_phase;
+_cp_amp_hold_infinite:
+    LCNTR = R2, DO _cp_amp_infinite_last UNTIL LCE;
+_cp_amp_infinite_last:
+    DM(I1, M6) = F4;
+    JUMP _cp_amp_done;
+_cp_amp_decay:
+    F0 = 1.0;
+    F0 = F0 - F7;
+    F0 = F0 * F9;
+    LCNTR = R2, DO _cp_amp_decay_last UNTIL LCE;
+        F4 = F4 * F7, DM(I1, M6) = F4;
+_cp_amp_decay_last:
+        F4 = F4 + F0;
+_cp_amp_done:
+    DM(1, I2) = R3;
+    DM(2, I2) = R5;
+    DM(_cp_amp_end) = F4;
+    R0 = 1;
+    DM(_cp_amp_native) = R0;
+    RTS;
+.SECTION/DM seg_dmda;
+.VAR _cp_amp_mode = 0;
+.VAR _cp_amp_state = 0;
+.VAR _cp_amp_input = 0;
+.VAR _cp_amp_native = 0;
+.VAR _cp_amp_end = 0;
+.VAR _cp_amp_gate = 0;
+.VAR _cp_amp_hold = 0;
+.VAR _cp_amp_options = 0;
+.VAR _cp_amp_copy_src = 0;
+.VAR _cp_amp_copy_dst = 0;
+.PKBSS _cp_amp_staging, 96;
+.VAR _cp_amp_samples = 0;
+.VAR _cp_amp_sample1 = 0;
+.VAR _cp_amp_sample2 = 0;
+.VAR _cp_amp_sample3 = 0;
+.VAR _cp_amp_sample4 = 0;
+.VAR _cp_amp_sample5 = 0;
+.VAR _cp_amp_sample6 = 0;
+.VAR _cp_amp_sample7 = 0;
+.VAR _cp_amp_sample8 = 0;
+.VAR _cp_amp_sample9 = 0;
+.VAR _cp_amp_sample10 = 0;
+.VAR _cp_amp_sample11 = 0;
+.VAR _cp_amp_sample12 = 0;
+.VAR _cp_amp_sample13 = 0;
+.VAR _cp_amp_sample14 = 0;
+.VAR _cp_amp_sample15 = 0;
+.VAR _cp_amp_sample16 = 0;
+.VAR _cp_amp_sample17 = 0;
+.VAR _cp_amp_sample18 = 0;
+.VAR _cp_amp_sample19 = 0;
+.VAR _cp_amp_sample20 = 0;
+.VAR _cp_amp_sample21 = 0;
+.VAR _cp_amp_sample22 = 0;
+.VAR _cp_amp_sample23 = 0;
+.VAR _cp_amp_sample24 = 0;
+.VAR _cp_amp_sample25 = 0;
+.VAR _cp_amp_sample26 = 0;
+.VAR _cp_amp_sample27 = 0;
+.VAR _cp_amp_sample28 = 0;
+.VAR _cp_amp_sample29 = 0;
+.VAR _cp_amp_sample30 = 0;
+.VAR _cp_amp_sample31 = 0;
+.VAR _cp_amp_samples_end = 0;
+
+// V7 borrows one common-envelope output. The original audio remains enveloped;
+// the adapter removes this common factor before track FX and restores it at AMP.
+// Per-lane maxima preserve relative polyphonic envelopes. Blend combines them
+// with the exact audio mix, so a muted pad cannot hold an audible arp tail open.
+.GLOBAL _cp_post_output;
+.GLOBAL _cp_post_init;
+.VAR _cp_post_output = 0;
+.VAR _cp_post_lane = 0;
+.PKBSS _cp_post_pad, 128;
+.PKBSS _cp_post_arp, 128;
+.SECTION/PM seg_pmco;
+_cp_post_init:
+    R0 = DM(_cp_post_output);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R1 = DM(_cp_amp_mode);
+    R1 = PASS R1;
+    IF NE JUMP _cp_post_clear;
+    // An unavailable native snapshot retains the entire legacy AMP path.
+    I1 = R0;
+    F0 = 1.0;
+    LCNTR = 32, DO _cp_post_unity_last UNTIL LCE;
+_cp_post_unity_last:
+    DM(I1,M6) = F0;
+    R0 = 0;
+    DM(_cp_post_output) = R0;
+    RTS;
+_cp_post_clear:
+    I1 = _cp_post_pad;
+    I2 = _cp_post_arp;
+    R0 = 0;
+    .NOCOMPRESS;
+    LCNTR = 32, DO _cp_post_clear_last UNTIL LCE;
+        DM(I1,M6) = R0;
+_cp_post_clear_last:
+        DM(I2,M6) = R0;
+    .COMPRESS;
+    RTS;
+// Before oscillator registers are loaded: preserve I0,R8,R11..15.
+_cp_post_collect:
+    R0 = DM(_cp_post_output);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R0 = DM(_cp_post_lane);
+    I2 = R0;
+    R0 = DM(_cp_amp_native);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_post_ramp;
+    I1 = _cp_amp_samples;
+    .NOCOMPRESS;
+    LCNTR = 32, DO _cp_post_max_last UNTIL LCE;
+        F0 = DM(I1,M6);
+        F1 = DM(I2,M5);
+        F0 = MAX(F0,F1);
+_cp_post_max_last:
+        DM(I2,M6) = F0;
+    .COMPRESS;
+    RTS;
+_cp_post_ramp:
+    // Native bypass happens only for lifecycle/steal ramps under V7 mode1/2.
+    // Match the renderer's update-before-output order, including its final zero.
+    F2 = DM(7,I0);
+    F3 = -0.015625;
+    F5 = 0.0;
+    F6 = 1.0;
+    .NOCOMPRESS;
+    LCNTR = 32, DO _cp_post_ramp_last UNTIL LCE;
+        F2 = F2 + F3, F1 = DM(I2,M5);
+        F2 = MAX(F2,F5);
+        F2 = MIN(F2,F6);
+        F0 = MAX(F2,F1);
+_cp_post_ramp_last:
+        DM(I2,M6) = F0;
+    .COMPRESS;
+    RTS;
+.SECTION/DM seg_dmda;
+
+// Scalar call workspace. V2 loads these from the current instance each block;
+// no persistent voice ownership lives here. Legacy kernel probes use sine.
+.GLOBAL _cp_attack;
+.GLOBAL _cp_release_step;
+.GLOBAL _cp_second;
+.GLOBAL _cp_third;
+.GLOBAL _cp_drift;
+.GLOBAL _cp_level;
+.VAR _cp_attack = 0x39888889;
+.VAR _cp_release_step = 0xb7aec33e;
+.VAR _cp_second = 0x00000000;
+.VAR _cp_third = 0x00000000;
+.VAR _cp_drift = 0x00000000;
+.VAR _cp_level = 0x3e000000;
+.VAR _cp_h3 = 0x00000000;
+.GLOBAL _cp_envelopes;
+.VAR _cp_envelopes = 0x3b088889;
+.VAR _cp_env_1 = 0xba088889;
+.VAR _cp_env_2 = 0x3a638e39;
+.VAR _cp_env_3 = 0xb9520d21;
+.VAR _cp_env_4 = 0x3a0fb824;
+.VAR _cp_env_5 = 0xb9020821;
+.VAR _cp_env_6 = 0x39d20d21;
+.VAR _cp_env_7 = 0xb8bc5264;
+.VAR _cp_env_8 = 0x39a57eb5;
+.VAR _cp_env_9 = 0xb8939a86;
+.VAR _cp_env_10 = 0x39888889;
+.VAR _cp_env_11 = 0xb872b9d6;
+.VAR _cp_env_12 = 0x396865ac;
+.VAR _cp_env_13 = 0xb84e168a;
+.VAR _cp_env_14 = 0x394a4588;
+.VAR _cp_env_15 = 0xb8330f63;
+.VAR _cp_env_16 = 0x39330f63;
+.VAR _cp_env_17 = 0xb81e4cad;
+.VAR _cp_env_18 = 0x3920a0a1;
+.VAR _cp_env_19 = 0xb80dda52;
+.VAR _cp_env_20 = 0x3911a2b4;
+.VAR _cp_env_21 = 0xb8008081;
+.VAR _cp_env_22 = 0x39053408;
+.VAR _cp_env_23 = 0xb7eae564;
+.VAR _cp_env_24 = 0x38f57404;
+.VAR _cp_env_25 = 0xb7d84a5a;
+.VAR _cp_env_26 = 0x38e38e39;
+.VAR _cp_env_27 = 0xb7c86a79;
+.VAR _cp_env_28 = 0x38d41733;
+.VAR _cp_env_29 = 0xb7bab656;
+.VAR _cp_env_30 = 0x38c6980c;
+.VAR _cp_env_31 = 0xb7aec33e;
+.VAR _cp_env_32 = 0x38bab656;
+.VAR _cp_env_33 = 0xb7a44029;
+.VAR _cp_env_34 = 0x38b02c0b;
+.VAR _cp_env_35 = 0xb79aee73;
+.VAR _cp_env_36 = 0x38a6c21e;
+.VAR _cp_env_37 = 0xb7929cec;
+.VAR _cp_env_38 = 0x389e4cad;
+.VAR _cp_env_39 = 0xb78b246b;
+.VAR _cp_env_40 = 0x3896a850;
+.VAR _cp_env_41 = 0xb784655e;
+.VAR _cp_env_42 = 0x388fb824;
+.VAR _cp_env_43 = 0xb77c8c16;
+.VAR _cp_env_44 = 0x3889645c;
+.VAR _cp_env_45 = 0xb7716289;
+.VAR _cp_env_46 = 0x38839930;
+.VAR _cp_env_47 = 0xb7672ae4;
+.VAR _cp_env_48 = 0x387c8c16;
+.VAR _cp_env_49 = 0xb75dc7b0;
+.VAR _cp_env_50 = 0x3872b9d6;
+.VAR _cp_env_51 = 0xb755200d;
+.VAR _cp_env_52 = 0x3869a3d2;
+.VAR _cp_env_53 = 0xb74d1ed9;
+.VAR _cp_env_54 = 0x386135aa;
+.VAR _cp_env_55 = 0xb745b201;
+.VAR _cp_env_56 = 0x38595dd3;
+.VAR _cp_env_57 = 0xb73ec9f8;
+.VAR _cp_env_58 = 0x38520d21;
+.VAR _cp_env_59 = 0xb738594b;
+.VAR _cp_env_60 = 0x384b3660;
+.VAR _cp_env_61 = 0xb732544a;
+.VAR _cp_env_62 = 0x3844ce08;
+.VAR _cp_env_63 = 0xb72cb0bd;
+.VAR _cp_env_64 = 0x383ec9f8;
+.VAR _cp_env_65 = 0xb72765ae;
+.VAR _cp_env_66 = 0x38392144;
+.VAR _cp_env_67 = 0xb7226b39;
+.VAR _cp_env_68 = 0x3833cc07;
+.VAR _cp_env_69 = 0xb71dba61;
+.VAR _cp_env_70 = 0x382ec33e;
+.VAR _cp_env_71 = 0xb7194cf3;
+.VAR _cp_env_72 = 0x382a00aa;
+.VAR _cp_env_73 = 0xb7151d6a;
+.VAR _cp_env_74 = 0x38257eb5;
+.VAR _cp_env_75 = 0xb71126d7;
+.VAR _cp_env_76 = 0x3821385d;
+.VAR _cp_env_77 = 0xb70d64cc;
+.VAR _cp_env_78 = 0x381d2922;
+.VAR _cp_env_79 = 0xb709d350;
+.VAR _cp_env_80 = 0x38194cf3;
+.VAR _cp_env_81 = 0xb7066ecd;
+.VAR _cp_env_82 = 0x3815a025;
+.VAR _cp_env_83 = 0xb7033405;
+.VAR _cp_env_84 = 0x38121f65;
+.VAR _cp_env_85 = 0xb7002008;
+.VAR _cp_env_86 = 0x380ec7ab;
+.VAR _cp_env_87 = 0xb6fa6056;
+.VAR _cp_env_88 = 0x380b9638;
+.VAR _cp_env_89 = 0xb6f4c401;
+.VAR _cp_env_90 = 0x38088889;
+.VAR _cp_env_91 = 0xb6ef66a2;
+.VAR _cp_env_92 = 0x38059c50;
+.VAR _cp_env_93 = 0xb6ea442d;
+.VAR _cp_env_94 = 0x3802cf75;
+.VAR _cp_env_95 = 0xb6e558eb;
+.VAR _cp_env_96 = 0x38002008;
+.VAR _cp_env_97 = 0xb6e0a174;
+.VAR _cp_env_98 = 0x37fb1885;
+.VAR _cp_env_99 = 0xb6dc1aa7;
+.VAR _cp_env_100 = 0x37f62505;
+.VAR _cp_env_101 = 0xb6d7c1a2;
+.VAR _cp_env_102 = 0x37f16289;
+.VAR _cp_env_103 = 0xb6d393bb;
+.VAR _cp_env_104 = 0x37ecce48;
+.VAR _cp_env_105 = 0xb6cf8e7e;
+.VAR _cp_env_106 = 0x37e865ac;
+.VAR _cp_env_107 = 0xb6cbafa4;
+.VAR _cp_env_108 = 0x37e42652;
+.VAR _cp_env_109 = 0xb6c7f511;
+.VAR _cp_env_110 = 0x37e00e01;
+.VAR _cp_env_111 = 0xb6c45cd0;
+.VAR _cp_env_112 = 0x37dc1aa7;
+.VAR _cp_env_113 = 0xb6c0e510;
+.VAR _cp_env_114 = 0x37d84a5a;
+.VAR _cp_env_115 = 0xb6bd8c20;
+.VAR _cp_env_116 = 0x37d49b4d;
+.VAR _cp_env_117 = 0xb6ba506c;
+.VAR _cp_env_118 = 0x37d10bd7;
+.VAR _cp_env_119 = 0xb6b7307b;
+.VAR _cp_env_120 = 0x37cd9a67;
+.VAR _cp_env_121 = 0xb6b42aee;
+.VAR _cp_env_122 = 0x37ca4588;
+.VAR _cp_env_123 = 0xb6b13e7c;
+.VAR _cp_env_124 = 0x37c70bdb;
+.VAR _cp_env_125 = 0xb6ae69f1;
+.VAR _cp_env_126 = 0x37c3ec1a;
+.VAR _cp_env_127 = 0xb6abac2d;
+.VAR _cp_env_128 = 0x37c0e510;
+.VAR _cp_env_129 = 0xb6a90420;
+.VAR _cp_env_130 = 0x37bdf59d;
+.VAR _cp_env_131 = 0xb6a670cd;
+.VAR _cp_env_132 = 0x37bb1cb0;
+.VAR _cp_env_133 = 0xb6a3f145;
+.VAR _cp_env_134 = 0x37b8594b;
+.VAR _cp_env_135 = 0xb6a184a7;
+.VAR _cp_env_136 = 0x37b5aa7d;
+.VAR _cp_env_137 = 0xb69f2a1f;
+.VAR _cp_env_138 = 0x37b30f63;
+.VAR _cp_env_139 = 0xb69ce0e6;
+.VAR _cp_env_140 = 0x37b08727;
+.VAR _cp_env_141 = 0xb69aa840;
+.VAR _cp_env_142 = 0x37ae1100;
+.VAR _cp_env_143 = 0xb6987f7b;
+.VAR _cp_env_144 = 0x37abac2d;
+.VAR _cp_env_145 = 0xb69665ee;
+.VAR _cp_env_146 = 0x37a957fb;
+.VAR _cp_env_147 = 0xb6945afc;
+.VAR _cp_env_148 = 0x37a713be;
+.VAR _cp_env_149 = 0xb6925e0d;
+.VAR _cp_env_150 = 0x37a4ded5;
+.VAR _cp_env_151 = 0xb6906e95;
+.VAR _cp_env_152 = 0x37a2b8a7;
+.VAR _cp_env_153 = 0xb68e8c0b;
+.VAR _cp_env_154 = 0x37a0a0a1;
+.VAR _cp_env_155 = 0xb68cb5ef;
+.VAR _cp_env_156 = 0x379e9639;
+.VAR _cp_env_157 = 0xb68aebc9;
+.VAR _cp_env_158 = 0x379c98ed;
+.VAR _cp_env_159 = 0xb6892d25;
+.VAR _cp_env_160 = 0x379aa840;
+.VAR _cp_env_161 = 0xb6877995;
+.VAR _cp_env_162 = 0x3798c3bb;
+.VAR _cp_env_163 = 0xb685d0b2;
+.VAR _cp_env_164 = 0x3796eaed;
+.VAR _cp_env_165 = 0xb6843217;
+.VAR _cp_env_166 = 0x37951d6a;
+.VAR _cp_env_167 = 0xb6829d67;
+.VAR _cp_env_168 = 0x37935acd;
+.VAR _cp_env_169 = 0xb6811247;
+.VAR _cp_env_170 = 0x3791a2b4;
+.VAR _cp_env_171 = 0xb67f20c3;
+.VAR _cp_env_172 = 0x378ff4c1;
+.VAR _cp_env_173 = 0xb67c2ecb;
+.VAR _cp_env_174 = 0x378e509c;
+.VAR _cp_env_175 = 0xb6794e08;
+.VAR _cp_env_176 = 0x378cb5ef;
+.VAR _cp_env_177 = 0xb6767de5;
+.VAR _cp_env_178 = 0x378b246b;
+.VAR _cp_env_179 = 0xb673bdd4;
+.VAR _cp_env_180 = 0x37899bc0;
+.VAR _cp_env_181 = 0xb6710d4d;
+.VAR _cp_env_182 = 0x37881ba6;
+.VAR _cp_env_183 = 0xb66e6bcd;
+.VAR _cp_env_184 = 0x3786a3d4;
+.VAR _cp_env_185 = 0xb66bd8d9;
+.VAR _cp_env_186 = 0x37853408;
+.VAR _cp_env_187 = 0xb66953f7;
+.VAR _cp_env_188 = 0x3783cc01;
+.VAR _cp_env_189 = 0xb666dcb8;
+.VAR _cp_env_190 = 0x37826b7f;
+.VAR _cp_env_191 = 0xb66472ac;
+.VAR _cp_env_192 = 0x37811247;
+.VAR _cp_env_193 = 0xb662156b;
+.VAR _cp_env_194 = 0x377f8040;
+.VAR _cp_env_195 = 0xb65fc490;
+.VAR _cp_env_196 = 0x377ce9a6;
+.VAR _cp_env_197 = 0xb65d7fbb;
+.VAR _cp_env_198 = 0x377a6056;
+.VAR _cp_env_199 = 0xb65b468f;
+.VAR _cp_env_200 = 0x3777e3eb;
+.VAR _cp_env_201 = 0xb65918b3;
+.VAR _cp_env_202 = 0x37757404;
+.VAR _cp_env_203 = 0xb656f5d2;
+.VAR _cp_env_204 = 0x37731042;
+.VAR _cp_env_205 = 0xb654dd99;
+.VAR _cp_env_206 = 0x3770b84d;
+.VAR _cp_env_207 = 0xb652cfb9;
+.VAR _cp_env_208 = 0x376e6bcd;
+.VAR _cp_env_209 = 0xb650cbe7;
+.VAR _cp_env_210 = 0x376c2a70;
+.VAR _cp_env_211 = 0xb64ed1d9;
+.VAR _cp_env_212 = 0x3769f3e4;
+.VAR _cp_env_213 = 0xb64ce14a;
+.VAR _cp_env_214 = 0x3767c7de;
+.VAR _cp_env_215 = 0xb64af9f4;
+.VAR _cp_env_216 = 0x3765a612;
+.VAR _cp_env_217 = 0xb6491b98;
+.VAR _cp_env_218 = 0x37638e39;
+.VAR _cp_env_219 = 0xb64745f6;
+.VAR _cp_env_220 = 0x3761800e;
+.VAR _cp_env_221 = 0xb64578d1;
+.VAR _cp_env_222 = 0x375f7b4f;
+.VAR _cp_env_223 = 0xb643b3f0;
+.VAR _cp_env_224 = 0x375d7fbb;
+.VAR _cp_env_225 = 0xb641f719;
+.VAR _cp_env_226 = 0x375b8d14;
+.VAR _cp_env_227 = 0xb6404217;
+.VAR _cp_env_228 = 0x3759a31f;
+.VAR _cp_env_229 = 0xb63e94b5;
+.VAR _cp_env_230 = 0x3757c1a2;
+.VAR _cp_env_231 = 0xb63ceec0;
+.VAR _cp_env_232 = 0x3755e865;
+.VAR _cp_env_233 = 0xb63b5007;
+.VAR _cp_env_234 = 0x37541733;
+.VAR _cp_env_235 = 0xb639b85c;
+.VAR _cp_env_236 = 0x37524dd6;
+.VAR _cp_env_237 = 0xb6382791;
+.VAR _cp_env_238 = 0x37508c1e;
+.VAR _cp_env_239 = 0xb6369d78;
+.VAR _cp_env_240 = 0x374ed1d9;
+.VAR _cp_env_241 = 0xb63519e9;
+.VAR _cp_env_242 = 0x374d1ed9;
+.VAR _cp_env_243 = 0xb6339cb9;
+.VAR _cp_env_244 = 0x374b72f0;
+.VAR _cp_env_245 = 0xb63225c1;
+.VAR _cp_env_246 = 0x3749cdf1;
+.VAR _cp_env_247 = 0xb630b4d9;
+.VAR _cp_env_248 = 0x37482fb3;
+.VAR _cp_env_249 = 0xb62f49dd;
+.VAR _cp_env_250 = 0x3746980c;
+.VAR _cp_env_251 = 0xb62de4a9;
+.VAR _cp_env_252 = 0x374506d5;
+.VAR _cp_env_253 = 0xb62c8519;
+.VAR _cp_env_254 = 0x37437be5;
+.VAR _cp_env_255 = 0xb62b2b0b;
+
+.GLOBAL _cp_second_start;
+.GLOBAL _cp_third_start;
+.GLOBAL _cp_second_step;
+.GLOBAL _cp_third_step;
+.VAR _cp_second_start = 0;
+.VAR _cp_third_start = 0;
+.VAR _cp_second_step = 0;
+.VAR _cp_third_step = 0;
+.VAR _cp_h2step = 0;
+.VAR _cp_h3step = 0;
+
+.VAR _cp_render_count = 6;

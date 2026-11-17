@@ -1,0 +1,165 @@
+//! Bounded image/BSS upload pump. Completion permits metadata installation only.
+//! Retain the same controllers after interruption; dropping is not cancellation.
+use crate::{
+    instrument_exchange::Failure,
+    instrument_image::Transfer,
+    instrument_load::{Command, Loads},
+    instrument_transport::{Driver, Error as LinkError, Progress as LinkProgress, Transport},
+};
+
+// Sparse local tags prevent GCC from embedding jump-table data in ColdFire text.
+// These values are not serialized on the wire.
+#[repr(u8)]
+#[derive(Debug, PartialEq, Eq)]
+pub enum Progress {
+    Pending = 0,
+    ReadyToInstall = 16,
+    Recover { cause: Failure, command: Command } = 32,
+    Blocked(Failure) = 48,
+    Finished = 64,
+}
+pub struct Upload<'a, 'image, T> {
+    driver: &'a mut Driver<T>,
+    transfer: &'a mut Transfer<'image>,
+    loads: &'a mut Loads,
+    state: PumpState,
+}
+
+/// Persistent state owned by the coordinator; no references into its owner.
+pub(crate) struct PumpState {
+    start: u32,
+    budget: u32,
+    drain_budget: u32,
+    draining: Option<(Failure, u32)>,
+    blocked: Option<Failure>,
+    finished: bool,
+}
+impl<'a, 'image, T: Transport> Upload<'a, 'image, T> {
+    /// One deadline covers all chunks, zero fills and retries. Tick clock must be
+    /// monotonic modulo u32, sampled within 2^31 ticks. Driver belongs exclusively
+    /// to this upload. Use invalidate_boot on boot loss, not a new deadline.
+    pub fn new(
+        driver: &'a mut Driver<T>,
+        transfer: &'a mut Transfer<'image>,
+        loads: &'a mut Loads,
+        now: u32,
+        budget: u32,
+    ) -> Option<Self> {
+        if transfer.next(loads).is_err() {
+            return None;
+        }
+        Some(Self {
+            driver,
+            transfer,
+            loads,
+            state: PumpState::new(now, budget)?,
+        })
+    }
+    pub fn invalidate_boot(&mut self) {
+        self.state.invalidate_boot(self.driver);
+    }
+    pub fn tick(&mut self, now: u32) -> Progress {
+        self.state.tick(self.driver, self.transfer, self.loads, now)
+    }
+}
+
+impl PumpState {
+    pub(crate) fn new(now: u32, budget: u32) -> Option<Self> {
+        Self::with_drain_budget(now, budget, budget)
+    }
+    pub(crate) fn with_drain_budget(now: u32, budget: u32, drain_budget: u32) -> Option<Self> {
+        if budget == 0 || budget >= 0x80000000 || drain_budget == 0 || drain_budget >= 0x80000000 {
+            return None;
+        }
+        Some(Self {
+            start: now,
+            budget,
+            drain_budget,
+            draining: None,
+            blocked: None,
+            finished: false,
+        })
+    }
+    fn block(&mut self, cause: Failure) -> Progress {
+        self.blocked = Some(cause);
+        Progress::Blocked(cause)
+    }
+    fn recover(
+        &mut self,
+        transfer: &mut Transfer<'_>,
+        loads: &mut Loads,
+        cause: Failure,
+    ) -> Progress {
+        match transfer.failed(loads) {
+            Ok(command) => {
+                self.finished = true;
+                Progress::Recover { cause, command }
+            }
+            Err(_) => self.block(Failure::Protocol),
+        }
+    }
+    /// Caller has lost trust in this DSP boot. Preserve all storage and stop
+    /// provider calls; whole-boot teardown is the owning runtime's responsibility.
+    pub(crate) fn invalidate_boot<T: Transport>(&mut self, driver: &mut Driver<T>) {
+        driver.invalidate_boot();
+        self.finished = false;
+        self.blocked = Some(Failure::Boot);
+    }
+    pub(crate) fn tick<T: Transport>(
+        &mut self,
+        driver: &mut Driver<T>,
+        transfer: &mut Transfer<'_>,
+        loads: &mut Loads,
+        now: u32,
+    ) -> Progress {
+        if self.finished {
+            return Progress::Finished;
+        }
+        if let Some(cause) = self.blocked {
+            return Progress::Blocked(cause);
+        }
+        if self.draining.is_none() && now.wrapping_sub(self.start) >= self.budget {
+            self.draining = Some((Failure::Timeout, now));
+        }
+        let link = driver.poll();
+        if let Some((cause, began)) = self.draining {
+            return match link {
+                Ok(LinkProgress::Idle | LinkProgress::Complete(_) | LinkProgress::Failed(_)) => {
+                    self.recover(transfer, loads, cause)
+                }
+                Ok(LinkProgress::Pending) if now.wrapping_sub(began) < self.drain_budget => {
+                    Progress::Pending
+                }
+                _ => self.block(cause),
+            };
+        }
+        match link {
+            Err(_) => return self.block(Failure::Link),
+            Ok(LinkProgress::Pending) => return Progress::Pending,
+            Ok(LinkProgress::Failed(_)) => return self.recover(transfer, loads, Failure::Link),
+            Ok(LinkProgress::Complete(completed)) => {
+                return if completed.image(transfer, loads).is_ok() {
+                    Progress::Pending
+                } else {
+                    self.block(Failure::Protocol)
+                }
+            }
+            Ok(LinkProgress::Idle) => {}
+        }
+        let write = match transfer.next(loads) {
+            Ok(Some(write)) => write,
+            Ok(None) => {
+                self.finished = true;
+                return Progress::ReadyToInstall;
+            }
+            Err(_) => return self.block(Failure::Protocol),
+        };
+        match driver.start_image(&write) {
+            Ok(_) => Progress::Pending,
+            Err(LinkError::Uncertain | LinkError::Busy) => self.block(Failure::Link),
+            Err(_) => self.recover(transfer, loads, Failure::Link),
+        }
+    }
+}
+#[cfg(test)]
+mod tests;

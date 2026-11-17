@@ -1,0 +1,45 @@
+[module]
+id = "digikit/canopy"
+version = "0.1.0"
+name = "CANOPY"
+category = "machines"
+type = "machine"
+author = "digikit"
+status = "experimental"
+summary = "Persistent four-note pad instrument with keyboard modes and learned chords."
+dynamic = true
+ports = ["dt2-1.17"]
+requires = ["core/instrument-play"]
+conflicts = []
+[targets]
+"dt2-1.17" = "experimental"
+
+# The machine, declared by builder calls in init (src/module.c). `instrument = true`: a persistent V2 instrument whose DSP entry points are
+# _canopy_reset and _canopy_process and whose descriptor is _canopy_descriptor (patchkit packs a version 7/8 DSP section).
+[[machine]]
+id = "canopy"
+instrument = true
+
+[[object]]
+path = "build/canopy-cf.dko.json"
+sources = ["src/module.c"]
+place = "cf.expansion"
+[[object]]
+path = "build/canopy-dsp.dko.json"
+sources = ["src/dsp/voice.s",
+  "src/dsp/fm.s",
+  "src/dsp/fm-tables.s", "src/dsp/wavetable.s", "src/dsp/wavetables.s", "src/dsp/blend.s", "src/dsp/arp.s", "src/dsp/strum.s", "src/dsp/tuning.s", "src/dsp/events.s", "src/dsp/status.s", "src/dsp/v2.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+
+# The load cell boots the patch set with core/instrument-play (the V2 owner), core/loop-storage and core/loop-display.
+[conformance]
+patch_set = "canopy-overloop"
+
+# The rows init commits (src/module.c: one machine, no pages or params), counted from the builder calls: record_bytes is the 16-byte
+# header and a machine record (0x6c), as packages/patchkit/src/dkmsynth.rs record_bytes computes it. Without them the commit refuses (E_DECL_USES).
+[uses.dt2]
+machine_rows = 1
+param_rows = 0
+page_rows = 0
+record_bytes = 124

@@ -49,6 +49,28 @@ test('full selection and legacy ID filtering retain all runtime types and DSP mo
   expect(() => loadRuntimeModules(root, { ids: 'test/unknown' })).toThrow('unknown run-time module');
 });
 
+test('a module names the patch set its load cell boots', () => {
+  manifest('own-set', 'type = "fx"\ndynamic = true\n[conformance]\npatch_set = "overloop"');
+  manifest('no-set');
+  manifest('bad-set', 'type = "fx"\ndynamic = true\n[conformance]\npatch_set = 1');
+  expect(() => loadRuntimeModules(root)).toThrow('[conformance] patch_set must be a string');
+  fs.rmSync(path.join(root, 'modules', 'machines', 'bad-set'), { recursive: true });
+  const modules = loadRuntimeModules(root);
+  expect(modules.find((module) => module.id === 'test/own-set')?.patchSet).toBe('overloop');
+  expect(modules.find((module) => module.id === 'test/no-set')).not.toHaveProperty('patchSet');
+});
+
+test('a V2 instrument is marked for the load cell', () => {
+  manifest(
+    'instrument',
+    'type = "machine"\ndynamic = true\n[[machine]]\nid = "a"\n[[machine]]\nid = "b"\ninstrument = true',
+  );
+  manifest('legacy', 'type = "machine"\ndynamic = true\n[[machine]]\nid = "a"\ninstrument = false');
+  const modules = loadRuntimeModules(root);
+  expect(modules.find((module) => module.id === 'test/instrument')?.instrument).toBe(true);
+  expect(modules.find((module) => module.id === 'test/legacy')).not.toHaveProperty('instrument');
+});
+
 test('full selection filters one-device modules while retaining modules with absent or empty ports', () => {
   manifest('dn2', 'type = "service"\nports = ["dn2-1.12"]');
   manifest('dt2', 'type = "machine"\ndynamic = true\nports = ["dt2-1.17"]');

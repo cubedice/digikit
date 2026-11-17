@@ -1,0 +1,459 @@
+[module]
+id = "core/instrument-play"
+version = "0.1.0"
+name = "Persistent instrument playback"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Single-instance V2 transport, development admission policy and shared carrier."
+requires = ["core/instrument-registry", "core/dsp-voice", "core/dynreg", "core/dyndsp", "core/ui"]
+conflicts = ["test/canopy-carrier", "test/canopy-transport", "test/instrument-load"]
+ports = ["dt2-1.17"]
+[targets]
+"dt2-1.17" = "experimental"
+[[object]]
+path = "build/play-dsp.dko.json"
+sources = ["src/dsp/play.s", "src/dsp/modulation.s", "src/dsp/lock.s", "src/dsp/reset-protected.s", "src/dsp/carrier.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+[object.externs]
+_mi_workspace_next = "dsp.voice.site.envelope_workspace.next"
+_mi_envelope_next = "dsp.voice.site.envelope_entry.next"
+_mi_velocity_next = "dsp.voice.site.velocity_operand.next"
+_iv_amp_attack_table = "dsp.voice.site.amp_attack_table"
+_iv_amp_decay_table = "dsp.voice.site.amp_decay_table"
+_iv_amp_hold_table = "dsp.voice.site.amp_hold_table"
+_iv_mod_frame = "dsp.voice.value.frame_base"
+[[op]]
+op = "hook"
+hook = "dsp.voice.hook.envelope_workspace"
+to = "_mi_workspace_entry"
+[[op]]
+op = "hook"
+hook = "dsp.voice.hook.envelope_entry"
+to = "_mi_envelope_entry"
+[[op]]
+op = "hook"
+hook = "dsp.voice.hook.velocity_operand"
+to = "_mi_velocity_entry"
+
+[[object]]
+path = "build/play-cf.dko.json"
+sources = ["src/cf/control.c", "src/cf/keyboard.c", "src/cf/preset.c", "src/cf/src-state.c", "src/cf/src-lock-packed.c", "src/cf/src-lock-event.c", "src/cf/src-lock-capture.c", "src/cf/src-lock-capture.s", "src/cf/src-mod.c", "src/cf/src-mod.s", "src/cf/status.c", "src/cf/src-display.c", "src/cf/src-clock.c", "src/cf/src-native.c", "src/cf/panel.c", "src/cf/panel.s", "src/cf/sound.c", "src/cf/sound-load.s", "src/cf/sound-record.c", "src/cf/sound-assoc.c", "src/cf/sound-persist.c", "src/cf/sound-persist.s", "src/cf/view.s"]
+place = "cf.expansion"
+devices = ["dt2"]
+[object.externs]
+ip_view_next = "hook.cf.machine.fn.selection_build.tail"
+ip_mod_color = "params.ip_mod_color.index"
+ip_mod_drift = "params.ip_mod_drift.index"
+ip_mod_mix = "params.ip_mod_mix.index"
+ip_mod_strum = "params.ip_mod_strum.index"
+ip_mod_gate = "params.ip_mod_gate.index"
+ip_mod_swing = "params.ip_mod_swing.index"
+ip_mod_position = "params.ip_mod_position.index"
+ip_mod_scan_depth = "params.ip_mod_scan_depth.index"
+ip_mod_scan_rate = "params.ip_mod_scan_rate.index"
+ip_mod_timbre_env = "params.ip_mod_timbre_env.index"
+ip_mod_wtfm_depth = "params.ip_mod_wtfm_depth.index"
+ip_mod_wtfm_env = "params.ip_mod_wtfm_env.index"
+ip_mod_fm_depth = "params.ip_mod_fm_depth.index"
+ip_mod_balance = "params.ip_mod_balance.index"
+ip_mod_feedback = "params.ip_mod_feedback.index"
+ip_mod_fm_env = "params.ip_mod_fm_env.index"
+ip_mod_fm_attack = "params.ip_mod_fm_attack.index"
+ip_mod_fm_release = "params.ip_mod_fm_release.index"
+ip_mod_track_type = "cf.machine.site.instrument_mod_type_row_literal"
+ip_mod_split_next = "hook.cf.machine.site.instrument_mod_split.return"
+ip_mod_split_skip = "cf.machine.site.instrument_mod_split_skip"
+ip_mod_recombine_next = "hook.cf.machine.site.instrument_mod_recombine.return"
+ip_mod_recombine_skip = "cf.machine.site.instrument_mod_recombine_skip"
+ip_view_build = "cf.machine.fn.selection_build"
+ip_project = "cf.project.fn.singleton"
+ip_kit = "cf.project.fn.active_kit"
+ip_refresh = "cf.machine.fn.refresh_track"
+ip_sound_resume = "hook.cf.machine.site.sound_deserialize.return"
+ip_save_resume = "hook.cf.machine.site.sound_serialize.return"
+ip_init_resume = "hook.cf.machine.site.sound_init_slices.return"
+ip_type_resume = "hook.cf.machine.site.sound_type_write.return"
+ip_memcpy_resume = "hook.cf.util.site.memcpy.return"
+ip_memset_resume = "hook.cf.util.site.memset.return"
+ip_bzero_resume = "hook.cf.util.site.bzero.return"
+ip_kit_table_lit = "cf.project.site.kit_table_lit"
+ip_sound_pool_lit = "cf.project.site.sound_pool_lit"
+fw_alloc = "cf.mem.fn.new"
+fw_free = "cf.mem.fn.free"
+ip_src_type = "cf.machine.fn.current_track_type"
+ip_src_track = "cf.page.site.instrument_src_track"
+ip_src_alternate = "cf.page.site.instrument_src_alternate"
+ip_src_stock_draw = "cf.page.site.instrument_src_draw"
+ip_src_stock_update = "cf.page.site.instrument_src_update"
+ip_src_stock_key = "cf.page.site.instrument_src_key"
+ip_src_stock_turn = "cf.page.site.instrument_src_turn"
+ip_src_stock_parameter = "cf.page.site.instrument_src_parameter"
+ip_src_stock_event = "cf.page.site.instrument_src_event_dispatch"
+ip_src_stock_attach = "cf.page.site.instrument_src_attach"
+ip_src_stock_detach = "cf.page.site.instrument_src_detach"
+ip_src_value = "cf.page.site.instrument_src_value"
+ip_src_tune_format = "cf.page.site.instrument_src_tune_format"
+ip_src_level_format = "cf.page.site.instrument_src_level_format"
+ip_src_focus_touch = "cf.page.site.instrument_focus_touch"
+ip_src_focus_active = "cf.page.site.instrument_focus_active"
+ip_src_label_font = "cf.page.site.instrument_label_font"
+ip_panel_on_resume = "hook.cf.page.site.instrument_panel_on.return"
+ip_panel_off_resume = "hook.cf.page.site.instrument_panel_off.return"
+ip_panel_track_object = "cf.page.site.instrument_panel_track_object"
+ip_panel_track_type = "cf.page.site.instrument_panel_track_type"
+ip_panel_selected_track = "cf.page.site.instrument_panel_selected_track"
+ip_panel_stock_key = "cf.page.site.instrument_panel_key"
+ip_panel_stock_detach = "cf.page.site.instrument_panel_detach"
+ip_panel_active = "cf.page.site.instrument_panel_active"
+ip_panel_stock_toggle = "cf.page.site.instrument_panel_toggle"
+ip_panel_live_record = "cf.page.site.instrument_live_record"
+ip_panel_trig_held = "cf.page.site.instrument_trig_held"
+ip_panel_step_record = "cf.page.site.instrument_step_record"
+ip_note_list_resume = "hook.cf.page.site.instrument_note_list_write.return"
+ip_lock_mark_edited = "cf.page.site.instrument_lock_mark_edited"
+ip_lock_get = "cf.page.site.instrument_lock_get"
+ip_lock_set = "cf.page.site.instrument_lock_set"
+ip_lock_clear = "cf.page.site.instrument_lock_clear"
+ip_seq_step = "cf.page.site.instrument_seq_step"
+ip_lock_due_1_next = "hook.cf.page.site.instrument_lock_due_1.return"
+ip_lock_due_1_skip = "cf.page.site.instrument_lock_skip_1"
+ip_lock_due_2_next = "hook.cf.page.site.instrument_lock_due_2.return"
+ip_lock_due_2_skip = "cf.page.site.instrument_lock_skip_2"
+[[op]]
+op = "hook"
+hook = "cf.page.hook.instrument_lock_due_1"
+to = "ip_lock_due_1"
+[[op]]
+op = "hook"
+hook = "cf.page.hook.instrument_lock_due_2"
+to = "ip_lock_due_2"
+[[op]]
+op = "hook"
+hook = "cf.machine.hook.instrument_mod_split"
+to = "ip_mod_split"
+[[op]]
+op = "hook"
+hook = "cf.machine.hook.instrument_mod_recombine"
+to = "ip_mod_recombine"
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_panel_toggle_call"
+offset = 2
+value = "ip_panel_toggle"
+width = 4
+[[op]]
+op = "hook"
+hook = "cf.page.hook.instrument_panel_on"
+to = "ip_panel_on"
+[[op]]
+op = "hook"
+hook = "cf.page.hook.instrument_panel_off"
+to = "ip_panel_off"
+[[op]]
+op = "hook"
+hook = "cf.page.hook.instrument_note_list_write"
+to = "ip_note_list_write"
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_panel_key_slot"
+value = "ip_panel_key_event"
+width = 4
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_panel_detach_slot"
+value = "ip_panel_detach"
+width = 4
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_panel_update_slot"
+value = "ip_panel_update"
+width = 4
+[[op]]
+op = "hook"
+hook = "cf.machine.hook.sound_deserialize"
+to = "ip_sound_entry"
+
+# CANOPY Sound persistence (sound-persist.c): the record extension in the
+# Sound writer, whole-Sound copies and fills, initialization and type changes.
+[[op]]
+op = "hook"
+hook = "cf.machine.hook.sound_serialize"
+to = "ip_save_entry"
+[[op]]
+op = "hook"
+hook = "cf.machine.hook.sound_init_slices"
+to = "ip_init_site"
+[[op]]
+op = "hook"
+hook = "cf.machine.hook.sound_type_write"
+to = "ip_type_site"
+[[op]]
+op = "hook"
+hook = "cf.util.hook.memcpy"
+to = "ip_memcpy_entry"
+[[op]]
+op = "hook"
+hook = "cf.util.hook.memset"
+to = "ip_memset_entry"
+[[op]]
+op = "hook"
+hook = "cf.util.hook.bzero"
+to = "ip_bzero_entry"
+
+[[op]]
+op = "hook"
+hook = "cf.machine.hook.selection_build"
+to = "ip_view_entry"
+
+# Replace only the relevant primary/interface entries, preserving RTTI and all
+# other SourcePageView virtual methods. Stock handlers remain callable.
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_src_parameter_slot"
+value = "ip_src_parameter"
+width = 4
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_src_draw_slot"
+value = "ip_src_draw"
+width = 4
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_src_update_slot"
+value = "ip_src_update"
+width = 4
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_src_key_slot"
+value = "ip_src_key"
+width = 4
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_src_turn_slot"
+value = "ip_src_turn"
+width = 4
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_src_encoder_slot"
+value = "ip_src_encoder_interface"
+width = 4
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_src_event_call"
+offset = 2
+value = "ip_src_event"
+width = 4
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_src_attach_slot"
+value = "ip_src_attach"
+width = 4
+[[op]]
+op = "write"
+anchor = "cf.page.site.instrument_src_detach_slot"
+value = "ip_src_detach"
+width = 4
+
+# Six native Sound modulation slots, with family-specific destination names.
+
+[[entry]]
+registry = "params"
+id = "ip_mod_color"
+name = "Color"
+short = "COLR"
+template = 0xd1
+slot = 1
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_drift"
+name = "Drift"
+short = "DRFT"
+template = 0xd1
+slot = 2
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_mix"
+name = "Arp mix"
+short = "MIX"
+template = 0xd1
+slot = 3
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_strum"
+name = "Strum"
+short = "STRM"
+template = 0xd1
+slot = 4
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_gate"
+name = "Arp gate"
+short = "GATE"
+template = 0xd1
+slot = 5
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_swing"
+name = "Arp swing"
+short = "SWNG"
+template = 0xd1
+slot = 6
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_position"
+name = "Wavetable position"
+short = "POS"
+template = 0xd1
+slot = 1
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_scan_depth"
+name = "Scan depth"
+short = "SCAN"
+template = 0xd1
+slot = 2
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_scan_rate"
+name = "Scan rate"
+short = "RATE"
+template = 0xd1
+slot = 3
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_timbre_env"
+name = "Timbre envelope"
+short = "ENV"
+template = 0xd1
+slot = 4
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_wtfm_depth"
+name = "WT FM depth"
+short = "DEP"
+template = 0xd1
+slot = 5
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_wtfm_env"
+name = "WT FM envelope"
+short = "ENV"
+template = 0xd1
+slot = 6
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_fm_depth"
+name = "FM depth"
+short = "DEP"
+template = 0xd1
+slot = 1
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_balance"
+name = "FM balance"
+short = "BAL"
+template = 0xd1
+slot = 2
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_feedback"
+name = "FM feedback"
+short = "FDBK"
+template = 0xd1
+slot = 3
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_fm_env"
+name = "FM envelope"
+short = "ENV"
+template = 0xd1
+slot = 4
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_fm_attack"
+name = "FM attack"
+short = "ATK"
+template = 0xd1
+slot = 5
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "ip_mod_fm_release"
+name = "FM release"
+short = "REL"
+template = 0xd1
+slot = 6
+min = 0
+max = 0x7f00
+default = 0x4000

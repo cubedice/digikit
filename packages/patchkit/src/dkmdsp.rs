@@ -11,6 +11,10 @@
 //! 0x18 u32 image_off    0x1c u32 reloc_off   0x20 u32 reloc_count
 //! 0x24 u32 import_off   0x28 u32 import_count   0x2c u32 voice_off   0x30 u32 voice_count
 //! 0x34 u32 fx_off       0x38 u32 fx_count   (version 4+: effect records; 0 before)   0x3c u32 bank_record_off (version 5; 0 before)
+//! V7 extends the header to 0x50: instrument offset/count at 0x40/0x44; 0x48/0x4c reserved.
+//! Instruments follow effects: 16 bytes (type, reset, process, desc), all image byte offsets.
+//! V8 uses 0x48/0x4c for sorted executable range offset/count (8-byte start/end records).
+//! A `[[machine]]` with `instrument = true` packs V7/V8; the runtime takes such a section on its V2 path (core/instrument-play).
 //! imports: 32-byte NUL padded names of DSP symbols the runtime resolves (`dyndsp_info` of core/dyn-dsp)
 //! relocs : 8 bytes each: u32 image byte offset of a 48-bit instruction, u32 kind << 28 | class << 24 | import index
 //!            kind 0 abs24 (the instruction's 24-bit address field), kind 1 abs32 (its 32-bit immediate)
@@ -51,6 +55,36 @@ pub use dksharc::dkds::{
     FX_LEN, HEADER, IMPORT_LEN, MAGIC, RELOC_LEN, VERSION_1, VERSION_3, VERSION_4, VERSION_5,
     VOICE_LEN, VOICE_LEN_V1, VOICE_LEN_V3,
 };
+pub use dksharc::dkds::{HEADER_INSTRUMENT, VERSION_7, VERSION_8};
+pub const INSTRUMENT_LEN: usize = 16;
+pub const MAX_INSTRUMENTS: usize = 8;
+
+/// Format validation ceilings only; runtime admission must supply device limits.
+pub const FORMAT_LIMITS: crate::instrument::Limits = crate::instrument::Limits {
+    state_bytes: u32::MAX,
+    cycles_process: u32::MAX,
+    cycles_reset: u32::MAX,
+    call_depth: u32::MAX,
+    stack_bytes: u32::MAX,
+};
+
+/// A persistent instrument to pack: its machine type (key) and the global symbols of its entry points and descriptor.
+#[derive(Clone, Debug)]
+pub struct InstrumentSpec {
+    pub type_no: u32,
+    pub reset: String,
+    pub process: String,
+    pub desc: String,
+}
+
+/// All three addresses are image byte offsets; zero is a valid callback address.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Instrument {
+    pub type_no: u32,
+    pub reset: u32,
+    pub process: u32,
+    pub desc: u32,
+}
 /// The 32-byte version 5 record: little-endian words kind, local id, records byte offset, control byte offset, then four reserved
 /// zero words. Offsets are relative to the module DSP image base; unlike this record the enclosing header is BE.
 pub const SAMPLE_RECORD_LEN: usize = 32;
@@ -334,6 +368,8 @@ pub struct DspSection {
     pub relocs: Vec<Reloc>,
     pub voices: Vec<Voice>,
     pub fxs: Vec<Effect>,
+    pub instruments: Vec<Instrument>,
+    pub executable: Vec<(u32, u32)>,
 }
 
 /// Link `obj` (a SHARC+ object) at the nominal base and encode the section. `voices` names the entry routine of each machine type
@@ -361,6 +397,35 @@ pub fn pack_with_gate(
     fxs: &[FxSpec],
     tracks: Option<&crate::typed::SampleTracksDef>,
 ) -> Result<(Vec<u8>, bool)> {
+    pack_inner(obj, device, voices, fxs, tracks, &[], FORMAT_LIMITS)
+}
+
+/// Pack persistent V2 instruments (and any V1 voices or effects of the same object) into a version 7 or 8 section.
+pub fn pack_with_instruments(
+    obj: &Dko,
+    device: u32,
+    voices: &[VoiceSpec],
+    fxs: &[FxSpec],
+    instruments: &[InstrumentSpec],
+    limits: crate::instrument::Limits,
+) -> Result<Vec<u8>> {
+    pack_inner(obj, device, voices, fxs, None, instruments, limits).map(|(bytes, _)| bytes)
+}
+
+fn pack_inner(
+    obj: &Dko,
+    device: u32,
+    voices: &[VoiceSpec],
+    fxs: &[FxSpec],
+    tracks: Option<&crate::typed::SampleTracksDef>,
+    instruments: &[InstrumentSpec],
+    limits: crate::instrument::Limits,
+) -> Result<(Vec<u8>, bool)> {
+    if !instruments.is_empty() && tracks.is_some() {
+        return Err(err!(
+            "instrument and sample declarations cannot share a DSP section"
+        ));
+    }
     let mut gate = false;
     if obj.arch != "sharc" {
         return Err(err!(
@@ -519,6 +584,11 @@ pub fn pack_with_gate(
                 .get(at..at + DESC_WORDS * 4)
                 .ok_or_else(|| err!("voice desc {d}: shorter than {} bytes", DESC_WORDS * 4))?;
             let w = |i: usize| u32::from_le_bytes(bytes[i * 4..i * 4 + 4].try_into().unwrap());
+            if w(0) == crate::instrument::MAGIC {
+                return Err(err!(
+                    "voice desc {d}: a persistent V2 instrument descriptor; declare the machine with `instrument = true`"
+                ));
+            }
             if w(0) != DESC_MAGIC {
                 return Err(err!(
                     "voice desc {d}: magic {:#x}, not DKMA ({DESC_MAGIC:#x})",
@@ -657,6 +727,43 @@ pub fn pack_with_gate(
             .ok_or_else(|| err!("sample symbol {name}: offset overflow"))?;
         Ok(at)
     };
+    if instruments.len() > MAX_INSTRUMENTS {
+        return Err(err!("too many persistent instruments"));
+    }
+    let mut ins = vec![];
+    for instrument in instruments {
+        let reset = entry_of(&instrument.reset)?;
+        let process = entry_of(&instrument.process)?;
+        if !matches!(defined.get(instrument.desc.as_str()), Some(("data", _))) {
+            return Err(err!(
+                "instrument descriptor {} must be a defined data symbol",
+                instrument.desc
+            ));
+        }
+        let desc = u32::try_from(linked.symbols[instrument.desc.as_str()] - L2_BYTE_BASE as u64)
+            .map_err(|_| err!("instrument descriptor offset overflow"))?;
+        ins.push(Instrument {
+            type_no: instrument.type_no,
+            reset,
+            process,
+            desc,
+        });
+    }
+    let mut executable = vec![];
+    if !ins.is_empty() {
+        for &(start, end) in &linked.text_ranges {
+            if start == end {
+                continue;
+            }
+            executable.push((
+                u32::try_from(start - L2_BYTE_BASE as u64)
+                    .map_err(|_| err!("text range overflow"))?,
+                u32::try_from(end - L2_BYTE_BASE as u64)
+                    .map_err(|_| err!("text range overflow"))?,
+            ));
+        }
+        executable.sort_unstable();
+    }
     let sample_tracks = tracks
         .map(|t| -> Result<SampleTracks> {
             let tracks = SampleTracks {
@@ -685,28 +792,98 @@ pub fn pack_with_gate(
         relocs,
         voices: vs,
         fxs: es,
+        instruments: ins,
+        executable,
     };
-    Ok((s.encode(), gate))
+    s.validate_instruments(limits)?;
+    let encoded = s.encode();
+    if !s.instruments.is_empty() {
+        DspSection::parse(&encoded)?;
+    }
+    Ok((encoded, gate))
 }
 
 impl DspSection {
+    /// Validate descriptors and total state before any V2 allocation.
+    pub fn validate_instruments(&self, limits: crate::instrument::Limits) -> Result<()> {
+        if self.instruments.is_empty() {
+            return Ok(());
+        }
+        if self.instruments.len() > MAX_INSTRUMENTS {
+            return Err(err!("too many persistent instruments"));
+        }
+        let mut types: BTreeSet<u32> = self.voices.iter().map(|v| v.type_no).collect();
+        let mut allocation = 0u64;
+        for i in &self.instruments {
+            if !types.insert(i.type_no) {
+                return Err(err!("duplicate instrument/voice type {}", i.type_no));
+            }
+            for at in [i.reset, i.process] {
+                if at % 2 != 0 || at as u64 + 6 > self.image.len() as u64 {
+                    return Err(err!("instrument callback outside image or unaligned"));
+                }
+            }
+            let at = i.desc as usize;
+            let end = at
+                .checked_add(crate::instrument::DESC_BYTES)
+                .ok_or_else(|| err!("instrument descriptor overflow"))?;
+            let bytes = self
+                .image
+                .get(at..end)
+                .filter(|_| at % 4 == 0)
+                .ok_or_else(|| err!("instrument descriptor outside image or unaligned"))?;
+            if self
+                .relocs
+                .iter()
+                .any(|r| (r.offset as u64) < end as u64 && r.offset as u64 + 6 > at as u64)
+            {
+                return Err(err!("instrument descriptor overlaps a relocation"));
+            }
+            allocation += crate::instrument::Descriptor::parse(bytes, limits)
+                .map_err(|e| err!("instrument descriptor: {e:?}"))?
+                .allocation_bytes as u64;
+        }
+        if allocation > limits.state_bytes as u64 {
+            return Err(err!("aggregate instrument state exceeds admission limits"));
+        }
+        let mut total =
+            (self.image.len() as u128 + self.bss as u128).div_ceil(8) * 8 + allocation as u128;
+        for v in &self.voices {
+            total += v.voices as u128 * (v.state_bytes as u128).div_ceil(8) * 8;
+        }
+        for e in &self.fxs {
+            total += (e.state_bytes as u128).div_ceil(8) * 8;
+        }
+        if total.div_ceil(GRANULE as u128) * GRANULE as u128 > u32::MAX as u128 {
+            return Err(err!("instrument section allocation overflow"));
+        }
+        Ok(())
+    }
+
     pub fn encode(&self) -> Vec<u8> {
-        let import_off = HEADER;
+        let v7 = !self.instruments.is_empty();
+        let import_off = if v7 { HEADER_INSTRUMENT } else { HEADER };
         let reloc_off = import_off + self.imports.len() * IMPORT_LEN;
         let voice_off = reloc_off + self.relocs.len() * RELOC_LEN;
         let v5 = self.sample_tracks.is_some();
-        let v4 = v5 || !self.fxs.is_empty();
+        let v4 = v7 || v5 || !self.fxs.is_empty();
         let v3 = v4 || self.voices.iter().any(|v| v.contract());
         let vlen = if v3 { VOICE_LEN_V3 } else { VOICE_LEN };
         let fx_off = voice_off + self.voices.len() * vlen;
         let bank_off = fx_off + self.fxs.len() * FX_LEN;
-        let image_off = align_up(bank_off + if v5 { SAMPLE_RECORD_LEN } else { 0 }, 16);
+        let instrument_off = bank_off + if v5 { SAMPLE_RECORD_LEN } else { 0 };
+        let text_off = instrument_off + self.instruments.len() * INSTRUMENT_LEN;
+        let image_off = align_up(text_off + self.executable.len() * 8, 16);
         let mut f = vec![0u8; image_off + self.image.len()];
         put(&mut f, 0, MAGIC);
         put(
             &mut f,
             4,
-            if v5 {
+            if v7 && !self.executable.is_empty() {
+                VERSION_8
+            } else if v7 {
+                VERSION_7
+            } else if v5 {
                 VERSION_5
             } else if v4 {
                 VERSION_4
@@ -796,6 +973,24 @@ impl DspSection {
                 put(&mut f, at + FX_PARAMS + 4 * k, *w);
             }
         }
+        if v7 {
+            put(&mut f, 0x40, instrument_off as u32);
+            put(&mut f, 0x44, self.instruments.len() as u32);
+            for (n, i) in self.instruments.iter().enumerate() {
+                let at = instrument_off + n * INSTRUMENT_LEN;
+                for (k, w) in [i.type_no, i.reset, i.process, i.desc].iter().enumerate() {
+                    put(&mut f, at + k * 4, *w);
+                }
+            }
+        }
+        if !self.executable.is_empty() {
+            put(&mut f, 0x48, text_off as u32);
+            put(&mut f, 0x4c, self.executable.len() as u32);
+            for (i, &(start, end)) in self.executable.iter().enumerate() {
+                put(&mut f, text_off + i * 8, start);
+                put(&mut f, text_off + i * 8 + 4, end);
+            }
+        }
         f[image_off..].copy_from_slice(&self.image);
         f
     }
@@ -809,6 +1004,15 @@ impl DspSection {
         }
         for e in &self.fxs {
             n += e.state_bytes.div_ceil(8) * 8;
+        }
+        for i in &self.instruments {
+            let at = i.desc as usize;
+            n += crate::instrument::Descriptor::parse(
+                &self.image[at..at + crate::instrument::DESC_BYTES],
+                FORMAT_LIMITS,
+            )
+            .expect("validated instrument descriptor")
+            .allocation_bytes;
         }
         n.div_ceil(GRANULE) * GRANULE
     }
@@ -873,7 +1077,7 @@ impl DspSection {
                     latched: if v3 { get(vo, at + 56) } else { 0 },
                     ranges: match version {
                         VERSION_1 => [0; 8],
-                        VERSION_3 | VERSION_4 | VERSION_5 => {
+                        VERSION_3 | VERSION_4 | VERSION_5 | VERSION_7 | VERSION_8 => {
                             std::array::from_fn(|k| get(vo, at + VOICE_V3_RANGES + 4 * k))
                         }
                         _ => std::array::from_fn(|k| get(vo, at + VOICE_V2_RANGES + 4 * k)),
@@ -978,7 +1182,41 @@ impl DspSection {
         } else {
             None
         };
-        Ok(DspSection {
+        let mut instruments = vec![];
+        if version >= VERSION_7 {
+            let count = get(f, 0x44) as usize;
+            if count == 0 || count > MAX_INSTRUMENTS || get(f, H_BSS) % 4 != 0 {
+                return Err(err!("invalid V7/V8 instrument count or bss"));
+            }
+            let records = d.range(get(f, 0x40), count * INSTRUMENT_LEN)?;
+            for n in 0..count {
+                let at = n * INSTRUMENT_LEN;
+                instruments.push(Instrument {
+                    type_no: get(records, at),
+                    reset: get(records, at + 4),
+                    process: get(records, at + 8),
+                    desc: get(records, at + 12),
+                });
+            }
+        }
+        let mut executable = vec![];
+        if version == VERSION_8 {
+            let count = get(f, 0x4c) as usize;
+            if count == 0 || count > 32 {
+                return Err(err!("invalid executable range count"));
+            }
+            let table = d.range(get(f, 0x48), count * 8)?;
+            let ranges =
+                dkrt_sdk::instrument_descriptor::executable_ranges(table, image_size as u32)
+                    .map_err(|e| err!("executable ranges: {e:?}"))?;
+            dkrt_sdk::instrument_descriptor::validate_executables(
+                d.range(get(f, 0x40), instruments.len() * INSTRUMENT_LEN)?,
+                &ranges,
+            )
+            .map_err(|e| err!("executable ranges: {e:?}"))?;
+            executable.extend(ranges.iter().flatten().map(|r| (r.start, r.end)));
+        }
+        let section = DspSection {
             sample_tracks,
             device: get(f, 8),
             image,
@@ -988,7 +1226,15 @@ impl DspSection {
             relocs,
             voices,
             fxs,
-        })
+            instruments,
+            executable,
+        };
+        section.validate_instruments(FORMAT_LIMITS)?;
+        // V7/V8 use canonical table order, zero reserved words and padding: overlapping tables, header aliases and trailing data are refused.
+        if version >= VERSION_7 && section.encode() != f {
+            return Err(err!("noncanonical V7/V8 table layout or reserved fields"));
+        }
+        Ok(section)
     }
 
     /// The reference loader: the image placed at the L2 byte address `base`, imports resolved by `resolve` (pc or byte address as

@@ -57,3 +57,21 @@ rule.dn2 = { kind = "cf_func", hash = "7f68bc71629aaed41f2ffa075e03c222", offset
 mark = "D"
 users = ["core/runtime"]
 doc = "`int f(Kit *, int track)`: the machine type of a track of a kit, -1 when the track does not exist. core/runtime uses it for the machine-change watch."
+
+[[site]]
+name = "cf.project.site.kit_table_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 16, offset = 2, sha256 = "346d2a18b355a54b4a8d12076760814b27366bfa723b6ad12b37267606a8b4a6", len = 4 }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 literal of `addi.l #kits,d0` after `muls.l #0x5574`: the live kit table (pattern k's kit at kits + k*0x5574, its track t Sound at +0x34 + t*0x450)."
+
+[[site]]
+name = "cf.project.site.sound_pool_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 16, offset = 2, sha256 = "2882d82ea09a35be688cc99220413e2118c2fd46fc9d62599979fbdb339dcdab", len = 4 }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 literal of `addi.l #pool,d0` after `muls.l #0x450` with the index bounded to 127: the 128-entry Sound pool."

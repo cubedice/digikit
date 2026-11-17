@@ -18,6 +18,8 @@ export interface ShippedModule {
   devices: Record<string, ShippedFile>;
   /** Source files, relative to the module (`module.toml`, `README.md`, `src/...`). */
   source: string[];
+  /** Files excluded from inline preview, with their byte sizes; all remain downloadable. */
+  sourceDownloads?: Record<string, number>;
 }
 
 export function parseIndex(text: string): ShippedModule[] {
@@ -31,6 +33,8 @@ export interface Fetchers {
   bytes(path: string): Promise<Uint8Array>;
   /** The text of a file under it (`src/<author/name>/src/module.c`). */
   text(path: string): Promise<string>;
+  /** A direct download URL for a file under the modules folder. */
+  url(path: string): string;
 }
 
 const USER = 'added/';
@@ -87,7 +91,15 @@ export function createWebLibrary(fetchers: Fetchers): { library: TransferLibrary
 
   const source: TransferSource = {
     files: (id) => known.find((m) => m.id === id)?.source ?? [],
-    read: (id, path) => fetchers.text(`src/${id}/${path}`),
+    read: async (id, path) => {
+      if (known.find((m) => m.id === id)?.sourceDownloads?.[path])
+        throw new Error('This source file is available as a download.');
+      return fetchers.text(`src/${id}/${path}`);
+    },
+    download: (id, path) => {
+      const size = known.find((m) => m.id === id)?.sourceDownloads?.[path];
+      return size ? { url: fetchers.url(`src/${id}/${path}`), size } : undefined;
+    },
   };
   return { library, source };
 }

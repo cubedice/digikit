@@ -14,10 +14,12 @@ by class and name when the bare name is not unique in OLD.)
 
 Run every test file in its own pytest process and record a baseline:
     uv run python -m tools.devtools.test_outcomes run --out DIR [--root PATH] [--jobs N] \
-        [--timeout SECONDS] [--pytest-arg=ARG ...] [--check] PATHS...
+        [--timeout SECONDS] [--pytest-arg=ARG ...] [--shard PATH=N ...] [--check] PATHS...
 writes DIR/logs, DIR/xml, DIR/summary.tsv and DIR/all.xml (a hung or crashed file
 becomes one error testcase named __file__) and exits 0; with --check it exits 1
-when any file failed.
+when any file failed. --shard PATH=N runs the file PATH as N processes, each with its
+own timeout, through tools/devtools/pytest_shard.py (shard I of a file is reported as
+`PATH[shard I/N]`, its cases keep their names).
 
 Exit status of the compare mode: 0 when the outcomes are the same, 1 when they differ, 2 on usage
 errors or unreadable XML.
@@ -260,6 +262,11 @@ def xml_counts(path: Path) -> tuple[int, int, int, int] | None:
     return len(cases) - failed - skipped - errors, failed, skipped, errors
 
 
+def unit_label(rel: str, shard: tuple[int, int] | None) -> str:
+    """The name of a run unit in reports: the file, or `FILE[shard I/N]` (I from 1)."""
+    return rel if shard is None else f"{rel}[shard {shard[0] + 1}/{shard[1]}]"
+
+
 def run_one(
     root: Path,
     out: Path,
@@ -267,16 +274,27 @@ def run_one(
     pytest_args: list[str],
     timeout: float,
     env: dict[str, str] | None = None,
+    shard: tuple[int, int] | None = None,
 ) -> dict[str, object]:
-    """Run pytest on one file in its own process group (ENV: its environment, default ours); return
-    its record."""
-    slug = slug_of(rel)
+    """Run pytest on one file, or on shard (I, N) of it, in its own process group (ENV: its
+    environment, default ours); return its record."""
+    slug = slug_of(rel) + (
+        "" if shard is None else f"__shard{shard[0] + 1}of{shard[1]}"
+    )
     (out / "logs").mkdir(parents=True, exist_ok=True)
     (out / "xml").mkdir(parents=True, exist_ok=True)
     xml = out / "xml" / f"{slug}.xml"
+    extra: list[str] = []
+    if shard is not None:
+        extra = ["-p", "tools.devtools.pytest_shard", f"--shard={shard[0]}/{shard[1]}"]
+        # The plugin is a module of this repository, whatever ROOT the tests run in.
+        env = dict(os.environ if env is None else env)
+        env["PYTHONPATH"] = os.pathsep.join(
+            p for p in (str(REPO), env.get("PYTHONPATH", "")) if p
+        )
     cmd = [
         sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
-        f"--junitxml={xml}", *pytest_args, rel,
+        f"--junitxml={xml}", *extra, *pytest_args, rel,
     ]  # fmt: skip
     start = time.monotonic()
     timed_out = False
@@ -313,7 +331,8 @@ def run_one(
         # Usable XML is not a successful process exit; write_reports checks both.
         status = "OK"
     return {
-        "file": rel,
+        "file": unit_label(rel, shard),
+        "path": rel,
         "status": status,
         "rc": rc,
         "seconds": seconds,
@@ -338,14 +357,21 @@ def run_all(
     pytest_args: list[str],
     jobs: int,
     timeout: float,
+    shards: dict[str, int] | None = None,
 ) -> list[str]:
-    """Run every file, print one line each, write summary.tsv and all.xml.
+    """Run every file (a file in SHARDS as that many shards), print one line each, write
+    summary.tsv and all.xml.
 
-    Returns the sorted files that did not pass."""
+    Returns the sorted units (files, or shards) that did not pass."""
+    units: list[tuple[str, tuple[int, int] | None]] = []
+    for f in files:
+        count = (shards or {}).get(f, 1)
+        units += [(f, None)] if count <= 1 else [(f, (i, count)) for i in range(count)]
     records: list[dict[str, object]] = []
     with ThreadPoolExecutor(max_workers=jobs) as pool:
         futures = [
-            pool.submit(run_one, root, out, f, pytest_args, timeout) for f in files
+            pool.submit(run_one, root, out, f, pytest_args, timeout, None, shard)
+            for f, shard in units
         ]
         for fut in as_completed(futures):
             rec = fut.result()
@@ -395,7 +421,7 @@ def write_reports(
         c = ET.SubElement(
             suite,
             "testcase",
-            classname=dotted_of(str(rec["file"])),
+            classname=dotted_of(str(rec.get("path", rec["file"]))),
             name="__file__",
         )
         ET.SubElement(c, "error", message=message)
@@ -425,12 +451,20 @@ def run_main(argv: list[str]) -> int:
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--timeout", type=float, default=900)
     ap.add_argument("--pytest-arg", action="append", default=[], metavar="ARG")
+    ap.add_argument("--shard", action="append", default=[], metavar="PATH=N")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("paths", nargs="+", metavar="PATHS")
     try:
         args = ap.parse_args(argv)
     except SystemExit as exc:
         return int(exc.code) if isinstance(exc.code, int) else 2
+    shards: dict[str, int] = {}
+    for spec in args.shard:
+        path, sep, count = spec.rpartition("=")
+        if not sep or not count.isdigit() or int(count) < 1:
+            print(f"test_outcomes: --shard {spec!r}: expected PATH=N", file=sys.stderr)
+            return 2
+        shards[path] = int(count)
     if args.jobs < 1 or args.timeout <= 0:
         print("test_outcomes: --jobs and --timeout must be positive", file=sys.stderr)
         return 2
@@ -443,7 +477,13 @@ def run_main(argv: list[str]) -> int:
         print("test_outcomes: no test files found", file=sys.stderr)
         return 2
     bad = run_all(
-        root, args.out.resolve(), files, args.pytest_arg, args.jobs, args.timeout
+        root,
+        args.out.resolve(),
+        files,
+        args.pytest_arg,
+        args.jobs,
+        args.timeout,
+        shards,
     )
     if not args.check:
         return 0

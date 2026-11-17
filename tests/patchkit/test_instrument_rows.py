@@ -1,0 +1,440 @@
+"""Execute internal row lifecycle scheduling with a synthetic V2 callback."""
+
+import pytest
+from support.paths import REPO_ROOT
+
+from tools.patchkit import pk_sharc
+
+
+@pytest.fixture(scope="module")
+def row_object():
+    root = REPO_ROOT / "modules/core/adapters/instrument-registry/src/dsp"
+    source = "\n".join(
+        (root / name).read_text() for name in ("lifecycle.s", "rows.s", "protected.s")
+    )
+    source += """
+.SECTION/PM seg_pmco;
+.GLOBAL _test_protected;
+_test_protected:
+    R0 = 0;
+    MR0F = R0;
+    MR1F = R0;
+    MR2F = R0;
+    MR0B = R0;
+    MR1B = R0;
+    MR2B = R0;
+    CALL _ir_row_tick_protected;
+    RTS;
+.GLOBAL _test_reset;
+_test_reset:
+    I1 = 0x20040000;
+    R0 = DM(0, I1);
+    R0 = R0 + 1;
+    DM(0, I1) = R0;
+    DM(1, I1) = R4;
+    DM(2, I1) = R8;
+    I0 = R4;
+    R1 = DM(0, I0);
+    DM(3, I1) = R1;
+    DM(0, I0) = R8;
+    R1 = DM(4, I1);
+    COMP(R0, R1);
+    IF EQ JUMP _test_fail;
+    R0 = 0;
+    JUMP (M13, I13);
+_test_fail:
+    R0 = -7;
+    JUMP (M13, I13);
+"""
+    obj = pk_sharc.assemble(source)
+    sections, initial, address = {}, {}, 0x20060000
+    for name, (blob, align, _) in obj.data.items():
+        address = (address + align - 1) // align * align
+        sections[name] = address
+        initial.update(
+            {
+                address // 4 + i: int.from_bytes(blob[i * 4 : i * 4 + 4], "little")
+                for i in range(len(blob) // 4)
+            }
+        )
+        address += len(blob) + 64
+    symbols = {
+        name: sections[sec] + off for name, (sec, off, _) in obj.data_symbols.items()
+    }
+    linked = pk_sharc.link(obj, 0xB90000, symbols)
+    return linked, symbols, initial
+
+
+@pytest.fixture
+def rows(row_object):
+    linked, symbols, initial = row_object
+    dm = dict(initial)
+    callback = linked.symbols["_test_reset"]
+    row = [
+        1,
+        3,
+        9,
+        3,
+        0x20050000,
+        4,
+        0x20050000,
+        0x20050100,
+        callback,
+        callback,
+        callback + 64,
+        0,
+        0,
+        0,
+        0,
+        0,
+    ]
+    dm.update({symbols["_ir_rows"] // 4 + i: value for i, value in enumerate(row)})
+    dm.update({0x20050000 // 4 + i: 0xDEADBEEF for i in range(64)})
+    dm.update({0x20040000 // 4 + i: 0 for i in range(5)})
+    reads = {
+        "rows": (symbols["_ir_rows"] // 4, 128),
+        "state": (0x20050000 // 4, 64),
+        "calls": (0x20040000 // 4, 5),
+        "process": (symbols["_ir_process_rows"] // 4, 64),
+        "capabilities": (symbols["_ir_process_flags"] // 4, 8),
+    }
+
+    def call(
+        entry="_test_protected",
+        index=0,
+        owner=3,
+        generation=9,
+        operation=2,
+        fail_at=None,
+        fields=None,
+        install=None,
+    ):
+        if fail_at is not None:
+            dm[0x20040000 // 4 + 4] = fail_at
+        for field, value in (fields or {}).items():
+            dm[symbols["_ir_rows"] // 4 + field] = value
+        if install is not None:
+            snapshot = row.copy()
+            for field, value in install.items():
+                snapshot[field] = value
+            dm.update({0x20041000 // 4 + i: value for i, value in enumerate(snapshot)})
+        result = pk_sharc.run_call(
+            linked,
+            entry,
+            regs={
+                "I1": 0x20041000,
+                "R4": index,
+                "R5": owner,
+                "R6": generation,
+                "R8": operation,
+                "M5": 0,
+                "M6": 1,
+                "M13": 0,
+                "L0": 0,
+                "L1": 0,
+            },
+            dm_words=dm,
+            reads=reads,
+            max_steps=2000,
+        )
+        assert result["halt"]["reason"] == "breakpoint", result
+        for name, (address, _) in reads.items():
+            dm.update({address + i: value for i, value in enumerate(result[name])})
+        return result
+
+    return call
+
+
+def test_process_capability_is_validated_before_install_and_bound_to_row(rows):
+    metadata = {
+        0: 1,
+        1: 3,
+        2: 9,
+        3: 20,
+        4: 0xB90000,
+        5: 0xB90000,
+        6: 0xB90100,
+        7: 8,
+        8: 16,
+        9: 1,
+        10: 0,
+    }
+    accepted = rows("_ir_process_install", install=metadata)
+    assert accepted["regs"]["R0"] == 0
+    assert accepted["capabilities"] == [1] + [0] * 7
+    assert accepted["process"][:8] == [3, 9, 20, 0xB90000, 0xB90000, 0xB90100, 8, 16]
+    for change in [
+        {9: 2},
+        {9: 4},
+        {9: 5},
+        {9: 6},
+        {9: 8},
+        {9: 15},
+        {9: 0xFFFFFFFF},
+        {10: 1},
+        {1: 4},
+        {2: 8},
+    ]:
+        rejected = rows("_ir_process_install", install={**metadata, **change})
+        assert rejected["regs"]["R0"] == 0xFFFFFFFF
+        assert rejected["capabilities"] == accepted["capabilities"]
+        assert rejected["process"] == accepted["process"]
+    native = rows("_ir_process_install", install={**metadata, 9: 3})
+    assert native["regs"]["R0"] == 0
+    assert native["capabilities"] == [3] + [0] * 7
+    assert native["process"] == accepted["process"]
+    post_amp = rows("_ir_process_install", install={**metadata, 9: 7})
+    assert post_amp["regs"]["R0"] == 0
+    assert post_amp["capabilities"] == [7] + [0] * 7
+    assert post_amp["process"] == accepted["process"]
+    legacy = rows("_ir_process_install", install={**metadata, 9: 0})
+    assert legacy["regs"]["R0"] == 0 and legacy["capabilities"] == [0] * 8
+
+
+def test_initialize_and_detach_one_instance_per_tick(rows):
+    result = rows("_ir_row_begin")
+    assert result["rows"][0] == 2 and result["calls"][0] == 0
+    for index in range(3):
+        result = rows()
+        assert result["calls"][:4] == [index + 1, 0x20050000 + index * 16, 1, 0]
+        assert result["rows"][0] == 2
+        assert result["rows"][11:14] == [index + 1, 0, index + 1]
+    result = rows()
+    assert result["rows"][0] == 3 and result["calls"][0] == 3
+    result = rows("_ir_row_begin", operation=3)
+    assert result["rows"][0] == 4
+    for index in range(3):
+        result = rows()
+        assert result["calls"][:4] == [index + 4, 0x20050000 + index * 16, 4, 1]
+        assert result["rows"][0] == 4
+    result = rows()
+    assert result["rows"][0:4] == [6, 3, 9, 3]
+    assert result["calls"][0] == 6
+    assert rows("_ir_row_begin", operation=3)["calls"][0] == 6
+    assert result["state"][12:] == [0xDEADBEEF] * 52
+
+
+def test_partial_initialization_fault_retains_and_detaches_touched_instances(rows):
+    rows("_ir_row_begin")
+    rows()
+    result = rows(fail_at=2)
+    assert result["regs"]["R0"] == 0xFFFFFFF9
+    assert result["rows"][0] == 5
+    assert result["rows"][11:14] == [1, 0xFFFFFFF9, 2]
+    assert rows()["calls"][0] == 2  # fault cannot silently continue
+    rows("_ir_row_begin", operation=3)
+    rows()
+    rows()
+    result = rows()
+    assert result["rows"][0] == 6 and result["calls"][0] == 4
+    assert result["state"][8:] == [0xDEADBEEF] * 56
+
+
+def test_detach_fault_remains_owned_and_can_be_retried(rows):
+    rows("_ir_row_begin")
+    rows()
+    rows("_ir_row_begin", operation=3)
+    result = rows(fail_at=2)
+    assert result["rows"][:3] == [5, 3, 9]
+    rows("_ir_row_begin", operation=3)
+    rows()
+    result = rows()
+    assert result["rows"][:3] == [6, 3, 9]
+    assert result["calls"][0] == 3
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"owner": 4},
+        {"generation": 10},
+        {"generation": 0},
+        {"index": 8},
+        {"index": 0xFFFFFFFF},
+        {"operation": 4},
+    ],
+)
+def test_wrong_owner_generation_row_or_operation_changes_nothing(rows, arguments):
+    result = rows("_ir_row_begin", **arguments)
+    assert result["regs"]["R0"] == 0xFFFFFFFF
+    assert result["rows"][:3] == [1, 3, 9]
+    assert result["calls"][0] == 0
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {3: 0},
+        {3: 17},
+        {5: 0},
+        {5: 1025},
+        {11: 4},
+        {11: 3},
+        {11: 1},
+        {13: 4},
+        {4: 0},
+        {7: 0x20050004},
+    ],
+)
+def test_bad_metadata_faults_without_callback(rows, fields):
+    rows("_ir_row_begin")
+    result = rows(fields=fields)
+    assert result["rows"][0] == 5
+    assert result["calls"][0] == 0
+    assert result["state"] == [0xDEADBEEF] * 64
+
+
+def test_cancel_before_first_tick_never_calls_reset(rows):
+    rows("_ir_row_begin")
+    rows("_ir_row_begin", operation=3)
+    result = rows()
+    assert result["rows"][0] == 6 and result["calls"][0] == 0
+
+
+def test_odd_word_states_keep_eight_byte_stride_and_padding(rows):
+    rows("_ir_row_begin", fields={5: 3})
+    for index in range(3):
+        result = rows()
+        assert result["calls"][:4] == [index + 1, 0x20050000 + index * 16, 1, 0]
+    assert result["state"][:12] == [1, 0, 0, 0xDEADBEEF] * 3
+    assert result["state"][12:] == [0xDEADBEEF] * 52
+    assert rows()["rows"][0] == 3
+
+
+def test_install_empty_row_then_initialize_and_detach(rows):
+    result = rows("_ir_row_install", index=7, install={})
+    assert result["regs"]["R0"] == 0
+    assert result["rows"][112:128] == result["rows"][:16]
+    assert result["calls"][0] == 0
+    assert result["state"] == [0xDEADBEEF] * 64
+    rows("_ir_row_begin", index=7)
+    for _ in range(4):
+        result = rows(index=7)
+    assert result["rows"][112] == 3
+    assert result["calls"][0] == 3
+    rows("_ir_row_begin", index=7, operation=3)
+    for _ in range(4):
+        result = rows(index=7)
+    assert result["rows"][112] == 6
+    result = rows("_ir_row_install", index=7, install={2: 10})
+    assert result["regs"]["R0"] == 0
+    assert result["rows"][112:116] == [1, 3, 10, 3]
+    assert result["rows"][123:128] == [0] * 5
+
+
+@pytest.mark.parametrize("phase", [1, 2, 3, 4, 5])
+def test_install_never_overwrites_owned_row(rows, phase):
+    before = rows("_ir_row_begin", owner=31, fields={0: phase})
+    result = rows("_ir_row_install", install={2: 10})
+    assert result["regs"]["R0"] == 0xFFFFFFFF
+    assert result["rows"] == before["rows"]
+    assert result["calls"][0] == 0
+
+
+@pytest.mark.parametrize(
+    "old,new,accepted",
+    [
+        (9, 9, False),
+        (9, 8, False),
+        (9, 0, False),
+        (0x7FFFFFFF, 0x80000000, True),
+        (0xFFFFFFFF, 1, False),
+        (0x80000000, 0x7FFFFFFF, False),
+    ],
+)
+def test_install_detached_generation_is_unsigned_and_never_wraps(
+    rows, old, new, accepted
+):
+    result = rows("_ir_row_install", fields={0: 6, 2: old}, install={2: new})
+    assert result["regs"]["R0"] == (0 if accepted else 0xFFFFFFFF)
+    assert result["rows"][:3] == ([1, 3, new] if accepted else [6, 3, old])
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {0: 2},
+        {1: 32},
+        {2: 0},
+        {3: 0},
+        {3: 17},
+        {5: 0},
+        {5: 1025},
+        {4: 0x20050004},
+        {6: 0x1FFFFFF8},
+        {6: 0x20050008},
+        {7: 0x20080008},
+        {7: 0x20050020},
+        {7: 0x20050000},
+        {8: 0x7FFFFFFF},
+        {8: 0xB90002, 9: 0xB90000, 10: 0xB90004},
+        {8: 0xB90000},
+        {9: 0xB7FFFF},
+        {10: 0xBC0001},
+        {11: 1},
+        {12: 1},
+        {13: 1},
+        {14: 1},
+        {15: 1},
+    ],
+)
+def test_install_rejects_bad_snapshot_without_any_row_write(rows, fields):
+    before = rows("_ir_row_begin", index=7)
+    result = rows("_ir_row_install", index=7, install=fields)
+    assert result["regs"]["R0"] == 0xFFFFFFFF
+    assert result["rows"] == before["rows"]
+    assert result["state"] == [0xDEADBEEF] * 64
+    assert result["calls"][0] == 0
+
+
+def test_install_checks_whole_odd_word_state_extent(rows):
+    result = rows("_ir_row_install", index=7, install={5: 1, 7: 0x20050010})
+    assert result["regs"]["R0"] == 0xFFFFFFFF
+    result = rows("_ir_row_install", index=7, install={5: 1, 7: 0x20050018})
+    assert result["regs"]["R0"] == 0
+
+
+@pytest.mark.parametrize("index", [8, 0xFFFFFFFF])
+def test_install_rejects_invalid_row_index(rows, index):
+    before = rows("_ir_row_begin", owner=31)
+    result = rows("_ir_row_install", index=index, install={})
+    assert result["regs"]["R0"] == 0xFFFFFFFF
+    assert result["rows"] == before["rows"]
+
+
+@pytest.mark.parametrize(
+    "phase,old,new", [(0, 0, 9), (6, 8, 9), (6, 0x7FFFFFFF, 0x80000000)]
+)
+def test_detach_never_installed_ticket_creates_empty_tombstone(rows, phase, old, new):
+    result = rows(
+        "_ir_row_begin", operation=3, generation=new, fields={0: phase, 1: 2, 2: old}
+    )
+    assert result["regs"]["R0"] == 0
+    assert result["rows"][:16] == [6, 3, new] + [0] * 13
+    assert result["calls"][0] == 0
+    assert result["state"] == [0xDEADBEEF] * 64
+    # A later transport sequence cannot install the cancelled generation again.
+    result = rows("_ir_row_install", install={2: new})
+    assert result["regs"]["R0"] == 0xFFFFFFFF
+    assert result["rows"][:16] == [6, 3, new] + [0] * 13
+
+
+@pytest.mark.parametrize(
+    "phase,old,new",
+    [
+        (6, 9, 8),
+        (6, 0xFFFFFFFF, 1),
+        (6, 9, 9),
+        (1, 8, 9),
+        (2, 8, 9),
+        (3, 8, 9),
+        (4, 8, 9),
+        (5, 8, 9),
+    ],
+)
+def test_detach_cannot_claim_another_owner_or_stale_tombstone(rows, phase, old, new):
+    before = rows("_ir_row_begin", owner=31, fields={0: phase, 1: 2, 2: old})
+    result = rows("_ir_row_begin", operation=3, generation=new)
+    assert result["regs"]["R0"] == 0xFFFFFFFF
+    assert result["rows"] == before["rows"]
+    assert result["calls"][0] == 0

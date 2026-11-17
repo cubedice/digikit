@@ -142,25 +142,31 @@ def limits(short: str) -> Limits:
     )
 
 
-def shared_limits() -> Limits:
-    """The limits every digikit device agrees on, except the per-device ones (`dsp_area_bytes`, `fx_slots`, `page_rows`), which are
-    taken from the first device. Raises when a shared limit differs: the runtime is one image for all devices."""
+@dataclass(frozen=True)
+class SharedLimits:
+    """Limits shared by the runtime; device-owned capacities require `limits(short)`."""
+
+    modules: int
+    machine_rows: int
+    arena_bytes: int
+    param_rows: int
+
+
+def shared_limits() -> SharedLimits:
+    """The limits every digikit device must agree on. Staging, DSP space and FX/page
+    capacities belong to the device object and are deliberately not returned here."""
     devs = digikit_devices()
     first = limits(devs[0])
     for d in devs[1:]:
         o = limits(d)
-        for k in (
-            "modules",
-            "machine_rows",
-            "arena_bytes",
-            "stage_bytes",
-            "param_rows",
-        ):
+        for k in SharedLimits.__dataclass_fields__:
             if getattr(o, k) != getattr(first, k):
                 raise RuntimeError(
                     f"[limits] {k} differs between {devs[0]} and {d}; the runtime is one image for all devices"
                 )
-    return first
+    return SharedLimits(
+        **{k: getattr(first, k) for k in SharedLimits.__dataclass_fields__}
+    )
 
 
 def peek_ranges(short: str) -> list[tuple[int, int]]:

@@ -947,6 +947,10 @@ impl Emulator {
             bus_trace_enabled: CAPTURE_BUS_TRACE,
             ram_clear_acceleration_enabled: ACCELERATE_RAM_CLEAR && self.ram_clear.is_some(),
             fault: self.error.clone(),
+            fault_registers: self.error.as_ref().map(|_| {
+                let (d, a, pc, sr) = self.cpu_regs();
+                crate::telemetry::FaultRegisters { d, a, pc, sr }
+            }),
             profile: self.telemetry.profile(),
             events: self.telemetry.events(),
         }
@@ -4902,6 +4906,12 @@ mod tests {
         assert!(!first.sharc_execution_connected && !first.pcm_output_connected);
         assert_eq!(runtime.snapshot().frame.unwrap(), vec![0xa5; PANEL_BYTES]);
         runtime.diagnostics();
+        assert!(runtime.snapshot().frame.is_none());
+        runtime.error = Some("synthetic diagnostic fault".into());
+        let before = runtime.cpu.clone();
+        let fault = runtime.diagnostics().fault_registers.unwrap();
+        assert_eq!((fault.d, fault.a, fault.pc, fault.sr), runtime.cpu_regs());
+        assert_eq!(runtime.cpu, before);
         assert!(runtime.snapshot().frame.is_none());
     }
 

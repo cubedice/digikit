@@ -1,0 +1,70 @@
+/* Bounded musical ownership above the physical MIDI FIFO. No I/O or allocation.
+ * Caller serializes all access. A generation boundary discards performance,
+ * never the saved templates; the physical ledger owns held-key tombstones. */
+#ifndef DK_INSTRUMENT_KEYBOARD_H
+#define DK_INSTRUMENT_KEYBOARD_H
+#include "../../../midi-events/src/cf/ownership.h"
+enum { KB_PLAY, KB_ROOT, KB_LEARN };
+enum { KB_OK, KB_FULL, KB_RANGE, KB_EMPTY, KB_STALE, KB_EXHAUSTED };
+typedef struct {
+    uint8_t count, intervals[4];
+} KbShape;
+/* A key may carry up to three further notes of a recorded chord, as signed
+ * intervals from its own note (sequencer trigs with chord-note locks). */
+#define KB_EXTRA 3u
+/* Packed lock wire IDs of those notes (src-lock-packed.h ILP_NOTE_*). */
+#define KB_LOCK_NOTE_FIRST 53u
+#define KB_LOCK_NOTE_CENTER 48u
+typedef struct {
+    uint32_t token;
+    uint8_t note, velocity, port, channel, held, pedal, stolen;
+    uint8_t extra_count;
+    int8_t extra[KB_EXTRA];
+} KbKey;
+typedef struct {
+    uint32_t source, token;
+    uint8_t note, velocity, port, channel;
+} KbVoice;
+typedef struct {
+    uint32_t epoch, generation, next_token, pedals, session, revision, phrase;
+    uint8_t mode, previous_mode, type, voicing, selector_base, selector_channel;
+    uint8_t slot, capture_count, capture[4], status, dirty, update;
+    KbShape shapes[8];
+    /* Loaded preset owns its shape by value; selecting a library slot releases
+     * this override. Preset loading never overwrites the learned library. */
+    KbShape preset_shape;
+    uint8_t preset_shape_active;
+    KbKey keys[MI_KEYS];
+    KbVoice voices[4];
+    /* Chord notes for the key the current locked event creates. */
+    uint8_t stage_count;
+    int8_t stage[KB_EXTRA];
+} KbState;
+void kb_init(KbState *s);
+void kb_reset(KbState *s, uint32_t epoch, uint32_t generation);
+/* Inputs: zero to eight note events, or one controller. At most eight output
+ * changes. Negative return requests a priority reset; never send partial output. */
+int kb_process(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8]);
+/* Apply chord/voicing locks only while resolving a sequencer note; retain the
+ * accepted keyboard settings and normal ownership of all generated voices.
+ * Chord-note locks (IDs 53..55) make that note play its recorded chord. */
+int kb_process_locked(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8]);
+#ifdef DK_CANOPY_SOUND_PROOF
+/* The selector proof must validate exactly the same inputs and selector rules
+ * as the mapper. A refused selector is consumed silently while all other
+ * input, particularly note-offs, retains its ordinary behavior. */
+int kb_selector_candidate(const KbState *s, const MiEvent *in, uint32_t count, uint32_t *type);
+int kb_process_locked_selector(KbState *s, const MiEvent *in, uint32_t count, MiEvent out[8],
+                               int allow);
+#endif
+/* Resolve a held trig in caller-owned scratch without changing live voices. */
+int kb_preview_locked(KbState *scratch, uint8_t note, const uint16_t *locks, uint32_t count,
+                      uint8_t pitches[4]);
+int kb_learn_begin(KbState *s);
+int kb_learn_save(KbState *s, uint32_t session, uint32_t revision);
+void kb_learn_cancel(KbState *s);
+/* Stable byte format, independent of CPU endian/padding. 8 templates, 48 bytes. */
+#define KB_RECORD_BYTES 48
+void kb_encode(const KbState *s, uint8_t bytes[KB_RECORD_BYTES]);
+int kb_decode(KbState *s, const uint8_t *bytes, uint32_t length);
+#endif

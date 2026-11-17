@@ -116,10 +116,11 @@ def test_tasks_returns_list_of_dicts_or_empty(snap_path):
         assert prios == sorted(prios)
 
 
-def test_rust_dt2snp01_memory(tmp_path):
+@pytest.mark.parametrize("magic", [b"DT2SNP01", b"DT2SNP02"])
+def test_rust_snapshot_memory(tmp_path, magic):
     page = bytearray(PAGE)
     page[0x10:0x14] = b"\x80\x00\x47\x04"
-    blob = bytearray(b"DT2SNP01" + b"\0" * 8 + b"junk")
+    blob = bytearray(magic + b"\0" * 8 + b"junk")
     blob += b"BORD" + struct.pack("<Q", 1) + struct.pack("<I", 0x800)
     for b in range(256):
         chunk = bytes(page[b * 4096 : (b + 1) * 4096])

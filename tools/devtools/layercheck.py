@@ -81,6 +81,78 @@ FOLDER_ROLES = {
 FIRMWARE_PATCH_MODULES = {"test/registry-demo"}
 # Test fixtures that stand in for an app (they use core/ui like core/digikit-menu does): app include rights.
 APP_LIKE = {"test/ui-demo"}
+# Emulator-only lifecycle integration fixture: it deliberately connects private
+# providers before a public V2 SDK exists. Limit the exception to this path/id,
+# these source files and these symbols; never grant general adapter privileges.
+CANOPY_FIXTURE = "tests/fixtures/modules/canopy-transport"
+CANOPY_INCLUDES = {
+    "modules/core/adapters/midi-events/src/cf/bridge.h",
+    "modules/machines/canopy/src/dsp/voice.s",
+    "modules/machines/canopy/src/dsp/tuning.s",
+    "modules/machines/canopy/src/dsp/instrument.s",
+    "modules/machines/canopy/src/dsp/events.s",
+}
+CANOPY_IMPORTS = {
+    "canopy_carrier_prepare",
+    "isp_request",
+    "mi_registry_reply",
+    "mi_config_submit",
+    "mi_instance_reset",
+    "mi_ledger",
+    "mi_route_enable",
+    "mi_transport",
+    "_mi_epoch",
+}
+
+
+def canopy_fixture(root: Path, m: Module) -> bool:
+    return m.id == "test/canopy-transport" and rel(root, m.dir) == CANOPY_FIXTURE
+
+
+# The carrier fixture installs three DSP hooks and tests stock Sound refresh.
+# These rights do not apply to CANOPY's production module or other test modules.
+CARRIER_INCLUDES = {
+    f"modules/core/adapters/midi-events/src/dsp/{name}.s"
+    for name in (
+        "carrier",
+        "carrier-frame",
+        "envelope",
+        "workspace",
+        "velocity",
+        "velocity-entry",
+    )
+} | {
+    "modules/machines/canopy/src/dsp/render.s",
+    "modules/machines/canopy/src/dsp/carrier-prepare.s",
+}
+CARRIER_EXTERNS = {
+    "cp_project": "cf.project.fn.singleton",
+    "cp_kit": "cf.project.fn.active_kit",
+    "cp_refresh": "cf.machine.fn.refresh_track",
+    "cp_sound_resume": "hook.cf.machine.site.sound_deserialize.return",
+    "_mi_workspace_next": "dsp.voice.site.envelope_workspace.next",
+    "_mi_envelope_next": "dsp.voice.site.envelope_entry.next",
+    "_mi_velocity_next": "dsp.voice.site.velocity_operand.next",
+}
+CARRIER_IMPORTS = {
+    "pp_position",
+    "canopy_carrier_suspend",
+    "dkrt_irq_mask",
+    "dkrt_irq_restore",
+    "pp_current_pattern",
+    "_cp_render_track",
+    "_cp_ready",
+    "_cp_banks",
+} | CARRIER_EXTERNS.keys()
+
+
+def carrier_fixture(root: Path, m: Module) -> bool:
+    return (
+        m.id == "test/canopy-carrier"
+        and rel(root, m.dir) == "tests/fixtures/modules/canopy-carrier"
+    )
+
+
 # Headers of the core layers an app may include.
 APP_HEADERS = {"dkrt.h", "dk_ui_core.h"}
 ANCHOR = re.compile(r"^(cf|dsp|hook|pk)\.")
@@ -295,6 +367,16 @@ def check_sources(root: Path, mods: list[Module]) -> list[Violation]:
                     continue
                 if sdk in target.parents:
                     continue
+                if (
+                    canopy_fixture(root, m)
+                    and rel(root.resolve(), target) in CANOPY_INCLUDES
+                ):
+                    continue
+                if (
+                    carrier_fixture(root, m)
+                    and rel(root.resolve(), target) in CARRIER_INCLUDES
+                ):
+                    continue
                 base = Path(name).name
                 if any(d in target.parents for d in fw_dirs):
                     out.append(
@@ -470,6 +552,8 @@ def check_objects(root: Path, mods: list[Module]) -> list[Violation]:
         mrel = rel(root, m.dir)
         for obj in m.manifest.get("object", []):
             for sym, anchor in (obj.get("externs") or {}).items():
+                if carrier_fixture(root, m) and CARRIER_EXTERNS.get(sym) == anchor:
+                    continue
                 out.append(
                     Violation(
                         f"{mrel}/module.toml:{line_of(m.text, sym)}",
@@ -494,6 +578,37 @@ def check_objects(root: Path, mods: list[Module]) -> list[Violation]:
                 ok = (
                     name in imports
                     or name in sdk_externs
+                    or (canopy_fixture(root, m) and name in CANOPY_IMPORTS)
+                    or (carrier_fixture(root, m) and name in CARRIER_IMPORTS)
+                    # This fault injector alone may corrupt the private session
+                    # latch. No other source, object, module or symbol is exempt.
+                    or (
+                        m.id == "test/instrument-session-loss"
+                        and mrel == "tests/fixtures/modules/instrument-session-loss"
+                        and obj.get("path") == "build/loss.dko.json"
+                        and obj.get("sources") == ["src/dsp/loss.s"]
+                        and name == "_instrument_session"
+                    )
+                    or (
+                        m.id == "test/instrument-load"
+                        and mrel == "tests/fixtures/modules/instrument-load"
+                        and obj.get("path") == "build/probe-cf.dko.json"
+                        and obj.get("sources") == ["src/probe.c"]
+                        and name == "_dl_area"
+                    )
+                    or (
+                        m.id == "test/instrument-load"
+                        and mrel == "tests/fixtures/modules/instrument-load"
+                        and obj.get("path") == "build/enable-dsp.dko.json"
+                        and obj.get("sources") == ["src/dsp/enable.s"]
+                        and name
+                        in {
+                            "_instrument_session",
+                            "_ir_lifecycle_ready",
+                            "_ir_rows",
+                            "_ir_process_packet",
+                        }
+                    )
                     or name.startswith(("dkrt_", "dk_ui_", "dk_app_", "dkm_"))
                 )
                 if ANCHOR.match(name) or not ok:
@@ -597,6 +712,18 @@ SC_RUNTIME_TEST = (
     "modules/core/runtime/tests/capacity/inferred/inferred-needs.device.test.ts"
 )
 SC_RUNTIME_PROJECT = "modules/core/runtime/tests/capacity/inferred/project.json"
+# This checker and its test name the module sources that the include exceptions
+# above (CANOPY_INCLUDES, CARRIER_INCLUDES) grant to the two fixtures.
+SC_CHECKER = ("tools/devtools/layercheck.py",)
+# core/instrument-play's admission policy serves one instrument, CANOPY. The runtime
+# does not tell an adapter which loaded module provides the admitted instrument, so
+# the adapter's settings hook (dk_app_instrument_module_settings) and its host
+# harness compare that module's id. Only these files and only this id; remove the
+# exception once the runtime publishes the instrument's module record.
+SC_POLICY_ID = {
+    "modules/core/adapters/instrument-play/src/cf/control.c": "digikit/canopy",
+    "tests/regression/host/canopy-settings.c": "digikit/canopy",
+}
 SC_SKIP_DIRS = {".git", "out", "node_modules", "target", "firmware", ".venv", "dist"}
 SC_HINT = (
     "move the test or model into the module's tests/ directory, use a fixture module (tests/fixtures/modules), "
@@ -993,6 +1120,7 @@ def sc_hits(root: Path, mods: list[Module]) -> list[tuple[str, int, Module, str]
             f.endswith(".md")
             or f.startswith(SC_ALLOWED_PREFIXES)
             or f == SC_RUNTIME_TEST
+            or f in SC_CHECKER
         ):
             continue
         data = (root / f).read_bytes()
@@ -1009,7 +1137,7 @@ def sc_hits(root: Path, mods: list[Module]) -> list[tuple[str, int, Module, str]
                     text[:start] + re.sub(r"[^\n]", " ", text[start:end]) + text[end:]
                 )
         for m, d, pat in pats:
-            if f.startswith(d + "/"):
+            if f.startswith(d + "/") or SC_POLICY_ID.get(f) == m.id:
                 continue
             for n, line in enumerate(text.splitlines(), 1):
                 if pat.search(line):

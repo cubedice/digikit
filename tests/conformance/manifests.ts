@@ -11,6 +11,11 @@ export interface RuntimeModule {
   type: 'machine' | 'fx' | 'service';
   /** Follow the owning module's pack devices; absent or empty means both. */
   ports?: string[];
+  /** `[conformance] patch_set`: the patch set the load cell boots, for a module that needs a patched-in core module the `emulator` set lacks. */
+  patchSet?: string;
+  /** A persistent V2 instrument (`[[machine]] instrument = true`): core/instrument-play publishes its voice row in its own table, so the
+   * runtime's registry holds none. */
+  instrument?: boolean;
 }
 
 /** The `[module]` table of a module.toml as flat key -> raw value text (only the keys read below). */
@@ -51,9 +56,18 @@ function readModule(manifest: string, scoped = false): RuntimeModule | undefined
   if (typeof id !== 'string' || !/^[^/\s]+\/[^/\s]+$/.test(id)) {
     throw new Error(`${manifest}: invalid module id`);
   }
-  const ports = scoped ? table.ports : (parse(text).module as { ports?: unknown } | undefined)?.ports;
+  const doc = parse(text) as {
+    module?: { ports?: unknown };
+    conformance?: { patch_set?: unknown };
+    machine?: { instrument?: unknown }[];
+  };
+  const ports = scoped ? table.ports : doc.module?.ports;
   if (ports !== undefined && (!Array.isArray(ports) || !ports.every((port) => typeof port === 'string'))) {
     throw new Error(`${manifest}: ports must be an array of strings`);
+  }
+  const patchSet = doc.conformance?.patch_set;
+  if (patchSet !== undefined && typeof patchSet !== 'string') {
+    throw new Error(`${manifest}: [conformance] patch_set must be a string`);
   }
   return {
     id,
@@ -61,6 +75,8 @@ function readModule(manifest: string, scoped = false): RuntimeModule | undefined
     contract: type === 'machine' ? 1 : type === 'fx' ? 2 : 3,
     dsp: dynamic === true && type !== 'service',
     ports: (ports as string[] | undefined) ?? [],
+    ...(patchSet === undefined ? {} : { patchSet }),
+    ...(doc.machine?.some((machine) => machine.instrument === true) ? { instrument: true } : {}),
   };
 }
 
