@@ -91,7 +91,7 @@ description = "Build the dkbulk USB bulk bridge and uploader (packages/dkbulk) i
 ["wb:cli"]
 depends = ["dkmidi:build", "dkbulk:build"]
 run = "node tools/devtools/wb.mjs"
-description = "Workbench actions from the command line through the workbench's own code: mise run wb:cli -- samples put FILE... --folder F [--bulk auto|off|force] | samples ls | store put LOCAL REMOTE | store ls [PREFIX] | store rm REMOTE | info | ports"
+description = "Workbench actions from the command line through the workbench's own code: mise run wb:cli -- samples put FILE... --folder F [--bulk auto|off|force] | samples ls | store put LOCAL REMOTE | store ls [PREFIX] | store rm REMOTE | transfer install ID... [--stock STOCK.syx] | transfer delete PATH... | info | ports"
 
 ["bootscreen"]
 run = "node packages/dkbs/cli/bootscreen.mjs"
@@ -137,6 +137,10 @@ description = "Default affected verification and merge gate against DIGI_GATE_BA
 ["test:plan"]
 run = "node tools/nx/gate.mjs --tier merge --explain"
 description = "Explain the default test selection; runs nothing. DIGI_GATE_BASE sets the shared comparison base"
+
+["test:subset"]
+run = "node tools/nx/test-subset.mjs"
+description = "Device tests of record tags (S:fx C:loading ...) plus gate-smoke and gate-pins: prints the Nx targets; add --run to run them (DIGI_EMU_SLOTS honoured). For a change that reaches device tests only through shared inputs"
 
 ["test:full"]
 run = "node tools/nx/gate.mjs --tier full"
@@ -298,7 +302,7 @@ description = "Build or inspect a standalone +Drive image"
 
 ["module:new"]
 run = "uv run python -m tools.patchkit.pk_new"
-description = "Create a run-time module from a template in sdk/templates and build it: mise run module:new -- machine|fx|tool AUTHOR/NAME [--dir DIR] (docs/MODULE-AUTHORING.md)"
+description = "Create a run-time module from a template in sdk/templates and build it: mise run module:new -- machine|fx|tool AUTHOR/NAME [--dir DIR], or a service crate of the runtime: module:new -- service NAME (docs/MODULE-AUTHORING.md)"
 
 ["module:build"]
 run = "uv run python -m tools.patchkit.patchkit build"
@@ -306,7 +310,7 @@ description = "Compile module sources to objects (core/* modules: build/*.dko.js
 
 ["module:check"]
 run = "uv run python -m tools.patchkit.pk_modcheck"
-description = "Check one module: module:check ID [--device dt2|dn2] [--trace]. Machine/effect conformance and own Python tests, then any module-owned Nx test-device target; may build or emulate. Modules without tests retain source/size checks; not an all-module patched load proof. Size/fit follows only after all owned stages pass"
+description = "Check one module: module:check ID [--device dt2|dn2] [--trace]; a service crate: module:check service/NAME (structure check, then its host tests). Machine/effect conformance and own Python tests, then any module-owned Nx test-device target; may build or emulate. Modules without tests retain source/size checks; not an all-module patched load proof. Size/fit follows only after all owned stages pass"
 
 ["module:audit"]
 run = "sh tools/devtools/module_audit.sh"

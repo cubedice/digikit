@@ -307,6 +307,7 @@ pub fn synth(spec: &Spec, dev: &str, models: &Models, decl: Option<&Dko>) -> Res
         trace: false,
         stereo: false,
         gate: false,
+        service: None,
     };
     let max = if spec.oversize {
         usize::MAX

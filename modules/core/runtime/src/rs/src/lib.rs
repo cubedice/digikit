@@ -21,7 +21,6 @@ pub mod core_api;
 #[cfg(not(test))]
 mod fw;
 mod native;
-pub mod services;
 pub mod assign;
 pub mod collect;
 mod handlers;
@@ -58,6 +57,8 @@ mod watch;
 mod worker;
 mod health;
 mod imports;
+mod svc_imports;
+mod svc_rows;
 mod mailbox;
 mod plan;
 mod platform;
@@ -131,6 +132,8 @@ mod fake_platform;
 mod spans_tests;
 #[cfg(test)]
 mod contract_tests;
+#[cfg(test)]
+mod svc_contract_tests;
 #[cfg(test)]
 mod fake_storage;
 

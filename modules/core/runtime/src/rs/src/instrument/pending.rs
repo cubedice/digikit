@@ -94,7 +94,7 @@ impl Pending {
     unsafe fn report(&mut self, result: i32) {
         self.result = result;
         if !self.reported {
-            crate::boot::note_result(self.selection, result);
+            crate::boot::report_dsp(self.selection, result);
             self.reported = true;
         }
     }

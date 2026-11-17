@@ -190,6 +190,7 @@ mise run test:changed         # lint, format, types, host tests and Python check
 pnpm test:host                # host Vitest projects; no device
 pnpm verify:host              # host lint, format, tests and types
 mise run test                 # the gate: Nx targets of the affected projects
+mise run test:subset -- S:fx  # the device tests of record tags plus gate-smoke and gate-pins; add --run to run them (docs/TESTING.md "Named device subset")
 mise run module:check ID      # one module: conformance and its own tests
 pnpm nx:pilot run @digi/sharc-rig-kit:test-conformance-rig   # machine and effect conformance of every module on the SHARC-only rig (docs/TESTING.md "The Vitest kit")
 node tools/devtools/rig_profile.ts digikit/shot --device dn2 --case sample/stereo-fwd-oneshot/note60   # `wb profile report` of one case on the rig: instructions per function and loop (docs/TESTING.md "SHARC-only rig")
@@ -221,6 +222,8 @@ All tools are indexed in [docs/TOOLS.md](TOOLS.md).
 
 Usage of the address map (`patchkit pack --addrmap`, `patchkit addr`, `wb addrmap lookup`, DSP names, load table snapshots): [ADDRMAP.md](ADDRMAP.md#usage).
 Usage of the object compare for moves of runtime code (`patchkit objdiff OLD NEW`): [PATCHING.md](PATCHING.md#compare-two-objects-after-a-move).
+Usage of the service binder (`patchkit bind IN.dks --firmware FW.syx -o OUT.dks`): [PATCHING.md](PATCHING.md#bind-a-service-to-your-firmware).
+Usage of Transfer install and delete with services (`wb transfer install`, `wb transfer delete`): [MODULES.md](MODULES.md#install-with-services-from-the-command-line).
 
 Owner hashes of the runtime object (`patchkit owners`, `objdiff --owners`, `modules/core/runtime/owners.toml`): [TESTING.md](TESTING.md#owner-hashes-patchkit-owners).
 Usage of the SDK-surface coverage (`patchkit imports`, `patchkit coverage`, `patchkit:sdk-coverage`): [TESTING.md](TESTING.md#sdk-surface-coverage).
@@ -268,6 +271,19 @@ pnpm dev                                # the gallery at /patch: patch in the br
 3. Check it with the module owner's tests: `mise run module:check -- AUTHOR/NAME [--device dt2|dn2]` (machine modules run the conformance suite, then the module's own tests; it prints the packed size by section per device).
 4. Run it in the emulator: `mise run dk:run -- fx/NAME --emu`. An emulator must already run (`mise run workbench` or `mise run emu:serve`). It builds, packs, uploads, selects the module, restarts the guest and follows the log.
 5. Run it on the device: `mise run dk:run -- fx/NAME --port Digitakt`. The device needs the digikit runtime (version 0.1.0 or newer for the log levels): `mise run patch`, then `mise run patch:preflight` on the image before you flash it.
+
+**A service crate of the runtime** (`modules/core/services/NAME`, linked into the runtime object): `mise run module:new -- service NAME` writes the layout of
+`sdk/templates/service` (`Cargo.toml`, `src/lib.rs`, `records.rs`, `slots.rs`, `tests/records.rs`; add `src/dsp/` when the service has DSP parts) and prints the
+steps that register it (workspace member, runtime dependency, `[[service]]` row and `[records.kinds]` in `sdk/sdk.toml`, owner in `owners.toml`).
+`mise run module:check -- service/NAME` runs `patchkit service-check modules/core/services/NAME` (the layout; at most one exported symbol, `dk_module`; the record
+kinds that `Service::declare` makes equal to the `[records.kinds]` entries of the service in `sdk/sdk.toml`), then the crate's `rust-tests`. Example, run in the
+repository root:
+
+```text
+$ patchkit service-check modules/core/services/lfo modules/core/services/fx
+modules/core/services/lfo: ok
+modules/core/services/fx: ok
+```
 
 Log levels: `mise run dk:log -- --port Digitakt level` prints them, `level debug` sets the default, `level --module NAME=trace` sets one module (`NAME=default` clears it), `follow --level L --module NAME` filters the display. Levels are not stored on the card.
 

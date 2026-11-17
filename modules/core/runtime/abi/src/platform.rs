@@ -81,6 +81,41 @@ pub trait StagedWriter {
     fn present(&self) -> bool;
 }
 
+/// The platform facts the samples service reads, and nothing more: whether the pool adapter is in the image, where the sample files are, and the
+/// interrupt mask around a pool table change. Every `Platform` is one (`impl` below); a host test of a service gives a smaller fake. The method
+/// names differ from those of `Platform` so a type that is both has no ambiguous call.
+pub trait SampleHost {
+    /// The storage the sample files are read from.
+    type Store: crate::storage::Storage;
+    fn store(&self) -> &Self::Store;
+    /// Is a sample-pool adapter of the right version in the image?
+    fn pool_present(&self) -> bool;
+    /// The samples are files of the digikit store, not the firmware's folder filesystem (`Platform::samples_in_store`).
+    fn files_in_store(&self) -> bool;
+    /// Mask interrupts; the old status register (`Platform::irq_mask`).
+    fn mask_irq(&self) -> u32;
+    fn restore_irq(&self, sr: u32);
+}
+
+impl<P: Platform> SampleHost for P {
+    type Store = P;
+    fn store(&self) -> &P {
+        self
+    }
+    fn pool_present(&self) -> bool {
+        SamplePool::present(self)
+    }
+    fn files_in_store(&self) -> bool {
+        self.samples_in_store()
+    }
+    fn mask_irq(&self) -> u32 {
+        self.irq_mask()
+    }
+    fn restore_irq(&self, sr: u32) {
+        self.irq_restore(sr)
+    }
+}
+
 pub trait Platform: Tasking + SamplePool + StagedWriter + crate::storage::Storage {
     // ---- who the device is -----------------------------------------------------------------------------------------------
     fn profile(&self) -> DeviceProfile;
@@ -95,6 +130,14 @@ pub trait Platform: Tasking + SamplePool + StagedWriter + crate::storage::Storag
     fn irq_restore(&self, sr: u32);
     /// Write back and invalidate both caches over a byte range (before running fresh code).
     fn flush(&self, start: u32, len: u32);
+
+    // ---- code and slot words ---------------------------------------------------------------------------------------------
+    /// Read `out.len()` bytes of code at the raw address `addr` (volatile byte copy).
+    unsafe fn read_code(&self, addr: u32, out: &mut [u8]);
+    /// Write `bytes` at the raw address `addr` (volatile byte copy). The caller masks interrupts and flushes the covered lines.
+    unsafe fn write_code(&self, addr: u32, bytes: &[u8]);
+    /// Store one slot word at the 4-aligned address `addr` (one volatile 32-bit store).
+    unsafe fn write_word(&self, addr: u32, value: u32);
 
     // ---- the card --------------------------------------------------------------------------------------------------------
     /// Read `bytes` (a multiple of 512) from `sector` into `buf`; 0 or a negative error.
