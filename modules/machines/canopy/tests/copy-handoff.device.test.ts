@@ -13,7 +13,7 @@ import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
 describeOn('dt2', 'CANOPY Sound copy on the DT2', () => {
-  // CANOPY Sound persistence (finding 151): one track Sound copy and paste with
+  // CANOPY Sound persistence (finding 351): one track Sound copy and paste with
   // the stock panel. The paste must carry the settings at copy time. Passing
   // this test does not prove all copy paths.
   vi.setConfig({ hookTimeout: 600_000 });

@@ -16,7 +16,7 @@ import { bootInfo, currentRecord, recordsIn } from '@digi/regression/runtime/car
 import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
 describeOn('dt2', 'CANOPY persistence on the DT2', () => {
-  // CANOPY Sound persistence (finding 151): a stock project on a disposable DTII
+  // CANOPY Sound persistence (finding 351): a stock project on a disposable DTII
   // card, two CANOPY tracks edited independently, a native project save, then a
   // fresh emulator from the saved card and a native project load. All edits and
   // saves are native panel actions; the test reads requested values but never

@@ -44,7 +44,7 @@ reached a V2 row, so on track 11 the instance rendered (`_iv_output` non-zero)
 but voices 20/21 took the stock renderer and stayed silent. The envelope
 interposer's native-AMP skip now matches the owner's voice pair
 (`_mi_native_owner_track`) instead of voices 0/1 only. Details and results:
-[finding 145](../findings/145-canopy-any-track.md).
+[finding 345](../findings/345-canopy-any-track.md).
 
 ## Verification (2026-11-11)
 

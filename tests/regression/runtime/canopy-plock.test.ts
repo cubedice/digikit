@@ -13,7 +13,7 @@ import { execFileSync } from 'node:child_process';
 import { waitInstrumentReady } from './instrument-ready.ts';
 import { acknowledgedPanel } from './panel-ack.ts';
 
-// Sequencer trigs and trig parameter locks on a CANOPY track (finding 147).
+// Sequencer trigs and trig parameter locks on a CANOPY track (finding 347).
 // Asserts the stock lock facts the packed design relies on: a held turn of a
 // stock knob records a lock that playback applies; locks on the machine
 // slots CANOPY does not use play back unclamped, 0..0x7fff. Sequencer trigs
@@ -119,7 +119,7 @@ test('CANOPY track trig locks: stock lock storage and playback', { timeout: 900_
       ],
       { cwd: root, timeout: 20_000 },
     );
-  // Raw stock parameter row of track 1 (finding 145): 0x80003362 + 2 * index.
+  // Raw stock parameter row of track 1 (finding 345): 0x80003362 + 2 * index.
   const rawParam = async (index: number) => {
     const address = 0x80003362 + 2 * index;
     const w = await word((address & ~3) >>> 0);

@@ -15,7 +15,7 @@ Both core firmware and CANOPY must be updated together. Older V6 modules retain
 their existing path on the new firmware.
 
 Implementation, measurements, output hashes and limits are in
-[finding 143](../findings/143-canopy-post-fx-amp.md). Focused DSP, SDK, registry
+[finding 343](../findings/343-canopy-post-fx-amp.md). Focused DSP, SDK, registry
 and adapter tests pass. The complete compiled native-AMP/WT/FM/Overloop proof
 passes in 402.77 seconds. In the new bit-reduced audio regression, successive
 release windows fall 13.78399 and 13.77511 dB against a 13.77770 dB prediction.
@@ -37,7 +37,7 @@ Matching local files:
 
 The user subsequently requested installation. On 2026-11-10 the physical DTII
 accepted the matching pair and rebooted into image ID `2c601dc3a9bf3d38`.
-CANOPY readback matches the hash in finding 143; Overloop and Remote remain
+CANOPY readback matches the hash in finding 343; Overloop and Remote remain
 unchanged. All three modules report zero faults with guards enabled, with no
 crash, safe mode or open upload.
 

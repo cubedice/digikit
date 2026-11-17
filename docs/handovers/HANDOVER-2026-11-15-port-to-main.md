@@ -17,7 +17,7 @@ ported branch replaces it only after review, and that needs a force push.
 - Per-device staging: the device object owns `DKRT_STAGE` and `dkrt_stage_bytes` (`src/cf/<dev>/device.s`), from
   `[limits] stage_bytes` of the device file: DT2 160 KiB, DN2 64 KiB. `load_to_stage` reads a file in bounded native reads
   (`read_extent`), as the branch did: one read of more than 64 KiB fails with `E_BAD_STORE`.
-- CANOPY's factory wavetables are 16-bit samples (finding 150 has the sizes); the table output is scaled by 2^-14 once,
+- CANOPY's factory wavetables are 16-bit samples (finding 350 has the sizes); the table output is scaled by 2^-14 once,
   exact for every stored sample. That let the DT2 stage drop from 240 to 160 KiB.
 - `[uses.dt2]`: CANOPY commits one machine row (without it the commit refuses with `E_DECL_USES`), Overloop one effect
   record. CANOPY's SRC pages and parameters are not runtime records: `core/instrument-play` draws them over the stock SRC

@@ -1,6 +1,6 @@
 # Digitakt II / Digitone II â€” findings
 
-CANOPY: [Stage 6 physical coexistence and USB/DIN ownership](findings/138-canopy-stage6-hardware.md) (**[D]**, DTII OS1.17; timing release gates remain open).
+CANOPY: [Stage 6 physical coexistence and USB/DIN ownership](findings/338-canopy-stage6-hardware.md) (**[D]**, DTII OS1.17; timing release gates remain open).
 
 Overloop: [performance display and DSP status return on DTII 1.17](findings/134-overloop-display.md) (**[D]**, emulator/component evidence; hardware unverified).
 
@@ -215,62 +215,19 @@ occupied regions and the remaining production ownership questions.
 | [`133-storage-concurrency.md`](findings/133-storage-concurrency.md) | Why parallel eMMC writes cannot help on DT2 and DN2: one eSDHC transfer at a time, one global block mutex (plus the +Drive file-system mutex on DT2), semaphore waits during DMA, no priority inheritance; wire and measured ceilings. [D]/[O] |
 | [`134-usb-fast-hardware-phases.md`](findings/134-usb-fast-hardware-phases.md) | usb-fast on DN2 1.12 and DT2 1.17 with phase traces: large file and 309-file pack time per phase, the cached receive switch (no copy gain, 0.19 s cost per 9.8 MB, removed), the END growth with store size on DN2, the flat 200 ms fixed cost per file on DT2, and the lever ranking (**[D]**; why the copy runs at 14 MB/s **[O]**). |
 | [`135-hot-reload-firmware-facts.md`](findings/135-hot-reload-firmware-facts.md) | Firmware facts for hot reload on DT2 1.17 and DN2 1.12: CACR write and by-address `cpushl`, the project load task and the UI task, the UI queue's single consumer, the two level 7 interrupts, empty machine rows play as type 0, readers of the name table (**[D] [O]**). |
-DTII physical DSP reset: [active SPI/DMA quiescence and retained ownership](findings/136-dt2-dsp-reset.md) (**[D]**, physical measurement passed; power-cycle recovery and Overloop restoration verified).
-
-CANOPY SRC foundation: [explicit page capability and DT2 input interfaces](findings/137-canopy-src-pages.md) (**[D]**, ColdFire component proof; rendered pages and booted UI acceptance remain open).
-
-CANOPY native UI revision: [native SRC controls and resolved panel ownership](findings/139-canopy-native-ui.md)
-(**[D]/[O]**, native control paths, default pixel comparison, separate panel source,
-USER exit, directional octave spread, fragmented physical screenshots and pad/arp phase interaction).
-
-Overloop reply ownership: [separate status from immediate FX diagnostics](findings/140-overloop-reply-ownership.md)
-(**[D]/[O]**, fixed carrier allocation and component regression; running coexistence recheck pending).
-
-CANOPY wavetable FM: [phase modulation, corrected interior-frame budget coverage and bounded DSP evidence](findings/141-canopy-wavetable-fm.md)
-(**[D]**, CPSB controls and unchanged polyphony/state size; strict interior/AHD
-instruction witnesses, exact neutral PCM and bounded spectrum checks;
-matching compiled UI/audio/preset acceptance passes).
-
-DTII emulator test execution: [device-specific generated DSP blocks and bounded test optimizations](findings/142-dt2-emulator-test-execution.md)
-(**[D]**, paired stock-sample execution preserves exact audio and DSP state;
-acknowledged encoder batching and streamed card hashing reduce test overhead).
-
-CANOPY release ordering: [native AMP after stock track effects](findings/143-canopy-post-fx-amp.md)
-(**[D]/[O]**, physical release plateau reproduced and explained by the actual
-stock bitcrusher; per-note envelope factoring and post-effects application).
-
-CANOPY controls: [compact SRC pages, latch removal and native MOD](findings/144-canopy-controls-modulation.md)
-(**[D]/[V]**, fixed six targets per source family, immutable base controls and
-narrow independently checked firmware-hook ABI; physical installation pending).
-
-CANOPY DSP: [block rendering](findings/146-canopy-dsp-block-rendering.md) (**[D]**,
-wavetable and FM voices render a block at a time; worst callback 99,849 to
-77,017 instructions; bit-identical in all 1,164 CANOPY DSP tests).
-
-CANOPY trig locks: [DT2 1.17 lock storage and the packed design](findings/147-canopy-trig-locks.md)
-(**[D]**, lane layout and set/clear/save/load/playback routines; values
-unclamped 0..0x7fff; five safe SRC slots; trigs and CANOPY's own knobs do not
-reach CANOPY yet **[O]**).
-
-CANOPY tracks: [any track, up to four at once](findings/145-canopy-any-track.md)
-(**[D]**, per-track stock row/frame/kit strides, DSP slots bound by reset
-hints, per-track carrier ownership, status focus; four-busy-instance DSP load
-open **[O]**).
-
-CANOPY arp: [pattern tempo, stopped playing and onset continuity](findings/148-canopy-pattern-arp.md)
-(**[D]**, automatic pattern timing, removal of local BPM/clock controls, and
-a short arp onset ramp for zero-attack sounds).
-
-CANOPY recording: [held-trig page, live chords and step recording](findings/149-canopy-recording.md)
-(**[D]**, sequencer byte +0x268 is the held-trig edit mark, not another
-context; recording modes; the pattern's per-step note list; recorded chords
-as chord-note locks; how step recording takes keyboard notes **[O]**).
-
-CANOPY loading: [boot transfers and their size](findings/150-canopy-boot-loading.md)
-(**[D]/[O]**, larger acknowledged image transfers reduce loader scheduling
-overhead; physical boot-time improvement not yet measured).
-
-CANOPY persistence: [Sound settings outside Sound memory](findings/151-canopy-sound-persistence.md)
-(**[D]/[O]**, a 40-byte extension in record halfwords stock zero-fills and never
-loads; an association store that follows whole-Sound memcpy/memset, loads,
-initialization and machine changes; emulator only, not on hardware).
+| [`336-dt2-dsp-reset.md`](findings/336-dt2-dsp-reset.md) | DTII physical DSP reset: active SPI/DMA quiescence and retained ownership (**[D]**, physical measurement passed; power-cycle recovery and Overloop restoration verified). |
+| [`337-canopy-src-pages.md`](findings/337-canopy-src-pages.md) | CANOPY SRC foundation: explicit page capability and DT2 input interfaces (**[D]**, ColdFire component proof; rendered pages and booted UI acceptance remain open). |
+| [`338-canopy-stage6-hardware.md`](findings/338-canopy-stage6-hardware.md) | CANOPY Stage 6 physical qualification. |
+| [`339-canopy-native-ui.md`](findings/339-canopy-native-ui.md) | CANOPY native UI revision: native SRC controls and resolved panel ownership (**[D]/[O]**, native control paths, default pixel comparison, separate panel source, USER exit, directional octave spread, fragmented physical screenshots and pad/arp phase interaction). |
+| [`340-overloop-reply-ownership.md`](findings/340-overloop-reply-ownership.md) | Overloop reply ownership: separate status from immediate FX diagnostics (**[D]/[O]**, fixed carrier allocation and component regression; running coexistence recheck pending). |
+| [`341-canopy-wavetable-fm.md`](findings/341-canopy-wavetable-fm.md) | CANOPY wavetable FM: phase modulation, corrected interior-frame budget coverage and bounded DSP evidence (**[D]**, CPSB controls and unchanged polyphony/state size; strict interior/AHD instruction witnesses, exact neutral PCM and bounded spectrum checks; matching compiled UI/audio/preset acceptance passes). |
+| [`342-dt2-emulator-test-execution.md`](findings/342-dt2-emulator-test-execution.md) | DTII emulator test execution: device-specific generated DSP blocks and bounded test optimizations (**[D]**, paired stock-sample execution preserves exact audio and DSP state; acknowledged encoder batching and streamed card hashing reduce test overhead). |
+| [`343-canopy-post-fx-amp.md`](findings/343-canopy-post-fx-amp.md) | CANOPY release ordering: native AMP after stock track effects (**[D]/[O]**, physical release plateau reproduced and explained by the actual stock bitcrusher; per-note envelope factoring and post-effects application). |
+| [`344-canopy-controls-modulation.md`](findings/344-canopy-controls-modulation.md) | CANOPY controls: compact SRC pages, latch removal and native MOD (**[D]/[V]**, fixed six targets per source family, immutable base controls and narrow independently checked firmware-hook ABI; physical installation pending). |
+| [`345-canopy-any-track.md`](findings/345-canopy-any-track.md) | CANOPY tracks: any track, up to four at once (**[D]**, per-track stock row/frame/kit strides, DSP slots bound by reset hints, per-track carrier ownership, status focus; four-busy-instance DSP load open **[O]**). |
+| [`346-canopy-dsp-block-rendering.md`](findings/346-canopy-dsp-block-rendering.md) | CANOPY DSP: block rendering (**[D]**, wavetable and FM voices render a block at a time; worst callback 99,849 to 77,017 instructions; bit-identical in all 1,164 CANOPY DSP tests). |
+| [`347-canopy-trig-locks.md`](findings/347-canopy-trig-locks.md) | CANOPY trig locks: DT2 1.17 lock storage and the packed design (**[D]**, lane layout and set/clear/save/load/playback routines; values unclamped 0..0x7fff; five safe SRC slots; trigs and CANOPY's own knobs do not reach CANOPY yet **[O]**). |
+| [`348-canopy-pattern-arp.md`](findings/348-canopy-pattern-arp.md) | CANOPY arp: pattern tempo, stopped playing and onset continuity (**[D]**, automatic pattern timing, removal of local BPM/clock controls, and a short arp onset ramp for zero-attack sounds). |
+| [`349-canopy-recording.md`](findings/349-canopy-recording.md) | CANOPY recording: held-trig page, live chords and step recording (**[D]**, sequencer byte +0x268 is the held-trig edit mark, not another context; recording modes; the pattern's per-step note list; recorded chords as chord-note locks; how step recording takes keyboard notes **[O]**). |
+| [`350-canopy-boot-loading.md`](findings/350-canopy-boot-loading.md) | CANOPY loading: boot transfers and their size (**[D]/[O]**, larger acknowledged image transfers reduce loader scheduling overhead; physical boot-time improvement not yet measured). |
+| [`351-canopy-sound-persistence.md`](findings/351-canopy-sound-persistence.md) | CANOPY persistence: Sound settings outside Sound memory (**[D]/[O]**, a 40-byte extension in record halfwords stock zero-fills and never loads; an association store that follows whole-Sound memcpy/memset, loads, initialization and machine changes; emulator only, not on hardware). |

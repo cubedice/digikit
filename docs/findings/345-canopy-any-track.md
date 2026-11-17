@@ -197,7 +197,7 @@ With two instances sounding (simple notes), the emulator's meter reported
 236,524 busy DSP instructions per block: 35.5 % model, 40.2 % real nominal,
 49.9 % real high, 41.1 % peak (`out/canopy-any-track/multi-load.json`). The
 bounded worst case of one instance is about 98,000 instructions per block
-(finding 141). Four instances all at that worst case would add about 390,000
+(finding 341). Four instances all at that worst case would add about 390,000
 to the stock engine's ~211,000, exceeding the 666,667-instruction block at
 the high real estimate. Typical sounds are far below the worst case, but four
 simultaneous worst-case wavetable-PM patches with arps can overload the DSP.

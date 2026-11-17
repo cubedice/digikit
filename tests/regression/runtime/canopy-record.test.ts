@@ -14,7 +14,7 @@ import { waitInstrumentReady } from './instrument-ready.ts';
 import { acknowledgedPanel } from './panel-ack.ts';
 import { waitEmulated } from './port-compat.ts';
 
-// Recording keyboard presses on a CANOPY track (findings 147 and 125). While
+// Recording keyboard presses on a CANOPY track (findings 347 and 125). While
 // the sequencer live records, CANOPY hands KEYBOARD presses to the stock note
 // action, which records them as trigs, and still plays them itself on the
 // panel path (the stock audition is muted). Other keys held with a recorded
@@ -298,7 +298,7 @@ test('CANOPY records keyboard presses', { timeout: 900_000 }, async () => {
   }
   await waitEmulated(session, 1_000); // the recorder commits after the key events
   const chordDiag = await Promise.all([0, 1, 2, 3, 4, 5, 6, 7].map((i) => cf('ip_panel_chord', i)));
-  // Track 1's recorded steps (finding 149): trig word at +2*step, note at +0x280+step.
+  // Track 1's recorded steps (finding 349): trig word at +2*step, note at +0x280+step.
   const block = (await word(0x4316501c)) >>> 0;
   const trigByte = async (a: number) => ((await word((a & ~3) >>> 0)) >>> ((3 - (a & 3)) * 8)) & 0xff;
   const recordedSteps: string[] = [];
@@ -310,7 +310,7 @@ test('CANOPY records keyboard presses', { timeout: 900_000 }, async () => {
       recordedSteps.push(`${st}:${w.toString(16)}:${fields.join('/')}`);
     }
   }
-  // Lock lanes (finding 147): 80 x 0x102 bytes at +0x17e50 {index, track, 128 x s16}.
+  // Lock lanes (finding 347): 80 x 0x102 bytes at +0x17e50 {index, track, 128 x s16}.
   const lanes: string[] = [];
   for (let lane = 0; lane < 80; lane++) {
     const at = block + 0x17e50 + lane * 0x102;

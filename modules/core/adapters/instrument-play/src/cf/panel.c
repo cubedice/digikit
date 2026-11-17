@@ -41,7 +41,7 @@ static uint32_t word(const uint8_t *p, uint32_t n)
 {
     return *(const uint32_t *)(p + n);
 }
-/* KeyboardView +0x98 is the sequencer UI state (finding 147). While it live
+/* KeyboardView +0x98 is the sequencer UI state (finding 347). While it live
  * records, step records, or a trig is held, the stock note action records the
  * key as a trig or a note lock. CANOPY still plays the press itself (all held
  * keys, as outside recording); the stock audition of the same press is muted
@@ -115,7 +115,7 @@ static void rec_release_all(void)
     for (uint32_t i = 0; i < 16; ++i)
         rec_release(i);
 }
-/* DT2 1.17 pattern object (finding 149): each step's notes are a linked
+/* DT2 1.17 pattern object (finding 349): each step's notes are a linked
  * list of 6-byte entries {track, step, note, velocity, ...} at +0x6a50, with
  * the head entry index of (track, step) at +0x12a50 (s16, negative = none),
  * next indices at +0x13a50, and the trig word of (track, step) at
@@ -358,7 +358,7 @@ void ip_panel_tick(void)
         watch_trig[s] = trig_word(p, track, s);
     }
 }
-/* Step recording (finding 149): with KEYBOARD held, a trig key writes its
+/* Step recording (finding 349): with KEYBOARD held, a trig key writes its
  * note on the cursor step at once, inside the stock KeyboardView key handler,
  * without the note action (ip_panel_on). Each further held key rewrites the
  * same step's note, and the cursor advances when the keys are released. */

@@ -5,7 +5,7 @@ DSP timing. On November 3 the user authorized USB audio capture, confirmed the
 project disposable, and connected a DIN keyboard. The combined firmware and
 CANOPY, Overloop and remote-control modules are now installed. Hardware
 coexistence, live loop edits, USB ownership and DIN keyboard checks passed;
-see [physical evidence](../findings/138-canopy-stage6-hardware.md).
+see [physical evidence](../findings/338-canopy-stage6-hardware.md).
 
 ## Combined image
 

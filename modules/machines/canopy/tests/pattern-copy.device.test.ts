@@ -13,7 +13,7 @@ import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 
 describeOn('dt2', 'CANOPY pattern copy on the DT2', () => {
-  // CANOPY Sound persistence (finding 151): two CANOPY tracks on two patterns
+  // CANOPY Sound persistence (finding 351): two CANOPY tracks on two patterns
   // with different settings, a project save, a return to the first pattern, then
   // pattern copy, a further source edit, paste and undo with the stock panel.
   vi.setConfig({ hookTimeout: 600_000 });

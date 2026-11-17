@@ -142,7 +142,7 @@ per block and its capture 0.0512 RMS, within the earlier runs' spread.
 ## Not covered
 
 Hardware cycle time, and four simultaneous worst-case instances on the device,
-remain open **[O]** (finding 145).
+remain open **[O]** (finding 345).
 
 ## Emulator checks [D]
 

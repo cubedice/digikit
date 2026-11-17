@@ -6,7 +6,7 @@ is pushed or installed on the DTII.
 
 Why: after the any-track change the user asked for several CANOPY tracks to
 play at once. Design, stock facts and results are in
-[finding 145](../findings/145-canopy-any-track.md) "Several instances at once".
+[finding 345](../findings/345-canopy-any-track.md) "Several instances at once".
 
 ## Change
 
@@ -32,7 +32,7 @@ play at once. Design, stock facts and results are in
 
 ## Verification (2026-11-12)
 
-- Unit and host suites as in finding 145's table; `test_midi_events.py` has 25
+- Unit and host suites as in finding 345's table; `test_midi_events.py` has 25
   pre-existing failures that fail identically on `680c2134` (stale extern
   table lacking `_fx_diag` and `_fm_enabled`).
 - Emulator proof `tests/regression/runtime/canopy-track.test.ts` passed on
@@ -50,7 +50,7 @@ play at once. Design, stock facts and results are in
 
 The user then asked for the bit-identical DSP optimizations: wavetable voices
 render a block at a time, the FM halfband history uses a block buffer, and the
-arp sorts by stable insertion ([finding 146](../findings/146-canopy-dsp-block-rendering.md)).
+arp sorts by stable insertion ([finding 346](../findings/346-canopy-dsp-block-rendering.md)).
 The worst callback fell from 99,849 to 89,255 instructions (wavetable 99,386 to
 69,909), bit-identical in all 1,164 CANOPY DSP tests. Only the CANOPY package
 changes: `out/patch/canopy-opt-release.dkm` (file sha256 `d33f58dc…84df`) with the same
