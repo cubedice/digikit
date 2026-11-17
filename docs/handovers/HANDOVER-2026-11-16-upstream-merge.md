@@ -91,6 +91,11 @@ order of evaluation decides; with this machine's `cc` (GCC 14) the struct is rea
 Under load only: `nx-tools:test-host` (`selection.test.ts`, a 10 s hook) and `@digi/web:test-wasm` (two tests over their
 120 s limit: 190 s and 315 s). `core/sdhc-large:test-device` and `gate-fast-roots:fast-roots` did not run (dependencies).
 
+Run again at 5f6338f1 with nothing else on the machine, all passing: the static checks, `regression:test-host` (559 tests),
+`patchkit:rust-tests` (399), `gate-rust-modules:rust-tests` (541), `nx-tools:test-host`, `@digi/web:test-wasm` (97 s for the
+task) and `core/sdhc-large:test-device` on both devices. `tools:python-tests` was not run again as a task: its five tests of
+the list above passed by name. The full gate was not repeated.
+
 ## Not done, and why
 
 - **The instrument code as a service crate.** About 10 000 lines of `instrument_*` live in `dkrt-sdk` and the owner in the
