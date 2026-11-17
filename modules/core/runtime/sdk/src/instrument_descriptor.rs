@@ -1,23 +1,22 @@
 //! Bounded decoding of V2 descriptors and DKDS7 instrument records. No addresses
 //! are dereferenced, allocations made, or runtime capabilities enabled. Decoded
 //! callbacks are image offsets, NOT proof of executable instruction boundaries.
+//!
+//! The format rules (the descriptor's words, a text range, a callback, the limits) are `dkneeds::instrument`'s: the host tools and the
+//! runtime's scan read a file with the same ones. This module adds the admission limits of the device and the refusal of each fault.
+use dkneeds::instrument as format;
 
-pub const MAGIC: u32 = 0x444b_4954;
-pub const VERSION: u32 = 2;
-pub const DESC_BYTES: usize = 48;
-/// Opt in to the V5 borrowed status-output extension. Unknown bits fail closed.
-pub const STATUS_OUTPUT: u32 = 1;
-/// Opt in to the V6 native AMP snapshot. Requires STATUS_OUTPUT.
-pub const NATIVE_AMP: u32 = 2;
-/// Opt in to V7 gains at the stock AMP position. Requires STATUS_OUTPUT | NATIVE_AMP.
-pub const POST_AMP: u32 = 4;
+pub const MAGIC: u32 = format::DESCRIPTOR_MAGIC;
+pub const VERSION: u32 = format::DESCRIPTOR_VERSION;
+pub const DESC_BYTES: usize = format::DESCRIPTOR_BYTES as usize;
+/// Opt in to the V5 borrowed status-output extension, the V6 native AMP snapshot (requires STATUS_OUTPUT) and V7 gains at the stock AMP
+/// position (requires both). Unknown bits fail closed (`valid_flags`).
+pub use format::{valid_flags, NATIVE_AMP, POST_AMP, STATUS_OUTPUT};
 
-pub const fn valid_flags(flags: u32) -> bool {
-    flags == 0
-        || flags == STATUS_OUTPUT
-        || flags == (STATUS_OUTPUT | NATIVE_AMP)
-        || flags == (STATUS_OUTPUT | NATIVE_AMP | POST_AMP)
-}
+const RECORD: usize = format::RECORD_BYTES as usize;
+const MAX_RECORDS: usize = format::MAX_INSTRUMENTS as usize;
+const TEXT_RANGE: usize = format::TEXT_RANGE_BYTES as usize;
+const MAX_TEXT: usize = format::MAX_TEXT_RANGES as usize;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Limits {
@@ -106,46 +105,52 @@ impl Descriptor {
             }
             word
         };
-        if w(0) != MAGIC || w(1) != VERSION || w(2) != DESC_BYTES as u32 {
-            return Err(Error::Header);
+        let mut words = [0u32; 12];
+        let mut i = 0;
+        while i < 12 {
+            words[i] = w(i);
+            i += 1;
         }
-        if !valid_flags(w(3)) {
-            return Err(Error::Flags);
-        }
-        if !(1..=16).contains(&w(4)) || !(1..=8).contains(&w(6)) || !(1..=32).contains(&w(7)) {
-            return Err(Error::Counts);
-        }
-        if w(5) == 0 || w(5) % 4 != 0 || w(11) % 4 != 0 {
-            return Err(Error::Alignment);
-        }
-        let allocation_bytes = w(5)
-            .checked_add(7)
-            .map(|n| n & !7)
-            .and_then(|n| n.checked_mul(w(4)))
-            .ok_or(Error::Allocation)?;
-        if allocation_bytes > limits.state_bytes {
+        // the format's rule of the twelve words, then the admission limits of the device
+        let shape = match format::descriptor(&words) {
+            Ok(shape) => shape,
+            Err(e) => {
+                // if-chain, not a `match`: a dense match becomes a jump table, which is not ColdFire code
+                return Err(if e == format::DescriptorError::Header {
+                    Error::Header
+                } else if e == format::DescriptorError::Flags {
+                    Error::Flags
+                } else if e == format::DescriptorError::Counts {
+                    Error::Counts
+                } else if e == format::DescriptorError::Alignment {
+                    Error::Alignment
+                } else {
+                    Error::Allocation
+                });
+            }
+        };
+        if shape.allocation_bytes > limits.state_bytes {
             return Err(Error::Allocation);
         }
-        if w(8) == 0
-            || w(8) > limits.cycles_process
-            || w(9) == 0
-            || w(9) > limits.cycles_reset
-            || w(10) > limits.call_depth
-            || w(11) > limits.stack_bytes
+        if !shape.declares_budget()
+            || shape.cycles_process > limits.cycles_process
+            || shape.cycles_reset > limits.cycles_reset
+            || shape.call_depth > limits.call_depth
+            || shape.stack_bytes > limits.stack_bytes
         {
             return Err(Error::Budget);
         }
         Ok(Self {
-            flags: w(3),
-            tracks: w(4),
-            state_bytes: w(5),
-            max_events: w(6),
-            max_controls: w(7),
-            cycles_process: w(8),
-            cycles_reset: w(9),
-            call_depth: w(10),
-            stack_bytes: w(11),
-            allocation_bytes,
+            flags: shape.flags,
+            tracks: shape.tracks,
+            state_bytes: shape.state_bytes,
+            max_events: shape.max_events,
+            max_controls: shape.max_controls,
+            cycles_process: shape.cycles_process,
+            cycles_reset: shape.cycles_reset,
+            call_depth: shape.call_depth,
+            stack_bytes: shape.stack_bytes,
+            allocation_bytes: shape.allocation_bytes,
         })
     }
 }
@@ -171,16 +176,16 @@ pub fn records(
     relocations: &[u8],
     limits: Limits,
 ) -> Result<[Option<Record>; 8], Error> {
-    if table.is_empty() || table.len() % 16 != 0 || table.len() > 8 * 16 {
+    if table.is_empty() || table.len() % RECORD != 0 || table.len() > MAX_RECORDS * RECORD {
         return Err(Error::Records);
     }
     if relocations.len() % 8 != 0 || relocations.len() > 4096 * 8 {
         return Err(Error::Relocation);
     }
     let be = |bytes: &[u8], at: usize| u32::from_be_bytes(bytes[at..at + 4].try_into().unwrap());
-    let mut result: [Option<Record>; 8] = [None; 8];
+    let mut result: [Option<Record>; 8] = [None; MAX_RECORDS];
     let mut allocation = 0u32;
-    for (i, row) in table.chunks_exact(16).enumerate() {
+    for (i, row) in table.chunks_exact(RECORD).enumerate() {
         let key = be(row, 0);
         if key == u32::MAX || result.iter().flatten().any(|r| r.key == key) {
             return Err(Error::Records);
@@ -188,11 +193,7 @@ pub fn records(
         let reset = be(row, 4);
         let process = be(row, 8);
         for offset in [reset, process] {
-            if offset % 2 != 0
-                || (offset as usize)
-                    .checked_add(6)
-                    .is_none_or(|end| end > image.len())
-            {
+            if !u32::try_from(image.len()).is_ok_and(|bytes| format::callback_ok(offset, bytes)) {
                 return Err(Error::Callback);
             }
         }
@@ -239,21 +240,15 @@ pub fn executable_ranges(
     table: &[u8],
     image_bytes: u32,
 ) -> Result<[Option<Executable>; 32], Error> {
-    if table.is_empty() || table.len() % 8 != 0 || table.len() > 32 * 8 {
+    if table.is_empty() || table.len() % TEXT_RANGE != 0 || table.len() > MAX_TEXT * TEXT_RANGE {
         return Err(Error::Executable);
     }
-    let mut ranges = [None; 32];
+    let mut ranges = [None; MAX_TEXT];
     let mut previous_end = 0;
-    for (i, bytes) in table.chunks_exact(8).enumerate() {
+    for (i, bytes) in table.chunks_exact(TEXT_RANGE).enumerate() {
         let start = u32::from_be_bytes(bytes[..4].try_into().unwrap());
         let end = u32::from_be_bytes(bytes[4..].try_into().unwrap());
-        if start % 2 != 0
-            || end % 2 != 0
-            || end <= start
-            || end > image_bytes
-            || end - start < 6
-            || start < previous_end
-        {
+        if !format::text_range_ok(start, end, image_bytes, previous_end) {
             return Err(Error::Executable);
         }
         ranges[i] = Some(Executable { start, end });
@@ -268,16 +263,17 @@ pub fn validate_executables(
     records: &[u8],
     ranges: &[Option<Executable>; 32],
 ) -> Result<(), Error> {
-    if records.is_empty() || records.len() % 16 != 0 || records.len() > 128 {
+    if records.is_empty() || records.len() % RECORD != 0 || records.len() > MAX_RECORDS * RECORD {
         return Err(Error::Records);
     }
-    for row in records.chunks_exact(16) {
+    for row in records.chunks_exact(RECORD) {
         let word = |at: usize| u32::from_be_bytes(row[at..at + 4].try_into().unwrap());
         for offset in [word(4), word(8)] {
             if offset % 2 != 0
-                || !ranges.iter().flatten().any(|r| {
-                    offset >= r.start && offset.checked_add(6).is_some_and(|end| end <= r.end)
-                })
+                || !ranges
+                    .iter()
+                    .flatten()
+                    .any(|r| format::in_text(offset, r.start, r.end))
             {
                 return Err(Error::Executable);
             }

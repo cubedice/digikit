@@ -242,8 +242,13 @@ structure and table bounds, but does not check signatures, imports, relocation
 contents or device-specific cycle/stack admission limits. It is not a load check.
 Its arena figure is the loader's V2 allocation: one block for the module's image and bss, copies of its keys table and
 of the whole DSP section, and the output buffer of the relocated DSP image, each rounded to 16; the block stays while the
-module is loaded and `arena_xfer` is 0 (CANOPY on the DT2: 279 600 bytes of arena, 150 016 of DSP area). The descriptor's
-flag word follows the loader's decoder (0, 1, 3 or 7). The runtime's scan (the MODULES page of the DIGIKIT menu) and the
+module is loaded and `arena_xfer` is 0 (CANOPY on the DT2: 279 600 bytes of arena, 150 016 of DSP area). The rules of the
+format are defined once, in `dkneeds::instrument`: the header's tables and their order, the limits, the twelve words of a
+descriptor (its flag word is 0, 1, 3 or 7), a text range and a callback. The loader's validator
+(`dkrt_sdk::instrument_section`) takes them from there and adds what only a device judges (the device word, imports,
+relocations, admission limits); it refuses a version 7 section and V1 voices or effects beside instruments, which the needs
+reader still takes. A test of the SDK crate edits every word of the canonical section (`dkneeds::fixtures::v2_section`,
+also used by the tests of `dkneeds` and patchkit) and holds both readers to one answer. The runtime's scan (the MODULES page of the DIGIKIT menu) and the
 hosts read with it: `patchkit needs` and `dump`, the wasm `pk_needs`, and through them `dk run`, `module:check` and the
 Transfer page give a V2 file its needs, the hosts with `INSTRUMENT_ROWS`, `INSTRUMENT_TRACKS` and `INSTRUMENT_STATE` beside
 the CAPACITY names. The scan entry and the fit rule have no instrument rows: the loader's V2 owner admits the rows and

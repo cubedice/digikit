@@ -14,45 +14,110 @@ pub(crate) fn limits() -> descriptor::Limits {
 fn put(bytes: &mut [u8], at: usize, value: u32) {
     bytes[at..at + 4].copy_from_slice(&value.to_be_bytes());
 }
+/// The canonical V2 section (`dkneeds::fixtures`): the same bytes the needs reader's and patchkit's tests read.
 pub(crate) fn fixture() -> [u8; 208] {
-    let mut bytes = [0; 208];
-    for (at, value) in [
-        (0, 0x444b4453),
-        (4, 8),
-        (8, 1),
-        (0x0c, 64),
-        (0x10, 8),
-        (0x14, 16),
-        (0x18, 144),
-        (0x24, 80),
-        (0x28, 1),
-        (0x1c, 112),
-        (0x20, 1),
-        (0x2c, 120),
-        (0x34, 120),
-        (0x40, 120),
-        (0x44, 1),
-        (0x48, 136),
-        (0x4c, 1),
-        (112, 0),
-        (116, 0x02000000),
-        (120, 20),
-        (124, 0),
-        (128, 6),
-        (132, 16),
-        (136, 0),
-        (140, 12),
-    ] {
-        put(&mut bytes, at, value);
+    dkneeds::fixtures::v2_section()
+}
+
+/// No admission limit of a device: what is left is the format.
+fn no_limits() -> descriptor::Limits {
+    descriptor::Limits {
+        state_bytes: u32::MAX,
+        cycles_process: u32::MAX,
+        cycles_reset: u32::MAX,
+        call_depth: u32::MAX,
+        stack_bytes: u32::MAX,
     }
-    bytes[80..84].copy_from_slice(b"test");
-    for (i, value) in [descriptor::MAGIC, 2, 48, 0, 2, 12, 8, 32, 20, 10, 2, 32]
-        .iter()
-        .enumerate()
-    {
-        bytes[160 + i * 4..164 + i * 4].copy_from_slice(&value.to_le_bytes());
+}
+
+/// The needs reader (`dkneeds`, the host tools and the runtime's scan) and this validator (the loader) read one format. For every one-word
+/// edit of the canonical section: a section the loader admits has needs, and they are what the loader takes; and a section with needs that
+/// the loader refuses is refused for something only the loader judges, never for the layout, the records, the text or the descriptor.
+#[test]
+fn the_needs_reader_and_the_loader_agree_on_every_one_word_edit() {
+    let good = fixture();
+    let needs = dkneeds::instrument_section_needs(&good).unwrap();
+    let section = Section::parse(&good, dkneeds::fixtures::V2_DEVICE, no_limits()).unwrap();
+    assert_eq!(
+        (needs.rows, needs.tracks, needs.state_bytes),
+        (1, 2, section.memory_request().state_bytes)
+    );
+    let (mut admitted, mut loader_only) = (0, 0);
+    for at in (0..good.len()).step_by(4) {
+        let old = u32::from_be_bytes(good[at..at + 4].try_into().unwrap());
+        for value in [
+            0,
+            1,
+            2,
+            3,
+            4,
+            6,
+            7,
+            8,
+            12,
+            16,
+            17,
+            32,
+            48,
+            64,
+            80,
+            144,
+            208,
+            0x100,
+            0x0100_0000,
+            0x0700_0000,
+            old ^ 1,
+            old ^ 0x0100_0000,
+            old.wrapping_add(4),
+            old.wrapping_add(8),
+            u32::MAX,
+        ] {
+            if value == old {
+                continue;
+            }
+            let mut bytes = good;
+            put(&mut bytes, at, value);
+            let needs = dkneeds::instrument_section_needs(&bytes);
+            match Section::parse(&bytes, dkneeds::fixtures::V2_DEVICE, no_limits()) {
+                Ok(section) => {
+                    admitted += 1;
+                    let needs = needs.unwrap_or_else(|e| panic!("word {at:#x} = {value:#x}: the loader admits it, the needs reader says {e:?}"));
+                    let tracks: u32 = section
+                        .records()
+                        .iter()
+                        .flatten()
+                        .map(|r| r.descriptor.tracks)
+                        .sum();
+                    assert_eq!(
+                        (needs.rows, needs.tracks, needs.state_bytes),
+                        (1, tracks, section.memory_request().state_bytes),
+                        "word {at:#x} = {value:#x}"
+                    );
+                }
+                Err(refusal) if needs.is_ok() => {
+                    loader_only += 1;
+                    assert!(
+                        matches!(
+                            refusal,
+                            Error::Device
+                                | Error::Header
+                                | Error::Import
+                                | Error::Relocation
+                                | Error::Descriptor(descriptor::Error::Relocation)
+                                | Error::Descriptor(descriptor::Error::Records)
+                        ),
+                        "word {at:#x} = {value:#x}: the needs reader takes it, the loader says {refusal:?}"
+                    );
+                }
+                Err(_) => {}
+            }
+        }
     }
-    bytes
+    // the edits reach both kinds: sections that still load, and ones only the loader refuses
+    assert!(
+        admitted > 0 && loader_only > 0,
+        "{admitted} admitted, {loader_only} refused by the loader alone"
+    );
 }
 #[test]
 fn instrument_section_composes_parsing_reservation_and_admission() {

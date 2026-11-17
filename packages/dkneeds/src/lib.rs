@@ -19,8 +19,10 @@ mod gen_limits;
 /// The loader's format limits, from `[limits.format]` of sdk/sdk.toml (`HEADER`, `DSP_HEADER`, `MAX_RECORDS`, `MAX_RELOCS`, `MAX_IMPORTS`,
 /// `MAX_CF_IMPORTS`, `MAX_VOICES`, `MAX_FX`, `MAX_STATE_VOICES`, `MAX_STATE_BYTES`, `GRANULE`, `DSP_SLACK`, `ARENA_HDR`).
 pub use gen_limits::*;
-mod instrument;
+pub mod instrument;
 pub use instrument::InstrumentNeeds;
+#[cfg(any(test, feature = "fixtures"))]
+pub mod fixtures;
 
 /// The needs of a file of persistent V2 instruments: the resources of `Needs` as the loader's V2 path takes them, and the
 /// instrument rows beside them. Not an admission: the loader's V2 owner checks the contract, the descriptors and the DSP.
@@ -190,6 +192,20 @@ fn word<B: Bytes>(src: &mut B, at: u32) -> Result<u32, Error> {
 /// `off + len` lies in `size` (the loader's `in_file`), without overflow.
 fn inside(off: u32, len: u32, size: u32) -> bool {
     off <= size && len <= size - off
+}
+
+/// The instrument needs of a bare DSP section of version 7 or 8 (not a whole `.dkm`): what [`needs_of_v2`] reads of a file's section. For the tests
+/// that hold the needs reader and the loader's validator to the same answer.
+pub fn instrument_section_needs(section: &[u8]) -> Result<InstrumentNeeds, Error> {
+    let mut src = section;
+    let mut needs = Needs::default();
+    let mut instruments = InstrumentNeeds::default();
+    let size = u32::try_from(section.len()).map_err(|_| Error::Sizes)?;
+    dsp(&mut src, 0, size, &mut needs, Some(&mut instruments))?;
+    if instruments.rows == 0 {
+        return Err(Error::Dsp);
+    }
+    Ok(instruments)
 }
 
 /// The needs of the file `src` reads: see the module's text. `Err` for a file the loader would refuse for its format, or one that cannot be read.
@@ -366,7 +382,7 @@ fn dsp<B: Bytes>(
     } else if version == DSP_V2 {
         VOICE_V2
     } else if (DSP_V3..=DSP_V5).contains(&version)
-        || (matches!(version, 7 | 8) && instruments.is_some())
+        || (instrument::is_instrument_version(version) && instruments.is_some())
     {
         // 7 and 8: persistent V2 instruments (voices as version 3); only a V2-aware reader takes them
         VOICE_V3
@@ -494,7 +510,7 @@ fn dsp<B: Bytes>(
         total = total.checked_add((state + 7) & !7).ok_or(Error::Dsp)?;
         i += 1;
     }
-    if version == 7 || version == 8 {
+    if instrument::is_instrument_version(version) {
         let allocation = instrument::read(src, off, size)?;
         total = total
             .checked_add(allocation.state_bytes)

@@ -13,3 +13,7 @@ path = "src/lib.rs"
 
 # No dependencies: it builds for ColdFire (the runtime and the menu, through dkrt-sdk), the host and wasm32.
 [dependencies]
+
+[features]
+# `dkneeds::fixtures`: the canonical test fixtures of the format, for the tests of this crate and of its users (a dev-dependency turns it on).
+fixtures = []

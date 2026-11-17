@@ -1311,54 +1311,28 @@ mod tests {
         assert_eq!(j["file_size"], f.len());
     }
 
-    /// The canonical version 7 section of dkneeds's tests: one persistent instrument of two tracks with 260 state bytes each, no V1 voice.
-    fn dsp_section_v7() -> Vec<u8> {
-        let mut s = vec![0u8; 160];
-        for (at, value) in [
-            (0, dkneeds::DSP_MAGIC),
-            (4, 7),
-            (8, 1),
-            (0x0c, 64),
-            (0x10, 8),
-            (0x14, 16),
-            (0x18, 96),
-            (0x1c, 80),
-            (0x24, 80),
-            (0x2c, 80),
-            (0x34, 80),
-            (0x40, 80),
-            (0x44, 1),
-            (80, 17),
-            (84, 0),
-            (88, 6),
-            (92, 16),
-        ] {
-            put(&mut s, at, value);
-        }
-        let desc: [u32; 12] = [0x444b4954, 2, 48, 0, 2, 260, 8, 32, 20000, 2000, 4, 64];
-        for (i, w) in desc.iter().enumerate() {
-            s[112 + i * 4..116 + i * 4].copy_from_slice(&w.to_le_bytes());
-        }
-        s
-    }
-
     #[test]
     fn a_file_of_v2_instruments_has_needs_and_names_its_instrument_rows() {
-        let f = pack_keys(Some(&object()), &[], &dsp_section_v7(), &opts()).unwrap();
-        // the reader without instruments refuses the section; this one gives what the loader's V2 path takes
+        let f = pack_keys(
+            Some(&object()),
+            &[],
+            &dkneeds::fixtures::v2_section(),
+            &opts(),
+        )
+        .unwrap();
+        // the canonical V2 section (dkneeds::fixtures): the reader without instruments refuses the section; this one gives what the loader's V2 path takes
         assert!(dkneeds::needs_of(&mut &f[..]).is_err());
         let n = needs_v2(&f).unwrap();
         assert_eq!(needs(&f).unwrap(), n.base);
-        // align64(image 64 + bss 8 + two states of align8(260)); the instrument is no voice row
-        assert_eq!((n.base.dsp_area, n.base.voice_rows), (640, 0));
+        // align64(image 64 + bss 8 + two states of align8(12)); the instrument is no voice row
+        assert_eq!((n.base.dsp_area, n.base.voice_rows), (128, 0));
         let j = needs_json(&f).unwrap();
-        assert_eq!(j["DSP_AREA"], 640);
+        assert_eq!(j["DSP_AREA"], 128);
         assert_eq!(j["INSTRUMENT_ROWS"], 1);
         assert_eq!(j["INSTRUMENT_TRACKS"], 2);
-        assert_eq!(j["INSTRUMENT_STATE"], 528);
+        assert_eq!(j["INSTRUMENT_STATE"], 32);
         assert!(
-            needs_text(&n)
-                .ends_with("instrument_rows 1, instrument_tracks 2, instrument_state 528")
+            needs_text(&n).ends_with("instrument_rows 1, instrument_tracks 2, instrument_state 32")
         );
         // a file without instruments says nothing of them
         let old = pack_keys(Some(&object()), &[], &dsp_section(100, 3), &opts()).unwrap();

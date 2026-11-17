@@ -364,7 +364,7 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
         let v2 = dsp_size >= 8
             && in_file(dsp_off, dsp_size, size)
             && rd32(f.add(dsp_off as usize + dkneeds::DSP_H_MAGIC as usize)) == dkneeds::DSP_MAGIC
-            && matches!(rd32(f.add(dsp_off as usize + dkneeds::DSP_H_VERSION as usize)), 7 | 8);
+            && dkneeds::instrument::is_instrument_version(rd32(f.add(dsp_off as usize + dkneeds::DSP_H_VERSION as usize)));
         let mut output_size = 0;
         if v2 {
             if crate::instrument::pending::policy().is_none() || crate::instrument::pending::occupied() {

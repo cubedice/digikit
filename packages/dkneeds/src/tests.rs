@@ -579,7 +579,35 @@ fn sample_track_record_v5_needs_kind_2_zero_blocks_and_no_overlap() {
     assert_eq!(of(&dkm(4, 0, &[], &dsp)), Err(Error::Dsp));
 }
 
-/// Canonical V7 section: two independent track states, no V1 voices.
+/// The canonical section of version 8 (`fixtures::v2_section`, shared with the loader's validator and patchkit) has needs: one row, two tracks
+/// of align8(12) state bytes. The tests below it edit a version 7 section, which only this reader takes.
+#[test]
+fn the_canonical_v2_section_has_needs() {
+    let section = crate::fixtures::v2_section();
+    assert_eq!(
+        instrument_section_needs(&section),
+        Ok(InstrumentNeeds {
+            rows: 1,
+            tracks: 2,
+            state_bytes: 32
+        })
+    );
+    let file = dkm(4, 0, &[], &section);
+    let n = needs_of_v2(&mut file.as_slice()).unwrap();
+    assert_eq!(
+        n.instruments,
+        InstrumentNeeds {
+            rows: 1,
+            tracks: 2,
+            state_bytes: 32
+        }
+    );
+    // align64(image 64 + bss 8 + the two states)
+    assert_eq!((n.base.dsp_area, n.base.voice_rows), (128, 0));
+    assert!(needs_of(&mut file.as_slice()).is_err());
+}
+
+/// A version 7 section (no text table): two independent track states, no V1 voices.
 fn dsp_section_v7() -> Vec<u8> {
     let mut s = vec![0u8; 160];
     for (at, value) in [
