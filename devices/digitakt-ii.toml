@@ -131,8 +131,8 @@ span_clock_hz = 132000000
 [limits]
 modules = 8
 machine_rows = 8
-arena_bytes = 491520 # 480 KiB: the fork gives 32 KiB of the arena to the firmware region, so the CANOPY, Overloop and PRISM adapters fit together on the Digitakt II (one runtime image, so both devices)
-stage_bytes = 151552 # 148 KiB: CANOPY with its 16-bit factory wavetables (147352 bytes) fits with 4200 to spare; the CANOPY patch set (`canopy-overloop`) needs the rest of cf.expansion and has about 4 KiB left there. Native card reads remain capped at 64 KiB
+arena_bytes = 524288
+stage_bytes = 151552 # 148 KiB: CANOPY with its 16-bit factory wavetables (147352 bytes) fits with 4200 to spare. With the machine, effect and sample services loaded from the card, the hardware image (`canopy-overloop-prism`) leaves about 80 KiB of cf.expansion. Native card reads remain capped at 64 KiB
 fx_slots = 3   # effects in the chain; core/dynfx reserves this many free effect rows for run-time effects (at most DK_FX_MAX = 4)
 send_slots = 2 # of them effects that run on a send bus (core/fx send route, the send page of the FX key: one knob each; at most the entries of [fx] send_indices)
 param_rows = 16
@@ -206,12 +206,10 @@ dsp_l2_excludes = [[0x200FA000, 0x200FE000]]
 # today (core/input and core/sample-pool, the stock sample pool adapter, are in both); a module such as digikit/remote is on exactly when its check mark in DIGIKIT > MODULES is set.
 [patch_sets]
 emulator = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/sample-pool"]
-# Real-device image. core/usb-bulk (inert until the usb-fast module is selected) and core/plusdrive-write (the +Drive writes usb-fast uses) are in: usb-fast requires both.
-device = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/sample-pool", "core/usb-bulk", "core/plusdrive-write", "core/sdhc-large"]
-# `device` plus core/usb-bulk-audio: the bulk OUT interface in USB AUDIO/MIDI (usb-fast without a take-over).
-device-audio-bulk = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/sample-pool", "core/usb-bulk", "core/usb-bulk-audio", "core/plusdrive-write", "core/sdhc-large"]
+# Real-device image. core/usb-bulk (inert until the usb-fast module is selected) and core/plusdrive-write (the +Drive writes usb-fast uses) are in: usb-fast requires both. core/usb-bulk-audio is in too: the bulk OUT interface in USB AUDIO/MIDI, so usb-fast works without changing USB CONFIG.
+device = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/sample-pool", "core/usb-bulk", "core/usb-bulk-audio", "core/plusdrive-write", "core/sdhc-large"]
 # `device` plus the optional black intro (core/introblank): the Workbench Firmware page picks it with its "Custom boot screen" toggle.
-device-introblank = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/sample-pool", "core/usb-bulk", "core/plusdrive-write", "core/introblank", "core/sdhc-large"]
+device-introblank = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/sample-pool", "core/usb-bulk", "core/usb-bulk-audio", "core/plusdrive-write", "core/introblank", "core/sdhc-large"]
 # Same roots as `emulator`; the name stays for the per-track sample tests (API 1.5).
 sample-tracks = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/sample-pool"]
 # `emulator` plus core/overdrive (the OVR TYPE device test).

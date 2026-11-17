@@ -17,8 +17,10 @@
         "devices": [
           "dt2"
         ],
+        "dsp": "sharc",
         "modules": [
-          "digikit/canopy"
+          "digikit/canopy",
+          "core/services/machines"
         ],
         "patchModules": [
           "core/instrument-play",
@@ -40,8 +42,10 @@
         "devices": [
           "dt2"
         ],
+        "dsp": "sharc",
         "modules": [
-          "digikit/canopy"
+          "digikit/canopy",
+          "core/services/machines"
         ],
         "patchModules": [
           "core/instrument-play",

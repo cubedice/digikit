@@ -10,8 +10,10 @@
         "devices": [
           "dt2"
         ],
+        "dsp": "sharc",
         "modules": [
-          "digikit/prism"
+          "digikit/prism",
+          "core/services/fx"
         ],
         "patchModules": [
           "core/phrase-ui",
@@ -21,7 +23,8 @@
         ],
         "plusdrive": true,
         "tags": [
-          "S:fx",
+          "A:core/dynfx",
+          "A:core/fxpages",
           "A:core/phrase-ui",
           "A:core/phrase-route"
         ]
@@ -33,9 +36,12 @@
         "devices": [
           "dt2"
         ],
+        "dsp": "sharc",
         "modules": [
           "digikit/prism",
-          "test/sine"
+          "test/sine",
+          "core/services/fx",
+          "core/services/machines"
         ],
         "patchModules": [
           "core/phrase-ui",
@@ -45,7 +51,8 @@
         ],
         "plusdrive": true,
         "tags": [
-          "S:fx",
+          "A:core/dynfx",
+          "A:core/fxpages",
           "A:core/phrase-ui",
           "A:core/phrase-route"
         ]
@@ -57,11 +64,14 @@
         "devices": [
           "dt2"
         ],
+        "dsp": "sharc",
         "modules": [
           "digikit/canopy",
           "digikit/overloop",
           "digikit/prism",
-          "digikit/remote"
+          "digikit/remote",
+          "core/services/fx",
+          "core/services/machines"
         ],
         "patchModules": [
           "core/input",
@@ -75,7 +85,8 @@
         ],
         "plusdrive": true,
         "tags": [
-          "S:fx",
+          "A:core/dynfx",
+          "A:core/fxpages",
           "A:core/phrase-ui",
           "A:core/phrase-route"
         ]

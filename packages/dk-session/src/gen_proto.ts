@@ -13,34 +13,26 @@ export const DSP_HEADER = 64;
 export const MAX_RECORDS = 32;
 export const MAX_RELOCS = 4096;
 export const MAX_IMPORTS = 32;
-export const MAX_CF_IMPORTS = 64;
+export const MAX_CF_IMPORTS = 128;
 export const MAX_STATE_VOICES = 64;
 export const MAX_STATE_BYTES = 16777216;
 export const GRANULE = 64;
 export const DSP_SLACK = 8;
 export const ARENA_HDR = 16;
-export const COLLECT_BYTES = 7486;
+export const COLLECT_BYTES = 1618;
 export const TABLE_MAGIC = 1145787458;
 export const TABLE_VERSION = 2;
 export const PROVIDER_MAX = 6;
 export const BIND_MAX = 24;
 export const INSTALL_SITES = 48;
+export const SLOTS_MAX = 16;
+export const INFO_MAX = 64;
 export const MAX_VOICES = 8;
 export const MAX_FX = 4;
 export const H_ROLE = 56;
 
 /** The services the runtime image provides itself: the names of `[handle] services` that no `.dks` provider supplies (a `[[service]]` without `rust` and with no static row). A module's NEEDS may name them; every other name needs a `.dks`. */
-export const RUNTIME_SERVICE_NAMES = [
-  'runtime',
-  'samples',
-  'machines',
-  'fx',
-  'ui',
-  'input',
-  'usb_bulk',
-  'dsp_link',
-  'sdhc_large',
-];
+export const RUNTIME_SERVICE_NAMES = ['runtime', 'ui', 'input', 'usb_bulk', 'dsp_link', 'sdhc_large'];
 
 /** The record kinds of a `.dkm` (`[records.kinds]`). */
 export const RECORD_KIND = {
@@ -336,6 +328,7 @@ export const LOG_KIND = {
   MODULE_COMMIT: 44,
   MODULE_LATCH: 45,
   DSP_LINK: 46,
+  FW_READY: 47,
 } as const;
 
 /** The kind of a LOG event by id: its name and the names of its five arguments ("-": not used). */
@@ -386,6 +379,7 @@ export const LOG_KINDS: Record<number, [string, [string, string, string, string,
   44: ['MODULE_COMMIT', ['index', 'rows', 'records_addr', 'records_size', '-']],
   45: ['MODULE_LATCH', ['index', 'machine', 'latched', '-', '-']],
   46: ['DSP_LINK', ['what', 'a', 'b', 'c', 'd']],
+  47: ['FW_READY', ['blocks', '-', '-', '-', '-']],
 };
 
 /** `MACHINE_FAULT` argument 1, low byte: what the DSP guard found. */

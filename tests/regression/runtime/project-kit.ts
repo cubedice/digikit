@@ -7,6 +7,7 @@ import { expect } from 'vitest';
 import { postRaw, readSectors } from './card-kit.ts';
 import { REDRAW, SETTLE, bounded, dspBytes, pickSine, word, type Rt } from './fx-live.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
+import { serviceSymbol } from './service-symbols.ts';
 import { overlayRecords } from './write-safety.ts';
 
 /**
@@ -167,9 +168,9 @@ export function machineHash(module: string, machine: string): number {
   return h & 0xffffff;
 }
 
-/** The type number the runtime assigned to `<module>:<machine>` in this boot (`DKRT_ASSIGN`: 3 header words, 8 map words, then 64 module indices, 64 keys, 64 types). */
+/** The type number the machines service assigned to `<module>:<machine>` in this boot (`DKRT_ASSIGN` of `machines.dks`: 3 header words, 8 map words, then 64 module indices, 64 keys, 64 types). */
 export async function dynType(session: Session, plan: RuntimePlan, module: string, machine: string): Promise<number> {
-  const base = planSymbol(plan, 'DKRT_ASSIGN');
+  const base = await serviceSymbol({ session }, plan, 'machines', 'DKRT_ASSIGN');
   const count = await word(session, base + 4);
   const want = machineHash(module, machine);
   for (let i = 0; i < count; i++) {
@@ -495,6 +496,9 @@ export function diffTables(a: Tables, b: Tables): string[] {
     out.push(`pages: ${JSON.stringify(sorted(a))} != ${JSON.stringify(sorted(b))}`);
   return out;
 }
+
+/** The type word of a free voice row of the DSP registry. */
+export const FREE_TYPE = 0xffff_ffff;
 
 /** The (type, pc) words of the eight voice rows of the DSP registry; a row is 24 words, `first` comes from the dyndsp info (word 6). */
 export async function voiceRows(session: Session, plan: RuntimePlan): Promise<[number, number][]> {

@@ -9,6 +9,7 @@ import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { planSymbol, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
 import { openDigikitMenu, waitEmulated } from '@digi/regression/runtime/port-compat.ts';
+import { putServices } from '@digi/regression/runtime/card-seed.ts';
 
 const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
 test('CANOPY movement through MIDI, setup, master transport and final audio', async () => {
@@ -31,6 +32,7 @@ test('CANOPY movement through MIDI, setup, master transport and final audio', as
     file = fs.readFileSync(path.join(root, 'out/patch/canopy-stage4.dkm'));
   await dk.put('modules/canopy.dkm', file);
   expect(await dk.verifyFile('modules/canopy.dkm', file)).toBe(true);
+  await putServices(dk, 'dt2', ['machines']);
   await dk.select(['modules/canopy.dkm']);
   await dk.restart();
   await dk.waitForBoot(undefined, 180_000);

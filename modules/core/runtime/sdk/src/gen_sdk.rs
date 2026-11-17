@@ -50,6 +50,7 @@ pub mod logk {
     pub const MODULE_COMMIT: u16 = 44;
     pub const MODULE_LATCH: u16 = 45;
     pub const DSP_LINK: u16 = 46;
+    pub const FW_READY: u16 = 47;
     pub const MENU_SELECT: u32 = 1;
     pub const MENU_RESTART: u32 = 2;
     pub const MENU_DEBUG: u32 = 3;
@@ -105,9 +106,6 @@ pub mod records {
         (KIND_NATIVE_PAGE_V2, LEN_NATIVE_PAGE_V2, "machines"),
         (KIND_LFO_SHAPE, LEN_LFO_SHAPE, "lfo"),
     ];
-    /// The kinds of the `samples` service: (kind, record length).
-    pub const KINDS_SAMPLES: [(u32, u32); 0] = [
-    ];
     /// The kinds of the `machines` service: (kind, record length).
     pub const KINDS_MACHINES: [(u32, u32); 6] = [
         (KIND_PARAM, LEN_PARAM),
@@ -125,12 +123,9 @@ pub mod records {
     pub const KINDS_LFO: [(u32, u32); 1] = [
         (KIND_LFO_SHAPE, LEN_LFO_SHAPE),
     ];
-    /// The services of `[handle] services`: the names a module's `NEEDS` may carry (hashed by `dkneeds::keys::name_hash`).
-    pub const HANDLE_SERVICES: [&str; 9] = [
+    /// The services of `[handle] services` that are in the runtime image (not the ones a `.dks` provides): the names a module's `NEEDS` meets without a provider (hashed by `dkneeds::keys::name_hash`).
+    pub const HANDLE_SERVICES: [&str; 6] = [
         "runtime",
-        "samples",
-        "machines",
-        "fx",
         "ui",
         "input",
         "usb_bulk",
@@ -317,6 +312,55 @@ pub mod proto {
         CAPK_DSP_VOICES,
         CAPK_INSTRUMENT_ROWS,
         CAPK_INSTRUMENT_TRACKS,
+    ];
+    /// The `name_hash` of `cap_<kind>` (the kind name in lower case) for each kind of `CAP_KINDS`: the name of the `[[info]]` entry of the image's info table that gives the kind's limit when no service answers (docs/PATCHING.md).
+    pub const CAP_INFO_HASHES: [u32; 18] = [
+        0x88b64095,
+        0x4905a3e2,
+        0x60285193,
+        0x5627108a,
+        0x981eb135,
+        0x0a60b4af,
+        0x240dcf06,
+        0x643dd0fb,
+        0x3a439d6d,
+        0x54f81d48,
+        0x8788708d,
+        0xc8a8f6fd,
+        0x549f20b1,
+        0x8a4e9248,
+        0x4ebaf5d9,
+        0xcb8f5ab7,
+        0x94edfcc3,
+        0x662ef4ea,
+    ];
+    /// The most a kind's limit may report (`ceiling` of the kind, a key of `[limits.max]`): the size of the arrays that hold its rows. `u32::MAX`: none.
+    pub const CAPMAX_MACHINE_ROWS: u32 = 8;
+    pub const CAPMAX_VOICE_ROWS: u32 = 8;
+    pub const CAPMAX_PARAM_ROWS: u32 = 16;
+    pub const CAPMAX_PAGE_ROWS: u32 = 8;
+    pub const CAPMAX_FX_SLOTS: u32 = 4;
+    pub const CAPMAX_MAP_ENTRIES: u32 = 8;
+    pub const CAPMAX_SEND_SLOTS: u32 = 2;
+    pub const CAP_CEILING: [u32; 18] = [
+        4294967295,
+        4294967295,
+        4294967295,
+        4294967295,
+        4294967295,
+        8,
+        8,
+        16,
+        8,
+        4,
+        8,
+        4294967295,
+        4294967295,
+        2,
+        4294967295,
+        4294967295,
+        4294967295,
+        4294967295,
     ];
     /// The resources a fit looks at: name, kind and what a person calls it.
     pub const CAP_FIT: [(&str, u8, &str); 14] = [
@@ -600,8 +644,8 @@ pub mod api {
         "dk_debug_speed_flags",
     ];
 
-    /// The names the runtime's own table holds (`IMPORTS`), in order: the imports without `requires`.
-    pub const BUILTIN_NAMES: [&str; 85] = [
+    /// The names the runtime's own table holds (`IMPORTS`), in order: the imports without `requires`, and not provided by a service file.
+    pub const BUILTIN_NAMES: [&str; 59] = [
         "memcpy",
         "memset",
         "memcmp",
@@ -648,38 +692,12 @@ pub mod api {
         "dk_hash32_update",
         "dk_hash32_finish",
         "dk_intro_take",
-        "dk_param_get",
-        "dk_param_set",
-        "dk_module_ctx_add_machine",
-        "dk_module_ctx_add_fx",
         "dk_record_add",
         "dk_service_declare_kind",
         "dk_service_declare_slot",
         "dk_service_declare_hook",
         "dk_service_declare_export",
         "dk_service_declare_resource",
-        "dk_machine_add_page",
-        "dk_fx_add_page",
-        "dk_page_add_param",
-        "dk_page_add_fx_param",
-        "dk_param_range",
-        "dk_param_glyph",
-        "dk_param_latched",
-        "dk_param_on_click",
-        "dk_page_canvas",
-        "dk_page_bind",
-        "dk_page_bind_local",
-        "dk_fx_routes",
-        "dk_fx_mix",
-        "dk_sample_pool_open",
-        "dk_sample_pool_add",
-        "dk_sample_pool_clear",
-        "dk_sample_pool_status",
-        "dk_sample_pool_info",
-        "dk_sample_pool_path",
-        "dk_sample_pool_set",
-        "dk_sample_pool_peaks",
-        "dk_sample_pool_peaks_window",
         "dk_debug_peek",
         "dk_debug_span_clock",
         "dk_debug_poll",
@@ -728,7 +746,7 @@ pub mod api {
     /// `dk_fw_block_read`: The firmware's eMMC block read: `bytes` (a multiple of 512) from `sector` into `buf`; 0 = ok. Reads the whole card, not only the store.
     pub type DkFwBlockReadFn = unsafe extern "C" fn(sector: u32, bytes: u32, buf: *mut u8) -> i32;
 
-    /// `dk_files_read`: Read a store file into `buf` (at most `cap` bytes); returns the file size, or a negative code. It uses the runtime's staging buffer. `files` is the handle of `dk_files_open`.
+    /// `dk_files_read`: Read a store file into `buf` (at most `cap` bytes); returns the file size, or a negative code: `E_NOT_FOUND` for a missing file or a folder, `E_SEL_PATH` for an empty path, `E_TOO_BIG` for a path over 159 bytes or a file larger than `cap`. It uses the runtime's staging buffer. `files` is the handle of `dk_files_open`.
     pub type DkFilesReadFn = unsafe extern "C" fn(files: *mut u8, path: *const u8, buf: *mut u8, cap: u32) -> i32;
 
     /// `dk_host_register`: Register the SysEx commands `first .. first + count` with `fn`. The range must lie inside one of the ranges sdk/sdk.toml [protocol.ranges] reserves and overlap no registered one; else it returns DK_E_CMD_RANGE. The range is released with the module. Returns 0. See <dk/platform/host.h>.

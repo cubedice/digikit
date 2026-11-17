@@ -1,6 +1,6 @@
 import { button, withinRuntimeDeadline, type Session } from '@digi/test-support';
 import { aggregate } from '../support.ts';
-import { deviceProfile, portAnchor } from './device-data.ts';
+import { deviceProfile, portAnchorAddress } from './device-data.ts';
 
 type PanelSession = Pick<Session, 'options' | 'status'> & {
   client: Pick<Session['client'], 'inputButton' | 'inputTurn' | 'memPeek'>;
@@ -16,8 +16,8 @@ export function acknowledgedPanel(session: PanelSession, { timeoutMs = 30_000, p
   const { device, firmware } = session.options;
   const profile = deviceProfile(device);
   if (profile.input.backend !== 'panel-uart') throw new Error(`Unsupported panel backend for ${device}`);
-  const maskLiteral = portAnchor(device, firmware, 'cf.input.site.key_decoder.prev_mask_lit');
-  const queueLiteral = portAnchor(device, firmware, 'cf.view.site.ui_loop.queue_lit');
+  const maskLiteral = portAnchorAddress(device, firmware, 'cf.input.site.key_decoder.prev_mask_lit');
+  const queueLiteral = portAnchorAddress(device, firmware, 'cf.view.site.ui_loop.queue_lit');
 
   async function edge(name: string | number, down: boolean): Promise<void> {
     const code = button(name);
@@ -128,7 +128,7 @@ export function acknowledgedPanel(session: PanelSession, { timeoutMs = 30_000, p
       await until(loop, (hits) => hits > before);
     };
     try {
-      const decoder = portAnchor(device, firmware, 'cf.input.fn.enc_decoder');
+      const decoder = portAnchorAddress(device, firmware, 'cf.input.fn.enc_decoder');
       if ((await word(decoder + 0x30)) !== 0x2440d5fc) throw new Error('Unexpected encoder pending-count instruction');
       const mapped = await word((await word(decoder + 0x10)) + 4 * (encoder - 1));
       if (mapped < 1 || mapped > profile.panel.encoders) throw new Error(`Invalid mapped encoder ${mapped}`);

@@ -4,7 +4,7 @@ import type { Session } from '@digi/test-support';
 import { expect } from 'vitest';
 import { acknowledgedPanel } from './panel-ack.ts';
 import { memory } from './memory.ts';
-import { portAnchor } from './device-data.ts';
+import { portAnchorAddress } from './device-data.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 import { waitEmulated } from './port-compat.ts';
 
@@ -22,7 +22,9 @@ export async function proveCanopyNativeAmp(session: Session, plan: RuntimePlan, 
   await expect.poll(() => scalar('_mi_envelope_records'), { timeout: 30_000 }).toBeGreaterThan(0);
   const recordAddress = await scalar('_mi_envelope_records');
   const table = async (name: string) =>
-    words(await peek(portAnchor(session.options.device, session.options.firmware, `dsp.voice.site.${name}`), 512));
+    words(
+      await peek(portAnchorAddress(session.options.device, session.options.firmware, `dsp.voice.site.${name}`), 512),
+    );
   const [attackTable, decayTable, holdTable] = await Promise.all([
     table('amp_attack_table'),
     table('amp_decay_table'),

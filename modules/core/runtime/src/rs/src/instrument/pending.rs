@@ -189,7 +189,7 @@ unsafe fn prepare(owner: &mut Owner, p: &mut Pending, ledger: &mut instrument_lo
     let bytes = core::slice::from_raw_parts(p.section as *const u8, p.section_size as usize);
     let Some(bounds) = descriptor_limits() else { return E_CONTRACT; };
     let Ok(section) = Section::parse(bytes, crate::device(), bounds) else { return E_FORMAT; };
-    let Ok(types) = crate::assign::resolve_instruments(&section, p.selection) else { return E_FORMAT; };
+    let Ok(types) = crate::instrument::resolve_types(&section, p.selection) else { return E_FORMAT; };
     let limits = Limits { l2: Range { start: 0x20000000, end: 0x20080000 },
         reset_frame: 20000, reset_overhead: 1000,
         process_total: policy[3].saturating_mul(policy[2]),

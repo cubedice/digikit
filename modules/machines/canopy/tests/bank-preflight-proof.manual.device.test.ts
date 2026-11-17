@@ -10,6 +10,7 @@ import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
+import { seedModules } from '@digi/regression/runtime/card-seed.ts';
 
 // Synthetic native bank-loader call on DigiKit's worker; emulator only.
 vi.setConfig({ hookTimeout: 600_000 });
@@ -18,12 +19,10 @@ if (process.env.DIGI_CANOPY_BANK_PREFLIGHT === '1') {
   const fixtureRoot = fs.realpathSync(path.join(repoRoot(), 'out'));
   const cardSeed = fs.mkdtempSync(path.join(fixtureRoot, 'canopy-bank-card-'));
   const moduleFile = moduleArtifact('dt2', 'digikit/canopy');
-  beforeAll(() => {
+  beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
-    const modules = path.join(cardSeed, 'digikit', 'modules');
-    fs.mkdirSync(modules, { recursive: true });
-    fs.copyFileSync(moduleFile, path.join(modules, 'canopy.dkm'));
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);

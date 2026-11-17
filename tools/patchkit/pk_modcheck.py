@@ -292,10 +292,21 @@ def _measure(mid: str, devices: list[str]) -> dict[str, dict]:
                 str(patchkit.binary()),
                 _daemon(dev),
                 debug_dkm=dbg,
+                services=_bound_services(dev, Path(tmp), [out, dbg]),
                 patch_set=patch_set,
                 dsp=dsp,
             )
     return per
+
+
+def _bound_services(dev: str, tmp: Path, files: list[Path]) -> list[Path]:
+    """The card services that the packed FILES need, bound to the stock firmware (`patchkit services`; module:check needs no Nx output)."""
+    from tools.patchkit import pk_services
+
+    return [
+        Path(s["bound_path"])
+        for s in pk_services.bound_services(dev, tmp / "svc-bound" / dev, files)
+    ]
 
 
 def _write_measured(

@@ -12,6 +12,7 @@ import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.t
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
+import { seedModules } from '@digi/regression/runtime/card-seed.ts';
 
 // This failing-baseline regression is not registered for ordinary device runs.
 // DIGI_CANOPY_PATTERN_PROOF selects unsafe emulator-only modules, never hardware.
@@ -23,12 +24,10 @@ if (enabled) {
   const fixtureRoot = fs.realpathSync(path.join(repoRoot(), 'out'));
   const cardSeed = fs.mkdtempSync(path.join(fixtureRoot, 'canopy-pattern-card-'));
   const moduleFile = moduleArtifact('dt2', 'digikit/canopy');
-  beforeAll(() => {
+  beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
-    const modules = path.join(cardSeed, 'digikit', 'modules');
-    fs.mkdirSync(modules, { recursive: true });
-    fs.copyFileSync(moduleFile, path.join(modules, 'canopy.dkm'));
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);

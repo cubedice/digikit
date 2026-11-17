@@ -26,4 +26,4 @@ pub const LIMIT_MODULES: u32 = 0x8;
 /// [limits] machine_rows (run-time machine and voice rows)
 pub const LIMIT_MACHINE_ROWS: u32 = 0x8;
 /// [limits] arena_bytes (the module arena)
-pub const LIMIT_ARENA_BYTES: u32 = 0x78000;
+pub const LIMIT_ARENA_BYTES: u32 = 0x80000;

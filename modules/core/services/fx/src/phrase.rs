@@ -2,6 +2,8 @@
 //! selects the route. Claiming it twice fails before allocating or publishing.
 //! It is a part of the fx service: the phrase effect is one effect row whose route, mix and page the image's phrase
 //! adapters own (core/phrase-control, core/phrase-ui, core/phrase-route). The service's DSP hooks call it (`records`).
+//! The service is a file of its own (`fx.dks`), so it has no link to the image: the three functions of the adapters it calls
+//! are `[[info]]` entries of their modules, found by name through `CoreApi::info` (`setup`).
 use core::ptr::addr_of_mut;
 use dkrt_abi::core_api::CoreApi;
 use dkrt_abi::dsp::{DspSec, Job, DSP_IMPORT_LEN, I_IMPORTS, I_NIMPORT};
@@ -12,12 +14,41 @@ use dkrt_sdk::*;
 const CONTROL: &[u8] = b"_phrase_control_info\0";
 /// The routing provider's DSP symbol: without it the image cannot route a phrase effect.
 const ROUTE: &[u8] = b"_phrase_route_info\0";
-extern "C" {
-    /// Optional symbols of core/phrase-ui and core/phrase-control: each resolves to 0 when its module is not in the image
-    /// (`[object] optional` of the runtime). A host test binary defines them (`tests/phrase_stubs.rs`).
-    fn phrase_bind(owner: u32, row: u32, page: u32, module: *const u8, title: *const u8);
-    fn phrase_control_tick();
-    fn phrase_ui_tick();
+/// `phrase_bind(owner, row, page, module, title)` of core/phrase-control.
+type BindFn = unsafe extern "C" fn(u32, u32, u32, *const u8, *const u8);
+type TickFn = unsafe extern "C" fn();
+
+/// The names of the `[[info]]` entries: each is the function itself (core/phrase-control: `phrase_bind`, `phrase_control_tick`; core/phrase-ui: `phrase_ui_tick`).
+pub const BIND_HASH: u32 = crate::fxpage::fnv1a(b"phrase_bind");
+pub const CONTROL_TICK_HASH: u32 = crate::fxpage::fnv1a(b"phrase_control_tick");
+pub const UI_TICK_HASH: u32 = crate::fxpage::fnv1a(b"phrase_ui_tick");
+
+/// The image's phrase functions as `setup` found them: an address, or 0 when its module is not in the image.
+struct Image {
+    bind: usize,
+    control_tick: usize,
+    ui_tick: usize,
+}
+static mut IMAGE: Image = Image {
+    bind: 0,
+    control_tick: 0,
+    ui_tick: 0,
+};
+fn image() -> &'static mut Image {
+    unsafe { &mut *addr_of_mut!(IMAGE) }
+}
+
+/// Find the phrase functions of the image (the service file's `setup`; a host test that gives its `FakeCore` the entries calls it too).
+/// An image without the phrase adapters leaves every address 0: a phrase effect is then refused by `check`.
+pub unsafe fn setup<C: CoreApi>(core: &C) {
+    let i = image();
+    i.bind = core.info(BIND_HASH) as usize;
+    i.control_tick = core.info(CONTROL_TICK_HASH) as usize;
+    i.ui_tick = core.info(UI_TICK_HASH) as usize;
+}
+unsafe fn phrase_bind(owner: u32, row: u32, page: u32, module: *const u8, title: *const u8) {
+    let f: BindFn = core::mem::transmute(image().bind);
+    f(owner, row, page, module, title)
 }
 #[derive(Clone, Copy)]
 struct Owner {
@@ -55,7 +86,7 @@ fn owner() -> &'static mut Owner {
     unsafe { &mut *addr_of_mut!(OWNER) }
 }
 pub unsafe fn available() -> bool {
-    core::hint::black_box(phrase_bind as usize) != 0
+    image().bind != 0
 }
 pub fn free() -> bool {
     owner().free()
@@ -147,19 +178,20 @@ pub unsafe fn admit(job: &Job) -> i32 {
 }
 
 pub unsafe fn tick() {
-    if core::hint::black_box(phrase_control_tick as usize) != 0 {
-        phrase_control_tick();
+    let i = image();
+    if i.control_tick != 0 {
+        let f: TickFn = core::mem::transmute(i.control_tick);
+        f();
     }
-    if core::hint::black_box(phrase_ui_tick as usize) != 0 {
-        phrase_ui_tick();
+    if i.ui_tick != 0 {
+        let f: TickFn = core::mem::transmute(i.ui_tick);
+        f();
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Owner;
-
-    include!("../tests/phrase_stubs.rs");
 
     // Local owner instances exercise the same transition code as the runtime
     // without racing unrelated loader tests' global module/transport fixtures.

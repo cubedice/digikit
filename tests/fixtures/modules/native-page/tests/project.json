@@ -7,8 +7,9 @@
     "runtimeAcceptance": [
       {
         "files": ["native-page.device.test.ts"],
+        "dsp": "sharc",
         "tags": ["A:core/ui"],
-        "modules": ["test/native-page"],
+        "modules": ["test/native-page", "core/services/machines"],
         "plusdrive": true
       }
     ]

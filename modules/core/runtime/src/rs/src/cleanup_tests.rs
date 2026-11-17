@@ -156,6 +156,7 @@ unsafe fn seed(completion: Completion, fx: bool, published: bool, queued: bool) 
     *st() = core::mem::zeroed();
     *dsp::ds() = core::mem::zeroed();
     *boot::info() = core::mem::zeroed();
+    dsp_loading();
     dsp::init_once();
     LINK = Link {
         completion,
@@ -353,6 +354,7 @@ fn invalidation_missing_ack_retains_and_stops() {
 #[test]
 fn fx_partial_cleanup_does_not_discard_publication() {
     let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _fx = crate::handlers::fx_fixture::LoadedFx::new();
     unsafe {
         seed(Completion::ErrorAt(3), true, true, true);
         pass();
@@ -363,6 +365,7 @@ fn fx_partial_cleanup_does_not_discard_publication() {
 #[test]
 fn missing_fx_info_retains_published_row() {
     let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _fx = crate::handlers::fx_fixture::LoadedFx::new();
     unsafe {
         seed(Completion::Ack, true, true, true);
         let _reset = NoFxInfoGuard;
@@ -403,6 +406,7 @@ fn acknowledged_voice_cleanup_reclaims_and_advances_queue() {
 #[test]
 fn acknowledged_fx_cleanup_reclaims_after_all_words() {
     let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _fx = crate::handlers::fx_fixture::LoadedFx::new();
     unsafe {
         successful_case(true, true);
         assert_eq!(LINK.accepted, 11);
@@ -458,6 +462,7 @@ fn attribution_names_the_module_of_every_site_the_watch_reports() {
     use crate::handlers::services;
     use dkrt_sdk::fault::{SITE_FX_MASTER, SITE_FX_SEND, SITE_NONE, SITE_VOICE};
     let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _fx = crate::handlers::fx_fixture::LoadedFx::new();
     unsafe {
         seed(Completion::Ack, false, true, false);
         let d = dsp::ds();
@@ -490,36 +495,38 @@ pub extern "C" fn sdhc_large_ctl(_: u32, _: u32) -> u32 {
     0
 }
 
-// The +Drive write adapter, absent in this host fixture (version 0 is refused).
+// The +Drive write adapter: absent in this host fixture (version 0 is refused) until a test installs the fake of `host_io::Pdw`.
 #[no_mangle]
 pub extern "C" fn dkpw_version() -> u32 {
-    0
+    crate::host_io::pdw_version()
 }
 #[no_mangle]
-pub extern "C" fn dkpw_begin(_: *const u8, _: u32, _: *const u8, _: u32) -> i32 {
-    -48
+pub extern "C" fn dkpw_begin(path: *const u8, size: u32, hash4: *const u8, flags: u32) -> i32 {
+    crate::host_io::pdw_begin(path, size, hash4, flags)
 }
 #[no_mangle]
-pub extern "C" fn dkpw_write(_: *const u8, _: u32) -> i32 {
-    -48
+pub extern "C" fn dkpw_write(buf: *const u8, len: u32) -> i32 {
+    crate::host_io::pdw_write(buf, len)
 }
 #[no_mangle]
-pub extern "C" fn dkpw_close(_: *mut u8) -> i32 {
-    -48
+pub extern "C" fn dkpw_close(out: *mut u8) -> i32 {
+    crate::host_io::pdw_close(out)
 }
 #[no_mangle]
-pub extern "C" fn dkpw_abort() {}
-#[no_mangle]
-pub extern "C" fn dkpw_delete(_: *const u8) -> i32 {
-    -48
+pub extern "C" fn dkpw_abort() {
+    crate::host_io::pdw_abort()
 }
 #[no_mangle]
-pub extern "C" fn dkpw_recover(_: *mut u32) -> i32 {
-    -48
+pub extern "C" fn dkpw_delete(path: *const u8) -> i32 {
+    crate::host_io::pdw_delete(path)
+}
+#[no_mangle]
+pub extern "C" fn dkpw_recover(out: *mut u32) -> i32 {
+    crate::host_io::pdw_recover(out)
 }
 #[no_mangle]
 pub extern "C" fn dkpw_commit() -> i32 {
-    0
+    crate::host_io::pdw_commit()
 }
 #[no_mangle]
 pub extern "C" fn dkpw_staging() -> *const u8 {
@@ -564,30 +571,30 @@ pub(crate) fn lenient_tick_drop() {
 }
 
 /// The other firmware anchors that the platform tests keep reachable: nothing in the host tests may write the card or send MIDI through them
-/// (the tests of platform behaviour use `FakePlatform`), and the effect pages' table is not in the image.
+/// (the tests of platform behaviour use `FakePlatform`).
 #[export_name = "cf.storage.fn.block.write"]
-pub extern "C" fn block_write(_: u32, _: u32, _: *const u8) -> i32 {
-    panic!("host tests must not write firmware storage")
+pub extern "C" fn block_write(sector: u32, bytes: u32, buf: *const u8) -> i32 {
+    match crate::host_io::card_write(sector, bytes, buf) {
+        Some(r) => r,
+        None => panic!("host tests must not write firmware storage"),
+    }
 }
 #[export_name = "cf.midi.fn.send"]
 pub extern "C" fn midi_send(_: u32, _: *const u8, _: u32) {
     panic!("host tests must not send MIDI through the firmware")
 }
+/// The image's info table: a function here, not a table with the magic, so every lookup through the real platform is null.
 #[no_mangle]
-pub extern "C" fn fxpages_info() {}
-/// The optional phrase symbols of the image (core/phrase-ui, core/phrase-control) that the fx service links: present here, so
-/// `dkrt_svc_fx::phrase::available()` is true in this binary; no test of the runtime loads a module that imports the phrase control.
-#[no_mangle]
-pub unsafe extern "C" fn phrase_bind(_: u32, _: u32, _: u32, _: *const u8, _: *const u8) {}
-#[no_mangle]
-pub unsafe extern "C" fn phrase_control_tick() {}
-#[no_mangle]
-pub unsafe extern "C" fn phrase_ui_tick() {}
+pub extern "C" fn dkrt_info_table() {}
 
 #[export_name = "cf.storage.fn.block.read"]
-pub extern "C" fn block_read(_: u32, _: u32, _: *mut u8) -> i32 {
-    panic!("host cleanup tests must not read firmware storage")
+pub extern "C" fn block_read(sector: u32, bytes: u32, buf: *mut u8) -> i32 {
+    match crate::host_io::card_read(sector, bytes, buf) {
+        Some(r) => r,
+        None => panic!("host cleanup tests must not read firmware storage"),
+    }
 }
+
 
 unsafe extern "C" fn test_sink(_: *const crate::dlog::Ev) {}
 

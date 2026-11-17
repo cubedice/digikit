@@ -41,3 +41,9 @@ devices = ["dt2"]
 
 [[claim]]
 resource = "cf.page.site.fx_update_slot"
+
+# The functions the fx service file (`fx.dks`) calls: it has no link to the image and finds each by name in the info table.
+[[info]]
+name = "loop_ui_paint"
+symbol = "loop_ui_paint"
+devices = ["dt2"]

@@ -39,6 +39,12 @@ then frees the original storage. Repeat draws reuse that allocation. A null
 allocation leaves the original vector intact and bounds the selected page to
 its existing count. A larger existing capacity and its page IDs are preserved.
 
+Since the machine hooks moved to the service file (`machines.dks`, 2026-11-18) the draw hook `mf_srcpage` is in
+`modules/core/services/machines/dks/src/hooks-dt2.s`. A service file has no link to the image, so core/machines
+publishes `mf_src_page_count`, `mf_src_apply_pages` and the optional `instrument_mod_param` in the info table
+`machines_ext_info` (`mf_ext_info` in `src/cf/dt2/machines.s`), and the service copies it into `MF_EXT` at its
+`setup`. An image without the table keeps upstream's one-page rule.
+
 This ownership follows the current DT2 1.17 bytes: ParameterPageView constructor
 `0x4006b260` allocates the vector at `0x4006b334` through `0x4011ebd0`, a thunk
 to the existing `cf.mem.fn.new` anchor at `0x4011e954`. SourcePageView's temporary

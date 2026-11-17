@@ -13,6 +13,7 @@ import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { patchkit } from '@digi/regression/runtime/patchkit.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { openDigikitMenu } from '@digi/regression/runtime/flows/menu.ts';
+import { seedModules } from '@digi/regression/runtime/card-seed.ts';
 
 /**
  * What a load of CANOPY takes is what its file says (docs/design/digikit-dkm.md, "Needs are inferred"). CANOPY is a file of persistent
@@ -26,12 +27,10 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
   const fixtureRoot = fs.realpathSync(path.join(repoRoot(), 'out'));
   const cardSeed = fs.mkdtempSync(path.join(fixtureRoot, 'canopy-needs-card-'));
   const moduleFile = moduleArtifact('dt2', 'digikit/canopy');
-  beforeAll(() => {
+  beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
-    const modules = path.join(cardSeed, 'digikit', 'modules');
-    fs.mkdirSync(modules, { recursive: true });
-    fs.copyFileSync(moduleFile, path.join(modules, 'canopy.dkm'));
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);

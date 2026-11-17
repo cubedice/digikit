@@ -180,6 +180,10 @@ struct Import {
     /// A test-only import (of a test-only service): not in the runtime's table, the public headers or the docs.
     #[serde(default)]
     test: bool,
+    /// The import is a function of a service file (`[[export]]` of a `.dks`): the runtime's table has no entry for it, and a module resolves it at load from the provider's
+    /// exports (`dk_param_get` of `machines.dks`).
+    #[serde(default)]
+    provided: bool,
 }
 /// The opaque handle types, services and call contexts of the service imports: `[handle]` of `sdk/sdk.toml`.
 #[derive(Deserialize)]
@@ -283,6 +287,8 @@ struct CapKind {
     #[serde(default)]
     fit: bool,
     label: Option<String>,
+    /// The key of `[limits.max]` that is the most the consumers of this kind can hold (their array sizes): the reported limit never exceeds it.
+    ceiling: Option<String>,
 }
 /// `[records]`: the record kinds of the `register` section and the resources of a module's `uses` (R7).
 #[derive(Deserialize)]
@@ -391,6 +397,8 @@ struct FormatLimits {
     provider_max: u32,
     bind_max: u32,
     install_sites: u32,
+    slots_max: u32,
+    info_max: u32,
 }
 /// The value of a `[format] consts` entry (the header offsets), 0 if it is missing.
 fn header_const(sdk: &Sdk, name: &str) -> u32 {
@@ -422,6 +430,8 @@ fn format_limits(sdk: &Sdk) -> Vec<(&'static str, u32)> {
         ("PROVIDER_MAX", f.provider_max),
         ("BIND_MAX", f.bind_max),
         ("INSTALL_SITES", f.install_sites),
+        ("SLOTS_MAX", f.slots_max),
+        ("INFO_MAX", f.info_max),
         ("MAX_VOICES", sdk.limits.max.machine_rows as u32),
         ("MAX_FX", sdk.limits.max.fx_slots as u32),
     ]
@@ -472,16 +482,18 @@ fn records_consts(sdk: &Sdk, indent: &str) -> String {
         }
         let _ = writeln!(s, "{indent}];");
     }
+    // a service of `[handle] services` that a `.dks` provides (no `rust` row) is not the runtime's: the planner must load its provider, so it is not in this list
+    let runtime_services = runtime_service_names(sdk);
     let _ = writeln!(
         s,
-        "{indent}/// The services of `[handle] services`: the names a module's `NEEDS` may carry (hashed by `dkneeds::keys::name_hash`)."
+        "{indent}/// The services of `[handle] services` that are in the runtime image (not the ones a `.dks` provides): the names a module's `NEEDS` meets without a provider (hashed by `dkneeds::keys::name_hash`)."
     );
     let _ = writeln!(
         s,
         "{indent}pub const HANDLE_SERVICES: [&str; {}] = [",
-        sdk.handle.services.len()
+        runtime_services.len()
     );
-    for n in &sdk.handle.services {
+    for n in &runtime_services {
         let _ = writeln!(s, "{indent}    {n:?},");
     }
     let _ = writeln!(s, "{indent}];");
@@ -563,9 +575,21 @@ fn rust_services(sdk: &Sdk) -> String {
         .iter()
         .map(|d| format!("{:?}", d.name))
         .collect::<Vec<_>>();
+    // Without in-crate rows there is no `HEAD`: a static of zero size has no section, and a pointer to it would be a relocation against nothing.
+    let (head, table) = if n == 0 {
+        (
+            String::new(),
+            "ServiceTable::new(&[], &REAL_CORE)".to_string(),
+        )
+    } else {
+        (
+            format!("static HEAD: RowPtrs<{n}> = RowPtrs::of(&SERVICES);\n\n"),
+            "ServiceTable::new(&HEAD.0, &REAL_CORE)".to_string(),
+        )
+    };
     let _ = write!(
         s,
-        "/// The name of every `[[service]]`, in file order: the ordinal of a service. The rows a `.dks` adds follow the in-crate rows sorted by it (`svc_rows.rs`).\npub const ORDER: [&str; {}] = [{}];\n\n/// The length of the row table: the in-crate rows, then room for `PROVIDER_MAX` rows of loaded service files.\npub const ROWS_LEN: usize = STATIC + dkrt_sdk::PROVIDER_MAX;\n\n/// The row table: the in-crate rows first, then the loaded ones (written by `svc_rows.rs` only; the null tail is not part of any table).\npub static mut ROWS: [*const ServiceRow; ROWS_LEN] = rows_with_tail(&SERVICES);\n\nstatic HEAD: RowPtrs<{n}> = RowPtrs::of(&SERVICES);\n\n/// The table of the in-crate rows alone (the declare check and `is_runtime_service`).\npub const TABLE: ServiceTable = ServiceTable::new(&HEAD.0, &REAL_CORE);\n",
+        "/// The name of every `[[service]]`, in file order: the ordinal of a service. The rows a `.dks` adds follow the in-crate rows sorted by it (`svc_rows.rs`).\npub const ORDER: [&str; {}] = [{}];\n\n/// The length of the row table: the in-crate rows, then room for `PROVIDER_MAX` rows of loaded service files.\npub const ROWS_LEN: usize = STATIC + dkrt_sdk::PROVIDER_MAX;\n\n/// The row table: the in-crate rows first, then the loaded ones (written by `svc_rows.rs` only; the null tail is not part of any table).\npub static mut ROWS: [*const ServiceRow; ROWS_LEN] = rows_with_tail(&SERVICES);\n\n{head}/// The table of the in-crate rows alone (the declare check and `is_runtime_service`).\npub const TABLE: ServiceTable = {table};\n",
         order.len(),
         order.join(", ")
     );
@@ -677,6 +701,22 @@ pub struct LimitsMax {
     pub page_rows: u64,
     pub machine_rows: u64,
     pub stage_bytes: u64,
+}
+
+/// The value of the `[limits.max]` key `key`.
+fn limits_max_value(m: &LimitsMax, key: &str) -> Option<u64> {
+    Some(match key {
+        "modules" => m.modules,
+        "map_entries" => m.map_entries,
+        "fx_slots" => m.fx_slots,
+        "send_slots" => m.send_slots,
+        "dsp_area_bytes" => m.dsp_area_bytes,
+        "param_rows" => m.param_rows,
+        "page_rows" => m.page_rows,
+        "machine_rows" => m.machine_rows,
+        "stage_bytes" => m.stage_bytes,
+        _ => return None,
+    })
 }
 
 /// `DK_PAGE_KNOBS` (`[page] knobs` in `sdk/sdk.toml`): the encoders on a page.
@@ -1117,6 +1157,48 @@ fn proto_consts(sdk: &Sdk, indent: &str, status_ty: &str) -> String {
     let _ = writeln!(s, "{indent}pub const CAP_KINDS: [u8; {}] = [", kinds.len());
     for (n, _) in &kinds {
         let _ = writeln!(s, "{indent}    CAPK_{n},");
+    }
+    let _ = writeln!(s, "{indent}];");
+    let _ = writeln!(
+        s,
+        "{indent}/// The `name_hash` of `cap_<kind>` (the kind name in lower case) for each kind of `CAP_KINDS`: the name of the `[[info]]` entry of the image's info table that gives the kind's limit when no service answers (docs/PATCHING.md)."
+    );
+    let _ = writeln!(
+        s,
+        "{indent}pub const CAP_INFO_HASHES: [u32; {}] = [",
+        kinds.len()
+    );
+    for (n, _) in &kinds {
+        let _ = writeln!(
+            s,
+            "{indent}    {:#010x},",
+            dkneeds::keys::name_hash(&format!("cap_{}", n.to_lowercase()))
+        );
+    }
+    let _ = writeln!(s, "{indent}];");
+    let _ = writeln!(
+        s,
+        "{indent}/// The most a kind's limit may report (`ceiling` of the kind, a key of `[limits.max]`): the size of the arrays that hold its rows. `u32::MAX`: none."
+    );
+    for (n, _) in &kinds {
+        if let Some(key) = &sdk.capacity.kinds[*n].ceiling {
+            let c = limits_max_value(&sdk.limits.max, key).unwrap_or(0);
+            let _ = writeln!(s, "{indent}pub const CAPMAX_{n}: u32 = {c};");
+        }
+    }
+    let _ = writeln!(
+        s,
+        "{indent}pub const CAP_CEILING: [u32; {}] = [",
+        kinds.len()
+    );
+    for (n, _) in &kinds {
+        let c = match &sdk.capacity.kinds[*n].ceiling {
+            None => u32::MAX as u64,
+            Some(key) => limits_max_value(&sdk.limits.max, key).unwrap_or_else(|| {
+                panic!("capacity kind {n}: ceiling {key:?} is no key of [limits.max]")
+            }),
+        };
+        let _ = writeln!(s, "{indent}    {c},");
     }
     let _ = writeln!(s, "{indent}];");
     let mut fit: Vec<_> = sdk.capacity.kinds.iter().filter(|(_, k)| k.fit).collect();
@@ -2484,9 +2566,9 @@ fn rust_api(sdk: &Sdk) -> Result<String> {
     s.push_str("    ];\n");
     let own: Vec<_> = imps
         .iter()
-        .filter(|(im, _)| im.requires.is_none())
+        .filter(|(im, _)| im.requires.is_none() && !im.provided)
         .collect();
-    s.push_str("\n    /// The names the runtime's own table holds (`IMPORTS`), in order: the imports without `requires`.\n");
+    s.push_str("\n    /// The names the runtime's own table holds (`IMPORTS`), in order: the imports without `requires`, and not provided by a service file.\n");
     let _ = writeln!(s, "    pub const BUILTIN_NAMES: [&str; {}] = [", own.len());
     for (im, _) in &own {
         let _ = writeln!(s, "        {:?},", im.name);
@@ -3030,13 +3112,14 @@ pub(crate) fn abi_inputs(text: &str) -> Result<AbiInputs> {
 
 /// The files of `dkrt-abi` that a service file and the runtime share across the boundary (interfaces B and C), relative to the repository root. `gen_svc_abi.rs`
 /// itself and the other files of the crate are not in the list.
-pub const SVC_ABI_FILES: [&str; 6] = [
+pub const SVC_ABI_FILES: [&str; 7] = [
     "modules/core/runtime/abi/src/service.rs",
     "modules/core/runtime/abi/src/core_api.rs",
     "modules/core/runtime/abi/src/link.rs",
     "modules/core/runtime/abi/src/dsp.rs",
     "modules/core/runtime/abi/src/registry.rs",
     "modules/core/runtime/abi/src/core_imports.rs",
+    "modules/core/runtime/abi/src/platform.rs",
 ];
 
 /// FNV-1a (32 bits) over each file as its name, a zero byte, its bytes and a zero byte, in the given order. Never 0 (0 means "no interface B or C" in the

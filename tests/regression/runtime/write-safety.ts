@@ -208,16 +208,20 @@ export function runtimeWatchEnv(planFile: string, out: string): Record<string, s
   };
 }
 
-function runtimePolicy(device: Device, name: SafetyPolicy) {
+/**
+ * The settings copies (both) are written by the services of the card that keep settings: the fx routes (policy `fx-routes`) and
+ * the machines service (sticky type map, key `machines.types`, flushed on the first boot that loads a machine on a fresh card).
+ * Policy `settings` allows them for a test whose module keeps a settings record of its own.
+ */
+function runtimePolicy(device: Device, name: SafetyPolicy, cardServices: readonly string[]) {
   if (name !== 'default' && name !== 'settings' && name !== 'fx-kit' && name !== 'fx-routes')
     throw new Error(`unknown runtime safety policy: ${String(name)}`);
   const store = cardStore(device);
   return {
     name,
     firmware_areas: name === 'fx-kit' || name === 'fx-routes' ? KIT_AREAS[device] : [],
-    // These scenarios persist a record that fits in the first sector of each
-    // settings copy. Other sectors remain forbidden, even within that copy.
-    store_extra: name === 'settings' || name === 'fx-routes' ? [store.setA, store.setB] : [],
+    store_extra:
+      name === 'settings' || name === 'fx-routes' || cardServices.includes('machines') ? [store.setA, store.setB] : [],
   };
 }
 
@@ -243,13 +247,15 @@ export function runtimeSafety(
   device: Device,
   output: string,
   overlays: string[],
-  minEmulators = 1,
-  policy: SafetyPolicy = 'default',
-  storeExtra: readonly number[] = [],
+  minEmulators: number,
+  policy: SafetyPolicy,
+  storeExtra: readonly number[],
+  /** Names of the service files on the card (`neededServices`): a settings writer widens the policy. */
+  cardServices: readonly string[],
 ) {
   if (minEmulators < 1 || !overlays.length)
     throw new Error('runtime safety needs observed emulators and exported overlays');
-  const facts = runtimePolicy(device, policy);
+  const facts = runtimePolicy(device, policy, cardServices);
   facts.store_extra = [...new Set([...facts.store_extra, ...storeExtra])];
   const { dir, name: stem } = path.parse(output);
   const indexed = (suffix: string) => {

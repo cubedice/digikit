@@ -12,6 +12,7 @@ import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.t
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { cardAfter, overlayRecords } from '@digi/regression/runtime/write-safety.ts';
 import { canopyPanel } from './canopy-panel.ts';
+import { seedModules } from '@digi/regression/runtime/card-seed.ts';
 
 describeOn('dt2', 'CANOPY Sound transfer on the DT2', () => {
   // CANOPY Sound persistence through the stock preset transfers (finding 351):
@@ -25,12 +26,10 @@ describeOn('dt2', 'CANOPY Sound transfer on the DT2', () => {
   const fixtureRoot = fs.realpathSync(path.join(repoRoot(), 'out'));
   const cardSeed = fs.mkdtempSync(path.join(fixtureRoot, 'canopy-transfer-card-'));
   const moduleFile = moduleArtifact('dt2', 'digikit/canopy');
-  beforeAll(() => {
+  beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
-    const modules = path.join(cardSeed, 'digikit', 'modules');
-    fs.mkdirSync(modules, { recursive: true });
-    fs.copyFileSync(moduleFile, path.join(modules, 'canopy.dkm'));
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);

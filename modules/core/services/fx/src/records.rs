@@ -5,7 +5,9 @@ use dkrt_abi::core_api::CoreApi;
 use dkrt_abi::dsp::{DspSec, Job, MAX_FX};
 use dkrt_abi::mem::rd32;
 use dkrt_abi::registry::each;
-use dkrt_abi::service::{tick_phase, ApplyCtx, CheckCtx, Claim, Declare, RowWrite, Service};
+use dkrt_abi::service::{
+    tick_phase, ApplyCtx, CheckCtx, Claim, Declare, ModuleCommitCtx, RowWrite, Service,
+};
 use dkrt_sdk::*;
 
 /// The fx service; every method works over the core it is given.
@@ -64,7 +66,16 @@ impl<C: CoreApi> Service<C> for Fx {
     }
 
     unsafe fn remove(core: &C, owner: u8) {
+        crate::build::release(owner as usize - 1);
         fxpage::remove(core, owner);
+    }
+
+    unsafe fn module_begin(_core: &C, rec: usize) {
+        crate::build::begin(rec)
+    }
+
+    unsafe fn module_commit(core: &C, rec: usize, c: &ModuleCommitCtx) -> i32 {
+        crate::build::commit(core, rec, c)
     }
 
     unsafe fn tick(core: &C, phase: u32) {
@@ -72,6 +83,10 @@ impl<C: CoreApi> Service<C> for Fx {
             fxpage::tick(core);
             crate::phrase::tick();
         }
+    }
+
+    unsafe fn fx_entry(core: &C, index: u32, out: &mut DkrtFx) -> i32 {
+        fxsend::fx_entry(core, index, out)
     }
 
     unsafe fn cap(core: &C, kind: u8) -> Option<(u32, u32)> {
@@ -92,16 +107,6 @@ impl<C: CoreApi> Service<C> for Fx {
         } else {
             None
         }
-    }
-
-    unsafe fn declare_fx(
-        core: &C,
-        rec: usize,
-        ordinal: u32,
-        flags: Option<u32>,
-        par: Option<[u32; 8]>,
-    ) -> Option<bool> {
-        Some(crate::dsp::fx_set_declared(core, rec, ordinal, flags, par))
     }
 
     unsafe fn dsp_check_sections(core: &C, sec: &DspSec) -> i32 {

@@ -12,6 +12,7 @@ import { waitInstrumentReady } from './instrument-ready.ts';
 import { acknowledgedPanel } from './panel-ack.ts';
 import { loadPanelProject, savePanelProject } from './project-kit.ts';
 import { sessionRt } from './port-compat.ts';
+import { seedModules } from './card-seed.ts';
 
 // Panel recording and note-paired absolute playback of a packed CANOPY lock
 // (finding 347, stage 3). This uses a disposable emulator card and image.
@@ -21,13 +22,11 @@ const options = liveOptions('dt2');
 const fixtureRoot = fs.realpathSync(path.join(repoRoot(), 'out'));
 const cardSeed = fs.mkdtempSync(path.join(fixtureRoot, 'canopy-lock-card-'));
 const moduleFile = path.resolve(repoRoot(), process.env.CANOPY_LOCK_PACKAGE ?? 'out/patch/canopy-fm-release.dkm');
-beforeAll(() => {
+beforeAll(async () => {
   for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav']) {
     fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
   }
-  const modules = path.join(cardSeed, 'digikit', 'modules');
-  fs.mkdirSync(modules, { recursive: true });
-  fs.copyFileSync(moduleFile, path.join(modules, 'canopy.dkm'));
+  await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
 });
 afterAll(() => {
   const owned = fs.realpathSync(cardSeed);

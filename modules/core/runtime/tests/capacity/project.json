@@ -13,9 +13,11 @@
         "files": [
           "capacity.device.test.ts"
         ],
+        "dsp": "sharc",
         "tags": ["C:loading"],
         "modules": [
-          "test/dyn-fx-gain"
+          "test/dyn-fx-gain",
+          "core/services/fx"
         ],
         "plusdrive": true
       },
@@ -23,9 +25,12 @@
         "files": [
           "commit.device.test.ts"
         ],
-        "tags": ["C:loading", "S:fx", "S:machines"],
+        "dsp": "sharc",
+        "tags": ["C:loading", "S:machines"],
         "modules": [
-          "test/commit-demo"
+          "test/commit-demo",
+          "core/services/machines",
+          "core/services/fx"
         ],
         "plusdrive": true
       }

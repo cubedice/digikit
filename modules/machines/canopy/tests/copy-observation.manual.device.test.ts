@@ -12,6 +12,7 @@ import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runti
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
+import { seedModules } from '@digi/regression/runtime/card-seed.ts';
 
 // Unregistered emulator-only snapshot for copy tracing. The experimental
 // modules are unsafe for hardware. A snapshot alone proves no ownership.
@@ -22,13 +23,11 @@ const options = liveOptions('dt2', { fresh: true });
 const fixtureRoot = fs.realpathSync(path.join(repoRoot(), 'out'));
 const cardSeed = enabled ? fs.mkdtempSync(path.join(fixtureRoot, 'canopy-copy-trace-card-')) : undefined;
 const moduleFile = moduleArtifact('dt2', 'digikit/canopy');
-beforeAll(() => {
+beforeAll(async () => {
   if (!cardSeed) return;
   for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
     fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
-  const modules = path.join(cardSeed, 'digikit', 'modules');
-  fs.mkdirSync(modules, { recursive: true });
-  fs.copyFileSync(moduleFile, path.join(modules, 'canopy.dkm'));
+  await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
 });
 afterAll(() => {
   if (!cardSeed) return;

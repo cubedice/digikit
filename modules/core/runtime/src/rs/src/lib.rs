@@ -18,16 +18,15 @@ use dkrt_sdk::*;
 mod api;
 mod arena;
 pub mod core_api;
-#[cfg(not(test))]
-mod fw;
-mod native;
-pub mod assign;
 pub mod collect;
 mod handlers;
+pub mod storage;
+pub(crate) use storage::storage_adapter;
+pub use storage::card::{block_write, block_write_with};
+pub use storage::{card, store, store_writer};
 #[rustfmt::skip]
 mod gen_services;
 pub mod boot;
-pub mod card;
 pub mod fault;
 pub mod dlog;
 mod dsp;
@@ -36,7 +35,6 @@ pub mod entry;
 mod instrument;
 mod gen_abi_check;
 mod loader;
-pub mod params;
 pub mod registry;
 pub mod scan;
 pub mod settings;
@@ -49,8 +47,6 @@ pub mod speed;
 mod intro;
 mod safe_screen;
 mod sha256;
-pub mod store;
-pub mod store_writer;
 mod io;
 mod invariants;
 mod watch;
@@ -62,7 +58,6 @@ mod svc_rows;
 mod mailbox;
 mod plan;
 mod platform;
-mod storage_adapter;
 mod safe_mode;
 mod selection;
 mod report;
@@ -118,8 +113,6 @@ pub(crate) unsafe extern "C" fn debug_selected_params(out: *mut i16, n: u32) -> 
     track as i32
 }
 
-pub(crate) unsafe extern "C" fn imp_param_get(track: u32, word: u32) -> i32 { handlers::exports::param_get(track, word) }
-pub(crate) unsafe extern "C" fn imp_param_set(track: u32, word: u32, raw: i32) -> i32 { handlers::exports::param_set(track, word, raw) }
 
 
 #[cfg(test)]
@@ -136,5 +129,9 @@ mod contract_tests;
 mod svc_contract_tests;
 #[cfg(test)]
 mod fake_storage;
+#[cfg(test)]
+mod host_io;
+#[cfg(test)]
+mod store_tests;
 
 
