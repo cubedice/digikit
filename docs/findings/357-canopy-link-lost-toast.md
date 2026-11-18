@@ -52,7 +52,8 @@ valid), so the struct keeps its size and offsets.
 
 ## Open
 
-- **[O]** Whether this toast is all the owner saw as "link lost" after the install of 2026-11-17. The fault of finding 355
-  (a faulted note transport, `RECOVER OR RESTART` in the INPUT menu) is a different state; its cause is still not known.
+- **[D]** The owner describes what they saw after the install of 2026-11-17 as a message at the top that goes away by
+  itself, which is this toast. The fault of finding 355 (a faulted note transport, `RECOVER OR RESTART` in the INPUT
+  menu) is a different state; its cause is still not known.
 - **[O]** The hand-over itself takes a few UI ticks, during which the keyboard caption is empty. Its length on the device
   was not measured.
