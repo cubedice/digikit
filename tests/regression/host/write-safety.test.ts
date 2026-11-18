@@ -144,7 +144,11 @@ describe.each(['dt2', 'dn2'] as const)('runtime safety on %s', (device) => {
 
   test('fx-routes also allows the settings copies, and nothing else in the store', () => {
     expect(check(device, [kitLo, store.setA, store.setB], 'fx-routes').pass).toBe(true);
-    for (const sector of [kitLo - 1, kitHi, store.first, store.setA + 1, store.setB + 1]) {
+    // a settings record longer than a sector uses the next sectors of its copy (16 sectors each)
+    expect(check(device, [store.setA + 1, store.setA + 15, store.setB + 1, store.setB + 15], 'fx-routes').pass).toBe(
+      true,
+    );
+    for (const sector of [kitLo - 1, kitHi, store.first, store.setA - 1]) {
       expect(check(device, [sector], 'fx-routes').pass, `sector ${sector}`).toBe(false);
     }
   });

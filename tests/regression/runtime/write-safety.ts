@@ -220,8 +220,15 @@ function runtimePolicy(device: Device, name: SafetyPolicy, cardServices: readonl
   return {
     name,
     firmware_areas: name === 'fx-kit' || name === 'fx-routes' ? KIT_AREAS[device] : [],
+    // The settings scenarios persist a record that may use the whole of each settings copy (CANOPY's working copy alone
+    // is 660 bytes, more than a sector). A card with the machines service writes the first sector of each copy under
+    // any policy. Every other store sector remains forbidden.
     store_extra:
-      name === 'settings' || name === 'fx-routes' || cardServices.includes('machines') ? [store.setA, store.setB] : [],
+      name === 'settings' || name === 'fx-routes'
+        ? Array.from({ length: SETTINGS_SECTORS }, (_, i) => [store.setA + i, store.setB + i]).flat()
+        : cardServices.includes('machines')
+          ? [store.setA, store.setB]
+          : [],
   };
 }
 
