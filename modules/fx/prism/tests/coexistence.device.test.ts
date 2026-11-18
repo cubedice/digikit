@@ -53,6 +53,9 @@ describeOn('dt2', 'DTII PRISM alongside CANOPY and Overloop', () => {
     initial: 'together',
     presets: { together: { selection: ['modules/m0.dkm', 'modules/m1.dkm', 'modules/m2.dkm', 'modules/m3.dkm'] } },
     requireAudible: true,
+    // CANOPY's instrument load holds the UI task for 1.04 s once per boot (finding 350, "The main loop during the load"): the main loop
+    // does not beat meanwhile. The limit stays well below a second stall of that size.
+    stallMs: 1500,
   });
 
   test('keeps separate capture banks and healthy audio while both loops process CANOPY', async () => {

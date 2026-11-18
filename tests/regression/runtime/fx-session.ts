@@ -94,6 +94,8 @@ export interface PreparedFxSessionOptions {
   initial: string;
   presets: Record<string, FxCardPreset>;
   requireAudible?: RequireAudible;
+  /** Stall threshold of the session's watchdog in emulated ms (default 1000): for a selection whose load holds the UI task longer at boot. */
+  stallMs?: number;
 }
 
 /** Wait until the boot input has finished, so the run can pause. */
@@ -257,6 +259,7 @@ export function withPreparedFxSession(device: Device, scope: string, config: Pre
   const fixture = withReusablePatchedSession(
     {
       ...options(device),
+      ...(config.stallMs !== undefined ? { stallMs: config.stallMs } : {}),
       dsp: 'sharc', // effects run on the DSP
       runDirClaim: () => claimRunDir(device),
       env: async () => {
