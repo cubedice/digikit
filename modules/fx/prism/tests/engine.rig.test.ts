@@ -3,7 +3,7 @@
  * the engine has a number here. The click measure is the largest second difference of the wet output around an event,
  * against the same measure in a steady stretch of the same take (docs/findings/354 "Clicks").
  */
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, test } from 'vitest';
 import {
@@ -42,15 +42,21 @@ const DECLARED = Number(
   /^dsp_cost_fx\s*=\s*(\d+)/m.exec(readFileSync(path.join(import.meta.dirname, '../module.toml'), 'utf8'))?.[1],
 );
 
-/** The numbers of this run, printed at the end: the report a pin or a threshold is set from. */
+/**
+ * The numbers of this run: the report a threshold here or a line of finding 358 is set from. Printed at the end and kept in
+ * out/runs/prism-engine/measures.txt (Vitest shows the output of a passing file only on request).
+ */
 const measures: string[] = [];
 const note = (line: string): void => void measures.push(line);
 afterAll(() => {
-  console.info(
-    ['PRISM engine measures:', ...measures, `heaviest block: ${PrismRig.worst} instructions (${PrismRig.worstIn})`].join(
-      '\n  ',
-    ),
-  );
+  const report = [
+    'PRISM engine measures:',
+    ...measures,
+    `heaviest block: ${PrismRig.worst} instructions (${PrismRig.worstIn})`,
+  ].join('\n  ');
+  console.info(report);
+  mkdirSync('out/runs/prism-engine', { recursive: true });
+  writeFileSync('out/runs/prism-engine/measures.txt', `${report}\n`);
 });
 
 async function withRig<T>(o: Parameters<typeof PrismRig.open>[0], body: (rig: PrismRig) => Promise<T>): Promise<T> {

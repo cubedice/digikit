@@ -278,7 +278,7 @@ export class PrismRig {
       instructions: [],
       faulted: 0,
     };
-    const master = new Array<number>(2 * BLOCK);
+    const master = Array.from({ length: 2 * BLOCK }, () => 0);
     this.bankStores = 0;
     for (let b = 0; b < blocks; b++) {
       for (let k = 0; k < BLOCK; k++) {
@@ -432,14 +432,17 @@ export function bandLevel(x: ArrayLike<number>, lo: number, hi: number, from = 0
   let size = 1;
   while (size < to - from) size *= 2;
   const n = to - from;
-  const re = new Array<number>(size).fill(0);
+  const re = Array.from({ length: size }, () => 0);
   let weight = 0;
   for (let k = 0; k < n; k++) {
     const w = 0.5 - 0.5 * Math.cos((2 * Math.PI * (k + 0.5)) / n);
     re[k] = w * x[from + k]!;
     weight += w * w;
   }
-  const [r, i] = fft(re, new Array<number>(size).fill(0));
+  const [r, i] = fft(
+    re,
+    Array.from({ length: size }, () => 0),
+  );
   let power = 0;
   for (let k = Math.ceil((lo * size) / FS); k <= Math.floor((hi * size) / FS); k++) power += r[k]! ** 2 + i[k]! ** 2;
   return Math.sqrt((2 * power) / (size * weight));

@@ -364,7 +364,7 @@ if (!outdir) throw new Error('usage: node modules/fx/prism/tests/render-audio.ts
 mkdirSync(path.join(outdir, 'wet'), { recursive: true });
 const chosen = names.length ? cases.filter((c) => names.includes(c.name)) : cases;
 const jobs = Math.max(1, Number(process.env.DIGI_JOBS ?? 4));
-const entries = new Array<string>(chosen.length);
+const entries = Array.from({ length: chosen.length }, () => '');
 let next = 0;
 await Promise.all(
   Array.from({ length: jobs }, async () => {
