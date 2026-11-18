@@ -178,8 +178,12 @@ void instrument_select_track(uint32_t track)
         return;
     selected = track;
     IpInst *in = for_track(track);
-    if (in)
+    if (in) {
         cur = in;
+        /* The DSP reports this instance only after the next tick has moved the focus to it. */
+        if (IDX(in) != focus)
+            is_await(STS(in));
+    }
 }
 /* The UI target after admission changes: the selected track's instance, else
  * the lowest admitted one, else instance 0. */
@@ -1011,7 +1015,7 @@ static void status_fill(dk_ui_menu *m, void *ctx)
                 d.heading);
     status_pair(m, d.notes[0], d.notes[1]);
     status_pair(m, d.notes[2], d.notes[3]);
-    int invalid = d.fault == 1 || d.fault == 2;
+    int invalid = d.waiting || d.fault == 1 || d.fault == 2;
     dk_ui_menu_add_text(m, invalid ? "PEDAL --" : d.pedal ? "PEDAL DOWN" : "PEDAL UP");
     snapshot.page[track] = 1;
     cv_build(&d, &snapshot, STS(in), now, "", "", preset_result || storage_result);
@@ -2479,6 +2483,7 @@ void instrument_play_tick(void)
     if (ui->track < MI_TRACKS && focus != IDX(ui)) {
         focus = IDX(ui);
         cs_touch(SRC(ui));
+        is_await(STS(ui));
     }
     for (uint32_t i = 0; i < IP_INSTANCES; ++i)
         tick_instance(i, ui);

@@ -59,6 +59,8 @@ typedef struct {
 static Captured captured[64];
 static uint32_t cursor;
 volatile uint32_t ip_src_debug[12];
+/* Fault headings shown as a toast by the draw (LINK LOST, VOICE ERR, ...). */
+volatile uint32_t ip_src_fault_toasts;
 volatile uint32_t ip_src_refresh[8];
 static int trig_held(const uint8_t *view);
 static uint32_t lock_steps(uint8_t *view, uint32_t steps[4]);
@@ -326,7 +328,10 @@ static void diagram_keyboard(uint8_t *b, const CvDisplay *d)
     }
     char caption[10];
     uint32_t i = 0;
-    const char *s = !d->fresh ? "LINK LOST" : d->fault == 2 ? "VOICE ERR" : d->playing;
+    const char *s = d->waiting      ? ""
+                    : !d->fresh     ? "LINK LOST"
+                    : d->fault == 2 ? "VOICE ERR"
+                                    : d->playing;
     while (i < 9 && s[i]) {
         caption[i] = s[i];
         ++i;
@@ -447,7 +452,7 @@ static void diagram_arp(uint8_t *b, const CvDisplay *d)
         }
     }
     if (!d->fresh)
-        diagram_text(b, 98, 59, "LINK LOST");
+        diagram_text(b, 98, 59, d->waiting ? "" : "LINK LOST");
     else if (d->fault == 2)
         diagram_text(b, 98, 59, "VOICE ERR");
     else if (!d->raw[CP_ARP_MIX])
@@ -713,8 +718,10 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
         }
     }
     diagram_draw(canvas, &display);
-    if (display.fault && display.fault != shown_fault)
+    if (display.fault && display.fault != shown_fault) {
+        ++ip_src_fault_toasts;
         toast(display.heading);
+    }
     shown_fault = display.fault;
     last_draw = instrument_src_now();
     ++ip_src_debug[3];

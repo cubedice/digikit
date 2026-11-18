@@ -20,6 +20,7 @@ void is_select(IsStatus *s, uint32_t track, uint32_t generation, uint32_t mode, 
     s->generation = generation;
     s->mode = mode;
     s->session = session;
+    s->waiting = 2;
 }
 static int fast_valid(const IsStatus *s, const uint32_t *w)
 {
@@ -108,6 +109,7 @@ int is_receive(IsStatus *s, const uint32_t w[IS_WORDS], uint32_t now)
         copy(s->fast, w, IS_WORDS);
         s->fast_at = now;
         s->fast_valid = 1;
+        s->waiting = 0;
         if (s->assembling && (s->assembly_revision != w[11] || s->assembly_control != w[3]))
             s->assembling = 0;
         return 1;
@@ -180,11 +182,38 @@ static void invalidate(IsStatus *s)
     s->assembling = 0;
     s->retried = 0;
 }
+void is_await(IsStatus *s)
+{
+    if (s->waiting)
+        return;
+    invalidate(s);
+    s->waiting = 2;
+}
+int is_waiting(const IsStatus *s, uint32_t now)
+{
+    return !s->fast_valid &&
+           (s->waiting == 2 || (s->waiting == 1 && now - s->fast_at < IS_WAIT_MS));
+}
+/* The UI task itself fell behind (a gap between polls, or the queue overflowed while it was away): what it missed
+ * says nothing about the link, so the next status is awaited from now. */
+static void stalled(IsStatus *s, uint32_t now)
+{
+    invalidate(s);
+    s->fast_at = now;
+    s->waiting = 1;
+}
 void is_poll(IsStatus *s, uint32_t now, IsRead read)
 {
     uint32_t words[IS_WORDS], age = 0;
     int accept = s->poll_valid && now - s->poll_at < IS_TIMEOUT_MS;
-    if (!accept)
+    if (s->waiting == 2) {
+        s->fast_at = now;
+        s->waiting = 1;
+    } else if (s->waiting == 1 && now - s->fast_at >= IS_WAIT_MS)
+        s->waiting = 0;
+    if (!accept && !s->waiting)
+        stalled(s, now);
+    else if (!accept)
         invalidate(s);
     /* The adapter has 128 entries plus a possible loss notification. Bounded
      * even if the audio interrupt continues publishing during this drain. */
@@ -196,7 +225,10 @@ void is_poll(IsStatus *s, uint32_t now, IsRead read)
             return;
         }
         if (result == -3) {
-            invalidate(s);
+            if (s->waiting)
+                invalidate(s);
+            else
+                stalled(s, now);
             accept = 0;
             continue;
         }

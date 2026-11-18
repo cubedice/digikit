@@ -10,6 +10,8 @@ typedef struct {
     uint16_t raw[CP_CONTROLS];
     uint8_t page, family, fresh, note_count, pitches[4], clock_state, arp_note, arp_active,
         focus_id;
+    /* Not fresh, but the first status of this selection is still expected (is_waiting): no fault, no text. */
+    uint8_t waiting;
     char playing[22];
 } CvDisplay;
 /* Snapshot in, bounded presentation out. Native values are already formatted

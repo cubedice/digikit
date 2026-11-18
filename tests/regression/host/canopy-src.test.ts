@@ -64,6 +64,7 @@ test.each([
   'freshness',
   'poll-freshness',
   'poll-loss',
+  'status-wait',
   'pitch-zero',
   'malformed',
   'details',
