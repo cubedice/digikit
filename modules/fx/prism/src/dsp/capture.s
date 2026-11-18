@@ -22,6 +22,7 @@ _prism_capture:
     DM(PS_OLD_MASK,I5) = R0;
     DM(PS_WRITE_BLOCK,I5) = R0;
     DM(PS_VALID_BLOCKS,I5) = R0;
+    DM(PT_VALID,I5) = R0;
     R0 = I5;
     R1 = PS_GRAINS * 4;
     R2 = R0 + R1;
@@ -77,14 +78,14 @@ _pc_selection_only:
     COMP(R0,R1);
     IF EQ JUMP _pc_clock;
 _pc_reset_history:
-    CALL _pc_retire_tape;
+    // The history a take can reach back over starts again. The tape itself runs on (PT_VALID): its audio does not
+    // depend on the clock, and a delay that fell silent at every START, STOP and pattern change would cut its repeats.
     R0 = DM(PC_SELECTION,I5);
     DM(PS_SELECTION,I5) = R0;
     R0 = DM(PC_EPOCH,I5);
     DM(PS_EPOCH,I5) = R0;
     R0 = 0;
     DM(PS_VALID_BLOCKS,I5) = R0;
-    DM(PS_WRITE_BLOCK,I5) = R0;
     DM(PS_CAPTURE_BLOCKS,I5) = R0;
     R1 = DM(PS_MODE,I5);
     DM(PS_MODE,I5) = R6;
@@ -113,7 +114,7 @@ _pc_clock:
     R0 = DM(PC_CMD_SEQ,I5);
     R1 = DM(PS_ACK,I5);
     COMP(R0,R1);
-    IF EQ RTS;
+    IF EQ JUMP _pc_write;
     DM(PS_ACK,I5) = R0;
     R0 = DM(PC_ACTION,I5);
     R1 = PH_ACTION_CLEAR;
@@ -122,7 +123,7 @@ _pc_clock:
     R1 = PH_ACTION_CANCEL;
     COMP(R0,R1);
     IF EQ JUMP _pc_cancel;
-    RTS;
+    JUMP _pc_write;
 
 _pc_commands:
     R0 = DM(PC_CMD_SEQ,I5);
@@ -220,11 +221,7 @@ _pc_clear:
 _pc_clear_state: DM(I3,M6) = R0;
 _pc_command_done:
     // An emergency command can arrive while timing is invalid. Its effects
-    // are immediate, but it must not seed rolling history from that clock.
-    R0 = DM(PC_FLAGS,I5);
-    R1 = PH_TIMING_VALID;
-    R0 = R0 AND R1;
-    IF EQ RTS;
+    // are immediate; _pc_write does not seed rolling history from that clock.
     JUMP _pc_write;
 _pc_no_input:
     R0 = PH_ERROR_NO_INPUT;
@@ -419,6 +416,7 @@ _pc_commit:
     DM(PS_ERROR,I5) = R0;
     DM(PS_ROLL_BANK,I5) = R0;
     DM(PS_VALID_BLOCKS,I5) = R0;
+    DM(PT_VALID,I5) = R0;
     DM(PS_WRITE_BLOCK,I5) = R0;
     DM(PS_LAUNCH_VALID,I5) = R0;
     DM(PS_SCAN,I5) = R0;
@@ -475,35 +473,10 @@ _pc_first_other:
     DM(PS_HANDOFF,I5) = R0;
     RTS;
 
-// The tape starts again from its first block: the grains that read it fade out over their next 32 samples instead of
-// reading a window the new tape is being written into. Uses R0, R1, R4 and I3.
-_pc_retire_tape:
-    R0 = I5;
-    R1 = PS_GRAINS * 4;
-    R0 = R0 + R1;
-    I3 = R0;
-    R4 = PRISM_GRAINS;
-_pc_retire_tape_next:
-    R0 = DM(PG_FRAMES,I3);
-    R0 = PASS R0;
-    IF EQ JUMP _pc_retire_tape_skip;
-    R0 = DM(PG_REMAIN,I3);
-    R1 = 32;
-    COMP(R0,R1);
-    IF LE JUMP _pc_retire_tape_skip;
-    DM(PG_REMAIN,I3) = R1;
-    DM(PG_RETIRE,I3) = R1;
-_pc_retire_tape_skip:
-    MODIFY(I3,PRISM_GRAIN_WORDS) (NW);
-    R4 = R4 - 1;
-    IF GT JUMP _pc_retire_tape_next;
-    RTS;
-
+// The tape runs whenever there is a rolling bank. Without a source it takes silence and the head's feedback, so the
+// repeats run out instead of standing still.
 _pc_write:
     R0 = DM(PS_ROLL_BANK,I5);
-    R0 = PASS R0;
-    IF EQ RTS;
-    R0 = DM(PC_MASK,I5);
     R0 = PASS R0;
     IF EQ RTS;
     // HOLD stops the tape: the head loops what is on it (tape.s). A take in progress keeps writing.
@@ -513,7 +486,10 @@ _pc_write:
     IF NE JUMP _pc_write_run;
     R0 = DM(PS_MODE,I5);
     R0 = PASS R0;
-    IF EQ RTS;
+    IF NE JUMP _pc_write_run;
+    R0 = 1;
+    DM(PS_WRITE_PAUSED,I5) = R0;
+    RTS;
 _pc_write_run:
     // Record phase before writing this block. Stereo planes and the metadata
     // tail are disjoint; every sample we later expose was written here.
@@ -539,16 +515,64 @@ _pc_write_run:
     R1 = PT_FEEDBACK * 4;
     R0 = R0 + R1;
     I3 = R0;
+    // A tape that stood still goes on here, next to its last frame: what is written starts from that frame's value.
+    // The difference (PS_WRITE_HEAL_*) is added to the write and falls by 1/256 a sample.
+    R0 = DM(PS_WRITE_PAUSED,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _pc_write_spliced;
+    R0 = 0;
+    DM(PS_WRITE_PAUSED,I5) = R0;
+    R0 = DM(PT_VALID,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _pc_write_spliced;
+    // The last frame is the one before this block; before the tape's first block it is the tape's last frame.
+    R0 = DM(PS_WRITE_BLOCK,I5);
+    R0 = LSHIFT R0 BY 5;
+    R0 = R0 - 1;
+    R1 = DM(PS_CAPACITY,I5);
+    R0 = PASS R0;
+    IF LT R0 = R0 + R1;
+    R0 = LSHIFT R0 BY 2;
+    R2 = DM(PS_ROLL_BANK,I5);
+    R0 = R0 + R2;
+    I4 = R0;
+    F4 = DM(0,I4);
+    R1 = LSHIFT R1 BY 2;
+    R0 = R0 + R1;
+    I4 = R0;
+    F5 = DM(0,I4);
+    F0 = DM(0,I0);
+    F1 = DM(0,I3);
+    F0 = F0 + F1;
+    F4 = F4 - F0;
+    DM(PS_WRITE_HEAL_L,I5) = R4;
+    F0 = DM(32,I0);
+    F1 = DM(32,I3);
+    F0 = F0 + F1;
+    F5 = F5 - F0;
+    DM(PS_WRITE_HEAL_R,I5) = R5;
+_pc_write_spliced:
+    R5 = 0x3f7f0000; // 1 - 1/256
+    F4 = DM(PS_WRITE_HEAL_L,I5);
     LCNTR = 32, DO _pc_write_left UNTIL LCE;
         F0 = DM(I0,M6);
         F1 = DM(I3,M6);
         F0 = F0 + F1;
+        F0 = F0 + F4;
+        F4 = F4 * F5;
 _pc_write_left: DM(I1,M6) = R0;
+    CALL _pc_write_settle;
+    DM(PS_WRITE_HEAL_L,I5) = R4;
+    F4 = DM(PS_WRITE_HEAL_R,I5);
     LCNTR = 32, DO _pc_write_right UNTIL LCE;
         F0 = DM(I0,M6);
         F1 = DM(I3,M6);
         F0 = F0 + F1;
+        F0 = F0 + F4;
+        F4 = F4 * F5;
 _pc_write_right: DM(I2,M6) = R0;
+    CALL _pc_write_settle;
+    DM(PS_WRITE_HEAL_R,I5) = R4;
     R0 = DM(PS_WRITE_BLOCK,I5);
     R1 = R0 + 1;
     R2 = DM(PS_BLOCKS,I5);
@@ -557,6 +581,19 @@ _pc_write_right: DM(I2,M6) = R0;
     R1 = 0;
 _pc_write_index:
     DM(PS_WRITE_BLOCK,I5) = R1;
+    R0 = DM(PT_VALID,I5);
+    R1 = R0 + 1;
+    COMP(R1,R2);
+    IF GT R1 = PASS R2;
+    DM(PT_VALID,I5) = R1;
+    // The history of a take needs a source and a valid clock: without them the stamps are no history.
+    R0 = DM(PC_MASK,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _pc_no_history;
+    R0 = DM(PC_FLAGS,I5);
+    R1 = PH_TIMING_VALID;
+    R0 = R0 AND R1;
+    IF EQ JUMP _pc_no_history;
     R0 = DM(PS_VALID_BLOCKS,I5);
     R1 = R0 + 1;
     COMP(R1,R2);
@@ -598,4 +635,18 @@ _pc_ready_done:
     R0 = DM(PS_CAPTURE_BLOCKS,I5);
     R0 = R0 + 1;
     DM(PS_CAPTURE_BLOCKS,I5) = R0;
+    RTS;
+_pc_no_history:
+    R0 = 0;
+    DM(PS_VALID_BLOCKS,I5) = R0;
+    RTS;
+
+// F4 a carried difference: below a millionth it is over (R4 = 0). Uses R0 and R1.
+_pc_write_settle:
+    F0 = -F4;
+    F0 = MAX(F0,F4);
+    R1 = 0x358637bd; // 1e-6
+    COMP(F0,F1);
+    IF GE RTS;
+    R4 = 0;
     RTS;

@@ -21,7 +21,7 @@ _pg_clear_output: DM(I0,M6) = R0;
     R0 = DM(PS_ROLL_BANK,I5);
     R0 = PASS R0;
     IF EQ JUMP _pg_voices;
-    R0 = DM(PS_VALID_BLOCKS,I5);
+    R0 = DM(PT_VALID,I5);
     R0 = LSHIFT R0 BY 5;
     R1 = 64;
     R0 = R0 - R1;
@@ -401,6 +401,29 @@ _pg_old_crop:
 _pg_crop:
     DM(PS_TEMP,I5) = R0;
     DM(PS_TEMP1,I5) = R1;
+    // PS_TEMP6: one over the edge of the window in samples. 32 for the two shapes that are smooth by themselves; RISE
+    // and FALL have one steep side, which is an eighth of the grain, 32 to 256 samples (about 5 ms), not a click.
+    R0 = 0x3d000000;
+    R1 = DM(PG_SHAPE,I4);
+    R2 = 2;
+    COMP(R1,R2);
+    IF LT JUMP _pg_edge_set;
+    R1 = DM(PG_DURATION,I4);
+    R1 = LSHIFT R1 BY -3;
+    R2 = 32;
+    COMP(R1,R2);
+    IF LT R1 = PASS R2;
+    R2 = 256;
+    COMP(R1,R2);
+    IF GT R1 = PASS R2;
+    F1 = FLOAT R1;
+    F0 = RECIPS F1;
+    F2 = F0 * F1;
+    R3 = 0x40000000;
+    F2 = F3 - F2;
+    F0 = F0 * F2;
+_pg_edge_set:
+    DM(PS_TEMP6,I5) = R0;
     F10 = DM(PG_PHASE,I4);
     F11 = DM(PG_RATE,I4);
     F12 = DM(PG_INV_DURATION,I4);
@@ -511,7 +534,7 @@ _pg_pair_second:
     F1 = F2 * F7;
     F6 = F0 + F1;
     // Four bounded windows. The first/last sample are exactly zero, and every
-    // shape includes a >=32-sample edge even for directional RISE/FALL.
+    // shape includes an edge of at least 32 samples (PS_TEMP6), also the directional RISE/FALL.
     F0 = FLOAT R9;
     F1 = F0 * F12;
     R0 = 0x3f800000;
@@ -547,7 +570,7 @@ _pg_window_edge:
     F0 = FLOAT R9;
     F1 = FLOAT R1;
     F2 = MIN(F0,F1);
-    R0 = 0x3d000000; // 1/32
+    F0 = DM(PS_TEMP6,I5);
     F1 = F2 * F0;
     R0 = 0x3f800000;
     F2 = MIN(F1,F0);

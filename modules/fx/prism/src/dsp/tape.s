@@ -5,7 +5,11 @@
 // Modes: FORWARD reads TIME frames behind the write position, with the delay slewed by at most half a frame per sample (a
 // change of TIME glides like tape). REVERSE plays the segment before each segment start backwards. HOLD stops the tape (the
 // write skips, capture.s) and loops the last TIME frames. When the tape cannot be read (no rolling bank during a phrase
-// handoff, not enough history yet), the output runs from its last sample to zero in one block and the feedback is zero.
+// handoff, not enough history yet), the head is silent.
+//
+// The output never jumps. Where it would (a change of mode, a tape that can no longer be read), the difference to the last
+// sample is carried on and run out over 256 samples (PT_HEAL_*); a head that comes back after silence fades in over 256
+// samples (PT_FADE). The feedback is always the filtered output, so it ends as smoothly as the output does.
 #include "dk_phrase.inc"
 #include "prism.h"
 
@@ -33,6 +37,9 @@ _prism_tape:
 _pt_mode_set:
     R1 = DM(PT_MODE,I5);
     DM(PT_MODE,I5) = R0;
+    // PS_TEMP1: the output may jump at the start of this block (a new mode here, or a tape that went away below).
+    R2 = 0;
+    DM(PS_TEMP1,I5) = R2;
     COMP(R0,R1);
     IF EQ JUMP _pt_mode_same;
     R1 = 0;
@@ -40,6 +47,8 @@ _pt_mode_set:
     DM(PT_COUNT_R,I5) = R1;
     DM(PT_LENGTH_L,I5) = R1;
     DM(PT_LENGTH_R,I5) = R1;
+    R2 = 1;
+    DM(PS_TEMP1,I5) = R2;
 _pt_mode_same:
     // Feedback gain, 0..1.1.
     F0 = DM(PC_FDBK,I5);
@@ -147,7 +156,7 @@ _pt_started:
 _pt_need:
     R3 = 80;
     R2 = R2 + R3;
-    R1 = DM(PS_VALID_BLOCKS,I5);
+    R1 = DM(PT_VALID,I5);
     R1 = LSHIFT R1 BY 5;
     COMP(R2,R1);
     IF GT JUMP _pt_silent;
@@ -182,19 +191,63 @@ _pt_need:
     DM(PT_COUNT_R,I5) = R6;
     DM(PT_LENGTH_R,I5) = R7;
 
-    // The first readable block after silence fades in over its 32 samples.
-    R0 = DM(PT_READABLE,I5);
-    R0 = PASS R0;
-    IF NE JUMP _pt_faded;
+    // A head that comes back after silence fades in over 256 samples.
+    R0 = 1;
+    DM(PT_READABLE,I5) = R0;
+    F4 = DM(PT_FADE,I5);
+    R5 = 0x3f800000;
+    COMP(F4,F5);
+    IF GE JUMP _pt_post;
     R0 = I5;
     R1 = PT_OUT * 4;
     R0 = R0 + R1;
     I1 = R0;
+    R6 = R4;
     CALL _pt_fade_in;
+    R4 = R6;
     CALL _pt_fade_in;
-    R0 = 1;
-    DM(PT_READABLE,I5) = R0;
-_pt_faded:
+    DM(PT_FADE,I5) = R4;
+
+_pt_post:
+    // At an event the output would jump from the last sample to this block's first: carry the difference.
+    R0 = DM(PS_TEMP1,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _pt_heal_run;
+    R2 = 0x3b800000; // 1/256
+    F0 = DM(PT_LAST_L,I5);
+    F1 = DM(PT_OUT,I5);
+    F0 = F0 - F1;
+    DM(PT_HEAL_L,I5) = R0;
+    F0 = F0 * F2;
+    DM(PT_HEAL_STEP_L,I5) = R0;
+    F0 = DM(PT_LAST_R,I5);
+    F1 = DM(PT_OUT + 32,I5);
+    F0 = F0 - F1;
+    DM(PT_HEAL_R,I5) = R0;
+    F0 = F0 * F2;
+    DM(PT_HEAL_STEP_R,I5) = R0;
+    R0 = 256;
+    DM(PT_HEAL_COUNT,I5) = R0;
+_pt_heal_run:
+    R0 = DM(PT_HEAL_COUNT,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _pt_healed;
+    R1 = 32;
+    R0 = R0 - R1;
+    DM(PT_HEAL_COUNT,I5) = R0;
+    R0 = I5;
+    R1 = PT_OUT * 4;
+    R0 = R0 + R1;
+    I1 = R0;
+    F4 = DM(PT_HEAL_L,I5);
+    F5 = DM(PT_HEAL_STEP_L,I5);
+    CALL _pt_heal;
+    DM(PT_HEAL_L,I5) = R4;
+    F4 = DM(PT_HEAL_R,I5);
+    F5 = DM(PT_HEAL_STEP_R,I5);
+    CALL _pt_heal;
+    DM(PT_HEAL_R,I5) = R4;
+_pt_healed:
     R0 = DM(PT_OUT + 31,I5);
     DM(PT_LAST_L,I5) = R0;
     R0 = DM(PT_OUT + 63,I5);
@@ -243,45 +296,47 @@ _pt_faded:
     RTS;
 
 _pt_silent:
+    // The head reads nothing. If it was playing, that is a jump from its last sample: the common tail runs it out and
+    // keeps the feedback filters going on what is left.
     R0 = I5;
     R1 = PT_OUT * 4;
     R0 = R0 + R1;
     I1 = R0;
-    F4 = DM(PT_LAST_L,I5);
-    CALL _pt_bridge;
-    F4 = DM(PT_LAST_R,I5);
-    CALL _pt_bridge;
     R0 = 0;
-    DM(PT_LAST_L,I5) = R0;
-    DM(PT_LAST_R,I5) = R0;
-    DM(PT_READABLE,I5) = R0;
+    LCNTR = 64, DO _pt_silent_out UNTIL LCE;
+_pt_silent_out: DM(I1,M6) = R0;
     DM(PT_COUNT_L,I5) = R0;
     DM(PT_COUNT_R,I5) = R0;
     DM(PT_LENGTH_L,I5) = R0;
     DM(PT_LENGTH_R,I5) = R0;
-    // PT_FEEDBACK follows PT_OUT.
-    LCNTR = 64, DO _pt_silent_feedback UNTIL LCE;
-_pt_silent_feedback: DM(I1,M6) = R0;
-    RTS;
+    DM(PT_FADE,I5) = R0;
+    R1 = DM(PT_READABLE,I5);
+    DM(PT_READABLE,I5) = R0;
+    R1 = PASS R1;
+    IF EQ JUMP _pt_post;
+    R1 = 1;
+    DM(PS_TEMP1,I5) = R1;
+    JUMP _pt_post;
 
-// I1 output (advanced by 32), F4 the last sample: a ramp from it to zero.
-_pt_bridge:
-    R2 = 0x3d000000;
-    F5 = F4 * F2;
-    LCNTR = 32, DO _pt_bridge_sample UNTIL LCE;
-        F4 = F4 - F5;
-_pt_bridge_sample: DM(I1,M6) = R4;
-    RTS;
-
-// I1 one channel of 32 samples (advanced): gain (i + 1) / 32.
+// I1 one channel of 32 samples (advanced), F4 the gain before its first sample, F5 one: the gain rises by 1/256 a sample
+// to 1. Returns the gain in F4.
 _pt_fade_in:
-    R4 = 0;
-    R5 = 0x3d000000;
+    R2 = 0x3b800000;
     LCNTR = 32, DO _pt_fade_sample UNTIL LCE;
-        F4 = F4 + F5;
+        F4 = F4 + F2;
+        F4 = MIN(F4,F5);
         F0 = DM(I1,M5);
         F0 = F0 * F4;
 _pt_fade_sample: DM(I1,M6) = R0;
+    RTS;
+
+// I1 one channel of 32 samples (advanced), F4 the carried difference and F5 its step: added, and stepped down.
+_pt_heal:
+    LCNTR = 32, DO _pt_heal_sample UNTIL LCE;
+        F0 = DM(I1,M5);
+        F0 = F0 + F4;
+        F4 = F4 - F5;
+_pt_heal_sample: DM(I1,M6) = R0;
     RTS;
 
 // R0 a ten-bit signed field in its low bits (higher bits ignored): R2 = the field, F0 = field / 512, -1 <= F0 < 1.
@@ -357,14 +412,31 @@ _pt_hold:
     R0 = R10 - R7;
     R0 = R0 + R6;
 _pt_window:
-    // min(c, length - 1 - c) / 16, at most 1: the first and last frame of a segment are silent.
+    // min(c, length - 1 - c) / edge, at most 1: the first and last frame of a segment are silent. The edge is a
+    // quarter of the segment in powers of two, 16 to 256 frames: about 5 ms for all but short delays.
     R1 = R7 - R6;
     R1 = R1 - 1;
     COMP(R1,R6);
     IF GT R1 = PASS R6;
-    F4 = FLOAT R1;
-    R2 = 0x3d800000;
-    F4 = F4 * F2;
+    R2 = -8;
+    R3 = 1024;
+    COMP(R7,R3);
+    IF GE JUMP _pt_edge;
+    R2 = -7;
+    R3 = 512;
+    COMP(R7,R3);
+    IF GE JUMP _pt_edge;
+    R2 = -6;
+    R3 = 256;
+    COMP(R7,R3);
+    IF GE JUMP _pt_edge;
+    R2 = -5;
+    R3 = 128;
+    COMP(R7,R3);
+    IF GE JUMP _pt_edge;
+    R2 = -4;
+_pt_edge:
+    F4 = FLOAT R1 BY R2;
     R2 = 0x3f800000;
     F4 = MIN(F4,F2);
     R5 = 0;
@@ -440,7 +512,8 @@ _pt_feedback:
 _pt_feedback_sample: DM(I1,M6) = R0;
     RTS;
 
-// The effect's output before SPACE: the grains (already in the output) and the head, by BALANCE, then DRIVE.
+// The effect's output before SPACE: the grains (already in the output) and the head, by BALANCE, then DRIVE. The two gains
+// and the drive move from the last block's values to this block's over its 32 samples.
 _prism_mix:
     R0 = DM(PC_TAPE,I5);
     R0 = LSHIFT R0 BY -22;
@@ -464,14 +537,38 @@ _prism_mix:
     F5 = DM(PC_DRIVE,I5);
     F5 = MAX(F5,F3);
     F5 = MIN(F5,F1);
+    // PS_TEMP and PS_TEMP1: the gains of the head and of the grains before this block; F9 and F11 their steps.
+    R7 = 0x3d000000;
+    F8 = DM(PT_GAIN_HEAD,I5);
+    DM(PT_GAIN_HEAD,I5) = R2;
+    DM(PS_TEMP,I5) = R8;
+    F2 = F2 - F8;
+    F9 = F2 * F7;
+    F10 = DM(PT_GAIN_GRAIN,I5);
+    DM(PT_GAIN_GRAIN,I5) = R4;
+    DM(PS_TEMP1,I5) = R10;
+    F4 = F4 - F10;
+    F11 = F4 * F7;
+    F12 = DM(PT_DRIVE,I5);
+    DM(PT_DRIVE,I5) = R5;
     I0 = DM(PS_OUTPUT,I5);
     R0 = I5;
     R1 = PT_OUT * 4;
     R0 = R0 + R1;
     I1 = R0;
-    COMP(F5,F3);
+    // No drive now and none before: the plain sum.
+    F0 = F12 + F5;
+    COMP(F0,F3);
     IF GT JUMP _pm_drive;
-    LCNTR = 64, DO _pm_clean UNTIL LCE;
+    CALL _pm_clean_channel;
+    CALL _pm_clean_channel;
+    RTS;
+_pm_clean_channel:
+    F2 = DM(PS_TEMP,I5);
+    F4 = DM(PS_TEMP1,I5);
+    LCNTR = 32, DO _pm_clean UNTIL LCE;
+        F2 = F2 + F9;
+        F4 = F4 + F11;
         F0 = DM(I0,M5);
         F0 = F0 * F4;
         F1 = DM(I1,M6);
@@ -480,29 +577,62 @@ _prism_mix:
 _pm_clean: DM(I0,M6) = R0;
     RTS;
 _pm_drive:
-    // Gain 1..8 into the same soft limit as the feedback.
-    R1 = 0x40e00000;
-    F5 = F5 * F1;
-    R1 = 0x3f800000;
-    F5 = F5 + F1;
-    R12 = 0x3f000000;
-    F5 = F5 * F12;
+    // Gain 1..8 into the same soft limit as the feedback; half the gain goes in and the limit's output is doubled.
+    // PS_TEMP2: that half gain before this block, F7 its step. With no drive the curve still bends (x - x^3/12), so
+    // the driven signal is blended in: PS_TEMP3 is the blend before this block (1 where the drive was on), F12 its
+    // step. It moves only in a block where the drive goes on or off.
     R13 = 0x3f800000;
     R14 = 0xbf800000;
     R15 = 0x3eaaaaab;
-    LCNTR = 64, DO _pm_driven UNTIL LCE;
+    R1 = 0x40e00000;
+    R0 = 0x3f000000;
+    F6 = F12 * F1;
+    F6 = F6 + F13;
+    F6 = F6 * F0;
+    DM(PS_TEMP2,I5) = R6;
+    F2 = F5 * F1;
+    F2 = F2 + F13;
+    F2 = F2 * F0;
+    F2 = F2 - F6;
+    F7 = F2 * F7;
+    R2 = 0;
+    COMP(F12,F3);
+    IF GT R2 = PASS R13;
+    DM(PS_TEMP3,I5) = R2;
+    R4 = 0;
+    COMP(F5,F3);
+    IF GT R4 = PASS R13;
+    F4 = F4 - F2;
+    R0 = 0x3d000000;
+    F12 = F4 * F0;
+    CALL _pm_driven_channel;
+    CALL _pm_driven_channel;
+    RTS;
+_pm_driven_channel:
+    F2 = DM(PS_TEMP,I5);
+    F4 = DM(PS_TEMP1,I5);
+    F5 = DM(PS_TEMP2,I5);
+    F3 = DM(PS_TEMP3,I5);
+    LCNTR = 32, DO _pm_driven UNTIL LCE;
+        F2 = F2 + F9;
+        F4 = F4 + F11;
+        F5 = F5 + F7;
+        F3 = F3 + F12;
         F0 = DM(I0,M5);
         F0 = F0 * F4;
         F1 = DM(I1,M6);
         F1 = F1 * F2;
         F0 = F0 + F1;
-        F0 = F0 * F5;
-        F0 = MIN(F0,F13);
-        F0 = MAX(F0,F14);
-        F1 = F0 * F0;
-        F1 = F1 * F0;
-        F1 = F1 * F15;
-        F0 = F0 - F1;
-        F0 = F0 + F0;
+        F1 = F0 * F5;
+        F1 = MIN(F1,F13);
+        F1 = MAX(F1,F14);
+        F6 = F1 * F1;
+        F6 = F6 * F1;
+        F6 = F6 * F15;
+        F1 = F1 - F6;
+        F1 = F1 + F1;
+        F1 = F1 - F0;
+        F1 = F1 * F3;
+        F0 = F0 + F1;
 _pm_driven: DM(I0,M6) = R0;
     RTS;

@@ -183,8 +183,9 @@ class Probe(FxRig):
             "faults": self.row_word(0, NFAULT),
             "diagnostics": diagnostics,
             "outputBits": [f2w(value) for value in output],
-            "tape": [self.state_word(0, 1296 + index) for index in range(23)],
+            "tape": [self.state_word(0, 1296 + index) for index in range(32)],
             "head": [w2f(self.state_word(0, 1328 + index)) for index in range(64)],
+            "write": [self.state_word(0, 268 + index) for index in range(3)],
             "grains": [
                 [self.state_word(0, 128 + 16 * slot + index) for index in range(16)]
                 for slot in range(8)
