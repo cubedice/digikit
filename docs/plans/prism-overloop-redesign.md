@@ -12,14 +12,14 @@ uses the native knob and text primitives that `core/phrase-ui` draws with today.
 | PRISM | Five pages (DELAY, LOOP, GRAIN, MOVE, SPACE) and an input overlay; its own routing with four firmware hooks; takes phrases from selected tracks and ducks them | One page. A send effect: each track has a PRISM send amount, PRISM's output goes to the FX return. A repeater modelled on the Mimeophon: ZONE, RATE, REPEATS, COLOR, HALO, SKEW, FLIP, HOLD |
 | Input selection | 18-bit source mask, a gain per track, EXT L/R, an overlay on the TRIG keys | Removed. The per-track send amount decides what PRISM hears |
 | Overloop | Four knobs (REC, START, FADE, LENGTH); you arm, it waits for START, records LENGTH steps, and a helper copies knob values into the next pattern's kit | Always listening. One action: ARM. At the next pattern change it keeps the last full cycle of the pattern that was playing. No START, no LENGTH |
-| Crossfade | Overloop's FADE knob on Overloop's page | On the PRISM page: crossfader, loop-to-PRISM send and all PRISM controls together |
+| Crossfade | Overloop's FADE knob on Overloop's page | On the PRISM page: the crossfader, a switch that feeds PRISM from the live tracks or from the loop, and all PRISM controls together |
 | Image adapters of the fork | `phrase-route`, `phrase-control`, `phrase-ui`, `loop-controls`, `loop-display`, `loop-storage`, `pattern-position` | `phrase-route` and `loop-controls` go away; `phrase-ui` and `phrase-control` shrink to one page and about a dozen control words |
 
 ## 2. PRISM
 
 ### 2.1 The page
 
-One page, eight encoders, the LEVEL/DATA knob, and four encoder presses.
+One page, eight encoders, the LEVEL/DATA knob, and five encoder presses.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -29,9 +29,9 @@ One page, eight encoders, the LEVEL/DATA knob, and four encoder presses.
 │  █  │ ····■···   │ 1/8.       │ 62         │ DARK 20     │
 │  █  │ ECHO       │ SYNC       │            │             │
 │  █  ├────────────┼────────────┼────────────┼─────────────┤
-│  ░  │ HALO       │ SKEW       │ LOOP       │ XFAD        │
-│  ░  │ 35         │ L 12       │ --         │ --          │
-│ 80  │            │            │ NO LOOP    │             │
+│  ░  │ HALO       │ SKEW       │ INPT       │ XFAD        │
+│  ░  │ 35         │ L 12       │ LIVE       │ --          │
+│ 80  │            │            │            │ NO LOOP     │
 └─────┴────────────┴────────────┴────────────┴─────────────┘
   LEVEL    A / E        B / F        C / G        D / H
 ```
@@ -44,7 +44,7 @@ One page, eight encoders, the LEVEL/DATA knob, and four encoder presses.
 | COLR | D | Colour of the repeats. Left of centre each repeat is darker and softer, centre is clean, right of centre each repeat is thinner and brighter | Color |
 | HALO | E | Smears each repeat a little more than the last; high settings turn the repeats into a wash | Halo |
 | SKEW | F | Makes the left side shorter and the right side longer (or the reverse). 0 is even | Skew |
-| LOOP | G | How much of Overloop's loop goes into PRISM (section 4). `--` when there is no loop | - |
+| INPT | G | PRISM's input, a switch with two positions. LIVE: the tracks, by their send amounts. LOOP: Overloop's loop, and the track sends are closed. Without a loop it stays at LIVE (section 4) | - |
 | XFAD | H | Overloop's crossfader between the live pattern and the loop (section 4) | - |
 | MIX | LEVEL | PRISM's level on the FX return | Mix |
 
@@ -53,7 +53,8 @@ One page, eight encoders, the LEVEL/DATA knob, and four encoder presses.
 | A (ZONE) | FLIP: the repeats play backwards | `FLIP` under the zone name |
 | B (RATE) | SYNC on or off | `SYNC` or `FREE` under the rate |
 | C (RPTS) | HOLD: the input is closed and what is in the buffer repeats without loss. ZONE and RATE then pick a part of the held sound and do not change it | `HOLD` under the repeats |
-| G (LOOP) | ARM Overloop (section 3) | `ARMD` in the LOOP cell |
+| G (INPT) | Switch the input, the same as turning G | `LIVE` or `LOOP` in the INPT cell |
+| H (XFAD) | ARM Overloop (section 3) | `ARMD` in the XFAD cell |
 | FUNC + NO | Drop the loop | `NO LOOP` |
 
 FUNC + RATE turns the rate finely and always bends the pitch (the Mimeophon's µRate has a modulation input; there is
@@ -69,9 +70,9 @@ With HOLD and FLIP on, and RATE free:
 │  █  │ ···■····   │ 92 MS      │ INF        │ BRIT 44     │
 │  █  │ SLAP  FLIP │ FREE       │ HOLD       │             │
 │  █  ├────────────┼────────────┼────────────┼─────────────┤
-│  █  │ HALO       │ SKEW       │ LOOP       │ XFAD        │
-│  ░  │ 70         │ R 30       │ --         │ --          │
-│ 104 │            │            │ NO LOOP    │             │
+│  █  │ HALO       │ SKEW       │ INPT       │ XFAD        │
+│  ░  │ 70         │ R 30       │ LIVE       │ --          │
+│ 104 │            │            │            │ NO LOOP     │
 └─────┴────────────┴────────────┴────────────┴─────────────┘
 ```
 
@@ -108,7 +109,9 @@ PRISM becomes an ordinary send effect of the effect framework that is already in
 └─────┴────────────┴────────────┴────────────┴─────────────┘
 ```
 
-- PRISM's input is the sum of the tracks times their send amounts, plus Overloop's loop times LOOP (section 4).
+- PRISM's input is one of two things, chosen by INPT: the sum of the tracks times their send amounts (LIVE), or
+  Overloop's loop (LOOP). A change of INPT is crossfaded over a few milliseconds, and what is already in PRISM's
+  buffer keeps repeating.
 - PRISM's output times MIX is added to the FX return. The dry tracks are not touched.
 
 What goes away with this:
@@ -145,22 +148,25 @@ Overloop records the master mix all the time into a rolling buffer and notes whe
    pattern's length; nothing is set by hand.
 3. From that boundary the loop plays in time, the crossfader stands at LOOP, and the new pattern runs underneath,
    unheard. What you hear does not change at the boundary.
-4. Turning the crossfader to LIVE brings the new pattern in.
+4. At the same boundary PRISM's input switches to LOOP by itself. This happens at every pattern change that was
+   armed.
+5. Turning the crossfader to LIVE brings the new pattern in, dry.
 
 Details:
 
 - The loop holds what was heard: the tracks, the stock effects, and PRISM's output at that time.
 - A loop stays until the next armed change replaces it or FUNC + NO drops it. With the crossfader at LIVE it is silent.
+  When a loop is dropped, PRISM's input goes back to LIVE.
 - ARM is one-shot. Arming again while a loop plays is allowed: the next change records what is heard then, the new
   pattern and whatever of the old loop is still mixed in.
 - The buffer holds 21.8 s. A pattern cycle longer than that (128 steps below about 88 BPM) is cut to the last 21.8 s,
   and the page says so.
-- The crossfader, the send and the armed state are not stored in the kit. They do not change when the pattern changes,
+- The crossfader, PRISM's input switch and the armed state are not stored in the kit. They do not change when the pattern changes,
   so the helper that copies knob values into the next kit (`core/loop-controls`) is no longer needed.
 
 ### 3.2 Overloop's own page
 
-Overloop stays usable without PRISM. Its page keeps the timeline drawing it has today and three knobs instead of four.
+Overloop stays usable without PRISM. Its page keeps the timeline drawing it has today and two knobs instead of four.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -169,53 +175,56 @@ Overloop stays usable without PRISM. Its page keeps the timeline drawing it has 
 │     │ NEXT CHANGE KEEPS  A02  64 ST  7.74 S              │
 │     │ ├──────────────────────────▲───────────────┤       │
 │     │ LIVE ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ LOOP       │
-│     ├────────────┬────────────┬──────────────────────────┤
-│     │ ARM        │ XFAD       │ SEND                     │
-│     │ ON         │ LIVE       │ 0                        │
-└─────┴────────────┴────────────┴──────────────────────────┘
+│     ├────────────┬───────────────────────────────────────┤
+│     │ ARM        │ XFAD                                  │
+│     │ ON         │ LIVE                                  │
+└─────┴────────────┴───────────────────────────────────────┘
 ```
 
-ARM is a knob here because a plain effect page has no keys: turn it up to arm, as REC works today. XFAD and SEND are the
-same two values the PRISM page shows.
+ARM is a knob here because a plain effect page has no keys: turn it up to arm, as REC works today. XFAD is the same
+value the PRISM page shows.
 
 ## 4. Performing a transition
 
-The loop is routed into PRISM's input through the LOOP send. The send is taken before the crossfader, so the loop can be
-faded out dry while its echoes carry on.
+PRISM hears either the live tracks or the loop, never both. An armed pattern change switches it to the loop. The loop
+reaches PRISM after the crossfader, so its feed fades with it.
 
 ```
- tracks ──┬──────────────────────────────► master mix = LIVE ──┐
-          │ per-track PRISM send                               ├─ XFAD ──► out
-          ▼                                 LOOP ──────────────┘    ▲
-      PRISM input ◄──── LOOP send (G) ────── │                      │
-          │                                                         │
-          ▼                                                         │
-        PRISM ───────────── MIX ────────────► FX return ────────────┘
+ tracks ──┬────────────────────────────► master mix = LIVE ──┐
+          │ per-track PRISM send                             ├─ XFAD ──► out
+          ▼                                                  │    ▲
+        LIVE ─┐                    LOOP ──► (loop side) ─────┘    │
+              ├─ INPT ─► PRISM ─── MIX ───► FX return ────────────┘
+        LOOP ─┘
+          ▲
+          └── the loop, at the level the crossfader gives it
 ```
 
 Step by step, all on the PRISM page.
 
-**1. Pattern A02 plays. Press G to arm.**
+**1. Pattern A02 plays, PRISM works on the live tracks. Press H to arm.**
 
 ```
 │ A02 │ PRISM                               ECHO   375 MS  │
 │ ...                                                      │
-│  ░  │ HALO       │ SKEW       │ LOOP       │ XFAD        │
-│  ░  │ 35         │ L 12       │ ARMD       │ LIVE        │
-│ 80  │            │            │ KEEPS A02  │ ●────────   │
+│  ░  │ HALO       │ SKEW       │ INPT       │ XFAD        │
+│  ░  │ 35         │ L 12       │ LIVE       │ ARMD        │
+│ 80  │            │            │            │ KEEPS A02   │
 ```
 
-**2. Choose A03 the usual way. At the change the loop takes over; the sound continues as A02.**
+**2. Choose A03 the usual way. At the change the loop takes over, the crossfader stands at LOOP and INPT switches to
+LOOP by itself. The sound continues as A02.**
 
 ```
 │ A03 │ PRISM                    LOOP A02  64 ST  7.74 S   │
 │ ...                                                      │
-│  ░  │ HALO       │ SKEW       │ LOOP       │ XFAD        │
-│  ░  │ 35         │ L 12       │ 0          │ LOOP        │
-│ 80  │            │            │ SEND       │ ────────●   │
+│  ░  │ HALO       │ SKEW       │ INPT       │ XFAD        │
+│  ░  │ 35         │ L 12       │ LOOP       │ LOOP        │
+│ 80  │            │            │            │ ────────●   │
 ```
 
-**3. Turn G up: the old pattern feeds PRISM. Shape it with ZONE, RATE, RPTS, COLR and HALO; press C to hold it.**
+**3. Play PRISM on the old pattern: ZONE, RATE, RPTS, COLR, HALO, MIX; press C to hold. A03 is not touched by any of
+it.**
 
 ```
 │ A03 │ PRISM                    LOOP A02  64 ST  7.74 S   │
@@ -223,28 +232,43 @@ Step by step, all on the PRISM page.
 │  █  │ ·····■··   │ 1/2        │ INF        │ DARK 35     │
 │  █  │ LONG       │ SYNC       │ HOLD       │             │
 │  █  ├────────────┼────────────┼────────────┼─────────────┤
-│  █  │ HALO       │ SKEW       │ LOOP       │ XFAD        │
-│  █  │ 80         │ L 12       │ 96         │ LOOP        │
-│ 110 │            │            │ SEND       │ ────────●   │
+│  █  │ HALO       │ SKEW       │ INPT       │ XFAD        │
+│  █  │ 80         │ L 12       │ LOOP       │ LOOP        │
+│ 110 │            │            │            │ ────────●   │
 ```
 
-**4. Turn H towards LIVE: A03 comes in under the echoes of A02.**
+**4. Turn H towards LIVE. A03 comes in dry: its sends do not reach PRISM while INPT is LOOP. The loop and its feed into
+PRISM fade together; what PRISM already holds rings on as RPTS allows.**
 
 ```
-│  █  │ HALO       │ SKEW       │ LOOP       │ XFAD        │
-│  █  │ 80         │ L 12       │ 96         │ 38          │
-│ 110 │            │            │ SEND       │ ───●─────   │
+│  █  │ HALO       │ SKEW       │ INPT       │ XFAD        │
+│  █  │ 80         │ L 12       │ LOOP       │ 38          │
+│ 110 │            │            │            │ ───●─────   │
 ```
 
-**5. H at LIVE: the dry loop is silent. Bring RPTS down, or release HOLD, and the echoes die away. The loop stays ready
-until the next armed change or FUNC + NO.**
+**5. H at LIVE: A03 alone and dry, with the last echoes of A02 dying away. Set PRISM up for the new pattern while it
+hears nothing new.**
+
+**6. Press or turn G: INPT goes to LIVE and PRISM works on A03 by its track sends.**
+
+```
+│ A03 │ PRISM                               ECHO   375 MS  │
+│ ...                                                      │
+│  ░  │ HALO       │ SKEW       │ INPT       │ XFAD        │
+│  ░  │ 35         │ L 12       │ LIVE       │ LIVE        │
+│ 80  │            │            │            │ ●────────   │
+```
+
+The loop stays ready until the next armed change or FUNC + NO. Switching INPT back to LOOP while the crossfader is at
+LIVE feeds PRISM nothing, because the loop's feed follows the crossfader.
 
 ## 5. Decisions for the owner
 
 | # | Question | Recommendation |
 |---|---|---|
 | 1 | Are PRISM's settings global or stored in each kit? | Global, as today. Stored per kit they would jump at every pattern change, in the middle of a transition |
-| 2 | Is the LOOP send taken before or after the crossfader? | Before, so the loop can dissolve into echoes while the dry loop is faded out |
+| 2 | Does the loop reach PRISM before or after the crossfader? | After. Crossfading to LIVE then also closes PRISM's feed, and the new pattern arrives dry with the old echoes dying away. Before the crossfader, the old pattern would keep feeding PRISM at full level until INPT is switched |
+| 2a | Does INPT go back to LIVE by itself when the crossfader reaches LIVE? | No. It is the owner's move, so PRISM can be set up for the new pattern first |
 | 3 | Does the loop hold what was heard, or the tracks without PRISM? | What was heard. The outgoing pattern then continues exactly as it sounded |
 | 4 | External inputs into PRISM | Not in the first version. A send effect sums track buses, and the external input is not one. Today's EXT L/R source is lost |
 | 5 | Keep Overloop usable without PRISM, with its own page? | Yes |
@@ -268,7 +292,7 @@ until the next armed change or FUNC + NO.**
 | 1 | PRISM engine on the rig: two heads, zones, COLR, HALO in the loop, SKEW, FLIP, HOLD; grains and capture out | Engine tests with numeric reports (step sizes, pitch during a RATE move, decay per repeat); WAVs for the owner | 3 to 4 |
 | 2 | PRISM as a send effect with the one page; `phrase-route` removed | Device tests: per-track send, FX return, page and presses; coexistence with CANOPY | 2 to 3 |
 | 3 | Overloop: rolling record, loop of the last cycle at an armed change, crossfader and send outside the kit; `loop-controls` removed | Rig tests of the seam (loop length against the pattern length, level across the boundary); device test of an armed change | 2 to 3 |
-| 4 | Loop into PRISM; LOOP, XFAD and ARM on the PRISM page | Device test of the whole transition | 1 to 2 |
+| 4 | Loop into PRISM; INPT, XFAD and ARM on the PRISM page; INPT switches to LOOP at an armed change | Device test of the whole transition: PRISM hears only the loop after the change, the new pattern is dry at LIVE, and PRISM hears the tracks after INPT is switched | 1 to 2 |
 | 5 | Install on the Digitakt and listen | The owner | - |
 
 Total 8 to 12 agent days.
