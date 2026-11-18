@@ -6,14 +6,46 @@ merged" listed what this merge had to port. Everything below is from this sessio
 otherwise. Nothing was installed on hardware.
 
 Branch `integrate/upstream-b1-rsc`, cut from fork `main` d6c67892 (PRISM as a tape delay is in it). Local, not pushed, no pull
-request. Upstream `main` was 870a7319 (411 commits past the last merged point 839a43e1).
+request. Upstream `main` was 870a7319 (411 commits past the last merged point 839a43e1). Fork `main` 09f86c61 was merged
+in afterwards.
 
 | Commit | What |
 | --- | --- |
 | 49e875cd | The merge: 29 conflicts resolved, the fork's code in moved code ported, generated sources and objects rebuilt. |
 | 06a7eb5c | CANOPY's needs test counts the arena of the machines service. |
 | 6980c469 | Fixes after the first gate (below), and the repeated measurement in finding 353. |
-| the commit of this file | `core/runtime:test-assembly` depends on the bind of the lfo service; this handover. |
+| f7377998 | `core/runtime:test-assembly` depends on the bind of the lfo service; this handover. |
+| 1de4b9fa | Merge of fork `main` 09f86c61 (the device bug fixes), see the next section. |
+
+## Fork `main` 09f86c61 merged in (2026-11-18)
+
+`main` gained three fixes after the branch point (pull request 5 of the fork): the limit of PRISM's tape feedback
+(a5f37017), the recovery of CANOPY's faulted note transport with status frames on one block in three (66436940) and the
+working copy of each track's CANOPY settings (ef879683); findings 354 (addition), 355 and 356. None of them touches code
+that the upstream merge moved, so the sources merged by themselves. Two conflicts:
+
+- `tests/regression/runtime/write-safety.ts`: the policies `settings` and `fx-routes` allow all 16 sectors of each
+  settings copy (from `main`: the settings record with the working copy is longer than a sector); a card with the
+  machines service allows the first sector of each copy under any policy (from upstream). Both host expectations are in
+  `tests/regression/host/write-safety.test.ts`.
+- `modules/core/adapters/instrument-play/build/play-cf.dko.json`: regenerated (`mise run module:build`).
+  `midi-events/build/midi-packet-dsp.dko.json` came out of the regeneration as on `main`.
+
+Run on 1de4b9fa, all passing: `regression:test-host` (with `canopy-link-recover`, `canopy-work-copy` and
+`write-safety`) and `digikit/prism:test-host` (the engine tests); `tests/patchkit/test_midi_events.py` (99 passed, 3
+skipped); the nine device tests of CANOPY and PRISM on the DT2, each run and none replayed; the static checks,
+`mise run check:layers`, `patchkit:objects-check` and `core/runtime:test-assembly`. `gate-smoke:smoke` and
+`gate-pins:pins` were replayed from the cache: their inputs did not change with this merge, and their last run was the
+full gate on 06a7eb5c. The full gate was not run again.
+
+Fit on the DT2 at 1de4b9fa: `canopy-overloop-prism` uses 1 317 300 of 1 396 736 bytes of `cf.expansion` (79 436 free;
+1712 bytes more than before this merge), `canopy-overloop` 1 292 312 (104 424 free). On `main` 09f86c61, with the
+arena before upstream's services, the first figure was 1 390 336 (as reported by the session that made the fixes; not
+measured here).
+
+The interrupt stack measurement (finding 353) was not repeated after this merge. The new routines `recover_tick` and
+`work_tick` are called from instrument-play's tick on the UI task (comment in `control.c`), not from the timer task
+whose stack the finding measures; that was read, not measured.
 
 ## What upstream changed under the fork
 
@@ -151,9 +183,8 @@ Read from the plan and upstream's handover; not tried.
   in the image adapter). It works in the coexistence test; the register use at the site was not read again.
 - [O] The fork's nineteen manual proofs (`*.manual.device.test.ts`, the CANOPY proofs under `tests/regression/runtime`)
   got the service upload by one scripted edit and type-check; none was run.
-- [O] `main` moves again: the session that fixes the four device bugs works on `fix/device-bugs` and will touch
-  `modules/fx/prism/src/dsp`, `core/midi-events`, `core/instrument-play` and `modules/machines/canopy`. Merge `main` into
-  this branch after its pull request.
+- The device bug fixes of `main` (09f86c61) are merged (section above). [O] The stack measurement of finding 353 was not
+  repeated with them.
 - Machine facts for the next session: the Rust-for-ColdFire toolchain is at `~/.cache/digikit/canopy-codegen-gcc`
   (`DIGIKIT_CODEGEN_DIR`); the core library store must be on the WSL disk
   (`DIGI_SHARC_CORE_STORE=$HOME/.cache/digikit/sharc-core-cache`), because its insert by rename fails in the git directory
