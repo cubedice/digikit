@@ -32,6 +32,8 @@ type Observation = {
   /** The tape head's state words (prism.h PT_*, from PS_TAPE) and its output of the last block (32 left, 32 right). */
   tape: number[];
   head: number[];
+  /** The splice of a tape that stood still: PS_WRITE_HEAL_L, PS_WRITE_HEAL_R (float bits) and PS_WRITE_PAUSED. */
+  write: number[];
   outputBits: number[];
   audio?: number[][];
 };
@@ -207,7 +209,7 @@ const cases: { name: string; commands: Command[] }[] = [
     name: 'tapeEcho',
     commands: [
       { set: { 58: 64, 60: HEAD_ONLY }, samples: 1 / 64 },
-      ...Array.from({ length: 7 }, (_, i) => ({ samples: (i + 2) / 64 })),
+      ...Array.from({ length: 15 }, (_, i) => ({ samples: (i + 2) / 64 })),
     ],
   },
   {
@@ -232,16 +234,16 @@ const cases: { name: string; commands: Command[] }[] = [
     name: 'tapeHold',
     commands: [
       { set: { 58: 128, 60: HEAD_ONLY } },
-      ...Array.from({ length: 9 }, (_, i) => ({ samples: (i + 2) / 64 })),
+      ...Array.from({ length: 19 }, (_, i) => ({ samples: (i + 2) / 64 })),
       { set: { 60: HEAD_ONLY + 2 }, samples: 0.9 },
-      ...Array.from({ length: 6 }, () => ({ samples: 0.9 })),
+      ...Array.from({ length: 14 }, () => ({ samples: 0.9 })),
     ],
   },
   {
     name: 'tapeReverse',
     commands: [
       { set: { 58: 64, 60: HEAD_ONLY + 1 }, samples: RAMP(0) },
-      ...Array.from({ length: 11 }, (_, i) => ({ samples: RAMP(i + 1) })),
+      ...Array.from({ length: 23 }, (_, i) => ({ samples: RAMP(i + 1) })),
     ],
   },
   {
@@ -259,7 +261,7 @@ const cases: { name: string; commands: Command[] }[] = [
   {
     name: 'tapeReset',
     commands: [
-      { set: { 58: 64, 60: HEAD_ONLY }, samples: TONE, repeat: 8 },
+      { set: { 58: 64, 60: HEAD_ONLY }, samples: TONE, repeat: 16 },
       { set: { 10: 2, 11: 4 }, samples: TONE },
       { samples: TONE },
       { samples: TONE, repeat: 6 },
@@ -284,6 +286,59 @@ const cases: { name: string; commands: Command[] }[] = [
       { set: { 23: 240, 25: bits(1.5), 31: bits(1) }, samples: TONE, repeat: 60 },
       { set: { 31: bits(0) }, samples: TONE, repeat: 60 },
     ],
+  },
+  // ---- no jumps. A constant input makes a gain readable from the output; word 24 = 0 keeps the grains off.
+  {
+    name: 'tapeModeChange',
+    commands: [
+      { set: { 58: 64, 60: HEAD_ONLY }, samples: TONE, repeat: 8 },
+      { set: { 60: HEAD_ONLY + 1 }, samples: TONE },
+      { samples: TONE, repeat: 8 },
+    ],
+  },
+  {
+    name: 'tapeGone',
+    commands: [
+      { set: { 24: 0, 58: 64, 60: HEAD_ONLY }, samples: 0.5, repeat: 6 },
+      { set: { 58: 192 }, samples: 0.5 },
+      { samples: 0.5 },
+    ],
+  },
+  {
+    name: 'mixRamp',
+    commands: [
+      { set: { 24: 0, 58: 64, 60: HEAD_ONLY }, samples: 0.5, repeat: 16 },
+      { set: { 60: 511 * 2 ** 22 }, samples: 0.5 },
+      { samples: 0.5 },
+    ],
+  },
+  {
+    name: 'driveOn',
+    commands: [
+      { set: { 24: 0, 58: 64, 60: HEAD_ONLY }, samples: 0.5, repeat: 16 },
+      { set: { 61: bits(1) }, samples: 0.5 },
+      { samples: 0.5 },
+    ],
+  },
+  {
+    name: 'tapeReverseEdge',
+    commands: [
+      { set: { 24: 0, 58: 128, 60: HEAD_ONLY + 1 }, samples: 0.5, repeat: 24 },
+      ...Array.from({ length: 4 }, () => ({ samples: 0.5 })),
+    ],
+  },
+  {
+    name: 'holdRelease',
+    commands: [
+      { set: { 24: 0, 58: 64, 60: HEAD_ONLY }, samples: 0.25, repeat: 16 },
+      { set: { 60: HEAD_ONLY + 2 }, samples: -0.5, repeat: 4 },
+      { set: { 60: HEAD_ONLY }, samples: -0.5 },
+      { samples: -0.5, repeat: 2 },
+    ],
+  },
+  {
+    name: 'fallEdge',
+    commands: [...held, { set: { 24: 0 }, repeat: 12 }, { set: { 23: 2048, 24: 1048576, 26: 3 } }],
   },
   {
     name: 'tapeWithGrains',
@@ -558,13 +613,19 @@ describe('PRISM real SHARC engine', () => {
     // too little tape for the first blocks: silence, and a head that is not readable
     expect(steps[1]!.head).toEqual(Array(64).fill(0));
     expect(steps[1]!.tape[11]).toBe(0);
-    // block 8 plays block 6 (64 frames are two blocks)
-    expect(last('tapeEcho').head).toEqual(Array(64).fill(6 / 64));
+    expect(steps[4]!.tape[11]).toBe(0);
+    // block 6 is the first with enough tape. It plays block 4, and comes in over 256 samples: 32 of them here
+    expect(steps[5]!.tape[11]).toBe(1);
+    expect(steps[5]!.head[0]).toBeCloseTo(4 / 64 / 256, 7);
+    expect(steps[5]!.head[31]).toBeCloseTo((4 / 64) * (32 / 256), 7);
+    expect(steps[5]!.head[63]).toBeCloseTo((4 / 64) * (32 / 256), 7);
+    // block 16 plays block 14 (64 frames are two blocks), in full
+    expect(last('tapeEcho').head).toEqual(Array(64).fill(14 / 64));
     expect(last('tapeEcho').tape[11]).toBe(1);
     // the head alone is the effect's output (balance at the head, no drive, SPACE open)
-    expect(last('tapeEcho').outputBits).toEqual(Array(64).fill(bits(6 / 64)));
+    expect(last('tapeEcho').outputBits).toEqual(Array(64).fill(bits(14 / 64)));
     // no feedback: the tape advanced one block a call
-    expect(last('tapeEcho').state[10]).toBe(8);
+    expect(last('tapeEcho').state[10]).toBe(16);
   });
   test('feedback writes the filtered head back onto the tape: repeats decay, and without feedback they end', () => {
     const steps = report.tapeFeedback!.steps;
@@ -595,17 +656,20 @@ describe('PRISM real SHARC engine', () => {
   test('HOLD stops the tape and loops its last TIME frames', () => {
     const steps = report.tapeHold!.steps;
     const after = last('tapeHold');
-    // the write position and the history stand still from the block after HOLD is seen
-    expect(after.state[9]).toBe(steps[11]!.state[9]);
-    expect(after.state[10]).toBe(steps[11]!.state[10]);
+    // the write position and the history stand still from the block after HOLD is seen (step 20)
+    expect(after.state[9]).toBe(steps[21]!.state[9]);
+    expect(after.state[10]).toBe(steps[21]!.state[10]);
+    expect(after.tape[24]).toBe(steps[21]!.tape[24]);
     expect(after.tape[10]).toBe(2);
+    expect(after.write[2]).toBe(1);
     // the input after HOLD (0.9) never reaches the head: every sample is one of the tape's values, scaled by the
     // edge of the loop
     const peak = headPeak(after);
     expect(peak).toBeGreaterThan(0.05);
-    expect(peak).toBeLessThanOrEqual(11 / 64 + 1e-6);
-    // and the loop repeats: 128 frames are four blocks
-    expect(steps[16]!.head).toEqual(steps[12]!.head);
+    expect(peak).toBeLessThanOrEqual(20 / 64 + 1e-6);
+    // and the loop repeats, once the change of mode has run out (eight blocks): 128 frames are four blocks
+    expect(steps[30]!.tape[29]).toBe(0);
+    expect(steps[34]!.head).toEqual(steps[30]!.head);
   });
   test('FLIP plays each segment backwards', () => {
     const head = last('tapeReverse').head.slice(0, 32);
@@ -631,14 +695,104 @@ describe('PRISM real SHARC engine', () => {
     expect(tape[4]).toBeGreaterThanOrEqual(95);
     expect(tape[4]).toBeLessThanOrEqual(96);
   });
-  test('a history reset runs the head to zero in one block and resumes when the tape is long enough again', () => {
+  test('a history reset (START, STOP, a pattern change, a new selection) does not stop the tape', () => {
     const steps = report.tapeReset!.steps;
     expect(headPeak(steps[0]!)).toBeGreaterThan(0.3);
-    // the block after the reset: no readable tape, a ramp from the last sample to zero
-    expect(steps[2]!.tape[11]).toBe(0);
-    expect(Math.abs(steps[2]!.head[31]!)).toBeLessThan(1e-6);
-    expect(headPeak(last('tapeReset'))).toBeGreaterThan(0.3);
-    expect(last('tapeReset').tape[11]).toBe(1);
+    // the history a take can reach back over starts again with the reset block ...
+    expect(steps[0]!.state[10]).toBe(16);
+    expect(steps[1]!.state[10]).toBe(1);
+    // ... the tape does not: its write position goes on, all 16 blocks stay audio, and the head plays what it
+    // would have played (the tone repeats every block, and the delay is two blocks)
+    expect(steps[1]!.state[9]).toBe((steps[0]!.state[9]! + 1) % 16);
+    for (const step of steps.slice(1)) {
+      expect(step.tape[24]).toBe(16);
+      expect(step.tape[11]).toBe(1);
+      expect(step.tape[29]).toBe(0);
+      expect(step.head).toEqual(steps[0]!.head);
+    }
+  });
+  // ---- no jumps ----
+  const f32 = (word: number) => new Float32Array(new Uint32Array([word]).buffer)[0]!;
+  test('a change of mode starts from the last sample and runs the difference out over 256 samples', () => {
+    const steps = report.tapeModeChange!.steps;
+    const before = steps[0]!.head;
+    const flipped = steps[1]!;
+    expect(flipped.tape[10]).toBe(1);
+    // the reverse segment starts silent; the head does not: its first sample is the last one of the block before
+    expect(Math.abs(before[31]!)).toBeGreaterThan(0.01);
+    expect(flipped.head[0]).toBeCloseTo(before[31]!, 6);
+    expect(flipped.head[32]).toBeCloseTo(before[63]!, 6);
+    expect(flipped.tape[29]).toBe(224);
+    expect(last('tapeModeChange').tape[29]).toBe(0);
+  });
+  test('a head that loses its tape runs out over 256 samples, and comes back over 256', () => {
+    const steps = report.tapeGone!.steps;
+    // block 6 is the first the head can read: 0.5 coming in, 32/256 of it at the block's end
+    expect(steps[0]!.tape[11]).toBe(1);
+    expect(steps[0]!.head[31]).toBeCloseTo(0.5 * (32 / 256), 7);
+    // TIME moves beyond the tape: nothing to read, but the output goes on from its last sample
+    const gone = steps[1]!;
+    expect(gone.tape[11]).toBe(0);
+    expect(gone.head[0]).toBeCloseTo(steps[0]!.head[31]!, 7);
+    expect(gone.head[31]).toBeCloseTo(steps[0]!.head[31]! * (1 - 31 / 256), 7);
+    expect(steps[2]!.head[0]).toBeCloseTo(steps[0]!.head[31]! * (1 - 32 / 256), 7);
+    expect(steps[2]!.head[32]).toBeCloseTo(steps[0]!.head[63]! * (1 - 32 / 256), 7);
+  });
+  test('BALANCE moves over the block instead of stepping', () => {
+    const steps = report.mixRamp!.steps;
+    const out = (step: Observation) => step.outputBits.map(f32);
+    expect(out(steps[0]!)).toEqual(Array(64).fill(0.5));
+    // head only -> grains only: the head's gain falls by 1/32 a sample, on both sides
+    const moving = out(steps[1]!);
+    for (const side of [0, 32]) {
+      expect(moving[side]).toBeCloseTo(0.5 * (31 / 32), 6);
+      expect(moving[side + 15]).toBeCloseTo(0.5 * (16 / 32), 6);
+      expect(moving[side + 31]).toBeCloseTo(0, 6);
+    }
+    expect(out(steps[2]!)).toEqual(Array(64).fill(0));
+  });
+  test('DRIVE comes on over the block: the first sample stays near the clean one', () => {
+    const steps = report.driveOn!.steps;
+    const out = (step: Observation) => step.outputBits.map(f32);
+    expect(out(steps[0]!)).toEqual(Array(64).fill(0.5));
+    const moving = out(steps[1]!);
+    expect(Math.abs(moving[0]! - 0.5)).toBeLessThan(0.01);
+    expect(Math.abs(moving[32]! - 0.5)).toBeLessThan(0.01);
+    for (let i = 1; i < 32; i++) expect(moving[i]! - moving[i - 1]!).toBeLessThan(0.08);
+    // full drive on 0.5: the limit's ceiling
+    for (const value of out(steps[2]!)) expect(value).toBeCloseTo(4 / 3, 5);
+  });
+  test('the edge of a reverse segment is a quarter of it, not 16 frames', () => {
+    // a constant tape: the head's output is the window of the segment. 128 frames: an edge of 32
+    for (const step of report.tapeReverseEdge!.steps.slice(1)) {
+      expect(step.tape[3]).toBe(128);
+      for (let i = 0; i < 32; i++) {
+        const c = (step.tape[2]! - 32 + i + 128) % 128;
+        expect(step.head[i]).toBeCloseTo(0.5 * Math.min(1, Math.min(c, 127 - c) / 32), 6);
+      }
+    }
+  });
+  test('a tape that stood still goes on from its last frame: the splice decays instead of jumping', () => {
+    const steps = report.holdRelease!.steps;
+    // HOLD: nothing is written, and the tape knows it
+    expect(steps[1]!.write[2]).toBe(1);
+    expect(steps[1]!.state[9]).toBe(steps[0]!.state[9]);
+    // release: the tape holds 0.25 and the input is -0.5. The first frame written is 0.25 again; the difference of
+    // 0.75 falls by 1/256 a sample
+    const released = steps[2]!;
+    expect(released.write[2]).toBe(0);
+    expect(f32(released.write[0]!)).toBeCloseTo(0.75 * (255 / 256) ** 32, 5);
+    expect(f32(released.write[1]!)).toBeCloseTo(0.75 * (255 / 256) ** 32, 5);
+    expect(f32(last('holdRelease').write[0]!)).toBeCloseTo(0.75 * (255 / 256) ** 96, 5);
+  });
+  test('the steep side of a FALL grain is an eighth of the grain (at most 256 samples), not 32', () => {
+    const step = last('fallEdge');
+    const grain = step.grains.find((words) => words[0] === 2048 - 32)!;
+    expect(grain, 'one grain of 2048 frames started in the last block').toBeDefined();
+    expect(grain[9]).toBe(3);
+    const level = 0.625 * f32(grain[13]!) * f32(grain[10]!);
+    const left = step.outputBits.slice(0, 32).map(f32);
+    for (const i of [1, 16, 31]) expect(left[i]! / level).toBeCloseTo((1 - i / 2048) * (i / 256), 4);
   });
   test('DRIVE saturates the output below 4/3', () => {
     const peak = last('tapeDrive').peak;
@@ -660,10 +814,14 @@ describe('PRISM real SHARC engine', () => {
     }
     expect(Math.max(steps[1]!.peak, steps[2]!.peak)).toBeGreaterThan(0.01);
   });
-  test('a history reset fades the tape grains out at once', () => {
+  test('a history reset leaves the tape grains playing: the tape they read goes on', () => {
     const steps = report.tapeGrainsReset!.steps;
-    for (const grain of steps[1]!.grains) if (grain[8]) expect(grain[0]).toBeLessThanOrEqual(32);
-    for (const grain of steps[2]!.grains) if (grain[8]) expect(grain[0]).toBeLessThanOrEqual(0);
+    for (const step of steps.slice(1)) {
+      expect(step.tape[24]).toBe(16);
+      expect(step.state[38]).toBeGreaterThan(0);
+      // no grain is being retired
+      for (const grain of step.grains) if (grain[0]! > 0) expect(grain[15]).toBe(0);
+    }
   });
   test('tape grains at the extremes of size, pitch, spray and reverse stay inside written tape', () => {
     for (const step of report.tapeGrainsExtreme!.steps) {
