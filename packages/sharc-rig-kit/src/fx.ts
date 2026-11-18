@@ -294,6 +294,11 @@ export class FxRig {
     amountWords(amounts).forEach((w, k) => this.setRowWord(i, AMT0 + k, w));
   }
 
+  /** Write the DM word at byte address ADDRESS before the next call: a word of a mailbox or a descriptor that the effect imports. */
+  poke(address: number, word: number): void {
+    this.q.poke(nw(address), word >>> 0);
+  }
+
   /** The DM words at byte address ADDRESS now (null: nothing wrote the word). Pending pokes are sent first. */
   async peek(address: number, count = 1): Promise<(number | null)[]> {
     this.q.push({ call: { pc: RETURN_SW, regs: {}, max_steps: 0, reads: [[nw(address), count]], read_regs: [] } });
