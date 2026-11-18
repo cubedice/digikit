@@ -16,6 +16,7 @@
 #include "src-clock.h"
 #include "src-mod.h"
 #include "instances.h"
+#include "work-copy.h"
 #if defined(__m68k__)
 #include "sound-persist.h"
 #endif
@@ -250,6 +251,16 @@ static int32_t preset_slot = 1, preset_result, preset_pending;
 static dk_ui_menu *preset_menu;
 static const char route_key[] = "canopy/routes/v1";
 static const char channels_key[] = "canopy/channels/v1";
+/* The working copy (work-copy.h): written WORK_QUIET_TICKS UI ticks after the last change (about two seconds), and
+ * applied to first binds until WORK_WINDOW_TICKS ticks of a healthy instrument have passed since boot (about 20 s),
+ * or WORK_GRACE_TICKS (about 3 s) after the first bind of the boot: the tracks of the boot project bind together, and a
+ * project loaded after that brings its own settings. */
+static const char work_key[] = "canopy/work/v1";
+enum { WORK_QUIET_TICKS = 60, WORK_WINDOW_TICKS = 600, WORK_GRACE_TICKS = 90 };
+static CwStore work;
+static uint32_t work_quiet, work_window;
+/* [0] boot copies applied, [1] writes of the record, [2] the last write's result. */
+volatile uint32_t ip_work_info[4];
 static uint8_t route_write[CR_BYTES], channels_write[CC_BYTES];
 static int route_pending, route_result;
 static CrRoute restore_route;
@@ -429,6 +440,25 @@ static void recover_tick(void)
         return;
     ++ip_recoveries;
     release_all();
+}
+/* UI task. Close the boot window of the working copy, and write the copy once it has been quiet for a moment. */
+static void work_tick(void)
+{
+    if (work_window < WORK_WINDOW_TICKS && healthy && ++work_window == WORK_WINDOW_TICKS) {
+        uint32_t sr = dkrt_irq_mask();
+        cw_expire(&work);
+        dkrt_irq_restore(sr);
+    }
+    if (!work.dirty || ++work_quiet < WORK_QUIET_TICKS)
+        return;
+    uint8_t record[CW_BYTES];
+    uint32_t sr = dkrt_irq_mask();
+    cw_encode(&work, record);
+    work.dirty = 0;
+    work_quiet = 0;
+    dkrt_irq_restore(sr);
+    ++ip_work_info[1];
+    ip_work_info[2] = (uint32_t)dkrt_settings_put(work_key, record, sizeof(record));
 }
 /* Learned shapes are one library shared by every instance. */
 static void shapes_share(const IpInst *from)
@@ -1100,6 +1130,8 @@ typedef struct {
     uint32_t seq;
     CpPreset state;
     uint8_t bound;
+    /* The carrier track at the bind: the working copy's entry of this Sound. */
+    uint8_t track;
 } IpSaBind;
 static IpSaBind sa_bind[IP_INSTANCES];
 static void persist_snapshot(const IpInst *in, CpPreset *p)
@@ -1162,6 +1194,8 @@ static void sa_publish(uint32_t i, int owned)
     if (mine) {
         b->seq = sa_put(s, b->sound, payload);
         copy_state(&b->state, &now);
+        if (cw_set(&work, b->track, payload))
+            work_quiet = 0;
     }
     dkrt_irq_restore(sr);
 }
@@ -1202,6 +1236,13 @@ static void sa_follow(uint32_t i)
     int have = sa_get(s, sound, payload, &seq);
     dkrt_irq_restore(sr);
     int decoded = have && !sr_decode(&want, payload);
+    /* The first bind of a track after boot takes the working copy: the settings it had when the power went, saved
+     * with a project or not. It wins over the extension of the boot records, which is the last save's. */
+    uint32_t track = inst[i].track;
+    uint8_t boot[SR_BYTES];
+    int from_work = cw_boot(&work, track, boot) && !sr_decode(&want, boot);
+    if (from_work)
+        decoded = 1;
     persist_snapshot(&inst[i], &now);
     if (decoded && !same_state(&want, &now)) {
         sr = dkrt_irq_mask();
@@ -1215,14 +1256,24 @@ static void sa_follow(uint32_t i)
     }
     /* A Sound without an extension is claimed with the state it sounds with. */
     uint8_t claim[SR_BYTES];
-    int claiming = !have && !sr_encode(&now, claim);
+    int claiming = from_work || (!have && !sr_encode(&now, claim));
+    uint8_t bound_now[SR_BYTES];
+    int known = !sr_encode(decoded ? &want : &now, bound_now);
     sr = dkrt_irq_mask();
     b->sound = sound;
     b->seq = seq;
     copy_state(&b->state, decoded ? &want : &now);
     b->bound = 1;
+    b->track = (uint8_t)(track < MI_TRACKS ? track : CW_TRACKS);
     if (claiming && sa_owned(i, sound) && sa_seq(s, sound) == seq)
-        b->seq = sa_put(s, sound, claim);
+        b->seq = sa_put(s, sound, from_work ? boot : claim);
+    cw_taken(&work, track);
+    if (work_window < WORK_WINDOW_TICKS - WORK_GRACE_TICKS)
+        work_window = WORK_WINDOW_TICKS - WORK_GRACE_TICKS;
+    if (from_work)
+        ++ip_work_info[0];
+    if (known && cw_set(&work, b->track, bound_now))
+        work_quiet = 0;
     dkrt_irq_restore(sr);
 }
 #else
@@ -2325,6 +2376,10 @@ void instrument_play_tick(void)
         if (n >= 0 && cc_decode(restore_channels, channels, (uint32_t)n))
             for (uint32_t t = 0; t < MI_TRACKS; ++t)
                 restore_channels[t] = 0;
+        uint8_t copy[CW_BYTES];
+        n = dkrt_settings_get(work_key, copy, sizeof(copy));
+        if (n < 0 || cw_decode(&work, copy, (uint32_t)n))
+            cw_clear(&work);
         keyboard_initialized = 1;
     }
     /* Reading a valid record cannot open MIDI routes. Restore requested setup
@@ -2413,6 +2468,7 @@ void instrument_play_tick(void)
         healthy = reply[0] == MT_PLAY_REPLY_MAGIC && reply[13] == 3 &&
                   reply[14] == dkrt_instrument_generation();
     recover_tick();
+    work_tick();
     instrument_sound_scan();
     ip_sa_tick();
     for (uint32_t i = 0; i < IP_INSTANCES; ++i)

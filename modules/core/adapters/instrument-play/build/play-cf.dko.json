@@ -2090,6 +2090,27 @@
   },
   {
    "addend": 0,
+   "offset": 22,
+   "section": ".text.cw_set.constprop.0",
+   "symbol": ".sec..bss.work",
+   "type": "cf.32"
+  },
+  {
+   "addend": 32,
+   "offset": 92,
+   "section": ".text.cw_set.constprop.0",
+   "symbol": ".sec..bss.work",
+   "type": "cf.32"
+  },
+  {
+   "addend": 672,
+   "offset": 126,
+   "section": ".text.cw_set.constprop.0",
+   "symbol": ".sec..bss.work",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 14,
    "section": ".text.sa_publish",
    "symbol": "ip_sa_store",
@@ -2184,6 +2205,20 @@
    "offset": 290,
    "section": ".text.sa_publish",
    "symbol": "sa_put",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 332,
+   "section": ".text.sa_publish",
+   "symbol": ".sec..text.cw_set.constprop.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 344,
+   "section": ".text.sa_publish",
+   "symbol": ".sec..bss.work_quiet",
    "type": "cf.32"
   },
   {
@@ -4729,1766 +4764,1990 @@
   },
   {
    "addend": 0,
-   "offset": 570,
+   "offset": 572,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.channels_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 690,
+   "offset": 704,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.keyboard_initialized",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 696,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.route_restore",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 706,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_instrument_type",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 716,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_instrument_generation",
+   "symbol": ".sec..rodata.work_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 726,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.restore_route",
+   "symbol": ".sec..bss.work",
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 732,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.track_channel",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 738,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.restore_channels",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 744,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.enabled",
-   "type": "cf.32"
-  },
-  {
-   "addend": 1,
-   "offset": 750,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.restore_route",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 756,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.usb",
-   "type": "cf.32"
-  },
-  {
-   "addend": 2,
-   "offset": 762,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.restore_route",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 768,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.din",
-   "type": "cf.32"
-  },
-  {
-   "addend": 3,
-   "offset": 774,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.restore_route",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 780,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.channel",
-   "type": "cf.32"
-  },
-  {
-   "addend": 4,
-   "offset": 786,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.restore_route",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 794,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.selector_octave",
-   "type": "cf.32"
-  },
-  {
-   "addend": 5,
-   "offset": 800,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.restore_route",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 806,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.selector_channel",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 834,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.changed",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 842,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.route_pending",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 856,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.route_write",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 862,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..rodata.route_key",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 868,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_settings_put",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 880,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.route_result",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 890,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.route_pending",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 896,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 904,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.route_restore",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 946,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.channels_write",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 952,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..rodata.channels_key",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 964,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.route_result",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 974,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_settings_flush",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 980,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.route_pending",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 986,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.route_result",
-   "type": "cf.32"
-  },
-  {
-   "addend": 29,
-   "offset": 996,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1002,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.ui",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1012,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_toast",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1020,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.input_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1032,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_is_open",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1044,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.input_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1050,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_refresh",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1058,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.preset_pending",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1072,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.preset_write",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1078,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..rodata.preset_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1090,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_settings_put",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1100,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.preset_result",
-   "type": "cf.32"
-  },
-  {
-   "addend": 43,
-   "offset": 1112,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1118,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.preset_pending",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1124,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.ui",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1134,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_toast",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1142,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.preset_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1154,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_is_open",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1166,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.preset_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1172,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_refresh",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1180,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.save_pending",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1188,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_irq_mask",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1194,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.cur",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1218,
-   "section": ".text.instrument_play_tick",
-   "symbol": "kb_encode",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1226,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_irq_restore",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1238,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..rodata.shape_key",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1244,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_settings_put",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1254,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.storage_result",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1264,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_settings_flush",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1270,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.storage_result",
-   "type": "cf.32"
-  },
-  {
-   "addend": 83,
-   "offset": 1282,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1288,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.save_pending",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1294,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.ui",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1304,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_toast",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1312,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.learn_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1324,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_is_open",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1336,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.cur",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1352,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.learn_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1358,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_close",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1366,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.learn_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1378,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_is_open",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1390,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.cur",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1404,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.refreshed_revision",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1412,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.refreshed_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1420,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.learn_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1426,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.refreshed_revision",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1432,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.refreshed_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1438,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_refresh",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1446,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_instrument_type",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1462,
-   "section": ".text.instrument_play_tick",
-   "symbol": "ip_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1470,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.listed_type",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1478,
-   "section": ".text.instrument_play_tick",
-   "symbol": "ip_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1484,
-   "section": ".text.instrument_play_tick",
-   "symbol": "ip_view_build",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1496,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.listed_type",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1512,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_registry_reply",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1552,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_instrument_generation",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1566,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.fault_generation",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1612,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.healthy",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1622,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_settings_flush",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1628,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.preset_result",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1650,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.preset_write",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1660,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.preset_records",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1688,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.preset_present",
-   "type": "cf.32"
-  },
-  {
-   "addend": 70,
-   "offset": 1694,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1702,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.preset_present",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1714,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..rodata.shape_fill.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 257,
-   "offset": 1720,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
-   "type": "cf.32"
-  },
-  {
-   "addend": 2663,
-   "offset": 1726,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
-   "type": "cf.32"
-  },
-  {
-   "addend": 5069,
-   "offset": 1732,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
-   "type": "cf.32"
-  },
-  {
-   "addend": 7475,
-   "offset": 1738,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1756,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.healthy",
-   "type": "cf.32"
-  },
-  {
-   "addend": 156,
-   "offset": 1762,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_transport",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1772,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.faulted_ticks.0",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1778,
-   "section": ".text.instrument_play_tick",
-   "symbol": "instrument_sound_scan",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1784,
-   "section": ".text.instrument_play_tick",
-   "symbol": "ip_sa_tick",
-   "type": "cf.32"
-  },
-  {
-   "addend": 8,
-   "offset": 1790,
-   "section": ".text.instrument_play_tick",
-   "symbol": "ip_tracks",
-   "type": "cf.32"
-  },
-  {
-   "addend": 12,
-   "offset": 1796,
-   "section": ".text.instrument_play_tick",
-   "symbol": "ip_tracks",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1802,
-   "section": ".text.instrument_play_tick",
-   "symbol": "ip_tracks",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1808,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
-   "type": "cf.32"
-  },
-  {
-   "addend": 4,
-   "offset": 1814,
-   "section": ".text.instrument_play_tick",
-   "symbol": "ip_tracks",
-   "type": "cf.32"
-  },
-  {
-   "addend": 2406,
-   "offset": 1820,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
-   "type": "cf.32"
-  },
-  {
-   "addend": 4812,
-   "offset": 1826,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1832,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.for_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 7218,
-   "offset": 1838,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1844,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.selected",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1860,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1904,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.cur",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1920,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1928,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1956,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.focus",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1974,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.focus",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1980,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.src_state",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1988,
-   "section": ".text.instrument_play_tick",
-   "symbol": "cs_touch",
-   "type": "cf.32"
-  },
-  {
-   "addend": 128,
-   "offset": 1996,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2008,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.sa_bind",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2018,
-   "section": ".text.instrument_play_tick",
-   "symbol": "ip_tracks",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2042,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.cur",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2058,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.src_requested",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2076,
-   "section": ".text.instrument_play_tick",
-   "symbol": "instrument_mod_publish",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2102,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.src_state",
-   "type": "cf.32"
-  },
-  {
-   "addend": 28,
-   "offset": 2138,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.src_state",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2430,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.focus",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2474,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.instrument_sound_suspend",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2498,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_instrument_generation",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2516,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.faulted_ticks.0",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2524,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.faulted_ticks.0",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2540,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_recoveries",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2550,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.faulted_ticks.0",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2556,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_instrument_generation",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2564,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.instrument_play_faulted",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2578,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_keyboard_recover",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2590,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_recoveries",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2596,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.release_all",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2612,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.healthy",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2622,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.quarantined",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2646,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.instrument_sound_suspend",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2670,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_irq_mask",
-   "type": "cf.32"
-  },
-  {
-   "addend": 11544,
-   "offset": 2694,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_ledger",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2724,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_transport",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2752,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_irq_restore",
-   "type": "cf.32"
-  },
-  {
-   "addend": 11544,
-   "offset": 2772,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_ledger",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2788,
-   "section": ".text.instrument_play_tick",
-   "symbol": "instrument_sound_prepare",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2804,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.instrument_sound_suspend",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2812,
+   "addend": 32,
+   "offset": 810,
    "section": ".text.instrument_play_tick",
-   "symbol": "ip_sa_ensure",
+   "symbol": ".sec..bss.work",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2826,
+   "offset": 874,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard_initialized",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2836,
+   "offset": 880,
    "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_irq_mask",
+   "symbol": ".sec..bss.route_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2842,
+   "offset": 890,
    "section": ".text.instrument_play_tick",
-   "symbol": "ip_admission",
+   "symbol": "dkrt_instrument_type",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2862,
+   "offset": 900,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.sa_owned",
+   "symbol": "dkrt_instrument_generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2882,
+   "offset": 910,
    "section": ".text.instrument_play_tick",
-   "symbol": "sa_seq",
+   "symbol": ".sec..bss.restore_route",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2918,
+   "offset": 916,
    "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_irq_restore",
+   "symbol": ".sec..bss.track_channel",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2934,
+   "offset": 922,
    "section": ".text.instrument_play_tick",
-   "symbol": "sa_slot",
+   "symbol": ".sec..bss.restore_channels",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2958,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.sa_publish",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3002,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_instance_bind",
-   "type": "cf.32"
-  },
-  {
-   "addend": 11544,
-   "offset": 3036,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_ledger",
-   "type": "cf.32"
-  },
-  {
-   "addend": 12,
-   "offset": 3076,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.src_state",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3086,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_config_submit",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3116,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_ledger",
-   "type": "cf.32"
-  },
-  {
-   "addend": 11552,
-   "offset": 3134,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_ledger",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3142,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.instrument_midi_ready",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3160,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.channel_of",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3188,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_route_enable",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3204,
+   "offset": 928,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.enabled",
    "type": "cf.32"
   },
   {
+   "addend": 1,
+   "offset": 934,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.restore_route",
+   "type": "cf.32"
+  },
+  {
    "addend": 0,
-   "offset": 3216,
+   "offset": 940,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.usb",
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 3230,
+   "addend": 2,
+   "offset": 946,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.route_one",
+   "symbol": ".sec..bss.restore_route",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3246,
+   "offset": 952,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.din",
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 3262,
+   "addend": 3,
+   "offset": 958,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.route_one",
+   "symbol": ".sec..bss.restore_route",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3292,
+   "offset": 964,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.channel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 970,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.restore_route",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 978,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.selector_octave",
+   "type": "cf.32"
+  },
+  {
+   "addend": 5,
+   "offset": 984,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.restore_route",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 990,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.selector_channel",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3304,
+   "offset": 1018,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.usb",
+   "symbol": ".sec..text.changed",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3318,
+   "offset": 1026,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.route_one",
+   "symbol": ".sec..bss.route_pending",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3334,
+   "offset": 1040,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.din",
+   "symbol": ".sec..bss.route_write",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3350,
+   "offset": 1046,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.route_one",
-   "type": "cf.32"
-  },
-  {
-   "addend": 420,
-   "offset": 3386,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_transport",
-   "type": "cf.32"
-  },
-  {
-   "addend": 424,
-   "offset": 3394,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_transport",
+   "symbol": ".sec..rodata.route_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3406,
+   "offset": 1052,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.instrument_sound_suspend",
+   "symbol": "dkrt_settings_put",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3456,
+   "offset": 1064,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.sa_publish",
+   "symbol": ".sec..bss.route_result",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3464,
+   "offset": 1074,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.route_pending",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1080,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1088,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.route_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1130,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1156,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.channels_write",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1162,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..rodata.channels_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1174,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.route_result",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1184,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_settings_flush",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1190,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.route_pending",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1196,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.route_result",
+   "type": "cf.32"
+  },
+  {
+   "addend": 29,
+   "offset": 1206,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1212,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.ui",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1222,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_toast",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1230,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.input_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1242,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_menu_is_open",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1254,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.input_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1260,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_menu_refresh",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1268,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.preset_pending",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1282,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.preset_write",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1288,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..rodata.preset_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1300,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_settings_put",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1310,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.preset_result",
+   "type": "cf.32"
+  },
+  {
+   "addend": 43,
+   "offset": 1322,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1328,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.preset_pending",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1334,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.ui",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1344,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_toast",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1352,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.preset_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1364,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_menu_is_open",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1376,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.preset_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1382,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_menu_refresh",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1390,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.save_pending",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1398,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3490,
-   "section": ".text.instrument_play_tick",
-   "symbol": "sa_get",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3502,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_irq_restore",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3526,
-   "section": ".text.instrument_play_tick",
-   "symbol": "sr_decode",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3554,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.preset_snapshot",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3604,
-   "section": ".text.instrument_play_tick",
-   "symbol": "sr_encode",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3622,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_irq_mask",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3688,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.sa_owned",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3704,
-   "section": ".text.instrument_play_tick",
-   "symbol": "sa_seq",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3726,
-   "section": ".text.instrument_play_tick",
-   "symbol": "sa_put",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3742,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_irq_restore",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3772,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.same_state",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3788,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_irq_mask",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3802,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.sa_owned",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3820,
-   "section": ".text.instrument_play_tick",
-   "symbol": "sa_seq",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3840,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_irq_restore",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3864,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.instrument_sound_suspend",
-   "type": "cf.32"
-  },
-  {
-   "addend": 12,
-   "offset": 4222,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.src_state",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4230,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_transport",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4260,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_config_submit",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4324,
+   "offset": 1404,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.cur",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4340,
+   "offset": 1428,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.focus",
+   "symbol": "kb_encode",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4374,
+   "offset": 1436,
    "section": ".text.instrument_play_tick",
-   "symbol": "mi_ledger",
+   "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4402,
+   "offset": 1448,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.src_status",
+   "symbol": ".sec..rodata.shape_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4410,
+   "offset": 1454,
    "section": ".text.instrument_play_tick",
-   "symbol": "is_select",
+   "symbol": "dkrt_settings_put",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4416,
-   "section": ".text.instrument_play_tick",
-   "symbol": "instrument_src_now",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4424,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.instrument_src_poll",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4434,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.cur",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4442,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_transport",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4448,
+   "offset": 1464,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.storage_result",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4470,
+   "offset": 1474,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 4,
-   "offset": 4476,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 8,
-   "offset": 4482,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 12,
-   "offset": 4488,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 16,
-   "offset": 4506,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 20,
-   "offset": 4512,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 24,
-   "offset": 4522,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 28,
-   "offset": 4528,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 32,
-   "offset": 4534,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 36,
-   "offset": 4540,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 4,
-   "offset": 4546,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
+   "symbol": "dkrt_settings_flush",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4552,
+   "offset": 1480,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_control",
+   "symbol": ".sec..bss.storage_result",
+   "type": "cf.32"
+  },
+  {
+   "addend": 83,
+   "offset": 1492,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4562,
+   "offset": 1498,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.enabled",
+   "symbol": ".sec..bss.save_pending",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4568,
+   "offset": 1504,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.healthy",
-   "type": "cf.32"
-  },
-  {
-   "addend": 40,
-   "offset": 4574,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 44,
-   "offset": 4592,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
+   "symbol": ".sec..text.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4618,
+   "offset": 1514,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_control",
-   "type": "cf.32"
-  },
-  {
-   "addend": 11544,
-   "offset": 4644,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_ledger",
-   "type": "cf.32"
-  },
-  {
-   "addend": 156,
-   "offset": 4668,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_transport",
+   "symbol": "dk_ui_toast",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4702,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.quarantined",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4716,
+   "offset": 1522,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.learn_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4728,
+   "offset": 1534,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_is_open",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4744,
+   "offset": 1546,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.cur",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1562,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.learn_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1568,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_menu_close",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1576,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.learn_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1588,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_menu_is_open",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1600,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.cur",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1614,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.refreshed_revision",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1622,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.refreshed_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1630,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.learn_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1636,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.refreshed_revision",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1642,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.refreshed_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1648,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_menu_refresh",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1656,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_instrument_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1672,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1680,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.listed_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1688,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1694,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_view_build",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1706,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.listed_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1722,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_registry_reply",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1762,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_instrument_generation",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1776,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.fault_generation",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1822,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.healthy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1832,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_settings_flush",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1838,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.preset_result",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1860,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.preset_write",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1870,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.preset_records",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1898,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.preset_present",
+   "type": "cf.32"
+  },
+  {
+   "addend": 70,
+   "offset": 1904,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1912,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.preset_present",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1924,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..rodata.shape_fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 257,
+   "offset": 1930,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.inst",
+   "type": "cf.32"
+  },
+  {
+   "addend": 2663,
+   "offset": 1936,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.inst",
+   "type": "cf.32"
+  },
+  {
+   "addend": 5069,
+   "offset": 1942,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.inst",
+   "type": "cf.32"
+  },
+  {
+   "addend": 7475,
+   "offset": 1948,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
+   "offset": 1966,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.healthy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 156,
+   "offset": 1972,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1982,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.faulted_ticks.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1988,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work_window",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2002,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.healthy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2014,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work_window",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2028,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 16,
+   "offset": 2036,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2058,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 672,
+   "offset": 2066,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2078,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work_quiet",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2086,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work_quiet",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2098,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2122,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2190,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work_quiet",
+   "type": "cf.32"
+  },
+  {
+   "addend": 672,
+   "offset": 2196,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2202,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2214,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..rodata.work_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 2220,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_work_info",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2226,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_settings_put",
+   "type": "cf.32"
+  },
+  {
+   "addend": 8,
+   "offset": 2236,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_work_info",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2242,
+   "section": ".text.instrument_play_tick",
+   "symbol": "instrument_sound_scan",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2248,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_sa_tick",
+   "type": "cf.32"
+  },
+  {
+   "addend": 8,
+   "offset": 2254,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_tracks",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 2260,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_tracks",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2266,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_tracks",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2272,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.inst",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 2278,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_tracks",
+   "type": "cf.32"
+  },
+  {
+   "addend": 2406,
+   "offset": 2284,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.inst",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4812,
+   "offset": 2290,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.inst",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2296,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.for_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 7218,
+   "offset": 2302,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.inst",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2308,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.selected",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2324,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.inst",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2368,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.cur",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2384,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.inst",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2392,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.inst",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2420,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.focus",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2438,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.focus",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2444,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.src_state",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2452,
+   "section": ".text.instrument_play_tick",
+   "symbol": "cs_touch",
+   "type": "cf.32"
+  },
+  {
+   "addend": 128,
+   "offset": 2460,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.inst",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2472,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.sa_bind",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2482,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_tracks",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2508,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.cur",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2524,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.src_requested",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2544,
+   "section": ".text.instrument_play_tick",
+   "symbol": "instrument_mod_publish",
+   "type": "cf.32"
+  },
+  {
+   "addend": 116,
+   "offset": 2590,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.src_state",
+   "type": "cf.32"
+  },
+  {
+   "addend": 28,
+   "offset": 2608,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.src_state",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2892,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.focus",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2936,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.instrument_sound_suspend",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2960,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_instrument_generation",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2978,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.faulted_ticks.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2986,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.faulted_ticks.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3002,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_recoveries",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3012,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.faulted_ticks.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3018,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_instrument_generation",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3026,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.instrument_play_faulted",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3040,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_keyboard_recover",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3052,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_recoveries",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3058,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.release_all",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3074,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.healthy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3086,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.quarantined",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3110,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.instrument_sound_suspend",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3134,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 11544,
+   "offset": 3158,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3188,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3216,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 11544,
+   "offset": 3236,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3252,
+   "section": ".text.instrument_play_tick",
+   "symbol": "instrument_sound_prepare",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3268,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.instrument_sound_suspend",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3276,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_sa_ensure",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3292,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.keyboard_initialized",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3302,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3308,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3328,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.sa_owned",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3350,
+   "section": ".text.instrument_play_tick",
+   "symbol": "sa_seq",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3384,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3402,
+   "section": ".text.instrument_play_tick",
+   "symbol": "sa_slot",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3426,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.sa_publish",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3470,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_instance_bind",
+   "type": "cf.32"
+  },
+  {
+   "addend": 11544,
+   "offset": 3504,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 3544,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.src_state",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3554,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_config_submit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3584,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 11552,
+   "offset": 3602,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3610,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.instrument_midi_ready",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3630,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.channel_of",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3658,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_route_enable",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3674,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.enabled",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3686,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.usb",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3702,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.route_one",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3718,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.din",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3736,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.route_one",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3766,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.selector_channel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3778,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.usb",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3794,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.route_one",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3810,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.din",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3828,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.route_one",
+   "type": "cf.32"
+  },
+  {
+   "addend": 420,
+   "offset": 3864,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 424,
+   "offset": 3872,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3884,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.instrument_sound_suspend",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3934,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.sa_publish",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3942,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3970,
+   "section": ".text.instrument_play_tick",
+   "symbol": "sa_get",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3980,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4002,
+   "section": ".text.instrument_play_tick",
+   "symbol": "sr_decode",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4032,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work",
+   "type": "cf.32"
+  },
+  {
+   "addend": 32,
+   "offset": 4054,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4090,
+   "section": ".text.instrument_play_tick",
+   "symbol": "sr_decode",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4120,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.preset_snapshot",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4166,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.same_state",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4178,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4192,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.sa_owned",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4212,
+   "section": ".text.instrument_play_tick",
+   "symbol": "sa_seq",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4232,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4270,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.instrument_sound_suspend",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 4628,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.src_state",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4636,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4666,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_config_submit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4730,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.cur",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4746,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.focus",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4780,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4808,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.src_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4816,
+   "section": ".text.instrument_play_tick",
+   "symbol": "is_select",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4822,
+   "section": ".text.instrument_play_tick",
+   "symbol": "instrument_src_now",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 4830,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.shown_main",
+   "symbol": ".sec..text.instrument_src_poll",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4838,
+   "offset": 4840,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.input_menu",
+   "symbol": ".sec..data.cur",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4844,
+   "offset": 4848,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.shown_main",
+   "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4856,
+   "offset": 4854,
    "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_is_open",
+   "symbol": ".sec..bss.storage_result",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4868,
+   "offset": 4876,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.input_menu",
+   "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 4874,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_refresh",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
+   "addend": 4,
    "offset": 4882,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.shape_menu",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 8,
+   "offset": 4888,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 4894,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 16,
+   "offset": 4912,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 20,
+   "offset": 4918,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 4928,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 28,
+   "offset": 4934,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 32,
+   "offset": 4940,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 36,
+   "offset": 4946,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 4952,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4894,
+   "offset": 4958,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4968,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.enabled",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4974,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.healthy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 40,
+   "offset": 4980,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 44,
+   "offset": 4998,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5024,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 11544,
+   "offset": 5050,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 156,
+   "offset": 5074,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5108,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.quarantined",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5122,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.learn_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5134,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_is_open",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4906,
+   "offset": 5150,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.inst",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5236,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.shown_main",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5244,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.input_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5250,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.shown_main",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5262,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_menu_is_open",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5274,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.input_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5280,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_menu_refresh",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5288,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.shape_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4912,
+   "offset": 5300,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_menu_is_open",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5312,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.shape_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5318,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_refresh",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5370,
+   "section": ".text.instrument_play_tick",
+   "symbol": "sr_encode",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5400,
+   "section": ".text.instrument_play_tick",
+   "symbol": "sr_encode",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5408,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5476,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.sa_owned",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5494,
+   "section": ".text.instrument_play_tick",
+   "symbol": "sa_seq",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5530,
+   "section": ".text.instrument_play_tick",
+   "symbol": "sa_put",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5552,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5566,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work_window",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5578,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work_window",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5588,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_work_info",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5608,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.cw_set.constprop.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5620,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work_quiet",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5628,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
@@ -16463,10 +16722,17 @@
   },
   {
    "align": 2,
-   "hex": "4fefff4c48d77c1c262f00b84eb90000000024004a80670000e4706e4c03080045f9000000002a4a2c404a32086c670000cc300349ef00502f0cc0fc09660680000000002f004eb900000000508f203c000009664c0308002040d1fc0000000071a800f455804a8066061f6800f500933003c0fc006e2640d7fc000000002f0b2f0c4eb900000000508f4a80666e486f00282f0c4eb900000000508f4a80665c4eb9000000002f4000244eb90000000041f2e80028004a28006c67342f35e8002f022f4800284eb900000000508f206f0020b0a8000466184aaf00bc67282f35e8002f034eb900000000508f4a8066262f2f00244eb900000000588f4cd77c1c4fef00b44e754a8467e62072e80071a800a2b88066da486f00282f35e8002f024eb9000000004fef000c42812580e80441f418007064179018005281b08166f060ae",
+   "hex": "4fefffec700f206f001848d71c04b0886522320845f90000000071b28800c2fc00282241428147f1a8004a80672c7028b081660c42804cd71c044fef00144e75286f001c10331820143418005281b5804a0057c07100448060d0d3fc00000000266f001c722849f30800139408005280b28066ec740170011582880013c20000000060b2",
+   "kind": "text",
+   "name": ".text.cw_set.constprop.0",
+   "size": 132
+  },
+  {
+   "align": 2,
+   "hex": "4fefff4c48d77c1c262f00b84eb90000000024004a80670000e4706e4c03080045f9000000002a4a2c404a32086c670000cc300349ef00502f0cc0fc09660680000000002f004eb900000000508f203c000009664c0308002040d1fc0000000071a800f455804a8066061f6800f500933003c0fc006e2640d7fc000000002f0b2f0c4eb900000000508f4a80666e486f00282f0c4eb900000000508f4a80665c4eb9000000002f4000244eb90000000041f2e80028004a28006c67342f35e8002f022f4800284eb900000000508f206f0020b0a8000466184aaf00bc67282f35e8002f034eb900000000508f4a8066262f2f00244eb900000000588f4cd77c1c4fef00b44e754a8467e62072e80071a800a2b88066da486f00282f35e8002f024eb9000000004fef000c42812580e80441f418007064179018005281b08166f0486f002871b2e86d2f004eb900000000508f4a80679a42b9000000006092",
    "kind": "text",
    "name": ".text.sa_publish",
-   "size": 322
+   "size": 350
   },
   {
    "align": 2,
@@ -16785,10 +17051,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56fd7048d73cfc4eb9000000004eb9000000004eb9000000002039000000004a80673a2f004eb900000000588f4a80672c4eb90000000024002f004eb90000000094b900000000588f7063b082640e2f39000000004eb900000000588f2439000000004a826600024e48780030260e0683ffffff1c2f0348790000000045f9000000004e924fef000c4a806d0000d62f002f034879000000004eb9000000004fef000c23c00000000042034879000000004eb9000000002a0e588f47f90000000042840685ffffff8013c300000000263c00000000487800902f032f1b4e924fef000c4a806d362f002f032f054eb9000000004fef000c4a8066222f032f054eb900000000508f4a8066127001123900000000e9a8808113c00000000052840683000000907c04bc8466aa4878001047eefeb82f0b4879000000004e924fef000c26004a806d00023e7e10be80672642b90000000024034a836d0000b874ff600000b272bcb2806700ff4023c0000000006000ff3671aefeb87243b28066d071aefeb97852b88066c671aefeba53804a8066bc4a2efebb66b6700a1833080066ae52807e0ebe8066f2420591c81033880052887c0ed0842200d28518001a01bc8866ea718079aefec6b8806682738171aefec7b0816600ff78486eff803d6efec0ff842d6efebcff804eb900000000588f4a806700ff5a43eeff84700133d10000000041eeff8023d00000000023c00000000023c200000000428047f90000000076104202178208005280b68066f248780014486eff804879000000004e924fef000c4a806d667814b8806600014a71aeff807c43bc806600013e71aeff81bc806600013471aeff8253804a806600012842811036188478107780b88365000118d08214005281b88166e87c5abd8073aeff837180b081660000fe428041f608847210179008005280b28066f0780123c4000000004ab9000000006700008a4eb9000000004a80677e4eb9000000004a80677471b90000000041f90000000043f90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b900000000538023c00000000071b90000000023c000000000428045f108007210119208005280b28066f042a742a74eb900000000508f4ab900000000670000d04878001048790000000048790000000045f9000000004e924fef000c23c0000000004a80673442b900000000243c00000000606242b90000000072bcb2806700fe826000fdc0428042027610178208005280b68066f26000ff04487800144879000000004879000000004e924fef000c23c0000000004a8066ac4eb90000000042b90000000023c0000000004a80669c243c000000004eb9000000002f022f004eb900000000508f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f2439000000004a8267704878009048790000000041f90000000053822f302c004eb9000000004fef000c23c0000000004a8067000200243c0000000042b9000000004eb9000000002f022f004eb900000000508f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f4ab900000000677c4eb900000000287900000000260e0683ffffff802f0349ec00d82f0c24004eb9000000002f024eb900000000487800302f034879000000004eb9000000004fef001823c0000000004a8066124eb90000000023c0000000004a80670001b0243c0000000042b9000000004eb9000000002f022f004eb900000000508f2039000000004a80672c2f004eb900000000588f4a80671e20790000000071a800f455804a80670e2f39000000004eb900000000588f2039000000004a8067462f004eb900000000588f4a806738207900000000222800ec71a80100b2b9000000006608b0b900000000671a2f390000000023c10000000023c0000000004eb900000000588f45f9000000004e922d40fda44a8067284ab9000000006720b0b90000000067182f39000000004eb900000000242efda4588f23c200000000487800107610486efe144eb900000000508f2400b680660000de283c494ea103b8aefe1466207c05bcaefe486618262efe4c4eb900000000b083660a41eefe4c23d0000000004e924a80670000b27210b282660000b0243c494ea103b4aefe14660a7603b6aefe4867000376428023c0000000006000008e4eb90000000023c0000000004a806600fdf2203c000000904c02080043f90000000020404280d1fc0000000045f108001192080052800c800000009066ee7001e5a8123900000000243c00000000808113c0000000006000fdb04200243c0000000013c00000000013c00000000013c00000000013c0000000006000fe3670feb0826600ff4a42b9000000004ab900000000660002ea42b9000000004eb9000000004eb90000000045f90000000049f90000000041f90000000023d00000000043f90000000023d10000000023d20000000045f90000000023d4000000002f39000000004e92588f2a404a80664241f90000000042802210740fb481650c4a8d670002d6b295650002d0528041e809667604b68066e04a8d66162a79000000002f154e92588f4a8066064bf900000000200d048000000000e280283c2bd64a7b7c0f4c0048002d44fdb0bc956528b8b90000000067202e3ce0b7dc404c07080023c4000000000680000000002f004eb900000000588f41f90000000099cc2d48fd9847f90000000042aefdac43f90000000045f1cc00226efd982e2efd980687ffffff8023c7000000002352ff80486efe542f074eb900000000508fbe8d660e71aefe962f004eb900000000588f202efdace280223c2bd64a7b243ce0b7dc4043f9000000004c0018004c0208002d41fda0322efda22031087448404240c2fc00c02041d1fc0000000073aefe9777e800067de8001e79e8001ce1892d43fda87be8001222462d44fdb424018480700b73e800042d43ff8c77e8000e2d46ff942d41fd9c2d41ff8873e8000c2d44ff902d43fdbc808224417de800102d40ff8071aefe962d40ff8471e8000a2d41ffa02d43ffa82d45ffa42d40fdb82d40ff9871eefe942d40ff9c2d46ffac71aefe9879e800142d40ffb43028000877e800162d44ffb02d43ffb8320071c0c2fc0003e2892d41ffbc73d02d41ffc073e800022d40ffd071e800182d4affd82d41ffc42d46ffe02d40fff02d45ffe42d44ffe82d43ffec45eeffc071e8001a2d6efd9cffc82d6efda8ffcc2d6efdb8ffd42d6efdbcffdc2d40fff42d6efdb4fff82d49fffc43e8002041e80040301948404240809224c0b3c866f2b9f900000000660a00820000800b2d42ff80206efd98700f2428ff88b0a8ff80640000944a82670007222f0c4eb900000000206efd9842a8ff88588f6000070c242efe4c4eb900000000b08257c0710044806000fc7a203900000000528023c000000000782cb8806400fd0a7c07bcb9000000006500fcfe42b9000000004eb9000000002f004eb900000000588f4a806600fce24eb9000000004a806600fcd652b9000000004eb9000000006000fcc62a486000fd2e4ab90000000067102f074eb900000000588f24404a8067145582e28a660006762f0c4eb9000000006000ff5a4a82660a206efd9872012141ff884eb900000000226efd9824002069ff8820085580e28866364ab900000000660002be2029ff84b0a9ff80660002b2220006810000007143f900000000760322311c00b688660002804a81670002922f0278014eb900000000588f206efd98b8a8ff88660002884ab90000000057c0710044802f002f0c4eb900000000508f4a806c0002702f0c4eb900000000588f4eb90000000026004a806700008e4ab900000000670000844eb90000000041f900000000280071cce78824300c042f022f0c4eb900000000508f2a004a80670002302f022f034eb900000000508f2d40fdc04a2b006c6710b493660cb0ab000457c07100448024402f044eb900000000588f4a8567242f022f034eb900000000508f4a806d144a8a670001ec487800012f0c4eb900000000508f7001206efd98b0a8ff8866204aa8ff8c671a2028ff80b0a8ff8467102140ff842f0c2f004eb900000000508f7001226efd982429ff84b0a9ff88660004884aa9ff8c670004ee4ab900000000660004e4202efda0223c000000c048780020486eff804c0108002f3c435053422040d1fc000000002f102f024eb9000000004fef00144a806600043e206efd9876022143ff8842a8004441f9000000002002068000000b492f300c002f39000000002f024eb9000000004fef000c4a80670004742f074eb900000000226efd9842a9ff9042972f29ff8442a74878000224004eb9000000004fef00104a806600fdd24ab9000000006700009a53824ab90000000067162f0242a72f074eb9000000004fef000c4a806600fda84ab90000000067182f02487800012f074eb9000000004fef000c4a806600fd88246efd9871aa007453804a80664a2439000000004a82674053824ab90000000067162f0242a72f074eb9000000004fef000c4a806600fd504ab90000000067182f02487800012f074eb9000000004fef000c4a806600fd30206efd9874032142ff88600003964a816600fd844ab900000000670ab0b9000000006700fd722f0c4eb900000000588f6000fd6442806000fd82226efd982340ff8c6000fd9242806000fdda4a2b006c6710b493670c42a72f0c4eb900000000508f4eb900000000486efdc02a0e0685fffffdc42f052f022f0328004eb9000000002f042d40fd9c4eb9000000004fef00144aaefd9c670000ec2f05486efeb84eb900000000508f4a8057c4790444842a0e0685ffffff1c2f052f074eb900000000508f206efd9871a8007455804a8066061d680075ff5f4a84660000ae2c044aaefd9c661a486efdec486eff1c4eb900000000508f4a8057c07100448024404eb9000000002682276efdc000042a0e28004a86670002140685fffffeb8200b91c8508043f058007264119108005288b28866f07c011746006c4a8a67382f022f0c4eb900000000508f4a8067282f022f034eb900000000508fb0aefdc06616486efdec2f022f034eb9000000004fef000c274000042f044eb900000000588f6000fcee42846000ff282f052a0e0685fffffeb82f054eb900000000508f2c004a806600ff3c4eb9000000002f022f0c2d40fda84eb900000000508f2c004a8067122f022f034eb900000000508fb0aefdc0671a7cff2f2efda84eb900000000588f52864a866600fef66000fc842f2efda04eb900000000102efefb206efd98588f116efefd00ab116efefe00ac116efeff00ad116eff0000ae116eff0100af11400074718021400048302efeb82200114000767381302efeba2141004c11400077220070017381114000b071eefebc214100502140ff9871eefebe2140ff9c71eefec02140ffcc71eefec22140ffa871eefec42140ffb071eefec6226efd982140ffb871eefec843e9ffd057802140ffbc71eefeca2140ffb471eefecc2140ffc071eefece2140ffc871eefed42140ffa071eefed62140ffa42045200541e8002006800000003873d822c1b1c066f8226efd98204541e8004a06850000006471d822c0b1c566f871eefef0206efd9872782140003471eefef22141ffac2140003871eefef42140003c71eefef62140004071aefefa2140ff9470022140ffc47001214000446000feae0685ffffff1c6000fdec206efd987003b0a8ff886654202efda0223c000000c04c01080022020681000000712040d1fc00000000201041f900000000b0b01c00633648780020486eff802f3c435053422f002f024eb9000000004fef00144a806608206efd9842a80044206efd987002b0a8ff886700fb66203c00000966528cd1aefdacd1aefd9847eb006e7204b28c6600f70023cd00000000740f2015b48065607603b6b900000000655673ad00f47802b8816600023c206d00e82f082c3c0000027e2f0141f9000000002200068100000b492f301c002f00202efdb04c0608000680000000002f004eb9000000004eb9000000002f004eb9000000004fef0018247900000000428147f9000000002439000000007baa00f47faa00f671aa00fb79aa010023c50000000023c70000000042b90000000023c00000000041ea00e843ea00ec77aa010123d00000000023d10000000071aa00fc23c40000000023c30000000023c20000000023c00000000043f90000000041f90000000071aa00fd2879000000002a790000000023c00000000071aa00fe2d4cfd9c2d4dfda023c0000000007c0f2011bc80640242804be9000406800000007149f90000000029951c0049f30c00216efd9c0004216efda000084bf900000000508121690008000c43e90966702041e800202c39000000002146fff02155fff42154fff8216efda4fffcb081669e286a00082f0a4eb9000000002a6a0010588f26402039000000004a8067102f004eb900000000588f4a80660000b4720995fc00000000200ce3a8220de98d4a8256c2ed8c80877e0fefa9750244828081720de3ab220ae2818a80700ce1aa88858882243c2bd64a7b4c021800484142418684280b8c8486814a8656c07c0e71004480eda88680b6b900000000675220390000000023c3000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f4cee3cfcfd704e5e4e7591c86000fdc6",
+   "hex": "4e56fb0c48d73cfc4eb9000000004eb9000000004eb9000000002039000000004a80673a2f004eb900000000588f4a80672c4eb90000000024002f004eb90000000094b900000000588f7063b082640e2f39000000004eb900000000588f2439000000004a826600030648780030260e0683fffffd082f0348790000000045f9000000004e924fef000c4a806d0000d62f002f034879000000004eb9000000004fef000c23c00000000042034879000000004eb9000000002a0e588f47f90000000042840685fffffd6c13c300000000263c00000000487800902f032f1b4e924fef000c4a806d362f002f032f054eb9000000004fef000c4a8066222f032f054eb900000000508f4a8066127001123900000000e9a8808113c00000000052840683000000907c04bc8466aa4878001047eefc402f0b4879000000004e924fef000c26004a806d0002f67e10be80672642b90000000024034a836d0000b874ff600000b272bcb2806700ff4023c0000000006000ff3671aefc407243b28066d071aefc417852b88066c671aefc4253804a8066bc4a2efc4366b6700a1833080066ae52807e0ebe8066f2420591c81033880052887c0ed0842200d28518001a01bc8866ea718079aefc4eb8806682738171aefc4fb0816600ff78486efd6c3d6efc48fd702d6efc44fd6c4eb900000000588f4a806700ff5a43eefd70700133d10000000041eefd6c23d00000000023c00000000023c200000000428047f90000000076104202178208005280b68066f24878001449eefca42f0c4879000000004e924fef000c4a806d667814b8806600020071aefca47c43bc80660001f471aefca5bc80660001ea71aefca653804a80660001de42811034180478107780b883650001ced08214005281b88166e87c5abd8073aefca77180b081660001b4428041f408047210179008005280b28066f048780294240e0682fffffd6c2f024879000000004e924fef000c4a806d00019691c8420443f900000000138488005288b1fc000002a166ea0c80000002946600017471aefd6c7c43bc806600016871aefd6d7e57be806600015c71aefd6e53804a806600015071aefd6f7610b6806600014420424280588847f900000000739053814a81661e7c0112bc000195ca13460010284a528a4bf0a80072281795c800b28a66ee528041e80029528947eb00287410b48066c8760123c3000000004ab9000000006700008a4eb9000000004a80677e4eb9000000004a80677471b90000000041f90000000043f90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b900000000538023c00000000071b90000000023c000000000428045f108007210119208005280b28066f042a742a74eb900000000508f4ab900000000670000ea4878001048790000000048790000000045f9000000004e924fef000c23c0000000004a80674e42b900000000243c00000000607c42b90000000072bcb2806700fdca6000fd08428042027610178208005280b68066f26000fe4e42802040d1fc00000000421052800c80000002a166ec6000feea487800144879000000004879000000004e924fef000c23c0000000004a8066924eb90000000042b90000000023c0000000004a806682243c000000004eb9000000002f022f004eb900000000508f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f2439000000004a8267704878009048790000000041f90000000053822f302c004eb9000000004fef000c23c0000000004a8067000200243c0000000042b9000000004eb9000000002f022f004eb900000000508f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f4ab900000000677c4eb900000000287900000000260e0683fffffd6c2f0349ec00d82f0c24004eb9000000002f024eb900000000487800302f034879000000004eb9000000004fef001823c0000000004a8066124eb90000000023c0000000004a80670001b0243c0000000042b9000000004eb9000000002f022f004eb900000000508f2039000000004a80672c2f004eb900000000588f4a80671e20790000000071a800f455804a80670e2f39000000004eb900000000588f2039000000004a8067462f004eb900000000588f4a806738207900000000222800ec71a80100b2b9000000006608b0b900000000671a2f390000000023c10000000023c0000000004eb900000000588f45f9000000004e922d40fb444a8067284ab9000000006720b0b90000000067182f39000000004eb900000000242efb44588f23c200000000487800107610486efc004eb900000000508f2400b680660000de283c494ea103b8aefc0066207c05bcaefc346618262efc384eb900000000b083660a41eefc3823d0000000004e924a80670000b27210b282660000b0243c494ea103b4aefc00660a7603b6aefc3467000472428023c0000000006000008e4eb90000000023c0000000004a806600fdf2203c000000904c02080043f90000000020404280d1fc0000000045f108001192080052800c800000009066ee7001e5a8123900000000243c00000000808113c0000000006000fdb04200243c0000000013c00000000013c00000000013c00000000013c0000000006000fe3670feb0826600ff4a42b9000000004ab900000000660003e642b9000000002039000000000c800000025762404ab90000000067382e00528723c7000000000c800000025766264eb900000000428141f90000000042027610118218005281b68166f22f004eb900000000588f4a3900000000670000a8783b203900000000528023c000000000b880640000924eb9000000002c3c43570110260e0683fffffd6c2443588a43f90000000042812d46fd6c26494a33180056c291c844821482143318006704143188205288158288007e28be8866ea528145ea0029741043e90028b48166ce42042f0042b90000000013c4000000004eb900000000487802942f0348790000000052b9000000004eb9000000004fef001023c0000000004eb9000000004eb90000000045f90000000049f90000000041f90000000023d00000000043f90000000023d10000000023d20000000045f90000000023d4000000002f39000000004e92588f28404a80664241f90000000042802210740fb481650c4a8c670002d4b294650002ce528041e809667604b68066e04a8c66162879000000002f144e92588f4a80660649f900000000200c048000000000e280283c2bd64a7b7c0f4c0048002d44fb50bc946528b8b90000000067202e3ce0b7dc404c07080023c4000000000680000000002f004eb900000000588f41f9000000009bcd2d48fb3447f90000000042aefb4c45f90000000041f2dc00246efb34226efb3443e9ff802d49fb3c23c9000000002550ff80486efc402f094eb900000000508fb9eefb3c660e71aefc822f004eb900000000588f202efb4ce280223c2bd64a7b760b243ce0b7dc404c0018004c0208002d41fb40322efb422240d3fc00000000201148404240c2fc00c02041d1fc0000000073aefc837de800067fe8001c79e80004e1892d46fb482d46fd782d47fb542d47fd7c2d44fb382d44fd742401848071aefc8273e8000a7be800127fe8000e2d40fd7071e8001e7de800102d41fb582d41fd84868222402d40fd8071eefc802d40fd882d43fd6c77e8000c2d45fd902d47fd942d46fd982d43fd8c244379e8001471aefc8477e800162d44fd9c2d40fda0302800082d43fda4320071c0c2fc0003e2892d41fda873d02d41fdac73e800022d40fdbc71e800182d4afdc42d41fdb02d47fdc82d40fddc2d46fdcc2d45fdd02d44fdd42d43fdd845eefdac71e8001a2d49fde843e800202d6efb38fdb42d6efb48fdb82d40fde02d6efb58fdc041e800402d6efb54fde4301948404240809224c0b3c866f2bbf900000000660a00820000800b2d42fd6c206efb34700f2628ff88b0a8ff80640000944a83670006ea2f0d4eb900000000206efb3442a8ff88588f600006d4242efc384eb900000000b08257c0710044806000fb7e203900000000528023c000000000782cb8806400fc0e7c07bcb9000000006500fc0242b9000000004eb9000000002f004eb900000000588f4a806600fbe64eb9000000004a806600fbda52b9000000004eb9000000006000fbca28486000fd304ab90000000067122f2efb3c4eb900000000588f24004a8067145583e28b6600063c2f0d4eb9000000006000ff584a83660a206efb3472012141ff884eb900000000226efb3426002069ff8820085580e28866364ab900000000660002cc2029ff84b0a9ff80660002c0220006810000007143f900000000780322311c00b8886600028e4a81670002a02f037c014eb900000000588f206efb34bca8ff88660002964ab90000000057c0710044802f002f0d4eb900000000508f4a806c00027e2f0d4eb900000000588f4eb9000000002d40fb384a80670000904ab900000000670000864eb90000000041f900000000280071cde78826300c042f032f0d4eb900000000508f2c004a806700023c2f032f2efb384eb900000000508f2d40fb5c4a2b006c670eb693660ab0ab000457c0750044822f044eb900000000588f4a8667262f032f2efb384eb900000000508f4a806d144a82670001f6487800012f0d4eb900000000508f7001206efb34b0a8ff8866204aa8ff8c671a2028ff80b0a8ff8467102140ff842f0d2f004eb900000000508f7001226efb342429ff84b0a9ff886600044a4aa9ff8c670004b04ab900000000660004a6202efb40223c000000c048780020486efd6c4c0108002f3c435053422040d1fc000000002f102f024eb9000000004fef00144a8066000400206efb3476022143ff8842a8004441f9000000002002068000000b492f300c002f39000000002f024eb9000000004fef000c4a80670004362f2efb3c4eb900000000226efb3442a9ff9042972f29ff8442a74878000224004eb9000000004fef00104a806600fdcc4ab900000000670000a253824ab90000000067182f0242a72f2efb3c4eb9000000004fef000c4a806600fda04ab900000000671a2f02487800012f2efb3c4eb9000000004fef000c4a806600fd7e246efb3471aa007453804a80664e2439000000004a82674453824ab90000000067182f0242a72f2efb3c4eb9000000004fef000c4a806600fd444ab900000000671a2f02487800012f2efb3c4eb9000000004fef000c4a806600fd22206efb3474032142ff886000034e4a816600fd764ab900000000670ab0b9000000006700fd642f0d4eb900000000588f6000fd5642806000fd74226efb342340ff8c6000fd8442806000fdd04a2b006c6710b693670c42a72f0d4eb900000000508f4eb900000000486efb5c2a0e0685fffffb602f052f0328002f2efb384eb9000000002f0424404eb9000000004fef00144a8a6700010a2f05486efca44eb900000000508f4a8057c479044484206efb34700f2a28ff80b085654a41f9000000004a305810673e70284c0508002e0042800687000000002047722843f0080041eefb88119108005280b28066ea486efb88486efca44eb900000000508f4a806604240628062c0e0686fffffd082f062f2efb3c4eb900000000508f206efb3471a8007455804a8066061d680075fd4b4a84670004a62f062c0e0686fffffca42f064eb900000000508f4a8066464eb9000000002f032f0d2d40fb484eb900000000508f2e004a8067142f032f2efb384eb900000000508fb0aefb5c67287eff2f2efb484eb900000000588f52874a876700fcd44a826700044e2e026000046c42846000ff0a2f2efb404eb900000000102efce7206efb34588f116efce900ab116efcea00ac116efceb00ad116efcec00ae116efced00af11400074718021400048302efca42200114000767381302efca62141004c11400077220070017381114000b071eefca8214100502140ff9871eefcaa2140ff9c71eefcac2140ffcc71eefcae2140ffa871eefcb02140ffb071eefcb2226efb342140ffb871eefcb443e9ffd057802140ffbc71eefcb62140ffb471eefcb82140ffc071eefcba2140ffc871eefcc02140ffa071eefcc22140ffa42046200641e8002006800000003873d822c1b1c066f8226efb34204641e8004a06860000006471d822c0b1c666f871eefcdc206efb3472787c012140003471eefcde2141ffac214600442140003871eefce02140003c71eefce22140004071aefce62140ff9470022140ffc46000fea00680fffffbb0600003a4206efb347003b0a8ff886654202efb40223c000000c04c01080022020681000000712040d1fc00000000201041f900000000b0b01c00633648780020486efd6c2f3c435053422f002f024eb9000000004fef00144a806608206efb3442a80044206efb347002b0a8ff886700fba4203c00000966528dd1aefb4cd1aefb3447eb006e7204b28d6600f73a23cc00000000740f2014b48065607603b6b900000000655673ac00f47802b8816600023c206c00e82f082c3c0000027e2f0141f9000000002200068100000b492f301c002f00202efb504c0608000680000000002f004eb9000000004eb9000000002f004eb9000000004fef0018247900000000428147f9000000002439000000007baa00f47faa00f671aa00fb79aa010023c50000000023c70000000042b90000000023c00000000041ea00e843ea00ec77aa010123d00000000023d10000000071aa00fc23c40000000023c30000000023c20000000023c00000000043f90000000041f90000000071aa00fd2879000000002a790000000023c00000000071aa00fe2d4cfb382d4dfb3c23c0000000007c0f2011bc80640242804be9000406800000007149f90000000029951c0049f30c00216efb380004216efb3c00084bf900000000508121690008000c43e90966702041e800202c39000000002146fff02155fff42154fff8216efb44fffcb081669e286a00082f0a4eb9000000002a6a0010588f26402039000000004a8067102f004eb900000000588f4a80660000b4720995fc00000000200ce3a8220de98d4a8256c2ed8c80877e0fefa9750244828081720de3ab220ae2818a80700ce1aa88858882243c2bd64a7b4c021800484142418684280b8c8486814a8656c07c0e71004480eda88680b6b900000000675220390000000023c3000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f4cee3cfcfb0c4e5e4e7591c86000fdc64a82670001262e02244660284a8a6600fbb0486efbb045eefd082f0a4eb900000000508f4a8057c77f0744874a84670445eefca4486efbd82f0a4eb9000000002c004eb9000000002683276efb5c0004508f220b91c82800508143f288007064119118005288b08866f0720120051741006c7210b285640270101740006d4a8767482f032f0d4eb900000000508f4a8067382f032f2efb384eb900000000508fb0aefb5c6624200e4a826700fc5c0680fffffb882f002f032f2efb384eb9000000004fef000c27400004760fb685650c420741f90000000011875810307c01fdb1f900000000650a327c01fe23c9000000004a82670652b9000000004a86661c486efbd871ab006d2f004eb900000000508f4a80670642b9000000002f044eb900000000588f6000f7644a8a6600fed86000fee0",
    "kind": "text",
    "name": ".text.instrument_play_tick",
-   "size": 4934
+   "size": 5648
   },
   {
    "align": 2,
@@ -16992,6 +17258,41 @@
    "kind": "bss",
    "name": ".bss.route_write",
    "size": 16
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.ip_work_info",
+   "size": 16
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.work_window",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.work_quiet",
+   "size": 4
+  },
+  {
+   "align": 1,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.work",
+   "size": 673
+  },
+  {
+   "align": 1,
+   "hex": "63616e6f70792f776f726b2f763100",
+   "kind": "data",
+   "name": ".rodata.work_key",
+   "size": 15
   },
   {
    "align": 1,
@@ -19500,7 +19801,7 @@
    "size": 332
   }
  ],
- "source_sha256": "c56064cac5959baaa08ee558ed12d6e16442c9ef4eb871562751898504c435b4",
+ "source_sha256": "38eed27aed918a1faeb3320c6d3b72bfda9dc307242c161661c0ace5c212e5b8",
  "symbols": [
   {
    "global": false,
@@ -19716,6 +20017,12 @@
    "global": false,
    "name": ".sec..bss.ip_src_refresh",
    "section": ".bss.ip_src_refresh",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.ip_work_info",
+   "section": ".bss.ip_work_info",
    "value": 0
   },
   {
@@ -20106,6 +20413,24 @@
    "global": false,
    "name": ".sec..bss.wheel_amount",
    "section": ".bss.wheel_amount",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.work",
+   "section": ".bss.work",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.work_quiet",
+   "section": ".bss.work_quiet",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.work_window",
+   "section": ".bss.work_window",
    "value": 0
   },
   {
@@ -20824,6 +21149,12 @@
   },
   {
    "global": false,
+   "name": ".sec..rodata.work_key",
+   "section": ".rodata.work_key",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..rodata.wt0.6",
    "section": ".rodata.wt0.6",
    "value": 0
@@ -21006,6 +21337,12 @@
    "global": false,
    "name": ".sec..text.cv_note",
    "section": ".text.cv_note",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.cw_set.constprop.0",
+   "section": ".text.cw_set.constprop.0",
    "value": 0
   },
   {
@@ -22200,6 +22537,12 @@
    "global": true,
    "name": "cv_preview_notes",
    "section": ".text.cv_preview_notes",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "cw_set.constprop.0",
+   "section": ".text.cw_set.constprop.0",
    "value": 0
   },
   {
@@ -23788,6 +24131,12 @@
   },
   {
    "global": true,
+   "name": "ip_work_info",
+   "section": ".bss.ip_work_info",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "is_detail_confirmed",
    "section": ".text.is_detail_confirmed",
    "value": 0
@@ -25258,6 +25607,30 @@
   },
   {
    "global": false,
+   "name": "work",
+   "section": ".bss.work",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "work_key",
+   "section": ".rodata.work_key",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "work_quiet",
+   "section": ".bss.work_quiet",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "work_window",
+   "section": ".bss.work_window",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "wt0.6",
    "section": ".rodata.wt0.6",
    "value": 0
@@ -25279,8 +25652,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "18421",
-  "isa_check": "fa8025a79114252e96a728cd118afa07b2841d707c8f2ad2e4216706c157608b",
+  "instructions_redecoded": "18690",
+  "isa_check": "3539be9e030b693359891ec9367e8a27d16314173859b32869c9cded55c10d13",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }
