@@ -42,6 +42,14 @@ ROWS = 0x47EC0000
 STOCK_LIST = 0x47EC1000
 NAMES = 0x47EC2000
 TYPEARG_EXIT = "mf_x_typearg"
+# The native page calls of the registry that the info table `machines_info` names (words 16 to 19; `native-page.c` of the adapter has them): the
+# routines of these tests never read the words, so each is 0 here.
+NATIVE_CALLS = {
+    "mf_native_register": 0,
+    "mf_native_register_v2": 0,
+    "mf_native_remove": 0,
+    "mf_native_turn": 0,
+}
 
 STUBS = [
     "_mf_t_dispatch",
@@ -154,6 +162,7 @@ def unit(src_allocator):
             "instrument_mod_param": 0,
             "mf_spt": TYPE_FN,
             # symbols of the info table of the image (not read by these tests)
+            **NATIVE_CALLS,
         },
         [
             "mf_srcpage",
@@ -295,6 +304,7 @@ def gap_unit(src_allocator):
             "_mf_list_stock": STOCK_LIST,
             "_mf_spt": TYPE_FN,
             "mf_spt": TYPE_FN,
+            **NATIVE_CALLS,
         },
         ["mf_list_entry", "mf_rank"],
     )

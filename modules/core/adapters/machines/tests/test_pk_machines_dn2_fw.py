@@ -136,6 +136,10 @@ def unit():
         "_mf_pgrows": PGROWS,
         # symbols of the info table of the image (not read by these tests)
         "_mf_pgn": 0,
+        "mf_native_register": 0,
+        "mf_native_register_v2": 0,
+        "mf_native_remove": 0,
+        "mf_native_turn": 0,
     }
     sym.update({f"mf_rc{i}": a for i, a in enumerate(RC)})
     return pk_cfunit.CfUnit(
@@ -334,6 +338,10 @@ def unit_pg():
         "_mf_pgrows": PGROWS,
         # symbols of the info table of the image (not read by these tests)
         "_mf_pgn": len(PAGES),
+        "mf_native_register": 0,
+        "mf_native_register_v2": 0,
+        "mf_native_remove": 0,
+        "mf_native_turn": 0,
     }
     sym.update({f"mf_rc{i}": a for i, a in enumerate(RC)})
     return pk_cfunit.CfUnit(

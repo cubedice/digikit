@@ -9,6 +9,7 @@ import {
   DEVICE_INPUTS,
   VITEST_SETUP,
   builtSourceExclusions,
+  bindableIds,
   deviceInputs,
   serviceLeaves,
 } from './device-test-keys.mjs';
@@ -292,6 +293,9 @@ export const testOnlyNodes = (
         twin: targetName === 'test-device',
         subjects: config.implicitDependencies,
         services: serviceLeaves(byId),
+        // a test-only project depends on the bind of the services its records list, as a module's own tests do (without it the bound
+        // file exists only when another project's test ran the bind first)
+        bindable: bindableIds(byId),
         base: workspaceRoot,
         mergeTests: mergeTests(join(workspaceRoot, root)),
       },
