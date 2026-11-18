@@ -21,6 +21,23 @@ MOD = ROOT / "modules/core/adapters/midi-events"
 FIRMWARE = ROOT / "firmware/Digitakt_II_OS1.17.syx"
 
 
+@pytest.mark.parametrize("heartbeat", [20, 21])
+def test_status_frames_come_one_block_in_three_whatever_the_heartbeat_parity(
+    reply_builder, heartbeat
+):
+    """A reader that sees only every second block (the two reply records alternate) must still get ACK frames:
+    status on every odd heartbeat could hide them all."""
+    payload = [0x12340000 + i for i in range(12)]
+    registry = [0x49525231, 17, 0, 7, 5, 0, 0, 0]
+    kinds = [
+        reply_builder(
+            1, 9, heartbeat, registry, 7, [3, 4], [1, *payload], status_phase=before
+        )[0]
+        for before in (0, 1, 2)
+    ]
+    assert kinds == [0x494EA103, 0x494EA103, 0x494EA104]
+
+
 @pytest.fixture(scope="module")
 def reply_builder():
     obj = pk_sharc.assemble((MOD / "src/dsp/reply.s").read_text())
@@ -82,8 +99,18 @@ def reply_builder():
         },
     )
 
-    def build(epoch, message, heartbeat, registry=None, session=0, play=None, ui=None):
+    def build(
+        epoch,
+        message,
+        heartbeat,
+        registry=None,
+        session=0,
+        play=None,
+        ui=None,
+        status_phase=0,
+    ):
         dm = dict(initial)
+        dm[symbols["_mi_status_phase"] // 4] = status_phase
         if registry is not None:
             dm.update({registry_at // 4 + i: w for i, w in enumerate(registry)})
         dm[(registry_at + 32) // 4] = session
@@ -1372,7 +1399,10 @@ def test_status_frames_alternate_without_replacing_lifecycle_ack(
 ):
     payload = [0x12340000 + i for i in range(12)]
     registry = [0x49525231, 17, 0, 7, 5, 0, 0, 0]
-    first = reply_builder(1, 9, 20, registry, 7, [phase, 4], [ready, *payload])
+    # the third eligible block carries the status (its phase counter is at 2 before the block), the next an ACK
+    first = reply_builder(
+        1, 9, 20, registry, 7, [phase, 4], [ready, *payload], status_phase=2
+    )
     second = reply_builder(1, 9, 21, registry, 7, [phase, 4], [ready, *payload])
     if phase == 3 and ready == 1:
         assert first[:3] == [0x494EA104, 7, 21]

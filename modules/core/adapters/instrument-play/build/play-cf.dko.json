@@ -1252,7 +1252,7 @@
    "addend": 0,
    "offset": 2,
    "section": ".text.ui",
-   "symbol": ".sec..bss.h.0",
+   "symbol": ".sec..bss.h.1",
    "type": "cf.32"
   },
   {
@@ -1266,7 +1266,7 @@
    "addend": 0,
    "offset": 18,
    "section": ".text.ui",
-   "symbol": ".sec..bss.h.0",
+   "symbol": ".sec..bss.h.1",
    "type": "cf.32"
   },
   {
@@ -1700,14 +1700,14 @@
    "addend": 0,
    "offset": 34,
    "section": ".text.ip_init",
-   "symbol": ".sec..rodata.wt0.5",
+   "symbol": ".sec..rodata.wt0.6",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 40,
    "section": ".text.ip_init",
-   "symbol": ".sec..rodata.fm0.4",
+   "symbol": ".sec..rodata.fm0.5",
    "type": "cf.32"
   },
   {
@@ -2973,76 +2973,83 @@
   {
    "addend": 0,
    "offset": 10,
-   "section": ".text.panic",
+   "section": ".text.release_all",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 16,
-   "section": ".text.panic",
+   "section": ".text.release_all",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 24,
-   "section": ".text.panic",
+   "section": ".text.release_all",
    "symbol": "kb_learn_cancel",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 30,
-   "section": ".text.panic",
+   "section": ".text.release_all",
    "symbol": ".sec..text.instrument_sound_suspend",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 36,
-   "section": ".text.panic",
+   "section": ".text.release_all",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 46,
-   "section": ".text.panic",
+   "section": ".text.release_all",
    "symbol": "kb_reset",
    "type": "cf.32"
   },
   {
    "addend": 11552,
    "offset": 106,
-   "section": ".text.panic",
+   "section": ".text.release_all",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 136,
-   "section": ".text.panic",
+   "section": ".text.release_all",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 142,
+   "offset": 2,
+   "section": ".text.panic",
+   "symbol": ".sec..text.release_all",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 8,
    "section": ".text.panic",
    "symbol": ".sec..text.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 154,
+   "offset": 14,
    "section": ".text.panic",
    "symbol": ".sec..rodata.panic.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 172,
+   "offset": 28,
    "section": ".text.panic",
    "symbol": "dk_ui_toast",
    "type": "cf.32"
@@ -4185,7 +4192,7 @@
    "addend": 0,
    "offset": 66,
    "section": ".text.instrument_src_preview_step",
-   "symbol": ".sec..bss.scratch.2",
+   "symbol": ".sec..bss.scratch.3",
    "type": "cf.32"
   },
   {
@@ -4199,7 +4206,7 @@
    "addend": 0,
    "offset": 126,
    "section": ".text.instrument_src_preview_step",
-   "symbol": ".sec..bss.scratch.2",
+   "symbol": ".sec..bss.scratch.3",
    "type": "cf.32"
   },
   {
@@ -4255,7 +4262,7 @@
    "addend": 0,
    "offset": 38,
    "section": ".text.dk_app_instrument_module_settings",
-   "symbol": ".sec..rodata.id.1",
+   "symbol": ".sec..rodata.id.2",
    "type": "cf.32"
   },
   {
@@ -5456,703 +5463,731 @@
    "type": "cf.32"
   },
   {
-   "addend": 0,
+   "addend": 156,
    "offset": 1762,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1772,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.faulted_ticks.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1778,
    "section": ".text.instrument_play_tick",
    "symbol": "instrument_sound_scan",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1768,
+   "offset": 1784,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_sa_tick",
    "type": "cf.32"
   },
   {
    "addend": 8,
-   "offset": 1774,
+   "offset": 1790,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_tracks",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 1780,
+   "offset": 1796,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_tracks",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1786,
+   "offset": 1802,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_tracks",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1792,
+   "offset": 1808,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 1798,
+   "offset": 1814,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_tracks",
    "type": "cf.32"
   },
   {
    "addend": 2406,
-   "offset": 1804,
+   "offset": 1820,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 4812,
-   "offset": 1810,
+   "offset": 1826,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1816,
+   "offset": 1832,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.for_track",
    "type": "cf.32"
   },
   {
    "addend": 7218,
-   "offset": 1822,
+   "offset": 1838,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1828,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.selected",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 1844,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
+   "symbol": ".sec..data.selected",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1888,
+   "offset": 1860,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.cur",
+   "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 1904,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
+   "symbol": ".sec..data.cur",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1912,
+   "offset": 1920,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1940,
+   "offset": 1928,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.inst",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1956,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.focus",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1958,
+   "offset": 1974,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.focus",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1964,
+   "offset": 1980,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.src_state",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1972,
+   "offset": 1988,
    "section": ".text.instrument_play_tick",
    "symbol": "cs_touch",
    "type": "cf.32"
   },
   {
    "addend": 128,
-   "offset": 1980,
+   "offset": 1996,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1992,
+   "offset": 2008,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.sa_bind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2002,
+   "offset": 2018,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_tracks",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2026,
+   "offset": 2042,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.cur",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2042,
+   "offset": 2058,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.src_requested",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2060,
+   "offset": 2076,
    "section": ".text.instrument_play_tick",
    "symbol": "instrument_mod_publish",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2086,
+   "offset": 2102,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.src_state",
    "type": "cf.32"
   },
   {
    "addend": 28,
-   "offset": 2122,
+   "offset": 2138,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.src_state",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2414,
+   "offset": 2430,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.focus",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2456,
+   "offset": 2474,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_sound_suspend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2480,
+   "offset": 2498,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_instrument_generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2504,
+   "offset": 2516,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.faulted_ticks.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2524,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.faulted_ticks.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2540,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_recoveries",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2550,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.faulted_ticks.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2556,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_instrument_generation",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2564,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.instrument_play_faulted",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2578,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_keyboard_recover",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2590,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_recoveries",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2596,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.release_all",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2612,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.healthy",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2514,
+   "offset": 2622,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.quarantined",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2538,
+   "offset": 2646,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_sound_suspend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2560,
+   "offset": 2670,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 11544,
-   "offset": 2584,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_ledger",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2614,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_transport",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2642,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_irq_restore",
-   "type": "cf.32"
-  },
-  {
-   "addend": 11544,
-   "offset": 2662,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_ledger",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2678,
-   "section": ".text.instrument_play_tick",
-   "symbol": "instrument_sound_prepare",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
    "offset": 2694,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.instrument_sound_suspend",
+   "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2702,
+   "offset": 2724,
    "section": ".text.instrument_play_tick",
-   "symbol": "ip_sa_ensure",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2716,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.keyboard_initialized",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2726,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_irq_mask",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2732,
-   "section": ".text.instrument_play_tick",
-   "symbol": "ip_admission",
+   "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 2752,
    "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 11544,
+   "offset": 2772,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2788,
+   "section": ".text.instrument_play_tick",
+   "symbol": "instrument_sound_prepare",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2804,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.instrument_sound_suspend",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2812,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_sa_ensure",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2826,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.keyboard_initialized",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2836,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2842,
+   "section": ".text.instrument_play_tick",
+   "symbol": "ip_admission",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2862,
+   "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.sa_owned",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2772,
+   "offset": 2882,
    "section": ".text.instrument_play_tick",
    "symbol": "sa_seq",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2808,
+   "offset": 2918,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2824,
+   "offset": 2934,
    "section": ".text.instrument_play_tick",
    "symbol": "sa_slot",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2848,
+   "offset": 2958,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.sa_publish",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2892,
+   "offset": 3002,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_instance_bind",
    "type": "cf.32"
   },
   {
    "addend": 11544,
-   "offset": 2926,
+   "offset": 3036,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 2966,
+   "offset": 3076,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.src_state",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2976,
+   "offset": 3086,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_config_submit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3006,
+   "offset": 3116,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 11552,
-   "offset": 3024,
+   "offset": 3134,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3032,
+   "offset": 3142,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_midi_ready",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3050,
+   "offset": 3160,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.channel_of",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3078,
+   "offset": 3188,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_route_enable",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3094,
+   "offset": 3204,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.enabled",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3106,
+   "offset": 3216,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.usb",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3120,
+   "offset": 3230,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.route_one",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3136,
+   "offset": 3246,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.din",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3152,
+   "offset": 3262,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.route_one",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3182,
+   "offset": 3292,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.selector_channel",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3194,
+   "offset": 3304,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.usb",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3208,
+   "offset": 3318,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.route_one",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3224,
+   "offset": 3334,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.din",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3240,
+   "offset": 3350,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.route_one",
    "type": "cf.32"
   },
   {
    "addend": 420,
-   "offset": 3276,
+   "offset": 3386,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 424,
-   "offset": 3284,
+   "offset": 3394,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3296,
+   "offset": 3406,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_sound_suspend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3346,
+   "offset": 3456,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.sa_publish",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3354,
+   "offset": 3464,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3380,
+   "offset": 3490,
    "section": ".text.instrument_play_tick",
    "symbol": "sa_get",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3392,
+   "offset": 3502,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3416,
+   "offset": 3526,
    "section": ".text.instrument_play_tick",
    "symbol": "sr_decode",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3444,
+   "offset": 3554,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.preset_snapshot",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3494,
+   "offset": 3604,
    "section": ".text.instrument_play_tick",
    "symbol": "sr_encode",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3512,
+   "offset": 3622,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3578,
+   "offset": 3688,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.sa_owned",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3594,
+   "offset": 3704,
    "section": ".text.instrument_play_tick",
    "symbol": "sa_seq",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3616,
+   "offset": 3726,
    "section": ".text.instrument_play_tick",
    "symbol": "sa_put",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3632,
+   "offset": 3742,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3662,
+   "offset": 3772,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.same_state",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3678,
+   "offset": 3788,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3692,
+   "offset": 3802,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.sa_owned",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3710,
+   "offset": 3820,
    "section": ".text.instrument_play_tick",
    "symbol": "sa_seq",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3730,
+   "offset": 3840,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3754,
+   "offset": 3864,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_sound_suspend",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 4112,
+   "offset": 4222,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.src_state",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4120,
+   "offset": 4230,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4150,
+   "offset": 4260,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_config_submit",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4214,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.cur",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4230,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.focus",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4264,
-   "section": ".text.instrument_play_tick",
-   "symbol": "mi_ledger",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4292,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.src_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4300,
-   "section": ".text.instrument_play_tick",
-   "symbol": "is_select",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4306,
-   "section": ".text.instrument_play_tick",
-   "symbol": "instrument_src_now",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4314,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.instrument_src_poll",
    "type": "cf.32"
   },
   {
@@ -6164,245 +6199,294 @@
   },
   {
    "addend": 0,
-   "offset": 4332,
+   "offset": 4340,
    "section": ".text.instrument_play_tick",
-   "symbol": "mi_transport",
+   "symbol": ".sec..data.focus",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4338,
+   "offset": 4374,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.storage_result",
+   "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4360,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 4,
-   "offset": 4366,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 8,
-   "offset": 4372,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 12,
-   "offset": 4378,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 16,
-   "offset": 4396,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 20,
    "offset": 4402,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
+   "symbol": ".sec..bss.src_status",
    "type": "cf.32"
   },
   {
-   "addend": 24,
-   "offset": 4412,
+   "addend": 0,
+   "offset": 4410,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
+   "symbol": "is_select",
    "type": "cf.32"
   },
   {
-   "addend": 28,
-   "offset": 4418,
+   "addend": 0,
+   "offset": 4416,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
+   "symbol": "instrument_src_now",
    "type": "cf.32"
   },
   {
-   "addend": 32,
+   "addend": 0,
    "offset": 4424,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
+   "symbol": ".sec..text.instrument_src_poll",
    "type": "cf.32"
   },
   {
-   "addend": 36,
-   "offset": 4430,
+   "addend": 0,
+   "offset": 4434,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_keyboard_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 4,
-   "offset": 4436,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.inst",
+   "symbol": ".sec..data.cur",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 4442,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_control",
+   "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4452,
+   "offset": 4448,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.enabled",
+   "symbol": ".sec..bss.storage_result",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4458,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.healthy",
-   "type": "cf.32"
-  },
-  {
-   "addend": 40,
-   "offset": 4464,
+   "offset": 4470,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
-   "addend": 44,
+   "addend": 4,
+   "offset": 4476,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 8,
    "offset": 4482,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 4508,
+   "addend": 12,
+   "offset": 4488,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.ip_control",
+   "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
-   "addend": 11544,
+   "addend": 16,
+   "offset": 4506,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 20,
+   "offset": 4512,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 4522,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 28,
+   "offset": 4528,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 32,
    "offset": 4534,
    "section": ".text.instrument_play_tick",
-   "symbol": "mi_ledger",
+   "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
-   "addend": 156,
-   "offset": 4558,
+   "addend": 36,
+   "offset": 4540,
    "section": ".text.instrument_play_tick",
-   "symbol": "mi_transport",
+   "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 4592,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.quarantined",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4606,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.learn_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4618,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_is_open",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4634,
+   "addend": 4,
+   "offset": 4546,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4720,
+   "offset": 4552,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.shown_main",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4562,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.enabled",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4568,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.healthy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 40,
+   "offset": 4574,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 44,
+   "offset": 4592,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_keyboard_status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4618,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.ip_control",
+   "type": "cf.32"
+  },
+  {
+   "addend": 11544,
+   "offset": 4644,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 156,
+   "offset": 4668,
+   "section": ".text.instrument_play_tick",
+   "symbol": "mi_transport",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4702,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.quarantined",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4716,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.learn_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 4728,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.input_menu",
+   "symbol": "dk_ui_menu_is_open",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4734,
+   "offset": 4744,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.inst",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4830,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.shown_main",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4746,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_is_open",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4758,
+   "offset": 4838,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.input_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4764,
+   "offset": 4844,
    "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_refresh",
+   "symbol": ".sec..data.shown_main",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4772,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.shape_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4784,
+   "offset": 4856,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_is_open",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4796,
+   "offset": 4868,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.input_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4874,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_menu_refresh",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4882,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.shape_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4802,
+   "offset": 4894,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_menu_is_open",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4906,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.shape_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4912,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_refresh",
    "type": "cf.32"
@@ -16518,6 +16602,13 @@
    "size": 60
   },
   {
+   "align": 2,
+   "hex": "4fefffe048d77c0c4eb90000000045f90000000042824bf9000000004df90000000049f9000000002f40001c47f900000000260a0683000000d82f034e95588f700fb09264064aaa000867062f024e96588f222a0004700fb08164024281068100000b492f341c002f39000000002f034e93528245ea09664fef000c7004b08266b02f2f001c4eb9000000004cef7c0c00044fef00244e75",
+   "kind": "text",
+   "name": ".text.release_all",
+   "size": 152
+  },
+  {
    "align": 1,
    "hex": "50414e4943202d2052454c454153452048454c44204b45595300",
    "kind": "data",
@@ -16526,10 +16617,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffe048d77c0c4eb90000000045f90000000042824bf9000000004df90000000049f9000000002f40001c47f900000000260a0683000000d82f034e95588f700fb09264064aaa000867062f024e96588f222a0004700fb08164024281068100000b492f341c002f39000000002f034e93528245ea09664fef000c7204b28266b02f2f001c4eb9000000004eb9000000004cef7c0c0004223c000000002f41002c2f4000284fef00244ef900000000",
+   "hex": "4eb9000000004eb900000000223c000000002f4100082f4000044ef900000000",
    "kind": "text",
    "name": ".text.panic",
-   "size": 176
+   "size": 32
   },
   {
    "align": 1,
@@ -16694,44 +16785,51 @@
   },
   {
    "align": 2,
-   "hex": "4e56fd7048d73cfc4eb9000000004eb9000000004eb9000000002039000000004a80673a2f004eb900000000588f4a80672c4eb90000000024002f004eb90000000094b900000000588f7063b082640e2f39000000004eb900000000588f2439000000004a826600024e48780030260e0683ffffff1c2f0348790000000045f9000000004e924fef000c4a806d0000d62f002f034879000000004eb9000000004fef000c23c00000000042034879000000004eb9000000002a0e588f47f90000000042840685ffffff8013c300000000263c00000000487800902f032f1b4e924fef000c4a806d362f002f032f054eb9000000004fef000c4a8066222f032f054eb900000000508f4a8066127001123900000000e9a8808113c00000000052840683000000907c04bc8466aa4878001047eefeb82f0b4879000000004e924fef000c26004a806d00023e7e10be80672642b90000000024034a836d0000b874ff600000b272bcb2806700ff4023c0000000006000ff3671aefeb87243b28066d071aefeb97852b88066c671aefeba53804a8066bc4a2efebb66b6700a1833080066ae52807e0ebe8066f2420591c81033880052887c0ed0842200d28518001a01bc8866ea718079aefec6b8806682738171aefec7b0816600ff78486eff803d6efec0ff842d6efebcff804eb900000000588f4a806700ff5a43eeff84700133d10000000041eeff8023d00000000023c00000000023c200000000428047f90000000076104202178208005280b68066f248780014486eff804879000000004e924fef000c4a806d667814b8806600014a71aeff807c43bc806600013e71aeff81bc806600013471aeff8253804a806600012842811036188478107780b88365000118d08214005281b88166e87c5abd8073aeff837180b081660000fe428041f608847210179008005280b28066f0780123c4000000004ab9000000006700008a4eb9000000004a80677e4eb9000000004a80677471b90000000041f90000000043f90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b900000000538023c00000000071b90000000023c000000000428045f108007210119208005280b28066f042a742a74eb900000000508f4ab900000000670000d04878001048790000000048790000000045f9000000004e924fef000c23c0000000004a80673442b900000000243c00000000606242b90000000072bcb2806700fe826000fdc0428042027610178208005280b68066f26000ff04487800144879000000004879000000004e924fef000c23c0000000004a8066ac4eb90000000042b90000000023c0000000004a80669c243c000000004eb9000000002f022f004eb900000000508f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f2439000000004a8267704878009048790000000041f90000000053822f302c004eb9000000004fef000c23c0000000004a8067000200243c0000000042b9000000004eb9000000002f022f004eb900000000508f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f4ab900000000677c4eb900000000287900000000260e0683ffffff802f0349ec00d82f0c24004eb9000000002f024eb900000000487800302f034879000000004eb9000000004fef001823c0000000004a8066124eb90000000023c0000000004a80670001b0243c0000000042b9000000004eb9000000002f022f004eb900000000508f2039000000004a80672c2f004eb900000000588f4a80671e20790000000071a800f455804a80670e2f39000000004eb900000000588f2039000000004a8067462f004eb900000000588f4a806738207900000000222800ec71a80100b2b9000000006608b0b900000000671a2f390000000023c10000000023c0000000004eb900000000588f45f9000000004e922d40fda44a8067284ab9000000006720b0b90000000067182f39000000004eb900000000242efda4588f23c200000000487800107610486efe144eb900000000508f2400b680660000de283c494ea103b8aefe1466207c05bcaefe486618262efe4c4eb900000000b083660a41eefe4c23d0000000004e924a80670000b27210b282660000b0243c494ea103b4aefe14660a7603b6aefe4867000364428023c0000000006000008e4eb90000000023c0000000004a806600fdf2203c000000904c02080043f90000000020404280d1fc0000000045f108001192080052800c800000009066ee7001e5a8123900000000243c00000000808113c0000000006000fdb04200243c0000000013c00000000013c00000000013c00000000013c0000000006000fe3670feb0826600ff4a42b9000000004eb9000000004eb90000000045f90000000049f90000000041f90000000023d00000000043f90000000023d10000000023d20000000045f90000000023d4000000002f39000000004e92588f2a404a80664241f90000000042802210740fb481650c4a8d6700027ab29565000274528041e809667604b68066e04a8d66162a79000000002f154e92588f4a8066064bf900000000200d048000000000e280283c2bd64a7b7c0f4c0048002d44fdb0bc956528b8b90000000067202e3ce0b7dc404c07080023c4000000000680000000002f004eb900000000588f41f90000000099cc2d48fd9847f90000000042aefdac43f90000000045f1cc00226efd982e2efd980687ffffff8023c7000000002352ff80486efe542f074eb900000000508fbe8d660e71aefe962f004eb900000000588f202efdace280223c2bd64a7b243ce0b7dc4043f9000000004c0018004c0208002d41fda0322efda22031087448404240c2fc00c02041d1fc0000000073aefe9777e800067de8001e79e8001ce1892d43fda87be8001222462d44fdb424018480700b73e800042d43ff8c77e8000e2d46ff942d41fd9c2d41ff8873e8000c2d44ff902d43fdbc808224417de800102d40ff8071aefe962d40ff8471e8000a2d41ffa02d43ffa82d45ffa42d40fdb82d40ff9871eefe942d40ff9c2d46ffac71aefe9879e800142d40ffb43028000877e800162d44ffb02d43ffb8320071c0c2fc0003e2892d41ffbc73d02d41ffc073e800022d40ffd071e800182d4affd82d41ffc42d46ffe02d40fff02d45ffe42d44ffe82d43ffec45eeffc071e8001a2d6efd9cffc82d6efda8ffcc2d6efdb8ffd42d6efdbcffdc2d40fff42d6efdb4fff82d49fffc43e8002041e80040301948404240809224c0b3c866f2b9f900000000660a00820000800b2d42ff80206efd98700f2428ff88b0a8ff8064384a82670006c62f0c4eb900000000206efd9842a8ff88588f600006b0242efe4c4eb900000000b08257c0710044806000fc8c2a486000fd8a4ab90000000067102f074eb900000000588f24404a8067125582e28a660006742f0c4eb90000000060b44a82660a206efd9872012141ff884eb900000000226efd9824002069ff8820085580e28866364ab900000000660002be2029ff84b0a9ff80660002b2220006810000007143f900000000760322311c00b688660002804a81670002922f0278014eb900000000588f206efd98b8a8ff88660002884ab90000000057c0710044802f002f0c4eb900000000508f4a806c0002702f0c4eb900000000588f4eb90000000026004a806700008e4ab900000000670000844eb90000000041f900000000280071cce78824300c042f022f0c4eb900000000508f2a004a80670002302f022f034eb900000000508f2d40fdc04a2b006c6710b493660cb0ab000457c07100448024402f044eb900000000588f4a8567242f022f034eb900000000508f4a806d144a8a670001ec487800012f0c4eb900000000508f7001206efd98b0a8ff8866204aa8ff8c671a2028ff80b0a8ff8467102140ff842f0c2f004eb900000000508f7001226efd982429ff84b0a9ff88660004884aa9ff8c670004ee4ab900000000660004e4202efda0223c000000c048780020486eff804c0108002f3c435053422040d1fc000000002f102f024eb9000000004fef00144a806600043e206efd9876022143ff8842a8004441f9000000002002068000000b492f300c002f39000000002f024eb9000000004fef000c4a80670004742f074eb900000000226efd9842a9ff9042972f29ff8442a74878000224004eb9000000004fef00104a806600fdd44ab9000000006700009a53824ab90000000067162f0242a72f074eb9000000004fef000c4a806600fdaa4ab90000000067182f02487800012f074eb9000000004fef000c4a806600fd8a246efd9871aa007453804a80664a2439000000004a82674053824ab90000000067162f0242a72f074eb9000000004fef000c4a806600fd524ab90000000067182f02487800012f074eb9000000004fef000c4a806600fd32206efd9874032142ff88600003964a816600fd844ab900000000670ab0b9000000006700fd722f0c4eb900000000588f6000fd6442806000fd82226efd982340ff8c6000fd9242806000fdda4a2b006c6710b493670c42a72f0c4eb900000000508f4eb900000000486efdc02a0e0685fffffdc42f052f022f0328004eb9000000002f042d40fd9c4eb9000000004fef00144aaefd9c670000ec2f05486efeb84eb900000000508f4a8057c4790444842a0e0685ffffff1c2f052f074eb900000000508f206efd9871a8007455804a8066061d680075ff5f4a84660000ae2c044aaefd9c661a486efdec486eff1c4eb900000000508f4a8057c07100448024404eb9000000002682276efdc000042a0e28004a86670002140685fffffeb8200b91c8508043f058007264119108005288b28866f07c011746006c4a8a67382f022f0c4eb900000000508f4a8067282f022f034eb900000000508fb0aefdc06616486efdec2f022f034eb9000000004fef000c274000042f044eb900000000588f6000fcee42846000ff282f052a0e0685fffffeb82f054eb900000000508f2c004a806600ff3c4eb9000000002f022f0c2d40fda84eb900000000508f2c004a8067122f022f034eb900000000508fb0aefdc0671a7cff2f2efda84eb900000000588f52864a866600fef66000fc842f2efda04eb900000000102efefb206efd98588f116efefd00ab116efefe00ac116efeff00ad116eff0000ae116eff0100af11400074718021400048302efeb82200114000767381302efeba2141004c11400077220070017381114000b071eefebc214100502140ff9871eefebe2140ff9c71eefec02140ffcc71eefec22140ffa871eefec42140ffb071eefec6226efd982140ffb871eefec843e9ffd057802140ffbc71eefeca2140ffb471eefecc2140ffc071eefece2140ffc871eefed42140ffa071eefed62140ffa42045200541e8002006800000003873d822c1b1c066f8226efd98204541e8004a06850000006471d822c0b1c566f871eefef0206efd9872782140003471eefef22141ffac2140003871eefef42140003c71eefef62140004071aefefa2140ff9470022140ffc47001214000446000feae0685ffffff1c6000fdec206efd987003b0a8ff886654202efda0223c000000c04c01080022020681000000712040d1fc00000000201041f900000000b0b01c00633648780020486eff802f3c435053422f002f024eb9000000004fef00144a806608206efd9842a80044206efd987002b0a8ff886700fb66203c00000966528cd1aefdacd1aefd9847eb006e7204b28c6600f75e23cd00000000740f2015b48065607603b6b900000000655673ad00f47802b8816600023c206d00e82f082c3c0000027e2f0141f9000000002200068100000b492f301c002f00202efdb04c0608000680000000002f004eb9000000004eb9000000002f004eb9000000004fef0018247900000000428147f9000000002439000000007baa00f47faa00f671aa00fb79aa010023c50000000023c70000000042b90000000023c00000000041ea00e843ea00ec77aa010123d00000000023d10000000071aa00fc23c40000000023c30000000023c20000000023c00000000043f90000000041f90000000071aa00fd2879000000002a790000000023c00000000071aa00fe2d4cfd9c2d4dfda023c0000000007c0f2011bc80640242804be9000406800000007149f90000000029951c0049f30c00216efd9c0004216efda000084bf900000000508121690008000c43e90966702041e800202c39000000002146fff02155fff42154fff8216efda4fffcb081669e286a00082f0a4eb9000000002a6a0010588f26402039000000004a8067102f004eb900000000588f4a80660000b4720995fc00000000200ce3a8220de98d4a8256c2ed8c80877e0fefa9750244828081720de3ab220ae2818a80700ce1aa88858882243c2bd64a7b4c021800484142418684280b8c8486814a8656c07c0e71004480eda88680b6b900000000675220390000000023c3000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f4cee3cfcfd704e5e4e7591c86000fdc6",
+   "hex": "4e56fd7048d73cfc4eb9000000004eb9000000004eb9000000002039000000004a80673a2f004eb900000000588f4a80672c4eb90000000024002f004eb90000000094b900000000588f7063b082640e2f39000000004eb900000000588f2439000000004a826600024e48780030260e0683ffffff1c2f0348790000000045f9000000004e924fef000c4a806d0000d62f002f034879000000004eb9000000004fef000c23c00000000042034879000000004eb9000000002a0e588f47f90000000042840685ffffff8013c300000000263c00000000487800902f032f1b4e924fef000c4a806d362f002f032f054eb9000000004fef000c4a8066222f032f054eb900000000508f4a8066127001123900000000e9a8808113c00000000052840683000000907c04bc8466aa4878001047eefeb82f0b4879000000004e924fef000c26004a806d00023e7e10be80672642b90000000024034a836d0000b874ff600000b272bcb2806700ff4023c0000000006000ff3671aefeb87243b28066d071aefeb97852b88066c671aefeba53804a8066bc4a2efebb66b6700a1833080066ae52807e0ebe8066f2420591c81033880052887c0ed0842200d28518001a01bc8866ea718079aefec6b8806682738171aefec7b0816600ff78486eff803d6efec0ff842d6efebcff804eb900000000588f4a806700ff5a43eeff84700133d10000000041eeff8023d00000000023c00000000023c200000000428047f90000000076104202178208005280b68066f248780014486eff804879000000004e924fef000c4a806d667814b8806600014a71aeff807c43bc806600013e71aeff81bc806600013471aeff8253804a806600012842811036188478107780b88365000118d08214005281b88166e87c5abd8073aeff837180b081660000fe428041f608847210179008005280b28066f0780123c4000000004ab9000000006700008a4eb9000000004a80677e4eb9000000004a80677471b90000000041f90000000043f90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b900000000538023c00000000071b90000000023c000000000428045f108007210119208005280b28066f042a742a74eb900000000508f4ab900000000670000d04878001048790000000048790000000045f9000000004e924fef000c23c0000000004a80673442b900000000243c00000000606242b90000000072bcb2806700fe826000fdc0428042027610178208005280b68066f26000ff04487800144879000000004879000000004e924fef000c23c0000000004a8066ac4eb90000000042b90000000023c0000000004a80669c243c000000004eb9000000002f022f004eb900000000508f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f2439000000004a8267704878009048790000000041f90000000053822f302c004eb9000000004fef000c23c0000000004a8067000200243c0000000042b9000000004eb9000000002f022f004eb900000000508f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f4ab900000000677c4eb900000000287900000000260e0683ffffff802f0349ec00d82f0c24004eb9000000002f024eb900000000487800302f034879000000004eb9000000004fef001823c0000000004a8066124eb90000000023c0000000004a80670001b0243c0000000042b9000000004eb9000000002f022f004eb900000000508f2039000000004a80672c2f004eb900000000588f4a80671e20790000000071a800f455804a80670e2f39000000004eb900000000588f2039000000004a8067462f004eb900000000588f4a806738207900000000222800ec71a80100b2b9000000006608b0b900000000671a2f390000000023c10000000023c0000000004eb900000000588f45f9000000004e922d40fda44a8067284ab9000000006720b0b90000000067182f39000000004eb900000000242efda4588f23c200000000487800107610486efe144eb900000000508f2400b680660000de283c494ea103b8aefe1466207c05bcaefe486618262efe4c4eb900000000b083660a41eefe4c23d0000000004e924a80670000b27210b282660000b0243c494ea103b4aefe14660a7603b6aefe4867000376428023c0000000006000008e4eb90000000023c0000000004a806600fdf2203c000000904c02080043f90000000020404280d1fc0000000045f108001192080052800c800000009066ee7001e5a8123900000000243c00000000808113c0000000006000fdb04200243c0000000013c00000000013c00000000013c00000000013c0000000006000fe3670feb0826600ff4a42b9000000004ab900000000660002ea42b9000000004eb9000000004eb90000000045f90000000049f90000000041f90000000023d00000000043f90000000023d10000000023d20000000045f90000000023d4000000002f39000000004e92588f2a404a80664241f90000000042802210740fb481650c4a8d670002d6b295650002d0528041e809667604b68066e04a8d66162a79000000002f154e92588f4a8066064bf900000000200d048000000000e280283c2bd64a7b7c0f4c0048002d44fdb0bc956528b8b90000000067202e3ce0b7dc404c07080023c4000000000680000000002f004eb900000000588f41f90000000099cc2d48fd9847f90000000042aefdac43f90000000045f1cc00226efd982e2efd980687ffffff8023c7000000002352ff80486efe542f074eb900000000508fbe8d660e71aefe962f004eb900000000588f202efdace280223c2bd64a7b243ce0b7dc4043f9000000004c0018004c0208002d41fda0322efda22031087448404240c2fc00c02041d1fc0000000073aefe9777e800067de8001e79e8001ce1892d43fda87be8001222462d44fdb424018480700b73e800042d43ff8c77e8000e2d46ff942d41fd9c2d41ff8873e8000c2d44ff902d43fdbc808224417de800102d40ff8071aefe962d40ff8471e8000a2d41ffa02d43ffa82d45ffa42d40fdb82d40ff9871eefe942d40ff9c2d46ffac71aefe9879e800142d40ffb43028000877e800162d44ffb02d43ffb8320071c0c2fc0003e2892d41ffbc73d02d41ffc073e800022d40ffd071e800182d4affd82d41ffc42d46ffe02d40fff02d45ffe42d44ffe82d43ffec45eeffc071e8001a2d6efd9cffc82d6efda8ffcc2d6efdb8ffd42d6efdbcffdc2d40fff42d6efdb4fff82d49fffc43e8002041e80040301948404240809224c0b3c866f2b9f900000000660a00820000800b2d42ff80206efd98700f2428ff88b0a8ff80640000944a82670007222f0c4eb900000000206efd9842a8ff88588f6000070c242efe4c4eb900000000b08257c0710044806000fc7a203900000000528023c000000000782cb8806400fd0a7c07bcb9000000006500fcfe42b9000000004eb9000000002f004eb900000000588f4a806600fce24eb9000000004a806600fcd652b9000000004eb9000000006000fcc62a486000fd2e4ab90000000067102f074eb900000000588f24404a8067145582e28a660006762f0c4eb9000000006000ff5a4a82660a206efd9872012141ff884eb900000000226efd9824002069ff8820085580e28866364ab900000000660002be2029ff84b0a9ff80660002b2220006810000007143f900000000760322311c00b688660002804a81670002922f0278014eb900000000588f206efd98b8a8ff88660002884ab90000000057c0710044802f002f0c4eb900000000508f4a806c0002702f0c4eb900000000588f4eb90000000026004a806700008e4ab900000000670000844eb90000000041f900000000280071cce78824300c042f022f0c4eb900000000508f2a004a80670002302f022f034eb900000000508f2d40fdc04a2b006c6710b493660cb0ab000457c07100448024402f044eb900000000588f4a8567242f022f034eb900000000508f4a806d144a8a670001ec487800012f0c4eb900000000508f7001206efd98b0a8ff8866204aa8ff8c671a2028ff80b0a8ff8467102140ff842f0c2f004eb900000000508f7001226efd982429ff84b0a9ff88660004884aa9ff8c670004ee4ab900000000660004e4202efda0223c000000c048780020486eff804c0108002f3c435053422040d1fc000000002f102f024eb9000000004fef00144a806600043e206efd9876022143ff8842a8004441f9000000002002068000000b492f300c002f39000000002f024eb9000000004fef000c4a80670004742f074eb900000000226efd9842a9ff9042972f29ff8442a74878000224004eb9000000004fef00104a806600fdd24ab9000000006700009a53824ab90000000067162f0242a72f074eb9000000004fef000c4a806600fda84ab90000000067182f02487800012f074eb9000000004fef000c4a806600fd88246efd9871aa007453804a80664a2439000000004a82674053824ab90000000067162f0242a72f074eb9000000004fef000c4a806600fd504ab90000000067182f02487800012f074eb9000000004fef000c4a806600fd30206efd9874032142ff88600003964a816600fd844ab900000000670ab0b9000000006700fd722f0c4eb900000000588f6000fd6442806000fd82226efd982340ff8c6000fd9242806000fdda4a2b006c6710b493670c42a72f0c4eb900000000508f4eb900000000486efdc02a0e0685fffffdc42f052f022f0328004eb9000000002f042d40fd9c4eb9000000004fef00144aaefd9c670000ec2f05486efeb84eb900000000508f4a8057c4790444842a0e0685ffffff1c2f052f074eb900000000508f206efd9871a8007455804a8066061d680075ff5f4a84660000ae2c044aaefd9c661a486efdec486eff1c4eb900000000508f4a8057c07100448024404eb9000000002682276efdc000042a0e28004a86670002140685fffffeb8200b91c8508043f058007264119108005288b28866f07c011746006c4a8a67382f022f0c4eb900000000508f4a8067282f022f034eb900000000508fb0aefdc06616486efdec2f022f034eb9000000004fef000c274000042f044eb900000000588f6000fcee42846000ff282f052a0e0685fffffeb82f054eb900000000508f2c004a806600ff3c4eb9000000002f022f0c2d40fda84eb900000000508f2c004a8067122f022f034eb900000000508fb0aefdc0671a7cff2f2efda84eb900000000588f52864a866600fef66000fc842f2efda04eb900000000102efefb206efd98588f116efefd00ab116efefe00ac116efeff00ad116eff0000ae116eff0100af11400074718021400048302efeb82200114000767381302efeba2141004c11400077220070017381114000b071eefebc214100502140ff9871eefebe2140ff9c71eefec02140ffcc71eefec22140ffa871eefec42140ffb071eefec6226efd982140ffb871eefec843e9ffd057802140ffbc71eefeca2140ffb471eefecc2140ffc071eefece2140ffc871eefed42140ffa071eefed62140ffa42045200541e8002006800000003873d822c1b1c066f8226efd98204541e8004a06850000006471d822c0b1c566f871eefef0206efd9872782140003471eefef22141ffac2140003871eefef42140003c71eefef62140004071aefefa2140ff9470022140ffc47001214000446000feae0685ffffff1c6000fdec206efd987003b0a8ff886654202efda0223c000000c04c01080022020681000000712040d1fc00000000201041f900000000b0b01c00633648780020486eff802f3c435053422f002f024eb9000000004fef00144a806608206efd9842a80044206efd987002b0a8ff886700fb66203c00000966528cd1aefdacd1aefd9847eb006e7204b28c6600f70023cd00000000740f2015b48065607603b6b900000000655673ad00f47802b8816600023c206d00e82f082c3c0000027e2f0141f9000000002200068100000b492f301c002f00202efdb04c0608000680000000002f004eb9000000004eb9000000002f004eb9000000004fef0018247900000000428147f9000000002439000000007baa00f47faa00f671aa00fb79aa010023c50000000023c70000000042b90000000023c00000000041ea00e843ea00ec77aa010123d00000000023d10000000071aa00fc23c40000000023c30000000023c20000000023c00000000043f90000000041f90000000071aa00fd2879000000002a790000000023c00000000071aa00fe2d4cfd9c2d4dfda023c0000000007c0f2011bc80640242804be9000406800000007149f90000000029951c0049f30c00216efd9c0004216efda000084bf900000000508121690008000c43e90966702041e800202c39000000002146fff02155fff42154fff8216efda4fffcb081669e286a00082f0a4eb9000000002a6a0010588f26402039000000004a8067102f004eb900000000588f4a80660000b4720995fc00000000200ce3a8220de98d4a8256c2ed8c80877e0fefa9750244828081720de3ab220ae2818a80700ce1aa88858882243c2bd64a7b4c021800484142418684280b8c8486814a8656c07c0e71004480eda88680b6b900000000675220390000000023c3000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f4cee3cfcfd704e5e4e7591c86000fdc6",
    "kind": "text",
    "name": ".text.instrument_play_tick",
-   "size": 4824
+   "size": 4934
   },
   {
    "align": 2,
    "hex": "",
    "kind": "bss",
-   "name": ".bss.h.0",
+   "name": ".bss.faulted_ticks.0",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.h.1",
    "size": 4
   },
   {
    "align": 1,
    "hex": "646967696b69742f63616e6f707900",
    "kind": "data",
-   "name": ".rodata.id.1",
+   "name": ".rodata.id.2",
    "size": 15
   },
   {
    "align": 2,
    "hex": "",
    "kind": "bss",
-   "name": ".bss.scratch.2",
+   "name": ".bss.scratch.3",
    "size": 2190
   },
   {
    "align": 2,
    "hex": "0000002000000000000000320000000300000008000000000000000500000028000000320000000f000000640000006400000064",
    "kind": "data",
-   "name": ".rodata.fm0.4",
+   "name": ".rodata.fm0.5",
    "size": 52
   },
   {
    "align": 2,
    "hex": "0000000000000000000000000000000a00000000000000000000000000000064000000050000000f0000006400000064",
    "kind": "data",
-   "name": ".rodata.wt0.5",
+   "name": ".rodata.wt0.6",
    "size": 48
   },
   {
@@ -16831,6 +16929,13 @@
    "kind": "data",
    "name": ".rodata.learn_desc",
    "size": 36
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.ip_recoveries",
+   "size": 4
   },
   {
    "align": 2,
@@ -19395,7 +19500,7 @@
    "size": 332
   }
  ],
- "source_sha256": "be066e187b989ab1039c2dc2ea1978964ea6c4ed86fd172c2df28835f8680468",
+ "source_sha256": "c56064cac5959baaa08ee558ed12d6e16442c9ef4eb871562751898504c435b4",
  "symbols": [
   {
    "global": false,
@@ -19465,6 +19570,12 @@
   },
   {
    "global": false,
+   "name": ".sec..bss.faulted_ticks.0",
+   "section": ".bss.faulted_ticks.0",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..bss.fm_wheel_amount",
    "section": ".bss.fm_wheel_amount",
    "value": 0
@@ -19483,8 +19594,8 @@
   },
   {
    "global": false,
-   "name": ".sec..bss.h.0",
-   "section": ".bss.h.0",
+   "name": ".sec..bss.h.1",
+   "section": ".bss.h.1",
    "value": 0
   },
   {
@@ -19569,6 +19680,12 @@
    "global": false,
    "name": ".sec..bss.ip_panel_step",
    "section": ".bss.ip_panel_step",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.ip_recoveries",
+   "section": ".bss.ip_recoveries",
    "value": 0
   },
   {
@@ -19819,8 +19936,8 @@
   },
   {
    "global": false,
-   "name": ".sec..bss.scratch.2",
-   "section": ".bss.scratch.2",
+   "name": ".sec..bss.scratch.3",
+   "section": ".bss.scratch.3",
    "value": 0
   },
   {
@@ -20245,8 +20362,8 @@
   },
   {
    "global": false,
-   "name": ".sec..rodata.fm0.4",
-   "section": ".rodata.fm0.4",
+   "name": ".sec..rodata.fm0.5",
+   "section": ".rodata.fm0.5",
    "value": 0
   },
   {
@@ -20299,8 +20416,8 @@
   },
   {
    "global": false,
-   "name": ".sec..rodata.id.1",
-   "section": ".rodata.id.1",
+   "name": ".sec..rodata.id.2",
+   "section": ".rodata.id.2",
    "value": 0
   },
   {
@@ -20707,8 +20824,8 @@
   },
   {
    "global": false,
-   "name": ".sec..rodata.wt0.5",
-   "section": ".rodata.wt0.5",
+   "name": ".sec..rodata.wt0.6",
+   "section": ".rodata.wt0.6",
    "value": 0
   },
   {
@@ -21009,6 +21126,12 @@
    "global": false,
    "name": ".sec..text.instrument_midi_ready",
    "section": ".text.instrument_midi_ready",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.instrument_play_faulted",
+   "section": ".text.instrument_play_faulted",
    "value": 0
   },
   {
@@ -21357,6 +21480,12 @@
    "global": false,
    "name": ".sec..text.recover_done",
    "section": ".text.recover_done",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.release_all",
+   "section": ".text.release_all",
    "value": 0
   },
   {
@@ -22327,14 +22456,20 @@
   },
   {
    "global": false,
+   "name": "faulted_ticks.0",
+   "section": ".bss.faulted_ticks.0",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "fill",
    "section": ".text.fill",
    "value": 0
   },
   {
    "global": false,
-   "name": "fm0.4",
-   "section": ".rodata.fm0.4",
+   "name": "fm0.5",
+   "section": ".rodata.fm0.5",
    "value": 0
   },
   {
@@ -22435,8 +22570,8 @@
   },
   {
    "global": false,
-   "name": "h.0",
-   "section": ".bss.h.0",
+   "name": "h.1",
+   "section": ".bss.h.1",
    "value": 0
   },
   {
@@ -22453,8 +22588,8 @@
   },
   {
    "global": false,
-   "name": "id.1",
-   "section": ".rodata.id.1",
+   "name": "id.2",
+   "section": ".rodata.id.2",
    "value": 0
   },
   {
@@ -23283,6 +23418,12 @@
    "global": true,
    "name": "ip_project",
    "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_recoveries",
+   "section": ".bss.ip_recoveries",
    "value": 0
   },
   {
@@ -24379,6 +24520,12 @@
   },
   {
    "global": false,
+   "name": "release_all",
+   "section": ".text.release_all",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "remember",
    "section": ".text.remember",
    "value": 0
@@ -24619,8 +24766,8 @@
   },
   {
    "global": false,
-   "name": "scratch.2",
-   "section": ".bss.scratch.2",
+   "name": "scratch.3",
+   "section": ".bss.scratch.3",
    "value": 0
   },
   {
@@ -25111,8 +25258,8 @@
   },
   {
    "global": false,
-   "name": "wt0.5",
-   "section": ".rodata.wt0.5",
+   "name": "wt0.6",
+   "section": ".rodata.wt0.6",
    "value": 0
   },
   {
@@ -25132,8 +25279,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "18394",
-  "isa_check": "2ebec6b47658836e4a8ab6bd45b7b19af791544d12999f2b56423ee9f990647c",
+  "instructions_redecoded": "18421",
+  "isa_check": "fa8025a79114252e96a728cd118afa07b2841d707c8f2ad2e4216706c157608b",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

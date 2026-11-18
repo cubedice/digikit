@@ -386,11 +386,9 @@ static void chord_apply(uint32_t next_mode, uint32_t next_type)
     cur->type = cur->keyboard.type = (uint8_t)next_type;
     cur->keyboard.update = 1;
 }
-/* PANIC releases every instance. */
-static void panic(void *ctx, int32_t value)
+/* Release every instance: learning off, sounds suspended, keyboards reset to the ledger's epoch. */
+static void release_all(void)
 {
-    (void)ctx;
-    (void)value;
     uint32_t sr = dkrt_irq_mask();
     for (uint32_t i = 0; i < IP_INSTANCES; ++i) {
         IpInst *in = &inst[i];
@@ -401,7 +399,36 @@ static void panic(void *ctx, int32_t value)
         kb_reset(&in->keyboard, mi_ledger.epoch, mi_ledger.generations[t]);
     }
     dkrt_irq_restore(sr);
+}
+/* PANIC releases every instance. */
+static void panic(void *ctx, int32_t value)
+{
+    (void)ctx;
+    (void)value;
+    release_all();
     dk_ui_toast(ui(), "PANIC - RELEASE HELD KEYS");
+}
+/* A faulted note transport sends nothing until it starts a new epoch, which only RECOVER KEYBOARD did. Do the same
+ * without the menu: after about a second of fault (UI ticks), when the reply guard is still valid and the DSP has
+ * not reported a voice fault, start the new epoch and release every instance; the instances then configure their
+ * tracks again. At most RECOVER_LIMIT times per boot: a link that keeps failing needs the restart the menu names.
+ * ip_recoveries counts them (a diagnostic word). */
+enum { RECOVER_TICKS = 45, RECOVER_LIMIT = 8 };
+volatile uint32_t ip_recoveries;
+static void recover_tick(void)
+{
+    static uint32_t faulted_ticks;
+    if (!mi_transport.faults) {
+        faulted_ticks = 0;
+        return;
+    }
+    if (++faulted_ticks < RECOVER_TICKS || ip_recoveries >= RECOVER_LIMIT)
+        return;
+    faulted_ticks = 0;
+    if (instrument_play_faulted(dkrt_instrument_generation()) || mi_keyboard_recover())
+        return;
+    ++ip_recoveries;
+    release_all();
 }
 /* Learned shapes are one library shared by every instance. */
 static void shapes_share(const IpInst *from)
@@ -2385,6 +2412,7 @@ void instrument_play_tick(void)
     else if (count == 16)
         healthy = reply[0] == MT_PLAY_REPLY_MAGIC && reply[13] == 3 &&
                   reply[14] == dkrt_instrument_generation();
+    recover_tick();
     instrument_sound_scan();
     ip_sa_tick();
     for (uint32_t i = 0; i < IP_INSTANCES; ++i)

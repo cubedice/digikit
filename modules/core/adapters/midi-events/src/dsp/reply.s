@@ -79,10 +79,19 @@ _mr_session_done:
     R1 = 3;
     COMP(R0, R1);
     IF NE JUMP _mr_checksum;
-    R0 = DM(_mi_heartbeat);
-    R1 = 1;
-    R0 = R0 AND R1;
-    IF EQ JUMP _mr_checksum;
+    // One eligible block in three carries the status. A reader that sees only every second block (the two reply
+    // records alternate) then still gets ordinary frames, which carry the ACK, and status frames; with status on
+    // every odd block such a reader could see status frames alone and never an ACK.
+    R0 = DM(_mi_status_phase);
+    R0 = R0 + 1;
+    R1 = 3;
+    COMP(R0, R1);
+    IF LT JUMP _mr_status_phase;
+    R0 = 0;
+_mr_status_phase:
+    DM(_mi_status_phase) = R0;
+    R0 = PASS R0;
+    IF NE JUMP _mr_checksum;
     R0 = _instrument_ui_status;
     R0 = PASS R0;
     IF EQ JUMP _mr_checksum;
@@ -124,4 +133,5 @@ _mr_sum:
 .SECTION/DM seg_dmda;
 .GLOBAL _mi_heartbeat;
 .VAR _mi_heartbeat = 0;
+.VAR _mi_status_phase = 0;
 .PKBSS _instrument_reply, 64;
