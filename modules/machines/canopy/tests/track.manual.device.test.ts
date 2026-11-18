@@ -93,7 +93,7 @@ test('CANOPY runs on any track, and up to four instances play at once', async ()
   const tracks = () => Promise.all([0, 1, 2, 3].map((i) => cf('ip_tracks', i)));
   const phases = () => Promise.all([0, 1, 2, 3].map((i) => cf('ip_control', i * 8)));
   // IsStatus is 638 bytes on the two-byte-aligned ColdFire ABI: 632 bytes
-  // of words, five validity bytes, and one byte of trailing padding.
+  // of words and six flag bytes (the validity bytes and `waiting`).
   const statusOf = async (slot: number) => {
     const base = planSymbol(plan, 'src_status') + slot * 638;
     return {
