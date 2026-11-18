@@ -104,27 +104,27 @@ heads that read the same tone at two delays add with their phases, so a crossfad
 Cost: the heaviest hook call (core/fx and the effect) is **17,379 instructions**, against 42,928 for the engine before.
 It is a constructed case: HOLD taken while both sides' heads drift between frames and released before the loop turns, so
 both sides crossfade from a head between frames to a head that glides, with HALO, the dark filter, the limiter and the
-write's crossfade. `dsp_cost_fx = 17379` in `module.toml` is that number; the test fails on a heavier block. A steady block
-with everything at rest and HALO off costs about 4,800; HALO adds about 3,400. Instructions of the rig, not a cycle count
-of the SHARC.
+write's crossfade. `dsp_cost_fx = 17379` in `module.toml` is that number; the test fails on a heavier block. A block with
+everything at rest costs 5,194, with HALO 8,637. Instructions of the rig, not a cycle count of the SHARC.
 
 ## Decisions the plan did not settle
 
-- **Crossfade length: 960 samples (20 ms).** Measured by a SYNC step from 2400 to 3601 frames and back with one echo, the
-  click measure and the share of the energy further than 150 Hz from the tone in a window around the crossfade:
+- **Crossfade length: 960 samples (20 ms).** Measured by a SYNC step from 2400 to 3601 frames and back with one echo
+  (the test "the crossfade length"), per tone the click measure and the share of the energy further than 150 Hz from the
+  tone in 8192 samples around the crossfade:
 
   | Length | 55 Hz | 220 Hz | 1 kHz |
   | --- | --- | --- | --- |
-  | 32 (0.7 ms) | 148 x, -21 dB | 11.0 x, -19 dB | 1.9 x, -31 dB |
-  | 96 (2 ms) | 18.3 x, -25 dB | 2.4 x, -20 dB | 1.5 x, -29 dB |
+  | 32 (0.7 ms) | 162.7 x, -19 dB | 11.4 x, -18 dB | 1.6 x, -33 dB |
+  | 96 (2 ms) | 20.5 x, -23 dB | 2.5 x, -21 dB | 1.5 x, -29 dB |
   | 240 (5 ms) | 5.9 x, -29 dB | 1.3 x, -29 dB | 1.4 x, -30 dB |
-  | 480 (10 ms) | 3.7 x, -49 dB | 1.1 x, -50 dB | 1.4 x, -43 dB |
-  | 720 (15 ms) | 2.6 x, -55 dB | 1.1 x, -57 dB | 1.4 x, -52 dB |
-  | 960 (20 ms) | 2.3 x, -60 dB | 1.0 x, -60 dB | 1.4 x, -59 dB |
+  | 480 (10 ms) | 3.6 x, -49 dB | 1.2 x, -50 dB | 1.4 x, -43 dB |
+  | 720 (15 ms) | 2.6 x, -54 dB | 1.1 x, -55 dB | 1.4 x, -52 dB |
+  | 960 (20 ms) | 2.3 x, -60 dB | 1.1 x, -59 dB | 1.4 x, -59 dB |
   | 1440 (30 ms) | 1.8 x, -68 dB | 1.0 x, -66 dB | 1.4 x, -66 dB |
 
   At 20 ms what the crossfade adds beyond 150 Hz of the tone is 59 dB or more below it at all three frequencies; each
-  5 ms less costs 5 to 7 dB. Longer was not taken because for the length of the crossfade both times sound together. The
+  5 ms less costs 4 to 9 dB. Longer was not taken because for the length of the crossfade both times sound together. The
   curve is `sin(pi/2 * s)` with `s` a smoothstep: equal power, and no slope at either end (a plain sine quarter starts with
   a slope; computed, not measured, that is a kink of about 4 times a clean 220 Hz tone's measure at 10 ms). The seam of a reverse segment or of a held loop uses the same
   curve over at most half the turn. `PRISM_XFADE` in `prism.h`; a test may change the state word `PS_XFADE`.
@@ -169,8 +169,8 @@ of the SHARC.
   by 0.02 % a pass at unity.
 - **Output**: the wet signal only, times MIX, as the effect contract asks; the adapter's own mix stays at 1.
 - **Tests**: `tests/engine.test.ts` and its Python probe are replaced by `tests/engine.rig.test.ts` on the SHARC-only rig
-  (`digikit/prism:test-rig`), because 30 s of audio and a 10.7 s time need the native core: the suite runs 45 cases in
-  about 130 s. `FxRig` of the kit got `poke()` for a word of a mailbox an effect imports.
+  (`digikit/prism:test-rig`), because 30 s of audio and a 10.7 s time need the native core: the suite runs 46 cases in
+  about 150 s and keeps its numbers in `out/runs/prism-engine/measures.txt`. `FxRig` of the kit got `poke()` for a word of a mailbox an effect imports.
 
 ## What finding 354 had open
 
@@ -212,7 +212,7 @@ the adapter plays dry. Not run, and expected to fail on this branch:
 - `digikit/prism:test-device` with its files `ui`, `capture` and `coexistence` (and the `test-device-all` forms): they
   drive the five pages and read the status words of the engine before (state, held frames, grains).
 - `digikit/prism:test-conformance` (the load cell on the `phrase` patch set) was not run either; the module still packs
-  (`digikit/prism:pack`, 8,970 bytes).
+  (`digikit/prism:pack`, 8,986 bytes).
 
 The adapters' own host tests (`core/phrase-control`, `core/phrase-route`, `core/phrase-ui`) do not load the engine and are
 not affected. `digikit/prism:test-host` no longer exists: the module's tests are `digikit/prism:test-rig`.
