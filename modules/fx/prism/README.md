@@ -37,8 +37,9 @@ DELAY:
 
 - TIME is a note length at the current tempo, from 1/32 to two bars (sixteen choices, with triplets and dotted values). A
   change glides: the head moves at most half a frame per sample, as a tape would.
-- FDBK writes the head's output back onto the tape through a DC blocker, a low pass near 5 kHz and a soft limiter. Above
-  100 % the limiter holds the level. A phrase recorded from the tape contains the repeats.
+- FDBK writes the head's output back onto the tape through a DC blocker, a low pass near 3 kHz and a soft limiter that
+  keeps the feedback at or below half of full scale, so repeats settle near the level of the input instead of building
+  up; above 100 % the lower notes keep repeating at that level. A phrase recorded from the tape contains the repeats.
 - MODE: FWD, REV (each stretch of TIME plays backwards) or HOLD (the tape stops and the head loops its last TIME).
 - SKEW makes one side up to half as long again (L or R); WOW is a slow drift of the delay of at most 0.3 %.
 - DRIV saturates the effect's output before SPACE. BAL sets head against grains: both full in the middle, one of them off
