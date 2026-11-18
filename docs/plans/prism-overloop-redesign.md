@@ -267,7 +267,7 @@ LIVE feeds PRISM nothing, because the loop's feed follows the crossfader.
 | # | Question | Recommendation |
 |---|---|---|
 | 1 | Are PRISM's settings global or stored in each kit? | Global, as today. Stored per kit they would jump at every pattern change, in the middle of a transition |
-| 2 | Does the loop reach PRISM before or after the crossfader? | After. Crossfading to LIVE then also closes PRISM's feed, and the new pattern arrives dry with the old echoes dying away. Before the crossfader, the old pattern would keep feeding PRISM at full level until INPT is switched |
+| 2 | Does the loop reach PRISM before or after the crossfader? | **Decided (owner, 2026-11-18): after.** Crossfading to LIVE then also closes PRISM's feed, and the new pattern arrives dry with the old echoes dying away. Before the crossfader, the old pattern would keep feeding PRISM at full level until INPT is switched |
 | 2a | Does INPT go back to LIVE by itself when the crossfader reaches LIVE? | No. It is the owner's move, so PRISM can be set up for the new pattern first |
 | 3 | Does the loop hold what was heard, or the tracks without PRISM? | What was heard. The outgoing pattern then continues exactly as it sounded |
 | 4 | External inputs into PRISM | Not in the first version. A send effect sums track buses, and the external input is not one. Today's EXT L/R source is lost |
