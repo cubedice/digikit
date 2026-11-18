@@ -13,6 +13,7 @@ import { execFileSync } from 'node:child_process';
 import { waitInstrumentReady } from './instrument-ready.ts';
 import { acknowledgedPanel } from './panel-ack.ts';
 import { waitEmulated } from './port-compat.ts';
+import { seedModules } from './card-seed.ts';
 
 // Recording keyboard presses on a CANOPY track (findings 347 and 125). While
 // the sequencer live records, CANOPY hands KEYBOARD presses to the stock note
@@ -27,13 +28,11 @@ const options = liveOptions('dt2');
 const fixtureRoot = fs.realpathSync(path.join(repoRoot(), 'out'));
 const cardSeed = fs.mkdtempSync(path.join(fixtureRoot, 'canopy-record-card-'));
 const moduleFile = path.resolve(repoRoot(), process.env.CANOPY_RECORD_PACKAGE ?? 'out/patch/canopy-fm-release.dkm');
-beforeAll(() => {
+beforeAll(async () => {
   for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav']) {
     fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
   }
-  const modules = path.join(cardSeed, 'digikit', 'modules');
-  fs.mkdirSync(modules, { recursive: true });
-  fs.copyFileSync(moduleFile, path.join(modules, 'canopy.dkm'));
+  await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
 });
 afterAll(() => {
   const owned = fs.realpathSync(cardSeed);

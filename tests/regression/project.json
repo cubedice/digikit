@@ -5,6 +5,7 @@
     "control-client",
     "@digi/test-support",
     "@digi/dk-session",
+    "@digi/sharc-rig-kit",
     "digi-control",
     "digi-coupled",
     "dkui-host"
@@ -26,7 +27,7 @@
         "default",
         {
           "input": "production",
-          "projects": ["control-client", "@digi/test-support", "@digi/dk-session", "@digi/dkbs"]
+          "projects": ["control-client", "@digi/test-support", "@digi/dk-session", "@digi/dkbs", "@digi/sharc-rig-kit"]
         },
         "jsToolchain"
       ]
@@ -38,6 +39,7 @@
         "patchkit:cli",
         "patchkit:device-bytes",
         "patchkit:device-images",
+        "core/runtime:test-assembly",
         { "target": "build-objects", "projects": ["tag:acceptance-image"] },
         "digi-control:daemons",
         "digikit/probe:pack",

@@ -59,6 +59,29 @@ output[8]` as locals: 17 events of 72 bytes, 1224 bytes. The timer task was abou
 deepest store without an interrupt was 128), so the interrupt path took about 1800 bytes and an overflow needs the timer task to
 be about 240 bytes deep at that moment. The image of 2026-11-14 has the same locals (`lane/prism`, `transport.c:64`).
 
+### Repeated after the merge of upstream 870a7319 (2026-11-18)
+
+**[D]** The same test on the merged image (`integrate/upstream-b1-rsc`, 06a7eb5c2: the machine, effect and sample services
+loaded from the card, the four modules of the `canopy-overloop-prism` set), the same thirteen stack ranges:
+
+| | boot to ready | the test case (about two minutes of use) |
+| --- | --- | --- |
+| timer task (2048 bytes): deepest store | 160 | 816 bytes, 1232 free (`pc 0x47fa8c8c`, in `cf.expansion`) |
+| intro task (16 KiB) | 1040 | no store |
+| deferred calls (4 KiB) | 48 | no store |
+| UI task | 24492 | 17860 |
+| task at `0x44e0cfcc` (32 KiB, priority 7) | 96 | 1276 |
+
+The write watch of the same run has no event. One run; the path to the deepest store was not traced again.
+
+How it was measured differs from the first time. The harness now boots the patched image once and runs the test case from a state
+the daemon restores from its snapshot cache, and on that path the daemon does not start the watch (`resume_watch` is called only by
+the state-load request, not after the restore inside a firmware load: `install_patched_audio` and the cache hit of the ColdFire-only
+load in `packages/emulator/control/src/controller.rs`). With `DIGI_STACK_WATCH` alone every stack of the test case reads depth 0 and
+`cacr_writes` 0. The numbers of the right column are from a daemon built with one added line (`runtime.resume_watch()` after the
+restore), used for this run only and not committed. **[O]** The same gap means the write watch of an effect session that starts from
+the snapshot cache checks nothing after the restore; this is upstream's code and is not changed here.
+
 ## Conclusion and marks
 
 - **[D]** The block interrupt of the fork's images can overflow the 2 KiB stack of the firmware's timer task. An overflow damages

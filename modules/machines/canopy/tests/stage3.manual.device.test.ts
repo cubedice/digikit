@@ -9,6 +9,7 @@ import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { planSymbol, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 import { chordWindow } from '@digi/regression/runtime/chord-continuity.ts';
 import { openDigikitMenu, waitEmulated } from '@digi/regression/runtime/port-compat.ts';
+import { putServices } from '@digi/regression/runtime/card-seed.ts';
 
 const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });
 test('CANOPY Stage 3 live pad controls, stock filter and reverb', async () => {
@@ -31,6 +32,7 @@ test('CANOPY Stage 3 live pad controls, stock filter and reverb', async () => {
     file = fs.readFileSync(path.join(root, 'out/patch/canopy-dt2.dkm'));
   await dk.put('modules/canopy.dkm', file);
   expect(await dk.verifyFile('modules/canopy.dkm', file)).toBe(true);
+  await putServices(dk, 'dt2', ['machines']);
   await dk.select(['modules/canopy.dkm']);
   await dk.restart();
   await dk.waitForBoot(undefined, 180_000);

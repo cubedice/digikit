@@ -19,6 +19,7 @@ import { encoderValue } from '@digi/regression/runtime/encoder-value.ts';
 import { canopyControls } from '@digi/regression/runtime/canopy-controls.ts';
 import { proveWavetableFm } from './wavetable-fm.ts';
 import { openDigikitMenu, waitEmulated } from '@digi/regression/runtime/port-compat.ts';
+import { seedModules } from '@digi/regression/runtime/card-seed.ts';
 
 async function captureRemoteOled(...args: Parameters<typeof captureOled>) {
   await captureOled(...args);
@@ -38,15 +39,13 @@ const options = liveOptions('dt2');
 const fixtureRoot = fs.realpathSync(path.join(repoRoot(), 'out'));
 const cardSeed = fs.mkdtempSync(path.join(fixtureRoot, 'canopy-stage5-card-'));
 const moduleFile = path.resolve(repoRoot(), process.env.CANOPY_UI_PACKAGE ?? 'out/patch/canopy-native-ui.dkm');
-beforeAll(() => {
+beforeAll(async () => {
   // Start with the same sample card and factory project, adding only the exact
   // prepared module. No selection, saved sound, preset or prior overlay is reused.
   for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav']) {
     fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
   }
-  const modules = path.join(cardSeed, 'digikit', 'modules');
-  fs.mkdirSync(modules, { recursive: true });
-  fs.copyFileSync(moduleFile, path.join(modules, 'canopy.dkm'));
+  await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
 });
 afterAll(() => {
   const owned = fs.realpathSync(cardSeed);

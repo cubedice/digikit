@@ -16,6 +16,7 @@ import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { REDRAW, SETTLE } from '@digi/regression/runtime/fx-live.ts';
 import { openDigikitMenu } from '@digi/regression/runtime/flows/menu.ts';
+import { seedModules } from '@digi/regression/runtime/card-seed.ts';
 
 describeOn('dt2', 'CANOPY arp on the DT2', () => {
   // Full DTII 1.17 firmware, real panel input and MIDI, with a disposable card.
@@ -28,12 +29,10 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
   const moduleFile = process.env.CANOPY_ARP_PACKAGE
     ? path.resolve(repoRoot(), process.env.CANOPY_ARP_PACKAGE)
     : moduleArtifact('dt2', 'digikit/canopy');
-  beforeAll(() => {
+  beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
-    const modules = path.join(cardSeed, 'digikit', 'modules');
-    fs.mkdirSync(modules, { recursive: true });
-    fs.copyFileSync(moduleFile, path.join(modules, 'canopy.dkm'));
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);

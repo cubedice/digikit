@@ -45,6 +45,37 @@ pub unsafe fn capacity() -> ((u32, u32, u32), (u32, u32)) {
     ((rows_limit, rows_used, open), (policy[2], tracks_used))
 }
 
+/// The type numbers of the records of `section`, for the module at index `selection` of the boot's selection. The lookup uses the saved selection
+/// index, not the module being loaded now. The keys and their numbers are a copy of the plan of the service that numbers them (`Service::planned_ids`);
+/// a number is refused when a service has it taken in its rows (`Service::id_taken`) or a legacy DSP row holds it, published or not. UI task only.
+pub unsafe fn resolve_types(
+    section: &dkrt_sdk::instrument_section::Section<'_>,
+    selection: u32,
+) -> Result<dkrt_sdk::instrument_types::Resolved, dkrt_sdk::instrument_types::Error> {
+    use dkrt_sdk::device::{DYN_TYPE_FIRST, DYN_TYPE_LAST};
+    if selection >= dkrt_sdk::SEL_MAX as u32 {
+        return Err(dkrt_sdk::instrument_types::Error::Map);
+    }
+    let mut pairs = [[0u32; 2]; 8];
+    let n = crate::handlers::exports::planned_ids(selection, &mut pairs);
+    let (mut keys, mut types) = ([0u32; 8], [0u32; 8]);
+    let mut i = 0;
+    while i < n {
+        keys[i] = pairs[i][0];
+        types[i] = pairs[i][1];
+        i += 1;
+    }
+    let context = dkrt_sdk::instrument_types::Context {
+        selection,
+        indices: &[selection; 8][..n],
+        keys: &keys[..n],
+        types: &types[..n],
+        first: DYN_TYPE_FIRST,
+        last: DYN_TYPE_LAST,
+    };
+    section.resolve_types(&context, |t| crate::handlers::exports::id_taken(t) || !crate::dsp::type_is_free(t))
+}
+
 /// UI-task only. Without all providers, legacy scheduling is unchanged.
 pub unsafe fn legacy_policy() -> LegacyPolicy {
     match (&*core::ptr::addr_of!(OWNER)).as_ref() {

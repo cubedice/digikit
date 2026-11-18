@@ -12,6 +12,7 @@ import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 import { execFileSync } from 'node:child_process';
 import { waitInstrumentReady } from './instrument-ready.ts';
 import { acknowledgedPanel } from './panel-ack.ts';
+import { seedModules } from './card-seed.ts';
 
 // Sequencer trigs and trig parameter locks on a CANOPY track (finding 347).
 // Asserts the stock lock facts the packed design relies on: a held turn of a
@@ -25,13 +26,11 @@ const options = liveOptions('dt2');
 const fixtureRoot = fs.realpathSync(path.join(repoRoot(), 'out'));
 const cardSeed = fs.mkdtempSync(path.join(fixtureRoot, 'canopy-plock-card-'));
 const moduleFile = path.resolve(repoRoot(), process.env.CANOPY_PLOCK_PACKAGE ?? 'out/patch/canopy-fm-release.dkm');
-beforeAll(() => {
+beforeAll(async () => {
   for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav']) {
     fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
   }
-  const modules = path.join(cardSeed, 'digikit', 'modules');
-  fs.mkdirSync(modules, { recursive: true });
-  fs.copyFileSync(moduleFile, path.join(modules, 'canopy.dkm'));
+  await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
 });
 afterAll(() => {
   const owned = fs.realpathSync(cardSeed);

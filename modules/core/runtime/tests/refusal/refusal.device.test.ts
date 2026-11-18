@@ -4,6 +4,7 @@ import { moduleStateText, type ModuleState } from '@digi/dk-session';
 import { CAPACITY_KINDS, RECORD_KIND, RESOURCE } from '@digi/dk-session/gen_proto';
 import { expect, test } from 'vitest';
 import { cardRigs, type CardRig } from '@digi/regression/runtime/card-rig.ts';
+import { derivedModule } from '@digi/regression/runtime/service-files.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { loadCode, stateName } from '@digi/regression/runtime/load-states.ts';
 import { LOADED } from '@digi/regression/runtime/synth.ts';
@@ -25,7 +26,7 @@ const GOOD = 'test/commit-demo';
 const LFO = 'test/lfo-shape';
 const LFO_DUP = 'test/lfo-shape-dup';
 /** The service of the lfo_shape kind is a file of the card (`services/lfo.dks`), not a part of the image: the two fixtures need it. */
-const LFO_SERVICE = 'core/lfo';
+const LFO_SERVICE = 'core/services/lfo';
 const UNOWNED_KIND = 90;
 
 interface Seen {
@@ -75,6 +76,7 @@ cardRigs('refusal fixtures and module states', { dsp: 'cold', roots: COUPLED_ROO
     fs.mkdirSync(dir, { recursive: true });
     const file = path.join(dir, `${name.split('/').at(-1)}.dkm`);
     fs.writeFileSync(file, f);
+    derivedModule(moduleArtifact(rig.device, GOOD), file);
     return { name, file, want };
   };
 

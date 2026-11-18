@@ -34,17 +34,20 @@ def committed(
     patchkit: str,
     binary: str | None = None,
     debug_dkm: Path | None = None,
+    services: list[Path] | None = None,
     patch_set: str | None = None,
     dsp: str | None = None,
 ) -> dict[str, Any]:
     """The decoded records of module MID (packed as DKM) on DEVICE: `{module, commit, records}` of `commit_records.ts`.
     DEBUG_DKM is the packed debug module the device boots with; without it the tool reads `dist/modules/<device>/debug.dkm`.
+    SERVICES are the bound `.dks` files (`patchkit bind`) the module needs: they go on the card as `services/<name>.dks`.
     PATCH_SET is the patch set the image is patched with (the tool's default, `emulator`, when None). DSP is `sharc` for a module that
     commits only once its DSP code runs (a persistent V2 instrument); the tool's default boots without a DSP."""
     cmd = [
         "node", CLI, "--device", device, "--module", mid, "--dkm", str(dkm), "--patchkit", patchkit,
         *(["--binary", binary] if binary else []),
         *(["--debug-dkm", str(debug_dkm)] if debug_dkm else []),
+        *[a for s in services or [] for a in ("--service", str(s))],
         *(["--patch-set", patch_set] if patch_set else []),
         *(["--dsp", dsp] if dsp else []),
     ]  # fmt: skip

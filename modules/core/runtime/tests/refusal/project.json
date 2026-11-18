@@ -17,9 +17,12 @@
           "test/commit-demo",
           "test/lfo-shape",
           "test/lfo-shape-dup",
-          "core/lfo"
+          "core/services/lfo",
+          "core/services/machines",
+          "core/services/fx"
         ],
         "plusdrive": true,
+        "dsp": "sharc",
         "tags": [
           "C:loading",
           "S:lfo"

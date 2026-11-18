@@ -29,34 +29,38 @@ SRC = (
     / "dt2"
     / "machines.s"
 )
+# the hooks of the machines service file (the image keeps the table builder, dispatch, list entry and rank) and the table they read
+HOOKS = (
+    ROOT / "modules" / "core" / "services" / "machines" / "dks" / "src" / "hooks-dt2.s"
+)
+TAB = ROOT / "tests" / "fixtures" / "machines-info-dt2.s"
+# the adapter functions of the SRC pages and the modulation mapping, as the service file binds them (`machines_ext_info`)
+EXT = ROOT / "tests" / "fixtures" / "machines-ext-dt2.s"
 ROWSIZE = 64
 FIRST = 7
 ROWS = 0x47EC0000
 STOCK_LIST = 0x47EC1000
 NAMES = 0x47EC2000
-TYPEARG_EXIT = "_mf_x_typearg"
+TYPEARG_EXIT = "mf_x_typearg"
+# The native page calls of the registry that the info table `machines_info` names (words 16 to 19; `native-page.c` of the adapter has them): the
+# routines of these tests never read the words, so each is 0 here.
+NATIVE_CALLS = {
+    "mf_native_register": 0,
+    "mf_native_register_v2": 0,
+    "mf_native_remove": 0,
+    "mf_native_turn": 0,
+}
 
 STUBS = [
     "_mf_t_dispatch",
     "_mf_t_list",
     "_mf_t_rank",
-    "_mf_t_typearg",
-    "_mf_x_typearg",
-    "_mf_t_clone5",
-    "_mf_c0a",
-    ("_mf_c0", 8),
-    ("_mf_c1", 6),
-    "_mf_c1a",
-    ("_mf_c2", 8),
-    "_mf_c2a",
-    ("_mf_c3", 6),
-    "_mf_c3a",
-    ("_mf_c4", 6),
-    "_mf_c4a",
-    ("_mf_c6", 12),
-    "_mf_c6a",
-    ("_mf_sp", 8),
-    "_mf_spa",
+    "dk_tail_09514a38",
+    "mf_x_typearg",
+    "mf_x_c5_ne",
+    "mf_x_c5_eq",
+    "mf_x_sp_stock",
+    "mf_x_sp_alt",
 ]
 
 pytestmark = [
@@ -140,6 +144,9 @@ def unit(src_allocator):
         SYX,
         [
             SRC,
+            HOOKS,
+            TAB,
+            EXT,
             SRC.with_name("src-pages.c"),
             ROOT / "tests/fixtures/native-page-absent.s",
             src_allocator,
@@ -153,6 +160,9 @@ def unit(src_allocator):
             "_mf_list_stock": STOCK_LIST,
             "_mf_spt": TYPE_FN,
             "instrument_mod_param": 0,
+            "mf_spt": TYPE_FN,
+            # symbols of the info table of the image (not read by these tests)
+            **NATIVE_CALLS,
         },
         [
             "mf_srcpage",
@@ -165,7 +175,6 @@ def unit(src_allocator):
             "mf_rank",
             "mf_typearg",
             "mf_clone5",
-            *CLONE_SITES,
         ],
     )
 
@@ -294,6 +303,8 @@ def gap_unit(src_allocator):
             "_mf_rows": ROWS,
             "_mf_list_stock": STOCK_LIST,
             "_mf_spt": TYPE_FN,
+            "mf_spt": TYPE_FN,
+            **NATIVE_CALLS,
         },
         ["mf_list_entry", "mf_rank"],
     )
@@ -332,63 +343,6 @@ def test_a_gap_row_is_neither_listed_nor_ranked(gap_unit, monkeypatch):
     assert FIRST + 1 not in expect
 
 
-# site -> (type register, stub that stands for "equal", for "not equal"); stubs named `_mf_cN` are the site address,
-# so `_mf_cN + k` is the end of the site
-CLONE_SITES = {
-    "mf_clone0": (0, "_mf_c0a", "_mf_c0"),
-    "mf_clone1": (0, "_mf_c1", "_mf_c1a"),
-    "mf_clone2": (0, "_mf_c2", "_mf_c2a"),
-    "mf_clone3": (0, "_mf_c3", "_mf_c3a"),
-    "mf_clone4": (2, "_mf_c4", "_mf_c4a"),
-    "mf_clone6": (0, "_mf_c6", "_mf_c6a"),
-}
-OBJ6 = 0x47EC5000
-
-
-def test_clone_tests_take_the_stock_branch_and_also_for_added_clones_of_slice(unit):
-    mem = tables()
-    types_added = [FIRST + k for k in range(COUNT)]
-    cases, want = [], []
-    for name, (reg, eq, neq) in CLONE_SITES.items():
-        for t in [6, 5, *types_added, FIRST + COUNT, 255]:
-            d = {i: 0x1000 + i for i in range(8)}
-            d[reg] = t
-            if name == "mf_clone4":
-                d[0] = 0x77  # the stock prefix loads 6 into d0
-            if name == "mf_clone3":
-                d[6] = 6
-            a = {i: 0x2000 + i for i in range(7)}
-            m = dict(mem)
-            if name == "mf_clone6":
-                a[0] = OBJ6 - 0x990
-                m[OBJ6] = bytes([t])
-            clone = (
-                ENTRIES[t - FIRST]["clone_of"] if FIRST <= t < FIRST + COUNT else None
-            )
-            equal = t == 6 or clone == 6
-            cases.append((m, {"routine": name, "d": d, "a": a, "stack": [0x11, 0x22]}))
-            want.append((name, t, eq if equal else neq, d))
-    for (m, case), (name, t, stub, _d) in zip(cases, want, strict=True):
-        r = unit.run_cases(m, [case])[0]
-        assert r.stub == stub, (name, t)
-        exp = dict(enumerate(case["d"][i] for i in range(8)))
-        if name in ("mf_clone0", "mf_clone1", "mf_clone2"):
-            exp[1] = 6
-        if name == "mf_clone4":
-            exp[0] = 6
-        if name == "mf_clone6":
-            exp[1] = 6
-            exp[0] = t if t < 128 else t - 256
-            exp[0] &= 0xFFFFFFFF
-        assert r.d == [exp[i] for i in range(8)], (name, t, r.d)
-        assert r.a[1:7] == [0x2000 + i for i in range(1, 7)]
-        assert r.a[0] == case["a"][0]
-        if (
-            name == "mf_clone3"
-        ):  # addq.l #4,sp ran: the stack words are seen from 4 bytes up
-            assert r.stack[:1] == [0x22]
-
-
 def test_masked_clone_test_maps_added_types_to_their_clone(unit):
     mem = tables()
     ts = [0, 4, 6, FIRST, FIRST + 1, FIRST + 2, FIRST + COUNT, 77]
@@ -398,8 +352,12 @@ def test_masked_clone_test_maps_added_types_to_their_clone(unit):
     )
     for t, r in zip(ts, res, strict=True):
         want = ENTRIES[t - FIRST]["clone_of"] if FIRST <= t < FIRST + COUNT else t
-        assert r.stub == "_mf_t_clone5" and r.d[0] == want
-        assert r.d[1] == 9 and r.d[3] == 33 and r.a[0] == 5
+        assert r.stub == ("mf_x_c5_eq" if (want & ~2) == 4 else "mf_x_c5_ne") and r.d[
+            0
+        ] == (want & ~2)
+        assert (
+            r.d[1] == 4 and r.d[3] == 33 and r.a[0] == 5
+        )  # d1 holds 4: the displaced `moveq #4,D1` of the stock test
 
 
 SLOTMAP = [8, 12, 16, 20, None, None, 24, 28, 32, 36]
@@ -437,11 +395,11 @@ def test_typearg_answers_fields_clone_types_and_hands_the_rest_on(unit):
             assert r.stub == TYPEARG_EXIT
             assert r.d[0] == e["f"][(SLOTMAP[idx - 25] - 8) // 4]
         elif 25 <= idx <= 34:  # slots 29 and 30: the clone's type replaces the argument
-            assert r.stub == "_mf_t_typearg" and r.stack[4] == e["clone_of"]
+            assert r.stub == "dk_tail_09514a38" and r.stack[4] == e["clone_of"]
         else:
-            assert r.stub == "_mf_t_typearg" and r.stack[4] == FIRST + k
+            assert r.stub == "dk_tail_09514a38" and r.stack[4] == FIRST + k
     for r in res[len(want) :]:
-        assert r.stub == "_mf_t_typearg"
+        assert r.stub == "dk_tail_09514a38"
 
 
 def test_stock_table_copies_append_the_clones_row():
@@ -567,16 +525,16 @@ def test_src_page_hook_gives_added_types_one_page_and_stock_types_two(unit):
     two-entry vector back and the stock path (page 1 = the sample view stays)."""
     for typ in (FIRST, 9, 18, 23):  # the first added type, the pluck, run-time rows
         for end_entries, idx in ((2, 0), (2, 1), (1, 0)):
-            assert run_src_page(unit, typ, end_entries, idx) == ("_mf_spa", 1, 0), (
+            assert run_src_page(unit, typ, end_entries, idx) == ("mf_x_sp_alt", 1, 0), (
                 typ,
                 end_entries,
                 idx,
             )
     for typ in (0, 3, 6, -1):  # SAMPLE, STRETCH, MANUAL SLICE, no track
         # page 0: the knob page; page 1: the sample view (stock continues at site + 8); a vector cut by an added type is restored
-        assert run_src_page(unit, typ, 2, 0) == ("_mf_spa", 2, 0), typ
-        assert run_src_page(unit, typ, 2, 1) == ("_mf_sp", 2, 1), typ
-        assert run_src_page(unit, typ, 1, 0) == ("_mf_spa", 2, 0), typ
+        assert run_src_page(unit, typ, 2, 0) == ("mf_x_sp_alt", 2, 0), typ
+        assert run_src_page(unit, typ, 2, 1) == ("mf_x_sp_stock", 2, 1), typ
+        assert run_src_page(unit, typ, 1, 0) == ("mf_x_sp_alt", 2, 0), typ
 
 
 def capability_case(unit, typ=18, fields=(1, 16, 2, 7), idx=1, capacity=2):
@@ -620,7 +578,7 @@ def test_explicit_src_capability_survives_draw_and_requires_matching_revocation(
     assert page_state(first) == page_state(still) == (2, 1)
     assert page_state(removed) == (1, 0)
     for r in (first, still, removed):
-        assert r.stub == "_mf_spa" and r.a[2] == VIEW and r.stack[0] == 0xAAAA
+        assert r.stub == "mf_x_sp_alt" and r.a[2] == VIEW and r.stack[0] == 0xAAAA
 
 
 @pytest.mark.parametrize(
@@ -683,7 +641,7 @@ def test_three_src_pages_grow_native_owned_storage_once(unit, idx, expected):
         assert vector_words(painted.reads[1]) == [0xFEEDFACE, 7, 11, 0xFEEDFACE]
         assert vector_words(painted.reads[2]) == [0xFEEDFACE, 7, 11, 7, 0xFEEDFACE]
         assert vector_words(painted.reads[3]) == [0, 1, 1, PAGES, 12]
-        assert painted.stub == "_mf_spa" and painted.a[2] == VIEW
+        assert painted.stub == "mf_x_sp_alt" and painted.a[2] == VIEW
         assert painted.stack[0] == 0xAAAA
 
 
@@ -727,7 +685,7 @@ def test_four_src_pages_preserve_existing_ids_and_grow_only_once(
             0xFEEDFACE,
         ]
         assert vector_words(painted.reads[3]) == [0, 1, 1, PAGES, 16]
-        assert painted.stub == "_mf_spa" and painted.a[2] == VIEW
+        assert painted.stub == "mf_x_sp_alt" and painted.a[2] == VIEW
         assert painted.stack[0] == 0xAAAA
 
 

@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'smol-toml';
-import { CELLS } from './device-inputs.mjs';
+import { CELLS, syxPath } from './device-inputs.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const pk = join(root, 'dist/patchkit/patchkit');
@@ -26,7 +26,7 @@ const run = promisify(execFile);
 // Static module root lists (`apply --modules`) that tests use: tests/regression/runtime/image-roots.json, also read by runtime-plan.ts.
 // Their image, plan and address map are kept under dist/bytes/images/<device>/<id>.* for the tests to copy.
 const { sets: rootSets } = JSON.parse(readFileSync(join(root, 'tests/regression/runtime/image-roots.json'), 'utf8'));
-const cells = CELLS.filter((cell) => existsSync(join(root, cell.syx)));
+const cells = CELLS.filter((cell) => existsSync(syxPath(cell)));
 const jobs = cells.flatMap((cell) => [
   ...(setsOf.get(cell.dev) ?? []).map((set) => ({ cell, label: set, select: ['--set', set] })),
   ...rootSets
@@ -41,6 +41,19 @@ const jobs = cells.flatMap((cell) => [
 rmSync(join(root, 'dist/bytes/images'), { recursive: true, force: true });
 for (const dev of new Set(cells.map((cell) => cell.dev)))
   mkdirSync(join(root, 'dist/bytes/images', dev), { recursive: true });
+/**
+ * `dist/bytes/images/<device>/set-<set>.info`: one line per entry of the image's info table (`dkrt_info_table`): name, name hash, kind (0 data table, 1 slot
+ * word), address and the words of a data entry, all but the name and kind in hex. The runtime's assembly test builds its `Platform::info` from it.
+ */
+const writeInfo = (dev, set, info) =>
+  writeFileSync(
+    join(root, 'dist/bytes/images', dev, `set-${set}.info`),
+    info
+      .map((e) =>
+        [e.name, e.hash.toString(16), e.kind, e.addr.toString(16), ...e.words.map((w) => w.toString(16))].join(' '),
+      )
+      .join('\n') + '\n',
+  );
 // The jobs only read; four at a time keep the machine usable. Lines keep the order of the jobs.
 const lines = Array.from({ length: jobs.length }, () => '');
 let next = 0;
@@ -60,7 +73,7 @@ try {
           root,
           'apply',
           '--firmware',
-          cell.syx,
+          syxPath(cell),
           ...select,
           '-o',
           out,
@@ -70,6 +83,8 @@ try {
           addrmap,
         ];
         await run(pk, args, { cwd: root });
+        // The info table of a patch set's image, as text for the host assembly tests (modules/core/runtime, `test-assembly`)
+        if (!keep) writeInfo(cell.dev, label, JSON.parse(readFileSync(plan, 'utf8')).info ?? []);
         const sha = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
         lines[index] = `${cell.dev}-${cell.ver} ${label} image ${sha(out)} plan ${sha(plan)} addrmap ${sha(addrmap)}`;
       }

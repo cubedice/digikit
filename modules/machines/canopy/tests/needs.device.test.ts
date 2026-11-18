@@ -10,9 +10,12 @@ import { planSymbol, prepareRuntimePlanListedOffline } from '@digi/regression/ru
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
-import { patchkit } from '@digi/regression/runtime/patchkit.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { openDigikitMenu } from '@digi/regression/runtime/flows/menu.ts';
+import { seedModules } from '@digi/regression/runtime/card-seed.ts';
+import { needsOf } from '@digi/regression/runtime/dkm.ts';
+import { boundPath } from '@digi/regression/runtime/service-files.ts';
+import { block } from '@digi/regression/runtime/synth.ts';
 
 /**
  * What a load of CANOPY takes is what its file says (docs/design/digikit-dkm.md, "Needs are inferred"). CANOPY is a file of persistent
@@ -26,12 +29,10 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
   const fixtureRoot = fs.realpathSync(path.join(repoRoot(), 'out'));
   const cardSeed = fs.mkdtempSync(path.join(fixtureRoot, 'canopy-needs-card-'));
   const moduleFile = moduleArtifact('dt2', 'digikit/canopy');
-  beforeAll(() => {
+  beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
-    const modules = path.join(cardSeed, 'digikit', 'modules');
-    fs.mkdirSync(modules, { recursive: true });
-    fs.copyFileSync(moduleFile, path.join(modules, 'canopy.dkm'));
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);
@@ -76,15 +77,19 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
     await waitInstrumentReady((name, i = 0) => word(planSymbol(plan, name) + 4 * i));
     await expectRuntimeUi(session, plan, artifacts, { afterEpoch: beforeRestart, emulatedMs: 180_000 });
 
-    // CANOPY is the only module of this boot: the arena holds its one V2 block and its record block, the DSP area its image,
+    // CANOPY is the only module of this boot: the arena holds its one V2 block, its record block and the machines service, the DSP area its image,
     // bss and track states. Its instruments take instrument rows and tracks (CAPACITY has them as kinds), and no voice row.
-    const needs = JSON.parse((await patchkit(['needs', '--json', moduleFile])).stdout)[moduleFile] as Record<string, number>;
+    // The machines service the runtime loads with it takes arena too: its image block (`patchkit needs` of the bound file) and the block of
+    // its keys table (as `inferred-needs.device.test.ts` of the runtime counts a provider).
+    const service = boundPath('dt2', 'machines');
+    const [needs, serviceNeeds] = (await needsOf([moduleFile, service])) as [Record<string, number>, Record<string, number>];
+    const provided = serviceNeeds.ARENA! + block(fs.readFileSync(service).readUInt32BE(0x94));
     const capacity = await dk.capacity();
-    fs.writeFileSync(path.join(artifacts, 'needs.json'), JSON.stringify({ needs, capacity }, null, 2));
+    fs.writeFileSync(path.join(artifacts, 'needs.json'), JSON.stringify({ needs, provided, capacity }, null, 2));
     const used = (kind: string) => capacity[kind]!.used;
     const kinds = ['ARENA', 'DSP_AREA', 'MACHINE_ROWS', 'VOICE_ROWS', 'INSTRUMENT_ROWS', 'INSTRUMENT_TRACKS'];
     expect(Object.fromEntries(kinds.map((k) => [k, used(k)])), 'the load takes what the needs say').toEqual({
-      ARENA: needs.ARENA,
+      ARENA: needs.ARENA! + provided,
       DSP_AREA: needs.DSP_AREA,
       MACHINE_ROWS: needs.MACHINE_ROWS,
       VOICE_ROWS: 0,

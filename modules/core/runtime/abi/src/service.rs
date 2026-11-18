@@ -10,10 +10,11 @@
 //! - the DSP section parts it owns: `dsp_check_*`, `dsp_admit`, `dsp_claim`, `dsp_release`, `dsp_clear`, `dsp_row_step`
 //!   (the DSP loader in `dsp/mod.rs` keeps the area, the row table and the state machine);
 //! - capacity counts (`caps`), the module behind a fault site (`attribute`), the guard's state of a machine type (`guard_state`);
-//! - the declarations of a module's DSP rows (`has_voice`, `declare_voice`, `declare_fx`) and `on_loaded`.
+//! - `on_loaded` (every row of a module is in the DSP);
+//! - the module lifecycle: `module_begin` before a module's `init`, `module_commit` after it (a `PREPARE`, a `WRITE` and a `DECLARE` pass over a `RecordSink`), and `remove`;
+//! - the boot: `settle`, once, after the services are loaded and before the first module, with the keys of the boot's selection.
 use crate::core_api::CoreApi;
 use crate::dsp::{DspSec, Job};
-use crate::registry::ApplyArgs;
 use core::ffi::c_void;
 use dkrt_sdk::*;
 
@@ -37,8 +38,6 @@ const fn svc_abi() -> u32 {
         size_of::<GuardState>(),
         size_of::<DeclItem>(),
         size_of::<Declare>(),
-        size_of::<ApplyArgs>(),
-        size_of::<crate::registry::RegState>(),
         size_of::<Job>(),
         size_of::<DspSec>(),
         size_of::<crate::dsp::DspState>(),
@@ -49,6 +48,11 @@ const fn svc_abi() -> u32 {
         size_of::<crate::link::Step>(),
         size_of::<crate::link::Sequence>(),
         size_of::<crate::link::Stream>(),
+        size_of::<DkrtFx>(),
+        size_of::<RecordSink>(),
+        size_of::<ModuleCommitCtx>(),
+        size_of::<SettleCtx>(),
+        size_of::<crate::keys::KeysCopy>(),
     ];
     let mut h = crate::gen_svc_abi::FILES_HASH;
     let mut i = 0;
@@ -96,24 +100,19 @@ pub mod tick_phase {
     pub const LAST: u32 = 2;
 }
 
-/// What the registry walker gives `check`: the `register` section (its layout is validated) and the registry's table.
+/// What the registry walker gives `check`: the `register` section (its layout is validated).
 #[repr(C)]
 pub struct CheckCtx {
     pub reg: *const u8,
     pub image_size: u32,
-    /// The words of `dynreg_info` (not null).
-    pub inf: *const u32,
 }
 
 /// What the registry walker gives `apply`: the (checked) section of module record `owner - 1`, loaded at `base`.
 #[repr(C)]
-pub struct ApplyCtx<'a> {
+pub struct ApplyCtx {
     pub owner: u8,
     pub reg: *const u8,
     pub base: u32,
-    pub inf: *const u32,
-    /// The callback arguments the commit set (`registry::set_args`).
-    pub args: Option<&'a ApplyArgs>,
 }
 
 /// What `dsp::reserve` gives `dsp_claim`: the module's range is placed at `base` (byte address), and the states of its voices and
@@ -147,6 +146,123 @@ pub struct RowWrite {
 pub struct GuardState {
     pub faults: u32,
     pub disabled: bool,
+}
+
+/// The passes of a module commit (`ModuleCommitCtx::phase`), run over every service in table order.
+pub mod commit_phase {
+    /// Check what the service collected for the module and measure the records it will write (`sink.at` grows). Changes nothing.
+    pub const PREPARE: u32 = 0;
+    /// Write the records into `sink.buf` (null when no service has records) and count the rows the module uses (`sink.rows`). Changes nothing else.
+    pub const WRITE: u32 = 1;
+    /// The loader's registry walker has checked the block and found nothing wrong: declare the DSP details of the module's rows (the sink is the written one, not touched).
+    /// A refusal of the walker's check leaves everything as it was.
+    pub const DECLARE: u32 = 2;
+}
+
+/// The bytes of the module's `register` section that the services write at a commit (`ModuleCommitCtx::sink`). The loader hands the block to the registry walker
+/// (`check` and `apply` of the services that own the kinds) after the `WRITE` pass. Writing to a sink without a buffer only measures.
+#[repr(C)]
+pub struct RecordSink {
+    pub buf: *mut u8,
+    pub cap: usize,
+    /// The bytes written or measured so far, the section header included.
+    pub at: usize,
+    /// The records written or measured so far.
+    pub count: u32,
+    /// The rows the module uses, as `[uses]` counts them (machine, parameter and page rows), added by the services in the `WRITE` pass (`MODULE_COMMIT` reports them).
+    pub rows: [u32; 3],
+}
+
+impl RecordSink {
+    /// The header of the section: magic, version, device, record count.
+    pub const HEADER: usize = 16;
+
+    /// A sink that only measures.
+    pub const fn measure() -> RecordSink {
+        RecordSink {
+            buf: core::ptr::null_mut(),
+            cap: 0,
+            at: RecordSink::HEADER,
+            count: 0,
+            rows: [0; 3],
+        }
+    }
+    /// A sink over `cap` bytes at `buf` (null: measures).
+    pub const fn over(buf: *mut u8, cap: usize) -> RecordSink {
+        RecordSink {
+            buf,
+            cap,
+            at: RecordSink::HEADER,
+            count: 0,
+            rows: [0; 3],
+        }
+    }
+    pub fn p32(&mut self, v: u32) {
+        if !self.buf.is_null() && self.at + 4 <= self.cap {
+            unsafe { crate::mem::wr32(self.buf.add(self.at), v) };
+        }
+        self.at += 4;
+    }
+    /// `s` padded with NUL to `field` bytes.
+    pub fn text(&mut self, s: &[u8], field: usize) {
+        let mut i = 0;
+        while i < field {
+            if !self.buf.is_null() && self.at + i < self.cap {
+                unsafe { *self.buf.add(self.at + i) = if i < s.len() { s[i] } else { 0 } };
+            }
+            i += 1;
+        }
+        self.at += field;
+    }
+    pub fn bytes(&mut self, s: &[u8]) {
+        let mut i = 0;
+        while i < s.len() {
+            if !self.buf.is_null() && self.at + i < self.cap {
+                unsafe { *self.buf.add(self.at + i) = s[i] };
+            }
+            i += 1;
+        }
+        self.at += s.len();
+    }
+    /// The head of a record of `kind` whose whole length (head included) is `len`.
+    pub fn head(&mut self, kind: u32, len: usize) {
+        self.p32(kind);
+        self.p32(len as u32);
+        self.count += 1;
+    }
+}
+
+/// What the loader gives `module_commit`: where the module is loaded, its keys table and the sink for its records.
+#[repr(C)]
+pub struct ModuleCommitCtx<'a> {
+    /// A `commit_phase`.
+    pub phase: u32,
+    /// The address the module's image was loaded at, and its size (callback addresses become image offsets).
+    pub base: u32,
+    pub image_size: u32,
+    /// The module's header table: `[uses]` rows, machine keys and effect ids.
+    pub keys: &'a crate::keys::KeysCopy,
+    pub sink: *mut RecordSink,
+}
+
+/// What the loader gives `settle`: the keys of each module of the boot's selection that a service numbers (the keys table of its header; `nkeys[k]` of the 8 words of
+/// `keys[k]`), in selection order. A module whose file could not be read has none. What the keys name is the service's business.
+#[repr(C)]
+pub struct SettleCtx {
+    /// The modules of the selection.
+    pub count: usize,
+    pub nkeys: [u8; dkrt_sdk::SEL_MAX],
+    pub keys: [[u32; 8]; dkrt_sdk::SEL_MAX],
+}
+
+impl SettleCtx {
+    pub const fn new() -> SettleCtx {
+        SettleCtx {
+            count: 0,
+            nkeys: [0; dkrt_sdk::SEL_MAX],
+            keys: [[0; 8]; dkrt_sdk::SEL_MAX],
+        }
+    }
 }
 
 /// One declaration of `Declare`: (table tag, first word, second word, third word); an unused word is 0.
@@ -184,8 +300,8 @@ pub struct Declare {
 }
 
 impl Declare {
-    /// Most declarations of one `init`: the machines service takes 21 hooks and a few slots and exports.
-    pub const MAX: usize = 32;
+    /// Most declarations of one `init`: the machines service takes 13 hooks, 6 kinds, a slot, its builder exports and its row.
+    pub const MAX: usize = 64;
     pub const KIND: u16 = 4;
     pub const SLOT: u16 = 5;
     pub const HOOK: u16 = 6;
@@ -314,16 +430,12 @@ impl Declare {
 }
 
 /// A service. Every method has a default that declares nothing; a service implements the ones it owns.
-/// The core is passed by reference to every method that may touch it (`declare` and `fits` read nothing but their arguments); a service
+/// The core is passed by reference to every method that may touch it (`declare` reads nothing but its argument); a service
 /// that a host test drives is generic over `C: CoreApi` and the test passes a `FakeCore`.
 #[allow(unused_variables)]
 pub trait Service<C: CoreApi> {
     /// The service's declarations (`Declare`): called once at the runtime's init; the runtime compares them with the service's table.
     unsafe fn declare(d: &mut Declare) {}
-    /// Whether the registry's table fits this service's state (the walker refuses with `E_NO_REGISTRY` when not).
-    unsafe fn fits(inf: *const u32) -> bool {
-        true
-    }
     /// One step of the validation (`check_step`) for this service's records. Writes nothing.
     unsafe fn check(core: &C, step: u32, c: &CheckCtx) -> i32 {
         OK
@@ -356,32 +468,37 @@ pub trait Service<C: CoreApi> {
     unsafe fn on_loaded(core: &C, rec: usize) {}
     /// The service's work of one UI-loop pass in `phase` (`tick_phase`).
     unsafe fn tick(core: &C, phase: u32) {}
-
-    /// Did module `rec` claim a voice row for machine type `ty`?
-    unsafe fn has_voice(core: &C, rec: usize, ty: u32) -> bool {
+    /// Effect `index` (0 ..) with a page, in row order, for DIGIKIT > FX ROUTES, into `out`: `OK`, or `E_NOT_FOUND` past the end (the default: this service has no effects).
+    unsafe fn fx_entry(core: &C, index: u32, out: &mut DkrtFx) -> i32 {
+        E_NOT_FOUND
+    }
+    /// The ids of the rows module `owner` (record number, 1 ..) filled, in row order, into `out`; how many (the default: none). The machines service gives the machine type numbers (the
+    /// MODULES reply lists them); the core knows no kind of id.
+    unsafe fn owned_ids(core: &C, owner: u8, out: &mut [u8; 8]) -> u32 {
+        0
+    }
+    /// The ids `settle` planned for the keys of the module at index `selection` of the boot's selection: `[key, id]` pairs into `out`, in the order of the plan;
+    /// how many (the default: none). An id of 0: the plan gave that key none (a key that names its id itself is one). The machines service gives the type numbers
+    /// of its plan; the core knows no kind of id. The loader resolves a persistent instrument's file from this copy, so no table pointer crosses the boundary.
+    unsafe fn planned_ids(core: &C, selection: u32, out: &mut [[u32; 2]; 8]) -> u32 {
+        0
+    }
+    /// Whether id `id` is taken in this service's rows: a module owns the row, or the image has filled it (the default: no). An id the service cannot
+    /// place (out of its range, or its registry is absent) counts as taken.
+    unsafe fn id_taken(core: &C, id: u32) -> bool {
         false
     }
-    /// The ranges and latch mask `init` declared for the voice of type `ty` (`has_voice` is true). `Some(E_*)` or `Some(OK)` if this
-    /// service owns the voice.
-    unsafe fn declare_voice(
-        core: &C,
-        rec: usize,
-        ty: u32,
-        rng: [u32; 8],
-        latched: u32,
-    ) -> Option<i32> {
-        None
+
+    /// The `init` of module record `rec` is about to run: forget what an earlier module collected. Called on every service that is loaded.
+    unsafe fn module_begin(core: &C, rec: usize) {}
+    /// The commit of module `rec`, after its `init` (`commit_phase`: a `PREPARE` pass, then a `WRITE` pass). A service checks what its builder calls collected, writes its
+    /// records into `c.sink` and returns `OK` or the refusal; the first refusal stops the commit and the loader gives every service its `remove`.
+    unsafe fn module_commit(core: &C, rec: usize, c: &ModuleCommitCtx) -> i32 {
+        OK
     }
-    /// The route flags and defaults `init` declared for effect record `ordinal` of module `rec`; `Some(false)`: no such effect.
-    unsafe fn declare_fx(
-        core: &C,
-        rec: usize,
-        ordinal: u32,
-        flags: Option<u32>,
-        par: Option<[u32; 8]>,
-    ) -> Option<bool> {
-        None
-    }
+    /// The boot has loaded every service its selection needs and loads no module yet; `s` has the keys of each selected module. Called once per boot
+    /// on every service that is loaded. A service that keeps state across boots (the machines service: its type numbers) plans and saves it here.
+    unsafe fn settle(core: &C, s: &SettleCtx) {}
 
     /// DSP section: the entries of the tables this service owns (called in list order, after the header is validated).
     unsafe fn dsp_check_sections(core: &C, sec: &DspSec) -> i32 {
@@ -430,7 +547,6 @@ pub struct ServiceRow {
     pub kinds: *const (u32, u32),
     pub nkinds: u32,
     declare: unsafe extern "C" fn(*const c_void, *mut Declare),
-    fits: unsafe extern "C" fn(*const c_void, *const u32) -> bool,
     check: unsafe extern "C" fn(*const c_void, u32, *const CheckCtx) -> i32,
     apply: unsafe extern "C" fn(*const c_void, *const ApplyCtx) -> i32,
     apply_record: unsafe extern "C" fn(*const c_void, u32, *const u8, *const ApplyCtx) -> i32,
@@ -439,12 +555,14 @@ pub struct ServiceRow {
     attribute: unsafe extern "C" fn(*const c_void, u32, u32, *mut usize) -> bool,
     guard_state: unsafe extern "C" fn(*const c_void, u32, *mut GuardState) -> bool,
     on_loaded: unsafe extern "C" fn(*const c_void, usize),
+    settle: unsafe extern "C" fn(*const c_void, *const SettleCtx),
+    module_begin: unsafe extern "C" fn(*const c_void, usize),
+    module_commit: unsafe extern "C" fn(*const c_void, usize, *const ModuleCommitCtx) -> i32,
     tick: unsafe extern "C" fn(*const c_void, u32),
-    has_voice: unsafe extern "C" fn(*const c_void, usize, u32) -> bool,
-    declare_voice:
-        unsafe extern "C" fn(*const c_void, usize, u32, *const u32, u32, *mut i32) -> bool,
-    declare_fx:
-        unsafe extern "C" fn(*const c_void, usize, u32, *const u32, *const u32, *mut bool) -> bool,
+    fx_entry: unsafe extern "C" fn(*const c_void, u32, *mut DkrtFx) -> i32,
+    owned_ids: unsafe extern "C" fn(*const c_void, u8, *mut u8) -> u32,
+    planned_ids: unsafe extern "C" fn(*const c_void, u32, *mut [u32; 2]) -> u32,
+    id_taken: unsafe extern "C" fn(*const c_void, u32) -> bool,
     dsp_check_sections: unsafe extern "C" fn(*const c_void, *const DspSec) -> i32,
     dsp_check_rows: unsafe extern "C" fn(*const c_void, *const DspSec) -> i32,
     dsp_check_types: unsafe extern "C" fn(*const c_void, *const DspSec) -> i32,
@@ -465,12 +583,6 @@ mod thunk {
 
     pub unsafe extern "C" fn declare<C: CoreApi, S: Service<C>>(_: *const c_void, d: *mut Declare) {
         S::declare(&mut *d)
-    }
-    pub unsafe extern "C" fn fits<C: CoreApi, S: Service<C>>(
-        _: *const c_void,
-        inf: *const u32,
-    ) -> bool {
-        S::fits(inf)
     }
     pub unsafe extern "C" fn check<C: CoreApi, S: Service<C>>(
         core: *const c_void,
@@ -541,67 +653,58 @@ mod thunk {
     pub unsafe extern "C" fn on_loaded<C: CoreApi, S: Service<C>>(core: *const c_void, rec: usize) {
         S::on_loaded(&*(core as *const C), rec)
     }
+    pub unsafe extern "C" fn settle<C: CoreApi, S: Service<C>>(
+        core: *const c_void,
+        s: *const SettleCtx,
+    ) {
+        S::settle(&*(core as *const C), &*s)
+    }
+    pub unsafe extern "C" fn module_begin<C: CoreApi, S: Service<C>>(
+        core: *const c_void,
+        rec: usize,
+    ) {
+        S::module_begin(&*(core as *const C), rec)
+    }
+    pub unsafe extern "C" fn module_commit<C: CoreApi, S: Service<C>>(
+        core: *const c_void,
+        rec: usize,
+        c: *const ModuleCommitCtx,
+    ) -> i32 {
+        S::module_commit(&*(core as *const C), rec, &*c)
+    }
     pub unsafe extern "C" fn tick<C: CoreApi, S: Service<C>>(core: *const c_void, phase: u32) {
         S::tick(&*(core as *const C), phase)
     }
-    pub unsafe extern "C" fn has_voice<C: CoreApi, S: Service<C>>(
+    pub unsafe extern "C" fn fx_entry<C: CoreApi, S: Service<C>>(
         core: *const c_void,
-        rec: usize,
-        ty: u32,
-    ) -> bool {
-        S::has_voice(&*(core as *const C), rec, ty)
+        index: u32,
+        out: *mut DkrtFx,
+    ) -> i32 {
+        S::fx_entry(&*(core as *const C), index, &mut *out)
     }
-    /// `rng` points at eight words; `out` receives the result when the service owns the voice.
-    pub unsafe extern "C" fn declare_voice<C: CoreApi, S: Service<C>>(
+    pub unsafe extern "C" fn owned_ids<C: CoreApi, S: Service<C>>(
         core: *const c_void,
-        rec: usize,
-        ty: u32,
-        rng: *const u32,
-        latched: u32,
-        out: *mut i32,
-    ) -> bool {
-        let mut r = [0u32; 8];
-        let mut i = 0;
-        while i < 8 {
-            r[i] = *rng.add(i);
-            i += 1;
-        }
-        match S::declare_voice(&*(core as *const C), rec, ty, r, latched) {
-            Some(v) => {
-                *out = v;
-                true
-            }
-            None => false,
-        }
+        owner: u8,
+        out: *mut u8,
+    ) -> u32 {
+        S::owned_ids(&*(core as *const C), owner, &mut *(out as *mut [u8; 8]))
     }
-    /// `flags` is null for `None`, else a pointer to one word; `par` is null for `None`, else a pointer to eight words.
-    pub unsafe extern "C" fn declare_fx<C: CoreApi, S: Service<C>>(
+    pub unsafe extern "C" fn planned_ids<C: CoreApi, S: Service<C>>(
         core: *const c_void,
-        rec: usize,
-        ordinal: u32,
-        flags: *const u32,
-        par: *const u32,
-        out: *mut bool,
+        selection: u32,
+        out: *mut [u32; 2],
+    ) -> u32 {
+        S::planned_ids(
+            &*(core as *const C),
+            selection,
+            &mut *(out as *mut [[u32; 2]; 8]),
+        )
+    }
+    pub unsafe extern "C" fn id_taken<C: CoreApi, S: Service<C>>(
+        core: *const c_void,
+        id: u32,
     ) -> bool {
-        let f = if flags.is_null() { None } else { Some(*flags) };
-        let p = if par.is_null() {
-            None
-        } else {
-            let mut r = [0u32; 8];
-            let mut i = 0;
-            while i < 8 {
-                r[i] = *par.add(i);
-                i += 1;
-            }
-            Some(r)
-        };
-        match S::declare_fx(&*(core as *const C), rec, ordinal, f, p) {
-            Some(v) => {
-                *out = v;
-                true
-            }
-            None => false,
-        }
+        S::id_taken(&*(core as *const C), id)
     }
     pub unsafe extern "C" fn dsp_check_sections<C: CoreApi, S: Service<C>>(
         core: *const c_void,
@@ -674,7 +777,6 @@ impl ServiceRow {
             kinds: kinds.as_ptr(),
             nkinds: kinds.len() as u32,
             declare: thunk::declare::<C, S>,
-            fits: thunk::fits::<C, S>,
             check: thunk::check::<C, S>,
             apply: thunk::apply::<C, S>,
             apply_record: thunk::apply_record::<C, S>,
@@ -683,10 +785,14 @@ impl ServiceRow {
             attribute: thunk::attribute::<C, S>,
             guard_state: thunk::guard_state::<C, S>,
             on_loaded: thunk::on_loaded::<C, S>,
+            settle: thunk::settle::<C, S>,
+            module_begin: thunk::module_begin::<C, S>,
+            module_commit: thunk::module_commit::<C, S>,
             tick: thunk::tick::<C, S>,
-            has_voice: thunk::has_voice::<C, S>,
-            declare_voice: thunk::declare_voice::<C, S>,
-            declare_fx: thunk::declare_fx::<C, S>,
+            fx_entry: thunk::fx_entry::<C, S>,
+            owned_ids: thunk::owned_ids::<C, S>,
+            planned_ids: thunk::planned_ids::<C, S>,
+            id_taken: thunk::id_taken::<C, S>,
             dsp_check_sections: thunk::dsp_check_sections::<C, S>,
             dsp_check_rows: thunk::dsp_check_rows::<C, S>,
             dsp_check_types: thunk::dsp_check_types::<C, S>,
@@ -834,18 +940,6 @@ impl ServiceTable {
         None
     }
     #[inline]
-    pub unsafe fn fits(&self, inf: *const u32) -> bool {
-        let mut i = 0;
-        while i < self.rows.len() {
-            if !(self.row(i).fits)(self.core, inf) {
-                return false;
-            }
-            i += 1;
-        }
-        true
-    }
-    /// One step of the validation over the services in table order; the first failure.
-    #[inline]
     pub unsafe fn check(&self, step: u32, c: &CheckCtx) -> i32 {
         let mut i = 0;
         while i < self.rows.len() {
@@ -943,6 +1037,75 @@ impl ServiceTable {
             i += 1;
         }
     }
+    /// `Service::settle` on every row, in table order.
+    #[inline]
+    pub unsafe fn settle(&self, s: &SettleCtx) {
+        let mut i = 0;
+        while i < self.rows.len() {
+            (self.row(i).settle)(self.core, s);
+            i += 1;
+        }
+    }
+    /// `Service::module_begin` on every row, in table order.
+    #[inline]
+    pub unsafe fn module_begin(&self, rec: usize) {
+        let mut i = 0;
+        while i < self.rows.len() {
+            (self.row(i).module_begin)(self.core, rec);
+            i += 1;
+        }
+    }
+    /// `Service::module_commit` over the rows in table order; the first refusal stops the walk and is the result.
+    #[inline]
+    pub unsafe fn module_commit(&self, rec: usize, c: &ModuleCommitCtx) -> i32 {
+        let mut i = 0;
+        while i < self.rows.len() {
+            let r = (self.row(i).module_commit)(self.core, rec, c);
+            if r != OK {
+                return r;
+            }
+            i += 1;
+        }
+        OK
+    }
+    /// The machine type numbers of the rows module `owner` filled, from the first service that has any (the machines service file); 0 when none is loaded.
+    #[inline]
+    pub unsafe fn owned_ids(&self, owner: u8, out: &mut [u8; 8]) -> usize {
+        let mut i = 0;
+        while i < self.rows.len() {
+            let n = (self.row(i).owned_ids)(self.core, owner, out.as_mut_ptr());
+            if n != 0 {
+                return n as usize;
+            }
+            i += 1;
+        }
+        0
+    }
+    /// The `[key, id]` pairs planned for the module at index `selection` of the boot's selection, from the first service that has any; 0 when none has.
+    #[inline]
+    pub unsafe fn planned_ids(&self, selection: u32, out: &mut [[u32; 2]; 8]) -> usize {
+        let mut i = 0;
+        while i < self.rows.len() {
+            let n = (self.row(i).planned_ids)(self.core, selection, out.as_mut_ptr());
+            if n != 0 {
+                return (n as usize).min(out.len());
+            }
+            i += 1;
+        }
+        0
+    }
+    /// Whether any service has id `id` taken in its rows.
+    #[inline]
+    pub unsafe fn id_taken(&self, id: u32) -> bool {
+        let mut i = 0;
+        while i < self.rows.len() {
+            if (self.row(i).id_taken)(self.core, id) {
+                return true;
+            }
+            i += 1;
+        }
+        false
+    }
     #[inline]
     pub unsafe fn tick(&self, phase: u32) {
         let mut i = 0;
@@ -951,64 +1114,17 @@ impl ServiceTable {
             i += 1;
         }
     }
+    /// The `index`th effect with a page, from the first service that has one; `E_NOT_FOUND` when no service has effects (the fx service file is not loaded) or past the end.
     #[inline]
-    pub unsafe fn has_voice(&self, rec: usize, ty: u32) -> bool {
+    pub unsafe fn fx_entry(&self, index: u32, out: &mut DkrtFx) -> i32 {
         let mut i = 0;
         while i < self.rows.len() {
-            if (self.row(i).has_voice)(self.core, rec, ty) {
-                return true;
+            if (self.row(i).fx_entry)(self.core, index, out) == OK {
+                return OK;
             }
             i += 1;
         }
-        false
-    }
-    #[inline]
-    pub unsafe fn declare_voice(
-        &self,
-        rec: usize,
-        ty: u32,
-        rng: [u32; 8],
-        latched: u32,
-    ) -> Option<i32> {
-        let mut i = 0;
-        while i < self.rows.len() {
-            let mut r = 0i32;
-            if (self.row(i).declare_voice)(self.core, rec, ty, rng.as_ptr(), latched, &mut r) {
-                return Some(r);
-            }
-            i += 1;
-        }
-        None
-    }
-    #[inline]
-    pub unsafe fn declare_fx(
-        &self,
-        rec: usize,
-        ordinal: u32,
-        flags: Option<u32>,
-        par: Option<[u32; 8]>,
-    ) -> Option<bool> {
-        let fl = flags.unwrap_or(0);
-        let fp = if flags.is_some() {
-            &fl as *const u32
-        } else {
-            core::ptr::null()
-        };
-        let pv = par.unwrap_or([0; 8]);
-        let pp = if par.is_some() {
-            pv.as_ptr()
-        } else {
-            core::ptr::null()
-        };
-        let mut i = 0;
-        while i < self.rows.len() {
-            let mut r = false;
-            if (self.row(i).declare_fx)(self.core, rec, ordinal, fp, pp, &mut r) {
-                return Some(r);
-            }
-            i += 1;
-        }
-        None
+        E_NOT_FOUND
     }
     #[inline]
     pub unsafe fn dsp_check_sections(&self, sec: &DspSec) -> i32 {

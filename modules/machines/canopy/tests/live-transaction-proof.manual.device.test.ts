@@ -11,6 +11,7 @@ import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.t
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
+import { seedModules } from '@digi/regression/runtime/card-seed.ts';
 
 // Opt-in disposable emulator only. Public mapper batches are injected by the
 // fixture; their outputs are checked without claiming physical MIDI/audio.
@@ -20,12 +21,10 @@ if (process.env.DIGI_CANOPY_LIVE_PROOF === '1') {
   const fixtureRoot = fs.realpathSync(path.join(repoRoot(), 'out'));
   const cardSeed = fs.mkdtempSync(path.join(fixtureRoot, 'canopy-live-card-'));
   const moduleFile = moduleArtifact('dt2', 'digikit/canopy');
-  beforeAll(() => {
+  beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
-    const modules = path.join(cardSeed, 'digikit', 'modules');
-    fs.mkdirSync(modules, { recursive: true });
-    fs.copyFileSync(moduleFile, path.join(modules, 'canopy.dkm'));
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);

@@ -90,6 +90,8 @@ def main(argv: list[str]) -> int:
         "build",
         "--release",
         "--locked",
+        "--features",
+        "c-abi",
         "--manifest-path",
         "packages/emulator/sharc/Cargo.toml",
         "--target-dir",

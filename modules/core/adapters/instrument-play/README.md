@@ -223,7 +223,9 @@ POSITION/SCAN DEPTH/SCAN RATE/TIMBRE ENV/WT FM DEPTH/WT FM ENVELOPE for
 wavetables; and FM DEPTH/FM BALANCE/FM FEEDBACK/FM ENVELOPE/FM ATTACK/FM RELEASE
 for FM. The optional `instrument_mod_param` hook supplies native destination
 descriptors only for the admitted instrument type and a live generation. Other
-machines retain their normal lookup. Family labels publish with the control
+machines retain their normal lookup. The hook that calls it (`mf_typearg`) is in the machines service file
+(`machines.dks`), which reaches the function through the info table `machines_ext_info` of core/machines (the word
+is 0 without this adapter). Family labels publish with the control
 snapshot; the SRC knob pages remain independent of these six carrier slots.
 
 Admission initializes the six unused Sound mirrors at their neutral `0x4000`.

@@ -21,6 +21,7 @@ import { analysisJson } from '@digi/regression/runtime/fx-live.ts';
 import { pageKit } from '@digi/regression/runtime/fx-pages-ui.ts';
 import type { FxProfile } from '@digi/regression/runtime/fx-session.ts';
 import { openDigikitMenu, sessionRt, waitEmulated } from '@digi/regression/runtime/port-compat.ts';
+import { putServices } from '@digi/regression/runtime/card-seed.ts';
 
 async function captureRemoteOled(...args: Parameters<typeof captureOled>) {
   await captureOled(...args);
@@ -143,6 +144,7 @@ test(
     );
     await dk.put('modules/overloop.dkm', loop);
     expect(await dk.verifyFile('modules/overloop.dkm', loop)).toBe(true);
+    await putServices(dk, 'dt2', ['fx', 'machines']);
     await dk.select(['modules/canopy.dkm', 'modules/overloop.dkm']);
     const beforeRestart = (await session.status()).epoch;
     if (typeof beforeRestart !== 'number') throw new Error('Missing pre-restart epoch');

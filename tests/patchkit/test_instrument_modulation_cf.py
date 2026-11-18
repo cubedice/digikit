@@ -29,6 +29,9 @@ COUNT, FIRST, ROWS, SRC, STOCK_LIST = (
     _fw.STOCK_LIST,
 )
 STUBS, SYX, TYPE_FN, tables = _fw.STUBS, _fw.SYX, _fw.TYPE_FN, _fw.tables
+# `mf_typearg` is a routine of the machines service file; it reads the image tables `MF_TAB` and `MF_EXT` (here: the fixtures, with
+# `instrument_mod_param` of src-mod.c in the unit)
+HOOKS, TAB, EXT, NATIVE_CALLS = _fw.HOOKS, _fw.TAB, _fw.EXT, _fw.NATIVE_CALLS
 pytestmark = _fw.pytestmark
 src_allocator = _fw.src_allocator
 
@@ -74,6 +77,9 @@ int instrument_sound_admitted(uint32_t track) {{
         SYX,
         [
             SRC,
+            HOOKS,
+            TAB,
+            EXT,
             SRC.with_name("src-pages.c"),
             REPO_ROOT / "tests/fixtures/native-page-absent.s",
             src_allocator,
@@ -95,6 +101,8 @@ int instrument_sound_admitted(uint32_t track) {{
             "_mf_rows": ROWS,
             "_mf_list_stock": STOCK_LIST,
             "_mf_spt": TYPE_FN,
+            "mf_spt": TYPE_FN,
+            **NATIVE_CALLS,
             "ip_mod_track_type": CONTROL + 40,
             **{f"ip_mod_{name}": 0x300 + index for index, name in enumerate(NAMES)},
         },
@@ -126,7 +134,7 @@ def test_mod_picker_and_refresh_map_same_slots_without_clobbering_live_registers
     results = mapped.run_cases(memory, cases)[1:]
     start = 0 if family < 2 else 6 * (family - 1)
     for index, result in enumerate(results):
-        assert result.stub == "_mf_x_typearg"
+        assert result.stub == "mf_x_typearg"
         assert result.d[0] == 0x300 + start + index
         assert result.d[1:3] == [0x77, 0x88]
         assert result.a[:3] == [MIRRORS[index], 0x1234, 0x99]
@@ -144,7 +152,7 @@ def test_nonowned_parameters_and_missing_generation_keep_stock_mapping(
     result = mapped.run_case(
         "mf_typearg", mem=memory, a={0: mirror}, stack=[0] * 4 + [type_no, 0xBBBB]
     )
-    assert result.stub == "_mf_t_typearg"
+    assert result.stub == "dk_tail_09514a38"
     assert result.stack[4] == type_no
 
 
@@ -170,7 +178,7 @@ def test_sampler_bank_aliases_are_not_exposed_for_canopy(mapped, mirror):
         stack=[0] * 4 + [20],
         a={0: mirror},
     )
-    assert result.stub == "_mf_x_typearg" and result.d[0] == 0
+    assert result.stub == "mf_x_typearg" and result.d[0] == 0
 
 
 @pytest.mark.parametrize("site,track_register", [("split", 7), ("recombine", 6)])

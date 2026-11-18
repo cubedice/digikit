@@ -2,7 +2,7 @@
 // the runtime's `MODULE_COMMIT` event, read the record block it names and decode it with `patchkit records --json`.
 //
 //   node tools/devtools/commit_records.ts --device dn2|dt2 --module ID --dkm FILE.dkm --patchkit BIN [--binary DIGI_EMUD]
-//        [--debug-dkm FILE.dkm] [--patch-set NAME] [--emulated-ms 60000]
+//        [--debug-dkm FILE.dkm] [--service BOUND.dks]... [--patch-set NAME] [--dsp zero|sharc] [--emulated-ms 60000]
 //
 // --patch-set names the patch set of the device file the image is patched with (default `emulator`): a module that requires a core module
 // the `emulator` set lacks (module.toml `[conformance] patch_set`) is refused at load without it.
@@ -17,6 +17,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { DkSession, EmuUsbTransport, RuntimeEvents } from '../../packages/dk-session/src/index.ts';
 import { LOG_KIND } from '../../packages/dk-session/src/gen_proto.ts';
+import { moduleStateText, stateModule } from '../../packages/dk-session/src/loads.ts';
 import { committedRecords, type RecordsExec } from '../../packages/test-support/src/commit-records.ts';
 import { emulatorClock } from '../../packages/test-support/src/emulated-clock.ts';
 import { repoRoot, type Device } from '../../packages/test-support/src/inputs.ts';
@@ -30,6 +31,7 @@ const { values } = parseArgs({
     module: { type: 'string' },
     dkm: { type: 'string' },
     'debug-dkm': { type: 'string' },
+    service: { type: 'string', multiple: true },
     'patch-set': { type: 'string', default: 'emulator' },
     dsp: { type: 'string', default: 'zero' },
     patchkit: { type: 'string' },
@@ -38,7 +40,7 @@ const { values } = parseArgs({
   },
 });
 const usage =
-  'usage: commit_records.ts --device dn2|dt2 --module ID --dkm FILE.dkm --patchkit BIN [--binary DIGI_EMUD] [--debug-dkm FILE.dkm] [--patch-set NAME] [--dsp zero|sharc] [--emulated-ms N]';
+  'usage: commit_records.ts --device dn2|dt2 --module ID --dkm FILE.dkm --patchkit BIN [--binary DIGI_EMUD] [--debug-dkm FILE.dkm] [--service BOUND.dks]... [--patch-set NAME] [--dsp zero|sharc] [--emulated-ms N]';
 if ((values.device !== 'dn2' && values.device !== 'dt2') || !values.module || !values.dkm || !values.patchkit) {
   throw new Error(usage);
 }
@@ -101,6 +103,8 @@ try {
     await dk.put(store, fs.readFileSync(file));
     paths.push(store);
   }
+  // the services the module needs (`--service`: bound files, `patchkit bind`): the runtime finds each by its name in services/ at boot
+  for (const file of values.service ?? []) await dk.put(`services/${path.basename(file)}`, fs.readFileSync(file));
   await dk.select(paths);
   await dk.restart();
   await dk.waitForBoot(undefined, dsp === 'sharc' ? 180_000 : undefined);
@@ -108,7 +112,13 @@ try {
   await events.listen({ fromBoot: true });
   const modules = await dk.modules();
   const index = modules.find((m) => m.name === values.module)?.index;
-  if (index === undefined) throw new Error(`${values.module} is not loaded: ${modules.map((m) => m.name).join(', ')}`);
+  if (index === undefined) {
+    // the runtime's own load record says why (state, code and plan detail), without the debug module's log
+    const states = (await dk.loadStates()).map((m) => `${stateModule(m)}: ${moduleStateText(m) ?? m.state}`).join('; ');
+    throw new Error(
+      `${values.module} is not loaded: ${modules.map((m) => m.name).join(', ')} (load states: ${states})`,
+    );
+  }
   const event = await events.until('MODULE_COMMIT', (e) => e.args[0] === index, {
     withinMs: Number(values['emulated-ms']),
   });

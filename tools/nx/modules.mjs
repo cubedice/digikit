@@ -7,10 +7,12 @@
 import { globSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { read, records, mergeTests, packDevices, isUploadable } from './module-manifests.mjs';
-import { buildObjectsTarget, packTarget, packAliasesTarget } from './module-build.mjs';
+import { buildObjectsTarget, packTarget, packAliasesTarget, bindTarget } from './module-build.mjs';
 import { deviceTargets, checkMergeTests, conformanceTarget, testOnlyNodes, regressionNode } from './device-tests.mjs';
-import { serviceLeaves } from './device-test-keys.mjs';
+import { serviceLeaves, isBindable, bindableIds } from './device-test-keys.mjs';
 import { checkAcceptanceTags } from './acceptance-tags.mjs';
+import { standaloneRustTests } from './cargo.mjs';
+import { checkDspModes } from './dsp-mode.mjs';
 import { rigTarget } from './rig-tests.mjs';
 import { testImportInputs } from './ts-imports.mjs';
 import { pythonImportInputs } from './py-imports.mjs';
@@ -114,6 +116,8 @@ export const createNodesV2 = [
           coreManifests,
         );
       if (devices.length && packable.has(m.id)) targets.pack = packTarget(ctx.workspaceRoot, byId, m, devices);
+      if (devices.length && packable.has(m.id) && isBindable(m))
+        targets.bind = bindTarget(ctx.workspaceRoot, m, devices);
       const aliasesTarget = packAliasesTarget(ctx.workspaceRoot, byId, recs);
       if (aliasesTarget) targets['pack-aliases'] = aliasesTarget;
       if (shipped && hostTests.length)
@@ -129,6 +133,7 @@ export const createNodesV2 = [
         };
       checkMergeTests(ctx.workspaceRoot, root, deviceTests, false);
       checkAcceptanceTags(root, recs, deviceTests, moduleInfo);
+      checkDspModes(ctx.workspaceRoot, root, recs, importInputs);
       if (shipped && deviceTests.length)
         Object.assign(
           targets,
@@ -136,11 +141,15 @@ export const createNodesV2 = [
             twin: true,
             moduleId: m.id,
             services: serviceLeaves(byId),
+            bindable: bindableIds(byId),
             projectDevices: devices,
             mergeTests: mergeTests(join(ctx.workspaceRoot, root)),
             base: ctx.workspaceRoot,
           }),
         );
+      // standalone Rust host tests of the module crate
+      const rustTests = standaloneRustTests(ctx.workspaceRoot, root);
+      if (rustTests) targets['rust-tests'] = rustTests;
       // sound checks on the SHARC-only rig (packages/sharc-rig-kit, docs/TESTING.md "Sound checks"): tests/rig/*.toml run by tests/*.rig.test.ts
       if (rigTests.length) targets['test-rig'] = rigTarget(root);
       if (uploadable) targets['test-conformance'] = conformanceTarget(ctx.workspaceRoot, root, m, f, importInputs);

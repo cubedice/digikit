@@ -37,6 +37,10 @@ const USAGE: &str = "usage: patchkit [--root DIR] COMMAND ...
                                          with --fx-max the effect budget of the tightest device): JSON from devices/*.toml and devices/cycle-factors.json
   uses    set --id MODULE --device SHORT [--dsp-cost-voice N] [--dsp-cost-fx N]   write the measured DSP cost (instructions per block) into
                                          [uses.<device>] of the module's module.toml (only those lines change; comments stay); prints wrote/unchanged PATH
+  services --device SHORT [--firmware FW.syx --bind-dir DIR] [--module ID]... [--service NAME]... [FILE.dkm]...   the card services that the .dkm files need (the NEEDS of their header
+                                         tables, matched to the modules with `role = \"service\"` and `service = NAME`) and those named by --module (id) or --service (name): one JSON line each
+                                         {service, module_id, store_path}; with --firmware and --bind-dir each is packed and bound to the stock image in DIR
+                                         (kept while its .src.json sidecar matches), and the line has bound_path
   pack    MODULE_ID -o OUT.dkm [--addrmap map.json] [--name N] [--device SHORT] [--trace] [--manifest PATH]...   the module's ColdFire object as a run-time .dkm
                                          (a `role = \"service\"` module packs to a .dks: OUT must end in .dks; any other module: not .dks);
                                          builds the objects that are stale first (content modules: cache out/cache/dko)
@@ -49,8 +53,8 @@ const USAGE: &str = "usage: patchkit [--root DIR] COMMAND ...
   synth-dkm SPEC.toml --device SHORT -o OUT.dkm [--size]   a synthetic .dkm of a chosen size, machines, parameters and DSP voices (capacity tests;
                                          the spec keys are in packages/patchkit/src/dkmsynth.rs)
   dkm-info FILE.dkm                      check a .dkm and list what it holds
-  bind    IN.dks --firmware FW.syx -o OUT.dks   bind a packed service to the firmware: a trampoline and a BIND item for each hook it declares;
-                                         prints the bound hooks as JSON; OUT.dks holds firmware bytes: -o is refused in the source tree
+  bind    IN.dks --firmware FW.syx -o OUT.dks [--addrmap IN.addrmap.json]   bind a packed service to the firmware: a trampoline and a BIND item for each hook it declares;
+                                         prints the bound hooks as JSON (a hook the file lists for this device that the port lacks is an error); --addrmap writes the address map moved by the appended code to OUT.addrmap.json; OUT.dks holds firmware bytes: -o is refused in the source tree
                                          unless under dist/ or out/
   dkm-identity BEFORE_DIR AFTER_DIR      do two sets of .dkm (patchkit pack-all) differ only in the header table? (image, relocs, imports, DSP section compared)
   fit     --json -                       the fit rule (dkrt-fit): {caps, needs, empty?} on stdin -> {each, set, line}; exit 1 on a bad request
@@ -292,6 +296,8 @@ fn run(a: Args) -> Result<()> {
             patchkit::owners::run(rest)?;
         }
         "service-check" => patchkit::svccheck::run(rest)?,
+        #[cfg(not(target_arch = "wasm32"))]
+        "services" => patchkit::services::run(&a.root, rest)?,
         "objdiff" => {
             let code = patchkit::objdiff::run(rest)?;
             if code != 0 {
@@ -671,6 +677,21 @@ plan.json {}",
                 std::fs::create_dir_all(d).map_err(|e| Error(format!("{}: {e}", d.display())))?;
             }
             write(&out, &file)?;
+            // the sidecar `<name>.src.json`: what the bound file was made from (the unbound file and the firmware image, by sha256), so a harness can tell a stale copy by content
+            let sidecar = patchkit::bind::sidecar_path(Path::new(&out));
+            write(
+                &sidecar.to_string_lossy(),
+                patchkit::bind::sidecar_json(&dks, &read(&fwp)?).as_bytes(),
+            )?;
+            // the address map of the packed file (`--addrmap`), moved by what bind appended, is written beside the bound file
+            if let Some(m) = flag(rest, "--addrmap") {
+                let old = patchkit::dkm::Dkm::parse(&dks)?.image.len();
+                let new = patchkit::dkm::Dkm::parse(&file)?.image.len();
+                let text = String::from_utf8_lossy(&read(&m)?).into_owned();
+                let shifted = patchkit::bind::shift_addrmap(&text, old, new - old)?;
+                let dest = out.trim_end_matches(".dks").to_string() + ".addrmap.json";
+                write(&dest, shifted.as_bytes())?;
+            }
             print!("{}", patchkit::bind::bind_json(&hooks));
         }
         "rebuild" => {

@@ -16,7 +16,10 @@ runtimeTests(
   async (runtime) => {
     const { session, dk } = runtime;
     await expectRuntimeReady(session);
-    await installModule(dk, 'test/native-page', moduleArtifact(session.options.device, 'test/native-page'));
+    // with the device, so that the machines service the fixture needs goes on the card with it
+    await installModule(dk, 'test/native-page', moduleArtifact(session.options.device, 'test/native-page'), {
+      device: session.options.device,
+    });
     const ui = panelKeys(runtime);
     const turns = scheduledTurns(session, runtime.clock);
     const artifacts = path.join(session.runDir, 'native-page-proof');

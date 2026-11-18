@@ -1,6 +1,6 @@
 // Build and pack: the patchkit command, the build input lists and the build-objects, pack and pack-aliases targets.
 // It does not hold device-test cache keys (device-test-keys.mjs) or the shape of test targets (device-tests.mjs).
-import { packOut, packMap, manifestClosure, manifestArgs, packDevices } from './module-manifests.mjs';
+import { packOut, packMap, servicesOut, manifestClosure, manifestArgs, packDevices } from './module-manifests.mjs';
 import { packSourceInputs } from './pack-inputs.mjs';
 
 // Commands run with cwd '.' (the workspace root); Nx accepts {workspaceRoot} only at the start of an option.
@@ -90,22 +90,77 @@ export const buildObjectsTarget = (workspaceRoot, byId, m, root, objects, coreBu
   },
 });
 
+// `patchkit services` maps the NEEDS of a packed file to the service modules of all manifests: their manifests are inputs of the pack target besides its closure.
+const serviceManifests = (byId) =>
+  [...byId.values()].filter(({ manifest }) => manifest.role === 'service').map(({ file }) => file);
+
 export const packTarget = (workspaceRoot, byId, m, devices) => {
   const manifests = manifestClosure(byId, [m.id]);
   return {
     executor: 'nx:run-commands',
     cache: false,
-    inputs: packInputs(workspaceRoot, byId, manifests),
+    inputs: [
+      ...packInputs(workspaceRoot, byId, manifests),
+      ...serviceManifests(byId).map((file) => `{workspaceRoot}/${file}`),
+    ],
     dependsOn: ['patchkit:cli'],
-    outputs: devices.flatMap((d) => [`{workspaceRoot}/${packOut(d, m)}`, `{workspaceRoot}/${packMap(d, m)}`]),
+    outputs: devices.flatMap((d) => [
+      `{workspaceRoot}/${packOut(d, m)}`,
+      `{workspaceRoot}/${packMap(d, m)}`,
+      `{workspaceRoot}/${servicesOut(d, m)}`,
+    ]),
     options: {
       commands: [
         'mkdir -p dist/modules/dt2 dist/modules/dn2',
         ...devices.map(
           (d) =>
-            `${PK} pack ${m.id} ${manifestArgs(manifests)} --device ${d} --addrmap ${packMap(d, m)} -o ${packOut(d, m)}`,
+            `${PK} pack ${m.id} ${manifestArgs(manifests)} --device ${d} --addrmap ${packMap(d, m)} -o ${packOut(d, m)} && ${PK} services --device ${d} ${packOut(d, m)} > ${servicesOut(d, m)}`,
         ),
       ],
+      parallel: false,
+      cwd: '.',
+    },
+  };
+};
+
+// The stock firmware a service with hooks is bound to (the acceptance cells of device-inputs.mjs).
+const STOCK_FIRMWARE = { dt2: 'firmware/Digitakt_II_OS1.17.syx', dn2: 'firmware/Digitone_II_OS1.12.syx' };
+
+/** The bound file of a service with hooks, `dist/svc-bound/<device>/<leaf>.dks` (never committed: it holds firmware bytes). */
+export const boundOut = (dev, m) => `dist/svc-bound/${dev}/${m.id.split('/').at(-1)}.dks`;
+/** What the bound file was made from (`patchkit bind` writes it beside the file): the sha256 of the unbound `.dks` and of the firmware image. */
+export const boundSource = (dev, m) => boundOut(dev, m).replace(/\.dks$/, '.src.json');
+
+/** The address map of the bound file (the packed map moved by what bind appended), written by `patchkit bind --addrmap`. */
+export const boundMap = (dev, m) => boundOut(dev, m).replace(/\.dks$/, '.addrmap.json');
+
+// A service that takes hooks is bound to the stock firmware (`patchkit bind`) before a device test puts it on a card. The target is keyed on the packed `.dks`
+// bytes and the firmware image (its content hash), so a change that leaves both alone replays the bound file; the tests copy it, they never run patchkit for it.
+export const bindTarget = (workspaceRoot, m, devices) => {
+  const ds = devices.filter((d) => STOCK_FIRMWARE[d]);
+  return {
+    executor: 'nx:run-commands',
+    cache: true,
+    inputs: ds
+      .flatMap((d) => [
+        // The packed files are gitignored dist/ outputs of the pack target: a file input would not hash them, so the key reads them as outputs of the dependency.
+        { dependentTasksOutputFiles: packOut(d, m) },
+        { dependentTasksOutputFiles: packMap(d, m) },
+        `{workspaceRoot}/${STOCK_FIRMWARE[d]}`,
+      ])
+      .concat([{ input: 'production', projects: ['patchkit'] }]), // the tool too: what bind writes (the .dks, its map and its .src.json sidecar) depends on it
+    dependsOn: ['patchkit:cli', 'pack'],
+    outputs: ds.flatMap((d) => [
+      `{workspaceRoot}/${boundOut(d, m)}`,
+      `{workspaceRoot}/${boundMap(d, m)}`,
+      `{workspaceRoot}/${boundSource(d, m)}`,
+    ]),
+    options: {
+      // a device whose firmware file is not here writes nothing (its tests are skipped without the image)
+      commands: ds.map(
+        (d) =>
+          `if test -f ${STOCK_FIRMWARE[d]}; then ${PK} bind ${packOut(d, m)} --firmware ${STOCK_FIRMWARE[d]} -o ${boundOut(d, m)} --addrmap ${packMap(d, m)} > /dev/null; fi`,
+      ),
       parallel: false,
       cwd: '.',
     },
@@ -125,9 +180,12 @@ export const packAliasesTarget = (workspaceRoot, byId, recs) => {
       aliasSources.add(source);
       for (const d of packDevices(src.manifest)) {
         aliasCmds.push(
-          `${PK} pack ${source} ${manifestArgs(manifestClosure(byId, [source]))} --device ${d} --name ${alias} -o ${packOut(d, src.manifest, alias)}`,
+          `${PK} pack ${source} ${manifestArgs(manifestClosure(byId, [source]))} --device ${d} --name ${alias} -o ${packOut(d, src.manifest, alias)} && ${PK} services --device ${d} ${packOut(d, src.manifest, alias)} > ${servicesOut(d, src.manifest, alias)}`,
         );
-        aliasOutputs.push(`{workspaceRoot}/${packOut(d, src.manifest, alias)}`);
+        aliasOutputs.push(
+          `{workspaceRoot}/${packOut(d, src.manifest, alias)}`,
+          `{workspaceRoot}/${servicesOut(d, src.manifest, alias)}`,
+        );
       }
     }
   if (!aliasCmds.length) return undefined;

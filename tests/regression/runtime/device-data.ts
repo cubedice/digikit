@@ -83,13 +83,8 @@ export function expansionRegion(device: Device, firmware: string): [number, numb
   return [region.start, region.end];
 }
 
-/** The address of the DN2 FX send slot bus, from its port anchor. */
-export function slotBusAddress(device: Device, firmware: string): number {
-  return portAnchor(device, firmware, 'dsp.fx.value.send.slot_bus');
-}
-
-/** Resolve one named firmware anchor instead of embedding a version-specific address in a test. */
-export function portAnchor(device: Device, firmware: string, name: string): number {
+/** The address of the port anchor `name` (exactly one must exist). */
+export function portAnchorAddress(device: Device, firmware: string, name: string): number {
   const anchors = (portFile(device, firmware).anchor ?? []).filter((a) => a.name === name);
   if (anchors.length !== 1) throw new Error(`expected exactly one ${name} anchor, found ${anchors.length}`);
   const address = anchors[0]!.addr;
@@ -97,3 +92,7 @@ export function portAnchor(device: Device, firmware: string, name: string): numb
     throw new Error(`${name}: invalid address`);
   return address;
 }
+
+/** The address of the DN2 FX send slot bus, from its port anchor. */
+export const slotBusAddress = (device: Device, firmware: string): number =>
+  portAnchorAddress(device, firmware, 'dsp.fx.value.send.slot_bus');

@@ -29,3 +29,14 @@ devices = ["dt2"]
 
 [[claim]]
 resource = "dt2.frame-tail.phrase"
+
+# The functions the fx service file (`fx.dks`) calls: it has no link to the image and finds each by name in the info table.
+[[info]]
+name = "phrase_bind"
+symbol = "phrase_bind"
+devices = ["dt2"]
+
+[[info]]
+name = "phrase_control_tick"
+symbol = "phrase_control_tick"
+devices = ["dt2"]

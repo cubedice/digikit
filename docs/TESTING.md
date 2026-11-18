@@ -24,6 +24,7 @@ execution requirements, not levels. A successful boot proves only what the run a
 | Unit (web) | Web app suites in `apps/web/tests`: Vitest `*.test.ts` (`test-host`, no wasm) and the real-wasm suites `*.wasm.test.ts` (`test-wasm`) | `pnpm nx:pilot run @digi/web:test-host`, `@digi/web:test-wasm` |
 | Unit (Python) | RE, firmware and dev tools | pytest on named files under `tests/<owner>/`; `mise run test:pypy` for the PyPy subset |
 | Unit (Rust) | Workspace and standalone dkrt | Explicit Nx project target `rust-tests`; runtime-only: `pnpm nx:pilot run core/runtime:rust-tests` |
+| Assembly (Rust, host) | The seams between the real packed artifacts of the runtime: fixtures, service files, bound files, the runtime object and the info table of the image, through the boot's plan, role checks and installs over `FakePlatform` | `pnpm nx:pilot run core/runtime:test-assembly` (seconds; every `test-device` and `test-conformance` target depends on it) |
 | Component | Module DSP conformance on the SHARC core | `mise run module:check ID` |
 | Device: stock UI | DT2 stock pages and transport goldens (zero DSP) | `mise run test:stock` |
 | Device: FX | Stock FX oracles | `mise run test:fx`, `mise run test:fx:dt2` |
@@ -56,10 +57,10 @@ iteration checks do not replace this gate. `mise run test:plan` explains task se
 | Empty-store menu fixture | `pnpm nx:pilot run core/digikit-menu-zero-tests:test-device` checks common menu navigation on both devices with zero DSP; the existing `core/digikit-menu:test-device` keeps coupled capacity checks. |
 | SDK UI fixture | `pnpm nx:pilot run sdk-ui-zero-tests:test-device` exercises the `test/ui-demo` SDK UI controls on both devices with zero DSP. |
 | Public SDK headers | `pnpm nx:pilot run sdk:test-host` and `pnpm nx:pilot run sdk-ui-zero-tests:test-device`; add the runtime loader fixtures above when load or ABI behavior is affected. |
-| Framework module, runtime | `core/runtime:rust-tests` for runtime units; an acceptance owner's `test-device` for iteration (runtime owners are listed below). Use `test:plan` for affected consumers. The default gate runs every owner's `test-device` and `test-conformance` and replays unchanged ones from the cache. |
+| Framework module, runtime | `core/runtime:rust-tests` for runtime units, `core/runtime:test-assembly` for the seams to the service files and the image; an acceptance owner's `test-device` for iteration (runtime owners are listed below). Use `test:plan` for affected consumers. The default gate runs every owner's `test-device` and `test-conformance` and replays unchanged ones from the cache. |
 | SHARC core or transpiler | regenerate the cores, then `test:changed` |
 | Emulator crates | `test:changed`; the crates' Rust tests |
-| PCM pins (`tests/scenarios/*.json`, device-test `pcmSha256`, rig pins) | from the signal report (section "PCM pins"); a change in how a module sounds goes to Em |
+| PCM pins (`tests/scenarios/*.json`, device-test `<case>.pcm.json` pins, rig pins and fingerprints) | from the signal report (section "PCM pins"); a change in how a module sounds goes to Em |
 
 ## Commands
 
@@ -86,7 +87,7 @@ Use `DIGI_GATE_BASE` rather than forwarding `--base`, so Python sees the same co
 For a proposed file, invoke `pnpm nx:pilot affected --files=path/to/file -t TARGET --explain` directly;
 Nx rejects `--files` together with the main command's `--base`.
 
-TypeScript edits select TypeScript targets. An edit in `packages/workbench-core/src` or `ui` selects its own `test-host` and `typecheck`, `@digi/web:test-host`, `check`, `test-wasm` and `build`, and the desktop `test-host`, `typecheck`, `check:ui` and `build:ui` (both apps import it); an edit in `packages/workbench-core/tests` selects only its own two targets; an edit in `apps/web/src` selects the web targets and an edit in `apps/desktop/ui/src` only the desktop targets (the apps do not import each other). Neither selects a cargo, wasm-build, device or conformance target: `patchkit:wasm` reads the Rust crates, `digiemu-desktop:rust-tests` reads the crate and its Rust dependencies, and the desktop `test-host` reads its own `ui/`, the workbench-core sources, `dk-session`, `dkbs`, `devices/*.toml`, `modules/*/*/module.toml` and `config/emulator.json`. `@digi/web:test-host` runs the Vitest project `web-transfer` and does not load wasm; `@digi/workbench-core:test-host` runs the project `workbench-core` (the tests of the shared code and of the NodeHost, with temp folders and stand-in bridge programs). Tests that load the real `public/*.wasm` or compare it with the patchkit command line (`tests/*.wasm.test.ts`, Vitest project `web-wasm`, the only web runner besides `web-transfer`) are the target `@digi/web:test-wasm`, which depends on `patchkit:wasm` (replayed from the cache unless a Rust input changed). A new test that needs the wasm or the command line is named `*.wasm.test.ts`. The fake devices of the web tests (`FakeDevice`, `FakeDrive`, `FakeUpgrade`), the fake modules and the command-line helpers are in `apps/web/tests/support/`; the site's screenshot tools import them from there. The logic of the desktop Samples mode is tested in `apps/desktop/ui/tests/samples-core.test.ts`.
+TypeScript edits select TypeScript targets. An edit in `packages/workbench-core/src` or `ui` selects its own `test-host` and `typecheck`, `@digi/web:test-host`, `check`, `test-wasm` and `build`, and the desktop `test-host`, `typecheck`, `check:ui` and `build:ui` (both apps import it); an edit in `packages/workbench-core/tests` selects only its own two targets; an edit in `apps/web/src` selects the web targets and an edit in `apps/desktop/ui/src` only the desktop targets (the apps do not import each other). Neither selects a cargo, wasm-build, device or conformance target: `patchkit:wasm` reads the Rust crates, `digiemu-desktop:rust-tests` reads the crate and its Rust dependencies, and the desktop `test-host` reads its own `ui/`, the workbench-core sources, `dk-session`, `dkbs`, `devices/*.toml`, `modules/*/*/module.toml` and `config/emulator.json`. `@digi/web:test-host` runs the Vitest project `web-transfer` and does not load wasm; `@digi/workbench-core:test-host` runs the project `workbench-core` (the tests of the shared code and of the NodeHost, with temp folders and stand-in bridge programs). Tests that load the real `public/*.wasm` or compare it with the patchkit command line (`tests/*.wasm.test.ts`, Vitest project `web-wasm`, the only web runner besides `web-transfer`) are the target `@digi/web:test-wasm`, which depends on `patchkit:wasm` (replayed from the cache unless a Rust input changed). A new test that needs the wasm or the command line is named `*.wasm.test.ts`. The fake devices of the web tests (`FakeDevice`, `FakeDrive`, `FakeUpgrade`), the fake modules and the command-line helpers are in `apps/web/tests/support/`; the site's screenshot tools import them from there. The logic of the desktop Samples mode is tested in `packages/workbench-core/tests/samples-core.test.ts`; the upload engine is tested in `packages/workbench-core/tests/sample-upload.test.ts`.
 
 Control-client, test-support, dk-session, desktop-host and regression-host targets use local result
 caching; web-transfer and the per-module `test-host` targets remain uncached. tools/nx/modules.mjs infers, for each shipped module, a `test-host` target (host tests under `tests/`), a `test-device` target (its `tests/**/*.device.test.ts`, run with Vitest directly after its packs) and, for each shipped dynamic, service or `host` module, a `test-conformance` target (the shared conformance suite for that module). A project with several device test files has one cached target per file, `test-device--<file>`, and `test-device` is their no-op parent; a project with one file has only `test-device`. Tasks and Vitest workers follow the CPU budget below. Other Nx targets: `pack` (patchkit pack for each device, building stale module objects on demand, into `dist/modules/<device>/<leaf>.dkm`; only for the modules the gate packs, not for patched-in core modules or static fixtures), `pack-aliases` (renamed copies named by `runtimeAcceptance` aliases, same directory), `patchkit:cli` (`dist/patchkit/patchkit`) and `plusdrive-format:cli` (`dist/plusdrive/plusdrive`). Outputs go to `dist/`, never under `out/`. Shipped content modules (not `core/*`) depend on `core/runtime`; machines also on `core/dynreg` and `core/dsp-voice`, effects on `core/dynfx` and `core/fxpages`. Web tests retain ignored
@@ -96,11 +97,11 @@ reads or external inputs require input/output review and scoped invalidation/res
 only the support/session pair was timed, not whole preflight. The standalone runtime unit target
 remains uncached; all test-only device targets, including `core/runtime-tests`, are cached like other module device targets.
 Plugin sources are not inputs of module device targets. A `runtimeAcceptance` record may set `dksampleWasm: true`
-(depends on `dksample:wasm`). Python tools need no record flag: list the `.py` tools a test runs in the record's `sources`. `tools/nx/py-imports.mjs` follows their `tools.*` imports (including function-local imports and `-m tools.x` strings) and hashes those files. Relative imports are not followed.
+(depends on `dksample:wasm`) or `dkprofWasm: true` (depends on `dkprof:wasm`). Python tools need no record flag: list the `.py` tools a test runs in the record's `sources`. `tools/nx/py-imports.mjs` follows their `tools.*` imports (including function-local imports and `-m tools.x` strings) and hashes those files. Relative imports are not followed.
 
 | Command | What runs |
 | --- | --- |
-| `mise run test:changed` | `nx affected` against `DIGI_GATE_BASE` (default `main`) over the targets `lint`, `fmt-check`, `typecheck`, `test-host` and `python-checks`. Does not run Rust, module builds or devices. |
+| `mise run test:changed` | `nx affected` against `DIGI_GATE_BASE` (default `main`) over the targets `lint`, `fmt-check`, `typecheck`, `test-host`, `python-checks` and `objects-check` (about 25 s uncached; `patchkit` is affected by edits of its own files, of core module sources, manifests or toolchain inputs, so a stale committed `.dko.json` fails here). Does not run Rust, module builds or devices. |
 | `pnpm test:host` | The Vitest projects of `vitest.host.projects.json` except `web-wasm` (the Nx `test-host` set): control-client, test-support, dk-session, web-transfer, desktop-host, regression-host, module-tests, nx-host, dkbs. One worker by default; `-- --maxWorkers N` changes it. |
 | `pnpm verify:host` | oxlint, Prettier check, host Vitest, typecheck of control-client, dk-session, test-support, regression and desktop. Stops at the first failure. |
 | `pnpm --filter @digi/web test-wasm` | The Vitest project `web-wasm` (`tests/*.wasm.test.ts`, 120 s limit per test). Needs `public/*.wasm` (`@digi/web:test-wasm` builds it). Cases that need firmware skip when absent. |
@@ -144,9 +145,19 @@ Wait without polling: run a long command with a long tool timeout (up to 2 hours
 `uv run python -m tools.devtools.test_outcomes BEFORE.xml AFTER.xml --renames-from REF` compares
 outcomes and skip reasons test by test after moving tests.
 
+### Assembly tests
+
+The assembly layer sits between the unit tests of a component and the device tests (docs/plans/test-architecture.md T2 step 4). A unit test owns the logic and the edge cases of one component against fakes. An assembly test owns a seam between separately built real artifacts: per seam one case that fits and one typical refusal, never a repeat of a unit edge case. A device test owns only what the firmware or hardware shows. An assertion belongs at the lowest layer that can see it.
+
+`pnpm nx:pilot run core/runtime:test-assembly` runs `modules/core/runtime/src/rs/src/loader/tests/assembly_tests.rs` (`cargo test --lib assembly_tests`, host build, seconds, cached). Its `dependsOn` build what it reads: `<id>:pack` of the fixtures (`test/sine`, `test/dyn-dn2`, `test/dyn-fx-gain`, `test/lfo-shape`, `test/svc-test`, `test/svc-test-user`) and of the services (`core/services/fx`, `machines`, `lfo`), `<id>:bind` of the services with hooks (`dist/svc-bound/<device>/`), and `patchkit:device-images`, which also writes `dist/bytes/images/<device>/set-<set>.info`, the info table of the patched image: `name hash kind address words...` per entry, taken from the `info` list of the plan that `patchkit apply` writes. The committed `runtime.dko.json` and the service objects are read from the repository. A device without its firmware file is skipped with a `SKIP` line, as its device tests are.
+
+Every `test-device` and `test-conformance` target `dependsOn` `core/runtime:test-assembly`: no device run starts while it fails. Its inputs are the runtime sources and exactly the files above (`pnpm nx:pilot show target inputs core/runtime:test-assembly`). `rust-tests` skips `assembly_tests`.
+
+A new service or runtime mechanism adds an assembly case before its first device test. A failure of this target is a wiring defect (a stale object or ABI word, an unmet need, a limit that is not in the image), not a flaky test.
+
 ### Named device subset
 
-`mise run test:subset -- <tag...>` is the merge gate for a change that reaches device tests only through shared inputs (SDK, profiles, patchkit, another core module): instead of every device test it runs the tests of the named record tags. The tags are the vocabulary of `metadata.runtimeAcceptance` (`tools/nx/acceptance-tags.mjs`: `S:` services, `C:` areas, `A:` core modules, `M:` tool modules); several tags are a union. The command reads the Nx project graph, resolves each tagged file to its leaf targets `test-device--<file>--dt2` and `--dn2` (the devices the file runs on), and adds `gate-smoke:smoke` and `gate-pins:pins`. Without `--run` it prints them. With `--run` it runs them through `pnpm nx:pilot run-many` (cached, with the remote cache); `DIGI_EMU_SLOTS` and the other emulator settings pass through the environment. An unknown tag fails with the vocabulary.
+`mise run test:subset -- <tag...> [--base REF]` is the merge gate for a change that reaches device tests only through shared inputs (SDK, profiles, patchkit, another core module): instead of every device test it runs the tests of the named record tags. The tags are the vocabulary of `metadata.runtimeAcceptance` (`tools/nx/acceptance-tags.mjs`: `S:` services, `C:` areas, `A:` core modules, `M:` tool modules); several tags are a union. The command reads the Nx project graph, resolves each tagged file to its leaf targets `test-device--<file>--dt2` and `--dn2` (the devices the file runs on), and adds `gate-smoke:smoke` and `gate-pins:pins`. Without `--run` it prints them. With `--run` it runs them through `pnpm nx:pilot run-many` (cached, with the remote cache); `DIGI_EMU_SLOTS` and the other emulator settings pass through the environment. `--base REF` adds the records whose inputs changed since REF. It sees the tracked diff against REF (commits and working tree) and the untracked files. A record is selected when a changed file is (a) source of its project or of a project in its `modules` (not tests, Markdown or project.json), (b) a test file it lists, or (c) in the import closure of one of its test files (a helper in `tests/regression/runtime`, a test-support package; the same closure walker as the cache keys, `tools/nx/ts-imports.mjs`). It does not see files that tests read by path without importing them, or a record that omits a module it loads in practice. A changed file that every device test depends on has no subject: the source of `patchkit`, the daemons (`digi-control`) and `core/runtime`, and the shared key inputs (`SHARED_INPUT_GLOBS` in `tools/nx/device-test-keys.mjs`: SDK, device profiles, toolchain, test reads). Without tags the command then fails and names the file ("name tags or run the full set"); it also fails when nothing changed or no record matches, so it never goes green with only the smoke and pin gates. With tags the tags decide and a note counts the shared files. The command also prints how many tasks are coupled and zero-DSP and how many start at once. An unknown tag fails with the vocabulary. Tags say what a test proves, not what it loads: a sample-pool test is `S:samples` even when it loads the machines service.
 
 ```text
 $ mise run test:subset -- S:lfo
@@ -187,6 +198,8 @@ For a content module, `mise run dk:module ID [--device dn2|dt2]` packs its card 
 capture. `tools/patchkit/pk_devreload.toml` lists base patch sets whose menu/runtime supports a zero DSP
 peer despite optional DSP adapters (`emulator` on both devices). Store module closures are always checked independently: adding
 `--store digikit/pluck` selects coupled SHARC, as do content DSP objects, unknown object placements and arbitrary `file:` store content.
+
+Services of the card come with the store. A service id in `--store` (a module with `role = "service"`, for example `core/services/machines`) is packed to a `.dks`, bound to the stock firmware of the device (`patchkit services --bind-dir`, the same bind as the Nx target `<id>:bind`) and put at `services/<name>.dks`. A stored module that needs a service gets that service without being listed: `patchkit services` ([PATCHING.md](PATCHING.md#which-services-a-module-needs)) reads the NEEDS items of the packed `.dkm` files and maps them to the service modules of the manifests; the device tests read its answer, which the pack target writes as `<leaf>.services.json` (`neededServices` in `tests/regression/runtime/service-files.ts`). So `mise run dk:dev -- emulator --device dn2 --store 'test/dyn-dn2*' --keys 'tap:SYN,shot:syn'` brings `machines.dks` along. The bound files are kept in `out/cache/devreload-svc/<device>/`; a file whose `.src.json` sidecar names another pack or firmware image is bound again. Not run live for this note (the machine was loaded).
 Other patch sets, including `sample-tracks`, use the conservative object check. Each DSP mode has its own kept daemon directory;
 the mode and audio status are checked after connecting and reloading. No additional flag is needed.
 
@@ -210,7 +223,7 @@ Tests that lack an input skip with a reason; `pytest -rs` lists them.
 
 | Input | How to provide |
 | --- | --- |
-| Stock images in `firmware/` (DT2 1.17, DN2 1.12) | README "Firmware files"; `DIGI_EMU_SYX`, `DIGI_EMU_SYX_DT2` override paths. |
+| Stock images in `firmware/` (DT2 1.17, DN2 1.12) | README "Firmware files". `DIGI_FIRMWARE_DIR` replaces the folder for every tool and test. `DIGI_EMU_SYX` and `DIGI_EMU_SYX_DT2` override the coupled tools' paths. |
 | Sections `out/sections/<image>/` | `uv run python -m tools.firmware.extract firmware/SYX -o out/sections/<image>`. |
 | SHARC database `out/sharcdb/<image>.sqlite` | `uv run python -m tools.sharc_dev.sharcdb build out/sections/*/section_7_BLOB.bin`. |
 | ColdFire dump `out/ghidra/<image>-emac` and cfdb | Needs Ghidra: `tools.coldfire.ghidradump`, then `tools.coldfire.cfdb build`. |
@@ -350,6 +363,7 @@ snapshot key matches and a baseline reload restores the snapshot (0.2 to 1.5 s) 
 fresh dir and always boots cold. Eviction runs when a fixture claims its run dir: only the newest 32 card dirs
 stay (a load touches a dir; one used in the last 2 hours stays). Fx presets with a `seed-card` settings step are built in the run dir, not cached. Delete `dist/session-cache/cards` to rebuild.
 `liveOptions(..., { fresh: true })` and mirror sessions use a fresh temp dir.
+A file that uses `withReusablePatchedSession` shares one session between its tests. A failure stays local: the failed test closes the session (diagnostics kept), and the next test starts a fresh session (one extra boot, only after a failure).
 
 ## Module-owned tests
 
@@ -374,11 +388,63 @@ A module keeps its tests in its own folder, `modules/<kind>/<name>/tests/`. No l
 - `module:check ID`, `gate` and `test:changed` select them. A change in the module selects its tests and those of the modules that depend
   on it; a change only in `tests/` runs python-tests (and `host` for `.ts`), no Rust or web step.
 - A scenario that pins the PCM of a module lives with that module. A shared test needs "a module" only: it uses a fixture of
-  `tests/fixtures/modules` (`test/sine`, a dynamic machine on both devices; `test/dyn-fx-gain`, an effect; the table is in
-  docs/MODULE-AUTHORING.md), or a made-up id such as `acme/demo` when nothing is built. A list of all shipped modules is a scan of
+  `tests/fixtures/modules` (`test/sine`, a dynamic machine on both devices; `test/dyn-fx-gain`, an effect; the table is
+  [Fixture table](#fixture-table) below), or a made-up id such as `acme/demo` when nothing is built. A list of all shipped modules is a scan of
   `modules/{machines,fx,tools}/*/module.toml`, never a literal list.
 - `mise run check:layers` (rule `self-contained`): no tracked file outside a module's folder names its id or path. Docs, `*.md`, `.agents/`
   and the fixtures may. `host = true` in `[module]` exempts a module the workbench speaks to (the remote control service).
+
+### Fixture table
+
+`tests/fixtures/modules/<id>` holds the test modules (author `test`). Each is the one canonical subject of the cases in the second column; a new test
+reuses a fixture before it adds one. Layers: **host** (Vitest or pytest, no device), **assembly** (runtime assembly tests and patchkit Rust tests), **rig**
+(SHARC-only rig), **device** (emulator). A fixture marked *patch-time* is applied to the firmware by patchkit (`[[prim]]` or core patches), not loaded from the card.
+
+| Fixture | Canonical subject for | Layers |
+| --- | --- | --- |
+| `sine` | The small dynamic machine of the SDK contract (pitched sine, one LEVEL parameter, both devices); the DSP source other fixtures share; pitch checks | host, assembly, rig, device |
+| `dyn-dn2` | A machine with four parameters of different ranges on the DSP of `sine`, on both devices (Digitone II: its own SYN page of four knobs): registry rows, needs inference, capacity, project round trip | host, assembly, device |
+| `dyn-fx-gain` | The effect contract: insert effect, GAIN knob, upload, persistence, kit save; the trace marks (`DK_TRACE_LOG`, `DK_STEP`) that exist only in a `--trace` build (zero-cost proof `trace.rs`); owns the gain DSP the wrappers share | host, assembly, device |
+| `dyn-fx-gain-b` | A second effect with the same gain under another module id (another effect id) and other defaults (0.25, MIX 64): two effects in one kit; wrapper of the DSP of `dyn-fx-gain` | host, device |
+| `dyn-fx-gain-bipolar` | A signed knob (BIAS, -64 to +63) and the routes master and send | device |
+| `dyn-fx-gain-both` | Routes: master and send allowed, default master (`dk_fx_routes`); wrapper of the DSP of `dyn-fx-gain` | device |
+| `dyn-fx-gain-send` | Routes: master and send allowed, default send; the FX ROUTES panel; wrapper of the DSP of `dyn-fx-gain` | assembly, device |
+| `dyn-fx-gain-sendonly` | Routes: send only; wrapper of the DSP of `dyn-fx-gain` | assembly, device |
+| `commit-demo` | A multi-feature commit: a machine with three parameters (latched, click action) and an effect with routes; the golden lowered records; refusals | device, rig |
+| `svc-test` | The service fixture: a `.dks` of the test-only service `svc-test` with exports `dk_svctest_ping` and `dk_svctest_hits` and one hook | host, assembly, device |
+| `svc-test-user` | A module with a hard NEED on `svc-test` (the provider and NEED path of the loader) | host, assembly, device |
+| `lfo-shape` | A service-type module that emits one `lfo_shape` record (shape id 7) | assembly, device |
+| `lfo-shape-dup` | The code of `lfo-shape` under another module name (same shape id): only one of the two loads (refusal) | device |
+| `entry-demo` | The module entry point: `dk_module` with `init`, `tick`, `fini`, `menu`, settings, log, time, an absent optional service | host, device |
+| `dyn-demo` | A raw module loaded from the card store with a counter in its `tick`: load, unload, store format, names | host, assembly, device |
+| `dyn-demo-stray` | The ColdFire memory audit: `dyn-demo` that writes one word outside its block | device |
+| `files-proof` | The public read-only listing boundary of the files API (deferred notifications, no tick) | host, device |
+| `file-write` | Store file writes from an I/O job (create, write, close, abort, delete, hash) started by service commands; cut and PlusDrive cases | host, device |
+| `file-write-b` | A second copy of `file-write` under another name and command range (two modules writing) | device |
+| `settings-a` | The module settings API: put, get and remove through service commands, read in `init` | device |
+| `settings-b` | The same code as `settings-a` under another module name and command range (two modules, one key) | device |
+| `dyn-crash` | The one fault injector, set by the store file `cfg/crash-after.bin` (delay, mode, place): a CPU exception, a reset or a hang a number of blocks into the UI loop (crash capture, safe mode), a reset in `init`, a fault in the boot animation callback (`bootscreen`); no file, no fault, so each test asserts the fault happened | assembly, device |
+| `dyn-dsp-hang` | A machine whose DSP routine never returns after a few blocks (fault trace) | device, rig |
+| `dyn-fx-hang` | A send effect whose process routine never returns (fault trace, log follow) | host, device, rig |
+| `dyn-fx-nan` | A send effect that outputs NaN: the fault count and the row switch-off after eight faults | device, rig |
+| `dyn-guard-nan` | A machine that outputs NaN while a voice is active: the voice guard of `core/dsp-voice` | host, device, rig |
+| `stock-pool` | Calls to the stock DT2 sample loader, reload and purge from the command task and the loader worker | host, device |
+| `track-select` | Adds a sample to the pool of another module's table through SysEx commands | host, device |
+| `dsp-facts` | Probe: cycle counts, instruction semantics and core register values on the SHARC+ core, one framed word per block | host, device |
+| `sharc-probe` | Probe: RECIPS and RSQRTS over a fixed sequence, one framed word per block | host, device |
+| `step-beacon` | Probe: stores a call counter in the module step word on every call | device |
+| `ui-demo` | The framework menu: SETTINGS > DIGIKIT with one row of each kind, text page, list, side panel | host, assembly |
+| `native-page` | Native callback page cycling, parameter edits, local zoom and clipped drawing | host |
+| `usb-echo` | The bulk interface of `core/usb-bulk`: echo of every buffer on EP2 IN from an I/O job | host, device |
+| `input-probe` | The input adapter: SysEx commands press keys and turn encoders through `core/input` | device |
+| `svc-echo` | Service commands: `dk_host_register` and an echo of the request body | host, device |
+| `intro-ticks` | The boot animation takes: the tick hash (the faults in the frame function are `dyn-crash`, place 2) | device |
+| `card-info` | Read-only eMMC and eSDHC register diagnostic of the card tool | host |
+| `c-demo` | A C module that needs 64-bit division, remainder, multiplication and shifts (libgcc helpers); inferred needs | host, assembly, device |
+| `synth-decl` | The code of the synthetic capacity modules (`packages/patchkit/src/dkmsynth.rs`) | assembly |
+| `cf-demo` | *Patch-time.* Code, data and bss placed in `cf.expansion` | assembly, host |
+| `rust-demo` | *Patch-time.* A Rust crate in `cf.expansion` | assembly |
+| `registry-demo` | *Patch-time.* The generic primitives: a registry, a section copied from the image with appended rows, a counting hook | assembly, host |
 
 ## The gate
 
@@ -555,8 +621,8 @@ reuse, because provenance can name further external files. LP0 case-selection fl
 Ignored/external edits alone do not trigger Git affected selection: invoke the owning Nx target
 directly after changing an override binary/root or ignored firmware/ready/card input.
 FX targets run the coupled-run binary, not a daemon. `digi-coupled:build` and `build-dt2` write
-`dist/coupled-dn2.json` and `dist/coupled-dt2.json` (`coupled build --id-out`): the sha256 of the built binary, without
-its path. The FX key has this file (as a dependent task output), the named source globs `fxDn2` and `fxDt2` (they also
+`dist/coupled-dn2.json` and `dist/coupled-dt2.json` (`coupled build --id-out`): the sha256 of the built binary and the store
+key of the core library it loads, without paths. The FX key has this file (as a dependent task output), the named source globs `fxDn2` and `fxDt2` (they also
 drive `affected`), and `tools/nx/coupled-inputs.mjs`. That digest covers the firmware and the ready inputs that
 `tools/emulator/coupled.py` boots from (`tools/emulator/ready_inputs.json`, and the `DIGI_EMU_SYX*`,
 `DIGI_COUPLED_SYX`, `DIGI_EMU_READY_DIR*` and `DIGI_EMU_DSP_*` overrides by file content). These are not the
@@ -564,7 +630,7 @@ patchkit ready dirs of `device-inputs.mjs`. Env in the key: `DIGI_FX_SWEEP`, `DI
 `DIGI_NO_PROGRESS_MS`, `DIGI_DT2_CARD` (its file content too), `DIGI_COUPLED_FEATURES`, `SHARC_AOT`, the `SHARC_FAST_*`
 switches, `SHARC_BLOCKTRANS` and `UPDATE_GOLDENS`. The render cache (`out/cache/renders`) is keyed by content and is safe
 to share. The tier targets write reports under `out/runs/fx-tier/<step>`; nothing reads them back. Not covered:
-`SHARC_GEN_DIR` (the generated core is checked by `--check-generated` and is built into the binary hash) and
+`SHARC_GEN_DIR` itself (the generated core enters through the store key of the core library in the identity file) and
 `out/sections/*` (derived from the firmware file).
 Not in the key on purpose: `dist/session-cache` (boot cache, cannot
 change a result) and directory scans such as `modules/README.md`. Failed tasks are not cached.
@@ -578,7 +644,7 @@ and a table named like the kind. Kinds:
 
 | Kind | Checks |
 | --- | --- |
-| `equiv` | Machine, parameter, page and voice rows of a boot with set S equal those of a boot of no module (apart from S's own machines); the note is audible, and the TypeScript cells pin its PCM by `pcmSha256` (Em approves a new value). |
+| `equiv` | Machine, parameter, page and voice rows of a boot with set S equal those of a boot of no module (apart from S's own machines); the note is audible, and the TypeScript cells pin its PCM with a `<case>.pcm.json` fingerprint pin ("PCM pins"; a change in how the note sounds goes to Em). |
 | `upload` | Module upload over USB SysEx: only `rust` is Python. The other parts are in `modules/core/runtime/tests/upload.device.test.ts` and `upload-faults.device.test.ts`. |
 | `menu` | Ticking a set in SETTINGS > DIGIKIT > MODULES and restarting loads the set: the machine is in the list, claims its voice row and plays an audible note. |
 | `pages` | Parameter pages of a machine on track 1: an added machine has one SRC page (no page dots, no sample view) and the stock sample machines keep two. |
@@ -633,7 +699,7 @@ FX rules (the same kit files, `fx.ts` for the master chain): the hook returns
 within 200,000 instructions; registers the stock function expects are preserved; the core/fx fault
 count stays 0; the module stores only to its output block, data, bss and stack; the master stays finite
 within 8.0; the effect stays within `min(headroom) / 4` plus 900 for core/fx. Negative fixtures:
-`test/dyn-dsp-hang` (machine), `test/fx-nan` (effect). `DIGI_JOBS` sets the worker count.
+`test/dyn-dsp-hang` (machine), `test/dyn-fx-nan` (effect). `DIGI_JOBS` sets the worker count.
 A change in a machine or effect module, `core/dsp-voice`, `core/fx` or the kit selects the suite.
 
 The suites do not run a persistent V2 instrument (`[[machine]] instrument = true`: no voice entry) or a module whose
@@ -665,14 +731,17 @@ asked for. With `watch` ranges (pcs) it also returns the stores of instructions 
 (a frame halfword, the trig bit, a release byte). `sharc-rig --serve` keeps the core between lines: the first line is a request, every
 later line is `{"ops": [...]}` and gets one answer line, so a rig runs a case block by block and stops at its first failure.
 
-The stock DSP image can be the base core. The setup line takes `image`, the loader stream of firmware section 7 as hex. The rig reads it with the boot crate's own `LoadedMemory::from_stream`
-(`packages/emulator/boot/src/dsp_stream.rs`, compiled into the rig by path: a dependency would change `Cargo.lock`, an input of the device tests) and loads it before `code`, so
+The stock DSP image can be the base core. The setup line takes `image`, the loader stream of firmware section 7 as hex. The rig reads it with the sharc-peer crate's own `LoadedMemory::from_stream`
+(`packages/emulator/sharc-peer/src/dsp_stream.rs`, compiled into the rig by path: a dependency would change `Cargo.lock`, an input of the device tests) and loads it before `code`, so
 linked code and hooks go over the stock bytes. A call takes `stock_reads: [[loader_byte_address, count]]` and answers `stock`, the bytes of the image as loaded (hex, `null` when the stream does not write all of them).
 `breaks` on a call replaces the setup's breaks for that call, and `resume: true` continues from the pc the last call stopped at (the stacks and registers stay; `regs` are still set), as `Runner.run` does after a breakpoint. A zero-step
 resume reads DM without ending a stopped call. `specials: {"MSF": [mask, bits]}` sets an 80-bit multiplier register (hex strings) before a call and `read_specials` answers it after. An address like 0x2010f000 or 0x80100000 is a byte address: a read count steps by one byte, so a rig that reads words asks for each word.
 `packages/sharc-rig-kit/src/stock.ts` finds `out/sections/<id>/section_7_BLOB.bin`, checks its hash and gives the hex; a test that needs it skips with `stockSkipReason` (a describe title) when the firmware was not extracted.
 `StereoRig` (`stereo.ts`) is the DN2 1.12 stereo rig on it: `dsp-voice-dn2-stereo.s` linked beside the stock image, the pan hook patched in at 0x1c9af6, `StereoSession` for one core.
 The tests are `modules/core/adapters/dsp-voice/tests/dsp-stereo-*.rig.test.ts` (`pnpm nx:pilot run core/dsp-voice:test-rig`) and `modules/core/adapters/dsp-stereo-proof/tests/*.rig.test.ts` (`core/dsp-stereo-proof:test-rig`, over `openImageSession`).
+
+A call with `"loads": true` also returns `loads`, the read analogue of `watch`: `[pc, address, width]` for each DM load (1, 2 or 4 bytes; a long-word or SIMD load is one entry per word) of an instruction in the `watch` ranges, in execution order, with the addresses of `stores` (L2 at the loader alias, an image word at its alias). The runtime records the loads (`St::read_log_on`, `packages/emulator/sharc-rt`); while it is on, the call takes the full memory path instead of the plain-RAM fast path. The record is off by default, costs a call without the option nothing and leaves no `loads` key. `StereoSession.raw` and `CallSpec` take `loads: true`. Block code (`_dm_read_b`, the fast tier) is not recorded: the rig runs one instruction at a time.
+The check kind is a `LoadRule` (`packages/sharc-rig-kit/src/loads.ts`, host tests `tests/loads.test.ts`): the covered loads (`pcs`, else every load of the call), the byte ranges they must lie in (`within`), and how many bytes they read (`bytes`, `bytesMultipleOf`). `loadFailures(loads, rules)` returns one text per broken rule, so a load of the right instruction at a wrong address fails where a count of executions passes. The shadow replay (`modules/core/adapters/dsp-stereo-proof/tests/dsp-stereo-shadow-replay.rig.test.ts`) keeps its read bounds as rule data per group: the table loads of the held and prepared leaves (and the held period `1 < p < 32`), the gain tables, the ring backing of the channel, the source samples and table, the ordered-route phases and the helper resets.
 
 A call with `"profile": true` also returns `profile`, one `[pc, count]` row per pc it executed, in pc order (the counts add up to `instructions`). Without the option
 nothing is counted and the answer has no `profile` key. `MachineRig` takes `profile: true` and puts the rows in `MachineBlock.profile`. The rig is a producer for `wb profile report`
@@ -764,7 +833,7 @@ max = 0.5
 
 An effect case has `[case.input]` (`kind` = `sine` with `freq` and `amp`, `table` with a `file` of float32 words (64 per block: left,
 then right), `square-noise`, or a test signal of the conformance cases), `observe = "scratch"` (the effect's own block, the default) or
-`"master"`, `mix` (a float32 word) and steps with `params_f32 = [..]` (the effect's float parameters) and `blocks`.
+`"master"`, `mix` (a float32 word) and steps with `params_f32 = [..]` (the effect's float parameters), `blocks` and `mix` (a float32 word written to the row before the step's first block: a MIX change during the run, which the adapter ramps over the next block).
 
 A machine that plays a sample has `[[case.pool]]` tables (`index`, `frames`, `rate`, `channels`, `token`, `planes` = a file of int16 words, left then right;
 the kit publishes the planes and the record before the first block), `pool_ctl` (the data symbol of the control sets: the count word must be 0 after every
@@ -777,10 +846,54 @@ fine, the module writes only its own memory, the output is finite). Check kinds:
 `expect`, `cents`, `method = "crossings"` or `"bandpass"`, `skip_periods`), `tone` and `tone-stable` (effects), `sample-at`, `differs`
 (`other = [first, end)`), `voice-ends` (`within`, `after`), `instructions` (`max`, `of` = `first`, `steady` or `idle`),
 `cursor` (a word of the voice's state block, `signed`, `tol`), `voice-active`, `tone-fit` (least-squares amplitude of a tone), `description`, `state-word`,
-`state-untouched-beyond` and `master-equals-input`, `master-equals-scratch` (effects), and the references `matches-table` (`file` of float32 words next to the toml,
+`state-untouched-beyond` and `master-equals-input`, `master-equals-scratch`, `scales-input` (effects; `gain`, error within `rel_peak` of the reference peak, default 2**-20), and the references `matches-table` (`file` of float32 words next to the toml,
 `atol`, `channel`) and `same-as` (`sha256` of the float32 words). The analysis is `packages/sharc-rig-kit/src/analysis.ts`, tested on
 synthetic signals. A reference table is the output of the old float32 model of the module (or of the rig, for a new pin) as float32
 words; changing one is a re-pin and needs review like a PCM pin of `tests/scenarios`.
+
+A `same-as` pin comes from the rig itself: a machine case with a `same-as` check names one device (an effect case runs once for the effect and uses the key `fx`), and `DIGI_RIG_PIN=1 pnpm exec vitest run --config vitest.host.config.ts --project module-rig <module dir>/tests/`
+runs no checks and writes the words hash of every `same-as` signal into its `sha256` line (`pinRigFile` in `soundcheck.ts`; the n-th `sha256` line belongs to the n-th `same-as` check of the file) and prints `pin CASE [device] HASH`.
+Every machine case runs twice with all module state filled differently: the module's `.PKBSS` and the voice state blocks (the state array is a bss run in the rig's data layout) hold NaN words in the first run and a seeded integer pattern (`FILL_SEED`) in the second (`MachineRigOptions.poison` default true, `fillSeed`). The case fails with kind `initial state` when the two outputs differ in any sample: the output does not depend on the initial state, so a read of state the machine never wrote shows, float or integer, and a NaN output fails the finite rule. That is a machine bug to report, not a value to pin. The adapter's `note_on` clears the first `clear` bytes of the voice state, as on the device. `poison = false` on a case zeroes the memory, skips the second run and needs a `poison_reason`. A `MachineRig` refuses to open a machine whose device is missing from `build/gen/gallery.json` or has no parameter there (`galleryGaps`; `module:check` writes the gallery).
+The machine note pins of analog, bd, pd and pluck are `tests/rig/equiv-note.toml`: note 60, velocity 100, default parameters, 375 blocks (0.25 s) in a friendly context, one case per device (pluck adds a second note, 67, for 375 blocks).
+
+#### Classifying a changed pin (fingerprint, report, plots)
+
+A `same-as` check is gated by the pin's fingerprint with its tolerances, or by the `sha256` (bit-exact) when the check has `exact = true` or the pin is a v1
+fingerprint (format and tolerances: "PCM pins"). Each pinned case has a fingerprint in `tests/rig/fingerprint/<key>.json`
+(plain numbers; v1: peak, onset sample, RMS per 32-sample block, 64 log-spaced band levels from 40 Hz to 22 kHz; no audio; v2 adds more). `<key>` is
+`<module>.<device>.<case name>` in lower case (`rigKey` in `packages/sharc-rig-kit/src/fingerprint.ts`). Writing a pin (`DIGI_RIG_PIN=1`, above) writes the
+fingerprint and the local cache `out/rig/<key>/ref.f32` (the pinned output; not committed; `out/` is shared by the worktrees, so keys name module, device and case).
+
+When the hash differs, the failure message adds a one-line verdict from `classify`:
+
+```text
+[dn2] same-as: the words hash is f2c3d9..., the pin is 00c3d9...
+  real change: difference -13.7 dB re the signal, level -2.0 dB, onset 64 -> 64, moved blocks 2-374, moved bands 62-69 Hz -2.0 dB; 84-84 Hz -2.0 dB; 102-20942 Hz -2.0 dB
+```
+
+| Verdict | Meaning |
+| --- | --- |
+| `identical` | the output equals the cached output bit for bit |
+| `time-shift` | the output is the cached output shifted by k samples (cross-correlation, -256..256); says whether the overlap is bit-identical |
+| `rounding` | the difference is at or below -100 dB re the signal and the band spectrum is unchanged (0.05 dB) |
+| `real-change` | the difference, the level change, the onset and the blocks and bands that moved by more than 1 dB |
+| `fingerprint-only` | no cached output (a fresh checkout): the new fingerprint against the stored one; it cannot tell rounding from a phase change |
+
+The report writes `out/rig/<key>/out.wav`, `ref.wav` (when the cache exists) and `plot.png` (waveform of the output over the reference, the difference, the band spectra of both) for every pinned case and prints one line per case. It runs the cases and changes nothing in the repository:
+
+```sh
+DIGI_RIG_REPORT=1 pnpm exec vitest run --config vitest.host.config.ts --project module-rig modules/machines/analog/tests/
+# DIGI_RIG_REPORT_FILE=PATH appends the lines to PATH (default: the temp directory, rig-report.txt)
+```
+
+Real lines of the report (after `DIGI_RIG_PIN=1`, the cache holds the pinned output):
+
+```text
+fadedlimes-analog.dn2.note-60-at-the-default-parameters-is-pinned-dn2: pin matches; identical: the output equals the cached output bit for bit
+  .../out/rig/fadedlimes-analog.dn2.note-60-at-the-default-parameters-is-pinned-dn2/plot.png
+```
+
+On a fresh checkout there is no cache: the verdict is `fingerprint-only` (`envelope, bands and onset equal the pin` when nothing moved). A machine whose device is missing from `gallery.json` prints `not run: ...` (run `mise run module:check ID`).
 
 #### Adapter tests on the rig (`tests/*.rig.test.ts`)
 
@@ -840,23 +953,29 @@ B = the performance core count on Apple Silicon, otherwise cores - 2, with a min
 | Setting | Formula | B=4 | B=8 | B=12 | B=16 |
 | --- | --- | --- | --- | --- | --- |
 | Nx tasks (`NX_PARALLEL`) and emulator ceiling | max(1, min(B, floor(RAM GB/2))) | 4 | 8 | 12 | 16 |
+| Coupled (SHARC) emulators at once | floor(B/3) | 1 | 2 | 4 | 5 |
 | `REGRESSION_JOBS` (Vitest workers per task) | 1 | 1 | 1 | 1 | 1 |
 | `DIGI_JOBS` (emulator processes) | clamp(floor(B/2), 1, 6) | 2 | 4 | 6 | 6 |
 | `CARGO_BUILD_JOBS` | B | 4 | 8 | 12 | 16 |
 | `NEXTEST_TEST_THREADS` | 2 | 2 | 2 | 2 | 2 |
 
-The values assume at least 2 GB of RAM per emulator. On Apple Silicon B is the performance core count, so a 12P+4E machine has B 12: 12 tasks, a ceiling of 12 emulators; the idle-core admission keeps the efficiency cores and 2 more cores free, so load stays near 10 cores.
+The values assume at least 2 GB of RAM per emulator. On Apple Silicon B is the performance core count, so a 12P+4E machine has B 12.
+B is also the core budget of the emulators. A task has the cores of its DSP mode: a zero-DSP run (ColdFire only) uses about 1 core, a coupled run (`dsp: 'sharc'`) about 3 (measured on a 16-core M3 Max). The slot ceiling counts zero-DSP runs (12 slots at B 12); the core budget stops coupled runs from filling them: at most 4 coupled emulators, or 12 zero-DSP ones, or a mix with cores 3 x coupled + zero at most 12. (Counting 12 slots of mostly coupled tests put the load at 60 and made each emulator about 3 times slower.)
+The mode comes from the `metadata.runtimeAcceptance` record: `"dsp": "sharc"`, no field means zero. The Nx target passes it as `DIGI_EMU_DSP` (a conformance target takes it from the module: a dynamic non-service module is coupled). `tools/nx/dsp-mode.mjs` derives the mode from the test source (`dsp: 'sharc'` in the file, or in an exported helper it calls, such as `withRouteFxSession`; an option such as `sharc: true` of `uploadTests`) and fails the Nx graph load when a record disagrees with a file it lists: set `dsp` to the derived mode, one record per mode.
 `tools/nx/resources.mjs` holds this policy.
 
 Each launcher run has its own budget, so several lanes could start more emulators than the machine runs well.
 Module device targets and `test-conformance` therefore run behind `node tools/devtools/emu-slot.mjs --`. It takes one
 of N machine-wide slots (lock files in `<git common dir>/emu-slots/`, N = the ceiling above), runs the command, and
-passes on its exit status. A slot is taken only when the machine has idle cores. One waiter at a time holds the
-`admit` lock and decides: if the slots in use reach the ceiling it waits; if none is in use it admits at once (work
-never starves); otherwise it samples the idle cores twice, 1 s apart, and admits when at least 2 plus the reserve are
-idle. The reserve is the efficiency-core count on Apple Silicon, else max(2, floor(cores/4)); `DIGI_EMU_RESERVE=N`
+passes on its exit status. A slot is taken only when the task fits the machine. One waiter at a time holds the
+`admit` lock and decides: if the slots in use reach the ceiling it waits; the waiter with the longest expected run goes
+first (priority = seconds of the task's last passed run, kept per target in `<git common dir>/emu-slots/durations/` and shared by all worktrees, else a guess of 600 s for a coupled and
+120 s for a zero-DSP task, so long coupled tasks start first and do not end the gate alone; a head waiter that does not fit by cores yet may be overtaken by a smaller waiter that fits, at most 8 times, then nothing overtakes until it fits); if no emulator runs it admits at once (work
+never starves); otherwise it waits while the cores of the running tasks plus its own would exceed B, then samples the idle cores twice, 1 s apart, and admits when at least its own cores plus the reserve are
+idle (that guards against load that is no emulator of ours; the CPU times come from the OS, not the load average). The reserve is the efficiency-core count on Apple Silicon, else max(2, floor(cores/4)); `DIGI_EMU_RESERVE=N`
 sets it. After an admission the lock is kept for 3 s, so the next decision sees the new emulator's load. The log shows
-`emulator slot taken (M of ceiling, idle X.X cores), emulator slot waited N s`. With `DIGI_TRACE_DIR` set, it appends `wait` and `run` spans to `$DIGI_TRACE_DIR/slots-trace.json`. `DIGI_EMU_SLOTS=N` is a fixed count with no idle check, for an A/B.
+`emulator slot taken (M of ceiling, idle X.X cores), emulator slot waited N s`. With `DIGI_TRACE_DIR` set, it appends `wait` and `run` spans to `$DIGI_TRACE_DIR/slots-trace.json`. Overrides: `DIGI_BUDGET=N` sets B (cores and slots), `DIGI_EMU_SLOTS=N` is a fixed count with no core, idle or order check, for an A/B.
+Order limit: Nx starts twice as many tasks as slots, so the order holds among the tasks that Nx has started; `mise run test:subset` prints how many coupled and zero-DSP tasks start at once.
 A waiting task prints one line and waits without a limit; a lock of a dead process is taken over. The admit lock is stale after 30 s (`ADMIT_MAX_MS`) even when its pid lives, so a holder that never releases it cannot stop every waiter. The wait is outside
 Vitest, so it does not count against test timeouts. The emulator gate targets are wrapped too (see the job rule below).
 
@@ -894,7 +1013,16 @@ A missing or stale profile prints one warning: a stale profile is still applied 
 `uv run python -m tools.emulator.native_pgo clean [--dry-run] [--days N]` removes bench, ab, raw and train output and unreferenced profiles older than N days (default 14) under `out/native/pgo`. It keeps profiles named by `manifest.json` or the newest four `by-key` entries. `train` calls it at its end when `AUTO_CLEAN` is set.
 `DIGI_EMU_PGO=0` turns PGO off. Measuring tools (`coupled_ab`, `sharc_matrix`, `perf`, `fastcov`, `fast_roots`) keep their own builds.
 
-`tools/devtools/sharc_cells.py` compares host instruction counts of two built `coupled-run` binaries on runtime fixtures (`uv run python -m tools.devtools.sharc_cells A=BIN B=BIN --state dn2-reset --jobs 2 --cov`). It runs each binary at two lengths, prints steady-state counters per audio second, the B/A instruction ratio and PCM and DSP state parity (non-zero exit on a difference), and with `--cov` the fast-tier root and exit tables. It does not take the bench lock, because counters are not timing; use `coupled_ab` for the final timing A/B.
+`tools/devtools/sharc_cells.py` compares host instruction counts of two built `coupled-run` binaries on runtime fixtures (`uv run python -m tools.devtools.sharc_cells A=BIN B=BIN --state dn2-reset --jobs 2 --cov`). It runs each binary at two lengths, prints steady-state counters per audio second, the B/A instruction ratio and PCM, DSP state and ColdFire state parity (`pcm/dsp/cf` per length; the ColdFire state is `state_sha256` of the `coupled-run` report, taken at the end of the run, see below; non-zero exit on a difference), and with `--cov` the fast-tier root and exit tables. `--env LABEL:NAME=VALUE` (repeatable) sets one variable for the runs of one label only (the cell environment is otherwise clean), for example `--env B:DIGI_SHARC_CORE_LIB_DN2=PATH` to run B with a loaded core library. The environment of a cell includes `DIGI_SHARC_CORE_LIB_<DEV>` from the core store (an explicit variable in the environment or in the label's `--env` wins), so a binary without a static core runs without `--env` (a static binary ignores it). `coupled_ab.py` (`--env LABEL:NAME=VALUE`, next to its `NAME=VALUE`) and `sharc_matrix.py run` (`--env LABEL:NAME=VALUE`, part of the resume identity) take the same per-label option (`tools/devtools/core_choice.py`). All three print which core each label runs, `both labels use core <key>` when it is the same one. A generated-core or transpiler change is compared by giving each label its library: build the B library with `verify_build cores` from the B gen dir (or point at an existing one) and set `B:DIGI_SHARC_CORE_LIB_<DEV>=PATH`; without it a core change is compared with itself. `sharc_matrix` provides libraries only for the devices of its cells and instruments. It does not take the bench lock, because counters are not timing; use `coupled_ab` for the final timing A/B.
+
+```text
+== dt2 (dt2, dt2-sample-trig), lengths [3.0, 6.0] s, steady state per audio s ==
+label    insn G    cyc G   aot M  fast M  interp  idle M   blk M  fcall M   B/A insns   rtf per length   parity (pcm/dsp/cf per length)
+A        25.510    4.811   294.1    18.6    1.80   685.4    2.17     0.31   1.0000     0.43/0.45        3s:=/=/= 6s:=/=/=
+B        25.518    4.908   294.1    18.6    1.80   685.4    2.17     0.31   1.0003     0.45/0.50        3s:=/=/= 6s:=/=/=
+```
+
+A `DIFF` in `pcm`, `dsp` or `cf` makes the exit code non-zero. `A` and `B` ran the same binary here. The ColdFire state digest (`Emulator::cf_state_digest`) covers the `save_state` bytes (CPU, RAM pages, DMA, DSPI and SSI link, eSDHC and card, timers, SD gate, UART bytes, the firmware-event counters, frame and input state) without the three instruction-path counters (interpreted, idle skipped, RAM clear skipped), then the state the snapshot lacks: the flash image and the flash write counts, the MIDI DIN port, the USB port (callbacks, queues with their contents, the active call, counters, the EP2 buffers, the controller error) and the pending and active guest calls. It leaves out instrumentation (spans, probe hits, `pc_probe`, traces, telemetry) and the SHARC side, which the DSP state sha covers. The board snapshot does not carry the USB PHY registers and their log, VBUS, the eDMA channel-37 transmit state, the soft-reset flag and the last write error. When the digest cannot be taken (a faulted emulator, `DIGI_CF_IPS` set, a pending IRQ1, a MIDI DIN transfer on the wire, FPU state) the report has `state_sha256: null` and `state_digest_error`, and `sharc_cells` fails that cell with the reason; so it does for a binary older than the digest (plan item "CF state digest in the A/B tool", PR 0 of docs/plans/emulator-core-split.md).
 
 ## Render cache
 
@@ -932,6 +1060,11 @@ These producers are uncached; patchkit's source hashes skip current objects. Con
 remain in place, so existing graph edges can overselect preparation; narrowing awaits clearer test ownership.
 Repeated per-owner generation checks currently repeat shared SDK/interface checks. This is a future optimization.
 
+The packed `.dks` and `.dkm` files, the bound files in `dist/svc-bound/` and the image info tables are gitignored `dist/`
+outputs, and Nx hashes a file input only when git tracks it. So `<service>:bind` and `core/runtime:test-assembly` name them as
+`dependentTasksOutputFiles` of their `pack`, `bind` and `device-images` dependencies: a changed ABI word changes the packed
+bytes, and the key changes with it. The stock firmware files stay plain file inputs.
+
 Catalog selection has a scoped proof: hypothetical edits to a shipped manifest and a fixture manifest both
 select `patchkit:catalog-check`; an edit to Pluck's C source does not. This verifies selection behavior only.
 
@@ -946,8 +1079,6 @@ A package or a harness file that no test imports is not an input: an edit to `pa
 leaves a target that does not import it cached. Files read by path are described in "What a device test's cache key contains". `digi-control:daemons` declares the daemon
 sources (`SOURCE_GLOBS` of `tools/devtools/emud_key.py`) as inputs. The binary is keyed by content, and these
 inputs make a source edit select every task that consumes `dist/daemons.json`.
-`tools/device/dktransfer.py` keeps the state of failed packs in a folder. A test run sets `DIGI_TRANSFER_DIR` to a folder
-of its run directory, because `out/` is shared by all worktrees.
 
 ### What a device test's cache key contains
 
@@ -998,6 +1129,7 @@ sharc-rt, dkmidi). Those run
 Their runtime key includes the sorted present `CARGO_PROFILE_RELEASE_*` names and values, including
 build-override options; changing these environment settings requires a direct target invocation when
 there is no tracked change selecting the crate.
+The service crates `modules/core/services/*/dks` are no members of the root workspace (own `[workspace]` and Cargo.lock); `standaloneRustTests` in `tools/nx/cargo.mjs` gives the module project of every such crate an uncached `rust-tests` (`cargo nextest run --manifest-path <crate>/Cargo.toml --release --locked --offline --no-tests=pass`), found by the `[workspace]` table, so a new service crate needs no list entry. Its inputs are the project files, the production files of its path dependencies (transitively) and the toolchain. Run one with `pnpm nx:pilot run core/services/machines:rust-tests`; `core/services/fx` and `core/services/lfo` have no host tests and pass with none.
 Other crates run uncached through `node tools/nx/rust-env.mjs --`; only `sharc-native` and the desktop crate
 add `--gen`, because only they need the generated core. Crates without tests have no `rust-tests`
 target. `workspace:fmt-check` is not cached: prettier also opens files it never formats (`.py`, `.rs`),
@@ -1012,7 +1144,7 @@ firmware, generated core or `out/` data.
 ### Owner hashes (`patchkit owners`)
 
 T1e keys a device test on the bytes of the service or area that it proves, not on the whole runtime. The runtime is one object, so
-`modules/core/runtime/owners.toml` maps the module path prefixes of its items to tags (`S:fx`, `C:storage`, ...) and lists the `shared`
+`modules/core/runtime/owners.toml` maps the module path prefixes of its items to tags (`C:storage`, `S:lfo`, ...) and lists the `shared`
 set (the standard library, `dkrt_abi`, `dkrt_sdk`, the entry points, the platform and others). The longest prefix at a `::` boundary wins.
 A C symbol is shared. An anonymous constant (a string, a table) belongs to the owner of the items that use it when they have one owner,
 and is shared otherwise. The tags of a test are the `tags` of its `metadata.runtimeAcceptance` record (vocabulary and check:
@@ -1022,19 +1154,16 @@ and is shared otherwise. The tags of a test are the `tags` of its `metadata.runt
 
 ```text
 $ patchkit owners modules/core/runtime/build/runtime.dko.json --out out/owners
-C:boot            22 items  cdc8cfe737173616
-C:diagnostics     40 items  f014789d84b40177
-C:dsp             28 items  0d59faae70bd3eaf
-C:loading         91 items  a9f5f478b8913ee2
-C:state           23 items  c23cfcc4d10c01aa
-C:storage        108 items  1d186a24994f2818
-C:tick             1 items  182559b316337832
-C:transport       37 items  16a32570dac04169
-S:fx              42 items  9c8a45d2b5ad5ba9
-S:lfo             23 items  7239c5a2fb8f71e4
-S:machines        40 items  a809be9c324d5eca
-S:samples         56 items  b8727e23ad0bcdc8
-shared           483 items  3bfc451eb35f79d7
+C:boot            22 items  dde8387366edca03
+C:diagnostics     41 items  99fa3153dedc8bf2
+C:dsp             25 items  643005221cbfde5b
+C:loading         82 items  7f3408b9070fbf87
+C:state           23 items  600322bec191c865
+C:storage        119 items  825506877527224f
+C:tick             1 items  d296515fc179902e
+C:transport       37 items  8d22528f8e08036f
+S:lfo              0 items  e3b0c44298fc1c14
+shared           472 items  a7528f325952d65c
 ```
 
 The command writes `<tag>.sha256` for every tag and `shared.sha256` into `--out`. `--owners FILE` names another map (default
@@ -1043,17 +1172,7 @@ The command writes `<tag>.sha256` for every tag and `shared.sha256` into `--out`
 A Rust item that no prefix matches is an error that lists the module paths (two components) with their item counts: add them to
 `owners.toml`; when unsure, add the path to `shared`.
 
-`objdiff --owners owners.toml OLD NEW` adds the owner of each differing item, so it shows why an owner hash changed:
-
-```text
-$ patchkit objdiff OLD.dko.json NEW.dko.json --owners modules/core/runtime/owners.toml
-differences: 1 (813 functions and 333 data objects match)
-differs   info::<RealCore>  [S:fx]
-            first difference at +0x3 (bytes); old, then new
-              +0x0000  598f         subq.l
-            - +0x0002  2ebc00000000 move.l  [reloc +0x2 fxpages_info+0]
-            + +0x0002  2e00         move.l
-```
+`objdiff --owners owners.toml OLD NEW` adds the owner of each differing item (`[C:storage]`, `[shared]`), so it shows why an owner hash changed.
 
 ### Daemon store
 
@@ -1077,15 +1196,120 @@ build, so nothing is stored with an incomplete key. Add the missing path to `SOU
 `tools/devtools/emud_key.py`. `uv run python -m tools.devtools.emud_key audit --device DEV --depfile FILE`
 repeats the check on a kept file.
 
+### Core library store
+
+A device with a fresh PGO profile gets a profile-guided library as a store entry of its own key (the profile content is in the key,
+the build is `-Cprofile-use` with `--target`, in the target dir variant `pgo-lib-use`). `native_pgo train` builds the instrumented
+libraries (variant `pgo-lib-instrument`, never stored) and loads them in the training run, so the profile covers the host and the DSP
+hot loop (`packages/emulator/README.md` "Profile-guided libraries"). `verify_build cores --pgo` provides them by hand; `verify_build
+daemons` gives a PGO daemon the library built with its profile and records the plain entry as `DIGI_SHARC_CORE_LIB_<DEV>_PLAIN`
+when it is stored, so the eviction keeps both.
+
+`verify_build cores` keeps the generated SHARC core of each device as a library in
+`<git common dir>/sharc-core-cache/<image>/<key>/` (the library, `key.txt`, `header.json`; the image is the device id). An
+entry is a hit only with all three files. It uses the mechanics of the daemon store (`tools/devtools/store.py`): insert by one
+rename, so two processes that insert one key are safe; the use time is the mtime of `key.txt` (a hit refreshes it, never
+creates it). Eviction keeps the last 4 keys per image, every key that `dist/daemons.json` of any worktree names, and every entry
+used within the last hour; it renames an entry to `.tmp-evict-*` before it removes it and removes `.tmp-*` directories older
+than an hour. `DIGI_SHARC_CORE_STORE` moves the store (tests only).
+
+Key and build come from one description, `core_store.build_plan` (the argv and environment of the cargo call). The key follows the
+daemon key's scheme (`emud_key.key_of`): the content of the repository files in `CORE_SOURCE_GLOBS` (the `sharc-core-lib`,
+`sharc-gen` and `sharc-rt` crates, `Cargo.toml`, `Cargo.lock`, `rust-toolchain*`, `.cargo`), every file of
+the gen dir, `rustc -vV`, the target triple, the argv without the target dir (profile, `-p sharc-core-lib`, features) and the rustc flag, `CARGO_PROFILE_*` and `CARGO_TARGET_*` variables of the build environment. The tooling scripts (`core_store.py`, `digi_env.py`, ...) are not in the key: what they decide is in the plan, so an edit that leaves the plan alone keeps every stored library. The key is known before the first build, so
+a lookup needs no build. After a build the dependency file of cargo is audited against the key: a file the build read that the key
+does not cover fails the build and stores nothing (add it to `CORE_SOURCE_GLOBS`).
+
+```sh
+uv run python -m tools.devtools.verify_build cores --device dn2,dt2 [--env-out FILE]
+# dn2 core: built 959db07d28b2        (a miss: builds and inserts)
+# dn2 core: restored 959db07d28b2     (a hit)
+# dn2 core: evicted 91350c44d39f      (a key beyond the last 4 that no worktree names and that was not used within the hour)
+```
+
+The build is the documented one, `cargo build --release --locked -p sharc-core-lib` with `SHARC_GEN_DIR` set to the device's core
+(`SHARC_GEN_DIR_<DEV>`, for DN2 also `SHARC_GEN_DIR`, else `out/native/<dev>-audio/gen`), in the target dir of that core, so a
+compiled `sharc-gen` of that core is reused. A stale generated core is refused as `tools/nx/rust-env.mjs --gen` refuses it. The
+library is always a plain build; a profile-guided host accepts it, because the header leaves the PGO flags out.
+`header.json` holds the device, the image name (the `IMAGE` const of the gen dir's `image.rs`), the key, the build flags and the
+header of the built library (read through ctypes from `sharc_core_header`: ABI version, `sharc-rt` sha256, rustc, target, flags,
+layout). The audit of cargo's dependency file runs on every build.
+
+`verify_build daemons` also provides the library of each device (a daemon holds no static core; a library that cannot be built
+fails the command with the build command in the message) and writes `DIGI_SHARC_CORE_LIB_<DEV>` (the store path) into the same `--env-out` file
+(`dist/daemons.json`); the key of the library is part of the device's line in `dist/bytes/daemon-test.key`, so a core change
+invalidates the merge keys of device tests. The variables reach the daemons as follows: `packages/test-support` (`coreLibEnv`,
+used by `Session.start` for a session with DSP) reads them from the environment or `dist/daemons.json` and passes them to the
+daemon; `tools/nx/daemon-env.mjs` puts the whole file into the environment of the Python harnesses. Every other launcher calls `core_store.library_env` (the same `ensure_core`): `tools/emulator/native_emu.py` for the cores of a
+coupled launch (the desktop app and `--daemon`: the libraries of both devices, so switching device in the app works; one device's failure prints a line and the launch goes on with the other), `tools/emulator/coupled.py`
+(`run_env`: `scenario`, `replay`, `bisect`, `coupled_ab.py`, `fastcov.py`; `cmd_gates`; `--id-out` only restores a library and records `core: none` when none is stored; the gate targets see a core change through `tools/nx/coupled-inputs.mjs`, which hashes `core_store key` of each device or an explicit library by content), `tools/devtools/sharc_cells.py`,
+`sharc_matrix.py`, `rt_matrix.py`, `dual_core_check.py` and `Emu.spawn_coupled`; a variable already in the environment wins and
+nothing is built for that device. A library that cannot be built stops the launch with the build command. The hosts
+(`digi-emud`, `coupled-run`, the app) build into the no-core target dir and compile no `sharc-gen`; the core library, the unit
+tests of `sharc-peer` and `sharc-native`, `sharc-rig` and the browser core link it. Region lists of a DT2 run use the `_2` names
+(`digi_env.resolve_tiers`, `coupledEnv(syx, env, device)`). `tests/devtools/test_core_store.py` covers the key and the store with a
+stand-in library.
+
 To clear the Nx cache: `pnpm nx:pilot reset`.
 
 ## PCM pins
 
-A PCM pin (`tests/scenarios/*.json`, the device-test `pcmSha256` pins, the rig pins) is set or changed from a numeric report of the captured signal (pitch against the expected note, crest factor, harmonics, level envelope, onset, stereo match), with the WAV kept for listening; never from a hash alone. Claude approves when the report matches what the fixture should produce; a change in how a module sounds goes to Em. The harness keeps the capture: a pending or changed device pin prints its artifacts directory, which holds `run.wav` (stereo float32, 48 kHz). The report for a pin names the expected values (for `test/sine` at note 60: 261.63 Hz, crest 1.414, no harmonics, a steady level) beside the measured ones. Fingerprint pins (a numeric fingerprint with tolerances compared by a tool, replacing the hashes) are planned in docs/plans/test-architecture.md T2.
+A PCM pin (`tests/scenarios/*.json`, the device pins `<case>.pcm.json`, the rig pins) is set or changed from a numeric report of the captured signal (pitch against the expected note, crest factor, harmonics, level envelope, onset, stereo match), with the WAV kept for listening; never from a hash alone. Claude approves when the report matches what the fixture should produce; a change in how a module sounds goes to Em. The harness keeps the capture: a pending or changed device pin prints its artifacts directory, which holds `run.wav` (stereo float32, 48 kHz). The report for a pin names the expected values (for `test/sine` at note 60: 261.63 Hz, crest 1.414, no harmonics, a steady level) beside the measured ones. Fingerprint pins (a numeric fingerprint with tolerances compared by a tool, replacing the hashes) are written by the pin CLI of `@digi/sharc-rig-kit` (docs/plans/test-architecture.md T2).
 
 `tests/sharc/integration/test_sharc_golden.py`
 hashes six SHARC core outputs: a refactor keeps them; an intended change updates them with
 `--update` and says why.
+
+Rig pins and device pins are numeric fingerprints compared with tolerances by one comparer (`packages/sharc-rig-kit/src/pcmpin.ts`,
+import `@digi/sharc-rig-kit/pins`). A hash alone never sets a pin.
+
+**Fingerprint v2** (plain numbers, no audio; the reader still accepts v1, comparing its onset, peak, bands and block levels):
+
+| Field | Meaning |
+| --- | --- |
+| `rate`, `channels`, `frames`, `window_frames` | the format; `window_frames` is the number of frames analysed from the onset (device pins: 12000 = 0.25 s; rig pins: null, the whole output) |
+| `onset` | first frame with a sample above 1e-6 |
+| `peak_db` | peak, dBFS |
+| `stereo` | `identical` (L = R) and `max_diff` (largest abs(L-R)); two channels only |
+| `rms_db` | level of each 10 ms window, dBFS |
+| `bandHz`, `bandDb` | 64 log-spaced band levels, 40 Hz to 22 kHz, of the channel mix |
+| `periodic` | only when the fundamental and harmonics 1..6 hold 90 % of the energy: `pitch` {`hz`, `midi`} from the parabolic peak of the zero-padded Hann spectrum, `crest` (peak over RMS) and `harmonics_db` (2..6, dB re the fundamental) |
+| `block`, `block_rms` | rig pins: RMS per 32-sample block (the sample classifier below reads it) |
+| `tolerance` | the fields below that differ from the defaults |
+| `exact` | `{ sha256 }`: the pin is exact |
+
+**Tolerances** (defaults tight enough that a change you can hear fails): `onset` 0 frames, `level_db` 0.1 (peak and each 10 ms window),
+`band_db` 0.5 (bands more than `band_floor_db` = 60 dB under the loudest band are skipped), `pitch_cents` 1, `harmonic_db` 1
+(harmonics under `harmonic_floor_db` = -80 dB in both signals are skipped), `crest_pct` 0.5, `rms_floor_db` -90 (a 10 ms window under it in both is skipped).
+`compare(pin, capture)` returns the differences in plain words and an empty list when the capture is within tolerance:
+`pitch +14.0 cents`, `level -3.1 dB from 200 ms to 250 ms`, `harmonic 3 rose to -38 dB`, `onset moved 32 frames`,
+`bands moved: 102-20942 Hz -2.0 dB`, `L and R differ now`. A test fails with that list.
+
+`exact`: the pin also needs the SHA-256 of the analysed float32 words (the fingerprint differences are listed all the same, or
+"only bits differ"). Use it only where the test proves identical output: the two `freqshift` state-independence cases
+(`exact = true` on the `same-as` check) and the device pin `equiv-dn2-set` (exact RECIPS output, finding 102; written with `--exact`). The machine note pins (`equiv-note.toml`) and `equiv-dt2-sine` are tolerant: a refactor that keeps
+the sound within tolerance passes without a re-pin.
+
+**Rig pins**: `tests/rig/fingerprint/<key>.json` (key: `rigKey`). A `same-as` check with a v2 file is compared with its tolerances;
+`exact = true` on the check, a v1 file or no file keeps the hash as the gate. The `sha256` line of the toml stays as the record of the last pin.
+`DIGI_RIG_PIN=1` (above) writes the v2 file; a tolerance in the old file stays, and an exact check stores the hash in it.
+
+**Device pins**: `modules/core/adapters/dynreg/tests/pins/<case>.pcm.json` (`pcmPinFile`), checked by `defineEquiv` over 12000 stereo frames
+from the onset (`checkCapture`). Cases of a plain sine (`sine: { note }`) also assert properties that hold whatever the pin says:
+pitch within 5 cents of the note, crest factor of the second half of the window within 1 % of sqrt(2) (`crest_settled`: the amplitude of the DT2 sine starts 1.7 % high and settles within about 0.15 s, which the whole-window crest includes), harmonics under -60 dB, level steady within 0.5 dB.
+
+**Failure and report**: a failed or missing pin prints the differences and the full report, expected beside measured (format, onset, peak,
+stereo, level range, loudest bands, pitch, crest factor, harmonics), and writes `<case>.plot.png` (the window and the pin's band curve) and
+`<case>.window.wav` beside the capture (`out/runs/...` of the case for a device pin, `out/rig/<key>/plot.png` and `out.wav` for a rig pin) for listening.
+
+**Approving a pin**: read the report; Claude approves a pin that states the fixture's own facts (for the DT2 sine: 261.63 Hz = MIDI 60, crest
+1.438 over the window and 1.412 in its second half, harmonics -115 dB, peak -23.9 dBFS, level within 0.4 dB, L = R) and a change that keeps the sound; a change of the sound goes to Em. Then write it from the capture
+(the WAV the device test keeps beside the run, `run.wav`, or the window WAV) with the CLI:
+
+```sh
+node packages/sharc-rig-kit/src/pin-cli.ts show  --wav CAPTURE.wav --pin PIN.json   # report and differences, exit 1 on a difference
+node packages/sharc-rig-kit/src/pin-cli.ts write --wav CAPTURE.wav --pin PIN.json [--window 12000] [--exact] [--tol pitch_cents=3,level_db=0.2]
+```
 
 ## Desktop UI preview
 

@@ -12,6 +12,7 @@ import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.t
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
+import { seedModules } from '@digi/regression/runtime/card-seed.ts';
 
 // Unregistered emulator-only proof. The fixture is unsafe for hardware. A
 // passing stale-handle assertion alone does not establish Sound ownership.
@@ -24,13 +25,11 @@ const options = liveOptions('dt2', { fresh: true });
 const fixtureRoot = fs.realpathSync(path.join(repoRoot(), 'out'));
 const cardSeed = enabled ? fs.mkdtempSync(path.join(fixtureRoot, 'canopy-lifetime-card-')) : undefined;
 const moduleFile = moduleArtifact('dt2', 'digikit/canopy');
-beforeAll(() => {
+beforeAll(async () => {
   if (!cardSeed) return;
   for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
     fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
-  const modules = path.join(cardSeed, 'digikit', 'modules');
-  fs.mkdirSync(modules, { recursive: true });
-  fs.copyFileSync(moduleFile, path.join(modules, 'canopy.dkm'));
+  await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
 });
 afterAll(() => {
   if (!cardSeed) return;

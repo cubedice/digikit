@@ -6,7 +6,7 @@ This file says who owns which part of the repository and which moves are planned
 
 | Owner | What | Where |
 | --- | --- | --- |
-| emulator | Native runtime, ColdFire and SHARC execution, coupled runner, launcher | `packages/emulator/{coldfire,machine,periph,card,live,boot,coupled,bootstrap,device-profile,sharc-rt,sharc-gen,sharc,sharc-fast-cl,sharc-fast-wasm}`; `tools/emulator/native_*.py`, `coupled*.py`, `digi_env.py`, `ready.py`, `card_*.py`, `live_audio.py`; trace and snapshot readers (`snapread`, `dspi_log`, `dsp_frames`, `dspdiff`, `wireevents`, `wiretrace`); scenario generators and checkers (`gen_*fx.py`, `fxcheck.py`, `scenario_dsl.py`); audio readers (`audiocheck.py`, `audiotone.py`, `palette.py`); `tests/scenarios/`; `devices/*.toml` |
+| emulator | Native runtime, ColdFire and SHARC execution, coupled runner, launcher | `packages/emulator/{coldfire,machine,periph,card,live,boot,sharc-peer,wasm-core,coupled,bootstrap,device-profile,sharc-rt,sharc-gen,sharc,sharc-fast-cl,sharc-fast-wasm}`; `tools/emulator/native_*.py`, `coupled*.py`, `digi_env.py`, `ready.py`, `card_*.py`, `live_audio.py`; trace and snapshot readers (`snapread`, `dspi_log`, `dsp_frames`, `dspdiff`, `wireevents`, `wiretrace`); scenario generators and checkers (`gen_*fx.py`, `fxcheck.py`, `scenario_dsl.py`); audio readers (`audiocheck.py`, `audiotone.py`, `palette.py`); `tests/scenarios/`; `devices/*.toml` |
 | sharc-dev | SHARC+ semantics, tracing, analysis, generation | `tools/sharc_dev/sharc_core/` (the single source of instruction semantics), `tools/sharc_dev/sharcspec/` (encodings from the public manuals), `tools/sharc_dev/sharc*.py`, `tools/sharc_dev/aot_*.py`, `selasm.py`, `dspmap.py`, `framelink.py`; `tools/sharc_dev/sharc_capture.py`, `tools/sharc_dev/sharc_peer.py` |
 | dkupload | Host side of the module upload protocol (`docs/design/digikit-upload.md`): codec, upload state machine, mock device; its wasm build is the mock device of the web tests; the Transfer page, on the site and in the desktop app, uses the TypeScript client of the same protocol (`packages/dk-session`, `packages/workbench-core/src/modules/dktransfer.ts`) | `packages/dkupload`; `packages/workbench-core/src/modules/`, `packages/workbench-core/src/transfer/` |
 | dk-session | Shared TypeScript SysEx client, WASM wrappers, generated protocol constants and injected emulator USB RPC transport | `packages/dk-session` |
@@ -31,7 +31,7 @@ This file says who owns which part of the repository and which moves are planned
 | Folder | Role | What |
 | --- | --- | --- |
 | `modules/core/runtime` | `runtime` | Loads `.dkm` modules, links their imports, owns store, selection and policy |
-| `modules/core/services/*` | none yet | Service crates linked into the runtime object (`fx`, `machines`, `samples`, `lfo`: crates `dkrt-svc-NAME`); one layout (`src/lib.rs`, `records.rs`, `slots.rs`, `dsp/` when the service has DSP parts, `tests/`; `module:new -- service NAME` makes it, `module:check service/NAME` checks it); they depend only on `dkrt-abi`, `dkrt-sdk` and `dkneeds` |
+| `modules/core/services/*` | `service` (the module is `NAME/dks`) | One folder per service (`fx`, `machines`, `samples`, `lfo`): the neutral crate `dkrt-svc-NAME` (`src/lib.rs`, `records.rs`, `slots.rs`, `dsp/` when the service has DSP parts, `tests/`; it depends only on `dkrt-abi`, `dkrt-sdk` and `dkneeds`) and the service file `dks/` (`module.toml` with id `core/services/NAME`, `src/lib.rs` with the `service!` call, `hooks.rs`, `fw.rs`); `module:new -- service NAME` makes it, `module:check service/NAME` checks it |
 | `modules/core/expansion` | `installer` | Reset-time installer of all patched-in code |
 | `modules/core/fw` | none | Generated firmware bindings (a library, not a module) |
 | `modules/core/adapters/*` | `adapter` | One adapter per firmware plug-in point: ui, input, fx, fxpages, dsp-voice, dsp-link, dyndsp, dynfx, dynreg, machines, params, overdrive, health |
@@ -47,7 +47,7 @@ Python tools live in `tools/<owner>/`, one package per owner above. The reposito
 | App | Builds |
 | --- | --- |
 | Desktop | `digiemu-desktop` depends on `elektron-native-boot`, `emmc-card`, `digi-coupled` and `digi-control`. Through them it pulls in most emulator crates, the loader, plusdrive and patchkit. |
-| Web | `tools/nx/wasm.mjs` builds `packages/emulator/boot` (wasm32), `packages/patchkit` and `packages/dkupload` (C ABI). Output goes to `apps/web/.local` (not committed). |
+| Web | `tools/nx/wasm.mjs` builds `packages/emulator/wasm-core` (wasm32), `packages/patchkit` and `packages/dkupload` (C ABI). Output goes to `apps/web/.local` (not committed). |
 
 ## Planned moves
 

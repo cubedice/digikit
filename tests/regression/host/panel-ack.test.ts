@@ -1,6 +1,6 @@
 import { button, type Session } from '@digi/test-support';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { portAnchor } from '../runtime/device-data.ts';
+import { portAnchorAddress } from '../runtime/device-data.ts';
 import { acknowledgedPanel } from '../runtime/panel-ack.ts';
 
 beforeEach(() => {
@@ -13,9 +13,9 @@ function fixture({ device = 'dt2' as const, firmware = '1.17', stalled = false, 
   const mask = Buffer.alloc(8),
     maskAddress = 0x1000,
     queueAddress = 0x2000;
-  const maskLiteral = portAnchor(device, firmware, 'cf.input.site.key_decoder.prev_mask_lit');
-  const queueLiteral = portAnchor(device, firmware, 'cf.view.site.ui_loop.queue_lit');
-  const decoder = portAnchor(device, firmware, 'cf.input.fn.enc_decoder');
+  const maskLiteral = portAnchorAddress(device, firmware, 'cf.input.site.key_decoder.prev_mask_lit');
+  const queueLiteral = portAnchorAddress(device, firmware, 'cf.view.site.ui_loop.queue_lit');
+  const decoder = portAnchorAddress(device, firmware, 'cf.input.fn.enc_decoder');
   const mapAddress = 0x3000,
     pendingBase = 0x4000;
   const events: { code: number; down: boolean; time: number; mask: string }[] = [];
