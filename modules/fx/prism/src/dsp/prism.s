@@ -543,7 +543,10 @@ _pl_take_span:
     R0 = 0;
     DM(CH_VEL,I3) = R0;
     R0 = PRISM_WFADE;
-// I3 one side, R0 frames: the reference moved, so both heads' delays, the seam and the turning point move with it.
+    CALL _pl_shift;
+    RTS;
+
+// I3 one side, R0 frames: the reference moved, so both heads' delays, the seam and the turning point move with it. Uses R1.
 _pl_shift:
     R1 = DM(CH_A_DINT,I3);
     R1 = R1 + R0;

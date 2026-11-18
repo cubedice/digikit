@@ -14,7 +14,7 @@
  * | 8    | ZONE      | int   | 1..8      | Time range (the table _prism_zones in prism.s). A change crossfades.           |
  * | 9    | RATE      | float | 0..1      | Position inside the zone: time = low * (high / low) ^ RATE. A change glides.   |
  * | 10   | FLAGS     | bits  |           | Bit 0 SYNC, bit 1 FLIP, bit 2 HOLD.                                            |
- * | 11   | SYNC_TIME | int   | frames    | With SYNC: the time in frames (a note length at the tempo). A change crossfades.|
+ * | 11   | SYNC_TIME | int   | frames    | With SYNC: the time in frames (a note length at the tempo). A change crossfades. |
  * | 12   | RPTS      | float | 0..1      | Repeats: 0 one echo, 0.75 unity, 1 a gain of 1.1.                              |
  * | 13   | COLR      | float | -1..1     | Colour of the repeats: below 0 dark, 0 flat, above 0 bright; its square is the |
  * |      |           |       |           | amount of the filter.                                                          |
