@@ -551,6 +551,8 @@ int main(void)
             (void)instrument_src_context(0, 0, 0);
             instrument_src_poll(100);
             src_status.fast_valid = (uint8_t)value;
+            /* The stale case is a status that had arrived and then stopped, not one still awaited. */
+            src_status.waiting = 0;
             src_status.fast_at = 100;
             src_status.fast[1] = (15u << 16) | (4u << 20) | (1u << 8);
             src_status.fast[5] = 1 | (3u << 8) | (8u << 16) | (10u << 24);
