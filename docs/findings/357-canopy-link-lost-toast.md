@@ -48,7 +48,9 @@ valid), so the struct keeps its size and offsets.
   With it: 0, the status of each selected track arrives, the note transport does not fault.
 - **[D]** `tests/regression/host/canopy-src.test.ts`, scenario `status-wait`: the wait after a selection, its end after
   600 ms, an immediate loss when a running stream stops, a focus change, and a stall of the UI task.
-- **[O]** Not yet seen on the device with the change.
+- **[D]** On the device with the change (image `50bed6f2e07945b6`, 2026-11-18): four switches between tracks 11 and 12
+  with the SRC page open, screenshots at 0, 0.25, 0.6, 1.5 and 3.0 s after each. None shows `LINK LOST`; the INPUT status
+  row reads `READY`.
 
 ## Open
 
