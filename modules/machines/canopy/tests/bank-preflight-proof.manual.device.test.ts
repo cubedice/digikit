@@ -48,7 +48,7 @@ if (process.env.DIGI_CANOPY_BANK_PREFLIGHT === '1') {
     expect(await dk.verifyFile('modules/canopy.dkm', fs.readFileSync(moduleFile))).toBe(true);
     await dk.select(['modules/canopy.dkm']);
     const epoch = Number((await session.status()).epoch);
-    await dk.restart(); await dk.waitForBoot(undefined, 180_000);
+    await dk.restart(); await dk.waitForBoot();
     const word = async (name: string, index = 0) => {
       const value = await session.client.memPeek(planSymbol(plan, name) + 4 * index);
       if (value === null) throw new Error(`Unreadable ${name}[${index}]`);

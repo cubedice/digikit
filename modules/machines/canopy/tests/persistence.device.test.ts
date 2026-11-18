@@ -76,7 +76,7 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
     await dk.select(['modules/canopy.dkm']);
     const firstEpoch = Number((await session.status()).epoch);
     await dk.restart();
-    await dk.waitForBoot(undefined, 180_000);
+    await dk.waitForBoot();
     const cf = async (name: string, index = 0) => {
       const value = await session.client.memPeek(planSymbol(plan, name) + 4 * index);
       if (value === null) throw new Error(`Unreadable ${name}[${index}]`);
@@ -159,7 +159,7 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
       await session.client.call('mem.cf.poke', { addr: planSymbol(plan, 'DKRT_SAVE_MODE'), value: 3 });
       const epoch = Number((await session.status()).epoch);
       await dk.restart();
-      await dk.waitForBoot(undefined, 180_000);
+      await dk.waitForBoot();
       await waitInstrumentReady(cf);
       await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, emulatedMs: 180_000 });
       await expect.poll(async () => {

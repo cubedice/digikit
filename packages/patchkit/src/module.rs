@@ -56,11 +56,12 @@ pub struct Manifest {
     /// `[[fx]] id = "..."`: the same for effects (`dk_module_ctx_add_fx`).
     #[serde(default, rename = "fx")]
     pub fxs: Vec<IdRef>,
-    /// `[[record]] kind = "lfo_shape", key = 7`: a record of a generic kind (`[records.kinds]` `generic = true`) that `init` emits with `dk_record_add`, with its key (the first
-    /// word of the record's body). The keys go in the KEYS entry of the header table, where the boot planner checks that the kind has an owner and that no other module has the key.
+    /// `[[record]] kind = "lfo_shape", id = "ramp"`: a record of a generic kind (`[records.kinds]` `generic = true`) that `init` emits with `dk_record_add`. Its key is
+    /// `hash24(<module id>:<id>) << 8`, like a machine key; `patchkit gen` writes it as `DK_KEY_<ID>` in `build/gen/module_ids.h` and `init` writes that constant as the
+    /// first word of the record's body. The keys go in the KEYS entry of the header table, where the boot planner checks that the kind has an owner and that no other module has the key.
     #[serde(default, rename = "record")]
     pub records: Vec<RecordKey>,
-    /// `[[export]] name = "dk_svctest_ping"`: the functions a service module (`role = "service"`) exports; each is an `[[import]]` of its service in sdk/sdk.toml.
+    /// `[[export]]` is no longer read (an error): the functions a service module (`role = "service"`) exports are the `provided` imports of its service in sdk/sdk.toml.
     /// Their name hashes and entry offsets go in the `EXPORTS` entry of the header table.
     #[serde(default, rename = "export")]
     pub exports: Vec<ExportDef>,
@@ -130,6 +131,23 @@ impl Manifest {
                 }
             }
         }
+        let mut seen = std::collections::BTreeSet::new();
+        for r in &self.records {
+            let ok = !r.id.is_empty()
+                && r.id.bytes().all(|c| {
+                    c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-' || c == b'_'
+                });
+            if !ok {
+                return Err(err!(
+                    "[[record]] id {:?}: use lowercase ascii letters, digits, `-` and `_`",
+                    r.id
+                ));
+            }
+            // the generated constants `DK_KEY_<ID>` of the records are one list
+            if !seen.insert(r.id.as_str()) {
+                return Err(err!("[[record]] id {:?} is declared twice", r.id));
+            }
+        }
         for (name, old) in [
             ("param", &self.param_old),
             ("page", &self.page_old),
@@ -145,7 +163,7 @@ impl Manifest {
     }
 
     /// What a `role = "service"` module provides (`None` for any other role). The service is a `[[service]]` of sdk/sdk.toml without `rust` (provided by a
-    /// `.dks`), and each `[[export]]` is an `[[import]]` of that service.
+    /// `.dks`), and its exports are the `provided` imports of that service, in `sdk/sdk.toml` order.
     pub fn provided_service(&self) -> Result<Option<crate::dkm::Provided>> {
         let id = &self.module.id;
         if self.module.role != Some(ModuleRole::Service) {
@@ -183,19 +201,13 @@ impl Manifest {
                 "{id}: the id's last part {leaf:?} must equal the provided service {service:?} (the file is `{service}.dks`: the runtime finds a provider by its file name)"
             ));
         }
-        let imports = crate::sdkgen::import_infos();
-        let mut exports = vec![];
-        for e in &self.exports {
-            match imports.get(&e.name) {
-                Some(i) if i.service == *service => exports.push(e.name.clone()),
-                _ => {
-                    return Err(err!(
-                        "{id}: [[export]] {:?} is not an [[import]] of the service {service:?} in sdk/sdk.toml",
-                        e.name
-                    ));
-                }
-            }
+        if let Some(e) = self.exports.first() {
+            return Err(err!(
+                "{id}: [[export]] {:?} is not read: the exports of a service file are the `provided = true` imports of its service in sdk/sdk.toml",
+                e.name
+            ));
         }
+        let exports = crate::sdkgen::provided_exports(service);
         let mut hooks: Vec<(String, String, Vec<String>)> = vec![];
         for h in &self.hooks {
             if h.name.is_empty() || h.entry.is_empty() {
@@ -221,6 +233,7 @@ impl Manifest {
             hooks.push((h.name.clone(), h.entry.clone(), h.devices.clone()));
         }
         let mut fills: Vec<(String, String, Vec<String>)> = vec![];
+        let mut dsp_fills: Vec<crate::dkm::DspFill> = vec![];
         for f in &self.fills {
             if f.slot.is_empty() || f.entry.is_empty() {
                 return Err(err!(
@@ -239,12 +252,38 @@ impl Manifest {
                     ));
                 }
             }
-            fills.push((f.slot.clone(), f.entry.clone(), f.devices.clone()));
+            match f.space.as_deref() {
+                None | Some("cf") => {
+                    fills.push((f.slot.clone(), f.entry.clone(), f.devices.clone()))
+                }
+                Some("dsp") => {
+                    let names = crate::sdkgen::dsp_slot_names();
+                    if !names.contains(&f.slot) {
+                        return Err(err!(
+                            "{id}: [[fill]] {:?} has space \"dsp\", but `[dsp.slots]` of sdk/sdk.toml has no such slot ({})",
+                            f.slot,
+                            names.join(", ")
+                        ));
+                    }
+                    dsp_fills.push(crate::dkm::DspFill {
+                        slot: f.slot.clone(),
+                        entry: f.entry.clone(),
+                        devices: f.devices.clone(),
+                        offset: None,
+                    });
+                }
+                Some(s) => {
+                    return Err(err!(
+                        "{id}: [[fill]] {:?}: space {s:?} is not \"cf\" or \"dsp\"",
+                        f.slot
+                    ));
+                }
+            }
         }
-        if fills.len() > dkneeds::SLOTS_MAX as usize {
+        if fills.len() + dsp_fills.len() > dkneeds::SLOTS_MAX as usize {
             return Err(err!(
                 "{id}: {} [[fill]] entries, over the {} a service file fills",
-                fills.len(),
+                fills.len() + dsp_fills.len(),
                 dkneeds::SLOTS_MAX
             ));
         }
@@ -253,6 +292,7 @@ impl Manifest {
             exports,
             hooks,
             fills,
+            dsp_fills,
         }))
     }
 }
@@ -274,7 +314,11 @@ pub struct ExportDef {
 #[serde(deny_unknown_fields)]
 pub struct ServiceFill {
     pub slot: String,
+    /// A global function of the ColdFire object, or with `space = "dsp"` a global text symbol of the DSP object.
     pub entry: String,
+    /// `"cf"` (default), or `"dsp"` for a slot declared with `space = "dsp"`: the entry is then a pc in the file's DSP section.
+    #[serde(default)]
+    pub space: Option<String>,
     /// The devices the fill is for (`dt2`, `dn2`); empty: every device. Needed when the slot is limited to some devices (`devices` of its `[[slot]]`).
     #[serde(default)]
     pub devices: Vec<String>,
@@ -292,12 +336,12 @@ pub struct ServiceHook {
     pub devices: Vec<String>,
 }
 
-/// An entry of `[[record]]`: the kind by its lower-case name (`dkneeds::KIND_NAMES`) and the key of one record of it.
+/// An entry of `[[record]]`: the kind by its lower-case name (`dkneeds::KIND_NAMES`) and the local id of one record of it (the key derives from the module id and this id).
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct RecordKey {
     pub kind: String,
-    pub key: u32,
+    pub id: String,
 }
 
 /// An entry of `[[machine]]` or `[[fx]]`: the id and an optional DSP symbol prefix (any other key is refused).
@@ -368,10 +412,10 @@ pub struct Uses {
     pub dsp_cost_fx: u32,
 }
 
-/// One generated file of device data: `kind` is `rust` (constants every device agrees on, one file), `gas-shared` (the same as `.equ` lines), `gas` (a ColdFire assembler
+/// One generated file of device data: `kind` is `gas-dkdv` (the runtime's device object `dkrt_dev`, one file per device) or `gas-dkdv-offsets` (its field offsets, one file), `gas` (a ColdFire assembler
 /// include, `.equ` lines, one file per device), `sharc` (a SHARC+ include, `#define` lines, one file per device) `sharc-adapter` (the `ADM_*` defines of `[adapter.machine]`, one file per device), `gas-sample-pool` or `sharc-sample-pool` (the `SP_*` numbers of `[adapter.sample_pool]` for ColdFire and SHARC+ assembly, one file per device). `path` is relative
 /// to the module; `{dev}` stands for the device's short name in a per-device path. `uses` lists the constant names the module reads; a trailing `*` matches a numbered
-/// family (`FX_VALUE_*`). It is required for `rust`, `gas-shared`, `gas` and `sharc`, and refused for the other kinds.
+/// family (`FX_VALUE_*`). It is required for `gas` and `sharc`, and refused for the other kinds.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GenDef {
@@ -632,6 +676,11 @@ pub struct ModuleInfo {
     /// Restrict to these ports (`dt2-1.17`); empty = any firmware whose anchors resolve.
     #[serde(default)]
     pub ports: Vec<String>,
+    /// Names of anchors and hooks that the module can do without. A firmware whose port lacks one still takes the module: the
+    /// object's link to the anchor is 0, a hook op of that name is skipped (and the tail symbols of its site, `hook.<site>.tail`, are 0),
+    /// and the plan lists `<owner>:<name>` under `disabled`. The module's code checks the link for 0 before it uses it.
+    #[serde(default)]
+    pub optional_anchors: Vec<String>,
     /// A module that is loaded at run time (`patchkit pack`, a `.dkm`), never patched into an image. Its typed sections
     /// are not lowered into registry rows; the packer lowers them into the `.dkm` `register` records.
     #[serde(default)]
@@ -722,6 +771,10 @@ pub struct Op {
     /// stub: expression of a hand-written stock path; the stub jumps there instead of running the re-encoded displaced instructions
     #[serde(default)]
     pub tail: Option<String>,
+    /// stub: `taken` or `fallthrough`: the site ends in a conditional branch, and the stub looks at its slot only when that branch would be taken (`taken`) or would not be
+    /// (`fallthrough`). The displaced instructions before the branch run first, then the stock branch decides, so the other outcome runs the stock path without a slot test.
+    #[serde(default)]
+    pub when: Option<String>,
 }
 
 /// `[[info]] name = "fxpages_info", symbol = "fxpages_info", devices = ["dt2"]`: an entry of the image's info table: the hash of `name` and the address that the
@@ -744,9 +797,20 @@ pub struct SlotDef {
     pub name: String,
     #[serde(default)]
     pub devices: Vec<String>,
-    /// region of the slot words (default `cf.expansion`)
+    /// region of the slot words (default `cf.expansion`); a CF slot only
     #[serde(default)]
     pub place: Option<String>,
+    /// `"cf"` (default): a pointer word in the module's data that a ColdFire `op = "stub"` loads. `"dsp"`: the slot of a SHARC hook stub: `name` is an entry of `[dsp.slots]` of
+    /// `sdk/sdk.toml` (a word of core/dsp-link's slot block, which the module's DSP stub reads); the module reserves no word, the info table gets the entry with the slot's index.
+    #[serde(default)]
+    pub space: Option<String>,
+}
+
+impl SlotDef {
+    /// The slot is a word of core/dsp-link's slot block (`space = "dsp"`).
+    pub fn is_dsp(&self) -> bool {
+        self.space.as_deref() == Some("dsp")
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -1204,10 +1268,7 @@ impl Library {
         root: &std::path::Path,
         only: Option<&[String]>,
     ) -> Option<Library> {
-        if crate::build::toolchain::Env::new(root).m68k("gcc").is_err() {
-            eprintln!(
-                "SKIP: the m68k-elf toolchain is not installed, so the content modules cannot be built (uv run python -m tools.patchkit.pk_toolchains m68k)"
-            );
+        if !crate::build::toolchain::Env::new(root).m68k_or_skip() {
             return None;
         }
         Some(Self::scan_repo_for(root, false, only).unwrap_or_else(|e| panic!("{e}")))
@@ -1419,5 +1480,16 @@ mod manifest_tests {
         assert!(e.to_string().contains("unknown field"), "{e}");
         let e = load("[uses.dt3]\nmachine_rows = 1\n").unwrap_err();
         assert!(e.to_string().contains("unknown field"), "{e}");
+    }
+
+    #[test]
+    fn a_record_has_a_local_id_and_no_key_field() {
+        let e = load("[[record]]\nkind = \"lfo_shape\"\nkey = 7\n").unwrap_err();
+        assert!(e.to_string().contains("unknown field"), "{e}");
+        let e = load("[[record]]\nkind = \"lfo_shape\"\nid = \"Ramp\"\n").unwrap_err();
+        assert!(e.to_string().contains("lowercase"), "{e}");
+        let e = load("[[record]]\nkind = \"lfo_shape\"\nid = \"a\"\n[[record]]\nkind = \"lfo_shape\"\nid = \"a\"\n").unwrap_err();
+        assert!(e.to_string().contains("declared twice"), "{e}");
+        assert!(load("[[record]]\nkind = \"lfo_shape\"\nid = \"ramp-up\"\n").is_ok());
     }
 }

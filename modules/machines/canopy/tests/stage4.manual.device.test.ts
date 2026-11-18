@@ -35,7 +35,7 @@ test('CANOPY movement through MIDI, setup, master transport and final audio', as
   await putServices(dk, 'dt2', ['machines']);
   await dk.select(['modules/canopy.dkm']);
   await dk.restart();
-  await dk.waitForBoot(undefined, 180_000);
+  await dk.waitForBoot();
   const cf = (name: string, i = 0) => session.client.memPeek(planSymbol(plan, name) + 4 * i);
   const diagnostic = async () => {
     const values: Record<string, unknown> = {};

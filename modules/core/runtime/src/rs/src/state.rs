@@ -7,10 +7,10 @@ use dkrt_sdk::*;
 
 /// Arena bytes. A sub-region of `cf.expansion` that is part of this object's bss: patchkit places it with the object, so no
 /// static object of any module can overlap it, and the reset-path loader zeroes it.
-pub const ARENA_BYTES: usize = dkrt_sdk::device::LIMIT_ARENA_BYTES as usize;
+pub use dkrt_sdk::ARENA_BYTES;
 pub use dkrt_abi::MAX_MODULES;
 /// Records of the loader: the module records (`DKRT_STATE.modules`, `MAX_MODULES`) and the records of provider files, after them (`loader/records.rs`).
-pub const REC_MAX: usize = MAX_MODULES + dkrt_sdk::PROVIDER_MAX;
+pub use dkrt_abi::REC_MAX;
 pub const LOG_ENTRIES: usize = 16;
 pub const STATE_MAGIC: u32 = 0x444b_5254; // "DKRT"
 
@@ -139,6 +139,7 @@ pub unsafe fn init_once() {
     if s.magic == STATE_MAGIC {
         return;
     }
+    crate::dev::valid(); // checks and keeps the device object's validity (an invalid object has no capability)
     arena::init();
     // the in-crate services declare their record kinds and the runtime compares them with the generated table (declare-check-commit)
     crate::handlers::check_declarations();

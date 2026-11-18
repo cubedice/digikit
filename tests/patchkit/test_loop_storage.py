@@ -124,7 +124,7 @@ def test_optional_storage_export_uses_direct_global_name():
     assert "_loop_buffer_info" not in obj["externs"]
     assert "_dd_loop_buffer_info" not in obj["externs"]
     source = (folder / "src/cf/dyndsp-dt2.s").read_text(encoding="utf-8")
-    assert ".long   _loop_buffer_info" in source
+    assert "DSP_IMPORT _loop_buffer_info" in source
     assert "_dd_loop_buffer_info" not in source
 
 

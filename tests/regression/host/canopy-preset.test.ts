@@ -110,7 +110,8 @@ test('SRC encoder edits use the real preset/configuration bank without enabling 
     'srcpage 2\nsrcturn 1 12\nsrcstate 1\npresetsave\ntick\ncolor 10\npresetload\nsrcstate 1\n' +
       'srcturn 1 1\nsrcstate 1\nsrcpage 1\nsrcturn 0 4\nsrcstate',
   );
-  expect(edited).toMatchObject({ result: 1, color: 76, value: '76', dirty: 1, heading: 'LINK LOST' });
+  // No status has arrived in this harness: the display waits for the first one and shows no fault heading.
+  expect(edited).toMatchObject({ result: 1, color: 76, value: '76', dirty: 1, heading: '' });
   expect(restored).toMatchObject({ color: 76, value: '76' });
   expect(stale).toMatchObject({ result: -1, color: 76 });
   expect(movement).toMatchObject({ result: 1, rate: 5, mix: 0 });

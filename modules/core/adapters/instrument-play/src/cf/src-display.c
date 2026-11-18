@@ -489,6 +489,10 @@ void cv_build_owner(CvDisplay *d, const CsState *s, const IsStatus *status, uint
     for (uint32_t i = 0; i < 4; ++i)
         cv_note(d->notes[i], 0, 0);
     if (!fresh) {
+        if (is_waiting(status, now)) {
+            d->waiting = 1;
+            return;
+        }
         d->fault = 1;
         text(d->heading, 22, "LINK LOST");
         return;

@@ -83,7 +83,7 @@ describeOn('dt2', 'CANOPY pattern SysEx on the DT2', () => {
     await dk.select(['modules/canopy.dkm']);
     const firstEpoch = Number((await session.status()).epoch);
     await dk.restart();
-    await dk.waitForBoot(undefined, 180_000);
+    await dk.waitForBoot();
     const p = canopyPanel(session, plan);
     await waitInstrumentReady(p.cf);
     await expectRuntimeUi(session, plan, artifacts, { afterEpoch: firstEpoch, emulatedMs: 180_000 });

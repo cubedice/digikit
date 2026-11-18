@@ -382,6 +382,19 @@ pub struct Provided {
     /// A `SLOTS` item of the table is the name hash and the entry offset. The third item lists the devices the fill is for (empty: every device); [`Provided::for_device`]
     /// drops the others, because a slot that the image of another device lacks is an unknown slot to the loader.
     pub fills: Vec<(String, String, Vec<String>)>,
+    /// The DSP slots the service fills (`[[fill]] space = "dsp"`): its dispatch code in the file's DSP section. The packer sets `offset` from the DSP object.
+    pub dsp_fills: Vec<DspFill>,
+}
+
+/// A fill of a DSP slot (a word of core/dsp-link's slot block): the slot name of the image adapter and the global text symbol of the DSP object whose pc goes in it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DspFill {
+    pub slot: String,
+    pub entry: String,
+    /// The devices the fill is for (empty: every device), as for [`Provided::fills`].
+    pub devices: Vec<String>,
+    /// The byte offset of `entry` in the DSP image; `None` until the packer has linked the DSP object.
+    pub offset: Option<u32>,
 }
 
 impl Provided {
@@ -389,6 +402,8 @@ impl Provided {
     pub fn for_device(mut self, device: &str) -> Provided {
         self.fills
             .retain(|(_, _, devs)| devs.is_empty() || devs.iter().any(|d| d == device));
+        self.dsp_fills
+            .retain(|f| f.devices.is_empty() || f.devices.iter().any(|d| d == device));
         self
     }
 }
@@ -694,6 +709,24 @@ fn pack_inner(
                 sl.push(dkneeds::keys::Slot {
                     id,
                     flags: 0,
+                    entry: at,
+                });
+            }
+            for f in &s.dsp_fills {
+                let at = f.offset.ok_or_else(|| {
+                    err!(
+                        "the service fills the DSP slot {} with {}, but the file has no DSP section that defines it",
+                        f.slot,
+                        f.entry
+                    )
+                })?;
+                let id = dkneeds::keys::name_hash(&f.slot);
+                if sl.iter().any(|p| p.id == id) {
+                    return Err(err!("the service fills {} twice", f.slot));
+                }
+                sl.push(dkneeds::keys::Slot {
+                    id,
+                    flags: dkneeds::keys::SLOT_DSP,
                     entry: at,
                 });
             }
@@ -1189,6 +1222,7 @@ mod tests {
                 exports: vec![],
                 hooks: vec![],
                 fills: vec![],
+                dsp_fills: vec![],
             }),
             ..opts()
         };
@@ -1226,6 +1260,7 @@ mod tests {
                 exports: vec![],
                 hooks: vec![],
                 fills: vec![("frametype".into(), "tick_fn".into(), vec![])],
+                dsp_fills: vec![],
             }),
             ..opts()
         };
@@ -1242,6 +1277,7 @@ mod tests {
                 exports: vec![],
                 hooks: vec![],
                 fills: vec![("frametype".into(), "no_such_function".into(), vec![])],
+                dsp_fills: vec![],
             }),
             ..self::opts()
         };
@@ -1260,6 +1296,7 @@ mod tests {
                         exports: vec![],
                         hooks: vec![],
                         fills: vec![("frametype".into(), "tick_fn".into(), vec!["dn2".into()])],
+                        dsp_fills: vec![],
                     }
                     .for_device(device),
                 ),
@@ -1728,6 +1765,7 @@ mod tests {
             exports: vec![],
             hooks: vec![],
             fills: vec![],
+            dsp_fills: vec![],
         }
     }
 

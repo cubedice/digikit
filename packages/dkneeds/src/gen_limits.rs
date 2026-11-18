@@ -19,6 +19,7 @@ pub const BIND_MAX: u32 = 24;
 pub const INSTALL_SITES: u32 = 48;
 pub const SLOTS_MAX: u32 = 16;
 pub const INFO_MAX: u32 = 64;
+pub const DSP_SLOT_WORDS: u32 = 16;
 pub const MAX_VOICES: u32 = 8;
 pub const MAX_FX: u32 = 4;
 
@@ -206,7 +207,7 @@ pub const LEN_NATIVE_PAGE: u32 = 0x90;
 pub const KIND_NATIVE_PAGE_V2: u32 = 7;
 pub const LEN_NATIVE_PAGE_V2: u32 = 0x98;
 pub const KIND_LFO_SHAPE: u32 = 8;
-pub const LEN_LFO_SHAPE: u32 = 0x4c;
+pub const LEN_LFO_SHAPE: u32 = 0x50;
 /// Every record kind in the order of its number: (kind, record length with its header, owning service).
 pub const KINDS: [(u32, u32, &str); 8] = [
     (KIND_PARAM, LEN_PARAM, "machines"),

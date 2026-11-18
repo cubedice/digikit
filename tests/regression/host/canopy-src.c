@@ -1014,6 +1014,56 @@ int main(int argc, char **argv)
         cs_context(&ui, 0, 12, 1, 1, KB_ROOT, 0, 0, 0);
         cv_build(&display, &ui, &status, now, "0", "100", 0);
         assert(!display.label[7][0] && !display.label[6][0]);
+    } else if (!strcmp(scenario, "status-wait")) {
+        CvDisplay display;
+        /* A selection without a status yet is a wait, not a lost link: no fault and no text. */
+        is_select(&status, 0, 12, KB_PLAY, 0);
+        cs_context(&ui, 0, 12, 1, 0, KB_PLAY, 0, 0, 0);
+        assert(is_waiting(&status, now) && !is_fresh(&status, now));
+        cv_build(&display, &ui, &status, now, "0", "100", 0);
+        assert(display.waiting && !display.fault && !display.fresh && !display.heading[0]);
+        /* The first poll starts the clock; the wait ends after IS_WAIT_MS, and then the link counts as lost. */
+        is_poll(&status, 100, read_status);
+        is_poll(&status, 120, read_status);
+        assert(is_waiting(&status, 100 + IS_WAIT_MS - 1) && !is_waiting(&status, 100 + IS_WAIT_MS));
+        cv_build(&display, &ui, &status, 100 + IS_WAIT_MS, "0", "100", 0);
+        assert(!display.waiting && display.fault == 1 && !strcmp(display.heading, "LINK LOST"));
+        /* A status ends the wait; when the stream then stops under regular polls, that is a lost link at once. */
+        is_select(&status, 0, 13, KB_PLAY, 0);
+        fast[0] = 1000;
+        fast[2] = 13;
+        is_poll(&status, 1000, read_status);
+        queued = 1;
+        is_poll(&status, 1020, read_status);
+        assert(status.fast_valid && !is_waiting(&status, 1020) && is_fresh(&status, 1020));
+        for (uint32_t t = 1040; t <= 1160; t += 20)
+            is_poll(&status, t, read_status);
+        assert(!is_fresh(&status, 1160) && !is_waiting(&status, 1160));
+        cs_context(&ui, 0, 13, 1, 0, KB_PLAY, 0, 0, 0);
+        cv_build(&display, &ui, &status, 1160, "0", "100", 0);
+        assert(display.fault == 1 && !strcmp(display.heading, "LINK LOST"));
+        /* A focus change awaits the next status; a second call while waiting does not restart the clock. */
+        is_await(&status);
+        assert(is_waiting(&status, 1160));
+        is_poll(&status, 1180, read_status);
+        is_await(&status);
+        is_poll(&status, 1200, read_status);
+        assert(is_waiting(&status, 1180 + IS_WAIT_MS - 1) &&
+               !is_waiting(&status, 1180 + IS_WAIT_MS));
+        /* A stall of the UI task (no poll for longer than the timeout) is not a lost link either. */
+        queued = 1;
+        is_poll(&status, 2000, read_status);
+        queued = 1;
+        is_poll(&status, 2020, read_status);
+        assert(is_fresh(&status, 2020));
+        queued = 3;
+        is_poll(&status, 2400, read_status);
+        assert(!is_fresh(&status, 2400) && is_waiting(&status, 2400));
+        cv_build(&display, &ui, &status, 2400, "0", "100", 0);
+        assert(display.waiting && !display.fault);
+        queued = 1;
+        is_poll(&status, 2420, read_status);
+        assert(is_fresh(&status, 2420) && !is_waiting(&status, 2420));
     } else {
         fprintf(stderr, "unknown scenario %s\n", scenario);
         return 2;

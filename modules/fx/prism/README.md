@@ -40,10 +40,11 @@ DELAY:
 - FDBK writes the head's output back onto the tape through a DC blocker, a low pass near 3 kHz and a soft limiter that
   keeps the feedback at or below half of full scale, so repeats settle near the level of the input instead of building
   up; above 100 % the lower notes keep repeating at that level. A phrase recorded from the tape contains the repeats.
-- MODE: FWD, REV (each stretch of TIME plays backwards) or HOLD (the tape stops and the head loops its last TIME).
+- MODE: FWD, REV (each stretch of TIME plays backwards) or HOLD (the tape stops and the head loops its last TIME). A
+  stretch and a loop fade in and out over a quarter of their length, at most 256 frames (about 5 ms).
 - SKEW makes one side up to half as long again (L or R); WOW is a slow drift of the delay of at most 0.3 %.
 - DRIV saturates the effect's output before SPACE. BAL sets head against grains: both full in the middle, one of them off
-  at each end.
+  at each end. A change of either moves over one block (32 samples).
 
 MOVE on the tape: POS runs from the newest audio (0) to the oldest of the grains' window (the newest two seconds); SCAN has
 no effect there. With a held phrase both work on the phrase as before.
@@ -75,10 +76,17 @@ no effect there. With a held phrase both work on the phrase as before.
 ## Tape, grain and space engine
 
 The head reads the rolling bank behind the block that is being written, so it never reads a frame of the current block.
-When the tape cannot be read (during a phrase handoff, after CLEAR, after a change of the input selection or of the
-timeline, until TIME of new tape exists) the head's output runs to zero in one block and comes back with a one-block fade.
-HOLD waits while a take is armed or recording. A grain on the tape reads a window fixed at its start, entirely inside tape
-that was written before it started; a reset of the tape fades such grains out over 32 samples.
+The tape runs whenever there is a rolling bank. START, STOP, a pattern change, a change of the input selection and an
+invalid clock start the history of a take again (what PAST can reach), not the tape: the delay and the grains on it play
+through them. Without a source the tape takes silence and the head's feedback, so the repeats run out.
+
+The head is silent only where there is no tape to read: during a phrase handoff, after CLEAR, and until TIME of tape
+exists. Its output does not jump. Where it would (a change of MODE, a tape that can no longer be read), the difference
+to its last sample is carried on and run out over 256 samples; a head that comes back fades in over 256 samples. The
+feedback is the filtered output, so it ends as the output does. HOLD waits while a take is armed or recording. A tape
+that stood still in HOLD goes on from its last frame: the difference to the new input is written with it and falls by
+1/256 a sample. A grain on the tape reads a window fixed at its start, entirely inside tape that was written before it
+started.
 
 The engine has eight total stereo grains, including old readers in
 a phrase handoff. Exhaustion skips a launch and reports LIMIT; it does not
@@ -89,8 +97,9 @@ fades out over at most 32 samples. A new reader starts on the following block,
 while the other old readers finish the phrase handoff.
 
 SIZE spans 240–24,000 samples (5–500 ms). Pitch ratio spans 0.25–4 (±24 st),
-independent of scan speed. SOFT, TRI, RISE and FALL all have a minimum 32-sample
-anti-click edge. Fractional reads interpolate adjacent samples and wrap only
+independent of scan speed. SOFT and TRI have a 32-sample edge at both ends. The
+steep side of RISE and FALL is an eighth of the grain, 32 to 256 samples (up to
+about 5 ms), so that it is an attack and not a click. Fractional reads interpolate adjacent samples and wrap only
 inside the active crop. Crop changes use a short output bridge and never
 read newly excluded audio. Scan and crop normalization use bounded arithmetic,
 including a full-length-to-minimum crop change.
@@ -148,9 +157,10 @@ acceptance test lives beside them. Firmware timing, allocator safety and
 selective routing have their own adapter tests; they are separate from the
 isolated engine checks.
 
-The descriptor reserves 48,000 instructions per block. The 47 concrete-core cases, which include the tape head in every
+The descriptor reserves 48,000 instructions per block. The 54 concrete-core cases, which include the tape head in every
 mode, feedback above 100 %, tape grains at their extremes and a saturated phrase handoff, all stay below it (asserted per
-block, with the production FX guard). This is a DTII engine measurement, not a claim to meet the tighter generic
+block, with the production FX guard). The heaviest block seen outside them is 42,928 (eight grains of 243 ms, the head in
+reverse, full DRIV and FDBK, SPACE on; finding 354, "Clicks"). This is a DTII engine measurement, not a claim to meet the tighter generic
 cross-device FX limit or a hardware cycle count. The native UI, capture and CANOPY/Overloop coexistence cases pass,
 including their safety checks; the capture case also measures the always-on echo (its onset against TIME). Full-system
 load stress and physical audio qualification remain separate requirements.

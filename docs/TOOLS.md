@@ -44,6 +44,7 @@ Never patch the bootstrap or updater sections. See
 | --- | --- |
 | `tools/coldfire/ghidradump.py` | Export an analysed Ghidra program into grep-friendly disassembly/decompilation plus SQLite indexes. |
 | `tools/coldfire/ghidraq.py` | Run read-only PyGhidra queries for functions, callers, references, strings, ranges, decompilation, and bounded HighFunction dataflow. Queries can be chained with `--then` so one JVM answers several questions. |
+| `tools/coldfire/liveness.py` | Register liveness of stock ColdFire code after a patch site, found from the image bytes (SLEIGH decode): which registers a stub may overwrite, the code to the first call, registers a function writes. |
 | `tools/coldfire/refscan.py` | Exhaustively scan a raw ColdFire image for direct references into an address range. Use this to check Ghidra's incomplete reference tables. |
 | `tools/coldfire/codeseeds.py` | Recover likely function entries from vectors, calls, and code pointers. |
 | `tools/coldfire/ghidraapply.py` | Apply code seeds or RTTI discoveries to a Ghidra project. |
@@ -140,7 +141,7 @@ each has a module docstring with its full command line.
 
 | Tool | Purpose |
 | --- | --- |
-| `tools/emulator/native_emu.py` | `mise run workbench` (`-- --build-only` builds only), `emu:serve`: build the desktop emulator once and run it (`--plus-drive DIR` or `--samples DIR`; default `plus_drive/<device>/`, `--dsp-patch FILE`, `--cf-only`, `--daemon`). |
+| `tools/emulator/native_emu.py` | `mise run workbench` (`-- --build-only` builds only), `emu:serve`: build the desktop emulator once and run it (`--plus-drive DIR` or `--samples DIR`; default `plus_drive/<device>/`, `--dsp-patch FILE`, `--cf-only`, `--no-dsp`, `--daemon`). |
 | `tools/emulator/native_target.py` | Pick the cargo target dir for a generated core (`prod`, `nogen`, `generic`, `g-<hash>`). |
 | `tools/emulator/native_pgo.py` | Profile-guided optimisation of the desktop build (`mise run perf:pgo`; `bench-bins`). In a linked worktree `train` writes `by-key/<key>.json` only and prints a final `WARNING ... NOT current` line with the `train [--device D] --set-current` command; the launcher build reads `manifest.json` and builds without PGO until it is current. `mise run perf:pgo` passes `--set-current-at-main`, which sets it current only when HEAD equals origin/main's commit. |
 | `tools/nx/wasm.mjs` | `mise run web:wasm`: build the browser cores. |

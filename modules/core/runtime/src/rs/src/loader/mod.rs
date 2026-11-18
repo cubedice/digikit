@@ -6,13 +6,14 @@ use discover::Found;
 use crate::handlers::{services, ServiceTable};
 use crate::plan::{self, Env, Plan, TABLE_MAX};
 use dkneeds::keys::Keys;
-use install::Installer;
+use install::{Backend, DspInstaller, Installer};
 use role::{PlaceArgs, RoleSteps};
 use exports::Exports;
 use crate::platform::RealPlatform;
 use crate::selection::BOOT_IDX;
 use crate::{cstr_eq, cstr_len, rd32, st, wr32, Module, MAX_MODULES};
 use core::ptr::{addr_of, addr_of_mut, read_volatile};
+use dkrt_abi::link::Owner;
 use dkrt_abi::platform::Platform;
 use dkrt_sdk::*;
 
@@ -31,8 +32,6 @@ const H_DSP_SIZE: usize = dkneeds::H_DSP_SIZE as usize;
 pub(crate) mod discover;
 pub(crate) mod exports;
 mod image;
-// `restore` is kept for hot reload (no caller yet)
-#[allow(dead_code)]
 pub(crate) mod install;
 mod records;
 pub(crate) mod role;
@@ -52,10 +51,12 @@ pub(crate) struct ProvRec {
     pub block: Option<Block>,
     pub len: u32,
     pub image_size: u32,
+    /// Bytes of the DSP image of the file (0: it has no DSP section): the bound of the entries of its DSP slot fills.
+    pub dsp_image: u32,
 }
 
 impl ProvRec {
-    pub const EMPTY: ProvRec = ProvRec { block: None, len: 0, image_size: 0 };
+    pub const EMPTY: ProvRec = ProvRec { block: None, len: 0, image_size: 0, dsp_image: 0 };
 }
 
 /// Which loads the loader accepts. The module set is fixed per session: only the boot hook loads (hot reload is archived, docs/plans/digikit-hot-reload.md).
@@ -91,6 +92,9 @@ pub struct Loader<P: Platform, M: Images, R: Registry> {
     /// is missing, torn, of the old format or has a larger table).
     tables: [[u8; TABLE_MAX]; SEL_MAX],
     table_len: [usize; SEL_MAX],
+    /// Whether the plan accepted the module at each selection index (set by `settle`): `keys_of` gives the keys of an accepted module only, so a module the plan
+    /// refused (a repeated key, no room, a missing need) takes no number from a service.
+    accepted: [bool; SEL_MAX],
     /// The DSP load of the accepted modules of the last plan: (load, largest per-voice cost), which `dkrt_capacity` reports as used and largest of
     /// `CAPK_DSP_COST`; the module set is fixed per session, so the plan is the load.
     planned_dsp: (u32, u32),
@@ -102,8 +106,12 @@ pub struct Loader<P: Platform, M: Images, R: Registry> {
     provs: [ProvRec; PROVIDER_MAX],
     /// The functions the loaded providers offer by name; an import that the runtime's table lacks resolves here.
     exports: Exports,
-    /// The hook sites of the loaded providers. Not armed in safe mode.
+    /// The hook sites and slot words of the loaded providers in the image (the ColdFire backend). Not armed in safe mode.
     installer: Installer,
+    /// The slots of the providers' DSP code in core/dsp-link's slot block (the DSP backend).
+    dsp_install: DspInstaller,
+    /// The selection index of each module record (`u8::MAX`: none): the late teardown of a service names the dependents' states by it.
+    sel_of_rec: [u8; MAX_MODULES],
 }
 
 /// The loader of the device.
@@ -113,6 +121,11 @@ static mut LOADER: Real = Loader::new(RealPlatform, RealImages, RealRegistry);
 
 fn loader() -> &'static mut Real {
     unsafe { &mut *addr_of_mut!(LOADER) }
+}
+
+/// The address a loaded service file published for the export `hash`, if any (`handlers::exports::find_export`).
+pub fn find_export(hash: u32) -> Option<u32> {
+    loader().exports.resolve(hash)
 }
 
 /// The boot's load loop over the selection in plan order (`Loader::boot`).
@@ -172,6 +185,21 @@ pub unsafe fn capture(k: usize, file: &[u8]) {
     loader().capture(k, file)
 }
 
+/// The keys of record kind `kind` of the accepted module at selection index `at` (`CoreApi::keys_of`). A read of the loader's tables, which `settle` and the loads that
+/// follow do not change.
+pub fn keys_of(at: u32, kind: u32, out: &mut [u32; 8]) -> usize {
+    loader().keys_of(at, kind, out)
+}
+
+/// A host test's boot: the module at selection index `at` has the header table `table` and the plan accepted it.
+#[cfg(test)]
+pub(crate) fn test_accept(at: usize, table: &[u8]) {
+    let l = loader();
+    l.tables[at][..table.len()].copy_from_slice(table);
+    l.table_len[at] = table.len();
+    l.accepted[at] = true;
+}
+
 /// Forget the tables (the start of a boot's planning).
 pub unsafe fn reset_plan() {
     loader().reset_plan()
@@ -216,12 +244,15 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
             decl_diff: (0, 0),
             tables: [[0; TABLE_MAX]; SEL_MAX],
             table_len: [0; SEL_MAX],
+            accepted: [false; SEL_MAX],
             planned_dsp: (0, 0),
             found: Found::new(),
             loaded: [false; PROVIDER_MAX],
             provs: [ProvRec::EMPTY; PROVIDER_MAX],
             exports: Exports::new(),
             installer: Installer::new(),
+            dsp_install: DspInstaller::new(),
+            sel_of_rec: [u8::MAX; MAX_MODULES],
         }
     }
 
@@ -458,6 +489,10 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
 
         // ---- record, init, publish ----
         self.roles[rec] = (role == 1) as u8;
+        if rec < MAX_MODULES {
+            let k = read_volatile(addr_of!(BOOT_IDX));
+            self.sel_of_rec[rec] = if (k as usize) < SEL_MAX { k as u8 } else { u8::MAX };
+        }
         let m: &mut Module = records::module(rec);
         m.used = 1;
         i = 0;
@@ -481,7 +516,7 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
         let menuaddr = if menu == NONE { 0 } else { base + menu };
         // a V2 instrument's menu is published with its CF side (`publish_v2`)
         records::set_menu(rec, if v2 { 0 } else { menuaddr });
-        let place = PlaceArgs { file: f, keys_off: reg_off, keys_len: reg_size, image_size };
+        let place = PlaceArgs { file: f, keys_off: reg_off, keys_len: reg_size, image_size, dsp_image: if dsp_size != 0 { job.image_size } else { 0 } };
         let initaddr = if init == NONE { 0 } else { base + init };
         let tickaddr = if tick == NONE { 0 } else { base + tick };
         if v2 {
@@ -510,7 +545,7 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
             if r != OK {
                 if dsp::retained() { return E_BUSY; }
                 dsp::cancel(rec);
-                if !crate::files::retire(rec) || !retire_sdk(rec) { return E_BUSY; }
+                if self.cannot_retire(rec) { return E_BUSY; }
                 self.m.free(base);
                 m.used = 0;
                 crate::entry::unbind(rec);
@@ -617,7 +652,8 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
         let old = read_volatile(addr_of!(BOOT_IDX));
         *addr_of_mut!(BOOT_IDX) = selection;
         // a module's role has no step of its own, so the staged file (gone by now) is not read
-        let place = PlaceArgs { file: core::ptr::null(), keys_off: 0, keys_len: keys_size, image_size };
+        // no DSP image of a provider here: a V2 instrument's DSP memory is its owner's
+        let place = PlaceArgs { file: core::ptr::null(), keys_off: 0, keys_len: keys_size, image_size, dsp_image: 0 };
         let r = self.complete(rec, &keys, init, tick, image_size, RoleSteps::MODULE, place, false);
         *addr_of_mut!(BOOT_IDX) = old;
         r
@@ -769,15 +805,21 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
     /// One UI-loop pass of the DSP loader. `dsp` only advances its state and reports what it found; the module teardown, the machine
     /// listing and the boot result belong here, so `dsp` depends on neither the loader nor the boot.
     pub unsafe fn dsp_step_with(&mut self, l: ServiceTable) {
-        match dsp::step_with(l) {
+        // the DSP backend of the installer writes the slots of a service file after its code is acknowledged (`dsp::step_with` asks for them)
+        let area = if dsp::have_link() { dsp::area_base() } else { 0 };
+        let adv = {
+            let di = &mut self.dsp_install;
+            dsp::step_with(l, &mut |rec| di.sequence(rec as u8, area))
+        };
+        match adv {
             dsp::Advance::Pending => {}
             dsp::Advance::Failed(code) => {
                 let (rec, idx) = {
                     let p = &dsp::ds().pending;
                     (p.rec as usize, p.boot_idx)
                 };
-                // Teardown invalidates once, after the tick is stopped, before any fini/free.
-                let reclaimed = self.undo_early(rec) == OK;
+                // Teardown invalidates once, after the tick is stopped, before any fini/free. A service goes the same way, dependents first.
+                let reclaimed = self.take_down(rec, code) == OK;
                 crate::boot::report_dsp(idx, code);
                 dsp::fail_done(reclaimed, code);
             }
@@ -793,6 +835,81 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
         }
     }
 
+    /// The DSP part of record `rec` failed with `code`: take the record down. A module goes through `unload_rec`. A service goes through the same `unload_rec`,
+    /// after its dependents (the modules and services whose header table needs what it provides): they are failed with `E_MISSING` in their module states, their queued
+    /// DSP loads are removed, and each is taken down by `unload_rec` too. The core knows no kind of service here: a need is a service name hash.
+    unsafe fn take_down(&mut self, rec: usize, _code: i32) -> i32 {
+        if rec >= MAX_MODULES {
+            let hash = self.provided_hash(rec - MAX_MODULES);
+            let mut d = 0;
+            while d < records::REC_MAX && hash != 0 {
+                if d != rec && records::module(d).used != 0 && self.needs_hash(d, hash) {
+                    // its queued DSP load first: the memory of its image goes back to the arena, the loader never starts it
+                    dsp::dequeue(d);
+                    let r = self.take_down(d, E_MISSING);
+                    if r != OK {
+                        return r;
+                    }
+                    if d < MAX_MODULES {
+                        let k = self.sel_of_rec[d];
+                        if k != u8::MAX {
+                            crate::boot::report_taken_down(k as u32, E_MISSING);
+                        }
+                    }
+                }
+                d += 1;
+            }
+        }
+        self.unload_rec(rec)
+    }
+
+    /// The hash of the service that provider `j` provides (its PROVIDES item), 0 when unknown.
+    unsafe fn provided_hash(&self, j: usize) -> u32 {
+        match Keys::parse(self.found.table(j)) {
+            Ok(k) => k.words(dkneeds::keys::tag::PROVIDES, 0).map_or(0, |w| w.0),
+            Err(_) => 0,
+        }
+    }
+
+    /// Whether the loaded record `rec` has a hard NEED of the service `hash` (from the header table the boot kept: the selection's for a module, the search's for a provider).
+    unsafe fn needs_hash(&self, rec: usize, hash: u32) -> bool {
+        let table: &[u8] = if rec < MAX_MODULES {
+            let k = self.sel_of_rec[rec] as usize;
+            if k >= SEL_MAX || self.table_len[k] == 0 {
+                return false;
+            }
+            &self.tables[k][..self.table_len[k]]
+        } else {
+            self.found.table(rec - MAX_MODULES)
+        };
+        let keys = match Keys::parse(table) {
+            Ok(k) => k,
+            Err(_) => return false,
+        };
+        let mut i = 0;
+        while let Some(w) = keys.words(dkneeds::keys::tag::NEEDS, i) {
+            if w.0 == hash && w.2 & 1 != 0 {
+                return true;
+            }
+            i += 1;
+        }
+        false
+    }
+
+    /// Take the install of provider record `rec` out of the image and the DSP: the hook sites back to stock and the ColdFire slot words zero (one mask), then the DSP
+    /// slots zero (the same sequence the install sent, with zeros; a slot of the block is zero before the code behind it is freed). False when the DSP does not take the
+    /// clear: the caller keeps everything (`E_BUSY`) and the DSP state stays retained.
+    unsafe fn uninstall(&mut self, rec: usize) -> bool {
+        self.installer.restore(&self.p, rec as u8);
+        let area = if dsp::have_link() { dsp::area_base() } else { 0 };
+        if let Some(seq) = self.dsp_install.clear_sequence(rec as u8, area) {
+            if !crate::link::lk().run(Owner::Loader, &seq) {
+                return false;
+            }
+        }
+        self.dsp_install.restore(&self.p, rec as u8);
+        true
+    }
 
     /// Take module record `rec` down: its tick, `fini`, machine rows, DSP voice rows and range, memory. Used only
     /// by the DSP loader when the DSP part of a module published at boot fails (`undo_early`). The run-time `unload` that also called
@@ -804,15 +921,25 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
         r
     }
 
+    /// The one lifecycle of a loaded record, for modules and services (docs/plans/digikit-hot-reload.md, "Quiesce and unload protocol"): stop what calls into it (the tick
+    /// of a module; the hook sites and slots of a service), drain the DSP, `fini`, the role's undo, the registry, the DSP range, the memory.
     unsafe fn unload_rec_inner(&mut self, rec: usize) -> i32 {
-        if !crate::files::retire(rec) { return E_BUSY; }
-        if !crate::worker::retire(rec) { return E_BUSY; }
-        if !retire_sdk(rec) { return E_BUSY; }
-        // an intro of this module that has not run `done` yet: `done` must not point into freed code
-        crate::intro::discard(rec);
+        let module = rec < MAX_MODULES;
+        if module {
+            if !crate::files::retire(rec) { return E_BUSY; }
+            if !crate::worker::retire(rec) { return E_BUSY; }
+            if !retire_sdk(rec) { return E_BUSY; }
+            // an intro of this module that has not run `done` yet: `done` must not point into freed code
+            crate::intro::discard(rec);
+        }
         let m: &mut Module = records::module(rec);
-        // 1. clear the tick (one aligned store) so no new call starts; the UI task, where it runs, is this task
-        crate::entry::stop_tick(rec);
+        if module {
+            // 1. clear the tick (one aligned store) so no new call starts; the UI task, where it runs, is this task
+            crate::entry::stop_tick(rec);
+        } else if !self.uninstall(rec) {
+            // 1. a service: nothing may jump into it any more (hook sites back to stock, slots zero)
+            return E_BUSY;
+        }
         // DSP rows must be invalidated before fini can mutate/release module state.
         if !dsp::quiesce(rec) { return E_BUSY; }
         // 2. fini, 3. free
@@ -830,9 +957,13 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
         // the machine row first, then the DSP voice rows, then the range in the DSP area
         (RoleSteps::<P, M, R>::of(self.roles[rec] as u32).undo)(self, rec);
         self.r.remove(rec);
-        let committed = crate::collect::release(rec);
-        if committed != 0 {
-            self.m.free(committed);
+        if module {
+            let committed = crate::collect::release(rec);
+            if committed != 0 {
+                self.m.free(committed);
+            }
+        } else {
+            self.loaded[rec - MAX_MODULES] = false;
         }
         dsp::release_range(rec);
         self.m.free(m.base);
@@ -856,9 +987,19 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
         self.table_len[k] = len;
     }
 
+    /// The keys of record kind `kind` in the header table of the accepted module at selection index `at` (`CoreApi::keys_of`).
+    pub fn keys_of(&self, at: u32, kind: u32, out: &mut [u32; 8]) -> usize {
+        let k = at as usize;
+        if k >= SEL_MAX || !self.accepted[k] {
+            return 0;
+        }
+        dkrt_abi::keys::keys_of(&self.tables[k][..self.table_len[k]], kind, out)
+    }
+
     /// Forget the tables (the start of a boot's planning).
     pub fn reset_plan(&mut self) {
         self.table_len = [0; SEL_MAX];
+        self.accepted = [false; SEL_MAX];
         self.planned_dsp = (0, 0);
     }
 
@@ -924,8 +1065,9 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
                     self.load_provider(path.as_ptr(), j)
                 }
             };
-            self.loaded[j] = res == OK;
-            let base = if res == OK { records::module(MAX_MODULES + j).base } else { 0 };
+            // a provider whose DSP part follows (`LOADING`) is live on the ColdFire from here: its dependents load, and a failure of the DSP part takes them down again
+            self.loaded[j] = res == OK || res == LOADING;
+            let base = if res == OK || res == LOADING { records::module(MAX_MODULES + j).base } else { 0 };
             // a refusal of the declare-check names the item that differs, in the words of the base (the tag) and the service hash (the item's first word)
             let (hash, base) = if res == E_DECL_KIND && self.decl_diff.0 != 0 { (self.decl_diff.1, self.decl_diff.0) } else { (hashes[j], base) };
             crate::boot::report_provider(self.found.path(j), res, hash, base);
@@ -948,16 +1090,31 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
         }
         let provs = parse_provs(&self.found, planned.np);
         plan::settle(&services(), planned, &mods[..n], &provs[..planned.np], &self.loaded[..planned.np]);
-        // every service of the boot is loaded and no module yet: the services plan what they keep per selected module
-        let mut sel = dkrt_abi::service::SettleCtx::new();
-        sel.count = n;
-        let mut i = 0;
-        while i < n {
-            sel.nkeys[i] = table_keys(&self.tables[i][..self.table_len[i]], &mut sel.keys[i]) as u8;
-            i += 1;
+        let mut a = 0;
+        while a < SEL_MAX {
+            self.accepted[a] = a < n && planned.verdicts[a].is_accepted();
+            a += 1;
         }
+        // every service of the boot is loaded and no module yet: the services plan what they keep per selected module
+        let sel = settle_ctx(planned, &self.tables, &self.table_len, n);
         services().settle(&sel);
     }
+}
+
+/// What `settle` hands to the services: the keys of the modules the plan accepted. A module the plan refused (a repeated key, no room, a missing need) gives none, so
+/// it takes no number and a key that it repeats never reaches a service's assignment.
+#[inline(never)]
+pub(crate) fn settle_ctx(planned: &Plan, tables: &[[u8; TABLE_MAX]; SEL_MAX], lens: &[usize; SEL_MAX], n: usize) -> dkrt_abi::service::SettleCtx {
+    let mut sel = dkrt_abi::service::SettleCtx::new();
+    sel.count = n;
+    let mut i = 0;
+    while i < n {
+        if planned.verdicts[i].is_accepted() {
+            sel.nkeys[i] = table_keys(&tables[i][..lens[i]], &mut sel.keys[i]) as u8;
+        }
+        i += 1;
+    }
+    sel
 }
 
 /// The keys of a module's header table that `settle` hands to the services (`table` empty: none), at most 8; their count.

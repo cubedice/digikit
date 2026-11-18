@@ -220,7 +220,7 @@ mise run emu:ctl status       # from another shell; `mise run emu:ctl quit` stop
 ```
 
 The ready inputs come from `mise run emu:ready -- dt2` (about 2 minutes). It writes them to the directory in
-`tools/emulator/ready_inputs.json`, where the test harness reads them; `DIGI_PK_READY_<DEV>_<VER>` (for example
+`[acceptance] ready_dir` of the device files, where the test harness reads them; `DIGI_PK_READY_<DEV>_<VER>` (for example
 `DIGI_PK_READY_DT2_117`) overrides the directory. The harness refuses ready
 inputs that are stale or belong to another `.syx`.
 
@@ -316,6 +316,36 @@ mise run module:build                         # rebuild all objects (`-- modules
 The command writes `modules/<category>/<name>/` (manifest, source stubs, `tests/smoke.toml`, `README.md`, `gallery/icon.svg`) and
 builds it, so the template is known to compile. [modules/README.md](../modules/README.md) is the authoring guide and
 the manifest reference.
+
+### Register liveness at a hook site
+
+A stub or a hook routine may overwrite only registers the stock code does not read afterwards. `tools/coldfire/liveness.py` finds them from the stock bytes of a port (SLEIGH decode of the ColdFire image, so no encoding table is kept): from each start address it follows fall-through and branch targets and calls a register dead when every path writes all of it before a read, call, return or indirect jump.
+
+```sh
+uv run python -m tools.coldfire.liveness dt2-1.17 cf.lfo.site.tick_slew --abi strict   # the site; starts: site+len and the branch target
+uv run python -m tools.coldfire.liveness dt2-1.17 cf.lfo.site.tick_call --from-site cf.lfo.site.tick_done --trace   # more starts; the code up to the first call
+uv run python -m tools.coldfire.liveness dt2-1.17 cf.lfo.site.tick_call --match 203c636ba875a4000800a1c2e58a      # where a byte sequence sits in that code
+uv run python -m tools.coldfire.liveness dt2-1.17 --writes 0x40139156 --writes 0x4013916c                         # registers a function and its callees write
+uv run python -m tools.coldfire.liveness dt2-1.17 --stable 0x40139698 0x40139804 A3 --skip 0x40188098             # writers of A3 on the paths between two addresses, the calls on them and what each callee writes
+uv run python -m tools.coldfire.liveness dt2-1.17 --preds 0x4013961e 0x4013986c                                    # every way into an address inside a function (is a site reached without the code before it?)
+uv run python -m tools.coldfire.liveness --decode a4000800a1c2                                                    # decode bytes
+```
+
+Output of the first command (cut):
+
+```text
+dt2-1.17 cf.lfo.site.tick_slew site 0x4013986c len 6
+  0x4013986c: moveq 0x6,D2
+  0x4013986e: cmp.l D3,D2
+  0x40139870: bne.b 0x4013989e
+from 0x40139872 (strict)
+  dead: D0 D2 D3 D5 D7 A0 A1 NF ZF VF CF
+  live: D1 D4 D6 A2 A3 A4 A5 A6 ACC0 ACC1 ACC2 ACC3 MACSR MASK XF
+    D0 dead, written at 0x40139882
+    D1 live: read at 0x401398a6: tst.l D1
+```
+
+`strict` counts a register that reaches a call, a return or an indirect jump untouched as live; `gcc` (default: both are printed) assumes the call convention of compiled code and shows more dead registers. It is a guess about the code, not a fact of the image: decide a scratch register, a register to save or a register that stays stable from `strict`, `--stable` and `--writes` only. `--stable` and `--writes` assume no convention: a call writes a register only when its callee (direct callees included, `jsr (An)` after one `lea (ABS).l,An` resolved) does; `--skip ADDR` leaves a named callee out (for example a fault reporter on an error branch), and the finding that uses it says so. A port hook carries the `regs.clobbers` of its declaration (`clobbers` in `devices/ports/*.toml`); patchkit refuses a `when` stub whose `scratch` is not in it. The results for the six LFO sites are in [findings/146](findings/149-lfo-waveforms.md#registers-at-the-six-sites) and in the `regs` of the hooks of `devices/fw/lfo.toml`. `--match` also proves that the bytes an assembler gives for a routine (`mac.l`, `movclr.l`) are the stock instructions they stand for.
 
 ### Resolve a port for a firmware
 
@@ -416,6 +446,13 @@ The manifest has `[module]`, `[targets]`, `[[object]]`, `[[op]]`, `[[claim]]`, `
   beq.b +4; move.l dN,-(sp); rts` (12 bytes each). A site whose displaced code patchkit cannot re-encode (a `(d8,PC,Xn)`
   operand) is refused with the site named; `tail = "<symbol>"` gives a hand-written stock path (`jmp.l` there) and the
   displaced instructions are dropped.
+- **DSP slots.** A `[[slot]] name = "voice_render", space = "dsp"` is a slot of a SHARC hook stub, not a ColdFire word: the name is an entry of `[dsp.slots]` in `sdk/sdk.toml` (the slots of
+  the hook stubs, in index order) and the module reserves nothing. The slots are words 0 to 15 of window 0 of core/dsp-link (`_dl_slots`, `.PKDATA`, zero at boot); the stub of the image reads one,
+  zero takes the stock path and anything else is the pc of dispatch code. `patchkit gen` writes the byte offsets as `DK_SLOT_*` into `sdk/dsp/contract/dk_stub.inc`, which is part of the
+  service ABI hash. The info table entry has kind 2 and the slot's index as its value. A service fills it with `[[fill]] slot = "voice_render", entry = "_dv_run", space = "dsp"`: the entry is a global
+  text symbol of the service's DSP object (one `[[object]]` with `place = "dsp.l2"` per device, sources in `dks/dsp/*-<device>.s`). `pack` writes the DSP section of the file (code, relocations and imports,
+  no voices or effects) and a `SLOTS` item with the flag `SLOT_DSP` and the byte offset of the entry in the DSP image. Every `.EXTERN` of the dispatch code is a `DSP_IMPORT` of core/dyndsp
+  for the device (`patchkit service-check`).
 - **The image's info table.** The image has one export table, `dkrt_info_table`: big endian `{magic 0x444b4954 "DKIT", count}`,
   then per entry `{FNV-1a name hash, address, kind}` (kind 1: a `[[slot]]` word, 0: an `[[info]]` data table; 12 bytes per entry). patchkit writes it from the `[[slot]]` entries (the address of the word) and the
   `[[info]]` entries (`name`, `symbol`: an expression that gives the address, by default the symbol `name`; `devices`) of every
@@ -528,10 +565,13 @@ patchkit stores a `DKPR` record in the image: format version, the SHA-256 of the
   with an aPLib packer that produces the same bytes as `tools/firmware/aplibpack.py` and runs about 25 times faster.
 - **Sections 2 (bootstrap), 4 (updater) and 8 never change.** patchkit has no override. The bootstrap is what lets you
   recover from a bad MAIN OS.
-- The container is at most `0x300000` (3 MiB). The OS container is written to flash at `0x80000`; the record sectors
-  (tagged fields, serial number) start at `0x380000`, and the bootstrap's write loop has no size limit of its own.
-  Stock images are about 1.5 MB.
-- patchkit re-decodes and verifies every output before it reports success: checksums, HMAC, size limits, the patch
+- An image for flashing has a container of at most `container_max` (`0x1FFE00` bytes, a port limit): the OS-upgrade
+  receiver copies the image into a 2 MiB RAM stage without a size check ([finding 146](findings/146-syntakt-os-upgrade-receiver.md)).
+  The limit applies to images built for flashing: the Firmware page, `patchkit apply` without `--no-flash-cap`, and the
+  flash checks (`patchkit flash`, `patchkit preflight`; `patchkit verify` alone does not check it). An image that only the emulator boots (the runtime patch of the
+  workbench, `patchkit apply --no-flash-cap`) has no container limit. The OS container is written to flash at `0x80000`;
+  the record sectors (tagged fields, serial number) start at `0x380000`. Stock images are about 1.5 MB.
+- patchkit re-decodes and verifies every output before it reports success: checksums, HMAC, size limits (the container limit only for an image built to flash), the patch
   record, and (with a base) that sections 2, 4 and 8 equal the stock image.
 - Never flash the output of `tools.firmware.build.rebuild`: it stores sections without compression and exceeds the cap
   ([finding 01](findings/01-container-and-patching.md)).

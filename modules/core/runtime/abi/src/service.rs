@@ -9,7 +9,7 @@
 //! - record kinds of the `register` section (`len`), and their `check`, `apply` and `remove` (the registry walker calls them);
 //! - the DSP section parts it owns: `dsp_check_*`, `dsp_admit`, `dsp_claim`, `dsp_release`, `dsp_clear`, `dsp_row_step`
 //!   (the DSP loader in `dsp/mod.rs` keeps the area, the row table and the state machine);
-//! - capacity counts (`caps`), the module behind a fault site (`attribute`), the guard's state of a machine type (`guard_state`);
+//! - capacity counts (`caps`), the module behind a fault site (`attribute`);
 //! - `on_loaded` (every row of a module is in the DSP);
 //! - the module lifecycle: `module_begin` before a module's `init`, `module_commit` after it (a `PREPARE`, a `WRITE` and a `DECLARE` pass over a `RecordSink`), and `remove`;
 //! - the boot: `settle`, once, after the services are loaded and before the first module, with the keys of the boot's selection.
@@ -460,34 +460,10 @@ pub trait Service<C: CoreApi> {
     unsafe fn attribute(core: &C, site: u32, id: u32) -> Option<usize> {
         None
     }
-    /// The guard's counts for machine type `ty`, if this service owns machine types.
-    unsafe fn guard_state(core: &C, ty: u32) -> Option<GuardState> {
-        None
-    }
     /// Every row of module `rec` is in the DSP.
     unsafe fn on_loaded(core: &C, rec: usize) {}
     /// The service's work of one UI-loop pass in `phase` (`tick_phase`).
     unsafe fn tick(core: &C, phase: u32) {}
-    /// Effect `index` (0 ..) with a page, in row order, for DIGIKIT > FX ROUTES, into `out`: `OK`, or `E_NOT_FOUND` past the end (the default: this service has no effects).
-    unsafe fn fx_entry(core: &C, index: u32, out: &mut DkrtFx) -> i32 {
-        E_NOT_FOUND
-    }
-    /// The ids of the rows module `owner` (record number, 1 ..) filled, in row order, into `out`; how many (the default: none). The machines service gives the machine type numbers (the
-    /// MODULES reply lists them); the core knows no kind of id.
-    unsafe fn owned_ids(core: &C, owner: u8, out: &mut [u8; 8]) -> u32 {
-        0
-    }
-    /// The ids `settle` planned for the keys of the module at index `selection` of the boot's selection: `[key, id]` pairs into `out`, in the order of the plan;
-    /// how many (the default: none). An id of 0: the plan gave that key none (a key that names its id itself is one). The machines service gives the type numbers
-    /// of its plan; the core knows no kind of id. The loader resolves a persistent instrument's file from this copy, so no table pointer crosses the boundary.
-    unsafe fn planned_ids(core: &C, selection: u32, out: &mut [[u32; 2]; 8]) -> u32 {
-        0
-    }
-    /// Whether id `id` is taken in this service's rows: a module owns the row, or the image has filled it (the default: no). An id the service cannot
-    /// place (out of its range, or its registry is absent) counts as taken.
-    unsafe fn id_taken(core: &C, id: u32) -> bool {
-        false
-    }
 
     /// The `init` of module record `rec` is about to run: forget what an earlier module collected. Called on every service that is loaded.
     unsafe fn module_begin(core: &C, rec: usize) {}
@@ -553,16 +529,11 @@ pub struct ServiceRow {
     remove: unsafe extern "C" fn(*const c_void, u8),
     cap: unsafe extern "C" fn(*const c_void, u8, *mut u32) -> bool,
     attribute: unsafe extern "C" fn(*const c_void, u32, u32, *mut usize) -> bool,
-    guard_state: unsafe extern "C" fn(*const c_void, u32, *mut GuardState) -> bool,
     on_loaded: unsafe extern "C" fn(*const c_void, usize),
     settle: unsafe extern "C" fn(*const c_void, *const SettleCtx),
     module_begin: unsafe extern "C" fn(*const c_void, usize),
     module_commit: unsafe extern "C" fn(*const c_void, usize, *const ModuleCommitCtx) -> i32,
     tick: unsafe extern "C" fn(*const c_void, u32),
-    fx_entry: unsafe extern "C" fn(*const c_void, u32, *mut DkrtFx) -> i32,
-    owned_ids: unsafe extern "C" fn(*const c_void, u8, *mut u8) -> u32,
-    planned_ids: unsafe extern "C" fn(*const c_void, u32, *mut [u32; 2]) -> u32,
-    id_taken: unsafe extern "C" fn(*const c_void, u32) -> bool,
     dsp_check_sections: unsafe extern "C" fn(*const c_void, *const DspSec) -> i32,
     dsp_check_rows: unsafe extern "C" fn(*const c_void, *const DspSec) -> i32,
     dsp_check_types: unsafe extern "C" fn(*const c_void, *const DspSec) -> i32,
@@ -637,19 +608,6 @@ mod thunk {
             None => false,
         }
     }
-    pub unsafe extern "C" fn guard_state<C: CoreApi, S: Service<C>>(
-        core: *const c_void,
-        ty: u32,
-        out: *mut GuardState,
-    ) -> bool {
-        match S::guard_state(&*(core as *const C), ty) {
-            Some(g) => {
-                *out = g;
-                true
-            }
-            None => false,
-        }
-    }
     pub unsafe extern "C" fn on_loaded<C: CoreApi, S: Service<C>>(core: *const c_void, rec: usize) {
         S::on_loaded(&*(core as *const C), rec)
     }
@@ -674,37 +632,6 @@ mod thunk {
     }
     pub unsafe extern "C" fn tick<C: CoreApi, S: Service<C>>(core: *const c_void, phase: u32) {
         S::tick(&*(core as *const C), phase)
-    }
-    pub unsafe extern "C" fn fx_entry<C: CoreApi, S: Service<C>>(
-        core: *const c_void,
-        index: u32,
-        out: *mut DkrtFx,
-    ) -> i32 {
-        S::fx_entry(&*(core as *const C), index, &mut *out)
-    }
-    pub unsafe extern "C" fn owned_ids<C: CoreApi, S: Service<C>>(
-        core: *const c_void,
-        owner: u8,
-        out: *mut u8,
-    ) -> u32 {
-        S::owned_ids(&*(core as *const C), owner, &mut *(out as *mut [u8; 8]))
-    }
-    pub unsafe extern "C" fn planned_ids<C: CoreApi, S: Service<C>>(
-        core: *const c_void,
-        selection: u32,
-        out: *mut [u32; 2],
-    ) -> u32 {
-        S::planned_ids(
-            &*(core as *const C),
-            selection,
-            &mut *(out as *mut [[u32; 2]; 8]),
-        )
-    }
-    pub unsafe extern "C" fn id_taken<C: CoreApi, S: Service<C>>(
-        core: *const c_void,
-        id: u32,
-    ) -> bool {
-        S::id_taken(&*(core as *const C), id)
     }
     pub unsafe extern "C" fn dsp_check_sections<C: CoreApi, S: Service<C>>(
         core: *const c_void,
@@ -783,16 +710,11 @@ impl ServiceRow {
             remove: thunk::remove::<C, S>,
             cap: thunk::cap::<C, S>,
             attribute: thunk::attribute::<C, S>,
-            guard_state: thunk::guard_state::<C, S>,
             on_loaded: thunk::on_loaded::<C, S>,
             settle: thunk::settle::<C, S>,
             module_begin: thunk::module_begin::<C, S>,
             module_commit: thunk::module_commit::<C, S>,
             tick: thunk::tick::<C, S>,
-            fx_entry: thunk::fx_entry::<C, S>,
-            owned_ids: thunk::owned_ids::<C, S>,
-            planned_ids: thunk::planned_ids::<C, S>,
-            id_taken: thunk::id_taken::<C, S>,
             dsp_check_sections: thunk::dsp_check_sections::<C, S>,
             dsp_check_rows: thunk::dsp_check_rows::<C, S>,
             dsp_check_types: thunk::dsp_check_types::<C, S>,
@@ -1015,21 +937,6 @@ impl ServiceTable {
         None
     }
     #[inline]
-    pub unsafe fn guard_state(&self, ty: u32) -> Option<GuardState> {
-        let mut i = 0;
-        while i < self.rows.len() {
-            let mut g = GuardState {
-                faults: 0,
-                disabled: false,
-            };
-            if (self.row(i).guard_state)(self.core, ty, &mut g) {
-                return Some(g);
-            }
-            i += 1;
-        }
-        None
-    }
-    #[inline]
     pub unsafe fn on_loaded(&self, rec: usize) {
         let mut i = 0;
         while i < self.rows.len() {
@@ -1068,44 +975,6 @@ impl ServiceTable {
         }
         OK
     }
-    /// The machine type numbers of the rows module `owner` filled, from the first service that has any (the machines service file); 0 when none is loaded.
-    #[inline]
-    pub unsafe fn owned_ids(&self, owner: u8, out: &mut [u8; 8]) -> usize {
-        let mut i = 0;
-        while i < self.rows.len() {
-            let n = (self.row(i).owned_ids)(self.core, owner, out.as_mut_ptr());
-            if n != 0 {
-                return n as usize;
-            }
-            i += 1;
-        }
-        0
-    }
-    /// The `[key, id]` pairs planned for the module at index `selection` of the boot's selection, from the first service that has any; 0 when none has.
-    #[inline]
-    pub unsafe fn planned_ids(&self, selection: u32, out: &mut [[u32; 2]; 8]) -> usize {
-        let mut i = 0;
-        while i < self.rows.len() {
-            let n = (self.row(i).planned_ids)(self.core, selection, out.as_mut_ptr());
-            if n != 0 {
-                return (n as usize).min(out.len());
-            }
-            i += 1;
-        }
-        0
-    }
-    /// Whether any service has id `id` taken in its rows.
-    #[inline]
-    pub unsafe fn id_taken(&self, id: u32) -> bool {
-        let mut i = 0;
-        while i < self.rows.len() {
-            if (self.row(i).id_taken)(self.core, id) {
-                return true;
-            }
-            i += 1;
-        }
-        false
-    }
     #[inline]
     pub unsafe fn tick(&self, phase: u32) {
         let mut i = 0;
@@ -1113,18 +982,6 @@ impl ServiceTable {
             (self.row(i).tick)(self.core, phase);
             i += 1;
         }
-    }
-    /// The `index`th effect with a page, from the first service that has one; `E_NOT_FOUND` when no service has effects (the fx service file is not loaded) or past the end.
-    #[inline]
-    pub unsafe fn fx_entry(&self, index: u32, out: &mut DkrtFx) -> i32 {
-        let mut i = 0;
-        while i < self.rows.len() {
-            if (self.row(i).fx_entry)(self.core, index, out) == OK {
-                return OK;
-            }
-            i += 1;
-        }
-        E_NOT_FOUND
     }
     #[inline]
     pub unsafe fn dsp_check_sections(&self, sec: &DspSec) -> i32 {

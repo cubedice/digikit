@@ -53,6 +53,8 @@ class FxRigAllocationTests(unittest.TestCase):
     def setUp(self):
         self.obj = object_with_states()
         empty = pk_sharc.SharcObject("", b"\0\0", {}, [], [])
+        # the rig fills the slots of core/fx with the entries of the dispatch object
+        empty.symbols = {"_fx_dispatch": (0, True), "_fxs_dispatch": (0, True)}
         patches = [
             patch.object(rig, "_BUILT", {}),
             patch.object(

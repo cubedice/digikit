@@ -1,12 +1,12 @@
 # The module contract: version numbers, log kinds and the SysEx protocol numbers. `patchkit gen` writes
 # modules/core/runtime/sdk/src/gen_sdk.rs, tools/device/dklog_kinds.py, tools/device/dkproto.py and
 # packages/dkupload/src/gen_proto.rs, packages/dk-session/src/gen_proto.ts, sdk/dsp/contract/dk_machine.inc, sdk/dsp/contract/dk_fx.inc,
-# sdk/dsp/contract/dk_sample_pool.inc, sdk/include/dk/core/status.h and sdk/include/dk/gen/machine_consts.h, fx_consts.h, machine.h, fx.h, imports.h, page_consts.h, limits.h
+# sdk/dsp/contract/dk_sample_pool.inc, modules/core/services/<service>/dks/src/gen_exports.rs (a service file's export list and pure builder wrappers), sdk/include/dk/core/status.h and sdk/include/dk/gen/machine_consts.h, fx_consts.h, machine.h, fx.h, imports.h, page_consts.h, limits.h
 # and sample.h, sdk/dsp/REGISTERS.md and packages/dksharc/src/rules_table.rs from this file (`patchkit gen --check` fails when they are stale).
 
 [runtime]           # the digikit runtime release: the one version of the SDK (semantic version; packed major<<16 | minor<<8 | patch)
-table = "0.8.0"     # the runtime version that introduced the header table of a `.dkm` (R7): `patchkit pack` writes at least this as the version the module needs, so the loader refuses a module of the 0.7 format with E_CONTRACT
-version = "0.8.3"   # 0.x (stable is 1.0.0): a MINOR may break (an import changed or removed, the module file format, the store format, the SysEx protocol); a PATCH only adds
+table = "0.9.0"     # the least version a packed `.dkm` needs: `patchkit pack` writes at least this, so the loader refuses a module of an older MINOR (the 0.7 format, no header table, among them) with E_CONTRACT. It is the current MINOR: the loader accepts only the runtime's MAJOR and MINOR, so a module that links no import newer than the last MINOR needs this floor to load (raise it with `version` at every MINOR)
+version = "0.9.0"   # 0.x (stable is 1.0.0): a MINOR may break (an import changed or removed, the module file format, the store format, the SysEx protocol); a PATCH only adds
 # The one-version rule (docs/plans/sdk.md section 5.1): every `[[import]]` has `since`, the runtime version that added it (a string "0.7.0"; S3 is breaking, so every import has 0.7.0).
 # `patchkit pack` writes the newest `since` among the imports a module links into the `.dkm` header (word 0x30, the runtime version the module needs; bit 31 is the trace flag,
 # 0 when the module links no service import). The runtime loads a module only when that version has the runtime's MAJOR and MINOR and a PATCH at most the runtime's; otherwise
@@ -207,6 +207,13 @@ fns = [
     "i32 instrument_process(void *state, const dk_instrument_in *in) // Consumes the bounded batch and writes output; returns DK_I_ACTIVE, DK_I_QUIET or a negative fault.",
 ]
 
+# The slots of the hook stubs (docs/plans/runtime-and-services.md R12-8): `words` 32-bit words, zero at boot, at the start of window 0 of core/dsp-link (`_dl_slots`). A hook site of the
+# image reads its slot; zero takes the stock path, else the word is the pc of a service's dispatch code. The order is the slot index. `patchkit gen` writes sdk/dsp/contract/dk_stub.inc
+# (DK_SLOT_*: byte offsets) from it; the file is part of the service ABI hash. A `[[slot]] space = "dsp"` of an image adapter and a `[[fill]]` of a service name an entry.
+[dsp.slots]
+words = 16
+names = ["voice_render", "voice_unpack", "fx_entry", "fx_send"]
+
 # The FX contract's numbers (sdk/include/dk/gen/fx.h is the generated C view; it includes the generated sdk/include/dk/gen/fx_consts.h).
 # `patchkit gen` writes sdk/dsp/contract/dk_fx.inc and sdk/include/dk/gen/fx_consts.h from this table. Do not include it together with dk_machine.inc (DK_BLOCK and DK_LEVEL_BOUND_BITS are in both).
 [fx]
@@ -276,6 +283,13 @@ consts = [
 # call whose prototype is in another header (<dk/platform/ui.h>), so none in <dk/gen/imports.h>. `requires`: the module whose absence makes the address 0 (the
 # import is then not found). `absent`: with `requires`, the runtime hands out a stub instead of 0 and the module loads: the stub returns this value ("0", "-1"),
 # the status DK_E_MISSING ("missing") or nothing ("void"), and the signature must agree.
+# `provided = true`: the import is a function of a service file (`.dks`), not of the runtime's table; the file exports it, and its export list is these imports in this
+# order (the header table sorts them by name hash). `wrapper = "<module>"`: with `provided`, the function is written by hand in that module of the service's `dks/src`
+# (`fw`, `builder`, `glue`: it converts a callback, takes the click state or a client handle). Without `wrapper` the function is a pure wrapper: `patchkit gen` writes
+# it to `modules/core/services/<service>/dks/src/gen_exports.rs` as a call of `build::<name without dk_ and a leading module_ctx_>(&ImportCore, args...)` (so `dk_module_ctx_add_machine`
+# calls `build::add_machine`) and a callback argument is an error. If the service crate's function has another name, or the call is not a plain forward, use `wrapper`.
+# `internal = true`: with `provided` and `wrapper`, an export that only the runtime calls, by name, through the loader's export table (`handlers::exports`): it is in the file's export
+# list and `gen_exports.rs`, and in no header, document or import table of a module. It is a plain `extern "C"` function with no core argument (the file reaches the core through `ImportCore`).
 [[import]]
 name = "memcpy"
 sig = "u8 *(u8 *d, const u8 *s, u32 n)"
@@ -694,6 +708,7 @@ doc = "Replace the stock boot animation. `frame(tick, arg)` returns the 1024-byt
 name = "dk_param_get"
 service = "machines"
 provided = true
+wrapper = "fw"
 since = "0.7.0"
 context = "ui"
 sig = "i32 (u32 track, u32 word)"
@@ -703,10 +718,55 @@ doc = "Raw value (unit * 256) of parameter word `word` of the calling module on 
 name = "dk_param_set"
 service = "machines"
 provided = true
+wrapper = "fw"
 since = "0.7.0"
 context = "ui"
 sig = "i32 (u32 track, u32 word, i32 raw)"
 doc = "Set parameter word `word` of the calling module on `track` to `raw` (unit * 256) with the stock setter of a knob turn. Same click flow as dk_param_get. Returns 0, DK_PARAM_E_STATE, DK_PARAM_E_ARG or DK_PARAM_E_HELD."
+
+[[import]]
+name = "dk_machines_guard_state"
+service = "machines"
+provided = true
+internal = true
+wrapper = "rt"
+since = "0.8.3"
+context = "ui"
+sig = "u32 (u32 ty, u8 *out)"
+doc = "The runtime's: the guard's counts of machine type `ty` as a `GuardState` into `out` for the MODULES reply; 1 when the machines service has the type, else 0."
+
+[[import]]
+name = "dk_machines_owned_ids"
+service = "machines"
+provided = true
+internal = true
+wrapper = "rt"
+since = "0.8.3"
+context = "ui"
+sig = "u32 (u32 owner, u8 *out)"
+doc = "The runtime's: the machine type numbers of the rows module record `owner` (1 ..) filled, in row order, as bytes into `out` (8 at most) for the MODULES reply; how many."
+
+[[import]]
+name = "dk_machines_planned_ids"
+service = "machines"
+provided = true
+internal = true
+wrapper = "rt"
+since = "0.9.0"
+context = "ui"
+sig = "u32 (u32 selection, u32 *out)"
+doc = "The runtime's: the `[key, number]` pairs the plan gave the module at index `selection` of the boot's selection, in plan order, as word pairs into `out` (8 pairs at most); how many. A number of 0: the plan gave that key none. The loader of a persistent instrument resolves its types from this copy."
+
+[[import]]
+name = "dk_machines_id_taken"
+service = "machines"
+provided = true
+internal = true
+wrapper = "rt"
+since = "0.9.0"
+context = "ui"
+sig = "u32 (u32 id)"
+doc = "The runtime's: 1 when machine type `id` is taken in the machine rows (a module owns the row, the image has filled it, or the service cannot place it), else 0."
 
 [[import]]
 name = "dk_module_ctx_add_machine"
@@ -841,6 +901,7 @@ doc = "Latch the parameter at note_on (machine contract 1.3)."
 name = "dk_param_on_click"
 service = "machines"
 provided = true
+wrapper = "builder"
 since = "0.7.0"
 context = "init"
 sig = "void (dk_param *prm, param_click_fn fn, void *arg)"
@@ -850,6 +911,7 @@ doc = "Run `fn(arg, track)` when the parameter's knob is clicked on the machine'
 name = "dk_page_canvas"
 service = "machines"
 provided = true
+wrapper = "builder"
 since = "0.7.0"
 context = "init"
 sig = "void (dk_page *p, u32 flags, page_draw_fn draw, page_event_fn event, void *arg)"
@@ -892,9 +954,21 @@ sig = "void (dk_fx *fx, u32 def)"
 doc = "Set the default of the effect's MIX knob, 0 to 127 (127 when this is not called)."
 
 [[import]]
+name = "dk_fx_routes_entry"
+service = "fx"
+provided = true
+internal = true
+wrapper = "rt"
+since = "0.8.3"
+context = "ui"
+sig = "i32 (u32 index, u8 *out)"
+doc = "The runtime's: the `index`th loaded effect that has a page (row order) as a `DkrtFx` into `out` for DIGIKIT > FX ROUTES: 0, or DK_E_NOT_FOUND past the end."
+
+[[import]]
 name = "dk_sample_pool_open"
 service = "samples"
 provided = true
+wrapper = "glue"
 since = "0.7.0"
 context = "init"
 sig = "i32 (dk_module_ctx *ctx, dk_sample_pool **out)"
@@ -904,6 +978,7 @@ doc = "Open the module's 16-entry sample pool table (its lowest DK_SAMPLE_TRACKS
 name = "dk_sample_pool_add"
 service = "samples"
 provided = true
+wrapper = "glue"
 since = "0.7.0"
 context = "ui"
 sig = "i32 (dk_sample_pool *p, const char *path)"
@@ -913,6 +988,7 @@ doc = "Add a stereo-capable sample file to the pool (copies the path, no file IO
 name = "dk_sample_pool_clear"
 service = "samples"
 provided = true
+wrapper = "glue"
 since = "0.7.0"
 context = "ui"
 sig = "i32 (dk_sample_pool *p, u32 index)"
@@ -922,6 +998,7 @@ doc = "Close the entry's generation, drop its reference and set it UNUSED, a hol
 name = "dk_sample_pool_status"
 service = "samples"
 provided = true
+wrapper = "glue"
 since = "0.7.0"
 context = "ui"
 sig = "i32 (dk_sample_pool *p, u32 index)"
@@ -931,6 +1008,7 @@ doc = "DK_SAMPLE_UNUSED, QUEUED, LOADING, READY, or a negative error; an error i
 name = "dk_sample_pool_info"
 service = "samples"
 provided = true
+wrapper = "glue"
 since = "0.7.0"
 context = "ui"
 sig = "i32 (dk_sample_pool *p, u32 index, void *out)"
@@ -940,6 +1018,7 @@ doc = "Copy a 16-byte dk_sample_info (frames, rate, channels, token) of a READY 
 name = "dk_sample_pool_path"
 service = "samples"
 provided = true
+wrapper = "glue"
 since = "0.7.0"
 context = "ui"
 sig = "i32 (dk_sample_pool *p, u32 index, char *buf, u32 cap)"
@@ -949,6 +1028,7 @@ doc = "Copy the root-relative path of the entry into `buf` and return its length
 name = "dk_sample_pool_set"
 service = "samples"
 provided = true
+wrapper = "glue"
 since = "0.7.0"
 context = "ui"
 sig = "i32 (dk_sample_pool *p, u32 index, const char *path)"
@@ -958,6 +1038,7 @@ doc = "Load a sample file into pool entry `index` (0..15), replacing what was th
 name = "dk_sample_pool_peaks"
 service = "samples"
 provided = true
+wrapper = "glue"
 since = "0.7.0"
 context = "ui"
 sig = "i32 (dk_sample_pool *p, u32 index, u32 token, void *out, u32 capacity)"
@@ -967,6 +1048,7 @@ doc = "Copy bounded PCM16 min/max overview pairs of a READY pool entry matching 
 name = "dk_sample_pool_peaks_window"
 service = "samples"
 provided = true
+wrapper = "glue"
 since = "0.7.0"
 context = "ui"
 sig = "i32 (dk_sample_pool *p, u32 index, u32 token, u32 first, u32 frames, u32 columns, void *out, u32 capacity)"
@@ -1306,6 +1388,7 @@ context = "any"
 sig = "i32 ()"
 doc = "Test only: returns 42 from the svc-test provider."
 test = true
+provided = true
 
 [[import]]
 name = "dk_svctest_hits"
@@ -1315,6 +1398,7 @@ context = "any"
 sig = "u32 ()"
 doc = "Test only: how often the provider's hook ran (the last step of the firmware's SETTINGS list rebuild)."
 test = true
+provided = true
 
 [[import]]
 name = "dk_debug_track_type"
@@ -1825,7 +1909,7 @@ EFFECT = { id = 4, len = 0x1a4, service = "fx" }
 ACTION = { id = 5, len = 0x10, service = "machines" }
 NATIVE_PAGE = { id = 6, len = 0x90, service = "machines" }
 NATIVE_PAGE_V2 = { id = 7, len = 0x98, service = "machines" }
-LFO_SHAPE = { id = 8, len = 76, service = "lfo", generic = true }   # u32 shape id (not 0), 32 samples of i16 (big-endian)
+LFO_SHAPE = { id = 8, len = 80, service = "lfo", generic = true }   # u32 key (`DK_KEY_<ID>`: not 0), 4 characters of name (space to tilde), 32 samples of i16 (big-endian)
 
 # The resources a module counts in its `uses` (R7, the header table of a `.dkm`): one id each. `capacity` names the [capacity.kinds] entry the
 # runtime reports for it.

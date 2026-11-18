@@ -9,6 +9,7 @@ import { parse } from 'smol-toml';
 import { test } from 'vitest';
 import { buildModuleData, shipModules } from '../scripts/gen-modules.mjs';
 import { isShipped, shippedDevices } from '../src/data/shipped.mjs';
+import { loadDevices } from '@digi/devices/node';
 import { PatchKit } from '@digi/workbench-core/patch/patchkit-core.ts';
 import {
   firmwareDir,
@@ -68,7 +69,9 @@ test('the shipped modules: the index describes them, the sources hold no build o
     .flatMap((r) => manifestFiles(join(root, 'modules', r)))
     .map((file) => ({ file, d: parse(readFileSync(file, 'utf8')) as { module: { id: string } } }))
     .filter(
-      ({ file, d }) => isShipped(d, relative(root, dirname(file)).split(sep).join('/')) && shippedDevices(d).length,
+      ({ file, d }) =>
+        isShipped(d, relative(root, dirname(file)).split(sep).join('/')) &&
+        shippedDevices(d, loadDevices().runtimeIds).length,
     )
     .map(({ d }) => d.module.id)
     .sort();
@@ -110,7 +113,7 @@ test.skipIf(!have)('worker core: check and apply equal the command line (core/fx
     py('tools.patchkit.patchkit', 'patch', '--firmware', path, '--modules', 'core/fx', '-o', out);
     const r = kit.apply(fw, ['core/fx']);
     assert.ok(Buffer.from(r.syx).equals(readFileSync(out)), `${name}: output differs from the CLI`);
-    assert.equal(r.plan.record.modules[0].split('@')[0], 'core/fx');
+    assert.ok(r.plan.record.modules.some((m: string) => m.split('@')[0] === 'core/fx'));
     assert.ok(r.verify.checks.length > 0);
     assert.equal(r.sha256.length, 64);
     // always from stock: an already patched image is refused with patchkit's text

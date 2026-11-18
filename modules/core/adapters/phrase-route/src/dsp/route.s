@@ -12,9 +12,11 @@
 .EXTERN _fx_table;
 .EXTERN _fxs_trackbus;
 .EXTERN _fxs_return;
-.EXTERN _fx_enter;
-.EXTERN _fx_leave;
-.EXTERN _fx_exec;
+.EXTERN _fx_blk;
+.EXTERN _fx_ctx;
+.EXTERN _fx_diag;
+.EXTERN _fx_rec;
+.EXTERN _fx_save;
 .EXTERN _fx_in;
 .EXTERN _fx_c;
 .EXTERN _fx_scratch;
@@ -37,7 +39,7 @@ _phr_pre:
     DM(_fx_s_l4) = R0;
     DM(_phr_input_table) = R8;
     L4 = 0;
-    CALL _fx_enter;
+    CALL _phr_fx_enter;
     R0 = DM(_phr_initialized);
     R0 = PASS R0;
     IF NE JUMP _phr_init_done;
@@ -119,7 +121,7 @@ _phr_no_owner:
     R0 = DM(_phr_row);
     DM(_fx_c) = R0;
     I4 = R0;
-    CALL _fx_exec;
+    CALL _phr_fx_exec;
     R0 = PASS R0;
     IF EQ JUMP _phr_fault;
     R1 = DM(_fx_c + 8);
@@ -230,7 +232,7 @@ _phr_publish_fault:
     DM(_phrase_status + PH_S_ROUTE_FAULT) = R0;
     CALL _phr_shadows;
     CALL _phr_scale_wet;
-    CALL _fx_leave;
+    CALL _phr_fx_leave;
     R0 = DM(_fx_s_l4);
     L4 = R0;
     R0 = DM(_fx_s_i4);
@@ -263,7 +265,7 @@ _phr_master:
     R0 = L4;
     DM(_fx_s_l4) = R0;
     L4 = 0;
-    CALL _fx_enter;
+    CALL _phr_fx_enter;
     I0 = _phr_wet;
     I1 = _fxs_return;
     LCNTR = 64, DO _phr_wet_add UNTIL LCE;
@@ -271,7 +273,7 @@ _phr_master:
         R1 = DM(I1,M5);
         F1 = F1 + F0;
 _phr_wet_add: DM(I1,M6) = R1;
-    CALL _fx_leave;
+    CALL _phr_fx_leave;
     R0 = DM(_fx_s_l4);
     L4 = R0;
     R0 = DM(_fx_s_i4);
@@ -557,6 +559,9 @@ _phr_scale_wet:
     CALL _phr_shadow_channel;
     CALL _phr_shadow_channel;
     RTS;
+
+// The router's own effect guard (`_phr_fx_enter`, `_phr_fx_exec`, `_phr_fx_leave`): see guard.inc.
+#include "guard.inc"
 
 .SECTION/DM seg_dmda;
 .GLOBAL _phrase_route_info;

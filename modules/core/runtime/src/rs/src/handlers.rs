@@ -8,7 +8,7 @@
 //! - record kinds of the `register` section (the row's `kinds`: kind and length from sdk.toml), and their `check`, `apply` and `remove` (the registry walker calls them);
 //! - the DSP section parts it owns: `dsp_check_*`, `dsp_admit`, `dsp_claim`, `dsp_release`, `dsp_clear`, `dsp_row_step`
 //!   (the DSP loader in `dsp/mod.rs` keeps the area, the row table and the state machine);
-//! - capacity counts (`cap`, per capacity kind), the module behind a fault site (`attribute`), the guard's state of a machine type (`guard_state`);
+//! - capacity counts (`cap`, per capacity kind), the module behind a fault site (`attribute`);
 //! - `on_loaded` (every row of a module is in the DSP).
 pub use dkrt_abi::service::*;
 
@@ -42,9 +42,53 @@ pub unsafe fn check_declarations() -> u32 {
 /// The C-ABI entry points of the services that the core links into its own tables (interface A: the imports of `sdk.toml` and the events the adapters
 /// call). This is the one place where the core names a service function; the rest of the core calls `Services` or `CoreApi`.
 pub mod exports {
-    /// The effect list of DIGIKIT > FX ROUTES: the fx service's row method; without the service file (no fx) there is no effect.
+    use dkrt_abi::service::GuardState;
+
+    /// The exports of the service files that only the runtime calls (`internal` imports of sdk/sdk.toml): the runtime looks them up by name in the loader's
+    /// export table and keeps its behaviour when the service file is not loaded.
+    pub const FX_ROUTES_ENTRY: &str = "dk_fx_routes_entry";
+    pub const MACHINES_GUARD_STATE: &str = "dk_machines_guard_state";
+    pub const MACHINES_OWNED_IDS: &str = "dk_machines_owned_ids";
+    pub const MACHINES_PLANNED_IDS: &str = "dk_machines_planned_ids";
+    pub const MACHINES_ID_TAKEN: &str = "dk_machines_id_taken";
+
+    /// Host tests: a fake export, by name hash, for the function that the table does not hold as a ColdFire address.
+    #[cfg(test)]
+    pub(crate) static TEST_EXPORTS: std::sync::Mutex<std::vec::Vec<(u32, usize)>> = std::sync::Mutex::new(std::vec::Vec::new());
+
+    /// The address of the export `name` of a loaded service file: `None` when no loaded file publishes it.
+    pub fn find_export(name: &str) -> Option<usize> {
+        let hash = dkneeds::keys::name_hash(name);
+        #[cfg(test)]
+        {
+            let fake = TEST_EXPORTS.lock().unwrap_or_else(|e| e.into_inner());
+            let mut i = 0;
+            while i < fake.len() {
+                if fake[i].0 == hash {
+                    return Some(fake[i].1);
+                }
+                i += 1;
+            }
+        }
+        crate::loader::find_export(hash).map(|a| a as usize)
+    }
+
+    /// The effect list of DIGIKIT > FX ROUTES: the `fx` service file's export; without the file (no fx) there is no effect.
     pub unsafe fn fx_entry(index: u32, out: &mut dkrt_sdk::DkrtFx) -> i32 {
-        super::services().fx_entry(index, out)
+        match find_export(FX_ROUTES_ENTRY) {
+            Some(a) => core::mem::transmute::<usize, unsafe extern "C" fn(u32, *mut u8) -> i32>(a)(index, out as *mut dkrt_sdk::DkrtFx as *mut u8),
+            None => dkrt_sdk::E_NOT_FOUND,
+        }
+    }
+    /// The guard's counts of machine type `ty` (`module_cmds`: the module list): the `machines` service file's export; none without the file.
+    pub unsafe fn guard_state(ty: u32) -> Option<GuardState> {
+        let a = find_export(MACHINES_GUARD_STATE)?;
+        let mut g = GuardState { faults: 0, disabled: false };
+        if core::mem::transmute::<usize, unsafe extern "C" fn(u32, *mut u8) -> u32>(a)(ty, &mut g as *mut GuardState as *mut u8) != 0 {
+            Some(g)
+        } else {
+            None
+        }
     }
     /// Host tests only: the type numbers of the machines service for the module being loaded, and its row as a loaded service file has it (`svc_rows::test_machines`).
     #[cfg(test)]
@@ -57,19 +101,31 @@ pub mod exports {
     }
     /// The machine type numbers of the machine rows module `owner` filled (`module_cmds`: the module list); returns how many.
     pub fn owned_ids(owner: u8, out: &mut [u8; 8]) -> usize {
-        unsafe { super::services().owned_ids(owner, out) }
+        match find_export(MACHINES_OWNED_IDS) {
+            Some(a) => unsafe { core::mem::transmute::<usize, unsafe extern "C" fn(u32, *mut u8) -> u32>(a)(owner as u32, out.as_mut_ptr()) as usize },
+            None => 0,
+        }
     }
-    /// The `[key, id]` pairs the services planned for the module at index `selection` of the boot's selection (`instrument::resolve_types`); returns how many.
+    /// The `[key, number]` pairs the machines service planned for the module at index `selection` of the boot's selection (`instrument::resolve_types`): the
+    /// `machines` service file's export; returns how many (none without the file).
     pub fn planned_ids(selection: u32, out: &mut [[u32; 2]; 8]) -> usize {
-        unsafe { super::services().planned_ids(selection, out) }
+        match find_export(MACHINES_PLANNED_IDS) {
+            Some(a) => unsafe {
+                (core::mem::transmute::<usize, unsafe extern "C" fn(u32, *mut u32) -> u32>(a)(selection, out.as_mut_ptr() as *mut u32) as usize).min(out.len())
+            },
+            None => 0,
+        }
     }
-    /// Whether a service has id `id` taken in its rows.
+    /// Whether the machines service has machine type `id` taken in its rows: the `machines` service file's export; not taken without the file.
     pub fn id_taken(id: u32) -> bool {
-        unsafe { super::services().id_taken(id) }
+        match find_export(MACHINES_ID_TAKEN) {
+            Some(a) => unsafe { core::mem::transmute::<usize, unsafe extern "C" fn(u32) -> u32>(a)(id) != 0 },
+            None => false,
+        }
     }
     /// The shapes of the lfo service, for the runtime's own tests of the record path.
     #[cfg(test)]
-    pub(crate) use dkrt_svc_lfo::records::{owner_of, shape, used, Lfo, MAX_SHAPES, SAMPLES};
+    pub(crate) use dkrt_svc_lfo::records::{number_of, owner_of, shape, used, Lfo, MAX_SHAPES, SAMPLES};
 }
 
 /// The length of a record of `kind`; `E_FORMAT`-worthy kinds are `None`. For the builder lowering (`collect`).

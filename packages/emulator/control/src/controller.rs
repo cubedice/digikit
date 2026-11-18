@@ -46,16 +46,14 @@ use crate::{
 pub const MAX_SYX: usize = 32 * 1024 * 1024;
 /// Guest instructions NO is held when the controller closes the boot modal.
 const NO_HOLD: u64 = 2_000_000;
-/// Guest instructions per emulated second (the ColdFire oracle clock).
-const CF_IPS: f64 = 132_000_000.0;
 /// How far a paced runtime may lag the wall clock before its stretch starts again, in seconds.
 const PACE_SLACK_S: f64 = 0.05;
 
 /// Pacing of a free-running runtime without audio: after `wall_s` seconds of wall clock a runtime that executed `executed` instructions
 /// (`None`: its count went back) is ahead of the clock (`Some(true)`: wait), on time or a little behind (`Some(false)`: step), or
 /// lagging by more than the slack (`None`: start the stretch again).
-fn pace_ahead(wall_s: f64, executed: Option<u64>) -> Option<bool> {
-    let seconds = executed? as f64 / CF_IPS;
+fn pace_ahead(wall_s: f64, executed: Option<u64>, ips: u64) -> Option<bool> {
+    let seconds = executed? as f64 / ips as f64;
     if seconds + PACE_SLACK_S < wall_s {
         None
     } else {
@@ -426,6 +424,10 @@ pub struct Config {
     /// The repository root that `firmware.load {runtime: true}` reads the module library and device files from
     /// (default: `$DIGI_REPO_ROOT`, else the working directory's repository; see `runtime_patch::find_root`).
     pub repo_root: Option<PathBuf>,
+    /// The DSP choice the launcher asked for (`--no-dsp`, `--dsp-on`); the loads that do not name one use it (`firmware.load {dsp}`),
+    /// None meaning on. On: coupled DSP audio when its inputs are set, a peer CPU that runs its program. Off: no DSP session, and the
+    /// mailbox responder for a peer CPU. A webview reads it as `status.dsp_flag` and adopts it instead of its own saved choice.
+    pub dsp: Option<bool>,
 }
 
 /// A +Drive folder and what to do with the firmware's changes to its card.
@@ -454,6 +456,7 @@ impl Config {
             mirror_dir: None,
             device_folders: None,
             repo_root: None,
+            dsp: None,
         }
     }
 }
@@ -702,6 +705,13 @@ struct Actor {
     runtime: Option<Runtime>,
     /// DSP blocks, instructions and idle-skipped instructions the worker had counted when `sharc.profile` started counting.
     sharc_profile_base: (u64, u64, u64),
+    /// `cf.profile` and `sharc.profile` were switched on and not off since: a new runtime (firmware load, restart) starts them again.
+    cf_profile_wanted: bool,
+    sharc_profile_wanted: bool,
+    /// How many times a new runtime re-armed each profile since the last explicit `enable` of that profile: the counters of a
+    /// read restarted that many times, and the reader can tell its recording has a gap.
+    cf_profile_restarts: u64,
+    sharc_profile_restarts: u64,
     /// The session id the webview protocol checks.
     session: u64,
     /// Raised whenever the runtime is replaced, whoever asked.
@@ -773,6 +783,10 @@ struct Actor {
     /// `card.reset_overlay` set the saved overlay aside: this session's card writes are not saved or exported at quit. A new
     /// runtime (the reload that follows) clears it.
     overlay_set_aside: bool,
+    /// The DSP choice in force (`Config::dsp`, then the last `firmware.load {dsp}`): false boots ColdFire only, with the responder for a peer CPU.
+    dsp: bool,
+    /// `Config::dsp`, kept for `status.dsp_flag`.
+    dsp_flag: Option<bool>,
     /// Soft resets in a row before the boot got ready (a bound for boot loops).
     boot_resets: u32,
     /// CPU exceptions run the guest's handler (RPC `cpu.exceptions`), for every runtime installed from now on.
@@ -830,12 +844,16 @@ impl Actor {
             rx,
             audio_default: config.audio.clone(),
             audio_alt: config.audio_alt,
-            audio: config.audio,
+            audio: config.audio.filter(|_| config.dsp != Some(false)),
             run_dir: config.run_dir,
             events: config.events,
             on_quit: config.on_quit,
             runtime: None,
             sharc_profile_base: (0, 0, 0),
+            cf_profile_wanted: false,
+            sharc_profile_wanted: false,
+            cf_profile_restarts: 0,
+            sharc_profile_restarts: 0,
             session: 0,
             epoch: 0,
             loaded: None,
@@ -898,6 +916,8 @@ impl Actor {
             deliver_exceptions: false,
             pc_probe: None,
             reset_ram: None,
+            dsp: config.dsp.unwrap_or(true),
+            dsp_flag: config.dsp,
         }
     }
 
@@ -1068,8 +1088,8 @@ impl Actor {
             && self.mode == Mode::Free
             && self.job.is_none()
             && self.runtime.as_ref().is_some_and(|r| !r.has_audio());
-        let elapsed = match self.runtime.as_ref() {
-            Some(r) if paced => r.elapsed_instructions(),
+        let (elapsed, ips) = match self.runtime.as_ref() {
+            Some(r) if paced => (r.elapsed_instructions(), r.cf_ips()),
             _ => {
                 self.pace_anchor = None;
                 return false;
@@ -1080,6 +1100,7 @@ impl Actor {
         match pace_ahead(
             now.duration_since(start).as_secs_f64(),
             elapsed.checked_sub(base),
+            ips,
         ) {
             Some(ahead) => ahead,
             // the clock went back (rebased) or the stretch lags: start a new one
@@ -1185,6 +1206,7 @@ impl Actor {
             .map_or(0, Runtime::elapsed_instructions);
         let obs = health::Observation {
             elapsed,
+            instr_per_ms: self.runtime.as_ref().map_or(0, |r| r.cf_ips() / 1000),
             hits: status.mainloop_hits,
             main_ui: status.main_ui_reached,
             cpu_running: status.cpu_state == "running",
@@ -1290,6 +1312,21 @@ impl Actor {
         runtime.set_deliver_exceptions(self.deliver_exceptions);
         if let Some(spec) = &self.pc_probe {
             runtime.set_pc_probe(spec);
+        }
+        // DSP off on a device with a second CPU that runs a program: the mailbox responder answers instead (no peer audio, fast UI).
+        if !self.dsp && runtime.has_peer_cpu() {
+            runtime.use_peer_responder();
+        }
+        self.sharc_profile_base = (0, 0, 0);
+        #[cfg(feature = "cf-profile")]
+        if self.cf_profile_wanted {
+            runtime.set_cf_profile(true);
+            self.cf_profile_restarts += 1;
+        }
+        // A runtime without a DSP session answers false: it does not count and does not fail the install.
+        #[cfg(feature = "sharc-profile")]
+        if self.sharc_profile_wanted && runtime.set_sharc_profile(true) {
+            self.sharc_profile_restarts += 1;
         }
         self.runtime = Some(runtime);
         self.overlay_set_aside = false;
@@ -1783,6 +1820,10 @@ impl Actor {
         let (Some(runtime), Some(run)) = (self.runtime.as_mut(), self.scenario_run.as_mut()) else {
             return Ok(budget);
         };
+        if run.started.is_none() {
+            // the file's instruction counts are authored at the base rate: scale them to this runtime's
+            run.scenario = run.scenario.clone().at_rate(runtime.cf_ips());
+        }
         let started = *run.started.get_or_insert_with(Instant::now);
         let elapsed = runtime.elapsed_instructions();
         while let Some(event) = run.scenario.events.get(run.next).copied() {
@@ -1926,9 +1967,11 @@ impl Actor {
             JobKind::Boot { cache, limit } => {
                 if runtime.status().ready {
                     self.boot_resets = 0;
+                    // The boot cache is an optimisation. A snapshot does not carry a running second CPU (`save_state`), so a device with
+                    // one boots cold every time; an explicit `state.save` still reports it.
                     let saved = match cache {
-                        Some(path) => save_cache(runtime, path),
-                        None => Ok(None),
+                        Some(path) if runtime.peer_cpu().is_none() => save_cache(runtime, path),
+                        _ => Ok(None),
                     };
                     runtime.rebase_clock();
                     Some(saved.map(|cache| json!({"booted": true, "cache_saved": cache})))
@@ -2055,24 +2098,7 @@ impl Actor {
             "state.save" => self.rpc_state_save(&p).map(Some),
             "state.load" => self.rpc_state_load(&p).map(Some),
             "pcm.tap" => self.rpc_pcm_tap(&p).map(Some),
-            "cf.profile" => self
-                .with_runtime(|r| {
-                    #[cfg(feature = "cf-profile")]
-                    {
-                        let mut v = r.cf_profile();
-                        v["controller_cpu_ns"] = elektron_native_boot::thread_cpu_ns().into();
-                        Ok(v)
-                    }
-                    #[cfg(not(feature = "cf-profile"))]
-                    {
-                        let _ = r;
-                        Err(RpcError::new(
-                            code::METHOD_NOT_FOUND,
-                            "built without cf-profile",
-                        ))
-                    }
-                })
-                .map(Some),
+            "cf.profile" => self.rpc_cf_profile(&p).map(Some),
             "sharc.profile" => self.rpc_sharc_profile(&p).map(Some),
             "dsp.peek" => self.rpc_dsp_peek(&p).map(Some),
             "dsp.peek_word" => self.rpc_dsp_peek_word(&p).map(Some),
@@ -2212,7 +2238,9 @@ impl Actor {
         let job = if let Some(j) = &self.patch_job {
             // The count restarts at 0 when a soft reset reboots the job, so a client counts any change as progress.
             let (phase, progress) = match j.phase.load(Ordering::Relaxed) {
-                PHASE_DSP => ("starting the DSP", Value::Null),
+                // The phase is only reported with a DSP start; a load without the DSP just boots.
+                PHASE_DSP if self.dsp => ("starting the DSP", Value::Null),
+                PHASE_DSP => ("booting", Value::Null),
                 PHASE_COLDFIRE => (
                     "booting",
                     json!(f64::from_bits(j.fraction.load(Ordering::Relaxed))),
@@ -2244,17 +2272,11 @@ impl Actor {
         let cf = serde_json::to_value(&status).unwrap_or(Value::Null);
         let audio = summarize_audio(runtime);
         let load = poll_load(&mut self.load_meter, &status, &audio);
-        let dsp = if runtime.has_audio() {
-            "sharc"
-        } else if runtime.is_zero() {
-            "zero"
-        } else {
-            "none"
-        };
+        let dsp = runtime.companion_kind().as_str();
         let frame = runtime.current_frame().map(|(revision, _)| revision);
         Ok(json!({
             "controller_cpu_ns": elektron_native_boot::thread_cpu_ns(),
-            "firmware": loaded, "cf": cf, "audio": audio, "dsp": dsp, "job": job,
+            "firmware": loaded, "cf": cf, "audio": audio, "dsp": dsp, "dsp_enabled": self.dsp, "dsp_flag": self.dsp_flag, "job": job,
             "scheduled_inputs": scheduled, "frame_revision": frame,
             "heartbeat": {"mainloop_hits": cf["mainloop_hits"], "stalled": self.health.stalled(),
                           "stall_count": self.health.stall_count, "stall_ms": self.health.stall_ms,
@@ -3422,6 +3444,39 @@ impl Actor {
         }
     }
 
+    /// `cf.profile {enable?}`: true starts the ColdFire profile and clears it, false stops and clears, no argument
+    /// reads the counters since the start (like `sharc.profile`).
+    fn rpc_cf_profile(&mut self, p: &Params) -> RpcResult {
+        #[cfg(feature = "cf-profile")]
+        {
+            let enable = p.opt_bool("enable")?;
+            let restarts = self.cf_profile_restarts;
+            // Set before the runtime call: a stop always clears the flag, a start is kept until a runtime arms it.
+            if let Some(on) = enable {
+                self.cf_profile_wanted = on;
+                self.cf_profile_restarts = 0;
+            }
+            self.with_runtime(|r| {
+                if let Some(on) = enable {
+                    r.set_cf_profile(on);
+                    return Ok(json!({"enabled": on}));
+                }
+                let mut v = r.cf_profile();
+                v["controller_cpu_ns"] = elektron_native_boot::thread_cpu_ns().into();
+                v["restarts"] = restarts.into();
+                Ok(v)
+            })
+        }
+        #[cfg(not(feature = "cf-profile"))]
+        {
+            let _ = p;
+            Err(RpcError::new(
+                code::METHOD_NOT_FOUND,
+                "built without cf-profile",
+            ))
+        }
+    }
+
     /// `sharc.profile {enable?}`: DSP instruction counts as raw `dk.profile/1` counters (docs/CONTROL.md). `enable: true` starts (and clears) the
     /// counting, `enable: false` stops and clears it; no `enable` reads the cumulative counts. Only with the `sharc-profile` feature.
     fn rpc_sharc_profile(&mut self, p: &Params) -> RpcResult {
@@ -3429,6 +3484,11 @@ impl Actor {
         {
             let enable = p.opt_bool("enable")?;
             let started = self.sharc_profile_base;
+            let restarts = self.sharc_profile_restarts;
+            if let Some(on) = enable {
+                self.sharc_profile_wanted = on;
+                self.sharc_profile_restarts = 0;
+            }
             let mut now = None;
             let answer = self.with_runtime(|r| {
                 let unavailable = |m: &str| RpcError::new(code::AUDIO_UNAVAILABLE, m);
@@ -3472,7 +3532,9 @@ impl Actor {
                         .collect(),
                     hist: hist.clone(),
                 };
-                Ok(crate::sharc_profile::profile_json(&counts))
+                let mut v = crate::sharc_profile::profile_json(&counts);
+                v["restarts"] = restarts.into();
+                Ok(v)
             })?;
             if let Some(base) = now {
                 self.sharc_profile_base = base;
@@ -3609,7 +3671,23 @@ impl Actor {
 
     /// `firmware.load`: decide how to get from the running firmware to `bytes`
     /// (see the design's "Firmware injection"), do it, and report.
+    /// Loads firmware. The load reads the DSP choice from `self.dsp`, so a `dsp` parameter is applied first and put back when the
+    /// load fails: a rejected image must not change the choice of the running firmware.
     fn firmware_load(
+        &mut self,
+        p: &Params,
+        bytes: Vec<u8>,
+        reply: &RpcReply,
+    ) -> Result<Option<Value>, RpcError> {
+        let before = self.dsp;
+        let result = self.firmware_load_inner(p, bytes, reply);
+        if result.is_err() {
+            self.dsp = before;
+        }
+        result
+    }
+
+    fn firmware_load_inner(
         &mut self,
         p: &Params,
         mut bytes: Vec<u8>,
@@ -3647,8 +3725,36 @@ impl Actor {
         // `replace`: load as the first firmware (nothing of the running one is reused, and a different device is fine): the webview's
         // Open and Reload. Without it the image is a variant of the running one (injection).
         let replace = p.opt_bool("replace")?.unwrap_or(false);
+        // The image's device decides which of the caller's preferences apply (the UI sends its own unconditionally).
+        let offers = LoadOffers::of(&bytes);
+        let mut dsp_note = None;
+        // `dsp`: the DSP choice of this load and the loads after it (true when the controller started without `--no-dsp`).
+        if let Some(dsp) = p.opt_bool("dsp")? {
+            if !offers.dsp_choice {
+                dsp_note = Some(json!({
+                    "requested": dsp, "in_force": self.dsp, "applied": false,
+                    "reason": "device has no DSP choice",
+                }));
+            } else if dsp != self.dsp && !replace {
+                return Err(RpcError::bad_params(
+                    "dsp changes with replace: true (a load that starts the firmware over)",
+                ));
+            } else {
+                self.dsp = dsp;
+            }
+        }
         let mut stock_base: Option<Vec<u8>> = None;
         let mut runtime_report = None;
+        let runtime_requested = if runtime_requested && !offers.runtime {
+            runtime_report = Some(json!({
+                "patched": false,
+                "skipped": "device has no digikit runtime",
+                "reason": "runtime: skipped (device has no digikit runtime)",
+            }));
+            false
+        } else {
+            runtime_requested
+        };
         if runtime_requested {
             let set = patch_set.unwrap_or("emulator");
             let started = Instant::now();
@@ -3698,6 +3804,12 @@ impl Actor {
         });
         if let Some(r) = runtime_report {
             report["runtime"] = r;
+        }
+        if let Some(note) = dsp_note {
+            report["dsp_choice"] = note;
+        }
+        if let Some(error) = offers.registry_error {
+            report["offers_error"] = json!(error);
         }
         // Fields a caller that loads on behalf of another method (`dev.reload`) adds to the report, the cold boot's included.
         if let Some(extra) = p.get("report_extra").and_then(Value::as_object) {
@@ -3754,7 +3866,11 @@ impl Actor {
         if replace {
             // As `ui_load` always did: forget the running firmware, its card job and its audio setup.
             self.cancel_card();
-            self.audio = self.audio_for_base(base_param.as_deref().unwrap_or(&new.sha256));
+            self.audio = if self.dsp {
+                self.audio_for_base(base_param.as_deref().unwrap_or(&new.sha256))
+            } else {
+                None
+            };
             self.card_last = json!({"state": "idle"});
             self.read_error = None;
             self.runtime = None;
@@ -3812,7 +3928,7 @@ impl Actor {
             let base_sha = loaded.base_sha.clone();
             let changed = running.changed_sections(&new);
             report["sections_changed"] = json!(changed);
-            let main_changed = changed.contains(&firmware::SECTION_MAIN);
+            let main_changed = changed.contains(&new.roles.main);
             report["main_changed"] = main_changed.into();
             if !main_changed && !force {
                 if initial_buttons.is_some() {
@@ -3889,7 +4005,10 @@ impl Actor {
         report: &mut Value,
         start: &str,
     ) -> Result<bool, RpcError> {
-        if start == "cold" {
+        // A firmware with a DSP restores a ready snapshot (it holds the DSP state); one
+        // without a DSP has none and boots cold. The roles come from the registry, or from the stock
+        // base a patch record names, so a patched image answers as its base does.
+        if start == "cold" && new.roles.dsp.is_some() {
             return Err(RpcError::bad_params(
                 "start cold needs a patched MAIN; a stock firmware restores its snapshot",
             ));
@@ -3933,7 +4052,7 @@ impl Actor {
         report: &mut Value,
         start: &str,
     ) -> Result<bool, RpcError> {
-        if start == "cold" {
+        if start == "cold" && new.roles.dsp.is_some() {
             return Err(RpcError::bad_params(
                 "start cold is for a patched MAIN; this MAIN is the base's",
             ));
@@ -3986,7 +4105,8 @@ impl Actor {
     ) -> Result<bool, RpcError> {
         let dsp_changed = running
             .changed_sections(&new)
-            .contains(&firmware::SECTION_DSP);
+            .iter()
+            .any(|id| Some(*id) == new.roles.dsp);
         report["start_used"] = "none".into();
         if dsp_changed {
             let has_audio = self.runtime.as_ref().is_some_and(Runtime::has_audio);
@@ -4280,23 +4400,69 @@ struct PatchJob {
     keep_out: Arc<Mutex<Option<Vec<u8>>>>,
 }
 
-/// The card file's path, length and mtime, and the SHA-256 of its saved overlay (`overlay.bin`, "-" without one).
-/// `None` when the card file's metadata cannot be read.
+/// The identity of a card for snapshot keys: its content id, its length and the SHA-256 of its saved overlay (`overlay.bin`, "-"
+/// without one). `None` when the card file's metadata cannot be read.
+/// The content id is the text of `card.key` next to the image. The card builder writes it (`tests/regression/runtime/card-cache.ts`):
+/// it is derived from the inputs that make the card, so the same card in two worktrees gives the same key without hashing its bytes.
+/// A card without `card.key` (a desktop card, a custom image) falls back to its path and mtime with a `p:` prefix. Such an entry
+/// never matches in another worktree: it can miss, never restore a wrong state.
 fn card_identity(card: &Path) -> Option<String> {
     use sha2::{Digest, Sha256};
     let meta = std::fs::metadata(card).ok()?;
-    let modified = meta
-        .modified()
-        .ok()
-        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-        .map_or(0, |d| d.as_secs());
     let overlay = std::fs::read(overlay_path(card))
         .map_or_else(|_| "-".to_string(), |b| format!("{:x}", Sha256::digest(&b)));
-    Some(format!(
-        "{}:{}:{modified}:{overlay}",
-        card.display(),
-        meta.len()
-    ))
+    let content = match std::fs::read_to_string(card.with_file_name("card.key")) {
+        Ok(id) if !id.trim().is_empty() => format!("k:{}", id.trim()),
+        _ => {
+            let modified = meta
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map_or(0, |d| d.as_secs());
+            format!("p:{}:{modified}", card.display())
+        }
+    };
+    Some(format!("{content}:{}:{overlay}", meta.len()))
+}
+
+/// A staging dir name inside the snapshot root for the cold boot of `stem`: unique per process and call.
+#[cfg_attr(not(feature = "sharc"), allow(dead_code))]
+fn pair_staging_name(stem: &str) -> String {
+    static SEQ: AtomicU64 = AtomicU64::new(0);
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos());
+    format!(
+        ".tmp-{stem}-{}-{nanos:x}-{}",
+        std::process::id(),
+        SEQ.fetch_add(1, Ordering::Relaxed)
+    )
+}
+
+/// Publish the staged ready pair `tmp` as `pair` with one directory rename, so a reader never sees a `.dsp` of one boot with a
+/// `.snap` of another. When `pair` already holds a snapshot, the first writer wins: `tmp` is removed and this gives `Ok(false)`.
+/// A `pair` dir without a snapshot is an incomplete leftover: it is removed and the rename is tried once more.
+/// On an error `tmp` is removed too.
+#[cfg_attr(not(feature = "sharc"), allow(dead_code))]
+fn publish_pair(tmp: &Path, pair: &Path) -> std::io::Result<bool> {
+    let mut retried = false;
+    loop {
+        match std::fs::rename(tmp, pair) {
+            Ok(()) => return Ok(true),
+            Err(_) if pair.join("digi-audio-m5.snap").is_file() => {
+                let _ = std::fs::remove_dir_all(tmp);
+                return Ok(false);
+            }
+            Err(e) if retried => {
+                let _ = std::fs::remove_dir_all(tmp);
+                return Err(e);
+            }
+            Err(_) => {
+                retried = true;
+                let _ = std::fs::remove_dir_all(pair);
+            }
+        }
+    }
 }
 
 /// The file name suffix of a ColdFire-only ready state for `card` (empty without a card): the card file's identity and its saved
@@ -4522,7 +4688,20 @@ impl Actor {
                 Err(e) if start != "snapshot" => {
                     // A bad cache: drop it and boot cold.
                     report["cache_note"] = format!("cached pair unusable: {}", e.message).into();
-                    let _ = std::fs::remove_file(&snapshot);
+                    // Rename the pair aside first, then remove it: another lane may have republished
+                    // meanwhile, and a rename never leaves a mixed pair. A missing entry is fine.
+                    let nanos = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map_or(0, |d| d.as_nanos());
+                    let aside = pair.with_file_name(format!(
+                        "{}.bad-{}-{nanos}",
+                        pair.file_name()
+                            .map_or_else(String::new, |n| n.to_string_lossy().into_owned()),
+                        std::process::id()
+                    ));
+                    if std::fs::rename(&pair, &aside).is_ok() {
+                        let _ = std::fs::remove_dir_all(&aside);
+                    }
                     return self.load_patched_coupled(
                         bytes,
                         card,
@@ -4544,8 +4723,7 @@ impl Actor {
                 pair.display()
             )));
         }
-        // The pair's presence is its snapshot: drop an old one first.
-        let _ = std::fs::remove_file(&snapshot);
+        // A cold start publishes through staging; an existing pair stays (first writer wins).
         install.report["start_used"] = "cold".into();
         install.report["cache_dir"] = pair.display().to_string().into();
         let cancel = Arc::new(AtomicBool::new(false));
@@ -4562,6 +4740,12 @@ impl Actor {
             card.clone(),
             base_sha.to_string(),
         );
+        // The cold boot writes into a staging dir; one rename publishes the pair (see `publish_pair`).
+        let pair_stem = pair
+            .file_name()
+            .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+        let pair_tmp = self.snapshot_root().join(pair_staging_name(&pair_stem));
+        let (worker_pair, worker_tmp) = (pair.clone(), pair_tmp);
         let synced = self.card_synced(card.as_deref());
         let mut inputs = digi_coupled::cold::ColdInputs {
             initial_buttons: initial_buttons.unwrap_or_default().to_vec(),
@@ -4586,12 +4770,12 @@ impl Actor {
                         let card = card_obj.get_or_insert_with(Card::default);
                         apply_overlay_sectors(card, sectors)?;
                     }
-                    digi_coupled::cold::boot_patched_to_ready(
+                    let booted = digi_coupled::cold::boot_patched_to_ready(
                         &worker_bytes,
                         card_obj,
                         &worker_base,
                         &inputs,
-                        &pair,
+                        &worker_tmp,
                         &worker_cancel,
                         |p| {
                             worker_progress.store(p.icount, Ordering::Relaxed);
@@ -4602,7 +4786,17 @@ impl Actor {
                             };
                             worker_phase.store(phase, Ordering::Relaxed);
                         },
-                    )
+                    );
+                    match booted {
+                        // The boot's own result is reported even when another boot published the same pair first.
+                        Ok(report) => publish_pair(&worker_tmp, &worker_pair)
+                            .map(|_| report)
+                            .map_err(|e| format!("publish {}: {e}", worker_pair.display())),
+                        Err(e) => {
+                            let _ = std::fs::remove_dir_all(&worker_tmp);
+                            Err(e)
+                        }
+                    }
                 });
                 let _ = done_tx.send(result.map(|r| PatchBooted {
                     icount: r.icount,
@@ -5205,7 +5399,10 @@ fn save_cache(runtime: &mut Runtime, path: &Path) -> Result<Option<String>, RpcE
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| RpcError::io(format!("{parent:?}: {e}")))?;
     }
-    let partial = path.with_extension("snap.part");
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos());
+    let partial = path.with_extension(format!("snap.{}.{nanos}.part", std::process::id()));
     std::fs::write(&partial, data).map_err(|e| RpcError::io(format!("{partial:?}: {e}")))?;
     std::fs::rename(&partial, path).map_err(|e| RpcError::io(format!("{path:?}: {e}")))?;
     Ok(Some(path.display().to_string()))
@@ -5248,6 +5445,105 @@ fn summarize_audio(runtime: &mut Runtime) -> Value {
         "source_audio_seconds": report["source_audio_seconds"],
         "dsp_tiers": report["dsp_tiers"], "dsp_core": report["dsp_core"],
     })
+}
+
+/// What the device of a firmware image offers the caller: the preferences of a load (`runtime`, `dsp`) apply only where it does.
+/// An image that cannot be identified offers everything: the load then fails or proceeds on its own checks, as it always did.
+struct LoadOffers {
+    /// `[digikit]` is in the device file: the digikit runtime can be patched in.
+    runtime: bool,
+    /// The device has a DSP (`[capabilities] dsp = "sharc"`) or a peer CPU (`[emulator] peer`): there is something to switch.
+    dsp_choice: bool,
+    /// The device registry did not parse: the offers fall back to everything, and the load report carries this error.
+    registry_error: Option<String>,
+}
+
+impl LoadOffers {
+    fn of(syx: &[u8]) -> Self {
+        let all = Self {
+            runtime: true,
+            dsp_choice: true,
+            registry_error: None,
+        };
+        let Ok(fw) = patchkit::firmware::Firmware::parse(syx) else {
+            return all;
+        };
+        let short = fw.device.short();
+        let Some(id) = patchkit::devdata::identities()
+            .iter()
+            .find(|i| i.short == short)
+        else {
+            return all;
+        };
+        let registry = match plusdrive_format::device_profile::Registry::load() {
+            Ok(registry) => registry,
+            Err(error) => {
+                return Self {
+                    registry_error: Some(format!("device registry: {error}")),
+                    ..all
+                };
+            }
+        };
+        let peer = registry
+            .devices()
+            .iter()
+            .any(|d| d.short == short && d.peer.is_some());
+        Self::from_device(id.runtime_target, &id.capabilities.dsp, peer)
+    }
+
+    fn from_device(runtime_target: bool, dsp: &str, peer: bool) -> Self {
+        Self {
+            runtime: runtime_target,
+            dsp_choice: dsp == "sharc" || peer,
+            registry_error: None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod load_offers_tests {
+    use super::*;
+
+    #[test]
+    fn a_device_offers_the_runtime_and_the_dsp_choice_by_its_data() {
+        let full = LoadOffers::from_device(true, "sharc", false);
+        assert!((full.runtime, full.dsp_choice) == (true, true));
+        // a peer CPU is a choice too; without a DSP or a peer there is none, and without [digikit] there is no runtime
+        let peer = LoadOffers::from_device(false, "none", true);
+        assert!((peer.runtime, peer.dsp_choice) == (false, true));
+        let plain = LoadOffers::from_device(false, "none", false);
+        assert!((plain.runtime, plain.dsp_choice) == (false, false));
+    }
+
+    /// Every firmware in `firmware/` is judged by its own device file: the runtime offer follows `[digikit]`, the DSP choice follows
+    /// the DSP or the peer CPU; an image that is no firmware offers everything.
+    #[test]
+    fn real_images_are_judged_by_their_device_file() {
+        let registry = plusdrive_format::device_profile::Registry::load().unwrap();
+        let mut judged = 0;
+        for device in registry.devices() {
+            let id = patchkit::devdata::identities()
+                .iter()
+                .find(|i| i.short == device.short)
+                .unwrap();
+            for file in device.firmwares.iter().filter_map(|f| f.filename.as_ref()) {
+                let Ok(syx) = std::fs::read(format!("../../../firmware/{file}")) else {
+                    continue;
+                };
+                let offers = LoadOffers::of(&syx);
+                assert_eq!(offers.runtime, id.runtime_target, "{file}");
+                assert_eq!(
+                    offers.dsp_choice,
+                    id.capabilities.dsp == "sharc" || device.peer.is_some(),
+                    "{file}"
+                );
+                judged += 1;
+            }
+        }
+        eprintln!("{judged} images judged");
+        let garbage = LoadOffers::of(b"not firmware");
+        assert!(garbage.runtime && garbage.dsp_choice);
+    }
 }
 
 #[cfg(test)]
@@ -5355,6 +5651,113 @@ mod card_key_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// A card file of `len` zero bytes in a new dir under `root`, with `card.key` text `key` when given.
+    fn card_in(root: &std::path::Path, name: &str, key: Option<&str>) -> std::path::PathBuf {
+        let dir = root.join(name);
+        std::fs::create_dir_all(&dir).unwrap();
+        let card = dir.join("card.img");
+        std::fs::write(&card, vec![0u8; 512]).unwrap();
+        if let Some(key) = key {
+            std::fs::write(dir.join("card.key"), key).unwrap();
+        }
+        card
+    }
+
+    #[test]
+    fn a_card_with_a_content_id_gives_the_same_key_in_every_worktree() {
+        let root = std::env::temp_dir().join(format!("digi-card-id-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let a = card_in(&root, "lane-a", Some("abc"));
+        let b = card_in(&root, "lane-b", Some("abc\n"));
+        let later = std::time::SystemTime::now() + std::time::Duration::from_secs(3600);
+        std::fs::File::options()
+            .write(true)
+            .open(&b)
+            .unwrap()
+            .set_modified(later)
+            .unwrap();
+        let key = |card: &std::path::Path| card_snapshot_key(Some(card), false);
+        assert_eq!(key(&a), key(&b), "same content id, other path and mtime");
+        let other = card_in(&root, "lane-c", Some("abd"));
+        assert_ne!(key(&a), key(&other), "other content id");
+        std::fs::write(overlay_path(&b), b"saved writes").unwrap();
+        assert_ne!(key(&a), key(&b), "other overlay");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_card_without_a_content_id_never_matches_at_another_path() {
+        let root = std::env::temp_dir().join(format!("digi-card-noid-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let a = card_in(&root, "lane-a", None);
+        let b = card_in(&root, "lane-b", None);
+        let key = |card: &std::path::Path| card_snapshot_key(Some(card), false);
+        assert_ne!(key(&a), key(&b));
+        assert_eq!(key(&a), key(&a));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn two_boots_of_one_pair_publish_one_complete_pair() {
+        let root = std::env::temp_dir().join(format!("digi-publish-pair-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let pair = root.join("stem");
+        let staged: Vec<_> = ["one", "two"]
+            .iter()
+            .map(|content| {
+                let tmp = root.join(super::pair_staging_name("stem"));
+                std::fs::create_dir_all(&tmp).unwrap();
+                std::fs::write(tmp.join("digi-audio-m5.snap.dsp"), content).unwrap();
+                std::fs::write(tmp.join("digi-audio-m5.snap"), content).unwrap();
+                tmp
+            })
+            .collect();
+        assert_ne!(staged[0], staged[1]);
+        let wins: Vec<bool> = std::thread::scope(|s| {
+            let handles: Vec<_> = staged
+                .iter()
+                .map(|tmp| {
+                    let pair = &pair;
+                    s.spawn(move || super::publish_pair(tmp, pair).unwrap())
+                })
+                .collect();
+            handles.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        assert_eq!(wins.iter().filter(|w| **w).count(), 1, "first writer wins");
+        let snap = std::fs::read(pair.join("digi-audio-m5.snap")).unwrap();
+        assert_eq!(
+            snap,
+            std::fs::read(pair.join("digi-audio-m5.snap.dsp")).unwrap()
+        );
+        let names: Vec<_> = std::fs::read_dir(&root)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, ["stem"], "no staging dir is left");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn an_incomplete_pair_dir_is_replaced_by_a_published_one() {
+        let root = std::env::temp_dir().join(format!("digi-publish-stale-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let pair = root.join("stem");
+        std::fs::create_dir_all(&pair).unwrap();
+        std::fs::write(pair.join("digi-audio-m5.snap.dsp"), "old").unwrap();
+        let tmp = root.join(super::pair_staging_name("stem"));
+        std::fs::create_dir_all(&tmp).unwrap();
+        std::fs::write(tmp.join("digi-audio-m5.snap.dsp"), "new").unwrap();
+        std::fs::write(tmp.join("digi-audio-m5.snap"), "new").unwrap();
+        assert!(super::publish_pair(&tmp, &pair).unwrap());
+        assert_eq!(
+            std::fs::read(pair.join("digi-audio-m5.snap")).unwrap(),
+            b"new"
+        );
+        assert!(!tmp.exists());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
     #[cfg(feature = "sharc")]
     #[test]
     fn the_ready_pair_key_follows_the_saved_overlay() {
@@ -5382,16 +5785,17 @@ mod card_key_tests {
 
 #[cfg(test)]
 mod pace_tests {
-    use super::{CF_IPS, pace_ahead};
+    use super::pace_ahead;
 
     #[test]
     fn pacing_waits_when_ahead_steps_when_on_time_and_restarts_when_lagging() {
-        let seconds = |s: f64| Some((s * CF_IPS) as u64);
-        assert_eq!(pace_ahead(1.0, seconds(1.5)), Some(true));
-        assert_eq!(pace_ahead(1.0, seconds(1.0)), Some(false));
-        assert_eq!(pace_ahead(1.0, seconds(0.97)), Some(false));
-        assert_eq!(pace_ahead(1.0, seconds(0.5)), None);
-        assert_eq!(pace_ahead(1.0, None), None);
+        let ips = 189_928_000;
+        let seconds = |s: f64| Some((s * ips as f64) as u64);
+        assert_eq!(pace_ahead(1.0, seconds(1.5), ips), Some(true));
+        assert_eq!(pace_ahead(1.0, seconds(1.0), ips), Some(false));
+        assert_eq!(pace_ahead(1.0, seconds(0.97), ips), Some(false));
+        assert_eq!(pace_ahead(1.0, seconds(0.5), ips), None);
+        assert_eq!(pace_ahead(1.0, None, ips), None);
     }
 }
 
@@ -5816,6 +6220,20 @@ mod mem_write_tests {
 #[cfg(test)]
 mod framebuffer_tests {
     use super::*;
+
+    #[test]
+    fn a_rejected_load_keeps_the_dsp_choice() {
+        let (_commands, rx) = mpsc::channel();
+        let mut actor = Actor::new(rx, Config::new(None));
+        let (reply, _answers) = mpsc::channel();
+        let before = actor.dsp;
+        let params = json!({"replace": true, "dsp": !before});
+        let e = actor
+            .firmware_load(&Params(&params), b"not firmware".to_vec(), &reply)
+            .unwrap_err();
+        assert_eq!(e.code, code::FIRMWARE_REJECTED);
+        assert_eq!(actor.dsp, before);
+    }
 
     #[test]
     fn source_is_validated_before_runtime_access_with_current_as_default() {

@@ -22,13 +22,13 @@ import { bootEntries, COUPLED_ROOTS, SYMBOLS, type Entry } from './capacity-help
  *
  * - the MODULE_COMMIT event gives the rows the module uses and the committed record block; the block holds the params and the effect page;
  * - the machine's voice row in the DSP has the knob ranges and the latch mask of the params;
- * - a module that declares more rows than its `[uses]`, an id that is not in its keys table, or an effect id that another loaded module has, is refused with
+ * - a module that declares more rows than its `[uses]`, an id that is not in its keys table, or an effect id that another loaded module has (the boot plan's E_PLAN_KEY), is refused with
  *   its own status and changes nothing: no row, no DSP range, no arena block (the refusals are made from the packed fixture by patching its bytes).
  */
 const ID = 'test/commit-demo';
 const E_DECL_ID = -27;
 const E_DECL_USES = -28;
-const E_FX_ID_DUP = -29;
+const E_PLAN_KEY = -77;
 /** Header fields of a .dkm (docs/design/digikit-dkm.md). */
 const H_NAME = 0x40;
 const H_KEYS_OFF = 0x90;
@@ -110,6 +110,8 @@ interface GoodArena {
   used: number;
   providers: number;
 }
+/** The result of a provider whose DSP part follows (fx.dks, machines.dks): live on the ColdFire, its blocks are in the arena. */
+const LOADING = 1;
 const goodArena = new Map<string, GoodArena>();
 
 /**
@@ -145,7 +147,7 @@ async function expectNothing(
 ) {
   const { mods, cap, rt } = got;
   const providersLoaded = (await ringEvents(rt.session, rig.plan, 'MOD_LOAD')).filter(
-    (e) => e.args[0] === PROVIDER_IDX && e.args[1] === 0,
+    (e) => e.args[0] === PROVIDER_IDX && (e.args[1] === 0 || e.args[1] === LOADING),
   ).length;
   const providers = providersLoaded ? good.providers : 0;
   expect(
@@ -265,7 +267,7 @@ cardRigs(
       await expectNothing(rig, got, [], 0, good);
     });
 
-    test('an effect id that a loaded module has is E_FX_ID_DUP and the first module stays intact', async () => {
+    test('an effect id that a loaded module has is E_PLAN_KEY and the first module stays intact', async () => {
       await rig.first();
       // the copy has another name and another machine key (in the keys table and the DSP voice record), the same effect id
       const copy = patched('dup.dkm', (f) => {
@@ -275,11 +277,11 @@ cardRigs(
       });
       const entries: Entry[] = [
         { name: ID, file: moduleArtifact(rig.device, ID), want: LOADED },
-        { name: 'test/commit-copy', file: copy, want: E_FX_ID_DUP },
+        { name: 'test/commit-copy', file: copy, want: E_PLAN_KEY },
       ];
       const good = await goodArenaOf(rig);
       const got = await bootEntries(rig, 'commit-dup', entries);
-      expect(got.info.results[1]).toBe(E_FX_ID_DUP);
+      expect(got.info.results[1]).toBe(E_PLAN_KEY);
       await expectNothing(rig, got, [ID], 1, good);
     });
   },

@@ -4,6 +4,7 @@ export * from './golden.ts';
 export * from './inputs.ts';
 export * from './keys.ts';
 export * from './session.ts';
-export * from './progress.ts';
 export * from './emulated-clock.ts';
 export * from './input.ts';
+export * from './boot-window.ts';
+export * from './boot-window-emulator.ts';

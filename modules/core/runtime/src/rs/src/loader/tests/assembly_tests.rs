@@ -183,9 +183,9 @@ fn adapter_of(import: &str) -> Option<String> {
     row.get("requires").map(|r| r.as_str().unwrap().to_string())
 }
 
-/// The info table of a patched image (`set-<set>.info`): name, hash, kind (0 data, 1 slot), address and the words of a data entry.
+/// The info table of a patched image (`set-<set>.info`): name, hash, kind (0 data, 1 slot, 2 DSP slot), address (the index in the slot block for a DSP slot) and the words of a data entry.
 struct Image {
-    entries: Vec<(String, u32, u32, Vec<u32>)>,
+    entries: Vec<(String, u32, u32, u32, Vec<u32>)>,
     /// The modules of the set (`[patch_sets]` of the device file and what they require): the adapters the image has.
     modules: Vec<String>,
 }
@@ -199,7 +199,7 @@ impl Image {
             .lines()
             .map(|l| {
                 let w: Vec<&str> = l.split(' ').collect();
-                (w[0].to_string(), hex(w[1]), w[2].parse().unwrap(), w[4..].iter().map(|x| hex(x)).collect())
+                (w[0].to_string(), hex(w[1]), w[2].parse().unwrap(), hex(w[3]), w[4..].iter().map(|x| hex(x)).collect())
             })
             .collect();
         Image { entries, modules: set_modules(dev, set) }
@@ -208,7 +208,7 @@ impl Image {
     /// The platform of the device with this image's table. `limits`: replacement values of the `cap_<kind>` words.
     fn platform(&self, dev: Dev, limits: &[(u8, u32)]) -> FakePlatform {
         let p = FakePlatform::new(dev.profile);
-        for (_, hash, kind, words) in &self.entries {
+        for (_, hash, kind, at, words) in &self.entries {
             let mut words = if words.is_empty() { std::vec![0] } else { words.clone() };
             if let Some((_, v)) = limits.iter().find(|(k, _)| *hash == cap_hash(*k)) {
                 words[0] = *v;
@@ -217,12 +217,15 @@ impl Image {
             if *kind == 0 {
                 p.info_data.borrow_mut().push(*hash);
             }
+            if *kind == 2 {
+                p.info_dsp.borrow_mut().push((*hash, *at));
+            }
         }
         p
     }
 
     fn has(&self, hash: u32) -> bool {
-        self.entries.iter().any(|e| e.1 == hash && !e.3.is_empty())
+        self.entries.iter().any(|e| e.1 == hash && !e.4.is_empty())
     }
 }
 
@@ -521,6 +524,58 @@ unsafe fn imports_resolve(l: &mut Boot, image: &Image, file: &[u8], what: &str) 
     adapter_imports
 }
 
+/// The `dyndsp_info` table of the host tests for the providers of `plan` that have a DSP part: the device word of their DSP header, a wide area and one import per
+/// `DSP_IMPORT` line of the dyndsp source of the device. `None` when no provider has a DSP part.
+fn dsp_info_of(dev: Dev, l: &Boot, plan: &Plan) -> Option<Vec<u32>> {
+    let mut device = None;
+    for j in 0..plan.np {
+        let path = l.found.path(j);
+        let (_, file) = l.m.files.iter().find(|(n, _)| *n == path).unwrap();
+        if be(file, dkneeds::H_DSP_SIZE) != 0 {
+            device = Some(be(file, be(file, dkneeds::H_DSP_OFF) + dkneeds::DSP_H_DEVICE));
+        }
+    }
+    let device = device?;
+    let src = std::fs::read_to_string(repo().join(std::format!("modules/core/adapters/dyndsp/src/cf/dyndsp-{}.s", dev.name))).unwrap();
+    let names: Vec<&str> = src.lines().filter_map(|t| t.trim().strip_prefix("DSP_IMPORT ")).map(str::trim).collect();
+    let mut t = vec![0u32; dkrt_abi::dsp::I_IMPORTS];
+    t[dkrt_abi::dsp::I_MAGIC] = dkrt_abi::dsp::INFO_MAGIC;
+    t[dkrt_abi::dsp::I_DEVICE] = device;
+    t[dkrt_abi::dsp::I_AREA] = 0x2000_0000;
+    t[dkrt_abi::dsp::I_AREA_BYTES] = 1 << 20;
+    t[dkrt_abi::dsp::I_VFIRST] = 4;
+    t[dkrt_abi::dsp::I_VFREE] = 8;
+    t[dkrt_abi::dsp::I_NIMPORT] = names.len() as u32;
+    for (i, n) in names.iter().enumerate() {
+        // an entry is a NUL padded name and, at `DSP_IMPORT_ADDR`, the address as a host word (the runtime reads the table in place)
+        let mut e = [0u8; dkneeds::DSP_IMPORT_LEN as usize];
+        e[..n.len()].copy_from_slice(n.as_bytes());
+        let mut words: Vec<u32> = e.chunks(4).map(|c| u32::from_ne_bytes(c.try_into().unwrap())).collect();
+        words[dkneeds::DSP_IMPORT_ADDR as usize / 4] = 0x1000 + 4 * i as u32;
+        t.extend_from_slice(&words);
+    }
+    Some(t)
+}
+
+/// The DSP of a provider's load for a host test (see `dsp_info_of`): the table is in place and the link acknowledges while this lives.
+struct DspEnv {
+    _info: Vec<u32>,
+    _guard: crate::cleanup_tests::VoiceInfoGuard,
+}
+
+impl Drop for DspEnv {
+    fn drop(&mut self) {
+        unsafe { crate::cleanup_tests::script_end() }
+    }
+}
+
+unsafe fn dsp_env(dev: Dev, l: &Boot, plan: &Plan) -> Option<DspEnv> {
+    let info = dsp_info_of(dev, l, plan)?;
+    let guard = crate::cleanup_tests::VoiceInfoGuard::set(info.as_ptr());
+    crate::cleanup_tests::script_link(true);
+    Some(DspEnv { _info: info, _guard: guard })
+}
+
 /// The seam of a fixture with its provider: the plan accepts the module and finds `want` on the card, the providers load (the ABI word, the stock bytes of every
 /// hook site), their hooks and slots are installed as their bind records say, and a module without a DSP section loads.
 unsafe fn fits(dev: Dev, set: &str, modules: &[&Fixture], want: &[&str]) {
@@ -537,6 +592,9 @@ unsafe fn fits(dev: Dev, set: &str, modules: &[&Fixture], want: &[&str]) {
     for j in 0..plan.np {
         assert_eq!(plan.provider_verdicts[j], Verdict::Accepted, "{what}: provider {j}");
     }
+    // a provider with a DSP part (the machines service) reaches the DSP loader from its load: the host gives it the import table of `core/dyndsp` (every name of its
+    // sources, an address that is not 0) and a link that acknowledges, and stops there (the DSP code and the slots follow in the UI loop, `dsp_provider_tests`)
+    let _dsp = dsp_env(dev, &l, &plan);
     l.load_providers(&plan);
     for j in 0..plan.np {
         assert!(l.loaded[j], "{what}: provider {} did not load", String::from_utf8_lossy(l.found.path(j)));
@@ -607,10 +665,46 @@ fn an_effect_loads_with_the_fx_service_file() {
 fn an_lfo_loads_with_the_lfo_service_file() {
     let _g = clean();
     for dev in DEVICES.iter().filter(|d| d.has_firmware()) {
+        // the image half (core/lfo) has the six slots of the device, kind 1 in the info table; `fits` loads the file, whose declared fills must name them, and installs each
+        let image = Image::read(*dev, "emulator");
+        for site in ["tick_call", "tick_slew", "tick_start", "read_call", "read_slew", "read_start"] {
+            let name = std::format!("lfo_{}_{site}", dev.name);
+            assert!(image.entries.iter().any(|e| e.0 == name && e.2 == 1), "{}: no slot {name} in the image", dev.name);
+        }
         unsafe {
             fits(*dev, "emulator", &[&LFO_SHAPE], &["lfo"]);
         }
         let _ = clean_state();
+        // the UI-task hooks: the bound file has one BIND item for each hook the device has (the name formatter, the T1 range accessor and the page cell's vector pick; the Digitone II also its three-character
+        // formatter), each over the stock bytes the bind compared with the firmware: `link.w A6,-0x1c; moveq 6,D0` and `move.l D2,-(SP); move.l 8(SP),D1`
+        let bound = service_file(*dev, "lfo", "core/services/lfo");
+        let table = table_of(&bound);
+        let keys = Keys::parse(&table).unwrap();
+        let mut got = Vec::new();
+        let mut i = 0;
+        while let Some(b) = keys.bind(i) {
+            got.push((b.site, b.stock[..b.len as usize].to_vec()));
+            i += 1;
+        }
+        let name = |h: &str| name_hash(std::format!("cf.lfo.hook.{h}").as_str());
+        let mut want = std::vec![
+            (name("wave_name"), std::vec![0x4e, 0x56, 0xff, 0xe4, 0x70, 0x06]),
+            (name("t1_range"), std::vec![0x2f, 0x02, 0x22, 0x2f, 0x00, 0x08]),
+            // the vector pick of the page's cell: `addi.l #TABLE,D6` with the base of the firmware's RAM table of tile vectors (the hook's tail replays it)
+            (
+                name("graph_vec"),
+                [0x06u8, 0x86]
+                    .into_iter()
+                    .chain(if dev.name == "dn2" { 0x4450_8b68u32 } else { 0x44d2_e37cu32 }.to_be_bytes())
+                    .collect(),
+            ),
+        ];
+        if dev.name == "dn2" {
+            want.push((name("wave_name3"), std::vec![0x4e, 0x56, 0xff, 0xe4, 0x70, 0x06]));
+        }
+        got.sort();
+        want.sort();
+        assert_eq!(got, want, "{}: the BIND items of lfo.dks", dev.name);
     }
 }
 
@@ -749,6 +843,25 @@ fn a_card_without_the_service_file_refuses_its_user_naming_the_service() {
     }
 }
 
+/// One key rule for every kind: the same packed module twice has the same machine key, so the boot plan refuses the second with the kind and the key that the first
+/// has (`E_PLAN_KEY`), on both devices. A different module with other keys is accepted next to the first.
+#[test]
+fn the_same_machine_key_in_two_packed_modules_is_refused_by_the_boot_plan() {
+    let _g = clean();
+    for dev in DEVICES.iter().filter(|d| d.has_firmware()) {
+        let image = Image::read(*dev, "emulator");
+        let table = table_of(&packed(*dev, SINE.leaf, "dkm", SINE.nx));
+        let key = Keys::parse(&table).unwrap().keys_of(dkneeds::KIND_MACHINE).next().expect("the sine fixture has a machine key");
+        unsafe {
+            let (_l, plan) = planned(*dev, &image, &[], &[&SINE, &SINE], &SERVICES[1..2]); // machines only
+            assert_eq!(plan.verdicts[0], Verdict::Accepted, "{}", dev.name);
+            assert_eq!(plan.verdicts[1], Verdict::Refused(Reason::DuplicateKey(dkneeds::KIND_MACHINE, key)), "{}", dev.name);
+            assert_eq!(plan.verdicts[1].result(), dkrt_sdk::E_PLAN_KEY);
+        }
+        let _ = clean_state();
+    }
+}
+
 /// The same refusal for an effect: its builder calls name the `fx` service, so a card with the machines and lfo services and no `fx.dks` refuses it.
 #[test]
 fn a_card_without_the_fx_service_file_refuses_an_effect_naming_the_service() {
@@ -764,20 +877,10 @@ fn a_card_without_the_fx_service_file_refuses_an_effect_naming_the_service() {
     }
 }
 
-/// The builder imports of the machines service and of the fx service (`provided = true` in sdk/sdk.toml): a module links them to the exports of the file that owns them.
-const MACHINE_BUILDERS: [&str; 10] = [
-    "dk_module_ctx_add_machine",
-    "dk_machine_add_page",
-    "dk_page_add_param",
-    "dk_param_range",
-    "dk_param_glyph",
-    "dk_param_latched",
-    "dk_param_on_click",
-    "dk_page_canvas",
-    "dk_page_bind",
-    "dk_page_bind_local",
-];
-const FX_BUILDERS: [&str; 5] = ["dk_module_ctx_add_fx", "dk_fx_add_page", "dk_page_add_fx_param", "dk_fx_routes", "dk_fx_mix"];
+/// The builder imports of a service (`provided = true` in sdk/sdk.toml): a module links them to the exports of the file that owns them.
+fn builders_of(service: &str) -> Vec<&'static str> {
+    dkrt_sdk::api::PROVIDED.iter().filter(|(s, _)| *s == service).map(|(_, n)| *n).collect()
+}
 
 /// The names a file imports.
 fn import_names(file: &[u8]) -> Vec<String> {
@@ -797,10 +900,12 @@ fn import_names(file: &[u8]) -> Vec<String> {
 fn the_builder_calls_of_a_module_resolve_to_the_exports_of_the_service_that_owns_them() {
     let _g = clean();
     for dev in DEVICES.iter().filter(|d| d.has_firmware()) {
-        for (module, service, builders) in [(&SINE, "machines", &MACHINE_BUILDERS[..]), (&FX_GAIN, "fx", &FX_BUILDERS[..])] {
+        for (module, service) in [(&SINE, "machines"), (&FX_GAIN, "fx")] {
+            let builders = builders_of(service);
             let image = Image::read(*dev, "emulator");
             unsafe {
                 let (mut l, plan) = planned(*dev, &image, &[], &[module], &SERVICES);
+                let _dsp = dsp_env(*dev, &l, &plan);
                 l.load_providers(&plan);
                 let file = packed(*dev, module.leaf, "dkm", module.nx);
                 let used: Vec<String> = import_names(&file).into_iter().filter(|n| builders.contains(&n.as_str())).collect();
@@ -818,6 +923,30 @@ fn the_builder_calls_of_a_module_resolve_to_the_exports_of_the_service_that_owns
                 }
             }
             let _ = clean_state();
+        }
+    }
+}
+
+/// The header EXPORTS of a service file are exactly its `provided` imports of sdk/sdk.toml, by name hash (the file's `exports()` is generated from the same list): the
+/// builder calls of the modules, and the `internal` ones that only the runtime calls (`handlers::exports` names them, so a renamed export is a failure here).
+#[test]
+fn the_header_exports_of_a_service_file_are_its_provided_imports() {
+    let _g = clean();
+    for dev in DEVICES.iter().filter(|d| d.has_firmware()) {
+        for service in ["machines", "fx", "samples"] {
+            let owner = service_file(*dev, service, &format!("core/services/{service}"));
+            let table = table_of(&owner);
+            let keys = Keys::parse(&table).unwrap();
+            let listed: std::collections::BTreeSet<u32> = (0..keys.count(tag::EXPORTS)).map(|i| keys.words(tag::EXPORTS, i).unwrap().0).collect();
+            use crate::handlers::exports::{FX_ROUTES_ENTRY, MACHINES_GUARD_STATE, MACHINES_ID_TAKEN, MACHINES_OWNED_IDS, MACHINES_PLANNED_IDS};
+            let internal: &[&str] = match service {
+                "fx" => &[FX_ROUTES_ENTRY],
+                "machines" => &[MACHINES_GUARD_STATE, MACHINES_OWNED_IDS, MACHINES_PLANNED_IDS, MACHINES_ID_TAKEN],
+                _ => &[],
+            };
+            let want: std::collections::BTreeSet<u32> = builders_of(service).into_iter().chain(internal.iter().copied()).map(name_hash).collect();
+            assert!(!want.is_empty(), "{service} provides nothing in sdk/sdk.toml");
+            assert_eq!(listed, want, "{} {service}.dks: header EXPORTS differ from the provided imports", dev.name);
         }
     }
 }
@@ -876,12 +1005,12 @@ fn a_bound_file_carries_the_identity_of_its_image_and_a_file_for_another_firmwar
             .find(|e| e.1 == name_hash("fw_id"))
             .unwrap_or_else(|| panic!("{}: the image has no fw_id entry", dev.name));
         assert_eq!(
-            (id.2, id.3.len() >= 2),
+            (id.2, id.4.len() >= 2),
             (0, true),
             "{}: fw_id is a data entry of at least two words",
             dev.name
         );
-        let words = [id.3[0], id.3[1]];
+        let words = [id.4[0], id.4[1]];
         unsafe {
             let (mut l, plan) = planned(*dev, &image, &[], &[&FX_GAIN], &SERVICES);
             let j = (0..plan.np)

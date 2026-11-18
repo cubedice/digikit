@@ -1,6 +1,7 @@
 // The Transfer page's state (Modules mode and the mode), kept for the life of the app: closing the page and opening it again shows the last list at once
 // (it is refreshed behind it), and an install's verify results stay until the next restart. One `TransferState` per app (createTransferApp).
 import { createSignal } from 'solid-js';
+import { isDeviceId, runtimeDeviceIds } from '../data/device-profiles';
 import type { JobsApp } from '../jobs/jobs';
 import { addJob, removeJob, updateJob } from '../jobs/jobs-core';
 import { remembered, type KeyValue } from '../storage';
@@ -10,13 +11,18 @@ import { parseMode, type Mode, type Progress, type TransferView, type Verified }
 
 export interface DeviceInfo {
   name: string;
-  runtime: string;
+  /** The runtime version; null when the device has no runtime (the stock firmware). */
+  runtime: string | null;
+  /** Samples mode: the device runs the digikit runtime (the actions that need it are offered). */
+  hasRuntime?: boolean;
   free?: number;
   /** Modules mode: the storage line under the device line (storageLine); the free space is in it, not in the device line. */
   storage?: string;
   /** Samples mode only: the backend of the device's samples, and whether it makes folders. */
   samples?: string;
   canMkdir?: boolean;
+  /** Samples mode: when the device uses a changed sample (`restart`: at its next start); `live` or absent: at once. */
+  apply?: 'live' | 'restart';
 }
 
 /** The state of the Transfer page of one app. `jobs` is the app's (the busy action is a job of its store). */
@@ -51,8 +57,8 @@ export function createTransferState({
   const [sampleLink, setSampleLink] = createSignal<LinkState>();
 
   /** The device whose library the list shows while no device answers (the site). */
-  const [browseDevice, setBrowseDevice] = remembered<'dt2' | 'dn2'>(storage, 'digikit.transferBrowseDevice', (v) =>
-    v === 'dn2' ? 'dn2' : 'dt2',
+  const [browseDevice, setBrowseDevice] = remembered<string>(storage, 'digikit.transferBrowseDevice', (v) =>
+    v !== null && isDeviceId(v) ? v : (runtimeDeviceIds[0] ?? ''),
   );
   /** The list shows the library alone, with no device behind it. */
   const [browsing, setBrowsing] = createSignal(false);

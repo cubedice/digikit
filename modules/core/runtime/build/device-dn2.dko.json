@@ -5,10 +5,10 @@
  "sections": [
   {
    "align": 4,
-   "hex": "00000002646e3200000000010000009700016a7c0000001000000002fc07000c07de29000000006540000000466c00004671200047fe100000000000000000000000000000000000008000000261a00000010000444b494d47494431000000000000000000000000000000000000000000000000000000000000000000000000",
+   "hex": "444b4456000000010000003c0000000fec070000480000004000000008000000fc0cc0000000001347fe000000001000000a2c2b000000100000000800000002646e3200000000010000009700016a7c0000001000000002fc07000c07de29000000006540000000466c00004671200047fe100000000000000000000000000000000000008000000261a00000010000444b494d47494431000000000000000000000000000000000000000000000000000000000000000000000000",
    "kind": "data",
    "name": ".rodata",
-   "size": 128
+   "size": 188
   },
   {
    "align": 16,
@@ -18,7 +18,7 @@
    "size": 65536
   }
  ],
- "source_sha256": "7b172dce350aaea0208e38ce855373309cd1d1d3917cfbea62648d0905792c13",
+ "source_sha256": "fa371bf886f472827fc98f1e91363c9eae731dcd7329a86f62e2db804998bc3a",
  "symbols": [
   {
    "global": true,
@@ -28,105 +28,111 @@
   },
   {
    "global": true,
-   "name": "dkrt_device_id",
+   "name": "dkrt_dev",
    "section": ".rodata",
    "value": 0
   },
   {
    "global": true,
+   "name": "dkrt_device_id",
+   "section": ".rodata",
+   "value": 60
+  },
+  {
+   "global": true,
    "name": "dkrt_device_name",
    "section": ".rodata",
-   "value": 4
+   "value": 64
   },
   {
    "global": true,
    "name": "dkrt_dsp_headroom",
    "section": ".rodata",
-   "value": 16
+   "value": 76
   },
   {
    "global": true,
    "name": "dkrt_dsp_voices",
    "section": ".rodata",
-   "value": 20
+   "value": 80
   },
   {
    "global": true,
    "name": "dkrt_files_fs",
    "section": ".rodata",
-   "value": 116
+   "value": 176
   },
   {
    "global": true,
    "name": "dkrt_image_id",
    "section": ".rodata",
-   "value": 92
+   "value": 152
   },
   {
    "global": true,
    "name": "dkrt_peek_n",
    "section": ".rodata",
-   "value": 24
+   "value": 84
   },
   {
    "global": true,
    "name": "dkrt_peek_ranges",
    "section": ".rodata",
-   "value": 40
+   "value": 100
   },
   {
    "global": true,
    "name": "dkrt_sample_fs",
    "section": ".rodata",
-   "value": 100
+   "value": 160
   },
   {
    "global": true,
    "name": "dkrt_sample_path_max",
    "section": ".rodata",
-   "value": 12
+   "value": 72
   },
   {
    "global": true,
    "name": "dkrt_samples_in_store",
    "section": ".rodata",
-   "value": 8
+   "value": 68
   },
   {
    "global": true,
    "name": "dkrt_sound_words",
    "section": ".rodata",
-   "value": 36
+   "value": 96
   },
   {
    "global": true,
    "name": "dkrt_span_clock",
    "section": ".rodata",
-   "value": 28
+   "value": 88
   },
   {
    "global": true,
    "name": "dkrt_span_clock_hz",
    "section": ".rodata",
-   "value": 32
+   "value": 92
   },
   {
    "global": true,
    "name": "dkrt_stage_bytes",
    "section": ".rodata",
-   "value": 80
+   "value": 140
   },
   {
    "global": true,
    "name": "dkrt_store_first",
    "section": ".rodata",
-   "value": 72
+   "value": 132
   },
   {
    "global": true,
    "name": "dkrt_store_sectors",
    "section": ".rodata",
-   "value": 76
+   "value": 136
   }
  ],
  "toolchain": {
@@ -134,7 +140,7 @@
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
   "instructions_redecoded": "0",
-  "isa_check": "b4bc30348cd255d4bff1b3fb9e66dda2bb3d94148232522a743f914577bee6a0",
+  "isa_check": "7372a693498259ad016c1d4f5e3dfb321f27a11a7e9dea42c9e3761ab97bb5f4",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

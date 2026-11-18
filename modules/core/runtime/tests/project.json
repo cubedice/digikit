@@ -8,6 +8,7 @@
       {
         "files": ["modules-capacity.device.test.ts"],
         "devices": ["dt2"],
+        "dsp": "sharc",
         "tags": ["C:loading"],
         "modules": ["digikit/debug", "digikit/probe", "digikit/remote", "test/dyn-dn2", "core/services/machines"]
       },
@@ -15,7 +16,7 @@
         "files": ["fault-trace.device.test.ts"],
         "devices": ["dt2"],
         "dsp": "sharc",
-        "tags": ["C:diagnostics", "C:dsp", "C:layout"],
+        "tags": ["C:diagnostics", "C:dsp", "C:fault", "C:layout"],
         "modules": [
           "digikit/debug",
           "test/dyn-crash",
@@ -35,6 +36,11 @@
         "sources": [
           "tools/devtools/wb.mjs",
           "tools/devtools/wb_transfer.mjs",
+          "packages/devices/src/node.ts",
+          "packages/devices/src/parse.ts",
+          "packages/dk-session/src/samples.ts",
+          "packages/dk-session/src/identify.ts",
+          "packages/dk-session/src/dkupload-core.ts",
           "packages/workbench-core/src/modules/dktransfer.ts",
           "packages/workbench-core/src/modules/dkbind.ts",
           "packages/workbench-core/src/node/node-host.ts",
@@ -127,7 +133,7 @@
         "files": ["crash-capture.device.test.ts"],
         "devices": ["dt2"],
         "dsp": "sharc",
-        "tags": ["C:diagnostics", "C:layout"],
+        "tags": ["C:diagnostics", "C:fault", "C:layout"],
         "modules": ["digikit/debug", "test/dyn-crash"],
         "plusdrive": true
       },
@@ -140,7 +146,7 @@
       },
       {
         "files": ["platform-contract.device.test.ts"],
-        "tags": ["C:boot", "C:storage", "C:tick", "C:transport"],
+        "tags": ["C:boot", "C:device-facts", "C:storage", "C:tick", "C:transport"],
         "modules": [],
         "sources": ["modules/core/runtime/tests/platform/contract.toml"]
       },

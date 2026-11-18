@@ -100,6 +100,12 @@
 #define PS_DECAY_STEP 265
 #define PS_HPF_STEP 266
 #define PS_LPF_STEP 267
+/* A tape that stood still (HOLD) goes on with a splice. PS_WRITE_PAUSED says that the last block was not written;
+ * PS_WRITE_HEAL_* carry the jump from the tape's last frame to the first new one, a difference that the write adds
+ * and that falls by 1/256 a sample (capture.s). */
+#define PS_WRITE_HEAL_L 268
+#define PS_WRITE_HEAL_R 269
+#define PS_WRITE_PAUSED 270
 #define PS_SPACE_LINE0 272
 #define PS_SPACE_LINE1 528
 #define PS_SPACE_LINE2 784
@@ -131,6 +137,19 @@
 #define PT_FDBK_NOW (PS_TAPE + 20)
 #define PT_GAIN_GRAIN (PS_TAPE + 21)
 #define PT_DRIVE (PS_TAPE + 22)
+/* The mix (BALANCE, DRIVE) ramps from the last block's values (PT_GAIN_GRAIN, PT_DRIVE, PT_GAIN_HEAD). PT_VALID counts the
+ * blocks of audio on the rolling bank: unlike PS_VALID_BLOCKS (the history a take can reach back over) it does not start
+ * again with the timeline, so the delay plays through START, STOP and a pattern change. PT_HEAL_* carry a jump of the
+ * head's output (a mode change, a tape that can no longer be read) out over 256 samples; PT_FADE is the gain of the
+ * head coming back after silence, 0..1 over 256 samples. */
+#define PT_GAIN_HEAD (PS_TAPE + 23)
+#define PT_VALID (PS_TAPE + 24)
+#define PT_HEAL_L (PS_TAPE + 25)
+#define PT_HEAL_STEP_L (PS_TAPE + 26)
+#define PT_HEAL_R (PS_TAPE + 27)
+#define PT_HEAL_STEP_R (PS_TAPE + 28)
+#define PT_HEAL_COUNT (PS_TAPE + 29)
+#define PT_FADE (PS_TAPE + 30)
 #define PT_OUT (PS_TAPE + 32)
 #define PT_FEEDBACK (PS_TAPE + 96)
 #define PRISM_STATE_BYTES 5824

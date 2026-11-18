@@ -2,12 +2,12 @@
 // Workbench actions from the command line, through the workbench's own code: the dk-session TypeScript (prepareUpload, openSamples, put,
 // verify) over the dkmidi Rust MIDI port (packages/dkmidi, the code the desktop app uses), here as a child process on stdin and stdout.
 // The workbench's Host (packages/workbench-core/src/host/host.ts) is the NodeHost here (src/node/node-host.ts): `ports` lists the MIDI ports
-// and the samples commands read the device profile through it, the calls the desktop app makes through its Tauri Host.
+// and the samples commands read the device profile from the registry (packages/devices), as the desktop app does.
 //
 //     node tools/devtools/wb.mjs [--port SUB] [--bin PATH] ports
 //     node tools/devtools/wb.mjs [--port SUB] [--bin PATH] info
 //     node tools/devtools/wb.mjs [--port SUB] [--bin PATH] samples ls [FOLDER]
-//     node tools/devtools/wb.mjs [--port SUB] [--bin PATH] samples put FILE... [--folder F] [--bulk auto|off|force] [--bulk-bin PATH] [--verify auto|always|never] [--speed MASK]
+//     node tools/devtools/wb.mjs [--port SUB] [--bin PATH] samples put FILE... [--folder F] [--slot N] [--bulk auto|off|force] [--bulk-bin PATH] [--verify auto|always|never] [--speed MASK]
 //     node tools/devtools/wb.mjs [--port SUB] [--bin PATH] samples rm FOLDER...
 //     node tools/devtools/wb.mjs [--port SUB] [--bin PATH] store ls [PREFIX]
 //     node tools/devtools/wb.mjs [--port SUB] [--bin PATH] store put LOCAL REMOTE
@@ -27,12 +27,14 @@
 // `get` reads the card log files and writes each raw (.bin) and decoded (.txt) to DIR (default out/runs/cardlog/<YYYYmmdd-HHMMSS>/), the older boot first.
 // `store` works on the card's store by path (for example data/tools/bootscreen/x.dkbs); `store put` verifies the file after the upload.
 // --emu [--run-dir DIR]: any device command on the running emulator of DIR (default out/native/run) instead of a MIDI port (`mise run emu:serve`).
+// --device ID: names the device and skips the identification (wb asks the stock MidiRpc Ping otherwise); for a device that does not answer Ping.
 // --port: a part of the MIDI port name (default "Digitakt"). --bin: the dkmidi binary (default $DKMIDI_BIN, else the nogen target dir;
 // `mise run dkmidi:build` builds it). `samples put` needs apps/web/public/dksample.wasm (`mise run wasm:dksample`).
 // `samples put` sends the file bytes over the USB bulk link when the device offers its interface (usb-fast; the `dkbulk` bridge, `mise run dkbulk:build`,
 // $DKBULK_BIN or --bulk-bin) and over SysEx or MidiRpc otherwise; --bulk off forces SysEx, --bulk force fails when there is no bulk link. It prints the
 // In USB AUDIO/MIDI with core/usb-bulk-audio, `samples put` uses the OUT-only bulk interface automatically (frames over `dkbulk open --out-only`, replies over
 // the SysEx 'R' poll; audio and MIDI keep running). Without that interface (old firmware) it stays on SysEx.
+// --slot N writes slot N and replaces what it holds; a cancelled write leaves the slot empty.
 // --speed MASK (4 bits, decimal or 0x): sets the four speed switches through usb-fast STATUS 'S' before the put (bit 0 hash once, bit 1 USB receive ring,
 // bit 2 read-back hash overlap, bit 3 large card commands; all on at boot); the run prints the resulting mask and the usb-fast STATUS words 18 (staging bytes)
 // and 19 (receive ring slots): the hardware A/B of docs/findings/126-usb-fast-transfer-ceilings.md.
@@ -50,12 +52,19 @@ import {
   EmuUsbTransport,
   ProcessBulkLink,
   chooseBulk,
+  emulatedClock,
+  emulatedProbe,
   eventLine,
+  identifyDevice,
+  poll,
+  RPC_PING,
   runtimeEvent,
+  wallClock,
 } from '../../packages/dk-session/src/index.ts';
 import { ProcessTransport } from '../../packages/dk-session/src/process-transport.ts';
-import { Sample, prepareUpload } from '../../packages/dk-session/src/dksample.ts';
-import { openSamples, skipVerifyAfterBulk } from '../../packages/dk-session/src/samples.ts';
+import { Sample, converterOf } from '../../packages/dk-session/src/dksample.ts';
+import { openSamples, samplesUseBulk, skipVerifyAfterBulk } from '../../packages/dk-session/src/samples.ts';
+import { loadDevices } from '../../packages/devices/src/node.ts';
 import { createNodeHost } from '../../packages/workbench-core/src/node/node-host.ts';
 import { profCommand, profSpans } from './wb_prof.mjs';
 import { transferCommand } from './wb_transfer.mjs';
@@ -66,7 +75,7 @@ const targetRoot = existsSync(path.join(root, '.git', 'HEAD'))
   ? path.join(root, 'out/native/target')
   : path.join(root, 'dist/native-target');
 const usage =
-  'usage: node tools/devtools/wb.mjs [--port SUB] [--bin PATH] ports | info | samples ls [FOLDER] | samples put FILE... [--folder F] | samples rm FOLDER... | store ls [PREFIX] | store put LOCAL REMOTE | store rm REMOTE | transfer install ID... [--stock STOCK.syx] [--restart] [--library DIR] | transfer restart | transfer delete PATH... | log card [on|off|get [--out DIR]] | profile spans [--start|--stop|--reset] [--out FILE]';
+  'usage: node tools/devtools/wb.mjs [--port SUB] [--device ID] [--bin PATH] ports | info | samples ls [FOLDER] | samples put FILE... [--folder F] [--slot N] (--slot N writes slot N and replaces what it holds; a cancelled write leaves the slot empty) | samples rm FOLDER... | store ls [PREFIX] | store put LOCAL REMOTE | store rm REMOTE | transfer install ID... [--stock STOCK.syx] [--restart] [--library DIR] | transfer restart | transfer delete PATH... | log card [on|off|get [--out DIR]] | profile spans [--start|--stop|--reset] [--out FILE]';
 
 // options anywhere on the line; the rest are the command words
 const args = process.argv.slice(2);
@@ -89,8 +98,10 @@ for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (
     a === '--port' ||
+    a === '--device' ||
     a === '--bin' ||
     a === '--folder' ||
+    a === '--slot' ||
     a === '--bulk' ||
     a === '--verify' ||
     a === '--bulk-bin' ||
@@ -161,13 +172,41 @@ const host = createNodeHost({
   libraryDir: opts.library ? path.resolve(opts.library) : undefined,
 });
 
-/** The samples backend the device profile names (`[storage] samples`), as the desktop app reads it; the stock +Drive when the device or its profile is unknown. */
-async function samplesKind(info) {
+const devices = loadDevices(path.join(root, 'devices'));
+
+/** The `[storage]` of the device profile, as the desktop app reads it from the registry. An unknown device or a profile without `[storage]` stops the command. */
+function storageOf(id) {
+  let device;
   try {
-    return (await host.library.deviceStorage(info.port)).samples;
-  } catch {
-    return 'stock-rpc';
+    device = devices.get(id);
+  } catch (e) {
+    fail(e instanceof Error ? e.message : String(e));
   }
+  if (!device.storage) fail(`the ${device.name} profile has no [storage]`);
+  return device.storage;
+}
+
+/** The samples backend the device profile names (`[storage] samples`). */
+const kindOf = (id) => storageOf(id).samples;
+
+/**
+ * The device's INFO and the samples backend its profile names. The device is identified through the stock MidiRpc Ping (dk-session `identifyDevice`),
+ * with or without the runtime; `info` is null for a device without the runtime. --device ID skips the identification (for a device that does not
+ * answer Ping); `info` is null then.
+ */
+async function infoAndKind(session) {
+  if (opts.device) return { info: null, kind: kindOf(opts.device), storage: storageOf(opts.device) };
+  let who;
+  try {
+    who = await identifyDevice(session, devices);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    fail(
+      `cannot identify the device: ${message}; --device ID names it when it does not answer Ping (one of: ${devices.ids.join(', ')})`,
+      1,
+    );
+  }
+  return { info: who.info, kind: kindOf(who.id), storage: storageOf(who.id) };
 }
 
 const SPANS = words[0] === 'profile' && words[1] === 'spans';
@@ -206,27 +245,53 @@ async function connectEmu() {
   if (!sock) fail(`no emulator socket in ${runDir} (start one: mise run emu:serve)`, 1);
   const client = await connectControl(sock);
   const transport = new EmuUsbTransport(client.call.bind(client));
-  return { session: new DkSession(transport, { timeoutMs: 60000 }), transport, close: async () => client.close() };
+  // the emulator's clock and probe, as the test harness builds them (tests/regression/runtime/waits.ts): a request lost while the guest resets ends after 2 s of emulated time, not after the 60 s timeout
+  const clock = emulatedClock(() => client.call('status'));
+  const session = new DkSession(transport, { timeoutMs: 60000, clock, emulatedProbe: emulatedProbe(clock) });
+  return { session, transport, close: async () => client.close() };
 }
 
 /**
- * `connect`, then one quick INFO; a device that does not reply is tried again for up to `waitMs` with a new bridge. The device may still re-enumerate after
- * the previous run: its MIDI port may be gone or not answer yet (the device re-enumerates after a USB mode change). After the time the last link is returned anyway (a stock device has no INFO) and
- * the first real request reports the error. An answer with an error status is no re-enumeration: no retry.
+ * `connect`, then one quick Ping; a device that does not reply is tried again for up to `waitMs` with a new bridge. The device may still re-enumerate after
+ * the previous run: its MIDI port may be gone or not answer yet (the device re-enumerates after a USB mode change). After the time the last link is returned anyway
+ * and the first real request reports the error. An answer with an error status is no re-enumeration: no retry.
+ * The device is ready when a quick INFO or a Ping answers (INFO first, then Ping, about 1 s each). A runtime answers INFO even while the stock service
+ * drops requests during the firmware intro (after a restart Ping can time out for seconds); a stock device does not answer INFO but answers Ping, so it
+ * is ready after one INFO timeout. An answer of either kind means the port is up again, which is what the loop waits for.
  */
 async function connectReady(waitMs = 8000) {
-  const deadline = Date.now() + waitMs;
-  for (;;) {
-    const link = opts.emu ? await connectEmu() : connect();
+  // a device named by --device skips the identification, so no probe
+  if (opts.device && !opts.emu) return connect();
+  let link;
+  // true: the device answered (or failed with something that is no re-enumeration: the first real request reports it); false: no answer yet
+  const answered = async () => {
+    await link?.close();
+    link = opts.emu ? await connectEmu() : connect();
     try {
-      await link.session.info(true);
-      return link;
+      try {
+        await link.session.probe((q) => link.session.info(q));
+      } catch (e) {
+        // an error reply of INFO is an answer: the runtime is up
+        if (e?.kind === 'timeout') await link.session.rpc(RPC_PING, undefined, 1000);
+        else if (e?.kind === 'cancelled') throw e;
+      }
+      return true;
     } catch (e) {
-      if (e?.kind !== 'timeout' || Date.now() > deadline) return link;
-      await link.close();
-      await new Promise((r) => setTimeout(r, 500));
+      if (e?.kind === 'cancelled') throw e;
+      return e?.kind !== 'timeout';
     }
+  };
+  // under --emu the wait counts emulated time, on the clock of the session that connectEmu built for the current try
+  const clock = opts.emu
+    ? { now: () => link.session.clock.now(), pause: (ms) => link.session.clock.pause(ms) }
+    : wallClock;
+  try {
+    await poll(clock, answered, Boolean, { withinMs: waitMs, intervalMs: 500, message: 'device answers' });
+  } catch (e) {
+    if (e?.kind === 'cancelled') throw e;
+    // after the time the last link is returned anyway and the first real request reports the error
   }
+  return link;
 }
 
 async function withSession(run) {
@@ -385,13 +450,21 @@ if (SPANS) {
 } else if (cmd === 'samples' && sub === 'ls') {
   const sample = await loadSample();
   await withSession(async (session) => {
-    const backend = openSamples('stock-rpc', { session, hashOf: (d) => sample.hash(d) });
+    const { kind, storage } = await infoAndKind(session);
+    const backend = openSamples(kind, { session, hashOf: (d) => sample.hash(d), slots: storage.slots });
     for (const e of await backend.list(rest[0] ?? ''))
-      console.log(`${e.kind === 'folder' ? `${e.name}/` : e.name}\t${e.size}`);
+      console.log(
+        `${e.slot !== undefined ? `${e.slot}\t` : ''}${e.kind === 'folder' ? `${e.name}/` : e.name}\t${e.size}`,
+      );
   });
 } else if (cmd === 'samples' && sub === 'put') {
   if (rest.length === 0) fail(usage);
   if (!['auto', 'always', 'never'].includes(opts.verify)) fail('--verify is auto, always or never');
+  if (opts.slot !== undefined) {
+    const n = Number(opts.slot);
+    if (!Number.isInteger(n) || n < 1 || n > 64) fail('--slot is 1 to 64');
+    if (rest.length !== 1) fail('--slot needs exactly one file');
+  }
   const sample = await loadSample();
   let bulk;
   const holder = { link: await connectReady() };
@@ -404,23 +477,18 @@ if (SPANS) {
     await (async () => {
       // the switches first: the receive ring is sized when the buffers are allocated (the enable of the bulk link)
       if (speedMask !== undefined) await setSpeed(holder.link.session, speedMask);
-      bulk = await connectBulk(holder);
       const session = holder.link.session;
       // the profile names the backend (`[storage] samples`); the Digitakt II is the stock +Drive, the Digitone II the digikit store
-      // (a stock Digitakt II has no runtime to answer INFO: the +Drive then)
-      let isDt2 = false;
-      let devInfo = null;
-      const kind = await session.info().then(
-        (i) => {
-          devInfo = i;
-          isDt2 = i.port === 'dt2';
-          return samplesKind(i);
-        },
-        () => 'stock-rpc',
-      );
+      const { info: devInfo, kind, storage } = await infoAndKind(session);
+      // a numbered-slot device has no bulk link: never open or report one
+      if (samplesUseBulk(kind)) bulk = await connectBulk(holder);
+      if (opts.slot !== undefined && kind !== 'stock-slots')
+        fail('--slot works only on a device with numbered sample slots');
       const backend = openSamples(kind, {
         session,
         hashOf: (d) => sample.hash(d),
+        converter: converterOf(sample),
+        slots: storage.slots,
         bulk: bulk?.session,
         note: (n) => console.error(`wb: ${n}`),
       });
@@ -439,7 +507,7 @@ if (SPANS) {
       const finish = async ({ prepared, n, prep, putMs, saved }) => {
         // the bulk END of the Digitakt II +Drive and of a runtime with the READBACK capability compares a hash the device computed from the written
         // file; the SysEx verify is skipped then (see skipVerifyAfterBulk)
-        const skip = skipVerifyAfterBulk(opts.verify, link(), kind, devInfo, isDt2);
+        const skip = skipVerifyAfterBulk(opts.verify, backend, devInfo);
         const t = performance.now();
         const v = skip
           ? {
@@ -454,7 +522,7 @@ if (SPANS) {
         tVerify += ver;
         const s = putMs / 1000;
         console.log(
-          `${v.ok ? 'ok  ' : 'FAIL'} ${kind === 'digikit' ? 'samples' : '+Drive'}/${opts.folder ? `${opts.folder}/` : ''}${prepared.name}  ${v.message}  ${n} bytes ${s.toFixed(2)} s ${(n / 1e6 / s).toFixed(2)} MB/s via ${link()} prep ${prep.toFixed(0)} ms put ${putMs.toFixed(0)} ms verify ${ver.toFixed(0)} ms`,
+          `${v.ok ? 'ok  ' : 'FAIL'} ${kind === 'digikit' ? 'samples' : kind === 'stock-slots' ? 'slot' : '+Drive'}/${opts.folder ? `${opts.folder}/` : ''}${prepared.name}  ${v.message}  ${n} bytes ${s.toFixed(2)} s ${(n / 1e6 / s).toFixed(2)} MB/s via ${link()} prep ${prep.toFixed(0)} ms put ${putMs.toFixed(0)} ms verify ${ver.toFixed(0)} ms`,
         );
         if (!v.ok) status = 1;
       };
@@ -468,7 +536,7 @@ if (SPANS) {
         try {
           if (!statSync(file).isFile()) throw new Error('not a file');
           const t = performance.now();
-          const prepared = prepareUpload(sample, path.basename(file), Uint8Array.from(await readFile(file)));
+          const prepared = backend.prepare(path.basename(file), Uint8Array.from(await readFile(file)));
           return { prepared, prep: performance.now() - t };
         } catch (error) {
           return { error };
@@ -486,10 +554,11 @@ if (SPANS) {
             exists: names.has(prepared.name),
             folderReady: true,
             defer: backend.commit !== undefined,
+            slot: opts.slot === undefined ? undefined : Number(opts.slot),
           });
           names.add(prepared.name);
           const putMs = performance.now() - t;
-          const n = prepared.stored.length;
+          const n = backend.sizeOf(prepared);
           total += n;
           tPrep += prep;
           tPut += putMs;
@@ -534,6 +603,8 @@ if (SPANS) {
       console.log(
         `phases prep ${tPrep.toFixed(0)} ms put ${tPut.toFixed(0)} ms commit ${tCommit.toFixed(0)} ms verify ${tVerify.toFixed(0)} ms, ${count} files ${(count / s).toFixed(2)} files/s`,
       );
+      if (storage.slots?.apply === 'restart')
+        console.log('the device uses new samples after it restarts (wb transfer restart)');
     })();
   } finally {
     await bulk?.close();
@@ -549,12 +620,26 @@ if (SPANS) {
   });
   const sample = await loadSample();
   await withSession(async (session) => {
-    const kind = await session.info().then(samplesKind, () => 'stock-rpc');
+    const { kind, storage } = await infoAndKind(session);
     const backend = openSamples(kind, {
       session,
       hashOf: (d) => sample.hash(d),
+      slots: storage.slots,
       note: (n) => console.error(`wb: ${n}`),
     });
+    if (kind === 'stock-slots') {
+      // numbered slots have no folders: each argument is the name `samples ls` shows
+      for (const name of rest) {
+        try {
+          await backend.remove('', name);
+          console.log(`removed ${name}`);
+        } catch (e) {
+          console.error(`FAIL ${name}: ${e instanceof Error ? e.message : e}`);
+          status = 1;
+        }
+      }
+      return;
+    }
     for (const folder of folders) {
       try {
         const cut = folder.lastIndexOf('/');

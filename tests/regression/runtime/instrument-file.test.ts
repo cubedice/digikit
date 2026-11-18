@@ -111,7 +111,7 @@ test.each([false, true])(
     expect(await dk.verifyFile('modules/v2-file.dkm', file)).toBe(true);
     await dk.select(['modules/v2-file.dkm']);
     await dk.restart();
-    await dk.waitForBoot(undefined, 180_000);
+    await dk.waitForBoot();
 
     await expect
       .poll(async () => [3, 6, 9].includes((await session.client.memPeek(diagnostic)) ?? -1), { timeout: 60_000 })
