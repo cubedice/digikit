@@ -84,6 +84,7 @@ heads that read the same tone at two delays add with their phases, so a crossfad
 | RPTS, level of a repeat against the one before | 0: 1.8e-4 (one echo); 0.25: 0.3333; 0.5: 0.6667; 0.75: 1.0000 (16th against 1st 0.9997); 1: 1.1000 until the limiter |
 | RPTS 1 for 30 s (20 s of a 0.5 tone, 10 s without) | peak 1.000 with the input, 0.498 after it; rms 0.4736 at 5 s and at 10 s after |
 | RPTS 0.75 with a burst of 0.5 | peaks of repeats 1, 2, 4, 16: 0.501, 0.464, 0.426, 0.361 (the limiter pulls it toward its knee, 0.25) |
+| MIX is the wet level only | a repeat at RPTS 0.75: 0.5000 of its level with MIX 0.5, exactly 0 with MIX 0, 0.9997 back at MIX 1 |
 | COLR 0 | 0.000 dB a repeat at 200 Hz and at 4 kHz |
 | COLR dark, dB a repeat at 200 Hz / 4 kHz | -0.25: -0.03 / -0.60; -0.5: -0.11 / -2.47; -0.75: -0.21 / -6.29; -1: -0.28 / -14.30 |
 | COLR bright, dB a repeat at 200 Hz / 4 kHz | 0.25: -0.54 / -0.03; 0.5: -2.37 / -0.11; 0.75: -6.53 / -0.20; 1: -14.14 / -0.25 |
@@ -169,7 +170,7 @@ everything at rest costs 5,194, with HALO 8,637. Instructions of the rig, not a 
   by 0.02 % a pass at unity.
 - **Output**: the wet signal only, times MIX, as the effect contract asks; the adapter's own mix stays at 1.
 - **Tests**: `tests/engine.test.ts` and its Python probe are replaced by `tests/engine.rig.test.ts` on the SHARC-only rig
-  (`digikit/prism:test-rig`), because 30 s of audio and a 10.7 s time need the native core: the suite runs 46 cases in
+  (`digikit/prism:test-rig`), because 30 s of audio and a 10.7 s time need the native core: the suite runs 47 cases in
   about 150 s and keeps its numbers in `out/runs/prism-engine/measures.txt`. `FxRig` of the kit got `poke()` for a word of a mailbox an effect imports.
 
 ## What finding 354 had open

@@ -643,6 +643,38 @@ describe('PRISM repeater engine: repeats', () => {
     });
   }, 300_000);
 
+  test('MIX is the level of the wet output and does not reach the loop', async () => {
+    await withRig({ frames: 65536 }, async (rig) => {
+      const T = 2400;
+      rig.set({ sync: true, syncTime: T, rpts: 0.75, mix: 1 });
+      await rig.run(300);
+      const at = 64;
+      const take = await rig.run(150, burst(440, 0.2, rig.clock + at, 960));
+      const full = rms(take.left, at + T, at + T + 960);
+      // half, then nothing, then full again: the repeats went on at their level all the time
+      rig.set({ mix: 0.5 });
+      await rig.run(300);
+      const origin = (rig.clock - take.start) % T;
+      const window = async () => {
+        const turn = await rig.run(T / 32);
+        const from = (at + 2 * T - origin) % T;
+        return from + 960 <= T ? rms(turn.left, from, from + 960) : rms(turn.left, 0, T) * Math.sqrt(T / 960);
+      };
+      const half = await window();
+      rig.set({ mix: 0 });
+      await rig.run(300);
+      const silent = await rig.run(T / 32);
+      rig.set({ mix: 1 });
+      await rig.run(300);
+      const again = await window();
+      expect(half / full).toBeCloseTo(0.5, 3);
+      expect(peak(silent.left)).toBe(0);
+      expect(peak(silent.right)).toBe(0);
+      expect(again / full).toBeCloseTo(1, 3);
+      note(`MIX: a repeat at RPTS 0.75 with MIX 0.5 is ${(half / full).toFixed(4)} of MIX 1, with MIX 0 the output is ${peak(silent.left)}, back at 1 it is ${(again / full).toFixed(4)}`);
+    });
+  });
+
   test('a repeat above the limiter\'s knee comes down toward it; one below it is not touched', async () => {
     await withRig({ frames: 65536 }, async (rig) => {
       const T = 2400;

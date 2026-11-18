@@ -56,7 +56,7 @@ the reasons for each choice: finding 358.
 ## Verification
 
 ```bash
-pnpm nx:pilot run digikit/prism:test-rig     # the engine on the SHARC-only rig, 46 cases, about 2.5 minutes
+pnpm nx:pilot run digikit/prism:test-rig     # the engine on the SHARC-only rig, 47 cases, about 2.5 minutes
 pnpm nx:pilot run digikit/prism:pack         # the package for the Digitakt II
 ```
 
