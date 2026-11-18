@@ -5,7 +5,7 @@ use crate::{dsp, nativepage, slots};
 use core::ptr::{addr_of, addr_of_mut};
 use dkrt_abi::core_api::CoreApi;
 use dkrt_abi::dsp::DspSec;
-use dkrt_abi::mem::{cstr_len, iw, rd, rd32, wr};
+use dkrt_abi::mem::{cstr_len, iw, rd32};
 use dkrt_abi::registry::each;
 use dkrt_abi::service::{
     check_step, tick_phase, ApplyCtx, CheckCtx, Claim, Declare, GuardState, ModuleCommitCtx,
@@ -92,26 +92,40 @@ pub unsafe fn type_is_free<C: CoreApi>(core: &C, t: u32) -> bool {
         return false;
     }
     let row = iw(inf, w::M_ROWS) + (t - iw(inf, w::M_FIRST)) * iw(inf, w::M_ROW_SIZE);
-    let name = rd(row + iw(inf, w::O_NAME));
-    name == 0 || *(name as *const u8) == 0
+    let name = core.rd(row + iw(inf, w::O_NAME));
+    name == 0 || core.rd8(name) == 0
 }
 
 /// The machines service.
 pub struct Machines;
 
+/// The guard's counts of machine type `ty` (the export `dk_machines_guard_state`, for the MODULES reply).
+pub unsafe fn guard_state<C: CoreApi>(core: &C, ty: u32) -> GuardState {
+    GuardState {
+        faults: core.guard_faults(ty),
+        disabled: core.guard_disabled(ty),
+    }
+}
+
+/// The machine type numbers of the rows module record `owner` (1 ..) filled, into `out`; how many (the export `dk_machines_owned_ids`, for the MODULES reply).
+pub fn owned_ids<C: CoreApi>(core: &C, owner: u8, out: &mut [u8; 8]) -> u32 {
+    types_of(core, owner, out) as u32
+}
+
+/// The plan's `[key, number]` pairs of the module at index `selection` of the boot's selection, in plan order, into `out`; how many (the export
+/// `dk_machines_planned_ids`). A number of 0: the plan gave that key none (a key that names its number itself is one). The loader resolves a persistent
+/// instrument's file from this copy, so no table pointer crosses the boundary.
+pub fn planned_ids(selection: u32, out: &mut [[u32; 2]; 8]) -> u32 {
+    crate::assign::planned(selection, out)
+}
+
+/// Whether machine type `id` is taken in the machine rows: a module owns the row, or the image has filled it (the export `dk_machines_id_taken`). A type the
+/// service cannot place (out of its range, or its registry is absent) counts as taken.
+pub unsafe fn id_taken<C: CoreApi>(core: &C, id: u32) -> bool {
+    !type_is_free(core, id)
+}
+
 impl<C: CoreApi> Service<C> for Machines {
-    unsafe fn owned_ids(_core: &C, owner: u8, out: &mut [u8; 8]) -> u32 {
-        types_of(owner, out) as u32
-    }
-
-    unsafe fn planned_ids(_core: &C, selection: u32, out: &mut [[u32; 2]; 8]) -> u32 {
-        crate::assign::planned(selection, out)
-    }
-
-    unsafe fn id_taken(core: &C, id: u32) -> bool {
-        !type_is_free(core, id)
-    }
-
     unsafe fn declare(d: &mut Declare) {
         d.kind(KIND_PARAM, LEN_PARAM);
         d.kind(KIND_MACHINE, LEN_MACHINE);
@@ -228,13 +242,6 @@ impl<C: CoreApi> Service<C> for Machines {
         } else {
             None
         }
-    }
-
-    unsafe fn guard_state(core: &C, ty: u32) -> Option<GuardState> {
-        Some(GuardState {
-            faults: core.guard_faults(ty),
-            disabled: core.guard_disabled(ty),
-        })
     }
 
     unsafe fn dsp_check_sections(core: &C, sec: &DspSec) -> i32 {
@@ -556,8 +563,8 @@ unsafe fn ck_records<C: CoreApi>(core: &C, c: &Ctx) -> i32 {
             ns += 1;
             let k = (t - dyn0) as usize;
             let row = iw(inf, w::M_ROWS) + (t - m_first) * iw(inf, w::M_ROW_SIZE);
-            let name = rd(row + iw(inf, w::O_NAME));
-            if s.mach_owner[k] != 0 || (name != 0 && *(name as *const u8) != 0) {
+            let name = core.rd(row + iw(inf, w::O_NAME));
+            if s.mach_owner[k] != 0 || (name != 0 && core.rd8(name) != 0) {
                 bad = E_TYPE_USED;
                 return;
             }
@@ -715,7 +722,7 @@ unsafe fn apply<C: CoreApi>(core: &C, ctx: &AppCtx) -> i32 {
         while j < KNOBS {
             let kn = rd32(b.add(4 + 4 * j));
             let known = kn & KNOB_PARAM != 0;
-            wr(
+            core.wr(
                 c0 + 4 * j as u32,
                 if known {
                     codes[(kn & !KNOB_PARAM) as usize]
@@ -723,17 +730,17 @@ unsafe fn apply<C: CoreApi>(core: &C, ctx: &AppCtx) -> i32 {
                     0
                 },
             );
-            wr(
+            core.wr(
                 s0 + 4 * j as u32,
                 if known { slot_base + j as u32 } else { 0 },
             );
             j += 1;
         }
-        wr(c0 + 4 * KNOBS as u32, rd32(b.add(36))); // the level code
-        wr(s0 + 4 * KNOBS as u32, 0);
-        wr(row + iw(inf, w::PGO_NAME), name);
-        wr(row + iw(inf, w::PGO_TITLE), title);
-        wr(
+        core.wr(c0 + 4 * KNOBS as u32, rd32(b.add(36))); // the level code
+        core.wr(s0 + 4 * KNOBS as u32, 0);
+        core.wr(row + iw(inf, w::PGO_NAME), name);
+        core.wr(row + iw(inf, w::PGO_TITLE), title);
+        core.wr(
             row + iw(inf, w::PGO_MACH),
             crate::assign::resolve(core, rd32(b)),
         ); // the page belongs to its machine from this store on
@@ -752,7 +759,7 @@ unsafe fn apply<C: CoreApi>(core: &C, ctx: &AppCtx) -> i32 {
         let mut j = 0;
         while j < knobs {
             let kn = rd32(b.add(20 + 4 * j));
-            wr(
+            core.wr(
                 f0 + 4 * j as u32,
                 if kn & KNOB_PARAM != 0 {
                     codes[(kn & !KNOB_PARAM) as usize]
@@ -762,10 +769,10 @@ unsafe fn apply<C: CoreApi>(core: &C, ctx: &AppCtx) -> i32 {
             );
             j += 1;
         }
-        wr(f0 + 4 * knobs as u32, rd32(b.add(16))); // the level, the field after the knobs
-        wr(row + iw(inf, w::O_CLONE), clone);
-        wr(row + iw(inf, w::O_POS), rd32(b.add(8)));
-        wr(row + iw(inf, w::O_OWN), rd32(b.add(12)));
+        core.wr(f0 + 4 * knobs as u32, rd32(b.add(16))); // the level, the field after the knobs
+        core.wr(row + iw(inf, w::O_CLONE), clone);
+        core.wr(row + iw(inf, w::O_POS), rd32(b.add(8)));
+        core.wr(row + iw(inf, w::O_OWN), rd32(b.add(12)));
         // strings
         copy_text(s.s.mach_name[k].as_mut_ptr(), b.add(52), MACH_TEXT);
         copy_text(
@@ -783,25 +790,25 @@ unsafe fn apply<C: CoreApi>(core: &C, ctx: &AppCtx) -> i32 {
             s.s.mach_short[k].as_ptr(),
             true,
         );
-        wr(row + iw(inf, w::O_LONG), long);
-        wr(row + iw(inf, w::O_SHORT), short);
-        wr(row + iw(inf, w::O_SNAME), s.s.mach_short[k].as_ptr() as u32);
+        core.wr(row + iw(inf, w::O_LONG), long);
+        core.wr(row + iw(inf, w::O_SHORT), short);
+        core.wr(row + iw(inf, w::O_SNAME), s.s.mach_short[k].as_ptr() as u32);
         // the per-type tables: the clone's row, our names
         let nrow = iw(inf, w::NAMES) + 12 * t;
-        wr(nrow, s.s.mach_name[k].as_ptr() as u32);
-        wr(nrow + 4, s.s.mach_short[k].as_ptr() as u32);
-        wr(nrow + 8, rd(iw(inf, w::NAMES) + 12 * clone + 8));
-        wr(
+        core.wr(nrow, s.s.mach_name[k].as_ptr() as u32);
+        core.wr(nrow + 4, s.s.mach_short[k].as_ptr() as u32);
+        core.wr(nrow + 8, core.rd(iw(inf, w::NAMES) + 12 * clone + 8));
+        core.wr(
             iw(inf, w::PERMIT) + 4 * t,
-            rd(iw(inf, w::PERMIT) + 4 * clone),
+            core.rd(iw(inf, w::PERMIT) + 4 * clone),
         );
         let pt = iw(inf, w::PERTYPE);
         if pt != 0 {
-            *((pt + t) as *mut u8) = *((pt + clone) as *const u8);
+            core.wr8(pt + t, core.rd8(pt + clone));
         }
         // publish: the name pointer marks the row as used (one aligned store)
         s.mach_owner[k] = owner;
-        wr(row + iw(inf, w::O_NAME), s.s.mach_name[k].as_ptr() as u32);
+        core.wr(row + iw(inf, w::O_NAME), s.s.mach_name[k].as_ptr() as u32);
     });
     // what the native pages need when the walker reaches them in file order
     let st = &mut *addr_of_mut!(APPLIED);
@@ -890,29 +897,29 @@ unsafe fn remove<C: CoreApi>(core: &C, owner: u8) {
             let t = iw(inf, w::M_DYN0) + k as u32;
             nativepage::remove(core, t); // callbacks must go before code/strings can be released
             let row = iw(inf, w::M_ROWS) + (t - first) * iw(inf, w::M_ROW_SIZE);
-            wr(row + iw(inf, w::O_NAME), empty); // hide first
+            core.wr(row + iw(inf, w::O_NAME), empty); // hide first
             s.empty_rep = [0, 0, 0xffff_ffff, 0];
             let rep = addr_of!(rstate().empty_rep) as u32 + 12;
-            wr(row + iw(inf, w::O_LONG), rep);
-            wr(row + iw(inf, w::O_SHORT), rep);
-            wr(row + iw(inf, w::O_SNAME), empty);
+            core.wr(row + iw(inf, w::O_LONG), rep);
+            core.wr(row + iw(inf, w::O_SHORT), rep);
+            core.wr(row + iw(inf, w::O_SNAME), empty);
             let f0 = row + iw(inf, w::O_F0);
             let mut j = 0;
             while j < knobs {
-                wr(f0 + 4 * j as u32, 0);
+                core.wr(f0 + 4 * j as u32, 0);
                 j += 1;
             }
-            wr(f0 + 4 * knobs as u32, 10);
-            wr(row + iw(inf, w::O_CLONE), 0);
-            wr(row + iw(inf, w::O_OWN), 0);
+            core.wr(f0 + 4 * knobs as u32, 10);
+            core.wr(row + iw(inf, w::O_CLONE), 0);
+            core.wr(row + iw(inf, w::O_OWN), 0);
             let nrow = iw(inf, w::NAMES) + 12 * t;
-            wr(nrow, empty);
-            wr(nrow + 4, empty);
-            wr(nrow + 8, rd(iw(inf, w::NAMES) + 8));
-            wr(iw(inf, w::PERMIT) + 4 * t, rd(iw(inf, w::PERMIT)));
+            core.wr(nrow, empty);
+            core.wr(nrow + 4, empty);
+            core.wr(nrow + 8, core.rd(iw(inf, w::NAMES) + 8));
+            core.wr(iw(inf, w::PERMIT) + 4 * t, core.rd(iw(inf, w::PERMIT)));
             let pt = iw(inf, w::PERTYPE);
             if pt != 0 {
-                *((pt + t) as *mut u8) = *(pt as *const u8);
+                core.wr8(pt + t, core.rd8(pt));
             }
             s.mach_owner[k] = 0;
         }
@@ -924,20 +931,20 @@ unsafe fn remove<C: CoreApi>(core: &C, owner: u8) {
         if s.page_owner[k] == owner {
             let row = iw(inf, w::PG_ROWS)
                 + (iw(inf, w::PG_DYN0) + k as u32 - iw(inf, w::PG_FIRST)) * iw(inf, w::PG_ROW_SIZE);
-            wr(row + iw(inf, w::PGO_MACH), iw(inf, w::PG_FREE));
+            core.wr(row + iw(inf, w::PGO_MACH), iw(inf, w::PG_FREE));
             s.empty_rep = [0, 0, 0xffff_ffff, 0];
             let rep = addr_of!(rstate().empty_rep) as u32 + 12;
-            wr(row + iw(inf, w::PGO_NAME), rep);
-            wr(row + iw(inf, w::PGO_TITLE), rep);
+            core.wr(row + iw(inf, w::PGO_NAME), rep);
+            core.wr(row + iw(inf, w::PGO_TITLE), rep);
             let (c0, s0) = (row + iw(inf, w::PGO_C), row + iw(inf, w::PGO_S));
             let mut j = 0;
             while j < KNOBS {
-                wr(c0 + 4 * j as u32, 0);
-                wr(s0 + 4 * j as u32, 0);
+                core.wr(c0 + 4 * j as u32, 0);
+                core.wr(s0 + 4 * j as u32, 0);
                 j += 1;
             }
-            wr(c0 + 4 * KNOBS as u32, 10); // the track level code, as in a free row
-            wr(s0 + 4 * KNOBS as u32, 0);
+            core.wr(c0 + 4 * KNOBS as u32, 10); // the track level code, as in a free row
+            core.wr(s0 + 4 * KNOBS as u32, 0);
             s.page_owner[k] = 0;
         }
         k += 1;
@@ -965,9 +972,12 @@ unsafe fn remove<C: CoreApi>(core: &C, owner: u8) {
 }
 
 /// The machine type numbers of the machine rows `owner` filled (at most 8), in type order; returns how many.
-pub fn types_of(owner: u8, out: &mut [u8; MAX_MACH]) -> usize {
+pub fn types_of<C: CoreApi>(core: &C, owner: u8, out: &mut [u8; MAX_MACH]) -> usize {
     let s = rstate();
-    let first = dkrt_sdk::device::DYN_TYPE_FIRST;
+    // A device without a profile has no run-time types (as check_types refuses them): none, not the stock types from 0.
+    let Some(first) = crate::profile(core).map(|p| p.dyn_type_first) else {
+        return 0;
+    };
     let mut n = 0;
     let mut k = 0;
     while k < MAX_MACH {
@@ -1046,7 +1056,9 @@ mod tests {
     }
 
     fn check_core_with(f: unsafe fn(&FakeCore, &Ctx) -> i32, recs: &[Rec], inf: Vec<u32>) -> i32 {
-        let (s, core) = (section(recs), FakeCore::new());
+        let mut core = FakeCore::new();
+        core.device = dkrt_abi::profiles::DT2.id; // the run-time machine types are the device profile's
+        let s = section(recs);
         unsafe {
             f(
                 &core,

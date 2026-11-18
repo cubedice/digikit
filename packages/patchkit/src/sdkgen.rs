@@ -43,6 +43,8 @@ pub const C_RECORDS_OUT: &str = "sdk/include/dk/gen/records.h";
 pub const C_SAMPLE_OUT: &str = "sdk/include/dk/gen/sample.h";
 /// The generated SHARC+ include of the sample pool record layout, relative to the repository root.
 pub const SAMPLE_INC_OUT: &str = "sdk/dsp/contract/dk_sample_pool.inc";
+/// The generated slot offsets of the hook stubs (`[dsp.slots]`).
+pub const STUB_INC_OUT: &str = "sdk/dsp/contract/dk_stub.inc";
 /// The generated register classes of the DSP contract for the rules check of `dksharc`, relative to the repository root.
 pub const RULES_RS_OUT: &str = "packages/dksharc/src/rules_table.rs";
 /// The generated document of the DSP register contract, relative to the repository root.
@@ -98,6 +100,16 @@ struct Sdk {
 #[serde(deny_unknown_fields)]
 struct DspToml {
     registers: DspRegisters,
+    slots: DspSlots,
+}
+/// `[dsp.slots]`: the slot block of core/dsp-link that the hook stubs of the image read.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DspSlots {
+    /// Words of the block (`DK_SLOTS`).
+    words: u32,
+    /// The slots in index order (`DK_SLOT_<NAME>` is the byte offset 4 * index).
+    names: Vec<String>,
 }
 /// `[dsp.registers]`: the register contract of module DSP code. Entries are names (`B3`), ranges (`R0-R15`) or groups (`MR`, `ASTAT`, `STKY`, `LCNTR`).
 #[derive(Deserialize)]
@@ -180,10 +192,18 @@ struct Import {
     /// A test-only import (of a test-only service): not in the runtime's table, the public headers or the docs.
     #[serde(default)]
     test: bool,
-    /// The import is a function of a service file (`[[export]]` of a `.dks`): the runtime's table has no entry for it, and a module resolves it at load from the provider's
+    /// The import is a function of a service file (an export of a `.dks`, listed in its header from the provided imports of its service): the runtime's table has no entry for it, and a module resolves it at load from the provider's
     /// exports (`dk_param_get` of `machines.dks`).
     #[serde(default)]
     provided: bool,
+    /// With `provided`: the module of the service's `dks/src` that holds the hand-written function (`fw`, `builder`, `glue`). Without it the export is a pure
+    /// wrapper that `patchkit gen` writes to `gen_exports.rs`: `build::<name without dk_ and module_ctx_>(&ImportCore, args...)`.
+    #[serde(default)]
+    wrapper: Option<String>,
+    /// With `provided`: an export that only the runtime calls by name (`handlers::exports`): it is in the file's export list and `gen_exports.rs`, and in no header, no
+    /// document and no import table of a module.
+    #[serde(default)]
+    internal: bool,
 }
 /// The opaque handle types, services and call contexts of the service imports: `[handle]` of `sdk/sdk.toml`.
 #[derive(Deserialize)]
@@ -432,6 +452,7 @@ fn format_limits(sdk: &Sdk) -> Vec<(&'static str, u32)> {
         ("INSTALL_SITES", f.install_sites),
         ("SLOTS_MAX", f.slots_max),
         ("INFO_MAX", f.info_max),
+        ("DSP_SLOT_WORDS", sdk.dsp.slots.words),
         ("MAX_VOICES", sdk.limits.max.machine_rows as u32),
         ("MAX_FX", sdk.limits.max.fx_slots as u32),
     ]
@@ -737,6 +758,24 @@ pub fn limits_max() -> LimitsMax {
         .max
 }
 
+/// The slots of the hook stubs, in index order: the names of `[dsp.slots]` of the `sdk/sdk.toml` this crate was built with.
+pub fn dsp_slot_names() -> Vec<String> {
+    parse(include_str!("../../../sdk/sdk.toml"))
+        .expect("sdk/sdk.toml parses")
+        .dsp
+        .slots
+        .names
+}
+
+/// The words of the slot block of core/dsp-link (`[dsp.slots] words` of the `sdk/sdk.toml` this crate was built with).
+pub fn dsp_slot_words() -> u32 {
+    parse(include_str!("../../../sdk/sdk.toml"))
+        .expect("sdk/sdk.toml parses")
+        .dsp
+        .slots
+        .words
+}
+
 /// `[limits.max]` of a `sdk/sdk.toml` text (for the tests).
 pub fn limits_max_of(text: &str) -> Result<LimitsMax> {
     Ok(parse(text)?.limits.max)
@@ -1011,7 +1050,14 @@ fn parse(text: &str) -> Result<Sdk> {
         parse_runtime(&sdk.runtime.table),
         parse_runtime(&sdk.runtime.version),
     ) {
-        (Ok(t), Ok(v)) if t <= v => {}
+        (Ok(t), Ok(v)) if t <= v && t >> 8 == v >> 8 => {}
+        (Ok(t), Ok(v)) if t <= v => {
+            return Err(err!(
+                "{SOURCE}: [runtime] table {} has another MAJOR.MINOR than version {}: the loader accepts only the MAJOR and MINOR of its own runtime, so a module that links nothing newer needs `table` raised with `version` at every MINOR",
+                sdk.runtime.table,
+                sdk.runtime.version
+            ));
+        }
         _ => {
             return Err(err!(
                 "{SOURCE}: [runtime] table is not a version, or is newer than version"
@@ -1999,6 +2045,29 @@ fn sample_inc(sdk: &Sdk) -> Result<String> {
     Ok(s)
 }
 
+/// `sdk/dsp/contract/dk_stub.inc`: the slot offsets of the hook stubs, decimal. Part of the service ABI hash (`SVC_ABI_FILES`).
+fn stub_inc(sdk: &Sdk) -> Result<String> {
+    let d = &sdk.dsp.slots;
+    if d.names.len() as u32 > d.words {
+        return Err(err!(
+            "[dsp.slots]: {} names for {} words",
+            d.names.len(),
+            d.words
+        ));
+    }
+    let mut s = format!(
+        "// {HEADER}\n// The contract between the hook stubs of the image and the dispatch code of a service (docs/plans/runtime-and-services.md, R12-8).\n//\n// A hook site of the image keeps a stub. The stub reads one slot, a word of core/dsp-link's slot block (`_dl_slots`, window 0 words 0 to {} of the link). A slot of 0\n// means that no service owns the site: the stub runs the displaced instruction and the stock path. Any other value is the pc of the service's dispatch entry. The stub\n// then saves the registers it pins in image words, pins M13 = 0 and jumps with `JUMP (M13, I12)`. The entry restores the saved registers first, so the dispatch code\n// sees the registers as the firmware left them at the hook. DK_SLOT_* are byte offsets into `_dl_slots`. Decimal values: the assembler upper-cases macro text.\n#ifndef DK_STUB_INC\n#define DK_STUB_INC\n",
+        d.words - 1
+    );
+    let _ = writeln!(s, "#define DK_SLOTS {}", d.words);
+    let _ = writeln!(s, "#define DK_SLOT_BYTES {}", 4 * d.words);
+    for (i, n) in d.names.iter().enumerate() {
+        let _ = writeln!(s, "#define DK_SLOT_{} {}", n.to_uppercase(), 4 * i);
+    }
+    s.push_str("#endif\n");
+    Ok(s)
+}
+
 /// `sdk/include/dk/gen/machine_consts.h`: the numbers of `sdk/include/dk/gen/machine.h`.
 fn machine_consts_h(sdk: &Sdk) -> String {
     let m = &sdk.machine;
@@ -2265,8 +2334,13 @@ fn callback_types(sdk: &Sdk) -> Result<Vec<(&String, Sig)>> {
     Ok(v)
 }
 
-/// The imports with their signatures, checked.
+/// The imports with their signatures, checked; a test-only import is left out (it is in no generated output but the export list of its service file).
 fn imports(sdk: &Sdk) -> Result<Vec<(&Import, Option<Sig>)>> {
+    imports_checked(sdk, false)
+}
+
+/// The imports with their signatures, checked; `with_test` keeps the test-only ones.
+fn imports_checked(sdk: &Sdk, with_test: bool) -> Result<Vec<(&Import, Option<Sig>)>> {
     let mut v = Vec::new();
     let handles: Vec<&str> = sdk.handle.types.iter().map(String::as_str).collect();
     callback_types(sdk)?;
@@ -2360,8 +2434,30 @@ fn imports(sdk: &Sdk) -> Result<Vec<(&Import, Option<Sig>)>> {
                 ));
             }
         }
-        // a test-only import is checked but is in no generated output
-        if !im.test {
+        if let Some(w) = &im.wrapper {
+            if !im.provided || !is_ident(w) {
+                return Err(err!(
+                    "{SOURCE}: {what}: `wrapper` names a module of the service's dks/src and goes with `provided = true`"
+                ));
+            }
+        } else if im.provided {
+            if let Some((t, n)) = sig
+                .iter()
+                .flat_map(|sig| sig.args.iter())
+                .find(|(t, _)| t.td)
+            {
+                return Err(err!(
+                    "{SOURCE}: {what}: a pure wrapper cannot take the callback `{}` (argument `{n}`): write the function by hand and name its module in `wrapper`",
+                    t.base
+                ));
+            }
+        }
+        if im.internal && (!im.provided || im.wrapper.is_none()) {
+            return Err(err!(
+                "{SOURCE}: {what}: `internal` goes with `provided = true` and a `wrapper`"
+            ));
+        }
+        if with_test || !(im.test || im.internal) {
             v.push((im, sig));
         }
     }
@@ -2375,6 +2471,16 @@ pub fn provider_services() -> std::collections::BTreeSet<String> {
         .into_iter()
         .filter(|d| d.rust.is_none())
         .map(|d| d.name)
+        .collect()
+}
+
+/// The functions the file of `service` exports: its `provided` imports (test-only ones too), in `sdk/sdk.toml` order.
+pub fn provided_exports(service: &str) -> Vec<String> {
+    sdk_embedded()
+        .import
+        .iter()
+        .filter(|i| i.provided && i.service.as_deref() == Some(service))
+        .map(|i| i.name.clone())
         .collect()
 }
 
@@ -2574,6 +2680,22 @@ fn rust_api(sdk: &Sdk) -> Result<String> {
         let _ = writeln!(s, "        {:?},", im.name);
     }
     s.push_str("    ];\n");
+    let prov: Vec<_> = imps.iter().filter(|(im, _)| im.provided).collect();
+    s.push_str("\n    /// The imports a service file provides (`provided = true`): (service, import name), in order.\n");
+    let _ = writeln!(
+        s,
+        "    pub const PROVIDED: [(&str, &str); {}] = [",
+        prov.len()
+    );
+    for (im, _) in &prov {
+        let _ = writeln!(
+            s,
+            "        ({:?}, {:?}),",
+            im.service.as_deref().unwrap_or(""),
+            im.name
+        );
+    }
+    s.push_str("    ];\n");
     for (im, sig) in &imps {
         let (None, Some(sig)) = (&im.kind, sig) else {
             continue;
@@ -2590,6 +2712,99 @@ fn rust_api(sdk: &Sdk) -> Result<String> {
         .ok_or_else(|| err!("{SOURCE}: [load.status] has no E_MISSING"))?;
     s.push_str(&rust_optional(&imps, missing));
     Ok(s)
+}
+
+/// The crate function a pure wrapper calls: the import name without `dk_` and a leading `module_ctx_`.
+fn build_fn(name: &str) -> &str {
+    let n = name.strip_prefix("dk_").unwrap_or(name);
+    n.strip_prefix("module_ctx_").unwrap_or(n)
+}
+
+/// `modules/core/services/<service>/dks/src/gen_exports.rs`: for each `provided` import of the service, in `sdk.toml` order, the pure `extern "C"` wrapper
+/// (or a reference to the hand-written function of `wrapper`), a type check against `api`, and `exports()` for `service!`.
+fn gen_exports_rs(service: &str, imps: &[(&Import, Option<Sig>)]) -> String {
+    let mine: Vec<_> = imps
+        .iter()
+        .filter(|(im, _)| im.provided && im.service.as_deref() == Some(service))
+        .collect();
+    let pure = mine.iter().any(|(im, _)| im.wrapper.is_none());
+    let mut s = format!(
+        "// {HEADER}\n\n//! The exports of the `{service}` service file: the builder calls that are thin wrappers over `dkrt_svc_{service}::build` and the list `service!` declares\n//! (`exports = gen_exports::exports()`). A function that is not a thin wrapper is written by hand in the module `wrapper` of its `[[import]]`.\n\nuse dkrt_sdk::api;\n"
+    );
+    if pure {
+        let _ = writeln!(
+            s,
+            "use dkrt_svc_{service}::build;\nuse dkrt_svc_rt::ImportCore;"
+        );
+    }
+    for (im, sig) in &mine {
+        let Some(sig) = sig else { continue };
+        if im.wrapper.is_some() {
+            continue;
+        }
+        let args: Vec<String> = sig
+            .args
+            .iter()
+            .map(|(t, n)| format!("{}: {}", rust_name(n), rust_ty(t)))
+            .collect();
+        let call: Vec<String> = sig.args.iter().map(|(_, n)| rust_name(n)).collect();
+        let ret = if sig.ret.base == "void" && sig.ret.ptr == 0 {
+            String::new()
+        } else {
+            format!(" -> {}", rust_ty(&sig.ret))
+        };
+        let _ = write!(
+            s,
+            "\n#[cfg_attr(target_arch = \"m68k\", no_mangle)]\npub unsafe extern \"C\" fn {}({}){ret} {{\n    build::{}(&ImportCore, {})\n}}\n",
+            im.name,
+            args.join(", "),
+            build_fn(&im.name),
+            call.join(", ")
+        );
+    }
+    let path = |im: &Import| match &im.wrapper {
+        Some(w) => format!("crate::{w}::{}", im.name),
+        None => im.name.clone(),
+    };
+    s.push_str("\n// the entries have the types sdk/sdk.toml gives the imports\n");
+    for (im, _) in mine.iter().filter(|(im, _)| !im.internal) {
+        let _ = writeln!(s, "const _: api::{}Fn = {};", camel(&im.name), path(im));
+    }
+    let _ = writeln!(
+        s,
+        "\n/// The entries `service!` declares, by name hash, in the order of `sdk/sdk.toml`.\npub fn exports() -> [(u32, *const u8); {}] {{\n    [",
+        mine.len()
+    );
+    for (im, _) in &mine {
+        let _ = writeln!(
+            s,
+            "        (dkrt_svc_rt::name_hash({:?}), {} as *const u8),",
+            im.name,
+            path(im)
+        );
+    }
+    s.push_str("    ]\n}\n");
+    s
+}
+
+/// The `gen_exports.rs` of every service with a `dks/` folder under `root` and `provided` imports, by path. A service file with provided imports and no `dks/` folder is no file yet: it has none.
+/// Its list is `provided_exports`, test-only imports included: the header EXPORTS and `exports()` of a file are equal.
+fn gen_exports(sdk: &Sdk, root: &std::path::Path) -> Result<Vec<(String, String)>> {
+    let imps = imports_checked(sdk, true)?;
+    let mut out = vec![];
+    for d in sdk.service.iter().filter(|d| d.rust.is_none()) {
+        let has = imps
+            .iter()
+            .any(|(im, _)| im.provided && im.service.as_deref() == Some(d.name.as_str()));
+        let dks = format!("modules/core/services/{}/dks", d.name);
+        if has && root.join(&dks).is_dir() {
+            out.push((
+                format!("{dks}/src/gen_exports.rs"),
+                gen_exports_rs(&d.name, &imps),
+            ));
+        }
+    }
+    Ok(out)
 }
 
 /// The macro `optional_imports!` for the runtime crate: the imports that another module provides (`requires`). It declares each as an external
@@ -3054,6 +3269,7 @@ pub fn render(text: &str) -> Result<Vec<(String, String)>> {
         (C_STATUS_OUT.to_string(), status_h(&sdk)),
         (C_SAMPLE_OUT.to_string(), sample_h(&sdk)?),
         (SAMPLE_INC_OUT.to_string(), sample_inc(&sdk)?),
+        (STUB_INC_OUT.to_string(), stub_inc(&sdk)?),
         (PROTO_PY_OUT.to_string(), python_proto(&sdk)),
         (PROTO_RS_OUT.to_string(), rust_proto(&sdk)),
         (PROTO_TS_OUT.to_string(), ts_proto(&sdk)),
@@ -3112,7 +3328,7 @@ pub(crate) fn abi_inputs(text: &str) -> Result<AbiInputs> {
 
 /// The files of `dkrt-abi` that a service file and the runtime share across the boundary (interfaces B and C), relative to the repository root. `gen_svc_abi.rs`
 /// itself and the other files of the crate are not in the list.
-pub const SVC_ABI_FILES: [&str; 7] = [
+pub const SVC_ABI_FILES: [&str; 8] = [
     "modules/core/runtime/abi/src/service.rs",
     "modules/core/runtime/abi/src/core_api.rs",
     "modules/core/runtime/abi/src/link.rs",
@@ -3120,6 +3336,8 @@ pub const SVC_ABI_FILES: [&str; 7] = [
     "modules/core/runtime/abi/src/registry.rs",
     "modules/core/runtime/abi/src/core_imports.rs",
     "modules/core/runtime/abi/src/platform.rs",
+    // the slot offsets of the hook stubs: the image stubs and the dispatch code of a service must agree on them
+    STUB_INC_OUT,
 ];
 
 /// FNV-1a (32 bits) over each file as its name, a zero byte, its bytes and a zero byte, in the given order. Never 0 (0 means "no interface B or C" in the
@@ -3167,5 +3385,6 @@ pub fn generate(root: &std::path::Path) -> Result<Vec<(String, String)>> {
         std::fs::read_to_string(&abi_path).map_err(|e| err!("{}: {e}", abi_path.display()))?;
     files.extend(crate::abigen::render(&abi, &abi_inputs(&text)?)?);
     files.push((SVC_ABI_OUT.to_string(), svc_abi_rs(root)?));
+    files.extend(gen_exports(&parse(&text)?, root)?);
     Ok(files)
 }

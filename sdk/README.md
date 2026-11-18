@@ -49,6 +49,13 @@ including the builder calls that declare machines and effects, are generated int
 `sdk.toml`. Each import has a `service`, a `since` (the runtime version that added it) and a `context`; the generated header repeats the last two
 in the comment of each prototype.
 
+A service that a service file (`.dks`) provides marks its imports `provided = true`; the file exports exactly those imports, in `sdk.toml` order, and its
+`module.toml` has no `[[export]]`. A provided import takes one more optional field, `wrapper = "<module>"`: the module of the service's `dks/src`
+(`fw`, `builder`, `glue`) that holds the function written by hand, for a function that converts a callback or a handle. An import without `wrapper` is a pure
+wrapper over the service crate's `build::*` function (the name without `dk_` and a leading `module_ctx_`): `patchkit gen` writes it, with the type check against
+the import's signature and the export list `gen_exports::exports()`, to `modules/core/services/<service>/dks/src/gen_exports.rs`. A pure wrapper cannot take a
+callback argument. A new builder call is an `[[import]]` and the `build::*` function; the generated file follows.
+
 - [docs/MODULES.md](../docs/MODULES.md) says what a module is and why: the entry point, services and optional providers, the builder calls,
   what `module.toml` fixes, the load path and the versions.
 - [docs/MODULE-AUTHORING.md](../docs/MODULE-AUTHORING.md) has the steps and a code sample for a machine, an effect and a tool.
@@ -194,6 +201,22 @@ IDs share a namespace with machine/effect IDs. `patchkit desc` reports these und
 records cannot yet target an instrument; V2 controls/pages require their own work.
 See the
 [CANOPY interface plan](../docs/design/canopy.md) for the remaining integration.
+
+## Modules never touch hardware
+
+A content module (everything outside `core/*`) reaches the device only through the runtime table and the services. It does not address a
+peripheral, the flash, the FPGA or the peer CPU. Each device file lists the windows that only the firmware and `core/*` drive
+(`[protect] windows` in `devices/*.toml`, evidence in [finding 141](../docs/findings/141-syntakt-analog-and-nor-paths.md)). `patchkit pack`
+refuses a module whose objects hold an address in such a window of any device it is built for: the addend of a relocation, the value of
+an absolute symbol, a word of a data section, or a 32-bit operand of an instruction (absolute long or immediate `.l` of `move`, `lea`, `pea`,
+`jsr`, `jmp`, `ori` to `cmpi`, the bit instructions). The error names the window, the device, and the section and offset (or the relocation's
+section, offset and symbol). A content module imports only from the runtime table, so there is no firmware routine name to check.
+
+A window below 0x10000 (the Syntakt's FlexBus CS1 at address 0) is checked against absolute-symbol relocations only. A literal below 64 KiB is an
+ordinary offset or constant, so those are not checked: a module that builds a low address in a register is not caught.
+
+Accepted residual risk: a constant table can hold a word inside a window by chance (a 32-bit value such as `0xFC05C034` in a lookup table or a
+`.l` immediate). The pack refuses it. The module author changes the table layout (another scale, an offset, 16-bit entries). There is no override.
 
 ## Writing modules
 

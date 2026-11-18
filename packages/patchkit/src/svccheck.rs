@@ -10,6 +10,8 @@
 //!   `service!(...)` call and nothing else) and, when needed, `src/hooks.rs` (every hook as assembler; required when the module has `[[hook]]` entries) and
 //!   `src/fw.rs` (firmware calls). It is required when the service's `[[service]]` row has no `rust` (the service is a file), and checked whenever it exists.
 //!   The `[[hook]]` entries of `dks/module.toml` equal the hooks of the `service!` call, per device (an entry with `devices`, and a call entry `(name, entry, dt2)`).
+//!   The exports of the file are the `provided = true` imports of the service in `sdk.toml`: `service!` takes `exports = gen_exports::exports()` (the file `patchkit gen`
+//!   writes) when there are any, never a literal list, and `dks/module.toml` has no `[[export]]`.
 //!   Assembler (`asm!`, `global_asm!`, `naked`) is only in `dks/src/hooks.rs`, and firmware names (`cf.` hook and anchor names, `dkfw`) only under `dks/`.
 //! - **Fills equal the slots.** A `[[fill]]` of `dks/module.toml` names a `[[slot]]` of an image adapter (`modules/core/adapters/**/module.toml`). When the
 //!   slot must exist (a typo is an error). When the slot exists only on some devices (`devices` in its `[[slot]]`), the fill names `devices` too and only devices the slot has.
@@ -216,7 +218,24 @@ fn manifest(sdk: &Path, name: &str) -> Result<(BTreeSet<String>, Option<Option<S
     Ok((kinds, row))
 }
 
-/// The entries of the list `key` (`hooks`, `fills` or `exports`) of the `service!` call in `dks/src/lib.rs`: (first string, device filter: `None` for every
+/// The names of the `provided = true` imports of service `name` in `sdk` (test-only ones too): the exports of its file (`patchkit gen` writes them to `dks/src/gen_exports.rs`).
+fn provided_imports(sdk: &Path, name: &str) -> Result<Vec<String>> {
+    let text = std::fs::read_to_string(sdk).map_err(|e| err!("{}: {e}", sdk.display()))?;
+    let v: toml::Table = text.parse().map_err(|e| err!("{}: {e}", sdk.display()))?;
+    Ok(v.get("import")
+        .and_then(|s| s.as_array())
+        .into_iter()
+        .flatten()
+        .filter_map(|r| r.as_table())
+        .filter(|r| {
+            r.get("service").and_then(|n| n.as_str()) == Some(name)
+                && r.get("provided").and_then(|p| p.as_bool()) == Some(true)
+        })
+        .filter_map(|r| r.get("name").and_then(|n| n.as_str()).map(str::to_string))
+        .collect())
+}
+
+/// The entries of the list `key` (`hooks` or `fills`) of the `service!` call in `dks/src/lib.rs`: (first string, device filter: `None` for every
 /// device, or `dt2` / `dn2`).
 fn service_list(lib: &str, key: &str) -> Option<Vec<(String, Option<String>)>> {
     let at = lib.find("service!(")?;
@@ -307,7 +326,12 @@ fn hook_set(entries: &[(String, Vec<String>)], device: &str) -> BTreeSet<String>
 }
 
 /// The problems of the service file crate `dks/` (when it exists or the service is a file) and of the neutral crate's sources against the file rules.
-fn check_dks(dir: &Path, needs_dks: bool, neutral: &[(String, String)]) -> Vec<String> {
+fn check_dks(
+    dir: &Path,
+    needs_dks: bool,
+    provided: &[String],
+    neutral: &[(String, String)],
+) -> Vec<String> {
     let mut out = vec![];
     let asm = Regex::new(
         r"\b(?:global_asm|asm|naked_asm)\s*!|#\[\s*naked\s*\]|#\[\s*unsafe\s*\(\s*naked\s*\)\s*\]",
@@ -341,8 +365,7 @@ fn check_dks(dir: &Path, needs_dks: bool, neutral: &[(String, String)]) -> Vec<S
         .ok()
         .and_then(|t| t.parse().ok());
     let mut hooks: Vec<(String, Vec<String>)> = vec![];
-    let (mut fills, mut exports): (Vec<(String, Vec<String>)>, Vec<(String, Vec<String>)>) =
-        (vec![], vec![]);
+    let mut fills: Vec<(String, Vec<String>)> = vec![];
     if let Some(m) = &manifest {
         let list = |table: &str, key: &str| -> Vec<(String, Vec<String>)> {
             m.get(table)
@@ -369,8 +392,102 @@ fn check_dks(dir: &Path, needs_dks: bool, neutral: &[(String, String)]) -> Vec<S
                 })
                 .collect()
         };
+        // a DSP fill (`space = "dsp"`) is dispatch code in `dks/dsp/*.s`, not a Rust function of the `service!` call: it has its own rules below
+        let is_dsp = |t: &toml::Table| t.get("space").and_then(|s| s.as_str()) == Some("dsp");
+        let dsp_fills: Vec<String> = m
+            .get("fill")
+            .and_then(|h| h.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|h| h.as_table())
+            .filter(|t| is_dsp(t))
+            .map(|t| {
+                t.get("slot")
+                    .and_then(|n| n.as_str())
+                    .unwrap_or("")
+                    .to_string()
+            })
+            .collect();
+        let dsp_names = crate::sdkgen::dsp_slot_names();
+        for s in &dsp_fills {
+            if !dsp_names.contains(s) {
+                out.push(format!(
+                    "dks/module.toml: [[fill]] `{s}` has space \"dsp\", but `[dsp.slots]` of sdk/sdk.toml has no such slot ({})",
+                    dsp_names.join(", ")
+                ));
+            }
+        }
+        if !dsp_fills.is_empty() {
+            let has_asm = std::fs::read_dir(dks.join("dsp"))
+                .map(|d| {
+                    d.flatten()
+                        .any(|e| e.path().extension().is_some_and(|x| x == "s"))
+                })
+                .unwrap_or(false);
+            if !has_asm {
+                out.push("dks/module.toml has DSP [[fill]] entries but dks/dsp/ holds no .s file (the dispatch code of the service)".into());
+            }
+            // every import of the DSP code must be in the import table of core/dyndsp for its device (the loader resolves a DSP import against that table only)
+            let ext = Regex::new(r"(?m)^\s*\.EXTERN\s+([A-Za-z_][A-Za-z0-9_]*)\s*;").unwrap();
+            let imp = Regex::new(r"(?m)^\s*DSP_IMPORT\s+([A-Za-z_][A-Za-z0-9_]*)\s*$").unwrap();
+            for e in std::fs::read_dir(dks.join("dsp"))
+                .into_iter()
+                .flatten()
+                .flatten()
+            {
+                let path = e.path();
+                let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+                let file = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+                if path.extension().is_none_or(|x| x != "s") {
+                    continue;
+                }
+                let Some(dev) = stem
+                    .rsplit('-')
+                    .next()
+                    .filter(|d| crate::devdata::by_short(d).is_some())
+                else {
+                    out.push(format!("dks/dsp/{file}: the name must end in -<device> (dt2 or dn2): a DSP object is for one device"));
+                    continue;
+                };
+                // the table of the repository around the service folder
+                let rel = format!("modules/core/adapters/dyndsp/src/cf/dyndsp-{dev}.s");
+                let table = dir.ancestors().map(|a| a.join(&rel)).find(|p| p.is_file());
+                let Some(table_text) = table.and_then(|p| std::fs::read_to_string(p).ok()) else {
+                    out.push(format!(
+                        "dks/dsp/{file}: core/dyndsp has no import table for {dev}"
+                    ));
+                    continue;
+                };
+                let known: std::collections::BTreeSet<&str> = imp
+                    .captures_iter(&table_text)
+                    .map(|c| c.get(1).unwrap().as_str())
+                    .collect();
+                let text = std::fs::read_to_string(&path).unwrap_or_default();
+                for c in ext.captures_iter(&text) {
+                    let n = c.get(1).unwrap().as_str();
+                    if !known.contains(n) {
+                        out.push(format!("dks/dsp/{file}: `.EXTERN {n}` is not a DSP_IMPORT of core/dyndsp (dyndsp-{dev}.s): the loader cannot resolve it"));
+                    }
+                }
+            }
+            let sharc_object = m
+                .get("object")
+                .and_then(|o| o.as_array())
+                .into_iter()
+                .flatten()
+                .filter_map(|o| o.as_table())
+                .any(|o| o.get("place").and_then(|p| p.as_str()) == Some("dsp.l2"));
+            if !sharc_object {
+                out.push("dks/module.toml has DSP [[fill]] entries but no [[object]] with place = \"dsp.l2\"".into());
+            }
+        }
         fills = list("fill", "slot");
-        exports = list("export", "name");
+        if !dsp_fills.is_empty() {
+            fills.retain(|(n, _)| !dsp_fills.contains(n));
+        }
+        if m.get("export").is_some() {
+            out.push("dks/module.toml: [[export]] is not read: the exports of the file are the `provided = true` imports of its service in sdk/sdk.toml".into());
+        }
         let module = m.get("module").and_then(|t| t.as_table());
         let get = |k: &str| module.and_then(|t| t.get(k)).and_then(|v| v.as_str());
         let want = format!("core/services/{name}");
@@ -423,6 +540,33 @@ fn check_dks(dir: &Path, needs_dks: bool, neutral: &[(String, String)]) -> Vec<S
         if !only_service_call(lib) {
             out.push("dks/src/lib.rs is not the `service!(...)` call alone (attributes, `use` and `mod` lines are allowed)".into());
         }
+        let literal = Regex::new(r"\bexports\s*=\s*\[").unwrap().is_match(lib);
+        let generated = Regex::new(r"\bexports\s*=\s*gen_exports::exports\(\)")
+            .unwrap()
+            .is_match(lib);
+        if literal {
+            out.push("dks/src/lib.rs: service! has a literal `exports = [...]` list: write `exports = gen_exports::exports()` (the list `patchkit gen` writes from the `provided` imports of sdk/sdk.toml)".into());
+        } else if !provided.is_empty() && !generated {
+            out.push(format!("dks/src/lib.rs: the service has {} `provided` imports in sdk/sdk.toml, so service! needs `exports = gen_exports::exports()`", provided.len()));
+        } else if provided.is_empty() && generated {
+            out.push("dks/src/lib.rs: `exports = gen_exports::exports()` but the service has no `provided` import in sdk/sdk.toml".into());
+        }
+        match get("src/gen_exports.rs") {
+            None if !provided.is_empty() => {
+                out.push("dks/src/gen_exports.rs is missing: run `patchkit gen`".into())
+            }
+            Some(g) => {
+                let named: Vec<String> = Regex::new(r#"name_hash\("(\w+)"\)"#)
+                    .unwrap()
+                    .captures_iter(g)
+                    .map(|c| c[1].to_string())
+                    .collect();
+                if named != provided {
+                    out.push("dks/src/gen_exports.rs does not list the `provided` imports of sdk/sdk.toml in order: run `patchkit gen`".into());
+                }
+            }
+            None => {}
+        }
         let called = |key: &str| -> Vec<(String, Vec<String>)> {
             service_list(lib, key)
                 .unwrap_or_default()
@@ -434,7 +578,6 @@ fn check_dks(dir: &Path, needs_dks: bool, neutral: &[(String, String)]) -> Vec<S
         for (what, noun, key, entries) in [
             ("[[hook]]", "hook", "hooks", &hooks),
             ("[[fill]]", "fill", "fills", &fills),
-            ("[[export]]", "export", "exports", &exports),
         ] {
             let c = called(key);
             for dev in ["dt2", "dn2"] {
@@ -683,7 +826,8 @@ pub fn check_with_adapters(dir: &Path, sdk: &Path, adapters: &Path) -> Result<Ve
 
     // declarations equal the manifest
     let (kinds, row) = manifest(sdk, &name)?;
-    for p in check_dks(dir, matches!(row, Some(None)), &srcs) {
+    let provided = provided_imports(sdk, &name)?;
+    for p in check_dks(dir, matches!(row, Some(None)), &provided, &srcs) {
         problem(p);
     }
     for p in fill_problems(dir, adapters) {

@@ -3,6 +3,7 @@
 //! `FakeCore` implements `CoreApi` (interface C) and records the calls a service makes. Its link is the real queue (`dkrt-link`) over a model of
 //! `core/dsp-link`. It lives in a crate of its own, below the services and the runtime, so a service crate tests against it without naming the runtime.
 extern crate std;
+pub mod contract;
 mod pool;
 pub mod routes;
 mod storage;
@@ -24,6 +25,10 @@ pub use storage::FakeStorage;
 pub enum Call {
     /// A word written to firmware memory by address (`FwMem::wr`): the rows and tables of the image. The fake keeps them (`FwMem::rd` reads them back).
     Wr(u32, u32),
+    /// A byte written to firmware memory by address (`FwMem::wr8`).
+    Wr8(u32, u8),
+    /// A halfword written to firmware memory by address (`FwMem::wr16`, `wr_half`): the low 16 bits of the value.
+    Wr16(u32, u16),
     SettingsPut(Vec<u8>, Vec<u8>),
     Log {
         kind: u16,
@@ -107,6 +112,8 @@ pub struct FakeCore {
     pub running: Cell<u8>,
     /// The selection index of the module being loaded (`CoreApi::boot_index`).
     pub boot_index: Cell<u32>,
+    /// What `CoreApi::keys_of` hands out: (selection index, kind, keys). Set with `set_keys`; no entry: none.
+    pub keys: RefCell<Vec<(u32, u32, Vec<u32>)>>,
     /// The bytes `CoreApi::legacy_state` hands out; `legacy_state_clear` zeroes them (and answers `legacy_clear_result`).
     pub legacy: Cell<[u8; 32]>,
     pub legacy_clear_result: Cell<i32>,
@@ -116,6 +123,8 @@ pub struct FakeCore {
     pub link: RefCell<&'static mut Link<FakeLink>>,
     pub name: String,
     pub fx_table: Vec<u32>,
+    /// The words of `dyndsp_info` the fake hands out (`CoreApi::dsp_info`); empty: the image has no voice rows.
+    pub dsp_table: Vec<u32>,
     /// The info entries `CoreApi::info` hands out, by name hash: the words of each. Empty: the image has no table.
     pub info_tables: Vec<(u32, Vec<u32>)>,
     pub device: u32,
@@ -131,6 +140,13 @@ pub struct FakeCore {
 }
 
 impl FakeCore {
+    /// The module at selection index `at` provides these keys of record kind `kind` (`CoreApi::keys_of`).
+    pub fn set_keys(&self, at: u32, kind: u32, keys: &[u32]) {
+        let mut k = self.keys.borrow_mut();
+        k.retain(|(a, kd, _)| !(*a == at && *kd == kind));
+        k.push((at, kind, keys.to_vec()));
+    }
+
     /// The image has the table `dynreg_info` with these words (word 0, the magic, is set here): `dkrt_svc_params::dynreg` finds it through `CoreApi::info`.
     pub fn set_dynreg(&mut self, mut table: Vec<u32>) {
         table[0] = 0x4459_4e52;
@@ -148,6 +164,7 @@ impl FakeCore {
             source: Cell::new(0),
             running: Cell::new(0),
             boot_index: Cell::new(u32::MAX),
+            keys: RefCell::new(Vec::new()),
             legacy: Cell::new([0; 32]),
             legacy_clear_result: Cell::new(0),
             put_result: Cell::new(0),
@@ -155,6 +172,7 @@ impl FakeCore {
             link: RefCell::new(Box::leak(Box::new(link()))),
             name: String::from("fake\0"),
             fx_table: std::vec![0; 8],
+            dsp_table: Vec::new(),
             info_tables: Vec::new(),
             device: 0,
             fw_result: Cell::new(0),
@@ -204,6 +222,19 @@ impl FakeCore {
     fn rec(&self, c: Call) {
         self.calls.borrow_mut().push(c);
     }
+    /// The two bytes of `v` at `a` (high byte first) into the words that hold them; one recorded call.
+    fn put16(&self, a: u32, v: u32) {
+        self.put_byte(a, v >> 8);
+        self.put_byte(a + 1, v);
+        self.rec(Call::Wr16(a, v as u16));
+    }
+    /// The low byte of `v` into the word that holds the byte at `a`.
+    fn put_byte(&self, a: u32, v: u32) {
+        let shift = 8 * (3 - (a & 3));
+        let mut m = self.mem.borrow_mut();
+        let w = m.entry(a & !3).or_insert(0);
+        *w = (*w & !(0xff << shift)) | ((v & 0xff) << shift);
+    }
 }
 
 impl dkrt_abi::mem::FwMem for FakeCore {
@@ -213,6 +244,23 @@ impl dkrt_abi::mem::FwMem for FakeCore {
     unsafe fn wr(&self, a: u32, v: u32) {
         self.mem.borrow_mut().insert(a, v);
         self.rec(Call::Wr(a, v));
+    }
+    /// The memory is a map of big-endian words by aligned address: a byte is part of the word at `a & !3`.
+    unsafe fn rd8(&self, a: u32) -> u32 {
+        (self.rd(a & !3) >> (8 * (3 - (a & 3)))) & 0xff
+    }
+    unsafe fn wr8(&self, a: u32, v: u32) {
+        self.put_byte(a, v);
+        self.rec(Call::Wr8(a, v as u8));
+    }
+    unsafe fn rd16(&self, a: u32) -> i32 {
+        ((((self.rd8(a) << 8) | self.rd8(a + 1)) as u16) as i16) as i32
+    }
+    unsafe fn wr16(&self, a: u32, v: i32) {
+        self.put16(a, v as u32);
+    }
+    unsafe fn wr_half(&self, a: u32, v: u32) {
+        self.put16(a, v);
     }
     unsafe fn call(&self, a: u32, args: &[usize]) -> usize {
         if a == 0 {
@@ -232,6 +280,21 @@ impl dkrt_abi::mem::FwMem for FakeCore {
 impl CoreApi for FakeCore {
     fn boot_index(&self) -> u32 {
         self.boot_index.get()
+    }
+    fn keys_of(&self, at: u32, kind: u32, out: &mut [u32; 8]) -> usize {
+        match self
+            .keys
+            .borrow()
+            .iter()
+            .find(|(a, k, _)| *a == at && *k == kind)
+        {
+            Some((_, _, v)) => {
+                let n = v.len().min(8);
+                out[..n].copy_from_slice(&v[..n]);
+                n
+            }
+            None => 0,
+        }
     }
     fn legacy_state(&self) -> [u8; 32] {
         self.legacy.get()
@@ -342,7 +405,11 @@ impl CoreApi for FakeCore {
         unsafe { &mut *self.dsp }
     }
     unsafe fn dsp_info(&self) -> *const u32 {
-        core::ptr::null()
+        if self.dsp_table.is_empty() {
+            core::ptr::null()
+        } else {
+            self.dsp_table.as_ptr()
+        }
     }
     unsafe fn fx_info(&self) -> *const u32 {
         self.fx_table.as_ptr()

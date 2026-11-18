@@ -33,11 +33,7 @@ macro_rules! need_image {
 /// The content modules are built on demand (`Library::scan_repo`): a test that needs one skips without the toolchain.
 macro_rules! need_toolchain {
     () => {
-        if patchkit::build::toolchain::Env::new(&root())
-            .m68k("gcc")
-            .is_err()
-        {
-            eprintln!("SKIP: the m68k-elf toolchain is not installed");
+        if !patchkit::build::toolchain::Env::new(&root()).m68k_or_skip() {
             return;
         }
     };
@@ -156,6 +152,7 @@ fn add_hook(reg: &mut Registry, img: &str, name: &str, site: &str, offset: i64, 
             site: site.into(),
             offset,
             mode: mode.into(),
+            clobbers: vec![],
         });
     }
 }
@@ -1644,6 +1641,63 @@ fn a_stub_loads_its_slot_and_falls_through_to_the_stock_path() {
     assert_eq!(j["hooks"][0]["to"], tail);
 }
 
+/// A module with one `[[slot]]` of `space = "dsp"` and no ColdFire stub.
+fn dsp_slot_body(name: &str, extra: &str) -> String {
+    format!(
+        "[[object]]\npath = \"x.json\"\nplace = \"cf.expansion\"\n[[slot]]\nname = \"{name}\"\nspace = \"dsp\"\ndevices = [\"dn2\"]\n{extra}\n"
+    )
+}
+
+#[test]
+fn a_dsp_slot_is_an_info_entry_with_its_index_and_has_no_word() {
+    need_image!(DN2);
+    let lib = library(vec![module(
+        "t/s",
+        "",
+        &dsp_slot_body("voice_unpack", ""),
+        Some(cf_obj()),
+    )]);
+    let out = run_on(DN2, &registry(), &lib, &["t/s"]).unwrap();
+    // the slot reserves no word in the image: its entry carries the index in core/dsp-link's slot block, in the order of `[dsp.slots]`
+    assert!(
+        !out.plan.symbols.contains_key("t/s@1.0.0:slot.voice_unpack"),
+        "a DSP slot has no address"
+    );
+    let tab = sym(&out, "t/s", "dkrt_info_table");
+    let b = read_cf(&out, tab, 8 + 12);
+    assert_eq!(be32(&b[0..]), 0x444b_4954);
+    assert_eq!(be32(&b[4..]), 2, "the DSP slot and fw_id");
+    assert_eq!(be32(&b[8..]), dkneeds::keys::name_hash("voice_unpack"));
+    assert_eq!(
+        be32(&b[12..]),
+        1,
+        "voice_unpack is the second entry of [dsp.slots]"
+    );
+    assert_eq!(be32(&b[16..]), 2, "the DSP slot kind");
+}
+
+#[test]
+fn a_dsp_slot_must_be_an_entry_of_dsp_slots_and_has_no_place() {
+    // the manifest check refuses both when the module loads
+    expect_err(
+        try_module(
+            "t/s",
+            "",
+            &dsp_slot_body("no_such_slot", ""),
+            Some(cf_obj()),
+        ),
+        "names an entry of `[dsp.slots]`",
+    );
+    let with_place = dsp_slot_body("voice_render", "").replace(
+        "space = \"dsp\"\n",
+        "space = \"dsp\"\nplace = \"cf.expansion\"\n",
+    );
+    expect_err(
+        try_module("t/s", "", &with_place, Some(cf_obj())),
+        "`place` belongs to a ColdFire slot",
+    );
+}
+
 #[test]
 fn an_info_symbol_may_be_a_symbol_plus_an_offset() {
     need_image!(DN2);
@@ -1911,7 +1965,7 @@ fn a_patch_time_effect_row_of_any_module_but_core_dynfx_is_refused() {
         None,
     )]);
     expect_err(
-        run(&lib, &["core/fx", "t/fxrow"]),
+        run(&lib, &["core/dsp-link", "core/fx", "t/fxrow"]),
         "core/fx: registry fx takes no patch-time entry (an effect is a run-time module (builder calls in init, packed as a .dkm); a row is filled through core/dsp-link by core/dynfx); t/fxrow adds `gain`",
     );
 }

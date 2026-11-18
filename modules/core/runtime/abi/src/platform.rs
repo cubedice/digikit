@@ -31,6 +31,45 @@ pub struct DeviceProfile {
     pub dsp_headroom: u32,
     /// `[adapter.machine] voices`: the voices a machine's per-voice DSP cost counts for (`DSP_VOICES`).
     pub dsp_voices: u32,
+    /// `[capabilities] dsp = "sharc"`: the device has the DSP that the digikit link drives. False: no DSP area, no machine rows, no DSP figures, no block counter.
+    pub has_dsp: bool,
+    /// The device file has `[card.store]`. False: every store call answers not found and the card is never written.
+    pub has_store: bool,
+    /// `[board] esdhc_base` is set: the card is on an eSDHC controller whose present-state register the runtime may read. False: the card is never busy.
+    pub has_sdhc: bool,
+    /// `[digikit] safe_key`: the firmware key index held at power-on for safe mode; `None`: no key starts safe mode.
+    pub safe_key: Option<u32>,
+    /// `[board] ddr_cached_base` and `ddr_bytes`: the cached DDR window.
+    pub ddr_base: u32,
+    pub ddr_bytes: u32,
+    /// `[digikit] keep_base` and `keep_bytes`: the RAM a soft reset is assumed to keep (the crash record).
+    pub keep_base: u32,
+    pub keep_bytes: u32,
+    /// `[board] esdhc_base` (0 without `has_sdhc`).
+    pub esdhc_base: u32,
+    /// `[board] dsp_clock_hz / dsp_blocks_per_second`, rounded (0 without a DSP): the DSP cycles of one block.
+    pub dsp_block_cycles: u32,
+    /// The first run-time machine type (`dynamic_first` of core/machines `types.toml`) and how many there are (0 without a DSP). The tables have
+    /// `MACHINE_ROWS` rows: a device has that many types or none.
+    pub dyn_type_first: u32,
+    pub dyn_types: u32,
+}
+
+impl DeviceProfile {
+    /// Is `a` an address of the cached DDR window?
+    pub fn ddr_contains(&self, a: u32) -> bool {
+        a >= self.ddr_base && a - self.ddr_base < self.ddr_bytes
+    }
+
+    /// Is `t` one of the run-time machine types?
+    pub fn is_dyn_type(&self, t: u32) -> bool {
+        t >= self.dyn_type_first && t - self.dyn_type_first < self.dyn_types
+    }
+
+    /// The profile of the device with `[digikit] id` `id`: what a service reads its device facts from (it knows the id through `CoreApi::device_id`).
+    pub fn by_id(id: u32) -> Option<DeviceProfile> {
+        crate::profiles::ALL.iter().copied().find(|p| p.id == id)
+    }
 }
 
 /// The firmware's task kernel and its heap.
@@ -103,6 +142,9 @@ pub trait Platform: Tasking + SamplePool + StagedWriter + crate::storage::Storag
     unsafe fn info(&self, name_hash: u32) -> *const u32;
     /// Like [`Platform::info`], but null unless the entry is a `[[slot]]` word (not an `[[info]]` data table): the only entries a service file's `SLOTS` item may fill.
     unsafe fn info_slot(&self, name_hash: u32) -> *const u32;
+    /// The index in core/dsp-link's slot block (window 0 words 0 to 15) of the entry `name_hash`, when it is a DSP slot (`[[slot]] space = "dsp"`, kind [`INFO_KIND_DSP_SLOT`]);
+    /// `None` for every other entry and for a missing one. The only entries a `SLOTS` item with `SLOT_DSP` may fill.
+    unsafe fn info_dsp_slot(&self, name_hash: u32) -> Option<u32>;
 
     // ---- code and slot words ---------------------------------------------------------------------------------------------
     /// Read `out.len()` bytes of code at the raw address `addr` (volatile byte copy).
@@ -155,6 +197,31 @@ pub trait Platform: Tasking + SamplePool + StagedWriter + crate::storage::Storag
     fn dsp_voices(&self) -> u32 {
         self.profile().dsp_voices
     }
+    fn has_dsp(&self) -> bool {
+        self.profile().has_dsp
+    }
+    fn has_store(&self) -> bool {
+        self.profile().has_store
+    }
+    fn has_sdhc(&self) -> bool {
+        self.profile().has_sdhc
+    }
+    fn safe_key(&self) -> Option<u32> {
+        self.profile().safe_key
+    }
+    fn ddr_contains(&self, a: u32) -> bool {
+        self.profile().ddr_contains(a)
+    }
+    /// The RAM a soft reset is assumed to keep (the crash record): its base and size.
+    fn keep_base(&self) -> u32 {
+        self.profile().keep_base
+    }
+    fn keep_bytes(&self) -> u32 {
+        self.profile().keep_bytes
+    }
+    fn dsp_block_cycles(&self) -> u32 {
+        self.profile().dsp_block_cycles
+    }
 }
 
 /// "DKIT": the first word of the image's info table.
@@ -162,6 +229,10 @@ pub const INFO_MAGIC: u32 = 0x444b_4954;
 
 /// The kind word of an info table entry that is a pointer slot word (`[[slot]]`); `0` is a data table (`[[info]]`).
 pub const INFO_KIND_SLOT: u32 = 1;
+
+/// The kind word of an info table entry that is a DSP slot (`[[slot]] space = "dsp"`): the value is the word index in the slot block of core/dsp-link (window 0 of the link),
+/// not an address. A `SLOTS` item with `dkneeds::keys::SLOT_DSP` fills it.
+pub const INFO_KIND_DSP_SLOT: u32 = 2;
 
 /// The address that entry `hash` of the info table at `table` holds, or null: no table (null), another magic, a count over `dkneeds::INFO_MAX`, or no such entry.
 /// The table is big endian words (the image's data): `{magic "DKIT", count}`, then `{name hash, address, kind}` per entry (`kind` is [`INFO_KIND_SLOT`] for a
@@ -180,6 +251,30 @@ pub unsafe fn info_find(table: *const u32, hash: u32) -> *const u32 {
 /// As [`info_find`].
 pub unsafe fn info_find_slot(table: *const u32, hash: u32) -> *const u32 {
     info_find_kind(table, hash, true)
+}
+
+/// The slot index of entry `hash` when it is a DSP slot (kind [`INFO_KIND_DSP_SLOT`]; the value word is the index, not an address); `None` otherwise.
+///
+/// # Safety
+/// As [`info_find`].
+pub unsafe fn info_find_dsp_slot(table: *const u32, hash: u32) -> Option<u32> {
+    use core::ptr::read_volatile;
+    if table.is_null() || read_volatile(table) != INFO_MAGIC {
+        return None;
+    }
+    let n = read_volatile(table.add(1));
+    if n > dkneeds::INFO_MAX {
+        return None;
+    }
+    let mut i = 0;
+    while i < n as usize {
+        if read_volatile(table.add(2 + 3 * i)) == hash {
+            return (read_volatile(table.add(4 + 3 * i)) == INFO_KIND_DSP_SLOT)
+                .then(|| read_volatile(table.add(3 + 3 * i)));
+        }
+        i += 1;
+    }
+    None
 }
 
 unsafe fn info_find_kind(table: *const u32, hash: u32, slot_only: bool) -> *const u32 {

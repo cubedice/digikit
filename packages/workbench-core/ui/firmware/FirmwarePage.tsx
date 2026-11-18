@@ -23,8 +23,9 @@ import { useFirmwareApp } from '../../src/transfer/app-context';
 import DefaultModules from './DefaultModules';
 import { CUSTOM_BOOT_SCREEN_HELP } from '../../src/firmware/default-modules-core';
 import { createEffectOn } from '../../src/firmware/on-change';
+import { newestReleasesText, runtimeDeviceIds } from '../../src/data/device-profiles';
 import {
-  DEVICE_NAMES,
+  deviceNameOf,
   PREPARE_STEPS,
   isDeviceId,
   type DeviceId,
@@ -115,6 +116,7 @@ export default function FirmwarePage(): JSX.Element {
     chooseFile,
     device,
     downloadImage,
+    fileDevice,
     forgetDevice,
     notice,
     prepared,
@@ -160,6 +162,11 @@ export default function FirmwarePage(): JSX.Element {
     void read();
   });
 
+  /** The chosen file's device has no boot screen image to add. */
+  const noBootImage = () => {
+    const d = fileDevice();
+    return d !== undefined && !d.patchSets['device-introblank'];
+  };
   const inputs = () => ({ prepare: prepared(), device: device(), ack: ack(), run: run(), route: route() });
   const marks = () => stepMarks(inputs());
   const flash = () => canFlash(inputs());
@@ -205,7 +212,7 @@ export default function FirmwarePage(): JSX.Element {
     const d = device();
     const id = d.kind === 'connected' ? d.d.model : undefined;
     const p = ready()?.p.device;
-    return DEVICE_NAMES[id ?? (isDeviceId(p ?? '') ? (p as DeviceId) : 'dt2')];
+    return deviceNameOf(id ?? (isDeviceId(p ?? '') ? (p as DeviceId) : (runtimeDeviceIds[0] ?? '')));
   };
   const shortName = (d: string) => d.toUpperCase();
   /** The device id the default modules are for: the image's device, else the connected one. */
@@ -287,8 +294,7 @@ export default function FirmwarePage(): JSX.Element {
               <Switch>
                 <Match when={prepared().kind === 'none'}>
                   <span class="dim">
-                    No file yet. Choose the stock .syx of your device (Digitakt II OS 1.17 or Digitone II OS 1.12). It
-                    is not uploaded.
+                    No file yet. Choose the stock .syx of your device ({newestReleasesText()}). It is not uploaded.
                   </span>
                 </Match>
                 <Match when={working()}>
@@ -336,8 +342,9 @@ export default function FirmwarePage(): JSX.Element {
           <label class="tick">
             <input
               type="checkbox"
-              checked={customBootScreen()}
-              disabled={running(run()) || restore()}
+              checked={customBootScreen() && !noBootImage()}
+              disabled={running(run()) || restore() || noBootImage()}
+              title={noBootImage() ? 'This device has no boot screen image.' : undefined}
               onChange={(e) => setCustomBoot(e.currentTarget.checked)}
             />
             <span>

@@ -11,6 +11,7 @@ use std::vec::Vec;
 
 // the seams between the real packed artifacts (`core/runtime:test-assembly`)
 mod assembly_tests;
+mod dsp_provider_tests;
 
 const PATH: &[u8] = b"mods/a.dkm\0";
 const IMAGE_OFF: usize = 160;
@@ -887,17 +888,6 @@ fn a_provider_in_safe_mode_installs_nothing() {
 }
 
 #[test]
-fn a_provider_with_a_dsp_section_is_refused_until_the_dsp_part_of_a_service_exists() {
-    let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
-    unsafe {
-        let bind = svc_bind(&STOCK);
-        let mut l = provider_loader(service_file(&svc_table(&bind), 64), svc_init());
-        assert_eq!(l.load_provider(PATH.as_ptr(), 0), E_FORMAT);
-        assert_eq!(l.m.allocs, 0);
-    }
-}
-
-#[test]
 fn a_service_file_loads_only_as_a_provider_and_a_module_file_only_as_a_module() {
     let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
     unsafe {
@@ -1388,5 +1378,70 @@ fn an_export_name_another_provider_published_undoes_the_load_and_keeps_the_other
         assert_eq!(l.load_provider(PATH.as_ptr(), 0), E_PLAN_OWNER);
         assert_provider_undone(&l, 1);
         assert_eq!(l.exports.resolve(dkneeds::keys::name_hash("dk_svctest_ping")), Some(0x7000));
+    }
+}
+
+#[test]
+fn settle_hands_the_services_the_keys_of_accepted_modules_only() {
+    use dkneeds::keys::{write_table, KeyGroup, Table};
+    use dkrt_abi::plan::{Reason, Verdict};
+    let keys = [0x100u32, 0x200];
+    let t = Table { keys: &[KeyGroup { kind: dkneeds::KIND_MACHINE, keys: &keys }], ..Default::default() };
+    let mut bytes = vec![0u8; dkneeds::keys::table_size(&t)];
+    write_table(&t, &mut bytes).unwrap();
+    let mut tables = [[0u8; crate::plan::TABLE_MAX]; SEL_MAX];
+    let mut lens = [0usize; SEL_MAX];
+    for k in 0..2 {
+        tables[k][..bytes.len()].copy_from_slice(&bytes);
+        lens[k] = bytes.len();
+    }
+    // module 1 repeats the keys of module 0: the plan refused it (E_PLAN_KEY), so its keys never reach the sticky assignment
+    let mut plan = Plan {
+        n: 2,
+        verdicts: [Verdict::Accepted; SEL_MAX],
+        order: [0; SEL_MAX],
+        dsp_load: (0, 0),
+        np: 0,
+        provider_verdicts: [Verdict::Accepted; dkrt_sdk::PROVIDER_MAX],
+        provider_order: [0; dkrt_sdk::PROVIDER_MAX],
+    };
+    plan.verdicts[1] = Verdict::Refused(Reason::DuplicateKey(dkneeds::KIND_MACHINE, 0x100));
+    let sel = settle_ctx(&plan, &tables, &lens, 2);
+    assert_eq!((sel.count, sel.nkeys[0], sel.nkeys[1]), (2, 2, 0));
+    assert_eq!(sel.keys[0][..2], keys);
+}
+
+#[test]
+fn keys_of_gives_the_keys_of_a_kind_for_an_accepted_module_only() {
+    use dkneeds::keys::{write_table, KeyGroup, Table};
+    let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let (shapes, machines) = ([0x300u32, 0x400, 0x500], [0x100u32]);
+    let t = Table {
+        keys: &[
+            KeyGroup { kind: dkneeds::KIND_MACHINE, keys: &machines },
+            KeyGroup { kind: dkneeds::KIND_LFO_SHAPE, keys: &shapes },
+        ],
+        ..Default::default()
+    };
+    let mut bytes = vec![0u8; dkneeds::keys::table_size(&t)];
+    write_table(&t, &mut bytes).unwrap();
+    unsafe {
+        let mut l = loader(Init::Ok);
+        l.reset_plan();
+        for k in 0..2 {
+            l.tables[k][..bytes.len()].copy_from_slice(&bytes);
+            l.table_len[k] = bytes.len();
+        }
+        // before settle nothing is accepted
+        let mut out = [0u32; 8];
+        assert_eq!(l.keys_of(0, dkneeds::KIND_LFO_SHAPE, &mut out), 0);
+        l.accepted[0] = true;
+        assert_eq!(l.keys_of(0, dkneeds::KIND_LFO_SHAPE, &mut out), 3);
+        assert_eq!(out[..3], shapes);
+        // another kind, a kind the table does not list, a module the plan refused and an index past the selection
+        assert_eq!(l.keys_of(0, dkneeds::KIND_MACHINE, &mut out), 1);
+        assert_eq!(l.keys_of(0, dkneeds::KIND_EFFECT, &mut out), 0);
+        assert_eq!(l.keys_of(1, dkneeds::KIND_LFO_SHAPE, &mut out), 0);
+        assert_eq!(l.keys_of(SEL_MAX as u32, dkneeds::KIND_LFO_SHAPE, &mut out), 0);
     }
 }

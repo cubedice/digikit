@@ -179,7 +179,7 @@ The keys are not in the header file. The packer computes them from the packed na
 
 `name` is the `--name` value of `pack` when given, else the module id. So a normal pack gives the same keys every time, and saved projects stay valid. An alias made with `pack --name` gets keys of its own, so two copies of one module do not share an effect id. Renaming a module id changes the keys and loses the projects that use it.
 
-Why the keys must be known before load: the runtime plans the type numbers of all selected machines at boot, before the first module loads (`assign::plan`). A card-side map of up to 8 entries keeps a number for a machine across boots; a clash gets a fresh number. Effect ids are 16 bits, so a clash is possible (about 1 in 65535 per pair). The loader refuses it with `E_FX_ID_DUP`.
+Why the keys must be known before load: the runtime plans the type numbers of all selected machines at boot, before the first module loads (`assign::plan`). A card-side map of up to 8 entries keeps a number for a machine across boots. A key that two modules (or one module twice) provide is refused by the boot plan with `E_PLAN_KEY`, for every kind. Effect ids are 16 bits, so a clash is possible (about 1 in 65535 per pair); the plan refuses it the same way.
 
 ### DSP names
 
@@ -207,9 +207,9 @@ The header pair at 0x90 and 0x94 is `table_off` and `table_size`. The table is v
 | KEYS | `(kind, n, keys)`: the machine keys, the effect ids, and the keys of `[[record]]` entries (the shape id of an `lfo_shape`) |
 | KINDS, SLOTS, HOOKS, EXPORTS, RESOURCES | what a service module provides (R12; the runtime compares the `dk_service_declare_*` calls of `init` with them) |
 
-A module that needs and keeps nothing has the 8-byte head. The packer always writes a table and at least 0.8.0 as the needed version, so a module of runtime 0.7 (no table, or the old row counts) is refused with `E_CONTRACT`. The header is 160 bytes. `packages/dkneeds/src/keys.rs` owns the layout.
+A module that needs and keeps nothing has the 8-byte head. The packer always writes a table and at least `[runtime] table` (the current MINOR, 0.9.0) as the needed version, so a module of an older MINOR (runtime 0.7: no table, or the old row counts) is refused with `E_CONTRACT`. The header is 160 bytes. `packages/dkneeds/src/keys.rs` owns the layout.
 
-A module that emits records of a generic kind (a kind a service owns that has no builder, such as `lfo_shape`) calls `dk_record_add(ctx, kind, bytes, len)` in `init` and lists each record as `[[record]] kind = "lfo_shape", key = 7` in `module.toml`. The boot planner reads the keys from the table: a kind no service owns, or a key another module of the selection has, is refused before the module loads (`E_PLAN_KIND`, `E_PLAN_KEY`).
+A module that emits records of a generic kind (a kind a service owns that has no builder, such as `lfo_shape`) calls `dk_record_add(ctx, kind, bytes, len)` in `init` and lists each record as `[[record]] kind = "lfo_shape", id = "ramp"` in `module.toml`. The record's key is `hash24(<module id>:<id>) << 8`, like a machine key; `patchkit gen` writes it as `DK_KEY_RAMP` in `build/gen/module_ids.h`, and `init` writes that constant as the first word of the record body. The boot planner reads the keys from the table: a kind no service owns, or a key another module of the selection has, is refused before the module loads (`E_PLAN_KIND`, `E_PLAN_KEY`).
 
 ## 7. The load path and what a refusal guarantees
 
@@ -262,12 +262,12 @@ Today the boot loads modules in selection order and a load either returns OK, LO
 
 ## 8. Versions
 
-There is one version: the runtime release (`[runtime] version` in `sdk/sdk.toml`, semantic, now 0.8.0).
+There is one version: the runtime release (`[runtime] version` in `sdk/sdk.toml`, semantic, now 0.9.0).
 
 - While it is 0.x, a minor may break (an import changed or removed, the module file format, the store format, the SysEx protocol). A patch only adds. Stable is 1.0.0.
 - There are no separate numbers for the API, the machine contract, the effect contract or a service.
 - Each import has `since`, the runtime version that added it.
-- The packer writes the newest `since` among the imports a module links into header word 0x30, and at least the version that introduced the header table (`[runtime] table`, 0.8.0). Bit 31 of that word is the trace flag.
+- The packer writes the newest `since` among the imports a module links into header word 0x30, and at least `[runtime] table` (the current MINOR, 0.9.0: the loader takes only the runtime's MAJOR and MINOR). Bit 31 of that word is the trace flag.
 - The loader accepts a module when its major and minor equal the runtime's and its patch is at most the runtime's. Otherwise the load fails with `E_CONTRACT`. The fix is to rebuild the module. A file with the old keys table (runtime 0.7) has no header table and fails with `E_CONTRACT` too.
 - A `.dkmod` (a source package) builds against the SDK of the machine that receives it, so the rule holds after the build.
 

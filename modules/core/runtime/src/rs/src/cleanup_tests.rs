@@ -100,8 +100,58 @@ pub unsafe fn send_word(win: u32, at: u32, buf: *const u32, len: u32) -> i32 {
     LINK.events.push(Event::Word(win, at, *buf));
     0
 }
-pub unsafe fn send_image(_: u32, _: *const u8, _: u32) -> i32 {
+pub unsafe fn send_image(dst: u32, buf: *const u8, len: u32) -> i32 {
+    if IMAGE_OK {
+        // the host tests of a service file's DSP part: an area send (the image) or a slot word (window 0) is accepted and logged as (destination, first word)
+        LINK.tries += 1;
+        LINK.accepted += 1;
+        // an image buffer is an arena address of the device (32 bits, not a host pointer): only a slot word (4 bytes, the link's own buffer) is read
+        IMAGE_SENDS.push((dst, if len == 4 { core::ptr::read_unaligned(buf as *const u32) } else { 0 }));
+        return 0;
+    }
     panic!("retained loader must not send another image")
+}
+
+static mut IMAGE_OK: bool = false;
+
+/// With the script: `arena::alloc` gives host memory (leaked: a test is short).
+pub(crate) fn host_arena() -> bool {
+    unsafe { IMAGE_OK }
+}
+pub(crate) unsafe fn host_alloc(n: u32) -> *mut u8 {
+    let v: Vec<u128> = std::vec![0u128; (n as usize + 15) / 16];
+    let p = v.as_ptr() as *mut u8;
+    core::mem::forget(v);
+    p
+}
+static mut IMAGE_SENDS: Vec<(u32, u32)> = Vec::new();
+
+/// Script the link for a host test of a service file's DSP part: area and slot sends are accepted, and the transfer is taken (`ack`) or fails (a link error after the first
+/// accepted send, the image). Hold the test lock; `script_end` undoes it.
+pub(crate) unsafe fn script_link(ack: bool) {
+    *crate::link::lk() = crate::link::Link::new(crate::link::DspTransport);
+    crate::link::lk().spin = 20_000;
+    LINK = Link {
+        completion: if ack { Completion::Ack } else { Completion::ErrorAt(1) },
+        original_failure: false,
+        tries: 0,
+        accepted: 0,
+        polls: 0,
+        no_fx_info: false,
+        strict_tick_drop: false,
+        events: Vec::new(),
+    };
+    IMAGE_SENDS = Vec::new();
+    IMAGE_OK = true;
+}
+
+pub(crate) unsafe fn script_end() {
+    IMAGE_OK = false;
+}
+
+/// The area and slot sends of the script so far: (destination byte address, first word).
+pub(crate) unsafe fn image_sends() -> Vec<(u32, u32)> {
+    IMAGE_SENDS.clone()
 }
 pub unsafe fn poll_state() -> (u32, u32) {
     LINK.polls += 1;
@@ -542,6 +592,30 @@ pub struct HostStage([u8; 65536]);
 pub static mut DKRT_STAGE: HostStage = HostStage([0; 65536]);
 #[no_mangle]
 pub static dkrt_stage_bytes: u32 = 65536;
+/// core/health is not in the host fixture: the runtime's links to it answer nothing (the magic stays 0).
+#[no_mangle]
+pub extern "C" fn health_read() {}
+#[no_mangle]
+pub extern "C" fn health_heap() {}
+/// The device object of a device with a DSP, a store and an eSDHC (the host fixture's board).
+#[no_mangle]
+pub static dkrt_dev: dkrt_sdk::DkrtDevice = dkrt_sdk::DkrtDevice {
+    magic: dkrt_sdk::DEV_MAGIC,
+    version: dkrt_sdk::DEV_VERSION,
+    size: core::mem::size_of::<dkrt_sdk::DkrtDevice>() as u32,
+    caps: dkrt_sdk::DEV_HAS_DSP | dkrt_sdk::DEV_HAS_STORE | dkrt_sdk::DEV_HAS_SDHC | dkrt_sdk::DEV_HAS_SAFE_KEY,
+    console_uart_base: 0xec07_0000,
+    ddr_uncached_alias: 0x4800_0000,
+    ddr_cached_base: 0x4000_0000,
+    ddr_bytes: 0x0800_0000,
+    esdhc_base: 0xfc0c_c000,
+    safe_key: 19,
+    keep_base: 0x47fe_0000,
+    keep_bytes: 0x1000,
+    dsp_block_cycles: 0xa_2c2b,
+    dyn_type_first: 16,
+    dyn_types: 8,
+};
 #[no_mangle]
 pub static dkrt_sample_fs: [u32; 4] = [0; 4];
 #[no_mangle]

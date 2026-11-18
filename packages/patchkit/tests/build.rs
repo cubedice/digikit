@@ -20,7 +20,7 @@ fn tiny() -> Vec<u8> {
 
 fn toolchain() -> Option<Env> {
     let env = Env::new(&root());
-    env.m68k("gcc").is_ok().then_some(env)
+    env.m68k_or_skip().then_some(env)
 }
 
 fn find_objects(dir: &Path, out: &mut Vec<PathBuf>) {
@@ -912,7 +912,11 @@ fn every_service_and_the_runtime_object_is_built_from_the_abi_boundary_files() {
             .into_iter()
             .map(|p| std::fs::canonicalize(&p).unwrap())
             .collect();
-        for f in patchkit::sdkgen::SVC_ABI_FILES {
+        // the .rs files; a contract include (the stub slot offsets) reaches the Rust objects through `gen_svc_abi.rs` (`FILES_HASH`), which is one of them
+        for f in patchkit::sdkgen::SVC_ABI_FILES
+            .iter()
+            .filter(|f| f.ends_with(".rs"))
+        {
             let f = std::fs::canonicalize(r.join(f)).unwrap();
             assert!(
                 files.contains(&f),

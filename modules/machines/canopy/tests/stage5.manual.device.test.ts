@@ -104,7 +104,7 @@ test(
       'canopy.protocol-restart',
       async () => {
         await dk.restart();
-        await dk.waitForBoot(undefined, 180_000);
+        await dk.waitForBoot();
       },
       context,
     );

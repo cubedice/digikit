@@ -63,7 +63,7 @@ describeOn('dt2', 'CANOPY on two tracks of the DT2', () => {
     await dk.select(['modules/canopy.dkm']);
     const epoch = Number((await session.status()).epoch);
     await dk.restart();
-    await dk.waitForBoot(undefined, 180_000);
+    await dk.waitForBoot();
     const word = async (address: number) => {
       const value = await session.client.memPeek(address);
       if (value === null) throw new Error(`Unreadable firmware word at ${address.toString(16)}`);

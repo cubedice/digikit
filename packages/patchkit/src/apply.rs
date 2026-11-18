@@ -57,6 +57,9 @@ pub struct Plan {
     /// P4: hooks
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub hooks: Vec<prim::PlanHook>,
+    /// `<owner>:<name>` of every optional anchor or hook (`optional_anchors` of a manifest) that the port lacks: what the module does without
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub disabled: Vec<String>,
     pub record: Record,
     pub output: Option<PlanOutput>,
 }
@@ -122,7 +125,8 @@ fn anchor_value(a: &Anchor) -> u64 {
 
 /// Memory of both CPUs as the firmware loads it.
 struct Mem {
-    stream: Stream,
+    /// The DSP boot stream; `None` on a device without a DSP.
+    stream: Option<Stream>,
     main: Vec<u8>,
     main_base: u64,
     stream_dirty: bool,
@@ -133,6 +137,8 @@ impl Mem {
     fn read(&self, cpu: &str, addr: u64, len: u64) -> Result<Vec<u8>> {
         if cpu == SHARC {
             self.stream
+                .as_ref()
+                .ok_or_else(|| err!("DSP {addr:#x}+{len}: the device has no DSP"))?
                 .read(addr as u32, len as usize)
                 .ok_or_else(|| err!("DSP {addr:#x}+{len}: not loaded by the boot stream"))
         } else {
@@ -148,7 +154,10 @@ impl Mem {
     fn write(&mut self, cpu: &str, addr: u64, data: &[u8]) -> Result<()> {
         if cpu == SHARC {
             self.stream_dirty = true;
-            self.stream.write(addr as u32, data)
+            self.stream
+                .as_mut()
+                .ok_or_else(|| err!("DSP {addr:#x}: the device has no DSP"))?
+                .write(addr as u32, data)
         } else {
             self.read(cpu, addr, data.len() as u64)?;
             let o = (addr - self.main_base) as usize;
@@ -258,15 +267,27 @@ pub fn compatible(m: &Module, port: &Port) -> Result<()> {
         }
         for sy in dko.symbols.iter().filter(|s| s.section.is_none()) {
             let name = o.externs.get(&sy.name).unwrap_or(&sy.name);
-            // an export of another object cannot be seen here; only names that look like anchors are checked
-            if (name.starts_with("dsp.") || name.starts_with("cf.")) && port.anchor(name).is_none()
+            // an export of another object cannot be seen here; only names that look like anchors are checked; an optional anchor may be missing
+            if (name.starts_with("dsp.") || name.starts_with("cf."))
+                && port.anchor(name).is_none()
+                && !disabled_anchors(m, port).contains(name)
             {
                 missing.push(format!("anchor {name}"));
             }
         }
     }
+    let off = disabled_anchors(m, port);
     for op in &m.manifest.op {
         if !on(&op.devices, dev) {
+            continue;
+        }
+        // an optional hook or anchor the port lacks switches the op off instead of refusing the module
+        let name = op
+            .hook
+            .as_deref()
+            .filter(|_| op.op == "hook")
+            .unwrap_or(&op.anchor);
+        if off.iter().any(|n| n == name) {
             continue;
         }
         let op = &match expand_op(m, port, op) {
@@ -295,7 +316,12 @@ pub fn compatible(m: &Module, port: &Port) -> Result<()> {
             }
         }
     }
-    for sl in m.manifest.slot.iter().filter(|s| on(&s.devices, dev)) {
+    for sl in m
+        .manifest
+        .slot
+        .iter()
+        .filter(|s| on(&s.devices, dev) && !s.is_dsp())
+    {
         let place = slot_place(sl);
         if port.region(&place).is_none() {
             missing.push(format!("region {place}"));
@@ -378,14 +404,43 @@ fn expand_op(m: &Module, port: &Port, op: &Op) -> Result<Op> {
     Ok(x)
 }
 
-/// The ops of a module that are active on the port's device, hook ops expanded.
+/// The names in the module's `optional_anchors` that the port has neither as an anchor nor as a hook: what the module does without on this firmware.
+pub fn disabled_anchors(m: &Module, port: &Port) -> Vec<String> {
+    m.manifest
+        .module
+        .optional_anchors
+        .iter()
+        .filter(|n| port.anchor(n).is_none() && port.hook(n).is_none())
+        .cloned()
+        .collect()
+}
+
+/// The ops of a module that are active on the port's device, hook ops expanded. An op whose hook or anchor is optional and missing is left out.
 fn device_ops(m: &Module, port: &Port) -> Result<Vec<Op>> {
+    let off = disabled_anchors(m, port);
     m.manifest
         .op
         .iter()
         .filter(|o| on(&o.devices, &port.port.device))
+        .filter(|o| match o.hook.as_deref().filter(|_| o.op == "hook") {
+            Some(h) => !off.iter().any(|n| n == h),
+            None => !off.contains(&o.anchor),
+        })
         .map(|o| expand_op(m, port, o))
         .collect()
+}
+
+/// Is `name`, an undefined symbol's anchor name, one that an optional anchor switched off: the optional anchor itself, or a tail
+/// (`hook.<site>.tail`, `hook.<site>.return`) of a hook whose site is one?
+fn switched_off(name: &str, off: &[String]) -> bool {
+    if off.iter().any(|n| n == name) {
+        return true;
+    }
+    let site = name.strip_prefix("hook.").and_then(|r| {
+        r.strip_suffix(".tail")
+            .or_else(|| r.strip_suffix(".return"))
+    });
+    site.is_some_and(|s| off.iter().any(|n| n == s))
 }
 
 /// Region of the slot words of a `[[slot]]`.
@@ -429,11 +484,17 @@ fn verify_anchor(mem: &Mem, a: &Anchor) -> Result<()> {
 pub struct Options {
     /// Write the `DKPR` record (always on for real patches; oracles compare against images made without).
     pub record: bool,
+    /// Refuse a container over the port's `container_max`. The limit protects the OS-upgrade flash path (the receiver
+    /// copies the image into a RAM stage without a size check); an image that is only booted in the emulator turns it off.
+    pub flash_cap: bool,
 }
 
 impl Default for Options {
     fn default() -> Self {
-        Options { record: true }
+        Options {
+            record: true,
+            flash_cap: true,
+        }
     }
 }
 
@@ -584,6 +645,8 @@ struct StubStage {
     slot: String,
     scratch: u8,
     tail: Option<String>,
+    /// `when`: `Some(true)` tests the slot where the stock branch is taken, `Some(false)` where it falls through
+    when: Option<bool>,
 }
 
 /// A `hook` or `stub` op, decoded.
@@ -762,7 +825,25 @@ fn stage<'a>(
                 let scratch = prim::parse_scratch(op.scratch.as_deref().unwrap())
                     .map_err(|e| err!("{who}: {e}"))?;
                 let tail = op.tail.clone();
-                if tail.is_none() {
+                let when = op.when.as_deref().map(|w| w == "taken");
+                if when.is_some() {
+                    // the instructions before the branch run before the slot test: the test overwrites `scratch` only on the path that tests the slot, which the hook's
+                    // `regs` (the registers dead there, found from the stock bytes) must allow
+                    prim::guarded_stub_len(site).map_err(|e| err!("{who}: {e}"))?;
+                    let hook = op.hook.as_deref().unwrap_or_default();
+                    let listed = port
+                        .hook(hook)
+                        .map(|h| crate::fwgen::expand_regs(hook, true, &h.clobbers))
+                        .transpose()?
+                        .unwrap_or_default();
+                    let sc = op.scratch.as_deref().unwrap();
+                    if !listed.iter().any(|r| r == sc) {
+                        return Err(err!(
+                            "{who}: scratch {sc} is not in the hook's regs.clobbers ({}): the slot test overwrites it, so the declaration must list it",
+                            listed.join(" ")
+                        ));
+                    }
+                } else if tail.is_none() {
                     prim::cf_tail(site, 0, 0).map_err(|e| {
                         err!(
                             "{who}: the stock path of the site cannot be re-encoded: {e}; give `tail = \"<symbol>\"` for a hand-written stock path"
@@ -781,10 +862,14 @@ fn stage<'a>(
                     slot: op.slot.clone().unwrap(),
                     scratch,
                     tail,
+                    when,
                 });
             }
             let tail_len = match (&cf, run) {
                 (_, false) => 0,
+                (Some(s), true) if stub.as_ref().is_some_and(|t| t.when.is_some()) => {
+                    prim::guarded_stub_len(s).map_err(|e| err!("{who}: {e}"))?
+                }
                 (Some(s), true) => {
                     let stock = match &stub {
                         Some(StubStage { tail: Some(_), .. }) => prim::CF_JMP_LEN,
@@ -984,21 +1069,26 @@ pub fn apply_with(
     })?;
     let dev = port.port.device.clone();
     let main_sec = fw
-        .section(3)
+        .main()
         .ok_or_else(|| err!("image has no MAIN OS section"))?;
-    let dsp_sec = fw
-        .section(7)
-        .ok_or_else(|| err!("image has no DSP section"))?;
-    if sha256_hex(&main_sec.data) != port.port.main_sha256
-        || sha256_hex(&dsp_sec.data) != port.port.dsp_sha256
-    {
+    // the DSP section is the device's `[container] dsp`; a device without a DSP has none and its port no `dsp_sha256`
+    let dsp_sec = match fw.device.dsp_section() {
+        Some(_) => Some(fw.dsp().ok_or_else(|| err!("image has no DSP section"))?),
+        None => None,
+    };
+    let dsp_ok = match (dsp_sec, &port.port.dsp_sha256) {
+        (Some(d), Some(h)) => sha256_hex(&d.data) == *h,
+        (None, None) => true,
+        _ => false,
+    };
+    if sha256_hex(&main_sec.data) != port.port.main_sha256 || !dsp_ok {
         return Err(err!(
             "port {} does not match the sections of this image",
             port.id()
         ));
     }
     let mut mem = Mem {
-        stream: Stream::parse(dsp_sec.data.clone())?,
+        stream: dsp_sec.map(|d| Stream::parse(d.data.clone())).transpose()?,
         main: main_sec.data.clone(),
         main_base: main_sec.dest as u64,
         stream_dirty: false,
@@ -1176,11 +1266,28 @@ pub fn apply_with(
                 m.manifest
                     .slot
                     .iter()
-                    .filter(|s| on(&s.devices, &dev))
+                    .filter(|s| on(&s.devices, &dev) && !s.is_dsp())
                     .collect::<Vec<_>>(),
             )
         })
         .filter(|(_, v)| !v.is_empty())
+        .collect();
+    // DSP slots: no word in the image, an info table entry with the slot's index in core/dsp-link's slot block (the order of `[dsp.slots]`)
+    let dsp_names = crate::sdkgen::dsp_slot_names();
+    let dsp_slots: Vec<(&Module, &crate::module::SlotDef, u32)> = order
+        .iter()
+        .map(|id| lib.get(id).unwrap())
+        .flat_map(|m| {
+            m.manifest
+                .slot
+                .iter()
+                .filter(|s| on(&s.devices, &dev) && s.is_dsp())
+                .map(move |s| (m, s))
+        })
+        .map(|(m, s)| {
+            let at = dsp_names.iter().position(|n| *n == s.name).unwrap_or(0) as u32;
+            (m, s, at)
+        })
         .collect();
     // the slot words of one module are one chunk in the region of its first slot: a slot with another `place` would be put in the wrong region
     for (m, defs) in &slot_defs {
@@ -1208,7 +1315,8 @@ pub fn apply_with(
         })
         .collect();
     // the entries of the modules, and patchkit's own `fw_id` (the first 8 bytes of the stock image's SHA-256: a bound service file is checked against it) in every table that exists
-    let n_modules = slot_defs.iter().map(|(_, d)| d.len()).sum::<usize>() + info_defs.len();
+    let n_modules =
+        slot_defs.iter().map(|(_, d)| d.len()).sum::<usize>() + dsp_slots.len() + info_defs.len();
     let n_info = n_modules + usize::from(n_modules > 0);
     if n_info > dkneeds::INFO_MAX as usize {
         return Err(err!(
@@ -1221,6 +1329,11 @@ pub fn apply_with(
         let names = slot_defs
             .iter()
             .flat_map(|(m, d)| d.iter().map(move |s| (m.id().to_string(), s.name.as_str())))
+            .chain(
+                dsp_slots
+                    .iter()
+                    .map(|(m, s, _)| (m.id().to_string(), s.name.as_str())),
+            )
             .chain(
                 info_defs
                     .iter()
@@ -1250,6 +1363,8 @@ pub fn apply_with(
         dko: &'a Dko,
         externs: &'a BTreeMap<String, String>,
         optional: &'a [String],
+        /// the anchors and hooks the module's port lacks and the module can do without (`disabled_anchors`)
+        off: Vec<String>,
         place: String,
         base: u64,
         cpu: &'static str,
@@ -1278,6 +1393,7 @@ pub fn apply_with(
                     dko,
                     externs: &no_externs,
                     optional: &no_optional,
+                    off: vec![],
                     place: (*region).into(),
                     base,
                     cpu: if dko.arch == "sharc" { SHARC } else { CF },
@@ -1313,6 +1429,7 @@ pub fn apply_with(
                 dko,
                 externs: &o.externs,
                 optional: &o.optional,
+                off: disabled_anchors(m, port),
                 place: o.place.clone(),
                 base,
                 cpu,
@@ -1445,6 +1562,7 @@ pub fn apply_with(
             let owner = slot_defs
                 .first()
                 .map(|(m, _)| *m)
+                .or_else(|| dsp_slots.first().map(|(m, _, _)| *m))
                 .unwrap_or_else(|| info_defs[0].0);
             add(owner, "dkrt_info_table".to_string(), addr)?;
         }
@@ -1495,6 +1613,9 @@ pub fn apply_with(
                 ext.insert(sy.name.clone(), anchor_value(a));
             } else if !ext.contains_key(&sy.name) && p.optional.contains(&sy.name) {
                 // an optional link to a module that is not selected
+                ext.insert(sy.name.clone(), 0);
+            } else if switched_off(&aname, &p.off) {
+                // an optional anchor the port lacks: the link is 0 and the module's code checks for it
                 ext.insert(sy.name.clone(), 0);
             }
         }
@@ -1667,6 +1788,7 @@ pub fn apply_with(
                     owner: slot_defs
                         .first()
                         .map(|(m, _)| m.tag())
+                        .or_else(|| dsp_slots.first().map(|(m, _, _)| m.tag()))
                         .unwrap_or_else(|| info_defs[0].0.tag()),
                     cpu: fw_cpu,
                     region: slot_defs
@@ -1679,6 +1801,14 @@ pub fn apply_with(
                     bss: 0,
                     what: "the firmware id (fw_id of the info table)".into(),
                 });
+            }
+            for (_, s, at) in &dsp_slots {
+                entries.push((
+                    dkneeds::keys::name_hash(&s.name),
+                    *at,
+                    prim::INFO_KIND_DSP_SLOT,
+                ));
+                names.push(s.name.clone());
             }
             for (m, inf) in &info_defs {
                 let text = inf.symbol.as_deref().unwrap_or(&inf.name);
@@ -1719,6 +1849,7 @@ pub fn apply_with(
             let owner = slot_defs
                 .first()
                 .map(|(m, _)| m.tag())
+                .or_else(|| dsp_slots.first().map(|(m, _, _)| m.tag()))
                 .unwrap_or_else(|| info_defs[0].0.tag());
             chunks.push(Chunk {
                 owner,
@@ -1752,6 +1883,29 @@ pub fn apply_with(
                         *prim_syms.get(&format!("slot.{}", st.slot)).ok_or_else(|| {
                             err!("{who}: slot {} is not declared on this device", st.slot)
                         })?;
+                    if let Some(taken_only) = st.when {
+                        let b = prim::cf_guarded_stub(
+                            site,
+                            addr,
+                            ret,
+                            st.scratch,
+                            slot_addr as u32,
+                            taken_only,
+                        )
+                        .map_err(|e| err!("{who}: {e}"))?;
+                        debug_assert_eq!(b.len(), h.tail_len);
+                        chunks.push(Chunk {
+                            owner: h.module.tag(),
+                            cpu,
+                            region: h.place.clone(),
+                            addr,
+                            code: vec![(addr, addr + b.len() as u64)],
+                            image: pad(b, cpu),
+                            bss: 0,
+                            what: format!("hook tail {}", h.base_name),
+                        });
+                        continue;
+                    }
                     let mut b = prim::stub_prefix(st.scratch, slot_addr as u32);
                     match &st.tail {
                         Some(t) => {
@@ -1942,7 +2096,7 @@ pub fn apply_with(
             .get_mut("dsp.l2")
             .ok_or_else(|| {
                 err!(
-                    "port {} has no dsp.l2 region for the patch record",
+                    "port {} has no dsp.l2 region for the patch record (no module uses cf.expansion)",
                     port.id()
                 )
             })?
@@ -2008,7 +2162,10 @@ pub fn apply_with(
     for c in &chunks {
         match (c.cpu, c.region.as_str()) {
             (SHARC, _) => {
-                mem.stream.append_block(c.addr as u32, &c.image)?;
+                mem.stream
+                    .as_mut()
+                    .ok_or_else(|| err!("{}: the device has no DSP", c.addr))?
+                    .append_block(c.addr as u32, &c.image)?;
                 mem.stream_dirty = true;
             }
             (_, "cf.flash_cave") => {
@@ -2044,7 +2201,10 @@ pub fn apply_with(
     }
     if opts.record {
         if rec_region == "dsp.l2" {
-            mem.stream.append_block(rec_addr as u32, &rec_bytes)?;
+            mem.stream
+                .as_mut()
+                .ok_or_else(|| err!("the device has no DSP"))?
+                .append_block(rec_addr as u32, &rec_bytes)?;
             mem.stream_dirty = true;
         }
         writes.push(PlanWrite {
@@ -2098,7 +2258,11 @@ pub fn apply_with(
             if crate::imageid::locate(&mem.main)? != Some(at) {
                 return Err(err!("the image id marker is not unique in MAIN OS"));
             }
-            let id = crate::imageid::compute(&unhex(&fw.syx_sha256)?, &mem.main, &mem.stream.blob);
+            let id = crate::imageid::compute(
+                &unhex(&fw.syx_sha256)?,
+                &mem.main,
+                mem.stream.as_ref().map_or(&[][..], |s| &s.blob),
+            );
             mem.main[at..at + 8].copy_from_slice(&id);
             image_id = Some(id);
         }
@@ -2107,15 +2271,18 @@ pub fn apply_with(
     // Limits, repack, build.
     let lim = &port.limits;
     if mem.stream_dirty {
-        if mem.stream.blob.len() as u64 > lim.dsp_depacked_max {
+        let (Some(stream), Some(dsp_id)) = (&mem.stream, fw.device.dsp_section()) else {
+            return Err(err!("a DSP patch on a device without a DSP"));
+        };
+        if stream.blob.len() as u64 > lim.dsp_depacked_max {
             return Err(err!(
                 "DSP stream is {} bytes, over the {} the ColdFire boot routine sends",
-                mem.stream.blob.len(),
+                stream.blob.len(),
                 lim.dsp_depacked_max
             ));
         }
-        fw.replace(7, mem.stream.blob.clone())?;
-        let stored = fw.section(7).unwrap().stored.len() as u64;
+        fw.replace(dsp_id, stream.blob.clone())?;
+        let stored = fw.section(dsp_id).unwrap().stored.len() as u64;
         if stored > lim.dsp_stored_max {
             return Err(err!(
                 "packed DSP section is {stored} bytes, over the {} limit",
@@ -2131,9 +2298,9 @@ pub fn apply_with(
                 lim.main_staged_max
             ));
         }
-        fw.replace(3, mem.main.clone())?;
+        fw.replace(fw.device.main_section(), mem.main.clone())?;
     }
-    let syx = fw.build(Some(lim.container_max as usize))?;
+    let syx = fw.build(opts.flash_cap.then_some(lim.container_max as usize))?;
     let regions = allocs
         .iter()
         .map(|(k, v)| (k.clone(), (v.used, v.cap)))
@@ -2153,6 +2320,15 @@ pub fn apply_with(
         sections: plan_secs,
         info: info_plan,
         hooks: plan_hooks,
+        disabled: order
+            .iter()
+            .flat_map(|i| {
+                let m = lib.get(i).unwrap();
+                disabled_anchors(m, port)
+                    .into_iter()
+                    .map(|n| format!("{}:{n}", m.tag()))
+            })
+            .collect(),
         record: rec,
         output: None,
     };

@@ -1,13 +1,13 @@
 //! The DSP side's shared types and constants: the words of the info tables, the row table state (`DspState`), the loader's pending load, the checked
 //! section (`Job`, `DspSec`). The core owns the object `DKRT_DSP` (a host tool reads its layout); a service reaches it through `CoreApi::dsp`.
-use crate::MAX_MODULES;
+use crate::{MAX_MODULES, REC_MAX};
 use dkneeds;
 use dkrt_sdk::*;
 
 pub const INFO_MAGIC: u32 = 0x4444_5350; // "DDSP"
 pub const STATE_MAGIC: u32 = 0x444b_4453; // "DKDS"
 /// Free voice rows core/dyndsp reserves: one per run-time machine type (a module's voice takes a row).
-pub const MAX_ROWS: usize = DYN_TYPES as usize;
+pub const MAX_ROWS: usize = MACHINE_ROWS;
 pub const MAX_VOICES: usize = MAX_ROWS;
 pub const MAX_RELOCS: u32 = dkneeds::MAX_RELOCS;
 pub const MAX_IMPORTS: u32 = dkneeds::MAX_IMPORTS;
@@ -68,12 +68,8 @@ pub const WIN_FX: u32 = 2;
 pub const FX_INFO_MAGIC: u32 = 0x4446_5849; // "DFXI"
 pub const L2_BYTE_BASE: u32 = 0x2000_0000;
 pub const L2_SW_BASE: u32 = 0x00B8_0000;
-/// The run-time machine types (`dynamic_first ..= last` of modules/core/adapters/machines/types.toml, through `patchkit gen`).
-pub const TYPE_FIRST: u32 = device::DYN_TYPE_FIRST;
-pub const TYPE_LAST: u32 = device::DYN_TYPE_LAST;
-pub const DYN_TYPES: u32 = device::DYN_TYPES;
-// the row count of the runtime's tables (`[limits] machine_rows`) is the count of run-time machine types that the firmware tables reserve
-const _: () = assert!(device::LIMIT_MACHINE_ROWS == device::DYN_TYPES);
+// The run-time machine types (`dynamic_first ..= last` of modules/core/adapters/machines/types.toml) are the device profile's (`dyn_type_first`,
+// `dyn_types`); the tables have `MACHINE_ROWS` rows, and the device's count is that many or 0 (no DSP, no row is used).
 /// A free voice row's type: no machine type equals it.
 pub const FREE_TYPE: u32 = 0xffff_ffff;
 /// UI-loop passes a phase may last before the load is given up.
@@ -149,9 +145,9 @@ pub struct DspState {
     pub failures: u32,
     pub last_dl_err: u32,
     /// Per module record: byte offset into the area and length of its range (len 0: none), and the rows it owns (bit mask).
-    pub mod_off: [u32; MAX_MODULES],
-    pub mod_len: [u32; MAX_MODULES],
-    pub mod_rows: [u32; MAX_MODULES],
+    pub mod_off: [u32; REC_MAX],
+    pub mod_len: [u32; REC_MAX],
+    pub mod_rows: [u32; REC_MAX],
     /// Per voice row: the type claimed for it (`FREE_TYPE` when free), its owner (module record + 1), whether its type word was
     /// written to the DSP (so it needs clearing), and the pc to publish.
     pub row_type: [u32; MAX_ROWS],
@@ -162,7 +158,7 @@ pub struct DspState {
     pub row_pub: [u8; MAX_ROWS],
     /// The load being sent, and the loads behind it (the boot hook publishes the CF side of every module at once).
     pub pending: Pending,
-    pub waiting: [Pending; MAX_MODULES],
+    pub waiting: [Pending; REC_MAX],
     pub nwait: u32,
     /// Per voice row: the note_on pc (0: none), the byte address of voice 0's state, the bytes between states, the bytes cleared at note-on.
     pub row_note_on: [u32; MAX_ROWS],
@@ -186,7 +182,9 @@ pub struct DspState {
     /// Per effect row: the flags word of its record (`FXF_*`: the routes the effect may run on and its default route; 0 = master only).
     pub fx_flags: [u32; MAX_FX],
     /// Per module record: the effect rows it owns (bit mask).
-    pub mod_fx: [u32; MAX_MODULES],
+    pub mod_fx: [u32; REC_MAX],
+    /// The slot writes of a provider file's DSP part sent so far (0: not started, 1: the sequence of its slots is in flight or done).
+    pub slot_run: u32,
 }
 
 /// What `check` found in a DSP section; pointers are into the staged file.

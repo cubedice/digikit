@@ -19,7 +19,7 @@ const USAGE: &str = "usage: patchkit [--root DIR] COMMAND ...
 
   inspect X.syx                          device, version, port, patch record
   check   --firmware X.syx [--modules a,b]  which modules fit, and why not
-  apply   --firmware X.syx [--modules a,b | --set NAME] [-o OUT.syx] [--plan plan.json] [--addrmap map.json] [--no-record (oracles only)]
+  apply   --firmware X.syx [--modules a,b | --set NAME] [-o OUT.syx] [--plan plan.json] [--addrmap map.json] [--no-record (oracles only)] [--no-flash-cap (image for the emulator, not for flashing)]
                                          --addrmap: the ship address map (names of the code the patch placed and of the port's anchors)
                                          without --modules: the device's patch set (devices/*.toml [patch_sets]), `device` by default
   (any command that reads modules: [--modules-dir DIR], PATCHKIT_MODULES=dir:dir for extra module roots)
@@ -268,7 +268,7 @@ fn run(a: Args) -> Result<()> {
                 Some(p) => println!("port      {} (stock image)", p.id()),
                 None => println!("port      none for this sha256"),
             }
-            let rep = verify::verify(&raw, Some(&reg), None)?;
+            let rep = verify::inspect(&raw, Some(&reg))?;
             match rep.record {
                 Some(r) => println!(
                     "record    patched from {} with {}",
@@ -368,6 +368,7 @@ fn run(a: Args) -> Result<()> {
             } else {
                 let opts = apply::Options {
                     record: !rest.iter().any(|a| a == "--no-record"),
+                    flash_cap: !rest.iter().any(|a| a == "--no-flash-cap"),
                 };
                 let out = apply::apply_with(&raw, &reg, &lib, &ids, opts)?;
                 if let Some(o) = flag(rest, "-o") {
@@ -639,8 +640,8 @@ plan.json {}",
             let path = need(rest)?;
             let fw = Firmware::parse(&read(path)?)?;
             let dsp = fw
-                .section(7)
-                .ok_or_else(|| Error("the image has no DSP section (7)".into()))?;
+                .dsp()
+                .ok_or_else(|| Error("the device has no DSP section".into()))?;
             if rest.iter().any(|a| a == "--list") {
                 // every scanned instruction (comparison aid)
                 for l in patchkit::dspscan::list(&dsp.data)? {

@@ -67,7 +67,7 @@ fn rel(offset: u64, symbol: &str) -> DkoReloc {
     }
 }
 
-/// A ColdFire object with `dk_module` (init and tick set), the global handler `hooktest_settings_tail` and the static `local_tail`.
+/// A ColdFire object with `dk_module` (init and tick set), the exports `dk_svctest_ping` and `dk_svctest_hits`, the global handler `hooktest_settings_tail` and the static `local_tail`.
 fn service_object() -> Dko {
     let text = [
         0x4e, 0x75, 0x4e, 0x75, 0x4e, 0x75, 0x4e, 0x75, 0x4e, 0x75, 0x4e, 0x75,
@@ -87,6 +87,9 @@ fn service_object() -> Dko {
             sym("hooktest_settings_tail", ".text", 6, true),
             sym("local_tail", ".text", 8, false),
             sym("dk_module", ".data", 8, true),
+            // the exports of svc-test (its header lists the provided imports of sdk/sdk.toml)
+            sym("dk_svctest_ping", ".text", 0, true),
+            sym("dk_svctest_hits", ".text", 2, true),
         ],
         relocs: vec![rel(8, "init_fn"), rel(16, "tick_fn")],
     };
@@ -305,10 +308,10 @@ fn raw_hook(raw: &[u8], reg: &Registry) -> (String, Vec<String>, patchkit::apply
         else {
             continue;
         };
-        // a hook that declares exits already is left for the real services (the test adds its own `exits`)
+        // a hook that declares exits or a tail already is left for the real services (the test adds its own `exits`)
         let at = text.find(&key).unwrap();
         let block = &text[at..text[at..].find("[[").map_or(text.len(), |e| at + e)];
-        if block.contains("exits =") {
+        if block.contains("exits =") || block.contains("tail =") {
             continue;
         }
         let mut decls = texts.clone();

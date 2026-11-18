@@ -125,6 +125,14 @@ fn cache_file(root: &Path, stock_sha256: &str, set: &str, key: &str) -> PathBuf 
         .join(format!("{stock_sha256}-{set}-{key}.syx"))
 }
 
+/// The apply options of an image that only the emulator boots: the record as for every patch, no flash container cap.
+fn emulator_options() -> apply::Options {
+    apply::Options {
+        flash_cap: false,
+        ..Default::default()
+    }
+}
+
 /// Patch `stock` with the device's `set` (or take the cached result). The cache is written whole or not at all.
 pub fn prepare(root: &Path, stock: &[u8], set: &str) -> Result<Outcome, String> {
     let e = |x: patchkit::Error| x.to_string();
@@ -165,7 +173,8 @@ pub fn prepare(root: &Path, stock: &[u8], set: &str) -> Result<Outcome, String> 
         return patched(syx, tags, true);
     }
     let reg = Registry::from_dir(&root.join("devices/ports")).map_err(e)?;
-    let out = apply::apply(stock, &reg, &lib, &modules).map_err(e)?;
+    // the image is booted in the emulator and never flashed: the flash container cap does not apply
+    let out = apply::apply_with(stock, &reg, &lib, &modules, emulator_options()).map_err(e)?;
     write_whole(&file, &out.syx)?;
     patched(out.syx, out.plan.modules, false)
 }
@@ -213,7 +222,7 @@ pub fn reapply(
         .map(|m| m.id().to_string())
         .collect();
     Ok(Reapplied {
-        applied: apply::apply(stock, &reg, &lib, ids).map_err(e)?,
+        applied: apply::apply_with(stock, &reg, &lib, ids, emulator_options()).map_err(e)?,
         requirers,
     })
 }
@@ -533,7 +542,7 @@ mod tests {
             Outcome::AlreadyPatched => panic!("stock has no patch record"),
         };
         assert!(!first.cache_hit);
-        assert_eq!(first.modules.len(), 17); // the Digitakt II emulator set: 12 and core/dynfx, core/fx, core/fxpages, core/sample-pool, core/platform (the runtime requires it)
+        assert_eq!(first.modules.len(), 18); // the Digitakt II emulator set: 12 and core/dynfx, core/fx, core/fxpages, core/sample-pool, core/platform (the runtime requires it), core/lfo
         assert!(first.cache_file.is_file());
         let record = verify::patch_record(&first.syx).unwrap().unwrap();
         assert_eq!(record.base_sha256, first.base_sha256);

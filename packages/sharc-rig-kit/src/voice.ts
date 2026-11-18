@@ -23,6 +23,8 @@ import {
   RECORDS,
   RELEASE,
   RETURN_SW,
+  SLOTS,
+  SLOT_WORDS,
   STACK,
   STOCK_BP,
   TABLE,
@@ -45,7 +47,10 @@ import {
   type Linked,
 } from './toolchain.ts';
 
+/** the hook stubs, which stay in the image */
 export const VOICE_CORE = path.join(ROOT, 'modules/core/adapters/dsp-voice/src/dsp/dsp-voice.s');
+/** the dispatch code behind the stubs, which the machines service carries (R12-8) */
+export const VOICE_DISPATCH = path.join(ROOT, 'modules/core/services/machines/dks/dsp/dispatch-dt2.s');
 /** a sine routine of the raw (no contract) form */
 export const VOICE_SINE = path.join(ROOT, 'tests/support/raw_sine.s');
 export const CORE_BASE = 0xb90000;
@@ -56,6 +61,9 @@ export const SV3 = DIAG + 0x104;
 export const SV5 = DIAG + 0x108;
 export const BCW = DIAG + 0x10c;
 export const REC_PTRS = DIAG + 0x110;
+export const SV_M13 = DIAG + 0x130; // the registers the stubs pin (sdk/dsp/contract/dk_stub.inc)
+export const SV_M13U = DIAG + 0x134;
+export const SV_I12U = DIAG + 0x138;
 export const STEP_WORD = DIAG + 0x120; // a stand-in for the module step word `_dk_step`; its address is `_dv_rec[2]`
 export const MASK = DIAG + 0x11c; // `_dv_mask`: the registered types, rebuilt by voice 0 from the table
 export const GUARD = DIAG + 0x200; // the guard's scalars and arrays (_dv_g, 128 bytes)
@@ -73,6 +81,8 @@ export const ADAPTER: Record<string, number> = {
 };
 /** `_dv_v2_scan`: set while voice 0 scans core/instrument-play's V2 table after the legacy one; the wrapper clears it every block */
 export const V2_SCAN = DIAG + 0x740;
+/** `_dv_v2_rows`: the address of the V2 table as the stub hands it to the dispatch code (voice 0 writes it each block) */
+export const V2_ROWS = DIAG + 0x744;
 export const VOICE_ROW = 24; // words of a registry row
 export const RING_A = 0x200a0000; // stand-ins for the two reply records (the breadcrumbs are written into both)
 export const RING_B = 0x200a2000;
@@ -91,6 +101,10 @@ export function coreExterns(): Record<string, number> {
     _dv_sv_l4: SV_L4,
     _dv_sv3: SV3,
     _dv_sv5: SV5,
+    _dv_sv_m13: SV_M13,
+    _dv_sv_m13u: SV_M13U,
+    _dv_sv_i12u: SV_I12U,
+    _dl_slots: SLOTS,
     _dv_bcw: BCW,
     _dv_rec: REC_PTRS,
     _dv_mask: MASK,
@@ -98,6 +112,7 @@ export function coreExterns(): Record<string, number> {
     // optional (module.toml `optional`): patchkit links it as 0 without core/instrument-play, and 0 keeps the legacy table alone
     _instrument_voice_rows: 0,
     _dv_v2_scan: V2_SCAN,
+    _dv_v2_rows: V2_ROWS,
     ...ADAPTER,
   };
 }
@@ -121,7 +136,9 @@ export function sineRoutine(): VoiceRoutine {
 }
 
 interface VoiceBuild {
+  /** the stub object (`core`, first) and the dispatch object */
   core: Linked;
+  dispatch: Linked;
   routine: Linked;
   renderPc: number;
 }
@@ -133,11 +150,22 @@ function build(defines: readonly string[], r: VoiceRoutine, externs: Record<stri
   let b = builds.get(key);
   if (!b) {
     const moddir = path.resolve(path.dirname(VOICE_CORE), '../..');
-    const text = applyConditionals(readFileSync(VOICE_CORE, 'utf8'), [...defines]);
-    const coreObj = assemble(expandIncludes(text, [...sharcIncludeDirs(moddir), path.dirname(VOICE_CORE)]));
-    const core = link(coreObj, CORE_BASE, { ...coreExterns(), ...externs });
+    const dirs = [...sharcIncludeDirs(moddir), path.dirname(VOICE_CORE)];
+    const object = (file: string) =>
+      assemble(expandIncludes(applyConditionals(readFileSync(file, 'utf8'), [...defines]), dirs));
+    const stubObj = object(VOICE_CORE);
+    const dispObj = object(VOICE_DISPATCH);
+    // the dispatch object follows the stub, rounded up to 0x100 short words (the placing of place.ts)
+    const dispBase = CORE_BASE + ((stubObj.parcels + 0xff) & ~0xff);
+    const own: Record<string, number> = {};
+    for (const [name, off] of Object.entries(stubObj.symbols)) own[name] = CORE_BASE + off;
+    for (const [name, off] of Object.entries(dispObj.symbols)) own[name] = dispBase + off;
+    const all = { ...coreExterns(), ...externs, ...own };
+    const stub = link(stubObj, CORE_BASE, all);
+    const dispatch = link(dispObj, dispBase, all);
+    const core: Linked = { ...stub, symbols: { ...stub.symbols, ...dispatch.symbols } };
     const routine = link(assemble(r.text), r.base, r.externs(core.symbols));
-    b = { core, routine, renderPc: routine.symbols[r.symbol]! };
+    b = { core, dispatch, routine, renderPc: routine.symbols[r.symbol]! };
     builds.set(key, b);
   }
   return b;
@@ -206,12 +234,15 @@ export class VoiceRig {
   private readonly ctxRng: PyRandom;
   private readonly b: VoiceBuild;
   private readonly open: RigOpener;
+  /** `_instrument_voice_rows` as the wrapper is linked (0: no V2 table) */
+  private readonly v2Rows: number;
 
   constructor(o: VoiceOptions = {}) {
     this.ctxRng = new PyRandom(o.seed ?? 0xd1617);
     this.b = build(o.defines ?? [], o.routine ?? sineRoutine(), o.externs);
+    this.v2Rows = o.externs?._instrument_voice_rows ?? 0;
     this.coreSymbols = this.b.core.symbols;
-    this.coreChecked = this.b.core.checked ?? 0;
+    this.coreChecked = (this.b.core.checked ?? 0) + (this.b.dispatch.checked ?? 0);
     this.routineChecked = this.b.routine.checked ?? 0;
     this.open = o.open ?? realRig;
     this.reset();
@@ -238,6 +269,8 @@ export class VoiceRig {
     zero(FRAME, 256);
     zero(OUT, 32 * 32); // the voice buffers hold the last block (a routine that writes none leaves them)
     zero(RECORDS, Math.floor((32 * REC) / 4));
+    zero(SLOTS, SLOT_WORDS);
+    this.installSlots();
     this.dm.set(nw(TABLE), VOICE_TYPE);
     this.dm.set(nw(TABLE) + 1, this.b.renderPc);
     zero(REC_PTRS, 3); // no reply records yet (core/dsp-link has not run): the breadcrumbs stay in _dv_diag
@@ -245,7 +278,20 @@ export class VoiceRig {
     zero(GUARD, 32);
     zero(ADAPTER._dv_st!, 16); // no track has written R (machine contract 1.2)
     zero(V2_SCAN, 1);
+    // voice 0's stub writes this word each block; a call of another voice alone finds what voice 0 left
+    this.dm.set(nw(V2_ROWS), this.v2Rows);
     [1, 2, 4, 5, 255, 255, 255, 255].forEach((w, k) => this.dm.set(nw(ADAPTER._dv_slots!) + k, w)); // the DT2 knob positions
+  }
+
+  /** What the machines service installs: slot 0 the render dispatch entry, slot 1 the unpack dispatch entry. */
+  installSlots(): void {
+    this.setSlot(0, this.coreSymbols._dv_run!);
+    this.setSlot(1, this.coreSymbols._dv_unpack_run!);
+  }
+
+  /** Slot `index` of core/dsp-link's slot block (0: the stub takes the stock path). */
+  setSlot(index: number, pc: number): void {
+    this.dm.set(nw(SLOTS) + index, u32(pc));
   }
 
   word(address: number): number {
@@ -310,7 +356,10 @@ export class VoiceRig {
     const { port, first } = await this.open({
       return_sw: RETURN_SW,
       breaks,
-      code: [this.b.core, this.b.routine].map((l) => ({ address: SW_ALIAS_BASE + 2 * l.baseSw, hex: l.codeBoot })),
+      code: [this.b.core, this.b.dispatch, this.b.routine].map((l) => ({
+        address: SW_ALIAS_BASE + 2 * l.baseSw,
+        hex: l.codeBoot,
+      })),
       ops: [
         { poke: [...this.dm].map(([a, w]) => [a, u32(w)] as [number, number]) },
         {

@@ -59,7 +59,7 @@ mise run emu:ready -- dn2                     # Digitone II 1.12 (about 2 minute
 mise run emu:ready -- dt2 [--card-image IMG]  # Digitakt II 1.17, optionally with a +Drive image
 ```
 
-It needs the shared core (`mise run gen:core`). The files go to the directories in `tools/emulator/ready_inputs.json`
+It needs the shared core (`mise run gen:core`). The files go to the `[acceptance] ready_dir` directories of the device files (`devices/*.toml`)
 (`out/snapshots/<device>-audio-ready-cold-*`), where the patchkit harness and the device tests read them. Git ignores them.
 
 ## Desktop emulator
@@ -71,7 +71,8 @@ mise run workbench:inputs         # the UI dist and the wasm files, from the Nx 
 mise run wasm:dkprof              # only public/dkprof.wasm (`wb` addrmap, module and profile commands load it)
 mise run workbench -- --cf-only --plus-drive DIR firmware/Digitakt_II_OS1.17.syx   # a +Drive folder (default: plus_drive/<device>/; --samples is the same option)
 mise run workbench -- --dsp-patch FILE  # overlay a DSP patch (DN2 audio)
-mise run workbench -- --cf-only   # ColdFire only: no DSP, no audio
+mise run workbench -- --cf-only   # ColdFire only: no DSP, no audio (a build without the DSP core)
+mise run workbench -- --no-dsp    # start with the "DSP" tick off: ColdFire only, a peer CPU is replaced by the mailbox responder; the tick turns it on again
 ```
 
 With the ready inputs present, a firmware loaded in `mise run workbench` plays audio. Without them it
@@ -114,7 +115,7 @@ disabled ("desktop only for now"). Headless: the control socket's `card.load {di
 - The apps do not import each other, and workbench-core imports no app (oxlint `no-restricted-imports`; `pnpm lint` fails it). Code that both need moves into workbench-core.
 - Nx: workbench-core is its own project. An edit in `src/` or `ui/` selects its own `test-host` and `typecheck`, the site's `check`, `test-host`, `test-wasm` and `build`, and the desktop's `typecheck`, `check:ui`, `test-host` and `build:ui`; no cargo, wasm-build or device target. An edit in `tests/` selects only its own targets.
 
-`createNodeHost(options)` (`src/node/node-host.ts`) is the `Host` for a command line, so a command runs the workbench's code over the same interfaces as the app: `fs` over `node:fs` (the rules of `local.rs`: one level, folders first, no dot files, no path outside the folder), `library` (`out/modules` and the `devices/*.toml` profiles), `ports.midi` and `ports.bulk` over the `dkmidi` and `dkbulk` bridge processes, `firmware.patchkitWasm` and `sampleWasm` from `apps/web/public`, and `rpc` over the control socket of a running emulator (`packages/control-client`). A command that needs a window or the app's own emulator session (a dialog, `library.build`, `emu.*`, `firmware.prepare`) fails with `NodeHostUnsupported`. `wb` (`tools/devtools/wb.mjs`) builds one: `wb ports` lists the MIDI ports through `host.ports.midi.ports()`, and the samples commands choose their backend from `host.library.deviceStorage(...)`, as the desktop's Samples backend does. Test it with temp folders and stand-in bridge programs (`tests/node-host.test.ts`).
+`createNodeHost(options)` (`src/node/node-host.ts`) is the `Host` for a command line, so a command runs the workbench's code over the same interfaces as the app: `fs` over `node:fs` (the rules of `local.rs`: one level, folders first, no dot files, no path outside the folder), `library` (`out/modules`), `ports.midi` and `ports.bulk` over the `dkmidi` and `dkbulk` bridge processes, `firmware.patchkitWasm` and `sampleWasm` from `apps/web/public`, and `rpc` over the control socket of a running emulator (`packages/control-client`). A command that needs a window or the app's own emulator session (a dialog, `library.build`, `emu.*`, `firmware.prepare`) fails with `NodeHostUnsupported`. `wb` (`tools/devtools/wb.mjs`) builds one: `wb ports` lists the MIDI ports through `host.ports.midi.ports()`, and the samples commands choose their backend from the device registry (`@digi/devices`, `[storage] samples`), as the desktop's Samples backend does. `wb samples put FILE --slot N` puts one WAV into numbered slot N of a device with sample slots and replaces what the slot holds; without `--slot` the lowest free slot is used and an occupied slot is never overwritten; `wb samples rm NAME` clears the slot that `wb samples ls` lists under that name. Test it with temp folders and stand-in bridge programs (`tests/node-host.test.ts`).
 
 ### Host and EmuRpc (desktop UI)
 
@@ -200,6 +201,7 @@ pnpm test:host                # host Vitest projects; no device
 pnpm verify:host              # host lint, format, tests and types
 mise run test                 # the gate: Nx targets of the affected projects
 mise run test:subset -- S:machines  # the device tests of record tags plus gate-smoke and gate-pins; add --run to run them (docs/TESTING.md "Named device subset")
+uv run python -m tools.devtools.sharc_cells A=BIN B=BIN --state dn2-reset --seconds 3,6   # paired counter runs of two coupled-run binaries: DSP and ColdFire host instructions per audio second, B/A ratios, parity (docs/TESTING.md)
 mise run module:check ID      # one module: conformance and its own tests
 pnpm nx:pilot run @digi/sharc-rig-kit:test-conformance-rig   # machine and effect conformance of every module on the SHARC-only rig (docs/TESTING.md "The Vitest kit")
 DIGI_RIG_REPORT=1 pnpm exec vitest run --config vitest.host.config.ts --project module-rig modules/machines/analog/tests/   # verdict, plot.png and wav files for the pinned cases (docs/TESTING.md "Classifying a changed pin")
@@ -232,6 +234,7 @@ All tools are indexed in [docs/TOOLS.md](TOOLS.md).
 
 Usage of the address map (`patchkit pack --addrmap`, `patchkit addr`, `wb addrmap lookup`, DSP names, load table snapshots): [ADDRMAP.md](ADDRMAP.md#usage).
 Usage of the object compare for moves of runtime code (`patchkit objdiff OLD NEW`): [PATCHING.md](PATCHING.md#compare-two-objects-after-a-move).
+Usage of the register liveness of stock code at a patch site (`tools/coldfire/liveness.py`): [PATCHING.md](PATCHING.md#register-liveness-at-a-hook-site).
 Usage of the service binder (`patchkit bind IN.dks --firmware FW.syx -o OUT.dks`): [PATCHING.md](PATCHING.md#bind-a-service-to-your-firmware). Which services a module needs (`patchkit services`): [PATCHING.md](PATCHING.md#which-services-a-module-needs).
 Usage of Transfer install, restart and delete with services (`mise run transfer`, `wb transfer install --restart`, `wb transfer delete`): [MODULES.md](MODULES.md#install-with-services-from-the-command-line).
 

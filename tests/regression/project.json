@@ -64,6 +64,7 @@
         "{workspaceRoot}/devices/*.toml",
         "{workspaceRoot}/modules/core/runtime/vectors/**/*",
         "{workspaceRoot}/devices/ports/*.toml",
+        "{workspaceRoot}/modules/core/runtime/tests/lfo/lfo-fit.ts",
         {
           "runtime": "shasum -a 256 dist/plusdrive/plusdrive 2>/dev/null || echo no-plusdrive"
         }

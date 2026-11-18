@@ -5,7 +5,7 @@ import type { LinkState } from '@digi/workbench-core/transfer/link-core.ts';
 import type { DeviceInfo } from '@digi/workbench-core/transfer/transfer-state.ts';
 import { sourceKind, type Prepared } from '@digi/dk-session/dksample';
 import type { SampleEntry, SamplesBackend } from '@digi/dk-session/samples';
-import { joinPath, type Prepare } from '@digi/workbench-core/transfer/sample-upload.ts';
+import { joinPath } from '@digi/workbench-core/transfer/sample-upload.ts';
 import type { LocalEntry } from '@digi/workbench-core/transfer/samples-core.ts';
 import {
   localFolder,
@@ -32,23 +32,26 @@ const setSampleLink = (l: LinkState | undefined): void => void simApp.app!.state
 const setDeviceInfo = (i: DeviceInfo | undefined): void => void simApp.app!.state.setDeviceInfo(i);
 
 const NAME = 'Digitakt II';
-export function deviceStorage(_device: string): Promise<{ name: string; samples: string }> {
-  return Promise.resolve({ name: NAME, samples: 'stock-rpc' });
-}
 
-export interface OpenedSamples {
-  name: string;
-  runtime: string;
-  samples: string;
-  backend: SamplesBackend;
-  prepare: Prepare;
-}
+// The real type: the mock returns what the desktop backend returns.
+import type { OpenedSamples } from '../src/samples-backend';
+export type { OpenedSamples };
 
 let puts = 0;
 let sent = 0;
 const clean = (folder: string) => folder.replace(/^\/+|\/+$/g, '');
 const backend: SamplesBackend = {
   kind: 'stock-rpc',
+  prepare(name, bytes): Prepared {
+    const kind = sourceKind(bytes, bytes.length);
+    return { name: kind === 'converted' ? name.replace(/\.wav$/i, '') : name, bytes, stored: bytes, kind };
+  },
+  sizeOf(file) {
+    return file.stored.length;
+  },
+  checksAtBulkEnd() {
+    return true;
+  },
   async list(folder = ''): Promise<SampleEntry[]> {
     await deviceRead();
     return [...(sampleTree.get(clean(folder)) ?? [])];
@@ -183,20 +186,19 @@ export async function openDeviceSamples(_forRun = false): Promise<OpenedSamples>
   return {
     name: NAME,
     runtime: '0.9.4',
+    hasRuntime: true,
     samples: 'stock-rpc',
+    apply: 'live',
     backend,
-    prepare: (name, bytes): Prepared => {
-      const kind = sourceKind(bytes, bytes.length);
-      return { name: kind === 'converted' ? name.replace(/\.wav$/i, '') : name, bytes, stored: bytes, kind };
-    },
+    link: 'sysex',
   };
 }
 
 export async function readSamples(): Promise<void> {
   control.counts.deviceRead++;
-  const { name, runtime, samples } = await openDeviceSamples();
+  const { name, runtime, hasRuntime, samples } = await openDeviceSamples();
   setSampleEntries(await backend.list(sampleFolder()));
-  setDeviceInfo({ name, runtime, samples, canMkdir: sim.mkdir, free: (await backend.space()).free });
+  setDeviceInfo({ name, runtime, hasRuntime, samples, canMkdir: sim.mkdir, free: (await backend.space()).free });
 }
 
 // ---- the local folder -------------------------------------------------------------------------------------------------------------
@@ -260,7 +262,6 @@ export async function readLocal(): Promise<void> {
 
 /** The same bag as the real `createSamplesBackend` (src/samples-backend.ts); the preview has no host to ask. */
 export const createSamplesBackend = (_host: unknown, _app?: unknown) => ({
-  deviceStorage,
   openDeviceSamples,
   readSamples,
   pickFolder,

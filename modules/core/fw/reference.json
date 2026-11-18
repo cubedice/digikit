@@ -19,6 +19,12 @@
             "addr": "0x40113700",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f8508",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -38,6 +44,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -69,6 +80,12 @@
             "addr": "0x40114168",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f8f70",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -88,6 +105,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -119,6 +141,12 @@
             "addr": "0x401131ae",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f7fb6",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -138,6 +166,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -169,6 +202,12 @@
             "addr": "0x401132c0",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f80c8",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -188,6 +227,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -219,6 +263,12 @@
             "addr": "0x40112f92",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f7d9a",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -238,6 +288,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -269,6 +324,12 @@
             "addr": "0x4011e598",
             "len": 2
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40103314",
+            "len": 2
+          }
         ]
       },
       "bindings": {
@@ -288,6 +349,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 2,
           "offset": 0
@@ -320,6 +386,12 @@
             "addr": "0x4011e318",
             "len": 2
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40103094",
+            "len": 2
+          }
         ]
       },
       "bindings": {
@@ -341,6 +413,12 @@
         "dt2": {
           "kind": "cf_func",
           "len": 2,
+          "offset": 0
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 2,
+          "mark": "D",
           "offset": 0
         }
       },
@@ -371,6 +449,12 @@
             "addr": "0x4011e150",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40102f40",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -390,6 +474,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -421,6 +510,12 @@
             "addr": "0x4011e328",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x401030a4",
+            "len": 4
+          }
         ]
       },
       "cpu": "cf",
@@ -439,6 +534,12 @@
           "kind": "cf_func",
           "len": 4,
           "offset": 16
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 4,
+          "mark": "D",
+          "offset": 16
         }
       },
       "subsystem": "input",
@@ -449,6 +550,1464 @@
         "cf.input.site.key_mask_lit",
         "input.fw.key_mask_lit"
       ]
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x4010ded0"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x4010e1b0"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4010c83c"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2",
+        "dn2"
+      ],
+      "doc": "The cell of the LFO page (UI task): for a wave 7 to 14 with a published shape graph D6 becomes the service's vector of four tiles and the byte at -0x11(A6) the unipolar mark; otherwise the tail runs the displaced `addi.l #TABLE,D6`. The wave is 0x18(A6). The vtable word of the tiles is read from the stock vector (the tail's displaced `addi` gives TABLE; TABLE + D6 is the vector, its first word the first Bitmap's vtable). Strict liveness: only the flags are dead; D0, D1, A0 and A1 are saved.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.graph_vec",
+      "regs": {
+        "clobbers": [
+          "d6",
+          "ccr"
+        ],
+        "in": [
+          "d5",
+          "d6",
+          "a6"
+        ]
+      },
+      "site": "cf.lfo.site.graph_vec",
+      "subsystem": "lfo",
+      "users": [
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x401375e4"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x401378c4"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x401394dc"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The second reader of the LFO tables, the compare of D3 with 6 before the call of the wave function table (interrupt context; d7 is live). exit.1 is the RAND code, exit.2 the code after the call. DT2 0x401394dc: `moveq 6,D0; cmp.l D3,D0; beq 0x40139512`. Dead at the RAND code (0x40139512): D0 and the flags; at the code after the call (0x4013957a): D2, D3, A6 and the flags, D1 and D0 are live. The stock fall-through needs the upper bits of D0 clear (`move.b #0x32,D0b` after the moveq): the routine sets D0 itself. The block is A4 (wave byte at 0x2a(a4)).",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.read_call",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "d2",
+          "ccr"
+        ],
+        "in": [
+          "d1",
+          "d2",
+          "d3",
+          "a4"
+        ]
+      },
+      "site": "cf.lfo.site.read_call",
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x401375e4"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x401378c4"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x401394dc"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dn2"
+      ],
+      "doc": "The second reader of the LFO tables, the compare of D3 with 6 before the call of the wave function table (interrupt context; d7 is live). exit.1 is the RAND code, exit.2 the code after the call. DN2 0x401378c4: `moveq 6,D0; cmp.l D3,D0; beq 0x401378fa`. Dead at the RAND code (0x401378fa): D0 and the flags; at the code after the call (0x40137962): D2, D3, A6 and the flags, D1 and D0 are live. The stock fall-through needs the upper bits of D0 clear (`move.b #0x32,D0b` after the moveq): the routine sets D0 itself. The block is A4 (wave byte at 0x2a(a4)).",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.read_call",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "d2",
+          "ccr"
+        ],
+        "in": [
+          "d1",
+          "d2",
+          "d3",
+          "a4"
+        ]
+      },
+      "site": "cf.lfo.site.read_call",
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137652"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137932"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013954a"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The second reader, the compare of D3 with 6 before the slew code (interrupt context). exit.1 skips the slew code. DT2 0x4013954a: `moveq 6,D2; cmp.l D3,D2; bne 0x4013957a`. Dead where the stock fall-through (0x40139550) continues: D0, D2, D3, A1, A6 and N Z V C; at 0x4013957a: D2, D3, A6 and the flags.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.read_slew",
+      "regs": {
+        "clobbers": [
+          "d2",
+          "ccr"
+        ],
+        "in": [
+          "d3",
+          "a4"
+        ]
+      },
+      "site": "cf.lfo.site.read_slew",
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137652"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137932"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013954a"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dn2"
+      ],
+      "doc": "The second reader, the compare of D3 with 6 before the slew code (interrupt context). exit.1 skips the slew code. DN2 0x40137932: `moveq 6,D2; cmp.l D3,D2; bne 0x40137962`. Dead where the stock fall-through (0x40137938) continues: D0, D2, D3, A1, A6 and N Z V C; at 0x40137962: D2, D3, A6 and the flags.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.read_slew",
+      "regs": {
+        "clobbers": [
+          "d2",
+          "ccr"
+        ],
+        "in": [
+          "d3",
+          "a4"
+        ]
+      },
+      "site": "cf.lfo.site.read_slew",
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137556"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137836"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013944e"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The second reader, the compare of D3 with 6 that gives RAND a start phase of 0 (interrupt context). exit.1 is the clear. DT2 0x4013944e: `moveq 6,D2; cmp.l D3,D2; beq 0x4013946a`. Dead at the clear (0x4013946a): D2, D6 and N Z V C; at the SPH phase code (0x40139454): D0, D2, D6 and N Z V C.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.read_start",
+      "regs": {
+        "clobbers": [
+          "d2",
+          "ccr"
+        ],
+        "in": [
+          "d3",
+          "a4"
+        ]
+      },
+      "site": "cf.lfo.site.read_start",
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137556"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137836"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013944e"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dn2"
+      ],
+      "doc": "The second reader, the compare of D3 with 6 that gives RAND a start phase of 0 (interrupt context). exit.1 is the clear. DN2 0x40137836: `moveq 6,D2; cmp.l D3,D2; beq 0x40137852`. Dead at the clear (0x40137852): D2, D6 and N Z V C; at the SPH phase code (0x4013783c): D0, D2, D6 and N Z V C.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.read_start",
+      "regs": {
+        "clobbers": [
+          "d2",
+          "ccr"
+        ],
+        "in": [
+          "d3",
+          "a4"
+        ]
+      },
+      "site": "cf.lfo.site.read_start",
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x400dbff0"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x400dc154"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x400da368"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2",
+        "dn2"
+      ],
+      "doc": "The T1 range accessor (the stock code has 172 callers on DT2, 191 on DN2; the hook does not run in interrupt context: it reads the status register first and runs the stock code when the interrupt mask is not 0): for the codes 79, 89 and 99 with a loaded shape the hook calls the stock accessor (`dk_stock_`), then raises the maximum in the buffer to the highest loaded wave number << 8 (finding 149, section Callers of the T1 range accessor: no caller scales a value onto 0..max; the clamps that MIDI CC and NRPN reach see the new maximum, a loaded shape is the only case that differs). Any other code runs the displaced `move.l D2,-(SP); move.l 8(SP),D1` and the stock code. Dead after the site (strict): D2 (written), D0 and D1 (written before use: only D0b is read before `mvs.b`), and the flags.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.t1_range",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "d1",
+          "ccr"
+        ],
+        "in": [
+          "a0"
+        ]
+      },
+      "site": "cf.lfo.site.t1_range",
+      "subsystem": "lfo",
+      "users": [
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x401379e6"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137cc6"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40139804"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The LFO tick, the compare of the clamped wave D3 with 6 before the call of the wave function table (interrupt context). exit.1 is the RAND code, exit.2 the code after the call (the result in d0); the end of the site is the table call of the stock waves. DT2 0x40139804: `moveq 6,D7; cmp.l D3,D7; beq 0x40139832`. Dead at the RAND code (0x40139832): D0 and the flags (strict); at the code after the call (0x4013989e): D2, D3, D5, D7 and the flags, D1 is live (the stock call path keeps it in its frame, the routine saves it); A0 and A1 are not proven dead there (strict), so the routine saves them too. The block is A3 (wave byte at 2(a3)).",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.tick_call",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "d2",
+          "ccr"
+        ],
+        "in": [
+          "d1",
+          "d2",
+          "d3",
+          "a3"
+        ]
+      },
+      "site": "cf.lfo.site.tick_call",
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x401379e6"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137cc6"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40139804"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dn2"
+      ],
+      "doc": "The LFO tick, the compare of the clamped wave D3 with 6 before the call of the wave function table (interrupt context). exit.1 is the RAND code, exit.2 the code after the call (the result in d0); the end of the site is the table call of the stock waves. DN2 0x40137cc6: `moveq 6,D0; cmp.l D3,D0; beq 0x40137cec`. Dead at the RAND code (0x40137cec): D0 and the flags; at the code after the call (0x40137d52): D1, D2 and the flags (the DN2 stock call path keeps no register in its frame, so the routine saves no D1); A0 and A1 are not proven dead there (strict), so the routine saves them. The block is A4 (wave byte at 0x4c(a4)).",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.tick_call",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "d1",
+          "d2",
+          "ccr"
+        ],
+        "in": [
+          "d2",
+          "d3",
+          "a4"
+        ]
+      },
+      "site": "cf.lfo.site.tick_call",
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137a3e"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137d1e"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013986c"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The LFO tick, the compare of D3 with 6 before the slew code of RAND (interrupt context). exit.1 skips the slew code; the end of the site is the slew code. DT2 0x4013986c: `moveq 6,D2; cmp.l D3,D2; bne 0x4013989e`. Dead where the stock fall-through (the slew code, 0x40139872) continues: D0, D2, D3, D5, D7, A0, A1 and N Z V C; at 0x4013989e: D2, D3, D5, D7 and the flags. D0 (the table result) and D1 are live.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.tick_slew",
+      "regs": {
+        "clobbers": [
+          "d2",
+          "ccr"
+        ],
+        "in": [
+          "d3",
+          "a3"
+        ]
+      },
+      "site": "cf.lfo.site.tick_slew",
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137a3e"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137d1e"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013986c"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dn2"
+      ],
+      "doc": "The LFO tick, the compare of D3 with 6 before the slew code of RAND (interrupt context). exit.1 skips the slew code; the end of the site is the slew code. DN2 0x40137d1e: `moveq 6,D1; cmp.l D3,D1; bne 0x40137d52`. Dead where the stock fall-through (the slew code, 0x40137d24) continues: D0, D1, D2, A0, A1 and N Z V C; at 0x40137d52: D1, D2 and the flags. D0 (the table result) is live.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.tick_slew",
+      "regs": {
+        "clobbers": [
+          "d1",
+          "ccr"
+        ],
+        "in": [
+          "d3",
+          "a4"
+        ]
+      },
+      "site": "cf.lfo.site.tick_slew",
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137960"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137c40"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013977e"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The LFO tick, the compare of D3 with 6 that gives RAND a start phase of 0 at a trigger (interrupt context). exit.1 is the clear; the end of the site is the SPH-based phase. DT2 0x4013977e: `moveq 6,D0; cmp.l D3,D0; beq 0x4013979a`. Dead at the clear (0x4013979a): D1, D2, D7 and N Z V C; at the SPH phase code (0x40139784): D0, D1, D2, D7 and N Z V C.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.tick_start",
+      "regs": {
+        "clobbers": [
+          "d2",
+          "ccr"
+        ],
+        "in": [
+          "d3",
+          "a3"
+        ]
+      },
+      "site": "cf.lfo.site.tick_start",
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137960"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137c40"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013977e"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dn2"
+      ],
+      "doc": "The LFO tick, the compare of D3 with 6 that gives RAND a start phase of 0 at a trigger (interrupt context). exit.1 is the clear; the end of the site is the SPH-based phase. DN2 0x40137c40: `moveq 6,D0; cmp.l D3,D0; beq 0x40137c5c`. Dead at the clear (0x40137c5c): D1, D2, D7 and N Z V C; at the SPH phase code (0x40137c46): D0, D1, D2, D7 and N Z V C.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.tick_start",
+      "regs": {
+        "clobbers": [
+          "d2",
+          "ccr"
+        ],
+        "in": [
+          "d3",
+          "a4"
+        ]
+      },
+      "site": "cf.lfo.site.tick_start",
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x400e34ac"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x400e3610"
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x400e1b68"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2",
+        "dn2"
+      ],
+      "doc": "The wave name formatter of the MOD page (UI task): `fmt(int value, char *buf)`, 4(SP) = value (wave << 8), 8(SP) = buf. For a value of 7 to 14 with a loaded shape the hook writes the shape's name and returns its length; otherwise it runs the displaced `link.w A6,-0x1c; moveq 6,D0` and continues at the end of the site. At the entry the flags are dead (strict liveness) and D0 is written by the displaced moveq.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.wave_name",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.lfo.site.wave_name",
+      "subsystem": "lfo",
+      "users": [
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x4000766c"
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x4000766c"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dn2"
+      ],
+      "doc": "The three-character wave name formatter of the Digitone II (UI task): as `wave_name`, with the first three characters of the shape's name.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.lfo.hook.wave_name3",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.lfo.site.wave_name3",
+      "subsystem": "lfo",
+      "users": [
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x4010ded0",
+            "len": 6
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x4010e1b0",
+            "len": 6
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4010c83c",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DT2 0x4010c83c, DN2 0x4010e1b0: the vector pick of the LFO page's cell: `addi.l #TABLE,D6` (D6 = 12 * the clamped wave) before `move.l D6,-(SP); jsr (A5)`. TABLE is the RAM table of seven tile vectors (DT2 0x44d2e37c, DN2 0x44508b68).",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.graph_vec",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 590
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 590
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x401375e4",
+            "len": 6
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x401378c4",
+            "len": 6
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x401394dc",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DT2 0x401394dc, DN2 0x401378c4: the second reader of the LFO tables (the look-ahead of FUN_401392d4 on DT2, FUN_401376bc on DN2): the compare of D3 with 6 before the function table call.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.read_call",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 520
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 520
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137682",
+            "len": 2
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137962",
+            "len": 2
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013957a",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DT2 0x4013957a, DN2 0x40137962: the second reader after the function call (the target of the bne at `read_slew`).",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.read_done",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 678
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 678
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x4013761a",
+            "len": 2
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x401378fa",
+            "len": 2
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40139512",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DT2 0x40139512, DN2 0x401378fa: the RAND code of the second reader (the target of the beq at `read_call`).",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.read_rand",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 574
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 574
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137652",
+            "len": 6
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137932",
+            "len": 6
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013954a",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DT2 0x4013954a, DN2 0x40137932: the second reader: the compare of D3 with 6 before the slew code.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.read_slew",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 630
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 630
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137556",
+            "len": 6
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137836",
+            "len": 6
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013944e",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DT2 0x4013944e, DN2 0x40137836: the second reader: the compare of D3 with 6 that gives RAND a start phase of 0.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.read_start",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 378
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 378
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137572",
+            "len": 2
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137852",
+            "len": 2
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013946a",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DT2 0x4013946a, DN2 0x40137852: the second reader: the clear of the start phase for RAND (the target of the beq at `read_start`).",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.read_start_rand",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 406
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 406
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x400dbff0",
+            "len": 6
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x400dc154",
+            "len": 6
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x400da368",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DT2 0x400da368, DN2 0x400dc154: the entry of the T1 range accessor (A0 = a 12-byte buffer, 4(SP) = the parameter code): it copies {min, max, default} of the code's T1 row (row + 8) to the buffer and returns it in d0. `move.l D2,-(SP); move.l 8(SP),D1` (6 bytes). 172 callers on DT2 (171 in the Ghidra database, one more found by refscan at 0x400c81be), 191 on DN2; the live-set clamp FUN_4003b570 is one of them.",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.t1_range",
+      "rule": {
+        "dn2": {
+          "kind": "cf_words",
+          "len": 6,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_words",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x401379e6",
+            "len": 6
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137cc6",
+            "len": 6
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40139804",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DT2 0x40139804, DN2 0x40137cc6: the LFO tick: `moveq 6,Dn; cmp.l D3,Dn; beq` before the wave function table call (D3 is the wave clamped to 0..6; the beq goes to the RAND code).",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.tick_call",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 704
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 486
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137a72",
+            "len": 2
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137d52",
+            "len": 2
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013989e",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DT2 0x4013989e, DN2 0x40137d52: the LFO tick after the wave function call: the result is in d0 (DN2: the store of d0).",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.tick_done",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 844
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 640
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137a0c",
+            "len": 2
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137cec",
+            "len": 2
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x40139832",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DT2 0x40139832, DN2 0x40137cec: the RAND code of the LFO tick (the target of the beq at `tick_call`).",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.tick_rand",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 742
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 532
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137a3e",
+            "len": 6
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137d1e",
+            "len": 6
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013986c",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DT2 0x4013986c, DN2 0x40137d1e: the LFO tick: `moveq 6,Dn; cmp.l D3,Dn; bne` before the slew code of RAND (the bne skips it).",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.tick_slew",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 792
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 590
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x40137960",
+            "len": 6
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137c40",
+            "len": 6
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013977e",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DT2 0x4013977e, DN2 0x40137c40: the LFO tick: `moveq 6,Dn; cmp.l D3,Dn; beq` that gives RAND a start phase of 0 at a trigger (the beq goes to the clear).",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.tick_start",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 570
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 352
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x4013797c",
+            "len": 2
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x40137c5c",
+            "len": 2
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4013979a",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DT2 0x4013979a, DN2 0x40137c5c: the LFO tick: the clear of the start phase for RAND (the target of the beq at `tick_start`).",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.tick_start_rand",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 598
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 380
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/lfo",
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x400e34ac",
+            "len": 6
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x400e3610",
+            "len": 6
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x400e1b68",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DT2 0x400e1b68, DN2 0x400e3610: the entry of the wave name formatter `fmt(int value, char *buf)` (the four-character names of the seven stock waves; DN2 also has `wave_name3`): `link.w A6,-0x1c; moveq 6,D0` (6 bytes), then `value >> 8` against 6 (unsigned) and the sprintf of the name table, or of \"ERR\".",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.wave_name",
+      "rule": {
+        "dn2": {
+          "kind": "cf_words",
+          "len": 6,
+          "offset": 0
+        },
+        "dt2": {
+          "kind": "cf_words",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/services/lfo"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dn2-1.11": [
+          {
+            "addr": "0x4000766c",
+            "len": 6
+          }
+        ],
+        "dn2-1.12": [
+          {
+            "addr": "0x4000766c",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "doc": "DN2 0x4000766c: the entry of the second wave name formatter of the Digitone II, the three-character names (TRI SIN SQR SAW EXP RMP RND): `link.w A6,-0x1c; moveq 6,D0` (6 bytes).",
+      "file": "devices/fw/lfo.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.lfo.site.wave_name3",
+      "rule": {
+        "dn2": {
+          "kind": "cf_words",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "lfo",
+      "users": [
+        "core/services/lfo"
+      ],
+      "was": []
     },
     {
       "at": {
@@ -4177,6 +5736,12 @@
             "addr": "0x4011eb5a",
             "len": 2
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x401038d6",
+            "len": 2
+          }
         ]
       },
       "bindings": {
@@ -4198,6 +5763,12 @@
         "dt2": {
           "kind": "cf_func",
           "len": 2,
+          "offset": 0
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 2,
+          "mark": "D",
           "offset": 0
         }
       },
@@ -4230,6 +5801,12 @@
             "addr": "0x4011e954",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x401036d0",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -4249,6 +5826,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -4285,6 +5867,12 @@
             "addr": "0x4011e972",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x401036ee",
+            "len": 4
+          }
         ]
       },
       "cpu": "cf",
@@ -4300,6 +5888,11 @@
           "offset": 30
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 30
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 30
@@ -4333,6 +5926,12 @@
             "addr": "0x4011e968",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x401036e4",
+            "len": 4
+          }
         ]
       },
       "cpu": "cf",
@@ -4348,6 +5947,11 @@
           "offset": 20
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 20
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 20
@@ -4381,6 +5985,12 @@
             "addr": "0x4011e962",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x401036de",
+            "len": 4
+          }
         ]
       },
       "cpu": "cf",
@@ -4396,6 +6006,11 @@
           "offset": 14
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 14
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 14
@@ -4429,6 +6044,12 @@
             "addr": "0x4011e9e6",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40103762",
+            "len": 4
+          }
         ]
       },
       "cpu": "cf",
@@ -4444,6 +6065,11 @@
           "offset": 146
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 146
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 146
@@ -4477,6 +6103,12 @@
             "addr": "0x4021cbf0",
             "len": 156
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40240b54",
+            "len": 156
+          }
         ]
       },
       "bindings": {
@@ -4496,6 +6128,11 @@
           "offset": 104
         },
         "dt2": {
+          "kind": "cf_ptr",
+          "len": 156,
+          "offset": 104
+        },
+        "st": {
           "kind": "cf_ptr",
           "len": 156,
           "offset": 104
@@ -4526,6 +6163,12 @@
             "addr": "0x4021d1b0",
             "len": 172
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40241114",
+            "len": 172
+          }
         ]
       },
       "bindings": {
@@ -4545,6 +6188,11 @@
           "offset": 88
         },
         "dt2": {
+          "kind": "cf_ptr",
+          "len": 172,
+          "offset": 88
+        },
+        "st": {
           "kind": "cf_ptr",
           "len": 172,
           "offset": 88
@@ -4575,6 +6223,12 @@
             "addr": "0x4011527a",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400fa082",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -4594,6 +6248,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -4625,6 +6284,12 @@
             "addr": "0x40115520",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400fa328",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -4644,6 +6309,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -4675,6 +6345,12 @@
             "addr": "0x40114d1a",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f9b22",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -4694,6 +6370,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -4725,6 +6406,12 @@
             "addr": "0x40114d4c",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f9b54",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -4744,6 +6431,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -4775,6 +6467,12 @@
             "addr": "0x4011539c",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400fa1a4",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -4794,6 +6492,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -4825,6 +6528,12 @@
             "addr": "0x40110624",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f53e0",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -4844,6 +6553,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -4925,6 +6639,12 @@
             "addr": "0x40114d34",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f9b3c",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -4944,6 +6664,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -4975,6 +6700,12 @@
             "addr": "0x40114d6c",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f9b74",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -4994,6 +6725,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -5025,6 +6761,12 @@
             "addr": "0x40115b90",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400fa998",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -5044,6 +6786,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -5075,6 +6822,12 @@
             "addr": "0x40115a44",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400fa84c",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -5094,6 +6847,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -5125,6 +6883,12 @@
             "addr": "0x4011077c",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f5538",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -5144,6 +6908,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -5175,6 +6944,12 @@
             "addr": "0x40110760",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f551c",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -5194,6 +6969,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -5225,6 +7005,12 @@
             "addr": "0x40115f7a",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400fad82",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -5244,6 +7030,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -5275,6 +7066,12 @@
             "addr": "0x40115f30",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400fad38",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -5294,6 +7091,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -5325,6 +7127,12 @@
             "addr": "0x4011547c",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400fa284",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -5344,6 +7152,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -5375,6 +7188,12 @@
             "addr": "0x4011083c",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f55f8",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -5394,6 +7213,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -5425,6 +7249,12 @@
             "addr": "0x401108f0",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f56ac",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -5444,6 +7274,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -5475,6 +7310,12 @@
             "addr": "0x40114df8",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f9c00",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -5494,6 +7335,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -5525,6 +7371,12 @@
             "addr": "0x401153cc",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400fa1d4",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -5544,6 +7396,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -5575,6 +7432,12 @@
             "addr": "0x40119f6c",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400fed6c",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -5596,6 +7459,12 @@
         "dt2": {
           "kind": "cf_func",
           "len": 4,
+          "offset": 0
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 4,
+          "mark": "O",
           "offset": 0
         }
       },
@@ -5624,6 +7493,11 @@
           {
             "addr": "0x400a5eac"
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4005f176"
+          }
         ]
       },
       "bindings": {
@@ -5634,7 +7508,8 @@
       "cpu": "cf",
       "devices": [
         "dt2",
-        "dn2"
+        "dn2",
+        "st"
       ],
       "doc": "Last step of the SETTINGS item list rebuild, before the selection is restored (a2 = the settings menu); the hook point for adding an item.",
       "file": "devices/fw/menu.toml",
@@ -5685,6 +7560,12 @@
             "addr": "0x400a5e86",
             "len": 6
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4005f150",
+            "len": 6
+          }
         ]
       },
       "bind": "static",
@@ -5708,6 +7589,12 @@
           "kind": "cf_func",
           "len": 6,
           "offset": 898
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 6,
+          "mark": "D",
+          "offset": 990
         }
       },
       "subsystem": "menu",
@@ -5738,6 +7625,12 @@
             "addr": "0x400a5eac",
             "len": 8
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4005f176",
+            "len": 8
+          }
         ]
       },
       "cpu": "cf",
@@ -5756,6 +7649,12 @@
           "kind": "cf_func",
           "len": 8,
           "offset": 936
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 8,
+          "mark": "D",
+          "offset": 1028
         }
       },
       "subsystem": "menu",
@@ -5766,6 +7665,62 @@
         "cf.menu.settings_tail",
         "cf.menu.site.settings_tail"
       ]
+    },
+    {
+      "at": {
+        "dn2-1.12": [
+          {
+            "addr": "0x4011b996",
+            "len": 6
+          }
+        ],
+        "dt2-1.17": [
+          {
+            "addr": "0x4011a022",
+            "len": 6
+          }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400fee10",
+            "len": 6
+          }
+        ]
+      },
+      "bind": "static",
+      "bindings": {
+        "c": "dk_fw_menu_vertical_menu_view_ctor_font_ref",
+        "rust": "dkfw::menu::VERTICAL_MENU_VIEW_CTOR_FONT_REF"
+      },
+      "cpu": "cf",
+      "doc": "The `move.l #font,d0` instruction (6 bytes of code) in the VerticalMenuView constructor: its operand is the address of the font object that the constructor stores twice in the view. The field offset is not the same in every firmware, so a module reads the font from this literal, not from a fixed offset.",
+      "file": "devices/fw/menu.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.menu.site.vertical_menu_view_ctor.font_ref",
+      "rule": {
+        "dn2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 182
+        },
+        "dt2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 182
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 6,
+          "mark": "D",
+          "offset": 164
+        }
+      },
+      "subsystem": "menu",
+      "users": [
+        "core/ui"
+      ],
+      "was": []
     },
     {
       "bindings": {
@@ -6046,6 +8001,12 @@
             "addr": "0x40121adc",
             "len": 2
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40106728",
+            "len": 2
+          }
         ]
       },
       "bindings": {
@@ -6065,6 +8026,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 2,
           "offset": 0
@@ -6126,13 +8092,14 @@
           {
             "addr": "0x4011f1e2"
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40103f5e"
+          }
         ]
       },
       "cpu": "cf",
-      "devices": [
-        "dt2",
-        "dn2"
-      ],
       "doc": "The MIDI task's router call for a gathered USB SysEx message (`jsr (A0)`, arguments on the stack); the hook can consume the message and continue after the call.",
       "file": "devices/fw/midi.toml",
       "kind": "hook",
@@ -6202,6 +8169,12 @@
             "addr": "0x40120bce",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4010586a",
+            "len": 4
+          }
         ]
       },
       "bind": "static",
@@ -6222,6 +8195,11 @@
           "offset": 2
         },
         "dt2": {
+          "kind": "cf_words",
+          "len": 4,
+          "offset": 2
+        },
+        "st": {
           "kind": "cf_words",
           "len": 4,
           "offset": 2
@@ -6252,6 +8230,12 @@
             "addr": "0x4011f1e2",
             "len": 6
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40103f5e",
+            "len": 6
+          }
         ]
       },
       "cpu": "cf",
@@ -6267,6 +8251,11 @@
           "offset": 2
         },
         "dt2": {
+          "kind": "cf_words",
+          "len": 6,
+          "offset": 2
+        },
+        "st": {
           "kind": "cf_words",
           "len": 6,
           "offset": 2
@@ -6299,6 +8288,12 @@
             "addr": "0x40004776",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40004a62",
+            "len": 4
+          }
         ]
       },
       "bind": "static",
@@ -6319,6 +8314,11 @@
           "offset": 66
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 66
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 66
@@ -6588,6 +8588,12 @@
             "addr": "0x40035cca",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4000f04c",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -6595,10 +8601,6 @@
         "rust": "dkfw::page::native_track_sound"
       },
       "cpu": "cf",
-      "devices": [
-        "dt2",
-        "dn2"
-      ],
       "doc": "`Sound *f(Kit *, int track)`: the Sound value object of a track (track clamped to 0..15; kit + 0x6c + 0x3c0 * track). DN2 uses it with the source view's sounds reference (view+0x78) in its draw and parameter mapper; core/runtime uses it with the active kit. Its vtable slot 0x28 returns the sound record, whose s16 parameter words start at +0x14. DT2 1.17 0x40035cca, DN2 1.12 0x40030e66.",
       "file": "devices/fw/page.toml",
       "kind": "fn",
@@ -6613,6 +8615,12 @@
         "dt2": {
           "kind": "cf_func",
           "len": 4,
+          "offset": 0
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 4,
+          "mark": "O",
           "offset": 0
         }
       },
@@ -6891,6 +8899,12 @@
             "addr": "0x4004abb8",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4001ff74",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -6910,6 +8924,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -10249,6 +12268,10 @@
         "rust": "dkfw::param::DESCRIPTOR_TABLE_MASTER_SIDECHAIN_FILTER"
       },
       "cpu": "cf",
+      "devices": [
+        "dt2",
+        "dn2"
+      ],
       "doc": "The descriptor row (60 bytes) of that parameter: mirror index 66, range 0..0x7f00, default 0x5000.",
       "file": "devices/fw/param.toml",
       "kind": "data",
@@ -10288,6 +12311,12 @@
             "addr": "0x4003b570",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40012b6e",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -10309,6 +12338,12 @@
         "dt2": {
           "kind": "cf_func",
           "len": 4,
+          "offset": 0
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 4,
+          "mark": "O",
           "offset": 0
         }
       },
@@ -12116,6 +14151,12 @@
             "addr": "0x40041d24",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40018464",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -12123,10 +14164,6 @@
         "rust": "dkfw::project::active_kit"
       },
       "cpu": "cf",
-      "devices": [
-        "dt2",
-        "dn2"
-      ],
       "doc": "`Kit *f(Project *)`: the active kit of a project. core/runtime uses it with the project singleton and track_type to watch each track's machine type.",
       "file": "devices/fw/project.toml",
       "kind": "fn",
@@ -12141,6 +14178,12 @@
         "dt2": {
           "kind": "cf_func",
           "len": 4,
+          "offset": 0
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 4,
+          "mark": "O",
           "offset": 0
         }
       },
@@ -12173,6 +14216,12 @@
             "addr": "0x40030c9c",
             "len": 2
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40008598",
+            "len": 2
+          }
         ]
       },
       "bindings": {
@@ -12192,6 +14241,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 2,
           "offset": 0
@@ -12225,6 +14279,12 @@
             "addr": "0x40041d18",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40018458",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -12232,10 +14292,6 @@
         "rust": "dkfw::project::settings"
       },
       "cpu": "cf",
-      "devices": [
-        "dt2",
-        "dn2"
-      ],
       "doc": "`ProjectSettings *f(Project *)`: project + 0x30. Pass it to `cf.page.fn.view_track` to get the selected track.",
       "file": "devices/fw/project.toml",
       "kind": "fn",
@@ -12250,6 +14306,12 @@
         "dt2": {
           "kind": "cf_func",
           "len": 4,
+          "offset": 0
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 4,
+          "mark": "O",
           "offset": 0
         }
       },
@@ -12279,6 +14341,12 @@
             "addr": "0x40198b7e",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4016e9c8",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -12300,6 +14368,12 @@
         "dt2": {
           "kind": "cf_func",
           "len": 4,
+          "offset": 0
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 4,
+          "mark": "O",
           "offset": 0
         }
       },
@@ -12332,6 +14406,12 @@
             "addr": "0x40036266",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4000f692",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -12353,6 +14433,12 @@
         "dt2": {
           "kind": "cf_func",
           "len": 4,
+          "offset": 0
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 4,
+          "mark": "O",
           "offset": 0
         }
       },
@@ -12446,6 +14532,12 @@
             "addr": "0x4003324e",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4000a658",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -12468,6 +14560,12 @@
           "kind": "cf_ptr",
           "len": 4,
           "offset": 1156
+        },
+        "st": {
+          "kind": "cf_ptr",
+          "len": 4,
+          "mark": "D",
+          "offset": 800
         }
       },
       "subsystem": "rtos",
@@ -12569,6 +14667,12 @@
             "addr": "0x40001928",
             "len": 2
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40001ca0",
+            "len": 2
+          }
         ]
       },
       "bindings": {
@@ -12588,6 +14692,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 2,
           "offset": 0
@@ -12620,6 +14729,12 @@
             "addr": "0x4000053e",
             "len": 8
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4000053e",
+            "len": 8
+          }
         ]
       },
       "bindings": {
@@ -12637,6 +14752,9 @@
           "kind": "cf_reset_init_calls"
         },
         "dt2": {
+          "kind": "cf_reset_init_calls"
+        },
+        "st": {
           "kind": "cf_reset_init_calls"
         }
       },
@@ -12668,6 +14786,12 @@
             "addr": "0x40001398",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40001710",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -12687,6 +14811,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -12718,6 +14847,12 @@
             "addr": "0x4000141a",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40001792",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -12737,6 +14872,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -12768,6 +14908,12 @@
             "addr": "0x4000155c",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400018d4",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -12787,6 +14933,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -12818,6 +14969,12 @@
             "addr": "0x40136544",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x401162f8",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -12837,6 +14994,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -12869,6 +15031,12 @@
             "addr": "0x400012c8",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40001640",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -12888,6 +15056,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -12919,6 +15092,12 @@
             "addr": "0x40001314",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4000168c",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -12938,6 +15117,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -12997,12 +15181,18 @@
           {
             "addr": "0x400cce4a"
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40082896"
+          }
         ]
       },
       "cpu": "cf",
       "devices": [
         "dt2",
-        "dn2"
+        "dn2",
+        "st"
       ],
       "doc": "The boot thread's last call (create the main-OS task), after which the thread idles; the hook makes that call itself and then counts idle iterations forever.",
       "file": "devices/fw/rtos.toml",
@@ -13037,12 +15227,18 @@
           {
             "addr": "0x400d183a"
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40087d0a"
+          }
         ]
       },
       "cpu": "cf",
       "devices": [
         "dt2",
-        "dn2"
+        "dn2",
+        "st"
       ],
       "doc": "The intro setup function, before it reads its scene table argument from (0x24,sp); a hook that writes another table pointer there changes the whole intro.",
       "file": "devices/fw/rtos.toml",
@@ -13081,6 +15277,11 @@
           {
             "addr": "0x400337ba"
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4000abd6"
+          }
         ]
       },
       "bindings": {
@@ -13089,10 +15290,6 @@
         "rust": "dkfw::rtos::MainOsTaskHook"
       },
       "cpu": "cf",
-      "devices": [
-        "dt2",
-        "dn2"
-      ],
       "doc": "Entry of the main-OS task, before the task builds its singletons; the hook point for boot-time module loading.",
       "file": "devices/fw/rtos.toml",
       "handler": {
@@ -13167,6 +15364,12 @@
             "addr": "0x40001266",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400015de",
+            "len": 4
+          }
         ]
       },
       "bind": "static",
@@ -13187,6 +15390,11 @@
           "offset": 18
         },
         "dt2": {
+          "kind": "cf_words",
+          "len": 4,
+          "offset": 18
+        },
+        "st": {
           "kind": "cf_words",
           "len": 4,
           "offset": 18
@@ -13219,6 +15427,12 @@
             "addr": "0x400cce4a",
             "len": 6
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40082896",
+            "len": 6
+          }
         ]
       },
       "cpu": "cf",
@@ -13237,6 +15451,12 @@
           "kind": "cf_func",
           "len": 6,
           "offset": 1154
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 6,
+          "mark": "D",
+          "offset": 798
         }
       },
       "subsystem": "rtos",
@@ -13266,6 +15486,12 @@
             "addr": "0x400d183a",
             "len": 6
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40087d0a",
+            "len": 6
+          }
         ]
       },
       "cpu": "cf",
@@ -13281,6 +15507,11 @@
           "offset": 8
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 8
+        },
+        "st": {
           "kind": "cf_func",
           "len": 6,
           "offset": 8
@@ -13311,6 +15542,12 @@
             "addr": "0x400337ba",
             "len": 8
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4000abd6",
+            "len": 8
+          }
         ]
       },
       "cpu": "cf",
@@ -13329,6 +15566,12 @@
           "kind": "cf_words",
           "len": 8,
           "offset": 2
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 8,
+          "mark": "D",
+          "offset": 0
         }
       },
       "subsystem": "rtos",
@@ -13359,6 +15602,12 @@
             "addr": "0x47db3f64",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x454e49a8",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -13378,6 +15627,11 @@
           "offset": 20
         },
         "dt2": {
+          "kind": "cf_literal",
+          "len": 4,
+          "offset": 20
+        },
+        "st": {
           "kind": "cf_literal",
           "len": 4,
           "offset": 20
@@ -13408,6 +15662,12 @@
             "addr": "0x43153a00",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x43bc9b34",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -13427,6 +15687,11 @@
           "offset": 116
         },
         "dt2": {
+          "kind": "cf_literal",
+          "len": 4,
+          "offset": 116
+        },
+        "st": {
           "kind": "cf_literal",
           "len": 4,
           "offset": 116
@@ -13457,6 +15722,12 @@
             "addr": "0x400004b2",
             "len": 8
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400004b2",
+            "len": 8
+          }
         ]
       },
       "bindings": {
@@ -13474,6 +15745,9 @@
           "kind": "cf_reset_helper"
         },
         "dt2": {
+          "kind": "cf_reset_helper"
+        },
+        "st": {
           "kind": "cf_reset_helper"
         }
       },
@@ -13505,6 +15779,12 @@
             "addr": "0x4000045c",
             "len": 8
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4000045c",
+            "len": 8
+          }
         ]
       },
       "bindings": {
@@ -13522,6 +15802,9 @@
           "kind": "cf_reset_helper"
         },
         "dt2": {
+          "kind": "cf_reset_helper"
+        },
+        "st": {
           "kind": "cf_reset_helper"
         }
       },
@@ -13877,6 +16160,12 @@
             "addr": "0x4012e1b6",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4010f612",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -13896,6 +16185,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -13933,6 +16227,12 @@
             "addr": "0x4012e39c",
             "len": 2
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4010f7f8",
+            "len": 2
+          }
         ]
       },
       "bindings": {
@@ -13952,6 +16252,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 2,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 2,
           "offset": 0
@@ -13987,6 +16292,12 @@
             "addr": "0x400f05ae",
             "len": 2
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400bd570",
+            "len": 2
+          }
         ]
       },
       "bindings": {
@@ -14008,6 +16319,12 @@
         "dt2": {
           "kind": "cf_func",
           "len": 2,
+          "offset": 0
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 2,
+          "mark": "O",
           "offset": 0
         }
       },
@@ -14945,6 +17262,11 @@
           {
             "addr": "0x4012e1d8"
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4010f634"
+          }
         ]
       },
       "cpu": "cf",
@@ -14990,6 +17312,11 @@
           {
             "addr": "0x4012e1ca"
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4010f626"
+          }
         ]
       },
       "cpu": "cf",
@@ -15032,6 +17359,11 @@
         "dt2-1.17": [
           {
             "addr": "0x4012e3be"
+          }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4010f81a"
           }
         ]
       },
@@ -15077,6 +17409,11 @@
         "dt2-1.17": [
           {
             "addr": "0x4012e3b0"
+          }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4010f80c"
           }
         ]
       },
@@ -15220,6 +17557,12 @@
             "addr": "0x4012e1d8",
             "len": 12
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4010f634",
+            "len": 12
+          }
         ]
       },
       "cpu": "cf",
@@ -15235,6 +17578,11 @@
           "offset": 34
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 12,
+          "offset": 34
+        },
+        "st": {
           "kind": "cf_func",
           "len": 12,
           "offset": 34
@@ -15265,6 +17613,12 @@
             "addr": "0x4012e1ca",
             "len": 6
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4010f626",
+            "len": 6
+          }
         ]
       },
       "cpu": "cf",
@@ -15280,6 +17634,11 @@
           "offset": 20
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 20
+        },
+        "st": {
           "kind": "cf_func",
           "len": 6,
           "offset": 20
@@ -15310,6 +17669,12 @@
             "addr": "0x4012e3be",
             "len": 12
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4010f81a",
+            "len": 12
+          }
         ]
       },
       "cpu": "cf",
@@ -15325,6 +17690,11 @@
           "offset": 34
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 12,
+          "offset": 34
+        },
+        "st": {
           "kind": "cf_func",
           "len": 12,
           "offset": 34
@@ -15355,6 +17725,12 @@
             "addr": "0x4012e3b0",
             "len": 6
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4010f80c",
+            "len": 6
+          }
         ]
       },
       "cpu": "cf",
@@ -15370,6 +17746,11 @@
           "offset": 20
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 6,
+          "offset": 20
+        },
+        "st": {
           "kind": "cf_func",
           "len": 6,
           "offset": 20
@@ -15709,6 +18090,12 @@
             "addr": "0x4011a0ba",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400feea8",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -15730,6 +18117,12 @@
         "dt2": {
           "kind": "cf_func",
           "len": 4,
+          "offset": 0
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 4,
+          "mark": "D",
           "offset": 0
         }
       },
@@ -15768,6 +18161,10 @@
         "rust": "dkfw::string::shared_ptr_move"
       },
       "cpu": "cf",
+      "devices": [
+        "dt2",
+        "dn2"
+      ],
       "doc": "Moves a `shared_ptr` from `src` to `dst`. core/digikit-menu uses it when it pushes a popup view.",
       "file": "devices/fw/string.toml",
       "kind": "fn",
@@ -15814,6 +18211,12 @@
             "addr": "0x40197d26",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4016dfac",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -15836,6 +18239,12 @@
           "kind": "cf_ptr",
           "len": 4,
           "offset": 88
+        },
+        "st": {
+          "kind": "cf_ptr",
+          "len": 4,
+          "mark": "D",
+          "offset": 128
         }
       },
       "sig": "void (u32 *ctl)",
@@ -15867,6 +18276,12 @@
             "addr": "0x40197ce0",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4016dc10",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -15886,6 +18301,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -15917,6 +18337,12 @@
             "addr": "0x401e7570",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x401bea14",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -15936,6 +18362,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -15967,6 +18398,12 @@
             "addr": "0x401e7e7a",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x401bf31e",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -15986,6 +18423,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -16020,6 +18462,12 @@
             "addr": "0x401e63ca",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x401bd86e",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -16039,6 +18487,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -16205,6 +18658,12 @@
             "addr": "0x40113d60",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f8b68",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -16224,6 +18683,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -16255,6 +18719,12 @@
             "addr": "0x40113fd4",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f8ddc",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -16274,6 +18744,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -16305,6 +18780,12 @@
             "addr": "0x40113dc8",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f8bd0",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -16324,6 +18805,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -16355,6 +18841,12 @@
             "addr": "0x4029ef80",
             "len": 280
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4029a808",
+            "len": 280
+          }
         ]
       },
       "bindings": {
@@ -16374,6 +18866,11 @@
           "offset": 34
         },
         "dt2": {
+          "kind": "cf_ptr",
+          "len": 280,
+          "offset": 34
+        },
+        "st": {
           "kind": "cf_ptr",
           "len": 280,
           "offset": 34
@@ -16411,6 +18908,10 @@
         "rust": "dkfw::usb::cancel_ep"
       },
       "cpu": "cf",
+      "devices": [
+        "dt2",
+        "dn2"
+      ],
       "doc": "Cancel and free every transfer descriptor queued on endpoint queue `index` (`FUN_400059aa`, 0x400059aa); each one's cancel callback (+0x28) is called.",
       "file": "devices/fw/usb.toml",
       "kind": "fn",
@@ -16461,6 +18962,10 @@
         "rust": "dkfw::usb::connect"
       },
       "cpu": "cf",
+      "devices": [
+        "dt2",
+        "dn2"
+      ],
       "doc": "The connect body of the USB MIDI port (`FUN_400043e2`, 0x400043e2): sets the EP1 queue heads, ENDPTCTRL1 and primes EP1 OUT.",
       "file": "devices/fw/usb.toml",
       "kind": "fn",
@@ -16504,6 +19009,12 @@
             "addr": "0x4000436e",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4000465a",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -16523,6 +19034,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -16561,6 +19077,10 @@
         "rust": "dkfw::usb::queue_td"
       },
       "cpu": "cf",
+      "devices": [
+        "dt2",
+        "dn2"
+      ],
       "doc": "Queue a transfer descriptor on endpoint queue `index` = endpoint + 4 * direction (IN = 1) and prime it (`FUN_40005a86`, 0x40005a86).",
       "file": "devices/fw/usb.toml",
       "kind": "fn",
@@ -16604,6 +19124,12 @@
             "addr": "0x40006bc6",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40006eb2",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -16623,6 +19149,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -16652,6 +19183,12 @@
         "dt2-1.17": [
           {
             "addr": "0x40006bac",
+            "len": 4
+          }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40006e98",
             "len": 4
           }
         ]
@@ -16676,6 +19213,11 @@
           "kind": "cf_func",
           "len": 4,
           "offset": 0
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
         }
       },
       "sig": "void ()",
@@ -16704,6 +19246,12 @@
             "addr": "0x40005764",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40005a50",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -16723,6 +19271,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -16809,6 +19362,10 @@
         ]
       },
       "cpu": "cf",
+      "devices": [
+        "dt2",
+        "dn2"
+      ],
       "doc": "The entry of the USB init `FUN_40006c52(port)` (0x40006c52 on DT2 1.17 and DN2 1.12), a 6-byte prologue `move.l d2,-(sp); move.l (4,sp),d2`. It runs at boot and again from the firmware tick after a controller reset.",
       "file": "devices/fw/usb.toml",
       "kind": "site",
@@ -16851,6 +19408,12 @@
             "addr": "0x40965a60",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x405d44a4",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -16870,6 +19433,11 @@
           "offset": 20
         },
         "dt2": {
+          "kind": "cf_literal",
+          "len": 4,
+          "offset": 20
+        },
+        "st": {
           "kind": "cf_literal",
           "len": 4,
           "offset": 20
@@ -16900,6 +19468,12 @@
             "addr": "0x40965a38",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x405d447c",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -16919,6 +19493,11 @@
           "offset": 10
         },
         "dt2": {
+          "kind": "cf_literal",
+          "len": 4,
+          "offset": 10
+        },
+        "st": {
           "kind": "cf_literal",
           "len": 4,
           "offset": 10
@@ -17141,6 +19720,12 @@
             "addr": "0x40198c24",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4016e044",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -17163,6 +19748,12 @@
           "kind": "cf_ptr",
           "len": 4,
           "offset": 70
+        },
+        "st": {
+          "kind": "cf_ptr",
+          "len": 4,
+          "mark": "O",
+          "offset": 98
         }
       },
       "sig": "u8 *()",
@@ -17194,6 +19785,12 @@
             "addr": "0x4011a592",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400ff292",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -17215,6 +19812,12 @@
         "dt2": {
           "kind": "cf_func",
           "len": 4,
+          "offset": 0
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 4,
+          "mark": "D",
           "offset": 0
         }
       },
@@ -17247,6 +19850,12 @@
             "addr": "0x40030a42",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40008392",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -17269,6 +19878,12 @@
           "kind": "cf_ptr",
           "len": 4,
           "offset": 78
+        },
+        "st": {
+          "kind": "cf_ptr",
+          "len": 4,
+          "mark": "D",
+          "offset": 106
         }
       },
       "sig": "u8 *(u8 *brain)",
@@ -17300,6 +19915,12 @@
             "addr": "0x4011b126",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400ffe22",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -17319,6 +19940,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -17359,6 +19985,10 @@
         "rust": "dkfw::view::shared_ptr_as_view"
       },
       "cpu": "cf",
+      "devices": [
+        "dt2",
+        "dn2"
+      ],
       "doc": "Converting copy `shared_ptr<View>(const shared_ptr<Derived> &)` for a class with its View sub-object at +0x38 (the Menu views): out.ptr = src.ptr + 0x38 (0 stays 0), out.ctl = src.ctl, and the use count of the control block is incremented. It does not make a new control block; a raw pointer cannot be wrapped with it. The caller releases `out` afterwards.",
       "file": "devices/fw/view.toml",
       "kind": "fn",
@@ -17402,6 +20032,12 @@
             "addr": "0x4011c08a",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x40100d86",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -17424,6 +20060,12 @@
           "kind": "cf_ptr",
           "len": 4,
           "offset": 96
+        },
+        "st": {
+          "kind": "cf_ptr",
+          "len": 4,
+          "mark": "D",
+          "offset": 118
         }
       },
       "sig": "u32 (u8 *mgr, const shared_ptr *sp, u32 exclusive)",
@@ -17455,6 +20097,12 @@
             "addr": "0x4011b22a",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400fff26",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -17474,6 +20122,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -17502,6 +20155,11 @@
           {
             "addr": "0x40033d06"
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4000b2d8"
+          }
         ]
       },
       "bindings": {
@@ -17510,10 +20168,6 @@
         "rust": "dkfw::view::UiLoopHook"
       },
       "cpu": "cf",
-      "devices": [
-        "dt2",
-        "dn2"
-      ],
       "doc": "The jsr at the top of the UI task's event loop that pops the next event; the hook point for the runtime's per-pass tick.",
       "file": "devices/fw/view.toml",
       "handler": {
@@ -17557,6 +20211,12 @@
             "addr": "0x40033d06",
             "len": 6
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4000b2d8",
+            "len": 6
+          }
         ]
       },
       "cpu": "cf",
@@ -17575,6 +20235,12 @@
           "kind": "cf_words",
           "len": 6,
           "offset": 6
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 6,
+          "mark": "D",
+          "offset": 1794
         }
       },
       "subsystem": "view",
@@ -17604,6 +20270,12 @@
             "addr": "0x40033d02",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4000b2d4",
+            "len": 4
+          }
         ]
       },
       "bind": "static",
@@ -17627,6 +20299,12 @@
           "kind": "cf_words",
           "len": 4,
           "offset": 2
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 4,
+          "mark": "D",
+          "offset": 1790
         }
       },
       "subsystem": "view",
@@ -17688,6 +20366,12 @@
             "addr": "0x4011139a",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400f6156",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -17707,6 +20391,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -17738,6 +20427,12 @@
             "addr": "0x40116b1e",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400fb916",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -17757,6 +20452,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -17795,6 +20495,10 @@
         "rust": "dkfw::window::popup_make"
       },
       "cpu": "cf",
+      "devices": [
+        "dt2",
+        "dn2"
+      ],
       "doc": "The firmware's `make_shared<PopupWindow>(const char *const &)`: `out` in a0, a reference to the message pointer on the stack. core/digikit-menu calls it through its dk_popup_make shim.",
       "file": "devices/fw/window.toml",
       "kind": "fn",
@@ -17839,6 +20543,12 @@
             "addr": "0x4005b23a",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400c347c",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -17858,6 +20568,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -17889,6 +20604,12 @@
             "addr": "0x4005b1e0",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x400c3422",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -17908,6 +20629,11 @@
           "offset": 0
         },
         "dt2": {
+          "kind": "cf_func",
+          "len": 4,
+          "offset": 0
+        },
+        "st": {
           "kind": "cf_func",
           "len": 4,
           "offset": 0
@@ -17939,6 +20665,12 @@
             "addr": "0x401998c0",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x4016ea6e",
+            "len": 4
+          }
         ]
       },
       "bindings": {
@@ -17960,6 +20692,12 @@
         "dt2": {
           "kind": "cf_func",
           "len": 4,
+          "offset": 0
+        },
+        "st": {
+          "kind": "cf_func",
+          "len": 4,
+          "mark": "D",
           "offset": 0
         }
       },
@@ -17989,6 +20727,12 @@
             "addr": "0x401ed3b0",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x401c2548",
+            "len": 4
+          }
         ]
       },
       "cpu": "cf",
@@ -18006,6 +20750,12 @@
         "dt2": {
           "kind": "cf_ptr",
           "len": 4,
+          "offset": 74
+        },
+        "st": {
+          "kind": "cf_ptr",
+          "len": 4,
+          "mark": "D",
           "offset": 74
         }
       },
@@ -18034,6 +20784,12 @@
             "addr": "0x40204fb4",
             "len": 4
           }
+        ],
+        "st-1.42": [
+          {
+            "addr": "0x401d1df4",
+            "len": 4
+          }
         ]
       },
       "cpu": "cf",
@@ -18051,6 +20807,12 @@
         "dt2": {
           "kind": "cf_ptr",
           "len": 4,
+          "offset": 250
+        },
+        "st": {
+          "kind": "cf_ptr",
+          "len": 4,
+          "mark": "O",
           "offset": 250
         }
       },
@@ -19200,6 +21962,11 @@
           "kind": "sharc_func",
           "len": 6,
           "offset": 244
+        },
+        "st": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 244
         }
       },
       "subsystem": "link",
@@ -19392,6 +22159,11 @@
           "kind": "sharc_func",
           "len": 6,
           "offset": 0
+        },
+        "st": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 0
         }
       },
       "subsystem": "master",
@@ -19490,6 +22262,11 @@
           "kind": "sharc_func",
           "len": 6,
           "offset": 348
+        },
+        "st": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 348
         }
       },
       "subsystem": "master",
@@ -19532,6 +22309,10 @@
           "offset": 15
         },
         "dt2": {
+          "kind": "sharc_literal",
+          "offset": 15
+        },
+        "st": {
           "kind": "sharc_literal",
           "offset": 15
         }
@@ -24003,6 +26784,11 @@
       "device": "dt2",
       "id": "dt2-1.17",
       "version": "1.17"
+    },
+    {
+      "device": "st",
+      "id": "st-1.42",
+      "version": "1.42"
     }
   ],
   "subsystems": [
@@ -24019,6 +26805,13 @@
       "file": "devices/fw/input.toml",
       "meaning": "key and encoder decoding",
       "name": "input"
+    },
+    {
+      "count": 32,
+      "cpu": "cf",
+      "file": "devices/fw/lfo.toml",
+      "meaning": "the LFO tick, its wave function table and the wave parameter readers",
+      "name": "lfo"
     },
     {
       "count": 13,
@@ -24042,7 +26835,7 @@
       "name": "mem"
     },
     {
-      "count": 30,
+      "count": 31,
       "cpu": "cf",
       "file": "devices/fw/menu.toml",
       "meaning": "Menu, MenuItem, menu views, the SETTINGS menu",

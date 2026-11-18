@@ -71,7 +71,7 @@ pub(crate) unsafe fn info() -> *const u32 {
     #[cfg(test)] { return crate::cleanup_tests::voice_info(); }
     #[cfg(not(test))] {
         let a = fn_addr(dyndsp_info);
-        if a == 0 {
+        if a == 0 || !crate::has_dsp() {
             return core::ptr::null();
         }
         let p = a as *const u32;
@@ -159,9 +159,9 @@ pub unsafe fn init_once() {
 
 // ---- the area ----------------------------------------------------------------------------------------------------------
 
-/// Bytes of the area (0: the image has no DSP loader).
+/// Bytes of the area (0: the image has no DSP loader, or the device has no DSP).
 pub unsafe fn area_bytes() -> u32 {
-    if info().is_null() {
+    if !crate::has_dsp() || info().is_null() {
         0
     } else {
         iw(I_AREA_BYTES)
@@ -487,6 +487,44 @@ pub(crate) unsafe fn unreserve(rec: usize) {
     d.mod_len[rec] = 0;
 }
 
+/// The byte address in the DSP area where the range of record `rec` starts (`reserve` has run for it).
+pub(crate) unsafe fn range_base(rec: usize) -> u32 {
+    iw(I_AREA) + ds().mod_off[rec]
+}
+
+/// The first byte of the area: the slot block of core/dsp-link lies directly below it, in the byte addresses of window 0.
+pub(crate) unsafe fn area_base() -> u32 {
+    iw(I_AREA)
+}
+
+/// The pc that a DSP entry has when the range of record `rec` is placed: `entry` is the byte offset of a text symbol in the file's DSP image (linked at the nominal base).
+pub(crate) unsafe fn placed_pc(rec: usize, entry: u32) -> u32 {
+    L2_SW_BASE + (range_base(rec) - L2_BYTE_BASE) / 2 + entry / 2
+}
+
+/// Take the load of record `rec` out of the queue behind the one in flight (its image buffer goes back to the arena). False when `rec` is not waiting. The load in
+/// flight is not touched here: the loader ends it through `fail_done`.
+pub(crate) unsafe fn dequeue(rec: usize) -> bool {
+    let d = ds();
+    let mut i = 0;
+    while i < d.nwait as usize {
+        if d.waiting[i].rec as usize == rec {
+            if d.waiting[i].send_buf != 0 {
+                arena::free(d.waiting[i].send_buf as *mut u8);
+            }
+            let mut k = i + 1;
+            while k < d.nwait as usize {
+                d.waiting[k - 1] = d.waiting[k];
+                k += 1;
+            }
+            d.nwait -= 1;
+            return true;
+        }
+        i += 1;
+    }
+    false
+}
+
 /// Undo a `reserve` that was never started (the CF side failed after it).
 pub unsafe fn cancel(rec: usize) {
     if retained() { return; }
@@ -548,6 +586,7 @@ pub(crate) unsafe fn start(p: Pending) {
     d.ticks = 0;
     d.step = 0;
     d.ticket = 0;
+    d.slot_run = 0;
     d.transfers += 1;
 }
 
@@ -604,11 +643,11 @@ pub(crate) unsafe fn loaded_done() {
 
 /// Advance the load in progress by what is ready now. Called once per UI-loop pass.
 pub unsafe fn step() -> Advance {
-    step_with(services())
+    step_with(services(), &mut |_| None)
 }
 
 /// `step` over a given list of services.
-pub(crate) unsafe fn step_with(l: ServiceTable) -> Advance {
+pub(crate) unsafe fn step_with(l: ServiceTable, slots: &mut dyn FnMut(usize) -> Option<Sequence>) -> Advance {
     // a V2 instrument transaction owns the DSP link (instrument.rs): legacy loads wait
     if crate::instrument::legacy_policy() == dkrt_sdk::instrument_coordinator::LegacyPolicy::Pause {
         return Advance::Pending;
@@ -688,6 +727,20 @@ pub(crate) unsafe fn step_with(l: ServiceTable) -> Advance {
                         }
                     }
                     if n == 0 {
+                        // a service file's DSP code is acknowledged and it has no more rows: its slots are written last, as one sequence (the DSP backend of the
+                        // installer): the stubs of the image take the stock path until then
+                        if d.slot_run == 0 {
+                            d.slot_run = 1;
+                            if let Some(seq) = slots(d.pending.rec as usize) {
+                                if let Some(t) = crate::link::lk().submit(Owner::Loader, &Stream::Sequence(seq)) {
+                                    d.ticket = t.id as u32;
+                                    d.row_steps = 0;
+                                    return Advance::Pending;
+                                }
+                                d.slot_run = 0;
+                                return Advance::Pending;
+                            }
+                        }
                         // every row is in: list the machine
                         return Advance::Loaded;
                     }
@@ -741,6 +794,6 @@ pub(super) unsafe fn cleanup_test_first_fit(len: u32, align: u32) -> Option<u32>
 /// Includes unpublished legacy reservations, not merely visible machines.
 pub unsafe fn type_is_free(t: u32) -> bool {
     let d = ds();
-    (TYPE_FIRST..=TYPE_LAST).contains(&t)
+    crate::dev::is_dyn_type(t)
         && !d.row_owner.iter().zip(d.row_type.iter()).any(|(&owner, &ty)| owner != 0 && ty == t)
 }

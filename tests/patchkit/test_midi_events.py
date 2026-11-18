@@ -855,7 +855,8 @@ def test_dsp_loader_enforces_each_optional_tail_boundary(
     }
     linked = pk_sharc.link(obj, 0xB90000, externs)
     n = capacity + int(oversize)
-    words = [0xD15C, (1 << 27) | (n << 17), *range(1, n + 1)]
+    # window 0, word 16: the area starts after the 16 words of the slot block
+    words = [0xD15C, (1 << 27) | (n << 17) | 16, *range(1, n + 1)]
     s1 = s2 = 0
     for value in words:
         s1 = (s1 + value) & 0xFFFFFFFF

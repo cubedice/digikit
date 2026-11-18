@@ -87,6 +87,9 @@ pub fn info() -> &'static mut DkrtBootInfo {
 #[no_mangle]
 pub unsafe extern "C" fn dkrt_boot() {
     crate::init_once();
+    if !crate::dev::valid() {
+        return; // a device object this runtime cannot read (a patch bug): load nothing, leave the firmware alone
+    }
     let b = info();
     if b.magic == INFO_MAGIC {
         return; // the constructor ran once already: a second call is a bug, not a second boot
@@ -293,6 +296,22 @@ pub unsafe fn report_dsp(idx: u32, r: i32) {
             }
         }
     }
+}
+
+/// Module `idx` of the selection was taken down because a service it needs failed (late teardown of a service whose DSP part failed): FAILED with `code`
+/// (`E_MISSING`), the count of loaded modules corrected, one `MOD_DSP` event like the end of a DSP part.
+pub unsafe fn report_taken_down(idx: u32, code: i32) {
+    if (idx as usize) < SEL_MAX {
+        let b = info();
+        let was_active = states().states[idx as usize] == dkrt_sdk::STATE_ACTIVE;
+        if states().taken_down(idx as usize) {
+            if was_active && b.loaded > 0 {
+                b.loaded -= 1;
+            }
+            b.results[idx as usize] = code;
+        }
+    }
+    dlog::ev(logk::MOD_DSP, logk::F_ERROR, [idx, code as u32, 0, 0, 0]);
 }
 
 pub unsafe fn boot_info(out: *mut DkrtBootInfo) {

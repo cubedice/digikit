@@ -15,12 +15,13 @@
 //! 1. the map has an entry for its hash and that number is not taken in this boot: use it (sticky; logged as rule 1);
 //! 2. else the lowest number that no map entry references and this boot has not given out; record the entry (rule 0);
 //! 3. else drop the lowest-index entry whose hash is not among this boot's machines (logged), take its number, record the entry (rule 0);
-//! 4. two machines with the same key in one boot: the second takes a fresh number and is not recorded.
+//!
+//! The keys of one boot are unique: the boot planner refuses a key that two modules provide or one module provides twice (`E_PLAN_KEY`), so the assignment has no rule for a repeat.
 use core::ptr::addr_of_mut;
 use dkrt_abi::core_api::{CoreApi, LOG_INFO};
 use dkrt_abi::service::SettleCtx;
 use dkrt_sdk::sel::MAP_N;
-use dkrt_sdk::sticky::{assign, clean, in_range, Event, MAX_KEYS};
+use dkrt_sdk::sticky::{assign, clean, in_range, Event, Range, MAX_KEYS};
 use dkrt_sdk::*;
 
 /// The settings key of the map: `MAP_N` words, big endian.
@@ -53,6 +54,17 @@ pub static mut DKRT_ASSIGN: State = State {
 
 fn st() -> &'static mut State {
     unsafe { &mut *addr_of_mut!(DKRT_ASSIGN) }
+}
+
+/// The run-time machine types of the device (its profile's); a device without a profile has none (an empty range).
+pub fn range<C: CoreApi>(core: &C) -> Range {
+    match crate::profile(core) {
+        Some(p) if p.dyn_types > 0 => Range {
+            lo: p.dyn_type_first,
+            hi: p.dyn_type_first + p.dyn_types - 1,
+        },
+        _ => Range { lo: 1, hi: 0 },
+    }
 }
 
 /// Entries of the sticky map in use now (for CAPACITY).
@@ -104,7 +116,8 @@ pub unsafe fn plan<C: CoreApi>(core: &C, sel: &SettleCtx) {
     a.magic = 0x444b_4153; // "DKAS"
     a.n = 0;
     let (from, legacy) = stored(core);
-    a.map = clean(&from);
+    let r = range(core);
+    clean(r, &from, &mut a.map);
     // the machines of the selection, in load order
     let mut k = 0;
     while k < sel.count {
@@ -120,6 +133,7 @@ pub unsafe fn plan<C: CoreApi>(core: &C, sel: &SettleCtx) {
     }
     let n = a.n;
     a.dirty = assign(
+        r,
         &from,
         &mut a.map,
         &a.key,
@@ -150,7 +164,7 @@ pub unsafe fn plan<C: CoreApi>(core: &C, sel: &SettleCtx) {
 /// (when it is in the run-time range), 0 when there is none.
 pub unsafe fn resolve<C: CoreApi>(core: &C, key: u32) -> u32 {
     if key >> 8 == 0 {
-        return if in_range(key) { key } else { 0 }; // a pinned number (0: none)
+        return if in_range(range(core), key) { key } else { 0 }; // a pinned number (0: none)
     }
     let a = st();
     let at = core.boot_index();
@@ -164,7 +178,7 @@ pub unsafe fn resolve<C: CoreApi>(core: &C, key: u32) -> u32 {
     0
 }
 
-/// The plan's `[key, number]` pairs of the module at selection index `at`, in plan order, into `out`; how many (`Service::planned_ids`). A pinned key has
+/// The plan's `[key, number]` pairs of the module at selection index `at`, in plan order, into `out`; how many (`records::planned_ids`, the export `dk_machines_planned_ids`). A pinned key has
 /// number 0 here (`resolve` answers it from the key). Nothing before `plan` ran.
 pub fn planned(at: u32, out: &mut [[u32; 2]; 8]) -> u32 {
     let a = st();
@@ -190,6 +204,6 @@ pub unsafe fn seed_for_test(keys: &[u32], at: u32) {
     for (i, k) in keys.iter().enumerate() {
         a.idx[i] = at;
         a.key[i] = *k;
-        a.ty[i] = dkrt_abi::dsp::TYPE_FIRST + i as u32;
+        a.ty[i] = dkrt_abi::profiles::DT2.dyn_type_first + i as u32;
     }
 }

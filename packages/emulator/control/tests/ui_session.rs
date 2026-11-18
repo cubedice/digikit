@@ -50,7 +50,7 @@ fn a_session_is_adopted_by_the_load_that_starts_it() {
             .as_array()
             .unwrap()
             .len(),
-        17 // the emulator set and core/platform, which the runtime requires
+        18 // the emulator set (core/lfo among it) and core/platform, which the runtime requires
     );
     // The maps of the running image: the ship map and the addresses the load table is read from (`runtime.maps`).
     let maps = handle.call("runtime.maps", json!({"session": 3})).unwrap();
@@ -82,13 +82,14 @@ fn patched_zero_keeps_the_block_clock_through_cache_fallback_and_restart() {
         return;
     };
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
-    let ready: serde_json::Value = serde_json::from_slice(
-        &std::fs::read(root.join("tools/emulator/ready_inputs.json")).unwrap(),
-    )
-    .unwrap();
-    let snapshot = root
-        .join(ready["ready_dirs"]["dt2"].as_str().unwrap())
-        .join("digi-audio-m5.snap");
+    let ready_dir = &patchkit::devdata::by_short("dt2")
+        .unwrap()
+        .identity
+        .acceptance
+        .as_ref()
+        .unwrap()
+        .ready_dir;
+    let snapshot = root.join(ready_dir).join("digi-audio-m5.snap");
     if !snapshot.is_file() {
         return;
     }

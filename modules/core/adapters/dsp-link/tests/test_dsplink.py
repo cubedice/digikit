@@ -87,7 +87,7 @@ def test_constants_agree_between_the_two_sides():
     ):
         assert define(c, name) == want == define(s, name)
     # the area of each device: the DL_AREA_BYTES define, the .PKBSS literal and the word count agree, and the 17-bit offset reaches it
-    for dev in pk_device.digikit_devices():
+    for dev in pk_device.dsp_devices():
         d = gen_inc(dev)
         area = pk_device.load(dev)["digikit"]["dsp_area_bytes"]
         assert define(d, "DL_AREA_BYTES") == area
@@ -502,17 +502,31 @@ def test_dl_send_checks_its_arguments(machine, built):
     lk = link_of(built, r[0])
     assert (
         lk["state"] == 4
-        and lk["dst"] == 0x10
+        and lk["dst"] == 0x10 + 16  # window 0 starts with the 16 slot words
         and lk["nwords"] == 16
         and lk["buf"] == src
     )
+    # the slot block lies directly below the area: window 0 words 0 to 15; a write stays inside it
+    ok_slots = run(
+        machine,
+        built,
+        {src: bytes(8)},
+        [call(built, "dl_send", [AREA - 64 + 56, src, 8])],
+    )
+    assert ok_slots[0].d0 == 0
     bad = [
+        [AREA - 68, src, 4],  # below the slot block
+        [AREA - 64 + 60, src, 8],  # leaves the slot block into the area
         [AREA + 1, src, 64],  # unaligned destination
         [AREA, src, 63],  # length not a multiple of 4
         [AREA, src, 0],
         [AREA - 4, src, 64],  # before the area
-        [AREA + 0x80000, src, 4],  # after it
-        [AREA + 0x7FFFC, src, 8],  # runs over its end
+        [
+            AREA + 0x7FFC0,
+            src,
+            4,
+        ],  # after it: the last 64 bytes of the 512 KiB are the slot block's place in window 0
+        [AREA + 0x7FFBC, src, 8],  # runs over its end
         [AREA, 0, 64],
     ]
     res = run(machine, built, {}, [call(built, "dl_send", a) for a in bad])
@@ -521,7 +535,7 @@ def test_dl_send_checks_its_arguments(machine, built):
         machine,
         built,
         {src: bytes(4)},
-        [call(built, "dl_send", [AREA + 0x7FFFC, src, 4])],
+        [call(built, "dl_send", [AREA + 0x7FFBC, src, 4])],
     )
     assert last[0].d0 == 0
 
@@ -559,7 +573,13 @@ def test_first_tick_writes_a_chunk_the_dsp_can_check(machine, built):
         (w[1] >> 26) & 1,
         w[1] >> 27,
     )
-    assert (off, n, last, end, xid) == (8, 171, 0, 0, 1)
+    assert (off, n, last, end, xid) == (
+        24,
+        171,
+        0,
+        0,
+        1,
+    )  # word 16 is the area start (the slot block is words 0-15), plus 8 words
     assert w[0] >> 30 == 0  # window 0
     assert w[2 : 2 + n] == words[:171]
     assert w[2 + n] == check_word(w[: 2 + n])
@@ -567,7 +587,7 @@ def test_first_tick_writes_a_chunk_the_dsp_can_check(machine, built):
     w1 = tail_words(r[2].reads[1], 0x402, 174)
     assert w1[0] == MAGIC | (1 << 16)
     off1, n1, last1 = w1[1] & 0x1FFFF, (w1[1] >> 17) & 0xFF, (w1[1] >> 25) & 1
-    assert (off1, n1, last1) == (8 + 171, nwords - 171, 1)
+    assert (off1, n1, last1) == (24 + 171, nwords - 171, 1)
     assert w1[2 : 2 + n1] == words[171:]
     assert w1[2 + n1] == check_word(w1[: 2 + n1])
     # halfwords of the queue outside the tail are untouched (the stock driver writes the command halfwords there)
@@ -1041,7 +1061,8 @@ def test_owned_send_requires_current_lease_and_preserves_wire_window(
     )  # claims do not consume transfer IDs
     words = tail_words(results[8].reads[0], 0x402, 174)
     assert words[0] >> 30 == window
-    assert words[1] & 0x1FFFF == (0 if window == 0 else dst)
+    # window 0: word 16 is the area start (the slot block is words 0-15)
+    assert words[1] & 0x1FFFF == (16 if window == 0 else dst)
     assert words[2] == int.from_bytes(b"abcd", "little")
     assert words[3] == check_word(words[:3])
 

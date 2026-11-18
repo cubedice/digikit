@@ -5,12 +5,20 @@
 |
 |  0 'DDSP'   4 version   8 device ([digikit] id: 1 = dt2)
 | 12 area base (the DSP byte address of core/dsp-link's reserved area = window 0)
-| 16 area bytes (DL_AREA_BYTES of modules/core/adapters/dsp-link/src/dsp/dt2.s)
+| 16 area bytes (DL_AREA_BYTES - DL_SLOT_BYTES: window 0 starts with the slot block `_dl_slots`, which is no part of the area; dt2.s of core/dsp-link)
 | 20 voice rows base (the voices registry = window 1)   24 index of the first free row   28 number of free rows
 | 32 number of rows in the registry (window 1 is 2 words per row)
 | 36 import count N; then N entries of 32 bytes: a NUL padded name of 28 bytes and its value
 
     .include "device-dt2.inc"
+
+| One import: the name in a 28 byte NUL padded field, then the value (a DSP symbol, or a firmware anchor that the object's externs name).
+    .macro DSP_IMPORT sym
+    .Lstart\@ = .
+    .asciz  "\sym"
+    .space  28 - (. - .Lstart\@)
+    .long   \sym
+    .endm
 
     .section .rodata
     .balign 4
@@ -20,53 +28,79 @@ dyndsp_info:
     .long   1
     .long   DEVICE_ID
     .long   _dl_area
-    .long   DL_AREA_BYTES
+    .long   DL_AREA_BYTES - DL_SLOT_BYTES
     .long   _dd_vrows
     .long   _dd_vfirst
     .long   DYN_TYPES
     .long   _dd_vcount
-    .long   12
-    .asciz  "_dv_exp2"
-    .space  28 - 9
-    .long   _dv_exp2
-    .asciz  "_dv_frame_hw"
-    .space  28 - 13
-    .long   _dv_frame_hw
-    .asciz  "_dv_frame_sw"
-    .space  28 - 13
-    .long   _dv_frame_sw
-    .asciz  "_dk_step"
-    .space  28 - 9
-    .long   _dk_step
+    .long   65
+    DSP_IMPORT _dv_exp2
+    DSP_IMPORT _dv_frame_hw
+    DSP_IMPORT _dv_frame_sw
+    DSP_IMPORT _dk_step
+    DSP_IMPORT _dl_slots
+    DSP_IMPORT _dv_bcw
+    DSP_IMPORT _dv_blk
+    DSP_IMPORT _dv_c
+    DSP_IMPORT _dv_call_params
+    DSP_IMPORT _dv_diag
+    DSP_IMPORT _dv_g
+    DSP_IMPORT _dv_gate
+    DSP_IMPORT _dv_idle
+    DSP_IMPORT _dv_in
+    DSP_IMPORT _dv_mask
+    DSP_IMPORT _dv_params
+    DSP_IMPORT _dv_rec
+    DSP_IMPORT _dv_slots
+    DSP_IMPORT _dv_st
+    DSP_IMPORT _dv_sv3
+    DSP_IMPORT _dv_sv5
+    DSP_IMPORT _dv_sv_i12u
+    DSP_IMPORT _dv_sv_l4
+    DSP_IMPORT _dv_sv_m13
+    DSP_IMPORT _dv_sv_m13u
+    DSP_IMPORT _dv_table
+    DSP_IMPORT _dv_trig_params
+    DSP_IMPORT _fw_frame
+    DSP_IMPORT _fw_param_rec
+    DSP_IMPORT _fw_release_latch
+    DSP_IMPORT _fw_render_next
+    DSP_IMPORT _fw_type_cache
+    DSP_IMPORT _fw_unpack
+    DSP_IMPORT _fx_table
+    DSP_IMPORT _fx_master
+    DSP_IMPORT _fx_sv_m13
+    DSP_IMPORT _fx_sv_i12
+    DSP_IMPORT _fx_idle
+    DSP_IMPORT _fx_s_i4
+    DSP_IMPORT _fx_s_l4
+    DSP_IMPORT _fx_save
+    DSP_IMPORT _fx_ctx
+    DSP_IMPORT _fx_blk
+    DSP_IMPORT _fx_in
+    DSP_IMPORT _fx_scratch
+    DSP_IMPORT _fx_c
+    DSP_IMPORT _fx_diag
+    DSP_IMPORT _fx_rec
+    DSP_IMPORT _fxs_idle
+    DSP_IMPORT _fxs_return
+    DSP_IMPORT _fxs_bus
+    DSP_IMPORT _fxs_gnew
+    DSP_IMPORT _fxs_prev
+    DSP_IMPORT _fxs_c
+    DSP_IMPORT _fxs_trackbus
+    | The trusted V2 table of core/instrument-play, as core/dsp-voice's stub hands it to the dispatch code, and the dispatch code's scan word.
+    DSP_IMPORT _dv_v2_rows
+    DSP_IMPORT _dv_v2_scan
     | Optional experimental storage provider. A missing provider resolves to 0:
     | dsp_symbol then refuses an importing module with E_DSP_IMPORT.
-    .asciz  "_loop_buffer_info"
-    .space  28 - 18
-    .long   _loop_buffer_info
+    DSP_IMPORT _loop_buffer_info
     | Optional per-frame transport snapshot. Missing provider fails an import before allocation.
-    .asciz  "_pattern_position_info"
-    .space  28 - 23
-    .long   _pattern_position_info
+    DSP_IMPORT _pattern_position_info
     | Optional destination-kit handoff adapter, required by Overloop 0.3+.
-    .asciz  "_loop_controls_info"
-    .space  28 - 20
-    .long   _loop_controls_info
-    .asciz  "_loop_ui_status"
-    .space  28 - 16
-    .long   _loop_ui_status
-
-    .asciz  "_phrase_storage_info"
-    .space  7
-    .long   _phrase_storage_info
-
-    .asciz  "_phrase_control_info"
-    .space  7
-    .long   _phrase_control_info
-
-    .asciz  "_phrase_status"
-    .space  13
-    .long   _phrase_status
-
-    .asciz  "_phrase_route_info"
-    .space  9
-    .long   _phrase_route_info
+    DSP_IMPORT _loop_controls_info
+    DSP_IMPORT _loop_ui_status
+    DSP_IMPORT _phrase_storage_info
+    DSP_IMPORT _phrase_control_info
+    DSP_IMPORT _phrase_status
+    DSP_IMPORT _phrase_route_info

@@ -1,9 +1,10 @@
 //! The role of a `.dkm` or `.dks` file (docs/plans/runtime-and-services.md section 13.2): the role word of the header and what the header table may hold for it.
-//! `RoleSteps` are the steps that differ by role, chosen from the role word: a module has only a check (its table has no PROVIDES, HOOKS or BIND item), a service (`.dks`) checks, keeps its table, publishes its exports and
+//! `RoleSteps` are the steps that differ by role, chosen from the role word: a module has only a check (its table has no PROVIDES, HOOKS, KINDS, SLOTS, BIND or FW item), a service (`.dks`) checks, keeps its table, publishes its exports and
 //! installs its hooks (the row of the service is R12-4).
 //! The service search (`discover.rs`) uses `role_of` and `role_ok`; the loader runs the steps.
 use super::exports::EXPORTS_MAX;
 use super::image::Head;
+use super::install::{Backend, CfItems, DspItems};
 use super::{Images, Loader, ProvRec, Registry};
 use dkneeds::keys::{tag, BindRef, Keys};
 use dkrt_abi::platform::Platform;
@@ -16,6 +17,8 @@ pub struct PlaceArgs {
     pub keys_off: u32,
     pub keys_len: u32,
     pub image_size: u32,
+    /// Bytes of the file's DSP image (0: no DSP section).
+    pub dsp_image: u32,
 }
 
 /// The steps of one role, in the order the loader runs them. `check` runs after the header parse and before anything is allocated (`file` is the staged
@@ -45,10 +48,10 @@ impl<P: Platform, M: Images, R: Registry> RoleSteps<P, M, R> {
         }
     }
 
-    /// A module has only a check: its header table has no PROVIDES, HOOKS or BIND item.
+    /// A module has only a check: its header table has no PROVIDES, HOOKS, KINDS, SLOTS, BIND or FW item.
     pub const MODULE: Self = RoleSteps { check: module_check, place: no_place, activate: no_activate, undo: no_undo };
 
-    /// A service (a provider record): the check refuses an unknown ABI, a DSP section, a bad table and a hook site that is not stock, all before anything is
+    /// A service (a provider record): the check refuses an unknown ABI, a bad table and a hook site that is not stock, all before anything is
     /// allocated; place keeps the table; activate publishes the exports and installs the hooks, last; undo withdraws and frees.
     pub const SERVICE: Self = RoleSteps { check: service_check, place: service_place, activate: service_activate, undo: service_undo };
 }
@@ -126,10 +129,6 @@ unsafe fn service_check<P: Platform, M: Images, R: Registry>(l: &mut Loader<P, M
     if !l.r.abi_ok(crate::rd32(file.add(dkneeds::H_SVC_ABI as usize))) {
         return E_SVC_ABI;
     }
-    // a provider's DSP section waits for R12-8 (the DSP part of a service)
-    if crate::rd32(file.add(super::H_DSP_SIZE)) != 0 {
-        return E_FORMAT;
-    }
     let (off, len) = (crate::rd32(file.add(super::H_REG_OFF)), crate::rd32(file.add(super::H_REG_SIZE)));
     let size = crate::rd32(file.add(dkneeds::H_SIZE as usize));
     if !super::in_file(off, len, size) {
@@ -167,6 +166,7 @@ unsafe fn service_place<P: Platform, M: Images, R: Registry>(l: &mut Loader<P, M
     let idx = index_of(rec);
     l.provs[idx] = ProvRec::EMPTY;
     l.provs[idx].image_size = a.image_size;
+    l.provs[idx].dsp_image = a.dsp_image;
     let keys = match table_of(a.file, a.keys_off, a.keys_len) {
         Ok(k) => k,
         Err(e) => return e,
@@ -217,8 +217,23 @@ unsafe fn service_activate<P: Platform, M: Images, R: Registry>(l: &mut Loader<P
     // the pointer slots the file fills: a SLOTS item is the name hash of a `[[slot]]` of an image adapter (the image's info table gives the address of its word) and the entry
     // of this file. A slot the image does not have, or a name that is an `[[info]]` data table, refuses the file, before anything is installed.
     let mut slots = [(0u32, 0u32); dkneeds::SLOTS_MAX as usize];
-    let mut ns = 0;
+    let mut dsp_slots = [(0u32, 0u32); dkneeds::SLOTS_MAX as usize];
+    let (mut ns, mut nd) = (0, 0);
     for sl in keys.slots() {
+        if sl.flags & dkneeds::keys::SLOT_DSP != 0 {
+            // a DSP slot: the name is a `[[slot]] space = "dsp"` of an image adapter (its index in the slot block comes from the info table) and the entry is a byte offset in
+            // this file's DSP image, which must be there and even (a pc is whole words)
+            if nd == dsp_slots.len() || pr.dsp_image == 0 || sl.entry >= pr.dsp_image || sl.entry & 1 != 0 {
+                return E_FORMAT;
+            }
+            let idx = match l.p.info_dsp_slot(sl.id) {
+                Some(i) => i,
+                None => return E_FORMAT,
+            };
+            dsp_slots[nd] = (idx, crate::dsp::placed_pc(rec, sl.entry));
+            nd += 1;
+            continue;
+        }
         if ns == slots.len() || sl.entry >= pr.image_size {
             return E_FORMAT;
         }
@@ -229,10 +244,18 @@ unsafe fn service_activate<P: Platform, M: Images, R: Registry>(l: &mut Loader<P
         slots[ns] = (at as usize as u32, base.wrapping_add(sl.entry));
         ns += 1;
     }
-    // the hooks go in last: nothing after this can fail, so a live site is never taken down again
-    match l.installer.install(&l.p, rec as u8, &binds[..nb], base, pr.image_size, &slots[..ns]) {
+    // the DSP slots are claimed (not written: the stubs stay stock until the DSP acknowledges the code), then the hooks go in last: nothing after this can fail, so a live
+    // site is never taken down again. A failure of the hooks gives the claim back.
+    if let Err(e) = Backend::install(&mut l.dsp_install, &l.p, rec as u8, &DspItems { slots: &dsp_slots[..nd] }) {
+        return e;
+    }
+    let cf = CfItems { binds: &binds[..nb], image_base: base, image_size: pr.image_size, slots: &slots[..ns] };
+    match Backend::install(&mut l.installer, &l.p, rec as u8, &cf) {
         Ok(()) => OK,
-        Err(e) => e,
+        Err(e) => {
+            Backend::restore(&mut l.dsp_install, &l.p, rec as u8);
+            e
+        }
     }
 }
 
@@ -251,12 +274,19 @@ pub fn role_of(head: &[u8; 64]) -> u32 {
     u32::from_be_bytes([head[at], head[at + 1], head[at + 2], head[at + 3]])
 }
 
-/// Whether the header table `keys` fits the role: a module (0) has no PROVIDES, HOOKS, BIND or FW item; a service (1) has table version 2 and exactly one
+/// Whether the header table `keys` fits the role: a module (0) has no PROVIDES, HOOKS, KINDS, SLOTS, BIND or FW item; a service (1) has table version 2 and exactly one
 /// PROVIDES item. Another role is `E_FORMAT`, like the other refusals.
 pub fn role_ok(role: u32, keys: &Keys) -> Result<(), i32> {
     if role == 0 {
-        // No packer writes HOOKS for a module (patchkit major3.rs writes only USES and KEYS, dkm.rs adds NEEDS): HOOKS are a service's (role 1).
-        if keys.count(tag::PROVIDES) != 0 || keys.count(tag::HOOKS) != 0 || keys.count(tag::BIND) != 0 || keys.count(tag::FW) != 0 {
+        // No packer writes HOOKS, KINDS or SLOTS for a module (patchkit major3.rs writes only USES and KEYS, dkm.rs adds NEEDS): they are a service's (role 1).
+        // A content module owns no firmware hook, record kind or plug-in point, so two modules can clash only on keys and capacity.
+        if keys.count(tag::PROVIDES) != 0
+            || keys.count(tag::HOOKS) != 0
+            || keys.count(tag::KINDS) != 0
+            || keys.count(tag::SLOTS) != 0
+            || keys.count(tag::BIND) != 0
+            || keys.count(tag::FW) != 0
+        {
             return Err(E_FORMAT);
         }
         Ok(())
@@ -273,7 +303,7 @@ pub fn role_ok(role: u32, keys: &Keys) -> Result<(), i32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dkneeds::keys::{write_table, Pair, Table};
+    use dkneeds::keys::{write_table, KindDecl, Pair, Slot, Table};
     use std::vec;
     use std::vec::Vec;
 
@@ -309,9 +339,11 @@ mod tests {
     }
 
     #[test]
-    fn a_module_with_a_provides_hooks_or_bind_item_is_refused() {
+    fn a_module_with_a_provides_hooks_kinds_slots_or_fw_item_is_refused() {
         assert_eq!(check(0, &Table { provides: ONE, ..KEEP }), Err(E_FORMAT));
         assert_eq!(check(0, &Table { hooks: &[Pair { a: 9, b: 4 }], ..KEEP }), Err(E_FORMAT));
+        assert_eq!(check(0, &Table { kinds: &[KindDecl { kind: 90, len: 16, entry: 8 }], ..KEEP }), Err(E_FORMAT));
+        assert_eq!(check(0, &Table { slots: &[Slot { id: 7, flags: 0, entry: 0 }], ..KEEP }), Err(E_FORMAT));
         assert_eq!(check(0, &Table { fw: &[[0; 8]], ..KEEP }), Err(E_FORMAT));
     }
 

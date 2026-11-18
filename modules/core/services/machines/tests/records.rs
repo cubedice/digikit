@@ -1,7 +1,8 @@
 //! The service over a `FakeCore` and a `FakeFw`: the record checks, `apply` and `remove` of parameter rows and click actions, the native page
-//! record and the capacity counts. A machine or a page row is written at absolute addresses of the firmware's tables (`wr`), which a host cannot
-//! reach: those parts run in the device tests (`core/dynreg`, `core/input`).
+//! record and the capacity counts. The machine and page rows are written through `FwMem` (`wr`), so a host test reaches them: `tests/contract.rs` loads and
+//! unloads whole modules and compares the rows (the contract suite); the tests here cover the single handlers.
 use dkneeds::keys::name_hash;
+use dkrt_abi::core_api::CoreApi;
 use dkrt_abi::mem::FwMem;
 use dkrt_abi::service::*;
 use dkrt_sdk::records::*;
@@ -78,6 +79,7 @@ fn core() -> FakeCore {
     c.set_dynreg(table());
     c.info_tables
         .push((name_hash("machines_info"), machines_info(true)));
+    c.device = dkrt_abi::profiles::DT2.id;
     c
 }
 
@@ -395,6 +397,7 @@ fn a_native_page_record_registers_its_callbacks_through_the_image_and_other_kind
 fn the_capacity_counts_need_a_registry_and_the_ui_pass_runs_the_click_last() {
     let _lock = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let mut core = FakeCore::new();
+    rstate().mach_owner = [0; limits::MACHINE_ROWS]; // other tests leave rows owned in the static state
     for kind in [
         dkrt_sdk::proto::CAPK_MACHINE_ROWS,
         dkrt_sdk::proto::CAPK_PARAM_ROWS,
@@ -426,28 +429,33 @@ fn the_capacity_counts_need_a_registry_and_the_ui_pass_runs_the_click_last() {
 
 #[test]
 fn the_machine_types_of_a_module_are_its_machine_rows_in_type_order() {
+    let _lock = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let core = core();
     let s = rstate();
     s.mach_owner[1] = 4;
     s.mach_owner[5] = 4;
     s.mach_owner[2] = 9;
     let mut out = [0u8; limits::MACHINE_ROWS];
-    let first = dkrt_sdk::device::DYN_TYPE_FIRST as u8;
-    assert_eq!(types_of(4, &mut out), 2);
+    let first = dkrt_abi::profiles::DT2.dyn_type_first as u8;
+    assert_eq!(types_of(&core, 4, &mut out), 2);
     assert_eq!(&out[..2], [first + 1, first + 5]);
-    assert_eq!(types_of(7, &mut out), 0);
+    assert_eq!(types_of(&core, 7, &mut out), 0);
+    s.mach_owner = [0; limits::MACHINE_ROWS];
 }
 
 #[test]
-fn the_machine_types_are_a_row_method_of_the_service() {
+fn the_machine_types_of_a_module_and_the_guard_counts_are_what_the_runtime_exports_ask_for() {
+    let _lock = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let core = core();
     rstate().mach_owner[3] = 2;
     let mut out = [0u8; 8];
-    let n = unsafe { <Machines as Service<FakeCore>>::owned_ids(&core, 2, &mut out) };
+    let n = dkrt_svc_machines::records::owned_ids(&core, 2, &mut out);
     assert_eq!(n, 1);
-    assert_eq!(out[0], dkrt_sdk::device::DYN_TYPE_FIRST as u8 + 3);
-    assert_eq!(
-        unsafe { <Machines as Service<FakeCore>>::owned_ids(&core, 5, &mut out) },
-        0
-    );
+    assert_eq!(out[0], dkrt_abi::profiles::DT2.dyn_type_first as u8 + 3);
+    assert_eq!(dkrt_svc_machines::records::owned_ids(&core, 5, &mut out), 0);
+    let g = unsafe { dkrt_svc_machines::records::guard_state(&core, 16) };
+    assert_eq!((g.faults, g.disabled), unsafe {
+        (core.guard_faults(16), core.guard_disabled(16))
+    });
+    rstate().mach_owner[3] = 0;
 }

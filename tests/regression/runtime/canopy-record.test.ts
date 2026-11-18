@@ -64,7 +64,7 @@ test('CANOPY records keyboard presses', { timeout: 900_000 }, async () => {
   const beforeRestart = (await session.status()).epoch;
   if (typeof beforeRestart !== 'number') throw new Error('Missing pre-restart epoch');
   await dk.restart();
-  await dk.waitForBoot(undefined, 180_000);
+  await dk.waitForBoot();
   const word = async (address: number) => {
     const value = await session.client.memPeek(address);
     if (value === null) throw new Error(`Unreadable firmware word at ${address.toString(16)}`);
