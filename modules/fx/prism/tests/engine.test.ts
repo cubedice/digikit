@@ -218,6 +218,13 @@ const cases: { name: string; commands: Command[] }[] = [
     ],
   },
   {
+    name: 'tapeFeedbackCeiling',
+    commands: [
+      { set: { 58: 64, 59: bits(1.1), 60: HEAD_ONLY }, samples: TONE, repeat: 60 },
+      { samples: 0, repeat: 4 },
+    ],
+  },
+  {
     name: 'tapeNoFeedback',
     commands: [{ set: { 58: 64, 60: HEAD_ONLY }, samples: TONE, repeat: 8 }, { samples: 0, repeat: 3 }, { samples: 0 }],
   },
@@ -570,6 +577,14 @@ describe('PRISM real SHARC engine', () => {
       expect(generations[i]! / generations[i - 1]!).toBeLessThan(0.55);
     }
     expect(headPeak(last('tapeNoFeedback'))).toBe(0);
+  });
+  test('the feedback on the tape never exceeds half of full scale', () => {
+    // the tone is 0.5: the tape holds the input and at most 0.5 of feedback, however long it repeats at 110 %
+    const steps = report.tapeFeedbackCeiling!.steps;
+    expect(headPeak(steps[0]!)).toBeGreaterThan(0.5);
+    expect(headPeak(steps[0]!)).toBeLessThanOrEqual(1.0 + 1e-6);
+    // the input is gone: what is left is feedback alone
+    expect(headPeak(steps[1]!)).toBeLessThanOrEqual(0.5 + 1e-6);
   });
   test('feedback above 1 is held by the limiter', () => {
     for (const step of report.tapeWithGrains!.steps) {

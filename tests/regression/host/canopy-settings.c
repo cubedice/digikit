@@ -154,9 +154,15 @@ int mi_route_enable(uint32_t p, uint32_t c, uint32_t t, int s)
     ++route_calls;
     return -2;
 }
+/* The adapter's recovery, modeled: it refuses (an invalid reply guard) unless a test sets recover_result to 0; a
+ * recovery starts a transport without faults, as mt_init does. */
+static int recover_result = -1, recover_calls;
 int mi_keyboard_recover(void)
 {
-    return -1;
+    ++recover_calls;
+    if (!recover_result)
+        mi_transport.faults = 0;
+    return recover_result;
 }
 int dkrt_settings_get(const char *key, uint8_t *out, uint32_t capacity)
 {

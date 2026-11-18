@@ -200,8 +200,10 @@ _pt_faded:
     R0 = DM(PT_OUT + 63,I5);
     DM(PT_LAST_R,I5) = R0;
 
-    // Feedback: a DC blocker, a one-pole low pass near 5 kHz, the gain and a soft limit (t - t^3/3 on half the signal,
-    // doubled: unity for small signals, 4/3 at most), so a feedback above 1 saturates instead of growing.
+    // Feedback: a DC blocker, a one-pole low pass near 3 kHz, the gain (ramped over the block from the last block's)
+    // and a soft limit: 0.75 * (t - t^3/3) with t = 4/3 of the signal, which is unity for small signals and half of
+    // full scale at most. Repeats at high feedback settle near the level of the input instead of building up to
+    // several times it, and a feedback above 1 saturates smoothly.
     R0 = I5;
     R1 = PT_OUT * 4;
     R0 = R0 + R1;
@@ -209,12 +211,20 @@ _pt_faded:
     R1 = (PT_FEEDBACK - PT_OUT) * 4;
     R0 = R0 + R1;
     I1 = R0;
-    F10 = DM(PT_FDBK,I5);
+    F10 = DM(PT_FDBK_NOW,I5);
+    F0 = DM(PT_FDBK,I5);
+    DM(PT_FDBK_NOW,I5) = R0;
+    F1 = F0 - F10;
+    R2 = 0x3d000000;
+    F4 = F1 * F2; // the gain's step per sample
+    R9 = R10; // the right side starts from the same gain
     R11 = 0x3f7eb852; // 0.995
-    R12 = 0x3f000000;
+    R12 = 0x3ea8f5c3; // 0.33: the low pass
     R13 = 0x3f800000;
     R14 = 0xbf800000;
     R15 = 0x3eaaaaab; // 1/3
+    R2 = 0x3faaaaab; // 4/3
+    R3 = 0x3f400000; // 0.75
     F6 = DM(PT_LP_L,I5);
     F7 = DM(PT_HP_X_L,I5);
     F8 = DM(PT_HP_Y_L,I5);
@@ -222,6 +232,7 @@ _pt_faded:
     DM(PT_LP_L,I5) = R6;
     DM(PT_HP_X_L,I5) = R7;
     DM(PT_HP_Y_L,I5) = R8;
+    R10 = R9;
     F6 = DM(PT_LP_R,I5);
     F7 = DM(PT_HP_X_R,I5);
     F8 = DM(PT_HP_Y_R,I5);
@@ -404,7 +415,8 @@ _pt_index_high:
     RTS;
 
 // I0 the head's output, I1 the feedback (both advanced by 32). F6 low pass state, F7 and F8 the DC blocker's last input
-// and output, F10 the gain; R11 to R15 hold 0.995, 0.5, 1, -1 and 1/3.
+// and output, F10 the gain and F4 its step per sample; R11 to R15 hold 0.995, the low pass coefficient, 1, -1 and 1/3,
+// F2 4/3 and F3 0.75.
 _pt_feedback:
     LCNTR = 32, DO _pt_feedback_sample UNTIL LCE;
         F0 = DM(I0,M6);
@@ -415,15 +427,16 @@ _pt_feedback:
         F1 = F8 - F6;
         F1 = F1 * F12;
         F6 = F6 + F1;
+        F10 = F10 + F4;
         F0 = F6 * F10;
-        F0 = F0 * F12;
+        F0 = F0 * F2;
         F0 = MIN(F0,F13);
         F0 = MAX(F0,F14);
         F1 = F0 * F0;
         F1 = F1 * F0;
         F1 = F1 * F15;
         F0 = F0 - F1;
-        F0 = F0 + F0;
+        F0 = F0 * F3;
 _pt_feedback_sample: DM(I1,M6) = R0;
     RTS;
 

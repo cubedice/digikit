@@ -52,6 +52,14 @@ boots. Only PRISM's package changed (11 370 bytes); it was uploaded before the f
 after it. CANOPY, Overloop, PRISM and remote load with no faults and the settings record is unchanged. PRISM's entry
 opens on DELAY with its defaults (TIME 1/8., MODE FWD, state READY). No audio was captured and nobody has listened.
 
+## Feedback level [C]
+
+The first build limited the feedback at 4/3 of full scale with a low pass near 5 kHz. On the device the feedback
+sounded clipped. In the engine harness a 0.3 tone with TIME 96 and 100 % feedback built the tape up to 1.52 and, at
+110 %, left a tail that sat at 0.96 with steps of 0.48 per sample: a flat-topped wave. The limit is now half of full
+scale (`0.75 * (t - t^3/3)`, `t` = 4/3 of the signal), the low pass is near 3 kHz and the gain is ramped over each
+block. The same input now peaks at 0.80, and the tail at 110 % sits at 0.31 [D]. Not yet heard on the device.
+
 ## Where this differs from the proposal
 
 - **[C]** The proposal said that while a phrase is held "the heads read the loop". The delay head stays on the tape (the

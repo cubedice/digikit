@@ -128,7 +128,7 @@
 #define PT_HP_X_R (PS_TAPE + 17)
 #define PT_HP_Y_R (PS_TAPE + 18)
 #define PT_FDBK (PS_TAPE + 19)
-#define PT_GAIN_DELAY (PS_TAPE + 20)
+#define PT_FDBK_NOW (PS_TAPE + 20)
 #define PT_GAIN_GRAIN (PS_TAPE + 21)
 #define PT_DRIVE (PS_TAPE + 22)
 #define PT_OUT (PS_TAPE + 32)

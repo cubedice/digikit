@@ -215,9 +215,12 @@ function runtimePolicy(device: Device, name: SafetyPolicy) {
   return {
     name,
     firmware_areas: name === 'fx-kit' || name === 'fx-routes' ? KIT_AREAS[device] : [],
-    // These scenarios persist a record that fits in the first sector of each
-    // settings copy. Other sectors remain forbidden, even within that copy.
-    store_extra: name === 'settings' || name === 'fx-routes' ? [store.setA, store.setB] : [],
+    // These scenarios persist settings. The record may use the whole of each settings copy (CANOPY's working copy alone
+    // is 660 bytes, more than a sector); every other store sector remains forbidden.
+    store_extra:
+      name === 'settings' || name === 'fx-routes'
+        ? Array.from({ length: SETTINGS_SECTORS }, (_, i) => [store.setA + i, store.setB + i]).flat()
+        : [],
   };
 }
 
