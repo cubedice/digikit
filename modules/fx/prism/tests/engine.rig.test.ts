@@ -491,6 +491,53 @@ describe('PRISM repeater engine: no clicks', () => {
     });
   });
 
+  test('the crossfade length: 20 ms puts what a jump adds 55 dB below the tone; shorter is worse step by step', async () => {
+    // A SYNC step from 2400 to 3601 frames and back with one echo, the crossfade length poked into the state. Per tone:
+    // the click measure, and the share of the energy further than 150 Hz from the tone in 8192 samples around the jump.
+    const far = (x: Float32Array, at: number, hz: number): number => {
+      const all = bandLevel(x, 1, 23990, at - 4096, at + 4096) ** 2;
+      const near = bandLevel(x, Math.max(1, hz - 150), hz + 150, at - 4096, at + 4096) ** 2;
+      return 10 * Math.log10(Math.max(1e-30, (all - near) / all));
+    };
+    const lengths = [32, 96, 240, 480, 720, 960, 1440];
+    const tones = [55, 220, 1000];
+    const table: { click: number; far: number }[][] = [];
+    for (const length of lengths) {
+      const row: { click: number; far: number }[] = [];
+      for (const hz of tones) {
+        await withRig({ frames: 65536 }, async (rig) => {
+          rig.set({ sync: true, syncTime: 2400, rpts: 0 });
+          await rig.run(1);
+          rig.pokeState(PS.XFADE, length);
+          const { take, marks } = await runSteps(rig, sine(hz, 0.25), [
+            [600, {}],
+            [300, { syncTime: 3601 }],
+            [300, { syncTime: 2400 }],
+          ]);
+          row.push({
+            click: Math.max(...clicks(take, marks)),
+            far: Math.max(far(take.left, marks[1]! + length / 2, hz), far(take.left, marks[2]! + length / 2, hz)),
+          });
+        });
+      }
+      table.push(row);
+    }
+    note(
+      `crossfade length (click measure x steady, energy beyond 150 Hz of the tone in dB) at ${tones.join(', ')} Hz: ${lengths
+        .map((length, k) => `${length}: ${table[k]!.map((c) => `${c.click.toFixed(1)} x ${c.far.toFixed(0)} dB`).join(', ')}`)
+        .join('; ')}`,
+    );
+    const at = (length: number) => table[lengths.indexOf(length)]!;
+    for (let tone = 0; tone < tones.length; tone++) {
+      expect(at(XFADE)[tone]!.far).toBeLessThan(-55);
+      expect(at(480)[tone]!.far).toBeGreaterThan(at(XFADE)[tone]!.far + 5);
+      expect(at(240)[tone]!.far).toBeGreaterThan(at(480)[tone]!.far + 5);
+    }
+    // without a crossfade to speak of, a low tone clicks
+    expect(at(32)[0]!.click).toBeGreaterThan(20);
+    expect(at(XFADE)[1]!.click).toBeLessThan(1.2);
+  });
+
   test('the first echo after the start comes in without a step', async () => {
     await withRig({ frames: 16384 }, async (rig) => {
       rig.set({ sync: true, syncTime: 2400, rpts: 0.5 });
@@ -974,6 +1021,16 @@ describe('PRISM repeater engine: cost', () => {
         await rig.run(40, input);
       }
     });
+    // for the record: a block with everything at rest, without and with HALO
+    const rest = await withRig({ frames: 65536 }, async (rig) => {
+      rig.set({ sync: true, syncTime: 2400, rpts: 0.5 });
+      await rig.run(600, TONE);
+      const plain = Math.max(...(await rig.run(20, TONE)).instructions);
+      rig.set({ halo: 0.5 });
+      await rig.run(600, TONE);
+      return [plain, Math.max(...(await rig.run(20, TONE)).instructions)];
+    });
+    note(`a block at rest: ${rest[0]} instructions, with HALO ${rest[1]}; declared dsp_cost_fx ${DECLARED}`);
     expect(PrismRig.worst).toBeLessThanOrEqual(DECLARED);
     // the declared cost is a measurement, not a ceiling picked with room: it is the heaviest block seen
     expect(PrismRig.worst).toBeGreaterThan(DECLARED * 0.95);

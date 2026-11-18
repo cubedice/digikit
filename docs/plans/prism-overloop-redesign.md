@@ -1,6 +1,7 @@
 # PRISM and Overloop: redesign proposal
 
-Status: proposal for the owner's review. Nothing here is built. Digitakt II 1.17 only, as today.
+Status: proposal for the owner's review. Step 1 of section 7, the engine, is built and measured on the SHARC-only rig
+([finding 358](../findings/358-prism-repeater-engine.md)); nothing else is. Digitakt II 1.17 only, as today.
 
 The screen drawings are schematic: they show what each cell holds and where, not pixels. The real screen is 128 x 64 and
 uses the native knob and text primitives that `core/phrase-ui` draws with today.
