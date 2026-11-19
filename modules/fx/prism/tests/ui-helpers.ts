@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { encoder, type Session } from '@digi/test-support';
+import { button, encoder, type Session } from '@digi/test-support';
 import { expect } from 'vitest';
 import { REDRAW, SETTLE, bounded, word } from '@digi/regression/runtime/fx-live.ts';
 import { mainPage as mainPageOf, openPages as openPagesOf } from '@digi/regression/runtime/fx-pages-ui.ts';
@@ -89,6 +89,57 @@ export async function prismPage(session: Session, address: number): Promise<Pris
       fader: bytes.readUInt32BE(84 + 32 * i),
     })),
   };
+}
+
+/** The TRIG LED values the page gives while G is held (core/phrase-ui's model.h): a track PRISM hears, and one it does not. */
+export const PU_LED_HEARD = 0x71;
+export const PU_LED_DIM = 0x02;
+
+/** The tracks as a mask of PH_P_TRKS: bit t - 1 for track t. */
+export const trackMask = (tracks: number[]) => tracks.reduce((mask, t) => mask | (1 << (t - 1)), 0);
+
+/** The 16 TRIG LEDs as the panel shows them: TRIG n is the firmware's logical LED 25 + n, the panel's LED index 24 + n (the LED map of the device file). */
+export async function trigLeds(session: Session): Promise<number[]> {
+  const { leds } = await session.leds();
+  return Array.from({ length: 16 }, (_, t) => parseInt(leds.slice(2 * (25 + t), 2 * (26 + t)), 16));
+}
+
+/** Hold G (its encoder press) for `during`, then release it; `settleMs` of emulated time after each edge. */
+export async function holdingG(session: Session, during: () => Promise<void>, settleMs = 150): Promise<void> {
+  await bounded(() => session.client.inputButton(button('PUSH G'), true));
+  try {
+    await advance(session, settleMs);
+    await during();
+  } finally {
+    await bounded(() => session.client.inputButton(button('PUSH G'), false));
+    await advance(session, settleMs);
+  }
+}
+
+/** Press TRIG `n` for 40 ms, then let `settleMs` of emulated time pass. */
+export async function pressTrig(session: Session, n: number, settleMs = 150): Promise<void> {
+  await bounded(() => session.client.inputButton(button(`TRIG ${n}`), true));
+  try {
+    await advance(session, 40);
+  } finally {
+    await bounded(() => session.client.inputButton(button(`TRIG ${n}`), false));
+  }
+  await advance(session, settleMs);
+}
+
+/**
+ * Let PRISM hear exactly `tracks` (`phrase_ui_values` at `values`): on PRISM's page (on top), hold G and press the TRIG keys of the tracks
+ * whose state differs, then release G.
+ */
+export async function chooseTracks(session: Session, values: number, tracks: number[]): Promise<void> {
+  const tracksNow = () => word(session, values + 4 * PH.PH_P_TRKS!);
+  const want = trackMask(tracks);
+  const differ = (want ^ (await tracksNow())) & PH.PH_TRACKS_ALL!;
+  if (!differ) return;
+  await holdingG(session, async () => {
+    for (let t = 1; t <= 16; t++) if (differ & (1 << (t - 1))) await pressTrig(session, t);
+  });
+  expect(await tracksNow(), `PRISM hears tracks [${tracks.join(', ')}]`).toBe(want);
 }
 
 /**

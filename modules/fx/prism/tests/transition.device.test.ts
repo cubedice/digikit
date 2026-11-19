@@ -2,15 +2,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { encoder, type Session } from '@digi/test-support';
 import { expect, test } from 'vitest';
-import { bounded, dspWords, frames, peak, readFloatWav, rpc, word, REDRAW } from '@digi/regression/runtime/fx-live.ts';
+import { bounded, dspWords, frames, peak, readFloatWav, rpc, word } from '@digi/regression/runtime/fx-live.ts';
 import { SINE } from '@digi/regression/runtime/fixtures.ts';
 import { describeOn } from '@digi/regression/runtime/devices.ts';
 import { inspectFxBoot, selectSine, shot, withPreparedFxSession } from '@digi/regression/runtime/fx-session.ts';
-import { setAmount } from '@digi/regression/runtime/fx-track-ui.ts';
 import { record } from '@digi/regression/runtime/artifacts.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
-import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
-import { PH, advance, float, mainPage, openPages, openPrismPage, prismPage, setPrism, tap } from './ui-helpers.ts';
+import {
+  PH,
+  advance,
+  chooseTracks,
+  float,
+  mainPage,
+  openPages,
+  openPrismPage,
+  prismPage,
+  setPrism,
+  tap,
+} from './ui-helpers.ts';
 
 /** The loop contract (LP_*, LS_*, LW_*): the one file the home, both pages and both engines share. */
 const L: Record<string, number> = Object.fromEntries(
@@ -131,17 +140,13 @@ describeOn('dt2', 'DTII PRISM and Overloop: a transition from PRISM\'s page', ()
       await tap(session, 'RECORD', 200);
     };
     const selectPattern = (n: number) => tap(session, `TRIG ${n}`, 400, 'PTN');
-    const sendAmount = async (amount: number) => {
-      const rt = sessionRt(session);
-      await mainPage(session);
-      await rt.ui.tap('FX', { until: { ms: 400, why: REDRAW } });
-      await rt.ui.tap('FX', { until: { ms: 400, why: REDRAW } });
-      await setAmount(rt, profile, 'ENC A', 0, amount);
+    // PRISM hears these tracks: G held and their TRIG keys on PRISM's page (the choice is PRISM's, the same in every pattern)
+    const hear = async (tracks: number[]) => {
       await prismOnTop();
+      await chooseTracks(session, values, tracks);
     };
 
-    // Pattern 1: the test instrument on track 1 with four trigs; pattern 2: the same instrument on other steps. Track 1's PRS amount
-    // is full (the amounts are the same in every pattern).
+    // Pattern 1: the test instrument on track 1 with four trigs; pattern 2: the same instrument on other steps. PRISM hears track 1.
     await selectSine(runtime, profile);
     await mainPage(session);
     await program([1, 5, 9, 13]);
@@ -150,7 +155,7 @@ describeOn('dt2', 'DTII PRISM and Overloop: a transition from PRISM\'s page', ()
     await mainPage(session);
     await program([1, 2, 4, 7, 8, 11, 15, 16]);
     await selectPattern(1);
-    await sendAmount(127);
+    await hear([1]);
     // PRISM: one echo of 60 ms with repeats, MIX full
     await setPrism(session, values, PH.PH_P_ZONE!, 'ENC A', 3, { detent: true });
     await setPrism(session, values, PH.PH_P_RATE!, 'ENC B', 0, { coarse: PH.PH_RATE_COARSE });
@@ -202,16 +207,19 @@ describeOn('dt2', 'DTII PRISM and Overloop: a transition from PRISM\'s page', ()
       await shot(session, artifacts, 'step2-loop');
       await advance(session, 2200);
 
-      // 3. PRISM plays on the old pattern: a control move changes what is heard; the tracks' sends do not reach it.
+      // 3. PRISM plays on the old pattern: a control move changes what is heard; the tracks' sends do not reach it. Track 1 off and on
+      // again with G held and TRIG 1: the hold with a TRIG key does not switch INPT.
       marks.move = await mark();
       await setPrism(session, values, PH.PH_P_MIX!, 'LEVEL', 64);
       await advance(session, 2200);
       await shot(session, artifacts, 'step3-play');
       marks.amount0 = await mark();
-      await sendAmount(0);
+      await hear([]);
+      expect(await inpt(), 'G held with a TRIG key: INPT stays LOOP').toBe(1);
       await advance(session, 2200);
       marks.amount127 = await mark();
-      await sendAmount(127);
+      await hear([1]);
+      expect(await inpt()).toBe(1);
       await advance(session, 2200);
       marks.amountBack = await mark();
 
@@ -244,7 +252,7 @@ describeOn('dt2', 'DTII PRISM and Overloop: a transition from PRISM\'s page', ()
       await shot(session, artifacts, 'step5-live');
       marks.liveEnd = await mark();
 
-      // 5. G: PRISM takes pattern 2 by its sends.
+      // 5. A short press of G: PRISM takes pattern 2 from the tracks it hears.
       await tap(session, 'PUSH G', 150);
       await advance(session, 300);
       expect(await inpt()).toBe(0);
@@ -293,7 +301,7 @@ describeOn('dt2', 'DTII PRISM and Overloop: a transition from PRISM\'s page', ()
     report.throughChange = against(at('chosen'), change + ECHO - 4 * BLOCK);
     // (3) the control move: the output changes against a cycle before
     report.afterMove = against(at('move') + 4800, at('move') + 4800 + CYCLE);
-    // (3) the send amount moved to 0 and back while PRISM takes the loop: the output repeats with the loop's cycle
+    // (3) track 1 off and on again (its send amount 0 and back to full) while PRISM takes the loop: the output repeats with the loop's cycle
     report.sendsAt0 = against(at('amount0') + CYCLE / 2, at('amount127'));
     report.sendsBack = against(at('amount127') + 4800, at('amountBack'));
     record(artifacts, 'transition-report', { top, marks, ...report });

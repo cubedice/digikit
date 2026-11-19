@@ -1,11 +1,27 @@
 import { button, encoder } from '@digi/test-support';
 import { expect, test } from 'vitest';
-import { bounded, dspWords, word } from '@digi/regression/runtime/fx-live.ts';
+import { bounded, dspWords, rows, word } from '@digi/regression/runtime/fx-live.ts';
 import { describeOn } from '@digi/regression/runtime/devices.ts';
 import { inspectFxBoot, shot, withPreparedFxSession } from '@digi/regression/runtime/fx-session.ts';
 import { record } from '@digi/regression/runtime/artifacts.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
-import { PH, advance, float, mainPage, openPrismPage, prismPage, setPrism, tap } from './ui-helpers.ts';
+import {
+  PH,
+  PU_LED_DIM,
+  PU_LED_HEARD,
+  advance,
+  chooseTracks,
+  float,
+  holdingG,
+  mainPage,
+  openPrismPage,
+  pressTrig,
+  prismPage,
+  setPrism,
+  tap,
+  trackMask,
+  trigLeds,
+} from './ui-helpers.ts';
 
 // The one page of PRISM on the real firmware view: what the host harness of core/phrase-ui proves about the model (encoder to value, the
 // presses, the texts) is shown here to reach the provider's control words and the painted page through the native key and encoder events.
@@ -40,7 +56,7 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     requireAudible: false,
   });
 
-  test('one page: six encoders and LEVEL set the controls, three presses switch, FUNC + RATE is fine, G and H do nothing', async () => {
+  test('one page: six encoders and LEVEL set the controls, three presses switch, FUNC + RATE is fine, G and H do nothing without a loop, G held gives the TRIG keys and LEDs to the tracks', async () => {
     const { fixture, plan, artifacts } = context;
     const runtime = fixture.runtime;
     const state = await inspectFxBoot(runtime, plan, ['digikit/prism'], artifacts, 'boot');
@@ -90,7 +106,9 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     expect(first.mix).toBe(100);
     expect(first.cells.map((cell) => cell.label)).toEqual(['ZONE', 'RATE', 'RPTS', 'COLR', 'HALO', 'SKEW', 'INPT', 'XFAD']);
     expect(first.cells.map((cell) => cell.value)).toEqual(['ECHO', first.time, '48', '0', '0', '0', 'LIVE', '--']);
-    expect(first.cells.map((cell) => cell.state)).toEqual(['', 'FREE', '', '', '', '', '', 'NO LOOP']);
+    // under INPT the tracks PRISM hears: nothing is stored on this card, so none
+    expect(first.cells.map((cell) => cell.state)).toEqual(['', 'FREE', '', '', '', '', 'NO TRK', 'NO LOOP']);
+    expect(await value(PH.PH_P_TRKS!), 'nothing stored: no track').toBe(0);
 
     // The presses, at the default values. B: SYNC. The cell shows the note length, the provider sends its length in frames at the tempo, and
     // the engine takes it.
@@ -225,6 +243,64 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     ])
       expect(wordsAfter(name), name).toBe(wordsBefore(name));
     expect(wordsAfter('PH_C_INPUT'), 'the words kept for the loop are zero').toBe(0);
+
+    // G held: the TRIG LEDs show the tracks PRISM hears (none: all dim) and INPT the selection. TRIG 3 turns track 3 on: its amount in
+    // PRISM's DSP row is full and its LED is lit; TRIG 3 again turns it off. G released: the LEDs and the keys are the firmware's again.
+    const sendRow = async () => (await rows(session, plan, context.slots))[0]!.slice(18, 23);
+    const sendRowIs = async (want: number[], what: string) => {
+      for (let i = 0; i < 40 && JSON.stringify(await sendRow()) !== JSON.stringify(want); i++) await advance(session, 50);
+      expect(await sendRow(), what).toEqual(want);
+    };
+    await sendRowIs([1, 0, 0, 0, 0], 'the send route, no track');
+    const stockLeds = await trigLeds(session);
+    const ledLog: Record<string, number[]> = { before: stockLeds };
+    const dispatched = await word(session, debug + 36);
+    await holdingG(session, async () => {
+      expect(await word(session, debug + 32), 'G holds the selection').toBe(1);
+      ledLog.held = await trigLeds(session);
+      expect(ledLog.held, 'no track: every TRIG LED dim').toEqual(Array(16).fill(PU_LED_DIM));
+      expect((await page()).cells[6]).toMatchObject({ value: 'NO TRK', state: 'TRIGS', lit: true });
+      await shot(session, artifacts, 'g-held-none');
+      await pressTrig(session, 3);
+      expect(await value(PH.PH_P_TRKS!)).toBe(trackMask([3]));
+      await sendRowIs([1, PH.PH_SEND_FULL! << 16, 0, 0, 0], 'track 3 at full send in the DSP row');
+      ledLog.track3 = await trigLeds(session);
+      expect(ledLog.track3[2], 'TRIG 3 lit').toBe(PU_LED_HEARD);
+      expect(ledLog.track3.filter((_, t) => t !== 2), 'the others dim').toEqual(Array(15).fill(PU_LED_DIM));
+      expect((await page()).cells[6]).toMatchObject({ value: '1 TRK', state: 'TRIGS' });
+      await shot(session, artifacts, 'g-held-track-3');
+      await pressTrig(session, 3);
+      expect(await value(PH.PH_P_TRKS!)).toBe(0);
+      await sendRowIs([1, 0, 0, 0, 0], 'track 3 off again');
+      ledLog.off = await trigLeds(session);
+      expect(ledLog.off[2], 'TRIG 3 dim again').toBe(PU_LED_DIM);
+      // tracks 1, 5, 9 and 16 for the pictures
+      for (const t of [1, 5, 9, 16]) await pressTrig(session, t);
+      ledLog.four = await trigLeds(session);
+      expect((await page()).cells[6]).toMatchObject({ value: '4 TRK', state: 'TRIGS' });
+      await shot(session, artifacts, 'g-held-four-tracks');
+    });
+    expect(await word(session, debug + 32), 'G released: no selection').toBe(0);
+    expect((await word(session, debug + 36)) - dispatched, 'the TRIG presses and releases went to the page').toBeGreaterThanOrEqual(12);
+    ledLog.released = await trigLeds(session);
+    record(artifacts, 'trig-leds', ledLog);
+    console.info('PRISM TRIG LEDs (TRIG 1 to 16, panel values):', JSON.stringify(ledLog));
+    expect(ledLog.released, 'G released: the TRIG LEDs are the firmware\'s again').toEqual(stockLeds);
+    expect(await value(PH.PH_P_TRKS!)).toBe(trackMask([1, 5, 9, 16]));
+    await sendRowIs([1, PH.PH_SEND_FULL!, PH.PH_SEND_FULL!, PH.PH_SEND_FULL!, PH.PH_SEND_FULL! << 24], 'tracks 1, 5, 9 and 16');
+    const released = await page();
+    expect(released.cells[6]).toMatchObject({ value: 'LIVE', state: '4 TRK', lit: false });
+    await shot(session, artifacts, 'g-released-four-tracks');
+    // a TRIG key now is the firmware's: the page takes nothing
+    const takenBefore = await word(session, debug + 36);
+    await pressTrig(session, 2);
+    expect(await word(session, debug + 36), 'TRIG 2 without G goes to the firmware').toBe(takenBefore);
+    expect(await value(PH.PH_P_TRKS!)).toBe(trackMask([1, 5, 9, 16]));
+    // a short press of G with no loop changes nothing
+    await tap(session, 'PUSH G', 150);
+    expect(await allValues()).toEqual([...before.slice(0, PH.PH_P_TRKS!), trackMask([1, 5, 9, 16])]);
+    // back to no track for the settings on the card
+    await chooseTracks(session, values, []);
 
     // Another view over the page: the page owns nothing, and LEVEL there does not move MIX.
     const mix = await value(PH.PH_P_MIX!);

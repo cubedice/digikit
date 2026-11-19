@@ -11,16 +11,15 @@ import {
   readFloatWav,
   rows,
   word,
-  REDRAW,
 } from '@digi/regression/runtime/fx-live.ts';
 import { describeOn } from '@digi/regression/runtime/devices.ts';
 import { inspectFxBoot, withPreparedFxSession } from '@digi/regression/runtime/fx-session.ts';
-import { selectTrack, setAmount } from '@digi/regression/runtime/fx-track-ui.ts';
+import { selectTrack } from '@digi/regression/runtime/fx-track-ui.ts';
 import { record } from '@digi/regression/runtime/artifacts.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
-import { PH, advance, mainPage, openPrismPage, setPrism, tap } from './ui-helpers.ts';
+import { PH, advance, chooseTracks, openPrismPage, setPrism, tap } from './ui-helpers.ts';
 
 // The set an installed device runs: the instrument, the two effects and the remote control (a ColdFire-only service).
 const inventory = ['digikit/canopy', 'digikit/overloop', 'digikit/prism', 'digikit/remote'];
@@ -180,19 +179,15 @@ describeOn('dt2', 'DTII PRISM alongside CANOPY and Overloop', () => {
     await pickSine(sessionRt(session), 20);
     expect(await cf('ip_control'), 'native chooser selected the admitted instrument').toBe(3);
 
-    // PRISM is a send effect: it hears CANOPY's track by the PRS amount on the second page of the track's FX key.
+    // PRISM is a send effect: it hears CANOPY's track 1, chosen on its page with G held and TRIG 1.
     const chainAtStart = await rows(session, plan, context.slots);
     expect(chainAtStart[0]![18], 'Overloop runs on the master').toBe(0);
     expect(chainAtStart[1]!.slice(18, 23), 'PRISM runs on the send bus, with no amount yet').toEqual([1, 0, 0, 0, 0]);
-    await mainPage(session);
-    const rt = sessionRt(session);
-    await rt.ui.tap('FX', { until: { ms: 400, why: REDRAW } });
-    await rt.ui.tap('FX', { until: { ms: 400, why: REDRAW } });
-    await setAmount(rt, profile, 'ENC A', 0, 100);
     await openPrismPage(session, planSymbol(plan, 'phrase_ui_debug'));
     expect(await cf('phrase_ui_debug', 6), 'PRISM owns its native page').not.toBe(0);
-    // a short echo that repeats for a while, so that the tape holds the note when HOLD closes the input
     const values = planSymbol(plan, 'phrase_ui_values');
+    await chooseTracks(session, values, [1]);
+    // a short echo that repeats for a while, so that the tape holds the note when HOLD closes the input
     await setPrism(session, values, PH.PH_P_ZONE!, 'ENC A', 3, { detent: true });
     await setPrism(session, values, PH.PH_P_RPTS!, 'ENC C', 80);
 
@@ -259,7 +254,7 @@ describeOn('dt2', 'DTII PRISM alongside CANOPY and Overloop', () => {
     expect((await dsp('_iv_result', 1))[0]! | 0, 'instrument process has no fault').toBeGreaterThanOrEqual(0);
     const chain = await rows(session, plan, context.slots);
     expect(chain[0]![18], 'Overloop runs on the master').toBe(0);
-    expect(chain[1]!.slice(18, 20), 'PRISM runs on the send bus with the amount of track 1').toEqual([1, 100]);
+    expect(chain[1]!.slice(18, 20), 'PRISM runs on the send bus with track 1 at full send').toEqual([1, PH.PH_SEND_FULL]);
     for (const [index, name] of ['Overloop', 'PRISM'].entries()) {
       expect(chain[index]![12], `${name} process was called`).toBe(1);
       expect(chain[index]![14], `${name} is enabled`).toBe(0);
