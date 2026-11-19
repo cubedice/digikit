@@ -167,7 +167,8 @@ void ld_page(const uint32_t *st, uint32_t fresh, uint32_t xfad, LoopPage *p)
         p->mark = step * 1000 / steps;
     if (p->mark != LD_NO_MARK && p->mark > 1000)
         p->mark = 1000;
-    p->fader = loop ? fader_of(st[LS_GAIN]) : 0;
+    /* with a loop, the crossfader as the engine applies it; without one, where XFAD stands (the engine plays LIVE then) */
+    p->fader = loop ? fader_of(st[LS_GAIN]) : (xfad > LP_MAX ? LP_MAX : xfad);
     copy(p->arm, armed ? "ARM ON" : "ARM OFF");
     s = copy(p->xfad, "XFAD ");
     if (xfad == 0)
@@ -206,26 +207,27 @@ void ld_render_header(const LoopPage *p, const LoopCanvas *c)
     text(c, 104, 2, p->state, 1);
     box(c, 0, 9, 128, 1, 1);
 }
+/* Below the header the page leaves x 123 to 127 to the FX view, which draws its page indicator there (x 125 to 127). */
 void ld_render(const LoopPage *p, const LoopCanvas *c)
 {
-    box(c, 0, 0, 128, 64, 0);
+    box(c, 0, 0, 124, 64, 0);
     ld_render_header(p, c);
     text(c, 64, 12, p->line1, 1);
     text(c, 64, 20, p->line2, 1);
     /* the timeline: a cycle from end to end, with quarter marks and the mark of where it stands */
-    box(c, 3, 33, 122, 1, 1);
+    box(c, 3, 33, 117, 1, 1);
     for (int i = 0; i <= 4; ++i)
-        box(c, 3 + i * 121 / 4, 30, 1, 7, 1);
+        box(c, 3 + i * 116 / 4, 30, 1, 7, 1);
     if (p->mark != LD_NO_MARK) {
-        int x = 3 + (int)(p->mark * 121 / 1000);
+        int x = 3 + (int)(p->mark * 116 / 1000);
         box(c, x - 1, 28, 3, 11, 1);
     }
     /* the crossfader as it sounds */
     text(c, 12, 43, "LIVE", 1);
-    text(c, 116, 43, "LOOP", 1);
-    box(c, 26, 45, 76, 1, 1);
-    box(c, 26 + (int)(p->fader * 73 / 127), 41, 3, 9, 1);
-    box(c, 0, 52, 128, 1, 1);
+    text(c, 108, 43, "LOOP", 1);
+    box(c, 25, 45, 70, 1, 1);
+    box(c, 25 + (int)(p->fader * 67 / 127), 41, 3, 9, 1);
+    box(c, 0, 52, 123, 1, 1);
     text(c, 32, 56, p->arm, p->armed ? 0 : 1);
     text(c, 96, 56, p->xfad, 1);
 }

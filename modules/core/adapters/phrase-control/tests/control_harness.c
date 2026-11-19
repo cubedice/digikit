@@ -190,6 +190,23 @@ static void status_assembly(void)
     /* without a reply for 750 blocks (half a second) the status is no longer fresh; the values stay */
     frame += 750;
     assert(!dkrt_phrase_snapshot(out, 32) && out[PH_S_TIME_L / 4] == 18000);
+    /* the same snapshot again and again (an engine that stopped, its last status still returned) is fresh only for half a
+     * second after its heartbeat last moved */
+    s[PH_S_HEARTBEAT / 4] = s[PH_S_SEQ_END / 4] = 78;
+    for (u32 n = 0; n < 5; ++n, frame += 200) {
+        for (u32 i = 0; i < 3; ++i) {
+            packet(wire, i, 20 + n, s);
+            reply(wire);
+        }
+        assert(dkrt_phrase_snapshot(out, 32) == (n < 4));
+    }
+    /* a heartbeat that moves again: fresh */
+    s[PH_S_HEARTBEAT / 4] = s[PH_S_SEQ_END / 4] = 79;
+    for (u32 i = 0; i < 3; ++i) {
+        packet(wire, i, 30, s);
+        reply(wire);
+    }
+    assert(dkrt_phrase_snapshot(out, 32));
 }
 
 int main(void)

@@ -177,10 +177,35 @@ describe('PRISM repeater engine: contract', () => {
     });
   });
 
+  // The control mailbox is the link's: a block without good controls is silent and not a fault. As faults, a link that
+  // drops a few frames in a second on the device would reach the guard's limit and switch the effect off until a restart.
   test.each([
-    ['a control mailbox of another version', 4, 4, (rig: PrismRig) => rig.pokeControl(1, 2)],
-    ['a control that is not a finite number', 4, 4, (rig: PrismRig) => rig.pokeControl(13, 0x7fc00000)],
-    ['a mailbox that is not enabled', 4, 4, (rig: PrismRig) => rig.pokeControl(4, 0)],
+    ['a control mailbox of another version', (rig: PrismRig) => rig.pokeControl(1, 2)],
+    ['a control that is not a finite number', (rig: PrismRig) => rig.pokeControl(13, 0x7fc00000)],
+    ['a mailbox that is not enabled', (rig: PrismRig) => rig.pokeControl(4, 0)],
+  ])('%s is silent, not a fault, and the engine goes on when the controls come back', async (_name, breakIt) => {
+    await withRig({ faults: true }, async (rig) => {
+      rig.set({ zone: 1, rate: 0, rpts: 0.5 });
+      const good = await rig.run(40, TONE);
+      expect(good.faulted).toBe(0);
+      expect(peak(good.left)).toBeGreaterThan(0);
+      breakIt(rig);
+      const bad = await rig.run(20, TONE);
+      expect(bad.faulted).toBe(0);
+      expect(peak(bad.left)).toBe(0);
+      expect(peak(bad.right)).toBe(0);
+      const status = await rig.status();
+      expect(status[4]).toBe(6); // PH_S_ERROR (word 4): PH_ERROR_LINK
+      // the provider publishes again: the repeats go on from the tape as it was, and the error is cleared
+      rig.set({ zone: 1, rate: 0, rpts: 0.5 });
+      const back = await rig.run(40, TONE);
+      expect(back.faulted).toBe(0);
+      expect(peak(back.left)).toBeGreaterThan(0);
+      expect((await rig.status())[4]).toBe(0);
+    });
+  });
+
+  test.each([
     ['a bank whose frames are no multiple of 32', 0, 4, (rig: PrismRig) => rig.pokeStorage(5, 16400)],
     ['a bank shorter than its two planes', 0, 4, (rig: PrismRig) => rig.pokeStorage(4, 8 * 16384 - 4)],
     ['a bank outside external memory', 0, 4, (rig: PrismRig) => rig.pokeStorage(2, 0x200a0000)],

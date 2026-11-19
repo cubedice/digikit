@@ -8,6 +8,9 @@
 #define PH_STORAGE_MAGIC 0x50484231
 #define PH_REPLY_MAGIC 0x50485231
 #define PH_CHECK_SALT 0x73509c21
+// The receiver keeps the last good mailbox while frames are refused (a repeated, late or torn frame on the device): after
+// PH_RX_GRACE refused frames in a row (half a second) it clears the mailbox's magic and enabled word.
+#define PH_RX_GRACE 750
 #define PH_CONTROL_WORDS 64
 #define PH_STATUS_WORDS 32
 // The storage descriptor of core/loop-storage has its own format number. The engine uses the first bank.

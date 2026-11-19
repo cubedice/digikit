@@ -154,7 +154,9 @@ _prism_storage_extent:
     R0 = DM(PS_OWNER,I5);
     R1 = DM(PC_OWNER,I5);
     COMP(R0,R1);
-    IF NE JUMP _prism_bad_link;
+    // another owner (the provider bound the effect again): a fault, so that the adapter zeroes the state and the engine
+    // starts anew for it in the next block
+    IF NE JUMP _prism_new_owner;
     JUMP _prism_run;
 _prism_initialize:
     // The state is zero: both heads silent, no tape yet.
@@ -185,19 +187,35 @@ _prism_run:
     CALL _prism_route;
     R0 = 0;
     DM(PS_FIRST,I5) = R0;
+    // a block that ran has no error: a link that came back clears the one it left
+    DM(PS_ERROR,I5) = R0;
     CALL _prism_publish;
     R0 = DK_FX_OK;
     JUMP (M13,I13);
 
+_prism_new_owner:
+    R0 = PH_ERROR_LINK;
+    JUMP _prism_fault;
 _prism_bad_storage:
     R0 = PH_ERROR_STORAGE;
-    JUMP _prism_fault;
-_prism_bad_link:
-    R0 = PH_ERROR_LINK;
 _prism_fault:
     DM(PS_ERROR,I5) = R0;
     CALL _prism_publish;
     R0 = -1;
+    JUMP (M13,I13);
+// A control mailbox that is missing, of another provider or not enabled is the link's state, not the engine's: the block
+// is silent and the engine waits for its controls with its state as it is. As a fault it would count toward the guard's
+// limit, and a link that drops a few blocks in a second (a late frame interrupt on the device) would switch the effect
+// off until the next start.
+_prism_bad_link:
+    R0 = PH_ERROR_LINK;
+    DM(PS_ERROR,I5) = R0;
+    I0 = DM(PS_OUTPUT,I5);
+    R0 = 0;
+    LCNTR = 64, DO _prism_silent UNTIL LCE;
+_prism_silent: DM(I0,M6) = R0;
+    CALL _prism_publish;
+    R0 = DK_FX_OK;
     JUMP (M13,I13);
 
 // ---- The input. Whether the loop effect runs: it finished a block since this engine's last one (its count LW_TAKEN moved;

@@ -141,7 +141,8 @@ static void texts(void)
     ld_page(w, 1, 64, &p);
     same(p.line2, "CYCLE 16 ST 2.00 S");
     same(p.xfad, "XFAD 64");
-    assert(p.mark == 250 && p.fader == 0);
+    /* without a loop the fader stands where XFAD is: the engine plays LIVE until a loop is taken */
+    assert(p.mark == 250 && p.fader == 64);
     /* Armed: what the next change keeps. */
     status(w, LS_TRACK | LS_ARMED, 0, 0, 371520, 64, 32, 0, 0);
     ld_page(w, 1, 0, &p);
@@ -190,7 +191,7 @@ static void texts(void)
     same(p.state, "NO LINK");
     same(p.line1, "");
     same(p.xfad, "XFAD 30");
-    assert(!p.loop && !p.armed && p.mark == LD_NO_MARK && p.fader == 0);
+    assert(!p.loop && !p.armed && p.mark == LD_NO_MARK && p.fader == 30);
 }
 /* A canvas that checks what the page draws: inside the screen, every text inside its place. */
 typedef struct {
@@ -200,6 +201,8 @@ static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
 {
     Drawn *d = ctx;
     assert(x >= 0 && y >= 0 && w > 0 && h > 0 && x + w <= 128 && y + h <= 64);
+    /* below the header, x 124 to 127 are the FX view's page indicator: nothing is drawn or cleared there */
+    assert(y + h <= 10 || x + w <= 124);
     assert(ink == 0 || ink == 1);
     ++d->boxes;
 }
@@ -208,7 +211,8 @@ static void drawn_text(void *ctx, int x, int y, const char *s, int ink)
     Drawn *d = ctx;
     /* The label font is at most 5 pixels a character with its gap, and 5 high. */
     int half = ((int)strlen(s) * 5 + 1) / 2;
-    if (!(*s && x - half >= 0 && x + half <= 128 && y >= 0 && y + 5 <= 64)) {
+    /* below the header, x 124 to 127 are the FX view's page indicator */
+    if (!(*s && x - half >= 0 && x + half <= (y < 10 ? 128 : 124) && y >= 0 && y + 5 <= 64)) {
         fprintf(stderr, "text \"%s\" at %d,%d leaves the screen\n", s, x, y);
         assert(0);
     }

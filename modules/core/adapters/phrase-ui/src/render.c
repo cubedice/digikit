@@ -95,7 +95,7 @@ void pu_page(const PhraseUi *s, PhrasePage *page)
     if (frames)
         pu_time(time, frames);
     else
-        put(time, s->fresh ? "--" : "NO LINK");
+        put(time, s->fresh && !s->status[PH_S_ERROR / 4] ? "--" : "NO LINK");
     put(page->time, time);
     page->mix = dkrt_phrase_get(PH_P_MIX);
     page->zone_index = zone;
@@ -163,10 +163,11 @@ void pu_render_header(const PhrasePage *p, const PhraseCanvas *c)
     }
     box(c, 0, 9, 128, 1, 1);
 }
+/* Below the header the page leaves x 123 to 127 to the FX view, which draws its page indicator there (x 125 to 127). */
 void pu_render(const PhrasePage *p, const PhraseCanvas *c)
 {
     char mix[8];
-    box(c, 0, 0, 128, 64, 0);
+    box(c, 0, 0, 124, 64, 0);
     pu_render_header(p, c);
     /* LEVEL: MIX, a column that fills from the bottom. */
     text(c, 10, 12, "MIX", 1);
@@ -175,10 +176,10 @@ void pu_render(const PhrasePage *p, const PhraseCanvas *c)
     box(c, 8, 21 + 32 - fill, 5, fill, 1);
     number(mix, p->mix);
     text(c, 10, 57, mix, 1);
-    box(c, 20, 37, 108, 1, 1);
+    box(c, 20, 37, 103, 1, 1);
     for (uint32_t i = 0; i < 8; ++i) {
         const PhraseCell *k = &p->cells[i];
-        int x = 33 + 26 * (int)(i % 4), y = i < 4 ? 11 : 38;
+        int x = 32 + 26 * (int)(i % 4), y = i < 4 ? 11 : 38; /* the last column ends at x 124 */
         text(c, x, y + 1, k->label, 1);
         text(c, x, y + 9, k->value, 1);
         if (i == 0)

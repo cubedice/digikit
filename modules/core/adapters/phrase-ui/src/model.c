@@ -300,7 +300,8 @@ void pu_time(char out[16], uint32_t frames)
 uint32_t pu_frames(const PhraseUi *s)
 {
     uint32_t l = s->status[PH_S_TIME_L / 4], r = s->status[PH_S_TIME_R / 4];
-    if (!s->fresh || !l || !r)
+    /* no time while the engine does not report, or reports that it has no controls (a silent block) */
+    if (!s->fresh || !l || !r || s->status[PH_S_ERROR / 4])
         return 0;
     if (l == r)
         return l;

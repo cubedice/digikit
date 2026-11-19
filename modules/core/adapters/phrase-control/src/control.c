@@ -12,6 +12,9 @@ static u32 raw[PH_PARAM_COUNT], control[2][PH_CONTROL_WORDS];
 static volatile u32 published;
 static u32 owner, page_code, row_index, generation;
 static u32 frame, reply_frame, assembled_seq, fragments, status[PH_STATUS_WORDS];
+/* The block in which the engine's heartbeat last moved. The DSP side returns its latest snapshot again and again; only a
+ * heartbeat that moves shows that the engine still runs. */
+static u32 beat_frame, beat, beating;
 static u32 assembling[PH_STATUS_WORDS];
 static char key[48];
 static char title[24];
@@ -158,6 +161,7 @@ void phrase_bind(u32 own, u32 physical_row, u32 native_page, const char *module,
         status[i] = 0;
     reply_frame = 0;
     fragments = 0;
+    beating = 0;
     if (own) {
         u32 j = 0;
         for (; j < 23 && name[j]; ++j)
@@ -196,8 +200,8 @@ u32 dkrt_phrase_snapshot(u32 *out, u32 words)
     u32 sr = dkrt_irq_mask();
     for (u32 i = 0; i < PH_STATUS_WORDS; ++i)
         out[i] = status[i];
-    u32 fresh = reply_frame && (u32)(frame - reply_frame) < 750 &&
-                status[PH_S_OWNER_GENERATION / 4] == generation;
+    u32 fresh = reply_frame && (u32)(frame - reply_frame) < 750 && beating &&
+                (u32)(frame - beat_frame) < 750 && status[PH_S_OWNER_GENERATION / 4] == generation;
     dkrt_irq_restore(sr);
     return fresh;
 }
@@ -257,6 +261,11 @@ static void reply(const volatile u16 *p)
     for (u32 i = 0; i < PH_STATUS_WORDS; ++i)
         status[i] = assembling[i];
     reply_frame = frame;
+    if (!beating || status[PH_S_HEARTBEAT / 4] != beat) {
+        beat = status[PH_S_HEARTBEAT / 4];
+        beat_frame = frame;
+        beating = 1;
+    }
     fragments = 0;
 }
 /* The tempo of the position suffix (core/pattern-position): word 5 holds BPM * 120 in its upper half. */

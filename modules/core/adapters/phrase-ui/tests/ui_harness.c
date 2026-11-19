@@ -336,6 +336,8 @@ static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
 {
     Drawn *d = ctx;
     assert(x >= 0 && y >= 0 && w > 0 && h > 0 && x + w <= 128 && y + h <= 64);
+    /* below the header, x 124 to 127 are the FX view's page indicator: nothing is drawn or cleared there */
+    assert(y + h <= 10 || x + w <= 124);
     assert(ink == 0 || ink == 1);
     ++d->boxes;
 }
@@ -347,6 +349,8 @@ static void drawn_text(void *ctx, int x, int y, const char *s, int ink)
     int half = (int)strlen(s) * 4 / 2;
     assert(*s && (strlen(s) <= 7 || (y == 2 && strlen(s) < 24)) && x - half >= 0 &&
            x + half <= 128 && y >= 0 && y + 5 <= 64);
+    /* below the header, x 124 to 127 are the FX view's page indicator */
+    assert(y < 10 || x + half <= 124);
     assert(d->texts < 64);
     strcpy(d->seen[d->texts++], s);
     d->inverted += !ink;
