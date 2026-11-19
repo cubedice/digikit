@@ -19,13 +19,17 @@ label, its value, and a state word.
 | D | COLR | | the distance from the centre, `DARK` or `BRIT` |
 | E | HALO | | the number |
 | F | SKEW | | `L 12` or `R 12`: the side with the longer time and the distance from the centre |
-| G | nothing yet | nothing yet | `INPT`, `LIVE` |
-| H | nothing yet | nothing yet | `XFAD`, `--`, `NO LOOP` |
+| G | INPT: a tick up LOOP, a tick down LIVE, only while there is a loop | INPT, only while there is a loop | `INPT`, `LIVE` or `LOOP` |
+| H | XFAD, Overloop's crossfader, a step a tick, only while there is a loop | ARM, while Overloop reports | `XFAD`: `--` and `NO LOOP`; `ARMD` and the steps the next change keeps (`16 ST`, `CUT`, `WAIT`); with a loop `LIVE`, a number or `LOOP`, and the crossfader as it sounds drawn below, or `ARMD` inverted |
+| FUNC + NO | | drop the loop | |
 
-G and H are kept for the loop (the input switch and Overloop's crossfader, steps 3 and 4 of
-[the redesign](../../../../docs/plans/prism-overloop-redesign.md)). Their encoders and presses, the presses of D to F and
-FUNC + NO are taken by the page, so that the stock page under it does nothing with them, and do nothing. UP, DOWN, FX and
-every other key go to the stock FX view: the page is one entry among the FX pages.
+INPT is `core/phrase-control`'s value (not saved); XFAD, ARM and the drop are Overloop's, through its home
+`core/loop-control` (`<dk/loop.h>`), which is optional here: in an image without it (the patch set `phrase`) the page has no
+loop, INPT stays LIVE and H shows `--`. `phrase_ui_tick`, once a UI pass also when the page is not shown, puts INPT at LOOP
+when the loop count in Overloop's status moves (a new loop) and at LIVE when there is no loop (a status without one, or
+no status for 60 more passes). While INPT is LOOP and there is a loop the header says `LOOP 16 ST 2.00 S` in place of the
+zone and the time. The presses of D to F are taken and do nothing. UP, DOWN, FX and every other key go to the stock FX
+view: the page is one entry among the FX pages.
 
 The time in the header and in the RATE cell is the engine's (`PH_S_TIME_L`, `PH_S_TIME_R`): the geometric mean of the
 two sides, since SKEW makes one shorter and one longer by the same ratio. Without a status the header says `NO LINK`.

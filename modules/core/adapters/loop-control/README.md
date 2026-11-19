@@ -39,19 +39,19 @@ two blocks or repeated.
 
 ## How the status comes back
 
-The engine publishes sixteen words in `_loop_ui_status` at the end of a block (this module owns the mailbox and the tap
-`_loop_tap` on the DSP side). `core/dsp-link` returns them in fourteen spare words of the reply; `loop_ui_tick` reads them
+The engine publishes sixteen words in `_loop_ui_status` at the end of a block (this module owns the mailbox on the DSP
+side). `core/dsp-link` returns them in fourteen spare words of the reply; `loop_ui_tick` reads them
 once a UI pass. A status without a new heartbeat for 60 passes is not fresh.
 
 When the status shows a loop the home has not seen (the count in the status differs from `LP_SEEN`), the home sets the
 crossfader to LOOP and `LP_SEEN` to the count. Until the engine reads that count back it holds its own crossfader at LOOP,
 so an old crossfader value cannot be heard between the capture and the home's answer.
 
-## The tap
+## Two pages
 
-`_loop_tap` (68 words, `LT_*` in `dk_loop.inc`): magic `LTAP`, version 1, the engine's block count, flags, then 32 left and
-32 right samples of the loop times the crossfader, as mixed into the last block. It is what an effect that takes the loop
-as its input reads in the next block. Nothing reads it yet.
+Overloop's page (`core/loop-display`) and PRISM's (`core/phrase-ui`) both set the crossfader and press ARM and DROP through
+this home; neither keeps a copy, so a change on one is what the other shows. The raw values are exported as
+`loop_control_raw` for device tests. The tap and the wet mailbox between the two effects are `core/loop-storage`'s.
 
 ## Checks
 
@@ -61,7 +61,5 @@ pnpm nx:pilot run dkrt-svc-fx:rust-tests         # the fx service: held values n
 pnpm nx:pilot run core/runtime:test-assembly     # the info entry is named as the service looks it up
 ```
 
-Open: when the engine starts anew (its storage lease changed) its count is 0 again, and the home follows as soon as it
-reads a status. If the engine took a loop before the home read one, and the count is the one the home last saw, the home
-does not move the crossfader to LOOP: the loop is taken and the engine moves from LOOP to where the crossfader stands.
-The window is one UI pass. Not reached in any test.
+An engine that starts anew (a load, a fault, a lease that moved) goes on counting loops from the count its status mailbox
+shows, so its next loop always has a count the home has not seen (finding 361: this closes the case finding 360 left open).

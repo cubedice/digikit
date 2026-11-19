@@ -5,10 +5,13 @@ diffusion network inside the repeat path, a skew between the two sides, reverse 
 Noise Mimeophon behaves; whether it sounds like one is for ears to decide, not for a test.
 
 It is a send effect of the effect framework: each track has a PRISM send amount, PRISM's output is added to the FX
-return, and the dry tracks are not touched. Steps 1 and 2 of [the redesign](../../../docs/plans/prism-overloop-redesign.md)
-are built: the engine, proven on the SHARC-only rig ([finding 358](../../../docs/findings/358-prism-repeater-engine.md)),
-and the send path with the one page, proven on the emulated Digitakt II
-([finding 359](../../../docs/findings/359-prism-send-effect-and-page.md)). Nothing ran on hardware, and nobody has listened.
+return, and the dry tracks are not touched. With Overloop it plays a transition: it hears Overloop's loop instead of the
+tracks (INPT), and Overloop's crossfader and ARM are on its page. Steps 1 to 4 of
+[the redesign](../../../docs/plans/prism-overloop-redesign.md) are built: the engine
+([finding 358](../../../docs/findings/358-prism-repeater-engine.md)), the send path with the one page
+([finding 359](../../../docs/findings/359-prism-send-effect-and-page.md)), and the loop as its input with the transition on
+its page ([finding 361](../../../docs/findings/361-prism-loop-input-and-return.md)), proven on the SHARC-only rig and the
+emulated Digitakt II. Nothing ran on hardware, and nobody has listened.
 
 The first target is Digitakt II OS 1.17. The engine contains no firmware address: its audio comes from the effect
 framework, its controls from the control mailbox it imports, its tape from the storage lease it imports.
@@ -19,7 +22,15 @@ framework, its controls from the control mailbox it imports, its tape from the s
   twice), the cell `PRS`, 0 to 127; the gain is the amount squared over 127 squared. All amounts start at 0, so PRISM is
   silent until one is raised. The amounts are kept in digikit's settings on the +Drive (`fx/send/digikit/prism`), not in
   kits or projects.
-- **Out:** the wet signal times MIX, added to the FX return.
+- **In, with INPT at LOOP:** Overloop's loop, at the level its crossfader gives it, times a fixed trim of -6 dB
+  (`PRISM_LOOP_TRIM` in `src/prism.h`, to be set by ear); the track sends do not reach PRISM then. Without Overloop or
+  without a loop that side is silence.
+- **Out:** the wet signal times MIX, added to the FX return. **While Overloop is loaded, PRISM's output goes to Overloop
+  instead**, which adds it after its crossfader at the same level, so PRISM is heard in full at every position of the
+  crossfader, and the loop does not record it (a loop that held PRISM's echoes would play them twice). In plain words: with
+  Overloop on the card, PRISM's echoes do not pass through the Digitakt's master compressor, its master overdrive or the clip
+  of the master stage, also when no loop is playing; the master volume still applies to them. Without Overloop they go
+  through the master as any send effect's return does.
 - PRISM takes the first free cell of that send page when it loads (the Digitakt II has two). It does not displace a stock
   effect: delay, reverb and chorus keep their sends on the first page. With both cells taken by other digikit send effects
   that load before it, PRISM loads and is not run.
@@ -50,14 +61,37 @@ FUNC + FX opens the FX pages; PRISM's is one of them (send effects come first). 
 | D | COLR, 64 is the centre: the cell shows the distance and `DARK` or `BRIT` |
 | E | HALO, 0 to 127 |
 | F | SKEW, 64 is the centre: `L 12` means the left side is the longer one by 12 steps, `R 12` the right |
-| G, H | INPT and XFAD: drawn in their place for the loop (step 4), and nothing moves them yet. Their presses, and FUNC + NO, do nothing |
+| G | INPT, a switch: LIVE (PRISM hears the tracks by their sends) or LOOP (PRISM hears Overloop's loop). A press or a turn switches, only while there is a loop; the switch crossfades over 5 ms |
+| H | XFAD, Overloop's crossfader: the same value as on Overloop's page (`LIVE`, a number, `LOOP`; below it the crossfader as it sounds). Turns only while there is a loop. Press: ARM (`ARMD`, and below it the steps the next change keeps); a second press takes it back |
+| FUNC + NO | Drop the loop |
 
 The header shows the zone and the time the engine plays now (it glides after a free RATE move). The values are kept in
 digikit's settings (`phrase/digikit/prism`), the same for every kit and project; HOLD is not kept. UP, DOWN and FUNC + FX
 move between the FX pages as on any of them.
 
 MIX is this page's and only this page's: the effect row's own MIX of the framework stays at unity, and a kit holds no
-PRISM value.
+PRISM value. INPT, XFAD and ARM are not kept anywhere: after a restart there is no loop, INPT is LIVE and the crossfader at
+LIVE; a pattern change does not move them. While PRISM hears the loop the header says `LOOP 16 ST 2.00 S` (its steps and
+seconds) in place of the zone and the time.
+
+## Performing a transition
+
+At the Digitakt, with PRISM and Overloop loaded, PRISM's page open (FUNC + FX until it shows) and the tracks you want PRISM
+to hear given a PRS amount:
+
+1. The pattern plays; PRISM echoes it. Press **H**: the XFAD cell says `ARMD`.
+2. Choose the next pattern the usual way (PTN and a TRIG key). At the end of the playing pattern the loop takes over:
+   XFAD goes to `LOOP`, INPT goes to `LOOP` by itself, and the header shows the loop. You hear the old pattern go on with
+   its echoes; the new pattern runs underneath, unheard.
+3. Play PRISM on the old pattern: ZONE, RATE, RPTS, COLR, HALO, MIX, press C to hold. The new pattern does not reach PRISM.
+4. Turn **H** toward LIVE. The new pattern comes in dry; the loop and PRISM's feed fade together, and what PRISM holds rings
+   on as RPTS lets it.
+5. At LIVE: the new pattern alone, with the last echoes of the old one. Set PRISM up for the new pattern.
+6. Press or turn **G**: INPT goes to LIVE and PRISM works on the new pattern by its sends.
+
+The loop stays until the next armed change or **FUNC + NO**; with it dropped INPT is LIVE. If you put INPT at LIVE while the
+crossfader still stands at LOOP, PRISM hears the new pattern by its sends and you hear its echoes over the loop: allowed,
+but the new pattern then reaches the output through PRISM before you turn H.
 
 ## Controls of the engine
 
@@ -104,10 +138,10 @@ the reasons for each choice: finding 358.
 ## Verification
 
 ```bash
-pnpm nx:pilot run digikit/prism:test-rig          # the engine on the SHARC-only rig, 47 cases, about 2.5 minutes
+pnpm nx:pilot run digikit/prism:test-rig          # the engine on the SHARC-only rig, and PRISM coupled with Overloop, about 3 minutes
 pnpm nx:pilot run core/phrase-control:test-host   # the control provider: values to control words, the SYNC note table, the transport
 pnpm nx:pilot run core/phrase-ui:test-host        # the page: encoders, presses, the cells' texts, what is drawn
-pnpm nx:pilot run digikit/prism:test-device       # the emulated Digitakt II: the page, the send path, beside CANOPY and Overloop
+pnpm nx:pilot run digikit/prism:test-device       # the emulated Digitakt II: the page, the send path, beside CANOPY and Overloop, the transition
 pnpm nx:pilot run digikit/prism:pack              # the package for the Digitakt II
 ```
 
@@ -117,15 +151,18 @@ click measure at every kind of jump, the pitch during a glide and through a jump
 tilt a repeat at both ends of COLR, HALO at 0 against a build without it, the times of the two sides, the held loop turn
 against turn and the bank's words while held. It prints the numbers at its end. Every block of every case is held to the
 effect contract (the hook returns, the registers come back, no fault, finite output), the module's stores are held to
-its state, its output and its bank, and the heaviest block is the `dsp_cost_fx` of `module.toml` (17,381 instructions,
-core/fx included; rig instructions, not a cycle count of the SHARC).
+its state, its output, its bank and its words of the wet mailbox, and the heaviest block is the `dsp_cost_fx` of
+`module.toml` (core/fx included; rig instructions, not a cycle count of the SHARC). The loop as the input and the route
+have their cases there too; `tests/transition.rig.test.ts` couples PRISM and Overloop block by block (`tests/pair-rig.ts`):
+the handover between the FX return and Overloop, the transition with PRISM sounding, INPT at LIVE over the loop.
 
 The device tests run the patched firmware with the SHARC core. `tests/ui.device.test.ts`: the page opens, each encoder
 and LEVEL moves its value, its control word and its cell, the three presses switch, FUNC + RATE is fine, G and H change
 nothing. `tests/send.device.test.ts`: a note of a track with a PRS amount comes again after the engine's time at the gain
 of the send law times MIX; a track with amount 0 is not heard by PRISM; with every amount at 0 the output is, sample for
 sample, the one of the card without PRISM. `tests/coexistence.device.test.ts`: CANOPY, Overloop, PRISM and remote on one
-card.
+card. `tests/transition.device.test.ts`: the transition of the plan's section 4 from PRISM's page with two patterns of the
+test instrument, and the level of PRISM through Overloop against through the FX return.
 
 ### Listening
 
@@ -141,10 +178,18 @@ free and in SYNC steps, zone changes, RPTS from 0 to 1, COLR from dark to bright
 ZONE, RATE and FLIP moved. It prints one line a file (`hold-moves: 28.0 s of audio in 28 s`). The files are renders of the
 rig, not recordings of a device, and are never committed.
 
-## What is not there yet
+```bash
+node modules/fx/prism/tests/transition-audio.ts out/runs/prism-transition-audio   # a whole transition with Overloop: about five minutes
+```
 
-- INPT (PRISM's input from Overloop's loop), and XFAD and ARM on this page, are step 4 of the redesign. Overloop has
-  them on its own page since step 3; their home (`core/loop-control`) and the tap PRISM will read (`_loop_tap`) are
-  there, and PRISM uses neither yet. The control and status words have their places for them (`PH_C_INPUT`, `PH_C_XFADE`, `PH_C_ARM_SEQ`, `PH_S_INPUT`,
-  `PH_S_LOOP`, `PH_S_ARMED`), all zero now.
+writes `transition-in.wav` (what the tracks play), `transition-out.wav` (what is heard) and a `README.txt` with the time of
+every step: pattern A with PRISM, ARM, the change, PRISM played on the loop, the crossfader to LIVE over two bars, G. Both
+engines run on the rig coupled as the device runs them (`tests/pair-rig.ts`); the master stage is its linear case.
+
+## Limits and what is open
+
+- At the armed change PRISM hears the new pattern for one block (0.7 ms): it runs before Overloop in a block and takes
+  the loop from the next one. Its echo of that block is the only trace of the new pattern in PRISM.
+- If PRISM is switched off (unloaded) while Overloop adds its output, that output stops without the framework's one-block
+  fade.
 - Nothing ran on hardware, and nobody has listened.

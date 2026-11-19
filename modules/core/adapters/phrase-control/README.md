@@ -21,10 +21,12 @@ offsets in that header are bytes.
 | RPTS | 0..127 | `RPTS`, float: 0..96 is 0..0.75 (a repeat at its level), 96..127 is 0.75..1 |
 | COLR, SKEW | 0..127, 64 the centre | float -1..1 |
 | HALO, MIX | 0..127 | float 0..1 |
-| INPT, XFAD | kept for the loop | `INPUT`, `XFADE`, `ARM_SEQ`: zero; a set of the raw value is refused (-2) |
+| INPT | 0 LIVE, 1 LOOP; not saved | `INPUT` |
+| XFAD | unused: the crossfader is Overloop's (`core/loop-control`) | `XFADE` and `ARM_SEQ` stay zero; a set of XFAD is refused (-2) |
 
-The words kept for the loop (and `PH_S_INPUT`, `PH_S_LOOP`, `PH_S_ARMED` of the status) have their places so that steps
-3 and 4 of [the redesign](../../../../docs/plans/prism-overloop-redesign.md) change no layout.
+The status words `PH_S_INPUT` (the input as the engine takes it), `PH_S_LOOP` (the loop feeds it) and `PH_S_ROUTE` (Overloop
+takes the output) are step 4's ([finding 361](../../../../docs/findings/361-prism-loop-input-and-return.md)); `PH_S_ARMED`
+stays 0.
 
 The note lengths are 12, 16, 18, 24, 32, 36, 48, 64, 72, 96, 128, 144, 192, 288, 384 and 768 ticks of 96 a quarter
 (1/32 to two bars, with triplets and dotted values). `SYNC_TIME` is `ticks * 3,600,000 / tempo`, the tempo in 1/120 BPM

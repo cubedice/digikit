@@ -208,6 +208,7 @@ DIGI_RIG_REPORT=1 pnpm exec vitest run --config vitest.host.config.ts --project 
 node tools/devtools/rig_profile.ts digikit/shot --device dn2 --case sample/stereo-fwd-oneshot/note60   # `wb profile report` of one case on the rig: instructions per function and loop (docs/TESTING.md "SHARC-only rig")
 node modules/fx/prism/tests/render-audio.ts out/runs/prism-audio   # WAV files of PRISM's engine on the rig for listening, with a README.txt of their settings (modules/fx/prism/README.md "Listening")
 node modules/fx/overloop/tests/render-audio.ts out/runs/overloop-audio   # WAV files of a whole pattern change through Overloop on the rig, input and output, with a README.txt of the event times (modules/fx/overloop/README.md "Listening")
+node modules/fx/prism/tests/transition-audio.ts out/runs/prism-transition-audio   # one WAV of a whole transition through PRISM and Overloop, both engines coupled on the rig, with a README.txt of the event times (modules/fx/prism/README.md "Listening")
 ```
 
 Pins are valid only for the firmware and ready state they were recorded with.

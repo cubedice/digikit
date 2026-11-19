@@ -1,13 +1,14 @@
 # Overloop
 
-Overloop is a looper that listens all the time. It records what is heard, the master mix behind every other effect, into a
-rolling record. Press ARM, change the pattern, and at the change the last cycle of the pattern that was playing becomes a
+Overloop is a looper that listens all the time. It records what is heard, the master mix behind every other effect but
+PRISM's echoes (below), into a rolling record. Press ARM, change the pattern, and at the change the last cycle of the pattern that was playing becomes a
 loop: it goes on playing where the old pattern would have, the crossfader stands at LOOP, and the new pattern runs
 underneath, unheard. Turn the crossfader to LIVE to bring the new pattern in.
 
-Steps 1 to 3 of [the redesign](../../../docs/plans/prism-overloop-redesign.md) are built; this is step 3
-([finding 360](../../../docs/findings/360-overloop-automatic-loop.md)). Digitakt II OS 1.17, proven on the SHARC-only rig
-and on the emulated device. Nothing ran on hardware, and nobody has listened.
+Steps 1 to 4 of [the redesign](../../../docs/plans/prism-overloop-redesign.md) are built: this module is step 3
+([finding 360](../../../docs/findings/360-overloop-automatic-loop.md)), and in step 4 it carries PRISM's output past its
+crossfader and gives PRISM the loop ([finding 361](../../../docs/findings/361-prism-loop-input-and-return.md)). Digitakt II
+OS 1.17, proven on the SHARC-only rig and on the emulated device. Nothing ran on hardware, and nobody has listened.
 
 ## Playing it
 
@@ -52,9 +53,10 @@ any more: the kit loads as any kit does and changes nothing in Overloop.
 
 ```
  input (the master mix) ──┬──────────────────────────────► x (1 - XFAD) ──┐
-                          │                                               ├──► output ──► rolling record
-                          │        loop ──► seam ──► x XFAD ──────────────┘                (the other buffer)
-                          │                              └──► tap (for an effect that takes the loop as its input)
+                          │                                               ├──► rolling record (the other buffer)
+                          │        loop ──► seam ──► x XFAD ──────────────┘          │
+                          │                              └──► tap (PRISM's input)    ├──► output
+ PRISM's output (the wet mailbox) ──► x +10 dB x the master volume ramp ─────────────┘
 ```
 
 - **Two buffers** of 1,032,192 frames (21.5 s) from `core/loop-storage`: its loop lease and the second phrase bank
@@ -68,8 +70,17 @@ any more: the kit loads as any kit does and changes nothing in Overloop.
   recorded. For a pattern that repeats those are the same samples, and the turn is exact.
 - **The crossfader:** output = input + (loop - input) * XFAD, moving by at most 1/256 a frame. LIVE passes the input
   bit for bit; LOOP is the loop alone. At an armed change it jumps to LOOP in the block of the change.
+- **PRISM's output:** while this engine runs, PRISM gives its output to the wet mailbox instead of the FX return; the engine
+  adds it after the crossfader and after the record, at the master stage's gain for it (its +10 dB and the volume ramp,
+  sample by sample; the ramp is read from two words of the stock master, anchors `dsp.master.value.volume_ramp.*`). PRISM
+  is heard in full at every crossfader position, and the loop never holds PRISM's echoes. The master's compressor,
+  overdrive and clip do not act on it. Without this engine PRISM goes to the FX return as before.
+- **The tap** is the loop times the crossfader, divided by the master's gain at the block's end (at most 1024 times): the
+  loop at the level of the mix before the master stage. PRISM reads it in the next block, and the loop count in its flags.
 - **The controls** are held by `core/loop-control`, outside the kit; the fx service hands them to the engine as the
-  parameter words of the effect's row. The engine publishes its status and the tap there (`sdk/dsp/contract/dk_loop.inc`).
+  parameter words of the effect's row. The engine publishes its status there; the tap and the wet mailbox are
+  `core/loop-storage`'s, which PRISM also requires (`sdk/dsp/contract/dk_loop.inc`). A new engine goes on counting loops
+  from its status, so a loop taken after a restart always has a new count.
 - **The page** is `core/loop-display`.
 
 Sources: `src/dsp/overloop.s` (the engine), `src/overloop.h` (its state and the constants that can be tuned),
@@ -104,6 +115,6 @@ and are never committed.
 
 ## What is not there yet
 
-- PRISM does not take the loop as its input, and PRISM's page does not show the crossfader or ARM (step 4). The tap and
-  the control home are there for it.
+- When this engine faults or is switched off while PRISM gives it its output, PRISM's block of that moment is not heard
+  (0.7 ms); PRISM is back on the FX return in the next block, faded in over that block.
 - Nothing ran on hardware, and nobody has listened.

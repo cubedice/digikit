@@ -1,13 +1,13 @@
 # PRISM and Overloop: redesign proposal
 
-Status: steps 1 to 3 of section 7 are built. Step 1, the engine, is measured on the SHARC-only rig
-([finding 358](../findings/358-prism-repeater-engine.md)); step 2, PRISM as a send effect with the one page and without
-`core/phrase-route`, is proven on the emulated Digitakt II ([finding 359](../findings/359-prism-send-effect-and-page.md),
-which also lists where the real page differs from the drawings below); step 3, Overloop as an always-listening looper
-with its own page and without `core/loop-controls`, is proven on the rig and on the emulated Digitakt II
-([finding 360](../findings/360-overloop-automatic-loop.md), which lists the boundary cases as built and where the page
-differs from section 3.2: ARM is a press of H, and the buffers hold 21.5 s). Steps 4 and 5 are not started; nothing ran
-on hardware. Digitakt II 1.17 only, as today.
+Status: steps 1 to 4 of section 7 are built; what remains is the install (step 5, the owner's). Step 1, the engine, is
+measured on the SHARC-only rig ([finding 358](../findings/358-prism-repeater-engine.md)); step 2, PRISM as a send effect
+with the one page and without `core/phrase-route` ([finding 359](../findings/359-prism-send-effect-and-page.md)); step 3,
+Overloop as an always-listening looper without `core/loop-controls` ([finding 360](../findings/360-overloop-automatic-loop.md));
+step 4, the loop as PRISM's input with INPT, XFAD and ARM on PRISM's page, and PRISM's output carried past Overloop's
+crossfader ([finding 361](../findings/361-prism-loop-input-and-return.md)). Steps 2 to 4 are proven on the emulated
+Digitakt II; the findings list where the pages differ from the drawings below. Nothing ran on hardware. Digitakt II 1.17
+only, as today.
 
 The screen drawings are schematic: they show what each cell holds and where, not pixels. The real screen is 128 x 64 and
 uses the native knob and text primitives that `core/phrase-ui` draws with today.
@@ -276,12 +276,14 @@ LIVE feeds PRISM nothing, because the loop's feed follows the crossfader.
 | 1 | Are PRISM's settings global or stored in each kit? | Global, as today. Stored per kit they would jump at every pattern change, in the middle of a transition |
 | 2 | Does the loop reach PRISM before or after the crossfader? | **Decided (owner, 2026-11-18): after.** Crossfading to LIVE then also closes PRISM's feed, and the new pattern arrives dry with the old echoes dying away. Before the crossfader, the old pattern would keep feeding PRISM at full level until INPT is switched |
 | 2a | Does INPT go back to LIVE by itself when the crossfader reaches LIVE? | No. It is the owner's move, so PRISM can be set up for the new pattern first |
-| 3 | Does the loop hold what was heard, or the tracks without PRISM? | What was heard. The outgoing pattern then continues exactly as it sounded |
+| 3 | Does the loop hold what was heard, or the tracks without PRISM? | **Decided (owner, 2026-11-18): the mix without PRISM.** PRISM goes on sounding over the loop at its full level, so a loop that held PRISM's echoes would play them twice at the change and keep them where no PRISM control reaches them. What is heard still goes on unchanged at the change: the loop plus PRISM, which rings on |
 | 4 | External inputs into PRISM | Not in the first version. A send effect sums track buses, and the external input is not one. Today's EXT L/R source is lost |
 | 5 | Keep Overloop usable without PRISM, with its own page? | Yes |
 | 6 | When the crossfader reaches LIVE, keep the loop or drop it? | Keep it |
 | 7 | The granular engine (GRAIN, MOVE) | Remove it from PRISM. It could come back as a separate effect; that is not part of this proposal |
 | 8 | Zone names, ranges, and the longest time (10.7 s or 21.5 s) | Set by ear in step 1 below |
+| 9 | How is PRISM heard past the crossfader, when Overloop is a master insert behind the FX return? | **Decided (owner, 2026-11-18): option B.** While Overloop runs, PRISM's output does not go to the FX return: Overloop adds it after its crossfader and after its record, at the master stage's gain (its +10 dB and the volume ramp). Accepted with it: with Overloop loaded, PRISM's echoes skip the master compressor, the clip of the master stage and the master overdrive, also without a loop; they follow the master volume. Without Overloop PRISM goes to the FX return as before |
+| 10 | At what level does the loop feed PRISM? | **Decided (owner, 2026-11-18):** INPT stays a plain switch; the loop's feed gets a fixed trim, -6 dB on the whole mix at full send (`PRISM_LOOP_TRIM` in `modules/fx/prism/src/prism.h`), set by ear after the install. No control on the page |
 
 ## 6. What is lost
 
@@ -296,10 +298,10 @@ LIVE feeds PRISM nothing, because the loop's feed follows the crossfader.
 
 | Step | Work | Proof | Effort (agent days) |
 |---|---|---|---|
-| 1 | PRISM engine on the rig: two heads, zones, COLR, HALO in the loop, SKEW, FLIP, HOLD; grains and capture out | Engine tests with numeric reports (step sizes, pitch during a RATE move, decay per repeat); WAVs for the owner | 3 to 4 |
-| 2 | PRISM as a send effect with the one page; `phrase-route` removed | Device tests: per-track send, FX return, page and presses; coexistence with CANOPY | 2 to 3 |
-| 3 | Overloop: rolling record, loop of the last cycle at an armed change, crossfader and send outside the kit; `loop-controls` removed | Rig tests of the seam (loop length against the pattern length, level across the boundary); device test of an armed change | 2 to 3 |
-| 4 | Loop into PRISM; INPT, XFAD and ARM on the PRISM page; INPT switches to LOOP at an armed change | Device test of the whole transition: PRISM hears only the loop after the change, the new pattern is dry at LIVE, and PRISM hears the tracks after INPT is switched | 1 to 2 |
+| 1 | PRISM engine on the rig: two heads, zones, COLR, HALO in the loop, SKEW, FLIP, HOLD; grains and capture out | Engine tests with numeric reports (step sizes, pitch during a RATE move, decay per repeat); WAVs for the owner | 3 to 4 (built) |
+| 2 | PRISM as a send effect with the one page; `phrase-route` removed | Device tests: per-track send, FX return, page and presses; coexistence with CANOPY | 2 to 3 (built) |
+| 3 | Overloop: rolling record, loop of the last cycle at an armed change, crossfader and send outside the kit; `loop-controls` removed | Rig tests of the seam (loop length against the pattern length, level across the boundary); device test of an armed change | 2 to 3 (built) |
+| 4 | Loop into PRISM; INPT, XFAD and ARM on the PRISM page; INPT switches to LOOP at an armed change | Device test of the whole transition: PRISM hears only the loop after the change, the new pattern is dry at LIVE, and PRISM hears the tracks after INPT is switched | 1 to 2 (built) |
 | 5 | Install on the Digitakt and listen | The owner | - |
 
 Total 8 to 12 agent days.
@@ -320,7 +322,8 @@ Open technical points:
 - (Settled in step 2, finding 359.) The native page was tied to the exclusive phrase route only in the fx service: the
   page's callbacks sit in the FX view's own table and ask which page is shown, so a send effect has the painted page
   with encoder presses without a new hook.
-- Overloop runs after the send effects in a block, so PRISM hears the loop one block (0.7 ms) late.
+- Overloop runs after the send effects in a block, so PRISM hears the loop one block (0.7 ms) late, and at an armed change
+  it hears the new pattern for that one block (finding 361).
 - An effect page of the plain framework has seven knobs and no keys. That is why PRISM keeps a native page.
 - Upstream's reload of modules (E5) and its folder regroup (E8) are still open; the new adapters should follow
   upstream's service layout where it is settled.
