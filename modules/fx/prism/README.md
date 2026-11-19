@@ -50,7 +50,7 @@ FUNC + FX opens the FX pages; PRISM's is one of them (send effects come first). 
 | D | COLR, 64 is the centre: the cell shows the distance and `DARK` or `BRIT` |
 | E | HALO, 0 to 127 |
 | F | SKEW, 64 is the centre: `L 12` means the left side is the longer one by 12 steps, `R 12` the right |
-| G, H | INPT and XFAD: drawn in their place for the loop (steps 3 and 4), and nothing moves them yet. Their presses, and FUNC + NO, do nothing |
+| G, H | INPT and XFAD: drawn in their place for the loop (step 4), and nothing moves them yet. Their presses, and FUNC + NO, do nothing |
 
 The header shows the zone and the time the engine plays now (it glides after a free RATE move). The values are kept in
 digikit's settings (`phrase/digikit/prism`), the same for every kit and project; HOLD is not kept. UP, DOWN and FUNC + FX
@@ -143,7 +143,8 @@ rig, not recordings of a device, and are never committed.
 
 ## What is not there yet
 
-- INPT (PRISM's input from Overloop's loop), XFAD (Overloop's crossfader) and ARM are steps 3 and 4 of the redesign. The
-  control and status words have their places for them (`PH_C_INPUT`, `PH_C_XFADE`, `PH_C_ARM_SEQ`, `PH_S_INPUT`,
+- INPT (PRISM's input from Overloop's loop), and XFAD and ARM on this page, are step 4 of the redesign. Overloop has
+  them on its own page since step 3; their home (`core/loop-control`) and the tap PRISM will read (`_loop_tap`) are
+  there, and PRISM uses neither yet. The control and status words have their places for them (`PH_C_INPUT`, `PH_C_XFADE`, `PH_C_ARM_SEQ`, `PH_S_INPUT`,
   `PH_S_LOOP`, `PH_S_ARMED`), all zero now.
 - Nothing ran on hardware, and nobody has listened.

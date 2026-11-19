@@ -22,7 +22,6 @@ commands within a shared session remain ordered. See [test concurrency and contr
 | `runtime/canopy-reload.test.ts` | `canopy-carrier` | Panel-driven temporary reload, same-pointer invalidation and fresh MIDI audio |
 | `runtime/canopy-carrier.test.ts` | `canopy-carrier` | Emulator-only initialization, machine/pattern re-admission and final PCM without audition |
 | `runtime/canopy-transport.test.ts` | `canopy-transport` | Emulator-only CANOPY MIDI/reset/configuration/event ACKs with real DSP |
-| `runtime/overloop-display.test.ts` | `overloop` | Experimental DT2 Overloop display, capture and live playback window |
 | `host/` | none (root `regression-host`) | Mocked helper tests, no daemon or firmware |
 
 Device tests for a module live in that module: `modules/**/tests/*.device.test.ts` (patched runtime on DT2 1.17
@@ -208,8 +207,8 @@ DIGI_EMUD_DT2=PATH_TO_DAEMON pnpm --filter @digi/regression exec vitest run --pr
 The test verifies the artifact hash against its plan, cold-boots with real DSP,
 waits for actual reset/configuration ACKs, then checks USB/DIN note tokens,
 independent releases and acknowledged queue drainage. It changes receive settings
-only in its disposable emulator. The fixture conflicts with `core/loop-controls`
-because it uses the optional controls tick for bootstrap. No renderer or public
+only in its disposable emulator. The fixture uses the platform's optional controls
+tick (`fx_controls_tick`) for bootstrap. No renderer or public
 machine descriptor is installed. It is excluded from the normal runtime suite.
 
 This image is emulator-only: current firmware preflight reports two tuning-table

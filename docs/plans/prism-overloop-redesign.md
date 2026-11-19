@@ -1,10 +1,13 @@
 # PRISM and Overloop: redesign proposal
 
-Status: steps 1 and 2 of section 7 are built. Step 1, the engine, is measured on the SHARC-only rig
+Status: steps 1 to 3 of section 7 are built. Step 1, the engine, is measured on the SHARC-only rig
 ([finding 358](../findings/358-prism-repeater-engine.md)); step 2, PRISM as a send effect with the one page and without
 `core/phrase-route`, is proven on the emulated Digitakt II ([finding 359](../findings/359-prism-send-effect-and-page.md),
-which also lists where the real page differs from the drawings below). Steps 3 to 5 are not started; nothing ran on
-hardware. Digitakt II 1.17 only, as today.
+which also lists where the real page differs from the drawings below); step 3, Overloop as an always-listening looper
+with its own page and without `core/loop-controls`, is proven on the rig and on the emulated Digitakt II
+([finding 360](../findings/360-overloop-automatic-loop.md), which lists the boundary cases as built and where the page
+differs from section 3.2: ARM is a press of H, and the buffers hold 21.5 s). Steps 4 and 5 are not started; nothing ran
+on hardware. Digitakt II 1.17 only, as today.
 
 The screen drawings are schematic: they show what each cell holds and where, not pixels. The real screen is 128 x 64 and
 uses the native knob and text primitives that `core/phrase-ui` draws with today.

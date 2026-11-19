@@ -32,9 +32,10 @@ two sides, since SKEW makes one shorter and one longer by the same ratio. Withou
 
 ## How it is bound
 
-The DTII 1.17 binding is declared in `devices/fw/phrase-ui.toml`. It replaces five slots of tables and no instruction:
-the FX view's draw, key and encoder slots, its encoder-interface thunk, and the draw slot of the passive help view. Each
-callback calls the stock function unless the page the view shows is the owner's (`dkrt_phrase_active`) and the view is
+This module is a page adapter of [`core/fxview`](../fxview/README.md), which owns the five table slots of the FX view
+(its draw, key and encoder slots, its encoder-interface thunk, and the draw slot of the passive help view; anchors in
+`devices/fw/phrase-ui.toml`) and calls `phrase_fxv_draw`, `phrase_fxv_key` and `phrase_fxv_turn` here. No instruction
+is replaced. An adapter function returns 0, and the firmware goes on as it would, unless the page the view shows is the owner's (`dkrt_phrase_active`) and the view is
 the visible FX view; so the binding does not depend on how the effect is routed, and every other FX page is the stock
 one. The view's page getter is vtable slot 34. The secondary encoder receiver is `view+4`, so that thunk adjusts the
 receiver before entering the shared handler. Eligibility uses the firmware's resolved drawable suffix, which removes FX
