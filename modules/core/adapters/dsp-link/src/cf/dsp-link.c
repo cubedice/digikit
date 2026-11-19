@@ -138,6 +138,8 @@ extern void instrument_write_frame(u32 tx_queue, u32 entry, const volatile u16 *
 extern void instrument_write_lock_frame(u32 tx_queue, u32 entry) __attribute__((weak));
 extern void phrase_write_frame(u32 tx_queue, u32 entry, const volatile u16 *rec)
     __attribute__((weak));
+/* core/loop-control: reads the loop effect's status from the reply copy, every block. It only reads. */
+extern void loop_reply_frame(const volatile u16 *rec) __attribute__((weak));
 
 static u32 word_at(const u8 *p)
 {
@@ -449,6 +451,8 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
     (void)src;
     if (cb)
         cb(rec);
+    if (loop_reply_frame)
+        loop_reply_frame(rec);
     if (!pp_write_frame && !instrument_write_frame && st != DL_START && st != DL_BUSY &&
         !l->ending && !l->dirty)
         return;

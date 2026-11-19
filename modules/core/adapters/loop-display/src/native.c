@@ -45,6 +45,7 @@ int loop_fxv_draw(uint8_t *view, uint8_t *bitmap, int header_only)
     if (!context(view))
         return 0;
     int fresh = (int)dkrt_loop_status(loop_ui_snapshot);
+    ld_observe(&ui, loop_ui_snapshot, (uint32_t)fresh);
     LoopCanvas c = {bitmap, fxv_box, fxv_text};
     ld_page(loop_ui_snapshot, (uint32_t)fresh, dkrt_loop_get(LP_XFAD), &loop_ui_page);
     if (header_only) {
@@ -95,6 +96,7 @@ void loop_view_update(uint8_t *view)
         if (*(uint8_t **)(node + 8) == view) {
             uint32_t now[LS_WORDS];
             int fresh = (int)dkrt_loop_status(now);
+            ld_observe(&ui, now, (uint32_t)fresh);
             /* Audio runs at 1500 blocks a second: 60 blocks is a 25 Hz ceiling on animation requests. An edit and
              * a link that came or went repaint at once. */
             if (fresh != drawn_fresh || ui.revision != drawn_revision ||

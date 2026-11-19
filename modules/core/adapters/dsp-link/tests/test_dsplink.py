@@ -214,6 +214,7 @@ def built():
         "instrument_write_frame": 0,
         "instrument_write_lock_frame": 0,
         "phrase_write_frame": 0,
+        "loop_reply_frame": 0,
     }
     return front_end.cf_link(
         [MOD / "src/cf/dsp-link.c"], BASE, syms, [MOD / "build/gen"]
@@ -249,6 +250,7 @@ pp_write_frame:
         "instrument_write_frame": 0,
         "instrument_write_lock_frame": 0,
         "phrase_write_frame": 0,
+        "loop_reply_frame": 0,
     }
     return front_end.cf_link(
         [MOD / "src/cf/dsp-link.c", stub], BASE, syms, [MOD / "build/gen"]
@@ -282,6 +284,7 @@ void instrument_write_frame(uint32_t tx, uint32_t entry, const volatile uint16_t
         "dl_tx_lit": TXLIT,
         "dl_rec_lit": RECLIT,
         "phrase_write_frame": 0,
+        "loop_reply_frame": 0,
     }
     if not locks:
         syms["instrument_write_lock_frame"] = 0

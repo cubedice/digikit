@@ -22,9 +22,6 @@ sources = ["src/control.c"]
 place = "cf.expansion"
 devices = ["dt2"]
 
-[object.externs]
-loop_reply_literal = "cf.link.site.reply_copy_lit"
-
 [[object]]
 path = "build/loop-control-dsp.dko.json"
 sources = ["src/dsp/status.s"]

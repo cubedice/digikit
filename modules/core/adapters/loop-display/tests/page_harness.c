@@ -2,8 +2,34 @@
 #include <stdio.h>
 #include <string.h>
 #include "../src/model.h"
-/* The home: the values as the page sets them. */
-static uint32_t xfad, arms, drops;
+/* The home: the values as the page sets them, and the engine's status as the home last had it. */
+static uint32_t xfad, arms, drops, st_words[LS_WORDS], st_fresh;
+uint32_t dkrt_loop_status(uint32_t *out)
+{
+    memcpy(out, st_words, sizeof(st_words));
+    return st_fresh;
+}
+/* The engine: BLOCKS more blocks of its heartbeat, in which it read the home's ARM counter (each change of it toggles ARM). */
+static uint32_t engine_arms;
+static void engine(uint32_t blocks)
+{
+    if (arms != engine_arms)
+        st_words[LS_STATE] ^= LS_ARMED;
+    engine_arms = arms;
+    st_words[LS_MAGIC] = LS_MAGIC_VALUE;
+    st_words[LS_HEARTBEAT] += blocks;
+    st_fresh = 1;
+}
+static uint32_t armed(void)
+{
+    return (st_words[LS_STATE] & LS_ARMED) != 0;
+}
+/* The engine's blocks, and the page reading the status as its update slot does. */
+static void run(LoopUi *s, uint32_t blocks)
+{
+    engine(blocks);
+    ld_observe(s, st_words, st_fresh);
+}
 uint32_t dkrt_loop_get(uint32_t index)
 {
     return index == LP_XFAD ? xfad : index == LP_ARM ? arms : index == LP_DROP ? drops : 0;
@@ -25,7 +51,9 @@ static void init(LoopUi *s)
 {
     memset(s, 0, sizeof(*s));
     s->active = 1;
-    xfad = arms = drops = 0;
+    xfad = arms = drops = engine_arms = 0;
+    memset(st_words, 0, sizeof(st_words));
+    st_fresh = 0;
 }
 static void controls(void)
 {
@@ -37,10 +65,11 @@ static void controls(void)
     assert(ld_turn(&s, LD_H, -2) == LD_OWN && xfad == 6);
     assert(ld_turn(&s, LD_LEVEL, 500) == LD_OWN && xfad == LP_MAX);
     assert(ld_turn(&s, LD_H, -500) == LD_OWN && xfad == 0);
-    /* A to G are taken and move nothing. */
+    /* A to D, F and G are taken and move nothing. */
     xfad = 40;
     for (uint32_t encoder = 0; encoder < LD_H; ++encoder)
-        assert(ld_turn(&s, encoder, 9) == LD_OWN);
+        if (encoder != LD_E)
+            assert(ld_turn(&s, encoder, 9) == LD_OWN);
     assert(xfad == 40 && !arms && !drops);
     assert(ld_turn(&s, 9, 1) == LD_PASS);
 
@@ -57,8 +86,10 @@ static void controls(void)
     s.active = 1;
     assert(ld_key(&s, LD_PUSH + LD_H, LD_PRESS, 0) == LD_OWN && arms == 3);
     assert(ld_key(&s, LD_PUSH + LD_H, LD_RELEASE, 0) == LD_OWN);
-    /* The presses of A to G are taken and do nothing. */
+    /* The presses of A to D, F and G are taken and do nothing. */
     for (uint32_t i = 0; i < LD_H; ++i) {
+        if (i == LD_E)
+            continue;
         assert(ld_key(&s, LD_PUSH + i, LD_PRESS, 0) == LD_OWN);
         assert(ld_key(&s, LD_PUSH + i, LD_RELEASE, 0) == LD_OWN);
     }
@@ -83,6 +114,63 @@ static void controls(void)
     assert(ld_key(&s, LD_PUSH + LD_H, LD_PRESS, 0) == LD_PASS && arms == 4);
     assert(ld_key(&s, LD_NO, LD_PRESS, 1) == LD_PASS && drops == 2);
     assert(ld_turn(&s, LD_H, 3) == LD_PASS && xfad == 40);
+    assert(ld_turn(&s, LD_E, 3) == LD_PASS && ld_key(&s, LD_PUSH + LD_E, LD_PRESS, 0) == LD_PASS &&
+           arms == 4);
+}
+/* E is ARM, where its label is: a press toggles, a turn to the right arms and to the left disarms. */
+static void arm_on_e(void)
+{
+    LoopUi s;
+    init(&s);
+    run(&s, 32);
+    /* A turn to the right arms; more turns to the right before the engine shows it do not take it back. */
+    assert(ld_turn(&s, LD_E, 1) == LD_OWN && arms == 1);
+    assert(ld_turn(&s, LD_E, 2) == LD_OWN && ld_turn(&s, LD_E, 1) == LD_OWN && arms == 1);
+    run(&s, 4);
+    assert(armed());
+    assert(ld_turn(&s, LD_E, 1) == LD_OWN && arms == 1);
+    /* To the left: disarmed, once. */
+    assert(ld_turn(&s, LD_E, -1) == LD_OWN && arms == 2);
+    assert(ld_turn(&s, LD_E, -3) == LD_OWN && arms == 2);
+    run(&s, 4);
+    assert(!armed() && ld_turn(&s, LD_E, -1) == LD_OWN && arms == 2);
+    /* A turn of 0 does nothing. */
+    assert(ld_turn(&s, LD_E, 0) == LD_OWN && arms == 2);
+    /* A press of E toggles: armed, then a turn to the right before the engine shows it keeps it armed. */
+    assert(ld_key(&s, LD_PUSH + LD_E, LD_PRESS, 0) == LD_OWN && arms == 3);
+    assert(ld_key(&s, LD_PUSH + LD_E, LD_RELEASE, 0) == LD_OWN);
+    assert(ld_turn(&s, LD_E, 1) == LD_OWN && arms == 3);
+    run(&s, 4);
+    assert(armed());
+    assert(ld_key(&s, LD_PUSH + LD_E, LD_PRESS, 0) == LD_OWN && arms == 4);
+    assert(ld_key(&s, LD_PUSH + LD_E, LD_REPEAT, 0) == LD_OWN && arms == 4);
+    assert(ld_key(&s, LD_PUSH + LD_E, LD_RELEASE, 0) == LD_OWN);
+    run(&s, 4);
+    assert(!armed());
+    /* H's press is ARM as well. */
+    assert(ld_key(&s, LD_PUSH + LD_H, LD_PRESS, 0) == LD_OWN && arms == 5);
+    assert(ld_key(&s, LD_PUSH + LD_H, LD_RELEASE, 0) == LD_OWN);
+    run(&s, 4);
+    assert(armed());
+    /* An armed change took the loop and used the arm up: the status says so, and a turn to the right arms again. */
+    st_words[LS_STATE] &= ~(uint32_t)LS_ARMED;
+    run(&s, 4);
+    assert(ld_turn(&s, LD_E, 1) == LD_OWN && arms == 6);
+    run(&s, 4);
+    assert(armed());
+    /* What the page asked for counts LD_ARM_SETTLE blocks at most: an engine that does not show it is followed again. */
+    assert(ld_turn(&s, LD_E, -1) == LD_OWN && arms == 7);
+    engine_arms = arms; /* the engine missed it */
+    run(&s, LD_ARM_SETTLE - 1);
+    assert(armed() && ld_turn(&s, LD_E, -1) == LD_OWN && arms == 7);
+    run(&s, 1);
+    assert(ld_turn(&s, LD_E, -1) == LD_OWN && arms == 8);
+    /* Without a fresh status every press is a change of the counter, as before. */
+    st_fresh = 0;
+    assert(ld_key(&s, LD_PUSH + LD_E, LD_PRESS, 0) == LD_OWN && arms == 9);
+    assert(ld_key(&s, LD_PUSH + LD_E, LD_RELEASE, 0) == LD_OWN);
+    assert(ld_key(&s, LD_PUSH + LD_E, LD_PRESS, 0) == LD_OWN && arms == 10);
+    assert(xfad == 0 && drops == 0);
 }
 static void same(const char *got, const char *want)
 {
@@ -133,14 +221,14 @@ static void texts(void)
     same(p.state, "IDLE");
     same(p.line1, "NO LOOP");
     same(p.line2, "");
-    same(p.arm, "ARM OFF");
-    same(p.xfad, "XFAD LIVE");
+    same(p.arm, "OFF");
+    same(p.xfad, "LIVE");
     assert(!p.armed && !p.loop && p.mark == LD_NO_MARK && p.fader == 0);
     /* A pattern plays: its cycle, and the mark at its step. */
     status(w, LS_TRACK, 0, 0, 96000, 16, 4, 0, 0);
     ld_page(w, 1, 64, &p);
     same(p.line2, "CYCLE 16 ST 2.00 S");
-    same(p.xfad, "XFAD 64");
+    same(p.xfad, "64");
     /* without a loop the fader stands where XFAD is: the engine plays LIVE until a loop is taken */
     assert(p.mark == 250 && p.fader == 64);
     /* Armed: what the next change keeps. */
@@ -149,7 +237,7 @@ static void texts(void)
     same(p.state, "ARMED");
     same(p.line1, "NEXT CHANGE KEEPS");
     same(p.line2, "64 ST 7.74 S");
-    same(p.arm, "ARM ON");
+    same(p.arm, "ON");
     assert(p.armed && p.mark == 500);
     /* Armed while nothing plays: a change now takes nothing. */
     status(w, LS_ARMED, 0, 0, 0, 0, 0, 0, 0);
@@ -165,7 +253,7 @@ static void texts(void)
     same(p.state, "LOOP");
     same(p.line1, "LOOP 16 ST 2.00 S");
     same(p.line2, "");
-    same(p.xfad, "XFAD LOOP");
+    same(p.xfad, "LOOP");
     assert(p.loop && p.mark == 250 && p.fader == 127);
     /* The crossfader half way: the fader shows what sounds. */
     status(w, LS_LOOP, 96000, 16, 0, 0, 0, 95999, 0.5f);
@@ -175,7 +263,7 @@ static void texts(void)
     status(w, LS_LOOP, 96000, 16, 0, 0, 0, 0, 0.0f);
     ld_page(w, 1, 0, &p);
     same(p.state, "LOOP");
-    same(p.xfad, "XFAD LIVE");
+    same(p.xfad, "LIVE");
     assert(p.fader == 0 && p.mark == 0);
     /* A loop that was cut, and armed again. */
     status(w, LS_LOOP | LS_CUT, 1031680, 128, 0, 0, 0, 0, 1.0f);
@@ -190,13 +278,26 @@ static void texts(void)
     ld_page(w, 0, 30, &p);
     same(p.state, "NO LINK");
     same(p.line1, "");
-    same(p.xfad, "XFAD 30");
+    same(p.xfad, "30");
     assert(!p.loop && !p.armed && p.mark == LD_NO_MARK && p.fader == 30);
 }
 /* A canvas that checks what the page draws: inside the screen, every text inside its place. */
 typedef struct {
     uint32_t boxes, texts, inverted;
+    /* the texts drawn, their centres and tops */
+    char text[16][28];
+    int x[16], y[16];
 } Drawn;
+/* The centre of text S, or -1000 when it was not drawn; *Y its top. */
+static int where(const Drawn *d, const char *s, int *y)
+{
+    for (uint32_t i = 0; i < d->texts && i < 16; ++i)
+        if (!strcmp(d->text[i], s)) {
+            *y = d->y[i];
+            return d->x[i];
+        }
+    return -1000;
+}
 static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
 {
     Drawn *d = ctx;
@@ -215,6 +316,12 @@ static void drawn_text(void *ctx, int x, int y, const char *s, int ink)
     if (!(*s && x - half >= 0 && x + half <= (y < 10 ? 128 : 124) && y >= 0 && y + 5 <= 64)) {
         fprintf(stderr, "text \"%s\" at %d,%d leaves the screen\n", s, x, y);
         assert(0);
+    }
+    if (d->texts < 16) {
+        strncpy(d->text[d->texts], s, 27);
+        d->text[d->texts][27] = 0;
+        d->x[d->texts] = x;
+        d->y[d->texts] = y;
     }
     ++d->texts;
     d->inverted += !ink;
@@ -245,6 +352,17 @@ static void rendering(void)
             assert(d.inverted == ((states[i] & LS_ARMED) ? 1u : 0u));
             assert(d.texts >= 6);
         }
+    /* Each label above its encoder, its value under it: ARM over E, XFAD over H (the cells of PRISM's page). */
+    status(w, LS_TRACK | LS_ARMED, 0, 0, 96000, 16, 4, 0, 0.0f);
+    ld_page(w, 1, 64, &p);
+    memset(&d, 0, sizeof(d));
+    ld_render(&p, &c);
+    int y_label = 0, y_value = 0;
+    assert(where(&d, "ARM", &y_label) == LD_CELL_E && where(&d, "ON", &y_value) == LD_CELL_E &&
+           y_value > y_label);
+    assert(where(&d, "XFAD", &y_label) == LD_CELL_H && where(&d, "64", &y_value) == LD_CELL_H &&
+           y_value > y_label);
+    assert(LD_CELL_E == 32 + 26 * (LD_E - 4) && LD_CELL_H == 32 + 26 * (LD_H - 4));
     memset(&d, 0, sizeof(d));
     ld_render_header(&p, &c);
     assert(d.texts == 2);
@@ -254,6 +372,7 @@ static void rendering(void)
 int main(void)
 {
     controls();
+    arm_on_e();
     texts();
     rendering();
     puts("loop page: ok");

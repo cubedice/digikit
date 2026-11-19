@@ -345,7 +345,13 @@ uint32_t session_boundary(const uint32_t *words, uint32_t step) {
             helper,
         ],
         0x47E00000,
-        {"_dl_area": 0, "dl_tx_lit": 0, "dl_rec_lit": 0, "pp_write_frame": 0},
+        {
+            "_dl_area": 0,
+            "dl_tx_lit": 0,
+            "dl_rec_lit": 0,
+            "pp_write_frame": 0,
+            "loop_reply_frame": 0,
+        },
         [mod / "src/cf", REPO_ROOT / "modules/core/adapters/dsp-link/build/gen"],
     )
     calls = [

@@ -1,17 +1,106 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#define LOOP_CONTROL_TEST
 #include "../src/control.c"
+/* The interrupt mask: counted, so that a test sees every mask restored. */
+static u32 masked;
 u32 dkrt_irq_mask(void)
 {
-    return 0;
+    return ++masked;
 }
 void dkrt_irq_restore(u32 sr)
 {
-    (void)sr;
+    assert(sr == masked);
+    --masked;
 }
-volatile u32 loop_reply_literal;
+
+/* The copy of a DSP reply (0xabc bytes) as the block interrupt hands it on, and the carrier's fourteen cells in it. */
+static u16 reply_copy[0xabc / 2];
+static void cell(u32 j, u32 value)
+{
+    u32 row = j < 8 ? 17 + j / 2 : 29 + (j - 8) / 2;
+    u32 off = (0x1c + 0x54 * row + 0x44 + (j & 1) * 4) / 2;
+    reply_copy[off] = (u16)value;
+    reply_copy[off + 1] = (u16)(value >> 16);
+}
+/* A reply that carries the loop effect's status (OVL2): heartbeat, state bits, the loop's frames. */
+static void carrier(u32 heartbeat, u32 state, u32 frames)
+{
+    memset(reply_copy, 0xa5, sizeof(reply_copy));
+    for (u32 j = 0; j < 14; ++j)
+        cell(j, 0);
+    cell(0, WIRE_MAGIC);
+    cell(LS_HEARTBEAT, heartbeat);
+    cell(LS_STATE, state);
+    cell(LS_LOOP_FRAMES, frames);
+}
+/* A reply of the phrase effect in the same cells (its magic). */
+static void phrase_reply(u32 serial)
+{
+    memset(reply_copy, 0x5a, sizeof(reply_copy));
+    cell(0, 0x50485231);
+    cell(1, serial);
+}
+/* The block interrupt, as core/dsp-link calls the hook. */
+static void block(void)
+{
+    loop_reply_frame(reply_copy);
+}
+static void reply_hook(void)
+{
+    u32 out[LS_WORDS];
+    u32 updates = loop_control_updates;
+    /* No reply yet, or no copy: nothing to take. */
+    loop_reply_frame(0);
+    loop_ui_tick();
+    assert(loop_control_updates == updates && masked == 0);
+    /* The status in one reply of four, the phrase reply in the other three: the UI pass takes it whichever block it comes
+     * after. */
+    carrier(100, LS_TRACK, 0);
+    block();
+    phrase_reply(1);
+    block();
+    phrase_reply(2);
+    block();
+    loop_ui_tick();
+    assert(loop_control_updates == updates + 1 && masked == 0);
+    assert(dkrt_loop_status(out) == 1 && out[LS_MAGIC] == LS_MAGIC_VALUE &&
+           out[LS_HEARTBEAT] == 100 && out[LS_STATE] == LS_TRACK && out[14] == 0 && out[15] == 0);
+    /* Two statuses between UI passes: the newest one. */
+    carrier(104, LS_TRACK | LS_ARMED, 0);
+    block();
+    phrase_reply(3);
+    block();
+    carrier(108, LS_LOOP, 96000);
+    block();
+    phrase_reply(4);
+    block();
+    loop_ui_tick();
+    assert(loop_control_updates == updates + 2);
+    assert(dkrt_loop_status(out) == 1 && out[LS_HEARTBEAT] == 108 && out[LS_STATE] == LS_LOOP &&
+           out[LS_LOOP_FRAMES] == 96000);
+    /* A UI pass without a new reply takes nothing again. */
+    loop_ui_tick();
+    assert(loop_control_updates == updates + 2);
+    /* A carrier with packed bits in its word 7, or without the magic, is not the loop effect's status. */
+    carrier(112, LS_TRACK, 0);
+    cell(7, 1);
+    block();
+    carrier(116, LS_TRACK, 0);
+    cell(0, LS_MAGIC_VALUE);
+    block();
+    loop_ui_tick();
+    assert(loop_control_updates == updates + 2 && dkrt_loop_status(out) == 1 &&
+           out[LS_HEARTBEAT] == 108);
+    /* The status stops: after STALE passes it is not fresh. */
+    for (u32 i = 0; i < STALE; ++i)
+        loop_ui_tick();
+    assert(dkrt_loop_status(out) == 0 && masked == 0);
+    carrier(120, LS_TRACK, 0);
+    block();
+    loop_ui_tick();
+    assert(dkrt_loop_status(out) == 1 && out[LS_HEARTBEAT] == 120);
+}
 
 /* A status as the engine publishes it: heartbeat, state bits, the count of loops. */
 static void report(u32 heartbeat, u32 bits, u32 count)
@@ -116,6 +205,7 @@ int main(void)
     dkrt_loop_xfad(10);
     report(8, LS_LOOP | LS_HELD, 1);
     assert(dkrt_loop_get(LP_XFAD) == LP_MAX && dkrt_loop_get(LP_SEEN) == 1);
+    reply_hook();
     puts("loop control: ok");
     return 0;
 }

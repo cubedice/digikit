@@ -15,6 +15,37 @@ static void own(LoopUi *s, uint32_t k, int on)
     else
         s->owned[k >> 5] &= ~(1u << (k & 31));
 }
+void ld_observe(LoopUi *s, const uint32_t *st, uint32_t fresh)
+{
+    if (!s->arm_asked)
+        return;
+    uint32_t armed = fresh && (st[LS_STATE] & LS_ARMED);
+    if (!fresh || armed == s->arm_asked - 1 || st[LS_HEARTBEAT] - s->arm_beat >= LD_ARM_SETTLE)
+        s->arm_asked = 0;
+}
+/* ARM as the page counts it: the state it asked for while the status does not show it yet, else the engine's status
+ * (without a fresh one the engine is taken as not armed). BEAT: the heartbeat of the status. */
+static uint32_t armed_now(LoopUi *s, uint32_t *beat)
+{
+    uint32_t st[LS_WORDS];
+    uint32_t fresh = dkrt_loop_status(st);
+    ld_observe(s, st, fresh);
+    *beat = st[LS_HEARTBEAT];
+    if (s->arm_asked)
+        return s->arm_asked - 1;
+    return fresh && (st[LS_STATE] & LS_ARMED);
+}
+/* ARM to ON: the home's counter moves once when the engine is not there yet (each change of it toggles the engine). */
+static void arm_to(LoopUi *s, uint32_t on)
+{
+    uint32_t beat;
+    if (armed_now(s, &beat) == on)
+        return;
+    dkrt_loop_arm();
+    s->arm_asked = 1 + on;
+    s->arm_beat = beat;
+    ++s->revision;
+}
 uint32_t ld_key(LoopUi *s, uint32_t key, uint32_t flags, uint32_t func)
 {
     if (key >= 64)
@@ -40,9 +71,10 @@ uint32_t ld_key(LoopUi *s, uint32_t key, uint32_t flags, uint32_t func)
         return LD_OWN;
     }
     if (key >= LD_PUSH && key < LD_PUSH + 8) {
-        if (key == LD_PUSH + LD_H) {
-            dkrt_loop_arm();
-            ++s->revision;
+        /* E and H: ARM, or the arm taken back */
+        if (key == LD_PUSH + LD_E || key == LD_PUSH + LD_H) {
+            uint32_t beat;
+            arm_to(s, !armed_now(s, &beat));
         }
         own(s, key, 1);
         return LD_OWN;
@@ -53,6 +85,8 @@ uint32_t ld_turn(LoopUi *s, uint32_t encoder, int32_t delta)
 {
     if (!s->active || encoder > LD_LEVEL)
         return LD_PASS;
+    if (encoder == LD_E && delta)
+        arm_to(s, delta > 0);
     if (encoder == LD_H || encoder == LD_LEVEL) {
         int32_t value = (int32_t)dkrt_loop_get(LP_XFAD) + delta;
         if (value < 0)
@@ -169,14 +203,13 @@ void ld_page(const uint32_t *st, uint32_t fresh, uint32_t xfad, LoopPage *p)
         p->mark = 1000;
     /* with a loop, the crossfader as the engine applies it; without one, where XFAD stands (the engine plays LIVE then) */
     p->fader = loop ? fader_of(st[LS_GAIN]) : (xfad > LP_MAX ? LP_MAX : xfad);
-    copy(p->arm, armed ? "ARM ON" : "ARM OFF");
-    s = copy(p->xfad, "XFAD ");
+    copy(p->arm, armed ? "ON" : "OFF");
     if (xfad == 0)
-        copy(s, "LIVE");
+        copy(p->xfad, "LIVE");
     else if (xfad >= LP_MAX)
-        copy(s, "LOOP");
+        copy(p->xfad, "LOOP");
     else
-        number(s, xfad);
+        number(p->xfad, xfad);
 }
 static void box(const LoopCanvas *c, int x, int y, int w, int h, int ink)
 {
@@ -207,7 +240,9 @@ void ld_render_header(const LoopPage *p, const LoopCanvas *c)
     text(c, 104, 2, p->state, 1);
     box(c, 0, 9, 128, 1, 1);
 }
-/* Below the header the page leaves x 123 to 127 to the FX view, which draws its page indicator there (x 125 to 127). */
+/* Below the header the page leaves x 124 to 127 to the FX view, which draws its page indicator there (x 125 to 127). The
+ * bottom row is laid out as PRISM's cells (label, value, then a third line), each above its encoder: ARM above E, XFAD above
+ * H. */
 void ld_render(const LoopPage *p, const LoopCanvas *c)
 {
     box(c, 0, 0, 124, 64, 0);
@@ -215,19 +250,20 @@ void ld_render(const LoopPage *p, const LoopCanvas *c)
     text(c, 64, 12, p->line1, 1);
     text(c, 64, 20, p->line2, 1);
     /* the timeline: a cycle from end to end, with quarter marks and the mark of where it stands */
-    box(c, 3, 33, 117, 1, 1);
+    box(c, 3, 30, 117, 1, 1);
     for (int i = 0; i <= 4; ++i)
-        box(c, 3 + i * 116 / 4, 30, 1, 7, 1);
+        box(c, 3 + i * 116 / 4, 27, 1, 7, 1);
     if (p->mark != LD_NO_MARK) {
         int x = 3 + (int)(p->mark * 116 / 1000);
-        box(c, x - 1, 28, 3, 11, 1);
+        box(c, x - 1, 26, 3, 9, 1);
     }
-    /* the crossfader as it sounds */
-    text(c, 12, 43, "LIVE", 1);
-    text(c, 108, 43, "LOOP", 1);
-    box(c, 25, 45, 70, 1, 1);
-    box(c, 25 + (int)(p->fader * 67 / 127), 41, 3, 9, 1);
-    box(c, 0, 52, 123, 1, 1);
-    text(c, 32, 56, p->arm, p->armed ? 0 : 1);
-    text(c, 96, 56, p->xfad, 1);
+    box(c, 0, 37, 124, 1, 1);
+    /* E: ARM, its state inverted while it is on */
+    text(c, LD_CELL_E, 39, "ARM", 1);
+    text(c, LD_CELL_E, 47, p->arm, p->armed ? 0 : 1);
+    /* H: XFAD as the home holds it, and under it the crossfader as it sounds, from LIVE (left) to LOOP (right) */
+    text(c, LD_CELL_H, 39, "XFAD", 1);
+    text(c, LD_CELL_H, 47, p->xfad, 1);
+    box(c, LD_CELL_H - 11, 60, 23, 1, 1);
+    box(c, LD_CELL_H - 11 + (int)(p->fader * 20 / 127), 58, 3, 5, 1);
 }

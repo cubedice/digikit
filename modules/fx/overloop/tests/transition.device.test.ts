@@ -65,6 +65,7 @@ describeOn('dt2', 'DTII Overloop: an armed pattern change', () => {
         'fx.rows',
         'loop_ui_debug',
         'loop_ui_values',
+        'loop_control_raw',
         'loop_ui_page',
         '_loop_ui_status',
         '_loop_buffer_info',
@@ -126,7 +127,9 @@ describeOn('dt2', 'DTII Overloop: an armed pattern change', () => {
         fader: bytes.readUInt32BE(116),
       };
     };
-    const xfad = () => cf('loop_ui_values', L.LP_XFAD!);
+    // the home's crossfader (core/loop-control), not the page's copy of it, which is a callback old: a turn read against the
+    // copy can be sent twice
+    const xfad = () => cf('loop_control_raw', L.LP_XFAD!);
     const setXfad = async (target: number) => {
       for (let attempt = 0; attempt < 40; attempt++) {
         const error = target - (await xfad());
@@ -171,7 +174,7 @@ describeOn('dt2', 'DTII Overloop: an armed pattern change', () => {
     const idle = await page();
     record(artifacts, 'page-idle', idle);
     await shot(session, artifacts, 'idle');
-    expect(idle).toMatchObject({ title: 'OVERLOOP', state: 'IDLE', line1: 'NO LOOP', arm: 'ARM OFF', xfad: 'XFAD LIVE', fader: 0 });
+    expect(idle).toMatchObject({ title: 'OVERLOOP', state: 'IDLE', line1: 'NO LOOP', arm: 'OFF', xfad: 'LIVE', fader: 0 });
     expect((await rows(session, plan, context.slots))[0]!.slice(17, 19), 'the effect runs on the master with no fault').toEqual([0, 0]);
 
     // Pattern 1 plays; after its first whole cycle the engine knows what a change would keep.
@@ -195,14 +198,14 @@ describeOn('dt2', 'DTII Overloop: an armed pattern change', () => {
     let live = 0;
     let end = 0;
     try {
-      // ARM with the press of H: one-shot, shown on the page.
-      await tap(session, 'PUSH H', 150);
+      // ARM with the press of E, under its label: one-shot, shown on the page.
+      await tap(session, 'PUSH E', 150);
       await advance(session, 300);
       expect(await status()).toMatchObject({ armed: true, loop: false });
       const armed = await page();
       record(artifacts, 'page-armed', armed);
       await shot(session, artifacts, 'armed');
-      expect(armed).toMatchObject({ state: 'ARMED', line1: 'NEXT CHANGE KEEPS', line2: '16 ST 2.00 S', arm: 'ARM ON', armed: true });
+      expect(armed).toMatchObject({ state: 'ARMED', line1: 'NEXT CHANGE KEEPS', line2: '16 ST 2.00 S', arm: 'ON', armed: true });
 
       // Pattern 2 is chosen the usual way: it comes at the end of pattern 1's cycle, and the loop takes over there.
       await selectPattern(2);
@@ -217,7 +220,7 @@ describeOn('dt2', 'DTII Overloop: an armed pattern change', () => {
       const atLoop = await page();
       record(artifacts, 'page-loop', atLoop);
       await shot(session, artifacts, 'loop');
-      expect(atLoop).toMatchObject({ state: 'LOOP', line1: 'LOOP 16 ST 2.00 S', arm: 'ARM OFF', xfad: 'XFAD LOOP', fader: 127, loop: true });
+      expect(atLoop).toMatchObject({ state: 'LOOP', line1: 'LOOP 16 ST 2.00 S', arm: 'OFF', xfad: 'LOOP', fader: 127, loop: true });
 
       // The crossfader half way, then at LIVE: pattern 2 comes in.
       moved = await mark();
@@ -226,7 +229,7 @@ describeOn('dt2', 'DTII Overloop: an armed pattern change', () => {
       const half = await page();
       record(artifacts, 'page-half', half);
       await shot(session, artifacts, 'half');
-      expect(half.xfad).toBe('XFAD 64');
+      expect(half.xfad).toBe('64');
       expect(Math.abs(half.fader - 64)).toBeLessThanOrEqual(1);
       expect((await status()).gain).toBeCloseTo(64 / 127, 5);
       await setXfad(0);
@@ -236,7 +239,7 @@ describeOn('dt2', 'DTII Overloop: an armed pattern change', () => {
       const atLive = await page();
       record(artifacts, 'page-live', atLive);
       await shot(session, artifacts, 'live');
-      expect(atLive).toMatchObject({ state: 'LOOP', xfad: 'XFAD LIVE', fader: 0 });
+      expect(atLive).toMatchObject({ state: 'LOOP', xfad: 'LIVE', fader: 0 });
       await advance(session, 4400);
       end = await mark();
     } finally {
@@ -284,9 +287,13 @@ describeOn('dt2', 'DTII Overloop: an armed pattern change', () => {
 
     // The crossfader and the armed state are not kit values: a pattern change leaves them as they are. First a change that
     // takes no loop because the transport is stopped (the arm stays), then one while it plays and nothing is armed.
+    // E turned to the right arms, and turned further stays armed.
+    const turnE = (ticks: number) => bounded(() => session.client.inputTurn(encoder('ENC E'), ticks));
     await tap(session, 'STOP', 150);
     await setXfad(50);
-    await tap(session, 'PUSH H', 150);
+    await turnE(1);
+    await advance(session, 300);
+    await turnE(2);
     await advance(session, 300);
     expect(await status()).toMatchObject({ armed: true, loop: true, count: 1 });
     await selectPattern(1);
@@ -295,10 +302,13 @@ describeOn('dt2', 'DTII Overloop: an armed pattern change', () => {
     expect(await xfad()).toBe(50);
     const both = await page();
     record(artifacts, 'page-loop-armed', both);
-    expect(both).toMatchObject({ state: 'LOOP+ARM', xfad: 'XFAD 50' });
-    await tap(session, 'PUSH H', 150);
+    expect(both).toMatchObject({ state: 'LOOP+ARM', arm: 'ON', xfad: '50' });
+    await turnE(-1);
     await advance(session, 300);
-    expect((await status()).armed, 'a second press takes the arm back').toBe(false);
+    expect((await status()).armed, 'E turned to the left takes the arm back').toBe(false);
+    await turnE(-2);
+    await advance(session, 300);
+    expect((await status()).armed, 'and turned further leaves it off').toBe(false);
     await tap(session, 'PLAY', 80);
     await advance(session, 600);
     await selectPattern(2);
@@ -324,6 +334,7 @@ describeOn('dt2', 'DTII Overloop: an armed pattern change', () => {
     const small = await status();
     record(artifacts, 'status-small-buffers', small);
     expect(small).toMatchObject({ track: true, nextCut: true, loop: false, capacity: 65536 - 480 - BLOCK });
+    // the press of H arms as well, as on PRISM's page
     await tap(session, 'PUSH H', 150);
     await advance(session, 300);
     const warned = await page();
