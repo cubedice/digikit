@@ -18,7 +18,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from tools.patchkit import pk_sharc
-from tools.sharc_dev.sharc_core.addressing import byte_to_normal_word
 
 from . import dsp_voice_rig as dv
 
@@ -55,23 +54,6 @@ FREE_PC = 0xFFFFFFFF  # the pc of a free row (core/dynfx): the adapter skips it
 POISON = 0x7FC00001  # the initial word of every .PKBSS
 AUTO_STATES = 4  # a Row with `state=""` (a run-time effect has no state symbol: the runtime reserves it) gets `_fx_auto_state<row>`,
 AUTO_STATE_BYTES = 4096  # fallback for unspecified, free or explicitly named-state rows
-# Synthetic external leases for the generic phrase capability. These addresses
-# belong only to the concrete-core rig, never to a firmware allocator.
-PHRASE_BANKS = (0x90000000, 0x90010000)
-PHRASE_BANK_BYTES, PHRASE_FRAMES = 8192, 512
-
-
-def _phrase_abi() -> dict[str, int]:
-    """Use the public numeric ABI, shared with the C/SHARC providers."""
-    result = {}
-    for line in (ROOT / "sdk/dsp/contract/dk_phrase.inc").read_text().splitlines():
-        parts = line.split()
-        if len(parts) == 3 and parts[0] == "#define" and parts[1].startswith("PH_"):
-            result[parts[1]] = int(parts[2], 0)
-    return result
-
-
-PH = _phrase_abi()
 nw = dv.nw
 # the row words (core/fx module.toml)
 PC, DESC, STATE, ENABLED, P0, WAS, MIX, DIS, WSTART, WCOUNT, NFAULT, ROUTE, AMT0 = (
@@ -169,7 +151,6 @@ class _Built:
     module_data: tuple[
         tuple[int, int], ...
     ] = ()  # (byte address, bytes) of the module's own data and bss
-    phrase_provider: bool = False  # explicit source providers remain authoritative
 
 
 _BUILT: dict[tuple, _Built] = {}
@@ -262,34 +243,6 @@ def _build(
     inits.append((addr, bytes(4), True))
     own[-1].append((addr, 4))
     addr += 4
-    # Importing this capability requests a phrase provider, independent of the
-    # effect's name. An explicitly supplied provider (module-owned scenarios)
-    # is left alone; incomplete providers and unknown imports still fail.
-    defined = set(data) | {name for o in objs for name in o.symbols}
-    unresolved = {r.symbol for o in objs for r in o.relocs} - defined
-    phrase_names = {"_phrase_control_info", "_phrase_storage_info", "_phrase_status"}
-    phrase_provider = "_phrase_control_info" in unresolved
-    if phrase_provider:
-        if phrase_names & defined:
-            raise ValueError(
-                "an explicit phrase provider must supply all three ABI symbols"
-            )
-        storage = struct.pack(
-            "<6I",
-            PH["PH_STORAGE_MAGIC"],
-            PH["PH_STORAGE_FORMAT"],
-            *PHRASE_BANKS,
-            PHRASE_BANK_BYTES,
-            PHRASE_FRAMES,
-        )
-        for name, raw in (
-            ("_phrase_storage_info", storage),
-            ("_phrase_control_info", bytes(PH["PH_CONTROL_WORDS"] * 4)),
-            ("_phrase_status", bytes(PH["PH_STATUS_WORDS"] * 4)),
-        ):
-            data[name] = addr
-            inits.append((addr, raw, False))
-            addr += len(raw)
     if addr > DATA_END:
         raise RuntimeError(f"data symbols need {addr - DATA_BASE:#x} bytes of L2")
     externs = {
@@ -327,7 +280,6 @@ def _build(
         syms,
         code,
         tuple(r for rs in own[FIXED_OBJECTS:] for r in rs),
-        phrase_provider,
     )
 
 
@@ -402,80 +354,8 @@ class FxRig:
             poke(nw(dv.SLOTS) + k, 0)
         poke(nw(dv.SLOTS) + 2, b.symbols["_fx_dispatch"])
         poke(nw(dv.SLOTS) + 3, b.symbols["_fxs_dispatch"])
-        self._phrase_sequence = 0
-        self._phrase_controls = None
-        if b.phrase_provider:
-            self._phrase_controls = [0] * PH["PH_CONTROL_WORDS"]
-            defaults = {
-                "PH_C_MAGIC": PH["PH_CONTROL_MAGIC"],
-                "PH_C_VERSION": PH["PH_VERSION"],
-                "PH_C_SIZE": PH["PH_CONTROL_WORDS"] * 4,
-                "PH_C_ENABLED": 1,
-                "PH_C_CMD_SEQ": 1,
-                "PH_C_ACTION": PH["PH_ACTION_ARM"],
-                "PH_C_TAKE_STEPS": 1,
-                "PH_C_SELECTION_EPOCH": 1,
-                "PH_C_NEXT_MASK": 1,
-                "PH_C_TIMELINE_EPOCH": 1,
-                "PH_C_TIMING_FLAGS": PH["PH_TIMING_VALID"]
-                | PH["PH_TIMING_RUNNING"]
-                | PH["PH_TIMING_TEMPO_VALID"],
-                "PH_C_LENGTH": 16,
-                "PH_C_INPUT_PTR": MASTER,
-                "PH_C_FADE": ONE,
-                "PH_C_CROP_LEN": ONE,
-                "PH_C_SIZE_FRAMES": 240,
-                "PH_C_RATE_BEATS": 8192,
-                "PH_C_PITCH_RATIO": ONE,
-                "PH_C_WIDTH": f2w(0.5),
-                "PH_C_DECAY_FEEDBACK": f2w(0.7),
-                "PH_C_LPF_COEFF": ONE,
-                "PH_C_OWNER_GENERATION": 1,
-                "PH_C_TEMPO_120": 14400,
-            }
-            for name, value in defaults.items():
-                self._phrase_controls[PH[name] // 4] = value
-            for index in range(18):
-                self._phrase_controls[PH["PH_C_GAINS"] // 4 + index] = ONE
-            # Poison the lease so a reader before capture is observable.
-            for bank in PHRASE_BANKS:
-                word = byte_to_normal_word(bank)
-                if word is None:
-                    raise ValueError("synthetic phrase lease must be in external DDR")
-                for index in range(PHRASE_BANK_BYTES // 4):
-                    poke(word + index, POISON)
         if self.record_stores:
             self.sess.record_stores()
-
-    def _phrase_frame(self) -> None:
-        """Advance only the synthetic provider; explicit fixtures own their clock.
-
-        One master step takes four blocks, so generic signal/switching cases
-        exercise capture and grain playback, not just an empty dry fallback.
-        """
-        words = self._phrase_controls
-        if words is None:
-            return
-        self._phrase_sequence += 1
-        sequence = self._phrase_sequence
-        phase = ((sequence - 1) * 16384) & 0xFFFFFFFF
-        fields = {
-            "PH_C_SEQ": sequence,
-            "PH_C_SEQ_END": sequence,
-            "PH_C_MASTER_PHASE": phase,
-            "PH_C_BEAT_PHASE": (phase // 4),
-            "PH_C_STEP": (phase >> 16) % 16,
-            "PH_C_STEP_SEQUENCE": (phase >> 16) + 1,
-        }
-        for name, value in fields.items():
-            words[PH[name] // 4] = value & 0xFFFFFFFF
-        check = PH["PH_CHECK_SALT"]
-        for value in words[: PH["PH_C_CHECK"] // 4]:
-            check ^= value
-        words[PH["PH_C_CHECK"] // 4] = check
-        start = nw(self.built.data["_phrase_control_info"])
-        for index, value in enumerate(words):
-            self.sess.poke(start + index, value)
 
     # -- the table -------------------------------------------------------------------------------------------------------
     def row_word(self, i: int, word: int) -> int:
@@ -563,7 +443,6 @@ class FxRig:
         regs: dict | None = None,
         entry: str = "_fx_entry",
     ) -> Block:
-        self._phrase_frame()
         if ctx is None:
             ctx = dv.draw_context(self.ctx_rng)
         elif ctx == "friendly":
@@ -626,18 +505,6 @@ class FxRig:
         and bss (its state included) and `stack_bytes` of data stack below I7 (the adapter does not lower I7 before the call)."""
         out = [(self.built.data["_fx_scratch"], 4 * 64, "output block")]
         out += [(a, n, "module data") for a, n in self.built.module_data]
-        if self.built.phrase_provider:
-            status = self.built.data["_phrase_status"]
-            # FADE and ROUTE_FAULT belong to the router, not to the engine.
-            for start, end in (
-                (0, PH["PH_S_FADE"]),
-                (PH["PH_S_FADE"] + 4, PH["PH_S_ROUTE_FAULT"]),
-                (PH["PH_S_ROUTE_FAULT"] + 4, PH["PH_STATUS_WORDS"] * 4),
-            ):
-                out.append((status + start, end - start, "phrase status"))
-            out += [
-                (bank, PHRASE_BANK_BYTES, "leased phrase bank") for bank in PHRASE_BANKS
-            ]
         out.append((dv.STACK - stack_bytes, stack_bytes, "module stack"))
         return out
 

@@ -17,7 +17,6 @@
         ],
         "patchModules": [
           "core/phrase-ui",
-          "core/phrase-route",
           "core/digikit-menu",
           "core/health"
         ],
@@ -25,13 +24,12 @@
         "tags": [
           "A:core/dynfx",
           "A:core/fxpages",
-          "A:core/phrase-ui",
-          "A:core/phrase-route"
+          "A:core/phrase-ui"
         ]
       },
       {
         "files": [
-          "tests/capture.device.test.ts"
+          "tests/send.device.test.ts"
         ],
         "devices": [
           "dt2"
@@ -45,7 +43,6 @@
         ],
         "patchModules": [
           "core/phrase-ui",
-          "core/phrase-route",
           "core/digikit-menu",
           "core/health"
         ],
@@ -53,8 +50,7 @@
         "tags": [
           "A:core/dynfx",
           "A:core/fxpages",
-          "A:core/phrase-ui",
-          "A:core/phrase-route"
+          "A:core/phrase-ui"
         ]
       },
       {
@@ -79,7 +75,6 @@
           "core/loop-storage",
           "core/loop-display",
           "core/phrase-ui",
-          "core/phrase-route",
           "core/digikit-menu",
           "core/health"
         ],
@@ -87,8 +82,7 @@
         "tags": [
           "A:core/dynfx",
           "A:core/fxpages",
-          "A:core/phrase-ui",
-          "A:core/phrase-route"
+          "A:core/phrase-ui"
         ]
       }
     ]

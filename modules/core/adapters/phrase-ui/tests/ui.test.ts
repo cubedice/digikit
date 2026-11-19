@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'vitest';
 
-test('phrase UI owns gestures, recalls pages, locks capture input and bounds rendering', () => {
+test('the phrase page: encoders, presses, SYNC notes, the cells and what is drawn', () => {
   const temp = mkdtempSync(join(tmpdir(), 'dk-phrase-ui-'));
   try {
     const executable = join(temp, 'ui');

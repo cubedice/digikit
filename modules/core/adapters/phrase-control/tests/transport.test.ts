@@ -20,7 +20,7 @@ const checksum = (words: number[]) => words.slice(0, 63).reduce((check, value) =
 function frame(sequence = 1): number[] {
   const data = Array.from({ length: 64 }, (_, i) => (0x13000000 + i * 997) >>> 0);
   data[0] = 0x50484331;
-  data[1] = 2;
+  data[1] = 3; // PH_VERSION
   data[2] = 256;
   data[3] = sequence;
   data[4] = 1;
@@ -60,7 +60,7 @@ const invalids: Record<string, number[]> = {};
 for (const name of ['magic', 'version', 'size', 'closing', 'checksum', 'duplicate', 'backward']) {
   const packet = frame(name === 'duplicate' ? 1 : name === 'backward' ? 0 : 2);
   if (name === 'magic') packet[0] = 0;
-  if (name === 'version') packet[1] = 3;
+  if (name === 'version') packet[1] = 2;
   if (name === 'size') packet[2] = 252;
   if (name === 'closing') packet[62] = 3;
   packet[63] = checksum(packet);
@@ -129,7 +129,7 @@ requests.disabled = {
 
 beforeAll(() => {
   results = JSON.parse(
-    execFileSync('uv', ['run', 'python', '-m', 'tools.patchkit.pk_phrase_route_probe'], {
+    execFileSync('uv', ['run', 'python', '-m', 'tools.patchkit.pk_phrase_transport_probe'], {
       input: JSON.stringify(requests),
       encoding: 'utf8',
       maxBuffer: 4 * 1024 * 1024,

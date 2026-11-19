@@ -1,51 +1,10 @@
 #ifndef PRISM_H
 #define PRISM_H
 
-/* PRISM, the repeater engine (src/dsp). This header holds the control words the engine reads, the constants that can be
- * tuned, and the layout of its state. No native device address appears in this module.
- *
- * Control words. The engine reads the 64-word mailbox _phrase_control_info once a block. The envelope is that of
- * dk_phrase.inc (word 0 magic, 1 version, 2 size in bytes, 3 sequence, 4 enabled, 56 owner generation, 62 the sequence
- * again); the version is PRISM_CONTROL_VERSION, so the engine refuses the mailbox of an earlier control provider. The
- * engine's own words:
- *
- * | Word | Name      | Type  | Range     | Meaning                                                                        |
- * |------|-----------|-------|-----------|--------------------------------------------------------------------------------|
- * | 8    | ZONE      | int   | 1..8      | Time range (the table _prism_zones in prism.s). A change crossfades.           |
- * | 9    | RATE      | float | 0..1      | Position inside the zone: time = low * (high / low) ^ RATE. A change glides.   |
- * | 10   | FLAGS     | bits  |           | Bit 0 SYNC, bit 1 FLIP, bit 2 HOLD.                                            |
- * | 11   | SYNC_TIME | int   | frames    | With SYNC: the time in frames (a note length at the tempo). A change crossfades. |
- * | 12   | RPTS      | float | 0..1      | Repeats: 0 one echo, 0.75 unity, 1 a gain of 1.1.                              |
- * | 13   | COLR      | float | -1..1     | Colour of the repeats: below 0 dark, 0 flat, above 0 bright; its square is the |
- * |      |           |       |           | amount of the filter.                                                          |
- * | 14   | HALO      | float | 0..1      | Diffusion inside the repeat path; 0 is an exact bypass.                        |
- * | 15   | SKEW      | float | -1..1     | Above 0 the left side is shorter and the right longer by up to 1.5; below 0    |
- * |      |           |       |           | the reverse. A change glides.                                                  |
- * | 16   | MIX       | float | 0..1      | Level of the wet output (the engine writes the wet signal only).               |
- *
- * A value out of range is clamped; a float that is not finite is a link fault. With SYNC the zone is not used.
- */
-#define PRISM_CONTROL_VERSION 3
-#define PW_ZONE 8
-#define PW_RATE 9
-#define PW_FLAGS 10
-#define PW_SYNC_TIME 11
-#define PW_RPTS 12
-#define PW_COLR 13
-#define PW_HALO 14
-#define PW_SKEW 15
-#define PW_MIX 16
-#define PRISM_F_SYNC 1
-#define PRISM_F_FLIP 2
-#define PRISM_F_HOLD 4
-#define PRISM_ZONES 8
-
-/* Status words the engine publishes in _phrase_status besides the envelope (magic, version, heartbeat, state, error,
- * owner generation, sequence): the two sides' times in frames, the hold state (PS_HOLD) and the readable tape in frames. */
-#define PRISM_S_TIME_L 8
-#define PRISM_S_TIME_R 9
-#define PRISM_S_HOLD 10
-#define PRISM_S_TAPE 11
+/* PRISM, the repeater engine (src/dsp). This header holds the constants that can be tuned and the layout of the engine's
+ * state. The control words the engine reads and the status words it writes are in sdk/dsp/contract/dk_phrase.inc
+ * (version PH_VERSION), which a source includes before this header; the control provider and the page share it. No native
+ * device address appears in this module. */
 
 /* Constants that can be tuned. Floats are given as their bits.
  * PRISM_XFADE: samples of the equal-power crossfade between the two heads at a zone change, a SYNC step, FLIP and HOLD
@@ -149,16 +108,17 @@
 #define PS_COLOUR_MID 50
 #define PS_HALO_MID 51
 #define PS_CONTROL 64
-#define PC_ZONE (PS_CONTROL + PW_ZONE)
-#define PC_RATE (PS_CONTROL + PW_RATE)
-#define PC_FLAGS (PS_CONTROL + PW_FLAGS)
-#define PC_SYNC_TIME (PS_CONTROL + PW_SYNC_TIME)
-#define PC_RPTS (PS_CONTROL + PW_RPTS)
-#define PC_COLR (PS_CONTROL + PW_COLR)
-#define PC_HALO (PS_CONTROL + PW_HALO)
-#define PC_SKEW (PS_CONTROL + PW_SKEW)
-#define PC_MIX (PS_CONTROL + PW_MIX)
-#define PC_OWNER (PS_CONTROL + 56)
+/* The snapshot of the control mailbox (PH_CONTROL_WORDS words) and the words the engine reads in it. */
+#define PC_ZONE (PS_CONTROL + PH_C_ZONE / 4)
+#define PC_RATE (PS_CONTROL + PH_C_RATE / 4)
+#define PC_FLAGS (PS_CONTROL + PH_C_FLAGS / 4)
+#define PC_SYNC_TIME (PS_CONTROL + PH_C_SYNC_TIME / 4)
+#define PC_RPTS (PS_CONTROL + PH_C_RPTS / 4)
+#define PC_COLR (PS_CONTROL + PH_C_COLR / 4)
+#define PC_HALO (PS_CONTROL + PH_C_HALO / 4)
+#define PC_SKEW (PS_CONTROL + PH_C_SKEW / 4)
+#define PC_MIX (PS_CONTROL + PH_C_MIX / 4)
+#define PC_OWNER (PS_CONTROL + PH_C_OWNER_GENERATION / 4)
 
 /* One side's two heads (heads.s). A head: playing or silent, its delay in frames from the reference (integer and
  * fraction) and its direction on the tape (1 forward, -1 reverse). Head A is the current one; head B is the one a

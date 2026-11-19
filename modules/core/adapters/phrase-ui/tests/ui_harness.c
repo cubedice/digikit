@@ -3,7 +3,8 @@
 #include <string.h>
 #include "../src/model.h"
 #include "../src/render.h"
-static uint32_t raw[PH_PARAM_COUNT], action, actions, writes;
+/* The provider: the values as the page sets them, and the count of writes. */
+static uint32_t raw[PH_PARAM_COUNT], writes;
 uint32_t dkrt_phrase_get(uint32_t p)
 {
     assert(p < PH_PARAM_COUNT);
@@ -12,14 +13,10 @@ uint32_t dkrt_phrase_get(uint32_t p)
 int32_t dkrt_phrase_set(uint32_t p, uint32_t v)
 {
     assert(p < PH_PARAM_COUNT);
+    /* The page writes only what the provider takes: nothing for the two cells kept for the loop. */
+    assert(p != PH_P_INPT && p != PH_P_XFAD);
     raw[p] = v;
     ++writes;
-    return 0;
-}
-int32_t dkrt_phrase_action(uint32_t a)
-{
-    action = a;
-    ++actions;
     return 0;
 }
 static void press(PhraseUi *s, uint32_t k)
@@ -35,368 +32,376 @@ static void tap(PhraseUi *s, uint32_t k)
     press(s, k);
     release(s, k);
 }
+static void status(PhraseUi *s, uint32_t left, uint32_t right)
+{
+    uint32_t words[PH_STATUS_WORDS] = {0};
+    words[PH_S_TIME_L / 4] = left;
+    words[PH_S_TIME_R / 4] = right;
+    pu_status(s, words, 1);
+}
 static void init(PhraseUi *s)
 {
     memset(s, 0, sizeof(*s));
     memset(raw, 0, sizeof(raw));
-    raw[PH_P_LEN] = 127;
-    for (uint32_t i = PH_P_GAIN0; i < PH_PARAM_COUNT; ++i)
-        raw[i] = 100;
-    pu_context(s, 33, 1);
-    /* A fresh owner shows DELAY; the cases of the four older pages start on LOOP. */
-    assert(s->page == PH_PAGE_DELAY);
-    s->page = PH_PAGE_LOOP;
-    s->fresh = 1;
+    /* the provider's defaults */
+    raw[PH_P_ZONE] = 4;
+    raw[PH_P_RATE] = 508;
+    raw[PH_P_NOTE] = 8;
+    raw[PH_P_RPTS] = 48;
+    raw[PH_P_COLR] = 64;
+    raw[PH_P_SKEW] = 64;
+    raw[PH_P_MIX] = 100;
+    writes = 0;
+    pu_context(s, 1, 1);
+    s->title = "PRISM";
+    status(s, 18000, 18000);
 }
-static void navigation(void)
+static void encoders(void)
 {
     PhraseUi s;
     init(&s);
-    tap(&s, PU_UP);
-    assert(s.page == PH_PAGE_DELAY); /* the page before LOOP */
-    tap(&s, PU_UP);
-    assert(s.page == 3);
-    tap(&s, PU_DOWN);
-    tap(&s, PU_DOWN);
-    assert(!s.page);
-    tap(&s, PU_DOWN);
-    assert(s.page == 1);
-    pu_context(&s, 0, 1);
-    pu_context(&s, 33, 1);
-    assert(s.page == 1);
-    assert(pu_key(&s, PU_FUNC, PU_PRESS) == PU_PASS);
-    assert(pu_key(&s, PU_DOWN, PU_PRESS) == PU_PASS);
-    assert(s.page == 1);
-    assert(pu_key(&s, PU_DOWN, PU_RELEASE) == PU_PASS);
-    assert(pu_key(&s, PU_FX, PU_CHORD) == PU_NEXT_FX);
-    assert(s.page == 1);
-    release(&s, PU_FX);
-    assert(pu_key(&s, PU_FUNC, PU_RELEASE) == PU_PASS);
-    tap(&s, PU_H);
-    assert(s.overlay);
-    tap(&s, PU_DOWN);
-    assert(s.page == 1 && s.overlay);
-    tap(&s, PU_NO);
-    assert(!s.overlay && s.page == 1);
-    pu_context(&s, 33, 2);
-    assert(s.page == PH_PAGE_DELAY);
-}
-static void sources(void)
-{
-    PhraseUi s;
-    init(&s);
-    tap(&s, PU_H);
-    tap(&s, PU_TRIG + 2);
-    assert(raw[PH_P_MASK] == 4);
-    press(&s, PU_TRIG + 2);
-    pu_turn(&s, 8, 5);
-    release(&s, PU_TRIG + 2);
-    assert(raw[PH_P_MASK] == 4 && raw[PH_P_GAIN0 + 2] == 105 && !raw[PH_P_FADE]);
-    press(&s, PU_TRIG + 1);
-    press(&s, PU_TRIG + 5);
-    assert(pu_gain_track(&s) == 5);
-    pu_turn(&s, 8, -2);
-    release(&s, PU_TRIG + 5);
-    assert(pu_gain_track(&s) == 1);
-    pu_turn(&s, 8, 3);
-    release(&s, PU_TRIG + 1);
-    assert(raw[PH_P_GAIN0 + 5] == 98 && raw[PH_P_GAIN0 + 1] == 103 && raw[PH_P_MASK] == 4);
-    raw[PH_P_MASK] |= 0x30000;
-    assert(pu_key(&s, PU_FUNC, PU_PRESS) == PU_PASS);
-    tap(&s, PU_TRIG + 7);
-    assert(raw[PH_P_MASK] == 0x30080);
-    assert(pu_key(&s, PU_FUNC, PU_RELEASE) == PU_PASS);
-    press(&s, PU_TRIG + 7);
-    tap(&s, PU_NO);
-    release(&s, PU_TRIG + 7);
-    assert(raw[PH_P_MASK] == 0x30080 && !s.overlay); /* closing never leaks the release */
-    pu_turn(&s, 8, 4);
-    assert(raw[PH_P_FADE] == 4);
-    raw[PH_P_GAIN0 + 7] = 0;
-    raw[PH_P_EXT_GAIN] = 0;
-    assert(!pu_effective_mask());
-}
-static void capture_lock(void)
-{
-    PhraseUi s;
-    init(&s);
-    tap(&s, PU_H);
-    tap(&s, PU_YES);
-    assert(action == PH_ACTION_ARM);
-    s.status[PH_S_STATE / 4] = PH_ARMED;
-    s.status[PH_S_REC_ACTIVE / 4] = 1;
+    /* C to F and LEVEL: one tick is one step, and the range ends at 0 and 127. */
+    static const uint8_t plain[5][2] = {
+        {2, PH_P_RPTS}, {3, PH_P_COLR}, {4, PH_P_HALO}, {5, PH_P_SKEW}, {PU_LEVEL, PH_P_MIX}};
+    for (uint32_t i = 0; i < 5; ++i) {
+        uint32_t encoder = plain[i][0], p = plain[i][1], before = raw[p];
+        assert(pu_parameter(encoder) == p);
+        assert(pu_turn(&s, encoder, 3, 0) == PU_OWN && raw[p] == before + 3);
+        assert(pu_turn(&s, encoder, -1, 0) == PU_OWN && raw[p] == before + 2);
+        /* FUNC makes no difference here */
+        assert(pu_turn(&s, encoder, 1, 1) == PU_OWN && raw[p] == before + 3);
+        assert(pu_turn(&s, encoder, 500, 0) == PU_OWN && raw[p] == 127);
+        assert(pu_turn(&s, encoder, -500, 0) == PU_OWN && raw[p] == 0);
+    }
+    /* A, ZONE: a choice takes four ticks, and one long event moves one zone. */
+    assert(pu_parameter(0) == PH_P_ZONE);
+    for (uint32_t i = 0; i < 3; ++i)
+        assert(pu_turn(&s, 0, 1, 0) == PU_OWN && raw[PH_P_ZONE] == 4);
+    assert(pu_turn(&s, 0, 1, 0) == PU_OWN && raw[PH_P_ZONE] == 5);
+    assert(pu_turn(&s, 0, 40, 0) == PU_OWN && raw[PH_P_ZONE] == 6);
+    assert(pu_turn(&s, 0, -4, 0) == PU_OWN && raw[PH_P_ZONE] == 5);
+    for (uint32_t i = 0; i < 12; ++i)
+        pu_turn(&s, 0, 4, 0);
+    assert(raw[PH_P_ZONE] == PH_ZONES - 1);
+    for (uint32_t i = 0; i < 12; ++i)
+        pu_turn(&s, 0, -4, 0);
+    assert(raw[PH_P_ZONE] == 0);
+    /* B, RATE: a coarse step, and with FUNC the fine one. */
+    assert(pu_parameter(1) == PH_P_RATE);
+    assert(pu_turn(&s, 1, 1, 0) == PU_OWN && raw[PH_P_RATE] == 508 + PH_RATE_COARSE);
+    assert(pu_turn(&s, 1, -2, 0) == PU_OWN && raw[PH_P_RATE] == 508 - PH_RATE_COARSE);
+    assert(pu_turn(&s, 1, 1, 1) == PU_OWN && raw[PH_P_RATE] == 508 - PH_RATE_COARSE + 1);
+    assert(pu_turn(&s, 1, -3, 1) == PU_OWN && raw[PH_P_RATE] == 508 - PH_RATE_COARSE - 2);
+    assert(pu_turn(&s, 1, 1000, 0) == PU_OWN && raw[PH_P_RATE] == PH_RATE_MAX);
+    assert(pu_turn(&s, 1, -1000, 0) == PU_OWN && raw[PH_P_RATE] == 0);
+    /* G and H: taken, and nothing is written. */
     uint32_t before = writes;
-    tap(&s, PU_TRIG + 2);
-    pu_turn(&s, 0, 4);
-    pu_turn(&s, 1, 3);
-    assert(before == writes);
-    press(&s, PU_TRIG);
-    pu_turn(&s, 8, 2);
-    release(&s, PU_TRIG);
-    assert(before == writes);
-    pu_turn(&s, 8, 2);
-    assert(raw[PH_P_FADE] == 2);
-    tap(&s, PU_YES);
-    assert(action == PH_ACTION_CANCEL);
-    s.status[PH_S_STATE / 4] = PH_HANDOFF;
-    tap(&s, PU_TRIG + 3);
-    assert(!raw[PH_P_MASK]);
-}
-static void clear_gesture(void)
-{
-    PhraseUi s;
-    init(&s);
-    uint32_t before = actions;
-    assert(pu_key(&s, PU_NO, PU_PRESS) == PU_PASS);
-    assert(pu_key(&s, PU_NO, PU_RELEASE) == PU_PASS && actions == before);
-    assert(pu_key(&s, PU_FUNC, PU_PRESS) == PU_PASS);
-    press(&s, PU_NO);
-    assert(action == PH_ACTION_CLEAR && actions == before + 1);
-    assert(pu_key(&s, PU_NO, PU_REPEAT) == PU_OWN && actions == before + 1);
-    pu_context(&s, 0, 1);
-    release(&s, PU_NO); /* release cannot escape after view loss */
-    assert(pu_key(&s, PU_FUNC, PU_RELEASE) == PU_PASS);
-    assert(pu_key(&s, PU_FUNC, PU_PRESS) == PU_PASS);
-    assert(pu_key(&s, PU_NO, PU_PRESS) == PU_PASS && actions == before + 1);
-    assert(pu_key(&s, PU_NO, PU_RELEASE) == PU_PASS);
-    assert(pu_key(&s, PU_FUNC, PU_RELEASE) == PU_PASS);
-    pu_context(&s, 33, 1);
-    tap(&s, PU_H);
-    assert(pu_key(&s, PU_FUNC, PU_PRESS) == PU_PASS);
-    tap(&s, PU_NO);
-    assert(s.overlay && action == PH_ACTION_CLEAR && actions == before + 2);
-    assert(pu_key(&s, PU_FUNC, PU_RELEASE) == PU_PASS);
-    tap(&s, PU_NO);
-    assert(!s.overlay && actions == before + 2);
-}
-static void led_ownership(void)
-{
-    PhraseUi s;
-    init(&s);
-    raw[PH_P_MASK] = 5;
-    assert(pu_led(&s, 26, 0x11) == 0x11);
-    tap(&s, PU_H);
-    assert(pu_led(&s, 26, 0x11) == 0x71 && pu_led(&s, 27, 0x71) == 0x02);
-    assert(pu_led(&s, 25, 0x21) == 0x21 && pu_led(&s, 42, 0x21) == 0x21);
-    raw[PH_P_GAIN0] = 0;
-    assert(pu_led(&s, 26, 0x11) == 0x02);
-    tap(&s, PU_NO);
-    assert(pu_led(&s, 26, 0x11) == 0x11);
-    /* Never acquire a stock-owned key held before opening the overlay. */
-    assert(pu_key(&s, PU_TRIG, PU_PRESS) == PU_PASS);
-    tap(&s, PU_H);
-    assert(pu_key(&s, PU_TRIG, PU_REPEAT) == PU_PASS);
-    assert(pu_key(&s, PU_TRIG, PU_RELEASE) == PU_PASS);
-}
-static void covered_view(void)
-{
-    PhraseUi s;
-    init(&s);
-    tap(&s, PU_DOWN);
-    tap(&s, PU_H);
-    press(&s, PU_TRIG + 4);
-    pu_context(&s, 0, 1);
-    assert(!s.overlay && s.page == 1 && pu_led(&s, 30, 0x11) == 0x11);
-    assert(pu_turn(&s, 8, 3) == PU_PASS && !raw[PH_P_FADE]);
-    release(&s, PU_TRIG + 4);
-    assert(!raw[PH_P_MASK]);
-    pu_context(&s, 33, 1);
-    assert(!s.overlay && s.page == 1);
-}
-static void native_gestures(void)
-{
-    assert(pu_native_flags(1) == PU_PRESS && pu_native_flags(5) == PU_PRESS);
-    assert(pu_native_flags(9) == PU_REPEAT && pu_native_flags(2) == PU_CHORD);
-    assert(pu_native_flags(0) == PU_RELEASE && pu_native_flags(4) == PU_RELEASE);
-    assert(pu_native_flags(16) == PU_RELEASE);
-    PhraseUi s;
-    init(&s);
-    tap(&s, PU_H);
-    assert(pu_key(&s, PU_TRIG + 2, pu_native_flags(1)) == PU_OWN);
-    assert(pu_key(&s, PU_TRIG + 2, pu_native_flags(0)) == PU_OWN && raw[PH_P_MASK] == 4);
-    press(&s, PU_TRIG + 3);
-    pu_context(&s, 0, 1);
-    const uint32_t up[2] = {0, 0};
-    pu_reconcile(&s, up);
-    assert(!s.owned[0] && !s.held[0] && raw[PH_P_MASK] == 4);
-    pu_context(&s, 33, 1);
-    tap(&s, PU_DOWN);
-    assert(s.page == 1);
-    tap(&s, PU_H);
-    release(&s, PU_TRIG + 3);
-    assert(raw[PH_P_MASK] == 4);
-    press(&s, PU_H);
-    pu_context(&s, 0, 1);
-    pu_reconcile(&s, up);
-    pu_context(&s, 33, 1);
-    tap(&s, PU_H);
-    assert(s.overlay); /* missed H release cannot suppress next press */
-    press(&s, PU_TRIG + 4);
-    pu_context(&s, 0, 1);
-    pu_reconcile(&s, up);
-    pu_context(&s, 33, 1);
-    tap(&s, PU_H);
-    tap(&s, PU_TRIG + 4);
-    assert(raw[PH_P_MASK] == 20); /* new initial gesture replaces the old tombstone */
-    uint32_t before = actions;
-    tap(&s, PU_NO);
-    assert(pu_key(&s, PU_H, pu_native_flags(9)) == PU_PASS && !s.overlay && actions == before);
-    assert(pu_key(&s, PU_H, pu_native_flags(0)) == PU_PASS);
-    /* A fresh modified down event belongs to the new view. It must replace
-     * a cancelled gesture's tombstone so its later release also stays stock. */
-    init(&s);
-    tap(&s, PU_H);
-    press(&s, PU_TRIG + 2);
-    pu_context(&s, 0, 1);
-    pu_reconcile(&s, up);
-    assert(pu_key(&s, PU_TRIG + 2, PU_CHORD) == PU_PASS);
-    assert(pu_key(&s, PU_TRIG + 2, PU_RELEASE) == PU_PASS);
-    assert(!raw[PH_P_MASK]);
-    /* A chord notification during the original still-held gesture is not
-     * a new press. It and its release remain cancelled and cannot leak. */
-    init(&s);
-    tap(&s, PU_H);
-    press(&s, PU_TRIG + 2);
-    pu_context(&s, 0, 1);
-    const uint32_t still_down[2] = {1u << (PU_TRIG + 2), 0};
-    pu_reconcile(&s, still_down);
-    assert(pu_key(&s, PU_TRIG + 2, PU_CHORD) == PU_OWN);
-    assert(pu_key(&s, PU_TRIG + 2, PU_RELEASE) == PU_OWN && !raw[PH_P_MASK]);
-}
-static void detents(void)
-{
-    PhraseUi s;
-    init(&s);
-    pu_turn(&s, 1, 1);
-    pu_turn(&s, 1, 1);
-    pu_turn(&s, 1, 1);
-    assert(!raw[PH_P_FROM]);
-    pu_turn(&s, 1, 1);
-    assert(raw[PH_P_FROM] == 1);
-    pu_turn(&s, 1, -3);
-    assert(raw[PH_P_FROM] == 1);
-    pu_turn(&s, 1, -1);
-    assert(!raw[PH_P_FROM]);
-    tap(&s, PU_DOWN);
-    pu_turn(&s, 1, 100);
-    assert(raw[PH_P_RATE] == 1); /* no skipping */
-    pu_turn(&s, 0, 8);
-    assert(raw[PH_P_SIZE] == 8); /* numeric remains responsive */
-    uint32_t before = writes;
-    pu_turn(&s, 6, 10);
-    pu_turn(&s, 7, 10);
+    for (uint32_t encoder = 6; encoder < 8; ++encoder) {
+        assert(pu_parameter(encoder) == PH_PARAM_COUNT);
+        assert(pu_turn(&s, encoder, 5, 0) == PU_OWN && pu_turn(&s, encoder, -5, 1) == PU_OWN);
+    }
     assert(writes == before);
+    /* No such encoder, and a page that is not on top: the stock handler's. */
+    assert(pu_turn(&s, 9, 1, 0) == PU_PASS);
+    pu_context(&s, 0, 1);
+    assert(pu_turn(&s, 2, 1, 0) == PU_PASS && pu_turn(&s, 6, 1, 0) == PU_PASS);
+    assert(writes == before);
+}
+static void presses(void)
+{
+    PhraseUi s;
+    init(&s);
+    /* A is FLIP, B is SYNC, C is HOLD: the press toggles, the release is taken and does nothing. */
+    static const uint8_t switches[3] = {PH_P_FLIP, PH_P_SYNC, PH_P_HOLD};
+    for (uint32_t i = 0; i < 3; ++i) {
+        uint32_t before = writes;
+        press(&s, PU_PUSH + i);
+        assert(raw[switches[i]] == 1 && writes == before + 1);
+        /* a repeat of the held key and its release toggle nothing */
+        assert(pu_key(&s, PU_PUSH + i, PU_REPEAT) == PU_OWN);
+        release(&s, PU_PUSH + i);
+        assert(raw[switches[i]] == 1 && writes == before + 1);
+        tap(&s, PU_PUSH + i);
+        assert(raw[switches[i]] == 0);
+    }
+    /* D to H: taken, so that the stock page does nothing with them; nothing is written. */
+    uint32_t before = writes;
+    for (uint32_t i = 3; i < 8; ++i)
+        tap(&s, PU_PUSH + i);
+    assert(writes == before);
+    /* FUNC + NO: taken and nothing happens. FUNC itself, NO alone and the other keys are the stock page's. */
+    assert(pu_key(&s, PU_FUNC, PU_PRESS) == PU_PASS);
+    tap(&s, PU_NO);
+    assert(pu_key(&s, PU_FUNC, PU_RELEASE) == PU_PASS);
+    assert(pu_key(&s, PU_NO, PU_PRESS) == PU_PASS && pu_key(&s, PU_NO, PU_RELEASE) == PU_PASS);
+    assert(pu_key(&s, PU_FX, PU_PRESS) == PU_PASS && pu_key(&s, PU_FX, PU_RELEASE) == PU_PASS);
+    assert(pu_key(&s, 11, PU_PRESS) == PU_PASS && pu_key(&s, 11, PU_RELEASE) == PU_PASS);
+    assert(pu_key(&s, 64, PU_PRESS) == PU_PASS);
+    assert(writes == before);
+    /* A key that was down before the page was on top stays the stock handler's gesture. */
+    pu_context(&s, 0, 1);
+    assert(pu_key(&s, PU_PUSH, PU_PRESS) == PU_PASS);
+    pu_context(&s, 1, 1);
+    assert(pu_key(&s, PU_PUSH, PU_REPEAT) == PU_PASS && pu_key(&s, PU_PUSH, PU_RELEASE) == PU_PASS);
+    assert(raw[PH_P_FLIP] == 0);
+    /* The page is covered while C is down: its release is still taken, the next press toggles again. */
+    press(&s, PU_PUSH + 2);
+    assert(raw[PH_P_HOLD] == 1);
+    pu_context(&s, 0, 1);
+    release(&s, PU_PUSH + 2);
+    pu_context(&s, 1, 1);
+    tap(&s, PU_PUSH + 2);
+    assert(raw[PH_P_HOLD] == 0);
+    /* The release was lost under the cover: the key is up, and the next press is a new gesture. */
+    press(&s, PU_PUSH + 2);
+    pu_context(&s, 0, 1);
+    uint32_t up[2] = {0, 0};
+    pu_reconcile(&s, up);
+    pu_context(&s, 1, 1);
+    tap(&s, PU_PUSH + 2);
+    assert(raw[PH_P_HOLD] == 0);
+    /* The native flags: bit 4 is a release, bit 3 a repeat, bit 0 a press, bit 1 alone a chord, none a release. */
+    assert(pu_native_flags(16) == PU_RELEASE && pu_native_flags(9) == PU_REPEAT);
+    assert(pu_native_flags(1) == PU_PRESS && pu_native_flags(2) == PU_CHORD);
+    assert(pu_native_flags(0) == PU_RELEASE);
+}
+static void sync(void)
+{
+    PhraseUi s;
+    init(&s);
+    tap(&s, PU_PUSH + 1);
+    assert(raw[PH_P_SYNC] == 1 && pu_parameter(1) == PH_P_NOTE);
+    /* With SYNC, B steps through the note lengths, four ticks a step, and RATE stays where it was. */
+    for (uint32_t i = 0; i < 3; ++i)
+        assert(pu_turn(&s, 1, 1, 0) == PU_OWN && raw[PH_P_NOTE] == 8);
+    assert(pu_turn(&s, 1, 1, 0) == PU_OWN && raw[PH_P_NOTE] == 9);
+    assert(pu_turn(&s, 1, -4, 1) == PU_OWN && raw[PH_P_NOTE] == 8);
+    for (uint32_t i = 0; i < 20; ++i)
+        pu_turn(&s, 1, 4, 0);
+    assert(raw[PH_P_NOTE] == PH_TIME_CHOICES - 1);
+    for (uint32_t i = 0; i < 20; ++i)
+        pu_turn(&s, 1, -4, 0);
+    assert(raw[PH_P_NOTE] == 0 && raw[PH_P_RATE] == 508);
+    /* Three ticks towards the next note are dropped by the switch back: free, the first tick moves RATE. */
+    pu_turn(&s, 1, 3, 0);
+    tap(&s, PU_PUSH + 1);
+    assert(raw[PH_P_SYNC] == 0 && pu_parameter(1) == PH_P_RATE);
+    assert(pu_turn(&s, 1, 1, 0) == PU_OWN && raw[PH_P_RATE] == 508 + PH_RATE_COARSE);
+    assert(raw[PH_P_NOTE] == 0);
+}
+static void same(const char *got, const char *want)
+{
+    if (strcmp(got, want)) {
+        fprintf(stderr, "got \"%s\", want \"%s\"\n", got, want);
+        assert(0);
+    }
+}
+static void formats(void)
+{
     char b[16];
-    pu_format(b, PH_P_TUNE, 47);
-    assert(!strcmp(b, "-0.5"));
-    pu_format(b, PH_P_SCAN, 0);
-    assert(!strcmp(b, "-2.00X"));
-    pu_format(b, PH_P_SIZE, 127);
-    assert(!strcmp(b, "500MS"));
-    pu_format(b, PH_P_DEC, 0);
-    assert(!strcmp(b, "0.15S"));
-    pu_format(b, PH_P_DEC, 127);
-    assert(!strcmp(b, "8.00S"));
+    static const char *const zones[PH_ZONES] = {"KARP", "FLNG", "CHOR", "SLAP",
+                                                "ECHO", "LONG", "PHRS", "LOOP"};
+    for (uint32_t i = 0; i < PH_ZONES; ++i) {
+        pu_format(b, PH_P_ZONE, i);
+        same(b, zones[i]);
+    }
+    /* The note lengths in the order of the provider's table, shortest first; every text fits a cell. */
+    static const char *const notes[PH_TIME_CHOICES] = {
+        "1/32", "1/16T", "1/32.", "1/16", "1/8T", "1/16.", "1/8",  "1/4T",
+        "1/8.", "1/4",   "1/2T",  "1/4.", "1/2",  "1/2.",  "1BAR", "2BAR"};
+    for (uint32_t i = 0; i < PH_TIME_CHOICES; ++i) {
+        pu_format(b, PH_P_NOTE, i);
+        same(b, notes[i]);
+        assert(strlen(b) <= 7);
+    }
+    pu_format(b, PH_P_RPTS, 62);
+    same(b, "62");
+    pu_format(b, PH_P_HALO, 0);
+    same(b, "0");
+    pu_format(b, PH_P_MIX, 127);
+    same(b, "127");
+    pu_format(b, PH_P_COLR, 44);
+    same(b, "20");
+    pu_format(b, PH_P_COLR, 64);
+    same(b, "0");
+    pu_format(b, PH_P_COLR, 108);
+    same(b, "44");
+    pu_format(b, PH_P_SKEW, 52);
+    same(b, "L 12");
+    pu_format(b, PH_P_SKEW, 64);
+    same(b, "0");
+    pu_format(b, PH_P_SKEW, 94);
+    same(b, "R 30");
+    pu_format(b, PH_P_SKEW, 0);
+    same(b, "L 64");
+    pu_format(b, PH_P_SKEW, 127);
+    same(b, "R 63");
+    pu_time(b, 48);
+    same(b, "1 MS");
+    pu_time(b, 18000);
+    same(b, "375 MS");
+    pu_time(b, 47975);
+    same(b, "999 MS");
+    pu_time(b, 48000);
+    same(b, "1.00 S");
+    pu_time(b, 60000);
+    same(b, "1.25 S");
+    pu_time(b, 479700);
+    same(b, "9.99 S");
+    pu_time(b, 479900);
+    same(b, "10.0 S");
+    pu_time(b, 516000);
+    same(b, "10.8 S");
 }
-static unsigned pixels, texts, knobs, live_error;
-static unsigned header_only;
-static int cursor_x;
-static void draw_box(void *c, int x, int y, int w, int h, int ink)
+static void page_cells(void)
 {
-    (void)c;
-    assert(x >= 0 && y >= 0 && x + w <= 128 && y + h <= 64 && w > 0 && h > 0);
-    if (header_only)
-        assert(y + h <= 10);
-    pixels += (unsigned)(w * h);
-    if (w == 1 && h == 9 && !ink)
-        cursor_x = x;
+    PhraseUi s;
+    PhrasePage p;
+    init(&s);
+    pu_page(&s, &p);
+    same(p.title, "PRISM");
+    same(p.zone, "ECHO");
+    same(p.time, "375 MS");
+    assert(p.mix == 100 && p.zone_index == 4);
+    static const char *const defaults[8][3] = {{"ZONE", "ECHO", ""}, {"RATE", "375 MS", "FREE"},
+                                               {"RPTS", "48", ""},   {"COLR", "0", ""},
+                                               {"HALO", "0", ""},    {"SKEW", "0", ""},
+                                               {"INPT", "LIVE", ""}, {"XFAD", "--", "NO LOOP"}};
+    for (uint32_t i = 0; i < 8; ++i) {
+        same(p.cells[i].label, defaults[i][0]);
+        same(p.cells[i].value, defaults[i][1]);
+        same(p.cells[i].state, defaults[i][2]);
+        assert(!p.cells[i].lit);
+    }
+    /* SYNC: the note length in the RATE cell, and the header keeps the time the engine plays. */
+    raw[PH_P_SYNC] = 1;
+    raw[PH_P_NOTE] = 8;
+    status(&s, 9000, 9000);
+    pu_page(&s, &p);
+    same(p.cells[1].value, "1/8.");
+    same(p.cells[1].state, "SYNC");
+    same(p.time, "188 MS");
+    /* HOLD and FLIP with RATE free, as the plan draws it. */
+    raw[PH_P_SYNC] = 0;
+    raw[PH_P_ZONE] = 3;
+    raw[PH_P_FLIP] = raw[PH_P_HOLD] = 1;
+    raw[PH_P_COLR] = 108;
+    raw[PH_P_HALO] = 70;
+    raw[PH_P_SKEW] = 94;
+    raw[PH_P_MIX] = 104;
+    /* SKEW makes one side shorter and the other longer by one ratio: the page shows the time between them. */
+    status(&s, 3312, 5888);
+    pu_page(&s, &p);
+    same(p.zone, "SLAP");
+    same(p.time, "92 MS");
+    same(p.cells[0].value, "SLAP");
+    same(p.cells[0].state, "FLIP");
+    same(p.cells[1].value, "92 MS");
+    same(p.cells[1].state, "FREE");
+    same(p.cells[2].value, "INF");
+    same(p.cells[2].state, "HOLD");
+    same(p.cells[3].value, "44");
+    same(p.cells[3].state, "BRIT");
+    same(p.cells[4].value, "70");
+    same(p.cells[5].value, "R 30");
+    assert(p.cells[0].lit && p.cells[2].lit && !p.cells[1].lit && p.mix == 104);
+    raw[PH_P_COLR] = 44;
+    pu_page(&s, &p);
+    same(p.cells[3].value, "20");
+    same(p.cells[3].state, "DARK");
+    /* The cells kept for the loop say the same whatever the provider holds. */
+    same(p.cells[6].value, "LIVE");
+    same(p.cells[7].state, "NO LOOP");
+    /* Long times: the mean of two sides of more than 16 bits is right to 16 frames. */
+    status(&s, 400000, 600000);
+    assert(pu_frames(&s) >= 489898 - 16 && pu_frames(&s) <= 489898 + 16);
+    status(&s, 516000, 516000);
+    assert(pu_frames(&s) == 516000);
+    /* A status of an engine that has no time yet, and no status at all. */
+    status(&s, 0, 0);
+    pu_page(&s, &p);
+    same(p.time, "--");
+    same(p.cells[1].value, "--");
+    s.fresh = 0;
+    pu_page(&s, &p);
+    same(p.time, "NO LINK");
+    same(p.cells[1].value, "--");
 }
-static void draw_text(void *c, int x, int y, const char *s, int ink)
+/* A canvas that checks what the page draws: inside the screen, every text inside its place. */
+typedef struct {
+    uint32_t boxes, texts, inverted;
+    char seen[64][8];
+} Drawn;
+static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
 {
-    (void)c;
-    (void)ink;
-    assert(x >= 0 && x < 128 && y >= 0 && y + 5 <= 64);
-    if (header_only)
-        assert(y + 5 <= 10);
-    assert(strlen(s) < 16);
-    if (!strcmp(s, "LIVE ERR"))
-        ++live_error;
-    ++texts;
+    Drawn *d = ctx;
+    assert(x >= 0 && y >= 0 && w > 0 && h > 0 && x + w <= 128 && y + h <= 64);
+    assert(ink == 0 || ink == 1);
+    ++d->boxes;
 }
-static void draw_knob(void *c, uint32_t cell, uint32_t value)
+static void drawn_text(void *ctx, int x, int y, const char *s, int ink)
 {
-    (void)c;
-    assert(!header_only && cell < 8 && value <= 127);
-    ++knobs;
+    Drawn *d = ctx;
+    /* The label font is at most 4 pixels a character and 5 high. */
+    int half = (int)strlen(s) * 4 / 2;
+    assert(*s && strlen(s) <= 7 && x - half >= 0 && x + half <= 128 && y >= 0 && y + 5 <= 64);
+    assert(d->texts < 64);
+    strcpy(d->seen[d->texts++], s);
+    d->inverted += !ink;
+}
+static int saw(const Drawn *d, const char *s)
+{
+    for (uint32_t i = 0; i < d->texts; ++i)
+        if (!strcmp(d->seen[i], s))
+            return 1;
+    return 0;
 }
 static void rendering(void)
 {
     PhraseUi s;
+    PhrasePage p;
     init(&s);
-    PhraseCanvas c = {0, draw_box, draw_text, draw_knob};
-    for (uint32_t page = 0; page < PH_PAGES; ++page)
-        for (uint32_t st = 0; st <= PH_HANDOFF; ++st) {
-            s.page = page;
-            s.status[PH_S_STATE / 4] = st;
-            s.status[PH_S_HELD_FRAMES / 4] = 384000;
-            s.status[PH_S_CROP_START / 4] = 96000;
-            s.status[PH_S_CROP_LEN / 4] = 192000;
-            s.status[PH_S_GRAIN_VALID / 4] = 0xff;
-            for (uint32_t i = 0; i < 4; ++i)
-                s.status[PH_S_GRAIN_POS0 / 4 + i] = 0xe0002000;
-            for (uint32_t overlay = 0; overlay < 2; ++overlay) {
-                s.overlay = overlay;
-                pu_render(&s, &c);
-            }
+    Drawn d = {0};
+    PhraseCanvas c = {&d, drawn_box, drawn_text};
+    pu_page(&s, &p);
+    pu_render(&p, &c);
+    static const char *const shown[] = {"PRISM", "ECHO", "375 MS", "MIX",  "100",  "ZONE",
+                                        "RATE",  "FREE", "RPTS",   "48",   "COLR", "HALO",
+                                        "SKEW",  "INPT", "LIVE",   "XFAD", "--",   "NO LOOP"};
+    for (uint32_t i = 0; i < sizeof(shown) / sizeof(*shown); ++i)
+        if (!saw(&d, shown[i])) {
+            fprintf(stderr, "not drawn: %s\n", shown[i]);
+            assert(0);
         }
-    s.fresh = 0;
-    pu_render(&s, &c);
-    assert(pixels && texts && knobs);
-    s.page = 2;
-    s.overlay = 0;
-    s.fresh = 1;
-    union {
-        float f;
-        uint32_t u;
-    } phase = {96000.0f};
-    s.status[PH_S_SCAN_PHASE / 4] = phase.u;
-    raw[PH_P_POS] = 0;
-    cursor_x = -1;
-    pu_render(&s, &c);
-    assert(cursor_x == 60); /* crop start + 96000 frames = phrase midpoint */
-    raw[PH_P_POS] = 127;
-    cursor_x = -1;
-    pu_render(&s, &c);
-    assert(cursor_x == 60); /* a complete crop wraps; POS stays separate */
-    s.fresh = 0;
-    cursor_x = -1;
-    pu_render(&s, &c);
-    assert(cursor_x == -1);
-    s.fresh = 1;
-    s.status[PH_S_ROUTE_FAULT / 4] = 1;
-    pu_render(&s, &c);
-    assert(live_error == 1);
-    /* A passive native overlay repaints only the header after the full FX
-     * view: restoring it must never erase control values or input tiles. */
-    header_only = 1;
-    for (uint32_t overlay = 0; overlay < 2; ++overlay) {
-        s.overlay = overlay;
-        pu_render_header(&s, &c);
+    assert(!d.inverted);
+    /* Every value at both ends of its range, with every switch on, stays on the screen. */
+    for (uint32_t pass = 0; pass < 2; ++pass) {
+        for (uint32_t i = 0; i < PH_PARAM_COUNT; ++i)
+            raw[i] = pass ? 127 : 0;
+        raw[PH_P_ZONE] = pass ? PH_ZONES - 1 : 0;
+        raw[PH_P_NOTE] = pass ? PH_TIME_CHOICES - 1 : 0;
+        raw[PH_P_SYNC] = raw[PH_P_FLIP] = raw[PH_P_HOLD] = pass;
+        status(&s, pass ? 344064 : 48, pass ? 516096 : 72);
+        memset(&d, 0, sizeof(d));
+        pu_page(&s, &p);
+        pu_render(&p, &c);
+        /* FLIP and HOLD are drawn inverted when they are on. */
+        assert(d.inverted == (pass ? 2u : 0u));
+        assert(saw(&d, "FLIP") == (int)pass && saw(&d, "HOLD") == (int)pass);
     }
-    header_only = 0;
+    /* The header alone: three texts, nothing below the bar. */
+    memset(&d, 0, sizeof(d));
+    pu_render_header(&p, &c);
+    assert(d.texts == 3 && saw(&d, "PRISM") && saw(&d, "LOOP"));
 }
 int main(void)
 {
-    navigation();
-    sources();
-    capture_lock();
-    clear_gesture();
-    led_ownership();
-    covered_view();
-    native_gestures();
-    detents();
+    encoders();
+    presses();
+    sync();
+    formats();
+    page_cells();
     rendering();
-    puts(
-        "phrase UI: ownership, navigation, capture locking, detents, LEDs and render bounds passed");
+    puts("phrase ui: ok");
     return 0;
 }

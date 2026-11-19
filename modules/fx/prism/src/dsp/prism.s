@@ -40,7 +40,7 @@ _prism_process:
     COMP(R0,R1);
     IF NE JUMP _prism_bad_link;
     R0 = DM(PH_C_VERSION / 4,I4);
-    R1 = PRISM_CONTROL_VERSION;
+    R1 = PH_VERSION;
     COMP(R0,R1);
     IF NE JUMP _prism_bad_link;
     R0 = DM(PH_C_SIZE / 4,I4);
@@ -199,7 +199,7 @@ _prism_fault:
 _prism_plan:
     R15 = DM(PC_FLAGS,I5);
     // ---- the base time. SYNC: the frames the provider gives. Free: low * exp(RATE * ln(high / low)) of the zone.
-    R0 = PRISM_F_SYNC;
+    R0 = PH_F_SYNC;
     R0 = R15 AND R0;
     R0 = PASS R0;
     IF EQ JUMP _pl_free;
@@ -210,7 +210,7 @@ _pl_free:
     R1 = 1;
     COMP(R0,R1);
     IF LT R0 = PASS R1;
-    R1 = PRISM_ZONES;
+    R1 = PH_ZONES;
     COMP(R0,R1);
     IF GT R0 = PASS R1;
     R0 = R0 - 1;
@@ -244,7 +244,7 @@ _pl_base:
     R5 = DM(PC_ZONE,I5);
     R6 = 0;
     R7 = 0;
-    R0 = PRISM_F_SYNC;
+    R0 = PH_F_SYNC;
     R0 = R15 AND R0;
     R0 = PASS R0;
     IF EQ JUMP _pl_key;
@@ -298,7 +298,7 @@ _pl_key_done:
     R0 = DM(PS_CAPACITY,I5);
     R1 = 256;
     R0 = R0 - R1;
-    R1 = PRISM_F_FLIP;
+    R1 = PH_F_FLIP;
     R1 = R15 AND R1;
     R1 = PASS R1;
     IF EQ JUMP _pl_longest;
@@ -331,7 +331,7 @@ _pl_sides:
     // crossfades from those frames into the new signal. While a forward head crossfades, taking waits: that head would
     // run on toward the standing tape's end.
     R14 = DM(PS_HOLD,I5);
-    R0 = PRISM_F_HOLD;
+    R0 = PH_F_HOLD;
     R0 = R15 AND R0;
     R0 = PASS R0;
     IF EQ JUMP _pl_no_hold;
@@ -409,7 +409,7 @@ _pl_hold_done:
 
     // ---- this block's mode, reference frame and the deepest delay that reads written tape
     R0 = PM_FORWARD;
-    R1 = PRISM_F_FLIP;
+    R1 = PH_F_FLIP;
     R1 = R15 AND R1;
     R1 = PASS R1;
     IF EQ JUMP _pl_mode;
@@ -627,15 +627,15 @@ _pr_recip:
     F0 = F1 * F12;
     RTS;
 
-// The engine writes every status word except PH_S_FADE and PH_S_ROUTE_FAULT, which the router owns. The sequence is
-// published last; a block that was not processed leaves no fresh heartbeat.
+// The engine writes every status word (dk_phrase.inc). The sequence is published last; a block that was not processed
+// leaves no fresh heartbeat.
 _prism_publish:
     I4 = _phrase_status;
     R0 = 0;
     DM(PH_S_SEQ_END / 4,I4) = R0;
     R0 = PH_STATUS_MAGIC;
     DM(PH_S_MAGIC / 4,I4) = R0;
-    R0 = PRISM_CONTROL_VERSION;
+    R0 = PH_VERSION;
     DM(PH_S_VERSION / 4,I4) = R0;
     R0 = DM(PS_BLOCK,I5);
     R0 = R0 + 1;
@@ -656,31 +656,22 @@ _prism_publish:
     DM(PH_S_STATE / 4,I4) = R1;
     R1 = DM(PS_ERROR,I5);
     DM(PH_S_ERROR / 4,I4) = R1;
-    // The words of the capture and of the grains that this engine does not have read as zero.
+    // Every word the layout does not name reads as zero, the three kept for the loop included.
     R0 = 0;
-    DM(PH_S_HELD_MASK / 4,I4) = R0;
-    DM(PH_S_OLD_MASK / 4,I4) = R0;
-    DM(PH_S_HANDOFF / 4,I4) = R0;
     R1 = I4;
-    R2 = PH_S_GOAL_STEPS + 4;
+    R2 = PH_S_ERROR + 4;
     R1 = R1 + R2;
     I3 = R1;
-    LCNTR = 11, DO _prism_status_clear UNTIL LCE;
+    LCNTR = (PH_S_SEQ_END - PH_S_ERROR - 4) / 4, DO _prism_status_clear UNTIL LCE;
 _prism_status_clear: DM(I3,M6) = R0;
-    R1 = I4;
-    R2 = PH_S_GRAIN_POS0;
-    R1 = R1 + R2;
-    I3 = R1;
-    LCNTR = 5, DO _prism_status_grains UNTIL LCE;
-_prism_status_grains: DM(I3,M6) = R0;
     R1 = DM(PS_TIME_L,I5);
-    DM(PRISM_S_TIME_L,I4) = R1;
+    DM(PH_S_TIME_L / 4,I4) = R1;
     R1 = DM(PS_TIME_R,I5);
-    DM(PRISM_S_TIME_R,I4) = R1;
+    DM(PH_S_TIME_R / 4,I4) = R1;
     R1 = DM(PS_HOLD,I5);
-    DM(PRISM_S_HOLD,I4) = R1;
+    DM(PH_S_HOLD / 4,I4) = R1;
     R1 = DM(PS_VALID,I5);
-    DM(PRISM_S_TAPE,I4) = R1;
+    DM(PH_S_TAPE / 4,I4) = R1;
     R1 = DM(PS_OWNER,I5);
     DM(PH_S_OWNER_GENERATION / 4,I4) = R1;
     R0 = DM(PS_BLOCK,I5);

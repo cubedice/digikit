@@ -75,27 +75,27 @@ A header in the module's `src/` is shared by C and SHARC+ sources. Use only deci
 
 ## Experimental phrase effects
 
-`dsp/contract/dk_phrase_imports.inc` declares the public DSP imports for one captured-phrase
-effect: the coherent control mailbox, status mailbox and two-bank audio lease.
-It includes `dsp/contract/dk_phrase.inc`, whose byte offsets and constants are also shared
-with C through `<dk/phrase.h>`. These are adapter data exports, not ColdFire
-function imports in `sdk.toml`.
+`dsp/contract/dk_phrase_imports.inc` declares the public DSP imports for the one phrase
+effect: the coherent control mailbox, the status mailbox and the two-bank audio lease.
+It includes `dsp/contract/dk_phrase.inc`, the one home of the layout (version 3), whose byte
+offsets and constants are also shared with C through `<dk/phrase.h>`. These are adapter
+data exports, not ColdFire function imports in `sdk.toml`.
 
-Importing `_phrase_control_info` requests exclusive phrase routing. The runtime
-requires exactly one FX and no voice records, the control and routing providers,
-and no existing phrase owner. It reserves that ownership before publishing the
-FX row and revokes it before unloading the row. Missing capabilities reject the
-load. The first supported port is DTII 1.17; these experimental headers do not
-imply availability on other devices or firmware.
+Importing `_phrase_control_info` requests the exclusive phrase capability: the effect's
+controls and its one page come from the image's phrase adapters (`core/phrase-control`,
+`core/phrase-ui`) and not from knobs of its record. The runtime requires exactly one FX and
+no voice records, the control provider, and no existing phrase owner. It reserves that
+ownership before publishing the FX row and revokes it before unloading the row. Missing
+capabilities reject the load. The first supported port is DTII 1.17; these experimental
+headers do not imply availability on other devices or firmware.
 
-The engine receives selected stereo input before FADE and returns wet audio.
-The adapter applies FADE, preserves unselected sources, and owns the `PH_S_FADE`
-and `PH_S_ROUTE_FAULT` status words. The engine must leave both intact and publish
-coherent, generation-tagged status. The storage descriptor supplies two distinct
-stereo banks; validate its bounds and capacity, initialize frames before exposing
-them, and never reuse a held bank while a grain still reads it. Neither bank may
-alias the legacy loop lease. `_phrase_route_info` is the runtime's internal
-provider-presence marker; content engines use the public control capability.
+The effect is otherwise an ordinary effect of the framework: its input and its route are
+the ones its record declares (`dk_fx_routes`), and it writes the wet signal. Its level is the
+control word `PH_C_MIX`; the framework keeps the row's own MIX at unity. The engine checks
+the mailbox (magic, version, size, the sequence at both ends, the owner generation) before
+it uses a word, and publishes coherent, generation-tagged status. The storage descriptor
+supplies two distinct stereo banks; validate its bounds and capacity before access. Neither
+bank aliases the legacy loop lease.
 
 ## Declaring an effect
 

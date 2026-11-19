@@ -4,7 +4,7 @@
 //! effect is registered, at the boot. The effect's record says which routes are allowed and which is the default (`route`, `routes` of the DK_FX record; flags word of the
 //! record): the default is used when the setting is not there or names a route the effect does not allow. DIGIKIT > FX ROUTES (`core/digikit-menu`) writes the setting through
 //! `dkrt_settings_put`, and lists the effects with `dkrt_fx`; the device limits the send effects (`[limits] send_slots`, `fxpages_info` word 39: the cells of the send page); an effect past the limit
-//! stays on the master. A send effect has a cell on the send page (the second page of the track FX key, `core/fxpages`): one knob row (`params.fs<c>`) whose value is the halfword
+//! stays on the master, and one that may not run on the master (a send-only effect) is then run by neither route. A send effect has a cell on the send page (the second page of the track FX key, `core/fxpages`): one knob row (`params.fs<c>`) whose value is the halfword
 //! `Sound[send_indices[c]]` of the current track's Sound object, so the firmware's own page code shows, edits and draws it (`FSH Send=40`). The row has the value class of the
 //! kit's Delay rows (no p-lock) and no CC.
 //!
@@ -139,6 +139,18 @@ fn routes_of(flags: u32) -> (u8, u8) {
     )
 }
 
+/// The route word of a DSP row: 1 on a send bus (it has a cell of the send page), 0 on the master, and 2 (run by neither route) for an effect
+/// without a cell that may not run on the master.
+fn route_word(allow: u8, cell: bool) -> u32 {
+    if cell {
+        1
+    } else if allow & ROUTE_MASTER != 0 {
+        0
+    } else {
+        2
+    }
+}
+
 /// The route effect row `k` has in the settings, as `ROUTE_*`: the stored one when the effect allows it, else its default. UI task.
 unsafe fn saved_route<C: CoreApi>(core: &C, k: usize) -> u8 {
     let s = ss();
@@ -270,8 +282,9 @@ pub unsafe fn apply<C: CoreApi>(core: &C, k: usize, owner: u8, tab: *const u8) {
         n += 1;
     }
     s.idlen[k] = cstr_len(name, 32) as u8;
-    // an image with no send page (no cells) has every effect on the master, whatever the settings say
+    // an image with no send page (no cells) has every effect on the master, whatever the settings say; a send-only effect does not run
     if inf.is_null() {
+        fxdsp::fx_set_route(core, k, route_word(allow, false), [0; 4]);
         return;
     }
     let want = saved_route(core, k) == ROUTE_SEND;
@@ -334,7 +347,7 @@ pub unsafe fn apply<C: CoreApi>(core: &C, k: usize, owner: u8, tab: *const u8) {
         s.kit = 0;
         publish_count(core, inf);
     }
-    fxdsp::fx_set_route(core, k, s.route[k] as u32, s.dsp[k]);
+    fxdsp::fx_set_route(core, k, route_word(allow, s.route[k] != 0), s.dsp[k]);
     // the FX view lists the send effects first: the list is built again now that the route is known
     fxpage::relist(core);
 }
@@ -552,6 +565,27 @@ mod tests {
         );
     }
 
+    /// The DSP route word: a cell of the send page is the send bus; without one the master, or neither route for a send-only effect.
+    #[test]
+    fn an_effect_without_a_cell_runs_on_the_master_only_if_it_may() {
+        assert_eq!(route_word(ROUTE_MASTER | ROUTE_SEND, true), 1);
+        assert_eq!(route_word(ROUTE_SEND, true), 1);
+        assert_eq!(route_word(ROUTE_MASTER | ROUTE_SEND, false), 0);
+        assert_eq!(route_word(ROUTE_MASTER, false), 0);
+        assert_eq!(
+            route_word(ROUTE_SEND, false),
+            2,
+            "send only and no cell: not run"
+        );
+        // the same at the claim, before the settings are read
+        assert_eq!(fxdsp::claim_route(0), 0);
+        assert_eq!(fxdsp::claim_route(FXF_SEND | FXF_DEFAULT_SEND), 0);
+        assert_eq!(
+            fxdsp::claim_route(FXF_SEND | FXF_NOMASTER | FXF_DEFAULT_SEND),
+            2
+        );
+    }
+
     /// The settings keys are `fx/route/<module id>` and `fx/send/<module id>`; the id is copied up to its length.
     #[test]
     fn settings_keys_carry_the_module_id() {
@@ -588,6 +622,11 @@ mod tests {
             s.allow[3] = ROUTE_MASTER | ROUTE_SEND;
             core.settings.borrow_mut()[0].1 = std::vec![7];
             assert_eq!(saved_route(&core, 3), ROUTE_MASTER, "7 is no route");
+            // an effect that was a master effect and is a send-only effect now (PRISM): a stored master route is not used
+            core.settings.borrow_mut()[0].1 = std::vec![0];
+            s.allow[3] = ROUTE_SEND;
+            s.dflt[3] = ROUTE_SEND;
+            assert_eq!(saved_route(&core, 3), ROUTE_SEND);
         }
     }
 

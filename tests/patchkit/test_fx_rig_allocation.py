@@ -7,7 +7,6 @@ layout, allocates memory and initializes the chain table through its normal path
 import struct
 import unittest
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import patch
 
 from support import fx_rig as rig
@@ -149,110 +148,6 @@ class FxRigAllocationTests(unittest.TestCase):
         fx = self.make("_large_desc", "_small_desc")
         self.assertEqual(fx.row_word(0, rig.STATE), fx.row_word(1, rig.STATE))
         self.assertEqual(fx.state_word(1, 0), rig.POISON)
-
-    def phrase_object(self):
-        self.obj = object_with_states(64)
-        self.obj.relocs = [
-            pk_sharc.SharcReloc(0, 0, name, 0)
-            for name in (
-                "_phrase_control_info",
-                "_phrase_storage_info",
-                "_phrase_status",
-            )
-        ]
-
-    def test_phrase_capability_supplies_coherent_capture_clock_without_module_identity(
-        self,
-    ):
-        self.phrase_object()
-        fx = self.make("_large_desc")
-        self.assertTrue(fx.built.phrase_provider)
-        fx._phrase_frame()
-        fields = rig.PH
-        start = rig.nw(fx.built.data["_phrase_control_info"])
-        first = [fx.sess.peek(start + i) for i in range(fields["PH_CONTROL_WORDS"])]
-        self.assertEqual(
-            first[fields["PH_C_SEQ"] // 4], first[fields["PH_C_SEQ_END"] // 4]
-        )
-        self.assertEqual(first[fields["PH_C_ACTION"] // 4], fields["PH_ACTION_ARM"])
-        self.assertTrue(
-            first[fields["PH_C_TIMING_FLAGS"] // 4] & fields["PH_TIMING_VALID"]
-        )
-        checksum = fields["PH_CHECK_SALT"]
-        for word in first[: fields["PH_C_CHECK"] // 4]:
-            checksum ^= word
-        self.assertEqual(first[fields["PH_C_CHECK"] // 4], checksum)
-        for _ in range(4):
-            fx._phrase_frame()
-        later = [fx.sess.peek(start + i) for i in range(fields["PH_CONTROL_WORDS"])]
-        self.assertEqual(later[fields["PH_C_MASTER_PHASE"] // 4], 65536)
-        self.assertEqual(later[fields["PH_C_BEAT_PHASE"] // 4], 16384)
-        self.assertEqual(
-            later[fields["PH_C_CMD_SEQ"] // 4], first[fields["PH_C_CMD_SEQ"] // 4]
-        )
-        self.assertGreater(
-            later[fields["PH_C_SEQ"] // 4], first[fields["PH_C_SEQ"] // 4]
-        )
-        fx.reset()
-        fx._phrase_frame()
-        self.assertEqual(fx.sess.peek(start + fields["PH_C_SEQ"] // 4), 1)
-
-    def test_phrase_provider_grants_only_lease_and_engine_status_writes(self):
-        self.phrase_object()
-        fx = self.make("_large_desc")
-        fx.built.data.update(
-            _fx_scratch=0x2009D000, _fx_save=0x2009D100, _fx_in=0x2009D200
-        )
-        allowed = fx.allowed(0)
-
-        def writable(at):
-            return any(lo <= at and at + 4 <= lo + length for lo, length, _ in allowed)
-
-        self.assertFalse(writable(fx.built.data["_phrase_control_info"]))
-        self.assertFalse(writable(fx.built.data["_phrase_storage_info"]))
-        status = fx.built.data["_phrase_status"]
-        self.assertTrue(writable(status + rig.PH["PH_S_ERROR"]))
-        self.assertFalse(writable(status + rig.PH["PH_S_FADE"]))
-        self.assertFalse(writable(status + rig.PH["PH_S_ROUTE_FAULT"]))
-        for bank in rig.PHRASE_BANKS:
-            self.assertTrue(writable(bank))
-            self.assertTrue(writable(bank + rig.PHRASE_BANK_BYTES - 4))
-            self.assertFalse(writable(bank + rig.PHRASE_BANK_BYTES))
-            word = rig.byte_to_normal_word(bank)
-            self.assertIsNotNone(word)
-            self.assertEqual(fx.sess.peek(word), rig.POISON)
-        # External addresses are already byte addresses; they must not be
-        # mistaken for the on-chip short-word alias in write-set validation.
-        store = SimpleNamespace(
-            address=rig.PHRASE_BANKS[0], width=4, pc_sw=fx.built.module_code[0][0]
-        )
-        fx.sess.stores = [store]
-        self.assertEqual(fx.foreign_stores(0), [])
-        store.address += rig.PHRASE_BANK_BYTES
-        self.assertEqual(len(fx.foreign_stores(0)), 1)
-
-    def test_explicit_phrase_provider_remains_authoritative(self):
-        self.phrase_object()
-        for name, size in (
-            ("_phrase_control_info", rig.PH["PH_CONTROL_WORDS"] * 4),
-            ("_phrase_storage_info", rig.PH["PH_STORAGE_BYTES"]),
-            ("_phrase_status", rig.PH["PH_STATUS_WORDS"] * 4),
-        ):
-            self.obj.data[name] = (bytes(size), 4, False)
-            self.obj.data_symbols[name] = (name, 0, True)
-        fx = self.make("_large_desc")
-        self.assertFalse(fx.built.phrase_provider)
-        control = rig.nw(fx.built.data["_phrase_control_info"])
-        fx.sess.poke(control, 12345)
-        fx._phrase_frame()
-        self.assertEqual(fx.sess.peek(control), 12345)
-
-    def test_partial_explicit_phrase_provider_is_rejected(self):
-        self.phrase_object()
-        self.obj.data["status"] = (bytes(128), 4, False)
-        self.obj.data_symbols["_phrase_status"] = ("status", 0, True)
-        with self.assertRaisesRegex(ValueError, "all three ABI symbols"):
-            self.make("_large_desc")
 
 
 if __name__ == "__main__":

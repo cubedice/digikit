@@ -92,7 +92,6 @@
         "core/dyndsp",
         "core/dynfx",
         "core/phrase-ui",
-        "core/phrase-route",
         "core/digikit-menu",
         "core/health"
       ],
@@ -110,7 +109,6 @@
         "core/loop-storage",
         "core/loop-display",
         "core/phrase-ui",
-        "core/phrase-route",
         "core/digikit-menu",
         "core/health"
       ],

@@ -19,15 +19,8 @@ static void mark(uint32_t b[2], uint32_t k, int on)
     else
         b[k >> 5] &= ~(1u << (k & 31));
 }
-static int locked(const PhraseUi *s)
-{
-    return s->status[PH_S_STATE / 4] == PH_ARMED || s->status[PH_S_STATE / 4] == PH_RECORDING ||
-           s->status[PH_S_STATE / 4] == PH_HANDOFF;
-}
 void pu_leave(PhraseUi *s)
 {
-    s->overlay = 0;
-    s->adjusted = 0xffff;
     for (uint32_t i = 0; i < 2; ++i)
         s->cancelled[i] |= s->owned[i];
     for (uint32_t i = 0; i < 9; ++i)
@@ -63,7 +56,6 @@ void pu_context(PhraseUi *s, uint32_t active, uint32_t generation)
 {
     if (generation != s->generation) {
         pu_leave(s);
-        s->page = PH_PAGE_DELAY;
         s->generation = generation;
     }
     if (!active && s->active)
@@ -75,48 +67,11 @@ void pu_status(PhraseUi *s, const uint32_t *status, uint32_t fresh)
     for (uint32_t i = 0; i < PH_STATUS_WORDS; ++i)
         s->status[i] = status[i];
     s->fresh = fresh;
-    if (s->focus_ticks)
-        --s->focus_ticks;
 }
-int32_t pu_gain_track(const PhraseUi *s)
+static void toggle(PhraseUi *s, uint32_t p)
 {
-    int32_t track = -1;
-    uint32_t newest = 0;
-    if (!s->overlay)
-        return -1;
-    for (uint32_t i = 0; i < 16; ++i)
-        if (held(s, PU_TRIG + i) && owned(s, PU_TRIG + i) && s->order[i] >= newest) {
-            newest = s->order[i];
-            track = (int32_t)i;
-        }
-    return track;
-}
-uint32_t pu_effective_mask(void)
-{
-    uint32_t mask = dkrt_phrase_get(PH_P_MASK) & PH_INPUT_MASK;
-    for (uint32_t i = 0; i < 16; ++i)
-        if (!dkrt_phrase_get(PH_P_GAIN0 + i))
-            mask &= ~(1u << i);
-    if (!dkrt_phrase_get(PH_P_EXT_GAIN))
-        mask &= 0xffff;
-    return mask;
-}
-uint32_t pu_led(const PhraseUi *s, uint32_t logical, uint32_t stock)
-{
-    if (!s->active || !s->overlay || logical < 26 || logical > 41)
-        return stock;
-    /* Native white steady and dim modes. Held-vs-next is shown on screen;
-     * the physical TRIG grid always represents the next effective input. */
-    return (pu_effective_mask() & (1u << (logical - 26))) ? 0x71 : 0x02;
-}
-static int modified(const PhraseUi *s)
-{
-    if (held(s, 16) || held(s, 17) || held(s, 18))
-        return 1;
-    for (uint32_t k = PU_TRIG; k <= PU_H; ++k)
-        if (held(s, k))
-            return 1;
-    return 0;
+    dkrt_phrase_set(p, !dkrt_phrase_get(p));
+    ++s->revision;
 }
 uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
 {
@@ -134,155 +89,64 @@ uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
         mark(s->held, key, 0);
         mark(s->owned, key, 0);
         mark(s->cancelled, key, 0);
-        if (was_owned || cancelled) {
-            if (!cancelled && s->active && s->overlay && key >= PU_TRIG && key < PU_TRIG + 16 &&
-                !locked(s)) {
-                uint32_t track = key - PU_TRIG;
-                if (!(s->adjusted & (1u << track)))
-                    dkrt_phrase_set(PH_P_MASK, dkrt_phrase_get(PH_P_MASK) ^ (1u << track));
-                s->adjusted &= ~(1u << track);
-            }
-            ++s->revision;
-            return PU_OWN;
-        }
-        return PU_PASS;
+        /* The release of a key this page took is this page's, also after the view was covered. */
+        return was_owned || cancelled ? PU_OWN : PU_PASS;
     }
     int first = !held(s, key);
     mark(s->held, key, 1);
     if (was_owned)
         return PU_OWN;
-    if (!s->active)
+    /* A key held before the page was on top remains the stock handler's gesture. */
+    if (!s->active || (flags & PU_REPEAT) || !first)
         return PU_PASS;
-    if (flags & PU_REPEAT)
-        return PU_PASS;
-    /* A key held before IN opened remains the stock handler's gesture. */
-    if (!first)
-        return PU_PASS;
-    if (key == PU_FX && held(s, PU_FUNC) && first) {
-        pu_leave(s);
-        mark(s->owned, key, 1);
-        return PU_NEXT_FX;
-    }
     if (key == PU_NO && held(s, PU_FUNC)) {
-        dkrt_phrase_action(PH_ACTION_CLEAR);
+        /* Kept for dropping the loop: taken, so that the stock page does nothing with it, and nothing happens yet. */
         mark(s->owned, key, 1);
-        ++s->revision;
         return PU_OWN;
     }
-    if (s->overlay) {
-        if (key == PU_H || key == PU_NO) {
-            if (first)
-                pu_leave(s);
-            mark(s->owned, key, 1);
-            return PU_OWN;
-        }
-        if (key == PU_YES) {
-            if (first)
-                dkrt_phrase_action(locked(s) ? PH_ACTION_CANCEL : PH_ACTION_ARM);
-            mark(s->owned, key, 1);
-            ++s->revision;
-            return PU_OWN;
-        }
-        if (key >= PU_TRIG && key < PU_TRIG + 16) {
-            uint32_t track = key - PU_TRIG;
-            mark(s->owned, key, 1);
-            s->order[track] = ++s->serial;
-            s->adjusted &= ~(1u << track);
-            if (locked(s))
-                s->adjusted |= 1u << track;
-            else if (held(s, PU_FUNC)) {
-                dkrt_phrase_set(PH_P_MASK, (dkrt_phrase_get(PH_P_MASK) & 0x30000) | (1u << track));
-                s->adjusted |= 1u << track;
-            }
-            ++s->revision;
-            return PU_OWN;
-        }
-        if (key == PU_UP || key == PU_DOWN || (key >= 41 && key <= 48)) {
-            mark(s->owned, key, 1);
-            return PU_OWN;
-        }
-        return PU_PASS;
-    }
-    if (key == PU_H && first && !held(s, PU_FUNC)) {
-        s->overlay = 1;
-        mark(s->owned, key, 1);
-        ++s->revision;
-        return PU_OWN;
-    }
-    if ((key == PU_UP || key == PU_DOWN) && first && !modified(s)) {
-        s->page = (s->page + (key == PU_DOWN ? 1 : PH_PAGES - 1)) % PH_PAGES;
-        mark(s->owned, key, 1);
-        for (uint32_t i = 0; i < 9; ++i)
-            s->detent[i] = 0;
-        ++s->revision;
-        return PU_OWN;
-    }
-    if (key >= 41 && key <= 48) {
+    if (key >= PU_PUSH && key < PU_PUSH + 8) {
+        /* A is FLIP, B is SYNC, C is HOLD. D to H are taken and do nothing (G and H are kept for the loop). */
+        static const uint8_t switches[3] = {PH_P_FLIP, PH_P_SYNC, PH_P_HOLD};
+        if (key < PU_PUSH + 3)
+            toggle(s, switches[key - PU_PUSH]);
+        if (key == PU_PUSH + 1)
+            s->detent[1] = 0;
         mark(s->owned, key, 1);
         return PU_OWN;
     }
     return PU_PASS;
 }
-uint32_t pu_parameter(uint32_t page, uint32_t encoder)
+uint32_t pu_parameter(uint32_t encoder)
 {
-    static const uint8_t mapping[PH_PAGES][8] = {
-        {0, 1, 2, 3, 4, 5, 255, 255},
-        {6, 7, 8, 9, 10, 11, 255, 255},
-        {12, 13, 14, 15, 255, 255, 255, 255},
-        {16, 17, 18, 19, 255, 255, 255, 255},
-        {PH_P_TIME, PH_P_FDBK, PH_P_MODE, PH_P_SKEW, PH_P_WOW, PH_P_DRIV, PH_P_BAL, 255}};
-    return page < PH_PAGES && encoder < 8 ? mapping[page][encoder] : 255;
+    static const uint8_t mapping[9] = {PH_P_ZONE,      PH_P_RATE,      PH_P_RPTS,
+                                       PH_P_COLR,      PH_P_HALO,      PH_P_SKEW,
+                                       PH_PARAM_COUNT, PH_PARAM_COUNT, PH_P_MIX};
+    if (encoder > PU_LEVEL)
+        return PH_PARAM_COUNT;
+    if (encoder == 1 && dkrt_phrase_get(PH_P_SYNC))
+        return PH_P_NOTE;
+    return mapping[encoder];
 }
 static uint32_t maximum(uint32_t p)
 {
-    if (p == PH_P_REC || p == PH_P_FROM)
-        return 1;
-    if (p == PH_P_TAKE || p == PH_P_CUE || p == PH_P_SCAN)
-        return 128;
-    if (p == PH_P_STRT)
-        return 126;
+    if (p == PH_P_ZONE)
+        return PH_ZONES - 1;
     if (p == PH_P_RATE)
-        return 12;
-    if (p == PH_P_TUNE)
-        return 96;
-    if (p == PH_P_SHAP)
-        return 3;
-    if (p == PH_P_MODE)
-        return 2;
-    if (p == PH_P_TIME)
+        return PH_RATE_MAX;
+    if (p == PH_P_NOTE)
         return PH_TIME_CHOICES - 1;
     return 127;
 }
-uint32_t pu_turn(PhraseUi *s, uint32_t encoder, int32_t delta)
+uint32_t pu_turn(PhraseUi *s, uint32_t encoder, int32_t delta, uint32_t fine)
 {
-    if (!s->active || encoder > 8)
+    if (!s->active || encoder > PU_LEVEL)
         return PU_PASS;
-    uint32_t p = encoder == 8 ? PH_P_FADE : pu_parameter(s->page, encoder), max = 127;
-    if (s->overlay) {
-        if (encoder == 8) {
-            int32_t track = pu_gain_track(s);
-            if (track >= 0) {
-                if (locked(s))
-                    return PU_OWN;
-                p = PH_P_GAIN0 + (uint32_t)track;
-                s->adjusted |= 1u << track;
-            }
-        } else {
-            if (locked(s))
-                return PU_OWN;
-            if (encoder == 0)
-                p = PH_P_MASK;
-            else if (encoder == 1)
-                p = PH_P_EXT_GAIN;
-            else
-                return PU_OWN;
-        }
-    }
+    uint32_t p = pu_parameter(encoder);
+    /* G and H: taken, so that the stock page does not turn a value under them, and nothing happens yet. */
     if (p >= PH_PARAM_COUNT)
         return PU_OWN;
-    if ((p == PH_P_REC || p == PH_P_FROM || p == PH_P_RATE || p == PH_P_SHAP || p == PH_P_MASK ||
-         p == PH_P_TIME || p == PH_P_MODE)) {
-        /* A long accelerated event never skips several discrete choices. */
+    if (p == PH_P_ZONE || p == PH_P_NOTE) {
+        /* A choice takes four ticks, and a long accelerated event never skips several choices. */
         if (delta > 4)
             delta = 4;
         if (delta < -4)
@@ -292,24 +156,14 @@ uint32_t pu_turn(PhraseUi *s, uint32_t encoder, int32_t delta)
         s->detent[encoder] = d % 4;
         if (!delta)
             return PU_OWN;
-    }
-    uint32_t raw = dkrt_phrase_get(p);
-    if (p == PH_P_MASK) {
-        raw = (raw >> 16) & 3;
-        max = 3;
-    } else
-        max = maximum(p);
-    int32_t value = (int32_t)raw + delta;
-    uint32_t min = p == PH_P_LEN ? 1 : 0;
-    if (value < (int32_t)min)
-        value = (int32_t)min;
-    if (value > (int32_t)max)
-        value = (int32_t)max;
-    if (p == PH_P_MASK)
-        value = (int32_t)((dkrt_phrase_get(p) & 0xffff) | ((uint32_t)value << 16));
+    } else if (p == PH_P_RATE && !fine)
+        delta *= PH_RATE_COARSE;
+    int32_t value = (int32_t)dkrt_phrase_get(p) + delta, max = (int32_t)maximum(p);
+    if (value < 0)
+        value = 0;
+    if (value > max)
+        value = max;
     dkrt_phrase_set(p, (uint32_t)value);
-    s->focus = p;
-    s->focus_ticks = 45;
     ++s->revision;
     return PU_OWN;
 }
@@ -333,105 +187,79 @@ static char *number(char *out, uint32_t n)
     *out = 0;
     return out;
 }
+const char *pu_zone_name(uint32_t zone)
+{
+    static const char *const names[PH_ZONES] = {"KARP", "FLNG", "CHOR", "SLAP",
+                                                "ECHO", "LONG", "PHRS", "LOOP"};
+    return names[zone < PH_ZONES ? zone : 0];
+}
 void pu_format(char out[16], uint32_t p, uint32_t raw)
 {
-    static const char *rates[] = {"OFF",  "1/1",  "1/2",  "1/4",   "1/8",   "1/16", "1/32",
-                                  "1/64", "1/4T", "1/8T", "1/16T", "1/32T", "1/64T"};
-    static const char *shapes[] = {"SOFT", "TRI", "RISE", "FALL"};
-    static const char *times[PH_TIME_CHOICES] = {"1/32", "1/16T", "1/32.", "1/16", "1/8T", "1/16.",
-                                                 "1/8",  "1/4T",  "1/8.",  "1/4",  "1/2T", "1/4.",
-                                                 "1/2",  "1/2.",  "1BAR",  "2BAR"};
-    static const char *modes[] = {"FWD", "REV", "HOLD"};
-    if (p == PH_P_TIME) {
-        copy(out, times[raw < PH_TIME_CHOICES ? raw : 0]);
+    static const char *const notes[PH_TIME_CHOICES] = {
+        "1/32", "1/16T", "1/32.", "1/16", "1/8T", "1/16.", "1/8",  "1/4T",
+        "1/8.", "1/4",   "1/2T",  "1/4.", "1/2",  "1/2.",  "1BAR", "2BAR"};
+    if (p == PH_P_ZONE) {
+        copy(out, pu_zone_name(raw));
         return;
     }
-    if (p == PH_P_MODE) {
-        copy(out, modes[raw <= 2 ? raw : 0]);
+    if (p == PH_P_NOTE) {
+        copy(out, notes[raw < PH_TIME_CHOICES ? raw : 0]);
         return;
     }
-    if (p == PH_P_SKEW || p == PH_P_BAL) {
-        /* Both sides alike in the middle; SKEW names the longer side, BAL the louder part. */
-        if (raw == 64) {
-            copy(out, p == PH_P_SKEW ? "EVEN" : "BOTH");
-            return;
-        }
-        char *s = out;
-        *s++ = p == PH_P_SKEW ? (raw < 64 ? 'L' : 'R') : (raw < 64 ? 'D' : 'G');
-        number(s, raw < 64 ? 64 - raw : raw - 64);
+    if (p == PH_P_COLR) {
+        /* The distance from the centre, where the repeats are clean; the cell names the side. */
+        number(out, raw < 64 ? 64 - raw : raw - 64);
         return;
     }
-    if (p == PH_P_REC) {
-        copy(out, raw ? "ON" : "OFF");
+    if (p == PH_P_SKEW && raw != 64) {
+        /* The distance from the centre and the side whose time is the longer one. */
+        number(copy(out, raw < 64 ? "L " : "R "), raw < 64 ? 64 - raw : raw - 64);
         return;
     }
-    if (p == PH_P_FROM) {
-        copy(out, raw ? "PAST" : "NEXT");
+    number(out, p == PH_P_SKEW ? 0 : raw);
+}
+void pu_time(char out[16], uint32_t frames)
+{
+    /* 48 frames a millisecond, to the nearest. */
+    uint32_t ms = (frames + 24) / 48;
+    if (ms < 1000) {
+        copy(number(out, ms), " MS");
         return;
     }
-    if (p == PH_P_TAKE && !raw) {
-        copy(out, "PAT");
-        return;
+    /* Seconds with two places below ten seconds and one from there. */
+    uint32_t hundredths = ms < 9995 ? (ms + 5) / 10 : (ms + 50) / 100 * 10;
+    char *s = number(out, hundredths / 100);
+    *s++ = '.';
+    *s++ = (char)('0' + hundredths / 10 % 10);
+    if (hundredths < 1000)
+        *s++ = (char)('0' + hundredths % 10);
+    copy(s, " S");
+}
+uint32_t pu_frames(const PhraseUi *s)
+{
+    uint32_t l = s->status[PH_S_TIME_L / 4], r = s->status[PH_S_TIME_R / 4];
+    if (!s->fresh || !l || !r)
+        return 0;
+    if (l == r)
+        return l;
+    /* The integer square root of l * r by bisection, in 32 bits (this processor has no 64-bit product): times of
+     * more than 16 bits lose their lowest bits first, at most 16 frames of more than a second. */
+    uint32_t shift = 0;
+    while ((l | r) >> 16) {
+        l >>= 1;
+        r >>= 1;
+        ++shift;
     }
-    if (p == PH_P_CUE && !raw) {
-        copy(out, "NOW");
-        return;
+    uint32_t product = l * r, lo = l < r ? l : r, hi = l < r ? r : l;
+    while (lo < hi) {
+        uint32_t mid = lo + (hi - lo + 1) / 2;
+        if (mid * mid <= product)
+            lo = mid;
+        else
+            hi = mid - 1;
     }
-    if (p == PH_P_RATE) {
-        copy(out, rates[raw <= 12 ? raw : 0]);
-        return;
-    }
-    if (p == PH_P_SHAP) {
-        copy(out, shapes[raw & 3]);
-        return;
-    }
-    if (p == PH_P_TUNE) {
-        int32_t n = (int32_t)raw - 48;
-        char *s = out;
-        if (n < 0) {
-            *s++ = '-';
-            n = -n;
-        } else
-            *s++ = '+';
-        s = number(s, (uint32_t)n / 2);
-        if (n & 1)
-            copy(s, ".5");
-        return;
-    }
-    if (p == PH_P_SCAN) {
-        int32_t n = (int32_t)raw - 64;
-        char *s = out;
-        if (n < 0) {
-            *s++ = '-';
-            n = -n;
-        } else
-            *s++ = '+';
-        uint32_t c = (uint32_t)n * 100 / 32;
-        s = number(s, c / 100);
-        *s++ = '.';
-        *s++ = (char)('0' + (c % 100) / 10);
-        *s++ = (char)('0' + c % 10);
-        copy(s, "X");
-        return;
-    }
-    if (p == PH_P_SIZE) {
-        copy(number(out, 5 + raw * raw * 495 / (127 * 127)), "MS");
-        return;
-    }
-    if (p == PH_P_DEC) {
-        uint32_t cs = 15 + (785 * raw * raw + 8064) / (127 * 127);
-        char *s = number(out, cs / 100);
-        *s++ = '.';
-        *s++ = (char)('0' + (cs % 100) / 10);
-        *s++ = (char)('0' + cs % 10);
-        copy(s, "S");
-        return;
-    }
-    if (p == PH_P_STRT || p == PH_P_LEN || p == PH_P_SPRY || p == PH_P_JITR || p == PH_P_POS ||
-        p == PH_P_REVR || p == PH_P_WDTH || p == PH_P_DIFF || p == PH_P_FADE || p == PH_P_FDBK ||
-        p == PH_P_WOW || p == PH_P_DRIV) {
-        copy(number(out, (raw * 100 + 63) / 127), "%");
-        return;
-    }
-    number(out, raw);
+    /* to the nearest */
+    if (lo * lo + lo < product)
+        ++lo;
+    return lo << shift;
 }

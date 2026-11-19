@@ -110,7 +110,7 @@ impl<C: CoreApi> Service<C> for Fx {
         if r != OK {
             return r;
         }
-        crate::phrase::check(core, sec)
+        crate::phrase::check(sec)
     }
 
     unsafe fn dsp_admit(_core: &C, job: &Job) -> i32 {

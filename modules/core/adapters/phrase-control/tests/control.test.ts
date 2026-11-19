@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'vitest';
 
-test('phrase controls, ownership, status assembly and musical clock', () => {
+test('phrase controls, the SYNC note table, persistence and status assembly', () => {
   const temp = mkdtempSync(join(tmpdir(), 'dk-phrase-control-'));
   try {
     const executable = join(temp, 'control');

@@ -1,55 +1,54 @@
-# Phrase FX performance UI
+# Phrase FX page
 
-`core/phrase-ui` owns the native FX surface for the loaded phrase capability.
-It does not identify a content module by name or effect ID. `core/phrase-control`
-publishes the single active native FX page and handles settings, capture actions,
-timing and coherent DSP telemetry.
+`core/phrase-ui` draws the one page of the loaded phrase effect in the native FX view and takes its encoders and presses.
+It does not identify a content module by name or effect ID: `core/phrase-control` says which native FX page is the
+owner's and holds every value.
 
-UP/DOWN cycle LOOP, GRAIN, MOVE and SPACE inside this one global effect entry.
-FUNC+FX advances the global effect once; the local page is recalled on return.
-H opens input selection. TRIG releases toggle sources; holding TRIG while
-turning LEVEL edits that source's capture gain and consumes the toggle.
-FUNC+TRIG selects only that internal source. A chooses external OFF/L/R/ST,
-B sets linked external gain, YES captures/cancels and NO/H closes the overlay.
-Capture locks input selection and gains while keeping FADE available.
-FUNC+NO clears the phrase from either a control page or IN without leaving
-that view. The gesture is scoped to the active visible FX owner and consumes
-its repeats and release; normal NO still closes IN or passes to the stock view.
+## The page
 
-The UI model owns complete key gestures, including their releases after an
-overlay closes. Saved track levels, native mute state, transport and recording
-remain independent. All parameters are supplied through the phrase contract;
-the native kit's eight generic effect words are not reused as hidden storage.
-The renderer uses native text and knob primitives through a bounded canvas.
-IN scopes the native LED setter to the sixteen TRIG indicators: selected
-effective sources are bright and excluded sources dim. Other LEDs retain
-their native handling, and the next native LED frame restores the TRIG grid
-when the overlay closes or loses its view. Held sources remain visible on
-screen, including the L/R external tiles.
+128 x 64, native text and filled rectangles only: a header of ten pixels (the effect's title, the zone's name, the time
+the engine plays), the MIX column at the left, and eight cells of 26 pixels in two rows. A cell has three lines: its
+label, its value, and a state word.
 
-`tests/ui.test.ts` compiles the same model and renderer used by firmware. It
-checks local/global navigation, page recall, release ownership, gain-edit
-selection, capture locking, discrete detents and all render-state bounds.
-It also checks the deliberate CLEAR gesture and routing-fault status display.
-Firmware integration and LED restoration require device acceptance in addition
-to these host tests.
+| | Turn | Press | Cell |
+| --- | --- | --- | --- |
+| LEVEL | MIX | | the column and its number |
+| A | ZONE, four ticks a zone | FLIP | the zone's name, eight marks under it with the chosen one tall, `FLIP` inverted |
+| B | RATE: a coarse step a tick, a fine step with FUNC held; with SYNC a note length, four ticks each | SYNC | the time (`387 MS`, `1.25 S`) or the note (`1/8.`), `FREE` or `SYNC` |
+| C | RPTS | HOLD | the number, or `INF` with `HOLD` inverted |
+| D | COLR | | the distance from the centre, `DARK` or `BRIT` |
+| E | HALO | | the number |
+| F | SKEW | | `L 12` or `R 12`: the side with the longer time and the distance from the centre |
+| G | nothing yet | nothing yet | `INPT`, `LIVE` |
+| H | nothing yet | nothing yet | `XFAD`, `--`, `NO LOOP` |
 
-The DTII 1.17 binding is declared in `devices/fw/phrase-ui.toml`. It replaces
-the native FX view's draw/key/encoder slots and its encoder-interface thunk,
-retaining the original functions for every other effect. The view's page
-getter is vtable slot 34; its native held-values flag is at `+0x190`. The
-secondary encoder receiver is `view+4`, so that thunk adjusts the receiver
-before entering the shared handler. The LED hook wraps the native setter
-through a generated tail and leaves its per-frame priority reset intact.
-Eligibility uses the firmware's resolved drawable suffix, which removes FX
-under an opaque modal while permitting a passive transparent view above it.
-Local navigation and encoder ownership begin when native dispatch calls the
-FX view. IN's TRIG gestures are intercepted at the key-manager boundary,
-before native grid/track handlers can also audition, select or edit a trig.
-Only eligible IN gestures and outstanding owned releases take this path;
-every other key still enters the stock dispatcher. Losing eligibility closes
-IN and cancels its held gestures. A post-HelpBubble paint wrapper restores
-only the ten-pixel PRISM header while that FX view remains eligible, preserving
-its local page, state and page count above the native global page label.
-View and LED layout background is in findings 71 and 19; the declarations
-and local 1.17 instruction windows are the version-specific binding evidence.
+G and H are kept for the loop (the input switch and Overloop's crossfader, steps 3 and 4 of
+[the redesign](../../../../docs/plans/prism-overloop-redesign.md)). Their encoders and presses, the presses of D to F and
+FUNC + NO are taken by the page, so that the stock page under it does nothing with them, and do nothing. UP, DOWN, FX and
+every other key go to the stock FX view: the page is one entry among the FX pages.
+
+The time in the header and in the RATE cell is the engine's (`PH_S_TIME_L`, `PH_S_TIME_R`): the geometric mean of the
+two sides, since SKEW makes one shorter and one longer by the same ratio. Without a status the header says `NO LINK`.
+
+## How it is bound
+
+The DTII 1.17 binding is declared in `devices/fw/phrase-ui.toml`. It replaces five slots of tables and no instruction:
+the FX view's draw, key and encoder slots, its encoder-interface thunk, and the draw slot of the passive help view. Each
+callback calls the stock function unless the page the view shows is the owner's (`dkrt_phrase_active`) and the view is
+the visible FX view; so the binding does not depend on how the effect is routed, and every other FX page is the stock
+one. The view's page getter is vtable slot 34. The secondary encoder receiver is `view+4`, so that thunk adjusts the
+receiver before entering the shared handler. Eligibility uses the firmware's resolved drawable suffix, which removes FX
+under an opaque modal while permitting a passive transparent view above it. A post-HelpBubble paint wrapper restores only
+the ten-pixel header while that FX view remains eligible. View layout background is in finding 71; the declarations and
+local 1.17 instruction windows are the version-specific binding evidence.
+
+The model owns complete key gestures: a press it took keeps its release, also when another view covers the page
+meanwhile, and a release that was lost under a cover does not hold the next press back.
+
+## Tests
+
+`tests/ui.test.ts` compiles the model and the renderer the firmware uses (`src/model.c`, `src/render.c`) with a stand-in
+provider: every encoder to its value and step, the three presses, the keys that pass, FUNC + RATE, the note steps with
+SYNC, every text, the cells for the states the plan draws, and that everything drawn stays on the screen. The native
+glue (`src/native.c`) is covered by PRISM's device test (`modules/fx/prism/tests/ui.device.test.ts`), which reads the
+painted page from `phrase_ui_page`.

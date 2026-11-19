@@ -103,4 +103,3 @@ dyndsp_info:
     DSP_IMPORT _phrase_storage_info
     DSP_IMPORT _phrase_control_info
     DSP_IMPORT _phrase_status
-    DSP_IMPORT _phrase_route_info

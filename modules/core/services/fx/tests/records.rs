@@ -100,6 +100,31 @@ fn a_declared_effect_publishes_its_words_in_order() {
     }
 }
 
+/// The phrase effect's row (PRISM): the route is the one the send code gives it, like any effect's, and its MIX word stays at unity whatever a
+/// record or a kit holds for it (a kit saved while PRISM was a master effect holds a MIX for its page: it is not used).
+#[test]
+fn the_phrase_row_takes_its_route_and_keeps_its_mix_at_unity() {
+    let core = core_with_row();
+    const MODULE: u8 = 9;
+    unsafe {
+        let d = core.dsp();
+        d.fx_owner[2] = MODULE;
+        dkrt_svc_fx::phrase::reserve(MODULE, 2);
+        assert!(dkrt_svc_fx::phrase::is_row(2) && !dkrt_svc_fx::phrase::is_row(1));
+        dkrt_svc_fx::dsp::fx_set_route(&core, 2, 1, [0x40, 0, 0, 0]);
+        assert_eq!((d.fx_route[2], d.fx_amt[2]), (1, [0x40, 0, 0, 0]));
+        dkrt_svc_fx::dsp::fx_set_route(&core, 2, 2, [0; 4]);
+        assert_eq!(d.fx_route[2], 2);
+        dkrt_svc_fx::dsp::fx_set_mix(&core, 2, 0x1234);
+        assert_eq!(d.fx_mix[2], MIX_ONE);
+        // another effect's row takes the MIX it is given
+        dkrt_svc_fx::dsp::fx_set_mix(&core, 1, 0x1234);
+        assert_eq!(d.fx_mix[1], 0x1234);
+        dkrt_svc_fx::phrase::remove(MODULE);
+        assert!(dkrt_svc_fx::phrase::free());
+    }
+}
+
 /// Clearing the rows of a module sends one sequence for the row (the pc to "free" first), drops its live values and frees the row.
 #[test]
 fn clearing_a_module_sends_the_free_pc_first_and_frees_the_row() {

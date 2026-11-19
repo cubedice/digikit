@@ -1,13 +1,13 @@
 [module]
 id = "core/phrase-ui"
 version = "0.1.0"
-name = "Phrase FX performance pages"
+name = "Phrase FX page"
 category = "core"
 role = "adapter"
 type = "framework"
 author = "digikit"
 status = "experimental"
-summary = "Four nested phrase pages and a performance input selection overlay."
+summary = "The one page of the phrase effect: eight cells, MIX on LEVEL, FLIP, SYNC and HOLD on the encoder presses."
 requires = ["core/phrase-control", "core/fxpages", "core/ui"]
 conflicts = []
 ports = ["dt2-1.17"]
@@ -25,12 +25,8 @@ devices = ["dt2"]
 phrase_stock_draw = "cf.page.site.phrase_fx_draw"
 phrase_stock_help_draw = "cf.page.site.phrase_help_draw"
 phrase_stock_key = "cf.page.site.phrase_fx_key"
-phrase_stock_key_dispatch = "hook.cf.page.site.phrase_key_dispatch.tail"
 phrase_stock_turn = "cf.page.site.phrase_fx_turn"
-phrase_stock_led = "hook.cf.page.site.phrase_led_set.tail"
 phrase_label_font = "cf.page.site.instrument_label_font"
-phrase_focus_touch = "cf.page.site.instrument_focus_touch"
-phrase_focus_active = "cf.page.site.instrument_focus_active"
 
 [[op]]
 op = "write"
@@ -66,14 +62,6 @@ resource = "cf.page.site.phrase_fx_turn_slot"
 resource = "cf.page.site.phrase_fx_encoder_slot"
 
 [[op]]
-op = "hook"
-hook = "cf.page.hook.phrase_led_set"
-to = "phrase_led_set"
-
-[[claim]]
-resource = "cf.page.site.phrase_led_set"
-
-[[op]]
 op = "write"
 anchor = "cf.page.site.phrase_help_draw_slot"
 value = "phrase_help_draw"
@@ -82,15 +70,7 @@ width = 4
 [[claim]]
 resource = "cf.page.site.phrase_help_draw_slot"
 
-[[op]]
-op = "hook"
-hook = "cf.page.hook.phrase_key_dispatch"
-to = "phrase_key_dispatch"
-
-[[claim]]
-resource = "cf.page.site.phrase_key_dispatch"
-
-# The functions the fx service file (`fx.dks`) calls: it has no link to the image and finds each by name in the info table.
+# The function the fx service file (`fx.dks`) calls: it has no link to the image and finds it by name in the info table.
 [[info]]
 name = "phrase_ui_tick"
 symbol = "phrase_ui_tick"
