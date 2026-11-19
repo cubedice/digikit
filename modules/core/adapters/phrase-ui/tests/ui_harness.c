@@ -263,10 +263,11 @@ static void page_cells(void)
     same(p.zone, "ECHO");
     same(p.time, "375 MS");
     assert(p.mix == 100 && p.zone_index == 4);
-    static const char *const defaults[8][3] = {{"ZONE", "ECHO", ""}, {"RATE", "375 MS", "FREE"},
-                                               {"RPTS", "48", ""},   {"COLR", "0", ""},
-                                               {"HALO", "0", ""},    {"SKEW", "0", ""},
-                                               {"INPT", "LIVE", ""}, {"XFAD", "--", "NO LOOP"}};
+    /* INPT: no track is heard until one is chosen */
+    static const char *const defaults[8][3] = {
+        {"ZONE", "ECHO", ""},       {"RATE", "375 MS", "FREE"}, {"RPTS", "48", ""},
+        {"COLR", "0", ""},          {"HALO", "0", ""},          {"SKEW", "0", ""},
+        {"INPT", "LIVE", "NO TRK"}, {"XFAD", "--", "NO LOOP"}};
     for (uint32_t i = 0; i < 8; ++i) {
         same(p.cells[i].label, defaults[i][0]);
         same(p.cells[i].value, defaults[i][1]);
@@ -371,9 +372,9 @@ static void rendering(void)
     PhraseCanvas c = {&d, drawn_box, drawn_text};
     pu_page(&s, &p);
     pu_render(&p, &c);
-    static const char *const shown[] = {"PRISM", "ECHO", "375 MS", "MIX",  "100",  "ZONE",
-                                        "RATE",  "FREE", "RPTS",   "48",   "COLR", "HALO",
-                                        "SKEW",  "INPT", "LIVE",   "XFAD", "--",   "NO LOOP"};
+    static const char *const shown[] = {
+        "PRISM", "ECHO", "375 MS", "MIX",  "100",  "ZONE",   "RATE", "FREE", "RPTS",   "48",
+        "COLR",  "HALO", "SKEW",   "INPT", "LIVE", "NO TRK", "XFAD", "--",   "NO LOOP"};
     for (uint32_t i = 0; i < sizeof(shown) / sizeof(*shown); ++i)
         if (!saw(&d, shown[i])) {
             fprintf(stderr, "not drawn: %s\n", shown[i]);
@@ -567,6 +568,167 @@ static void loop_page(void)
     pu_render_header(&p, &c);
     assert(d.texts == 2 && saw(&d, "PRISM") && saw(&d, "LOOP 16 ST 2.00 S"));
 }
+/* The engine's report with a heartbeat: the blocks it has run (the clock of a hold of G), fresh or not. */
+static void beat(PhraseUi *s, uint32_t blocks, uint32_t fresh)
+{
+    uint32_t words[PH_STATUS_WORDS] = {0};
+    words[PH_S_TIME_L / 4] = words[PH_S_TIME_R / 4] = 18000;
+    words[PH_S_HEARTBEAT / 4] = blocks;
+    pu_status(s, words, fresh);
+}
+static uint32_t trig(uint32_t track)
+{
+    return PU_TRIG + track - 1;
+}
+static void hold_g(PhraseUi *s)
+{
+    press(s, PU_PUSH + PU_SELECT);
+    assert(pu_selecting(s));
+}
+static void release_g(PhraseUi *s)
+{
+    release(s, PU_PUSH + PU_SELECT);
+    assert(!pu_selecting(s));
+}
+/* The LEDs of TRIG 1 to 16 as pu_led gives them, the firmware's own value being STOCK. */
+static void leds(const PhraseUi *s, uint32_t stock, uint32_t want[16])
+{
+    for (uint32_t t = 0; t < 16; ++t)
+        want[t] = pu_led(s, PU_LED_TRIG + t, stock);
+}
+static void tracks(void)
+{
+    PhraseUi s;
+    PhrasePage p;
+    uint32_t led[16];
+    init(&s);
+    /* Nothing chosen: INPT says so. A TRIG key and its LED are the firmware's. */
+    pu_page(&s, &p);
+    same(p.cells[6].value, "LIVE");
+    same(p.cells[6].state, "NO TRK");
+    assert(pu_key(&s, trig(3), PU_PRESS) == PU_PASS && pu_key(&s, trig(3), PU_RELEASE) == PU_PASS);
+    leds(&s, 0x11, led);
+    for (uint32_t t = 0; t < 16; ++t)
+        assert(led[t] == 0x11);
+    assert(raw[PH_P_TRKS] == 0 && writes == 0);
+    /* G held: the TRIG LEDs show the tracks (none: all dim) and INPT the selection; no other LED changes. */
+    hold_g(&s);
+    pu_page(&s, &p);
+    same(p.cells[6].value, "NO TRK");
+    same(p.cells[6].state, "TRIGS");
+    assert(p.cells[6].lit);
+    leds(&s, 0x11, led);
+    for (uint32_t t = 0; t < 16; ++t)
+        assert(led[t] == PU_LED_DIM);
+    assert(pu_led(&s, PU_LED_TRIG - 1, 0x71) == 0x71 && pu_led(&s, PU_LED_TRIG + 16, 0x01) == 0x01);
+    /* TRIG 3 turns track 3 on, its LED is lit; the release is the page's too. */
+    assert(pu_key(&s, trig(3), PU_PRESS) == PU_OWN);
+    assert(raw[PH_P_TRKS] == 1u << 2 && pu_track_count() == 1);
+    leds(&s, 0x11, led);
+    assert(led[2] == PU_LED_HEARD && led[0] == PU_LED_DIM && led[3] == PU_LED_DIM);
+    pu_page(&s, &p);
+    same(p.cells[6].value, "1 TRK");
+    /* a repeat of the held key changes nothing */
+    assert(pu_key(&s, trig(3), PU_REPEAT) == PU_OWN && raw[PH_P_TRKS] == 1u << 2);
+    release(&s, trig(3));
+    /* again: off */
+    tap(&s, trig(3));
+    assert(raw[PH_P_TRKS] == 0);
+    leds(&s, 0x11, led);
+    assert(led[2] == PU_LED_DIM);
+    /* tracks 1 and 11 */
+    tap(&s, trig(1));
+    tap(&s, trig(11));
+    assert(raw[PH_P_TRKS] == (1u | 1u << 10));
+    pu_page(&s, &p);
+    same(p.cells[6].value, "2 TRK");
+    /* G released: every key and LED is the firmware's again; INPT shows LIVE and the tracks under it. No loop: no switch. */
+    release_g(&s);
+    assert(raw[PH_P_INPT] == 0);
+    leds(&s, 0x11, led);
+    for (uint32_t t = 0; t < 16; ++t)
+        assert(led[t] == 0x11);
+    assert(pu_key(&s, trig(2), PU_PRESS) == PU_PASS && pu_key(&s, trig(2), PU_RELEASE) == PU_PASS);
+    assert(raw[PH_P_TRKS] == (1u | 1u << 10));
+    pu_page(&s, &p);
+    same(p.cells[6].value, "LIVE");
+    same(p.cells[6].state, "2 TRK");
+    assert(!p.cells[6].lit);
+    /* A TRIG key still down when G is released: its release stays the page's, its next press is the firmware's. */
+    hold_g(&s);
+    assert(pu_key(&s, trig(5), PU_PRESS) == PU_OWN);
+    release_g(&s);
+    release(&s, trig(5));
+    assert(pu_key(&s, trig(5), PU_PRESS) == PU_PASS && pu_key(&s, trig(5), PU_RELEASE) == PU_PASS);
+    assert(raw[PH_P_TRKS] == (1u | 1u << 4 | 1u << 10));
+    /* A TRIG key down before G: the firmware's gesture, also its release. */
+    assert(pu_key(&s, trig(7), PU_PRESS) == PU_PASS);
+    hold_g(&s);
+    assert(pu_key(&s, trig(7), PU_REPEAT) == PU_PASS && pu_key(&s, trig(7), PU_RELEASE) == PU_PASS);
+    release_g(&s);
+    /* All 16, drawn on the screen while G is held. */
+    hold_g(&s);
+    for (uint32_t t = 1; t <= 16; ++t)
+        if (!(raw[PH_P_TRKS] & (1u << (t - 1))))
+            tap(&s, trig(t));
+    assert(raw[PH_P_TRKS] == PH_TRACKS_ALL);
+    Drawn d = {0};
+    PhraseCanvas c = {&d, drawn_box, drawn_text};
+    pu_page(&s, &p);
+    pu_render(&p, &c);
+    assert(saw(&d, "16 TRK") && saw(&d, "TRIGS") && d.inverted == 1);
+    /* The page loses the top while G is held: the selection ends, keys and LEDs are the firmware's, G's release is the
+     * page's and switches nothing. */
+    pu_context(&s, 0, 1);
+    assert(!pu_selecting(&s) && pu_led(&s, PU_LED_TRIG, 0x11) == 0x11);
+    assert(pu_key(&s, trig(1), PU_PRESS) == PU_PASS && pu_key(&s, trig(1), PU_RELEASE) == PU_PASS);
+    release(&s, PU_PUSH + PU_SELECT);
+    pu_context(&s, 1, 1);
+    assert(!pu_selecting(&s) && raw[PH_P_TRKS] == PH_TRACKS_ALL);
+    pu_page(&s, &p);
+    same(p.cells[6].state, "16 TRK");
+
+    /* With a loop: a short press of G switches INPT, a hold with a TRIG key, with a turn or of 0.4 s or more does not. */
+    s.loop = &fake_home;
+    home_xfad = LP_MAX;
+    report(LS_LOOP | LS_TRACK, 1, 16, 16, 96000, 1.0f);
+    pu_loop_status(&s);
+    raw[PH_P_INPT] = 0;
+    beat(&s, 1000, 1);
+    hold_g(&s);
+    beat(&s, 1100, 1);
+    release_g(&s);
+    assert(raw[PH_P_INPT] == 1);
+    tap(&s, PU_PUSH + PU_SELECT);
+    assert(raw[PH_P_INPT] == 0);
+    hold_g(&s);
+    tap(&s, trig(16));
+    release_g(&s);
+    assert(raw[PH_P_INPT] == 0 && raw[PH_P_TRKS] == 0x7fff);
+    /* a turn of G while it is held: the turn switches (a tick up is LOOP), the release does not switch back */
+    hold_g(&s);
+    assert(pu_turn(&s, PU_SELECT, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
+    release_g(&s);
+    assert(raw[PH_P_INPT] == 1);
+    /* a hold of 600 blocks only looks at the tracks */
+    beat(&s, 2000, 1);
+    hold_g(&s);
+    beat(&s, 2000 + PU_SHORT_BLOCKS, 1);
+    release_g(&s);
+    assert(raw[PH_P_INPT] == 1);
+    /* one block less is a press */
+    beat(&s, 4000, 1);
+    hold_g(&s);
+    beat(&s, 4000 + PU_SHORT_BLOCKS - 1, 1);
+    release_g(&s);
+    assert(raw[PH_P_INPT] == 0);
+    /* without an engine's heartbeat the length is not known: a press */
+    beat(&s, 5000, 0);
+    hold_g(&s);
+    beat(&s, 9000, 0);
+    release_g(&s);
+    assert(raw[PH_P_INPT] == 1);
+}
 int main(void)
 {
     encoders();
@@ -576,6 +738,7 @@ int main(void)
     page_cells();
     rendering();
     loop_page();
+    tracks();
     puts("phrase ui: ok");
     return 0;
 }

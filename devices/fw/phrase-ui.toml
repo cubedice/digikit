@@ -80,3 +80,45 @@ rule = { kind = "cf_window_hash", search_len = 32, offset = 0, len = 8, sha256 =
 mark = "V"
 users = ["core/fxview"]
 doc = "DTII OS1.17 HelpBubbleView draw, cdecl(view, bitmap). Independently verified unique window and complete link/movem entry. Stock paint runs first; only the visible phrase page reclaims its ten-pixel header."
+
+# The TRIG keys and LEDs of the phrase page while G holds the selection of the tracks. Restored from the input overlay that
+# step 2 of the PRISM redesign removed (git 98409b9ad); the windows, hashes and port entries are the ones it ran with.
+[[site]]
+name = "cf.page.site.phrase_led_set"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 0, len = 8, sha256 = "4b295b76d2e45d653b51a0a47899dde156277fd97d73331ef479e3e01202f80a" }
+mark = "V"
+users = ["core/phrase-ui"]
+doc = "DTII OS1.17 LedManager setter entry. cdecl(manager, logical, layer, value). First eight bytes contain complete stack allocation and register-save instructions. Native layer priorities reset on each LED frame."
+
+[[hook]]
+name = "cf.page.hook.phrase_led_set"
+site = "cf.page.site.phrase_led_set"
+cpu = "cf"
+mode = "before"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/phrase-ui"]
+doc = "Wrap the normal cdecl LED setter; the handler invokes the generated callable tail. Only TRIG LEDs 26..41 change while G holds the phrase page's selection of the tracks; every other LED and all other calls are retained."
+
+[[site]]
+name = "cf.page.site.phrase_key_dispatch"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 48, offset = 0, len = 8, sha256 = "dbc9176ef60626f2b66cec5f4736946cd8e720907b568a69daa9bca0fdb9ba76" }
+mark = "V"
+users = ["core/phrase-ui"]
+doc = "DTII OS1.17 primary ViewController key dispatcher, cdecl(manager,event). Its callback invokes primary View slot2 after native key-owner routing. Unique 48-byte window; complete eight-byte lea -96(sp)/movem d2-d7,a2-a6 prologue. This replaces the earlier misidentified secondary-observer dispatcher."
+
+[[hook]]
+name = "cf.page.hook.phrase_key_dispatch"
+site = "cf.page.site.phrase_key_dispatch"
+cpu = "cf"
+mode = "before"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/phrase-ui"]
+doc = "Preempt only the TRIG keys while G holds the phrase page's selection of the tracks, including the releases of TRIG keys it took after G or the view went. All other events invoke the native callable tail unchanged."

@@ -3,8 +3,9 @@
 //! It is a part of the fx service: the phrase effect is one effect row whose controls and page the image's phrase
 //! adapters own (core/phrase-control, core/phrase-ui). Its route is the one of any effect (`fxsend`: the routes its record
 //! allows; PRISM is a send effect); its row MIX stays at unity, since its level is one of the adapters' controls, and the
-//! kit's page values are not read for it (`fxpage`). The service's DSP hooks call it (`records`).
-//! The service is a file of its own (`fx.dks`), so it has no link to the image: the two functions of the adapters it calls
+//! kit's page values are not read for it (`fxpage`). On a send bus its amounts are the adapters' too (`sends`: the tracks
+//! the page selects), so it has no cell of the send page. The service's DSP hooks call it (`records`).
+//! The service is a file of its own (`fx.dks`), so it has no link to the image: the three functions of the adapters it calls
 //! are `[[info]]` entries of their modules, found by name through `CoreApi::info` (`setup`).
 use core::ptr::addr_of_mut;
 use dkrt_abi::core_api::CoreApi;
@@ -17,19 +18,24 @@ const CONTROL: &[u8] = b"_phrase_control_info\0";
 /// `phrase_bind(owner, row, page, module, title)` of core/phrase-control.
 type BindFn = unsafe extern "C" fn(u32, u32, u32, *const u8, *const u8);
 type TickFn = unsafe extern "C" fn();
+/// `phrase_sends(amounts)` of core/phrase-control: the 16 send amounts (0 to 127) into `amounts`; 1, or 0 (nothing written) without an owner.
+type SendsFn = unsafe extern "C" fn(*mut u8) -> u32;
 
-/// The names of the `[[info]]` entries: each is the function itself (core/phrase-control: `phrase_bind`; core/phrase-ui: `phrase_ui_tick`).
+/// The names of the `[[info]]` entries: each is the function itself (core/phrase-control: `phrase_bind`, `phrase_sends`; core/phrase-ui: `phrase_ui_tick`).
 pub const BIND_HASH: u32 = crate::fxpage::fnv1a(b"phrase_bind");
 pub const UI_TICK_HASH: u32 = crate::fxpage::fnv1a(b"phrase_ui_tick");
+pub const SENDS_HASH: u32 = crate::fxpage::fnv1a(b"phrase_sends");
 
 /// The image's phrase functions as `setup` found them: an address, or 0 when its module is not in the image.
 struct Image {
     bind: usize,
     ui_tick: usize,
+    sends: usize,
 }
 static mut IMAGE: Image = Image {
     bind: 0,
     ui_tick: 0,
+    sends: 0,
 };
 fn image() -> &'static mut Image {
     unsafe { &mut *addr_of_mut!(IMAGE) }
@@ -41,6 +47,48 @@ pub unsafe fn setup<C: CoreApi>(core: &C) {
     let i = image();
     i.bind = core.info(BIND_HASH) as usize;
     i.ui_tick = core.info(UI_TICK_HASH) as usize;
+    i.sends = core.info(SENDS_HASH) as usize;
+}
+
+/// Set the address of `phrase_sends` (`setup`; a host test gives a function of its own, 0 for none).
+pub unsafe fn set_sends(f: usize) {
+    image().sends = f;
+}
+
+/// The phrase effect's row, while one is claimed.
+pub fn row() -> Option<usize> {
+    let o = owner();
+    if o.free() {
+        None
+    } else {
+        Some(o.row)
+    }
+}
+
+/// Effect row `k` takes its send amounts from the phrase adapters: it is the phrase effect's, and the image has `phrase_sends`.
+pub fn sends_row(k: usize) -> bool {
+    is_row(k) && image().sends != 0
+}
+
+/// The send amounts the phrase adapters give (one byte a track, at most 127), or `None` without an owner or without the function.
+pub unsafe fn sends() -> Option<[u8; 16]> {
+    let f = image().sends;
+    if f == 0 {
+        return None;
+    }
+    let call: SendsFn = core::mem::transmute(f);
+    let mut a = [0u8; 16];
+    if call(a.as_mut_ptr()) != 1 {
+        return None;
+    }
+    let mut t = 0;
+    while t < a.len() {
+        if a[t] > 127 {
+            a[t] = 127;
+        }
+        t += 1;
+    }
+    Some(a)
 }
 unsafe fn phrase_bind(owner: u32, row: u32, page: u32, module: *const u8, title: *const u8) {
     let f: BindFn = core::mem::transmute(image().bind);
@@ -164,6 +212,17 @@ pub unsafe fn tick() {
 #[cfg(test)]
 mod tests {
     use super::Owner;
+
+    /// The service looks the adapters' functions up by the hash of their names in the image's info table (the assembly test reads the table).
+    #[test]
+    fn the_functions_of_the_adapters_are_looked_up_by_their_names() {
+        assert_eq!(super::BIND_HASH, dkneeds::keys::name_hash("phrase_bind"));
+        assert_eq!(
+            super::UI_TICK_HASH,
+            dkneeds::keys::name_hash("phrase_ui_tick")
+        );
+        assert_eq!(super::SENDS_HASH, dkneeds::keys::name_hash("phrase_sends"));
+    }
 
     // Local owner instances exercise the same transition code as the runtime
     // without racing unrelated loader tests' global module/transport fixtures.

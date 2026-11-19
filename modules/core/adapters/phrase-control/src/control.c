@@ -16,9 +16,10 @@ static u32 frame, reply_frame, assembled_seq, fragments, status[PH_STATUS_WORDS]
  * heartbeat that moves shows that the engine still runs. */
 static u32 beat_frame, beat, beating;
 static u32 assembling[PH_STATUS_WORDS];
-static char key[48];
+static char key[48], sends_key[48];
 static char title[24];
-/* The format of the saved settings: the version of the control words. Settings of another format are not read. */
+/* The format of the saved settings: the version of the control words. Settings of another format are not read. A record
+ * of format 3 has every value up to PH_P_TRKS, or (written before the tracks were a value) every value before it. */
 enum { SAVE_FORMAT = 3 };
 
 static u32 bits(float v)
@@ -40,6 +41,8 @@ static u32 limit(u32 p)
         return PH_TIME_CHOICES - 1;
     if (p == PH_P_SYNC || p == PH_P_FLIP || p == PH_P_HOLD || p == PH_P_INPT)
         return 1;
+    if (p == PH_P_TRKS)
+        return PH_TRACKS_ALL;
     return 127;
 }
 static void defaults(void)
@@ -77,20 +80,40 @@ static void save(void)
     }
     dkrt_settings_put(key, value, sizeof(value));
 }
+/* The tracks the effect heard before they were one of its values: the send amounts of the fx service's record of the
+ * effect (fx/send/<module id>, one byte a track, finding 64) when it set them from a cell of the send page. A track with
+ * an amount above 0 is heard; without the record none is. */
+static u32 carried_tracks(void)
+{
+    uint8_t amount[PH_TRACKS];
+    u32 tracks = 0;
+    if (dkrt_settings_get(sends_key, amount, sizeof(amount)) != (int)sizeof(amount))
+        return 0;
+    for (u32 t = 0; t < PH_TRACKS; ++t)
+        if (amount[t])
+            tracks |= 1u << t;
+    return tracks;
+}
 static void load(void)
 {
     uint8_t value[4 + PH_PARAM_COUNT * 4];
     defaults();
-    if (dkrt_settings_get(key, value, sizeof(value)) != (int)sizeof(value) || value[0] != 'P' ||
-        value[1] != 'H' || value[2] != SAVE_FORMAT || value[3] != PH_PARAM_COUNT)
-        return;
-    for (u32 i = 0; i < PH_PARAM_COUNT; ++i) {
+    int n = dkrt_settings_get(key, value, sizeof(value));
+    u32 count = 0;
+    if (n >= 4 && value[0] == 'P' && value[1] == 'H' && value[2] == SAVE_FORMAT &&
+        (value[3] == PH_PARAM_COUNT || value[3] == PH_P_TRKS) && n == 4 + 4 * (int)value[3])
+        count = value[3];
+    for (u32 i = 0; i < count; ++i) {
         u32 v = 0;
         for (u32 j = 0; j < 4; ++j)
             v = (v << 8) | value[4 + 4 * i + j];
         raw[i] = v > limit(i) ? limit(i) : v;
     }
     raw[PH_P_HOLD] = raw[PH_P_INPT] = raw[PH_P_XFAD] = 0;
+    /* No tracks of its own (a record from before, another format or none): the ones the send amounts gave. They are saved
+     * with the next change of any value. */
+    if (count < PH_PARAM_COUNT)
+        raw[PH_P_TRKS] = carried_tracks();
 }
 /* The time in frames of the NOTE choice at TEMPO (BPM * 120): ticks * 3 600 000 / tempo, in integers (this runs in the
  * block interrupt; a tick is 1/96 of a quarter note). Without a tempo the last value stays. The engine bounds it to its
@@ -167,19 +190,35 @@ void phrase_bind(u32 own, u32 physical_row, u32 native_page, const char *module,
         for (; j < 23 && name[j]; ++j)
             title[j] = name[j];
         title[j] = 0;
-        const char prefix[] = "phrase/";
-        u32 n = 0;
+        static const char prefix[] = "phrase/", sends[] = "fx/send/";
+        u32 n = 0, s = 0;
         for (; n < 7; ++n)
             key[n] = prefix[n];
-        for (u32 i = 0; i < 31 && module[i]; ++i)
+        for (; s < 8; ++s)
+            sends_key[s] = sends[s];
+        for (u32 i = 0; i < 31 && module[i]; ++i) {
             key[n++] = module[i];
+            sends_key[s++] = module[i];
+        }
         key[n] = 0;
+        sends_key[s] = 0;
         load();
         row_index = physical_row;
         page_code = native_page;
         owner = own;
     }
     publish();
+}
+/* The fx service calls this once a UI pass for the effect's row (an `[[info]]` entry, like phrase_bind): the send amount of
+ * each of the 16 tracks into AMOUNTS, PH_SEND_FULL for a track the effect hears (PH_P_TRKS) and 0 for the others. It
+ * returns 1, or 0 without an owner, and then writes nothing. The send route mixes the tracks by these amounts. */
+u32 phrase_sends(uint8_t *amounts)
+{
+    if (!owner || !amounts)
+        return 0;
+    for (u32 t = 0; t < PH_TRACKS; ++t)
+        amounts[t] = (raw[PH_P_TRKS] >> t) & 1 ? PH_SEND_FULL : 0;
+    return 1;
 }
 u32 dkrt_phrase_active(void)
 {

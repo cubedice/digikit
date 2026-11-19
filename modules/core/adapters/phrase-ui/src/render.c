@@ -38,6 +38,19 @@ static uint32_t heard(uint32_t bits)
         return 0;
     return (((bits & 0x7fffffu) | 0x800000u) * 127u) >> shift;
 }
+/* The tracks the effect hears as a cell's text: "5 TRK", or "NO TRK". */
+static void tracks_text(char out[16])
+{
+    uint32_t n = pu_track_count();
+    if (!n) {
+        copy(out, "NO TRK");
+        return;
+    }
+    pu_format(out, PH_P_MIX, n);
+    while (*out)
+        ++out;
+    copy(out, " TRK");
+}
 /* G and H, and the header's loop line: the loop effect's state as the page shows it. */
 static void loop_cells(const PhraseUi *s, PhrasePage *page)
 {
@@ -45,7 +58,12 @@ static void loop_cells(const PhraseUi *s, PhrasePage *page)
     const uint32_t *st = s->loop_status;
     uint32_t state = s->loop_fresh ? st[LS_STATE] : 0, loop = pu_has_loop(s),
              armed = (state & LS_ARMED) != 0, inpt = dkrt_phrase_get(PH_P_INPT);
-    cell(&page->cells[6], "INPT", inpt ? "LOOP" : "LIVE", "", 0);
+    /* INPT and under it the tracks it hears at LIVE; while G is held the tracks, and TRIGS inverted: the TRIG keys choose them */
+    tracks_text(text);
+    if (pu_selecting(s))
+        cell(&page->cells[6], "INPT", text, "TRIGS", 1);
+    else
+        cell(&page->cells[6], "INPT", inpt ? "LOOP" : "LIVE", text, 0);
     page->line[0] = 0;
     if (!loop) {
         if (armed) {
@@ -193,6 +211,8 @@ void pu_render(const PhrasePage *p, const PhraseCanvas *c)
             box(c, x - 11, y + 22, 23, 1, 1);
             box(c, x - 11 + (int)(k->fader - 1) * 20 / 127, y + 20, 3, 5, 1);
         } else
-            text(c, x, y + 19, k->state, k->lit ? 0 : 1);
+            /* INPT's state (the tracks, TRIGS) sits 4 pixels left of the cell's centre: H's state beside it (NO LOOP) is the
+             * widest text of the page, and in the firmware's font the two would touch. */
+            text(c, i == 6 ? x - 4 : x, y + 19, k->state, k->lit ? 0 : 1);
     }
 }

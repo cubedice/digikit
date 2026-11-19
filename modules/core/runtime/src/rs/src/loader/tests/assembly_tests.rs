@@ -793,6 +793,34 @@ fn the_holder_of_an_effects_values_is_named_as_the_fx_service_looks_it_up() {
     assert!(!without.entries.iter().any(|e| e.1 == name_hash("fx_held_values")), "an image without the adapter holds no effect's values");
 }
 
+/// The seam between the fx service file and the phrase adapters: the service finds `phrase_bind` and `phrase_sends` (core/phrase-control) and
+/// `phrase_ui_tick` (core/phrase-ui) by name in the image's info table; `phrase_sends` gives the send amounts of the phrase effect, which has no cell of
+/// the send page. The patch sets PRISM loads in have the three entries under the hashes the service asks for (its own test holds its constants to
+/// `name_hash`); an image without the adapters has none, and the service then refuses a phrase effect.
+#[test]
+fn the_phrase_adapters_are_named_as_the_fx_service_looks_them_up() {
+    if !DT2.has_firmware() {
+        return;
+    }
+    const NAMES: [&str; 3] = ["phrase_bind", "phrase_sends", "phrase_ui_tick"];
+    for set in ["phrase", "canopy-overloop-prism"] {
+        let with = Image::read(DT2, set);
+        for m in ["core/phrase-control", "core/phrase-ui"] {
+            assert!(with.modules.iter().any(|x| x == m), "the set {set} is expected to hold {m}");
+        }
+        for name in NAMES {
+            let entry = with.entries.iter().find(|e| e.0 == name).unwrap_or_else(|| panic!("the set {set} has no entry {name}"));
+            assert_eq!(entry.1, name_hash(name), "{set}: the hash of {name} is the one the fx service looks up");
+            assert_ne!(entry.3, 0, "{set}: {name} has an address");
+        }
+    }
+    let without = Image::read(DT2, "emulator");
+    assert!(!without.modules.iter().any(|m| m == "core/phrase-control"));
+    for name in NAMES {
+        assert!(!without.entries.iter().any(|e| e.1 == name_hash(name)), "an image without the phrase adapters has no {name}");
+    }
+}
+
 /// The directory of every module under `modules/`, by id.
 fn module_dirs() -> std::collections::BTreeMap<String, PathBuf> {
     fn walk(dir: &Path, out: &mut std::collections::BTreeMap<String, PathBuf>) {

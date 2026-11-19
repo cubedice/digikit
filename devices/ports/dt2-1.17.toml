@@ -5300,3 +5300,33 @@ len = 4
 sha256 = "3bf22f8dc338efb30e88aff8b54767149433bda3a4cb711f8b6db5c4c3b75ab3"
 mark = "V"
 rule = "fw/phrase-ui:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.phrase_key_dispatch"
+cpu = "cf"
+kind = "code"
+addr = 0x4011c79c
+len = 8
+sha256 = "3d25d06bf11f3a7bccef894d0016b52adbb4ae468a0f475dd497d7b5966e2694"
+mark = "V"
+rule = "fw/phrase-ui:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.phrase_led_set"
+cpu = "cf"
+kind = "code"
+addr = 0x400308e0
+len = 8
+sha256 = "efa23c0a55aebcd8ffb29c8ba97d3970d8e88ed9c16272d7b5ea0b4e8309ecf5"
+mark = "V"
+rule = "fw/phrase-ui:cf_window_hash"
+
+[[hook]]
+name = "cf.page.hook.phrase_key_dispatch"
+site = "cf.page.site.phrase_key_dispatch"
+mode = "before"
+
+[[hook]]
+name = "cf.page.hook.phrase_led_set"
+site = "cf.page.site.phrase_led_set"
+mode = "before"

@@ -31,8 +31,14 @@ devices = ["dt2"]
 [[claim]]
 resource = "dt2.frame-tail.phrase"
 
-# The function the fx service file (`fx.dks`) calls: it has no link to the image and finds it by name in the info table.
+# The functions the fx service file (`fx.dks`) calls: it has no link to the image and finds each by name in the info table.
+# phrase_bind binds the effect's row; phrase_sends gives its send amounts (the tracks the effect hears).
 [[info]]
 name = "phrase_bind"
 symbol = "phrase_bind"
+devices = ["dt2"]
+
+[[info]]
+name = "phrase_sends"
+symbol = "phrase_sends"
 devices = ["dt2"]

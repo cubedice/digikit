@@ -2,13 +2,20 @@
  * bitmap are borrowed for the current callback only; no firmware View survives in our state.
  *
  * The page is the phrase effect's page in the FX view, whichever way the effect is routed: the callbacks act only
- * while the page the view shows is the owner's (dkrt_phrase_active). */
+ * while the page the view shows is the owner's (dkrt_phrase_active).
+ *
+ * The TRIG keys and their LEDs are not the FX view's: the firmware's track and grid handlers take the keys before any view
+ * sees them. Two hooks before firmware functions give them to the page while G holds the selection of the tracks: the key
+ * dispatcher (phrase_key_dispatch) and the LED setter (phrase_led_set). At any other time both go straight on to the
+ * firmware. */
 #include <stdint.h>
 #include <dk/fxview.h>
 #include "model.h"
 #include "render.h"
 #include "dk_fw_view.h"
 #include "dk_fw_input.h"
+extern uint32_t phrase_stock_key_dispatch(uint8_t *, uint8_t *);
+extern void phrase_stock_led(uint8_t *, uint32_t, uint32_t, uint32_t);
 /* The loop effect's home (core/loop-control) is optional: in an image without it these are 0 and the page has no loop. */
 #pragma weak dkrt_loop_get
 #pragma weak dkrt_loop_xfad
@@ -32,8 +39,9 @@ static void reach_home(void)
     ui.loop = &home;
 }
 /* Native acceptance diagnostics: 0 draws, 1 and 2 the encoder and the ticks of the last turn the view got, 3 keys taken,
- * 4 turns taken, 5 turns the view got, 6 the page is on top, 7 the view's page. */
-uint32_t phrase_ui_debug[8];
+ * 4 turns taken, 5 turns the view got, 6 the page is on top, 7 the view's page, 8 G holds the selection of the tracks,
+ * 9 TRIG events the selection took at the key dispatcher, 10 TRIG LED values it gave. */
+uint32_t phrase_ui_debug[11];
 /* Native acceptance diagnostics: owner page, receiver, eligible FX view,
  * generation, freshness, callback count, eligible vtable and callback page. */
 uint32_t phrase_ui_binding[8];
@@ -105,9 +113,8 @@ int phrase_fxv_draw(uint8_t *view, uint8_t *bitmap, int header_only)
     ++phrase_ui_debug[0];
     return 1;
 }
-int phrase_fxv_key(uint8_t *view, uint8_t *event)
+static uint32_t model_key(uint8_t *event)
 {
-    (void)context(view);
     uint32_t key = word(event, 12), flags = word(event, 16);
     /* FUNC may have been pressed before this view was on top. Native
      * key state supplies modifiers; never manufacture ownership of them. */
@@ -118,11 +125,61 @@ int phrase_fxv_key(uint8_t *view, uint8_t *event)
             else
                 ui.held[k >> 5] &= ~(1u << (k & 31));
         }
-    if (pu_key(&ui, key, pu_native_flags(flags)) == PU_PASS)
+    return pu_key(&ui, key, pu_native_flags(flags));
+}
+int phrase_fxv_key(uint8_t *view, uint8_t *event)
+{
+    (void)context(view);
+    if (model_key(event) == PU_PASS)
         return 0;
     ++phrase_ui_debug[3];
+    phrase_ui_debug[8] = pu_selecting(&ui);
     dk_fw_view_invalidate(view);
     return 1;
+}
+/* Before the firmware's key dispatcher (cf.page.hook.phrase_key_dispatch, cdecl(manager, event)): a TRIG key goes to the
+ * page while G holds the selection on the page that is on top, so that it neither plays a note, nor enters a step, nor
+ * selects a track or a pattern. The release of a TRIG key the page took is the page's, also after G or the view went.
+ * Every other event goes on to the firmware unchanged. */
+uint32_t phrase_key_dispatch(uint8_t *manager, uint8_t *event)
+{
+    uint32_t key = word(event, 12);
+    if (key >= PU_TRIG && key < PU_TRIG + PH_TRACKS) {
+        uint32_t bit = 1u << (key & 31),
+                 taken = (ui.owned[key >> 5] | ui.cancelled[key >> 5]) & bit;
+        if (ui.select || taken) {
+            uint8_t *view = fxv_visible_view();
+            if (view)
+                (void)context(view);
+            else
+                pu_context(&ui, 0, dkrt_phrase_active() ? ui.generation : 0);
+            if ((pu_selecting(&ui) || taken) && model_key(event) != PU_PASS) {
+                ++phrase_ui_debug[9];
+                if (view)
+                    dk_fw_view_invalidate(view);
+                return 1;
+            }
+        }
+    }
+    return phrase_stock_key_dispatch(manager, event);
+}
+/* Before the firmware's LED setter (cf.page.hook.phrase_led_set, cdecl(manager, logical, layer, value)): while G holds the
+ * selection on the page that is on top, the TRIG LEDs show the tracks the effect hears. Every other LED, and every LED at
+ * any other time, is the firmware's. */
+void phrase_led_set(uint8_t *manager, uint32_t logical, uint32_t layer, uint32_t value)
+{
+    if (ui.select && logical >= PU_LED_TRIG && logical < PU_LED_TRIG + PH_TRACKS) {
+        uint8_t *view = fxv_visible_view();
+        if (!view || fxv_page(view) != dkrt_phrase_active())
+            pu_context(&ui, 0, dkrt_phrase_active() ? ui.generation : 0);
+        if (pu_selecting(&ui)) {
+            value = pu_led(&ui, logical, value);
+            /* layer 2: a claimed value (layer 1 is the firmware's forced off); the next LED frame clears every claim */
+            layer = 2;
+            ++phrase_ui_debug[10];
+        }
+    }
+    phrase_stock_led(manager, logical, layer, value);
 }
 int phrase_fxv_turn(uint8_t *view, uint8_t *event)
 {
@@ -153,9 +210,11 @@ void phrase_ui_tick(void)
             if (ui.revision != paint_revision || seq - painted >= 60 || ui.fresh != paint_fresh)
                 dk_fw_view_invalidate(view);
         }
+        phrase_ui_debug[8] = pu_selecting(&ui);
         return;
     }
     if (ui.active || dkrt_phrase_active() != last_owner)
         pu_context(&ui, 0, dkrt_phrase_active() ? ui.generation : 0);
     phrase_ui_debug[6] = 0;
+    phrase_ui_debug[8] = 0;
 }

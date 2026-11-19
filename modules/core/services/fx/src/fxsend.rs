@@ -18,6 +18,10 @@
 //!   settings, written to the card 2 s after the last change, and the DSP words, live values on the link through window 2 like the effect pages' values).
 //!
 //! Everything runs in the UI task (the settings store is not for other tasks).
+//!
+//! The phrase effect (`crate::phrase`) is the one exception. Its page is the image's, and so are its amounts: on a send bus it has no cell, it is not counted
+//! in the send slots, and its amounts are what the phrase adapters give (`phrase::sends`, the tracks the page selects), read every pass and sent like any
+//! effect's; they are not kept in `fx/send/<module id>`.
 use crate::dsp as fxdsp;
 use crate::fxpage;
 use core::ptr::addr_of_mut;
@@ -139,10 +143,10 @@ fn routes_of(flags: u32) -> (u8, u8) {
     )
 }
 
-/// The route word of a DSP row: 1 on a send bus (it has a cell of the send page), 0 on the master, and 2 (run by neither route) for an effect
-/// without a cell that may not run on the master.
-fn route_word(allow: u8, cell: bool) -> u32 {
-    if cell {
+/// The route word of a DSP row: 1 on a send bus (it has a cell of the send page, or it is the phrase effect, whose amounts the phrase adapters give), 0
+/// on the master, and 2 (run by neither route) for an effect without a cell that may not run on the master.
+fn route_word(allow: u8, send: bool) -> u32 {
+    if send {
         1
     } else if allow & ROUTE_MASTER != 0 {
         0
@@ -288,18 +292,27 @@ pub unsafe fn apply<C: CoreApi>(core: &C, k: usize, owner: u8, tab: *const u8) {
         return;
     }
     let want = saved_route(core, k) == ROUTE_SEND;
-    let mut key = [0u8; KEY_MAX];
+    // the phrase effect's amounts are the phrase adapters' (its page selects the tracks): a send bus without a cell
+    let adapter = crate::phrase::sends_row(k);
     let mut a = [0u8; TRACKS];
-    let kn = key_of(&mut key, b"fx/send/", &s.id[k], s.idlen[k] as usize);
-    if core.settings_get(&key[..kn], &mut a) != TRACKS as i32 {
-        a = [0u8; TRACKS];
-    }
-    let mut t = 0;
-    while t < TRACKS {
-        if a[t] > 127 {
-            a[t] = 127;
+    if adapter {
+        // none before the adapters have bound the effect (`phrase::bind` follows): the next pass has them
+        if let Some(given) = crate::phrase::sends() {
+            a = given;
         }
-        t += 1;
+    } else {
+        let mut key = [0u8; KEY_MAX];
+        let kn = key_of(&mut key, b"fx/send/", &s.id[k], s.idlen[k] as usize);
+        if core.settings_get(&key[..kn], &mut a) != TRACKS as i32 {
+            a = [0u8; TRACKS];
+        }
+        let mut t = 0;
+        while t < TRACKS {
+            if a[t] > 127 {
+                a[t] = 127;
+            }
+            t += 1;
+        }
     }
     s.amt[k] = a;
     s.dsp[k] = words_of(&a);
@@ -309,7 +322,9 @@ pub unsafe fn apply<C: CoreApi>(core: &C, k: usize, owner: u8, tab: *const u8) {
     while c < cells && s.row[c] != 0 {
         c += 1;
     }
-    if want && c < cells {
+    if want && adapter {
+        s.route[k] = 1;
+    } else if want && c < cells {
         s.route[k] = 1;
         s.cell[k] = c as u8 + 1;
         s.row[c] = k as u8 + 1;
@@ -352,10 +367,14 @@ pub unsafe fn apply<C: CoreApi>(core: &C, k: usize, owner: u8, tab: *const u8) {
     fxpage::relist(core);
 }
 
-/// Give back the cell of effect row `k` (if it has one).
+/// Give back the send bus of effect row `k`, and its cell (if it has one: the phrase effect has none).
 unsafe fn release<C: CoreApi>(core: &C, inf: *const u32, k: usize) {
     let s = ss();
     if s.route[k] == 0 {
+        return;
+    }
+    if s.cell[k] == 0 {
+        s.route[k] = 0;
         return;
     }
     let c = s.cell[k] as usize - 1;
@@ -405,33 +424,53 @@ unsafe fn put_amounts<C: CoreApi>(core: &C, k: usize) {
     s.puts += 1;
 }
 
+/// The phrase effect's row while it runs on a send bus without a cell: its amounts are the phrase adapters' (`phrase::sends`).
+fn adapter_row() -> Option<usize> {
+    let k = crate::phrase::row()?;
+    let s = ss();
+    if k < dsp::MAX_FX && s.route[k] != 0 && s.cell[k] == 0 {
+        Some(k)
+    } else {
+        None
+    }
+}
+
 /// Once per UI-loop pass (after the effect pages' own tick).
 pub unsafe fn tick<C: CoreApi>(core: &C) {
     let s = ss();
-    if s.used == 0 {
+    let adapter = adapter_row();
+    if s.used == 0 && adapter.is_none() {
         return;
     }
     let inf = info(core);
     if inf.is_null() {
         return;
     }
-    // a kit, a pattern's kit or a project was loaded: wait until the loads are over, then write the amounts back
-    let ns = core.rd(iw(inf, w::NSOUND));
-    if ns != s.nsound {
-        s.nsound = ns;
-        s.settle = SETTLE;
-    }
-    let mut quiet = true;
-    if s.settle != 0 {
-        s.settle -= 1;
-        if s.settle == 0 {
-            s.restore = 0xffff;
-        } else {
-            quiet = false;
+    if s.used != 0 {
+        // a kit, a pattern's kit or a project was loaded: wait until the loads are over, then write the amounts back
+        let ns = core.rd(iw(inf, w::NSOUND));
+        if ns != s.nsound {
+            s.nsound = ns;
+            s.settle = SETTLE;
+        }
+        let mut quiet = true;
+        if s.settle != 0 {
+            s.settle -= 1;
+            if s.settle == 0 {
+                s.restore = 0xffff;
+            } else {
+                quiet = false;
+            }
+        }
+        if quiet {
+            tracks(core, inf);
         }
     }
-    if quiet {
-        tracks(core, inf);
+    // the phrase effect: the amounts its adapters give now (a selection on its page), not a knob's
+    if let Some(k) = adapter {
+        if let Some(a) = crate::phrase::sends() {
+            s.amt[k] = a;
+        }
     }
     // the amounts go to the link as live values; the DSP's own copy follows the link's confirmation
     let mut k = 0;
@@ -525,6 +564,7 @@ unsafe fn tracks<C: CoreApi>(core: &C, inf: *const u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use dkrt_test_support::Call;
 
     /// The offsets that the device tests read from `DKRT_FXS` (`fx-routes-ui.ts`, `fx-track-route.device.test.ts`).
     #[test]
@@ -627,6 +667,144 @@ mod tests {
             s.allow[3] = ROUTE_SEND;
             s.dflt[3] = ROUTE_SEND;
             assert_eq!(saved_route(&core, 3), ROUTE_SEND);
+        }
+    }
+
+    /// An image with a send page of two cells (the words of `fxpages_info` as `tests/contract.rs` gives them) and the parameter table of the firmware.
+    fn send_page_core() -> dkrt_test_support::FakeCore {
+        let mut core = dkrt_test_support::FakeCore::new();
+        let mut t = std::vec![0u32; 64];
+        t[0] = 0x4658_5047; // "FXPG"
+        t[1] = 4;
+        t[2] = core.device;
+        t[3] = 0x6000;
+        t[4] = 0x2c;
+        t[5] = 14;
+        t[6] = 3;
+        t[8] = 8;
+        t[12] = 40;
+        t[13] = 8;
+        t[14] = 0x14;
+        t[15] = 32;
+        t[37] = 70;
+        t[38] = 0x46a7;
+        t[w::CELLS] = 2;
+        t[w::P_SEND] = 90;
+        t[61] = 13;
+        t[63] = 0x80;
+        core.info_tables.push((fxpage::INFO_HASH, t));
+        let mut d = std::vec![0u32; 96];
+        d[dkrt_svc_params::dynreg::w::P_TABLE] = 0x10000;
+        d[dkrt_svc_params::dynreg::w::PF_SIZE] = 0x40;
+        d[dkrt_svc_params::dynreg::w::P_ROWS] = 0x20000;
+        d[dkrt_svc_params::dynreg::w::P_ROW_SIZE] = 0x20;
+        d[dkrt_svc_params::dynreg::w::P_TEMPLATE_OFF] = 8;
+        core.set_dynreg(d);
+        core
+    }
+
+    /// What the phrase adapters give in these tests (`phrase_sends`): the amounts of `PHRASE_SENDS`, or nothing while it is `None`.
+    static PHRASE_SENDS: std::sync::Mutex<Option<[u8; TRACKS]>> = std::sync::Mutex::new(None);
+    unsafe extern "C" fn phrase_sends(out: *mut u8) -> u32 {
+        match *PHRASE_SENDS.lock().unwrap_or_else(|e| e.into_inner()) {
+            Some(a) => {
+                core::ptr::copy_nonoverlapping(a.as_ptr(), out, TRACKS);
+                1
+            }
+            None => 0,
+        }
+    }
+    fn give(a: Option<[u8; TRACKS]>) {
+        *PHRASE_SENDS.lock().unwrap_or_else(|e| e.into_inner()) = a;
+    }
+
+    /// The phrase effect (PRISM) runs on a send bus without a cell of the send page: its amounts are what the phrase adapters give, before and after a
+    /// selection changes, and none are kept in `fx/send/<id>`. A send effect that loads after it takes the first cell, as it did before the phrase effect
+    /// gave its cell up, and its amounts are the stored ones. Without `phrase_sends` in the image the phrase effect is a send effect like any other.
+    #[test]
+    fn the_phrase_effect_takes_its_amounts_from_its_adapters_and_no_cell() {
+        let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let core = send_page_core();
+        let send_only = FXF_SEND | FXF_NOMASTER | FXF_DEFAULT_SEND;
+        unsafe {
+            fxpage::unbind();
+            let d = core.dsp();
+            for (k, owner) in [(0usize, 1u8), (1, 2)] {
+                d.fx_owner[k] = owner;
+                d.fx_pub[k] = 1;
+                d.fx_flags[k] = send_only;
+            }
+            // the other send effect's stored amounts: track 2 at 50
+            let mut stored = [0u8; TRACKS];
+            stored[1] = 50;
+            core.settings
+                .borrow_mut()
+                .push((b"fx/send/fake".to_vec(), stored.to_vec()));
+            crate::phrase::reserve(1, 0);
+            crate::phrase::set_sends(phrase_sends as *const () as usize);
+            // the adapters have not bound the effect yet: no amounts
+            give(None);
+            apply(&core, 0, 1, b"PRS\0".as_ptr());
+            let s = ss();
+            assert_eq!(
+                (s.route[0], s.cell[0], used()),
+                (1, 0, 0),
+                "a send bus, no cell, no send slot used"
+            );
+            assert_eq!((d.fx_route[0], d.fx_amt[0]), (1, [0; 4]));
+            // the selection of the page: tracks 3 and 11
+            let mut a = [0u8; TRACKS];
+            a[2] = 127;
+            a[10] = 127;
+            give(Some(a));
+            tick(&core);
+            assert_eq!(s.amt[0], a);
+            let set = |word: u32| {
+                core.calls().iter().rev().find_map(|c| match c {
+                    Call::Set { slot, value }
+                        if *slot == fxdsp::fx_slot(&core, 0, word).unwrap() =>
+                    {
+                        Some(*value)
+                    }
+                    _ => None,
+                })
+            };
+            assert_eq!(
+                set(dsp::FXW_AMT0),
+                Some(127 << 16),
+                "track 3 at full send, live on the link"
+            );
+            assert_eq!(set(dsp::FXW_AMT0 + 2), Some(127 << 16), "track 11");
+            // track 3 off: its amount follows at the next pass
+            a[2] = 0;
+            give(Some(a));
+            tick(&core);
+            assert_eq!(set(dsp::FXW_AMT0), Some(0));
+            // the other send effect takes the first cell and its stored amounts
+            apply(&core, 1, 2, b"SND\0".as_ptr());
+            assert_eq!((s.route[1], s.cell[1], s.row[0], used()), (1, 1, 2, 1));
+            assert_eq!((d.fx_route[1], d.fx_amt[1]), (1, [50 << 8, 0, 0, 0]));
+            assert!(
+                !core
+                    .calls()
+                    .iter()
+                    .any(|c| matches!(c, Call::SettingsPut(k, _) if k.starts_with(b"fx/send/"))),
+                "no amount is written to the settings"
+            );
+            // the phrase effect leaves: its bus goes, the cell stays the other effect's
+            remove(&core, 0);
+            assert_eq!((s.route[0], s.cell[0], s.row[0], used()), (0, 0, 2, 1));
+            remove(&core, 1);
+            assert_eq!(used(), 0);
+            // an image without `phrase_sends`: the phrase effect takes a cell like any send effect
+            crate::phrase::set_sends(0);
+            assert!(!crate::phrase::sends_row(0));
+            apply(&core, 0, 1, b"PRS\0".as_ptr());
+            assert_eq!((s.route[0], s.cell[0], used()), (1, 1, 1));
+            remove(&core, 0);
+            crate::phrase::remove(1);
+            give(None);
+            fxpage::unbind();
         }
     }
 

@@ -7,7 +7,7 @@ role = "adapter"
 type = "framework"
 author = "digikit"
 status = "experimental"
-summary = "The one page of the phrase effect: eight cells, MIX on LEVEL, FLIP, SYNC and HOLD on the encoder presses, INPT and the loop effect's crossfader, ARM and drop."
+summary = "The one page of the phrase effect: eight cells, MIX on LEVEL, FLIP, SYNC and HOLD on the encoder presses, INPT with the tracks it hears (G held: the TRIG keys), the loop effect's crossfader, ARM and drop."
 # core/fxview owns the FX view's table slots and calls this page's phrase_fxv_ functions.
 requires = ["core/phrase-control", "core/fxview", "core/ui"]
 conflicts = []
@@ -24,6 +24,28 @@ devices = ["dt2"]
 # The loop effect's home (core/loop-control, <dk/loop.h>): INPT, XFAD, ARM and the drop on this page. Optional, so PRISM works in an
 # image without the loop effect (the patch set phrase): the page then has no loop.
 optional = ["dkrt_loop_get", "dkrt_loop_xfad", "dkrt_loop_arm", "dkrt_loop_drop", "dkrt_loop_status"]
+
+# The TRIG keys and their LEDs while G holds the selection of the tracks: the firmware's key dispatcher and LED setter, each
+# with a hook before it (devices/fw/phrase-ui.toml). They are the input overlay's hooks from before step 2 of the redesign.
+[object.externs]
+phrase_stock_key_dispatch = "hook.cf.page.site.phrase_key_dispatch.tail"
+phrase_stock_led = "hook.cf.page.site.phrase_led_set.tail"
+
+[[op]]
+op = "hook"
+hook = "cf.page.hook.phrase_key_dispatch"
+to = "phrase_key_dispatch"
+
+[[claim]]
+resource = "cf.page.site.phrase_key_dispatch"
+
+[[op]]
+op = "hook"
+hook = "cf.page.hook.phrase_led_set"
+to = "phrase_led_set"
+
+[[claim]]
+resource = "cf.page.site.phrase_led_set"
 
 # The function the fx service file (`fx.dks`) calls: it has no link to the image and finds it by name in the info table.
 [[info]]

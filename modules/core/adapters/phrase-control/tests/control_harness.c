@@ -5,6 +5,9 @@
 static unsigned writes;
 static uint8_t saved[64];
 static u32 saved_bytes;
+/* The fx service's record of the effect's send amounts (fx/send/<module id>), which only the carry-over reads. */
+static uint8_t sends_record[16];
+static u32 sends_bytes;
 u32 dkrt_irq_mask(void)
 {
     return 0;
@@ -13,18 +16,26 @@ void dkrt_irq_restore(u32 v)
 {
     (void)v;
 }
+/* The runtime's rule (settings.rs): the value's length, its bytes when they fit, -1 without the key. */
+static int get(const uint8_t *value, u32 bytes, void *p, u32 n)
+{
+    if (!bytes)
+        return -1;
+    if (bytes > n)
+        return -2; /* E_SET_VALUE: nothing written */
+    memcpy(p, value, bytes);
+    return (int)bytes;
+}
 int dkrt_settings_get(const char *k, void *p, u32 n)
 {
+    if (!strcmp(k, "fx/send/fixture/phrase"))
+        return get(sends_record, sends_bytes, p, n);
     assert(!strcmp(k, "phrase/fixture/phrase"));
-    if (!saved_bytes)
-        return -1;
-    if (saved_bytes != n)
-        return (int)saved_bytes; /* a value of another size: the caller refuses it */
-    memcpy(p, saved, n);
-    return (int)n;
+    return get(saved, saved_bytes, p, n);
 }
 int dkrt_settings_put(const char *k, const void *p, u32 n)
 {
+    /* the provider never writes the fx service's record */
     assert(!strcmp(k, "phrase/fixture/phrase"));
     assert(n <= sizeof(saved));
     memcpy(saved, p, n);
@@ -209,6 +220,97 @@ static void status_assembly(void)
     assert(dkrt_phrase_snapshot(out, 32));
 }
 
+/* A saved record of format 3 with COUNT values: value i is i + 1 (in range for each), the tracks (if counted) TRACKS. */
+static void store(u32 count, u32 tracks)
+{
+    memset(saved, 0, sizeof(saved));
+    saved[0] = 'P';
+    saved[1] = 'H';
+    saved[2] = 3;
+    saved[3] = (uint8_t)count;
+    for (u32 i = 0; i < count; ++i) {
+        u32 v = i == PH_P_TRKS ? tracks : i + 1;
+        for (u32 j = 0; j < 4; ++j)
+            saved[4 + 4 * i + j] = (uint8_t)(v >> (24 - 8 * j));
+    }
+    saved_bytes = 4 + 4 * count;
+}
+static void sends(const uint8_t *amounts, u32 bytes)
+{
+    memset(sends_record, 0, sizeof(sends_record));
+    if (amounts)
+        memcpy(sends_record, amounts, bytes);
+    sends_bytes = bytes;
+}
+static void restart(u32 own)
+{
+    phrase_bind(0, 0, 0, 0, 0);
+    phrase_bind(own, 1, 0x20, "fixture/phrase", "TEST");
+}
+/* The tracks the effect hears: a saved value, global like the others; the send amounts the fx service gets for them; where
+ * the first ones come from on a device that had none. */
+static void tracks(void)
+{
+    uint8_t a[16];
+    /* The owner's device: PRISM's record from before the tracks (13 values) and the fx service's record with 127 for tracks 1
+     * and 11. The tracks are those two, the 13 values are kept, and the bind writes nothing. */
+    store(13, 0);
+    uint8_t owner_amounts[16] = {127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 127, 0, 0, 0, 0, 0};
+    sends(owner_amounts, 16);
+    unsigned n = writes;
+    restart(6);
+    assert(dkrt_phrase_get(PH_P_TRKS) == (1u | 1u << 10));
+    assert(dkrt_phrase_get(PH_P_ZONE) == 1 && dkrt_phrase_get(PH_P_RATE) == 2 &&
+           dkrt_phrase_get(PH_P_MIX) == 11 && dkrt_phrase_get(PH_P_SKEW) == 10);
+    assert(writes == n && saved_bytes == 4 + 13 * 4);
+    assert(phrase_sends(a) == 1);
+    for (u32 t = 0; t < 16; ++t)
+        assert(a[t] == (t == 0 || t == 10 ? PH_SEND_FULL : 0));
+    /* A change saves the tracks with every value; after a restart they are the saved ones, not the send amounts. */
+    assert(dkrt_phrase_set(PH_P_TRKS, 1u << 2) == 0 && writes == n + 1);
+    assert(saved_bytes == 4 + PH_PARAM_COUNT * 4 && saved[3] == PH_PARAM_COUNT);
+    restart(7);
+    assert(dkrt_phrase_get(PH_P_TRKS) == 1u << 2 && dkrt_phrase_get(PH_P_ZONE) == 1);
+    assert(phrase_sends(a) == 1 && a[2] == PH_SEND_FULL && a[0] == 0 && a[10] == 0);
+    /* No track at all is saved as such. */
+    assert(dkrt_phrase_set(PH_P_TRKS, 0) == 0);
+    restart(8);
+    assert(dkrt_phrase_get(PH_P_TRKS) == 0);
+    /* Without PRISM's record any amount above 0 counts as heard. */
+    saved_bytes = 0;
+    uint8_t other[16] = {0, 64, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 200};
+    sends(other, 16);
+    restart(9);
+    assert(dkrt_phrase_get(PH_P_TRKS) == (1u << 1 | 1u << 2 | 1u << 15));
+    assert(dkrt_phrase_get(PH_P_ZONE) == 4 && dkrt_phrase_get(PH_P_MIX) == 100); /* the defaults */
+    /* Nothing stored: no track, and the sends are all 0. A send record of another size is not read. */
+    saved_bytes = 0;
+    sends(0, 0);
+    restart(10);
+    assert(dkrt_phrase_get(PH_P_TRKS) == 0);
+    assert(phrase_sends(a) == 1);
+    for (u32 t = 0; t < 16; ++t)
+        assert(a[t] == 0);
+    sends(owner_amounts, 8);
+    restart(11);
+    assert(dkrt_phrase_get(PH_P_TRKS) == 0);
+    /* A record of 14 values with the tracks out of range: clamped to the 16 tracks. */
+    store(PH_PARAM_COUNT, 0x12345);
+    restart(12);
+    assert(dkrt_phrase_get(PH_P_TRKS) == PH_TRACKS_ALL);
+    assert(dkrt_phrase_set(PH_P_TRKS, 0x10000) == 0 && dkrt_phrase_get(PH_P_TRKS) == PH_TRACKS_ALL);
+    /* The tracks are no control word: setting them publishes the same words. */
+    u32 before[PH_CONTROL_WORDS];
+    for (u32 i = 0; i < PH_CONTROL_WORDS; ++i)
+        before[i] = control[published][i];
+    assert(dkrt_phrase_set(PH_P_TRKS, 5) == 0);
+    for (u32 i = 0; i < PH_CONTROL_WORDS; ++i)
+        assert(control[published][i] == before[i]);
+    /* No owner: nothing is written, and the fx service gets nothing. */
+    phrase_bind(0, 0, 0, 0, 0);
+    memset(a, 0x55, sizeof(a));
+    assert(phrase_sends(a) == 0 && a[0] == 0x55 && phrase_sends(0) == 0);
+}
 int main(void)
 {
     /* no owner: nothing is published as enabled and nothing can be set */
@@ -259,6 +361,7 @@ int main(void)
     assert(dkrt_phrase_get(PH_P_ZONE) == 7 && dkrt_phrase_get(PH_P_RATE) == PH_RATE_MAX &&
            dkrt_phrase_get(PH_P_NOTE) == PH_TIME_CHOICES - 1 && dkrt_phrase_get(PH_P_MIX) == 127);
     assert(!dkrt_phrase_get(PH_P_HOLD) && !dkrt_phrase_get(PH_P_INPT) &&
-           !dkrt_phrase_get(PH_P_XFAD));
+           !dkrt_phrase_get(PH_P_XFAD) && dkrt_phrase_get(PH_P_TRKS) == PH_TRACKS_ALL);
+    tracks();
     return 0;
 }

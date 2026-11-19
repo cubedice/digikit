@@ -100,6 +100,9 @@
 //   NOTE 0..PH_TIME_CHOICES - 1, the note length used with SYNC; RPTS 0..127 with PH_RPTS_UNITY as unity;
 //   COLR and SKEW 0..127 with 64 as the centre; HALO, MIX 0..127; INPT 0 or 1, not saved (the page moves it only while there
 //   is a loop, and to LOOP by itself at a new loop). XFAD is unused: the crossfader is the loop effect's (dkrt_loop_*).
+//   TRKS 0..PH_TRACKS_ALL: the tracks PRISM hears at LIVE, bit t for track t + 1 (the TRIG keys while G is held on the
+//   page); saved. It is no control word: the provider hands the fx service PH_SEND_FULL as the send amount of a heard track
+//   and 0 for the others (phrase_sends), and the effect row's amount words carry them to the send route.
 #define PH_P_ZONE 0
 #define PH_P_RATE 1
 #define PH_P_SYNC 2
@@ -113,7 +116,11 @@
 #define PH_P_MIX 10
 #define PH_P_INPT 11
 #define PH_P_XFAD 12
-#define PH_PARAM_COUNT 13
+#define PH_P_TRKS 13
+#define PH_PARAM_COUNT 14
+#define PH_TRACKS 16
+#define PH_TRACKS_ALL 0xffff
+#define PH_SEND_FULL 127
 #define PH_RATE_MAX 1016
 #define PH_RATE_COARSE 8
 #define PH_RPTS_UNITY 96

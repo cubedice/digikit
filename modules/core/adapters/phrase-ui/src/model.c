@@ -21,6 +21,8 @@ static void mark(uint32_t b[2], uint32_t k, int on)
 }
 void pu_leave(PhraseUi *s)
 {
+    /* the TRIG keys and their LEDs go back to the firmware at once; a release of G that comes later is no press */
+    s->select = 0;
     for (uint32_t i = 0; i < 2; ++i)
         s->cancelled[i] |= s->owned[i];
     for (uint32_t i = 0; i < 9; ++i)
@@ -109,6 +111,39 @@ void pu_loop(PhraseUi *s)
     s->loop_seen = count;
     s->loop_known = 1;
 }
+uint32_t pu_tracks(void)
+{
+    return dkrt_phrase_get(PH_P_TRKS) & PH_TRACKS_ALL;
+}
+uint32_t pu_track_count(void)
+{
+    uint32_t n = 0;
+    for (uint32_t tracks = pu_tracks(); tracks; tracks &= tracks - 1)
+        ++n;
+    return n;
+}
+uint32_t pu_selecting(const PhraseUi *s)
+{
+    return s->active && s->select;
+}
+uint32_t pu_led(const PhraseUi *s, uint32_t logical, uint32_t stock)
+{
+    if (!pu_selecting(s) || logical < PU_LED_TRIG || logical >= PU_LED_TRIG + PH_TRACKS)
+        return stock;
+    return (pu_tracks() >> (logical - PU_LED_TRIG)) & 1 ? PU_LED_HEARD : PU_LED_DIM;
+}
+/* G is released: the selection ends. A short press with no TRIG key and no turn is INPT's switch, while there is a loop. */
+static void select_end(PhraseUi *s)
+{
+    if (!s->select)
+        return;
+    uint32_t held_for = s->status[PH_S_HEARTBEAT / 4] - s->select_beat,
+             timed = s->select_timed && s->fresh;
+    if (!s->select_used && (!timed || held_for < PU_SHORT_BLOCKS) && s->active && pu_has_loop(s))
+        toggle(s, PH_P_INPT);
+    s->select = 0;
+    ++s->revision;
+}
 uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
 {
     if (key >= 64)
@@ -125,6 +160,8 @@ uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
         mark(s->held, key, 0);
         mark(s->owned, key, 0);
         mark(s->cancelled, key, 0);
+        if (key == PU_PUSH + PU_SELECT && was_owned)
+            select_end(s);
         /* The release of a key this page took is this page's, also after the view was covered. */
         return was_owned || cancelled ? PU_OWN : PU_PASS;
     }
@@ -135,6 +172,16 @@ uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
     /* A key held before the page was on top remains the stock handler's gesture. */
     if (!s->active || (flags & PU_REPEAT) || !first)
         return PU_PASS;
+    if (key >= PU_TRIG && key < PU_TRIG + PH_TRACKS) {
+        /* While G is held a TRIG key turns its track on or off; at any other time it is the firmware's. */
+        if (!s->select)
+            return PU_PASS;
+        dkrt_phrase_set(PH_P_TRKS, pu_tracks() ^ (1u << (key - PU_TRIG)));
+        s->select_used = 1;
+        ++s->revision;
+        mark(s->owned, key, 1);
+        return PU_OWN;
+    }
     if (key == PU_NO && held(s, PU_FUNC)) {
         /* Drop the loop (taken also without one, so that the stock page does nothing with it). */
         if (pu_has_loop(s)) {
@@ -145,15 +192,20 @@ uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
         return PU_OWN;
     }
     if (key >= PU_PUSH && key < PU_PUSH + 8) {
-        /* A is FLIP, B is SYNC, C is HOLD; G switches INPT while there is a loop; H is ARM while the loop effect reports.
-         * D, E and F are taken and do nothing. */
+        /* A is FLIP, B is SYNC, C is HOLD; G holds the selection of the tracks (its release may switch INPT); H is ARM while
+         * the loop effect reports. D, E and F are taken and do nothing. */
         static const uint8_t switches[3] = {PH_P_FLIP, PH_P_SYNC, PH_P_HOLD};
         if (key < PU_PUSH + 3)
             toggle(s, switches[key - PU_PUSH]);
         if (key == PU_PUSH + 1)
             s->detent[1] = 0;
-        if (key == PU_PUSH + 6 && pu_has_loop(s))
-            toggle(s, PH_P_INPT);
+        if (key == PU_PUSH + PU_SELECT) {
+            s->select = 1;
+            s->select_used = 0;
+            s->select_beat = s->status[PH_S_HEARTBEAT / 4];
+            s->select_timed = s->fresh;
+            ++s->revision;
+        }
         if (key == PU_PUSH + 7 && s->loop && s->loop_fresh) {
             s->loop->arm();
             ++s->revision;
@@ -190,8 +242,11 @@ uint32_t pu_turn(PhraseUi *s, uint32_t encoder, int32_t delta, uint32_t fine)
         return PU_PASS;
     uint32_t p = pu_parameter(encoder);
     /* G and H: taken, so that the stock page does not turn a value under them. While there is a loop, G is the switch (a
-     * tick up is LOOP, a tick down LIVE) and H the loop effect's crossfader, a step a tick. */
+     * tick up is LOOP, a tick down LIVE) and H the loop effect's crossfader, a step a tick. A turn of G while it is held
+     * makes its release no press. */
     if (p >= PH_PARAM_COUNT) {
+        if (encoder == PU_SELECT && delta && s->select)
+            s->select_used = 1;
         if (!pu_has_loop(s) || !delta)
             return PU_OWN;
         if (encoder == 6)
