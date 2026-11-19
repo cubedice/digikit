@@ -10,7 +10,11 @@ Digitakt II; the findings list where the pages differ from the drawings below. T
 too: the per-track PRS send amounts of section 2.3 are replaced by tracks chosen on or off with the TRIG keys while G (INPT)
 is held on PRISM's page, at full send, and the send page has no PRS cell
 ([finding 362](../findings/362-prism-track-select.md)); it is proven on the emulated Digitakt II and has not run on
-hardware. Digitakt II 1.17 only, as today.
+hardware. After the owner's first use on the device (image `d0e4825dd04d8646`): the position stream, Overloop's run and its
+status tolerate frames of the link that come twice or late, ARM is on Overloop's encoder E under its label, and PRISM's INPT
+is a two-position switch turned by G at any time ([finding 363](../findings/363-loop-link-jitter.md)); SYNC follows the
+Mimeophon, ZONE an octave of the synced time and RATE a ratio inside it, in place of section 2.1's note lengths
+([finding 364](../findings/364-prism-sync-zones.md)). Digitakt II 1.17 only, as today.
 
 The screen drawings are schematic: they show what each cell holds and where, not pixels. The real screen is 128 x 64 and
 uses the native knob and text primitives that `core/phrase-ui` draws with today.

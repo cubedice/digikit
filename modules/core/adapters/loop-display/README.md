@@ -13,9 +13,10 @@ holds no value of its own. The engine is `digikit/overloop`; the behaviour is de
          NEXT CHANGE KEEPS                line 1
            16 ST 2.00 S                   line 2
  |-------|---▮---|-------|-------|        the timeline: one cycle, quarter marks, where it stands
- LIVE ▮────────────────────── LOOP        the crossfader as it sounds
  ──────────────────────────────────
-      ARM ON            XFAD LIVE         the two controls
+    ARM                         XFAD      the bottom row as PRISM's cells: each label above its encoder (E, H)
+    ON                          LIVE      ARM's state (inverted while on), XFAD's value
+                              ▮─────      the crossfader as it sounds, LIVE left, LOOP right
 ```
 
 | State | Line 1 | Line 2 |
@@ -26,16 +27,24 @@ holds no value of its own. The engine is `digikit/overloop`; the behaviour is de
 | a loop, armed | as armed | as armed |
 
 The mark on the timeline is the step of the pattern that plays, or the loop's place once there is a loop. The crossfader
-drawing follows the level the engine applies (it moves by at most 1/256 a frame, and stands at LOOP right after a capture); the
-`XFAD` text is the value of the control. `ARM ON` is drawn inverted. Times have two places below ten seconds and one from
-there; below a second they are in milliseconds.
+drawing under `XFAD` follows the level the engine applies (it moves by at most 1/256 a frame, and stands at LOOP right after
+a capture); the text above it is the value of the control. `ON` is drawn inverted. The cells are 26 pixels wide, E's
+centred at x 32 and H's at x 110, as on PRISM's page; x 124 to 127 below the header are left to the FX view's page
+indicator. Times have two places below ten seconds and one from there; below a second they are in milliseconds.
 
 | Control | Does |
 | --- | --- |
-| press H | ARM, or take the arm back |
+| press E | ARM, or take the arm back |
+| turn E | right: ARM; left: take the arm back. A turn toward the state that is already asked for does nothing |
+| press H | ARM, or take the arm back (as on PRISM's page) |
 | H, or LEVEL | XFAD, a step a tick, 0 (LIVE) to 127 (LOOP) |
 | FUNC + NO | drop the loop |
-| A to G, their presses | taken by the page, without effect |
+| A to D, F, G, their presses | taken by the page, without effect |
+
+ARM is a counter in the home: each change of it toggles the engine. So that a turn of several ticks moves it once, the page
+counts the state it asked for until the status shows it (`ld_observe`, each time the page reads the status), the status is
+not fresh, or 750 blocks of the engine's heartbeat have passed (`LD_ARM_SETTLE`). Without a fresh status every press moves
+the counter, as before.
 
 Everything else (the page keys, PLAY, STOP, the track keys, FUNC + FX to the next page) goes to the firmware.
 

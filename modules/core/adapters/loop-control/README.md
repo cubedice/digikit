@@ -40,8 +40,14 @@ two blocks or repeated.
 ## How the status comes back
 
 The engine publishes sixteen words in `_loop_ui_status` at the end of a block (this module owns the mailbox on the DSP
-side). `core/dsp-link` returns them in fourteen spare words of the reply; `loop_ui_tick` reads them
-once a UI pass. A status without a new heartbeat for 60 passes is not fresh.
+side). `core/dsp-link` returns them in fourteen spare words of the reply (the `OVL2` carrier, finding 340). PRISM's reply
+(`core/phrase-control`) has the same cells in three blocks of four, so a status read once a UI pass came only when the pass
+met the fourth block, at irregular times. `core/dsp-link` therefore calls `loop_reply_frame(rec)` once a block, in the block
+interrupt, with the reply copy, as it calls `phrase_write_frame`: it reads the fourteen cells and keeps the newest `OVL2`
+carrier (its magic, and its packed word 7 zero). It only reads; what the other adapters get is unchanged.
+`loop_ui_tick`, once a UI pass, copies the newest carrier with the interrupt masked for that bounded copy and takes it
+when the block interrupt found a new one ([finding 363](../../../../docs/findings/363-loop-link-jitter.md)). A status without
+a new heartbeat for 60 passes is not fresh.
 
 When the status shows a loop the home has not seen (the count in the status differs from `LP_SEEN`), the home sets the
 crossfader to LOOP and `LP_SEEN` to the count. Until the engine reads that count back it holds its own crossfader at LOOP,
@@ -56,7 +62,8 @@ this home; neither keeps a copy, so a change on one is what the other shows. The
 ## Checks
 
 ```bash
-pnpm nx:pilot run core/loop-control:test-host    # the home: values, counters, the held-values answer, the page code, a new loop
+pnpm nx:pilot run core/loop-control:test-host    # the home: values, counters, the held-values answer, the page code, a new loop,
+                                                 # the per-block hook (the newest carrier kept, the phrase reply and bad carriers refused)
 pnpm nx:pilot run dkrt-svc-fx:rust-tests         # the fx service: held values never come from the kit
 pnpm nx:pilot run core/runtime:test-assembly     # the info entry is named as the service looks it up
 ```

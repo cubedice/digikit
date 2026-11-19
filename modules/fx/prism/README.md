@@ -59,6 +59,9 @@ FUNC + FX opens the FX pages; PRISM's is one of them (send effects come first). 
  100                         2 TRK      NO LOOP
 ```
 
+With SYNC on, RATE shows the ratio of the zone's 1/1 (`1/1`, `X1.5`, `/1.33`) over `SYNC`; the header keeps the time the
+engine plays. With INPT at LOOP and no loop the INPT cell says `SILENT` (PRISM hears nothing until a loop exists).
+
 With G held the INPT cell shows the tracks and that the TRIG keys choose them (`TRIGS` inverted):
 
 ```
@@ -70,13 +73,13 @@ With G held the INPT cell shows the tracks and that the TRIG keys choose them (`
 | Control | Does |
 | --- | --- |
 | LEVEL | MIX, 0 to 127 |
-| A | ZONE, four ticks a zone. Press: FLIP (`FLIP` under the zone name, inverted) |
-| B | RATE. Free: the time in milliseconds, a coarse step a tick; with FUNC held a fine step (1016 of them across the zone). Press: SYNC on or off (`SYNC` or `FREE`); with SYNC the encoder steps through sixteen note lengths, four ticks each, from 1/32 to two bars |
+| A | ZONE, four ticks a zone. With SYNC each zone is an octave of the synced time (below). Press: FLIP (`FLIP` under the zone name, inverted) |
+| B | RATE. Free: the time in milliseconds, a coarse step a tick; with FUNC held a fine step (1016 of them across the zone). Press: SYNC on or off (`SYNC` or `FREE`); with SYNC the encoder steps through thirteen ratios of the zone's 1/1, four ticks each, from `/2` (shortest) to `X2` (longest), `1/1` in the middle |
 | C | RPTS, 0 to 127; 96 holds a repeat at its level. Press: HOLD (`INF` and `HOLD`, inverted) |
 | D | COLR, 64 is the centre: the cell shows the distance and `DARK` or `BRIT` |
 | E | HALO, 0 to 127 |
 | F | SKEW, 64 is the centre: `L 12` means the left side is the longer one by 12 steps, `R 12` the right |
-| G | INPT, a switch: LIVE (PRISM hears the tracks it is given) or LOOP (PRISM hears Overloop's loop). A short press or a turn switches, only while there is a loop; the switch crossfades over 5 ms. Hold: the TRIG keys choose the tracks PRISM hears, their LEDs show them; a hold with a TRIG key, with a turn, or of 0.4 s or more does not switch INPT. Under INPT: the number of tracks PRISM hears at LIVE |
+| G | INPT, a two-position switch turned by the knob: right is LOOP (PRISM hears Overloop's loop), left is LIVE (PRISM hears the tracks it is given), at any time; without a loop LOOP is silence until one exists (`SILENT` under it). The switch crossfades over 5 ms. The press switches nothing. Hold: the TRIG keys choose the tracks PRISM hears, their LEDs show them. Under INPT: the number of tracks PRISM hears at LIVE. INPT goes to LOOP by itself at an armed change that takes a loop, and to LIVE when the loop is dropped or Overloop stops reporting for a while; it does not go back to LIVE only because there is no loop |
 | H | XFAD, Overloop's crossfader: the same value as on Overloop's page (`LIVE`, a number, `LOOP`; below it the crossfader as it sounds). Turns only while there is a loop. Press: ARM (`ARMD`, and below it the steps the next change keeps); a second press takes it back |
 | FUNC + NO | Drop the loop |
 
@@ -104,11 +107,33 @@ to hear chosen (hold G, press their TRIG keys, release G; the INPT cell counts t
 5. At LIVE: the new pattern alone, with the last echoes of the old one. Set PRISM up for the new pattern; hold **G** and
    choose the tracks of the new pattern PRISM shall hear. The choice does not switch INPT, and PRISM goes on hearing nothing
    new until step 6.
-6. Press **G** briefly, or turn it: INPT goes to LIVE and PRISM works on the chosen tracks of the new pattern.
+6. Turn **G** to the left: INPT goes to LIVE and PRISM works on the chosen tracks of the new pattern.
 
-The loop stays until the next armed change or **FUNC + NO**; with it dropped INPT is LIVE. If you put INPT at LIVE while the
+The loop stays until the next armed change or **FUNC + NO**; when it is dropped INPT goes to LIVE. If you put INPT at LIVE while the
 crossfader still stands at LOOP, PRISM hears the chosen tracks of the new pattern and you hear its echoes over the loop:
 allowed, but the new pattern then reaches the output through PRISM before you turn H.
+
+## SYNC, after the Mimeophon
+
+With SYNC the repeats follow the pattern's tempo the way the Make Noise Mimeophon's do with its Tempo input: ZONE scales
+the synced time by octaves, and RATE picks a ratio inside the zone ([finding 364](../../../docs/findings/364-prism-sync-zones.md)).
+
+- **The 1/1.** The beat (a quarter note at the pattern's tempo) is the 1/1 of the zone that fits it best: the zone whose
+  centre, the geometric mean of its free range, lies nearest the beat in log terms. Each zone above doubles the 1/1, each
+  below halves it. At 96 BPM the beat (625 ms) is ECHO's 1/1, SLAP's is an eighth note and LONG's a half note; at 60 BPM
+  (1 s) the beat is LONG's 1/1; at 120 and 180 BPM ECHO's; above 253 BPM SLAP's; below 34.2 BPM PHRS's.
+- **The ratio.** RATE with SYNC steps through 13 ratios of the 1/1, four ticks each: `/2`, `/1.75`, `/1.67`, `/1.5`,
+  `/1.33`, `/1.25`, `1/1`, `X1.25`, `X1.33`, `X1.5`, `X1.67`, `X1.75`, `X2` (1/2, 4/7, 3/5, 2/3, 3/4, 4/5, 1, 5/4, 4/3,
+  3/2, 5/3, 7/4, 2 of the 1/1). As in free mode, a turn to the right is a longer time: `X2` is the longest, `/2` the
+  shortest. This is the reverse of the Mimeophon's Rate knob, which PRISM does not copy here.
+- **The time** is beat * 2 ^ (zone - the beat's zone) * ratio frames, at most 10.7 s (the top zone's high end), computed in
+  integers by `core/phrase-control` once a block from the tempo of the position suffix; without a tempo the last one
+  stays. At slow tempos the top zone reaches that bound and the longest ratios give the same 10.7 s: while the beat is
+  LONG's 1/1 (34.2 to 89.4 BPM) LOOP's `X2` below 44.9 BPM, `X1.75` below 39.3 BPM and `X1.67` below 37.4 BPM; just above
+  89.4 BPM (the beat ECHO's) LOOP's `X2` by up to 40 ms. Nothing else reaches it.
+- A zone or ratio change, or a new tempo, changes the time once: the engine crossfades to it, with no pitch bend.
+- The ratio is the saved value that was the note length before: a stored note above 12 is 12 (`X2`); without a stored
+  value it is the 1/1.
 
 ## Controls of the engine
 
@@ -119,7 +144,7 @@ tuned); `core/phrase-control` fills them from the page's values.
 | --- | --- | --- |
 | ZONE | 1..8 | Picks the time range: 1 to 10 ms, 5 to 40 ms, 20 to 120 ms, 60 to 350 ms, 150 ms to 1 s, 0.5 to 2.7 s, 1.3 to 5.4 s, 2.7 to 10.7 s. A change crossfades to the new time; the pitch does not bend. |
 | RATE | 0..1 | The time inside the zone, `low * (high / low) ^ RATE`. A change glides: the pitch of what is on the tape bends, like tape (at most an octave down or a fifth up). |
-| SYNC | on, off | On: the time is the frames the control provider gives (a note length at the tempo). Each step crossfades. |
+| SYNC | on, off | On: the time is the frames the control provider gives (a ratio of the zone's 1/1 at the tempo, below); ZONE and RATE are then not read. Each change crossfades; the pitch does not bend. |
 | RPTS | 0..1 | Repeats. 0 is one echo; 0.75 holds a repeat at its level for ever; above it the level grows by up to 1.1 a repeat until the limiter holds it. |
 | COLR | -1..1 | Colour of the repeats. Centre: flat. Toward dark every repeat loses highs (down to a low pass at 800 Hz), saturates a little and drifts slowly in pitch. Toward bright every repeat loses lows (up to a high pass at 1 kHz). |
 | HALO | 0..1 | Smears every repeat a little more than the last. 0 is an exact bypass. It never changes the level of the repeats. |
@@ -156,7 +181,7 @@ the reasons for each choice: finding 358.
 
 ```bash
 pnpm nx:pilot run digikit/prism:test-rig          # the engine on the SHARC-only rig, and PRISM coupled with Overloop, about 3 minutes
-pnpm nx:pilot run core/phrase-control:test-host   # the control provider: values to control words, the SYNC note table, the transport
+pnpm nx:pilot run core/phrase-control:test-host   # the control provider: values to control words, SYNC's zones and ratios, the transport
 pnpm nx:pilot run core/phrase-ui:test-host        # the page: encoders, presses, the cells' texts, what is drawn
 pnpm nx:pilot run digikit/prism:test-device       # the emulated Digitakt II: the page, the send path, beside CANOPY and Overloop, the transition
 pnpm nx:pilot run digikit/prism:pack              # the package for the Digitakt II

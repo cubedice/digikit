@@ -14,12 +14,12 @@ label, its value, and a state word.
 | --- | --- | --- | --- |
 | LEVEL | MIX | | the column and its number |
 | A | ZONE, four ticks a zone | FLIP | the zone's name, eight marks under it with the chosen one tall, `FLIP` inverted |
-| B | RATE: a coarse step a tick, a fine step with FUNC held; with SYNC a note length, four ticks each | SYNC | the time (`387 MS`, `1.25 S`) or the note (`1/8.`), `FREE` or `SYNC` |
+| B | RATE: a coarse step a tick, a fine step with FUNC held; with SYNC a ratio of the zone's 1/1, four ticks each, `/2` to `X2` | SYNC | the time (`387 MS`, `1.25 S`) or the ratio (`1/1`, `X1.5`, `/1.33`), `FREE` or `SYNC` |
 | C | RPTS | HOLD | the number, or `INF` with `HOLD` inverted |
 | D | COLR | | the distance from the centre, `DARK` or `BRIT` |
 | E | HALO | | the number |
 | F | SKEW | | `L 12` or `R 12`: the side with the longer time and the distance from the centre |
-| G | INPT: a tick up LOOP, a tick down LIVE, only while there is a loop | a short press: INPT, only while there is a loop. Held: the TRIG keys turn tracks on and off, their LEDs show them | `INPT`, `LIVE` or `LOOP`, and under it the tracks the effect hears (`5 TRK`, `NO TRK`); while G is held the tracks and `TRIGS` inverted |
+| G | INPT, a two-position switch: a tick to the right LOOP, to the left LIVE, at any time (also without a loop) | nothing. Held: the TRIG keys turn tracks on and off, their LEDs show them | `INPT`, `LIVE` or `LOOP`, and under it the tracks the effect hears (`5 TRK`, `NO TRK`), or `SILENT` at LOOP while there is no loop; while G is held the tracks and `TRIGS` inverted |
 | H | XFAD, Overloop's crossfader, a step a tick, only while there is a loop | ARM, while Overloop reports | `XFAD`: `--` and `NO LOOP`; `ARMD` and the steps the next change keeps (`16 ST`, `CUT`, `WAIT`); with a loop `LIVE`, a number or `LOOP`, and the crossfader as it sounds drawn below, or `ARMD` inverted |
 | FUNC + NO | | drop the loop | |
 
@@ -29,18 +29,19 @@ While G is held on the page that is on top, the 16 TRIG keys choose the tracks t
 white (`0x71`) for a track it hears, the dim level (`0x02`) for the others. A TRIG key turns its track on or off at its
 press; the key plays no note, enters no step and selects no track or pattern, and its release is the page's too, also
 when G or the page went first. A key down before G was is the firmware's. When G is released, when another view covers
-the page or when the FX view shows another page, every TRIG key and LED is the firmware's again. The release of G is
-INPT's switch only when it ends a short press: no TRIG key and no turn of G during the hold, and less than 0.4 s
-(`PU_SHORT_BLOCKS`, 600 blocks of the engine's heartbeat; without a fresh heartbeat any hold counts as short). The tracks
+the page or when the FX view shows another page, every TRIG key and LED is the firmware's again. Neither the press nor the
+release of G switches INPT ([finding 363](../../../../docs/findings/363-loop-link-jitter.md)). The tracks
 are `core/phrase-control`'s value `PH_P_TRKS` (bit t for track t + 1), saved with the other values; the provider gives
 the fx service a full send amount (127) for each of them and 0 for the others (`phrase_sends`), and the effect row's
 amount words carry them to the send route.
 
 INPT is `core/phrase-control`'s value (not saved); XFAD, ARM and the drop are Overloop's, through its home
 `core/loop-control` (`<dk/loop.h>`), which is optional here: in an image without it (the patch set `phrase`) the page has no
-loop, INPT stays LIVE and H shows `--`. `phrase_ui_tick`, once a UI pass also when the page is not shown, puts INPT at LOOP
-when the loop count in Overloop's status moves (a new loop) and at LIVE when there is no loop (a status without one, or
-no status for 60 more passes). While INPT is LOOP and there is a loop the header says `LOOP 16 ST 2.00 S` in place of the
+loop and H shows `--`; G still turns INPT, and at LOOP PRISM hears silence. `phrase_ui_tick`, once a UI pass also when the
+page is not shown, puts INPT at LOOP when the loop count in Overloop's status moves (a new loop), and at LIVE when the
+loop goes away (a status with a loop, then one without: a drop, or a loop lost with its lease) or when Overloop, having
+reported, stops reporting (no status for 60 more passes; once, so that G may put INPT at LOOP again). At no other time
+does INPT move by itself: without a loop it stays where G put it. While INPT is LOOP and there is a loop the header says `LOOP 16 ST 2.00 S` in place of the
 zone and the time. The presses of D to F are taken and do nothing. UP, DOWN, FX and every other key go to the stock FX
 view: the page is one entry among the FX pages.
 
@@ -74,10 +75,11 @@ meanwhile, and a release that was lost under a cover does not hold the next pres
 ## Tests
 
 `tests/ui.test.ts` compiles the model and the renderer the firmware uses (`src/model.c`, `src/render.c`) with a stand-in
-provider: every encoder to its value and step, the three presses, the keys that pass, FUNC + RATE, the note steps with
-SYNC, every text, the cells for the states the plan draws, that everything drawn stays on the screen, and the tracks: G
+provider: every encoder to its value and step, the three presses, the keys that pass, FUNC + RATE, the ratio steps with
+SYNC, every text, G's turn both ways with and without a loop, no switch on its press, INPT staying at LOOP without a loop,
+LIVE at a drop and LOOP at an armed change, the cells for the states the plan draws, that everything drawn stays on the screen, and the tracks: G
 held and the TRIG keys, their LEDs, the texts of INPT held and not held, the release of a TRIG key after G, a key down
-before G, the page losing the top while G is held, and which holds of G switch INPT. The native glue (`src/native.c`,
+before G, the page losing the top while G is held, and that no hold of G switches INPT. The native glue (`src/native.c`,
 the two hooks) is covered by PRISM's device tests (`modules/fx/prism/tests/ui.device.test.ts`: the TRIG LEDs read from
 the panel, the amount words of the DSP row; `send.device.test.ts`: no note and no step from a TRIG key while G is held),
 which read the painted page from `phrase_ui_page`.

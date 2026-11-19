@@ -16,12 +16,15 @@ FUNC + FX opens the FX pages; Overloop's is one of them.
 
 | Control | Does |
 | --- | --- |
-| press H | ARM: the next pattern change keeps the cycle that was playing. One-shot: the change uses it up. A second press takes it back |
+| E: press | ARM: the next pattern change keeps the cycle that was playing. One-shot: the change uses it up. A second press takes it back |
+| E: turn | right arms, left takes the arm back (turned further it stays) |
 | H, or LEVEL | XFAD, the crossfader: 0 is LIVE (the input, untouched), 127 is LOOP (the loop alone) |
+| H: press | ARM as well, as on PRISM's page |
 | FUNC + NO | Drop the loop |
 
 The page shows the state (`IDLE`, `ARMED`, `LOOP`, `LOOP+ARM`), what an armed change would keep (`16 ST 2.00 S`) or what
-the loop holds, a timeline with a mark at the step that plays or at the loop's place, and the crossfader as it sounds.
+the loop holds, a timeline with a mark at the step that plays or at the loop's place, and in the bottom row, laid out as
+PRISM's cells, `ARM` above E (`OFF` or `ON`) and `XFAD` above H with the crossfader as it sounds under it.
 
 What happens, case by case:
 
@@ -66,6 +69,14 @@ any more: the kit loads as any kit does and changes nothing in Overloop.
 - **The boundary** comes from `core/pattern-position`: a step boundary begins with the block whose record counts it, as
   the notes of that step do, so the loop is a whole number of blocks and is exactly what was heard. A boundary of another
   pattern is the change; a boundary of another start generation is a START. No hook into the firmware was added.
+- **A record that comes again or late** (on the device a frame of the link comes twice or late when the ColdFire's block
+  interrupt is held off; the position receiver then keeps the last good record, [finding 363](../../../docs/findings/363-loop-link-jitter.md)):
+  a record whose send count did not move is no news, and the run of boundaries goes on. A send count that moved by up to
+  `OL_SKIP` (4) since the last new record, at most 4 blocks after it, goes on as well; a boundary in that record begins
+  with this block, up to d - 1 blocks after its own for a gap of d frames. The loop's length is exact when no gap touches
+  the two boundaries it is measured between, and one block off when a single frame that did not arrive held one of them
+  (at most 3 blocks for a gap of 4). A larger gap, 4 records again in a row, a send count that went back or two boundaries
+  in one record end the run: the next boundary starts a new one, and an armed change in that record takes nothing.
 - **The seam:** the last 480 frames of the loop run into the 480 frames before its start, so the turn is as it was
   recorded. For a pattern that repeats those are the same samples, and the turn is exact.
 - **The crossfader:** output = input + (loop - input) * XFAD, moving by at most 1/256 a frame. LIVE passes the input
