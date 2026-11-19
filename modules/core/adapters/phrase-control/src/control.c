@@ -1,4 +1,5 @@
-/* UI settings and a bounded per-block phrase sideband. No audio reads on CF. */
+/* The control provider of the phrase effect (PRISM): its settings, the control words it publishes once a block and the
+ * status it gets back (layout: sdk/dsp/contract/dk_phrase.inc, version 3). No audio is read on the ColdFire. */
 #include <dk/phrase.h>
 typedef uint32_t u32;
 typedef uint16_t u16;
@@ -6,24 +7,20 @@ extern u32 dkrt_irq_mask(void);
 extern void dkrt_irq_restore(u32);
 extern int dkrt_settings_get(const char *, void *, u32);
 extern int dkrt_settings_put(const char *, const void *, u32);
-extern void pp_phrase_timing(u32 *);
 
 static u32 raw[PH_PARAM_COUNT], control[2][PH_CONTROL_WORDS];
 static volatile u32 published;
-static u32 owner, page_code, row_index, generation, command, action, selection;
+static u32 owner, page_code, row_index, generation;
 static u32 frame, reply_frame, assembled_seq, fragments, status[PH_STATUS_WORDS];
+/* The block in which the engine's heartbeat last moved. The DSP side returns its latest snapshot again and again; only a
+ * heartbeat that moves shows that the engine still runs. */
+static u32 beat_frame, beat, beating;
 static u32 assembling[PH_STATUS_WORDS];
-static char key[48];
+static char key[48], sends_key[48];
 static char title[24];
-static u32 phase_seen, prev_phase, prev_boundary, prev_epoch, prev_pattern;
-static u32 beat_q16, beat_rem, master_q16, boundary_phase, master_ticks = 5400000;
-static u32 local_phase, stopped_seen, timeline, timeline_start;
-static u32 clock_valid, start_wait_blocks;
-enum { START_PRECOMMIT_BLOCKS = 64 };
-static u32 route_fault_seen, route_rearm_pending, route_rearm_frame;
-/* A healthy control/reply roundtrip fits well inside this 43ms window. A
- * persistent fault must not leave the displayed fader above the LIVE route. */
-enum { ROUTE_REARM_BLOCKS = 64 };
+/* The format of the saved settings: the version of the control words. Settings of another format are not read. A record
+ * of format 3 has every value up to PH_P_TRKS, or (written before the tracks were a value) every value before it. */
+enum { SAVE_FORMAT = 3 };
 
 static u32 bits(float v)
 {
@@ -36,107 +33,139 @@ static u32 bits(float v)
 }
 static u32 limit(u32 p)
 {
-    if (p == PH_P_REC || p == PH_P_FROM)
-        return 1;
-    if (p == PH_P_MODE)
-        return 2;
-    if (p == PH_P_TIME)
-        return PH_TIME_CHOICES - 1;
-    if (p == PH_P_TAKE || p == PH_P_CUE || p == PH_P_SCAN)
-        return 128;
-    if (p == PH_P_STRT)
-        return 126;
+    if (p == PH_P_ZONE)
+        return PH_ZONES - 1;
     if (p == PH_P_RATE)
-        return 12;
-    if (p == PH_P_TUNE)
-        return 96;
-    if (p == PH_P_SHAP)
-        return 3;
-    if (p == PH_P_MASK)
-        return PH_INPUT_MASK;
+        return PH_RATE_MAX;
+    if (p == PH_P_RATIO)
+        return PH_SYNC_RATIOS - 1;
+    if (p == PH_P_SYNC || p == PH_P_FLIP || p == PH_P_HOLD || p == PH_P_INPT)
+        return 1;
+    if (p == PH_P_TRKS)
+        return PH_TRACKS_ALL;
     return 127;
 }
 static void defaults(void)
 {
     for (u32 i = 0; i < PH_PARAM_COUNT; ++i)
         raw[i] = 0;
-    raw[PH_P_LEN] = 127;
-    raw[PH_P_SIZE] = 32;
-    raw[PH_P_RATE] = 4;
-    raw[PH_P_TUNE] = 48;
-    raw[PH_P_SCAN] = 64;
-    raw[PH_P_WDTH] = 64;
-    raw[PH_P_DEC] = 40;
-    raw[PH_P_LPF] = 127;
-    raw[PH_P_MASK] = 1;
-    for (u32 i = PH_P_GAIN0; i <= PH_P_EXT_GAIN; ++i)
-        raw[i] = 127;
-    /* The tape: a dotted eighth, a third of the way up the feedback, both sides alike, head and grains both full. */
-    raw[PH_P_TIME] = 8;
-    raw[PH_P_FDBK] = 45;
+    /* Zone 5 (150 ms to 1 s) in its middle, the zone's 1/1 with SYNC, half the way to unity, flat, no halo, both sides
+     * alike, the wet signal most of the way up. */
+    raw[PH_P_ZONE] = 4;
+    raw[PH_P_RATE] = PH_RATE_MAX / 2;
+    raw[PH_P_RATIO] = PH_SYNC_UNITY;
+    raw[PH_P_RPTS] = PH_RPTS_UNITY / 2;
+    raw[PH_P_COLR] = 64;
     raw[PH_P_SKEW] = 64;
-    raw[PH_P_BAL] = 64;
+    raw[PH_P_MIX] = 100;
+}
+/* What survives a restart: everything but HOLD, which is a gesture, INPT, which follows the loop (after a restart there is
+ * none), and XFAD, which is the loop effect's. */
+static u32 saved_value(u32 i)
+{
+    return i == PH_P_HOLD || i == PH_P_INPT || i == PH_P_XFAD ? 0 : raw[i];
 }
 static void save(void)
 {
-    /* Versioned byte encoding, independent of host endianness. Volatile REC,
-     * FADE and captured audio never survive reboot. */
+    /* Versioned byte encoding, independent of host endianness. */
     uint8_t value[4 + PH_PARAM_COUNT * 4];
     value[0] = 'P';
     value[1] = 'H';
-    value[2] = 2;
+    value[2] = SAVE_FORMAT;
     value[3] = PH_PARAM_COUNT;
     for (u32 i = 0; i < PH_PARAM_COUNT; ++i) {
-        u32 v = (i == PH_P_REC || i == PH_P_FADE) ? 0 : raw[i];
+        u32 v = saved_value(i);
         for (u32 j = 0; j < 4; ++j)
             value[4 + 4 * i + j] = (uint8_t)(v >> (24 - 8 * j));
     }
     dkrt_settings_put(key, value, sizeof(value));
 }
+/* The tracks the effect heard before they were one of its values: the send amounts of the fx service's record of the
+ * effect (fx/send/<module id>, one byte a track, finding 64) when it set them from a cell of the send page. A track with
+ * an amount above 0 is heard; without the record none is. */
+static u32 carried_tracks(void)
+{
+    uint8_t amount[PH_TRACKS];
+    u32 tracks = 0;
+    if (dkrt_settings_get(sends_key, amount, sizeof(amount)) != (int)sizeof(amount))
+        return 0;
+    for (u32 t = 0; t < PH_TRACKS; ++t)
+        if (amount[t])
+            tracks |= 1u << t;
+    return tracks;
+}
 static void load(void)
 {
     uint8_t value[4 + PH_PARAM_COUNT * 4];
     defaults();
-    if (dkrt_settings_get(key, value, sizeof(value)) != (int)sizeof(value) || value[0] != 'P' ||
-        value[1] != 'H' || value[2] != 2 || value[3] != PH_PARAM_COUNT)
-        return;
-    for (u32 i = 0; i < PH_PARAM_COUNT; ++i) {
+    int n = dkrt_settings_get(key, value, sizeof(value));
+    u32 count = 0;
+    if (n >= 4 && value[0] == 'P' && value[1] == 'H' && value[2] == SAVE_FORMAT &&
+        (value[3] == PH_PARAM_COUNT || value[3] == PH_P_TRKS) && n == 4 + 4 * (int)value[3])
+        count = value[3];
+    for (u32 i = 0; i < count; ++i) {
         u32 v = 0;
         for (u32 j = 0; j < 4; ++j)
             v = (v << 8) | value[4 + 4 * i + j];
         raw[i] = v > limit(i) ? limit(i) : v;
     }
-    raw[PH_P_REC] = raw[PH_P_FADE] = 0;
-    if (!raw[PH_P_LEN])
-        raw[PH_P_LEN] = 1;
+    raw[PH_P_HOLD] = raw[PH_P_INPT] = raw[PH_P_XFAD] = 0;
+    /* No tracks of its own (a record from before, another format or none): the ones the send amounts gave. They are saved
+     * with the next change of any value. */
+    if (count < PH_PARAM_COUNT)
+        raw[PH_P_TRKS] = carried_tracks();
 }
-/* 2^(semitones/12), bounded half-semitone range; coefficient multiplication
- * only on a UI edit, never in the audio ISR. */
-static float pitch(u32 n)
+/* SYNC (dk_phrase.inc): the beat is the 1/1 of the zone Z0 it fits best, the zone doubles or halves it by its distance from
+ * Z0, RATIO multiplies it. In integers, as this runs in the block interrupt: a beat is 345 600 000 / TEMPO frames (TEMPO is
+ * BPM * 120, 48 000 frames a second), kept as its whole frames and the remainder. */
+static const uint8_t ratio_num[PH_SYNC_RATIOS] = {1, 4, 3, 2, 3, 4, 1, 5, 4, 3, 5, 7, 2};
+static const uint8_t ratio_den[PH_SYNC_RATIOS] = {2, 7, 5, 3, 4, 5, 1, 4, 3, 2, 3, 4, 1};
+#define BEAT_120 345600000u
+/* Z0, the zone (0..7) the beat at TEMPO fits best. */
+static u32 sync_zone(u32 tempo)
 {
-    float v = 0.25f;
-    for (u32 i = 0; i < n; ++i)
-        v *= 1.02930223664f;
-    return v;
+    static const u32 edges[PH_ZONES - 1] = {PH_SYNC_EDGE_1, PH_SYNC_EDGE_2, PH_SYNC_EDGE_3,
+                                            PH_SYNC_EDGE_4, PH_SYNC_EDGE_5, PH_SYNC_EDGE_6,
+                                            PH_SYNC_EDGE_7};
+    u32 beat = BEAT_120 / tempo, z = 0;
+    while (z < PH_ZONES - 1 && beat >= edges[z])
+        ++z;
+    return z;
 }
-/* A 0..127 control as a signed ten-bit field of the packed tape word. CENTRED: 64 is 0 and the ends are -512 and 511
- * (the ends switch a side off exactly); else 0..127 is 0..508. */
-static u32 field(u32 value, u32 centred)
+/* The frames of RATIO in ZONE (0..7) at TEMPO: beat * 2 ^ (ZONE - Z0) * num / den, to the nearest, at most PH_SYNC_MAX. */
+static u32 sync_time_of(u32 tempo, u32 zone, u32 ratio)
 {
-    int v = centred ? (value >= 127 ? 511 : ((int)value - 64) * 8) : (int)value * 4;
-    return (u32)v & 0x3ffu;
+    u32 z0 = sync_zone(tempo), num = ratio_num[ratio], den = ratio_den[ratio];
+    if (zone >= z0)
+        num <<= zone - z0;
+    else
+        den <<= z0 - zone;
+    /* beat * num / den with the beat's remainder: at most 96 000 * 7 * 128 and 36 000 * 7 * 128, inside 32 bits */
+    u32 whole = BEAT_120 / tempo, rest = BEAT_120 % tempo;
+    u32 frames = (whole * num + rest * num / tempo + den / 2) / den;
+    return frames > PH_SYNC_MAX ? PH_SYNC_MAX : frames;
 }
-/* The delay in frames for the TIME choice at TEMPO (BPM * 120): ticks * 3 600 000 / tempo, in integers (this runs
- * in the block interrupt). Without a tempo the last value stays. The engine bounds it to its tape. */
-static u32 tape_time = 24000;
-static u32 tape_frames(u32 tempo)
+/* SYNC_TIME of this block from the position suffix's TEMPO: without a tempo the last one stays (120 BPM before any). */
+static u32 sync_tempo = 14400;
+static u32 sync_frames(u32 tempo)
 {
-    static const u16 ticks[PH_TIME_CHOICES] = {12, 16, 18,  24,  32,  36,  48,  64,
-                                               72, 96, 128, 144, 192, 288, 384, 768};
-    u32 choice = raw[PH_P_TIME];
-    if (tempo && choice < PH_TIME_CHOICES)
-        tape_time = (u32)ticks[choice] * 3600000u / tempo;
-    return tape_time;
+    if (tempo)
+        sync_tempo = tempo;
+    u32 zone = raw[PH_P_ZONE], ratio = raw[PH_P_RATIO];
+    return sync_time_of(sync_tempo, zone < PH_ZONES ? zone : PH_ZONES - 1,
+                        ratio < PH_SYNC_RATIOS ? ratio : PH_SYNC_UNITY);
+}
+/* RPTS as the engine takes it: 0 .. PH_RPTS_UNITY is 0 .. 0.75 (unity exactly), the rest of the way up to 1. */
+static float repeats(u32 v)
+{
+    if (v <= PH_RPTS_UNITY)
+        return (float)v * (0.75f / PH_RPTS_UNITY);
+    return 0.75f + (float)(v - PH_RPTS_UNITY) * (0.25f / (127 - PH_RPTS_UNITY));
+}
+/* A control with its centre at 64: -1 .. 1, both ends exact. */
+static float centred(u32 v)
+{
+    return v >= 64 ? (float)(v - 64) / 63.0f : -(float)(64 - v) / 64.0f;
 }
 static void publish(void)
 {
@@ -148,52 +177,18 @@ static void publish(void)
     W(PH_C_VERSION, PH_VERSION);
     W(PH_C_SIZE, PH_CONTROL_WORDS * 4);
     W(PH_C_ENABLED, owner != 0);
-    W(PH_C_CMD_SEQ, command);
-    W(PH_C_ACTION, action);
-    W(PH_C_FROM, raw[PH_P_FROM]);
-    W(PH_C_TAKE_STEPS, raw[PH_P_TAKE]);
-    W(PH_C_CUE, raw[PH_P_CUE]);
-    W(PH_C_SELECTION_EPOCH, selection);
-    u32 mask = raw[PH_P_MASK];
-    for (u32 i = 0; i < 18; ++i) {
-        u32 g = raw[i < 16 ? PH_P_GAIN0 + i : PH_P_EXT_GAIN];
-        if (!g)
-            mask &= ~(1u << i);
-        c[PH_C_GAINS / 4 + i] = bits((float)g / 127.0f);
-    }
-    W(PH_C_NEXT_MASK, mask);
-    W(PH_C_FADE, bits((float)raw[PH_P_FADE] / 127.0f));
-    W(PH_C_CROP_START, bits((float)raw[PH_P_STRT] / 127.0f));
-    W(PH_C_CROP_LEN, bits((float)raw[PH_P_LEN] / 127.0f));
-    u32 sz = raw[PH_P_SIZE];
-    W(PH_C_SIZE_FRAMES, 240 + 23760 * sz * sz / (127 * 127));
-    static const u32 rates[13] = {0,    262144, 131072, 65536, 32768, 16384, 8192,
-                                  4096, 43691,  21845,  10923, 5461,  2731};
-    W(PH_C_RATE_BEATS, rates[raw[PH_P_RATE]]);
-    W(PH_C_PITCH_RATIO, bits(pitch(raw[PH_P_TUNE])));
-    W(PH_C_SHAPE, raw[PH_P_SHAP]);
-    W(PH_C_SPRAY, bits((float)raw[PH_P_SPRY] / 127.0f));
-    W(PH_C_JITTER, bits((float)raw[PH_P_JITR] / 127.0f));
-    W(PH_C_POS, bits((float)raw[PH_P_POS] / 127.0f));
-    W(PH_C_SCAN_RATIO, bits(((float)raw[PH_P_SCAN] - 64.0f) / 32.0f));
-    W(PH_C_REVERSE, bits((float)raw[PH_P_REVR] / 127.0f));
-    W(PH_C_WIDTH, bits((float)raw[PH_P_WDTH] / 127.0f));
-    W(PH_C_DIFF, bits((float)raw[PH_P_DIFF] / 127.0f));
-    /* RT60 across the diffusion network's mean136.5sample delay. */
-    float decay = (float)raw[PH_P_DEC] / 127.0f;
-    float exponent = 0.019643f / (0.15f + 7.85f * decay * decay);
-    W(PH_C_DECAY_FEEDBACK,
-      bits(1.0f - exponent + 0.5f * exponent * exponent - exponent * exponent * exponent / 6.0f));
-    /* Stable one-pole coefficients, zero HP and full LP are bypass endpoints. */
-    float hp = (float)raw[PH_P_HPF] / 127.0f, lp = (float)raw[PH_P_LPF] / 127.0f;
-    W(PH_C_HPF_COEFF, bits(hp * hp * 0.55f));
-    W(PH_C_LPF_COEFF, bits(lp * lp * 0.99f + 0.01f));
-    /* The tape head. TIME is filled in per block from the tempo (tape_frames). */
-    W(PH_C_TAPE_FEEDBACK, bits((float)raw[PH_P_FDBK] * (1.1f / 127.0f)));
-    W(PH_C_TAPE_PACK, (raw[PH_P_MODE] == 1 ? PH_TAPE_FLIP : 0) |
-                          (raw[PH_P_MODE] == 2 ? PH_TAPE_HOLD : 0) | field(raw[PH_P_SKEW], 1) << 2 |
-                          field(raw[PH_P_WOW], 0) << 12 | field(raw[PH_P_BAL], 1) << 22);
-    W(PH_C_DRIVE, bits((float)raw[PH_P_DRIV] / 127.0f));
+    W(PH_C_ZONE, raw[PH_P_ZONE] + 1);
+    W(PH_C_RATE, bits((float)raw[PH_P_RATE] / (float)PH_RATE_MAX));
+    W(PH_C_FLAGS, (raw[PH_P_SYNC] ? PH_F_SYNC : 0) | (raw[PH_P_FLIP] ? PH_F_FLIP : 0) |
+                      (raw[PH_P_HOLD] ? PH_F_HOLD : 0));
+    /* SYNC_TIME is filled in per block from the tempo (sync_frames). */
+    W(PH_C_RPTS, bits(repeats(raw[PH_P_RPTS])));
+    W(PH_C_COLR, bits(centred(raw[PH_P_COLR])));
+    W(PH_C_HALO, bits((float)raw[PH_P_HALO] / 127.0f));
+    W(PH_C_SKEW, bits(centred(raw[PH_P_SKEW])));
+    W(PH_C_MIX, bits((float)raw[PH_P_MIX] / 127.0f));
+    W(PH_C_INPUT, raw[PH_P_INPT]);
+    /* PH_C_XFADE and PH_C_ARM_SEQ stay 0: the crossfader and ARM are the loop effect's (core/loop-control). */
     W(PH_C_OWNER_ROW, row_index);
     W(PH_C_OWNER_GENERATION, generation);
 #undef W
@@ -202,41 +197,55 @@ static void publish(void)
     dkrt_irq_restore(sr);
 }
 
-/* Runtime calls only for a loader-validated exclusive capability owner.
- * physical_row is the absolute core/fx registry row, native_page the FX code. */
+/* The fx service calls this for the one effect that imports the control mailbox, when its page is registered, and
+ * with owner 0 when the effect leaves. physical_row is the row of the effect table, native_page the FX page code. */
 void phrase_bind(u32 own, u32 physical_row, u32 native_page, const char *module, const char *name)
 {
     if (owner == own && own && page_code == native_page)
         return;
     owner = 0;
     page_code = 0;
-    raw[PH_P_FADE] = raw[PH_P_REC] = 0;
+    raw[PH_P_HOLD] = 0;
     ++generation;
-    ++selection;
-    command = action = 0;
-    route_fault_seen = route_rearm_pending = route_rearm_frame = 0;
     for (u32 i = 0; i < PH_STATUS_WORDS; ++i)
         status[i] = 0;
     reply_frame = 0;
     fragments = 0;
+    beating = 0;
     if (own) {
         u32 j = 0;
         for (; j < 23 && name[j]; ++j)
             title[j] = name[j];
         title[j] = 0;
-        const char prefix[] = "phrase/";
-        u32 n = 0;
+        static const char prefix[] = "phrase/", sends[] = "fx/send/";
+        u32 n = 0, s = 0;
         for (; n < 7; ++n)
             key[n] = prefix[n];
-        for (u32 i = 0; i < 31 && module[i]; ++i)
+        for (; s < 8; ++s)
+            sends_key[s] = sends[s];
+        for (u32 i = 0; i < 31 && module[i]; ++i) {
             key[n++] = module[i];
+            sends_key[s++] = module[i];
+        }
         key[n] = 0;
+        sends_key[s] = 0;
         load();
         row_index = physical_row;
         page_code = native_page;
         owner = own;
     }
     publish();
+}
+/* The fx service calls this once a UI pass for the effect's row (an `[[info]]` entry, like phrase_bind): the send amount of
+ * each of the 16 tracks into AMOUNTS, PH_SEND_FULL for a track the effect hears (PH_P_TRKS) and 0 for the others. It
+ * returns 1, or 0 without an owner, and then writes nothing. The send route mixes the tracks by these amounts. */
+u32 phrase_sends(uint8_t *amounts)
+{
+    if (!owner || !amounts)
+        return 0;
+    for (u32 t = 0; t < PH_TRACKS; ++t)
+        amounts[t] = (raw[PH_P_TRKS] >> t) & 1 ? PH_SEND_FULL : 0;
+    return 1;
 }
 u32 dkrt_phrase_active(void)
 {
@@ -257,89 +266,27 @@ u32 dkrt_phrase_snapshot(u32 *out, u32 words)
     u32 sr = dkrt_irq_mask();
     for (u32 i = 0; i < PH_STATUS_WORDS; ++i)
         out[i] = status[i];
-    u32 fresh = reply_frame && (u32)(frame - reply_frame) < 750 &&
-                status[PH_S_OWNER_GENERATION / 4] == generation;
+    u32 fresh = reply_frame && (u32)(frame - reply_frame) < 750 && beating &&
+                (u32)(frame - beat_frame) < 750 && status[PH_S_OWNER_GENERATION / 4] == generation;
     dkrt_irq_restore(sr);
     return fresh;
-}
-int32_t dkrt_phrase_action(u32 a)
-{
-    if (!owner || a < PH_ACTION_ARM || a > PH_ACTION_CLEAR)
-        return -1;
-    u32 st = status[PH_S_STATE / 4];
-    if (st == PH_HANDOFF && a == PH_ACTION_ARM)
-        return -2;
-    action = a;
-    ++command;
-    raw[PH_P_REC] = a == PH_ACTION_ARM;
-    /* CLEAR drops the held phrase; MIX stays, because the effect runs without one. After a routing fault it still
-     * takes MIX down and cancels a retry, as every safety path does. */
-    if (a == PH_ACTION_CLEAR && (route_fault_seen || route_rearm_pending)) {
-        raw[PH_P_FADE] = 0;
-        route_rearm_pending = 0;
-    }
-    publish();
-    return 0;
 }
 int32_t dkrt_phrase_set(u32 i, u32 value)
 {
     if (!owner || i >= PH_PARAM_COUNT)
         return -1;
-    if (i == PH_P_REC)
-        return dkrt_phrase_action(value ? PH_ACTION_ARM : PH_ACTION_CANCEL);
-    u32 st = status[PH_S_STATE / 4];
-    u32 input = i == PH_P_MASK || (i >= PH_P_GAIN0 && i <= PH_P_EXT_GAIN);
-    if (input && (raw[PH_P_REC] || st == PH_ARMED || st == PH_RECORDING))
+    /* XFAD is the loop effect's crossfader, held by core/loop-control. */
+    if (i == PH_P_XFAD)
         return -2;
     if (value > limit(i))
         value = limit(i);
-    if (i == PH_P_LEN && !value)
-        value = 1;
-    /* MIX needs a live engine, not a held phrase: the effect is on whenever it is loaded. */
-    if (i == PH_P_FADE && value && (!reply_frame || frame - reply_frame >= 750))
-        value = 0;
     if (raw[i] == value)
         return 0;
-    if (i == PH_P_FADE) {
-        if (!value)
-            route_rearm_pending = 0;
-        else if (!raw[i] && route_fault_seen && status[PH_S_ROUTE_FAULT / 4]) {
-            /* The router keeps its fault flag until it sees this explicit
-             * zero-to-raised gesture. Do not erase that gesture using the
-             * previous reply while its new control frame is in flight. */
-            route_rearm_pending = 1;
-            route_rearm_frame = frame;
-        }
-    }
     raw[i] = value;
-    if (input)
-        ++selection;
     publish();
-    if (i != PH_P_FADE)
+    if (i != PH_P_HOLD && i != PH_P_INPT)
         save();
     return 0;
-}
-void phrase_control_tick(void)
-{
-    if (!owner)
-        return;
-    if (raw[PH_P_REC] && status[PH_S_COMMAND_ACK / 4] == command && !status[PH_S_REC_ACTIVE / 4]) {
-        raw[PH_P_REC] = 0;
-        publish();
-    }
-    u32 fault = status[PH_S_ROUTE_FAULT / 4], new_fault = fault && !route_fault_seen;
-    route_fault_seen = fault != 0;
-    if (!fault || new_fault)
-        route_rearm_pending = 0;
-    u32 failed_rearm =
-        fault && route_rearm_pending && frame - route_rearm_frame >= ROUTE_REARM_BLOCKS;
-    if (raw[PH_P_FADE] &&
-        (!reply_frame || frame - reply_frame >= 750 || new_fault || failed_rearm ||
-         status[PH_S_ERROR / 4] == PH_ERROR_STORAGE || status[PH_S_ERROR / 4] == PH_ERROR_LINK)) {
-        raw[PH_P_FADE] = 0;
-        route_rearm_pending = 0;
-        publish();
-    }
 }
 
 static u32 queued(u32 queue, u32 entry)
@@ -348,7 +295,7 @@ static u32 queued(u32 queue, u32 entry)
     return p[0] | ((u32)p[2] << 16);
 }
 /* Same reply cells as the loop UI, explicitly time multiplexed by magic.
- * Page0 latches a32-word status snapshot; pages1/2 finish that same snapshot. */
+ * Page 0 latches a 32-word status snapshot; pages 1 and 2 finish that same snapshot. */
 static void reply(const volatile u16 *p)
 {
     if (!p)
@@ -380,129 +327,42 @@ static void reply(const volatile u16 *p)
     for (u32 i = 0; i < PH_STATUS_WORDS; ++i)
         status[i] = assembling[i];
     reply_frame = frame;
+    if (!beating || status[PH_S_HEARTBEAT / 4] != beat) {
+        beat = status[PH_S_HEARTBEAT / 4];
+        beat_frame = frame;
+        beating = 1;
+    }
     fragments = 0;
 }
-/* Musical clock uses stock21600000 ticks/quarter. The position provider stages
- * the exact master scale and phase origin with each nominal boundary.
- * A stopped NOW grid advances at the stock selected BPM, without local tempo.
- * Whole and remainder division avoids cumulative fractional-clock drift. */
-static void timing(u32 *c, const u32 *p, u32 period, u32 origin)
+/* The tempo of the position suffix (core/pattern-position): word 5 holds BPM * 120 in its upper half. */
+static u32 tempo_of(u32 flags)
 {
-    u32 flags = p[5], tempo = flags >> 16, phase = p[9], running = flags & 2;
-    u32 valid = (flags & 1) && !(flags & 4), stopped = !running;
-    u32 period_valid = period >= 2700000 && period <= 43200000;
-    if (tempo < 3600 || tempo > 36000)
-        tempo = 0;
-    if (!phase_seen) {
-        clock_valid = 0;
-        start_wait_blocks = 0;
-    }
-    /* Stock transport becomes RUNNING before its timed START boundary is
-     * committed. During that narrow handoff the provider has no period and
-     * still publishes the preceding generation/pattern. Keep the previously
-     * valid stopped grid for at most 64 blocks; do not publish a START reason
-     * or consume the stopped-to-running transition before the valid commit.
-     * Any other invalid clock is immediately invalid. A timeout cannot open
-     * another grace window until an actual stop or valid commit is observed. */
-    if (!running || (valid && period_valid))
-        start_wait_blocks = 0;
-    if (phase_seen && stopped_seen && clock_valid && (flags & 7) == 2 && !period &&
-        p[4] == prev_epoch && p[6] == prev_pattern && tempo && master_ticks >= 2700000 &&
-        master_ticks <= 43200000 && start_wait_blocks < START_PRECOMMIT_BLOCKS) {
-        ++start_wait_blocks;
-        running = 0;
-        stopped = 1;
-        period = master_ticks;
-        period_valid = 1;
-    }
-    if (!period_valid)
-        period = 5400000;
-    if (!phase_seen || p[4] != prev_epoch || stopped != stopped_seen || p[6] != prev_pattern ||
-        (stopped && master_ticks != period)) {
-        /* Preserve the reason for the whole epoch so a queued control frame
-         * cannot miss the one transition on which a stopped numbered cue
-         * becomes runnable. Pattern, scale or invalid-clock changes are not
-         * an ordinary START, even when they also enter running transport. */
-        timeline_start = phase_seen && stopped_seen && clock_valid && running &&
-                                 p[4] - prev_epoch == 1 && p[6] == prev_pattern &&
-                                 master_ticks == period && valid && period_valid && tempo
-                             ? PH_TIMING_START
-                             : 0;
-        ++timeline;
-        phase_seen = 1;
-        prev_phase = phase;
-        beat_q16 = beat_rem = 0;
-        master_q16 = 0;
-        boundary_phase = running ? origin : phase;
-        prev_boundary = p[3];
-        prev_epoch = p[4];
-        prev_pattern = p[6];
-        local_phase = phase;
-        stopped_seen = stopped;
-    }
-    master_ticks = period;
-    if (stopped) {
-        local_phase += tempo * 2;
-        phase = local_phase;
-        valid = tempo != 0;
-    }
-    valid = valid && period_valid;
-    u32 delta = phase - prev_phase;
-    prev_phase = phase;
-    if (delta > 21600000) {
-        valid = 0;
-        ++timeline;
-        timeline_start = 0;
-        delta = 0;
-    }
-    /* delta<=21600000. quotient and remainder before multiplying by65536. */
-    u32 q = delta / 21600000, r = delta % 21600000;
-    uint64_t fine = (uint64_t)r * 65536 + beat_rem;
-    u32 fine_q = (u32)(fine / 21600000);
-    beat_q16 += q * 65536 + fine_q;
-    /* The true remainder is below21600000. Unsigned low-word subtraction
-     * recovers it exactly, avoiding a second64-bit division helper on CF. */
-    beat_rem = (u32)fine - fine_q * 21600000u;
-    if (running && p[3] != prev_boundary) {
-        if (p[3] - prev_boundary != 1)
-            valid = 0;
-        master_q16 = (master_q16 + 65536) & 0xffff0000u;
-        boundary_phase = origin;
-        prev_boundary = p[3];
-    }
-    u32 frac = (u32)(((uint64_t)(phase - boundary_phase) * 65536) / master_ticks);
-    if (running && frac > 65535)
-        frac = 65535;
-    c[PH_C_MASTER_PHASE / 4] = master_q16 + frac;
-    c[PH_C_BEAT_PHASE / 4] = beat_q16;
-    c[PH_C_TIMELINE_EPOCH / 4] = timeline;
-    c[PH_C_TIMING_FLAGS / 4] = (valid ? PH_TIMING_VALID : 0) | (running ? PH_TIMING_RUNNING : 0) |
-                               (tempo ? PH_TIMING_TEMPO_VALID : 0) |
-                               (stopped ? PH_TIMING_STOPPED : 0) | timeline_start;
-    clock_valid = valid;
-    c[PH_C_STEP / 4] = p[7];
-    c[PH_C_LENGTH / 4] = p[8];
-    c[PH_C_STEP_SEQUENCE / 4] = p[3];
-    c[PH_C_TEMPO_120 / 4] = tempo;
-    c[PH_C_TAPE_TIME / 4] = tape_frames(tempo);
+    u32 tempo = flags >> 16;
+    return tempo < 3600 || tempo > 36000 ? 0 : tempo;
 }
-void phrase_write_frame(u32 queue, u32 entry, const volatile u16 *rec)
+/* The control words of this block: the published ones, the tempo and the SYNC time from the position suffix's word 5, the
+ * block sequence at both ends and the checksum the DSP side checks. */
+static void frame_words(u32 *c, u32 position_flags)
 {
-    u32 c[PH_CONTROL_WORDS], p[16], clock[2];
-    ++frame;
-    reply(rec);
     for (u32 i = 0; i < PH_CONTROL_WORDS; ++i)
         c[i] = control[published][i];
-    /* PHRASE suffix starts at0x8b4; position suffix at0xa7c. */
-    for (u32 i = 0; i < 16; ++i)
-        p[i] = queued(queue, 0xa7c / 2 + 2 * i);
-    pp_phrase_timing(clock);
-    timing(c, p, clock[0], clock[1]);
+    u32 tempo = tempo_of(position_flags);
+    c[PH_C_TEMPO_120 / 4] = tempo;
+    c[PH_C_SYNC_TIME / 4] = sync_frames(tempo);
     c[PH_C_SEQ / 4] = c[PH_C_SEQ_END / 4] = frame;
     u32 check = PH_CHECK_SALT;
     for (u32 i = 0; i < PH_CONTROL_WORDS - 1; ++i)
         check ^= c[i];
     c[PH_C_CHECK / 4] = check;
+}
+/* core/dsp-link calls this once a block, in the block interrupt, with the frame it is about to send. The phrase suffix
+ * starts at 0x8b4 (ENTRY), the position suffix at 0xa7c. */
+void phrase_write_frame(u32 queue, u32 entry, const volatile u16 *rec)
+{
+    u32 c[PH_CONTROL_WORDS];
+    ++frame;
+    reply(rec);
+    frame_words(c, queued(queue, 0xa7c / 2 + 2 * 5));
     volatile u16 *out = (volatile u16 *)(queue + 4 * entry + 2);
     for (u32 i = 0; i < PH_CONTROL_WORDS; ++i) {
         out[0] = (u16)c[i];

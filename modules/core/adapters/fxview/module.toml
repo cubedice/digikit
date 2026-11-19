@@ -1,0 +1,73 @@
+[module]
+id = "core/fxview"
+version = "0.1.0"
+name = "FX view pages"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "The one owner of the FX view's draw, key and encoder slots: it hands them to the image adapters that paint a page of their own."
+requires = ["core/fxpages"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+# The page adapters are optional symbols (<dk/fxview.h>): core/phrase-ui has the phrase_ ones, core/loop-display the loop_ ones.
+[[object]]
+path = "build/fxview-cf.dko.json"
+sources = ["src/native.c"]
+optional = ["phrase_fxv_draw", "phrase_fxv_key", "phrase_fxv_turn", "loop_fxv_draw", "loop_fxv_key", "loop_fxv_turn"]
+place = "cf.expansion"
+devices = ["dt2"]
+
+[object.externs]
+fxv_stock_draw = "cf.page.site.phrase_fx_draw"
+fxv_stock_help_draw = "cf.page.site.phrase_help_draw"
+fxv_stock_key = "cf.page.site.phrase_fx_key"
+fxv_stock_turn = "cf.page.site.phrase_fx_turn"
+fxv_label_font = "cf.page.site.instrument_label_font"
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.phrase_fx_draw_slot"
+value = "fxv_view_draw"
+width = 4
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.phrase_fx_key_slot"
+value = "fxv_view_key"
+width = 4
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.phrase_fx_turn_slot"
+value = "fxv_view_turn"
+width = 4
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.phrase_fx_encoder_slot"
+value = "fxv_encoder_interface"
+width = 4
+
+[[claim]]
+resource = "cf.page.site.phrase_fx_draw_slot"
+[[claim]]
+resource = "cf.page.site.phrase_fx_key_slot"
+[[claim]]
+resource = "cf.page.site.phrase_fx_turn_slot"
+[[claim]]
+resource = "cf.page.site.phrase_fx_encoder_slot"
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.phrase_help_draw_slot"
+value = "fxv_help_draw"
+width = 4
+
+[[claim]]
+resource = "cf.page.site.phrase_help_draw_slot"

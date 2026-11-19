@@ -1,0 +1,41 @@
+{
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "name": "digikit/overloop",
+  "metadata": {
+    "runtimeAcceptance": [
+      {
+        "files": [
+          "tests/transition.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "dsp": "sharc",
+        "modules": [
+          "digikit/overloop",
+          "test/sine",
+          "core/services/fx",
+          "core/services/machines"
+        ],
+        "patchModules": [
+          "core/loop-storage",
+          "core/pattern-position",
+          "core/loop-display",
+          "core/digikit-menu",
+          "core/health"
+        ],
+        "plusdrive": true,
+        "tags": [
+          "A:core/dynfx",
+          "A:core/fxpages",
+          "A:core/loop-display"
+        ]
+      }
+    ]
+  },
+  "targets": {
+    "test-device": {
+      "cache": false
+    }
+  }
+}

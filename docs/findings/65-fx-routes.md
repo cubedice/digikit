@@ -20,7 +20,7 @@ that is not allowed. No contract bump: the contract is still fx 1.0, because the
 ## What the runtime does with it **[D]**
 
 `fxsend::apply` (when the effect row is registered, at the boot): the route is the stored `fx/route/<module id>` when it is 0 or 1 and the effect allows it, else the manifest's default. An effect with no setting and `route = "send"` starts as a send effect. A send route needs a free send cell
-(`send_slots`, CAPACITY `SEND_SLOTS`); an effect past the limit stays on the master, also a send-only one **[O]** (the menu does not offer a send past the limit, but a default can exceed it). On an image without send cells (the Digitone II until step 6) every effect stays on the master and the page lists
+(`send_slots`, CAPACITY `SEND_SLOTS`); an effect past the limit stays on the master, also a send-only one **[O]** (the menu does not offer a send past the limit, but a default can exceed it; **[C]** [finding 359](359-prism-send-effect-and-page.md): a send-only effect without a cell is now run by neither route, since on the master it would replace the mix with its wet signal). On an image without send cells (the Digitone II until step 6) every effect stays on the master and the page lists
 it as saved. `fxsend::fx_entry` is behind the new export `dkrt_fx(index, DkrtFx *)`: the effects that have a page, in row order, with the tab, the module id, the allowed routes, the default, the route in force and the route the settings give now. `dkrt_settings_flush()` writes the settings record at once
 (the menu needs the write to land before the restart; the 2 s delay would lose it).
 

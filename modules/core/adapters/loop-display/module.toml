@@ -1,14 +1,15 @@
 [module]
 id = "core/loop-display"
-version = "0.1.0"
-name = "Loop performance display"
+version = "0.2.0"
+name = "Loop page"
 category = "core"
 role = "adapter"
 type = "framework"
 author = "digikit"
 status = "experimental"
-summary = "DTII Overloop performance display and coherent DSP status return."
-requires = ["core/fxpages", "core/dsp-link", "core/loop-controls"]
+summary = "The loop effect's own page: the timeline, the crossfader on H and LEVEL, ARM on the press of H, FUNC + NO drops the loop."
+# core/fxview owns the FX view's table slots and calls this page's loop_fxv_ functions; core/loop-control holds the values.
+requires = ["core/fxview", "core/loop-control"]
 conflicts = []
 ports = ["dt2-1.17"]
 
@@ -17,20 +18,14 @@ ports = ["dt2-1.17"]
 
 [[object]]
 path = "build/loop-display-cf.dko.json"
-sources = ["src/display.c"]
+sources = ["src/model.c", "src/native.c"]
 place = "cf.expansion"
 devices = ["dt2"]
 
 [object.externs]
-loop_reply_literal = "cf.link.site.reply_copy_lit"
 loop_stock_update = "cf.page.site.fx_update_entry"
 
-[[object]]
-path = "build/loop-display-dsp.dko.json"
-sources = ["src/dsp/status.s"]
-place = "dsp.l2"
-devices = ["dt2"]
-
+# The FX view's update call: the page asks for a repaint when the engine's status has moved on.
 [[op]]
 op = "write"
 anchor = "cf.page.site.fx_update_slot"
@@ -41,9 +36,3 @@ devices = ["dt2"]
 
 [[claim]]
 resource = "cf.page.site.fx_update_slot"
-
-# The functions the fx service file (`fx.dks`) calls: it has no link to the image and finds each by name in the info table.
-[[info]]
-name = "loop_ui_paint"
-symbol = "loop_ui_paint"
-devices = ["dt2"]

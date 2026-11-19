@@ -5,7 +5,7 @@
     "test-host": {
       "inputs": [
         "hostTests",
-        "{workspaceRoot}/tools/patchkit/pk_phrase_route_probe.py",
+        "{workspaceRoot}/tools/patchkit/pk_phrase_transport_probe.py",
         "{workspaceRoot}/tools/patchkit/pk_sharc.py",
         "{workspaceRoot}/tests/support/fx_rig.py",
         "{workspaceRoot}/tests/support/dsp_voice_rig.py",

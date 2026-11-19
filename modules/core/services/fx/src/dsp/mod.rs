@@ -99,6 +99,8 @@ pub unsafe fn fx_flags_of<C: CoreApi>(core: &C, k: usize) -> u32 {
 }
 
 /// Set the MIX word an effect row publishes (before its rows go out) and the defaults of its parameter words are the record's.
+/// The phrase effect's row stays at unity: its level is a control of the phrase adapters (`PH_C_MIX`), so a MIX of its record
+/// or of a kit never reaches it.
 pub unsafe fn fx_set_mix<C: CoreApi>(core: &C, k: usize, bits: u32) {
     if k < MAX_FX {
         core.dsp().fx_mix[k] = if crate::phrase::is_row(k) {
@@ -113,7 +115,7 @@ pub unsafe fn fx_set_mix<C: CoreApi>(core: &C, k: usize, bits: u32) {
 pub unsafe fn fx_set_route<C: CoreApi>(core: &C, k: usize, route: u32, amt: [u32; 4]) {
     if k < MAX_FX {
         let d = core.dsp();
-        d.fx_route[k] = if crate::phrase::is_row(k) { 2 } else { route };
+        d.fx_route[k] = route;
         d.fx_amt[k] = amt;
     }
 }
@@ -264,6 +266,16 @@ pub(crate) unsafe fn check_rows<C: CoreApi>(core: &C, sec: &DspSec) -> i32 {
     OK
 }
 
+/// The route word of a row at its claim, before `fxsend::apply` has read the settings: the master (0), or run by neither route (2) for a
+/// record whose flags do not allow the master (`FXF_NOMASTER`).
+pub fn claim_route(flags: u32) -> u32 {
+    if flags & dkneeds::FXF_NOMASTER != 0 {
+        2
+    } else {
+        0
+    }
+}
+
 /// Claim the effect rows (lowest free ones first); the states follow the voice states, in record order.
 pub(crate) unsafe fn claim<C: CoreApi>(core: &C, c: &mut Claim) {
     let (rec, job, base) = (c.rec, c.job, c.base);
@@ -288,14 +300,14 @@ pub(crate) unsafe fn claim<C: CoreApi>(core: &C, c: &mut Claim) {
             k += 1;
         }
         d.fx_mix[frow] = MIX_ONE;
-        d.fx_route[frow] = 0;
-        d.fx_amt[frow] = [0; 4];
         d.fx_flags[frow] = rd32(e.add(FX_FLAGS as usize));
+        // an effect that may not run on the master is run by neither route until `fxsend::apply` has given it a send cell
+        d.fx_route[frow] = claim_route(d.fx_flags[frow]);
+        d.fx_amt[frow] = [0; 4];
         d.fx_owner[frow] = rec as u8 + 1;
         if phrase {
-            // the phrase effect's row: its route is the phrase route from the first publication on
+            // the phrase effect's row: its MIX is unity from the first publication on (`fx_set_mix`)
             crate::phrase::reserve(rec as u8 + 1, frow);
-            d.fx_route[frow] = 2;
         }
         d.fx_pub[frow] = 0;
         fclaimed |= 1 << frow;

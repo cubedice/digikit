@@ -17,9 +17,6 @@ static u32 head, count, generation, seen, last_step, last_pattern, valid;
 volatile u32 pp_position[16];
 static u32 external_seen, external_expired, external_stamp;
 static u32 committed_period;
-#ifndef PP_QUEUE_TEST
-static u32 committed_phase;
-#endif
 
 /* DTII 1.17 master scheduler: advanced mode uses six900000-tick pulses.
  * Common mode uses the pattern scale. This is musical time, not audio time. */
@@ -140,14 +137,6 @@ static u32 pattern_period(u32 pattern)
     return pp_period(*(volatile u8 *)(pattern + 0x1db79), *(volatile u8 *)(pattern + 0x1db7a));
 }
 
-/* Called in the same audio ISR after pp_write_frame. Staging with the nominal
- * marker keeps a pending pattern/scale change from reaching capture early. */
-void pp_phrase_timing(u32 *out)
-{
-    out[0] = U32(0x43164f94) == 1 ? committed_period : pattern_period(pp_current_pattern());
-    out[1] = committed_phase;
-}
-
 void pp_snapshot(u32 start)
 {
     u32 pattern = U32(0x4316501c), length = 0;
@@ -164,10 +153,7 @@ void pp_snapshot(u32 start)
 
 void pp_due(u32 clock, u32 kind)
 {
-    u32 before = pp_position[3];
     pp_commit(clock, kind, U32(0x40966840));
-    if (pp_position[3] != before)
-        committed_phase = U32(0x80004880);
 }
 
 void pp_write_frame_impl(u32 queue, u32 suffix)

@@ -84,6 +84,16 @@ describe('FxRig block', () => {
     expect(call.read_regs).toEqual(expect.arrayContaining(['I6', 'I7', 'R15', 'B3', 'MODE1']));
   });
 
+  it('pokes a word at a byte address before the call: a mailbox the effect imports', async () => {
+    const { fake, rig } = await open();
+    rig.poke(0x200a0400 + 8, 0xfffffffe);
+    await rig.block(Array(64).fill(0));
+    const ops = fake.batches[0]!;
+    expect(pokes(ops)).toContainEqual([nw(0x200a0400) + 2, 0xfffffffe]);
+    // the poke is sent before the call of the block
+    expect(ops.findIndex((o) => 'poke' in o)).toBeLessThan(ops.findIndex((o) => 'call' in o));
+  });
+
   it('reports the master after the hook, the fault count of each row and the effect output block', async () => {
     const master = Array.from({ length: 64 }, (_, k) => f2w(k));
     const { rig } = await open({

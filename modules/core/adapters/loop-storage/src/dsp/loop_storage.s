@@ -29,3 +29,11 @@
 .VAR _phrase_storage_bank1 = 0x9c22b9c8;
 .VAR _phrase_storage_bank_bytes = 0x00800000;
 .VAR _phrase_storage_frames = 1032192;
+
+// The two mailboxes between the loop effect (Overloop) and the phrase effect (PRISM), here because both effects require this
+// provider and either may be in an image without the other (sdk/dsp/contract/dk_loop.inc). _loop_tap (68 words, LT_*): the
+// loop times the crossfader, which the phrase effect hears with INPT at LOOP; the loop effect writes it. _loop_wet (68
+// words, LW_*): the phrase effect's output, which the loop effect adds behind its crossfader while it runs; each word has
+// one writer. Both start as zero: no magic, and LW_TAKEN does not move without a loop effect.
+.PKDATA _loop_tap, 272;
+.PKDATA _loop_wet, 272;

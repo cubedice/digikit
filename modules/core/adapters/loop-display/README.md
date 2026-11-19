@@ -1,28 +1,71 @@
-# Overloop performance display
+# Overloop's page (`core/loop-display`)
 
-Experimental DTII OS 1.17 adapter for one `digikit/overloop` instance. Include `core/loop-display` in the firmware, or use the `overloop` patch set. Overloop 0.4 requires its DSP import, so updating only the DKM on older firmware fails to load rather than silently losing the display.
+The page of the loop effect in the firmware's FX view on the Digitakt II (OS 1.17). It is a page adapter of
+[`core/fxview`](../fxview/README.md) and a client of the control home [`core/loop-control`](../loop-control/README.md): it
+holds no value of its own. The engine is `digikit/overloop`; the behaviour is described in
+[its README](../../../fx/overloop/README.md) and in [finding 360](../../../../docs/findings/360-overloop-automatic-loop.md).
 
-The adapter owns a 64-byte DSP mailbox, `_loop_ui_status`. Overloop publishes it at the end of each audio block; the DTII DSP-link sender encodes it into fourteen spare words at row offsets `+0x44/+0x48` in rows 17–20 and 29–31. The `OVL2` carrier packs the three 0–127 START/LENGTH values into one word; the mailbox and public UI snapshot remain sixteen-word `OVL1` records. The existing ACK, diagnostic and instrument reply rows, header, trailer, and all other bytes are preserved. DNII has no such return extension. Both firmware sender and reader must be updated together; the Overloop DKM ABI is unchanged. See [reply ownership](../../../../docs/findings/340-overloop-reply-ownership.md).
+## The page
 
-| Word | Meaning |
+```
+ OVERLOOP                      ARMED      title, state: IDLE, ARMED, LOOP, LOOP+ARM, NO LINK
+ ──────────────────────────────────
+         NEXT CHANGE KEEPS                line 1
+           16 ST 2.00 S                   line 2
+ |-------|---▮---|-------|-------|        the timeline: one cycle, quarter marks, where it stands
+ ──────────────────────────────────
+    ARM                         XFAD      the bottom row as PRISM's cells: each label above its encoder (E, H)
+    ON                          LIVE      ARM's state (inverted while on), XFAD's value
+                              ▮─────      the crossfader as it sounds, LIVE left, LOOP right
+```
+
+| State | Line 1 | Line 2 |
+| --- | --- | --- |
+| no loop, nothing armed | `NO LOOP` | `CYCLE 16 ST 2.00 S` once a step has been heard; empty while stopped |
+| armed | `NEXT CHANGE KEEPS` | `16 ST 2.00 S`; `LAST 21.5 S ONLY` when the cycle is longer than the buffers; `NOTHING YET` while a change would take nothing (stopped) |
+| a loop | `LOOP 16 ST 2.00 S` | `CUT TO ITS LAST PART` for a cut loop, else empty |
+| a loop, armed | as armed | as armed |
+
+The mark on the timeline is the step of the pattern that plays, or the loop's place once there is a loop. The crossfader
+drawing under `XFAD` follows the level the engine applies (it moves by at most 1/256 a frame, and stands at LOOP right after
+a capture); the text above it is the value of the control. `ON` is drawn inverted. The cells are 26 pixels wide, E's
+centred at x 32 and H's at x 110, as on PRISM's page; x 124 to 127 below the header are left to the FX view's page
+indicator. Times have two places below ten seconds and one from there; below a second they are in milliseconds.
+
+| Control | Does |
 | --- | --- |
-| 0 | ABI magic `0x4f564c31` (`OVL1`) |
-| 1 | Process-block heartbeat, wrapping u32 |
-| 2 | State: 0 idle, 1 recording, 2 frozen, 3 armed |
-| 3–4 | Valid recorded frames; frames written during capture |
-| 5–6 | Playback phase within window; applied float32 loop gain |
-| 7–9 | Latched arm start, capture goal steps, completed steps |
-| 10 | Capture error: 0 none, 1 timing lost, 3 capacity exceeded |
-| 11 | Recorded step count |
-| 12–13 | Playback window offset and length in frames |
-| 14–15 | Current START and LENGTH parameters |
+| press E | ARM, or take the arm back |
+| turn E | right: ARM; left: take the arm back. A turn toward the state that is already asked for does nothing |
+| press H | ARM, or take the arm back (as on PRISM's page) |
+| H, or LEVEL | XFAD, a step a tick, 0 (LIVE) to 127 (LOOP) |
+| FUNC + NO | drop the loop |
+| A to D, F, G, their presses | taken by the page, without effect |
 
-The UI task copies fourteen low-half-first carrier words from the driver reply while interrupts are briefly masked, checks the carrier version and reserved bits, then reconstructs the sixteen logical words. It validates bounds and rejects a missing or stalled heartbeat after 60 UI passes. No audio buffer is read by the UI. Firmware drawing occurs only in the FX view paint callback. The native view update runs first; our wrapper invalidates only a currently drawable Overloop view. It retains no view pointers. Animation requests require 60 new audio blocks, a 25 Hz ceiling; native input can redraw immediately.
+ARM is a counter in the home: each change of it toggles the engine. So that a turn of several ticks moves it once, the page
+counts the state it asked for until the status shows it (`ld_observe`, each time the page reads the status), the status is
+not fresh, or 750 blocks of the engine's heartbeat have passed (`LD_ARM_SETTLE`). Without a fresh status every press moves
+the counter, as before.
 
-The native title remains above the performance page. Layout uses top-left coordinates, converted to the firmware rectangle routine's bottom-left convention. The display shows recorder state, captured steps/time, wrap-aware window bounds, playback cursor, selected start/length/time, and actual audible LIVE–LOOP gain. The small upper-right cue indicates the next pattern-switch side. No CAP label is drawn.
+Everything else (the page keys, PLAY, STOP, the track keys, FUNC + FX to the next page) goes to the firmware.
 
-Parameter IDs remain REC=0, START=1, FADE=2, LENGTH=3. Physical encoder positions are A REC, B START, C LENGTH, D FADE, so saved kits retain their meaning.
+## How it is built
 
-Component checks: `tests/patchkit/test_loop_display.py`, `modules/fx/overloop/tests/test_overloop.py`. Running-firmware scenario: `modules/fx/overloop/tests/display.manual.device.test.ts`, using the `overloop` patch set and a separately prepared `out/regression/modules/dt2/overloop.dkm`. Hardware behavior is unverified.
+- `src/model.c`, `model.h`: the keys and turns, the texts and the drawing, against a canvas of two functions. No firmware
+  type; tested on the host.
+- `src/native.c`: the adapter functions `loop_fxv_draw`, `loop_fxv_key`, `loop_fxv_turn` that `core/fxview` calls, and
+  `loop_view_update` in the view's update slot (`cf.fx.site.fx_update`), which asks for a repaint when the status has
+  moved on by 60 blocks (25 times a second at most), at once after an edit, and when the link comes or goes.
+- The page is the loop effect's when the view's page code is the one the home reports (`dkrt_loop_page`, which the fx
+  service tells the home with the effect's values). Without a loop effect loaded no page is taken.
+- Diagnostics a device test reads: `loop_ui_debug` (0 paints, 3 keys taken, 4 turns taken, 6 the page is on top, 7 the
+  view's page code), `loop_ui_values` (the home's values at the last callback), `loop_ui_snapshot` (the status), and
+  `loop_ui_page` (the page as last painted: the texts, the mark and the fader).
 
-Run the experimental device scenario with `pnpm --filter @digi/regression test:overloop` after preparing the daemon, ready inputs, synthetic sample card and DKM as described in `docs/TESTING.md`. It is a separate Vitest project so normal runtime acceptance does not require experimental firmware or a DTII-only module.
+## Checks
+
+```bash
+pnpm nx:pilot run core/loop-display:test-host     # keys, turns, the texts of every state, the drawing's bounds
+pnpm nx:pilot run digikit/overloop:test-device    # the page on the emulated Digitakt II, in every state
+```
+
+The module is in the patch sets `overloop` and `canopy-overloop-prism`. Nothing ran on hardware.

@@ -754,7 +754,7 @@ A change in a machine or effect module, `core/dsp-voice`, `core/fx` or the kit s
 The suites do not run a persistent V2 instrument (`[[machine]] instrument = true`: no voice entry) or a module whose
 module.toml says why the rig cannot run it, `[conformance] rig_skip = "<why>"` (its DSP reads data of a core module that the rig does
 not place); such a module's own tests run its DSP. No suite then measures its `dsp_cost_voice` or `dsp_cost_fx`: its own tests check
-every block they run against the cost in `[uses.<device>]` (Overloop: `modules/fx/overloop/tests/test_overloop.py`), and
+every block they run against the cost in `[uses.<device>]` (Overloop: `modules/fx/overloop/tests/loop.rig.test.ts`), and
 `patchkit uses set --id ID --device DEV --dsp-cost-fx N` writes it. `[conformance] patch_set = "<set>"` names the patch set the module's load cell
 (`tests/conformance`) and `module:check`'s commit stage boot, for a module that needs a patched-in core module the `emulator` set lacks.
 The load cell expects no runtime voice row of a V2 instrument: core/instrument-play publishes its row in its own table.

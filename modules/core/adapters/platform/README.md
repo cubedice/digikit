@@ -3,7 +3,7 @@
 The L1 adapter under the runtime's `Platform` interface (docs/ARCHITECTURE.md, R3). It owns the firmware hooks that the digikit runtime used to install
 itself, and the exception hook install:
 
-- `cf.view.hook.ui_loop` (`dkrt_loop_hook`): the UI loop's event pop runs the runtime's `dkrt_tick` once per pass, after the optional adapter policies `fx_controls_tick` (core/loop-controls) and `loop_ui_tick` (core/loop-display).
+- `cf.view.hook.ui_loop` (`dkrt_loop_hook`): the UI loop's event pop runs the runtime's `dkrt_tick` once per pass, after the optional adapter policies `fx_controls_tick` (a test fixture; core/loop-controls) and `loop_ui_tick` (core/loop-display).
 - `cf.rtos.hook.main_os_task` (`dkrt_boot_hook`): the entry of the main-OS task runs `dkrt_boot`, which loads the selected modules before the task builds its
   singletons (finding 37; finding 128: it must exist before the main OS starts, so it stays patched in the image).
 - `cf.midi.hook.rx` (`dkrt_midi_hook`): a gathered USB SysEx message goes to `dkrt_midi_rx` first (finding 43).

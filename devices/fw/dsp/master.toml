@@ -29,6 +29,28 @@ mark = "D"
 users = ["core/fx"]
 doc = "The master float buffer: the literal `I3 = 0x25f180` (Digitakt II) or `0x268438` (Digitone II) of the Q31 converter."
 
+# The volume ramp of the DT2 master function (FUN_1c207b, the function of the send hook, devices/fw/dsp/fx.toml): once a block it
+# squares the volume word, keeps the last block's end gain as this block's start (0x2558c0), stores the new one (0x2558c4) and
+# the step (new - start) / 32 (0x2558c8), and multiplies sample k of the master by start + k steps (added up sample by sample).
+# The only other writer is an initialisation function (FUN_1c15e3, reached from 0x1c147e), not part of the block.
+[[value]]
+name = "dsp.master.value.volume_ramp.start"
+cpu = "sharc"
+devices = ["dt2"]
+rule = { kind = "sharc_mem_addr", reloc_hash = "cd922cc4821f7d3912560bd7e559ebe263957a4e55d8a784b0ce16bf06dd7454", offset = 0x2b7 }
+mark = "D"
+users = ["core/dyndsp"]
+doc = "DT2 only: the master volume ramp's gain for the first sample of the block, the word of `DM(0x2558c0) = R0` in the master function. The loop effect reads it after the master function to add a send effect's output at the master's gain."
+
+[[value]]
+name = "dsp.master.value.volume_ramp.step"
+cpu = "sharc"
+devices = ["dt2"]
+rule = { kind = "sharc_mem_addr", reloc_hash = "cd922cc4821f7d3912560bd7e559ebe263957a4e55d8a784b0ce16bf06dd7454", offset = 0x2c5 }
+mark = "D"
+users = ["core/dyndsp"]
+doc = "DT2 only: the master volume ramp's step a sample (new gain - start) / 32, the word of `DM(0x2558c8) = R12` in the master function."
+
 [[hook]]
 name = "dsp.master.hook.q31_converter.call"
 site = "dsp.master.site.q31_converter.call"

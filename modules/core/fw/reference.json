@@ -9446,7 +9446,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "Preempt only TRIG input-selection gestures while a visible phrase overlay owns them, including cancelled releases after view loss. All other events invoke the native callable tail unchanged.",
+      "doc": "Preempt only the TRIG keys while G holds the phrase page's selection of the tracks, including the releases of TRIG keys it took after G or the view went. All other events invoke the native callable tail unchanged.",
       "file": "devices/fw/phrase-ui.toml",
       "kind": "hook",
       "mark": "D",
@@ -9479,7 +9479,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "Wrap the normal cdecl LED setter; the handler invokes the generated callable tail. Only TRIG LEDs 26..41 change while phrase input selection owns the view; every other LED and all normal-view calls are retained.",
+      "doc": "Wrap the normal cdecl LED setter; the handler invokes the generated callable tail. Only TRIG LEDs 26..41 change while G holds the phrase page's selection of the tracks; every other LED and all other calls are retained.",
       "file": "devices/fw/phrase-ui.toml",
       "kind": "hook",
       "mark": "D",
@@ -11780,7 +11780,7 @@
       },
       "subsystem": "page",
       "users": [
-        "core/phrase-ui"
+        "core/fxview"
       ],
       "was": []
     },
@@ -11811,7 +11811,7 @@
       },
       "subsystem": "page",
       "users": [
-        "core/phrase-ui"
+        "core/fxview"
       ],
       "was": []
     },
@@ -11842,7 +11842,7 @@
       },
       "subsystem": "page",
       "users": [
-        "core/phrase-ui"
+        "core/fxview"
       ],
       "was": []
     },
@@ -11873,7 +11873,7 @@
       },
       "subsystem": "page",
       "users": [
-        "core/phrase-ui"
+        "core/fxview"
       ],
       "was": []
     },
@@ -11904,7 +11904,7 @@
       },
       "subsystem": "page",
       "users": [
-        "core/phrase-ui"
+        "core/fxview"
       ],
       "was": []
     },
@@ -11935,7 +11935,7 @@
       },
       "subsystem": "page",
       "users": [
-        "core/phrase-ui"
+        "core/fxview"
       ],
       "was": []
     },
@@ -11966,7 +11966,7 @@
       },
       "subsystem": "page",
       "users": [
-        "core/phrase-ui"
+        "core/fxview"
       ],
       "was": []
     },
@@ -11997,7 +11997,7 @@
       },
       "subsystem": "page",
       "users": [
-        "core/phrase-ui"
+        "core/fxview"
       ],
       "was": []
     },
@@ -12028,7 +12028,7 @@
       },
       "subsystem": "page",
       "users": [
-        "core/phrase-ui"
+        "core/fxview"
       ],
       "was": []
     },
@@ -22330,6 +22330,66 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x2558c0",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 only: the master volume ramp's gain for the first sample of the block, the word of `DM(0x2558c0) = R0` in the master function. The loop effect reads it after the master function to add a send effect's output at the master's gain.",
+      "file": "devices/fw/dsp/master.toml",
+      "kind": "value",
+      "mark": "D",
+      "name": "dsp.master.value.volume_ramp.start",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_mem_addr",
+          "offset": 695
+        }
+      },
+      "subsystem": "master",
+      "users": [
+        "core/dyndsp"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2558c8",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 only: the master volume ramp's step a sample (new gain - start) / 32, the word of `DM(0x2558c8) = R12` in the master function.",
+      "file": "devices/fw/dsp/master.toml",
+      "kind": "value",
+      "mark": "D",
+      "name": "dsp.master.value.volume_ramp.step",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_mem_addr",
+          "offset": 709
+        }
+      },
+      "subsystem": "master",
+      "users": [
+        "core/dyndsp"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x2838ea02",
             "pm": true
           }
@@ -22387,299 +22447,6 @@
       "subsystem": "pattern",
       "users": [
         "core/pattern-position"
-      ],
-      "was": []
-    },
-    {
-      "at": {
-        "dt2-1.17": [
-          {
-            "addr": "0x2838314c",
-            "len": 6,
-            "pm": true
-          }
-        ]
-      },
-      "cpu": "sharc",
-      "devices": [
-        "dt2"
-      ],
-      "doc": "Native sends driver entry, after track rendering and before native send inputs: R8 points to two raw external-input channel pointers.",
-      "file": "devices/fw/phrase-route.toml",
-      "kind": "fn",
-      "mark": "V",
-      "name": "dsp.phrase.fn.send_entry",
-      "rule": {
-        "dt2": {
-          "kind": "sharc_func",
-          "len": 6,
-          "offset": 0
-        }
-      },
-      "subsystem": "phrase",
-      "users": [
-        "core/phrase-route"
-      ],
-      "was": []
-    },
-    {
-      "at": {
-        "dt2-1.17": [
-          {
-            "addr": "0x283841d4",
-            "pm": true
-          }
-        ]
-      },
-      "cpu": "sharc",
-      "devices": [
-        "dt2"
-      ],
-      "doc": "Add phrase wet to the completed native return and replace the master-only track base.",
-      "file": "devices/fw/phrase-route.toml",
-      "kind": "hook",
-      "mark": "D",
-      "mode": "replace",
-      "name": "dsp.phrase.hook.master_tracks",
-      "regs": {
-        "clobbers": [
-          "i13",
-          "astat"
-        ],
-        "in": []
-      },
-      "site": "dsp.phrase.site.master_tracks",
-      "subsystem": "phrase",
-      "users": [
-        "core/phrase-route"
-      ],
-      "was": []
-    },
-    {
-      "at": {
-        "dt2-1.17": [
-          {
-            "addr": "0x2838314c",
-            "pm": true
-          }
-        ]
-      },
-      "cpu": "sharc",
-      "devices": [
-        "dt2"
-      ],
-      "doc": "Run the exclusive phrase owner before native sends, retaining original tracks and raw input while substituting a private raw-input pointer pair.",
-      "file": "devices/fw/phrase-route.toml",
-      "kind": "hook",
-      "mark": "D",
-      "mode": "before",
-      "name": "dsp.phrase.hook.send_entry",
-      "regs": {
-        "clobbers": [
-          "r8",
-          "astat"
-        ],
-        "in": [
-          "r8"
-        ]
-      },
-      "site": "dsp.phrase.fn.send_entry",
-      "subsystem": "phrase",
-      "users": [
-        "core/phrase-route"
-      ],
-      "was": []
-    },
-    {
-      "at": {
-        "dt2-1.17": [
-          {
-            "addr": "0x2838320c",
-            "pm": true
-          }
-        ]
-      },
-      "cpu": "sharc",
-      "devices": [
-        "dt2"
-      ],
-      "doc": "Replace the first track pointer with the private dry/send bus.",
-      "file": "devices/fw/phrase-route.toml",
-      "kind": "hook",
-      "mark": "D",
-      "mode": "replace",
-      "name": "dsp.phrase.hook.send_first",
-      "regs": {
-        "clobbers": [
-          "i4"
-        ],
-        "in": []
-      },
-      "site": "dsp.phrase.site.send_first",
-      "subsystem": "phrase",
-      "users": [
-        "core/phrase-route"
-      ],
-      "was": []
-    },
-    {
-      "at": {
-        "dt2-1.17": [
-          {
-            "addr": "0x283833a0",
-            "pm": true
-          }
-        ]
-      },
-      "cpu": "sharc",
-      "devices": [
-        "dt2"
-      ],
-      "doc": "Replace the native trackbase addition with the private dry/send base.",
-      "file": "devices/fw/phrase-route.toml",
-      "kind": "hook",
-      "mark": "D",
-      "mode": "replace",
-      "name": "dsp.phrase.hook.send_tracks",
-      "regs": {
-        "clobbers": [
-          "i0",
-          "astat"
-        ],
-        "in": [
-          "i0"
-        ]
-      },
-      "site": "dsp.phrase.site.send_tracks",
-      "subsystem": "phrase",
-      "users": [
-        "core/phrase-route"
-      ],
-      "was": []
-    },
-    {
-      "at": {
-        "dt2-1.17": [
-          {
-            "addr": "0x283841d4",
-            "len": 6,
-            "pm": true
-          }
-        ]
-      },
-      "cpu": "sharc",
-      "devices": [
-        "dt2"
-      ],
-      "doc": "Master track base I13; redirect only the master reader to the private track mirror, and add validated phrase wet output before FX-return mixing.",
-      "file": "devices/fw/phrase-route.toml",
-      "kind": "site",
-      "mark": "V",
-      "name": "dsp.phrase.site.master_tracks",
-      "rule": {
-        "dt2": {
-          "kind": "sharc_func",
-          "len": 6,
-          "offset": 111
-        }
-      },
-      "subsystem": "phrase",
-      "users": [
-        "core/phrase-route"
-      ],
-      "was": []
-    },
-    {
-      "at": {
-        "dt2-1.17": [
-          {
-            "addr": "0x2838320c",
-            "len": 6,
-            "pm": true
-          }
-        ]
-      },
-      "cpu": "sharc",
-      "devices": [
-        "dt2"
-      ],
-      "doc": "Native sends track zero source pointer, I4=track bus; replace with the private scaled bus.",
-      "file": "devices/fw/phrase-route.toml",
-      "kind": "site",
-      "mark": "V",
-      "name": "dsp.phrase.site.send_first",
-      "rule": {
-        "dt2": {
-          "kind": "sharc_func",
-          "len": 6,
-          "offset": 96
-        }
-      },
-      "subsystem": "phrase",
-      "users": [
-        "core/phrase-route"
-      ],
-      "was": []
-    },
-    {
-      "at": {
-        "dt2-1.17": [
-          {
-            "addr": "0x283833a0",
-            "len": 6,
-            "pm": true
-          }
-        ]
-      },
-      "cpu": "sharc",
-      "devices": [
-        "dt2"
-      ],
-      "doc": "Native sends tracks1..15 source address addition; incoming I0 is track byte offset, add the private scaled base.",
-      "file": "devices/fw/phrase-route.toml",
-      "kind": "site",
-      "mark": "V",
-      "name": "dsp.phrase.site.send_tracks",
-      "rule": {
-        "dt2": {
-          "kind": "sharc_func",
-          "len": 6,
-          "offset": 298
-        }
-      },
-      "subsystem": "phrase",
-      "users": [
-        "core/phrase-route"
-      ],
-      "was": []
-    },
-    {
-      "at": {
-        "dt2-1.17": [
-          {
-            "addr": "0x252728",
-            "len": 6
-          }
-        ]
-      },
-      "cpu": "sharc",
-      "devices": [
-        "dt2"
-      ],
-      "doc": "Native main exclusion mask: bits0..15 skip track contribution in the master; capture observes those track exclusions. External capture is independent of monitoring.",
-      "file": "devices/fw/phrase-route.toml",
-      "kind": "value",
-      "mark": "V",
-      "name": "dsp.phrase.value.main_exclude",
-      "rule": {
-        "dt2": {
-          "kind": "sharc_mem_addr",
-          "offset": 108
-        }
-      },
-      "subsystem": "phrase",
-      "users": [
-        "core/phrase-route"
       ],
       "was": []
     },
@@ -26982,7 +26749,7 @@
       "name": "machine"
     },
     {
-      "count": 4,
+      "count": 6,
       "cpu": "sharc",
       "file": "devices/fw/dsp/master.toml",
       "meaning": "the master stage",
@@ -26994,13 +26761,6 @@
       "file": "devices/fw/dsp/pattern.toml",
       "meaning": "master-pattern position transport before rendering",
       "name": "pattern"
-    },
-    {
-      "count": 9,
-      "cpu": "sharc",
-      "file": "devices/fw/phrase-route.toml",
-      "meaning": "selective phrase capture and replacement routing",
-      "name": "phrase"
     },
     {
       "count": 99,

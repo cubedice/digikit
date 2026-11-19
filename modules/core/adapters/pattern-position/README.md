@@ -4,7 +4,9 @@ Experimental DT2 OS 1.17 framework provider for `_pattern_position_info`. ABI ve
 
 The start and sequencer hooks snapshot a bounded 16-entry marker queue. Type 7 dispatch commits the PLAY boundary; type 5 dispatch commits later step boundaries. Each marker freezes its deadline, generation, scheduling-pattern identity, step and master length. No stock event is allocated or inserted. Missing deadlines, queue overflow and multiple boundaries in one audio block invalidate timing. STOP clears pending timing.
 
-The per-send writer fills the existing 16-word reserved suffix; the early DSP receiver checks packet integrity and sequence before publishing its 20-word record. ColdFire accesses are interrupt-masked. SDK definitions are in `sdk/include/dk/pattern_position.h` and `sdk/dsp/contract/dk_pattern_position.inc`. This record is read-only to effects. It describes the nominal master grid, not per-track swing or microtimed notes.
+The per-send writer fills the existing 16-word reserved suffix; the early DSP receiver checks packet integrity and sequence before publishing its 20-word record. ColdFire accesses are interrupt-masked.
+
+A refused frame (bad header or check, or a transmit sequence that did not move on or went back) leaves the last good record and clock record in place: on the device a frame comes twice or late when the ColdFire's block interrupt is held off, and a reader then sees the same record again (its transmit sequence unchanged: nothing new this block). Only `PP_RX_GRACE` (750, half a second, as the phrase receiver's `PH_RX_GRACE`) refusals in a row clear the magic and flags of both records; after that any frame with another transmit sequence, also an earlier one (a sender that started again), is taken as a first frame (delta 0). Words 16 to 19 count as before: every block, every refusal, every accepted frame, and the accepted frame's transmit-sequence delta. See [finding 363](../../../../docs/findings/363-loop-link-jitter.md), which also says why the other readers (Overloop, CANOPY through `core/instrument-play`, PRISM's SYNC time) are tolerant. SDK definitions are in `sdk/include/dk/pattern_position.h` and `sdk/dsp/contract/dk_pattern_position.inc`. This record is read-only to effects. It describes the nominal master grid, not per-track swing or microtimed notes.
 
 The same early DSP hook optionally calls `_instrument_block` after processing the
 position packet, including rejected packets, and before returning to stock render.
@@ -53,7 +55,7 @@ the version, reserved word and checksum of the public ABI 2 position record,
 preserving existing effects. `_pattern_clock_info` retains its 32-byte size;
 version 2 carries tempo in its flags' high 16 bits. Its low flags continue to
 describe phase health independently: a lost external clock still clears them.
-An invalid frame clears the record's magic and flags. The instrument adapter
+A run of `PP_RX_GRACE` refused frames clears the record's magic and flags. The instrument adapter
 additionally rejects skipped frames, and forwards a validated tempo to V5+
 inputs through timing flag bit 11 and bits 16..31. Explicit STOP is distinct
 from missing or stale running clock, so CANOPY can play held-key arpeggios while

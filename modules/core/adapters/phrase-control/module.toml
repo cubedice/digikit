@@ -7,9 +7,10 @@ role = "adapter"
 type = "framework"
 author = "digikit"
 status = "experimental"
-summary = "Exclusive phrase FX controls, musical timing and coherent status transport."
+summary = "The phrase effect's controls (version 3: a repeater's), its SYNC time from the tempo, and the status transport."
 ports = ["dt2-1.17"]
-requires = ["core/pattern-position", "core/fxpages"]
+# core/loop-storage: the bank lease (`_phrase_storage_info`) a phrase effect's engine imports with the control words.
+requires = ["core/pattern-position", "core/fxpages", "core/loop-storage"]
 conflicts = []
 
 [targets]
@@ -31,12 +32,13 @@ devices = ["dt2"]
 resource = "dt2.frame-tail.phrase"
 
 # The functions the fx service file (`fx.dks`) calls: it has no link to the image and finds each by name in the info table.
+# phrase_bind binds the effect's row; phrase_sends gives its send amounts (the tracks the effect hears).
 [[info]]
 name = "phrase_bind"
 symbol = "phrase_bind"
 devices = ["dt2"]
 
 [[info]]
-name = "phrase_control_tick"
-symbol = "phrase_control_tick"
+name = "phrase_sends"
+symbol = "phrase_sends"
 devices = ["dt2"]

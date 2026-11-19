@@ -43,6 +43,8 @@ _ph_rx_check:
     COMP(R3,R2);
     IF NE JUMP _ph_rx_bad;
     DM(_ph_last_sequence) = R1;
+    R2 = 0;
+    DM(_ph_refused) = R2;
     I0 = R0;
     I1 = _phrase_control_info;
     R4 = PH_CONTROL_WORDS;
@@ -54,7 +56,19 @@ _ph_rx_copy:
     R4 = R4 - 1;
     IF GT JUMP _ph_rx_copy;
     RTS;
+// A refused frame leaves the last good mailbox in place: on the device a frame can come twice or late when the ColdFire's
+// block interrupt is held off, and the engine goes on with the controls it has. Only PH_RX_GRACE refusals in a row end
+// the link: then the mailbox loses its magic and enabled word, and the engine is silent until a good frame comes.
 _ph_rx_bad:
+    R0 = DM(_ph_refused);
+    R2 = PH_RX_GRACE;
+    COMP(R0,R2);
+    IF GE JUMP _ph_rx_dead;
+    R0 = R0 + 1;
+    DM(_ph_refused) = R0;
+    COMP(R0,R2);
+    IF LT RTS;
+_ph_rx_dead:
     R0 = 0;
     DM(_phrase_control_info + PH_C_MAGIC) = R0;
     DM(_phrase_control_info + PH_C_ENABLED) = R0;
@@ -158,6 +172,7 @@ _ph_reply_emit:
 .PKDATA _phrase_control_info, 256;
 .PKDATA _phrase_status, 128;
 .PKDATA _ph_last_sequence, 4;
+.PKDATA _ph_refused, 4;
 .PKDATA _ph_reply_phase, 4;
 .PKDATA _ph_reply_serial, 4;
 .PKDATA _ph_reply_snapshot, 144;

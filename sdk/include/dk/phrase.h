@@ -4,17 +4,16 @@
 #include <stdint.h>
 #include "../../dsp/contract/dk_phrase.inc"
 
-/* Raw ranges: REC/FROM0..1, TAKE/CUE0..128 (0=PAT/NOW), STRT0..126,
- * LEN1..127, RATE0..12 (OFF,1/1,1/2,1/4,1/8,1/16,1/32,1/64,
- * 1/4T,1/8T,1/16T,1/32T,1/64T), TUNE0..96 (-24..24 in .5st),
- * SHAP0..3, SCAN0..128 (64=still), MASK18bits; others0..127.
- * Gains16and17 use the single linked EXT_GAIN. Zero gain removes membership.
- * GET/SET/actions execute only on the UI task. Snapshot is a bounded copy.
- * active returns the native global FX page code, or0 when no owner is loaded.
+/* The provider (core/phrase-control) holds the owner's raw values PH_P_* and sends them to the engine as the control
+ * words PH_C_*; the layout and the ranges are in dk_phrase.inc. GET and SET execute only on the UI task. SET clamps
+ * to the range and returns 0; -1 without an owner or for an index that does not exist; -2 for PH_P_XFAD, which is the
+ * loop effect's crossfader (<dk/loop.h>). PH_P_INPT is not saved: after a restart it is 0 (LIVE). PH_P_TRKS, the tracks the
+ * effect hears, is saved with the other values; the provider gives the fx service their send amounts. Snapshot is a bounded copy of the engine's status
+ * words PH_S_* and returns whether the status is fresh. active returns the native global FX page code of the owner's
+ * page, or 0 when no owner is loaded.
  */
 uint32_t dkrt_phrase_get(uint32_t index);
 int32_t dkrt_phrase_set(uint32_t index, uint32_t value);
-int32_t dkrt_phrase_action(uint32_t action);
 uint32_t dkrt_phrase_active(void);
 const char *dkrt_phrase_title(void);
 uint32_t dkrt_phrase_snapshot(uint32_t *out, uint32_t words);

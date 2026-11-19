@@ -85,6 +85,37 @@
       "devices": ["dt2"]
     },
     {
+      "id": "prism-transition",
+      "roots": [
+        "core/runtime",
+        "core/dynreg",
+        "core/dyndsp",
+        "core/dynfx",
+        "core/loop-storage",
+        "core/pattern-position",
+        "core/loop-display",
+        "core/phrase-ui",
+        "core/digikit-menu",
+        "core/health"
+      ],
+      "devices": ["dt2"]
+    },
+    {
+      "id": "overloop",
+      "roots": [
+        "core/runtime",
+        "core/dynreg",
+        "core/dyndsp",
+        "core/dynfx",
+        "core/loop-storage",
+        "core/pattern-position",
+        "core/loop-display",
+        "core/digikit-menu",
+        "core/health"
+      ],
+      "devices": ["dt2"]
+    },
+    {
       "id": "prism",
       "roots": [
         "core/runtime",
@@ -92,7 +123,6 @@
         "core/dyndsp",
         "core/dynfx",
         "core/phrase-ui",
-        "core/phrase-route",
         "core/digikit-menu",
         "core/health"
       ],
@@ -110,7 +140,6 @@
         "core/loop-storage",
         "core/loop-display",
         "core/phrase-ui",
-        "core/phrase-route",
         "core/digikit-menu",
         "core/health"
       ],

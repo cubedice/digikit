@@ -40,14 +40,18 @@ extern "C" {
 pub static mut DKRT_FXP_PAINT: u32 = 0;
 
 /// The service's `setup`: give the table the two firmware words, then bind it (`fxpage::setup`), and find the optional functions of the image
-/// (the page painter of core/loop-display, the phrase adapters). A host build has no firmware: both words are 0.
+/// (the page painter, the phrase adapters, the holder of an effect's values). A host build has no firmware: both words are 0.
 pub unsafe fn setup(core: &ImportCore) -> i32 {
     #[cfg(target_arch = "m68k")]
     dkrt_svc_fx::fxpage::set_firmware(DKRT_FXP_FW[0], DKRT_FXP_FW[1]);
     let r = dkrt_svc_fx::fxpage::setup(core);
     if r == dkrt_sdk::OK {
-        core::ptr::write_volatile(core::ptr::addr_of_mut!(DKRT_FXP_PAINT), dkrt_svc_fx::fxpage::page_painter(core));
+        core::ptr::write_volatile(
+            core::ptr::addr_of_mut!(DKRT_FXP_PAINT),
+            dkrt_svc_fx::fxpage::page_painter(core),
+        );
         dkrt_svc_fx::phrase::setup(core);
+        dkrt_svc_fx::fxpage::held_setup(core);
     }
     r
 }

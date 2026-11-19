@@ -20,7 +20,7 @@ const checksum = (words: number[]) => words.slice(0, 63).reduce((check, value) =
 function frame(sequence = 1): number[] {
   const data = Array.from({ length: 64 }, (_, i) => (0x13000000 + i * 997) >>> 0);
   data[0] = 0x50484331;
-  data[1] = 2;
+  data[1] = 3; // PH_VERSION
   data[2] = 256;
   data[3] = sequence;
   data[4] = 1;
@@ -60,7 +60,7 @@ const invalids: Record<string, number[]> = {};
 for (const name of ['magic', 'version', 'size', 'closing', 'checksum', 'duplicate', 'backward']) {
   const packet = frame(name === 'duplicate' ? 1 : name === 'backward' ? 0 : 2);
   if (name === 'magic') packet[0] = 0;
-  if (name === 'version') packet[1] = 3;
+  if (name === 'version') packet[1] = 2;
   if (name === 'size') packet[2] = 252;
   if (name === 'closing') packet[62] = 3;
   packet[63] = checksum(packet);
@@ -81,6 +81,25 @@ for (const name of ['magic', 'version', 'size', 'closing', 'checksum', 'duplicat
     ],
   };
 }
+// The 750th refusal in a row (PH_RX_GRACE, half a second of blocks) ends the link: the mailbox loses its magic and enabled word.
+requests.grace = {
+  transport: true,
+  ops: [
+    ...putWords(input, frame()),
+    receive('first'),
+    put('_ph_refused', 748),
+    ...putWords(input, frame(1)),
+    receive('749th'),
+    read('kept', '_phrase_control_info', 64),
+    receive('750th'),
+    read('ended', '_phrase_control_info', 64),
+    read('refused', '_ph_refused', 1),
+    ...putWords(input, frame(2)),
+    receive('recover'),
+    read('recovered', '_phrase_control_info', 64),
+    read('refusedAfter', '_ph_refused', 1),
+  ],
+};
 requests.wrap = {
   transport: true,
   ops: [
@@ -129,7 +148,7 @@ requests.disabled = {
 
 beforeAll(() => {
   results = JSON.parse(
-    execFileSync('uv', ['run', 'python', '-m', 'tools.patchkit.pk_phrase_route_probe'], {
+    execFileSync('uv', ['run', 'python', '-m', 'tools.patchkit.pk_phrase_transport_probe'], {
       input: JSON.stringify(requests),
       encoding: 'utf8',
       maxBuffer: 4 * 1024 * 1024,
@@ -145,13 +164,21 @@ test('receiver copies all64 words with their original offsets and accepts a fres
   expect(words('copy', 'copied')).toEqual(frame());
   expect(words('copy', 'sequence')).toEqual([1]);
 });
-test.each(Object.keys(invalids))('receiver rejects %s and fails open before accepting a later valid frame', (name) => {
-  const expected = frame();
-  expected[0] = 0;
-  expected[4] = 0;
-  expect(words(name, 'copied')).toEqual(expected);
+test.each(Object.keys(invalids))('receiver refuses %s, keeps the last good mailbox, and takes a later valid frame', (name) => {
+  // a repeated, late or torn frame on the device must not take the engine's controls away for a block
+  expect(words(name, 'copied')).toEqual(frame());
   expect(words(name, 'sequence')).toEqual([1]);
   expect(words(name, 'recovered')).toEqual(frame(3));
+});
+test('half a second of refused frames in a row ends the link; the next good frame restores it', () => {
+  expect(words('grace', 'kept')).toEqual(frame());
+  const ended = frame();
+  ended[0] = 0;
+  ended[4] = 0;
+  expect(words('grace', 'ended')).toEqual(ended);
+  expect(words('grace', 'refused')).toEqual([750]);
+  expect(words('grace', 'recovered')).toEqual(frame(2));
+  expect(words('grace', 'refusedAfter')).toEqual([0]);
 });
 test('sequence ordering accepts forward wrap and rejects ambiguous half-range jumps', () => {
   expect(words('wrap', 'copied')).toEqual(frame());

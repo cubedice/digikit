@@ -19,13 +19,21 @@
 // 16 receive count, 17 rejected frames,
 // 18 accepted frames, 19 unsigned transmit-sequence delta (0 on first).
 // Counter domains are distinct: neither is core/fx's conditional _fx_blk.
-// Bad header/check or a repeated/backward transmit sequence clears magic and flags.
+// A refused frame (bad header or check, or a transmit sequence that did not move
+// on or went back) leaves the last good record in place: on the device a frame
+// comes twice or late when the ColdFire's block interrupt is held off, and a
+// reader then sees the same record again (its transmit sequence unchanged:
+// nothing new this block). Only PP_RX_GRACE refusals in a row clear magic and
+// flags; the next good frame with another transmit sequence then starts anew
+// (a first frame, delta 0), so a restarted sender is followed again.
 // An accepted wire with flags.valid=0 remains semantically invalid to clients.
 
 #define PP_MAGIC 0x50504f53
 #define PP_VERSION 2
 #define PP_SUFFIX 0xa7c
 #define PP_CHECK_SALT 0x7b91d6e3
+// Refused frames in a row before the record is cleared: half a second of blocks, as PH_RX_GRACE of the phrase receiver.
+#define PP_RX_GRACE 750
 
 .SECTION/PM seg_pmco;
 .GLOBAL _pp_block_entry;
@@ -135,13 +143,17 @@ _pp_wire_version_ok:
     IF NE JUMP _pp_bad;
     I0 = R2;
     R0 = DM(2, I0);                    // this frame's transmit sequence
-    R1 = DM(_pp_seen);
-    R1 = PASS R1;
+    R4 = DM(_pp_seen);                 // 0 none yet, 1 following, 2 after the grace
+    R4 = PASS R4;
     IF EQ JUMP _pp_first;
     R1 = DM(_pattern_position_info + 8);
     R3 = R0 - R1;                      // unsigned wrap is intentional
     R3 = PASS R3;
     IF EQ JUMP _pp_bad;                // an old queue snapshot is not a new timing frame
+    R1 = 2;
+    COMP(R4, R1);
+    IF EQ JUMP _pp_first;              // after the grace any other sequence starts anew
+    R3 = PASS R3;
     IF LT JUMP _pp_bad;                // serial arithmetic: reject a backward half-range
     JUMP _pp_copy;
 _pp_first:
@@ -149,6 +161,8 @@ _pp_first:
     R0 = 1;
     DM(_pp_seen) = R0;
 _pp_copy:
+    R0 = 0;
+    DM(_pp_refused) = R0;
     DM(_pattern_position_info + 76) = R3;
     R0 = 0;
     DM(_pattern_position_info) = R0;    // publish magic last
@@ -265,15 +279,30 @@ _pp_publish:
     R0 = PP_MAGIC;
     DM(_pattern_position_info) = R0;
     JUMP _pp_restore;
+// A refused frame keeps the last good record; the counters count it. The PP_RX_GRACE'th refusal in a row clears magic
+// and flags of both records, once.
 _pp_bad:
     R0 = DM(_pattern_position_info + 68);
     R1 = R0 + 1;
     DM(_pattern_position_info + 68) = R1;
+    R0 = DM(_pp_refused);
+    R1 = PP_RX_GRACE;
+    COMP(R0, R1);
+    IF GE JUMP _pp_restore;
+    R0 = R0 + 1;
+    DM(_pp_refused) = R0;
+    COMP(R0, R1);
+    IF LT JUMP _pp_restore;
     R0 = 0;
     DM(_pattern_position_info) = R0;
     DM(_pattern_position_info + 20) = R0;
     DM(_pattern_clock_info) = R0;
     DM(_pattern_clock_info + 16) = R0;
+    R0 = DM(_pp_seen);
+    R0 = PASS R0;
+    IF EQ JUMP _pp_restore;
+    R0 = 2;
+    DM(_pp_seen) = R0;
 _pp_restore:
     R0 = _phrase_receive;
     R0 = PASS R0;
@@ -314,6 +343,7 @@ _pp_no_instrument:
 .PKDATA _pattern_position_info, 80;
 .PKDATA _pattern_clock_info, 32;
 .PKDATA _pp_seen, 4;
+.PKDATA _pp_refused, 4;
 .PKDATA _pp_sv_r0, 8;
 .PKDATA _pp_sv_r1, 8;
 .PKDATA _pp_sv_r2, 8;
