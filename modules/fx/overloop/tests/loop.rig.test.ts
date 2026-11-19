@@ -14,6 +14,7 @@ import {
   LP,
   LoopRig,
   OL,
+  jitter,
   join,
   maxDifference,
   maxSecondDifference,
@@ -600,6 +601,99 @@ describe('Overloop engine: the boundary cases', () => {
       const broken = await rig.run(blocks(3 * STEP), SOUND_A);
       expect(sameBits(broken.left, broken.dryLeft)).toBe(0);
       expect((await rig.status()).loop).toBe(false);
+    });
+  });
+});
+
+describe('Overloop engine: a position stream whose records come again or late (the device link, docs/findings/363)', () => {
+  // With armedChange(rig, 4, ...) the last cycle of A runs from block LAST to the change at block CHANGE; ARM and the change are
+  // set at block 270. Steps begin every 10 blocks.
+  const CHANGE = blocks(4 * CYCLE);
+  const LAST = CHANGE - blocks(CYCLE);
+
+  /** A delivery that keeps what it gave: the record of each block. */
+  const recorded = (delivery: (block: number) => number) => {
+    const given: number[] = [];
+    return {
+      given,
+      delivery: (block: number) => {
+        given[block] = delivery(block);
+        return given[block]!;
+      },
+    };
+  };
+
+  test('a record again every 37 blocks, one a block early every 53 and a burst of three: an armed change keeps the last cycle exactly', async () => {
+    const late = (b: number) => b % 37 === 22 || (b >= 300 && b < 303);
+    const early = (b: number) => b % 53 === 47;
+    const { delivery, given } = recorded(jitter(late, early));
+    await withRig({ delivery }, async (rig) => {
+      const { take, change } = await armedChange(rig, 4, 5);
+      const status = await rig.status();
+      expect(status).toMatchObject({ loop: true, armed: false, cut: false, count: 1, loopFrames: CYCLE, loopSteps: 8 });
+      const turns = 5 * CYCLE;
+      expect(maxDifference(take.left, change, take.left, change - CYCLE, turns), 'five turns against one cycle earlier').toBe(0);
+      expect(maxDifference(take.right, change, take.right, change - CYCLE, turns)).toBe(0);
+      // what the jitter did: records seen again, gaps, and the steps it moved (the block a boundary was seen in, against its own)
+      const again = given.filter((n, b) => b > 0 && n === given[b - 1]).length;
+      const gaps = given.flatMap((n, b) => (b > 0 && n - given[b - 1]! > 1 ? [n - given[b - 1]!] : []));
+      const moved = rig.log
+        .map(([frame]) => [frame / BLOCK, given.findIndex((n) => n >= frame / BLOCK)] as const)
+        .filter(([own, seen]) => own !== seen);
+      note(
+        `jitter over ${given.length} blocks: ${again} records seen again, ${gaps.length} gaps (largest ${Math.max(...gaps)}), steps seen late or early ${moved.map(([own, seen]) => `${own}->${seen}`).join(' ')}; loop ${status.loopFrames} frames, exact`,
+      );
+      expect(again).toBeGreaterThanOrEqual(30);
+      expect(Math.max(...gaps), 'the burst of three: a gap of four').toBe(OL.OL_SKIP);
+      expect(moved.length, 'the jitter moved steps of A and B').toBeGreaterThanOrEqual(2);
+      expect(moved.some(([own]) => own === LAST || own === CHANGE), 'but neither end of the last cycle').toBe(false);
+    });
+  });
+
+  test.each([
+    ["the last cycle's first step is seen a block late", (b: number) => b === LAST, () => false, -1],
+    ['the change is seen a block late', (b: number) => b === CHANGE, () => false, 1],
+    ['the change is seen a block early', () => false, (b: number) => b === CHANGE - 1, -1],
+  ])('%s: the loop is one block off', async (what, late, early, off) => {
+    await withRig({ delivery: jitter(late, early) }, async (rig) => {
+      await armedChange(rig, 4, 1);
+      const status = await rig.status();
+      note(`${what}: loop ${status.loopFrames} frames for a cycle of ${CYCLE}`);
+      expect(status).toMatchObject({ loop: true, armed: false, count: 1, loopSteps: 8 });
+      expect(status.loopFrames).toBe(CYCLE + off * BLOCK);
+    });
+  });
+
+  /** Pattern A, ARM and a change at the end of the fourth cycle; `fault` is applied to the record of the change's block. */
+  async function faultAtChange(rig: LoopRig, fault: (rig: LoopRig) => unknown): Promise<void> {
+    rig.start(A);
+    await rig.run(blocks(3 * CYCLE + 3 * STEP), SOUND_A);
+    rig.arm();
+    rig.changeAtEnd(B);
+    await rig.run(blocks(5 * STEP), SOUND_A);
+    expect(rig.clock / BLOCK).toBe(CHANGE);
+    await fault(rig);
+    await rig.run(1, SOUND_B);
+  }
+  const none = () => undefined;
+  test.each([
+    ['a send count that moved by OL_SKIP + 1', (rig: LoopRig) => rig.skipFrames(OL.OL_SKIP!), undefined, false],
+    ['a send count that moved by OL_SKIP', (rig: LoopRig) => rig.skipFrames(OL.OL_SKIP! - 1), undefined, true],
+    ['a send count that went back', async (rig: LoopRig) => rig.patchPosition(2, (await rig.positionWord(2)) - 1), undefined, false],
+    ['two boundaries in one record', async (rig: LoopRig) => rig.patchPosition(3, (await rig.positionWord(3)) + 2), undefined, false],
+    ['OL_SKIP records again in a row before it', none, jitter((b) => b >= CHANGE - 4 && b < CHANGE), false],
+    ['OL_SKIP - 1 records again in a row before it', none, jitter((b) => b >= CHANGE - 3 && b < CHANGE), true],
+  ])('%s, at the armed change: the change keeps a loop: %s', async (_, fault, delivery, kept) => {
+    await withRig({ delivery }, async (rig) => {
+      await faultAtChange(rig, fault);
+      if (kept) {
+        expect(await rig.status()).toMatchObject({ loop: true, armed: false, count: 1, loopFrames: CYCLE });
+        return;
+      }
+      // the run ended: no edge is placed with this record, and the change takes nothing; the arm waits for the next change
+      expect(await rig.status()).toMatchObject({ loop: false, armed: true, count: 0, track: false });
+      await rig.run(blocks(2 * CYCLE), SOUND_B);
+      expect(await rig.status(), 'the run follows B again').toMatchObject({ loop: false, armed: true, count: 0, track: true, steps: 8 });
     });
   });
 });

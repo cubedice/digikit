@@ -11,7 +11,8 @@
 // One block:
 //   controls   the parameter words: the crossfader, and the counters of ARM and DROP (core/loop-control holds them)
 //   position   the record of core/pattern-position: a step boundary begins with this block or not; a boundary of
-//              another pattern is a change, a boundary of another generation is a START
+//              another pattern is a change, a boundary of another generation is a START. A record that comes again is
+//              no news, and a few frames that did not arrive end nothing (OL_SKIP)
 //   mix        output = input + (loop - input) * crossfader; LIVE passes the input as it is
 //   record     the output goes to the rolling record, and a block of the frames before its start is filled in
 //   wet        a send effect's output from the wet mailbox (PRISM's, while this engine runs it does not go to the FX return)
@@ -198,16 +199,42 @@ _ol_track:
     R0 = DM(OL_HAVE,I5);
     R4 = DM(OL_TX,I5);
     R5 = DM(OL_BSEQ,I5);
+    R7 = DM(OL_SAME,I5);
+    R1 = 1;
+    R0 = PASS R0;
+    IF EQ JUMP _ol_first;
+    // the same record again (a frame that came twice or late): nothing new in this block; OL_SKIP of them in a row end
+    // the run
+    R6 = R2 - R4;
+    IF NE JUMP _ol_news;
+    R7 = R7 + 1;
+    DM(OL_SAME,I5) = R7;
+    R0 = OL_SKIP;
+    COMP(R7,R0);
+    IF LT JUMP _ol_target;
+    JUMP _ol_unrun;
+_ol_first:
+    // the first record: no edge can be placed
     DM(OL_TX,I5) = R2;
     DM(OL_BSEQ,I5) = R3;
-    R1 = 1;
     DM(OL_HAVE,I5) = R1;
-    // the first record, or blocks were missed: no edge can be placed
-    R0 = PASS R0;
-    IF EQ JUMP _ol_unrun;
-    R2 = R2 - R4;
-    COMP(R2,R1);
-    IF NE JUMP _ol_unrun;
+    R0 = 0;
+    DM(OL_SAME,I5) = R0;
+    JUMP _ol_unrun;
+_ol_news:
+    DM(OL_TX,I5) = R2;
+    DM(OL_BSEQ,I5) = R3;
+    R0 = 0;
+    DM(OL_SAME,I5) = R0;
+    // a send count that went back, or a gap of more than OL_SKIP frames or blocks since the last new record: no edge can
+    // be placed
+    R6 = PASS R6;
+    IF LT JUMP _ol_unrun;
+    R0 = OL_SKIP;
+    COMP(R6,R0);
+    IF GT JUMP _ol_unrun;
+    COMP(R7,R0);
+    IF GE JUMP _ol_unrun;
     // stopped, or the timing is not valid
     R0 = DM(5,I4);
     R6 = 3;

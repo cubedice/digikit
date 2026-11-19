@@ -14,7 +14,7 @@
 #define DK_POSITION_RUNNING 2u
 
 typedef struct dk_pattern_position {
-    uint32_t magic; /* zero on invalid/replayed/corrupt frame */
+    uint32_t magic; /* zero after 750 refused frames in a row; one keeps the last record */
     uint32_t version;
     uint32_t transmit_sequence; /* CF audio-send frames; unsigned wrap */
     uint32_t boundary_sequence; /* committed boundaries; unsigned wrap */

@@ -12,6 +12,13 @@
 // function, offset 0x1ad) before its clip and the volume ramp. A send effect's output that the engine adds (the wet mailbox)
 // gets this and the ramp; the tap is divided by both.
 #define OL_MASTER_BOOST 0x404a6320
+// The position record (core/pattern-position) may come again or late on the device: its receiver keeps the last good one
+// when a frame is refused. The engine follows its run through a record that comes again (the send count did not move: nothing
+// new in this block) and through a send count that moved by at most OL_SKIP since the last new record, at most OL_SKIP
+// blocks after it. A boundary in a record after such a gap of d frames begins with this block: up to d - 1 blocks after the
+// block of its frame on the ColdFire. A larger gap, a send count that went back, or more than one boundary in one record
+// ends the run.
+#define OL_SKIP 4
 // The tap is divided by at most 1024 (a master gain below 1/1024 counts as 1/1024).
 #define OL_INV_FLOOR 0x3a800000
 // A sample of the output with the send effect's output added stays within +-7.9 (the framework's bound is 8).
@@ -95,5 +102,7 @@
 #define OL_WET_INIT 54
 #define OL_WET_OK 55
 #define OL_INV 56
+// blocks in a row in which the position record did not move (it came again)
+#define OL_SAME 57
 #define OL_STATE_WORDS 60
 #define OL_STATE_BYTES 240

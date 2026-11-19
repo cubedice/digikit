@@ -10,7 +10,9 @@
  *     rig.arm(); rig.changeAtEnd(B);                 // ARM, and pattern B at the end of A's cycle
  *
  * The rig's sequencer writes the position record the way core/pattern-position does: a boundary is counted in the record
- * of the block it begins with. The control home is played by the rig as well: it hands the crossfader and the counters
+ * of the block it begins with. That is a stream of one record a block; `delivery` chooses which of them the engine sees in
+ * a block, as the device's link does when a frame comes twice or late (the receiver then keeps the last good record). The
+ * control home is played by the rig as well: it hands the crossfader and the counters
  * to the engine as parameter words and, like core/loop-control, sets the crossfader to LOOP when the status shows a new
  * loop (`home: false` leaves that out).
  *
@@ -89,6 +91,26 @@ export interface LoopRigOptions {
   home?: boolean;
   /** read the tap after every block (slower) */
   tap?: boolean;
+  /**
+   * The record of the position stream the engine sees in block `block` (the stream has one record a block, record n the one
+   * the sequencer writes for block n): `block` itself by default. Called once a block, in order; it may give an earlier record
+   * (one that came again) and at most the next one (the block after it then sees that record again). See `jitter`.
+   */
+  delivery?: (block: number) => number;
+}
+
+/**
+ * A delivery (LoopRigOptions.delivery) with the link's two faults: in a block of `late` the record of the block before comes
+ * again (the frame of this block is late) and the next block sees its own (the frame of this block never arrives: a gap of
+ * two); in a block of `early` the next block's record comes (this block's frame was overwritten before it was read: a gap of
+ * two) and the next block sees it again. A run of `late` blocks is a burst.
+ */
+export function jitter(late: (block: number) => boolean, early: (block: number) => boolean = () => false): (block: number) => number {
+  let last = -1;
+  return (block) => {
+    last = early(block) ? block + 1 : late(block) && last >= 0 ? last : block;
+    return last;
+  };
 }
 
 /** The send effect as the rig plays it: what it writes to the wet mailbox before each block. */
@@ -150,6 +172,10 @@ export class LoopRig {
   private generation = 0;
   private tx = 0;
   private boundaries = 0;
+  /** the records of the position stream not yet passed by the delivery (by block), and the next block to write one for */
+  private readonly stream = new Map<number, number[]>();
+  private streamNext = 0;
+  private delivered = -1;
   /** the frame of the rig's clock at which each boundary began: [frame, pattern id, step] */
   readonly log: [number, number, number][] = [];
 
@@ -236,8 +262,14 @@ export class LoopRig {
 
   // ---- the sequencer -----------------------------------------------------------------------------------------------------------
 
+  /** A change of the sequencer counts from the next record of the stream: the delivery must not have taken it ahead. */
+  private atStream(what: string): void {
+    if (this.streamNext * BLOCK > this.clock) throw new Error(`${what}: the delivery took the next block's record already`);
+  }
+
   /** START: `pattern` plays from its first step with the next block. */
   start(pattern: Pattern): void {
+    this.atStream('start');
     this.running = true;
     this.pattern = pattern;
     this.pending = undefined;
@@ -247,17 +279,20 @@ export class LoopRig {
   }
 
   stop(): void {
+    this.atStream('stop');
     this.running = false;
     this.pending = undefined;
   }
 
   /** The pattern changes at the end of the cycle that plays (a sequential change). */
   changeAtEnd(pattern: Pattern): void {
+    this.atStream('changeAtEnd');
     this.pending = { pattern, atEnd: true };
   }
 
   /** The pattern changes at the next step boundary: the new pattern starts at its first step there (a direct change). */
   changeNow(pattern: Pattern): void {
+    this.atStream('changeNow');
     this.pending = { pattern, atEnd: false };
   }
 
@@ -280,9 +315,9 @@ export class LoopRig {
     return frames;
   }
 
-  /** The position record of the block that begins at the rig's clock. */
-  private writePosition(valid = true): void {
-    if (this.running && this.pattern && this.clock >= this.nextBoundary) {
+  /** The record of the stream for the block that begins at `clock`. */
+  private record(clock: number): number[] {
+    if (this.running && this.pattern && clock >= this.nextBoundary) {
       let pattern = this.pattern;
       let step = this.step + 1;
       if (step >= pattern.steps) step = 0;
@@ -293,14 +328,13 @@ export class LoopRig {
       }
       this.pattern = pattern;
       this.step = step;
-      this.nextBoundary = this.clock + this.framesOf(pattern);
+      this.nextBoundary = clock + this.framesOf(pattern);
       this.boundaries += 1;
-      this.log.push([this.clock, pattern.id, step]);
+      this.log.push([clock, pattern.id, step]);
     }
     this.tx += 1;
-    const at = this.fx.built.data._pattern_position_info!;
-    const words = [
-      valid ? 0x50504f53 : 0,
+    return [
+      0x50504f53,
       2,
       this.tx,
       this.boundaries,
@@ -310,13 +344,38 @@ export class LoopRig {
       Math.max(this.step, 0),
       this.pattern?.steps ?? 0,
     ];
-    words.forEach((value, k) => this.fx.poke(at + 4 * k, value >>> 0));
+  }
+
+  /** The position record the engine sees in the block that begins at the rig's clock: the stream's record the delivery gives. */
+  private writePosition(): void {
+    const block = this.clock / BLOCK;
+    const n = this.o.delivery ? this.o.delivery(block) : block;
+    if (n > block + 1 || n < this.delivered) throw new Error(`block ${block}: the delivery gave record ${n}`);
+    this.delivered = n;
+    while (this.streamNext <= n) {
+      this.stream.set(this.streamNext, this.record(this.streamNext * BLOCK));
+      this.streamNext += 1;
+    }
+    for (const key of this.stream.keys()) if (key < n) this.stream.delete(key);
+    const at = this.fx.built.data._pattern_position_info!;
+    this.stream.get(n)!.forEach((value, k) => this.fx.poke(at + 4 * k, value >>> 0));
   }
 
   /** One raw word of the position record for the next block only (a case that breaks the stream): applied after the sequencer wrote it. */
   private positionPatch: [number, number][] = [];
   patchPosition(word: number, value: number): void {
     this.positionPatch.push([word, value]);
+  }
+
+  /** `frames` records of the stream are never sent: the send count of the next record moves by `frames` + 1. */
+  skipFrames(frames: number): void {
+    this.atStream('skipFrames');
+    this.tx += frames;
+  }
+
+  /** A word of the position record the engine saw in the last block (patches included). */
+  async positionWord(word: number): Promise<number> {
+    return (await this.fx.peek(this.fx.built.data._pattern_position_info! + 4 * word, 1))[0] ?? 0;
   }
 
   // ---- state -------------------------------------------------------------------------------------------------------------------

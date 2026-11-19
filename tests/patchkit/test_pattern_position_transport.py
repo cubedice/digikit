@@ -1,4 +1,8 @@
-"""Bounded per-frame position receiver, optional imports, and tail ownership."""
+"""Bounded per-frame position receiver, optional imports, and tail ownership.
+
+A refused frame (repeated, late, backward or corrupt) keeps the last good record; only
+PP_RX_GRACE refusals in a row clear its magic and flags (docs/findings/363).
+"""
 
 import json
 import struct
@@ -17,6 +21,7 @@ LINK = ROOT / "modules/core/adapters/dsp-link"
 MAGIC, SALT = 0x50504F53, 0x7B91D6E3
 RX, DATA, BASE, BACK = 0x200A0000, 0x20090000, 0xB90000, 0xB9F000
 SUFFIX = 0xA7C
+GRACE = 750  # PP_RX_GRACE of the receiver
 SAVED = tuple(
     [f"R{i}" for i in range(16)]
     + [f"S{i}" for i in range(16)]
@@ -126,7 +131,20 @@ def receiver():
     return linked, syms, dm
 
 
-def receive(receiver, words, *, previous=None, seen=False, mode=0x1011800, clock=False):
+def receive(
+    receiver,
+    words,
+    *,
+    previous=None,
+    previous_clock=None,
+    seen=False,
+    refused=0,
+    mode=0x1011800,
+    clock=False,
+    state=False,
+):
+    """One block. SEEN: 0 nothing taken yet, 1 following, 2 after the grace. STATE: also
+    return the receiver's own words (seen, refusals in a row)."""
     linked, syms, initial = receiver
     dm = dict(initial)
     record = syms["_pattern_position_info"] // 4
@@ -135,7 +153,11 @@ def receive(receiver, words, *, previous=None, seen=False, mode=0x1011800, clock
     dm[(RX + SUFFIX) // 4 + 16] = 0x33774466
     if previous is not None:
         dm.update({record + i: value for i, value in enumerate(previous)})
+    if previous_clock is not None:
+        at = syms["_pattern_clock_info"] // 4
+        dm.update({at + i: value for i, value in enumerate(previous_clock)})
     dm[syms["_pp_seen"] // 4] = int(seen)
+    dm[syms["_pp_refused"] // 4] = refused
     regs = {f"R{i}": 0x12340000 + i for i in range(16)}
     regs.update({f"S{i}": 0x76540000 + i for i in range(16)})
     regs.update(
@@ -162,6 +184,8 @@ def receive(receiver, words, *, previous=None, seen=False, mode=0x1011800, clock
             "record": (record, 20),
             "wire": ((RX + SUFFIX) // 4 - 1, 18),
             "clock": (syms["_pattern_clock_info"] // 4, 5),
+            "seen": (syms["_pp_seen"] // 4, 1),
+            "refused": (syms["_pp_refused"] // 4, 1),
         },
         read_regs=SAVED,
         max_steps=500,
@@ -172,6 +196,8 @@ def receive(receiver, words, *, previous=None, seen=False, mode=0x1011800, clock
     for name in SAVED:
         assert out["regs"][name] == regs[name], (name, out["regs"][name], regs[name])
     assert out["wire"] == [0x99118822, *words, 0x33774466]
+    if state:
+        return out["record"], out["clock"], out["seen"][0], out["refused"][0]
     return (out["record"], out["clock"]) if clock else out["record"]
 
 
@@ -182,31 +208,110 @@ def test_receiver_publishes_before_return_and_preserves_context(receiver, mode):
     assert record == words + [1, 0, 1, 0]
 
 
+CLOCK = [0x50434C4B, 2, 0x1234, 37, 3]
+
+
 @pytest.mark.parametrize("index", [0, 1, 5, 14, 15])
-def test_bad_header_or_checksum_clears_validity(receiver, index):
+def test_bad_header_or_checksum_keeps_the_last_good_record(receiver, index):
     previous = wire() + [30, 2, 28, 1]
     bad = wire(8)
     bad[index] ^= 1
-    record = receive(receiver, bad, previous=previous, seen=True)
-    assert record[0] == record[5] == 0
-    assert record[16:19] == [31, 3, 28]
+    record, clock, seen, refused = receive(
+        receiver,
+        bad,
+        previous=previous,
+        previous_clock=CLOCK,
+        seen=True,
+        refused=3,
+        state=True,
+    )
+    # the record and the clock stay; the counters count the refusal
+    assert record == wire() + [31, 3, 28, 1]
+    assert clock == CLOCK
+    assert (seen, refused) == (1, 4)
 
 
-def test_duplicate_rejected_and_counter_wrap_accepted(receiver):
+def test_duplicate_kept_and_counter_wrap_accepted(receiver):
     previous = wire(0xFFFFFFFF) + [0xFFFFFFFF, 2, 5, 1]
     duplicate = receive(receiver, wire(0xFFFFFFFF), previous=previous, seen=True)
-    assert duplicate[0] == duplicate[5] == 0
-    assert duplicate[16:19] == [0, 3, 5]
-    wrapped = receive(receiver, wire(0), previous=previous, seen=True)
+    # a frame that came twice: the same record again, nothing new for its readers
+    assert duplicate == wire(0xFFFFFFFF) + [0, 3, 5, 1]
+    wrapped, _, _, refused = receive(
+        receiver, wire(0), previous=previous, seen=True, refused=9, state=True
+    )
     assert wrapped[:16] == wire(0)
     assert wrapped[16:] == [0, 2, 6, 1]
+    assert refused == 0  # a good frame ends the run of refusals
 
 
-def test_backward_transmit_sequence_is_rejected(receiver):
+def test_backward_transmit_sequence_is_refused_and_the_record_kept(receiver):
     previous = wire(10) + [42, 2, 40, 1]
     record = receive(receiver, wire(9), previous=previous, seen=True)
-    assert record[0] == record[5] == 0
-    assert record[16:19] == [43, 3, 40]
+    assert record == wire(10) + [43, 3, 40, 1]
+
+
+def test_the_grace_clears_the_record_once_and_a_new_sequence_starts_anew(receiver):
+    previous = wire(10) + [42, 2, 40, 2]
+    # the 749th refusal in a row keeps it
+    record, clock, seen, refused = receive(
+        receiver,
+        wire(10),
+        previous=previous,
+        previous_clock=CLOCK,
+        seen=True,
+        refused=GRACE - 2,
+        state=True,
+    )
+    assert record == wire(10) + [43, 3, 40, 2]
+    assert clock == CLOCK and (seen, refused) == (1, GRACE - 1)
+    # the 750th clears magic and flags of both records; the rest stays as it was
+    record, clock, seen, refused = receive(
+        receiver,
+        wire(10),
+        previous=previous,
+        previous_clock=CLOCK,
+        seen=True,
+        refused=GRACE - 1,
+        state=True,
+    )
+    cleared = wire(10)
+    cleared[0] = cleared[5] = 0
+    assert record == cleared + [43, 3, 40, 2]
+    assert clock == [0, 2, 0x1234, 37, 0]
+    assert (seen, refused) == (2, GRACE)
+    # more refusals change nothing but the counters
+    record, _, seen, refused = receive(
+        receiver,
+        wire(10),
+        previous=cleared + [43, 3, 40, 2],
+        seen=2,
+        refused=GRACE,
+        state=True,
+    )
+    assert record == cleared + [44, 4, 40, 2]
+    assert (seen, refused) == (2, GRACE)
+    # after the grace a frame with another sequence, even an earlier one (a sender that
+    # started again), is a first frame
+    record, _, seen, refused = receive(
+        receiver,
+        wire(3),
+        previous=cleared + [44, 4, 40, 2],
+        seen=2,
+        refused=GRACE,
+        state=True,
+    )
+    assert record == wire(3) + [45, 4, 41, 0]
+    assert (seen, refused) == (1, 0)
+
+
+def test_a_good_frame_after_refusals_restores_the_stream(receiver):
+    previous = wire(10) + [42, 7, 40, 1]
+    record, _, seen, refused = receive(
+        receiver, wire(12), previous=previous, seen=True, refused=5, state=True
+    )
+    # a frame was missed while the others were refused: the gap is in the delta
+    assert record == wire(12) + [43, 7, 41, 2]
+    assert (seen, refused) == (1, 0)
 
 
 def test_gap_count_and_semantically_invalid_snapshot_are_explicit(receiver):
