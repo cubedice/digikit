@@ -306,11 +306,13 @@ overdrive-tracks = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", 
 # phrase page (core/phrase-ui), which brings the controls (core/phrase-control) and their storage (core/loop-storage).
 phrase = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/sample-pool", "core/phrase-ui"]
 
-overloop = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/loop-storage", "core/loop-display"]
+# Overloop alone: its storage (core/loop-storage), the pattern position its engine follows (core/pattern-position) and its page (core/loop-display; it brings
+# the control home core/loop-control and the FX view dispatcher core/fxview). No phrase adapter is needed.
+overloop = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/loop-storage", "core/pattern-position", "core/loop-display"]
 # Experimental CANOPY + Overloop qualification image; install both DKMs separately.
-canopy-overloop = ["core/digikit-menu", "core/health", "core/input", "core/instrument-play", "core/loop-storage", "core/loop-display"]
+canopy-overloop = ["core/digikit-menu", "core/health", "core/input", "core/instrument-play", "core/loop-storage", "core/pattern-position", "core/loop-display"]
 # The hardware image of the fork: `canopy-overloop` with the phrase adapters of PRISM (core/phrase-ui; it brings core/phrase-control).
-canopy-overloop-prism = ["core/digikit-menu", "core/health", "core/input", "core/instrument-play", "core/loop-storage", "core/loop-display", "core/phrase-ui"]
+canopy-overloop-prism = ["core/digikit-menu", "core/health", "core/input", "core/instrument-play", "core/loop-storage", "core/pattern-position", "core/loop-display", "core/phrase-ui"]
 
 # The input backend core/input uses to press keys and turn encoders from software (docs/plans/remote-control.md). The profile chooses; `panel-uart`: the panel
 # MCU's UART packets are decoded by the firmware's own key and encoder decoders, which core/input calls (anchors by hash in the port files).

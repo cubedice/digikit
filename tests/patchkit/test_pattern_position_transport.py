@@ -77,7 +77,7 @@ def test_direct_optional_symbols_are_consistent():
 
 
 @pytest.mark.parametrize(
-    "name", ["_pattern_position_info", "_loop_controls_info", "_loop_ui_status"]
+    "name", ["_pattern_position_info", "_loop_tap", "_loop_ui_status"]
 )
 def test_built_import_uses_the_provider_name(name):
     path = ROOT / "modules/core/adapters/dyndsp/build/dyndsp-dt2.dko.json"

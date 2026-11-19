@@ -6,7 +6,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 48, offset = 16, len = 4, sha256 = "a84a39fa0bda5afad7e5b264442861634978ab7d99c834dc1b1b12ecdcaaaabf" }
 mark = "V"
-users = ["core/phrase-ui"]
+users = ["core/fxview"]
 doc = "DTII OS1.17 FxPageView fx_draw_slot. Native ABI retained; only the phrase-owned page handles custom input."
 
 [[site]]
@@ -15,7 +15,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 48, offset = 8, len = 4, sha256 = "a84a39fa0bda5afad7e5b264442861634978ab7d99c834dc1b1b12ecdcaaaabf" }
 mark = "V"
-users = ["core/phrase-ui"]
+users = ["core/fxview"]
 doc = "DTII OS1.17 FxPageView fx_key_slot. Native ABI retained; only the phrase-owned page handles custom input."
 
 [[site]]
@@ -24,7 +24,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 72, offset = 68, len = 4, sha256 = "6964c6e8d6bdee5cb6542c02afcaeb54bb08452922da1885fec16ab9e285b52d" }
 mark = "V"
-users = ["core/phrase-ui"]
+users = ["core/fxview"]
 doc = "DTII OS1.17 FxPageView fx_turn_slot. Native ABI retained; only the phrase-owned page handles custom input."
 
 [[site]]
@@ -33,7 +33,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 20, offset = 16, len = 4, sha256 = "e2da3d0a44e72a261dc18691a8a20a1d76aecd3f61676ed3473b54cd194bedc4" }
 mark = "V"
-users = ["core/phrase-ui"]
+users = ["core/fxview"]
 doc = "DTII OS1.17 FxPageView encoder observer slot: stock thunk subtracts 4 from the receiver before calling the primary encoder handler."
 
 [[site]]
@@ -42,7 +42,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "af9fac4c8769e5c4d05d9dd332de7da0aa5ad3334fb422faddbb83dd387da4c2" }
 mark = "V"
-users = ["core/phrase-ui"]
+users = ["core/fxview"]
 doc = "DTII OS1.17 FxPageView fx_draw. Native ABI retained; only the phrase-owned page handles custom input."
 
 [[site]]
@@ -51,7 +51,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "56bfac7647f303ce7ae17696a67f9a18538a0b6d0c086ea5b204f80512af5bff" }
 mark = "V"
-users = ["core/phrase-ui"]
+users = ["core/fxview"]
 doc = "DTII OS1.17 FxPageView fx_key. Native ABI retained; only the phrase-owned page handles custom input."
 
 [[site]]
@@ -60,7 +60,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "8604aab9fd0b9386c1fc6e059e26b384ae9109c14958b4d095917a3fe2b0de0d" }
 mark = "V"
-users = ["core/phrase-ui"]
+users = ["core/fxview"]
 doc = "DTII OS1.17 FxPageView fx_turn. Native ABI retained; only the phrase-owned page handles custom input."
 
 [[site]]
@@ -69,7 +69,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 48, offset = 16, len = 4, sha256 = "1267b8120c3672789108d121600e4a862cc5eed13da599f76763b5df35ba3583" }
 mark = "V"
-users = ["core/phrase-ui"]
+users = ["core/fxview"]
 doc = "DTII OS1.17 HelpBubbleView draw vtable slot. Independently verified unique MAIN byte window and native draw target."
 
 [[site]]
@@ -78,5 +78,5 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 32, offset = 0, len = 8, sha256 = "ee00f239cdf3b6b3a663929e2fa09f19d824945cbe47f14f81ee011b959c2dd0" }
 mark = "V"
-users = ["core/phrase-ui"]
+users = ["core/fxview"]
 doc = "DTII OS1.17 HelpBubbleView draw, cdecl(view, bitmap). Independently verified unique window and complete link/movem entry. Stock paint runs first; only the visible phrase page reclaims its ten-pixel header."

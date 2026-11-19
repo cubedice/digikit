@@ -97,9 +97,9 @@ dyndsp_info:
     DSP_IMPORT _loop_buffer_info
     | Optional per-frame transport snapshot. Missing provider fails an import before allocation.
     DSP_IMPORT _pattern_position_info
-    | Optional destination-kit handoff adapter, required by Overloop 0.3+.
-    DSP_IMPORT _loop_controls_info
+    | The status mailbox and the tap of core/loop-control, which the loop effect imports.
     DSP_IMPORT _loop_ui_status
+    DSP_IMPORT _loop_tap
     DSP_IMPORT _phrase_storage_info
     DSP_IMPORT _phrase_control_info
     DSP_IMPORT _phrase_status

@@ -16,7 +16,8 @@
 .EXTERN _phrase_status;
 
 // Read-only two-bank lease descriptor from core/loop-storage, separate from
-// the legacy loop lease. Validate magic/version, both bank extents and frame
-// capacity before access; do not assume a fixed address or bank size. PCM is
-// interleaved stereo float32 at 48 kHz. Initialize frames before reading them.
+// the loop lease. The phrase engine's bank is the first; the second is the loop
+// effect's (dk_loop.inc). Validate magic/version, the bank's extent and frame
+// capacity before access; do not assume a fixed address or bank size.
+// Initialize frames before reading them.
 .EXTERN _phrase_storage_info;

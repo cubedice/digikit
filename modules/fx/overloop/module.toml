@@ -1,17 +1,17 @@
 [module]
 id = "digikit/overloop"
-version = "0.4.0"
+version = "0.5.0"
 name = "Overloop"
 category = "fx"
 type = "fx"
 author = "digikit"
 status = "experimental"
-summary = "Arms at a selected pattern step, records a chosen step count once, and crossfades the frozen stereo loop."
+summary = "Listens all the time; an armed pattern change keeps the last cycle as a loop, and a crossfader brings the new pattern in."
 dynamic = true
 ports = ["dt2-1.17"]
-# The DSP reads the loop buffer (core/loop-storage) and the pattern position (core/pattern-position); the knob handoff and the
-# display are core/loop-controls and core/loop-display, which require the position adapter.
-requires = ["core/loop-storage", "core/loop-display"]
+# The DSP reads the two buffers of core/loop-storage and the pattern position of core/pattern-position, and writes the status
+# mailbox and the tap of core/loop-control. The page is core/loop-display, which brings core/loop-control and core/fxview.
+requires = ["core/loop-storage", "core/pattern-position", "core/loop-display"]
 conflicts = []
 
 [targets]
@@ -33,18 +33,18 @@ path = "build/overloop-cf.dko.json"
 sources = ["src/module.c"]
 place = "cf.expansion"
 
-# The load cell boots the patch set with core/loop-storage and core/loop-display. The rig does not run the effect: its DSP reads the
-# loop buffer of core/loop-storage and the position of core/pattern-position, which the rig does not place; tests/test_overloop.py runs
-# it on the effect adapter with stand-ins for both (tests/fx_provider.py) and holds every block to dsp_cost_fx of [uses.dt2].
+# The load cell boots the patch set with core/loop-storage and core/loop-display. The rig's effect suite does not run the effect: its
+# DSP reads the buffers of core/loop-storage and the position of core/pattern-position, which the suite does not place;
+# tests/loop.rig.test.ts runs it on the rig with stand-ins for both (tests/provider.s) and holds every block to dsp_cost_fx of [uses.dt2].
 [conformance]
 patch_set = "overloop"
 rig_skip = "reads core/loop-storage and core/pattern-position data the rig does not place"
 
 # One effect record (0x1a4, its page and params inline) after the 16-byte header: no machine, param or page rows.
-# dsp_cost_fx: the costliest hook call (core/fx and the effect) of the scenarios in tests/test_overloop.py, in instructions.
+# dsp_cost_fx: the costliest hook call (core/fx and the effect) of the cases in tests/loop.rig.test.ts, in instructions.
 [uses.dt2]
 machine_rows = 0
 param_rows = 0
 page_rows = 0
 record_bytes = 436
-dsp_cost_fx = 2617
+dsp_cost_fx = 4384

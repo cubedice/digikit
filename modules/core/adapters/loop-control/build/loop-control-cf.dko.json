@@ -1,0 +1,548 @@
+{
+ "arch": "cf",
+ "format": 1,
+ "relocs": [
+  {
+   "addend": 0,
+   "offset": 12,
+   "section": ".text.dkrt_loop_get",
+   "symbol": ".sec..bss.raw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 14,
+   "section": ".text.dkrt_loop_xfad",
+   "symbol": ".sec..bss.raw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 14,
+   "section": ".text.dkrt_loop_arm",
+   "symbol": ".sec..bss.raw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 2,
+   "section": ".text.dkrt_loop_arm",
+   "symbol": ".sec..bss.raw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 8,
+   "offset": 14,
+   "section": ".text.dkrt_loop_drop",
+   "symbol": ".sec..bss.raw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 8,
+   "offset": 2,
+   "section": ".text.dkrt_loop_drop",
+   "symbol": ".sec..bss.raw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 34,
+   "section": ".text.dkrt_loop_status",
+   "symbol": ".sec..data.age",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.dkrt_loop_status",
+   "symbol": ".sec..bss.status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4,
+   "section": ".text.dkrt_loop_page",
+   "symbol": ".sec..data.asked",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 12,
+   "section": ".text.dkrt_loop_page",
+   "symbol": ".sec..bss.page",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 16,
+   "section": ".text.loop_control_pass",
+   "symbol": ".sec..data.age",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 36,
+   "section": ".text.loop_control_pass",
+   "symbol": ".sec..data.asked",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text.loop_control_pass",
+   "symbol": ".sec..data.age",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 22,
+   "section": ".text.loop_control_pass",
+   "symbol": ".sec..data.asked",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 24,
+   "section": ".text.fx_held_values",
+   "symbol": ".sec..bss.page",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 30,
+   "section": ".text.fx_held_values",
+   "symbol": ".sec..data.asked",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 36,
+   "section": ".text.fx_held_values",
+   "symbol": ".sec..bss.raw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 14,
+   "section": ".text.loop_control_status",
+   "symbol": ".sec..bss.last_seq",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 22,
+   "section": ".text.loop_control_status",
+   "symbol": ".sec..bss.last_seq",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 28,
+   "section": ".text.loop_control_status",
+   "symbol": ".sec..data.age",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 34,
+   "section": ".text.loop_control_status",
+   "symbol": ".sec..bss.loop_control_updates",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 76,
+   "section": ".text.loop_control_status",
+   "symbol": ".sec..bss.raw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 84,
+   "section": ".text.loop_control_status",
+   "symbol": ".sec..bss.raw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 96,
+   "section": ".text.loop_control_status",
+   "symbol": ".sec..bss.raw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 102,
+   "section": ".text.loop_control_status",
+   "symbol": ".sec..bss.loop_control_seen",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 42,
+   "section": ".text.loop_control_status",
+   "symbol": ".sec..bss.status",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.loop_ui_tick",
+   "symbol": "loop_reply_literal",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 16,
+   "section": ".text.loop_ui_tick",
+   "symbol": ".sec..text.loop_control_pass",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 28,
+   "section": ".text.loop_ui_tick",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 118,
+   "section": ".text.loop_ui_tick",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 160,
+   "section": ".text.loop_ui_tick",
+   "symbol": ".sec..text.loop_control_status",
+   "type": "cf.32"
+  }
+ ],
+ "sections": [
+  {
+   "align": 2,
+   "hex": "202f00047203b280650c41f90000000020300c004e75428060fa",
+   "kind": "text",
+   "name": ".text.dkrt_loop_get",
+   "size": 26
+  },
+  {
+   "align": 2,
+   "hex": "202f0004727fb2806402707f23c0000000004e75",
+   "kind": "text",
+   "name": ".text.dkrt_loop_xfad",
+   "size": 20
+  },
+  {
+   "align": 2,
+   "hex": "203900000000727f5280c28023c1000000004e75",
+   "kind": "text",
+   "name": ".text.dkrt_loop_arm",
+   "size": 20
+  },
+  {
+   "align": 2,
+   "hex": "203900000000727f5280c28023c1000000004e75",
+   "kind": "text",
+   "name": ".text.dkrt_loop_drop",
+   "size": 20
+  },
+  {
+   "align": 2,
+   "hex": "2f0a206f0008428043f90000000045f108007240219208005880b28066f0723bb2b90000000054c0245f710044804e75",
+   "kind": "text",
+   "name": ".text.dkrt_loop_status",
+   "size": 48
+  },
+  {
+   "align": 2,
+   "hex": "703bb0b90000000065082039000000004e75428060fa",
+   "kind": "text",
+   "name": ".text.dkrt_loop_page",
+   "size": 22
+  },
+  {
+   "align": 2,
+   "hex": "2039000000007277b2806508528023c0000000002039000000007277b2806508528023c0000000004e75",
+   "kind": "text",
+   "name": ".text.loop_control_pass",
+   "size": 42
+  },
+  {
+   "align": 2,
+   "hex": "206f000c203c0000ca1bb0af0004663843ef0008428023d10000000042b90000000043f9000000007203b280651622310c00e18931810a0052807208b28066e870014e75424160ec428060f6",
+   "kind": "text",
+   "name": ".text.fx_held_values",
+   "size": 76
+  },
+  {
+   "align": 2,
+   "hex": "2f0a2f02206f000c20280004b0b900000000675623c00000000042b90000000052b900000000428043f90000000045f008007240239208005880b28066f0222800082001e088747fc082b0b900000000671823c00000000008010000670623c20000000052b900000000241f245f4e75",
+   "kind": "text",
+   "name": ".text.loop_control_status",
+   "size": 112
+  },
+  {
+   "align": 2,
+   "hex": "4fefffb048d74c042c79000000004eb9000000004a8e6700008e4eb90000000045ef00102240428022007407e289b480657e0681000000117401c480c2fc00155280264241f3181873c8e58930761800548102810001fffe3436180073c8484242428481720e24c2b28066bc2f09243c4f564c324eb900000000588fb4af001066244aaf002c661e267c4f564c312f4b001042af004c42af0048486f00104eb900000000588f4cd74c044fef00504e750681000000196080",
+   "kind": "text",
+   "name": ".text.loop_ui_tick",
+   "size": 184
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.loop_control_seen",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.loop_control_updates",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "00000078",
+   "kind": "data",
+   "name": ".data.asked",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.page",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.last_seq",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "00000078",
+   "kind": "data",
+   "name": ".data.age",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.status",
+   "size": 64
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.raw",
+   "size": 16
+  }
+ ],
+ "source_sha256": "c057fd1f729a66b7073da1b8dc6754fe0b7093efaebc255ba3abef9aeaa857ae",
+ "symbols": [
+  {
+   "global": false,
+   "name": ".sec..bss.last_seq",
+   "section": ".bss.last_seq",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.loop_control_seen",
+   "section": ".bss.loop_control_seen",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.loop_control_updates",
+   "section": ".bss.loop_control_updates",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.page",
+   "section": ".bss.page",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.raw",
+   "section": ".bss.raw",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.status",
+   "section": ".bss.status",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..data.age",
+   "section": ".data.age",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..data.asked",
+   "section": ".data.asked",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.loop_control_pass",
+   "section": ".text.loop_control_pass",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.loop_control_status",
+   "section": ".text.loop_control_status",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "age",
+   "section": ".data.age",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "asked",
+   "section": ".data.asked",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_irq_mask",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_irq_restore",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_loop_arm",
+   "section": ".text.dkrt_loop_arm",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_loop_drop",
+   "section": ".text.dkrt_loop_drop",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_loop_get",
+   "section": ".text.dkrt_loop_get",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_loop_page",
+   "section": ".text.dkrt_loop_page",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_loop_status",
+   "section": ".text.dkrt_loop_status",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_loop_xfad",
+   "section": ".text.dkrt_loop_xfad",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fx_held_values",
+   "section": ".text.fx_held_values",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "last_seq",
+   "section": ".bss.last_seq",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "loop_control_pass",
+   "section": ".text.loop_control_pass",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "loop_control_seen",
+   "section": ".bss.loop_control_seen",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "loop_control_status",
+   "section": ".text.loop_control_status",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "loop_control_updates",
+   "section": ".bss.loop_control_updates",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "loop_reply_literal",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "loop_ui_tick",
+   "section": ".text.loop_ui_tick",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "page",
+   "section": ".bss.page",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "raw",
+   "section": ".bss.raw",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "status",
+   "section": ".bss.status",
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "as": "GNU assembler (GNU Binutils) 2.47.20260726",
+  "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
+  "gcc": "m68k-elf-gcc (GCC) 16.2.0",
+  "instructions_redecoded": "178",
+  "isa_check": "baba3ace4274217e61d211bfe3b1ec078b968f75769ac2d8ad361b80110d72f5",
+  "ld": "GNU ld (GNU Binutils) 2.47.20260726"
+ }
+}

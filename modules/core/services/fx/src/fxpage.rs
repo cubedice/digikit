@@ -329,6 +329,48 @@ pub unsafe fn page_painter<C: CoreApi>(core: &C) -> u32 {
     core.info(fnv1a(b"loop_ui_paint")) as u32
 }
 
+/// The name of the image function that holds an effect's values outside the kit: `int fx_held_values(u32 effect_id, u32 page, u16 *raw)`, an
+/// `[[info]]` entry (the function itself; core/loop-control has it for the loop effect). `page` is the native FX page of the effect's row. It returns 1
+/// and fills the raw values of the effect's knobs, on the kit's scale (0 to 0x7f00), when it holds the values of the effect with this ID, else 0. For such an effect the kit's values are never read: its knobs are
+/// the adapter's and its MIX stays the record's default, so its values are the same in every kit and do not change at a pattern change.
+pub const HELD_HASH: u32 = fnv1a(b"fx_held_values");
+static mut HELD: usize = 0;
+
+/// Find the function (the service file's `setup`); 0 when the image has none: every effect's values are the kit's.
+pub unsafe fn held_setup<C: CoreApi>(core: &C) {
+    set_held(core.info(HELD_HASH) as usize);
+}
+
+/// Set the function's address (`held_setup`; a host test gives one of its own).
+pub unsafe fn set_held(f: usize) {
+    write_volatile(addr_of_mut!(HELD), f);
+}
+
+/// The raw values an adapter holds for the effect `id`, whose page is `page`, or `None` when no adapter holds them.
+unsafe fn held_values(id: u32, page: u32) -> Option<[u16; 8]> {
+    let f = read_volatile(addr_of_mut!(HELD));
+    if f == 0 || id == 0 {
+        return None;
+    }
+    let call: unsafe extern "C" fn(u32, u32, *mut u16) -> i32 = core::mem::transmute(f);
+    let mut raw = [0u16; 8];
+    if call(id, page, raw.as_mut_ptr()) == 1 {
+        Some(raw)
+    } else {
+        None
+    }
+}
+
+/// The raw value that word `j` of a row takes: the adapter's for a knob of an effect whose values it holds (`held`), the record's default `def` for that
+/// effect's MIX, and the kit's (`kit`, read only then) for every other effect.
+fn source_raw(held: Option<&[u16; 8]>, j: usize, def: i32, kit: impl FnOnce() -> i32) -> i32 {
+    match held {
+        Some(_) if j == WORDS - 1 => def,
+        Some(raw) => raw[j] as i32,
+        None => kit(),
+    }
+}
+
 /// Forget the bound table: the next `info` reads the image table again (host tests that change the fake image table; a service file that is unloaded).
 pub unsafe fn unbind() {
     write_volatile(addr_of_mut!(DKRT_FXP_TAB) as *mut u32, 0);
@@ -783,10 +825,17 @@ unsafe fn values<C: CoreApi>(core: &C, inf: *const u32) {
     k = 0;
     while k < MAX_FX {
         if s.owner[k] != 0 && !crate::phrase::is_row(k) {
+            // an effect whose values an image adapter holds: the kit is not read for it
+            let held = held_values(
+                core.rd16(iw(inf, w::IDS) + 2 * k as u32) as u32 & 0xffff,
+                iw(inf, w::FIRST) + k as u32,
+            );
             let mut j = 0;
             while j < WORDS {
                 if has_word(s, k, j) {
-                    let raw = core.rd16(arr + 2 * value_index(inf, k, j));
+                    let raw = source_raw(held.as_ref(), j, s.def[k][j], || {
+                        core.rd16(arr + 2 * value_index(inf, k, j))
+                    });
                     let n = if raw < 0 {
                         0
                     } else if raw > RAW_MAX {
@@ -915,6 +964,55 @@ pub unsafe fn counts<C: CoreApi>(core: &C) -> (u32, u32) {
 mod tests {
     use super::*;
     use dkrt_test_support::{Call, FakeCore};
+
+    /// An effect whose values an image adapter holds: its knobs are the adapter's values and its MIX the record's default, whatever the kit holds (a kit
+    /// saved with other values for it changes nothing); every other effect is read from the kit, and so is every effect in an image without the adapter.
+    #[test]
+    fn held_values_come_from_the_adapter_and_never_from_the_kit() {
+        unsafe extern "C" fn adapter(id: u32, page: u32, raw: *mut u16) -> i32 {
+            if id != 0xca1b {
+                return 0;
+            }
+            *raw = 0x7f00;
+            *raw.add(1) = 0x0300;
+            // the page of the effect's row comes with the question
+            *raw.add(2) = page as u16;
+            1
+        }
+        // the name the image's info table has for the function (the assembly test of the runtime reads the table)
+        assert_eq!(HELD_HASH, dkneeds::keys::name_hash("fx_held_values"));
+        unsafe {
+            set_held(adapter as *const () as usize);
+            let held = held_values(0xca1b, 15).expect("the adapter holds this effect");
+            assert_eq!(&held[..4], &[0x7f00, 0x0300, 15, 0]);
+            assert!(
+                held_values(0x1234, 15).is_none(),
+                "another effect is the kit's"
+            );
+            assert!(held_values(0, 15).is_none(), "a row without an effect");
+            assert_eq!(
+                source_raw(Some(&held), 0, 0x100, || panic!("the kit was read")),
+                0x7f00
+            );
+            assert_eq!(
+                source_raw(Some(&held), 1, 0, || panic!("the kit was read")),
+                0x0300
+            );
+            assert_eq!(
+                source_raw(Some(&held), WORDS - 1, 0x7f00, || panic!(
+                    "the kit was read"
+                )),
+                0x7f00,
+                "MIX is the record's default"
+            );
+            assert_eq!(source_raw(None, 0, 0x100, || 0x2a00), 0x2a00);
+            set_held(0);
+            assert!(
+                held_values(0xca1b, 15).is_none(),
+                "no adapter in the image: the kit's values"
+            );
+        }
+    }
 
     /// A knob of effect row 2 is declared with a default, then its value changes: the parameter row is written first, then the new value is the word's live value.
     #[test]

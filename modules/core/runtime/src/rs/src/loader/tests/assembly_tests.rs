@@ -775,6 +775,24 @@ fn an_adapter_import_resolves_only_in_an_image_with_the_adapter() {
     }
 }
 
+/// The seam between the fx service file and the image adapter that holds an effect's values outside the kit: the service finds the adapter's function by
+/// the name `fx_held_values` in the image's info table. An image with core/loop-control has that entry under the hash the service asks for; an image
+/// without the adapter has none, and the service then reads every effect's values from the kit.
+#[test]
+fn the_holder_of_an_effects_values_is_named_as_the_fx_service_looks_it_up() {
+    if !DT2.has_firmware() {
+        return;
+    }
+    let with = Image::read(DT2, "overloop");
+    assert!(with.modules.iter().any(|m| m == "core/loop-control"), "the set is expected to hold the adapter");
+    let entry = with.entries.iter().find(|e| e.0 == "fx_held_values").expect("the image with core/loop-control has no entry fx_held_values");
+    // the fx service asks for the hash of this name (its own test holds its constant to `name_hash("fx_held_values")`)
+    assert_eq!(entry.1, name_hash("fx_held_values"), "the entry's hash is the one the fx service looks up");
+    let without = Image::read(DT2, "emulator");
+    assert!(!without.modules.iter().any(|m| m == "core/loop-control"));
+    assert!(!without.entries.iter().any(|e| e.1 == name_hash("fx_held_values")), "an image without the adapter holds no effect's values");
+}
+
 #[test]
 fn a_c_service_with_the_abi_word_0_is_accepted_and_its_user_loads() {
     let _g = clean();

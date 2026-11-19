@@ -8,7 +8,7 @@ author = "digikit"
 status = "experimental"
 summary = "Emulator-only reset/configuration/event ACK proof; no audio renderer or public V2 machine."
 requires = ["core/midi-events"]
-conflicts = ["core/loop-controls"]
+conflicts = []
 ports = ["dt2-1.17"]
 
 [targets]

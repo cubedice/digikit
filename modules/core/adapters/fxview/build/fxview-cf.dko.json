@@ -1,0 +1,430 @@
+{
+ "arch": "cf",
+ "format": 1,
+ "relocs": [
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.fxv_view_draw",
+   "symbol": "fxv_stock_draw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 18,
+   "section": ".text.fxv_view_draw",
+   "symbol": "phrase_fxv_draw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 44,
+   "section": ".text.fxv_view_draw",
+   "symbol": "loop_fxv_draw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 80,
+   "section": ".text.fxv_visible_view",
+   "symbol": ".sec..text.fxv_view_draw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.fxv_visible_view",
+   "symbol": "cf.view.fn.brain.instance",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 22,
+   "section": ".text.fxv_visible_view",
+   "symbol": "cf.view.fn.brain.view_manager",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 54,
+   "section": ".text.fxv_box",
+   "symbol": "cf.draw.fn.fill_rect",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.fxv_text",
+   "symbol": "fxv_label_font",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 48,
+   "section": ".text.fxv_text",
+   "symbol": ".sec..rodata.fxv_text.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 78,
+   "section": ".text.fxv_text",
+   "symbol": "cf.text.fn.draw_box",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 140,
+   "section": ".text.fxv_text",
+   "symbol": ".sec..text.fxv_box",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 12,
+   "section": ".text.fxv_help_draw",
+   "symbol": "fxv_stock_help_draw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 18,
+   "section": ".text.fxv_help_draw",
+   "symbol": ".sec..text.fxv_visible_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 32,
+   "section": ".text.fxv_help_draw",
+   "symbol": "phrase_fxv_draw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 58,
+   "section": ".text.fxv_help_draw",
+   "symbol": "loop_fxv_draw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 14,
+   "section": ".text.fxv_view_key",
+   "symbol": "phrase_fxv_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 24,
+   "section": ".text.fxv_view_key",
+   "symbol": "loop_fxv_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 46,
+   "section": ".text.fxv_view_key",
+   "symbol": "fxv_stock_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 14,
+   "section": ".text.fxv_view_turn",
+   "symbol": "phrase_fxv_turn",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 24,
+   "section": ".text.fxv_view_turn",
+   "symbol": "loop_fxv_turn",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 46,
+   "section": ".text.fxv_view_turn",
+   "symbol": "fxv_stock_turn",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 6,
+   "section": ".text.fxv_encoder_interface",
+   "symbol": ".sec..text.fxv_view_turn",
+   "type": "cf.32"
+  }
+ ],
+ "sections": [
+  {
+   "align": 2,
+   "hex": "2f2f00082f2f00084eb900000000508f41f9000000004a88671042a72f2f000c2f2f000c4e904fef000c41f9000000004a88671042a72f2f000c2f2f000c4e904fef000c4e75",
+   "kind": "text",
+   "name": ".text.fxv_view_draw",
+   "size": 70
+  },
+  {
+   "align": 2,
+   "hex": "206f000422502f480004226900884ed1",
+   "kind": "text",
+   "name": ".text.fxv_page",
+   "size": 16
+  },
+  {
+   "align": 2,
+   "hex": "4feffff448d7040c4eb9000000004a8067522f004eb900000000588f4a806744224024002069001c068200000014722042804a88672eb1c2672a226800084a89671a4a290030661424514a8a670e263c00000000b6aa001066022009205053814a8166ce4cd7040c4fef000c4e75",
+   "kind": "text",
+   "name": ".text.fxv_visible_view",
+   "size": 110
+  },
+  {
+   "align": 2,
+   "hex": "222f000408010004661444c16b147001c08108010000660808010001660870104e75700860fa700260f6",
+   "kind": "text",
+   "name": ".text.fxv_key_flags",
+   "size": 42
+  },
+  {
+   "align": 2,
+   "hex": "2f02743f202f000c2240d3ef0014222f001094812f40000c206f001853892f490014327c00402f42001893c193c82f490010241f4ef900000000",
+   "kind": "text",
+   "name": ".text.fxv_box",
+   "size": 58
+  },
+  {
+   "align": 1,
+   "hex": "257300",
+   "kind": "data",
+   "name": ".rodata.fxv_text.str1.1",
+   "size": 3
+  },
+  {
+   "align": 2,
+   "hex": "2f0b2f0a222f00182279000000004aaf001c6600009626690008204195ca101066784a8a56c07100d5c02f01703b48790000000042a742a74878000190af00282f002f2f00282f092f2f002c4eb9000000004fef00244aaf001c66384a8a6734200a6a0252804878ffff48780007486a0002206f00204868ffff206f0020e28091c04868ffff2f2f00204eb9000000004fef0018245f265f4e757180528871b3080045f208016000ff7695ca6000ff7c",
+   "kind": "text",
+   "name": ".text.fxv_text",
+   "size": 176
+  },
+  {
+   "align": 2,
+   "hex": "2f022f2f000c2f2f000c4eb9000000004eb900000000508f24004a80673441f9000000004a886710487800012f2f00102f004e904fef000c41f9000000004a886710487800012f2f00102f024e904fef000c241f4e75",
+   "kind": "text",
+   "name": ".text.fxv_help_draw",
+   "size": 86
+  },
+  {
+   "align": 2,
+   "hex": "2f032f02242f000c262f001041f9000000004a88661c41f9000000004a8866262f4300102f42000c241f261f4ef9000000002f032f024e90508f4a8067d8241f7001261f4e752f032f024e90508f4a8067ce60ea",
+   "kind": "text",
+   "name": ".text.fxv_view_key",
+   "size": 84
+  },
+  {
+   "align": 2,
+   "hex": "2f032f02242f000c262f001041f9000000004a88661c41f9000000004a8866262f4300102f42000c241f261f4ef9000000002f032f024e90508f4a8067d8241f7001261f4e752f032f024e90508f4a8067ce60ea",
+   "kind": "text",
+   "name": ".text.fxv_view_turn",
+   "size": 84
+  },
+  {
+   "align": 2,
+   "hex": "59af00044ef900000000",
+   "kind": "text",
+   "name": ".text.fxv_encoder_interface",
+   "size": 10
+  }
+ ],
+ "source_sha256": "8dfe4b97c06b3a02e56ac97460a6af294b40b91aaa4cd0d839c7682c1b0a5459",
+ "symbols": [
+  {
+   "global": false,
+   "name": ".sec..rodata.fxv_text.str1.1",
+   "section": ".rodata.fxv_text.str1.1",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.fxv_box",
+   "section": ".text.fxv_box",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.fxv_view_draw",
+   "section": ".text.fxv_view_draw",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.fxv_view_turn",
+   "section": ".text.fxv_view_turn",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.fxv_visible_view",
+   "section": ".text.fxv_visible_view",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cf.draw.fn.fill_rect",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cf.text.fn.draw_box",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cf.view.fn.brain.instance",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cf.view.fn.brain.view_manager",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_box",
+   "section": ".text.fxv_box",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_encoder_interface",
+   "section": ".text.fxv_encoder_interface",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_help_draw",
+   "section": ".text.fxv_help_draw",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_key_flags",
+   "section": ".text.fxv_key_flags",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_label_font",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_page",
+   "section": ".text.fxv_page",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_stock_draw",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_stock_help_draw",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_stock_key",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_stock_turn",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_text",
+   "section": ".text.fxv_text",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_view_draw",
+   "section": ".text.fxv_view_draw",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_view_key",
+   "section": ".text.fxv_view_key",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_view_turn",
+   "section": ".text.fxv_view_turn",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_visible_view",
+   "section": ".text.fxv_visible_view",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "loop_fxv_draw",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "loop_fxv_key",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "loop_fxv_turn",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "phrase_fxv_draw",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "phrase_fxv_key",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "phrase_fxv_turn",
+   "section": null,
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "as": "GNU assembler (GNU Binutils) 2.47.20260726",
+  "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
+  "gcc": "m68k-elf-gcc (GCC) 16.2.0",
+  "instructions_redecoded": "250",
+  "isa_check": "08bee89aa6ea038078738cc3e896d3f5123d20a3ccde02274ecc18634b260fb7",
+  "ld": "GNU ld (GNU Binutils) 2.47.20260726"
+ }
+}

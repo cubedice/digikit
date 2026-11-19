@@ -8,7 +8,8 @@ type = "framework"
 author = "digikit"
 status = "experimental"
 summary = "The one page of the phrase effect: eight cells, MIX on LEVEL, FLIP, SYNC and HOLD on the encoder presses."
-requires = ["core/phrase-control", "core/fxpages", "core/ui"]
+# core/fxview owns the FX view's table slots and calls this page's phrase_fxv_ functions.
+requires = ["core/phrase-control", "core/fxview", "core/ui"]
 conflicts = []
 ports = ["dt2-1.17"]
 
@@ -20,55 +21,6 @@ path = "build/phrase-ui-cf.dko.json"
 sources = ["src/model.c", "src/render.c", "src/native.c"]
 place = "cf.expansion"
 devices = ["dt2"]
-
-[object.externs]
-phrase_stock_draw = "cf.page.site.phrase_fx_draw"
-phrase_stock_help_draw = "cf.page.site.phrase_help_draw"
-phrase_stock_key = "cf.page.site.phrase_fx_key"
-phrase_stock_turn = "cf.page.site.phrase_fx_turn"
-phrase_label_font = "cf.page.site.instrument_label_font"
-
-[[op]]
-op = "write"
-anchor = "cf.page.site.phrase_fx_draw_slot"
-value = "phrase_view_draw"
-width = 4
-
-[[op]]
-op = "write"
-anchor = "cf.page.site.phrase_fx_key_slot"
-value = "phrase_view_key"
-width = 4
-
-[[op]]
-op = "write"
-anchor = "cf.page.site.phrase_fx_turn_slot"
-value = "phrase_view_turn"
-width = 4
-
-[[op]]
-op = "write"
-anchor = "cf.page.site.phrase_fx_encoder_slot"
-value = "phrase_encoder_interface"
-width = 4
-
-[[claim]]
-resource = "cf.page.site.phrase_fx_draw_slot"
-[[claim]]
-resource = "cf.page.site.phrase_fx_key_slot"
-[[claim]]
-resource = "cf.page.site.phrase_fx_turn_slot"
-[[claim]]
-resource = "cf.page.site.phrase_fx_encoder_slot"
-
-[[op]]
-op = "write"
-anchor = "cf.page.site.phrase_help_draw_slot"
-value = "phrase_help_draw"
-width = 4
-
-[[claim]]
-resource = "cf.page.site.phrase_help_draw_slot"
 
 # The function the fx service file (`fx.dks`) calls: it has no link to the image and finds it by name in the info table.
 [[info]]

@@ -684,110 +684,96 @@
   {
    "addend": 0,
    "offset": 10,
-   "section": ".text.visible_fx_view",
-   "symbol": "cf.view.fn.brain.instance",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 22,
-   "section": ".text.visible_fx_view",
-   "symbol": "cf.view.fn.brain.view_manager",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 80,
-   "section": ".text.visible_fx_view",
-   "symbol": ".sec..text.phrase_view_draw",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 14,
    "section": ".text.context",
    "symbol": "dkrt_phrase_active",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 36,
+   "offset": 32,
    "section": ".text.context",
    "symbol": "dkrt_phrase_snapshot",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 46,
+   "offset": 42,
    "section": ".text.context",
    "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 54,
+   "offset": 50,
    "section": ".text.context",
    "symbol": "pu_status",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 60,
+   "offset": 56,
    "section": ".text.context",
    "symbol": "dkrt_phrase_title",
    "type": "cf.32"
   },
   {
    "addend": 204,
-   "offset": 70,
+   "offset": 66,
    "section": ".text.context",
    "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 90,
+   "offset": 86,
    "section": ".text.context",
    "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 96,
+   "offset": 92,
    "section": ".text.context",
-   "symbol": ".sec..text.visible_fx_view",
+   "symbol": "fxv_visible_view",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 114,
+   "offset": 104,
    "section": ".text.context",
-   "symbol": ".sec..bss.phrase_ui_binding",
+   "symbol": "fxv_page",
    "type": "cf.32"
   },
   {
-   "addend": 4,
-   "offset": 120,
+   "addend": 0,
+   "offset": 110,
    "section": ".text.context",
    "symbol": ".sec..bss.phrase_ui_binding",
    "type": "cf.32"
   },
   {
    "addend": 8,
-   "offset": 126,
+   "offset": 116,
    "section": ".text.context",
    "symbol": ".sec..bss.phrase_ui_binding",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 132,
+   "offset": 122,
    "section": ".text.context",
    "symbol": ".sec..bss.phrase_ui_binding",
    "type": "cf.32"
   },
   {
    "addend": 16,
+   "offset": 136,
+   "section": ".text.context",
+   "symbol": ".sec..bss.phrase_ui_binding",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
    "offset": 142,
    "section": ".text.context",
    "symbol": ".sec..bss.phrase_ui_binding",
@@ -844,387 +830,268 @@
   },
   {
    "addend": 0,
-   "offset": 212,
+   "offset": 214,
    "section": ".text.context",
    "symbol": "dkrt_phrase_get",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 234,
+   "offset": 232,
    "section": ".text.context",
    "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
   {
    "addend": 28,
-   "offset": 240,
+   "offset": 238,
    "section": ".text.context",
    "symbol": ".sec..bss.phrase_ui_debug",
    "type": "cf.32"
   },
   {
    "addend": 24,
-   "offset": 250,
+   "offset": 248,
    "section": ".text.context",
    "symbol": ".sec..bss.phrase_ui_debug",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 64,
-   "section": ".text.native_box",
-   "symbol": "cf.draw.fn.fill_rect",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 10,
-   "section": ".text.native_text",
-   "symbol": "phrase_label_font",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 48,
-   "section": ".text.native_text",
-   "symbol": ".sec..rodata.native_text.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 82,
-   "section": ".text.native_text",
-   "symbol": "cf.text.fn.draw_box",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 144,
-   "section": ".text.native_text",
-   "symbol": ".sec..text.native_box",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 14,
-   "section": ".text.phrase_view_draw",
-   "symbol": "phrase_stock_draw",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 24,
-   "section": ".text.phrase_view_draw",
+   "offset": 12,
+   "section": ".text.phrase_fxv_draw",
    "symbol": ".sec..text.context",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 46,
-   "section": ".text.phrase_view_draw",
-   "symbol": ".sec..text.native_box",
+   "offset": 26,
+   "section": ".text.phrase_fxv_draw",
+   "symbol": "fxv_box",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 32,
+   "section": ".text.phrase_fxv_draw",
+   "symbol": "fxv_text",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 52,
-   "section": ".text.phrase_view_draw",
+   "section": ".text.phrase_fxv_draw",
    "symbol": ".sec..bss.phrase_ui_page",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 58,
-   "section": ".text.phrase_view_draw",
-   "symbol": ".sec..text.native_text",
+   "section": ".text.phrase_fxv_draw",
+   "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 64,
-   "section": ".text.phrase_view_draw",
-   "symbol": ".sec..bss.ui",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 90,
-   "section": ".text.phrase_view_draw",
+   "section": ".text.phrase_fxv_draw",
    "symbol": "pu_page",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 100,
-   "section": ".text.phrase_view_draw",
+   "offset": 82,
+   "section": ".text.phrase_fxv_draw",
    "symbol": ".sec..bss.phrase_ui_page",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 106,
-   "section": ".text.phrase_view_draw",
-   "symbol": "pu_render",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 112,
-   "section": ".text.phrase_view_draw",
-   "symbol": ".sec..bss.phrase_ui_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 84,
-   "offset": 122,
-   "section": ".text.phrase_view_draw",
-   "symbol": ".sec..bss.ui",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 128,
-   "section": ".text.phrase_view_draw",
-   "symbol": ".sec..bss.painted",
-   "type": "cf.32"
-  },
-  {
-   "addend": 8,
-   "offset": 134,
-   "section": ".text.phrase_view_draw",
-   "symbol": ".sec..bss.ui",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 140,
-   "section": ".text.phrase_view_draw",
-   "symbol": ".sec..bss.paint_revision",
-   "type": "cf.32"
-  },
-  {
-   "addend": 72,
-   "offset": 146,
-   "section": ".text.phrase_view_draw",
-   "symbol": ".sec..bss.ui",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 152,
-   "section": ".text.phrase_view_draw",
-   "symbol": ".sec..bss.paint_fresh",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 14,
-   "section": ".text.phrase_help_draw",
-   "symbol": "phrase_stock_help_draw",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 20,
-   "section": ".text.phrase_help_draw",
-   "symbol": ".sec..text.visible_fx_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 38,
-   "section": ".text.phrase_help_draw",
-   "symbol": ".sec..text.context",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 58,
-   "section": ".text.phrase_help_draw",
-   "symbol": ".sec..text.native_box",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 64,
-   "section": ".text.phrase_help_draw",
-   "symbol": ".sec..bss.phrase_ui_page",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 70,
-   "section": ".text.phrase_help_draw",
-   "symbol": ".sec..text.native_text",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 76,
-   "section": ".text.phrase_help_draw",
-   "symbol": ".sec..bss.ui",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 102,
-   "section": ".text.phrase_help_draw",
-   "symbol": "pu_page",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 112,
-   "section": ".text.phrase_help_draw",
-   "symbol": ".sec..bss.phrase_ui_page",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 118,
-   "section": ".text.phrase_help_draw",
-   "symbol": "pu_render_header",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 20,
-   "section": ".text.phrase_view_key",
-   "symbol": ".sec..bss.ui",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 28,
-   "section": ".text.phrase_view_key",
-   "symbol": ".sec..text.context",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 74,
-   "section": ".text.phrase_view_key",
-   "symbol": "cf.input.fn.key_down",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 112,
-   "section": ".text.phrase_view_key",
-   "symbol": "pu_native_flags",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 122,
-   "section": ".text.phrase_view_key",
-   "symbol": ".sec..bss.ui",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 128,
-   "section": ".text.phrase_view_key",
-   "symbol": "pu_key",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 158,
-   "section": ".text.phrase_view_key",
-   "symbol": "phrase_stock_key",
-   "type": "cf.32"
-  },
-  {
-   "addend": 12,
-   "offset": 172,
-   "section": ".text.phrase_view_key",
-   "symbol": ".sec..bss.phrase_ui_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 178,
-   "section": ".text.phrase_view_key",
-   "symbol": "cf.view.fn.invalidate",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 20,
-   "section": ".text.phrase_view_turn",
-   "symbol": ".sec..text.context",
-   "type": "cf.32"
-  },
-  {
-   "addend": 4,
-   "offset": 38,
-   "section": ".text.phrase_view_turn",
-   "symbol": ".sec..bss.phrase_ui_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 8,
-   "offset": 44,
-   "section": ".text.phrase_view_turn",
-   "symbol": ".sec..bss.phrase_ui_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 20,
-   "offset": 50,
-   "section": ".text.phrase_view_turn",
-   "symbol": ".sec..bss.phrase_ui_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 78,
-   "section": ".text.phrase_view_turn",
-   "symbol": "phrase_stock_turn",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 88,
-   "section": ".text.phrase_view_turn",
-   "symbol": "cf.input.fn.key_down",
+   "section": ".text.phrase_fxv_draw",
+   "symbol": "pu_render_header",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 102,
-   "section": ".text.phrase_view_turn",
+   "offset": 110,
+   "section": ".text.phrase_fxv_draw",
+   "symbol": ".sec..bss.phrase_ui_page",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 116,
+   "section": ".text.phrase_fxv_draw",
+   "symbol": "pu_render",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 122,
+   "section": ".text.phrase_fxv_draw",
+   "symbol": ".sec..bss.phrase_ui_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 84,
+   "offset": 128,
+   "section": ".text.phrase_fxv_draw",
    "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 108,
-   "section": ".text.phrase_view_turn",
-   "symbol": "pu_turn",
+   "offset": 134,
+   "section": ".text.phrase_fxv_draw",
+   "symbol": ".sec..bss.painted",
    "type": "cf.32"
   },
   {
-   "addend": 16,
-   "offset": 124,
-   "section": ".text.phrase_view_turn",
+   "addend": 8,
+   "offset": 140,
+   "section": ".text.phrase_fxv_draw",
+   "symbol": ".sec..bss.ui",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 146,
+   "section": ".text.phrase_fxv_draw",
+   "symbol": ".sec..bss.paint_revision",
+   "type": "cf.32"
+  },
+  {
+   "addend": 72,
+   "offset": 152,
+   "section": ".text.phrase_fxv_draw",
+   "symbol": ".sec..bss.ui",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 158,
+   "section": ".text.phrase_fxv_draw",
+   "symbol": ".sec..bss.paint_fresh",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": ".text.phrase_fxv_key",
+   "symbol": ".sec..text.context",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 38,
+   "section": ".text.phrase_fxv_key",
+   "symbol": ".sec..bss.ui",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 72,
+   "section": ".text.phrase_fxv_key",
+   "symbol": "cf.input.fn.key_down",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 110,
+   "section": ".text.phrase_fxv_key",
+   "symbol": "pu_native_flags",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 120,
+   "section": ".text.phrase_fxv_key",
+   "symbol": ".sec..bss.ui",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 126,
+   "section": ".text.phrase_fxv_key",
+   "symbol": "pu_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 144,
+   "section": ".text.phrase_fxv_key",
    "symbol": ".sec..bss.phrase_ui_debug",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 130,
-   "section": ".text.phrase_view_turn",
+   "offset": 150,
+   "section": ".text.phrase_fxv_key",
    "symbol": "cf.view.fn.invalidate",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 6,
-   "section": ".text.phrase_encoder_interface",
-   "symbol": ".sec..text.phrase_view_turn",
+   "offset": 14,
+   "section": ".text.phrase_fxv_turn",
+   "symbol": ".sec..text.context",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 32,
+   "section": ".text.phrase_fxv_turn",
+   "symbol": ".sec..bss.phrase_ui_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 8,
+   "offset": 38,
+   "section": ".text.phrase_fxv_turn",
+   "symbol": ".sec..bss.phrase_ui_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 20,
+   "offset": 44,
+   "section": ".text.phrase_fxv_turn",
+   "symbol": ".sec..bss.phrase_ui_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 68,
+   "section": ".text.phrase_fxv_turn",
+   "symbol": "cf.input.fn.key_down",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 82,
+   "section": ".text.phrase_fxv_turn",
+   "symbol": ".sec..bss.ui",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 88,
+   "section": ".text.phrase_fxv_turn",
+   "symbol": "pu_turn",
+   "type": "cf.32"
+  },
+  {
+   "addend": 16,
+   "offset": 106,
+   "section": ".text.phrase_fxv_turn",
+   "symbol": ".sec..bss.phrase_ui_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 112,
+   "section": ".text.phrase_fxv_turn",
+   "symbol": "cf.view.fn.invalidate",
    "type": "cf.32"
   },
   {
@@ -1259,7 +1126,7 @@
    "addend": 0,
    "offset": 104,
    "section": ".text.phrase_ui_tick",
-   "symbol": ".sec..text.visible_fx_view",
+   "symbol": "fxv_visible_view",
    "type": "cf.32"
   },
   {
@@ -1595,73 +1462,31 @@
   },
   {
    "align": 2,
-   "hex": "4feffff448d7040c4eb9000000004a8067522f004eb900000000588f4a806744224024002069001c068200000014722042804a88672eb1c2672a226800084a89671a4a290030661424514a8a670e263c00000000b6aa001066022009205053814a8166ce4cd7040c4fef000c4e75",
-   "kind": "text",
-   "name": ".text.visible_fx_view",
-   "size": 110
-  },
-  {
-   "align": 2,
-   "hex": "4fefff6848d7443c246f009c4eb90000000048780020260f06830000001c2f0324004eb9000000002f002f0348790000000028004eb9000000004eb9000000004fef001423c0000000004a82670000be262f00784a8366062639000000004eb90000000020522f0a206800882c404e9023c20000000023ca0000000023ce0000000023c3000000002a00588f23c40000000052b9000000004a8e6776201623c00000000023c5000000004a82666842802f032f004879000000004eb90000000023c20000000045f90000000042824fef000c4df9000000002f024e965282588f24c0700db08266f020390000000023c5000000004cd7443c23c0000000004a8056c0710044804fef00984e7542836000ff4e42806088ba826694b5ce57c071004480608c",
+   "hex": "4fefff6c48d7403c4eb90000000048780020260f0683000000182f0324004eb9000000002f002f0348790000000028004eb9000000004eb9000000004fef001423c0000000004a82670000c0262f00744a8366062639000000004eb9000000002f2f00982c404eb90000000023c20000000023ce0000000023c30000000041ef009c588f2a0023c40000000023d00000000052b9000000004a8e6774201623c00000000023c5000000004a82666642802f032f004879000000004eb90000000023c2000000004df90000000042824fef000c2f024eb9000000005282588f2cc0700db08266ec20390000000023c5000000004cd7403c23c0000000004a8056c0710044804fef00944e7542836000ff4c4280608aba826696bdef009857c071004480608c",
    "kind": "text",
    "name": ".text.context",
    "size": 292
   },
   {
    "align": 2,
-   "hex": "2f02743f202f000c2240d3ef0014222f001094812f40000c206f001853892f490014327c00402f42001893c193c8206f00082f4900102f6800040008241f4ef900000000",
+   "hex": "4feffff42f0e2f2f00144eb900000000588f2c404a806746203c0000000041f9000000002f6f001800042f4000082f48000c4879000000004879000000004eb900000000508f4aaf001c671c486f00044879000000004eb900000000508f200e2c5f4fef000c4e75486f00044879000000004eb90000000052b90000000041f90000000023d00000000041f90000000023d00000000041f90000000023d00000000060b8",
    "kind": "text",
-   "name": ".text.native_box",
-   "size": 68
-  },
-  {
-   "align": 1,
-   "hex": "257300",
-   "kind": "data",
-   "name": ".rodata.native_text.str1.1",
-   "size": 3
+   "name": ".text.phrase_fxv_draw",
+   "size": 164
   },
   {
    "align": 2,
-   "hex": "2f0b2f0a222f00182279000000004aaf001c6600009a26690008204195ca1010667c4a8a56c07100d5c02f01703b48790000000042a742a74878000190af00282f002f2f00282f09206f002c2f2800044eb9000000004fef00244aaf001c66384a8a6734200a6a0252804878ffff48780007486a0002206f00204868ffff206f0020e28091c04868ffff2f2f00204eb9000000004fef0018245f265f4e757180528871b3080045f208016000ff7295ca6000ff78",
+   "hex": "4fefffe048d70c7c246f002874102f2f00244eb9000000002f6a001000202a2a000c588f45f900000000b4856732701f7801c0822602ea8be1ac2004c0b23c144a80661c2f024eb900000000588f2203568126321c004a80674e888325841c0052827031b08266c22f2f001c4eb9000000002f002f054879000000004eb9000000004fef00104a8067142f2f002452b9000000004eb900000000588f70014cd70c7c4fef00204e754684c88360ae",
    "kind": "text",
-   "name": ".text.native_text",
-   "size": 180
+   "name": ".text.phrase_fxv_key",
+   "size": 174
   },
   {
    "align": 2,
-   "hex": "4e56ffec2f2e000c2f2e00084eb9000000002f2e00084eb9000000004fef000c4a80677841eeffec2d48fff4203c0000000048790000000041f9000000004879000000002d48fffc2d40fff82d6e0008ffec2d6e000cfff04eb900000000486efff44879000000004eb90000000052b9000000004fef001041f90000000023d00000000041f90000000023d00000000041f90000000023d0000000004e5e4e75",
+   "hex": "2f0a2f02246f00102f2f000c4eb900000000588f242a000c41ea0010700823c20000000023d00000000052b9000000005382b08264084280241f245f4e75487800114eb9000000002f002f2a00102f024879000000004eb9000000004fef00144a8067d22f2f000c52b9000000004eb900000000588f700160be",
    "kind": "text",
-   "name": ".text.phrase_view_draw",
-   "size": 160
-  },
-  {
-   "align": 2,
-   "hex": "4e56ffe82f2e000c2f2e00084eb9000000004eb900000000508f2d40ffe84a80675c2f004eb900000000588f4a80674e41eeffec2d48fff4203c0000000048790000000041f9000000004879000000002d40fff82d48fffc2d6effe8ffec2d6e000cfff04eb900000000486efff44879000000004eb9000000004fef00104e5e4e75",
-   "kind": "text",
-   "name": ".text.phrase_help_draw",
-   "size": 130
-  },
-  {
-   "align": 2,
-   "hex": "4fefffd848d71cfc2a2f002c7410246f003049f9000000002f054eb9000000002c2a000c2f6a00100028588fb4866732701f78012602ea8bc082e1ac2004c0b43c144a80661c2f024eb900000000588f2203568126341c004a806746888329841c0052827031b08266c22f2f00244eb9000000002f002f064879000000004eb9000000004fef00104a80661c2f4a00302f45002c4cd71cfc4fef00284ef9000000004684c88360b62f0552b9000000004eb9000000004cef1cfc000470014fef002c4e75",
-   "kind": "text",
-   "name": ".text.phrase_view_key",
-   "size": 196
-  },
-  {
-   "align": 2,
-   "hex": "4feffff448d7040c262f0010246f00142f034eb900000000242a000c588f41ea0010700823c20000000023d00000000052b9000000005382b08264162f4a00142f4300104cd7040c4fef000c4ef900000000487800114eb9000000002f002f2a00102f024879000000004eb9000000004fef00144a8067c42f0352b9000000004eb9000000004cef040c000470014fef00104e75",
-   "kind": "text",
-   "name": ".text.phrase_view_turn",
-   "size": 148
-  },
-  {
-   "align": 2,
-   "hex": "59af00044ef900000000",
-   "kind": "text",
-   "name": ".text.phrase_encoder_interface",
-   "size": 10
+   "name": ".text.phrase_fxv_turn",
+   "size": 122
   },
   {
    "align": 2,
@@ -1734,7 +1559,7 @@
    "size": 208
   }
  ],
- "source_sha256": "6c8eb5122154624cc0973eb3a97a4b8772f463d149fca1d519f7764af2f92a79",
+ "source_sha256": "3fa312235448dc9ad3413c125548edf580d7a7a11eeb8d4d09a41624c5f5b14a",
  "symbols": [
   {
    "global": false,
@@ -1800,12 +1625,6 @@
    "global": false,
    "name": ".sec..rodata.names.1",
    "section": ".rodata.names.1",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..rodata.native_text.str1.1",
-   "section": ".rodata.native_text.str1.1",
    "value": 0
   },
   {
@@ -1882,32 +1701,8 @@
   },
   {
    "global": false,
-   "name": ".sec..text.native_box",
-   "section": ".text.native_box",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.native_text",
-   "section": ".text.native_text",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": ".sec..text.number",
    "section": ".text.number",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.phrase_view_draw",
-   "section": ".text.phrase_view_draw",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.phrase_view_turn",
-   "section": ".text.phrase_view_turn",
    "value": 0
   },
   {
@@ -1948,12 +1743,6 @@
   },
   {
    "global": false,
-   "name": ".sec..text.visible_fx_view",
-   "section": ".text.visible_fx_view",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": "box",
    "section": ".text.box",
    "value": 0
@@ -1966,31 +1755,7 @@
   },
   {
    "global": true,
-   "name": "cf.draw.fn.fill_rect",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
    "name": "cf.input.fn.key_down",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "cf.text.fn.draw_box",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "cf.view.fn.brain.instance",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "cf.view.fn.brain.view_manager",
    "section": null,
    "value": 0
   },
@@ -2043,6 +1808,30 @@
    "value": 0
   },
   {
+   "global": true,
+   "name": "fxv_box",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_page",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_text",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_visible_view",
+   "section": null,
+   "value": 0
+  },
+  {
    "global": false,
    "name": "last_owner",
    "section": ".bss.last_owner",
@@ -2064,18 +1853,6 @@
    "global": false,
    "name": "names.1",
    "section": ".rodata.names.1",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "native_box",
-   "section": ".text.native_box",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "native_text",
-   "section": ".text.native_text",
    "value": 0
   },
   {
@@ -2110,44 +1887,20 @@
   },
   {
    "global": true,
-   "name": "phrase_encoder_interface",
-   "section": ".text.phrase_encoder_interface",
+   "name": "phrase_fxv_draw",
+   "section": ".text.phrase_fxv_draw",
    "value": 0
   },
   {
    "global": true,
-   "name": "phrase_help_draw",
-   "section": ".text.phrase_help_draw",
+   "name": "phrase_fxv_key",
+   "section": ".text.phrase_fxv_key",
    "value": 0
   },
   {
    "global": true,
-   "name": "phrase_label_font",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "phrase_stock_draw",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "phrase_stock_help_draw",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "phrase_stock_key",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "phrase_stock_turn",
-   "section": null,
+   "name": "phrase_fxv_turn",
+   "section": ".text.phrase_fxv_turn",
    "value": 0
   },
   {
@@ -2178,24 +1931,6 @@
    "global": true,
    "name": "phrase_ui_values",
    "section": ".bss.phrase_ui_values",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "phrase_view_draw",
-   "section": ".text.phrase_view_draw",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "phrase_view_key",
-   "section": ".text.phrase_view_key",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "phrase_view_turn",
-   "section": ".text.phrase_view_turn",
    "value": 0
   },
   {
@@ -2311,20 +2046,14 @@
    "name": "ui",
    "section": ".bss.ui",
    "value": 0
-  },
-  {
-   "global": false,
-   "name": "visible_fx_view",
-   "section": ".text.visible_fx_view",
-   "value": 0
   }
  ],
  "toolchain": {
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "1521",
-  "isa_check": "b09c820d692d4b6adf679506753f4e8939ddc52c1cf0726152d1e47d4db8fb07",
+  "instructions_redecoded": "1365",
+  "isa_check": "1124c19ff047597fc4012206ae89945b19056fd14554cf2a0af4ba9b16ee832a",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

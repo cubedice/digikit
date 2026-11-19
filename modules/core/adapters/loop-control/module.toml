@@ -1,0 +1,38 @@
+[module]
+id = "core/loop-control"
+version = "0.1.0"
+name = "Loop controls"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "The home of the loop effect's crossfader, ARM and DROP outside the kit, its status from the DSP, and its tap."
+# core/fxpages: the fx service asks this module for the loop effect's values (fx_held_values). core/dsp-link returns the status.
+requires = ["core/fxpages", "core/dsp-link"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/loop-control-cf.dko.json"
+sources = ["src/control.c"]
+place = "cf.expansion"
+devices = ["dt2"]
+
+[object.externs]
+loop_reply_literal = "cf.link.site.reply_copy_lit"
+
+[[object]]
+path = "build/loop-control-dsp.dko.json"
+sources = ["src/dsp/status.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+
+# The function the fx service file (`fx.dks`) calls: it has no link to the image and finds it by name in the info table.
+[[info]]
+name = "fx_held_values"
+symbol = "fx_held_values"
+devices = ["dt2"]
