@@ -1,7 +1,10 @@
 # PRISM and Overloop: redesign proposal
 
-Status: proposal for the owner's review. Step 1 of section 7, the engine, is built and measured on the SHARC-only rig
-([finding 358](../findings/358-prism-repeater-engine.md)); nothing else is. Digitakt II 1.17 only, as today.
+Status: steps 1 and 2 of section 7 are built. Step 1, the engine, is measured on the SHARC-only rig
+([finding 358](../findings/358-prism-repeater-engine.md)); step 2, PRISM as a send effect with the one page and without
+`core/phrase-route`, is proven on the emulated Digitakt II ([finding 359](../findings/359-prism-send-effect-and-page.md),
+which also lists where the real page differs from the drawings below). Steps 3 to 5 are not started; nothing ran on
+hardware. Digitakt II 1.17 only, as today.
 
 The screen drawings are schematic: they show what each cell holds and where, not pixels. The real screen is 128 x 64 and
 uses the native knob and text primitives that `core/phrase-ui` draws with today.
@@ -311,8 +314,9 @@ Confidence:
 
 Open technical points:
 
-- The native page is tied today to the exclusive phrase route. Step 2 has to give a send effect a painted page with
-  encoder presses; `loop-display` paints an effect page already, and `phrase-ui` takes the keys already.
+- (Settled in step 2, finding 359.) The native page was tied to the exclusive phrase route only in the fx service: the
+  page's callbacks sit in the FX view's own table and ask which page is shown, so a send effect has the painted page
+  with encoder presses without a new hook.
 - Overloop runs after the send effects in a block, so PRISM hears the loop one block (0.7 ms) late.
 - An effect page of the plain framework has seven knobs and no keys. That is why PRISM keeps a native page.
 - Upstream's reload of modules (E5) and its folder regroup (E8) are still open; the new adapters should follow

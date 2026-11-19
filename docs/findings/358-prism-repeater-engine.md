@@ -105,7 +105,8 @@ heads that read the same tone at two delays add with their phases, so a crossfad
 Cost: the heaviest hook call (core/fx and the effect) is **17,379 instructions**, against 42,928 for the engine before.
 It is a constructed case: HOLD taken while both sides' heads drift between frames and released before the loop turns, so
 both sides crossfade from a head between frames to a head that glides, with HALO, the dark filter, the limiter and the
-write's crossfade. `dsp_cost_fx = 17379` in `module.toml` is that number; the test fails on a heavier block. A block with
+write's crossfade. `dsp_cost_fx = 17379` in `module.toml` was that number; the test fails on a heavier block. (17,381
+since [finding 359](359-prism-send-effect-and-page.md): the status publication clears two more words.) A block with
 everything at rest costs 5,194, with HALO 8,637. Instructions of the rig, not a cycle count of the SHARC.
 
 ## Decisions the plan did not settle
