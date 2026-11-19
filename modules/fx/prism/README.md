@@ -4,24 +4,31 @@ PRISM is a stereo repeater on one tape: a delay whose time is picked in eight zo
 diffusion network inside the repeat path, a skew between the two sides, reverse and hold. It is modelled on how the Make
 Noise Mimeophon behaves; whether it sounds like one is for ears to decide, not for a test.
 
-It is a send effect of the effect framework: each track has a PRISM send amount, PRISM's output is added to the FX
-return, and the dry tracks are not touched. With Overloop it plays a transition: it hears Overloop's loop instead of the
-tracks (INPT), and Overloop's crossfader and ARM are on its page. Steps 1 to 4 of
+It is a send effect of the effect framework: it hears the tracks you choose on its page (hold G and press their TRIG keys),
+PRISM's output is added to the FX return, and the dry tracks are not touched. With Overloop it plays a transition: it hears
+Overloop's loop instead of the tracks (INPT), and Overloop's crossfader and ARM are on its page. Steps 1 to 4 of
 [the redesign](../../../docs/plans/prism-overloop-redesign.md) are built: the engine
 ([finding 358](../../../docs/findings/358-prism-repeater-engine.md)), the send path with the one page
 ([finding 359](../../../docs/findings/359-prism-send-effect-and-page.md)), and the loop as its input with the transition on
 its page ([finding 361](../../../docs/findings/361-prism-loop-input-and-return.md)), proven on the SHARC-only rig and the
-emulated Digitakt II. Nothing ran on hardware, and nobody has listened.
+emulated Digitakt II; the tracks chosen with the TRIG keys in place of the PRS send amounts are
+[finding 362](../../../docs/findings/362-prism-track-select.md). The track choice has not run on hardware, and nobody has
+listened.
 
 The first target is Digitakt II OS 1.17. The engine contains no firmware address: its audio comes from the effect
 framework, its controls from the control mailbox it imports, its tape from the storage lease it imports.
 
 ## Where the sound comes from and goes
 
-- **In:** the tracks, each times its PRS send amount. The amount is on the second page of the track's FX key (press FX
-  twice), the cell `PRS`, 0 to 127; the gain is the amount squared over 127 squared. All amounts start at 0, so PRISM is
-  silent until one is raised. The amounts are kept in digikit's settings on the +Drive (`fx/send/digikit/prism`), not in
-  kits or projects.
+- **In:** the tracks PRISM hears, each at full send (the send route's amount 127, gain 1); the others not at all. Choose
+  them on PRISM's page: hold **G** and the 16 TRIG keys light up, bright for a track PRISM hears and dim for one it does
+  not; a TRIG key turns its track on or off. While G is held the TRIG keys play no note, enter no step and change no
+  pattern; when G is released they are the Digitakt's again. The INPT cell shows how many tracks PRISM hears (`5 TRK`,
+  `NO TRK`). The choice is one for the whole device, like PRISM's other values: kept in digikit's settings on the +Drive
+  with them (`phrase/digikit/prism`), not in kits, patterns or projects, and the same after a restart. A device with
+  nothing stored starts with no track, so PRISM is silent until one is chosen. On a device that had PRS send amounts
+  (`fx/send/digikit/prism`, from before the TRIG keys chose the tracks), every track with an amount above 0 is heard at
+  first. There is no PRS cell on the second page of the track's FX key any more.
 - **In, with INPT at LOOP:** Overloop's loop, at the level its crossfader gives it, times a fixed trim of -6 dB
   (`PRISM_LOOP_TRIM` in `src/prism.h`, to be set by ear); the track sends do not reach PRISM then. Without Overloop or
   without a loop that side is silence.
@@ -31,9 +38,9 @@ framework, its controls from the control mailbox it imports, its tape from the s
   Overloop on the card, PRISM's echoes do not pass through the Digitakt's master compressor, its master overdrive or the clip
   of the master stage, also when no loop is playing; the master volume still applies to them. Without Overloop they go
   through the master as any send effect's return does.
-- PRISM takes the first free cell of that send page when it loads (the Digitakt II has two). It does not displace a stock
-  effect: delay, reverb and chorus keep their sends on the first page. With both cells taken by other digikit send effects
-  that load before it, PRISM loads and is not run.
+- PRISM uses no cell of the send page on the track's FX key: both of the Digitakt II's cells stay for other digikit send
+  effects, and none of them can keep PRISM from running. The stock delay, reverb and chorus keep their sends on the first
+  page.
 
 ## The page
 
@@ -49,7 +56,15 @@ FUNC + FX opens the FX pages; PRISM's is one of them (send effects come first). 
  │█│  ───────────────────────────────────────────
  │█│   HALO       SKEW       INPT       XFAD
  └─┘   0          0          LIVE       --
- 100                                    NO LOOP
+ 100                         2 TRK      NO LOOP
+```
+
+With G held the INPT cell shows the tracks and that the TRIG keys choose them (`TRIGS` inverted):
+
+```
+ │█│   HALO       SKEW       INPT       XFAD
+ └─┘   0          0          2 TRK      --
+ 100                         [TRIGS]    NO LOOP
 ```
 
 | Control | Does |
@@ -61,7 +76,7 @@ FUNC + FX opens the FX pages; PRISM's is one of them (send effects come first). 
 | D | COLR, 64 is the centre: the cell shows the distance and `DARK` or `BRIT` |
 | E | HALO, 0 to 127 |
 | F | SKEW, 64 is the centre: `L 12` means the left side is the longer one by 12 steps, `R 12` the right |
-| G | INPT, a switch: LIVE (PRISM hears the tracks by their sends) or LOOP (PRISM hears Overloop's loop). A press or a turn switches, only while there is a loop; the switch crossfades over 5 ms |
+| G | INPT, a switch: LIVE (PRISM hears the tracks it is given) or LOOP (PRISM hears Overloop's loop). A short press or a turn switches, only while there is a loop; the switch crossfades over 5 ms. Hold: the TRIG keys choose the tracks PRISM hears, their LEDs show them; a hold with a TRIG key, with a turn, or of 0.4 s or more does not switch INPT. Under INPT: the number of tracks PRISM hears at LIVE |
 | H | XFAD, Overloop's crossfader: the same value as on Overloop's page (`LIVE`, a number, `LOOP`; below it the crossfader as it sounds). Turns only while there is a loop. Press: ARM (`ARMD`, and below it the steps the next change keeps); a second press takes it back |
 | FUNC + NO | Drop the loop |
 
@@ -77,7 +92,7 @@ seconds) in place of the zone and the time.
 ## Performing a transition
 
 At the Digitakt, with PRISM and Overloop loaded, PRISM's page open (FUNC + FX until it shows) and the tracks you want PRISM
-to hear given a PRS amount:
+to hear chosen (hold G, press their TRIG keys, release G; the INPT cell counts them):
 
 1. The pattern plays; PRISM echoes it. Press **H**: the XFAD cell says `ARMD`.
 2. Choose the next pattern the usual way (PTN and a TRIG key). At the end of the playing pattern the loop takes over:
@@ -86,12 +101,14 @@ to hear given a PRS amount:
 3. Play PRISM on the old pattern: ZONE, RATE, RPTS, COLR, HALO, MIX, press C to hold. The new pattern does not reach PRISM.
 4. Turn **H** toward LIVE. The new pattern comes in dry; the loop and PRISM's feed fade together, and what PRISM holds rings
    on as RPTS lets it.
-5. At LIVE: the new pattern alone, with the last echoes of the old one. Set PRISM up for the new pattern.
-6. Press or turn **G**: INPT goes to LIVE and PRISM works on the new pattern by its sends.
+5. At LIVE: the new pattern alone, with the last echoes of the old one. Set PRISM up for the new pattern; hold **G** and
+   choose the tracks of the new pattern PRISM shall hear. The choice does not switch INPT, and PRISM goes on hearing nothing
+   new until step 6.
+6. Press **G** briefly, or turn it: INPT goes to LIVE and PRISM works on the chosen tracks of the new pattern.
 
 The loop stays until the next armed change or **FUNC + NO**; with it dropped INPT is LIVE. If you put INPT at LIVE while the
-crossfader still stands at LOOP, PRISM hears the new pattern by its sends and you hear its echoes over the loop: allowed,
-but the new pattern then reaches the output through PRISM before you turn H.
+crossfader still stands at LOOP, PRISM hears the chosen tracks of the new pattern and you hear its echoes over the loop:
+allowed, but the new pattern then reaches the output through PRISM before you turn H.
 
 ## Controls of the engine
 
@@ -117,7 +134,7 @@ is a crossfade of 20 ms between two read heads with equal power.
 ## The engine
 
 ```
- input (the tracks by their PRS amounts) ────────────┐
+ input (the tracks it hears, at full send) ──────────┐
                                                      ▼
  tape ──► two heads a side ──► DC blocker ──► COLR ──► HALO ──┬──► x MIX ──► FX return
   ▲                                                           │

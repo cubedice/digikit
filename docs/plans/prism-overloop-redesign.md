@@ -6,8 +6,11 @@ with the one page and without `core/phrase-route` ([finding 359](../findings/359
 Overloop as an always-listening looper without `core/loop-controls` ([finding 360](../findings/360-overloop-automatic-loop.md));
 step 4, the loop as PRISM's input with INPT, XFAD and ARM on PRISM's page, and PRISM's output carried past Overloop's
 crossfader ([finding 361](../findings/361-prism-loop-input-and-return.md)). Steps 2 to 4 are proven on the emulated
-Digitakt II; the findings list where the pages differ from the drawings below. Nothing ran on hardware. Digitakt II 1.17
-only, as today.
+Digitakt II; the findings list where the pages differ from the drawings below. The owner's decision of 2026-11-19 is built
+too: the per-track PRS send amounts of section 2.3 are replaced by tracks chosen on or off with the TRIG keys while G (INPT)
+is held on PRISM's page, at full send, and the send page has no PRS cell
+([finding 362](../findings/362-prism-track-select.md)); it is proven on the emulated Digitakt II and has not run on
+hardware. Digitakt II 1.17 only, as today.
 
 The screen drawings are schematic: they show what each cell holds and where, not pixels. The real screen is 128 x 64 and
 uses the native knob and text primitives that `core/phrase-ui` draws with today.
