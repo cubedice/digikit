@@ -8,6 +8,15 @@
 #define OL_JUMP_FRAMES 256
 // The smallest buffers the engine works with, in frames.
 #define OL_MIN_FRAMES 4096
+// The master stage of DT2 1.17 multiplies its sum by this (+10 dB, 3.1623: the literal 'R4 = 0x404a6320' of the master
+// function, offset 0x1ad) before its clip and the volume ramp. A send effect's output that the engine adds (the wet mailbox)
+// gets this and the ramp; the tap is divided by both.
+#define OL_MASTER_BOOST 0x404a6320
+// The tap is divided by at most 1024 (a master gain below 1/1024 counts as 1/1024).
+#define OL_INV_FLOOR 0x3a800000
+// A sample of the output with the send effect's output added stays within +-7.9 (the framework's bound is 8).
+#define OL_WET_BOUND 0x40fccccd
+#define OL_WET_FLOOR 0xc0fccccd
 
 // The state, in words. It is zero when the adapter resets it.
 #define OL_INIT 0
@@ -81,5 +90,10 @@
 #define OL_PARAMS 50
 #define OL_TARGET 51
 #define OL_TAP_SET 52
-#define OL_STATE_WORDS 56
-#define OL_STATE_BYTES 224
+// The wet mailbox: LW_SEQ at the last block, 1 once it was read, 1 when this block adds it; the tap's factor (float).
+#define OL_WET_SEEN 53
+#define OL_WET_INIT 54
+#define OL_WET_OK 55
+#define OL_INV 56
+#define OL_STATE_WORDS 60
+#define OL_STATE_BYTES 240

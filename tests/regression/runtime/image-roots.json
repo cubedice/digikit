@@ -85,6 +85,22 @@
       "devices": ["dt2"]
     },
     {
+      "id": "prism-transition",
+      "roots": [
+        "core/runtime",
+        "core/dynreg",
+        "core/dyndsp",
+        "core/dynfx",
+        "core/loop-storage",
+        "core/pattern-position",
+        "core/loop-display",
+        "core/phrase-ui",
+        "core/digikit-menu",
+        "core/health"
+      ],
+      "devices": ["dt2"]
+    },
+    {
       "id": "overloop",
       "roots": [
         "core/runtime",

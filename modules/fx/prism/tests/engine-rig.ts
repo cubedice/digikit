@@ -1,6 +1,8 @@
 /**
  * PRISM's engine on the SHARC-only rig: the assembled sources behind the production effect adapter (core/fx), with stand-ins
- * for the storage descriptor and the two mailboxes (provider.s). engine.rig.test.ts and render-audio.ts run it.
+ * for the storage descriptor, the two mailboxes, the loop effect's tap and the wet mailbox (provider.s). engine.rig.test.ts and
+ * render-audio.ts run it. The loop effect is played by the rig (`rig.loop`): while it runs, the rig moves its count before every
+ * block and writes its tap.
  *
  *     const rig = await PrismRig.open({ frames: 16384 });
  *     rig.set({ zone: 4, rate: 0.5, rpts: 0.5 });
@@ -9,6 +11,7 @@
  * Every block is held to the rules of the effect contract: the hook returns, the context and the registers come back, the
  * adapter counts no fault and the output is finite. A case that expects a fault opens the rig with `faults: true`.
  */
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { FxRig, SW_ALIAS_BASE, f2w, fft, w2f } from '../../../../packages/sharc-rig-kit/src/index.ts';
 
@@ -24,6 +27,18 @@ const CONTROL_MAGIC = 0x50484331;
 const CONTROL_VERSION = 3;
 const POISON = 0x7fc00001;
 
+/** The numbers of a C-style header: `#define NAME value` lines. */
+function defines(file: string): Record<string, number> {
+  return Object.fromEntries(
+    [...readFileSync(file, 'utf8').matchAll(/^#define (\w+) (0x[0-9a-fA-F]+|\d+)$/gm)].map((m) => [m[1]!, Number(m[2])]),
+  );
+}
+/** The loop contract (LT_*, LW_*) and the engine's constants. */
+export const LOOP = defines(path.join(HERE, '../../../../sdk/dsp/contract/dk_loop.inc'));
+export const PRISM = defines(path.join(HERE, '../src/prism.h'));
+/** PRISM_LOOP_TRIM as a number. */
+export const TRIM = w2f(PRISM.PRISM_LOOP_TRIM!);
+
 /** State words of prism.h that the tests read. */
 export const PS = {
   WPOS: 10,
@@ -35,6 +50,11 @@ export const PS = {
   XFADE: 16,
   TIME_L: 34,
   TIME_R: 35,
+  ALIVE: 53,
+  FEED: 54,
+  DIVERT: 55,
+  INPT: 56,
+  AUTO: 58,
   CH_L: 128,
   CH_R: 160,
 } as const;
@@ -59,6 +79,20 @@ export interface Controls {
   /** -1..1: above 0 the left side is the shorter one */
   skew: number;
   mix: number;
+  /** INPT: 0 the send bus, 1 the loop */
+  input: number;
+}
+
+/** The loop effect as the rig plays it. */
+export interface Loop {
+  /** it finished a block before each of PRISM's: its count moves */
+  alive: boolean;
+  /** its tap (the loop times the crossfader, at the level before the master stage), one value for both sides */
+  tap?: Signal;
+  /** the tap's flag: it carries a loop (default true) */
+  audible?: boolean;
+  /** the count of loops it took (default 0) */
+  count?: number;
 }
 
 /** PRISM_XFADE and PRISM_WFADE of prism.h. */
@@ -77,6 +111,7 @@ export const DEFAULTS: Controls = {
   halo: 0,
   skew: 0,
   mix: 1,
+  input: 0,
 };
 
 /** The zones' free ranges in frames (prism.s `_prism_zones`). */
@@ -141,6 +176,12 @@ export interface Take {
   /** the input, as given */
   dryLeft: Float32Array;
   dryRight: Float32Array;
+  /** what PRISM put in the wet mailbox for the loop effect in each block (0 where its count did not move) */
+  wetLeft: Float32Array;
+  wetRight: Float32Array;
+  /** the tap the rig wrote before each block (0 without a running loop effect) */
+  tapLeft: Float32Array;
+  tapRight: Float32Array;
   /** instructions of each hook call (core/fx and the effect) */
   instructions: number[];
   /** blocks in which the adapter counted a fault (only with `faults: true`) */
@@ -177,6 +218,11 @@ export class PrismRig {
   bankStores = 0;
   private sequence = 0;
   private faultCount = 0;
+  /** the loop effect, played by the rig (undefined: none in the image) */
+  loop: Loop | undefined;
+  private taken = 0;
+  /** PRISM's count of blocks in the wet mailbox as the rig last read it */
+  wetSeq = 0;
   private readonly o: PrismRigOptions;
 
   private constructor(fx: FxRig, frames: number, o: PrismRigOptions) {
@@ -201,7 +247,7 @@ export class PrismRig {
     const info = fx.built.data._phrase_storage_info!;
     fx.poke(info + 16, 8 * frames);
     fx.poke(info + 20, frames);
-    if (o.poison ?? frames <= 65536) for (let k = 0; k < 2 * frames; k++) fx.poke(BANK + 4 * k, POISON);
+    if (o.poison ?? frames <= 65536) for (let k = 0; k < 2 * frames; k++) fx.pokeExternal(BANK + 4 * k, POISON);
     rig.set({});
     return rig;
   }
@@ -231,6 +277,7 @@ export class PrismRig {
       14: f2w(c.halo),
       15: f2w(c.skew),
       16: f2w(c.mix),
+      17: c.input,
       56: 7,
       62: this.sequence,
     };
@@ -263,7 +310,13 @@ export class PrismRig {
 
   /** The tape as it stands: the two planes' words (null: never written). */
   async tape(): Promise<(number | null)[]> {
-    return this.fx.peek(BANK, 2 * this.frames);
+    return this.fx.peekExternal(BANK, 2 * this.frames);
+  }
+
+  /** COUNT frames of the tape's left plane from frame FROM, as floats (a word nothing wrote is NaN). */
+  async tapeLeft(from: number, count: number): Promise<Float32Array> {
+    const words = await this.fx.peekExternal(BANK + 4 * from, count);
+    return Float32Array.from(words, (w) => (w === null ? Number.NaN : w2f(w)));
   }
 
   /** Run `blocks` blocks with `input` (a function of the rig's clock). */
@@ -275,6 +328,10 @@ export class PrismRig {
       right: new Float32Array(n),
       dryLeft: new Float32Array(n),
       dryRight: new Float32Array(n),
+      wetLeft: new Float32Array(n),
+      wetRight: new Float32Array(n),
+      tapLeft: new Float32Array(n),
+      tapRight: new Float32Array(n),
       instructions: [],
       faulted: 0,
     };
@@ -289,6 +346,7 @@ export class PrismRig {
         take.dryLeft[b * BLOCK + k] = l;
         take.dryRight[b * BLOCK + k] = r;
       }
+      this.playLoop(take, b);
       const block = await this.fx.block(master, this.o.friendly ? 'friendly' : undefined);
       const where = `block ${this.clock / BLOCK}`;
       if (!block.returned) throw new Error(`${where}: the hook did not return (${block.halt} at pc 0x${block.finalPc.toString(16)})`);
@@ -309,6 +367,7 @@ export class PrismRig {
         take.left[b * BLOCK + k] = l;
         take.right[b * BLOCK + k] = r;
       }
+      await this.readWet(take, b);
       take.instructions.push(block.instructions);
       if (block.instructions > PrismRig.worst) {
         PrismRig.worst = block.instructions;
@@ -320,17 +379,72 @@ export class PrismRig {
     return take;
   }
 
-  /** The module's code may store to its output block, its state and data, and its bank; never to the mailbox it reads or the descriptor. */
+  /** The loop effect's part before a block: its count moves, its tap is the signal at this block's frames. */
+  private playLoop(take: Take, b: number): void {
+    if (!this.loop?.alive) return;
+    const tap = this.fx.built.data._loop_tap!;
+    this.fx.poke(tap + 4 * LOOP.LT_MAGIC!, LOOP.LT_MAGIC_VALUE!);
+    this.fx.poke(tap + 4 * LOOP.LT_VERSION!, LOOP.LT_VERSION_VALUE!);
+    this.fx.poke(tap + 4 * LOOP.LT_FLAGS!, ((this.loop.audible ?? true) ? LOOP.LT_AUDIBLE! : 0) | ((this.loop.count ?? 0) << LOOP.LT_COUNT_SHIFT!));
+    for (let k = 0; k < BLOCK; k++) {
+      const v = this.loop.tap ? this.loop.tap(this.clock + k) : 0;
+      const [l, r] = typeof v === 'number' ? [v, v] : v;
+      this.fx.poke(tap + 4 * (LOOP.LT_LEFT! + k), f2w(Math.fround(l)));
+      this.fx.poke(tap + 4 * (LOOP.LT_RIGHT! + k), f2w(Math.fround(r)));
+      take.tapLeft[b * BLOCK + k] = Math.fround(l);
+      take.tapRight[b * BLOCK + k] = Math.fround(r);
+    }
+    this.taken += 1;
+    this.fx.poke(this.fx.built.data._loop_wet! + 4 * LOOP.LW_TAKEN!, this.taken);
+  }
+
+  /** The wet mailbox after a block: its samples when PRISM's count moved. */
+  private async readWet(take: Take, b: number): Promise<void> {
+    const at = this.fx.built.data._loop_wet!;
+    const words = (await this.fx.peek(at, LOOP.LW_WORDS!)).map((w) => w ?? 0);
+    if (words[LOOP.LW_SEQ!] === this.wetSeq) return;
+    this.wetSeq = words[LOOP.LW_SEQ!]!;
+    for (let k = 0; k < BLOCK; k++) {
+      take.wetLeft[b * BLOCK + k] = w2f(words[LOOP.LW_LEFT! + k]!);
+      take.wetRight[b * BLOCK + k] = w2f(words[LOOP.LW_RIGHT! + k]!);
+    }
+  }
+
+  /** The words of the wet mailbox as they are. */
+  async wetWords(): Promise<number[]> {
+    return (await this.fx.peek(this.fx.built.data._loop_wet!, LOOP.LW_WORDS!)).map((w) => w ?? 0);
+  }
+
+  /** Write one word of the tap or the wet mailbox (a case that writes what the loop effect would). */
+  pokeTap(word: number, value: number): void {
+    this.fx.poke(this.fx.built.data._loop_tap! + 4 * word, value);
+  }
+
+  /** What a real loop effect left after its block: its tap (LT_WORDS words) and its count LW_TAKEN (with `loop` undefined). */
+  pokeLoop(tap: readonly number[], taken: number): void {
+    tap.forEach((w, k) => this.fx.poke(this.fx.built.data._loop_tap! + 4 * k, w >>> 0));
+    this.fx.poke(this.fx.built.data._loop_wet! + 4 * LOOP.LW_TAKEN!, taken >>> 0);
+  }
+
+  /** The module's code may store to its output block, its state and data, its bank, and the wet mailbox but its LW_TAKEN; never to the mailbox it reads, the descriptor or the tap. */
   private checkStores(stores: [pc: number, address: number, width: number][], where: string): void {
     const built = this.fx.built;
     const readOnly = [
       { address: built.data._phrase_control_info!, bytes: 256 },
       { address: built.data._phrase_storage_info!, bytes: 24 },
+      { address: built.data._loop_tap!, bytes: 4 * LOOP.LT_WORDS! },
+      { address: built.data._loop_wet! + 4 * LOOP.LW_TAKEN!, bytes: 4 },
     ];
     // the state lies in the rig's auto-state area: a store there stays inside the descriptor's state_bytes
     const state = { address: this.fx.stateAddress(0), bytes: this.fx.descWords('_prism_desc')[3]! };
     const autoStates = { address: state.address, bytes: 4 * 4096 };
-    const own = [{ address: built.data._fx_scratch!, bytes: 256 }, ...built.moduleData];
+    const own = [
+      { address: built.data._fx_scratch!, bytes: 256 },
+      // the wet mailbox's head, LW_SEQ and the samples: everything but LW_TAKEN
+      { address: built.data._loop_wet!, bytes: 4 * LOOP.LW_TAKEN! },
+      { address: built.data._loop_wet! + 4 * LOOP.LW_LEFT!, bytes: 4 * (LOOP.LW_WORDS! - LOOP.LW_LEFT!) },
+      ...built.moduleData,
+    ];
     for (const [pc, at, width] of stores) {
       if (!built.moduleCode.some(([lo, hi]) => lo <= pc && pc < hi)) continue;
       // the core keeps internal memory at the loader alias
@@ -486,6 +600,10 @@ export function join(takes: Take[]): Take {
     right: new Float32Array(n),
     dryLeft: new Float32Array(n),
     dryRight: new Float32Array(n),
+    wetLeft: new Float32Array(n),
+    wetRight: new Float32Array(n),
+    tapLeft: new Float32Array(n),
+    tapRight: new Float32Array(n),
     instructions: [],
     faulted: 0,
   };
@@ -495,6 +613,10 @@ export function join(takes: Take[]): Take {
     out.right.set(t.right, at);
     out.dryLeft.set(t.dryLeft, at);
     out.dryRight.set(t.dryRight, at);
+    out.wetLeft.set(t.wetLeft, at);
+    out.wetRight.set(t.wetRight, at);
+    out.tapLeft.set(t.tapLeft, at);
+    out.tapRight.set(t.tapRight, at);
     out.instructions.push(...t.instructions);
     out.faulted += t.faulted;
     at += t.left.length;

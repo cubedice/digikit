@@ -45,6 +45,16 @@
 #define PRISM_SMOOTH_NEAR 0x38d1b717
 /* The shortest time: a head never reads the block being written. */
 #define PRISM_TIME_MIN 32
+/* The loop as PRISM's input (INPT at LOOP): the loop effect's tap, which is the loop at the level of the mix before the master
+ * stage (the whole mix at full send), times this trim: -6 dB (10^(-6/20)). Set by ear. */
+#define PRISM_LOOP_TRIM 0x3f004dce
+/* The step a sample of INPT's crossfade and of the output's move between the FX return and the loop effect: 1/256, a move
+ * over 256 frames (5.3 ms). */
+#define PRISM_SWITCH_STEP 0x3b800000
+/* At a new loop (the loop effect's count in its tap moved) the input is the loop at once, from the block after the change, and
+ * stays there this many blocks (0.5 s) while the provider has not set INPT to LOOP: the page does it in its next pass. A
+ * crossfade, or waiting for the page, would let the new pattern's first notes into the tape. */
+#define PRISM_AUTO_BLOCKS 750
 
 /* State offsets, in 32-bit words. */
 #define PS_INIT 0
@@ -107,6 +117,19 @@
 #define PS_MIX_MID 49
 #define PS_COLOUR_MID 50
 #define PS_HALO_MID 51
+/* The loop effect: its count LW_TAKEN at this engine's last block; it finished a block since then (this block: 0 or 1); the
+ * loop feeds the input (its tap carries a loop); the share of the output the loop effect takes (float 0..1, PS_DIVERT) and
+ * the share of the loop in the input (float 0..1, PS_INPT), both at the end of the last block. */
+#define PS_OL_LAST 52
+#define PS_ALIVE 53
+#define PS_FEED 54
+#define PS_DIVERT 55
+#define PS_INPT 56
+/* The loop count the tap showed last, plus 1 (0: none seen yet); the blocks the input stays at LOOP by itself after a new loop
+ * while INPT is not LOOP yet; whether the input is LOOP this block (0 or 1). */
+#define PS_LOOP_SEEN 57
+#define PS_AUTO 58
+#define PS_INPUT_ON 59
 #define PS_CONTROL 64
 /* The snapshot of the control mailbox (PH_CONTROL_WORDS words) and the words the engine reads in it. */
 #define PC_ZONE (PS_CONTROL + PH_C_ZONE / 4)
@@ -118,6 +141,7 @@
 #define PC_HALO (PS_CONTROL + PH_C_HALO / 4)
 #define PC_SKEW (PS_CONTROL + PH_C_SKEW / 4)
 #define PC_MIX (PS_CONTROL + PH_C_MIX / 4)
+#define PC_INPUT (PS_CONTROL + PH_C_INPUT / 4)
 #define PC_OWNER (PS_CONTROL + PH_C_OWNER_GENERATION / 4)
 
 /* One side's two heads (heads.s). A head: playing or silent, its delay in frames from the reference (integer and
@@ -176,7 +200,9 @@
 #define PS_LINE1 640
 #define PS_LINE2 896
 #define PS_LINE3 1152
-#define PRISM_STATE_BYTES 5632
+/* The block's input when the loop is part of it (INPT): 32 left then 32 right. */
+#define PS_IN 1408
+#define PRISM_STATE_BYTES 5888
 #define PRISM_CALL_DEPTH 4
 
 /* Modes (PS_MODE, CH_MODE). */

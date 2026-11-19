@@ -744,9 +744,11 @@ SC_POLICY_ID = {
     "tests/regression/host/canopy-settings.c": "digikit/canopy",
 }
 # The fork's hardware image runs three content modules together (CANOPY, Overloop, PRISM: patch set `canopy-overloop-prism`
-# of devices/digitakt-ii.toml). One device test loads all three, and its acceptance record lists them: only these two files.
+# of devices/digitakt-ii.toml). Two device tests load them together (all three; PRISM and Overloop in the transition PRISM's
+# page plays), and the acceptance records list them: only these files.
 SC_COEXISTENCE = (
     "modules/fx/prism/tests/coexistence.device.test.ts",
+    "modules/fx/prism/tests/transition.device.test.ts",
     "modules/fx/prism/project.json",
 )
 SC_SKIP_DIRS = {".git", "out", "node_modules", "target", "firmware", ".venv", "dist"}

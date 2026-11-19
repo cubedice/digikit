@@ -11,6 +11,7 @@ import {
   DEVICE_FRAMES,
   PS,
   PrismRig,
+  TRIM,
   WFADE,
   XFADE,
   ZONES,
@@ -19,6 +20,7 @@ import {
   crossingHz,
   db,
   envelope,
+  f2w,
   levelAt,
   maxSecondDifference,
   noise,
@@ -1025,6 +1027,152 @@ describe('PRISM repeater engine: HOLD', () => {
   });
 });
 
+describe('PRISM repeater engine: the loop as the input (INPT), and where the output goes', () => {
+  // one echo, so the tape holds the input as it was written (the feedback is 0)
+  const ONE_ECHO: Partial<Controls> = { rpts: 0, mix: 1, sync: true, syncTime: 960 };
+  const SEND = sine(440, 0.1);
+  const LOOPED = sine(660, 0.1);
+  /** the tape's left plane as floats (frame k of the run is word k: the write starts at 0) */
+  const tapeOf = async (rig: PrismRig, frames: number): Promise<number[]> => Array.from(await rig.tapeLeft(0, frames));
+
+  test('LIVE is the send bus, LOOP the tap times the trim; the switch crossfades over 256 frames without a click', async () => {
+    await withRig({}, async (rig) => {
+      rig.set(ONE_ECHO);
+      rig.loop = { alive: true, tap: LOOPED };
+      const live = await rig.run(40, SEND);
+      rig.set({ input: 1 });
+      const loop = await rig.run(40, SEND);
+      rig.set({ input: 0 });
+      const back = await rig.run(40, SEND);
+      const tape = await tapeOf(rig, 120 * 32);
+      const send = Float32Array.from({ length: 120 * 32 }, (_, n) => Math.fround(SEND(n) as number));
+      const fed = Float32Array.from({ length: 120 * 32 }, (_, n) => Math.fround(Math.fround(LOOPED(n) as number) * TRIM));
+      let liveDiffer = 0;
+      let loopDiffer = 0;
+      for (let n = 32; n < 1280; n++) if (f2w(tape[n]!) !== f2w(send[n]!)) liveDiffer += 1;
+      for (let n = 1280 + 256; n < 2560; n++) if (f2w(tape[n]!) !== f2w(fed[n]!)) loopDiffer += 1;
+      expect(liveDiffer, 'LIVE: the send bus, bit for bit').toBe(0);
+      expect(loopDiffer, 'LOOP: the tap times the trim, bit for bit, and nothing of the send bus').toBe(0);
+      for (let n = 2560 + 256; n < 3840; n++) if (f2w(tape[n]!) !== f2w(send[n]!)) liveDiffer += 1;
+      expect(liveDiffer, 'LIVE again').toBe(0);
+      // the click measure of the two switches against the steady stretches of each side
+      const x = Float32Array.from(tape);
+      const steady = Math.max(maxSecondDifference(x, 200, 1270).value, maxSecondDifference(x, 1600, 2550).value);
+      const up = maxSecondDifference(x, 1280 - 4, 1280 + 260).value / steady;
+      const down = maxSecondDifference(x, 2560 - 4, 2560 + 260).value / steady;
+      note(`INPT: LIVE the send bus and LOOP the tap times the trim (${TRIM.toFixed(4)}), bit for bit; the switch over 256 frames, click ${up.toFixed(2)} and ${down.toFixed(2)} x steady`);
+      expect(up).toBeLessThanOrEqual(1.05);
+      expect(down).toBeLessThanOrEqual(1.05);
+      // the status: INPT as asked, the loop feeding it, the loop effect taking the output
+      const st = await rig.status();
+      expect([st[12], st[13], st[15]]).toEqual([0, 1, 1]);
+      expect(live.faulted + loop.faulted + back.faulted).toBe(0);
+    });
+  });
+
+  test('the loop side is silence without a running loop effect, with a tap flagged empty and with a count that stands; never older memory', async () => {
+    await withRig({}, async (rig) => {
+      rig.set({ ...ONE_ECHO, input: 1 });
+      // the tap holds a tone, but in the engine's first block nothing is known: silence
+      rig.loop = { alive: true, tap: LOOPED };
+      await rig.run(10, SEND);
+      // the loop effect stops: its count stands, its last tap is still there
+      rig.loop = undefined;
+      await rig.run(10, SEND);
+      // it runs, and its tap says there is no loop
+      rig.loop = { alive: true, tap: LOOPED, audible: false };
+      await rig.run(10, SEND);
+      const tape = await tapeOf(rig, 30 * 32);
+      // the first block: the switch moves from LIVE (a fresh engine starts there) and the loop side is silence
+      let first = 0;
+      for (let n = 0; n < 32; n++) {
+        const c = (n + 1) / 256;
+        const w = Math.fround(Math.fround(c * c) * Math.fround(3 - 2 * c));
+        if (f2w(tape[n]!) !== f2w(Math.fround(Math.fround(SEND(n) as number) * Math.fround(1 - w)))) first += 1;
+      }
+      expect(first, 'the first block').toBe(0);
+      expect(peak(Float32Array.from(tape), 32, 320 - 32)).toBeGreaterThan(0.04);
+      expect(peak(Float32Array.from(tape), 320, 640), 'the loop effect has stopped').toBe(0);
+      expect(peak(Float32Array.from(tape), 640, 960), 'a tap flagged empty').toBe(0);
+      const st = await rig.status();
+      expect([st[12], st[13], st[15]]).toEqual([1, 0, 1]);
+    });
+  });
+
+  test('a new loop: the input is the loop at once, and stays there while INPT is not LOOP yet, for PRISM_AUTO_BLOCKS blocks', async () => {
+    await withRig({}, async (rig) => {
+      rig.set(ONE_ECHO);
+      rig.loop = { alive: true, tap: LOOPED, count: 3 };
+      await rig.run(10, SEND);
+      // the loop effect took loop 4: from this block the input is the tap times the trim, without a crossfade
+      rig.loop = { alive: true, tap: LOOPED, count: 4 };
+      await rig.run(20, SEND);
+      const tape = await tapeOf(rig, 30 * 32);
+      let differ = 0;
+      for (let n = 320; n < 960; n++) if (f2w(tape[n]!) !== f2w(Math.fround(Math.fround(LOOPED(n) as number) * TRIM))) differ += 1;
+      expect(differ).toBe(0);
+      expect((await rig.status())[12], 'the status says LOOP').toBe(1);
+      // the page did not set INPT: after PRISM_AUTO_BLOCKS blocks the input goes back to LIVE
+      const auto = (await rig.state(PS.AUTO))[0]!;
+      await rig.run(auto + 10, SEND);
+      expect((await rig.status())[12]).toBe(0);
+      // with INPT set and taken back (the page, then G), LIVE at once with the crossfade
+      rig.loop = { alive: true, tap: LOOPED, count: 5 };
+      await rig.run(2, SEND);
+      rig.set({ input: 1 });
+      await rig.run(2, SEND);
+      rig.set({ input: 0 });
+      await rig.run(10, SEND);
+      expect((await rig.status())[12]).toBe(0);
+      note(`a new loop: the input is the loop from the block PRISM sees it in, bit for bit; without INPT it goes back to LIVE after ${auto} blocks`);
+    });
+  });
+
+  test('the output moves to the loop effect over 256 frames and the two ways add up to it; back on the return it fades in over one block', async () => {
+    const run = async (loop: boolean) =>
+      withRig({}, async (rig) => {
+        // echoes from the tenth block on
+        rig.set({ rpts: 0.5, mix: 1, sync: true, syncTime: 320 });
+        const takes: Take[] = [];
+        takes.push(await rig.run(20, TONE));
+        if (loop) rig.loop = { alive: true };
+        takes.push(await rig.run(40, TONE));
+        rig.loop = undefined;
+        takes.push(await rig.run(20, TONE));
+        return takes;
+      });
+    const a = await run(true);
+    const b = await run(false);
+    const [l0, l1, l2] = a;
+    const [r0, r1, r2] = b;
+    // before: the same output, nothing in the mailbox
+    expect(sameWords(l0!.left, r0!.left)).toBe(0);
+    expect(peak(l0!.wetLeft)).toBe(0);
+    // while the loop effect runs: the share moves over 256 frames; after it the output block is 0 and the mailbox the output, exactly
+    let worst = 0;
+    for (let n = 0; n < l1!.left.length; n++)
+      worst = Math.max(worst, Math.abs(l1!.left[n]! + l1!.wetLeft[n]! - r1!.left[n]!) / Math.max(1e-9, peak(r1!.left)));
+    expect(worst, 'output block + mailbox = the output').toBeLessThan(1e-6);
+    expect(peak(l1!.left, 32 + 256)).toBe(0);
+    expect(sameWords(l1!.wetLeft.subarray(32 + 256), r1!.left.subarray(32 + 256))).toBe(0);
+    expect(peak(l1!.left, 0, 32), 'the move takes 256 frames').toBeGreaterThan(0);
+    // it stops: the next block fades the output block in from 0, (k + 1) / 32; nothing goes to the mailbox
+    let fade = 0;
+    for (let k = 0; k < 32; k++) if (f2w(l2!.left[k]!) !== f2w(Math.fround(r2!.left[k]! * ((k + 1) / 32)))) fade += 1;
+    expect(fade).toBe(0);
+    expect(sameWords(l2!.left.subarray(32), r2!.left.subarray(32))).toBe(0);
+    expect(peak(l2!.wetLeft)).toBe(0);
+    note(`route: to the loop effect over 256 frames (output block + mailbox = the output, largest difference ${worst.toExponential(1)} of the peak); after it stops the output block fades in over one block`);
+  });
+});
+
+/** The samples whose words differ. */
+function sameWords(x: ArrayLike<number>, y: ArrayLike<number>): number {
+  let differ = 0;
+  for (let n = 0; n < Math.min(x.length, y.length); n++) if (f2w(x[n]!) !== f2w(y[n]!)) differ += 1;
+  return differ;
+}
+
 describe('PRISM repeater engine: cost', () => {
   test('the heaviest block of every case here is the cost module.toml declares', async () => {
     await withRig({ frames: 65536 }, async (rig) => {
@@ -1056,6 +1204,16 @@ describe('PRISM repeater engine: cost', () => {
         rig.set({ hold: true });
         await rig.run(17 + k, input);
         rig.set({ hold: false, rate: 0.9 - 0.01 * k });
+        await rig.run(40, input);
+      }
+      // the same with the loop effect coming and going: at each release INPT switches (its crossfade) and the output moves
+      // to the loop effect or fades back onto the return, in the same blocks
+      for (let k = 0; k < 6; k++) {
+        rig.loop = k % 2 ? undefined : { alive: true, tap: input };
+        rig.set({ hold: true });
+        await rig.run(17 + k, input);
+        rig.loop = { alive: true, tap: input };
+        rig.set({ hold: false, rate: 0.9 - 0.01 * k, input: k % 2 });
         await rig.run(40, input);
       }
     });

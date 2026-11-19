@@ -3,9 +3,26 @@
 // the code in, the SDK, the device profiles, the hashes of the two binaries it runs and the hash of the stock DSP section (or "absent":
 // the stock-image suites skip without the firmware). The synthetic shadow-replay fixtures of tests/fixtures/dsp are inputs of the stereo proof's
 // shadow replay test.
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { posix } from 'node:path';
+
 const STEREO_PROOF_ROOT = 'modules/core/adapters/dsp-stereo-proof';
 
-export const rigTarget = (root) => ({
+// A rig test that imports another module's rig (the two effects of the loop, coupled block by block) keys on that module's files too.
+const importedModules = (base, root) => {
+  const dir = posix.join(base, root, 'tests');
+  if (!existsSync(dir)) return [];
+  const out = new Set();
+  for (const name of readdirSync(dir).filter((n) => n.endsWith('.ts'))) {
+    for (const m of readFileSync(posix.join(dir, name), 'utf8').matchAll(/from '(\.\.\/[^']+)'/g)) {
+      const other = /^(modules\/[^/]+\/[^/]+)\//.exec(posix.normalize(posix.join(root, 'tests', m[1])));
+      if (other && other[1] !== root) out.add(`{workspaceRoot}/${other[1]}/**/*`);
+    }
+  }
+  return [...out].sort();
+};
+
+export const rigTarget = (root, base = '.') => ({
   executor: 'nx:run-commands',
   cache: true,
   dependsOn: ['patchkit:cli', 'sharc-rig:build'],
@@ -23,6 +40,7 @@ export const rigTarget = (root) => ({
     '{workspaceRoot}/sdk/**/*',
     '{workspaceRoot}/devices/*.toml',
     '{workspaceRoot}/tools/patchkit/toolchain/pins.toml',
+    ...importedModules(base, root),
     { runtime: 'node tools/nx/stock-section-hash.mjs' },
     { dependentTasksOutputFiles: '**/*' },
   ],

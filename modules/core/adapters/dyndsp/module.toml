@@ -38,7 +38,7 @@ path = "build/dyndsp-dt2.dko.json"
 sources = ["src/cf/dyndsp-dt2.s"]
 place = "cf.expansion"
 devices = ["dt2"]
-optional = ["_loop_buffer_info", "_pattern_position_info", "_loop_ui_status", "_loop_tap", "_phrase_storage_info", "_phrase_control_info", "_phrase_status"]
+optional = ["_loop_buffer_info", "_pattern_position_info", "_loop_ui_status", "_loop_tap", "_loop_wet", "_phrase_storage_info", "_phrase_control_info", "_phrase_status"]
 
 [object.externs]
 _dd_area = "_dl_area"
@@ -61,6 +61,9 @@ _fx_table = "fx.rows"
 _fx_master = "dsp.master.value.q31_converter.float_buf"
 _fxs_trackbus = "dsp.fx.value.send.track_bus"
 _fxs_return = "dsp.fx.value.send.return_bus"
+# and the master stage's volume ramp, which the loop effect reads to add a send effect's output at the master's gain
+_fw_master_gain = "dsp.master.value.volume_ramp.start"
+_fw_master_step = "dsp.master.value.volume_ramp.step"
 
 [[object]]
 path = "build/dyndsp-dn2.dko.json"

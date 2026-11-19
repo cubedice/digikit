@@ -17,6 +17,71 @@ static void cell(PhraseCell *c, const char *label, const char *value, const char
     put(c->value, value);
     put(c->state, state);
     c->lit = lit;
+    c->fader = 0;
+}
+static char *copy(char *out, const char *s)
+{
+    while (*s)
+        *out++ = *s++;
+    *out = 0;
+    return out;
+}
+/* The crossfader the loop effect applies, 0 .. 127, from its float 0 .. 1 (LS_GAIN). */
+static uint32_t heard(uint32_t bits)
+{
+    if (bits & 0x80000000u)
+        return 0;
+    if (bits >= 0x3f800000u)
+        return 127;
+    uint32_t e = (bits >> 23) & 255, shift = 150 - e;
+    if (shift >= 32)
+        return 0;
+    return (((bits & 0x7fffffu) | 0x800000u) * 127u) >> shift;
+}
+/* G and H, and the header's loop line: the loop effect's state as the page shows it. */
+static void loop_cells(const PhraseUi *s, PhrasePage *page)
+{
+    char text[16], time[16];
+    const uint32_t *st = s->loop_status;
+    uint32_t state = s->loop_fresh ? st[LS_STATE] : 0, loop = pu_has_loop(s),
+             armed = (state & LS_ARMED) != 0, inpt = dkrt_phrase_get(PH_P_INPT);
+    cell(&page->cells[6], "INPT", inpt ? "LOOP" : "LIVE", "", 0);
+    page->line[0] = 0;
+    if (!loop) {
+        if (armed) {
+            /* what the next change keeps: the steps of the pattern that plays, CUT when the buffers hold less, WAIT before a
+             * whole step was heard */
+            const char *keeps = "WAIT";
+            if (state & LS_NEXT_CUT)
+                keeps = "CUT";
+            else if (state & LS_TRACK) {
+                pu_format(text, PH_P_MIX, (st[LS_STEPS] >> 8) & 255);
+                copy(copy(time, text), " ST");
+                keeps = time;
+            }
+            cell(&page->cells[7], "XFAD", "ARMD", keeps, 0);
+        } else
+            cell(&page->cells[7], "XFAD", "--", "NO LOOP", 0);
+        return;
+    }
+    uint32_t xfad = s->loop->get(LP_XFAD);
+    if (xfad == 0)
+        copy(text, "LIVE");
+    else if (xfad >= LP_MAX)
+        copy(text, "LOOP");
+    else
+        pu_format(text, PH_P_MIX, xfad);
+    cell(&page->cells[7], "XFAD", text, armed ? "ARMD" : "", armed);
+    if (!armed)
+        page->cells[7].fader = 1 + heard(st[LS_GAIN]);
+    if (inpt) {
+        /* PRISM hears the loop: the header names it, its steps and its time */
+        char *o = copy(page->line, "LOOP ");
+        pu_format(text, PH_P_MIX, st[LS_STEPS] & 255);
+        o = copy(copy(o, text), " ST ");
+        pu_time(time, st[LS_LOOP_FRAMES]);
+        copy(o, time);
+    }
 }
 void pu_page(const PhraseUi *s, PhrasePage *page)
 {
@@ -48,9 +113,8 @@ void pu_page(const PhraseUi *s, PhrasePage *page)
     cell(&page->cells[4], "HALO", text, "", 0);
     pu_format(text, PH_P_SKEW, dkrt_phrase_get(PH_P_SKEW));
     cell(&page->cells[5], "SKEW", text, "", 0);
-    /* Kept for the loop: the input switch and Overloop's crossfader. Nothing moves them yet. */
-    cell(&page->cells[6], "INPT", "LIVE", "", 0);
-    cell(&page->cells[7], "XFAD", "--", "NO LOOP", 0);
+    /* The input switch and Overloop's crossfader. */
+    loop_cells(s, page);
 }
 static void box(const PhraseCanvas *c, int x, int y, int w, int h, int ink)
 {
@@ -91,8 +155,12 @@ void pu_render_header(const PhrasePage *p, const PhraseCanvas *c)
 {
     box(c, 0, 0, 128, 10, 0);
     text(c, 15, 2, p->title, 1);
-    text(c, 78, 2, p->zone, 1);
-    text(c, 110, 2, p->time, 1);
+    if (p->line[0])
+        text(c, 82, 2, p->line, 1);
+    else {
+        text(c, 78, 2, p->zone, 1);
+        text(c, 110, 2, p->time, 1);
+    }
     box(c, 0, 9, 128, 1, 1);
 }
 void pu_render(const PhrasePage *p, const PhraseCanvas *c)
@@ -119,6 +187,11 @@ void pu_render(const PhrasePage *p, const PhraseCanvas *c)
                 int on = (uint32_t)z == p->zone_index;
                 box(c, x - 12 + 3 * z, y + (on ? 15 : 16), 2, on ? 2 : 1, 1);
             }
-        text(c, x, y + 19, k->state, k->lit ? 0 : 1);
+        if (k->fader) {
+            /* the crossfader as it sounds: a line from LIVE (left) to LOOP (right) and its place on it */
+            box(c, x - 11, y + 22, 23, 1, 1);
+            box(c, x - 11 + (int)(k->fader - 1) * 20 / 127, y + 20, 3, 5, 1);
+        } else
+            text(c, x, y + 19, k->state, k->lit ? 0 : 1);
     }
 }

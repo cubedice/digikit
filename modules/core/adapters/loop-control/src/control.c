@@ -17,7 +17,9 @@ extern void dkrt_irq_restore(u32);
 /* UI passes without a new heartbeat after which the status is not fresh */
 #define STALE 60u
 
-static u32 raw[LP_COUNT];
+/* The raw values (LP_*): exported so that a device test reads what both pages set. */
+u32 loop_control_raw[LP_COUNT];
+#define raw loop_control_raw
 static u32 status[LS_WORDS];
 static u32 age = 2 * STALE, last_seq;
 /* The native FX page of the loop effect, as the fx service last said, and the UI passes since it said so. */

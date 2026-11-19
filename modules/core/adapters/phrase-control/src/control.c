@@ -53,7 +53,8 @@ static void defaults(void)
     raw[PH_P_SKEW] = 64;
     raw[PH_P_MIX] = 100;
 }
-/* What survives a restart: everything but HOLD, which is a gesture, and the two values kept for the loop. */
+/* What survives a restart: everything but HOLD, which is a gesture, INPT, which follows the loop (after a restart there is
+ * none), and XFAD, which is the loop effect's. */
 static u32 saved_value(u32 i)
 {
     return i == PH_P_HOLD || i == PH_P_INPT || i == PH_P_XFAD ? 0 : raw[i];
@@ -133,7 +134,8 @@ static void publish(void)
     W(PH_C_HALO, bits((float)raw[PH_P_HALO] / 127.0f));
     W(PH_C_SKEW, bits(centred(raw[PH_P_SKEW])));
     W(PH_C_MIX, bits((float)raw[PH_P_MIX] / 127.0f));
-    /* PH_C_INPUT, PH_C_XFADE and PH_C_ARM_SEQ stay 0 until the loop feeds the effect. */
+    W(PH_C_INPUT, raw[PH_P_INPT]);
+    /* PH_C_XFADE and PH_C_ARM_SEQ stay 0: the crossfader and ARM are the loop effect's (core/loop-control). */
     W(PH_C_OWNER_ROW, row_index);
     W(PH_C_OWNER_GENERATION, generation);
 #undef W
@@ -203,8 +205,8 @@ int32_t dkrt_phrase_set(u32 i, u32 value)
 {
     if (!owner || i >= PH_PARAM_COUNT)
         return -1;
-    /* Kept for the loop: nothing turns them yet. */
-    if (i == PH_P_INPT || i == PH_P_XFAD)
+    /* XFAD is the loop effect's crossfader, held by core/loop-control. */
+    if (i == PH_P_XFAD)
         return -2;
     if (value > limit(i))
         value = limit(i);
@@ -212,7 +214,7 @@ int32_t dkrt_phrase_set(u32 i, u32 value)
         return 0;
     raw[i] = value;
     publish();
-    if (i != PH_P_HOLD)
+    if (i != PH_P_HOLD && i != PH_P_INPT)
         save();
     return 0;
 }

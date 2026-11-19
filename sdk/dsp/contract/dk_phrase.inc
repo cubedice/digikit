@@ -46,8 +46,10 @@
 #define PH_C_HALO 56
 #define PH_C_SKEW 60
 #define PH_C_MIX 64
-// Kept for the loop as PRISM's input (INPT: 0 the tracks' sends, 1 the loop), the crossfader (float 0 live .. 1 loop) and
-// the count of ARM presses: the provider publishes 0 and nothing reads them yet.
+//   INPUT     int 0, 1    INPT: 0 the tracks by their send amounts (LIVE), 1 the loop effect's loop (LOOP): its tap of the block
+//                         before (dk_loop.inc) times the engine's PRISM_LOOP_TRIM; silence while the loop effect does not run or
+//                         has no loop. A change crossfades the input. The provider leaves it at 0 while there is no loop.
+// XFADE and ARM_SEQ are unused and 0: the crossfader and ARM are the loop effect's controls, held by core/loop-control.
 #define PH_C_INPUT 68
 #define PH_C_XFADE 72
 #define PH_C_ARM_SEQ 76
@@ -73,10 +75,13 @@
 #define PH_S_TIME_R 36
 #define PH_S_HOLD 40
 #define PH_S_TAPE 44
-// Kept for the loop: what the input is, the loop's frames, whether ARM is pending. The engine writes 0.
+// The input as the engine takes it: INPUT (0 LIVE, 1 LOOP); LOOP 1 while the loop feeds it (the loop effect runs and its tap
+// carries a loop); ARMED is unused and 0. ROUTE: 0 the output goes to the FX return, 1 the loop effect adds it behind its
+// crossfader (it runs; the engine moves the output there over PRISM_SWITCH_STEP a sample).
 #define PH_S_INPUT 48
 #define PH_S_LOOP 52
 #define PH_S_ARMED 56
+#define PH_S_ROUTE 60
 #define PH_S_OWNER_GENERATION 96
 #define PH_S_SEQ_END 124
 // States: the tape is still too short to read (FILLING), the repeats run (READY), HOLD stands (HELD).
@@ -90,7 +95,8 @@
 // ---- the raw values the page turns and the provider keeps (dkrt_phrase_get / dkrt_phrase_set).
 //   ZONE 0..7; RATE 0..PH_RATE_MAX in fine steps (an encoder detent is PH_RATE_COARSE of them); SYNC, FLIP, HOLD 0 or 1;
 //   NOTE 0..PH_TIME_CHOICES - 1, the note length used with SYNC; RPTS 0..127 with PH_RPTS_UNITY as unity;
-//   COLR and SKEW 0..127 with 64 as the centre; HALO, MIX 0..127. INPT and XFAD are kept for the loop and are not turned yet.
+//   COLR and SKEW 0..127 with 64 as the centre; HALO, MIX 0..127; INPT 0 or 1, not saved (the page moves it only while there
+//   is a loop, and to LOOP by itself at a new loop). XFAD is unused: the crossfader is the loop effect's (dkrt_loop_*).
 #define PH_P_ZONE 0
 #define PH_P_RATE 1
 #define PH_P_SYNC 2

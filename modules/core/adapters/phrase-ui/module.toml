@@ -7,7 +7,7 @@ role = "adapter"
 type = "framework"
 author = "digikit"
 status = "experimental"
-summary = "The one page of the phrase effect: eight cells, MIX on LEVEL, FLIP, SYNC and HOLD on the encoder presses."
+summary = "The one page of the phrase effect: eight cells, MIX on LEVEL, FLIP, SYNC and HOLD on the encoder presses, INPT and the loop effect's crossfader, ARM and drop."
 # core/fxview owns the FX view's table slots and calls this page's phrase_fxv_ functions.
 requires = ["core/phrase-control", "core/fxview", "core/ui"]
 conflicts = []
@@ -21,6 +21,9 @@ path = "build/phrase-ui-cf.dko.json"
 sources = ["src/model.c", "src/render.c", "src/native.c"]
 place = "cf.expansion"
 devices = ["dt2"]
+# The loop effect's home (core/loop-control, <dk/loop.h>): INPT, XFAD, ARM and the drop on this page. Optional, so PRISM works in an
+# image without the loop effect (the patch set phrase): the page then has no loop.
+optional = ["dkrt_loop_get", "dkrt_loop_xfad", "dkrt_loop_arm", "dkrt_loop_drop", "dkrt_loop_status"]
 
 # The function the fx service file (`fx.dks`) calls: it has no link to the image and finds it by name in the info table.
 [[info]]

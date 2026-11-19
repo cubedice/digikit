@@ -2,13 +2,18 @@
 #define PHRASE_UI_MODEL_H
 #include <stdint.h>
 #include <dk/phrase.h>
+#include <dk/loop.h>
 /* The one page of the phrase effect (PRISM): what a key and a turn do. No firmware is named here: native.c hands in the
  * native events and the provider (core/phrase-control) holds the values.
  *
  *   LEVEL  MIX            A  ZONE  press: FLIP        B  RATE  press: SYNC on/off, FUNC + turn: fine
  *                         C  RPTS  press: HOLD        D  COLR
  *                         E  HALO                     F  SKEW
- *                         G  INPT  (kept for the loop: nothing yet)       H  XFAD  (the same)
+ *                         G  INPT  press or turn: LIVE / LOOP, only while there is a loop
+ *                         H  XFAD  Overloop's crossfader (while there is a loop)   press: ARM   FUNC + NO: drop the loop
+ *
+ * INPT is the provider's (not saved); XFAD, ARM and the drop are the loop effect's, through its home (core/loop-control).
+ * pu_loop, once a UI pass, puts INPT at LOOP when a new loop is taken and at LIVE when there is no loop.
  */
 enum { PU_PASS = 0, PU_OWN = 1 };
 enum {
@@ -22,15 +27,35 @@ enum {
     PU_RELEASE = 16
 };
 enum { PU_LEVEL = 8 }; /* the encoders: 0 to 7 are A to H */
+/* The loop effect's home as the page reaches it (<dk/loop.h>): native.c fills it when the image has core/loop-control.
+ * Without it (PhraseUi.loop 0) the page has no loop: INPT stays LIVE and XFAD shows --. */
+typedef struct {
+    uint32_t (*get)(uint32_t index);
+    void (*xfad)(uint32_t value);
+    void (*arm)(void);
+    void (*drop)(void);
+    uint32_t (*status)(uint32_t *out);
+} PhraseLoop;
+/* UI passes with no fresh status from the loop effect (after the home's own 60) before INPT goes back to LIVE. */
+enum { PU_LOOP_GONE = 60 };
 typedef struct {
     uint32_t active, generation, revision;
     uint32_t held[2], owned[2], cancelled[2];
     int32_t detent[9];
     uint32_t fresh, status[PH_STATUS_WORDS];
     const char *title;
+    const PhraseLoop *loop;
+    /* the loop effect's status as last read, whether it was fresh, the loop count last seen (once one was), stale passes */
+    uint32_t loop_status[LS_WORDS], loop_fresh, loop_seen, loop_known, loop_stale;
 } PhraseUi;
 void pu_context(PhraseUi *, uint32_t active, uint32_t generation);
 void pu_status(PhraseUi *, const uint32_t *, uint32_t fresh);
+/* Read the loop effect's status (no rule applied). */
+void pu_loop_status(PhraseUi *);
+/* Once a UI pass: read the status and keep INPT with the loop (LOOP at a new loop, LIVE without one). */
+void pu_loop(PhraseUi *);
+/* There is a loop: the loop effect reports, and it holds one. */
+uint32_t pu_has_loop(const PhraseUi *);
 uint32_t pu_key(PhraseUi *, uint32_t key, uint32_t flags);
 uint32_t pu_native_flags(uint32_t flags);
 void pu_reconcile(PhraseUi *, const uint32_t physical[2]);

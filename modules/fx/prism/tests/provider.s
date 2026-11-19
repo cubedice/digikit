@@ -1,5 +1,5 @@
 // Stand-ins for the providers the engine imports, for the module's own rig tests: the storage descriptor (a test sets
-// the frames and the bytes of its bank), the control mailbox and the status mailbox.
+// the frames and the bytes of its bank) with the loop effect's tap and the wet mailbox, the control mailbox and the status mailbox.
 .SECTION/PM seg_pmco;
     NOP;
 .SECTION/DM seg_dmda;
@@ -12,3 +12,5 @@
 .VAR _prism_test_frames = 16384;
 .PKDATA _phrase_control_info, 256;
 .PKDATA _phrase_status, 128;
+.PKDATA _loop_tap, 272;
+.PKDATA _loop_wet, 272;

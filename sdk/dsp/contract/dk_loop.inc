@@ -1,5 +1,6 @@
-// The loop effect (Overloop): its controls, its status and its tap. Pure numeric definitions, shared by the control home
-// (core/loop-control, through <dk/loop.h>), the page (core/loop-display) and the engine. DTII OS 1.17 only.
+// The loop effect (Overloop): its controls, its status, its tap and the wet mailbox. Pure numeric definitions, shared by the
+// control home (core/loop-control, through <dk/loop.h>), the pages (core/loop-display, core/phrase-ui), the loop effect's
+// engine and the phrase effect's engine (PRISM). DTII OS 1.17 only.
 //
 // Controls. The home holds them outside the kit; the fx service hands them to the engine as the parameter words of the
 // effect's row (it asks the home for the values instead of the kit). LP_* is the index of a raw value and of its parameter
@@ -21,7 +22,9 @@
 #define LS_WORDS 16
 #define LS_MAGIC 0
 #define LS_HEARTBEAT 1
-// LS_STATE: the bits below, and the count of loops taken from bit 8 up.
+// LS_STATE: the bits below, and the count of loops taken from bit 8 up. An engine that starts (a load, a reset of its state, a
+// lease that moved) goes on counting from the count the mailbox shows, so a loop taken after a restart has a count no reader
+// has seen before.
 #define LS_STATE 2
 #define LS_LOOP 1
 #define LS_ARMED 2
@@ -40,8 +43,10 @@
 // (from bit 16); the last two are 0 while no pattern is followed.
 #define LS_STEPS 9
 #define LS_CAPACITY 10
-// The tap: what the loop adds to the output, the loop times the crossfader as applied, one block. The engine writes it
-// after every block; a reader in the next block finds LT_BLOCK one behind its own block count. 68 words.
+// The tap: the loop times the crossfader as applied, one block, at the level of the mix before the master stage: divided by the
+// master stage's gain after its sum at the end of the block (its +10 dB and the volume ramp; at most 1024 times). The engine
+// writes it after every block; a reader in the next block uses it while the engine runs (LW_TAKEN moved since its last block)
+// and LT_FLAGS has LT_AUDIBLE. 68 words, in core/loop-storage.
 #define LT_MAGIC_VALUE 0x4c544150
 #define LT_VERSION_VALUE 1
 #define LT_WORDS 68
@@ -51,4 +56,21 @@
 #define LT_FLAGS 3
 #define LT_LEFT 4
 #define LT_RIGHT 36
+// LT_FLAGS: LT_AUDIBLE while a loop is mixed, and the count of loops taken from bit LT_COUNT_SHIFT up (a reader sees a new loop
+// in the block after the one it was taken in).
 #define LT_AUDIBLE 1
+#define LT_COUNT_SHIFT 8
+// The wet mailbox: a send effect's output that the loop effect adds behind its crossfader, at the master stage's gain after
+// its sum, in the same block (the send effects run before the master stage, the loop effect after it). One writer a word:
+// the send effect writes the head, LW_SEQ and the samples, the loop effect LW_TAKEN. LW_SEQ counts the blocks the send effect
+// wrote (it moves after the samples are there); LW_TAKEN counts the blocks the loop effect finished. A reader takes a block
+// when the other's count moved since its own last block. 68 words, in core/loop-storage.
+#define LW_MAGIC_VALUE 0x4c574554
+#define LW_VERSION_VALUE 1
+#define LW_WORDS 68
+#define LW_MAGIC 0
+#define LW_VERSION 1
+#define LW_SEQ 2
+#define LW_TAKEN 3
+#define LW_LEFT 4
+#define LW_RIGHT 36

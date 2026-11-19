@@ -9,7 +9,28 @@
 #include "render.h"
 #include "dk_fw_view.h"
 #include "dk_fw_input.h"
+/* The loop effect's home (core/loop-control) is optional: in an image without it these are 0 and the page has no loop. */
+#pragma weak dkrt_loop_get
+#pragma weak dkrt_loop_xfad
+#pragma weak dkrt_loop_arm
+#pragma weak dkrt_loop_drop
+#pragma weak dkrt_loop_status
 static PhraseUi ui;
+static PhraseLoop home;
+static void reach_home(void)
+{
+    if (!dkrt_loop_status || !dkrt_loop_get || !dkrt_loop_xfad || !dkrt_loop_arm ||
+        !dkrt_loop_drop) {
+        ui.loop = 0;
+        return;
+    }
+    home.get = dkrt_loop_get;
+    home.xfad = dkrt_loop_xfad;
+    home.arm = dkrt_loop_arm;
+    home.drop = dkrt_loop_drop;
+    home.status = dkrt_loop_status;
+    ui.loop = &home;
+}
 /* Native acceptance diagnostics: 0 draws, 1 and 2 the encoder and the ticks of the last turn the view got, 3 keys taken,
  * 4 turns taken, 5 turns the view got, 6 the page is on top, 7 the view's page. */
 uint32_t phrase_ui_debug[8];
@@ -39,6 +60,8 @@ static int context(uint8_t *view)
     uint32_t owner = dkrt_phrase_active(), status[PH_STATUS_WORDS];
     uint32_t fresh = dkrt_phrase_snapshot(status, PH_STATUS_WORDS);
     pu_status(&ui, status, fresh);
+    reach_home();
+    pu_loop_status(&ui);
     ui.title = dkrt_phrase_title();
     uint32_t generation = status[PH_S_OWNER_GENERATION / 4];
     /* Keep the last known generation during initial status assembly. */
@@ -119,6 +142,9 @@ int phrase_fxv_turn(uint8_t *view, uint8_t *event)
 void phrase_ui_tick(void)
 {
     reconcile();
+    /* INPT follows the loop also while the page is not shown */
+    reach_home();
+    pu_loop(&ui);
     uint8_t *view = fxv_visible_view();
     if (view) {
         if (context(view)) {

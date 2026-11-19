@@ -1,6 +1,7 @@
 /**
  * Overloop's engine on the SHARC-only rig: the assembled source behind the production effect adapter (core/fx) as a master
- * effect, with stand-ins for the storage descriptors, the position record, the status mailbox and the tap (provider.s).
+ * effect, with stand-ins for the storage descriptors, the position record, the status mailbox, the tap, the wet mailbox and the
+ * master stage's volume ramp (provider.s).
  * loop.rig.test.ts and render-audio.ts run it.
  *
  *     const rig = await LoopRig.open({ frames: 16384 });
@@ -64,6 +65,9 @@ export interface Take {
   /** the tap as the engine left it after each block */
   tapLeft: Float32Array;
   tapRight: Float32Array;
+  /** the send effect's output the rig put in the wet mailbox before each block (0 where it wrote none) */
+  wetLeft: Float32Array;
+  wetRight: Float32Array;
   /** instructions of each hook call (core/fx and the effect) */
   instructions: number[];
   /** blocks in which the adapter counted a fault (only with `faults: true`) */
@@ -85,6 +89,16 @@ export interface LoopRigOptions {
   home?: boolean;
   /** read the tap after every block (slower) */
   tap?: boolean;
+}
+
+/** The send effect as the rig plays it: what it writes to the wet mailbox before each block. */
+export interface Wet {
+  /** its output (one value for both sides) */
+  signal: Signal;
+  /** a count that does not move: the block is not new (the send effect did not run) */
+  stale?: boolean;
+  /** the mailbox's magic word (default the right one) */
+  magic?: number;
 }
 
 /** The status the engine publishes, decoded (dk_loop.inc LS_*). */
@@ -124,6 +138,9 @@ export class LoopRig {
   private seen = 0;
   private faultCount = 0;
   private readonly o: LoopRigOptions;
+  /** the send effect, while it runs */
+  wet: Wet | undefined;
+  private wetSeq = 0;
   // the sequencer
   private running = false;
   private pattern: Pattern | undefined;
@@ -154,7 +171,7 @@ export class LoopRig {
     rig.pokePhraseLease(4, 8 * frames);
     rig.pokePhraseLease(5, frames);
     if (o.poison ?? frames <= 65536)
-      for (const base of BUFFERS) for (let k = 0; k < 2 * frames; k++) fx.poke(base + 4 * k, POISON);
+      for (const base of BUFFERS) for (let k = 0; k < 2 * frames; k++) fx.pokeExternal(base + 4 * k, POISON);
     rig.writeControls();
     return rig;
   }
@@ -199,6 +216,22 @@ export class LoopRig {
 
   pokePhraseLease(word: number, value: number): void {
     this.fx.poke(this.fx.built.data._phrase_storage_info! + 4 * word, value);
+  }
+
+  /** The master stage's volume ramp: the gain of the block's first sample and the step a sample (floats). */
+  setMaster(start: number, step = 0): void {
+    this.fx.poke(this.fx.built.data._fw_master_gain!, f2w(Math.fround(start)));
+    this.fx.poke(this.fx.built.data._fw_master_step!, f2w(Math.fround(step)));
+  }
+
+  /** The tap's words as they are (LT_WORDS). */
+  async tapWords(): Promise<number[]> {
+    return (await this.fx.peek(this.fx.built.data._loop_tap!, LP.LT_WORDS!)).map((x) => x ?? 0);
+  }
+
+  /** The wet mailbox's count of blocks the engine finished (LW_TAKEN). */
+  async taken(): Promise<number> {
+    return (await this.fx.peek(this.fx.built.data._loop_wet! + 4 * LP.LW_TAKEN!, 1))[0] ?? 0;
   }
 
   // ---- the sequencer -----------------------------------------------------------------------------------------------------------
@@ -329,7 +362,7 @@ export class LoopRig {
 
   /** The words of one buffer's planes (null: never written). */
   buffer(index: 0 | 1): Promise<(number | null)[]> {
-    return this.fx.peek(BUFFERS[index], 2 * this.frames);
+    return this.fx.peekExternal(BUFFERS[index], 2 * this.frames);
   }
 
   /** Run `blocks` blocks with `input` (a function of the rig's clock). */
@@ -343,6 +376,8 @@ export class LoopRig {
       dryRight: new Float32Array(n),
       tapLeft: new Float32Array(n),
       tapRight: new Float32Array(n),
+      wetLeft: new Float32Array(n),
+      wetRight: new Float32Array(n),
       instructions: [],
       faulted: 0,
     };
@@ -356,6 +391,7 @@ export class LoopRig {
         take.dryLeft[b * BLOCK + k] = l;
         take.dryRight[b * BLOCK + k] = r;
       }
+      this.writeWet(take, b);
       this.writePosition();
       for (const [word, value] of this.positionPatch)
         this.fx.poke(this.fx.built.data._pattern_position_info! + 4 * word, value >>> 0);
@@ -399,6 +435,25 @@ export class LoopRig {
     return take;
   }
 
+  /** The send effect's block in the wet mailbox, as PRISM writes it: the samples, then a new count. */
+  private writeWet(take: Take, b: number): void {
+    if (!this.wet) return;
+    const at = this.fx.built.data._loop_wet!;
+    this.fx.poke(at + 4 * LP.LW_MAGIC!, this.wet.magic ?? LP.LW_MAGIC_VALUE!);
+    this.fx.poke(at + 4 * LP.LW_VERSION!, LP.LW_VERSION_VALUE!);
+    if (this.wet.stale) return;
+    for (let k = 0; k < BLOCK; k++) {
+      const v = this.wet.signal(this.clock + k);
+      const [l, r] = typeof v === 'number' ? [v, v] : v;
+      this.fx.poke(at + 4 * (LP.LW_LEFT! + k), f2w(Math.fround(l)));
+      this.fx.poke(at + 4 * (LP.LW_RIGHT! + k), f2w(Math.fround(r)));
+      take.wetLeft[b * BLOCK + k] = Math.fround(l);
+      take.wetRight[b * BLOCK + k] = Math.fround(r);
+    }
+    this.wetSeq += 1;
+    this.fx.poke(at + 4 * LP.LW_SEQ!, this.wetSeq);
+  }
+
   /** What core/loop-control does with the status: a new loop sets the crossfader to LOOP and is acknowledged. */
   private async playHome(): Promise<void> {
     const state = (await this.fx.peek(this.fx.built.data._loop_ui_status! + 4 * LP.LS_STATE!, 1))[0] ?? 0;
@@ -419,6 +474,8 @@ export class LoopRig {
       { address: built.data._fx_scratch!, bytes: 256 },
       { address: built.data._loop_ui_status!, bytes: 64 },
       { address: built.data._loop_tap!, bytes: 272 },
+      // of the wet mailbox only its own count
+      { address: built.data._loop_wet! + 4 * LP.LW_TAKEN!, bytes: 4 },
       ...BUFFERS.map((address) => ({ address, bytes: 8 * this.frames })),
     ];
     for (const [pc, at, width] of stores) {
@@ -477,6 +534,8 @@ export function join(...takes: Take[]): Take {
     dryRight: new Float32Array(n),
     tapLeft: new Float32Array(n),
     tapRight: new Float32Array(n),
+    wetLeft: new Float32Array(n),
+    wetRight: new Float32Array(n),
     instructions: [],
     faulted: 0,
   };
@@ -488,6 +547,8 @@ export function join(...takes: Take[]): Take {
     out.dryRight.set(t.dryRight, at);
     out.tapLeft.set(t.tapLeft, at);
     out.tapRight.set(t.tapRight, at);
+    out.wetLeft.set(t.wetLeft, at);
+    out.wetRight.set(t.wetRight, at);
     out.instructions.push(...t.instructions);
     out.faulted += t.faulted;
     at += t.left.length;

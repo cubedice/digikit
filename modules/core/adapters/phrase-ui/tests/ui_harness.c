@@ -13,8 +13,8 @@ uint32_t dkrt_phrase_get(uint32_t p)
 int32_t dkrt_phrase_set(uint32_t p, uint32_t v)
 {
     assert(p < PH_PARAM_COUNT);
-    /* The page writes only what the provider takes: nothing for the two cells kept for the loop. */
-    assert(p != PH_P_INPT && p != PH_P_XFAD);
+    /* The page writes only what the provider takes: XFAD is the loop effect's, INPT a switch. */
+    assert(p != PH_P_XFAD && (p != PH_P_INPT || v <= 1));
     raw[p] = v;
     ++writes;
     return 0;
@@ -309,7 +309,7 @@ static void page_cells(void)
     pu_page(&s, &p);
     same(p.cells[3].value, "20");
     same(p.cells[3].state, "DARK");
-    /* The cells kept for the loop say the same whatever the provider holds. */
+    /* Without the loop effect's home the loop cells say there is none. */
     same(p.cells[6].value, "LIVE");
     same(p.cells[7].state, "NO LOOP");
     /* Long times: the mean of two sides of more than 16 bits is right to 16 frames. */
@@ -330,7 +330,7 @@ static void page_cells(void)
 /* A canvas that checks what the page draws: inside the screen, every text inside its place. */
 typedef struct {
     uint32_t boxes, texts, inverted;
-    char seen[64][8];
+    char seen[64][24];
 } Drawn;
 static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
 {
@@ -342,9 +342,11 @@ static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
 static void drawn_text(void *ctx, int x, int y, const char *s, int ink)
 {
     Drawn *d = ctx;
-    /* The label font is at most 4 pixels a character and 5 high. */
+    /* The label font is at most 4 pixels a character and 5 high. A cell's text has at most 7 characters; the header's loop
+     * line (at the top) more. */
     int half = (int)strlen(s) * 4 / 2;
-    assert(*s && strlen(s) <= 7 && x - half >= 0 && x + half <= 128 && y >= 0 && y + 5 <= 64);
+    assert(*s && (strlen(s) <= 7 || (y == 2 && strlen(s) < 24)) && x - half >= 0 &&
+           x + half <= 128 && y >= 0 && y + 5 <= 64);
     assert(d->texts < 64);
     strcpy(d->seen[d->texts++], s);
     d->inverted += !ink;
@@ -394,6 +396,173 @@ static void rendering(void)
     pu_render_header(&p, &c);
     assert(d.texts == 3 && saw(&d, "PRISM") && saw(&d, "LOOP"));
 }
+
+/* The loop effect's home as core/loop-control keeps it (the crossfader and the counts of ARM and DROP), and its status. */
+static uint32_t home_xfad, home_arms, home_drops, home_fresh, home_words[LS_WORDS];
+static uint32_t home_get(uint32_t i)
+{
+    return i == LP_XFAD ? home_xfad : 0;
+}
+static void home_set_xfad(uint32_t v)
+{
+    assert(v <= LP_MAX);
+    home_xfad = v;
+}
+static void home_arm(void)
+{
+    ++home_arms;
+}
+static void home_drop(void)
+{
+    ++home_drops;
+}
+static uint32_t home_status(uint32_t *out)
+{
+    memcpy(out, home_words, sizeof(home_words));
+    return home_fresh;
+}
+static const PhraseLoop fake_home = {home_get, home_set_xfad, home_arm, home_drop, home_status};
+/* The engine's report: state bits, loops taken, the pattern's steps, the loop's steps and frames, the crossfader applied. */
+static void report(uint32_t bits, uint32_t count, uint32_t steps, uint32_t loop_steps,
+                   uint32_t frames, float gain)
+{
+    memset(home_words, 0, sizeof(home_words));
+    home_words[LS_MAGIC] = LS_MAGIC_VALUE;
+    home_words[LS_STATE] = bits | count << LS_COUNT_SHIFT;
+    home_words[LS_STEPS] = loop_steps | steps << 8;
+    home_words[LS_LOOP_FRAMES] = frames;
+    memcpy(&home_words[LS_GAIN], &gain, 4);
+    home_fresh = 1;
+}
+static void loop_page(void)
+{
+    PhraseUi s;
+    PhrasePage p;
+    init(&s);
+    s.loop = &fake_home;
+    home_xfad = home_arms = home_drops = 0;
+    /* Pattern 1 plays, no loop yet: INPT stays LIVE whatever G does, H and FUNC + NO move nothing; a press of H arms. */
+    report(LS_TRACK, 0, 16, 0, 0, 0.0f);
+    pu_loop(&s);
+    assert(raw[PH_P_INPT] == 0);
+    assert(pu_turn(&s, 6, 1, 0) == PU_OWN && pu_turn(&s, 7, 5, 0) == PU_OWN &&
+           raw[PH_P_INPT] == 0 && home_xfad == 0);
+    tap(&s, PU_PUSH + 6);
+    assert(raw[PH_P_INPT] == 0);
+    assert(pu_key(&s, PU_FUNC, PU_PRESS) == PU_PASS);
+    tap(&s, PU_NO);
+    assert(pu_key(&s, PU_FUNC, PU_RELEASE) == PU_PASS && home_drops == 0);
+    pu_page(&s, &p);
+    same(p.cells[6].value, "LIVE");
+    same(p.cells[7].value, "--");
+    same(p.cells[7].state, "NO LOOP");
+    tap(&s, PU_PUSH + 7);
+    assert(home_arms == 1);
+    report(LS_TRACK | LS_ARMED, 0, 16, 0, 0, 0.0f);
+    pu_loop(&s);
+    pu_page(&s, &p);
+    same(p.cells[7].value, "ARMD");
+    same(p.cells[7].state, "16 ST");
+    assert(!p.cells[7].lit && !p.cells[7].fader && !p.line[0]);
+    report(LS_ARMED, 0, 0, 0, 0, 0.0f);
+    pu_loop(&s);
+    pu_page(&s, &p);
+    same(p.cells[7].state, "WAIT");
+    report(LS_TRACK | LS_ARMED | LS_NEXT_CUT, 0, 128, 0, 0, 0.0f);
+    pu_loop(&s);
+    pu_page(&s, &p);
+    same(p.cells[7].state, "CUT");
+    /* The armed change takes a loop: the home puts the crossfader at LOOP, and INPT goes to LOOP by itself. */
+    home_xfad = LP_MAX;
+    report(LS_LOOP | LS_HELD | LS_TRACK, 1, 16, 16, 96000, 1.0f);
+    pu_loop(&s);
+    assert(raw[PH_P_INPT] == 1);
+    pu_page(&s, &p);
+    same(p.cells[6].value, "LOOP");
+    same(p.cells[7].value, "LOOP");
+    assert(p.cells[7].fader == 128);
+    same(p.line, "LOOP 16 ST 2.00 S");
+    /* H is the crossfader, a step a tick, through the home; the cell shows the number between the ends. */
+    assert(pu_turn(&s, 7, -64, 0) == PU_OWN && home_xfad == 63);
+    report(LS_LOOP | LS_TRACK, 1, 16, 16, 96000, 63.0f / 127.0f);
+    pu_loop(&s);
+    pu_page(&s, &p);
+    same(p.cells[7].value, "63");
+    assert(p.cells[7].fader >= 63 && p.cells[7].fader <= 64);
+    assert(pu_turn(&s, 7, -500, 0) == PU_OWN && home_xfad == 0);
+    report(LS_LOOP | LS_TRACK, 1, 16, 16, 96000, 0.0f);
+    /* At LIVE INPT stays at LOOP: switching it is the performer's move. */
+    pu_loop(&s);
+    assert(raw[PH_P_INPT] == 1);
+    pu_page(&s, &p);
+    same(p.cells[7].value, "LIVE");
+    assert(p.cells[7].fader == 1);
+    /* G: a press switches, a tick up is LOOP and a tick down LIVE; the header names the loop only while PRISM hears it. */
+    tap(&s, PU_PUSH + 6);
+    assert(raw[PH_P_INPT] == 0);
+    pu_page(&s, &p);
+    assert(!p.line[0]);
+    same(p.zone, "ECHO");
+    assert(pu_turn(&s, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
+    assert(pu_turn(&s, 6, 3, 0) == PU_OWN && raw[PH_P_INPT] == 1);
+    assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
+    /* Arming again while the loop plays: ARMD, drawn inverted, in place of the crossfader's line. */
+    tap(&s, PU_PUSH + 7);
+    assert(home_arms == 2);
+    report(LS_LOOP | LS_ARMED | LS_TRACK, 1, 16, 16, 96000, 0.0f);
+    pu_loop(&s);
+    pu_page(&s, &p);
+    same(p.cells[7].state, "ARMD");
+    assert(p.cells[7].lit && !p.cells[7].fader);
+    /* The next loop: INPT goes to LOOP again, from LIVE. */
+    report(LS_LOOP | LS_HELD | LS_TRACK, 2, 16, 16, 96000, 1.0f);
+    pu_loop(&s);
+    assert(raw[PH_P_INPT] == 1);
+    /* FUNC + NO drops through the home; without a loop INPT is LIVE. */
+    assert(pu_key(&s, PU_FUNC, PU_PRESS) == PU_PASS);
+    tap(&s, PU_NO);
+    assert(pu_key(&s, PU_FUNC, PU_RELEASE) == PU_PASS && home_drops == 1);
+    report(LS_TRACK, 2, 16, 0, 0, 0.0f);
+    pu_loop(&s);
+    assert(raw[PH_P_INPT] == 0);
+    /* A page that first sees a loop already taken does not switch INPT (it was not this change). */
+    PhraseUi late;
+    memset(&late, 0, sizeof(late));
+    pu_context(&late, 1, 1);
+    late.loop = &fake_home;
+    report(LS_LOOP | LS_TRACK, 3, 16, 16, 96000, 1.0f);
+    pu_loop(&late);
+    assert(raw[PH_P_INPT] == 0);
+    report(LS_LOOP | LS_HELD | LS_TRACK, 4, 16, 16, 96000, 1.0f);
+    pu_loop(&late);
+    assert(raw[PH_P_INPT] == 1);
+    /* The loop effect stops reporting: the cells say there is no loop, and after PU_LOOP_GONE passes INPT is LIVE. */
+    home_fresh = 0;
+    for (uint32_t i = 0; i < PU_LOOP_GONE; ++i)
+        pu_loop(&late);
+    assert(raw[PH_P_INPT] == 1);
+    pu_loop(&late);
+    assert(raw[PH_P_INPT] == 0);
+    pu_page(&late, &p);
+    same(p.cells[7].value, "--");
+    same(p.cells[7].state, "NO LOOP");
+    uint32_t arms = home_arms;
+    tap(&late, PU_PUSH + 7);
+    assert(home_arms == arms);
+    /* What the loop's page shows is drawn on the screen: the header line, the crossfader's line. */
+    report(LS_LOOP | LS_TRACK, 4, 16, 16, 96000, 0.5f);
+    raw[PH_P_INPT] = 1;
+    home_xfad = 64;
+    pu_loop_status(&s);
+    Drawn d = {0};
+    PhraseCanvas c = {&d, drawn_box, drawn_text};
+    pu_page(&s, &p);
+    pu_render(&p, &c);
+    assert(saw(&d, "LOOP 16 ST 2.00 S") && saw(&d, "64"));
+    memset(&d, 0, sizeof(d));
+    pu_render_header(&p, &c);
+    assert(d.texts == 2 && saw(&d, "PRISM") && saw(&d, "LOOP 16 ST 2.00 S"));
+}
 int main(void)
 {
     encoders();
@@ -402,6 +571,7 @@ int main(void)
     formats();
     page_cells();
     rendering();
+    loop_page();
     puts("phrase ui: ok");
     return 0;
 }

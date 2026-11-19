@@ -306,6 +306,22 @@ export class FxRig {
     return res.reads[0] ?? [];
   }
 
+  /**
+   * External memory (the DDR a module leases, byte addressed as its code addresses it): `poke` and `peek` take internal
+   * addresses and convert them to normal words, which misses these. Write the word at byte address ADDRESS.
+   */
+  pokeExternal(address: number, word: number): void {
+    this.q.poke(address >>> 0, word >>> 0);
+  }
+
+  /** COUNT words of external memory from byte address ADDRESS, 4 bytes apart (null: nothing wrote the word). */
+  async peekExternal(address: number, count: number): Promise<(number | null)[]> {
+    const reads = Array.from({ length: count }, (_, k): [number, number] => [(address + 4 * k) >>> 0, 1]);
+    this.q.push({ call: { pc: RETURN_SW, regs: {}, max_steps: 0, reads, read_regs: [] } });
+    const res = (await this.port.run(this.q.take())).at(-1)!;
+    return res.reads.map((r) => r[0] ?? null);
+  }
+
   private async word(address: number): Promise<number> {
     return (await this.peek(address))[0] ?? 0;
   }

@@ -5,10 +5,14 @@
  * pu_render draws it. A cell is 26 pixels wide, so a text has at most 7 characters. */
 typedef struct {
     char label[8], value[8], state[8];
-    uint32_t lit; /* the state is on (FLIP, HOLD): drawn inverted */
+    uint32_t lit; /* the state is on (FLIP, HOLD, ARMD): drawn inverted */
+    uint32_t
+        fader; /* 0: none; else 1 + the crossfader as it sounds, 0 .. 127: drawn in place of the state */
 } PhraseCell;
 typedef struct {
     char title[8], zone[8], time[8];
+    /* While PRISM hears the loop: "LOOP 16 ST 2.00 S" in place of the zone and the time. */
+    char line[24];
     uint32_t mix, zone_index;
     PhraseCell cells[8]; /* A to H */
 } PhrasePage;

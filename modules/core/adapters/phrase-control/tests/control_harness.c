@@ -101,9 +101,14 @@ static void controls(void)
     assert(dkrt_phrase_set(PH_P_FLIP, 1) == 0 && word(PH_C_FLAGS) == (PH_F_SYNC | PH_F_FLIP));
     assert(dkrt_phrase_set(PH_P_HOLD, 7) == 0 &&
            word(PH_C_FLAGS) == (PH_F_SYNC | PH_F_FLIP | PH_F_HOLD));
-    /* the words kept for the loop are published as 0, and nothing sets their values */
-    assert(dkrt_phrase_set(PH_P_INPT, 1) == -2 && dkrt_phrase_set(PH_P_XFAD, 64) == -2);
-    assert(word(PH_C_INPUT) == 0 && word(PH_C_XFADE) == 0 && word(PH_C_ARM_SEQ) == 0);
+    /* INPT is a switch, published as it is and not saved (a restart has no loop); XFAD is the loop effect's and cannot be
+     * set here, and the words of the crossfader and of ARM stay 0 */
+    u32 before = writes;
+    assert(dkrt_phrase_set(PH_P_INPT, 5) == 0 && dkrt_phrase_get(PH_P_INPT) == 1 &&
+           word(PH_C_INPUT) == 1);
+    assert(dkrt_phrase_set(PH_P_INPT, 0) == 0 && word(PH_C_INPUT) == 0 && writes == before);
+    assert(dkrt_phrase_set(PH_P_XFAD, 64) == -2);
+    assert(word(PH_C_XFADE) == 0 && word(PH_C_ARM_SEQ) == 0);
     assert(dkrt_phrase_set(PH_PARAM_COUNT, 1) == -1);
 }
 

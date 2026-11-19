@@ -248,43 +248,50 @@
    "type": "cf.32"
   },
   {
-   "addend": 0,
+   "addend": 44,
    "offset": 340,
    "section": ".text.publish",
-   "symbol": ".sec..bss.row_index",
+   "symbol": ".sec..bss.raw",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 350,
    "section": ".text.publish",
+   "symbol": ".sec..bss.row_index",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 360,
+   "section": ".text.publish",
    "symbol": ".sec..bss.generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 364,
+   "offset": 374,
    "section": ".text.publish",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 370,
+   "offset": 380,
    "section": ".text.publish",
    "symbol": ".sec..bss.published",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 378,
+   "offset": 388,
    "section": ".text.publish",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 422,
+   "offset": 432,
    "section": ".text.publish",
    "symbol": "__addsf3",
    "type": "cf.32"
@@ -599,35 +606,35 @@
   },
   {
    "addend": 0,
-   "offset": 62,
+   "offset": 50,
    "section": ".text.dkrt_phrase_set",
    "symbol": ".sec..rodata.CSWTCH.29",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 82,
+   "offset": 70,
    "section": ".text.dkrt_phrase_set",
    "symbol": ".sec..bss.raw",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 98,
+   "offset": 86,
    "section": ".text.dkrt_phrase_set",
    "symbol": ".sec..text.publish",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 186,
+   "offset": 178,
    "section": ".text.dkrt_phrase_set",
    "symbol": ".sec..bss.key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 192,
+   "offset": 184,
    "section": ".text.dkrt_phrase_set",
    "symbol": "dkrt_settings_put",
    "type": "cf.32"
@@ -811,10 +818,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffec700148d73c04243900000000b1822002e1882440d5fc00000000200a204a0680000001004298b1c066fa4ab90000000056c0307c010072032541000424bc504843312548000847f90000000049f9000000004bf90000000071004480254000102039000000005280254000202f39000000004e932ebc447e00002f004e94508f4ab90000000056c1207900000000254000244ab90000000056c0730171004481e5894480d08080814ab90000000056c1730144818081726025400028b288650000c62f084e932ebc3c0000002f004e95508f25400030723f203900000000b280640000c820404868ffc04e932ebc427c00002f004e94508f254000342f39000000004e932ebc42fe00002f004e94508f723f25400038203900000000b280640000a620404868ffc04e932ebc427c00002f004e94508f2540003c2f39000000004e932ebc42fe00002f004e94508f41f900000000255000dc41f900000000255000e0254000404eb90000000023c2000000002f004eb9000000004cef3c0400044fef00184e754868ffa04e932ebc3c0421082f004e95588f2ebc3f4000002f004eb9000000006000ff28724092802f014e932ebc3c8000000680800000002f004e956000ff32724092802f014e932ebc3c8000000680800000002f004e956000ff54",
+   "hex": "4fefffec700148d73c04243900000000b1822002e1882440d5fc00000000200a204a0680000001004298b1c066fa4ab90000000056c0307c010072032541000424bc504843312548000847f90000000049f9000000004bf90000000071004480254000102039000000005280254000202f39000000004e932ebc447e00002f004e94508f4ab90000000056c1207900000000254000244ab90000000056c0730171004481e5894480d08080814ab90000000056c1730144818081726025400028b288650000d02f084e932ebc3c0000002f004e95508f25400030723f203900000000b280640000d220404868ffc04e932ebc427c00002f004e94508f254000342f39000000004e932ebc42fe00002f004e94508f723f25400038203900000000b280640000b020404868ffc04e932ebc427c00002f004e94508f2540003c2f39000000004e932ebc42fe00002f004e94508f41f9000000002550004441f900000000255000dc41f90000000025400040255000e04eb90000000023c2000000002f004eb9000000004cef3c0400044fef00184e754868ffa04e932ebc3c0421082f004e95588f2ebc3f4000002f004eb9000000006000ff1e724092802f014e932ebc3c8000000680800000002f004e956000ff28724092802f014e932ebc3c8000000680800000002f004e956000ff4a",
    "kind": "text",
    "name": ".text.publish",
-   "size": 486
+   "size": 496
   },
   {
    "align": 2,
@@ -853,10 +860,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56ffbc222e000c48d7040c4ab900000000660c70ff4cee040cffbc4e5e4e75700cb0ae000865ec202e00080680fffffff5e288670000aa262e000841f90000000071f03a00b28064022001226e000845f900000000b0b29c00676c25809c004eb9000000007005b0ae0008675a223c5048030d42802d41ffc841eeffcc7405b480664a4281761852802401e6aa2601e08b1141000358881142fffc2401720d424248421143fffe1142fffdb28066ce48780038486effc84879000000004eb9000000004fef000c42806000ff4a22000681fffffff5e28967aa22320c0060a670fe6000ff32",
+   "hex": "4e56ffbc222e000c48d7040c4ab900000000660c70ff4cee040cffbc4e5e4e75700cb0ae000865ec670000ae242e000841f90000000071f02a00b28064022001262e000845f900000000b0b23c00677025803c004eb9000000007005b0836760720bb283675a243c5048030d42802d42ffc841eeffcc7605b680664a4281741852802601e4ab2401e08a1141000358881143fffc2601424348431142fffe1143fffd760db68066ce48780038486effc84879000000004eb9000000004fef000c42806000ff5222000681fffffff5e28967aa22320c0060a670fe6000ff3a",
    "kind": "text",
    "name": ".text.dkrt_phrase_set",
-   "size": 230
+   "size": 222
   },
   {
    "align": 2,
@@ -992,7 +999,7 @@
    "size": 52
   }
  ],
- "source_sha256": "962f487dad6155879269e2c3369d700c1ab4bf1f13f19c3e93b2bb20f6e27a46",
+ "source_sha256": "1f76250cc89567dfdfab39a7696f3577635f3ccb749b9b4e140b5a31039e87b3",
  "symbols": [
   {
    "global": false,
@@ -1791,8 +1798,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "1805",
-  "isa_check": "24fcfe16af372da2f15ab10260d66f3203b01e21b762de997ebe5b0521a0d9df",
+  "instructions_redecoded": "1807",
+  "isa_check": "846cc7d0d8664a966e73f0cf7f53887d79605bb2a08d255ef4e6f1ff6994b621",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

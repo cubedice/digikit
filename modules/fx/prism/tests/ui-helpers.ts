@@ -51,11 +51,15 @@ export interface PrismCell {
   value: string;
   state: string;
   lit: boolean;
+  /** 0: no crossfader drawn; else 1 + its position as it sounds (0 .. 127) */
+  fader: number;
 }
 export interface PrismPage {
   title: string;
   zone: string;
   time: string;
+  /** the header's loop line while PRISM hears the loop ('' otherwise) */
+  line: string;
   mix: number;
   zoneIndex: number;
   cells: PrismCell[];
@@ -63,23 +67,26 @@ export interface PrismPage {
 
 /** The page as core/phrase-ui last painted it (`phrase_ui_page`, the `PhrasePage` of its render.h): the texts of the header and of the cells A to H. */
 export async function prismPage(session: Session, address: number): Promise<PrismPage> {
-  const bytes = Buffer.alloc(256);
-  for (let i = 0; i < 64; i++) bytes.writeUInt32BE(await word(session, address + 4 * i), 4 * i);
-  const text = (at: number) => {
+  // title, zone, time (8 bytes each), line (24), mix, zone index, then 8 cells of label, value, state (8 each), lit, fader
+  const bytes = Buffer.alloc(312);
+  for (let i = 0; i < 78; i++) bytes.writeUInt32BE(await word(session, address + 4 * i), 4 * i);
+  const text = (at: number, field = 8) => {
     const end = bytes.indexOf(0, at);
-    return bytes.toString('latin1', at, Math.min(end < 0 ? at + 8 : end, at + 8));
+    return bytes.toString('latin1', at, Math.min(end < 0 ? at + field : end, at + field));
   };
   return {
     title: text(0),
     zone: text(8),
     time: text(16),
-    mix: bytes.readUInt32BE(24),
-    zoneIndex: bytes.readUInt32BE(28),
+    line: text(24, 24),
+    mix: bytes.readUInt32BE(48),
+    zoneIndex: bytes.readUInt32BE(52),
     cells: Array.from({ length: 8 }, (_, i) => ({
-      label: text(32 + 28 * i),
-      value: text(40 + 28 * i),
-      state: text(48 + 28 * i),
-      lit: bytes.readUInt32BE(56 + 28 * i) !== 0,
+      label: text(56 + 32 * i),
+      value: text(64 + 32 * i),
+      state: text(72 + 32 * i),
+      lit: bytes.readUInt32BE(80 + 32 * i) !== 0,
+      fader: bytes.readUInt32BE(84 + 32 * i),
     })),
   };
 }

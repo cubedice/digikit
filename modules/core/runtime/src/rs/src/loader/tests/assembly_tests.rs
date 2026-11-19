@@ -793,6 +793,151 @@ fn the_holder_of_an_effects_values_is_named_as_the_fx_service_looks_it_up() {
     assert!(!without.entries.iter().any(|e| e.1 == name_hash("fx_held_values")), "an image without the adapter holds no effect's values");
 }
 
+/// The directory of every module under `modules/`, by id.
+fn module_dirs() -> std::collections::BTreeMap<String, PathBuf> {
+    fn walk(dir: &Path, out: &mut std::collections::BTreeMap<String, PathBuf>) {
+        for e in std::fs::read_dir(dir).unwrap().map(|e| e.unwrap().path()) {
+            if e.is_dir() {
+                if !["build", "target", "node_modules"].contains(&e.file_name().unwrap().to_str().unwrap()) {
+                    walk(&e, out);
+                }
+            } else if e.file_name().unwrap() == "module.toml" {
+                let t: toml::Table = std::fs::read_to_string(&e).unwrap().parse().unwrap();
+                out.insert(t["module"]["id"].as_str().unwrap().to_string(), e.parent().unwrap().to_path_buf());
+            }
+        }
+    }
+    let mut out = std::collections::BTreeMap::new();
+    walk(&repo().join("modules"), &mut out);
+    out
+}
+
+/// The names of the import table of core/dyndsp for a device (its `DSP_IMPORT` lines) and the count word the table states.
+fn dyndsp_imports(dev: Dev) -> (Vec<String>, u32) {
+    let src = std::fs::read_to_string(repo().join(format!("modules/core/adapters/dyndsp/src/cf/dyndsp-{}.s", dev.name))).unwrap();
+    let names = src.lines().filter_map(|t| t.trim().strip_prefix("DSP_IMPORT ")).map(|n| n.trim().to_string()).collect();
+    // the count is the word after `.long _dd_vcount`
+    let lines: Vec<&str> = src.lines().map(str::trim).collect();
+    let at = lines.iter().position(|l| *l == ".long   _dd_vcount").expect("the table's header ends with the voice row count");
+    let count = lines[at + 1].strip_prefix(".long").unwrap().trim().parse().unwrap();
+    (names, count)
+}
+
+/// The import table's count word is its number of entries: the runtime reads that many 32-byte entries.
+#[test]
+fn the_import_table_of_dyndsp_states_its_own_number_of_entries() {
+    for dev in DEVICES {
+        let (names, count) = dyndsp_imports(dev);
+        assert_eq!(count as usize, names.len(), "{}: the count word of dyndsp_info", dev.name);
+    }
+}
+
+/// A run-time module's DSP imports against the images it can load in (Digitakt II). Every content module whose DSP sources
+/// take a name from outside the module that the import table of core/dyndsp marks optional (a provider that may be missing)
+/// must find it provided by an adapter in every patch set that holds what the module requires: its `requires` is the
+/// promise that it loads there. This is the seam of the loop effect and the phrase effect (the tap and the wet mailbox of
+/// core/loop-storage, the status mailbox of core/loop-control): the phrase effect requires no core/loop-control, so it may
+/// not import that mailbox and still load in the patch set `phrase`. Every other name must be in the table at all.
+#[test]
+fn a_modules_optional_dsp_imports_are_provided_where_its_requires_are() {
+    let (table, _) = dyndsp_imports(DT2);
+    let dyndsp: toml::Table = std::fs::read_to_string(repo().join("modules/core/adapters/dyndsp/module.toml")).unwrap().parse().unwrap();
+    let optional: Vec<String> = dyndsp["object"].as_array().unwrap().iter().filter_map(|o| o.get("optional")).flat_map(strings).collect();
+    let dirs = module_dirs();
+    // the names a module's DSP sources declare `.EXTERN` (in the sources and the contract files they include) and do not define themselves
+    let imports = |dir: &Path| -> Vec<String> {
+        let mut files: Vec<PathBuf> = std::fs::read_dir(dir.join("src/dsp")).unwrap().map(|e| e.unwrap().path()).collect();
+        files.sort();
+        let mut texts: Vec<String> = Vec::new();
+        let included = |text: &str| -> Vec<String> {
+            text.lines().filter_map(|l| l.trim().strip_prefix("#include \"")).map(|l| l.trim_end_matches('"').to_string()).collect()
+        };
+        for f in &files {
+            let t = std::fs::read_to_string(f).unwrap();
+            for inc in included(&t) {
+                if let Ok(text) = std::fs::read_to_string(repo().join("sdk/dsp/contract").join(&inc)) {
+                    for inner in included(&text) {
+                        if let Ok(x) = std::fs::read_to_string(repo().join("sdk/dsp/contract").join(inner)) {
+                            texts.push(x);
+                        }
+                    }
+                    texts.push(text);
+                }
+            }
+            texts.push(t);
+        }
+        let names = |prefix: &str| -> Vec<String> {
+            texts
+                .iter()
+                .flat_map(|t| t.lines().filter_map(|l| l.trim().strip_prefix(prefix)).map(|n| n.trim().trim_end_matches(';').trim().to_string()).collect::<Vec<_>>())
+                .collect()
+        };
+        let own = names(".GLOBAL ");
+        let mut out: Vec<String> = names(".EXTERN ").into_iter().filter(|n| !own.contains(n)).collect();
+        out.sort();
+        out.dedup();
+        out
+    };
+    // the globals of the DSP objects of the adapters of a set
+    let provided = |set: &str| -> Vec<String> {
+        let mut out = Vec::new();
+        for id in set_modules(DT2, set) {
+            let Some(dir) = dirs.get(&id) else { continue };
+            let t: toml::Table = std::fs::read_to_string(dir.join("module.toml")).unwrap().parse().unwrap();
+            for o in t.get("object").and_then(|o| o.as_array()).cloned().unwrap_or_default() {
+                let dt2 = o.get("devices").map(|d| strings(d).iter().any(|x| x == "dt2")).unwrap_or(true);
+                if o.get("place").and_then(|p| p.as_str()) != Some("dsp.l2") || !dt2 {
+                    continue;
+                }
+                // the object's symbols: each global's name follows its `"global": true`
+                let json = std::fs::read_to_string(dir.join(o["path"].as_str().unwrap())).unwrap();
+                let symbols = &json[json.find("\"symbols\"").expect("an object has its symbols")..];
+                for part in symbols.split("\"global\": true").skip(1) {
+                    let at = part.find("\"name\": \"").unwrap() + "\"name\": \"".len();
+                    out.push(part[at..at + part[at..].find('"').unwrap()].to_string());
+                }
+            }
+        }
+        out
+    };
+    let text = String::from_utf8(read(&repo().join(DT2.toml), "git checkout devices")).unwrap();
+    let device: toml::Table = text.parse().unwrap();
+    let sets: Vec<String> = device["patch_sets"].as_table().unwrap().keys().cloned().collect();
+    let requires = module_requires();
+    let mut checked = 0;
+    let mut wet = 0;
+    for (id, dir) in &dirs {
+        let content = ["modules/machines/", "modules/fx/", "modules/tools/"].iter().any(|r| dir.starts_with(repo().join(r)));
+        if !content || !dir.join("src/dsp").is_dir() {
+            continue;
+        }
+        let names = imports(dir);
+        let wanted: Vec<&String> = names.iter().filter(|n| optional.contains(n)).collect();
+        if wanted.is_empty() {
+            continue;
+        }
+        for n in &names {
+            assert!(table.contains(n), "{id} imports {n}, which the import table of core/dyndsp does not name");
+        }
+        wet += names.iter().any(|n| n == "_loop_wet") as u32;
+        let needs = &requires[id];
+        for set in &sets {
+            let holds = set_modules(DT2, set);
+            if !needs.iter().all(|r| holds.contains(r)) {
+                continue;
+            }
+            let have = provided(set);
+            for n in &wanted {
+                assert!(have.contains(n), "{id} imports {n}, which no adapter of the set {set} provides, though the set holds what it requires");
+            }
+            checked += 1;
+        }
+    }
+    // the two effects of the loop are among them: both take the wet mailbox, each in at least its own set and the hardware set
+    assert!(wet >= 2, "two modules take the wet mailbox");
+    assert!(checked >= 4, "{checked} module and set pairs checked");
+}
+
 #[test]
 fn a_c_service_with_the_abi_word_0_is_accepted_and_its_user_loads() {
     let _g = clean();

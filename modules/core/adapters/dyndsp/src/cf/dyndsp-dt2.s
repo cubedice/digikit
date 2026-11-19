@@ -33,7 +33,7 @@ dyndsp_info:
     .long   _dd_vfirst
     .long   DYN_TYPES
     .long   _dd_vcount
-    .long   65
+    .long   67
     DSP_IMPORT _dv_exp2
     DSP_IMPORT _dv_frame_hw
     DSP_IMPORT _dv_frame_sw
@@ -97,9 +97,13 @@ dyndsp_info:
     DSP_IMPORT _loop_buffer_info
     | Optional per-frame transport snapshot. Missing provider fails an import before allocation.
     DSP_IMPORT _pattern_position_info
-    | The status mailbox and the tap of core/loop-control, which the loop effect imports.
+    | The status mailbox of core/loop-control, and the tap and the wet mailbox of core/loop-storage (the loop effect and the phrase effect).
     DSP_IMPORT _loop_ui_status
     DSP_IMPORT _loop_tap
+    DSP_IMPORT _loop_wet
+    | The master stage's volume ramp (the loop effect adds the phrase effect's output at the master's gain): its start and its step a sample.
+    DSP_IMPORT _fw_master_gain
+    DSP_IMPORT _fw_master_step
     DSP_IMPORT _phrase_storage_info
     DSP_IMPORT _phrase_control_info
     DSP_IMPORT _phrase_status

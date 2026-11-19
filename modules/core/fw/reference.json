@@ -22202,6 +22202,66 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x2558c0",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 only: the master volume ramp's gain for the first sample of the block, the word of `DM(0x2558c0) = R0` in the master function. The loop effect reads it after the master function to add a send effect's output at the master's gain.",
+      "file": "devices/fw/dsp/master.toml",
+      "kind": "value",
+      "mark": "D",
+      "name": "dsp.master.value.volume_ramp.start",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_mem_addr",
+          "offset": 695
+        }
+      },
+      "subsystem": "master",
+      "users": [
+        "core/dyndsp"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2558c8",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 only: the master volume ramp's step a sample (new gain - start) / 32, the word of `DM(0x2558c8) = R12` in the master function.",
+      "file": "devices/fw/dsp/master.toml",
+      "kind": "value",
+      "mark": "D",
+      "name": "dsp.master.value.volume_ramp.step",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_mem_addr",
+          "offset": 709
+        }
+      },
+      "subsystem": "master",
+      "users": [
+        "core/dyndsp"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x2838ea02",
             "pm": true
           }
@@ -26561,7 +26621,7 @@
       "name": "machine"
     },
     {
-      "count": 4,
+      "count": 6,
       "cpu": "sharc",
       "file": "devices/fw/dsp/master.toml",
       "meaning": "the master stage",

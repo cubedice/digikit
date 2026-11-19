@@ -2,6 +2,9 @@
 // Include this in the engine's SHARC entry source. C uses dk/phrase.h;
 // dk_phrase.inc alone contains the shared numeric layout without imports.
 #include "dk_phrase.inc"
+// The loop effect's tap and the wet mailbox (LT_*, LW_*): the phrase effect hears the loop through the one and gives its
+// output to the loop effect through the other while that runs.
+#include "dk_loop.inc"
 
 // Read-only 64-word coherent control mailbox from core/phrase-control.
 // Importing this makes one FX (no voices) the exclusive phrase effect.
@@ -21,3 +24,9 @@
 // capacity before access; do not assume a fixed address or bank size.
 // Initialize frames before reading them.
 .EXTERN _phrase_storage_info;
+
+// The loop effect's tap (68 words, LT_*) and the wet mailbox (68 words, LW_*), both of core/loop-storage. The engine reads
+// the tap and LW_TAKEN; it writes the mailbox's head, LW_SEQ and its samples. With no loop effect in the image LW_TAKEN never
+// moves: the engine then hears the tracks only and gives its whole output to the FX return.
+.EXTERN _loop_tap;
+.EXTERN _loop_wet;

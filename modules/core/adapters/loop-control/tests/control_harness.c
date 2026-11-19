@@ -102,6 +102,20 @@ int main(void)
     /* An engine that starts anew (its count is 0 again) is followed without moving the crossfader. */
     report(6, 0, 0);
     assert(dkrt_loop_get(LP_SEEN) == 0 && dkrt_loop_get(LP_XFAD) == 90);
+    /* Two pages (Overloop's and PRISM's) share the one home: what one sets the other reads, and an ARM from each is two presses
+     * (the second takes the arm back), whichever page they came from. */
+    dkrt_loop_xfad(30);
+    assert(dkrt_loop_get(LP_XFAD) == 30 && loop_control_raw[LP_XFAD] == 30);
+    u32 arms = dkrt_loop_get(LP_ARM);
+    dkrt_loop_arm();
+    dkrt_loop_arm();
+    assert(dkrt_loop_get(LP_ARM) == ((arms + 2) & LP_MAX));
+    /* An engine that starts anew goes on counting from its status: its next loop is a new count, and the crossfader goes to
+     * LOOP. */
+    report(7, 0, 0);
+    dkrt_loop_xfad(10);
+    report(8, LS_LOOP | LS_HELD, 1);
+    assert(dkrt_loop_get(LP_XFAD) == LP_MAX && dkrt_loop_get(LP_SEEN) == 1);
     puts("loop control: ok");
     return 0;
 }

@@ -6,11 +6,12 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, test } from 'vitest';
-import { f2w } from '../../../../packages/sharc-rig-kit/src/index.ts';
+import { f2w, w2f } from '../../../../packages/sharc-rig-kit/src/index.ts';
 import {
   BLOCK,
   DEVICE_FRAMES,
   FS,
+  LP,
   LoopRig,
   OL,
   join,
@@ -77,6 +78,8 @@ const SOUND_A = periodic(CYCLE, 11, 29, 0.3);
 const SOUND_B = periodic(CYCLE, 17, 5, 0.25);
 const SOUND_C = periodic(CYCLE, 7, 41, 0.2);
 
+/** x times a factor, sample by sample in single precision. */
+const scaled = (x: ArrayLike<number>, factor: number): Float32Array => Float32Array.from(x, (v) => Math.fround(v * factor));
 const blocks = (frames: number): number => {
   if (frames % BLOCK) throw new Error(`${frames} frames are not whole blocks`);
   return frames / BLOCK;
@@ -132,13 +135,16 @@ describe('Overloop engine: an armed change at the pattern end', () => {
       );
       for (const c of clicks) expect(c).toBeLessThanOrEqual(1.001);
       for (const l of levels) expect(l).toBe(1);
-      // the tap is the loop at the crossfader's level: here the whole output from the change on, nothing before it
+      // the tap is the loop at the crossfader's level, at the level before the master stage: here the whole output from the
+      // change on divided by the master's gain after its sum (+10 dB, the ramp at 1), nothing before it
+      const inv = w2f((await rig.state(OL.OL_INV!))[0]!);
+      expect(Math.abs(inv * w2f(OL.OL_MASTER_BOOST!) - 1)).toBeLessThan(1e-6);
       expect(peak(take.tapLeft, 0, change)).toBe(0);
-      expect(maxDifference(take.tapLeft, change, take.left, change, turns)).toBe(0);
-      expect(maxDifference(take.tapRight, change, take.right, change, turns)).toBe(0);
+      expect(maxDifference(take.tapLeft, change, scaled(take.left, inv), change, turns)).toBe(0);
+      expect(maxDifference(take.tapRight, change, scaled(take.right, inv), change, turns)).toBe(0);
       const head = await rig.tapHead();
       expect(head.slice(0, 2)).toEqual([0x4c544150, 1]);
-      expect(head[3], 'the tap carries the loop').toBe(1);
+      expect(head[3], 'the tap carries the loop, and the count of loops').toBe(1 | (1 << LP.LT_COUNT_SHIFT!));
       // its block count is the adapter's: one more with every block
       await rig.run(1, SOUND_B);
       expect((await rig.tapHead())[2]! - head[2]!).toBe(1);
@@ -530,11 +536,12 @@ describe('Overloop engine: the boundary cases', () => {
       rig.pokePhraseLease(5, 8192);
       const moved = await rig.run(4, SOUND_B);
       expect(sameBits(moved.left, moved.dryLeft) + sameBits(moved.right, moved.dryRight), 'the input plays').toBe(0);
-      expect(await rig.status()).toMatchObject({ loop: false, armed: false, count: 0, gain: 0, capacity: 8192 - OL.OL_SEAM! - BLOCK });
+      // the new engine goes on counting loops from its status: a loop it takes has a count no reader has seen
+      expect(await rig.status()).toMatchObject({ loop: false, armed: false, count: 1, gain: 0, capacity: 8192 - OL.OL_SEAM! - BLOCK });
       // and an armed change works as before
       rig.stop();
       const { take, change } = await armedChange(rig, 2, 1);
-      expect(await rig.status()).toMatchObject({ loop: true, count: 1, loopFrames: CYCLE });
+      expect(await rig.status()).toMatchObject({ loop: true, count: 2, loopFrames: CYCLE });
       expect(maxDifference(take.left, change, take.left, change - CYCLE, CYCLE)).toBe(0);
     });
   });
@@ -551,11 +558,12 @@ describe('Overloop engine: the boundary cases', () => {
       // then the seam with the crossfader between LIVE and LOOP
       const turn = await rig.run(blocks(CYCLE), SOUND_B);
       const g = Math.fround(30 / 127);
+      const inv = w2f((await rig.state(OL.OL_INV!))[0]!);
       let worst = 0;
       for (let k = 0; k < turn.left.length; k++) {
         const loop = take.left[change - CYCLE + ((STEP + k) % CYCLE)]!;
-        // the tap is the loop times the crossfader, in single precision
-        worst = Math.max(worst, Math.abs(turn.tapLeft[k]! - Math.fround(loop * g)));
+        // the tap is the loop times the crossfader, then divided by the master's gain, in single precision
+        worst = Math.max(worst, Math.abs(turn.tapLeft[k]! - Math.fround(Math.fround(loop * g) * inv)));
       }
       expect(worst, 'the tap at a crossfader of 30').toBe(0);
       note(
@@ -592,6 +600,111 @@ describe('Overloop engine: the boundary cases', () => {
       const broken = await rig.run(blocks(3 * STEP), SOUND_A);
       expect(sameBits(broken.left, broken.dryLeft)).toBe(0);
       expect((await rig.status()).loop).toBe(false);
+    });
+  });
+});
+
+describe("Overloop engine: a send effect's output (the wet mailbox)", () => {
+  /** A send effect's output as PRISM would give it: periodic with the cycle, so it is easy to tell from the patterns. */
+  const WET: Signal = (n) => {
+    const p = (2 * Math.PI * (n % CYCLE)) / CYCLE;
+    return [0.2 * Math.sin(13 * p), 0.15 * Math.sin(19 * p)];
+  };
+  const BOOST = w2f(OL.OL_MASTER_BOOST!);
+  test("behind the crossfader at every position, at the master's gain, and never in the record", async () => {
+    const run = async (wet: boolean) =>
+      withRig({}, async (rig) => {
+        rig.setMaster(0.8, 0);
+        if (wet) rig.wet = { signal: WET };
+        const { take: first } = await armedChange(rig, 3, 1);
+        rig.setXfad(64);
+        const half = await rig.run(blocks(CYCLE), SOUND_B);
+        rig.setXfad(0);
+        const live = await rig.run(blocks(CYCLE), SOUND_B);
+        return { take: join(first, half, live), buffers: [await rig.buffer(0), await rig.buffer(1)], inv: w2f((await rig.state(OL.OL_INV!))[0]!) };
+      });
+    const a = await run(true);
+    const b = await run(false);
+    const change = 3 * CYCLE;
+    const n = a.take.left.length;
+    // from the second block on (the engine's first block only notes the mailbox's count): before the loop (LIVE), the loop
+    // at LOOP, the crossfader at 64, at LIVE; both sides
+    let differ = 0;
+    for (const [out, base, wet] of [
+      [a.take.left, b.take.left, a.take.wetLeft],
+      [a.take.right, b.take.right, a.take.wetRight],
+    ] as const) {
+      for (let at = BLOCK; at < n; at++) {
+        const term = Math.fround(Math.fround(wet[at]! * BOOST) * Math.fround(0.8));
+        if (f2w(out[at]!) !== f2w(Math.fround(base[at]! + term))) differ += 1;
+      }
+    }
+    expect(differ, 'every sample is the output without the send effect plus its output times the +10 dB stage and the ramp').toBe(0);
+    expect(sameBits(a.take.left, b.take.left, 0, BLOCK), 'the first block notes the count only').toBe(0);
+    // the record and the loop: the same words with and without the send effect
+    for (const k of [0, 1]) expect(a.buffers[k]!.every((w, i) => w === b.buffers[k]![i]), `buffer ${k}`).toBe(true);
+    // the tap is divided by the master's gain at the block's end
+    expect(Math.abs(a.inv * BOOST * 0.8 - 1)).toBeLessThan(1e-6);
+    const level = rms(a.take.left, change, change + CYCLE) / rms(b.take.left, change, change + CYCLE);
+    note(`send effect's output added at LIVE, LOOP, 64 and LIVE again, ramp at 0.8: every sample as the master's gain gives it (differences 0); the two buffers with and without it are the same words; output level with it ${level.toFixed(3)} x without`);
+  });
+
+  test('the volume ramp sample by sample, the bound, and the dry path untouched when the send effect is silent', async () => {
+    await withRig({}, async (rig) => {
+      // a ramp from 0.5 down by 1/4096 a sample, as the stock code adds it up
+      const start = 0.5;
+      const step = -1 / 4096;
+      rig.setMaster(start, step);
+      rig.wet = { signal: WET };
+      rig.start(A);
+      const take = await rig.run(40, SOUND_A);
+      let differ = 0;
+      for (let b = BLOCK; b < take.left.length; b += BLOCK) {
+        let g = Math.fround(start);
+        for (let k = 0; k < BLOCK; k++) {
+          const term = Math.fround(Math.fround(take.wetLeft[b + k]! * BOOST) * g);
+          if (f2w(take.left[b + k]!) !== f2w(Math.fround(take.dryLeft[b + k]! + term))) differ += 1;
+          g = Math.fround(Math.fround(step) + g);
+        }
+      }
+      expect(differ, 'the gain before sample k is start + k steps').toBe(0);
+      // a silent send effect: the output is the input, bit for bit
+      rig.wet = { signal: () => 0 };
+      const silent = await rig.run(20, SOUND_A);
+      expect(sameBits(silent.left, silent.dryLeft) + sameBits(silent.right, silent.dryRight)).toBe(0);
+      // a count that does not move: nothing is added
+      rig.wet = { signal: WET, stale: true };
+      const stale = await rig.run(20, SOUND_A);
+      expect(sameBits(stale.left, stale.dryLeft)).toBe(0);
+      // a block that is not finite, or louder than 8: not added, and no fault
+      rig.wet = { signal: (n) => (n % BLOCK === 5 ? Number.NaN : 0.1) };
+      const bad = await rig.run(4, SOUND_A);
+      expect(sameBits(bad.left, bad.dryLeft)).toBe(0);
+      rig.wet = { signal: () => 9 };
+      const loud = await rig.run(4, SOUND_A);
+      expect(sameBits(loud.left, loud.dryLeft)).toBe(0);
+      // a loud one within the bound: the output stays within 7.9
+      rig.setMaster(1, 0);
+      rig.wet = { signal: () => 5 };
+      const top = await rig.run(4, SOUND_A);
+      expect(peak(top.left, BLOCK)).toBeCloseTo(7.9, 5);
+      // a wrong magic: nothing
+      rig.wet = { signal: WET, magic: 0 };
+      const wrong = await rig.run(4, SOUND_A);
+      expect(sameBits(wrong.left, wrong.dryLeft)).toBe(0);
+      note('volume ramp from 0.5 by -1/4096 a sample: every sample as the stock ramp adds it up; silent, stale, not finite, louder than 8 and wrong magic: the input bit for bit; within the bound the output stays at 7.9');
+    });
+  });
+
+  test("its count moves once a block the engine finishes, never in a block that faulted", async () => {
+    await withRig({ faults: true }, async (rig) => {
+      rig.start(A);
+      await rig.run(10, SOUND_A);
+      expect(await rig.taken()).toBe(10);
+      rig.pokeLoopLease(0, 0);
+      const broken = await rig.run(3, SOUND_A);
+      expect(broken.faulted).toBe(3);
+      expect(await rig.taken()).toBe(10);
     });
   });
 });

@@ -84,6 +84,37 @@
           "A:core/fxpages",
           "A:core/phrase-ui"
         ]
+      },
+      {
+        "files": [
+          "tests/transition.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "dsp": "sharc",
+        "modules": [
+          "digikit/prism",
+          "digikit/overloop",
+          "test/sine",
+          "core/services/fx",
+          "core/services/machines"
+        ],
+        "patchModules": [
+          "core/loop-storage",
+          "core/pattern-position",
+          "core/loop-display",
+          "core/phrase-ui",
+          "core/digikit-menu",
+          "core/health"
+        ],
+        "plusdrive": true,
+        "tags": [
+          "A:core/dynfx",
+          "A:core/fxpages",
+          "A:core/phrase-ui",
+          "A:core/loop-display"
+        ]
       }
     ]
   },

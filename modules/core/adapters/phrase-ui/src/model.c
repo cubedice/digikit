@@ -73,6 +73,42 @@ static void toggle(PhraseUi *s, uint32_t p)
     dkrt_phrase_set(p, !dkrt_phrase_get(p));
     ++s->revision;
 }
+void pu_loop_status(PhraseUi *s)
+{
+    s->loop_fresh = s->loop ? s->loop->status(s->loop_status) : 0;
+}
+uint32_t pu_has_loop(const PhraseUi *s)
+{
+    return s->loop_fresh && (s->loop_status[LS_STATE] & LS_LOOP);
+}
+static void input(PhraseUi *s, uint32_t value)
+{
+    if (dkrt_phrase_get(PH_P_INPT) != value) {
+        dkrt_phrase_set(PH_P_INPT, value);
+        ++s->revision;
+    }
+}
+void pu_loop(PhraseUi *s)
+{
+    pu_loop_status(s);
+    if (!s->loop_fresh) {
+        /* the loop effect does not report: after a while there is no loop to hear */
+        if (s->loop_stale < PU_LOOP_GONE)
+            ++s->loop_stale;
+        else
+            input(s, 0);
+        return;
+    }
+    s->loop_stale = 0;
+    uint32_t state = s->loop_status[LS_STATE], count = state >> LS_COUNT_SHIFT;
+    if (!(state & LS_LOOP))
+        input(s, 0);
+    else if (s->loop_known && count != s->loop_seen)
+        /* an armed pattern change took a new loop: PRISM hears it (the engine counts loops across its restarts) */
+        input(s, 1);
+    s->loop_seen = count;
+    s->loop_known = 1;
+}
 uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
 {
     if (key >= 64)
@@ -100,17 +136,28 @@ uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
     if (!s->active || (flags & PU_REPEAT) || !first)
         return PU_PASS;
     if (key == PU_NO && held(s, PU_FUNC)) {
-        /* Kept for dropping the loop: taken, so that the stock page does nothing with it, and nothing happens yet. */
+        /* Drop the loop (taken also without one, so that the stock page does nothing with it). */
+        if (pu_has_loop(s)) {
+            s->loop->drop();
+            ++s->revision;
+        }
         mark(s->owned, key, 1);
         return PU_OWN;
     }
     if (key >= PU_PUSH && key < PU_PUSH + 8) {
-        /* A is FLIP, B is SYNC, C is HOLD. D to H are taken and do nothing (G and H are kept for the loop). */
+        /* A is FLIP, B is SYNC, C is HOLD; G switches INPT while there is a loop; H is ARM while the loop effect reports.
+         * D, E and F are taken and do nothing. */
         static const uint8_t switches[3] = {PH_P_FLIP, PH_P_SYNC, PH_P_HOLD};
         if (key < PU_PUSH + 3)
             toggle(s, switches[key - PU_PUSH]);
         if (key == PU_PUSH + 1)
             s->detent[1] = 0;
+        if (key == PU_PUSH + 6 && pu_has_loop(s))
+            toggle(s, PH_P_INPT);
+        if (key == PU_PUSH + 7 && s->loop && s->loop_fresh) {
+            s->loop->arm();
+            ++s->revision;
+        }
         mark(s->owned, key, 1);
         return PU_OWN;
     }
@@ -142,9 +189,24 @@ uint32_t pu_turn(PhraseUi *s, uint32_t encoder, int32_t delta, uint32_t fine)
     if (!s->active || encoder > PU_LEVEL)
         return PU_PASS;
     uint32_t p = pu_parameter(encoder);
-    /* G and H: taken, so that the stock page does not turn a value under them, and nothing happens yet. */
-    if (p >= PH_PARAM_COUNT)
+    /* G and H: taken, so that the stock page does not turn a value under them. While there is a loop, G is the switch (a
+     * tick up is LOOP, a tick down LIVE) and H the loop effect's crossfader, a step a tick. */
+    if (p >= PH_PARAM_COUNT) {
+        if (!pu_has_loop(s) || !delta)
+            return PU_OWN;
+        if (encoder == 6)
+            input(s, delta > 0);
+        else {
+            int32_t value = (int32_t)s->loop->get(LP_XFAD) + delta;
+            if (value < 0)
+                value = 0;
+            if (value > LP_MAX)
+                value = LP_MAX;
+            s->loop->xfad((uint32_t)value);
+            ++s->revision;
+        }
         return PU_OWN;
+    }
     if (p == PH_P_ZONE || p == PH_P_NOTE) {
         /* A choice takes four ticks, and a long accelerated event never skips several choices. */
         if (delta > 4)

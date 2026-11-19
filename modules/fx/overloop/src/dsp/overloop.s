@@ -13,8 +13,10 @@
 //   position   the record of core/pattern-position: a step boundary begins with this block or not; a boundary of
 //              another pattern is a change, a boundary of another generation is a START
 //   mix        output = input + (loop - input) * crossfader; LIVE passes the input as it is
-//   record     the output goes to the rolling record, and a block of the frames before its start is filled in; the tap
-//              and the status are published
+//   record     the output goes to the rolling record, and a block of the frames before its start is filled in
+//   wet        a send effect's output from the wet mailbox (PRISM's, while this engine runs it does not go to the FX return)
+//              is added at the master stage's gain after its sum: behind the crossfader, and not in the record
+//   publish    the tap, the status, and LW_TAKEN: the send effect sees in its next block that this engine finished one
 #include "dk_fx.inc"
 #include "dk_loop_imports.inc"
 #include "overloop.h"
@@ -103,6 +105,7 @@ _bl_process:
     DM(OL_BUF1,I5) = R6;
     R0 = 1;
     DM(OL_INIT,I5) = R0;
+    CALL _ol_count_on;
     JUMP _ol_controls;
 _ol_same:
     R0 = DM(OL_N,I5);
@@ -127,6 +130,7 @@ _ol_moved_clear: DM(I4,M6) = R0;
     DM(OL_N,I5) = R9;
     DM(OL_BUF0,I5) = R2;
     DM(OL_BUF1,I5) = R6;
+    CALL _ol_count_on;
 
     // ---- The controls. The counters come as floats 0 .. 127; a change of ARM arms or disarms, a change of DROP drops.
 _ol_controls:
@@ -343,8 +347,10 @@ _ol_unrun:
     DM(OL_RUN,I5) = R0;
     DM(OL_NEXT,I5) = R0;
 
-    // ---- The crossfader's target: LIVE without a loop, LOOP while it is held there, else the home's value.
+    // ---- The crossfader's target: LIVE without a loop, LOOP while it is held there, else the home's value. First the
+    // master stage's gain for the tap and the wet mailbox.
 _ol_target:
+    CALL _ol_master;
     R14 = 0;
     R0 = DM(OL_LOOP,I5);
     R0 = PASS R0;
@@ -535,9 +541,12 @@ _ol_ramp:
 _ol_ramped:
         R4 = DM(I0,M6);
         R8 = DM(I1,M6);
-        // the tap: what the loop adds to the output
+        // the tap: what the loop adds to the output, at the level of the mix before the master stage
         F0 = F9 * F15;
         F1 = F10 * F15;
+        R2 = DM(OL_INV,I5);
+        F0 = F0 * F2;
+        F1 = F1 * F2;
         I4 = R12;
         DM(0,I4) = R0;
         DM(DK_BLOCK,I4) = R1;
@@ -629,11 +638,11 @@ _ol_fill:
     R2 = R2 + R1;
     R0 = DM(OL_FILL_MAX,I5);
     COMP(R2,R0);
-    IF GT JUMP _ol_publish;
+    IF GT JUMP _ol_wet;
     R0 = DM(OL_VALID,I5);
     R0 = R0 + R1;
     COMP(R0,R7);
-    IF GT JUMP _ol_publish;
+    IF GT JUMP _ol_wet;
     DM(OL_VALID,I5) = R0;
     DM(OL_FILL,I5) = R2;
     // from the block that ends OL_FILL frames before OL_FILL_END, to the block that ends as many before the buffer's end
@@ -661,6 +670,28 @@ _ol_fill:
         DM(M2,I1) = R8;
 _ol_fill_end: DM(I1,M6) = R4;
 
+    // ---- The send effect's output (the wet mailbox), behind the crossfader and after the record: what the master stage
+    // would have made of it, its +10 dB and its volume ramp sample by sample (the gain before sample k is the ramp's start
+    // plus k steps, added up as the stock code does). Its clip, compressor and overdrive are not applied. R7 is kept.
+_ol_wet:
+    R0 = DM(OL_WET_OK,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _ol_publish;
+    I4 = _fw_master_gain;
+    R4 = DM(0,I4);
+    I4 = _fw_master_step;
+    R5 = DM(0,I4);
+    R6 = OL_MASTER_BOOST;
+    R11 = OL_WET_BOUND;
+    R12 = OL_WET_FLOOR;
+    R0 = _loop_wet;
+    R1 = LW_LEFT * 4;
+    R0 = R0 + R1;
+    I0 = R0;
+    I2 = DM(OL_OUT,I5);
+    CALL _ol_wet_side;
+    CALL _ol_wet_side;
+
     // ---- The tap's head and the status. The block-tail sender runs after this function on the same core.
 _ol_publish:
     I4 = _loop_tap;
@@ -671,6 +702,9 @@ _ol_publish:
     R0 = DM(OL_BLOCK,I5);
     DM(LT_BLOCK,I4) = R0;
     R0 = DM(OL_TAP_SET,I5);
+    R1 = DM(OL_COUNT,I5);
+    R1 = LSHIFT R1 BY LT_COUNT_SHIFT;
+    R0 = R0 OR R1;
     DM(LT_FLAGS,I4) = R0;
     I4 = _loop_ui_status;
     R0 = LS_MAGIC_VALUE;
@@ -739,6 +773,11 @@ _ol_status_loop:
     R2 = R2 OR R0;
 _ol_status_steps:
     DM(LS_STEPS,I4) = R2;
+    // this block is finished: the send effect sees it in its next block
+    I4 = _loop_wet;
+    R0 = DM(LW_TAKEN,I4);
+    R0 = R0 + 1;
+    DM(LW_TAKEN,I4) = R0;
     R0 = DK_FX_OK;
     JUMP (M13,I13);
 
@@ -746,6 +785,100 @@ _ol_bad:
     // the adapter's guard plays the input and resets the state
     R0 = -1;
     JUMP (M13,I13);
+
+// A new engine (a load, a reset of the state, a lease that moved) goes on counting loops from the count its status mailbox
+// shows, so a loop it takes has a count the home and the pages have not seen. Uses R0 to R2, I4.
+_ol_count_on:
+    I4 = _loop_ui_status;
+    R0 = DM(LS_STATE,I4);
+    R0 = LSHIFT R0 BY -LS_COUNT_SHIFT;
+    R1 = DM(LS_MAGIC,I4);
+    R2 = LS_MAGIC_VALUE;
+    COMP(R1,R2);
+    IF NE R0 = R0 - R0;
+    DM(OL_COUNT,I5) = R0;
+    RTS;
+
+// The master stage's gain after its sum at the end of this block (OL_MASTER_BOOST times the volume ramp's end): its
+// reciprocal, at most 1/OL_INV_FLOOR, is the tap's factor (OL_INV; 0 when the gain is not a number). Then the wet mailbox:
+// OL_WET_OK is 1 when the send effect wrote a block since this engine's last one (not in the engine's first block) and every
+// sample is finite and at most 8 in magnitude. Uses R0 to R4, I4.
+_ol_master:
+    I4 = _fw_master_gain;
+    F0 = DM(0,I4);
+    I4 = _fw_master_step;
+    F1 = DM(0,I4);
+    R2 = 0x42000000;
+    F1 = F1 * F2;
+    F0 = F0 + F1;
+    R1 = OL_MASTER_BOOST;
+    F0 = F0 * F1;
+    R4 = 0;
+    R1 = 0x7f800000;
+    R2 = R0 AND R1;
+    COMP(R2,R1);
+    IF EQ JUMP _ol_master_inv;
+    R1 = OL_INV_FLOOR;
+    COMP(R0,R1);
+    IF LT R0 = PASS R1;
+    CALL _ol_recip;
+    R4 = PASS R0;
+_ol_master_inv:
+    DM(OL_INV,I5) = R4;
+    R4 = 0;
+    I4 = _loop_wet;
+    R0 = DM(LW_MAGIC,I4);
+    R1 = LW_MAGIC_VALUE;
+    COMP(R0,R1);
+    IF NE JUMP _ol_master_done;
+    R0 = DM(LW_VERSION,I4);
+    R1 = LW_VERSION_VALUE;
+    COMP(R0,R1);
+    IF NE JUMP _ol_master_done;
+    R2 = DM(LW_SEQ,I4);
+    R0 = DM(OL_WET_SEEN,I5);
+    DM(OL_WET_SEEN,I5) = R2;
+    R1 = DM(OL_WET_INIT,I5);
+    R3 = 1;
+    DM(OL_WET_INIT,I5) = R3;
+    R1 = PASS R1;
+    IF EQ JUMP _ol_master_done;
+    COMP(R0,R2);
+    IF EQ JUMP _ol_master_done;
+    // the largest magnitude's bits: finite and at most 8.0
+    R0 = _loop_wet;
+    R1 = LW_LEFT * 4;
+    R0 = R0 + R1;
+    I4 = R0;
+    R3 = 0;
+    R1 = 0x7fffffff;
+    LCNTR = 2 * DK_BLOCK, DO _ol_master_scan UNTIL LCE;
+        R0 = DM(I4,M6);
+        R0 = R0 AND R1;
+_ol_master_scan: R3 = MAX(R3,R0);
+    R0 = 0x41000000;
+    COMP(R3,R0);
+    IF GT JUMP _ol_master_done;
+    R4 = 1;
+_ol_master_done:
+    DM(OL_WET_OK,I5) = R4;
+    RTS;
+
+// One side of the send effect's output: I0 the mailbox (read), I2 the output (read and write), each advanced by 32. F4 the
+// ramp's gain before the first sample, F5 its step, F6 the +10 dB stage, F11 and F12 the output's bounds. Uses F0, F1, F3.
+_ol_wet_side:
+    F3 = PASS F4;
+    LCNTR = DK_BLOCK, DO _ol_wet_sample UNTIL LCE;
+        F0 = DM(I0,M6);
+        F0 = F0 * F6;
+        F0 = F0 * F3;
+        F1 = DM(I2,M5);
+        F1 = F1 + F0;
+        F1 = MIN(F1,F11);
+        F1 = MAX(F1,F12);
+        DM(I2,M6) = R1;
+_ol_wet_sample: F3 = F5 + F3;
+    RTS;
 
 // R0 a byte address, R8 bytes: R0 = 0 when [R0, R0 + R8) lies in external memory, else 1. Uses R1 and R4.
 _ol_range:

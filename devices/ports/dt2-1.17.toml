@@ -3895,6 +3895,28 @@ mark = "D"
 rule = "fw/dsp/master:sharc_literal"
 
 [[anchor]]
+name = "dsp.master.value.volume_ramp.start"
+cpu = "sharc"
+kind = "value"
+addr = 0x2558c0
+src = 0x28384664
+len = 6
+sha256 = "239eb673a8891e6f8a6444cb3ef7562da614cdd02e8d4253f99c3ccc8c36f728"
+mark = "D"
+rule = "fw/dsp/master:sharc_mem_addr"
+
+[[anchor]]
+name = "dsp.master.value.volume_ramp.step"
+cpu = "sharc"
+kind = "value"
+addr = 0x2558c8
+src = 0x28384680
+len = 6
+sha256 = "1875f97efde65dd79c12473520502873c98ed5463140f4ecfe9c937584ab0c66"
+mark = "D"
+rule = "fw/dsp/master:sharc_mem_addr"
+
+[[anchor]]
 name = "dsp.voice.fn.overdrive"
 cpu = "sharc"
 kind = "code"

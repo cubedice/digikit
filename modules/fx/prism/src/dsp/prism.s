@@ -9,6 +9,10 @@
 //   halo (halo.s)       the diffusion network, in place: PS_Y is now the wet signal
 //   loop (loop.s)       output = wet * MIX; feedback = limit(wet * gain); the tape takes input + feedback
 //
+// Before the plan, the input (this file): the tracks' send bus (INPT LIVE) or the loop effect's tap (INPT LOOP), crossfaded.
+// After the loop, the route (this file): while the loop effect runs, the output goes to the wet mailbox, which the loop
+// effect adds behind its crossfader in the same block, instead of the FX return (dk_loop.inc).
+//
 // The colour filter and HALO sit between the heads and the tape, so each pass through the loop adds to them. While HOLD
 // stands the tape is not written: what it holds repeats unchanged, and colour and HALO work on the output only.
 #include "dk_fx.inc"
@@ -172,11 +176,13 @@ _prism_initialize:
     DM(PS_CH_R + CH_A_DIR,I5) = R0;
     DM(PS_CH_R + CH_B_DIR,I5) = R0;
 _prism_run:
+    CALL _prism_input;
     CALL _prism_plan;
     CALL _prism_heads;
     CALL _prism_colour;
     CALL _prism_halo;
     CALL _prism_loop;
+    CALL _prism_route;
     R0 = 0;
     DM(PS_FIRST,I5) = R0;
     CALL _prism_publish;
@@ -193,6 +199,202 @@ _prism_fault:
     CALL _prism_publish;
     R0 = -1;
     JUMP (M13,I13);
+
+// ---- The input. Whether the loop effect runs: it finished a block since this engine's last one (its count LW_TAKEN moved;
+// in the first block after a start nothing is known yet). The loop feeds the input while it runs and its tap carries a
+// loop; else the loop's side is silence, never older memory. INPT (PC_INPUT) moves the loop's share c of the input toward 0 or
+// 1 by PRISM_SWITCH_STEP a sample: input = send * (1 - w) + tap * PRISM_LOOP_TRIM * w, w = c c (3 - 2 c), written to PS_IN,
+// which the tape then takes. While c is 0 and stays 0 the send bus is the input as it is. Uses R0 to R5, R8 to R13, I0 to I4.
+_prism_input:
+    I4 = _loop_wet;
+    R0 = DM(LW_TAKEN,I4);
+    R1 = DM(PS_OL_LAST,I5);
+    DM(PS_OL_LAST,I5) = R0;
+    R2 = 0;
+    R3 = 1;
+    COMP(R0,R1);
+    IF NE R2 = PASS R3;
+    R0 = DM(PS_FIRST,I5);
+    R0 = PASS R0;
+    IF NE R2 = R2 - R2;
+    DM(PS_ALIVE,I5) = R2;
+    R4 = 0;
+    R2 = PASS R2;
+    IF EQ JUMP _pi_feed;
+    I4 = _loop_tap;
+    R0 = DM(LT_MAGIC,I4);
+    R1 = LT_MAGIC_VALUE;
+    COMP(R0,R1);
+    IF NE JUMP _pi_feed;
+    R0 = DM(LT_VERSION,I4);
+    R1 = LT_VERSION_VALUE;
+    COMP(R0,R1);
+    IF NE JUMP _pi_feed;
+    R0 = DM(LT_FLAGS,I4);
+    R1 = LT_AUDIBLE;
+    R4 = R0 AND R1;
+    // a new loop (the count moved since a count was seen, and the loop is mixed): the input is the loop from this block on,
+    // at once
+    R0 = LSHIFT R0 BY -LT_COUNT_SHIFT;
+    R0 = R0 + 1;
+    R1 = DM(PS_LOOP_SEEN,I5);
+    DM(PS_LOOP_SEEN,I5) = R0;
+    R4 = PASS R4;
+    IF EQ JUMP _pi_feed;
+    R1 = PASS R1;
+    IF EQ JUMP _pi_feed;
+    COMP(R0,R1);
+    IF EQ JUMP _pi_feed;
+    R0 = PRISM_AUTO_BLOCKS;
+    DM(PS_AUTO,I5) = R0;
+    R0 = 0x3f800000;
+    DM(PS_INPT,I5) = R0;
+_pi_feed:
+    DM(PS_FEED,I5) = R4;
+    // the switch's target (R12): LOOP when INPT says so, or for a while after a new loop until it does; where it stands (R13)
+    R12 = 0;
+    R2 = DM(PS_AUTO,I5);
+    R0 = DM(PC_INPUT,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _pi_auto;
+    R12 = 0x3f800000;
+    R2 = 0;
+    JUMP _pi_target;
+_pi_auto:
+    R2 = PASS R2;
+    IF LE JUMP _pi_target;
+    R12 = 0x3f800000;
+    R2 = R2 - 1;
+_pi_target:
+    DM(PS_AUTO,I5) = R2;
+    R0 = 0;
+    R1 = 1;
+    R12 = PASS R12;
+    IF NE R0 = PASS R1;
+    DM(PS_INPUT_ON,I5) = R0;
+    R13 = DM(PS_INPT,I5);
+    R0 = R12 OR R13;
+    R0 = PASS R0;
+    IF EQ RTS;
+    // the loop's side: the tap times the trim, or silence
+    R11 = PRISM_LOOP_TRIM;
+    R4 = PASS R4;
+    IF EQ R11 = R11 - R11;
+    R9 = PRISM_SWITCH_STEP;
+    R8 = 0x3f800000;
+    R10 = PASS R13;
+    I0 = DM(PS_INPUT,I5);
+    R0 = _loop_tap;
+    R1 = LT_LEFT * 4;
+    R0 = R0 + R1;
+    I2 = R0;
+    R0 = I5;
+    R1 = PS_IN * 4;
+    R0 = R0 + R1;
+    I1 = R0;
+    DM(PS_INPUT,I5) = R0;
+    CALL _pi_side;
+    R13 = PASS R10;
+    CALL _pi_side;
+    DM(PS_INPT,I5) = R13;
+    RTS;
+// One side: I0 the send bus, I2 the tap, I1 the input (each advanced by 32); F13 the share before the first sample, F12 its
+// target, F9 its step, F11 the tap's factor, F8 1.0. The share moves in steps of 1/256 from 0 or 1, so it lands on its target
+// exactly; the mix takes the weight w = c c (3 - 2 c), which has no corner at either end and is exactly 0 and 1 there.
+// Uses F0 to F5.
+_pi_side:
+    LCNTR = 32, DO _pi_sample UNTIL LCE;
+        F0 = F12 - F13;
+        F1 = -F9;
+        F0 = MAX(F0,F1);
+        F0 = MIN(F0,F9);
+        F13 = F13 + F0;
+        F1 = F13 + F13;
+        R0 = 0x40400000;
+        F1 = F0 - F1;
+        F5 = F13 * F13;
+        F5 = F5 * F1;
+        F2 = DM(I0,M6);
+        F3 = DM(I2,M6);
+        F3 = F3 * F11;
+        F3 = F3 * F5;
+        F4 = F8 - F5;
+        F2 = F2 * F4;
+        F2 = F2 + F3;
+_pi_sample: DM(I1,M6) = R2;
+    RTS;
+
+// ---- The route. Without the loop effect the output is the effect's output block, which the framework adds to the FX return.
+// While the loop effect runs, the share a of each sample goes to the wet mailbox instead, and the loop effect adds it behind
+// its crossfader in the same block; a moves toward 1 by PRISM_SWITCH_STEP a sample, so the two ways crossfade. When the loop
+// effect has stopped (no block finished since this engine's last one), a is 0 at once and the output block fades in over
+// this block from the return's last share 1 - a: what went to the mailbox in the block the loop effect did not finish is
+// the one block that is lost. The mailbox's count LW_SEQ moves after its samples, and only in a block that wrote them.
+// Uses R0 to R2, R8 to R13, I0, I1, I4.
+_prism_route:
+    R13 = DM(PS_DIVERT,I5);
+    R0 = DM(PS_ALIVE,I5);
+    R0 = PASS R0;
+    IF NE JUMP _pr_divert;
+    R13 = PASS R13;
+    IF EQ RTS;
+    R0 = 0;
+    DM(PS_DIVERT,I5) = R0;
+    R12 = 0x3d000000;
+    F12 = F13 * F12;
+    R11 = 0x3f800000;
+    F11 = F11 - F13;
+    I0 = DM(PS_OUTPUT,I5);
+    CALL _pr_fade_side;
+    CALL _pr_fade_side;
+    RTS;
+// One side of the fade: I0 the output block (advanced by 32), F11 the weight before the first sample, F12 its step. Uses
+// F0, F10.
+_pr_fade_side:
+    F10 = PASS F11;
+    LCNTR = 32, DO _pr_fade_sample UNTIL LCE;
+        F10 = F10 + F12;
+        F0 = DM(I0,M5);
+        F0 = F0 * F10;
+_pr_fade_sample: DM(I0,M6) = R0;
+    RTS;
+_pr_divert:
+    I4 = _loop_wet;
+    R0 = LW_MAGIC_VALUE;
+    DM(LW_MAGIC,I4) = R0;
+    R0 = LW_VERSION_VALUE;
+    DM(LW_VERSION,I4) = R0;
+    R12 = 0x3f800000;
+    R9 = PRISM_SWITCH_STEP;
+    R10 = PASS R13;
+    I0 = DM(PS_OUTPUT,I5);
+    R0 = _loop_wet;
+    R1 = LW_LEFT * 4;
+    R0 = R0 + R1;
+    I1 = R0;
+    CALL _pr_divert_side;
+    R13 = PASS R10;
+    CALL _pr_divert_side;
+    DM(PS_DIVERT,I5) = R13;
+    R0 = DM(LW_SEQ,I4);
+    R0 = R0 + 1;
+    DM(LW_SEQ,I4) = R0;
+    RTS;
+// One side: I0 the output block (read y, write y - a y), I1 the mailbox (a y), F13 the share before the first sample, F12 its
+// target, F9 its step. At a = 1 the mailbox holds y and the output block 0, both exactly. Uses F0 to F2.
+_pr_divert_side:
+    LCNTR = 32, DO _pr_divert_sample UNTIL LCE;
+        F0 = F12 - F13;
+        F1 = -F9;
+        F0 = MAX(F0,F1);
+        F0 = MIN(F0,F9);
+        F13 = F13 + F0;
+        F0 = DM(I0,M5);
+        F1 = F0 * F13;
+        F0 = F0 - F1;
+        DM(I0,M6) = R0;
+_pr_divert_sample: DM(I1,M6) = R1;
+    RTS;
 
 // The controls become this block's plan: the two sides' times in frames (PS_TIME_L, PS_TIME_R), the hold state, the frame
 // the heads' delays count from, and each side's head program (heads.s).
@@ -656,7 +858,7 @@ _prism_publish:
     DM(PH_S_STATE / 4,I4) = R1;
     R1 = DM(PS_ERROR,I5);
     DM(PH_S_ERROR / 4,I4) = R1;
-    // Every word the layout does not name reads as zero, the three kept for the loop included.
+    // Every word the layout does not name reads as zero, ARMED included.
     R0 = 0;
     R1 = I4;
     R2 = PH_S_ERROR + 4;
@@ -672,6 +874,14 @@ _prism_status_clear: DM(I3,M6) = R0;
     DM(PH_S_HOLD / 4,I4) = R1;
     R1 = DM(PS_VALID,I5);
     DM(PH_S_TAPE / 4,I4) = R1;
+    // the input (LOOP as INPT asks for it, or by itself after a new loop), whether the loop feeds it, whether the loop effect
+    // takes the output
+    R1 = DM(PS_INPUT_ON,I5);
+    DM(PH_S_INPUT / 4,I4) = R1;
+    R1 = DM(PS_FEED,I5);
+    DM(PH_S_LOOP / 4,I4) = R1;
+    R1 = DM(PS_ALIVE,I5);
+    DM(PH_S_ROUTE / 4,I4) = R1;
     R1 = DM(PS_OWNER,I5);
     DM(PH_S_OWNER_GENERATION / 4,I4) = R1;
     R0 = DM(PS_BLOCK,I5);
