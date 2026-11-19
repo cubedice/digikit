@@ -118,17 +118,18 @@ for (const zone of [4, 5]) {
 }
 cases.push({
   name: 'rate-sync-steps',
-  about: 'SYNC at 120 BPM, a new note length every 2 s: 1/8, 1/16, 1/8 dotted, 1/4, 1/8 triplet, 1/8. Each step is a crossfade: no bend.',
+  about:
+    "SYNC at 120 BPM (ECHO's 1/1 is the beat), a new zone or ratio every 2 s, as core/phrase-control computes them: SLAP 1/1, SLAP /2, SLAP X1.5, ECHO 1/1, ECHO /1.5, SLAP 1/1. Each step is a crossfade: no bend.",
   input: 'the phrase, six bars',
   signal: phrase(sec(0.2), 6),
   seconds: 14,
-  start: { sync: true, syncTime: 12000, rpts: 0.55 },
+  start: { zone: 4, sync: true, syncTime: 12000, rpts: 0.55 },
   moves: [
     [2, { syncTime: 6000 }],
     [4, { syncTime: 18000 }],
-    [6, { syncTime: 24000 }],
-    [8, { syncTime: 8000 }],
-    [10, { syncTime: 12000 }],
+    [6, { zone: 5, syncTime: 24000 }],
+    [8, { syncTime: 16000 }],
+    [10, { zone: 4, syncTime: 12000 }],
   ],
 });
 cases.push({

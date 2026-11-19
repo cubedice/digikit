@@ -77,7 +77,7 @@ describeOn('dt2', 'DTII PRISM and Overloop: a transition from PRISM\'s page', ()
     requireAudible: true,
   });
 
-  test('ARM and a change on PRISM\'s page: the loop goes on with PRISM, PRISM takes the loop, LIVE brings pattern 2 dry, G gives it to PRISM, FUNC + NO drops', async () => {
+  test('ARM and a change on PRISM\'s page: the loop goes on with PRISM, PRISM takes the loop, LIVE brings pattern 2 dry, G turned to LIVE gives it to PRISM, FUNC + NO drops and INPT goes to LIVE', async () => {
     const { fixture, plan, profile, artifacts } = context;
     const runtime = fixture.runtime;
     const session = runtime.session;
@@ -231,7 +231,7 @@ describeOn('dt2', 'DTII PRISM and Overloop: a transition from PRISM\'s page', ()
       await shot(session, artifacts, 'step4-half');
       // the same crossfader on Overloop's page, and an ARM from there is seen on PRISM's
       await loopOnTop();
-      expect(await loopPageXfad()).toBe('XFAD 64');
+      expect(await loopPageXfad()).toBe('64');
       await tap(session, 'PUSH H', 150);
       await advance(session, 300);
       expect((await loop()).armed).toBe(true);
@@ -252,8 +252,13 @@ describeOn('dt2', 'DTII PRISM and Overloop: a transition from PRISM\'s page', ()
       await shot(session, artifacts, 'step5-live');
       marks.liveEnd = await mark();
 
-      // 5. A short press of G: PRISM takes pattern 2 from the tracks it hears.
+      // 5. G turned to the left: PRISM takes pattern 2 from the tracks it hears. A press of G switches nothing.
       await tap(session, 'PUSH G', 150);
+      await advance(session, 300);
+      expect(await inpt(), 'a press of G switches nothing').toBe(1);
+      // the stock input path holds an encoder's turns back for about 0.3 s after its press (finding 359)
+      await advance(session, 200);
+      await turn('ENC G', 0, inpt);
       await advance(session, 300);
       expect(await inpt()).toBe(0);
       expect(await prism()).toMatchObject({ input: 0 });
@@ -272,14 +277,27 @@ describeOn('dt2', 'DTII PRISM and Overloop: a transition from PRISM\'s page', ()
       expect(await inpt()).toBe(0);
       expect(await xfad()).toBe(0);
 
-      // 6. FUNC + NO drops the loop; INPT stays LIVE.
+      // 6. G to the right: PRISM hears the loop again. FUNC + NO drops the loop, and INPT goes to LIVE by itself.
+      await turn('ENC G', 1, inpt);
+      await advance(session, 300);
+      expect(await prism()).toMatchObject({ input: 1 });
       await tap(session, 'NO', 150, 'FUNC');
       await advance(session, 400);
       expect(await loop()).toMatchObject({ loop: false });
-      expect(await inpt()).toBe(0);
+      expect(await inpt(), 'the drop puts INPT at LIVE').toBe(0);
       p = await page();
       expect(p.cells[7]).toMatchObject({ value: '--', state: 'NO LOOP' });
       await shot(session, artifacts, 'step7-dropped');
+      // 7. Without a loop G still turns INPT, and it stays at LOOP: PRISM hears silence, and the page says so. Back to LIVE.
+      await turn('ENC G', 1, inpt);
+      await advance(session, 1500);
+      expect(await inpt(), 'no snap back without a loop').toBe(1);
+      expect((await page()).cells[6]).toMatchObject({ value: 'LOOP', state: 'SILENT' });
+      await shot(session, artifacts, 'step8-loop-without-a-loop');
+      await turn('ENC G', 0, inpt);
+      // back at LIVE PRISM echoes pattern 2 again, so that its tape holds sound for the two ways below
+      await advance(session, 1500);
+      expect(await wet(), 'PRISM echoes pattern 2 again').toBeGreaterThan(0.005);
       marks.end = await mark();
     } finally {
       await rpc(session, 'pcm.tap', { action: 'capture_stop' });

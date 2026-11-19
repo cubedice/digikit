@@ -7,17 +7,18 @@
  * native events and the provider (core/phrase-control) holds the values.
  *
  *   LEVEL  MIX            A  ZONE  press: FLIP        B  RATE  press: SYNC on/off, FUNC + turn: fine
+ *                                                        with SYNC: the ratio of the zone's 1/1, /2 .. 1/1 .. X2
  *                         C  RPTS  press: HOLD        D  COLR
  *                         E  HALO                     F  SKEW
- *                         G  INPT  turn: LIVE / LOOP, only while there is a loop
+ *                         G  INPT  turn: right LOOP, left LIVE, at any time (without a loop PRISM hears silence)
  *                                  hold: the TRIG keys choose the tracks the effect hears, their LEDs show them
- *                                  a short press without a TRIG key: LIVE / LOOP, only while there is a loop
  *                         H  XFAD  Overloop's crossfader (while there is a loop)   press: ARM   FUNC + NO: drop the loop
  *
  * INPT is the provider's (not saved), and so are the tracks (TRKS, saved); XFAD, ARM and the drop are the loop effect's,
- * through its home (core/loop-control). pu_loop, once a UI pass, puts INPT at LOOP when a new loop is taken and at LIVE
- * when there is no loop. The TRIG keys reach the page through the firmware's key dispatcher (native.c), and only while G
- * holds the selection on the page that is on top; then pu_led gives their LEDs.
+ * through its home (core/loop-control). pu_loop, once a UI pass, puts INPT at LOOP when a new loop is taken, and at LIVE when
+ * the loop is dropped (or lost) or the loop effect stops reporting; at no other time. The TRIG keys reach the page through
+ * the firmware's key dispatcher (native.c), and only while G holds the selection on the page that is on top; then pu_led
+ * gives their LEDs.
  */
 enum { PU_PASS = 0, PU_OWN = 1 };
 enum {
@@ -36,8 +37,6 @@ enum { PU_SELECT = 6 }; /* G: INPT, and its hold the tracks */
 /* The TRIG LEDs (the firmware's logical LEDs 26 to 41 for TRIG 1 to 16) while G is held: white for a track the effect
  * hears, the dim level for the others (the values of the input overlay before step 2 of the redesign). */
 enum { PU_LED_TRIG = 26, PU_LED_HEARD = 0x71, PU_LED_DIM = 0x02 };
-/* A hold of G of this many engine blocks (0.4 s) or more is no press: it only shows and chooses the tracks. */
-enum { PU_SHORT_BLOCKS = 600 };
 /* The loop effect's home as the page reaches it (<dk/loop.h>): native.c fills it when the image has core/loop-control.
  * Without it (PhraseUi.loop 0) the page has no loop: INPT stays LIVE and XFAD shows --. */
 typedef struct {
@@ -47,7 +46,8 @@ typedef struct {
     void (*drop)(void);
     uint32_t (*status)(uint32_t *out);
 } PhraseLoop;
-/* UI passes with no fresh status from the loop effect (after the home's own 60) before INPT goes back to LIVE. */
+/* UI passes with no fresh status from the loop effect that reported (after the home's own 60) before INPT goes back to
+ * LIVE, once. */
 enum { PU_LOOP_GONE = 60 };
 typedef struct {
     uint32_t active, generation, revision;
@@ -56,17 +56,18 @@ typedef struct {
     uint32_t fresh, status[PH_STATUS_WORDS];
     const char *title;
     const PhraseLoop *loop;
-    /* the loop effect's status as last read, whether it was fresh, the loop count last seen (once one was), stale passes */
-    uint32_t loop_status[LS_WORDS], loop_fresh, loop_seen, loop_known, loop_stale;
-    /* G holds the selection of the tracks; a TRIG key or a turn of G was used meanwhile; the engine's heartbeat at the
-     * press, and whether it was fresh then */
-    uint32_t select, select_used, select_beat, select_timed;
+    /* the loop effect's status as last read, whether it was fresh, the loop count last seen (once one was: loop_known),
+     * whether the last fresh status held a loop, stale passes */
+    uint32_t loop_status[LS_WORDS], loop_fresh, loop_seen, loop_known, loop_had, loop_stale;
+    /* G holds the selection of the tracks */
+    uint32_t select;
 } PhraseUi;
 void pu_context(PhraseUi *, uint32_t active, uint32_t generation);
 void pu_status(PhraseUi *, const uint32_t *, uint32_t fresh);
 /* Read the loop effect's status (no rule applied). */
 void pu_loop_status(PhraseUi *);
-/* Once a UI pass: read the status and keep INPT with the loop (LOOP at a new loop, LIVE without one). */
+/* Once a UI pass: read the status and keep INPT with the loop (LOOP at a new loop; LIVE when it is dropped or the loop
+ * effect stops reporting). */
 void pu_loop(PhraseUi *);
 /* There is a loop: the loop effect reports, and it holds one. */
 uint32_t pu_has_loop(const PhraseUi *);
@@ -83,10 +84,10 @@ void pu_reconcile(PhraseUi *, const uint32_t physical[2]);
 /* FINE: FUNC is held. */
 uint32_t pu_turn(PhraseUi *, uint32_t encoder, int32_t delta, uint32_t fine);
 void pu_leave(PhraseUi *);
-/* The parameter an encoder turns now (RATE's encoder turns NOTE with SYNC), or PH_PARAM_COUNT for none. */
+/* The parameter an encoder turns now (RATE's encoder turns RATIO with SYNC), or PH_PARAM_COUNT for none. */
 uint32_t pu_parameter(uint32_t encoder);
-/* The text of a value, at most 7 characters: a zone's name, a note length, COLR's distance from the centre, SKEW's
- * distance with the longer side ("L 12", "R 30"), the number itself for the rest. */
+/* The text of a value, at most 7 characters: a zone's name, a SYNC ratio ("/2", "/1.33", "1/1", "X1.5", "X2"), COLR's
+ * distance from the centre, SKEW's distance with the longer side ("L 12", "R 30"), the number itself for the rest. */
 void pu_format(char out[16], uint32_t parameter, uint32_t raw);
 /* A time in frames as text: "375 MS" below a second, "1.25 S" below ten, "10.7 S" from there. */
 void pu_time(char out[16], uint32_t frames);

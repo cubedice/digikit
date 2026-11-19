@@ -36,6 +36,8 @@ function defines(file: string): Record<string, number> {
 /** The loop contract (LT_*, LW_*) and the engine's constants. */
 export const LOOP = defines(path.join(HERE, '../../../../sdk/dsp/contract/dk_loop.inc'));
 export const PRISM = defines(path.join(HERE, '../src/prism.h'));
+/** The control contract (PH_*): the provider's SYNC numbers among them. */
+export const PH = defines(path.join(HERE, '../../../../sdk/dsp/contract/dk_phrase.inc'));
 /** PRISM_LOOP_TRIM as a number. */
 export const TRIM = w2f(PRISM.PRISM_LOOP_TRIM!);
 
@@ -48,6 +50,7 @@ export const PS = {
   HOLD_W: 14,
   WFADE: 15,
   XFADE: 16,
+  KEYGEN: 17,
   TIME_L: 34,
   TIME_R: 35,
   ALIVE: 53,

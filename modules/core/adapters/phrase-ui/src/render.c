@@ -58,12 +58,13 @@ static void loop_cells(const PhraseUi *s, PhrasePage *page)
     const uint32_t *st = s->loop_status;
     uint32_t state = s->loop_fresh ? st[LS_STATE] : 0, loop = pu_has_loop(s),
              armed = (state & LS_ARMED) != 0, inpt = dkrt_phrase_get(PH_P_INPT);
-    /* INPT and under it the tracks it hears at LIVE; while G is held the tracks, and TRIGS inverted: the TRIG keys choose them */
+    /* INPT and under it the tracks it hears at LIVE, or SILENT at LOOP while there is no loop to hear; while G is held the
+     * tracks, and TRIGS inverted: the TRIG keys choose them */
     tracks_text(text);
     if (pu_selecting(s))
         cell(&page->cells[6], "INPT", text, "TRIGS", 1);
     else
-        cell(&page->cells[6], "INPT", inpt ? "LOOP" : "LIVE", text, 0);
+        cell(&page->cells[6], "INPT", inpt ? "LOOP" : "LIVE", inpt && !loop ? "SILENT" : text, 0);
     page->line[0] = 0;
     if (!loop) {
         if (armed) {
@@ -119,7 +120,8 @@ void pu_page(const PhraseUi *s, PhrasePage *page)
     page->zone_index = zone;
     cell(&page->cells[0], "ZONE", pu_zone_name(zone), flip ? "FLIP" : "", flip);
     if (sync) {
-        pu_format(text, PH_P_NOTE, dkrt_phrase_get(PH_P_NOTE));
+        /* the ratio of the zone's 1/1; the header has the time it gives */
+        pu_format(text, PH_P_RATIO, dkrt_phrase_get(PH_P_RATIO));
         cell(&page->cells[1], "RATE", text, "SYNC", 0);
     } else
         cell(&page->cells[1], "RATE", frames ? time : "--", "FREE", 0);
@@ -211,8 +213,9 @@ void pu_render(const PhrasePage *p, const PhraseCanvas *c)
             box(c, x - 11, y + 22, 23, 1, 1);
             box(c, x - 11 + (int)(k->fader - 1) * 20 / 127, y + 20, 3, 5, 1);
         } else
-            /* INPT's state (the tracks, TRIGS) sits 4 pixels left of the cell's centre: H's state beside it (NO LOOP) is the
-             * widest text of the page, and in the firmware's font the two would touch. */
-            text(c, i == 6 ? x - 4 : x, y + 19, k->state, k->lit ? 0 : 1);
+            /* INPT's state (the tracks, TRIGS, SILENT) sits 7 pixels left of the cell's centre: H's state beside it (NO LOOP)
+             * is the widest text of the page, and in the firmware's font six characters at 4 pixels left touched it (the
+             * emulator's screen); F's state line beside it on the left is always empty. */
+            text(c, i == 6 ? x - 7 : x, y + 19, k->state, k->lit ? 0 : 1);
     }
 }

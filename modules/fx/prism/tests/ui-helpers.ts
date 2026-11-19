@@ -14,6 +14,23 @@ export const PH: Record<string, number> = Object.fromEntries(
   ].map((match) => [match[1]!, Number(match[2])]),
 );
 
+/**
+ * SYNC_TIME as core/phrase-control computes it (dk_phrase.inc): the beat at TEMPO (BPM * 120) is the 1/1 of the zone it fits
+ * best, each zone above doubles it, each below halves it, and RATIO (0..12, the 1/1 at PH_SYNC_UNITY) multiplies it. ZONE
+ * is 0..7. Integers, as the provider has them.
+ */
+export function syncFrames(tempo: number, zone: number, ratio: number): number {
+  const num = [1, 4, 3, 2, 3, 4, 1, 5, 4, 3, 5, 7, 2][ratio]!;
+  const den = [2, 7, 5, 3, 4, 5, 1, 4, 3, 2, 3, 4, 1][ratio]!;
+  const whole = Math.floor(345_600_000 / tempo);
+  const rest = 345_600_000 % tempo;
+  let z0 = 0;
+  while (z0 < 7 && whole >= PH[`PH_SYNC_EDGE_${z0 + 1}`]!) z0 += 1;
+  const n = zone >= z0 ? num * 2 ** (zone - z0) : num;
+  const d = zone >= z0 ? den : den * 2 ** (z0 - zone);
+  return Math.min(PH.PH_SYNC_MAX!, Math.floor((whole * n + Math.floor((rest * n) / tempo) + Math.floor(d / 2)) / d));
+}
+
 /** The float a control or status word holds. */
 export const float = (bits: number) => {
   const bytes = Buffer.alloc(4);

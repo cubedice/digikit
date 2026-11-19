@@ -18,6 +18,7 @@ import {
   pressTrig,
   prismPage,
   setPrism,
+  syncFrames,
   tap,
   trackMask,
   trigLeds,
@@ -56,7 +57,7 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     requireAudible: false,
   });
 
-  test('one page: six encoders and LEVEL set the controls, three presses switch, FUNC + RATE is fine, G and H do nothing without a loop, G held gives the TRIG keys and LEDs to the tracks', async () => {
+  test('one page: six encoders and LEVEL set the controls, three presses switch, FUNC + RATE is fine, SYNC is a ratio of the zone, G turns INPT also without a loop, H does nothing without one, G held gives the TRIG keys and LEDs to the tracks', async () => {
     const { fixture, plan, artifacts } = context;
     const runtime = fixture.runtime;
     const state = await inspectFxBoot(runtime, plan, ['digikit/prism'], artifacts, 'boot');
@@ -110,29 +111,44 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     expect(first.cells.map((cell) => cell.state)).toEqual(['', 'FREE', '', '', '', '', 'NO TRK', 'NO LOOP']);
     expect(await value(PH.PH_P_TRKS!), 'nothing stored: no track').toBe(0);
 
-    // The presses, at the default values. B: SYNC. The cell shows the note length, the provider sends its length in frames at the tempo, and
-    // the engine takes it.
+    // The presses, at the default values. B: SYNC. The cell shows the ratio of the zone's 1/1 (the 1/1 by default), the provider
+    // sends its frames at the tempo (the beat is the 1/1 of the zone it fits best; each zone is an octave), and the engine takes it.
     await tap(session, 'PUSH B', 120);
     expect(await value(PH.PH_P_SYNC!)).toBe(1);
     let words = await control();
     expect(words('PH_C_FLAGS') & PH.PH_F_SYNC!).toBe(PH.PH_F_SYNC);
     const tempo = words('PH_C_TEMPO_120');
     expect(tempo, 'the tempo of the position suffix').toBeGreaterThanOrEqual(3600);
-    expect(words('PH_C_SYNC_TIME'), 'a dotted eighth is 72 ticks').toBe(Math.floor((72 * 3_600_000) / tempo));
-    expect((await page()).cells[1]).toMatchObject({ value: '1/8.', state: 'SYNC' });
+    expect(await value(PH.PH_P_RATIO!), 'the 1/1 by default').toBe(PH.PH_SYNC_UNITY);
+    expect(words('PH_C_SYNC_TIME'), "ECHO's 1/1").toBe(syncFrames(tempo, 4, PH.PH_SYNC_UNITY!));
+    expect((await page()).cells[1]).toMatchObject({ value: '1/1', state: 'SYNC' });
     await advance(session, 1500);
     expect((await status())('PH_S_TIME_L')).toBe(words('PH_C_SYNC_TIME'));
     expect(Math.abs(parseInt((await page()).time, 10) - words('PH_C_SYNC_TIME') / 48)).toBeLessThanOrEqual(1);
     await shot(session, artifacts, 'sync');
-    // With SYNC, RATE's encoder steps the note lengths, four ticks each, and the free rate is kept. (The stock input path does not deliver
-    // an encoder's turns for about 0.3 s after its own press, finding 359: the wait above is past that.)
+    // With SYNC, RATE's encoder steps the ratios, four ticks each, toward X2 to the right, and the free rate is kept. (The stock input
+    // path does not deliver an encoder's turns for about 0.3 s after its own press, finding 359: the wait above is past that.)
     const free = await value(PH.PH_P_RATE!);
     await turn('ENC B', 4);
-    expect(await value(PH.PH_P_NOTE!)).toBe(9);
+    expect(await value(PH.PH_P_RATIO!)).toBe(PH.PH_SYNC_UNITY! + 1);
     expect(await value(PH.PH_P_RATE!), 'the free rate is kept').toBe(free);
     words = await control();
-    expect(words('PH_C_SYNC_TIME'), 'a quarter is 96 ticks').toBe(Math.floor((96 * 3_600_000) / tempo));
-    expect((await page()).cells[1]).toMatchObject({ value: '1/4', state: 'SYNC' });
+    expect(words('PH_C_SYNC_TIME'), "ECHO's 1/1 times 5/4").toBe(syncFrames(tempo, 4, PH.PH_SYNC_UNITY! + 1));
+    expect((await page()).cells[1]).toMatchObject({ value: 'X1.25', state: 'SYNC' });
+    // ZONE with SYNC: LONG is an octave above ECHO, the same ratio of twice the time; the engine takes it.
+    await turn('ENC A', 4);
+    expect(await value(PH.PH_P_ZONE!)).toBe(5);
+    words = await control();
+    const octave = words('PH_C_SYNC_TIME');
+    expect(octave, "LONG's 1/1 times 5/4").toBe(syncFrames(tempo, 5, PH.PH_SYNC_UNITY! + 1));
+    expect(Math.abs(octave - 2 * syncFrames(tempo, 4, PH.PH_SYNC_UNITY! + 1))).toBeLessThanOrEqual(1);
+    expect((await page()).cells[0]!.value).toBe('LONG');
+    await advance(session, 1500);
+    expect((await status())('PH_S_TIME_L'), 'the engine plays the synced time of the zone').toBe(octave);
+    await shot(session, artifacts, 'sync-zone');
+    await turn('ENC A', -4);
+    await turn('ENC B', -4);
+    expect([await value(PH.PH_P_ZONE!), await value(PH.PH_P_RATIO!)]).toEqual([4, PH.PH_SYNC_UNITY]);
     await tap(session, 'PUSH B', 120);
     expect(await value(PH.PH_P_SYNC!)).toBe(0);
     expect((await page()).cells[1]!.state).toBe('FREE');
@@ -214,14 +230,31 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     ]);
     expect(turned.mix).toBe(90);
 
-    // G and H, the presses of D to H and FUNC + NO: nothing changes, and the page stays.
+    // G is INPT's switch also without a loop: to the right LOOP, which stays (PRISM hears silence and the page says so), to the left
+    // LIVE. Its press switches nothing.
+    await turn('ENC G', 1);
+    expect(await value(PH.PH_P_INPT!), 'G to the right: LOOP').toBe(1);
+    expect((await control())('PH_C_INPUT')).toBe(1);
+    await advance(session, 1500);
+    expect(await value(PH.PH_P_INPT!), 'no loop, and INPT stays at LOOP').toBe(1);
+    expect((await status())('PH_S_INPUT'), 'the engine takes the loop as its input').toBe(1);
+    expect((await page()).cells[6]).toMatchObject({ label: 'INPT', value: 'LOOP', state: 'SILENT' });
+    await shot(session, artifacts, 'inpt-loop-no-loop');
+    await tap(session, 'PUSH G', 150);
+    expect(await value(PH.PH_P_INPT!), 'a press of G switches nothing').toBe(1);
+    // the stock input path holds an encoder's turns back for about 0.3 s after its press (finding 359)
+    await advance(session, 400);
+    await turn('ENC G', -2);
+    expect(await value(PH.PH_P_INPT!), 'G to the left: LIVE').toBe(0);
+    expect((await page()).cells[6]).toMatchObject({ value: 'LIVE', state: 'NO TRK' });
+    await shot(session, artifacts, 'inpt-live');
+
+    // H, the presses of D to H and FUNC + NO: nothing changes, and the page stays.
     const before = await allValues();
     const cellsBefore = (await page()).cells.slice(6);
     const wordsBefore = await control();
-    for (const knob of ['ENC G', 'ENC H']) {
-      await turn(knob, 3);
-      await turn(knob, -5);
-    }
+    await turn('ENC H', 3);
+    await turn('ENC H', -5);
     for (const key of ['PUSH D', 'PUSH E', 'PUSH F', 'PUSH G', 'PUSH H']) await tap(session, key, 80);
     await tap(session, 'NO', 120, 'FUNC');
     expect(await active(), 'FUNC + NO is taken by the page').not.toBe(0);

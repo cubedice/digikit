@@ -123,23 +123,107 @@ static void controls(void)
     assert(dkrt_phrase_set(PH_PARAM_COUNT, 1) == -1);
 }
 
+/* SYNC as dk_phrase.inc defines it, in doubles, from the zones' free ranges in milliseconds (the engine's table): Z0 is the
+ * zone whose centre sqrt(low * high) is nearest the beat in log terms, that is whose low * high / beat ^ 2 is nearest 1 in
+ * ratio. */
+static const double zone_ms[PH_ZONES][2] = {{1, 10},     {5, 40},     {20, 120},    {60, 350},
+                                            {150, 1000}, {500, 2700}, {1300, 5400}, {2700, 10700}};
+static double beat_of(u32 tempo120)
+{
+    return 345600000.0 / tempo120;
+}
+static u32 zone_of(double beat)
+{
+    u32 best = 0;
+    double best_far = 0;
+    for (u32 z = 0; z < PH_ZONES; ++z) {
+        double r = zone_ms[z][0] * 48 * zone_ms[z][1] * 48 / (beat * beat), far = r > 1 ? r : 1 / r;
+        if (!z || far < best_far) {
+            best = z;
+            best_far = far;
+        }
+    }
+    return best;
+}
+/* The ratios of dk_phrase.inc, shortest first. */
+static const double ratio[PH_SYNC_RATIOS] = {1.0 / 2, 4.0 / 7, 3.0 / 5, 2.0 / 3, 3.0 / 4,
+                                             4.0 / 5, 1,       5.0 / 4, 4.0 / 3, 3.0 / 2,
+                                             5.0 / 3, 7.0 / 4, 2};
+static u32 expected(u32 tempo120, u32 zone, u32 r)
+{
+    double beat = beat_of(tempo120), frames = beat * ratio[r];
+    for (u32 z = zone_of(beat); z < zone; ++z)
+        frames *= 2;
+    for (u32 z = zone; z < zone_of(beat); ++z)
+        frames /= 2;
+    return frames > PH_SYNC_MAX ? PH_SYNC_MAX : (u32)(frames + 0.5);
+}
 static void sync_times(void)
 {
-    /* A note length is ticks * 3 600 000 / (BPM * 120) frames, a tick being 1/96 of a quarter note: at 120 BPM a quarter
-     * note is 24000 frames. */
-    static const u32 at120[PH_TIME_CHOICES] = {3000,  4000,  4500,  6000,  8000,  9000,
-                                               12000, 16000, 18000, 24000, 32000, 36000,
-                                               48000, 72000, 96000, 192000};
-    for (u32 note = 0; note < PH_TIME_CHOICES; ++note) {
-        assert(dkrt_phrase_set(PH_P_NOTE, note) == 0);
-        assert(sent(14400, PH_C_SYNC_TIME) == at120[note]);
+    /* The default: the zone's 1/1. */
+    assert(PH_SYNC_RATIOS == 13 && ratio[PH_SYNC_UNITY] == 1);
+    /* Z0, the zone of the beat: 60 BPM (1 s) LONG, 96 BPM (625 ms) ECHO, 120 and 180 BPM ECHO, above 253 BPM SLAP, below
+     * 34.2 BPM PHRS; the provider's edges agree with the definition at every tempo but within a frame of an edge. */
+    assert(sync_zone(7200) == 5 && zone_of(beat_of(7200)) == 5);
+    assert(sync_zone(11520) == 4 && zone_of(beat_of(11520)) == 4);
+    assert(sync_zone(14400) == 4 && sync_zone(21600) == 4);
+    assert(sync_zone(36000) == 3 && sync_zone(3600) == 6);
+    static const u32 edges[PH_ZONES - 1] = {PH_SYNC_EDGE_1, PH_SYNC_EDGE_2, PH_SYNC_EDGE_3,
+                                            PH_SYNC_EDGE_4, PH_SYNC_EDGE_5, PH_SYNC_EDGE_6,
+                                            PH_SYNC_EDGE_7};
+    for (u32 tempo = 3600; tempo <= 36000; ++tempo) {
+        double beat = beat_of(tempo);
+        int near_edge = 0;
+        for (u32 e = 0; e < PH_ZONES - 1; ++e)
+            near_edge |= beat > edges[e] - 1.0 && beat < edges[e] + 1.0;
+        assert(near_edge || sync_zone(tempo) == zone_of(beat));
     }
-    assert(dkrt_phrase_set(PH_P_NOTE, 9) == 0);
-    assert(sent(7200, PH_C_SYNC_TIME) == 48000);  /* 60 BPM */
-    assert(sent(36000, PH_C_SYNC_TIME) == 9600);  /* 300 BPM */
-    assert(sent(10800, PH_C_SYNC_TIME) == 32000); /* 90 BPM */
-    assert(sent(0, PH_C_SYNC_TIME) == 32000);     /* no tempo: the last time stays */
-    assert(sent(100, PH_C_SYNC_TIME) == 32000);   /* a tempo out of range is none */
+    /* At 96 BPM the beat is 30000 frames: ECHO's 1/1. Every ratio there and in SLAP, an octave below, is the formula's. */
+    assert(dkrt_phrase_set(PH_P_ZONE, 4) == 0);
+    for (u32 r = 0; r < PH_SYNC_RATIOS; ++r) {
+        assert(dkrt_phrase_set(PH_P_RATIO, r) == 0);
+        assert(sent(11520, PH_C_SYNC_TIME) == expected(11520, 4, r));
+    }
+    assert(dkrt_phrase_set(PH_P_RATIO, PH_SYNC_UNITY) == 0 && sent(11520, PH_C_SYNC_TIME) == 30000);
+    assert(dkrt_phrase_set(PH_P_RATIO, 1) == 0 && sent(11520, PH_C_SYNC_TIME) == 17143); /* 4/7 */
+    assert(dkrt_phrase_set(PH_P_ZONE, 3) == 0);
+    for (u32 r = 0; r < PH_SYNC_RATIOS; ++r) {
+        assert(dkrt_phrase_set(PH_P_RATIO, r) == 0);
+        assert(sent(11520, PH_C_SYNC_TIME) == expected(11520, 3, r));
+    }
+    assert(dkrt_phrase_set(PH_P_RATIO, PH_SYNC_UNITY) == 0 && sent(11520, PH_C_SYNC_TIME) == 15000);
+    /* LONG is a half note at 96 BPM; at 60 BPM LONG is the beat itself. */
+    assert(dkrt_phrase_set(PH_P_ZONE, 5) == 0 && sent(11520, PH_C_SYNC_TIME) == 60000);
+    assert(sent(7200, PH_C_SYNC_TIME) == 48000);
+    /* Every zone, ratio and tempo is the formula's, to the frame, but within a frame of an edge. */
+    for (u32 zone = 0; zone < PH_ZONES; ++zone)
+        for (u32 r = 0; r < PH_SYNC_RATIOS; ++r)
+            for (u32 tempo = 3600; tempo <= 36000; tempo += 37) {
+                double beat = beat_of(tempo);
+                int near_edge = 0;
+                for (u32 e = 0; e < PH_ZONES - 1; ++e)
+                    near_edge |= beat > edges[e] - 1.0 && beat < edges[e] + 1.0;
+                u32 got = sync_time_of(tempo, zone, r), want = expected(tempo, zone, r);
+                assert(near_edge || got == want || got + 1 == want || got == want + 1);
+            }
+    /* The top: at 35 BPM the beat (1.71 s) is LONG's 1/1, LOOP is four of it (6.86 s), and from 5/3 on LOOP is the longest
+     * time, 10.7 s. */
+    assert(dkrt_phrase_set(PH_P_ZONE, 7) == 0);
+    assert(dkrt_phrase_set(PH_P_RATIO, 9) == 0 &&
+           sent(4200, PH_C_SYNC_TIME) == expected(4200, 7, 9));
+    assert(sent(4200, PH_C_SYNC_TIME) < PH_SYNC_MAX);
+    for (u32 r = 10; r < PH_SYNC_RATIOS; ++r) {
+        assert(dkrt_phrase_set(PH_P_RATIO, r) == 0);
+        assert(sent(4200, PH_C_SYNC_TIME) == PH_SYNC_MAX);
+    }
+    /* Without a tempo the last one stays; a tempo out of range is none. */
+    assert(dkrt_phrase_set(PH_P_ZONE, 4) == 0 && dkrt_phrase_set(PH_P_RATIO, PH_SYNC_UNITY) == 0);
+    assert(sent(10800, PH_C_SYNC_TIME) == 32000); /* 90 BPM: ECHO's 1/1 is the beat */
+    assert(sent(0, PH_C_SYNC_TIME) == 32000);
+    assert(sent(100, PH_C_SYNC_TIME) == 32000);
+    /* and a zone or ratio change without a tempo is taken at that tempo */
+    assert(dkrt_phrase_set(PH_P_RATIO, 12) == 0 && sent(0, PH_C_SYNC_TIME) == 64000);
+    assert(dkrt_phrase_set(PH_P_RATIO, PH_SYNC_UNITY) == 0);
     assert(sent(14400, PH_C_TEMPO_120) == 14400);
     /* the frame as the DSP checks it: the sequence at both ends, the checksum over the first 63 words */
     u32 check = PH_CHECK_SALT, seq = sent(14400, PH_C_SEQ);
@@ -294,6 +378,22 @@ static void tracks(void)
     sends(owner_amounts, 8);
     restart(11);
     assert(dkrt_phrase_get(PH_P_TRKS) == 0);
+    /* The owner's record from the note lengths: a NOTE of 15 (2BAR) is the ratio 12 (X2), a NOTE of 8 the ratio 8; the
+     * other values and the tracks are kept. */
+    store(PH_PARAM_COUNT, 0x0801);
+    saved[4 + 4 * PH_P_RATIO + 3] = 15;
+    restart(13);
+    assert(dkrt_phrase_get(PH_P_RATIO) == PH_SYNC_RATIOS - 1 &&
+           dkrt_phrase_get(PH_P_TRKS) == 0x0801);
+    assert(dkrt_phrase_get(PH_P_ZONE) == 1 && dkrt_phrase_get(PH_P_MIX) == 11 &&
+           dkrt_phrase_get(PH_P_SKEW) == 10);
+    saved[4 + 4 * PH_P_RATIO + 3] = 8;
+    restart(14);
+    assert(dkrt_phrase_get(PH_P_RATIO) == 8);
+    /* Nothing stored: the 1/1. */
+    saved_bytes = 0;
+    restart(15);
+    assert(dkrt_phrase_get(PH_P_RATIO) == PH_SYNC_UNITY);
     /* A record of 14 values with the tracks out of range: clamped to the 16 tracks. */
     store(PH_PARAM_COUNT, 0x12345);
     restart(12);
@@ -359,7 +459,7 @@ int main(void)
     saved[3] = PH_PARAM_COUNT;
     phrase_bind(5, 1, 0x20, "fixture/phrase", "TEST");
     assert(dkrt_phrase_get(PH_P_ZONE) == 7 && dkrt_phrase_get(PH_P_RATE) == PH_RATE_MAX &&
-           dkrt_phrase_get(PH_P_NOTE) == PH_TIME_CHOICES - 1 && dkrt_phrase_get(PH_P_MIX) == 127);
+           dkrt_phrase_get(PH_P_RATIO) == PH_SYNC_RATIOS - 1 && dkrt_phrase_get(PH_P_MIX) == 127);
     assert(!dkrt_phrase_get(PH_P_HOLD) && !dkrt_phrase_get(PH_P_INPT) &&
            !dkrt_phrase_get(PH_P_XFAD) && dkrt_phrase_get(PH_P_TRKS) == PH_TRACKS_ALL);
     tracks();

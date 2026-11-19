@@ -34,7 +34,8 @@
 //   ZONE      int 1..8    the time range. A change crossfades.
 //   RATE      float 0..1  the position inside the zone: time = low * (high / low) ^ RATE. A change glides.
 //   FLAGS     bits        PH_F_SYNC, PH_F_FLIP, PH_F_HOLD.
-//   SYNC_TIME int frames  with SYNC: the time (a note length at the tempo; the provider's table). A change crossfades.
+//   SYNC_TIME int frames  with SYNC: the time, a ratio of the zone's 1/1 at the tempo (the provider's, below). A change
+//                         crossfades.
 //   RPTS      float 0..1  repeats: 0 one echo, 0.75 unity, 1 a gain of 1.1.
 //   COLR      float -1..1 colour of the repeats: below 0 dark, 0 flat, above 0 bright; its square is the amount of the filter.
 //   HALO      float 0..1  diffusion inside the repeat path; 0 is an exact bypass.
@@ -51,7 +52,8 @@
 #define PH_C_MIX 64
 //   INPUT     int 0, 1    INPT: 0 the tracks by their send amounts (LIVE), 1 the loop effect's loop (LOOP): its tap of the block
 //                         before (dk_loop.inc) times the engine's PRISM_LOOP_TRIM; silence while the loop effect does not run or
-//                         has no loop. A change crossfades the input. The provider leaves it at 0 while there is no loop.
+//                         has no loop. A change crossfades the input. It may be 1 while there is no loop: the engine then
+//                         hears silence.
 // XFADE and ARM_SEQ are unused and 0: the crossfader and ARM are the loop effect's controls, held by core/loop-control.
 #define PH_C_INPUT 68
 #define PH_C_XFADE 72
@@ -97,16 +99,17 @@
 
 // ---- the raw values the page turns and the provider keeps (dkrt_phrase_get / dkrt_phrase_set).
 //   ZONE 0..7; RATE 0..PH_RATE_MAX in fine steps (an encoder detent is PH_RATE_COARSE of them); SYNC, FLIP, HOLD 0 or 1;
-//   NOTE 0..PH_TIME_CHOICES - 1, the note length used with SYNC; RPTS 0..127 with PH_RPTS_UNITY as unity;
-//   COLR and SKEW 0..127 with 64 as the centre; HALO, MIX 0..127; INPT 0 or 1, not saved (the page moves it only while there
-//   is a loop, and to LOOP by itself at a new loop). XFAD is unused: the crossfader is the loop effect's (dkrt_loop_*).
+//   RATIO 0..PH_SYNC_RATIOS - 1, the ratio of the zone's 1/1 used with SYNC (below); RPTS 0..127 with PH_RPTS_UNITY as
+//   unity; COLR and SKEW 0..127 with 64 as the centre; HALO, MIX 0..127; INPT 0 or 1, not saved: the page's G turns it at
+//   any time, and it goes to LOOP by itself at a new loop and to LIVE when the loop is dropped or the loop effect stops
+//   reporting. XFAD is unused: the crossfader is the loop effect's (dkrt_loop_*).
 //   TRKS 0..PH_TRACKS_ALL: the tracks PRISM hears at LIVE, bit t for track t + 1 (the TRIG keys while G is held on the
 //   page); saved. It is no control word: the provider hands the fx service PH_SEND_FULL as the send amount of a heard track
 //   and 0 for the others (phrase_sends), and the effect row's amount words carry them to the send route.
 #define PH_P_ZONE 0
 #define PH_P_RATE 1
 #define PH_P_SYNC 2
-#define PH_P_NOTE 3
+#define PH_P_RATIO 3
 #define PH_P_FLIP 4
 #define PH_P_HOLD 5
 #define PH_P_RPTS 6
@@ -124,5 +127,20 @@
 #define PH_RATE_MAX 1016
 #define PH_RATE_COARSE 8
 #define PH_RPTS_UNITY 96
-// NOTE is a list of note lengths, in 1/96 of a quarter note (the ticks table of the control provider).
-#define PH_TIME_CHOICES 16
+// SYNC, after the Mimeophon: the beat (a quarter note at the pattern's tempo) is the 1/1 of the zone Z0 whose centre (the
+// geometric mean of its free range, sqrt(low * high)) lies nearest it in log terms; each zone above doubles the 1/1, each
+// below halves it. RATIO picks one of PH_SYNC_RATIOS ratios of it, shortest first: 1/2, 4/7, 3/5, 2/3, 3/4, 4/5, 1/1 (index
+// PH_SYNC_UNITY), 5/4, 4/3, 3/2, 5/3, 7/4, 2 (the provider's table, and the page's texts). The time is at most PH_SYNC_MAX
+// frames, the high end of the top zone. The beat lies in zone z (0..7) when it is at least PH_SYNC_EDGE_z frames and less
+// than PH_SYNC_EDGE_(z+1): the geometric means of two neighbouring centres, in frames to the nearest (from the engine's
+// zone table of free ranges; the engine's rig test checks them against it).
+#define PH_SYNC_RATIOS 13
+#define PH_SYNC_UNITY 6
+#define PH_SYNC_MAX 513600
+#define PH_SYNC_EDGE_1 321
+#define PH_SYNC_EDGE_2 1263
+#define PH_SYNC_EDGE_3 4044
+#define PH_SYNC_EDGE_4 11372
+#define PH_SYNC_EDGE_5 32199
+#define PH_SYNC_EDGE_6 84219
+#define PH_SYNC_EDGE_7 181139

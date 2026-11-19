@@ -37,8 +37,8 @@ static u32 limit(u32 p)
         return PH_ZONES - 1;
     if (p == PH_P_RATE)
         return PH_RATE_MAX;
-    if (p == PH_P_NOTE)
-        return PH_TIME_CHOICES - 1;
+    if (p == PH_P_RATIO)
+        return PH_SYNC_RATIOS - 1;
     if (p == PH_P_SYNC || p == PH_P_FLIP || p == PH_P_HOLD || p == PH_P_INPT)
         return 1;
     if (p == PH_P_TRKS)
@@ -49,11 +49,11 @@ static void defaults(void)
 {
     for (u32 i = 0; i < PH_PARAM_COUNT; ++i)
         raw[i] = 0;
-    /* Zone 5 (150 ms to 1 s) in its middle, a dotted eighth with SYNC, half the way to unity, flat, no halo, both sides
+    /* Zone 5 (150 ms to 1 s) in its middle, the zone's 1/1 with SYNC, half the way to unity, flat, no halo, both sides
      * alike, the wet signal most of the way up. */
     raw[PH_P_ZONE] = 4;
     raw[PH_P_RATE] = PH_RATE_MAX / 2;
-    raw[PH_P_NOTE] = 8;
+    raw[PH_P_RATIO] = PH_SYNC_UNITY;
     raw[PH_P_RPTS] = PH_RPTS_UNITY / 2;
     raw[PH_P_COLR] = 64;
     raw[PH_P_SKEW] = 64;
@@ -115,18 +115,45 @@ static void load(void)
     if (count < PH_PARAM_COUNT)
         raw[PH_P_TRKS] = carried_tracks();
 }
-/* The time in frames of the NOTE choice at TEMPO (BPM * 120): ticks * 3 600 000 / tempo, in integers (this runs in the
- * block interrupt; a tick is 1/96 of a quarter note). Without a tempo the last value stays. The engine bounds it to its
- * tape. */
-static u32 sync_time = 24000;
+/* SYNC (dk_phrase.inc): the beat is the 1/1 of the zone Z0 it fits best, the zone doubles or halves it by its distance from
+ * Z0, RATIO multiplies it. In integers, as this runs in the block interrupt: a beat is 345 600 000 / TEMPO frames (TEMPO is
+ * BPM * 120, 48 000 frames a second), kept as its whole frames and the remainder. */
+static const uint8_t ratio_num[PH_SYNC_RATIOS] = {1, 4, 3, 2, 3, 4, 1, 5, 4, 3, 5, 7, 2};
+static const uint8_t ratio_den[PH_SYNC_RATIOS] = {2, 7, 5, 3, 4, 5, 1, 4, 3, 2, 3, 4, 1};
+#define BEAT_120 345600000u
+/* Z0, the zone (0..7) the beat at TEMPO fits best. */
+static u32 sync_zone(u32 tempo)
+{
+    static const u32 edges[PH_ZONES - 1] = {PH_SYNC_EDGE_1, PH_SYNC_EDGE_2, PH_SYNC_EDGE_3,
+                                            PH_SYNC_EDGE_4, PH_SYNC_EDGE_5, PH_SYNC_EDGE_6,
+                                            PH_SYNC_EDGE_7};
+    u32 beat = BEAT_120 / tempo, z = 0;
+    while (z < PH_ZONES - 1 && beat >= edges[z])
+        ++z;
+    return z;
+}
+/* The frames of RATIO in ZONE (0..7) at TEMPO: beat * 2 ^ (ZONE - Z0) * num / den, to the nearest, at most PH_SYNC_MAX. */
+static u32 sync_time_of(u32 tempo, u32 zone, u32 ratio)
+{
+    u32 z0 = sync_zone(tempo), num = ratio_num[ratio], den = ratio_den[ratio];
+    if (zone >= z0)
+        num <<= zone - z0;
+    else
+        den <<= z0 - zone;
+    /* beat * num / den with the beat's remainder: at most 96 000 * 7 * 128 and 36 000 * 7 * 128, inside 32 bits */
+    u32 whole = BEAT_120 / tempo, rest = BEAT_120 % tempo;
+    u32 frames = (whole * num + rest * num / tempo + den / 2) / den;
+    return frames > PH_SYNC_MAX ? PH_SYNC_MAX : frames;
+}
+/* SYNC_TIME of this block from the position suffix's TEMPO: without a tempo the last one stays (120 BPM before any). */
+static u32 sync_tempo = 14400;
 static u32 sync_frames(u32 tempo)
 {
-    static const u16 ticks[PH_TIME_CHOICES] = {12, 16, 18,  24,  32,  36,  48,  64,
-                                               72, 96, 128, 144, 192, 288, 384, 768};
-    u32 choice = raw[PH_P_NOTE];
-    if (tempo && choice < PH_TIME_CHOICES)
-        sync_time = (u32)ticks[choice] * 3600000u / tempo;
-    return sync_time;
+    if (tempo)
+        sync_tempo = tempo;
+    u32 zone = raw[PH_P_ZONE], ratio = raw[PH_P_RATIO];
+    return sync_time_of(sync_tempo, zone < PH_ZONES ? zone : PH_ZONES - 1,
+                        ratio < PH_SYNC_RATIOS ? ratio : PH_SYNC_UNITY);
 }
 /* RPTS as the engine takes it: 0 .. PH_RPTS_UNITY is 0 .. 0.75 (unity exactly), the rest of the way up to 1. */
 static float repeats(u32 v)

@@ -46,7 +46,7 @@ static void init(PhraseUi *s)
     /* the provider's defaults */
     raw[PH_P_ZONE] = 4;
     raw[PH_P_RATE] = 508;
-    raw[PH_P_NOTE] = 8;
+    raw[PH_P_RATIO] = PH_SYNC_UNITY;
     raw[PH_P_RPTS] = 48;
     raw[PH_P_COLR] = 64;
     raw[PH_P_SKEW] = 64;
@@ -94,12 +94,17 @@ static void encoders(void)
     assert(pu_turn(&s, 1, -3, 1) == PU_OWN && raw[PH_P_RATE] == 508 - PH_RATE_COARSE - 2);
     assert(pu_turn(&s, 1, 1000, 0) == PU_OWN && raw[PH_P_RATE] == PH_RATE_MAX);
     assert(pu_turn(&s, 1, -1000, 0) == PU_OWN && raw[PH_P_RATE] == 0);
-    /* G and H: taken, and nothing is written. */
+    /* G is INPT's switch, also without a loop: right LOOP, left LIVE, once each way. H is taken and writes nothing. */
     uint32_t before = writes;
-    for (uint32_t encoder = 6; encoder < 8; ++encoder) {
+    for (uint32_t encoder = 6; encoder < 8; ++encoder)
         assert(pu_parameter(encoder) == PH_PARAM_COUNT);
-        assert(pu_turn(&s, encoder, 5, 0) == PU_OWN && pu_turn(&s, encoder, -5, 1) == PU_OWN);
-    }
+    assert(pu_turn(&s, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1 && writes == before + 1);
+    assert(pu_turn(&s, 6, 5, 0) == PU_OWN && raw[PH_P_INPT] == 1 && writes == before + 1);
+    assert(pu_turn(&s, 6, 0, 0) == PU_OWN && raw[PH_P_INPT] == 1);
+    assert(pu_turn(&s, 6, -5, 1) == PU_OWN && raw[PH_P_INPT] == 0 && writes == before + 2);
+    assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0 && writes == before + 2);
+    before = writes;
+    assert(pu_turn(&s, 7, 5, 0) == PU_OWN && pu_turn(&s, 7, -5, 1) == PU_OWN);
     assert(writes == before);
     /* No such encoder, and a page that is not on top: the stock handler's. */
     assert(pu_turn(&s, 9, 1, 0) == PU_PASS);
@@ -170,24 +175,25 @@ static void sync(void)
     PhraseUi s;
     init(&s);
     tap(&s, PU_PUSH + 1);
-    assert(raw[PH_P_SYNC] == 1 && pu_parameter(1) == PH_P_NOTE);
-    /* With SYNC, B steps through the note lengths, four ticks a step, and RATE stays where it was. */
+    assert(raw[PH_P_SYNC] == 1 && pu_parameter(1) == PH_P_RATIO);
+    /* With SYNC, B steps through the ratios of the zone's 1/1, four ticks a step, toward X2 to the right as a free RATE
+     * goes longer, and RATE stays where it was. */
     for (uint32_t i = 0; i < 3; ++i)
-        assert(pu_turn(&s, 1, 1, 0) == PU_OWN && raw[PH_P_NOTE] == 8);
-    assert(pu_turn(&s, 1, 1, 0) == PU_OWN && raw[PH_P_NOTE] == 9);
-    assert(pu_turn(&s, 1, -4, 1) == PU_OWN && raw[PH_P_NOTE] == 8);
+        assert(pu_turn(&s, 1, 1, 0) == PU_OWN && raw[PH_P_RATIO] == PH_SYNC_UNITY);
+    assert(pu_turn(&s, 1, 1, 0) == PU_OWN && raw[PH_P_RATIO] == PH_SYNC_UNITY + 1);
+    assert(pu_turn(&s, 1, -4, 1) == PU_OWN && raw[PH_P_RATIO] == PH_SYNC_UNITY);
     for (uint32_t i = 0; i < 20; ++i)
         pu_turn(&s, 1, 4, 0);
-    assert(raw[PH_P_NOTE] == PH_TIME_CHOICES - 1);
+    assert(raw[PH_P_RATIO] == PH_SYNC_RATIOS - 1 && PH_SYNC_RATIOS == 13);
     for (uint32_t i = 0; i < 20; ++i)
         pu_turn(&s, 1, -4, 0);
-    assert(raw[PH_P_NOTE] == 0 && raw[PH_P_RATE] == 508);
+    assert(raw[PH_P_RATIO] == 0 && raw[PH_P_RATE] == 508);
     /* Three ticks towards the next note are dropped by the switch back: free, the first tick moves RATE. */
     pu_turn(&s, 1, 3, 0);
     tap(&s, PU_PUSH + 1);
     assert(raw[PH_P_SYNC] == 0 && pu_parameter(1) == PH_P_RATE);
     assert(pu_turn(&s, 1, 1, 0) == PU_OWN && raw[PH_P_RATE] == 508 + PH_RATE_COARSE);
-    assert(raw[PH_P_NOTE] == 0);
+    assert(raw[PH_P_RATIO] == 0);
 }
 static void same(const char *got, const char *want)
 {
@@ -205,15 +211,20 @@ static void formats(void)
         pu_format(b, PH_P_ZONE, i);
         same(b, zones[i]);
     }
-    /* The note lengths in the order of the provider's table, shortest first; every text fits a cell. */
-    static const char *const notes[PH_TIME_CHOICES] = {
-        "1/32", "1/16T", "1/32.", "1/16", "1/8T", "1/16.", "1/8",  "1/4T",
-        "1/8.", "1/4",   "1/2T",  "1/4.", "1/2",  "1/2.",  "1BAR", "2BAR"};
-    for (uint32_t i = 0; i < PH_TIME_CHOICES; ++i) {
-        pu_format(b, PH_P_NOTE, i);
-        same(b, notes[i]);
+    /* The SYNC ratios in the order of the provider's table (1/2, 4/7, 3/5, 2/3, 3/4, 4/5, 1, 5/4, 4/3, 3/2, 5/3, 7/4, 2),
+     * shortest first, as the Mimeophon names them; every text fits a cell. */
+    static const char *const ratios[PH_SYNC_RATIOS] = {"/2",    "/1.75", "/1.67", "/1.5",  "/1.33",
+                                                       "/1.25", "1/1",   "X1.25", "X1.33", "X1.5",
+                                                       "X1.67", "X1.75", "X2"};
+    for (uint32_t i = 0; i < PH_SYNC_RATIOS; ++i) {
+        pu_format(b, PH_P_RATIO, i);
+        same(b, ratios[i]);
         assert(strlen(b) <= 7);
     }
+    same(ratios[PH_SYNC_UNITY], "1/1");
+    /* a value out of range is the 1/1 */
+    pu_format(b, PH_P_RATIO, PH_SYNC_RATIOS);
+    same(b, "1/1");
     pu_format(b, PH_P_RPTS, 62);
     same(b, "62");
     pu_format(b, PH_P_HALO, 0);
@@ -274,14 +285,19 @@ static void page_cells(void)
         same(p.cells[i].state, defaults[i][2]);
         assert(!p.cells[i].lit);
     }
-    /* SYNC: the note length in the RATE cell, and the header keeps the time the engine plays. */
+    /* SYNC: the ratio in the RATE cell, and the header keeps the time the engine plays; ZONE stays the zone (its octave). */
     raw[PH_P_SYNC] = 1;
-    raw[PH_P_NOTE] = 8;
-    status(&s, 9000, 9000);
+    raw[PH_P_RATIO] = 9;
+    status(&s, 36000, 36000);
     pu_page(&s, &p);
-    same(p.cells[1].value, "1/8.");
+    same(p.cells[1].value, "X1.5");
     same(p.cells[1].state, "SYNC");
-    same(p.time, "188 MS");
+    same(p.time, "750 MS");
+    same(p.cells[0].value, "ECHO");
+    same(p.zone, "ECHO");
+    raw[PH_P_RATIO] = PH_SYNC_UNITY;
+    pu_page(&s, &p);
+    same(p.cells[1].value, "1/1");
     /* HOLD and FLIP with RATE free, as the plan draws it. */
     raw[PH_P_SYNC] = 0;
     raw[PH_P_ZONE] = 3;
@@ -386,7 +402,7 @@ static void rendering(void)
         for (uint32_t i = 0; i < PH_PARAM_COUNT; ++i)
             raw[i] = pass ? 127 : 0;
         raw[PH_P_ZONE] = pass ? PH_ZONES - 1 : 0;
-        raw[PH_P_NOTE] = pass ? PH_TIME_CHOICES - 1 : 0;
+        raw[PH_P_RATIO] = pass ? PH_SYNC_RATIOS - 1 : 0;
         raw[PH_P_SYNC] = raw[PH_P_FLIP] = raw[PH_P_HOLD] = pass;
         status(&s, pass ? 344064 : 48, pass ? 516096 : 72);
         memset(&d, 0, sizeof(d));
@@ -446,14 +462,25 @@ static void loop_page(void)
     init(&s);
     s.loop = &fake_home;
     home_xfad = home_arms = home_drops = 0;
-    /* Pattern 1 plays, no loop yet: INPT stays LIVE whatever G does, H and FUNC + NO move nothing; a press of H arms. */
+    /* Pattern 1 plays, no loop yet. G turns INPT at any time: to the right LOOP, which stays (PRISM hears silence until a
+     * loop exists, and the page says so), to the left LIVE. Its press switches nothing; H and FUNC + NO move nothing; a
+     * press of H arms. */
     report(LS_TRACK, 0, 16, 0, 0, 0.0f);
     pu_loop(&s);
     assert(raw[PH_P_INPT] == 0);
-    assert(pu_turn(&s, 6, 1, 0) == PU_OWN && pu_turn(&s, 7, 5, 0) == PU_OWN &&
-           raw[PH_P_INPT] == 0 && home_xfad == 0);
+    assert(pu_turn(&s, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
+    for (uint32_t i = 0; i < 3 * PU_LOOP_GONE; ++i)
+        pu_loop(&s);
+    assert(raw[PH_P_INPT] == 1);
+    pu_page(&s, &p);
+    same(p.cells[6].value, "LOOP");
+    same(p.cells[6].state, "SILENT");
+    tap(&s, PU_PUSH + 6);
+    assert(raw[PH_P_INPT] == 1);
+    assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
     tap(&s, PU_PUSH + 6);
     assert(raw[PH_P_INPT] == 0);
+    assert(pu_turn(&s, 7, 5, 0) == PU_OWN && home_xfad == 0);
     assert(pu_key(&s, PU_FUNC, PU_PRESS) == PU_PASS);
     tap(&s, PU_NO);
     assert(pu_key(&s, PU_FUNC, PU_RELEASE) == PU_PASS && home_drops == 0);
@@ -502,9 +529,11 @@ static void loop_page(void)
     pu_page(&s, &p);
     same(p.cells[7].value, "LIVE");
     assert(p.cells[7].fader == 1);
-    /* G: a press switches, a tick up is LOOP and a tick down LIVE; the header names the loop only while PRISM hears it. */
+    /* G: a press switches nothing; a tick to the left is LIVE and to the right LOOP; the header names the loop only while
+     * PRISM hears it. */
     tap(&s, PU_PUSH + 6);
-    assert(raw[PH_P_INPT] == 0);
+    assert(raw[PH_P_INPT] == 1);
+    assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
     pu_page(&s, &p);
     assert(!p.line[0]);
     same(p.zone, "ECHO");
@@ -523,13 +552,22 @@ static void loop_page(void)
     report(LS_LOOP | LS_HELD | LS_TRACK, 2, 16, 16, 96000, 1.0f);
     pu_loop(&s);
     assert(raw[PH_P_INPT] == 1);
-    /* FUNC + NO drops through the home; without a loop INPT is LIVE. */
+    /* FUNC + NO drops through the home; when the loop is gone INPT is LIVE, once: G may put it at LOOP again, and it stays. */
     assert(pu_key(&s, PU_FUNC, PU_PRESS) == PU_PASS);
     tap(&s, PU_NO);
     assert(pu_key(&s, PU_FUNC, PU_RELEASE) == PU_PASS && home_drops == 1);
+    pu_loop(&s);
+    assert(raw[PH_P_INPT] == 1);
     report(LS_TRACK, 2, 16, 0, 0, 0.0f);
     pu_loop(&s);
     assert(raw[PH_P_INPT] == 0);
+    assert(pu_turn(&s, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
+    pu_loop(&s);
+    pu_loop(&s);
+    assert(raw[PH_P_INPT] == 1);
+    pu_page(&s, &p);
+    same(p.cells[6].state, "SILENT");
+    assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
     /* A page that first sees a loop already taken does not switch INPT (it was not this change). */
     PhraseUi late;
     memset(&late, 0, sizeof(late));
@@ -551,6 +589,14 @@ static void loop_page(void)
     pu_page(&late, &p);
     same(p.cells[7].value, "--");
     same(p.cells[7].state, "NO LOOP");
+    /* once: G at LOOP again stays while the loop effect still does not report */
+    assert(pu_turn(&late, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
+    for (uint32_t i = 0; i < 3 * PU_LOOP_GONE; ++i)
+        pu_loop(&late);
+    assert(raw[PH_P_INPT] == 1);
+    pu_page(&late, &p);
+    same(p.cells[6].state, "SILENT");
+    assert(pu_turn(&late, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
     uint32_t arms = home_arms;
     tap(&late, PU_PUSH + 7);
     assert(home_arms == arms);
@@ -567,14 +613,6 @@ static void loop_page(void)
     memset(&d, 0, sizeof(d));
     pu_render_header(&p, &c);
     assert(d.texts == 2 && saw(&d, "PRISM") && saw(&d, "LOOP 16 ST 2.00 S"));
-}
-/* The engine's report with a heartbeat: the blocks it has run (the clock of a hold of G), fresh or not. */
-static void beat(PhraseUi *s, uint32_t blocks, uint32_t fresh)
-{
-    uint32_t words[PH_STATUS_WORDS] = {0};
-    words[PH_S_TIME_L / 4] = words[PH_S_TIME_R / 4] = 18000;
-    words[PH_S_HEARTBEAT / 4] = blocks;
-    pu_status(s, words, fresh);
 }
 static uint32_t trig(uint32_t track)
 {
@@ -642,7 +680,8 @@ static void tracks(void)
     assert(raw[PH_P_TRKS] == (1u | 1u << 10));
     pu_page(&s, &p);
     same(p.cells[6].value, "2 TRK");
-    /* G released: every key and LED is the firmware's again; INPT shows LIVE and the tracks under it. No loop: no switch. */
+    /* G released: every key and LED is the firmware's again; INPT shows LIVE and the tracks under it. The release switches
+     * nothing. */
     release_g(&s);
     assert(raw[PH_P_INPT] == 0);
     leds(&s, 0x11, led);
@@ -688,46 +727,29 @@ static void tracks(void)
     pu_page(&s, &p);
     same(p.cells[6].state, "16 TRK");
 
-    /* With a loop: a short press of G switches INPT, a hold with a TRIG key, with a turn or of 0.4 s or more does not. */
+    /* With a loop as without one, G's press switches nothing: short or long, with a TRIG key or none. A turn of G switches,
+     * also while it is held, and its release does not switch back. */
     s.loop = &fake_home;
     home_xfad = LP_MAX;
     report(LS_LOOP | LS_TRACK, 1, 16, 16, 96000, 1.0f);
     pu_loop_status(&s);
     raw[PH_P_INPT] = 0;
-    beat(&s, 1000, 1);
-    hold_g(&s);
-    beat(&s, 1100, 1);
-    release_g(&s);
-    assert(raw[PH_P_INPT] == 1);
+    uint32_t before = writes;
     tap(&s, PU_PUSH + PU_SELECT);
-    assert(raw[PH_P_INPT] == 0);
+    hold_g(&s);
+    release_g(&s);
+    assert(raw[PH_P_INPT] == 0 && writes == before);
+    raw[PH_P_INPT] = 1;
+    tap(&s, PU_PUSH + PU_SELECT);
+    assert(raw[PH_P_INPT] == 1);
     hold_g(&s);
     tap(&s, trig(16));
     release_g(&s);
-    assert(raw[PH_P_INPT] == 0 && raw[PH_P_TRKS] == 0x7fff);
-    /* a turn of G while it is held: the turn switches (a tick up is LOOP), the release does not switch back */
+    assert(raw[PH_P_INPT] == 1 && raw[PH_P_TRKS] == 0x7fff);
     hold_g(&s);
-    assert(pu_turn(&s, PU_SELECT, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
-    release_g(&s);
-    assert(raw[PH_P_INPT] == 1);
-    /* a hold of 600 blocks only looks at the tracks */
-    beat(&s, 2000, 1);
-    hold_g(&s);
-    beat(&s, 2000 + PU_SHORT_BLOCKS, 1);
-    release_g(&s);
-    assert(raw[PH_P_INPT] == 1);
-    /* one block less is a press */
-    beat(&s, 4000, 1);
-    hold_g(&s);
-    beat(&s, 4000 + PU_SHORT_BLOCKS - 1, 1);
+    assert(pu_turn(&s, PU_SELECT, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
     release_g(&s);
     assert(raw[PH_P_INPT] == 0);
-    /* without an engine's heartbeat the length is not known: a press */
-    beat(&s, 5000, 0);
-    hold_g(&s);
-    beat(&s, 9000, 0);
-    release_g(&s);
-    assert(raw[PH_P_INPT] == 1);
 }
 int main(void)
 {

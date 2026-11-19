@@ -9,6 +9,7 @@ import { afterAll, describe, expect, test } from 'vitest';
 import {
   CH,
   DEVICE_FRAMES,
+  PH,
   PS,
   PrismRig,
   TRIM,
@@ -257,6 +258,11 @@ describe('PRISM repeater engine: contract', () => {
         expect(zones[2 * z]).toBe(low);
         expect(zones[2 * z + 1]).toBeCloseTo(Math.log(high / low), 6);
       });
+      // SYNC (dk_phrase.inc, core/phrase-control): the beat lies in zone z from PH_SYNC_EDGE_z on, the geometric mean of the
+      // centres sqrt(low * high) of zones z - 1 and z, to the nearest frame; the longest synced time is the top zone's high end
+      const centre = (z: number) => zones[2 * z]! * Math.exp(zones[2 * z + 1]! / 2);
+      for (let z = 1; z < 8; z++) expect(PH[`PH_SYNC_EDGE_${z}`], `edge ${z}`).toBe(Math.round(Math.sqrt(centre(z - 1) * centre(z))));
+      expect(PH.PH_SYNC_MAX).toBe(Math.round(zones[14]! * Math.exp(zones[15]!)));
     });
   });
 });
@@ -402,6 +408,48 @@ describe('PRISM repeater engine: a free move bends the pitch, a jump does not', 
         rows.push(`${during.toFixed(1)}/${after.toFixed(2)}`);
       }
       note(`jumps with a 1 kHz tone, Hz during the crossfade / after it: ${rows.join(' ')}`);
+    });
+  });
+});
+
+describe('PRISM repeater engine: SYNC after the Mimeophon', () => {
+  test('a zone change and a ratio change with SYNC are one crossfade each: the tone keeps its pitch', async () => {
+    // the provider's times at 120 BPM: a beat of 24000 frames is ECHO's 1/1 (zone 5); SLAP (zone 4) is half of it, and ECHO's
+    // 3/4 is 18000 frames. With SYNC the engine takes only SYNC_TIME; a zone change comes with its new time in one mailbox.
+    const beat = 24000;
+    await withRig({ frames: 65536 }, async (rig) => {
+      rig.set({ zone: 4, sync: true, syncTime: beat / 2, rpts: 0 });
+      const steps: [number, Partial<Controls>][] = [
+        [1000, {}],
+        [400, { zone: 5, syncTime: beat }],
+        [400, { syncTime: (beat * 3) / 4 }],
+        [400, { zone: 4, syncTime: (beat * 3) / 8 }],
+      ];
+      const takes: Take[] = [];
+      const marks: number[] = [];
+      const programs: number[] = [];
+      let at = 0;
+      for (const [blocks, change] of steps) {
+        rig.set(change);
+        marks.push(at);
+        takes.push(await rig.run(blocks, sine(1000, 0.25)));
+        programs.push((await rig.state(PS.KEYGEN))[0]!);
+        at += blocks * 32;
+      }
+      const left = Float32Array.from(takes.flatMap((t) => [...t.left]));
+      const rows: string[] = [];
+      for (const [i, m] of marks.slice(1).entries()) {
+        expect(programs[i + 1]! - programs[i]!, 'one program change: one crossfade').toBe(1);
+        const [time] = await rig.state(PS.TIME_L);
+        const during = crossingHz(left, m, m + XFADE);
+        const after = crossingHz(left, m + XFADE + 200, m + 9000);
+        expect(Math.abs(during - 1000)).toBeLessThan(30);
+        expect(after).toBeCloseTo(1000, 1);
+        for (const bent of [500, 1500]) expect(levelAt(left, bent, m, m + XFADE + 2000)).toBeLessThan(0.005);
+        rows.push(`${during.toFixed(1)}/${after.toFixed(2)}`);
+        if (i === marks.length - 2) expect(time).toBe((beat * 3) / 8);
+      }
+      note(`SYNC jumps (zone 4 -> 5, ratio 1/1 -> 3/4, zone 5 -> 4) with a 1 kHz tone, one program change each, Hz during the crossfade / after it: ${rows.join(' ')}`);
     });
   });
 });

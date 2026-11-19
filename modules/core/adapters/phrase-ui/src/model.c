@@ -94,20 +94,28 @@ void pu_loop(PhraseUi *s)
 {
     pu_loop_status(s);
     if (!s->loop_fresh) {
-        /* the loop effect does not report: after a while there is no loop to hear */
-        if (s->loop_stale < PU_LOOP_GONE)
+        /* the loop effect that reported has stopped: after a while there is no loop to hear, and INPT goes to LIVE once (a
+         * turn of G may put it at LOOP again) */
+        if (!s->loop_known)
+            return;
+        if (s->loop_stale < PU_LOOP_GONE) {
             ++s->loop_stale;
-        else
-            input(s, 0);
+            return;
+        }
+        input(s, 0);
+        s->loop_known = s->loop_had = s->loop_stale = 0;
         return;
     }
     s->loop_stale = 0;
-    uint32_t state = s->loop_status[LS_STATE], count = state >> LS_COUNT_SHIFT;
-    if (!(state & LS_LOOP))
+    uint32_t state = s->loop_status[LS_STATE], count = state >> LS_COUNT_SHIFT,
+             loop = (state & LS_LOOP) != 0;
+    if (s->loop_had && !loop)
+        /* the loop was dropped (or lost): PRISM hears the tracks again */
         input(s, 0);
-    else if (s->loop_known && count != s->loop_seen)
+    else if (loop && s->loop_known && count != s->loop_seen)
         /* an armed pattern change took a new loop: PRISM hears it (the engine counts loops across its restarts) */
         input(s, 1);
+    s->loop_had = loop;
     s->loop_seen = count;
     s->loop_known = 1;
 }
@@ -132,15 +140,11 @@ uint32_t pu_led(const PhraseUi *s, uint32_t logical, uint32_t stock)
         return stock;
     return (pu_tracks() >> (logical - PU_LED_TRIG)) & 1 ? PU_LED_HEARD : PU_LED_DIM;
 }
-/* G is released: the selection ends. A short press with no TRIG key and no turn is INPT's switch, while there is a loop. */
+/* G is released: the selection ends. The press switches nothing: INPT is G's turn. */
 static void select_end(PhraseUi *s)
 {
     if (!s->select)
         return;
-    uint32_t held_for = s->status[PH_S_HEARTBEAT / 4] - s->select_beat,
-             timed = s->select_timed && s->fresh;
-    if (!s->select_used && (!timed || held_for < PU_SHORT_BLOCKS) && s->active && pu_has_loop(s))
-        toggle(s, PH_P_INPT);
     s->select = 0;
     ++s->revision;
 }
@@ -177,7 +181,6 @@ uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
         if (!s->select)
             return PU_PASS;
         dkrt_phrase_set(PH_P_TRKS, pu_tracks() ^ (1u << (key - PU_TRIG)));
-        s->select_used = 1;
         ++s->revision;
         mark(s->owned, key, 1);
         return PU_OWN;
@@ -192,8 +195,8 @@ uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
         return PU_OWN;
     }
     if (key >= PU_PUSH && key < PU_PUSH + 8) {
-        /* A is FLIP, B is SYNC, C is HOLD; G holds the selection of the tracks (its release may switch INPT); H is ARM while
-         * the loop effect reports. D, E and F are taken and do nothing. */
+        /* A is FLIP, B is SYNC, C is HOLD; G holds the selection of the tracks; H is ARM while the loop effect reports.
+         * D, E and F are taken and do nothing. */
         static const uint8_t switches[3] = {PH_P_FLIP, PH_P_SYNC, PH_P_HOLD};
         if (key < PU_PUSH + 3)
             toggle(s, switches[key - PU_PUSH]);
@@ -201,9 +204,6 @@ uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
             s->detent[1] = 0;
         if (key == PU_PUSH + PU_SELECT) {
             s->select = 1;
-            s->select_used = 0;
-            s->select_beat = s->status[PH_S_HEARTBEAT / 4];
-            s->select_timed = s->fresh;
             ++s->revision;
         }
         if (key == PU_PUSH + 7 && s->loop && s->loop_fresh) {
@@ -223,7 +223,7 @@ uint32_t pu_parameter(uint32_t encoder)
     if (encoder > PU_LEVEL)
         return PH_PARAM_COUNT;
     if (encoder == 1 && dkrt_phrase_get(PH_P_SYNC))
-        return PH_P_NOTE;
+        return PH_P_RATIO;
     return mapping[encoder];
 }
 static uint32_t maximum(uint32_t p)
@@ -232,8 +232,8 @@ static uint32_t maximum(uint32_t p)
         return PH_ZONES - 1;
     if (p == PH_P_RATE)
         return PH_RATE_MAX;
-    if (p == PH_P_NOTE)
-        return PH_TIME_CHOICES - 1;
+    if (p == PH_P_RATIO)
+        return PH_SYNC_RATIOS - 1;
     return 127;
 }
 uint32_t pu_turn(PhraseUi *s, uint32_t encoder, int32_t delta, uint32_t fine)
@@ -241,17 +241,14 @@ uint32_t pu_turn(PhraseUi *s, uint32_t encoder, int32_t delta, uint32_t fine)
     if (!s->active || encoder > PU_LEVEL)
         return PU_PASS;
     uint32_t p = pu_parameter(encoder);
-    /* G and H: taken, so that the stock page does not turn a value under them. While there is a loop, G is the switch (a
-     * tick up is LOOP, a tick down LIVE) and H the loop effect's crossfader, a step a tick. A turn of G while it is held
-     * makes its release no press. */
+    /* G and H: taken, so that the stock page does not turn a value under them. G is INPT's switch at any time (a tick to
+     * the right is LOOP, to the left LIVE); H, while there is a loop, the loop effect's crossfader, a step a tick. */
     if (p >= PH_PARAM_COUNT) {
-        if (encoder == PU_SELECT && delta && s->select)
-            s->select_used = 1;
-        if (!pu_has_loop(s) || !delta)
+        if (!delta)
             return PU_OWN;
-        if (encoder == 6)
+        if (encoder == PU_SELECT)
             input(s, delta > 0);
-        else {
+        else if (pu_has_loop(s)) {
             int32_t value = (int32_t)s->loop->get(LP_XFAD) + delta;
             if (value < 0)
                 value = 0;
@@ -262,7 +259,7 @@ uint32_t pu_turn(PhraseUi *s, uint32_t encoder, int32_t delta, uint32_t fine)
         }
         return PU_OWN;
     }
-    if (p == PH_P_ZONE || p == PH_P_NOTE) {
+    if (p == PH_P_ZONE || p == PH_P_RATIO) {
         /* A choice takes four ticks, and a long accelerated event never skips several choices. */
         if (delta > 4)
             delta = 4;
@@ -312,15 +309,16 @@ const char *pu_zone_name(uint32_t zone)
 }
 void pu_format(char out[16], uint32_t p, uint32_t raw)
 {
-    static const char *const notes[PH_TIME_CHOICES] = {
-        "1/32", "1/16T", "1/32.", "1/16", "1/8T", "1/16.", "1/8",  "1/4T",
-        "1/8.", "1/4",   "1/2T",  "1/4.", "1/2",  "1/2.",  "1BAR", "2BAR"};
+    /* the SYNC ratios of dk_phrase.inc, shortest first: X a multiple of the zone's 1/1, / a division */
+    static const char *const ratios[PH_SYNC_RATIOS] = {"/2",    "/1.75", "/1.67", "/1.5",  "/1.33",
+                                                       "/1.25", "1/1",   "X1.25", "X1.33", "X1.5",
+                                                       "X1.67", "X1.75", "X2"};
     if (p == PH_P_ZONE) {
         copy(out, pu_zone_name(raw));
         return;
     }
-    if (p == PH_P_NOTE) {
-        copy(out, notes[raw < PH_TIME_CHOICES ? raw : 0]);
+    if (p == PH_P_RATIO) {
+        copy(out, ratios[raw < PH_SYNC_RATIOS ? raw : PH_SYNC_UNITY]);
         return;
     }
     if (p == PH_P_COLR) {
