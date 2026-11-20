@@ -28,7 +28,7 @@ OS 1.16 and are not an address source for this patch.
 | `0x43164f98` | 16-bit next scheduled master step |
 | `0x43164f9a` | 8-bit substep |
 | `0x43164f9c` | 16-bit current master step returned by getter `0x400d67fe` |
-| `0x4316501c` | Opaque scheduled-pattern pointer; can change ahead of audible playback |
+| `0x4316501c` | Opaque scheduled-pattern pointer; can change ahead of audible playback (a step ahead at a change at the end; since finding 365 the record carries the playing pattern instead, **[C]**) |
 | `0x43165130` | Signed master wrap override; values greater than 1 take priority |
 | scheduled pattern + `0x1db74` | Signed fallback wrap length; values at most 1 are reported as unknown |
 | `0x43158f7c` | Raw 32-bit scheduler clock, not an audio sample count |
