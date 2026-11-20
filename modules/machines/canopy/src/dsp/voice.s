@@ -809,21 +809,107 @@ _cp_amp_copy_words:
     R0 = DM(3, I0);
     DM(3, I1) = R0;
     RTS;
+// A lifecycle reset or steal (gate 2): the voice's level e0 where the ramp began falls to 0 over D = ceil(64 e0) samples
+// (1 to 64, as long as the linear 1/64 a sample ramp took before), with the weight 1 - s(k / D), s(u) = u u (3 - 2u):
+// no corner where it begins or ends, so a stolen or restarted note does not click (finding 365). The 32 levels of this
+// block go to _cp_amp_samples as a native envelope does. While the gate is 2 the voice's sidecar holds the ramp: its
+// token, the samples done, e0 and CP_RESET_MARK. Called from _cp_amp_begin: preserves I0, R8, R11..15.
+#define CP_RESET_MARK 0x52535431
+_cp_amp_reset:
+    R0 = I0;
+    CALL _cp_amp_record_for;
+    R1 = DM(0, I0);
+    R0 = DM(0, I1);
+    COMP(R0, R1);
+    IF NE JUMP _cp_amp_reset_new;
+    R0 = DM(3, I1);
+    R2 = CP_RESET_MARK;
+    COMP(R0, R2);
+    IF EQ JUMP _cp_amp_reset_go;
+_cp_amp_reset_new:
+    DM(0, I1) = R1;
+    R0 = 0;
+    DM(1, I1) = R0;
+    R0 = DM(7, I0);
+    DM(2, I1) = R0;
+    R0 = CP_RESET_MARK;
+    DM(3, I1) = R0;
+_cp_amp_reset_go:
+    // D = ceil(64 e0) in [1, 64] (R5) and 1/D (F5)
+    F4 = DM(2, I1);
+    F0 = 64.0;
+    F0 = F4 * F0;
+    R5 = TRUNC F0;
+    F1 = FLOAT R5;
+    COMP(F1, F0);
+    IF LT R5 = R5 + 1;
+    R0 = 1;
+    R5 = MAX(R5, R0);
+    R0 = 64;
+    R5 = MIN(R5, R0);
+    F0 = FLOAT R5;
+    F1 = RECIPS F0;
+    F3 = 2.0;
+    F2 = F0 * F1;
+    F2 = F3 - F2;
+    F1 = F1 * F2;
+    F2 = F0 * F1;
+    F2 = F3 - F2;
+    F5 = F1 * F2;
+    R6 = DM(1, I1);
+    I2 = _cp_amp_samples;
+    F7 = 1.0;
+    F3 = 3.0;
+    LCNTR = 32, DO _cp_amp_reset_last UNTIL LCE;
+        R6 = R6 + 1;
+        F0 = FLOAT R6;
+        F0 = F0 * F5;
+        F0 = MIN(F0, F7);
+        COMP(R6, R5);
+        IF GE F0 = PASS F7;
+        F1 = F0 + F0;
+        F1 = F3 - F1;
+        F0 = F0 * F0;
+        F0 = F0 * F1;
+        F0 = F7 - F0;
+        F0 = F0 * F4;
+_cp_amp_reset_last:
+        DM(I2, M6) = F0;
+    DM(1, I1) = R6;
+    DM(_cp_amp_end) = F0;
+    R0 = 1;
+    DM(_cp_amp_native) = R0;
+    RTS;
 // Called before oscillator registers are loaded. Preserves I0,R8,R11..15.
 // Stable phases use hardware loops; the shared buffer is consumed immediately.
 _cp_amp_begin:
     R0 = 0;
     DM(_cp_amp_native) = R0;
-    R0 = DM(_cp_amp_mode);
-    R0 = PASS R0;
-    IF EQ RTS;
+    // A lifecycle reset or steal (gate 2) of a voice of the V2 instance (it has a sidecar: a pad or tail slot, or the arp
+    // group) takes the eased ramp below, with either AMP. A bank without sidecars keeps the linear ramp of the renderer.
     R0 = DM(1, I0);
     R1 = 3;
     R0 = R0 AND R1;
-    DM(_cp_amp_gate) = R0;
     R1 = 2;
     COMP(R0, R1);
-    IF EQ RTS; // Lifecycle reset/steal always retains the bounded64-sample ramp.
+    IF NE JUMP _cp_amp_not_reset;
+    R1 = I0;
+    R2 = DM(_cp_amp_state);
+    R1 = R1 - R2;
+    R2 = 544;
+    COMP(R1, R2);
+    IF EQ JUMP _cp_amp_reset;
+    R1 = PASS R1;
+    IF LT RTS;
+    R2 = 192;
+    COMP(R1, R2);
+    IF LT JUMP _cp_amp_reset;
+    RTS;
+_cp_amp_not_reset:
+    R1 = DM(_cp_amp_mode);
+    R1 = PASS R1;
+    IF EQ RTS;
+    DM(_cp_amp_gate) = R0;
     R0 = I0;
     CALL _cp_amp_record_for;
     I2 = I1;

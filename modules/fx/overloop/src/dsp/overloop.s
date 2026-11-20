@@ -12,8 +12,10 @@
 //   controls   the parameter words: the crossfader, and the counters of ARM and DROP (core/loop-control holds them)
 //   position   the record of core/pattern-position: a step boundary begins with this block or not; a boundary of
 //              another pattern is a change, a boundary of another generation is a START. A record that comes again is
-//              no news, and a few frames that did not arrive end nothing (OL_SKIP)
-//   mix        output = input + (loop - input) * crossfader; LIVE passes the input as it is
+//              no news, and a few frames that did not arrive end nothing (OL_SKIP). While the transport is stopped or
+//              paused the loop side is silent: it fades out at STOP and in again at the first boundary after the
+//              transport runs, from its first frame after a STOP and from where it stood after a pause
+//   mix        output = input + (loop - input) * crossfader * the transport's weight; LIVE passes the input as it is
 //   record     the output goes to the rolling record, and a block of the frames before its start is filled in
 //   wet        a send effect's output from the wet mailbox (PRISM's, while this engine runs it does not go to the FX return)
 //              is added at the master stage's gain after its sum: behind the crossfader, and not in the record
@@ -194,6 +196,27 @@ _ol_track:
     R1 = 2;
     COMP(R0,R1);
     IF NE JUMP _ol_lost;
+    // The transport stopped or paused (the record's RUNNING flag is clear): the loop side fades out, and the loop's phase
+    // now is where a CONTINUE goes on. Paused or stopped is the raw transport (word 14: 2 paused).
+    R0 = DM(5,I4);
+    R1 = 2;
+    R0 = R0 AND R1;
+    IF NE JUMP _ol_running;
+    R0 = DM(14,I4);
+    R2 = 0;
+    R3 = 1;
+    COMP(R0,R1);
+    IF EQ R2 = PASS R3;
+    DM(OL_PAUSED,I5) = R2;
+    R0 = DM(OL_TRUN,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _ol_running;
+    R0 = DM(OL_PHASE,I5);
+    DM(OL_HALT,I5) = R0;
+    R0 = 0;
+    DM(OL_TRUN,I5) = R0;
+    DM(OL_SYNC,I5) = R0;
+_ol_running:
     R2 = DM(2,I4);
     R3 = DM(3,I4);
     R0 = DM(OL_HAVE,I5);
@@ -259,22 +282,96 @@ _ol_news:
     // A boundary: step R11 of pattern R12 (R10 steps, generation R13) begins with this block.
     R12 = DM(6,I4);
     R13 = DM(4,I4);
+    // After a CONTINUE that repeated the paused step: at the step after it the loop is set to where that step begins in it
+    // (from where it stood it would lag the sequencer by what the sequencer had scheduled ahead when it paused)
+    R0 = DM(OL_SYNC,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _ol_synced;
+    R1 = 0;
+    DM(OL_SYNC,I5) = R1;
+    R1 = R11 + 1;
+    COMP(R0,R1);
+    IF NE JUMP _ol_synced;
+    R0 = DM(OL_SYNC_PH,I5);
+    R1 = DM(OL_PHASE,I5);
+    R2 = R0 - R1;
+    R2 = ABS R2;
+    R3 = DK_BLOCK;
+    COMP(R2,R3);
+    IF LE JUMP _ol_synced;
+    DM(OL_OLD,I5) = R1;
+    R1 = OL_JUMP_FRAMES;
+    DM(OL_JUMP,I5) = R1;
+    DM(OL_PHASE,I5) = R0;
+_ol_synced:
+    // A loop that is held begins again with the pattern: at the first boundary after the transport ran again, at its first
+    // frame after a STOP and where it stood after a pause (a CONTINUE), and at a START while it plays, at its first frame.
+    // The loop side fades in; where the old position is still heard it fades out under the new one.
+    R0 = DM(OL_LOOP,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _ol_begun;
+    R2 = 0;
+    R0 = DM(OL_TRUN,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _ol_again;
+    R0 = DM(OL_GEN_OK,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _ol_begun;
+    R0 = DM(OL_GEN,I5);
+    COMP(R0,R13);
+    IF EQ JUMP _ol_begun;
+    JUMP _ol_begin;
+_ol_again:
+    R0 = DM(OL_PAUSED,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _ol_begin;
+    // A CONTINUE. R1: where the step after the paused one begins in the loop (the last boundary's phase and a whole step).
+    // The stock CONTINUE repeats the paused step as its first boundary: the loop goes on where it stood, and is set to R1 at
+    // the next step. Without the repeat it is at R1 now. Without a whole step measured it goes on where it stood.
+    R2 = DM(OL_HALT,I5);
+    R0 = DM(OL_BLEN,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _ol_begin;
+    R1 = DM(OL_BPH,I5);
+    R1 = R1 + R0;
+    R0 = DM(OL_L,I5);
+    R3 = R1 - R0;
+    COMP(R1,R0);
+    IF GE R1 = PASS R3;
+    R0 = DM(OL_BSTEP,I5);
+    COMP(R0,R11);
+    IF EQ JUMP _ol_repeat;
+    R2 = PASS R1;
+    JUMP _ol_begin;
+_ol_repeat:
+    DM(OL_SYNC_PH,I5) = R1;
+    R0 = R11 + 1;
+    R3 = 0;
+    COMP(R0,R10);
+    IF GE R0 = PASS R3;
+    R0 = R0 + 1;
+    DM(OL_SYNC,I5) = R0;
+_ol_begin:
+    R0 = 0;
+    R1 = DM(OL_TF,I5);
+    R1 = PASS R1;
+    IF EQ JUMP _ol_begin_at;
+    R0 = DM(OL_PHASE,I5);
+    DM(OL_OLD,I5) = R0;
+    R0 = OL_JUMP_FRAMES;
+_ol_begin_at:
+    DM(OL_JUMP,I5) = R0;
+    DM(OL_PHASE,I5) = R2;
+    R0 = 1;
+    DM(OL_TRUN,I5) = R0;
+_ol_begun:
+    CALL _ol_mark;
     R0 = DM(OL_GEN_OK,I5);
     R0 = PASS R0;
     IF EQ JUMP _ol_gen_new;
     R0 = DM(OL_GEN,I5);
     COMP(R0,R13);
     IF EQ JUMP _ol_gen_same;
-    // START. A loop that is held begins again with the pattern; the old position fades out under it.
-    R0 = DM(OL_LOOP,I5);
-    R0 = PASS R0;
-    IF EQ JUMP _ol_gen_new;
-    R0 = DM(OL_PHASE,I5);
-    DM(OL_OLD,I5) = R0;
-    R0 = OL_JUMP_FRAMES;
-    DM(OL_JUMP,I5) = R0;
-    R0 = 0;
-    DM(OL_PHASE,I5) = R0;
 _ol_gen_new:
     DM(OL_GEN,I5) = R13;
     R0 = 1;
@@ -415,8 +512,22 @@ _ol_audio:
     I3 = R0;
     R0 = DM(OL_LOOP,I5);
     R0 = PASS R0;
+    IF EQ JUMP _ol_live;
+    // A loop of which nothing is heard: the transport has stopped and the loop side has faded out. The crossfader takes
+    // its target at once (a drop is done then), and the input plays as it is.
+    R0 = DM(OL_TRUN,I5);
+    R1 = DM(OL_TF,I5);
+    R0 = R0 OR R1;
     IF NE JUMP _ol_mix;
-    // ---- No loop: the input as it is.
+    DM(OL_GAIN,I5) = R14;
+    R0 = DM(OL_DROP,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _ol_live;
+    R14 = PASS R14;
+    IF NE JUMP _ol_live;
+    CALL _ol_gone;
+_ol_live:
+    // ---- No loop, or none heard: the input as it is.
     LCNTR = DK_BLOCK, DO _ol_live_end UNTIL LCE;
         R0 = DM(I0,M6);
         R1 = DM(I1,M6);
@@ -437,11 +548,19 @@ _ol_tap_clear: DM(I4,M6) = R0;
     JUMP _ol_record;
 
     // ---- A loop is held. R5 the phase, R6 the loop's frames, R7 the buffer's frames, R15 the crossfader, R14 its
-    // target, R13 its step a frame (1/256), R12 the tap's next word.
+    // target, R13 its step a frame (1/256), R12 the tap's next word, R11 1 while the transport's weight moves.
 _ol_mix:
     R15 = DM(OL_GAIN,I5);
     R13 = 0x3b800000;
-    R11 = 0x3f800000;
+    R11 = 0;
+    R0 = DM(OL_TF,I5);
+    R1 = OL_TFADE_FRAMES;
+    R2 = DM(OL_TRUN,I5);
+    R2 = PASS R2;
+    IF EQ R1 = R1 - R1;
+    COMP(R0,R1);
+    R0 = 1;
+    IF NE R11 = PASS R0;
     R5 = DM(OL_PHASE,I5);
     R6 = DM(OL_L,I5);
     R7 = DM(OL_N,I5);
@@ -566,11 +685,37 @@ _ol_ramp:
         F0 = MIN(F2,F13);
         F15 = F15 + F0;
 _ol_ramped:
+        // F3, the loop's gain: the crossfader times the transport's weight, which moves a frame at a time towards the
+        // loop side's state (OL_TF of OL_TFADE_FRAMES, eased) while it fades at STOP or when the transport runs again
+        F3 = PASS F15;
+        R11 = PASS R11;
+        IF EQ JUMP _ol_weighed;
+        R0 = DM(OL_TF,I5);
+        R1 = 1;
+        R2 = DM(OL_TRUN,I5);
+        R2 = PASS R2;
+        IF EQ R1 = -R1;
+        R0 = R0 + R1;
+        R1 = 0;
+        R0 = MAX(R0,R1);
+        R1 = OL_TFADE_FRAMES;
+        R0 = MIN(R0,R1);
+        DM(OL_TF,I5) = R0;
+        F1 = FLOAT R0;
+        F1 = F1 * F13;
+        // a * a * (3 - 2a)
+        F0 = F1 * F1;
+        F1 = F1 + F1;
+        R2 = 0x40400000;
+        F1 = F2 - F1;
+        F0 = F0 * F1;
+        F3 = F3 * F0;
+_ol_weighed:
         R4 = DM(I0,M6);
         R8 = DM(I1,M6);
         // the tap: what the loop adds to the output, at the level of the mix before the master stage
-        F0 = F9 * F15;
-        F1 = F10 * F15;
+        F0 = F9 * F3;
+        F1 = F10 * F3;
         R2 = DM(OL_INV,I5);
         F0 = F0 * F2;
         F1 = F1 * F2;
@@ -581,15 +726,16 @@ _ol_ramped:
         R12 = R12 + R0;
         // LIVE is the input as it is, LOOP the loop as it is
         R0 = 0;
-        COMP(F15,F0);
+        COMP(F3,F0);
         IF EQ JUMP _ol_dry;
-        COMP(F15,F11);
+        R0 = 0x3f800000;
+        COMP(F3,F0);
         IF EQ JUMP _ol_out;
         F0 = F9 - F4;
-        F0 = F0 * F15;
+        F0 = F0 * F3;
         F9 = F4 + F0;
         F0 = F10 - F8;
-        F0 = F0 * F15;
+        F0 = F0 * F3;
         F10 = F8 + F0;
         JUMP _ol_out;
 _ol_dry:
@@ -613,11 +759,7 @@ _ol_mix_end: DM(I3,M6) = R10;
     R0 = 0;
     COMP(F15,F0);
     IF NE JUMP _ol_record;
-    DM(OL_LOOP,I5) = R0;
-    DM(OL_DROP,I5) = R0;
-    DM(OL_HELD,I5) = R0;
-    DM(OL_CUT,I5) = R0;
-    DM(OL_JUMP,I5) = R0;
+    CALL _ol_gone;
 
     // ---- What was heard goes to the rolling record. Its next frame is a whole number of blocks, so a block never wraps.
 _ol_record:
@@ -763,6 +905,14 @@ _ol_publish:
     R0 = DM(OL_HELD,I5);
     R0 = LSHIFT R0 BY 5;
     R1 = R1 OR R0;
+    // LS_STOPPED: a loop is held and the loop side does not play (the transport stopped)
+    R0 = DM(OL_TRUN,I5);
+    R3 = 1;
+    R0 = R0 XOR R3;
+    R3 = DM(OL_LOOP,I5);
+    R0 = R0 AND R3;
+    R0 = LSHIFT R0 BY 6;
+    R1 = R1 OR R0;
     R0 = DM(OL_COUNT,I5);
     R0 = LSHIFT R0 BY LS_COUNT_SHIFT;
     R1 = R1 OR R0;
@@ -812,6 +962,48 @@ _ol_bad:
     // the adapter's guard plays the input and resets the state
     R0 = -1;
     JUMP (M13,I13);
+
+// The last boundary, for a CONTINUE: the loop's phase at this one, its step (R11), OL_T and the generation (R13); and the frames
+// of the step that just ended when it was a whole one (it began after a boundary of this generation, and this step follows
+// it in order, of R10 steps). Uses R0 to R3.
+_ol_mark:
+    R1 = DM(OL_T,I5);
+    R3 = 1;
+    R0 = DM(OL_BGEN,I5);
+    COMP(R0,R13);
+    IF NE JUMP _ol_mark_at;
+    R3 = 2;
+    R0 = DM(OL_BOK,I5);
+    COMP(R0,R3);
+    IF NE JUMP _ol_mark_at;
+    R0 = DM(OL_BSTEP,I5);
+    R0 = R0 + 1;
+    R2 = 0;
+    COMP(R0,R10);
+    IF GE R0 = PASS R2;
+    COMP(R0,R11);
+    IF NE JUMP _ol_mark_at;
+    R0 = DM(OL_BT,I5);
+    R0 = R1 - R0;
+    DM(OL_BLEN,I5) = R0;
+_ol_mark_at:
+    DM(OL_BOK,I5) = R3;
+    DM(OL_BT,I5) = R1;
+    DM(OL_BSTEP,I5) = R11;
+    DM(OL_BGEN,I5) = R13;
+    R0 = DM(OL_PHASE,I5);
+    DM(OL_BPH,I5) = R0;
+    RTS;
+
+// A dropped loop is gone. Uses R0.
+_ol_gone:
+    R0 = 0;
+    DM(OL_LOOP,I5) = R0;
+    DM(OL_DROP,I5) = R0;
+    DM(OL_HELD,I5) = R0;
+    DM(OL_CUT,I5) = R0;
+    DM(OL_JUMP,I5) = R0;
+    RTS;
 
 // A new engine (a load, a reset of the state, a lease that moved) goes on counting loops from the count its status mailbox
 // shows, so a loop it takes has a count the home and the pages have not seen. Uses R0 to R2, I4.
@@ -1025,10 +1217,17 @@ _ol_capture_base:
     R0 = 1;
     DM(OL_LOOP,I5) = R0;
     DM(OL_HELD,I5) = R0;
+    // a capture is at a boundary while the transport runs: the loop side plays in full at once
+    DM(OL_TRUN,I5) = R0;
+    R0 = OL_TFADE_FRAMES;
+    DM(OL_TF,I5) = R0;
     R0 = 0x3f800000;
     DM(OL_GAIN,I5) = R0;
     R0 = 0;
     DM(OL_PHASE,I5) = R0;
+    // this boundary is the loop's first frame
+    DM(OL_BPH,I5) = R0;
+    DM(OL_SYNC,I5) = R0;
     DM(OL_DROP,I5) = R0;
     DM(OL_JUMP,I5) = R0;
     DM(OL_ARMED,I5) = R0;

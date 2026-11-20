@@ -29,14 +29,20 @@ PRISM's cells, `ARM` above E (`OFF` or `ON`) and `XFAD` above H with the crossfa
 What happens, case by case:
 
 - **A change at the pattern's end** (the usual one): the loop is the cycle that just ended, to the block. What is heard
-  after the change is what was heard one cycle earlier.
-- **A direct change in the middle of a pattern:** the loop is the last L frames before the change, L the length of the
-  last whole cycle. It starts in the middle of a bar and goes on from there.
+  after the change is what was heard one cycle earlier. A pattern queued early in the cycle changes nothing until it is
+  heard: up to then what is played live is heard ([finding 365](../../../docs/findings/365-loop-transport-and-playing-pattern.md)).
+- **A direct change in the middle of a pattern** (direct start or direct jump): the loop is the last L frames before the
+  step where the new pattern begins, L the length of the last whole cycle. It starts in the middle of a bar and goes on
+  from there.
 - **Less than one cycle since START:** L is the frames a step has taken so far times the pattern's steps; the loop holds
   what was heard before START as well (the record runs while the transport is stopped). Frames from before the module
   was loaded are silence.
 - **A change while the transport is stopped** takes no loop, and the arm stays for the next change while it plays.
-- **STOP** leaves the loop playing. **START** begins it again with the pattern's first step (over 256 frames, without a click).
+- **STOP** (or a pause) fades the loop out over 256 frames (5 ms, eased), and while the transport is stopped the input
+  passes as at LIVE: what is played live (the keys, CANOPY, the input) is heard wherever XFAD stands. The loop, XFAD and
+  an arm are kept; PRISM at INPT LOOP hears silence. **START** begins the loop again at its first frame with the
+  pattern's first step, faded in over 256 frames, to where XFAD stands. **CONTINUE** after a pause goes on where the loop
+  stood, in time with the pattern, which goes on where it paused too.
 - **A tempo change after the capture** leaves the loop its recorded length.
 - **Arming again while a loop plays** is allowed: the next change keeps what is heard then, the new pattern and
   whatever of the old loop the crossfader mixes in. If that change comes sooner than about half its cycle after the
@@ -67,8 +73,14 @@ any more: the kit loads as any kit does and changes nothing in Overloop.
   on in the other one, where the frames heard before the change are filled in from the loop's buffer, a block each
   block, so that a second change soon after the first finds them. Both descriptors are checked every block; no address is embedded.
 - **The boundary** comes from `core/pattern-position`: a step boundary begins with the block whose record counts it, as
-  the notes of that step do, so the loop is a whole number of blocks and is exactly what was heard. A boundary of another
-  pattern is the change; a boundary of another start generation is a START. No hook into the firmware was added.
+  the notes of that step do, so the loop is a whole number of blocks and is exactly what was heard. The record carries
+  the pattern whose step begins there (the playing pattern, not the one the sequencer schedules a step ahead from). A
+  boundary of another pattern is the change; a boundary of another start generation is a START. No hook into the
+  firmware was added.
+- **The transport:** the record's RUNNING flag and raw transport (0 stopped, 2 paused). At the first record that does not
+  run, the loop's phase is kept (for a CONTINUE) and the loop side fades out; at the first boundary after the transport
+  runs again it begins (at its first frame, or after a pause where it stood) and fades in. The fade is
+  `OL_TFADE_FRAMES` (256), the weight a·a·(3 - 2a) applied to the crossfader. The status shows `LS_STOPPED` meanwhile.
 - **A record that comes again or late** (on the device a frame of the link comes twice or late when the ColdFire's block
   interrupt is held off; the position receiver then keeps the last good record, [finding 363](../../../docs/findings/363-loop-link-jitter.md)):
   a record whose send count did not move is no news, and the run of boundaries goes on. A send count that moved by up to
@@ -100,10 +112,10 @@ Sources: `src/dsp/overloop.s` (the engine), `src/overloop.h` (its state and the 
 ## Verification
 
 ```bash
-pnpm nx:pilot run digikit/overloop:test-rig        # the engine on the SHARC-only rig, 23 cases, about 15 s
+pnpm nx:pilot run digikit/overloop:test-rig        # the engine on the SHARC-only rig, 45 cases, about 15 s
 pnpm nx:pilot run core/loop-control:test-host      # the control home
 pnpm nx:pilot run core/loop-display:test-host      # the page: keys, turns, the texts of every state
-pnpm nx:pilot run digikit/overloop:test-device     # the emulated Digitakt II: an armed pattern change with two patterns
+pnpm nx:pilot run digikit/overloop:test-device     # the emulated Digitakt II: an armed change, a queued one, the transport
 pnpm nx:pilot run digikit/overloop:pack            # the package for the Digitakt II
 ```
 
@@ -111,7 +123,11 @@ pnpm nx:pilot run digikit/overloop:pack            # the package for the Digitak
 stand-ins for the storage descriptors, the position record, the status mailbox and the tap (`tests/provider.s`,
 `tests/loop-rig.ts`). Each case above has a number there, and the heaviest block is the `dsp_cost_fx` of `module.toml`.
 `tests/transition.device.test.ts` plays two patterns of the test instrument on the patched firmware, arms, changes the
-pattern, and compares what is heard across the change with one cycle earlier.
+pattern, and compares what is heard across the change with one cycle earlier. `tests/transport.device.test.ts` queues the
+change early in the cycle and plays track 1 live after it, reads the sequencer's scheduled and playing pattern words while
+it waits, and shows where the loop takes over; then STOP, START, PAUSE and CONTINUE with the loop at LOOP. The rig models
+the change modes (sequential, direct start, direct jump), a pause and a CONTINUE, and the record of the provider before
+finding 365 (`identity: 'scheduled'`) as a control.
 
 ### Listening
 

@@ -2407,6 +2407,16 @@ mark = "D"
 rule = "fw/param:cf_params_refs"
 
 [[anchor]]
+name = "cf.pattern.site.playing_lit"
+cpu = "cf"
+kind = "code"
+addr = 0x400d84ae
+len = 4
+sha256 = "7ef13a8503428bc9f991c85ed1ea5f4aea021ce9eb00dbf91a39f5810c023c84"
+mark = "D"
+rule = "fw/pattern:cf_window_hash"
+
+[[anchor]]
 name = "cf.pattern.site.start"
 cpu = "cf"
 kind = "code"

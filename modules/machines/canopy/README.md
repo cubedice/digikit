@@ -280,7 +280,11 @@ tails still render after reset ACK. A newer stream epoch resets all tracks.
 
 When all four foreground slots are occupied, reclaim the quietest releasing note
 first (oldest token breaks ties), otherwise the oldest held note. Preserve its
-phase and gain in a free tail slot and fade it within 64 samples. If both tails
+phase and gain in a free tail slot and fade it within 64 samples. Every reset and
+steal fade is eased: from the level e0 where it begins to 0 over ceil(64 e0)
+samples with the weight 1 - s(k/D), s(u) = u u (3 - 2u), so it has no corner at
+either end; the linear fade it replaces clicked at every chord trig while the arp
+restarted (RST TRIG) ([finding 366](../../../docs/findings/366-canopy-trig-click.md)). If both tails
 are occupied, fade the displaced note in its foreground slot and queue the new
 onset there; it starts after at most two render blocks. Pending replacements can
 themselves be replaced or released without sounding. Never-rendered intermediate

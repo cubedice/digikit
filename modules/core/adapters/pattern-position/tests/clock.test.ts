@@ -4,10 +4,11 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'vitest';
 
-test('master scale changes commit with their audible nominal boundary', () => {
+/** Compile one harness of the boundary queue (src/cf/boundary.c with PP_QUEUE_TEST) for the host and run it. */
+function runHarness(name: string): void {
   const temp = mkdtempSync(join(tmpdir(), 'dk-phrase-clock-'));
   try {
-    const executable = join(temp, 'clock');
+    const executable = join(temp, name);
     execFileSync(
       'cc',
       [
@@ -16,7 +17,7 @@ test('master scale changes commit with their audible nominal boundary', () => {
         '-Wall',
         '-Wextra',
         '-Werror',
-        resolve('modules/core/adapters/pattern-position/tests/clock_harness.c'),
+        resolve(`modules/core/adapters/pattern-position/tests/${name}.c`),
         '-o',
         executable,
       ],
@@ -26,4 +27,12 @@ test('master scale changes commit with their audible nominal boundary', () => {
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }
+}
+
+test('master scale changes commit with their audible nominal boundary', () => {
+  runHarness('clock_harness');
+});
+
+test('a boundary carries the playing pattern and its length, taken at master step edges', () => {
+  runHarness('playing_harness');
 });

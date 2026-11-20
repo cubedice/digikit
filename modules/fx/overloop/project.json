@@ -5,7 +5,8 @@
     "runtimeAcceptance": [
       {
         "files": [
-          "tests/transition.device.test.ts"
+          "tests/transition.device.test.ts",
+          "tests/transport.device.test.ts"
         ],
         "devices": [
           "dt2"
@@ -28,7 +29,8 @@
         "tags": [
           "A:core/dynfx",
           "A:core/fxpages",
-          "A:core/loop-display"
+          "A:core/loop-display",
+          "A:core/pattern-position"
         ]
       }
     ]

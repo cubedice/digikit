@@ -10,7 +10,8 @@
  *     rig.arm(); rig.changeAtEnd(B);                 // ARM, and pattern B at the end of A's cycle
  *
  * The rig's sequencer writes the position record the way core/pattern-position does: a boundary is counted in the record
- * of the block it begins with. That is a stream of one record a block; `delivery` chooses which of them the engine sees in
+ * of the block it begins with, and it carries the pattern whose step begins there (the playing pattern, finding 365);
+ * `identity: 'scheduled'` gives the record of the provider before that fix instead. That is a stream of one record a block; `delivery` chooses which of them the engine sees in
  * a block, as the device's link does when a frame comes twice or late (the receiver then keeps the last good record). The
  * control home is played by the rig as well: it hands the crossfader and the counters
  * to the engine as parameter words and, like core/loop-control, sets the crossfader to LOOP when the status shows a new
@@ -97,6 +98,12 @@ export interface LoopRigOptions {
    * (one that came again) and at most the next one (the block after it then sees that record again). See `jitter`.
    */
   delivery?: (block: number) => number;
+  /**
+   * The pattern the record carries: the one whose step begins at the boundary (`playing`, the default, as core/pattern-position
+   * writes it), or the pointer the stock sequencer schedules from (`scheduled`, the provider before finding 365): at a change
+   * at the end it moves to the new pattern, with its length, at the boundary of the old pattern's last step.
+   */
+  identity?: 'playing' | 'scheduled';
 }
 
 /**
@@ -132,6 +139,7 @@ export interface Status {
   track: boolean;
   nextCut: boolean;
   held: boolean;
+  stopped: boolean;
   count: number;
   loopFrames: number;
   nextFrames: number;
@@ -165,10 +173,17 @@ export class LoopRig {
   private wetSeq = 0;
   // the sequencer
   private running = false;
+  /** paused (raw transport 2): a CONTINUE goes on where it stood */
+  private paused = false;
+  /** after a CONTINUE: the frames of the step that was playing when it paused that are still to come */
+  private continued: number | undefined;
+  private remaining = 0;
   private pattern: Pattern | undefined;
   private step = 0;
   private nextBoundary = 0;
-  private pending: { pattern: Pattern; atEnd: boolean } | undefined;
+  private pending: { pattern: Pattern; atEnd: boolean; keepStep?: boolean } | undefined;
+  /** what the record carries as the pattern and its steps (identity 'scheduled': the new one a step early) */
+  private carried: Pattern | undefined;
   private generation = 0;
   private tx = 0;
   private boundaries = 0;
@@ -271,6 +286,8 @@ export class LoopRig {
   start(pattern: Pattern): void {
     this.atStream('start');
     this.running = true;
+    this.paused = false;
+    this.continued = undefined;
     this.pattern = pattern;
     this.pending = undefined;
     this.step = -1;
@@ -281,7 +298,39 @@ export class LoopRig {
   stop(): void {
     this.atStream('stop');
     this.running = false;
+    this.paused = false;
     this.pending = undefined;
+  }
+
+  /** PLAY while it plays: the transport pauses (raw transport 2) in the middle of the step that plays. */
+  pause(): void {
+    this.atStream('pause');
+    if (!this.running) throw new Error('pause: the sequencer does not run');
+    this.running = false;
+    this.paused = true;
+    this.pending = undefined;
+    this.remaining = this.nextBoundary - this.clock;
+  }
+
+  /**
+   * PLAY while paused, a CONTINUE: a new start generation whose first boundary, with the next block, is the step that was
+   * playing (the stock start event repeats it); the next step follows when the rest of that step has passed. The stock
+   * sequencer goes on from the point it had scheduled when it paused, `lead` frames after the one that was heard (the
+   * emulated DT2: 608 to 848 frames at 120 BPM, finding 365). `repeat: false`: no repeated boundary, the next step is the
+   * first.
+   */
+  resume(o: { lead?: number; repeat?: boolean } = {}): void {
+    this.atStream('resume');
+    if (!this.paused) throw new Error('resume: the sequencer is not paused');
+    const rest = this.remaining - (o.lead ?? 0);
+    if (rest <= 0 || rest % BLOCK) throw new Error(`resume: ${rest} frames of the paused step are left`);
+    this.running = true;
+    this.paused = false;
+    this.generation += 1;
+    if (o.repeat ?? true) {
+      this.continued = rest;
+      this.nextBoundary = this.clock;
+    } else this.nextBoundary = this.clock + rest;
   }
 
   /** The pattern changes at the end of the cycle that plays (a sequential change). */
@@ -290,10 +339,16 @@ export class LoopRig {
     this.pending = { pattern, atEnd: true };
   }
 
-  /** The pattern changes at the next step boundary: the new pattern starts at its first step there (a direct change). */
+  /** The pattern changes at the next step boundary: the new pattern starts at its first step there (direct start). */
   changeNow(pattern: Pattern): void {
     this.atStream('changeNow');
     this.pending = { pattern, atEnd: false };
+  }
+
+  /** The pattern changes at the next step boundary and goes on from the step that comes next (direct jump). */
+  changeJump(pattern: Pattern): void {
+    this.atStream('changeJump');
+    this.pending = { pattern, atEnd: false, keepStep: true };
   }
 
   /** While stopped: another pattern is selected; it plays from the next START. */
@@ -319,20 +374,35 @@ export class LoopRig {
   private record(clock: number): number[] {
     if (this.running && this.pattern && clock >= this.nextBoundary) {
       let pattern = this.pattern;
-      let step = this.step + 1;
-      if (step >= pattern.steps) step = 0;
-      if (this.pending && (!this.pending.atEnd || step === 0) && this.step >= 0) {
-        pattern = this.pending.pattern;
-        step = 0;
-        this.pending = undefined;
+      let step: number;
+      let frames: number;
+      if (this.continued !== undefined) {
+        // the first boundary of a CONTINUE: the step that was playing, again, for the rest of its frames
+        step = this.step;
+        frames = this.continued;
+        this.continued = undefined;
+      } else {
+        step = this.step + 1;
+        if (step >= pattern.steps) step = 0;
+        if (this.pending && (!this.pending.atEnd || step === 0) && this.step >= 0) {
+          const next = this.pending.pattern;
+          step = this.pending.keepStep ? step % next.steps : 0;
+          pattern = next;
+          this.pending = undefined;
+        }
+        frames = this.framesOf(pattern);
       }
       this.pattern = pattern;
       this.step = step;
-      this.nextBoundary = clock + this.framesOf(pattern);
+      this.nextBoundary = clock + frames;
       this.boundaries += 1;
       this.log.push([clock, pattern.id, step]);
+      // the scheduled pointer: at a change at the end it is the new pattern from the boundary of the old one's last step on
+      this.carried =
+        this.o.identity === 'scheduled' && this.pending?.atEnd && step === pattern.steps - 1 ? this.pending.pattern : pattern;
     }
     this.tx += 1;
+    const carried = this.carried ?? this.pattern;
     return [
       0x50504f53,
       2,
@@ -340,9 +410,16 @@ export class LoopRig {
       this.boundaries,
       this.generation,
       this.running ? 3 : 0,
-      this.pattern?.id ?? 0,
+      carried?.id ?? 0,
       Math.max(this.step, 0),
-      this.pattern?.steps ?? 0,
+      carried?.steps ?? 0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      // the raw transport: 0 stopped, 1 running, 2 paused
+      this.running ? 1 : this.paused ? 2 : 0,
     ];
   }
 
@@ -397,6 +474,7 @@ export class LoopRig {
       track: (state & LP.LS_TRACK!) !== 0,
       nextCut: (state & LP.LS_NEXT_CUT!) !== 0,
       held: (state & LP.LS_HELD!) !== 0,
+      stopped: (state & LP.LS_STOPPED!) !== 0,
       count: state >>> LP.LS_COUNT_SHIFT!,
       loopFrames: w[LP.LS_LOOP_FRAMES!]!,
       nextFrames: w[LP.LS_NEXT_FRAMES!]!,
