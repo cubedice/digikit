@@ -32,6 +32,9 @@
 #define LS_TRACK 8
 #define LS_NEXT_CUT 16
 #define LS_HELD 32
+// LS_STOPPED: a loop is held and the transport has stopped or paused: the loop side fades out and is silent until the
+// transport runs again (the input plays as at LIVE; the crossfader and the loop are kept).
+#define LS_STOPPED 64
 #define LS_COUNT_SHIFT 8
 // The loop's frames (0: none), the frames an armed change would keep now (0: not known), the loop's phase in frames, the
 // crossfader as applied (float).

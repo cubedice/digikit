@@ -503,32 +503,6 @@ describe('Overloop engine: the boundary cases', () => {
     });
   });
 
-  test('STOP leaves the loop playing; START begins it again with the pattern, without a click', async () => {
-    await withRig({}, async (rig) => {
-      const { take, change } = await armedChange(rig, 3, 1);
-      const origin = change - CYCLE;
-      rig.stop();
-      const stopped = await rig.run(blocks(CYCLE + 5 * STEP), SOUND_B);
-      let worst = 0;
-      for (let k = 0; k < stopped.left.length; k++)
-        worst = Math.max(worst, Math.abs(stopped.left[k]! - take.left[origin + ((stopped.start + k - change) % CYCLE)]!));
-      expect(worst, 'stopped: the loop goes on in its phase').toBe(0);
-      // START in the middle of the loop: it begins again with the first step
-      rig.start(B);
-      const started = await rig.run(blocks(2 * CYCLE), SOUND_B);
-      const settle = OL.OL_JUMP_FRAMES!;
-      worst = 0;
-      for (let k = settle; k < started.left.length; k++) worst = Math.max(worst, Math.abs(started.left[k]! - take.left[origin + (k % CYCLE)]!));
-      const all = join(stopped, started);
-      const at = stopped.left.length;
-      const measure = maxSecondDifference(all.left, at - 8, at + settle + 8).value / maxSecondDifference(take.left, origin + 200, change - 200).value;
-      note(`START at phase ${(stopped.start + stopped.left.length - change) % CYCLE} of the loop: from ${settle} frames on it is the loop from its start (difference ${worst}); click over the restart ${measure.toFixed(2)} x steady`);
-      expect(worst).toBe(0);
-      expect(measure).toBeLessThan(1.6);
-      expect(await rig.status()).toMatchObject({ loop: true, count: 1, loopFrames: CYCLE });
-    });
-  });
-
   test('a lease that changes under the running engine: it starts anew in the new buffers, without a fault', async () => {
     await withRig({}, async (rig) => {
       await armedChange(rig, 3, 1);
@@ -550,9 +524,10 @@ describe('Overloop engine: the boundary cases', () => {
   test('START while the crossfader moves, and the seam while it stands between: the heaviest blocks', async () => {
     await withRig({ tap: true }, async (rig) => {
       const { take, change } = await armedChange(rig, 3, 1);
+      // STOP, and START again two blocks later, while the loop side still fades out: the restart's declick, the loop
+      // side's fade in, the crossfader on its way and the mix, all in the same blocks
       rig.stop();
-      await rig.run(blocks(3 * STEP), SOUND_B);
-      // the restart's declick, the crossfader on its way and the mix, all in the same blocks
+      await rig.run(2, SOUND_B);
       rig.setXfad(30);
       rig.start(B);
       const moving = await rig.run(blocks(STEP), SOUND_B);
@@ -602,6 +577,236 @@ describe('Overloop engine: the boundary cases', () => {
       expect(sameBits(broken.left, broken.dryLeft)).toBe(0);
       expect((await rig.status()).loop).toBe(false);
     });
+  });
+});
+
+describe('Overloop engine: the transport (docs/findings/365)', () => {
+  const FADE = OL.OL_TFADE_FRAMES!;
+  /** The loop's sample at `phase` (the loop of armedChange: the cycle before `change`). */
+  const loopSample = (take: Take, change: number, side: 'left' | 'right', phase: number): number =>
+    take[side][change - CYCLE + (((phase % CYCLE) + CYCLE) % CYCLE)]!;
+  /** The click measure over a fade of FADE frames from `at`, against the larger steady measure of the two sounds it joins. */
+  const fadeClick = (x: ArrayLike<number>, at: number, ...steady: [ArrayLike<number>, number, number][]): number =>
+    maxSecondDifference(x, at - 64, at + FADE + 64).value /
+    Math.max(...steady.map(([y, from, to]) => maxSecondDifference(y, from, to).value));
+
+  test('STOP: the loop side fades out, then the input plays bit for bit; the tap is silent; the loop and XFAD are kept', async () => {
+    await withRig({ tap: true }, async (rig) => {
+      const { take, change } = await armedChange(rig, 3, 1);
+      expect((await rig.status()).gain).toBe(1);
+      // what plays live while the transport is stopped: the keys and the input
+      const keys = periodic(CYCLE, 13, 3, 0.2);
+      const phase = (await rig.state(OL.OL_PHASE!))[0]!;
+      rig.stop();
+      const stopped = await rig.run(blocks(2 * CYCLE), keys);
+      // the stop counts from the next block's record: the fade starts with this take
+      expect(sameBits(stopped.left, stopped.dryLeft, FADE) + sameBits(stopped.right, stopped.dryRight, FADE), 'after the fade: the input').toBe(0);
+      // the fade from the loop at its phase to the keys, eased: out = in + (loop - in) * w, w from 1 to 0
+      let law = 0;
+      for (let k = 0; k < FADE; k++) {
+        const a = Math.fround(Math.fround(FADE - 1 - k) * Math.fround(1 / 256));
+        const w = Math.fround(Math.fround(a * a) * Math.fround(3 - Math.fround(a + a)));
+        const l = loopSample(take, change, 'left', phase + k);
+        const want = Math.fround(stopped.dryLeft[k]! + Math.fround(Math.fround(l - stopped.dryLeft[k]!) * w));
+        if (f2w(stopped.left[k]!) !== f2w(want)) law += 1;
+      }
+      expect(law, 'the fade: the eased weight, sample by sample').toBe(0);
+      const all = join(take, stopped);
+      const at = take.left.length;
+      const measure = fadeClick(all.left, at, [take.left, change + 200, change + CYCLE - 200], [stopped.left, FADE + 200, CYCLE - 200]);
+      // the tap: the loop side as it fades, then nothing
+      expect(peak(stopped.tapLeft, FADE) + peak(stopped.tapRight, FADE), 'the tap is silent').toBe(0);
+      expect((await rig.tapHead())[3]! & LP.LT_AUDIBLE!, 'and says no loop is mixed').toBe(0);
+      const status = await rig.status();
+      expect(status).toMatchObject({ loop: true, stopped: true, count: 1, loopFrames: CYCLE, gain: 1, track: false });
+      expect(rig.xfad, 'the home keeps XFAD').toBe(127);
+      note(`STOP with the loop at LOOP: the loop side fades out over ${FADE} frames (the eased weight bit for bit), click ${measure.toFixed(2)} x steady; then the keys bit for bit and the tap silent; loop and XFAD kept`);
+      expect(measure).toBeLessThan(1.5);
+    });
+  });
+
+  test('START: the loop begins at its first frame with the pattern and fades in, to where XFAD stands', async () => {
+    await withRig({}, async (rig) => {
+      const { take, change } = await armedChange(rig, 3, 1);
+      rig.stop();
+      const stopped = await rig.run(blocks(CYCLE + 3 * STEP), SOUND_B);
+      // START: the loop at LOOP from its first frame, after the fade in
+      rig.start(B);
+      const started = await rig.run(blocks(2 * CYCLE), SOUND_B);
+      let worst = 0;
+      for (let k = FADE; k < started.left.length; k++) worst = Math.max(worst, Math.abs(started.left[k]! - loopSample(take, change, 'left', k)));
+      expect(worst, 'from the fade on: the loop from its first frame').toBe(0);
+      const all = join(stopped, started);
+      const measure = fadeClick(all.left, stopped.left.length, [stopped.left, 200, CYCLE - 200], [take.left, change + 200, change + CYCLE - 200]);
+      expect(await rig.status()).toMatchObject({ loop: true, stopped: false, count: 1, loopFrames: CYCLE, gain: 1 });
+      // XFAD moved while stopped: the loop comes back to where it stands, by the law
+      rig.stop();
+      await rig.run(blocks(CYCLE), SOUND_B);
+      rig.setXfad(100);
+      await rig.run(blocks(STEP), SOUND_B);
+      expect(await rig.status(), 'stopped, the crossfader is where XFAD stands').toMatchObject({ stopped: true, gain: Math.fround(100 / 127) });
+      rig.start(B);
+      const back = await rig.run(blocks(CYCLE), SOUND_B);
+      const g = Math.fround(100 / 127);
+      let differ = 0;
+      for (let k = FADE; k < back.left.length; k++) {
+        const l = loopSample(take, change, 'left', k);
+        if (f2w(back.left[k]!) !== f2w(Math.fround(back.dryLeft[k]! + Math.fround(Math.fround(l - back.dryLeft[k]!) * g)))) differ += 1;
+      }
+      expect(differ, 'at 100 after the fade in: the law bit for bit, the loop from its first frame').toBe(0);
+      note(`START after STOP: the loop from its first frame with the pattern's first step, faded in over ${FADE} frames (then difference ${worst}), click ${measure.toFixed(2)} x steady; XFAD 100 set while stopped is where it comes back to`);
+      expect(measure).toBeLessThan(1.5);
+    });
+  });
+
+  test('PAUSE and CONTINUE: the loop side fades out, and the loop goes on where it stood with the pattern', async () => {
+    await withRig({}, async (rig) => {
+      const { take, change } = await armedChange(rig, 3, 1);
+      // pause in the middle of a step: the loop's phase then is where it goes on
+      await rig.run(blocks(2 * STEP + STEP / 2), SOUND_B);
+      const halt = (await rig.state(OL.OL_PHASE!))[0]!;
+      rig.pause();
+      const paused = await rig.run(blocks(CYCLE), SOUND_B);
+      expect(sameBits(paused.left, paused.dryLeft, FADE), 'paused: the input after the fade').toBe(0);
+      expect(await rig.status()).toMatchObject({ loop: true, stopped: true });
+      expect((await rig.state(OL.OL_PAUSED!))[0]).toBe(1);
+      rig.resume();
+      const resumed = await rig.run(blocks(2 * CYCLE), SOUND_B);
+      let worst = 0;
+      for (let k = FADE; k < resumed.left.length; k++)
+        worst = Math.max(worst, Math.abs(resumed.left[k]! - loopSample(take, change, 'left', halt + k)));
+      expect(worst, 'after the fade in: the loop from where it stood').toBe(0);
+      // and in time with the pattern: the step after the one that was paused begins where the loop has that step
+      const next = rig.log.find(([frame]) => frame > resumed.start)!;
+      expect(next[2], 'the step after the paused one').toBe(3);
+      expect((halt + next[0] - resumed.start) % CYCLE, 'the loop is at that step there').toBe(3 * STEP);
+      const all = join(paused, resumed);
+      const measure = fadeClick(all.left, paused.left.length, [paused.left, FADE + 200, CYCLE - 200], [take.left, change + 200, change + CYCLE - 200]);
+      note(`PAUSE at loop phase ${halt}, CONTINUE: the loop goes on from ${halt} (difference ${worst} after the fade in), the next step on the loop's step; click ${measure.toFixed(2)} x steady`);
+      expect(measure).toBeLessThan(1.5);
+      // a pause, then STOP: START begins at the loop's first frame
+      rig.pause();
+      await rig.run(blocks(STEP), SOUND_B);
+      rig.stop();
+      await rig.run(blocks(STEP), SOUND_B);
+      expect((await rig.state(OL.OL_PAUSED!))[0]).toBe(0);
+      rig.start(B);
+      const restarted = await rig.run(blocks(CYCLE), SOUND_B);
+      worst = 0;
+      for (let k = FADE; k < restarted.left.length; k++) worst = Math.max(worst, Math.abs(restarted.left[k]! - loopSample(take, change, 'left', k)));
+      expect(worst, 'a pause, STOP, START: the loop from its first frame').toBe(0);
+    });
+  });
+
+  test.each([
+    ['repeats the paused step and goes on 64 frames after what was heard', { lead: 64 }],
+    ['does not repeat the paused step', { lead: 64, repeat: false }],
+  ])('a CONTINUE that %s: from the next step the loop is where that step begins in it', async (what, resume) => {
+    await withRig({}, async (rig) => {
+      const { take, change } = await armedChange(rig, 3, 1);
+      await rig.run(blocks(2 * STEP + STEP / 2), SOUND_B);
+      rig.pause();
+      await rig.run(blocks(CYCLE), SOUND_B);
+      rig.resume(resume);
+      const resumed = await rig.run(blocks(2 * CYCLE), SOUND_B);
+      // the step after the paused one (the third of B's cycle) begins where the loop has it, and from the fades on the
+      // loop goes on from there
+      const next = rig.log.find(([frame, , step]) => frame > resumed.start && step === 3)!;
+      const at = next[0] - resumed.start;
+      let worst = 0;
+      for (let k = at + FADE; k < resumed.left.length; k++)
+        worst = Math.max(worst, Math.abs(resumed.left[k]! - loopSample(take, change, 'left', 3 * STEP + k - at)));
+      note(`CONTINUE that ${what}: the loop at the next step's place from ${FADE} frames after it (difference ${worst})`);
+      expect(worst).toBe(0);
+    });
+  });
+
+  test('an armed change while stopped takes nothing; after START the loop side plays again and the next change takes a loop', async () => {
+    await withRig({}, async (rig) => {
+      await armedChange(rig, 3, 1);
+      rig.stop();
+      rig.arm();
+      rig.select(C);
+      const stopped = await rig.run(blocks(CYCLE), SOUND_C);
+      expect(sameBits(stopped.left, stopped.dryLeft, FADE)).toBe(0);
+      expect(await rig.status()).toMatchObject({ loop: true, armed: true, stopped: true, count: 1 });
+      rig.start(C);
+      await rig.run(blocks(CYCLE + 3 * STEP), SOUND_C);
+      expect(await rig.status()).toMatchObject({ loop: true, armed: true, stopped: false, count: 1 });
+      rig.changeAtEnd(A);
+      await rig.run(blocks(5 * STEP + CYCLE), SOUND_A);
+      expect(await rig.status()).toMatchObject({ loop: true, armed: false, stopped: false, count: 2, loopFrames: CYCLE });
+    });
+  });
+});
+
+describe('Overloop engine: a change queued early takes the loop when the new pattern is heard (docs/findings/365)', () => {
+  /** A sound that comes in only when the change is queued: what is played live then, which no earlier cycle holds. */
+  const LIVE = periodic(CYCLE, 23, 7, 0.15);
+  const plus = (a: Signal, b: Signal): Signal => (n) => {
+    const [l1, r1] = a(n) as readonly [number, number];
+    const [l2, r2] = b(n) as readonly [number, number];
+    return [l1 + l2, r1 + r2];
+  };
+  /** Where the change is queued: in the middle of step 3 of A's third cycle. */
+  const QUEUED = 2 * CYCLE + 2 * STEP + STEP / 2;
+  /**
+   * A plays; ARM and `queue` in the middle of step 3 of its third cycle, and from then on a live sound is added to what
+   * plays, which no earlier cycle holds. The new pattern `next` (its sound `after`) is heard from `heard`. Gives the take.
+   */
+  async function queued(rig: LoopRig, queue: (rig: LoopRig) => void, next: Pattern, after: Signal, heard: number) {
+    rig.start(A);
+    const lead = await rig.run(blocks(QUEUED), SOUND_A);
+    rig.arm();
+    queue(rig);
+    const rest = await rig.run(blocks(4 * CYCLE), switchAt(heard, plus(SOUND_A, LIVE), plus(after, LIVE)));
+    expect(rig.log.find(([, id]) => id === next.id)![0], `the rig plays ${next.id.toString(16)} first at ${heard}`).toBe(heard);
+    return join(lead, rest);
+  }
+  /**
+   * The first frame from `from` on at which the output is what it was one cycle earlier, for a cycle less the seam: where
+   * the loop took over (the loop's seam runs into frames from before the live sound, so it is left out).
+   */
+  const cut = (take: Take, from: number): number => {
+    for (let n = from; n + CYCLE <= take.left.length; n += BLOCK)
+      if (maxDifference(take.left, n, take.left, n - CYCLE, CYCLE - OL.OL_SEAM!) === 0) return n;
+    return -1;
+  };
+
+  test.each([
+    ['sequential (at the end)', (rig: LoopRig) => rig.changeAtEnd(B), 3 * CYCLE],
+    ['direct start', (rig: LoopRig) => rig.changeNow(B), 2 * CYCLE + 3 * STEP],
+    ['direct jump', (rig: LoopRig) => rig.changeJump(B), 2 * CYCLE + 3 * STEP],
+  ])('%s: the loop is taken exactly where B begins, and until then the live change is heard', async (what, queue, heard) => {
+    await withRig({}, async (rig) => {
+      const take = await queued(rig, queue, B, SOUND_B, heard);
+      const status = await rig.status();
+      expect(status).toMatchObject({ loop: true, armed: false, count: 1, loopFrames: CYCLE });
+      // until B begins the output is the input, with the live sound; from there the last cycle
+      expect(sameBits(take.left, take.dryLeft, QUEUED, heard) + sameBits(take.right, take.dryRight, QUEUED, heard), 'the live change is heard until B begins').toBe(0);
+      expect(cut(take, QUEUED), 'the loop takes over where B begins').toBe(heard);
+      const step = rig.log.find(([frame]) => frame === heard)![2];
+      note(`${what}, queued in step 3 of 8: B begins at frame ${heard} (its step ${step + 1}); the output is the input with the live sound up to there and the last cycle (${status.loopFrames} frames) from there, exactly`);
+    });
+  });
+
+  test('the record of the provider before the fix (the scheduled pattern) took the loop a step early, and none for a shorter pattern', async () => {
+    const heard = 3 * CYCLE;
+    await withRig({ identity: 'scheduled' }, async (rig) => {
+      const take = await queued(rig, (r) => r.changeAtEnd(B), B, SOUND_B, heard);
+      expect(cut(take, QUEUED), 'a step before B begins').toBe(heard - STEP);
+      const lost = maxDifference(take.left, heard - STEP, take.dryLeft, heard - STEP, STEP);
+      note(`with the scheduled pattern in the record a change at the end took the loop a step early (frame ${heard - STEP}); the live sound of that step was not heard (largest difference to the input ${lost.toFixed(3)})`);
+      expect(lost).toBeGreaterThan(0.05);
+    });
+    const D: Pattern = { id: 0x47000400, steps: 4, stepFrames: STEP };
+    const toShort = async (identity: 'playing' | 'scheduled') =>
+      withRig({ identity }, async (rig) => {
+        await queued(rig, (r) => r.changeAtEnd(D), D, periodic(4 * STEP, 3, 5, 0.2), heard);
+        return rig.status();
+      });
+    expect(await toShort('scheduled'), 'to 4 steps, scheduled: the last step of 8 is not a step of 4, the run ends').toMatchObject({ loop: false, armed: true });
+    expect(await toShort('playing'), 'with the playing pattern: the loop').toMatchObject({ loop: true, armed: false, loopFrames: CYCLE });
   });
 });
 

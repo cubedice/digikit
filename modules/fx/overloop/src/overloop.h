@@ -6,6 +6,9 @@
 #define OL_SEAM 480
 // Frames of the declick when the loop starts again at a START (the engine's weight of it is 1/256 a frame).
 #define OL_JUMP_FRAMES 256
+// Frames of the loop side's fade when the transport stops (out) and when it runs again (in), with an eased weight. The
+// engine moves the weight by 1/256 a frame, so this is 256.
+#define OL_TFADE_FRAMES 256
 // The smallest buffers the engine works with, in frames.
 #define OL_MIN_FRAMES 4096
 // The master stage of DT2 1.17 multiplies its sum by this (+10 dB, 3.1623: the literal 'R4 = 0x404a6320' of the master
@@ -104,5 +107,27 @@
 #define OL_INV 56
 // blocks in a row in which the position record did not move (it came again)
 #define OL_SAME 57
-#define OL_STATE_WORDS 60
-#define OL_STATE_BYTES 240
+// The transport (finding 365). OL_TRUN: 1 while the loop side plays, from a capture or the first boundary after the
+// transport ran again until a record says it stopped or paused. OL_TF: frames of the loop side's fade, 0 (silent) to
+// OL_TFADE_FRAMES (full); it moves a frame at a time towards OL_TRUN. OL_HALT: the loop's phase when the transport stopped,
+// where a CONTINUE goes on. OL_PAUSED: the transport is paused (a CONTINUE follows), not stopped (a START follows).
+#define OL_TRUN 58
+#define OL_TF 59
+#define OL_HALT 60
+#define OL_PAUSED 61
+// The last boundary, for a CONTINUE: the loop's phase there, its step, OL_T there and its generation; OL_BOK 0 none, 1 it
+// began a generation (its step may be a part of one), 2 it began a whole step. OL_BLEN: the frames of the last whole step
+// (two boundaries in order in one generation), 0 not known.
+#define OL_BPH 62
+#define OL_BSTEP 63
+#define OL_BT 64
+#define OL_BGEN 65
+#define OL_BOK 66
+#define OL_BLEN 67
+// After a CONTINUE that repeated the step that was playing: at the boundary of step OL_SYNC - 1 the loop is set to phase
+// OL_SYNC_PH, where that step begins in it (the stock sequencer goes on from the point it had scheduled, a little after the
+// one that was heard when it paused). 0: nothing pending.
+#define OL_SYNC 68
+#define OL_SYNC_PH 69
+#define OL_STATE_WORDS 72
+#define OL_STATE_BYTES 288
