@@ -263,6 +263,69 @@
   },
   {
    "addend": 0,
+   "offset": 28,
+   "section": ".text.pp_playing",
+   "symbol": ".sec..bss.shown_seen",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 42,
+   "section": ".text.pp_playing",
+   "symbol": ".sec..bss.shown_seen",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 54,
+   "section": ".text.pp_playing",
+   "symbol": ".sec..bss.shown_length",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 62,
+   "section": ".text.pp_playing",
+   "symbol": ".sec..bss.shown_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 68,
+   "section": ".text.pp_playing",
+   "symbol": ".sec..bss.shown_seen",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 76,
+   "section": ".text.pp_playing",
+   "symbol": ".sec..bss.shown_length",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 82,
+   "section": ".text.pp_playing",
+   "symbol": ".sec..bss.shown_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 94,
+   "section": ".text.pp_playing",
+   "symbol": ".sec..bss.shown_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 102,
+   "section": ".text.pp_playing",
+   "symbol": ".sec..bss.shown_length",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 6,
    "section": ".text.pp_commit",
    "symbol": ".sec..bss.count",
@@ -389,16 +452,37 @@
   },
   {
    "addend": 0,
-   "offset": 72,
+   "offset": 16,
    "section": ".text.pp_snapshot",
-   "symbol": ".sec..text.pp_observe_scaled",
+   "symbol": ".sec..text.pattern_ok",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 156,
+   "offset": 22,
+   "section": ".text.pp_snapshot",
+   "symbol": "pp_playing_lit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 122,
+   "section": ".text.pp_snapshot",
+   "symbol": ".sec..text.pp_playing",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 166,
    "section": ".text.pp_snapshot",
    "symbol": ".sec..text.pp_period",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 204,
+   "section": ".text.pp_snapshot",
+   "symbol": ".sec..text.pp_observe_scaled",
    "type": "cf.32"
   },
   {
@@ -524,6 +608,13 @@
   },
   {
    "align": 2,
+   "hex": "202f000422000681c00000000c8107fe2484620846807201c0814e75428060fa",
+   "kind": "text",
+   "name": ".text.pattern_ok",
+   "size": 32
+  },
+  {
+   "align": 2,
    "hex": "202f00087201b2af000467127206b280651441f90000000020300c004e75203c005265c060f6428060f2",
    "kind": "text",
    "name": ".text.pp_period",
@@ -552,6 +643,13 @@
   },
   {
    "align": 2,
+   "hex": "2f02242f0008222f0010202f001884af000c206f00204a8266084ab9000000006626b2af0014670c4ab900000000662c202f001c23c000000000700123c10000000023c000000000241f43f90000000020b900000000215100044e75b2b90000000066cc20390000000060c8",
+   "kind": "text",
+   "name": ".text.pp_playing",
+   "size": 108
+  },
+  {
+   "align": 2,
    "hex": "2f032f022439000000004a82670000c0203900000000721c41f9000000004c001800224126318800222f000c92836b00009eb6af000c6600008a222f0010b2b098146600008a4ab900000000670c222f0014b2b9000000006768d1c952b90000000043e80004528023d10000000043e80008538223c20000000023d10000000043e8000c23d10000000041e80010222f001423d00000000042b90000000023c100000000720fc280700123c000000000226f000c23c90000000023c100000000600c42b90000000042b900000000241f261f4e75",
    "kind": "text",
    "name": ".text.pp_commit",
@@ -566,10 +664,10 @@
   },
   {
    "align": 2,
-   "hex": "598f2f032f0224394316501c2042d1fcc0000000b1fc07fe248a620a7001c08208020000673242814280327943164f9c207943158f7c2f002f013f0942672f022f082f2f00244eb9000000004fef0018241f261f588f4e757379431651307601b6816d0e2242d3fc0001db747351b6816c36b1fc07fe248462b02042d1fc0001db7a10102242d3fc0001db79778010112f0371802f002f4100104eb900000000508f222f00086082428160c6",
+   "hex": "4e56ffe048d7041c26394316501c45f90000000020790000000024102f034e92588f28004a80660000b642aefff22f024e92588f4a80660824034a84670000d42042d1fc0001db74301078017340b8816c0000c071c0123943164f9a486efff82f002f2efff22f032f024a0157c0710044802f002f2e00084eb900000000242efff82f024e924fef00204a80671e2042d1fc0001db7a12101028ffff738171802f012f004eb900000000508f307943164f9c223943158f7c2f002f2efffc3f0842672f022f012f2e00084eb9000000004fef00184cee041cffe04e5e4e7530394316513072013d40fff67140b2806d162043d1fc0001db743d50fff6716efff6b2806c00ff2673eefff62d41fff26000ff1e42806000ff40",
    "kind": "text",
    "name": ".text.pp_snapshot",
-   "size": 172
+   "size": 280
   },
   {
    "align": 2,
@@ -591,6 +689,27 @@
    "kind": "data",
    "name": ".rodata.ticks.0",
    "size": 28
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.shown_seen",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.shown_length",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.shown_pattern",
+   "size": 4
   },
   {
    "align": 2,
@@ -677,7 +796,7 @@
    "size": 448
   }
  ],
- "source_sha256": "80abe33037cc9430a9330ed64d19b5ab768aa78f7a30f180441302af8f17e5de",
+ "source_sha256": "315feef70b22ebc4658271cd87cbe6accde7a18e9ecf7092d57946a424cfe657",
  "symbols": [
   {
    "global": false,
@@ -747,6 +866,24 @@
   },
   {
    "global": false,
+   "name": ".sec..bss.shown_length",
+   "section": ".bss.shown_length",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.shown_pattern",
+   "section": ".bss.shown_pattern",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.shown_seen",
+   "section": ".bss.shown_seen",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..bss.valid",
    "section": ".bss.valid",
    "value": 0
@@ -755,6 +892,12 @@
    "global": false,
    "name": ".sec..rodata.ticks.0",
    "section": ".rodata.ticks.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.pattern_ok",
+   "section": ".text.pattern_ok",
    "value": 0
   },
   {
@@ -779,6 +922,12 @@
    "global": false,
    "name": ".sec..text.pp_period",
    "section": ".text.pp_period",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.pp_playing",
+   "section": ".text.pp_playing",
    "value": 0
   },
   {
@@ -831,6 +980,12 @@
   },
   {
    "global": false,
+   "name": "pattern_ok",
+   "section": ".text.pattern_ok",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "pending",
    "section": ".bss.pending",
    "value": 0
@@ -875,6 +1030,18 @@
    "global": true,
    "name": "pp_period",
    "section": ".text.pp_period",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "pp_playing",
+   "section": ".text.pp_playing",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "pp_playing_lit",
+   "section": null,
    "value": 0
   },
   {
@@ -957,6 +1124,24 @@
   },
   {
    "global": false,
+   "name": "shown_length",
+   "section": ".bss.shown_length",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shown_pattern",
+   "section": ".bss.shown_pattern",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shown_seen",
+   "section": ".bss.shown_seen",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "ticks.0",
    "section": ".rodata.ticks.0",
    "value": 0
@@ -972,8 +1157,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "435",
-  "isa_check": "fc7e1b9efc8350087ddf1d4fb5dbe8305d247bbb3b1d95d115c8ab5b0eb4ee3f",
+  "instructions_redecoded": "506",
+  "isa_check": "0ad95b35fce6739d581e9f47b01fe2b60110471a2afd1bc4b130e1bc6b5d69a8",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

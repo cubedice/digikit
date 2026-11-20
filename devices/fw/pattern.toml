@@ -38,6 +38,15 @@ users = ["core/pattern-position"]
 doc = "Hash-pinned DT2 1.17 boundary observation: pp.cf.start_due."
 
 [[site]]
+name = "cf.pattern.site.playing_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 12, offset = 2, sha256 = "31449d881f069ddb0b1e9948a82416905c9ad5f444440e7c2cb5bb67517f0774", len = 4 }
+mark = "D"
+users = ["core/pattern-position"]
+doc = "DT2 1.17 literal of the substep tick's `lea playing,a6` before `move.l #0x43165000,d6`: 16 words, the pattern of each track's current step, copied when the step becomes current (finding 365)."
+
+[[site]]
 name = "cf.pattern.site.step_fn"
 cpu = "cf"
 devices = ["dt2"]

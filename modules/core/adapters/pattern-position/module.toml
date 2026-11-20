@@ -27,6 +27,8 @@ pp_stock_step = "cf.pattern.site.step_fn"
 pp_start_back = "hook.cf.pattern.site.start.return"
 pp_tick_back = "hook.cf.pattern.site.tick.return"
 pp_start_due_back = "hook.cf.pattern.site.start_due.return"
+# The literal of the stock tick's `lea playing,a6`: the pattern of each track's current step (finding 365).
+pp_playing_lit = "cf.pattern.site.playing_lit"
 
 # Pinned DT2 1.17 MAIN SHA-256:
 # a1e7b657b705eba1a19d81c33c1e11ba9c409816447ad74005d7bbf36da6d964

@@ -20,9 +20,9 @@ typedef struct dk_pattern_position {
     uint32_t boundary_sequence; /* committed boundaries; unsigned wrap */
     uint32_t start_generation;  /* generation frozen with the boundary */
     uint32_t flags;
-    uint32_t pattern_identity; /* opaque scheduling pointer, not a slot ID */
+    uint32_t pattern_identity; /* opaque pointer of the playing pattern, not a slot ID */
     uint32_t master_step;      /* committed native master-grid position */
-    uint32_t master_length;    /* 0 means unknown/special */
+    uint32_t master_length;    /* that pattern's; 0 means unknown/special */
     uint32_t reserved;         /* zero */
     uint32_t commit_block;     /* CF block preparing the boundary's frame */
     uint32_t scheduler_clock;  /* committed raw deadline, not samples */

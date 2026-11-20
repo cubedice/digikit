@@ -92,6 +92,30 @@ void pp_observe(u32 start, u32 clock, u32 pattern, u32 step, u32 length)
     pp_observe_scaled(start, clock, pattern, step, length, 5400000);
 }
 
+/* The pattern a boundary carries is the one whose step begins there: the playing pattern, not the scheduled one.
+ * The stock tick schedules a step about one step ahead; at a change at the pattern's end it moves the scheduled pointer
+ * at the edge of the old pattern's last step, one step before the new pattern is heard (finding 365). The playing
+ * pattern of track 1's current step is set by the tick when that step becomes current. It is taken at a master step
+ * edge (substep 0) and at START; between edges the one taken at the last edge stays, so a track faster than the
+ * master grid cannot move it into the middle of a step. Its length, taken with it: the scheduled pattern's (the
+ * master override first) when the two are the same; while the scheduled one has moved on, the length taken for the
+ * playing one at the edge before; else its own. */
+static u32 shown_pattern, shown_length, shown_seen;
+void pp_playing(u32 start, u32 edge, u32 playing, u32 scheduled, u32 scheduled_length,
+                u32 own_length, u32 out[2])
+{
+    if (start || edge || !shown_seen) {
+        u32 length = playing == scheduled                     ? scheduled_length
+                     : shown_seen && playing == shown_pattern ? shown_length
+                                                              : own_length;
+        shown_pattern = playing;
+        shown_length = length;
+        shown_seen = 1;
+    }
+    out[0] = shown_pattern;
+    out[1] = shown_length;
+}
+
 void pp_commit(u32 clock, u32 kind, u32 block)
 {
     if (!count)
@@ -125,30 +149,50 @@ void pp_commit(u32 clock, u32 kind, u32 block)
 }
 
 #ifndef PP_QUEUE_TEST
+/* The literal of the stock tick's `lea playing,a6` (anchor cf.pattern.site.playing_lit): 16 words, the pattern each
+ * track's current step belongs to, which the tick copies when that step becomes current and START sets. Track 1's is
+ * the first. */
+extern volatile u32 pp_playing_lit;
+
+/* The scheduled pattern: the pointer the tick schedules from, a step ahead of what is heard at a change at the end. */
 u32 pp_current_pattern(void)
 {
     return U32(0x4316501c);
 }
 
+static int pattern_ok(u32 pattern)
+{
+    return pattern >= 0x40000000 && pattern <= 0x47fe2484 && !(pattern & 1);
+}
+
 static u32 pattern_period(u32 pattern)
 {
-    if (pattern < 0x40000000 || pattern > 0x47fe2484 || (pattern & 1))
+    if (!pattern_ok(pattern))
         return 0;
     return pp_period(*(volatile u8 *)(pattern + 0x1db79), *(volatile u8 *)(pattern + 0x1db7a));
 }
 
+/* A pattern's own length (pattern + 0x1db74), or 0 for unknown. */
+static u32 own_length(u32 pattern)
+{
+    int n = pattern_ok(pattern) ? (short)U16(pattern + 0x1db74) : 0;
+    return n > 1 ? (u32)n : 0;
+}
+
 void pp_snapshot(u32 start)
 {
-    u32 pattern = U32(0x4316501c), length = 0;
-    if (pattern >= 0x40000000 && pattern <= 0x47fe248a && !(pattern & 1)) {
+    u32 scheduled = U32(0x4316501c), playing = U32(pp_playing_lit), length = 0, shown[2];
+    if (pattern_ok(scheduled)) {
         int n = (short)U16(0x43165130);
-        if (n <= 1)
-            n = (short)U16(pattern + 0x1db74);
-        if (n > 1)
-            length = (u32)n;
+        length = n > 1 ? (u32)n : own_length(scheduled);
     }
-    pp_observe_scaled(start, U32(0x43158f7c), pattern, U16(0x43164f9c), length,
-                      pattern_period(pattern));
+    if (!pattern_ok(playing))
+        playing = scheduled;
+    /* substep 0: a master step edge */
+    pp_playing(start, *(volatile u8 *)0x43164f9a == 0, playing, scheduled, length,
+               own_length(playing), shown);
+    pp_observe_scaled(start, U32(0x43158f7c), shown[0], U16(0x43164f9c), shown[1],
+                      pattern_period(shown[0]));
 }
 
 void pp_due(u32 clock, u32 kind)

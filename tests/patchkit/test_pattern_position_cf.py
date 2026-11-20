@@ -20,6 +20,16 @@ MOD = ROOT / "modules/core/adapters/pattern-position"
 FW = ROOT / "firmware/Digitakt_II_OS1.17.syx"
 BASE, QUEUE = 0x47E00000, 0x47E10000
 PATTERN = 0x47F00000
+# cf.pattern.site.playing_lit in DT2 1.17 (devices/ports/dt2-1.17.toml): the literal of `lea playing,a6`
+PLAYING_LIT, PLAYING = 0x400D84AE, 0x44F37BD0
+SCHEDULED, OVERRIDE, STEP, SUBSTEP, CLOCK, BLOCK = (
+    0x4316501C,
+    0x43165130,
+    0x43164F9C,
+    0x43164F9A,
+    0x43158F7C,
+    0x40966840,
+)
 
 
 def test_all_cf_windows_match_pinned_image():
@@ -49,6 +59,8 @@ def linked():
             "pp_start_back": 0,
             "pp_tick_back": 0,
             "pp_start_due_back": 0,
+            # the literal itself, in the firmware image cf_script loads
+            "pp_playing_lit": PLAYING_LIT,
         },
     )
 
@@ -74,6 +86,9 @@ def execute(linked, tmp_path, events, *, tempo=0, transport=1):
     original = b"".join(struct.pack(">HH", 0xA000 + i, 0x5555) for i in range(64))
     ops += [{"op": "poke", "addr": QUEUE, "hex": original.hex()}]
     for index, (function, args) in enumerate(events):
+        if function == "poke":
+            ops.append({"op": "poke", "addr": args[0], "hex": args[1]})
+            continue
         ops += [
             {
                 "op": "call",
@@ -222,3 +237,66 @@ def test_unsigned_deadline_wrap_and_duplicate_substeps(linked, tmp_path):
         ],
     )
     assert words[3] == 2 and words[7] == 1 and words[11] == 0x20 and words[5] == 3
+
+
+def poke(addr, data):
+    return ("poke", [addr, data.hex()])
+
+
+def poke32(addr, value):
+    return poke(addr, struct.pack(">I", value))
+
+
+def pattern_at(addr, steps):
+    """A pattern as the snapshot reads it: its length at +0x1db74, common mode and scale 1x at +0x1db79."""
+    return [
+        poke(addr + 0x1DB74, struct.pack(">h", steps)),
+        poke(addr + 0x1DB79, bytes([0, 2])),
+    ]
+
+
+def tick(scheduled, playing, step, substep, clock, start=0):
+    """The stock tick's state at its tail, then the snapshot it hooks."""
+    return [
+        poke32(SCHEDULED, scheduled),
+        poke32(PLAYING, playing),
+        poke(STEP, struct.pack(">H", step)),
+        poke(SUBSTEP, bytes([substep])),
+        poke32(CLOCK, clock),
+        ("pp_snapshot", [start]),
+    ]
+
+
+def commit(clock, block, kind=5):
+    return [poke32(BLOCK, block), ("pp_due", [clock, kind])]
+
+
+def test_snapshot_carries_the_playing_pattern_at_a_change_at_the_end(linked, tmp_path):
+    """A change from A (16 steps) to B (8 steps) at A's end: the stock tick moves the scheduled pointer to B at the edge
+    of A's last step, while track 1's current step is still A's. The boundary of that edge is A's step 15 of 16; B's first
+    step comes at the next edge, and a track that takes B between the edges does not move it (finding 365)."""
+    a, b = PATTERN, PATTERN + 0x40000
+    events = [
+        poke(OVERRIDE, struct.pack(">h", 0)),
+        *pattern_at(a, 16),
+        *pattern_at(b, 8),
+    ]
+    events += tick(a, a, 0, 0, 1000, start=1) + commit(1000, 10, kind=7)
+    events += tick(a, a, 14, 0, 2000) + commit(2000, 11)
+    events += tick(b, a, 15, 0, 3000) + commit(3000, 12)
+    events += tick(b, b, 15, 1, 3100)
+    events += tick(b, b, 0, 0, 4000) + commit(4000, 13)
+    words, rows = execute(linked, tmp_path, events)
+    dues = [i for i, (function, _) in enumerate(events) if function == "pp_due"]
+    # after each commit: the boundary count, the pattern, the step and the length
+    committed = [
+        struct.unpack(">16I", bytes.fromhex(rows[f"state{i}"]["hex"]))[3:9]
+        for i in dues
+    ]
+    assert [(c[0], c[3], c[4], c[5]) for c in committed] == [
+        (1, a, 0, 16),
+        (2, a, 14, 16),
+        (3, a, 15, 16),  # the last step of A is A's, with A's length
+        (4, b, 0, 8),  # the snapshot between the edges queued nothing
+    ]
+    assert words[5] & 3 == 3 and words[6:9] == [b, 0, 8]
