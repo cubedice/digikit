@@ -3,6 +3,9 @@
 # python-tests shards: 8
 # (911 cases, about an hour on one core: the arp and FM cases render hundreds of blocks.)
 
+import math
+import struct
+
 import pytest
 from canopy_paths import DSP
 from support.paths import REPO_ROOT
@@ -746,6 +749,30 @@ def test_post_amp_lane_buffers_resolve_to_distinct_data_storage(canopy, canopy_o
     assert result["common_amp"] == values("_cp_post_pad", 32)
 
 
+def f32(x):
+    return struct.unpack("<f", struct.pack("<f", x))[0]
+
+
+def eased_reset(e0, done, count):
+    """The reset and steal ramp of voice.s in single precision: from the level e0 over D = ceil(64 e0) samples (1 to 64),
+    e = e0 (1 - u u (3 - 2u)), u = k / D, for samples done + 1 .. done + count."""
+    e0 = f32(e0)
+    d = min(64, max(1, math.ceil(f32(e0 * 64))))
+    inv = f32(1 / d)
+    out = []
+    for k in range(done + 1, done + count + 1):
+        u = 1.0 if k >= d else min(f32(k * inv), 1.0)
+        s = f32(f32(u * u) * f32(3 - f32(u + u)))
+        out.append(f32(f32(1 - s) * e0))
+    return out
+
+
+def reset_record(token, done, e0_bits):
+    """A voice's sidecar while its reset or steal ramp runs: its token, the samples done, its level where the ramp began
+    and CP_RESET_MARK."""
+    return [token, done, e0_bits, 0x52535431]
+
+
 def test_post_amp_reset_ramp_remains_smooth_and_then_exactly_quiet(canopy):
     amp = native_amp(attack=1, decay=1, sustain=1, release=1)
     controls = wavetable_fm_controls(fm_depth=70)
@@ -753,12 +780,9 @@ def test_post_amp_reset_ramp_remains_smooth_and_then_exactly_quiet(canopy):
     canopy(reset=2)
     first = canopy(native=amp, controls=controls, post_amp=True)
     second = canopy(native=amp, controls=controls, post_amp=True)
-    assert [wt_float(v) for v in first["common_amp"]] == [
-        1 - (i + 1) / 64 for i in range(32)
-    ]
-    assert [wt_float(v) for v in second["common_amp"]] == [
-        0.5 - (i + 1) / 64 for i in range(32)
-    ]
+    # the eased reset ramp (finding 366) from the level 1.0: 64 samples of 1 - s(k / 64)
+    assert [wt_float(v) for v in first["common_amp"]] == eased_reset(1.0, 0, 32)
+    assert [wt_float(v) for v in second["common_amp"]] == eased_reset(1.0, 32, 32)
     assert second["out"][-1] == 0
     quiet = canopy(native=amp, controls=controls, post_amp=True)
     assert quiet["out"] == quiet["common_amp"] == [0] * 32
@@ -939,10 +963,11 @@ def test_native_amp_pad_steal_copies_phase_and_overrides_infinite_release(canopy
     amp = native_amp(attack=1, sustain=1, release=1)
     before = canopy([note(i + 1, 60 + 3 * i) for i in range(4)], native=amp, blocks=8)
     source = next(slot for slot in range(4) if before["state"][slot * 8] == 1)
-    metadata = before["state"][716 + source * 4 : 720 + source * 4]
+    level = before["state"][source * 8 + 7]
     after = canopy([note(5, 74)], native=amp)
     tail = next(slot for slot in (4, 5) if after["state"][slot * 8] == 1)
-    assert after["state"][716 + tail * 4 : 720 + tail * 4] == metadata
+    # the stolen voice ramps out in the tail: its sidecar holds the ramp from its level (finding 366)
+    assert after["state"][716 + tail * 4 : 720 + tail * 4] == reset_record(1, 32, level)
     assert wt_float(after["state"][tail * 8 + 7]) == 0.5
     after = canopy(native=amp)
     assert after["state"][tail * 8] == 0
@@ -960,8 +985,10 @@ def test_native_amp_rejected_steal_batch_preserves_envelope_metadata(canopy):
     after = canopy([note(5, 74)], native=amp)
     tail = next(slot for slot in (4, 5) if after["state"][slot * 8] == 1)
     source = next(slot for slot in range(4) if before["state"][slot * 8] == 1)
-    metadata = before["state"][716 + source * 4 : 720 + source * 4]
-    assert after["state"][716 + tail * 4 : 720 + tail * 4] == [*metadata[:3], 2]
+    # the steal that is taken this time ramps the voice out in the tail (finding 366)
+    assert after["state"][716 + tail * 4 : 720 + tail * 4] == reset_record(
+        1, 32, before["state"][source * 8 + 7]
+    )
 
 
 @pytest.mark.parametrize(
