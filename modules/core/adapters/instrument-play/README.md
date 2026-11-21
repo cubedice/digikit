@@ -97,24 +97,27 @@ and sample card. No firmware build in this document authorizes a device flash.
 
 ## Keyboard modes and shape memory
 
-The experimental track keyboard can request the CANOPY carrier with
-`instrument_track_keyboard_claim(track, 1)`. The first call requests the
-ordinary generation reset and reconfiguration. Once a call returns 1, the
-owner can send resolved note-on and note-off events with
-`instrument_track_keyboard_note(track, token, pitch, velocity, on, lane)`.
-Send ascending nonzero onset tokens and pair releases by the original token
-and pitch. The bounded queue reserves a release slot for every accepted onset
-and discards stale events on a track, epoch or generation change. Calling
-`instrument_track_keyboard_claim(track, 0)` returns ownership to CANOPY.
+With `core/track-keyboard`, CANOPY uses the compact SOURCE layout with
+TUNE, WAVE, timbre, DRFT, MIX and LEV. Wavetable and FM sources also
+show TONE and ENV. The ARP and KEYS TRIG pages show inherited performance
+settings until a pattern override is written. Inherited sounds and patterns
+with native CANOPY locks continue using the legacy performer.
 
-This seam uses all four foreground voices for the external owner. Direct
-notes and serial arp notes use the same bank. A separate blend lane and
-shared trig-lock translation are pending. The carrier masks its own strum and
-arp after applying locks and modulation for an externally claimed track. Its
-saved values are preserved. The opt-in SRC layout can show SOUND with TUNE,
-WAVE, main timbre, DRFT, MIX and LEV, followed by TONE and ENV for wavetable
-or FM. Until there is an admitted owner for the whole workflow, the normal
-four-page SRC layout continues to own keyboard and arp controls.
+The shared adapter calls `instrument_track_keyboard_lanes(track, lanes)`
+with bit 0 for the four foreground pad voices and bit 1 for the separate
+timed voice. A nonzero mask claims the track. The first call requests
+the normal generation reset and bank configuration. Once ready, the owner
+sends resolved onsets and releases with
+`instrument_track_keyboard_note(track, token, pitch, velocity, on, lane)`.
+The bounded queue pairs event tokens, reserves release capacity and
+drops stale generations after a handoff. A zero mask returns ownership
+to the local performer.
+
+The carrier suppresses its own arp and strum for a claimed track. With
+both lanes enabled it renders the Sound's MIX after eligible lock and
+modulation overlays. A single lane plays at its full level and MIX shows
+that lane. The decoded Sound bank retains its saved controls. Use a
+matched CANOPY module and a firmware build with this adapter.
 
 Stage 2 keeps the sine renderer and adds a bounded ColdFire musical mapper to
 `core/instrument-play`. Open DIGIKIT > CANOPY > INPUT and explicitly enable routing.

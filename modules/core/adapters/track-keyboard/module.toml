@@ -9,7 +9,7 @@ author = "digikit"
 status = "experimental"
 summary = "Opt-in track keyboard, arpeggiator and TRIG pages for registered note backends."
 ports = ["dt2-1.17"]
-requires = ["core/runtime", "core/pattern-position", "core/ui", "core/instrument-play"]
+requires = ["core/runtime", "core/pattern-position", "core/ui", "core/instrument-play", "core/midi-events", "core/relay-input"]
 conflicts = []
 
 [targets]
@@ -17,7 +17,11 @@ conflicts = []
 
 [[object]]
 path = "build/track-keyboard.dko.json"
-sources = ["src/track-keyboard.c", "src/track-config.c", "src/track-service.c", "src/track-runtime.c", "src/track-native.c", "src/track-native-fw.c", "src/trig-view.c"]
+sources = ["src/track-keyboard.c", "src/track-canopy.c", "src/track-config.c", "src/track-service.c", "src/track-runtime.c", "src/track-native.c", "src/track-native-fw.c", "src/trig-view.c",
+  "src/track-pattern.c", "src/track-pattern-fw.c", "src/track-record.c", "src/track-pattern-hooks.s",
+  "src/track-midi.c", "src/track-midi-fw.c", "src/track-midi-hooks.s",
+  "src/track-capture.c", "src/track-sequence.c", "src/track-sequence-fw.c", "src/track-sequence-hooks.s",
+  "src/track-pool.c", "src/track-pool-fw.c", "src/track-pool-admission.c", "src/track-pool-hooks.s"]
 place = "cf.expansion"
 devices = ["dt2"]
 [object.externs]
@@ -39,6 +43,8 @@ tk_fw_track_type = "cf.project.fn.track_type"
 tk_fw_note_on = "cf.track_keys.fn.note_on"
 tk_fw_note_off = "cf.track_keys.fn.note_off"
 tk_fw_audio_dispatch = "cf.track_keys.fn.audio_dispatch"
+tk_pool_fw_audio_queue = "cf.track_keys.fn.audio_queue_head"
+tk_pool_stock_dispatch_resume = "hook.cf.track_keys.site.audio_dispatch_entry.return"
 tk_fw_midi_dispatch = "cf.track_keys.fn.midi_dispatch"
 tk_fw_midi_mode = "cf.track_keys.fn.midi_mode"
 tk_fw_midi_channel = "cf.track_keys.fn.midi_channel"
@@ -46,6 +52,51 @@ tk_fw_note_mail_lit = "cf.track_keys.site.note_mail_lit"
 tk_fw_midi_mail_lit = "cf.track_keys.site.midi_mail_lit"
 tk_fw_midi_free_lit = "cf.track_keys.site.midi_free_lit"
 tk_fw_midi_hold_lit = "cf.track_keys.site.midi_hold_lit"
+
+tk_fw_alloc = "cf.mem.fn.new"
+tk_fw_free = "cf.mem.fn.free"
+tk_fw_midi_selected_lit = "cf.track_keys.site.midi_selected_lit"
+tk_fw_midi_routes_lit = "cf.track_keys.site.midi_routes_lit"
+tk_fw_midi_rx_notes_lit = "cf.track_keys.site.midi_rx_notes_lit"
+tk_fw_midi_ports_lit = "cf.track_keys.site.midi_ports_lit"
+tk_midi_on_tail = "hook.cf.track_keys.site.midi_target_on.tail"
+tk_midi_on_return = "hook.cf.track_keys.site.midi_target_on.return"
+tk_midi_off_tail = "hook.cf.track_keys.site.midi_target_off.tail"
+tk_midi_off_return = "hook.cf.track_keys.site.midi_target_off.return"
+tk_pattern_save_resume = "hook.cf.project.site.pattern_save.return"
+tk_pattern_load_resume = "hook.cf.project.site.pattern_load.return"
+tk_pattern_reset_resume = "hook.cf.project.site.pattern_reset.return"
+tk_pattern_track_clear_tail = "hook.cf.project.site.track_clear.tail"
+tk_seq_audio_stage_resume = "cf.track_sequence.site.audio_stage_resume"
+tk_seq_midi_stage_resume = "cf.track_sequence.site.midi_stage_resume"
+tk_seq_audio_builder_return = "cf.track_sequence.site.audio_builder_return"
+tk_seq_midi_builder_return = "cf.track_sequence.site.midi_builder_return"
+tk_seq_audio_due_resume = "cf.track_sequence.site.audio_due_resume"
+tk_seq_audio_due_skip = "cf.track_sequence.site.audio_due_skip"
+tk_seq_midi_due_resume = "cf.track_sequence.site.midi_due_resume"
+tk_seq_midi_due_skip = "cf.track_sequence.site.midi_due_skip"
+tk_seq_length_table = "cf.track_sequence.site.length_table"
+tk_seq_audio_mute_lit = "cf.track_sequence.site.audio_mute_lit"
+tk_seq_audio_solo_lit = "cf.track_sequence.site.audio_solo_lit"
+tk_seq_midi_mute_lit = "cf.track_sequence.site.midi_mute_lit"
+tk_seq_midi_solo_lit = "cf.track_sequence.site.midi_solo_lit"
+
+tk_seq_record_ui_lit = "cf.track_sequence.site.record_ui_lit"
+tk_seq_audio_free_lit = "cf.track_sequence.site.audio_free_lit"
+tk_seq_audio_event_alloc = "cf.track_sequence.site.audio_event_alloc"
+tk_seq_audio_lock_alloc = "cf.track_sequence.site.audio_lock_alloc"
+tk_seq_audio_lock_free_lit = "cf.track_sequence.site.audio_lock_free_lit"
+tk_seq_audio_bucket_free_lit = "cf.track_sequence.site.audio_bucket_free_lit"
+tk_seq_audio_event_queue = "cf.track_sequence.site.audio_event_queue"
+tk_seq_audio_track_sound = "cf.track_sequence.site.audio_track_sound"
+tk_seq_capture_clock = "cf.track_sequence.site.capture_clock"
+tk_seq_capture_live_resume = "cf.track_sequence.site.capture_live_resume"
+
+[[object]]
+path = "build/track-pool-dsp.dko.json"
+sources = ["src/dsp/track-pool.s"]
+place = "dsp.l2"
+devices = ["dt2"]
 
 [[op]]
 op = "write"
@@ -76,3 +127,72 @@ op = "write"
 anchor = "cf.page.site.track_trig_turn_interface_slot"
 value = "tk_trig_turn_interface"
 width = 4
+
+[[op]]
+op = "hook"
+hook = "cf.track_keys.hook.midi_target_on"
+to = "tk_midi_target_on"
+
+[[claim]]
+resource = "cf.track_keys.site.midi_target_on"
+
+[[op]]
+op = "hook"
+hook = "cf.track_keys.hook.midi_target_off"
+to = "tk_midi_target_off"
+
+[[claim]]
+resource = "cf.track_keys.site.midi_target_off"
+
+[[op]]
+op = "hook"
+hook = "cf.project.hook.pattern_save"
+to = "tk_pattern_save_entry"
+
+[[op]]
+op = "hook"
+hook = "cf.project.hook.pattern_load"
+to = "tk_pattern_load_entry"
+
+[[op]]
+op = "hook"
+hook = "cf.project.hook.pattern_reset"
+to = "tk_pattern_reset_entry"
+
+[[op]]
+op = "hook"
+hook = "cf.project.hook.track_clear"
+to = "tk_pattern_track_clear_entry"
+
+[[claim]]
+resource = "cf.project.site.track_clear"
+
+[[op]]
+op = "hook"
+hook = "cf.track_sequence.hook.audio_stage"
+to = "tk_seq_audio_stage"
+
+[[op]]
+op = "hook"
+hook = "cf.track_sequence.hook.midi_stage"
+to = "tk_seq_midi_stage"
+
+[[op]]
+op = "hook"
+hook = "cf.track_sequence.hook.audio_due"
+to = "tk_seq_audio_due"
+
+[[op]]
+op = "hook"
+hook = "cf.track_sequence.hook.midi_due"
+to = "tk_seq_midi_due"
+
+[[op]]
+op = "hook"
+hook = "cf.track_keys.hook.audio_dispatch_entry"
+to = "tk_pool_stock_dispatch"
+
+[[op]]
+op = "hook"
+hook = "cf.track_sequence.hook.capture_live"
+to = "tk_seq_capture_live"

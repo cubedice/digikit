@@ -128,6 +128,9 @@ uint32_t ip_sa_saved(uint32_t record, uint32_t sound, uint32_t result)
     return result;
 }
 
+extern void tk_pattern_copied(uint32_t, uint32_t, uint32_t) __attribute__((weak));
+extern void tk_pattern_cleared(uint32_t, uint32_t) __attribute__((weak));
+
 /* memcpy of at least one Sound's length, before and after the stock copy. */
 void ip_sa_copy_before(uint32_t destination, uint32_t source, uint32_t length)
 {
@@ -137,6 +140,8 @@ void ip_sa_copy_before(uint32_t destination, uint32_t source, uint32_t length)
 }
 void ip_sa_copy_after(uint32_t destination, uint32_t source, uint32_t length)
 {
+    if (tk_pattern_copied && (length == 0x1db8cu || length == 0x6a5u))
+        tk_pattern_copied(destination, source, length);
     if (!ip_sa_ready)
         return;
     uint32_t sr = dkrt_irq_mask();
@@ -147,6 +152,8 @@ void ip_sa_copy_after(uint32_t destination, uint32_t source, uint32_t length)
 /* memset or bzero of at least one Sound's length, after the stock fill. */
 void ip_sa_cleared(uint32_t destination, uint32_t length)
 {
+    if (tk_pattern_cleared && length == 0x1db8cu)
+        tk_pattern_cleared(destination, length);
     if (!ip_sa_ready)
         return;
     uint32_t sr = dkrt_irq_mask();

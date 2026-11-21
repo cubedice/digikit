@@ -1,3 +1,4 @@
+#include "../src/track-record.h"
 #include "../src/track-keyboard.h"
 #include "../src/track-config.h"
 #include "../src/track-service.h"
@@ -88,6 +89,31 @@ static void steal_and_strum(void)
     tk_release(&s, TK_PANEL, 0, 0);
     tk_tick(&s, 60000, 0);
     assert(e.count == 4 && !e.events[2].on && !e.events[3].on);
+}
+
+static void full_pitch_pool_from_two_ports(void)
+{
+    Events e = {0};
+    TkState s;
+    tk_init(&s, sink, &e);
+    tk_set_backend(&s, TK_NOTES, false);
+    TkParams p = tk_defaults();
+    const TkRecipe recipe = {0};
+    p.poly = true;
+    p.voices = TK_NOTES;
+    assert(tk_configure(&s, &p, &recipe));
+    for (uint8_t i = 0; i < TK_NOTES; ++i) {
+        assert(tk_press(&s, TK_USB, 0, i, 48 + i, 100));
+        assert(tk_press(&s, TK_DIN, 0, i, 48 + i, 90));
+    }
+    assert(e.count == TK_NOTES && s.key_count == TK_INPUT_KEYS);
+    assert(!tk_press(&s, TK_PANEL, 0, 0, 70, 100));
+    for (uint8_t i = 0; i < TK_NOTES; ++i)
+        tk_release(&s, TK_USB, 0, i);
+    assert(e.count == TK_NOTES);
+    for (uint8_t i = 0; i < TK_NOTES; ++i)
+        tk_release(&s, TK_DIN, 0, i);
+    assert(e.count == 2 * TK_NOTES);
 }
 
 static void arp_timing(void)
@@ -251,11 +277,50 @@ static void service_ownership(void)
     assert(tk_service_set_backend(0, NULL));
 }
 
+static void selector_retains_common_pitches(void)
+{
+    static TkPattern pattern;
+    Events e = {0};
+    tk_pattern_init(&pattern);
+    tk_service_edit_pattern(&pattern);
+    TkTrackBackend backend = {.output = track_sink, .context = &e, .voices = 4};
+    assert(tk_service_set_backend(0, &backend));
+    assert(tk_trig_write(0, TK_CTL_POLY, 1));
+    assert(tk_trig_write(0, TK_CTL_CHORD, TK_CHORD_MAJ));
+    assert(tk_service_write_selector(0, 3, -1));
+    int8_t octave, channel;
+    assert(tk_service_selector(0, true, &octave, &channel) && octave == 3 && channel == -1);
+    assert(tk_service_press(0, TK_USB, 0, 60, 60, 96));
+    expect(&e, 0, true, 60, TK_DIRECT);
+    expect(&e, 1, true, 64, TK_DIRECT);
+    expect(&e, 2, true, 67, TK_DIRECT);
+    tk_service_select_chord(0, TK_CHORD_MIN);
+    expect(&e, 3, false, 64, TK_DIRECT);
+    expect(&e, 4, true, 63, TK_DIRECT);
+    assert(e.count == 5 && pattern.tracks[0].params.chord == TK_CHORD_MIN);
+    tk_service_release(0, TK_USB, 0, 60);
+    assert(e.count == 8);
+    assert(tk_trig_write(0, TK_CTL_CHORD, TK_CHORD_PLAY));
+    assert(tk_service_selector(0, true, &octave, &channel) && octave == -1 && channel == -1);
+    assert(tk_service_selector(0, false, &octave, &channel) && octave == 3 && channel == -1);
+    tk_service_edit_pattern(NULL);
+    assert(tk_service_set_backend(0, NULL));
+}
+
 static void pattern_roundtrip(void)
 {
     static TkPattern original, decoded;
     tk_pattern_init(&original);
     original.tracks[2].params.arp = 1;
+    original.tracks[2].params.rate = TK_RATE_5Q;
+    original.tracks[2].selector_channel = 15;
+    original.tracks[2].canopy_mix = 76;
+    original.tracks[2].override = true;
+    original.seeds[8] = (TkPatternSeed){.index = 300,
+                                        .seed = {.count = 3,
+                                                 .notes = {{60, 102, 0, UINT64_C(32098765000)},
+                                                           {67, 64, 231, 0},
+                                                           {64, 111, 26043, UINT64_C(123456789)}}}};
     original.steps[0].index = 300;
     assert(tk_set_lock(&original.steps[0].locks, TK_CTL_CHORD, TK_CHORD_USER));
     original.steps[0].locks.mask |= TK_RECIPE_OVERRIDE;
@@ -266,7 +331,12 @@ static void pattern_roundtrip(void)
     size_t size = tk_pattern_encoded_size(&original);
     assert(size <= sizeof data && tk_pattern_encode(&original, data, size));
     assert(tk_pattern_decode(&decoded, data, size));
-    assert(decoded.tracks[2].params.arp == 1);
+    assert(decoded.tracks[2].params.arp == 1 && decoded.tracks[2].params.rate == TK_RATE_5Q);
+    assert(decoded.tracks[2].selector_channel == 15 && decoded.tracks[2].override);
+    assert(decoded.tracks[2].canopy_mix == 76 && decoded.tracks[0].selector_octave == -1);
+    assert(decoded.seeds[0].seed.notes[2].pitch == 64 &&
+           decoded.seeds[0].seed.notes[2].delay_us == 26043 &&
+           decoded.seeds[0].seed.notes[0].gate_ticks == UINT64_C(32098765000));
     assert(decoded.steps[1].index == original.steps[59].index);
     assert(decoded.steps[1].locks.values[TK_CTL_OCTAVES] == -2);
     assert(decoded.steps[0].locks.user.notes[1].interval == -8);
@@ -278,16 +348,88 @@ static void pattern_roundtrip(void)
     assert(!tk_pattern_decode(&decoded, data, size));
 }
 
+static void copy_track_attachment(void)
+{
+    static TkPattern source, target;
+    tk_pattern_init(&source);
+    tk_pattern_init(&target);
+    source.tracks[4].params.arp = 1;
+    source.tracks[4].selector_octave = 3;
+    source.steps[1].index = 4 * TK_STEPS + 128;
+    assert(tk_set_lock(&source.steps[1].locks, TK_CTL_CHORD, TK_CHORD_MIN));
+    const TkSeed recipe = {.count = 2, .notes = {{60, 99, 0, 1000}, {63, 91, 100, 2000}}};
+    assert(tk_pattern_set_seed(&source, 4, 0, &recipe));
+    target.tracks[0].params.poly = 1;
+    target.steps[7].index = 2 * TK_STEPS + 1;
+    assert(tk_set_lock(&target.steps[7].locks, TK_CTL_GATE, 62));
+    assert(tk_pattern_has_track(&source, 4));
+    assert(tk_pattern_copy_track(&target, 2, &source, 4));
+    assert(target.tracks[0].params.poly == 1 && target.tracks[2].params.arp == 1);
+    assert(target.tracks[2].selector_octave == 3);
+    assert(target.steps[0].index == 2 * TK_STEPS + 128);
+    assert(target.steps[0].locks.values[TK_CTL_CHORD] == TK_CHORD_MIN);
+    assert(target.steps[7].index == 0);
+    assert(tk_pattern_seed(&target, 2, 0)->notes[0].velocity == 99);
+    assert(tk_pattern_copy_track(&target, 1, &target, 2));
+    assert(tk_pattern_has_track(&target, 1) && tk_pattern_has_track(&target, 2));
+    assert(tk_pattern_seed(&target, 1, 0)->notes[1].delay_us == 100);
+    assert(tk_pattern_copy_track(&target, 2, NULL, 0));
+    assert(!tk_pattern_has_track(&target, 2) && tk_pattern_has_track(&target, 1));
+
+    /* An unavailable lock slot refuses the transfer before altering tracks. */
+    for (unsigned i = 0; i < TK_LOCKED_STEPS; ++i)
+        target.steps[i].index = (uint16_t)(i + 1);
+    assert(!tk_pattern_copy_track(&target, 2, &source, 4));
+    assert(!tk_pattern_has_track(&target, 2) && target.tracks[0].params.poly == 1);
+}
+
+static void native_record_roundtrip(void)
+{
+    static uint8_t record[TK_NATIVE_RECORD_BYTES];
+    enum { SIZE = TK_NATIVE_TAIL_PAYLOAD + 329 };
+    uint8_t bytes[SIZE], decoded[SIZE];
+    for (unsigned i = 0; i < SIZE; ++i)
+        bytes[i] = (uint8_t)(i * 11u);
+    uint8_t *native_locks = record + TK_NATIVE_LOCKS_OFFSET;
+    for (unsigned slot = 0; slot < TK_NATIVE_LOCKS; ++slot)
+        memset(native_locks + slot * TK_NATIVE_LOCK_STRIDE, 0x11, TK_NATIVE_LOCK_STRIDE);
+    const unsigned free_slots[] = {10, 74};
+    native_locks[free_slots[0] * TK_NATIVE_LOCK_STRIDE] = 0xff;
+    assert(!tk_record_write(record, bytes, SIZE));
+    assert(tk_record_read(record, decoded, sizeof decoded) == 0);
+    for (unsigned f = 0; f < 2; ++f)
+        memset(native_locks + free_slots[f] * TK_NATIVE_LOCK_STRIDE, 0xff, 2);
+    assert(tk_record_write(record, bytes, SIZE));
+    assert(tk_record_read(record, decoded, sizeof decoded) == SIZE);
+    assert(memcmp(bytes, decoded, SIZE) == 0);
+    assert(tk_record_read(record, decoded, sizeof decoded - 1) == 0);
+    for (unsigned slot = 0; slot < TK_NATIVE_LOCKS; ++slot)
+        if (slot != free_slots[0] && slot != free_slots[1])
+            for (unsigned offset = 0; offset < TK_NATIVE_LOCK_STRIDE; ++offset)
+                assert(native_locks[slot * TK_NATIVE_LOCK_STRIDE + offset] == 0x11);
+    assert(tk_record_write(record, NULL, 0));
+    assert(tk_record_read(record, decoded, sizeof decoded) == 0);
+    record[TK_NATIVE_TAIL_OFFSET] = 0x55;
+    assert(!tk_record_write(record, bytes, SIZE));
+    assert(record[TK_NATIVE_TAIL_OFFSET] == 0x55);
+}
+
 extern void track_native_checks(void);
+extern void track_pool_checks(void);
 
 int main(void)
 {
     direct_notes();
+    full_pitch_pool_from_two_ports();
     steal_and_strum();
     arp_timing();
     sequence_and_learned_shape();
     pattern_controls();
     service_ownership();
+    selector_retains_common_pitches();
     pattern_roundtrip();
+    copy_track_attachment();
+    native_record_roundtrip();
     track_native_checks();
+    track_pool_checks();
 }

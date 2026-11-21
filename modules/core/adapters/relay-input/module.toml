@@ -20,7 +20,7 @@ path = "build/relay-input-dsp.dko.json"
 sources = ["src/dsp/input.s"]
 place = "dsp.l2"
 devices = ["dt2"]
-optional = ["_rtm_capture"]
+optional = ["_rtm_capture", "_tk_pool_fold"]
 
 [object.externs]
 _relay_input_tail = "hook.dsp.fx.fn.relay_input.tail"

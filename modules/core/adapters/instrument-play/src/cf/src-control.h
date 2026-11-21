@@ -15,6 +15,8 @@ void instrument_src_track_keyboard(uint32_t track, int active);
  * completes. Direct and arpeggiated output share the four foreground voices;
  * this endpoint does not advertise a separate blend lane. Tokens stay unique
  * during a claim. On handoff or transport faults the carrier resets them. */
+/* Bit 0 enables the pad lane, bit 1 enables the timed lane. */
+int instrument_track_keyboard_lanes(uint32_t track, uint32_t lanes);
 int instrument_track_keyboard_claim(uint32_t track, int active);
 int instrument_track_keyboard_note(uint32_t track, uint32_t token, uint32_t pitch,
                                    uint32_t velocity, uint32_t on, uint32_t lane);

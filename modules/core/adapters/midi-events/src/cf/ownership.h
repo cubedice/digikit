@@ -83,6 +83,8 @@ int mi_session_begin(MiLedger *m);
 /* Fully normalized channel messages only. 1 consumed, 0 stock fallthrough.
  * Unsupported controllers, system messages and malformed messages fall through. */
 int mi_message(MiLedger *m, uint32_t port, const uint8_t *msg, uint32_t len);
+/* Claim a matching prior note only, including a tombstone after a route handoff. */
+int mi_release_known(MiLedger *m, uint8_t port, uint8_t channel, uint8_t note, uint8_t velocity);
 /* Resolved local keys have an identity independent of pitch. Key-up releases
  * exactly the pitches captured at key-down, including across scale changes. */
 int mi_panel_down(MiLedger *m, uint32_t key, uint32_t note, uint32_t velocity, uint32_t track);

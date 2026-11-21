@@ -16,13 +16,16 @@
 // One declaration per line: patchkit's undeclared-symbol check reads `.EXTERN` at the start of a source line.
 .EXTERN _pattern_position_info;
 .EXTERN _instrument_reply;
+.EXTERN _tk_pool_receive;
+.EXTERN _tk_pool_quiet_reply;
+#define DL_QUIET_REPLY R0 = _tk_pool_quiet_reply; R0 = PASS R0; IF NE CALL _tk_pool_quiet_reply; JUMP _dl_out;
 .EXTERN _iv_lock_stage;
 .EXTERN _phrase_control_info;
 .EXTERN _phrase_reply;
 #define DL_POSITION_EXTERN
 // Transport reserves 16 position and 32 packet words; the optional lock
 // receiver reserves another 18. Three words belong to each transfer header.
-#define DL_POSITION_LIMIT R0 = _pattern_position_info; R4 = DL_TAIL_WORDS - 19; R0 = PASS R0; IF NE R3 = R4; R0 = _instrument_reply; R4 = DL_TAIL_WORDS - 51; R0 = PASS R0; IF NE R3 = R4; R0 = _iv_lock_stage; R4 = DL_TAIL_WORDS - 69; R0 = PASS R0; IF NE R3 = R4; R0 = _phrase_control_info; R4 = DL_TAIL_WORDS - 133; R0 = PASS R0; IF NE R3 = R4; R0 = _relay_status; R4 = DL_TAIL_WORDS - 153; R0 = PASS R0; IF NE R3 = R4;
+#define DL_POSITION_LIMIT R0 = _pattern_position_info; R4 = DL_TAIL_WORDS - 19; R0 = PASS R0; IF NE R3 = R4; R0 = _instrument_reply; R4 = DL_TAIL_WORDS - 51; R0 = PASS R0; IF NE R3 = R4; R0 = _iv_lock_stage; R4 = DL_TAIL_WORDS - 69; R0 = PASS R0; IF NE R3 = R4; R0 = _phrase_control_info; R4 = DL_TAIL_WORDS - 133; R0 = PASS R0; IF NE R3 = R4; R0 = _relay_status; R4 = DL_TAIL_WORDS - 153; R0 = PASS R0; IF NE R3 = R4; R0 = _tk_pool_receive; R4 = DL_TAIL_WORDS - 157; R0 = PASS R0; IF NE R3 = R4;
 .EXTERN _relay_status;
 .EXTERN _relay_response;
 .EXTERN _relay_request;

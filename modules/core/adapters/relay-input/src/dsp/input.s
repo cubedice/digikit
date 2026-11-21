@@ -4,6 +4,7 @@
 .GLOBAL _relay_input_tap;
 .EXTERN _relay_input_tail;
 .EXTERN _rtm_capture;
+.EXTERN _tk_pool_fold;
 _relay_input_tap:
     DM(_ri_r0) = R0;
     R0 = MODE1;
@@ -39,6 +40,9 @@ _ri_left: DM(I1,M6) = R0;
 _ri_right: DM(I1,M6) = R0;
     R0 = ASTATX;
     DM(_ri_astat) = R0;
+    R0 = _tk_pool_fold;
+    R0 = PASS R0;
+    IF NE CALL _tk_pool_fold;
     R0 = _rtm_capture;
     R0 = PASS R0;
     IF NE CALL _rtm_capture;

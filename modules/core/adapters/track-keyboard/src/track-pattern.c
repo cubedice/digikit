@@ -1,7 +1,8 @@
 #include "track-service.h"
 #include "track-memory.h"
 
-enum { HEADER = 12, STEP_BYTES = 64, TRACK_BYTES = TK_TRACKS * TK_CONFIG_BYTES };
+enum { LEGACY_HEADER = 12, HEADER = TK_PATTERN_HEADER, STEP_BYTES = 64 };
+enum { TRACK_MASK = 12, SEED_COUNT = 14 };
 enum { VALUES = 4, NOTE_COUNT = VALUES + 2 * TK_CONTROL_COUNT, NOTES = NOTE_COUNT + 1 };
 _Static_assert(NOTES + 2 * TK_NOTES <= STEP_BYTES, "pattern lock record");
 
@@ -24,12 +25,188 @@ static uint32_t checksum(const uint8_t *p, size_t n)
     return hash;
 }
 
+static bool saved_track(const TkTrackConfig *config)
+{
+    if (config->override || config->user.count || config->helpers || config->canopy_mix ||
+        config->params.legacy_swing || config->selector_octave != -1 ||
+        config->selector_channel != -1)
+        return true;
+    TkTrackConfig defaults = tk_track_defaults();
+    for (enum TkControl control = TK_CTL_ARP; control < TK_CONTROL_COUNT; ++control) {
+        int actual, initial;
+        tk_get_control(&config->params, control, &actual);
+        tk_get_control(&defaults.params, control, &initial);
+        if (actual != initial)
+            return true;
+    }
+    return false;
+}
+
+static uint16_t saved_tracks(const TkPattern *p)
+{
+    uint16_t mask = 0;
+    for (uint8_t track = 0; track < TK_TRACKS; ++track)
+        if (saved_track(&p->tracks[track]))
+            mask |= (uint16_t)(1u << track);
+    return mask;
+}
+
+static bool belongs(uint16_t index, uint8_t track)
+{
+    return index > track * TK_STEPS && index <= (track + 1u) * TK_STEPS;
+}
+
+bool tk_pattern_has_track(const TkPattern *p, uint8_t track)
+{
+    if (!p || track >= TK_TRACKS)
+        return false;
+    if (saved_track(&p->tracks[track]))
+        return true;
+    for (unsigned i = 0; i < TK_LOCKED_STEPS; ++i)
+        if (belongs(p->steps[i].index, track))
+            return true;
+    for (unsigned i = 0; i < TK_RECORDED_STEPS; ++i)
+        if (belongs(p->seeds[i].index, track))
+            return true;
+    return false;
+}
+
+bool tk_pattern_copy_track(TkPattern *dst, uint8_t to, const TkPattern *src, uint8_t from)
+{
+    if (!dst || to >= TK_TRACKS || from >= TK_TRACKS)
+        return false;
+    if (dst == src && to == from)
+        return true;
+    unsigned steps = 0, seeds = 0, free_steps = 0, free_seeds = 0;
+    for (unsigned i = 0; i < TK_LOCKED_STEPS; ++i) {
+        steps += src && belongs(src->steps[i].index, from);
+        free_steps += !dst->steps[i].index || belongs(dst->steps[i].index, to);
+    }
+    for (unsigned i = 0; i < TK_RECORDED_STEPS; ++i) {
+        seeds += src && belongs(src->seeds[i].index, from);
+        free_seeds += !dst->seeds[i].index || belongs(dst->seeds[i].index, to);
+    }
+    if (steps > free_steps || seeds > free_seeds)
+        return false;
+    dst->tracks[to] = src ? src->tracks[from] : tk_track_defaults();
+    for (unsigned i = 0; i < TK_LOCKED_STEPS; ++i)
+        if (belongs(dst->steps[i].index, to))
+            dst->steps[i].index = 0;
+    for (unsigned i = 0; i < TK_RECORDED_STEPS; ++i)
+        if (belongs(dst->seeds[i].index, to))
+            dst->seeds[i].index = 0;
+    if (!src)
+        return true;
+    int offset = ((int)to - from) * TK_STEPS;
+    for (unsigned i = 0, out = 0; i < TK_LOCKED_STEPS; ++i) {
+        if (!belongs(src->steps[i].index, from))
+            continue;
+        while (dst->steps[out].index)
+            ++out;
+        dst->steps[out] = src->steps[i];
+        dst->steps[out++].index = (uint16_t)(src->steps[i].index + offset);
+    }
+    for (unsigned i = 0, out = 0; i < TK_RECORDED_STEPS; ++i) {
+        if (!belongs(src->seeds[i].index, from))
+            continue;
+        while (dst->seeds[out].index)
+            ++out;
+        dst->seeds[out] = src->seeds[i];
+        dst->seeds[out++].index = (uint16_t)(src->seeds[i].index + offset);
+    }
+    return true;
+}
+
+static size_t varint_size(uint64_t value)
+{
+    size_t n = 1;
+    for (; value >= 128; value >>= 7)
+        ++n;
+    return n;
+}
+
+static uint8_t *write_varint(uint8_t *out, uint64_t value)
+{
+    while (value >= 128) {
+        *out++ = (uint8_t)(value | 0x80);
+        value >>= 7;
+    }
+    *out++ = (uint8_t)value;
+    return out;
+}
+
+static bool read_varint(const uint8_t **in, const uint8_t *end, uint64_t *value)
+{
+    *value = 0;
+    for (unsigned shift = 0; shift < 64 && *in < end; shift += 7) {
+        unsigned b = *(*in)++;
+        if (shift == 63 && b > 1)
+            return false;
+        *value |= (uint64_t)(b & 127) << shift;
+        if (!(b & 128))
+            return !shift || b != 0;
+    }
+    return false;
+}
+
+static size_t seed_bytes(const TkSeed *seed)
+{
+    if (seed->count > TK_NOTES)
+        return 0;
+    size_t n = 3;
+    for (uint8_t i = 0; i < seed->count; ++i)
+        n += 2 + varint_size(seed->notes[i].delay_us) + varint_size(seed->notes[i].gate_ticks);
+    return n;
+}
+
+static uint8_t *encode_seed(const TkPatternSeed *entry, uint8_t *out)
+{
+    write16(out, entry->index);
+    out[2] = entry->seed.count;
+    out += 3;
+    for (uint8_t i = 0; i < entry->seed.count; ++i) {
+        const TkSeedNote *note = &entry->seed.notes[i];
+        *out++ = note->pitch;
+        *out++ = note->velocity;
+        out = write_varint(out, note->delay_us);
+        out = write_varint(out, note->gate_ticks);
+    }
+    return out;
+}
+
+static const uint8_t *decode_seed(TkPatternSeed *entry, const uint8_t *in, const uint8_t *end)
+{
+    if (end - in < 3 || !in[2] || in[2] > TK_NOTES)
+        return NULL;
+    *entry = (TkPatternSeed){.index = (uint16_t)read16(in), .seed = {.count = in[2]}};
+    in += 3;
+    for (uint8_t i = 0; i < entry->seed.count; ++i) {
+        if (end - in < 2)
+            return NULL;
+        TkSeedNote *note = &entry->seed.notes[i];
+        note->pitch = *in++;
+        note->velocity = *in++;
+        uint64_t delay;
+        if (!read_varint(&in, end, &delay) || delay > UINT32_MAX ||
+            !read_varint(&in, end, &note->gate_ticks))
+            return NULL;
+        note->delay_us = (uint32_t)delay;
+    }
+    return tk_seed_valid(&entry->seed) ? in : NULL;
+}
+
 size_t tk_pattern_encoded_size(const TkPattern *pattern)
 {
-    size_t n = HEADER + TRACK_BYTES;
+    size_t n = HEADER;
+    uint16_t mask = saved_tracks(pattern);
+    for (; mask; mask &= (uint16_t)(mask - 1))
+        n += TK_CONFIG_BYTES;
     for (unsigned i = 0; i < TK_LOCKED_STEPS; ++i)
         if (pattern->steps[i].index)
             n += STEP_BYTES;
+    for (unsigned i = 0; i < TK_RECORDED_STEPS; ++i)
+        if (pattern->seeds[i].index)
+            n += seed_bytes(&pattern->seeds[i].seed);
     return n;
 }
 
@@ -78,10 +255,15 @@ bool tk_pattern_encode(const TkPattern *pattern, uint8_t *data, size_t size)
     /* An incomplete write carries no magic and cannot be read as a pattern. */
     memset(data, 0, HEADER);
     uint8_t *next = data + HEADER;
-    for (uint8_t track = 0; track < TK_TRACKS; ++track, next += TK_CONFIG_BYTES)
+    uint16_t mask = saved_tracks(pattern);
+    for (uint8_t track = 0; track < TK_TRACKS; ++track) {
+        if (!(mask & (1u << track)))
+            continue;
         if (!tk_config_encode(&pattern->tracks[track], next, TK_CONFIG_BYTES) ||
             (pattern->tracks[track].helpers & (1u << track)))
             return false;
+        next += TK_CONFIG_BYTES;
+    }
     uint8_t seen[(TK_TRACKS * TK_STEPS) / 8] = {0};
     unsigned count = 0;
     for (unsigned i = 0; i < TK_LOCKED_STEPS; ++i) {
@@ -93,9 +275,23 @@ bool tk_pattern_encode(const TkPattern *pattern, uint8_t *data, size_t size)
         next += STEP_BYTES;
         ++count;
     }
-    data[4] = 1;
+    memset(seen, 0, sizeof seen);
+    unsigned seeds = 0;
+    for (unsigned i = 0; i < TK_RECORDED_STEPS; ++i) {
+        const TkPatternSeed *entry = &pattern->seeds[i];
+        if (!entry->index)
+            continue;
+        if (seen_step(seen, entry->index) || entry->seed.length_ticks ||
+            !tk_seed_valid(&entry->seed))
+            return false;
+        next = encode_seed(entry, next);
+        ++seeds;
+    }
+    data[4] = 2;
     write16(data + 6, count);
-    uint32_t hash = checksum(data + HEADER, size - HEADER);
+    write16(data + SEED_COUNT, seeds);
+    write16(data + TRACK_MASK, mask);
+    uint32_t hash = checksum(data + LEGACY_HEADER, size - LEGACY_HEADER);
     write16(data + 8, hash >> 16);
     write16(data + 10, hash);
     memcpy(data, "TKPT", 4);
@@ -140,31 +336,61 @@ static bool decode_step(TkPatternStep *step, const uint8_t *bytes)
 
 bool tk_pattern_decode(TkPattern *pattern, const uint8_t *data, size_t size)
 {
-    if (!data || size < HEADER + TRACK_BYTES || data[0] != 'T' || data[1] != 'K' ||
-        data[2] != 'P' || data[3] != 'T' || data[4] != 1 || data[5] != 0)
+    if (!data || size < LEGACY_HEADER || !tk_bytes_equal(data, "TKPT", 4) || data[5])
+        return false;
+    bool legacy = data[4] == 1;
+    unsigned header = legacy ? LEGACY_HEADER : HEADER;
+    if (size < header || (!legacy && data[4] != 2))
         return false;
     unsigned count = read16(data + 6);
-    if (count > TK_LOCKED_STEPS || size != HEADER + TRACK_BYTES + count * STEP_BYTES ||
-        checksum(data + HEADER, size - HEADER) != (read16(data + 8) << 16 | read16(data + 10)))
+    unsigned seeds = legacy ? 0 : read16(data + SEED_COUNT);
+    unsigned track_bytes = legacy ? TK_CONFIG_V1_BYTES : TK_CONFIG_BYTES;
+    unsigned mask = legacy ? UINT16_MAX : read16(data + TRACK_MASK);
+    size_t expected = header + count * STEP_BYTES;
+    for (unsigned bits = mask; bits; bits &= bits - 1)
+        expected += track_bytes;
+    if (count > TK_LOCKED_STEPS || seeds > TK_RECORDED_STEPS || size < expected ||
+        checksum(data + LEGACY_HEADER, size - LEGACY_HEADER) !=
+            (read16(data + 8) << 16 | read16(data + 10)))
         return false;
-    const uint8_t *next = data + HEADER;
+    const uint8_t *next = data + header;
     TkTrackConfig config;
-    for (uint8_t track = 0; track < TK_TRACKS; ++track, next += TK_CONFIG_BYTES)
-        if (!tk_config_decode(&config, next, TK_CONFIG_BYTES) || (config.helpers & (1u << track)))
+    for (uint8_t track = 0; track < TK_TRACKS; ++track) {
+        if (!(mask & (1u << track)))
+            continue;
+        if (!tk_config_decode(&config, next, track_bytes) || (config.helpers & (1u << track)))
             return false;
+        next += track_bytes;
+    }
     uint8_t seen[(TK_TRACKS * TK_STEPS) / 8] = {0};
     TkPatternStep step;
     for (unsigned i = 0; i < count; ++i, next += STEP_BYTES)
         if (seen_step(seen, read16(next)) || !decode_step(&step, next))
             return false;
-    /* Fixed-size bounded second pass makes decode atomic without a second
-     * pattern-sized stack buffer. Input cannot change during a load callback.
-     */
+    const uint8_t *first_seed = next;
+    const uint8_t *end = data + size;
+    memset(seen, 0, sizeof seen);
+    TkPatternSeed entry;
+    for (unsigned i = 0; i < seeds; ++i) {
+        next = decode_seed(&entry, next, end);
+        if (!next || seen_step(seen, entry.index))
+            return false;
+    }
+    if (next != end)
+        return false;
+    /* Validate the entire record before exposing any of it to playback. */
     tk_pattern_init(pattern);
-    next = data + HEADER;
-    for (uint8_t track = 0; track < TK_TRACKS; ++track, next += TK_CONFIG_BYTES)
-        tk_config_decode(&pattern->tracks[track], next, TK_CONFIG_BYTES);
+    next = data + header;
+    for (uint8_t track = 0; track < TK_TRACKS; ++track) {
+        if (!(mask & (1u << track)))
+            continue;
+        tk_config_decode(&pattern->tracks[track], next, track_bytes);
+        next += track_bytes;
+    }
     for (unsigned i = 0; i < count; ++i, next += STEP_BYTES)
         decode_step(&pattern->steps[i], next);
+    next = first_seed;
+    for (unsigned i = 0; i < seeds; ++i)
+        next = decode_seed(&pattern->seeds[i], next, end);
     return true;
 }

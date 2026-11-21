@@ -860,6 +860,34 @@ def test_shared_keyboard_runs_resolved_notes_without_local_arp_or_strum(playback
     assert after_release[owner + 1] == 1
 
 
+@pytest.mark.parametrize("family", [0, 2, 3])
+def test_track_keyboard_has_independent_pad_and_timed_voices(playback, family):
+    call, _, get, reset, configure, events, _ = playback
+    assert reset() == 1
+    call(0)
+    values = wavetable_fm_bank(family=family)
+    values[0] |= 0x7800  # Shared scheduler, both lanes.
+    values[6] = 60
+    values[21] = (values[21] & 0xFFFF0000) | 60
+    assert configure(values=values) == 1
+    call(0)
+    timed = 0x40000005
+    pad = [(i, 1, 50 + i * 3, 100, 2, 0) for i in range(1, 5)]
+    assert events([*pad, (timed, 1, 79, 92, 2, 0)]) == 1
+    call(0)
+    state = get("_test_state", 144)
+    assert {state[i] for i in range(0, 32, 8)} == {1, 2, 3, 4}
+    assert state[136] == timed
+    assert any(get("_iv_output", 32))
+    assert get("_iv_shared_controls", 32)[6] == 60
+    assert events([(timed, 2, 79, 0, 2, 0)]) == 1
+    call(0)
+    state = get("_test_state", 144)
+    assert {state[i] for i in range(0, 32, 8)} == {1, 2, 3, 4}
+    assert all(state[i + 1] == 1 for i in range(0, 32, 8))
+    assert state[137] == 0
+
+
 def test_extended_movement_configuration_is_applied_atomically(playback):
     call, _, get, reset, configure, events, _ = playback
     reset()

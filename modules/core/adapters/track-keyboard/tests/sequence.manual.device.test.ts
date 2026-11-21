@@ -1,0 +1,188 @@
+import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
+import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
+import { trackType } from '@digi/regression/runtime/project-kit.ts';
+import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
+import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
+import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
+import { pollEmulated } from '@digi/regression/runtime/waits.ts';
+import { withSession } from '@digi/regression/support.ts';
+import { expect, test } from 'vitest';
+
+describeOn('dt2', 'shared arpeggiator stock sequence', () => {
+  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+  test('replays audio and MIDI trigs and captures a step-recorded chord', { timeout: 240_000 }, async () => {
+    const { session } = handle;
+    const image = await prepareRuntimePlanModulesOffline(
+      session.options,
+      session.runDir,
+      session.runDir,
+      [
+        'DKRT_BOOT',
+        'tk_sequence_audio_hits',
+        'tk_sequence_audio_locked_hits',
+        'tk_sequence_midi_hits',
+        'tk_sequence_midi_info',
+        'tk_native_audio_active',
+        'tk_capture_committed',
+        'tk_capture_last_count',
+      ],
+      { modules: ['core/track-keyboard', 'core/instrument-play', 'core/digikit-menu', 'core/health'] },
+    );
+    await session.client.firmwareLoad({
+      syx: image.syx,
+      base_sha256: image.plan.base.syx_sha256,
+      start: 'auto',
+      force: true,
+      auto_no: true,
+      card: session.cardPath,
+    });
+    await session.client.call('run.mode', { mode: 'free' });
+    await expectRuntimeUi(session, image.plan, session.runDir);
+    const { edge, tap, turn } = acknowledgedPanel(session);
+    await edge('TRK', true);
+    try {
+      await tap('TRIG 1');
+    } finally {
+      await edge('TRK', false);
+    }
+
+    await tap('RECORD'); // GRID
+    await tap('TRIG 1');
+    await tap('TRIG 5');
+    await tap('FLTR');
+    for (const trig of ['TRIG 1', 'TRIG 5']) {
+      await edge(trig, true);
+      try {
+        await turn(1, -12);
+      } finally {
+        await edge(trig, false);
+      }
+    }
+    await tap('RECORD');
+    await tap(1);
+    await tap(1);
+    await tap(1);
+    await turn(1, 12);
+    await turn(3, 30);
+
+    const symbol = (name: string) => session.client.memPeek(planSymbol(image.plan, name));
+    const held = async () => ((await symbol('tk_native_audio_active')) ?? 0) & 1;
+    const hits = () => symbol('tk_sequence_audio_hits');
+    expect(await hits()).toBe(0);
+    await tap('PLAY');
+    await pollEmulated(session, hits, (n) => n !== null && n > 0, {
+      emulatedMs: 5000,
+      message: 'the due native note was admitted to the shared scheduler',
+    });
+    await pollEmulated(session, held, (n) => n === 1, {
+      emulatedMs: 5000,
+      intervalMs: 10,
+      message: 'the native audio backend received a generated note-on',
+    });
+    // Stock DSP-frame parameter-lock masks: three words per audio track.
+    const nativeLock = async () =>
+      ((await session.client.memPeek(0x47db461c)) ?? 0) |
+      ((await session.client.memPeek(0x47db4620)) ?? 0) |
+      ((await session.client.memPeek(0x47db4624)) ?? 0);
+    await pollEmulated(session, nativeLock, (mask) => mask !== 0, {
+      emulatedMs: 5000,
+      intervalMs: 10,
+      message: 'stock audio dispatch installed the generated note’s parameter lock',
+    });
+    expect(await symbol('tk_sequence_audio_locked_hits')).toBeGreaterThan(0);
+    await tap('STOP');
+    await pollEmulated(session, held, (n) => n === 0, {
+      emulatedMs: 5000,
+      message: 'STOP released the sequencer-owned note',
+    });
+    await edge('RECORD', true);
+    try {
+      await tap('STOP');
+    } finally {
+      await edge('RECORD', false);
+    }
+    await edge('KEYBOARD', true);
+    const notes = ['TRIG 9', 'TRIG 11', 'TRIG 13'];
+    try {
+      for (const note of notes) await edge(note, true);
+      await pollEmulated(session, () => symbol('tk_capture_last_count'), (n) => n === 3, {
+        emulatedMs: 5000,
+        intervalMs: 10,
+        message: 'three held step-entry keys committed to one ordered native trig recipe',
+      });
+    } finally {
+      for (const note of notes) await edge(note, false);
+      await edge('KEYBOARD', false);
+    }
+    expect(await symbol('tk_capture_committed')).toBeGreaterThanOrEqual(3);
+    await tap('RECORD');
+
+    const modified = async (modifier: string, key: string | number) => {
+      await edge(modifier, true);
+      try {
+        await tap(key);
+      } finally {
+        await edge(modifier, false);
+      }
+    };
+    await modified('TRK', 'TRIG 2');
+    await modified('FUNC', 'SRC');
+    for (let i = 0; i < 6; i++) await tap('DOWN');
+    await tap('YES');
+    await pollEmulated(session, () => trackType(session, 2), (type) => type === 5, {
+      emulatedMs: 5000,
+      message: 'track 2 uses the stock MIDI machine',
+    });
+    await tap('SRC');
+    const channelEnabled = async () => ((await session.client.memPeek(0x44e3b9e8)) ?? 0) & 1;
+    if (!(await channelEnabled())) await modified('FUNC', 'PUSH A');
+    await turn(1, 4);
+    expect(await channelEnabled(), 'MIDI track CHAN enabled').toBe(1);
+    await tap('RECORD');
+    await tap('TRIG 1');
+    await tap('TRIG 5');
+    await tap('RECORD');
+    await tap(1);
+    await tap(1);
+    await tap(1);
+    await turn(1, 12);
+    await turn(3, 30);
+
+    const outgoing = async () => {
+      const response = await session.client.call<{ hex: string }>('midi.out', {});
+      return [...Buffer.from(response.hex.replaceAll(/\s/g, ''), 'hex')];
+    };
+    await outgoing();
+    await tap('PLAY');
+    try {
+      await pollEmulated(session, () => symbol('tk_sequence_midi_hits'), (n) => n !== null && n > 0, {
+        emulatedMs: 5000,
+        message: 'the due stock MIDI note reached the shared scheduler',
+      });
+    } catch (error) {
+      const base = planSymbol(image.plan, 'tk_sequence_midi_info');
+      const counters = await Promise.all([0, 4, 8, 12, 16].map((offset) => session.client.memPeek(base + offset)));
+      throw new Error('Native MIDI scheduled/due/matched/enabled/decoded ' + JSON.stringify(counters), { cause: error });
+    }
+    const wire: number[] = [];
+    let active: [number, number] | undefined;
+    await pollEmulated(session, async () => {
+      wire.push(...await outgoing());
+      for (let i = 0; i + 2 < wire.length; i++) {
+        const [status, note, velocity] = wire.slice(i, i + 3) as [number, number, number];
+        if ((status & 0xf0) === 0x90 && note < 128 && velocity > 0 && velocity < 128) {
+          active = [status & 15, note];
+        }
+      }
+      return active;
+    }, (note) => note !== undefined, { emulatedMs: 5000, message: 'native MIDI route emitted a note-on' });
+    await tap('STOP');
+    await pollEmulated(session, async () => {
+      wire.push(...await outgoing());
+      return wire.some((status, i) =>
+        (status & 15) === active![0] && wire[i + 1] === active![1] &&
+        ((status & 0xf0) === 0x80 || ((status & 0xf0) === 0x90 && wire[i + 2] === 0)));
+    }, Boolean, { emulatedMs: 5000, message: 'native MIDI route emitted the paired note-off' });
+    await session.expectNoFault('shared arpeggiator stock sequence');
+  });
+});

@@ -75,9 +75,10 @@ def composed_frame(
         "_pp_block_back": 0xB9F000,
         "_instrument_play_status": 0,
         "_instrument_ui_status": 0,
-        # Neither optional receiver is present in this frame.
+        # The other optional receivers are absent in this frame.
         "_phrase_receive": 0,
         "_relay_receive": 0,
+        "_tk_pool_receive": 0,
     }
     if carrier:
         externs["_mi_envelope_next"] = 0

@@ -87,3 +87,108 @@ rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 6, sha256 =
 mark = "D"
 users = ["core/track-keyboard"]
 doc = "Pass a 64-byte note record to the native audio voice task, including after a track has changed machine type."
+
+[[fn]]
+name = "cf.track_keys.fn.audio_queue_head"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 8, sha256 = "c392e8fd6754990d40156a745831bb031741203e24c48242f8dd9f52cdbb709b" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Read the pending audio-event list before admitting a reserved voice."
+
+[[site]]
+name = "cf.track_keys.site.audio_dispatch_entry"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 8, sha256 = "55e8feb077368a4f4f1670fc90841d0ad3cc6891c962cfaae9d6413effc4fb97" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Audio note dispatch entry. The eight-byte prologue allocates its frame and saves callee registers."
+
+[[hook]]
+name = "cf.track_keys.hook.audio_dispatch_entry"
+site = "cf.track_keys.site.audio_dispatch_entry"
+cpu = "cf"
+mode = "replace"
+regs = { in = [], clobbers = ["d0", "d1", "a0", "a1", "ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Quarantine ordinary auditions on physical tracks reserved by a helper group."
+
+[[site]]
+name = "cf.track_keys.site.midi_selected_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 6, len = 4, sha256 = "11fa7691434bcc3697a196c57320ff8229f2de7bda5b64d8347bd84a2e589d19" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "MIDI note router operand for the selected track used by Auto Channel."
+
+[[site]]
+name = "cf.track_keys.site.midi_routes_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 14, len = 4, sha256 = "11fa7691434bcc3697a196c57320ff8229f2de7bda5b64d8347bd84a2e589d19" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "MIDI note router operand for its signed per-track input channel table."
+
+[[site]]
+name = "cf.track_keys.site.midi_rx_notes_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 14, len = 4, sha256 = "afe9f20e67b04da4ed307eb7979c337e7eaaddd7f46429cf15c34717e1ad22c6" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Stock MIDI Receive Notes flag used at the entry of the MIDI note-on parser."
+
+[[site]]
+name = "cf.track_keys.site.midi_ports_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 12, len = 4, sha256 = "63e397027bfe366553da8661df48013408cd8310d9317a902e308ccc157f47d9" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "MIDI gatherer receive port mask operand. Bit 0 enables DIN and bit 1 enables USB."
+
+[[site]]
+name = "cf.track_keys.site.midi_target_on"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 8, len = 6, sha256 = "3f2498d3fbb12add31ef218bacc0ea660640c2709cc948b238262e11ff91a886" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Per-destination native MIDI note-on call, with seven arguments already pushed."
+
+[[hook]]
+name = "cf.track_keys.hook.midi_target_on"
+site = "cf.track_keys.site.midi_target_on"
+cpu = "cf"
+mode = "before"
+regs = { in = ["d1", "d2", "d3", "a3"], clobbers = ["ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Keep native fan-out for stock destinations after shared keyboard admits a subset."
+
+[[site]]
+name = "cf.track_keys.site.midi_target_off"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 8, len = 6, sha256 = "164abbc732a18cebc9e831f6e500ff5ae369acf3c31220d71c46f53186aae241" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Per-destination native MIDI note-off call, with the source already pushed."
+
+[[hook]]
+name = "cf.track_keys.hook.midi_target_off"
+site = "cf.track_keys.site.midi_target_off"
+cpu = "cf"
+mode = "before"
+regs = { in = ["d2", "d4", "a2"], clobbers = ["ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Leave stock release dispatch only on native destinations of mixed routes."

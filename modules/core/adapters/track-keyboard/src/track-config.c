@@ -46,6 +46,7 @@ bool tk_set_control(TkParams *p, enum TkControl id, int v)
         break;
     case TK_CTL_SWING:
         next.swing = u;
+        next.legacy_swing = 0;
         break;
     case TK_CTL_RESET:
         next.reset = u;
@@ -132,9 +133,16 @@ bool tk_assign_helpers(TkTrackConfig *config, uint8_t owner, uint16_t request, u
     return true;
 }
 
-/* TKEY, version, recipe count, helper mask, control words, recipe. */
+TkTrackConfig tk_track_defaults(void)
+{
+    return (TkTrackConfig){.params = tk_defaults(), .selector_octave = -1, .selector_channel = -1};
+}
+
+/* TKEY, version, recipe count, helper mask, control words, recipe, metadata. */
 enum { RECIPE_OFFSET = 8 + 2 * TK_CONTROL_COUNT };
-_Static_assert(RECIPE_OFFSET + 2 * TK_NOTES == TK_CONFIG_BYTES, "track record layout");
+enum { SELECTOR_OCTAVE = RECIPE_OFFSET + 2 * TK_NOTES, SELECTOR_CHANNEL, CANOPY_MIX, OVERRIDE };
+_Static_assert(SELECTOR_OCTAVE == TK_CONFIG_V1_BYTES && OVERRIDE + 1 == TK_CONFIG_BYTES,
+               "track record layout");
 
 static void put_u16(uint8_t *p, uint16_t v)
 {
@@ -150,38 +158,65 @@ static unsigned get_u16(const uint8_t *p)
 bool tk_config_encode(const TkTrackConfig *config, uint8_t *data, size_t size)
 {
     if (!data || size != TK_CONFIG_BYTES || !tk_valid(&config->params) ||
-        !tk_valid_recipe(&config->user) || !valid_helpers(config->helpers))
+        !tk_valid_recipe(&config->user) || !valid_helpers(config->helpers) ||
+        config->selector_octave < -1 || config->selector_octave > 10 ||
+        config->selector_channel < -1 || config->selector_channel > 15 || config->canopy_mix > 127)
         return false;
     memset(data, 0, size);
     memcpy(data, "TKEY", 4);
-    data[4] = 1;
+    data[4] = 2;
     data[5] = config->user.count;
     put_u16(data + 6, config->helpers);
     for (enum TkControl id = TK_CTL_ARP; id < TK_CONTROL_COUNT; ++id) {
         int value = 0;
         tk_get_control(&config->params, id, &value);
         /* Bias signed controls so the representation is independent of C layout. */
-        put_u16(data + 8 + 2 * id, (uint16_t)(id == TK_CTL_OCTAVES ? value + 3 : value));
+        uint16_t stored = (uint16_t)(id == TK_CTL_OCTAVES ? value + 3 : value);
+        if (id == TK_CTL_SWING && config->params.legacy_swing)
+            stored |= (uint16_t)config->params.legacy_swing << 8;
+        put_u16(data + 8 + 2 * id, stored);
     }
     for (uint8_t i = 0; i < config->user.count; ++i) {
         data[RECIPE_OFFSET + 2 * i] = (uint8_t)(config->user.notes[i].interval + 127);
         data[RECIPE_OFFSET + 2 * i + 1] = config->user.notes[i].velocity;
     }
+    data[SELECTOR_OCTAVE] = (uint8_t)(config->selector_octave + 1);
+    data[SELECTOR_CHANNEL] = (uint8_t)(config->selector_channel + 1);
+    data[CANOPY_MIX] = config->canopy_mix;
+    data[OVERRIDE] = config->override;
     return true;
 }
 
 bool tk_config_decode(TkTrackConfig *config, const uint8_t *data, size_t size)
 {
-    if (!data || size != TK_CONFIG_BYTES || !tk_bytes_equal(data, "TKEY", 4) || data[4] != 1 ||
-        data[5] > TK_NOTES)
+    if (!data || (size != TK_CONFIG_BYTES && size != TK_CONFIG_V1_BYTES) ||
+        !tk_bytes_equal(data, "TKEY", 4) || data[5] > TK_NOTES ||
+        data[4] != (size == TK_CONFIG_V1_BYTES ? 1 : 2))
         return false;
-    TkTrackConfig next = {.params = tk_defaults(), .helpers = (uint16_t)get_u16(data + 6)};
+    TkTrackConfig next = tk_track_defaults();
+    next.helpers = (uint16_t)get_u16(data + 6);
+    if (data[4] == 2) {
+        if (data[SELECTOR_OCTAVE] > 11 || data[SELECTOR_CHANNEL] > 16 || data[CANOPY_MIX] > 127 ||
+            data[OVERRIDE] > 1)
+            return false;
+        next.selector_octave = (int8_t)(data[SELECTOR_OCTAVE] - 1);
+        next.selector_channel = (int8_t)(data[SELECTOR_CHANNEL] - 1);
+        next.canopy_mix = data[CANOPY_MIX];
+        next.override = data[OVERRIDE];
+    }
     if (!valid_helpers(next.helpers))
         return false;
     for (enum TkControl id = TK_CTL_ARP; id < TK_CONTROL_COUNT; ++id) {
         int value = (int)get_u16(data + 8 + 2 * id);
+        unsigned legacy_swing = data[4] == 2 && id == TK_CTL_SWING ? (unsigned)value >> 8 : 0;
+        if (legacy_swing > 75)
+            return false;
+        if (legacy_swing)
+            value &= 255;
         if (!tk_set_control(&next.params, id, id == TK_CTL_OCTAVES ? value - 3 : value))
             return false;
+        if (legacy_swing)
+            next.params.legacy_swing = (uint8_t)legacy_swing;
     }
     next.user.count = data[5];
     for (uint8_t i = 0; i < TK_NOTES; ++i) {

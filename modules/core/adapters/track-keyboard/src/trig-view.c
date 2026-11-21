@@ -20,7 +20,10 @@ extern uint8_t tk_trig_stock_live_record(uint32_t);
 extern void tk_trig_stock_mark_edited(uint32_t, uint32_t);
 extern const uint32_t tk_trig_label_font;
 extern void tk_runtime_touch(uint8_t track);
-extern bool tk_trig_open_notes(uint8_t track) __attribute__((weak));
+extern bool tk_trig_lock_batch(uint8_t track, const uint32_t steps[4], enum TkControl control,
+                               int value, bool clear) __attribute__((weak));
+extern uint16_t tk_trig_pitch_display(uint8_t track, uint16_t *held) __attribute__((weak));
+extern bool tk_trig_open_notes(uint8_t track, int step) __attribute__((weak));
 extern bool tk_trig_open_pool(uint8_t track) __attribute__((weak));
 
 /* DTII OS 1.17 ParameterPageView fields. The installed vtable is specific to
@@ -58,7 +61,7 @@ typedef struct {
 
 static const TrigCell arp[] = {
     {"ARP", TK_CTL_ARP, 0, 1, true},       {"ORDR", TK_CTL_ORDER, 0, 4, true},
-    {"GATE", TK_CTL_GATE, 1, 100, false},  {"RATE", TK_CTL_RATE, 0, 17, true},
+    {"GATE", TK_CTL_GATE, 1, 100, false},  {"RATE", TK_CTL_RATE, 0, TK_RATE_5Q, true},
     {"OCTS", TK_CTL_OCTAVES, -3, 3, true}, {"SWNG", TK_CTL_SWING, 50, 75, false},
     {"RST", TK_CTL_RESET, 0, 2, true},     {"CHRD", TK_CTL_CHORD, 0, TK_CHORD_COUNT - 1, true},
 };
@@ -76,6 +79,8 @@ typedef struct {
 } EncoderTrace;
 static EncoderTrace trace;
 static uint8_t click_track, click_page, click_key;
+static int click_step;
+static bool click_modified;
 static uint8_t owned_clicks;
 
 static uint32_t word(const uint8_t *p, uint16_t offset)
@@ -165,6 +170,20 @@ static int step_context(const uint8_t *view)
     return step;
 }
 
+static bool group_context(const uint8_t *view, int step, uint32_t steps[4])
+{
+    uint32_t editor = word(view, EDITOR);
+    if (step != TK_STEPS || !editor || !tk_trig_lock_batch || !tk_trig_stock_held(editor))
+        return false;
+    const uint8_t *seq = (const uint8_t *)(uintptr_t)editor;
+    uint32_t any = 0;
+    for (unsigned i = 0; i < 4; ++i) {
+        steps[i] = word(seq, HELD_STEP_MASK + 4 * i);
+        any |= steps[i];
+    }
+    return any != 0;
+}
+
 uint32_t tk_trig_parameter(uint8_t *view, uint32_t encoder)
 {
     if (word(view, PAGE_INDEX) >= ARP_PAGE && encoder < TRACK_LEVEL_INDEX)
@@ -240,6 +259,35 @@ static void draw_value(uint8_t *bitmap, const uint8_t *font, int x, int y, const
         dk_fw_text_draw_box(bitmap, typeface, x, y, 0, 0, 0, "%s", text);
 }
 
+static void draw_keyboard(uint8_t *bitmap, uint8_t track)
+{
+    static const uint8_t white[] = {0, 2, 4, 5, 7, 9, 11};
+    static const uint8_t black[] = {1, 3, 6, 8, 10};
+    static const uint8_t gap[] = {0, 1, 3, 4, 5};
+    uint16_t held = 0;
+    uint16_t sounding = tk_trig_pitch_display ? tk_trig_pitch_display(track, &held) : 0;
+    dk_fw_draw_fill_rect(bitmap, 75, 24, 117, 38, 1);
+    for (unsigned i = 0; i < sizeof white; ++i) {
+        int x = 75 + 6 * (int)i;
+        uint16_t mask = (uint16_t)(1u << white[i]);
+        dk_fw_draw_fill_rect(bitmap, x, 24, x, 38, 0);
+        if (sounding & mask)
+            dk_fw_draw_fill_rect(bitmap, x + 2, 25, x + 4, 29, 0);
+        else if (held & mask)
+            dk_fw_draw_fill_rect(bitmap, x + 3, 26, x + 3, 26, 0);
+    }
+    dk_fw_draw_fill_rect(bitmap, 117, 24, 117, 38, 0);
+    for (unsigned i = 0; i < sizeof black; ++i) {
+        int x = 79 + 6 * gap[i];
+        uint16_t mask = (uint16_t)(1u << black[i]);
+        dk_fw_draw_fill_rect(bitmap, x, 31, x + 3, 38, 0);
+        if (sounding & mask)
+            dk_fw_draw_fill_rect(bitmap, x + 1, 32, x + 2, 36, 1);
+        else if (held & mask)
+            dk_fw_draw_fill_rect(bitmap, x + 1, 32, x + 1, 32, 1);
+    }
+}
+
 void tk_trig_draw(uint8_t *view, uint8_t *bitmap)
 {
     uint8_t track = current_track(view);
@@ -262,6 +310,8 @@ void tk_trig_draw(uint8_t *view, uint8_t *bitmap)
     uint16_t locks;
     if (!read_controls(track, step, &params, &locks) || !tk_valid(&params))
         return;
+    if (page == KEYS_PAGE)
+        draw_keyboard(bitmap, track);
     for (unsigned i = 0; i < 8; ++i) {
         const TrigCell *cell = &cells[i];
         if (!cell->label)
@@ -302,11 +352,25 @@ uint8_t tk_trig_key(uint8_t *view, uint8_t *event)
     if (!(flags & 1u) && (owned_clicks & bit)) {
         owned_clicks &= (uint8_t)~bit;
         if (active && page == click_page && track == click_track && key == click_key &&
-            step_context(view) == -1 && !(flags & 2u)) {
-            if (page == KEYS_PAGE && i == 7 && tk_trig_open_pool)
+            step_context(view) == click_step) {
+            const TrigCell *cell = &(page == ARP_PAGE ? arp : keys)[i];
+            if (click_step >= 0) {
+                if (click_modified && cell->control == TK_CTL_CHORD && tk_trig_open_notes) {
+                    tk_trig_open_notes(track, click_step);
+                } else if (!click_modified && cell->control < TK_CTL_VOICES) {
+                    uint32_t steps[4];
+                    tk_trig_stock_mark_edited(word(view, EDITOR), 1);
+                    if (group_context(view, click_step, steps))
+                        tk_trig_lock_batch(track, steps, cell->control, 0, true);
+                    else if (click_step < TK_STEPS)
+                        tk_trig_lock_write(track, (uint8_t)click_step, cell->control, 0, true);
+                    dk_fw_view_invalidate(view);
+                }
+            } else if (page == KEYS_PAGE && i == 7 && tk_trig_open_pool) {
                 tk_trig_open_pool(track);
-            else if (tk_trig_open_notes)
-                tk_trig_open_notes(track);
+            } else if (tk_trig_open_notes) {
+                tk_trig_open_notes(track, -1);
+            }
         }
         click_key = 0;
         return 1;
@@ -318,15 +382,19 @@ uint8_t tk_trig_key(uint8_t *view, uint8_t *event)
         if (flags & 8u) /* Key repeats do not create or clear another lock. */
             return 1;
         int step = step_context(view);
-        click_key = 0;
         const TrigCell *cell = &(page == ARP_PAGE ? arp : keys)[i];
-        if (step >= 0 && step < TK_STEPS && cell->control < TK_CTL_VOICES && !(flags & 2u)) {
-            tk_trig_stock_mark_edited(word(view, EDITOR), 1);
-            tk_trig_lock_write(track, (uint8_t)step, cell->control, 0, true);
-            dk_fw_view_invalidate(view);
-        } else if (step == -1 && !(flags & 2u) && action_for(page, (uint8_t)key)) {
+        bool modified = (flags & 2u) != 0;
+        uint32_t steps[4];
+        bool held_action =
+            step >= 0 && (modified ? step < TK_STEPS && cell->control == TK_CTL_CHORD
+                                   : cell->control < TK_CTL_VOICES &&
+                                         (step < TK_STEPS || group_context(view, step, steps)));
+        click_key = 0;
+        if (held_action || (step == -1 && !modified && action_for(page, (uint8_t)key))) {
             click_track = track;
             click_page = (uint8_t)page;
+            click_step = step;
+            click_modified = modified;
             click_key = (uint8_t)key;
         }
     }
@@ -344,7 +412,9 @@ uint8_t tk_trig_turn(uint8_t *view, uint8_t *event)
     uint8_t i = (uint8_t)(knob - 1u);
     const TrigCell *cell = &(page == ARP_PAGE ? arp : keys)[i];
     int step = step_context(view);
-    if (step == TK_STEPS || cell->control >= TK_CONTROL_COUNT ||
+    uint32_t steps[4];
+    bool group = group_context(view, step, steps);
+    if ((step == TK_STEPS && !group) || cell->control >= TK_CONTROL_COUNT ||
         (step >= 0 && cell->control == TK_CTL_VOICES))
         return 1;
     TkParams params;
@@ -389,7 +459,10 @@ uint8_t tk_trig_turn(uint8_t *view, uint8_t *event)
         tk_trig_write(track, cell->control, value);
     else {
         tk_trig_stock_mark_edited(word(view, EDITOR), 1);
-        tk_trig_lock_write(track, (uint8_t)step, cell->control, value, false);
+        if (group)
+            tk_trig_lock_batch(track, steps, cell->control, value, false);
+        else
+            tk_trig_lock_write(track, (uint8_t)step, cell->control, value, false);
     }
     dk_fw_view_invalidate(view);
     return 1;

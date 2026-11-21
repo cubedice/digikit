@@ -1,19 +1,25 @@
 #include "track-native.h"
+#include "track-canopy.h"
 
 extern uintptr_t tk_fw_project(void);
 extern uintptr_t tk_fw_active_kit(uintptr_t);
 extern int32_t tk_fw_track_type(uintptr_t, uint32_t);
 extern uint32_t tk_fw_midi_mode(uint32_t);
 extern int32_t tk_fw_midi_channel(uint32_t);
-extern void tk_fw_note_on(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, int32_t, int32_t,
-                          int32_t, int32_t);
-extern void tk_fw_note_off(uint32_t, uint32_t, uint32_t);
 extern void tk_fw_midi_dispatch(const int32_t *);
 extern void tk_fw_audio_dispatch(const int32_t *);
-extern const uint8_t tk_fw_note_mail_lit[];
+extern uint32_t pp_current_pattern(void);
 extern const uint8_t tk_fw_midi_mail_lit[];
 extern const uint8_t tk_fw_midi_free_lit[];
 extern const uint8_t tk_fw_midi_hold_lit[];
+extern const uint8_t tk_seq_audio_free_lit[];
+extern const uint8_t tk_seq_audio_bucket_free_lit[], tk_seq_audio_lock_free_lit[];
+extern uint32_t *tk_seq_audio_event_alloc(void);
+extern uint32_t *tk_seq_audio_lock_alloc(void);
+extern void tk_seq_audio_event_queue(uint32_t *);
+extern uintptr_t tk_seq_audio_track_sound(uint32_t);
+extern uint32_t dkrt_irq_mask(void);
+extern void dkrt_irq_restore(uint32_t);
 
 static uintptr_t literal(const uint8_t *operand)
 {
@@ -39,12 +45,81 @@ int tk_native_kind(uint8_t track)
     bool midi = tk_fw_midi_mode(track) != 0;
     if (midi)
         return type == 5 ? TK_NATIVE_MIDI : TK_NATIVE_UNSUPPORTED;
+    if (tk_canopy_is_owner(track, type))
+        return TK_NATIVE_CANOPY;
     return type >= 0 && type <= 6 && type != 5 ? TK_NATIVE_AUDIO : TK_NATIVE_UNSUPPORTED;
 }
 
 int tk_native_channel(uint8_t track)
 {
     return tk_fw_midi_channel(track);
+}
+
+bool tk_native_try_seed_send(uint8_t track, uint8_t pitch, uint8_t velocity,
+                             const TkSequenceAudio *audio)
+{
+    if (track >= TK_TRACKS || pitch > 127 || (velocity && !audio))
+        return false;
+    uint32_t sr = dkrt_irq_mask();
+    if (!read_pointer(literal(tk_seq_audio_free_lit)) ||
+        !read_pointer(literal(tk_seq_audio_bucket_free_lit)) ||
+        (velocity && audio->count && !read_pointer(literal(tk_seq_audio_lock_free_lit)))) {
+        dkrt_irq_restore(sr);
+        return false;
+    }
+    uint32_t *event = tk_seq_audio_event_alloc();
+    uint32_t *lock = velocity && audio->count ? tk_seq_audio_lock_alloc() : NULL;
+    /* The scheduler owns this native event and its lock record after enqueue.
+     * Source 2 uses the native audition release arbitration so a resequenced
+     * note-off cannot end a new source-1 stock pattern note of the same pitch. */
+    event[1] = velocity ? 1 : 2;
+    event[4] = track;
+    event[5] = 2;
+    event[7] = 0;
+    event[8] = UINT32_MAX;
+    event[9] = (uint32_t)pitch << 8 | velocity;
+    event[10] = 127u << 24;
+    event[0xb] = 0;
+    event[0xe] = velocity ? audio->flags : 0;
+    event[0xf] = velocity ? (uint32_t)audio->sound : 0;
+    event[0x11] = 0;
+    event[0x12] = 0;
+    event[0x13] = 0;
+    event[0x15] = (uint32_t)(uintptr_t)lock;
+    event[0x17] = track;
+    event[0x19] = UINT32_MAX;
+    if (lock) {
+        lock[2] = audio->count;
+        uint16_t *values = (uint16_t *)(lock + 5);
+        for (uint8_t i = 0; i < audio->count; ++i, values += 4) {
+            values[0] = audio->locks[i].parameter;
+            values[1] = audio->locks[i].value;
+        }
+    }
+    tk_seq_audio_event_queue(event);
+    dkrt_irq_restore(sr);
+    return true;
+}
+
+static uint32_t note_flags(uint8_t track)
+{
+    uint32_t pattern = pp_current_pattern();
+    if (!pattern)
+        return 0x10081;
+    const uint8_t *trig = (const uint8_t *)(uintptr_t)(pattern + track * 0x6a5u + 0x482u);
+    return ((uint32_t)(int16_t)((uint16_t)trig[0] << 8 | trig[1]) | 0x10001u) & ~2u;
+}
+
+bool tk_native_try_helper_send(uint8_t owner, uint8_t track, uint8_t pitch, uint8_t velocity,
+                               const TkSequenceAudio *audio)
+{
+    if (owner >= TK_TRACKS)
+        return false;
+    if (!velocity || audio)
+        return tk_native_try_seed_send(track, pitch, velocity, audio);
+    const TkSequenceAudio live = {.sound = tk_seq_audio_track_sound(owner),
+                                  .flags = note_flags(owner)};
+    return live.sound && tk_native_try_seed_send(track, pitch, velocity, &live);
 }
 
 bool tk_native_try_send(uint8_t track, bool midi, uint8_t pitch, uint8_t velocity)
@@ -86,23 +161,26 @@ bool tk_native_try_send(uint8_t track, bool midi, uint8_t pitch, uint8_t velocit
         tk_fw_midi_dispatch(event);
         return true;
     }
-    if (!same_kind) {
-        /* The note is already owned by the old task. A native audition release
-         * would select the new task. Submit the old task's release record. The
-         * audio worker looks up the Sound retained with the original voice.
-         */
-        const int32_t release[16] = {
-            [0] = track, [1] = pitch, [3] = 2, [5] = -1, [8] = (int32_t)source};
-        tk_fw_audio_dispatch(release);
-        return true;
-    }
-    /* Leave half of the native audition ring to the stock input paths. */
-    uintptr_t mail = read_pointer(literal(tk_fw_note_mail_lit));
-    if (!mail || read_pointer(mail + 4) >= 8)
+    uintptr_t free = read_pointer(literal(tk_seq_audio_free_lit));
+    for (uint32_t remaining = velocity ? 4 : 2; free && remaining; --remaining)
+        free = read_pointer(free + 0x68);
+    if (!free)
         return false;
-    if (velocity)
-        tk_fw_note_on(track, pitch, velocity, source, 0, -1, -1, -1, -1);
-    else
-        tk_fw_note_off(track, pitch, source);
+    /* Dispatch past the note wrapper so generated notes never enter the
+     * recorder's channel-input inbox. Keep the audio path for old releases. */
+    const int32_t event[16] = {
+        [0] = track,
+        [1] = pitch,
+        [2] = velocity,
+        [3] = velocity ? 1 : 2,
+        [4] = velocity ? (int32_t)note_flags(track) : 0,
+        [5] = -1,
+        [8] = (int32_t)source,
+        [9] = -1,
+        [10] = -1,
+        [14] = -1,
+        [15] = -1,
+    };
+    tk_fw_audio_dispatch(event);
     return true;
 }

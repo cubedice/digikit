@@ -19,6 +19,7 @@ extern void ip_panel_stock_detach(uint8_t *, uint8_t *);
 extern uint8_t ip_panel_live_record(uint32_t);
 extern uint8_t ip_panel_trig_held(uint32_t);
 extern uint8_t ip_panel_step_record(uint32_t);
+extern uint32_t ip_panel_key_down(uint32_t);
 /* The active pattern (core/pattern-position); without it no chord is stored. */
 extern uint32_t pp_current_pattern(void) __attribute__((weak));
 /* control.c: the track's instance plays held keys as separate notes (PLAY). */
@@ -240,6 +241,11 @@ extern int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t ve
 extern int tk_panel_off(uint32_t key) __attribute__((weak));
 extern void tk_panel_cancel(void) __attribute__((weak));
 extern void tk_panel_focus(uint32_t track) __attribute__((weak));
+extern void tk_capture_panel_press(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)
+    __attribute__((weak));
+extern void tk_capture_panel_release(uint32_t key) __attribute__((weak));
+extern void tk_capture_note_list_commit(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)
+    __attribute__((weak));
 
 static void panel_play(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch,
                        uint32_t velocity)
@@ -267,7 +273,9 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
                           : 0;
     int canopy = object && ip_panel_track_type(object) == type && key < 16 &&
                  ip_panel_active(word(view, 0xa0));
-    if (!canopy && ip_panel_active(word(view, 0xa0))) {
+    if (tk_capture_panel_press && recording(view))
+        tk_capture_panel_press(key, track, pitch, velocity, ip_panel_step_record(word(view, 0x98)));
+    if (ip_panel_active(word(view, 0xa0))) {
         if (recording(view)) {
             if (tk_panel_cancel)
                 tk_panel_cancel();
@@ -305,6 +313,8 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
 }
 void ip_panel_off(uint8_t *view, uint32_t key)
 {
+    if (tk_capture_panel_release)
+        tk_capture_panel_release(key);
     if (tk_panel_off && tk_panel_off(key))
         return;
     /* Consume tombstones even after track/machine/mode changes. Stock owns
@@ -415,14 +425,28 @@ volatile uint32_t ip_panel_step[8];
 void ip_note_list_write(uint8_t *editor, uint32_t track, uint32_t step, uint32_t *records)
 {
     uint32_t note = 128;
-    if (records && track == commit_track && step < 128) {
+    uint32_t velocity = 0;
+    if (records && (track == commit_track || tk_capture_note_list_commit) && track < 16 && step < 128) {
         const uint8_t *first = (const uint8_t *)(uintptr_t)records[0],
                       *end = (const uint8_t *)(uintptr_t)records[1];
-        if (first && first < end && first[0] < 128)
+        if (first && first < end && first[0] < 128) {
             note = first[0];
+            velocity = first[1];
+        }
     }
     /* Publish only after the stock writer has finished updating the pattern. */
     ip_note_list_original(editor, track, step, records);
+    if (note < 128 && editor && tk_capture_note_list_commit) {
+        typedef uint32_t (*EditorNotes)(uint8_t *);
+        uint32_t vtable = word(editor, 0);
+        EditorNotes get_notes = vtable ? (EditorNotes)(uintptr_t)word((const uint8_t *)
+                                                                      (uintptr_t)vtable, 0x28)
+                                      : 0;
+        uint32_t notes = get_notes ? get_notes(editor) : 0;
+        if (notes >= NL_ENTRIES &&
+            step_note((const uint8_t *)(uintptr_t)(notes - NL_ENTRIES), track, step) == (int)note)
+            tk_capture_note_list_commit(notes, track, step, note, velocity);
+    }
     if (note < 128) {
         uint32_t sr = dkrt_irq_mask();
         if (track == commit_track && commit_count < COMMITS) {
@@ -573,6 +597,13 @@ uint32_t ip_panel_key_event(uint8_t *view, uint8_t *event)
     /* Firmware flags: bit 0 is press, bit 3 is auto-repeat, bit 4 is
      * release. The note-off callback may run before the release event. */
     uint32_t flags = event ? word(event, 0x10) : 0;
+    if (tk_capture_panel_press && key < 16 && (flags & 1u) && !(flags & 8u)) {
+        uint32_t seq = word(view, 0x98);
+        if (seq && ip_panel_step_record(seq) && ip_panel_key_down(0x12))
+            tk_capture_panel_press(key, ip_panel_selected_track(word(view, 0xa0)), 128, 100, 1);
+    }
+    if (tk_capture_panel_release && key < 16 && (flags & 0x10u))
+        tk_capture_panel_release(key);
     int entry = key < 16 && (flags & 1u) && !(flags & 8u) && step_recording(view, &track);
     if (key < 16) {
         ++ip_panel_step[0];

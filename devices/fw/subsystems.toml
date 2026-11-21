@@ -2,6 +2,8 @@
 # Each subsystem has one file: devices/fw/<subsystem>.toml for ColdFire, devices/fw/dsp/<subsystem>.toml for the DSP.
 
 [cf]
+track_keys = "track keyboard note ownership and native dispatch"
+track_sequence = "resolved track sequencer events and timed dispatch"
 pattern = "master-pattern scheduling and timed step dispatch"
 rtos = "tasks, queues, mutexes, idle, interrupts, the reset and boot path"
 mem = "heap, operator new and free"

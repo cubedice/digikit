@@ -41,11 +41,12 @@ to = "_mi_velocity_entry"
 
 [[object]]
 path = "build/play-cf.dko.json"
-optional = ["rtm_src", "rtm_can_save", "rtm_mod_param", "rtm_mod_carrier", "tk_panel_on", "tk_panel_off", "tk_panel_cancel", "tk_panel_focus"]
+optional = ["rtm_src", "rtm_can_save", "rtm_mod_param", "rtm_mod_carrier", "tk_panel_on", "tk_panel_off", "tk_panel_cancel", "tk_panel_focus", "tk_pattern_copied", "tk_pattern_cleared", "tk_runtime_init", "tk_capture_panel_press", "tk_capture_panel_release", "tk_capture_note_list_commit"]
 sources = ["src/cf/control.c", "src/cf/keyboard.c", "src/cf/preset.c", "src/cf/src-state.c", "src/cf/src-lock-packed.c", "src/cf/src-lock-event.c", "src/cf/src-lock-capture.c", "src/cf/src-lock-capture.s", "src/cf/src-mod.c", "src/cf/src-mod.s", "src/cf/status.c", "src/cf/src-display.c", "src/cf/src-clock.c", "src/cf/src-native.c", "src/cf/panel.c", "src/cf/panel.s", "src/cf/sound.c", "src/cf/sound-load.s", "src/cf/sound-record.c", "src/cf/sound-assoc.c", "src/cf/sound-persist.c", "src/cf/sound-persist.s", "src/cf/view.s"]
 place = "cf.expansion"
 devices = ["dt2"]
 [object.externs]
+memcpy = "cf.util.site.memcpy"
 ip_view_next = "hook.cf.machine.fn.selection_build.tail"
 ip_mod_color = "params.ip_mod_color.index"
 ip_mod_drift = "params.ip_mod_drift.index"
@@ -114,6 +115,7 @@ ip_panel_stock_toggle = "cf.page.site.instrument_panel_toggle"
 ip_panel_live_record = "cf.page.site.instrument_live_record"
 ip_panel_trig_held = "cf.page.site.instrument_trig_held"
 ip_panel_step_record = "cf.page.site.instrument_step_record"
+ip_panel_key_down = "cf.input.fn.key_down"
 ip_note_list_resume = "hook.cf.page.site.instrument_note_list_write.return"
 ip_lock_mark_edited = "cf.page.site.instrument_lock_mark_edited"
 ip_lock_get = "cf.page.site.instrument_lock_get"

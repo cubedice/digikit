@@ -11,7 +11,7 @@ export function prepareRuntimePlanModulesOffline(
   directory: string,
   artifacts: string,
   symbols: string[],
-  selection: { modules: string[] },
+  selection: { modules: string[]; timeoutMs?: number },
 ): Promise<PreparedRuntimePlan> {
   return prepareOfflineWith(patchkit, options, directory, artifacts, symbols, selection);
 }

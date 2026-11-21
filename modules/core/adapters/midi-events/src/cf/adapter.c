@@ -14,6 +14,8 @@ extern int instrument_lock_take(uint32_t track, uint16_t out[MI_LOCKS]) __attrib
 extern void instrument_lock_discard(void) __attribute__((weak));
 extern int instrument_lock_source(uint32_t track, uint32_t wave, uint16_t out[MI_SOURCE_VALUES])
     __attribute__((weak));
+extern int tk_midi_channel_message(const uint8_t *, uint32_t, uint32_t, int) __attribute__((weak));
+extern int instrument_track_keyboard_routed(uint32_t track) __attribute__((weak));
 
 MiLedger mi_ledger;
 MiTransport mi_transport;
@@ -407,7 +409,7 @@ void mi_panel_release(void)
     dkrt_irq_restore(sr);
 }
 
-int mi_channel_message(const uint8_t *msg, uint32_t len, uint32_t source)
+static int legacy_channel_message(const uint8_t *msg, uint32_t len, uint32_t source)
 {
     uint32_t sr, port;
     int consumed;
@@ -420,12 +422,34 @@ int mi_channel_message(const uint8_t *msg, uint32_t len, uint32_t source)
     else
         return 0;
     sr = dkrt_irq_mask();
-    if (msg[0] >= 0x80u && msg[0] < 0xf0u) {
-        MiRoute *route = &mi_ledger.routes[port * 16u + (msg[0] & 15u)];
-        if (route->enabled)
-            revalidate_track(route->track);
+    uint8_t channel = msg[0] & 15u;
+    MiRoute *route = &mi_ledger.routes[port * 16u + channel];
+    if (msg[0] >= 0x80u && msg[0] < 0xf0u && route->enabled)
+        revalidate_track(route->track);
+    uint8_t kind = msg[0] >> 4;
+    int shared = tk_midi_channel_message && instrument_track_keyboard_routed &&
+                 route->track < MI_TRACKS && instrument_track_keyboard_routed(route->track);
+    if (shared && (kind == 8 || (kind == 9 && !msg[2]))) {
+        consumed = msg[1] < 128 && msg[2] < 128
+                       ? mi_release_known(&mi_ledger, (uint8_t)port, channel, msg[1], msg[2])
+                       : 0;
+    } else if (shared && (kind == 9 || (kind == 11 && msg[1] != 1))) {
+        consumed = 0;
+    } else {
+        consumed = mi_message(&mi_ledger, port, msg, len);
     }
-    consumed = mi_message(&mi_ledger, port, msg, len);
     dkrt_irq_restore(sr);
     return consumed;
+}
+
+int mi_channel_message(const uint8_t *msg, uint32_t len, uint32_t source)
+{
+    if (tk_midi_channel_message) {
+        int owned = tk_midi_channel_message(msg, len, source, 1);
+        if (owned)
+            return owned > 0;
+    }
+    if (legacy_channel_message(msg, len, source))
+        return 1;
+    return tk_midi_channel_message ? tk_midi_channel_message(msg, len, source, 0) : 0;
 }

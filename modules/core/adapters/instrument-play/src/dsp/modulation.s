@@ -207,9 +207,8 @@ _iv_mod_next:
     R0 = _iv_mod_controls;
     RTS;
 
-// External note scheduling only. This uses the foreground voice bank for
-// both direct and arp notes. Run after lock and MOD overlays, so they cannot
-// re-enable the local arp or strum. Preserve the stored bank and upper halves.
+// External note scheduling only. Apply the lane mask after lock and MOD
+// overlays, while preserving the Sound's blend when both lanes are active.
 .GLOBAL _iv_shared_keyboard;
 _iv_shared_keyboard:
     I0 = R0;
@@ -224,10 +223,24 @@ _iv_shared_copy:
     DM(I1, M6) = R1;
     I0 = _iv_shared_controls;
     R1 = DM(0, I0);
+    R3 = FEXT R1 BY 11:3;
+    R1 = BCLR R1 BY 11;
+    R1 = BCLR R1 BY 12;
     R1 = BCLR R1 BY 14;
     DM(0, I0) = R1;
+    R1 = 127;
+    R2 = 6;
+    COMP(R3, R2);
+    IF EQ JUMP _iv_shared_mix;
     R1 = 0;
+    R2 = 7;
+    COMP(R3, R2);
+    IF NE JUMP _iv_shared_mix;
+    R1 = DM(6, I0);
+_iv_shared_mix:
     DM(6, I0) = R1;
+    R3 = R1;
+    R1 = 0;
     DM(15, I0) = R1;
     R2 = 0xffff0000;
     R1 = DM(20, I0);
@@ -235,6 +248,7 @@ _iv_shared_copy:
     DM(20, I0) = R1;
     R1 = DM(21, I0);
     R1 = R1 AND R2;
+    R1 = R1 OR R3;
     DM(21, I0) = R1;
     R0 = _iv_shared_controls;
     RTS;

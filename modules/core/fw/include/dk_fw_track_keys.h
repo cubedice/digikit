@@ -7,6 +7,7 @@
 #include <stddef.h>
 
 /* cf.track_keys.fn.audio_dispatch: no sig yet */
+/* cf.track_keys.fn.audio_queue_head: no sig yet */
 /* cf.track_keys.fn.midi_channel: no sig yet */
 /* cf.track_keys.fn.midi_dispatch: no sig yet */
 /* cf.track_keys.fn.midi_mode: no sig yet */

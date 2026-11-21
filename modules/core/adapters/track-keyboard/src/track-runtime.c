@@ -1,34 +1,67 @@
 #include "track-native.h"
+#include "track-canopy.h"
+#include "track-capture.h"
+#include "track-midi.h"
+#include "track-pattern-fw.h"
+#include "track-pool.h"
+#include "track-sequence.h"
 
 #include <dk/platform/ui.h>
 #include "dkrt.h"
 
-/* Experimental panel audition. This adapter keeps one scratch pattern and
- * releases ownership on pattern changes. No stock pattern bytes are edited.
- */
 extern uint32_t pp_current_pattern(void);
 extern uint32_t pp_selected_tempo(void);
 extern volatile uint32_t pp_position[16];
 extern dk_ui *dk_ui_core_handle(void);
 
-static TkPattern scratch;
-static uint32_t pattern, block, boundary, block_fraction;
+static uint32_t pattern, editing_pattern, revision, block, boundary, block_fraction;
+static bool was_running;
 static uint16_t registered;
 static uint8_t kind[TK_TRACKS], panel_track[TK_NOTES];
 static uint16_t panel_claims, canceled_panel;
 volatile uint32_t tk_panel_claim_hits;
 static bool polling;
 static TkNotesDraft draft;
-static dk_ui_menu *notes_menu, *note_menu;
+static dk_ui_menu *notes_menu, *note_menu, *selector_menu, *pool_menu;
+static uint8_t pool_owner;
 static int32_t note_index, note_offset, note_velocity;
+static int32_t selector_octave, selector_channel;
 
 static void close_notes(void)
 {
+    if (pool_menu && dk_ui_menu_is_open(pool_menu))
+        dk_ui_menu_close(pool_menu);
+    if (selector_menu && dk_ui_menu_is_open(selector_menu))
+        dk_ui_menu_close(selector_menu);
     if (note_menu && dk_ui_menu_is_open(note_menu))
         dk_ui_menu_close(note_menu);
     if (notes_menu && dk_ui_menu_is_open(notes_menu))
         dk_ui_menu_close(notes_menu);
     draft.open = false;
+}
+
+uint16_t tk_runtime_learn_mask(void)
+{
+    return draft.open && draft.learn && draft.track < TK_TRACKS ? (uint16_t)(1u << draft.track) : 0;
+}
+
+void tk_runtime_midi_busy(void)
+{
+    static uint32_t last_notice;
+    const uint32_t now = dkrt_blocks() | 1u;
+    if (!last_notice || now - last_notice >= 1500u) {
+        last_notice = now;
+        dk_ui_toast(dk_ui_core_handle(), "MIDI BUSY");
+    }
+}
+
+bool tk_runtime_learn_note(uint8_t track, uint8_t pitch, uint8_t velocity)
+{
+    if (!draft.open || !draft.learn || draft.track != track)
+        return false;
+    if (!tk_notes_append(&draft, pitch, velocity))
+        dk_ui_toast(dk_ui_core_handle(), "NOTES FULL");
+    return true;
 }
 
 static uint32_t pattern_snapshot(void)
@@ -63,27 +96,70 @@ void tk_panel_focus(uint32_t track)
 
 static bool refresh_pattern(void)
 {
-    uint32_t next = pattern_snapshot();
-    if (next == pattern)
-        return next != 0;
-    tk_panel_cancel();
-    close_notes();
-    tk_service_stop();
-    tk_pattern_init(&scratch);
-    tk_service_edit_pattern(next ? &scratch : NULL);
-    pattern = next;
-    return next != 0;
+    bool running = (pp_position[5] & 2u) != 0;
+    uint32_t next = running ? pattern_snapshot() : 0;
+    uint32_t edit = tk_pattern_fw_selected();
+    if (!edit)
+        edit = pp_current_pattern();
+    uint32_t stamp = tk_pattern_fw_revision();
+    bool project_data_changed = stamp != revision;
+    if (next != pattern || edit != editing_pattern || project_data_changed) {
+        uint32_t previous_live = pattern ? pattern : editing_pattern;
+        uint32_t next_live = next ? next : edit;
+        if (next_live != previous_live || project_data_changed) {
+            tk_panel_cancel();
+            tk_midi_reset();
+        }
+        close_notes();
+        if (project_data_changed) {
+            tk_sequence_reset();
+            tk_capture_poll(0, 0);
+            tk_service_stop();
+        }
+        tk_service_edit_pattern(tk_pattern_fw_get(edit));
+        tk_service_play_pattern(tk_pattern_fw_get(next));
+        pattern = next;
+        editing_pattern = edit;
+        revision = stamp;
+    }
+    if (was_running && !running)
+        tk_service_stop();
+    was_running = running;
+    return edit != 0;
 }
 
 static void poll(void)
 {
-    refresh_pattern();
+    if (!refresh_pattern())
+        return;
+    tk_pool_fw_update(pattern ? pattern : editing_pattern, tk_service_active_config(0),
+                      !was_running);
     for (uint8_t track = 0; track < TK_TRACKS; ++track) {
         uint16_t mask = (uint16_t)(1u << track);
-        if ((registered & mask) && tk_native_kind(track) != kind[track]) {
+        int type = tk_pool_fw_reserved(track) ? TK_NATIVE_UNSUPPORTED : tk_native_kind(track);
+        if ((registered & mask) && type != kind[track]) {
+            tk_midi_cancel_track(track);
             tk_service_set_backend(track, NULL);
+            if (kind[track] == TK_NATIVE_CANOPY)
+                tk_canopy_sync(track, false, 0);
             registered &= (uint16_t)~mask;
         }
+        if (!(registered & mask) && type != TK_NATIVE_UNSUPPORTED && tk_native_idle(track)) {
+            TkTrackBackend backend;
+            if (type == TK_NATIVE_CANOPY)
+                tk_canopy_backend(&backend);
+            else
+                tk_native_backend(type == TK_NATIVE_MIDI, &backend);
+            if (tk_service_set_backend(track, &backend)) {
+                kind[track] = (uint8_t)type;
+                registered |= mask;
+            }
+        }
+        if (type == TK_NATIVE_CANOPY)
+            tk_canopy_sync(track, true, pattern ? pattern : editing_pattern);
+        else if (type == TK_NATIVE_AUDIO && (registered & mask))
+            tk_service_set_voice_capacity(track, tk_pool_fw_voices(track));
+        tk_sequence_set_midi(track, type == TK_NATIVE_MIDI);
     }
     uint32_t observed = pp_position[3];
     if (observed != boundary && (pp_position[5] & 1u) && pp_position[7] == 0) {
@@ -95,39 +171,37 @@ static void poll(void)
     block = now;
     if (elapsed > 1500u) {
         tk_panel_cancel();
+        tk_midi_reset();
         elapsed = 1500u;
     }
     uint32_t time = elapsed * 2000u + block_fraction;
     block_fraction = time % 3u;
     tk_service_tick(time / 3u, (uint16_t)pp_selected_tempo());
+    tk_midi_poll();
+    tk_sequence_poll(pattern ? pattern : editing_pattern, was_running);
+    tk_capture_poll(editing_pattern, (uint16_t)pp_selected_tempo());
     tk_native_drain();
+}
+
+void tk_runtime_init(void)
+{
+    if (polling || !tk_service_init())
+        return;
+    tk_sequence_init();
+    block = dkrt_blocks();
+    if (dkrt_poll_add((uintptr_t)poll) == 0)
+        polling = true;
 }
 
 void tk_runtime_touch(uint8_t track)
 {
-    if (track >= TK_TRACKS || !refresh_pattern())
+    if (track >= TK_TRACKS)
         return;
-    if (!polling) {
-        block = dkrt_blocks();
-        if (dkrt_poll_add((uintptr_t)poll) != 0)
-            return;
-        polling = true;
-    }
+    tk_runtime_init();
     if (draft.open && draft.track != track)
         close_notes();
-    uint16_t mask = (uint16_t)(1u << track);
-    if ((registered & mask) || !tk_native_idle(track))
-        return;
-    int type = tk_native_kind(track);
-    TkTrackBackend backend;
-    if (type == TK_NATIVE_UNSUPPORTED)
-        return;
-    tk_native_backend(type == TK_NATIVE_MIDI, &backend);
-    if (!tk_service_set_backend(track, &backend))
-        return;
-    kind[track] = (uint8_t)type;
-    registered |= mask;
-    poll();
+    if (polling)
+        poll();
 }
 
 int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
@@ -140,12 +214,20 @@ int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
     if (!polling || !refresh_pattern() || !(registered & (1u << track)) ||
         tk_native_kind((uint8_t)track) != kind[track])
         return 0;
-    if (draft.open && draft.learn && draft.track == track &&
-        !tk_notes_append(&draft, (uint8_t)pitch, (uint8_t)velocity))
-        dk_ui_toast(dk_ui_core_handle(), "NOTES FULL");
+    bool learned = tk_runtime_learn_note((uint8_t)track, (uint8_t)pitch, (uint8_t)velocity);
     poll();
-    if (!tk_service_press((uint8_t)track, TK_PANEL, 0, key, (uint8_t)pitch, (uint8_t)velocity))
+    int8_t octave, channel;
+    bool selector = !learned && tk_service_enabled((uint8_t)track) &&
+                    tk_service_selector((uint8_t)track, true, &octave, &channel) && channel < 0 &&
+                    octave == (int8_t)(pitch / 12u);
+    if (selector) {
+        tk_service_select_chord((uint8_t)track, (enum TkChord)(TK_CHORD_MAJ + pitch % 12u));
+        tk_capture_shape_changed((uint8_t)track);
+    } else if (!tk_service_press((uint8_t)track, TK_PANEL, 0, key, (uint8_t)pitch,
+                                 (uint8_t)velocity) &&
+               !learned) {
         return 0;
+    }
     panel_track[key] = (uint8_t)track;
     panel_claims |= mask;
     ++tk_panel_claim_hits;
@@ -169,6 +251,7 @@ static void notes_learn(void *unused, int32_t value)
     (void)unused;
     (void)value;
     tk_notes_learn(&draft);
+    tk_midi_poll();
     dk_ui_menu_close(notes_menu);
     dk_ui_toast(dk_ui_core_handle(), "PLAY KEYS. CLICK CHRD TO SAVE");
 }
@@ -254,17 +337,65 @@ static void note_move(void *unused, int32_t encoded)
     dk_ui_menu_select(notes_menu, to + 2);
 }
 
+static void selector_save(void *unused, int32_t mode)
+{
+    (void)unused;
+    if (!draft.open || draft.step_scope)
+        return;
+    int8_t octave = mode == 1 ? (int8_t)(selector_octave + 1) : -1;
+    int8_t channel = mode == 2 ? (int8_t)(selector_channel - 1) : -1;
+    if (tk_service_write_selector(draft.track, octave, channel)) {
+        tk_midi_poll();
+        dk_ui_menu_close(selector_menu);
+    }
+}
+
+static void selector_fill(dk_ui_menu *m, void *unused)
+{
+    (void)unused;
+    dk_ui_menu_add_action(m, "OFF", selector_save, NULL, 0);
+    dk_ui_menu_add_value(m, "OCTAVE", &selector_octave, -1, 9, NULL, NULL);
+    dk_ui_menu_add_action(m, "USE OCTAVE", selector_save, NULL, 1);
+    dk_ui_menu_add_value(m, "MIDI CH", &selector_channel, 1, 16, NULL, NULL);
+    dk_ui_menu_add_action(m, "USE MIDI CH", selector_save, NULL, 2);
+}
+
+static void selector_open(void *unused, int32_t value)
+{
+    (void)unused;
+    (void)value;
+    static const dk_ui_menu_desc desc = {
+        .name = "track-keyboard/selector", .title = "SELECTOR", .fill = selector_fill};
+    int8_t octave, channel;
+    if (!draft.open || draft.step_scope ||
+        !tk_service_selector(draft.track, false, &octave, &channel))
+        return;
+    if (!selector_menu)
+        selector_menu = dk_ui_menu_new(dk_ui_core_handle(), &desc);
+    if (!selector_menu)
+        return;
+    selector_octave = octave >= 0 ? octave - 1 : 2;
+    selector_channel = channel >= 0 ? channel + 1 : 16;
+    dk_ui_menu_select(selector_menu, octave >= 0 ? 2 : (channel >= 0 ? 4 : 0));
+    dk_ui_menu_open(selector_menu);
+}
+
 static void notes_panel(dk_ui_menu *m, int32_t row, void *unused)
 {
     (void)unused;
     int32_t n = row - 2;
-    if (n < 0 || n >= draft.recipe.count)
+    if (n < 0 || n >= draft.recipe.count) {
+        if (!draft.step_scope)
+            dk_ui_menu_add_action(m, "SELECTOR", selector_open, NULL, 0);
         return;
+    }
     if (n > 0)
         dk_ui_menu_add_action(m, "MOVE UP", note_move, NULL, 2 * n);
     if (n + 1 < draft.recipe.count)
         dk_ui_menu_add_action(m, "MOVE DOWN", note_move, NULL, 2 * n + 1);
     dk_ui_menu_add_action(m, "REMOVE", note_remove, NULL, n);
+    if (!draft.step_scope)
+        dk_ui_menu_add_action(m, "SELECTOR", selector_open, NULL, 0);
 }
 
 static void notes_fill(dk_ui_menu *m, void *unused)
@@ -285,7 +416,7 @@ static void notes_fill(dk_ui_menu *m, void *unused)
     }
 }
 
-bool tk_trig_open_notes(uint8_t track)
+bool tk_trig_open_notes(uint8_t track, int step)
 {
     static const dk_ui_menu_desc desc = {.name = "track-keyboard/notes",
                                          .title = "NOTES",
@@ -297,7 +428,8 @@ bool tk_trig_open_notes(uint8_t track)
         notes_menu = dk_ui_menu_new(dk_ui_core_handle(), &desc);
     if (!notes_menu)
         return false;
-    if (!draft.open && !tk_notes_open(track, 0, false, &draft))
+    if ((!draft.open || (step >= 0 && (!draft.step_scope || draft.step != step))) &&
+        !tk_notes_open(track, step < 0 ? 0 : (uint8_t)step, step >= 0, &draft))
         return false;
     draft.learn = false;
     dk_ui_menu_select(notes_menu, 0);
@@ -308,13 +440,76 @@ bool tk_trig_open_notes(uint8_t track)
     return true;
 }
 
+static void pool_toggle(void *unused, int32_t track)
+{
+    (void)unused;
+    if (was_running || track < 0 || track >= TK_TRACKS || track == pool_owner)
+        return;
+    uint16_t mask = (uint16_t)(1u << track);
+    uint16_t requested = tk_service_helpers(pool_owner);
+    uint16_t eligible = tk_pool_fw_eligible(pool_owner);
+    if (!(mask & (requested | eligible)) ||
+        !tk_service_assign_helpers(pool_owner, requested ^ mask, eligible)) {
+        dk_ui_toast(dk_ui_core_handle(), mask & eligible ? "UP TO 3 HELPERS" : "TRACK UNAVAILABLE");
+        return;
+    }
+    poll();
+    dk_ui_menu_refresh(pool_menu);
+}
+
+static void pool_fill(dk_ui_menu *m, void *unused)
+{
+    (void)unused;
+    char summary[DK_UI_ROW];
+    char *end = decimal(summary, tk_pool_fw_voices(pool_owner));
+    *end++ = ' ';
+    const char *suffix = "VOICES";
+    while (*suffix)
+        *end++ = *suffix++;
+    *end = 0;
+    dk_ui_menu_add_text(m, summary);
+    uint16_t requested = tk_service_helpers(pool_owner);
+    uint16_t eligible = tk_pool_fw_eligible(pool_owner);
+    for (uint8_t track = 0; track < TK_TRACKS; ++track) {
+        if (track == pool_owner)
+            continue;
+        char label[DK_UI_ROW] = {'T'};
+        char *w = decimal(label + 1, track + 1);
+        *w++ = ' ';
+        uint16_t bit = (uint16_t)(1u << track);
+        int owner = tk_pool_fw_owner(track);
+        const char *state = owner == pool_owner ? "RESERVED"
+                            : requested & bit   ? "PENDING"
+                            : eligible & bit    ? "AVAILABLE"
+                                                : "IN USE";
+        while (*state)
+            *w++ = *state++;
+        *w = 0;
+        dk_ui_menu_add_action(m, label, pool_toggle, NULL, track);
+    }
+}
+
 bool tk_trig_open_pool(uint8_t track)
 {
+    static const dk_ui_menu_desc desc = {.name = "track-keyboard/pool",
+                                         .title = "VOICE GROUP",
+                                         .flags = DK_UI_WIDE,
+                                         .fill = pool_fill};
     if (!tk_trig_ready(track))
         return false;
-    return dk_ui_toast(dk_ui_core_handle(), kind[track] == TK_NATIVE_MIDI
-                                                ? "MIDI: UP TO 16 NOTES"
-                                                : "AUDIO: ONE VOICE") == 0;
+    if (kind[track] == TK_NATIVE_MIDI || kind[track] == TK_NATIVE_CANOPY)
+        return dk_ui_toast(dk_ui_core_handle(), kind[track] == TK_NATIVE_MIDI
+                                                    ? "MIDI: UP TO 16 NOTES"
+                                                    : "CANOPY: FOUR PAD VOICES") == 0;
+    if (was_running)
+        return dk_ui_toast(dk_ui_core_handle(), "STOP TO EDIT VOICE GROUP") == 0;
+    if (!pool_menu)
+        pool_menu = dk_ui_menu_new(dk_ui_core_handle(), &desc);
+    if (!pool_menu)
+        return false;
+    pool_owner = track;
+    dk_ui_menu_select(pool_menu, 1);
+    return dk_ui_menu_open(pool_menu) >= 0;
 }
 
 int tk_panel_off(uint32_t key)

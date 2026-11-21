@@ -177,9 +177,9 @@ bool tk_trig_lock_write(uint8_t track, uint8_t step, enum TkControl control, int
     return true;
 }
 
-bool tk_trig_open_notes(uint8_t track)
+bool tk_trig_open_notes(uint8_t track, int step)
 {
-    assert(track == 0 && !held && !record);
+    assert(track == 0 && !record && step == (held ? 17 : -1));
     ++notes;
     return true;
 }
@@ -242,6 +242,9 @@ int main(void)
     key(48, 1);
     key(48, 16);
     assert(lock_writes == 2 && edited == 2 && notes == 1 && track_writes == 2);
+    key(48, 3);
+    key(48, 16);
+    assert(notes == 2 && lock_writes == 2);
     write(editor, 0x258, (1u << 15) | (1u << 17));
     assert(turn(8, 4) && key(48, 1) && key(48, 16));
     assert(lock_writes == 2 && track_writes == 2);
@@ -258,7 +261,7 @@ int main(void)
     selected_track = 5;
     key(42, 16);
     assert(!read(view, 0x90) && read(view, 0x80) - read(view, 0x7c) == 8);
-    assert(notes == 1);
+    assert(notes == 2);
     selected_track = 0;
     tk_trig_draw(view, bitmap);
     assert(allocations == 1 && read(view, 0x80) - read(view, 0x7c) == 16);

@@ -6,9 +6,12 @@
 #include <stdint.h>
 
 #define TK_NOTES 16
-#define TK_KEYS 32
+#define TK_INPUT_KEYS (2 * TK_NOTES)
+#define TK_KEYS (TK_INPUT_KEYS + TK_NOTES)
 #define TK_CANDIDATES (4 * TK_NOTES)
 #define TK_TICKS_PER_QUARTER 21600000u
+
+enum { TK_RATE_7Q = 17, TK_RATE_5Q };
 
 enum TkOrder { TK_ORDER_PLAY, TK_ORDER_UP, TK_ORDER_DOWN, TK_ORDER_UPDN, TK_ORDER_RANDOM };
 enum TkReset { TK_RESET_TRIG, TK_RESET_PATTERN, TK_RESET_CONTINUE };
@@ -36,6 +39,7 @@ typedef struct {
     uint8_t arp, poly, order, gate, rate;
     int8_t octaves;
     uint8_t swing, reset, chord, voicing;
+    uint8_t legacy_swing; /* CANOPY Sound's exact alternating interval deviation. */
     uint16_t strum_ms;
     uint8_t voices;
 } TkParams;

@@ -22,6 +22,11 @@ uint8_t ip_panel_step_record(uint32_t seq)
     assert(seq == SEQ);
     return step_record;
 }
+uint32_t ip_panel_key_down(uint32_t key)
+{
+    assert(key == 0x12);
+    return 0;
+}
 /* A fake pattern object (finding 349): trig words per track, the note-list
  * entries at +0x6a50 and the head index per (track, step) at +0x12a50. The
  * recorder commits after the key event; commit() models that write. */

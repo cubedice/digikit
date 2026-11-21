@@ -1,4 +1,5 @@
 #include "track-service.h"
+#include "track-sequence.h"
 
 #include "track-memory.h"
 
@@ -10,12 +11,33 @@ typedef struct {
     bool live_has_priority;
 } TkTrack;
 
+#ifdef __m68k__
+extern void *tk_fw_alloc(uint32_t size);
+static TkTrack *tracks;
+#else
 static TkTrack tracks[TK_TRACKS];
+#endif
+
+bool tk_service_init(void)
+{
+#ifdef __m68k__
+    if (!tracks) {
+        TkTrack *memory = tk_fw_alloc(sizeof(TkTrack) * TK_TRACKS);
+        if (!memory)
+            return false;
+        memset(memory, 0, sizeof(TkTrack) * TK_TRACKS);
+        tracks = memory;
+    }
+#endif
+    return true;
+}
 static TkPattern *editing;
 static const TkPattern *playing;
 static uint32_t edit_generation;
 static uint16_t tempo;
 static void live_priority(TkTrack *t, bool muting);
+static TkTrackConfig track_settings(uint8_t track);
+static void configure_live(TkTrack *t);
 
 static bool send_live(void *context, const TkNoteEvent *event)
 {
@@ -36,7 +58,46 @@ void tk_pattern_init(TkPattern *p)
 {
     memset(p, 0, sizeof *p);
     for (uint8_t track = 0; track < TK_TRACKS; ++track)
-        p->tracks[track].params = tk_defaults();
+        p->tracks[track] = tk_track_defaults();
+}
+
+const TkSeed *tk_pattern_seed(const TkPattern *p, uint8_t track, uint8_t step)
+{
+    if (!p || track >= TK_TRACKS || step >= TK_STEPS)
+        return NULL;
+    uint16_t index = (uint16_t)(track * TK_STEPS + step + 1);
+    for (unsigned i = 0; i < TK_RECORDED_STEPS; ++i)
+        if (p->seeds[i].index == index)
+            return &p->seeds[i].seed;
+    return NULL;
+}
+
+bool tk_pattern_set_seed(TkPattern *p, uint8_t track, uint8_t step, const TkSeed *seed)
+{
+    if (!p || track >= TK_TRACKS || step >= TK_STEPS ||
+        (seed && (seed->length_ticks || !tk_seed_valid(seed))))
+        return false;
+    uint16_t index = (uint16_t)(track * TK_STEPS + step + 1);
+    TkPatternSeed *available = NULL;
+    for (unsigned i = 0; i < TK_RECORDED_STEPS; ++i) {
+        TkPatternSeed *slot = &p->seeds[i];
+        if (slot->index == index) {
+            if (seed)
+                slot->seed = *seed;
+            else
+                slot->index = 0;
+            return true;
+        }
+        if (!available && !slot->index)
+            available = slot;
+    }
+    if (!seed)
+        return true;
+    if (!available)
+        return false;
+    available->seed = *seed;
+    available->index = index;
+    return true;
 }
 
 static const TkStepLocks *find_step(const TkPattern *p, uint8_t track, uint8_t step)
@@ -71,6 +132,88 @@ static bool store_step(TkPattern *p, uint8_t track, uint8_t step, const TkStepLo
     return true;
 }
 
+bool tk_service_store_edit_seed(uint8_t track, uint8_t step, const TkSeed *seed,
+                                const TkRecordedShape *shape)
+{
+    if (!editing || track >= TK_TRACKS || step >= TK_STEPS || !shape)
+        return false;
+    const TkStepLocks *existing = find_step(editing, track, step);
+    TkStepLocks previous = existing ? *existing : (TkStepLocks){0};
+    TkStepLocks next = previous;
+    if (!tk_set_lock(&next, TK_CTL_CHORD, shape->chord) ||
+        !tk_set_lock(&next, TK_CTL_VOICING, shape->voicing) ||
+        !tk_set_lock(&next, TK_CTL_STRUM, shape->strum_ms))
+        return false;
+    next.mask &= (uint16_t)~TK_RECIPE_OVERRIDE;
+    if (shape->chord == TK_CHORD_USER && tk_valid_recipe(&shape->user)) {
+        next.user = shape->user;
+        next.mask |= TK_RECIPE_OVERRIDE;
+    }
+    if (!store_step(editing, track, step, &next))
+        return false;
+    if (tk_pattern_set_seed(editing, track, step, seed))
+        return true;
+    store_step(editing, track, step, &previous);
+    return false;
+}
+
+bool tk_service_edit_shape(uint8_t track, TkRecordedShape *shape)
+{
+    if (!tk_trig_ready(track) || !shape)
+        return false;
+    const TkTrackConfig config = track_settings(track);
+    *shape = (TkRecordedShape){.chord = config.params.chord,
+                               .voicing = config.params.voicing,
+                               .strum_ms = config.params.strum_ms,
+                               .user = config.user};
+    return true;
+}
+
+const TkTrackConfig *tk_service_active_config(uint8_t track)
+{
+    const TkPattern *p = playing ? playing : editing;
+    return p && track < TK_TRACKS ? &p->tracks[track] : NULL;
+}
+
+static TkTrackConfig track_settings(uint8_t track)
+{
+    TkTrackConfig config = editing->tracks[track];
+    TkTrackInherit inherit = tracks[track].backend.inherit;
+    if (!config.override && inherit) {
+        TkTrackConfig legacy;
+        if (inherit(track, &legacy)) {
+            legacy.helpers = config.helpers;
+            if (config.selector_octave >= 0 || config.selector_channel >= 0) {
+                legacy.selector_octave = config.selector_octave;
+                legacy.selector_channel = config.selector_channel;
+            }
+            config = legacy;
+        }
+    }
+    return config;
+}
+
+static void apply_track_settings(uint8_t track, const TkTrackConfig *config)
+{
+    editing->tracks[track] = *config;
+    if (!playing || playing == editing) {
+        configure_live(&tracks[track]);
+        live_priority(&tracks[track], tracks[track].live.key_count != 0);
+    }
+}
+
+static bool resolve_mode(const TkTrack *t, const TkTrackConfig *c, TkParams *params)
+{
+    if (params->poly || params->arp)
+        return true;
+    if (!t->backend.inherit || !c->override)
+        return false;
+    params->poly = 1;
+    params->voices = 1;
+    params->chord = TK_CHORD_PLAY;
+    return true;
+}
+
 static void configure_live(TkTrack *t)
 {
     const TkPattern *p = playing ? playing : editing;
@@ -78,9 +221,10 @@ static void configure_live(TkTrack *t)
         return;
     if (p) {
         const TkTrackConfig *config = &p->tracks[t->number];
-        if (!(config->params.poly || config->params.arp))
+        TkParams params = config->params;
+        if (!resolve_mode(t, config, &params))
             tk_panic(&t->live);
-        tk_configure(&t->live, &config->params, &config->user);
+        tk_configure(&t->live, &params, &config->user);
     } else {
         tk_panic(&t->live);
     }
@@ -133,9 +277,50 @@ bool tk_service_set_backend(uint8_t track, const TkTrackBackend *backend)
     return true;
 }
 
+void tk_service_set_voice_capacity(uint8_t track, uint8_t voices)
+{
+    if (track >= TK_TRACKS || !voices || voices > TK_NOTES)
+        return;
+    TkTrack *t = &tracks[track];
+    if (!t->backend.output || t->backend.voices == voices)
+        return;
+    t->backend.voices = voices;
+    tk_set_backend(&t->live, voices, t->backend.blend);
+    tk_set_backend(&t->sequence, voices, t->backend.blend);
+}
+
+uint16_t tk_service_helpers(uint8_t track)
+{
+    return tk_trig_ready(track) ? editing->tracks[track].helpers : 0;
+}
+
+bool tk_service_assign_helpers(uint8_t track, uint16_t request, uint16_t selectable)
+{
+    if (!tk_trig_ready(track) || tracks[track].backend.inherit)
+        return false;
+    TkTrackConfig *config = &editing->tracks[track];
+    return tk_assign_helpers(config, track, request, UINT16_MAX, selectable | config->helpers, 0);
+}
+
+static bool available(uint8_t track)
+{
+    const TkTrackBackend *backend = &tracks[track].backend;
+    return backend->output && (!backend->available || backend->available(track));
+}
+
+void tk_service_cancel_track(uint8_t track)
+{
+    if (track >= TK_TRACKS || !tracks[track].backend.output)
+        return;
+    TkTrack *t = &tracks[track];
+    tk_panic(&t->live);
+    tk_stop_transport(&t->sequence);
+    live_priority(t, false);
+}
+
 bool tk_service_enabled(uint8_t track)
 {
-    return track < TK_TRACKS && (playing || editing) && tracks[track].backend.output &&
+    return track < TK_TRACKS && (playing || editing) && available(track) &&
            (tracks[track].live.params.arp || tracks[track].live.params.poly);
 }
 
@@ -180,10 +365,96 @@ void tk_service_pedal(uint8_t track, uint8_t source, uint8_t channel, bool down)
     live_priority(t, t->live.key_count != 0);
 }
 
+void tk_service_clear_source(uint8_t track, uint8_t source, uint8_t channel)
+{
+    if (track >= TK_TRACKS || !tracks[track].backend.output)
+        return;
+    TkTrack *t = &tracks[track];
+    tk_clear_source(&t->live, source, channel);
+    live_priority(t, t->live.key_count != 0);
+}
+
+bool tk_service_selector(uint8_t track, bool active, int8_t *octave, int8_t *channel)
+{
+    const TkPattern *p = active && playing ? playing : editing;
+    if (!p || track >= TK_TRACKS)
+        return false;
+    const TkTrackConfig *config = &p->tracks[track];
+    bool enable = !active || tracks[track].live.params.chord != TK_CHORD_PLAY;
+    *octave = enable ? config->selector_octave : -1;
+    *channel = enable ? config->selector_channel : -1;
+    return true;
+}
+
+bool tk_service_write_selector(uint8_t track, int8_t octave, int8_t channel)
+{
+    if (!tk_trig_ready(track) || octave < -1 || octave > 10 || channel < -1 || channel > 15 ||
+        (octave >= 0 && channel >= 0))
+        return false;
+    TkTrackConfig *config = &editing->tracks[track];
+    config->selector_octave = octave;
+    config->selector_channel = channel;
+    return true;
+}
+
+void tk_service_select_chord(uint8_t track, enum TkChord chord)
+{
+    if (!tk_service_enabled(track) || chord < TK_CHORD_MAJ || chord >= TK_CHORD_COUNT)
+        return;
+    TkTrack *t = &tracks[track];
+    if (t->live.params.chord == TK_CHORD_PLAY)
+        return;
+    if (editing && (!playing || playing == editing)) {
+        tk_trig_write(track, TK_CTL_CHORD, chord);
+        return;
+    }
+    TkParams params = t->live.params;
+    params.chord = (uint8_t)chord;
+    tk_configure(&t->live, &params, &t->live.user);
+}
+
+void tk_service_sequence_policy(TkSequencePolicy *policy)
+{
+    memset(policy, 0, sizeof *policy);
+    const TkPattern *p = playing ? playing : editing;
+    if (!p)
+        return;
+    for (uint8_t track = 0; track < TK_TRACKS; ++track) {
+        TkParams params = p->tracks[track].params;
+        if (available(track) && resolve_mode(&tracks[track], &p->tracks[track], &params))
+            for (unsigned i = 0; i < TK_STEPS / 32u; ++i)
+                policy->steps[track][i] = UINT32_MAX;
+    }
+    for (unsigned i = 0; i < TK_LOCKED_STEPS; ++i) {
+        const TkPatternStep *entry = &p->steps[i];
+        if (!entry->index || entry->index > TK_TRACKS * TK_STEPS ||
+            !(entry->locks.mask & ((1u << TK_CTL_ARP) | (1u << TK_CTL_POLY))))
+            continue;
+        uint8_t track = (uint8_t)((entry->index - 1u) / TK_STEPS);
+        uint8_t step = (uint8_t)((entry->index - 1u) % TK_STEPS);
+        if (!available(track))
+            continue;
+        TkParams params;
+        TkRecipe recipe;
+        uint32_t bit = UINT32_C(1) << (step % 32u);
+        if (tk_resolve_step(&p->tracks[track], &entry->locks, &params, &recipe) &&
+            resolve_mode(&tracks[track], &p->tracks[track], &params))
+            policy->steps[track][step / 32u] |= bit;
+        else
+            policy->steps[track][step / 32u] &= ~bit;
+    }
+}
+
+void tk_service_end_seed(uint8_t track)
+{
+    if (track < TK_TRACKS && tracks[track].backend.output)
+        tk_stop_seed(&tracks[track].sequence);
+}
+
 bool tk_service_seed(uint8_t track, uint8_t step, const TkSeed *seed)
 {
     const TkPattern *p = playing ? playing : editing;
-    if (!p || track >= TK_TRACKS || step >= TK_STEPS || !tracks[track].backend.output)
+    if (!p || track >= TK_TRACKS || step >= TK_STEPS || !available(track))
         return false;
     TkTrack *t = &tracks[track];
     const TkStepLocks *locked = find_step(p, track, step);
@@ -191,18 +462,29 @@ bool tk_service_seed(uint8_t track, uint8_t step, const TkSeed *seed)
     TkRecipe recipe;
     if (!tk_resolve_step(&p->tracks[track], locked, &params, &recipe))
         return false;
-    if (!(params.arp || params.poly)) {
+    if (!resolve_mode(t, &p->tracks[track], &params)) {
         tk_stop_transport(&t->sequence);
         return false;
     }
     if (!tk_seed_valid(seed))
         return false;
     TkSeed effective = *seed;
+    const TkSeed *recorded = tk_pattern_seed(p, track, step);
+    if (recorded) {
+        effective.count = recorded->count;
+        for (uint8_t i = 0; i < recorded->count; ++i) {
+            TkSeedNote note = recorded->notes[i];
+            if (effective.length_ticks && note.gate_ticks > effective.length_ticks)
+                note.gate_ticks = effective.length_ticks;
+            effective.notes[i] = note;
+        }
+    }
     if (params.chord != TK_CHORD_PLAY)
         effective.count = 1;
     tk_stop_seed(&t->sequence);
     if (!tk_configure(&t->sequence, &params, &recipe) || !tk_seed(&t->sequence, &effective))
         return false;
+    tk_tick(&t->sequence, 0, tempo);
     return true;
 }
 
@@ -250,22 +532,41 @@ uint8_t tk_trig_voice_capacity(uint8_t track)
     return tk_trig_ready(track) ? tracks[track].backend.voices : 0;
 }
 
+uint16_t tk_trig_pitch_display(uint8_t track, uint16_t *held)
+{
+    *held = 0;
+    if (!tk_trig_ready(track))
+        return 0;
+    const TkTrack *t = &tracks[track];
+    for (unsigned i = 0; i < t->live.key_count; ++i)
+        *held |= (uint16_t)(1u << (t->live.keys[i].pitch % 12u));
+    uint16_t sounding = 0;
+    const TkState *state = t->live_has_priority ? &t->live : &t->sequence;
+    for (unsigned i = 0; i < TK_NOTES; ++i)
+        if (state->voices[i].sent)
+            sounding |= (uint16_t)(1u << (state->voices[i].note.pitch % 12u));
+    if (state->arp_voice.sent)
+        sounding |= (uint16_t)(1u << (state->arp_voice.note.pitch % 12u));
+    return sounding;
+}
+
 bool tk_trig_display(uint8_t track, TkParams *out)
 {
     if (!tk_trig_ready(track))
         return false;
-    *out = editing->tracks[track].params;
+    *out = track_settings(track).params;
     return true;
 }
 
 bool tk_trig_write(uint8_t track, enum TkControl control, int value)
 {
-    if (!tk_trig_ready(track) || !tk_set_control(&editing->tracks[track].params, control, value))
+    if (!tk_trig_ready(track))
         return false;
-    if (!playing || playing == editing) {
-        configure_live(&tracks[track]);
-        live_priority(&tracks[track], tracks[track].live.key_count != 0);
-    }
+    TkTrackConfig config = track_settings(track);
+    if (!tk_set_control(&config.params, control, value))
+        return false;
+    config.override = true;
+    apply_track_settings(track, &config);
     return true;
 }
 
@@ -275,7 +576,8 @@ bool tk_trig_lock_display(uint8_t track, uint8_t step, TkParams *out, uint16_t *
         return false;
     const TkStepLocks *locks = find_step(editing, track, step);
     TkRecipe ignored;
-    if (!tk_resolve_step(&editing->tracks[track], locks, out, &ignored))
+    TkTrackConfig config = track_settings(track);
+    if (!tk_resolve_step(&config, locks, out, &ignored))
         return false;
     *lock_mask = locks ? locks->mask : 0;
     return true;
@@ -294,7 +596,39 @@ bool tk_trig_lock_write(uint8_t track, uint8_t step, enum TkControl control, int
     } else if (!tk_set_lock(&next, control, value)) {
         return false;
     }
-    return store_step(editing, track, step, &next);
+    if (!store_step(editing, track, step, &next))
+        return false;
+    if (!clear && !editing->tracks[track].override && tracks[track].backend.inherit) {
+        TkTrackConfig config = track_settings(track);
+        config.override = true;
+        apply_track_settings(track, &config);
+    }
+    return true;
+}
+
+bool tk_trig_lock_batch(uint8_t track, const uint32_t steps[4], enum TkControl control, int value,
+                        bool clear)
+{
+    if (!tk_trig_ready(track) || !steps || control < 0 || control >= TK_CTL_VOICES)
+        return false;
+    if (!clear) {
+        TkStepLocks validated = {0};
+        if (!tk_set_lock(&validated, control, value))
+            return false;
+        unsigned available = 0, needed = 0;
+        for (unsigned i = 0; i < TK_LOCKED_STEPS; ++i)
+            available += editing->steps[i].index == 0;
+        for (unsigned step = 0; step < TK_STEPS; ++step)
+            if ((steps[step / 32u] & (1u << (step % 32u))) &&
+                !find_step(editing, track, (uint8_t)step))
+                ++needed;
+        if (needed > available)
+            return false;
+    }
+    for (unsigned step = 0; step < TK_STEPS; ++step)
+        if (steps[step / 32u] & (1u << (step % 32u)))
+            tk_trig_lock_write(track, (uint8_t)step, control, value, clear);
+    return true;
 }
 
 bool tk_notes_open(uint8_t track, uint8_t step, bool step_scope, TkNotesDraft *draft)
@@ -304,7 +638,8 @@ bool tk_notes_open(uint8_t track, uint8_t step, bool step_scope, TkNotesDraft *d
     const TkStepLocks *locks = step_scope ? find_step(editing, track, step) : NULL;
     TkRecipe recipe;
     TkParams ignored;
-    if (!tk_resolve_step(&editing->tracks[track], locks, &ignored, &recipe))
+    TkTrackConfig config = track_settings(track);
+    if (!tk_resolve_step(&config, locks, &ignored, &recipe))
         return false;
     *draft = (TkNotesDraft){.pattern = editing,
                             .edit_generation = edit_generation,
@@ -349,9 +684,17 @@ bool tk_notes_commit(TkNotesDraft *draft)
         if (!tk_set_lock(&next, TK_CTL_CHORD, TK_CHORD_USER) ||
             !store_step(editing, draft->track, draft->step, &next))
             return false;
+        if (!editing->tracks[draft->track].override && tracks[draft->track].backend.inherit) {
+            TkTrackConfig config = track_settings(draft->track);
+            config.override = true;
+            apply_track_settings(draft->track, &config);
+        }
     } else {
-        editing->tracks[draft->track].user = draft->recipe;
-        tk_trig_write(draft->track, TK_CTL_CHORD, TK_CHORD_USER);
+        TkTrackConfig config = track_settings(draft->track);
+        config.user = draft->recipe;
+        config.params.chord = TK_CHORD_USER;
+        config.override = true;
+        apply_track_settings(draft->track, &config);
     }
     draft->open = false;
     return true;

@@ -28,11 +28,110 @@ A 0.32-second comparison gave identical stereo PCM for a track 10 helper alone b
 
 With the last condition, the 1.0–1.2 s tail measured 0.00153 / 0.00170 RMS. It was silent in the other cases. The owner reverb amount was set through `0x4002d7a4(0x7f00, 0, 56)` (code `0x45`). The dry exclusion was set in DSP memory after the frame decode. It verifies native output route selection and reverb input independently. The half-gain case verifies stereo fold math. The front-panel mute gesture and dedicated LEVEL control have their own upstream paths.
 
-## Gates for enabling a stock audio helper group [O]
+## Owner map, drain and LEVEL proof [D]
 
-1. Lease only eligible unused tracks through POOL. Keep their stored Sound, mixer and sequencer data intact. Reject a group with a pending recording, a competing owner, or any pattern event that can reach a helper. Release and drain helper tails before old leases are cleared or reassigned. Evaluate track, kit and pattern changes alongside the note ownership transitions.
-2. Give the helper the owner's live DSP control values, including resolved locks, before the fixed per-track AMP, level, filter, overdrive, and pan chain. Keep the helper's note, gate, envelopes, and filter history independent. A stereo fold after that chain cannot reproduce changes to the owner's LEVEL, pan or upstream controls by itself. Prove these controls on both owner and helper notes while sustained, and cover the relevant stock Sound types.
-3. Publish one complete owner map per audio frame. Fold each valid helper into its owner exactly once before custom send captures and stock sends use the buses. Clear that helper contribution so it cannot enter the master, compressor bypass, or post-master track readers as an independent track. The temporary overlay uses the send entry already claimed by `core/relay-input`. Integrate before its capture, or test the caller at `0x1c3090` with its delay slots preserved. Use the same order with PRISM's private attenuated send and master copies. The master entry alone is too late for capture and sends.
-4. Verify live owner mute, native sends, compressor route, and recording/USB output with the device's actual controls. A main-out exclusion can preserve sends by design and does not establish the front-panel mute contract. Test disable, transport stop, rapid group and route changes, project reload, and pre-existing notes and tails. Check unchanged PCM with helper groups disabled and measure DSP headroom with the maximum qualified group.
+The reservation model admits an entire group only when the owner is qualified
+and each destination can be leased exclusively and is quiescent. A pattern
+epoch change or loss of eligibility stops new helper notes immediately. The
+old route stays assigned to its mixer until the worker queue, cursor and AMP
+tail are confirmed idle. The model leaves all stored helper requests intact.
+Host tests cover conflicts, refusing an occupied destination, atomic group
+assignment and holding a retired route across a pattern change.
 
-The backend stays monophonic for stock audio until these gates are met.
+The map fits in four words at frame byte `0x854`, before the RELAY, phrase,
+lock, instrument and position packets. The SHARC receiver accepts a tagged,
+checksummed map and rejects helper-to-helper routes. A corrupt frame retains
+the last route, and a valid empty map restores stock routing. A standalone
+execution test checks individual left/right samples, independent owners and
+sparse helper tracks across both packed map words. In the coupled DTII 1.17
+fixture, a temporary overlay calls the assembled fold before stock sends.
+One helper produces identical 480-block PCM in stock, disabled and folded
+cases (`7d3a3af8786ea57f…`). The assembled two-helper chord matches the fixed
+overlay above (`fd6bdb6e4278a9dc…`). This initial test injects the map into
+private DSP state.
+
+The composed build publishes the double-buffered map from the UI task.
+DSP-link writes those four words and projects owner controls into the matching
+native frame copy. Pattern-position receives the map before rendering. The
+fold runs in relay-input before the custom input callback and native sends.
+With a private test lease published on the ColdFire after a cold boot, the
+DSP received mask `0x0200` for T10 owned by T1. A held T10 note followed
+two native LEVEL/DATA turns on T1. Its window RMS rose from 0.0219 to 0.0266,
+while the direct T1 reference rose from 0.0254 to 0.0308. The map in an
+unleased reference was empty and its T10 RMS stayed at 0.0239. This verifies
+the negotiated frame path under real firmware scheduling. The lease is still
+injected by the emulator in this measurement.
+
+Turning the native LEVEL/DATA knob on T1 changed kit track halfword `+0x14`
+and wire halfword `0x74` together, from `0x6a00` to `0x7400` or `0x6000`.
+The late RMS of the held T1 note changed from 0.0257 to 0.0308 or 0.0211.
+The track LEVEL word is distinct from SRC LEV, carried at `0xec + 0x60*t`.
+The fold of a T10 helper alone was bit-identical when only the owner wire
+halfword at `0x74` was lowered. Applying `0x6000`, `0x7400` and zero to the
+helper word at `0x86` changed helper-only folded RMS to 0.01814, 0.02648 and
+zero respectively. Track LEVEL must therefore be projected before the helper
+bus reaches the fold.
+
+The frame projection copies owner track LEVEL, filter type, SRC LEV and the
+continuous filter/AMP/FX control section. A host comparison verifies all other
+halfwords are preserved, including pitch, velocity, gate masks, machine and
+sample slot. Further coupled tests need to qualify the individual live AMP,
+filter and FX controls and confirm that these words suffice across the
+admitted stock Sound types.
+
+In a second booted emulator fixture, T1, T9 and T10 played the same sample
+as different notes and routed together to T1. A UI-task callback sent the
+stock event `[track=9, pitch=67, type=2, source=0x40]` after 456 audio blocks.
+In the 0.32–0.49 s window, T10's 1498.5 Hz peak fell from 0.025684 in the
+held reference to 0.022724 after release. The 1000.5 Hz and 1259.8 Hz peaks
+retained amplitudes 0.036316 and 0.030674 in both cases. This checks a native
+selective release with both siblings held. Reassignment with a sustained loop
+or long tail requires the separate idle witness below.
+
+## POOL admission and playback [D]
+
+The interactive pool admits stock ONESHOT owners and helpers. POOL checks the
+selected pattern, the live working pattern, the track machine, stock note and
+trig data, and per-step parameter-lock counts. Start a new lease while stopped
+with the recorder idle. An eligible group can retain the same lease when the
+same pattern starts playing. A conflicting assignment fails as a group. The
+reserved destination uses the owner's active Sound and native lock context.
+Its original kit and pattern records are left intact.
+
+Closing the native onset gate begins a 24-block guard, after which admission
+requires the requested physical track to have no queued note, no generated
+note still owned by the worker, and a fresh DSP quiet witness. The native
+queue is scanned under the interrupt mask with a fixed bound. A native type-5
+control record was present at every probed UI pass even with all 16 audio
+tracks quiet. A check for an entirely empty queue never granted the lease.
+The scanner now checks individual note destinations and treats a pending kit
+transition or unrecognized record as busy. The native audition dispatcher
+and sequencer due hook exclude independent notes on leased destinations.
+
+Every eight blocks the DSP checks both sample cursors and the complete
+pre-fold stereo track bus. This handles a native AMP phase that parks after
+its source ends. A stopped ONESHOT cursor with a silent bus is quiescent even
+if the AMP still holds its last release coefficient. The quiet mask and its
+sequence and check travel in the idle DSP-link ACK cells. An active upload
+gets its normal ACK. Admission and reuse require a fresh valid quiet reply.
+The draining route remains tied to its owner while a
+matched physical note-off is delivered and the voice becomes quiet.
+
+The compiled panel test `pool.manual.device.test.ts` selected T1, enabled
+POLY, chose an empty helper in POOL and waited for the native lease to publish.
+Two held keyboard pitches produced accepted native events on T1 and the
+helper. The reserve mask survived PLAY on the same pattern, and two new held
+pitches again used distinct native physical destinations. The test uses panel
+input and reads the resulting device state. It passed again in 77.90 seconds
+with the final trigless-lock exclusion. The earlier coupled measurements
+establish stereo PCM, owner LEVEL, reverb and independent release.
+
+## Remaining qualification [O]
+
+Validate WERP, STRETCH, REPITCH, SLICE, GRID and stateful machines before
+expanding audio-track eligibility. Check audible owner mute, pan, filter,
+overdrive and compressor routing with the device's controls. Qualification
+also needs a maximum-group DSP budget and a higher-load capture covering
+PRISM, RELAY, USB audio, rapid group changes, and pattern changes that
+immediately need a retiring helper. The pool keeps the old route during a
+sustained loop for as long as its cursor remains active.

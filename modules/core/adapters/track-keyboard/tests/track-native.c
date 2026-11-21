@@ -1,4 +1,5 @@
 #include "../src/track-native.h"
+#include "../src/track-pool.h"
 
 #include <assert.h>
 
@@ -7,10 +8,36 @@ typedef struct {
     bool midi;
 } Sent;
 
-static Sent sent[8];
+static Sent sent[16];
 static unsigned count;
 static bool blocked;
 static int kind[2] = {TK_NATIVE_MIDI, TK_NATIVE_MIDI};
+static uint16_t helper_mask;
+
+uint8_t tk_pool_fw_voices(uint8_t track)
+{
+    return (track == 0 && helper_mask) ? 2 : 1;
+}
+
+uint16_t tk_pool_fw_helpers(uint8_t track)
+{
+    return track == 0 ? helper_mask : 0;
+}
+
+bool tk_pool_fw_reserved(uint8_t track)
+{
+    return (helper_mask & (1u << track)) != 0;
+}
+
+uint16_t tk_pool_fw_quiet(void)
+{
+    return UINT16_MAX;
+}
+
+void tk_pool_fw_note_edge(uint8_t track)
+{
+    (void)track;
+}
 
 int tk_native_kind(uint8_t track)
 {
@@ -30,6 +57,26 @@ bool tk_native_try_send(uint8_t track, bool midi, uint8_t pitch, uint8_t velocit
     assert(count < sizeof sent / sizeof sent[0]);
     sent[count++] = (Sent){track, pitch, velocity, midi};
     return true;
+}
+
+const TkSequenceAudio *tk_sequence_audio(uint8_t track)
+{
+    (void)track;
+    return NULL;
+}
+
+bool tk_native_try_seed_send(uint8_t track, uint8_t pitch, uint8_t velocity,
+                             const TkSequenceAudio *audio)
+{
+    (void)audio;
+    return tk_native_try_send(track, false, pitch, velocity);
+}
+
+bool tk_native_try_helper_send(uint8_t owner, uint8_t track, uint8_t pitch, uint8_t velocity,
+                               const TkSequenceAudio *audio)
+{
+    assert(owner == 0 && track == 9);
+    return tk_native_try_seed_send(track, pitch, velocity, audio);
 }
 
 static bool post(const TkTrackBackend *backend, uint8_t track, uint32_t token, uint8_t pitch,
@@ -71,5 +118,22 @@ void track_native_checks(void)
     kind[0] = TK_NATIVE_AUDIO;
     tk_native_drain();
     assert(count == 4 && sent[3].midi && sent[3].velocity == 0);
+    assert(tk_native_idle(0));
+
+    TkTrackBackend audio;
+    tk_native_backend(false, &audio);
+    helper_mask = 1u << 9;
+    assert(post(&audio, 0, 3, 60, 111));
+    assert(post(&audio, 0, 4, 64, 82));
+    assert(!post(&audio, 9, 1, 55, 90)); /* Reserved destinations cannot claim keys. */
+    tk_native_drain();
+    assert(count == 6 && sent[4].track == 0 && sent[5].track == 9);
+    helper_mask = 0;
+    tk_native_drain();
+    assert(count == 7 && sent[6].track == 9 && sent[6].velocity == 0);
+    assert(post(&audio, 0, 4, 64, 0)); /* Stale release must not touch the owner. */
+    assert(post(&audio, 0, 3, 60, 0));
+    tk_native_drain();
+    assert(count == 8 && sent[7].track == 0 && sent[7].velocity == 0);
     assert(tk_native_idle(0));
 }

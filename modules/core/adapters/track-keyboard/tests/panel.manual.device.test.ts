@@ -25,10 +25,14 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
       const captures = mkdtempSync(path.join(results, 'panel-'));
       const capture = async (name: string) =>
         copyFileSync(await captureRemoteOled(session, name), path.join(captures, name + '.png'));
-      const drawnText = async () => {
+      const pixels = async () => {
         const frame = await session.client.framebufferGet({ data: true });
         const bytes = Buffer.from(frame.data_b64 ?? '', 'base64');
         expect(bytes.length).toBe(1024);
+        return bytes;
+      };
+      const drawnText = async () => {
+        const bytes = await pixels();
         let lit = 0;
         for (let x = 23; x < 122; x++) {
           for (let y = 12; y < 63; y++) {
@@ -42,8 +46,11 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
         session.options,
         session.runDir,
         session.runDir,
-        ['DKRT_BOOT', 'tk_panel_claim_hits'],
-        { modules: ['core/track-keyboard', 'core/instrument-play', 'core/digikit-menu', 'core/health'] },
+        ['DKRT_BOOT', 'tk_panel_claim_hits', 'tk_native_audio_active'],
+        {
+          modules: ['core/track-keyboard', 'core/instrument-play', 'core/digikit-menu', 'core/health'],
+          timeoutMs: 90_000,
+        },
       );
       await session.client.firmwareLoad({
         syx: image.syx,
@@ -64,16 +71,19 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
       }
       await tap(1);
       await tap(1);
+      const stockLeft = (await pixels()).subarray(0, 20 * 8);
+      await capture('stock-audio-trig-2');
       await tap(1);
       await turn(1, 12);
       await turn(3, 30); // Lengthen the generated gate to be observable by the emulator client.
       await capture('track-arp');
+      expect((await pixels()).subarray(0, 20 * 8)).toEqual(stockLeft);
       expect(await drawnText(), 'ARP control labels render below the header').toBeGreaterThan(135);
       await tap('KEYBOARD');
-      // Audition counter of native track 1, incremented by native note-on and
-      // decremented by native note-off. The proof stops the physical keyboard
-      // path from dispatching the original note and must drive this via ARP.
-      const held = () => session.client.memPeek(0x44e086ec);
+      // The generated route skips the stock audition counter. Track bit 0
+      // reports an accepted onset still awaiting its backend release.
+      const held = async () =>
+        ((await session.client.memPeek(planSymbol(image.plan, 'tk_native_audio_active'))) ?? 0) & 1;
       const claims = () => session.client.memPeek(planSymbol(image.plan, 'tk_panel_claim_hits'));
       await edge('TRIG 9', true);
       try {

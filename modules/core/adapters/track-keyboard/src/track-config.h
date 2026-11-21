@@ -27,6 +27,9 @@ typedef struct {
     TkParams params;
     TkRecipe user;
     uint16_t helpers;
+    int8_t selector_octave, selector_channel;
+    uint8_t canopy_mix;
+    bool override;
 } TkTrackConfig;
 
 typedef struct {
@@ -35,6 +38,7 @@ typedef struct {
     TkRecipe user;
 } TkStepLocks;
 
+TkTrackConfig tk_track_defaults(void);
 bool tk_get_control(const TkParams *params, enum TkControl control, int *value);
 bool tk_set_control(TkParams *params, enum TkControl control, int value);
 bool tk_set_lock(TkStepLocks *locks, enum TkControl control, int value);
@@ -47,7 +51,8 @@ bool tk_assign_helpers(TkTrackConfig *config, uint8_t owner, uint16_t request, u
                        uint16_t empty, uint16_t already_reserved);
 
 /* Versioned fixed-width record. Pattern adapters own association and transactions. */
-#define TK_CONFIG_BYTES 64
+#define TK_CONFIG_V1_BYTES 64
+#define TK_CONFIG_BYTES 68
 bool tk_config_encode(const TkTrackConfig *config, uint8_t *data, size_t size);
 bool tk_config_decode(TkTrackConfig *config, const uint8_t *data, size_t size);
 

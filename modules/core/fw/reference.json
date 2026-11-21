@@ -14761,6 +14761,136 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x400dc702"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Replay the displaced prologue and synchronize the track keyboard data after the stock operation.",
+      "file": "devices/fw/project.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.project.hook.pattern_load",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.project.site.pattern_load",
+      "subsystem": "project",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400e5db6"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Replay the displaced prologue and synchronize the track keyboard data after the stock operation.",
+      "file": "devices/fw/project.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.project.hook.pattern_reset",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.project.site.pattern_reset",
+      "subsystem": "project",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400dc894"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Replay the displaced prologue and synchronize the track keyboard data after the stock operation.",
+      "file": "devices/fw/project.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.project.hook.pattern_save",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.project.site.pattern_save",
+      "subsystem": "project",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400e5af8"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Clear the attachment for the same native track and let the stock clear continue.",
+      "file": "devices/fw/project.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "cf.project.hook.track_clear",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.project.site.track_clear",
+      "subsystem": "project",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x4003407c",
             "len": 4
           }
@@ -14792,6 +14922,99 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x400dc702",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Pattern v4 loader (live pattern, input record, index).",
+      "file": "devices/fw/project.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.project.site.pattern_load",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "project",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400e5db6",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Whole-pattern initializer (pattern, index).",
+      "file": "devices/fw/project.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.project.site.pattern_reset",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "project",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400dc894",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Pattern v4 serializer (out record, live pattern, mode).",
+      "file": "devices/fw/project.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.project.site.pattern_save",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "project",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x4012029c",
             "len": 4
           }
@@ -14816,6 +15039,37 @@
       "subsystem": "project",
       "users": [
         "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400e5af8",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Stock track clear (track ID, track data, lock list, note list).",
+      "file": "devices/fw/project.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.project.site.track_clear",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "project",
+      "users": [
+        "core/track-keyboard"
       ],
       "was": []
     },
@@ -19167,6 +19421,41 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x4013a6d0",
+            "len": 8
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_keys_audio_queue_head",
+        "rust": "dkfw::track_keys::audio_queue_head"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Read the pending audio-event list before admitting a reserved voice.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_keys.fn.audio_queue_head",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x4012bcba",
             "len": 6
           }
@@ -19342,6 +19631,143 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x40139b54"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Quarantine ordinary auditions on physical tracks reserved by a helper group.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_keys.hook.audio_dispatch_entry",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "d1",
+          "a0",
+          "a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.track_keys.site.audio_dispatch_entry",
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40120754"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Leave stock release dispatch only on native destinations of mixed routes.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "cf.track_keys.hook.midi_target_off",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": [
+          "d2",
+          "d4",
+          "a2"
+        ]
+      },
+      "site": "cf.track_keys.site.midi_target_off",
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401208fa"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Keep native fan-out for stock destinations after shared keyboard admits a subset.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "cf.track_keys.hook.midi_target_on",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": [
+          "d1",
+          "d2",
+          "d3",
+          "a3"
+        ]
+      },
+      "site": "cf.track_keys.site.midi_target_on",
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40139b54",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Audio note dispatch entry. The eight-byte prologue allocates its frame and saves callee registers.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.audio_dispatch_entry",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x4012bff8",
             "len": 4
           }
@@ -19435,6 +19861,192 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x4011f1c4",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI gatherer receive port mask operand. Bit 0 enables DIN and bit 1 enables USB.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_ports_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 12
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401207bc",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI note router operand for its signed per-track input channel table.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_routes_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 14
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40120952",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Stock MIDI Receive Notes flag used at the entry of the MIDI note-on parser.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_rx_notes_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 14
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401207b4",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI note router operand for the selected track used by Auto Channel.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_selected_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 6
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40120754",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Per-destination native MIDI note-off call, with the source already pushed.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_target_off",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401208fa",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Per-destination native MIDI note-on call, with seven arguments already pushed.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_target_on",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x4011f5a0",
             "len": 4
           }
@@ -19457,6 +20069,1019 @@
         }
       },
       "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e28c"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Mirror the resolved native sequencer event without altering the stock register contract.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_sequence.hook.audio_due",
+      "regs": {
+        "clobbers": [],
+        "in": []
+      },
+      "site": "cf.track_sequence.site.audio_due",
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d6e10"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Mirror the resolved native sequencer event without altering the stock register contract.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_sequence.hook.audio_stage",
+      "regs": {
+        "clobbers": [],
+        "in": []
+      },
+      "site": "cf.track_sequence.site.audio_stage",
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40049274"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Report the resolved placement of a live-recorded input note and replay the original timebase call.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_sequence.hook.capture_live",
+      "regs": {
+        "clobbers": [],
+        "in": []
+      },
+      "site": "cf.track_sequence.site.capture_live",
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012cd18"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Mirror the resolved native sequencer event without altering the stock register contract.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_sequence.hook.midi_due",
+      "regs": {
+        "clobbers": [],
+        "in": []
+      },
+      "site": "cf.track_sequence.site.midi_due",
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d7234"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Mirror the resolved native sequencer event without altering the stock register contract.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_sequence.hook.midi_stage",
+      "regs": {
+        "clobbers": [],
+        "in": []
+      },
+      "site": "cf.track_sequence.site.midi_stage",
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4013a6a8",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Operand of the native event-bucket free list.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_bucket_free_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d8204",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Return after timer ISR builds an audio pattern event.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_builder_return",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e28c",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Due audio note after mute, retrig and priority checks.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_due",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 12
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e294",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native audio note lookup after the two replayed loads.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_due_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 2,
+          "offset": 20
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e6c0",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Releases a processed audio scheduler entry.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_due_skip",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4013a806",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Reserve a native audio scheduler event with the stock allocator.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_event_alloc",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4013aa66",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Append a native immediate event after existing due events.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_event_queue",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4013a80e",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Operand of the native scheduled audio event free list.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_free_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4013a7b6",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Reserve a native parameter-lock context for one generated note.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_lock_alloc",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4013a7be",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Operand of the native lock-context free list.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_lock_free_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002dda0",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "ISR operand for the stock audio mute mask.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_mute_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002ddaa",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "ISR operand for the stock audio solo mask.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_solo_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 18
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d6e10",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Audio builder success before its register restore.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_stage",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 16
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d6e16",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Audio builder native epilogue.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_stage_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 22
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002daa4",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Effective active native Sound for a track under live audition.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_track_sound",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4019995c",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Stock recorder timebase singleton call replayed by the live note hook.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.capture_clock",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40049274",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Live note recorder after the target step, note list and lock are committed.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.capture_live",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 14
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4004927a",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Continue the unchanged native recorder history path.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.capture_live_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 2,
+          "offset": 20
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f07ac",
+            "len": 512
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Stock note LEN table used in both audio and MIDI dispatch.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.length_table",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 512,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d821e",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Return after timer ISR builds a MIDI pattern event.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_builder_return",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012cd18",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Due MIDI note after the native mute and control paths.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_due",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012cd1e",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Resume unclaimed native MIDI note dispatch.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_due_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 2,
+          "offset": 14
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012d046",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI record cleanup used when this record emits no native note.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_due_skip",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 2,
+          "offset": 2
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012c822",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI worker operand for the mute mask.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_mute_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 6
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012c828",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI worker operand for the solo mask.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_solo_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 12
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d7234",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI builder success before its register restore.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_stage",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 16
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d723a",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI builder native epilogue.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_stage_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 22
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401998ca",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Operand of the UI state singleton used by native recording.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.record_ui_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 10
+        }
+      },
+      "subsystem": "track_sequence",
       "users": [
         "core/track-keyboard"
       ],
@@ -27341,7 +28966,7 @@
       "name": "pattern"
     },
     {
-      "count": 7,
+      "count": 15,
       "cpu": "cf",
       "file": "devices/fw/project.toml",
       "meaning": "the project object, kits, tracks, serialisation",
@@ -27390,11 +29015,18 @@
       "name": "text"
     },
     {
-      "count": 10,
+      "count": 21,
       "cpu": "cf",
       "file": "devices/fw/track-keys.toml",
-      "meaning": "",
+      "meaning": "track keyboard note ownership and native dispatch",
       "name": "track_keys"
+    },
+    {
+      "count": 33,
+      "cpu": "cf",
+      "file": "devices/fw/track-sequence.toml",
+      "meaning": "resolved track sequencer events and timed dispatch",
+      "name": "track_sequence"
     },
     {
       "count": 12,

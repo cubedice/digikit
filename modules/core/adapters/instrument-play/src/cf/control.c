@@ -82,6 +82,7 @@ CsState src_state[IP_INSTANCES];
 IsStatus src_status[IP_INSTANCES];
 static IpInst inst[IP_INSTANCES];
 static uint8_t track_keyboard_claim[MI_TRACKS];
+static uint8_t track_keyboard_lanes[MI_TRACKS];
 static IsnQueue shared_notes[IP_INSTANCES];
 static IpInst *cur = &inst[0];
 #ifdef DK_CANOPY_SOUND_PROOF
@@ -335,6 +336,22 @@ int instrument_track_keyboard_claim(uint32_t track, int active)
     return ready;
 }
 
+int instrument_track_keyboard_routed(uint32_t track)
+{
+    return track < MI_TRACKS && track_keyboard_claim[track] && track_keyboard_lanes[track];
+}
+
+int instrument_track_keyboard_lanes(uint32_t track, uint32_t lanes)
+{
+    if (track >= MI_TRACKS || lanes > 3)
+        return 0;
+    uint32_t sr = dkrt_irq_mask();
+    track_keyboard_lanes[track] = (uint8_t)lanes;
+    int ready = instrument_track_keyboard_claim(track, lanes != 0);
+    dkrt_irq_restore(sr);
+    return ready;
+}
+
 int instrument_track_keyboard_note(uint32_t track, uint32_t token, uint32_t pitch,
                                    uint32_t velocity, uint32_t on, uint32_t lane)
 {
@@ -351,7 +368,9 @@ int instrument_track_keyboard_note(uint32_t track, uint32_t token, uint32_t pitc
                  instrument_midi_ready(track, mi_ledger.epoch, mi_ledger.generations[track])))) {
         IsnQueue *q = &shared_notes[IDX(in)];
         isn_sync(q, track, mi_ledger.epoch, mi_ledger.generations[track]);
-        result = isn_submit(q, token, pitch, velocity, on != 0);
+        result = track_keyboard_lanes[track]
+                     ? isn_submit_voice(q, token, pitch, velocity, on != 0, (int)lane)
+                     : isn_submit(q, token, pitch, velocity, on != 0);
     }
     dkrt_irq_restore(sr);
     return result;
@@ -400,8 +419,14 @@ int instrument_keyboard_events(uint32_t track, uint32_t epoch, uint32_t generati
         /* The shared owner delivers resolved pitches. Consume any local
          * ledger traffic left after handoff without running the old chord
          * mapper or routing its channel controllers into shared notes. */
-        if (count)
+        if (count) {
+            if (track_keyboard_lanes[track] && count == 1 && input[0].kind == MI_CC &&
+                input[0].note == 1) {
+                mi_event_copy(output, input);
+                return 1;
+            }
             return 0;
+        }
         IpInst *in = for_track(track);
         if (!in)
             return 0;
@@ -780,8 +805,12 @@ uint32_t instrument_src_context(uint32_t track, uint32_t page, int visible)
         in = cur;
     CpPreset current;
     src_requested(in, &current);
-    if (for_track(track) == in)
-        cs_track_keyboard(SRC(in), track_keyboard_src[track]);
+    if (for_track(track) == in) {
+        CsState *s = SRC(in);
+        cs_track_keyboard(s, track_keyboard_src[track]);
+        s->layout = (uint8_t)((s->layout & ~CS_LAYOUT_LANES) |
+                              (uint32_t)track_keyboard_lanes[track] << 3);
+    }
     uint32_t generation = track < MI_TRACKS ? mi_ledger.generations[track] : 0;
     uint32_t token = cs_context(
         SRC(in), track, generation,
@@ -2376,8 +2405,11 @@ static void tick_instance(uint32_t i, const IpInst *ui)
         values[0] |= 0x8000u;
     /* The effective bank suppresses the local arp and strum after MOD and
      * locks. The carrier strips this flag before the machine callback. */
-    if (in->track < MI_TRACKS && track_keyboard_claim[in->track])
+    if (in->track < MI_TRACKS && track_keyboard_claim[in->track]) {
         values[0] |= 0x4000u;
+        if (track_keyboard_lanes[in->track])
+            values[0] |= 0x2000u | (uint32_t)track_keyboard_lanes[in->track] << 11;
+    }
     if (in->track >= MI_TRACKS) {
         /* Freed: release the old track; keep the sound for the next track. */
         if (in->phase) {
@@ -2441,6 +2473,9 @@ void instrument_play_tick(void)
     ip_init();
 #if defined(__m68k__)
     extern void instrument_src_tick(void), ip_panel_tick(void);
+    extern void tk_runtime_init(void) __attribute__((weak));
+    if (tk_runtime_init)
+        tk_runtime_init();
     instrument_src_tick();
     ip_panel_tick(); /* recorded chords: steps committed after the key event */
     if (status_menu && dk_ui_menu_is_open(status_menu)) {

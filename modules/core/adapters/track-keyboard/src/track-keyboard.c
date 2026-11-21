@@ -2,7 +2,8 @@
 
 #include "track-memory.h"
 
-static const uint8_t divisions[] = {1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 7};
+static const uint8_t divisions[] = {1,  2,  3,  4,  5,  6,  8,  10, 12, 16,
+                                    20, 24, 32, 40, 48, 64, 80, 7,  5};
 
 TkParams tk_defaults(void)
 {
@@ -13,7 +14,7 @@ bool tk_rate_division(uint8_t rate, uint8_t *numerator, uint8_t *denominator)
 {
     if (rate >= sizeof divisions)
         return false;
-    *numerator = rate == sizeof divisions - 1 ? 1 : 4;
+    *numerator = rate >= TK_RATE_7Q ? 1 : 4;
     *denominator = divisions[rate];
     return true;
 }
@@ -22,9 +23,10 @@ bool tk_valid(const TkParams *p)
 {
     return p && p->arp <= 1 && p->poly <= 1 && p->order <= TK_ORDER_RANDOM && p->gate >= 1 &&
            p->gate <= 100 && p->rate < sizeof divisions && p->octaves >= -3 && p->octaves <= 3 &&
-           p->swing >= 50 && p->swing <= 75 && p->reset <= TK_RESET_CONTINUE &&
-           p->chord < TK_CHORD_COUNT && p->voicing <= TK_VOICE_INV2 && p->strum_ms <= 500 &&
-           p->voices > 0 && p->voices <= TK_NOTES;
+           p->swing >= 50 && p->swing <= 75 && p->legacy_swing <= 75 &&
+           p->reset <= TK_RESET_CONTINUE && p->chord < TK_CHORD_COUNT &&
+           p->voicing <= TK_VOICE_INV2 && p->strum_ms <= 500 && p->voices > 0 &&
+           p->voices <= TK_NOTES;
 }
 
 bool tk_valid_recipe(const TkRecipe *recipe)
@@ -449,12 +451,12 @@ bool tk_press(TkState *s, uint8_t source, uint8_t channel, uint32_t id, int pitc
     uint8_t i = key_index(s, source, channel, id);
     if (i < s->key_count && s->keys[i].down)
         return false;
-    /* Reserve half of the ledger for an overlapping sequencer chord. */
+    /* Retain independent input owners while reserving room for a seed. */
     uint8_t live_keys = 0;
     for (uint8_t j = 0; j < s->key_count; ++j)
         if (s->keys[j].source != TK_SEQUENCER)
             ++live_keys;
-    if (i == s->key_count && live_keys == TK_NOTES)
+    if (i == s->key_count && live_keys == TK_INPUT_KEYS)
         return false;
     bool live = live_input(s);
     bool audible = source != TK_SEQUENCER || !live;
@@ -583,10 +585,12 @@ void tk_tick(TkState *s, uint32_t elapsed_us, uint16_t bpm)
     if (!tk_rate_division(s->params.rate, &num, &den))
         return;
     uint64_t span = (uint64_t)TK_TICKS_PER_QUARTER * num;
-    unsigned weight = s->swung ? 100u - s->params.swing : s->params.swing;
+    unsigned deviation =
+        s->params.legacy_swing ? s->params.legacy_swing : 2u * (s->params.swing - 50u);
+    unsigned weight = s->swung ? 100u - deviation : 100u + deviation;
     uint64_t scaled = span * weight + s->interval_remainder;
-    uint64_t duration = scaled / (den * 50u);
-    s->interval_remainder = (uint32_t)(scaled % (den * 50u));
+    uint64_t duration = scaled / (den * 100u);
+    s->interval_remainder = (uint32_t)(scaled % (den * 100u));
     s->swung = !s->swung;
     /* After a missed interval start from now, without bursting overdue notes. */
     uint64_t due = s->next;

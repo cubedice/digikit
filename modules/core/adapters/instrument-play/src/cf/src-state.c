@@ -270,7 +270,7 @@ void cs_metadata(CsState *s, uint32_t metadata)
     }
     int changed_family = (s->metadata ^ metadata) & 0x30;
     s->metadata = metadata;
-    s->layout = (uint8_t)((s->layout & CS_SHARED_KEYBOARD) | family(s));
+    s->layout = (uint8_t)((s->layout & (CS_SHARED_KEYBOARD | CS_LAYOUT_LANES)) | family(s));
     if (changed_family)
         activate(s);
     ++s->revision;
@@ -329,7 +329,9 @@ static int move(CsState *s, uint32_t token, uint32_t encoder, int32_t *detents, 
     s->focus_at = now;
     if (control == CS_TUNE || control == CS_LEVEL)
         return CS_NATIVE;
-    if ((control >= 16 && control < CP_CONTROLS && family(s) < 2) || control == CP_SOURCE ||
+    uint32_t lanes = cs_shared_lanes(s);
+    if ((control == CP_ARP_MIX && (lanes == 1 || lanes == 2)) ||
+        (control >= 16 && control < CP_CONTROLS && family(s) < 2) || control == CP_SOURCE ||
         (s->mode == KB_PLAY && (control == CP_VOICING || control == CP_STRUM)) ||
         /* A learned shape fixes its voicing, not the choice of chord. */
         (s->learned && control == CP_VOICING))
@@ -414,7 +416,7 @@ int cs_edit(CsState *s, uint32_t token, uint32_t encoder, int32_t detents, uint3
     s->mode = mode;
     s->learned = learned;
     s->metadata = metadata;
-    s->layout = (uint8_t)((s->layout & CS_SHARED_KEYBOARD) | family(s));
+    s->layout = (uint8_t)((s->layout & (CS_SHARED_KEYBOARD | CS_LAYOUT_LANES)) | family(s));
     if (control == CS_WAVE) {
         activate(s);
         if (next >= 2 && next < 7)

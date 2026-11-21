@@ -1026,14 +1026,26 @@ _iv_native_config:
     R1 = FEXT R0 BY 0:8;
     COMP(R1, R2);
     IF NE JUMP _iv_no;
-    // bit 15 is the CF focus flag. CPSB also accepts bit 14 for an
-    // externally scheduled keyboard; neither reaches the machine callback.
+    // Bit 15 is the CF focus flag. CPSB also accepts bit 14 for external
+    // scheduling, and an explicit nonempty lane mask with bit 13 set.
     R1 = 11;
     COMP(R2, R1);
     IF EQ JUMP _iv_native_flags_shared;
     R1 = FEXT R0 BY 10:5;
     JUMP _iv_native_flags_ready;
 _iv_native_flags_shared:
+    R1 = FEXT R0 BY 13:1;
+    R1 = PASS R1;
+    IF EQ JUMP _iv_native_flags_legacy;
+    R1 = FEXT R0 BY 14:1;
+    R1 = PASS R1;
+    IF EQ JUMP _iv_no;
+    R1 = FEXT R0 BY 11:2;
+    R1 = PASS R1;
+    IF EQ JUMP _iv_no;
+    R1 = FEXT R0 BY 10:1;
+    JUMP _iv_native_flags_ready;
+_iv_native_flags_legacy:
     R1 = FEXT R0 BY 10:4;
 _iv_native_flags_ready:
     R1 = PASS R1;
