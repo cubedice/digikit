@@ -28,16 +28,10 @@ optional = ["dkrt_loop_get", "dkrt_loop_xfad", "dkrt_loop_arm", "dkrt_loop_drop"
 # The TRIG keys and their LEDs while G holds the selection of the tracks: the firmware's key dispatcher and LED setter, each
 # with a hook before it (devices/fw/phrase-ui.toml). They are the input overlay's hooks from before step 2 of the redesign.
 [object.externs]
-phrase_stock_key_dispatch = "hook.cf.page.site.phrase_key_dispatch.tail"
+
 phrase_stock_led = "hook.cf.page.site.phrase_led_set.tail"
 
-[[op]]
-op = "hook"
-hook = "cf.page.hook.phrase_key_dispatch"
-to = "phrase_key_dispatch"
 
-[[claim]]
-resource = "cf.page.site.phrase_key_dispatch"
 
 [[op]]
 op = "hook"

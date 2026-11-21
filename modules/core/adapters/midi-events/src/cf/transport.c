@@ -439,6 +439,7 @@ int mt_reply_guard_expect(MtReplyGuard *g, uint32_t token, uint32_t sequence, ui
 int mt_reply_reordered(const MtReplyGuard *g, const uint32_t *reply)
 {
     uint32_t behind, i, j;
+    int bracketed = 0;
     if (!g->ready || !g->expected || g->invalid || !mt_reply_valid(reply) ||
         !session_reply(reply[0]) || mt_reply_session(reply) != g->expected)
         return 0;
@@ -446,13 +447,20 @@ int mt_reply_reordered(const MtReplyGuard *g, const uint32_t *reply)
     if (!behind || behind >= 0x80000000u)
         return 0;
     for (i = 0; i < g->history_count; ++i) {
-        for (j = 0; j < MT_REPLY_WORDS; ++j)
-            if (g->history[i][j] != reply[j])
-                break;
-        if (j == MT_REPLY_WORDS)
+        uint32_t age = g->heartbeat - mt_reply_heartbeat(g->history[i]);
+        if (age == behind) {
+            for (j = 0; j < MT_REPLY_WORDS; ++j)
+                if (g->history[i][j] != reply[j])
+                    return 0;
             return 1;
+        }
+        /* The DTII can deliver N, N+3, N+2. A previously unseen reply
+         * inside a small, observed gap is stale too. Never admit its payload
+         * or refresh the deadline. An older unbracketed counter still faults. */
+        if (age > behind && age <= sizeof(g->history) / sizeof(g->history[0]))
+            bracketed = 1;
     }
-    return 0;
+    return bracketed;
 }
 
 /* Sticky diagnostic for the first trust failure of a guard. No reply pointer

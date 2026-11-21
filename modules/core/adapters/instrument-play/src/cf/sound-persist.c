@@ -109,10 +109,13 @@ void ip_sa_load_end(uint32_t destination, uint32_t result, const uint8_t *keep)
 }
 
 /* Sound writer: the stock body zero-filled the extension positions. */
-void ip_sa_saved(uint32_t record, uint32_t sound, uint32_t result)
+extern int rtm_can_save(uint32_t sound) __attribute__((weak));
+uint32_t ip_sa_saved(uint32_t record, uint32_t sound, uint32_t result)
 {
     if (!(result & 0xffu) || !record || !sound || !ip_sa_ready)
-        return;
+        return result;
+    if (rtm_can_save && !rtm_can_save(sound))
+        return 0;
     instrument_sound_flush(sound, sound + SA_SOUND);
     uint8_t payload[SR_BYTES];
     uint32_t sr = dkrt_irq_mask();
@@ -122,6 +125,7 @@ void ip_sa_saved(uint32_t record, uint32_t sound, uint32_t result)
     dkrt_irq_restore(sr);
     if (present)
         sr_scatter((uint8_t *)(uintptr_t)record, payload);
+    return result;
 }
 
 /* memcpy of at least one Sound's length, before and after the stock copy. */

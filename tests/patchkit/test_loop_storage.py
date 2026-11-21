@@ -21,13 +21,16 @@ def stock_main():
     return proof.main_image(firmware)
 
 
-def patched_from_manifest(stock):
+def patched_from_manifest(stock, relay=False):
     manifest = tomllib.loads((MODULE / "module.toml").read_text(encoding="utf-8"))
     patched = bytearray(stock)
     for op in manifest["op"]:
         assert op["op"] == "write" and op["anchor"] == "cf.main"
         assert op["width"] == 4
-        struct.pack_into(">I", patched, op["offset"], op["value"])
+        base, adjustment = op["value"].split(" - ")
+        assert adjustment == "0x02000000 * defined(_relay_storage_info)"
+        limit = int(base, 16) - (proof.RELAY_BYTES if relay else 0)
+        struct.pack_into(">I", patched, op["offset"], limit)
     return bytes(patched)
 
 
@@ -65,6 +68,18 @@ def test_manifest_changes_only_reviewed_six_operands(stock_main):
     for address in proof.EXCLUDED_SITES:
         offset = address - proof.MAIN_BASE
         assert patched[offset : offset + 4] == stock_main[offset : offset + 4]
+
+
+def test_relay_lease_abuts_existing_phrase_storage(stock_main):
+    proof.audit_main(stock_main, patched_from_manifest(stock_main, relay=True), relay=True)
+    module = ROOT / "modules/core/adapters/relay-storage"
+    obj = json.loads((module / "build/relay-storage-dsp.dko.json").read_text())
+    symbol = next(s for s in obj["symbols"] if s["name"] == "_relay_storage_info")
+    section = next(s for s in obj["sections"] if s["name"] == symbol["section"])
+    magic, version, base, size = struct.unpack_from("<4I", bytes.fromhex(section["hex"]), symbol["value"])
+    assert (magic, version, size) == (0x524C5931, 1, proof.RELAY_BYTES)
+    assert base == proof.cf_offset_to_dsp(proof.CF_BIAS + proof.POOL_BYTES - size)
+    assert base + size == proof.PHRASE_BANK0
 
 
 def test_unrelated_matching_capacity_literal_is_rejected(stock_main):

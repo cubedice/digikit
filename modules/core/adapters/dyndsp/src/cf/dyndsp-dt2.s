@@ -33,7 +33,8 @@ dyndsp_info:
     .long   _dd_vfirst
     .long   DYN_TYPES
     .long   _dd_vcount
-    .long   67
+    .long   (.Limports_end - .Limports_start) / 32
+.Limports_start:
     DSP_IMPORT _dv_exp2
     DSP_IMPORT _dv_frame_hw
     DSP_IMPORT _dv_frame_sw
@@ -104,6 +105,10 @@ dyndsp_info:
     | The master stage's volume ramp (the loop effect adds the phrase effect's output at the master's gain): its start and its step a sample.
     DSP_IMPORT _fw_master_gain
     DSP_IMPORT _fw_master_step
+    DSP_IMPORT _relay_pool
+    DSP_IMPORT _rtm_tracks
+    DSP_IMPORT _rtm_tapes
     DSP_IMPORT _phrase_storage_info
     DSP_IMPORT _phrase_control_info
     DSP_IMPORT _phrase_status
+.Limports_end:

@@ -26,6 +26,7 @@ MAIN_BASE = 0x40000400
 CF_BIAS = 0x400
 STOCK_BYTES = 0x19000000
 POOL_BYTES = 0x17800000
+RELAY_BYTES = 32 * 1024 * 1024
 BUFFER_BYTES = 0x00800000
 PHRASE_BANK_BYTES = 0x00800000
 PHRASE_BANK_FRAMES = 1_032_192
@@ -67,7 +68,7 @@ def main_image(syx: Path) -> bytes:
     return depack_section(data) if kind == "packed" else data
 
 
-def audit_main(stock: bytes, patched: bytes) -> None:
+def audit_main(stock: bytes, patched: bytes, relay: bool = False) -> None:
     """Require exactly the six reviewed writes; reject preview/table edits."""
     if hashlib.sha256(stock).hexdigest() != MAIN_SHA:
         raise ValueError("Stock MAIN SHA-256 is not DT2 1.17")
@@ -76,7 +77,7 @@ def audit_main(stock: bytes, patched: bytes) -> None:
         offset = address - MAIN_BASE
         if struct.unpack_from(">I", stock, offset)[0] != before:
             raise ValueError(f"Unexpected allocator operand at {address:#x}")
-        struct.pack_into(">I", expected, offset, after)
+        struct.pack_into(">I", expected, offset, after - (RELAY_BYTES if relay else 0))
     if patched != expected:
         raise ValueError("Patched MAIN differs beyond the six reservation operands")
 
@@ -95,7 +96,7 @@ def allocation_record(start: int, size: int, gap: int = 0) -> bytes:
     return struct.pack(">13I", *words)
 
 
-def allocator_script(capacity: int) -> tuple[list[dict], dict[str, tuple[int, int]]]:
+def allocator_script(capacity: int, reserved_capacity: int = POOL_BYTES) -> tuple[list[dict], dict[str, tuple[int, int]]]:
     """Operations plus expected (mask, value) for call/peek result tags."""
     ops: list[dict] = []
     expected: dict[str, tuple[int, int]] = {}
@@ -122,8 +123,8 @@ def allocator_script(capacity: int) -> tuple[list[dict], dict[str, tuple[int, in
     call("total-capacity", 0x40153AFA, [], capacity, 0xFFFFFFFF)
     call("empty-free", 0x40153ABC, [], capacity, 0xFFFFFFFF)
     for tag, file_size in (
-        ("new-capacity-exact", POOL_BYTES - 0x10),
-        ("new-capacity-over", POOL_BYTES - 0x0F),
+        ("new-capacity-exact", reserved_capacity - 0x10),
+        ("new-capacity-over", reserved_capacity - 0x0F),
         ("old-capacity-exact", STOCK_BYTES - 0x10),
         ("old-capacity-over", STOCK_BYTES - 0x0F),
     ):
@@ -131,7 +132,7 @@ def allocator_script(capacity: int) -> tuple[list[dict], dict[str, tuple[int, in
 
     # The real helper reads the last live allocation and copies its empty
     # reference tree. No huge backing sample buffer is created or touched.
-    size = POOL_BYTES - 0x2000
+    size = reserved_capacity - 0x2000
     ops.append(
         {"op": "poke", "addr": RECORD, "hex": allocation_record(CF_BIAS, size).hex()}
     )
@@ -192,12 +193,14 @@ def main() -> int:
     parser.add_argument("--cf-script", type=Path, required=True)
     parser.add_argument("--work", type=Path, default=ROOT / "out/runs/loop-storage")
     parser.add_argument("--timeout", type=float, default=120)
+    parser.add_argument("--relay", action="store_true", help="check the extra 32 MiB RELAY reservation")
     args = parser.parse_args()
     if args.timeout <= 0 or args.timeout > 900:
         parser.error("--timeout must be in (0, 900] seconds per process")
     if hashlib.sha256(args.stock.read_bytes()).hexdigest() != STOCK_SHA:
         raise ValueError("Stock firmware SHA-256 is not DT2 1.17")
-    audit_main(main_image(args.stock), main_image(args.patched))
+    audit_main(main_image(args.stock), main_image(args.patched), relay=args.relay)
+    reserved_capacity = POOL_BYTES - (RELAY_BYTES if args.relay else 0)
     args.work.mkdir(parents=True, exist_ok=True)
     report = {
         "status": "failed",
@@ -208,16 +211,17 @@ def main() -> int:
         "phrase_bank_bases": [PHRASE_BANK0, PHRASE_BANK1],
         "phrase_bank_bytes": PHRASE_BANK_BYTES,
         "phrase_bank_frames": PHRASE_BANK_FRAMES,
-        "sample_pool_bytes": POOL_BYTES,
+        "sample_pool_bytes": reserved_capacity,
+        "relay_bytes": RELAY_BYTES if args.relay else 0,
         "scope": "Real ColdFire allocator helpers with synthetic records; no sample-load integration",
         "runs": {},
     }
     try:
         for name, syx, capacity in (
             ("stock", args.stock, STOCK_BYTES),
-            ("reserved", args.patched, POOL_BYTES),
+            ("reserved", args.patched, reserved_capacity),
         ):
-            ops, expected = allocator_script(capacity)
+            ops, expected = allocator_script(capacity, reserved_capacity)
             script = args.work / f"{name}.json"
             script.write_text(json.dumps(ops, indent=2) + "\n", encoding="utf-8")
             command = [

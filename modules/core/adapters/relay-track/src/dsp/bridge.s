@@ -1,0 +1,73 @@
+#include "dk_relay_track.inc"
+#include "dk_relay_transfer.inc"
+.SECTION/PM seg_pmco;
+.GLOBAL _relay_receive;
+_relay_receive:
+    R0 = I3;
+    R1 = 0x874; // 16 words immediately before the 64-word phrase packet
+    R0 = R0 + R1;
+    I0 = R0;
+    I1 = _relay_timing;
+    R2 = DM(-4,I0); DM(0,I1) = R2;
+    R2 = DM(-3,I0); DM(1,I1) = R2;
+    R2 = DM(-2,I0); DM(2,I1) = R2;
+    R2 = DM(-1,I0); DM(3,I1) = R2;
+    I1 = _relay_request;
+    R2 = DM(0,I0);
+    R1 = RT_MAGIC;
+    COMP(R2,R1);
+    IF NE JUMP _rx_file;
+    DM(0,I1) = R2;
+    I1 = _rtm_command;
+    R1 = DM(15,I0);
+    R2 = DM(1,I0);
+    COMP(R1,R2);
+    IF NE RTS;
+    R2 = DM(2,I0); DM(2,I1) = R2;
+    R2 = DM(3,I0); DM(3,I1) = R2;
+    R2 = DM(4,I0); DM(4,I1) = R2;
+    R2 = DM(5,I0); DM(5,I1) = R2;
+    R2 = DM(6,I0); DM(6,I1) = R2;
+    R2 = DM(7,I0); DM(7,I1) = R2;
+    DM(1,I1) = R1;
+    RTS;
+_rx_file:
+    DM(0,I1) = R2;
+    R1 = RX_MAGIC;
+    COMP(R2,R1);
+    IF NE RTS;
+    R1 = DM(1,I0);
+    R2 = DM(1,I1);
+    COMP(R1,R2);
+    IF EQ RTS;
+    R2 = DM(15,I0);
+    COMP(R1,R2);
+    IF NE RTS;
+    R2 = DM(2,I0); DM(2,I1) = R2;
+    R2 = DM(3,I0); DM(3,I1) = R2;
+    R2 = DM(4,I0); DM(4,I1) = R2;
+    R2 = DM(5,I0); DM(5,I1) = R2;
+    R2 = DM(6,I0); DM(6,I1) = R2;
+    R2 = DM(7,I0); DM(7,I1) = R2;
+    R2 = DM(8,I0); DM(8,I1) = R2;
+    R2 = DM(9,I0); DM(9,I1) = R2;
+    R2 = DM(10,I0); DM(10,I1) = R2;
+    R2 = DM(11,I0); DM(11,I1) = R2;
+    R2 = DM(12,I0); DM(12,I1) = R2;
+    R2 = DM(13,I0); DM(13,I1) = R2;
+    R2 = DM(14,I0); DM(14,I1) = R2;
+    DM(1,I1) = R1;
+    RTS;
+.SECTION/DM seg_dmda;
+.GLOBAL _relay_request;
+.GLOBAL _relay_response;
+.GLOBAL _relay_timing;
+.VAR _relay_timing[4];
+.VAR _relay_request[16];
+.VAR _relay_response[14];
+
+.SECTION/DM seg_dmda;
+.GLOBAL _relay_status;
+.VAR _relay_status[14];
+.GLOBAL _rtm_command;
+.VAR _rtm_command[8];

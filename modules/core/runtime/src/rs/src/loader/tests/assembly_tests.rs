@@ -874,7 +874,19 @@ fn a_modules_optional_dsp_imports_are_provided_where_its_requires_are() {
     let dirs = module_dirs();
     // the names a module's DSP sources declare `.EXTERN` (in the sources and the contract files they include) and do not define themselves
     let imports = |dir: &Path| -> Vec<String> {
-        let mut files: Vec<PathBuf> = std::fs::read_dir(dir.join("src/dsp")).unwrap().map(|e| e.unwrap().path()).collect();
+        fn sources(dir: &Path, files: &mut Vec<PathBuf>) {
+            for entry in std::fs::read_dir(dir).unwrap() {
+                let entry = entry.unwrap();
+                let path = entry.path();
+                if entry.file_type().unwrap().is_dir() {
+                    sources(&path, files);
+                } else if matches!(path.extension().and_then(|s| s.to_str()), Some("s" | "inc" | "h")) {
+                    files.push(path);
+                }
+            }
+        }
+        let mut files = Vec::new();
+        sources(&dir.join("src/dsp"), &mut files);
         files.sort();
         let mut texts: Vec<String> = Vec::new();
         let included = |text: &str| -> Vec<String> {

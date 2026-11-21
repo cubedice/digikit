@@ -125,6 +125,7 @@ ip_save_entry:
     move.l %a3,-(%sp)
     move.l %a2,-(%sp)
     jsr ip_sa_saved
+    move.l %d0,%d3
     lea 12(%sp),%sp
 1:
     move.l %d3,%d0

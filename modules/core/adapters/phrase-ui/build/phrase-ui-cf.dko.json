@@ -1425,100 +1425,93 @@
   },
   {
    "addend": 0,
-   "offset": 42,
-   "section": ".text.phrase_key_dispatch",
+   "offset": 38,
+   "section": ".text.phrase_dispatch_trig",
    "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
   {
    "addend": 296,
-   "offset": 68,
-   "section": ".text.phrase_key_dispatch",
+   "offset": 64,
+   "section": ".text.phrase_dispatch_trig",
    "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 76,
-   "section": ".text.phrase_key_dispatch",
+   "offset": 72,
+   "section": ".text.phrase_dispatch_trig",
    "symbol": "fxv_visible_view",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 90,
-   "section": ".text.phrase_key_dispatch",
+   "offset": 86,
+   "section": ".text.phrase_dispatch_trig",
    "symbol": ".sec..text.context",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 98,
-   "section": ".text.phrase_key_dispatch",
+   "offset": 94,
+   "section": ".text.phrase_dispatch_trig",
    "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 104,
-   "section": ".text.phrase_key_dispatch",
+   "offset": 100,
+   "section": ".text.phrase_dispatch_trig",
    "symbol": "pu_selecting",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 118,
-   "section": ".text.phrase_key_dispatch",
+   "offset": 116,
+   "section": ".text.phrase_dispatch_trig",
    "symbol": ".sec..text.model_key",
    "type": "cf.32"
   },
   {
    "addend": 36,
-   "offset": 130,
-   "section": ".text.phrase_key_dispatch",
+   "offset": 128,
+   "section": ".text.phrase_dispatch_trig",
    "symbol": ".sec..bss.phrase_ui_debug",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 142,
-   "section": ".text.phrase_key_dispatch",
-   "symbol": "cf.view.fn.invalidate",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 162,
-   "section": ".text.phrase_key_dispatch",
+   "section": ".text.phrase_dispatch_trig",
    "symbol": "dkrt_phrase_active",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 172,
-   "section": ".text.phrase_key_dispatch",
+   "offset": 152,
+   "section": ".text.phrase_dispatch_trig",
    "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 182,
-   "section": ".text.phrase_key_dispatch",
+   "offset": 162,
+   "section": ".text.phrase_dispatch_trig",
    "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 188,
-   "section": ".text.phrase_key_dispatch",
+   "offset": 168,
+   "section": ".text.phrase_dispatch_trig",
    "symbol": "pu_context",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 218,
-   "section": ".text.phrase_key_dispatch",
-   "symbol": "phrase_stock_key_dispatch",
+   "offset": 182,
+   "section": ".text.phrase_dispatch_trig",
+   "symbol": "cf.view.fn.invalidate",
    "type": "cf.32"
   },
   {
@@ -2225,10 +2218,10 @@
   },
   {
    "align": 2,
-   "hex": "4feffff048d7040c246f00182f6f0014000c222a000c20010680ffffffe7e888660000a42001ea8841f90000000026300c1486b00c1c701fc2807001e3a8c680200380b900000000677c4eb90000000024004a80674a2f004eb900000000588f4879000000004eb900000000588f808367542f0a4eb900000000588f4a80674652b9000000004a82670a2f024eb900000000588f4cd7040c70014fef00104e754eb9000000004a8067062039000000002f0042a74879000000004eb9000000004fef000c609a2f4a00184cd7040c2f6f000c00144fef00104ef900000000",
+   "hex": "2f032f02206f000c2228000c20010680ffffffe7e88867084280241f261f4e752001ea8841f90000000026300c1486b00c1c701fc2807001e3a8c680200380b90000000067d24eb90000000024004a80673a2f004eb900000000588f4879000000004eb900000000588f808367aa2f2f000c4eb900000000588f4a80679a52b9000000004a82662a7001608e4eb9000000004a8067062039000000002f0042a74879000000004eb9000000004fef000c60aa2f024eb900000000588f60ca",
    "kind": "text",
-   "name": ".text.phrase_key_dispatch",
-   "size": 222
+   "name": ".text.phrase_dispatch_trig",
+   "size": 190
   },
   {
    "align": 2,
@@ -2322,7 +2315,7 @@
    "size": 300
   }
  ],
- "source_sha256": "9b36841b1b2f41f54e52bc7d6c809d7fd35efb82f667ed6035a585c41b693f39",
+ "source_sha256": "b25c58fa63f03ad9830e739b0000dd9f2944081fee85bf26f416cf265fd442a7",
  "symbols": [
   {
    "global": false,
@@ -2758,6 +2751,12 @@
   },
   {
    "global": true,
+   "name": "phrase_dispatch_trig",
+   "section": ".text.phrase_dispatch_trig",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "phrase_fxv_draw",
    "section": ".text.phrase_fxv_draw",
    "value": 0
@@ -2776,20 +2775,8 @@
   },
   {
    "global": true,
-   "name": "phrase_key_dispatch",
-   "section": ".text.phrase_key_dispatch",
-   "value": 0
-  },
-  {
-   "global": true,
    "name": "phrase_led_set",
    "section": ".text.phrase_led_set",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "phrase_stock_key_dispatch",
-   "section": null,
    "value": 0
   },
   {
@@ -3001,8 +2988,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "2050",
-  "isa_check": "212f2ff07d2a132edca2aa36d298f52502b41210079cbfdd4f3b812983758cfa",
+  "instructions_redecoded": "2047",
+  "isa_check": "0c534140e1d8cfe72fed0dabfc00f00d5c94030a5bf8c78eec323f54a161b7c7",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

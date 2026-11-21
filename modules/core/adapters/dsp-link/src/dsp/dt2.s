@@ -22,9 +22,13 @@
 #define DL_POSITION_EXTERN
 // Transport reserves 16 position and 32 packet words; the optional lock
 // receiver reserves another 18. Three words belong to each transfer header.
-#define DL_POSITION_LIMIT R0 = _pattern_position_info; R4 = DL_TAIL_WORDS - 19; R0 = PASS R0; IF NE R3 = R4; R0 = _instrument_reply; R4 = DL_TAIL_WORDS - 51; R0 = PASS R0; IF NE R3 = R4; R0 = _iv_lock_stage; R4 = DL_TAIL_WORDS - 69; R0 = PASS R0; IF NE R3 = R4; R0 = _phrase_control_info; R4 = DL_TAIL_WORDS - 133; R0 = PASS R0; IF NE R3 = R4;
-#define DL_LOOP_RETURN JUMP _dl_loop_status; _dl_loop_status_return: JUMP _dl_instrument_status; _dl_instrument_status_return: R0 = _phrase_reply; R0 = PASS R0; IF EQ JUMP _dl_no_phrase_reply; CALL _phrase_reply; _dl_no_phrase_reply:
+#define DL_POSITION_LIMIT R0 = _pattern_position_info; R4 = DL_TAIL_WORDS - 19; R0 = PASS R0; IF NE R3 = R4; R0 = _instrument_reply; R4 = DL_TAIL_WORDS - 51; R0 = PASS R0; IF NE R3 = R4; R0 = _iv_lock_stage; R4 = DL_TAIL_WORDS - 69; R0 = PASS R0; IF NE R3 = R4; R0 = _phrase_control_info; R4 = DL_TAIL_WORDS - 133; R0 = PASS R0; IF NE R3 = R4; R0 = _relay_status; R4 = DL_TAIL_WORDS - 153; R0 = PASS R0; IF NE R3 = R4;
+.EXTERN _relay_status;
+.EXTERN _relay_response;
+.EXTERN _relay_request;
+#define DL_LOOP_RETURN JUMP _dl_loop_status; _dl_loop_status_return: JUMP _dl_instrument_status; _dl_instrument_status_return: R0 = _phrase_reply; R0 = PASS R0; IF EQ JUMP _dl_no_phrase_reply; CALL _phrase_reply; _dl_no_phrase_reply: JUMP _dl_relay_status; _dl_relay_status_return:
 #include "dsp-link.inc"
 #include "loop-status.inc"
+#include "relay-status.inc"
 #include "instrument-status.inc"
 .PKBSS _dl_area, DL_AREA_BYTES;

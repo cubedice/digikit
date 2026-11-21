@@ -1,0 +1,37 @@
+{
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "name": "digikit/relay-machine",
+  "metadata": {
+    "runtimeAcceptance": [
+      {
+        "files": [
+          "tests/pages.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "dsp": "sharc",
+        "modules": [
+          "digikit/relay-machine",
+          "core/services/machines"
+        ],
+        "patchModules": [
+          "core/relay-track",
+          "core/digikit-menu",
+          "core/health",
+          "core/input"
+        ],
+        "plusdrive": true,
+        "tags": [
+          "A:core/relay-track",
+          "A:core/pattern-position"
+        ]
+      }
+    ]
+  },
+  "targets": {
+    "test-device": {
+      "cache": false
+    }
+  }
+}

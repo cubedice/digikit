@@ -661,6 +661,24 @@ uint32_t mi_test_reply_reordering(void)
     CHECK(!mt_reply_reordered(&g, r)); /* evicted */
     mt_reply_guard_tick(&g, 0, 109 + MT_STALL_BLOCKS);
     CHECK(g.invalid); /* repeated stale copies never extend freshness */
+
+    MtReplyGuard wrap = {0};
+    CHECK(mt_reply_guard_expect(&wrap, 0xdeadbeefu, 17, 1) == 0);
+    session_reply(r, UINT32_MAX - 1);
+    mt_reply_guard_tick(&wrap, r, 1);
+    session_reply(r, 1);
+    mt_reply_guard_tick(&wrap, r, 2);
+    session_reply(r, 0);
+    CHECK(mt_reply_reordered(&wrap, r));
+    r[12]++;
+    reply_checksum(r);
+    CHECK(!mt_reply_reordered(&wrap, r)); /* gap cannot excuse a different session */
+    session_reply(r, UINT32_MAX - 2);
+    CHECK(!mt_reply_reordered(&wrap, r)); /* before both boundaries */
+    session_reply(r, 10);
+    mt_reply_guard_tick(&wrap, r, 3);
+    session_reply(r, 9);
+    CHECK(!mt_reply_reordered(&wrap, r)); /* interval wider than eight blocks */
     return 0;
 }
 

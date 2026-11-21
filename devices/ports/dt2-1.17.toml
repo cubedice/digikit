@@ -3795,6 +3795,17 @@ mark = "D"
 rule = "fw/dsp/fx:sharc_func"
 
 [[anchor]]
+name = "dsp.fx.fn.relay_input"
+cpu = "sharc"
+kind = "code"
+addr = 0x2838314c
+pm = 0x1c18a6
+len = 6
+sha256 = "aee4910e66f86ea483231f49e79a3a3c7bfbdecf34024052d36dd87fc34f4fe3"
+mark = "D"
+rule = "fw/relay:sharc_func"
+
+[[anchor]]
 name = "dsp.fx.fn.send"
 cpu = "sharc"
 kind = "code"
@@ -4516,6 +4527,11 @@ name = "dsp.fx.hook.entry"
 site = "dsp.fx.fn.entry"
 mode = "before"
 clobbers = ["astat"]
+
+[[hook]]
+name = "dsp.fx.hook.relay_input"
+site = "dsp.fx.fn.relay_input"
+mode = "before"
 
 [[hook]]
 name = "dsp.fx.hook.send"

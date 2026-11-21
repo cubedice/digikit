@@ -265,6 +265,21 @@ uint32_t mi_test_dispatch(void)
         for (i = 0; i < 16; ++i)
             r[i] = legacy[i];
     }
+    /* Playback on DTII delivered 300389, 300392, then the previously
+     * unseen 300391. A late PLAY reply must not revoke either track or
+     * publish its obsolete registry ACK. Only a fresh reply can resume. */
+    r[0] = MT_PLAY_REPLY_MAGIC;
+    r[3] = 300389;
+    publish_reply(queue, record, r, 0);
+    r[3] = 300392;
+    publish_reply(queue, record, r, 0);
+    r[3] = 300391;
+    publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0 && !mi_transport.faults);
+    r[3] = 300393;
+    publish_reply(queue, record, r, 0);
+    CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS);
+    CHECK(snapshot[3] == 300393 && !mi_transport.faults);
     /* A backwards, otherwise valid heartbeat invalidates registry trust even
      * when its MIDI epoch is not admitted. The caller buffer stays unchanged. */
     r[3] = 1;
@@ -274,7 +289,7 @@ uint32_t mi_test_dispatch(void)
         uint32_t age = 0;
         CHECK(mi_status_reply(snapshot, 16, &age) == -2 && !age);
     }
-    CHECK(snapshot[3] == 8);
+    CHECK(snapshot[3] == 300393);
     CHECK(mi_keyboard_recover() == -1);
     CHECK(mi_transport.faults && mi_route_enable(0, 0, 0, 0) == -2);
     for (i = 0; i < MT_WORDS; ++i) {

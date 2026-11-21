@@ -179,6 +179,80 @@ static u32 own_length(u32 pattern)
     return n > 1 ? (u32)n : 0;
 }
 
+u32 pp_record_steps(void)
+{
+    int master = (short)U16(0x43165130);
+    u32 steps = U32(0x43164f94) == 1 && valid ? pp_position[8]
+                : master > 1 ? (u32)master : own_length(pp_current_pattern());
+    return steps <= 1024 ? steps : 0;
+}
+
+/* Duration for a recorder at the current tempo. Bars 0 means the playing
+ * pattern (loaded pattern while stopped). Return 0 for an unknown cycle. */
+u32 pp_record_frames(u32 bars)
+{
+    u32 tempo = U32(0x402b67fc);
+    if (tempo < 3600 || tempo > 36000)
+        return 0;
+    u32 steps = bars * 4, ticks = 21600000;
+    if (!bars) {
+        u32 running = U32(0x43164f94) == 1 && valid;
+        u32 pattern = running ? pp_position[6] : pp_current_pattern();
+        steps = pp_record_steps();
+        ticks = running ? committed_period : pattern_period(pattern);
+    }
+    if (!steps || steps > 1024 || !ticks)
+        return 0;
+    /* 48 kHz times 60 times 120 / 21600000 = 16. Divide before
+     * multiplying by steps to keep even a slow, long cycle in 32 bits. */
+    u32 numer = ticks * 16;
+    return (numer / tempo) * steps + ((numer % tempo) * steps + tempo / 2) / tempo;
+}
+
+/* Four recorder timing words published in the same audio ISR as pp_position.
+ * The selected duration is revalidated at the boundary, and beat quantization
+ * follows quarter notes independently of pattern length or track scale. */
+void pp_record_timing(u32 out[4])
+{
+    static u32 prev_tempo, prev_steps, prev_ticks, pattern_frames, bar_frames;
+    static u32 prev_phase, prev_generation, fraction, beats, tracking;
+    u32 running = U32(0x43164f94) == 1 && valid;
+    u32 pat = running ? pp_position[6] : pp_current_pattern();
+    int master = (short)U16(0x43165130);
+    u32 steps = running ? pp_position[8] : master > 1 ? (u32)master : own_length(pat);
+    u32 ticks = running ? committed_period : pattern_period(pat);
+    u32 tempo = U32(0x402b67fc);
+    if (tempo != prev_tempo || ticks != prev_ticks || steps != prev_steps) {
+        pattern_frames = pp_record_frames(0);
+        bar_frames = pp_record_frames(1);
+        prev_tempo = tempo;
+        prev_ticks = ticks;
+        prev_steps = steps;
+    }
+    u32 phase = U32(0x80004880);
+    if (running) {
+        if (!tracking || prev_generation != pp_position[4]) {
+            prev_generation = pp_position[4];
+            prev_phase = pp_position[11];
+            fraction = 0;
+            ++beats;
+            tracking = 1;
+        }
+        int delta = (int)(phase - prev_phase);
+        if (delta > 0) {
+            prev_phase = phase;
+            fraction += (u32)delta;
+            beats += fraction / 21600000u;
+            fraction %= 21600000u;
+        }
+    } else
+        tracking = 0;
+    out[0] = 0x524c5431;
+    out[1] = pattern_frames;
+    out[2] = bar_frames;
+    out[3] = beats;
+}
+
 void pp_snapshot(u32 start)
 {
     u32 scheduled = U32(0x4316501c), playing = U32(pp_playing_lit), length = 0, shown[2];

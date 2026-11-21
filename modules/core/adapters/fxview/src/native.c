@@ -21,6 +21,23 @@ extern int loop_fxv_draw(uint8_t *, uint8_t *, int) OPTIONAL;
 extern int loop_fxv_key(uint8_t *, uint8_t *) OPTIONAL;
 extern int loop_fxv_turn(uint8_t *, uint8_t *) OPTIONAL;
 void fxv_view_draw(uint8_t *, uint8_t *);
+extern uint32_t fxv_stock_dispatch(uint8_t *, uint8_t *);
+extern int phrase_dispatch_trig(uint8_t *) OPTIONAL;
+extern int relay_trig(uint8_t *) OPTIONAL;
+extern void rtm_stop_key(uint32_t) OPTIONAL;
+
+/* TRIG keys reach the stock sequencer before they reach the FX view. */
+uint32_t fxv_key_dispatch(uint8_t *manager, uint8_t *event)
+{
+    uint32_t key = *(uint32_t *)(event + 12);
+    if (key == 21 && rtm_stop_key)
+        rtm_stop_key(*(uint32_t *)(event + 16));
+    if (key >= 25 && key < 41 &&
+        ((phrase_dispatch_trig && phrase_dispatch_trig(event)) ||
+         (relay_trig && relay_trig(event))))
+        return 1;
+    return fxv_stock_dispatch(manager, event);
+}
 
 static uint32_t word(const uint8_t *p, uint32_t off)
 {
@@ -72,6 +89,8 @@ uint32_t fxv_key_flags(uint32_t flags)
 }
 void fxv_box(void *bitmap, int x, int y, int w, int h, int ink)
 {
+    if (w <= 0 || h <= 0)
+        return;
     dk_fw_draw_fill_rect(bitmap, x, 64 - y - h, x + w - 1, 63 - y, ink);
 }
 void fxv_text(void *bitmap, int x, int y, const char *s, int ink)

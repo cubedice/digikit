@@ -65,8 +65,11 @@ u32 dkrt_loop_page(void)
 }
 
 /* One UI pass: the status and the page grow older. */
+extern void relay_ui_pass(void) __attribute__((weak));
 void loop_control_pass(void)
 {
+    if (relay_ui_pass)
+        relay_ui_pass();
     if (age < 2 * STALE)
         ++age;
     if (asked < 2 * STALE)

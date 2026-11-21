@@ -288,21 +288,22 @@ committed bind after an uncertain outcome.
 
 The DT2 1.17 coupled loads captured older valid replies after newer ones,
 including heartbeat 3549 after 3552 during CANOPY binding. The frame adapter
-keeps the last eight accepted bound replies and discards a backward reply only
-when all 16 words exactly match one of those records. A numerically nearby but
-previously unseen reply is not evidence of a duplicate and still invalidates
-trust. The bounded cache uses 512 bytes; eviction fails closed.
+keeps the last eight accepted bound replies. It discards an exact copy or a
+previously unseen heartbeat strictly between two accepted counters within
+eight blocks of the newest. On hardware, CANOPY received 300389, 300392,
+then 300391 while playing two tracks. The missing counter had never been
+cached. The comparison uses unsigned distances across counter wrap.
 
 Unbound legacy heartbeats do not establish a session identity. The first trusted
 heartbeat comes from the exact bind acknowledgement. Legacy traffic cannot
 refresh the bind deadline. Unexpected sessions, version downgrades and the
 physical-reset hook still invalidate trust.
 
-Known stale copies become missing input for both the guard and MIDI ACK receiver,
+Both forms of stale reply become missing input for the guard and MIDI ACK receiver,
 and invalidate the cached registry snapshot for that frame. They cannot accept
 an ACK or update the last-progress block. Repeated copies expire at the original
-deadline. An altered ACK, status or generation with an old heartbeat is not a
-known copy, even with a valid checksum.
+deadline. Conflicting payloads for a previously observed heartbeat and
+unbracketed regressions invalidate the session.
 
 `mt_guard_fault` records reason, CF block, received heartbeat, prior heartbeat
 and reply magic for trust failure diagnostics. It cannot reset or reopen trust.

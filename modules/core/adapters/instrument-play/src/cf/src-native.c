@@ -45,6 +45,7 @@ extern uint8_t ip_lock_set(uint32_t, uint32_t, uint32_t, uint32_t),
     ip_lock_clear(uint32_t, uint32_t, uint32_t);
 /* adda.l #state,a0 before the per-track step store at +0x15b (literal at +2). */
 extern const uint8_t ip_seq_step[];
+extern int rtm_src(uint8_t *, unsigned, uint8_t *) __attribute__((weak));
 static uint32_t owner_type, owner_generation, published, last_draw;
 static uint32_t saved_generation, saved_page, saved_valid;
 static uint32_t restore_pending, restore_page, was_owned;
@@ -647,7 +648,13 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
 {
     uint32_t token = context(view);
     restore_pending = 0;
+    int relay = rtm_src && rtm_src(view, 0, 0);
     ip_src_stock_draw(view, canvas);
+    if (relay) {
+        rtm_src(view, 1, canvas);
+        last_draw = instrument_src_now();
+        return;
+    }
     if (!token)
         return;
     char tune[32], level[32];
@@ -742,6 +749,7 @@ void ip_src_attach(uint8_t *view, uint8_t *manager)
 void ip_src_detach(uint8_t *view, uint8_t *manager)
 {
     (void)context(view);
+    if (rtm_src) rtm_src(view, 4, 0);
     ip_src_stock_detach(view, manager);
     was_owned = 0;
     published = 0;
@@ -781,6 +789,14 @@ void instrument_src_tick(void)
                 uint32_t now = instrument_src_now();
                 ip_src_refresh[5] = now;
                 ip_src_refresh[6] = last_draw;
+                int relay = rtm_src ? rtm_src(view, 5, 0) : 0;
+                if (relay) {
+                    if (relay == 2 && now - last_draw >= 40) {
+                        last_draw = now;
+                        dk_fw_view_invalidate(view);
+                    }
+                    return;
+                }
                 if (context(view)) {
                     instrument_src_poll(now);
                     if (now - last_draw >= 40) {
@@ -920,6 +936,7 @@ static int lock_clear(uint8_t *view, uint32_t encoder, const uint32_t steps[4])
 }
 uint32_t ip_src_key(uint8_t *view, uint8_t *event)
 {
+    if (rtm_src && rtm_src(view, 2, event)) return 1;
     uint32_t token = context(view), key = word(event, 12), page = word(view, 0x90), steps[4];
     if (token && key >= 41 && key <= 48 && trig_held(view) && lock_steps(view, steps) < 128 &&
         lock_clear(view, key - 41, steps)) {
@@ -935,6 +952,7 @@ uint32_t ip_src_key(uint8_t *view, uint8_t *event)
 uint32_t ip_src_turn(uint8_t *view, uint8_t *event)
 {
     uint32_t captured_token = take(event), token = context(view), encoder = word(event, 12);
+    if (rtm_src && rtm_src(view, 3, event)) return 1;
     ++ip_src_debug[4];
     ip_src_debug[9] = captured_token;
     ip_src_debug[10] = encoder;

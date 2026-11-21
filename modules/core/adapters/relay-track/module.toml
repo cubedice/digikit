@@ -1,0 +1,106 @@
+[module]
+id = "core/relay-track"
+version = "0.3.0"
+name = "RELAY track recorder"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Track-owned stereo takes and the LIVE and TAKE SRC views."
+ports = ["dt2-1.17"]
+requires = ["core/relay-input", "core/relay-storage", "core/instrument-play", "core/loop-control", "core/fxview", "core/plusdrive-write"]
+conflicts = []
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/track-cf.dko.json"
+sources = ["src/control.c", "src/files.c"]
+place = "cf.expansion"
+devices = ["dt2"]
+[object.externs]
+rtm_mod_rate = "params.rtm_mod_rate.index"
+rtm_mod_spacing = "params.rtm_mod_spacing.index"
+rtm_mod_feedback = "params.rtm_mod_feedback.index"
+rtm_mod_mix = "params.rtm_mod_mix.index"
+rtm_mod_gain = "params.rtm_mod_gain.index"
+rtm_mod_position = "params.rtm_mod_position.index"
+rtm_type = "cf.machine.fn.current_track_type"
+rtm_track = "cf.page.site.instrument_src_track"
+
+[[object]]
+path = "build/track-dsp.dko.json"
+sources = ["src/dsp/engine.s", "src/dsp/bridge.s", "src/dsp/capture.s", "src/dsp/audio.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+[object.externs]
+_rtm_bus = "dsp.fx.value.send.track_bus"
+_rtm_mod_frame = "dsp.voice.value.frame_base"
+
+[[entry]]
+registry = "params"
+id = "rtm_mod_rate"
+name = "Tape rate"
+short = "RATE"
+template = 0xd1
+slot = 1
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "rtm_mod_spacing"
+name = "Head spacing"
+short = "HEAD"
+template = 0xd1
+slot = 2
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "rtm_mod_feedback"
+name = "Feedback"
+short = "FDBK"
+template = 0xd1
+slot = 3
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "rtm_mod_mix"
+name = "Tape mix"
+short = "MIX"
+template = 0xd1
+slot = 4
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "rtm_mod_gain"
+name = "Input gain"
+short = "GAIN"
+template = 0xd1
+slot = 5
+min = 0
+max = 0x7f00
+default = 0x4000
+
+[[entry]]
+registry = "params"
+id = "rtm_mod_position"
+name = "Play position"
+short = "POS"
+template = 0xd1
+slot = 6
+min = 0
+max = 0x7f00
+default = 0x4000

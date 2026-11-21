@@ -620,21 +620,21 @@
   },
   {
    "addend": 0,
-   "offset": 54,
+   "offset": 56,
    "section": ".text.mt_reply_reordered",
    "symbol": ".sec..text.mt_reply_valid",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 84,
+   "offset": 86,
    "section": ".text.mt_reply_reordered",
    "symbol": ".sec..text.mt_reply_session",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 102,
+   "offset": 106,
    "section": ".text.mt_reply_reordered",
    "symbol": ".sec..text.mt_reply_heartbeat",
    "type": "cf.32"
@@ -2540,10 +2540,10 @@
   },
   {
    "align": 2,
-   "hex": "4feffff048d70c0c246f0014266f00184aaa001c660e428220024cd70c0c4fef00104e75262a00104a8367ea4aaa000c66e42f0b4eb900000000588f24004a8067d6201372020680b6b15efeb28065c62f0b4eb900000000588fb08366b8262a00042f0b4eb900000000588f220392804a816fa2226a02204281b289679871c1ed8841f20800428026330800b6b00820660c58807640b68066ee6000ff7c528160d8",
+   "hex": "4fefffd048d77cfc246f0034266f00384aaa001c660e428420044cd77cfc4fef00304e75242a00104a8267ea262a000c4a8366e22f0b4eb900000000588f2c004a806772201372020680b6b15efeb28065c42f0b4eb900000000588fb08266b62a2a00042a452f0b49f9000000004e94588f2c409bc04a8d6f9c222a02202e0a42820687000000202f41002c4284b4af002c67842f074e94588fb08e661eed8ad5c220333800b0b238206600ff6a58837240b28366ec28066000ff5e22059280b28d630c7008b08154c1730144818881528206870000004060b4",
    "kind": "text",
    "name": ".text.mt_reply_reordered",
-   "size": 162
+   "size": 218
   },
   {
    "align": 2,
@@ -2847,7 +2847,7 @@
    "size": 11640
   }
  ],
- "source_sha256": "46d9ca25b02d8f3e9bf64a47a85fb587aaf3ee20a4aae183e731b7c63f29e709",
+ "source_sha256": "f8d9f0f0b89ec6d394c7d92b1363d6db015b05f35affca3289730f6d844c7746",
  "symbols": [
   {
    "global": false,
@@ -3670,8 +3670,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "3871",
-  "isa_check": "fbf8e25fb57206eecd4427699519b8db4477b715722cc619388097ef5aaea65e",
+  "instructions_redecoded": "3893",
+  "isa_check": "d80abb94b7dabcdcb6226461a0de095c72526f84a33ddf5db78368d906979439",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

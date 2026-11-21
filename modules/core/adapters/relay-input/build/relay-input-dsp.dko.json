@@ -1,0 +1,241 @@
+{
+ "arch": "sharc",
+ "format": 1,
+ "relocs": [
+  {
+   "addend": 0,
+   "offset": 0,
+   "section": "seg_pmco",
+   "symbol": "_ri_r0",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 5,
+   "section": "seg_pmco",
+   "symbol": "_ri_mode",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 15,
+   "section": "seg_pmco",
+   "symbol": "_ri_i0",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": "seg_pmco",
+   "symbol": "_ri_i1",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 25,
+   "section": "seg_pmco",
+   "symbol": "_ri_m6",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 30,
+   "section": "seg_pmco",
+   "symbol": "_ri_l0",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 35,
+   "section": "seg_pmco",
+   "symbol": "_ri_l1",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 50,
+   "section": "seg_pmco",
+   "symbol": "_relay_external",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 79,
+   "section": "seg_pmco",
+   "symbol": "_ri_astat",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 82,
+   "section": "seg_pmco",
+   "symbol": "_rtm_capture",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 86,
+   "section": "seg_pmco",
+   "symbol": "_rtm_capture",
+   "type": "sharc.abs24"
+  },
+  {
+   "addend": 0,
+   "offset": 89,
+   "section": "seg_pmco",
+   "symbol": "_ri_astat",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 94,
+   "section": "seg_pmco",
+   "symbol": "_ri_i0",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 99,
+   "section": "seg_pmco",
+   "symbol": "_ri_i1",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 104,
+   "section": "seg_pmco",
+   "symbol": "_ri_l0",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 109,
+   "section": "seg_pmco",
+   "symbol": "_ri_l1",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 114,
+   "section": "seg_pmco",
+   "symbol": "_ri_m6",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 119,
+   "section": "seg_pmco",
+   "symbol": "_ri_mode",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 126,
+   "section": "seg_pmco",
+   "symbol": "_ri_r0",
+   "type": "sharc.abs32"
+  },
+  {
+   "addend": 0,
+   "offset": 129,
+   "section": "seg_pmco",
+   "symbol": "_relay_input_tail",
+   "type": "sharc.abs24"
+  }
+ ],
+ "sections": [
+  {
+   "align": 8,
+   "hex": "0011000000003f773f00001100000000221420000000010001003e713f000011000000003e713f800011000000007f723f000011000000003e733f000011000000003e733f80001100000000b00f0000b10f0000a60f0100be703f08089000003e703f08110f00000000000c00200600be5100000000be5300800000be703f08089001003e703f08000c00200600be5100000000be53008000007f773f00001100000000000f0000000000c2a006000000000010000000003e703f3b0010000000003e703f080010000000003e70bf080010000000003e703f180010000000003e70bf180010000000003e703f130010000000003e703f39010001000010000000003e0600000000",
+   "kind": "text",
+   "name": "seg_pmco",
+   "size": 264
+  },
+  {
+   "align": 8,
+   "hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "kind": "data",
+   "name": "seg_dmda",
+   "size": 296
+  }
+ ],
+ "source_sha256": "b48b486144f2f22e2fa0970988f647a78e0b8449daa16af25a2dcbd778b75dd0",
+ "symbols": [
+  {
+   "global": true,
+   "name": "_relay_input_tap",
+   "section": "seg_pmco",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_relay_external",
+   "section": "seg_dmda",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "_ri_astat",
+   "section": "seg_dmda",
+   "value": 272
+  },
+  {
+   "global": false,
+   "name": "_ri_i0",
+   "section": "seg_dmda",
+   "value": 276
+  },
+  {
+   "global": false,
+   "name": "_ri_i1",
+   "section": "seg_dmda",
+   "value": 280
+  },
+  {
+   "global": false,
+   "name": "_ri_l0",
+   "section": "seg_dmda",
+   "value": 284
+  },
+  {
+   "global": false,
+   "name": "_ri_l1",
+   "section": "seg_dmda",
+   "value": 288
+  },
+  {
+   "global": false,
+   "name": "_ri_m6",
+   "section": "seg_dmda",
+   "value": 292
+  },
+  {
+   "global": false,
+   "name": "_ri_mode",
+   "section": "seg_dmda",
+   "value": 264
+  },
+  {
+   "global": false,
+   "name": "_ri_r0",
+   "section": "seg_dmda",
+   "value": 256
+  },
+  {
+   "global": true,
+   "name": "_relay_input_tail",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_rtm_capture",
+   "section": null,
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "instructions_redecoded": "55",
+  "selache_rev": "967c1d1e4d02e41f483181964f0ba333558a1fa7"
+ }
+}

@@ -140,6 +140,8 @@ extern void phrase_write_frame(u32 tx_queue, u32 entry, const volatile u16 *rec)
     __attribute__((weak));
 /* core/loop-control: reads the loop effect's status from the reply copy, every block. It only reads. */
 extern void loop_reply_frame(const volatile u16 *rec) __attribute__((weak));
+extern void relay_reply_frame(const volatile u16 *rec) __attribute__((weak));
+extern void relay_write_frame(u32 queue, u32 entry) __attribute__((weak));
 
 static u32 word_at(const u8 *p)
 {
@@ -453,6 +455,8 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
         cb(rec);
     if (loop_reply_frame)
         loop_reply_frame(rec);
+    if (relay_reply_frame)
+        relay_reply_frame(rec);
     if (!pp_write_frame && !instrument_write_frame && st != DL_START && st != DL_BUSY &&
         !l->ending && !l->dirty)
         return;
@@ -489,6 +493,12 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
                                total - 2u * (DL_POSITION_WORDS + DL_INSTRUMENT_WORDS +
                                              DL_LOCK_WORDS + DL_PHRASE_WORDS),
                                rec);
+        }
+        if (relay_write_frame) {
+            const u32 reserved =
+                DL_POSITION_WORDS + DL_INSTRUMENT_WORDS + DL_LOCK_WORDS + DL_PHRASE_WORDS + 20;
+            words = 174u - reserved;
+            relay_write_frame(tx, total - 2u * reserved);
         }
         /* Position snapshots are sent even while the acknowledged link is idle. */
         if (st != DL_START && st != DL_BUSY && !l->ending && !l->dirty)

@@ -37,6 +37,8 @@ static const uint32_t rows[3][6] = {
 #undef CODE
 static const uint8_t mirrors[6] = {26, 27, 28, 31, 32, 33};
 static uint32_t published_family;
+extern uint32_t rtm_mod_param(uint32_t type, uint32_t mirror) __attribute__((weak));
+extern int rtm_mod_carrier(uint32_t type) __attribute__((weak));
 
 void instrument_mod_publish(uint32_t family)
 {
@@ -47,7 +49,7 @@ void instrument_mod_publish(uint32_t family)
 uint32_t instrument_mod_param(uint32_t type, uint32_t mirror)
 {
     if (type < 16 || type != dkrt_instrument_type() || !dkrt_instrument_generation())
-        return UINT32_MAX;
+        return rtm_mod_param && type >= 7 ? rtm_mod_param(type, mirror) : UINT32_MAX;
     /* Native sampler bank/slot aliases have no meaning for this instrument. */
     if (mirror == 29 || mirror == 30)
         return 0;
@@ -60,9 +62,12 @@ uint32_t instrument_mod_param(uint32_t type, uint32_t mirror)
 int instrument_mod_carrier(uint32_t track)
 {
     uint32_t type = dkrt_instrument_type();
-    return track < 16 && type >= 16 && instrument_sound_admitted(track) &&
-           dkrt_instrument_generation() &&
-           *(volatile const uint8_t *)(uintptr_t)(ip_mod_track_type + 0x9au * track) == type;
+    if (track >= 16)
+        return 0;
+    uint32_t actual = *(volatile const uint8_t *)(uintptr_t)(ip_mod_track_type + 0x9au * track);
+    return (actual == type && type >= 16 && instrument_sound_admitted(track) &&
+            dkrt_instrument_generation()) ||
+           (rtm_mod_carrier && actual >= 7 && rtm_mod_carrier(actual));
 }
 
 void instrument_mod_defaults(uint32_t source)

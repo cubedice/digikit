@@ -813,17 +813,18 @@ def link_receiver_object():
 
 
 @pytest.mark.parametrize(
-    "position,instrument,locks,capacity",
+    "position,instrument,locks,relay,capacity",
     [
-        (False, False, False, 171),
-        (True, False, False, 155),
-        (True, True, False, 123),
-        (True, True, True, 105),
+        (False, False, False, False, 171),
+        (True, False, False, False, 155),
+        (True, True, False, False, 123),
+        (True, True, True, False, 105),
+        (True, True, True, True, 21),
     ],
 )
 @pytest.mark.parametrize("oversize", [False, True])
 def test_dsp_loader_enforces_each_optional_tail_boundary(
-    link_receiver_object, position, instrument, locks, capacity, oversize
+    link_receiver_object, position, instrument, locks, relay, capacity, oversize
 ):
     obj, syms, initial = link_receiver_object
     rx, reply, frame, mailbox, back = (
@@ -851,6 +852,9 @@ def test_dsp_loader_enforces_each_optional_tail_boundary(
         "_iv_lock_stage": mailbox if locks else 0,
         "_phrase_control_info": 0,
         "_phrase_reply": 0,
+        "_relay_status": mailbox if relay else 0,
+        "_relay_request": mailbox if relay else 0,
+        "_relay_response": mailbox if relay else 0,
         **syms,
     }
     linked = pk_sharc.link(obj, 0xB90000, externs)
@@ -1133,7 +1137,14 @@ void *memset(void *d, int c, unsigned n) {
             memory,
         ],
         0x47E00000,
-        {"dl_reset_begin": 0, "dl_reset_quiesce": 0, "instrument_keyboard_events": 0},
+        {
+            "dl_reset_begin": 0,
+            "dl_reset_quiesce": 0,
+            "instrument_keyboard_events": 0,
+            "instrument_lock_take": 0,
+            "instrument_lock_discard": 0,
+            "instrument_lock_source": 0,
+        },
         [MOD / "src/cf"],
     )
     names = [
@@ -1348,6 +1359,9 @@ def test_v2_registration_window_is_bounded(
         "_iv_lock_stage": 0,
         "_phrase_control_info": 0,
         "_phrase_reply": 0,
+        "_relay_status": 0,
+        "_relay_request": 0,
+        "_relay_response": 0,
         **syms,
     }
     linked = pk_sharc.link(obj, 0xB90000, externs)
