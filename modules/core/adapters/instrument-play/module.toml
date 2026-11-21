@@ -41,6 +41,7 @@ to = "_mi_velocity_entry"
 
 [[object]]
 path = "build/play-cf.dko.json"
+optional = ["rtm_src", "rtm_can_save", "rtm_mod_param", "rtm_mod_carrier"]
 sources = ["src/cf/control.c", "src/cf/keyboard.c", "src/cf/preset.c", "src/cf/src-state.c", "src/cf/src-lock-packed.c", "src/cf/src-lock-event.c", "src/cf/src-lock-capture.c", "src/cf/src-lock-capture.s", "src/cf/src-mod.c", "src/cf/src-mod.s", "src/cf/status.c", "src/cf/src-display.c", "src/cf/src-clock.c", "src/cf/src-native.c", "src/cf/panel.c", "src/cf/panel.s", "src/cf/sound.c", "src/cf/sound-load.s", "src/cf/sound-record.c", "src/cf/sound-assoc.c", "src/cf/sound-persist.c", "src/cf/sound-persist.s", "src/cf/view.s"]
 place = "cf.expansion"
 devices = ["dt2"]

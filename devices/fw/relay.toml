@@ -1,0 +1,20 @@
+# DTII native sends receive raw external L/R channel pointers in R8.
+[[fn]]
+name = "dsp.fx.fn.relay_input"
+cpu = "sharc"
+devices = ["dt2"]
+rule = { kind = "sharc_func", reloc_hash = "fa1a20f99b38800e86908e78c57bf944edd86a45b60ed6f20fe24c7fe19e9c44", offset = 0, len = 6 }
+mark = "D"
+users = ["core/relay-input"]
+doc = "Native send entry after track rendering. R8 is a table of two dry input channel pointers."
+
+[[hook]]
+name = "dsp.fx.hook.relay_input"
+site = "dsp.fx.fn.relay_input"
+cpu = "sharc"
+mode = "before"
+regs = { in = ["r8"], clobbers = [] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/relay-input"]
+doc = "Snapshot this block's external stereo input before the native sends run."

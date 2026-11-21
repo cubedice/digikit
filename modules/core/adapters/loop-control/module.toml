@@ -19,6 +19,7 @@ ports = ["dt2-1.17"]
 [[object]]
 path = "build/loop-control-cf.dko.json"
 sources = ["src/control.c"]
+optional = ["relay_ui_pass"]
 place = "cf.expansion"
 devices = ["dt2"]
 

@@ -1,0 +1,34 @@
+[module]
+id = "core/relay-input"
+version = "0.1.0"
+name = "RELAY input tap"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Snapshots both dry external input channels for the RELAY recorder."
+requires = []
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/relay-input-dsp.dko.json"
+sources = ["src/dsp/input.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+optional = ["_rtm_capture"]
+
+[object.externs]
+_relay_input_tail = "hook.dsp.fx.fn.relay_input.tail"
+
+[[op]]
+op = "hook"
+hook = "dsp.fx.hook.relay_input"
+to = "_relay_input_tap"
+
+[[claim]]
+resource = "dsp.relay.native-send-entry"

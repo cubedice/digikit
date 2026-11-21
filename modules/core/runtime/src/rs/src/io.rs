@@ -424,6 +424,12 @@ pub fn wake(id: i32) {
     }
 }
 
+/// Submit an image-owned adapter job on the same I/O task and file arbiter as DKM jobs.
+#[no_mangle]
+pub unsafe extern "C" fn dkrt_io_post_image(step: Option<IoStepFn>, done: Option<IoDoneFn>, ctx: *mut u8) -> i32 {
+    post(0, step, done, ctx)
+}
+
 /// `dkrt_io_wake(id)`: `wake` for an adapter (core/usb-bulk calls it from the USB interrupt when a buffer is full). Safe in an interrupt handler.
 #[no_mangle]
 pub extern "C" fn dkrt_io_wake(id: i32) {

@@ -5,7 +5,7 @@
 //!
 //! ```text
 //! expr    = integer | symbol | "$" field | "image." ("u8"|"u16"|"u32") "(" anchor [("+"|"-") expr] ")"
-//!         | "~" expr | "-" expr | expr op expr | "(" expr ")"       op = * / % + - << >> & ^ |
+//!         | "defined" "(" symbol ")" | "~" expr | "-" expr | expr op expr | "(" expr ")"       op = * / % + - << >> & ^ |
 //! ```
 //!
 //! A symbol is `[A-Za-z_.][A-Za-z0-9_.]*` (anchor names, module exports, registry and hook symbols; `this` is the
@@ -20,6 +20,7 @@ use crate::error::*;
 pub enum Expr {
     Num(i64),
     Sym(String),
+    Defined(String),
     Field(String),
     Neg(Box<Expr>),
     Not(Box<Expr>),
@@ -210,6 +211,17 @@ impl P<'_> {
             Some(Tok::Id(id)) => {
                 self.at += 1;
                 if self.peek() == Some(&Tok::Sym("(")) {
+                    if id == "defined" {
+                        self.at += 1;
+                        let Some(Tok::Id(name)) = self.t.get(self.at).cloned() else {
+                            return self.fail("defined requires a symbol name");
+                        };
+                        self.at += 1;
+                        if !self.eat(")") {
+                            return self.fail("missing `)` after defined symbol");
+                        }
+                        return Ok(Expr::Defined(name));
+                    }
                     let width = match id.as_str() {
                         "image.u8" => 1,
                         "image.u16" => 2,
@@ -263,7 +275,7 @@ impl Expr {
     pub fn names(&self, out: &mut Vec<String>) {
         match self {
             Expr::Num(_) | Expr::Field(_) => {}
-            Expr::Sym(s) => out.push(s.clone()),
+            Expr::Sym(s) | Expr::Defined(s) => out.push(s.clone()),
             Expr::Neg(e) | Expr::Not(e) => e.names(out),
             Expr::Bin(_, a, b) => {
                 a.names(out);
@@ -282,6 +294,7 @@ impl Expr {
         let ov = || err!("expression overflows 64 bits");
         Ok(match self {
             Expr::Num(n) => *n,
+            Expr::Defined(s) => i64::from(env.symbol(s).is_some()),
             Expr::Sym(s) => env.symbol(s).ok_or_else(|| err!("unknown symbol {s}"))?,
             Expr::Field(f) => env
                 .field(f)
@@ -365,6 +378,13 @@ mod tests {
         assert_eq!(ev("0x100 >> 4 + 0").unwrap(), 16);
         assert_eq!(ev("1 + 2 << 1").unwrap(), 6); // + binds tighter than <<
         assert_eq!(ev("machines.first + $idx").unwrap(), 10);
+    }
+
+    #[test]
+    fn optional_export_presence_controls_a_write() {
+        assert_eq!(ev("32 - 8 * defined(a)").unwrap(), 24);
+        assert_eq!(ev("32 - 8 * defined(absent)").unwrap(), 32);
+        assert!(ev("defined(a + 1)").is_err());
     }
 
     #[test]

@@ -30,11 +30,18 @@ mod tests {
         fn mi_test_session_midi() -> u32;
         fn mi_test_reply_record() -> u32;
     }
+    // The firmware calls the frame sender from one non-nesting interrupt.
+    // Independent C fixtures still share its static packet scratch space.
+    static FRAME_SENDER: std::sync::Mutex<()> = std::sync::Mutex::new(());
     macro_rules! case {
         ($name:ident, $run:ident) => {
             #[test]
             fn $name() {
-                assert_eq!(unsafe { $run() }, 0, "C assertion line");
+                let result = {
+                    let _sender = FRAME_SENDER.lock().unwrap();
+                    unsafe { $run() }
+                };
+                assert_eq!(result, 0, "C assertion line");
             }
         };
     }

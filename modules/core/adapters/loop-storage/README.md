@@ -2,6 +2,8 @@
 
 This experimental, patch-time DT2 1.17 module reserves 24 MiB: the original 8 MiB stereo-loop buffer and two separate 8 MiB phrase banks. It reduces the stock sample allocator from 400 MiB to 376 MiB. The original loop address and descriptor remain unchanged and still hold 21.845 seconds at 48 kHz float32 stereo. Each phrase bank holds 1,032,192 stereo frames (21.504 seconds), phase stamps and 2048 guard bytes. Consumers choose their own lengths.
 
+Selecting [core/relay-storage](../relay-storage/README.md) extends this reservation by 32 MiB below phrase bank 0. Its linked DSP descriptor selects a 344 MiB stock capacity at the same six operands (subtract 0x02000000 from each value in the table). The existing audio addresses stay fixed.
+
 The firmware is selected by the existing port SHA-256. Six writes use the `cf.main` anchor, which verifies the complete original MAIN image before patching. This is a firmware reservation, not a claim that unused sample memory is free. No firmware bytes are included in this module.
 
 | DT2 1.17 operand | Purpose | New value |

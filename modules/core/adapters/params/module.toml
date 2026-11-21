@@ -42,7 +42,7 @@ conflicts = []
 name = "params"
 devices = ["dt2"]
 first = "image.u32(cf.param.fn.value_class + 6)"      # the immediate of `cmpi.l #count,D0` in the accessor: the stock row count
-max = 64
+max = 72
 region = "cf.expansion"
 
 [[registry.field]]

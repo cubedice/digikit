@@ -87,6 +87,26 @@ static int switching(void)
     return running && (flags & 3) == 3 && committed && pattern != committed;
 }
 
+/* A panel transport can start a track before its first native trig has copied
+ * its Sound into the DSP frame. Only refresh the committed kit's matching Sound. */
+uint32_t ip_current_machine_sound(uint32_t track, uint32_t type)
+{
+    uint32_t project;
+    if (!type || switching())
+        return 0;
+    uint32_t sound = track_sound(kit_now(&project), track);
+    return sound && *(const uint8_t *)(uintptr_t)(sound + 0xa2) == type ? sound : 0;
+}
+
+int ip_refresh_machine_track(uint32_t track, uint32_t type)
+{
+    uint32_t source = ip_current_machine_sound(track, type);
+    if (!source)
+        return 0;
+    ip_refresh(source, track);
+    return 1;
+}
+
 /* Once per UI tick. An instance keeps its track while that track still
  * carries the instrument among the lowest IP_INSTANCES such tracks; freed
  * instances take newly qualifying tracks, lowest track first, keeping their

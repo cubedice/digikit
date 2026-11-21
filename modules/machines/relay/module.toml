@@ -1,0 +1,37 @@
+[module]
+id = "digikit/relay-machine"
+version = "0.4.0"
+name = "RELAY"
+category = "machines"
+type = "machine"
+author = "digikit"
+status = "experimental"
+summary = "A pattern-length stereo tape with a reversible motor, two heads and record feedback."
+dynamic = true
+ports = ["dt2-1.17"]
+requires = ["core/relay-track"]
+conflicts = []
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[machine]]
+id = "relay"
+
+[[object]]
+path = "build/relay-cf.dko.json"
+sources = ["src/module.c"]
+place = "cf.expansion"
+[[object]]
+path = "build/relay-dsp.dko.json"
+sources = ["src/dsp/voice.s"]
+place = "dsp.l2"
+
+[conformance]
+patch_set = "relay-track"
+
+[uses.dt2]
+machine_rows = 1
+param_rows = 0
+page_rows = 0
+record_bytes = 124

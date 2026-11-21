@@ -21407,6 +21407,38 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838314c",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native send entry after track rendering. R8 is a table of two dry input channel pointers.",
+      "file": "devices/fw/relay.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "dsp.fx.fn.relay_input",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "fx",
+      "users": [
+        "core/relay-input"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x28383e3c",
@@ -21497,6 +21529,38 @@
       "subsystem": "fx",
       "users": [
         "core/fx"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838314c",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Snapshot this block's external stereo input before the native sends run.",
+      "file": "devices/fw/relay.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "dsp.fx.hook.relay_input",
+      "regs": {
+        "clobbers": [],
+        "in": [
+          "r8"
+        ]
+      },
+      "site": "dsp.fx.fn.relay_input",
+      "subsystem": "fx",
+      "users": [
+        "core/relay-input"
       ],
       "was": []
     },
@@ -26759,7 +26823,7 @@
       "name": "frame"
     },
     {
-      "count": 10,
+      "count": 12,
       "cpu": "sharc",
       "file": "devices/fw/dsp/fx.toml",
       "meaning": "the effect chain: sends, returns, buses",

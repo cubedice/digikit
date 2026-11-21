@@ -129,6 +129,11 @@
       "devices": ["dt2"]
     },
     {
+      "id": "relay-track",
+      "roots": ["core/relay-track", "core/digikit-menu", "core/health", "core/input"],
+      "devices": ["dt2"]
+    },
+    {
       "id": "prism-coexist",
       "roots": [
         "core/runtime",

@@ -218,18 +218,22 @@ pub unsafe extern "C" fn dk_files_read(_f: *mut u8, path: *const u8, buf: *mut u
 
 // The write calls take the same handle. The store has one write session in all, so the handle only names the owner: it is not looked up yet.
 
+#[export_name = "dkrt_image_file_create"]
 pub unsafe extern "C" fn dk_files_create(_f: *mut u8, root: u32, path: *const u8, size: u32, hash4: *const u8, flags: u32) -> i32 {
     crate::storage::sdk_files::sdk_create(root, path, size, hash4, flags)
 }
 
+#[export_name = "dkrt_image_file_write"]
 pub unsafe extern "C" fn dk_files_write(_f: *mut u8, h: i32, offset: u32, buf: *const u8, len: u32) -> i32 {
     crate::storage::sdk_files::sdk_write(h, offset, buf, len)
 }
 
+#[export_name = "dkrt_image_file_close"]
 pub unsafe extern "C" fn dk_files_close(_f: *mut u8, h: i32, hash_out: *mut u8) -> i32 {
     crate::storage::sdk_files::sdk_close(h, hash_out)
 }
 
+#[export_name = "dkrt_image_file_abort"]
 pub unsafe extern "C" fn dk_files_abort(_f: *mut u8, h: i32) -> i32 {
     crate::storage::sdk_files::sdk_abort(h)
 }

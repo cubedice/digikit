@@ -95,7 +95,8 @@ int sr_decode(CpPreset *out, const uint8_t in[SR_BYTES])
 }
 int sr_present(const uint8_t in[SR_BYTES])
 {
-    return in && (in[0] & 0xf0) == 0xc0 && in[0] != 0xc0;
+    return in && (((in[0] & 0xf0) == 0xc0 && in[0] != 0xc0) ||
+                  (in[0] == 0xd1 && in[1] == 'R' && in[2] == 'L' && in[3] == 'Y'));
 }
 uint32_t sr_offset(uint32_t i)
 {

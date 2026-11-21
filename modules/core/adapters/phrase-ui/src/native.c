@@ -14,7 +14,7 @@
 #include "render.h"
 #include "dk_fw_view.h"
 #include "dk_fw_input.h"
-extern uint32_t phrase_stock_key_dispatch(uint8_t *, uint8_t *);
+
 extern void phrase_stock_led(uint8_t *, uint32_t, uint32_t, uint32_t);
 /* The loop effect's home (core/loop-control) is optional: in an image without it these are 0 and the page has no loop. */
 #pragma weak dkrt_loop_get
@@ -141,7 +141,7 @@ int phrase_fxv_key(uint8_t *view, uint8_t *event)
  * page while G holds the selection on the page that is on top, so that it neither plays a note, nor enters a step, nor
  * selects a track or a pattern. The release of a TRIG key the page took is the page's, also after G or the view went.
  * Every other event goes on to the firmware unchanged. */
-uint32_t phrase_key_dispatch(uint8_t *manager, uint8_t *event)
+int phrase_dispatch_trig(uint8_t *event)
 {
     uint32_t key = word(event, 12);
     if (key >= PU_TRIG && key < PU_TRIG + PH_TRACKS) {
@@ -161,7 +161,7 @@ uint32_t phrase_key_dispatch(uint8_t *manager, uint8_t *event)
             }
         }
     }
-    return phrase_stock_key_dispatch(manager, event);
+    return 0;
 }
 /* Before the firmware's LED setter (cf.page.hook.phrase_led_set, cdecl(manager, logical, layer, value)): while G holds the
  * selection on the page that is on top, the TRIG LEDs show the tracks the effect hears. Every other LED, and every LED at

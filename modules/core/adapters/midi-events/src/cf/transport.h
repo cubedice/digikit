@@ -85,9 +85,10 @@ typedef struct {
  * -2 already armed or invalid. No reset/retry; readiness requires the exact bind
  * ACK plus version/token. Deadline uses CF frame blocks, not a UI wall clock. */
 int mt_reply_guard_expect(MtReplyGuard *guard, uint32_t token, uint32_t sequence, uint32_t block);
-/* Discard only exact copies of the last eight accepted bound replies.
+/* Discard exact copies or late arrivals within a gap bracketed by accepted
+ * heartbeats in the last eight blocks of the same bound session.
  * Treat it as missing everywhere: no ACK, no cached registry reply, no deadline
- * refresh. Unknown regressions and changed/missing bound sessions still fault. */
+ * refresh. Conflicting copies, unbracketed regressions and session changes still fault. */
 int mt_reply_reordered(const MtReplyGuard *guard, const uint32_t *reply);
 void mt_reply_guard_tick(MtReplyGuard *guard, const uint32_t *reply, uint32_t block);
 /* Call after guard_tick on the same snapshot/block. An armed session must bind

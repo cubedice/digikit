@@ -74,14 +74,14 @@
   },
   {
    "addend": 0,
-   "offset": 16,
+   "offset": 28,
    "section": ".text.loop_control_pass",
    "symbol": ".sec..data.age",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 36,
+   "offset": 48,
    "section": ".text.loop_control_pass",
    "symbol": ".sec..data.asked",
    "type": "cf.32"
@@ -90,12 +90,19 @@
    "addend": 0,
    "offset": 2,
    "section": ".text.loop_control_pass",
+   "symbol": "relay_ui_pass",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 14,
+   "section": ".text.loop_control_pass",
    "symbol": ".sec..data.age",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 22,
+   "offset": 34,
    "section": ".text.loop_control_pass",
    "symbol": ".sec..data.asked",
    "type": "cf.32"
@@ -300,10 +307,10 @@
   },
   {
    "align": 2,
-   "hex": "2039000000007277b2806508528023c0000000002039000000007277b2806508528023c0000000004e75",
+   "hex": "41f9000000004a8867024e902039000000007277b2806508528023c0000000002039000000007277b2806508528023c0000000004e75",
    "kind": "text",
    "name": ".text.loop_control_pass",
-   "size": 42
+   "size": 54
   },
   {
    "align": 2,
@@ -411,7 +418,7 @@
    "size": 16
   }
  ],
- "source_sha256": "9c5811216a78076007244b577eecb3908e09a2ecc5824cc047a8a2c8936c0c42",
+ "source_sha256": "70d90307a84f0b53628aa97578237f69af3c75817c5941719664b02ddc8f7bb5",
  "symbols": [
   {
    "global": false,
@@ -624,6 +631,12 @@
    "value": 0
   },
   {
+   "global": true,
+   "name": "relay_ui_pass",
+   "section": null,
+   "value": 0
+  },
+  {
    "global": false,
    "name": "status",
    "section": ".bss.status",
@@ -640,8 +653,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "204",
-  "isa_check": "17ab6a21c667c2dde186aef45ec8cde2cecb348fcae9bc7d5c3f057f74280e60",
+  "instructions_redecoded": "208",
+  "isa_check": "97122fda5f584dca976aa71d43c95736eca556f77169ac1ec6d655f269c5a5d5",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

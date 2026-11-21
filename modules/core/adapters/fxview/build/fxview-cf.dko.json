@@ -25,6 +25,34 @@
   },
   {
    "addend": 0,
+   "offset": 26,
+   "section": ".text.fxv_key_dispatch",
+   "symbol": "rtm_stop_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 58,
+   "section": ".text.fxv_key_dispatch",
+   "symbol": "fxv_stock_dispatch",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 74,
+   "section": ".text.fxv_key_dispatch",
+   "symbol": "phrase_dispatch_trig",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 84,
+   "section": ".text.fxv_key_dispatch",
+   "symbol": "relay_trig",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 80,
    "section": ".text.fxv_visible_view",
    "symbol": ".sec..text.fxv_view_draw",
@@ -46,7 +74,7 @@
   },
   {
    "addend": 0,
-   "offset": 54,
+   "offset": 78,
    "section": ".text.fxv_box",
    "symbol": "cf.draw.fn.fill_rect",
    "type": "cf.32"
@@ -167,6 +195,13 @@
   },
   {
    "align": 2,
+   "hex": "598f2f0a7215246f00102f6f000c0004202a000cb280662641f9000000004a8867082f2a00104e90588f2f4a00102f6f0004000c245f588f4ef9000000000680ffffffe7e88866e241f9000000004a88661641f9000000004a8867ce2f0a4e90588f4a8067c4600a2f0a4e90588f4a8067e0245f7001588f4e75",
+   "kind": "text",
+   "name": ".text.fxv_key_dispatch",
+   "size": 122
+  },
+  {
+   "align": 2,
    "hex": "206f000422502f480004226900884ed1",
    "kind": "text",
    "name": ".text.fxv_page",
@@ -188,10 +223,10 @@
   },
   {
    "align": 2,
-   "hex": "2f02743f202f000c2240d3ef0014222f001094812f40000c206f001853892f490014327c00402f42001893c193c82f490010241f4ef900000000",
+   "hex": "598f2f02226f0018206f0010222f0014202f001c2f6f000c00044a896f344a806f3043f098ff743f94812f42001c2f4800102f6f0004000c2f490018327c004093c193c02f490014241f588f4ef900000000241f588f4e75",
    "kind": "text",
    "name": ".text.fxv_box",
-   "size": 58
+   "size": 88
   },
   {
    "align": 1,
@@ -236,7 +271,7 @@
    "size": 10
   }
  ],
- "source_sha256": "8dfe4b97c06b3a02e56ac97460a6af294b40b91aaa4cd0d839c7682c1b0a5459",
+ "source_sha256": "f534e03996b0c880a0b3a016ba733a0b135e12836d6decc69075c10ce0c177e5",
  "symbols": [
   {
    "global": false,
@@ -312,6 +347,12 @@
   },
   {
    "global": true,
+   "name": "fxv_key_dispatch",
+   "section": ".text.fxv_key_dispatch",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "fxv_key_flags",
    "section": ".text.fxv_key_flags",
    "value": 0
@@ -326,6 +367,12 @@
    "global": true,
    "name": "fxv_page",
    "section": ".text.fxv_page",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_stock_dispatch",
+   "section": null,
    "value": 0
   },
   {
@@ -402,6 +449,12 @@
   },
   {
    "global": true,
+   "name": "phrase_dispatch_trig",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "phrase_fxv_draw",
    "section": null,
    "value": 0
@@ -417,14 +470,26 @@
    "name": "phrase_fxv_turn",
    "section": null,
    "value": 0
+  },
+  {
+   "global": true,
+   "name": "relay_trig",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "rtm_stop_key",
+   "section": null,
+   "value": 0
   }
  ],
  "toolchain": {
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "250",
-  "isa_check": "08bee89aa6ea038078738cc3e896d3f5123d20a3ccde02274ecc18634b260fb7",
+  "instructions_redecoded": "303",
+  "isa_check": "9a3e6754ab42b25e638ee9a6237ac8141c8ac6e50312b2baf00dda87de37cced",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

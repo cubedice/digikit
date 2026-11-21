@@ -1,0 +1,76 @@
+// R8 points to two channel pointers for this callback. Make an owned block
+// before the firmware can reuse either source. No modification to dry routing.
+.SECTION/PM seg_pmco;
+.GLOBAL _relay_input_tap;
+.EXTERN _relay_input_tail;
+.EXTERN _rtm_capture;
+_relay_input_tap:
+    DM(_ri_r0) = R0;
+    R0 = MODE1;
+    DM(_ri_mode) = R0;
+    BIT CLR MODE1 0x200000;
+    NOP;
+    NOP;
+    R0 = I0;
+    DM(_ri_i0) = R0;
+    R0 = I1;
+    DM(_ri_i1) = R0;
+    R0 = M6;
+    DM(_ri_m6) = R0;
+    R0 = L0;
+    DM(_ri_l0) = R0;
+    R0 = L1;
+    DM(_ri_l1) = R0;
+    L0 = 0;
+    L1 = 0;
+    M6 = 1;
+    I0 = R8;
+    R0 = DM(0,I0);
+    I0 = R0;
+    I1 = _relay_external;
+    LCNTR = 32, DO _ri_left UNTIL LCE;
+        R0 = DM(I0,M6);
+_ri_left: DM(I1,M6) = R0;
+    I0 = R8;
+    R0 = DM(1,I0);
+    I0 = R0;
+    LCNTR = 32, DO _ri_right UNTIL LCE;
+        R0 = DM(I0,M6);
+_ri_right: DM(I1,M6) = R0;
+    R0 = ASTATX;
+    DM(_ri_astat) = R0;
+    R0 = _rtm_capture;
+    R0 = PASS R0;
+    IF NE CALL _rtm_capture;
+    R0 = DM(_ri_astat);
+    ASTATX = R0;
+    R0 = DM(_ri_i0);
+    I0 = R0;
+    R0 = DM(_ri_i1);
+    I1 = R0;
+    R0 = DM(_ri_l0);
+    L0 = R0;
+    R0 = DM(_ri_l1);
+    L1 = R0;
+    R0 = DM(_ri_m6);
+    M6 = R0;
+    R0 = DM(_ri_mode);
+    MODE1 = R0;
+    NOP;
+    NOP;
+    R0 = DM(_ri_r0);
+    JUMP _relay_input_tail;
+
+.SECTION/DM seg_dmda;
+.GLOBAL _relay_external;
+.VAR _relay_external[64];
+// Stores before PEYEN is cleared can write both lanes. Keep each pair
+// together so the scalar save of L0 cannot overwrite the saved S0.
+.VAR _ri_r0[2];
+.VAR _ri_mode[2];
+.VAR _ri_astat;
+.VAR _ri_i0;
+.VAR _ri_i1;
+.VAR _ri_l0;
+.VAR _ri_l1;
+.VAR _ri_m6;

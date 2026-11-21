@@ -1,0 +1,25 @@
+[module]
+id = "core/relay-storage"
+version = "0.1.0"
+name = "RELAY recording storage"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Adds a shared 32 MiB stereo recording pool below the two phrase banks."
+requires = ["core/loop-storage"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/relay-storage-dsp.dko.json"
+sources = ["src/dsp/storage.s", "src/dsp/pool.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+
+[[claim]]
+resource = "dt2.sample-pool.relay"

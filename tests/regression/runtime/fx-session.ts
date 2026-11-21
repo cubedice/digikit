@@ -1,16 +1,25 @@
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { expect } from 'vitest';
 import { DkSession, EmuUsbTransport } from '@digi/dk-session';
-import { repoRoot, withinRuntimeDeadline, type Device, type RuntimeBaseline, type Session } from '@digi/test-support';
+import {
+  repoRoot,
+  resolveInputs,
+  withinRuntimeDeadline,
+  type Device,
+  type RuntimeBaseline,
+  type Session,
+} from '@digi/test-support';
 import { aggregate, withReusablePatchedSession, type PatchedSession } from '../support.ts';
 import { record } from './artifacts.ts';
 import { cachedCard, cardKey, fileSha } from './card-cache.ts';
 import { plusdriveBinary } from './card-kit.ts';
 import { FIRMWARE, claimRunDir } from './devices.ts';
+import { sampleWav } from './fixtures.ts';
 import { moduleArtifact } from './install.ts';
 import { boundService, neededServices } from './service-files.ts';
 import { bindServiceSymbols } from './service-symbols.ts';
@@ -69,6 +78,8 @@ export interface FxProfile {
   };
 }
 export interface FxCardPreset {
+  /** Seed the native boot project for a scenario that uses the stock sample filesystem. */
+  seedProject?: boolean;
   /** Store paths (modules/m0.dkm, etc.) in boot order; every card contains the complete scenario inventory. */
   selection: string[];
   /** UTF-8 settings keys and hex-encoded byte values. */
@@ -92,6 +103,8 @@ export interface PreparedFxSessionOptions {
     policy: SafetyPolicy;
   };
   initial: string;
+  /** A seeded +Drive can skip the fresh-card checker. Still reject an explicit verification failure. */
+  usedCard?: boolean;
   presets: Record<string, FxCardPreset>;
   requireAudible?: RequireAudible;
   /** Stall threshold of the session's watchdog in emulated ms (default 1000): for a selection whose load holds the UI task longer at boot. */
@@ -282,7 +295,7 @@ export function withPreparedFxSession(device: Device, scope: string, config: Pre
         watchOutput = path.join(artifacts, 'writewatch.jsonl');
         const env = runtimeWatchEnv(prepared.planFile, watchOutput);
         record(artifacts, 'watch-environment', env);
-        return env;
+        return config.usedCard ? { ...env, DIGI_COLD_RELAX_FS: '1' } : env;
       },
     },
     {
@@ -312,6 +325,11 @@ export function withPreparedFxSession(device: Device, scope: string, config: Pre
           const produce = async (work: string) => {
             // The seed stays in the card dir: tests read the built modules from it.
             const seed = path.join(work, 'card', 'seed');
+            if (preset.seedProject) {
+              // The +Drive builder only creates a boot project when it can bind a native sample.
+              fs.mkdirSync(path.join(seed, 'Samples'), { recursive: true });
+              fs.writeFileSync(path.join(seed, 'Samples', 'Reference.wav'), sampleWav(1));
+            }
             const destination = path.join(seed, 'digikit', 'modules');
             fs.mkdirSync(destination, { recursive: true });
             for (const f of files) fs.copyFileSync(f.file, path.join(destination, f.name));
@@ -321,11 +339,14 @@ export function withPreparedFxSession(device: Device, scope: string, config: Pre
             fs.writeFileSync(path.join(seed, 'digikit', 'selection.txt'), preset.selection.join('\n') + '\n');
             const out = path.join(work, 'card', 'card.img');
             fs.mkdirSync(path.dirname(out), { recursive: true });
-            const built = await exec(binary, ['build', seed, '-o', out, '--device', device], {
+            const project = preset.seedProject ? ['--syx', resolveInputs(device, FIRMWARE[device]).syx] : [];
+            const built = await exec(binary, ['build', seed, '-o', out, '--device', device, ...project], {
               cwd: root,
               timeout: 30_000, // host work is invisible to the emulator watchdog
             });
             record(artifacts, `card-${tag}`, { stdout: built.stdout, stderr: built.stderr });
+            if (preset.seedProject && !built.stdout.includes('project=Some('))
+              throw new Error('the +Drive builder did not seed a native project');
             if (preset.settings?.length) {
               const entries = path.join(work, 'settings.json');
               fs.writeFileSync(
@@ -352,6 +373,12 @@ export function withPreparedFxSession(device: Device, scope: string, config: Pre
           } else {
             const key = cardKey(device, {
               kind: 'fx-route-preset',
+              ...(preset.seedProject
+                ? {
+                    project: fileSha(resolveInputs(device, FIRMWARE[device]).syx),
+                    sample: createHash('sha256').update(sampleWav(1)).digest('hex'),
+                  }
+                : {}),
               modules: files.map((f) => ({ name: f.name, sha: fileSha(f.file) })),
               services: services.map((f) => ({ name: f.name, sha: fileSha(f.file) })),
               selection: preset.selection,
@@ -362,6 +389,7 @@ export function withPreparedFxSession(device: Device, scope: string, config: Pre
           if (!prepared.preparedImage) throw new Error('explicit route plan lacks prepared image identity');
           baselines.set(tag, {
             cardImage,
+            relaxedReady: config.usedCard,
             preparedImage: prepared.preparedImage,
             guard: { protect: [{ lo: boot, hi: boot + 8, label: 'runtime boot identity' }], allow_pc: [] },
           });

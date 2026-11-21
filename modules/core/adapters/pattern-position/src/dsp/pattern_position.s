@@ -40,6 +40,7 @@
 .EXTERN _pp_block_back;
 .EXTERN _instrument_block;
 .EXTERN _phrase_receive;
+.EXTERN _relay_receive;
 
 _pp_block_entry:
     DM(_pp_sv_r0) = R0;
@@ -304,6 +305,11 @@ _pp_bad:
     R0 = 2;
     DM(_pp_seen) = R0;
 _pp_restore:
+    R0 = _relay_receive;
+    R0 = PASS R0;
+    IF EQ JUMP _pp_no_relay;
+    CALL _relay_receive;
+_pp_no_relay:
     R0 = _phrase_receive;
     R0 = PASS R0;
     IF EQ JUMP _pp_no_phrase;

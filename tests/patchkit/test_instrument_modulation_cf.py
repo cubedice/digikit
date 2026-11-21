@@ -104,6 +104,8 @@ int instrument_sound_admitted(uint32_t track) {{
             "mf_spt": TYPE_FN,
             **NATIVE_CALLS,
             "ip_mod_track_type": CONTROL + 40,
+            "rtm_mod_param": 0,
+            "rtm_mod_carrier": 0,
             **{f"ip_mod_{name}": 0x300 + index for index, name in enumerate(NAMES)},
         },
         [
