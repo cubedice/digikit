@@ -47,7 +47,8 @@ extern uint8_t ip_lock_set(uint32_t, uint32_t, uint32_t, uint32_t),
 extern const uint8_t ip_seq_step[];
 extern int rtm_src(uint8_t *, unsigned, uint8_t *) __attribute__((weak));
 static uint32_t owner_type, owner_generation, published, last_draw;
-static uint32_t saved_generation, saved_page, saved_valid;
+static uint32_t saved_generation, saved_page, saved_valid, saved_track;
+static int saved_shared_keyboard;
 static uint32_t restore_pending, restore_page, was_owned;
 static uint32_t live_control = CS_NONE, live_value;
 static uint32_t live_track = UINT32_MAX, live_token;
@@ -110,7 +111,7 @@ static uint32_t context(uint8_t *view)
         owner_type = 0;
     }
     uint32_t track = ip_src_track(word(view, 0x74)), page = word(view, 0x90),
-             pages = instrument_src_pages();
+             pages = instrument_src_pages(track);
     /* The SRC page's track is the UI selection for menus, presets and focus.
      * Sequencer byte +0x268 (ip_src_alternate) is not another context: it is
      * the held-trig "edited" mark that the first lock edit sets until the
@@ -120,7 +121,11 @@ static uint32_t context(uint8_t *view)
     int owns = type >= 7 && type < 32 && gen && track < 16 && instrument_track_owned(track) &&
                ip_src_type(view) == type;
     if (owns) {
-        if (restore_pending) {
+        int shared_keyboard = instrument_src_shared_keyboard(track);
+        if (saved_valid && saved_track == track && saved_shared_keyboard != shared_keyboard) {
+            page = 0;
+            *(uint32_t *)(view + 0x90) = page;
+        } else if (restore_pending) {
             page = restore_page;
             *(uint32_t *)(view + 0x90) = page;
         } else if (!was_owned && saved_valid && saved_generation == gen) {
@@ -128,7 +133,7 @@ static uint32_t context(uint8_t *view)
             *(uint32_t *)(view + 0x90) = page;
         }
         if (page >= pages) {
-            page = 2;
+            page = shared_keyboard ? 0 : 2;
             *(uint32_t *)(view + 0x90) = page;
         }
         MfSrcCapability cap = {MF_SRC_ABI, sizeof(cap), pages, gen};
@@ -141,6 +146,8 @@ static uint32_t context(uint8_t *view)
         saved_generation = gen;
         saved_page = page;
         saved_valid = 1;
+        saved_track = track;
+        saved_shared_keyboard = shared_keyboard;
     }
     if (page >= pages)
         page = 0;
@@ -608,8 +615,102 @@ static void diagram_routing(uint8_t *b, int wt)
         diagram_text(b, 111, 53, "VOL");
     }
 }
-static uint32_t diagram_mask(uint32_t page, uint32_t family)
+static void compact_mix(uint8_t *b, const CvDisplay *d)
 {
+    diagram_text(b, 78, 40, "P");
+    diagram_text(b, 93, 40, "A");
+    diagram_line(b, 77, 50, 95, 50);
+    diagram_line(b, 77, 48, 77, 52);
+    diagram_line(b, 95, 48, 95, 52);
+    int x = 77 + (18 * d->raw[CP_ARP_MIX] + 63) / 127;
+    diagram_box(b, x - 1, 47, 3, 7, 1);
+}
+static void compact_wave(uint8_t *b, const CvDisplay *d)
+{
+    static const int8_t velvet[] = {0, 3, 5, 6, 5, 4, 4, 3, 0, -3, -5, -6, -5, -4, -4, -3};
+    int table[47], peak = 1;
+    uint32_t position = d->raw[CP_WT_POS];
+    if (position > 700)
+        position = 700;
+    uint32_t frame = position / 100, fraction = position % 100,
+             next = frame < 7 ? frame + 1 : frame;
+    uint32_t id = d->raw[CP_WT_TABLE];
+    if (id > 4)
+        id = 4;
+    for (uint32_t i = 0; i < 47; ++i) {
+        uint32_t j = 73 * i / 46, sample = 16 * i / 47;
+        int y;
+        if (d->family == 2) {
+            y = (canopy_preview_value(id, frame, j) * (int)(100 - fraction) +
+                 canopy_preview_value(id, next, j) * (int)fraction) /
+                100;
+        } else if (d->family == 1) {
+            y = sample < 8 ? 7 - (int)sample * 2 : (int)sample * 2 - 23;
+        } else {
+            y = velvet[sample];
+        }
+        table[i] = y;
+        int magnitude = y < 0 ? -y : y;
+        if (magnitude > peak)
+            peak = magnitude;
+    }
+    for (int i = 1; i < 47; ++i)
+        diagram_line(b, 24 + i, 48 - table[i - 1] * 5 / peak, 25 + i, 48 - table[i] * 5 / peak);
+    if (d->family == 2) {
+        diagram_line(b, 25, 56, 71, 56);
+        for (int i = 0; i < 8; ++i)
+            diagram_box(b, 25 + (46 * i + 3) / 7, 55, 1, 3, 1);
+        diagram_box(b, 24 + (int)((46 * position + 350) / 700), 54, 3, 5, 1);
+    } else {
+        diagram_text(b, 48, 57, d->family == 1 ? "REED" : "VELVET");
+    }
+}
+/* The compact SOURCE and TONE pages use a small routing diagram in their
+ * unassigned cells. The source algorithm selects the paths between operators. */
+static void compact_fm(uint8_t *b, const CvDisplay *d, int x)
+{
+    diagram_operator(b, x, 39, "A");
+    diagram_operator(b, x + 29, 39, "B");
+    diagram_operator(b, x, 53, "X");
+    diagram_operator(b, x + 29, 53, "Y");
+    uint32_t alg = d->raw[CP_FM_ALG];
+    diagram_line(b, x + 6, 47, x + 6, 52);
+    if (alg == 0)
+        diagram_line(b, x + 35, 47, x + 35, 52);
+    else if (alg == 2)
+        diagram_line(b, x + 32, 47, x + 12, 52);
+    else
+        diagram_line(b, x + 13, 43, x + 28, 43);
+    if (alg == 3)
+        diagram_line(b, x + 13, 57, x + 28, 57);
+}
+static void compact_scan(uint8_t *b, const CvDisplay *d)
+{
+    if (d->raw[CP_WT_SHAPE] == 2) {
+        diagram_text(b, 84, 47, "RAND");
+        return;
+    }
+    static const int8_t sine[] = {0, 3, 5, 6, 5, 3, 0, -3, -5, -6, -5, -3, 0};
+    static const int8_t triangle[] = {0, 2, 4, 6, 4, 2, 0, -2, -4, -6, -4, -2, 0};
+    const int8_t *shape = d->raw[CP_WT_SHAPE] ? triangle : sine;
+    for (int i = 1; i <= 12; ++i)
+        diagram_line(b, 54 + (i - 1) * 5, 49 - shape[i - 1], 54 + i * 5, 49 - shape[i]);
+    uint32_t depth = d->raw[CP_WT_DEPTH];
+    int half = (int)(29 * (depth < 100 ? depth : 100) / 100);
+    diagram_line(b, 84 - half, 59, 84 + half, 59);
+    diagram_box(b, 84 - half, 57, 1, 3, 1);
+    diagram_box(b, 84 + half, 57, 1, 3, 1);
+}
+static uint32_t diagram_mask(uint32_t page, const CvDisplay *d)
+{
+    uint32_t family = d->family;
+    if (d->shared_keyboard) {
+        if (page == 0)
+            return 0x70;
+        if (page == 1)
+            return family < 2 ? 0xff : 0xe0;
+        return family == 2 ? 0x83 : family == 3 ? 0xcf : 0xff;
+    }
     if (page == 0)
         return 0x7c;
     if (page == 1)
@@ -620,11 +721,22 @@ static uint32_t diagram_mask(uint32_t page, uint32_t family)
 }
 static void diagram_draw(uint8_t *b, const CvDisplay *d)
 {
-    if (d->page == 0)
+    if (d->shared_keyboard && d->page == 0) {
+        if (d->family == 3)
+            compact_fm(b, d, 27);
+        else
+            compact_wave(b, d);
+        compact_mix(b, d);
+    } else if (d->shared_keyboard && d->page == 1) {
+        if (d->family == 3)
+            compact_fm(b, d, 63);
+        else if (d->family == 2)
+            compact_scan(b, d);
+    } else if (!d->shared_keyboard && d->page == 0)
         diagram_keys(b, d);
-    else if (d->page == 1)
+    else if (!d->shared_keyboard && d->page == 1)
         diagram_arp(b, d);
-    else if (d->page == 2) {
+    else if (!d->shared_keyboard && d->page == 2) {
         if (d->family == 2)
             diagram_wavetable(b, d);
         else if (d->family == 3)
@@ -673,13 +785,13 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
         /* A held trig shows what it plays: its locks, else the Sound. */
         lock_snapshot(first, &locked);
         instrument_src_display_locked(&display, instrument_src_now(), tune, level, &locked);
-        if (display.page == 0)
+        if (display.page == 0 && !display.shared_keyboard)
             instrument_src_preview_step(&display, &locked,
                                         ip_panel_step_note(ip_src_debug[0], first));
     } else
         instrument_src_display(&display, instrument_src_now(), tune, level);
     uint32_t page = word(view, 0x90);
-    uint32_t mask = diagram_mask(page, display.family);
+    uint32_t mask = diagram_mask(page, &display);
     if (page == 0) {
         dk_fw_draw_fill_rect(canvas, 49, 27, 123, 52, 0);
         dk_fw_draw_fill_rect(canvas, 23, 0, 100, 25, 0);
@@ -749,7 +861,8 @@ void ip_src_attach(uint8_t *view, uint8_t *manager)
 void ip_src_detach(uint8_t *view, uint8_t *manager)
 {
     (void)context(view);
-    if (rtm_src) rtm_src(view, 4, 0);
+    if (rtm_src)
+        rtm_src(view, 4, 0);
     ip_src_stock_detach(view, manager);
     was_owned = 0;
     published = 0;
@@ -936,7 +1049,8 @@ static int lock_clear(uint8_t *view, uint32_t encoder, const uint32_t steps[4])
 }
 uint32_t ip_src_key(uint8_t *view, uint8_t *event)
 {
-    if (rtm_src && rtm_src(view, 2, event)) return 1;
+    if (rtm_src && rtm_src(view, 2, event))
+        return 1;
     uint32_t token = context(view), key = word(event, 12), page = word(view, 0x90), steps[4];
     if (token && key >= 41 && key <= 48 && trig_held(view) && lock_steps(view, steps) < 128 &&
         lock_clear(view, key - 41, steps)) {
@@ -952,7 +1066,8 @@ uint32_t ip_src_key(uint8_t *view, uint8_t *event)
 uint32_t ip_src_turn(uint8_t *view, uint8_t *event)
 {
     uint32_t captured_token = take(event), token = context(view), encoder = word(event, 12);
-    if (rtm_src && rtm_src(view, 3, event)) return 1;
+    if (rtm_src && rtm_src(view, 3, event))
+        return 1;
     ++ip_src_debug[4];
     ip_src_debug[9] = captured_token;
     ip_src_debug[10] = encoder;

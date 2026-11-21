@@ -207,6 +207,38 @@ _iv_mod_next:
     R0 = _iv_mod_controls;
     RTS;
 
+// External note scheduling only. This uses the foreground voice bank for
+// both direct and arp notes. Run after lock and MOD overlays, so they cannot
+// re-enable the local arp or strum. Preserve the stored bank and upper halves.
+.GLOBAL _iv_shared_keyboard;
+_iv_shared_keyboard:
+    I0 = R0;
+    R1 = DM(0, I0);
+    R1 = FEXT R1 BY 14:1;
+    R1 = PASS R1;
+    IF EQ RTS;
+    I1 = _iv_shared_controls;
+    LCNTR = 32, DO _iv_shared_copy UNTIL LCE;
+    R1 = DM(I0, M6);
+_iv_shared_copy:
+    DM(I1, M6) = R1;
+    I0 = _iv_shared_controls;
+    R1 = DM(0, I0);
+    R1 = BCLR R1 BY 14;
+    DM(0, I0) = R1;
+    R1 = 0;
+    DM(6, I0) = R1;
+    DM(15, I0) = R1;
+    R2 = 0xffff0000;
+    R1 = DM(20, I0);
+    R1 = R1 AND R2;
+    DM(20, I0) = R1;
+    R1 = DM(21, I0);
+    R1 = R1 AND R2;
+    DM(21, I0) = R1;
+    R0 = _iv_shared_controls;
+    RTS;
+
 // Restore only normalized base-control fields in a successful CPSB detail
 // fragment. UI ACK/pending feedback must describe the accepted base revision,
 // not constantly moving LFO samples. Voice identity and fast telemetry stay real.
@@ -215,6 +247,9 @@ _iv_mod_next:
 _iv_mod_status:
     I0 = R8;
     R0 = DM(9, I0);
+    R1 = _iv_shared_controls;
+    COMP(R0, R1);
+    IF EQ JUMP _iv_mod_status_scratch;
     R1 = _iv_mod_controls;
     COMP(R0, R1);
     IF EQ JUMP _iv_mod_status_scratch;
@@ -285,6 +320,7 @@ _iv_mod_status_store:
 .PKBSS _iv_mod_base, 4;
 .PKBSS _iv_mod_delta, 24;
 .PKBSS _iv_mod_controls, 128;
+.PKBSS _iv_shared_controls, 128;
 // Table rows: word,shift,min,max,duplicate (0xffffffff means none).
 .VAR _iv_mod_mirrors = 110;
 .VAR _iv_mod_mirrors_1 = 111;

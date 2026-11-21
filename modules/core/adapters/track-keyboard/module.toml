@@ -1,0 +1,78 @@
+[module]
+id = "core/track-keyboard"
+version = "0.1.0"
+name = "Track keyboard and arpeggiator"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "Opt-in track keyboard, arpeggiator and TRIG pages for registered note backends."
+ports = ["dt2-1.17"]
+requires = ["core/runtime", "core/pattern-position", "core/ui", "core/instrument-play"]
+conflicts = []
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/track-keyboard.dko.json"
+sources = ["src/track-keyboard.c", "src/track-config.c", "src/track-service.c", "src/track-runtime.c", "src/track-native.c", "src/track-native-fw.c", "src/trig-view.c"]
+place = "cf.expansion"
+devices = ["dt2"]
+[object.externs]
+memcpy = "cf.util.site.memcpy"
+memset = "cf.util.site.memset"
+tk_trig_stock_track = "cf.page.site.instrument_src_track"
+tk_trig_stock_alloc = "cf.mem.fn.new"
+tk_trig_stock_held = "cf.page.site.instrument_trig_held"
+tk_trig_stock_live_record = "cf.page.site.instrument_live_record"
+tk_trig_stock_mark_edited = "cf.page.site.instrument_lock_mark_edited"
+tk_trig_label_font = "cf.page.site.instrument_label_font"
+tk_trig_stock_key = "cf.page.site.track_trig_stock_key"
+tk_trig_stock_draw = "cf.page.site.track_trig_stock_draw"
+tk_trig_stock_turn = "cf.page.site.track_trig_stock_turn"
+tk_trig_stock_parameter = "cf.page.site.track_trig_stock_parameter"
+tk_fw_project = "cf.project.fn.singleton"
+tk_fw_active_kit = "cf.project.fn.active_kit"
+tk_fw_track_type = "cf.project.fn.track_type"
+tk_fw_note_on = "cf.track_keys.fn.note_on"
+tk_fw_note_off = "cf.track_keys.fn.note_off"
+tk_fw_audio_dispatch = "cf.track_keys.fn.audio_dispatch"
+tk_fw_midi_dispatch = "cf.track_keys.fn.midi_dispatch"
+tk_fw_midi_mode = "cf.track_keys.fn.midi_mode"
+tk_fw_midi_channel = "cf.track_keys.fn.midi_channel"
+tk_fw_note_mail_lit = "cf.track_keys.site.note_mail_lit"
+tk_fw_midi_mail_lit = "cf.track_keys.site.midi_mail_lit"
+tk_fw_midi_free_lit = "cf.track_keys.site.midi_free_lit"
+tk_fw_midi_hold_lit = "cf.track_keys.site.midi_hold_lit"
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.track_trig_key_slot"
+value = "tk_trig_key"
+width = 4
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.track_trig_draw_slot"
+value = "tk_trig_draw"
+width = 4
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.track_trig_turn_slot"
+value = "tk_trig_turn"
+width = 4
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.track_trig_parameter_slot"
+value = "tk_trig_parameter"
+width = 4
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.track_trig_turn_interface_slot"
+value = "tk_trig_turn_interface"
+width = 4

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include "../../../modules/core/adapters/instrument-play/src/cf/shared-notes.h"
 #include "../../../modules/core/adapters/instrument-play/src/cf/src-native.c"
 static CsState state;
 static uint32_t test_held, test_marked, seq_object[0xa0];
@@ -111,9 +112,15 @@ uint32_t mf_native_page_count(uint32_t type, uint32_t ordinary)
     (void)type;
     return ordinary;
 }
-uint32_t instrument_src_pages(void)
+uint32_t instrument_src_pages(uint32_t track)
 {
+    (void)track;
     return cs_pages(&state);
+}
+int instrument_src_shared_keyboard(uint32_t track)
+{
+    (void)track;
+    return cs_shared_keyboard(&state);
 }
 uint32_t instrument_src_tune_page(uint32_t page)
 {
@@ -395,7 +402,67 @@ int main(int argc, char **argv)
     cs_init(&state);
     memset(canvas, 0xaa, sizeof(canvas));
     ip_src_draw((uint8_t *)v, canvas);
-    if (!strcmp(argv[1], "live-lock")) {
+    if (!strcmp(argv[1], "shared-keyboard-queue")) {
+        IsnQueue q = {0};
+        MiEvent batch[8] = {0};
+        isn_sync(&q, 5, 7, 23);
+        for (uint32_t token = 1; token <= 6; ++token) {
+            assert(isn_submit(&q, token, 59 + token, 100, 1));
+            assert(isn_submit(&q, token, 59 + token, 0, 0));
+        }
+        assert(isn_submit(&q, 7, 66, 100, 1));
+        assert(isn_submit(&q, 8, 67, 100, 1));
+        assert(!isn_submit(&q, 9, 68, 100, 1));
+        assert(!isn_submit(&q, 7, 67, 0, 0));
+        assert(isn_submit(&q, 7, 66, 0, 0));
+        assert(isn_submit(&q, 8, 67, 0, 0));
+        assert(isn_take(&q, batch) == 8);
+        assert(batch[0].port == MI_PANEL && batch[0].track == 5 && batch[0].epoch == 7 &&
+               batch[0].generation == 23 && batch[0].sequence == 0);
+        assert(batch[0].kind == MI_NOTE_ON && batch[0].token == 1 && batch[0].note == 60);
+        assert(batch[1].kind == MI_NOTE_OFF && batch[1].token == 1 && batch[1].note == 60);
+        assert(isn_take(&q, batch) == 8);
+        assert(batch[7].kind == MI_NOTE_OFF && batch[7].token == 8 && batch[7].note == 67);
+        assert(!isn_submit(&q, 6, 68, 100, 1));
+        assert(isn_submit(&q, 9, 68, 100, 1));
+        isn_sync(&q, 5, 7, 24);
+        assert(!isn_take(&q, batch));
+        assert(!isn_submit(&q, 9, 68, 0, 0));
+        assert(isn_submit(&q, 9, 68, 100, 1));
+        isn_sync(&q, 6, 7, 24);
+        assert(!isn_take(&q, batch));
+    } else if (!strcmp(argv[1], "shared-keyboard")) {
+        real_display = 1;
+        cs_track_keyboard(&state, 1);
+        v[0x90 / 4] = 2;
+        clear_paint(canvas);
+        ip_src_draw((uint8_t *)v, canvas);
+        assert(v[0x90 / 4] == 0 && mf_src_page_count(type_id) == 1);
+        assert(!strcmp(label_text[1], "WAVE") && !strcmp(label_text[2], "COLR"));
+        assert(!strcmp(label_text[6], "MIX") && !label_text[4][0]);
+        assert(ip_src_parameter((uint8_t *)v, 0) == 0xca);
+        assert(ip_src_parameter((uint8_t *)v, 7) == 0xd1);
+        assert(ip_src_parameter((uint8_t *)v, 8) == 10);
+        protected_pixels(canvas, 1);
+        for (uint32_t source = 2; source <= 3; ++source) {
+            cs_metadata(&state, source << 4);
+            for (uint32_t page = 0; page < 3; ++page) {
+                v[0x90 / 4] = page;
+                clear_paint(canvas);
+                ip_src_draw((uint8_t *)v, canvas);
+                assert(v[0x90 / 4] == page && mf_src_page_count(type_id) == 3);
+                assert(!strcmp(label_text[page ? 0 : 1], page == 0     ? "WAVE"
+                                                         : page == 2   ? "ATK"
+                                                         : source == 2 ? "DEP"
+                                                                       : "ALG"));
+                protected_pixels(canvas, page == 0);
+            }
+        }
+        cs_track_keyboard(&state, 0);
+        ip_src_draw((uint8_t *)v, canvas);
+        assert(v[0x90 / 4] == 0 && mf_src_page_count(type_id) == 4);
+        assert(!strcmp(label_text[1], "CHRD"));
+    } else if (!strcmp(argv[1], "live-lock")) {
         for (unsigned step = 0; step < 128; ++step)
             for (unsigned lane = 0; lane < ILP_LANES; ++lane)
                 test_locks[step][lane] = -1;

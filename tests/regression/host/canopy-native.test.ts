@@ -55,6 +55,8 @@ afterAll(() => {
 });
 test.each([
   'held-lock',
+  'shared-keyboard',
+  'shared-keyboard-queue',
   'lock-paint',
   'live-lock',
   'paint',

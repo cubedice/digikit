@@ -12192,6 +12192,281 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f94f0",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 TRIG parameter view's draw vtable slot. Stock target 0x40073264.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_draw_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 16
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f94e8",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 TRIG parameter view's key vtable slot. Stock target 0x4007302c.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_key_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f959c",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 TRIG parameter view's parameter vtable slot. Stock target 0x40069628.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_parameter_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 188
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40073264",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Unmodified entry called when wrapping the TRIG view draw method.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_stock_draw",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4007302c",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Unmodified entry called when wrapping the TRIG view key method.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_stock_key",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40069628",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Unmodified entry called when wrapping the TRIG view parameter method.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_stock_parameter",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4007375a",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Unmodified entry called when wrapping the TRIG view turn method.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_stock_turn",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f95e0",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 TRIG parameter view's turn_interface vtable slot. Stock target 0x4007385c.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_turn_interface_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 256
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f9524",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 TRIG parameter view's turn vtable slot. Stock target 0x4007375a.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_turn_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 68
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x401f7f94",
@@ -18850,6 +19125,340 @@
       "subsystem": "text",
       "users": [
         "core/ui"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40139b54",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_keys_audio_dispatch",
+        "rust": "dkfw::track_keys::audio_dispatch"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Pass a 64-byte note record to the native audio voice task, including after a track has changed machine type.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_keys.fn.audio_dispatch",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012bcba",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_keys_midi_channel",
+        "rust": "dkfw::track_keys::midi_channel"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Reads the active MIDI-track output channel, or -1 when disabled.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_keys.fn.midi_channel",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012d4ce",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_keys_midi_dispatch",
+        "rust": "dkfw::track_keys::midi_dispatch"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Pass a 64-byte note record to the native MIDI track task without selecting the task from the current machine type.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_keys.fn.midi_dispatch",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002f3b0",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_keys_midi_mode",
+        "rust": "dkfw::track_keys::midi_mode"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Tests the active playback kit MIDI-mode bit for a track.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_keys.fn.midi_mode",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401204ec",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_keys_note_off",
+        "rust": "dkfw::track_keys::note_off"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Stock release on the original track, pitch and source.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_keys.fn.note_off",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401200f2",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_keys_note_on",
+        "rust": "dkfw::track_keys::note_on"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Stock note start below KeyboardView. The source 0x40 is the stock audition route.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_keys.fn.note_on",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012bff8",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native MIDI event free-list head pointer operand. Allocator pops and follows the link at +0x5c.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_free_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012ce52",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native MIDI held-note free-list head pointer operand. The MIDI task allocates on note-on and follows the link at +0x14.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_hold_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 10
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012d56e",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native MIDI event task mailbox address operand. A 64-entry ring backs audition notes.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_mail_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 10
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4011f5a0",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native note-announcement mailbox pointer operand. A 16-entry ring backs its queued messages.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.note_mail_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 12
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
       ],
       "was": []
     },
@@ -26711,7 +27320,7 @@
       "name": "midi"
     },
     {
-      "count": 105,
+      "count": 114,
       "cpu": "cf",
       "file": "devices/fw/instrument-src.toml",
       "meaning": "parameter and FX pages",
@@ -26779,6 +27388,13 @@
       "file": "devices/fw/text.toml",
       "meaning": "fonts and text drawing",
       "name": "text"
+    },
+    {
+      "count": 10,
+      "cpu": "cf",
+      "file": "devices/fw/track-keys.toml",
+      "meaning": "",
+      "name": "track_keys"
     },
     {
       "count": 12,

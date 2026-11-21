@@ -63,6 +63,8 @@
         "{workspaceRoot}/config/emulator.json",
         "{workspaceRoot}/devices/*.toml",
         "{workspaceRoot}/modules/core/runtime/vectors/**/*",
+        "{workspaceRoot}/modules/core/adapters/track-keyboard/src/**/*",
+        "{workspaceRoot}/modules/core/adapters/track-keyboard/tests/**/*",
         "{workspaceRoot}/devices/ports/*.toml",
         "{workspaceRoot}/modules/core/runtime/tests/lfo/lfo-fit.ts",
         {

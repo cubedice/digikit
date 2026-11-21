@@ -235,6 +235,12 @@ static int group_has(uint32_t pitch)
             return 1;
     return 0;
 }
+extern int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
+    __attribute__((weak));
+extern int tk_panel_off(uint32_t key) __attribute__((weak));
+extern void tk_panel_cancel(void) __attribute__((weak));
+extern void tk_panel_focus(uint32_t track) __attribute__((weak));
+
 static void panel_play(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch,
                        uint32_t velocity)
 {
@@ -261,6 +267,14 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
                           : 0;
     int canopy = object && ip_panel_track_type(object) == type && key < 16 &&
                  ip_panel_active(word(view, 0xa0));
+    if (!canopy && ip_panel_active(word(view, 0xa0))) {
+        if (recording(view)) {
+            if (tk_panel_cancel)
+                tk_panel_cancel();
+        } else if (tk_panel_on && tk_panel_on(key, track, pitch, velocity)) {
+            return;
+        }
+    }
     if (canopy && recording(view)) {
         uint32_t seq = word(view, 0x98);
         ++ip_panel_recorded;
@@ -291,6 +305,8 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
 }
 void ip_panel_off(uint8_t *view, uint32_t key)
 {
+    if (tk_panel_off && tk_panel_off(key))
+        return;
     /* Consume tombstones even after track/machine/mode changes. Stock owns
      * its own vector and still receives releases for non-CANOPY auditions. */
     if (key < 16) {
@@ -518,6 +534,9 @@ static void step_commits(void)
 }
 void ip_panel_update(uint8_t *view)
 {
+    if (tk_panel_focus)
+        tk_panel_focus(ip_panel_active(word(view, 0xa0)) ? ip_panel_selected_track(word(view, 0xa0))
+                                                         : IP_NONE);
     uint32_t step_track;
     /* KEYBOARD is only held during step entry: keep the entered notes. */
     if (panel_view == view && step_recording(view, &step_track) && step_track == panel_track)
@@ -535,6 +554,8 @@ void ip_panel_update(uint8_t *view)
 void ip_panel_toggle(uint32_t manager)
 {
     ip_panel_stock_toggle(manager);
+    if (tk_panel_cancel && !ip_panel_active(manager))
+        tk_panel_cancel();
     /* KeyboardView is retained when the main controller toggles KEYBOARD.
      * Its detach callback therefore cannot be the only release boundary. */
     if (panel_view && !ip_panel_active(manager)) {
@@ -587,6 +608,8 @@ uint32_t ip_panel_key_event(uint8_t *view, uint8_t *event)
 }
 void ip_panel_detach(uint8_t *view, uint8_t *manager)
 {
+    if (tk_panel_cancel)
+        tk_panel_cancel();
     if (panel_view == view) {
         mi_panel_release();
         rec_release_all();

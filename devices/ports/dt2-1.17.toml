@@ -5356,3 +5356,193 @@ mode = "before"
 name = "cf.page.hook.phrase_led_set"
 site = "cf.page.site.phrase_led_set"
 mode = "before"
+
+[[anchor]]
+name = "cf.page.site.track_trig_key_slot"
+cpu = "cf"
+kind = "code"
+addr = 0x401f94e8
+len = 4
+sha256 = "3ed8621daf8119dc42a7340f3fe87d666243062aa05f69e69cdf7e358740dbe0"
+mark = "D"
+rule = "fw/track-trig:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.track_trig_draw_slot"
+cpu = "cf"
+kind = "code"
+addr = 0x401f94f0
+len = 4
+sha256 = "a74d2baf1cba11b5a9dd1292e7301ebfe8c3f50d6793b1e21b3ec53dd96ed50c"
+mark = "D"
+rule = "fw/track-trig:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.track_trig_turn_slot"
+cpu = "cf"
+kind = "code"
+addr = 0x401f9524
+len = 4
+sha256 = "0ce302c70f92ce53ebd93586e38d9a968ba11efa955ea80a9d2665f606842f09"
+mark = "D"
+rule = "fw/track-trig:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.track_trig_parameter_slot"
+cpu = "cf"
+kind = "code"
+addr = 0x401f959c
+len = 4
+sha256 = "165cd62331a4379d2bd21a71aa261baa98c9f00eedc6111f1a89a1eae9f162bd"
+mark = "D"
+rule = "fw/track-trig:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.track_trig_turn_interface_slot"
+cpu = "cf"
+kind = "code"
+addr = 0x401f95e0
+len = 4
+sha256 = "846488226118a1bf934c87f990d337925f3ed756380c876ba9777fceaac58377"
+mark = "D"
+rule = "fw/track-trig:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.track_trig_stock_key"
+cpu = "cf"
+kind = "code"
+addr = 0x4007302c
+len = 6
+sha256 = "54be4b72635e35b25d2efc24fdf04adf2db64387d45c46da306f6caef4b8116a"
+mark = "D"
+rule = "fw/track-trig:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.track_trig_stock_draw"
+cpu = "cf"
+kind = "code"
+addr = 0x40073264
+len = 6
+sha256 = "7574badcad1b415b98018ea49b8de23a849eb0358d41c87027e21f1a9d6f2510"
+mark = "D"
+rule = "fw/track-trig:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.track_trig_stock_turn"
+cpu = "cf"
+kind = "code"
+addr = 0x4007375a
+len = 6
+sha256 = "ae9abab072b1198239d071981ce9269f3960a365a516602dbe0acb3f7502b332"
+mark = "D"
+rule = "fw/track-trig:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.track_trig_stock_parameter"
+cpu = "cf"
+kind = "code"
+addr = 0x40069628
+len = 6
+sha256 = "37c074d00df58d4313ecc5cd33646920417a8d19d377c6028bf2bafa37305d50"
+mark = "D"
+rule = "fw/track-trig:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.fn.note_on"
+cpu = "cf"
+kind = "code"
+addr = 0x401200f2
+len = 6
+sha256 = "73cc28b6c3040e36489699d5d081bf8b983f04b3c9a85f97c6662a18b1b0dfbb"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.fn.note_off"
+cpu = "cf"
+kind = "code"
+addr = 0x401204ec
+len = 6
+sha256 = "0e8771e484abdcffe941991efb3b00e4634a6d31e6b781e9cc137f290b0a29a7"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.fn.midi_mode"
+cpu = "cf"
+kind = "code"
+addr = 0x4002f3b0
+len = 6
+sha256 = "2d1cb993e1925a790b34aa8221c1a3cda99b4507ed33ba9a5e79df7fd578f03d"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.fn.midi_channel"
+cpu = "cf"
+kind = "code"
+addr = 0x4012bcba
+len = 6
+sha256 = "634d9eb2733999e0dfdab7941c52ea926c2ca1a4e06431728267a558779486de"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.site.note_mail_lit"
+cpu = "cf"
+kind = "code"
+addr = 0x4011f5a0
+len = 4
+sha256 = "7c328c40128b9b75f7116f850419b727008309e6de8bf0ccd960c31b9d379500"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.site.midi_free_lit"
+cpu = "cf"
+kind = "code"
+addr = 0x4012bff8
+len = 4
+sha256 = "ada3d437e6b58ab7e9442a58a7daf4b23e3df51c11d4dd98b35232a73ff2390b"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.site.midi_mail_lit"
+cpu = "cf"
+kind = "code"
+addr = 0x4012d56e
+len = 4
+sha256 = "e37898e0add768d1e3ad477638082a0be4c4a6efda6f2bf27aaa6f369b170a06"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.site.midi_hold_lit"
+cpu = "cf"
+kind = "code"
+addr = 0x4012ce52
+len = 4
+sha256 = "4bf1941e92b7033d2559fcad608c78bba7d15c41910dbe43dfa9fe3f8831108a"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.fn.midi_dispatch"
+cpu = "cf"
+kind = "code"
+addr = 0x4012d4ce
+len = 6
+sha256 = "8d1503d38f264a9b0be0700a53c1e2e61354803cc529f54092a511ae826bca7f"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.fn.audio_dispatch"
+cpu = "cf"
+kind = "code"
+addr = 0x40139b54
+len = 6
+sha256 = "b8257edfadd3cb3738049b9849bce547b5a39bb113af271145945f49885ccd01"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"

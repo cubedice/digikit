@@ -97,6 +97,25 @@ and sample card. No firmware build in this document authorizes a device flash.
 
 ## Keyboard modes and shape memory
 
+The experimental track keyboard can request the CANOPY carrier with
+`instrument_track_keyboard_claim(track, 1)`. The first call requests the
+ordinary generation reset and reconfiguration. Once a call returns 1, the
+owner can send resolved note-on and note-off events with
+`instrument_track_keyboard_note(track, token, pitch, velocity, on, lane)`.
+Send ascending nonzero onset tokens and pair releases by the original token
+and pitch. The bounded queue reserves a release slot for every accepted onset
+and discards stale events on a track, epoch or generation change. Calling
+`instrument_track_keyboard_claim(track, 0)` returns ownership to CANOPY.
+
+This seam uses all four foreground voices for the external owner. Direct
+notes and serial arp notes use the same bank. A separate blend lane and
+shared trig-lock translation are pending. The carrier masks its own strum and
+arp after applying locks and modulation for an externally claimed track. Its
+saved values are preserved. The opt-in SRC layout can show SOUND with TUNE,
+WAVE, main timbre, DRFT, MIX and LEV, followed by TONE and ENV for wavetable
+or FM. Until there is an admitted owner for the whole workflow, the normal
+four-page SRC layout continues to own keyboard and arp controls.
+
 Stage 2 keeps the sine renderer and adds a bounded ColdFire musical mapper to
 `core/instrument-play`. Open DIGIKIT > CANOPY > INPUT and explicitly enable routing.
 PLAY admits four foreground notes, preserving pitch, octave, velocity and token

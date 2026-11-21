@@ -508,35 +508,42 @@
   },
   {
    "addend": 0,
-   "offset": 120,
+   "offset": 14,
+   "section": ".text.pp_record_frames",
+   "symbol": ".sec..text.pp_selected_tempo",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 108,
    "section": ".text.pp_record_frames",
    "symbol": ".sec..bss.valid",
    "type": "cf.32"
   },
   {
    "addend": 24,
-   "offset": 128,
+   "offset": 116,
    "section": ".text.pp_record_frames",
    "symbol": ".sec..bss.pp_position",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 134,
+   "offset": 122,
    "section": ".text.pp_record_frames",
    "symbol": ".sec..text.pp_record_steps",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 148,
+   "offset": 136,
    "section": ".text.pp_record_frames",
    "symbol": ".sec..text.pattern_period",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 168,
+   "offset": 156,
    "section": ".text.pp_record_frames",
    "symbol": ".sec..bss.committed_period",
    "type": "cf.32"
@@ -1021,10 +1028,17 @@
   },
   {
    "align": 2,
-   "hex": "4feffff048d7003c2639402b67fc2003242f00140680fffff1f00c8000007e90630c42804cd7003c4fef00104e754a826738e58a203c01499700220253810c81000003ff62dc4a8067dae9882803e28c4c4300014c4300004c0218004c020800d2844c431001d08160ba283943164f947001b08466264ab900000000671e2a39000000004eb90000000024004a8466162f054eb900000000588f609e2a394316501c428460de203900000000608c",
+   "hex": "2039402b67fc22000681fffff1f00c8100007e90630242804e75",
+   "kind": "text",
+   "name": ".text.pp_selected_tempo",
+   "size": 26
+  },
+  {
+   "align": 2,
+   "hex": "4feffff048d7003c242f00144eb90000000026004a806700008a4a826740e58a203c01499700220253810c81000003ff62704a80671ee9882803e28c4c4300014c4300004c0218004c020800d2844c431001d0814cd7003c4fef00104e75283943164f947001b08466264ab900000000671e2a39000000004eb90000000024004a8466162f054eb900000000588f60962a394316501c428460de2039000000006084428060ae",
    "kind": "text",
    "name": ".text.pp_record_frames",
-   "size": 174
+   "size": 166
   },
   {
    "align": 2,
@@ -1244,7 +1258,7 @@
    "size": 448
   }
  ],
- "source_sha256": "73b0a4be5c59b0fda50dbc6c4b99b23ecbee94317926a31564889cec94cb9e57",
+ "source_sha256": "5ffa18c22df6b34986eda082d77743bcdd35f0d769388845dbafe357a80c6fdf",
  "symbols": [
   {
    "global": false,
@@ -1470,6 +1484,12 @@
   },
   {
    "global": false,
+   "name": ".sec..text.pp_selected_tempo",
+   "section": ".text.pp_selected_tempo",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "bar_frames.5",
    "section": ".bss.bar_frames.5",
    "value": 0
@@ -1650,6 +1670,12 @@
   },
   {
    "global": true,
+   "name": "pp_selected_tempo",
+   "section": ".text.pp_selected_tempo",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "pp_seq_hook",
    "section": ".text",
    "value": 40
@@ -1791,8 +1817,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "686",
-  "isa_check": "be29ab667663b4d170e3adc9598b9a792d577c0a9de0c2b70b4d2ab94fd1565a",
+  "instructions_redecoded": "692",
+  "isa_check": "c9667e1de79382519769f8966f0cac9eae43c1eb00a4d445d1b4bd3fdc3bc312",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

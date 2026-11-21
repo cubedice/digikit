@@ -64,7 +64,35 @@ int main(int argc, char **argv)
     uint32_t token = cs_context(&ui, 0, 12, 1, 0, KB_ROOT, 0, 0, 0), id = 255;
     ui.pending = 0;
     ui.native_tune_pending = 0; /* Fixture starts after an applied initial bank. */
-    if (!strcmp(scenario, "lock-indicators")) {
+    if (!strcmp(scenario, "shared-keyboard-layout")) {
+        uint32_t old = token;
+        uint32_t revision = ui.revision;
+        cs_track_keyboard(&ui, 1);
+        assert(cs_pages(&ui) == 1 && ui.revision == revision && ui.value[CP_CHORD] == 0);
+        assert(cs_edit(&ui, old, 1, 4, 0, &id) == CS_STALE);
+        assert(cs_mapped_control(&ui, 1) == CS_WAVE);
+        assert(cs_mapped_control(&ui, 2) == CP_COLOR);
+        token = ui.token;
+        assert(cs_edit(&ui, token, 1, 8, 0, &id) == CS_EDIT && id == CS_WAVE);
+        assert(cs_pages(&ui) == 3 && cs_mapped_control(&ui, 2) == CP_WT_POS);
+        token = cs_context(&ui, 0, 12, 1, 1, KB_ROOT, 0, 0, 0);
+        assert(cs_mapped_control(&ui, 0) == CP_WT_DEPTH);
+        assert(cs_edit(&ui, token, 1, 1, 0, &id) == CS_EDIT && id == CP_WT_RATE);
+        assert(ui.value[CP_WT_RATE] == 11);
+        assert(cs_mapped_control(&ui, 5) == CS_NONE);
+        /* Held WAVE changes the effective bank, not the page count. */
+        CsState locked = ui;
+        locked.metadata &= ~0x30u;
+        assert(cs_pages(&locked) == 3 && cs_mapped_control(&locked, 0) == CS_NONE);
+        cs_metadata(&ui, 3u << 4);
+        assert(cs_mapped_control(&ui, 0) == CP_FM_ALG);
+        cs_context(&ui, 0, 12, 1, 2, KB_ROOT, 0, 0, 0);
+        assert(cs_mapped_control(&ui, 0) == CP_FM_ATTACK);
+        assert(cs_mapped_control(&ui, 6) == CS_NONE);
+        cs_track_keyboard(&ui, 0);
+        assert(cs_pages(&ui) == 4 && cs_mapped_control(&ui, 1) == CP_CHORD);
+        assert(ui.wavetable[CP_WT_RATE - 16] == 11);
+    } else if (!strcmp(scenario, "lock-indicators")) {
         IlpSnapshot locks = {0};
         locks.count = 3;
         locks.pair[0].id = 2;

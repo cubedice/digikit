@@ -829,6 +829,37 @@ def test_local_arp_configuration_reaches_the_process_callback(playback):
     assert get("_iv_revision") == [1]
 
 
+def test_shared_keyboard_runs_resolved_notes_without_local_arp_or_strum(playback):
+    call, _, get, reset, configure, events, _ = playback
+    assert reset() == 1
+    call(0)
+    values = wavetable_fm_bank(family=0)
+    values[0] |= 0x4000
+    values[6] = 127
+    values[15] = 450
+    values[20] = (values[20] & 0xFFFF0000) | 300
+    values[21] = (values[21] & 0xFFFF0000) | 127
+    assert configure(values=values) == 1
+    call(0)
+    assert events([(10, 1, 60, 100, 2, 0), (11, 1, 64, 100, 2, 0)]) == 1
+    call(0)
+    state = get("_test_state", 144)
+    assert {10, 11} <= {state[i] for i in range(0, 32, 8)}
+    assert state[136] == 0
+    assert any(get("_iv_output", 32))
+    assert get("_iv_controls", 32) == values
+    active = get("_iv_shared_controls", 32)
+    assert active[0] == (values[0] & ~0x4000)
+    assert active[6] == active[15] == 0
+    assert active[20] == (values[20] & 0xFFFF0000)
+    assert active[21] == (values[21] & 0xFFFF0000)
+    assert events([(10, 2, 60, 0, 2, 0)]) == 1
+    call(0)
+    after_release = get("_test_state", 32)
+    owner = next(i for i in range(0, 32, 8) if after_release[i] == 11)
+    assert after_release[owner + 1] == 1
+
+
 def test_extended_movement_configuration_is_applied_atomically(playback):
     call, _, get, reset, configure, events, _ = playback
     reset()

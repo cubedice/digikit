@@ -183,16 +183,23 @@ u32 pp_record_steps(void)
 {
     int master = (short)U16(0x43165130);
     u32 steps = U32(0x43164f94) == 1 && valid ? pp_position[8]
-                : master > 1 ? (u32)master : own_length(pp_current_pattern());
+                : master > 1                  ? (u32)master
+                                              : own_length(pp_current_pattern());
     return steps <= 1024 ? steps : 0;
 }
 
 /* Duration for a recorder at the current tempo. Bars 0 means the playing
  * pattern (loaded pattern while stopped). Return 0 for an unknown cycle. */
-u32 pp_record_frames(u32 bars)
+u32 pp_selected_tempo(void)
 {
     u32 tempo = U32(0x402b67fc);
-    if (tempo < 3600 || tempo > 36000)
+    return tempo >= 3600 && tempo <= 36000 ? tempo : 0;
+}
+
+u32 pp_record_frames(u32 bars)
+{
+    u32 tempo = pp_selected_tempo();
+    if (!tempo)
         return 0;
     u32 steps = bars * 4, ticks = 21600000;
     if (!bars) {

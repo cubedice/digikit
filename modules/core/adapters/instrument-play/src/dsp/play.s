@@ -36,6 +36,7 @@
 .EXTERN _pattern_position_info;
 .EXTERN _pattern_clock_info;
 .EXTERN _iv_modulate;
+.EXTERN _iv_shared_keyboard;
 .EXTERN _iv_mod_status;
 .EXTERN _iv_mod_ready;
 
@@ -175,6 +176,7 @@ _iv_no_status:
     R4 = PASS R0;
     R8 = DM(_iv_control_count);
     CALL _iv_modulate;
+    CALL _iv_shared_keyboard;
     I0 = _iv_input;
     DM(9, I0) = R0;
     R0 = DM(_iv_control_count);
@@ -1024,7 +1026,16 @@ _iv_native_config:
     R1 = FEXT R0 BY 0:8;
     COMP(R1, R2);
     IF NE JUMP _iv_no;
-    R1 = FEXT R0 BY 10:5; // bit 15 is the CF focus flag, removed below
+    // bit 15 is the CF focus flag. CPSB also accepts bit 14 for an
+    // externally scheduled keyboard; neither reaches the machine callback.
+    R1 = 11;
+    COMP(R2, R1);
+    IF EQ JUMP _iv_native_flags_shared;
+    R1 = FEXT R0 BY 10:5;
+    JUMP _iv_native_flags_ready;
+_iv_native_flags_shared:
+    R1 = FEXT R0 BY 10:4;
+_iv_native_flags_ready:
     R1 = PASS R1;
     IF NE JUMP _iv_no;
     R1 = LSHIFT R0 BY -16;

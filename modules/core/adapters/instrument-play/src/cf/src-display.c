@@ -438,6 +438,7 @@ void cv_build_owner(CvDisplay *d, const CsState *s, const IsStatus *status, uint
                 status->generation == s->generation && status->mode == owner_mode;
     d->page = (uint8_t)page;
     d->family = (uint8_t)((s->metadata >> 4) & 3);
+    d->shared_keyboard = (uint8_t)cs_shared_keyboard(s);
     d->fresh = (uint8_t)fresh;
     d->focus_id = cs_focused(s, now) ? s->focus_id : CS_NONE;
     for (uint32_t i = 0; i < CP_CONTROLS; ++i)
