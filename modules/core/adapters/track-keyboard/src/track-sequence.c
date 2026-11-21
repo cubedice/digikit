@@ -13,15 +13,23 @@ typedef struct {
 } TkSequenceQueue;
 
 typedef struct {
+    uintptr_t address;
+    const TkPattern *pattern;
+    TkSequencePolicy policy;
+} TkPreparedSequence;
+
+typedef struct {
     TkSequenceQueue queues[TK_SEQUENCE_SOURCES];
     TkSequenceAudio audio[TK_TRACKS];
+    TkPreparedSequence prepared[2][TK_SEQUENCE_TARGETS];
 } TkSequenceState;
 
 static TkSequenceState *state;
 static TkSequencePolicy policies[2];
 static volatile uint8_t active_policy;
+static volatile uint8_t active_prepared;
 static volatile uintptr_t active_pattern;
-static uint16_t sounding;
+static uintptr_t track_pattern[TK_TRACKS];
 static bool was_running;
 
 static void publish(void)
@@ -54,19 +62,60 @@ const TkSequenceAudio *tk_sequence_audio(uint8_t track)
     return &state->audio[track];
 }
 
+static const TkPreparedSequence *prepared_pattern(uintptr_t address)
+{
+    if (!state || !address)
+        return NULL;
+    const TkPreparedSequence *targets = state->prepared[active_prepared];
+    for (unsigned i = 0; i < TK_SEQUENCE_TARGETS; ++i)
+        if (targets[i].address == address)
+            return &targets[i];
+    return NULL;
+}
+
+void tk_sequence_prepare(const TkSequenceTarget *targets, unsigned count)
+{
+    if (!state)
+        return;
+    uint8_t bank = active_prepared ^ 1u;
+    TkPreparedSequence *prepared = state->prepared[bank];
+    unsigned used = 0;
+    for (unsigned i = 0; i < count && used < TK_SEQUENCE_TARGETS; ++i) {
+        const TkSequenceTarget *target = &targets[i];
+        if (!target->address || !target->pattern || target->blocked_tracks == UINT16_MAX)
+            continue;
+        TkPreparedSequence *entry = &prepared[used++];
+        entry->address = target->address;
+        entry->pattern = target->pattern;
+        tk_service_sequence_policy_for(&entry->policy, target->pattern);
+        for (uint8_t track = 0; track < TK_TRACKS; ++track)
+            if (target->blocked_tracks & (UINT32_C(1) << track))
+                memset(entry->policy.steps[track], 0, sizeof entry->policy.steps[track]);
+    }
+    for (unsigned i = used; i < TK_SEQUENCE_TARGETS; ++i)
+        prepared[i].address = 0;
+    publish();
+    active_prepared = bank;
+}
+
 bool tk_sequence_wants_seed(uintptr_t pattern, uint8_t track, uint8_t step)
 {
-    if (!pattern || active_pattern != pattern || track >= TK_TRACKS || step >= TK_STEPS)
+    if (!pattern || track >= TK_TRACKS || step >= TK_STEPS)
         return false;
-    uint8_t bank = active_policy;
-    return (policies[bank].steps[track][step / 32] & (UINT32_C(1) << (step % 32))) != 0;
+    if (active_pattern == pattern)
+        return (policies[active_policy].steps[track][step / 32] & (UINT32_C(1) << (step % 32))) !=
+               0;
+    const TkPreparedSequence *prepared = prepared_pattern(pattern);
+    if (!prepared)
+        return false;
+    return (prepared->policy.steps[track][step / 32] & (UINT32_C(1) << (step % 32))) != 0;
 }
 
 bool tk_sequence_offer(uint8_t source, const TkSequenceHit *hit)
 {
     if (!state || source >= TK_SEQUENCE_SOURCES || !hit || !hit->pattern ||
-        active_pattern != hit->pattern || hit->track >= TK_TRACKS || hit->step >= TK_STEPS ||
-        hit->count > TK_NOTES)
+        (active_pattern != hit->pattern && !prepared_pattern(hit->pattern)) ||
+        hit->track >= TK_TRACKS || hit->step >= TK_STEPS || hit->count > TK_NOTES)
         return false;
     for (uint8_t i = 0; i < hit->count; ++i)
         if (hit->notes[i].pitch > 127 || !hit->notes[i].velocity || hit->notes[i].velocity > 127 ||
@@ -83,14 +132,35 @@ bool tk_sequence_offer(uint8_t source, const TkSequenceHit *hit)
     return true;
 }
 
-static void accept(const TkSequenceHit *hit, const uint32_t lengths[128])
+static void end(uint8_t track)
 {
-    uint16_t mask = (uint16_t)(UINT32_C(1) << hit->track);
+    if (track_pattern[track])
+        tk_service_end_seed(track);
+    track_pattern[track] = 0;
+    state->audio[track].sound = 0;
+}
+
+static void accept(const TkSequenceHit *hit, const TkPattern *prepared, const uint32_t lengths[128])
+{
+    if (hit->parameters_only) {
+        TkSequenceAudio *audio = &state->audio[hit->track];
+        if (track_pattern[hit->track] != hit->pattern || !audio->sound)
+            return;
+        for (uint8_t i = 0; i < hit->audio.count; ++i) {
+            TkSequenceLock lock = hit->audio.locks[i];
+            uint8_t index = 0;
+            while (index < audio->count && audio->locks[index].parameter != lock.parameter)
+                ++index;
+            if (index < TK_NATIVE_LOCKS_PER_HIT) {
+                audio->locks[index] = lock;
+                if (index == audio->count)
+                    ++audio->count;
+            }
+        }
+        return;
+    }
     if (!hit->count) {
-        if (sounding & mask)
-            tk_service_end_seed(hit->track);
-        sounding &= (uint16_t)~mask;
-        state->audio[hit->track].sound = 0;
+        end(hit->track);
         return;
     }
     TkSeed seed = {
@@ -107,10 +177,12 @@ static void accept(const TkSequenceHit *hit, const uint32_t lengths[128])
             (TkSeedNote){.pitch = note.pitch, .velocity = note.velocity, .gate_ticks = duration};
     }
     state->audio[hit->track] = hit->audio;
-    if (tk_service_seed(hit->track, hit->step, &seed))
-        sounding |= mask;
+    bool started = prepared ? tk_service_seed_for(prepared, hit->track, hit->step, &seed)
+                            : tk_service_seed(hit->track, hit->step, &seed);
+    if (started)
+        track_pattern[hit->track] = hit->pattern;
     else
-        state->audio[hit->track].sound = 0;
+        end(hit->track);
 }
 
 void tk_sequence_drain(uintptr_t pattern, bool running, uint16_t muted, const uint32_t lengths[128])
@@ -120,25 +192,30 @@ void tk_sequence_drain(uintptr_t pattern, bool running, uint16_t muted, const ui
     bool changed = active_pattern != pattern;
     if (changed || (was_running && !running))
         active_pattern = 0;
-    if (changed || !running)
+    if (!running) {
+        tk_sequence_prepare(NULL, 0);
         muted = UINT16_MAX;
+    }
     was_running = running;
-    uint16_t departing = muted & sounding;
     for (uint8_t track = 0; track < TK_TRACKS; ++track)
-        if (departing & (UINT32_C(1) << track)) {
-            tk_service_end_seed(track);
-            state->audio[track].sound = 0;
-        }
-    sounding &= (uint16_t)~departing;
+        if (track_pattern[track] &&
+            ((muted & (UINT32_C(1) << track)) || (changed && track_pattern[track] != pattern)))
+            end(track);
     for (uint8_t source = 0; source < TK_SEQUENCE_SOURCES; ++source) {
         TkSequenceQueue *q = &state->queues[source];
         uint8_t end = q->write;
         while (q->read != end) {
             uint8_t read = q->read;
             const TkSequenceHit *hit = &q->hits[read];
-            if (running && hit->pattern == pattern &&
-                !(muted & (UINT32_C(1) << hit->track)))
-                accept(hit, lengths);
+            if (running && !(muted & (UINT32_C(1) << hit->track))) {
+                if (hit->pattern == pattern) {
+                    accept(hit, NULL, lengths);
+                } else {
+                    const TkPreparedSequence *prepared = prepared_pattern(hit->pattern);
+                    if (prepared)
+                        accept(hit, prepared->pattern, lengths);
+                }
+            }
             publish();
             q->read = (uint8_t)((read + 1u) % QUEUE_CAPACITY);
         }

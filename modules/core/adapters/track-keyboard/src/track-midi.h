@@ -14,6 +14,7 @@ int tk_midi_native_action(uint32_t track, uint32_t channel, uint32_t note, uint3
                           uint32_t on);
 
 /* UI task. Publish eligible tracks and dispatch events to the service. */
+bool tk_midi_init(void);
 void tk_midi_poll(void);
 void tk_midi_reset(void);
 void tk_midi_cancel_track(uint8_t track);

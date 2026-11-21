@@ -3,6 +3,7 @@
 #include "track-service.h"
 
 bool tk_canopy_is_owner(uint8_t track, int type);
+bool tk_canopy_routed(uint8_t track);
 void tk_canopy_backend(TkTrackBackend *out);
 void tk_canopy_sync(uint8_t track, bool active, uint32_t pattern);
 

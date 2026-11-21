@@ -108,6 +108,12 @@ TkPattern *tk_pattern_fw_get(uint32_t address)
     return result;
 }
 
+const TkPattern *tk_pattern_fw_existing(uint32_t address)
+{
+    int index = slot(address);
+    return index < 0 ? NULL : pattern_slots[index];
+}
+
 uint32_t tk_pattern_fw_revision(void)
 {
     return revision;
@@ -163,7 +169,19 @@ void tk_pattern_fw_reset(uint32_t address)
     dkrt_irq_restore(sr);
 }
 
-static uint32_t track_base(uint32_t address, uint8_t *track)
+TkPattern *tk_pattern_fw_peek(uint32_t address)
+{
+    return lookup(address, PATTERN_BYTES);
+}
+
+void tk_pattern_fw_changed(void)
+{
+    uint32_t sr = dkrt_irq_mask();
+    ++revision;
+    dkrt_irq_restore(sr);
+}
+
+uint32_t tk_pattern_fw_track_base(uint32_t address, uint8_t *track)
 {
     uint32_t offset = address - PROJECT_PATTERNS;
     if (offset >= PATTERNS * PATTERN_BYTES)
@@ -178,7 +196,7 @@ static uint32_t track_base(uint32_t address, uint8_t *track)
 void tk_pattern_fw_track_clear(uint32_t track, uint32_t address)
 {
     uint8_t known;
-    uint32_t base = track_base(address, &known);
+    uint32_t base = tk_pattern_fw_track_base(address, &known);
     if (!base || known != track)
         return;
     uint32_t sr = dkrt_irq_mask();
@@ -193,8 +211,8 @@ void tk_pattern_fw_track_clear(uint32_t track, uint32_t address)
 static void track_copied(uint32_t to, uint32_t from)
 {
     uint8_t source_track = 0, target_track = 0;
-    uint32_t source_base = track_base(from, &source_track);
-    uint32_t target_base = track_base(to, &target_track);
+    uint32_t source_base = tk_pattern_fw_track_base(from, &source_track);
+    uint32_t target_base = tk_pattern_fw_track_base(to, &target_track);
     if (!source_base && !target_base)
         return;
     const TkPattern *src =

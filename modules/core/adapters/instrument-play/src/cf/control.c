@@ -352,10 +352,12 @@ int instrument_track_keyboard_lanes(uint32_t track, uint32_t lanes)
     return ready;
 }
 
-int instrument_track_keyboard_note(uint32_t track, uint32_t token, uint32_t pitch,
-                                   uint32_t velocity, uint32_t on, uint32_t lane)
+int instrument_track_keyboard_locked_note(uint32_t track, uint32_t token, uint32_t pitch,
+                                          uint32_t velocity, uint32_t on, uint32_t lane,
+                                          const IsnSnapshot *snapshot)
 {
-    if (track >= MI_TRACKS || lane > 1 || on > 1)
+    if (track >= MI_TRACKS || lane > 1 || on > 1 ||
+        (snapshot && (snapshot->count > MI_LOCKS || snapshot->lanes > 3)))
         return 0;
     uint32_t sr = dkrt_irq_mask();
     IpInst *in = for_track(track);
@@ -369,11 +371,17 @@ int instrument_track_keyboard_note(uint32_t track, uint32_t token, uint32_t pitc
         IsnQueue *q = &shared_notes[IDX(in)];
         isn_sync(q, track, mi_ledger.epoch, mi_ledger.generations[track]);
         result = track_keyboard_lanes[track]
-                     ? isn_submit_voice(q, token, pitch, velocity, on != 0, (int)lane)
+                     ? isn_submit_locked(q, token, pitch, velocity, on != 0, (int)lane, snapshot)
                      : isn_submit(q, token, pitch, velocity, on != 0);
     }
     dkrt_irq_restore(sr);
     return result;
+}
+
+int instrument_track_keyboard_note(uint32_t track, uint32_t token, uint32_t pitch,
+                                   uint32_t velocity, uint32_t on, uint32_t lane)
+{
+    return instrument_track_keyboard_locked_note(track, token, pitch, velocity, on, lane, 0);
 }
 static void suspend_all(void)
 {
@@ -442,7 +450,7 @@ int instrument_keyboard_events(uint32_t track, uint32_t epoch, uint32_t generati
 }
 /* Capture the requested source's remembered bank with the trig, before any
  * later UI edit or packet retry. Caller already holds the MIDI IRQ lock. */
-int instrument_lock_source(uint32_t track, uint32_t wave, uint16_t out[MI_SOURCE_VALUES])
+int instrument_lock_source(uint32_t track, uint32_t wave, uint16_t *out)
 {
     IpInst *in = for_track(track);
     if (!in || !out || wave > 7)
@@ -808,8 +816,8 @@ uint32_t instrument_src_context(uint32_t track, uint32_t page, int visible)
     if (for_track(track) == in) {
         CsState *s = SRC(in);
         cs_track_keyboard(s, track_keyboard_src[track]);
-        s->layout = (uint8_t)((s->layout & ~CS_LAYOUT_LANES) |
-                              (uint32_t)track_keyboard_lanes[track] << 3);
+        s->layout =
+            (uint8_t)((s->layout & ~CS_LAYOUT_LANES) | (uint32_t)track_keyboard_lanes[track] << 3);
     }
     uint32_t generation = track < MI_TRACKS ? mi_ledger.generations[track] : 0;
     uint32_t token = cs_context(

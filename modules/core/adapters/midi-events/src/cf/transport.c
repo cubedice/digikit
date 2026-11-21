@@ -82,13 +82,11 @@ const uint32_t *mt_prepare(MiTransport *t, MiLedger *m, const uint32_t revisions
 const uint32_t *mt_prepare_mapped(MiTransport *t, MiLedger *m, const uint32_t revisions[MI_TRACKS],
                                   uint32_t block, MtTransform transform)
 {
-    uint32_t i, kind, track, count = 0, consumed = 0, lock_valid = 0, lock_count = 0,
-                             source_valid = 0;
+    uint32_t i, kind, track, count = 0, consumed = 0;
+    const MiEvent *snapshot = 0;
     /* The batch buffers are static, not locals: 17 events are 1224 bytes, and this runs in the block interrupt on the stack
      * of whichever task it interrupted. The firmware's timer task has 2048 bytes; with these as locals the interrupt reached
      * 1860 of them (docs/findings/353). The one caller is the frame callback of the block interrupt, which does not nest. */
-    static uint16_t locks[MI_LOCKS];
-    static uint16_t source[MI_SOURCE_VALUES];
     static MiEvent first, input[8], output[8];
     first.sequence = 0;
     first.track = 0;
@@ -151,6 +149,7 @@ const uint32_t *mt_prepare_mapped(MiTransport *t, MiLedger *m, const uint32_t re
             if (result) {
                 kind = MT_EVENTS;
                 count = (uint32_t)result;
+                snapshot = &output[0];
                 goto assemble;
             }
         }
@@ -174,23 +173,8 @@ const uint32_t *mt_prepare_mapped(MiTransport *t, MiLedger *m, const uint32_t re
                 break;
             mi_event_copy(&input[consumed++], e);
         }
-        if (consumed && input[0].lock_valid) {
-            if (input[0].lock_count > MI_LOCKS) {
-                mapping_fault(m, track);
-                return 0;
-            }
-            lock_valid = 1;
-            /* IDs from MI_LOCK_MAPPER_FIRST are for the CF mapper only
-             * (recorded chord notes); the DSP sideband never carries them. */
-            for (i = 0; i < input[0].lock_count; ++i)
-                if ((input[0].locks[i] >> 10) < MI_LOCK_MAPPER_FIRST)
-                    locks[lock_count++] = input[0].locks[i];
-            if (input[0].source_valid) {
-                source_valid = 1;
-                for (i = 0; i < MI_SOURCE_VALUES; ++i)
-                    source[i] = input[0].source[i];
-            }
-        }
+        if (consumed)
+            snapshot = &input[0];
         if (transform) {
             int result = transform(track, m->epoch, m->generations[track], input, consumed, output);
             if (result < 0 || result > 8) {
@@ -210,13 +194,22 @@ const uint32_t *mt_prepare_mapped(MiTransport *t, MiLedger *m, const uint32_t re
         }
     }
 assemble:
-    t->lock_valid = lock_valid;
-    t->lock_count = lock_count;
-    for (i = 0; i < MI_LOCKS; ++i)
-        t->locks[i] = i < lock_count ? locks[i] : 0;
-    t->source_valid = source_valid;
-    for (i = 0; i < MI_SOURCE_VALUES; ++i)
-        t->source[i] = source_valid ? source[i] : 0;
+    t->lock_valid = snapshot && snapshot->lock_valid;
+    t->lock_count = t->shared_lanes = t->source_valid = 0;
+    if (t->lock_valid) {
+        if (snapshot->lock_count > MI_LOCKS || snapshot->shared_lanes > 3) {
+            mapping_fault(m, track);
+            return 0;
+        }
+        /* Recorded chord offsets are consumed by the CF scheduler. */
+        for (i = 0; i < snapshot->lock_count; ++i)
+            if ((snapshot->locks[i] >> 10) < MI_LOCK_MAPPER_FIRST)
+                t->locks[t->lock_count++] = snapshot->locks[i];
+        t->shared_lanes = snapshot->shared_lanes;
+        t->source_valid = snapshot->source_valid;
+        for (i = 0; t->source_valid && i < MI_SOURCE_VALUES; ++i)
+            t->source[i] = snapshot->source[i];
+    }
     for (i = 0; i < MT_WORDS; ++i)
         t->words[i] = 0;
     t->words[0] = MT_MAGIC;
@@ -271,7 +264,7 @@ assemble:
                 return 0;
             }
     }
-    t->words[1] = kind | (count << 8) | (lock_valid ? MT_LOCKED : 0u);
+    t->words[1] = kind | (count << 8) | (t->lock_valid ? MT_LOCKED : 0u);
     t->words[7] = mt_check(t->words);
     t->pending = kind;
     t->count = consumed;

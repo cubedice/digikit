@@ -2,6 +2,7 @@
 #define DK_TRACK_POOL_H
 
 #include "track-config.h"
+bool tk_pool_link_init(void);
 
 enum { TK_POOL_WORDS = 4, TK_POOL_UNBOUND = TK_TRACKS };
 
@@ -51,7 +52,7 @@ const uint16_t *tk_pool_link_project(const uint16_t *src);
 void tk_pool_link_reply(const volatile uint16_t *reply);
 uint16_t tk_pool_link_quiet(uint32_t *observed, uint32_t *now);
 
-/* DTII 1.17 UI task. Only stopped ONESHOT groups may claim helpers. */
+/* DTII 1.17 UI task. A stopped stock sample track may request helpers. */
 void tk_pool_fw_update(uint32_t pattern, const TkTrackConfig config[TK_TRACKS], bool can_admit);
 uint16_t tk_pool_fw_eligible(uint8_t owner);
 int tk_pool_fw_owner(uint8_t track);

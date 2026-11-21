@@ -12,14 +12,18 @@ int instrument_src_shared_keyboard(uint32_t track);
  * after it has taken ownership of the old KEYS and ARP controls. */
 void instrument_src_track_keyboard(uint32_t track, int active);
 /* UI/task boundary. Claim returns ready only after the carrier reset/config
- * completes. Direct and arpeggiated output share the four foreground voices;
- * this endpoint does not advertise a separate blend lane. Tokens stay unique
- * during a claim. On handoff or transport faults the carrier resets them. */
+ * completes. Tokens stay unique during a claim. On handoff or transport
+ * faults the carrier resets them. */
 /* Bit 0 enables the pad lane, bit 1 enables the timed lane. */
 int instrument_track_keyboard_lanes(uint32_t track, uint32_t lanes);
 int instrument_track_keyboard_claim(uint32_t track, int active);
 int instrument_track_keyboard_note(uint32_t track, uint32_t token, uint32_t pitch,
                                    uint32_t velocity, uint32_t on, uint32_t lane);
+struct IsnSnapshot;
+int instrument_track_keyboard_locked_note(uint32_t track, uint32_t token, uint32_t pitch,
+                                          uint32_t velocity, uint32_t on, uint32_t lane,
+                                          const struct IsnSnapshot *snapshot);
+int instrument_lock_source(uint32_t track, uint32_t wave, uint16_t *out);
 /* Read the current Sound without changing its origin or ownership. */
 int instrument_track_keyboard_legacy(uint32_t track, CpPreset *out);
 uint32_t instrument_src_tune_page(uint32_t page);

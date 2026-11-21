@@ -3,7 +3,19 @@
 
 static volatile uint32_t maps[2][TK_POOL_WORDS];
 static volatile unsigned published;
+#ifdef __m68k__
+extern void *tk_fw_alloc(uint32_t size);
+static uint16_t *projected;
+
+bool tk_pool_link_init(void)
+{
+    if (!projected)
+        projected = tk_fw_alloc(TK_POOL_NATIVE_HALFWORDS * sizeof(*projected));
+    return projected != NULL;
+}
+#else
 static uint16_t projected[TK_POOL_NATIVE_HALFWORDS];
+#endif
 static volatile uint32_t reply_time, reply_clock, reply_word;
 
 void tk_pool_publish_frame(const TkPool *pool)
@@ -43,7 +55,7 @@ const uint16_t *tk_pool_link_project(const uint16_t *src)
     uint32_t snapshot[TK_POOL_WORDS];
     for (unsigned word = 0; word < TK_POOL_WORDS; ++word)
         snapshot[word] = packet[word];
-    memcpy(projected, src, sizeof projected);
+    memcpy(projected, src, TK_POOL_NATIVE_HALFWORDS * sizeof(*projected));
     return tk_pool_project_frame(projected, snapshot) ? projected : src;
 }
 

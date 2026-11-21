@@ -5923,6 +5923,46 @@ mark = "D"
 rule = "fw/track-sequence:cf_window_hash"
 
 [[anchor]]
+name = "cf.track_sequence.site.queued_lit"
+cpu = "cf"
+kind = "code"
+addr = 0x400d863a
+len = 4
+sha256 = "1624dc3f8afd7813d2449937ac800d8e57bba2543384179e2f3898749b8bb5be"
+mark = "D"
+rule = "fw/track-sequence:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_sequence.site.direct_target_lit"
+cpu = "cf"
+kind = "code"
+addr = 0x400d7ce2
+len = 4
+sha256 = "46f964d187b0e588ace1cafb53f416bf4d43f9d858d3f40192f8f1a5e3f42e64"
+mark = "D"
+rule = "fw/track-sequence:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_sequence.site.direct_request_lit"
+cpu = "cf"
+kind = "code"
+addr = 0x400d7c72
+len = 4
+sha256 = "9212a5994a78a5a7154ac8663ee98e73854c899b45207205cc0a1feba1813730"
+mark = "D"
+rule = "fw/track-sequence:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_sequence.site.direct_countdown_lit"
+cpu = "cf"
+kind = "code"
+addr = 0x400d7ca8
+len = 4
+sha256 = "ec1e32351ddb47269940d62dc0ec66147848bf4e158fc4cfffdff12866ab0f42"
+mark = "D"
+rule = "fw/track-sequence:cf_window_hash"
+
+[[anchor]]
 name = "cf.project.site.pattern_load"
 cpu = "cf"
 kind = "code"
@@ -5984,6 +6024,130 @@ rule = "fw/project:cf_window_hash"
 name = "cf.project.hook.track_clear"
 site = "cf.project.site.track_clear"
 mode = "before"
+
+[[anchor]]
+name = "cf.track_steps.site.copy"
+cpu = "cf"
+kind = "code"
+addr = 0x4005889a
+len = 8
+sha256 = "74c815be25e554835b3b514942da870c1b9c1d9a8aaaf82d5a113e31f7f467cb"
+mark = "D"
+rule = "fw/track-steps:cf_window_hash"
+
+[[hook]]
+name = "cf.track_steps.hook.copy"
+site = "cf.track_steps.site.copy"
+mode = "replace"
+clobbers = ["d0-d1", "a0-a1", "ccr"]
+
+[[anchor]]
+name = "cf.track_steps.site.paste"
+cpu = "cf"
+kind = "code"
+addr = 0x4005a1e0
+len = 8
+sha256 = "a258430f740995ff16e1e7bcec372cbc2b0684ced0cf9a814b0baed152efbbf1"
+mark = "D"
+rule = "fw/track-steps:cf_window_hash"
+
+[[hook]]
+name = "cf.track_steps.hook.paste"
+site = "cf.track_steps.site.paste"
+mode = "replace"
+clobbers = ["d0-d1", "a0-a1", "ccr"]
+
+[[anchor]]
+name = "cf.track_steps.site.clear"
+cpu = "cf"
+kind = "code"
+addr = 0x400594c8
+len = 8
+sha256 = "4997842f477c42235c625d7ba815c13fc3a07a0c57335d4361007e1288ff0795"
+mark = "D"
+rule = "fw/track-steps:cf_window_hash"
+
+[[hook]]
+name = "cf.track_steps.hook.clear"
+site = "cf.track_steps.site.clear"
+mode = "replace"
+clobbers = ["d0-d1", "a0-a1", "ccr"]
+
+[[anchor]]
+name = "cf.track_steps.site.toggle"
+cpu = "cf"
+kind = "code"
+addr = 0x40059988
+len = 8
+sha256 = "efa23c0a55aebcd8ffb29c8ba97d3970d8e88ed9c16272d7b5ea0b4e8309ecf5"
+mark = "D"
+rule = "fw/track-steps:cf_window_hash"
+
+[[hook]]
+name = "cf.track_steps.hook.toggle"
+site = "cf.track_steps.site.toggle"
+mode = "replace"
+clobbers = ["d0-d1", "a0-a1", "ccr"]
+
+[[anchor]]
+name = "cf.track_steps.fn.clipboard"
+cpu = "cf"
+kind = "code"
+addr = 0x4019e794
+len = 6
+sha256 = "d5e849e080cf2582e0d808e063832d28a8ea8b386e6f18ccd3dcefbd569aa39c"
+mark = "D"
+rule = "fw/track-steps:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_steps.fn.clip_get"
+cpu = "cf"
+kind = "code"
+addr = 0x401ac546
+len = 6
+sha256 = "83943a457e502817312a444113fe15cd721607c35c36eeef2965c26186506801"
+mark = "D"
+rule = "fw/track-steps:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_steps.fn.ref_copy"
+cpu = "cf"
+kind = "code"
+addr = 0x40198cc0
+len = 6
+sha256 = "d041a7bd351b11986e1510b0eda2405838eed0662366652bdcc06618c5c5c210"
+mark = "D"
+rule = "fw/track-steps:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_steps.fn.ref_drop"
+cpu = "cf"
+kind = "code"
+addr = 0x40197d26
+len = 6
+sha256 = "4e0e30df82a3ac62f8edab8cfc6aeba71ecf4bdd2b091ec3d1c8240a4c6ef143"
+mark = "D"
+rule = "fw/track-steps:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_steps.fn.clip_set"
+cpu = "cf"
+kind = "code"
+addr = 0x401102c2
+len = 6
+sha256 = "a28b3bdd990d405d8632045c881ea31dbffdfeeffea704796b2898fdec3b8766"
+mark = "D"
+rule = "fw/track-steps:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_steps.fn.length"
+cpu = "cf"
+kind = "code"
+addr = 0x40054a6c
+len = 6
+sha256 = "a28b3bdd990d405d8632045c881ea31dbffdfeeffea704796b2898fdec3b8766"
+mark = "D"
+rule = "fw/track-steps:cf_window_hash"
 
 [[hook]]
 name = "cf.track_sequence.hook.audio_due"

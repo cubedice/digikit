@@ -48,6 +48,25 @@ STOP, or PLAY copies, pastes, or clears the active track sequence.
 Repeat the paste or clear gesture to undo it.
 [Digitakt II manual, sections 6.4 and 17](https://www.elektron.se/wp-content/uploads/2025/06/Digitakt-2-User-Manual_ENG_OS1.15_250625.pdf)
 
+## Individual trigs [D]
+
+The held-TRIG commands enter the native copy, paste, and clear routines
+at `0x4005889a`, `0x4005a1e0`, and `0x400594c8`. The shared clipboard
+retains the native clipboard reference and stores the step locks and
+learned or recorded note recipe in the order accepted by the native
+copy. Paste follows the native step offset and track-length wrap,
+and keeps the original clipboard spacing for later pastes. It checks
+for overlapping destinations and enough lock and note slots for the
+whole edit before applying the native paste.
+
+Repeat the paste or clear gesture on the same selected trig or trigs
+within four seconds to undo a shared attachment edit. The adapter
+uses the native clipboard routines to capture and restore the touched
+trigs. It checks the current native fields, shared attachments, and
+pattern revision before restoring. Native clipboard and undo slots
+retain their own entries during the snapshot. Tapping an active note
+trig off clears its attachment through the note flag setter hook.
+
 ## Emulator results [D]
 
 The manual storage test on a disposable DTII 1.17 card set A01 and A02
@@ -59,15 +78,18 @@ patterns recovered their separate keyboard routing settings.
 The undo check reads the pasted value before pressing another panel key.
 An intervening panel gesture can reset the stock clipboard undo context.
 
-The track clipboard test copied T2 in grid recording, pasted to T1, then
-undid the paste. It also cleared T1 and restored it with stock undo. T2
-kept its own settings throughout.
-
 The track clipboard test selected track 2, enabled ARP, placed a native trig,
 and copied its sequence in grid recording. Pasting onto track 1 applied the
 saved ARP state. Undo restored the destination state. Clear and undo clear
 changed track 1 while track 2 retained its setting.
 [Track clipboard emulator test](../../modules/core/adapters/track-keyboard/tests/track-clipboard.manual.device.test.ts)
+
+The individual trig fixture copied an ARP lock to another trig,
+undid the paste to recover its previous GATE lock, cleared and
+restored the source lock, and deleted the source without disturbing
+the destination. A two-trig clipboard wrapped from step 16 to step 2
+and undid both changes, then pasted to steps 6 and 8 using the same
+source spacing. [Trig clipboard emulator test](../../modules/core/adapters/track-keyboard/tests/trig-clipboard.manual.device.test.ts)
 
 The portable tests also cover ordered note durations, selector state,
 corrupt payload rejection, preserving populated native lock records and

@@ -56,6 +56,104 @@ static bool belongs(uint16_t index, uint8_t track)
     return index > track * TK_STEPS && index <= (track + 1u) * TK_STEPS;
 }
 
+bool tk_pattern_step_attachment(const TkPattern *p, uint8_t track, uint8_t step,
+                                TkStepAttachment *out)
+{
+    memset(out, 0, sizeof *out);
+    if (!p || track >= TK_TRACKS || step >= TK_STEPS)
+        return false;
+    uint16_t index = (uint16_t)(track * TK_STEPS + step + 1u);
+    for (unsigned i = 0; i < TK_LOCKED_STEPS; ++i)
+        if (p->steps[i].index == index) {
+            out->locks = p->steps[i].locks;
+            break;
+        }
+    const TkSeed *seed = tk_pattern_seed(p, track, step);
+    if (seed)
+        out->seed = *seed;
+    return out->locks.mask || out->seed.count;
+}
+
+static bool selected(uint16_t index, uint8_t track, const uint32_t positions[4])
+{
+    unsigned step = index - (unsigned)track * TK_STEPS - 1u;
+    return step < TK_STEPS && (positions[step / 32u] & (1u << (step % 32u)));
+}
+
+enum TkAttachmentResult tk_pattern_attach_batch(TkPattern *p, uint8_t track, const int32_t *steps,
+                                                uint8_t count, const TkStepAttachment *attachments,
+                                                bool commit, bool *changed)
+{
+    if (track >= TK_TRACKS || !steps || !count || count > TK_STEPS)
+        return TK_ATTACH_INVALID;
+    uint32_t positions[4] = {0};
+    unsigned needed_locks = 0, needed_seeds = 0;
+    for (uint8_t i = 0; i < count; ++i) {
+        if (steps[i] < 0 || steps[i] >= TK_STEPS)
+            return TK_ATTACH_INVALID;
+        unsigned step = (unsigned)steps[i];
+        uint32_t bit = 1u << (step % 32u);
+        if (attachments && (positions[step / 32u] & bit))
+            return TK_ATTACH_INVALID;
+        positions[step / 32u] |= bit;
+        if (attachments) {
+            needed_locks += attachments[i].locks.mask != 0;
+            needed_seeds += attachments[i].seed.count != 0;
+        }
+    }
+    *changed = false;
+    if (!p)
+        return needed_locks || needed_seeds ? TK_ATTACH_FULL : TK_ATTACH_OK;
+    unsigned available_locks = 0, available_seeds = 0;
+    for (unsigned i = 0; i < TK_LOCKED_STEPS; ++i) {
+        uint16_t index = p->steps[i].index;
+        bool replace = selected(index, track, positions);
+        available_locks += !index || replace;
+        *changed |= replace;
+    }
+    for (unsigned i = 0; i < TK_RECORDED_STEPS; ++i) {
+        uint16_t index = p->seeds[i].index;
+        bool replace = selected(index, track, positions);
+        available_seeds += !index || replace;
+        *changed |= replace;
+    }
+    if (available_locks < needed_locks || available_seeds < needed_seeds)
+        return TK_ATTACH_FULL;
+    *changed |= needed_locks || needed_seeds;
+    if (!commit || !*changed)
+        return TK_ATTACH_OK;
+
+    for (unsigned i = 0; i < TK_LOCKED_STEPS; ++i)
+        if (selected(p->steps[i].index, track, positions))
+            p->steps[i].index = 0;
+    for (unsigned i = 0; i < TK_RECORDED_STEPS; ++i)
+        if (selected(p->seeds[i].index, track, positions))
+            p->seeds[i].index = 0;
+    for (unsigned i = 0, lock = 0, seed = 0; attachments && i < count; ++i) {
+        uint16_t index = (uint16_t)(track * TK_STEPS + steps[i] + 1u);
+        if (attachments[i].locks.mask) {
+            while (p->steps[lock].index)
+                ++lock;
+            p->steps[lock++] = (TkPatternStep){.index = index, .locks = attachments[i].locks};
+        }
+        if (attachments[i].seed.count) {
+            while (p->seeds[seed].index)
+                ++seed;
+            p->seeds[seed++] = (TkPatternSeed){.index = index, .seed = attachments[i].seed};
+        }
+    }
+    return TK_ATTACH_OK;
+}
+
+bool tk_pattern_set_attachment(TkPattern *p, uint8_t track, uint8_t step,
+                               const TkStepAttachment *attachment)
+{
+    int32_t address = step;
+    bool changed;
+    return tk_pattern_attach_batch(p, track, &address, 1, attachment, true, &changed) ==
+           TK_ATTACH_OK;
+}
+
 bool tk_pattern_has_track(const TkPattern *p, uint8_t track)
 {
     if (!p || track >= TK_TRACKS)

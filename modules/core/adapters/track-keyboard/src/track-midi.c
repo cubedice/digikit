@@ -4,6 +4,7 @@
 
 #include "track-midi.h"
 #include "track-capture.h"
+#include "track-memory.h"
 #include "track-service.h"
 
 extern uint32_t dkrt_blocks(void);
@@ -41,7 +42,24 @@ typedef struct {
 } NativeBypass;
 
 static MidiEvent queue[MIDI_QUEUE];
+#ifdef __m68k__
+extern void *tk_fw_alloc(uint32_t size);
+static MidiKey *keys;
+
+bool tk_midi_init(void)
+{
+    if (keys)
+        return true;
+    MidiKey *memory = tk_fw_alloc(sizeof(*memory) * MIDI_KEYS);
+    if (!memory)
+        return false;
+    memset(memory, 0, sizeof(*memory) * MIDI_KEYS);
+    keys = memory;
+    return true;
+}
+#else
 static MidiKey keys[MIDI_KEYS];
+#endif
 static NativeBypass bypass[2];
 /* Overflowing or deliberately canceled strikes still own their next release. */
 static uint32_t ignored[MIDI_ROUTES][4];

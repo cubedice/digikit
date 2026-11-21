@@ -90,13 +90,16 @@ or long tail requires the separate idle witness below.
 
 ## POOL admission and playback [D]
 
-The interactive pool admits stock ONESHOT owners and helpers. POOL checks the
-selected pattern, the live working pattern, the track machine, stock note and
-trig data, and per-step parameter-lock counts. Start a new lease while stopped
-with the recorder idle. An eligible group can retain the same lease when the
-same pattern starts playing. A conflicting assignment fails as a group. The
-reserved destination uses the owner's active Sound and native lock context.
-Its original kit and pattern records are left intact.
+The interactive pool admits the stock ONESHOT, WERP, STRETCH, REPITCH, GRID and
+SLICE machines. POOL checks the selected pattern, the live working pattern,
+the track machine, stock note and trig data, and per-step parameter-lock
+counts. Start a new lease while stopped with the recorder idle. An eligible
+group can retain the same lease when the same pattern starts playing. A
+machine change on the owner or a helper retires the old lease. A conflicting
+assignment fails as a group. The first onset goes to the owner and installs
+its Sound and locks. The remaining destinations use the owner's active Sound
+and native lock context. Each helper retains its original kit and pattern
+records.
 
 Closing the native onset gate begins a 24-block guard, after which admission
 requires the requested physical track to have no queued note, no generated
@@ -125,13 +128,51 @@ pitches again used distinct native physical destinations. The test uses panel
 input and reads the resulting device state. It passed again in 77.90 seconds
 with the final trigless-lock exclusion. The earlier coupled measurements
 establish stereo PCM, owner LEVEL, reverb and independent release.
+The expanded panel test then changed the owner's machine to WERP and verified
+that the saved helper request was admitted again. Both physical destinations
+carried the WERP machine type during the next held chord.
+
+The test programmed an owner trig, started PLAY and observed it enter the
+shared sequence. The stock FUNC+TRIG shortcut set the native mute bit. Over
+the next 2.5 emulated seconds, the sequence hit count stayed fixed while a
+new keyboard chord dispatched on the owner and the helper. The expanded
+test passed in 106.25 seconds including fixture setup. [Elektron Digitakt II manual, §8.5.3 and Mutes shortcuts](https://www.elektron.se/wp-content/uploads/2025/06/Digitakt-2-User-Manual_ENG_OS1.15_250625.pdf)
+
+## Stock sample machine qualification [D]
+
+In the coupled 1.17 emulator, each stock sample machine produced bit-identical
+stereo PCM when the owner Sound was sent to the owner or to a borrowed
+destination and folded back. The paired renders covered C4 and G4. WERP and
+STRETCH rendered separate pitch peaks when three notes were played together.
+Changing BARS changed the rendered PCM in WERP, STRETCH and REPITCH while
+preserving the owner/helper match. REPITCH's default BARS gave the same
+timing-derived pitch for the two notes at both destinations. GRID changed
+the played region when its slice setting changed. SLICE transferred the
+owner's manually defined slice table, with each tested note selecting the same
+start and end on either destination. A native note-off on one of three
+physical voices reduced group RMS for each machine while the sibling gates
+stayed held. Long BARS kept STRETCH and REPITCH sample cursors busy after their
+isolated AMP output fell silent, so quiet-bus evidence alone cannot retire
+these leases.
+
+A separate paired render ran all 16 native audio tracks over 781 blocks
+per case and enabled the fold for three helpers. The average increase in
+active SHARC instructions per block was 1,325 for ONESHOT, 1,325 for WERP,
+1,331 for STRETCH, 1,382 for REPITCH, 1,361 for GRID and 1,354 for SLICE.
+These counts measure the fold in isolation on the coupled emulator.
 
 ## Remaining qualification [O]
 
-Validate WERP, STRETCH, REPITCH, SLICE, GRID and stateful machines before
-expanding audio-track eligibility. Check audible owner mute, pan, filter,
-overdrive and compressor routing with the device's controls. Qualification
-also needs a maximum-group DSP budget and a higher-load capture covering
-PRISM, RELAY, USB audio, rapid group changes, and pattern changes that
-immediately need a retiring helper. The pool keeps the old route during a
-sustained loop for as long as its cursor remains active.
+POOL excludes dynamic machines. CANOPY has its internal allocator. RELAY's
+recorder, tape handles, playback lanes and undo positions are keyed by physical
+track, so forwarding the owner's Sound to another physical voice would still
+address that destination's tape state. RELAY needs shared read access to the
+owner's tape with independent playback heads and a single recorder before it
+can borrow voices. Other dynamic machines need their own playback and quiet
+contracts.
+
+Check audible owner mute, pan, filter, overdrive and compressor routing with
+the device's controls. The physical DSP budget still needs a capture covering
+PRISM, RELAY, USB audio, rapid group changes and pattern changes that
+immediately need a retiring helper. A sustained loop keeps its old route
+for as long as its cursor remains active.

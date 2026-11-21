@@ -6,9 +6,10 @@
 typedef struct {
     TkState live;
     TkState sequence;
+    const TkPattern *sequence_pattern;
     TkTrackBackend backend;
     uint8_t number;
-    bool live_has_priority;
+    bool live_has_priority, early_seed;
 } TkTrack;
 
 #ifdef __m68k__
@@ -222,8 +223,7 @@ static void configure_live(TkTrack *t)
     if (p) {
         const TkTrackConfig *config = &p->tracks[t->number];
         TkParams params = config->params;
-        if (!resolve_mode(t, config, &params))
-            tk_panic(&t->live);
+        resolve_mode(t, config, &params);
         tk_configure(&t->live, &params, &config->user);
     } else {
         tk_panic(&t->live);
@@ -248,7 +248,11 @@ void tk_service_play_pattern(const TkPattern *p)
         TkTrack *t = &tracks[i];
         if (!t->backend.output)
             continue;
-        tk_stop_transport(&t->sequence);
+        /* A negative-microtimed destination note can already be sounding. */
+        if (!p || t->sequence_pattern != p) {
+            tk_stop_transport(&t->sequence);
+            t->sequence_pattern = NULL;
+        }
         configure_live(t);
         live_priority(t, t->live.key_count != 0);
     }
@@ -315,6 +319,7 @@ void tk_service_cancel_track(uint8_t track)
     TkTrack *t = &tracks[track];
     tk_panic(&t->live);
     tk_stop_transport(&t->sequence);
+    t->sequence_pattern = NULL;
     live_priority(t, false);
 }
 
@@ -326,6 +331,7 @@ bool tk_service_enabled(uint8_t track)
 
 static void live_priority(TkTrack *t, bool muting)
 {
+    muting = muting && (t->live.params.arp || t->live.params.poly);
     if (t->live_has_priority == muting)
         return;
     t->live_has_priority = muting;
@@ -413,10 +419,9 @@ void tk_service_select_chord(uint8_t track, enum TkChord chord)
     tk_configure(&t->live, &params, &t->live.user);
 }
 
-void tk_service_sequence_policy(TkSequencePolicy *policy)
+void tk_service_sequence_policy_for(TkSequencePolicy *policy, const TkPattern *p)
 {
     memset(policy, 0, sizeof *policy);
-    const TkPattern *p = playing ? playing : editing;
     if (!p)
         return;
     for (uint8_t track = 0; track < TK_TRACKS; ++track) {
@@ -445,15 +450,21 @@ void tk_service_sequence_policy(TkSequencePolicy *policy)
     }
 }
 
-void tk_service_end_seed(uint8_t track)
+void tk_service_sequence_policy(TkSequencePolicy *policy)
 {
-    if (track < TK_TRACKS && tracks[track].backend.output)
-        tk_stop_seed(&tracks[track].sequence);
+    tk_service_sequence_policy_for(policy, playing ? playing : editing);
 }
 
-bool tk_service_seed(uint8_t track, uint8_t step, const TkSeed *seed)
+void tk_service_end_seed(uint8_t track)
 {
-    const TkPattern *p = playing ? playing : editing;
+    if (track < TK_TRACKS && tracks[track].backend.output) {
+        tk_stop_seed(&tracks[track].sequence);
+        tracks[track].sequence_pattern = NULL;
+    }
+}
+
+bool tk_service_seed_for(const TkPattern *p, uint8_t track, uint8_t step, const TkSeed *seed)
+{
     if (!p || track >= TK_TRACKS || step >= TK_STEPS || !available(track))
         return false;
     TkTrack *t = &tracks[track];
@@ -462,10 +473,6 @@ bool tk_service_seed(uint8_t track, uint8_t step, const TkSeed *seed)
     TkRecipe recipe;
     if (!tk_resolve_step(&p->tracks[track], locked, &params, &recipe))
         return false;
-    if (!resolve_mode(t, &p->tracks[track], &params)) {
-        tk_stop_transport(&t->sequence);
-        return false;
-    }
     if (!tk_seed_valid(seed))
         return false;
     TkSeed effective = *seed;
@@ -479,13 +486,32 @@ bool tk_service_seed(uint8_t track, uint8_t step, const TkSeed *seed)
             effective.notes[i] = note;
         }
     }
+    if (t->backend.prepare_seed &&
+        !t->backend.prepare_seed(track, &params, &recipe, &effective, recorded != NULL))
+        return false;
+    if (!resolve_mode(t, &p->tracks[track], &params)) {
+        tk_stop_transport(&t->sequence);
+        t->sequence_pattern = NULL;
+        return false;
+    }
     if (params.chord != TK_CHORD_PLAY)
         effective.count = 1;
-    tk_stop_seed(&t->sequence);
+    if (t->sequence_pattern && t->sequence_pattern != p)
+        tk_stop_transport(&t->sequence);
+    else
+        tk_stop_seed(&t->sequence);
+    t->sequence_pattern = NULL;
     if (!tk_configure(&t->sequence, &params, &recipe) || !tk_seed(&t->sequence, &effective))
         return false;
+    t->sequence_pattern = p;
+    t->early_seed = playing && p != playing;
     tk_tick(&t->sequence, 0, tempo);
     return true;
+}
+
+bool tk_service_seed(uint8_t track, uint8_t step, const TkSeed *seed)
+{
+    return tk_service_seed_for(playing ? playing : editing, track, step, seed);
 }
 
 void tk_service_tick(uint32_t elapsed_us, uint16_t bpm)
@@ -504,10 +530,18 @@ void tk_service_tick(uint32_t elapsed_us, uint16_t bpm)
 void tk_service_boundary(void)
 {
     for (unsigned i = 0; i < TK_TRACKS; ++i) {
-        if (!tracks[i].backend.output)
+        TkTrack *t = &tracks[i];
+        if (!t->backend.output)
             continue;
-        tk_pattern_boundary(&tracks[i].live);
-        tk_pattern_boundary(&tracks[i].sequence);
+        tk_pattern_boundary(&t->live);
+        uint8_t cursor = t->sequence.cursor;
+        tk_pattern_boundary(&t->sequence);
+        if (playing && t->early_seed && t->sequence_pattern == playing) {
+            /* The first destination onset already advanced its traversal.
+             * Record the actual cycle origin without replaying that note. */
+            t->sequence.cursor = cursor;
+            t->early_seed = false;
+        }
     }
 }
 
@@ -519,6 +553,7 @@ void tk_service_stop(void)
             continue;
         tk_stop_transport(&tracks[i].live);
         tk_stop_transport(&tracks[i].sequence);
+        tracks[i].sequence_pattern = NULL;
     }
 }
 
@@ -656,6 +691,7 @@ void tk_notes_learn(TkNotesDraft *draft)
     if (!draft->open)
         return;
     draft->learn = true;
+    draft->clear = false;
     draft->recipe.count = 0;
 }
 
@@ -674,14 +710,16 @@ bool tk_notes_append(TkNotesDraft *draft, uint8_t pitch, uint8_t velocity)
 bool tk_notes_commit(TkNotesDraft *draft)
 {
     if (!draft->open || draft->pattern != editing || draft->edit_generation != edit_generation ||
-        !tk_trig_ready(draft->track) || !draft->recipe.count || !tk_valid_recipe(&draft->recipe))
+        !tk_trig_ready(draft->track) || (!draft->recipe.count && !draft->clear) ||
+        !tk_valid_recipe(&draft->recipe))
         return false;
+    enum TkChord chord = draft->recipe.count ? TK_CHORD_USER : TK_CHORD_PLAY;
     if (draft->step_scope) {
         const TkStepLocks *prev = find_step(editing, draft->track, draft->step);
         TkStepLocks next = prev ? *prev : (TkStepLocks){0};
         next.user = draft->recipe;
         next.mask |= TK_RECIPE_OVERRIDE;
-        if (!tk_set_lock(&next, TK_CTL_CHORD, TK_CHORD_USER) ||
+        if (!tk_set_lock(&next, TK_CTL_CHORD, chord) ||
             !store_step(editing, draft->track, draft->step, &next))
             return false;
         if (!editing->tracks[draft->track].override && tracks[draft->track].backend.inherit) {
@@ -692,7 +730,7 @@ bool tk_notes_commit(TkNotesDraft *draft)
     } else {
         TkTrackConfig config = track_settings(draft->track);
         config.user = draft->recipe;
-        config.params.chord = TK_CHORD_USER;
+        config.params.chord = chord;
         config.override = true;
         apply_track_settings(draft->track, &config);
     }

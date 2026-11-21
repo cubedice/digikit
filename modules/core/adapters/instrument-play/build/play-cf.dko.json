@@ -1670,8 +1670,15 @@
   },
   {
    "addend": 0,
-   "offset": 150,
-   "section": ".text.isn_submit_voice",
+   "offset": 156,
+   "section": ".text.isn_submit_locked",
+   "symbol": "memcpy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 406,
+   "section": ".text.isn_submit_locked",
    "symbol": "memcpy",
    "type": "cf.32"
   },
@@ -3343,100 +3350,107 @@
   },
   {
    "addend": 0,
-   "offset": 46,
-   "section": ".text.instrument_track_keyboard_note",
+   "offset": 72,
+   "section": ".text.instrument_track_keyboard_locked_note",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 52,
-   "section": ".text.instrument_track_keyboard_note",
+   "offset": 78,
+   "section": ".text.instrument_track_keyboard_locked_note",
    "symbol": ".sec..bss.track_keyboard_claim",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 78,
-   "section": ".text.instrument_track_keyboard_note",
+   "offset": 104,
+   "section": ".text.instrument_track_keyboard_locked_note",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 94,
-   "section": ".text.instrument_track_keyboard_note",
+   "offset": 120,
+   "section": ".text.instrument_track_keyboard_locked_note",
    "symbol": ".sec..text.for_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 120,
-   "section": ".text.instrument_track_keyboard_note",
+   "offset": 146,
+   "section": ".text.instrument_track_keyboard_locked_note",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 11552,
-   "offset": 138,
-   "section": ".text.instrument_track_keyboard_note",
+   "offset": 164,
+   "section": ".text.instrument_track_keyboard_locked_note",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 146,
-   "section": ".text.instrument_track_keyboard_note",
+   "offset": 172,
+   "section": ".text.instrument_track_keyboard_locked_note",
    "symbol": ".sec..text.instrument_midi_ready",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 160,
-   "section": ".text.instrument_track_keyboard_note",
+   "offset": 186,
+   "section": ".text.instrument_track_keyboard_locked_note",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 176,
-   "section": ".text.instrument_track_keyboard_note",
+   "offset": 202,
+   "section": ".text.instrument_track_keyboard_locked_note",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 11552,
-   "offset": 182,
-   "section": ".text.instrument_track_keyboard_note",
+   "offset": 208,
+   "section": ".text.instrument_track_keyboard_locked_note",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 204,
-   "section": ".text.instrument_track_keyboard_note",
+   "offset": 230,
+   "section": ".text.instrument_track_keyboard_locked_note",
    "symbol": ".sec..bss.shared_notes",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 214,
-   "section": ".text.instrument_track_keyboard_note",
+   "offset": 240,
+   "section": ".text.instrument_track_keyboard_locked_note",
    "symbol": ".sec..bss.shared_notes",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 280,
-   "section": ".text.instrument_track_keyboard_note",
+   "offset": 306,
+   "section": ".text.instrument_track_keyboard_locked_note",
    "symbol": ".sec..bss.track_keyboard_lanes",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 286,
+   "offset": 312,
+   "section": ".text.instrument_track_keyboard_locked_note",
+   "symbol": ".sec..text.isn_submit_locked",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 28,
    "section": ".text.instrument_track_keyboard_note",
-   "symbol": ".sec..text.isn_submit_voice",
+   "symbol": ".sec..text.instrument_track_keyboard_locked_note",
    "type": "cf.32"
   },
   {
@@ -3455,49 +3469,84 @@
   },
   {
    "addend": 0,
-   "offset": 132,
+   "offset": 134,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..text.for_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 144,
+   "offset": 148,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 158,
+   "offset": 162,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..bss.shared_notes",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 368,
+   "offset": 230,
+   "section": ".text.instrument_keyboard_events",
+   "symbol": ".sec..bss.shared_notes",
+   "type": "cf.32"
+  },
+  {
+   "addend": 84,
+   "offset": 378,
+   "section": ".text.instrument_keyboard_events",
+   "symbol": ".sec..bss.shared_notes",
+   "type": "cf.32"
+  },
+  {
+   "addend": 94,
+   "offset": 412,
+   "section": ".text.instrument_keyboard_events",
+   "symbol": ".sec..bss.shared_notes",
+   "type": "cf.32"
+  },
+  {
+   "addend": 84,
+   "offset": 546,
+   "section": ".text.instrument_keyboard_events",
+   "symbol": ".sec..bss.shared_notes",
+   "type": "cf.32"
+  },
+  {
+   "addend": 94,
+   "offset": 602,
+   "section": ".text.instrument_keyboard_events",
+   "symbol": ".sec..bss.shared_notes",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 714,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..text.for_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 426,
+   "offset": 776,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..bss.keyboard_initialized",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 462,
+   "offset": 812,
    "section": ".text.instrument_keyboard_events",
    "symbol": "kb_reset",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 480,
+   "offset": 830,
    "section": ".text.instrument_keyboard_events",
    "symbol": "kb_process_locked",
    "type": "cf.32"
@@ -8103,16 +8152,23 @@
   },
   {
    "addend": 0,
-   "offset": 176,
-   "section": ".text.ilp_filter_event",
+   "offset": 50,
+   "section": ".text.ilp_event_pair",
    "symbol": "ilp_unpack",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 294,
+   "offset": 150,
    "section": ".text.ilp_filter_event",
-   "symbol": "ilp_unpack",
+   "symbol": ".sec..text.ilp_event_pair",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 240,
+   "section": ".text.ilp_filter_event",
+   "symbol": ".sec..text.ilp_event_pair",
    "type": "cf.32"
   },
   {
@@ -17849,10 +17905,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffe048d70cfc262f0028246f00242a2f002c282f00302c2f0034202f00384a83670000a622058284ee896600009c4a8666000090142a001247ea0014324242023e097f872047600252827382b1c1677e47eb000ab6abfff666ee4a866676740a4c02180041f2180071a8001cb085660000f224280018200953801540001271807e0a4c0708004878000a48720814486800144eb9000000004fef000c60000088367c0005741460360c813fffffff67184a8056c27e1e528175024482efaa848160404a846600ff6e4286600000964a86670000904a806cc8367c00047410b1c162e6b7c867e273aa001147f01802b48b65d6222a000c4a806caeb28364ca2203240320095280154000122541000c720a20084c0108001585081c1584081d2583081425820818102a0011324071aa00103e0973877e14d2804c4718004a8666024284720a7c014c010800258308462582084a1585084e1584084f200952801540001120064cd70cfc4fef00204e75",
+   "hex": "4fefffe048d70cfc282f0028246f00242a2f0030262f00342c2f00384a84670000bc222f002c8285ee89660000b04a83660000a4122a00122e0a06870000001491c8718122406002528830087580b3c26700009006870000000a2647b8abfff666e64a83660000827c0a4c06280041f2280071a8001cb0af002c6600012a2428001853811541001273814c0618004878000a48721814486800144eb9000000004fef000c60000098307c00147e056042b1fc3fffffff67244a8656c2701e52882c0875024482e1aa8486604a420215821850600000ca4a856600ff5a4283600000c64a83670000c04a866cbc307c00107e04b3c262e6be8967e275aa001147f12802b1cb65d6206a000c4a866ca2b1c464ca204424045281154100122009720a4c0108002548000c43f20800136f002f001c1345001d23440014234200181e2a001171aa001073872041d1c0200872144c41080622464a83660242852209703a4c00180041f21800116f002f004e1145004f214400462142004a4a836700ff4e4aaf003c6700ff46487800302f2f0040486800504eb9000000004fef000c528776011547001120034cd70cfc4fef00204e75",
    "kind": "text",
-   "name": ".text.isn_submit_voice",
-   "size": 368
+   "name": ".text.isn_submit_locked",
+   "size": 434
   },
   {
    "align": 2,
@@ -18143,17 +18199,24 @@
   },
   {
    "align": 2,
-   "hex": "4fefffe4700f48d7043c262f0020242f0030b083640c42804cd7043c4fef001c4e75202f00348082e28866ea4eb90000000041f9000000002f4000184a303800661842802f2f00182f4000184eb900000000588f202f001460be2f034eb900000000588f24404a8067d84a8267307a03baaa000866cc41f9000000002003068000000b492f300c002f39000000002f034eb9000000004fef000c4a8067a695fc00000000220ae281203c3c028dba45f9000000002839000000004c010800204022402003068000000b49d1fc0000000020320c0045f900000000b6a80008660cb8b298006606b0a80004672a2a3c3c028dba4c05180043f21800234000044240258418002343000842a9000c3580181042011341001245f90000000043f9000000004a323800671e2f2f00342f022f2f00342f2f00342f2f00342f084e914fef00186000ff004878ffff60e0",
+   "hex": "4fefffe0700f48d70c3c262f0024242f0034266f003cb083640c42804cd70c3c4fef00204e75202f00388082e28866ea4a8b671271ab00017a05ba8065dc71ab0003e48866d44eb90000000041f9000000002f40001c4a303800661842802f2f001c2f40001c4eb900000000588f202f001860a82f034eb900000000588f24404a8067d84a8267307a03baaa000866cc41f9000000002003068000000b492f300c002f39000000002f034eb9000000004fef000c4a8067a695fc00000000220ae281203c9f99dafa45f9000000002839000000004c010800204022402003068000000b49d1fc0000000020320c0045f900000000b6a80008660cb8b298006606b0a80004672a2a3c9f99dafa4c05180043f21800234000044240258418002343000842a9000c3580181042011341001245f90000000043f9000000004a32380067202f0b2f2f003c2f022f2f003c2f2f003c2f2f003c2f084e914fef001c6000fefe42a74878ffff60de",
    "kind": "text",
-   "name": ".text.instrument_track_keyboard_note",
-   "size": 332
+   "name": ".text.instrument_track_keyboard_locked_note",
+   "size": 362
   },
   {
    "align": 2,
-   "hex": "4fefffe0700f48d71c7c262f0024282f00282a2f002c266f0030242f0034246f0038b0836500014641f9000000004a303800670001384a82674641f9000000004a303800660c42804cd71c7c4fef00204e757201b28266ee71ab001057804a8066e471ab0014b28066dc428041f308007246159008005280b28066f0700160c82f034eb900000000588f4a8067b8048000000000e280223c3c028dba47f9000000004c01080041f30800b6a80008660cb8b308006606baa80004671c278408002785080442442783080842b3080c42053784081017850812204a45f30800182a00116700008277aa0010720a538452824c0318002241d3c0d3cb1a29004f2229004a1c29004e20b308002141000842a80004216a0004000c41e800464a0556c154811141ffca72021141ffcb42011141ffcc116a000bffcd1145ffcf1141ffdc1141ffd11141ffd022037a1452814c4518031146ffce15440011720815430010b2826600ff7a20026000fede2f034eb900000000588f4a80662e428042816022260b91c8d68043f2080049f038007846139488005288b88866f05281068000000046b28266da60be4ab90000000067542c0020400686000000d8b8a800d86606baa800dc67102f052f042f064eb9000000004fef000c2f0a2f022f0b2f064eb9000000004fef00104a806f00fe5c45ea001342811483528145ea0046b28066f46000fe4670ff6000fe40",
+   "hex": "42a72f2f001c2f2f001c2f2f001c2f2f001c2f2f001c2f2f001c4eb9000000004fef001c4e75",
+   "kind": "text",
+   "name": ".text.instrument_track_keyboard_note",
+   "size": 38
+  },
+  {
+   "align": 2,
+   "hex": "4fefffc0700f48d77cfc262f0044282f00482a2f004c246f0050242f0054266f0058b083650002a041f9000000004a303800670002924a82674841f9000000004a303800670653824a82670c42804cd77cfc4fef00404e7571aa001057804a8066ea71aa001453804a8066e0428041f208007246179008005280b28066f0700160cc2f034eb900000000588f4a8067bc2200048100000000e281243c9f99dafa43f9000000004c02180041f11800b6a80008660cb8b118006606baa80004671c238318082384180042432385180442b1180c42043383181013841812d3c110290010763a49f900000000204b47f418002f4b003875801f40003142804c0328002442d5c1d5cc162900111f4300356700ff3e14290010783a162a00501f42003675827b834c0248002a4447f51800d7cc182b00501f4400377984b8856600ff104a03677e7faa005177ab0051b6876600fefe1c2a005277ab00527986b6846600feee77aa005379ab0053b8836600fee0360279af00312641d7fc000000004285c8fc003ac6fc003a2f44002cd7c3be856200010c4a06672a2641d7fc00000000d7c34285282f002c2c4b9dc37dd37ff64800bc876600fe98548b52857811b88566e220b41800dbc142a80004dbcc216d004a000821690004000c182d004f56c35483114300107602114300114203114300121169000b0013116d004e0014114400151143002211430017114300164a8066604a2f0037675a780177af00362641d7fc000000004285c6fc003a11440016d7c3182d00511144001779841c2d005211460022116d005300234be80018b885626e4a06671c2641d7fc00000000d7c326080683000000464be800243adbb68d66fa5282781452804c442803142f0035266f003841e80046174300105382174200117408b4806600fe6e6000fdb2282f002c2c4b9dc379f648002f44003c79d3b8af003c6600fd98548b52856000fed03adb528560882f034eb900000000588f4a80663242804281602291c849f2080043f308004bf488007646139588005288b68866f05281068000000046b28266da20026000fd4a4ab90000000067542c0020400686000000d8b8a800d86606baa800dc67102f052f042f064eb9000000004fef000c2f0b2f022f0a2f064eb9000000004fef00104a806f00fd0447eb001342811683528147eb0046b08166f46000fcee70ff6000fce8",
    "kind": "text",
    "name": ".text.instrument_keyboard_events",
-   "size": 522
+   "size": 872
   },
   {
    "align": 2,
@@ -18762,7 +18825,7 @@
    "hex": "",
    "kind": "bss",
    "name": ".bss.shared_notes",
-   "size": 1080
+   "size": 4920
   },
   {
    "align": 1,
@@ -19396,10 +19459,17 @@
   },
   {
    "align": 2,
-   "hex": "4fefffb848d75cfc246f004c202f00502c6f00544a8a67044a8e660c70ff4cd75cfc4fef00484e754a8067f27047b0aa000865e847ea00144282260f280f284b428606830000002c068400000028bcaa00086532280f2a0f4286428306840000002c068500000028bcaa00086500008e254300082cc243ef00304280b480660000de70016098301422000681ffffffe673c1e289670e0680ffffffe171c07202b280653e7f6c00022f032f042f074eb9000000004fef000c4a8067267005b0826700ff5a222f0028428041ef0034b480661852803f810c3041ef002e3f902c3624005286508c6000ff667fd0b28767065888528060d870fe6000ff24301322000681ffffffe673c1e289670e0680ffffffe171c07202b28065187f6b00022f042f052f074eb9000000004fef000c4a806624bc83671e2003e78841f20800315300142003e788316b0002001641eb00042590081852835286508b6000ff0c3ca900043d690006000258895280588e6000ff0c",
+   "hex": "2f02302f000a22000681ffffffe673c1e289670e0680ffffffe171c07202b28065242f2f00142f2f0014756f00162f024eb9000000004fef000c4a8056c071004480241f4e75428060f8",
+   "kind": "text",
+   "name": ".text.ilp_event_pair",
+   "size": 74
+  },
+  {
+   "align": 2,
+   "hex": "4fefffb848d75cfc246f004c202f00502c6f00544a8a67044a8e660c70ff4cd75cfc4fef00484e754a8067f27047b0aa000865e847ea001442822a0f2c0f260b428406850000002c068600000028b8aa000865302a0f2c0f4284428306850000002c068600000028b8aa00086572254300082cc243ef00304280b480660000aa7001609a20437f6800022f052f062f0771d02f004eb9000000004fef00104a8067267005b0826700ff74222f0028428041ef0034b480661652803f810c3041ef002e3f902c3624005284508360807fd0b28767065888528060da70fe6000ff40716b00022f052f062f0071d32f004eb9000000004fef00104a806624b883671e2003e78841f20800315300142003e788316b0002001641eb00042590081852835284508b6000ff423ca900043d690006000258895280588e6000ff40",
    "kind": "text",
    "name": ".text.ilp_filter_event",
-   "size": 370
+   "size": 316
   },
   {
    "align": 2,
@@ -21215,7 +21285,7 @@
    "size": 332
   }
  ],
- "source_sha256": "977f466c6a2d52005054d73a5b395a2c6269568e0ab06409738149e59eaf6daa",
+ "source_sha256": "b531fb239f3981d1046946b7263438b108cbde0a335b7234744c27a5fb897756",
  "symbols": [
   {
    "global": false,
@@ -22959,6 +23029,12 @@
   },
   {
    "global": false,
+   "name": ".sec..text.ilp_event_pair",
+   "section": ".text.ilp_event_pair",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..text.ilp_pack.part.0",
    "section": ".text.ilp_pack.part.0",
    "value": 0
@@ -23021,6 +23097,12 @@
    "global": false,
    "name": ".sec..text.instrument_track_keyboard_claim",
    "section": ".text.instrument_track_keyboard_claim",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.instrument_track_keyboard_locked_note",
+   "section": ".text.instrument_track_keyboard_locked_note",
    "value": 0
   },
   {
@@ -23097,8 +23179,8 @@
   },
   {
    "global": false,
-   "name": ".sec..text.isn_submit_voice",
-   "section": ".text.isn_submit_voice",
+   "name": ".sec..text.isn_submit_locked",
+   "section": ".text.isn_submit_locked",
    "value": 0
   },
   {
@@ -24525,6 +24607,12 @@
   },
   {
    "global": true,
+   "name": "ilp_event_pair",
+   "section": ".text.ilp_event_pair",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "ilp_filter_event",
    "section": ".text.ilp_filter_event",
    "value": 0
@@ -24839,6 +24927,12 @@
    "global": true,
    "name": "instrument_track_keyboard_legacy",
    "section": ".text.instrument_track_keyboard_legacy",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "instrument_track_keyboard_locked_note",
+   "section": ".text.instrument_track_keyboard_locked_note",
    "value": 0
   },
   {
@@ -25833,8 +25927,8 @@
   },
   {
    "global": false,
-   "name": "isn_submit_voice",
-   "section": ".text.isn_submit_voice",
+   "name": "isn_submit_locked",
+   "section": ".text.isn_submit_locked",
    "value": 0
   },
   {
@@ -27480,8 +27574,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "20403",
-  "isa_check": "3ec157f6e01430eec1f9a0f140ff89b51be8929eaa4b2f831798fca9af071680",
+  "instructions_redecoded": "20560",
+  "isa_check": "bd6a24bebd399ebf145d3b0c33f78e529186f43c8e08314b9e2544c3a0c012b0",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

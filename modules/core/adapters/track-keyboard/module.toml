@@ -19,6 +19,7 @@ conflicts = []
 path = "build/track-keyboard.dko.json"
 sources = ["src/track-keyboard.c", "src/track-canopy.c", "src/track-config.c", "src/track-service.c", "src/track-runtime.c", "src/track-native.c", "src/track-native-fw.c", "src/trig-view.c",
   "src/track-pattern.c", "src/track-pattern-fw.c", "src/track-record.c", "src/track-pattern-hooks.s",
+  "src/track-step-fw.c", "src/track-step-hooks.s",
   "src/track-midi.c", "src/track-midi-fw.c", "src/track-midi-hooks.s",
   "src/track-capture.c", "src/track-sequence.c", "src/track-sequence-fw.c", "src/track-sequence-hooks.s",
   "src/track-pool.c", "src/track-pool-fw.c", "src/track-pool-admission.c", "src/track-pool-hooks.s"]
@@ -67,6 +68,17 @@ tk_pattern_save_resume = "hook.cf.project.site.pattern_save.return"
 tk_pattern_load_resume = "hook.cf.project.site.pattern_load.return"
 tk_pattern_reset_resume = "hook.cf.project.site.pattern_reset.return"
 tk_pattern_track_clear_tail = "hook.cf.project.site.track_clear.tail"
+
+tk_step_copy_resume = "hook.cf.track_steps.site.copy.return"
+tk_step_paste_resume = "hook.cf.track_steps.site.paste.return"
+tk_step_clear_resume = "hook.cf.track_steps.site.clear.return"
+tk_step_toggle_resume = "hook.cf.track_steps.site.toggle.return"
+tk_stock_step_clipboard = "cf.track_steps.fn.clipboard"
+tk_step_clip_get_entry = "cf.track_steps.fn.clip_get"
+tk_stock_step_ref_copy = "cf.track_steps.fn.ref_copy"
+tk_stock_step_ref_drop = "cf.track_steps.fn.ref_drop"
+tk_stock_step_clip_set = "cf.track_steps.fn.clip_set"
+tk_stock_step_length = "cf.track_steps.fn.length"
 tk_seq_audio_stage_resume = "cf.track_sequence.site.audio_stage_resume"
 tk_seq_midi_stage_resume = "cf.track_sequence.site.midi_stage_resume"
 tk_seq_audio_builder_return = "cf.track_sequence.site.audio_builder_return"
@@ -91,6 +103,10 @@ tk_seq_audio_event_queue = "cf.track_sequence.site.audio_event_queue"
 tk_seq_audio_track_sound = "cf.track_sequence.site.audio_track_sound"
 tk_seq_capture_clock = "cf.track_sequence.site.capture_clock"
 tk_seq_capture_live_resume = "cf.track_sequence.site.capture_live_resume"
+tk_seq_queued_lit = "cf.track_sequence.site.queued_lit"
+tk_seq_direct_target_lit = "cf.track_sequence.site.direct_target_lit"
+tk_seq_direct_request_lit = "cf.track_sequence.site.direct_request_lit"
+tk_seq_direct_countdown_lit = "cf.track_sequence.site.direct_countdown_lit"
 
 [[object]]
 path = "build/track-pool-dsp.dko.json"
@@ -166,6 +182,38 @@ to = "tk_pattern_track_clear_entry"
 
 [[claim]]
 resource = "cf.project.site.track_clear"
+
+[[op]]
+op = "hook"
+hook = "cf.track_steps.hook.copy"
+to = "tk_step_copy"
+
+[[claim]]
+resource = "cf.track_steps.site.copy"
+
+[[op]]
+op = "hook"
+hook = "cf.track_steps.hook.paste"
+to = "tk_step_paste"
+
+[[claim]]
+resource = "cf.track_steps.site.paste"
+
+[[op]]
+op = "hook"
+hook = "cf.track_steps.hook.clear"
+to = "tk_step_clear"
+
+[[claim]]
+resource = "cf.track_steps.site.clear"
+
+[[op]]
+op = "hook"
+hook = "cf.track_steps.hook.toggle"
+to = "tk_step_toggle"
+
+[[claim]]
+resource = "cf.track_steps.site.toggle"
 
 [[op]]
 op = "hook"

@@ -20,7 +20,7 @@ static int note_packet(const uint32_t *p)
 int ml_encode(const MiTransport *t, const uint32_t *packet, uint32_t out[ML_WORDS])
 {
     if (!t || !out || packet != t->words || !t->pending || !t->lock_valid ||
-        t->lock_count > MI_LOCKS || !note_packet(packet))
+        t->lock_count > MI_LOCKS || t->shared_lanes > 3 || !note_packet(packet))
         return 0;
     uint32_t wave = 0;
     for (uint32_t i = 0; i < t->lock_count; ++i)
@@ -35,7 +35,8 @@ int ml_encode(const MiTransport *t, const uint32_t *packet, uint32_t out[ML_WORD
     w[1] = packet[2];
     w[2] = packet[3];
     w[3] = packet[9];
-    w[4] = ((packet[10] >> 10) & 15u) | (t->lock_count << 8) | (wave << 16);
+    w[4] =
+        ((packet[10] >> 10) & 15u) | (t->shared_lanes << 4) | (t->lock_count << 8) | (wave << 16);
     for (uint32_t i = 0; i < 3; ++i) {
         uint32_t a = 2 * i < t->lock_count ? t->locks[2 * i] : 0;
         uint32_t b = 2 * i + 1 < t->lock_count ? t->locks[2 * i + 1] : 0;
@@ -56,7 +57,7 @@ int ml_decode(const uint32_t side[ML_WORDS], const uint32_t *packet, uint16_t lo
 {
     if (!side || !locks || !count || !source || !source_valid || !note_packet(packet) ||
         side[0] != ML_MAGIC || side[1] != packet[2] || side[2] != packet[3] ||
-        side[3] != packet[9] || (side[4] & ~0x1070fu) ||
+        side[3] != packet[9] || (side[4] & ~0x1073fu) ||
         (side[4] & 15u) != ((packet[10] >> 10) & 15u) || side[17] != check(side))
         return 0;
     uint32_t n = (side[4] >> 8) & 7u;

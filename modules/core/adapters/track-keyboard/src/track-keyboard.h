@@ -29,6 +29,7 @@ enum TkChord {
     TK_CHORD_MIN7,
     TK_CHORD_USER,
     TK_CHORD_MAJ7,
+    TK_CHORD_AUG,
     TK_CHORD_COUNT
 };
 enum TkVoicing { TK_VOICE_CLOSE, TK_VOICE_OPEN, TK_VOICE_INV1, TK_VOICE_INV2 };
@@ -68,7 +69,7 @@ typedef struct {
 
 typedef struct {
     uint32_t token;
-    uint8_t pitch, velocity, lane, on;
+    uint8_t pitch, velocity, lane, on, lanes;
 } TkNoteEvent;
 
 /* Return false to decline an onset. Accept every release for any accepted onset.

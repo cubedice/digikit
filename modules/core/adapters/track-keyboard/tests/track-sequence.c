@@ -39,7 +39,8 @@ static void native_due(void)
                          .track = 0,
                          .step = 4,
                          .count = 3,
-                         .notes = {{60, 90, 1}, {64, 80, 0}, {67, 70, 127}}};
+                         .notes = {{60, 90, 1}, {64, 80, 0}, {67, 70, 127}},
+                         .audio = {.sound = 1, .count = 1, .locks = {{4, 8}}}};
     tk_service_tick(0, 14400);
     assert(!tk_sequence_offer(TK_SEQUENCE_MIDI, &hit));
     tk_sequence_drain(id, true, 0, lengths);
@@ -54,6 +55,16 @@ static void native_due(void)
     tk_sequence_drain(id, true, 0, lengths);
     assert(count == 3 && events[0].pitch == 60 && events[0].velocity == 90);
     assert(events[1].pitch == 64 && events[2].pitch == 67);
+    const TkSequenceHit automation = {.pattern = id,
+                                      .track = 0,
+                                      .step = 5,
+                                      .parameters_only = true,
+                                      .audio = {.count = 2, .locks = {{4, 10}, {5, 12}}}};
+    assert(tk_sequence_offer(TK_SEQUENCE_AUDIO, &automation));
+    tk_sequence_drain(id, true, 0, lengths);
+    const TkSequenceAudio *audio = tk_sequence_audio(0);
+    assert(count == 3 && audio && audio->sound == 1 && audio->count == 2);
+    assert(audio->locks[0].value == 10 && audio->locks[1].value == 12);
     tk_service_tick(249999, 14400);
     assert(count == 3);
     tk_service_tick(1, 14400);
@@ -107,6 +118,77 @@ static void arm_while_stopped(void)
     tk_sequence_drain(selected, true, 0, lengths);
     assert(count == before + 2); /* The outgoing hit cannot start at the next PLAY. */
     tk_sequence_reset();
+}
+
+static void prepared_destination(void)
+{
+    const uint32_t lengths[128] = {0};
+    const uintptr_t outgoing = 0x41800000, incoming = 0x4181db8c;
+    static TkPattern destination;
+    tk_pattern_init(&destination);
+    destination.tracks[0].params.poly = true;
+    const TkSeed recorded = {.count = 1, .notes = {{75, 94, 0, 0}}};
+    assert(tk_pattern_set_seed(&destination, 0, 3, &recorded));
+
+    TkSequenceHit a = {
+        .pattern = outgoing, .track = 0, .step = 15, .count = 1, .notes = {{60, 90, 127}}};
+    TkSequenceHit b = {
+        .pattern = incoming, .track = 0, .step = 3, .count = 1, .notes = {{64, 91, 127}}};
+    TkSequenceTarget target = {.address = incoming, .pattern = &destination, .blocked_tracks = 1};
+    tk_service_play_pattern(&bank_a);
+    tk_sequence_drain(outgoing, true, 0, lengths);
+    tk_sequence_prepare(&target, 1);
+    assert(!tk_sequence_wants_seed(incoming, 0, 3));
+    target.blocked_tracks = 0;
+    tk_sequence_prepare(&target, 1);
+    assert(tk_sequence_wants_seed(outgoing, 0, 15));
+    assert(tk_sequence_wants_seed(incoming, 0, 3));
+
+    const unsigned before = count;
+    assert(tk_sequence_offer(TK_SEQUENCE_AUDIO, &a));
+    tk_sequence_drain(outgoing, true, 0, lengths);
+    assert(count == before + 1 && events[before].on && events[before].pitch == 60);
+    /* Native negative microtiming can put the destination note before the
+     * master boundary. Its own recorded notes must already be effective. */
+    assert(tk_sequence_offer(TK_SEQUENCE_AUDIO, &b));
+    tk_sequence_drain(outgoing, true, 0, lengths);
+    assert(count == before + 3 && !events[before + 1].on);
+    assert(events[before + 2].on && events[before + 2].pitch == 75);
+    assert(tk_sequence_offer(TK_SEQUENCE_AUDIO, &a));
+    tk_service_play_pattern(&destination);
+    tk_sequence_drain(incoming, true, 0, lengths);
+    assert(count == before + 3); /* Neither a new note nor a cut at the boundary. */
+
+    tk_sequence_reset();
+    tk_service_play_pattern(&bank_a);
+    tk_sequence_drain(outgoing, true, 0, lengths);
+    tk_sequence_prepare(&target, 1);
+    const unsigned before_direct = count;
+    assert(tk_sequence_offer(TK_SEQUENCE_MIDI, &a));
+    assert(tk_sequence_offer(TK_SEQUENCE_MIDI, &b));
+    tk_service_play_pattern(&destination);
+    tk_sequence_drain(incoming, true, 0, lengths);
+    assert(count == before_direct + 1 && events[before_direct].pitch == 75);
+    tk_sequence_reset();
+    tk_service_play_pattern(&bank_a);
+    destination.tracks[0].params.poly = 0;
+    destination.tracks[0].params.arp = 1;
+    destination.tracks[0].params.reset = TK_RESET_PATTERN;
+    const TkSeed chord = {.count = 2, .notes = {{75, 94, 0, 0}, {79, 90, 0, 0}}};
+    assert(tk_pattern_set_seed(&destination, 0, 3, &chord));
+    tk_sequence_drain(outgoing, true, 0, lengths);
+    tk_sequence_prepare(&target, 1);
+    const unsigned before_arp = count;
+    assert(tk_sequence_offer(TK_SEQUENCE_AUDIO, &b));
+    tk_sequence_drain(outgoing, true, 0, lengths);
+    assert(count == before_arp + 1 && events[before_arp].pitch == 75);
+    tk_service_play_pattern(&destination);
+    tk_service_boundary();
+    tk_service_tick(125000, 14400);
+    assert(count == before_arp + 3 && events[before_arp + 2].on &&
+           events[before_arp + 2].pitch == 79);
+    tk_sequence_reset();
+    tk_service_play_pattern(NULL);
 }
 
 static void recorded_notes(void)
@@ -180,6 +262,7 @@ int main(void)
     assert(tk_service_set_backend(0, &backend));
     native_due();
     arm_while_stopped();
+    prepared_destination();
     recorded_notes();
     return 0;
 }

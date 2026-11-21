@@ -1,4 +1,5 @@
 #include "track-native.h"
+#include "track-memory.h"
 #include "track-pool.h"
 
 extern void tk_runtime_midi_busy(void) __attribute__((weak));
@@ -14,7 +15,25 @@ typedef struct {
 /* Include one extra slot for a new note submitted before the preceding
  * note-off is drained. Offs update an existing slot and need no queue space.
  */
-static NativeNote notes[TK_TRACKS][TK_NOTES + 1];
+typedef NativeNote NativeTrack[TK_NOTES + 1];
+#ifdef __m68k__
+extern void *tk_fw_alloc(uint32_t size);
+static NativeTrack *notes;
+
+bool tk_native_init(void)
+{
+    if (notes)
+        return true;
+    NativeTrack *memory = tk_fw_alloc(sizeof(*memory) * TK_TRACKS);
+    if (!memory)
+        return false;
+    memset(memory, 0, sizeof(*memory) * TK_TRACKS);
+    notes = memory;
+    return true;
+}
+#else
+static NativeTrack notes[TK_TRACKS];
+#endif
 static uint32_t serial;
 static unsigned starts, releases;
 static uint16_t active_helpers;
@@ -156,8 +175,15 @@ static bool choose_audio_destination(uint8_t owner, NativeNote *note)
 {
     if (tk_pool_fw_reserved(owner))
         return false;
-    uint16_t available = (uint16_t)((1u << owner) | tk_pool_fw_helpers(owner));
-    available &= (uint16_t)~tk_native_audio_active;
+    uint16_t group = (uint16_t)((1u << owner) | tk_pool_fw_helpers(owner));
+    uint16_t active = group & tk_native_audio_active;
+    if (!active) {
+        /* The first note installs the resolved Sound and locks on the owner
+         * before subsequent notes inherit that track's live controls. */
+        note->destination = owner;
+        return true;
+    }
+    uint16_t available = group & ~active;
     if (!available)
         return false;
     uint16_t quiet = available & tk_pool_fw_quiet();

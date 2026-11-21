@@ -1,8 +1,10 @@
 #include "src-lock-event.h"
 
-static int carrier(uint16_t index)
+int ilp_event_pair(uint16_t parameter, int16_t packed, uint32_t *id, uint32_t *value)
 {
-    return index == 26 || index == 27 || index == 31 || index == 32 || index == 33;
+    return (parameter == 26 || parameter == 27 || parameter == 31 || parameter == 32 ||
+            parameter == 33) &&
+           ilp_unpack(packed, id, value);
 }
 
 int ilp_filter_event(IlpEvent *event, int owned, IlpSnapshot *snapshot)
@@ -19,7 +21,7 @@ int ilp_filter_event(IlpEvent *event, int owned, IlpSnapshot *snapshot)
      * entries or overwrite the prior snapshot. */
     for (uint32_t i = 0; i < event->count; ++i) {
         uint32_t id, value;
-        if (!carrier(event->entry[i].index) || !ilp_unpack(event->entry[i].value, &id, &value))
+        if (!ilp_event_pair(event->entry[i].index, event->entry[i].value, &id, &value))
             continue;
         if (next.count == ILP_LANES)
             return -1;
@@ -33,7 +35,7 @@ int ilp_filter_event(IlpEvent *event, int owned, IlpSnapshot *snapshot)
     uint32_t out = 0;
     for (uint32_t i = 0; i < event->count; ++i) {
         uint32_t id, value;
-        if (carrier(event->entry[i].index) && ilp_unpack(event->entry[i].value, &id, &value))
+        if (ilp_event_pair(event->entry[i].index, event->entry[i].value, &id, &value))
             continue;
         if (out != i) {
             event->entry[out].index = event->entry[i].index;

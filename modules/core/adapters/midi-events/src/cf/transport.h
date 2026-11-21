@@ -36,7 +36,7 @@ typedef struct {
     /* Retained alongside the pending note packet, not yet emitted on wire. */
     uint32_t lock_valid, lock_count;
     uint16_t locks[MI_LOCKS];
-    uint32_t source_valid;
+    uint32_t source_valid, shared_lanes;
     uint16_t source[MI_SOURCE_VALUES];
 } MiTransport;
 void mt_init(MiTransport *t);

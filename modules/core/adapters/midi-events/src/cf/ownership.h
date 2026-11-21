@@ -29,7 +29,7 @@ typedef struct {
      * Other events always have lock_valid=0. Pairs are id:6/value:10. */
     uint8_t lock_valid, lock_count;
     uint16_t locks[MI_LOCKS];
-    uint8_t source_valid;
+    uint8_t source_valid, shared_lanes;
     uint16_t source[MI_SOURCE_VALUES];
 } MiEvent;
 typedef struct {

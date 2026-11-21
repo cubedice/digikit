@@ -11,15 +11,18 @@ note gate, rate, signed octave spread, swing and restart behavior. H selects
 the chord. On KEYS, A enables polyphony and B selects the same chord. C and
 D change the voicing and strum. The keyboard drawing distinguishes held
 pitch classes from emitted pitches. Stock audio voice groups use H POOL.
-With transport stopped, select available, empty ONESHOT tracks as helpers.
-Requested helpers belong to the pattern. The menu shows effective
-reservations and the resulting voice count. A qualified reservation stays
-active when transport starts on the same pattern.
+With transport stopped, choose available empty stock audio tracks as helpers
+for ONESHOT, WERP, STRETCH, REPITCH, GRID or SLICE. Requested helpers belong
+to the pattern. The menu shows effective reservations and the resulting voice
+count. A qualified reservation stays active when transport starts on the
+same pattern.
 
 Click CHRD to open NOTES. Choose LEARN, play notes from the panel or an
 external keyboard, then click CHRD again and choose APPLY USER. Open a
-note row to edit its interval or velocity. Use RIGHT to move or remove an
-entry or configure a silent chord selector for a track. In grid recording,
+note row to edit its interval or velocity. Use RIGHT to insert, move or remove
+an entry, choose a reference note, clear the recipe or configure a silent
+chord selector for a track. The NOTES title identifies the track and the step
+when editing a step recipe. In grid recording,
 hold a step and use FUNC with the CHRD encoder click to edit its private
 recipe. Turning an encoder with steps held sets a lock. Clicking an
 encoder without turning clears its lock. The stock recorder chooses the
@@ -29,10 +32,19 @@ their individual timing within each of 32 captured steps per pattern.
 The pattern extension also carries track defaults, helper requests and
 sparse step locks. It is saved alongside the stock pattern and follows
 pattern copy and undo. Native grid track copy, paste, clear and undo also
-preserve the corresponding track settings, locks and recorded notes. The
-extension uses the v4 record tail and data space in unused native lock records. The native writer fails if the extension
-cannot fit with its current native lock count, or if the record tail
-belongs to an unknown format.
+preserve the corresponding track settings, locks and recorded notes.
+Hold a trig in grid recording and press RECORD, STOP or PLAY to copy,
+paste or clear its locks and recipe. Repeat paste or clear on the same
+trig within four seconds to undo a shared edit. A clipboard operation that
+would exceed recipe capacity leaves the destination intact. The extension
+uses the v4 record tail and data space in unused native lock records. The
+native writer refuses a save if the extension cannot fit alongside the
+current native lock count or if another format owns the record tail.
+
+While switching patterns, the scheduler prepares compatible destination tracks
+before the first note is due. It uses that pattern's step settings and notes,
+including for early steps with negative microtiming. Held keyboard input
+retains ownership across ordinary pattern changes.
 
 Use the matching CANOPY module build with this firmware. An inherited
 sound continues to use its legacy performer. Its effective controls appear
@@ -42,14 +54,19 @@ Wavetable and FM sources add their respective TONE and ENV pages. When
 both ARP and POLY are enabled, MIX balances four foreground pad voices
 and the separately timed CANOPY voice. The shared note scheduler keeps the
 legacy 5/Q and 7/Q rates and the original swing percentage on migration.
-Patterns with existing native CANOPY sound or parameter locks keep legacy
-performance routing so those trigs retain their original behavior.
+Packed CANOPY trig locks travel with the generated phrase. Chord, timing and
+blend locks apply to the shared scheduler, and timbre locks reach the DSP
+before native modulation. The next unlocked phrase uses the Sound's base
+values. Native AMP, filter and FX parameter locks still go through the stock
+track. CANOPY tracks with native Sound selections on note trigs use legacy
+performance routing.
 
 The full design and release checks are in the
 [proposal](../../../../docs/design/dt2-track-arpeggiator.md). The adapter
-remains experimental. Stock helper eligibility is restricted to ONESHOT
-tracks with transport stopped. Timing under heavy MIDI load and physical
-device measurements need separate qualification.
+remains experimental. CANOPY uses its internal voices, and dynamic machines
+that need their own playback state are ineligible for borrowing tracks.
+Timing under heavy MIDI load and physical device measurements need separate
+qualification.
 
 ## Verification
 

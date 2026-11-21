@@ -1,12 +1,20 @@
 #include "track-sequence.h"
+#include "track-canopy.h"
 #include "track-capture.h"
+#include "track-memory.h"
+#include "track-native.h"
 #include "track-pool.h"
 
 extern const uint32_t tk_seq_length_table[128];
 extern const uint8_t tk_seq_audio_mute_lit[], tk_seq_audio_solo_lit[];
 extern const uint8_t tk_seq_midi_mute_lit[], tk_seq_midi_solo_lit[];
 extern const uint8_t tk_seq_record_ui_lit[];
+extern const uint8_t tk_seq_queued_lit[], tk_seq_direct_target_lit[];
+extern const uint8_t tk_seq_direct_request_lit[], tk_seq_direct_countdown_lit[];
 extern volatile uint32_t pp_position[16];
+extern uint32_t pp_current_pattern(void);
+extern uint32_t dkrt_irq_mask(void);
+extern void dkrt_irq_restore(uint32_t);
 
 enum {
     TRACK_BYTES = 0x6a5,
@@ -17,7 +25,6 @@ enum {
     DEFAULT_LENGTH = 0x481,
     DEFAULT_PITCH = 0x485,
     SOUND_LOCKS = 0x400,
-    PARAMETER_LOCK_COUNTS = 0x1d360,
     STAGED_EVENTS = 257,
 };
 
@@ -27,7 +34,8 @@ typedef struct {
     uint8_t track, step;
 } Staged;
 
-static Staged staged[STAGED_EVENTS];
+extern void *tk_fw_alloc(uint32_t size);
+static Staged *volatile staged;
 static uint16_t midi_tracks;
 
 volatile uint32_t tk_sequence_audio_hits, tk_sequence_audio_locked_hits, tk_sequence_midi_hits;
@@ -36,6 +44,19 @@ volatile uint32_t tk_sequence_midi_info[5]; /* scheduled, due, matched, enabled,
 static void barrier(void)
 {
     __asm__ volatile("" ::: "memory");
+}
+
+bool tk_sequence_fw_init(void)
+{
+    if (staged)
+        return true;
+    Staged *memory = tk_fw_alloc(sizeof(*memory) * STAGED_EVENTS);
+    if (!memory)
+        return false;
+    memset(memory, 0, sizeof(*memory) * STAGED_EVENTS);
+    barrier();
+    staged = memory;
+    return true;
 }
 
 static uintptr_t literal(const uint8_t *operand)
@@ -47,6 +68,40 @@ static uintptr_t literal(const uint8_t *operand)
 static uint32_t read32(const uint8_t *operand)
 {
     return *(const volatile uint32_t *)literal(operand);
+}
+
+void tk_sequence_native_targets(TkSequenceNativeTarget targets[TK_SEQUENCE_TARGETS])
+{
+    uint32_t sr = dkrt_irq_mask();
+    /* Finding 365 identifies the pattern/kit pairs used by the scheduler.
+     * The longwords following the queued pattern are the scheduled, queued,
+     * and outgoing kits. The direct request stores its kit next to its pattern. */
+    const volatile uint32_t *queued = (const volatile uint32_t *)literal(tk_seq_queued_lit);
+    const volatile uint32_t *direct = (const volatile uint32_t *)literal(tk_seq_direct_target_lit);
+    targets[0] = (TkSequenceNativeTarget){pp_current_pattern(), queued[2]};
+    targets[1] = (TkSequenceNativeTarget){queued[0], queued[3]};
+    bool pending =
+        read32(tk_seq_direct_request_lit) || (int32_t)read32(tk_seq_direct_countdown_lit) > 0;
+    targets[2] =
+        pending ? (TkSequenceNativeTarget){direct[0], direct[1]} : (TkSequenceNativeTarget){0};
+    dkrt_irq_restore(sr);
+}
+
+int tk_sequence_target_kind(uint32_t kit, uint8_t track)
+{
+    if (kit < 0x40000000u || kit > 0x48000000u - 0x5574u || (kit & 3u) || track >= TK_TRACKS)
+        return TK_NATIVE_UNSUPPORTED;
+    if (*(const uint32_t *)(uintptr_t)kit != UINT32_C(0x4b495420)) /* KIT record */
+        return TK_NATIVE_UNSUPPORTED;
+    /* An inactive kit is serialized data. Read the Sound field directly
+     * because the active-kit accessor calls methods that are not bound yet. */
+    const uint8_t *native = (const uint8_t *)(uintptr_t)kit;
+    int type = native[0xd6u + 0x450u * track];
+    const uint8_t *mode = native + 0x552eu;
+    uint16_t midi = (uint16_t)((uint16_t)mode[0] << 8 | mode[1]);
+    if (midi & (UINT32_C(1) << track))
+        return type == 5 ? TK_NATIVE_MIDI : TK_NATIVE_UNSUPPORTED;
+    return type >= 0 && type <= 6 && type != 5 ? TK_NATIVE_AUDIO : TK_NATIVE_UNSUPPORTED;
 }
 
 uint32_t tk_capture_midi_mode(void)
@@ -96,7 +151,7 @@ static Staged *slot_for(const uint32_t *event)
 
 void tk_fw_seq_stage(const uint32_t *event, uint32_t track, uint32_t step, uintptr_t note_table)
 {
-    if (!event || track >= TK_TRACKS || step >= TK_STEPS || note_table < NOTE_TABLE)
+    if (!staged || !event || track >= TK_TRACKS || step >= TK_STEPS || note_table < NOTE_TABLE)
         return;
     Staged *slot = slot_for(event);
     slot->event = NULL;
@@ -118,6 +173,8 @@ void tk_fw_seq_stage_midi(const uint32_t *event, uint32_t track, uint32_t step,
 static bool take(const uint32_t *event, uint32_t track, uintptr_t note_table, uintptr_t track_data,
                  TkSequenceHit *hit)
 {
+    if (!staged)
+        return false;
     Staged *slot = slot_for(event);
     if (slot->event != event)
         return false;
@@ -188,7 +245,7 @@ static bool end_stock(uint8_t source, TkSequenceHit *hit)
 int tk_fw_seq_audio_due(const uint32_t *event)
 {
     const uint32_t flags = event[0xe];
-    if (event[0] || event[1] != 1 || event[5] != 1 || (flags & 0x81u) != 0x81u)
+    if (event[0] || event[1] != 1 || event[5] != 1 || !(flags & 1u))
         return false;
     if (event[4] < TK_TRACKS && tk_pool_fw_reserved((uint8_t)event[4]))
         return true;
@@ -196,24 +253,32 @@ int tk_fw_seq_audio_due(const uint32_t *event)
     if (!take(event, event[4], event[7], event[0xb], &hit))
         return false;
     const uint8_t *track = (const uint8_t *)(uintptr_t)event[0xb];
-    if (!tk_sequence_wants_seed(hit.pattern, hit.track, hit.step))
+    hit.parameters_only = !(flags & 0x80u);
+    if (hit.parameters_only && tk_canopy_routed(hit.track))
+        return false;
+    if (!hit.parameters_only && !tk_sequence_wants_seed(hit.pattern, hit.track, hit.step))
         return end_stock(TK_SEQUENCE_AUDIO, &hit);
     hit.audio.sound = event[0x10] ? event[0x10] : event[0xf];
     hit.audio.flags = flags & ~2u; /* The shared scheduler supplies retriggers. */
-    if (!hit.audio.sound)
+    if (!hit.parameters_only && !hit.audio.sound)
         return end_stock(TK_SEQUENCE_AUDIO, &hit);
     const uint32_t *locks = (const uint32_t *)(uintptr_t)event[0x15];
     if (locks) {
         uint32_t count = locks[2];
         if (count > TK_NATIVE_LOCKS_PER_HIT)
-            return end_stock(TK_SEQUENCE_AUDIO, &hit);
+            return hit.parameters_only ? false : end_stock(TK_SEQUENCE_AUDIO, &hit);
         hit.audio.count = (uint8_t)count;
         const uint16_t *values = (const uint16_t *)(locks + 5);
         for (uint32_t i = 0; i < count; ++i, values += 4) {
             if (values[0] >= TK_NATIVE_LOCKS_PER_HIT)
-                return end_stock(TK_SEQUENCE_AUDIO, &hit);
+                return hit.parameters_only ? false : end_stock(TK_SEQUENCE_AUDIO, &hit);
             hit.audio.locks[i] = (TkSequenceLock){.parameter = values[0], .value = values[1]};
         }
+    }
+    if (hit.parameters_only) {
+        if (hit.audio.count)
+            tk_sequence_offer(TK_SEQUENCE_AUDIO, &hit);
+        return false; /* Stock still applies the automation at its due time. */
     }
     if (!decode(&hit, (const uint8_t *)(uintptr_t)event[7], track, (int32_t)event[8],
                 (const uint8_t *)(event + 9), false) ||
@@ -222,7 +287,10 @@ int tk_fw_seq_audio_due(const uint32_t *event)
     ++tk_sequence_audio_hits;
     if (hit.audio.count)
         ++tk_sequence_audio_locked_hits;
-    return true;
+    /* Native CANOPY dispatch still applies the stock AMP/filter/FX locks.
+     * Its instrument event adapter discards stock key events while the
+     * shared keyboard owns note generation. */
+    return !tk_canopy_routed(hit.track);
 }
 
 int tk_fw_seq_midi_due(const uint32_t *event, int32_t channel)
@@ -271,15 +339,14 @@ void tk_sequence_set_midi(uint8_t track, bool midi)
         midi_tracks &= (uint16_t)~bit;
 }
 
-bool tk_sequence_canopy_legacy_locks(uint32_t pattern, uint8_t track)
+bool tk_sequence_canopy_sound_locks(uint32_t pattern, uint8_t track)
 {
     if (!pattern || track >= TK_TRACKS)
         return false;
     const uint8_t *native = (const uint8_t *)(uintptr_t)pattern;
     const uint8_t *trig = native + TRACK_BYTES * track;
-    const uint8_t *locks = native + PARAMETER_LOCK_COUNTS + TK_STEPS * track;
     for (uint8_t step = 0; step < TK_STEPS; ++step)
-        if ((trig[2u * step + 1u] & 1u) && ((int8_t)trig[SOUND_LOCKS + step] >= 0 || locks[step]))
+        if ((trig[2u * step + 1u] & 1u) && (int8_t)trig[SOUND_LOCKS + step] >= 0)
             return true;
     return false;
 }

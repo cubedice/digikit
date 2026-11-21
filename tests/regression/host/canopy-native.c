@@ -431,6 +431,21 @@ int main(int argc, char **argv)
         assert(isn_submit(&q, 9, 68, 100, 1));
         isn_sync(&q, 6, 7, 24);
         assert(!isn_take(&q, batch));
+        IsnSnapshot locked = {.valid = 1, .count = 1, .lanes = 3, .locks = {(2 << 10) | 84}};
+        const IsnSnapshot live = {.valid = 1, .lanes = 1};
+        assert(isn_submit_locked(&q, 10, 60, 100, 1, 0, &locked));
+        assert(isn_submit_locked(&q, 11, 64, 100, 1, 1, &locked));
+        assert(isn_submit_voice(&q, 10, 60, 0, 0, 0));
+        assert(isn_submit_locked(&q, 12, 67, 100, 1, 0, &live));
+        locked.locks[0] = 0;
+        assert(isn_take(&q, batch) == 2);
+        assert(batch[0].lock_valid && batch[0].lock_count == 1 && batch[0].shared_lanes == 3 &&
+               batch[0].locks[0] == ((2 << 10) | 84));
+        assert(batch[1].kind == MI_NOTE_ON && !batch[1].lock_valid &&
+               (batch[1].token & ISN_ARP_TOKEN));
+        assert(isn_take(&q, batch) == 1 && batch[0].kind == MI_NOTE_OFF && !batch[0].lock_valid);
+        assert(isn_take(&q, batch) == 1 && batch[0].lock_valid && !batch[0].lock_count &&
+               batch[0].shared_lanes == 1);
     } else if (!strcmp(argv[1], "shared-keyboard")) {
         real_display = 1;
         cs_track_keyboard(&state, 1);

@@ -250,6 +250,42 @@ mark = "D"
 users = ["core/track-keyboard"]
 doc = "Stock recorder timebase singleton call replayed by the live note hook."
 
+[[site]]
+name = "cf.track_sequence.site.queued_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 26, offset = 8, len = 4, sha256 = "4dedefcc944a837eb7d40316e064f1303279af94ad0d3272ac116d3c01b00b41" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Native queued pattern operand and base for its scheduled and queued kit companions."
+
+[[site]]
+name = "cf.track_sequence.site.direct_target_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 4, sha256 = "e9be0efbd468205430ab3b8996695974093d061fc7971c2473ae0db7ddc643e5" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Native direct-switch target pattern operand followed by its kit."
+
+[[site]]
+name = "cf.track_sequence.site.direct_request_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 12, len = 4, sha256 = "3f80514142e7dbb4d81c44522ac5c3a9f01a29a06db669ab7a2f9c61d2cc3bf8" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Native direct-switch request flag before the sequencer accepts it."
+
+[[site]]
+name = "cf.track_sequence.site.direct_countdown_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 4, sha256 = "7f0f47d73fa661ecf137e6668fb3978633146e397c7e10a85ed1dd40dae2b443" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Native direct-switch countdown after the sequencer accepts a request."
+
 [[hook]]
 name = "cf.track_sequence.hook.audio_stage"
 site = "cf.track_sequence.site.audio_stage"

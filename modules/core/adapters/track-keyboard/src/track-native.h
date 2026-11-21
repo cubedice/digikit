@@ -4,6 +4,7 @@
 #include "track-sequence.h"
 
 enum TkNativeKind { TK_NATIVE_UNSUPPORTED = -1, TK_NATIVE_AUDIO, TK_NATIVE_MIDI, TK_NATIVE_CANOPY };
+bool tk_native_init(void);
 
 /* The caller owns one UI task. Release and drain the old binding before changing
  * the track's type. Only admitted physical destinations increase stock capacity. */

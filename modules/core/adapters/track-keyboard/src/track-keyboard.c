@@ -93,7 +93,8 @@ static void start(TkState *s, TkVoice *voice, TkPitch pitch, uint8_t lane)
                          .pitch = pitch.pitch,
                          .velocity = pitch.velocity,
                          .lane = lane,
-                         .on = 1};
+                         .on = 1,
+                         .lanes = s->params.poly | s->params.arp << 1};
     if (s->muted || s->output(s->context, &event))
         *voice = (TkVoice){.note = event, .order = ++s->voice_order, .sent = !s->muted};
 }
@@ -136,7 +137,7 @@ static uint8_t chord(const TkState *s, TkKey root, TkPitch *notes)
         [TK_CHORD_MIN] = {0, 3, 7, -1},  [TK_CHORD_SUS4] = {0, 5, 7, -1},
         [TK_CHORD_ADD9] = {0, 4, 7, 14}, [TK_CHORD_DOM7] = {0, 4, 7, 10},
         [TK_CHORD_DIM] = {0, 3, 6, -1},  [TK_CHORD_MIN7] = {0, 3, 7, 10},
-        [TK_CHORD_MAJ7] = {0, 4, 7, 11},
+        [TK_CHORD_MAJ7] = {0, 4, 7, 11}, [TK_CHORD_AUG] = {0, 4, 8, -1},
     };
     uint8_t n = 0;
     if (s->params.chord == TK_CHORD_USER) {

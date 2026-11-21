@@ -210,6 +210,7 @@ _iv_mod_next:
 // External note scheduling only. Apply the lane mask after lock and MOD
 // overlays, while preserving the Sound's blend when both lanes are active.
 .GLOBAL _iv_shared_keyboard;
+.EXTERN _iv_lock_shared_lanes;
 _iv_shared_keyboard:
     I0 = R0;
     R1 = DM(0, I0);
@@ -224,6 +225,11 @@ _iv_shared_copy:
     I0 = _iv_shared_controls;
     R1 = DM(0, I0);
     R3 = FEXT R1 BY 11:3;
+    R2 = DM(_iv_lock_shared_lanes);
+    R2 = PASS R2;
+    IF EQ JUMP _iv_shared_base_lanes;
+    R3 = BSET R2 BY 2;
+_iv_shared_base_lanes:
     R1 = BCLR R1 BY 11;
     R1 = BCLR R1 BY 12;
     R1 = BCLR R1 BY 14;

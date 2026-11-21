@@ -321,6 +321,43 @@ scheduling. Release acceptance includes:
   guaranteed release capacity. Compare audio timing and CPU overhead against
   the feature disabled before making a performance claim.
 
+## Implementation status
+
+The experimental adapter implements the shared scheduler, native TRIG pages,
+pattern-owned recipes, and stock sample voice groups. The [adapter guide](../../modules/core/adapters/track-keyboard/README.md)
+describes the available controls and the held-trig edit gestures. The
+[native output findings](../findings/369-track-keyboard-native-output.md)
+record the six-machine stereo comparison, independent release, and the
+ordinary mute test. [Pattern storage findings](../findings/371-track-keyboard-pattern-storage.md)
+cover the bounded record and individual-trig clipboard tests.
+
+On the DTII 1.17 emulator, a 16-step pattern switched to an 8-step
+destination and produced one generated hit on the first trig through both
+queued and direct-start routes. The host tests also cover a negative-timed
+destination note arriving ahead of the nominal boundary. Early MIDI and
+CANOPY scheduling requires a shared kit. The CANOPY route also requires
+shared performance in both patterns. Voice groups wait for destination
+helper validation.
+
+The original audio and MIDI TRIG 1 and TRIG 2 body captures match stock
+at OLED resolution. The page markers and page-count header reflect four
+pages. The packed CANOPY COLOR lock and a native filter cutoff lock both
+reached the same generated phrase in the coupled emulator. An unlocked trig
+restored both values. Separate SHARC tests cover locked and unlocked blends
+across the three source families.
+
+Physical USB tests measured stopped sample-track arpeggiation and the MIDI
+sequence C–E–G at 120 BPM. The hardware image loaded CANOPY, Overloop,
+PRISM, RELAY and remote together. That build uses a 448 KiB module arena to
+fit the extra fixed ColdFire code. The standard arena is 512 KiB. On the
+physical unit, a CANOPY Sound edit restored output after switching from
+shared polyphony to ARP-only. This exposed a control-revision issue that
+requires a new firmware build for physical verification.
+
+Release qualification remains open for native Sound lock transitions on
+CANOPY, custom ARP widget parity, the complete held-value and encoder-focus
+capture matrix, and physical DIN and simultaneous-load measurements.
+
 ## References and reusable evidence
 
 - [Digitone II OS 1.12 manual, section 9.7](https://www.elektron.se/wp-content/uploads/2026/10/Digitone-2-User-Manual_ENG_OS1.12_261008.pdf):

@@ -11,11 +11,19 @@ typedef struct {
     uint32_t token, wire;
     uint8_t pitch, velocity;
 } IsnNote;
+typedef struct IsnSnapshot {
+    uint8_t valid, count, source_valid, lanes;
+    uint16_t locks[MI_LOCKS], source[MI_SOURCE_VALUES];
+} IsnSnapshot;
+typedef struct {
+    IsnNote note;
+    IsnSnapshot snapshot;
+} IsnPending;
 typedef struct {
     uint32_t epoch, generation, track, last_token;
     uint8_t head, count, active_count;
     IsnNote active[ISN_SHARED_VOICES];
-    IsnNote pending[ISN_QUEUE];
+    IsnPending pending[ISN_QUEUE];
 } IsnQueue;
 
 static inline void isn_sync(IsnQueue *q, uint32_t track, uint32_t epoch, uint32_t generation)
@@ -29,8 +37,8 @@ static inline void isn_sync(IsnQueue *q, uint32_t track, uint32_t epoch, uint32_
     }
 }
 
-static inline int isn_submit_voice(IsnQueue *q, uint32_t token, uint32_t pitch, uint32_t velocity,
-                                   int on, int lane)
+static inline int isn_submit_locked(IsnQueue *q, uint32_t token, uint32_t pitch, uint32_t velocity,
+                                    int on, int lane, const IsnSnapshot *snapshot)
 {
     if (!token || pitch > 127 || velocity > 127 || (on && !velocity))
         return 0;
@@ -54,18 +62,27 @@ static inline int isn_submit_voice(IsnQueue *q, uint32_t token, uint32_t pitch, 
                 return 0;
             wire = ++q->last_token | (lane ? ISN_ARP_TOKEN : 0u);
         }
-        q->active[q->active_count++] =
-            (IsnNote){token, wire, (uint8_t)pitch, (uint8_t)velocity};
+        q->active[q->active_count++] = (IsnNote){token, wire, (uint8_t)pitch, (uint8_t)velocity};
     } else {
         if (pos == q->active_count || q->active[pos].pitch != pitch)
             return 0;
         wire = q->active[pos].wire;
         q->active[pos] = q->active[--q->active_count];
     }
-    q->pending[(q->head + q->count) % ISN_QUEUE] =
-        (IsnNote){token, wire, (uint8_t)pitch, on ? (uint8_t)velocity : 0};
+    IsnPending *pending = &q->pending[(q->head + q->count) % ISN_QUEUE];
+    pending->note = (IsnNote){token, wire, (uint8_t)pitch, on ? (uint8_t)velocity : 0};
+    if (on && snapshot)
+        pending->snapshot = *snapshot;
+    else
+        pending->snapshot.valid = 0;
     ++q->count;
     return 1;
+}
+
+static inline int isn_submit_voice(IsnQueue *q, uint32_t token, uint32_t pitch, uint32_t velocity,
+                                   int on, int lane)
+{
+    return isn_submit_locked(q, token, pitch, velocity, on, lane, 0);
 }
 
 static inline int isn_submit(IsnQueue *q, uint32_t token, uint32_t pitch, uint32_t velocity, int on)
@@ -73,26 +90,58 @@ static inline int isn_submit(IsnQueue *q, uint32_t token, uint32_t pitch, uint32
     return isn_submit_voice(q, token, pitch, velocity, on, -1);
 }
 
+static inline int isn_same_snapshot(const IsnSnapshot *a, const IsnSnapshot *b)
+{
+    if (a->valid != b->valid)
+        return 0;
+    if (!a->valid)
+        return 1;
+    if (a->count != b->count || a->source_valid != b->source_valid || a->lanes != b->lanes)
+        return 0;
+    for (uint32_t i = 0; i < a->count; ++i)
+        if (a->locks[i] != b->locks[i])
+            return 0;
+    for (uint32_t i = 0; a->source_valid && i < MI_SOURCE_VALUES; ++i)
+        if (a->source[i] != b->source[i])
+            return 0;
+    return 1;
+}
+
 static inline uint32_t isn_take(IsnQueue *q, MiEvent output[8])
 {
     uint32_t n = 0;
+    const IsnSnapshot *first = &q->pending[q->head].snapshot;
     for (; n < 8 && q->count; ++n) {
-        IsnNote note = q->pending[q->head];
+        const IsnPending *pending = &q->pending[q->head];
+        const IsnSnapshot *snapshot = &pending->snapshot;
+        if (!isn_same_snapshot(first, snapshot))
+            break;
+        const IsnNote *note = &pending->note;
         MiEvent *event = &output[n];
         /* A panel-shaped packet fits the existing wire validators. Shared
          * note ownership is entirely CF-side. The DSP sees one raw voice
          * onset/release and checks generation just as for a local key. */
         event->epoch = q->epoch;
         event->sequence = 0;
-        event->token = note.wire;
+        event->token = note->wire;
         event->generation = q->generation;
-        event->kind = note.velocity ? MI_NOTE_ON : MI_NOTE_OFF;
+        event->kind = note->velocity ? MI_NOTE_ON : MI_NOTE_OFF;
         event->port = MI_PANEL;
         event->channel = 0;
         event->track = (uint8_t)q->track;
-        event->note = note.pitch;
-        event->value = note.velocity;
+        event->note = note->pitch;
+        event->value = note->velocity;
         event->lock_valid = event->lock_count = event->source_valid = 0;
+        if (n == 0 && snapshot->valid) {
+            event->lock_valid = 1;
+            event->lock_count = snapshot->count;
+            event->source_valid = snapshot->source_valid;
+            event->shared_lanes = snapshot->lanes;
+            for (uint32_t i = 0; i < snapshot->count; ++i)
+                event->locks[i] = snapshot->locks[i];
+            for (uint32_t i = 0; snapshot->source_valid && i < MI_SOURCE_VALUES; ++i)
+                event->source[i] = snapshot->source[i];
+        }
         q->head = (uint8_t)((q->head + 1) % ISN_QUEUE);
         --q->count;
     }

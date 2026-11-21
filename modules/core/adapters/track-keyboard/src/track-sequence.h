@@ -7,9 +7,22 @@ typedef struct {
     uint32_t steps[TK_TRACKS][TK_STEPS / 32];
 } TkSequencePolicy;
 
-/* Snapshot the active playing settings from the service task. */
+/* Snapshot track eligibility on the service task. */
 void tk_service_sequence_policy(TkSequencePolicy *policy);
+void tk_service_sequence_policy_for(TkSequencePolicy *policy, const TkPattern *pattern);
 void tk_service_end_seed(uint8_t track);
+
+enum { TK_SEQUENCE_TARGETS = 3 };
+
+typedef struct {
+    uintptr_t address;
+    const TkPattern *pattern;
+    uint16_t blocked_tracks;
+} TkSequenceTarget;
+
+typedef struct {
+    uint32_t address, kit;
+} TkSequenceNativeTarget;
 
 enum { TK_SEQUENCE_AUDIO, TK_SEQUENCE_MIDI, TK_SEQUENCE_SOURCES };
 
@@ -33,6 +46,7 @@ typedef struct {
 typedef struct {
     uintptr_t pattern;
     uint8_t track, step, count;
+    bool parameters_only;
     TkSequenceNote notes[TK_NOTES];
     TkSequenceAudio audio;
 } TkSequenceHit;
@@ -43,13 +57,17 @@ typedef struct {
 bool tk_sequence_offer(uint8_t source, const TkSequenceHit *hit);
 bool tk_sequence_wants_seed(uintptr_t pattern, uint8_t track, uint8_t step);
 bool tk_sequence_init(void);
+bool tk_sequence_fw_init(void);
 void tk_sequence_reset(void);
+void tk_sequence_prepare(const TkSequenceTarget *targets, unsigned count);
 const TkSequenceAudio *tk_sequence_audio(uint8_t track);
 void tk_sequence_drain(uintptr_t pattern, bool running, uint16_t muted,
                        const uint32_t lengths[128]);
 
 void tk_sequence_poll(uint32_t pattern, bool running);
+void tk_sequence_native_targets(TkSequenceNativeTarget targets[TK_SEQUENCE_TARGETS]);
+int tk_sequence_target_kind(uint32_t kit, uint8_t track);
 void tk_sequence_set_midi(uint8_t track, bool midi);
-bool tk_sequence_canopy_legacy_locks(uint32_t pattern, uint8_t track);
+bool tk_sequence_canopy_sound_locks(uint32_t pattern, uint8_t track);
 
 #endif

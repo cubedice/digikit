@@ -207,7 +207,7 @@ static void draw_value(uint8_t *bitmap, const uint8_t *font, int x, int y, const
     static const char *const voicing[] = {"CLOSE", "OPEN", "INV1", "INV2"};
     static const char *const chord[] = {
         "PLAY", "MAJ",  "MAJ6", "SUS2", "MIN6", "MIN",  "SUS4",
-        "ADD9", "DOM7", "DIM",  "MIN7", "USER", "MAJ7",
+        "ADD9", "DOM7", "DIM",  "MIN7", "USER", "MAJ7", "AUG",
     };
     uint8_t *typeface = (uint8_t *)font;
     const char *text = 0;

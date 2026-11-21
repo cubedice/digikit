@@ -10,6 +10,8 @@ typedef bool (*TkTrackOutput)(void *context, uint8_t track, const TkNoteEvent *e
 
 typedef bool (*TkTrackAvailable)(uint8_t track);
 typedef bool (*TkTrackInherit)(uint8_t track, TkTrackConfig *config);
+typedef bool (*TkTrackPrepare)(uint8_t track, TkParams *params, TkRecipe *recipe, TkSeed *seed,
+                               bool recorded);
 
 typedef struct {
     TkTrackOutput output;
@@ -18,6 +20,7 @@ typedef struct {
     bool blend;
     TkTrackInherit inherit;
     TkTrackAvailable available;
+    TkTrackPrepare prepare_seed;
 } TkTrackBackend;
 
 /* The pattern adapter owns this storage and supplies a stable pointer for the
@@ -40,6 +43,13 @@ typedef struct {
 } TkPatternSeed;
 
 typedef struct {
+    TkStepLocks locks;
+    TkSeed seed;
+} TkStepAttachment;
+
+enum TkAttachmentResult { TK_ATTACH_OK, TK_ATTACH_INVALID, TK_ATTACH_FULL };
+
+typedef struct {
     uint8_t chord, voicing;
     uint16_t strum_ms;
     TkRecipe user;
@@ -56,13 +66,21 @@ typedef struct {
     uint32_t edit_generation;
     TkRecipe recipe;
     uint8_t track, step, first_pitch;
-    bool open, learn, step_scope;
+    bool open, learn, step_scope, clear;
 } TkNotesDraft;
 
 void tk_pattern_init(TkPattern *pattern);
 bool tk_pattern_has_track(const TkPattern *pattern, uint8_t track);
 bool tk_pattern_copy_track(TkPattern *destination, uint8_t to, const TkPattern *source,
                            uint8_t from);
+bool tk_pattern_step_attachment(const TkPattern *pattern, uint8_t track, uint8_t step,
+                                TkStepAttachment *out);
+bool tk_pattern_set_attachment(TkPattern *pattern, uint8_t track, uint8_t step,
+                               const TkStepAttachment *attachment);
+enum TkAttachmentResult tk_pattern_attach_batch(TkPattern *pattern, uint8_t track,
+                                                const int32_t *steps, uint8_t count,
+                                                const TkStepAttachment *attachments, bool commit,
+                                                bool *changed);
 const TkSeed *tk_pattern_seed(const TkPattern *pattern, uint8_t track, uint8_t step);
 bool tk_pattern_set_seed(TkPattern *pattern, uint8_t track, uint8_t step, const TkSeed *seed);
 bool tk_service_store_edit_seed(uint8_t track, uint8_t step, const TkSeed *seed,
@@ -93,6 +111,7 @@ bool tk_service_selector(uint8_t track, bool active, int8_t *octave, int8_t *cha
 bool tk_service_write_selector(uint8_t track, int8_t octave, int8_t channel);
 void tk_service_select_chord(uint8_t track, enum TkChord chord);
 bool tk_service_seed(uint8_t track, uint8_t step, const TkSeed *seed);
+bool tk_service_seed_for(const TkPattern *pattern, uint8_t track, uint8_t step, const TkSeed *seed);
 void tk_service_tick(uint32_t elapsed_us, uint16_t bpm);
 void tk_service_boundary(void);
 void tk_service_stop(void);

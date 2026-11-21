@@ -1,6 +1,7 @@
 #include "track-native.h"
 #include "track-canopy.h"
 #include "track-capture.h"
+#include "track-memory.h"
 #include "track-midi.h"
 #include "track-pattern-fw.h"
 #include "track-pool.h"
@@ -13,6 +14,8 @@ extern uint32_t pp_current_pattern(void);
 extern uint32_t pp_selected_tempo(void);
 extern volatile uint32_t pp_position[16];
 extern dk_ui *dk_ui_core_handle(void);
+extern uintptr_t tk_fw_project(void);
+extern uintptr_t tk_fw_active_kit(uintptr_t project);
 
 static uint32_t pattern, editing_pattern, revision, block, boundary, block_fraction;
 static bool was_running;
@@ -23,6 +26,7 @@ volatile uint32_t tk_panel_claim_hits;
 static bool polling;
 static TkNotesDraft draft;
 static dk_ui_menu *notes_menu, *note_menu, *selector_menu, *pool_menu;
+static char notes_title[DK_UI_ROW] = "NOTES";
 static uint8_t pool_owner;
 static int32_t note_index, note_offset, note_velocity;
 static int32_t selector_octave, selector_channel;
@@ -104,14 +108,10 @@ static bool refresh_pattern(void)
     uint32_t stamp = tk_pattern_fw_revision();
     bool project_data_changed = stamp != revision;
     if (next != pattern || edit != editing_pattern || project_data_changed) {
-        uint32_t previous_live = pattern ? pattern : editing_pattern;
-        uint32_t next_live = next ? next : edit;
-        if (next_live != previous_live || project_data_changed) {
-            tk_panel_cancel();
-            tk_midi_reset();
-        }
         close_notes();
         if (project_data_changed) {
+            tk_panel_cancel();
+            tk_midi_reset();
             tk_sequence_reset();
             tk_capture_poll(0, 0);
             tk_service_stop();
@@ -126,6 +126,60 @@ static bool refresh_pattern(void)
         tk_service_stop();
     was_running = running;
     return edit != 0;
+}
+
+static bool can_prepare_track(uint8_t track, const TkPattern *destination,
+                              TkSequenceNativeTarget target, uintptr_t active_kit)
+{
+    const TkTrackConfig *active = tk_service_active_config(track);
+    const TkTrackConfig *next = &destination->tracks[track];
+    if (!active)
+        return false;
+    if (kind[track] == TK_NATIVE_CANOPY) {
+        /* An early seed can use the active CANOPY Sound only when both
+         * patterns share that Sound and have adopted the shared keyboard. */
+        return active_kit && target.kit == active_kit && active->override && next->override &&
+               tk_canopy_routed(track) && !tk_sequence_canopy_sound_locks(target.address, track);
+    }
+    if (tk_sequence_target_kind(target.kit, track) != (int)kind[track])
+        return false;
+    /* MIDI sends through the active kit's channel. Audio has a detached
+     * Sound snapshot, but pooled audio depends on the current voice group. */
+    if (kind[track] == TK_NATIVE_MIDI)
+        return target.kit == active_kit;
+    return !active->helpers && !next->helpers;
+}
+
+static void prepare_sequence_targets(void)
+{
+    if (!was_running || !pattern)
+        return;
+    TkSequenceNativeTarget native[TK_SEQUENCE_TARGETS];
+    TkSequenceTarget targets[TK_SEQUENCE_TARGETS];
+    unsigned count = 0;
+    tk_sequence_native_targets(native);
+    uintptr_t project = tk_fw_project();
+    uintptr_t active_kit = project ? tk_fw_active_kit(project) : 0;
+    for (unsigned i = 0; i < TK_SEQUENCE_TARGETS; ++i) {
+        uint32_t address = native[i].address;
+        if (!address || address == pattern)
+            continue;
+        bool already_prepared = false;
+        for (unsigned j = 0; j < count; ++j)
+            already_prepared |= targets[j].address == address;
+        if (already_prepared)
+            continue;
+        const TkPattern *destination = tk_pattern_fw_existing(address);
+        if (!destination)
+            continue;
+        uint16_t blocked = (uint16_t)~registered;
+        for (uint8_t track = 0; track < TK_TRACKS; ++track)
+            if ((registered & (UINT32_C(1) << track)) &&
+                !can_prepare_track(track, destination, native[i], active_kit))
+                blocked |= (uint16_t)(UINT32_C(1) << track);
+        targets[count++] = (TkSequenceTarget){address, destination, blocked};
+    }
+    tk_sequence_prepare(targets, count);
 }
 
 static void poll(void)
@@ -179,15 +233,16 @@ static void poll(void)
     tk_service_tick(time / 3u, (uint16_t)pp_selected_tempo());
     tk_midi_poll();
     tk_sequence_poll(pattern ? pattern : editing_pattern, was_running);
+    prepare_sequence_targets();
     tk_capture_poll(editing_pattern, (uint16_t)pp_selected_tempo());
     tk_native_drain();
 }
 
 void tk_runtime_init(void)
 {
-    if (polling || !tk_service_init())
+    if (polling || !tk_service_init() || !tk_sequence_init() || !tk_sequence_fw_init() ||
+        !tk_midi_init() || !tk_native_init() || !tk_pool_link_init())
         return;
-    tk_sequence_init();
     block = dkrt_blocks();
     if (dkrt_poll_add((uintptr_t)poll) == 0)
         polling = true;
@@ -317,6 +372,7 @@ static void note_remove(void *unused, int32_t index)
     if (!draft.open || index < 0 || index >= draft.recipe.count)
         return;
     --draft.recipe.count;
+    draft.clear = !draft.recipe.count;
     for (; index < draft.recipe.count; ++index)
         draft.recipe.notes[index] = draft.recipe.notes[index + 1];
     dk_ui_menu_refresh(notes_menu);
@@ -335,6 +391,55 @@ static void note_move(void *unused, int32_t encoded)
     draft.recipe.notes[to] = note;
     dk_ui_menu_refresh(notes_menu);
     dk_ui_menu_select(notes_menu, to + 2);
+}
+
+static void note_insert(void *unused, int32_t index)
+{
+    (void)unused;
+    if (!draft.open || index < 0 || index > draft.recipe.count)
+        return;
+    if (draft.recipe.count == TK_NOTES) {
+        dk_ui_toast(dk_ui_core_handle(), "NOTES FULL");
+        return;
+    }
+    for (int32_t i = draft.recipe.count; i > index; --i)
+        draft.recipe.notes[i] = draft.recipe.notes[i - 1];
+    draft.recipe.notes[index] = (TkRecipeNote){.velocity = 100};
+    ++draft.recipe.count;
+    draft.clear = false;
+    dk_ui_menu_refresh(notes_menu);
+    dk_ui_menu_select(notes_menu, index + 2);
+    note_open(NULL, index);
+}
+
+static void note_reference(void *unused, int32_t index)
+{
+    (void)unused;
+    if (!draft.open || index < 0 || index >= draft.recipe.count)
+        return;
+    int reference = draft.recipe.notes[index].interval;
+    for (uint8_t i = 0; i < draft.recipe.count; ++i) {
+        int interval = draft.recipe.notes[i].interval - reference;
+        if (interval < -127 || interval > 127) {
+            dk_ui_toast(dk_ui_core_handle(), "REFERENCE OUT OF RANGE");
+            return;
+        }
+    }
+    for (uint8_t i = 0; i < draft.recipe.count; ++i)
+        draft.recipe.notes[i].interval = (int8_t)(draft.recipe.notes[i].interval - reference);
+    dk_ui_menu_refresh(notes_menu);
+}
+
+static void notes_clear(void *unused, int32_t value)
+{
+    (void)unused;
+    (void)value;
+    if (!draft.open)
+        return;
+    draft.recipe.count = 0;
+    draft.clear = true;
+    dk_ui_menu_refresh(notes_menu);
+    dk_ui_menu_select(notes_menu, 0);
 }
 
 static void selector_save(void *unused, int32_t mode)
@@ -385,6 +490,9 @@ static void notes_panel(dk_ui_menu *m, int32_t row, void *unused)
     (void)unused;
     int32_t n = row - 2;
     if (n < 0 || n >= draft.recipe.count) {
+        dk_ui_menu_add_action(m, "INSERT", note_insert, NULL, draft.recipe.count);
+        if (draft.recipe.count)
+            dk_ui_menu_add_action(m, "CLEAR NOTES", notes_clear, NULL, 0);
         if (!draft.step_scope)
             dk_ui_menu_add_action(m, "SELECTOR", selector_open, NULL, 0);
         return;
@@ -393,6 +501,8 @@ static void notes_panel(dk_ui_menu *m, int32_t row, void *unused)
         dk_ui_menu_add_action(m, "MOVE UP", note_move, NULL, 2 * n);
     if (n + 1 < draft.recipe.count)
         dk_ui_menu_add_action(m, "MOVE DOWN", note_move, NULL, 2 * n + 1);
+    dk_ui_menu_add_action(m, "INSERT", note_insert, NULL, n);
+    dk_ui_menu_add_action(m, "SET REFERENCE", note_reference, NULL, n);
     dk_ui_menu_add_action(m, "REMOVE", note_remove, NULL, n);
     if (!draft.step_scope)
         dk_ui_menu_add_action(m, "SELECTOR", selector_open, NULL, 0);
@@ -401,7 +511,7 @@ static void notes_panel(dk_ui_menu *m, int32_t row, void *unused)
 static void notes_fill(dk_ui_menu *m, void *unused)
 {
     (void)unused;
-    dk_ui_menu_add_action(m, "APPLY USER", notes_apply, NULL, 0);
+    dk_ui_menu_add_action(m, draft.clear ? "APPLY PLAY" : "APPLY USER", notes_apply, NULL, 0);
     dk_ui_menu_add_action(m, "LEARN", notes_learn, NULL, 0);
     for (uint8_t i = 0; i < draft.recipe.count; ++i) {
         char text[DK_UI_ROW];
@@ -419,7 +529,7 @@ static void notes_fill(dk_ui_menu *m, void *unused)
 bool tk_trig_open_notes(uint8_t track, int step)
 {
     static const dk_ui_menu_desc desc = {.name = "track-keyboard/notes",
-                                         .title = "NOTES",
+                                         .title = notes_title,
                                          .flags = DK_UI_LIST,
                                          .fill = notes_fill,
                                          .panel = notes_panel,
@@ -432,6 +542,13 @@ bool tk_trig_open_notes(uint8_t track, int step)
         !tk_notes_open(track, step < 0 ? 0 : (uint8_t)step, step >= 0, &draft))
         return false;
     draft.learn = false;
+    memcpy(notes_title, "NOTES T", 7);
+    char *title = decimal(notes_title + 7, (unsigned)draft.track + 1u);
+    if (draft.step_scope) {
+        memcpy(title, " S", 2);
+        title = decimal(title + 2, (unsigned)draft.step + 1u);
+    }
+    *title = 0;
     dk_ui_menu_select(notes_menu, 0);
     if (dk_ui_menu_open(notes_menu) < 0) {
         draft.open = false;

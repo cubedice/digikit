@@ -20,6 +20,7 @@ static uintptr_t last_kit;
 static uint32_t guard_at[TK_TRACKS];
 static uint32_t rescanned;
 static uint16_t eligible, owners, empty_tracks;
+static uint8_t machine[TK_TRACKS];
 static bool previously_admitting;
 static volatile uint16_t preparing, reserved;
 
@@ -174,8 +175,14 @@ void tk_pool_fw_update(uint32_t pattern, const TkTrackConfig config[TK_TRACKS], 
             rescanned = now;
         }
         for (uint8_t track = 0; track < TK_TRACKS; ++track) {
-            if (!tk_fw_midi_mode(track) && tk_fw_track_type(kit, track) == 0 &&
-                !tk_canopy_is_owner(track, 0))
+            int type = tk_fw_track_type(kit, track);
+            bool changed = machine[track] != (uint8_t)type;
+            machine[track] = (uint8_t)type;
+            /* The six stock sample machines share the stock stereo cursor
+             * bank. Retire a lease when either machine changes, since its
+             * live state and loaded sample belonged to the earlier voice. */
+            if (type >= 0 && type <= 6 && type != 5 && !changed && !tk_fw_midi_mode(track) &&
+                !tk_canopy_is_owner(track, type))
                 owners |= (uint16_t)(1u << track);
         }
         eligible = owners & empty_tracks;
@@ -210,11 +217,10 @@ void tk_pool_fw_update(uint32_t pattern, const TkTrackConfig config[TK_TRACKS], 
                                .eligible_helpers = eligible,
                                .quiescent_helpers = quiet};
     tk_pool_update(&pool, &snapshot, config);
-    uint16_t protected = 0;
+    uint16_t leased = 0;
     for (uint8_t owner = 0; owner < TK_TRACKS; ++owner)
-      protected
-    |= pool.assigned[owner] | pool.draining[owner];
-    reserved = protected;
+        leased |= pool.assigned[owner] | pool.draining[owner];
+    reserved = leased;
     preparing = requested;
     tk_pool_publish_frame(&pool);
 }

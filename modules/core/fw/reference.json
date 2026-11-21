@@ -20781,6 +20781,99 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x400d7ca8",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native direct-switch countdown after the sequencer accepts a request.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.direct_countdown_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d7c72",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native direct-switch request flag before the sequencer accepts it.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.direct_request_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 12
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d7ce2",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native direct-switch target pattern operand followed by its kit.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.direct_target_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x401f07ac",
             "len": 512
           }
@@ -21060,6 +21153,37 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x400d863a",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native queued pattern operand and base for its scheduled and queued kit companions.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.queued_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x401998ca",
             "len": 4
           }
@@ -21082,6 +21206,472 @@
         }
       },
       "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401ac546",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_steps_clip_get",
+        "rust": "dkfw::track_steps::clip_get"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Read the typed trig clipboard and acquire its reference.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_steps.fn.clip_get",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401102c2",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_steps_clip_set",
+        "rust": "dkfw::track_steps::clip_set"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Replace one clipboard or undo slot with a retained native object.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_steps.fn.clip_set",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4019e794",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_steps_clipboard",
+        "rust": "dkfw::track_steps::clipboard"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Return the native clipboard and undo slots.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_steps.fn.clipboard",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40054a6c",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_steps_length",
+        "rust": "dkfw::track_steps::length"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Return a track's native sequence length in steps.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_steps.fn.length",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40198cc0",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_steps_ref_copy",
+        "rust": "dkfw::track_steps::ref_copy"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Acquire another native clipboard reference.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_steps.fn.ref_copy",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40197d26",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_steps_ref_drop",
+        "rust": "dkfw::track_steps::ref_drop"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Release a native clipboard reference.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_steps.fn.ref_drop",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400594c8"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Pair the native operation with the attached step settings.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_steps.hook.clear",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.track_steps.site.clear",
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005889a"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Pair the native operation with the attached step settings.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_steps.hook.copy",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.track_steps.site.copy",
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005a1e0"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Pair the native operation with the attached step settings.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_steps.hook.paste",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.track_steps.site.paste",
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40059988"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Pair the native operation with the attached step settings.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_steps.hook.toggle",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.track_steps.site.toggle",
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400594c8",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Clear native trig data for the selected steps.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_steps.site.clear",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005889a",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Copy native trigs from the selected steps to the clipboard.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_steps.site.copy",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005a1e0",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Paste native clipboard trigs onto a destination step.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_steps.site.paste",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40059988",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Set a native note trig's active state.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_steps.site.toggle",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
       "users": [
         "core/track-keyboard"
       ],
@@ -29022,11 +29612,18 @@
       "name": "track_keys"
     },
     {
-      "count": 33,
+      "count": 37,
       "cpu": "cf",
       "file": "devices/fw/track-sequence.toml",
       "meaning": "resolved track sequencer events and timed dispatch",
       "name": "track_sequence"
+    },
+    {
+      "count": 14,
+      "cpu": "cf",
+      "file": "devices/fw/track-steps.toml",
+      "meaning": "native trig clipboard and individual step editing",
+      "name": "track_steps"
     },
     {
       "count": 12,

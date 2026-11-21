@@ -35,7 +35,7 @@ _iv_lock_stage:
     COMP(R0, R1);
     IF NE JUMP _iv_lock_bad;
     R0 = DM(4, I1);
-    R1 = 0xfffef8f0;
+    R1 = 0xfffef8c0;
     R1 = R0 AND R1;
     R1 = PASS R1;
     IF NE JUMP _iv_lock_bad;
@@ -45,8 +45,13 @@ _iv_lock_stage:
     COMP(R1, R2);
     IF NE JUMP _iv_lock_bad;
     R6 = FEXT R0 BY 8:3;
+    R2 = FEXT R0 BY 4:2;
     R1 = FEXT R0 BY 16:1;
     DM(_iv_lock_source_flag) = R1;
+    R2 = LSHIFT R2 BY 1;
+    R2 = R2 OR R1;
+    I2 = _iv_lock_staging;
+    DM(6, I2) = R2;
     R1 = 0;
     DM(_iv_lock_wave_seen) = R1;
     R1 = 5;
@@ -135,8 +140,6 @@ _iv_lock_pair_next:
     R1 = DM(_iv_lock_source_flag);
     COMP(R0, R1);
     IF NE JUMP _iv_lock_bad;
-    I2 = _iv_lock_staging;
-    DM(6, I2) = R1;
     R5 = 0;
 _iv_lock_source_copy:
     R0 = LSHIFT R5 BY -1;
@@ -251,6 +254,7 @@ _iv_lock_clear:
     I0 = R0;
     R0 = 0;
     DM(0, I0) = R0;
+    DM(6, I0) = R0;
     RTS;
 // Apply the slot's absolute values to private scratch before native MOD.
 // R4=accepted bank, R0=base or scratch. Clobbers R0..15/I0..2.
@@ -262,6 +266,9 @@ _iv_lock_overlay:
     R1 = _iv_lock_slots;
     R0 = R0 + R1;
     I0 = R0;
+    R1 = DM(6, I0);
+    R1 = FEXT R1 BY 1:2;
+    DM(_iv_lock_shared_lanes) = R1;
     R0 = DM(0, I0);
     R0 = PASS R0;
     IF EQ JUMP _iv_lock_overlay_none;
@@ -504,6 +511,7 @@ _iv_lock_overlay_none:
 .PKBSS _iv_lock_staged, 4;
 .PKBSS _iv_lock_staging, 96;
 .PKBSS _iv_lock_slots, 384;
+.PKBSS _iv_lock_shared_lanes, 4;
 .PKBSS _iv_lock_source_flag, 4;
 .PKBSS _iv_lock_wave_seen, 4;
 .PKBSS _iv_lock_wave_value, 4;

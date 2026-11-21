@@ -13,6 +13,7 @@ static unsigned count;
 static bool blocked;
 static int kind[2] = {TK_NATIVE_MIDI, TK_NATIVE_MIDI};
 static uint16_t helper_mask;
+static uint16_t quiet_mask = UINT16_MAX;
 
 uint8_t tk_pool_fw_voices(uint8_t track)
 {
@@ -31,7 +32,7 @@ bool tk_pool_fw_reserved(uint8_t track)
 
 uint16_t tk_pool_fw_quiet(void)
 {
-    return UINT16_MAX;
+    return quiet_mask;
 }
 
 void tk_pool_fw_note_edge(uint8_t track)
@@ -123,6 +124,7 @@ void track_native_checks(void)
     TkTrackBackend audio;
     tk_native_backend(false, &audio);
     helper_mask = 1u << 9;
+    quiet_mask = helper_mask; /* A new phrase still installs its Sound on T1. */
     assert(post(&audio, 0, 3, 60, 111));
     assert(post(&audio, 0, 4, 64, 82));
     assert(!post(&audio, 9, 1, 55, 90)); /* Reserved destinations cannot claim keys. */

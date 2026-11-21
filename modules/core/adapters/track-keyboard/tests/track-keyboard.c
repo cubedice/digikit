@@ -307,6 +307,34 @@ static void selector_retains_common_pitches(void)
     assert(tk_service_set_backend(0, NULL));
 }
 
+static void pattern_switch_keeps_held_keys(void)
+{
+    static TkPattern first, second, bypass;
+    tk_pattern_init(&first);
+    tk_pattern_init(&second);
+    tk_pattern_init(&bypass);
+    first.tracks[0].params.poly = 1;
+    second.tracks[0].params.poly = 1;
+    Events e = {0};
+    const TkTrackBackend backend = {.output = track_sink, .context = &e, .voices = 4};
+    tk_service_edit_pattern(&first);
+    assert(tk_service_set_backend(0, &backend));
+    tk_service_play_pattern(&first);
+    assert(tk_service_press(0, TK_USB, 0, 60, 60, 100));
+    expect(&e, 0, true, 60, TK_DIRECT);
+    tk_service_play_pattern(&second);
+    assert(e.count == 1);
+    tk_service_play_pattern(&bypass);
+    expect(&e, 1, false, 60, TK_DIRECT);
+    tk_service_play_pattern(&second);
+    expect(&e, 2, true, 60, TK_DIRECT);
+    tk_service_release(0, TK_USB, 0, 60);
+    expect(&e, 3, false, 60, TK_DIRECT);
+    tk_service_stop();
+    tk_service_edit_pattern(NULL);
+    assert(tk_service_set_backend(0, NULL));
+}
+
 static void pattern_roundtrip(void)
 {
     static TkPattern original, decoded;
@@ -383,6 +411,51 @@ static void copy_track_attachment(void)
     assert(!tk_pattern_has_track(&target, 2) && target.tracks[0].params.poly == 1);
 }
 
+static void copy_step_attachment(void)
+{
+    static TkPattern pattern;
+    tk_pattern_init(&pattern);
+    TkStepAttachment source = {
+        .seed = {.count = 2, .notes = {{60, 99, 0, 1000}, {65, 83, 27, 3000}}}};
+    assert(tk_set_lock(&source.locks, TK_CTL_CHORD, TK_CHORD_MIN));
+    assert(tk_pattern_set_attachment(&pattern, 1, 127, &source));
+    TkStepAttachment copy;
+    assert(tk_pattern_step_attachment(&pattern, 1, 127, &copy));
+    assert(tk_pattern_set_attachment(&pattern, 4, 0, &copy));
+    assert(tk_pattern_set_attachment(&pattern, 1, 127, NULL));
+    assert(!tk_pattern_step_attachment(&pattern, 1, 127, &copy));
+    assert(tk_pattern_step_attachment(&pattern, 4, 0, &copy));
+    assert(copy.locks.values[TK_CTL_CHORD] == TK_CHORD_MIN);
+    assert(copy.seed.notes[1].pitch == 65 && copy.seed.notes[1].gate_ticks == 3000);
+
+    /* The lock and seed move together, so a full seed array keeps the old lock. */
+    TkStepAttachment previous = {0};
+    assert(tk_set_lock(&previous.locks, TK_CTL_GATE, 70));
+    assert(tk_pattern_set_attachment(&pattern, 5, 6, &previous));
+    for (unsigned i = 0; i < TK_RECORDED_STEPS; ++i)
+        pattern.seeds[i].index = (uint16_t)(i + 1);
+    assert(!tk_pattern_set_attachment(&pattern, 5, 6, &source));
+    assert(tk_pattern_step_attachment(&pattern, 5, 6, &copy));
+    assert(!copy.seed.count && copy.locks.values[TK_CTL_GATE] == 70);
+
+    /* A later target can free the slot an earlier destination needs. */
+    const int32_t moving[] = {50, 0};
+    const TkStepAttachment empty = {0};
+    const TkStepAttachment values[] = {source, empty};
+    bool changed;
+    assert(tk_pattern_attach_batch(&pattern, 0, moving, 2, values, false, &changed) ==
+           TK_ATTACH_OK);
+    assert(changed && !tk_pattern_seed(&pattern, 0, 50));
+    assert(tk_pattern_attach_batch(&pattern, 0, moving, 2, values, true, &changed) == TK_ATTACH_OK);
+    assert(!tk_pattern_seed(&pattern, 0, 0));
+    assert(tk_pattern_seed(&pattern, 0, 50)->notes[1].gate_ticks == 3000);
+
+    const int32_t overlapping[] = {50, 50};
+    assert(tk_pattern_attach_batch(&pattern, 0, overlapping, 2, values, true, &changed) ==
+           TK_ATTACH_INVALID);
+    assert(tk_pattern_seed(&pattern, 0, 50)->notes[1].gate_ticks == 3000);
+}
+
 static void native_record_roundtrip(void)
 {
     static uint8_t record[TK_NATIVE_RECORD_BYTES];
@@ -427,8 +500,10 @@ int main(void)
     pattern_controls();
     service_ownership();
     selector_retains_common_pitches();
+    pattern_switch_keeps_held_keys();
     pattern_roundtrip();
     copy_track_attachment();
+    copy_step_attachment();
     native_record_roundtrip();
     track_native_checks();
     track_pool_checks();

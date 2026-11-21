@@ -291,8 +291,7 @@ def playback(playback_object):
 
 def test_locked_event_sideband_is_checked_before_slot_commit(playback):
     call, put, get, _, _, _, symbols = playback
-    packet = wire_packet([(1, 1, 60, 100, 0, 0)], generation=1, revision=1, track=0)
-    packet[1] |= 0x1000
+    packet = wire_packet([(1, 1, 60, 100, 0, 0)], locked=True)
     side = [
         0x434C4B31,
         packet[2],
@@ -886,6 +885,50 @@ def test_track_keyboard_has_independent_pad_and_timed_voices(playback, family):
     assert {state[i] for i in range(0, 32, 8)} == {1, 2, 3, 4}
     assert all(state[i + 1] == 1 for i in range(0, 32, 8))
     assert state[137] == 0
+
+
+@pytest.mark.parametrize("family", [0, 2, 3])
+def test_shared_phrase_applies_locked_blend_then_restores_live_lane(playback, family):
+    call, put, get, reset, configure, events, symbols = playback
+    assert reset() == 1
+    call(0)
+    values = wavetable_fm_bank(family=family)
+    values[0] = (values[0] & ~0x3800) | 0x6800  # Base requests pad lane only.
+    values[6] = 60
+    values[21] = (values[21] & 0xFFFF0000) | 60
+    assert configure(values=values) == 1
+    call(0)
+
+    def locked(events, lanes, pair=0):
+        packet = wire_packet(events, locked=True)
+        side = [
+            0x434C4B31,
+            packet[2],
+            packet[3],
+            packet[9],
+            (bool(pair) << 8) | (lanes << 4),
+            pair,
+        ] + [0] * 12
+        a, b = 0x6C6F636B, 0x74726967
+        for word in side[:17]:
+            a = (a + word) & 0xFFFFFFFF
+            b = (b + a) & 0xFFFFFFFF
+        side[17] = a ^ b
+        put("_test_packet_block", side + packet)
+        assert call(3, R4=symbols["_test_packet"]) == 1
+        call(0)
+
+    pad, arp = 1, 0x40000002
+    locked([(pad, 1, 60, 100, 2, 0), (arp, 1, 60, 100, 2, 0)], 3, (5 << 10) | 89)
+    assert get("_iv_shared_controls", 32)[6] == 89
+    assert get("_iv_controls", 32) == values
+    assert get("_test_state", 144)[136] == arp
+    assert events([(arp, 2, 60, 0, 2, 0), (pad, 2, 60, 0, 2, 0)]) == 1
+    call(0)
+    locked([(3, 1, 60, 100, 2, 0)], 0)
+    assert get("_iv_lock_slots")[0] == 0
+    assert get("_iv_shared_controls", 32)[6] == 0
+    assert get("_iv_controls", 32) == values
 
 
 def test_extended_movement_configuration_is_applied_atomically(playback):
