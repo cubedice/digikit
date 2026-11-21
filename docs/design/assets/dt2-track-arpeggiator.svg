@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="840" height="1038" viewBox="0 0 840 1038" role="img" aria-labelledby="title description">
+  <title id="title">Digitakt II track keyboard, arpeggiator and CANOPY SRC</title>
+  <desc id="description">Eight proposed 128 by 64 screens. The audio track has an SMP badge and level fader. Holding TRIG PARAMETERS changes the captions to values. The MIDI track leaves its level column empty. The NOTES list shows ordered intervals and velocities. The lower screens show the shared keyboard and the wavetable version of all three CANOPY source pages.</desc>
+  <!-- Original vector drawings with original screen lettering. Screen coordinates are logical OLED pixels. -->
+  <style>
+    .heading { font: 600 16px system-ui,sans-serif; fill: #272821 }
+    .screen { color: #f8f4db; fill: currentColor; font: bold 5.6px monospace }
+    .line { fill: none; stroke: currentColor; stroke-width: .9 }
+    .caption { text-anchor: middle }
+    .ink { fill: #161711 }
+    .readout { font-size: 5.1px; text-anchor: middle }
+  </style>
+  <defs>
+    <path id="g58" d="M0 0h1v1H0zM2 0h1v1H2zM0 1h1v1H0zM2 1h1v1H2zM1 2h1v1H1zM0 3h1v1H0zM2 3h1v1H2zM0 4h1v1H0zM2 4h1v1H2z"/>
+    <!-- Three-by-five screen lettering constructed for this drawing. -->
+    <path id="g30" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g31" d="M1 0h1v1h-1zM0 1h1v1h-1zM1 1h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g32" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 1h1v1h-1zM1 2h1v1h-1zM0 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g33" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 1h1v1h-1zM1 2h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1z"/>
+    <path id="g34" d="M0 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM2 3h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g35" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1z"/>
+    <path id="g36" d="M1 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g37" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM2 1h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM1 4h1v1h-1z"/>
+    <path id="g38" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g39" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1z"/>
+    <path id="g41" d="M1 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g42" d="M0 0h1v1h-1zM1 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1z"/>
+    <path id="g43" d="M1 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM0 2h1v1h-1zM0 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g44" d="M0 0h1v1h-1zM1 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1z"/>
+    <path id="g45" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM0 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g46" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM0 3h1v1h-1zM0 4h1v1h-1z"/>
+    <path id="g47" d="M1 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g48" d="M0 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g49" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM1 1h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g4a" d="M2 0h1v1h-1zM2 1h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM1 4h1v1h-1z"/>
+    <path id="g4b" d="M0 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g4c" d="M0 0h1v1h-1zM0 1h1v1h-1zM0 2h1v1h-1zM0 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g4d" d="M0 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g4e" d="M0 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g4f" d="M1 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM1 4h1v1h-1z"/>
+    <path id="g50" d="M0 0h1v1h-1zM1 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM0 3h1v1h-1zM0 4h1v1h-1z"/>
+    <path id="g51" d="M1 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g52" d="M0 0h1v1h-1zM1 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g53" d="M1 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM1 2h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1z"/>
+    <path id="g54" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM1 1h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM1 4h1v1h-1z"/>
+    <path id="g55" d="M0 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g56" d="M0 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM1 4h1v1h-1z"/>
+    <path id="g57" d="M0 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g59" d="M0 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM1 4h1v1h-1z"/>
+    <path id="g2e" d="M1 4h1v1h-1z"/>
+    <path id="g2f" d="M2 0h1v1h-1zM2 1h1v1h-1zM1 2h1v1h-1zM0 3h1v1h-1zM0 4h1v1h-1z"/>
+    <path id="g2b" d="M1 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM1 3h1v1h-1z"/>
+    <path id="g2d" d="M0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1z"/>
+    <path id="g25" d="M0 0h1v1h-1zM2 0h1v1h-1zM2 1h1v1h-1zM1 2h1v1h-1zM0 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g23" d="M0 0h1v1h-1zM2 0h1v1h-1zM0 1h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g28" d="M2 0h1v1h-1zM1 1h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g29" d="M0 0h1v1h-1zM1 1h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM0 4h1v1h-1z"/>
+    <path id="g2669" d="M2 0h1v1h-1zM2 1h1v1h-1zM2 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g61" d="M1 1h1v1h-1zM2 1h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g65" d="M1 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1z"/>
+    <path id="g67" d="M0 1h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1z"/>
+    <path id="g69" d="M1 0h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM1 4h1v1h-1z"/>
+    <path id="g6f" d="M1 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM1 4h1v1h-1z"/>
+    <path id="g70" d="M0 1h1v1h-1zM1 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM0 4h1v1h-1z"/>
+    <path id="g72" d="M1 1h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM0 3h1v1h-1zM0 4h1v1h-1z"/>
+    <path id="g74" d="M1 0h1v1h-1zM0 1h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1z"/>
+    <rect id="face" class="ink" width="128" height="64"/>
+    <g id="pattern">
+      <rect width="17" height="9"/><g aria-label="A01" class="ink" transform="translate(2 2) scale(1)"><use xlink:href="#g41" x="0"/><use xlink:href="#g30" x="4"/><use xlink:href="#g31" x="8"/></g>
+      <g aria-label="ORBIT" transform="translate(20 2) scale(1)"><use xlink:href="#g4f" x="0"/><use xlink:href="#g52" x="4"/><use xlink:href="#g42" x="8"/><use xlink:href="#g49" x="12"/><use xlink:href="#g54" x="16"/></g>
+      <path d="M86 2h4v1h-4zm0 2h4v1h-4zm0 2h4v1h-4z"/>
+      <rect x="93" width="35" height="9"/><g aria-label="♩120.0" class="ink" transform="translate(96 2) scale(1)"><use xlink:href="#g2669" x="0"/><use xlink:href="#g31" x="4"/><use xlink:href="#g32" x="8"/><use xlink:href="#g30" x="12"/><use xlink:href="#g2e" x="16"/><use xlink:href="#g30" x="20"/></g>
+    </g>
+    <g id="pagetitle">
+      <rect width="128" height="9"/><path d="M17 0v9" stroke="#161711"/>
+      <g aria-label="A01" class="ink" transform="translate(2 2) scale(1)"><use xlink:href="#g41" x="0"/><use xlink:href="#g30" x="4"/><use xlink:href="#g31" x="8"/></g>
+      <g aria-label="Arpeggiator (3/4)" class="ink" transform="translate(20 2) scale(1)"><use xlink:href="#g41" x="0"/><use xlink:href="#g72" x="4"/><use xlink:href="#g70" x="8"/><use xlink:href="#g65" x="12"/><use xlink:href="#g67" x="16"/><use xlink:href="#g67" x="20"/><use xlink:href="#g69" x="24"/><use xlink:href="#g61" x="28"/><use xlink:href="#g74" x="32"/><use xlink:href="#g6f" x="36"/><use xlink:href="#g72" x="40"/><use xlink:href="#g28" x="48"/><use xlink:href="#g33" x="52"/><use xlink:href="#g2f" x="56"/><use xlink:href="#g34" x="60"/><use xlink:href="#g29" x="64"/></g>
+    </g>
+    <g id="markers"><path d="M126 24h1v1h-1zM126 29h1v1h-1zM125 34h3v3h-3zM126 40h1v1h-1z"/></g>
+    <g id="badge">
+      <rect class="line" x="1" y="12" width="14" height="24"/>
+      <g aria-label="1" transform="translate(5 23) scale(2)"><use xlink:href="#g31" x="0"/></g>
+    </g>
+    <g id="audio">
+      <use xlink:href="#badge"/><g aria-label="SMP" transform="translate(3 14) scale(1)"><use xlink:href="#g53" x="0"/><use xlink:href="#g4d" x="4"/><use xlink:href="#g50" x="8"/></g>
+      <path class="line" d="M5 40h6v15H5z M1 40h2m-2 4h2m-2 4h2m-2 4h2m-2 3h2m10-15h2m-2 4h2m-2 4h2m-2 4h2m-2 3h2"/>
+      <rect x="7" y="44" width="2" height="9"/>
+    </g>
+    <g id="midi"><use xlink:href="#badge"/><g aria-label="MID" transform="translate(3 14) scale(1)"><use xlink:href="#g4d" x="0"/><use xlink:href="#g49" x="4"/><use xlink:href="#g44" x="8"/></g></g>
+    <g id="widgets">
+      <rect class="line" x="26" y="17" width="17" height="8" rx="4"/><circle cx="39" cy="21" r="2.5"/>
+      <rect class="line" x="51" y="13" width="19" height="16" rx="1"/><g aria-label="UP" transform="translate(57 18) scale(1)"><use xlink:href="#g55" x="0"/><use xlink:href="#g50" x="4"/></g>
+      <circle class="line" cx="86" cy="21" r="8"/><path class="line" d="M86 21v-8"/>
+      <rect class="line" x="102.5" y="13" width="19" height="16" rx="1"/><g aria-label="1/16" transform="translate(105 18) scale(1)"><use xlink:href="#g31" x="0"/><use xlink:href="#g2f" x="4"/><use xlink:href="#g31" x="8"/><use xlink:href="#g36" x="12"/></g>
+      <rect class="line" x="25" y="40" width="19" height="16" rx="1"/><g aria-label="+1" transform="translate(31 45) scale(1)"><use xlink:href="#g2b" x="0"/><use xlink:href="#g31" x="4"/></g>
+      <circle class="line" cx="60.5" cy="48" r="8"/><path class="line" d="m60.5 48-5.5 5.5"/>
+      <rect class="line" x="76.5" y="40" width="19" height="16" rx="1"/><g aria-label="TRIG" transform="translate(79 45) scale(1)"><use xlink:href="#g54" x="0"/><use xlink:href="#g52" x="4"/><use xlink:href="#g49" x="8"/><use xlink:href="#g47" x="12"/></g>
+      <rect class="line" x="102.5" y="40" width="19" height="16" rx="1"/><g aria-label="PLAY" transform="translate(105 45) scale(1)"><use xlink:href="#g50" x="0"/><use xlink:href="#g4c" x="4"/><use xlink:href="#g41" x="8"/><use xlink:href="#g59" x="12"/></g>
+    </g>
+    <g id="labels" class="caption">
+      <g aria-label="ARP" transform="translate(29 31) scale(1)"><use xlink:href="#g41" x="0"/><use xlink:href="#g52" x="4"/><use xlink:href="#g50" x="8"/></g><g aria-label="ORDR" transform="translate(53 31) scale(1)"><use xlink:href="#g4f" x="0"/><use xlink:href="#g52" x="4"/><use xlink:href="#g44" x="8"/><use xlink:href="#g52" x="12"/></g><g aria-label="GATE" transform="translate(79 31) scale(1)"><use xlink:href="#g47" x="0"/><use xlink:href="#g41" x="4"/><use xlink:href="#g54" x="8"/><use xlink:href="#g45" x="12"/></g><g aria-label="RATE" transform="translate(105 31) scale(1)"><use xlink:href="#g52" x="0"/><use xlink:href="#g41" x="4"/><use xlink:href="#g54" x="8"/><use xlink:href="#g45" x="12"/></g>
+      <g aria-label="OCTS" transform="translate(27 58) scale(1)"><use xlink:href="#g4f" x="0"/><use xlink:href="#g43" x="4"/><use xlink:href="#g54" x="8"/><use xlink:href="#g53" x="12"/></g><g aria-label="SWNG" transform="translate(53 58) scale(1)"><use xlink:href="#g53" x="0"/><use xlink:href="#g57" x="4"/><use xlink:href="#g4e" x="8"/><use xlink:href="#g47" x="12"/></g><g aria-label="RST" transform="translate(81 58) scale(1)"><use xlink:href="#g52" x="0"/><use xlink:href="#g53" x="4"/><use xlink:href="#g54" x="8"/></g><g aria-label="CHRD" transform="translate(105 58) scale(1)"><use xlink:href="#g43" x="0"/><use xlink:href="#g48" x="4"/><use xlink:href="#g52" x="8"/><use xlink:href="#g44" x="12"/></g>
+    </g>
+    <g id="values" class="caption">
+      <g aria-label="ON" transform="translate(31 31) scale(1)"><use xlink:href="#g4f" x="0"/><use xlink:href="#g4e" x="4"/></g><g aria-label="UP" transform="translate(57 31) scale(1)"><use xlink:href="#g55" x="0"/><use xlink:href="#g50" x="4"/></g><g aria-label="50%" transform="translate(81 31) scale(1)"><use xlink:href="#g35" x="0"/><use xlink:href="#g30" x="4"/><use xlink:href="#g25" x="8"/></g><g aria-label="1/16" transform="translate(105 31) scale(1)"><use xlink:href="#g31" x="0"/><use xlink:href="#g2f" x="4"/><use xlink:href="#g31" x="8"/><use xlink:href="#g36" x="12"/></g>
+      <g aria-label="+1" transform="translate(31 58) scale(1)"><use xlink:href="#g2b" x="0"/><use xlink:href="#g31" x="4"/></g><g aria-label="50%" transform="translate(55 58) scale(1)"><use xlink:href="#g35" x="0"/><use xlink:href="#g30" x="4"/><use xlink:href="#g25" x="8"/></g><g aria-label="TRIG" transform="translate(79 58) scale(1)"><use xlink:href="#g54" x="0"/><use xlink:href="#g52" x="4"/><use xlink:href="#g49" x="8"/><use xlink:href="#g47" x="12"/></g><g aria-label="PLAY" transform="translate(105 58) scale(1)"><use xlink:href="#g50" x="0"/><use xlink:href="#g4c" x="4"/><use xlink:href="#g41" x="8"/><use xlink:href="#g59" x="12"/></g>
+    </g>
+  </defs>
+  <rect width="840" height="1038" fill="#f5f4ed"/>
+  <g class="heading"><text x="20" y="30">Audio track · ARP</text><text x="436" y="30">Audio track · holding TRIG PARAMETERS</text>
+    <text x="20" y="291">MIDI track · entering ARP</text><text x="436" y="291">NOTES · editing a learned chord</text></g>
+  <g class="screen" transform="translate(20 44) scale(3)">
+    <use xlink:href="#face"/><use xlink:href="#pattern"/><use xlink:href="#audio"/><g aria-label="LEV" transform="translate(3 58) scale(1)"><use xlink:href="#g4c" x="0"/><use xlink:href="#g45" x="4"/><use xlink:href="#g56" x="8"/></g>
+    <use xlink:href="#widgets"/><use xlink:href="#labels"/><use xlink:href="#markers"/>
+  </g>
+  <g class="screen" transform="translate(436 44) scale(3)">
+    <use xlink:href="#face"/><use xlink:href="#pattern"/><use xlink:href="#audio"/><g aria-label="100" transform="translate(3 58) scale(1)"><use xlink:href="#g31" x="0"/><use xlink:href="#g30" x="4"/><use xlink:href="#g30" x="8"/></g>
+    <use xlink:href="#widgets"/><use xlink:href="#values"/><use xlink:href="#markers"/>
+  </g>
+  <g class="screen" transform="translate(20 305) scale(3)">
+    <use xlink:href="#face"/><use xlink:href="#pagetitle"/><use xlink:href="#midi"/>
+    <use xlink:href="#widgets"/><use xlink:href="#labels"/><use xlink:href="#markers"/>
+  </g>
+  <g class="screen" transform="translate(436 305) scale(3)">
+    <use xlink:href="#face"/><path class="line" d="M39.5 0v64"/>
+    <g aria-label="NOTES" transform="translate(3 4) scale(1)"><use xlink:href="#g4e" x="0"/><use xlink:href="#g4f" x="4"/><use xlink:href="#g54" x="8"/><use xlink:href="#g45" x="12"/><use xlink:href="#g53" x="16"/></g><g aria-label="TRK 1" transform="translate(3 14) scale(1)"><use xlink:href="#g54" x="0"/><use xlink:href="#g52" x="4"/><use xlink:href="#g4b" x="8"/><use xlink:href="#g31" x="16"/></g><g aria-label="USER" transform="translate(3 33) scale(1)"><use xlink:href="#g55" x="0"/><use xlink:href="#g53" x="4"/><use xlink:href="#g45" x="8"/><use xlink:href="#g52" x="12"/></g><g aria-label="3/16" transform="translate(3 43) scale(1)"><use xlink:href="#g33" x="0"/><use xlink:href="#g2f" x="4"/><use xlink:href="#g31" x="8"/><use xlink:href="#g36" x="12"/></g><g aria-label="OUT E3" transform="translate(3 55) scale(1)"><use xlink:href="#g4f" x="0"/><use xlink:href="#g55" x="4"/><use xlink:href="#g54" x="8"/><use xlink:href="#g45" x="16"/><use xlink:href="#g33" x="20"/></g>
+    <g aria-label="#" transform="translate(43 3) scale(1)"><use xlink:href="#g23" x="0"/></g><g aria-label="NOTE" transform="translate(68 3) scale(1)"><use xlink:href="#g4e" x="0"/><use xlink:href="#g4f" x="4"/><use xlink:href="#g54" x="8"/><use xlink:href="#g45" x="12"/></g><g aria-label="VEL" transform="translate(101 3) scale(1)"><use xlink:href="#g56" x="0"/><use xlink:href="#g45" x="4"/><use xlink:href="#g4c" x="8"/></g>
+    <g aria-label="01" transform="translate(43 15) scale(1)"><use xlink:href="#g30" x="0"/><use xlink:href="#g31" x="4"/></g><g aria-label="+0" transform="translate(68 15) scale(1)"><use xlink:href="#g2b" x="0"/><use xlink:href="#g30" x="4"/></g><g aria-label="100" transform="translate(101 15) scale(1)"><use xlink:href="#g31" x="0"/><use xlink:href="#g30" x="4"/><use xlink:href="#g30" x="8"/></g>
+    <rect x="42" y="23" width="82" height="10"/><g class="ink"><g aria-label="02" transform="translate(43 25) scale(1)"><use xlink:href="#g30" x="0"/><use xlink:href="#g32" x="4"/></g><g aria-label="-4" transform="translate(68 25) scale(1)"><use xlink:href="#g2d" x="0"/><use xlink:href="#g34" x="4"/></g><g aria-label="96" transform="translate(101 25) scale(1)"><use xlink:href="#g39" x="0"/><use xlink:href="#g36" x="4"/></g></g>
+    <g aria-label="03" transform="translate(43 35) scale(1)"><use xlink:href="#g30" x="0"/><use xlink:href="#g33" x="4"/></g><g aria-label="+3" transform="translate(68 35) scale(1)"><use xlink:href="#g2b" x="0"/><use xlink:href="#g33" x="4"/></g><g aria-label="90" transform="translate(101 35) scale(1)"><use xlink:href="#g39" x="0"/><use xlink:href="#g30" x="4"/></g>
+  </g>
+  <text class="heading" x="20" y="552">TRIG 4 · Keyboard</text>
+  <g class="screen" transform="translate(20 566) scale(3)">
+    <use xlink:href="#face"/><use xlink:href="#pattern"/><use xlink:href="#audio"/><g aria-label="LEV" transform="translate(3 58)"><use xlink:href="#g4c" x="0"/><use xlink:href="#g45" x="4"/><use xlink:href="#g56" x="8"/></g><rect x="126" y="26" width="1" height="1"/><rect x="126" y="31" width="1" height="1"/><rect x="126" y="36" width="1" height="1"/><rect x="125" y="41" width="3" height="3"/>
+    <path class="line" d="M24 41h47v14H24zM31 41v14m7-14v14m6-14v14m7-14v14m7-14v14m7-14v14"/><path d="M29 41h4v8h-4zm7 0h4v8h-4zm13 0h4v8h-4zm7 0h4v8h-4zm7 0h4v8h-4zM25 52h5v2h-5zm19 0h5v2h-5zm14 0h5v2h-5z"/><g aria-label="C MIN" transform="translate(39 58)"><use xlink:href="#g43" x="0"/><use xlink:href="#g4d" x="8"/><use xlink:href="#g49" x="12"/><use xlink:href="#g4e" x="16"/></g>
+    <rect class="line" x="24" y="13" width="20" height="15" rx="1"/><g aria-label="ON" transform="translate(31 18)"><use xlink:href="#g4f" x="0"/><use xlink:href="#g4e" x="4"/></g><g aria-label="POLY" transform="translate(27 31)"><use xlink:href="#g50" x="0"/><use xlink:href="#g4f" x="4"/><use xlink:href="#g4c" x="8"/><use xlink:href="#g59" x="12"/></g>
+    <rect class="line" x="50" y="13" width="20" height="15" rx="1"/><g aria-label="MIN" transform="translate(55 18)"><use xlink:href="#g4d" x="0"/><use xlink:href="#g49" x="4"/><use xlink:href="#g4e" x="8"/></g><g aria-label="CHRD" transform="translate(53 31)"><use xlink:href="#g43" x="0"/><use xlink:href="#g48" x="4"/><use xlink:href="#g52" x="8"/><use xlink:href="#g44" x="12"/></g>
+    <rect class="line" x="76" y="13" width="20" height="15" rx="1"/><g aria-label="CLS" transform="translate(81 18)"><use xlink:href="#g43" x="0"/><use xlink:href="#g4c" x="4"/><use xlink:href="#g53" x="8"/></g><g aria-label="VOIC" transform="translate(79 31)"><use xlink:href="#g56" x="0"/><use xlink:href="#g4f" x="4"/><use xlink:href="#g49" x="8"/><use xlink:href="#g43" x="12"/></g>
+    <rect class="line" x="102" y="13" width="20" height="15" rx="1"/><g aria-label="OFF" transform="translate(107 18)"><use xlink:href="#g4f" x="0"/><use xlink:href="#g46" x="4"/><use xlink:href="#g46" x="8"/></g><g aria-label="STRM" transform="translate(105 31)"><use xlink:href="#g53" x="0"/><use xlink:href="#g54" x="4"/><use xlink:href="#g52" x="8"/><use xlink:href="#g4d" x="12"/></g>
+
+
+    <rect class="line" x="76" y="40" width="20" height="15" rx="1"/><g aria-label="3" transform="translate(85 45)"><use xlink:href="#g33" x="0"/></g><g aria-label="VCES" transform="translate(79 58)"><use xlink:href="#g56" x="0"/><use xlink:href="#g43" x="4"/><use xlink:href="#g45" x="8"/><use xlink:href="#g53" x="12"/></g>
+    <rect class="line" x="102" y="40" width="20" height="15" rx="1"/><g aria-label="GRP" transform="translate(107 45)"><use xlink:href="#g47" x="0"/><use xlink:href="#g52" x="4"/><use xlink:href="#g50" x="8"/></g><g aria-label="POOL" transform="translate(105 58)"><use xlink:href="#g50" x="0"/><use xlink:href="#g4f" x="4"/><use xlink:href="#g4f" x="8"/><use xlink:href="#g4c" x="12"/></g>
+  </g>
+  <text class="heading" x="436" y="552">CANOPY SRC 1 · Source</text>
+  <g class="screen" transform="translate(436 566) scale(3)">
+    <use xlink:href="#face"/><use xlink:href="#pattern"/><use xlink:href="#audio"/><g aria-label="LEV" transform="translate(3 58)"><use xlink:href="#g4c" x="0"/><use xlink:href="#g45" x="4"/><use xlink:href="#g56" x="8"/></g><rect x="125" y="26" width="3" height="3"/><rect x="126" y="31" width="1" height="1"/><rect x="126" y="36" width="1" height="1"/>
+    <path class="line" d="M24 48q5 -12 12 0t12 0 12 0 12 0"/><path d="M24 55h47v1H24zM40 53h2v5h-2z"/><g aria-label="GLASS" transform="translate(39 58)"><use xlink:href="#g47" x="0"/><use xlink:href="#g4c" x="4"/><use xlink:href="#g41" x="8"/><use xlink:href="#g53" x="12"/><use xlink:href="#g53" x="16"/></g>
+    <circle class="line" cx="34" cy="21" r="7"/><path class="line" d="M34 21l4 -5"/><g aria-label="TUNE" transform="translate(27 31)"><use xlink:href="#g54" x="0"/><use xlink:href="#g55" x="4"/><use xlink:href="#g4e" x="8"/><use xlink:href="#g45" x="12"/></g>
+    <rect class="line" x="50" y="13" width="20" height="15" rx="1"/><g aria-label="GLAS" transform="translate(53 18)"><use xlink:href="#g47" x="0"/><use xlink:href="#g4c" x="4"/><use xlink:href="#g41" x="8"/><use xlink:href="#g53" x="12"/></g><g aria-label="WAVE" transform="translate(53 31)"><use xlink:href="#g57" x="0"/><use xlink:href="#g41" x="4"/><use xlink:href="#g56" x="8"/><use xlink:href="#g45" x="12"/></g>
+    <circle class="line" cx="86" cy="21" r="7"/><path class="line" d="M86 21l4 -5"/><g aria-label="POS" transform="translate(81 31)"><use xlink:href="#g50" x="0"/><use xlink:href="#g4f" x="4"/><use xlink:href="#g53" x="8"/></g>
+    <circle class="line" cx="112" cy="21" r="7"/><path class="line" d="M112 21l4 -5"/><g aria-label="DRFT" transform="translate(105 31)"><use xlink:href="#g44" x="0"/><use xlink:href="#g52" x="4"/><use xlink:href="#g46" x="8"/><use xlink:href="#g54" x="12"/></g>
+
+
+    <path class="line" d="M76 48h20m-20-2v4m20-4v4"/><rect x="84" y="45" width="3" height="7"/><g aria-label="MIX" transform="translate(81 58)"><use xlink:href="#g4d" x="0"/><use xlink:href="#g49" x="4"/><use xlink:href="#g58" x="8"/></g>
+    <circle class="line" cx="112" cy="48" r="7"/><path class="line" d="M112 48l4 -5"/><g aria-label="LEV" transform="translate(107 58)"><use xlink:href="#g4c" x="0"/><use xlink:href="#g45" x="4"/><use xlink:href="#g56" x="8"/></g>
+  </g>
+  <text class="heading" x="20" y="810">CANOPY SRC 2 · Wavetable tone</text>
+  <g class="screen" transform="translate(20 824) scale(3)">
+    <use xlink:href="#face"/><use xlink:href="#pattern"/><use xlink:href="#audio"/><g aria-label="LEV" transform="translate(3 58)"><use xlink:href="#g4c" x="0"/><use xlink:href="#g45" x="4"/><use xlink:href="#g56" x="8"/></g><rect x="126" y="26" width="1" height="1"/><rect x="125" y="31" width="3" height="3"/><rect x="126" y="36" width="1" height="1"/>
+    <path class="line" d="M51 50q8 -17 16 0t16 0 16 0 16 0"/><path d="M59 55h50v1H59zM59 53h1v5h-1zm49 0h1v5h-1z"/>
+    <circle class="line" cx="34" cy="21" r="7"/><path class="line" d="M34 21l4 -5"/><g aria-label="DEP" transform="translate(29 31)"><use xlink:href="#g44" x="0"/><use xlink:href="#g45" x="4"/><use xlink:href="#g50" x="8"/></g>
+    <rect class="line" x="50" y="13" width="20" height="15" rx="1"/><g aria-label="1/4" transform="translate(55 18)"><use xlink:href="#g31" x="0"/><use xlink:href="#g2f" x="4"/><use xlink:href="#g34" x="8"/></g><g aria-label="RATE" transform="translate(53 31)"><use xlink:href="#g52" x="0"/><use xlink:href="#g41" x="4"/><use xlink:href="#g54" x="8"/><use xlink:href="#g45" x="12"/></g>
+    <rect class="line" x="76" y="13" width="20" height="15" rx="1"/><g aria-label="SINE" transform="translate(79 18)"><use xlink:href="#g53" x="0"/><use xlink:href="#g49" x="4"/><use xlink:href="#g4e" x="8"/><use xlink:href="#g45" x="12"/></g><g aria-label="SHAP" transform="translate(79 31)"><use xlink:href="#g53" x="0"/><use xlink:href="#g48" x="4"/><use xlink:href="#g41" x="8"/><use xlink:href="#g50" x="12"/></g>
+    <rect class="line" x="102" y="13" width="20" height="15" rx="1"/><g aria-label="SYNC" transform="translate(105 18)"><use xlink:href="#g53" x="0"/><use xlink:href="#g59" x="4"/><use xlink:href="#g4e" x="8"/><use xlink:href="#g43" x="12"/></g><g aria-label="CLK" transform="translate(107 31)"><use xlink:href="#g43" x="0"/><use xlink:href="#g4c" x="4"/><use xlink:href="#g4b" x="8"/></g>
+    <rect class="line" x="24" y="40" width="20" height="15" rx="1"/><g aria-label="PATT" transform="translate(27 45)"><use xlink:href="#g50" x="0"/><use xlink:href="#g41" x="4"/><use xlink:href="#g54" x="8"/><use xlink:href="#g54" x="12"/></g><g aria-label="RST" transform="translate(29 58)"><use xlink:href="#g52" x="0"/><use xlink:href="#g53" x="4"/><use xlink:href="#g54" x="8"/></g>
+
+
+
+  </g>
+  <text class="heading" x="436" y="810">CANOPY SRC 3 · Timbre envelope</text>
+  <g class="screen" transform="translate(436 824) scale(3)">
+    <use xlink:href="#face"/><use xlink:href="#pattern"/><use xlink:href="#audio"/><g aria-label="LEV" transform="translate(3 58)"><use xlink:href="#g4c" x="0"/><use xlink:href="#g45" x="4"/><use xlink:href="#g56" x="8"/></g><rect x="126" y="26" width="1" height="1"/><rect x="126" y="31" width="1" height="1"/><rect x="125" y="36" width="3" height="3"/>
+    <path class="line" d="M24 28l16 -15h14l16 15"/><path stroke="currentColor" stroke-dasharray="1 2" d="M54 14v15"/><path class="line" d="M104 48h5l3 -4h8m-11 4 3 5h8"/>
+    <g aria-label="ATK" transform="translate(29 31)"><use xlink:href="#g41" x="0"/><use xlink:href="#g54" x="4"/><use xlink:href="#g4b" x="8"/></g>
+    <g aria-label="REL" transform="translate(55 31)"><use xlink:href="#g52" x="0"/><use xlink:href="#g45" x="4"/><use xlink:href="#g4c" x="8"/></g>
+    <circle class="line" cx="86" cy="21" r="7"/><path class="line" d="M86 21l4 -5"/><g aria-label="FM" transform="translate(83 31)"><use xlink:href="#g46" x="0"/><use xlink:href="#g4d" x="4"/></g>
+    <rect class="line" x="102" y="13" width="20" height="15" rx="1"/><g aria-label="1.00" transform="translate(105 18)"><use xlink:href="#g31" x="0"/><use xlink:href="#g2e" x="4"/><use xlink:href="#g30" x="8"/><use xlink:href="#g30" x="12"/></g><g aria-label="RAT" transform="translate(107 31)"><use xlink:href="#g52" x="0"/><use xlink:href="#g41" x="4"/><use xlink:href="#g54" x="8"/></g>
+    <circle class="line" cx="34" cy="48" r="7"/><path class="line" d="M34 48l4 -5"/><g aria-label="PENV" transform="translate(27 58)"><use xlink:href="#g50" x="0"/><use xlink:href="#g45" x="4"/><use xlink:href="#g4e" x="8"/><use xlink:href="#g56" x="12"/></g>
+    <circle class="line" cx="60" cy="48" r="7"/><path class="line" d="M60 48l4 -5"/><g aria-label="FENV" transform="translate(53 58)"><use xlink:href="#g46" x="0"/><use xlink:href="#g45" x="4"/><use xlink:href="#g4e" x="8"/><use xlink:href="#g56" x="12"/></g>
+    <circle class="line" cx="86" cy="48" r="7"/><path class="line" d="M86 48l4 -5"/><g aria-label="VEL" transform="translate(81 58)"><use xlink:href="#g56" x="0"/><use xlink:href="#g45" x="4"/><use xlink:href="#g4c" x="8"/></g>
+
+  </g>
+</svg>
