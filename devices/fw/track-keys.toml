@@ -192,3 +192,97 @@ devices = ["dt2"]
 mark = "D"
 users = ["core/track-keyboard"]
 doc = "Leave stock release dispatch only on native destinations of mixed routes."
+
+[[site]]
+name = "cf.track_keys.site.wire_ports_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 4, sha256 = "02022f3ad3a26c2a6251bbd7669ede3c0f5fb0789c900d33ac255fe087ca014d" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Native output mask operand. Bit 0 routes to DIN and bit 1 routes to USB."
+
+[[site]]
+name = "cf.track_keys.site.wire_message_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 4, sha256 = "841c1330bf94f9f68afd7f2b5c7416fc8250274a52017b8e6a9c796f9795f1bb" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Worker note buffer count used before sending one explicitly routed message."
+
+[[site]]
+name = "cf.track_keys.site.wire_append"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 6, sha256 = "4c9592542e5ccc034aed687ecf2840c9019e1cb5700c124e0846a11b6db60234" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Append one MIDI message to the native worker buffer."
+
+[[site]]
+name = "cf.track_keys.site.wire_flush"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 6, sha256 = "ad6b50634e908475d64f6137bdda6de2ab3e34ccf3dded06cf0c7d8f73a27d57" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Send the native MIDI worker buffer through the configured output mask."
+
+[[site]]
+name = "cf.track_keys.site.wire_on"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 6, sha256 = "4a4a93ba131f8ebe003b8f7cdfdb1fcbba98b22d12e5d71126b6379a2d3465c9" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Append the new note after the native same-pitch release and retain the worker owner."
+
+[[site]]
+name = "cf.track_keys.site.wire_off"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 8, sha256 = "b8246b778c0095186d09647bd6b5f1b63c8d40b51cde6a805ff592917105fa90" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Append a note-off on the saved channel, then clear the matching native owner."
+
+[[site]]
+name = "cf.track_keys.site.wire_on_resume"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 4, sha256 = "87f36a7a85c51a28a0514b646ce3ee42bd56e63c822ea8fff3b05be2209f17ae" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Resume the native onset after the routed append."
+
+[[site]]
+name = "cf.track_keys.site.wire_off_resume"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 4, sha256 = "9109ffc9c869b6356f9d29659f36f0c054dfbce56eb8279bbb7e95b264a4b969" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Resume the native release after clearing the note owner."
+
+[[hook]]
+name = "cf.track_keys.hook.wire_on"
+site = "cf.track_keys.site.wire_on"
+cpu = "cf"
+mode = "replace"
+regs = { in = ["a2"], clobbers = ["ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Preserve native note ownership and use the captured port mask for a generated note."
+
+[[hook]]
+name = "cf.track_keys.hook.wire_off"
+site = "cf.track_keys.site.wire_off"
+cpu = "cf"
+mode = "replace"
+regs = { in = ["a2"], clobbers = ["ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Preserve native note ownership and use the captured port mask for a generated note."

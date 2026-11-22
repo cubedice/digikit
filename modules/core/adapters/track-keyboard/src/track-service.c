@@ -585,6 +585,25 @@ uint16_t tk_trig_pitch_display(uint8_t track, uint16_t *held)
     return sounding;
 }
 
+uint8_t tk_trig_held_pitches(uint8_t track, uint8_t pitches[TK_NOTES])
+{
+    if (!tk_trig_ready(track))
+        return 0;
+    const TkState *live = &tracks[track].live;
+    uint8_t count = 0;
+    for (uint8_t i = 0; i < live->key_count && count < TK_NOTES; ++i) {
+        const TkKey *key = &live->keys[i];
+        if (key->stolen)
+            continue;
+        uint8_t j = 0;
+        while (j < count && pitches[j] != key->pitch)
+            ++j;
+        if (j == count)
+            pitches[count++] = key->pitch;
+    }
+    return count;
+}
+
 bool tk_trig_display(uint8_t track, TkParams *out)
 {
     if (!tk_trig_ready(track))

@@ -46,3 +46,29 @@ tk_midi_target_off:
     jmp tk_midi_off_tail
 1:  subq.l #8,%sp
     jmp tk_midi_off_return
+
+/* The worker has already built the message and retained its native note
+ * owner. Pass its event record in A2 to the generated-route filter. */
+    .macro wire_note
+    lea -16(%sp),%sp
+    movem.l %d0-%d1/%a0-%a1,(%sp)
+    move.l %a2,-(%sp)
+    move.l 24(%sp),-(%sp)    /* message among the stock call arguments */
+    move.l 24(%sp),-(%sp)    /* message length */
+    jsr tk_midi_routed_note
+    lea 12(%sp),%sp
+    movem.l (%sp),%d0-%d1/%a0-%a1
+    lea 16(%sp),%sp
+    .endm
+
+    .globl tk_midi_wire_on
+tk_midi_wire_on:
+    wire_note
+    mvs.b %d5,%d0
+    jmp tk_midi_wire_on_resume
+
+    .globl tk_midi_wire_off
+tk_midi_wire_off:
+    wire_note
+    clr.l (%a4,%d7.l)
+    jmp tk_midi_wire_off_resume

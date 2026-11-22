@@ -840,14 +840,16 @@ fn module_dirs() -> std::collections::BTreeMap<String, PathBuf> {
     out
 }
 
-/// The names of the import table of core/dyndsp for a device (its `DSP_IMPORT` lines) and the count word the table states.
+/// The import names declared in the assembly and the count compiled into the device's dyndsp_info table.
 fn dyndsp_imports(dev: Dev) -> (Vec<String>, u32) {
     let src = std::fs::read_to_string(repo().join(format!("modules/core/adapters/dyndsp/src/cf/dyndsp-{}.s", dev.name))).unwrap();
     let names = src.lines().filter_map(|t| t.trim().strip_prefix("DSP_IMPORT ")).map(|n| n.trim().to_string()).collect();
-    // the count is the word after `.long _dd_vcount`
-    let lines: Vec<&str> = src.lines().map(str::trim).collect();
-    let at = lines.iter().position(|l| *l == ".long   _dd_vcount").expect("the table's header ends with the voice row count");
-    let count = lines[at + 1].strip_prefix(".long").unwrap().trim().parse().unwrap();
+    let path = repo().join(format!("modules/core/adapters/dyndsp/build/dyndsp-{}.dko.json", dev.name));
+    let object = read(&path, "patchkit build core/dyndsp");
+    let [table]: [&str; 1] = hex_sections(std::str::from_utf8(&object).unwrap()).try_into().expect("dyndsp object contains one table section");
+    assert!(table.starts_with("44445350"), "{}: missing dyndsp_info header", dev.name);
+    let count_at = dkrt_abi::dsp::I_NIMPORT * 8;
+    let count = u32::from_str_radix(&table[count_at..count_at + 8], 16).expect("dyndsp_info import count");
     (names, count)
 }
 

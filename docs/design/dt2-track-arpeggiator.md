@@ -67,9 +67,10 @@ Use the same stock header, track column, native widgets, page marks and momentar
 | MIDI machine | One note-on/off pair per pitch on the configured port/channel. Default four sounding notes, optionally up to the 16-note input limit, subject to bandwidth and the receiving synth. | Sustain C and G while E releases, including repeated notes and shared-channel ownership. |
 | CANOPY | One admitted instrument instance supplies four foreground voices and its two short release tails. It accepts resolved notes with individual tokens. | Play four overlapping notes from one track and compare release and steal behavior with CANOPY PLAY today. |
 | Stock sample and single-voice DigiKit machines | A **voice group** uses the source track and explicitly reserved audio tracks, one playback context per sounding pitch. Initial target one to four voices inclusive. One extra voice costs one reserved track. | ONESHOT on T01 with T09 and T10 reserved. Capture distinct pitches and independent AMP releases in stereo with the other tracks playing. |
-| Stateful machines, including RELAY | The same page, note entry and arp are available. Qualify each machine’s note meaning and capacity. RELAY would need independent playback heads reading the owner’s tape while record, overdub and undo stay single-owner. | Until this path passes, POOL reports one available voice. Playing notes must never start a second recorder. |
+| RELAY 0.5 | The owner and one reserved audio track provide two independent readers of the same committed tape. Record, overdub and undo stay single-owner. | Play two pitches during an open punch and verify that each reader keeps its own position and that both leave the writer intact. |
+| Other stateful machines | The shared pages and arpeggiator use the machine’s supported note path. Helper tracks require a machine-specific playback and quiet contract. | The group uses only its owner until a helper backend is qualified. |
 
-The DTII stock voice-group backend is **proposed**. CANOPY demonstrates internal polyphony in its own renderer. Applying that renderer’s allocator to a stock track does not create independent sample cursors or envelopes. Each qualified stock machine needs a real voice context for pitch, playback position, velocity, filter and AMP release. Keep the selected sample, slice, start settings and machine-specific pitch behavior for the seed. Prove WERP, STRETCH, REPITCH, SLICE and GRID individually, including timing and slice selection. A qualified module may instead advertise independent internal voices. The user sees the same keyboard on every machine and an honest sounding-voice limit. [CANOPY voice bank](../../modules/machines/canopy/README.md) · [DTII sample lifetime](../findings/85-dt2-sample-lifecycle.md) · [RELAY track contract](../../sdk/dsp/contract/dk_relay_track.inc)
+DTII stock voice groups use native contexts for pitch, playback position, velocity, filter and AMP release. They carry the seed’s sample, slice, start settings and machine-specific pitch behavior. The coupled emulator qualified ONESHOT, WERP, STRETCH, REPITCH, SLICE and GRID individually, including timing-derived pitch and slice selection. CANOPY uses independent voices in its own renderer. The same keyboard shows the effective sounding-voice limit for each track. [Stock machine qualification](../findings/369-track-keyboard-native-output.md) · [CANOPY voice bank](../../modules/machines/canopy/README.md) · [RELAY track contract](../../sdk/dsp/contract/dk_relay_track.inc)
 
 **Assigning a group.** In POOL, tap numbered TRIGs to select helper tracks. LEDs show owner, selected helpers and unavailable tracks. YES applies the set together. NO cancels. Offer empty audio tracks only. Reject tracks with sequencer data, an existing reservation or an active recording. Never automatically claim a muted or momentarily silent track. A reserved helper shows its owner when selected. Release it in POOL to edit or sequence it independently. Keep its stored Sound, mix and pattern data intact. The playback overlay follows the owner’s Sound and resolved locks, and feeds the owner’s mixer, sends and mute exactly once. Owner LEVEL/DATA adjusts the whole chord. Independent helper copies in the mixer would give the chord the wrong level and routing. Prove that routing before enabling the backend.
 
@@ -357,7 +358,8 @@ Physical USB tests measured stopped sample-track arpeggiation and the MIDI
 sequence C–E–G at 120 BPM. The hardware image loaded CANOPY, Overloop,
 PRISM, RELAY and remote together. The full experimental build uses a
 440 KiB module arena to fit the fixed ColdFire code and patch metadata.
-Its DTII staging buffer remains 151,552 bytes. On the
+The verified full image leaves 4,440 bytes in ColdFire expansion and retains
+the 151,552-byte DTII staging buffer. On the
 physical unit, switching from shared polyphony to ARP-only initially stayed
 silent until a Sound edit. The playback adapter now publishes the updated
 lane mix when that routing changes. The rebuilt firmware measured RMS
@@ -408,11 +410,39 @@ On hardware the picker showed the two populated steps, and opening step 9
 showed its track and step in the Apply row. A staged helper was discarded
 with NO. Applying it in a new draft increased the track display to two voices.
 
-The numbered TRIG and LED shortcuts for POOL and step targeting remain
-open, as do absolute PLAY note displays, shared arp support for RELAY,
-independent RELAY playback heads, and separate USB and DIN transmit
-budgets. Release qualification also needs the rest of the held-value and
-step-lock capture matrix and absolute ColdFire headroom under load.
+POOL also accepts numbered TRIG presses and shows staged, unavailable, and
+owner tracks on the LEDs. NOTES uses numbered TRIG presses and PAGE to
+choose an existing step across 16-step banks. Each picker consumes its
+own press and release. PLAY shows absolute pitches from a recorded recipe,
+the native trig, or held keys. USER still displays intervals and velocities.
+The coupled POOL test exercised a direct TRIG selection and its indicator.
+On the physical unit, PAGE moved across the 16-step banks. Pressing TRIG 9
+in bank 1 targeted track 1, step 9 and showed its absolute pitch, C4.
+
+DIN and USB use independent transmit budgets. An onset pays for both messages
+on each selected port. The native worker pairs the release on its original
+channel, and the captured output mask keeps it on its original ports. The
+coupled test switched each port while a note was held and observed the
+release only on the original output. The host sequence test fills the recipe
+pool and verifies that a refused write leaves the prior notes and locks intact.
+
+RELAY 0.5 supports the shared keyboard. With one empty track assigned in
+POOL, the owner and helper each provide a pitched playback head. They read
+the owner’s committed tape, apply track AMP independently, and mix their
+wet signals into the owner’s route. A commit or undo invalidates the readers
+for the old take. The RELAY recorder retains ownership of the writer and the
+tape’s history. A SHARC test played two pitches while opening a punch,
+checked that both heads read the committed take, and verified that the
+reads left both the writer and its copy-on-write metadata intact. Earlier
+RELAY packages retain their native playback and recording controls.
+The full image booted on the DTII with all five modules loaded. In a
+disposable project, RELAY recorded a two-second take from a sample track.
+Assigning T9 from POOL raised the effective voice count to two. Both
+individual pitches were identifiable in the recorded two-note USB audio.
+
+Release qualification still includes absolute ColdFire headroom under load,
+physical DIN transmit saturation, and the rest of the held-value and
+step-lock capture matrix.
 
 ### Building the full experimental image
 

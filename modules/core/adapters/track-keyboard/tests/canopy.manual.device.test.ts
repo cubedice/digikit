@@ -291,34 +291,58 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
     // restore the active track before assigning the pool Sound to one trig.
     const family = async () => (await dsp('_iv_shared_controls', 4, 4))?.readUInt32LE(0);
     const tune = async () => (await dsp('_iv_shared_controls', 0, 4))?.readUInt16LE(2);
-    const baseTune = await tune();
+    const nativeTune = async () => {
+      const sound = await cf('ip_admission', 1);
+      expect(sound, 'CANOPY is editing an admitted native Sound').toBeGreaterThanOrEqual(0x40000000);
+      return halfAt(sound + 0x46);
+    };
+    const panel = canopyPanel(session, plan);
+    const baseTune = await nativeTune();
     expect(baseTune).toBe(0x4000);
-    await tap('SRC');
-    expect(await cf('ip_src_debug', 1)).toBe(0);
+    // Keep the original Sound in slot 002 so it can be recalled exactly,
+    // regardless of how many native TUNE turns the stock accumulator accepts.
+    await panel.poolSave(1, 2);
+    await panel.keysPage(1);
     await turn(2, 28); // Velvet to FM, seven WAVE increments.
     await pollEmulated(session, family, (value) => value === 3, {
       emulatedMs: 5000,
       message: 'the contrasting Sound uses FM',
     });
-    await turn(1, 12); // Stock TUNE on SOURCE A.
-    const poolTune = await pollEmulated(session, tune, (raw) => raw !== undefined && raw !== baseTune, {
-      emulatedMs: 5000,
-      message: 'the contrasting Sound has a non-default native TUNE',
+    expect(await cf('ip_src_debug', 1), 'SOURCE A remains the native TUNE after changing WAVE').toBe(0);
+    const priorTurns = await cf('ip_src_debug', 4);
+    // The stock encoder accumulator can consume the first detent batch.
+    // Check the edited Sound directly and continue until the value changes.
+    const tuneEdit = await pollEmulated(
+      session,
+      async () => {
+        await turn(1, 8);
+        await session.wait(500);
+        return {
+          raw: await nativeTune(),
+          turns: (await cf('ip_src_debug', 4)) - priorTurns,
+          encoder: await cf('ip_src_debug', 10),
+          handlerResult: (await cf('ip_src_debug', 11)) | 0,
+        };
+      },
+      (state) => state.raw !== baseTune,
+      {
+        emulatedMs: 5000,
+        message: 'the source encoder changes the native Sound TUNE before saving the pool entry',
+      },
+    ).catch(async (error) => {
+      await panel.shot('source-native-tune-unchanged');
+      throw error;
     });
+    const poolTune = tuneEdit.raw;
     const activeSound = await cf('ip_admission', 1);
-    expect(activeSound).toBeGreaterThanOrEqual(0x40000000);
-    await canopyPanel(session, plan).poolSave(1);
+    await panel.poolSave(1);
     const poolSound = 0x4291377a;
     expect(await byteAt(poolSound + 0xa2)).toBe(await byteAt(activeSound + 0xa2));
     expect(await halfAt(poolSound + 0x46)).toBe(poolTune);
-    await tap('SRC');
-    for (let i = 0; i < 3 && (await cf('ip_src_debug', 1)) !== 0; ++i) await tap('SRC');
-    expect(await cf('ip_src_debug', 1)).toBe(0);
-    await turn(1, -12);
-    await turn(2, -28);
+    await panel.poolLoad(1, 2);
     await pollEmulated(
       session,
-      async () => ({ family: await family(), tune: await tune() }),
+      async () => ({ family: await family(), tune: await nativeTune() }),
       (state) => state.family === 0 && state.tune === baseTune,
       { emulatedMs: 5000, message: 'the base Sound is Velvet again with its original TUNE' },
     );

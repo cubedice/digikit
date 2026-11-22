@@ -6263,3 +6263,93 @@ mode = "replace"
 name = "cf.track_sequence.hook.capture_live"
 site = "cf.track_sequence.site.capture_live"
 mode = "replace"
+
+[[anchor]]
+name = "cf.track_keys.site.wire_ports_lit"
+cpu = "cf"
+kind = "code"
+addr = 0x4012bc78
+len = 4
+sha256 = "5756f3eefb4ea909c930ac81d652c73bce74985dffb248976c91b59bca0fd2e2"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.site.wire_message_lit"
+cpu = "cf"
+kind = "code"
+addr = 0x4012c3b0
+len = 4
+sha256 = "cb1fbd3b5d3eae5be6d79e4b76e9d0009d04a3821e99bd20f5f7cbb3afcc892d"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.site.wire_append"
+cpu = "cf"
+kind = "code"
+addr = 0x4012c3ae
+len = 6
+sha256 = "c740d0f4fdb98aa0086998b8103c63401ca4a60fb2c151a809550a3d6b08d586"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.site.wire_flush"
+cpu = "cf"
+kind = "code"
+addr = 0x4012bc74
+len = 6
+sha256 = "81eb47d17dbe8d62ed93aaa44c8c8a0a71002a327bf76ebdf2232a5ad5413013"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.site.wire_on"
+cpu = "cf"
+kind = "code"
+addr = 0x4012ce44
+len = 6
+sha256 = "bb9194176b98df47c734cb12634588d13077a32c1756910c89cbd62d7680bc89"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.site.wire_off"
+cpu = "cf"
+kind = "code"
+addr = 0x4012d00e
+len = 8
+sha256 = "811c3cabc54aec6a7ad24e8c4979e6564303c5c9893d5a638071ce6a9c4ee1ae"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.site.wire_on_resume"
+cpu = "cf"
+kind = "code"
+addr = 0x4012ce4a
+len = 4
+sha256 = "c8330886bf6d19f8572e7b99c313aba2d8bedc9e9218fda2f114a5ff05495e31"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_keys.site.wire_off_resume"
+cpu = "cf"
+kind = "code"
+addr = 0x4012d016
+len = 4
+sha256 = "d4d3ab44eeacd6407b80db1818c0be1705ca2a27aea44aca6bb6be0ba33a1c18"
+mark = "D"
+rule = "fw/track-keys:cf_window_hash"
+
+[[hook]]
+name = "cf.track_keys.hook.wire_on"
+site = "cf.track_keys.site.wire_on"
+mode = "replace"
+
+[[hook]]
+name = "cf.track_keys.hook.wire_off"
+site = "cf.track_keys.site.wire_off"
+mode = "replace"

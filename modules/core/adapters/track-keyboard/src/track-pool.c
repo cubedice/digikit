@@ -2,6 +2,12 @@
 
 #define TK_POOL_MAGIC 0x544b0000u
 #define TK_POOL_SALT 0x22dca71bu
+#define TK_POOL_RELAY_OWNER 0xau
+
+static bool valid_size(const TkPoolSnapshot *snapshot, uint8_t owner, uint16_t mask)
+{
+    return !(snapshot->relay_owners & (1u << owner)) || !(mask & (mask - 1u));
+}
 
 void tk_pool_update(TkPool *pool, const TkPoolSnapshot *snapshot,
                     const TkTrackConfig config[TK_TRACKS])
@@ -10,14 +16,16 @@ void tk_pool_update(TkPool *pool, const TkPoolSnapshot *snapshot,
     uint16_t owners = 0;
     bool changed = pool->epoch != snapshot->epoch;
     pool->epoch = snapshot->epoch;
+    pool->relay_owners = snapshot->relay_owners;
 
     for (uint8_t owner = 0; owner < TK_TRACKS; ++owner) {
         uint16_t assigned = pool->assigned[owner];
         uint16_t draining = pool->draining[owner] & ~snapshot->quiescent_helpers;
         bool enabled = config && snapshot->epoch && (snapshot->qualified_owners & (1u << owner)) &&
                        config[owner].params.poly;
-        if (assigned && (changed || !enabled || config[owner].helpers != assigned ||
-                         (assigned & ~snapshot->eligible_helpers))) {
+        if (assigned &&
+            (changed || !enabled || config[owner].helpers != assigned ||
+             (assigned & ~snapshot->eligible_helpers) || !valid_size(snapshot, owner, assigned))) {
             draining |= assigned;
             assigned = 0;
         }
@@ -34,7 +42,8 @@ void tk_pool_update(TkPool *pool, const TkPoolSnapshot *snapshot,
         const TkTrackConfig *request = &config[owner];
         if (!request->helpers || !request->params.poly || !snapshot->epoch ||
             !(snapshot->qualified_owners & (1u << owner)) || (claimed & (1u << owner)) ||
-            pool->assigned[owner] || pool->draining[owner])
+            !valid_size(snapshot, owner, request->helpers) || pool->assigned[owner] ||
+            pool->draining[owner])
             continue;
         TkTrackConfig trial = {0};
         if (!tk_assign_helpers(&trial, owner, request->helpers, snapshot->eligible_helpers,
@@ -72,6 +81,10 @@ void tk_pool_owner_frame(const TkPool *pool, uint32_t words[TK_POOL_WORDS])
     for (uint8_t owner = 0; owner < TK_TRACKS; ++owner) {
         uint16_t mask = pool->assigned[owner] | pool->draining[owner];
         words[0] |= mask;
+        /* Only a translated, validated RELAY lease enables tape heads.
+         * An ordinary sample-group Sound lock must not inherit this route. */
+        if (pool->assigned[owner] && (pool->relay_owners & (1u << owner)))
+            words[1 + owner / 8] |= TK_POOL_RELAY_OWNER << (4u * (owner % 8));
         for (uint8_t helper = 0; mask; ++helper, mask >>= 1)
             if (mask & 1u)
                 words[1 + helper / 8] |= (uint32_t)owner << (4u * (helper % 8u));

@@ -24,19 +24,40 @@ void fxv_view_draw(uint8_t *, uint8_t *);
 extern uint32_t fxv_stock_dispatch(uint8_t *, uint8_t *);
 extern int phrase_dispatch_trig(uint8_t *) OPTIONAL;
 extern int relay_trig(uint8_t *) OPTIONAL;
+extern int tk_picker_key(uint32_t, uint32_t) OPTIONAL;
+extern int tk_picker_led(uint32_t) OPTIONAL;
+extern int phrase_led_claim(uint32_t) OPTIONAL;
+extern void fxv_stock_led(uint8_t *, uint32_t, uint32_t, uint32_t);
 extern void rtm_stop_key(uint32_t) OPTIONAL;
 
 /* TRIG keys reach the stock sequencer before they reach the FX view. */
 uint32_t fxv_key_dispatch(uint8_t *manager, uint8_t *event)
 {
     uint32_t key = *(uint32_t *)(event + 12);
+    const uint32_t flags = *(uint32_t *)(event + 16);
     if (key == 21 && rtm_stop_key)
-        rtm_stop_key(*(uint32_t *)(event + 16));
+        rtm_stop_key(flags);
+    if (((key >= 25 && key < 41) || key == 22) && tk_picker_key && tk_picker_key(key, flags))
+        return 1;
     if (key >= 25 && key < 41 &&
         ((phrase_dispatch_trig && phrase_dispatch_trig(event)) ||
          (relay_trig && relay_trig(event))))
         return 1;
     return fxv_stock_dispatch(manager, event);
+}
+
+void fxv_panel_led(uint8_t *manager, uint32_t logical, uint32_t layer, uint32_t value)
+{
+    if (logical >= 26 && logical < 50) {
+        int claim = tk_picker_led ? tk_picker_led(logical) : -1;
+        if (claim < 0 && phrase_led_claim)
+            claim = phrase_led_claim(logical);
+        if (claim >= 0) {
+            layer = 2;
+            value = (uint32_t)claim;
+        }
+    }
+    fxv_stock_led(manager, logical, layer, value);
 }
 
 static uint32_t word(const uint8_t *p, uint32_t off)

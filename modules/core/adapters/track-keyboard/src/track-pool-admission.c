@@ -3,6 +3,7 @@
 #include "track-capture.h"
 #include "track-canopy.h"
 #include "track-pattern-fw.h"
+#include "dkrt.h"
 
 extern uintptr_t tk_fw_project(void);
 extern uintptr_t tk_fw_active_kit(uintptr_t project);
@@ -13,16 +14,39 @@ extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t sr);
 extern uint32_t pp_current_pattern(void);
 extern volatile uint32_t tk_native_audio_active;
+extern int rtm_is_type(unsigned type) __attribute__((weak));
 
 static TkPool pool;
 static uint32_t last_pattern, last_revision, generation;
 static uintptr_t last_kit;
 static uint32_t guard_at[TK_TRACKS];
 static uint32_t rescanned;
+static uint16_t relay_owners;
 static uint16_t eligible, owners, empty_tracks;
 static uint8_t machine[TK_TRACKS];
-static bool previously_admitting;
+static bool previously_admitting, relay_head_package;
 static volatile uint16_t preparing, reserved;
+
+static bool relay_head_module(void)
+{
+    static const char module_id[] = "digikit/relay-machine";
+    DkrtModule module;
+    if (!rtm_is_type)
+        return false;
+    for (unsigned i = 0; dkrt_module(i, &module) == DKRT_OK; ++i) {
+        unsigned n = 0;
+        while (n < sizeof(module_id) && module.name[n] == (uint8_t)module_id[n])
+            ++n;
+        if (n == sizeof(module_id))
+            return module.state == DKRT_MOD_LOADED && module.version >= 0x000500u;
+    }
+    return false;
+}
+
+bool tk_pool_fw_relay_ready(void)
+{
+    return relay_head_package;
+}
 
 static bool ram_record(uintptr_t address, unsigned size)
 {
@@ -161,12 +185,13 @@ void tk_pool_fw_update(uint32_t pattern, const TkTrackConfig config[TK_TRACKS], 
     }
     uint32_t observed, now;
     uint16_t quiet = tk_pool_link_quiet(&observed, &now) & ~tk_native_audio_active;
-    owners = eligible = 0;
+    owners = eligible = relay_owners = 0;
     bool may_create = can_admit && tk_capture_midi_mode() == TK_CAPTURE_OFF;
     bool observing = (may_create || reserved) && pattern && kit;
     if (observing) {
         if (context_changed || !previously_admitting || now - rescanned >= 120u) {
             uint32_t live = pp_current_pattern();
+            relay_head_package = relay_head_module();
             empty_tracks = 0;
             for (uint8_t track = 0; track < TK_TRACKS; ++track)
                 if (empty_track(pattern, track) &&
@@ -174,18 +199,23 @@ void tk_pool_fw_update(uint32_t pattern, const TkTrackConfig config[TK_TRACKS], 
                     empty_tracks |= (uint16_t)(1u << track);
             rescanned = now;
         }
+        uint16_t sample_tracks = 0;
         for (uint8_t track = 0; track < TK_TRACKS; ++track) {
             int type = tk_fw_track_type(kit, track);
             bool changed = machine[track] != (uint8_t)type;
             machine[track] = (uint8_t)type;
+            if (type < 0 || changed || tk_fw_midi_mode(track) || tk_canopy_is_owner(track, type))
+                continue;
             /* The six stock sample machines share the stock stereo cursor
              * bank. Retire a lease when either machine changes, since its
              * live state and loaded sample belonged to the earlier voice. */
-            if (type >= 0 && type <= 6 && type != 5 && !changed && !tk_fw_midi_mode(track) &&
-                !tk_canopy_is_owner(track, type))
-                owners |= (uint16_t)(1u << track);
+            if (type <= 6 && type != 5)
+                sample_tracks |= (uint16_t)(1u << track);
+            else if (relay_head_package && rtm_is_type && rtm_is_type((unsigned)type))
+                relay_owners |= (uint16_t)(1u << track);
         }
-        eligible = owners & empty_tracks;
+        owners = sample_tracks | relay_owners;
+        eligible = sample_tracks & empty_tracks;
         if (!may_create) {
             uint16_t assigned = 0;
             for (uint8_t track = 0; track < TK_TRACKS; ++track)
@@ -198,8 +228,11 @@ void tk_pool_fw_update(uint32_t pattern, const TkTrackConfig config[TK_TRACKS], 
     if (config)
         for (uint8_t owner = 0; owner < TK_TRACKS; ++owner)
             if (config[owner].params.poly && config[owner].helpers &&
-                !(config[owner].helpers & ~tk_pool_fw_eligible(owner)))
-                requested |= config[owner].helpers;
+                !(config[owner].helpers & ~tk_pool_fw_eligible(owner))) {
+                uint16_t helpers = config[owner].helpers;
+                if (!(relay_owners & (1u << owner)) || !(helpers & (helpers - 1u)))
+                    requested |= helpers;
+            }
 
     if (requested || reserved)
         quiet &= (uint16_t)~queued_tracks();
@@ -214,6 +247,7 @@ void tk_pool_fw_update(uint32_t pattern, const TkTrackConfig config[TK_TRACKS], 
     }
     TkPoolSnapshot snapshot = {.epoch = generation,
                                .qualified_owners = owners,
+                               .relay_owners = relay_owners,
                                .eligible_helpers = eligible,
                                .quiescent_helpers = quiet};
     tk_pool_update(&pool, &snapshot, config);

@@ -5,10 +5,11 @@
 extern void tk_runtime_midi_busy(void) __attribute__((weak));
 
 enum NoteState { NOTE_FREE, NOTE_PENDING, NOTE_SOUNDING, NOTE_RELEASE };
+enum { MIDI_DIN = 1, MIDI_USB = 2, UNITS_PER_BYTE = 1500 };
 
 typedef struct {
     uint32_t token, order;
-    uint8_t pitch, velocity, state, channel, destination;
+    uint8_t pitch, velocity, state, channel, destination, ports, kind;
     bool midi, native_seed;
 } NativeNote;
 
@@ -41,14 +42,44 @@ static uint16_t active_helpers;
  * ownership independently so it can be compared with the stock route.
  */
 volatile uint32_t tk_native_audio_active;
-static const bool audio_binding = false;
-static const bool midi_binding = true;
+static const uint8_t audio_binding = TK_NATIVE_AUDIO;
+static const uint8_t midi_binding = TK_NATIVE_MIDI;
+static const uint8_t relay_binding = TK_NATIVE_RELAY;
+extern uint32_t dkrt_blocks(void);
+
+/* Pay for a release at onset. USB uses four framing bytes per message.
+ * The DIN limit leaves 425 bytes per second for stock clock and controllers. */
+static uint32_t budget_at;
+static uint32_t usb_budget = 256u * UNITS_PER_BYTE;
+static uint32_t din_budget = 48u * UNITS_PER_BYTE;
+
+static void replenish_midi(void)
+{
+    uint32_t now = dkrt_blocks();
+    uint32_t elapsed = now - budget_at;
+    budget_at = now;
+    if (elapsed > 1500)
+        elapsed = 1500;
+    usb_budget += elapsed * 12000u;
+    din_budget += elapsed * 2700u;
+    if (usb_budget > 256u * UNITS_PER_BYTE)
+        usb_budget = 256u * UNITS_PER_BYTE;
+    if (din_budget > 48u * UNITS_PER_BYTE)
+        din_budget = 48u * UNITS_PER_BYTE;
+}
+
+static bool midi_room(uint8_t ports)
+{
+    return (!(ports & MIDI_USB) || usb_budget >= 8u * UNITS_PER_BYTE) &&
+           (!(ports & MIDI_DIN) || din_budget >= 6u * UNITS_PER_BYTE);
+}
 
 bool tk_native_event(void *context, uint8_t track, const TkNoteEvent *event)
 {
     if (!context || track >= TK_TRACKS || !event->token || event->pitch > 127)
         return false;
-    bool midi = *(const bool *)context;
+    uint8_t kind = *(const uint8_t *)context;
+    bool midi = kind == TK_NATIVE_MIDI;
     NativeNote *empty = NULL;
     unsigned active = 0;
     for (unsigned i = 0; i <= TK_NOTES; ++i) {
@@ -74,8 +105,10 @@ bool tk_native_event(void *context, uint8_t track, const TkNoteEvent *event)
     }
     if (!event->on)
         return true;
-    if (tk_pool_fw_reserved(track) || !empty ||
-        active >= (midi ? TK_NOTES : tk_pool_fw_voices(track)) || !event->velocity ||
+    unsigned limit = midi ? TK_NOTES : 1;
+    if (kind == TK_NATIVE_AUDIO || (kind == TK_NATIVE_RELAY && tk_pool_fw_relay_ready()))
+        limit = tk_pool_fw_voices(track);
+    if (tk_pool_fw_reserved(track) || !empty || active >= limit || !event->velocity ||
         event->velocity > 127)
         return false;
     *empty = (NativeNote){.token = event->token,
@@ -84,6 +117,7 @@ bool tk_native_event(void *context, uint8_t track, const TkNoteEvent *event)
                           .velocity = event->velocity,
                           .state = NOTE_PENDING,
                           .destination = track,
+                          .kind = kind,
                           .midi = midi,
                           .native_seed =
                               !midi && (event->token & 0x80000000u) && tk_sequence_audio(track)};
@@ -98,6 +132,12 @@ void tk_native_backend(bool midi, TkTrackBackend *out)
         .context = (void *)(midi ? &midi_binding : &audio_binding),
         .voices = midi ? TK_NOTES : 1,
     };
+}
+
+void tk_native_relay_backend(TkTrackBackend *out)
+{
+    *out =
+        (TkTrackBackend){.output = tk_native_event, .context = (void *)&relay_binding, .voices = 1};
 }
 
 bool tk_native_idle(uint8_t track)
@@ -148,7 +188,8 @@ static bool send(uint8_t track, const NativeNote *entry, uint8_t velocity)
                                          entry->native_seed ? tk_sequence_audio(track) : NULL);
     if (entry->native_seed)
         return tk_native_try_seed_send(track, entry->pitch, velocity, tk_sequence_audio(track));
-    bool sent = tk_native_try_send(track, entry->midi, entry->pitch, velocity);
+    bool sent = entry->midi ? tk_native_try_midi_send(track, entry->pitch, velocity, entry->ports)
+                            : tk_native_try_send(track, false, entry->pitch, velocity);
     if (!sent && entry->midi && tk_runtime_midi_busy)
         tk_runtime_midi_busy();
     return sent;
@@ -203,6 +244,7 @@ static bool choose_audio_destination(uint8_t owner, NativeNote *note)
 void tk_native_drain(void)
 {
     retire_unassigned();
+    replenish_midi();
     /* The stock audition mailbox owns 16 backing records. Dispatch a bounded
      * batch and yield the task to its consumers. Releases win over new notes.
      */
@@ -225,24 +267,36 @@ void tk_native_drain(void)
         if (!entry)
             return;
         int kind = tk_native_kind(track);
-        if (kind != (entry->midi ? TK_NATIVE_MIDI : TK_NATIVE_AUDIO) ||
-            (!entry->midi && !choose_audio_destination(track, entry))) {
+        bool pooled =
+            kind == TK_NATIVE_AUDIO || (kind == TK_NATIVE_RELAY && tk_pool_fw_relay_ready());
+        if (kind != entry->kind || (pooled && !choose_audio_destination(track, entry))) {
             *entry = (NativeNote){0};
             --starts;
             continue;
         }
         if (entry->midi) {
             int channel = tk_native_channel(track);
-            if (channel < 0 || channel > 15 || midi_collision(entry, (uint8_t)channel)) {
+            uint8_t ports = tk_native_midi_ports();
+            bool busy = ports && !midi_room(ports);
+            if (!ports || busy || channel < 0 || channel > 15 ||
+                midi_collision(entry, (uint8_t)channel)) {
+                if (busy && tk_runtime_midi_busy)
+                    tk_runtime_midi_busy();
                 *entry = (NativeNote){0};
                 --starts;
                 continue;
             }
             entry->channel = (uint8_t)channel;
+            entry->ports = ports;
         }
         if (!send(track, entry, entry->velocity))
             return;
-        if (!entry->midi) {
+        if (entry->midi) {
+            if (entry->ports & MIDI_USB)
+                usb_budget -= 8u * UNITS_PER_BYTE;
+            if (entry->ports & MIDI_DIN)
+                din_budget -= 6u * UNITS_PER_BYTE;
+        } else {
             tk_native_audio_active |= 1u << entry->destination;
             if (entry->destination != track)
                 active_helpers |= (uint16_t)(1u << entry->destination);

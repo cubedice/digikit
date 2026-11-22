@@ -40,6 +40,8 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
       _pattern_position_info: status + 1024,
       _rtm_bus: ext + 4096,
       _rtm_mod_frame: ext + 12288,
+      _tk_pool_head_owner: 0,
+      _dv_exp2: 0,
     },
     returnSw: ret,
   });
@@ -243,6 +245,10 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
     expect(b.status[6]).toBe(32);
     b = await block(15);
     expect(b.status[2]! & 15).toBe(2);
+    const punchPosition = b.status[6]!;
+    expect(punchPosition).toBeGreaterThan(0);
+    await reset();
+    expect(await rig.peek(row + 1, 1)).toEqual([punchPosition]);
     rig.poke(clock, 0);
     rig.poke(clock + 5, 0);
     b = await block(13);

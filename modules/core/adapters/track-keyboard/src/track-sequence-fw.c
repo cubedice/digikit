@@ -3,6 +3,7 @@
 #include "track-capture.h"
 #include "track-memory.h"
 #include "track-native.h"
+#include "track-pattern-fw.h"
 #include "track-pool.h"
 #include "../../instrument-play/src/cf/src-control.h"
 
@@ -39,7 +40,7 @@ typedef struct {
 extern void *tk_fw_alloc(uint32_t size);
 static Staged *volatile staged;
 static Staged start_cache[TK_TRACKS];
-static uint16_t midi_tracks;
+static uint16_t midi_tracks, relay_tracks;
 
 volatile uint32_t tk_sequence_audio_hits, tk_sequence_audio_locked_hits, tk_sequence_midi_hits;
 volatile uint32_t tk_sequence_midi_info[5]; /* scheduled, due, matched, enabled, decoded */
@@ -266,6 +267,24 @@ static bool decode(TkSequenceHit *hit, const uint8_t *table, const uint8_t *trac
     return !midi || record[5] != group;
 }
 
+uint8_t tk_sequence_native_pitches(uint32_t pattern, uint8_t track, uint8_t step, bool midi,
+                                   uint8_t pitches[4])
+{
+    if (!tk_pattern_fw_note_step(pattern, track, step))
+        return 0;
+    const uint8_t *base = (const uint8_t *)(uintptr_t)pattern;
+    const uint8_t *table = base + NOTE_TABLE;
+    const uint8_t *data = base + TRACK_BYTES * track;
+    int head = signed16(table + 0xc000u + 2u * (TK_STEPS * track + step));
+    const uint8_t fallback[6] = {track, step, 0xff, 0xff, 0xff, 0};
+    TkSequenceHit hit = {0};
+    if (!decode(&hit, table, data, head, fallback, midi))
+        return 0;
+    for (uint8_t i = 0; i < hit.count; ++i)
+        pitches[i] = hit.notes[i].pitch;
+    return hit.count;
+}
+
 static bool end_stock(uint8_t source, TkSequenceHit *hit)
 {
     hit->count = 0;
@@ -295,6 +314,8 @@ int tk_fw_seq_audio_due(const uint32_t *event)
     if (!hit.parameters_only && !tk_sequence_wants_seed(hit.pattern, hit.track, hit.step))
         return end_stock(TK_SEQUENCE_AUDIO, &hit);
     hit.audio.sound = event[0x10] ? event[0x10] : event[0xf];
+    if ((relay_tracks & (1u << hit.track)) && !tk_native_relay_sound(hit.audio.sound))
+        return hit.parameters_only ? false : end_stock(TK_SEQUENCE_AUDIO, &hit);
     int8_t pool = (int8_t)track[SOUND_LOCKS + hit.step];
     if (pool >= 0)
         hit.audio.pool_sound = (uint8_t)pool + 1u;
@@ -381,6 +402,17 @@ void tk_sequence_set_midi(uint8_t track, bool midi)
         midi_tracks |= bit;
     else
         midi_tracks &= (uint16_t)~bit;
+}
+
+void tk_sequence_set_relay(uint8_t track, bool relay)
+{
+    if (track >= TK_TRACKS)
+        return;
+    uint16_t bit = (uint16_t)(1u << track);
+    if (relay)
+        relay_tracks |= bit;
+    else
+        relay_tracks &= (uint16_t)~bit;
 }
 
 bool tk_sequence_canopy_sound_fallback(uint32_t pattern, uint8_t track)

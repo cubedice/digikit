@@ -5,6 +5,7 @@
 #define TK_POOL_SUFFIX 0x854
 #define TK_POOL_MAGIC 0x544b
 #define TK_POOL_SALT 0x22dca71b
+#define TK_POOL_RELAY_OWNER 10
 #define TK_TRACK_BUS 0x252df8
 
 .SECTION/PM seg_pmco;
@@ -63,6 +64,65 @@ _tk_pool_publish:
     DM(_tk_pool_owners_high) = R3;
 _tk_pool_clear:
     DM(_tk_pool_mask) = R1;
+    RTS;
+
+// R1: physical voice. Return its authenticated RELAY group owner or -1.
+// Ordinary sample groups leave the non-helper owners' nibbles empty.
+.GLOBAL _tk_pool_head_owner;
+_tk_pool_head_owner:
+    R0 = DM(_tk_pool_mask);
+    R0 = PASS R0;
+    IF EQ JUMP _tk_pool_no_head;
+    R2 = -R1;
+    R2 = LSHIFT R0 BY R2;
+    BTST R2 BY 0;
+    IF SZ JUMP _tk_pool_find_lead;
+    R2 = FEXT R1 BY 0:3;
+    R2 = LSHIFT R2 BY 2;
+    R2 = -R2;
+    R3 = DM(_tk_pool_owners_low);
+    R6 = DM(_tk_pool_owners_high);
+    BTST R1 BY 3;
+    IF NOT SZ R3 = R6;
+    R3 = LSHIFT R3 BY R2;
+    R0 = FEXT R3 BY 0:4;
+    JUMP _tk_pool_check_marker;
+_tk_pool_find_lead:
+    R2 = DM(_tk_pool_owners_low);
+    R3 = DM(_tk_pool_owners_high);
+_tk_pool_find_binding:
+    BTST R0 BY 0;
+    IF SZ JUMP _tk_pool_find_advance;
+    R6 = FEXT R2 BY 0:4;
+    COMP(R1,R6);
+    IF EQ JUMP _tk_pool_found_lead;
+_tk_pool_find_advance:
+    R0 = LSHIFT R0 BY -1;
+    R0 = PASS R0;
+    IF EQ JUMP _tk_pool_no_head;
+    R6 = LSHIFT R3 BY 28;
+    R2 = LSHIFT R2 BY -4;
+    R2 = R2 OR R6;
+    R3 = LSHIFT R3 BY -4;
+    JUMP _tk_pool_find_binding;
+_tk_pool_found_lead:
+    R0 = R1;
+_tk_pool_check_marker:
+    R2 = FEXT R0 BY 0:3;
+    R2 = LSHIFT R2 BY 2;
+    R2 = -R2;
+    R3 = DM(_tk_pool_owners_low);
+    R6 = DM(_tk_pool_owners_high);
+    BTST R0 BY 3;
+    IF NOT SZ R3 = R6;
+    R3 = LSHIFT R3 BY R2;
+    R3 = FEXT R3 BY 0:4;
+    R1 = TK_POOL_RELAY_OWNER;
+    COMP(R3,R1);
+    IF NE JUMP _tk_pool_no_head;
+    RTS;
+_tk_pool_no_head:
+    R0 = -1;
     RTS;
 
 // Call once per block, after the native track processors and before any

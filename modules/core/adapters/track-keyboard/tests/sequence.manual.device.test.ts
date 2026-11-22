@@ -183,6 +183,61 @@ describeOn('dt2', 'shared arpeggiator stock sequence', () => {
         (status & 15) === active![0] && wire[i + 1] === active![1] &&
         ((status & 0xf0) === 0x80 || ((status & 0xf0) === 0x90 && wire[i + 2] === 0)));
     }, Boolean, { emulatedMs: 5000, message: 'native MIDI route emitted the paired note-off' });
+
+    // Switch from the sequencer arp to the held keyboard path. Change the
+    // stock output mask while a generated note is still held on each port.
+    await turn(1, -12);
+    await tap(1);
+    await turn(1, 12);
+    await tap('KEYBOARD');
+    const portMask = 0x44e3b9e0;
+    const initialMask = await session.client.memPeek(portMask);
+    expect(initialMask).not.toBeNull();
+    const setPorts = async (mask: number) => {
+      const bytes = Buffer.alloc(4);
+      bytes.writeUInt32BE(mask);
+      await session.client.call('mem.cf.write', { addr: portMask, hex: bytes.toString('hex') });
+    };
+    const outgoingUsb = async () => {
+      const response = await session.client.call<{ hex: string }>('midi.usb.out', {});
+      return [...Buffer.from(response.hex.replaceAll(/\s/g, ''), 'hex')];
+    };
+    const noteOn = (bytes: number[]) => {
+      const offset = bytes.findIndex((status, i) =>
+        (status & 0xf0) === 0x90 && bytes[i + 1] < 128 && bytes[i + 2] > 0 && bytes[i + 2] < 128);
+      return offset < 0 ? undefined : { channel: bytes[offset] & 15, pitch: bytes[offset + 1] };
+    };
+    const noteOff = (bytes: number[], note: { channel: number; pitch: number }) =>
+      bytes.some((status, i) => (status & 15) === note.channel && bytes[i + 1] === note.pitch &&
+        ((status & 0xf0) === 0x80 || ((status & 0xf0) === 0x90 && bytes[i + 2] === 0)));
+    try {
+      for (const selected of [1, 2]) {
+        const read = selected === 1 ? outgoing : outgoingUsb;
+        const readOther = selected === 1 ? outgoingUsb : outgoing;
+        await setPorts(selected);
+        await read();
+        await readOther();
+        await edge('TRIG 9', true);
+        let note;
+        try {
+          note = await pollEmulated(session, async () => noteOn(await read()), (n) => n !== undefined, {
+            emulatedMs: 3000,
+            message: 'the generated key used its selected physical output',
+          });
+          await setPorts(selected ^ 3);
+        } finally {
+          await edge('TRIG 9', false);
+        }
+        await pollEmulated(session, async () => noteOff(await read(), note!), Boolean, {
+          emulatedMs: 3000,
+          message: 'the paired release stayed on the original output',
+        });
+        expect(noteOff(await readOther(), note!)).toBe(false);
+      }
+    } finally {
+      await setPorts(initialMask ?? 0);
+      await tap('KEYBOARD');
+    }
     await session.expectNoFault('shared arpeggiator stock sequence');
   });
 });

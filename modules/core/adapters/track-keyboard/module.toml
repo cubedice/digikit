@@ -9,7 +9,7 @@ author = "digikit"
 status = "experimental"
 summary = "Opt-in track keyboard, arpeggiator and TRIG pages for registered note backends."
 ports = ["dt2-1.17"]
-requires = ["core/runtime", "core/pattern-position", "core/ui", "core/instrument-play", "core/midi-events", "core/relay-input"]
+requires = ["core/runtime", "core/pattern-position", "core/ui", "core/instrument-play", "core/midi-events", "core/relay-input", "core/fxview"]
 conflicts = []
 
 [targets]
@@ -17,6 +17,7 @@ conflicts = []
 
 [[object]]
 path = "build/track-keyboard.dko.json"
+optional = ["rtm_is_type"]
 sources = ["src/track-keyboard.c", "src/track-canopy.c", "src/track-config.c", "src/track-service.c", "src/track-runtime.c", "src/track-native.c", "src/track-native-fw.c", "src/trig-view.c", "src/trig-title.s",
   "src/track-pattern.c", "src/track-pattern-fw.c", "src/track-record.c", "src/track-pattern-hooks.s",
   "src/track-step-fw.c", "src/track-step-hooks.s",
@@ -50,6 +51,13 @@ tk_fw_note_off = "cf.track_keys.fn.note_off"
 tk_fw_audio_dispatch = "cf.track_keys.fn.audio_dispatch"
 tk_pool_fw_audio_queue = "cf.track_keys.fn.audio_queue_head"
 tk_pool_stock_dispatch_resume = "hook.cf.track_keys.site.audio_dispatch_entry.return"
+tk_midi_wire_ports_lit = "cf.track_keys.site.wire_ports_lit"
+tk_midi_wire_message_lit = "cf.track_keys.site.wire_message_lit"
+tk_midi_stock_append = "cf.track_keys.site.wire_append"
+tk_midi_stock_flush = "cf.track_keys.site.wire_flush"
+tk_midi_wire_send = "cf.midi.fn.send"
+tk_midi_wire_on_resume = "cf.track_keys.site.wire_on_resume"
+tk_midi_wire_off_resume = "cf.track_keys.site.wire_off_resume"
 tk_fw_midi_dispatch = "cf.track_keys.fn.midi_dispatch"
 tk_fw_midi_mode = "cf.track_keys.fn.midi_mode"
 tk_fw_midi_channel = "cf.track_keys.fn.midi_channel"
@@ -268,3 +276,13 @@ to = "tk_pool_stock_dispatch"
 op = "hook"
 hook = "cf.track_sequence.hook.capture_live"
 to = "tk_seq_capture_live"
+
+[[op]]
+op = "hook"
+hook = "cf.track_keys.hook.wire_on"
+to = "tk_midi_wire_on"
+
+[[op]]
+op = "hook"
+hook = "cf.track_keys.hook.wire_off"
+to = "tk_midi_wire_off"

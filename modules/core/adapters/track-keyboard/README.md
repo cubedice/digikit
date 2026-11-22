@@ -11,12 +11,13 @@ note gate, rate, signed octave spread, swing and restart behavior. H selects
 the chord. On KEYS, A enables polyphony and B selects the same chord. C and
 D change the voicing and strum. The keyboard drawing distinguishes held
 pitch classes from emitted pitches. Stock audio voice groups use H POOL.
-With transport stopped, choose available empty stock audio tracks as helpers
-for ONESHOT, WERP, STRETCH, REPITCH, GRID or SLICE. Check the track rows, then
-choose APPLY GROUP to save them together. NO discards the draft. Requested
-helpers belong to the pattern. The menu shows effective reservations and the
-resulting voice count. A qualified reservation stays active when transport
-starts on the same pattern.
+With transport stopped, tap numbered TRIGs to stage empty audio tracks as
+helpers for ONESHOT, WERP, STRETCH, REPITCH, GRID or SLICE. The owner LED is
+blue, selected helpers are white, and available tracks are dim. YES applies
+the group. NO discards the draft. You can also check the track rows and
+choose APPLY GROUP. Requested helpers belong to the pattern. The menu shows
+effective reservations and the resulting voice count. A qualified reservation
+stays active when transport starts on the same pattern.
 
 Click CHRD to open NOTES. Choose LEARN, play notes from the panel or an
 external keyboard, then click CHRD again and choose APPLY USER. Open a
@@ -25,8 +26,11 @@ an entry, choose a reference note, clear the recipe or configure a silent
 chord selector for a track. The APPLY row identifies the track and step
 when editing a step recipe. In grid recording,
 hold a step and use FUNC with the CHRD encoder click to edit its private
-recipe. In NOTES, RIGHT then EDIT STEP opens a list of existing note trigs.
-Choose the absolute step with the arrow keys or LEVEL/DATA, then press YES.
+recipe. In NOTES, RIGHT then EDIT STEP lights the existing note trigs.
+Tap a lit TRIG to edit its step. PAGE moves through banks of 16 steps.
+You can also select a step with the arrow keys or LEVEL/DATA, then press YES.
+In PLAY, read-only rows show absolute note names from the saved recording,
+the native trig, or the held input. USER rows still show intervals and velocities.
 Apply or cancel an edited draft before selecting another step. Choosing a
 step leaves the pattern unchanged until you apply its recipe. Turning an
 encoder with steps held sets a lock. Clicking an
@@ -68,10 +72,20 @@ pool for the generated phrase, including its source family and TUNE. Trig
 locks still take precedence. Tracks that reference a Sound without a
 supported CANOPY record use legacy performance routing.
 
+RELAY 0.5 supports shared ARP and KEYS with its normal single tape voice.
+To play two pitched notes, stop transport, enable POLY, then use POOL to
+reserve one empty stock sample track. The paired heads play the owner's
+committed stereo take from its start at the note pitch relative to C5.
+They follow the tape's RATE and MIX, and only the recorded signal goes
+through the grouped voices. The recorder still owns punch, undo, and
+the manual tape controls. While recording, the heads read the last
+committed MAIN. A new take, an undo, or a take change retires the old notes.
+Earlier RELAY builds keep their original keyboard and recorder behavior.
+
 The full design and release checks are in the
 [proposal](../../../../docs/design/dt2-track-arpeggiator.md). The adapter
-remains experimental. CANOPY uses its internal voices, and dynamic machines
-that need their own playback state are ineligible for borrowing tracks.
+remains experimental. CANOPY uses its internal voices. RELAY is the
+only qualified dynamic machine that can borrow an empty stock track.
 Timing under heavy MIDI load and physical device measurements need separate
 qualification.
 

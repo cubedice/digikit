@@ -298,7 +298,7 @@ void relay_ui_pass(void)
         }
     }
 }
-static int owns(unsigned type)
+int rtm_is_type(unsigned type)
 {
     unsigned first = machines_info[3];
     if (type < first || type - first >= machines_info[4])
@@ -313,7 +313,7 @@ u32 rtm_mod_param(u32 type, u32 mirror)
 {
     static const u8 *const descriptors[] = {&rtm_mod_rate, &rtm_mod_spacing, &rtm_mod_feedback,
                                             &rtm_mod_mix,  &rtm_mod_gain,    &rtm_mod_position};
-    if (!owns(type))
+    if (!rtm_is_type(type))
         return UINT32_MAX;
     for (unsigned i = 0; i < 6; ++i)
         if (mirror == mod_mirrors[i])
@@ -322,7 +322,7 @@ u32 rtm_mod_param(u32 type, u32 mirror)
 }
 int rtm_mod_carrier(u32 type)
 {
-    return type == relay_type && owns(type);
+    return type == relay_type && rtm_is_type(type);
 }
 static u32 sent_launch;
 static volatile u32 need_sound;
@@ -376,7 +376,7 @@ const uint16_t *rtm_gate_frame(const uint16_t *src)
     // stays at full velocity on subsequent note edges until the motor stops.
     continuous &= latest[4] >> 16;
     if (!src || src[0x15] || !(rising | (continuous & (src[0x11] | src[0x12]))) || !relay_type ||
-        !owns(relay_type))
+        !rtm_is_type(relay_type))
         return src;
     return project_gate(src, rising);
 }
@@ -783,7 +783,7 @@ int rtm_src(u8 *view, unsigned action, u8 *data)
 {
     initialize_settings();
     unsigned type = rtm_type(view), t = rtm_track(*(u32 *)(view + 0x74));
-    if (!owns(type) || t >= 16 || action == 4) {
+    if (!rtm_is_type(type) || t >= 16 || action == 4) {
         if (track < 16) {
             leave();
             track = 16;

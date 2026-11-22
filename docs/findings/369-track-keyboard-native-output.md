@@ -8,7 +8,11 @@ The stock keyboard lifecycle wrappers at ColdFire `0x4005cee2` and `0x4005c72a` 
 
 The stock MIDI worker `0x4012d4ce` accepts a 64-byte native event record. Word 3 selects an onset (1) or release (2). Word 4 bit 7 enables output. With track 10's kit MIDI bit set and its cached channel at 4, an E4 onset at velocity 96 yielded native TX bytes `03 93 40 60`. The native channel/pitch owner changed from 0 to 10 and returned to 0 after release. The event pool head returned to its initial value. The same release worked after the track's kit MIDI bit was cleared, because the stock MIDI worker matches the saved track owner for an off.
 
-The shared backend submits bounded work in the main task. It orders offs ahead of ons, cancels an onset that has not left the queue, and checks room in the stock worker mail and event pools. Admission checks the kit machine and live MIDI bitmap. Stock audio is assigned one voice. MIDI can use several pitches from a single track and uses the configured stock channel. The stock worker has a single owner per channel and pitch, so the generated-note queue keeps the first owner across a channel/pitch collision. Physical MIDI port tests and saturation measurements remain open.
+The shared backend submits bounded work in the main task. It orders offs ahead of ons, cancels an onset that has not left the queue, and checks room in the stock worker mail and event pools. Admission checks the kit machine and live MIDI bitmap. Stock audio is assigned one voice. MIDI can use several pitches from a single track and uses the configured stock channel. The stock worker has a single owner per channel and pitch, so the generated-note queue keeps the first owner across a channel/pitch collision.
+
+The MIDI worker's native route mask is at `0x44e3b9e0`, with DIN on bit 0 and USB on bit 1. Generated onsets reserve both messages of their pair before entering the worker. DIN accrues 2,700 bytes/s with a 48-byte burst allowance. USB accrues 12,000 framing bytes/s with a 256-byte burst allowance. A note sent to both ports spends both allowances. Over-capacity onsets are rejected with MIDI BUSY. A release keeps the outgoing mask recorded at onset and does not need more allowance.
+
+The native worker retains pitch/channel ownership and constructs both messages. The append hooks at `0x4012ce44` and `0x4012d00e` use the saved mask for tagged generated messages. Untagged messages take the stock append route. A pending native append is flushed before an explicitly routed generated note to preserve same-pitch ordering. Host tests cover exhausting DIN while USB remains available, pairing releases after an output change, and refilling both allowances. The coupled sequence fixture switched DIN to USB and USB to DIN while a note was held. Each release appeared on its original output only. Hardware DIN transmit saturation is still an open proof.
 
 ## Helper voices and owner routing [D]
 
@@ -203,15 +207,28 @@ pool and produced a dominant pitch of 468.02 Hz on the panel starts and
 are under the ignored `dist/track-keyboard/hardware-20261121/final-combined`
 directory.
 
+## RELAY playback and recording [D]
+
+RELAY 0.5 gives the owner and one reserved helper separate pitched wet
+playback heads. An explicit RELAY group marker in the voice map authenticates
+the owner of both heads. Both read the owner's committed tape. The helper
+never receives a recorder or an undo position. A take revision retires its
+old heads. The committed read path leaves copy-on-write pages unallocated,
+including when it crosses implicit silence during an open punch.
+
+On the physical DTII, image `9eb931fe23821e2f` loaded RELAY 0.5 alongside
+CANOPY, Overloop, PRISM and remote with zero reported module faults. RELAY
+on T2 recorded a two-second take from T1 in a disposable project. T9
+selected directly in POOL raised the effective voice count to two. Three
+48 kHz USB captures held each note individually and both together. The two
+individual waveforms each appeared at a consistent offset in multiple
+overlapping windows of the paired capture. The peak absolute sample rose
+from about 0.005 for either note alone to 0.0065 for the pair.
+
 ## Remaining qualification [O]
 
-POOL excludes dynamic machines. CANOPY has its internal allocator. RELAY's
-recorder, tape handles, playback lanes and undo positions are keyed by physical
-track, so forwarding the owner's Sound to another physical voice would still
-address that destination's tape state. RELAY needs shared read access to the
-owner's tape with independent playback heads and a single recorder before it
-can borrow voices. Other dynamic machines need their own playback and quiet
-contracts.
+CANOPY supplies its own internal polyphony. Other dynamic machines need
+their own playback and quiet contracts before POOL can reserve helpers for them.
 
 Check audible owner mute, pan, filter, overdrive and compressor routing with
 the device's controls. The physical DSP budget still needs a capture covering

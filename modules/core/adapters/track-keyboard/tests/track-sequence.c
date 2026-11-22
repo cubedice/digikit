@@ -257,6 +257,39 @@ static void recorded_notes(void)
     assert(seed->count == TK_NOTES && seed->notes[15].velocity == 85);
 }
 
+static void full_recording_pool(void)
+{
+    tk_pattern_init(&bank_b);
+    tk_service_edit_pattern(&bank_b);
+    TkSeed note = {.count = 1, .notes = {{.pitch = 64, .velocity = 100}}};
+    TkRecordedShape shape = {.chord = TK_CHORD_MAJ, .voicing = TK_VOICE_OPEN};
+    for (uint8_t step = 0; step < TK_RECORDED_STEPS; ++step)
+        assert(tk_service_store_edit_seed(0, step, &note, &shape));
+
+    const uint8_t spare = TK_RECORDED_STEPS;
+    assert(tk_trig_lock_write(0, spare, TK_CTL_RATE, 14, false));
+    assert(!tk_service_store_edit_seed(0, spare, &note, &shape));
+    TkParams params;
+    uint16_t locks;
+    assert(tk_trig_lock_display(0, spare, &params, &locks));
+    assert(locks == (1u << TK_CTL_RATE) && params.rate == 14);
+    assert(!tk_pattern_seed(&bank_b, 0, spare));
+
+    const TkSeed *saved = tk_pattern_seed(&bank_b, 0, 0);
+    assert(saved && saved->count == 1 && saved->notes[0].pitch == 64);
+    note.count = TK_NOTES + 1;
+    shape.chord = TK_CHORD_MIN;
+    assert(!tk_service_store_edit_seed(0, 0, &note, &shape));
+    assert(tk_trig_lock_display(0, 0, &params, &locks));
+    assert(params.chord == TK_CHORD_MAJ);
+    assert(saved->count == 1 && saved->notes[0].pitch == 64);
+
+    note.count = 1;
+    note.notes[0].pitch = 67;
+    assert(tk_service_store_edit_seed(0, 0, &note, &shape));
+    assert(saved->notes[0].pitch == 67);
+}
+
 int main(void)
 {
     assert(tk_service_init());
@@ -270,5 +303,6 @@ int main(void)
     arm_while_stopped();
     prepared_destination();
     recorded_notes();
+    full_recording_pool();
     return 0;
 }

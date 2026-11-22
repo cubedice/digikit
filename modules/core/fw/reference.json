@@ -9446,7 +9446,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "Preempt only the TRIG keys while G holds the phrase page's selection of the tracks, including the releases of TRIG keys it took after G or the view went. All other events invoke the native callable tail unchanged.",
+      "doc": "Offer numbered TRIG presses to the front picker before stock grid processing, and retain the resulting releases. A note-step picker also owns PAGE.",
       "file": "devices/fw/phrase-ui.toml",
       "kind": "hook",
       "mark": "D",
@@ -9463,7 +9463,7 @@
       "site": "cf.page.site.phrase_key_dispatch",
       "subsystem": "page",
       "users": [
-        "core/phrase-ui"
+        "core/fxview"
       ],
       "was": []
     },
@@ -9479,7 +9479,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "Wrap the normal cdecl LED setter; the handler invokes the generated callable tail. Only TRIG LEDs 26..41 change while G holds the phrase page's selection of the tracks; every other LED and all other calls are retained.",
+      "doc": "Wrap the normal cdecl LED setter; the handler invokes the generated callable tail. The FX adapter lets the front picker claim TRIG and page LEDs at native layer 2; otherwise the call is retained.",
       "file": "devices/fw/phrase-ui.toml",
       "kind": "hook",
       "mark": "D",
@@ -9496,7 +9496,7 @@
       "site": "cf.page.site.phrase_led_set",
       "subsystem": "page",
       "users": [
-        "core/phrase-ui"
+        "core/fxview"
       ],
       "was": []
     },
@@ -12059,7 +12059,7 @@
       },
       "subsystem": "page",
       "users": [
-        "core/phrase-ui"
+        "core/fxview"
       ],
       "was": []
     },
@@ -12090,7 +12090,7 @@
       },
       "subsystem": "page",
       "users": [
-        "core/phrase-ui"
+        "core/fxview"
       ],
       "was": []
     },
@@ -19798,6 +19798,72 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x4012d00e"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Preserve native note ownership and use the captured port mask for a generated note.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_keys.hook.wire_off",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": [
+          "a2"
+        ]
+      },
+      "site": "cf.track_keys.site.wire_off",
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012ce44"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Preserve native note ownership and use the captured port mask for a generated note.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_keys.hook.wire_on",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": [
+          "a2"
+        ]
+      },
+      "site": "cf.track_keys.site.wire_on",
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x40139b54",
             "len": 8
           }
@@ -20127,6 +20193,254 @@
           "kind": "cf_window_hash",
           "len": 4,
           "offset": 12
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012c3ae",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Append one MIDI message to the native worker buffer.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_append",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012bc74",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Send the native MIDI worker buffer through the configured output mask.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_flush",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012c3b0",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Worker note buffer count used before sending one explicitly routed message.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_message_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012d00e",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Append a note-off on the saved channel, then clear the matching native owner.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_off",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012d016",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Resume the native release after clearing the note owner.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_off_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012ce44",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Append the new note after the native same-pitch release and retain the worker owner.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_on",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012ce4a",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Resume the native onset after the routed append.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_on_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012bc78",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native output mask operand. Bit 0 routes to DIN and bit 1 routes to USB.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_ports_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
         }
       },
       "subsystem": "track_keys",
@@ -29910,7 +30224,7 @@
       "name": "text"
     },
     {
-      "count": 21,
+      "count": 31,
       "cpu": "cf",
       "file": "devices/fw/track-keys.toml",
       "meaning": "track keyboard note ownership and native dispatch",

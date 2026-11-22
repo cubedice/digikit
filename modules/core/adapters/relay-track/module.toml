@@ -35,6 +35,7 @@ path = "build/track-dsp.dko.json"
 sources = ["src/dsp/engine.s", "src/dsp/bridge.s", "src/dsp/capture.s", "src/dsp/audio.s"]
 place = "dsp.l2"
 devices = ["dt2"]
+optional = ["_tk_pool_head_owner"]
 [object.externs]
 _rtm_bus = "dsp.fx.value.send.track_bus"
 _rtm_mod_frame = "dsp.voice.value.frame_base"

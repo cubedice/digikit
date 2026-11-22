@@ -10,6 +10,15 @@
 .EXTERN _rtm_bus;
 .EXTERN _rtm_mod_frame;
 .EXTERN _pattern_position_info;
+.EXTERN _tk_pool_head_owner;
+.GLOBAL _rtm_read_head_owner;
+_rtm_read_head_owner:
+    R0 = _tk_pool_head_owner;
+    R0 = PASS R0;
+    IF NE JUMP _tk_pool_head_owner;
+    R0 = -1;
+    RTS;
+
 .GLOBAL _rtm_block;
 // The input tap runs once per 32 stereo frames even when no voice is active.
 // RT_TRIG protects writer alignment against retriggers. All published roots

@@ -15,7 +15,6 @@
 #include "dk_fw_view.h"
 #include "dk_fw_input.h"
 
-extern void phrase_stock_led(uint8_t *, uint32_t, uint32_t, uint32_t);
 /* The loop effect's home (core/loop-control) is optional: in an image without it these are 0 and the page has no loop. */
 #pragma weak dkrt_loop_get
 #pragma weak dkrt_loop_xfad
@@ -166,21 +165,19 @@ int phrase_dispatch_trig(uint8_t *event)
 /* Before the firmware's LED setter (cf.page.hook.phrase_led_set, cdecl(manager, logical, layer, value)): while G holds the
  * selection on the page that is on top, the TRIG LEDs show the tracks the effect hears. Every other LED, and every LED at
  * any other time, is the firmware's. */
-void phrase_led_set(uint8_t *manager, uint32_t logical, uint32_t layer, uint32_t value)
+int phrase_led_claim(uint32_t logical)
 {
-    if (ui.select && logical >= PU_LED_TRIG && logical < PU_LED_TRIG + PH_TRACKS) {
-        uint8_t *view = fxv_visible_view();
-        if (!view || fxv_page(view) != dkrt_phrase_active())
-            pu_context(&ui, 0, dkrt_phrase_active() ? ui.generation : 0);
-        if (pu_selecting(&ui)) {
-            value = pu_led(&ui, logical, value);
-            /* layer 2: a claimed value (layer 1 is the firmware's forced off); the next LED frame clears every claim */
-            layer = 2;
-            ++phrase_ui_debug[10];
-        }
-    }
-    phrase_stock_led(manager, logical, layer, value);
+    if (!ui.select || logical < PU_LED_TRIG || logical >= PU_LED_TRIG + PH_TRACKS)
+        return -1;
+    uint8_t *view = fxv_visible_view();
+    if (!view || fxv_page(view) != dkrt_phrase_active())
+        pu_context(&ui, 0, dkrt_phrase_active() ? ui.generation : 0);
+    if (!pu_selecting(&ui))
+        return -1;
+    ++phrase_ui_debug[10];
+    return (int)pu_led(&ui, logical, 0);
 }
+
 int phrase_fxv_turn(uint8_t *view, uint8_t *event)
 {
     (void)context(view);

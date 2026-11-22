@@ -9,6 +9,7 @@
 
 #include <dk/platform/ui.h>
 #include "dkrt.h"
+#include "dk_fw_input.h"
 
 extern uint32_t pp_current_pattern(void);
 extern uint32_t pp_transport_running(void);
@@ -17,6 +18,7 @@ extern volatile uint32_t pp_position[16];
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
 extern dk_ui *dk_ui_core_handle(void);
+extern int32_t dk_ui_core_menu_front(const dk_ui_menu *);
 extern uintptr_t tk_fw_project(void);
 extern uintptr_t tk_fw_active_kit(uintptr_t project);
 
@@ -31,6 +33,9 @@ static bool polling;
 static TkNotesDraft draft;
 static dk_ui_menu *notes_menu, *note_menu, *selector_menu, *pool_menu;
 static bool notes_dirty, notes_choosing_step, notes_existing_step;
+static uint8_t note_bank;
+static uint16_t note_steps, pool_eligible;
+static void picker_enter(void);
 static uint8_t pool_owner;
 static int32_t note_index, note_offset, note_velocity;
 static int32_t selector_octave, selector_channel;
@@ -147,6 +152,8 @@ static bool can_prepare_track(uint8_t track, const TkPattern *destination,
         return active_kit && target.kit == active_kit && active->override && next->override &&
                tk_canopy_routed(track) && !tk_sequence_canopy_sound_fallback(target.address, track);
     }
+    if (kind[track] == TK_NATIVE_RELAY)
+        return active_kit && target.kit == active_kit && !active->helpers && !next->helpers;
     if (tk_sequence_target_kind(target.kit, track) != (int)kind[track])
         return false;
     /* MIDI sends through the active kit's channel. Audio has a detached
@@ -208,6 +215,8 @@ static void poll(void)
             TkTrackBackend backend;
             if (type == TK_NATIVE_CANOPY)
                 tk_canopy_backend(&backend);
+            else if (type == TK_NATIVE_RELAY)
+                tk_native_relay_backend(&backend);
             else
                 tk_native_backend(type == TK_NATIVE_MIDI, &backend);
             if (tk_service_set_backend(track, &backend)) {
@@ -217,9 +226,10 @@ static void poll(void)
         }
         if (type == TK_NATIVE_CANOPY)
             tk_canopy_sync(track, true, pattern ? pattern : editing_pattern);
-        else if (type == TK_NATIVE_AUDIO && (registered & mask))
+        else if ((type == TK_NATIVE_AUDIO || type == TK_NATIVE_RELAY) && (registered & mask))
             tk_service_set_voice_capacity(track, tk_pool_fw_voices(track));
         tk_sequence_set_midi(track, type == TK_NATIVE_MIDI);
+        tk_sequence_set_relay(track, (registered & mask) && type == TK_NATIVE_RELAY);
     }
     uint32_t observed = pp_position[3];
     if (observed != boundary && (pp_position[5] & 1u) && pp_position[7] == 0) {
@@ -538,6 +548,8 @@ static void notes_edit_step(void *unused, int32_t value)
         return;
     }
     notes_choosing_step = true;
+    note_bank = draft.step_scope ? draft.step / 16u : 0;
+    picker_enter();
     dk_ui_menu_select(notes_menu, 0);
 }
 
@@ -568,18 +580,70 @@ static void notes_panel(dk_ui_menu *m, int32_t row, void *unused)
     dk_ui_menu_add_action(m, "EDIT STEP", notes_edit_step, NULL, 0);
 }
 
+static void notes_play_pitches(dk_ui_menu *m)
+{
+    TkParams params;
+    uint16_t locks;
+    bool found = draft.step_scope ? tk_trig_lock_display(draft.track, draft.step, &params, &locks)
+                                  : tk_trig_display(draft.track, &params);
+    if (!found || params.chord != TK_CHORD_PLAY)
+        return;
+    uint8_t pitches[TK_NOTES], count;
+    const char *heading;
+    const TkSeed *seed =
+        draft.step_scope ? tk_pattern_seed(draft.pattern, draft.track, draft.step) : NULL;
+    if (seed) {
+        count = seed->count;
+        for (uint8_t i = 0; i < count; ++i)
+            pitches[i] = seed->notes[i].pitch;
+        heading = "RECORDED PLAY";
+    } else if (draft.step_scope) {
+        count = tk_sequence_native_pitches(editing_pattern, draft.track, draft.step,
+                                           kind[draft.track] == TK_NATIVE_MIDI, pitches);
+        heading = "NATIVE PLAY";
+    } else {
+        count = tk_trig_held_pitches(draft.track, pitches);
+        heading = "HELD PLAY";
+    }
+    if (!count)
+        return;
+    dk_ui_menu_add_text(m, heading);
+    for (uint8_t i = 0; i < count; ++i) {
+        static const char name[] = "CCDDEFFGGAAB";
+        char row[6], *end = row;
+        unsigned pitch = pitches[i], pc = pitch % 12u, octave = pitch / 12u;
+        *end++ = name[pc];
+        if ((0x54au >> pc) & 1u)
+            *end++ = '#';
+        if (octave == 0)
+            *end++ = '-';
+        *decimal(end, octave ? octave - 1 : 1) = 0;
+        dk_ui_menu_add_text(m, row);
+    }
+}
+
 static void notes_fill(dk_ui_menu *m, void *unused)
 {
     (void)unused;
     if (notes_choosing_step) {
-        dk_ui_menu_add_text(m, "EDIT STEP");
-        for (unsigned step = 0; step < TK_STEPS; ++step) {
+        char title[DK_UI_ROW] = "STEPS ";
+        unsigned first = 16u * note_bank;
+        char *end = decimal(title + 6, first + 1);
+        *end++ = '-';
+        *decimal(end, first + 16) = 0;
+        dk_ui_menu_add_text(m, title);
+        note_steps = 0;
+        for (unsigned key = 0; key < 16; ++key) {
+            unsigned step = first + key;
             if (!tk_pattern_fw_note_step(editing_pattern, draft.track, (uint8_t)step))
                 continue;
+            note_steps |= (uint16_t)(1u << key);
             char label[DK_UI_ROW] = "STEP ";
             *decimal(label + 5, step + 1u) = 0;
             dk_ui_menu_add_action(m, label, notes_pick_step, NULL, (int32_t)step);
         }
+        if (!note_steps)
+            dk_ui_menu_add_text(m, "NO NOTE TRIGS");
         return;
     }
     const char *apply = draft.clear ? "APPLY PLAY" : "APPLY USER";
@@ -605,6 +669,8 @@ static void notes_fill(dk_ui_menu *m, void *unused)
         *decimal(w, draft.recipe.notes[i].velocity) = 0;
         dk_ui_menu_add_action(m, text, note_open, NULL, i);
     }
+    if (!notes_dirty)
+        notes_play_pitches(m);
 }
 
 bool tk_trig_open_notes(uint8_t track, int step)
@@ -648,7 +714,9 @@ static bool pool_editable(void)
         return false;
     }
     if (editing_pattern == pool_pattern && tk_pattern_fw_revision() == pool_revision &&
-        tk_trig_ready(pool_owner) && kind[pool_owner] == TK_NATIVE_AUDIO &&
+        tk_trig_ready(pool_owner) &&
+        (kind[pool_owner] == TK_NATIVE_AUDIO ||
+         (kind[pool_owner] == TK_NATIVE_RELAY && tk_pool_fw_relay_ready())) &&
         tk_service_helpers(pool_owner) == pool_original)
         return true;
     dk_ui_menu_close(pool_menu);
@@ -670,6 +738,10 @@ static void pool_toggle(void *unused, int32_t track)
         dk_ui_toast(dk_ui_core_handle(), "TRACK UNAVAILABLE");
         return;
     }
+    if ((request & bit) && kind[pool_owner] == TK_NATIVE_RELAY && (request & (request - 1u))) {
+        dk_ui_toast(dk_ui_core_handle(), "RELAY: ONE HELPER");
+        return;
+    }
     TkTrackConfig preview;
     if (!tk_assign_helpers(&preview, pool_owner, request, UINT16_MAX, UINT16_MAX, 0)) {
         dk_ui_toast(dk_ui_core_handle(), "UP TO 3 HELPERS");
@@ -685,7 +757,8 @@ static void pool_apply(void *unused, int32_t value)
     (void)value;
     if (!pool_editable())
         return;
-    if (!tk_service_assign_helpers(pool_owner, pool_request, tk_pool_fw_eligible(pool_owner))) {
+    if ((kind[pool_owner] == TK_NATIVE_RELAY && (pool_request & (pool_request - 1u))) ||
+        !tk_service_assign_helpers(pool_owner, pool_request, tk_pool_fw_eligible(pool_owner))) {
         dk_ui_toast(dk_ui_core_handle(), "TRACK UNAVAILABLE");
         return;
     }
@@ -705,7 +778,7 @@ static void pool_fill(dk_ui_menu *m, void *unused)
     *end = 0;
     dk_ui_menu_add_text(m, summary);
     dk_ui_menu_add_action(m, "APPLY GROUP", pool_apply, NULL, 0);
-    uint16_t eligible = tk_pool_fw_eligible(pool_owner);
+    pool_eligible = tk_pool_fw_eligible(pool_owner);
     int32_t row = 2;
     for (uint8_t track = 0; track < TK_TRACKS; ++track) {
         if (track == pool_owner)
@@ -717,7 +790,7 @@ static void pool_fill(dk_ui_menu *m, void *unused)
         int owner = tk_pool_fw_owner(track);
         const char *state = pool_request & bit    ? owner == pool_owner ? "RESERVED" : "SELECTED"
                             : pool_original & bit ? "REMOVE"
-                            : eligible & bit      ? "AVAILABLE"
+                            : pool_eligible & bit ? "AVAILABLE"
                                                   : "IN USE";
         while (*state)
             *w++ = *state++;
@@ -739,6 +812,8 @@ bool tk_trig_open_pool(uint8_t track)
         return dk_ui_toast(dk_ui_core_handle(), kind[track] == TK_NATIVE_MIDI
                                                     ? "MIDI: UP TO 16 NOTES"
                                                     : "CANOPY: FOUR PAD VOICES") == 0;
+    if (kind[track] == TK_NATIVE_RELAY && !tk_pool_fw_relay_ready())
+        return dk_ui_toast(dk_ui_core_handle(), "RELAY: ONE TAPE VOICE") == 0;
     if (pp_transport_running())
         return dk_ui_toast(dk_ui_core_handle(), "STOP TO EDIT VOICE GROUP") == 0;
     if (!pool_menu)
@@ -749,8 +824,89 @@ bool tk_trig_open_pool(uint8_t track)
     pool_original = pool_request = tk_service_helpers(track);
     pool_pattern = editing_pattern;
     pool_revision = tk_pattern_fw_revision();
+    picker_enter();
     dk_ui_menu_select(pool_menu, 2);
     return dk_ui_menu_open(pool_menu) >= 0;
+}
+
+enum {
+    PICKER_OFF,
+    PICKER_POOL,
+    PICKER_STEP,
+    KEY_PAGE = 22,
+    KEY_TRIG = 25,
+    LED_TRIG = 26,
+    LED_PAGE = 42,
+};
+static uint32_t picker_held, picker_foreign;
+
+static void picker_enter(void)
+{
+    picker_foreign = dk_fw_input_key_down(KEY_PAGE) ? 1u << 16 : 0;
+    for (unsigned i = 0; i < 16; ++i)
+        if (dk_fw_input_key_down(KEY_TRIG + i))
+            picker_foreign |= 1u << i;
+    picker_foreign &= ~picker_held;
+}
+
+static unsigned picker_front(void)
+{
+    if (notes_choosing_step && draft.open && dk_ui_core_menu_front(notes_menu))
+        return PICKER_STEP;
+    if (dk_ui_core_menu_front(pool_menu))
+        return PICKER_POOL;
+    return PICKER_OFF;
+}
+
+int tk_picker_key(uint32_t key, uint32_t flags)
+{
+    unsigned index = key == KEY_PAGE ? 16u : key - KEY_TRIG;
+    if (index > 16)
+        return 0;
+    uint32_t bit = 1u << index;
+    if ((flags & 16u) || !(flags & 11u)) {
+        bool owned = (picker_held & bit) != 0;
+        picker_held &= ~bit;
+        picker_foreign &= ~bit;
+        return owned;
+    }
+    if (picker_held & bit)
+        return 1;
+    if (!(flags & 1u) || (flags & 8u) || (picker_foreign & bit))
+        return 0;
+    unsigned mode = picker_front();
+    if (!mode || (index == 16 && mode != PICKER_STEP))
+        return 0;
+    picker_held |= bit;
+    if (mode == PICKER_POOL) {
+        pool_toggle(NULL, (int32_t)index);
+        if (dk_ui_core_menu_front(pool_menu))
+            dk_ui_menu_select(pool_menu, 1); /* YES applies the whole draft. */
+    } else if (index == 16) {
+        note_bank = (uint8_t)((note_bank + 1u) % (TK_STEPS / 16u));
+        dk_ui_menu_select(notes_menu, 0);
+    } else {
+        notes_pick_step(NULL, 16 * note_bank + (int32_t)index);
+    }
+    return 1;
+}
+
+int tk_picker_led(uint32_t logical)
+{
+    unsigned mode = picker_front();
+    if (mode == PICKER_STEP && logical >= LED_PAGE && logical < LED_PAGE + TK_STEPS / 16)
+        return logical - LED_PAGE == note_bank ? 0x0a : 0x02;
+    unsigned track = logical - LED_TRIG;
+    if (!mode || track >= 16)
+        return -1;
+    uint16_t bit = (uint16_t)(1u << track);
+    if (mode == PICKER_STEP)
+        return (note_steps & bit) ? 0x71 : 0x01;
+    if (track == pool_owner)
+        return 0x41; /* Owner: blue. */
+    if (pool_request & bit)
+        return 0x71; /* Selected: white. */
+    return (pool_eligible & bit) ? 0x02 : 0x01;
 }
 
 int tk_panel_off(uint32_t key)

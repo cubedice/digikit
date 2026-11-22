@@ -12,10 +12,13 @@ it('renders separate stereo tracks at the recorder phase and retires a cleared t
     'modules/core/adapters/relay-storage/src/dsp/pool.s', 'modules/machines/relay/src/dsp/voice.s'];
   const tracks = 0x20111000;
   const ret = 0xb9f100;
-  const rig = await RawRig.open({ objects: sources.map((source, i) => ({
+  const rig = await RawRig.open({ objects: [...sources.map((source, i) => ({
     text: readFileSync(path.join(root, source), 'utf8').replaceAll('\r\n', '\n'),
     includes: [headers], base: 0xb90000 + i * 0x2000,
-  })), externs: { _rtm_tracks: tracks, _rtm_tapes: tracks + 0x1000 }, returnSw: ret });
+  })), {
+    text: '.SECTION/PM seg_pmco;\n.GLOBAL _rtm_read_head_owner;\n_rtm_read_head_owner: R0 = -1; RTS;',
+    base: 0xb9b000,
+  }], externs: { _rtm_tracks: tracks, _rtm_tapes: tracks + 0x1000, _dv_exp2: 0 }, returnSw: ret });
   const a = 0x20110000, b = a + 256, input = b + 256, left = input + 128, right = left + 256, params = right + 256;
   async function pool(name: string, arg = 0) {
     const result = await rig.call('_relay_pool', { R4: op[name]!, R8: arg, R12: 0 }, { readRegs: ['R0'] });

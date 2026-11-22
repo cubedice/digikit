@@ -1516,92 +1516,85 @@
   },
   {
    "addend": 296,
-   "offset": 28,
-   "section": ".text.phrase_led_set",
+   "offset": 6,
+   "section": ".text.phrase_led_claim",
    "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 48,
-   "section": ".text.phrase_led_set",
+   "offset": 36,
+   "section": ".text.phrase_led_claim",
    "symbol": "fxv_visible_view",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 54,
-   "section": ".text.phrase_led_set",
+   "offset": 42,
+   "section": ".text.phrase_led_claim",
    "symbol": "dkrt_phrase_active",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 74,
-   "section": ".text.phrase_led_set",
+   "offset": 62,
+   "section": ".text.phrase_led_claim",
    "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 80,
-   "section": ".text.phrase_led_set",
+   "offset": 68,
+   "section": ".text.phrase_led_claim",
    "symbol": "pu_context",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 94,
-   "section": ".text.phrase_led_set",
+   "offset": 82,
+   "section": ".text.phrase_led_claim",
    "symbol": "fxv_page",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 114,
-   "section": ".text.phrase_led_set",
+   "offset": 102,
+   "section": ".text.phrase_led_claim",
    "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 120,
-   "section": ".text.phrase_led_set",
+   "offset": 108,
+   "section": ".text.phrase_led_claim",
    "symbol": "pu_selecting",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 138,
-   "section": ".text.phrase_led_set",
+   "offset": 126,
+   "section": ".text.phrase_led_claim",
    "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 144,
-   "section": ".text.phrase_led_set",
-   "symbol": "pu_led",
-   "type": "cf.32"
-  },
-  {
    "addend": 40,
-   "offset": 154,
-   "section": ".text.phrase_led_set",
+   "offset": 132,
+   "section": ".text.phrase_led_claim",
    "symbol": ".sec..bss.phrase_ui_debug",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 188,
-   "section": ".text.phrase_led_set",
-   "symbol": "phrase_stock_led",
+   "offset": 138,
+   "section": ".text.phrase_led_claim",
+   "symbol": "pu_led",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 194,
-   "section": ".text.phrase_led_set",
+   "offset": 152,
+   "section": ".text.phrase_led_claim",
    "symbol": ".sec..bss.ui",
    "type": "cf.32"
   },
@@ -2225,10 +2218,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffe848d7041c282f0020262f0024242f00282f6f001c00104ab900000000677e20040680ffffffe6e88866724eb90000000045f9000000004a80661c4e924a80667c2f0042a74879000000004eb9000000004fef000c60162f004eb9000000002f4000184e92588fb0af001466ce4879000000004eb900000000588f4a80671e2f0276022f044879000000004eb9000000004fef000c52b90000000024002f4200282f4300242f4400204cd7041c2f6f0010001c4fef00184ef9000000002039000000006000ff7c",
+   "hex": "598f2f0a4ab900000000660870ff245f588f4e75202f000c0680ffffffe6e88866ea4eb90000000045f9000000004a80661c4e924a80665e2f0042a74879000000004eb9000000004fef000c60162f004eb9000000002f4000084e92588fb0af000466ce4879000000004eb900000000588f4a80679642a72f2f001048790000000052b9000000004eb9000000004fef000c6000ff7a203900000000609a",
    "kind": "text",
-   "name": ".text.phrase_led_set",
-   "size": 202
+   "name": ".text.phrase_led_claim",
+   "size": 158
   },
   {
    "align": 2,
@@ -2315,7 +2308,7 @@
    "size": 300
   }
  ],
- "source_sha256": "b25c58fa63f03ad9830e739b0000dd9f2944081fee85bf26f416cf265fd442a7",
+ "source_sha256": "5b4696244af9f8f622ef88b148076f509e67e3de7a8bc1596ae7f0e1003d5b27",
  "symbols": [
   {
    "global": false,
@@ -2775,14 +2768,8 @@
   },
   {
    "global": true,
-   "name": "phrase_led_set",
-   "section": ".text.phrase_led_set",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "phrase_stock_led",
-   "section": null,
+   "name": "phrase_led_claim",
+   "section": ".text.phrase_led_claim",
    "value": 0
   },
   {
@@ -2988,8 +2975,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "2047",
-  "isa_check": "0c534140e1d8cfe72fed0dabfc00f00d5c94030a5bf8c78eec323f54a161b7c7",
+  "instructions_redecoded": "2039",
+  "isa_check": "7d593982247bd9f8246dbd652edb6ec3725d85d02262b95d03adb4f4222fe1f3",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

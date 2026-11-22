@@ -10,11 +10,13 @@ typedef struct {
     uint16_t assigned[TK_TRACKS];
     uint16_t draining[TK_TRACKS];
     uint32_t epoch;
+    uint16_t relay_owners;
 } TkPool;
 
 typedef struct {
     uint32_t epoch;
     uint16_t qualified_owners;
+    uint16_t relay_owners;
     /* Empty audio destinations with native events excluded during a lease. */
     uint16_t eligible_helpers;
     /* Includes the worker queue, sample cursor and envelope release. */
@@ -52,8 +54,9 @@ const uint16_t *tk_pool_link_project(const uint16_t *src);
 void tk_pool_link_reply(const volatile uint16_t *reply);
 uint16_t tk_pool_link_quiet(uint32_t *observed, uint32_t *now);
 
-/* DTII 1.17 UI task. A stopped stock sample track may request helpers. */
+/* DTII 1.17 UI task. A stopped qualified audio track may request helpers. */
 void tk_pool_fw_update(uint32_t pattern, const TkTrackConfig config[TK_TRACKS], bool can_admit);
+bool tk_pool_fw_relay_ready(void);
 uint16_t tk_pool_fw_eligible(uint8_t owner);
 int tk_pool_fw_owner(uint8_t track);
 uint8_t tk_pool_fw_voices(uint8_t owner);

@@ -85,6 +85,9 @@ _relay_pool:
     R0 = RLY_READ_SPAN;
     COMP(R4,R0);
     IF EQ JUMP _rp_read;
+    R0 = RLY_PEEK_SPAN;
+    COMP(R4,R0);
+    IF EQ JUMP _rp_peek;
     R0 = RLY_LENGTH;
     COMP(R4,R0);
     IF EQ JUMP _rp_length;
@@ -352,6 +355,30 @@ _rp_read:
     CALL _rp_address;
     R6 = DM(UNSEEDED,I2); R6 = PASS R6; IF NE CALL _rp_seed;
     JUMP _rp_span_result;
+_rp_peek:
+    R0 = RLY_TRACK_MAIN; COMP(R8,R0); IF LT JUMP _rp_fail;
+    R10 = PASS R10; IF EQ JUMP _rp_fail;
+    R12 = PASS R12; IF LT JUMP _rp_fail;
+    R2 = DM(FRAMES,I2); R2 = R2 - R12; IF LE JUMP _rp_fail;
+    R1 = FEXT R12 BY 0:8; R0 = 256; R1 = R0 - R1; R2 = MIN(R2,R1);
+    // A parent has the same length as its child. Follow only immutable roots
+    // and stop after at most the size of the root table.
+    R4 = RLY_SLOT_COUNT;
+_rp_peek_parent:
+    R10 = PASS R10; IF EQ JUMP _rp_peek_silence;
+    I2 = R10;
+    CALL _rp_address;
+    R6 = DM(UNSEEDED,I2); R6 = PASS R6; IF EQ JUMP _rp_peek_return;
+    CALL _rp_bit;
+    R6 = PASS R6; IF NE JUMP _rp_peek_return;
+    R10 = DM(PARENT,I2);
+    R4 = R4 - 1; IF NE JUMP _rp_peek_parent;
+    JUMP _rp_fail;
+_rp_peek_silence:
+    R0 = 0;
+_rp_peek_return:
+    R1 = R2;
+    RTS;
 _rp_address:
     R3 = LSHIFT R12 BY -17;
     R3 = LSHIFT R3 BY 2;

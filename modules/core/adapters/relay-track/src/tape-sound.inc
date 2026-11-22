@@ -228,7 +228,7 @@ static void tape_sound_tick(void)
         if (count_types > 128)
             return;
         for (unsigned i = 0; i < count_types; ++i)
-            if (owns(first + i)) {
+            if (rtm_is_type(first + i)) {
                 relay_type = first + i;
                 break;
             }

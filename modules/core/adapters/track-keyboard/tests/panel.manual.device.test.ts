@@ -1,13 +1,16 @@
 import { copyFileSync, mkdirSync, mkdtempSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from '@digi/test-support';
+import { portAnchorAddress } from '@digi/regression/runtime/device-data.ts';
 import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
+import { word } from '@digi/regression/runtime/fx-live.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { trackType } from '@digi/regression/runtime/project-kit.ts';
+import { selectDt2, trackType } from '@digi/regression/runtime/project-kit.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
+import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
@@ -55,22 +58,26 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
           await edge(modifier, false);
         }
       };
+      const selectedTrackOperand = portAnchorAddress(
+        session.options.device,
+        session.options.firmware,
+        'cf.track_keys.site.midi_selected_lit',
+      );
+      const selectedTrack = async () => word(session, await word(session, selectedTrackOperand));
       const readPages = async (build: string) => {
         const views = new Map<string, Buffer>();
         for (const [kind, track] of [['audio', 1], ['midi', 2]] as const) {
           await modified('TRK', `TRIG ${track}`);
+          const selected = await selectedTrack();
+          if (selected !== track - 1) await capture(`${build}-${kind}-track-select-failed`);
+          expect(selected, `${build}: selected track`).toBe(track - 1);
           if (kind === 'midi' && (await trackType(session, track)) !== 5) {
-            await tap('SRC');
-            await modified('FUNC', 'SRC');
-            // The list remembers its cursor. Begin at the first machine.
-            for (let index = 0; index < 12; index++) await tap('UP');
-            for (let index = 0; index < 6; index++) await tap('DOWN');
-            await tap('YES');
-            await tap('YES');
-            await pollEmulated(session, () => trackType(session, track), (type) => type === 5, {
-              emulatedMs: 5000,
-              message: 'track 2 uses the stock MIDI machine',
-            });
+            try {
+              await selectDt2(sessionRt(session), track, 5, 6);
+            } catch (error) {
+              await capture(`${build}-midi-machine-select-failed`);
+              throw error;
+            }
           }
           await tap('SRC');
           for (let page = 1; page <= 2; page++) {
@@ -127,6 +134,9 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
       });
       await session.client.call('run.mode', { mode: 'free' });
       await expectRuntimeUi(session, image.plan, session.runDir);
+      // The runtime hook can report ready while the stock FILE SYSTEM OK
+      // acknowledgement still covers the page after the firmware reload.
+      await tap('NO');
       const shared = await readPages('shared');
       for (const [name, reference] of stock) {
         expect(protectedPixels(shared.get(name)!), `${name} preserves stock pixels`).toEqual(

@@ -111,11 +111,12 @@ export function canopyPanel(session: Session, plan: RuntimePlan) {
       await sessionRt(session).ui.wait({ ms: 250, why: REDRAW });
     }
   };
-  // Track n's Sound into pool slot 001 (empty: SAVE TO HERE is the first action).
-  const poolSave = async (n: number) => {
+  // Track n's Sound into an empty pool slot (SAVE TO HERE is the first action).
+  const poolSave = async (n: number, slot = 1) => {
     await track(n);
     await presetMenu(PRESET_POOL, 'pool-save');
     await listTop();
+    for (let i = 1; i < slot; i++) await key('DOWN');
     await key('RIGHT');
     await sessionRt(session).ui.wait({ ms: 400, why: REDRAW });
     await shot('pool-save-actions');
@@ -124,11 +125,12 @@ export function canopyPanel(session: Session, plan: RuntimePlan) {
     await confirmSave('pool-save');
     await leaveMenus();
   };
-  // Pool slot 001 onto track n (filled: LOAD TO TRACK is the first action).
-  const poolLoad = async (n: number) => {
+  // A filled pool slot onto track n (LOAD TO TRACK is the first action).
+  const poolLoad = async (n: number, slot = 1) => {
     await track(n);
     await presetMenu(PRESET_POOL, `pool-load-t${n}`);
     await listTop();
+    for (let i = 1; i < slot; i++) await key('DOWN');
     await key('RIGHT');
     await sessionRt(session).ui.wait({ ms: 400, why: REDRAW });
     await shot(`pool-load-t${n}-actions`);
@@ -212,6 +214,7 @@ export function canopyPanel(session: Session, plan: RuntimePlan) {
     shot,
     leaveMenus,
     chooseCanopy,
+    keysPage,
     sound,
     edit,
     poolSave,

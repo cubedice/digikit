@@ -25,30 +25,72 @@
   },
   {
    "addend": 0,
-   "offset": 26,
+   "offset": 34,
    "section": ".text.fxv_key_dispatch",
    "symbol": "rtm_stop_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 58,
+   "offset": 68,
    "section": ".text.fxv_key_dispatch",
    "symbol": "fxv_stock_dispatch",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 74,
+   "offset": 94,
+   "section": ".text.fxv_key_dispatch",
+   "symbol": "tk_picker_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 108,
+   "section": ".text.fxv_key_dispatch",
+   "symbol": "tk_picker_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 124,
    "section": ".text.fxv_key_dispatch",
    "symbol": "phrase_dispatch_trig",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 84,
+   "offset": 134,
    "section": ".text.fxv_key_dispatch",
    "symbol": "relay_trig",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 178,
+   "section": ".text.fxv_key_dispatch",
+   "symbol": "tk_picker_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 42,
+   "section": ".text.fxv_panel_led",
+   "symbol": "tk_picker_led",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 52,
+   "section": ".text.fxv_panel_led",
+   "symbol": "phrase_led_claim",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 88,
+   "section": ".text.fxv_panel_led",
+   "symbol": "fxv_stock_led",
    "type": "cf.32"
   },
   {
@@ -195,10 +237,17 @@
   },
   {
    "align": 2,
-   "hex": "598f2f0a7215246f00102f6f000c0004202a000cb280662641f9000000004a8867082f2a00104e90588f2f4a00102f6f0004000c245f588f4ef9000000000680ffffffe7e88866e241f9000000004a88661641f9000000004a8867ce2f0a4e90588f4a8067c4600a2f0a4e90588f4a8067e0245f7001588f4e75",
+   "hex": "4feffff048d7040c246f001876152f6f0014000c202a000c222a0010b680662841f9000000004a8867062f014e90588f2f4a00184cd7040c2f6f000c00144fef00104ef9000000002400760f0682ffffffe7b682645a7616b68066d441f9000000004a8867ca2f012f004eb900000000508f4a80662ee88a66b641f9000000004a88661641f9000000004a8867a22f0a4e90588f4a806798600a2f0a4e90588f4a8067e04cd7040c70014fef00104e7541f9000000004a8867c060aa",
    "kind": "text",
    "name": ".text.fxv_key_dispatch",
-   "size": 122
+   "size": 188
+  },
+  {
+   "align": 2,
+   "hex": "4feffff0721748d7001c242f00182002262f001c0680ffffffe6282f00202f6f0014000cb280651441f9000000004a88662a41f9000000004a8866302f4400202f43001c2f4200184cd7001c2f6f000c00144fef00104ef9000000002f024e90588f4a806dcc2800760260d02f024e90588f4a806cf060c4",
+   "kind": "text",
+   "name": ".text.fxv_panel_led",
+   "size": 120
   },
   {
    "align": 2,
@@ -271,7 +320,7 @@
    "size": 10
   }
  ],
- "source_sha256": "f534e03996b0c880a0b3a016ba733a0b135e12836d6decc69075c10ce0c177e5",
+ "source_sha256": "0d27a5fe771333c97ceda75b648cb2e546fbf4db4efda62ce436b533a146293f",
  "symbols": [
   {
    "global": false,
@@ -371,6 +420,12 @@
   },
   {
    "global": true,
+   "name": "fxv_panel_led",
+   "section": ".text.fxv_panel_led",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "fxv_stock_dispatch",
    "section": null,
    "value": 0
@@ -390,6 +445,12 @@
   {
    "global": true,
    "name": "fxv_stock_key",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_stock_led",
    "section": null,
    "value": 0
   },
@@ -473,6 +534,12 @@
   },
   {
    "global": true,
+   "name": "phrase_led_claim",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "relay_trig",
    "section": null,
    "value": 0
@@ -482,14 +549,26 @@
    "name": "rtm_stop_key",
    "section": null,
    "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_picker_key",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_picker_led",
+   "section": null,
+   "value": 0
   }
  ],
  "toolchain": {
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "303",
-  "isa_check": "9a3e6754ab42b25e638ee9a6237ac8141c8ac6e50312b2baf00dda87de37cced",
+  "instructions_redecoded": "362",
+  "isa_check": "8a309733bc075baafe7281a7ceab2c0a2dcbe2245fa493c9ab417f1d11a2e400",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

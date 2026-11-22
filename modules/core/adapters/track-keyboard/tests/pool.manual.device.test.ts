@@ -3,6 +3,7 @@ import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
+import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
@@ -27,6 +28,7 @@ describeOn('dt2', 'stock audio helper group', () => {
     await session.client.call('run.mode', { mode: 'free' });
     await expectRuntimeUi(session, image.plan, session.runDir);
     const { edge, tap, turn } = acknowledgedPanel(session);
+    await tap('NO'); // Close the stock FILE SYSTEM OK acknowledgement before sending panel gestures.
     await edge('TRK', true);
     try {
       await tap('TRIG 1');
@@ -40,17 +42,31 @@ describeOn('dt2', 'stock audio helper group', () => {
     await tap('SRC');
     for (let page = 0; page < 4; page++) await tap('PAGE TRIG');
     await turn(1, 12);
+    const led = async (track: number) => {
+      const { leds } = await session.leds();
+      return parseInt(leds.slice(2 * (25 + track), 2 * (26 + track)), 16);
+    };
     const selectHelper = async () => {
       await tap('PUSH H');
-      for (let row = 1; row < helper; row++) await tap('DOWN');
-      await tap('YES');
+      await pollEmulated(session, () => led(0), (value) => value === 0x41, {
+        emulatedMs: 2000, message: 'the owner is blue in the native group picker',
+      }).catch(async (error) => {
+        await captureRemoteOled(session, 'pool-owner-led-failed');
+        throw error;
+      });
+      await tap(`TRIG ${helper + 1}`);
+      await pollEmulated(session, () => led(helper), (value) => value === 0x71, {
+        emulatedMs: 2000, message: 'the staged helper lights white with no lease yet',
+      });
       expect(await mask('reserved')).toBe(0);
     };
     await selectHelper();
-    await tap('NO'); // Cancel the whole group before opening a new draft.
+    await tap('NO');
     expect(await mask('reserved')).toBe(0);
+    await pollEmulated(session, () => led(0), (value) => value !== 0x41, {
+      emulatedMs: 2000, message: 'cancel returns LED ownership to the native panel',
+    });
     await selectHelper();
-    for (let row = 0; row < helper; row++) await tap('UP');
     await tap('YES'); // APPLY GROUP
     await pollEmulated(session, () => mask('reserved'), (value) => value === helperMask, {
       emulatedMs: 4000, message: 'idle helper is admitted only after applying the draft',
@@ -110,7 +126,7 @@ describeOn('dt2', 'stock audio helper group', () => {
       await pollEmulated(
         session, async () => Promise.all([soundingMachine(0), soundingMachine(helper)]),
         ([ownerType, helperType]) => ownerType === 1 && helperType === 1, {
-          emulatedMs: 4000, message: 'both active voices receive the owner’s WERP Sound',
+          emulatedMs: 4000, message: 'both active voices receive the ownerâ€™s WERP Sound',
         },
       );
     });

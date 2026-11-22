@@ -154,4 +154,26 @@ void track_pool_checks(void)
     tk_pool_update(&pool, &snapshot, config);
     assert(!tk_pool_can_start(&pool, OWNER, COMPETITOR));
     assert(tk_pool_capacity(&pool, COMPETITOR) == 4);
+
+    /* A RELAY owner can lease one empty sample track, even if an older
+     * pattern has stored a larger request from a stock sample machine. */
+    pool = (TkPool){0};
+    snapshot.relay_owners = 1u << OWNER;
+    config[OWNER].helpers = group;
+    config[COMPETITOR].params.poly = 0;
+    tk_pool_update(&pool, &snapshot, config);
+    assert(tk_pool_capacity(&pool, OWNER) == 1);
+    config[OWNER].helpers = 1u << H1;
+    tk_pool_update(&pool, &snapshot, config);
+    assert(tk_pool_capacity(&pool, OWNER) == 2);
+    assert(tk_pool_can_start(&pool, OWNER, H1));
+    tk_pool_owner_frame(&pool, frame);
+    assert((frame[1] & 0xf) == 0xa);
+    assert(tk_pool_decode_frame(frame, route) && route[H1] == OWNER);
+    snapshot.quiescent_helpers = 0;
+    config[OWNER].params.poly = 0;
+    tk_pool_update(&pool, &snapshot, config);
+    tk_pool_owner_frame(&pool, frame);
+    assert((frame[1] & 0xf) == 0); /* Draining is a mixer route, never read permission. */
+    assert(tk_pool_decode_frame(frame, route) && route[H1] == OWNER);
 }
