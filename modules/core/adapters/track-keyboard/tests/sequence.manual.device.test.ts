@@ -5,13 +5,13 @@ import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
-import { pollEmulated } from '@digi/regression/runtime/waits.ts';
+import { emulatedClockMs, pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
 
 describeOn('dt2', 'shared arpeggiator stock sequence', () => {
   const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
-  test('replays audio and MIDI trigs and captures a step-recorded chord', { timeout: 240_000 }, async () => {
+  test('replays audio and MIDI trigs and captures a step-recorded chord', { timeout: 360_000 }, async () => {
     const { session } = handle;
     const image = await prepareRuntimePlanModulesOffline(
       session.options,
@@ -24,6 +24,7 @@ describeOn('dt2', 'shared arpeggiator stock sequence', () => {
         'tk_sequence_midi_hits',
         'tk_sequence_midi_info',
         'tk_native_audio_active',
+        'retrig_keys',
         'tk_capture_committed',
         'tk_capture_last_count',
       ],
@@ -40,13 +41,16 @@ describeOn('dt2', 'shared arpeggiator stock sequence', () => {
     await session.client.call('run.mode', { mode: 'free' });
     await expectRuntimeUi(session, image.plan, session.runDir);
     const { edge, tap, turn } = acknowledgedPanel(session);
+    const modified = async (modifier: string, key: string | number) => {
+      await edge(modifier, true);
+      try {
+        await tap(key);
+      } finally {
+        await edge(modifier, false);
+      }
+    };
     await tap('NO'); // Dismiss the asynchronous stock filesystem acknowledgement.
-    await edge('TRK', true);
-    try {
-      await tap('TRIG 1');
-    } finally {
-      await edge('TRK', false);
-    }
+    await modified('TRK', 'TRIG 1');
 
     await tap('RECORD'); // GRID
     await tap('TRIG 1');
@@ -67,8 +71,19 @@ describeOn('dt2', 'shared arpeggiator stock sequence', () => {
     await turn(1, 12);
     await turn(3, 30);
 
+    await modified('TRK', 'TRIG 3');
+    await tap('SRC');
+    await tap('RECORD');
+    for (const trig of ['TRIG 1', 'TRIG 5', 'TRIG 9', 'TRIG 13']) await tap(trig);
+    await tap('RECORD');
+    for (let page = 0; page < 3; page++) await tap(1);
+    await turn(1, 12);
+    await turn(3, 30);
+    await modified('TRK', 'TRIG 1');
+
     const symbol = (name: string) => session.client.memPeek(planSymbol(image.plan, name));
-    const held = async () => ((await symbol('tk_native_audio_active')) ?? 0) & 1;
+    const audioArps = async () => ((await symbol('tk_native_audio_active')) ?? 0) & 5;
+    const held = async () => (await audioArps()) & 1;
     const hits = () => symbol('tk_sequence_audio_hits');
     expect(await hits()).toBe(0);
     await tap('PLAY');
@@ -95,11 +110,76 @@ describeOn('dt2', 'shared arpeggiator stock sequence', () => {
       message: 'stock audio dispatch installed the generated note’s parameter lock',
     });
     expect(await symbol('tk_sequence_audio_locked_hits')).toBeGreaterThan(0);
+
+    // Set up the stock performance mode in this disposable emulated project.
+    // Project +0x30 embeds settings; its getter returns the pointer at +0x10.
+    // The actual retrig press and release still go through the native panel.
+    const project = (await session.client.memPeek(0x44f370a0))!;
+    const settings = (await session.client.memPeek(project + 0x40))!;
+    const selectTrigMode = async (wanted: number) => {
+      const addr = settings + 0x118;
+      const bytes = Buffer.alloc(4);
+      bytes.writeUInt32BE(wanted);
+      await session.client.call('mem.cf.write', { addr, hex: bytes.toString('hex') });
+      expect(await session.client.memPeek(addr), 'stock performance mode').toBe(wanted);
+    };
+    await selectTrigMode(2); // RETRIGS
+    expect(await session.client.memPeek(settings + 0x38), 'stock KEYBOARD mode').toBe(0);
+    await pollEmulated(session, audioArps, (mask) => mask === 5, {
+      emulatedMs: 5000,
+      intervalMs: 20,
+      message: 'both audio tracks are arpeggiating before the manual gesture',
+    });
+    await edge('TRIG 9', true);
+    try {
+      const keysAddress = planSymbol(image.plan, 'retrig_keys');
+      const retrigKeys = async () => {
+        const word = await session.client.memPeek(keysAddress & ~3);
+        return word === null ? -1 : (word >>> (16 - (keysAddress & 2) * 8)) & 0xffff;
+      };
+      await pollEmulated(session, retrigKeys, (mask) => mask === 1 << 8, {
+        emulatedMs: 1000,
+        message: 'native RETRIGS claimed the original physical key',
+      }).catch(async (error) => {
+        await captureRemoteOled(session, 'sequence-retrig-owner-failure');
+        throw error;
+      });
+      await pollEmulated(session, held, (n) => n === 0, {
+        emulatedMs: 500,
+        message: 'the owner’s previously dispatched arp note retired',
+      });
+      const until = emulatedClockMs(await session.status()) + 2100;
+      let otherPlayed = false;
+      await pollEmulated(
+        session,
+        async () => {
+          const mask = await audioArps();
+          expect(mask & 1, 'shared arp dispatched a note on the manual retrig owner').toBe(0);
+          otherPlayed ||= (mask & 4) !== 0;
+          return emulatedClockMs(await session.status());
+        },
+        (now) => now >= until,
+        {
+          emulatedMs: 3000,
+          intervalMs: 20,
+          message: 'hold manual RETRIGS across two sequencer seeds',
+        },
+      );
+      expect(otherPlayed, 'the other track still arpeggiated during manual RETRIGS').toBe(true);
+    } finally {
+      await edge('TRIG 9', false);
+    }
+    await pollEmulated(session, held, (n) => n === 1, {
+      emulatedMs: 5000,
+      intervalMs: 20,
+      message: 'releasing the original retrig key restores its track arp',
+    });
     await tap('STOP');
     await pollEmulated(session, held, (n) => n === 0, {
       emulatedMs: 5000,
       message: 'STOP released the sequencer-owned note',
     });
+    await selectTrigMode(0); // TRACKS
     await edge('RECORD', true);
     try {
       await tap('STOP');
@@ -122,14 +202,6 @@ describeOn('dt2', 'shared arpeggiator stock sequence', () => {
     expect(await symbol('tk_capture_committed')).toBeGreaterThanOrEqual(3);
     await tap('RECORD');
 
-    const modified = async (modifier: string, key: string | number) => {
-      await edge(modifier, true);
-      try {
-        await tap(key);
-      } finally {
-        await edge(modifier, false);
-      }
-    };
     await modified('TRK', 'TRIG 2');
     await modified('FUNC', 'SRC');
     for (let i = 0; i < 6; i++) await tap('DOWN');

@@ -10,6 +10,8 @@ Turn A on ARP to enable the arpeggiator. Its controls set traversal order,
 note gate, rate, signed octave spread, swing and restart behavior. Changes
 to rate, spread or order apply from the next onset and preserve an open
 gate. A sequenced phrase keeps any of those values locked by its seed.
+Holding a pad in stock RETRIGS mode pauses generated arp notes for the
+selected audio track. Releasing it resumes on the next timed onset.
 H selects the chord. On KEYS, A enables polyphony and B selects the same chord. C and
 D change the voicing and strum. The keyboard drawing distinguishes held
 pitch classes from emitted pitches. Stock audio voice groups use H POOL.
@@ -78,7 +80,7 @@ pool for the generated phrase, including its source family and TUNE. Trig
 locks still take precedence. Tracks that reference a Sound without a
 supported CANOPY record use legacy performance routing.
 
-RELAY 0.5 supports shared ARP and KEYS with its normal single tape voice.
+RELAY 0.5.1 supports shared ARP and KEYS with its normal single tape voice.
 To play two pitched notes, stop transport, enable POLY, then use POOL to
 reserve one empty stock sample track. The paired heads play the owner's
 committed stereo take from its start at the note pitch relative to C5.
@@ -86,7 +88,9 @@ They follow the tape's RATE and MIX, and only the recorded signal goes
 through the grouped voices. The recorder still owns punch, undo, and
 the manual tape controls. While recording, the heads read the last
 committed MAIN. A new take, an undo, or a take change retires the old notes.
-Earlier RELAY builds keep their original keyboard and recorder behavior.
+Released heads relinquish their helper after the finite native AMP tail.
+Earlier RELAY builds retain their own motor and recorder. POOL requires
+RELAY 0.5.1, its matching firmware, and the updated DTII machine service.
 
 The full design and release checks are in the
 [proposal](../../../../docs/design/dt2-track-arpeggiator.md). The adapter

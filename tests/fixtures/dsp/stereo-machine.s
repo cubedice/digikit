@@ -1,5 +1,6 @@
 // Test-only stereo machine (machine contract 1.2) for the core/dsp-voice tests: L is the constant 0.25, R is chosen by parameter word 0
-// (UI units): 0 gives 0.5, 1 gives 16.0 (over the level bound), 2 gives a NaN. The status is DK_OK | DK_STEREO.
+// (UI units): 0 gives 0.5, 1 gives 16.0 (over the level bound), 2 gives a NaN.
+// Selector 3 finishes the voice. Selector 4 models a fresh native arm before DONE.
 #include "dk_machine.inc"
 
 .SECTION/PM seg_pmco;
@@ -9,16 +10,17 @@
 _sm_render:
     I2 = R8;
     I4 = R12;
+    I5 = R4;
     NOP; NOP; NOP;
     R0 = DM(0, I4);
-    R0 = LSHIFT R0 BY -8;
+    R5 = LSHIFT R0 BY -8;
     R1 = 0x3f000000;                      // 0.5
     R2 = 1;
-    COMP(R0, R2);
+    COMP(R5, R2);
     R3 = 0x41800000;                      // 16.0
     IF EQ R1 = PASS R3;
     R2 = 2;
-    COMP(R0, R2);
+    COMP(R5, R2);
     R3 = 0x7fc00000;                      // NaN
     IF EQ R1 = PASS R3;
     R0 = DM(DK_IN_W_OUT, I2);
@@ -31,6 +33,19 @@ _sm_render:
         DM(I1, M6) = R1;
 _sm_loop: DM(I0, M6) = R2;
     R0 = DK_OK;
+    R1 = 3;
+    COMP(R5, R1);
+    IF EQ JUMP _sm_done;
+    R1 = 4;
+    COMP(R5, R1);
+    IF NE JUMP _sm_stereo;
+    R0 = DM(0, I5);                      // Pointer to the rig's native cursor word.
+    I4 = R0;
+    R0 = 0x33010001;
+    DM(0, I4) = R0;
+_sm_done:
+    R0 = DK_DONE;
+_sm_stereo:
     R1 = DK_STEREO;
     R0 = R0 OR R1;
     JUMP (M13, I13);

@@ -41,6 +41,7 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
       _rtm_bus: ext + 4096,
       _rtm_mod_frame: ext + 12288,
       _tk_pool_head_owner: 0,
+      _mi_envelope_records: 0,
       _dv_exp2: 0,
     },
     returnSw: ret,

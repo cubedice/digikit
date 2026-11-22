@@ -116,6 +116,11 @@ void tk_mute_output(TkState *s, bool muted)
                 s->voices[i].sent = s->output(s->context, &s->voices[i].note);
 }
 
+void tk_retire_arp(TkState *s)
+{
+    stop(s, &s->arp_voice);
+}
+
 static bool live_input(const TkState *s)
 {
     for (uint8_t i = 0; i < s->key_count; ++i)

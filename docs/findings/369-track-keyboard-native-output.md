@@ -262,6 +262,50 @@ individual waveforms each appeared at a consistent offset in multiple
 overlapping windows of the paired capture. The peak absolute sample rose
 from about 0.005 for either note alone to 0.0065 for the pair.
 
+Reassigning a helper repeatedly during a held RELAY note on 0.5 left the
+new request selected with one effective voice. Releasing the note and
+stopping transport left that state in place even after the wet output had
+decayed. The read head could render indefinitely because its tape cursor
+was independent of the native AMP release. The pool correctly retained the
+old route while that cursor remained active.
+
+RELAY 0.5.1 tests the physical track's native AMP record after key-up. A
+finite phase-4 tail below a normalized amplitude of 0.0000001 lets the head
+return DONE. Stock filtering still runs, and the pool waits for the cursor
+and folded bus to go idle. The rig exercises the releasing head and its
+held sibling independently, including audible decay, an AHD hold, and an
+infinite release. The matched 0.5.1 pack and firmware are required for
+borrowed RELAY voices.
+
+The first 0.5.1 physical retest still left T7 reserved. The ColdFire
+readback showed that both note releases had completed and T8 was quiet,
+eligible, and requested. The DSP quiet acknowledgement was five blocks
+old and still excluded T7 more than five seconds after key-up. The stock
+arm writes ACTIVE and a pending sample seed. The SDK's old DONE code
+cleared ACTIVE and its note-on mark but left the sample seed. A dynamic
+machine bypasses the sample stage that would normally consume that seed.
+
+The bound DTII machine service now clears the marked even cursor's stale
+seed on DONE and retires the paired cursor for stereo output. It preserves
+the native direction byte, neighboring tracks, and an unmarked next
+note. All nine SHARC stereo cases passed. The service's ColdFire code and
+the OS image remained byte-identical in the hardware A/B.
+
+With image `7feac6215dbc8d90`, RELAY 0.5.1 and the updated
+`services/machines.dks`, T6 held a two-voice chord while changing helpers
+T7 → T8 → T7 → T8. Each change retired the old helper before granting
+the new one. The first readbacks that showed readmission occurred
+0.55, 0.55 and 0.65 seconds after the key-up checkpoint. All three runs
+used both destinations and the 48 kHz USB capture reported no stream
+errors.
+
+A01 then used RELAY T6 with helper T8, while A02 stored a request for T8
+on sample track T2. A queued A02 change while the A01 chord was held
+preserved T8 as a draining A01 route. T8 became free during A02 with no
+new lease. Stopping transport admitted it to T2. The hardware readback
+captured all three states.
+
+
 ## Absolute ColdFire idle measurements [D]
 
 The physical observer sampled the idle counter against the free-running
@@ -293,6 +337,26 @@ to about 29% without a reboot or ARP change. These measurements put the
 1/80 stress cases at the ColdFire ceiling even though the DSP and MIDI
 release paths kept up.
 
+## Manual RETRIGS priority [D]
+
+On DTII 1.17, the stock performance call at `0x4005d4a6` reaches
+`0x4005cee2` and returns to `0x4005d4aa`. The shared adapter checks that
+return address and stock Trig Mode 2 from `0x4004d8da`. Other callers can
+still audition notes or record the step through the same stock entry. The
+original key-up closure at `0x4005c8cc` calls `0x4005c72a`. Both note entry
+points already pass through Instrument Play.
+
+The physical key and its owner define the gesture. While the key is held,
+the owner's shared arp releases its current note and skips new onsets.
+Its clock keeps advancing. The original key-up restores output at the
+next scheduled onset, even if track focus has changed. Project reload or
+a service interruption clears stale ownership. Host tests verify that a
+second track's arp and the owner's direct note lane continue. The coupled
+DTII fixture sets the stock RETRIGS mode directly, then holds and releases
+native TRIG 9. It observed the owner release its prior arp note, suppress
+new output for 2.1 seconds, and resume after the original key-up. The
+second audio arp continued during the hold.
+
 ## Combined DSP load [D]
 
 A disposable hardware project ran a four-pitch sample group, a MIDI arp,
@@ -301,16 +365,18 @@ selected, 125 ms, and MIX 58. Health reported 68% DSP time on average and
 70–72% peak across four consecutive windows. The 6.7-second USB audio
 capture reported no stream errors. The percentage estimates time in the
 DSP block handler at the configured 1 GHz clock. The stress test above
-measures ColdFire idle time separately.
+measures ColdFire idle time separately. The USB PCM, Health frames,
+and stopped input timing are under the ignored
+`dist/track-keyboard/hardware-20261121` directory with the `closeout-`
+prefix.
 
-## Remaining qualification [O]
+## Qualification scope [D]
 
 CANOPY supplies its own internal polyphony. Other dynamic machines need
 their own playback and quiet contracts before POOL can reserve helpers for
 them.
 
-The physical and coupled runs cover different parts of owner routing. The
-emulator covers stock mute, pan, filter, overdrive, and send routing. The
-physical unit covers isolated PRE/POST USB output and compressor routing.
-The host tests cover pattern changes that immediately request a retiring
-helper. A device capture of that exact transition remains open.
+Owner pan, filter, overdrive, mute and sends were measured in the
+coupled emulator. The physical unit covered isolated PRE/POST USB
+output, compressor routing, RELAY helper reassignment, and a queued
+pattern change that requested the same retiring helper.

@@ -38,7 +38,7 @@ static bool relay_head_module(void)
         while (n < sizeof(module_id) && module.name[n] == (uint8_t)module_id[n])
             ++n;
         if (n == sizeof(module_id))
-            return module.state == DKRT_MOD_LOADED && module.version >= 0x000500u;
+            return module.state == DKRT_MOD_LOADED && module.version >= 0x000501u;
     }
     return false;
 }

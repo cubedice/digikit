@@ -8,6 +8,7 @@ import dataclasses
 
 import numpy as np
 import pytest
+from support import dsp_voice_rig as dv
 from support.machine_rig import MachineRig, nw
 from support.paths import REPO_ROOT
 
@@ -93,6 +94,46 @@ def test_the_status_bit_is_not_confused_with_the_voice_end():
     rig = stereo_rig()
     run(rig)
     assert rig.read_rec_word(rig.voice, 0x1B8) & 0xFF != 0, "DK_OK | DK_STEREO: running"
+
+
+def test_done_clears_both_stereo_seeds_and_preserves_next_note():
+    rig = stereo_rig()
+    voice = rig.voice
+    rig.rec_word(voice, 0x1B8, 0x33010001)
+    rig.rec_word(voice + 1, 0x1B8, 0x44010001)
+    rig.rec_word(voice + 2, 0x1B8, 0x55010001)
+    even = rig.block("friendly")
+    assert even.returned and even.faults == 0
+    assert rig.read_rec_word(voice, 0x1B8) == 0x33015A01
+    assert rig.read_rec_word(voice + 1, 0x1B8) == 0x44010001
+    rig.odd_block()
+
+    rig.set_param("level", 3 << 8)
+    even = rig.block("friendly")
+    assert even.returned and even.faults == 0
+    assert set(rig.odd_block()) == {0.5}
+    assert rig.read_rec_word(voice, 0x1B8) == 0x33000000
+    assert rig.read_rec_word(voice + 1, 0x1B8) == 0x44000000
+    assert rig.read_rec_word(voice + 2, 0x1B8) == 0x55010001
+
+    rig.set_param("level", 0)
+    rig.rec_word(voice, 0x1B8, 0x33010001)
+    assert set(rig.block("friendly").samples) == {0.25}
+    assert rig.read_rec_word(voice, 0x1B8) == 0x33015A01
+
+
+def test_done_from_an_old_callback_does_not_clear_an_unmarked_cursor():
+    rig = stereo_rig()
+    rig.rec_word(rig.voice, 0x1B8, 0x33010001)
+    rig.rec_word(rig.voice + 1, 0x1B8, 0x44010001)
+    assert set(rig.block("friendly").samples) == {0.25}
+    cursor = dv.RECORDS + dv.REC * rig.voice + 0x1B8
+    rig.sess.poke(nw(rig.built.state + rig.built.stride * rig.track), cursor)
+    rig.set_param("level", 4 << 8)
+    even = rig.block("friendly")
+    assert even.returned and even.faults == 0
+    assert rig.read_rec_word(rig.voice, 0x1B8) == 0x33010001
+    assert rig.read_rec_word(rig.voice + 1, 0x1B8) == 0x44010001
 
 
 def test_a_flag_left_by_an_even_voice_whose_odd_voice_did_not_run_does_not_leak():

@@ -11,12 +11,44 @@
 .EXTERN _rtm_mod_frame;
 .EXTERN _pattern_position_info;
 .EXTERN _tk_pool_head_owner;
+.EXTERN _mi_envelope_records;
 .GLOBAL _rtm_read_head_owner;
 _rtm_read_head_owner:
     R0 = _tk_pool_head_owner;
     R0 = PASS R0;
     IF NE JUMP _tk_pool_head_owner;
     R0 = -1;
+    RTS;
+
+// R1: physical DTII track. Read the even voice's last complete native AMP
+// record. A finite release is monotone, so the head can retire at the same
+// -140 dB envelope floor used by CANOPY. The downstream filter still runs.
+.GLOBAL _rtm_group_amp_done;
+_rtm_group_amp_done:
+    R0 = DM(_mi_envelope_records);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R2 = 88;
+    R1 = R1 * R2 (SSI);
+    R0 = R0 + R1;
+    I2 = R0;
+    R0 = DM(7,I2); // envelope phase
+    R2 = 4;
+    COMP(R0,R2);
+    IF NE JUMP _rtm_group_amp_active;
+    R0 = DM(4,I2); // release index (native AHD uses its decay index here)
+    R2 = 127;
+    COMP(R0,R2);
+    IF GE JUMP _rtm_group_amp_active;
+    R0 = DM(10,I2); // negative amplitude, before the next stock AMP pass
+    R0 = FEXT R0 BY 0:31;
+    R2 = 0x33d6bf95; // float32(1e-7)
+    COMP(R0,R2);
+    R0 = 0;
+    IF LT R0 = R0 + 1;
+    RTS;
+_rtm_group_amp_active:
+    R0 = 0;
     RTS;
 
 .GLOBAL _rtm_block;

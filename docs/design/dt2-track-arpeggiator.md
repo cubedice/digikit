@@ -67,7 +67,7 @@ Use the same stock header, track column, native widgets, page marks and momentar
 | MIDI machine | One note-on/off pair per pitch on the configured port/channel. Default four sounding notes, optionally up to the 16-note input limit, subject to bandwidth and the receiving synth. | Sustain C and G while E releases, including repeated notes and shared-channel ownership. |
 | CANOPY | One admitted instrument instance supplies four foreground voices and its two short release tails. It accepts resolved notes with individual tokens. | Play four overlapping notes from one track and compare release and steal behavior with CANOPY PLAY today. |
 | Stock sample and single-voice DigiKit machines | A **voice group** uses the source track and explicitly reserved audio tracks, one playback context per sounding pitch. Initial target one to four voices inclusive. One extra voice costs one reserved track. | ONESHOT on T01 with T09 and T10 reserved. Capture distinct pitches and independent AMP releases in stereo with the other tracks playing. |
-| RELAY 0.5 | The owner and one reserved audio track provide two independent readers of the same committed tape. Record, overdub and undo stay single-owner. | Play two pitches during an open punch and verify that each reader keeps its own position and that both leave the writer intact. |
+| RELAY 0.5.1 | The owner and one reserved audio track provide two independent readers of the same committed tape. Record, overdub and undo stay single-owner. | Play two pitches during an open punch and verify that each reader keeps its own position and that both leave the writer intact. |
 | Other stateful machines | The shared pages and arpeggiator use the machine’s supported note path. Helper tracks require a machine-specific playback and quiet contract. | The group uses only its owner until a helper backend is qualified. |
 
 DTII stock voice groups use native contexts for pitch, playback position, velocity, filter and AMP release. They carry the seed’s sample, slice, start settings and machine-specific pitch behavior. The coupled emulator qualified ONESHOT, WERP, STRETCH, REPITCH, SLICE and GRID individually, including timing-derived pitch and slice selection. CANOPY uses independent voices in its own renderer. The same keyboard shows the effective sounding-voice limit for each track. [Stock machine qualification](../findings/369-track-keyboard-native-output.md) · [CANOPY voice bank](../../modules/machines/canopy/README.md) · [RELAY track contract](../../sdk/dsp/contract/dk_relay_track.inc)
@@ -365,7 +365,7 @@ Physical USB tests measured stopped sample-track arpeggiation and the MIDI
 sequence C–E–G at 120 BPM. The hardware image loaded CANOPY, Overloop,
 PRISM, RELAY and remote together. The full experimental build uses a
 440 KiB module arena to fit the fixed ColdFire code and patch metadata.
-The verified full image leaves 4,440 bytes in ColdFire expansion and retains
+The verified full image leaves 1,672 bytes in ColdFire expansion and retains
 the 151,552-byte DTII staging buffer. On the
 physical unit, switching from shared polyphony to ARP-only initially stayed
 silent until a Sound edit. The playback adapter now publishes the updated
@@ -453,6 +453,10 @@ each selected port's note-pair budget.
 RATE, OCTS and ORDR edits update the next live or sequenced arp onset
 without shortening the gate already in progress. A sequenced phrase keeps
 values explicitly locked by its seed, including migrated CANOPY locks.
+While an audio track runs stock manual RETRIGS, its shared arp clock
+keeps advancing. The track stops sending shared arp notes until the
+gesture ends. The next scheduled onset resumes from the current traversal
+position. Other tracks continue playing.
 
 DIN and USB use independent transmit budgets. An onset pays for both messages
 on each selected port. The native worker pairs the release on its original
@@ -467,11 +471,13 @@ played and released all 96 requested notes. With DIN and USB selected, the
 device admitted 80 notes, and every release appeared on both outputs.
 The DIN driver drained the whole queue in each run. [Measurements](../findings/369-track-keyboard-native-output.md)
 
-RELAY 0.5 supports the shared keyboard. With one empty track assigned in
+RELAY 0.5.1 supports the shared keyboard. With one empty track assigned in
 POOL, the owner and helper each provide a pitched playback head. They read
 the owner’s committed tape, apply track AMP independently, and mix their
 wet signals into the owner’s route. A commit or undo invalidates the readers
-for the old take. The RELAY recorder retains ownership of the writer and the
+for the old take. A released head waits for its finite native AMP envelope
+before freeing the cursor. The pool keeps routing the downstream tail
+through its original owner until the bus is quiet. The RELAY recorder retains ownership of the writer and the
 tape’s history. A SHARC test played two pitches while opening a punch,
 checked that both heads read the committed take, and verified that the
 reads left both the writer and its copy-on-write metadata intact. Earlier
@@ -480,6 +486,12 @@ The full image booted on the DTII with all five modules loaded. In a
 disposable project, RELAY recorded a two-second take from a sample track.
 Assigning T9 from POOL raised the effective voice count to two. Both
 individual pitches were identifiable in the recorded two-note USB audio.
+With the updated machine service, three helper swaps during held RELAY
+chords released the old lease and restored two effective voices. The
+DTII also switched from a RELAY pattern to a pattern whose sample track
+requested the same helper. The old route held through its tail and
+the destination track acquired it after STOP.
+
 
 ### Building the full experimental image
 
@@ -489,6 +501,11 @@ set `ARENA_BYTES` to the same value in the runtime ABI. Regenerate its C and
 Rust ABI files and rebuild `core/runtime` and the Track Keyboard dependencies
 in that checkout. The device profiles and the runtime must agree on the arena
 size. Use the normal 512 KiB defaults for other builds.
+
+Pair this firmware with RELAY 0.5.1 and the matching DTII-bound
+`services/machines.dks` from the same build. The firmware supplies the
+native AMP state. The machine service frees the two completed cursors
+before POOL reuses the helper.
 
 ```bash
 patchkit apply --firmware firmware/Digitakt_II_OS1.17.syx \

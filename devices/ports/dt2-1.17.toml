@@ -4960,6 +4960,26 @@ len = 6
 sha256 = "8d1503d38f264a9b0be0700a53c1e2e61354803cc529f54092a511ae826bca7f"
 
 [[anchor]]
+name = "cf.page.fn.instrument_panel_trig_mode"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+cpu = "cf"
+kind = "code"
+addr = 0x4004d8da
+len = 48
+sha256 = "8444d4e630888e2db0866ad03d89d953a5cef9cf6b231b41fb2e692244f3b93b"
+
+[[anchor]]
+name = "cf.page.site.instrument_panel_trig_return"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+cpu = "cf"
+kind = "code"
+addr = 0x4005d4aa
+len = 12
+sha256 = "9b3c4b3a440fe1ba1b06e359cb4598735806f3fe024ef83a3901372051917c94"
+
+[[anchor]]
 name = "cf.page.site.instrument_panel_toggle"
 mark = "D"
 rule = "fw/instrument-src:cf_window_hash"

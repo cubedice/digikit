@@ -113,6 +113,7 @@ void tk_service_select_chord(uint8_t track, enum TkChord chord);
 bool tk_service_seed(uint8_t track, uint8_t step, const TkSeed *seed);
 bool tk_service_seed_for(const TkPattern *pattern, uint8_t track, uint8_t step, const TkSeed *seed);
 void tk_service_tick(uint32_t elapsed_us, uint16_t bpm);
+void tk_service_manual_retrig(uint8_t track, bool held);
 void tk_service_boundary(void);
 void tk_service_stop(void);
 

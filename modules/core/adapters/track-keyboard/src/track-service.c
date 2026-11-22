@@ -37,6 +37,7 @@ static TkPattern *editing;
 static const TkPattern *playing;
 static uint32_t edit_generation;
 static uint16_t tempo;
+static uint16_t manual_retrig_tracks;
 static const uint32_t sequence_token_bit = UINT32_C(0x80000000);
 static void live_priority(TkTrack *t, bool muting);
 static TkTrackConfig track_settings(uint8_t track);
@@ -45,6 +46,8 @@ static void configure_live(TkTrack *t);
 static bool send_live(void *context, const TkNoteEvent *event)
 {
     TkTrack *t = context;
+    if (event->on && event->lane == TK_ARP && (manual_retrig_tracks & (1u << t->number)))
+        return false;
     return t->backend.output && t->backend.output(t->backend.context, t->number, event);
 }
 
@@ -528,6 +531,20 @@ void tk_service_tick(uint32_t elapsed_us, uint16_t bpm)
             continue;
         tk_tick(&t->live, elapsed_us, tempo);
         tk_tick(&t->sequence, elapsed_us, tempo);
+    }
+}
+
+void tk_service_manual_retrig(uint8_t track, bool held)
+{
+    if (track >= TK_TRACKS)
+        return;
+    uint16_t mask = (uint16_t)(1u << track);
+    if (held) {
+        manual_retrig_tracks |= mask;
+        tk_retire_arp(&tracks[track].live);
+        tk_retire_arp(&tracks[track].sequence);
+    } else {
+        manual_retrig_tracks &= (uint16_t)~mask;
     }
 }
 

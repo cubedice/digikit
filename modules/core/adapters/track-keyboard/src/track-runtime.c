@@ -29,6 +29,8 @@ static bool was_running;
 static uint16_t registered;
 static uint8_t kind[TK_TRACKS], panel_track[TK_NOTES];
 static uint16_t panel_claims, canceled_panel;
+static uint8_t retrig_track[TK_NOTES];
+static uint16_t retrig_keys;
 volatile uint32_t tk_panel_claim_hits;
 static bool polling;
 static TkNotesDraft draft;
@@ -118,6 +120,14 @@ void tk_panel_cancel(void)
     panel_claims = 0;
 }
 
+static void clear_retrigs(void)
+{
+    for (uint8_t key = 0; key < TK_NOTES; ++key)
+        if (retrig_keys & (1u << key))
+            tk_service_manual_retrig(retrig_track[key], false);
+    retrig_keys = 0;
+}
+
 void tk_panel_focus(uint32_t track)
 {
     for (uint8_t key = 0; key < TK_NOTES; ++key)
@@ -143,6 +153,7 @@ static bool refresh_pattern(void)
     if (next != pattern || edit != editing_pattern || project_data_changed) {
         close_notes();
         if (project_data_changed) {
+            clear_retrigs();
             tk_panel_cancel();
             tk_midi_reset();
             tk_sequence_reset();
@@ -262,6 +273,7 @@ static void poll(void)
     uint32_t elapsed = now - block;
     block = now;
     if (elapsed > 1500u) {
+        clear_retrigs();
         tk_panel_cancel();
         tk_midi_reset();
         elapsed = 1500u;
@@ -992,4 +1004,30 @@ int tk_panel_off(uint32_t key)
     tk_service_release(panel_track[key], TK_PANEL, 0, key);
     tk_native_drain();
     return 1;
+}
+
+int tk_panel_retrig(uint32_t key, uint32_t track)
+{
+    if (key >= TK_NOTES || !polling)
+        return 0;
+    uint16_t mask = (uint16_t)(1u << key);
+    bool held = (retrig_keys & mask) != 0;
+    if (held) {
+        uint8_t owner = retrig_track[key];
+        retrig_keys &= (uint16_t)~mask;
+        bool owner_held = false;
+        for (uint8_t other = 0; other < TK_NOTES; ++other)
+            if ((retrig_keys & (1u << other)) && retrig_track[other] == owner)
+                owner_held = true;
+        if (!owner_held)
+            tk_service_manual_retrig(owner, false);
+    }
+    if (track < TK_TRACKS && (registered & (1u << track)) && kind[track] != TK_NATIVE_MIDI) {
+        tk_panel_off(key);
+        retrig_track[key] = (uint8_t)track;
+        retrig_keys |= mask;
+        tk_service_manual_retrig((uint8_t)track, true);
+        tk_native_drain();
+    }
+    return held;
 }

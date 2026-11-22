@@ -6,6 +6,7 @@
 .EXTERN _rtm_tracks;
 .EXTERN _rtm_tapes;
 .EXTERN _rtm_read_head_owner;
+.EXTERN _rtm_group_amp_done;
 .SECTION/PM seg_pmco;
 .EXTERN _relay_pool;
 .EXTERN _dv_exp2;
@@ -218,6 +219,15 @@ _rv_sample: DM(I3,M6) = R0;
 
 _rv_render_head:
     R6 = R0 - 1;
+    I2 = R8;
+    R0 = DM(DK_IN_W_GATE,I2);
+    R0 = PASS R0;
+    IF NE JUMP _rv_head_validate;
+    R1 = DM(DK_IN_W_TRACK,I2);
+    CALL _rtm_group_amp_done;
+    R0 = PASS R0;
+    IF NE JUMP _rv_empty;
+_rv_head_validate:
     R1 = DM(RV_REVISION,I1);
     R0 = DM(RT_REVISION,I0);
     COMP(R0,R1);
@@ -347,7 +357,7 @@ _rv_clear: DM(I3,M6) = R0;
 .SECTION/DM seg_dmda;
 .GLOBAL _relay_desc;
 .VAR _relay_desc = DK_MAGIC;
-.VAR _rv_contract = 257; // DK_MACHINE_V1 | DK_MACHINE_STEREO
+.VAR _rv_contract = 769; // DK_MACHINE_V1 | DK_MACHINE_STEREO | DK_MACHINE_GATE
 .VAR _rv_params = 0;
 .VAR _rv_voices = DK_MAX_VOICES;
 .VAR _rv_state_bytes = 52;

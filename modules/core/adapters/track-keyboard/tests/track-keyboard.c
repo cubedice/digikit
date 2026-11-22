@@ -282,6 +282,56 @@ static void service_ownership(void)
     assert(tk_service_set_backend(0, NULL));
 }
 
+static bool per_track_sink(void *context, uint8_t track, const TkNoteEvent *e)
+{
+    return sink((Events *)context + track, e);
+}
+
+static void manual_retrig_owns_arp_output(void)
+{
+    static TkPattern pattern;
+    Events tracks[2] = {0};
+    const TkTrackBackend backend = {.output = per_track_sink, .context = tracks, .voices = 4};
+    const TkSeed seed = {.count = 3, .notes = {{60, 100, 0, 0}, {64, 90, 0, 0}, {67, 95, 0, 0}}};
+    tk_pattern_init(&pattern);
+    tk_service_edit_pattern(&pattern);
+    tk_service_play_pattern(&pattern);
+    for (uint8_t track = 0; track < 2; ++track) {
+        assert(tk_service_set_backend(track, &backend));
+        assert(tk_trig_write(track, TK_CTL_ARP, 1));
+        assert(tk_service_seed(track, 0, &seed));
+    }
+    tk_service_tick(0, 14400);
+    expect(&tracks[0], 0, true, 60, TK_ARP);
+    expect(&tracks[1], 0, true, 60, TK_ARP);
+    tk_service_manual_retrig(0, true);
+    expect(&tracks[0], 1, false, 60, TK_ARP);
+    assert(tracks[0].events[1].token == tracks[0].events[0].token);
+    uint32_t token;
+    assert(tk_trig_arp_pitch(0, &token) == -1);
+    tk_service_tick(125000, 0);
+    assert(tracks[0].count == 2);
+    expect(&tracks[1], 2, true, 64, TK_ARP);
+    tk_service_manual_retrig(0, false);
+    assert(tracks[0].count == 2);
+    tk_service_tick(125000, 0);
+    expect(&tracks[0], 2, true, 67, TK_ARP);
+    expect(&tracks[1], 4, true, 67, TK_ARP);
+
+    tk_service_manual_retrig(0, true);
+    assert(tk_trig_write(0, TK_CTL_ARP, 0));
+    assert(tk_trig_write(0, TK_CTL_POLY, 1));
+    assert(tk_service_press(0, TK_USB, 0, 70, 70, 100));
+    expect(&tracks[0], 4, true, 70, TK_DIRECT);
+    tk_service_release(0, TK_USB, 0, 70);
+    expect(&tracks[0], 5, false, 70, TK_DIRECT);
+    tk_service_manual_retrig(0, false);
+    tk_service_stop();
+    tk_service_edit_pattern(NULL);
+    for (uint8_t track = 0; track < 2; ++track)
+        assert(tk_service_set_backend(track, NULL));
+}
+
 static void active_traversal_edits(void)
 {
     static TkPattern pattern;
@@ -583,6 +633,7 @@ int main(void)
     sequence_and_learned_shape();
     pattern_controls();
     service_ownership();
+    manual_retrig_owns_arp_output();
     active_traversal_edits();
     traversal_edits_keep_active_locks();
     selector_retains_common_pitches();

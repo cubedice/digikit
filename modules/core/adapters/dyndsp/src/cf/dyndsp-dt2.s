@@ -109,6 +109,7 @@ dyndsp_info:
     DSP_IMPORT _rtm_tracks
     DSP_IMPORT _rtm_tapes
     DSP_IMPORT _rtm_read_head_owner
+    DSP_IMPORT _rtm_group_amp_done
     DSP_IMPORT _phrase_storage_info
     DSP_IMPORT _phrase_control_info
     DSP_IMPORT _phrase_status

@@ -63,6 +63,7 @@
 
 #define DV_FIXED_LEVEL 0x6400                 // knob 7's word for level 100
 #define DV_SLOTS_ALWAYS 4                     // the parameter slots every machine reads (knobs 1, 2, 4, 5); the rest only when declared
+#define DV_CONTRACT_MARK 0x5a00
 
 .SECTION/PM seg_pmco;
 .GLOBAL _dv_run;
@@ -1347,7 +1348,7 @@ _dv_contract:
     IF EQ R11 = PASS R12;
     R11 = PASS R11;
     IF EQ JUMP _dv_cmarked;
-    R0 = 0x5a00;                          // the adapter writes the mark
+    R0 = DV_CONTRACT_MARK;
     R9 = R9 OR R0;
     DM(I1, M5) = R9;
 _dv_cmarked:
@@ -1571,11 +1572,22 @@ _dv_nogate:
     R1 = DK_DONE;
     COMP(R0, R1);
     IF NE JUMP _dv_rdone;
-    R4 = DM(_dv_g + 16);                  // DK_DONE: the voice has ended (ACTIVE and mark clear)
+    R4 = DM(_dv_g + 16);
     I1 = R4;
     MODIFY(I1, ADM_RECORD_ACTIVE);
     R9 = DM(I1, M5);
-    R3 = 0xffff0000;
+    R3 = 0xff00;
+    R3 = R9 AND R3;
+    R12 = DV_CONTRACT_MARK;
+    COMP(R3, R12);
+    IF NE JUMP _dv_rdone;               // A fresh unmarked native arm belongs to the next note.
+    R3 = 0xff000000;                     // Clear ACTIVE, mark and the bypassed stock sample seed.
+    R9 = R9 AND R3;
+    DM(I1, M5) = R9;
+    R2 = PASS R2;
+    IF EQ JUMP _dv_rdone;
+    MODIFY(I1, 0x1d8);                   // DK_STEREO owns the paired right cursor as well.
+    R9 = DM(I1, M5);
     R9 = R9 AND R3;
     DM(I1, M5) = R9;
 _dv_rdone:

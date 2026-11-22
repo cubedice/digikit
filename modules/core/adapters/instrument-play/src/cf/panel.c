@@ -10,6 +10,9 @@ extern uint8_t *ip_panel_track_object(uint32_t, uint32_t);
 extern uint32_t ip_panel_track_type(uint8_t *);
 extern uint32_t ip_panel_selected_track(uint32_t);
 extern uint8_t ip_panel_active(uint32_t);
+extern uint32_t ip_panel_project_settings(uint32_t);
+extern uint32_t ip_panel_trig_mode(uint32_t);
+extern const uint8_t ip_panel_trig_return[];
 extern void ip_panel_stock_toggle(uint32_t);
 extern void ip_panel_original_on(uint8_t *, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t,
                                  uint32_t, uint32_t);
@@ -239,6 +242,7 @@ static int group_has(uint32_t pitch)
 extern int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
     __attribute__((weak));
 extern int tk_panel_off(uint32_t key) __attribute__((weak));
+extern int tk_panel_retrig(uint32_t key, uint32_t track) __attribute__((weak));
 extern void tk_panel_cancel(void) __attribute__((weak));
 extern void tk_panel_focus(uint32_t track) __attribute__((weak));
 extern void tk_capture_panel_press(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)
@@ -271,11 +275,11 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
     uint8_t *object = track < 16 && instrument_track_owned(track) && type >= 7 && type < 32
                           ? ip_panel_track_object(word(view, 0xa4), track)
                           : 0;
-    int canopy = object && ip_panel_track_type(object) == type && key < 16 &&
-                 ip_panel_active(word(view, 0xa0));
+    int keyboard = ip_panel_active(word(view, 0xa0));
+    int canopy = keyboard && object && ip_panel_track_type(object) == type && key < 16;
     if (tk_capture_panel_press && recording(view))
         tk_capture_panel_press(key, track, pitch, velocity, ip_panel_step_record(word(view, 0x98)));
-    if (ip_panel_active(word(view, 0xa0))) {
+    if (keyboard) {
         if (recording(view)) {
             if (tk_panel_cancel)
                 tk_panel_cancel();
@@ -309,13 +313,22 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
         panel_play(view, key, track, pitch, velocity);
         return;
     }
+    /* The same stock action also auditions keyboard and recording notes.
+     * Check the performance caller and its trig mode. */
+    if (!keyboard && tk_panel_retrig && key < 16 && track < 16 && pitch < 128 &&
+        __builtin_return_address(0) == ip_panel_trig_return) {
+        uint32_t controller = word(view, 0x94);
+        uint32_t settings = controller ? ip_panel_project_settings(controller) : 0;
+        if (settings && ip_panel_trig_mode(settings) == 2)
+            tk_panel_retrig(key, track);
+    }
     ip_panel_original_on(view, key, track, pitch, velocity, a, b, c);
 }
 void ip_panel_off(uint8_t *view, uint32_t key)
 {
     if (tk_capture_panel_release)
         tk_capture_panel_release(key);
-    if (tk_panel_off && tk_panel_off(key))
+    if (!(tk_panel_retrig && tk_panel_retrig(key, IP_NONE)) && tk_panel_off && tk_panel_off(key))
         return;
     /* Consume tombstones even after track/machine/mode changes. Stock owns
      * its own vector and still receives releases for non-CANOPY auditions. */

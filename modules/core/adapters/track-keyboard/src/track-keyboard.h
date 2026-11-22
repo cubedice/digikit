@@ -130,6 +130,7 @@ void tk_pedal(TkState *state, uint8_t source, uint8_t channel, bool down);
 void tk_clear_source(TkState *state, uint8_t source, uint8_t channel);
 void tk_panic(TkState *state);
 void tk_mute_output(TkState *state, bool muted);
+void tk_retire_arp(TkState *state);
 /* One resolved trig. Length/gate zero means unlimited; delay is from its onset. */
 bool tk_seed_valid(const TkSeed *seed);
 bool tk_seed(TkState *state, const TkSeed *seed);

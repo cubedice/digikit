@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, it } from 'vitest';
-import { RawRig, w2f } from '@digi/sharc-rig-kit';
+import { RawRig, f2w, w2f } from '@digi/sharc-rig-kit';
 
 it('plays two read-only RELAY heads from the leased owner tape at independent pitches', async () => {
   const root = path.resolve(import.meta.dirname, '../../../..');
@@ -14,6 +14,8 @@ it('plays two read-only RELAY heads from the leased owner tape at independent pi
   ];
   const helper = read('modules/core/adapters/dsp-voice/src/dsp/dsp-voice.s');
   const exp2 = helper.slice(helper.indexOf('.GLOBAL _dv_exp2;'), helper.indexOf('// R0 = the unsigned 16-bit'));
+  const engine = read('modules/core/adapters/relay-track/src/dsp/engine.s');
+  const ampDone = engine.slice(engine.indexOf('.GLOBAL _rtm_group_amp_done;'), engine.indexOf('.GLOBAL _rtm_block;'));
   const pcmMemory = 0x20110000;
   const tracks = pcmMemory + 0x1000;
   const tapes = tracks + 0x1000;
@@ -23,6 +25,8 @@ it('plays two read-only RELAY heads from the leased owner tape at independent pi
   const lead = right + 0x100;
   const second = lead + 0x100;
   const rx = pcmMemory + 0x4000;
+  const ampPointer = pcmMemory + 0x5000;
+  const ampRecords = ampPointer + 0x100;
   const ret = 0xb9f100;
   const rig = await RawRig.open({
     objects: [
@@ -35,6 +39,7 @@ it('plays two read-only RELAY heads from the leased owner tape at independent pi
         text: `.SECTION/PM seg_pmco;
 .EXTERN _tk_pool_head_owner;
 .EXTERN _relay_storage_info;
+.EXTERN _mi_envelope_records;
 .GLOBAL _rtm_read_head_owner;
 _rtm_read_head_owner: JUMP _tk_pool_head_owner;
 .GLOBAL _relay_test_root;
@@ -52,11 +57,12 @@ _relay_test_backing:
     R0 = DM(5,I3);
     R1 = DM(6,I3);
     RTS;
-${exp2}`,
+${exp2}
+${ampDone}`,
         base: 0xb9a000,
       },
     ],
-    externs: { _rtm_tracks: tracks, _rtm_tapes: tapes },
+    externs: { _rtm_tracks: tracks, _rtm_tapes: tapes, _mi_envelope_records: ampPointer },
     returnSw: ret,
   });
   const owner = 3;
@@ -92,7 +98,9 @@ ${exp2}`,
     const result = await rig.call('_relay_note_on', { R4: state, R8: input, M13: 0, I13: ret });
     expect(result.halt).toBe('breakpoint');
   }
-  async function render(state: number, status = 2) {
+  async function render(state: number, status = 2, gate = 1) {
+    rig.poke(input / 4 + 4, state === lead ? owner : supportingTrack);
+    rig.poke(input / 4 + 6, gate);
     const result = await rig.call(
       '_relay_render',
       { R4: state, R8: input, M13: 0, I13: ret, M6: 1 },
@@ -104,6 +112,13 @@ ${exp2}`,
   }
   const expected = (from: number, stride: number) =>
     [1, -1].map((sign) => Array.from({ length: 32 }, (_, i) => sign * ((from + stride * i) % length + 1)));
+  const silence = [Array(32).fill(0), Array(32).fill(0)];
+  const amp = (track: number, phase: number, release: number, gain: number) => {
+    const record = (ampRecords + 88 * track) / 4;
+    rig.poke(record + 4, release);
+    rig.poke(record + 7, phase);
+    rig.poke(record + 10, f2w(-gain));
+  };
 
   try {
     for (const trackRow of [row, helperRow]) {
@@ -140,6 +155,19 @@ ${exp2}`,
     expect(await rig.peek(row + 1, 1)).toEqual([21]);
     expect(await rig.peek(helperRow + 1, 1)).toEqual([51]);
 
+    rig.poke(ampPointer / 4, ampRecords);
+    amp(owner, 4, 32, 1e-8);
+    expect(await render(lead)).toEqual(expected(32, 1)); // Still held.
+    amp(supportingTrack, 3, 32, 1e-8);
+    expect(await render(second, 2, 0)).toEqual(expected(0, 2)); // Finite AHD hold.
+    amp(supportingTrack, 4, 32, 0.25);
+    expect(await render(second, 2, 0)).toEqual(expected(0, 2)); // Audible release.
+    amp(supportingTrack, 4, 127, 1e-8);
+    expect(await render(second, 2, 0)).toEqual(expected(0, 2)); // Infinite release.
+    amp(supportingTrack, 4, 32, 1e-8);
+    expect(await render(second, 3, 0)).toEqual(silence); // Native cursor can now clear.
+    expect(await render(lead)).toEqual(expected(0, 1)); // The sibling is untouched.
+
     const originalRoot = await committedRoot();
     expect(originalRoot).not.toBe(0);
     await pool(2, length);
@@ -153,8 +181,8 @@ ${exp2}`,
     await pool(16, ownerSlot);
     rig.poke(row + 2, ownerSlot);
     rig.poke(row + 8, 1); // Commit or undo invalidates both saved heads.
-    expect(await render(lead, 3)).toEqual([Array(32).fill(0), Array(32).fill(0)]);
-    expect(await render(second, 3)).toEqual([Array(32).fill(0), Array(32).fill(0)]);
+    expect(await render(lead, 3)).toEqual(silence);
+    expect(await render(second, 3)).toEqual(silence);
 
     const dubRoot = await committedRoot();
     expect(dubRoot).not.toBe(originalRoot);
@@ -169,7 +197,7 @@ ${exp2}`,
     rig.poke(row + 8, 2);
     const blankRoot = await committedRoot();
     await note(second, supportingTrack, 72);
-    expect(await render(second)).toEqual([Array(32).fill(0), Array(32).fill(0)]);
+    expect(await render(second)).toEqual(silence);
     expect(await backing(blankRoot)).toEqual([0, 1]);
 
     rig.poke(row + 11, 1);
