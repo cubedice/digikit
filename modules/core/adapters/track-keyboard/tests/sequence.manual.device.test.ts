@@ -2,6 +2,7 @@ import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { trackType } from '@digi/regression/runtime/project-kit.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
+import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
@@ -39,6 +40,7 @@ describeOn('dt2', 'shared arpeggiator stock sequence', () => {
     await session.client.call('run.mode', { mode: 'free' });
     await expectRuntimeUi(session, image.plan, session.runDir);
     const { edge, tap, turn } = acknowledgedPanel(session);
+    await tap('NO'); // Dismiss the asynchronous stock filesystem acknowledgement.
     await edge('TRK', true);
     try {
       await tap('TRIG 1');
@@ -73,6 +75,9 @@ describeOn('dt2', 'shared arpeggiator stock sequence', () => {
     await pollEmulated(session, hits, (n) => n !== null && n > 0, {
       emulatedMs: 5000,
       message: 'the due native note was admitted to the shared scheduler',
+    }).catch(async (error) => {
+      await captureRemoteOled(session, 'sequence-first-due-failure');
+      throw error;
     });
     await pollEmulated(session, held, (n) => n === 1, {
       emulatedMs: 5000,

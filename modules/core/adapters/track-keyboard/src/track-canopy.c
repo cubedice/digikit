@@ -147,7 +147,7 @@ static void load_preset_source(IsnSnapshot *snapshot, const CpPreset *saved, uin
 }
 
 static bool prepare_seed(uint8_t track, TkParams *params, TkRecipe *recipe, TkSeed *seed,
-                         bool recorded)
+                         bool recorded, uint16_t *pinned_controls)
 {
     const TkSequenceAudio *audio = tk_sequence_audio(track);
     IsnSnapshot snapshot = {.valid = 1};
@@ -183,6 +183,12 @@ static bool prepare_seed(uint8_t track, TkParams *params, TkRecipe *recipe, TkSe
         if (id == 34)
             wave = (int32_t)value;
     }
+    if (seen & (UINT64_C(1) << CP_RATE))
+        *pinned_controls |= 1u << TK_CTL_RATE;
+    if (seen & (UINT64_C(1) << CP_ORDER))
+        *pinned_controls |= 1u << TK_CTL_ORDER;
+    if (seen & (UINT64_C(1) << CP_OCTAVES))
+        *pinned_controls |= 1u << TK_CTL_OCTAVES;
     if (sound_lock)
         load_preset_source(&snapshot, &saved, (uint32_t)wave);
     else if (wave >= 0) {

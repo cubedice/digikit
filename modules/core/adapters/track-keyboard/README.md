@@ -7,8 +7,10 @@ arpeggiator follows the selected pattern tempo when the sequencer is stopped
 or playing. MIDI tracks use the configured output channel.
 
 Turn A on ARP to enable the arpeggiator. Its controls set traversal order,
-note gate, rate, signed octave spread, swing and restart behavior. H selects
-the chord. On KEYS, A enables polyphony and B selects the same chord. C and
+note gate, rate, signed octave spread, swing and restart behavior. Changes
+to rate, spread or order apply from the next onset and preserve an open
+gate. A sequenced phrase keeps any of those values locked by its seed.
+H selects the chord. On KEYS, A enables polyphony and B selects the same chord. C and
 D change the voicing and strum. The keyboard drawing distinguishes held
 pitch classes from emitted pitches. Stock audio voice groups use H POOL.
 With transport stopped, tap numbered TRIGs to stage empty audio tracks as
@@ -16,7 +18,9 @@ helpers for ONESHOT, WERP, STRETCH, REPITCH, GRID or SLICE. The owner LED is
 blue, selected helpers are white, and available tracks are dim. YES applies
 the group. NO discards the draft. You can also check the track rows and
 choose APPLY GROUP. Requested helpers belong to the pattern. The menu shows
-effective reservations and the resulting voice count. A qualified reservation
+effective reservations and the resulting voice count. MIDI tracks show
+their channel, USB/DIN routes and transmit budgets, and CANOPY shows
+its internal voice limit. A qualified reservation
 stays active when transport starts on the same pattern.
 
 Click CHRD to open NOTES. Choose LEARN, play notes from the panel or an
@@ -30,7 +34,9 @@ recipe. In NOTES, RIGHT then EDIT STEP lights the existing note trigs.
 Tap a lit TRIG to edit its step. PAGE moves through banks of 16 steps.
 You can also select a step with the arrow keys or LEVEL/DATA, then press YES.
 In PLAY, read-only rows show absolute note names from the saved recording,
-the native trig, or the held input. USER rows still show intervals and velocities.
+the native trig, or the held input. The NOTES title shows the track or step
+being edited and the sounding arpeggiated note. USER rows show intervals
+and velocities.
 Apply or cancel an edited draft before selecting another step. Choosing a
 step leaves the pattern unchanged until you apply its recipe. Turning an
 encoder with steps held sets a lock. Clicking an
@@ -86,8 +92,8 @@ The full design and release checks are in the
 [proposal](../../../../docs/design/dt2-track-arpeggiator.md). The adapter
 remains experimental. CANOPY uses its internal voices. RELAY is the
 only qualified dynamic machine that can borrow an empty stock track.
-Timing under heavy MIDI load and physical device measurements need separate
-qualification.
+Physical DIN, heavy MIDI load, isolated USB audio, routing and DSP
+measurements are recorded in the [native output findings](../../../../docs/findings/369-track-keyboard-native-output.md).
 
 ## Verification
 

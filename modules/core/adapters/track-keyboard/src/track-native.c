@@ -5,7 +5,7 @@
 extern void tk_runtime_midi_busy(void) __attribute__((weak));
 
 enum NoteState { NOTE_FREE, NOTE_PENDING, NOTE_SOUNDING, NOTE_RELEASE };
-enum { MIDI_DIN = 1, MIDI_USB = 2, UNITS_PER_BYTE = 1500 };
+enum { UNITS_PER_BYTE = 1500 };
 
 typedef struct {
     uint32_t token, order;
@@ -60,8 +60,8 @@ static void replenish_midi(void)
     budget_at = now;
     if (elapsed > 1500)
         elapsed = 1500;
-    usb_budget += elapsed * 12000u;
-    din_budget += elapsed * 2700u;
+    usb_budget += elapsed * TK_MIDI_USB_BYTES_PER_S;
+    din_budget += elapsed * TK_MIDI_DIN_BYTES_PER_S;
     if (usb_budget > 256u * UNITS_PER_BYTE)
         usb_budget = 256u * UNITS_PER_BYTE;
     if (din_budget > 48u * UNITS_PER_BYTE)
@@ -70,8 +70,8 @@ static void replenish_midi(void)
 
 static bool midi_room(uint8_t ports)
 {
-    return (!(ports & MIDI_USB) || usb_budget >= 8u * UNITS_PER_BYTE) &&
-           (!(ports & MIDI_DIN) || din_budget >= 6u * UNITS_PER_BYTE);
+    return (!(ports & TK_MIDI_OUT_USB) || usb_budget >= TK_MIDI_USB_PAIR_BYTES * UNITS_PER_BYTE) &&
+           (!(ports & TK_MIDI_OUT_DIN) || din_budget >= TK_MIDI_DIN_PAIR_BYTES * UNITS_PER_BYTE);
 }
 
 bool tk_native_event(void *context, uint8_t track, const TkNoteEvent *event)
@@ -148,6 +148,16 @@ bool tk_native_idle(uint8_t track)
         if (notes[track][i].state != NOTE_FREE)
             return false;
     return true;
+}
+
+bool tk_native_sounding(uint8_t track, uint32_t token)
+{
+    if (track >= TK_TRACKS || !token)
+        return false;
+    for (unsigned i = 0; i <= TK_NOTES; ++i)
+        if (notes[track][i].token == token)
+            return notes[track][i].state == NOTE_SOUNDING;
+    return false;
 }
 
 static NativeNote *oldest(uint8_t state, uint8_t *owner)
@@ -292,10 +302,10 @@ void tk_native_drain(void)
         if (!send(track, entry, entry->velocity))
             return;
         if (entry->midi) {
-            if (entry->ports & MIDI_USB)
-                usb_budget -= 8u * UNITS_PER_BYTE;
-            if (entry->ports & MIDI_DIN)
-                din_budget -= 6u * UNITS_PER_BYTE;
+            if (entry->ports & TK_MIDI_OUT_USB)
+                usb_budget -= TK_MIDI_USB_PAIR_BYTES * UNITS_PER_BYTE;
+            if (entry->ports & TK_MIDI_OUT_DIN)
+                din_budget -= TK_MIDI_DIN_PAIR_BYTES * UNITS_PER_BYTE;
         } else {
             tk_native_audio_active |= 1u << entry->destination;
             if (entry->destination != track)

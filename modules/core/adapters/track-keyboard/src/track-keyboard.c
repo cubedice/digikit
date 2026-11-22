@@ -186,7 +186,8 @@ static uint8_t duration_count(const TkState *s)
     return s->params.order == TK_ORDER_UPDN && n > 1 ? (uint8_t)(2u * n - 2u) : n;
 }
 
-static void rebuild_arp(TkState *s, const TkPitch *input_notes, uint8_t n, bool restart)
+static void rebuild_arp(TkState *s, const TkPitch *input_notes, uint8_t n, bool restart,
+                        bool keep_gate)
 {
     unsigned layers =
         s->params.octaves < 0 ? (unsigned)-s->params.octaves : (unsigned)s->params.octaves;
@@ -215,8 +216,9 @@ static void rebuild_arp(TkState *s, const TkPitch *input_notes, uint8_t n, bool 
         stop(s, &s->arp_voice);
         return;
     }
-    if (s->arp_voice.note.token && find_pitch(s->candidates, s->candidate_count,
-                                              s->arp_voice.note.pitch) == s->candidate_count)
+    if (!keep_gate && s->arp_voice.note.token &&
+        find_pitch(s->candidates, s->candidate_count, s->arp_voice.note.pitch) ==
+            s->candidate_count)
         stop(s, &s->arp_voice);
     if (restart || !s->playing) {
         uint8_t count = duration_count(s);
@@ -266,7 +268,7 @@ static void rebuild(TkState *s, bool restart)
     bool live = live_input(s);
     TkPitch notes[TK_NOTES];
     uint8_t n = input(s, live, false, notes);
-    rebuild_arp(s, notes, n, restart);
+    rebuild_arp(s, notes, n, restart, false);
     n = 0;
     if (s->params.poly && (!s->params.arp || s->blend))
         n = input(s, live, true, notes);
@@ -325,6 +327,23 @@ bool tk_configure(TkState *s, const TkParams *params, const TkRecipe *user)
     s->user = *user;
     rebuild(s, false);
     return true;
+}
+
+void tk_arp_traversal(TkState *s, const TkParams *params)
+{
+    if (s->params.rate != params->rate) {
+        s->params.rate = params->rate;
+        s->interval_remainder = 0;
+    }
+    if (s->params.order == params->order && s->params.octaves == params->octaves)
+        return;
+    s->params.order = params->order;
+    s->params.octaves = params->octaves;
+    if (s->playing) {
+        TkPitch notes[TK_NOTES];
+        uint8_t count = input(s, live_input(s), false, notes);
+        rebuild_arp(s, notes, count, false, true);
+    }
 }
 
 static uint8_t key_index(TkState *s, uint8_t source, uint8_t channel, uint32_t id)

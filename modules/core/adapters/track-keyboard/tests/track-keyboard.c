@@ -248,15 +248,19 @@ static void service_ownership(void)
     assert(tk_service_seed(0, 5, &seed));
     tk_service_tick(0, 14400);
     expect(&e, 0, true, 60, TK_ARP);
+    uint32_t token;
+    assert(tk_trig_arp_pitch(0, &token) == 60 && token == e.events[0].token);
     assert(tk_service_press(0, TK_PANEL, 0, 1, 71, 100));
     tk_service_tick(0, 0);
     expect(&e, 1, false, 60, TK_ARP);
     expect(&e, 2, true, 71, TK_ARP);
+    assert(tk_trig_arp_pitch(0, &token) == 71 && token == e.events[2].token);
     tk_service_tick(125000, 0);
     tk_service_release(0, TK_PANEL, 0, 1);
     unsigned resume = e.count;
     tk_service_tick(125000, 0);
     expect(&e, resume, true, 67, TK_ARP); /* The overridden E still advanced the arp. */
+    assert(tk_trig_arp_pitch(0, &token) == 67 && token == e.events[resume].token);
     assert(e.events[0].token & 0x80000000u);
     assert(!(e.events[2].token & 0x80000000u));
 
@@ -272,6 +276,86 @@ static void service_ownership(void)
     tk_service_edit_pattern(&pattern);
     assert(!tk_notes_commit(&draft));
 
+    tk_service_stop();
+    assert(tk_trig_arp_pitch(0, &token) == -1);
+    tk_service_edit_pattern(NULL);
+    assert(tk_service_set_backend(0, NULL));
+}
+
+static void active_traversal_edits(void)
+{
+    static TkPattern pattern;
+    for (unsigned sequenced = 0; sequenced < 2; ++sequenced) {
+        Events e = {0};
+        TkTrackBackend backend = {.output = track_sink, .context = &e, .voices = 4};
+        tk_pattern_init(&pattern);
+        tk_service_edit_pattern(&pattern);
+        assert(tk_service_set_backend(0, &backend));
+        assert(tk_trig_write(0, TK_CTL_ARP, 1));
+        assert(tk_trig_write(0, TK_CTL_OCTAVES, -1));
+        if (sequenced) {
+            const TkSeed seed = {.count = 2, .notes = {{60, 100, 0, 0}, {64, 100, 0, 0}}};
+            tk_service_play_pattern(&pattern);
+            assert(tk_service_seed(0, 5, &seed));
+        } else {
+            assert(tk_service_press(0, TK_USB, 0, 60, 60, 100));
+            assert(tk_service_press(0, TK_USB, 0, 64, 64, 100));
+        }
+        tk_service_tick(0, 14400);
+        expect(&e, 0, true, 60, TK_ARP);
+        tk_service_tick(125000, 0);
+        expect(&e, 2, true, 64, TK_ARP);
+        tk_service_tick(125000, 0);
+        expect(&e, 4, true, 48, TK_ARP);
+        assert(tk_trig_write(0, TK_CTL_OCTAVES, 0));
+        assert(tk_trig_write(0, TK_CTL_ORDER, TK_ORDER_DOWN));
+        assert(tk_trig_write(0, TK_CTL_RATE, 3)); /* 1/4 instead of 1/16 */
+        tk_service_tick(62499, 0);
+        assert(e.count == 5);
+        tk_service_tick(1, 0);
+        expect(&e, 5, false, 48, TK_ARP);
+        assert(e.events[4].token == e.events[5].token);
+        tk_service_tick(62500, 0);
+        expect(&e, 6, true, 60, TK_ARP);
+        tk_service_tick(249999, 0);
+        assert(e.count == 7);
+        tk_service_tick(1, 0);
+        expect(&e, 7, false, 60, TK_ARP);
+        tk_service_stop();
+        tk_service_edit_pattern(NULL);
+        assert(tk_service_set_backend(0, NULL));
+    }
+}
+
+static void traversal_edits_keep_active_locks(void)
+{
+    static TkPattern pattern;
+    Events e = {0};
+    TkTrackBackend backend = {.output = track_sink, .context = &e, .voices = 4};
+    const TkSeed seed = {.count = 2, .notes = {{60, 100, 0, 0}, {64, 100, 0, 0}}};
+    tk_pattern_init(&pattern);
+    tk_service_edit_pattern(&pattern);
+    assert(tk_service_set_backend(0, &backend));
+    assert(tk_trig_write(0, TK_CTL_ARP, 1));
+    assert(tk_trig_lock_write(0, 5, TK_CTL_RATE, tk_defaults().rate, false));
+    assert(tk_trig_lock_write(0, 5, TK_CTL_ORDER, TK_ORDER_PLAY, false));
+    assert(tk_trig_lock_write(0, 5, TK_CTL_OCTAVES, -1, false));
+    tk_service_play_pattern(&pattern);
+    assert(tk_service_seed(0, 5, &seed));
+    expect(&e, 0, true, 60, TK_ARP);
+    assert(tk_trig_write(0, TK_CTL_RATE, 3));
+    assert(tk_trig_write(0, TK_CTL_ORDER, TK_ORDER_UP));
+    assert(tk_trig_write(0, TK_CTL_OCTAVES, 0));
+    tk_service_tick(125000, 14400);
+    expect(&e, 2, true, 64, TK_ARP);
+    tk_service_tick(125000, 0);
+    expect(&e, 4, true, 48, TK_ARP);
+    assert(tk_service_seed(0, 6, &seed));
+    expect(&e, 6, true, 60, TK_ARP);
+    tk_service_tick(249999, 0);
+    assert(e.count == 7);
+    tk_service_tick(1, 0);
+    expect(&e, 7, false, 60, TK_ARP);
     tk_service_stop();
     tk_service_edit_pattern(NULL);
     assert(tk_service_set_backend(0, NULL));
@@ -499,6 +583,8 @@ int main(void)
     sequence_and_learned_shape();
     pattern_controls();
     service_ownership();
+    active_traversal_edits();
+    traversal_edits_keep_active_locks();
     selector_retains_common_pitches();
     pattern_switch_keeps_held_keys();
     pattern_roundtrip();

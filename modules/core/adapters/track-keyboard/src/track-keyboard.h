@@ -121,6 +121,8 @@ bool tk_rate_division(uint8_t rate, uint8_t *numerator, uint8_t *denominator);
 void tk_init(TkState *state, TkOutput output, void *context);
 void tk_set_backend(TkState *state, uint8_t max_voices, bool mix_direct_and_arp);
 bool tk_configure(TkState *state, const TkParams *params, const TkRecipe *user);
+/* Update RATE, ORDR and OCTS for upcoming onsets, leaving an in-flight gate intact. */
+void tk_arp_traversal(TkState *state, const TkParams *params);
 bool tk_press(TkState *state, uint8_t source, uint8_t channel, uint32_t id, int pitch,
               int velocity);
 void tk_release(TkState *state, uint8_t source, uint8_t channel, uint32_t id);

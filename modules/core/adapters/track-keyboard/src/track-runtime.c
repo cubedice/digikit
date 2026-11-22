@@ -7,9 +7,9 @@
 #include "track-pool.h"
 #include "track-sequence.h"
 
-#include <dk/platform/ui.h>
 #include "dkrt.h"
 #include "dk_fw_input.h"
+#include "dk_ui_core.h"
 
 extern uint32_t pp_current_pattern(void);
 extern uint32_t pp_transport_running(void);
@@ -17,10 +17,11 @@ extern uint32_t pp_selected_tempo(void);
 extern volatile uint32_t pp_position[16];
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
-extern dk_ui *dk_ui_core_handle(void);
-extern int32_t dk_ui_core_menu_front(const dk_ui_menu *);
 extern uintptr_t tk_fw_project(void);
 extern uintptr_t tk_fw_active_kit(uintptr_t project);
+extern char *tk_trig_decimal(char *out, unsigned value);
+extern char *tk_trig_pitch_name(char *out, uint8_t pitch);
+extern void tk_trig_notes_title(char *title, uint8_t track, int step, int pitch);
 
 static uint32_t pattern, editing_pattern, revision, block, boundary, block_fraction;
 static uint32_t stopped_boundary;
@@ -35,10 +36,31 @@ static dk_ui_menu *notes_menu, *note_menu, *selector_menu, *pool_menu;
 static bool notes_dirty, notes_choosing_step, notes_existing_step;
 static uint8_t note_bank;
 static uint16_t note_steps, pool_eligible;
+static uint32_t notes_title_at, notes_title_key;
 static void picker_enter(void);
 static uint8_t pool_owner;
 static int32_t note_index, note_offset, note_velocity;
 static int32_t selector_octave, selector_channel;
+
+static void notes_update_title(void)
+{
+    const int step = draft.step_scope && !notes_choosing_step ? draft.step : -1;
+    uint32_t token;
+    int pitch = notes_choosing_step ? -1 : tk_trig_arp_pitch(draft.track, &token);
+    if (pitch >= 0 && kind[draft.track] != TK_NATIVE_CANOPY &&
+        !tk_native_sounding(draft.track, token))
+        pitch = -1;
+    /* The three fields fit individually in a byte. The extra track count
+     * keeps zero reserved for the initial title. */
+    uint32_t key =
+        ((uint32_t)(draft.track + 1) << 16) | ((uint32_t)(step + 1) << 8) | (uint32_t)(pitch + 1);
+    if (key == notes_title_key)
+        return;
+    notes_title_key = key;
+    char title[DK_UI_ROW];
+    tk_trig_notes_title(title, draft.track, step, pitch);
+    dk_ui_core_list_title(notes_menu, title);
+}
 
 static void close_notes(void)
 {
@@ -260,6 +282,10 @@ static void poll(void)
         }
     }
     tk_native_drain();
+    if (draft.open && now - notes_title_at >= 120u && dk_ui_core_menu_front(notes_menu)) {
+        notes_title_at = now;
+        notes_update_title();
+    }
 }
 
 void tk_runtime_init(void)
@@ -345,21 +371,12 @@ static int32_t notes_back(void *unused)
     (void)unused;
     if (notes_choosing_step) {
         notes_choosing_step = false;
+        notes_update_title();
         dk_ui_menu_select(notes_menu, 0);
         return 1;
     }
     draft.open = false;
     return 0;
-}
-
-static char *decimal(char *out, unsigned value)
-{
-    if (value >= 100)
-        *out++ = (char)('0' + value / 100);
-    if (value >= 10)
-        *out++ = (char)('0' + value / 10 % 10);
-    *out++ = (char)('0' + value % 10);
-    return out;
 }
 
 static void note_apply(void *unused, int32_t value)
@@ -536,6 +553,7 @@ static void notes_pick_step(void *unused, int32_t step)
     }
     notes_existing_step = true;
     notes_choosing_step = false;
+    notes_update_title();
     dk_ui_menu_select(notes_menu, 0);
 }
 
@@ -550,6 +568,7 @@ static void notes_edit_step(void *unused, int32_t value)
     notes_choosing_step = true;
     note_bank = draft.step_scope ? draft.step / 16u : 0;
     picker_enter();
+    notes_update_title();
     dk_ui_menu_select(notes_menu, 0);
 }
 
@@ -609,15 +628,8 @@ static void notes_play_pitches(dk_ui_menu *m)
         return;
     dk_ui_menu_add_text(m, heading);
     for (uint8_t i = 0; i < count; ++i) {
-        static const char name[] = "CCDDEFFGGAAB";
-        char row[6], *end = row;
-        unsigned pitch = pitches[i], pc = pitch % 12u, octave = pitch / 12u;
-        *end++ = name[pc];
-        if ((0x54au >> pc) & 1u)
-            *end++ = '#';
-        if (octave == 0)
-            *end++ = '-';
-        *decimal(end, octave ? octave - 1 : 1) = 0;
+        char row[6];
+        *tk_trig_pitch_name(row, pitches[i]) = 0;
         dk_ui_menu_add_text(m, row);
     }
 }
@@ -628,9 +640,9 @@ static void notes_fill(dk_ui_menu *m, void *unused)
     if (notes_choosing_step) {
         char title[DK_UI_ROW] = "STEPS ";
         unsigned first = 16u * note_bank;
-        char *end = decimal(title + 6, first + 1);
+        char *end = tk_trig_decimal(title + 6, first + 1);
         *end++ = '-';
-        *decimal(end, first + 16) = 0;
+        *tk_trig_decimal(end, first + 16) = 0;
         dk_ui_menu_add_text(m, title);
         note_steps = 0;
         for (unsigned key = 0; key < 16; ++key) {
@@ -639,7 +651,7 @@ static void notes_fill(dk_ui_menu *m, void *unused)
                 continue;
             note_steps |= (uint16_t)(1u << key);
             char label[DK_UI_ROW] = "STEP ";
-            *decimal(label + 5, step + 1u) = 0;
+            *tk_trig_decimal(label + 5, step + 1u) = 0;
             dk_ui_menu_add_action(m, label, notes_pick_step, NULL, (int32_t)step);
         }
         if (!note_steps)
@@ -651,22 +663,22 @@ static void notes_fill(dk_ui_menu *m, void *unused)
     if (draft.step_scope) {
         memcpy(scope, apply, 10);
         memcpy(scope + 10, " T", 2);
-        char *end = decimal(scope + 12, (unsigned)draft.track + 1u);
+        char *end = tk_trig_decimal(scope + 12, (unsigned)draft.track + 1u);
         memcpy(end, " S", 2);
-        *decimal(end + 2, (unsigned)draft.step + 1u) = 0;
+        *tk_trig_decimal(end + 2, (unsigned)draft.step + 1u) = 0;
         apply = scope;
     }
     dk_ui_menu_add_action(m, apply, notes_apply, NULL, 0);
     dk_ui_menu_add_action(m, "LEARN", notes_learn, NULL, 0);
     for (uint8_t i = 0; i < draft.recipe.count; ++i) {
         char text[DK_UI_ROW];
-        char *w = decimal(text, i + 1u);
+        char *w = tk_trig_decimal(text, i + 1u);
         *w++ = ' ';
         int n = draft.recipe.notes[i].interval;
         *w++ = n < 0 ? '-' : '+';
-        w = decimal(w, (unsigned)(n < 0 ? -n : n));
+        w = tk_trig_decimal(w, (unsigned)(n < 0 ? -n : n));
         *w++ = ' ';
-        *decimal(w, draft.recipe.notes[i].velocity) = 0;
+        *tk_trig_decimal(w, draft.recipe.notes[i].velocity) = 0;
         dk_ui_menu_add_action(m, text, note_open, NULL, i);
     }
     if (!notes_dirty)
@@ -696,6 +708,7 @@ bool tk_trig_open_notes(uint8_t track, int step)
         notes_dirty = notes_existing_step = false;
     }
     notes_choosing_step = draft.learn = false;
+    notes_update_title();
     dk_ui_menu_select(notes_menu, 0);
     if (dk_ui_menu_open(notes_menu) < 0) {
         draft.open = false;
@@ -707,6 +720,19 @@ bool tk_trig_open_notes(uint8_t track, int step)
 static uint16_t pool_original, pool_request;
 static uint32_t pool_pattern, pool_revision;
 
+uint16_t tk_trig_voice_group(uint8_t track)
+{
+    if (track >= TK_TRACKS || (kind[track] != TK_NATIVE_AUDIO && kind[track] != TK_NATIVE_RELAY))
+        return 0;
+    return (uint16_t)((1u << track) | tk_pool_fw_helpers(track));
+}
+
+static bool pool_has_helpers(void)
+{
+    return kind[pool_owner] == TK_NATIVE_AUDIO ||
+           (kind[pool_owner] == TK_NATIVE_RELAY && tk_pool_fw_relay_ready());
+}
+
 static bool pool_editable(void)
 {
     if (pp_transport_running()) {
@@ -714,9 +740,7 @@ static bool pool_editable(void)
         return false;
     }
     if (editing_pattern == pool_pattern && tk_pattern_fw_revision() == pool_revision &&
-        tk_trig_ready(pool_owner) &&
-        (kind[pool_owner] == TK_NATIVE_AUDIO ||
-         (kind[pool_owner] == TK_NATIVE_RELAY && tk_pool_fw_relay_ready())) &&
+        tk_trig_ready(pool_owner) && pool_has_helpers() &&
         tk_service_helpers(pool_owner) == pool_original)
         return true;
     dk_ui_menu_close(pool_menu);
@@ -766,11 +790,57 @@ static void pool_apply(void *unused, int32_t value)
     poll();
 }
 
+static void pool_midi_rate(dk_ui_menu *m, const char *port, unsigned pairs_per_second)
+{
+    char row[DK_UI_ROW];
+    memcpy(row, port, 3);
+    row[3] = ' ';
+    char *end = tk_trig_decimal(row + 4, pairs_per_second);
+    memcpy(end, " PAIRS/S", 9);
+    dk_ui_menu_add_text(m, row);
+}
+
+static void pool_midi_fill(dk_ui_menu *m)
+{
+    int channel = tk_native_channel(pool_owner);
+    char row[DK_UI_ROW] = "CHAN OFF";
+    if (channel >= 0 && channel < 16)
+        *tk_trig_decimal(row + 5, (unsigned)channel + 1) = 0;
+    dk_ui_menu_add_text(m, row);
+
+    static const char *const ports[] = {"OUT OFF", "OUT DIN", "OUT USB", "OUT MIDI+USB"};
+    uint8_t mask = tk_native_midi_ports() & (TK_MIDI_OUT_DIN | TK_MIDI_OUT_USB);
+    dk_ui_menu_add_text(m, ports[mask]);
+
+    TkParams params;
+    if (tk_trig_display(pool_owner, &params)) {
+        unsigned capacity = tk_trig_voice_capacity(pool_owner);
+        memcpy(row, "VOICES ", 7);
+        *tk_trig_decimal(row + 7, params.voices < capacity ? params.voices : capacity) = 0;
+        dk_ui_menu_add_text(m, row);
+    }
+    if (mask & TK_MIDI_OUT_DIN)
+        pool_midi_rate(m, "DIN", TK_MIDI_DIN_BYTES_PER_S / TK_MIDI_DIN_PAIR_BYTES);
+    if (mask & TK_MIDI_OUT_USB)
+        pool_midi_rate(m, "USB", TK_MIDI_USB_BYTES_PER_S / TK_MIDI_USB_PAIR_BYTES);
+}
+
 static void pool_fill(dk_ui_menu *m, void *unused)
 {
     (void)unused;
+    if (kind[pool_owner] == TK_NATIVE_MIDI) {
+        pool_midi_fill(m);
+        return;
+    }
+    if (kind[pool_owner] == TK_NATIVE_CANOPY) {
+        dk_ui_menu_add_text(m, "CANOPY");
+        dk_ui_menu_add_text(m, "4 PAD VOICES");
+        dk_ui_menu_add_text(m, "1 ARP VOICE");
+        dk_ui_menu_add_text(m, "2 RELEASE TAILS");
+        return;
+    }
     char summary[DK_UI_ROW];
-    char *end = decimal(summary, tk_pool_fw_voices(pool_owner));
+    char *end = tk_trig_decimal(summary, tk_pool_fw_voices(pool_owner));
     *end++ = ' ';
     const char *suffix = "VOICES";
     while (*suffix)
@@ -784,7 +854,7 @@ static void pool_fill(dk_ui_menu *m, void *unused)
         if (track == pool_owner)
             continue;
         char label[DK_UI_ROW] = {'T'};
-        char *w = decimal(label + 1, track + 1);
+        char *w = tk_trig_decimal(label + 1, track + 1);
         *w++ = ' ';
         uint16_t bit = (uint16_t)(1u << track);
         int owner = tk_pool_fw_owner(track);
@@ -808,13 +878,10 @@ bool tk_trig_open_pool(uint8_t track)
                                          .fill = pool_fill};
     if (!tk_trig_ready(track))
         return false;
-    if (kind[track] == TK_NATIVE_MIDI || kind[track] == TK_NATIVE_CANOPY)
-        return dk_ui_toast(dk_ui_core_handle(), kind[track] == TK_NATIVE_MIDI
-                                                    ? "MIDI: UP TO 16 NOTES"
-                                                    : "CANOPY: FOUR PAD VOICES") == 0;
+    bool editable = kind[track] != TK_NATIVE_MIDI && kind[track] != TK_NATIVE_CANOPY;
     if (kind[track] == TK_NATIVE_RELAY && !tk_pool_fw_relay_ready())
         return dk_ui_toast(dk_ui_core_handle(), "RELAY: ONE TAPE VOICE") == 0;
-    if (pp_transport_running())
+    if (editable && pp_transport_running())
         return dk_ui_toast(dk_ui_core_handle(), "STOP TO EDIT VOICE GROUP") == 0;
     if (!pool_menu)
         pool_menu = dk_ui_menu_new(dk_ui_core_handle(), &desc);
@@ -824,8 +891,9 @@ bool tk_trig_open_pool(uint8_t track)
     pool_original = pool_request = tk_service_helpers(track);
     pool_pattern = editing_pattern;
     pool_revision = tk_pattern_fw_revision();
-    picker_enter();
-    dk_ui_menu_select(pool_menu, 2);
+    if (editable)
+        picker_enter();
+    dk_ui_menu_select(pool_menu, editable ? 2 : 0);
     return dk_ui_menu_open(pool_menu) >= 0;
 }
 
@@ -853,7 +921,7 @@ static unsigned picker_front(void)
 {
     if (notes_choosing_step && draft.open && dk_ui_core_menu_front(notes_menu))
         return PICKER_STEP;
-    if (dk_ui_core_menu_front(pool_menu))
+    if (dk_ui_core_menu_front(pool_menu) && pool_has_helpers())
         return PICKER_POOL;
     return PICKER_OFF;
 }

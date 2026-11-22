@@ -1,4 +1,5 @@
 #include "track-service.h"
+#include "track-memory.h"
 
 #ifdef __m68k__
 #pragma GCC optimize("no-jump-tables")
@@ -28,6 +29,82 @@ extern bool tk_trig_lock_batch(uint8_t track, const uint32_t steps[4], enum TkCo
 extern uint16_t tk_trig_pitch_display(uint8_t track, uint16_t *held) __attribute__((weak));
 extern bool tk_trig_open_notes(uint8_t track, int step) __attribute__((weak));
 extern bool tk_trig_open_pool(uint8_t track) __attribute__((weak));
+extern uint16_t tk_trig_voice_group(uint8_t track) __attribute__((weak));
+
+char *tk_trig_decimal(char *out, unsigned value)
+{
+    if (value >= 1000)
+        *out++ = (char)('0' + value / 1000);
+    if (value >= 100)
+        *out++ = (char)('0' + value / 100 % 10);
+    if (value >= 10)
+        *out++ = (char)('0' + value / 10 % 10);
+    *out++ = (char)('0' + value % 10);
+    return out;
+}
+
+char *tk_trig_pitch_name(char *out, uint8_t pitch)
+{
+    static const char name[] = "CCDDEFFGGAAB";
+    unsigned pc = pitch % 12u, octave = pitch / 12u;
+    *out++ = name[pc];
+    if ((0x54au >> pc) & 1u)
+        *out++ = '#';
+    if (octave == 0)
+        *out++ = '-';
+    *out++ = (char)('0' + (octave ? octave - 1 : 1));
+    return out;
+}
+
+static char *track_label(char *out, uint8_t track)
+{
+    ++track;
+    *out++ = 'T';
+    *out++ = (char)('0' + track / 10);
+    *out++ = (char)('0' + track % 10);
+    return out;
+}
+
+void tk_trig_notes_title(char *title, uint8_t track, int step, int pitch)
+{
+    char *out = track_label(title, track);
+    if (step >= 0) {
+        *out++ = ' ';
+        *out++ = 'S';
+        out = tk_trig_decimal(out, (unsigned)step + 1);
+    }
+    memcpy(out, " NOTES ", 7);
+    out += 7;
+    if (pitch >= 0) {
+        out = tk_trig_pitch_name(out, (uint8_t)pitch);
+    } else {
+        *out++ = '-';
+        *out++ = '-';
+    }
+    *out = 0;
+}
+
+static void voice_focus(uint8_t track, int value)
+{
+    uint16_t group = tk_trig_voice_group ? tk_trig_voice_group(track) : 0;
+    if (!group) {
+        dk_fw_window_toast(dk_fw_window_ui_states(), "%d voices", value);
+        return;
+    }
+    char focus[sizeof "16V T01+T02+T03+T04"];
+    char *out = tk_trig_decimal(focus, (unsigned)value);
+    *out++ = 'V';
+    *out++ = ' ';
+    out = track_label(out, track);
+    for (uint8_t helper = 0; helper < TK_TRACKS && focus + sizeof focus - out > 4; ++helper) {
+        if (helper != track && (group & (1u << helper))) {
+            *out++ = '+';
+            out = track_label(out, helper);
+        }
+    }
+    *out = 0;
+    dk_fw_window_toast(dk_fw_window_ui_states(), "%s", focus);
+}
 
 /* DTII OS 1.17 ParameterPageView fields. The installed vtable is specific to
  * the TRIG view. SRC, AMP, FX and MOD use other vtables. */
@@ -547,11 +624,9 @@ uint8_t tk_trig_turn(uint8_t *view, uint8_t *event)
         value = cell->low;
     if (value > high)
         value = high;
-    if (value == current && step < 0)
-        return 1;
     bool written;
     if (step < 0)
-        written = tk_trig_write(track, cell->control, value);
+        written = value == current || tk_trig_write(track, cell->control, value);
     else {
         tk_trig_stock_mark_edited(word(view, EDITOR), 1);
         if (group)
@@ -559,7 +634,9 @@ uint8_t tk_trig_turn(uint8_t *view, uint8_t *event)
         else
             written = tk_trig_lock_write(track, (uint8_t)step, cell->control, value, false);
     }
-    if (written && value != current) {
+    if (written && cell->control == TK_CTL_VOICES) {
+        voice_focus(track, value);
+    } else if (written && value != current) {
         const char *description = focus_description(cell->control, value);
         if (description)
             dk_fw_window_toast(dk_fw_window_ui_states(), "%s", description);

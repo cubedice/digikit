@@ -11,7 +11,7 @@ typedef bool (*TkTrackOutput)(void *context, uint8_t track, const TkNoteEvent *e
 typedef bool (*TkTrackAvailable)(uint8_t track);
 typedef bool (*TkTrackInherit)(uint8_t track, TkTrackConfig *config);
 typedef bool (*TkTrackPrepare)(uint8_t track, TkParams *params, TkRecipe *recipe, TkSeed *seed,
-                               bool recorded);
+                               bool recorded, uint16_t *pinned_controls);
 
 typedef struct {
     TkTrackOutput output;
@@ -118,6 +118,7 @@ void tk_service_stop(void);
 
 bool tk_trig_ready(uint8_t track);
 uint8_t tk_trig_voice_capacity(uint8_t track);
+int tk_trig_arp_pitch(uint8_t track, uint32_t *token);
 uint8_t tk_trig_held_pitches(uint8_t track, uint8_t pitches[TK_NOTES]);
 bool tk_trig_display(uint8_t track, TkParams *out);
 bool tk_trig_write(uint8_t track, enum TkControl control, int value);

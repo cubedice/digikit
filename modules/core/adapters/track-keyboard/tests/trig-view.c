@@ -15,6 +15,7 @@ uint8_t tk_trig_key(uint8_t *, uint8_t *);
 uint8_t tk_trig_turn(uint8_t *, uint8_t *);
 uint8_t tk_trig_turn_interface(uint8_t *, uint8_t *);
 uint32_t tk_trig_parameter(uint8_t *, uint32_t);
+void tk_trig_notes_title(char *, uint8_t, int, int);
 
 _Alignas(4) static uint8_t view[0x194], editor[0x270], bitmap[1];
 static uint32_t stock_pages[] = {1, 2}, midi_pages[] = {23, 24}, other_pages[] = {7, 8};
@@ -25,6 +26,7 @@ static struct {
 } widget_draw[8];
 static char labels[2][8][12];
 static unsigned focus, focus_touches, locks_drawn;
+static uint16_t voice_group;
 static bool keyboard_drawn, audio_retrig;
 static char last_toast[32];
 static uint8_t selected_track;
@@ -212,6 +214,12 @@ uint8_t tk_trig_voice_capacity(uint8_t track)
     return 1;
 }
 
+uint16_t tk_trig_voice_group(uint8_t track)
+{
+    assert(track == 0);
+    return voice_group;
+}
+
 void tk_runtime_touch(uint8_t track)
 {
     assert(track < TK_TRACKS);
@@ -353,7 +361,9 @@ int main(void)
     tk_trig_draw(view, bitmap);
     assert(keyboard_drawn && !labels[0][4][0] && !labels[0][5][0]);
     assert(widget_draw[0].code == 0x104 && widget_draw[3].code == 0xcc);
+    voice_group = (1u << 0) | (1u << 8) | (1u << 9) | (1u << 15);
     assert(turn(7, 4) && track_writes == 2);
+    assert(!strcmp(last_toast, "1V T01+T09+T10+T16"));
     key(42, 1);
     selected_track = 5;
     key(42, 16);
@@ -388,5 +398,12 @@ int main(void)
     tk_trig_draw(view, bitmap);
     assert(!read(view, 0x90) && read(view, 0x80) - read(view, 0x7c) == 8);
     assert(pages[0] == 23 && pages[1] == 24 && tk_trig_parameter(view, 0) == 100);
+    char title[24];
+    tk_trig_notes_title(title, 15, 127, 1);
+    assert(!strcmp(title, "T16 S128 NOTES C#-1"));
+    tk_trig_notes_title(title, 1, -1, 127);
+    assert(!strcmp(title, "T02 NOTES G9"));
+    tk_trig_notes_title(title, 0, 0, -1);
+    assert(!strcmp(title, "T01 S1 NOTES --"));
     return 0;
 }

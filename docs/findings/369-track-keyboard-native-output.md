@@ -102,9 +102,23 @@ bus reaches the fold.
 The frame projection copies owner track LEVEL, filter type, SRC LEV and the
 continuous filter/AMP/FX control section. A host comparison verifies all other
 halfwords are preserved, including pitch, velocity, gate masks, machine and
-sample slot. Further coupled tests need to qualify the individual live AMP,
-filter and FX controls and confirm that these words suffice across the
-admitted stock Sound types.
+sample slot. The expanded coupled POOL test used the actual owner and
+helper and measured both pitches following native PAN, filter type and
+frequency, and track overdrive. Excluding the owner from main and send
+FX silenced both pitches. Re-enabling only the owner send returned the
+group through reverb. The same test exercises native sequencer mute and
+readmission after a stock machine change.
+
+The physical DTII USB test leased T3–T5 to T1 and played C4, E♭4, G4, and
+B♭4. Each pitch was also captured separately. The four isolated T1
+waveforms fit the chord with relative amplitude factors 1.009, 0.994,
+0.996, and 0.986, and an 11.3% residual. The isolated T3 output was
+digitally silent. With the owner's track level at zero, isolated POST had
+zero peak and PRE still peaked at 0.306 / 0.285. With compressor MIX at
+127, the same chord peaked at 0.540 / 0.514 with the owner routed to the
+compressor and 0.206 / 0.195 with only the owner excluded. The helper
+routing settings were held fixed. These captures used DTII USB audio at
+48 kHz.
 
 In a second booted emulator fixture, T1, T9 and T10 played the same sample
 as different notes and routed together to T1. A UI-task callback sent the
@@ -279,13 +293,24 @@ to about 29% without a reboot or ARP change. These measurements put the
 1/80 stress cases at the ColdFire ceiling even though the DSP and MIDI
 release paths kept up.
 
+## Combined DSP load [D]
+
+A disposable hardware project ran a four-pitch sample group, a MIDI arp,
+RELAY playing a committed take, and PRISM in LIVE with all 16 tracks
+selected, 125 ms, and MIX 58. Health reported 68% DSP time on average and
+70–72% peak across four consecutive windows. The 6.7-second USB audio
+capture reported no stream errors. The percentage estimates time in the
+DSP block handler at the configured 1 GHz clock. The stress test above
+measures ColdFire idle time separately.
+
 ## Remaining qualification [O]
 
 CANOPY supplies its own internal polyphony. Other dynamic machines need
-their own playback and quiet contracts before POOL can reserve helpers for them.
+their own playback and quiet contracts before POOL can reserve helpers for
+them.
 
-Check audible owner mute, pan, filter, overdrive and compressor routing with
-the device's controls. The physical DSP budget still needs a capture covering
-PRISM, RELAY, USB audio, rapid group changes and pattern changes that
-immediately need a retiring helper. A sustained loop keeps its old route
-for as long as its cursor remains active.
+The physical and coupled runs cover different parts of owner routing. The
+emulator covers stock mute, pan, filter, overdrive, and send routing. The
+physical unit covers isolated PRE/POST USB output and compressor routing.
+The host tests cover pattern changes that immediately request a retiring
+helper. A device capture of that exact transition remains open.

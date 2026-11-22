@@ -8,6 +8,7 @@ typedef struct {
     TkState sequence;
     const TkPattern *sequence_pattern;
     TkTrackBackend backend;
+    uint16_t sequence_pinned;
     uint8_t number;
     bool live_has_priority, early_seed;
 } TkTrack;
@@ -36,6 +37,7 @@ static TkPattern *editing;
 static const TkPattern *playing;
 static uint32_t edit_generation;
 static uint16_t tempo;
+static const uint32_t sequence_token_bit = UINT32_C(0x80000000);
 static void live_priority(TkTrack *t, bool muting);
 static TkTrackConfig track_settings(uint8_t track);
 static void configure_live(TkTrack *t);
@@ -51,7 +53,7 @@ static bool send_sequence(void *context, const TkNoteEvent *event)
     TkTrack *t = context;
     /* The two schedulers use different token spaces for the same destination. */
     TkNoteEvent sequenced = *event;
-    sequenced.token ^= 0x80000000u;
+    sequenced.token ^= sequence_token_bit;
     return send_live(t, &sequenced);
 }
 
@@ -486,8 +488,9 @@ bool tk_service_seed_for(const TkPattern *p, uint8_t track, uint8_t step, const 
             effective.notes[i] = note;
         }
     }
+    uint16_t pinned = locked ? locked->mask : 0;
     if (t->backend.prepare_seed &&
-        !t->backend.prepare_seed(track, &params, &recipe, &effective, recorded != NULL))
+        !t->backend.prepare_seed(track, &params, &recipe, &effective, recorded != NULL, &pinned))
         return false;
     if (!resolve_mode(t, &p->tracks[track], &params)) {
         tk_stop_transport(&t->sequence);
@@ -504,6 +507,7 @@ bool tk_service_seed_for(const TkPattern *p, uint8_t track, uint8_t step, const 
     if (!tk_configure(&t->sequence, &params, &recipe) || !tk_seed(&t->sequence, &effective))
         return false;
     t->sequence_pattern = p;
+    t->sequence_pinned = pinned;
     t->early_seed = playing && p != playing;
     tk_tick(&t->sequence, 0, tempo);
     return true;
@@ -585,6 +589,20 @@ uint16_t tk_trig_pitch_display(uint8_t track, uint16_t *held)
     return sounding;
 }
 
+int tk_trig_arp_pitch(uint8_t track, uint32_t *token)
+{
+    if (!tk_trig_ready(track))
+        return -1;
+    const TkTrack *t = &tracks[track];
+    const TkState *state = t->live_has_priority ? &t->live : &t->sequence;
+    if (!state->arp_voice.sent)
+        return -1;
+    *token = state->arp_voice.note.token;
+    if (state == &t->sequence)
+        *token ^= sequence_token_bit;
+    return state->arp_voice.note.pitch;
+}
+
 uint8_t tk_trig_held_pitches(uint8_t track, uint8_t pitches[TK_NOTES])
 {
     if (!tk_trig_ready(track))
@@ -620,7 +638,20 @@ bool tk_trig_write(uint8_t track, enum TkControl control, int value)
     if (!tk_set_control(&config.params, control, value))
         return false;
     config.override = true;
-    apply_track_settings(track, &config);
+    bool traversal = control == TK_CTL_RATE || control == TK_CTL_ORDER || control == TK_CTL_OCTAVES;
+    TkTrack *t = &tracks[track];
+    if (traversal && (editing->tracks[track].override || !t->backend.inherit)) {
+        editing->tracks[track] = config;
+        if (!playing || playing == editing)
+            tk_arp_traversal(&t->live, &config.params);
+    } else {
+        apply_track_settings(track, &config);
+    }
+    if (traversal && t->sequence_pattern == editing && !(t->sequence_pinned & (1u << control))) {
+        TkParams params = t->sequence.params;
+        tk_set_control(&params, control, value);
+        tk_arp_traversal(&t->sequence, &params);
+    }
     return true;
 }
 

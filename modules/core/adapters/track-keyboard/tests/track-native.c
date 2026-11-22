@@ -138,14 +138,18 @@ static void midi_wire_budget(const TkTrackBackend *backend)
     assert(count == first + 16 && sent[count - 1].ports == 1 && !sent[count - 1].velocity);
     output_ports = 3;
     assert(post(backend, 0, 9, 60, 100));
+    assert(!tk_native_sounding(0, 9));
     tk_native_drain();
     assert(count == first + 16 && busy == prior_busy + 1 && tk_native_idle(0));
+    assert(!tk_native_sounding(0, 9));
     output_ports = 2;
     assert(post(backend, 0, 10, 60, 100));
     tk_native_drain();
     assert(count == first + 17 && sent[count - 1].ports == 2);
+    assert(tk_native_sounding(0, 10));
     assert(post(backend, 0, 10, 60, 0));
     tk_native_drain();
+    assert(!tk_native_sounding(0, 10));
     output_ports = 3;
     blocks += 4;
     assert(post(backend, 0, 11, 60, 100));

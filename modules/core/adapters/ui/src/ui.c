@@ -749,6 +749,18 @@ int32_t dk_ui_core_menu_front(const dk_ui_menu *m)
     return 0;
 }
 
+void dk_ui_core_list_title(dk_ui_menu *m, const char *text)
+{
+    if (!m || m->kind != K_LIST || !m->obj)
+        return;
+    uint32_t title;
+    uint8_t alloc = 0;
+    dk_fw_string_std_string_ctor(&title, text, &alloc);
+    dk_fw_menu_set_title(m->obj, &title);
+    dk_fw_string_std_string_dtor(&title);
+    invalidate(m);
+}
+
 static int ui_open(dk_ui_menu *m)
 {
     if (!m || !m->obj || !m->d || m->kind == K_PANEL)

@@ -397,8 +397,12 @@ channels, all 3,339 note-ons had matching releases, with no duplicate starts,
 orphan releases or unreleased notes after USB MIDI Stop. In a separate
 remote-panel run, the native MIDI Stop message came about 1.10 seconds after
 the remote command acknowledgement. All 890 notes on that run had matching
-releases, and the last onset preceded the native Stop by 15 ms. Panel input
-latency and individual gate timing need separate measurements.
+releases, and the last onset preceded the native Stop by 15 ms. Input and
+gate timing were then measured separately with the sequencer stopped. At
+120 BPM and 1/16, remote-panel input took 3.0–5.1 ms to produce the first
+USB MIDI note. USB keyboard input took 37.8–69.5 ms. The median gates were
+65.0 and 66.1 ms respectively at 50% GATE. All 70 notes had matching
+releases. These figures include the host MIDI transport.
 
 With the same pattern playing one sample track and six MIDI tracks, the
 Health page showed 58% estimated DSP usage with ARP disabled and with all
@@ -411,6 +415,17 @@ retained 13–16%. With three or nine arps at 1/80 and 275 BPM, the counter
 recorded zero idle iterations during steady playback. Across those runs
 the USB audio capture reported zero stream errors, and every transmitted
 note had a matching release.
+
+A four-note stock chord appeared on the owner's isolated USB output, and
+the isolated helper output was silent. Individual-to-chord comparison
+measured each pitch within 1.4% of its standalone amplitude. The owner's
+level at zero silenced the POST output, while PRE retained the chord.
+Changing only the owner’s compressor routing changed the complete chord’s
+level. The coupled emulator also measured the owner’s pan, filter,
+overdrive, send and mute behavior. With the sample group, MIDI arp, RELAY,
+PRISM LIVE, and USB audio running together on the device, DSP time was 68%
+on average and peaked at 72% over four measured windows.
+[Routing and DSP measurements](../findings/369-track-keyboard-native-output.md)
 
 The POOL menu stages helper selection in checked track rows. APPLY GROUP
 validates and writes the complete group. NO discards the draft. Recording
@@ -430,6 +445,14 @@ the native trig, or held keys. USER still displays intervals and velocities.
 The coupled POOL test exercised a direct TRIG selection and its indicator.
 On the physical unit, PAGE moved across the 16-step banks. Pressing TRIG 9
 in bank 1 targeted track 1, step 9 and showed its absolute pitch, C4.
+NOTES shows the editor scope and the playing arp pitch in its title while
+keeping the selected row. KEYS voice-count focus names the effective voice
+group. POOL on a MIDI track lists its configured channel, output routes and
+each selected port's note-pair budget.
+
+RATE, OCTS and ORDR edits update the next live or sequenced arp onset
+without shortening the gate already in progress. A sequenced phrase keeps
+values explicitly locked by its seed, including migrated CANOPY locks.
 
 DIN and USB use independent transmit budgets. An onset pays for both messages
 on each selected port. The native worker pairs the release on its original

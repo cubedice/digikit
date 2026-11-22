@@ -1,5 +1,7 @@
+import path from 'node:path';
 import { portAnchorAddress } from '@digi/regression/runtime/device-data.ts';
 import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
+import { dspWords, peak, readFloatWav } from '@digi/regression/runtime/fx-live.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
@@ -10,9 +12,43 @@ import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
 
+const AUDIO_RATE = 48_000;
+const WINDOW = 4096;
+
+/** Measure one channel in a settled window with the same normalization across captures. */
+function tone(pcm: Float32Array, frequency: number, channel: 0 | 1): number {
+  expect(pcm.length).toBeGreaterThanOrEqual(2 * WINDOW);
+  const offset = Math.floor((pcm.length / 2 - WINDOW) / 2);
+  let real = 0;
+  let imaginary = 0;
+  for (let i = 0; i < WINDOW; i++) {
+    const window = (1 - Math.cos((2 * Math.PI * i) / (WINDOW - 1))) / 2;
+    const value = pcm[2 * (i + offset) + channel]! * window;
+    const phase = (2 * Math.PI * frequency * i) / AUDIO_RATE;
+    real += value * Math.cos(phase);
+    imaginary += value * Math.sin(phase);
+  }
+  return Math.hypot(real, imaginary) / WINDOW;
+}
+
+function fundamental(pcm: Float32Array): number {
+  // Track 1 of the stock test card is a one-second 220 Hz sine.
+  let frequency = 0;
+  let maximum = 0;
+  for (let probe = 100; probe <= 550; probe += 2) {
+    const level = tone(pcm, probe, 0);
+    if (level > maximum) {
+      maximum = level;
+      frequency = probe;
+    }
+  }
+  expect(maximum, 'stock sample is audible in the held-note reference').toBeGreaterThan(0.001);
+  return frequency;
+}
+
 describeOn('dt2', 'stock audio helper group', () => {
   const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
-  test('leases an empty helper, keeps it through PLAY and re-admits after switching to WERP', { timeout: 240_000 }, async () => {
+  test('leases an empty helper, follows the owner controls, and re-admits after switching to WERP', { timeout: 240_000 }, async () => {
     const { session } = handle;
     const image = await prepareRuntimePlanModulesOffline(
       session.options, session.runDir, session.runDir,
@@ -86,7 +122,111 @@ describeOn('dt2', 'stock audio helper group', () => {
         await edge('TRIG 9', false);
       }
     };
-    await chord();
+    const rendered = async (label: string, keys: string[], duration = 150) => {
+      await waitEmulated(session, 1200); // The test sample lasts one second at its original pitch.
+      const file = path.join(session.runDir, `pool-${label}.wav`);
+      for (const key of keys) await edge(key, true);
+      try {
+        const active = keys.length === 2 ? both : (value: number | null) => !!((value ?? 0) & 1);
+        await pollEmulated(session, () => word('tk_native_audio_active'), active, {
+          emulatedMs: 2000, message: `${label} owns its expected physical destinations`,
+        });
+        await session.client.call('pcm.tap', { action: 'capture', path: file });
+        try {
+          await waitEmulated(session, duration);
+        } finally {
+          await session.client.call('pcm.tap', { action: 'capture_stop' });
+        }
+      } finally {
+        for (const key of keys.toReversed()) await edge(key, false);
+      }
+      return readFloatWav(file);
+    };
+    const keys = ['TRIG 9', 'TRIG 11'];
+    const frequencies = [
+      fundamental(await rendered('owner-note-1', keys.slice(0, 1))),
+      fundamental(await rendered('owner-note-2', keys.slice(1))),
+    ];
+    expect(Math.abs(frequencies[1]! - frequencies[0]!), 'two distinct pitches').toBeGreaterThan(12);
+    const dry = await rendered('center', keys);
+    const stereo = (pcm: Float32Array, frequency: number) => [tone(pcm, frequency, 0), tone(pcm, frequency, 1)] as const;
+    const sweep = async (encoder: number, direction: 1 | -1) => {
+      for (let i = 0; i < 6; i++) await turn(encoder, 28 * direction);
+    };
+    await tap('AMP');
+    await sweep(7, 1); // AMP G PAN.
+    const pan = await rendered('right', keys);
+    await tap('FLTR');
+    // The card's two pitches are near the bottom of the audio range. With
+    // FREQ open, the MULTI-MODE lowpass/highpass endpoints give a clear test.
+    await sweep(5, 1); // FLTR E FREQ.
+    await sweep(7, 1); // FLTR G TYPE, from lowpass to highpass.
+    await captureRemoteOled(session, 'pool-highpass');
+    const filtered = await rendered('highpass', keys);
+    await sweep(7, -1);
+    const open = await rendered('filter-open', keys);
+    await tap('FX');
+    await sweep(2, 1); // FX B OVERDRIVE.
+    const driven = await rendered('overdrive', keys);
+    for (const frequency of frequencies) {
+      const [dryLeft, dryRight] = stereo(dry, frequency);
+      const [panLeft, panRight] = stereo(pan, frequency);
+      const [, filteredRight] = stereo(filtered, frequency);
+      const [, openRight] = stereo(open, frequency);
+      const [, drivenRight] = stereo(driven, frequency);
+      const cleanRatio = tone(open, frequency * 3, 1) / openRight;
+      const drivenRatio = tone(driven, frequency * 3, 1) / drivenRight;
+      console.info('POOL owner-control PCM', {
+        frequency, dryLeft, dryRight, panLeft, panRight, filteredRight, openRight, cleanRatio, drivenRatio,
+      });
+      expect(Math.min(dryLeft, dryRight), `${frequency} Hz is audible in both channels`).toBeGreaterThan(0.001);
+      expect(panRight, `${frequency} Hz follows the owner's right PAN`).toBeGreaterThan(3 * panLeft);
+      expect(panRight, `${frequency} Hz stays present after panning`).toBeGreaterThan(dryRight / 2);
+      expect(filteredRight, `${frequency} Hz follows the owner's filter`).toBeLessThan(openRight / 2);
+      expect(drivenRatio, `${frequency} Hz acquires overdrive harmonics`).toBeGreaterThan(cleanRatio * 3 + 0.001);
+    }
+    await sweep(2, -1);
+    await waitEmulated(session, 1200);
+    await sweep(6, 1); // FX F REV.
+
+    // Use the original routing menus. The helper is still allowed in the
+    // master when we exclude the owner, so a duplicate dry voice would sound.
+    const routes = async (actions: ('main' | 'sends')[]) => {
+      await tap('SETTINGS');
+      for (let i = 0; i < 9; i++) await tap('UP');
+      for (let i = 0; i < 5; i++) await tap('DOWN');
+      await tap('YES'); // AUDIO ROUTING.
+      for (const route of actions) {
+        await tap('UP');
+        await tap('UP');
+        if (route === 'sends') await tap('DOWN');
+        await tap('YES'); // TO MAIN or TO SEND FX.
+        await tap('TRIG 1');
+        await tap('NO');
+      }
+      await tap('NO');
+      await tap('NO');
+    };
+    const mainMask = async () => (await dspWords(session, 0x252728, 1))[0]!;
+    expect((await mainMask()) & (helperMask | 1)).toBe(0);
+    await routes(['main', 'sends']);
+    await pollEmulated(session, mainMask, (value) => (value & (helperMask | 1)) === 1, {
+      emulatedMs: 2000, message: 'the owner alone is excluded from the native main output',
+    });
+    const excluded = await rendered('owner-excluded', keys, 440);
+    expect(peak(excluded), 'owner exclusion gates dry and FX for the entire group').toBeLessThan(1e-5);
+    await routes(['sends']);
+    const wet = await rendered('owner-reverb-only', keys, 440);
+    expect(peak(wet), 'the owner FX route carries the group even with its dry route excluded').toBeGreaterThan(1e-3);
+    await routes(['main']);
+    await pollEmulated(session, mainMask, (value) => (value & (helperMask | 1)) === 0, {
+      emulatedMs: 2000, message: 'the owner is included in the native main output again',
+    });
+    await tap('FX');
+    await sweep(6, -1);
+    await tap('AMP');
+    await sweep(7, -1);
+    await tap('SRC');
     await tap('PLAY');
     await pollEmulated(session, () => word('pp_position', 20), (flags) => !!((flags ?? 0) & 2), {
       emulatedMs: 2000, message: 'native pattern is running',
