@@ -546,10 +546,6 @@ static void diagram_wavetable(uint8_t *b, const CvDisplay *d)
     diagram_line(b, hi, 12, hi, 14);
     diagram_line(b, x, 13, x, 30);
     diagram_box(b, x - 1, 27, 3, 3, 1);
-    if (d->scan_valid) {
-        int scan_x = 49 + (int)((72 * (uint32_t)d->scan_position + IS_SCAN_MAX / 2) / IS_SCAN_MAX);
-        diagram_rect(b, scan_x - 2, 27, 5, 5);
-    }
     /* The scan-shape glyph is qualitative; RAND intentionally promises no
      * future random trajectory. */
     if (d->raw[CP_WT_SHAPE] == 2)
@@ -770,7 +766,6 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
         /* A held trig shows what it plays: its locks, else the Sound. */
         lock_snapshot(first, &locked);
         instrument_src_display_locked(&display, instrument_src_now(), tune, level, &locked);
-        display.scan_valid = 0; /* Show the held step's programmed position and range. */
         if (display.page == 0 && !display.shared_keyboard)
             instrument_src_preview_step(&display, &locked,
                                         ip_panel_step_note(ip_src_debug[0], first));

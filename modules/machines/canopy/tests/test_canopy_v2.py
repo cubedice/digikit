@@ -3016,36 +3016,6 @@ def test_wavetable_scan_phase_is_shared_and_phrase_restart_ignores_added_notes(c
     assert wt_float(r["state"][239]) == pytest.approx(first, rel=1e-6)
 
 
-@pytest.mark.parametrize("shape", [0, 1, 2])
-def test_wavetable_fast_status_tracks_the_shared_scan_position(canopy, shape):
-    controls = wavetable_fm_controls(depth=100, rate=1000, shape=shape)
-    timing = {0: 5, 1: 96}
-
-    def position(result):
-        ready, *fast = result["status"]
-        assert ready == 1 and fast[1] >> 30 == 0
-        base, scan = (wt_float(result["state"][i]) for i in (233, 247))
-        assert 1 <= fast[10] <= 701
-        assert fast[10] - 1 == pytest.approx(100 * min(7, max(0, base + scan)), abs=1)
-        return fast[10]
-
-    idle = canopy(controls=controls, edits=timing)
-    assert position(idle) != position(
-        canopy(
-            [note(1, 60, 100), note(2, 67, 60)],
-            controls=controls,
-            edits=timing,
-            state_edits={239: wt_bits(0.5)},
-        )
-    )
-    other = {"edits": timing, "state": 0x20054000, "state_edits": {188: 0}}
-    for requested in (fm_controls(), controls):
-        # The FM instance does not report a stale scan position while fading
-        # out its current bank in response to a wavetable request.
-        ready, *fast = canopy(controls=requested, **other)["status"]
-        assert ready == 1 and fast[1] >> 30 == 0 and fast[10] == 0
-
-
 def test_wavetable_pattern_reset_requires_new_boundary_and_preserves_midpattern_progress(
     canopy,
 ):

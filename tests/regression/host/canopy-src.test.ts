@@ -42,7 +42,6 @@ test.each([
   'lock-indicators',
   'wavetable',
   'wavetable-status',
-  'wavetable-scan-status',
   'wavetable-fm',
   'wavetable-fm-status',
   'list-small-turns',

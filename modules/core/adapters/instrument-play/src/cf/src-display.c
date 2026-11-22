@@ -502,11 +502,6 @@ void cv_build_owner(CvDisplay *d, const CsState *s, const IsStatus *status, uint
         return;
     }
     uint32_t flags = status->fast[1], count = (flags >> 20) & 7;
-    uint32_t scan = status->fast[IS_FAST_SCAN];
-    if (d->family == 2 && scan) {
-        d->scan_position = (uint16_t)(scan - 1);
-        d->scan_valid = 1;
-    }
     d->pedal = (uint8_t)((flags >> 8) & 1);
     uint8_t pitches[4], ids[4];
     uint32_t n = 0;

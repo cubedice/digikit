@@ -14,9 +14,6 @@ enum {
     IS_WAIT_MS = 600
 };
 enum { IS_FAST = 0, IS_DETAIL = 1 };
-/* Fast word 10 is zero until the DSP can report scan position. The valid
- * values 1..701 encode frame positions 0.00..7.00 in hundredths. */
-enum { IS_FAST_SCAN = 10, IS_SCAN_MAX = 700 };
 enum {
     IS_CLOCK_LOCAL = 0,
     IS_CLOCK_WAIT = 1,
