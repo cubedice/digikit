@@ -22,7 +22,7 @@ enum TkMidiOutput {
 bool tk_native_init(void);
 
 /* The caller owns one UI task. Release and drain the old binding before changing
- * the track's type. Only admitted physical destinations increase stock capacity. */
+ * the track's type. Audio helper onsets wait for route admission. */
 int tk_native_kind(uint8_t track);
 void tk_native_backend(bool midi, TkTrackBackend *out);
 void tk_native_relay_backend(TkTrackBackend *out);
@@ -31,6 +31,8 @@ bool tk_native_event(void *context, uint8_t track, const TkNoteEvent *event);
 void tk_native_drain(void);
 bool tk_native_idle(uint8_t track);
 bool tk_native_sounding(uint8_t track, uint32_t token);
+uint16_t tk_native_audio_waiting(void);
+uint8_t tk_native_audio_pending(uint8_t owner);
 
 /* DTII 1.17 firmware entry points, isolated for the host scheduler test. */
 int tk_native_channel(uint8_t track);

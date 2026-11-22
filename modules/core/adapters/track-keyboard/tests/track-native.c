@@ -17,6 +17,8 @@ static uint8_t output_ports = 2;
 static int kind[2] = {TK_NATIVE_MIDI, TK_NATIVE_MIDI};
 static uint16_t helper_mask;
 static uint16_t quiet_mask = UINT16_MAX;
+static uint16_t route_ready = UINT16_MAX;
+static bool automatic;
 static bool relay_ready;
 
 bool tk_pool_fw_relay_ready(void)
@@ -24,9 +26,20 @@ bool tk_pool_fw_relay_ready(void)
     return relay_ready;
 }
 
-uint8_t tk_pool_fw_voices(uint8_t track)
+uint8_t tk_pool_fw_limit(uint8_t track)
 {
-    return (track == 0 && helper_mask) ? 2 : 1;
+    return (track == 0 && (helper_mask || automatic)) ? 2 : 1;
+}
+
+bool tk_pool_fw_automatic(uint8_t track)
+{
+    return track == 0 && automatic;
+}
+
+bool tk_pool_fw_start_ready(uint8_t owner, uint8_t track)
+{
+    assert(owner == 0);
+    return (route_ready & (1u << track)) != 0;
 }
 
 uint16_t tk_pool_fw_helpers(uint8_t track)
@@ -205,6 +218,110 @@ static void relay_checks(void)
     count = 0;
 }
 
+static void automatic_checks(const TkTrackBackend *midi, const TkTrackBackend *audio)
+{
+    unsigned first = count;
+    kind[0] = TK_NATIVE_AUDIO;
+    automatic = true;
+    output_ports = TK_MIDI_OUT_USB;
+    blocks += 1500;
+    assert(post(audio, 0, 20, 60, 100));
+    assert(post(audio, 0, 21, 64, 100));
+    assert(!post(audio, 0, 22, 67, 100));
+    assert(tk_native_audio_waiting() == 1 && tk_native_audio_pending(0) == 2);
+    assert(post(midi, 1, 20, 72, 100));
+    tk_native_drain();
+    assert(count == first + 2 && sent[first].track == 0 && sent[first + 1].track == 1);
+    assert(tk_native_audio_waiting() == 1 && tk_native_audio_pending(0) == 1);
+    assert(tk_native_sounding(0, 20) && !tk_native_sounding(0, 21));
+
+    /* The helper is reserved before its routing reaches the DSP. */
+    helper_mask = 1u << 9;
+    route_ready = 1;
+    tk_native_drain();
+    assert(count == first + 2 && tk_native_audio_pending(0) == 1);
+    route_ready |= helper_mask;
+    tk_native_drain();
+    assert(count == first + 3 && sent[first + 2].track == 9);
+    assert(tk_native_audio_waiting() == 0 && tk_native_audio_pending(0) == 0);
+    assert(tk_native_sounding(0, 21));
+
+    assert(post(audio, 0, 21, 64, 0));
+    assert(post(midi, 1, 20, 72, 0));
+    tk_native_drain();
+    assert(count == first + 5 && sent[first + 3].track == 9 && !sent[first + 3].velocity);
+    assert(sent[first + 4].track == 1 && !sent[first + 4].velocity);
+    helper_mask = 0;
+    assert(post(audio, 0, 22, 67, 80));
+    assert(post(audio, 0, 22, 67, 0)); /* Key-up cancels an unplayed helper. */
+    assert(!tk_native_audio_waiting());
+    tk_native_drain();
+    assert(count == first + 5);
+
+    assert(post(audio, 0, 23, 67, 90));
+    blocks += 119;
+    tk_native_drain();
+    assert(tk_native_audio_pending(0) == 1 && !tk_native_sounding(0, 23));
+    ++blocks;
+    helper_mask = 1u << 9;
+    tk_native_drain();
+    assert(!tk_native_audio_waiting() && count == first + 5);
+    helper_mask = 0;
+    assert(post(audio, 0, 20, 60, 0));
+    tk_native_drain();
+    assert(tk_native_idle(0) && tk_native_idle(1));
+
+    /* A failed pool map delays a stock chord only until its first pitch
+     * can fall back. Even a ready helper must not start an expired pitch.
+     */
+    unsigned fallback = count;
+    route_ready = 0;
+    helper_mask = 1u << 9;
+    assert(post(audio, 0, 26, 60, 100));
+    assert(post(audio, 0, 27, 64, 90));
+    blocks += 119;
+    tk_native_drain();
+    assert(count == fallback && tk_native_audio_pending(0) == 2);
+    ++blocks;
+    route_ready = helper_mask;
+    tk_native_drain();
+    assert(count == fallback + 1 && sent[fallback].track == 0 && sent[fallback].pitch == 60);
+    assert(tk_native_sounding(0, 26) && !tk_native_sounding(0, 27));
+    assert(!tk_native_audio_waiting());
+    assert(post(audio, 0, 27, 64, 0));
+    assert(post(audio, 0, 26, 60, 0));
+    tk_native_drain();
+    assert(count == fallback + 2 && sent[fallback + 1].track == 0 &&
+           sent[fallback + 1].pitch == 60 && !sent[fallback + 1].velocity);
+    assert(tk_native_idle(0));
+    helper_mask = 0;
+
+    /* A standalone RELAY head also waits for the new mode to reach DSP. */
+    TkTrackBackend relay;
+    tk_native_relay_backend(&relay);
+    kind[0] = TK_NATIVE_RELAY;
+    relay_ready = true;
+    route_ready = 0;
+    assert(post(&relay, 0, 25, 67, 90));
+    tk_native_drain();
+    assert(tk_native_audio_pending(0) == 1 && !tk_native_sounding(0, 25));
+    route_ready = 1;
+    tk_native_drain();
+    assert(tk_native_sounding(0, 25) && !tk_native_audio_waiting());
+    assert(post(&relay, 0, 25, 67, 0));
+    tk_native_drain();
+    assert(tk_native_idle(0));
+
+    route_ready = 0;
+    unsigned before = count;
+    assert(post(&relay, 0, 28, 67, 90));
+    tk_native_drain();
+    blocks += 120;
+    tk_native_drain();
+    assert(count == before && !tk_native_audio_waiting());
+    assert(tk_native_idle(0));
+}
+
 void track_native_checks(void)
 {
     relay_checks();
@@ -257,4 +374,5 @@ void track_native_checks(void)
     assert(count == 8 && sent[7].track == 0 && sent[7].velocity == 0);
     assert(tk_native_idle(0));
     midi_wire_budget(&midi);
+    automatic_checks(&midi, &audio);
 }

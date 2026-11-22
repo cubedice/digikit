@@ -42,7 +42,7 @@ ARP uses the switch graphic used for RTRG. RATE uses the retrig division display
 
 ## TRIG 4 · Keyboard
 
-For a pitched sample, choose the track, tap [TRIG PARAMETERS] to **Keyboard (4/4)**, turn **A POLY** on and choose **B CHRD = PLAY**. Press H to open **VOICE GROUP**, and assign two available audio tracks. Now hold C–E–G on the panel keyboard or via USB/DIN. The three pitches have independent starts and releases. Lift E and the other two continue. Turn B to MIN and one root plays a minor triad. Turn ARP on at TRIG 3 to hear the same chord one note at a time. On a MIDI track the same example uses its configured output channel. CANOPY uses its own foreground voices.
+For a pitched sample, choose the track, tap [TRIG PARAMETERS] to **Keyboard (4/4)**, turn **A POLY** on and choose **B CHRD = PLAY**. Hold C–E–G on the panel keyboard or via USB/DIN. AUTO borrows two eligible audio tracks when available. Press H to inspect the group. The three pitches have independent starts and releases. Lift E and the other two continue. Turn B to MIN and one root plays a minor triad. Turn ARP on at TRIG 3 to hear the same chord one note at a time. On a MIDI track the same example uses its configured output channel. CANOPY uses its own foreground voices.
 
 | Encoder | Caption | Action |
 | --- | --- | --- |
@@ -66,15 +66,28 @@ Use the same stock header, track column, native widgets, page marks and momentar
 | --- | --- | --- |
 | MIDI machine | One note-on/off pair per pitch on the configured port/channel. Default four sounding notes, optionally up to the 16-note input limit, subject to bandwidth and the receiving synth. | Sustain C and G while E releases, including repeated notes and shared-channel ownership. |
 | CANOPY | One admitted instrument instance supplies four foreground voices and its two short release tails. It accepts resolved notes with individual tokens. | Play four overlapping notes from one track and compare release and steal behavior with CANOPY PLAY today. |
-| Stock sample and single-voice DigiKit machines | A **voice group** uses the source track and explicitly reserved audio tracks, one playback context per sounding pitch. Initial target one to four voices inclusive. One extra voice costs one reserved track. | ONESHOT on T01 with T09 and T10 reserved. Capture distinct pitches and independent AMP releases in stereo with the other tracks playing. |
-| RELAY 0.5.1 | The owner and one reserved audio track provide two independent readers of the same committed tape. Record, overdub and undo stay single-owner. | Play two pitches during an open punch and verify that each reader keeps its own position and that both leave the writer intact. |
+| Stock sample and single-voice DigiKit machines | A **voice group** uses the source track and borrows an eligible audio track for each additional voice, up to four total. | ONESHOT on T01 with T09 and T10 reserved. Capture distinct pitches and independent AMP releases in stereo with the other tracks playing. |
+| RELAY 0.5.1 | The owner and one borrowed audio track provide two independent readers of the same committed tape. Record, overdub and undo stay single-owner. | Play two pitches during an open punch and verify that each reader keeps its own position and that both leave the writer intact. |
 | Other stateful machines | The shared pages and arpeggiator use the machine’s supported note path. Helper tracks require a machine-specific playback and quiet contract. | The group uses only its owner until a helper backend is qualified. |
 
 DTII stock voice groups use native contexts for pitch, playback position, velocity, filter and AMP release. They carry the seed’s sample, slice, start settings and machine-specific pitch behavior. The coupled emulator qualified ONESHOT, WERP, STRETCH, REPITCH, SLICE and GRID individually, including timing-derived pitch and slice selection. CANOPY uses independent voices in its own renderer. The same keyboard shows the effective sounding-voice limit for each track. [Stock machine qualification](../findings/369-track-keyboard-native-output.md) · [CANOPY voice bank](../../modules/machines/canopy/README.md) · [RELAY track contract](../../sdk/dsp/contract/dk_relay_track.inc)
 
-**Assigning a group.** In POOL, tap numbered TRIGs to select helper tracks. LEDs show owner, selected helpers and unavailable tracks. YES applies the set together. NO cancels. Offer empty audio tracks only. Reject tracks with sequencer data, an existing reservation or an active recording. Never automatically claim a muted or momentarily silent track. A reserved helper shows its owner when selected. Release it in POOL to edit or sequence it independently. Keep its stored Sound, mix and pattern data intact. The playback overlay follows the owner’s Sound and resolved locks, and feeds the owner’s mixer, sends and mute exactly once. Owner LEVEL/DATA adjusts the whole chord. Independent helper copies in the mixer would give the chord the wrong level and routing. Prove that routing before enabling the backend.
+**Automatic groups.** POLY enables borrowing on eligible audio machines.
+Each additional pitch uses an empty, quiet sample track while it sounds and
+through its native release tail. The allocator checks the current pattern,
+the selected pattern and already queued destinations. The focused track and
+tracks that already have notes, stored sequence data or another claim are
+excluded from new automatic loans. H POOL reports the owner and its current
+loans against the voice limit. The overlay follows the owner’s Sound and
+resolved locks and feeds the owner’s mixer, sends and mute once. Owner
+LEVEL/DATA adjusts the whole chord.
 
-**Allocation and cleanup.** Give each pressed key an ownership token. Prefer a free voice, then a releasing voice, then the oldest sounding voice. A stale note-off for a stolen token cannot stop the replacement. Keep held notes in the input ledger for arp traversal even if their direct voices were stolen. Preserve normal per-key velocity and pedal ownership. When a generated chord exceeds capacity, admit its root and then its ordered intervals up to the limit, and display the audible count. The complete recipe remains editable. Release reservations and pending notes on disable, reassignment or project change. At a playing-pattern switch, validate the destination group before admitting any notes. Pattern/track copies retain the requested configuration but may claim only eligible helpers. Conflicts show the effective capacity for the destination.
+**Pinned groups.** With transport stopped, POOL can still pin a set of
+empty audio tracks to the pattern. Numbered TRIGs choose helpers, YES applies,
+and NO cancels. Saved groups keep their choices. Apply an empty selection
+to return the group to AUTO.
+
+**Allocation and cleanup.** Give each pressed key an ownership token. Prefer a free voice, then a releasing voice, then the oldest sounding voice. A stale note-off for a stolen token cannot stop the replacement. Keep held notes in the input ledger for arp traversal even if their direct voices were stolen. Preserve normal per-key velocity and pedal ownership. When a generated chord exceeds capacity, admit the first pitch and as many additional pitches as are available, up to VCES. A note waiting for routing has a bounded wait and its release can cancel the start. The complete recipe remains editable. Release reservations and pending notes on disable, reassignment or project change. At a playing-pattern switch, validate the destination group before admitting any notes. Pattern/track copies retain the requested configuration but may claim only eligible helpers. Conflicts show the effective capacity for the destination.
 
 **Recording.** A chord trig holds a pattern-owned recipe. For a named shape, store root, shape, voicing and strum once. For PLAY, store the ordered notes, velocities and individual onset/release offsets when the player rolls a chord or lifts one finger early. Preserve the stock recorder’s placement and quantize policy. Notes placed on different steps keep their own step identity. Pair note-offs across step boundaries, including repeated pitches, and apply TRIG LEN as the phrase limit for an explicitly length-edited seed. Held-step NOTES edits an isolated draft. Save/load, copy, undo and ARP on/off must reproduce the same input performance. A four-note MIDI root/offset seed is the interoperable subset. Extra pitches and independent gates require the versioned pattern extension.
 
@@ -363,11 +376,8 @@ comparisons, only the intentional page-count digit and markers differed.
 
 Physical USB tests measured stopped sample-track arpeggiation and the MIDI
 sequence C–E–G at 120 BPM. The hardware image loaded CANOPY, Overloop,
-PRISM, RELAY and remote together. The full experimental build uses a
-440 KiB module arena to fit the fixed ColdFire code and patch metadata.
-The verified full image leaves 1,672 bytes in ColdFire expansion and retains
-the 151,552-byte DTII staging buffer. On the
-physical unit, switching from shared polyphony to ARP-only initially stayed
+PRISM, RELAY and remote together. On the physical unit, switching from
+shared polyphony to ARP-only initially stayed
 silent until a Sound edit. The playback adapter now publishes the updated
 lane mix when that routing changes. The rebuilt firmware measured RMS
 0.044 in POLY-only and 0.030 in ARP-only without a SOURCE edit. Both modes
@@ -471,8 +481,8 @@ played and released all 96 requested notes. With DIN and USB selected, the
 device admitted 80 notes, and every release appeared on both outputs.
 The DIN driver drained the whole queue in each run. [Measurements](../findings/369-track-keyboard-native-output.md)
 
-RELAY 0.5.1 supports the shared keyboard. With one empty track assigned in
-POOL, the owner and helper each provide a pitched playback head. They read
+RELAY 0.5.1 supports the shared keyboard. When an eligible empty track is
+available, POLY can borrow it for a second pitched playback head. Both read
 the owner’s committed tape, apply track AMP independently, and mix their
 wet signals into the owner’s route. A commit or undo invalidates the readers
 for the old take. A released head waits for its finite native AMP envelope
@@ -495,8 +505,10 @@ the destination track acquired it after STOP.
 
 ### Building the full experimental image
 
-Use a separate checkout to build the 440 KiB image. Set `[limits] arena_bytes`
-to `450560` in the Digitakt II, Digitone II and Syntakt device profiles and
+Use a separate checkout to build the full experimental image with the
+436 KiB module arena. This profile leaves 3,112 bytes in ColdFire expansion
+and retains the 151,552-byte DTII staging buffer. Set `[limits] arena_bytes`
+to `446464` in the Digitakt II, Digitone II and Syntakt device profiles and
 set `ARENA_BYTES` to the same value in the runtime ABI. Regenerate its C and
 Rust ABI files and rebuild `core/runtime` and the Track Keyboard dependencies
 in that checkout. The device profiles and the runtime must agree on the arena

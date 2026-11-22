@@ -3358,6 +3358,41 @@
   {
    "addend": 0,
    "offset": 6,
+   "section": ".text.update_pool",
+   "symbol": ".sec..bss.was_running",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 16,
+   "section": ".text.update_pool",
+   "symbol": "tk_service_active_config",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 24,
+   "section": ".text.update_pool",
+   "symbol": ".sec..bss.pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 30,
+   "section": ".text.update_pool",
+   "symbol": ".sec..bss.editing_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 52,
+   "section": ".text.update_pool",
+   "symbol": "tk_pool_fw_update",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 6,
    "section": ".text.notes_update_title",
    "symbol": ".sec..bss.notes_choosing_step",
    "type": "cf.32"
@@ -4939,30 +4974,30 @@
   },
   {
    "addend": 0,
-   "offset": 44,
+   "offset": 24,
+   "section": ".text.pool_fill",
+   "symbol": "dk_ui_menu_add_text",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 50,
    "section": ".text.pool_fill",
    "symbol": "tk_native_channel",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 82,
+   "offset": 88,
    "section": ".text.pool_fill",
    "symbol": "memset",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 104,
+   "offset": 110,
    "section": ".text.pool_fill",
    "symbol": "tk_trig_decimal",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 130,
-   "section": ".text.pool_fill",
-   "symbol": "dk_ui_menu_add_text",
    "type": "cf.32"
   },
   {
@@ -5008,7 +5043,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 49,
+   "addend": 51,
    "offset": 210,
    "section": ".text.pool_fill",
    "symbol": ".sec..rodata.pool_fill.str1.1",
@@ -5029,7 +5064,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 57,
+   "addend": 59,
    "offset": 274,
    "section": ".text.pool_fill",
    "symbol": ".sec..rodata.pool_fill.str1.1",
@@ -5043,7 +5078,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 61,
+   "addend": 63,
    "offset": 304,
    "section": ".text.pool_fill",
    "symbol": ".sec..rodata.pool_fill.str1.1",
@@ -5057,43 +5092,36 @@
    "type": "cf.32"
   },
   {
-   "addend": 65,
+   "addend": 67,
    "offset": 340,
    "section": ".text.pool_fill",
    "symbol": ".sec..rodata.pool_fill.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 350,
-   "section": ".text.pool_fill",
-   "symbol": "dk_ui_menu_add_text",
-   "type": "cf.32"
-  },
-  {
-   "addend": 72,
-   "offset": 358,
+   "addend": 74,
+   "offset": 352,
    "section": ".text.pool_fill",
    "symbol": ".sec..rodata.pool_fill.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 85,
-   "offset": 370,
+   "addend": 87,
+   "offset": 364,
    "section": ".text.pool_fill",
    "symbol": ".sec..rodata.pool_fill.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 97,
-   "offset": 392,
+   "addend": 99,
+   "offset": 386,
    "section": ".text.pool_fill",
    "symbol": ".sec..rodata.pool_fill.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 410,
+   "offset": 404,
    "section": ".text.pool_fill",
    "symbol": "dk_ui_menu_add_text",
    "type": "cf.32"
@@ -5102,180 +5130,229 @@
    "addend": 0,
    "offset": 418,
    "section": ".text.pool_fill",
-   "symbol": "tk_pool_fw_voices",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 432,
-   "section": ".text.pool_fill",
    "symbol": "tk_trig_decimal",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 458,
+   "offset": 424,
+   "section": ".text.pool_fill",
+   "symbol": "memcpy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 430,
+   "section": ".text.pool_fill",
+   "symbol": "tk_pool_fw_voices",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 436,
+   "section": ".text.pool_fill",
+   "symbol": ".sec..bss.pool_original",
+   "type": "cf.32"
+  },
+  {
+   "addend": 115,
+   "offset": 462,
    "section": ".text.pool_fill",
    "symbol": ".sec..rodata.pool_fill.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 476,
+   "offset": 494,
+   "section": ".text.pool_fill",
+   "symbol": ".sec..text.pool_apply",
+   "type": "cf.32"
+  },
+  {
+   "addend": 129,
+   "offset": 500,
+   "section": ".text.pool_fill",
+   "symbol": ".sec..rodata.pool_fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 506,
    "section": ".text.pool_fill",
    "symbol": "dk_ui_menu_add_action",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 504,
+   "offset": 524,
    "section": ".text.pool_fill",
-   "symbol": "dk_ui_menu_add_text",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 514,
-   "section": ".text.pool_fill",
-   "symbol": ".sec..text.pool_apply",
-   "type": "cf.32"
-  },
-  {
-   "addend": 113,
-   "offset": 520,
-   "section": ".text.pool_fill",
-   "symbol": ".sec..rodata.pool_fill.str1.1",
+   "symbol": ".sec..bss.pool_owner",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 532,
    "section": ".text.pool_fill",
-   "symbol": ".sec..bss.pool_owner",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 540,
-   "section": ".text.pool_fill",
    "symbol": "tk_pool_fw_eligible",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 550,
+   "offset": 542,
    "section": ".text.pool_fill",
    "symbol": ".sec..bss.pool_eligible",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 556,
+   "offset": 548,
    "section": ".text.pool_fill",
    "symbol": ".sec..bss.pool_owner",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 596,
+   "offset": 588,
    "section": ".text.pool_fill",
    "symbol": "memset",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 620,
+   "offset": 612,
    "section": ".text.pool_fill",
    "symbol": "tk_pool_fw_owner",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 626,
+   "offset": 618,
    "section": ".text.pool_fill",
    "symbol": ".sec..bss.pool_request",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 642,
+   "offset": 636,
    "section": ".text.pool_fill",
    "symbol": ".sec..bss.pool_owner",
    "type": "cf.32"
   },
   {
-   "addend": 21,
-   "offset": 654,
+   "addend": 16,
+   "offset": 648,
    "section": ".text.pool_fill",
    "symbol": ".sec..rodata.pool_fill.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 670,
+   "offset": 666,
    "section": ".text.pool_fill",
    "symbol": ".sec..text.pool_toggle",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 682,
+   "offset": 678,
    "section": ".text.pool_fill",
    "symbol": "dk_ui_menu_add_action",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 688,
+   "offset": 684,
    "section": ".text.pool_fill",
    "symbol": ".sec..bss.pool_request",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 712,
+   "offset": 708,
    "section": ".text.pool_fill",
    "symbol": "dk_ui_menu_check",
    "type": "cf.32"
   },
   {
+   "addend": 123,
+   "offset": 738,
+   "section": ".text.pool_fill",
+   "symbol": ".sec..rodata.pool_fill.str1.1",
+   "type": "cf.32"
+  },
+  {
    "addend": 0,
-   "offset": 746,
+   "offset": 748,
+   "section": ".text.pool_fill",
+   "symbol": ".sec..bss.pool_owner",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 774,
+   "section": ".text.pool_fill",
+   "symbol": ".sec..bss.pool_owner",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 782,
+   "section": ".text.pool_fill",
+   "symbol": "tk_pool_fw_limit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 808,
    "section": ".text.pool_fill",
    "symbol": ".sec..bss.pool_original",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 758,
+   "offset": 820,
+   "section": ".text.pool_fill",
+   "symbol": ".sec..bss.pool_owner",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 830,
    "section": ".text.pool_fill",
    "symbol": ".sec..bss.pool_eligible",
    "type": "cf.32"
   },
   {
-   "addend": 30,
-   "offset": 770,
+   "addend": 25,
+   "offset": 842,
    "section": ".text.pool_fill",
    "symbol": ".sec..rodata.pool_fill.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 40,
-   "offset": 784,
+   "addend": 42,
+   "offset": 860,
    "section": ".text.pool_fill",
    "symbol": ".sec..rodata.pool_fill.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 14,
-   "offset": 794,
+   "addend": 9,
+   "offset": 870,
    "section": ".text.pool_fill",
    "symbol": ".sec..rodata.pool_fill.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 7,
-   "offset": 804,
+   "addend": 0,
+   "offset": 880,
+   "section": ".text.pool_fill",
+   "symbol": ".sec..rodata.pool_fill.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 35,
+   "offset": 890,
    "section": ".text.pool_fill",
    "symbol": ".sec..rodata.pool_fill.str1.1",
    "type": "cf.32"
@@ -5673,7 +5750,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 14,
+   "addend": 9,
    "offset": 306,
    "section": ".text.notes_panel",
    "symbol": ".sec..rodata.pool_fill.str1.1",
@@ -6395,609 +6472,581 @@
   },
   {
    "addend": 0,
-   "offset": 22,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.was_running",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 34,
-   "section": ".text.poll",
-   "symbol": "tk_service_active_config",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 42,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.pattern",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 52,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.editing_pattern",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 64,
+   "offset": 26,
    "section": ".text.poll",
    "symbol": "tk_service_set_voice_capacity",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 82,
-   "section": ".text.poll",
-   "symbol": "tk_pool_fw_update",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 102,
+   "offset": 48,
    "section": ".text.poll",
    "symbol": "tk_pool_fw_reserved",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 118,
+   "offset": 64,
    "section": ".text.poll",
    "symbol": "tk_native_kind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 128,
+   "offset": 74,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 148,
+   "offset": 94,
    "section": ".text.poll",
    "symbol": ".sec..bss.kind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 166,
+   "offset": 112,
    "section": ".text.poll",
    "symbol": "tk_midi_cancel_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 176,
+   "offset": 122,
    "section": ".text.poll",
    "symbol": "tk_service_set_backend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 202,
+   "offset": 148,
    "section": ".text.poll",
    "symbol": "tk_canopy_sync",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 216,
+   "offset": 162,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 224,
+   "offset": 170,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 238,
+   "offset": 184,
    "section": ".text.poll",
    "symbol": "tk_native_idle",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 260,
+   "offset": 206,
    "section": ".text.poll",
    "symbol": "tk_canopy_backend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 272,
+   "offset": 218,
    "section": ".text.poll",
    "symbol": "tk_service_set_backend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 284,
+   "offset": 230,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 290,
+   "offset": 236,
    "section": ".text.poll",
    "symbol": ".sec..bss.kind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 302,
+   "offset": 248,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 316,
+   "offset": 262,
    "section": ".text.poll",
    "symbol": ".sec..bss.pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 326,
+   "offset": 272,
    "section": ".text.poll",
    "symbol": ".sec..bss.editing_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 340,
+   "offset": 286,
    "section": ".text.poll",
    "symbol": "tk_canopy_sync",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 360,
+   "offset": 306,
    "section": ".text.poll",
    "symbol": "tk_sequence_set_midi",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 366,
+   "offset": 312,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 396,
+   "offset": 342,
    "section": ".text.poll",
    "symbol": "tk_sequence_set_relay",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 414,
+   "offset": 360,
    "section": ".text.poll",
    "symbol": "pp_position",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 420,
+   "offset": 366,
    "section": ".text.poll",
    "symbol": ".sec..bss.boundary",
    "type": "cf.32"
   },
   {
    "addend": 20,
-   "offset": 428,
+   "offset": 374,
    "section": ".text.poll",
    "symbol": "pp_position",
    "type": "cf.32"
   },
   {
    "addend": 28,
-   "offset": 442,
+   "offset": 388,
    "section": ".text.poll",
    "symbol": "pp_position",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 450,
+   "offset": 396,
    "section": ".text.poll",
    "symbol": "tk_service_boundary",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 456,
+   "offset": 402,
    "section": ".text.poll",
    "symbol": ".sec..bss.boundary",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 462,
+   "offset": 408,
    "section": ".text.poll",
    "symbol": "dkrt_blocks",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 470,
+   "offset": 416,
    "section": ".text.poll",
    "symbol": ".sec..bss.block",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 476,
+   "offset": 422,
    "section": ".text.poll",
    "symbol": ".sec..bss.block",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 490,
+   "offset": 436,
    "section": ".text.poll",
    "symbol": ".sec..text.clear_retrigs",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 496,
+   "offset": 442,
    "section": ".text.poll",
    "symbol": ".sec..text.tk_panel_cancel",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 502,
+   "offset": 448,
    "section": ".text.poll",
    "symbol": "tk_midi_reset",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 522,
+   "offset": 468,
    "section": ".text.poll",
    "symbol": ".sec..bss.block_fraction",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 536,
+   "offset": 482,
    "section": ".text.poll",
    "symbol": ".sec..bss.block_fraction",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 542,
+   "offset": 488,
    "section": ".text.poll",
    "symbol": "pp_selected_tempo",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 554,
+   "offset": 500,
    "section": ".text.poll",
    "symbol": "tk_service_tick",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 560,
+   "offset": 506,
    "section": ".text.poll",
    "symbol": "tk_midi_poll",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 566,
+   "offset": 512,
    "section": ".text.poll",
    "symbol": ".sec..bss.was_running",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 574,
+   "offset": 520,
    "section": ".text.poll",
    "symbol": ".sec..bss.pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 584,
+   "offset": 530,
    "section": ".text.poll",
    "symbol": ".sec..bss.editing_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 596,
+   "offset": 542,
    "section": ".text.poll",
    "symbol": "tk_sequence_poll",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 604,
+   "offset": 550,
    "section": ".text.poll",
    "symbol": ".sec..bss.was_running",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 614,
+   "offset": 560,
    "section": ".text.poll",
    "symbol": ".sec..bss.pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 630,
+   "offset": 576,
    "section": ".text.poll",
    "symbol": "tk_sequence_native_targets",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 636,
+   "offset": 582,
    "section": ".text.poll",
    "symbol": "tk_fw_project",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 654,
+   "offset": 600,
    "section": ".text.poll",
    "symbol": "tk_fw_active_kit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 680,
+   "offset": 626,
    "section": ".text.poll",
    "symbol": ".sec..bss.pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 712,
+   "offset": 658,
    "section": ".text.poll",
    "symbol": "tk_pattern_fw_existing",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 728,
+   "offset": 674,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 742,
+   "offset": 688,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 766,
+   "offset": 712,
    "section": ".text.poll",
    "symbol": "tk_service_active_config",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 782,
+   "offset": 728,
    "section": ".text.poll",
    "symbol": ".sec..bss.kind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 834,
+   "offset": 780,
    "section": ".text.poll",
    "symbol": "tk_canopy_routed",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 854,
+   "offset": 800,
    "section": ".text.poll",
    "symbol": "tk_sequence_canopy_sound_fallback",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 924,
+   "offset": 870,
    "section": ".text.poll",
    "symbol": "tk_sequence_prepare",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 932,
+   "offset": 878,
    "section": ".text.poll",
    "symbol": "pp_selected_tempo",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 942,
+   "offset": 888,
    "section": ".text.poll",
    "symbol": ".sec..bss.editing_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 948,
+   "offset": 894,
    "section": ".text.poll",
    "symbol": "tk_capture_poll",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 956,
+   "offset": 900,
+   "section": ".text.poll",
+   "symbol": ".sec..text.update_pool",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 908,
    "section": ".text.poll",
    "symbol": "tk_capture_dropped",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 962,
+   "offset": 914,
    "section": ".text.poll",
    "symbol": ".sec..bss.capture_drops.6",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 970,
+   "offset": 922,
    "section": ".text.poll",
    "symbol": ".sec..bss.capture_notice.5",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 976,
+   "offset": 928,
    "section": ".text.poll",
    "symbol": "tk_capture_dropped",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 982,
+   "offset": 934,
    "section": ".text.poll",
    "symbol": ".sec..bss.capture_drops.6",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1008,
+   "offset": 960,
    "section": ".text.poll",
    "symbol": ".sec..bss.capture_notice.5",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1014,
+   "offset": 966,
    "section": ".text.poll",
    "symbol": "dk_ui_core_handle",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1020,
+   "offset": 972,
    "section": ".text.poll",
    "symbol": ".sec..rodata.note_insert.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1028,
+   "offset": 980,
    "section": ".text.poll",
    "symbol": "dk_ui_toast",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1036,
+   "offset": 988,
    "section": ".text.poll",
    "symbol": "tk_native_drain",
    "type": "cf.32"
   },
   {
    "addend": 44,
-   "offset": 1042,
+   "offset": 994,
    "section": ".text.poll",
    "symbol": ".sec..bss.draft",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1056,
+   "offset": 1008,
    "section": ".text.poll",
    "symbol": ".sec..bss.notes_title_at",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1068,
+   "offset": 1020,
    "section": ".text.poll",
    "symbol": ".sec..bss.notes_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1074,
+   "offset": 1026,
    "section": ".text.poll",
    "symbol": "dk_ui_core_menu_front",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1088,
+   "offset": 1040,
    "section": ".text.poll",
    "symbol": ".sec..bss.notes_title_at",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1102,
+   "offset": 1054,
    "section": ".text.poll",
    "symbol": ".sec..text.notes_update_title",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1122,
+   "offset": 1074,
    "section": ".text.poll",
    "symbol": "tk_native_relay_backend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1142,
+   "offset": 1094,
    "section": ".text.poll",
    "symbol": "tk_native_backend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1166,
+   "offset": 1118,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1182,
+   "offset": 1134,
    "section": ".text.poll",
-   "symbol": "tk_pool_fw_voices",
+   "symbol": "tk_pool_fw_limit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1258,
+   "offset": 1210,
    "section": ".text.poll",
    "symbol": "tk_sequence_target_kind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1266,
+   "offset": 1218,
    "section": ".text.poll",
    "symbol": ".sec..bss.kind",
    "type": "cf.32"
@@ -7361,70 +7410,84 @@
   },
   {
    "addend": 0,
-   "offset": 266,
+   "offset": 270,
    "section": ".text.tk_panel_on",
    "symbol": "tk_service_select_chord",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 274,
+   "offset": 278,
    "section": ".text.tk_panel_on",
    "symbol": "tk_capture_shape_changed",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 284,
+   "offset": 288,
    "section": ".text.tk_panel_on",
    "symbol": ".sec..bss.panel_claims",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 290,
+   "offset": 294,
    "section": ".text.tk_panel_on",
    "symbol": ".sec..bss.panel_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 304,
+   "offset": 308,
    "section": ".text.tk_panel_on",
    "symbol": ".sec..bss.tk_panel_claim_hits",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 312,
+   "offset": 316,
    "section": ".text.tk_panel_on",
    "symbol": ".sec..bss.panel_claims",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 318,
+   "offset": 322,
    "section": ".text.tk_panel_on",
    "symbol": "pp_selected_tempo",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 330,
+   "offset": 334,
    "section": ".text.tk_panel_on",
    "symbol": "tk_service_tick",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 336,
+   "offset": 340,
+   "section": ".text.tk_panel_on",
+   "symbol": "tk_native_audio_waiting",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 354,
+   "section": ".text.tk_panel_on",
+   "symbol": ".sec..text.update_pool",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 360,
    "section": ".text.tk_panel_on",
    "symbol": "tk_native_drain",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 362,
+   "offset": 384,
    "section": ".text.tk_panel_on",
    "symbol": "tk_service_press",
    "type": "cf.32"
@@ -7662,147 +7725,154 @@
   },
   {
    "addend": 0,
-   "offset": 96,
-   "section": ".text.tk_trig_open_pool",
-   "symbol": "pp_transport_running",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 106,
-   "section": ".text.tk_trig_open_pool",
-   "symbol": "dk_ui_core_handle",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 112,
-   "section": ".text.tk_trig_open_pool",
-   "symbol": ".sec..rodata.pool_editable.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 120,
-   "section": ".text.tk_trig_open_pool",
-   "symbol": ".sec..bss.pool_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 128,
-   "section": ".text.tk_trig_open_pool",
-   "symbol": "dk_ui_core_handle",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 134,
-   "section": ".text.tk_trig_open_pool",
-   "symbol": ".sec..rodata.desc.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 142,
-   "section": ".text.tk_trig_open_pool",
-   "symbol": "dk_ui_menu_new",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 152,
-   "section": ".text.tk_trig_open_pool",
-   "symbol": ".sec..bss.pool_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 174,
-   "section": ".text.tk_trig_open_pool",
-   "symbol": ".sec..bss.pool_owner",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 180,
+   "offset": 98,
    "section": ".text.tk_trig_open_pool",
    "symbol": "tk_service_helpers",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 186,
+   "offset": 110,
+   "section": ".text.tk_trig_open_pool",
+   "symbol": "pp_transport_running",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 120,
+   "section": ".text.tk_trig_open_pool",
+   "symbol": "dk_ui_core_handle",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 126,
+   "section": ".text.tk_trig_open_pool",
+   "symbol": ".sec..rodata.pool_editable.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 134,
+   "section": ".text.tk_trig_open_pool",
+   "symbol": ".sec..bss.pool_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 142,
+   "section": ".text.tk_trig_open_pool",
+   "symbol": "dk_ui_core_handle",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 148,
+   "section": ".text.tk_trig_open_pool",
+   "symbol": ".sec..rodata.desc.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 156,
+   "section": ".text.tk_trig_open_pool",
+   "symbol": "dk_ui_menu_new",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 166,
+   "section": ".text.tk_trig_open_pool",
+   "symbol": ".sec..bss.pool_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 188,
+   "section": ".text.tk_trig_open_pool",
+   "symbol": ".sec..bss.pool_owner",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 194,
+   "section": ".text.tk_trig_open_pool",
+   "symbol": "tk_service_helpers",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 200,
    "section": ".text.tk_trig_open_pool",
    "symbol": ".sec..bss.editing_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 192,
+   "offset": 206,
    "section": ".text.tk_trig_open_pool",
    "symbol": ".sec..bss.pool_request",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 198,
+   "offset": 212,
    "section": ".text.tk_trig_open_pool",
    "symbol": ".sec..bss.pool_original",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 204,
+   "offset": 218,
    "section": ".text.tk_trig_open_pool",
    "symbol": ".sec..bss.pool_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 210,
+   "offset": 224,
    "section": ".text.tk_trig_open_pool",
    "symbol": "tk_pattern_fw_revision",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 218,
+   "offset": 232,
    "section": ".text.tk_trig_open_pool",
    "symbol": ".sec..bss.pool_revision",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 228,
+   "offset": 242,
    "section": ".text.tk_trig_open_pool",
    "symbol": ".sec..text.picker_enter",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 238,
+   "offset": 252,
    "section": ".text.tk_trig_open_pool",
    "symbol": ".sec..bss.pool_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 244,
+   "offset": 258,
    "section": ".text.tk_trig_open_pool",
    "symbol": "dk_ui_menu_select",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 250,
+   "offset": 264,
    "section": ".text.tk_trig_open_pool",
    "symbol": ".sec..bss.pool_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 256,
+   "offset": 270,
    "section": ".text.tk_trig_open_pool",
    "symbol": "dk_ui_menu_open",
    "type": "cf.32"
@@ -8222,21 +8292,49 @@
   },
   {
    "addend": 0,
-   "offset": 14,
+   "offset": 12,
    "section": ".text.oldest",
    "symbol": ".sec..bss.notes",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 24,
+   "offset": 28,
    "section": ".text.oldest",
    "symbol": ".sec..bss.serial",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 60,
+   "offset": 12,
+   "section": ".text.finish_start.isra.0",
+   "symbol": ".sec..bss.audio_pending",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 34,
+   "section": ".text.finish_start.isra.0",
+   "symbol": ".sec..bss.audio_waiting",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 44,
+   "section": ".text.finish_start.isra.0",
+   "symbol": ".sec..bss.audio_waiting",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 50,
+   "section": ".text.finish_start.isra.0",
+   "symbol": ".sec..bss.starts",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 62,
    "section": ".text.tk_native_event",
    "symbol": ".sec..bss.notes",
    "type": "cf.32"
@@ -8245,77 +8343,105 @@
    "addend": 0,
    "offset": 124,
    "section": ".text.tk_native_event",
+   "symbol": ".sec..text.finish_start.isra.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 140,
+   "section": ".text.tk_native_event",
    "symbol": "memset",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 130,
-   "section": ".text.tk_native_event",
-   "symbol": ".sec..bss.starts",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 156,
+   "offset": 168,
    "section": ".text.tk_native_event",
    "symbol": ".sec..bss.releases",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 222,
-   "section": ".text.tk_native_event",
-   "symbol": "tk_pool_fw_voices",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 234,
-   "section": ".text.tk_native_event",
-   "symbol": "tk_pool_fw_reserved",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 278,
-   "section": ".text.tk_native_event",
-   "symbol": ".sec..bss.serial",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 288,
-   "section": ".text.tk_native_event",
-   "symbol": ".sec..bss.serial",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 320,
-   "section": ".text.tk_native_event",
-   "symbol": "memset",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 358,
-   "section": ".text.tk_native_event",
-   "symbol": ".sec..bss.starts",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 392,
+   "offset": 232,
    "section": ".text.tk_native_event",
    "symbol": "tk_pool_fw_relay_ready",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 418,
+   "offset": 248,
+   "section": ".text.tk_native_event",
+   "symbol": "tk_pool_fw_reserved",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 286,
+   "section": ".text.tk_native_event",
+   "symbol": ".sec..bss.serial",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 296,
+   "section": ".text.tk_native_event",
+   "symbol": ".sec..bss.serial",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 332,
    "section": ".text.tk_native_event",
    "symbol": "tk_sequence_audio",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 346,
+   "section": ".text.tk_native_event",
+   "symbol": "dkrt_blocks",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 362,
+   "section": ".text.tk_native_event",
+   "symbol": "memset",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 424,
+   "section": ".text.tk_native_event",
+   "symbol": ".sec..bss.audio_pending",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 434,
+   "section": ".text.tk_native_event",
+   "symbol": ".sec..bss.audio_waiting",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 452,
+   "section": ".text.tk_native_event",
+   "symbol": ".sec..bss.audio_waiting",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 458,
+   "section": ".text.tk_native_event",
+   "symbol": ".sec..bss.starts",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 476,
+   "section": ".text.tk_native_event",
+   "symbol": "tk_pool_fw_limit",
    "type": "cf.32"
   },
   {
@@ -8344,6 +8470,20 @@
    "offset": 50,
    "section": ".text.tk_native_init",
    "symbol": ".sec..bss.notes",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text.tk_native_audio_waiting",
+   "symbol": ".sec..bss.audio_waiting",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 12,
+   "section": ".text.tk_native_audio_pending",
+   "symbol": ".sec..bss.audio_pending",
    "type": "cf.32"
   },
   {
@@ -8509,224 +8649,266 @@
   },
   {
    "addend": 0,
-   "offset": 250,
+   "offset": 248,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..text.oldest",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 256,
+   "offset": 254,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.releases",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 264,
+   "offset": 262,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.starts",
    "type": "cf.32"
   },
   {
    "addend": 162,
-   "offset": 312,
+   "offset": 314,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..text.send",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 338,
+   "offset": 340,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.active_helpers",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 350,
+   "offset": 352,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.tk_native_audio_active",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 358,
+   "offset": 360,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.active_helpers",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 364,
+   "offset": 366,
    "section": ".text.tk_native_drain",
    "symbol": "tk_pool_fw_note_edge",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 380,
+   "offset": 382,
    "section": ".text.tk_native_drain",
    "symbol": "memset",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 386,
+   "offset": 394,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.releases",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 436,
+   "offset": 446,
    "section": ".text.tk_native_drain",
    "symbol": "tk_native_kind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 460,
+   "offset": 468,
    "section": ".text.tk_native_drain",
    "symbol": "tk_pool_fw_relay_ready",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 490,
+   "offset": 486,
    "section": ".text.tk_native_drain",
-   "symbol": "tk_pool_fw_reserved",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 510,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_pool_fw_helpers",
+   "symbol": "tk_pool_fw_automatic",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 522,
    "section": ".text.tk_native_drain",
-   "symbol": ".sec..bss.tk_native_audio_active",
+   "symbol": ".sec..bss.budget_at",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 538,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_fw_reserved",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 552,
    "section": ".text.tk_native_drain",
-   "symbol": "tk_native_channel",
+   "symbol": "tk_pool_fw_helpers",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 560,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_native_midi_ports",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 586,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..data.usb_budget",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 608,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..data.din_budget",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 626,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..bss.notes",
-   "type": "cf.32"
-  },
-  {
-   "addend": 162,
-   "offset": 728,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..text.send",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 768,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..data.usb_budget",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 786,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..data.din_budget",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 794,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..bss.starts",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 828,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_pool_fw_quiet",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 888,
-   "section": ".text.tk_native_drain",
-   "symbol": "memset",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 894,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..bss.starts",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 904,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_runtime_midi_busy",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 930,
+   "offset": 568,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.tk_native_audio_active",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 940,
+   "offset": 618,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_fw_start_ready",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 712,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_native_channel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 720,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_native_midi_ports",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 744,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..data.usb_budget",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 766,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..data.din_budget",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 796,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..text.finish_start.isra.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 810,
+   "section": ".text.tk_native_drain",
+   "symbol": "memset",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 850,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_fw_start_ready",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 888,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_fw_quiet",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 962,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..text.finish_start.isra.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 976,
+   "section": ".text.tk_native_drain",
+   "symbol": "memset",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 992,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_runtime_midi_busy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1010,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..bss.notes",
+   "type": "cf.32"
+  },
+  {
+   "addend": 162,
+   "offset": 1112,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..text.send",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1150,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..data.usb_budget",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1168,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..data.din_budget",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1188,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..text.finish_start.isra.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1218,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..bss.tk_native_audio_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1228,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.active_helpers",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 948,
+   "offset": 1236,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.active_helpers",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 956,
+   "offset": 1244,
    "section": ".text.tk_native_drain",
    "symbol": "tk_pool_fw_note_edge",
    "type": "cf.32"
@@ -15271,14 +15453,21 @@
   },
   {
    "addend": 0,
-   "offset": 280,
+   "offset": 136,
    "section": ".text.tk_pool_update",
-   "symbol": "memset",
+   "symbol": ".sec..text.request_for",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 318,
+   "offset": 268,
+   "section": ".text.tk_pool_update",
+   "symbol": ".sec..text.request_for",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 472,
    "section": ".text.tk_pool_update",
    "symbol": "tk_assign_helpers",
    "type": "cf.32"
@@ -15320,42 +15509,42 @@
   },
   {
    "addend": 0,
-   "offset": 18,
+   "offset": 20,
    "section": ".text.tk_pool_publish_frame",
    "symbol": "tk_pool_owner_frame",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 26,
+   "offset": 28,
    "section": ".text.tk_pool_publish_frame",
    "symbol": ".sec..bss.published",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 40,
+   "offset": 46,
    "section": ".text.tk_pool_publish_frame",
    "symbol": ".sec..bss.maps",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 110,
+   "offset": 132,
    "section": ".text.tk_pool_publish_frame",
    "symbol": ".sec..bss.published",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2,
+   "offset": 12,
    "section": ".text.tk_pool_link_write",
    "symbol": ".sec..bss.published",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 16,
+   "offset": 20,
    "section": ".text.tk_pool_link_write",
    "symbol": ".sec..bss.maps",
    "type": "cf.32"
@@ -15369,49 +15558,49 @@
   },
   {
    "addend": 0,
-   "offset": 28,
+   "offset": 32,
    "section": ".text.tk_pool_link_project",
    "symbol": ".sec..bss.maps",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 70,
+   "offset": 74,
    "section": ".text.tk_pool_link_project",
    "symbol": ".sec..bss.projected",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 76,
+   "offset": 80,
    "section": ".text.tk_pool_link_project",
    "symbol": "memcpy",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 84,
+   "offset": 88,
    "section": ".text.tk_pool_link_project",
    "symbol": ".sec..bss.projected",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 90,
+   "offset": 94,
    "section": ".text.tk_pool_link_project",
    "symbol": "tk_pool_project_frame",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 104,
+   "offset": 108,
    "section": ".text.tk_pool_link_project",
    "symbol": ".sec..bss.projected",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 10,
+   "offset": 14,
    "section": ".text.tk_pool_link_reply",
    "symbol": ".sec..bss.reply_clock",
    "type": "cf.32"
@@ -15425,21 +15614,7 @@
   },
   {
    "addend": 0,
-   "offset": 52,
-   "section": ".text.tk_pool_link_reply",
-   "symbol": ".sec..bss.reply_word",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 82,
-   "section": ".text.tk_pool_link_reply",
-   "symbol": ".sec..bss.reply_time",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 118,
+   "offset": 62,
    "section": ".text.tk_pool_link_reply",
    "symbol": ".sec..bss.reply_word",
    "type": "cf.32"
@@ -15447,6 +15622,27 @@
   {
    "addend": 0,
    "offset": 124,
+   "section": ".text.tk_pool_link_reply",
+   "symbol": ".sec..bss.reply_word",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 130,
+   "section": ".text.tk_pool_link_reply",
+   "symbol": ".sec..bss.reply_tag",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 136,
+   "section": ".text.tk_pool_link_reply",
+   "symbol": ".sec..bss.reply_time",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 148,
    "section": ".text.tk_pool_link_reply",
    "symbol": ".sec..bss.reply_time",
    "type": "cf.32"
@@ -15476,6 +15672,48 @@
    "addend": 0,
    "offset": 28,
    "section": ".text.tk_pool_link_quiet",
+   "symbol": ".sec..bss.reply_clock",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text.tk_pool_link_ready",
+   "symbol": ".sec..bss.published",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.tk_pool_link_ready",
+   "symbol": ".sec..bss.reply_time",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 16,
+   "section": ".text.tk_pool_link_ready",
+   "symbol": ".sec..bss.reply_tag",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 22,
+   "section": ".text.tk_pool_link_ready",
+   "symbol": ".sec..bss.maps",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 58,
+   "section": ".text.tk_pool_link_ready",
+   "symbol": ".sec..bss.reply_time",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 68,
+   "section": ".text.tk_pool_link_ready",
    "symbol": ".sec..bss.reply_clock",
    "type": "cf.32"
   },
@@ -15545,6 +15783,90 @@
   {
    "addend": 0,
    "offset": 12,
+   "section": ".text.tk_pool_fw_automatic",
+   "symbol": ".sec..bss.automatic_owners",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 22,
+   "section": ".text.tk_pool_fw_start_ready",
+   "symbol": ".sec..bss.pool",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 28,
+   "section": ".text.tk_pool_fw_start_ready",
+   "symbol": "tk_pool_can_start",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 46,
+   "section": ".text.tk_pool_fw_start_ready",
+   "symbol": "tk_pool_link_ready",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 56,
+   "section": ".text.tk_pool_fw_start_ready",
+   "symbol": "tk_native_audio_pending",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 72,
+   "section": ".text.tk_pool_fw_start_ready",
+   "symbol": ".sec..bss.planned_chords",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 92,
+   "section": ".text.tk_pool_fw_start_ready",
+   "symbol": ".sec..bss.wanted",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 102,
+   "section": ".text.tk_pool_fw_start_ready",
+   "symbol": ".sec..bss.pool",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 124,
+   "section": ".text.tk_pool_fw_start_ready",
+   "symbol": "tk_pool_link_ready",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 134,
+   "section": ".text.tk_pool_fw_start_ready",
+   "symbol": ".sec..bss.relay_owners",
+   "type": "cf.32"
+  },
+  {
+   "addend": 68,
+   "offset": 146,
+   "section": ".text.tk_pool_fw_start_ready",
+   "symbol": ".sec..bss.pool",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 158,
+   "section": ".text.tk_pool_fw_start_ready",
+   "symbol": "tk_pool_link_ready",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 12,
    "section": ".text.tk_pool_fw_helpers",
    "symbol": ".sec..bss.pool",
    "type": "cf.32"
@@ -15565,6 +15887,34 @@
   },
   {
    "addend": 0,
+   "offset": 10,
+   "section": ".text.tk_pool_fw_limit",
+   "symbol": ".sec..text.tk_pool_fw_automatic",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 24,
+   "section": ".text.tk_pool_fw_limit",
+   "symbol": ".sec..text.tk_pool_fw_reserved",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 36,
+   "section": ".text.tk_pool_fw_limit",
+   "symbol": ".sec..bss.relay_owners",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 58,
+   "section": ".text.tk_pool_fw_limit",
+   "symbol": ".sec..text.tk_pool_fw_voices",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 14,
    "section": ".text.tk_pool_fw_quiet",
    "symbol": "tk_pool_link_quiet",
@@ -15579,9 +15929,23 @@
   },
   {
    "addend": 0,
-   "offset": 36,
+   "offset": 38,
    "section": ".text.tk_pool_fw_note_edge",
    "symbol": ".sec..bss.guard_at",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 54,
+   "section": ".text.tk_pool_fw_note_edge",
+   "symbol": ".sec..bss.planned_chords",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 64,
+   "section": ".text.tk_pool_fw_note_edge",
+   "symbol": ".sec..bss.planned_chords",
    "type": "cf.32"
   },
   {
@@ -15607,476 +15971,672 @@
   },
   {
    "addend": 0,
-   "offset": 34,
+   "offset": 32,
    "section": ".text.tk_pool_fw_update",
    "symbol": "tk_fw_active_kit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 46,
+   "offset": 42,
    "section": ".text.tk_pool_fw_update",
    "symbol": "tk_pattern_fw_revision",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 52,
+   "offset": 48,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.last_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 60,
+   "offset": 56,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.last_revision",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 72,
+   "offset": 64,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.last_kit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 86,
+   "offset": 74,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.last_revision",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 92,
+   "offset": 80,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 100,
+   "offset": 88,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.last_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 94,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.last_kit",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 106,
    "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.last_kit",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 118,
-   "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 134,
+   "offset": 114,
    "section": ".text.tk_pool_fw_update",
-   "symbol": "tk_pool_link_quiet",
+   "symbol": "tk_native_audio_waiting",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 140,
+   "offset": 126,
    "section": ".text.tk_pool_fw_update",
    "symbol": "tk_native_audio_active",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 154,
+   "offset": 144,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": "tk_pool_link_quiet",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 156,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.automatic_owners",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 164,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.relay_owners",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 162,
+   "offset": 170,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.eligible",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 168,
+   "offset": 176,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.owners",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 178,
+   "offset": 182,
    "section": ".text.tk_pool_fw_update",
    "symbol": "tk_capture_midi_mode",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 188,
+   "offset": 236,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.reserved",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 206,
+   "offset": 262,
    "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.previously_admitting",
+   "symbol": "memset",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 244,
+   "offset": 278,
    "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..text.tk_pool_fw_eligible",
+   "symbol": "tk_sequence_native_targets",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 264,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.relay_owners",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 302,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.reserved",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 314,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": "dkrt_irq_mask",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 324,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": "tk_pool_fw_audio_queue",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 414,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.previously_admitting",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 428,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.rescanned",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 440,
+   "offset": 292,
    "section": ".text.tk_pool_fw_update",
    "symbol": "pp_current_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 448,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": "rtm_is_type",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 464,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..rodata.module_id.0",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 474,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": "dkrt_module",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 524,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.relay_head_package",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 534,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..text.empty_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 540,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.empty_tracks",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 584,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.empty_tracks",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 600,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.empty_tracks",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 618,
+   "offset": 338,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.rescanned",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 628,
+   "offset": 356,
    "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.machine",
+   "symbol": ".sec..bss.scan_patterns",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 640,
+   "offset": 390,
    "section": ".text.tk_pool_fw_update",
-   "symbol": "tk_fw_track_type",
+   "symbol": ".sec..bss.scan_kits",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 398,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.scan_kits",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 672,
+   "offset": 406,
    "section": ".text.tk_pool_fw_update",
-   "symbol": "tk_fw_midi_mode",
+   "symbol": ".sec..bss.scan_kits",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 412,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.scan_kits",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 692,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": "tk_canopy_is_owner",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 730,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.relay_owners",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 738,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.owners",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 744,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.empty_tracks",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 756,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.eligible",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 784,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.relay_head_package",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 792,
+   "offset": 432,
    "section": ".text.tk_pool_fw_update",
    "symbol": "rtm_is_type",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 814,
+   "offset": 448,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..rodata.module_id.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 458,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": "dkrt_module",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 542,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.relay_head_package",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 552,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..text.empty_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 566,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.empty_tracks",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 654,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.empty_tracks",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 664,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.empty_tracks",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 684,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": "tk_sequence_target_kind",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 714,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.rescanned",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 724,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.machine",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 734,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": "tk_fw_track_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 766,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": "tk_fw_midi_mode",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 786,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": "tk_canopy_is_owner",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 828,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.relay_owners",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 824,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.relay_owners",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 834,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.pool",
-   "type": "cf.32"
-  },
-  {
-   "addend": 32,
-   "offset": 846,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.pool",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 858,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.eligible",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 960,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": "dkrt_irq_restore",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 968,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.preparing",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 974,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.guard_at",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 982,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.reserved",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1006,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.preparing",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1026,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.reserved",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1060,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.generation",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1070,
+   "offset": 836,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.owners",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1080,
+   "offset": 842,
    "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.relay_owners",
+   "symbol": ".sec..bss.empty_tracks",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1090,
+   "offset": 850,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.eligible",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1108,
+   "offset": 874,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.pool",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1118,
+   "offset": 884,
    "section": ".text.tk_pool_fw_update",
-   "symbol": "tk_pool_update",
+   "symbol": ".sec..bss.owners",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1130,
+   "offset": 940,
    "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.pool",
-   "type": "cf.32"
-  },
-  {
-   "addend": 32,
-   "offset": 1136,
-   "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.pool",
+   "symbol": ".sec..bss.guard_at",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1158,
+   "offset": 946,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.reserved",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1164,
+   "offset": 986,
    "section": ".text.tk_pool_fw_update",
-   "symbol": ".sec..bss.preparing",
+   "symbol": ".sec..bss.reserved",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1170,
+   "offset": 1000,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1010,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": "tk_pool_fw_audio_queue",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1076,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.relay_head_package",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1086,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": "rtm_is_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1112,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.relay_owners",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1122,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.relay_owners",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1138,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.automatic_owners",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1146,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.automatic_owners",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1188,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..text.tk_pool_fw_eligible",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1216,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.relay_owners",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1348,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1360,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": "tk_midi_selected_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1370,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.reserved",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1406,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.eligible",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1420,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": "tk_native_audio_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1434,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.wanted",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1444,
    "section": ".text.tk_pool_fw_update",
    "symbol": ".sec..bss.pool",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1176,
+   "offset": 1454,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.planned_chords",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1460,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": "memset",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1490,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.automatic_owners",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1508,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.reserved",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1524,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.eligible",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1566,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": "tk_native_audio_pending",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1584,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.planned_chords",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1596,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.planned_chords",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1614,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.relay_owners",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1700,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.wanted",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1736,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.preparing",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1752,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.guard_at",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1764,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.reserved",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1776,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.preparing",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1796,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.reserved",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1838,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.relay_owners",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1844,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.automatic_owners",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1852,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.generation",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1862,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.owners",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1872,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.eligible",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1878,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.wanted",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1906,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.pool",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1944,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": "tk_pool_update",
+   "type": "cf.32"
+  },
+  {
+   "addend": 32,
+   "offset": 1956,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.pool",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1978,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.reserved",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1984,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.preparing",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1990,
+   "section": ".text.tk_pool_fw_update",
+   "symbol": ".sec..bss.pool",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1996,
    "section": ".text.tk_pool_fw_update",
    "symbol": "tk_pool_publish_frame",
    "type": "cf.32"
@@ -16967,6 +17527,13 @@
   },
   {
    "align": 2,
+   "hex": "2f02700114390000000042a7b1824eb900000000588f2239000000002079000000004a816602220875822f022f002f082f014eb9000000004fef0010241f4e75",
+   "kind": "text",
+   "name": ".text.update_pool",
+   "size": 64
+  },
+  {
+   "align": 2,
    "hex": "4e56ffe01039000000002f032f024a3900000000670000be4a00670a74ff76ff2d43ffe0604a75b90000000071b900000000486effe42f004eb900000000508f2d40ffe04a806d2871b90000000041f90000000073b0080055814a8167122f2effe42f004eb900000000508f4a0067ae71b90000000022002040528120025280e188484142418280202effe052808280b2b90000000067302f2effe02f022f08240e0682ffffffe82f0223c1000000004eb9000000002f022f39000000004eb9000000004fef0018242effd8262effdc4e5e4e754a006600ff4474ff6000ff4e",
    "kind": "text",
    "name": ".text.notes_update_title",
@@ -17149,17 +17716,17 @@
   },
   {
    "align": 1,
-   "hex": "564f4943455300494e205553450052454d4f56450053454c454354454400415641494c41424c4500524553455256454400564f49434553200044494e005553420043414e4f505900342050414420564f4943455300312041525020564f49434500322052454c45415345205441494c53004150504c592047524f555000",
+   "hex": "424f52524f5745440052454d4f56450053454c454354454400415641494c41424c4500494e2055534500524553455256454400564f49434553200044494e005553420043414e4f505900342050414420564f4943455300312041525020564f49434500322052454c45415345205441494c530020564f49434553004155544f20004150504c592047524f555000",
    "kind": "data",
    "name": ".rodata.pool_fill.str1.1",
-   "size": 125
+   "size": 141
   },
   {
    "align": 2,
-   "hex": "4e56ffa471b90000000048d73cfc41f90000000074012d6e0008ffcc73b00800b481660001282f00740f4eb9000000004878001042a7486efff0207c4348414e2440203c204f46462d48ffe82d40ffec4eb9000000004fef0010b48a6514486a0001486effed4eb900000000508f20404210280e0684ffffffe82f042f2effcc45f9000000004e924eb90000000041f90000000016007003c0832f300c002f2effcc4e9271b900000000486effd02f004eb9000000004fef00184a00674871b9000000002f004eb900000000487800074879000000002f0475804eb90000000073aeffdeb481640222022f01486effef4eb900000000204042102f042f2effcc4e924fef0020080300006718487801c24879000000002f2effcc4eb9000000004fef000c080300016718487805dc4879000000002f2effcc4eb9000000004fef000c4cee3cfcffa44e5e4e7555814a81664c4879000000002f2effcc45f9000000004e924879000000002f2effcc4e924879000000002f2effcc4e924cee3cfcffa44fef001841f9000000002d48000c2d6effcc00084e5e4ef9000000002f004eb900000000240e0682ffffffd047f90000000071802f002f024e934fef000c4281204010bc002043f90000000052817007b0816600010a420045f90000000042872c0e76020686ffffffe8114000072f022f2effcc4eb90000000042a742a74879000000004879000000002f2effcc4e9271b9000000002f004eb9000000004fef002033c00000000071b9000000007b8728075284ba806700009848780014243c5400000042a7486effec2d42ffe874014eb9000000002f04486effe94e93efaa244014fc00202f054eb9000000003239000000004fef0018c2824a41676873b900000000b0816700008441f9000000001010667242122f0742a74879000000002f062f2effcc4eb900000000303900000000c4804a4256c2750244822f022f032f2effcc4eb9000000004fef002052832e047010b0846600ff506000fe64119918006000fee8303900000000c0824a406624303900000000c0824a40672241f900000000608a14c05288608441f9000000006000ff7c41f9000000006000ff7241f9000000006000ff68",
+   "hex": "4e56ffa471b90000000048d73cfc41f900000000740145f9000000002d6e0008ffcc73b00800b481660001222f00740f4eb9000000004878001042a7486efff0207c4348414e2640203c204f46462d48ffe82d40ffec4eb9000000004fef0010b48b6514486b0001486effed4eb900000000508f20404210280e0684ffffffe82f042f2effcc4e924eb90000000041f90000000016007003c0832f300c002f2effcc4e9271b900000000486effd02f004eb9000000004fef00184a00674871b9000000002f004eb900000000487800074879000000002f0475804eb90000000073aeffdeb481640222022f01486effef4eb900000000204042102f042f2effcc4e924fef0020080300006718487801c24879000000002f2effcc4eb9000000004fef000c080300016718487805dc4879000000002f2effcc4eb9000000004fef000c4cee3cfcffa44e5e4e7555814a8166464879000000002f2effcc4e924879000000002f2effcc4e924879000000002f2effcc4e924cee3cfcffa44fef001841f9000000002d48000c2d6effcc00084e5e4ef900000000240e0682ffffffd047f9000000004bf90000000049f9000000004a7900000000670001222f004e9471802f002f024e93487800084879000000002f004e954fef00182f0276022c0e42872f2effcc4e9242a742a748790000000048790000000045f9000000000686ffffffe82f2effcc4e9271b9000000002f004eb9000000004fef002033c00000000071b9000000007b8728075284ba806700009c48780014203c5400000042a77401486effec2d40ffe84eb9000000002f04486effe94e93efaa244014fc00202f054eb9000000003239000000004fef0018c2824a41670000ae73b900000000b081670000d641f9000000001010660000c242122f0742a74879000000002f062f2effcc4eb900000000303900000000c4804a4256c2750244822f022f032f2effcc4eb9000000004fef002052832e047410b4846600ff4c6000fe68487800054879000000002f024e9571b9000000002f004e9471802f00486effd54e93284018fc002f71b9000000002f004eb90000000071802f002f0c4e934fef0024204042106000feb6323900000000c2824a41663273b900000000b0816732303900000000c0824a40673041f9000000006000ff3c14c052886000ff3441f9000000006000ff2a41f9000000006000ff2041f9000000006000ff1641f9000000006000ff0c",
    "kind": "text",
    "name": ".text.pool_fill",
-   "size": 812
+   "size": 898
   },
   {
    "align": 2,
@@ -17289,10 +17856,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56ff9048d73cfc4eb9000000004a0067000508143900000000700142a7b1824eb900000000588f2239000000004a81660622390000000075822e0e42854bf9000000000687ffffffe22f022f002f014eb9000000004fef000c758576011805ebab2f024eb900000000588f4a00660003e22f024eb900000000588f24003039000000007201b28257c67984c0834a40675245f90000000071b25800b480670000922f044eb90000000042a72f044eb9000000004fef000c71b2580055804a80661042a742a72f044eb9000000004fef000c20034680323900000000c08133c00000000070ffb08267722f044eb900000000588f4a00673a7202b2826600035a2f074eb900000000588f2f072f044eb900000000508f4a00671830390000000041f90000000011825800808333c0000000007202b282660003482039000000004a8066062039000000002f00487800012f044eb9000000004fef000c448652857d862f062f044eb9000000003039000000007203b28257c2c68044824a4356c34483c68277832f032f044eb9000000004fef00107010b0856600fec0243900000000b4b900000000672241f90000000008280000000367144ab900000000660c4eb90000000023c2000000004eb900000000260090b90000000023c3000000000c80000005dc63184eb9000000004eb9000000004eb900000000203c000005dcc0fc07d072032400d4b9000000004c4120004c41200223c0000000004eb9000000003f0042672f024eb9000000004eb900000000123900000000508f2039000000004a80660620390000000073812f012f004eb900000000508f4a3900000000670001404ab9000000006700013645eeffca2f0a4eb9000000004eb900000000588f2d40ffb84a80670e2f004eb900000000588f2d40ffb8428442aeffc02c124a86670000e0bcb900000000670000d6420041eeffe24281b881660001f24a00660000c22f064eb900000000588f2a404a80670000b03a390000000047ed00324282468571f9000000000500677471822e2a00042d52ffc42f0028404eb900000000588f20404a806700020643f900000000720271b12800b280660001a44aaeffb8670001ecbeaeffb8660001e44a280037670001dc4a2b0005670001d42f0c4eb900000000588f4a00670001c42f0c2f2effc44eb900000000508f4a00660001b0528247eb00387010b0826600ff76700a4c04080052843d8508ea2d8608e22d8d08e652aeffc0508a7203b2aeffc06600ff0c2f04486effe24eb900000000508f4eb9000000003f0042672f39000000004eb900000000508f207900000000b1f900000000674220390000000043f90000000023d1000000004a80670c220392800c81000005db63207001808323c0000000004eb9000000004879000000002f004eb900000000508f4eb9000000004a3900000000670001022003727790b900000000b280640000f22f39000000004eb900000000588f4a80670000de23c3000000004cee3cfcff904e5e4ef90000000074ff6000fc287003b082660c2f074eb9000000006000fca02006448071802f072f004eb900000000508f6000fc8c4a8267087003b0826600fcd2303900000000c0834a406700fcc42f044eb90000000071802f002f044e956000fcacbc9057c2528141e8000a448280826000fdfa57804a80661a4aaeffb86744beaeffb8663e4a68003266384a536700fe8660302f0c2f072d48ffbc4eb900000000508f43f90000000073b12800206effbcb280660e53804a8066cabeaeffb86700fe547001e5a88a806000fe4a4cee3cfcff904e5e4e75",
+   "hex": "4e56ff9048d73cfc4eb9000000004a00670004d82e0e42854bf9000000000687ffffffe2758576011805ebab2f024eb900000000588f4a00660003e82f024eb900000000588f24003039000000007201b28257c67984c0834a40675245f90000000071b25800b480670000922f044eb90000000042a72f044eb9000000004fef000c71b2580055804a80661042a742a72f044eb9000000004fef000c20034680323900000000c08133c00000000070ffb08267722f044eb900000000588f4a00673a7202b282660003602f074eb900000000588f2f072f044eb900000000508f4a00671830390000000041f90000000011825800808333c0000000007202b2826600034e2039000000004a8066062039000000002f00487800012f044eb9000000004fef000c448652857d862f062f044eb9000000003039000000007203b28257c2c68044824a4356c34483c68277832f032f044eb9000000004fef00107010b0856600fec0243900000000b4b900000000672241f90000000008280000000367144ab900000000660c4eb90000000023c2000000004eb900000000260090b90000000023c3000000000c80000005dc63184eb9000000004eb9000000004eb900000000203c000005dcc0fc07d072032400d4b9000000004c4120004c41200223c0000000004eb9000000003f0042672f024eb9000000004eb900000000123900000000508f2039000000004a80660620390000000073812f012f004eb900000000508f4a3900000000670001404ab9000000006700013645eeffca2f0a4eb9000000004eb900000000588f2d40ffb84a80670e2f004eb900000000588f2d40ffb8428442aeffc02c124a86670000e0bcb900000000670000d6420041eeffe24281b881660001f84a00660000c22f064eb900000000588f2a404a80670000b03a390000000047ed00324282468571f9000000000500677471822e2a00042d52ffc42f0028404eb900000000588f20404a806700020c43f900000000720271b12800b280660001aa4aaeffb8670001f2beaeffb8660001ea4a280037670001e24a2b0005670001da2f0c4eb900000000588f4a00670001ca2f0c2f2effc44eb900000000508f4a00660001b6528247eb00387010b0826600ff76700a4c04080052843d8508ea2d8608e22d8d08e652aeffc0508a7203b2aeffc06600ff0c2f04486effe24eb900000000508f4eb9000000003f0042672f39000000004eb9000000004eb900000000508f207900000000b1f900000000674220390000000043f90000000023d1000000004a80670c220392800c81000005db63207001808323c0000000004eb9000000004879000000002f004eb900000000508f4eb9000000004a3900000000670001022003727790b900000000b280640000f22f39000000004eb900000000588f4a80670000de23c3000000004cee3cfcff904e5e4ef90000000074ff6000fc227003b082660c2f074eb9000000006000fc9a2006448071802f072f004eb900000000508f6000fc864a8267087003b0826600fccc303900000000c0834a406700fcbe2f044eb90000000071802f002f044e956000fca6bc9057c2528141e8000a448280826000fdf457804a80661a4aaeffb86744beaeffb8663e4a68003266384a536700fe8060302f0c2f072d48ffbc4eb900000000508f43f90000000073b12800206effbcb280660e53804a8066cabeaeffb86700fe4e7001e5a88a806000fe444cee3cfcff904e5e4e75",
    "kind": "text",
    "name": ".text.poll",
-   "size": 1316
+   "size": 1268
   },
   {
    "align": 2,
@@ -17331,10 +17898,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56ffdc48d700fc2a2e000c2c2e000820068085282e0014e888670c42804cee00fcffdc4e5e4e75767fb6ae001065ec2004727e5380b28065e23039000000003239000000007601edab80812d43fff6c0834a40660001004a390000000067bc4eb9000000004a0067b271f9000000000b0067a875852f024eb900000000588f41f90000000073b05800b280668e79847fae00132f042f072f024eb9000000001d40fffb4eb9000000004fef000c4a2efffb660000a82f024eb900000000588f4a0067000098486effff486efffe487800012f024eb9000000004fef00104a00677a4a2effff6c74202e0010760c4c4300014c430000772efffe71002241b083665a486900012f024eb9000000002f024eb9000000004fef000c30390000000041f900000000262efff61185680052b900000000868033c3000000004eb9000000003f00426742a74eb9000000004eb900000000508f70016000fec42f042f072f0642a742a72f024eb9000000004fef00184a0066a44a2efffb669e6000fe9e",
+   "hex": "4e56ffdc48d700fc262e000c2c2e0008200680832a2e0014e888670c42804cee00fcffdc4e5e4e75787fb8ae001065ec2005727e5380b28065e23039000000003239000000007801edac80812d44fff6c0844a40660001164a390000000067bc4eb9000000004a0067b271f900000000070067a875832f024eb900000000588f41f90000000073b03800b280668e7b857fae00132f052f072f024eb9000000001d40fffb4eb9000000004fef000c4a2efffb660000be2f024eb900000000588f4a00670000ae486effff486efffe487800012f024eb9000000004fef00104a00670000904a2effff6c000088202e0010780c4c4400014c440000792efffe71002241b084666c486900012f024eb9000000002f024eb9000000004fef000c30390000000041f900000000282efff61183680052b900000000888033c4000000004eb9000000003f00426742a74eb9000000004eb900000000508f71c0070067064eb9000000004eb90000000070016000feae2f052f072f0642a742a72f024eb9000000004fef00184a0066924a2efffb668c6000fe88",
    "kind": "text",
    "name": ".text.tk_panel_on",
-   "size": 384
+   "size": 406
   },
   {
    "align": 2,
@@ -17359,10 +17926,10 @@
   },
   {
    "align": 2,
-   "hex": "2f032f0277af000f2f034eb900000000588f4a00673c41f9000000001030380024005382718057804a80662c4eb9000000004a0066284eb9000000004879000000002f004eb900000000508f4a8057c04480241f261f4e757182e28867184eb9000000004a80670e4eb90000000048790000000060cc4ab90000000066244eb9000000004879000000002f004eb900000000508f220023c00000000042004a8167b0122f000f2f037582e28a13c1000000004eb90000000041f90000000033c00000000033c00000000023d0000000004eb900000000588f23c0000000004a8267324eb90000000070022f002f39000000004eb9000000002f39000000004eb9000000004fef000c4680d080918044806000ff40428060d2",
+   "hex": "2f032f0277af000f2f034eb900000000588f4a00673c41f9000000001030380024005382718057804a80662c4eb9000000004a0066284eb9000000004879000000002f004eb900000000508f4a8057c04480241f261f4e757182e28867262f034eb900000000588f4a4067184eb9000000004a80670e4eb90000000048790000000060be4ab90000000066244eb9000000004879000000002f004eb900000000508f220023c00000000042004a8167a2122f000f2f037582e28a13c1000000004eb90000000041f90000000033c00000000033c00000000023d0000000004eb900000000588f23c0000000004a8267324eb90000000070022f002f39000000004eb9000000002f39000000004eb9000000004fef000c4680d080918044806000ff32428060d2",
    "kind": "text",
    "name": ".text.tk_trig_open_pool",
-   "size": 280
+   "size": 294
   },
   {
    "align": 2,
@@ -17758,24 +18325,45 @@
   },
   {
    "align": 2,
-   "hex": "4fefffe8428048d7043c420222790000000079af001f26390000000043e9013641e9fece73a80006b881660e4a80662e246f002020085980148241e80012b3c866e2220252811401738143e801327a10ba8166cc4cd7043c4fef00184e752203244092902f410014220392aa0004b2af001465bc60c4",
+   "hex": "4fefffe4428148d7043c227900000000428077ef002a79af002324390000000043e90158030366281f41001741e9feac7ba80006b88566104a80662a246f00242008598014af001741e80014b3c866e0528143e901547a10ba8166c84cd7043c4fef001c4e752a0224409a902f4500182a029aaa0004baaf001865c060ca",
    "kind": "text",
    "name": ".text.oldest",
-   "size": 118
+   "size": 126
   },
   {
    "align": 2,
-   "hex": "4fefffdc48d71cfc286f0028266f00304a8c670a75af002f700fb082640c42004cd71cfc4fef00244e7528134a8467ee4a2b00046de8102f002f207900000000428395ca4880c0fc0132d1c0224842801229000a67000124b891664e4a2b000766bc73817401b48166227a124c0508004878001242a7487008004eb90000000053b9000000004fef000c601855814a81661272037a124c05080052b9000000001181080a70016000ff78738157814a8167025283528043e900127211b28066904a2b000767de181470017b842845b085670000c64a04660000a82f024eb900000000588f7b802f024eb900000000588f4a006600ff2a4a8a6700ff26ba836300ff201a2b00056f00ff1876017201b983102b00042c390000000052862e1323c6000000004a0357c336404483b28c67044a876d6a42824878001242a72f0a4eb900000000248725460004154500097a01300b7201c485156f003b000c1544000e1543000f52b900000000154000081541000a154200106000ff0e24496000ff367203b285660c4eb9000000004a006600ff4a7a016000ff507a106000ff4a2f024eb900000000588f4a8056c2750244826084",
+   "hex": "4a2f000b662a73af000741f9000000001030180053801180180066147001e3a83239000000004680c08133c00000000053b9000000004e75",
+   "kind": "text",
+   "name": ".text.finish_start.isra.0",
+   "size": 56
+  },
+  {
+   "align": 2,
+   "hex": "4fefffd4226f003048d77cfc266f00384a89670a77af0037700fb083640e420210024cd77cfc4fef002c4e7522134a8167ec4a2b00046de6102f00372879000000004282428495ca4880c0fc0154d9c0204c1028000a6700017ab29066544a2b000766ba71807201b280662c71a8000f7a144c0528002f002f034eb9000000004878001442a7487428004eb9000000004fef00147401608855804a8066f670037a144c05280052b9000000001980280a60e2718057804a8067025284528241e800147011b082668a4a2b000767c61a1172017d85b286670001104a05670000fa7003b086660c4eb9000000004a00660000e87e012f034eb900000000588f14006600ff1c4a8a6700ff18be846300ff12182b00056f00ff0a7001bb802e390000000052872a5323c7000000004a0057c022004481102b0004284172013640b286670000ac4a8d6c102f034eb900000000588f4a8056c244824eb9000000003c404878001442a72f0a4eb900000000248d2547000453861545000e300b72013a0c156f0043000c1544000915420010354e00124fef000c154000081541000a1545000f4a86672241f900000000103038003239000000005280118038007001e7a8808133c00000000052b9000000006000fec424486000fee62f034eb900000000588f7f806000ff0e7e106000ff089dce6000ff6e",
    "kind": "text",
    "name": ".text.tk_native_event",
-   "size": 434
+   "size": 500
   },
   {
    "align": 2,
-   "hex": "2f024ab90000000067067001241f4e75487813204eb900000000588f24004a80671a4878132042a72f004eb90000000023c2000000004fef000c60ce420060cc",
+   "hex": "2f024ab90000000067067001241f4e75487815404eb900000000588f24004a80671a4878154042a72f004eb90000000023c2000000004fef000c60ce420060cc",
    "kind": "text",
    "name": ".text.tk_native_init",
    "size": 64
+  },
+  {
+   "align": 2,
+   "hex": "3039000000004e75",
+   "kind": "text",
+   "name": ".text.tk_native_audio_waiting",
+   "size": 8
+  },
+  {
+   "align": 2,
+   "hex": "71af0007720fb280650c41f900000000103008004e75420060fa",
+   "kind": "text",
+   "name": ".text.tk_native_audio_pending",
+   "size": 26
   },
   {
    "align": 2,
@@ -17793,24 +18381,24 @@
   },
   {
    "align": 2,
-   "hex": "2f02102f000b7380e88967064200241f4e754880c0fc0132d0b900000000204006800000013c41e8000a4a1066de41e80012b08866f4700160d4",
+   "hex": "2f02102f000b7380e88967064200241f4e754880c0fc0154d0b900000000204006800000015e41e8000a4a1066de41e80014b08866f4700160d4",
    "kind": "text",
    "name": ".text.tk_native_idle",
    "size": 58
   },
   {
    "align": 2,
-   "hex": "2f02102f000b222f000c75802042740fb48864064200241f4e754a8167f64880207900000000c0fc0132d1c022484280b2916616721274024c0108001030080ab5804a0057c0448060cc528043e900127411b48066da60bc",
+   "hex": "2f02102f000b222f000c75802042740fb48864064200241f4e754a8167f64880207900000000c0fc0154d1c022484280b2916616721474024c0108001030080ab5804a0057c0448060cc528043e900147411b48066da60bc",
    "kind": "text",
    "name": ".text.tk_native_sounding",
    "size": 88
   },
   {
    "align": 2,
-   "hex": "4fefffd848d74cfc4a79000000006770420342827b8342042f054eb900000000588f223900000000d282227900000000204171c041e8000a06810000013c7d9055864a8666147da80002bc85670c0d00660810bc00037801528941e80012b28866dc4a04670623c90000000020035280160071800682000001327210b28066944eb900000000220092b90000000023c00000000020010c81000005dc6306203c000005dc3200c0fc0a8cd0b900000000c2fc2ee023c000000000d2b90000000023c1000000000c810005dc00630c2e3c0005dc0023c7000000000c8000011940630c203c0001194023c0000000002c0f780406860000002745f900000000203900000000220082b9000000006700008442011f4100274a80670000822f06487800034e92508f2c404a80677042a72f0071af002f2f004eb9000000004fef000c4a00674e4a2e000f662871ae000c7201343900000000e1a92f004681c3b900000000c28233c1000000004eb900000000588f4878001242a72f0e4eb90000000053b9000000004fef000c53844a846600ff6e4cd74cfc4fef00284e752f06487800014e92508f2c404a8067e671af00272f004eb900000000588f24004a80670001667e03be80660001644eb900000000718073ae000eb481660001944a8067381a2f002777852f034eb900000000588f4a006600017a7401e7aa2f034eb900000000588f84802002c0b9000000004a40660001201d45000c4a2e000f670000aa71af00272f004eb90000000024004eb900000000588f4a00670001340800000167102e3c00002edfbeb90000000064000136080000006710223c00002327b2b900000000640001207e0fbe82650001002079000000002208778206810000013a43e8145a204141e8fece7ba8000255854a85661a4a28000767147ba80003ba83660c7f907bae0008ba87670000c241e80012b1c166d4068100000132b28966c41d42000b1d40000d71ae00092f002f0e71af002f2f004eb9000000004fef000c4a006700feae4a2e000f670000a8102e000d08000001670c223cffffd120d3b90000000008000000670c2e3cffffdcd8dfb900000000700253b9000000001d40000a6000fe6670016000fea842806000fea24680c4803e0267344eb900000000c4804a4267023e027fc770012207e6a9c081080100006600febc010767081d40000c6000feb452807210b28066ec4878001242a72f0e4eb90000000053b9000000006000fe0241f9000000004a8867de4e9060da73ae000c700175af0027e3a881b900000000b481670e343900000000808233c0000000002f014eb900000000588f6000ff52",
+   "hex": "4fefffc848d77cfc4a79000000006770420342827b8342042f054eb900000000588f223900000000d282227900000000204171c041e8000a06810000015e7d9055864a8666147da80002ba86670c0d00660810bc00037801528941e80014b1c166dc4a04670623c90000000020035280160071800682000001547210b28066944eb900000000220092b90000000023c00000000020010c81000005dc6306203c000005dc3200c0fc0a8cd0b900000000c2fc2ee023c000000000d2b90000000023c1000000000c810005dc00630c283c0005dc0023c4000000000c8000011940630c2a3c0001194023c50000000095ca42824bef003747f900000000203900000000220082b9000000006700008a42061f4600374a806700008842a72f0d487800034e934fef000c28404a80677242a72f0071af003f2f004eb9000000004fef000c4a0067504a2c000f662871ac000c7201363900000000e1a92f004681c3b900000000c28333c1000000004eb900000000588f4878001442a72f0c4eb90000000052824fef000c53b9000000007804b8826600ff684cd77cfc4fef00384e753f0a42672f0d487800014e934fef000c2c404a8067e071af00372f004eb900000000588f2c004a8067147e03be80660000d24eb9000000004a00670000c871af00372f004eb900000000588f7780700173ae000ebc81660001bc4a00670000ba1e2f0037302e0012223900000000798792802f4100302f044eb900000000588f4a0066502f044eb900000000588f7201e9a982802001c0b9000000004a83676a7bef003220457a77ba88645e4a4066244a2e000e661e1d47000c71ef00327e77be8065542f042f044eb900000000508f4a00664471ae000ebc80660001384a83670001327bef00327c77bc856500012673af003770012e0ae3a88e8024476000fe5c420042836000ff484a40660000841d47000c4a8366a24a2e000f6700018a71af00372f004eb90000000026004eb900000000588f4a006734080000016710223c00002edfb2b900000000640000f0080000006710283c00002327b8b900000000640000da7a0fba83640000e471ae000f2f0071af003b2f004eb9000000004878001442a72f0e4eb900000000600000a446802a01ca804a836734428171c503006724200171802f002f042f4100344eb900000000508f222f002c4a0066087001e3a84680ca8052817010b08166ce4a456700ff004eb900000000c0854a4067023a0073c52a01e8ad78012005c0840805000067121d47000c6000ff1c52807a10ba806700fece010167f21d40000c6000ff0671ae000f2f0071af003b2f004eb9000000004878001442a72f0e4eb90000000052824fef00146000fdb241f9000000004a886700ff264e906000ff202279000000002209798306810000015c43e9169c204141e8feac7ba8000255854a85661a4a28000767147ba80003ba84660c7d907bae0008ba866700fee241e80014b1c166d4068100000154b28966c41d43000b1d40000d71ae00092f002f0e71af003f2f004eb9000000004fef000c4a006700fd324a2e000f6748102e000d08000001670c2e3cffffd120dfb90000000008000000670c203cffffdcd8d1b900000000528271ae000f2f0071af003b2f004eb9000000007202508f1d41000a6000fcdc73ae000c700177af0037e3a881b900000000b681670e363900000000808333c0000000002f014eb900000000588f60b0",
    "kind": "text",
    "name": ".text.tk_native_drain",
-   "size": 966
+   "size": 1252
   },
   {
    "align": 2,
@@ -17860,6 +18448,20 @@
    "kind": "bss",
    "name": ".bss.tk_native_audio_active",
    "size": 4
+  },
+  {
+   "align": 1,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.audio_pending",
+   "size": 16
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.audio_waiting",
+   "size": 2
   },
   {
    "align": 2,
@@ -19389,10 +19991,17 @@
   },
   {
    "align": 2,
-   "hex": "4fefff9091c848d77cfc246f00782c6f0074224e4243322a000a2e123d6a00060044202e00402a6f007c2d4700402f40003047ed0032240146823f42003642423219382f00363a29001eca8438454a8d67064a876600011c42844a416738beaf0030662c4a8467287dd379c1b886662079ea00084684c8864a84661471ea000628080900671028065384c8864a8467068a81424128453341fffe2c0c8286334c001e84814a41670872012008e1a98681528847eb00387210b28866844a8d670000a847ed000142843a2b00316700008a4a13670000844a92677e71ea00040900677671c20900667071ea00060900670c73c520015380c0814a80665c4a5666584a6e002066522c0f0686000000384878003842a72f064eb900000000200280833f00426771ea000a2f0071ea00082f003f052004718042672f002f064eb9000000004fef00244a00670e302f006a3c8084807001e9a88680528447eb0038548e7210b2846600ff624cd77cfc4fef00704e7579ea00042c080d046700fedc4a2bffcf56c4790444846000fed0",
+   "hex": "2f02206f000c102f0013226f00084a886604424060264a9167f875e900047380030267ee120048813001c0fc0038d1c030280032670a4a28000167d6241f4e75206900104a8867ca73c130301a0060ec",
+   "kind": "text",
+   "name": ".text.request_for",
+   "size": 80
+  },
+  {
+   "align": 2,
+   "hex": "4e56ff88206e000c48d73cfc424742833028000c3c28000a2a6e0008244d42444242222d0040285047ed00202d41ffbc3d47ffba220046813d41ffc22b4c00403d46ffc63c13322effc2548b3e2bffdec2862d41ffb0b9eeffbc67044241605c206e000c71e800060700670c73c720015380c0814a8066e4200371802f002f2e00102f2e000c4eb9000000004fef000c3a2effc6ca87ca8032054a40671e3c03226e0010ccfc00384a716832670e7dc771c0b08666a67bc5ba8666a020014680c0873741ffde80aeffb082803740fffe84814a4167147201e7a988814a40670a3e2effba8e813d47ffba52837010b0836600ff52286e0010428549ec00327f852f072f2e00102f2e000c4eb9000000004fef000c360067687201eba92001c0822d41ffbc4a406658206e000c36523228000c3028000a2c0bc08122028284c08382aeffbc4681c08132002040302a00208c80301426464a40670000aa4a466600009e226e000c4a29000e6754360b300332128480828034814a40670488aeffbc5285548a49ec00387010b0856600ff70206e000c46823028000632280004c280302effbac282468034280008c0848082c0813b4000444cee3cfcff884e5e4e7542a72f3c0000ffff3f087dc342672f062f07486effc84eb9000000004fef00184a006788206e000c71e800060b006700ff7e20065380c0864a806700ff7242436000ff6c226e000c36290006c6aeffbc4a43663076034a4667044a03661a4a416700ff4e4a036700ff482c014486cc8153838086bd8160e6204653882e085383cc8760d2760160ce",
    "kind": "text",
    "name": ".text.tk_pool_update",
-   "size": 396
+   "size": 584
   },
   {
    "align": 2,
@@ -19410,10 +20019,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffe8428048d7047c206f0020226f001c43e9002020bc544b000042a8000842a800043629ffe054893429fffe8483320275c285904a43671e246f001c75ea00440102671276077a0ac6807580e68ae58be7ad8bb02c0442024a41662a52807210b28066be26280008201022280004b7804cd7047cb3800a8022dca71b2140000c4fef00184e750801000067127a07ca822c007782e68be58debae8db03c044841424176115282e6a960ae",
+   "hex": "4fefffe8428048d700fc226f001c206f002079e9004420bc544b000042a8000842a8000432193429001e8481320275c285900104671276077c0ac6807580e68ae58be7ae8db02c0442024a41662a52807210b28066ce26280008201022280004b7804cd700fcb3800a8022dca71b2140000c4fef00184e750801000067127c07cc822e007782e68be58eedaf8fb03c044841424176115282e6a960ae",
    "kind": "text",
    "name": ".text.tk_pool_owner_frame",
-   "size": 172
+   "size": 156
   },
   {
    "align": 2,
@@ -19438,31 +20047,31 @@
   },
   {
    "align": 2,
-   "hex": "4fefffe048d7440c486f00102f2f00284eb90000000042012039000000009dce43ef0018508f41f90000000045f60c002619528eb6b0ac0056c2448282827404b48e66e84a01672a7601b78043ef00102200e98921911800d1c1216f00140004216f00180008216f001c000c23c0000000004cd7440c4fef00204e75",
+   "hex": "4fefffdc48d7441c486f001476122f2f002c4eb90000000042002239000000009dce41ef001c508f4c01380043f900000000244345f2ec002818528eb8b1a80056c2448280827404b48e66e64a00673878017012b98141ef00144c0108002390080041f10800216f00180004216f001c0008216f0020000c1031381052801140001023c1000000004cd7441c4fef00244e75",
    "kind": "text",
    "name": ".text.tk_pool_publish_frame",
+   "size": 146
+  },
+  {
+   "align": 2,
+   "hex": "4fefffe8701248d71c1c243900000000428145f900000000206f001c4c002800266f002041f0bc0271b2281048404240224070097801e2a82842508847f41c005281c08428094480c0842832b800b9803140fff8424048403140fffc7004b08166d04cd71c1c4fef00184e75",
+   "kind": "text",
+   "name": ".text.tk_pool_link_write",
+   "size": 108
+  },
+  {
+   "align": 2,
+   "hex": "4feffff02f0e2f0a2c6f001c2039000000004a8e675a72124c0108002040d1fc00000000201071c04a806744428045ef000843f008007210259108005880b28066f0487808022f0e2f39000000004eb9000000002f0a2f39000000004eb9000000004fef00144a0067062c7900000000245f200e2c5f4fef00104e75",
+   "kind": "text",
+   "name": ".text.tk_pool_link_project",
    "size": 124
   },
   {
    "align": 2,
-   "hex": "203900000000226f0004e9882040d1fc00000000202f0008220806810000001043f10c02201850893340fff8424048403340fffcb28866ec4e75",
-   "kind": "text",
-   "name": ".text.tk_pool_link_write",
-   "size": 58
-  },
-  {
-   "align": 2,
-   "hex": "4feffff02f0e2f0a2c6f001c2039000000004a8e6756e9882040d1fc00000000201071c04a806744428045ef000843f008007210259108005880b28066f0487808022f0e2f39000000004eb9000000002f0a2f39000000004eb9000000004fef00144a0067062c7900000000245f200e2c5f4fef00104e75",
-   "kind": "text",
-   "name": ".text.tk_pool_link_project",
-   "size": 120
-  },
-  {
-   "align": 2,
-   "hex": "4feffff4206f0010227900000000528948d7001c23c9000000004a88676271e800600c8000004b516656302800643228006226390000000075c04a40674242434843280098834a4467366c0e2609782896b900000000b8836426b38077e800660a80000032f771c0b08366144842424273c1848123c20000000023c9000000004cd7001c4fef000c4e75",
+   "hex": "4feffff048d7003c206f0014243900000000528223c2000000004a88677e3028006002800000ff000c8000004b00666c32280060302800643268006228390000000077c04a406754424448442a009a844a4567486d3878512a09b981bb80798171c0b98079e800660a80000032f7b880662a4843424371c9868023c30000000013c10000000023c200000000600e28027a2898b900000000ba8465ba4cd7003c4fef00104e75",
    "kind": "text",
    "name": ".text.tk_pool_link_reply",
-   "size": 138
+   "size": 166
   },
   {
    "align": 2,
@@ -19470,6 +20079,20 @@
    "kind": "text",
    "name": ".text.tk_pool_link_quiet",
    "size": 64
+  },
+  {
+   "align": 2,
+   "hex": "203900000000598f22790000000012390000000041f9000000001f41000372124c0108004ab00800660a42807201c081588f4e754a8967f2223900000000b3c166e822790000000093c17228b28965da10300810122f0003b3804a0057c07100448060c8",
+   "kind": "text",
+   "name": ".text.tk_pool_link_ready",
+   "size": 100
+  },
+  {
+   "align": 1,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.reply_tag",
+   "size": 1
   },
   {
    "align": 2,
@@ -19511,7 +20134,7 @@
    "hex": "",
    "kind": "bss",
    "name": ".bss.maps",
-   "size": 32
+   "size": 36
   },
   {
    "align": 2,
@@ -19550,6 +20173,20 @@
   },
   {
    "align": 2,
+   "hex": "73af0007700fb081650e71f900000000e2a87201c0814e75428060fa",
+   "kind": "text",
+   "name": ".text.tk_pool_fw_automatic",
+   "size": 28
+  },
+  {
+   "align": 2,
+   "hex": "2f032f0277af000f71af0013b08367222f002f034879000000004eb9000000004fef000c4a00672c241f261f4ef9000000002f0374014eb900000000e7aa588f7180e288673e303900000000c0824a4066084200241f261f4e7541f90000000032303a0041f90000000071f03a004680c0814a4066dc4a41670a4eb9000000004a0067d0303900000000c0824a406718303900000000c4804a4267104eb9000000007201c08160ac700160f6428060f2",
+   "kind": "text",
+   "name": ".text.tk_pool_fw_start_ready",
+   "size": 176
+  },
+  {
+   "align": 2,
    "hex": "71af0007720fb280650c41f90000000030300a004e75424060fa",
    "kind": "text",
    "name": ".text.tk_pool_fw_helpers",
@@ -19564,6 +20201,13 @@
   },
   {
    "align": 2,
+   "hex": "2f0275af000b2f024eb900000000588f4a00671e2f024eb900000000588f4a00661071f900000000050067127002241f4e752f420008241f4ef900000000700460ec",
+   "kind": "text",
+   "name": ".text.tk_pool_fw_limit",
+   "size": 66
+  },
+  {
+   "align": 2,
    "hex": "4e56fff8486efffc486efff84eb900000000508f4e5e4e75",
    "kind": "text",
    "name": ".text.tk_pool_fw_quiet",
@@ -19571,10 +20215,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56fff8486efffc486efff84eb90000000071ae000b508f720fb2806512226efffc41f90000000043e9001821890c004e5e4e75",
+   "hex": "4e56fff8486efffc486efff84eb90000000073ae000b508f700fb0816526226efffc700141f900000000e3a843e9001821891c003239000000004680c08133c0000000004e5e4e75",
    "kind": "text",
    "name": ".text.tk_pool_fw_note_edge",
-   "size": 52
+   "size": 72
   },
   {
    "align": 2,
@@ -19585,10 +20229,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56ff5048d73cfc182e00132c2e00084eb9000000002d40ff784a80670e2f004eb900000000588f2d40ff784eb900000000bcb9000000006616b0b900000000660e222eff78b2b9000000006700013c2e2eff7823c000000000203900000000528023c60000000023c7000000004a806700011223c0000000007601486eff80486eff7c4eb9000000002a39000000004685508f4241ca8033c100000000340533c10000000033c1000000004a04670a4eb9000000004a80670a4a7900000000670842044a86660000c8420413c4000000004aae000c67544243246e000c4284528a4a1267363c2a003167302e047f872f074eb90000000073c6588f71c04680c0814a80661671f9000000000900670a20015380c0814a8066028686528445ea00387010b08466ba4a43660c3639000000006700029242434eb900000000424224404eb900000000223c00000080224070214a896700026253804a8067000258207cc0000000d1c9b1fc07ffffec620002462e09080700006600023c206900086000020470016000feec42036000feee4aaeff786700ff344a03661a4a39000000006712202eff807e7790b900000000be80640000ba4eb9000000002600203c000000004a806740428749eeff8447f9000000002f0c2f074eb900000000508f4a80670a602252807216b280671273b40800204173b30800b28867ea528760d44aaefff0670000f6420013c000000000424097cb45f90000000033c000000000320b73812f012f0628414e92508f4a00672a4a836710b686670c2f0c2f034e92508f4a006716307900000000220b7001e3a82208808133c000000000528b7010b08b66bc41eeff8023d0000000004246428345f9000000002f032f2eff784eb900000000508f2e0010323800158738004a876d3c71807387b28066342f034eb900000000588f4a806626200371802f072f004eb900000000508f4a0066127206b2876d4a7005b08767447001e7a88c8052837210b28366a0303900000000808633c000000000303900000000c0864a04674c33c0000000006000fdd22e3c00000500beaeffa455c044806000fefe4a390000000067ba41f9000000004a8867b02f074e90588f4a8067a67001323900000000e7a8808133c0000000006092424341f900000000321882833601b1fc0000000066f2c081780133c0000000006000fd6c780fb8a80010650a282800107e01e9af84877e02be90673c7808b89065362068006853814a8867244a8167282e080687c00000000c8707ffff9462182e080807000066107801b89065c860b4226900106000fd9e74ff4682c4852f0a4eb900000000588f30390000000041f9000000004285323900000000226eff802c2eff7c43e900184680c083828333c1000000007201eba92801c8804a44670220893839000000008883c8814a44670a280698906a044681c481528558887210b28566d041f9000000002d50ff8441f9000000003d50ff8841f9000000003d50ff8a41f9000000003d50ff8c2f2e000c486eff844879000000003d42ff8e4eb9000000004fef000c424141f90000000043f90000000034183028001e808280813200b1c966f033c00000000033c3000000004879000000004eb9000000004cee3cfcff50588f4e5e4e75",
+   "hex": "4e56fefc48d73cfc1c2e00172a2e00084eb90000000024004a80670c2f004eb900000000588f24004eb900000000bab9000000006612b0b900000000660ab4b9000000006700019823c000000000203900000000528023c50000000023c2000000004a806700017223c00000000076014eb900000000486eff504247223900000000486eff4c2d41ff3c3d40ff3a4eb900000000282eff3c468433c700000000c88033c70000000033c70000000033c7000000004eb900000000508f2d40ff484a8057c04480c0862d40ff444a85670002864a82670002802e2eff504a06660001044a6eff3a660001024a790000000056c07100448024404878001842a747eeff6c2f0b4eb9000000004fef000c4a8a670a2f0b4eb900000000588f2d6e000cff5c4eb9000000002d6eff74ff64226eff78206eff802d40ff602d6eff7cff682d49ff542d48ff584a0366102607707796b900000000b08355c34483428149eeff5c45f900000000267418007c10b7f2180056c0258b18005881448080831600bc8166e4b3f90000000056c1b1f90000000056c323c90000000023c80000000044814483828380814a0067000122203c000000004a80671c428349eeff8447f9000000002f0c2f034eb900000000508f4a8067264200604470016000fe8c42036000fe8e95ca6000ff10347c00016000ff0852807216b28067107db4080073b30800b28667ec528360ba4aaefff066c4307c0500b1eeffa455c0448013c0000000004240428345f90000000049eeff644beeff5433c000000000220373811c0347eeff5c2f012f054e9241eb00102d48ff40508f4a006706b7eeff40660442816058221b4a8167f0b28567ec71862f002f014e9260dc203418002641588b4a80661c220b7008b08166ec7001323900000000e7a8808133c0000000006020b08567e071862f002f3518004eb900000000508f220b4a8057c044804a0066c652837210b2836600ff7423c7000000004243428545f9000000002f052f024eb900000000508f2c0010325800158658004a866d4071807386b28066382f054eb900000000588f4a80662a2e057f872f062f074eb900000000508f4a0066167006b0866d0001107205b286670001087001eba8868052857c10bc85669e303900000000808333c000000000303900000000c08333c0000000004aae001067000182424642422a6e0010428549f9000000007601ebab303900000000c0834a40671a322d00324a15660000e44a2d0001660000dc4a41670000dc8c8352854bed00387e10be8566ca206eff4c428043f90000000073f90000000001016710220892b10c006a087201e1a94681c88152807210b28066de4a6eff3a660e30390000000080824a40670003f84eb900000000424328404eb90000000072212240203c000000804a896700013853814a816700012e207cc0000000d1c9b1fc07ffffec6200011c2e09080700006600011220690008600000da4a39000000006700fef841f9000000004a886700feec2f064e90588f4a806700fee07001323900000000eba8808133c0000000006000feca8c834a416612303900000000808333c0000000006000ff184a2d00016700ff104a2eff4766084a745a006700ff022e057f872f072d41ff304eb900000000588f222eff307fc071c14687ce8020404a876600fedc303900000000c6804a43670e200826085380c0834a806600fec284816000febc424642426000fec07a0fbaa80010650a2a2800107e01ebaf86877e02be90673c7a08ba9065362068006853804a8867244a806728267cc0000000d7c8b7fc07ffff9462182e080807000066107a01ba9065c860b4226900106000fec876ff4683c6842f0c4eb900000000588f3d43ff2a4eb900000000322eff3a3a3900000000760f71808a818a828a863205b68065067201e1a982854aaeff486600026a3a39000000004681ca84ca8142402e390000000026044878002042a74879000000002d47ff4045f9000000004683264a33c0000000004eb90000000042414fef000c42aeff2c2d43ff483d41ff36222eff2c7e01303900000000e3afc08728474a40670000d2303900000000c0874a40660000c43213303900000000262eff402e01ce80322eff3a200cc687c0813d43ff264a40670001e4262eff2c77832f034eb900000000588f72017180b280640001be307900000000260c2208868133c300000000260cc6aeff404a4366025380307900000000260c2208c6814a43670001a0327c0001222eff48386b0020c287260c828320414a4167064a896600018a22079bcdc284bbc96710bbc0670c4a41660001864a45660001a0322eff263e2eff36262eff2c41f90000000031813a008e813d47ff3652aeff2c548b7010b0aeff2c6600ff0a322eff36303900000000226eff5042852e2eff4c41f90000000043e9001884813239000000004680c082828233c1000000007201eba92801c8804a44670220893839000000008882c8814a446712280798906a0c362eff2a4681c6813d43ff2a528558887210b28566c8323900000000303900000000760141f9000000002d50ff8441f9000000003d50ff8841f9000000002a3c000000003d50ff8e3d41ff8ac081322eff3a2f2e0010486eff844879000000003d6eff2aff902d45ff9482aeff3c8286c0813d40ff8c202eff44b7801d40ff924eb90000000042414fef000c41f900000000361a302a001e808380813200b5c866f033c00000000033c2000000004879000000004eb9000000004cee3cfcfefc588f4e5e4e753d44ff2a6000fd6c42456000fda04a806700fe5e70016000fe4c42806000fe52327c00036000fe6049e8ffff5389220c2608c2836000fe5e38412e0c260c4483c6873e2eff26528d8e834683c283ca833d47ff266000fe50384560de",
    "kind": "text",
    "name": ".text.tk_pool_fw_update",
-   "size": 1192
+   "size": 2104
   },
   {
    "align": 1,
@@ -19616,13 +20260,6 @@
    "hex": "",
    "kind": "bss",
    "name": ".bss.relay_head_package",
-   "size": 1
-  },
-  {
-   "align": 1,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.previously_admitting",
    "size": 1
   },
   {
@@ -19657,8 +20294,43 @@
    "align": 2,
    "hex": "",
    "kind": "bss",
+   "name": ".bss.wanted",
+   "size": 32
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.planned_chords",
+   "size": 2
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.automatic_owners",
+   "size": 2
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
    "name": ".bss.relay_owners",
    "size": 2
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.scan_kits",
+   "size": 8
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.scan_patterns",
+   "size": 16
   },
   {
    "align": 2,
@@ -19710,7 +20382,7 @@
    "size": 70
   }
  ],
- "source_sha256": "58f4a9276bfbc94caa88ff996fb5d1a6d3de4638d4ee29a1d67723c0e4d1a315",
+ "source_sha256": "68b774a899ae8a8bc1bb83f488883da227989cda9a629a8127b6d4f8fe450c3d",
  "symbols": [
   {
    "global": false,
@@ -19752,6 +20424,24 @@
    "global": false,
    "name": ".sec..bss.assigned",
    "section": ".bss.assigned",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.audio_pending",
+   "section": ".bss.audio_pending",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.audio_waiting",
+   "section": ".bss.audio_waiting",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.automatic_owners",
+   "section": ".bss.automatic_owners",
    "value": 0
   },
   {
@@ -20128,6 +20818,12 @@
   },
   {
    "global": false,
+   "name": ".sec..bss.planned_chords",
+   "section": ".bss.planned_chords",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..bss.playing",
    "section": ".bss.playing",
    "value": 0
@@ -20196,12 +20892,6 @@
    "global": false,
    "name": ".sec..bss.preparing",
    "section": ".bss.preparing",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.previously_admitting",
-   "section": ".bss.previously_admitting",
    "value": 0
   },
   {
@@ -20278,6 +20968,12 @@
   },
   {
    "global": false,
+   "name": ".sec..bss.reply_tag",
+   "section": ".bss.reply_tag",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..bss.reply_time",
    "section": ".bss.reply_time",
    "value": 0
@@ -20328,6 +21024,18 @@
    "global": false,
    "name": ".sec..bss.rx_ports",
    "section": ".bss.rx_ports",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.scan_kits",
+   "section": ".bss.scan_kits",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.scan_patterns",
+   "section": ".bss.scan_patterns",
    "value": 0
   },
   {
@@ -20490,6 +21198,12 @@
    "global": false,
    "name": ".sec..bss.tracks",
    "section": ".bss.tracks",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.wanted",
+   "section": ".bss.wanted",
    "value": 0
   },
   {
@@ -21052,6 +21766,12 @@
   },
   {
    "global": false,
+   "name": ".sec..text.finish_start.isra.0",
+   "section": ".text.finish_start.isra.0",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..text.finish_undo",
    "section": ".text.finish_undo",
    "value": 0
@@ -21352,6 +22072,12 @@
   },
   {
    "global": false,
+   "name": ".sec..text.request_for",
+   "section": ".text.request_for",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..text.resolve_mode",
    "section": ".text.resolve_mode",
    "value": 0
@@ -21628,6 +22354,12 @@
   },
   {
    "global": false,
+   "name": ".sec..text.tk_pool_fw_automatic",
+   "section": ".text.tk_pool_fw_automatic",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..text.tk_pool_fw_eligible",
    "section": ".text.tk_pool_fw_eligible",
    "value": 0
@@ -21636,6 +22368,18 @@
    "global": false,
    "name": ".sec..text.tk_pool_fw_owner",
    "section": ".text.tk_pool_fw_owner",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.tk_pool_fw_reserved",
+   "section": ".text.tk_pool_fw_reserved",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.tk_pool_fw_voices",
+   "section": ".text.tk_pool_fw_voices",
    "value": 0
   },
   {
@@ -21814,6 +22558,12 @@
   },
   {
    "global": false,
+   "name": ".sec..text.update_pool",
+   "section": ".text.update_pool",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..text.vector.constprop.0",
    "section": ".text.vector.constprop.0",
    "value": 0
@@ -21930,6 +22680,24 @@
    "global": false,
    "name": "audio_binding",
    "section": ".rodata.audio_binding",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "audio_pending",
+   "section": ".bss.audio_pending",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "audio_waiting",
+   "section": ".bss.audio_waiting",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "automatic_owners",
+   "section": ".bss.automatic_owners",
    "value": 0
   },
   {
@@ -22446,6 +23214,12 @@
    "global": false,
    "name": "find_temporary",
    "section": ".text.find_temporary",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "finish_start.isra.0",
+   "section": ".text.finish_start.isra.0",
    "value": 0
   },
   {
@@ -23020,6 +23794,12 @@
   },
   {
    "global": false,
+   "name": "planned_chords",
+   "section": ".bss.planned_chords",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "playing",
    "section": ".bss.playing",
    "value": 0
@@ -23182,12 +23962,6 @@
   },
   {
    "global": false,
-   "name": "previously_admitting",
-   "section": ".bss.previously_admitting",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": "projected",
    "section": ".bss.projected",
    "value": 0
@@ -23320,6 +24094,12 @@
   },
   {
    "global": false,
+   "name": "reply_tag",
+   "section": ".bss.reply_tag",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "reply_time",
    "section": ".bss.reply_time",
    "value": 0
@@ -23328,6 +24108,12 @@
    "global": false,
    "name": "reply_word",
    "section": ".bss.reply_word",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "request_for",
+   "section": ".text.request_for",
    "value": 0
   },
   {
@@ -23442,6 +24228,18 @@
    "global": false,
    "name": "saved_tracks",
    "section": ".text.saved_tracks",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "scan_kits",
+   "section": ".bss.scan_kits",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "scan_patterns",
+   "section": ".bss.scan_patterns",
    "value": 0
   },
   {
@@ -24124,6 +24922,18 @@
   },
   {
    "global": true,
+   "name": "tk_native_audio_pending",
+   "section": ".text.tk_native_audio_pending",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_native_audio_waiting",
+   "section": ".text.tk_native_audio_waiting",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "tk_native_backend",
    "section": ".text.tk_native_backend",
    "value": 0
@@ -24526,6 +25336,12 @@
   },
   {
    "global": true,
+   "name": "tk_pool_fw_automatic",
+   "section": ".text.tk_pool_fw_automatic",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "tk_pool_fw_block_note",
    "section": ".text.tk_pool_fw_block_note",
    "value": 0
@@ -24540,6 +25356,12 @@
    "global": true,
    "name": "tk_pool_fw_helpers",
    "section": ".text.tk_pool_fw_helpers",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_pool_fw_limit",
+   "section": ".text.tk_pool_fw_limit",
    "value": 0
   },
   {
@@ -24574,6 +25396,12 @@
   },
   {
    "global": true,
+   "name": "tk_pool_fw_start_ready",
+   "section": ".text.tk_pool_fw_start_ready",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "tk_pool_fw_update",
    "section": ".text.tk_pool_fw_update",
    "value": 0
@@ -24600,6 +25428,12 @@
    "global": true,
    "name": "tk_pool_link_quiet",
    "section": ".text.tk_pool_link_quiet",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_pool_link_ready",
+   "section": ".text.tk_pool_link_ready",
    "value": 0
   },
   {
@@ -25720,6 +26554,12 @@
   },
   {
    "global": false,
+   "name": "update_pool",
+   "section": ".text.update_pool",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "usb_budget",
    "section": ".data.usb_budget",
    "value": 0
@@ -25734,6 +26574,12 @@
    "global": false,
    "name": "voicing.3",
    "section": ".rodata.voicing.3",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "wanted",
+   "section": ".bss.wanted",
    "value": 0
   },
   {
@@ -25771,8 +26617,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "21112",
-  "isa_check": "c31582fea63cdc9391fdca7359c42d412b6d05cc231c58743d8fd255e92a631e",
+  "instructions_redecoded": "21853",
+  "isa_check": "20a4e8660ea2fe580fa1b9d7069b945331f7a5aeba20ac770b4c8945d85d83d8",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

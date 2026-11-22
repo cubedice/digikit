@@ -136,18 +136,50 @@ ${ampDone}`,
     const low = 0xa << (owner * 4);
     const high = owner << ((supportingTrack - 8) * 4);
     const mask = 0x544b0000 | (1 << supportingTrack);
-    async function publish(marker: number) {
-      const packet = [mask, marker, high, mask ^ marker ^ high ^ 0x22dca71b];
+    async function publish(marker: number, group = true, tag = 0, corrupt = false) {
+      const header = (group ? mask : 0x544b0000) ^ (tag << 16);
+      const nextHigh = group ? high : 0;
+      const packet = [header, marker, nextHigh, header ^ marker ^ nextHigh ^ 0x22dca71b ^ Number(corrupt)];
       packet.forEach((word, i) => rig.poke((rx + 0x854) / 4 + i, word));
       expect((await rig.call('_tk_pool_receive', { I3: rx })).halt).toBe('breakpoint');
     }
+    async function headOwner(track: number) {
+      const lookup = await rig.call('_tk_pool_head_owner', { R1: track }, { readRegs: ['R0'] });
+      expect(lookup.halt).toBe('breakpoint');
+      return lookup.regs.R0! >>> 0;
+    }
+    async function expectEcho(tag: number) {
+      const serial = 23;
+      const quiet = 0x1234;
+      rig.poke(rig.data._tk_pool_quiet_serial! / 4, serial);
+      rig.poke(rig.data._tk_pool_quiet_mask! / 4, quiet);
+      const reply = await rig.call('_tk_pool_quiet_reply', { I4: rx }, { reads: [[rx / 4 + 24, 2]] });
+      expect(reply.halt).toBe('breakpoint');
+      expect(reply.reads[0]).toEqual([
+        (quiet << 16) | (0x4b51 ^ tag),
+        ((serial ^ quiet ^ 0x32f7 ^ tag) << 16) | serial,
+      ]);
+    }
     await publish(0);
     for (const track of [owner, supportingTrack]) {
-      const lookup = await rig.call('_tk_pool_head_owner', { R1: track }, { readRegs: ['R0'] });
-      expect(lookup.regs.R0! >>> 0).toBe(0xffffffff); // A stock pool cannot authorize a RELAY Sound.
+      expect(await headOwner(track)).toBe(0xffffffff); // A stock pool cannot authorize a RELAY Sound.
     }
-    await publish(low);
 
+    await publish(low, false, 0xa5);
+    expect(await headOwner(owner)).toBe(owner);
+    expect(await headOwner(supportingTrack)).toBe(0xffffffff);
+    await expectEcho(0xa5);
+    await note(lead, owner, 72);
+    expect(await render(lead)).toEqual(expected(0, 2)); // AUTO solo starts a pitched head.
+    expect(await rig.peek(row + 1, 1)).toEqual([21]); // The motor did not seek.
+    await publish(0, false, 0xb2, true);
+    expect(await headOwner(owner)).toBe(owner);
+    await expectEcho(0xa5);
+    await publish(0, false, 0xb2);
+    expect(await headOwner(owner)).toBe(0xffffffff);
+    await expectEcho(0xb2);
+
+    await publish(low);
     await note(lead, owner, 60);
     await note(second, supportingTrack, 72);
     expect(await render(lead)).toEqual(expected(0, 1));

@@ -5,12 +5,13 @@
 extern void tk_runtime_midi_busy(void) __attribute__((weak));
 
 enum NoteState { NOTE_FREE, NOTE_PENDING, NOTE_SOUNDING, NOTE_RELEASE };
-enum { UNITS_PER_BYTE = 1500 };
+enum { UNITS_PER_BYTE = 1500, AUTO_WAIT_BLOCKS = 120 };
 
 typedef struct {
     uint32_t token, order;
     uint8_t pitch, velocity, state, channel, destination, ports, kind;
     bool midi, native_seed;
+    uint16_t queued_at;
 } NativeNote;
 
 /* Include one extra slot for a new note submitted before the preceding
@@ -38,6 +39,8 @@ static NativeTrack notes[TK_TRACKS];
 static uint32_t serial;
 static unsigned starts, releases;
 static uint16_t active_helpers;
+static uint16_t audio_waiting;
+static uint8_t audio_pending[TK_TRACKS];
 /* Generated audio bypasses the stock audition counter. Report dispatch
  * ownership independently so it can be compared with the stock route.
  */
@@ -74,6 +77,23 @@ static bool midi_room(uint8_t ports)
            (!(ports & TK_MIDI_OUT_DIN) || din_budget >= TK_MIDI_DIN_PAIR_BYTES * UNITS_PER_BYTE);
 }
 
+uint16_t tk_native_audio_waiting(void)
+{
+    return audio_waiting;
+}
+
+uint8_t tk_native_audio_pending(uint8_t owner)
+{
+    return owner < TK_TRACKS ? audio_pending[owner] : 0;
+}
+
+static void finish_start(uint8_t owner, const NativeNote *note)
+{
+    if (!note->midi && --audio_pending[owner] == 0)
+        audio_waiting &= (uint16_t)~(1u << owner);
+    --starts;
+}
+
 bool tk_native_event(void *context, uint8_t track, const TkNoteEvent *event)
 {
     if (!context || track >= TK_TRACKS || !event->token || event->pitch > 127)
@@ -92,8 +112,8 @@ bool tk_native_event(void *context, uint8_t track, const TkNoteEvent *event)
             if (event->on)
                 return false;
             if (entry->state == NOTE_PENDING) {
+                finish_start(track, entry);
                 *entry = (NativeNote){0};
-                --starts;
             } else if (entry->state == NOTE_SOUNDING) {
                 entry->state = NOTE_RELEASE;
                 ++releases;
@@ -107,7 +127,7 @@ bool tk_native_event(void *context, uint8_t track, const TkNoteEvent *event)
         return true;
     unsigned limit = midi ? TK_NOTES : 1;
     if (kind == TK_NATIVE_AUDIO || (kind == TK_NATIVE_RELAY && tk_pool_fw_relay_ready()))
-        limit = tk_pool_fw_voices(track);
+        limit = tk_pool_fw_limit(track);
     if (tk_pool_fw_reserved(track) || !empty || active >= limit || !event->velocity ||
         event->velocity > 127)
         return false;
@@ -120,7 +140,12 @@ bool tk_native_event(void *context, uint8_t track, const TkNoteEvent *event)
                           .kind = kind,
                           .midi = midi,
                           .native_seed =
-                              !midi && (event->token & 0x80000000u) && tk_sequence_audio(track)};
+                              !midi && (event->token & 0x80000000u) && tk_sequence_audio(track),
+                          .queued_at = midi ? 0 : (uint16_t)dkrt_blocks()};
+    if (!midi) {
+        ++audio_pending[track];
+        audio_waiting |= (uint16_t)(1u << track);
+    }
     ++starts;
     return true;
 }
@@ -160,10 +185,12 @@ bool tk_native_sounding(uint8_t track, uint32_t token)
     return false;
 }
 
-static NativeNote *oldest(uint8_t state, uint8_t *owner)
+static NativeNote *oldest(uint8_t state, uint8_t *owner, uint16_t skipped)
 {
     NativeNote *first = NULL;
-    for (uint8_t track = 0; track < TK_TRACKS; ++track)
+    for (uint8_t track = 0; track < TK_TRACKS; ++track) {
+        if (skipped & (1u << track))
+            continue;
         for (unsigned i = 0; i <= TK_NOTES; ++i) {
             NativeNote *entry = &notes[track][i];
             if (entry->state != state)
@@ -173,6 +200,7 @@ static NativeNote *oldest(uint8_t state, uint8_t *owner)
                 *owner = track;
             }
         }
+    }
     return first;
 }
 
@@ -222,19 +250,28 @@ static void retire_unassigned(void)
     }
 }
 
-static bool choose_audio_destination(uint8_t owner, NativeNote *note)
+static bool choose_audio_destination(uint8_t owner, NativeNote *note, bool automatic, bool expired)
 {
     if (tk_pool_fw_reserved(owner))
         return false;
     uint16_t group = (uint16_t)((1u << owner) | tk_pool_fw_helpers(owner));
     uint16_t active = group & tk_native_audio_active;
+    /* A stock owner can play alone when helper setup times out. An extra
+     * pitch is too late to add, and RELAY needs a mapped head on every start.
+     */
+    if (automatic && expired && (active || note->kind != TK_NATIVE_AUDIO))
+        return false;
     if (!active) {
         /* The first note installs the resolved Sound and locks on the owner
          * before subsequent notes inherit that track's live controls. */
         note->destination = owner;
-        return true;
+        return !automatic || expired || tk_pool_fw_start_ready(owner, owner);
     }
     uint16_t available = group & ~active;
+    if (automatic)
+        for (uint8_t track = 0; track < TK_TRACKS; ++track)
+            if ((available & (1u << track)) && !tk_pool_fw_start_ready(owner, track))
+                available &= (uint16_t)~(1u << track);
     if (!available)
         return false;
     uint16_t quiet = available & tk_pool_fw_quiet();
@@ -255,12 +292,13 @@ void tk_native_drain(void)
 {
     retire_unassigned();
     replenish_midi();
+    uint16_t skipped = 0;
     /* The stock audition mailbox owns 16 backing records. Dispatch a bounded
      * batch and yield the task to its consumers. Releases win over new notes.
      */
-    for (unsigned n = 0; n < 4 && (starts || releases); ++n) {
+    for (unsigned n = 0; n < 4 && (starts || releases);) {
         uint8_t track = 0;
-        NativeNote *entry = releases ? oldest(NOTE_RELEASE, &track) : NULL;
+        NativeNote *entry = releases ? oldest(NOTE_RELEASE, &track, 0) : NULL;
         if (entry) {
             if (!send(track, entry, 0))
                 return;
@@ -271,17 +309,27 @@ void tk_native_drain(void)
             }
             *entry = (NativeNote){0};
             --releases;
+            ++n;
             continue;
         }
-        entry = oldest(NOTE_PENDING, &track);
+        entry = oldest(NOTE_PENDING, &track, skipped);
         if (!entry)
             return;
         int kind = tk_native_kind(track);
         bool pooled =
             kind == TK_NATIVE_AUDIO || (kind == TK_NATIVE_RELAY && tk_pool_fw_relay_ready());
-        if (kind != entry->kind || (pooled && !choose_audio_destination(track, entry))) {
+        bool automatic = pooled && tk_pool_fw_automatic(track);
+        bool expired = (uint16_t)(budget_at - entry->queued_at) >= AUTO_WAIT_BLOCKS;
+        if (kind != entry->kind ||
+            (pooled && !choose_audio_destination(track, entry, automatic, expired))) {
+            if (kind == entry->kind && automatic && !expired) {
+                /* Later starts on the same track wait behind its oldest. */
+                skipped |= (uint16_t)(1u << track);
+                continue;
+            }
+            finish_start(track, entry);
             *entry = (NativeNote){0};
-            --starts;
+            ++n;
             continue;
         }
         if (entry->midi) {
@@ -292,8 +340,9 @@ void tk_native_drain(void)
                 midi_collision(entry, (uint8_t)channel)) {
                 if (busy && tk_runtime_midi_busy)
                     tk_runtime_midi_busy();
+                finish_start(track, entry);
                 *entry = (NativeNote){0};
-                --starts;
+                ++n;
                 continue;
             }
             entry->channel = (uint8_t)channel;
@@ -312,7 +361,8 @@ void tk_native_drain(void)
                 active_helpers |= (uint16_t)(1u << entry->destination);
             tk_pool_fw_note_edge(entry->destination);
         }
+        finish_start(track, entry);
         entry->state = NOTE_SOUNDING;
-        --starts;
+        ++n;
     }
 }

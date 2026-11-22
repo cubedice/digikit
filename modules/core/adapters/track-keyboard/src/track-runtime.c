@@ -229,12 +229,16 @@ static void prepare_sequence_targets(void)
     tk_sequence_prepare(targets, count);
 }
 
+static void update_pool(void)
+{
+    tk_pool_fw_update(pattern ? pattern : editing_pattern, editing_pattern,
+                      tk_service_active_config(0), !was_running);
+}
+
 static void poll(void)
 {
     if (!refresh_pattern())
         return;
-    tk_pool_fw_update(pattern ? pattern : editing_pattern, tk_service_active_config(0),
-                      !was_running);
     for (uint8_t track = 0; track < TK_TRACKS; ++track) {
         uint16_t mask = (uint16_t)(1u << track);
         int type = tk_pool_fw_reserved(track) ? TK_NATIVE_UNSUPPORTED : tk_native_kind(track);
@@ -261,7 +265,7 @@ static void poll(void)
         if (type == TK_NATIVE_CANOPY)
             tk_canopy_sync(track, true, pattern ? pattern : editing_pattern);
         else if ((type == TK_NATIVE_AUDIO || type == TK_NATIVE_RELAY) && (registered & mask))
-            tk_service_set_voice_capacity(track, tk_pool_fw_voices(track));
+            tk_service_set_voice_capacity(track, tk_pool_fw_limit(track));
         tk_sequence_set_midi(track, type == TK_NATIVE_MIDI);
         tk_sequence_set_relay(track, (registered & mask) && type == TK_NATIVE_RELAY);
     }
@@ -286,6 +290,7 @@ static void poll(void)
     tk_sequence_poll(pattern ? pattern : editing_pattern, was_running);
     prepare_sequence_targets();
     tk_capture_poll(editing_pattern, (uint16_t)pp_selected_tempo());
+    update_pool();
     static uint32_t capture_drops, capture_notice;
     if (capture_drops != tk_capture_dropped) {
         capture_drops = tk_capture_dropped;
@@ -362,6 +367,8 @@ int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
     panel_claims |= mask;
     ++tk_panel_claim_hits;
     tk_service_tick(0, (uint16_t)pp_selected_tempo());
+    if (tk_native_audio_waiting() & (1u << track))
+        update_pool();
     tk_native_drain();
     return 1;
 }
@@ -865,12 +872,15 @@ static void pool_fill(dk_ui_menu *m, void *unused)
         return;
     }
     char summary[DK_UI_ROW];
-    char *end = tk_trig_decimal(summary, tk_pool_fw_voices(pool_owner));
-    *end++ = ' ';
-    const char *suffix = "VOICES";
-    while (*suffix)
-        *end++ = *suffix++;
-    *end = 0;
+    if (pool_original) {
+        char *end = tk_trig_decimal(summary, tk_pool_fw_voices(pool_owner));
+        memcpy(end, " VOICES", 8);
+    } else {
+        memcpy(summary, "AUTO ", 5);
+        char *end = tk_trig_decimal(summary + 5, tk_pool_fw_voices(pool_owner));
+        *end++ = '/';
+        *tk_trig_decimal(end, tk_pool_fw_limit(pool_owner)) = 0;
+    }
     dk_ui_menu_add_text(m, summary);
     dk_ui_menu_add_action(m, "APPLY GROUP", pool_apply, NULL, 0);
     pool_eligible = tk_pool_fw_eligible(pool_owner);
@@ -885,6 +895,7 @@ static void pool_fill(dk_ui_menu *m, void *unused)
         int owner = tk_pool_fw_owner(track);
         const char *state = pool_request & bit    ? owner == pool_owner ? "RESERVED" : "SELECTED"
                             : pool_original & bit ? "REMOVE"
+                            : owner == pool_owner ? "BORROWED"
                             : pool_eligible & bit ? "AVAILABLE"
                                                   : "IN USE";
         while (*state)
@@ -906,7 +917,7 @@ bool tk_trig_open_pool(uint8_t track)
     bool editable = kind[track] != TK_NATIVE_MIDI && kind[track] != TK_NATIVE_CANOPY;
     if (kind[track] == TK_NATIVE_RELAY && !tk_pool_fw_relay_ready())
         return dk_ui_toast(dk_ui_core_handle(), "RELAY: ONE TAPE VOICE") == 0;
-    if (editable && pp_transport_running())
+    if (editable && tk_service_helpers(track) && pp_transport_running())
         return dk_ui_toast(dk_ui_core_handle(), "STOP TO EDIT VOICE GROUP") == 0;
     if (!pool_menu)
         pool_menu = dk_ui_menu_new(dk_ui_core_handle(), &desc);

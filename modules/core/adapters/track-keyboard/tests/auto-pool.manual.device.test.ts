@@ -1,0 +1,148 @@
+// device-literals: allow (uses the DTII stock voice records)
+import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
+import { dspWords } from '@digi/regression/runtime/fx-live.ts';
+import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
+import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
+import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
+import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
+import { pollEmulated } from '@digi/regression/runtime/waits.ts';
+import { withSession } from '@digi/regression/support.ts';
+import { freeClock, waitClock } from '@digi/test-support';
+import { expect, test } from 'vitest';
+
+const OWNER = 1;
+const TRIG_9 = 33;
+const STOCK_VOICE_FLAGS = 0x241484;
+const STOCK_TRACK_STRIDE = 0x3b0;
+
+function trackBits(mask: number): number[] {
+  return Array.from({ length: 16 }, (_, track) => track).filter((track) => mask & (1 << track));
+}
+
+describeOn('dt2', 'automatic stock audio helper pool', () => {
+  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+
+  test('borrows only for the notes being played and returns empty tracks after release', { timeout: 180_000 }, async () => {
+    const { session } = handle;
+    const image = await prepareRuntimePlanModulesOffline(
+      session.options, session.runDir, session.runDir,
+      ['DKRT_BOOT', 'tk_native_audio_active', 'pp_position'],
+      { modules: ['core/track-keyboard', 'core/instrument-play', 'core/digikit-menu', 'core/health'] },
+    );
+    const word = async (symbol: string, offset = 0) => (await session.client.memPeek(planSymbol(image.plan, symbol) + offset)) ?? 0;
+    const mask = async (name: string, offset = 0) => (await word('.sec..bss.' + name, offset)) >>> 16;
+    await session.client.firmwareLoad({
+      syx: image.syx, base_sha256: image.plan.base.syx_sha256, start: 'auto',
+      force: true, auto_no: true, card: session.cardPath,
+    });
+    await session.client.call('run.mode', { mode: 'free' });
+    await expectRuntimeUi(session, image.plan, session.runDir);
+    const { edge, tap, turn } = acknowledgedPanel(session);
+    const selectTrack = async (track: number) => {
+      await edge('TRK', true);
+      try {
+        await tap('TRIG ' + (track + 1));
+      } finally {
+        await edge('TRK', false);
+      }
+    };
+    await tap('NO'); // Dismiss the stock FILE SYSTEM OK acknowledgement.
+    await selectTrack(0);
+    const initialEligible = await pollEmulated(session, () => mask('eligible'),
+      (value) => trackBits(value & ~OWNER).length >= 3, {
+        emulatedMs: 4000, message: 'stock card has three empty tracks to test',
+      });
+    const [protectedTrack] = trackBits(initialEligible & ~OWNER);
+    const protectedMask = 1 << protectedTrack!;
+    await selectTrack(protectedTrack!);
+    await tap('RECORD');
+    await tap('TRIG 1');
+    await tap('RECORD');
+    await selectTrack(0);
+    await pollEmulated(session, () => mask('eligible'),
+      (value) => !(value & protectedMask) && trackBits(value & ~OWNER).length >= 2, {
+        emulatedMs: 4000, message: 'placing a sequencer trig removes that track from the available pool',
+      });
+
+    await tap('SRC');
+    for (let page = 0; page < 4; page++) await tap('PAGE TRIG');
+    await turn(1, 12); // POLY
+    await turn(2, 4); // MAJ, generated from one pressed key.
+    await tap('KEYBOARD');
+
+    const state = async () => ({
+      assigned: await mask('pool'),
+      draining: await mask('pool', 32),
+      preparing: await mask('preparing'),
+      reserved: await mask('reserved'),
+      active: await word('tk_native_audio_active'),
+      quiet: (await word('.sec..bss.reply_word')) & 0xffff,
+      eligible: await mask('eligible'),
+      empty: await mask('empty_tracks'),
+      wanted: await mask('wanted'),
+    });
+    const playAndRelease = async (label: string) => {
+      const idle = await state();
+      expect(idle.assigned | idle.draining | idle.reserved | idle.active, label + ' has no idle leases').toBe(0);
+      const states: string[] = [];
+      let helpers = 0;
+      await session.client.inputButton(TRIG_9, true);
+      try {
+        const sounding = await pollEmulated(session, async () => {
+          const current = await state();
+          const destinations = OWNER | current.assigned;
+          let dspActive = 0;
+          if (current.active & destinations) {
+            for (const track of trackBits(current.active & destinations)) {
+              // Each DTII audio track has two alternating sample voice records.
+              const [primary] = await dspWords(session, STOCK_VOICE_FLAGS + track * STOCK_TRACK_STRIDE, 1);
+              const [alternate] = await dspWords(session, STOCK_VOICE_FLAGS + track * STOCK_TRACK_STRIDE + 0x1d8, 1);
+              if (((primary ?? 0) | (alternate ?? 0)) & 1) dspActive |= 1 << track;
+            }
+          }
+          const summary = Object.entries({ ...current, dspActive }).map(([key, value]) => key + '=' + value.toString(16)).join(' ');
+          if (states.at(-1) !== summary) states.push(summary);
+          return { ...current, dspActive };
+        }, (value) => trackBits(value.assigned).length === 2 && value.dspActive === (OWNER | value.assigned), {
+          emulatedMs: 1800,
+          intervalMs: 5,
+          message: () => label + ' sounds a chord on three actual DSP voice destinations\n'
+            + 'Before onset: ' + JSON.stringify(idle) + ', protected mask: ' + protectedMask.toString(16)
+            + '\nObserved masks in hex:\n' + states.join('\n'),
+        });
+        helpers = sounding.assigned;
+        expect(sounding.reserved, label + ' only reserves the helpers required by the triad').toBe(helpers);
+        expect((sounding.reserved | sounding.active) & protectedMask, label + ' leaves the populated track independent').toBe(0);
+      } finally {
+        await session.client.inputButton(TRIG_9, false);
+      }
+      const released = await pollEmulated(session, state, (current) => {
+        expect((current.assigned | current.draining | current.reserved) & protectedMask).toBe(0);
+        return (current.assigned | current.draining | current.reserved | current.active) === 0
+          && (current.quiet & helpers) === helpers;
+      }, {
+        emulatedMs: 6000, intervalMs: 10, message: label + ' returns all helpers after the DSP reports them quiet',
+      });
+      console.info(label + ' AUTO pool', {
+        eligible: idle.eligible.toString(16),
+        quietBefore: idle.quiet.toString(16),
+        protected: protectedMask.toString(16),
+        sounding: (OWNER | helpers).toString(16),
+        quietAfter: released.quiet.toString(16),
+      });
+    };
+
+    await playAndRelease('Stopped transport');
+    await tap('PLAY');
+    try {
+      await pollEmulated(session, () => word('pp_position', 20), (flags) => !!(flags & 2), {
+        emulatedMs: 2000, message: 'stock transport is running',
+      });
+      await waitClock(freeClock(session), 200); // Let native transport and FX finish their initial kit update.
+      await playAndRelease('Running transport');
+    } finally {
+      await tap('STOP');
+    }
+    await session.expectNoFault('AUTO stock voice borrowing while playing a chord');
+  });
+});

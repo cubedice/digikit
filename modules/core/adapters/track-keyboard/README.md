@@ -12,18 +12,21 @@ to rate, spread or order apply from the next onset and preserve an open
 gate. A sequenced phrase keeps any of those values locked by its seed.
 Holding a pad in stock RETRIGS mode pauses generated arp notes for the
 selected audio track. Releasing it resumes on the next timed onset.
-H selects the chord. On KEYS, A enables polyphony and B selects the same chord. C and
-D change the voicing and strum. The keyboard drawing distinguishes held
-pitch classes from emitted pitches. Stock audio voice groups use H POOL.
-With transport stopped, tap numbered TRIGs to stage empty audio tracks as
-helpers for ONESHOT, WERP, STRETCH, REPITCH, GRID or SLICE. The owner LED is
-blue, selected helpers are white, and available tracks are dim. YES applies
-the group. NO discards the draft. You can also check the track rows and
-choose APPLY GROUP. Requested helpers belong to the pattern. The menu shows
-effective reservations and the resulting voice count. MIDI tracks show
-their channel, USB/DIN routes and transmit budgets, and CANOPY shows
-its internal voice limit. A qualified reservation
-stays active when transport starts on the same pattern.
+H selects the chord. On KEYS, A enables polyphony, B selects the same
+chord, and C and D set voicing and strum. VCES sets the maximum number of
+voices. For ONESHOT, WERP, STRETCH, REPITCH, GRID and SLICE, turn POLY on
+and play. AUTO uses the selected track for the first voice and borrows
+eligible empty audio tracks for the extra pitches, with transport running
+or stopped. Each borrowed track returns to the pool after its release
+tail finishes.
+
+H POOL shows the automatic voice count and borrowed tracks. A saved
+manual group still uses its chosen helpers. To pin a group, stop transport,
+tap the numbered TRIGs in POOL, then press YES. Blue is the owner, white
+shows selected helpers, and dim shows available tracks. NO discards the
+draft. Clear the selections and apply to return a saved group to AUTO.
+MIDI tracks show their configured channel, output routes and transmit
+budgets. CANOPY shows its internal voice limit.
 
 Click CHRD to open NOTES. Choose LEARN, play notes from the panel or an
 external keyboard, then click CHRD again and choose APPLY USER. Open a
@@ -80,10 +83,10 @@ pool for the generated phrase, including its source family and TUNE. Trig
 locks still take precedence. Tracks that reference a Sound without a
 supported CANOPY record use legacy performance routing.
 
-RELAY 0.5.1 supports shared ARP and KEYS with its normal single tape voice.
-To play two pitched notes, stop transport, enable POLY, then use POOL to
-reserve one empty stock sample track. The paired heads play the owner's
-committed stereo take from its start at the note pitch relative to C5.
+RELAY 0.5.1 supports shared ARP and KEYS. Enable POLY to play two pitches
+when an empty stock sample track is available. AUTO borrows it for the
+second note. The playback heads read the owner's committed stereo take
+from its start, pitched relative to C5.
 They follow the tape's RATE and MIX, and only the recorded signal goes
 through the grouped voices. The recorder still owns punch, undo, and
 the manual tape controls. While recording, the heads read the last

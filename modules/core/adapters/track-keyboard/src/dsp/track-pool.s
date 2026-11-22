@@ -3,7 +3,7 @@
 // R0-R5, I0 and flags belong to that receiver. Bad packets keep the old
 // route so a helper's tail cannot jump to its own sends or master channel.
 #define TK_POOL_SUFFIX 0x854
-#define TK_POOL_MAGIC 0x544b
+#define TK_POOL_MAGIC 0x54
 #define TK_POOL_SALT 0x22dca71b
 #define TK_POOL_RELAY_OWNER 10
 #define TK_TRACK_BUS 0x252df8
@@ -16,7 +16,7 @@ _tk_pool_receive:
     R0 = R0 + R1;
     I0 = R0;
     R1 = DM(0,I0);
-    R2 = LSHIFT R1 BY -16;
+    R2 = LSHIFT R1 BY -24;
     R3 = TK_POOL_MAGIC;
     COMP(R2,R3);
     IF NE RTS;
@@ -31,7 +31,7 @@ _tk_pool_receive:
     IF NE RTS;
     R1 = FEXT R1 BY 0:16;
     R0 = PASS R1;
-    IF EQ JUMP _tk_pool_clear;
+    IF EQ JUMP _tk_pool_publish;
 
     // Reject a map that would send a helper through another helper.
     R4 = PASS R2;
@@ -62,8 +62,12 @@ _tk_pool_advance:
 _tk_pool_publish:
     DM(_tk_pool_owners_low) = R2;
     DM(_tk_pool_owners_high) = R3;
-_tk_pool_clear:
     DM(_tk_pool_mask) = R1;
+    R0 = DM(0,I0);
+    R0 = FEXT R0 BY 16:8;
+    R4 = 0x4b;
+    R0 = R0 XOR R4;
+    DM(_tk_pool_tag) = R0;
     RTS;
 
 // R1: physical voice. Return its authenticated RELAY group owner or -1.
@@ -71,12 +75,10 @@ _tk_pool_clear:
 .GLOBAL _tk_pool_head_owner;
 _tk_pool_head_owner:
     R0 = DM(_tk_pool_mask);
-    R0 = PASS R0;
-    IF EQ JUMP _tk_pool_no_head;
     R2 = -R1;
     R2 = LSHIFT R0 BY R2;
     BTST R2 BY 0;
-    IF SZ JUMP _tk_pool_find_lead;
+    IF SZ JUMP _tk_pool_lead;
     R2 = FEXT R1 BY 0:3;
     R2 = LSHIFT R2 BY 2;
     R2 = -R2;
@@ -87,25 +89,8 @@ _tk_pool_head_owner:
     R3 = LSHIFT R3 BY R2;
     R0 = FEXT R3 BY 0:4;
     JUMP _tk_pool_check_marker;
-_tk_pool_find_lead:
-    R2 = DM(_tk_pool_owners_low);
-    R3 = DM(_tk_pool_owners_high);
-_tk_pool_find_binding:
-    BTST R0 BY 0;
-    IF SZ JUMP _tk_pool_find_advance;
-    R6 = FEXT R2 BY 0:4;
-    COMP(R1,R6);
-    IF EQ JUMP _tk_pool_found_lead;
-_tk_pool_find_advance:
-    R0 = LSHIFT R0 BY -1;
-    R0 = PASS R0;
-    IF EQ JUMP _tk_pool_no_head;
-    R6 = LSHIFT R3 BY 28;
-    R2 = LSHIFT R2 BY -4;
-    R2 = R2 OR R6;
-    R3 = LSHIFT R3 BY -4;
-    JUMP _tk_pool_find_binding;
-_tk_pool_found_lead:
+_tk_pool_lead:
+    // AUTO marks the owner even before it has borrowed a helper.
     R0 = R1;
 _tk_pool_check_marker:
     R2 = FEXT R0 BY 0:3;
@@ -291,13 +276,16 @@ _tk_pool_quiet_reply:
     R0 = PASS R0;
     IF EQ RTS;
     R3 = DM(_tk_pool_quiet_mask);
+    R6 = DM(_tk_pool_tag);
     R5 = 0x32f7;
     R5 = R5 XOR R3;
     R5 = R5 XOR R0;
+    R5 = R5 XOR R6;
     R5 = LSHIFT R5 BY 16;
     R5 = R5 OR R0;
     R3 = LSHIFT R3 BY 16;
-    R6 = 0x4b51;
+    R0 = 0x4b51;
+    R6 = R6 XOR R0;
     R3 = R3 OR R6;
     R0 = I4;
     I2 = R0;
@@ -309,6 +297,7 @@ _tk_pool_quiet_reply:
 .VAR _tk_pool_mask;
 .VAR _tk_pool_owners_low;
 .VAR _tk_pool_owners_high;
+.VAR _tk_pool_tag;
 .VAR _tk_pool_rx_r6;
 .VAR _tk_pool_r0[2];
 .VAR _tk_pool_mode[2];

@@ -394,6 +394,22 @@ and stopped input timing are under the ignored
 `dist/track-keyboard/hardware-20261121` directory with the `closeout-`
 prefix.
 
+## Automatic helper pool [D]
+
+On the DTII 1.17 coupled emulator, enabling POLY and playing one MAJ root
+started the owner on T1 and borrowed T6 and T10 for the other two pitches
+with the default POOL settings. The test placed a sequencer trig on T2 and
+verified that the allocator left that track independent. The same three
+DSP sample lanes activated with transport stopped and running. After key-up,
+the helpers returned once the DSP reported their audio buses quiet.
+
+The preparation check uses DSP quiet to keep a pending group together.
+Admission still checks the stock event queue before claiming a track. The
+onsets wait for the DSP to echo the new route. The dispatch test covers the
+stock owner fallback when the route cannot be confirmed within 120 blocks.
+In the RELAY SHARC rig, the automatic owner played a pitched take from its
+own head and accepted the second head when a helper route was present.
+
 ## Qualification scope [D]
 
 CANOPY supplies its own internal polyphony. Other dynamic machines need
