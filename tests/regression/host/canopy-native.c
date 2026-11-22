@@ -134,6 +134,7 @@ static char label_text[8][32];
 static char body_text[8][32];
 static char arp_caption[32];
 static uint32_t real_display, graph_mask, graph_value[8];
+static uint32_t scan_report;
 static uint32_t amp_draws;
 static int32_t amp_args[6];
 const uint32_t ip_src_label_font = 123;
@@ -236,6 +237,7 @@ void instrument_src_display(CvDisplay *d, uint32_t time, const char *t, const ch
         status.mode = state.mode;
         status.fast_valid = 1;
         status.fast_at = time;
+        status.fast[IS_FAST_SCAN] = scan_report;
         cv_build(d, &state, &status, time, t, l, 0);
         return;
     }
@@ -585,6 +587,41 @@ int main(int argc, char **argv)
         clear_paint(canvas);
         ip_src_draw((uint8_t *)v, canvas);
         assert(!amp_draws);
+    } else if (!strcmp(argv[1], "wavetable-scan")) {
+        for (unsigned step = 0; step < 128; ++step)
+            for (unsigned lane = 0; lane < ILP_LANES; ++lane)
+                test_locks[step][lane] = -1;
+        real_display = 1;
+        cs_metadata(&state, 2u << 4);
+        state.value[CP_WT_POS] = 233;
+        state.value[CP_WT_DEPTH] = 45;
+        v[0x6c / 4] = (uint32_t)(uintptr_t)seq_object;
+        seq_object[0x258 / 4] = 1u << 4;
+        for (int shared = 0; shared < 2; ++shared) {
+            cs_track_keyboard(&state, shared);
+            v[0x90 / 4] = shared ? CS_VOICE : 2;
+            v[0x190 / 4] = 0;
+            test_held = 0;
+            scan_report = 0;
+            clear_paint(canvas);
+            ip_src_draw((uint8_t *)v, canvas);
+            assert(canvas[13 * 128 + 73] == 1 && canvas[31 * 128 + 49] == 0);
+            assert(!strcmp(label_text[1], "POS"));
+
+            scan_report = 1;
+            ip_src_draw((uint8_t *)v, canvas);
+            assert(canvas[31 * 128 + 49] == 1 && canvas[31 * 128 + 121] == 0);
+            v[0x190 / 4] = 0x01010101;
+            scan_report = IS_SCAN_MAX + 1;
+            ip_src_draw((uint8_t *)v, canvas);
+            assert(canvas[31 * 128 + 49] == 0 && canvas[31 * 128 + 121] == 1);
+            assert(canvas[13 * 128 + 73] == 1 && !strcmp(label_text[1], "3.33"));
+            protected_pixels(canvas, 0);
+
+            test_held = 1;
+            ip_src_draw((uint8_t *)v, canvas);
+            assert(canvas[13 * 128 + 73] == 1 && canvas[31 * 128 + 121] == 0);
+        }
     } else if (!strcmp(argv[1], "live-lock")) {
         for (unsigned step = 0; step < 128; ++step)
             for (unsigned lane = 0; lane < ILP_LANES; ++lane)

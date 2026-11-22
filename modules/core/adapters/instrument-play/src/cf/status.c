@@ -28,7 +28,7 @@ static int fast_valid(const IsStatus *s, const uint32_t *w)
     if ((flags & 0xf0000000u) || ((flags >> 4) & 3) > 2 || ((flags >> 6) & 3) != s->mode ||
         ((flags >> 20) & 7) > 4 || (w[7] & 0xf000) || (w[8] >> 24) || (w[8] & 255) > 127 ||
         (w[9] & 255) > 2 || ((w[9] >> 8) & 255) > IS_CLOCK_STOPPED || ((w[9] >> 16) & 255) > 3 ||
-        ((w[9] >> 24) & 255) > 8)
+        ((w[9] >> 24) & 255) > 8 || w[IS_FAST_SCAN] > IS_SCAN_MAX + 1)
         return 0;
     for (uint32_t i = 0; i < 4; ++i) {
         uint32_t pitch = (w[5] >> (8 * i)) & 255, member = (w[6] >> (8 * i)) & 255;

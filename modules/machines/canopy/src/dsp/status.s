@@ -5,6 +5,7 @@
 // Physical-key/pedal/latch ownership is deliberately not inferred from gates.
 .SECTION/PM seg_pmco;
 .GLOBAL _cu_publish;
+.EXTERN _fm_bank;
 _cu_publish:
     I3 = R8;
     R0 = DM(0, I3);
@@ -372,7 +373,7 @@ _cu_revision:
     DM(188, I2) = R1;
     R1 = 4;
     R1 = R0 AND R1;
-    IF EQ JUMP _cu_ready;
+    IF EQ JUMP _cu_fast;
 _cu_detail:
     R0 = LSHIFT R0 BY -3;
     R1 = 0x20b00;
@@ -498,6 +499,32 @@ _cu_detail_store:
     R5 = R5 + 1;
     R6 = R6 - 1;
     IF NE JUMP _cu_detail_word;
+    JUMP _cu_ready;
+_cu_fast:
+    R0 = DM(9, I3);
+    R1 = DM(_fm_bank); // The outgoing bank can still own a source transition.
+    R1 = PASS R1;
+    IF NE R0 = R1;
+    I1 = R0;
+    R0 = DM(1, I1);
+    R1 = 2; // Wavetable family.
+    COMP(R0, R1);
+    IF NE JUMP _cu_ready;
+    // Fast word 10: one plus the track's scan position in hundredths of
+    // a frame. Use the smoothed POS and the shaped offset at block end.
+    // Per-voice envelope, velocity and wheel offsets do not move this cursor.
+    F0 = DM(233, I2);
+    F1 = DM(247, I2);
+    F0 = F0 + F1;
+    F1 = 0.0;
+    F2 = 7.0;
+    F0 = MAX(F0, F1);
+    F0 = MIN(F0, F2);
+    F1 = 100.0;
+    F0 = F0 * F1;
+    R0 = FIX F0;
+    R0 = R0 + 1;
+    DM(11, I4) = R0;
 _cu_ready:
     R0 = 1;
     DM(0, I4) = R0;

@@ -797,6 +797,42 @@ int main(int argc, char **argv)
         is_select(&status, 1, 12, 0, 0);
         assert(!is_fresh(&status, 100));
         assert(is_receive(&status, fast, 100) == -1);
+    } else if (!strcmp(scenario, "wavetable-scan-status")) {
+        CvDisplay display;
+        start();
+        cs_context(&ui, 0, 12, 1, 0, KB_PLAY, 0, 0, 0);
+        cs_metadata(&ui, 2u << 4);
+        cv_build(&display, &ui, &status, now, "0", "127", 0);
+        assert(display.fresh && !display.scan_valid); /* Legacy status. */
+
+        ++fast[0];
+        fast[IS_FAST_SCAN] = 1;
+        assert(is_receive(&status, fast, 110) == 1);
+        cv_build(&display, &ui, &status, 110, "0", "127", 0);
+        assert(display.scan_valid && display.scan_position == 0);
+
+        ++fast[0];
+        fast[IS_FAST_SCAN] = IS_SCAN_MAX + 1;
+        assert(is_receive(&status, fast, 120) == 1);
+        cv_build(&display, &ui, &status, 120, "0", "127", 0);
+        assert(display.scan_valid && display.scan_position == IS_SCAN_MAX);
+
+        ++fast[0];
+        fast[IS_FAST_SCAN] = IS_SCAN_MAX + 2;
+        assert(is_receive(&status, fast, 130) == -1 && status.fast_at == 120);
+        cv_build(&display, &ui, &status, 120 + IS_TIMEOUT_MS, "0", "127", 0);
+        assert(!display.fresh && !display.scan_valid);
+
+        cs_context(&ui, 1, 12, 1, 0, KB_PLAY, 0, 0, 0);
+        cv_build(&display, &ui, &status, 120, "0", "127", 0);
+        assert(!display.scan_valid);
+        cs_context(&ui, 0, 13, 1, 0, KB_PLAY, 0, 0, 0);
+        cv_build(&display, &ui, &status, 120, "0", "127", 0);
+        assert(!display.scan_valid);
+        cs_context(&ui, 0, 12, 1, 0, KB_PLAY, 0, 0, 0);
+        cs_metadata(&ui, 3u << 4);
+        cv_build(&display, &ui, &status, 120, "0", "127", 0);
+        assert(display.fresh && !display.scan_valid);
     } else if (!strcmp(scenario, "pitch-zero")) {
         start();
         ++fast[0];
