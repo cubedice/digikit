@@ -14600,43 +14600,8 @@
   {
    "addend": 0,
    "offset": 2,
-   "section": ".text.waiting_has",
-   "symbol": ".sec..bss.waiting_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 12,
-   "section": ".text.waiting_has",
-   "symbol": ".sec..bss.waiting",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2,
    "section": ".text.keys_held",
    "symbol": ".sec..bss.rec_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 18,
-   "section": ".text.recording",
-   "symbol": "ip_panel_live_record",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 38,
-   "section": ".text.recording",
-   "symbol": "ip_panel_trig_held",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 52,
-   "section": ".text.recording",
-   "symbol": "ip_panel_step_record",
    "type": "cf.32"
   },
   {
@@ -14704,6 +14669,34 @@
   },
   {
    "addend": 0,
+   "offset": 2,
+   "section": ".text.waiting_release",
+   "symbol": ".sec..bss.waiting_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.waiting_release",
+   "symbol": ".sec..bss.waiting",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 50,
+   "section": ".text.waiting_release",
+   "symbol": "instrument_src_now",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 62,
+   "section": ".text.waiting_release",
+   "symbol": ".sec..bss.commit_until",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 18,
    "section": ".text.step_recording",
    "symbol": "dkrt_instrument_type",
@@ -14746,28 +14739,28 @@
   },
   {
    "addend": 0,
-   "offset": 10,
+   "offset": 18,
    "section": ".text.rec_release",
    "symbol": ".sec..bss.rec_keys",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 66,
+   "offset": 70,
    "section": ".text.rec_release",
    "symbol": ".sec..bss.waiting_count",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 74,
+   "offset": 78,
    "section": ".text.rec_release",
    "symbol": ".sec..bss.waiting_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 86,
+   "offset": 90,
    "section": ".text.rec_release",
    "symbol": "mi_seq_mute",
    "type": "cf.32"
@@ -14788,84 +14781,98 @@
   },
   {
    "addend": 0,
-   "offset": 44,
+   "offset": 50,
    "section": ".text.panel_play",
    "symbol": ".sec..data.panel_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 52,
-   "section": ".text.panel_play",
-   "symbol": "mi_panel_release",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 58,
    "section": ".text.panel_play",
-   "symbol": ".sec..text.rec_release_all",
+   "symbol": "mi_panel_release",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 66,
+   "offset": 64,
    "section": ".text.panel_play",
-   "symbol": ".sec..bss.panel_view",
+   "symbol": ".sec..text.rec_release_all",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 72,
    "section": ".text.panel_play",
-   "symbol": ".sec..data.panel_track",
+   "symbol": ".sec..bss.panel_view",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 78,
    "section": ".text.panel_play",
+   "symbol": ".sec..data.panel_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 84,
+   "section": ".text.panel_play",
    "symbol": "instrument_select_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 96,
+   "offset": 92,
    "section": ".text.panel_play",
    "symbol": ".sec..bss.ip_panel_debug",
    "type": "cf.32"
   },
   {
    "addend": 8,
-   "offset": 102,
+   "offset": 98,
    "section": ".text.panel_play",
    "symbol": ".sec..bss.ip_panel_debug",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 110,
+   "offset": 104,
    "section": ".text.panel_play",
    "symbol": ".sec..bss.ip_panel_debug",
    "type": "cf.32"
   },
   {
    "addend": 16,
-   "offset": 116,
+   "offset": 110,
    "section": ".text.panel_play",
    "symbol": ".sec..bss.ip_panel_debug",
    "type": "cf.32"
   },
   {
    "addend": 20,
-   "offset": 122,
+   "offset": 116,
    "section": ".text.panel_play",
    "symbol": ".sec..bss.ip_panel_debug",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 146,
+   "offset": 136,
+   "section": ".text.panel_play",
+   "symbol": "tk_panel_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 154,
+   "section": ".text.panel_play",
+   "symbol": ".sec..bss.shared_step_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 200,
    "section": ".text.panel_play",
    "symbol": "mi_panel_key",
    "type": "cf.32"
@@ -15250,28 +15257,49 @@
   },
   {
    "addend": 0,
-   "offset": 662,
+   "offset": 644,
+   "section": ".text.step_commits",
+   "symbol": "tk_panel_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 658,
+   "section": ".text.step_commits",
+   "symbol": "instrument_track_keyboard_routed",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 690,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.waiting_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 696,
    "section": ".text.step_commits",
    "symbol": ".sec..text.panel_play",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 698,
+   "offset": 732,
    "section": ".text.step_commits",
    "symbol": ".sec..bss.commit_until",
    "type": "cf.32"
   },
   {
    "addend": 24,
-   "offset": 708,
+   "offset": 742,
    "section": ".text.step_commits",
    "symbol": ".sec..bss.ip_panel_step",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 714,
+   "offset": 748,
    "section": ".text.step_commits",
    "symbol": ".sec..bss.waiting_count",
    "type": "cf.32"
@@ -15292,366 +15320,352 @@
   },
   {
    "addend": 0,
-   "offset": 46,
+   "offset": 50,
    "section": ".text.ip_panel_on",
    "symbol": "dkrt_instrument_type",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 66,
+   "offset": 70,
    "section": ".text.ip_panel_on",
    "symbol": "instrument_track_owned",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 84,
+   "offset": 88,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_active",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 92,
-   "section": ".text.ip_panel_on",
-   "symbol": "tk_capture_panel_press",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 114,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_track_type",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 162,
+   "offset": 130,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_track_object",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 184,
+   "offset": 144,
    "section": ".text.ip_panel_on",
-   "symbol": ".sec..text.recording",
+   "symbol": "ip_panel_track_type",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 200,
+   "offset": 178,
    "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_step_record",
+   "symbol": "ip_panel_live_record",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 234,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..text.recording",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 248,
-   "section": ".text.ip_panel_on",
-   "symbol": "tk_panel_cancel",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 268,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..text.recording",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 288,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.rec_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 296,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.ip_panel_recorded",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 340,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.group_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 348,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..text.group_append",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 386,
-   "section": ".text.ip_panel_on",
-   "symbol": "mi_seq_mute",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 394,
+   "offset": 188,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_trig_held",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 416,
+   "offset": 198,
    "section": ".text.ip_panel_on",
-   "symbol": "pp_current_pattern",
+   "symbol": "ip_panel_step_record",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 448,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.watch_active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 458,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.watch_list",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 466,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.watch_trig",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 484,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..text.note_signature",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 504,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..text.trig_word",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 536,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.watch_active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 542,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.watch_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 550,
+   "offset": 248,
    "section": ".text.ip_panel_on",
    "symbol": "tk_panel_on",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 604,
+   "offset": 266,
    "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.watch_track",
+   "symbol": "instrument_track_keyboard_routed",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 634,
+   "offset": 288,
    "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_original_on",
+   "symbol": "tk_capture_panel_press",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 684,
+   "offset": 398,
    "section": ".text.ip_panel_on",
-   "symbol": ".sec..text.store_chord",
+   "symbol": "tk_panel_cancel",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 724,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..text.panel_play",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 736,
+   "offset": 424,
    "section": ".text.ip_panel_on",
    "symbol": "tk_panel_retrig",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 762,
+   "offset": 450,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_trig_return",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 784,
+   "offset": 472,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_project_settings",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 798,
+   "offset": 486,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_trig_mode",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 866,
+   "offset": 558,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_original_on",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 18,
+   "offset": 564,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 630,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.rec_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 638,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.ip_panel_recorded",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 682,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.group_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 690,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..text.group_append",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 728,
+   "section": ".text.ip_panel_on",
+   "symbol": "mi_seq_mute",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 744,
+   "section": ".text.ip_panel_on",
+   "symbol": "pp_current_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 770,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.watch_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 782,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.watch_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 790,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.watch_list",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 798,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.watch_trig",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 816,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..text.note_signature",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 836,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..text.trig_word",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 868,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.watch_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 874,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.watch_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 904,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_original_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 952,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..text.store_chord",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 996,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..text.panel_play",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
    "section": ".text.ip_panel_off",
    "symbol": "tk_capture_panel_release",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 34,
+   "offset": 48,
    "section": ".text.ip_panel_off",
    "symbol": "tk_panel_retrig",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 46,
+   "offset": 80,
    "section": ".text.ip_panel_off",
-   "symbol": "tk_panel_off",
+   "symbol": ".sec..bss.shared_step_keys",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 66,
+   "offset": 96,
    "section": ".text.ip_panel_off",
    "symbol": ".sec..data.panel_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 80,
+   "offset": 110,
    "section": ".text.ip_panel_off",
    "symbol": "mi_panel_key",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 88,
+   "offset": 124,
    "section": ".text.ip_panel_off",
    "symbol": ".sec..bss.ip_panel_debug",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 94,
+   "offset": 130,
    "section": ".text.ip_panel_off",
-   "symbol": ".sec..text.waiting_has",
+   "symbol": ".sec..text.waiting_release",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 108,
-   "section": ".text.ip_panel_off",
-   "symbol": ".sec..bss.waiting_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 116,
-   "section": ".text.ip_panel_off",
-   "symbol": ".sec..bss.waiting",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 156,
-   "section": ".text.ip_panel_off",
-   "symbol": "instrument_src_now",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 168,
-   "section": ".text.ip_panel_off",
-   "symbol": ".sec..bss.commit_until",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 178,
+   "offset": 142,
    "section": ".text.ip_panel_off",
    "symbol": ".sec..bss.rec_keys",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 196,
+   "offset": 160,
    "section": ".text.ip_panel_off",
    "symbol": ".sec..text.rec_release",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 204,
+   "offset": 168,
    "section": ".text.ip_panel_off",
    "symbol": ".sec..data.commit_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 212,
+   "offset": 176,
    "section": ".text.ip_panel_off",
    "symbol": "instrument_src_now",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 224,
+   "offset": 188,
    "section": ".text.ip_panel_off",
    "symbol": ".sec..bss.watch_until",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 246,
+   "offset": 212,
    "section": ".text.ip_panel_off",
    "symbol": "ip_panel_original_off",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 224,
+   "section": ".text.ip_panel_off",
+   "symbol": "tk_panel_off",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 250,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..bss.shared_step_keys",
    "type": "cf.32"
   },
   {
@@ -15936,100 +15950,86 @@
   },
   {
    "addend": 0,
-   "offset": 8,
+   "offset": 20,
    "section": ".text.ip_panel_update",
-   "symbol": "tk_panel_focus",
+   "symbol": "ip_panel_active",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 26,
+   "offset": 36,
    "section": ".text.ip_panel_update",
-   "symbol": "ip_panel_active",
+   "symbol": "ip_panel_selected_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 46,
    "section": ".text.ip_panel_update",
-   "symbol": "ip_panel_selected_track",
+   "symbol": "tk_panel_focus",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 64,
+   "offset": 52,
    "section": ".text.ip_panel_update",
    "symbol": ".sec..bss.panel_view",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 78,
+   "offset": 68,
    "section": ".text.ip_panel_update",
    "symbol": ".sec..text.step_recording",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 90,
+   "offset": 88,
    "section": ".text.ip_panel_update",
    "symbol": ".sec..data.panel_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 106,
+   "offset": 116,
    "section": ".text.ip_panel_update",
    "symbol": ".sec..bss.panel_view",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 118,
+   "offset": 124,
    "section": ".text.ip_panel_update",
-   "symbol": "ip_panel_active",
+   "symbol": ".sec..data.panel_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 130,
+   "offset": 132,
    "section": ".text.ip_panel_update",
    "symbol": "mi_panel_release",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 136,
+   "offset": 138,
    "section": ".text.ip_panel_update",
    "symbol": ".sec..text.rec_release_all",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 142,
+   "offset": 144,
    "section": ".text.ip_panel_update",
    "symbol": ".sec..bss.panel_view",
    "type": "cf.32"
   },
   {
    "addend": 24,
-   "offset": 148,
+   "offset": 150,
    "section": ".text.ip_panel_update",
    "symbol": ".sec..bss.ip_panel_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 174,
-   "section": ".text.ip_panel_update",
-   "symbol": "ip_panel_selected_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 182,
-   "section": ".text.ip_panel_update",
-   "symbol": ".sec..data.panel_track",
    "type": "cf.32"
   },
   {
@@ -16097,212 +16097,261 @@
   },
   {
    "addend": 0,
-   "offset": 42,
+   "offset": 14,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..text.step_commits",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 60,
+   "offset": 24,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "tk_capture_panel_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 74,
    "section": ".text.ip_panel_key_event",
    "symbol": "tk_capture_panel_press",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 100,
+   "offset": 102,
    "section": ".text.ip_panel_key_event",
    "symbol": "ip_panel_step_record",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 116,
-   "section": ".text.ip_panel_key_event",
-   "symbol": "ip_panel_key_down",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 132,
+   "offset": 118,
    "section": ".text.ip_panel_key_event",
    "symbol": "ip_panel_selected_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 164,
+   "offset": 172,
    "section": ".text.ip_panel_key_event",
-   "symbol": "tk_capture_panel_release",
+   "symbol": ".sec..text.waiting_release",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 192,
+   "offset": 198,
    "section": ".text.ip_panel_key_event",
-   "symbol": "tk_capture_panel_release",
+   "symbol": "ip_panel_key_down",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 224,
-   "section": ".text.ip_panel_key_event",
-   "symbol": "tk_capture_panel_release",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 250,
+   "offset": 260,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..text.step_recording",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 262,
+   "offset": 274,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..bss.ip_panel_step",
    "type": "cf.32"
   },
   {
    "addend": 28,
-   "offset": 268,
+   "offset": 284,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..bss.ip_panel_step",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 284,
+   "offset": 302,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..bss.rec_keys",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 304,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..text.waiting_has",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 318,
+   "offset": 316,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..bss.waiting_count",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 332,
+   "offset": 324,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.waiting",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 346,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..bss.waiting_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 358,
+   "offset": 368,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..text.keys_held",
    "type": "cf.32"
   },
   {
    "addend": 1,
-   "offset": 366,
+   "offset": 384,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..bss.waiting",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 386,
+   "offset": 402,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..bss.step_group",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 398,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.waiting",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 410,
+   "offset": 420,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..bss.waiting_count",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 416,
+   "offset": 426,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..bss.waiting_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 422,
+   "offset": 432,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..bss.waiting_view",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 436,
+   "offset": 446,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..bss.step_group",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 450,
+   "offset": 460,
    "section": ".text.ip_panel_key_event",
    "symbol": "instrument_src_now",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 472,
+   "offset": 482,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..data.commit_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 478,
+   "offset": 488,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..bss.commit_until",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 484,
+   "offset": 494,
    "section": ".text.ip_panel_key_event",
    "symbol": "mi_seq_mute",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 492,
+   "offset": 502,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..bss.ip_panel_step",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 514,
+   "offset": 512,
    "section": ".text.ip_panel_key_event",
    "symbol": "ip_panel_stock_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 528,
+   "offset": 530,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.shared_step_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 548,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "tk_panel_off",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 554,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.shared_step_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 572,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..text.rec_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 584,
    "section": ".text.ip_panel_key_event",
    "symbol": ".sec..text.ip_panel_update",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 660,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.rec_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 676,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 684,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 698,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "mi_panel_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 706,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..text.rec_release",
    "type": "cf.32"
   },
   {
@@ -20684,24 +20733,10 @@
   },
   {
    "align": 2,
-   "hex": "22390000000042802f0241f900000000b08166064280241f4e757590b4af000866064a280001670652805c8860e2700160e4",
-   "kind": "text",
-   "name": ".text.waiting_has",
-   "size": 50
-  },
-  {
-   "align": 2,
    "hex": "41f90000000093c942804a10671c73a80002b2af000457c173014481d081528956887210b28966e24e75428160ee",
    "kind": "text",
    "name": ".text.keys_held",
    "size": 46
-  },
-  {
-   "align": 2,
-   "hex": "2f02206f0008242800984a8267362f024eb900000000588f4a0067067001241f4e752f024eb900000000588f4a0066ec2f024eb900000000588f4a0056c07100448060da428060d6",
-   "kind": "text",
-   "name": ".text.recording",
-   "size": 72
   },
   {
    "align": 2,
@@ -20712,6 +20747,13 @@
   },
   {
    "align": 2,
+   "hex": "223900000000428041f9000000002f022248b081672c7590b4af000866284a280001662272064c0108007201138108014eb9000000000680000001f423c000000000241f4e7552805c8860c6",
+   "kind": "text",
+   "name": ".text.waiting_release",
+   "size": 76
+  },
+  {
+   "align": 2,
    "hex": "4feffff448d7040c246f0010242a00984eb90000000026004a82660c42804cd7040c4fef000c4e752f024eb900000000588f4a0067e6200372185f80b28065dc2f2a00a04eb900000000588f2400700fb08265c82f024eb900000000588f4a8067bc2f022f2a00a44eb900000000508f4a8067a82f004eb900000000588fb680669a206f0014700120826092",
    "kind": "text",
    "name": ".text.step_recording",
@@ -20719,10 +20761,10 @@
   },
   {
    "align": 2,
-   "hex": "2f027003222f000841f9000000004c0018004a3018006744420210301802118218007580428122424a10670875a80002b4896728528156887410b48166ea71804ab9000000006708b0b900000000670c42a72f004eb900000000508f241f4e75",
+   "hex": "2f02700f226f0008b089655443f19a0041f9000000004a3188006744103098024201758013818800428122424a10670875a80002b4896728528156887410b48166ea71804ab9000000006708b0b900000000670c42a72f004eb900000000508f241f4e75",
    "kind": "text",
    "name": ".text.rec_release",
-   "size": 96
+   "size": 100
   },
   {
    "align": 2,
@@ -20733,17 +20775,17 @@
   },
   {
    "align": 2,
-   "hex": "4fefffec20390000000048d7007c2c2f0018262f001c242f0020282f00242a2f00284a806718bc806608b4b900000000670c4eb9000000004eb9000000002f0223c60000000023c2000000004eb9000000002f42002c2f4500242f44002052b90000000023c300000000700123c20000000023c40000000023c5000000002f43001c2f4000284cef007c00044fef00184ef900000000",
+   "hex": "4fefffe820390000000048d7007c2c2f001c262f0020242f0024282f00282a2f002c2f6f003000144a806718bc806608b4b900000000670c4eb9000000004eb9000000002f0223c60000000023c2000000004eb900000000588f52b90000000023c30000000023c20000000023c40000000023c5000000004aaf0014672a2f052f042f022f034eb9000000004fef00104a80670a7001e7a881b9000000004cd7007c4fef00184e752f42002c70012f4500242f4400202f43001c2f4000284cd7007c4fef00184ef900000000",
    "kind": "text",
    "name": ".text.panel_play",
-   "size": 150
+   "size": 204
   },
   {
    "align": 2,
-   "hex": "4e56ffc048d71cfc4eb90000000047f90000000045f900000000720f2d40ffe870ff2d40ffecb2b90000000065642039000000004a80675a486effec2f004eb900000000508f4a80670c263900000000b6aeffec673c4e9342b90000000042b9000000002f004e9242a72f390000000042b9000000004eb9000000004fef000c70ff23c0000000004cee1cfcffc04e5e4e7549f9000000004e934ab90000000066502f004e92588f2239000000004a8166000202760fb6b90000000065ca4ab90000000066c22f39000000004eb900000000588f4a8066b042a72f39000000004eb900000000508f70ff23c0000000006096207900000000760f2239000000005281c68141f08a0023c3000000001430c800d1cc1a2800011e2800022f0053b9000000004e92588f73822d41ffe4b2b9000000006600ff62202effe890b9000000004a806e00ff522039000000004a806700ff46b2b9000000006600ff3c1639000000001c3900000000227900000000720141f900000000b28066000126538023c000000000b3f900000000670e420023c90000000013c00000000079872f044eb900000000588f4a06661c7183720141f900000000224043f19a001381880011879801118298027585701fca8070012202ea8942aefffc42aefff842aefff442aefff0eba852b90000000052b90000000023c4000000002d801cf02f042f2effe4486efff04eb90000000023c2000000004fef000c41f9000000004a8867524e902a004a80674a4ab9000000006742222effe4b2b90000000066362f022f012f004eb9000000004fef000c41f90000000021802c002f022f2effe42f054eb9000000004fef000c41f90000000031802a004a066600fe222039000000004a806700fe167783487800642f042f2effe42f032f004eb9000000004fef00146000fdf85c8831680004fffe2150fffa52816000fec6202effe890b9000000006b00fdf4d3b90000000042b9000000006000fde4",
+   "hex": "4e56ffc048d71cfc4eb90000000047f90000000045f900000000720f2d40ffe870ff2d40ffecb2b90000000065642039000000004a80675a486effec2f004eb900000000508f4a80670c243900000000b4aeffec673c4e9342b90000000042b9000000002f004e9242a72f390000000042b9000000004eb9000000004fef000c70ff23c0000000004cee1cfcffc04e5e4e7549f9000000004e934ab90000000066502f004e92588f2239000000004a8166000224740fb4b90000000065ca4ab90000000066c22f39000000004eb900000000588f4a8066b042a72f39000000004eb900000000508f70ff23c0000000006096207900000000740f2239000000005281c48141f08a0023c2000000001830c800d1cc1a2800011e2800022f0053b9000000004e92588f73842d41ffe4b2b9000000006600ff62202effe890b9000000004a806e00ff522039000000004a806700ff46b2b9000000006600ff3c1439000000001c3900000000227900000000720141f900000000b28066000148538023c000000000b3f900000000670e420023c90000000013c00000000077872f034eb900000000588f4a06661c7182720141f900000000224043f19a001381880011879801118498027985701fca8070012204ea8942aefffc42aefff842aefff442aefff0eba852b90000000052b90000000023c3000000002d801cf02f032f2effe4486efff04eb90000000023c4000000004fef000c41f9000000004a8867524e902a004a80674a4ab9000000006742222effe4b2b90000000066362f042f012f004eb9000000004fef000c41f90000000021804c002f042f2effe42f054eb9000000004fef000c41f90000000031804a004a066600fe224ab9000000006700fe18203c000000004a8067142f2effe44eb900000000588f4a8056c0710044802f007582487800642f032f2effe42f022f39000000004eb9000000004fef00186000fdd65c8831680004fffe2150fffa52816000fea4202effe890b9000000006b00fdd2d3b90000000042b9000000006000fdc2",
    "kind": "text",
    "name": ".text.step_commits",
-   "size": 722
+   "size": 756
   },
   {
    "align": 2,
@@ -20761,17 +20803,17 @@
   },
   {
    "align": 2,
-   "hex": "4e56ffb82d6e0010ffe048d73cfc246e0008242e000c262e0014282e00182e2e0020286e00242d6e001cffe84eb9000000002a00700fb0aeffe065102f2effe04eb900000000588f4a80664242862f2a00a04eb900000000588f47f90000000073802a414a0067444a86670002fa2f064eb900000000588fba80660002ea700fb08254c57b0544854a8b66286058200572185f80b28065b42f2effe02f2a00a44eb900000000508f2c0060a24a8b6700022e42852f0a4eb900000000588f4a80671e2f2a00984eb90000000071802f002f042f032f2effe02f024e934fef00184a8d670001f42f0a4eb900000000588f4a806700013041f9000000004a8867024e904a856700022e2f0a4eb900000000588f4a806700019e266a0098428141f90000000093c952b9000000002a484a106700011e71a80002b0aeffe057c071004480d280528956887010b08966e04a81660613c1000000002f034eb9000000007001224241f12a001b808800dbc81b4300011b6effe30002487800012f2effe04eb9000000002f0b4eb9000000004fef001073802d41ffec4a00660000c841f9000000004a88670000bc4e902a004a80670000b2700fb0aeffe0650000a84ab900000000660000904bf900000000428641f9000000002f062f2effe02f052d48ffe44eb9000000004fef000c2ac02f062f2effe02f054eb9000000004fef000c5286206effe430c00c860000008066c6222effe0700123c00000000023c100000000604041f9000000004a886700fed42f042f032f2effe02f024e904fef00104a806700febe4cee3cfcffb84e5e4e7542806000feee222effe0b2b9000000006600ff662f0c2f072f2effe82f042f032f2effe02f022f0a4eb9000000004fef00204aaeffec672c2d6b0258fff02d6b025cfff42d6b0260fff82d6b0264fffc2f032f2effe0486efff04eb9000000004fef000c2d4400182d4300142d42000c2d4a00084cee3cfcffb82d6effe000104e5e4ef9000000004a856600fe2c47f9000000004a8b674c202effe08082e8886642707fb083653c223c00000000b2ae00046630202a00944a8067282f004eb900000000588f4a80671a2f004eb900000000588f55804a80660a2f2effe02f024e93508f2d4c00242d4700202d4400182d4300142d42000c2d4a00084cee3cfcffb82d6effe8001c2d6effe000104e5e4ef90000000042856000fd1e",
+   "hex": "4e56ffb42d6e0010ffdc48d73cfc246e0008282e000c2a2e00142c2e00182d6e001cffe42d6e0020ffe82d6e0024ffec4eb9000000002600700fb0aeffdc65102f2effdc4eb900000000588f4a80661e42822f2a00a04eb900000000588f738028414a0067044a82662242876036200372185f80b28065d82f2effdc2f2a00a44eb900000000508f240060c62f024eb900000000588fb68066d0700fb08454c77f074487266a00984a8b670000b82f0b4eb9000000002f0b14004eb9000000002f0b16004eb9000000004fef000c4a0056c1730144814a0267784a0356c3307c0001770344833a7c00014a87677e4a00677e4a88667e203c000000004a8067782f2effdc2d48ffe04eb900000000588f206effe022074a8056c27502448243f9000000004a8967584a8d670002bc4a88664a82832f012f062f052f2effdc2f044e914fef00144a8c66424a876600012660544a036706760191c8608a2a41428391c8608642839bcd428191c8428260ae428160f8220860f4220760f0428160b44a8c670000e64a8d670000a841f9000000004a8867064a8266024e904a87660000d44a8c665647f9000000004a8b674c202effdc8084e8886642707fb085653c223c00000000b2ae00046630202a00944a8067282f004eb900000000588f4a80671a2f004eb900000000588f55804a80660a2f2effdc2f044e93508f2d4600182d4500142d44000c2d4a00084cee3cfcffb42d6effec00242d6effe800202d6effe4001c2d6effdc00104e5e4ef90000000041f9000000004a8867222f062f052f2effdc2f044e904fef00104a80670e4cee3cfcffb44e5e4e754280603a4a87679a42ae001c6000015c4a876700ff384a8d67ee41f900000000428152b90000000093c928484a1067d071a80002b0aeffdc57c071004480d280528956887010b08966e24a81660613c1000000002f054eb9000000007001224441f14a0019808800d9c819450001196effdf0002487800012f2effdc4eb9000000004fef000c4a836600008a41f9000000004a88677e4e902e004a806776720fb2aeffdc656e4ab900000000670c222effdcb2b900000000675a49f9000000009bcd41f9000000002f0d2f2effdc2f072d48ffe04eb9000000004fef000c28c02f0d2f2effdc2f074eb9000000004fef000c528d206effe030c0bbfc0000008066c6222effdc700123c00000000023c1000000002f2effec2f2effe82f2effe42f062f052f2effdc2f042f0a4eb9000000004fef00204a83672c2d6b0258fff02d6b025cfff42d6b0260fff82d6b0264fffc2f052f2effdc486efff04eb9000000004fef000c2d42001c2d4600182d4500142d44000c2d4a00084cee3cfcffb42d6effdc00104e5e4ef9000000004a8c6600fe464a876700fdb46000fe6c",
    "kind": "text",
    "name": ".text.ip_panel_on",
-   "size": 876
+   "size": 1016
   },
   {
    "align": 2,
-   "hex": "598f2f0a2f02246f00142f6f0010000841f9000000004a8867062f0a4e90588f41f9000000004a88660000d041f9000000004a88660000d8700fb08a650000a62f390000000042a742a742a72f0a4eb9000000002f0a52b9000000004eb9000000004fef00184a806742223900000000428041f9000000002248b280671c7590b48a6600009e4a2800016600009672064c0108007201138108014eb9000000000680000001f423c00000000041f2aa0043f9000000004a309800672875b188022f0a4eb900000000588fb4b90000000067124eb9000000000680000005dc23c0000000002f4a00142f6f00080010241f245f588f4ef9000000004878ffff2f0a4e90508f4a806700ff246000ff2c2f0a4e90588f4a806700ff20241f245f588f4e7552805c886000ff52",
+   "hex": "4feffff048d7040c242f00182f6f0014000c41f9000000004a8867062f024e90588f700fb082650000b07601e5ab41f9000000004a88670000a64878ffff2f024e90508f4a806700009642804683c7b900000000720fb28265664a8066182f390000000042a742a742a72f024eb9000000004fef00142f02244252b9000000004eb900000000588f41f22a0043f9000000004a309800672877b188022f024eb900000000588fb6b90000000067124eb9000000000680000005dc23c0000000002f4200184cd7040c2f6f000c00144fef00104ef90000000042836000ff5241f9000000004a886700ff622f024e90588f4a806700ff582003c0b9000000004a80670670016000ff464cd7040c4fef00104e75",
    "kind": "text",
    "name": ".text.ip_panel_off",
-   "size": 298
+   "size": 274
   },
   {
    "align": 2,
@@ -20789,10 +20831,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56fffc2f0a45f9000000004a8a672a206e00082f2800a04eb900000000588f4a00677c206e00082f2800a04eb900000000588f2f004e92588f206e0008b1f9000000006652486efffc2f084eb900000000508f4a80670c203900000000b0aefffc6734206e0008b1f90000000066282f2800a04eb900000000588f4a0066244eb9000000004eb90000000042b90000000052b900000000246efff84e5e4e7570ff6090206e00082f2800a04eb900000000588fb0b90000000066c460da",
+   "hex": "4e56ffec48d70c04266e0008242b00a02f024eb900000000588f4a00670000862f024eb900000000588f240045f900000000b7f90000000066000086486efffc2f0b4eb900000000508f2d40fff84a806768222efffc2039000000004a8a6648b08157c1730144812d41fff84aaefff86628b7f9000000006620b4b90000000067184eb9000000004eb90000000042b90000000052b9000000004cee0c04ffec4e5e4e7574ff6084b0816706220242aefff82f014e92588f60b24a8a66ee60b24a8a66e860d4",
    "kind": "text",
    "name": ".text.ip_panel_update",
-   "size": 190
+   "size": 198
   },
   {
    "align": 2,
@@ -20803,10 +20845,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56ffd848d73c1c266e000c246e00084a8b6700009a206b000c41e8ffe72d48fff470ff2d40fffc49f9000000004e944a8b67000084242b0010263c000000004a83677a720fb2aefff4650001b07009c08253804a80664a202a00984a8067422f004eb900000000588f4a006734487800124eb900000000588f4a8067242f2a00a04eb90000000048780001487800644878008020432f002f2efff44e904fef0018203c000000004a806628603872102d41fff46000ff6c42826000ff7e203c000000004a806700012a700fb0aefff46500012a08020004670c2f2efff44eb900000000588f7009c48053824a8266000136486efffc2f0a4eb900000000508f41eb000c52b90000000023d0000000004a80670000e82a6efff441f90000000043f5da004a318800660000d22f0d4eb900000000588f4a80660000c22439000000007003b082650000b4263900000000282efffc4a826706b68467024282b68457c32f044eb900000000588f43f90000000091c84483b1c2660000b24a80660652b90000000070064c02080041f900000000528243eefff723c20000000023c40000000023ca0000000011910800d1c0420043f90000000021510002114000014eb90000000048780001222efffc0680000001f42f0123c10000000023c0000000004eb900000000508f52b900000000600a720fb2aefff46400feec2f0b2f0a4eb9000000002d40fff84e942f0a4eb9000000004fef000c4cee3c1cffd8202efff84e5e4e7542806000fed64a1157c152885c894481c2837381d0816000ff38",
+   "hex": "4e56ffd048d73cfc266e000c49f900000000246e00084bf9000000004a8b671a70ff720f2c2b000c0686ffffffe72d40fffcb28664664e94600a70ff7c102d40fffc4e9442824280263c000000004a836700008c4a8067000282202a00984a8067302f004eb900000000588f4a0067222f2a00a04eb90000000048780001487800644878008020432f002f064e904fef00184a8d67664a8267626050262b00100803000467322f0674014eb9000000004e94588f7209c68153834a8366000210487800124eb900000000588f4a8056c0710044806000ff724e94428260d64a8d6714220224004a81670001702f064e95588f200274014a80670001e6486efffc2f0a4eb900000000508f720fb286651052b90000000041eb000c23d0000000004a80670000d62a4643f56a0041f9000000004a318800660000c2263900000000428041f9000000002e08b680660001147204b283670000a42a3900000000282efffc4a836706ba84670242832f044eb900000000588f93c92040ba8457c02a3c000000004480b689660000ec4a88660652b90000000070064c03080020472a47528323c30000000023c40000000023ca00000000dbc011860800420041f9000000002b5000021b4000014eb90000000048780001222efffc0680000001f42f0123c10000000023c0000000004eb900000000508f52b9000000002f0b2f0a4eb900000000508f26004a8267367001eda82239000000002401c4804a82676e4680c08141f90000000023c0000000004a8867062f064e90588f2f064eb900000000588f4e942f0a4eb900000000588f20034cee3cfcffd04e5e4e75200242826000fe967390bc8166064a280001678c52805c886000fed62a4552894a1557c15c854481c2807381d1c16000fefc264641f36a0043f9000000004a30980067a471b18802b0b90000000066982f390000000042a742a742a72f064eb9000000002f064eb9000000004fef00186000ff764a8d6716220242826000fe0e4a8d6600fe04700fb0866500ff1442806000fe24",
    "kind": "text",
    "name": ".text.ip_panel_key_event",
-   "size": 576
+   "size": 750
   },
   {
    "align": 2,
@@ -20982,6 +21024,13 @@
    "kind": "bss",
    "name": ".bss.ip_panel_debug",
    "size": 32
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.shared_step_keys",
+   "size": 4
   },
   {
    "align": 2,
@@ -21467,7 +21516,7 @@
    "size": 332
   }
  ],
- "source_sha256": "ad109d86990e4fd7d6c43268e57c62bf9e0a01086c71adbd15f26aca23d4b48b",
+ "source_sha256": "ff4532b1af55f5ac32271a156efc315854748c329ba7f94781513fa4c0ad36f1",
  "symbols": [
   {
    "global": false,
@@ -21971,6 +22020,12 @@
    "global": false,
    "name": ".sec..bss.shared_notes",
    "section": ".bss.shared_notes",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.shared_step_keys",
+   "section": ".bss.shared_step_keys",
    "value": 0
   },
   {
@@ -23619,12 +23674,6 @@
   },
   {
    "global": false,
-   "name": ".sec..text.recording",
-   "section": ".text.recording",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": ".sec..text.recover",
    "section": ".text.recover",
    "value": 0
@@ -23895,8 +23944,8 @@
   },
   {
    "global": false,
-   "name": ".sec..text.waiting_has",
-   "section": ".text.waiting_has",
+   "name": ".sec..text.waiting_release",
+   "section": ".text.waiting_release",
    "value": 0
   },
   {
@@ -26847,12 +26896,6 @@
   },
   {
    "global": false,
-   "name": "recording",
-   "section": ".text.recording",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": "recover",
    "section": ".text.recover",
    "value": 0
@@ -27251,6 +27294,12 @@
    "global": false,
    "name": "shared_notes",
    "section": ".bss.shared_notes",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shared_step_keys",
+   "section": ".bss.shared_step_keys",
    "value": 0
   },
   {
@@ -27669,8 +27718,8 @@
   },
   {
    "global": false,
-   "name": "waiting_has",
-   "section": ".text.waiting_has",
+   "name": "waiting_release",
+   "section": ".text.waiting_release",
    "value": 0
   },
   {
@@ -27798,8 +27847,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "20704",
-  "isa_check": "dcd4ded9740c8462d0d84415c391a0bcab6e84a1e0f52f5b7c81c2e9d1b0353b",
+  "instructions_redecoded": "20852",
+  "isa_check": "b0c731ec05de213b9b7eba82131db5aa64a57aad721904944ba04513a81fc26b",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

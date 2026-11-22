@@ -203,18 +203,25 @@ static void recorded_notes(void)
     blocks = 100;
     tk_capture_panel_press(0, 0, 128, 90, 1);
     tk_capture_note_commit(note_table, 0, 13, 67, 91);
-    blocks = 115;
-    assert(tk_capture_input_at(0, TK_USB, 2, 30, 60, 75, true, 115));
+    blocks = 160;
+    assert(tk_capture_input_at(0, TK_USB, 2, 30, 60, 75, true, blocks));
     tk_capture_note_commit(note_table, 0, 13, 60, 75);
     tk_capture_poll(id, 14400);
     const TkSeed *seed = tk_pattern_seed(&bank_a, 0, 13);
     assert(seed && seed->count == 2 && seed->notes[0].pitch == 67 && seed->notes[1].pitch == 60);
     assert(seed->notes[0].velocity == 91 && seed->notes[1].velocity == 75);
-    assert(seed->notes[0].delay_us == 0 && seed->notes[1].delay_us == 10000);
+    assert(seed->notes[0].delay_us == 0 && seed->notes[1].delay_us == 0);
     blocks = 175;
     tk_capture_panel_release(0);
     assert(tk_capture_input_at(0, TK_USB, 2, 30, 60, 0, true, 250));
     assert(seed->notes[0].gate_ticks == 2160000u && seed->notes[1].gate_ticks == 4320000u);
+    const TkSeed stock = {.count = 1, .notes = {{60, 100, 0, 0}}};
+    count = 0;
+    assert(tk_service_seed_for(&bank_a, 0, 13, &stock));
+    assert(count == 2 && events[0].on && events[1].on);
+    assert(events[0].pitch == 67 && events[0].velocity == 91);
+    assert(events[1].pitch == 60 && events[1].velocity == 75);
+    tk_service_end_seed(0);
     TkParams settings;
     uint16_t locks;
     assert(tk_trig_write(0, TK_CTL_CHORD, TK_CHORD_MIN));
@@ -309,6 +316,16 @@ static void recorded_held_chord(void)
     assert(chord->count == 2);
     const TkSeed *next = tk_pattern_seed(&bank_a, 0, 7);
     assert(next && next->count == 1 && next->notes[0].pitch == 67);
+
+    /* As stored, the remaining two notes are 10 ms apart. They are a
+     * single attack on playback, while the longer roll above is preserved. */
+    count = 0;
+    const TkSeed stock = {.count = 1, .notes = {{60, 100, 0, 0}}};
+    assert(tk_service_seed_for(&bank_a, 0, 6, &stock));
+    assert(count == 2 && events[0].on && events[1].on);
+    assert(events[0].pitch == 60 && events[1].pitch == 64 && events[1].velocity == 85);
+    assert(chord->notes[1].delay_us == 10000);
+    tk_service_end_seed(0);
 }
 
 static void full_recording_pool(void)

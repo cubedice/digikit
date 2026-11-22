@@ -266,18 +266,23 @@ int main(void)
     /* Share physical note identity with the native writer but keep audition
      * exclusively in the keyboard service. Capture mode is latched at press.
      */
-    mode = TK_CAPTURE_STEP;
-    assert(!feed(4, 0x90, 60, 105));
-    assert(tk_midi_native_action(0, 0, 60, 4, 1) == TK_MIDI_RECORD_ONLY);
-    assert(feed(4, 0x90, 60, 105));
-    mode = TK_CAPTURE_OFF;
-    assert(!feed(4, 0x90, 60, 0));
-    assert(tk_midi_native_action(0, 0, 60, 4, 0) == TK_MIDI_NATIVE);
-    tk_midi_poll();
-    expect_event(canceled, 'B', 0, TK_USB, 0, 60, 105);
-    expect_event(canceled + 1, 'P', 0, TK_USB, 0, 60, 105);
-    expect_event(canceled + 2, 'W', 0, TK_USB, 0, 60, 0);
-    expect_event(canceled + 3, 'R', 0, TK_USB, 0, 60, 0);
+    const uint32_t recording_modes[] = {TK_CAPTURE_STEP, TK_CAPTURE_HELD, TK_CAPTURE_LIVE};
+    for (unsigned i = 0; i < sizeof recording_modes / sizeof recording_modes[0]; ++i) {
+        const char capture_kind = recording_modes[i] == TK_CAPTURE_LIVE ? 'W' : 'B';
+        mode = recording_modes[i];
+        const unsigned before_record = count;
+        assert(!feed(4, 0x90, 60, 105));
+        assert(tk_midi_native_action(0, 0, 60, 4, 1) == TK_MIDI_RECORD_ONLY);
+        assert(feed(4, 0x90, 60, 105));
+        mode = TK_CAPTURE_OFF;
+        assert(!feed(4, 0x90, 60, 0));
+        assert(tk_midi_native_action(0, 0, 60, 4, 0) == TK_MIDI_NATIVE);
+        tk_midi_poll();
+        expect_event(before_record, capture_kind, 0, TK_USB, 0, 60, 105);
+        expect_event(before_record + 1, 'P', 0, TK_USB, 0, 60, 105);
+        expect_event(before_record + 2, 'W', 0, TK_USB, 0, 60, 0);
+        expect_event(before_record + 3, 'R', 0, TK_USB, 0, 60, 0);
+    }
 
     count = 0;
     assert(feed(4, 0x90, 60, 100));

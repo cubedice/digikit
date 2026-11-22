@@ -20,7 +20,7 @@ typedef struct {
     TkRecordedShape shape;
     uint16_t group, bpm;
     uint8_t pitch, velocity, channel, source, step;
-    bool released;
+    bool released, step_record;
 } Input;
 
 typedef struct {
@@ -97,7 +97,9 @@ static bool rethink(uint8_t track, uint8_t step, uint16_t group)
             ++tk_capture_dropped;
             return false;
         }
-        uint32_t delay = note->started - first;
+        /* Step entry records pitches on the trig, irrespective of the time
+         * between key presses. Live recording can still capture a roll. */
+        uint32_t delay = note->step_record ? 0 : note->started - first;
         uint64_t gate = note->released && note->bpm
                             ? (uint64_t)(note->released_at - first) * 2u * note->bpm
                             : 0;
@@ -206,6 +208,7 @@ bool tk_capture_input_at(uint8_t track, uint8_t source, uint8_t channel, uint32_
         .step = UNKNOWN_STEP,
         .shape = shape,
         .bpm = tempo,
+        .step_record = step_record,
     };
     if (group_count)
         rethink(track, placement(t, t->count - 1u), t->group);

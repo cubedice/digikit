@@ -420,8 +420,9 @@ static int note_message(uint8_t route, bool on, uint8_t note, uint8_t value, uin
     uint16_t tracks = owned & (uint16_t)~select;
     uint32_t mode = tk_capture_midi_mode();
     uint16_t record = mode == TK_CAPTURE_OFF ? 0 : (tracks & active & (uint16_t)~learning);
+    bool step_entry = mode == TK_CAPTURE_STEP || mode == TK_CAPTURE_HELD;
     enqueue(MIDI_SELECT, select, route, note, value);
-    if (!enqueue_capture(MIDI_PRESS, tracks, route, note, value, record, mode == TK_CAPTURE_STEP))
+    if (!enqueue_capture(MIDI_PRESS, tracks, route, note, value, record, step_entry))
         tracks = record = 0;
     assigned[route] |= tracks;
     *free_key = (MidiKey){.tracks = tracks,

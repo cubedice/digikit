@@ -483,9 +483,14 @@ bool tk_service_seed_for(const TkPattern *p, uint8_t track, uint8_t step, const 
     TkSeed effective = *seed;
     const TkSeed *recorded = tk_pattern_seed(p, track, step);
     if (recorded) {
+        /* Group a tightly played chord into one attack without changing its
+         * stored timing or flattening a longer roll. */
+        bool together = recorded->notes[recorded->count - 1u].delay_us <= 12000u;
         effective.count = recorded->count;
         for (uint8_t i = 0; i < recorded->count; ++i) {
             TkSeedNote note = recorded->notes[i];
+            if (together)
+                note.delay_us = 0;
             if (effective.length_ticks && note.gate_ticks > effective.length_ticks)
                 note.gate_ticks = effective.length_ticks;
             effective.notes[i] = note;
