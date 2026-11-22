@@ -484,6 +484,9 @@ int main(int argc, char **argv)
             cs_metadata(&state, source << 4);
             if (source == 2) {
                 state.value[CP_WT_CLOCK] = 0;
+                state.value[CP_WT_POS] = 233;
+                state.value[CP_WT_DEPTH] = 45;
+                state.value[CP_WT_RATE] = 132;
                 state.value[CP_WT_ATTACK] = 12;
                 state.value[CP_WT_RELEASE] = 26;
                 state.value[CP_WTFM_ENV] = 0;
@@ -500,6 +503,7 @@ int main(int argc, char **argv)
             for (uint32_t page = 0; page < 3; ++page) {
                 v[0x90 / 4] = page;
                 v[0x190 / 4] = 0;
+                focus_mask = 0;
                 clear_paint(canvas);
                 ip_src_draw((uint8_t *)v, canvas);
                 assert(v[0x90 / 4] == page && mf_src_page_count(type_id) == 3);
@@ -508,6 +512,17 @@ int main(int argc, char **argv)
                 assert(ip_src_parameter((uint8_t *)v, 0) == (page == CS_DETAIL ? 0xca : 0));
                 assert(ip_src_parameter((uint8_t *)v, 7) == (page == CS_DETAIL ? 0xd1 : 0));
                 assert(ip_src_parameter((uint8_t *)v, 8) == 10);
+                if (source == 2 && page == CS_VOICE) {
+                    /* The waveform, frame rail, and scan shape use the WT widget bodies. */
+                    unsigned waveform = 0;
+                    for (unsigned y = 14; y <= 26; ++y)
+                        waveform |= canvas[y * 128 + 50];
+                    assert(waveform == 1 && canvas[48 * 128 + 25] == 1);
+                    for (unsigned x = 49; x <= 121; ++x)
+                        assert(canvas[29 * 128 + x] == 1);
+                    assert(canvas[13 * 128 + 73] == 1);
+                    assert(!(graph_mask & 0x1e));
+                }
                 if (source == 2 && page == CS_FM_ENV)
                     expect_amp(0x0c00, 0, 0x7f00, 0x1a00);
                 else if (source == 3 && page == CS_FM_ENV)
@@ -519,6 +534,19 @@ int main(int argc, char **argv)
                 v[0x190 / 4] = 0x01010101;
                 clear_paint(canvas);
                 ip_src_draw((uint8_t *)v, canvas);
+                if (source == 2 && page == CS_VOICE) {
+                    assert(!strcmp(label_text[1], "3.33") && !strcmp(label_text[2], "45%") &&
+                           !strcmp(label_text[3], "1.32") && !strcmp(label_text[4], "SINE"));
+                    assert(canvas[29 * 128 + 121] == 1 && canvas[13 * 128 + 73] == 1);
+                    v[0x190 / 4] = 0;
+                    event((uint8_t *)e, 2, 100, 0, 0);
+                    assert(ip_src_turn((uint8_t *)v, (uint8_t *)e) == 1);
+                    assert(state.value[CP_WT_POS] == 333);
+                    clear_paint(canvas);
+                    ip_src_draw((uint8_t *)v, canvas);
+                    assert(!strcmp(label_text[1], "4.33"));
+                    assert(canvas[13 * 128 + 73] == 0 && canvas[13 * 128 + 83] == 1);
+                }
                 if (source == 2 && page == CS_FM_ENV) {
                     assert(!strcmp(label_text[3], "-100%") && !strcmp(label_text[5], "8.00"));
                     expect_amp(0x0c00, 0, 0x7f00, 0x1a00);
@@ -539,6 +567,7 @@ int main(int argc, char **argv)
                 if (source == 2 && page == CS_VOICE) {
                     v[0x190 / 4] = 0;
                     state.value[CP_WT_CLOCK] = 1;
+                    state.value[CP_WT_RATE] = 3;
                     clear_paint(canvas);
                     ip_src_draw((uint8_t *)v, canvas);
                     assert(!strcmp(label_text[3], "RATE"));

@@ -50,17 +50,44 @@ static uint16_t tempo;
 volatile uint32_t tk_capture_committed, tk_capture_dropped;
 volatile uint32_t tk_capture_last_count;
 
-static void rethink(uint8_t track, uint8_t step, uint16_t group)
+static uint8_t group_placement(const CaptureTrack *t, uint8_t index)
+{
+    const Input *note = &t->inputs[index];
+    /* A stock audio trig can report just one pitch for a held PLAY chord.
+     * Use its placement for the other known pitches until stock supplies
+     * their own. Keep distinct native placements when the gesture spans steps. */
+    for (uint8_t i = index; i > 0; --i) {
+        const Input *earlier = &t->inputs[i - 1u];
+        if (earlier->group == note->group && earlier->step < TK_STEPS)
+            return earlier->step;
+    }
+    for (uint8_t i = index + 1u; i < t->count; ++i) {
+        const Input *later = &t->inputs[i];
+        if (later->group == note->group && later->step < TK_STEPS)
+            return later->step;
+    }
+    return UNKNOWN_STEP;
+}
+
+static uint8_t placement(const CaptureTrack *t, uint8_t index)
+{
+    const Input *note = &t->inputs[index];
+    if (note->step < TK_STEPS || note->pitch == UNKNOWN_PITCH || note->shape.chord != TK_CHORD_PLAY)
+        return note->step;
+    return group_placement(t, index);
+}
+
+static bool rethink(uint8_t track, uint8_t step, uint16_t group)
 {
     CaptureTrack *t = &tracks[track];
-    if (t->step_group[step] != group)
-        return;
+    if (step >= TK_STEPS || t->step_group[step] != group)
+        return true;
     TkSeed seed = {0};
     TkRecordedShape shape;
     uint32_t first = 0;
     for (uint8_t i = 0; i < t->count; ++i) {
         const Input *note = &t->inputs[i];
-        if (note->group != group || note->step != step)
+        if (note->group != group || placement(t, i) != step)
             continue;
         if (!seed.count) {
             first = note->started;
@@ -68,7 +95,7 @@ static void rethink(uint8_t track, uint8_t step, uint16_t group)
         }
         if (seed.count == TK_NOTES) {
             ++tk_capture_dropped;
-            return;
+            return false;
         }
         uint32_t delay = note->started - first;
         uint64_t gate = note->released && note->bpm
@@ -81,14 +108,15 @@ static void rethink(uint8_t track, uint8_t step, uint16_t group)
             .gate_ticks = note->released && !gate ? 1 : gate,
         };
     }
-    if (seed.count) {
-        if (tk_service_store_edit_seed(track, step, &seed, &shape)) {
-            tk_capture_last_count = seed.count;
-            ++tk_capture_committed;
-        } else {
-            ++tk_capture_dropped;
-        }
+    if (!seed.count)
+        return true;
+    if (!tk_service_store_edit_seed(track, step, &seed, &shape)) {
+        ++tk_capture_dropped;
+        return false;
     }
+    tk_capture_last_count = seed.count;
+    ++tk_capture_committed;
+    return true;
 }
 
 static bool release(uint8_t track, uint8_t source, uint8_t channel, uint32_t id, uint32_t now)
@@ -100,8 +128,7 @@ static bool release(uint8_t track, uint8_t source, uint8_t channel, uint32_t id,
             continue;
         note->released = true;
         note->released_at = now;
-        if (note->step < TK_STEPS)
-            rethink(track, note->step, note->group);
+        rethink(track, placement(t, i), note->group);
         return true;
     }
     return false;
@@ -180,6 +207,8 @@ bool tk_capture_input_at(uint8_t track, uint8_t source, uint8_t channel, uint32_
         .shape = shape,
         .bpm = tempo,
     };
+    if (group_count)
+        rethink(track, placement(t, t->count - 1u), t->group);
     return true;
 }
 
@@ -266,13 +295,21 @@ static void consume(const Commit *commit)
             (int32_t)(commit->arrived - note->started) < -2 ||
             (note->released && (int32_t)(commit->arrived - note->released_at) > MATCH_BLOCKS))
             continue;
+        uint8_t previous_step =
+            note->shape.chord == TK_CHORD_PLAY ? group_placement(t, i) : UNKNOWN_STEP;
         if (note->pitch == UNKNOWN_PITCH) {
             note->pitch = commit->pitch;
             note->velocity = commit->velocity;
         }
+        uint16_t previous_group = t->step_group[commit->step];
         note->step = commit->step;
         t->step_group[commit->step] = note->group;
-        rethink(commit->track, commit->step, note->group);
+        if (!rethink(commit->track, commit->step, note->group)) {
+            note->step = UNKNOWN_STEP;
+            t->step_group[commit->step] = previous_group;
+        } else if (previous_step != commit->step) {
+            rethink(commit->track, previous_step, note->group);
+        }
         return;
     }
 }

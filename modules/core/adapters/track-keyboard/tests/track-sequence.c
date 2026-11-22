@@ -257,6 +257,60 @@ static void recorded_notes(void)
     assert(seed->count == TK_NOTES && seed->notes[15].velocity == 85);
 }
 
+static void recorded_held_chord(void)
+{
+    const uint32_t id = 0x41810000;
+    const uint32_t note_table = id + 0x6a50u;
+    const uint32_t lengths[128] = {0};
+    tk_pattern_init(&bank_a);
+    tk_service_edit_pattern(&bank_a);
+    assert(tk_trig_write(0, TK_CTL_POLY, true));
+    tk_capture_poll(id, 14400);
+
+    blocks = 1000;
+    assert(tk_capture_input(0, TK_USB, 1, 60, 60, 100, false));
+    tk_capture_note_commit(note_table, 0, 6, 60, 100);
+    tk_capture_poll(id, 14400);
+    blocks = 1015;
+    assert(tk_capture_input(0, TK_USB, 1, 64, 64, 85, false));
+    blocks = 1030;
+    assert(tk_capture_input(0, TK_USB, 1, 67, 67, 90, false));
+    /* The stock audio trig retains only the root of the held chord. */
+    tk_capture_note_commit(note_table, 0, 6, 60, 100);
+    tk_capture_poll(id, 14400);
+    const TkSeed *chord = tk_pattern_seed(&bank_a, 0, 6);
+    assert(chord && chord->count == 3);
+    assert(chord->notes[1].pitch == 64 && chord->notes[1].velocity == 85 &&
+           chord->notes[1].delay_us == 10000);
+    assert(chord->notes[2].pitch == 67 && chord->notes[2].delay_us == 20000);
+
+    blocks = 1100;
+    assert(tk_capture_input(0, TK_USB, 1, 60, 60, 0, false));
+    assert(tk_capture_input(0, TK_USB, 1, 64, 64, 0, false));
+    assert(tk_capture_input(0, TK_USB, 1, 67, 67, 0, false));
+    assert(chord->notes[1].gate_ticks == 2880000u);
+
+    count = 0;
+    tk_sequence_drain(id, false, 0, lengths);
+    const TkSequenceHit root = {
+        .pattern = id, .track = 0, .step = 6, .count = 1, .notes = {{60, 100, 127}}};
+    assert(tk_sequence_offer(TK_SEQUENCE_AUDIO, &root));
+    tk_sequence_drain(id, true, 0, lengths);
+    assert(count == 1 && events[0].on && events[0].pitch == 60);
+    tk_service_tick(10000, 14400);
+    assert(count == 2 && events[1].on && events[1].pitch == 64 && events[1].velocity == 85);
+    tk_service_tick(10000, 14400);
+    assert(count == 3 && events[2].on && events[2].pitch == 67 && events[2].velocity == 90);
+    tk_sequence_reset();
+
+    /* A later native placement takes precedence over the inferred one. */
+    tk_capture_note_commit(note_table, 0, 7, 67, 90);
+    tk_capture_poll(id, 14400);
+    assert(chord->count == 2);
+    const TkSeed *next = tk_pattern_seed(&bank_a, 0, 7);
+    assert(next && next->count == 1 && next->notes[0].pitch == 67);
+}
+
 static void full_recording_pool(void)
 {
     tk_pattern_init(&bank_b);
@@ -303,6 +357,7 @@ int main(void)
     arm_while_stopped();
     prepared_destination();
     recorded_notes();
+    recorded_held_chord();
     full_recording_pool();
     return 0;
 }

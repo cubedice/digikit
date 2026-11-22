@@ -162,6 +162,8 @@ static bool refresh_pattern(void)
             tk_service_stop();
         }
         tk_service_edit_pattern(tk_pattern_fw_get(edit));
+        if (edit != editing_pattern || project_data_changed)
+            tk_capture_poll(edit, (uint16_t)pp_selected_tempo());
         tk_service_play_pattern(tk_pattern_fw_get(next));
         pattern = next;
         editing_pattern = edit;

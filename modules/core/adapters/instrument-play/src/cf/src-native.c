@@ -672,7 +672,7 @@ static uint32_t diagram_mask(uint32_t page, const CvDisplay *d)
     uint32_t family = d->family;
     if (d->shared_keyboard) {
         if (page == CS_VOICE)
-            return family < 2 ? 0x70 : family == 3 ? 0x40 : 0;
+            return family < 2 ? 0x70 : family == 2 ? 0x1e : 0x40;
         if (page == CS_FM_ENV)
             return family < 2 ? 0xff : 0x8f;
         return 0x40;
@@ -691,7 +691,9 @@ static void shared_diagram(const uint8_t *view, uint8_t *b, const CvDisplay *d)
         diagram_text(b, 34, 12, "VOICE");
         if (d->family == 3)
             compact_fm(b, d);
-        else if (d->family < 2)
+        else if (d->family == 2)
+            diagram_wavetable(b, d);
+        else
             diagram_legacy(b, d, 72);
     } else if (d->page == CS_DETAIL) {
         diagram_text(b, 73, 18, "DETAIL");
