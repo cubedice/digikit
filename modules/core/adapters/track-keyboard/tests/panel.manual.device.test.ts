@@ -20,7 +20,7 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
   test(
     'preserves stock audio and MIDI TRIG pages and plays ARP while stopped',
     {
-      timeout: 240_000,
+      timeout: 420_000,
     },
     async () => {
       const { session } = handle;
@@ -50,14 +50,28 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
       const switchPixels = (frame: Buffer) => crop(frame, 23, 13, 46, 29);
       const ratePixels = (frame: Buffer) => crop(frame, 101, 13, 122, 29);
       const { edge, tap, turn } = acknowledgedPanel(session);
-      const modified = async (modifier: string, key: string) => {
-        await edge(modifier, true);
+      const hold = async (key: string, action: () => Promise<void>) => {
+        await edge(key, true);
         try {
-          await tap(key);
+          await action();
         } finally {
-          await edge(modifier, false);
+          await edge(key, false);
         }
       };
+      const modified = async (modifier: string, key: string) => {
+        await hold(modifier, () => tap(key));
+      };
+      const cellCaption = (frame: Buffer, encoder: number) => {
+        const x = 23 + 26 * (encoder % 4);
+        const y = encoder < 4 ? 32 : 59;
+        return crop(frame, x, y, Math.min(122, x + 24), y + 4);
+      };
+      const cellGraphic = (frame: Buffer, encoder: number) => {
+        const x = 24 + 26 * (encoder % 4);
+        const y = encoder < 4 ? 12 : 39;
+        return crop(frame, x, y, Math.min(122, x + 22), y + 18);
+      };
+      const inverse = (pixels: Buffer) => Buffer.from(pixels.map((value) => 1 - value));
       const selectedTrackOperand = portAnchorAddress(
         session.options.device,
         session.options.firmware,
@@ -66,7 +80,10 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
       const selectedTrack = async () => word(session, await word(session, selectedTrackOperand));
       const readPages = async (build: string) => {
         const views = new Map<string, Buffer>();
-        for (const [kind, track] of [['audio', 1], ['midi', 2]] as const) {
+        for (const [kind, track] of [
+          ['audio', 1],
+          ['midi', 2],
+        ] as const) {
           await modified('TRK', `TRIG ${track}`);
           const selected = await selectedTrack();
           if (selected !== track - 1) await capture(`${build}-${kind}-track-select-failed`);
@@ -87,6 +104,33 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
             views.set(name, await pixels());
             await capture(`${build}-${name}`);
           }
+          await hold('PAGE TRIG', async () => {
+            await session.wait(800);
+            views.set(`${kind}-trig-2-values`, await pixels());
+            await capture(`${build}-${kind}-trig-2-values`);
+          });
+          await session.wait(1500);
+          views.set(`${kind}-trig-2-released`, await pixels());
+          await capture(`${build}-${kind}-trig-2-released`);
+          // Compare the native RATE or COND focus on an edited step before
+          // the custom pages run. Remove the fixture trig after the capture.
+          const encoder = kind === 'audio' ? 3 : 7;
+          await tap('RECORD');
+          await tap('TRIG 8');
+          await hold('TRIG 8', async () => {
+            const before = await pixels();
+            for (let turnIndex = 0; turnIndex < 3; ++turnIndex) await turn(encoder + 1, 8);
+            const focused = await pixels();
+            await capture(`${build}-${kind}-trig-2-step-focus`);
+            expect(cellGraphic(focused, encoder), `${build} edits native ${kind} step`).not.toEqual(
+              cellGraphic(before, encoder),
+            );
+            views.set(`${kind}-trig-2-step-focus`, focused);
+            await tap(`PUSH ${'ABCDEFGH'[encoder]}`);
+          });
+          await tap('TRIG 8');
+          await tap('RECORD');
+          await session.wait(2000);
         }
         return views;
       };
@@ -104,15 +148,25 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
         return Buffer.from(result);
       };
       await session.client.call('run.mode', { mode: 'free' });
-      await pollEmulated(session, () => session.status(), (status) => status.cf.main_ui_reached, {
-        emulatedMs: 30_000,
-        message: 'unmodified firmware reached the stock UI',
-      });
+      await pollEmulated(
+        session,
+        () => session.status(),
+        (status) => status.cf.main_ui_reached,
+        {
+          emulatedMs: 30_000,
+          message: 'unmodified firmware reached the stock UI',
+        },
+      );
       await tap('NO'); // Dismiss the stock first-boot filesystem message.
-      await pollEmulated(session, () => session.status(), (status) => status.cf.ready, {
-        emulatedMs: 30_000,
-        message: 'stock setup finished before capturing TRIG pages',
-      });
+      await pollEmulated(
+        session,
+        () => session.status(),
+        (status) => status.cf.ready,
+        {
+          emulatedMs: 30_000,
+          message: 'stock setup finished before capturing TRIG pages',
+        },
+      );
       const stock = await readPages('stock');
       const image = await prepareRuntimePlanModulesOffline(
         session.options,
@@ -152,7 +206,8 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
       await tap('PAGE TRIG');
       await capture('track-midi-keys-entry');
       await session.wait(1500);
-      expect(trackColumn(await pixels())).toEqual(trackColumn(shared.get('midi-trig-2')!));
+      const midiKeys = await pixels();
+      expect(trackColumn(midiKeys)).toEqual(trackColumn(shared.get('midi-trig-2')!));
       await capture('track-midi-keys');
 
       await modified('TRK', 'TRIG 1');
@@ -237,6 +292,178 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
       await tap(1);
       await capture('track-keys');
       expect(await drawnText(), 'KEYS control labels render below the header').toBeGreaterThan(135);
+
+      const checkPage = async (stem: string, isArp: boolean, nativeColumn: Buffer, valueColumn: Buffer) => {
+        const controls = isArp ? [0, 1, 2, 3, 4, 5, 6, 7] : [0, 1, 2, 3, 6];
+        const lockable = isArp ? controls : controls.slice(0, 4);
+        // Approach the endpoints from both directions. The step writes then
+        // keep the same displayed values, isolating inversion from the value change.
+        const directions = isArp ? [1, 1, 1, 1, -1, 1, 1, 1] : [1, 1, -1, 1];
+        const turns = isArp ? [2, 2, 2, 2, 2, 2, 2, 2] : [2, 2, 2, 6];
+        for (const encoder of lockable) {
+          for (let i = 0; i < turns[encoder]!; ++i) {
+            const edit = () => turn(encoder + 1, 30 * directions[encoder]!);
+            if ((isArp && encoder === 2) || (!isArp && encoder === 3)) {
+              await hold(`PUSH ${'ABCDEFGH'[encoder]}`, edit);
+            } else {
+              await edit();
+            }
+          }
+        }
+        const labels = isArp ? midiArp : midiKeys;
+        const changed = async (reference: Buffer) => {
+          const frame = await pixels();
+          return controls.filter((i) => !cellCaption(frame, i).equals(cellCaption(reference, i)));
+        };
+        await pollEmulated(
+          session,
+          () => changed(labels),
+          (indices) => indices.length === 0,
+          {
+            emulatedMs: 9000,
+            message: `${stem} focuses expire before collecting the idle frame`,
+          },
+        );
+        const idle = await pixels();
+        expect(trackColumn(idle), `${stem} idle track column`).toEqual(nativeColumn);
+        await capture(`${stem}-idle`);
+        await hold('PAGE TRIG', async () => {
+          try {
+            await pollEmulated(
+              session,
+              () => changed(idle),
+              (indices) => indices.length === controls.length,
+              { emulatedMs: 3000, message: `${stem} shows every parameter value` },
+            );
+          } finally {
+            await capture(`${stem}-values`);
+          }
+          const shown = await pixels();
+          expect(trackColumn(shown), `${stem} held track column`).toEqual(valueColumn);
+          for (const i of controls) {
+            expect(cellCaption(shown, i).includes(1), `${stem} visible value ${i + 1}`).toBe(true);
+            expect(cellGraphic(shown, i), `${stem} preserves graphic ${i + 1} during hold`).toEqual(
+              cellGraphic(idle, i),
+            );
+          }
+        });
+        await pollEmulated(
+          session,
+          () => changed(idle),
+          (indices) => indices.length === 0,
+          { emulatedMs: 2000, message: `${stem} restores every caption on release` },
+        );
+        await capture(`${stem}-released`);
+        if (isArp) {
+          // AUG is the last choice. The previous choice has four glyphs
+          // and exercises the rightmost cell with a longer chord reading.
+          await turn(8, -4);
+          await hold('PAGE TRIG', async () => {
+            await pollEmulated(
+              session,
+              () => changed(idle),
+              (indices) => indices.length === controls.length,
+              { emulatedMs: 3000, message: `${stem} holds the value view long enough to avoid a page turn` },
+            );
+            const reading = await pixels();
+            const width = Array.from({ length: 22 }, (_, i) => 101 + i).filter((x) =>
+              crop(reading, x, 59, x, 63).includes(1),
+            ).length;
+            expect(width, `${stem} renders a four-glyph chord at the right edge`).toBeGreaterThan(13);
+            expect(crop(reading, 123, 59, 125, 63).includes(1), `${stem} preserves the right margin`).toBe(false);
+            await capture(`${stem}-right-edge`);
+          });
+          await turn(8, 12);
+        }
+
+        await hold('TRIG 1', async () => {
+          const before = await pixels();
+          for (const i of lockable) {
+            const edit = () => turn(i + 1, 12 * directions[i]!);
+            if ((isArp && i === 2) || (!isArp && i === 3)) {
+              await hold(`PUSH ${'ABCDEFGH'[i]}`, edit);
+            } else {
+              await edit();
+            }
+          }
+          const missingInversion = async () => {
+            const frame = await pixels();
+            return lockable.filter((i) => !cellGraphic(frame, i).equals(inverse(cellGraphic(before, i))));
+          };
+          try {
+            await pollEmulated(session, missingInversion, (indices) => indices.length === 0, {
+              emulatedMs: 3000,
+              message: `${stem} inverts every lockable widget at matching values`,
+            });
+          } finally {
+            await capture(`${stem}-step-all-locked`);
+          }
+          // Keep the all-locked frame and verify each lock's independent clear path.
+          for (const i of lockable) await tap(`PUSH ${'ABCDEFGH'[i]}`);
+          await pollEmulated(
+            session,
+            pixels,
+            (frame) => lockable.every((i) => cellGraphic(frame, i).equals(cellGraphic(before, i))),
+            { emulatedMs: 3000, message: `${stem} restores each widget after step lock clear` },
+          );
+          await capture(`${stem}-step-cleared`);
+        });
+      };
+
+      for (const [kind, track] of [
+        ['audio', 1],
+        ['midi', 2],
+      ] as const) {
+        await modified('TRK', `TRIG ${track}`);
+        await tap('SRC');
+        for (let page = 0; page < 3; ++page) await tap('PAGE TRIG');
+        await tap('RECORD');
+        await tap('TRIG 1');
+        await tap('TRIG 3');
+        const nativeColumn = trackColumn(shared.get(`${kind}-trig-2`)!);
+        const valueColumn = trackColumn(shared.get(`${kind}-trig-2-values`)!);
+        await checkPage(`${kind}-arp-matrix`, true, nativeColumn, valueColumn);
+        const before = await pixels();
+        await hold('TRIG 1', () => hold('TRIG 3', () => turn(4, 12)));
+        for (const step of [1, 3]) {
+          await hold(`TRIG ${step}`, async () => {
+            try {
+              await pollEmulated(
+                session,
+                async () => cellGraphic(await pixels(), 3).equals(inverse(cellGraphic(before, 3))),
+                Boolean,
+                { emulatedMs: 3000, message: `${kind} multi-step RATE lock reached step ${step}` },
+              );
+            } finally {
+              await capture(`${kind}-arp-matrix-multi-${step}`);
+            }
+          });
+        }
+        await hold('TRIG 1', () => hold('TRIG 3', () => tap('PUSH D')));
+        await tap('PAGE TRIG');
+        await checkPage(`${kind}-keys-matrix`, false, nativeColumn, valueColumn);
+        await tap('RECORD');
+        const keysCaption = cellCaption(midiKeys, 0);
+        const showingIdleKeys = async () => cellCaption(await pixels(), 0).equals(keysCaption);
+        await pollEmulated(session, showingIdleKeys, Boolean, {
+          emulatedMs: 9000,
+          message: `${kind} KEYS encoder focus expires before opening Quantize`,
+        });
+        await capture(`${kind}-keys-matrix-before-quantize`);
+        // A covering native Quantize view must return to KEYS without cycling TRIG.
+        await modified('FUNC', 'PAGE TRIG');
+        expect(await showingIdleKeys()).toBe(false);
+        await capture(`${kind}-keys-matrix-quantize`);
+        await tap('NO');
+        try {
+          await pollEmulated(session, showingIdleKeys, Boolean, {
+            emulatedMs: 9000,
+            message: `${kind} returns to KEYS from Quantize`,
+          });
+        } finally {
+          await capture(`${kind}-keys-matrix-return`);
+        }
+      }
       await session.expectNoFault('shared track keyboard');
     },
   );

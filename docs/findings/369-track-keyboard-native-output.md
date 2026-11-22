@@ -12,7 +12,30 @@ The shared backend submits bounded work in the main task. It orders offs ahead o
 
 The MIDI worker's native route mask is at `0x44e3b9e0`, with DIN on bit 0 and USB on bit 1. Generated onsets reserve both messages of their pair before entering the worker. DIN accrues 2,700 bytes/s with a 48-byte burst allowance. USB accrues 12,000 framing bytes/s with a 256-byte burst allowance. A note sent to both ports spends both allowances. Over-capacity onsets are rejected with MIDI BUSY. A release keeps the outgoing mask recorded at onset and does not need more allowance.
 
-The native worker retains pitch/channel ownership and constructs both messages. The append hooks at `0x4012ce44` and `0x4012d00e` use the saved mask for tagged generated messages. Untagged messages take the stock append route. A pending native append is flushed before an explicitly routed generated note to preserve same-pitch ordering. Host tests cover exhausting DIN while USB remains available, pairing releases after an output change, and refilling both allowances. The coupled sequence fixture switched DIN to USB and USB to DIN while a note was held. Each release appeared on its original output only. Hardware DIN transmit saturation is still an open proof.
+The native worker retains pitch/channel ownership and constructs both messages. The append hooks at `0x4012ce44` and `0x4012d00e` use the saved mask for tagged generated messages. Untagged messages take the stock append route. A pending native append is flushed before an explicitly routed generated note to preserve same-pitch ordering. Host tests cover exhausting DIN while USB remains available, pairing releases after an output change, and refilling both allowances. The coupled sequence fixture switched DIN to USB and USB to DIN while a note was held. Each release appeared on its original output only.
+
+### Physical DIN under load [D]
+
+On image `9eb931fe23821e2f`, a disposable 275 BPM pattern played one
+sample track and nine independent MIDI arps at 1/80. A temporary
+observer read the stock DIN transmitter's queue cursors, eDMA completion
+and UART-empty status. We connected MIDI OUT directly to MIDI IN and set
+the sequencer input to USB, leaving the DIN receive DMA available for
+passive capture.
+
+Over seven seconds of playback, all 15,180 bytes from the completed DIN
+transfers reached the receiver. They matched USB byte for byte in the
+same order, including all 2,530 complete note pairs. A separate 12-second
+run with native clock send enabled drained 26,526 bulk note bytes. USB
+received all 4,421 pairs, the DIN queue emptied after Stop, and the
+maximum sampled bulk wait count was six bytes.
+
+Six stopped USB input bursts each requested 16 simultaneous pitches on
+one MIDI track with POLY and a 16-voice limit. USB output alone delivered
+96 complete pairs. With USB and DIN enabled, 80 pairs were admitted
+across the same six bursts. The 480 bytes captured at MIDI IN matched
+the USB output exactly. After each burst, all admitted notes had matching
+releases. The physical transmit queue drained in both route settings.
 
 ## Helper voices and owner routing [D]
 
@@ -224,6 +247,37 @@ selected directly in POOL raised the effective voice count to two. Three
 individual waveforms each appeared at a consistent offset in multiple
 overlapping windows of the paired capture. The peak absolute sample rose
 from about 0.005 for either note alone to 0.0065 for the pair.
+
+## Absolute ColdFire idle measurements [D]
+
+The physical observer sampled the idle counter against the free-running
+DTCN0 timer while the DSP block count advanced at 1,500 Hz. A bounded
+calibration on the same counter and memory alignment timed warm chains
+of 1, 8 and 16 copies of the idle loop's increment and branch. The
+estimated cost was 2.50–2.57 hardware timer ticks per iteration. The chain
+branches across cache lines, so nonzero idle percentages are estimates.
+Zero idle iterations directly indicate that the idle task was never
+scheduled in that window.
+
+The same 275 BPM test pattern with a sample track, USB audio capture,
+MIDI clock send and repeated USB CC1 input produced these results.
+
+| Workload | Estimated idle share in steady windows | Emitted note pairs in ten seconds |
+| --- | --- | --- |
+| Nine MIDI tracks, ARP off | 21.3–21.8% | 207 |
+| Three MIDI arps at 1/80 | 0% | 2,752 |
+| Nine MIDI arps at 1/80 | 0% | 3,497 |
+
+All pairs completed and the audio capture reported no stream errors.
+In a separate USB-only run with MIDI clock send disabled, lowering the
+three arps to 1/16 left an estimated 13.2–15.5% idle time. All 534 note
+pairs completed in eight seconds and the audio stream reported no errors.
+The 1/80 three-arp run returned to about 29% idle within roughly five seconds
+of USB MIDI Stop. In the nine-arp trial, the first five seconds of the
+stopped follow-up still showed zero idle. A later stopped sample recovered
+to about 29% without a reboot or ARP change. These measurements put the
+1/80 stress cases at the ColdFire ceiling even though the DSP and MIDI
+release paths kept up.
 
 ## Remaining qualification [O]
 

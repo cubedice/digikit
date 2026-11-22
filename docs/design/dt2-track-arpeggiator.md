@@ -354,6 +354,13 @@ reached the same generated phrase in the coupled emulator. An unlocked trig
 restored both values. Separate SHARC tests cover locked and unlocked blends
 across the three source families.
 
+The final coupled OLED test captured audio and MIDI TRIG pages in their idle,
+held and released states. It verified all 24 lockable ARP and KEYS cells
+across the two track types, including exact inversion and clearing. The
+test also covered grouped RATE locks, the longest values at the right edge,
+and returning from the native Quantize dialog. In ten full-frame stock
+comparisons, only the intentional page-count digit and markers differed.
+
 Physical USB tests measured stopped sample-track arpeggiation and the MIDI
 sequence C–E–G at 120 BPM. The hardware image loaded CANOPY, Overloop,
 PRISM, RELAY and remote together. The full experimental build uses a
@@ -397,8 +404,13 @@ With the same pattern playing one sample track and six MIDI tracks, the
 Health page showed 58% estimated DSP usage with ARP disabled and with all
 seven arps set to 1/80. Reported DSP peaks were 61% and 61–62%, respectively.
 The relative ColdFire indicator rose from 46% to 100%. That indicator uses
-the quietest window since boot as its reference, so the test leaves absolute
-ColdFire headroom open.
+the quietest window since boot as its reference. The later physical test
+timed the idle loop against the hardware clock. With ARP off, the playing
+test pattern retained about 21% estimated idle time. Three arps at 1/16
+retained 13–16%. With three or nine arps at 1/80 and 275 BPM, the counter
+recorded zero idle iterations during steady playback. Across those runs
+the USB audio capture reported zero stream errors, and every transmitted
+note had a matching release.
 
 The POOL menu stages helper selection in checked track rows. APPLY GROUP
 validates and writes the complete group. NO discards the draft. Recording
@@ -426,6 +438,12 @@ coupled test switched each port while a note was held and observed the
 release only on the original output. The host sequence test fills the recipe
 pool and verifies that a refused write leaves the prior notes and locks intact.
 
+The physical DIN loopback returned all 15,180 note bytes in the same order
+as USB during a nine-arp playback test. In a separate burst test, USB alone
+played and released all 96 requested notes. With DIN and USB selected, the
+device admitted 80 notes, and every release appeared on both outputs.
+The DIN driver drained the whole queue in each run. [Measurements](../findings/369-track-keyboard-native-output.md)
+
 RELAY 0.5 supports the shared keyboard. With one empty track assigned in
 POOL, the owner and helper each provide a pitched playback head. They read
 the owner’s committed tape, apply track AMP independently, and mix their
@@ -439,10 +457,6 @@ The full image booted on the DTII with all five modules loaded. In a
 disposable project, RELAY recorded a two-second take from a sample track.
 Assigning T9 from POOL raised the effective voice count to two. Both
 individual pitches were identifiable in the recorded two-note USB audio.
-
-Release qualification still includes absolute ColdFire headroom under load,
-physical DIN transmit saturation, and the rest of the held-value and
-step-lock capture matrix.
 
 ### Building the full experimental image
 
