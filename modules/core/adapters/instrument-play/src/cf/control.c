@@ -229,10 +229,7 @@ void instrument_src_track_keyboard(uint32_t track, int active)
 }
 uint32_t instrument_src_pages(uint32_t track)
 {
-    if (!instrument_src_shared_keyboard(track))
-        return 4;
-    const IpInst *in = for_track(track);
-    return in && in->pad_family >= 2 ? 3 : 1;
+    return instrument_src_shared_keyboard(track) ? CS_SHARED_PAGES : 4;
 }
 int instrument_src_shared_keyboard(uint32_t track)
 {

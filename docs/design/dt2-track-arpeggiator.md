@@ -93,21 +93,21 @@ to return the group to AUTO.
 
 ## CANOPY SRC after moving keyboard controls
 
-CANOPY opens on **SOURCE**. TUNE is on A and source LEV is on H, using the native widgets once each. The dedicated LEVEL/DATA knob remains track level. Turn B to select Velvet, Reed, a wavetable or FM. **TONE** edits the selected oscillator and **ENV** edits its timbre envelope. AMP continues to control amplitude. Velvet and Reed need only SOURCE. Wavetable and FM use SOURCE → TONE → ENV. The selected base sound family determines the navigation count. A transient WAVE trig lock changes the sounding voice without changing the player’s page underneath their fingers.
+With the Track Keyboard adapter, **SRC** cycles **VOICE → FM ENV → DETAIL** for every CANOPY sound. Turn VOICE A to select Velvet, Reed, a wavetable or FM. VOICE includes the oscillator controls and DRFT. LEVEL/DATA controls track level and stock AMP controls amplitude. A held WAVE lock supplies the step’s effective sound family for drawing and editing.
 
 | SRC page and family | A | B | C | D | E | F | G | H |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| SOURCE · Velvet / Reed | TUNE | WAVE | COLR | DRFT | waveform | waveform | MIX | LEV |
-| SOURCE · wavetable | TUNE | WAVE | POS | DRFT | table preview | table preview | MIX | LEV |
-| SOURCE · FM | TUNE | WAVE | DEP | DRFT | operator diagram | operator diagram | MIX | LEV |
-| TONE · wavetable | DEP | RATE / HZ | SHAP | CLK | RST | scan preview | scan preview | scan preview |
-| TONE · FM | ALG | BAL | RTA | RTB | FDBK | algorithm diagram | algorithm diagram | algorithm diagram |
-| ENV · wavetable | ATK | REL | FM | RAT | PENV | FENV | VEL | routing diagram |
-| ENV · FM | ATK | DEC | SUS | REL | ENV | VEL | routing diagram | routing diagram |
+| VOICE · Velvet / Reed | WAVE | COLR | — | — | waveform | waveform | waveform | DRFT |
+| VOICE · wavetable | WAVE | POS | DEP | RATE / HZ | SHAP | CLK | RST | DRFT |
+| VOICE · FM | WAVE | ALG | BAL | RTA | RTB | FDBK | operator chart | DRFT |
+| FM ENV · Velvet / Reed | — | — | — | — | — | — | — | — |
+| FM ENV · wavetable | ATK | REL | PENV | FENV | FM depth | RAT | VEL | envelope guide |
+| FM ENV · FM | ATK | DEC | SUS | REL | FM depth | ENV | VEL | envelope guide |
+| DETAIL · all families | TUNE | — | — | — | — | — | MIX | LEV |
 
-Adjacent preview cells form a single read-only drawing. Wavetable POS has one home. Its TONE depth, rate, clock and reset control **scanning**. ARP rate and reset remain on TRIG. Keep the existing signed amounts, wheel assignments and fixed six modulation destinations per sound type. The source picker keeps the remembered values of each family. Show-values, focus, native tuning increments and held-step lock inversion follow the current SRC behavior. [Current CANOPY parameter definitions](canopy-ui-review.md)
+For Velvet and Reed, FM ENV points to AMP. The wavetable attack and release shape both position and FM depth, with PENV and FENV setting their signed amounts. VEL uses strike velocity to offset wavetable position or FM depth, depending on the engine. The FM envelope uses ADSR for modulation depth. Both curves use the stock AMP graph renderer and update as you turn the timing knobs. DETAIL keeps native TUNE and source LEV around the pad/arp blend. ARP rate and reset live on TRIG 3. Show-values, focus and held-step lock inversion use the native interaction. Stored presets, step-lock IDs, wheel setup and the six modulation destinations per sound family retain their existing meanings. [CANOPY parameter definitions](canopy-ui-review.md)
 
-**What moves.** The current SRC KEYS keyboard picture, CHRD, VOIC and STRM move to TRIG 4. The old four-page SRC cycle becomes SOURCE alone for Velvet/Reed, or SOURCE → TONE → ENV for wavetable/FM. The entire SRC ARP timing row moves to TRIG 3. NOTES becomes the front-panel home for learn and selector keys. SOURCE G keeps CANOPY’s **MIX** as a sound parameter because it balances two synthesis layers. When only POLY or only ARP is enabled, that path sounds at its normal level and MIX shows which lane is active. Enable both to edit the blend. When both are enabled on CANOPY, the common scheduler supplies separate direct and timed note events, and MIX blends them from pad to arp. The CANOPY renderer keeps native envelope and voice-tail behavior. One mapper and one clock generate those events. Other destinations use the arp alone when both switches are on.
+**Keyboard and blend.** TRIG 4 holds CHRD, VOIC, STRM and the keyboard display. TRIG 3 holds the arp controls. NOTES is the front-panel home for learn and selector keys. **MIX** on DETAIL G blends CANOPY’s pad and arp when POLY and ARP are both enabled. Each path plays at its normal level when enabled alone. The shared scheduler delivers separate direct and timed notes to CANOPY’s existing voice renderer. Firmware without the Track Keyboard adapter uses the fallback KEYS → ARP → SOUND → ENV cycle.
 
 **Existing projects and presets.** An unmodified CANOPY Sound supplies its legacy performance settings to the two TRIG pages until a track override is saved. Initialize its effective switches and blend from the original pad/arp behavior, including pure pad, intermediate mix and pure arp. Merely opening the pages writes nothing. For an inherited sound use its legacy engine where needed for exact recall. The first performance edit materializes pattern defaults. Migrate timing as rational divisions, including CANOPY’s 7/Q even though stock retrig lacks that division. Keep order, octave traversal, swing and reset semantics for recalled legacy phrases. Decode existing packed step locks and MOD by **parameter identity**, including CHRD, strum, ARP MIX, gate and swing. Existing timbre locks still reach the same synthesis control after its encoder moves. Apply a pattern override ahead of an inherited base, then the eligible step lock and native modulation. Never rewrite shared Sound data while copying or editing the pattern. Compare rendered notes, release timing and the blended sound before and after migration for each source family. [Existing controls and lock behavior](../../modules/machines/canopy/README.md)
 
@@ -262,7 +262,7 @@ future `RENDER TO TRIGS` action can do that, with preview and capacity checks.
 
 ## CANOPY and track lifecycle
 
-CANOPY accepts the shared keyboard’s resolved pitches and the arp’s timed events on distinct lanes. The SOURCE MIX rule above determines their levels. The local legacy generator yields ownership when the shared engine takes over.
+CANOPY accepts the shared keyboard’s resolved pitches and the arp’s timed events on distinct lanes. MIX on DETAIL sets their levels. The local legacy generator yields ownership when the shared engine takes over.
 
 On changes to POLY or ARP, retire output that loses ownership and retain still-valid voices in the other lane. On route, machine or project changes, release all old output ownership before adopting the new configuration.
 Transport stop ends sequencer-owned phrases; keys still held can continue in
@@ -380,7 +380,7 @@ PRISM, RELAY and remote together. On the physical unit, switching from
 shared polyphony to ARP-only initially stayed
 silent until a Sound edit. The playback adapter now publishes the updated
 lane mix when that routing changes. The rebuilt firmware measured RMS
-0.044 in POLY-only and 0.030 in ARP-only without a SOURCE edit. Both modes
+0.044 in POLY-only and 0.030 in ARP-only without a sound edit. Both modes
 were tested on the same CANOPY track with the same panel chord.
 
 Shared CANOPY phrases can use a supported native Sound from the project
@@ -506,7 +506,7 @@ the destination track acquired it after STOP.
 ### Building the full experimental image
 
 Use a separate checkout to build the full experimental image with the
-436 KiB module arena. This profile leaves 3,112 bytes in ColdFire expansion
+436 KiB module arena. This profile leaves 3,432 bytes in ColdFire expansion
 and retains the 151,552-byte DTII staging buffer. Set `[limits] arena_bytes`
 to `446464` in the Digitakt II, Digitone II and Syntakt device profiles and
 set `ARENA_BYTES` to the same value in the runtime ABI. Regenerate its C and

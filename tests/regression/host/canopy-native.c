@@ -124,7 +124,7 @@ int instrument_src_shared_keyboard(uint32_t track)
 }
 uint32_t instrument_src_tune_page(uint32_t page)
 {
-    return page == 0;
+    return page == (cs_shared_keyboard(&state) ? CS_DETAIL : 0);
 }
 static uint32_t selected, alternate, now = 100, type_id = 9, generation = 1, stock_turns,
                                      stock_keys, invalidations, polls;
@@ -134,6 +134,8 @@ static char label_text[8][32];
 static char body_text[8][32];
 static char arp_caption[32];
 static uint32_t real_display, graph_mask, graph_value[8];
+static uint32_t amp_draws;
+static int32_t amp_args[6];
 const uint32_t ip_src_label_font = 123;
 void ip_src_focus_touch(uint8_t *tracker, uint32_t index)
 {
@@ -260,6 +262,14 @@ void ip_src_level_format(int32_t raw, char *out)
     assert(raw == 0x7f00);
     strcpy(out, "127");
 }
+void ip_src_amp_adsr(const uint8_t *view, uint8_t *canvas, int32_t column, int32_t row,
+                     int32_t attack, int32_t decay, int32_t sustain, int32_t release)
+{
+    assert(view && canvas);
+    ++amp_draws;
+    const int32_t args[] = {column, row, attack, decay, sustain, release};
+    memcpy(amp_args, args, sizeof amp_args);
+}
 void ip_src_stock_attach(uint8_t *v, uint8_t *m)
 {
     (void)m;
@@ -381,6 +391,13 @@ static void clear_paint(uint8_t *canvas)
     memset(body_text, 0, sizeof(body_text));
     memset(graph_value, 0, sizeof(graph_value));
     graph_mask = 0;
+    amp_draws = 0;
+}
+static void expect_amp(int32_t attack, int32_t decay, int32_t sustain, int32_t release)
+{
+    const int32_t expected[] = {0, 0, attack, decay, sustain, release};
+    assert(amp_draws == 1 && !memcmp(amp_args, expected, sizeof expected));
+    assert(!(graph_mask & 0x0f)); /* The graph occupies all four time-control widgets. */
 }
 static void protected_pixels(const uint8_t *canvas, int native_tune)
 {
@@ -447,36 +464,98 @@ int main(int argc, char **argv)
         assert(isn_take(&q, batch) == 1 && batch[0].lock_valid && !batch[0].lock_count &&
                batch[0].shared_lanes == 1);
     } else if (!strcmp(argv[1], "shared-keyboard")) {
+        static const char *const labels[3][3][8] = {
+            {{"WAVE", "COLR", "", "", "", "", "", "DRFT"},
+             {"", "", "", "", "", "", "", ""},
+             {"", "", "", "", "", "", "MIX", ""}},
+            {{"WAVE", "POS", "DEP", "HZ", "SHAP", "CLK", "RST", "DRFT"},
+             {"ATK", "REL", "PENV", "FENV", "FM", "RAT", "VEL", ""},
+             {"", "", "", "", "", "", "MIX", ""}},
+            {{"WAVE", "ALG", "BAL", "RTA", "RTB", "FDBK", "", "DRFT"},
+             {"ATK", "DEC", "SUS", "REL", "DEP", "ENV", "VEL", ""},
+             {"", "", "", "", "", "", "MIX", ""}}};
         real_display = 1;
         cs_track_keyboard(&state, 1);
         v[0x90 / 4] = 2;
         clear_paint(canvas);
         ip_src_draw((uint8_t *)v, canvas);
-        assert(v[0x90 / 4] == 0 && mf_src_page_count(type_id) == 1);
-        assert(!strcmp(label_text[1], "WAVE") && !strcmp(label_text[2], "COLR"));
-        assert(!strcmp(label_text[6], "MIX") && !label_text[4][0]);
-        assert(ip_src_parameter((uint8_t *)v, 0) == 0xca);
-        assert(ip_src_parameter((uint8_t *)v, 7) == 0xd1);
-        assert(ip_src_parameter((uint8_t *)v, 8) == 10);
-        protected_pixels(canvas, 1);
-        for (uint32_t source = 2; source <= 3; ++source) {
+        assert(v[0x90 / 4] == 0 && mf_src_page_count(type_id) == 3);
+        for (uint32_t source = 0; source < 4; ++source) {
             cs_metadata(&state, source << 4);
+            if (source == 2) {
+                state.value[CP_WT_CLOCK] = 0;
+                state.value[CP_WT_ATTACK] = 12;
+                state.value[CP_WT_RELEASE] = 26;
+                state.value[CP_WTFM_ENV] = 0;
+                state.value[CP_WTFM_RATIO] = 15;
+            } else if (source == 3) {
+                state.value[CP_FM_ALG] = 3;
+                state.value[CP_FM_ATTACK] = 127;
+                state.value[CP_FM_DECAY] = 127;
+                state.value[CP_FM_SUSTAIN] = 67;
+                state.value[CP_FM_RELEASE] = 127;
+                state.value[CP_FM_BAL] = 100;
+                state.value[CP_COLOR] = 32;
+            }
             for (uint32_t page = 0; page < 3; ++page) {
                 v[0x90 / 4] = page;
+                v[0x190 / 4] = 0;
                 clear_paint(canvas);
                 ip_src_draw((uint8_t *)v, canvas);
                 assert(v[0x90 / 4] == page && mf_src_page_count(type_id) == 3);
-                assert(!strcmp(label_text[page ? 0 : 1], page == 0     ? "WAVE"
-                                                         : page == 2   ? "ATK"
-                                                         : source == 2 ? "DEP"
-                                                                       : "ALG"));
-                protected_pixels(canvas, page == 0);
+                for (unsigned i = 0; i < 8; ++i)
+                    assert(!strcmp(label_text[i], labels[source < 2 ? 0 : source - 1][page][i]));
+                assert(ip_src_parameter((uint8_t *)v, 0) == (page == CS_DETAIL ? 0xca : 0));
+                assert(ip_src_parameter((uint8_t *)v, 7) == (page == CS_DETAIL ? 0xd1 : 0));
+                assert(ip_src_parameter((uint8_t *)v, 8) == 10);
+                if (source == 2 && page == CS_FM_ENV)
+                    expect_amp(0x0c00, 0, 0x7f00, 0x1a00);
+                else if (source == 3 && page == CS_FM_ENV)
+                    expect_amp(0x7f00, 0x7eff, 21783, 0x7eff);
+                else
+                    assert(!amp_draws);
+                protected_pixels(canvas, page == CS_DETAIL);
+
+                v[0x190 / 4] = 0x01010101;
+                clear_paint(canvas);
+                ip_src_draw((uint8_t *)v, canvas);
+                if (source == 2 && page == CS_FM_ENV) {
+                    assert(!strcmp(label_text[3], "-100%") && !strcmp(label_text[5], "8.00"));
+                    expect_amp(0x0c00, 0, 0x7f00, 0x1a00);
+                }
+                if (source == 3 && page == CS_FM_ENV) {
+                    assert(!strcmp(label_text[0], "127") && !strcmp(label_text[4], "32"));
+                    expect_amp(0x7f00, 0x7eff, 21783, 0x7eff);
+                    event((uint8_t *)e, 1, -109, 0, 0);
+                    assert(ip_src_turn((uint8_t *)v, (uint8_t *)e) == 1);
+                    clear_paint(canvas);
+                    ip_src_draw((uint8_t *)v, canvas);
+                    assert(!strcmp(label_text[0], "18"));
+                    expect_amp(0x1200, 0x7eff, 21783, 0x7eff);
+                }
+                if (source == 3 && page == CS_VOICE)
+                    assert(!strcmp(label_text[1], "CHAIN") && !strcmp(label_text[2], "100%"));
+                protected_pixels(canvas, page == CS_DETAIL);
+                if (source == 2 && page == CS_VOICE) {
+                    v[0x190 / 4] = 0;
+                    state.value[CP_WT_CLOCK] = 1;
+                    clear_paint(canvas);
+                    ip_src_draw((uint8_t *)v, canvas);
+                    assert(!strcmp(label_text[3], "RATE"));
+                    protected_pixels(canvas, 0);
+                }
             }
         }
         cs_track_keyboard(&state, 0);
+        v[0x190 / 4] = 0;
+        clear_paint(canvas);
         ip_src_draw((uint8_t *)v, canvas);
         assert(v[0x90 / 4] == 0 && mf_src_page_count(type_id) == 4);
         assert(!strcmp(label_text[1], "CHRD"));
+        v[0x90 / 4] = 3; /* Standalone FM ENV retains its four-page renderer. */
+        clear_paint(canvas);
+        ip_src_draw((uint8_t *)v, canvas);
+        assert(!amp_draws);
     } else if (!strcmp(argv[1], "live-lock")) {
         for (unsigned step = 0; step < 128; ++step)
             for (unsigned lane = 0; lane < ILP_LANES; ++lane)

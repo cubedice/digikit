@@ -179,6 +179,15 @@ users = ["core/instrument-play"]
 doc = "DT2 1.17 SRC integration level_format; bounded static image inspection, retained stock ABI."
 
 [[site]]
+name = "cf.page.site.instrument_src_amp_adsr"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "d3a1bc3c7fe6f4d6566099b8453eb1f26b8235bd24a55b0c6b3d803d24df2087" }
+mark = "D"
+users = ["core/instrument-play"]
+doc = "DT2 1.17 AMP ADSR graph renderer, called with view, canvas, column, row and four Q8 envelope values."
+
+[[site]]
 name = "cf.page.site.instrument_src_parameter_slot"
 cpu = "cf"
 devices = ["dt2"]

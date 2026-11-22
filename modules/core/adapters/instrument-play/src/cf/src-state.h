@@ -61,6 +61,7 @@ uint32_t cs_context(CsState *, uint32_t track, uint32_t generation, int visible,
                     uint32_t mode, uint32_t clock, int learned, int modal);
 uint32_t cs_control(uint32_t page, uint32_t encoder);
 uint32_t cs_pages(const CsState *);
+enum CsSharedPage { CS_VOICE, CS_FM_ENV, CS_DETAIL, CS_SHARED_PAGES };
 uint32_t cs_mapped_control(const CsState *, uint32_t encoder);
 /* View-only choices. PLAY is followed by the twelve persisted chord types;
  * Velvet/Reed are followed by the five persisted wavetable identifiers. */

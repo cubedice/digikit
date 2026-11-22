@@ -11044,6 +11044,37 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x4006aff0",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 AMP ADSR graph renderer, called with view, canvas, column, row and four Q8 envelope values.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_amp_adsr",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x400693da",
             "len": 6
           }
@@ -30154,7 +30185,7 @@
       "name": "midi"
     },
     {
-      "count": 116,
+      "count": 117,
       "cpu": "cf",
       "file": "devices/fw/instrument-src.toml",
       "meaning": "parameter and FX pages",

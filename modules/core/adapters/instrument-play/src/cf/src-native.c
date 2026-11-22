@@ -24,6 +24,8 @@ extern uint32_t ip_src_stock_event(uint8_t *, uint8_t *);
 extern void ip_src_stock_attach(uint8_t *, uint8_t *), ip_src_stock_detach(uint8_t *, uint8_t *);
 extern int32_t ip_src_value(uint8_t *, uint32_t, uint8_t *);
 extern void ip_src_tune_format(int32_t, char *), ip_src_level_format(int32_t, char *);
+extern void ip_src_amp_adsr(const uint8_t *, uint8_t *, int32_t, int32_t, int32_t, int32_t, int32_t,
+                            int32_t);
 extern void ip_src_focus_touch(uint8_t *, uint32_t);
 extern uint8_t ip_src_focus_active(uint8_t *, uint32_t);
 extern const uint32_t ip_src_label_font;
@@ -73,6 +75,10 @@ static uint32_t word(const uint8_t *p, uint32_t offset)
 static uint8_t *pointer(const uint8_t *p, uint32_t offset)
 {
     return (uint8_t *)(uintptr_t)word(p, offset);
+}
+static int native_cells(uint32_t page, int shared_keyboard)
+{
+    return page == (shared_keyboard ? CS_DETAIL : 0);
 }
 static int32_t lock_get(void *ctx, uint32_t code, uint32_t step)
 {
@@ -312,6 +318,22 @@ static void diagram_envelope(uint8_t *b, const CvDisplay *d, int fm)
     if (x3 + 1 < 124)
         for (int j = 12; j < 30; j += 2)
             diagram_box(b, x3 + 1, j, 1, 1, 1);
+}
+static int32_t finite_env_time(const CvDisplay *d, uint32_t control)
+{
+    int32_t value = native_index(d, control);
+    /* The AMP graph draws maximum DEC and REL as infinite. CANOPY's
+     * timbre timing is finite, including at the longest setting. */
+    return value == 127 ? 0x7eff : value << 8;
+}
+static void shared_envelope(const uint8_t *view, uint8_t *b, const CvDisplay *d)
+{
+    int fm = d->family == 3;
+    int32_t attack = native_index(d, fm ? CP_FM_ATTACK : CP_WT_ATTACK) << 8;
+    int32_t decay = fm ? finite_env_time(d, CP_FM_DECAY) : 0;
+    int32_t sustain = fm ? (d->raw[CP_FM_SUSTAIN] * 0x7f00 + 50) / 100 : 0x7f00;
+    int32_t release = finite_env_time(d, fm ? CP_FM_RELEASE : CP_WT_RELEASE);
+    ip_src_amp_adsr(view, b, 0, 0, attack, decay, sustain, release);
 }
 static void diagram_keyboard(uint8_t *b, const CvDisplay *d)
 {
@@ -579,20 +601,20 @@ static void diagram_fm(uint8_t *b, const CvDisplay *d)
     diagram_line(b, 120, 13, 120, 19);
     diagram_line(b, 120, 19, 117, 19);
 }
-static void diagram_legacy(uint8_t *b, const CvDisplay *d)
+static void diagram_legacy(uint8_t *b, const CvDisplay *d, int width)
 {
     static const int8_t wave[] = {0,  2,  4,  6,  7,  7,  6,  5,  4,  3,  3,  3,  3,  2, 0,
                                   -2, -4, -6, -7, -7, -6, -5, -4, -3, -3, -3, -3, -2, 0};
-    for (int i = 1; i < 92; ++i) {
-        int a = wave[(i - 1) * 28 / 91], c = wave[i * 28 / 91];
+    for (int i = 1; i < width; ++i) {
+        int pa = (i - 1) * 28 / (width - 1), pc = i * 28 / (width - 1);
+        int a = wave[pa], c = wave[pc];
         if (d->family) {
-            int pa = (i - 1) * 28 / 91, pc = i * 28 / 91;
             a = pa < 14 ? 7 - pa : pa - 21;
             c = pc < 14 ? 7 - pc : pc - 21;
         }
         diagram_line(b, 26 + i, 48 - a, 27 + i, 48 - c);
     }
-    diagram_text(b, 73, 59, d->family ? "REED" : "VELVET");
+    diagram_text(b, 27 + width / 2, 59, d->family ? "REED" : "VELVET");
 }
 static void diagram_routing(uint8_t *b, int wt)
 {
@@ -625,91 +647,35 @@ static void compact_mix(uint8_t *b, const CvDisplay *d)
     int x = 77 + (18 * d->raw[CP_ARP_MIX] + 63) / 127;
     diagram_box(b, x - 1, 47, 3, 7, 1);
 }
-static void compact_wave(uint8_t *b, const CvDisplay *d)
+/* VOICE G shows the operator lanes selected by ALG. */
+static void compact_fm(uint8_t *b, const CvDisplay *d)
 {
-    static const int8_t velvet[] = {0, 3, 5, 6, 5, 4, 4, 3, 0, -3, -5, -6, -5, -4, -4, -3};
-    int table[47], peak = 1;
-    uint32_t position = d->raw[CP_WT_POS];
-    if (position > 700)
-        position = 700;
-    uint32_t frame = position / 100, fraction = position % 100,
-             next = frame < 7 ? frame + 1 : frame;
-    uint32_t id = d->raw[CP_WT_TABLE];
-    if (id > 4)
-        id = 4;
-    for (uint32_t i = 0; i < 47; ++i) {
-        uint32_t j = 73 * i / 46, sample = 16 * i / 47;
-        int y;
-        if (d->family == 2) {
-            y = (canopy_preview_value(id, frame, j) * (int)(100 - fraction) +
-                 canopy_preview_value(id, next, j) * (int)fraction) /
-                100;
-        } else if (d->family == 1) {
-            y = sample < 8 ? 7 - (int)sample * 2 : (int)sample * 2 - 23;
-        } else {
-            y = velvet[sample];
-        }
-        table[i] = y;
-        int magnitude = y < 0 ? -y : y;
-        if (magnitude > peak)
-            peak = magnitude;
+    static const char *const names[] = {"A", "B", "X", "Y"};
+    for (unsigned i = 0; i < 4; ++i) {
+        int x = 77 + 13 * (int)(i % 2), y = 39 + 13 * (int)(i / 2);
+        diagram_rect(b, x, y, 8, 8);
+        diagram_text(b, x + 3, y + 1, names[i]);
     }
-    for (int i = 1; i < 47; ++i)
-        diagram_line(b, 24 + i, 48 - table[i - 1] * 5 / peak, 25 + i, 48 - table[i] * 5 / peak);
-    if (d->family == 2) {
-        diagram_line(b, 25, 56, 71, 56);
-        for (int i = 0; i < 8; ++i)
-            diagram_box(b, 25 + (46 * i + 3) / 7, 55, 1, 3, 1);
-        diagram_box(b, 24 + (int)((46 * position + 350) / 700), 54, 3, 5, 1);
-    } else {
-        diagram_text(b, 48, 57, d->family == 1 ? "REED" : "VELVET");
-    }
-}
-/* The compact SOURCE and TONE pages use a small routing diagram in their
- * unassigned cells. The source algorithm selects the paths between operators. */
-static void compact_fm(uint8_t *b, const CvDisplay *d, int x)
-{
-    diagram_operator(b, x, 39, "A");
-    diagram_operator(b, x + 29, 39, "B");
-    diagram_operator(b, x, 53, "X");
-    diagram_operator(b, x + 29, 53, "Y");
     uint32_t alg = d->raw[CP_FM_ALG];
-    diagram_line(b, x + 6, 47, x + 6, 52);
+    diagram_line(b, 80, 47, 80, 51);
     if (alg == 0)
-        diagram_line(b, x + 35, 47, x + 35, 52);
+        diagram_line(b, 93, 47, 93, 51);
     else if (alg == 2)
-        diagram_line(b, x + 32, 47, x + 12, 52);
+        diagram_line(b, 93, 47, 84, 51);
     else
-        diagram_line(b, x + 13, 43, x + 28, 43);
+        diagram_line(b, 85, 42, 89, 42);
     if (alg == 3)
-        diagram_line(b, x + 13, 57, x + 28, 57);
-}
-static void compact_scan(uint8_t *b, const CvDisplay *d)
-{
-    if (d->raw[CP_WT_SHAPE] == 2) {
-        diagram_text(b, 84, 47, "RAND");
-        return;
-    }
-    static const int8_t sine[] = {0, 3, 5, 6, 5, 3, 0, -3, -5, -6, -5, -3, 0};
-    static const int8_t triangle[] = {0, 2, 4, 6, 4, 2, 0, -2, -4, -6, -4, -2, 0};
-    const int8_t *shape = d->raw[CP_WT_SHAPE] ? triangle : sine;
-    for (int i = 1; i <= 12; ++i)
-        diagram_line(b, 54 + (i - 1) * 5, 49 - shape[i - 1], 54 + i * 5, 49 - shape[i]);
-    uint32_t depth = d->raw[CP_WT_DEPTH];
-    int half = (int)(29 * (depth < 100 ? depth : 100) / 100);
-    diagram_line(b, 84 - half, 59, 84 + half, 59);
-    diagram_box(b, 84 - half, 57, 1, 3, 1);
-    diagram_box(b, 84 + half, 57, 1, 3, 1);
+        diagram_line(b, 85, 55, 89, 55);
 }
 static uint32_t diagram_mask(uint32_t page, const CvDisplay *d)
 {
     uint32_t family = d->family;
     if (d->shared_keyboard) {
-        if (page == 0)
-            return 0x70;
-        if (page == 1)
-            return family < 2 ? 0xff : 0xe0;
-        return family == 2 ? 0x83 : family == 3 ? 0xcf : 0xff;
+        if (page == CS_VOICE)
+            return family < 2 ? 0x70 : family == 3 ? 0x40 : 0;
+        if (page == CS_FM_ENV)
+            return family < 2 ? 0xff : 0x8f;
+        return 0x40;
     }
     if (page == 0)
         return 0x7c;
@@ -719,30 +685,43 @@ static uint32_t diagram_mask(uint32_t page, const CvDisplay *d)
         return family == 2 ? 0x1e : family == 3 ? 0x0e : 0xf8;
     return family == 2 ? 0x83 : family == 3 ? 0xcf : 0xff;
 }
-static void diagram_draw(uint8_t *b, const CvDisplay *d)
+static void shared_diagram(const uint8_t *view, uint8_t *b, const CvDisplay *d)
 {
-    if (d->shared_keyboard && d->page == 0) {
+    if (d->page == CS_VOICE) {
+        diagram_text(b, 34, 12, "VOICE");
         if (d->family == 3)
-            compact_fm(b, d, 27);
-        else
-            compact_wave(b, d);
+            compact_fm(b, d);
+        else if (d->family < 2)
+            diagram_legacy(b, d, 72);
+    } else if (d->page == CS_DETAIL) {
+        diagram_text(b, 73, 18, "DETAIL");
         compact_mix(b, d);
-    } else if (d->shared_keyboard && d->page == 1) {
-        if (d->family == 3)
-            compact_fm(b, d, 63);
-        else if (d->family == 2)
-            compact_scan(b, d);
-    } else if (!d->shared_keyboard && d->page == 0)
+    } else if (d->family >= 2) {
+        shared_envelope(view, b, d);
+        diagram_text(b, 112, 42, "FM ENV");
+        if (d->family == 2)
+            diagram_text(b, 112, 53, "POS FM");
+    } else {
+        diagram_text(b, 73, 17, "FM ENV");
+        diagram_text(b, 73, 34, "SELECT FM OR TABLE");
+        diagram_text(b, 73, 50, "VOLUME ON AMP");
+    }
+}
+static void diagram_draw(const uint8_t *view, uint8_t *b, const CvDisplay *d)
+{
+    if (d->shared_keyboard)
+        shared_diagram(view, b, d);
+    else if (d->page == 0)
         diagram_keys(b, d);
-    else if (!d->shared_keyboard && d->page == 1)
+    else if (d->page == 1)
         diagram_arp(b, d);
-    else if (!d->shared_keyboard && d->page == 2) {
+    else if (d->page == 2) {
         if (d->family == 2)
             diagram_wavetable(b, d);
         else if (d->family == 3)
             diagram_fm(b, d);
         else
-            diagram_legacy(b, d);
+            diagram_legacy(b, d, 92);
     } else if (d->family == 2) {
         diagram_envelope(b, d, 0);
         diagram_routing(b, 1);
@@ -791,8 +770,9 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
     } else
         instrument_src_display(&display, instrument_src_now(), tune, level);
     uint32_t page = word(view, 0x90);
+    int native = native_cells(page, display.shared_keyboard);
     uint32_t mask = diagram_mask(page, &display);
-    if (page == 0) {
+    if (native) {
         dk_fw_draw_fill_rect(canvas, 49, 27, 123, 52, 0);
         dk_fw_draw_fill_rect(canvas, 23, 0, 100, 25, 0);
     } else
@@ -800,7 +780,7 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
     for (uint32_t i = 0; i < 8; ++i) {
         /* The firmware already painted SOUND A/H and the track column.
          * Custom cells never clear or redraw any part of those controls. */
-        if (page == 0 && (i == 0 || i == 7))
+        if (native && (i == 0 || i == 7))
             continue;
         int32_t x = 24 + 26 * (int32_t)(i % 4), y = i < 4 ? 27 : 0;
         if (mask & (1u << i)) {
@@ -836,7 +816,7 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
                 dk_fw_draw_fill_rect(canvas, x - 1, y + 6, x + 21, y + 24, -1);
         }
     }
-    diagram_draw(canvas, &display);
+    diagram_draw(view, canvas, &display);
     if (display.fault && display.fault != shown_fault) {
         ++ip_src_fault_toasts;
         toast(display.heading);
@@ -1052,14 +1032,16 @@ uint32_t ip_src_key(uint8_t *view, uint8_t *event)
     if (rtm_src && rtm_src(view, 2, event))
         return 1;
     uint32_t token = context(view), key = word(event, 12), page = word(view, 0x90), steps[4];
-    if (token && key >= 41 && key <= 48 && trig_held(view) && lock_steps(view, steps) < 128 &&
-        lock_clear(view, key - 41, steps)) {
+    int held = token && key >= 41 && key <= 48 && trig_held(view);
+    if (held && lock_steps(view, steps) < 128 && lock_clear(view, key - 41, steps)) {
         dk_fw_view_invalidate(view);
         return 1;
     }
     published = 0;
     (void)instrument_src_context(ip_src_debug[0], page, 0);
-    if (token && key >= 41 && key <= 48 && (page != 0 || (key != 48 && key != 41)))
+    if (token && key >= 41 && key <= 48 &&
+        (!native_cells(page, instrument_src_shared_keyboard(ip_src_debug[0])) ||
+         (key != 48 && key != 41)))
         return 1;
     return ip_src_stock_key(view, event);
 }
@@ -1116,7 +1098,7 @@ uint32_t ip_src_parameter(uint8_t *view, uint32_t encoder)
     if (context(view)) {
         if (encoder == 8)
             return 10;
-        if (word(view, 0x90) == 0) {
+        if (native_cells(word(view, 0x90), instrument_src_shared_keyboard(ip_src_debug[0]))) {
             if (encoder == 0)
                 return 0xca;
             if (encoder == 7)

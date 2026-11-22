@@ -17,7 +17,7 @@ static uint32_t family(const CsState *s)
 }
 uint32_t cs_pages(const CsState *s)
 {
-    return !cs_shared_keyboard(s) ? 4 : (s->layout & CS_LAYOUT_FAMILY) < 2 ? 1 : 3;
+    return cs_shared_keyboard(s) ? CS_SHARED_PAGES : 4;
 }
 static void remember(CsState *s)
 {
@@ -181,25 +181,24 @@ uint32_t cs_mapped_control(const CsState *s, uint32_t encoder)
         return CS_NONE;
     uint32_t page = s->page[s->track], source = family(s);
     if (cs_shared_keyboard(s)) {
-        static const uint8_t source_cells[4][8] = {
-            {CS_TUNE, CS_WAVE, CP_COLOR, CP_DRIFT, CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL},
-            {CS_TUNE, CS_WAVE, CP_COLOR, CP_DRIFT, CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL},
-            {CS_TUNE, CS_WAVE, CP_WT_POS, CP_DRIFT, CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL},
-            {CS_TUNE, CS_WAVE, CP_COLOR, CP_DRIFT, CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL}};
-        static const uint8_t wt_tone[8] = {CP_WT_DEPTH, CP_WT_RATE, CP_WT_SHAPE, CP_WT_CLOCK,
-                                           CP_WT_RESET, CS_NONE,    CS_NONE,     CS_NONE};
-        static const uint8_t fm_tone[8] = {CP_FM_ALG, CP_FM_BAL, CP_FM_RTA, CP_FM_RTB,
-                                           CP_FM_FB,  CS_NONE,   CS_NONE,   CS_NONE};
-        if (page == 0)
-            return source_cells[source][encoder];
-        if (source < 2)
-            return CS_NONE;
-        if (page == 1)
-            return source == 3 ? fm_tone[encoder] : wt_tone[encoder];
-        if (page != 2)
-            return CS_NONE;
-        /* The timbre envelope retains its legacy encoder layout. */
-        page = 3;
+        static const uint8_t voice[3][8] = {
+            {CS_WAVE, CP_COLOR, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CP_DRIFT},
+            {CS_WAVE, CP_WT_POS, CP_WT_DEPTH, CP_WT_RATE, CP_WT_SHAPE, CP_WT_CLOCK, CP_WT_RESET,
+             CP_DRIFT},
+            {CS_WAVE, CP_FM_ALG, CP_FM_BAL, CP_FM_RTA, CP_FM_RTB, CP_FM_FB, CS_NONE, CP_DRIFT}};
+        static const uint8_t envelopes[2][8] = {
+            {CP_WT_ATTACK, CP_WT_RELEASE, CP_WT_ENV, CP_WTFM_ENV, CP_WTFM_DEPTH, CP_WTFM_RATIO,
+             CP_WT_VELOCITY, CS_NONE},
+            {CP_FM_ATTACK, CP_FM_DECAY, CP_FM_SUSTAIN, CP_FM_RELEASE, CP_COLOR, CP_FM_ENV,
+             CP_FM_VELOCITY, CS_NONE}};
+        static const uint8_t detail[8] = {CS_TUNE, CS_NONE, CS_NONE,    CS_NONE,
+                                          CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL};
+        uint32_t bank = source < 2 ? 0 : source - 1;
+        if (page == CS_VOICE)
+            return voice[bank][encoder];
+        if (page == CS_DETAIL)
+            return detail[encoder];
+        return page == CS_FM_ENV && source >= 2 ? envelopes[source - 2][encoder] : CS_NONE;
     }
     if (page == 2) {
         if (family(s) < 2) {

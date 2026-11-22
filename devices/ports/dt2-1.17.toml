@@ -4790,6 +4790,16 @@ mark = "D"
 rule = "fw/instrument-src:cf_window_hash"
 
 [[anchor]]
+name = "cf.page.site.instrument_src_amp_adsr"
+cpu = "cf"
+kind = "code"
+addr = 0x4006aff0
+len = 6
+sha256 = "bef44d360abe3f2c2ccbdd154091f115341620e403f028ea16f7ee231d46780c"
+mark = "D"
+rule = "fw/instrument-src:cf_window_hash"
+
+[[anchor]]
 name = "cf.page.site.instrument_src_parameter_slot"
 cpu = "cf"
 kind = "code"

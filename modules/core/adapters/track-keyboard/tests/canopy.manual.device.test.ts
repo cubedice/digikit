@@ -106,10 +106,26 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
       },
     );
     expect(await byte('track_keyboard_lanes')).toBe(0);
+    const srcPage = () => cf('ip_src_debug', 1);
+    const nextSrcPage = async (page: number) => {
+      await tap('SRC');
+      await pollEmulated(session, srcPage, (current) => current === page, {
+        emulatedMs: 4000,
+        message: `the native SRC cycle reaches page ${page + 1}`,
+      });
+    };
+    const captureSrc = async (name: string) =>
+      fs.copyFileSync(await captureRemoteOled(session, `tk-canopy-${name}`), path.join(output, `${name}.png`));
     await tap('SRC');
-    await tap('SRC');
-    expect(await cf('ip_src_debug', 1)).toBe(0); // Velvet and Reed need only SOURCE.
-    fs.copyFileSync(await captureRemoteOled(session, 'tk-canopy-source'), path.join(output, 'source.png'));
+    for (let i = 0; i < 2 && (await srcPage()) !== 0; i++) await tap('SRC');
+    expect(await srcPage()).toBe(0);
+    await captureSrc('velvet-voice');
+    await nextSrcPage(1);
+    await captureSrc('velvet-fm-env');
+    await nextSrcPage(2);
+    await captureSrc('velvet-detail');
+    await nextSrcPage(0);
+    expect(await byte('track_keyboard_lanes')).toBe(0);
     await tap(1);
     await tap(1);
     await tap(1);
@@ -179,7 +195,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
     expect(await cf('ip_src_debug', 1)).toBe(0);
     await edge(`TRIG ${lockedStep + 1}`, true);
     try {
-      await turn(3, 20); // Compact SOURCE C is COLOR on Velvet.
+      await turn(2, 20); // VOICE B is COLOR on Velvet.
     } finally {
       await edge(`TRIG ${lockedStep + 1}`, false);
     }
@@ -303,12 +319,48 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
     // regardless of how many native TUNE turns the stock accumulator accepts.
     await panel.poolSave(1, 2);
     await panel.keysPage(1);
-    await turn(2, 28); // Velvet to FM, seven WAVE increments.
+    await turn(1, 8); // Velvet to the first wavetable, two WAVE increments.
+    await pollEmulated(session, family, (value) => value === 2, {
+      emulatedMs: 5000,
+      message: 'VOICE WAVE selects the wavetable family',
+    });
+    expect(await srcPage()).toBe(0);
+    await captureSrc('wavetable-voice');
+    await nextSrcPage(1);
+    await captureSrc('wavetable-fm-env');
+    await nextSrcPage(2);
+    await captureSrc('wavetable-detail');
+    await nextSrcPage(0);
+    await turn(1, 20); // First wavetable to FM, five WAVE increments.
     await pollEmulated(session, family, (value) => value === 3, {
       emulatedMs: 5000,
       message: 'the contrasting Sound uses FM',
     });
-    expect(await cf('ip_src_debug', 1), 'SOURCE A remains the native TUNE after changing WAVE').toBe(0);
+    expect(await srcPage(), 'changing WAVE keeps VOICE selected').toBe(0);
+    await captureSrc('fm-voice');
+    await nextSrcPage(1);
+    await captureSrc('fm-env');
+    const attackPixels = async () => {
+      const frame = await session.client.framebufferGet();
+      const oled = Buffer.from(frame.data_b64 ?? '', 'base64');
+      expect(oled.length).toBe(1024);
+      const pixels: number[] = [];
+      // Left side of the stock envelope, above the control names.
+      for (let y = 14; y < 30; y++)
+        for (let x = 24; x < 60; x++) pixels.push((oled[8 * x + 7 - (y >> 3)] >> (y & 7)) & 1);
+      return Buffer.from(pixels);
+    };
+    const beforeAttack = await attackPixels();
+    expect(beforeAttack.includes(1), 'the idle stock envelope is visible').toBe(true);
+    await turn(1, 30);
+    await pollEmulated(session, attackPixels, (pixels) => !pixels.equals(beforeAttack), {
+      emulatedMs: 4000,
+      message: 'the envelope graph pixels change when FM ENV A increases attack',
+    });
+    await captureSrc('fm-env-attack-longer');
+    await turn(1, -30);
+    await nextSrcPage(2);
+    await captureSrc('fm-detail');
     const priorTurns = await cf('ip_src_debug', 4);
     // The stock encoder accumulator can consume the first detent batch.
     // Check the edited Sound directly and continue until the value changes.
@@ -327,7 +379,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
       (state) => state.raw !== baseTune,
       {
         emulatedMs: 5000,
-        message: 'the source encoder changes the native Sound TUNE before saving the pool entry',
+        message: 'DETAIL A changes the native Sound TUNE before saving the pool entry',
       },
     ).catch(async (error) => {
       await panel.shot('source-native-tune-unchanged');
