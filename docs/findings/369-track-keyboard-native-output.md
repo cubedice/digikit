@@ -161,6 +161,48 @@ active SHARC instructions per block was 1,325 for ONESHOT, 1,325 for WERP,
 1,331 for STRETCH, 1,382 for REPITCH, 1,361 for GRID and 1,354 for SLICE.
 These counts measure the fold in isolation on the coupled emulator.
 
+## The first trig at START [D]
+
+The DTII 1.17 timer creates subsequent audio and MIDI events at
+`0x400d8200` and `0x400d821a`. The first events instead come from a per-track
+cache beginning at `0x44f37c94`. Its builders return at `0x400d73b8` for
+audio and `0x400d7400` for MIDI. Local START copies 0x6c bytes into each
+allocated event at `0x400d6598`. Synchronized START uses the same cache and
+copies it at `0x400d6120`. The two loops carry the track index times four in
+`D3` and `D2` respectively. Both replay the stack pop and byte load after the
+copy. The cached tag belongs to the source track, resolved step and native
+pattern, while ownership follows the allocated destination at due time.
+The stock cached audio builder stores type 1 at offset zero in
+`0x400d6ca4`–`0x400d6caa`; the allocating timer path uses type 0.
+The copy and enqueue retain that type. The shared due hook admits type 1
+only when it has the transferred START tag.
+
+On the physical DTII, the intermediate image had an audio START tag for
+track 8, step 1, pointing to its scheduled pattern and note table. Reading
+the cached stock event confirmed type 1 and matching native track data.
+The native CANOPY capture observed the first hit, while the shared hit
+counter only advanced at step 9. This identifies the due-event type check
+as a separate requirement from the cache transfer.
+
+The stock running word at `0x43164f94` is set before the first events become
+due. Its published `pp_position` frame can still show stopped. The shared
+scheduler samples the native transport and each queue's write position
+before draining. A first hit that arrives after a stopped snapshot remains
+queued for the running pass. An observed stop still discards outgoing notes.
+The existing native due check verifies track and pattern pointers on the
+copied record before accepting the tag.
+
+The final physical test isolated CANOPY on track 8 by setting the other
+populated track's level to zero. The two panel starts and one USB-clock
+start produced their first onsets at 0.5179, 0.5134, and 0.5103 s after
+commands scheduled at 0.500 s in each recording. In all three captures,
+the first step and the wrapped step 1 had a dominant pitch of 232.18 Hz
+from the base Velvet Sound. Step 9 recalled FM preset 001 from the project
+pool and produced a dominant pitch of 468.02 Hz on the panel starts and
+468.75 Hz on the USB-clock start. The recordings and timing measurements
+are under the ignored `dist/track-keyboard/hardware-20261121/final-combined`
+directory.
+
 ## Remaining qualification [O]
 
 POOL excludes dynamic machines. CANOPY has its internal allocator. RELAY's

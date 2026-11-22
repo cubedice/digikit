@@ -40,13 +40,21 @@ describeOn('dt2', 'stock audio helper group', () => {
     await tap('SRC');
     for (let page = 0; page < 4; page++) await tap('PAGE TRIG');
     await turn(1, 12);
-    await tap('PUSH H');
-    for (let row = 1; row < helper; row++) await tap('DOWN');
-    await tap('YES');
+    const selectHelper = async () => {
+      await tap('PUSH H');
+      for (let row = 1; row < helper; row++) await tap('DOWN');
+      await tap('YES');
+      expect(await mask('reserved')).toBe(0);
+    };
+    await selectHelper();
+    await tap('NO'); // Cancel the whole group before opening a new draft.
+    expect(await mask('reserved')).toBe(0);
+    await selectHelper();
+    for (let row = 0; row < helper; row++) await tap('UP');
+    await tap('YES'); // APPLY GROUP
     await pollEmulated(session, () => mask('reserved'), (value) => value === helperMask, {
-      emulatedMs: 4000, message: 'idle helper is admitted after its DSP quiet witness',
+      emulatedMs: 4000, message: 'idle helper is admitted only after applying the draft',
     });
-    await tap('NO');
     await tap('KEYBOARD');
     const both = (value: number | null) => ((value ?? 0) & (helperMask | 1)) === (helperMask | 1);
     const chord = async (verifySound?: () => Promise<void>) => {

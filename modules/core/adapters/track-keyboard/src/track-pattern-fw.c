@@ -126,6 +126,21 @@ uint32_t tk_pattern_fw_selected(void)
     return index < PATTERNS ? PROJECT_PATTERNS + index * PATTERN_BYTES : 0;
 }
 
+bool tk_pattern_fw_note_step(uint32_t address, uint8_t track, uint8_t step)
+{
+    if (slot(address) < 0 || track >= TK_TRACKS || step >= TK_STEPS)
+        return false;
+    const volatile uint8_t *native =
+        (const volatile uint8_t *)(uintptr_t)(address + TRACK_BYTES * track);
+    uint8_t flags = native[2u * step + 1u];
+    if (!(flags & 1u))
+        return false;
+    /* The stock builder at 0x400d6ae0 resolves note-enable bit 7 from
+     * track defaults unless the step's override bit 11 is present. */
+    uint8_t note = native[2u * step] & 8u ? flags : native[0x483];
+    return (note & 0x80u) != 0;
+}
+
 static TkPattern *destination(uint32_t address, uint32_t bytes)
 {
     if (bytes == PATTERN_BYTES && slot(address) >= 0)

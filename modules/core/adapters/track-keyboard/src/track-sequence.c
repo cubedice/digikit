@@ -185,7 +185,17 @@ static void accept(const TkSequenceHit *hit, const TkPattern *prepared, const ui
         end(hit->track);
 }
 
-void tk_sequence_drain(uintptr_t pattern, bool running, uint16_t muted, const uint32_t lengths[128])
+TkSequenceQueueEnds tk_sequence_queue_ends(void)
+{
+    TkSequenceQueueEnds ends = {0};
+    if (state)
+        for (uint8_t source = 0; source < TK_SEQUENCE_SOURCES; ++source)
+            ends.write[source] = state->queues[source].write;
+    return ends;
+}
+
+void tk_sequence_drain_through(uintptr_t pattern, bool running, uint16_t muted,
+                               const uint32_t lengths[128], TkSequenceQueueEnds ends)
 {
     if (!state)
         return;
@@ -203,7 +213,7 @@ void tk_sequence_drain(uintptr_t pattern, bool running, uint16_t muted, const ui
             end(track);
     for (uint8_t source = 0; source < TK_SEQUENCE_SOURCES; ++source) {
         TkSequenceQueue *q = &state->queues[source];
-        uint8_t end = q->write;
+        uint8_t end = ends.write[source];
         while (q->read != end) {
             uint8_t read = q->read;
             const TkSequenceHit *hit = &q->hits[read];
@@ -229,6 +239,11 @@ void tk_sequence_drain(uintptr_t pattern, bool running, uint16_t muted, const ui
         active_policy = next_policy;
         active_pattern = pattern;
     }
+}
+
+void tk_sequence_drain(uintptr_t pattern, bool running, uint16_t muted, const uint32_t lengths[128])
+{
+    tk_sequence_drain_through(pattern, running, muted, lengths, tk_sequence_queue_ends());
 }
 
 void tk_sequence_reset(void)

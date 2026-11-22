@@ -17,7 +17,7 @@ conflicts = []
 
 [[object]]
 path = "build/track-keyboard.dko.json"
-sources = ["src/track-keyboard.c", "src/track-canopy.c", "src/track-config.c", "src/track-service.c", "src/track-runtime.c", "src/track-native.c", "src/track-native-fw.c", "src/trig-view.c",
+sources = ["src/track-keyboard.c", "src/track-canopy.c", "src/track-config.c", "src/track-service.c", "src/track-runtime.c", "src/track-native.c", "src/track-native-fw.c", "src/trig-view.c", "src/trig-title.s",
   "src/track-pattern.c", "src/track-pattern-fw.c", "src/track-record.c", "src/track-pattern-hooks.s",
   "src/track-step-fw.c", "src/track-step-hooks.s",
   "src/track-midi.c", "src/track-midi-fw.c", "src/track-midi-hooks.s",
@@ -33,10 +33,14 @@ tk_trig_stock_alloc = "cf.mem.fn.new"
 tk_trig_stock_held = "cf.page.site.instrument_trig_held"
 tk_trig_stock_live_record = "cf.page.site.instrument_live_record"
 tk_trig_stock_mark_edited = "cf.page.site.instrument_lock_mark_edited"
+tk_trig_focus_touch = "cf.page.site.instrument_focus_touch"
+tk_trig_focus_active = "cf.page.site.instrument_focus_active"
 tk_trig_label_font = "cf.page.site.instrument_label_font"
 tk_trig_stock_key = "cf.page.site.track_trig_stock_key"
 tk_trig_stock_draw = "cf.page.site.track_trig_stock_draw"
 tk_trig_stock_turn = "cf.page.site.track_trig_stock_turn"
+tk_trig_stock_title = "cf.page.site.track_trig_stock_title"
+tk_trig_title_ctor = "cf.string.fn.std_string.ctor"
 tk_trig_stock_parameter = "cf.page.site.track_trig_stock_parameter"
 tk_fw_project = "cf.project.fn.singleton"
 tk_fw_active_kit = "cf.project.fn.active_kit"
@@ -83,6 +87,10 @@ tk_seq_audio_stage_resume = "cf.track_sequence.site.audio_stage_resume"
 tk_seq_midi_stage_resume = "cf.track_sequence.site.midi_stage_resume"
 tk_seq_audio_builder_return = "cf.track_sequence.site.audio_builder_return"
 tk_seq_midi_builder_return = "cf.track_sequence.site.midi_builder_return"
+tk_seq_audio_start_builder_return = "cf.track_sequence.site.audio_start_builder_return"
+tk_seq_midi_start_builder_return = "cf.track_sequence.site.midi_start_builder_return"
+tk_seq_start_copy_resume = "cf.track_sequence.site.start_copy_resume"
+tk_seq_sync_start_copy_resume = "cf.track_sequence.site.sync_start_copy_resume"
 tk_seq_audio_due_resume = "cf.track_sequence.site.audio_due_resume"
 tk_seq_audio_due_skip = "cf.track_sequence.site.audio_due_skip"
 tk_seq_midi_due_resume = "cf.track_sequence.site.midi_due_resume"
@@ -130,6 +138,12 @@ width = 4
 op = "write"
 anchor = "cf.page.site.track_trig_turn_slot"
 value = "tk_trig_turn"
+width = 4
+
+[[op]]
+op = "write"
+anchor = "cf.page.site.track_trig_title_slot"
+value = "tk_trig_title"
 width = 4
 
 [[op]]
@@ -224,6 +238,16 @@ to = "tk_seq_audio_stage"
 op = "hook"
 hook = "cf.track_sequence.hook.midi_stage"
 to = "tk_seq_midi_stage"
+
+[[op]]
+op = "hook"
+hook = "cf.track_sequence.hook.start_copy"
+to = "tk_seq_start_copy"
+
+[[op]]
+op = "hook"
+hook = "cf.track_sequence.hook.sync_start_copy"
+to = "tk_seq_sync_start_copy"
 
 [[op]]
 op = "hook"

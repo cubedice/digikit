@@ -17,6 +17,7 @@ extern volatile uint32_t ip_admission[IP_INSTANCES * 8];
 void instrument_sound_scan(void);
 int instrument_sound_prepare(uint32_t instance, int allow_refresh);
 uint32_t instrument_sound_tune(uint32_t instance);
+uint32_t instrument_sound_raw_tune(uintptr_t sound);
 /* 1 when an admitted instance currently owns this track's Sound. */
 int instrument_sound_admitted(uint32_t track);
 /* control.c */

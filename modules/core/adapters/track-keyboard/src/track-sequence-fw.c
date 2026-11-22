@@ -4,6 +4,7 @@
 #include "track-memory.h"
 #include "track-native.h"
 #include "track-pool.h"
+#include "../../instrument-play/src/cf/src-control.h"
 
 extern const uint32_t tk_seq_length_table[128];
 extern const uint8_t tk_seq_audio_mute_lit[], tk_seq_audio_solo_lit[];
@@ -13,6 +14,7 @@ extern const uint8_t tk_seq_queued_lit[], tk_seq_direct_target_lit[];
 extern const uint8_t tk_seq_direct_request_lit[], tk_seq_direct_countdown_lit[];
 extern volatile uint32_t pp_position[16];
 extern uint32_t pp_current_pattern(void);
+extern uint32_t pp_transport_running(void);
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
 
@@ -31,11 +33,12 @@ enum {
 typedef struct {
     const uint32_t *volatile event;
     uintptr_t pattern;
-    uint8_t track, step;
+    uint8_t track, step, from_start;
 } Staged;
 
 extern void *tk_fw_alloc(uint32_t size);
 static Staged *volatile staged;
+static Staged start_cache[TK_TRACKS];
 static uint16_t midi_tracks;
 
 volatile uint32_t tk_sequence_audio_hits, tk_sequence_audio_locked_hits, tk_sequence_midi_hits;
@@ -149,18 +152,45 @@ static Staged *slot_for(const uint32_t *event)
     return &staged[((uintptr_t)event >> 2) % STAGED_EVENTS];
 }
 
-void tk_fw_seq_stage(const uint32_t *event, uint32_t track, uint32_t step, uintptr_t note_table)
+static void stage(Staged *slot, const uint32_t *event, uint32_t track, uint32_t step,
+                  uintptr_t note_table, bool from_start)
 {
-    if (!staged || !event || track >= TK_TRACKS || step >= TK_STEPS || note_table < NOTE_TABLE)
-        return;
-    Staged *slot = slot_for(event);
     slot->event = NULL;
     barrier();
     slot->pattern = note_table - NOTE_TABLE;
     slot->track = (uint8_t)track;
     slot->step = (uint8_t)step;
+    slot->from_start = from_start;
     barrier();
     slot->event = event;
+}
+
+void tk_fw_seq_stage(const uint32_t *event, uint32_t track, uint32_t step, uintptr_t note_table)
+{
+    if (staged && event && track < TK_TRACKS && step < TK_STEPS && note_table >= NOTE_TABLE)
+        stage(slot_for(event), event, track, step, note_table, false);
+}
+
+void tk_fw_seq_start_stage(const uint32_t *event, uint32_t track, uint32_t step,
+                           uintptr_t note_table)
+{
+    /* Stock can build the first record before the adapter heap is ready. */
+    if (event && track < TK_TRACKS && step < TK_STEPS && note_table >= NOTE_TABLE)
+        stage(&start_cache[track], event, track, step, note_table, false);
+}
+
+void tk_fw_seq_start_copy(const uint32_t *event, const uint32_t *source, uint32_t track)
+{
+    if (!staged || !event || !source || track >= TK_TRACKS)
+        return;
+    const Staged *cached = &start_cache[track];
+    if (cached->event != source)
+        return;
+    barrier();
+    uintptr_t pattern = cached->pattern;
+    uint32_t step = cached->step;
+    if (pattern && cached->event == source)
+        stage(slot_for(event), event, track, step, pattern + NOTE_TABLE, true);
 }
 
 void tk_fw_seq_stage_midi(const uint32_t *event, uint32_t track, uint32_t step,
@@ -171,7 +201,7 @@ void tk_fw_seq_stage_midi(const uint32_t *event, uint32_t track, uint32_t step,
 }
 
 static bool take(const uint32_t *event, uint32_t track, uintptr_t note_table, uintptr_t track_data,
-                 TkSequenceHit *hit)
+                 bool require_start, TkSequenceHit *hit)
 {
     if (!staged)
         return false;
@@ -182,7 +212,8 @@ static bool take(const uint32_t *event, uint32_t track, uintptr_t note_table, ui
     uintptr_t pattern = slot->pattern;
     uint8_t step = slot->step;
     if (track != slot->track || pattern + NOTE_TABLE != note_table ||
-        pattern + track * TRACK_BYTES != track_data || slot->event != event)
+        pattern + track * TRACK_BYTES != track_data || (require_start && !slot->from_start) ||
+        slot->event != event)
         return false;
     /* Only the due consumers clear entries. Timer interrupt reuse republishes
      * the slot, so a collision defaults to native dispatch.
@@ -245,13 +276,18 @@ static bool end_stock(uint8_t source, TkSequenceHit *hit)
 int tk_fw_seq_audio_due(const uint32_t *event)
 {
     const uint32_t flags = event[0xe];
-    if (event[0] || event[1] != 1 || event[5] != 1 || !(flags & 1u))
+    /* The audio builder uses type 0 for heap events and type 1 for a
+     * cached record. Only a verified START copy can admit the latter. */
+    if (event[0] > 1 || event[1] != 1 || event[5] != 1 || !(flags & 1u))
         return false;
-    if (event[4] < TK_TRACKS && tk_pool_fw_reserved((uint8_t)event[4]))
+    bool reserved = event[4] < TK_TRACKS && tk_pool_fw_reserved((uint8_t)event[4]);
+    if (reserved && !event[0])
         return true;
     TkSequenceHit hit;
-    if (!take(event, event[4], event[7], event[0xb], &hit))
+    if (!take(event, event[4], event[7], event[0xb], event[0] == 1, &hit))
         return false;
+    if (reserved)
+        return true;
     const uint8_t *track = (const uint8_t *)(uintptr_t)event[0xb];
     hit.parameters_only = !(flags & 0x80u);
     if (hit.parameters_only && tk_canopy_routed(hit.track))
@@ -259,6 +295,9 @@ int tk_fw_seq_audio_due(const uint32_t *event)
     if (!hit.parameters_only && !tk_sequence_wants_seed(hit.pattern, hit.track, hit.step))
         return end_stock(TK_SEQUENCE_AUDIO, &hit);
     hit.audio.sound = event[0x10] ? event[0x10] : event[0xf];
+    int8_t pool = (int8_t)track[SOUND_LOCKS + hit.step];
+    if (pool >= 0)
+        hit.audio.pool_sound = (uint8_t)pool + 1u;
     hit.audio.flags = flags & ~2u; /* The shared scheduler supplies retriggers. */
     if (!hit.parameters_only && !hit.audio.sound)
         return end_stock(TK_SEQUENCE_AUDIO, &hit);
@@ -299,7 +338,7 @@ int tk_fw_seq_midi_due(const uint32_t *event, int32_t channel)
         return false;
     ++tk_sequence_midi_info[1];
     TkSequenceHit hit;
-    if (!take(event, event[2], event[5], event[0xb], &hit))
+    if (!take(event, event[2], event[5], event[0xb], false, &hit))
         return false;
     ++tk_sequence_midi_info[2];
     if (channel < 0 || channel > 15 || !tk_sequence_wants_seed(hit.pattern, hit.track, hit.step))
@@ -325,7 +364,12 @@ void tk_sequence_poll(uint32_t pattern, bool running)
     uint16_t audio_muted = (uint16_t)(audio_solo ? ~audio_solo : read32(tk_seq_audio_mute_lit));
     uint16_t midi_muted = (uint16_t)(midi_solo ? ~midi_solo : read32(tk_seq_midi_mute_lit));
     uint16_t muted = (uint16_t)((audio_muted & ~midi_tracks) | (midi_muted & midi_tracks));
-    tk_sequence_drain(pattern, running, muted, tk_seq_length_table);
+    uint32_t sr = dkrt_irq_mask();
+    TkSequenceQueueEnds ends = tk_sequence_queue_ends();
+    bool current = pp_transport_running() != 0;
+    dkrt_irq_restore(sr);
+    if (current == running)
+        tk_sequence_drain_through(pattern, running, muted, tk_seq_length_table, ends);
 }
 
 void tk_sequence_set_midi(uint8_t track, bool midi)
@@ -339,14 +383,17 @@ void tk_sequence_set_midi(uint8_t track, bool midi)
         midi_tracks &= (uint16_t)~bit;
 }
 
-bool tk_sequence_canopy_sound_locks(uint32_t pattern, uint8_t track)
+bool tk_sequence_canopy_sound_fallback(uint32_t pattern, uint8_t track)
 {
     if (!pattern || track >= TK_TRACKS)
         return false;
     const uint8_t *native = (const uint8_t *)(uintptr_t)pattern;
     const uint8_t *trig = native + TRACK_BYTES * track;
-    for (uint8_t step = 0; step < TK_STEPS; ++step)
-        if ((trig[2u * step + 1u] & 1u) && (int8_t)trig[SOUND_LOCKS + step] >= 0)
+    for (uint8_t step = 0; step < TK_STEPS; ++step) {
+        int8_t pool = (int8_t)trig[SOUND_LOCKS + step];
+        if ((trig[2u * step + 1u] & 1u) && pool >= 0 &&
+            !instrument_locked_sound((uint32_t)pool, 0, NULL, NULL))
             return true;
+    }
     return false;
 }

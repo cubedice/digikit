@@ -5448,6 +5448,26 @@ mark = "D"
 rule = "fw/track-trig:cf_window_hash"
 
 [[anchor]]
+name = "cf.page.site.track_trig_title_slot"
+cpu = "cf"
+kind = "code"
+addr = 0x401f952c
+len = 4
+sha256 = "dcd1309602fa8a9bfa0661a6de765b002dbadab0b54528701efd8cdf6c5a7c33"
+mark = "D"
+rule = "fw/track-trig:cf_window_hash"
+
+[[anchor]]
+name = "cf.page.site.track_trig_stock_title"
+cpu = "cf"
+kind = "code"
+addr = 0x4006965a
+len = 6
+sha256 = "e84f69da3752f168fb13858328ab536865283d736440546f4342eef7bf447df4"
+mark = "D"
+rule = "fw/track-trig:cf_window_hash"
+
+[[anchor]]
 name = "cf.track_keys.fn.note_on"
 cpu = "cf"
 kind = "code"
@@ -5699,6 +5719,66 @@ kind = "code"
 addr = 0x400d821e
 len = 4
 sha256 = "6ef15c482d55335f14a002f42688906c779de1b5d8e349881bc6ee6e4fd4a088"
+mark = "D"
+rule = "fw/track-sequence:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_sequence.site.audio_start_builder_return"
+cpu = "cf"
+kind = "code"
+addr = 0x400d73b8
+len = 2
+sha256 = "a029f16a367301553b7491f628f8f09b6c5c4e6b44921ba6b0450cfae2918d6f"
+mark = "D"
+rule = "fw/track-sequence:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_sequence.site.midi_start_builder_return"
+cpu = "cf"
+kind = "code"
+addr = 0x400d7400
+len = 4
+sha256 = "6ef15c482d55335f14a002f42688906c779de1b5d8e349881bc6ee6e4fd4a088"
+mark = "D"
+rule = "fw/track-sequence:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_sequence.site.start_copy"
+cpu = "cf"
+kind = "code"
+addr = 0x400d659e
+len = 6
+sha256 = "99edd645f6b4652f2d8927c5010c1328afd936c7dabb624160e9399d5c7a9d46"
+mark = "D"
+rule = "fw/track-sequence:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_sequence.site.start_copy_resume"
+cpu = "cf"
+kind = "code"
+addr = 0x400d65a4
+len = 4
+sha256 = "6c9c6ee0e3b37b5733fa554215fdebe7be8ac97b170d7777b29c31b1bec4f7ed"
+mark = "D"
+rule = "fw/track-sequence:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_sequence.site.sync_start_copy"
+cpu = "cf"
+kind = "code"
+addr = 0x400d6122
+len = 6
+sha256 = "b110c5e99b98e9ea1c0eee6c5f96d7be55cfc13576b5abf2b448dc360393a0d7"
+mark = "D"
+rule = "fw/track-sequence:cf_window_hash"
+
+[[anchor]]
+name = "cf.track_sequence.site.sync_start_copy_resume"
+cpu = "cf"
+kind = "code"
+addr = 0x400d6128
+len = 4
+sha256 = "6c9c6ee0e3b37b5733fa554215fdebe7be8ac97b170d7777b29c31b1bec4f7ed"
 mark = "D"
 rule = "fw/track-sequence:cf_window_hash"
 
@@ -6148,6 +6228,16 @@ len = 6
 sha256 = "a28b3bdd990d405d8632045c881ea31dbffdfeeffea704796b2898fdec3b8766"
 mark = "D"
 rule = "fw/track-steps:cf_window_hash"
+
+[[hook]]
+name = "cf.track_sequence.hook.start_copy"
+site = "cf.track_sequence.site.start_copy"
+mode = "replace"
+
+[[hook]]
+name = "cf.track_sequence.hook.sync_start_copy"
+site = "cf.track_sequence.site.sync_start_copy"
+mode = "replace"
 
 [[hook]]
 name = "cf.track_sequence.hook.audio_due"

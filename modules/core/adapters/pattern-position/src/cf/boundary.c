@@ -281,6 +281,13 @@ void pp_due(u32 clock, u32 kind)
     pp_commit(clock, kind, U32(0x40966840));
 }
 
+u32 pp_transport_running(void)
+{
+    /* The native START handler sets this before due events. The frame's
+     * published running bit is updated later, after due processing. */
+    return U32(0x43164f94) == 1;
+}
+
 void pp_write_frame_impl(u32 queue, u32 suffix)
 {
     volatile u16 *out = (volatile u16 *)(queue + 4 * suffix + 2);

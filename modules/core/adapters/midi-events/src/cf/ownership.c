@@ -181,6 +181,8 @@ static int emit(MiLedger *m, uint32_t token, uint32_t gen, uint8_t track, uint8_
     for (uint32_t j = 0; j < MI_LOCKS; ++j)
         e->locks[j] = 0;
     e->source_valid = e->shared_lanes = 0;
+    e->sound_tune = 0;
+    e->sound_controls = 0;
     for (uint32_t j = 0; j < MI_SOURCE_VALUES; ++j)
         e->source[j] = 0;
     ++m->count; /* publish last, while caller holds its critical section */
@@ -462,6 +464,8 @@ int mi_peek(MiLedger *m, MiEvent *out)
             out->locks[i] = e->locks[i];
         out->source_valid = e->source_valid;
         out->shared_lanes = e->shared_lanes;
+        out->sound_tune = e->sound_tune;
+        out->sound_controls = e->sound_controls;
         for (uint32_t i = 0; i < MI_SOURCE_VALUES; ++i)
             out->source[i] = e->source[i];
     }

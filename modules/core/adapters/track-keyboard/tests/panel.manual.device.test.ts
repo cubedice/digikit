@@ -32,17 +32,20 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
         expect(bytes.length).toBe(1024);
         return bytes;
       };
-      const drawnText = async () => {
-        const bytes = await pixels();
-        let lit = 0;
-        for (let x = 23; x < 122; x++) {
-          for (let y = 12; y < 63; y++) {
-            const cell = bytes[8 * x + 7 - Math.floor(y / 8)] ?? 0;
-            lit += (cell >> (y % 8)) & 1;
+      const crop = (frame: Buffer, x0: number, y0: number, x1: number, y1: number) => {
+        const result: number[] = [];
+        for (let x = x0; x <= x1; x++) {
+          for (let y = y0; y <= y1; y++) {
+            const cell = frame[8 * x + 7 - Math.floor(y / 8)] ?? 0;
+            result.push((cell >> (y % 8)) & 1);
           }
         }
-        return lit;
+        return Buffer.from(result);
       };
+      const drawnText = async () => crop(await pixels(), 23, 12, 122, 62).reduce((a, b) => a + b, 0);
+      const trackColumn = (frame: Buffer) => crop(frame, 0, 11, 22, 63);
+      const switchPixels = (frame: Buffer) => crop(frame, 23, 13, 46, 29);
+      const ratePixels = (frame: Buffer) => crop(frame, 101, 13, 122, 29);
       const { edge, tap, turn } = acknowledgedPanel(session);
       const modified = async (modifier: string, key: string) => {
         await edge(modifier, true);
@@ -130,17 +133,60 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
           protectedPixels(reference),
         );
       }
+      await tap('PAGE TRIG');
+      await capture('track-midi-arp-entry');
+      await session.wait(1500);
+      const midiArp = await pixels();
+      expect(trackColumn(midiArp)).toEqual(trackColumn(shared.get('midi-trig-2')!));
+      await capture('track-midi-arp');
+      await tap('PAGE TRIG');
+      await capture('track-midi-keys-entry');
+      await session.wait(1500);
+      expect(trackColumn(await pixels())).toEqual(trackColumn(shared.get('midi-trig-2')!));
+      await capture('track-midi-keys');
+
       await modified('TRK', 'TRIG 1');
       await tap('SRC');
       await tap(1);
       await tap(1);
-      const stockLeft = (await pixels()).subarray(0, 20 * 8);
+      const native = await pixels();
+      const stockLeft = trackColumn(native);
       await capture('shared-audio-trig-2-before-arp');
       await tap(1);
+      await capture('track-arp-entry');
+      const rateCaption = (frame: Buffer) => crop(frame, 101, 32, 122, 36);
+      const unfocusedCaption = rateCaption(await pixels());
+      await turn(4, 12); // ARP defaults to 1/16. Stock RTRG defaults to 1/32.
+      const focused = await pixels();
+      expect(switchPixels(focused)).toEqual(switchPixels(native));
+      expect(ratePixels(focused)).toEqual(ratePixels(native));
+      expect(rateCaption(focused)).not.toEqual(unfocusedCaption);
+      await capture('track-arp-rate-focus');
+      await pollEmulated(session, pixels, (p) => rateCaption(p).equals(unfocusedCaption), {
+        emulatedMs: 6000,
+        message: 'the native edit-focus timer restores the RATE caption',
+      });
+      await capture('track-arp-rate-idle');
+      await edge('PAGE TRIG', true);
+      try {
+        await pollEmulated(session, pixels, (p) => !rateCaption(p).equals(unfocusedCaption), {
+          emulatedMs: 2000,
+          message: 'holding TRIG PARAMETERS shows the ARP values',
+        });
+        expect(ratePixels(await pixels())).toEqual(ratePixels(native));
+        await capture('track-arp-values');
+      } finally {
+        await edge('PAGE TRIG', false);
+      }
+      await pollEmulated(session, pixels, (p) => rateCaption(p).equals(unfocusedCaption), {
+        emulatedMs: 2000,
+        message: 'releasing TRIG PARAMETERS restores captions on ARP',
+      });
+      await turn(4, -12);
       await turn(1, 12);
       await turn(3, 30); // Lengthen the generated gate to be observable by the emulator client.
       await capture('track-arp');
-      expect((await pixels()).subarray(0, 20 * 8)).toEqual(stockLeft);
+      expect(trackColumn(await pixels())).toEqual(stockLeft);
       expect(await drawnText(), 'ARP control labels render below the header').toBeGreaterThan(135);
       await tap('KEYBOARD');
       // The generated route skips the stock audition counter. Track bit 0

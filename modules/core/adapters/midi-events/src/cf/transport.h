@@ -38,6 +38,8 @@ typedef struct {
     uint16_t locks[MI_LOCKS];
     uint32_t source_valid, shared_lanes;
     uint16_t source[MI_SOURCE_VALUES];
+    uint16_t sound_tune;
+    uint32_t sound_controls;
 } MiTransport;
 void mt_init(MiTransport *t);
 /* Returns a retained immutable packet, or null when idle/faulted. Revision zero

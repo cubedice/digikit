@@ -53,6 +53,60 @@ users = ["core/track-keyboard"]
 doc = "Return after timer ISR builds a MIDI pattern event."
 
 [[site]]
+name = "cf.track_sequence.site.audio_start_builder_return"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 18, len = 2, sha256 = "821b92529c79bfaab50e16ac63c70ca81624ec04325f3000fdc67e1ee7113630" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Return after building an audio event in the per-track first-step cache."
+
+[[site]]
+name = "cf.track_sequence.site.midi_start_builder_return"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 16, len = 4, sha256 = "6c616a76a1b1bef0eb4e7c1bf7716d9ae78b19340de150168ddbd50d976e6672" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Return after building a MIDI event in the per-track first-step cache."
+
+[[site]]
+name = "cf.track_sequence.site.start_copy"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 36, offset = 22, len = 6, sha256 = "d4a3f33827cab38a5302292f274f3149d4b819d0bd30de58738efc17dd5beacc" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Local START copied the cached stock record into an allocated event."
+
+[[site]]
+name = "cf.track_sequence.site.start_copy_resume"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 36, offset = 28, len = 4, sha256 = "d4a3f33827cab38a5302292f274f3149d4b819d0bd30de58738efc17dd5beacc" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Local START continues preparing the allocated event's deadline."
+
+[[site]]
+name = "cf.track_sequence.site.sync_start_copy"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 36, offset = 26, len = 6, sha256 = "ef58f7b3327976ff91b7ccaf4fbd115a54796558a282de9b26f7b47b6b142fa6" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Synchronized START copied the cached stock record into an allocated event."
+
+[[site]]
+name = "cf.track_sequence.site.sync_start_copy_resume"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 36, offset = 32, len = 4, sha256 = "ef58f7b3327976ff91b7ccaf4fbd115a54796558a282de9b26f7b47b6b142fa6" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Synchronized START continues preparing the allocated event's deadline."
+
+[[site]]
 name = "cf.track_sequence.site.audio_due"
 cpu = "cf"
 devices = ["dt2"]
@@ -307,6 +361,28 @@ regs = { in = [], clobbers = [] }
 mark = "D"
 users = ["core/track-keyboard"]
 doc = "Mirror the resolved native sequencer event without altering the stock register contract."
+
+[[hook]]
+name = "cf.track_sequence.hook.start_copy"
+site = "cf.track_sequence.site.start_copy"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = [] }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Transfer the first-step tag to the local START event allocation."
+
+[[hook]]
+name = "cf.track_sequence.hook.sync_start_copy"
+site = "cf.track_sequence.site.sync_start_copy"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = [] }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Transfer the first-step tag to the synchronized START event allocation."
 
 [[hook]]
 name = "cf.track_sequence.hook.audio_due"

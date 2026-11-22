@@ -24,6 +24,9 @@ int instrument_track_keyboard_locked_note(uint32_t track, uint32_t token, uint32
                                           uint32_t velocity, uint32_t on, uint32_t lane,
                                           const struct IsnSnapshot *snapshot);
 int instrument_lock_source(uint32_t track, uint32_t wave, uint16_t *out);
+/* Return a valid CANOPY Sound from the stock project pool. A probe takes
+ * expected=0 and out=tune=NULL; a hit takes its exact native Sound pointer. */
+int instrument_locked_sound(uint32_t index, uintptr_t expected, CpPreset *out, uint16_t *tune);
 /* Read the current Sound without changing its origin or ownership. */
 int instrument_track_keyboard_legacy(uint32_t track, CpPreset *out);
 uint32_t instrument_src_tune_page(uint32_t page);

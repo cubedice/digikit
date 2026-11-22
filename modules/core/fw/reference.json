@@ -12377,6 +12377,36 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x4006965a",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native TRIG page title routine. The adapter preserves this method and return ABI for both stock pages.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_stock_title",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x4007375a",
             "len": 6
           }
@@ -12395,6 +12425,37 @@
         "dt2": {
           "kind": "cf_window_hash",
           "len": 6
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f952c",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 TRIG parameter view title slot. Stock target 0x4006965a returns a COW std::string to A0.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_title_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 76
         }
       },
       "subsystem": "page",
@@ -20223,6 +20284,64 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x400d659e"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Transfer the first-step tag to the local START event allocation.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_sequence.hook.start_copy",
+      "regs": {
+        "clobbers": [],
+        "in": []
+      },
+      "site": "cf.track_sequence.site.start_copy",
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d6122"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Transfer the first-step tag to the synchronized START event allocation.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_sequence.hook.sync_start_copy",
+      "regs": {
+        "clobbers": [],
+        "in": []
+      },
+      "site": "cf.track_sequence.site.sync_start_copy",
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x4013a6a8",
             "len": 4
           }
@@ -20645,6 +20764,37 @@
           "kind": "cf_window_hash",
           "len": 4,
           "offset": 22
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d73b8",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Return after building an audio event in the per-track first-step cache.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_start_builder_return",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 2,
+          "offset": 18
         }
       },
       "subsystem": "track_sequence",
@@ -21153,6 +21303,37 @@
       "at": {
         "dt2-1.17": [
           {
+            "addr": "0x400d7400",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Return after building a MIDI event in the per-track first-step cache.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_start_builder_return",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 16
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
             "addr": "0x400d863a",
             "len": 4
           }
@@ -21203,6 +21384,130 @@
           "kind": "cf_window_hash",
           "len": 4,
           "offset": 10
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d659e",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Local START copied the cached stock record into an allocated event.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.start_copy",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 22
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d65a4",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Local START continues preparing the allocated event's deadline.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.start_copy_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 28
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d6122",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Synchronized START copied the cached stock record into an allocated event.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.sync_start_copy",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 26
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d6128",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Synchronized START continues preparing the allocated event's deadline.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.sync_start_copy_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 32
         }
       },
       "subsystem": "track_sequence",
@@ -29535,7 +29840,7 @@
       "name": "midi"
     },
     {
-      "count": 114,
+      "count": 116,
       "cpu": "cf",
       "file": "devices/fw/instrument-src.toml",
       "meaning": "parameter and FX pages",
@@ -29612,7 +29917,7 @@
       "name": "track_keys"
     },
     {
-      "count": 37,
+      "count": 45,
       "cpu": "cf",
       "file": "devices/fw/track-sequence.toml",
       "meaning": "resolved track sequencer events and timed dispatch",

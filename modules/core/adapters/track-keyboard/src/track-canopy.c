@@ -123,16 +123,48 @@ static void apply_control(TkParams *p, uint32_t id, uint32_t value)
     }
 }
 
+static uint32_t preset_wave(const CpPreset *p)
+{
+    if (p->family == 3)
+        return 7;
+    return p->family == 2 ? 2u + p->control[CP_WT_TABLE] : p->family;
+}
+
+static void load_preset_source(IsnSnapshot *snapshot, const CpPreset *saved, uint32_t wave)
+{
+    const uint16_t *p = saved->control;
+    snapshot->sound_controls = MI_SOUND_VALID | wave | ((uint32_t)p[CP_DRIFT] << 3) |
+                               ((uint32_t)p[CP_ATTACK] << 10) | ((uint32_t)p[CP_RELEASE] << 17) |
+                               ((uint32_t)p[CP_ARP_MIX] << 24);
+    snapshot->source_valid = 1;
+    snapshot->source[0] = wave == 7 ? saved->fm[0] : p[CP_COLOR];
+    for (uint32_t i = 0; i < 12; ++i)
+        snapshot->source[1 + i] = wave == 7 ? saved->fm[1 + i] : p[CP_WT_TABLE + i];
+    for (uint32_t i = 0; i < 4; ++i)
+        snapshot->source[13 + i] = p[CP_WTFM_DEPTH + i];
+    if (wave >= 2 && wave < 7)
+        snapshot->source[1] = (uint16_t)(wave - 2);
+}
+
 static bool prepare_seed(uint8_t track, TkParams *params, TkRecipe *recipe, TkSeed *seed,
                          bool recorded)
 {
     const TkSequenceAudio *audio = tk_sequence_audio(track);
     IsnSnapshot snapshot = {.valid = 1};
+    CpPreset saved;
+    bool sound_lock = audio && audio->pool_sound;
+    if (sound_lock && !instrument_locked_sound(audio->pool_sound - 1u, audio->sound, &saved,
+                                               &snapshot.sound_tune))
+        return false;
+    int32_t wave = sound_lock ? (int32_t)preset_wave(&saved) : -1;
     uint64_t seen = 0;
     TkSeedNote root = seed->notes[0];
     int8_t intervals[ILP_NOTE_LAST - ILP_NOTE_FIRST + 1] = {0};
     for (uint8_t i = 0; audio && i < audio->count; ++i) {
         const TkSequenceLock *lock = &audio->locks[i];
+        /* The native TUNE p-lock overrides the Sound's raw TUNE. */
+        if (sound_lock && lock->parameter == 25 && lock->value >= 0x400 && lock->value <= 0x7c00)
+            snapshot.sound_tune = lock->value;
         uint32_t id, value;
         if (!ilp_event_pair(lock->parameter, (int16_t)lock->value, &id, &value))
             continue;
@@ -148,13 +180,18 @@ static bool prepare_seed(uint8_t track, TkParams *params, TkRecipe *recipe, TkSe
             return false;
         snapshot.locks[snapshot.count++] = (uint16_t)((id << 10) | value);
         apply_control(params, id, value);
-        if (id == 34) {
-            uint32_t sr = dkrt_irq_mask();
-            snapshot.source_valid = (uint8_t)instrument_lock_source(track, value, snapshot.source);
-            dkrt_irq_restore(sr);
-            if (!snapshot.source_valid)
-                return false;
-        }
+        if (id == 34)
+            wave = (int32_t)value;
+    }
+    if (sound_lock)
+        load_preset_source(&snapshot, &saved, (uint32_t)wave);
+    else if (wave >= 0) {
+        uint32_t sr = dkrt_irq_mask();
+        snapshot.source_valid =
+            (uint8_t)instrument_lock_source(track, (uint32_t)wave, snapshot.source);
+        dkrt_irq_restore(sr);
+        if (!snapshot.source_valid)
+            return false;
     }
     if (!recorded)
         for (unsigned i = 0; i < sizeof intervals; ++i) {
@@ -172,8 +209,7 @@ static bool prepare_seed(uint8_t track, TkParams *params, TkRecipe *recipe, TkSe
             }
         }
     if (params->chord == TK_CHORD_USER && !recipe->count) {
-        CpPreset saved;
-        if (instrument_track_keyboard_legacy(track, &saved) && cp_valid(&saved))
+        if (sound_lock || (instrument_track_keyboard_legacy(track, &saved) && cp_valid(&saved)))
             set_user_recipe(recipe, &saved);
     }
     sequence_snapshot[track] = snapshot;
@@ -194,7 +230,7 @@ void tk_canopy_sync(uint8_t track, bool active, uint32_t pattern)
 {
     const TkTrackConfig *config = active ? tk_service_active_config(track) : NULL;
     unsigned lanes = 0;
-    bool fallback = config && config->override && tk_sequence_canopy_sound_locks(pattern, track);
+    bool fallback = config && config->override && tk_sequence_canopy_sound_fallback(pattern, track);
     uint16_t bit = (uint16_t)(1u << track);
     if (fallback)
         tk_canopy_fallback |= bit;

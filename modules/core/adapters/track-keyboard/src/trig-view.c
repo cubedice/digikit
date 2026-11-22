@@ -8,6 +8,7 @@
 #include "dk_fw_mem.h"
 #include "dk_fw_text.h"
 #include "dk_fw_view.h"
+#include "dk_fw_window.h"
 
 extern uint32_t tk_trig_stock_track(uint32_t);
 extern uint32_t tk_trig_stock_alloc(uint32_t);
@@ -18,6 +19,8 @@ extern uint32_t tk_trig_stock_parameter(uint8_t *, uint32_t);
 extern uint8_t tk_trig_stock_held(uint32_t);
 extern uint8_t tk_trig_stock_live_record(uint32_t);
 extern void tk_trig_stock_mark_edited(uint32_t, uint32_t);
+extern void tk_trig_focus_touch(uint8_t *, uint32_t);
+extern uint8_t tk_trig_focus_active(uint8_t *, uint32_t);
 extern const uint32_t tk_trig_label_font;
 extern void tk_runtime_touch(uint8_t track);
 extern bool tk_trig_lock_batch(uint8_t track, const uint32_t steps[4], enum TkControl control,
@@ -35,6 +38,14 @@ enum {
     PAGES_END = 0x80,
     PAGES_CAPACITY = 0x84,
     PAGE_INDEX = 0x90,
+    FOCUS_TRACKER = 0x94,
+    CONTROL_STATE = 0xb4,
+    CONTROL_STATE_SIZE = 20,
+    VIEW_PARAMETER_ACCESSOR = 0xc4,
+    PARAMETER_DRAW_CONTROL = 0x60,
+    PARAMETER_CFADE = 0xcc,
+    PARAMETER_RTRG = 0x104,
+    PARAMETER_RATE = 0x107,
     SHOW_VALUES = 0x190,
     HELD_STEP_MASK = 0x258,
     EVENT_NUMBER = 12,
@@ -199,8 +210,8 @@ static bool read_controls(uint8_t track, int step, TkParams *out, uint16_t *mask
     return tk_trig_display(track, out);
 }
 
-static void draw_value(uint8_t *bitmap, const uint8_t *font, int x, int y, const TrigCell *cell,
-                       int value, bool held_values)
+static void draw_value(uint8_t *bitmap, uint8_t *font, int x, int y, const TrigCell *cell,
+                       int value)
 {
     static const char *const order[] = {"PLAY", "UP", "DOWN", "UPDN", "RAND"};
     static const char *const reset[] = {"TRIG", "PATT", "CONT"};
@@ -209,7 +220,6 @@ static void draw_value(uint8_t *bitmap, const uint8_t *font, int x, int y, const
         "PLAY", "MAJ",  "MAJ6", "SUS2", "MIN6", "MIN",  "SUS4",
         "ADD9", "DOM7", "DIM",  "MIN7", "USER", "MAJ7", "AUG",
     };
-    uint8_t *typeface = (uint8_t *)font;
     const char *text = 0;
     switch (cell->control) {
     case TK_CTL_ARP:
@@ -232,31 +242,102 @@ static void draw_value(uint8_t *bitmap, const uint8_t *font, int x, int y, const
         if (!value)
             text = "OFF";
         else
-            dk_fw_text_draw_box(bitmap, typeface, x, y, 0, 0, 0, "%dMS", value);
+            dk_fw_text_draw_box(bitmap, font, x, y, 1, 0, 0, "%dMS", value);
         break;
     case TK_CTL_GATE:
     case TK_CTL_SWING:
-        dk_fw_text_draw_box(bitmap, typeface, x, y, 0, 0, 0, "%d%%", value);
+        dk_fw_text_draw_box(bitmap, font, x, y, 1, 0, 0, "%d%%", value);
         break;
     case TK_CTL_RATE: {
         uint8_t num, den;
         if (tk_rate_division((uint8_t)value, &num, &den))
-            dk_fw_text_draw_box(bitmap, typeface, x, y, 0, 0, 0, num == 1 ? "%d/Q" : "1/%d",
-                                (int)den);
+            dk_fw_text_draw_box(bitmap, font, x, y, 1, 0, 0, num == 1 ? "%d/Q" : "1/%d", (int)den);
         break;
     }
     case TK_CTL_OCTAVES:
-        dk_fw_text_draw_box(bitmap, typeface, x, y, 0, 0, 0, "%+d", value);
+        dk_fw_text_draw_box(bitmap, font, x, y, 1, 0, 0, "%+d", value);
         break;
     case TK_CTL_VOICES:
-        dk_fw_text_draw_box(bitmap, typeface, x, y, 0, 0, 0, "%d", value);
+        dk_fw_text_draw_box(bitmap, font, x, y, 1, 0, 0, "%d", value);
         break;
     default:
-        text = held_values ? "INFO" : ">";
+        text = ">";
         break;
     }
     if (text)
-        dk_fw_text_draw_box(bitmap, typeface, x, y, 0, 0, 0, "%s", text);
+        dk_fw_text_draw_box(bitmap, font, x, y, 1, 0, 0, "%s", text);
+}
+
+static const char *focus_description(enum TkControl control, int value)
+{
+    static const char *const order[] = {
+        "As played", "Ascending", "Descending", "Up then down", "Random",
+    };
+    static const char *const reset[] = {
+        "Restart on trig",
+        "Restart on pattern",
+        "Continue across trigs",
+    };
+    static const char *const chord[] = {
+        "Play held notes",  "Major",      "Major sixth",      "Suspended second",
+        "Minor sixth",      "Minor",      "Suspended fourth", "Added ninth",
+        "Dominant seventh", "Diminished", "Minor seventh",    "User chord",
+        "Major seventh",    "Augmented",
+    };
+    switch (control) {
+    case TK_CTL_ORDER:
+        return order[value];
+    case TK_CTL_RESET:
+        return reset[value];
+    case TK_CTL_CHORD:
+        return chord[value];
+    default:
+        return 0;
+    }
+}
+
+static bool draw_widget(uint8_t *view, uint8_t *bitmap, unsigned encoder, int x, int y,
+                        const TrigCell *cell, int value)
+{
+    unsigned parameter;
+    switch (cell->control) {
+    case TK_CTL_ARP:
+    case TK_CTL_POLY:
+        parameter = PARAMETER_RTRG;
+        break;
+    case TK_CTL_RATE:
+        /* 1/1 through 1/80 use the same ordinal as stock RTRG. The two
+         * quarter-note divisions are unique to ARP. */
+        if (value >= TK_RATE_7Q)
+            return false;
+        parameter = PARAMETER_RATE;
+        break;
+    case TK_CTL_GATE:
+    case TK_CTL_SWING:
+    case TK_CTL_STRUM:
+        parameter = PARAMETER_CFADE;
+        value = ((value - cell->low) * 127) / (cell->high - cell->low);
+        break;
+    default:
+        return false;
+    }
+
+    /* Generic native parameter drawing on TRIG and SRC both use this view
+     * accessor and an animation slot for the encoder. Pass our value directly
+     * to the paint virtual so the firmware never edits its template parameter. */
+    const uint8_t *vt = (const uint8_t *)(uintptr_t)word(view, 0);
+    uint8_t *(*access)(uint8_t *, uint32_t, int32_t) =
+        (void *)(uintptr_t)word(vt, VIEW_PARAMETER_ACCESSOR);
+    uint8_t *a = access(view, parameter, -1);
+    if (!a)
+        return false;
+    const uint8_t *av = (const uint8_t *)(uintptr_t)word(a, 0);
+    void (*draw)(uint8_t *, uint32_t, int32_t, uint32_t, uint8_t *, uint8_t *, int32_t, int32_t) =
+        (void *)(uintptr_t)word(av, PARAMETER_DRAW_CONTROL);
+    /* Stock switch, RATE, and encoder graphics share this x origin. */
+    draw(a, parameter, value << 8, 0, view + CONTROL_STATE + CONTROL_STATE_SIZE * encoder, bitmap,
+         x - 1, y + 7);
+    return true;
 }
 
 static void draw_keyboard(uint8_t *bitmap, uint8_t track)
@@ -266,25 +347,25 @@ static void draw_keyboard(uint8_t *bitmap, uint8_t track)
     static const uint8_t gap[] = {0, 1, 3, 4, 5};
     uint16_t held = 0;
     uint16_t sounding = tk_trig_pitch_display ? tk_trig_pitch_display(track, &held) : 0;
-    dk_fw_draw_fill_rect(bitmap, 75, 24, 117, 38, 1);
+    dk_fw_draw_fill_rect(bitmap, 25, 7, 67, 21, 1);
     for (unsigned i = 0; i < sizeof white; ++i) {
-        int x = 75 + 6 * (int)i;
+        int x = 25 + 6 * (int)i;
         uint16_t mask = (uint16_t)(1u << white[i]);
-        dk_fw_draw_fill_rect(bitmap, x, 24, x, 38, 0);
+        dk_fw_draw_fill_rect(bitmap, x, 7, x, 21, 0);
         if (sounding & mask)
-            dk_fw_draw_fill_rect(bitmap, x + 2, 25, x + 4, 29, 0);
+            dk_fw_draw_fill_rect(bitmap, x + 2, 8, x + 4, 12, 0);
         else if (held & mask)
-            dk_fw_draw_fill_rect(bitmap, x + 3, 26, x + 3, 26, 0);
+            dk_fw_draw_fill_rect(bitmap, x + 3, 9, x + 3, 9, 0);
     }
-    dk_fw_draw_fill_rect(bitmap, 117, 24, 117, 38, 0);
+    dk_fw_draw_fill_rect(bitmap, 67, 7, 67, 21, 0);
     for (unsigned i = 0; i < sizeof black; ++i) {
-        int x = 79 + 6 * gap[i];
+        int x = 29 + 6 * gap[i];
         uint16_t mask = (uint16_t)(1u << black[i]);
-        dk_fw_draw_fill_rect(bitmap, x, 31, x + 3, 38, 0);
+        dk_fw_draw_fill_rect(bitmap, x, 14, x + 3, 21, 0);
         if (sounding & mask)
-            dk_fw_draw_fill_rect(bitmap, x + 1, 32, x + 2, 36, 1);
+            dk_fw_draw_fill_rect(bitmap, x + 1, 15, x + 2, 19, 1);
         else if (held & mask)
-            dk_fw_draw_fill_rect(bitmap, x + 1, 32, x + 1, 32, 1);
+            dk_fw_draw_fill_rect(bitmap, x + 1, 15, x + 1, 15, 1);
     }
 }
 
@@ -300,11 +381,6 @@ void tk_trig_draw(uint8_t *view, uint8_t *bitmap)
     uint8_t *font = (uint8_t *)(uintptr_t)tk_trig_label_font;
     dk_fw_draw_fill_rect(bitmap, 23, 0, 122, 52, 0);
     bool held = view[SHOW_VALUES] != 0;
-    /* The anchor yields the font descriptor expected by draw_box. The
-     * formatted-text primitive expects a wrapper around that descriptor. */
-    dk_fw_text_draw_box(bitmap, font, 24, 45, 0, 0, 0, "%s",
-                        held ? "VALUES" : (page == ARP_PAGE ? "ARPEGGIATOR" : "KEYBOARD"));
-    dk_fw_draw_fill_rect(bitmap, 23, 43, 121, 43, 1);
     int step = step_context(view);
     TkParams params;
     uint16_t locks;
@@ -316,19 +392,24 @@ void tk_trig_draw(uint8_t *view, uint8_t *bitmap)
         const TrigCell *cell = &cells[i];
         if (!cell->label)
             continue;
-        /* Read sideways by knob row. Each row gives two controls a 49 px
-         * label/value budget and leaves the original page dots untouched. */
-        int x = 23 + (int)(i / 4u) * 50;
-        int y = 34 - (int)(i % 4u) * 9;
+        int x = 25 + 26 * (int)(i % 4u);
+        int y = i < 4 ? 27 : 0;
         int value = 0;
         bool parameter = tk_get_control(&params, cell->control, &value);
+        bool locked = parameter && (locks & (1u << cell->control));
+        bool values =
+            parameter && (held || locked || tk_trig_focus_active(view + FOCUS_TRACKER, i));
         if (cell->control == TK_CTL_VOICES && value > tk_trig_voice_capacity(track))
             value = tk_trig_voice_capacity(track);
-        dk_fw_text_draw_box(bitmap, font, x + 1, y, 0, 0, 0, "%s", cell->label);
-        if (held || parameter || (cell->control == TK_CONTROL_COUNT && tk_trig_open_pool))
-            draw_value(bitmap, font, x + 24, y, cell, value, held);
-        if (parameter && (locks & (1u << cell->control)))
-            dk_fw_draw_invert_rect(bitmap, x, y - 1, x + 47, y + 6, 1);
+        if (values)
+            draw_value(bitmap, font, x + 9, y, cell, value);
+        else
+            dk_fw_text_draw_box(bitmap, font, x + 9, y, 1, 0, 0, "%s", cell->label);
+        if ((parameter && !draw_widget(view, bitmap, i, x, y, cell, value)) ||
+            (!parameter && tk_trig_open_pool))
+            draw_value(bitmap, font, x + 9, y + 14, cell, value);
+        if (locked)
+            dk_fw_draw_fill_rect(bitmap, x - 1, y + 6, i % 4u == 3 ? 122 : x + 21, y + 24, -1);
     }
 }
 
@@ -406,8 +487,17 @@ uint8_t tk_trig_turn(uint8_t *view, uint8_t *event)
     uint8_t track = current_track(view);
     bool active = update_pages(view, track);
     uint32_t page = word(view, PAGE_INDEX), knob = word(event, EVENT_NUMBER);
-    if (knob == 0 || knob > 8 || !active || (page != ARP_PAGE && page != KEYS_PAGE))
-        return tk_trig_stock_turn(view, event);
+    if (knob == 0 || knob > 8 || !active || (page != ARP_PAGE && page != KEYS_PAGE)) {
+        uint8_t handled = tk_trig_stock_turn(view, event);
+        if (active && page == 1 && knob == 1 &&
+            tk_trig_stock_parameter(view, 0) == PARAMETER_RTRG) {
+            TkParams params;
+            uint16_t locks;
+            if (read_controls(track, step_context(view), &params, &locks) && params.arp)
+                dk_fw_window_toast(dk_fw_window_ui_states(), "%s", "ARP overrides RTRG");
+        }
+        return handled;
+    }
     click_key = 0;
     uint8_t i = (uint8_t)(knob - 1u);
     const TrigCell *cell = &(page == ARP_PAGE ? arp : keys)[i];
@@ -429,6 +519,10 @@ uint8_t tk_trig_turn(uint8_t *view, uint8_t *event)
     if (current > high)
         current = high;
     int32_t delta = (int32_t)word(event, EVENT_VALUE);
+    if (!delta)
+        return 1;
+    tk_trig_focus_touch(view + FOCUS_TRACKER, i);
+    dk_fw_view_invalidate(view);
     if (delta > 64)
         delta = 64;
     if (delta < -64)
@@ -455,16 +549,21 @@ uint8_t tk_trig_turn(uint8_t *view, uint8_t *event)
         value = high;
     if (value == current && step < 0)
         return 1;
+    bool written;
     if (step < 0)
-        tk_trig_write(track, cell->control, value);
+        written = tk_trig_write(track, cell->control, value);
     else {
         tk_trig_stock_mark_edited(word(view, EDITOR), 1);
         if (group)
-            tk_trig_lock_batch(track, steps, cell->control, value, false);
+            written = tk_trig_lock_batch(track, steps, cell->control, value, false);
         else
-            tk_trig_lock_write(track, (uint8_t)step, cell->control, value, false);
+            written = tk_trig_lock_write(track, (uint8_t)step, cell->control, value, false);
     }
-    dk_fw_view_invalidate(view);
+    if (written && value != current) {
+        const char *description = focus_description(cell->control, value);
+        if (description)
+            dk_fw_window_toast(dk_fw_window_ui_states(), "%s", description);
+    }
     return 1;
 }
 

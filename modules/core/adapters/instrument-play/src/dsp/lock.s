@@ -35,7 +35,7 @@ _iv_lock_stage:
     COMP(R0, R1);
     IF NE JUMP _iv_lock_bad;
     R0 = DM(4, I1);
-    R1 = 0xfffef8c0;
+    R1 = 0xfffcf8c0;
     R1 = R0 AND R1;
     R1 = PASS R1;
     IF NE JUMP _iv_lock_bad;
@@ -50,6 +50,10 @@ _iv_lock_stage:
     DM(_iv_lock_source_flag) = R1;
     R2 = LSHIFT R2 BY 1;
     R2 = R2 OR R1;
+    R1 = FEXT R0 BY 17:1;
+    DM(_iv_lock_sound_flag) = R1;
+    R3 = LSHIFT R1 BY 3;
+    R2 = R2 OR R3;
     I2 = _iv_lock_staging;
     DM(6, I2) = R2;
     R1 = 0;
@@ -59,12 +63,35 @@ _iv_lock_stage:
     IF GT JUMP _iv_lock_bad;
     R0 = DM(7, I1);
     R0 = LSHIFT R0 BY -16;
-    R0 = PASS R0;
+    R3 = DM(16, I1);
+    R1 = FEXT R3 BY 31:1;
+    R1 = PASS R1;
     IF NE JUMP _iv_lock_bad;
-    R0 = DM(16, I1);
-    R0 = LSHIFT R0 BY -16;
-    R0 = PASS R0;
+    R3 = LSHIFT R3 BY -16;
+    R3 = LSHIFT R3 BY 16;
+    R3 = R3 OR R0;
+    DM(24, I2) = R3;
+    R1 = DM(_iv_lock_sound_flag);
+    R1 = PASS R1;
+    IF NE JUMP _iv_lock_sound_stage;
+    R3 = PASS R3;
     IF NE JUMP _iv_lock_bad;
+    JUMP _iv_lock_checksum;
+_iv_lock_sound_stage:
+    R0 = FEXT R3 BY 0:3;
+    DM(_iv_lock_wave_value) = R0;
+    R0 = DM(8, I1);
+    R0 = FEXT R0 BY 7:15;
+    R1 = 0x400;
+    COMP(R0, R1);
+    IF LT JUMP _iv_lock_bad;
+    R1 = 0x7c00;
+    COMP(R0, R1);
+    IF GT JUMP _iv_lock_bad;
+    R0 = LSHIFT R0 BY 16;
+    R2 = R2 OR R0;
+    DM(6, I2) = R2;
+_iv_lock_checksum:
     // Same wrapping checksum as ml_encode, over words 0..16.
     R1 = 0x6c6f636b;
     R2 = 0x74726967;
@@ -115,10 +142,17 @@ _iv_lock_pair_active:
     R1 = 1;
     DM(_iv_lock_wave_seen) = R1;
     R1 = FEXT R0 BY 0:10;
-    DM(_iv_lock_wave_value) = R1;
     R2 = 7;
     COMP(R1, R2);
     IF GT JUMP _iv_lock_bad;
+    R2 = DM(_iv_lock_sound_flag);
+    R2 = PASS R2;
+    IF EQ JUMP _iv_lock_wave_store;
+    R2 = DM(_iv_lock_wave_value);
+    COMP(R1, R2);
+    IF NE JUMP _iv_lock_bad;
+_iv_lock_wave_store:
+    DM(_iv_lock_wave_value) = R1;
 _iv_lock_pair_value:
     R1 = FEXT R0 BY 0:10;
     R2 = 1000;
@@ -137,6 +171,8 @@ _iv_lock_pair_next:
     COMP(R5, R0);
     IF LT JUMP _iv_lock_pair;
     R0 = DM(_iv_lock_wave_seen);
+    R2 = DM(_iv_lock_sound_flag);
+    R0 = R0 OR R2;
     R1 = DM(_iv_lock_source_flag);
     COMP(R0, R1);
     IF NE JUMP _iv_lock_bad;
@@ -155,6 +191,20 @@ _iv_lock_source_copy:
     R1 = -R1;
     R0 = LSHIFT R0 BY R1;
     R0 = FEXT R0 BY 0:16;
+    R1 = DM(_iv_lock_sound_flag);
+    R1 = PASS R1;
+    IF EQ JUMP _iv_lock_source_has;
+    R2 = 2;
+    COMP(R5, R2);
+    IF GE JUMP _iv_lock_source_has;
+    R0 = DM(8, I1);
+    R5 = PASS R5;
+    IF NE JUMP _iv_lock_source_sound_high;
+    R0 = FEXT R0 BY 0:7;
+    JUMP _iv_lock_source_has;
+_iv_lock_source_sound_high:
+    R0 = LSHIFT R0 BY -22;
+_iv_lock_source_has:
     R1 = DM(_iv_lock_source_flag);
     R1 = PASS R1;
     IF NE JUMP _iv_lock_source_save;
@@ -224,19 +274,19 @@ _iv_lock_bad:
     R0 = 0;
     RTS;
 
-// Slot-local snapshot; R0 is ignored by callers. 24 words per slot.
+// Slot-local snapshot; R0 is ignored by callers. 25 words per slot.
 _iv_lock_commit:
     R0 = DM(_iv_lock_staged);
     R0 = PASS R0;
     IF EQ RTS;
     R0 = DM(_iv_slot);
-    R1 = 96;
+    R1 = 100;
     R0 = R0 * R1 (SSI);
     R1 = _iv_lock_slots;
     R0 = R0 + R1;
     I0 = R0;
     I1 = _iv_lock_staging;
-    R1 = 24;
+    R1 = 25;
 _iv_lock_commit_word:
     R0 = DM(I1, M6);
     DM(I0, M6) = R0;
@@ -247,7 +297,7 @@ _iv_lock_commit_word:
     RTS;
 _iv_lock_clear:
     R0 = DM(_iv_slot);
-    R1 = 96;
+    R1 = 100;
     R0 = R0 * R1 (SSI);
     R1 = _iv_lock_slots;
     R0 = R0 + R1;
@@ -261,18 +311,20 @@ _iv_lock_clear:
 .GLOBAL _iv_lock_overlay;
 _iv_lock_overlay:
     R0 = DM(_iv_slot);
-    R1 = 96;
+    R1 = 100;
     R0 = R0 * R1 (SSI);
     R1 = _iv_lock_slots;
     R0 = R0 + R1;
     I0 = R0;
     R1 = DM(6, I0);
+    R2 = FEXT R1 BY 3:1;
     R1 = FEXT R1 BY 1:2;
     DM(_iv_lock_shared_lanes) = R1;
     R0 = DM(0, I0);
+    DM(_iv_lock_work_count) = R0;
+    R0 = R0 OR R2;
     R0 = PASS R0;
     IF EQ JUMP _iv_lock_overlay_none;
-    DM(_iv_lock_work_count) = R0;
     R0 = I0;
     R1 = 4;
     R0 = R0 + R1;
@@ -285,15 +337,19 @@ _iv_lock_overlay_copy:
     DM(I1, M6) = R0;
     R2 = R2 - 1;
     IF NE JUMP _iv_lock_overlay_copy;
-    // A wave lock carries the remembered source bank in this same snapshot.
-    // Install it into scratch first, then apply other locks for that family.
+    // A Sound or wave lock carries its source bank. Apply it to scratch
+    // before the absolute step locks and the native MOD stage.
     R0 = DM(_iv_lock_work_pairs);
     R1 = 20;
     R0 = R0 + R1;
     I0 = R0;
     R0 = DM(0, I0);
-    R0 = PASS R0;
+    R1 = FEXT R0 BY 0:1;
+    R1 = PASS R1;
     IF EQ JUMP _iv_lock_overlay_start;
+    R1 = FEXT R0 BY 3:1;
+    R1 = PASS R1;
+    IF NE JUMP _iv_lock_overlay_sound;
     R0 = DM(_iv_lock_work_pairs);
     I1 = R0;
     R10 = DM(_iv_lock_work_count);
@@ -308,6 +364,47 @@ _iv_lock_find_wave:
     JUMP _iv_lock_overlay_start;
 _iv_lock_wave_found:
     R8 = FEXT R0 BY 0:10;
+    JUMP _iv_lock_wave_bank;
+_iv_lock_overlay_sound:
+    R8 = FEXT R0 BY 16:15;
+    // Sound-wide controls are the final word after 17 source values.
+    R9 = DM(18, I0);
+    I0 = _iv_lock_controls;
+    R0 = DM(0, I0);
+    R0 = FEXT R0 BY 0:16;
+    R8 = LSHIFT R8 BY 16;
+    R0 = R0 OR R8;
+    DM(0, I0) = R0;
+    R2 = FEXT R9 BY 3:7;
+    DM(3, I0) = R2;
+    R0 = DM(19, I0);
+    R0 = LSHIFT R0 BY -16;
+    R0 = LSHIFT R0 BY 16;
+    R0 = R0 OR R2;
+    DM(19, I0) = R0;
+    R2 = FEXT R9 BY 10:7;
+    DM(4, I0) = R2;
+    R0 = DM(30, I0);
+    R0 = LSHIFT R0 BY -16;
+    R0 = LSHIFT R0 BY 16;
+    R0 = R0 OR R2;
+    DM(30, I0) = R0;
+    R2 = FEXT R9 BY 17:7;
+    DM(5, I0) = R2;
+    R0 = DM(31, I0);
+    R0 = LSHIFT R0 BY -16;
+    R0 = LSHIFT R0 BY 16;
+    R0 = R0 OR R2;
+    DM(31, I0) = R0;
+    R2 = FEXT R9 BY 24:7;
+    DM(6, I0) = R2;
+    R0 = DM(21, I0);
+    R0 = LSHIFT R0 BY -16;
+    R0 = LSHIFT R0 BY 16;
+    R0 = R0 OR R2;
+    DM(21, I0) = R0;
+    R8 = FEXT R9 BY 0:3;
+_iv_lock_wave_bank:
     R0 = DM(_iv_lock_work_pairs);
     R1 = 24;
     R0 = R0 + R1;
@@ -509,10 +606,11 @@ _iv_lock_overlay_none:
     RTS;
 .SECTION/DM seg_dmda;
 .PKBSS _iv_lock_staged, 4;
-.PKBSS _iv_lock_staging, 96;
-.PKBSS _iv_lock_slots, 384;
+.PKBSS _iv_lock_staging, 100;
+.PKBSS _iv_lock_slots, 400;
 .PKBSS _iv_lock_shared_lanes, 4;
 .PKBSS _iv_lock_source_flag, 4;
+.PKBSS _iv_lock_sound_flag, 4;
 .PKBSS _iv_lock_wave_seen, 4;
 .PKBSS _iv_lock_wave_value, 4;
 .PKBSS _iv_lock_controls, 128;

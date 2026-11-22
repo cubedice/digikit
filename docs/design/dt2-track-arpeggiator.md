@@ -341,22 +341,94 @@ helper validation.
 
 The original audio and MIDI TRIG 1 and TRIG 2 body captures match stock
 at OLED resolution. The page markers and page-count header reflect four
-pages. The packed CANOPY COLOR lock and a native filter cutoff lock both
+pages. On the hardware OLED, ARP's OFF and ON switch and 1/32 RATE widget
+match the original audio retrig graphics at their exact coordinates. The
+MIDI ARP widgets also match, and the MIDI ARP and KEYS pages retain the
+stock track column. Holding TRIG shows the control values, encoder focus
+briefly shows RATE's value, and both interactions restore the idle captions.
+A held MIDI step showed inverted RATE graphics after turning the encoder.
+Pressing the encoder without turning restored the track RATE for the step.
+The packed CANOPY COLOR lock and a native filter cutoff lock both
 reached the same generated phrase in the coupled emulator. An unlocked trig
 restored both values. Separate SHARC tests cover locked and unlocked blends
 across the three source families.
 
 Physical USB tests measured stopped sample-track arpeggiation and the MIDI
 sequence C–E–G at 120 BPM. The hardware image loaded CANOPY, Overloop,
-PRISM, RELAY and remote together. That build uses a 448 KiB module arena to
-fit the extra fixed ColdFire code. The standard arena is 512 KiB. On the
-physical unit, a CANOPY Sound edit restored output after switching from
-shared polyphony to ARP-only. This exposed a control-revision issue that
-requires a new firmware build for physical verification.
+PRISM, RELAY and remote together. The full experimental build uses a
+440 KiB module arena to fit the fixed ColdFire code and patch metadata.
+Its DTII staging buffer remains 151,552 bytes. On the
+physical unit, switching from shared polyphony to ARP-only initially stayed
+silent until a Sound edit. The playback adapter now publishes the updated
+lane mix when that routing changes. The rebuilt firmware measured RMS
+0.044 in POLY-only and 0.030 in ARP-only without a SOURCE edit. Both modes
+were tested on the same CANOPY track with the same panel chord.
 
-Release qualification remains open for native Sound lock transitions on
-CANOPY, custom ARP widget parity, the complete held-value and encoder-focus
-capture matrix, and physical DIN and simultaneous-load measurements.
+Shared CANOPY phrases can use a supported native Sound from the project
+pool. The phrase receives its source, TUNE and common performance controls
+before explicit parameter locks and native modulation. The next unlocked
+phrase restores the track Sound. The host test verifies the queued payload
+and the SHARC rig verifies consumption and retirement, including bad
+payload rejection. On the physical DTII, two panel-path starts and one
+USB-clock start played an isolated CANOPY track in the first step. Each
+take played Velvet at about 232 Hz on step 1, FM at about 468 Hz on the
+locked step 9, and Velvet on the next cycle. START copies a native cached
+event into the due queue. The adapter carries the step identity to that
+copy and accepts the cache event type only when it can verify this origin.
+The source and TUNE apply to the instrument instance, including any
+overlapping release tail.
+
+A DIN keyboard played a repeating three-note phrase on the sample track
+at 1/16 with the transport stopped. The USB audio capture returned to
+silence after the keys were released. A separate 12-second run played one
+audio track and six MIDI tracks at 1/80 while receiving 750 USB controller
+messages and 791 external clock ticks. Playback continued through a
+one-second clock gap and resumed following the clock. Across six USB MIDI
+channels, all 3,339 note-ons had matching releases, with no duplicate starts,
+orphan releases or unreleased notes after USB MIDI Stop. In a separate
+remote-panel run, the native MIDI Stop message came about 1.10 seconds after
+the remote command acknowledgement. All 890 notes on that run had matching
+releases, and the last onset preceded the native Stop by 15 ms. Panel input
+latency and individual gate timing need separate measurements.
+
+With the same pattern playing one sample track and six MIDI tracks, the
+Health page showed 58% estimated DSP usage with ARP disabled and with all
+seven arps set to 1/80. Reported DSP peaks were 61% and 61–62%, respectively.
+The relative ColdFire indicator rose from 46% to 100%. That indicator uses
+the quietest window since boot as its reference, so the test leaves absolute
+ColdFire headroom open.
+
+The POOL menu stages helper selection in checked track rows. APPLY GROUP
+validates and writes the complete group. NO discards the draft. Recording
+reports NOTES FULL when it hits the capture limit and keeps the first
+sixteen notes. NOTES → RIGHT → EDIT STEP lists existing note trigs by
+absolute step. Selecting a row retargets the editor without writing or
+auditioning a trig. Apply or cancel an edited draft before retargeting.
+On hardware the picker showed the two populated steps, and opening step 9
+showed its track and step in the Apply row. A staged helper was discarded
+with NO. Applying it in a new draft increased the track display to two voices.
+
+The numbered TRIG and LED shortcuts for POOL and step targeting remain
+open, as do absolute PLAY note displays, shared arp support for RELAY,
+independent RELAY playback heads, and separate USB and DIN transmit
+budgets. Release qualification also needs the rest of the held-value and
+step-lock capture matrix and absolute ColdFire headroom under load.
+
+### Building the full experimental image
+
+Use a separate checkout to build the 440 KiB image. Set `[limits] arena_bytes`
+to `450560` in the Digitakt II, Digitone II and Syntakt device profiles and
+set `ARENA_BYTES` to the same value in the runtime ABI. Regenerate its C and
+Rust ABI files and rebuild `core/runtime` and the Track Keyboard dependencies
+in that checkout. The device profiles and the runtime must agree on the arena
+size. Use the normal 512 KiB defaults for other builds.
+
+```bash
+patchkit apply --firmware firmware/Digitakt_II_OS1.17.syx \
+  --modules core/track-keyboard,core/digikit-menu,core/health,core/input,core/loop-storage,core/loop-display,core/phrase-ui,core/relay-track \
+  -o out/patch/track-keyboard-dt2.syx
+patchkit preflight out/patch/track-keyboard-dt2.syx
+```
 
 ## References and reusable evidence
 

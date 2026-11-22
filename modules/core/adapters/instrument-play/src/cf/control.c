@@ -346,8 +346,16 @@ int instrument_track_keyboard_lanes(uint32_t track, uint32_t lanes)
     if (track >= MI_TRACKS || lanes > 3)
         return 0;
     uint32_t sr = dkrt_irq_mask();
+    uint8_t previous = track_keyboard_lanes[track];
     track_keyboard_lanes[track] = (uint8_t)lanes;
     int ready = instrument_track_keyboard_claim(track, lanes != 0);
+    if (previous && lanes && previous != lanes) {
+        /* An active claim stays in the same generation. Republish its new
+         * lane mask with the next control revision so the DSP updates MIX. */
+        IpInst *in = for_track(track);
+        if (in)
+            cs_touch(SRC(in));
+    }
     dkrt_irq_restore(sr);
     return ready;
 }

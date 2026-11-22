@@ -6,7 +6,29 @@
 #include "../../../modules/core/adapters/midi-events/src/cf/transport.h"
 #include "../../../modules/core/adapters/midi-events/src/cf/lock-wire.h"
 #include "../../../modules/core/adapters/instrument-play/src/cf/keyboard.h"
+#include "../../../modules/core/adapters/instrument-play/src/cf/shared-notes.h"
 #include <stddef.h>
+
+static IsnQueue shared;
+
+static int shared_snapshot(uint32_t track, uint32_t epoch, uint32_t generation, const MiEvent *in,
+                           uint32_t count, MiEvent out[8])
+{
+    (void)in;
+    assert(!count);
+    isn_sync(&shared, track, epoch, generation);
+    return (int)isn_take(&shared, out);
+}
+
+static void check_sideband(uint32_t side[ML_WORDS])
+{
+    uint32_t a = 0x6c6f636bu, b = 0x74726967u;
+    for (unsigned i = 0; i < ML_WORDS - 1; ++i) {
+        a += side[i];
+        b += a;
+    }
+    side[ML_WORDS - 1] = a ^ b;
+}
 
 static int32_t stored[ILP_LANES] = {-1, -1, -1, -1, -1};
 static unsigned writes, fail_write;
@@ -314,20 +336,26 @@ int main(void)
     const uint32_t *packet = mt_prepare(&transport, &ledger, revisions, 0);
     assert(packet && (packet[1] & MT_LOCKED) && transport.lock_valid && transport.lock_count == 2);
     assert(transport.locks[0] == pair[0] && transport.locks[1] == pair[1]);
-    uint32_t side[ML_WORDS], n = 99, source_valid = 99;
-    uint16_t decoded[MI_LOCKS] = {0}, source_out[MI_SOURCE_VALUES] = {0};
+    uint32_t side[ML_WORDS], n = 99, source_valid = 99, sound_controls = 99;
+    uint16_t decoded[MI_LOCKS] = {0}, source_out[MI_SOURCE_VALUES] = {0}, sound_tune = 99;
     assert(ml_encode(&transport, packet, side));
-    assert(ml_decode(side, packet, decoded, &n, source_out, &source_valid) && n == 2 &&
-           !source_valid && decoded[0] == pair[0] && decoded[1] == pair[1]);
+    assert(ml_decode(side, packet, decoded, &n, source_out, &source_valid, &sound_controls,
+                     &sound_tune) &&
+           n == 2 && !source_valid && !sound_controls && !sound_tune && decoded[0] == pair[0] &&
+           decoded[1] == pair[1]);
     side[5] ^= 1;
     n = 99;
-    assert(!ml_decode(side, packet, decoded, &n, source_out, &source_valid) && n == 99);
+    assert(!ml_decode(side, packet, decoded, &n, source_out, &source_valid, &sound_controls,
+                      &sound_tune) &&
+           n == 99);
     side[5] ^= 1;
     uint32_t wrong[MT_WORDS];
     for (unsigned i = 0; i < MT_WORDS; ++i)
         wrong[i] = packet[i];
     ++wrong[3];
-    assert(!ml_decode(side, wrong, decoded, &n, source_out, &source_valid) && n == 99);
+    assert(!ml_decode(side, wrong, decoded, &n, source_out, &source_valid, &sound_controls,
+                      &sound_tune) &&
+           n == 99);
     assert(!ml_encode(&transport, wrong, side));
     uint32_t message = packet[3];
     assert(mt_prepare(&transport, &ledger, revisions, 1)[3] == message &&
@@ -349,8 +377,9 @@ int main(void)
     assert(mi_seq_attach_source(&ledger, 1, source));
     packet = mt_prepare(&transport, &ledger, revisions, 0);
     assert(packet && ml_encode(&transport, packet, side));
-    assert(ml_decode(side, packet, decoded, &n, source_out, &source_valid) && source_valid &&
-           n == 1);
+    assert(ml_decode(side, packet, decoded, &n, source_out, &source_valid, &sound_controls,
+                     &sound_tune) &&
+           source_valid && n == 1 && !sound_controls && !sound_tune);
     for (unsigned i = 0; i < MI_SOURCE_VALUES; ++i)
         assert(source_out[i] == source[i]);
 
@@ -468,7 +497,55 @@ int main(void)
     assert(packet && transport.lock_valid && transport.lock_count == 1 &&
            transport.locks[0] == mixed[1]);
     assert(ml_encode(&transport, packet, side) &&
-           ml_decode(side, packet, decoded, &n, source_out, &source_valid));
+           ml_decode(side, packet, decoded, &n, source_out, &source_valid, &sound_controls,
+                     &sound_tune));
     assert(n == 1 && decoded[0] == mixed[1]);
+
+    /* A full source preset and all five explicit locks survive shared-queue
+     * batching, transport retry and validation of the unchanged frame size. */
+    mi_init(&ledger);
+    mt_init(&transport);
+    IsnSnapshot sound = {
+        .valid = 1,
+        .count = MI_LOCKS,
+        .source_valid = 1,
+        .lanes = 3,
+        .locks = {wave, (3u << 10) | 26u, (15u << 10) | 17u, (40u << 10) | 17u, (49u << 10) | 88u},
+        .source = {127, 3, 77, 12, 15, 89, 124, 127, 100, 87, 200, 100, 2, 99, 15, 200, 55},
+        .sound_tune = 0x7c00,
+        .sound_controls =
+            MI_SOUND_VALID | 7u | (127u << 3) | (63u << 10) | (97u << 17) | (126u << 24)};
+    IsnSnapshot next = sound;
+    next.sound_tune = 0x400;
+    isn_sync(&shared, 1, ledger.epoch, ledger.generations[1]);
+    assert(isn_submit_locked(&shared, 1, 60, 100, 1, 0, &sound));
+    assert(isn_submit_locked(&shared, 2, 67, 100, 1, 0, &next));
+    packet = mt_prepare_mapped(&transport, &ledger, revisions, 0, shared_snapshot);
+    assert(packet && ((packet[1] >> 8) & 15u) == 1 && ml_encode(&transport, packet, side));
+    assert(ml_decode(side, packet, decoded, &n, source_out, &source_valid, &sound_controls,
+                     &sound_tune) &&
+           n == MI_LOCKS && source_valid && sound_controls == sound.sound_controls &&
+           sound_tune == sound.sound_tune);
+    for (unsigned i = 0; i < MI_LOCKS; ++i)
+        assert(decoded[i] == sound.locks[i]);
+    for (unsigned i = 0; i < MI_SOURCE_VALUES; ++i)
+        assert(source_out[i] == sound.source[i]);
+    side[7] ^= 1u << 16; /* Change the bank's selected wave, keeping the WAVE p-lock. */
+    check_sideband(side);
+    assert(!ml_decode(side, packet, decoded, &n, source_out, &source_valid, &sound_controls,
+                      &sound_tune) &&
+           sound_controls == sound.sound_controls && sound_tune == sound.sound_tune);
+    assert(mt_prepare_mapped(&transport, &ledger, revisions, 1, shared_snapshot) == packet &&
+           ml_encode(&transport, packet, side));
+    side[8] &= ~(0x7fffu << 7);
+    check_sideband(side);
+    assert(!ml_decode(side, packet, decoded, &n, source_out, &source_valid, &sound_controls,
+                      &sound_tune));
+    assert(mt_ack(&transport, &ledger, ledger.epoch, packet[3]));
+    packet = mt_prepare_mapped(&transport, &ledger, revisions, 2, shared_snapshot);
+    assert(packet && ml_encode(&transport, packet, side));
+    assert(ml_decode(side, packet, decoded, &n, source_out, &source_valid, &sound_controls,
+                     &sound_tune) &&
+           sound_tune == next.sound_tune);
     return 0;
 }

@@ -20,5 +20,6 @@ void tk_capture_panel_release(uint32_t key);
 void tk_capture_note_commit(uint32_t note_table, uint32_t track, uint32_t step, uint32_t pitch,
                             uint32_t velocity);
 void tk_capture_poll(uint32_t edit_pattern, uint16_t bpm);
+extern volatile uint32_t tk_capture_dropped;
 
 #endif

@@ -19,11 +19,12 @@ handler advances or wraps against the vector count. The show-values byte at
 | Key | Tail to the shared ParameterPageView event handler | Primary +`0x08` |
 | Draw | `0x40073264` | Primary +`0x10` |
 | Turn | `0x4007375a` | Primary +`0x44` |
+| Page title | `0x4006965a`, COW string result through A0 | Primary +`0x4c` |
 | Resolve parameter | `0x40069628` | Primary +`0xbc` |
 | Turn through the secondary interface | `0x4007385c`, adjusts this by four bytes | Primary +`0x100` |
 
-All five slot anchors resolve from one unique 260-byte window in the 1.17 MAIN
-image. The four called stock entries are separately resolved. The adapter
+All six slot anchors resolve from one unique 260-byte window in the 1.17 MAIN
+image. The five called stock entries are separately resolved. The adapter
 allocates a four-entry vector with the same allocator as the stock
 constructor. The stock view retains ownership and its destructor still frees
 the vector. If the requested track has no available backend, the adapter
@@ -33,9 +34,24 @@ The extra views reuse a stock page ID for the frame and level column. On MIDI
 tracks they reuse the second ID. The first MIDI page has a note visualization.
 The custom resolver hides A–H from the stock parameter editor while ARP
 or KEYS is visible. All other views keep their own untouched vtables.
-Custom controls use a compact two-column form. The base view still draws its
-header, track rail, and page dots. Held display uses the native show-values
-flag. The probe uses the same knob gestures as the proposal.
+Custom controls use the native four-column grid from `0x4006b0b0`. The
+caption grid starts at x = 25 + 26 * column. Native widget rows start at
+y = 34 or 7 in firmware coordinates. The physical OLED comparison measured
+the stock switch, RATE, and continuous widgets one pixel to the left of the
+caption grid, so those painters start at x = 24 + 26 * column.
+The base view still draws its header, track rail, and page dots. The native
+title slot supplies `Arpeggiator (3/4)` and `Keyboard (4/4)` to the stock
+transient heading. The adapter uses the native focus tracker at view +`0x94`
+and the same show-values byte as the stock pages.
+
+The audio retrig page has RTRG `0x104` and RATE `0x107`. The stock descriptor
+gives RTRG raw values `0x000` and `0x100`. RATE's formatter table at
+`0x40213fb8` matches ARP indices 0 through 16 in order. Its raw value is the index
+shifted left eight. ARP's two additional quarter-note rates use text. GATE,
+SWNG and STRM reuse the native continuous control with projected values.
+The adapter supplies values directly to the native control painter without
+writing any stock parameter. It confines custom lock inversion to the body so
+right-edge navigation marks remain visible.
 
 One held step resolves to its own lock through the shared editor's held-step
 mask. A held encoder click clears the corresponding track keyboard lock.
@@ -70,6 +86,13 @@ releasing an encoder after turning it cannot open a menu.
 - The host registration tests cover the MIDI vector with its own preserved
   page IDs. MIDI note delivery to the native worker, including note-off
   after a machine type change, is covered in [finding 369](369-track-keyboard-native-output.md).
+
+The updated TRIG fixture checks the widget codes, raw value projections,
+focus and held captions, lock inversion bounds, and stock RTRG override
+message. It passed the x86 host build with undefined-behavior checks. The
+new title slot and stock routine anchors match the stock 1.17 image. The
+manual panel scenario has matching-value widget comparisons and captures
+both track types in normal, focused, and held views.
 
 ## Open [O]
 

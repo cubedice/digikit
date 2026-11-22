@@ -1,6 +1,5 @@
-/* OS 1.17 scheduler builds note records in the timer interrupt. Capture the
- * resolved step after all native chance/condition decisions. Only these call
- * sites are sequencer starts; other calls use the same builders for previews.
+/* OS 1.17 builds note records in the timer and in the per-track START cache.
+ * Capture the resolved step after native decisions. Ignore other invocations.
  */
     .text
     .even
@@ -9,12 +8,22 @@ tk_seq_audio_stage:
     move.l %a6,84(%a3)
     move.l 52(%sp),%d0
     cmpi.l #tk_seq_audio_builder_return,%d0
-    bne.s 1f
+    bne.s 2f
     move.l 28(%a3),-(%sp)
     move.l %d3,-(%sp)
     move.l 16(%a3),-(%sp)
     move.l %a3,-(%sp)
     jsr tk_fw_seq_stage
+    lea 16(%sp),%sp
+    bra.s 1f
+2:
+    cmpi.l #tk_seq_audio_start_builder_return,%d0
+    bne.s 1f
+    move.l 28(%a3),-(%sp)
+    move.l %d3,-(%sp)
+    move.l 16(%a3),-(%sp)
+    move.l %a3,-(%sp)
+    jsr tk_fw_seq_start_stage
     lea 16(%sp),%sp
 1:
     move.l %a3,%d0
@@ -25,16 +34,54 @@ tk_seq_midi_stage:
     move.l %d2,16(%a6)
     move.l 52(%sp),%d0
     cmpi.l #tk_seq_midi_builder_return,%d0
-    bne.s 1f
+    bne.s 2f
     move.l 20(%a6),-(%sp)
     move.l %d4,-(%sp)
     move.l 8(%a6),-(%sp)
     move.l %a6,-(%sp)
     jsr tk_fw_seq_stage_midi
     lea 16(%sp),%sp
+    bra.s 1f
+2:
+    cmpi.l #tk_seq_midi_start_builder_return,%d0
+    bne.s 1f
+    move.l 20(%a6),-(%sp)
+    move.l %d4,-(%sp)
+    move.l 8(%a6),-(%sp)
+    move.l %a6,-(%sp)
+    jsr tk_fw_seq_start_stage
+    lea 16(%sp),%sp
 1:
     move.l %a3,%d0
     jmp tk_seq_midi_stage_resume
+
+/* Both native start paths have just copied a cached stock record. Source and
+ * destination are still the memcpy arguments. Carry its tag to the allocated
+ * event that the due hook will actually see. The loop counter is track*4. */
+    .macro start_copy track, offset, resume
+    lea -16(%sp),%sp
+    movem.l %d0-%d1/%a0-%a1,(%sp)
+    move.l \track,%d0
+    lsr.l #2,%d0
+    move.l %d0,-(%sp)
+    move.l 24(%sp),-(%sp)
+    move.l 24(%sp),-(%sp)
+    jsr tk_fw_seq_start_copy
+    lea 12(%sp),%sp
+    movem.l (%sp),%d0-%d1/%a0-%a1
+    lea 16(%sp),%sp
+    lea 12(%sp),%sp
+    move.b (\offset),%d0
+    jmp \resume
+    .endm
+
+    .globl tk_seq_start_copy
+tk_seq_start_copy:
+    start_copy %d3,%a4,tk_seq_start_copy_resume
+
+    .globl tk_seq_sync_start_copy
+tk_seq_sync_start_copy:
+    start_copy %d2,%a3,tk_seq_sync_start_copy_resume
 
 /* The audio callback has applied native mute/solo, retrig relevance and
  * event priority at this point. Preserve its temporaries across the C call.

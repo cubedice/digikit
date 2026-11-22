@@ -104,8 +104,12 @@ static void arm_while_stopped(void)
     assert(!tk_sequence_wants_seed(selected, 0, 5)); /* Step lock still applies. */
     assert(!tk_sequence_wants_seed(selected + 1, 0, 0));
 
-    /* The timer delivers the first hit before the service observes PLAY. */
+    /* The timer starts after this poll snapshots its stopped queue. It must
+     * not discard the new native hit when its STOP drain runs afterward. */
+    TkSequenceQueueEnds stopped = tk_sequence_queue_ends();
     assert(tk_sequence_offer(TK_SEQUENCE_AUDIO, &first));
+    assert(count == before);
+    tk_sequence_drain_through(selected, false, 0, lengths, stopped);
     assert(count == before);
     tk_sequence_drain(selected, true, 0, lengths);
     assert(count == before + 1 && events[before].on && events[before].pitch == 71);
@@ -247,7 +251,9 @@ static void recorded_notes(void)
     tk_capture_poll(id + 1u, 14400);
     seed = tk_pattern_seed(&bank_b, 0, 17);
     assert(seed && seed->count == TK_NOTES && seed->notes[15].pitch == 75);
+    uint32_t drops = tk_capture_dropped;
     assert(!tk_capture_input(0, TK_DIN, 1, 16, 76, 90, false));
+    assert(tk_capture_dropped == drops + 1);
     assert(seed->count == TK_NOTES && seed->notes[15].velocity == 85);
 }
 

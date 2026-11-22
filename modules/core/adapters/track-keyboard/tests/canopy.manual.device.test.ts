@@ -14,6 +14,7 @@ import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { seedModules } from '@digi/regression/runtime/card-seed.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
+import { canopyPanel } from '../../../../machines/canopy/tests/canopy-panel.ts';
 
 describeOn('dt2', 'CANOPY shared track keyboard', () => {
   vi.setConfig({ hookTimeout: 600_000 });
@@ -143,15 +144,31 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
       const bytes = Buffer.from(result.hex, 'hex');
       return bytes.length === len ? bytes : null;
     };
+    const mix = async () => (await dsp('_iv_shared_controls', 24, 4))?.readUInt32LE(0);
+    const originalMix = await mix();
+    expect(originalMix).toBeLessThan(127);
+    await tap(1); // TRIG 4, KEYS
+    await turn(1, -12);
+    await pollEmulated(session, mix, (n) => n === 127, {
+      emulatedMs: 5000,
+      message: 'switching from both lanes to arp-only updates the DSP mix without a Sound edit',
+    });
+    expect(await byte('track_keyboard_lanes')).toBe(2);
+    await turn(1, 12);
+    await pollEmulated(session, mix, (n) => n === originalMix, {
+      emulatedMs: 5000,
+      message: 'restoring both lanes restores the saved CANOPY blend',
+    });
     await tap('RECORD');
     const pattern = (await session.client.memPeek(0x4316501c)) ?? 0;
     expect(pattern, 'scheduled pattern is in ColdFire RAM').toBeGreaterThanOrEqual(0x40000000);
     expect(pattern).toBeLessThan(0x48000000);
+    const firstStep = 0;
     const lockedStep = 4;
     const unlockedStep = 8;
     const hasNote = (flags: number) => (flags & 0x81) === 0x81;
     const trigFlags = (step: number) => halfAt(pattern + 2 * step);
-    for (const step of [lockedStep, unlockedStep]) {
+    for (const step of [firstStep, lockedStep, unlockedStep]) {
       if (!hasNote(await trigFlags(step))) await tap(`TRIG ${step + 1}`);
       await pollEmulated(session, () => trigFlags(step), hasNote, {
         emulatedMs: 1000,
@@ -206,7 +223,27 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
     const cutoff = () => halfAt(0x80003362 + 2 * cutoffIndex);
     const baseCutoff = await cutoff();
     expect(baseCutoff).toBeGreaterThan(lockedCutoff);
+    const beforePlay = await cf('tk_sequence_audio_hits');
     await tap('PLAY');
+    await pollEmulated(
+      session,
+      async () => ({
+        sequenceHits: await cf('tk_sequence_audio_hits'),
+        count: await slotCount(),
+        color: await color(),
+        cutoff: await cutoff(),
+      }),
+      (status) =>
+        status.sequenceHits === beforePlay + 1 &&
+        status.count === 0 &&
+        status.color === baseColor &&
+        status.cutoff === baseCutoff,
+      {
+        emulatedMs: 1000,
+        intervalMs: 10,
+        message: 'the cached first trig at START reaches CANOPY before the first locked trig',
+      },
+    );
     const locked = await pollEmulated(
       session,
       async () => {
@@ -249,6 +286,79 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
       },
     );
     await tap('STOP');
+
+    // Save a contrasting CANOPY Sound through the stock pool menu, then
+    // restore the active track before assigning the pool Sound to one trig.
+    const family = async () => (await dsp('_iv_shared_controls', 4, 4))?.readUInt32LE(0);
+    const tune = async () => (await dsp('_iv_shared_controls', 0, 4))?.readUInt16LE(2);
+    const baseTune = await tune();
+    expect(baseTune).toBe(0x4000);
+    await tap('SRC');
+    expect(await cf('ip_src_debug', 1)).toBe(0);
+    await turn(2, 28); // Velvet to FM, seven WAVE increments.
+    await pollEmulated(session, family, (value) => value === 3, {
+      emulatedMs: 5000,
+      message: 'the contrasting Sound uses FM',
+    });
+    await turn(1, 12); // Stock TUNE on SOURCE A.
+    const poolTune = await pollEmulated(session, tune, (raw) => raw !== undefined && raw !== baseTune, {
+      emulatedMs: 5000,
+      message: 'the contrasting Sound has a non-default native TUNE',
+    });
+    const activeSound = await cf('ip_admission', 1);
+    expect(activeSound).toBeGreaterThanOrEqual(0x40000000);
+    await canopyPanel(session, plan).poolSave(1);
+    const poolSound = 0x4291377a;
+    expect(await byteAt(poolSound + 0xa2)).toBe(await byteAt(activeSound + 0xa2));
+    expect(await halfAt(poolSound + 0x46)).toBe(poolTune);
+    await tap('SRC');
+    for (let i = 0; i < 3 && (await cf('ip_src_debug', 1)) !== 0; ++i) await tap('SRC');
+    expect(await cf('ip_src_debug', 1)).toBe(0);
+    await turn(1, -12);
+    await turn(2, -28);
+    await pollEmulated(
+      session,
+      async () => ({ family: await family(), tune: await tune() }),
+      (state) => state.family === 0 && state.tune === baseTune,
+      { emulatedMs: 5000, message: 'the base Sound is Velvet again with its original TUNE' },
+    );
+    const soundLock = pattern + 0x400 + lockedStep;
+    expect(await byteAt(soundLock)).toBe(0xff);
+    await write(soundLock, [0]); // The project pool is zero based.
+    await tap('PLAY');
+    const lockedSound = await pollEmulated(
+      session,
+      async () => ({
+        family: await family(),
+        tune: await tune(),
+        cutoff: await cutoff(),
+        hits: await cf('tk_sequence_audio_hits'),
+      }),
+      (state) => state.family === 3 && state.tune === poolTune && state.cutoff === lockedCutoff,
+      {
+        emulatedMs: 8000,
+        intervalMs: 10,
+        message: 'the generated CANOPY phrase uses the native Sound lock and stock cutoff lock',
+      },
+    );
+    expect(await byte('tk_canopy_fallback', 1)).toBe(0);
+    await pollEmulated(
+      session,
+      async () => ({ family: await family(), tune: await tune(), hits: await cf('tk_sequence_audio_hits') }),
+      (state) => state.hits > lockedSound.hits && state.family === 0 && state.tune === baseTune,
+      {
+        emulatedMs: 8000,
+        intervalMs: 10,
+        message: 'the next phrase restores the track source and TUNE',
+      },
+    );
+    await tap('STOP');
+    await write(soundLock, [127]); // Empty pool entry on this disposable project.
+    await pollEmulated(session, () => byte('tk_canopy_fallback', 1), (mask) => (mask & 1) !== 0, {
+      emulatedMs: 5000,
+      message: 'an unsupported Sound record leaves native performance routing active',
+    });
+    await write(soundLock, [0xff]);
     await session.expectNoFault('CANOPY track keyboard handoff');
   });
 });

@@ -39,7 +39,7 @@ typedef struct {
 typedef struct {
     uintptr_t sound;
     uint32_t flags;
-    uint8_t count;
+    uint8_t count, pool_sound; /* Native Sound-lock index plus one. */
     TkSequenceLock locks[TK_NATIVE_LOCKS_PER_HIT];
 } TkSequenceAudio;
 
@@ -50,6 +50,10 @@ typedef struct {
     TkSequenceNote notes[TK_NOTES];
     TkSequenceAudio audio;
 } TkSequenceHit;
+
+typedef struct {
+    uint8_t write[TK_SEQUENCE_SOURCES];
+} TkSequenceQueueEnds;
 
 /* These queues have one native producer each. The service task consumes them.
  * A zero-note hit ends the previous phrase while stock plays the new trig.
@@ -63,11 +67,16 @@ void tk_sequence_prepare(const TkSequenceTarget *targets, unsigned count);
 const TkSequenceAudio *tk_sequence_audio(uint8_t track);
 void tk_sequence_drain(uintptr_t pattern, bool running, uint16_t muted,
                        const uint32_t lengths[128]);
+/* Pair a queue boundary with the live transport before deciding to discard
+ * stopped events. A START after this snapshot can publish the next hit. */
+TkSequenceQueueEnds tk_sequence_queue_ends(void);
+void tk_sequence_drain_through(uintptr_t pattern, bool running, uint16_t muted,
+                               const uint32_t lengths[128], TkSequenceQueueEnds ends);
 
 void tk_sequence_poll(uint32_t pattern, bool running);
 void tk_sequence_native_targets(TkSequenceNativeTarget targets[TK_SEQUENCE_TARGETS]);
 int tk_sequence_target_kind(uint32_t kit, uint8_t track);
 void tk_sequence_set_midi(uint8_t track, bool midi);
-bool tk_sequence_canopy_sound_locks(uint32_t pattern, uint8_t track);
+bool tk_sequence_canopy_sound_fallback(uint32_t pattern, uint8_t track);
 
 #endif

@@ -3,8 +3,11 @@
 #include "dk_fw_mem.h"
 #include "dk_fw_text.h"
 #include "dk_fw_view.h"
+#include "dk_fw_window.h"
 
 #include <assert.h>
+#include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 
 void tk_trig_draw(uint8_t *, uint8_t *);
@@ -15,7 +18,15 @@ uint32_t tk_trig_parameter(uint8_t *, uint32_t);
 
 _Alignas(4) static uint8_t view[0x194], editor[0x270], bitmap[1];
 static uint32_t stock_pages[] = {1, 2}, midi_pages[] = {23, 24}, other_pages[] = {7, 8};
-static uint32_t pages[4], event[6];
+static uint32_t pages[4], event[6], view_vtable[0xc8 / 4], widget_vtable[0x64 / 4], widget;
+static struct {
+    unsigned code;
+    int32_t raw;
+} widget_draw[8];
+static char labels[2][8][12];
+static unsigned focus, focus_touches, locks_drawn;
+static bool keyboard_drawn, audio_retrig;
+static char last_toast[32];
 static uint8_t selected_track;
 static unsigned allocations, stock_keys, stock_turns, drawn, invalidations, edited, notes;
 static unsigned lock_writes, track_writes;
@@ -88,13 +99,61 @@ uint8_t tk_trig_stock_turn(uint8_t *p, uint8_t *ev)
 uint32_t tk_trig_stock_parameter(uint8_t *p, uint32_t encoder)
 {
     assert(p == view);
-    return 100 + encoder;
+    return !encoder && audio_retrig ? 0x104 : 100 + encoder;
+}
+
+void tk_trig_focus_touch(uint8_t *tracker, uint32_t encoder)
+{
+    assert(tracker == view + 0x94 && encoder < 8);
+    focus |= 1u << encoder;
+    ++focus_touches;
+}
+
+uint8_t tk_trig_focus_active(uint8_t *tracker, uint32_t encoder)
+{
+    assert(tracker == view + 0x94 && encoder < 8);
+    return (focus & (1u << encoder)) != 0;
+}
+
+static uint8_t *widget_access(uint8_t *p, uint32_t code, int32_t track)
+{
+    assert(p == view && (code == 0xcc || code == 0x104 || code == 0x107) && track == -1);
+    return (uint8_t *)&widget;
+}
+
+static void widget_paint(uint8_t *parameter, uint32_t code, int32_t raw, uint32_t flags,
+                         uint8_t *state, uint8_t *b, int32_t x, int32_t y)
+{
+    assert(parameter == (uint8_t *)&widget && b == bitmap && !flags);
+    unsigned encoder = (unsigned)(state - (view + 0xb4)) / 20u;
+    assert(encoder < 8 && state == view + 0xb4 + 20 * encoder);
+    assert(x == 24 + 26 * (int)(encoder % 4) && y == (encoder < 4 ? 34 : 7));
+    widget_draw[encoder].code = code;
+    widget_draw[encoder].raw = raw;
 }
 
 void tk_trig_stock_draw(uint8_t *p, uint8_t *b)
 {
     assert(p == view && b == bitmap);
     ++drawn;
+    memset(widget_draw, 0, sizeof widget_draw);
+    memset(labels, 0, sizeof labels);
+    keyboard_drawn = false;
+    locks_drawn = 0;
+}
+
+uint8_t *dk_fw_window_ui_states(void)
+{
+    return bitmap;
+}
+
+void dk_fw_window_toast(uint8_t *ui, const char *fmt, ...)
+{
+    assert(ui == bitmap);
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(last_toast, sizeof last_toast, fmt, args);
+    va_end(args);
 }
 
 void dk_fw_mem_free(uint8_t *p)
@@ -111,7 +170,12 @@ void dk_fw_view_invalidate(uint8_t *p)
 void dk_fw_draw_fill_rect(uint8_t *b, int32_t x0, int32_t y0, int32_t x1, int32_t y1, int32_t color)
 {
     assert(b == bitmap && x0 >= 23 && y0 >= 0 && x1 <= 122 && y1 <= 52);
-    (void)color;
+    if (color == -1) {
+        assert(x0 == 102 && y0 == 6 && x1 == 122 && y1 == 24);
+        ++locks_drawn;
+    }
+    if (color == 1 && x0 == 25 && y0 == 7 && x1 == 67 && y1 == 21)
+        keyboard_drawn = true;
 }
 
 void dk_fw_draw_invert_rect(uint8_t *b, int32_t x0, int32_t y0, int32_t x1, int32_t y1,
@@ -124,9 +188,16 @@ int32_t dk_fw_text_draw_box(uint8_t *b, uint8_t *f, int32_t x, int32_t y, int32_
                             int32_t flags, const char *prefix, const char *fmt, ...)
 {
     assert(b == bitmap && x >= 23 && y >= 0 && x < 122 && y <= 52);
-    assert(align == 0 && flags == 0 && !prefix);
+    assert(align == 1 && flags == 0 && !prefix);
     (void)f;
-    (void)fmt;
+    assert(x == 34 || x == 60 || x == 86 || x == 112);
+    unsigned encoder = (unsigned)(x - 34) / 26u + (y < 27 ? 4u : 0u);
+    unsigned line = y == 14 || y == 41;
+    assert(line || y == 0 || y == 27);
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(labels[line][encoder], sizeof labels[line][encoder], fmt, args);
+    va_end(args);
     return 0;
 }
 
@@ -208,6 +279,10 @@ static void init_vector(uint32_t *original)
 
 int main(void)
 {
+    write(view, 0, (uint32_t)(uintptr_t)view_vtable);
+    view_vtable[0xc4 / 4] = (uint32_t)(uintptr_t)widget_access;
+    widget = (uint32_t)(uintptr_t)widget_vtable;
+    widget_vtable[0x60 / 4] = (uint32_t)(uintptr_t)widget_paint;
     write(view, 0x6c, (uint32_t)(uintptr_t)editor);
     write(view, 0x74, 1);
     init_vector(stock_pages);
@@ -223,14 +298,33 @@ int main(void)
     assert(read(view, 0x90) == 2 && pages[0] == 1 && pages[1] == 2);
     tk_trig_draw(view, bitmap);
     assert(tk_trig_parameter(view, 0) == 0 && tk_trig_parameter(view, 8) == 108);
-    assert(turn(1, 2) && !track_writes);
+    assert(!strcmp(labels[0][0], "ARP") && !strcmp(labels[0][1], "ORDR"));
+    assert(widget_draw[0].code == 0x104 && widget_draw[0].raw == 0);
+    assert(widget_draw[2].code == 0xcc && widget_draw[5].code == 0xcc);
+    assert(widget_draw[3].code == 0x107 && widget_draw[3].raw == config.rate << 8);
+    view[0x190] = 1;
+    tk_trig_draw(view, bitmap);
+    assert(!strcmp(labels[0][0], "OFF") && !strcmp(labels[0][2], "50%"));
+    assert(!strcmp(labels[0][3], "1/16") && widget_draw[3].code == 0x107);
+    view[0x190] = 0;
+    config.rate = TK_RATE_7Q;
+    tk_trig_draw(view, bitmap);
+    assert(!widget_draw[3].code && !strcmp(labels[1][3], "7/Q"));
+    config.rate = tk_defaults().rate;
+    assert(turn(1, 2) && !track_writes && focus_touches == 1);
     assert(turn(1, 2) && track_writes == 1 && config.arp == 1);
+    tk_trig_draw(view, bitmap);
+    assert(!strcmp(labels[0][0], "ON") && widget_draw[0].raw == 0x100);
+    focus = 0;
+    tk_trig_draw(view, bitmap);
+    assert(!strcmp(labels[0][0], "ARP"));
     turn(9, 4);
     assert(stock_turns == 1);
     key(48, 1);
     turn(8, 4);
     key(48, 16);
     assert(!notes && config.chord == TK_CHORD_MAJ);
+    assert(!strcmp(last_toast, "Major"));
     key(48, 1);
     key(48, 16);
     assert(notes == 1);
@@ -238,6 +332,7 @@ int main(void)
     held = true;
     write(editor, 0x258, 1u << 17);
     tk_trig_draw(view, bitmap);
+    assert(locks_drawn == 1 && !strcmp(labels[0][7], "MIN"));
     turn(8, 4);
     key(48, 1);
     key(48, 16);
@@ -256,6 +351,8 @@ int main(void)
     key(1, 16);
     assert(read(view, 0x90) == 3);
     tk_trig_draw(view, bitmap);
+    assert(keyboard_drawn && !labels[0][4][0] && !labels[0][5][0]);
+    assert(widget_draw[0].code == 0x104 && widget_draw[3].code == 0xcc);
     assert(turn(7, 4) && track_writes == 2);
     key(42, 1);
     selected_track = 5;
@@ -265,7 +362,13 @@ int main(void)
     selected_track = 0;
     tk_trig_draw(view, bitmap);
     assert(allocations == 1 && read(view, 0x80) - read(view, 0x7c) == 16);
-    assert(stock_keys == 3 && invalidations == 4);
+    assert(stock_keys == 3 && invalidations == 6 && focus_touches == 5);
+
+    write(view, 0x90, 1);
+    audio_retrig = true;
+    assert(!turn(1, 4));
+    assert(stock_turns == 2 && !strcmp(last_toast, "ARP overrides RTRG"));
+    audio_retrig = false;
 
     init_vector(other_pages);
     tk_trig_draw(view, bitmap);

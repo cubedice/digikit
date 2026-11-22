@@ -4,9 +4,13 @@
 #include "transport.h"
 enum { ML_WORDS = 18 };
 #define ML_MAGIC 0x434c4b31u
+/* Sound frames retain all five lock pairs. Header bit 17 marks a Sound.
+ * The high halves of words 7 and 16 carry the 31-bit preset controls.
+ * Word 8 packs color:7, native tune:15 and source value 1:10. */
 /* Both routines leave outputs unchanged on failure. `packet` is the exact
  * retained note packet, so a late or unrelated sideband cannot be applied. */
 int ml_encode(const MiTransport *transport, const uint32_t *packet, uint32_t out[ML_WORDS]);
 int ml_decode(const uint32_t side[ML_WORDS], const uint32_t *packet, uint16_t locks[MI_LOCKS],
-              uint32_t *count, uint16_t source[MI_SOURCE_VALUES], uint32_t *source_valid);
+              uint32_t *count, uint16_t source[MI_SOURCE_VALUES], uint32_t *source_valid,
+              uint32_t *sound_controls, uint16_t *sound_tune);
 #endif

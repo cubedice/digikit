@@ -395,6 +395,75 @@ def test_wave_lock_carries_the_remembered_fm_bank_without_changing_base(playback
     assert get("_test_values", 32) == base
 
 
+def test_sound_lock_overlay_uses_pool_bank_before_step_locks_and_retires_it(playback):
+    call, put, get, _, _, _, symbols = playback
+    base = wavetable_fm_controls()
+    base[0] |= 0x4000 << 16
+    base[1] = 2
+    put("_test_values", base)
+    packet = wire_packet([(1, 1, 60, 100, 0, 0)], generation=1, revision=1, track=0)
+    packet[1] |= 0x1000
+
+    def stage(source, wave, tune, pairs=(), *, reserved=0):
+        controls = wave | (91 << 3) | (19 << 10) | (102 << 17) | (125 << 24)
+        side = [
+            0x434C4B31,
+            packet[2],
+            packet[3],
+            packet[9],
+            0x30030 | (len(pairs) << 8),
+        ]
+        padded = [*pairs, *([0] * (6 - len(pairs)))]
+        side += [padded[i] | (padded[i + 1] << 16) for i in range(0, 6, 2)]
+        side[7] |= (controls & 0xFFFF) << 16
+        side.append(source[0] | (tune << 7) | (source[1] << 22))
+        for i in range(2, 17, 2):
+            side.append(source[i] | ((source[i + 1] if i + 1 < 17 else 0) << 16))
+        side[16] |= (controls & 0xFFFF0000) | reserved
+        a, b = 0x6C6F636B, 0x74726967
+        for value in side:
+            a = (a + value) & 0xFFFFFFFF
+            b = (b + a) & 0xFFFFFFFF
+        put("_test_packet_block", side + [a ^ b] + packet)
+        return call(9, R4=symbols["_test_packet"])
+
+    fm = fm_controls()
+    source = [fm[2]] + [word >> 16 for word in fm[16:32]]
+    assert stage(source, 7, 0x7C00) == 1
+    call(10)
+    assert call(12, R4=symbols["_test_values"]) == symbols["_iv_lock_controls"]
+    effective = get("_iv_lock_controls", 32)
+    assert effective[0] >> 16 == 0x7C00
+    assert effective[1:7] == [3, source[0], 91, 19, 102, 125]
+    assert [word >> 16 for word in effective[16:32]] == source[1:]
+    assert [effective[i] & 65535 for i in (18, 19, 21, 30, 31)] == [
+        source[0],
+        91,
+        125,
+        19,
+        102,
+    ]
+
+    pairs = [(34 << 10) | 7, (3 << 10) | 12, (40 << 10) | 98]
+    assert stage(source, 6, 0x400, pairs) == 0
+    assert stage(source, 7, 0x3FF, pairs) == 0
+    assert stage(source, 7, 0x400, pairs, reserved=1 << 31) == 0
+    call(10)
+    assert call(12, R4=symbols["_test_values"]) == symbols["_iv_lock_controls"]
+    assert get("_iv_lock_controls", 32) == effective
+    assert stage(source, 7, 0x400, pairs) == 1
+    call(10)
+    call(12, R4=symbols["_test_values"])
+    overridden = get("_iv_lock_controls", 32)
+    assert overridden[0] >> 16 == 0x400
+    assert overridden[2:4] == [98, 12]
+    assert [overridden[i] & 65535 for i in (18, 19)] == [98, 12]
+    assert get("_test_values", 32) == base
+
+    call(11)
+    assert call(12, R4=symbols["_test_values"]) == symbols["_test_values"]
+
+
 def test_opted_in_output_is_borrowed_per_block_and_revoked_with_session(playback):
     call, put, get, reset, configure, events, symbols = playback
     assert reset() == 1

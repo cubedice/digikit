@@ -21,6 +21,9 @@
 /* Lock IDs from here are consumed by the CF mapper and stay off the DSP wire. */
 #define MI_LOCK_MAPPER_FIRST 53u
 #define MI_SOURCE_VALUES 17u
+/* Sound presets carry the effective wave followed by DRIFT, ATK, REL and MIX
+ * (3 + 4 x 7 bits). The top bit distinguishes a Sound from a WAVE-only bank. */
+#define MI_SOUND_VALID UINT32_C(0x80000000)
 
 typedef struct {
     uint32_t epoch, sequence, token, generation;
@@ -31,6 +34,8 @@ typedef struct {
     uint16_t locks[MI_LOCKS];
     uint8_t source_valid, shared_lanes;
     uint16_t source[MI_SOURCE_VALUES];
+    uint16_t sound_tune;
+    uint32_t sound_controls;
 } MiEvent;
 typedef struct {
     uint32_t token, generation, identity;

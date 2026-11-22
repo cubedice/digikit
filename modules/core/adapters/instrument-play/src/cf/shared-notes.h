@@ -14,6 +14,8 @@ typedef struct {
 typedef struct IsnSnapshot {
     uint8_t valid, count, source_valid, lanes;
     uint16_t locks[MI_LOCKS], source[MI_SOURCE_VALUES];
+    uint16_t sound_tune;
+    uint32_t sound_controls;
 } IsnSnapshot;
 typedef struct {
     IsnNote note;
@@ -96,7 +98,8 @@ static inline int isn_same_snapshot(const IsnSnapshot *a, const IsnSnapshot *b)
         return 0;
     if (!a->valid)
         return 1;
-    if (a->count != b->count || a->source_valid != b->source_valid || a->lanes != b->lanes)
+    if (a->count != b->count || a->source_valid != b->source_valid || a->lanes != b->lanes ||
+        a->sound_controls != b->sound_controls || a->sound_tune != b->sound_tune)
         return 0;
     for (uint32_t i = 0; i < a->count; ++i)
         if (a->locks[i] != b->locks[i])
@@ -132,11 +135,15 @@ static inline uint32_t isn_take(IsnQueue *q, MiEvent output[8])
         event->note = note->pitch;
         event->value = note->velocity;
         event->lock_valid = event->lock_count = event->source_valid = 0;
+        event->sound_tune = 0;
+        event->sound_controls = 0;
         if (n == 0 && snapshot->valid) {
             event->lock_valid = 1;
             event->lock_count = snapshot->count;
             event->source_valid = snapshot->source_valid;
             event->shared_lanes = snapshot->lanes;
+            event->sound_tune = snapshot->sound_tune;
+            event->sound_controls = snapshot->sound_controls;
             for (uint32_t i = 0; i < snapshot->count; ++i)
                 event->locks[i] = snapshot->locks[i];
             for (uint32_t i = 0; snapshot->source_valid && i < MI_SOURCE_VALUES; ++i)

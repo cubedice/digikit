@@ -9,5 +9,6 @@ uint32_t tk_pattern_fw_track_base(uint32_t address, uint8_t *track);
 void tk_pattern_fw_changed(void);
 uint32_t tk_pattern_fw_revision(void);
 uint32_t tk_pattern_fw_selected(void);
+bool tk_pattern_fw_note_step(uint32_t address, uint8_t track, uint8_t step);
 
 #endif

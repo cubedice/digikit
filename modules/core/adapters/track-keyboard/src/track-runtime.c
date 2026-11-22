@@ -11,13 +11,17 @@
 #include "dkrt.h"
 
 extern uint32_t pp_current_pattern(void);
+extern uint32_t pp_transport_running(void);
 extern uint32_t pp_selected_tempo(void);
 extern volatile uint32_t pp_position[16];
+extern uint32_t dkrt_irq_mask(void);
+extern void dkrt_irq_restore(uint32_t);
 extern dk_ui *dk_ui_core_handle(void);
 extern uintptr_t tk_fw_project(void);
 extern uintptr_t tk_fw_active_kit(uintptr_t project);
 
 static uint32_t pattern, editing_pattern, revision, block, boundary, block_fraction;
+static uint32_t stopped_boundary;
 static bool was_running;
 static uint16_t registered;
 static uint8_t kind[TK_TRACKS], panel_track[TK_NOTES];
@@ -26,7 +30,7 @@ volatile uint32_t tk_panel_claim_hits;
 static bool polling;
 static TkNotesDraft draft;
 static dk_ui_menu *notes_menu, *note_menu, *selector_menu, *pool_menu;
-static char notes_title[DK_UI_ROW] = "NOTES";
+static bool notes_dirty, notes_choosing_step, notes_existing_step;
 static uint8_t pool_owner;
 static int32_t note_index, note_offset, note_velocity;
 static int32_t selector_octave, selector_channel;
@@ -70,12 +74,10 @@ bool tk_runtime_learn_note(uint8_t track, uint8_t pitch, uint8_t velocity)
 
 static uint32_t pattern_snapshot(void)
 {
-    uint32_t before = pp_position[2];
-    uint32_t flags = pp_position[5], audible = pp_position[6];
-    uint32_t after = pp_position[2];
-    if (before != after)
-        return pattern;
-    if (flags & 2u)
+    uint32_t flags = pp_position[5], audible = pp_position[6], committed = pp_position[3];
+    /* A START can be native-running before the frame contains its position.
+     * Until a new boundary arrives, follow the scheduled pattern armed at STOP. */
+    if ((flags & 2u) && committed != stopped_boundary)
         return (flags & 1u) && audible ? audible : pattern;
     return pp_current_pattern();
 }
@@ -100,8 +102,12 @@ void tk_panel_focus(uint32_t track)
 
 static bool refresh_pattern(void)
 {
-    bool running = (pp_position[5] & 2u) != 0;
+    uint32_t sr = dkrt_irq_mask();
+    bool running = pp_transport_running() != 0;
+    if (!running)
+        stopped_boundary = pp_position[3];
     uint32_t next = running ? pattern_snapshot() : 0;
+    dkrt_irq_restore(sr);
     uint32_t edit = tk_pattern_fw_selected();
     if (!edit)
         edit = pp_current_pattern();
@@ -139,7 +145,7 @@ static bool can_prepare_track(uint8_t track, const TkPattern *destination,
         /* An early seed can use the active CANOPY Sound only when both
          * patterns share that Sound and have adopted the shared keyboard. */
         return active_kit && target.kit == active_kit && active->override && next->override &&
-               tk_canopy_routed(track) && !tk_sequence_canopy_sound_locks(target.address, track);
+               tk_canopy_routed(track) && !tk_sequence_canopy_sound_fallback(target.address, track);
     }
     if (tk_sequence_target_kind(target.kit, track) != (int)kind[track])
         return false;
@@ -235,6 +241,14 @@ static void poll(void)
     tk_sequence_poll(pattern ? pattern : editing_pattern, was_running);
     prepare_sequence_targets();
     tk_capture_poll(editing_pattern, (uint16_t)pp_selected_tempo());
+    static uint32_t capture_drops, capture_notice;
+    if (capture_drops != tk_capture_dropped) {
+        capture_drops = tk_capture_dropped;
+        if (!capture_notice || now - capture_notice >= 1500u) {
+            capture_notice = now | 1u;
+            dk_ui_toast(dk_ui_core_handle(), "NOTES FULL");
+        }
+    }
     tk_native_drain();
 }
 
@@ -295,6 +309,10 @@ static void notes_apply(void *unused, int32_t value)
 {
     (void)unused;
     (void)value;
+    if (notes_existing_step && !tk_pattern_fw_note_step(editing_pattern, draft.track, draft.step)) {
+        dk_ui_toast(dk_ui_core_handle(), "STEP UNAVAILABLE");
+        return;
+    }
     if (tk_notes_commit(&draft))
         dk_ui_menu_close(notes_menu);
     else
@@ -305,6 +323,7 @@ static void notes_learn(void *unused, int32_t value)
 {
     (void)unused;
     (void)value;
+    notes_dirty = true;
     tk_notes_learn(&draft);
     tk_midi_poll();
     dk_ui_menu_close(notes_menu);
@@ -314,6 +333,11 @@ static void notes_learn(void *unused, int32_t value)
 static int32_t notes_back(void *unused)
 {
     (void)unused;
+    if (notes_choosing_step) {
+        notes_choosing_step = false;
+        dk_ui_menu_select(notes_menu, 0);
+        return 1;
+    }
     draft.open = false;
     return 0;
 }
@@ -334,6 +358,7 @@ static void note_apply(void *unused, int32_t value)
     (void)value;
     if (!draft.open || note_index < 0 || note_index >= draft.recipe.count)
         return;
+    notes_dirty = true;
     draft.recipe.notes[note_index] = (TkRecipeNote){(int8_t)note_offset, (uint8_t)note_velocity};
     dk_ui_menu_close(note_menu);
     dk_ui_menu_refresh(notes_menu);
@@ -371,6 +396,7 @@ static void note_remove(void *unused, int32_t index)
     (void)unused;
     if (!draft.open || index < 0 || index >= draft.recipe.count)
         return;
+    notes_dirty = true;
     --draft.recipe.count;
     draft.clear = !draft.recipe.count;
     for (; index < draft.recipe.count; ++index)
@@ -386,6 +412,7 @@ static void note_move(void *unused, int32_t encoded)
     if (!draft.open || index < 0 || to < 0 || index >= draft.recipe.count ||
         to >= draft.recipe.count)
         return;
+    notes_dirty = true;
     TkRecipeNote note = draft.recipe.notes[index];
     draft.recipe.notes[index] = draft.recipe.notes[to];
     draft.recipe.notes[to] = note;
@@ -402,6 +429,7 @@ static void note_insert(void *unused, int32_t index)
         dk_ui_toast(dk_ui_core_handle(), "NOTES FULL");
         return;
     }
+    notes_dirty = true;
     for (int32_t i = draft.recipe.count; i > index; --i)
         draft.recipe.notes[i] = draft.recipe.notes[i - 1];
     draft.recipe.notes[index] = (TkRecipeNote){.velocity = 100};
@@ -425,6 +453,7 @@ static void note_reference(void *unused, int32_t index)
             return;
         }
     }
+    notes_dirty = true;
     for (uint8_t i = 0; i < draft.recipe.count; ++i)
         draft.recipe.notes[i].interval = (int8_t)(draft.recipe.notes[i].interval - reference);
     dk_ui_menu_refresh(notes_menu);
@@ -436,6 +465,7 @@ static void notes_clear(void *unused, int32_t value)
     (void)value;
     if (!draft.open)
         return;
+    notes_dirty = true;
     draft.recipe.count = 0;
     draft.clear = true;
     dk_ui_menu_refresh(notes_menu);
@@ -485,9 +515,37 @@ static void selector_open(void *unused, int32_t value)
     dk_ui_menu_open(selector_menu);
 }
 
+static void notes_pick_step(void *unused, int32_t step)
+{
+    (void)unused;
+    if (tk_pattern_fw_selected() != editing_pattern ||
+        !tk_pattern_fw_note_step(editing_pattern, draft.track, (uint8_t)step) ||
+        !tk_notes_open(draft.track, (uint8_t)step, true, &draft)) {
+        dk_ui_toast(dk_ui_core_handle(), "STEP UNAVAILABLE");
+        return;
+    }
+    notes_existing_step = true;
+    notes_choosing_step = false;
+    dk_ui_menu_select(notes_menu, 0);
+}
+
+static void notes_edit_step(void *unused, int32_t value)
+{
+    (void)unused;
+    (void)value;
+    if (notes_dirty) {
+        dk_ui_toast(dk_ui_core_handle(), "APPLY OR CANCEL FIRST");
+        return;
+    }
+    notes_choosing_step = true;
+    dk_ui_menu_select(notes_menu, 0);
+}
+
 static void notes_panel(dk_ui_menu *m, int32_t row, void *unused)
 {
     (void)unused;
+    if (notes_choosing_step)
+        return;
     int32_t n = row - 2;
     if (n < 0 || n >= draft.recipe.count) {
         dk_ui_menu_add_action(m, "INSERT", note_insert, NULL, draft.recipe.count);
@@ -495,6 +553,7 @@ static void notes_panel(dk_ui_menu *m, int32_t row, void *unused)
             dk_ui_menu_add_action(m, "CLEAR NOTES", notes_clear, NULL, 0);
         if (!draft.step_scope)
             dk_ui_menu_add_action(m, "SELECTOR", selector_open, NULL, 0);
+        dk_ui_menu_add_action(m, "EDIT STEP", notes_edit_step, NULL, 0);
         return;
     }
     if (n > 0)
@@ -506,12 +565,34 @@ static void notes_panel(dk_ui_menu *m, int32_t row, void *unused)
     dk_ui_menu_add_action(m, "REMOVE", note_remove, NULL, n);
     if (!draft.step_scope)
         dk_ui_menu_add_action(m, "SELECTOR", selector_open, NULL, 0);
+    dk_ui_menu_add_action(m, "EDIT STEP", notes_edit_step, NULL, 0);
 }
 
 static void notes_fill(dk_ui_menu *m, void *unused)
 {
     (void)unused;
-    dk_ui_menu_add_action(m, draft.clear ? "APPLY PLAY" : "APPLY USER", notes_apply, NULL, 0);
+    if (notes_choosing_step) {
+        dk_ui_menu_add_text(m, "EDIT STEP");
+        for (unsigned step = 0; step < TK_STEPS; ++step) {
+            if (!tk_pattern_fw_note_step(editing_pattern, draft.track, (uint8_t)step))
+                continue;
+            char label[DK_UI_ROW] = "STEP ";
+            *decimal(label + 5, step + 1u) = 0;
+            dk_ui_menu_add_action(m, label, notes_pick_step, NULL, (int32_t)step);
+        }
+        return;
+    }
+    const char *apply = draft.clear ? "APPLY PLAY" : "APPLY USER";
+    char scope[DK_UI_ROW];
+    if (draft.step_scope) {
+        memcpy(scope, apply, 10);
+        memcpy(scope + 10, " T", 2);
+        char *end = decimal(scope + 12, (unsigned)draft.track + 1u);
+        memcpy(end, " S", 2);
+        *decimal(end + 2, (unsigned)draft.step + 1u) = 0;
+        apply = scope;
+    }
+    dk_ui_menu_add_action(m, apply, notes_apply, NULL, 0);
     dk_ui_menu_add_action(m, "LEARN", notes_learn, NULL, 0);
     for (uint8_t i = 0; i < draft.recipe.count; ++i) {
         char text[DK_UI_ROW];
@@ -529,7 +610,7 @@ static void notes_fill(dk_ui_menu *m, void *unused)
 bool tk_trig_open_notes(uint8_t track, int step)
 {
     static const dk_ui_menu_desc desc = {.name = "track-keyboard/notes",
-                                         .title = notes_title,
+                                         .title = "NOTES",
                                          .flags = DK_UI_LIST,
                                          .fill = notes_fill,
                                          .panel = notes_panel,
@@ -538,17 +619,17 @@ bool tk_trig_open_notes(uint8_t track, int step)
         notes_menu = dk_ui_menu_new(dk_ui_core_handle(), &desc);
     if (!notes_menu)
         return false;
-    if ((!draft.open || (step >= 0 && (!draft.step_scope || draft.step != step))) &&
-        !tk_notes_open(track, step < 0 ? 0 : (uint8_t)step, step >= 0, &draft))
-        return false;
-    draft.learn = false;
-    memcpy(notes_title, "NOTES T", 7);
-    char *title = decimal(notes_title + 7, (unsigned)draft.track + 1u);
-    if (draft.step_scope) {
-        memcpy(title, " S", 2);
-        title = decimal(title + 2, (unsigned)draft.step + 1u);
+    if (!draft.open || draft.track != track ||
+        (step >= 0 && (!draft.step_scope || draft.step != step))) {
+        if (draft.open && notes_dirty) {
+            dk_ui_toast(dk_ui_core_handle(), "APPLY OR CANCEL FIRST");
+            return false;
+        }
+        if (!tk_notes_open(track, step < 0 ? 0 : (uint8_t)step, step >= 0, &draft))
+            return false;
+        notes_dirty = notes_existing_step = false;
     }
-    *title = 0;
+    notes_choosing_step = draft.learn = false;
     dk_ui_menu_select(notes_menu, 0);
     if (dk_ui_menu_open(notes_menu) < 0) {
         draft.open = false;
@@ -557,21 +638,59 @@ bool tk_trig_open_notes(uint8_t track, int step)
     return true;
 }
 
+static uint16_t pool_original, pool_request;
+static uint32_t pool_pattern, pool_revision;
+
+static bool pool_editable(void)
+{
+    if (pp_transport_running()) {
+        dk_ui_toast(dk_ui_core_handle(), "STOP TO EDIT VOICE GROUP");
+        return false;
+    }
+    if (editing_pattern == pool_pattern && tk_pattern_fw_revision() == pool_revision &&
+        tk_trig_ready(pool_owner) && kind[pool_owner] == TK_NATIVE_AUDIO &&
+        tk_service_helpers(pool_owner) == pool_original)
+        return true;
+    dk_ui_menu_close(pool_menu);
+    dk_ui_toast(dk_ui_core_handle(), "VOICE GROUP CHANGED");
+    return false;
+}
+
 static void pool_toggle(void *unused, int32_t track)
 {
     (void)unused;
-    if (was_running || track < 0 || track >= TK_TRACKS || track == pool_owner)
+    if (track < 0 || track >= TK_TRACKS || track == pool_owner || !pool_editable())
         return;
-    uint16_t mask = (uint16_t)(1u << track);
-    uint16_t requested = tk_service_helpers(pool_owner);
-    uint16_t eligible = tk_pool_fw_eligible(pool_owner);
-    if (!(mask & (requested | eligible)) ||
-        !tk_service_assign_helpers(pool_owner, requested ^ mask, eligible)) {
-        dk_ui_toast(dk_ui_core_handle(), mask & eligible ? "UP TO 3 HELPERS" : "TRACK UNAVAILABLE");
+    uint16_t bit = (uint16_t)(1u << track);
+    uint16_t request = pool_request ^ bit;
+    uint16_t selectable = tk_pool_fw_eligible(pool_owner) | pool_original;
+    /* An unavailable draft member can always be removed. Apply checks the
+     * complete set against current eligibility before it changes the pattern. */
+    if ((request & bit) && !(selectable & bit)) {
+        dk_ui_toast(dk_ui_core_handle(), "TRACK UNAVAILABLE");
         return;
     }
-    poll();
+    TkTrackConfig preview;
+    if (!tk_assign_helpers(&preview, pool_owner, request, UINT16_MAX, UINT16_MAX, 0)) {
+        dk_ui_toast(dk_ui_core_handle(), "UP TO 3 HELPERS");
+        return;
+    }
+    pool_request = preview.helpers;
     dk_ui_menu_refresh(pool_menu);
+}
+
+static void pool_apply(void *unused, int32_t value)
+{
+    (void)unused;
+    (void)value;
+    if (!pool_editable())
+        return;
+    if (!tk_service_assign_helpers(pool_owner, pool_request, tk_pool_fw_eligible(pool_owner))) {
+        dk_ui_toast(dk_ui_core_handle(), "TRACK UNAVAILABLE");
+        return;
+    }
+    dk_ui_menu_close(pool_menu);
+    poll();
 }
 
 static void pool_fill(dk_ui_menu *m, void *unused)
@@ -585,8 +704,9 @@ static void pool_fill(dk_ui_menu *m, void *unused)
         *end++ = *suffix++;
     *end = 0;
     dk_ui_menu_add_text(m, summary);
-    uint16_t requested = tk_service_helpers(pool_owner);
+    dk_ui_menu_add_action(m, "APPLY GROUP", pool_apply, NULL, 0);
     uint16_t eligible = tk_pool_fw_eligible(pool_owner);
+    int32_t row = 2;
     for (uint8_t track = 0; track < TK_TRACKS; ++track) {
         if (track == pool_owner)
             continue;
@@ -595,14 +715,15 @@ static void pool_fill(dk_ui_menu *m, void *unused)
         *w++ = ' ';
         uint16_t bit = (uint16_t)(1u << track);
         int owner = tk_pool_fw_owner(track);
-        const char *state = owner == pool_owner ? "RESERVED"
-                            : requested & bit   ? "PENDING"
-                            : eligible & bit    ? "AVAILABLE"
-                                                : "IN USE";
+        const char *state = pool_request & bit    ? owner == pool_owner ? "RESERVED" : "SELECTED"
+                            : pool_original & bit ? "REMOVE"
+                            : eligible & bit      ? "AVAILABLE"
+                                                  : "IN USE";
         while (*state)
             *w++ = *state++;
         *w = 0;
         dk_ui_menu_add_action(m, label, pool_toggle, NULL, track);
+        dk_ui_menu_check(m, row++, (pool_request & bit) != 0);
     }
 }
 
@@ -610,7 +731,7 @@ bool tk_trig_open_pool(uint8_t track)
 {
     static const dk_ui_menu_desc desc = {.name = "track-keyboard/pool",
                                          .title = "VOICE GROUP",
-                                         .flags = DK_UI_WIDE,
+                                         .flags = DK_UI_LIST,
                                          .fill = pool_fill};
     if (!tk_trig_ready(track))
         return false;
@@ -618,14 +739,17 @@ bool tk_trig_open_pool(uint8_t track)
         return dk_ui_toast(dk_ui_core_handle(), kind[track] == TK_NATIVE_MIDI
                                                     ? "MIDI: UP TO 16 NOTES"
                                                     : "CANOPY: FOUR PAD VOICES") == 0;
-    if (was_running)
+    if (pp_transport_running())
         return dk_ui_toast(dk_ui_core_handle(), "STOP TO EDIT VOICE GROUP") == 0;
     if (!pool_menu)
         pool_menu = dk_ui_menu_new(dk_ui_core_handle(), &desc);
     if (!pool_menu)
         return false;
     pool_owner = track;
-    dk_ui_menu_select(pool_menu, 1);
+    pool_original = pool_request = tk_service_helpers(track);
+    pool_pattern = editing_pattern;
+    pool_revision = tk_pattern_fw_revision();
+    dk_ui_menu_select(pool_menu, 2);
     return dk_ui_menu_open(pool_menu) >= 0;
 }
 

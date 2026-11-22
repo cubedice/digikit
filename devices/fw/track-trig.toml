@@ -78,3 +78,21 @@ rule = { kind = "cf_window_hash", search_len = 24, len = 6, sha256 = "c8b3769c5f
 mark = "D"
 users = ["core/track-keyboard"]
 doc = "Unmodified entry called when wrapping the TRIG view parameter method."
+
+[[site]]
+name = "cf.page.site.track_trig_title_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 260, offset = 76, len = 4, sha256 = "8854b03c33812096d8c5e09004e27cf086601ca7dc99a59e577b46a50611565d" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "DTII 1.17 TRIG parameter view title slot. Stock target 0x4006965a returns a COW std::string to A0."
+
+[[site]]
+name = "cf.page.site.track_trig_stock_title"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, len = 6, sha256 = "ac8506583ca85b41a876e649429f5028096067c8dd6a24fcfa411730bfcfe19d" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Native TRIG page title routine. The adapter preserves this method and return ABI for both stock pages."
