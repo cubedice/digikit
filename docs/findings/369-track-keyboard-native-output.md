@@ -410,6 +410,24 @@ stock owner fallback when the route cannot be confirmed within 120 blocks.
 In the RELAY SHARC rig, the automatic owner played a pitched take from its
 own head and accepted the second head when a helper route was present.
 
+## ARP phase under short gates [D]
+
+The scheduler used the note's gate deadline as its threshold for moving
+the next onset to the current poll time. In a 120 BPM host test at 1/16
+and GATE 1%, a poll 2 ms late shifted the following onset from 250 to
+252 ms. The scheduler now keeps the original time grid and swing phase.
+It advances across elapsed slots without replaying them. A late onset
+receives a gate bounded by the following slot.
+
+The coupled DTII 1.17 fixture programmed a single long trig on T10 and
+counted its 1/32 arpeggio against 16 committed native steps at 102 BPM
+with GATE 1%. The older scheduler dispatched 25 of the 32 subdivisions
+in the final A/B run.
+The fixed scheduler dispatched all 32 in order and emitted 32 releases.
+The native send entry arrived 0.75–33.10 ms after its subdivision, with
+no growing offset across the pattern.
+These measurements use the emulated device clock at dispatch.
+
 ## Qualification scope [D]
 
 CANOPY supplies its own internal polyphony. Other dynamic machines need

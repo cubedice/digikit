@@ -183,10 +183,12 @@ RST controls the traversal cursor:
 - **CONTINUE** — preserve cursor across phrases and pattern changes, wrapping
   against the new candidate count. It does not preserve notes or latch input.
 
-RST controls the note index, not the seed's actual onset time. A new phrase's
-first note is due at the eligible seed/key event, including a microtimed trig;
-its subsequent intervals start there and follow RATE/SWNG. Do not catch up
-missed notes with a burst. CONTINUE remembers the next index while input is
+RST controls the note index. A new phrase's
+first note is due at the eligible seed/key event, including a microtimed trig.
+Its subsequent intervals start there and follow RATE/SWNG. A delayed poll
+skips elapsed slots and keeps the forward timing and swing phase. A late
+onset whose gate has already elapsed gets a gate bounded by the next slot.
+CONTINUE remembers the next index while input is
 empty; it does not advance it silently. PATTERN instead derives the index
 from the running pattern grid on re-entry. For an E/C/G press-order set, a
 fresh phrase starts E under TRIG; CONTINUE resumes C if E was the last note;
@@ -506,7 +508,7 @@ the destination track acquired it after STOP.
 ### Building the full experimental image
 
 Use a separate checkout to build the full experimental image with the
-436 KiB module arena. This profile leaves 3,432 bytes in ColdFire expansion
+436 KiB module arena. This profile leaves 2,856 bytes in ColdFire expansion
 and retains the 151,552-byte DTII staging buffer. Set `[limits] arena_bytes`
 to `446464` in the Digitakt II, Digitone II and Syntakt device profiles and
 set `ARENA_BYTES` to the same value in the runtime ABI. Regenerate its C and

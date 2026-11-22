@@ -153,6 +153,50 @@ static void arp_timing(void)
     assert(e.count == 16);
 }
 
+static void late_arp_preserves_grid(void)
+{
+    Events e = {0};
+    TkState s;
+    tk_init(&s, sink, &e);
+    TkParams p = tk_defaults();
+    const TkRecipe recipe = {0};
+    const TkSeed seed = {.count = 1, .notes = {{60, 100, 0, 0}}};
+    const uint64_t ticks_per_ms = TK_TICKS_PER_QUARTER / 500u; /* 120 BPM. */
+    p.arp = true;
+    p.chord = TK_CHORD_MAJ;
+    p.gate = 1;
+    assert(tk_configure(&s, &p, &recipe));
+    assert(tk_seed(&s, &seed));
+    tk_tick(&s, 0, 14400);
+    expect(&e, 0, true, 60, TK_ARP);
+    tk_tick(&s, 127000, 0); /* Late by 2 ms, longer than the 1.25 ms gate. */
+    expect(&e, 2, true, 64, TK_ARP);
+    assert(s.arp_off == s.clock + TK_TICKS_PER_QUARTER / 400u);
+    assert(s.next == 250u * ticks_per_ms);
+    tk_tick(&s, 123000, 0);
+    expect(&e, 4, true, 67, TK_ARP);
+    assert(s.next == 375u * ticks_per_ms);
+
+    tk_init(&s, sink, &e);
+    e.count = 0;
+    p.swing = 60;
+    assert(tk_configure(&s, &p, &recipe));
+    assert(tk_seed(&s, &seed));
+    tk_tick(&s, 0, 14400);
+    /* Miss the 150 ms and 250 ms slots. The next note lands at 400 ms;
+     * the following short interval is still 100 ms. */
+    tk_tick(&s, 402000, 0);
+    assert(e.count == 3);
+    expect(&e, 2, true, 60, TK_ARP);
+    assert(s.next == 500u * ticks_per_ms);
+    tk_tick(&s, 98000, 0);
+    expect(&e, 4, true, 64, TK_ARP);
+    assert(s.next == 650u * ticks_per_ms);
+    tk_tick(&s, 252000, 0); /* Skip one short interval and resume the long swing. */
+    expect(&e, 6, true, 60, TK_ARP);
+    assert(s.next == 900u * ticks_per_ms);
+}
+
 static void sequence_and_learned_shape(void)
 {
     Events e = {0};
@@ -630,6 +674,7 @@ int main(void)
     full_pitch_pool_from_two_ports();
     steal_and_strum();
     arp_timing();
+    late_arp_preserves_grid();
     sequence_and_learned_shape();
     pattern_controls();
     service_ownership();

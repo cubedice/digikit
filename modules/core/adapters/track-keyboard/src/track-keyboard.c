@@ -613,16 +613,41 @@ void tk_tick(TkState *s, uint32_t elapsed_us, uint16_t bpm)
     unsigned deviation =
         s->params.legacy_swing ? s->params.legacy_swing : 2u * (s->params.swing - 50u);
     unsigned weight = s->swung ? 100u - deviation : 100u + deviation;
+    uint32_t divisor = den * 100u;
     uint64_t scaled = span * weight + s->interval_remainder;
-    uint64_t duration = scaled / (den * 100u);
-    s->interval_remainder = (uint32_t)(scaled % (den * 100u));
-    s->swung = !s->swung;
-    /* After a missed interval start from now, without bursting overdue notes. */
+    uint64_t duration = scaled / divisor;
     uint64_t due = s->next;
-    if (s->clock - due >= duration * s->params.gate / 100u)
-        due = s->clock;
+    uint64_t late = s->clock - due;
+    if (late >= duration) {
+        /* Two swings always add to two straight intervals. Skip elapsed
+         * pairs in one step and retain their fractional ticks. */
+        uint64_t pair = span * 200u;
+        uint64_t pairs = (late * divisor + divisor - 1u - s->interval_remainder) / pair;
+        uint64_t skipped = pairs * pair + s->interval_remainder;
+        due += skipped / divisor;
+        scaled = span * weight + skipped % divisor;
+        duration = scaled / divisor;
+        uint8_t count = duration_count(s);
+        unsigned cursor = s->cursor + 2u * (unsigned)(pairs % count);
+        if (s->clock - due >= duration) {
+            due += duration;
+            scaled = span * (200u - weight) + scaled % divisor;
+            duration = scaled / divisor;
+            s->swung = !s->swung;
+            ++cursor;
+        }
+        s->cursor = (uint8_t)(cursor % count);
+    }
+    s->interval_remainder = (uint32_t)(scaled % divisor);
+    s->swung = !s->swung;
     s->next = due + duration;
-    s->arp_off = due + duration * s->params.gate / 100u;
+    uint64_t gate = duration * s->params.gate / 100u;
+    s->arp_off = due + gate;
+    if (s->clock >= s->arp_off) {
+        /* Give a late onset a gate without moving the next grid deadline. */
+        uint64_t off = s->clock + gate;
+        s->arp_off = off < s->next ? off : s->next;
+    }
     stop(s, &s->arp_voice);
     TkPitch pitch = s->candidates[arp_index(s)];
     start(s, &s->arp_voice, pitch, TK_ARP);
