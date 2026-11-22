@@ -451,13 +451,12 @@ int mt_reply_reordered(const MtReplyGuard *g, const uint32_t *reply)
                     return 0;
             return 1;
         }
-        /* The DTII can deliver N, N+3, N+2. A previously unseen reply
-         * inside a small, observed gap is stale too. Never admit its payload
-         * or refresh the deadline. An older unbracketed counter still faults. */
-        if (age > behind && age <= sizeof(g->history) / sizeof(g->history[0]))
+        /* Gaps between accepted replies can be wider than the lag of the
+         * late reply itself. Keep looking for any conflicting known copy. */
+        if (age > behind && age < 0x80000000u)
             bracketed = 1;
     }
-    return bracketed;
+    return bracketed && behind <= MT_REPLY_REORDER_LAG;
 }
 
 /* Sticky diagnostic for the first trust failure of a guard. No reply pointer

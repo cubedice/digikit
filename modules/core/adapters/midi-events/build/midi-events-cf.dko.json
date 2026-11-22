@@ -592,14 +592,14 @@
   },
   {
    "addend": 0,
-   "offset": 86,
+   "offset": 88,
    "section": ".text.mt_reply_reordered",
    "symbol": ".sec..text.mt_reply_session",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 106,
+   "offset": 108,
    "section": ".text.mt_reply_reordered",
    "symbol": ".sec..text.mt_reply_heartbeat",
    "type": "cf.32"
@@ -2547,10 +2547,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffd048d77cfc246f0034266f00384aaa001c660e428420044cd77cfc4fef00304e75242a00104a8267ea262a000c4a8366e22f0b4eb900000000588f2c004a806772201372020680b6b15efeb28065c42f0b4eb900000000588fb08266b62a2a00042a452f0b49f9000000004e94588f2c409bc04a8d6f9c222a02202e0a42820687000000202f41002c4284b4af002c67842f074e94588fb08e661eed8ad5c220333800b0b238206600ff6a58837240b28366ec28066000ff5e22059280b28d630c7008b08154c1730144818881528206870000004060b4",
+   "hex": "4fefffd048d77cfc246f0034266f00384aaa001c660e428320034cd77cfc4fef00304e75242a00104a8267ea2a2a000c4a8566e22f0b4eb900000000588f2e004a8067000082201372020680b6b15efeb28065c22f0b4eb900000000588fb08266b42c2a000428062f0b49f9000000004e94588f2c4098804a846f9a222a022042824bea002042832f41002cb4af002c66124a8367827008b08454c4770444836000ff762f0d4e94588fb08e661eed8ad5c220335800b0b258206600ff5a58857240b28566ec26076000ff4e22069280b284630a4681d28193814481868152824bed004060a6",
    "kind": "text",
    "name": ".text.mt_reply_reordered",
-   "size": 218
+   "size": 230
   },
   {
    "align": 2,
@@ -2840,7 +2840,7 @@
    "size": 12408
   }
  ],
- "source_sha256": "5383c2d79cde4cc00e15f0262249a14fd9286658d3efc8520310c98b215956a7",
+ "source_sha256": "f0f73d4da20ac8803e8ad28be6c4bf6edd5059f4631e3bd2b42325d61fb6c11a",
  "symbols": [
   {
    "global": false,
@@ -3663,8 +3663,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "4108",
-  "isa_check": "3a73714b8b2740dc53dc8ad18e9550bfd4e0cde09ead23df965639daa27bd475",
+  "instructions_redecoded": "4114",
+  "isa_check": "2aa37291c091a0c41ac3191d95adc779ca73038f48cfe9b3a4a93400eb1a8a26",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

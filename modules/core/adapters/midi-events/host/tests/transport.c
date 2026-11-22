@@ -678,7 +678,11 @@ uint32_t mi_test_reply_reordering(void)
     session_reply(r, 10);
     mt_reply_guard_tick(&wrap, r, 3);
     session_reply(r, 9);
-    CHECK(!mt_reply_reordered(&wrap, r)); /* interval wider than eight blocks */
+    CHECK(mt_reply_reordered(&wrap, r)); /* one late amid a nine-block gap */
+    session_reply(r, 2);
+    CHECK(mt_reply_reordered(&wrap, r)); /* unseen and eight blocks late */
+    session_reply(r, 0);
+    CHECK(!mt_reply_reordered(&wrap, r)); /* bracketed, but too far behind */
     return 0;
 }
 

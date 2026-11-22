@@ -16,6 +16,7 @@
 #define MT_CHUNK_WORDS 16u
 #define MT_STALL_BLOCKS 900u
 #define MT_REPLY_WORDS 16u
+#define MT_REPLY_REORDER_LAG 8u
 #define MT_REPLY_MAGIC 0x494ea101u
 #define MT_SESSION_REPLY_MAGIC 0x494ea102u
 /* V4 status frames alternate with legacy lifecycle/ACK frames. Header:
@@ -87,8 +88,8 @@ typedef struct {
  * -2 already armed or invalid. No reset/retry; readiness requires the exact bind
  * ACK plus version/token. Deadline uses CF frame blocks, not a UI wall clock. */
 int mt_reply_guard_expect(MtReplyGuard *guard, uint32_t token, uint32_t sequence, uint32_t block);
-/* Discard exact copies or late arrivals within a gap bracketed by accepted
- * heartbeats in the last eight blocks of the same bound session.
+/* Discard exact copies or unseen replies up to eight DSP blocks late that
+ * have a strictly older accepted reply retained for the same bound session.
  * Treat it as missing everywhere: no ACK, no cached registry reply, no deadline
  * refresh. Conflicting copies, unbracketed regressions and session changes still fault. */
 int mt_reply_reordered(const MtReplyGuard *guard, const uint32_t *reply);

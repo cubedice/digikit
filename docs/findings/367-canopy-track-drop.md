@@ -14,7 +14,7 @@ the rest of that boot. A restart cleared the fault. The saved project still
 contained both assignments. The coupled emulator played the same project
 without producing that ordering.
 
-The frame adapter now discards an unseen counter strictly inside a gap
+The first fix discarded an unseen counter strictly inside a gap
 bounded by accepted replies at most eight blocks apart. It checks the frame
 integrity and session first. A discarded reply cannot acknowledge work,
 publish status or refresh either watchdog. A conflicting copy at a known
@@ -28,6 +28,21 @@ the same pattern for four minutes with the original four modules and the
 diagnostic disabled. Across 228 screen samples, alternating the selected
 track every 30 seconds, the CHRD and VOIC labels remained present. The old
 fault capture at those positions showed the empty stock controls.
+
+**[D] Reproduction across a wider gap.** Image `a2df0f2261bc39bc` lost both
+CANOPY tracks while playing A02, with the debug module present. At ColdFire
+block 847253, the guard reported a valid same-session STATUS reply with
+heartbeat 855474 after PLAY 855475. The previous accepted reply was PLAY
+855466. The STATUS was one DSP block late inside a nine-block gap, so the
+first fix rejected it. The session entered phase 9 without a hardware reset.
+The independent DSP heartbeat continued from 855995 to 857495 after the
+failure.
+
+The guard now applies the eight-block limit to the late reply's distance
+from the newest accepted heartbeat. It still requires a strictly older
+accepted reply in the retained history. The dispatch regression replays
+855466, 855475 and 855474, checks that the STATUS cannot refresh trust or
+enter the UI queue, and verifies that the next fresh PLAY is admitted.
 
 **[D] Separate mixer defect.** The input tap in this firmware runs even with
 the RELAY module disabled. Entering it with both SHARC lanes enabled stored
