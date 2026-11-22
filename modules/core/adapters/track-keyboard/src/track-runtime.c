@@ -22,6 +22,7 @@ extern uintptr_t tk_fw_active_kit(uintptr_t project);
 extern char *tk_trig_decimal(char *out, unsigned value);
 extern char *tk_trig_pitch_name(char *out, uint8_t pitch);
 extern void tk_trig_notes_title(char *title, uint8_t track, int step, int pitch);
+extern void tk_trig_refresh_keys(void);
 
 static uint32_t pattern, editing_pattern, revision, block, boundary, block_fraction;
 static uint32_t stopped_boundary;
@@ -300,13 +301,25 @@ static void poll(void)
     }
 }
 
+static void ui_poll(void)
+{
+    static uint32_t keys_block;
+    poll();
+    /* The painter also synchronizes musical state through poll(). Only
+     * the registered UI pass can request another keyboard frame. */
+    if (block != keys_block) {
+        keys_block = block;
+        tk_trig_refresh_keys();
+    }
+}
+
 void tk_runtime_init(void)
 {
     if (polling || !tk_service_init() || !tk_sequence_init() || !tk_sequence_fw_init() ||
         !tk_midi_init() || !tk_native_init() || !tk_pool_link_init())
         return;
     block = dkrt_blocks();
-    if (dkrt_poll_add((uintptr_t)poll) == 0)
+    if (dkrt_poll_add((uintptr_t)ui_poll) == 0)
         polling = true;
 }
 

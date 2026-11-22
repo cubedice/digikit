@@ -11,6 +11,7 @@
 #include <string.h>
 
 void tk_trig_draw(uint8_t *, uint8_t *);
+void tk_trig_refresh_keys(void);
 uint8_t tk_trig_key(uint8_t *, uint8_t *);
 uint8_t tk_trig_turn(uint8_t *, uint8_t *);
 uint8_t tk_trig_turn_interface(uint8_t *, uint8_t *);
@@ -18,6 +19,7 @@ uint32_t tk_trig_parameter(uint8_t *, uint32_t);
 void tk_trig_notes_title(char *, uint8_t, int, int);
 
 _Alignas(4) static uint8_t view[0x194], editor[0x270], bitmap[1];
+_Alignas(4) static uint8_t manager[0x20], node[12];
 static uint32_t stock_pages[] = {1, 2}, midi_pages[] = {23, 24}, other_pages[] = {7, 8};
 static uint32_t pages[4], event[6], view_vtable[0xc8 / 4], widget_vtable[0x64 / 4], widget;
 static struct {
@@ -27,6 +29,7 @@ static struct {
 static char labels[2][8][12];
 static unsigned focus, focus_touches, locks_drawn;
 static uint16_t voice_group;
+static uint16_t held_pitches, sounding_pitches;
 static bool keyboard_drawn, audio_retrig;
 static char last_toast[32];
 static uint8_t selected_track;
@@ -169,6 +172,17 @@ void dk_fw_view_invalidate(uint8_t *p)
     ++invalidations;
 }
 
+uint8_t *dk_fw_view_brain_instance(void)
+{
+    return bitmap;
+}
+
+uint8_t *dk_fw_view_brain_view_manager(uint8_t *brain)
+{
+    assert(brain == bitmap);
+    return manager;
+}
+
 void dk_fw_draw_fill_rect(uint8_t *b, int32_t x0, int32_t y0, int32_t x1, int32_t y1, int32_t color)
 {
     assert(b == bitmap && x0 >= 23 && y0 >= 0 && x1 <= 122 && y1 <= 52);
@@ -218,6 +232,13 @@ uint16_t tk_trig_voice_group(uint8_t track)
 {
     assert(track == 0);
     return voice_group;
+}
+
+uint16_t tk_trig_pitch_display(uint8_t track, uint16_t *pressed)
+{
+    assert(track == 0);
+    *pressed = held_pitches;
+    return sounding_pitches;
 }
 
 void tk_runtime_touch(uint8_t track)
@@ -283,6 +304,43 @@ static void init_vector(uint32_t *original)
     write(view, 0x80, (uint32_t)(uintptr_t)(original + 2));
     write(view, 0x84, (uint32_t)(uintptr_t)(original + 2));
     write(view, 0x90, 0);
+}
+
+static void note_driven_keyboard_redraw(void)
+{
+    active = true;
+    write(view, 0x90, 3);
+    view_vtable[4] = (uint32_t)(uintptr_t)tk_trig_draw;
+    write(node, 0, (uint32_t)(uintptr_t)(manager + 0x14));
+    write(node, 8, (uint32_t)(uintptr_t)view);
+    write(manager, 0x1c, (uint32_t)(uintptr_t)node);
+    tk_trig_draw(view, bitmap);
+    unsigned before = invalidations;
+    tk_trig_refresh_keys();
+    assert(invalidations == before);
+
+    held_pitches = 1;
+    tk_trig_refresh_keys();
+    tk_trig_refresh_keys();
+    assert(invalidations == before + 1);
+
+    sounding_pitches = 1;
+    tk_trig_refresh_keys();
+    assert(invalidations == before + 2);
+    held_pitches = sounding_pitches = 0;
+    tk_trig_refresh_keys();
+    assert(invalidations == before + 3);
+
+    /* An opaque modal removes the underlying view from the drawable suffix. */
+    write(manager, 0x1c, (uint32_t)(uintptr_t)(manager + 0x14));
+    held_pitches = 1;
+    tk_trig_refresh_keys();
+    assert(invalidations == before + 3);
+    write(manager, 0x1c, (uint32_t)(uintptr_t)node);
+    tk_trig_draw(view, bitmap);
+    held_pitches = 0;
+    tk_trig_refresh_keys();
+    assert(invalidations == before + 4);
 }
 
 int main(void)
@@ -405,5 +463,6 @@ int main(void)
     assert(!strcmp(title, "T02 NOTES G9"));
     tk_trig_notes_title(title, 0, 0, -1);
     assert(!strcmp(title, "T01 S1 NOTES --"));
+    note_driven_keyboard_redraw();
     return 0;
 }

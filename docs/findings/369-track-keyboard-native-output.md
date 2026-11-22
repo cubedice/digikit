@@ -337,6 +337,30 @@ to about 29% without a reboot or ARP change. These measurements put the
 1/80 stress cases at the ColdFire ceiling even though the DSP and MIDI
 release paths kept up.
 
+## KEYS display refresh [D]
+
+The keyboard drawing read the current pitches when the native TRIG page
+repainted. In the DTII 1.17 coupled emulator, accepted panel, USB and DIN
+notes produced no key highlight during the first 150 ms on an idle KEYS
+page. Moving to the active pitch state did not schedule a repaint.
+
+The UI task now compares the held and sounding pitch-class masks after the
+note worker runs. It marks the visible KEYS view dirty when either mask
+changes. The native drawable list resolves the view for that request, so
+opening a modal does not leave a pointer to the underlying page.
+
+The same emulator fixture measured these times from input to the first
+observed frame with the expected key highlights.
+
+| Input | Note-on | Note-off |
+| --- | ---: | ---: |
+| Panel | 15.2 ms | 30.3 ms |
+| USB MIDI | 64.4 ms | 60.6 ms |
+| DIN MIDI | 70.1 ms | 60.6 ms |
+
+The test reads the keyboard pixels and the native backend's note ownership
+without forcing a paint. These measurements are in emulated time.
+
 ## Manual RETRIGS priority [D]
 
 On DTII 1.17, the stock performance call at `0x4005d4a6` reaches

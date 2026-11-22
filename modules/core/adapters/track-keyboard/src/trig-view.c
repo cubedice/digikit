@@ -170,6 +170,8 @@ static uint8_t click_track, click_page, click_key;
 static int click_step;
 static bool click_modified;
 static uint8_t owned_clicks;
+static uint8_t keys_track = TK_TRACKS;
+static uint32_t keys_pitches;
 
 static uint32_t word(const uint8_t *p, uint16_t offset)
 {
@@ -417,13 +419,20 @@ static bool draw_widget(uint8_t *view, uint8_t *bitmap, unsigned encoder, int x,
     return true;
 }
 
-static void draw_keyboard(uint8_t *bitmap, uint8_t track)
+static uint32_t keyboard_pitches(uint8_t track)
+{
+    uint16_t held = 0;
+    uint16_t sounding = tk_trig_pitch_display ? tk_trig_pitch_display(track, &held) : 0;
+    return ((uint32_t)sounding << 16) | held;
+}
+
+static void draw_keyboard(uint8_t *bitmap, uint32_t pitches)
 {
     static const uint8_t white[] = {0, 2, 4, 5, 7, 9, 11};
     static const uint8_t black[] = {1, 3, 6, 8, 10};
     static const uint8_t gap[] = {0, 1, 3, 4, 5};
-    uint16_t held = 0;
-    uint16_t sounding = tk_trig_pitch_display ? tk_trig_pitch_display(track, &held) : 0;
+    uint16_t held = (uint16_t)pitches;
+    uint16_t sounding = (uint16_t)(pitches >> 16);
     dk_fw_draw_fill_rect(bitmap, 25, 7, 67, 21, 1);
     for (unsigned i = 0; i < sizeof white; ++i) {
         int x = 25 + 6 * (int)i;
@@ -452,6 +461,7 @@ void tk_trig_draw(uint8_t *view, uint8_t *bitmap)
     bool active = update_pages(view, track);
     uint32_t page = word(view, PAGE_INDEX);
     tk_trig_stock_draw(view, bitmap);
+    keys_track = TK_TRACKS;
     if (!active || (page != ARP_PAGE && page != KEYS_PAGE))
         return;
     const TrigCell *cells = page == ARP_PAGE ? arp : keys;
@@ -463,8 +473,11 @@ void tk_trig_draw(uint8_t *view, uint8_t *bitmap)
     uint16_t locks;
     if (!read_controls(track, step, &params, &locks) || !tk_valid(&params))
         return;
-    if (page == KEYS_PAGE)
-        draw_keyboard(bitmap, track);
+    if (page == KEYS_PAGE) {
+        keys_track = track;
+        keys_pitches = keyboard_pitches(track);
+        draw_keyboard(bitmap, keys_pitches);
+    }
     for (unsigned i = 0; i < 8; ++i) {
         const TrigCell *cell = &cells[i];
         if (!cell->label)
@@ -488,6 +501,38 @@ void tk_trig_draw(uint8_t *view, uint8_t *bitmap)
         if (locked)
             dk_fw_draw_fill_rect(bitmap, x - 1, y + 6, i % 4u == 3 ? 122 : x + 21, y + 24, -1);
     }
+}
+
+void tk_trig_refresh_keys(void)
+{
+    if (keys_track >= TK_TRACKS)
+        return;
+    uint32_t pitches = keyboard_pitches(keys_track);
+    if (pitches == keys_pitches)
+        return;
+    keys_pitches = pitches;
+
+    /* Borrow the visible TRIG view from the stock drawable suffix. An
+     * opaque window can cover KEYS, and a passive overlay can share it. */
+    uint8_t *brain = dk_fw_view_brain_instance();
+    uint8_t *manager = brain ? dk_fw_view_brain_view_manager(brain) : NULL;
+    if (manager) {
+        uint8_t *sentinel = manager + 0x14;
+        uint8_t *node = (uint8_t *)(uintptr_t)word(manager, 0x1c);
+        for (unsigned n = 0; n < 32 && node && node != sentinel;
+             ++n, node = (uint8_t *)(uintptr_t)word(node, 0)) {
+            uint8_t *view = (uint8_t *)(uintptr_t)word(node, 8);
+            if (!view || view[0x30])
+                continue;
+            const uint8_t *vtable = (const uint8_t *)(uintptr_t)word(view, 0);
+            if (vtable && word(vtable, 16) == (uint32_t)(uintptr_t)tk_trig_draw &&
+                word(view, PAGE_INDEX) == KEYS_PAGE && current_track(view) == keys_track) {
+                dk_fw_view_invalidate(view);
+                return;
+            }
+        }
+    }
+    keys_track = TK_TRACKS;
 }
 
 static bool action_for(uint32_t page, uint8_t key)
