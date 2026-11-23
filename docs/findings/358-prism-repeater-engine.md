@@ -233,3 +233,15 @@ The distance between energy-normalized echoes rose from 0.000 to 0.095, showing 
 Eleven focused rig checks passed, including exact bypass at HALO 0, repeat energy, control changes, held tape, and three
 PRISM/Overloop transitions. The highest observed block cost in those cases was 19,068 instructions within the declared
 19,292 limit.
+
+## HALO late reverb follow-up
+
+**[D]** Two cross-coupled, low-pass-damped lines at 24 kHz add a stereo late return after the tape write.
+HALO raises the return quadratically, and a short attack on the lines' excitation smooths the first echoes after
+enabling it. The effect shares the existing MIX control. The late return fits in 8,224 bytes of additional DSP
+state and preserves the tape feedback law and HOLD write inhibition.
+
+On the native SHARC rig at full HALO and RPTS 0, the return after 50 ms contained -20.7 dB of the input impulse's
+energy, with an estimated 0.560 s RT60 and 0.077 left/right correlation. The first echo kept its timing.
+The worst control sweep measured 1.55 times the steady-tone click measure, below the existing 2 times limit.
+The heaviest measured block was 20,631 instructions. The rig still checks exact audio bypass at HALO 0.

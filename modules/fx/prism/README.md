@@ -67,7 +67,7 @@ input graphic closes once captured audio is available.
 | B | RATE. Free: the time in milliseconds, a coarse step a tick; with FUNC held a fine step (1016 of them across the zone). Press: SYNC on or off (`SYNC` or `FREE`); with SYNC the encoder steps through thirteen ratios of the zone's 1/1, four ticks each, from `/2` (shortest) to `X2` (longest), `1/1` in the middle |
 | C | RPTS, 0 to 127; 96 holds a repeat at its level. Press: HOLD (`INF` and `HOLD`, inverted) |
 | D | COLR. The centre is 0 on screen. Negative values darken the repeats and positive values brighten them |
-| E | HALO, 0 to 127. Spreads the repeats in time and stereo. The upper half adds slow movement to the tail |
+| E | HALO, 0 to 127. Spreads the repeats in stereo and adds a darker reverb tail. The upper half adds slow movement to the tail |
 | F | SKEW, 64 is the centre: `L 12` means the left side is the longer one by 12 steps, `R 12` the right |
 | G | INPT, a two-position switch turned by the knob: right is LOOP (PRISM hears Overloop's loop), left is LIVE (PRISM hears the tracks it is given). The switch crossfades over 5 ms. Hold G and use TRIG keys to choose tracks. Changing the selection switches silent LOOP to LIVE when there is no capture. INPT goes to LOOP at an armed change that takes a loop, and to LIVE when the loop is dropped or Overloop stops reporting for a while. |
 | H | XFAD, Overloop's crossfader. The slider shows the applied position. Turns only while there is a loop. Press to arm or disarm. With FUNC + FX held, the caption shows `LIVE`, a number, or `LOOP`. Before the first loop, it reveals how many steps the next change keeps |
@@ -137,7 +137,7 @@ tuned); `core/phrase-control` fills them from the page's values.
 | SYNC | on, off | On: the time is the frames the control provider gives (a ratio of the zone's 1/1 at the tempo, below); ZONE and RATE are then not read. Each change crossfades; the pitch does not bend. |
 | RPTS | 0..1 | Repeats. 0 is one echo; 0.75 holds a repeat at its level for ever; above it the level grows by up to 1.1 a repeat until the limiter holds it. |
 | COLR | -1..1 | Colour of the repeats. Centre: flat. Toward dark every repeat loses highs (down to a low pass at 800 Hz), saturates a little and drifts slowly in pitch. Toward bright every repeat loses lows (up to a high pass at 1 kHz). |
-| HALO | 0..1 | Spreads each repeat into a longer stereo tail. Above halfway, two slow motions vary its shape. 0 is an exact bypass |
+| HALO | 0..1 | Spreads each repeat and brings up a damped stereo reverb, audible with RPTS at 0. Above halfway, two slow motions vary the diffusion. 0 is an exact bypass |
 | SKEW | -1..1 | Above 0 the left side is shorter and the right longer by the same ratio (up to 1.5); below 0 the reverse. A change glides. |
 | FLIP | on, off | The repeats play backwards: each stretch of the time is read from its end to its start. |
 | HOLD | on, off | The input is closed and what is on the tape repeats without loss. ZONE, RATE and FLIP then pick a part of the held sound and leave the tape as it is. Releasing records again. |
@@ -151,7 +151,7 @@ is a crossfade of 20 ms between two read heads with equal power.
 ```
  input (the tracks it hears, at full send) ──────────┐
                                                      ▼
- tape ──► two heads a side ──► DC blocker ──► COLR ──► HALO ──┬──► x MIX ──► FX return
+ tape ──► two heads a side ──► DC blocker ──► COLR ──► HALO ──┬──► + HALO reverb ──► x MIX ──► FX return
   ▲                                                           │
   └──────────── + ◄──── limiter ◄──── x gain of RPTS ◄────────┘
 ```
@@ -160,12 +160,12 @@ is a crossfade of 20 ms between two read heads with equal power.
   side's head program), the status.
 - `src/dsp/heads.s`: the read heads: glide, crossfade, reverse segments, the held loop.
 - `src/dsp/loop.s`: the DC blocker and the colour filter; the output, the limiter and the write to the tape.
-- `src/dsp/halo.s` spreads the repeats through four lattice all-pass lines of 97, 137, 191, and 251 frames.
+- `src/dsp/halo.s` spreads the repeats through four lattice all-pass lines of 97, 137, 191, and 251 frames. Two damped,
+  cross-coupled lines at half rate add a longer stereo reverb to the wet return. The same HALO knob controls both stages.
 
 The tape is the first bank of the storage lease, 1,032,192 stereo float frames on the device (21.5 s); the longest time
-is half of it. COLR and HALO sit between the heads and the tape, so each pass through the loop adds to them. While HOLD
-stands the tape is not written, so the held sound cannot degrade; COLR and HALO then work on the output only. Details and
-the reasons for each choice: finding 358.
+is half of it. Each pass through the tape adds COLR and the early HALO diffusion. The late reverb feeds the wet return.
+HOLD freezes the tape, and COLR and HALO continue to shape the output. See finding 358 for the tape design.
 
 ## Verification
 

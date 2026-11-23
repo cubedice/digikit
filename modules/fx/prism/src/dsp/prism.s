@@ -8,6 +8,7 @@
 //   colour (loop.s)     DC blocker and the colour filter, in place
 //   halo (halo.s)       the diffusion network, in place: PS_Y is now the wet signal
 //   loop (loop.s)       output = wet * MIX; feedback = limit(wet * gain); the tape takes input + feedback
+//   late (halo.s)       a damped stereo reverb added to the wet output, after the tape write
 //
 // Before the plan, the input (this file): the tracks' send bus (INPT LIVE) or the loop effect's tap (INPT LOOP), crossfaded.
 // After the loop, the route (this file): while the loop effect runs, the output goes to the wet mailbox, which the loop
@@ -27,6 +28,7 @@
 .EXTERN _prism_heads;
 .EXTERN _prism_colour;
 .EXTERN _prism_halo;
+.EXTERN _prism_halo_late;
 .EXTERN _prism_loop;
 
 _prism_process:
@@ -184,6 +186,7 @@ _prism_run:
     CALL _prism_colour;
     CALL _prism_halo;
     CALL _prism_loop;
+    CALL _prism_halo_late;
     CALL _prism_route;
     R0 = 0;
     DM(PS_FIRST,I5) = R0;

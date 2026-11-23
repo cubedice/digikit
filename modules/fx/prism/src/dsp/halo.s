@@ -12,6 +12,7 @@
 
 .SECTION/PM seg_pmco;
 .GLOBAL _prism_halo;
+.GLOBAL _prism_halo_late;
 .EXTERN _pr_recip;
 .EXTERN _pr_smooth;
 
@@ -187,4 +188,183 @@ _hl_line:
     F0 = F0 * F8;
     F1 = F1 * F9;
     F0 = F0 + F1;
+    RTS;
+
+// Late stereo room: two downsampled delays, one pole per return and a damped
+// orthogonal feedback matrix. Excite it from the early diffuser's PS_Y after the
+// tape writer has used it, then add it to the existing MIX-scaled FX output.
+// The reverb never reaches the feedback tape, so RPTS and HOLD retain their gain.
+_prism_halo_late:
+    F0 = DM(PS_HALO_H,I5);
+    R2 = I5;
+    R1 = PS_LATE * 4;
+    R2 = R2 + R1;
+    I4 = R2;
+    R1 = 0;
+    COMP(F0,F1);
+    IF GT JUMP _hl_late_on;
+    R0 = DM(PL_VALID,I4);
+    R0 = PASS R0;
+    IF EQ RTS;
+    // Leave the delay memory alone. The valid count silences each stale read
+    // until its own delay has been filled again, including a quick re-enable.
+    DM(PL_INDEX,I4) = R1;
+    DM(PL_VALID,I4) = R1;
+    DM(PL_DAMP_L,I4) = R1;
+    DM(PL_DAMP_R,I4) = R1;
+    DM(PL_GAIN,I4) = R1;
+    RTS;
+
+_hl_late_on:
+    F0 = F0 * F0;
+    R1 = PRISM_LATE_AMOUNT;
+    F0 = F0 * F1;
+    F1 = DM(PS_MIX,I5);
+    F0 = F0 * F1;
+    F6 = DM(PL_GAIN,I4);
+    DM(PL_GAIN,I4) = R0;
+    F0 = F0 - F6;
+    R1 = 0x3d800000; // one sixteenth of the gain difference per pair
+    F7 = F0 * F1;
+    F4 = DM(PL_DAMP_L,I4);
+    F5 = DM(PL_DAMP_R,I4);
+    R11 = DM(PL_INDEX,I4);
+    R12 = DM(PL_VALID,I4);
+    R13 = PRISM_LATE_RING - 1;
+    R0 = I5;
+    R1 = PS_LATE_LINE_L * 4;
+    R0 = R0 + R1;
+    DM(PS_TEMP2,I5) = R0;
+    R1 = PRISM_LATE_RING * 4;
+    R0 = R0 + R1;
+    DM(PS_TEMP3,I5) = R0;
+    R0 = I5;
+    R1 = PS_Y * 4;
+    R0 = R0 + R1;
+    I0 = R0;
+    R1 = 128;
+    R0 = R0 + R1;
+    I1 = R0;
+    I2 = DM(PS_OUTPUT,I5);
+    R0 = I2;
+    R0 = R0 + R1;
+    I3 = R0;
+    R8 = PRISM_LATE_DAMP;
+    R9 = PRISM_LATE_FEEDBACK;
+    R10 = 0x3f000000;
+    R14 = 0x40fccccd;
+    R15 = 0xc0fccccd;
+    LCNTR = 16, DO _hl_late_pair UNTIL LCE;
+        R1 = PRISM_LATE_DELAY_L;
+        R0 = R11 - R1;
+        R0 = R0 AND R13;
+        R0 = LSHIFT R0 BY 2;
+        R2 = DM(PS_TEMP2,I5);
+        R0 = R0 + R2;
+        I4 = R0;
+        R0 = DM(0,I4);
+        COMP(R12,R1);
+        IF LT R0 = R0 - R0;
+        R2 = R4;
+        F0 = F0 - F4;
+        F0 = F0 * F8;
+        F4 = F4 + F0;
+        R1 = PRISM_LATE_DELAY_R;
+        R0 = R11 - R1;
+        R0 = R0 AND R13;
+        R0 = LSHIFT R0 BY 2;
+        R3 = DM(PS_TEMP3,I5);
+        R0 = R0 + R3;
+        I4 = R0;
+        R0 = DM(0,I4);
+        COMP(R12,R1);
+        IF LT R0 = R0 - R0;
+        R3 = R5;
+        F0 = F0 - F5;
+        F0 = F0 * F8;
+        F5 = F5 + F0;
+
+        // Reconstruct the two output samples with a linear half-step.
+        F6 = F6 + F7;
+        F2 = F2 + F4;
+        F2 = F2 * F10;
+        F2 = F2 * F6;
+        F0 = DM(I2,M5);
+        F0 = F0 + F2;
+        F0 = MIN(F0,F14);
+        F0 = MAX(F0,F15);
+        DM(I2,M6) = R0;
+        F2 = F4 * F6;
+        F0 = DM(I2,M5);
+        F0 = F0 + F2;
+        F0 = MIN(F0,F14);
+        F0 = MAX(F0,F15);
+        DM(I2,M6) = R0;
+        F3 = F3 + F5;
+        F3 = F3 * F10;
+        F3 = F3 * F6;
+        F0 = DM(I3,M5);
+        F0 = F0 + F3;
+        F0 = MIN(F0,F14);
+        F0 = MAX(F0,F15);
+        DM(I3,M6) = R0;
+        F3 = F5 * F6;
+        F0 = DM(I3,M5);
+        F0 = F0 + F3;
+        F0 = MIN(F0,F14);
+        F0 = MAX(F0,F15);
+        DM(I3,M6) = R0;
+
+        // Box-filter the stereo input to half rate. The two linear combinations
+        // of the damped output constitute a normalized Hadamard matrix times g.
+        F0 = DM(I0,M6);
+        F1 = DM(I0,M6);
+        F2 = F0 + F1;
+        F2 = F2 * F10;
+        F0 = DM(I1,M6);
+        F1 = DM(I1,M6);
+        F3 = F0 + F1;
+        F3 = F3 * F10;
+        // Start new excitation at zero with zero slope. The first reading of
+        // either refilled delay must not expose a full-amplitude sample.
+        R0 = PRISM_LATE_START;
+        R0 = MIN(R12,R0);
+        F0 = FLOAT R0;
+        R1 = 0x3b800000; // 1 / PRISM_LATE_START
+        F0 = F0 * F1;
+        F0 = F0 * F0;
+        R1 = 0x40000000;
+        F1 = F1 - F0;
+        F0 = F0 * F1;
+        F2 = F2 * F0;
+        F3 = F3 * F0;
+        F0 = F4 + F5;
+        F1 = F4 - F5;
+        F0 = F0 * F9;
+        F1 = F1 * F9;
+        F2 = F2 + F0;
+        F3 = F3 + F1;
+        R0 = LSHIFT R11 BY 2;
+        R1 = DM(PS_TEMP2,I5);
+        R1 = R1 + R0;
+        I4 = R1;
+        DM(0,I4) = R2;
+        R1 = DM(PS_TEMP3,I5);
+        R1 = R1 + R0;
+        I4 = R1;
+        DM(0,I4) = R3;
+        R11 = R11 + 1;
+        R11 = R11 AND R13;
+_hl_late_pair: R12 = R12 + 1;
+
+    R2 = I5;
+    R1 = PS_LATE * 4;
+    R2 = R2 + R1;
+    I4 = R2;
+    COMP(R12,R13);
+    IF GT R12 = PASS R13;
+    DM(PL_INDEX,I4) = R11;
+    DM(PL_VALID,I4) = R12;
+    DM(PL_DAMP_L,I4) = R4;
+    DM(PL_DAMP_R,I4) = R5;
     RTS;
