@@ -50,6 +50,7 @@ uint32_t phrase_ui_values[PH_PARAM_COUNT];
 /* The page as it was last painted: the texts of its cells, for the same test. */
 PhrasePage phrase_ui_page;
 static uint32_t painted, paint_revision, last_owner, paint_fresh;
+static int paint_values;
 static void reconcile(void)
 {
     uint32_t physical[2] = {0, 0};
@@ -101,14 +102,16 @@ int phrase_fxv_draw(uint8_t *view, uint8_t *bitmap, int header_only)
         return 0;
     PhraseCanvas c = {bitmap, fxv_box, fxv_text};
     pu_page(&ui, &phrase_ui_page);
+    int show_values = dk_fw_input_key_down(PU_FUNC) != 0;
     if (header_only) {
-        pu_render_header(&phrase_ui_page, &c);
+        pu_render_header(&phrase_ui_page, &c, show_values);
         return 1;
     }
-    pu_render(&phrase_ui_page, &c);
+    pu_render(&phrase_ui_page, &c, show_values);
     painted = ui.status[PH_S_HEARTBEAT / 4];
     paint_revision = ui.revision;
     paint_fresh = ui.fresh;
+    paint_values = show_values;
     ++phrase_ui_debug[0];
     return 1;
 }
@@ -202,9 +205,10 @@ void phrase_ui_tick(void)
     uint8_t *view = fxv_visible_view();
     if (view) {
         if (context(view)) {
-            /* A repaint for an edit, for a link that came or went, and every 60 blocks for the time. */
+            /* Read FUNC from the panel so both edges repaint even if stock dispatch takes the key. */
             uint32_t seq = ui.status[PH_S_HEARTBEAT / 4];
-            if (ui.revision != paint_revision || seq - painted >= 60 || ui.fresh != paint_fresh)
+            if (ui.revision != paint_revision || seq - painted >= 60 || ui.fresh != paint_fresh ||
+                paint_values != (dk_fw_input_key_down(PU_FUNC) != 0))
                 dk_fw_view_invalidate(view);
         }
         phrase_ui_debug[8] = pu_selecting(&ui);

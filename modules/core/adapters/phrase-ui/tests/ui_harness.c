@@ -348,6 +348,7 @@ static void page_cells(void)
 typedef struct {
     uint32_t boxes, texts, inverted;
     char seen[64][24];
+    int centres[64], tops[64];
     uint8_t pixels[64][128];
 } Drawn;
 static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
@@ -371,10 +372,11 @@ static void drawn_text(void *ctx, int x, int y, const char *s, int ink)
            x + half <= 128 && y >= 0 && y + 5 <= 64);
     /* below the header, x 124 to 127 are the FX view's page indicator */
     assert(y < 10 || x + half <= 124);
-    /* Text stays out of the icon bands at rows 17–23 and 44–50. */
-    assert(y + 5 <= 17 || y >= 24);
-    assert(y + 5 <= 44 || y >= 51);
+    /* Text in the control grid is confined to its two caption baselines. */
+    assert(y < 10 || x + half + !ink <= 19 || y == 32 || y == 59);
     assert(d->texts < 64);
+    d->centres[d->texts] = x;
+    d->tops[d->texts] = y;
     strcpy(d->seen[d->texts++], s);
     d->inverted += !ink;
 }
@@ -385,24 +387,50 @@ static int saw(const Drawn *d, const char *s)
             return 1;
     return 0;
 }
+static int saw_at(const Drawn *d, int x, int y, const char *s)
+{
+    for (uint32_t i = 0; i < d->texts; ++i)
+        if (d->centres[i] == x && d->tops[i] == y && !strcmp(d->seen[i], s))
+            return 1;
+    return 0;
+}
+static void draw_page(const PhrasePage *p, Drawn *d, int show_values)
+{
+    memset(d, 0, sizeof(*d));
+    PhraseCanvas c = {d, drawn_box, drawn_text};
+    pu_render(p, &c, show_values);
+}
 static void rendering(void)
 {
     PhraseUi s;
     PhrasePage p;
     init(&s);
-    Drawn d = {0};
+    Drawn d, values;
     PhraseCanvas c = {&d, drawn_box, drawn_text};
     pu_page(&s, &p);
-    pu_render(&p, &c);
-    static const char *const shown[] = {
-        "PRISM", "ECHO", "375 MS", "MIX",  "100",  "ZONE",   "RATE", "FREE", "RPTS",   "48",
-        "COLR",  "HALO", "SKEW",   "INPT", "LIVE", "NO TRK", "XFAD", "--",   "NO LOOP"};
-    for (uint32_t i = 0; i < sizeof(shown) / sizeof(*shown); ++i)
-        if (!saw(&d, shown[i])) {
-            fprintf(stderr, "not drawn: %s\n", shown[i]);
-            assert(0);
-        }
-    assert(!d.inverted);
+    draw_page(&p, &d, 0);
+    draw_page(&p, &values, 1);
+    static const char *const labels[] = {"ZONE", "RATE", "RPTS", "COLR",
+                                         "HALO", "SKEW", "INPT", "XFAD"};
+    static const char *const formatted[] = {"ECHO", "375 MS", "48", "0", "0", "0", "LIVE", "--"};
+    for (int i = 0; i < 8; ++i) {
+        int x = 32 + 26 * (i % 4), y = i < 4 ? 32 : 59;
+        int value_x = x + (i == 1) - (i == 0);
+        assert(saw_at(&d, x, y, labels[i]) && !saw_at(&values, value_x, y, labels[i]));
+        assert(saw_at(&values, value_x, y, formatted[i]) && !saw_at(&d, x, y, formatted[i]));
+    }
+    /* Holding FUNC swaps the captions while the underlying icon pixels stay the same. */
+    for (int row = 14; row <= 28; ++row) {
+        assert(!memcmp(d.pixels[row], values.pixels[row], sizeof(d.pixels[row])));
+        assert(!memcmp(d.pixels[row + 27], values.pixels[row + 27], sizeof(d.pixels[row])));
+    }
+    assert(saw_at(&d, 7, 59, "MIX") && !saw(&d, "100"));
+    assert(saw_at(&values, 7, 59, "100") && !saw(&values, "MIX"));
+    assert(saw_at(&d, 15, 2, "PRISM") && !saw(&d, "ECHO") && !saw(&d, "375 MS"));
+    assert(saw_at(&d, 42, 2, "FREE") && saw_at(&values, 42, 2, "FREE"));
+    assert(saw_at(&d, 76, 2, "NO TRK") && saw_at(&values, 76, 2, "375 MS"));
+    assert(saw_at(&d, 111, 2, "NO LOOP") && saw_at(&values, 111, 2, "NO LOOP"));
+    assert(!d.inverted && !values.inverted);
     /* Every value at both ends of its range, with every switch on, stays on the screen. */
     for (uint32_t pass = 0; pass < 2; ++pass) {
         for (uint32_t i = 0; i < PH_PARAM_COUNT; ++i)
@@ -411,17 +439,60 @@ static void rendering(void)
         raw[PH_P_RATIO] = pass ? PH_SYNC_RATIOS - 1 : 0;
         raw[PH_P_SYNC] = raw[PH_P_FLIP] = raw[PH_P_HOLD] = pass;
         status(&s, pass ? 344064 : 48, pass ? 516096 : 72);
-        memset(&d, 0, sizeof(d));
         pu_page(&s, &p);
-        pu_render(&p, &c);
-        /* FLIP and HOLD are drawn inverted when they are on. */
-        assert(d.inverted == (pass ? 2u : 0u));
-        assert(saw(&d, "FLIP") == (int)pass && saw(&d, "HOLD") == (int)pass);
+        for (int mode = 0; mode <= 1; ++mode) {
+            draw_page(&p, &d, mode);
+            /* FLIP and HOLD are drawn inverted when they are on. */
+            assert(d.inverted == (pass ? 2u : 0u));
+            assert(saw_at(&d, 9, 14, "FLIP") == (int)pass);
+            assert(saw_at(&d, 9, 22, "HOLD") == (int)pass);
+        }
     }
-    /* The header alone: three texts, nothing below the bar. */
+    /* The header alone stays consistent with the page in both modes. */
     memset(&d, 0, sizeof(d));
-    pu_render_header(&p, &c);
-    assert(d.texts == 3 && saw(&d, "PRISM") && saw(&d, "LOOP"));
+    pu_render_header(&p, &c, 0);
+    assert(d.texts == 4 && saw_at(&d, 15, 2, "PRISM") && saw_at(&d, 42, 2, "SYNC"));
+    assert(saw_at(&d, 76, 2, "SILENT") && saw_at(&d, 111, 2, "NO LOOP"));
+    memset(&d, 0, sizeof(d));
+    pu_render_header(&p, &c, 1);
+    assert(d.texts == 4 && saw_at(&d, 15, 2, "PRISM") && saw_at(&d, 42, 2, "SYNC"));
+    assert(saw_at(&d, 76, 2, p.time) && saw_at(&d, 111, 2, "NO LOOP"));
+    s.fresh = 0;
+    pu_page(&s, &p);
+    draw_page(&p, &d, 0);
+    assert(saw_at(&d, 76, 2, "NO LINK"));
+    raw[PH_P_COLR] = 0;
+    pu_page(&s, &p);
+    draw_page(&p, &d, 1);
+    assert(saw_at(&d, 110, 32, "-64"));
+}
+static void mix_meter(void)
+{
+    PhraseUi s;
+    PhrasePage p;
+    Drawn normal, values;
+    init(&s);
+    /* Each stock level frame begins at one of these integers. */
+    static const uint8_t first[] = {0, 1, 12, 22, 33, 43, 54, 64, 75, 85, 96, 106, 117, 127};
+    int height = 0;
+    for (uint32_t level = 0; level <= 127; ++level) {
+        if (height < 13 && level == first[height + 1])
+            ++height;
+        raw[PH_P_MIX] = level;
+        pu_page(&s, &p);
+        draw_page(&p, &normal, 0);
+        draw_page(&p, &values, 1);
+        for (int y = 40; y <= 56; ++y) {
+            assert(!memcmp(&normal.pixels[y][3], &values.pixels[y][3], 9));
+            for (int x = 3; x <= 11; ++x) {
+                int end = y == 40 || y == 56;
+                int frame = end ? x > 3 && x < 11 : x == 3 || x == 11;
+                int fill = x >= 5 && x <= 9 && y >= 55 - height && y <= 54;
+                int rest_tick = y >= 42 && y <= 54 && !(y & 1) && (x == 5 || x == 9);
+                assert(normal.pixels[y][x] == (frame || fill || rest_tick));
+            }
+        }
+    }
 }
 
 /* The loop effect's home as core/loop-control keeps it (the crossfader and the counts of ARM and DROP), and its status. */
@@ -465,6 +536,7 @@ static void loop_page(void)
 {
     PhraseUi s;
     PhrasePage p;
+    Drawn d;
     init(&s);
     s.loop = &fake_home;
     home_xfad = home_arms = home_drops = 0;
@@ -502,6 +574,11 @@ static void loop_page(void)
     same(p.cells[7].value, "ARMD");
     same(p.cells[7].state, "16 ST");
     assert(!p.cells[7].lit && !p.cells[7].fader && !p.line[0]);
+    draw_page(&p, &d, 0);
+    assert(saw_at(&d, 110, 59, "XFAD") && saw_at(&d, 9, 30, "ARMD") && !saw(&d, "16 ST"));
+    assert(!saw(&d, "NO LOOP") && d.inverted == 1);
+    draw_page(&p, &d, 1);
+    assert(saw_at(&d, 110, 59, "16 ST") && saw_at(&d, 9, 30, "ARMD") && d.inverted == 1);
     report(LS_ARMED, 0, 0, 0, 0, 0.0f);
     pu_loop(&s);
     pu_page(&s, &p);
@@ -546,7 +623,7 @@ static void loop_page(void)
     assert(pu_turn(&s, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
     assert(pu_turn(&s, 6, 3, 0) == PU_OWN && raw[PH_P_INPT] == 1);
     assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
-    /* Arming again while the loop plays shows ARMD below the crossfader. */
+    /* Arming again while the loop plays keeps the crossfader and its armed state. */
     tap(&s, PU_PUSH + 7);
     assert(home_arms == 2);
     report(LS_LOOP | LS_ARMED | LS_TRACK, 1, 16, 16, 96000, 0.0f);
@@ -573,6 +650,8 @@ static void loop_page(void)
     assert(raw[PH_P_INPT] == 1);
     pu_page(&s, &p);
     same(p.cells[6].state, "SILENT");
+    draw_page(&p, &d, 0);
+    assert(saw_at(&d, 84, 59, "INPT") && saw_at(&d, 76, 2, "SILENT"));
     assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
     /* A page that first sees a loop already taken does not switch INPT (it was not this change). */
     PhraseUi late;
@@ -611,14 +690,16 @@ static void loop_page(void)
     raw[PH_P_INPT] = 1;
     home_xfad = 64;
     pu_loop_status(&s);
-    Drawn d = {0};
     PhraseCanvas c = {&d, drawn_box, drawn_text};
     pu_page(&s, &p);
-    pu_render(&p, &c);
-    assert(saw(&d, "LOOP 16 ST 2.00 S") && saw(&d, "64"));
+    draw_page(&p, &d, 0);
+    assert(saw_at(&d, 76, 2, "LOOP") && !saw(&d, "LOOP 16 ST 2.00 S") && !saw(&d, "64"));
+    draw_page(&p, &d, 1);
+    assert(saw_at(&d, 90, 2, "LOOP 16 ST 2.00 S") && saw_at(&d, 110, 59, "64"));
     memset(&d, 0, sizeof(d));
-    pu_render_header(&p, &c);
-    assert(d.texts == 2 && saw(&d, "PRISM") && saw(&d, "LOOP 16 ST 2.00 S"));
+    pu_render_header(&p, &c, 1);
+    assert(d.texts == 3 && saw_at(&d, 15, 2, "PRISM") && saw_at(&d, 42, 2, "FREE"));
+    assert(saw_at(&d, 90, 2, "LOOP 16 ST 2.00 S"));
 }
 static uint32_t trig(uint32_t track)
 {
@@ -644,6 +725,7 @@ static void tracks(void)
 {
     PhraseUi s;
     PhrasePage p;
+    Drawn d;
     uint32_t led[16];
     init(&s);
     /* Nothing chosen: INPT says so. A TRIG key and its LED are the firmware's. */
@@ -699,6 +781,10 @@ static void tracks(void)
     same(p.cells[6].value, "LIVE");
     same(p.cells[6].state, "2 TRK");
     assert(!p.cells[6].lit);
+    draw_page(&p, &d, 0);
+    assert(saw_at(&d, 84, 59, "INPT") && saw_at(&d, 76, 2, "LIVE") && !saw(&d, "2 TRK"));
+    draw_page(&p, &d, 1);
+    assert(saw_at(&d, 84, 59, "LIVE") && saw_at(&d, 76, 2, p.time));
     /* A TRIG key still down when G is released: its release stays the page's, its next press is the firmware's. */
     hold_g(&s);
     assert(pu_key(&s, trig(5), PU_PRESS) == PU_OWN);
@@ -717,11 +803,11 @@ static void tracks(void)
         if (!(raw[PH_P_TRKS] & (1u << (t - 1))))
             tap(&s, trig(t));
     assert(raw[PH_P_TRKS] == PH_TRACKS_ALL);
-    Drawn d = {0};
-    PhraseCanvas c = {&d, drawn_box, drawn_text};
     pu_page(&s, &p);
-    pu_render(&p, &c);
-    assert(saw(&d, "16 TRK") && saw(&d, "TRIGS") && d.inverted == 1);
+    draw_page(&p, &d, 0);
+    assert(saw_at(&d, 84, 59, "INPT") && saw_at(&d, 76, 2, "TRIGS") && !saw(&d, "16 TRK"));
+    draw_page(&p, &d, 1);
+    assert(saw_at(&d, 84, 59, "16 TRK") && saw_at(&d, 76, 2, "TRIGS"));
     /* The page loses the top while G is held: the selection ends, keys and LEDs are the firmware's, G's release is the
      * page's and switches nothing. */
     pu_context(&s, 0, 1);
@@ -762,19 +848,17 @@ static void tracks(void)
 static void icon_frame(const PhraseUi *s, Drawn *d)
 {
     PhrasePage p;
-    PhraseCanvas c = {d, drawn_box, drawn_text};
-    memset(d, 0, sizeof(*d));
     pu_page(s, &p);
-    pu_render(&p, &c);
+    draw_page(&p, d, 0);
 }
 static void icon_changes(const PhraseUi *s, Drawn *previous, int changed_cell)
 {
     Drawn current;
     icon_frame(s, &current);
     for (int cell = 0; cell < 8; ++cell) {
-        int x = 19 + 26 * (cell % 4), y = cell < 4 ? 17 : 44;
+        int x = 19 + 26 * (cell % 4), y = cell < 4 ? 14 : 41;
         int changed = 0;
-        for (int row = y; row < y + 7; ++row)
+        for (int row = y; row < y + 15; ++row)
             changed |= memcmp(&previous->pixels[row][x], &current.pixels[row][x], 26) != 0;
         if (changed != (cell == changed_cell)) {
             fprintf(stderr, "icon for %c %s while changing %c\n", 'A' + cell,
@@ -861,6 +945,7 @@ int main(void)
     formats();
     page_cells();
     rendering();
+    mix_meter();
     loop_page();
     tracks();
     dynamic_icons();

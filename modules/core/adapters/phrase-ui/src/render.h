@@ -15,7 +15,7 @@ typedef struct {
     uint32_t mix, zone_index;
     PhraseCell cells[8]; /* A to H */
     /* Icon inputs follow the existing page fields read by device diagnostics. */
-    uint8_t rate, repeats, colour, halo, skew, loop_input, loop_ready;
+    uint8_t rate, repeats, colour, halo, skew, loop_input, loop_ready, armed, link_error;
     uint16_t tracks;
 } PhrasePage;
 typedef struct {
@@ -24,7 +24,7 @@ typedef struct {
     void (*text)(void *, int centre, int top, const char *, int ink);
 } PhraseCanvas;
 void pu_page(const PhraseUi *, PhrasePage *);
-void pu_render(const PhrasePage *, const PhraseCanvas *);
+void pu_render(const PhrasePage *, const PhraseCanvas *, int show_values);
 /* Header-only repaint after native passive overlays; never touches controls. */
-void pu_render_header(const PhrasePage *, const PhraseCanvas *);
+void pu_render_header(const PhrasePage *, const PhraseCanvas *, int show_values);
 #endif

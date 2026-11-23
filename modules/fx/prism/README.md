@@ -44,16 +44,18 @@ framework, its controls from the control mailbox it imports, its tape from the s
 
 ## The page
 
-FUNC + FX opens the FX pages. PRISM has eight encoder cells, each with a live graphic above the value. The top row shows
-the selected zone, pulse spacing, repeat decay or growth, and the colour tilt. The bottom row shows halo spread, the
-relative length of the left and right taps, the input route, and the crossfader. The MIX meter is beside both rows.
+FUNC + FX opens the FX pages. PRISM has eight encoder cells, each with a label below its live graphic. Hold FUNC to see
+the formatted values in place of those labels, including MIX. The top row shows the selected zone, pulse spacing,
+repeat decay or growth, and the colour tilt. The bottom row shows halo spread, the relative length of the left and
+right taps, the input route, and the crossfader. The MIX meter sits at the lower left like the stock FX level strip.
 
-With SYNC on, RATE shows the ratio of the zone's 1/1 (`1/1`, `X1.5`, `/1.33`) over `SYNC`; the header keeps the time the
-engine plays. With INPT at LOOP and no loop the INPT cell says `SILENT` (PRISM hears nothing until a loop exists).
+The header shows FREE or SYNC, input status, and NO LOOP before a capture. FLIP, HOLD, and ARMD appear above the MIX
+meter. With SYNC on, hold FUNC to see the ratio of the zone's 1/1 (`1/1`, `X1.5`, `/1.33`). Choosing LOOP before a
+capture shows SILENT in the header.
 
-The LIVE input graphic shows tracks 1–8 on top and 9–16 below. Selected tracks are larger dots. With G held the count
-and inverted `TRIGS` indicate that the TRIG keys are editing this routing. The LOOP input graphic closes once captured
-audio is available.
+The LIVE input graphic shows tracks 1–8 on top and 9–16 below. Selected tracks are larger dots. With G held, inverted
+`TRIGS` in the header indicates that the TRIG keys are editing this routing. Hold FUNC to see the count. The LOOP
+input graphic closes once captured audio is available.
 
 | Control | Does |
 | --- | --- |
@@ -61,21 +63,21 @@ audio is available.
 | A | ZONE, four ticks a zone. With SYNC each zone is an octave of the synced time (below). Press: FLIP (`FLIP` under the zone name, inverted) |
 | B | RATE. Free: the time in milliseconds, a coarse step a tick; with FUNC held a fine step (1016 of them across the zone). Press: SYNC on or off (`SYNC` or `FREE`); with SYNC the encoder steps through thirteen ratios of the zone's 1/1, four ticks each, from `/2` (shortest) to `X2` (longest), `1/1` in the middle |
 | C | RPTS, 0 to 127; 96 holds a repeat at its level. Press: HOLD (`INF` and `HOLD`, inverted) |
-| D | COLR, 64 is the centre: the cell shows the distance and `DARK` or `BRIT` |
+| D | COLR. The centre is 0 on screen. Negative values darken the repeats and positive values brighten them |
 | E | HALO, 0 to 127 |
 | F | SKEW, 64 is the centre: `L 12` means the left side is the longer one by 12 steps, `R 12` the right |
 | G | INPT, a two-position switch turned by the knob: right is LOOP (PRISM hears Overloop's loop), left is LIVE (PRISM hears the tracks it is given), at any time; without a loop LOOP is silence until one exists (`SILENT` under it). The switch crossfades over 5 ms. The press switches nothing. Hold: the TRIG keys choose the tracks PRISM hears, their LEDs show them. Under INPT: the number of tracks PRISM hears at LIVE. INPT goes to LOOP by itself at an armed change that takes a loop, and to LIVE when the loop is dropped or Overloop stops reporting for a while; it does not go back to LIVE only because there is no loop |
-| H | XFAD, Overloop's crossfader. The slider shows the applied position above `LIVE`, a number, or `LOOP`. Turns only while there is a loop. Press to arm or disarm. With an existing loop, `ARMD` appears below the slider and value. Before the first loop, `ARMD` shows with the steps the next change keeps |
+| H | XFAD, Overloop's crossfader. The slider shows the applied position. Turns only while there is a loop. Press to arm or disarm. With FUNC held, the caption shows `LIVE`, a number, or `LOOP`. Before the first loop, FUNC also reveals how many steps the next change keeps |
 | FUNC + NO | Drop the loop |
 
-The header shows the zone and the time the engine plays now (it glides after a free RATE move). The values are kept in
+While FUNC is held the header shows the time the engine plays now, which glides after a free RATE move. The values are kept in
 digikit's settings (`phrase/digikit/prism`), the same for every kit and project; HOLD is not kept. UP, DOWN and FUNC + FX
 move between the FX pages as on any of them.
 
 MIX is this page's and only this page's: the effect row's own MIX of the framework stays at unity, and a kit holds no
 PRISM value. INPT, XFAD and ARM are not kept anywhere: after a restart there is no loop, INPT is LIVE and the crossfader at
-LIVE; a pattern change does not move them. While PRISM hears the loop the header says `LOOP 16 ST 2.00 S` (its steps and
-seconds) in place of the zone and the time.
+LIVE; a pattern change does not move them. While PRISM hears the loop, holding FUNC shows its step count and duration
+in the header, for example `LOOP 16 ST 2.00 S`.
 
 ## Performing a transition
 

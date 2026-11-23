@@ -6,21 +6,21 @@ owner's and holds every value.
 
 ## The page
 
-128 x 64, native text and filled rectangles only: a header of ten pixels (the effect's title, the zone's name, the time
-the engine plays), the MIX column at the left, and eight cells of 26 pixels in two rows. A cell has three lines: its
-label, its value, and a state word.
+The 128 × 64 view has a ten-pixel header, a MIX meter at the lower left, and eight cells in two rows. Each cell has a graphic
+above its label. Hold FUNC to see formatted values in place of the labels and playback time in the header. The header
+also carries rate mode, input and loop status. FLIP, HOLD and ARMD are above the MIX meter.
 
-| | Turn | Press | Cell |
+| | Turn | Press | Cell with FUNC held |
 | --- | --- | --- | --- |
 | LEVEL | MIX | | the column and its number |
-| A | ZONE, four ticks a zone | FLIP | the zone's name, eight marks under it with the chosen one tall, `FLIP` inverted |
+| A | ZONE, four ticks a zone | FLIP | the zone's name below the eight zone marks, `FLIP` inverted |
 | B | RATE: a coarse step a tick, a fine step with FUNC held; with SYNC a ratio of the zone's 1/1, four ticks each, `/2` to `X2` | SYNC | the time (`387 MS`, `1.25 S`) or the ratio (`1/1`, `X1.5`, `/1.33`), `FREE` or `SYNC` |
 | C | RPTS | HOLD | the number, or `INF` with `HOLD` inverted |
-| D | COLR | | the distance from the centre, `DARK` or `BRIT` |
+| D | COLR | | Signed distance from the centre. Negative darkens and positive brightens |
 | E | HALO | | the number |
 | F | SKEW | | `L 12` or `R 12`: the side with the longer time and the distance from the centre |
 | G | INPT, a two-position switch: a tick to the right LOOP, to the left LIVE, at any time (also without a loop) | nothing. Held: the TRIG keys turn tracks on and off, their LEDs show them | `INPT`, `LIVE` or `LOOP`, and under it the tracks the effect hears (`5 TRK`, `NO TRK`), or `SILENT` at LOOP while there is no loop; while G is held the tracks and `TRIGS` inverted |
-| H | XFAD, Overloop's crossfader, a step a tick, only while there is a loop | ARM, while Overloop reports | `XFAD`: `--` and `NO LOOP`; `ARMD` and the steps the next change keeps (`16 ST`, `CUT`, `WAIT`); with a loop `LIVE`, a number or `LOOP`, and the crossfader as it sounds drawn below, or `ARMD` inverted |
+| H | XFAD, Overloop's crossfader, a step a tick, only while there is a loop | ARM, while Overloop reports | The applied crossfader above `LIVE`, a number, or `LOOP`. Before a loop exists, `NO LOOP` or `ARMD` with `16 ST`, `CUT`, or `WAIT` |
 | FUNC + NO | | drop the loop | |
 
 ### The tracks
@@ -42,7 +42,7 @@ page is not shown, puts INPT at LOOP when the loop count in Overloop's status mo
 loop goes away (a status with a loop, then one without: a drop, or a loop lost with its lease) or when Overloop, having
 reported, stops reporting (no status for 60 more passes; once, so that G may put INPT at LOOP again). At no other time
 does INPT move by itself: without a loop it stays where G put it. While INPT is LOOP and there is a loop the header says `LOOP 16 ST 2.00 S` in place of the
-zone and the time. The presses of D to F are taken and do nothing. UP, DOWN, FX and every other key go to the stock FX
+zone and the time while FUNC is held. The presses of D to F are taken and do nothing. UP, DOWN, FX and every other key go to the stock FX
 view: the page is one entry among the FX pages.
 
 The time in the header and in the RATE cell is the engine's (`PH_S_TIME_L`, `PH_S_TIME_R`): the geometric mean of the
