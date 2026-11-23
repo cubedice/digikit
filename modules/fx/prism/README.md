@@ -49,7 +49,8 @@ time or sync ratio directly. Hold FUNC to see the other formatted values, includ
 lower left like the stock FX level strip.
 
 RPTS adds horizontal dashes and shows ∞ at unity, above unity, or in HOLD. COLR grows from a solid square to an
-outline at the neutral point. HALO starts with one ring and adds more overlapping rings farther out as it increases.
+outline at the neutral point. HALO starts with one visible ring. The other rings move away from the center as you turn it
+up and converge when you turn it down.
 
 The header shows FREE or SYNC, input status, and NO LOOP before a capture. FLIP, HOLD, and ARMD appear above the MIX
 meter. Choosing LOOP before a capture shows SILENT in the header.

@@ -1026,14 +1026,22 @@ static void halo_icon(void)
     Drawn d;
     init(&s);
     static const uint8_t ring[] = {0x1c, 0x22, 0x41, 0x41, 0x41, 0x22, 0x1c};
-    static const int offsets[][2] = {{0, 0}, {-4, -2}, {4, 2}, {-8, 2}, {8, -2}};
-    for (int full = 0; full <= 1; ++full) {
-        raw[PH_P_HALO] = full ? 127 : 0;
+    static const struct {
+        uint32_t value;
+        int inner, outer, rise;
+    } positions[] = {{0, 0, 0, 0},  {7, 0, 0, 0},  {8, 0, 1, 0},  {16, 1, 1, 0},
+                     {32, 1, 2, 1}, {64, 2, 4, 1}, {96, 3, 6, 2}, {127, 4, 8, 2}};
+    for (unsigned step = 0; step < sizeof(positions) / sizeof(positions[0]); ++step) {
+        int inner = positions[step].inner, outer = positions[step].outer,
+            rise = positions[step].rise;
+        const int offsets[][2] = {
+            {0, 0}, {-inner, -rise}, {inner, rise}, {-outer, rise}, {outer, -rise}};
+        raw[PH_P_HALO] = positions[step].value;
         icon_frame(&s, &d);
         for (int y = 41; y <= 55; ++y)
             for (int x = 19; x <= 44; ++x) {
                 int on = 0;
-                for (int i = 0; i < (full ? 5 : 1); ++i) {
+                for (int i = 0; i < 5; ++i) {
                     int dx = x - 29 - offsets[i][0], dy = y - 45 - offsets[i][1];
                     if (dx >= 0 && dx < 7 && dy >= 0 && dy < 7)
                         on |= (ring[dy] >> dx) & 1;

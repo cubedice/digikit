@@ -221,12 +221,19 @@ static void icon(const PhrasePage *p, const PhraseCanvas *c, int i, int x, int y
             box(c, left + 1, top + 1, size - 2, size - 2, 0);
         break;
     }
-    case 4: { /* Overlapping rings spread out in the order they appear. */
+    case 4: { /* Each pair moves out from the same center as HALO increases. */
         static const uint16_t ring[] = {0x1c, 0x22, 0x41, 0x41, 0x41, 0x22, 0x1c};
-        static const int8_t offsets[][2] = {{0, 0}, {-4, -2}, {4, 2}, {-8, 2}, {8, -2}};
-        int extra = (p->halo * 4 + 63) / 127;
-        for (int j = 0; j <= extra; ++j)
-            glyph(c, x - 3 + offsets[j][0], y + 4 + offsets[j][1], ring);
+        int left = x - 3, top = y + 4;
+        int dy = (p->halo * 2 + 63) / 127;
+        glyph(c, left, top, ring);
+        for (int spread = 4; spread <= 8; spread += 4) {
+            int dx = (p->halo * spread + 63) / 127;
+            if (dx) {
+                glyph(c, left - dx, top - dy, ring);
+                glyph(c, left + dx, top + dy, ring);
+            }
+            dy = -dy;
+        }
         break;
     }
     case 5: { /* Left and right delay lengths diverge about the centre. */
