@@ -187,8 +187,8 @@ uint32_t cs_mapped_control(const CsState *s, uint32_t encoder)
              CP_DRIFT},
             {CS_WAVE, CP_FM_ALG, CP_FM_BAL, CP_FM_RTA, CP_FM_RTB, CP_FM_FB, CS_NONE, CP_DRIFT}};
         static const uint8_t envelopes[2][8] = {
-            {CP_WT_ATTACK, CP_WT_RELEASE, CP_WT_ENV, CP_WTFM_ENV, CP_WTFM_DEPTH, CP_WTFM_RATIO,
-             CP_WT_VELOCITY, CS_NONE},
+            {CP_WT_ATTACK, CP_WT_RELEASE, CS_NONE, CP_WT_ENV, CP_WTFM_DEPTH, CP_WTFM_RATIO,
+             CP_WT_VELOCITY, CP_WTFM_ENV},
             {CP_FM_ATTACK, CP_FM_DECAY, CP_FM_SUSTAIN, CP_FM_RELEASE, CP_COLOR, CP_FM_ENV,
              CP_FM_VELOCITY, CS_NONE}};
         static const uint8_t detail[8] = {CS_TUNE, CS_NONE, CS_NONE,    CS_NONE,

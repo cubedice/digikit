@@ -92,8 +92,9 @@ source LEV and track LEVEL retain their existing scales.
 Turn **VOICE A / WAVE** to choose the sound. VOICE also holds wavetable
 position and scanning, or the FM operators, with **DRFT** on H. **FM ENV**
 uses the AMP graph to show the timbre envelope as you adjust it. Both
-engines put FM depth on E and velocity modulation on G. Wavetable adds
-its FM ratio on F. For Velvet and Reed, FM ENV points to AMP.
+engines put FM depth on E and velocity modulation on G. Wavetable uses a compact
+ATK/REL graph, with PENV on D and FENV on H in the rightmost column. Its FM ratio
+is on F. For Velvet and Reed, FM ENV points to AMP.
 **DETAIL** has native TUNE on A and source LEV on H, with pad/arp **MIX**
 on G. LEVEL/DATA sets track level. The page changes preserve stored
 presets and lock IDs. The later tables show the fallback SRC layout.

@@ -335,6 +335,28 @@ static void shared_envelope(const uint8_t *view, uint8_t *b, const CvDisplay *d)
     int32_t release = finite_env_time(d, fm ? CP_FM_RELEASE : CP_WT_RELEASE);
     ip_src_amp_adsr(view, b, 0, 0, attack, decay, sustain, release);
 }
+static void compact_wt_envelope(uint8_t *b)
+{
+    if (word(b, 4) != 128 || word(b, 8) != 64 || word(b, 12) != 2 || !word(b, 16))
+        return;
+    uint32_t *upper = (uint32_t *)pointer(b, 16) + 1;
+    /* Bitmap y runs from bottom to top. The second word in each column stores screen rows 0 through 31, with the top row in bit 0.
+     * Combine source columns so a thin vertical envelope edge always survives the narrower graph. */
+    const uint32_t graph = UINT32_MAX << 11;
+    enum { LEFT = 23, FULL_END = 124, COMPACT_END = 97, WIDTH = COMPACT_END - LEFT };
+    unsigned source = LEFT, extra = 0;
+    for (unsigned x = LEFT; x < COMPACT_END; ++x) {
+        uint32_t column = upper[2 * source++];
+        extra += FULL_END - COMPACT_END;
+        if (extra >= WIDTH) {
+            column |= upper[2 * source++];
+            extra -= WIDTH;
+        }
+        upper[2 * x] = (upper[2 * x] & ~graph) | (column & graph);
+    }
+    for (unsigned x = COMPACT_END; x < FULL_END; ++x)
+        upper[2 * x] &= ~graph;
+}
 static void diagram_keyboard(uint8_t *b, const CvDisplay *d)
 {
     static const uint8_t white[] = {0, 2, 4, 5, 7, 9, 11}, black[] = {1, 3, 6, 8, 10},
@@ -674,7 +696,7 @@ static uint32_t diagram_mask(uint32_t page, const CvDisplay *d)
         if (page == CS_VOICE)
             return family < 2 ? 0x70 : family == 2 ? 0x1e : 0x40;
         if (page == CS_FM_ENV)
-            return family < 2 ? 0xff : 0x8f;
+            return family < 2 ? 0xff : family == 2 ? 0x07 : 0x8f;
         return 0x40;
     }
     if (page == 0)
@@ -695,13 +717,9 @@ static void shared_diagram(const uint8_t *view, uint8_t *b, const CvDisplay *d)
         else
             diagram_legacy(b, d, 72);
     } else if (d->page == CS_DETAIL) {
-        diagram_text(b, 73, 18, "DETAIL");
         compact_mix(b, d);
     } else if (d->family >= 2) {
         shared_envelope(view, b, d);
-        diagram_text(b, 112, 42, "FM ENV");
-        if (d->family == 2)
-            diagram_text(b, 112, 53, "POS FM");
     } else {
         diagram_text(b, 73, 17, "FM ENV");
         diagram_text(b, 73, 34, "SELECT FM OR TABLE");
@@ -790,6 +808,11 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
         dk_fw_draw_fill_rect(canvas, 23, 0, 100, 25, 0);
     } else
         dk_fw_draw_fill_rect(canvas, 23, 0, 123, 52, 0);
+    int compact = display.shared_keyboard && page == CS_FM_ENV && display.family == 2;
+    if (compact) {
+        shared_envelope(view, canvas, &display);
+        compact_wt_envelope(canvas);
+    }
     for (uint32_t i = 0; i < 8; ++i) {
         /* The firmware already painted SOUND A/H and the track column.
          * Custom cells never clear or redraw any part of those controls. */
@@ -797,7 +820,7 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
             continue;
         int32_t x = 24 + 26 * (int32_t)(i % 4), y = i < 4 ? 27 : 0;
         if (mask & (1u << i)) {
-            /* The shared diagram is painted after all parameter labels. */
+            /* This control's body is part of the diagram. */
         } else if (display.rotary & (1u << i)) {
             ip_src_draw_rotary(view, canvas, i, display.knob[i]);
         } else {
@@ -820,7 +843,8 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
                 dk_fw_draw_fill_rect(canvas, x - 1, y + 6, x + 21, y + 24, -1);
         }
     }
-    diagram_draw(view, canvas, &display);
+    if (!compact)
+        diagram_draw(view, canvas, &display);
     if (display.fault && display.fault != shown_fault) {
         ++ip_src_fault_toasts;
         toast(display.heading);
