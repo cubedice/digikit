@@ -13,7 +13,7 @@ void     dkrt_loop_xfad(uint32_t value);  /* the crossfader: 0 LIVE .. 127 LOOP 
 void     dkrt_loop_arm(void);             /* one press of ARM: arms, or takes the arm back */
 void     dkrt_loop_drop(void);            /* drop the loop */
 uint32_t dkrt_loop_status(uint32_t *out); /* the engine's status (LS_* words); 1 while it is fresh */
-void     dkrt_loop_wave_peaks(uint16_t out[LS_WAVE_COLUMNS]); /* rolling or held waveform, 120 ordered columns */
+uint32_t dkrt_loop_wave_peaks(uint16_t out[LS_WAVE_COLUMNS]); /* 120 peak columns, returns live write cursor or LS_WAVE_COLUMNS */
 uint32_t dkrt_loop_page(void);            /* the native FX page of the loop effect, 0 while none is loaded */
 ```
 

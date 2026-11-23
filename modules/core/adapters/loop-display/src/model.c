@@ -246,7 +246,7 @@ void ld_render(const LoopPage *p, const LoopCanvas *c)
     box(c, 0, 0, 124, 64, 0);
     ld_render_header(p, c);
     uint16_t wave[LS_WAVE_COLUMNS];
-    dkrt_loop_wave_peaks(wave);
+    uint32_t write_column = dkrt_loop_wave_peaks(wave);
     box(c, 2, 11, 120, 1, 1);
     box(c, 1, 12, 1, 30, 1);
     box(c, 122, 12, 1, 30, 1);
@@ -267,12 +267,16 @@ void ld_render(const LoopPage *p, const LoopCanvas *c)
         down -= down >= 8;
         box(c, 2 + x, 27 - up, 1, 1 + up + down, 1);
     }
-    /* The rolling view ends at now. A retained loop has an absolute playhead. */
+    /* The retained loop has edge ticks; the live write cursor is dashed through the plot. */
     if (p->loop && p->mark != LD_NO_MARK) {
         int x = 3 + (int)(p->mark * 117 / 1000);
         box(c, x - 1, 12, 3, 1, 1);
         box(c, x, 13, 1, 2, 1);
         box(c, x, 40, 1, 2, 1);
+    } else if (!p->loop && write_column < LS_WAVE_COLUMNS) {
+        int x = 2 + (int)write_column;
+        for (int y = 12; y <= 40; y += 4)
+            box(c, x, y, 1, 2, 1);
     }
     text(c, 62, 44, *p->line2 ? p->line2 : p->line1, 1);
     text(c, LD_CELL_E, 51, "ARM", 1);

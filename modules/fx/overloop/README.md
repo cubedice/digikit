@@ -25,9 +25,10 @@ FUNC + FX opens the FX pages; Overloop's is one of them.
 The page shows the state (`IDLE`, `ARMED`, `LOOP`, `LOOP+ARM`) above one framed waveform. The highest positive peak
 and deepest negative peak from either stereo channel share the same centre line. Each pixel column covers its own
 time interval. The display scales to the strongest peak in view, up to about eightfold visual gain for quiet phrases.
-During recording the right edge is the newest audio. The view covers the expected cycle
-(two seconds until its length is known). An armed change freezes that cycle's picture with its audio. The mark on the
-frame follows the loop playhead. STOP keeps the frozen picture and DROP returns to the rolling view. The line below
+During recording, a dashed cursor writes peaks into fixed columns from left to right over the expected cycle
+(two seconds until its length is known). The cursor wraps and replaces the previous pass one column at a time. An
+armed change freezes the captured cycle's picture with its audio. The mark on the frame follows the loop playhead.
+STOP keeps the frozen picture and DROP returns to the live view. The line below
 shows the cycle length or capture limit. On the bottom row, E is `ARM` and H is `XFAD`; the bar between them shows the
 crossfade as heard.
 

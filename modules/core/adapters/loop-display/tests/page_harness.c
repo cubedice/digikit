@@ -5,9 +5,11 @@
 /* The home: the values as the page sets them, and the engine's status as the home last had it. */
 static uint32_t xfad, arms, drops, st_words[LS_WORDS], st_fresh;
 static uint16_t wave_override[LS_WAVE_COLUMNS];
-void dkrt_loop_wave_peaks(uint16_t out[LS_WAVE_COLUMNS])
+static uint32_t write_column = LS_WAVE_COLUMNS;
+uint32_t dkrt_loop_wave_peaks(uint16_t out[LS_WAVE_COLUMNS])
 {
     memcpy(out, wave_override, sizeof(wave_override));
+    return write_column;
 }
 uint32_t dkrt_loop_status(uint32_t *out)
 {
@@ -405,12 +407,52 @@ static void rendering(void)
     ld_page(w, 0, 0, &p);
     ld_render(&p, &c);
 }
+
+static void waveform_cursor(void)
+{
+    uint32_t w[LS_WORDS];
+    LoopPage p;
+    Drawn without = {0}, with = {0};
+    LoopCanvas clean = {&without, drawn_box, drawn_text}, cursor = {&with, drawn_box, drawn_text};
+    static const uint32_t columns[] = {0, 54, LS_WAVE_COLUMNS - 1};
+    memset(wave_override, 0, sizeof(wave_override));
+    wave_override[10] = 0x2010;
+    status(w, LS_TRACK | LS_ARMED, 0, 0, 96000, 16, 4, 0, 0.0f);
+    ld_page(w, 1, 64, &p);
+    ld_render(&p, &clean);
+    for (uint32_t i = 0; i < sizeof(columns) / sizeof(*columns); ++i) {
+        write_column = columns[i];
+        memset(&with, 0, sizeof(with));
+        ld_render(&p, &cursor);
+        for (int y = 0; y < 64; ++y)
+            for (int x = 0; x < 128; ++x) {
+                int dash = x == 2 + (int)write_column && y >= 12 && y <= 41 && (y - 12) % 4 < 2;
+                assert(with.dots[y][x] == (without.dots[y][x] || dash));
+            }
+    }
+
+    /* Even a supplied write column does not replace the retained loop's phase ticks. */
+    status(w, LS_LOOP, 96000, 16, 0, 0, 0, 48000, 0.5f);
+    ld_page(w, 1, 64, &p);
+    write_column = LS_WAVE_COLUMNS;
+    memset(&without, 0, sizeof(without));
+    ld_render(&p, &clean);
+    assert(without.dots[12][60] && without.dots[12][62] && without.dots[14][61]);
+    assert(!without.dots[20][61] && without.dots[40][61]);
+    write_column = columns[1];
+    memset(&with, 0, sizeof(with));
+    ld_render(&p, &cursor);
+    assert(!memcmp(with.dots, without.dots, sizeof(with.dots)));
+    write_column = LS_WAVE_COLUMNS;
+}
+
 int main(void)
 {
     controls();
     arm_on_e();
     texts();
     rendering();
+    waveform_cursor();
     puts("loop page: ok");
     return 0;
 }

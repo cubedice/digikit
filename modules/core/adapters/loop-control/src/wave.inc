@@ -16,7 +16,7 @@ typedef struct {
 } WaveView;
 static u16 wave_ring[WAVE_LEVELS][WAVE_BINS];
 static WaveView wave_loop;
-static u32 wave_end, wave_valid, wave_count, wave_length, wave_span;
+static u32 wave_end, wave_valid, wave_count, wave_length, wave_span, wave_lap;
 
 static u16 wave_merge(u16 a, u16 b)
 {
@@ -80,6 +80,23 @@ static void wave_snapshot(WaveView *v, u32 end, u32 length, u32 valid)
         v->bins[j] = wave_ring[i][j];
 }
 
+static void wave_set_span(u32 estimate, u32 capacity)
+{
+    u32 frames = estimate ? estimate : wave_span ? wave_span : 96000;
+    u32 limit = WAVE_MAX_FRAMES - (WAVE_MAX_FRAMES / WAVE_BINS);
+    if (capacity && capacity < limit)
+        limit = capacity;
+    if (frames > limit)
+        frames = limit;
+    u32 change = frames > wave_span ? frames - wave_span : wave_span - frames;
+    /* Estimates vary as steps arrive. Keep a stable chart when the difference is
+     * smaller than one display column, and rebase when the visible span changes. */
+    if (change > wave_span / LS_WAVE_COLUMNS || wave_span > limit) {
+        wave_span = frames;
+        wave_lap = wave_end;
+    }
+}
+
 static void wave_accept(const u32 *w)
 {
     u32 t = w[LS_WAVE_T], end = t & ~(WAVE_BIN_FRAMES - 1u);
@@ -92,8 +109,7 @@ static void wave_accept(const u32 *w)
         wave_valid = 0;
         wave_span = 0;
     }
-    if (w[LS_NEXT_FRAMES])
-        wave_span = w[LS_NEXT_FRAMES];
+    wave_set_span(w[LS_NEXT_FRAMES], w[LS_CAPACITY]);
     if (end != wave_end && (!capture || (int32_t)(end - edge) <= 0))
         wave_add(end, wave_decode((u16)w[LS_WAVE_PEAK], w[LS_STATE]));
     if (capture) {
@@ -115,15 +131,22 @@ static void wave_accept(const u32 *w)
     }
     if (end != wave_end)
         wave_add(end, wave_decode((u16)w[LS_WAVE_PEAK], w[LS_STATE]));
+    /* Advance the lap anchor rather than taking the absolute clock modulo the
+     * span. The display stays aligned even when the 32-bit sample clock wraps. */
+    u32 position = wave_end - wave_lap;
+    if (position >= wave_span)
+        wave_lap = wave_end - position % wave_span;
     wave_count = count;
     wave_length = (w[LS_STATE] & LS_LOOP) ? w[LS_LOOP_FRAMES] : 0;
 }
 
-void dkrt_loop_wave_peaks(u16 out[LS_WAVE_COLUMNS])
+u32 dkrt_loop_wave_peaks(u16 out[LS_WAVE_COLUMNS])
 {
     WaveView v;
     u32 sr = dkrt_irq_mask();
-    if (wave_length) {
+    int live = !wave_length;
+    u32 position = 0;
+    if (!live) {
         v.end = wave_loop.end;
         v.frames = wave_loop.frames;
         v.valid = wave_loop.valid;
@@ -131,12 +154,8 @@ void dkrt_loop_wave_peaks(u16 out[LS_WAVE_COLUMNS])
         for (u32 j = 0; j < WAVE_BINS; ++j)
             v.bins[j] = wave_loop.bins[j];
     } else {
-        u32 frames = wave_span;
-        if (!frames)
-            frames = 96000; /* two seconds of rolling record before tempo/length is known */
-        if (frames > status[LS_CAPACITY] && status[LS_CAPACITY])
-            frames = status[LS_CAPACITY];
-        wave_snapshot(&v, wave_end, frames, wave_valid);
+        wave_snapshot(&v, wave_end, wave_span, wave_valid);
+        position = wave_end - wave_lap;
     }
     dkrt_irq_restore(sr);
     /* Integer endpoints avoid an expensive divide per pixel. At most three
@@ -149,10 +168,22 @@ void dkrt_loop_wave_peaks(u16 out[LS_WAVE_COLUMNS])
             ++to;
             frac -= LS_WAVE_COLUMNS;
         }
+        u32 first = from, stop = to;
+        if (live && from >= position) {
+            /* This column has not been reached in the current pass. Read the
+             * same column from the preceding pass. */
+            first -= position;
+            stop -= position;
+        } else if (live) {
+            u32 base = v.frames - position;
+            first += base;
+            stop = to < position ? base + to : v.frames;
+        }
         u16 peak = 0;
-        if (age < STALE && to > from && to > v.frames - v.valid) {
-            u32 first = (from < v.frames - v.valid ? v.frames - v.valid : from);
-            u32 pos = v.end - v.frames + first, last = v.end - v.frames + to - 1;
+        if (age < STALE && stop > first && stop > v.frames - v.valid) {
+            if (first < v.frames - v.valid)
+                first = v.frames - v.valid;
+            u32 pos = v.end - v.frames + first, last = v.end - v.frames + stop - 1;
             for (;;) {
                 peak = wave_merge(peak, v.bins[(pos >> v.shift) & (WAVE_BINS - 1)]);
                 u32 advance = (1u << v.shift) - (pos & ((1u << v.shift) - 1));
@@ -164,4 +195,5 @@ void dkrt_loop_wave_peaks(u16 out[LS_WAVE_COLUMNS])
         out[x] = peak;
         from = to;
     }
+    return live && age < STALE && v.valid ? position * LS_WAVE_COLUMNS / v.frames : LS_WAVE_COLUMNS;
 }

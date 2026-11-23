@@ -113,6 +113,10 @@ static void wave_history(void)
      * survive the coarser histories while the middle and silent side stay flat. */
     length = 1031680;
     const u32 start = 0u - length / 2;
+    carrier(++seq, LS_TRACK, 0);
+    cell(LS_WAVE_T, start);
+    cell(LS_NEXT_FRAMES, length);
+    block();
     for (u32 at = 512; at <= length; at += 512) {
         carrier(++seq, LS_TRACK, 0);
         cell(LS_WAVE_T, start + at);
@@ -177,10 +181,9 @@ static void wave_history_gaps(void)
         block();
     }
     loop_ui_tick();
-    dkrt_loop_wave_peaks(shape);
-    for (u32 x = 0; x < LS_WAVE_COLUMNS - 2; ++x)
-        assert(shape[x] == 0x4411);
-    assert(shape[118] == 0 && shape[119] == 0x6688);
+    assert(dkrt_loop_wave_peaks(shape) == 10);
+    for (u32 x = 0; x < LS_WAVE_COLUMNS; ++x)
+        assert(shape[x] == (x == 8 ? 0 : x == 9 ? 0x6688 : 0x4411));
 
     /* No new viewport estimate while the transport re-establishes its position. Keep the previous width. */
     carrier(++seq, LS_WAVE_PRECISE, 0);
@@ -228,6 +231,43 @@ static void wave_history_gaps(void)
     loop_ui_tick();
     dkrt_loop_wave_peaks(shape);
     assert(shape[0] == 0x2255 && shape[117] == 0x2255 && shape[118] == 0 && shape[119] == 0x7f09);
+}
+
+static void wave_print(void)
+{
+    u32 seq = 1200, origin = 1u << 27;
+    const u32 span = LS_WAVE_COLUMNS * 512;
+    u16 shape[LS_WAVE_COLUMNS];
+    const u32 precise = LS_TRACK | LS_WAVE_PRECISE;
+    carrier(++seq, precise, 0);
+    cell(LS_WAVE_T, origin);
+    cell(LS_NEXT_FRAMES, span);
+    block();
+    loop_ui_tick();
+    assert(dkrt_loop_wave_peaks(shape) == LS_WAVE_COLUMNS);
+    /* Each new bin changes only the column the cursor just passed. */
+    for (u32 bin = 1; bin <= LS_WAVE_COLUMNS; ++bin) {
+        carrier(++seq, precise, 0);
+        cell(LS_WAVE_T, origin + bin * 512);
+        cell(LS_NEXT_FRAMES, span);
+        cell(LS_WAVE_PEAK, bin);
+        block();
+        loop_ui_tick();
+        assert(dkrt_loop_wave_peaks(shape) == bin % LS_WAVE_COLUMNS);
+        for (u32 x = 0; x < LS_WAVE_COLUMNS; ++x)
+            assert(shape[x] == (x < bin ? x + 1 : 0));
+    }
+    /* On wrap, the first new bin overwrites the first column. The previous
+     * pass stays visible ahead of the cursor. A tiny estimate change stays put. */
+    carrier(++seq, precise, 0);
+    cell(LS_WAVE_T, origin + span + 512);
+    cell(LS_NEXT_FRAMES, span + 128);
+    cell(LS_WAVE_PEAK, 0x7722);
+    block();
+    loop_ui_tick();
+    assert(dkrt_loop_wave_peaks(shape) == 1 && shape[0] == 0x7722);
+    for (u32 x = 1; x < LS_WAVE_COLUMNS; ++x)
+        assert(shape[x] == x + 1);
 }
 
 static void reply_hook(void)
@@ -520,6 +560,7 @@ int main(void)
     wave_history();
     reply_order();
     wave_history_gaps();
+    wave_print();
     puts("loop control: ok");
     return 0;
 }

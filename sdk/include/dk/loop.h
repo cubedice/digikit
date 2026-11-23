@@ -23,6 +23,7 @@ void dkrt_loop_drop(void);
 /* Copy the engine's status (LS_WORDS words) to `out`; returns 1 when it is fresh, 0 when the engine has not reported
  * for a while (no loop effect is loaded, or its DSP part does not run): the words are then the last ones. */
 uint32_t dkrt_loop_status(uint32_t *out);
-/* The rolling preview or frozen loop, left to right: negative magnitude in the low byte, positive in the high byte. */
-void dkrt_loop_wave_peaks(uint16_t out[LS_WAVE_COLUMNS]);
+/* The live preview or frozen loop, left to right: negative magnitude in the low byte, positive in the high byte.
+ * Returns the live write column, or LS_WAVE_COLUMNS when there is no live trace or the waveform is held. */
+uint32_t dkrt_loop_wave_peaks(uint16_t out[LS_WAVE_COLUMNS]);
 #endif

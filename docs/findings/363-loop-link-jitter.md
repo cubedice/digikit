@@ -212,3 +212,11 @@ come one a block.
 - **[O]** Hardware: nothing of this ran on the device. Whether the frames on the device come as the rig's jitter models
   them (a repeat, then a gap of two; bursts) is not measured.
 - **[O]** The 750-block settle of the page's ARM and the `OL_SKIP` of 4 are first values.
+
+
+### Overloop live waveform cursor
+
+**[D]** The live view projects peaks into a fixed span with a dashed write cursor. On wrap, the latest pass overwrites the
+previous pass from the left. The held view still uses the actual capture boundaries, with its own playback marker.
+Small changes in the estimated cycle length leave the span in place. The host checks cover stationary columns through a
+full sweep and wrap, missing peak intervals, and the live and held cursor pixels.

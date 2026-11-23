@@ -21,8 +21,8 @@ holds no value of its own. The engine is `digikit/overloop`; the behaviour is de
 
 | State | Waveform | Caption |
 | --- | --- | --- |
-| IDLE | rolling stereo record, newest at right | `CYCLE 16 ST 2.00 S` once the cycle is known, otherwise `NO LOOP` |
-| ARMED | rolling record | expected cycle, `LAST 21.5 S ONLY` at capacity, or `NOTHING YET` |
+| IDLE | live peaks written at a moving cursor | `CYCLE 16 ST 2.00 S` once the cycle is known, otherwise `NO LOOP` |
+| ARMED | live peaks written at a moving cursor | expected cycle, `LAST 21.5 S ONLY` at capacity, or `NOTHING YET` |
 | LOOP | held audio and playhead | retained cycle or `CUT TO ITS LAST PART` |
 | LOOP+ARM | currently held audio and playhead | the cycle to be captured on the next change |
 
