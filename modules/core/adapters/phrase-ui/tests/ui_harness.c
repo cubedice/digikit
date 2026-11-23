@@ -348,6 +348,7 @@ static void page_cells(void)
 typedef struct {
     uint32_t boxes, texts, inverted;
     char seen[64][24];
+    uint8_t pixels[64][128];
 } Drawn;
 static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
 {
@@ -356,6 +357,8 @@ static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
     /* below the header, x 124 to 127 are the FX view's page indicator: nothing is drawn or cleared there */
     assert(y + h <= 10 || x + w <= 124);
     assert(ink == 0 || ink == 1);
+    for (int row = y; row < y + h; ++row)
+        memset(&d->pixels[row][x], ink, (size_t)w);
     ++d->boxes;
 }
 static void drawn_text(void *ctx, int x, int y, const char *s, int ink)
@@ -368,6 +371,9 @@ static void drawn_text(void *ctx, int x, int y, const char *s, int ink)
            x + half <= 128 && y >= 0 && y + 5 <= 64);
     /* below the header, x 124 to 127 are the FX view's page indicator */
     assert(y < 10 || x + half <= 124);
+    /* Text stays out of the icon bands at rows 17–23 and 44–50. */
+    assert(y + 5 <= 17 || y >= 24);
+    assert(y + 5 <= 44 || y >= 51);
     assert(d->texts < 64);
     strcpy(d->seen[d->texts++], s);
     d->inverted += !ink;
@@ -540,14 +546,14 @@ static void loop_page(void)
     assert(pu_turn(&s, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
     assert(pu_turn(&s, 6, 3, 0) == PU_OWN && raw[PH_P_INPT] == 1);
     assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
-    /* Arming again while the loop plays: ARMD, drawn inverted, in place of the crossfader's line. */
+    /* Arming again while the loop plays shows ARMD below the crossfader. */
     tap(&s, PU_PUSH + 7);
     assert(home_arms == 2);
     report(LS_LOOP | LS_ARMED | LS_TRACK, 1, 16, 16, 96000, 0.0f);
     pu_loop(&s);
     pu_page(&s, &p);
     same(p.cells[7].state, "ARMD");
-    assert(p.cells[7].lit && !p.cells[7].fader);
+    assert(p.cells[7].lit && p.cells[7].fader == 1);
     /* The next loop: INPT goes to LOOP again, from LIVE. */
     report(LS_LOOP | LS_HELD | LS_TRACK, 2, 16, 16, 96000, 1.0f);
     pu_loop(&s);
@@ -751,6 +757,102 @@ static void tracks(void)
     release_g(&s);
     assert(raw[PH_P_INPT] == 0);
 }
+
+/* Compare only the icon rows. Labels, numeric values and state text cannot satisfy this test. */
+static void icon_frame(const PhraseUi *s, Drawn *d)
+{
+    PhrasePage p;
+    PhraseCanvas c = {d, drawn_box, drawn_text};
+    memset(d, 0, sizeof(*d));
+    pu_page(s, &p);
+    pu_render(&p, &c);
+}
+static void icon_changes(const PhraseUi *s, Drawn *previous, int changed_cell)
+{
+    Drawn current;
+    icon_frame(s, &current);
+    for (int cell = 0; cell < 8; ++cell) {
+        int x = 19 + 26 * (cell % 4), y = cell < 4 ? 17 : 44;
+        int changed = 0;
+        for (int row = y; row < y + 7; ++row)
+            changed |= memcmp(&previous->pixels[row][x], &current.pixels[row][x], 26) != 0;
+        if (changed != (cell == changed_cell)) {
+            fprintf(stderr, "icon for %c %s while changing %c\n", 'A' + cell,
+                    changed ? "changed" : "stayed the same", 'A' + changed_cell);
+            assert(0);
+        }
+    }
+    *previous = current;
+}
+static void dynamic_icons(void)
+{
+    PhraseUi s;
+    Drawn previous;
+    init(&s);
+    icon_frame(&s, &previous);
+
+    raw[PH_P_ZONE] = 0;
+    icon_changes(&s, &previous, 0);
+    raw[PH_P_ZONE] = PH_ZONES - 1;
+    icon_changes(&s, &previous, 0);
+    raw[PH_P_RATE] = 0;
+    status(&s, 12000, 12000);
+    icon_changes(&s, &previous, 1);
+    raw[PH_P_RATE] = PH_RATE_MAX;
+    status(&s, 90000, 90000);
+    icon_changes(&s, &previous, 1);
+    raw[PH_P_SYNC] = 1;
+    icon_changes(&s, &previous, 1);
+    raw[PH_P_RATIO] = 0;
+    icon_changes(&s, &previous, 1);
+    raw[PH_P_RATIO] = PH_SYNC_RATIOS - 1;
+    icon_changes(&s, &previous, 1);
+    raw[PH_P_RPTS] = 0;
+    icon_changes(&s, &previous, 2);
+    raw[PH_P_RPTS] = 127;
+    icon_changes(&s, &previous, 2);
+    raw[PH_P_HOLD] = 1;
+    icon_changes(&s, &previous, 2);
+    raw[PH_P_COLR] = 0;
+    icon_changes(&s, &previous, 3);
+    raw[PH_P_COLR] = 127;
+    icon_changes(&s, &previous, 3);
+    raw[PH_P_HALO] = 127;
+    icon_changes(&s, &previous, 4);
+    raw[PH_P_SKEW] = 0;
+    icon_changes(&s, &previous, 5);
+    raw[PH_P_SKEW] = 127;
+    icon_changes(&s, &previous, 5);
+
+    hold_g(&s);
+    icon_frame(&s, &previous);
+    tap(&s, trig(1));
+    icon_changes(&s, &previous, 6);
+    tap(&s, trig(1));
+    tap(&s, trig(16));
+    icon_changes(&s, &previous, 6); /* Same number of tracks, different routing. */
+    release_g(&s);
+    icon_frame(&s, &previous);
+    raw[PH_P_INPT] = 1;
+    icon_changes(&s, &previous, 6); /* The open loop glyph precedes a capture. */
+    raw[PH_P_INPT] = 0;
+    icon_changes(&s, &previous, 6);
+
+    s.loop = &fake_home;
+    home_xfad = 64;
+    report(LS_LOOP | LS_TRACK, 1, 16, 16, 96000, 0.0f);
+    pu_loop_status(&s);
+    icon_changes(&s, &previous, 7);
+    raw[PH_P_INPT] = 1;
+    icon_changes(&s, &previous, 6);
+    /* H follows the applied crossfade even while a new loop is armed and the target stays fixed. */
+    report(LS_LOOP | LS_TRACK | LS_ARMED, 1, 16, 16, 96000, 0.5f);
+    pu_loop_status(&s);
+    icon_changes(&s, &previous, 7);
+    report(LS_LOOP | LS_TRACK | LS_ARMED, 1, 16, 16, 96000, 1.0f);
+    pu_loop_status(&s);
+    icon_changes(&s, &previous, 7);
+}
 int main(void)
 {
     encoders();
@@ -761,6 +863,7 @@ int main(void)
     rendering();
     loop_page();
     tracks();
+    dynamic_icons();
     puts("phrase ui: ok");
     return 0;
 }

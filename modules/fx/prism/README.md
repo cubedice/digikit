@@ -44,31 +44,16 @@ framework, its controls from the control mailbox it imports, its tape from the s
 
 ## The page
 
-FUNC + FX opens the FX pages; PRISM's is one of them (send effects come first). The real screen:
-
-```
- PRISM                              ECHO    387 MS
-─────────────────────────────────────────────────
- MIX   ZONE       RATE       RPTS       COLR
- ┌─┐   ECHO       387 MS     48         0
- │ │   ····▮···
- │█│              FREE
- │█│  ───────────────────────────────────────────
- │█│   HALO       SKEW       INPT       XFAD
- └─┘   0          0          LIVE       --
- 100                         2 TRK      NO LOOP
-```
+FUNC + FX opens the FX pages. PRISM has eight encoder cells, each with a live graphic above the value. The top row shows
+the selected zone, pulse spacing, repeat decay or growth, and the colour tilt. The bottom row shows halo spread, the
+relative length of the left and right taps, the input route, and the crossfader. The MIX meter is beside both rows.
 
 With SYNC on, RATE shows the ratio of the zone's 1/1 (`1/1`, `X1.5`, `/1.33`) over `SYNC`; the header keeps the time the
 engine plays. With INPT at LOOP and no loop the INPT cell says `SILENT` (PRISM hears nothing until a loop exists).
 
-With G held the INPT cell shows the tracks and that the TRIG keys choose them (`TRIGS` inverted):
-
-```
- │█│   HALO       SKEW       INPT       XFAD
- └─┘   0          0          2 TRK      --
- 100                         [TRIGS]    NO LOOP
-```
+The LIVE input graphic shows tracks 1–8 on top and 9–16 below. Selected tracks are larger dots. With G held the count
+and inverted `TRIGS` indicate that the TRIG keys are editing this routing. The LOOP input graphic closes once captured
+audio is available.
 
 | Control | Does |
 | --- | --- |
@@ -80,7 +65,7 @@ With G held the INPT cell shows the tracks and that the TRIG keys choose them (`
 | E | HALO, 0 to 127 |
 | F | SKEW, 64 is the centre: `L 12` means the left side is the longer one by 12 steps, `R 12` the right |
 | G | INPT, a two-position switch turned by the knob: right is LOOP (PRISM hears Overloop's loop), left is LIVE (PRISM hears the tracks it is given), at any time; without a loop LOOP is silence until one exists (`SILENT` under it). The switch crossfades over 5 ms. The press switches nothing. Hold: the TRIG keys choose the tracks PRISM hears, their LEDs show them. Under INPT: the number of tracks PRISM hears at LIVE. INPT goes to LOOP by itself at an armed change that takes a loop, and to LIVE when the loop is dropped or Overloop stops reporting for a while; it does not go back to LIVE only because there is no loop |
-| H | XFAD, Overloop's crossfader: the same value as on Overloop's page (`LIVE`, a number, `LOOP`; below it the crossfader as it sounds). Turns only while there is a loop. Press: ARM (`ARMD`, and below it the steps the next change keeps); a second press takes it back |
+| H | XFAD, Overloop's crossfader. The slider shows the applied position above `LIVE`, a number, or `LOOP`. Turns only while there is a loop. Press to arm or disarm. With an existing loop, `ARMD` appears below the slider and value. Before the first loop, `ARMD` shows with the steps the next change keeps |
 | FUNC + NO | Drop the loop |
 
 The header shows the zone and the time the engine plays now (it glides after a free RATE move). The values are kept in
