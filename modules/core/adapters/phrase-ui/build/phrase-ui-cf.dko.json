@@ -88,56 +88,84 @@
   },
   {
    "addend": 0,
-   "offset": 132,
+   "offset": 98,
    "section": ".text.pu_key",
    "symbol": ".sec..text.mark.part.0",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 218,
+   "offset": 110,
+   "section": ".text.pu_key",
+   "symbol": ".sec..text.mark.part.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 144,
+   "section": ".text.pu_key",
+   "symbol": ".sec..text.mark.part.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 230,
    "section": ".text.pu_key",
    "symbol": ".sec..text.mark.constprop.0",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 282,
+   "offset": 292,
    "section": ".text.pu_key",
    "symbol": ".sec..text.pu_tracks",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 300,
+   "offset": 310,
    "section": ".text.pu_key",
    "symbol": "dkrt_phrase_set",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 350,
+   "offset": 326,
    "section": ".text.pu_key",
    "symbol": ".sec..text.pu_has_loop",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 412,
+   "offset": 342,
+   "section": ".text.pu_key",
+   "symbol": ".sec..text.input",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 392,
+   "section": ".text.pu_key",
+   "symbol": ".sec..text.pu_has_loop",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 454,
    "section": ".text.pu_key",
    "symbol": ".sec..rodata.switches.3",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 424,
+   "offset": 466,
    "section": ".text.pu_key",
    "symbol": "dkrt_phrase_get",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 442,
+   "offset": 484,
    "section": ".text.pu_key",
    "symbol": "dkrt_phrase_set",
    "type": "cf.32"
@@ -2155,10 +2183,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffdc703f48d71cfc242f002c246f0028262f0030b082650001f87e107c1f2a02ea8dce83cc8247ea000c08030000660e08030001673420325c0c0d00662c7001eda8c0b25c1c4a8067202f02486a001c49f9000000004e942f02486a00144e942f022f0b4e944fef0018720128325c14ecacc8814a87675626325c1c2f022f0b47f9000000004e932f02486a00144e932f02486a001c4e934fef0018702fb08266164a8467164aaa0128670842aa012852aa00087001600c4a8466f82003eca87201c0814cd71cfc4fef00244e752a325c0c2f022f0b49f9000000004e94508f264c4a846600012420124a8067d6ecad70017208c681ca80200580836600010c2602720f0683ffffffe7b2836534202a01284a8067ae4eb9000000007201e7a9b1812f014878000d4eb90000000052aa00082f02486a00144e944fef00106000ff74760cb682663a202a000c0280000200004a806700ff6e2f0a4eb900000000588f4a80670e206a00d02068000c4e9052aa0008203c0000100081aa00146000ff34220276070681ffffffd7b6816500ff34702bb082654441f90000000077b018002f034eb9000000004a8057c0710044802f002f034eb90000000052aa00084fef000c722ab282660442aa00282f02486a00144e93508f6000feda762fb682660c70012540012852aa000860e07230b28266da206a00d04a8867d24aaa011467cc206800084e9060de20046000feb642806000feb0",
+   "hex": "4fefffe0703f48d70cfc242f0028246f0024262f002cb082650002207e107c1f2a02ea8dce83cc8247ea000c08030000660e08030001674020325c0c0d0066387001eda8c0b25c1c4a80672c2f02486a001c41f9000000004e902f02486a001441f9000000004e902f022f0b41f9000000004e904fef001828325c14ecac7001c8804a87675626325c1c2f022f0b47f9000000004e932f02486a00144e932f02486a001c4e934fef0018722fb28266164a8467164aaa0128670842aa012852aa00087001600c4a8466f82003eca87601c0834cd70cfc4fef00204e752a325c0c2f022f0b47f9000000004e93508f4a846600014220124a8067d8ecad70017208c681ca80200580836600012a2602720f0683ffffffe7b2836554202a01284a8067b04eb9000000007201e7a9b1812f014878000d4eb900000000508f4aaa0120661a2f0a4eb900000000588f4a80660c42a72f0a4eb900000000508f52aa00082f02486a00144e93508f6000ff56760cb682663a202a000c0280000200004a806700ff502f0a4eb900000000588f4a80670e206a00d02068000c4e9052aa0008203c0000100081aa00146000ff16220276070681ffffffd7b6816500ff16702bb082653c41f90000000077b018002f034eb9000000004a8057c0710044802f002f034eb90000000052aa00084fef000c722ab2826600ff6a42aa00286000ff62762fb682660a7001254001286000ff4e7230b2826600ff4a206a00d04a886700ff404aaa01146700ff38206800084e906000ff2a20046000fe9a42806000fe94",
    "kind": "text",
    "name": ".text.pu_key",
-   "size": 536
+   "size": 576
   },
   {
    "align": 2,
@@ -2476,7 +2504,7 @@
    "size": 300
   }
  ],
- "source_sha256": "7041941a3fd472dfc2c82552c1b6ded88e6c369b9953f944650414a102880f13",
+ "source_sha256": "47bf3bf15d9d8ad489d1778d271bf2585ea0e15b7af2b335331320035e9b6054",
  "symbols": [
   {
    "global": false,
@@ -3191,8 +3219,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "2507",
-  "isa_check": "a4c50848c722ae4a875b847df3f2f035d18467ab94616356aac5d2d891d0e9de",
+  "instructions_redecoded": "2515",
+  "isa_check": "06cf7ac06f5ef8b9255c77cb3e73ceeb1ac15b29de7cfc30be4dcff7bece5306",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

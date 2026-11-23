@@ -53,7 +53,8 @@ outline at the neutral point. HALO starts with one visible ring. The other rings
 up and converge when you turn it down.
 
 The header shows FREE or SYNC, input status, and NO LOOP before a capture. FLIP, HOLD, and ARMD appear above the MIX
-meter. Choosing LOOP before a capture shows SILENT in the header.
+meter. Choosing LOOP before a capture shows SILENT in the header. Changing a track selection from this state returns
+INPT to LIVE and shows the selected tracks.
 
 The LIVE input graphic shows tracks 1–8 on top and 9–16 below. Selected tracks are larger dots. With G held, inverted
 `TRIGS` in the header indicates that the TRIG keys are editing this routing. Hold FUNC to see the count. The LOOP
@@ -68,7 +69,7 @@ input graphic closes once captured audio is available.
 | D | COLR. The centre is 0 on screen. Negative values darken the repeats and positive values brighten them |
 | E | HALO, 0 to 127. Spreads the repeats in time and stereo. The upper half adds slow movement to the tail |
 | F | SKEW, 64 is the centre: `L 12` means the left side is the longer one by 12 steps, `R 12` the right |
-| G | INPT, a two-position switch turned by the knob: right is LOOP (PRISM hears Overloop's loop), left is LIVE (PRISM hears the tracks it is given), at any time; without a loop LOOP is silence until one exists (`SILENT` under it). The switch crossfades over 5 ms. The press switches nothing. Hold: the TRIG keys choose the tracks PRISM hears, their LEDs show them. Under INPT: the number of tracks PRISM hears at LIVE. INPT goes to LOOP by itself at an armed change that takes a loop, and to LIVE when the loop is dropped or Overloop stops reporting for a while; it does not go back to LIVE only because there is no loop |
+| G | INPT, a two-position switch turned by the knob: right is LOOP (PRISM hears Overloop's loop), left is LIVE (PRISM hears the tracks it is given). The switch crossfades over 5 ms. Hold G and use TRIG keys to choose tracks. Changing the selection switches silent LOOP to LIVE when there is no capture. INPT goes to LOOP at an armed change that takes a loop, and to LIVE when the loop is dropped or Overloop stops reporting for a while. |
 | H | XFAD, Overloop's crossfader. The slider shows the applied position. Turns only while there is a loop. Press to arm or disarm. With FUNC held, the caption shows `LIVE`, a number, or `LOOP`. Before the first loop, FUNC also reveals how many steps the next change keeps |
 | FUNC + NO | Drop the loop |
 

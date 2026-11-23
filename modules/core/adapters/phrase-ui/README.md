@@ -29,9 +29,9 @@ While G is held on the page that is on top, the 16 TRIG keys choose the tracks t
 white (`0x71`) for a track it hears, the dim level (`0x02`) for the others. A TRIG key turns its track on or off at its
 press; the key plays no note, enters no step and selects no track or pattern, and its release is the page's too, also
 when G or the page went first. A key down before G was is the firmware's. When G is released, when another view covers
-the page or when the FX view shows another page, every TRIG key and LED is the firmware's again. Neither the press nor the
-release of G switches INPT ([finding 363](../../../../docs/findings/363-loop-link-jitter.md)). The tracks
-are `core/phrase-control`'s value `PH_P_TRKS` (bit t for track t + 1), saved with the other values; the provider gives
+the page or when the FX view shows another page, every TRIG key and LED is the firmware's again. A track edit while LOOP
+is empty returns INPT to LIVE. With a held loop, choosing tracks prepares the LIVE input and keeps the loop routed.
+The tracks are `core/phrase-control`'s value `PH_P_TRKS` (bit t for track t + 1), saved with the other values. The provider gives
 the fx service a full send amount (127) for each of them and 0 for the others (`phrase_sends`), and the effect row's
 amount words carry them to the send route.
 
@@ -40,8 +40,8 @@ INPT is `core/phrase-control`'s value (not saved); XFAD, ARM and the drop are Ov
 loop and H shows `--`; G still turns INPT, and at LOOP PRISM hears silence. `phrase_ui_tick`, once a UI pass also when the
 page is not shown, puts INPT at LOOP when the loop count in Overloop's status moves (a new loop), and at LIVE when the
 loop goes away (a status with a loop, then one without: a drop, or a loop lost with its lease) or when Overloop, having
-reported, stops reporting (no status for 60 more passes; once, so that G may put INPT at LOOP again). At no other time
-does INPT move by itself: without a loop it stays where G put it. While INPT is LOOP and there is a loop the header says `LOOP 16 ST 2.00 S` in place of the
+reported, stops reporting (no status for 60 more passes; once, so that G may put INPT at LOOP again). While INPT is LOOP
+and there is a loop the header says `LOOP 16 ST 2.00 S` in place of the
 zone and the time while FUNC is held. The presses of D to F are taken and do nothing. UP, DOWN, FX and every other key go to the stock FX
 view: the page is one entry among the FX pages.
 

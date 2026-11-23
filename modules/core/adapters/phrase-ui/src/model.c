@@ -184,6 +184,9 @@ uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
         if (!s->select)
             return PU_PASS;
         dkrt_phrase_set(PH_P_TRKS, pu_tracks() ^ (1u << (key - PU_TRIG)));
+        /* A track edit gives an empty LOOP input something to hear. Keep a captured loop through edit and link grace. */
+        if (!s->loop_had && !pu_has_loop(s))
+            input(s, 0);
         ++s->revision;
         mark(s->owned, key, 1);
         return PU_OWN;

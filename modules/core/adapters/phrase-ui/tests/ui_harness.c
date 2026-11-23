@@ -852,8 +852,7 @@ static void tracks(void)
     pu_page(&s, &p);
     same(p.cells[6].state, "16 TRK");
 
-    /* With a loop as without one, G's press switches nothing: short or long, with a TRIG key or none. A turn of G switches,
-     * also while it is held, and its release does not switch back. */
+    /* G's press switches nothing. While a loop is held, track edits prepare LIVE without switching away from the loop. */
     s.loop = &fake_home;
     home_xfad = LP_MAX;
     report(LS_LOOP | LS_TRACK, 1, 16, 16, 96000, 1.0f);
@@ -871,10 +870,37 @@ static void tracks(void)
     tap(&s, trig(16));
     release_g(&s);
     assert(raw[PH_P_INPT] == 1 && raw[PH_P_TRKS] == 0x7fff);
+    /* The same applies through a brief loss of Overloop status. */
+    pu_loop(&s);
+    home_fresh = 0;
+    pu_loop(&s);
+    hold_g(&s);
+    tap(&s, trig(16));
+    release_g(&s);
+    assert(raw[PH_P_INPT] == 1 && raw[PH_P_TRKS] == PH_TRACKS_ALL);
+    /* A turn of G while it is held still switches, and release keeps that choice. */
     hold_g(&s);
     assert(pu_turn(&s, PU_SELECT, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
     release_g(&s);
     assert(raw[PH_P_INPT] == 0);
+
+    /* In silent LOOP with no capture, choosing an actual track brings back the LIVE track grid. */
+    report(LS_TRACK, 1, 16, 0, 0, 0.0f);
+    pu_loop(&s);
+    raw[PH_P_TRKS] = 0;
+    assert(pu_turn(&s, PU_SELECT, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
+    hold_g(&s);
+    release_g(&s);
+    assert(raw[PH_P_INPT] == 1);
+    hold_g(&s);
+    tap(&s, trig(16));
+    release_g(&s);
+    assert(raw[PH_P_INPT] == 0 && raw[PH_P_TRKS] == (1u << 15));
+    pu_page(&s, &p);
+    same(p.cells[6].value, "LIVE");
+    same(p.cells[6].state, "1 TRK");
+    draw_page(&p, &d, 0);
+    assert(!p.loop_input && saw_at(&d, 76, 2, "LIVE") && d.pixels[51][95]);
 }
 
 /* Compare only the icon rows. Labels, numeric values and state text cannot satisfy this test. */
