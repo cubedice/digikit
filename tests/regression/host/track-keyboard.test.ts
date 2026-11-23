@@ -40,3 +40,39 @@ test('tracks own chord notes independently and schedule direct and arpeggiated p
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test('native One Shot chords can reattack their helpers through sample tails', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'digikit-track-pool-admission-'));
+  const root = resolve(import.meta.dirname, '../../..');
+  const module = join(root, 'modules/core/adapters/track-keyboard');
+  const binary = join(directory, 'pool-admission');
+  try {
+    execFileSync(
+      'cc',
+      [
+        '-std=c11',
+        '-O2',
+        '-Wall',
+        '-Wextra',
+        '-Werror',
+        '-fsanitize=undefined',
+        '-I',
+        join(root, 'modules/core/runtime/include'),
+        '-I',
+        join(root, 'sdk/include'),
+        join(module, 'src/track-keyboard.c'),
+        join(module, 'src/track-config.c'),
+        join(module, 'src/track-native.c'),
+        join(module, 'src/track-pool.c'),
+        join(module, 'src/track-pool-fw.c'),
+        join(module, 'tests/track-pool-admission.c'),
+        '-o',
+        binary,
+      ],
+      { timeout: 20_000 },
+    );
+    execFileSync(binary, { timeout: 10_000 });
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

@@ -230,7 +230,8 @@ _tk_pool_return:
 
 // Inspect each native stereo cursor pair and its completed track block.
 // AHD/ADSR state may park in release after a source ends. Cursor inactivity
-// plus stereo silence excludes both the source and its audible filter tail.
+// plus output below a half 24-bit sample step excludes the audible tail.
+// Native filters can keep decaying for seconds below this level.
 // A looped cursor stays claimed even if its envelope has reached silence.
 _tk_pool_quiet_scan:
     I1 = 0x241484;   // first native sample record + 0x1b8
@@ -247,10 +248,12 @@ _tk_pool_quiet_track:
     IF NE JUMP _tk_pool_quiet_next;
     I0 = R6;
     R4 = 0;
+    R3 = 0x33800000; // 2^-24, float magnitude bits
     LCNTR = 64, DO _tk_pool_quiet_sample UNTIL LCE;
         R0 = DM(I0,M6);
-_tk_pool_quiet_sample: R4 = R4 OR R0;
-    R4 = FEXT R4 BY 0:31; // allow negative zero on a silent bus
+        R0 = FEXT R0 BY 0:31;
+        COMP(R0,R3);
+_tk_pool_quiet_sample: IF GE R4 = PASS R3; // also rejects infinity and NaN
     R4 = PASS R4;
     IF EQ R7 = BSET R7 BY 15;
 _tk_pool_quiet_next:

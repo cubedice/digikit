@@ -154,8 +154,9 @@ and sequencer due hook exclude independent notes on leased destinations.
 
 Every eight blocks the DSP checks both sample cursors and the complete
 pre-fold stereo track bus. This handles a native AMP phase that parks after
-its source ends. A stopped ONESHOT cursor with a silent bus is quiescent even
-if the AMP still holds its last release coefficient. The quiet mask and its
+its source ends. A stopped ONESHOT cursor with every sample below a half
+24-bit sample step is quiescent even if the AMP still holds its last release
+coefficient. The quiet mask and its
 sequence and check travel in the idle DSP-link ACK cells. An active upload
 gets its normal ACK. Admission and reuse require a fresh valid quiet reply.
 The draining route remains tied to its owner while a
@@ -468,3 +469,21 @@ recording mode or moving to a different track.
 **[D]** The coupled emulator on image `821ef4c23c807b81` confirmed three actual voices and a recorder commit
 during panel live recording. Stopped and running panel play and USB live recording also passed. The populated
 track remained independent, and the helpers drained after release in all four cases.
+
+## Rapid One Shot chord retriggers [D]
+
+In the host test, a second chord arrived while both released sample helpers were still ringing. The dispatcher
+sent three releases and the next root in one batch. The following pool update moved both helpers to draining,
+which prevented the next two attacks. AUTO lets released helpers drain and can reuse a still-routed sample
+lane for a fresh chord from the same owner in the same pattern and kit. Selecting a borrowed track takes it
+out of reuse while its previous tail drains.
+
+The running test also exposed a DSP quiet check that required exact zero after the sample cursor stopped.
+A pre-fold trace captured both inactive helper buses with residual peaks of `2.11e-6` and `4.77e-8` after
+the old test's six-second deadline. Over the next nine snapshots both dropped below `1e-9`. The DSP now
+accepts magnitudes below `2^-24` while still checking both native sample and pending-seed flags.
+
+In the coupled DTII emulator, image `430154c8ca5a4367` played only the root on the second panel press while both
+helper tails were still active. Image `7483a69156b60e0b` reused the same two helpers and activated all three stock
+voice destinations for the second chord. After release, both quiet helpers returned to the pool. The running
+transport case also returned both helpers.

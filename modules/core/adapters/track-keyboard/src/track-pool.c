@@ -24,16 +24,28 @@ void tk_pool_update(TkPool *pool, const TkPoolSnapshot *snapshot,
 {
     uint16_t claimed = 0, owners = 0, tails = 0;
     bool changed = pool->epoch != snapshot->epoch;
+    uint16_t reusable = changed ? 0 : pool->reusable_tails;
+    uint16_t next_reusable = 0;
     pool->epoch = snapshot->epoch;
 
     for (uint8_t owner = 0; owner < TK_TRACKS; ++owner) {
+        uint16_t bit = (uint16_t)(1u << owner);
         uint16_t assigned = pool->assigned[owner];
         uint16_t draining = pool->draining[owner] & ~snapshot->quiescent_helpers;
         uint16_t request = request_for(snapshot, config, owner);
         uint16_t keep = assigned & request & snapshot->eligible_helpers;
+        bool reuse = !changed && config && !config[owner].helpers &&
+                     (snapshot->qualified_owners & bit) && !(snapshot->relay_owners & bit);
         if (changed || !valid_size(snapshot, owner, assigned) ||
             (request && config[owner].helpers && (assigned != request || keep != assigned)))
             keep = 0;
+        if (reuse) {
+            uint16_t warm = draining & reusable & snapshot->reusable_helpers;
+            uint16_t restarted = warm & request;
+            draining &= (uint16_t)~restarted;
+            keep |= restarted;
+            next_reusable |= (warm & ~restarted) | (assigned & ~keep & snapshot->reusable_helpers);
+        }
         draining |= assigned & ~keep;
         pool->assigned[owner] = keep;
         pool->draining[owner] = draining;
@@ -76,6 +88,7 @@ void tk_pool_update(TkPool *pool, const TkPoolSnapshot *snapshot,
     }
     pool->relay_heads = ((snapshot->relay_heads | (owners & ~tails)) & snapshot->relay_owners &
                          snapshot->qualified_owners & ~claimed);
+    pool->reusable_tails = next_reusable;
 }
 
 uint8_t tk_pool_capacity(const TkPool *pool, uint8_t owner)
