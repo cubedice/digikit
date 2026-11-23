@@ -608,7 +608,7 @@ static void draw_waveform(u8 *b, const struct RelayOverview *overview, unsigned 
                           unsigned writing, unsigned span, unsigned write, unsigned read)
 {
     enum { LEFT = 17 };
-    int top = page ? 26 : 35, bottom = page ? 47 : 41;
+    int top = page ? 22 : 35, bottom = page ? 54 : 41;
     int middle = (top + bottom) / 2;
     if (page) {
         fxv_box(b, LEFT - 1, top + 1, 1, bottom - top - 1, 1);
@@ -670,36 +670,20 @@ static void time_text(char *text, unsigned frames)
 }
 static void transport_mark(u8 *b, unsigned writing)
 {
-    int y = page ? 10 : 12;
+    int x = 82, y = page ? 12 : 17; /* Encoder C's top cell. */
     if (writing) {
-        int fill = !(status[2] & 16);
-        fxv_box(b, 17, y, 2, 5, 1);
-        fxv_box(b, 16, y + 1, 4, 3, 1);
-        if (!fill)
-            fxv_box(b, 17, y + 1, 2, 3, 0);
+        fxv_box(b, x + 2, y, 3, 7, 1);
+        fxv_box(b, x + 1, y + 1, 5, 5, 1);
+        fxv_box(b, x, y + 2, 7, 3, 1);
+        if (status[2] & 16)
+            fxv_box(b, x + 2, y + 2, 3, 3, 0);
     } else if (status[7] & 1) {
-        fxv_box(b, 16, y, 1, 5, 1);
-        fxv_box(b, 17, y + 1, 1, 3, 1);
-        fxv_box(b, 18, y + 2, 1, 1, 1);
+        for (int i = 0; i < 4; ++i)
+            fxv_box(b, x + 1 + i, y + i, 1, 7 - 2 * i, 1);
     } else {
-        fxv_box(b, 16, y, 1, 5, 1);
-        fxv_box(b, 19, y, 1, 5, 1);
+        fxv_box(b, x + 1, y, 2, 7, 1);
+        fxv_box(b, x + 4, y, 2, 7, 1);
     }
-}
-static void detail_dial(u8 *b, int x, int y, unsigned value)
-{
-    /* Detail fits the same controls around the waveform with smaller dials. */
-    static const int8_t needle[7][2] = {{-2, 2}, {-2, 0}, {-2, -2}, {0, -2},
-                                        {2, -2}, {2, 0},  {2, 2}};
-    fxv_box(b, x - 2, y, 5, 1, 1);
-    fxv_box(b, x - 2, y + 6, 5, 1, 1);
-    fxv_box(b, x - 3, y + 1, 1, 5, 1);
-    fxv_box(b, x + 3, y + 1, 1, 5, 1);
-    unsigned step = (value * 6 + 63) / 127;
-    int dx = needle[step][0], dy = needle[step][1];
-    fxv_box(b, x + dx, y + 3 + dy, 1, 1, 1);
-    fxv_box(b, x + dx / 2, y + 3 + dy / 2, 1, 1, 1);
-    fxv_box(b, x, y + 3, 1, 1, 1);
 }
 static void draw(u8 *view, u8 *b, unsigned values)
 {
@@ -711,14 +695,6 @@ static void draw(u8 *view, u8 *b, unsigned values)
     unsigned total = status[5], span = loop_frames(total, fraction);
     unsigned write = span ? status[6] % span : 0, read = span ? (write + read_offset) % span : 0;
     unsigned steps = grid(), length = loop_steps(steps, fraction);
-    unsigned knobs[8] = {s->gain * 127 / 100,
-                         (s->rate + 200) * 127 / 400,
-                         0,
-                         s->feedback * 127 / 100,
-                         span ? write * 127 / span : 0,
-                         span ? read * 127 / span : 0,
-                         length * 127 / steps,
-                         s->mix * 127 / 100};
     char rate[6], feedback[4], mix[4], gain[4], len[8], write_at[8], read_at[8];
     unsigned speed = s->rate < 0 ? -s->rate : s->rate;
     rate[0] = s->rate < 0 ? '-' : '+';
@@ -741,20 +717,29 @@ static void draw(u8 *view, u8 *b, unsigned values)
     /* Keep the native header, track column and page indicators. */
     fxv_box(b, 16, 10, 108, 54, 0);
     transport_mark(b, writing);
+    if (!page) {
+        unsigned knobs[8] = {s->gain * 127 / 100,
+                             (s->rate + 200) * 127 / 400,
+                             0,
+                             s->feedback * 127 / 100,
+                             span ? write * 127 / span : 0,
+                             span ? read * 127 / span : 0,
+                             length * 127 / steps,
+                             s->mix * 127 / 100};
+        for (unsigned i = edit_gain ? 0 : 1; i < 8; ++i)
+            if (i != 2)
+                ip_src_draw_rotary(view, b, i, knobs[i]);
+        if (!edit_gain && !(values & 1))
+            fxv_text(b, 33, 21, input, 1);
+    }
     for (unsigned i = 0; i < 8; ++i) {
         if (i == 2)
             continue;
         int x = 33 + (i % 4) * 26;
-        if (!i && !edit_gain) {
-            if (!(values & 1))
-                fxv_text(b, x, page ? 15 : 21, input, 1);
-        } else if (page) {
-            detail_dial(b, x, i < 4 ? 11 : 49, knobs[i]);
-        } else {
-            ip_src_draw_rotary(view, b, i, knobs[i]);
-        }
-        const char *label = !i && edit_gain ? "GAIN" : labels[i];
-        fxv_text(b, x, i >= 4 ? 58 : page ? 20 : 30, values & (1u << i) ? shown[i] : label, 1);
+        const char *label = labels[i];
+        if (!i)
+            label = edit_gain ? "GAIN" : page ? input : label;
+        fxv_text(b, x, i >= 4 ? 58 : page ? 13 : 30, values & (1u << i) ? shown[i] : label, 1);
     }
     const struct RelayOverview *o = current_wave();
     unsigned live =
@@ -819,9 +804,10 @@ int rtm_src(u8 *view, unsigned action, u8 *data)
         return 1;
     }
     if (action == 1 || action == 5) {
-        unsigned values = view[0x190]                                            ? 255
-                          : focus && ip_src_focus_active(view + 0x94, focus - 1) ? 1u << (focus - 1)
-                                                                                 : 0;
+        unsigned values = view[0x190] ? 255
+                          : !page && focus && ip_src_focus_active(view + 0x94, focus - 1)
+                              ? 1u << (focus - 1)
+                              : 0;
         if (action == 5)
             return redraw || values != paint_values ? 2 : 1;
         draw(view, data, values);
