@@ -1,7 +1,7 @@
 // Stock Sound records carry the settings and the source +Drive folder/number.
 // The asynchronous file job must finish before a new reference is published.
 struct TapeRecord {
-    unsigned source, take, grid, input, gain, feedback, mix, spacing, hits, sensitivity;
+    unsigned source, take, grid, input, gain, feedback, mix, spacing, hits, sensitivity, loop_q16;
     int rate;
 };
 struct TapeBinding {
@@ -39,6 +39,7 @@ static int decode_tape(const u8 *p, struct TapeRecord *v)
         return 0;
     v->hits = p[18];
     v->sensitivity = p[19];
+    v->loop_q16 = get16(p + 20);
     v->source = p[4];
     v->take = get16(p + 5);
     v->grid = get16(p + 7);
@@ -48,7 +49,7 @@ static int decode_tape(const u8 *p, struct TapeRecord *v)
     v->mix = p[12];
     v->rate = (int)get16(p + 13) - 200;
     v->spacing = p[15] ? 65536 : get16(p + 16);
-    return v->source < 16 && v->take <= 9999 && v->grid <= 1024 && v->input < 19 && v->hits <= 1 &&
+    return v->source < 16 && v->take <= 9999 && v->grid <= 1024 && v->input <= RT_INPUT_MAIN && v->hits <= 1 &&
            v->sensitivity <= 8 && v->gain <= 100 && v->feedback <= 100 && v->mix <= 100 &&
            v->rate >= -200 && v->rate <= 200;
 }
@@ -78,6 +79,7 @@ static void publish_sound(unsigned t)
     put16(bytes + 16, s->spacing);
     bytes[18] = s->hits;
     bytes[19] = s->sensitivity;
+    put16(bytes + 20, s->loop_q16);
     put16(bytes + 38, record_check(bytes));
     u32 sr = dkrt_irq_mask();
     if (sa_seq(store, b->sound) == b->sequence) {
@@ -149,6 +151,7 @@ static int restore_controls(unsigned t)
     s->feedback = r->feedback;
     s->mix = r->mix;
     s->spacing = r->spacing;
+    s->loop_q16 = r->loop_q16;
     s->rate = r->rate;
     if (!send_to(t, RT_SETTINGS, 0, r->grid))
         return 0;
@@ -228,7 +231,7 @@ static void tape_sound_tick(void)
         if (count_types > 128)
             return;
         for (unsigned i = 0; i < count_types; ++i)
-            if (owns(first + i)) {
+            if (rtm_is_type(first + i)) {
                 relay_type = first + i;
                 break;
             }
@@ -279,7 +282,7 @@ static void tape_sound_tick(void)
             b->sound = sound;
         } else {
             struct TapeRecord incoming;
-            incoming.source = incoming.take = incoming.grid = incoming.input = incoming.hits = 0;
+            incoming.source = incoming.take = incoming.grid = incoming.input = incoming.hits = incoming.loop_q16 = 0;
             incoming.sensitivity = 4;
             incoming.gain = incoming.feedback = incoming.mix = 100;
             incoming.spacing = 65536;
@@ -358,8 +361,8 @@ static void tape_sound_tick(void)
             return;
         }
     }
-    if (b->pending == 2 && track == t && !confirm && !audition)
+    if (b->pending == 2 && track == t && !confirm)
         confirm = 3;
-    if ((save_requests & (1u << t)) && file_track >= 16 && !b->pending && save_tape(t, 0, 1))
-        say("SAVING TAPE");
+    if ((save_requests & (1u << t)) && file_track >= 16 && !b->pending)
+        save_tape(t, 0, 1);
 }

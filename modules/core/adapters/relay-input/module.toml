@@ -7,7 +7,7 @@ role = "adapter"
 type = "framework"
 author = "digikit"
 status = "experimental"
-summary = "Snapshots both dry external input channels for the RELAY recorder."
+summary = "Snapshots stereo external input and the final stereo master mix for RELAY."
 requires = []
 conflicts = []
 ports = ["dt2-1.17"]
@@ -20,15 +20,25 @@ path = "build/relay-input-dsp.dko.json"
 sources = ["src/dsp/input.s"]
 place = "dsp.l2"
 devices = ["dt2"]
-optional = ["_rtm_capture"]
+optional = ["_rtm_capture", "_tk_pool_fold"]
 
 [object.externs]
 _relay_input_tail = "hook.dsp.fx.fn.relay_input.tail"
+_relay_q31_converter = "dsp.master.fn.q31_converter"
+_relay_master_float = "dsp.master.value.q31_converter.float_buf"
 
 [[op]]
 op = "hook"
 hook = "dsp.fx.hook.relay_input"
 to = "_relay_input_tap"
 
+[[op]]
+op = "hook"
+hook = "dsp.master.hook.q31_converter.call"
+to = "_relay_main_tap"
+
 [[claim]]
 resource = "dsp.relay.native-send-entry"
+
+[[claim]]
+resource = "dsp.relay.master-converter-entry"

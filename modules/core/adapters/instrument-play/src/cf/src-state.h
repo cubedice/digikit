@@ -11,6 +11,8 @@ enum {
     CS_CLOCK = 35,
     CS_BPM = 36,
     CS_NONE = 255,
+    CS_SHARED_KEYBOARD = 4,
+    CS_LAYOUT_FAMILY = 3,
     CS_FOCUS_MS = 750,
     CS_LIST_TICKS = 4
 };
@@ -19,6 +21,9 @@ typedef struct {
     uint32_t generation, track, token, revision, pending, focus_at, metadata;
     uint16_t value[CP_CONTROLS];
     uint8_t page[16], visible, mode, clock, learned, modal, focus, focus_id;
+    /* Base family in bits 0–1; bit 2 selects the shared keyboard layout.
+     * Keep the native tune words and proof-visible record stride unchanged. */
+    uint8_t layout;
     uint32_t native_tune, native_tune_pending;
     /* Signed panel movement, not accelerated parameter increments. Keep each
      * encoder's partial list step separate from other knobs and contexts. */
@@ -34,10 +39,17 @@ void cs_import(CsState *, const CpPreset *);
 void cs_metadata(CsState *, uint32_t metadata);
 void cs_touch(CsState *);
 void cs_native_tune(CsState *, uint32_t raw);
+/* Switch layouts only when the track keyboard owns both note generation and its UI. */
+void cs_track_keyboard(CsState *, int active);
+static inline int cs_shared_keyboard(const CsState *s)
+{
+    return !!(s->layout & CS_SHARED_KEYBOARD);
+}
 uint32_t cs_context(CsState *, uint32_t track, uint32_t generation, int visible, uint32_t page,
                     uint32_t mode, uint32_t clock, int learned, int modal);
 uint32_t cs_control(uint32_t page, uint32_t encoder);
 uint32_t cs_pages(const CsState *);
+enum CsSharedPage { CS_VOICE, CS_FM_ENV, CS_DETAIL, CS_SHARED_PAGES };
 uint32_t cs_mapped_control(const CsState *, uint32_t encoder);
 /* View-only choices. PLAY is followed by the twelve persisted chord types;
  * Velvet/Reed are followed by the five persisted wavetable identifiers. */

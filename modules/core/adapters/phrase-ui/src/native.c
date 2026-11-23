@@ -15,7 +15,6 @@
 #include "dk_fw_view.h"
 #include "dk_fw_input.h"
 
-extern void phrase_stock_led(uint8_t *, uint32_t, uint32_t, uint32_t);
 /* The loop effect's home (core/loop-control) is optional: in an image without it these are 0 and the page has no loop. */
 #pragma weak dkrt_loop_get
 #pragma weak dkrt_loop_xfad
@@ -51,6 +50,7 @@ uint32_t phrase_ui_values[PH_PARAM_COUNT];
 /* The page as it was last painted: the texts of its cells, for the same test. */
 PhrasePage phrase_ui_page;
 static uint32_t painted, paint_revision, last_owner, paint_fresh;
+static int paint_values;
 static void reconcile(void)
 {
     uint32_t physical[2] = {0, 0};
@@ -62,6 +62,11 @@ static void reconcile(void)
 static uint32_t word(const uint8_t *p, uint32_t off)
 {
     return *(const uint32_t *)(p + off);
+}
+static int values_visible(const uint8_t *view)
+{
+    /* FxPageView inherits ParameterPageView's momentary values flag. The stock FX key handler owns tap and hold. */
+    return view[0x190] != 0;
 }
 static int context(uint8_t *view)
 {
@@ -102,14 +107,16 @@ int phrase_fxv_draw(uint8_t *view, uint8_t *bitmap, int header_only)
         return 0;
     PhraseCanvas c = {bitmap, fxv_box, fxv_text};
     pu_page(&ui, &phrase_ui_page);
+    int show_values = values_visible(view);
     if (header_only) {
-        pu_render_header(&phrase_ui_page, &c);
+        pu_render_header(&phrase_ui_page, &c, show_values);
         return 1;
     }
-    pu_render(&phrase_ui_page, &c);
+    pu_render(&phrase_ui_page, &c, show_values);
     painted = ui.status[PH_S_HEARTBEAT / 4];
     paint_revision = ui.revision;
     paint_fresh = ui.fresh;
+    paint_values = show_values;
     ++phrase_ui_debug[0];
     return 1;
 }
@@ -166,21 +173,19 @@ int phrase_dispatch_trig(uint8_t *event)
 /* Before the firmware's LED setter (cf.page.hook.phrase_led_set, cdecl(manager, logical, layer, value)): while G holds the
  * selection on the page that is on top, the TRIG LEDs show the tracks the effect hears. Every other LED, and every LED at
  * any other time, is the firmware's. */
-void phrase_led_set(uint8_t *manager, uint32_t logical, uint32_t layer, uint32_t value)
+int phrase_led_claim(uint32_t logical)
 {
-    if (ui.select && logical >= PU_LED_TRIG && logical < PU_LED_TRIG + PH_TRACKS) {
-        uint8_t *view = fxv_visible_view();
-        if (!view || fxv_page(view) != dkrt_phrase_active())
-            pu_context(&ui, 0, dkrt_phrase_active() ? ui.generation : 0);
-        if (pu_selecting(&ui)) {
-            value = pu_led(&ui, logical, value);
-            /* layer 2: a claimed value (layer 1 is the firmware's forced off); the next LED frame clears every claim */
-            layer = 2;
-            ++phrase_ui_debug[10];
-        }
-    }
-    phrase_stock_led(manager, logical, layer, value);
+    if (!ui.select || logical < PU_LED_TRIG || logical >= PU_LED_TRIG + PH_TRACKS)
+        return -1;
+    uint8_t *view = fxv_visible_view();
+    if (!view || fxv_page(view) != dkrt_phrase_active())
+        pu_context(&ui, 0, dkrt_phrase_active() ? ui.generation : 0);
+    if (!pu_selecting(&ui))
+        return -1;
+    ++phrase_ui_debug[10];
+    return (int)pu_led(&ui, logical, 0);
 }
+
 int phrase_fxv_turn(uint8_t *view, uint8_t *event)
 {
     (void)context(view);
@@ -205,9 +210,9 @@ void phrase_ui_tick(void)
     uint8_t *view = fxv_visible_view();
     if (view) {
         if (context(view)) {
-            /* A repaint for an edit, for a link that came or went, and every 60 blocks for the time. */
             uint32_t seq = ui.status[PH_S_HEARTBEAT / 4];
-            if (ui.revision != paint_revision || seq - painted >= 60 || ui.fresh != paint_fresh)
+            if (ui.revision != paint_revision || seq - painted >= 60 || ui.fresh != paint_fresh ||
+                paint_values != values_visible(view))
                 dk_fw_view_invalidate(view);
         }
         phrase_ui_debug[8] = pu_selecting(&ui);

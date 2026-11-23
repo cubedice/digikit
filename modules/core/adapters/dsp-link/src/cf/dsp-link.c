@@ -62,6 +62,8 @@ typedef unsigned char u8;
 #define DL_INSTRUMENT_WORDS 32u /* immediately before position; paired with the DSP-side limit */
 #define DL_LOCK_WORDS 18u       /* optional note-locked sideband before instrument packet */
 #define DL_PHRASE_WORDS 64u     /* fixed suffix before all three existing providers */
+#define DL_RELAY_WORDS 20u
+#define DL_TRACK_POOL_WORDS 4u
 
 #define DL_IDLE 0u
 #define DL_BUSY 1u
@@ -142,6 +144,8 @@ extern void phrase_write_frame(u32 tx_queue, u32 entry, const volatile u16 *rec)
 extern void loop_reply_frame(const volatile u16 *rec) __attribute__((weak));
 extern void relay_reply_frame(const volatile u16 *rec) __attribute__((weak));
 extern void relay_write_frame(u32 queue, u32 entry) __attribute__((weak));
+extern void tk_pool_link_write(u32 queue, u32 entry) __attribute__((weak));
+extern void tk_pool_link_reply(const volatile u16 *rec) __attribute__((weak));
 
 static u32 word_at(const u8 *p)
 {
@@ -449,14 +453,17 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
     DlLink *l = &dl_link;
     u32 st = l->state;
     u32 tx, e0, total, words;
+    int dt2_reply = len == 0x802 && reclen == 0xabc;
     void (*cb)(const volatile u16 *) = dl_tick_cb;
     (void)src;
     if (cb)
         cb(rec);
-    if (loop_reply_frame)
+    if (loop_reply_frame && dt2_reply)
         loop_reply_frame(rec);
     if (relay_reply_frame)
         relay_reply_frame(rec);
+    if (tk_pool_link_reply && dt2_reply)
+        tk_pool_link_reply(rec);
     if (!pp_write_frame && !instrument_write_frame && st != DL_START && st != DL_BUSY &&
         !l->ending && !l->dirty)
         return;
@@ -496,9 +503,16 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
         }
         if (relay_write_frame) {
             const u32 reserved =
-                DL_POSITION_WORDS + DL_INSTRUMENT_WORDS + DL_LOCK_WORDS + DL_PHRASE_WORDS + 20;
+                DL_POSITION_WORDS + DL_INSTRUMENT_WORDS + DL_LOCK_WORDS + DL_PHRASE_WORDS +
+                DL_RELAY_WORDS;
             words = 174u - reserved;
             relay_write_frame(tx, total - 2u * reserved);
+        }
+        if (tk_pool_link_write) {
+            const u32 reserved = DL_POSITION_WORDS + DL_INSTRUMENT_WORDS + DL_LOCK_WORDS +
+                                 DL_PHRASE_WORDS + DL_RELAY_WORDS + DL_TRACK_POOL_WORDS;
+            words = 174u - reserved;
+            tk_pool_link_write(tx, total - 2u * reserved);
         }
         /* Position snapshots are sent even while the acknowledged link is idle. */
         if (st != DL_START && st != DL_BUSY && !l->ending && !l->dirty)

@@ -24,6 +24,8 @@ extern uint32_t ip_src_stock_event(uint8_t *, uint8_t *);
 extern void ip_src_stock_attach(uint8_t *, uint8_t *), ip_src_stock_detach(uint8_t *, uint8_t *);
 extern int32_t ip_src_value(uint8_t *, uint32_t, uint8_t *);
 extern void ip_src_tune_format(int32_t, char *), ip_src_level_format(int32_t, char *);
+extern void ip_src_amp_adsr(const uint8_t *, uint8_t *, int32_t, int32_t, int32_t, int32_t, int32_t,
+                            int32_t);
 extern void ip_src_focus_touch(uint8_t *, uint32_t);
 extern uint8_t ip_src_focus_active(uint8_t *, uint32_t);
 extern const uint32_t ip_src_label_font;
@@ -47,7 +49,8 @@ extern uint8_t ip_lock_set(uint32_t, uint32_t, uint32_t, uint32_t),
 extern const uint8_t ip_seq_step[];
 extern int rtm_src(uint8_t *, unsigned, uint8_t *) __attribute__((weak));
 static uint32_t owner_type, owner_generation, published, last_draw;
-static uint32_t saved_generation, saved_page, saved_valid;
+static uint32_t saved_generation, saved_page, saved_valid, saved_track;
+static int saved_shared_keyboard;
 static uint32_t restore_pending, restore_page, was_owned;
 static uint32_t live_control = CS_NONE, live_value;
 static uint32_t live_track = UINT32_MAX, live_token;
@@ -72,6 +75,10 @@ static uint32_t word(const uint8_t *p, uint32_t offset)
 static uint8_t *pointer(const uint8_t *p, uint32_t offset)
 {
     return (uint8_t *)(uintptr_t)word(p, offset);
+}
+static int native_cells(uint32_t page, int shared_keyboard)
+{
+    return page == (shared_keyboard ? CS_DETAIL : 0);
 }
 static int32_t lock_get(void *ctx, uint32_t code, uint32_t step)
 {
@@ -110,7 +117,7 @@ static uint32_t context(uint8_t *view)
         owner_type = 0;
     }
     uint32_t track = ip_src_track(word(view, 0x74)), page = word(view, 0x90),
-             pages = instrument_src_pages();
+             pages = instrument_src_pages(track);
     /* The SRC page's track is the UI selection for menus, presets and focus.
      * Sequencer byte +0x268 (ip_src_alternate) is not another context: it is
      * the held-trig "edited" mark that the first lock edit sets until the
@@ -120,7 +127,11 @@ static uint32_t context(uint8_t *view)
     int owns = type >= 7 && type < 32 && gen && track < 16 && instrument_track_owned(track) &&
                ip_src_type(view) == type;
     if (owns) {
-        if (restore_pending) {
+        int shared_keyboard = instrument_src_shared_keyboard(track);
+        if (saved_valid && saved_track == track && saved_shared_keyboard != shared_keyboard) {
+            page = 0;
+            *(uint32_t *)(view + 0x90) = page;
+        } else if (restore_pending) {
             page = restore_page;
             *(uint32_t *)(view + 0x90) = page;
         } else if (!was_owned && saved_valid && saved_generation == gen) {
@@ -128,7 +139,7 @@ static uint32_t context(uint8_t *view)
             *(uint32_t *)(view + 0x90) = page;
         }
         if (page >= pages) {
-            page = 2;
+            page = shared_keyboard ? 0 : 2;
             *(uint32_t *)(view + 0x90) = page;
         }
         MfSrcCapability cap = {MF_SRC_ABI, sizeof(cap), pages, gen};
@@ -141,6 +152,8 @@ static uint32_t context(uint8_t *view)
         saved_generation = gen;
         saved_page = page;
         saved_valid = 1;
+        saved_track = track;
+        saved_shared_keyboard = shared_keyboard;
     }
     if (page >= pages)
         page = 0;
@@ -305,6 +318,44 @@ static void diagram_envelope(uint8_t *b, const CvDisplay *d, int fm)
     if (x3 + 1 < 124)
         for (int j = 12; j < 30; j += 2)
             diagram_box(b, x3 + 1, j, 1, 1, 1);
+}
+static int32_t finite_env_time(const CvDisplay *d, uint32_t control)
+{
+    int32_t value = native_index(d, control);
+    /* The AMP graph draws maximum DEC and REL as infinite. CANOPY's
+     * timbre timing is finite, including at the longest setting. */
+    return value == 127 ? 0x7eff : value << 8;
+}
+static void shared_envelope(const uint8_t *view, uint8_t *b, const CvDisplay *d)
+{
+    int fm = d->family == 3;
+    int32_t attack = native_index(d, fm ? CP_FM_ATTACK : CP_WT_ATTACK) << 8;
+    int32_t decay = fm ? finite_env_time(d, CP_FM_DECAY) : 0;
+    int32_t sustain = fm ? (d->raw[CP_FM_SUSTAIN] * 0x7f00 + 50) / 100 : 0x7f00;
+    int32_t release = finite_env_time(d, fm ? CP_FM_RELEASE : CP_WT_RELEASE);
+    ip_src_amp_adsr(view, b, 0, 0, attack, decay, sustain, release);
+}
+static void compact_wt_envelope(uint8_t *b)
+{
+    if (word(b, 4) != 128 || word(b, 8) != 64 || word(b, 12) != 2 || !word(b, 16))
+        return;
+    uint32_t *upper = (uint32_t *)pointer(b, 16) + 1;
+    /* Bitmap y runs from bottom to top. The second word in each column stores screen rows 0 through 31, with the top row in bit 0.
+     * Combine source columns so a thin vertical envelope edge always survives the narrower graph. */
+    const uint32_t graph = UINT32_MAX << 11;
+    enum { LEFT = 23, FULL_END = 124, COMPACT_END = 97, WIDTH = COMPACT_END - LEFT };
+    unsigned source = LEFT, extra = 0;
+    for (unsigned x = LEFT; x < COMPACT_END; ++x) {
+        uint32_t column = upper[2 * source++];
+        extra += FULL_END - COMPACT_END;
+        if (extra >= WIDTH) {
+            column |= upper[2 * source++];
+            extra -= WIDTH;
+        }
+        upper[2 * x] = (upper[2 * x] & ~graph) | (column & graph);
+    }
+    for (unsigned x = COMPACT_END; x < FULL_END; ++x)
+        upper[2 * x] &= ~graph;
 }
 static void diagram_keyboard(uint8_t *b, const CvDisplay *d)
 {
@@ -572,20 +623,20 @@ static void diagram_fm(uint8_t *b, const CvDisplay *d)
     diagram_line(b, 120, 13, 120, 19);
     diagram_line(b, 120, 19, 117, 19);
 }
-static void diagram_legacy(uint8_t *b, const CvDisplay *d)
+static void diagram_legacy(uint8_t *b, const CvDisplay *d, int width)
 {
     static const int8_t wave[] = {0,  2,  4,  6,  7,  7,  6,  5,  4,  3,  3,  3,  3,  2, 0,
                                   -2, -4, -6, -7, -7, -6, -5, -4, -3, -3, -3, -3, -2, 0};
-    for (int i = 1; i < 92; ++i) {
-        int a = wave[(i - 1) * 28 / 91], c = wave[i * 28 / 91];
+    for (int i = 1; i < width; ++i) {
+        int pa = (i - 1) * 28 / (width - 1), pc = i * 28 / (width - 1);
+        int a = wave[pa], c = wave[pc];
         if (d->family) {
-            int pa = (i - 1) * 28 / 91, pc = i * 28 / 91;
             a = pa < 14 ? 7 - pa : pa - 21;
             c = pc < 14 ? 7 - pc : pc - 21;
         }
         diagram_line(b, 26 + i, 48 - a, 27 + i, 48 - c);
     }
-    diagram_text(b, 73, 59, d->family ? "REED" : "VELVET");
+    diagram_text(b, 27 + width / 2, 59, d->family ? "REED" : "VELVET");
 }
 static void diagram_routing(uint8_t *b, int wt)
 {
@@ -608,8 +659,46 @@ static void diagram_routing(uint8_t *b, int wt)
         diagram_text(b, 111, 53, "VOL");
     }
 }
-static uint32_t diagram_mask(uint32_t page, uint32_t family)
+static void compact_mix(uint8_t *b, const CvDisplay *d)
 {
+    diagram_text(b, 78, 40, "P");
+    diagram_text(b, 93, 40, "A");
+    diagram_line(b, 77, 50, 95, 50);
+    diagram_line(b, 77, 48, 77, 52);
+    diagram_line(b, 95, 48, 95, 52);
+    int x = 77 + (18 * d->raw[CP_ARP_MIX] + 63) / 127;
+    diagram_box(b, x - 1, 47, 3, 7, 1);
+}
+/* VOICE G shows the operator lanes selected by ALG. */
+static void compact_fm(uint8_t *b, const CvDisplay *d)
+{
+    static const char *const names[] = {"A", "B", "X", "Y"};
+    for (unsigned i = 0; i < 4; ++i) {
+        int x = 77 + 13 * (int)(i % 2), y = 39 + 13 * (int)(i / 2);
+        diagram_rect(b, x, y, 8, 8);
+        diagram_text(b, x + 3, y + 1, names[i]);
+    }
+    uint32_t alg = d->raw[CP_FM_ALG];
+    diagram_line(b, 80, 47, 80, 51);
+    if (alg == 0)
+        diagram_line(b, 93, 47, 93, 51);
+    else if (alg == 2)
+        diagram_line(b, 93, 47, 84, 51);
+    else
+        diagram_line(b, 85, 42, 89, 42);
+    if (alg == 3)
+        diagram_line(b, 85, 55, 89, 55);
+}
+static uint32_t diagram_mask(uint32_t page, const CvDisplay *d)
+{
+    uint32_t family = d->family;
+    if (d->shared_keyboard) {
+        if (page == CS_VOICE)
+            return family < 2 ? 0x70 : family == 2 ? 0x1e : 0x40;
+        if (page == CS_FM_ENV)
+            return family < 2 ? 0xff : family == 2 ? 0x07 : 0x8f;
+        return 0x40;
+    }
     if (page == 0)
         return 0x7c;
     if (page == 1)
@@ -618,9 +707,30 @@ static uint32_t diagram_mask(uint32_t page, uint32_t family)
         return family == 2 ? 0x1e : family == 3 ? 0x0e : 0xf8;
     return family == 2 ? 0x83 : family == 3 ? 0xcf : 0xff;
 }
-static void diagram_draw(uint8_t *b, const CvDisplay *d)
+static void shared_diagram(const uint8_t *view, uint8_t *b, const CvDisplay *d)
 {
-    if (d->page == 0)
+    if (d->page == CS_VOICE) {
+        if (d->family == 3)
+            compact_fm(b, d);
+        else if (d->family == 2)
+            diagram_wavetable(b, d);
+        else
+            diagram_legacy(b, d, 72);
+    } else if (d->page == CS_DETAIL) {
+        compact_mix(b, d);
+    } else if (d->family >= 2) {
+        shared_envelope(view, b, d);
+    } else {
+        diagram_text(b, 73, 17, "FM ENV");
+        diagram_text(b, 73, 34, "SELECT FM OR TABLE");
+        diagram_text(b, 73, 50, "VOLUME ON AMP");
+    }
+}
+static void diagram_draw(const uint8_t *view, uint8_t *b, const CvDisplay *d)
+{
+    if (d->shared_keyboard)
+        shared_diagram(view, b, d);
+    else if (d->page == 0)
         diagram_keys(b, d);
     else if (d->page == 1)
         diagram_arp(b, d);
@@ -630,7 +740,7 @@ static void diagram_draw(uint8_t *b, const CvDisplay *d)
         else if (d->family == 3)
             diagram_fm(b, d);
         else
-            diagram_legacy(b, d);
+            diagram_legacy(b, d, 92);
     } else if (d->family == 2) {
         diagram_envelope(b, d, 0);
         diagram_routing(b, 1);
@@ -643,6 +753,18 @@ static void diagram_draw(uint8_t *b, const CvDisplay *d)
         diagram_text(b, 73, 43, "VOLUME ENVELOPE");
         diagram_text(b, 73, 52, "ON AMP");
     }
+}
+void ip_src_draw_rotary(uint8_t *view, uint8_t *canvas, uint32_t cell, uint32_t value)
+{
+    /* Paint a native encoder glyph with a supplied value and the cell's native focus state. */
+    uint32_t *vt = (uint32_t *)pointer(view, 0);
+    uint8_t *(*access)(uint8_t *, uint32_t, int32_t) = (void *)(uintptr_t)vt[0xc4 / 4];
+    uint8_t *a = access(view, 0xcc, -1);
+    uint32_t *av = (uint32_t *)pointer(a, 0);
+    void (*draw)(uint8_t *, uint32_t, int32_t, uint32_t, uint8_t *, uint8_t *, int32_t, int32_t) =
+        (void *)(uintptr_t)av[0x60 / 4];
+    draw(a, 0xcc, (int32_t)value << 8, 0, view + 0xb4 + 20 * cell, canvas,
+         24 + 26 * (int32_t)(cell % 4), cell < 4 ? 34 : 7);
 }
 void ip_src_draw(uint8_t *view, uint8_t *canvas)
 {
@@ -673,37 +795,34 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
         /* A held trig shows what it plays: its locks, else the Sound. */
         lock_snapshot(first, &locked);
         instrument_src_display_locked(&display, instrument_src_now(), tune, level, &locked);
-        if (display.page == 0)
+        if (display.page == 0 && !display.shared_keyboard)
             instrument_src_preview_step(&display, &locked,
                                         ip_panel_step_note(ip_src_debug[0], first));
     } else
         instrument_src_display(&display, instrument_src_now(), tune, level);
     uint32_t page = word(view, 0x90);
-    uint32_t mask = diagram_mask(page, display.family);
-    if (page == 0) {
+    int native = native_cells(page, display.shared_keyboard);
+    uint32_t mask = diagram_mask(page, &display);
+    if (native) {
         dk_fw_draw_fill_rect(canvas, 49, 27, 123, 52, 0);
         dk_fw_draw_fill_rect(canvas, 23, 0, 100, 25, 0);
     } else
         dk_fw_draw_fill_rect(canvas, 23, 0, 123, 52, 0);
+    int compact = display.shared_keyboard && page == CS_FM_ENV && display.family == 2;
+    if (compact) {
+        shared_envelope(view, canvas, &display);
+        compact_wt_envelope(canvas);
+    }
     for (uint32_t i = 0; i < 8; ++i) {
         /* The firmware already painted SOUND A/H and the track column.
          * Custom cells never clear or redraw any part of those controls. */
-        if (page == 0 && (i == 0 || i == 7))
+        if (native && (i == 0 || i == 7))
             continue;
         int32_t x = 24 + 26 * (int32_t)(i % 4), y = i < 4 ? 27 : 0;
         if (mask & (1u << i)) {
-            /* The shared diagram is painted after all parameter labels. */
+            /* This control's body is part of the diagram. */
         } else if (display.rotary & (1u << i)) {
-            /* Reuse the device's native encoder template (CFADE) with a
-             * supplied value, without reading/writing its Sound slot.
-             * Accessor and state are borrowed only for this paint call. */
-            uint32_t *vt = (uint32_t *)pointer(view, 0);
-            uint8_t *(*access)(uint8_t *, uint32_t, int32_t) = (void *)(uintptr_t)vt[0xc4 / 4];
-            uint8_t *a = access(view, 0xcc, -1);
-            uint32_t *av = (uint32_t *)pointer(a, 0);
-            void (*draw)(uint8_t *, uint32_t, int32_t, uint32_t, uint8_t *, uint8_t *, int32_t,
-                         int32_t) = (void *)(uintptr_t)av[0x60 / 4];
-            draw(a, 0xcc, (int32_t)display.knob[i] << 8, 0, view + 0xb4 + 20 * i, canvas, x, y + 7);
+            ip_src_draw_rotary(view, canvas, i, display.knob[i]);
         } else {
             dk_fw_text_draw_box(canvas, (uint8_t *)(uintptr_t)ip_src_label_font, x + 9, y + 14, 1,
                                 0, 0, "%s", display.value[i]);
@@ -724,7 +843,8 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
                 dk_fw_draw_fill_rect(canvas, x - 1, y + 6, x + 21, y + 24, -1);
         }
     }
-    diagram_draw(canvas, &display);
+    if (!compact)
+        diagram_draw(view, canvas, &display);
     if (display.fault && display.fault != shown_fault) {
         ++ip_src_fault_toasts;
         toast(display.heading);
@@ -749,7 +869,8 @@ void ip_src_attach(uint8_t *view, uint8_t *manager)
 void ip_src_detach(uint8_t *view, uint8_t *manager)
 {
     (void)context(view);
-    if (rtm_src) rtm_src(view, 4, 0);
+    if (rtm_src)
+        rtm_src(view, 4, 0);
     ip_src_stock_detach(view, manager);
     was_owned = 0;
     published = 0;
@@ -791,7 +912,7 @@ void instrument_src_tick(void)
                 ip_src_refresh[6] = last_draw;
                 int relay = rtm_src ? rtm_src(view, 5, 0) : 0;
                 if (relay) {
-                    if (relay == 2 && now - last_draw >= 40) {
+                    if (relay == 2 && now - last_draw >= 24) {
                         last_draw = now;
                         dk_fw_view_invalidate(view);
                     }
@@ -936,23 +1057,27 @@ static int lock_clear(uint8_t *view, uint32_t encoder, const uint32_t steps[4])
 }
 uint32_t ip_src_key(uint8_t *view, uint8_t *event)
 {
-    if (rtm_src && rtm_src(view, 2, event)) return 1;
+    if (rtm_src && rtm_src(view, 2, event))
+        return 1;
     uint32_t token = context(view), key = word(event, 12), page = word(view, 0x90), steps[4];
-    if (token && key >= 41 && key <= 48 && trig_held(view) && lock_steps(view, steps) < 128 &&
-        lock_clear(view, key - 41, steps)) {
+    int held = token && key >= 41 && key <= 48 && trig_held(view);
+    if (held && lock_steps(view, steps) < 128 && lock_clear(view, key - 41, steps)) {
         dk_fw_view_invalidate(view);
         return 1;
     }
     published = 0;
     (void)instrument_src_context(ip_src_debug[0], page, 0);
-    if (token && key >= 41 && key <= 48 && (page != 0 || (key != 48 && key != 41)))
+    if (token && key >= 41 && key <= 48 &&
+        (!native_cells(page, instrument_src_shared_keyboard(ip_src_debug[0])) ||
+         (key != 48 && key != 41)))
         return 1;
     return ip_src_stock_key(view, event);
 }
 uint32_t ip_src_turn(uint8_t *view, uint8_t *event)
 {
     uint32_t captured_token = take(event), token = context(view), encoder = word(event, 12);
-    if (rtm_src && rtm_src(view, 3, event)) return 1;
+    if (rtm_src && rtm_src(view, 3, event))
+        return 1;
     ++ip_src_debug[4];
     ip_src_debug[9] = captured_token;
     ip_src_debug[10] = encoder;
@@ -1001,7 +1126,7 @@ uint32_t ip_src_parameter(uint8_t *view, uint32_t encoder)
     if (context(view)) {
         if (encoder == 8)
             return 10;
-        if (word(view, 0x90) == 0) {
+        if (native_cells(word(view, 0x90), instrument_src_shared_keyboard(ip_src_debug[0]))) {
             if (encoder == 0)
                 return 0xca;
             if (encoder == 7)

@@ -1368,7 +1368,7 @@ def test_other_notes_do_not_reset_held_voice_phase_or_gain(canopy):
             assert voices(actual)[token] == voices(reference)[token]
 
 
-def wire_packet(events, *, track=0, generation=1, revision=1, epoch=1, movement=None):
+def wire_packet(events, *, track=0, generation=1, revision=1, epoch=1, movement=None, locked=False):
     words = [0x494E0101, 1 | (len(events) << 8), epoch, 1, 1, revision, 0, 0] + [0] * 24
     for i, (token, kind, pitch, value, port, channel) in enumerate(events):
         words[8 + 3 * i : 11 + 3 * i] = [
@@ -1379,6 +1379,8 @@ def wire_packet(events, *, track=0, generation=1, revision=1, epoch=1, movement=
     if movement is not None:
         words[1] = 5 | (len(events) << 8)
         words[4] = movement
+    if locked:
+        words[1] |= 0x1000
     a = b = 0
     for i, word in enumerate(words):
         if i != 7:

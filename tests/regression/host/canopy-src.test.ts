@@ -36,6 +36,7 @@ afterAll(() => {
 test.each([
   'controls',
   'four-page-layout',
+  'shared-keyboard-layout',
   'pattern-tempo-import',
   'trig-lock-edit',
   'lock-indicators',

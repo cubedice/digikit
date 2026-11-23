@@ -218,3 +218,43 @@ the adapter plays dry. Not run, and expected to fail on this branch:
 
 The adapters' own host tests (`core/phrase-control`, `core/phrase-route`, `core/phrase-ui`) do not load the engine and are
 not affected. `digikit/prism:test-host` no longer exists: the module's tests are `digikit/prism:test-rig`.
+
+## HALO spread and motion follow-up
+
+**[D]** The four taps now use 97, 137, 191, and 251 frames in the existing 256-frame rings. Above half HALO, two slow
+triangle phases vary the lattice rotation. The coefficient calculation keeps the rotation normalized, and the existing
+per-block ramp interpolates the coefficients between endpoints.
+
+On the native SHARC rig, two mono impulses one second apart at full HALO and zero feedback reached 95% of their stereo
+energy after 525 frames each in the previous version. The updated engine took 600 and 640 frames. Left/right correlation
+fell from 0.250 in both echoes to 0.180 and 0.218. Both versions retained 1.000 of input energy to three decimal places.
+The distance between energy-normalized echoes rose from 0.000 to 0.095, showing the motion in the tail.
+
+Eleven focused rig checks passed, including exact bypass at HALO 0, repeat energy, control changes, held tape, and three
+PRISM/Overloop transitions. The highest observed block cost in those cases was 19,068 instructions within the declared
+19,292 limit.
+
+## HALO late reverb follow-up
+
+**[D]** Two cross-coupled, low-pass-damped lines at 24 kHz add a stereo late return after the tape write.
+HALO raises the return quadratically, and a short attack on the lines' excitation smooths the first echoes after
+enabling it. The effect shares the existing MIX control. The late return fits in 8,224 bytes of additional DSP
+state and preserves the tape feedback law and HOLD write inhibition.
+
+On the native SHARC rig at full HALO and RPTS 0, the return after 50 ms contained -20.7 dB of the input impulse's
+energy, with an estimated 0.560 s RT60 and 0.077 left/right correlation. The first echo kept its timing.
+The worst control sweep measured 1.55 times the steady-tone click measure, below the existing 2 times limit.
+The heaviest measured block was 20,631 instructions. The rig still checks exact audio bypass at HALO 0.
+
+## Stronger HALO and SKEW feedback routing
+
+**[D]** Full HALO at RPTS 0 raised the late return after 50 ms by 7.9 dB relative to the previous reverb.
+Estimated RT60 rose from 0.560 s to 0.735 s. The direct echo timing, tape feedback, HOLD and exact HALO 0
+bypass pass the existing rig checks. The late output now interpolates the half-rate returns with a quadratic
+midpoint and ramps gain at each output sample.
+
+Pressing SKEW enables mono input and alternating stereo repeats at the center. With SKEW offset, it keeps
+the two input channels and crosses their feedback, preserving the two delay times. The feedback and input
+routing move through a 256-frame ramp. Tests measure alternating impulses at center and independent
+1778/3240-frame times with crossed feedback when offset. The full engine and transition run passed 59 cases.
+The heaviest block took 22,183 instructions.

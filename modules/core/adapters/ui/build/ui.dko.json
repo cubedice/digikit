@@ -789,6 +789,41 @@
   {
    "addend": 0,
    "offset": 10,
+   "section": ".text.dk_ui_core_menu_front",
+   "symbol": ".sec..text.ui_is_open",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 54,
+   "section": ".text.dk_ui_core_list_title",
+   "symbol": "cf.string.fn.std_string.ctor",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 70,
+   "section": ".text.dk_ui_core_list_title",
+   "symbol": "cf.menu.fn.set_title",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 78,
+   "section": ".text.dk_ui_core_list_title",
+   "symbol": "cf.string.fn.std_string.dtor",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 92,
+   "section": ".text.dk_ui_core_list_title",
+   "symbol": ".sec..text.invalidate.isra.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
    "section": ".text.dk_ui_confirm",
    "symbol": ".sec..bss.g_open",
    "type": "cf.32"
@@ -1490,6 +1525,20 @@
   },
   {
    "align": 2,
+   "hex": "2f02242f00082f024eb900000000588f4a80673e20427220202800042240206900642408068200000014226800184a89672eb3c2672a206900084a8867184a2800306612068000000038b08857c071004480241f4e752269000453814a8166ce428060ee",
+   "kind": "text",
+   "name": ".text.dk_ui_core_menu_front",
+   "size": 100
+  },
+  {
+   "align": 2,
+   "hex": "4e56fff82f024aae00086758206e000871a8001055804a80664a4aa8000467444200486efffb2f2e000c240e59822f021d40fffb4eb9000000002f02206e00082f2800044eb9000000002f024eb900000000206e00082f2800044eb9000000004fef001c242efff44e5e4e75",
+   "kind": "text",
+   "name": ".text.dk_ui_core_list_title",
+   "size": 108
+  },
+  {
+   "align": 2,
    "hex": "4e56ff3048d7003c4ab90000000066144878008c4eb900000000588f2d40ff404a80660c70ff4cee003cff304e5e4e752f2e000c48780051240e0682ffffff5e2f0241f9000000004e902f2e001048780051280e0684ffffffaf2f0443f9000000004e9142002a0e0685ffffff452f052f02260e0683ffffff4641f9000000002f031d40ff454e904fef00202e852f040684ffffff9b2f0443f9000000004e912d6e0018ff52226eff4041f9000000002d48ff5a203c000000002d40ff56700141e900102d6e0014ff4e23400004234000082348000c22bc0000000042a7486eff4e2f042f0348690010243900000000528223c2000000004eb9000000004fef001c2e8443f9000000004e912f0341f9000000004e902f022f2eff4023c2000000004eb9000000004fef00104a806700fef642b9000000006000feea",
    "kind": "text",
    "name": ".text.dk_ui_confirm",
@@ -1706,7 +1755,7 @@
    "size": 4
   }
  ],
- "source_sha256": "05064609e6bd46e61e682256b14d084561bc77eca3d71549d83f1bf7ffe2c38e",
+ "source_sha256": "c0f821aa338f3f7304c622939b9b3aad2a6de48449486e8dcaad918f0cf98c34",
  "symbols": [
   {
    "global": false,
@@ -2196,6 +2245,18 @@
   },
   {
    "global": true,
+   "name": "dk_ui_core_list_title",
+   "section": ".text.dk_ui_core_list_title",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dk_ui_core_menu_front",
+   "section": ".text.dk_ui_core_menu_front",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "dk_ui_menu_add_action",
    "section": ".text.dk_ui_menu_add_action",
    "value": 0
@@ -2523,8 +2584,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "1863",
-  "isa_check": "6c415a9a4736c0f939ca194a6aac0c52f98697bf4936c59d5ff6fd09572e15c1",
+  "instructions_redecoded": "1932",
+  "isa_check": "e2bf685f09e587b7c7acf61400d62fe488ea09387bd989dcccacde3a8ad48ad5",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

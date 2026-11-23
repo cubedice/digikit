@@ -97,6 +97,28 @@ and sample card. No firmware build in this document authorizes a device flash.
 
 ## Keyboard modes and shape memory
 
+With `core/track-keyboard`, CANOPY uses the compact SOURCE layout with
+TUNE, WAVE, timbre, DRFT, MIX and LEV. Wavetable and FM sources also
+show TONE and ENV. The ARP and KEYS TRIG pages show inherited performance
+settings until a pattern override is written. Inherited sounds and patterns
+with native CANOPY locks continue using the legacy performer.
+
+The shared adapter calls `instrument_track_keyboard_lanes(track, lanes)`
+with bit 0 for the four foreground pad voices and bit 1 for the separate
+timed voice. A nonzero mask claims the track. The first call requests
+the normal generation reset and bank configuration. Once ready, the owner
+sends resolved onsets and releases with
+`instrument_track_keyboard_note(track, token, pitch, velocity, on, lane)`.
+The bounded queue pairs event tokens, reserves release capacity and
+drops stale generations after a handoff. A zero mask returns ownership
+to the local performer.
+
+The carrier suppresses its own arp and strum for a claimed track. With
+both lanes enabled it renders the Sound's MIX after eligible lock and
+modulation overlays. A single lane plays at its full level and MIX shows
+that lane. The decoded Sound bank retains its saved controls. Use a
+matched CANOPY module and a firmware build with this adapter.
+
 Stage 2 keeps the sine renderer and adds a bounded ColdFire musical mapper to
 `core/instrument-play`. Open DIGIKIT > CANOPY > INPUT and explicitly enable routing.
 PLAY admits four foreground notes, preserving pitch, octave, velocity and token

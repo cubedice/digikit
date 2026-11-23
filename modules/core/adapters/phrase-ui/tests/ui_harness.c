@@ -129,10 +129,22 @@ static void presses(void)
         tap(&s, PU_PUSH + i);
         assert(raw[switches[i]] == 0);
     }
-    /* D to H: taken, so that the stock page does nothing with them; nothing is written. */
+    /* F switches stereo routing. Turning F keeps the mode and changes only the skew. */
     uint32_t before = writes;
-    for (uint32_t i = 3; i < 8; ++i)
-        tap(&s, PU_PUSH + i);
+    press(&s, PU_PUSH + 5);
+    assert(raw[PH_P_PING_PONG] == 1 && raw[PH_P_SKEW] == 64 && writes == before + 1);
+    assert(pu_key(&s, PU_PUSH + 5, PU_REPEAT) == PU_OWN);
+    release(&s, PU_PUSH + 5);
+    assert(raw[PH_P_PING_PONG] == 1 && writes == before + 1);
+    assert(pu_turn(&s, 5, 4, 0) == PU_OWN && raw[PH_P_PING_PONG] == 1 && raw[PH_P_SKEW] == 68);
+    tap(&s, PU_PUSH + 5);
+    assert(raw[PH_P_PING_PONG] == 0 && raw[PH_P_SKEW] == 68);
+    /* D, E, G and H consume their press and release without writing. */
+    before = writes;
+    tap(&s, PU_PUSH + 3);
+    tap(&s, PU_PUSH + 4);
+    tap(&s, PU_PUSH + 6);
+    tap(&s, PU_PUSH + 7);
     assert(writes == before);
     /* FUNC + NO: taken and nothing happens. FUNC itself, NO alone and the other keys are the stock page's. */
     assert(pu_key(&s, PU_FUNC, PU_PRESS) == PU_PASS);
@@ -348,6 +360,8 @@ static void page_cells(void)
 typedef struct {
     uint32_t boxes, texts, inverted;
     char seen[64][24];
+    int centres[64], tops[64];
+    uint8_t pixels[64][128];
 } Drawn;
 static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
 {
@@ -356,6 +370,8 @@ static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
     /* below the header, x 124 to 127 are the FX view's page indicator: nothing is drawn or cleared there */
     assert(y + h <= 10 || x + w <= 124);
     assert(ink == 0 || ink == 1);
+    for (int row = y; row < y + h; ++row)
+        memset(&d->pixels[row][x], ink, (size_t)w);
     ++d->boxes;
 }
 static void drawn_text(void *ctx, int x, int y, const char *s, int ink)
@@ -368,7 +384,11 @@ static void drawn_text(void *ctx, int x, int y, const char *s, int ink)
            x + half <= 128 && y >= 0 && y + 5 <= 64);
     /* below the header, x 124 to 127 are the FX view's page indicator */
     assert(y < 10 || x + half <= 124);
+    /* The RATE readout is the only text inside an icon band. */
+    assert(y < 10 || x + half + !ink <= 19 || y == 32 || y == 59 || (x == 58 && y == 19));
     assert(d->texts < 64);
+    d->centres[d->texts] = x;
+    d->tops[d->texts] = y;
     strcpy(d->seen[d->texts++], s);
     d->inverted += !ink;
 }
@@ -379,24 +399,60 @@ static int saw(const Drawn *d, const char *s)
             return 1;
     return 0;
 }
+static int saw_at(const Drawn *d, int x, int y, const char *s)
+{
+    for (uint32_t i = 0; i < d->texts; ++i)
+        if (d->centres[i] == x && d->tops[i] == y && !strcmp(d->seen[i], s))
+            return 1;
+    return 0;
+}
+static void draw_page(const PhrasePage *p, Drawn *d, int show_values)
+{
+    memset(d, 0, sizeof(*d));
+    PhraseCanvas c = {d, drawn_box, drawn_text};
+    pu_render(p, &c, show_values);
+}
 static void rendering(void)
 {
     PhraseUi s;
     PhrasePage p;
     init(&s);
-    Drawn d = {0};
+    Drawn d, values;
     PhraseCanvas c = {&d, drawn_box, drawn_text};
     pu_page(&s, &p);
-    pu_render(&p, &c);
-    static const char *const shown[] = {
-        "PRISM", "ECHO", "375 MS", "MIX",  "100",  "ZONE",   "RATE", "FREE", "RPTS",   "48",
-        "COLR",  "HALO", "SKEW",   "INPT", "LIVE", "NO TRK", "XFAD", "--",   "NO LOOP"};
-    for (uint32_t i = 0; i < sizeof(shown) / sizeof(*shown); ++i)
-        if (!saw(&d, shown[i])) {
-            fprintf(stderr, "not drawn: %s\n", shown[i]);
-            assert(0);
-        }
-    assert(!d.inverted);
+    draw_page(&p, &d, 0);
+    draw_page(&p, &values, 1);
+    static const char *const labels[] = {"ZONE", "RATE", "RPTS", "COLR",
+                                         "HALO", "SKEW", "INPT", "XFAD"};
+    static const char *const formatted[] = {"ECHO", "RATE", "48", "0", "0", "0", "LIVE", "--"};
+    for (int i = 0; i < 8; ++i) {
+        int x = 32 + 26 * (i % 4), y = i < 4 ? 32 : 59;
+        assert(saw_at(&d, x, y, labels[i]) && saw_at(&values, x, y, formatted[i]));
+        if (i != 1)
+            assert(!saw_at(&d, x, y, formatted[i]) && !saw_at(&values, x, y, labels[i]));
+    }
+    /* Holding FUNC swaps the captions while the underlying icon pixels stay the same. */
+    for (int row = 14; row <= 28; ++row) {
+        assert(!memcmp(d.pixels[row], values.pixels[row], sizeof(d.pixels[row])));
+        assert(!memcmp(d.pixels[row + 27], values.pixels[row + 27], sizeof(d.pixels[row])));
+    }
+    assert(saw_at(&d, 7, 59, "MIX") && !saw(&d, "100"));
+    assert(saw_at(&values, 7, 59, "100") && !saw(&values, "MIX"));
+    assert(saw_at(&d, 15, 2, "PRISM") && !saw(&d, "ECHO"));
+    assert(saw_at(&d, 42, 2, "FREE") && saw_at(&values, 42, 2, "FREE"));
+    assert(saw_at(&d, 76, 2, "NO TRK") && saw_at(&values, 76, 2, "NO TRK"));
+    assert(saw_at(&d, 58, 19, "375 MS") && saw_at(&values, 58, 19, "375 MS"));
+    assert(saw_at(&d, 111, 2, "NO LOOP") && saw_at(&values, 111, 2, "NO LOOP"));
+    assert(!d.inverted && !values.inverted);
+    tap(&s, PU_PUSH + 5);
+    pu_page(&s, &p);
+    draw_page(&p, &d, 0);
+    assert(p.cells[5].lit && saw_at(&d, 58, 59, "PONG"));
+    pu_turn(&s, 5, 12, 0);
+    pu_page(&s, &p);
+    draw_page(&p, &d, 0);
+    draw_page(&p, &values, 1);
+    assert(p.cells[5].lit && saw_at(&d, 58, 59, "SWAP") && saw_at(&values, 58, 59, "R 12"));
     /* Every value at both ends of its range, with every switch on, stays on the screen. */
     for (uint32_t pass = 0; pass < 2; ++pass) {
         for (uint32_t i = 0; i < PH_PARAM_COUNT; ++i)
@@ -405,17 +461,85 @@ static void rendering(void)
         raw[PH_P_RATIO] = pass ? PH_SYNC_RATIOS - 1 : 0;
         raw[PH_P_SYNC] = raw[PH_P_FLIP] = raw[PH_P_HOLD] = pass;
         status(&s, pass ? 344064 : 48, pass ? 516096 : 72);
-        memset(&d, 0, sizeof(d));
         pu_page(&s, &p);
-        pu_render(&p, &c);
-        /* FLIP and HOLD are drawn inverted when they are on. */
-        assert(d.inverted == (pass ? 2u : 0u));
-        assert(saw(&d, "FLIP") == (int)pass && saw(&d, "HOLD") == (int)pass);
+        for (int mode = 0; mode <= 1; ++mode) {
+            draw_page(&p, &d, mode);
+            /* FLIP and HOLD are drawn inverted when they are on. */
+            assert(d.inverted == (pass ? 2u : 0u));
+            assert(saw_at(&d, 9, 14, "FLIP") == (int)pass);
+            assert(saw_at(&d, 9, 22, "HOLD") == (int)pass);
+        }
     }
-    /* The header alone: three texts, nothing below the bar. */
+    /* The header alone stays consistent with the page in both modes. */
     memset(&d, 0, sizeof(d));
-    pu_render_header(&p, &c);
-    assert(d.texts == 3 && saw(&d, "PRISM") && saw(&d, "LOOP"));
+    pu_render_header(&p, &c, 0);
+    assert(d.texts == 4 && saw_at(&d, 15, 2, "PRISM") && saw_at(&d, 42, 2, "SYNC"));
+    assert(saw_at(&d, 76, 2, "SILENT") && saw_at(&d, 111, 2, "NO LOOP"));
+    memset(&d, 0, sizeof(d));
+    pu_render_header(&p, &c, 1);
+    assert(d.texts == 4 && saw_at(&d, 15, 2, "PRISM") && saw_at(&d, 42, 2, "SYNC"));
+    assert(saw_at(&d, 76, 2, p.time) && saw_at(&d, 111, 2, "NO LOOP"));
+    s.fresh = 0;
+    pu_page(&s, &p);
+    draw_page(&p, &d, 0);
+    assert(saw_at(&d, 76, 2, "NO LINK"));
+    raw[PH_P_COLR] = 0;
+    pu_page(&s, &p);
+    draw_page(&p, &d, 1);
+    assert(saw_at(&d, 110, 32, "-64"));
+}
+static void rate_readout(void)
+{
+    PhraseUi s;
+    PhrasePage p;
+    Drawn d;
+    init(&s);
+    static const struct {
+        uint32_t sync, ratio, frames;
+        const char *readout;
+    } cases[] = {{0, PH_SYNC_UNITY, 18000, "375 MS"},
+                 {0, PH_SYNC_UNITY, 12000, "250 MS"},
+                 {1, PH_SYNC_UNITY, 12000, "1/1"},
+                 {1, PH_SYNC_UNITY + 3, 18000, "X1.5"}};
+    for (uint32_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+        raw[PH_P_SYNC] = cases[i].sync;
+        raw[PH_P_RATIO] = cases[i].ratio;
+        status(&s, cases[i].frames, cases[i].frames);
+        pu_page(&s, &p);
+        for (int mode = 0; mode <= 1; ++mode) {
+            draw_page(&p, &d, mode);
+            assert(saw_at(&d, 58, 32, "RATE") && saw_at(&d, 58, 19, cases[i].readout));
+            assert(saw_at(&d, 76, 2, mode && cases[i].sync ? p.time : "NO TRK"));
+        }
+    }
+}
+static void mix_meter(void)
+{
+    PhraseUi s;
+    PhrasePage p;
+    Drawn normal, values;
+    init(&s);
+    /* Each stock level frame begins at one of these integers. */
+    static const uint8_t first[] = {0, 1, 12, 22, 33, 43, 54, 64, 75, 85, 96, 106, 117, 127};
+    int height = 0;
+    for (uint32_t level = 0; level <= 127; ++level) {
+        if (height < 13 && level == first[height + 1])
+            ++height;
+        raw[PH_P_MIX] = level;
+        pu_page(&s, &p);
+        draw_page(&p, &normal, 0);
+        draw_page(&p, &values, 1);
+        for (int y = 40; y <= 56; ++y) {
+            assert(!memcmp(&normal.pixels[y][3], &values.pixels[y][3], 9));
+            for (int x = 3; x <= 11; ++x) {
+                int end = y == 40 || y == 56;
+                int frame = end ? x > 3 && x < 11 : x == 3 || x == 11;
+                int fill = x >= 5 && x <= 9 && y >= 55 - height && y <= 54;
+                int rest_tick = y >= 42 && y <= 54 && !(y & 1) && (x == 5 || x == 9);
+                assert(normal.pixels[y][x] == (frame || fill || rest_tick));
+            }
+        }
+    }
 }
 
 /* The loop effect's home as core/loop-control keeps it (the crossfader and the counts of ARM and DROP), and its status. */
@@ -459,6 +583,7 @@ static void loop_page(void)
 {
     PhraseUi s;
     PhrasePage p;
+    Drawn d;
     init(&s);
     s.loop = &fake_home;
     home_xfad = home_arms = home_drops = 0;
@@ -496,6 +621,11 @@ static void loop_page(void)
     same(p.cells[7].value, "ARMD");
     same(p.cells[7].state, "16 ST");
     assert(!p.cells[7].lit && !p.cells[7].fader && !p.line[0]);
+    draw_page(&p, &d, 0);
+    assert(saw_at(&d, 110, 59, "XFAD") && saw_at(&d, 9, 30, "ARMD") && !saw(&d, "16 ST"));
+    assert(!saw(&d, "NO LOOP") && d.inverted == 1);
+    draw_page(&p, &d, 1);
+    assert(saw_at(&d, 110, 59, "16 ST") && saw_at(&d, 9, 30, "ARMD") && d.inverted == 1);
     report(LS_ARMED, 0, 0, 0, 0, 0.0f);
     pu_loop(&s);
     pu_page(&s, &p);
@@ -540,14 +670,14 @@ static void loop_page(void)
     assert(pu_turn(&s, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
     assert(pu_turn(&s, 6, 3, 0) == PU_OWN && raw[PH_P_INPT] == 1);
     assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
-    /* Arming again while the loop plays: ARMD, drawn inverted, in place of the crossfader's line. */
+    /* Arming again while the loop plays keeps the crossfader and its armed state. */
     tap(&s, PU_PUSH + 7);
     assert(home_arms == 2);
     report(LS_LOOP | LS_ARMED | LS_TRACK, 1, 16, 16, 96000, 0.0f);
     pu_loop(&s);
     pu_page(&s, &p);
     same(p.cells[7].state, "ARMD");
-    assert(p.cells[7].lit && !p.cells[7].fader);
+    assert(p.cells[7].lit && p.cells[7].fader == 1);
     /* The next loop: INPT goes to LOOP again, from LIVE. */
     report(LS_LOOP | LS_HELD | LS_TRACK, 2, 16, 16, 96000, 1.0f);
     pu_loop(&s);
@@ -567,6 +697,8 @@ static void loop_page(void)
     assert(raw[PH_P_INPT] == 1);
     pu_page(&s, &p);
     same(p.cells[6].state, "SILENT");
+    draw_page(&p, &d, 0);
+    assert(saw_at(&d, 84, 59, "INPT") && saw_at(&d, 76, 2, "SILENT"));
     assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
     /* A page that first sees a loop already taken does not switch INPT (it was not this change). */
     PhraseUi late;
@@ -579,14 +711,21 @@ static void loop_page(void)
     report(LS_LOOP | LS_HELD | LS_TRACK, 4, 16, 16, 96000, 1.0f);
     pu_loop(&late);
     assert(raw[PH_P_INPT] == 1);
-    /* The loop effect stops reporting: the cells say there is no loop, and after PU_LOOP_GONE passes INPT is LIVE. */
+    /* A gap keeps the existing loop and its displayed length until the same expiry as the input route. */
     home_fresh = 0;
-    for (uint32_t i = 0; i < PU_LOOP_GONE; ++i)
+    for (uint32_t i = 0; i < PU_LOOP_GONE; ++i) {
         pu_loop(&late);
+        pu_loop_status(&late); /* The draw callback also reads the home. */
+        pu_page(&late, &p);
+        assert(p.loop_ready && p.cells[7].fader == 128);
+        same(p.line, "LOOP 16 ST 2.00 S");
+    }
     assert(raw[PH_P_INPT] == 1);
     pu_loop(&late);
     assert(raw[PH_P_INPT] == 0);
+    pu_loop_status(&late);
     pu_page(&late, &p);
+    assert(!p.loop_ready && !p.line[0]);
     same(p.cells[7].value, "--");
     same(p.cells[7].state, "NO LOOP");
     /* once: G at LOOP again stays while the loop effect still does not report */
@@ -605,14 +744,16 @@ static void loop_page(void)
     raw[PH_P_INPT] = 1;
     home_xfad = 64;
     pu_loop_status(&s);
-    Drawn d = {0};
     PhraseCanvas c = {&d, drawn_box, drawn_text};
     pu_page(&s, &p);
-    pu_render(&p, &c);
-    assert(saw(&d, "LOOP 16 ST 2.00 S") && saw(&d, "64"));
+    draw_page(&p, &d, 0);
+    assert(saw_at(&d, 76, 2, "LOOP") && !saw(&d, "LOOP 16 ST 2.00 S") && !saw(&d, "64"));
+    draw_page(&p, &d, 1);
+    assert(saw_at(&d, 90, 2, "LOOP 16 ST 2.00 S") && saw_at(&d, 110, 59, "64"));
     memset(&d, 0, sizeof(d));
-    pu_render_header(&p, &c);
-    assert(d.texts == 2 && saw(&d, "PRISM") && saw(&d, "LOOP 16 ST 2.00 S"));
+    pu_render_header(&p, &c, 1);
+    assert(d.texts == 3 && saw_at(&d, 15, 2, "PRISM") && saw_at(&d, 42, 2, "FREE"));
+    assert(saw_at(&d, 90, 2, "LOOP 16 ST 2.00 S"));
 }
 static uint32_t trig(uint32_t track)
 {
@@ -638,6 +779,7 @@ static void tracks(void)
 {
     PhraseUi s;
     PhrasePage p;
+    Drawn d;
     uint32_t led[16];
     init(&s);
     /* Nothing chosen: INPT says so. A TRIG key and its LED are the firmware's. */
@@ -693,6 +835,10 @@ static void tracks(void)
     same(p.cells[6].value, "LIVE");
     same(p.cells[6].state, "2 TRK");
     assert(!p.cells[6].lit);
+    draw_page(&p, &d, 0);
+    assert(saw_at(&d, 84, 59, "INPT") && saw_at(&d, 76, 2, "LIVE") && !saw(&d, "2 TRK"));
+    draw_page(&p, &d, 1);
+    assert(saw_at(&d, 84, 59, "LIVE") && saw_at(&d, 76, 2, "LIVE"));
     /* A TRIG key still down when G is released: its release stays the page's, its next press is the firmware's. */
     hold_g(&s);
     assert(pu_key(&s, trig(5), PU_PRESS) == PU_OWN);
@@ -711,11 +857,11 @@ static void tracks(void)
         if (!(raw[PH_P_TRKS] & (1u << (t - 1))))
             tap(&s, trig(t));
     assert(raw[PH_P_TRKS] == PH_TRACKS_ALL);
-    Drawn d = {0};
-    PhraseCanvas c = {&d, drawn_box, drawn_text};
     pu_page(&s, &p);
-    pu_render(&p, &c);
-    assert(saw(&d, "16 TRK") && saw(&d, "TRIGS") && d.inverted == 1);
+    draw_page(&p, &d, 0);
+    assert(saw_at(&d, 84, 59, "INPT") && saw_at(&d, 76, 2, "TRIGS") && !saw(&d, "16 TRK"));
+    draw_page(&p, &d, 1);
+    assert(saw_at(&d, 84, 59, "16 TRK") && saw_at(&d, 76, 2, "TRIGS"));
     /* The page loses the top while G is held: the selection ends, keys and LEDs are the firmware's, G's release is the
      * page's and switches nothing. */
     pu_context(&s, 0, 1);
@@ -727,8 +873,7 @@ static void tracks(void)
     pu_page(&s, &p);
     same(p.cells[6].state, "16 TRK");
 
-    /* With a loop as without one, G's press switches nothing: short or long, with a TRIG key or none. A turn of G switches,
-     * also while it is held, and its release does not switch back. */
+    /* G's press switches nothing. While a loop is held, track edits prepare LIVE without switching away from the loop. */
     s.loop = &fake_home;
     home_xfad = LP_MAX;
     report(LS_LOOP | LS_TRACK, 1, 16, 16, 96000, 1.0f);
@@ -746,10 +891,211 @@ static void tracks(void)
     tap(&s, trig(16));
     release_g(&s);
     assert(raw[PH_P_INPT] == 1 && raw[PH_P_TRKS] == 0x7fff);
+    /* The same applies through a brief loss of Overloop status. */
+    pu_loop(&s);
+    home_fresh = 0;
+    pu_loop(&s);
+    hold_g(&s);
+    tap(&s, trig(16));
+    release_g(&s);
+    assert(raw[PH_P_INPT] == 1 && raw[PH_P_TRKS] == PH_TRACKS_ALL);
+    /* A turn of G while it is held still switches, and release keeps that choice. */
     hold_g(&s);
     assert(pu_turn(&s, PU_SELECT, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
     release_g(&s);
     assert(raw[PH_P_INPT] == 0);
+
+    /* In silent LOOP with no capture, choosing an actual track brings back the LIVE track grid. */
+    report(LS_TRACK, 1, 16, 0, 0, 0.0f);
+    pu_loop(&s);
+    raw[PH_P_TRKS] = 0;
+    assert(pu_turn(&s, PU_SELECT, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
+    hold_g(&s);
+    release_g(&s);
+    assert(raw[PH_P_INPT] == 1);
+    hold_g(&s);
+    tap(&s, trig(16));
+    release_g(&s);
+    assert(raw[PH_P_INPT] == 0 && raw[PH_P_TRKS] == (1u << 15));
+    pu_page(&s, &p);
+    same(p.cells[6].value, "LIVE");
+    same(p.cells[6].state, "1 TRK");
+    draw_page(&p, &d, 0);
+    assert(!p.loop_input && saw_at(&d, 76, 2, "LIVE") && d.pixels[51][95]);
+}
+
+/* Compare only the icon rows. Labels, numeric values and state text cannot satisfy this test. */
+static void icon_frame(const PhraseUi *s, Drawn *d)
+{
+    PhrasePage p;
+    pu_page(s, &p);
+    draw_page(&p, d, 0);
+}
+static void icon_changes(const PhraseUi *s, Drawn *previous, int changed_cell)
+{
+    Drawn current;
+    icon_frame(s, &current);
+    for (int cell = 0; cell < 8; ++cell) {
+        int x = 19 + 26 * (cell % 4), y = cell < 4 ? 14 : 41;
+        int changed = 0;
+        for (int row = y; row < y + 15; ++row)
+            changed |= memcmp(&previous->pixels[row][x], &current.pixels[row][x], 26) != 0;
+        if (changed != (cell == changed_cell)) {
+            fprintf(stderr, "icon for %c %s while changing %c\n", 'A' + cell,
+                    changed ? "changed" : "stayed the same", 'A' + changed_cell);
+            assert(0);
+        }
+    }
+    *previous = current;
+}
+static void dynamic_icons(void)
+{
+    PhraseUi s;
+    Drawn previous;
+    init(&s);
+    icon_frame(&s, &previous);
+
+    raw[PH_P_ZONE] = 0;
+    icon_changes(&s, &previous, 0);
+    raw[PH_P_ZONE] = PH_ZONES - 1;
+    icon_changes(&s, &previous, 0);
+    raw[PH_P_RPTS] = 0;
+    icon_changes(&s, &previous, 2);
+    raw[PH_P_RPTS] = PH_RPTS_UNITY - 1;
+    icon_changes(&s, &previous, 2);
+    raw[PH_P_HOLD] = 1;
+    icon_changes(&s, &previous, 2);
+    raw[PH_P_COLR] = 0;
+    icon_changes(&s, &previous, 3);
+    raw[PH_P_COLR] = 127;
+    icon_changes(&s, &previous, 3);
+    raw[PH_P_HALO] = 127;
+    icon_changes(&s, &previous, 4);
+    raw[PH_P_SKEW] = 0;
+    icon_changes(&s, &previous, 5);
+    raw[PH_P_SKEW] = 127;
+    icon_changes(&s, &previous, 5);
+
+    hold_g(&s);
+    icon_frame(&s, &previous);
+    tap(&s, trig(1));
+    icon_changes(&s, &previous, 6);
+    tap(&s, trig(1));
+    tap(&s, trig(16));
+    icon_changes(&s, &previous, 6); /* Same number of tracks, different routing. */
+    release_g(&s);
+    icon_frame(&s, &previous);
+    raw[PH_P_INPT] = 1;
+    icon_changes(&s, &previous, 6); /* The open loop glyph precedes a capture. */
+    raw[PH_P_INPT] = 0;
+    icon_changes(&s, &previous, 6);
+
+    s.loop = &fake_home;
+    home_xfad = 64;
+    report(LS_LOOP | LS_TRACK, 1, 16, 16, 96000, 0.0f);
+    pu_loop_status(&s);
+    icon_changes(&s, &previous, 7);
+    raw[PH_P_INPT] = 1;
+    icon_changes(&s, &previous, 6);
+    /* H follows the applied crossfade even while a new loop is armed and the target stays fixed. */
+    report(LS_LOOP | LS_TRACK | LS_ARMED, 1, 16, 16, 96000, 0.5f);
+    pu_loop_status(&s);
+    icon_changes(&s, &previous, 7);
+    report(LS_LOOP | LS_TRACK | LS_ARMED, 1, 16, 16, 96000, 1.0f);
+    pu_loop_status(&s);
+    icon_changes(&s, &previous, 7);
+}
+static void repeat_icon(void)
+{
+    PhraseUi s;
+    Drawn d;
+    init(&s);
+    static const uint32_t levels[] = {0, PH_RPTS_UNITY - 1};
+    for (int i = 0; i < 2; ++i) {
+        raw[PH_P_RPTS] = levels[i];
+        icon_frame(&s, &d);
+        int first = -1, last = 0, dashes = 0, width = 0;
+        for (int x = 71; x <= 97; ++x) {
+            int ink = x < 97 && d.pixels[20][x];
+            if (ink) {
+                if (first < 0)
+                    first = x;
+                last = x;
+                ++width;
+            } else if (width) {
+                assert(width == 3);
+                width = 0;
+                ++dashes;
+            }
+            if (x < 97)
+                for (int y = 14; y <= 28; ++y)
+                    assert(d.pixels[y][x] == (ink && (y == 20 || y == 21)));
+        }
+        assert(first + last == 168 && dashes == (i ? 5 : 1));
+    }
+    static const uint16_t infinity[] = {0x306, 0x489, 0x451, 0x421, 0x451, 0x489, 0x306};
+    static const uint32_t sustained[] = {PH_RPTS_UNITY, 127, 0};
+    for (int i = 0; i < 3; ++i) {
+        raw[PH_P_RPTS] = sustained[i];
+        raw[PH_P_HOLD] = i == 2;
+        icon_frame(&s, &d);
+        for (int y = 14; y <= 28; ++y)
+            for (int x = 71; x <= 96; ++x) {
+                int on = x >= 79 && x <= 89 && y >= 18 && y <= 24 &&
+                         (infinity[y - 18] & (1u << (x - 79)));
+                assert(d.pixels[y][x] == on);
+            }
+    }
+}
+static void colour_icon(void)
+{
+    PhraseUi s;
+    Drawn d;
+    init(&s);
+    static const uint32_t levels[] = {0, 63, 64, 127};
+    static const int radii[] = {1, 4, 4, 7};
+    for (int i = 0; i < 4; ++i) {
+        raw[PH_P_COLR] = levels[i];
+        icon_frame(&s, &d);
+        int radius = radii[i];
+        for (int y = 14; y <= 28; ++y)
+            for (int x = 97; x <= 122; ++x) {
+                int dx = x > 110 ? x - 110 : 110 - x, dy = y > 21 ? y - 21 : 21 - y;
+                int on = dx <= radius && dy <= radius &&
+                         (levels[i] < 64 || dx == radius || dy == radius);
+                assert(d.pixels[y][x] == on);
+            }
+    }
+}
+static void halo_icon(void)
+{
+    PhraseUi s;
+    Drawn d;
+    init(&s);
+    static const uint8_t ring[] = {0x1c, 0x22, 0x41, 0x41, 0x41, 0x22, 0x1c};
+    static const struct {
+        uint32_t value;
+        int inner, outer, rise;
+    } positions[] = {{0, 0, 0, 0},  {7, 0, 0, 0},  {8, 0, 1, 0},  {16, 1, 1, 0},
+                     {32, 1, 2, 1}, {64, 2, 4, 1}, {96, 3, 6, 2}, {127, 4, 8, 2}};
+    for (unsigned step = 0; step < sizeof(positions) / sizeof(positions[0]); ++step) {
+        int inner = positions[step].inner, outer = positions[step].outer,
+            rise = positions[step].rise;
+        const int offsets[][2] = {
+            {0, 0}, {-inner, -rise}, {inner, rise}, {-outer, rise}, {outer, -rise}};
+        raw[PH_P_HALO] = positions[step].value;
+        icon_frame(&s, &d);
+        for (int y = 41; y <= 55; ++y)
+            for (int x = 19; x <= 44; ++x) {
+                int on = 0;
+                for (int i = 0; i < 5; ++i) {
+                    int dx = x - 29 - offsets[i][0], dy = y - 45 - offsets[i][1];
+                    if (dx >= 0 && dx < 7 && dy >= 0 && dy < 7)
+                        on |= (ring[dy] >> dx) & 1;
+                }
+                assert(d.pixels[y][x] == on);
+            }
+    }
 }
 int main(void)
 {
@@ -759,8 +1105,14 @@ int main(void)
     formats();
     page_cells();
     rendering();
+    rate_readout();
+    mix_meter();
     loop_page();
     tracks();
+    dynamic_icons();
+    repeat_icon();
+    colour_icon();
+    halo_icon();
     puts("phrase ui: ok");
     return 0;
 }

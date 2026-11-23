@@ -235,3 +235,22 @@ accumulator; one initial event alone need not produce a parameter increment.
 The full host lane passes333 tests. See the current
 [Stage 5 handover](../handovers/HANDOVER-2026-11-01-canopy-stage5.md) for final
 artifact hashes, scope decisions and the separate Stage 6 hardware gates.
+
+## CANOPY Track Keyboard SRC and the AMP curve [D]
+
+DTII 1.17 AmpPageView draws ADSR through `0x4006aff0`. The helper takes
+the canvas and the four Q8 segment settings. It draws straight segments,
+the stage nodes and sustain boundaries. The stock update callback handles
+parameter focus timing. The curve itself uses the settings from the
+current Sound or held trig.
+
+CANOPY's shared FM ENV page calls the same helper. The FM mode supplies
+all four settings. Wavetable A/R uses zero decay and full sustain. The
+stock maximum DEC and REL represent indefinite stages. CANOPY maps its
+longest finite values to the nearest finite graph input, `0x7eff`.
+This mapping affects drawing only.
+
+The coupled emulator test visited all three SRC pages for Velvet, wavetable
+and FM. The OLED region covering the attack segment changed when FM ENV A
+was turned. The same test edited TUNE through the stock path on DETAIL and
+recalled the Sound and its trig locks.

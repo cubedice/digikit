@@ -63,4 +63,8 @@ _dl_relay_copy:
     R0 = DM(11,I3); DM(655,I2) = R0;
     R0 = DM(12,I3); DM(675,I2) = R0;
     R0 = DM(13,I3); DM(676,I2) = R0;
+    // A control snapshot closes the live envelope window. Leave transfer
+    // replies intact for retransmission on their normal cadence.
+    R0 = DM(0,I3); R3 = 0x524c5932; COMP(R0,R3);
+    R0 = 0; IF EQ DM(0,I3) = R0;
     JUMP _dl_relay_status_return;

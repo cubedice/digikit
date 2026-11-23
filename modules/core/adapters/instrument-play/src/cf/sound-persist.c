@@ -12,7 +12,9 @@
 #pragma GCC optimize("no-tree-loop-distribute-patterns")
 #endif
 #include <stdint.h>
+#include "instances.h"
 #include "sound-persist.h"
+extern uint32_t dkrt_instrument_type(void);
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
 extern uint8_t *fw_alloc(uint32_t);
@@ -30,10 +32,50 @@ volatile uint32_t ip_sa_ready;
 volatile uint32_t ip_sa_info[8];
 /* The store's counters, for proofs (copied on each UI tick). */
 volatile uint32_t ip_sa_stats[SA_STATS];
+/* A pattern can refer to the same Sound on many steps. Recheck its CRC when
+ * the stock association changes and when taking the actual snapshot. */
+static uint32_t pool_sequence[SA_POOL];
+static uint8_t pool_validation[SA_POOL];
 
 SaStore *ip_sa_store(void)
 {
     return ip_sa_ready ? &store : 0;
+}
+
+int instrument_locked_sound(uint32_t index, uintptr_t expected, CpPreset *out, uint16_t *tune)
+{
+    if (index >= SA_POOL || (out ? (!expected || !tune) : (expected || tune)))
+        return 0;
+    uint8_t payload[SR_BYTES];
+    CpPreset saved;
+    uint32_t type = dkrt_instrument_type(), seq;
+    uint32_t sr = dkrt_irq_mask();
+    SaStore *s = ip_sa_store();
+    uintptr_t sound = s ? s->pool + index * SA_SOUND : 0;
+    if (!sound || (expected && expected != sound) || !type ||
+        *(const uint8_t *)(sound + 0xa2) != type) {
+        dkrt_irq_restore(sr);
+        return 0;
+    }
+    seq = sa_seq(s, sound);
+    if (!out && pool_validation[index] && pool_sequence[index] == seq) {
+        int valid = pool_validation[index] == 2;
+        dkrt_irq_restore(sr);
+        return valid;
+    }
+    int have = sa_get(s, sound, payload, 0);
+    uint16_t raw_tune = out ? (uint16_t)instrument_sound_raw_tune(sound) : 0;
+    dkrt_irq_restore(sr);
+    int valid = have && !sr_decode(out ? out : &saved, payload);
+    sr = dkrt_irq_mask();
+    if (sa_seq(s, sound) == seq) {
+        pool_sequence[index] = seq;
+        pool_validation[index] = valid ? 2 : 1;
+    }
+    dkrt_irq_restore(sr);
+    if (valid && out)
+        *tune = raw_tune;
+    return valid;
 }
 
 static int ram(uint32_t p)
@@ -128,6 +170,9 @@ uint32_t ip_sa_saved(uint32_t record, uint32_t sound, uint32_t result)
     return result;
 }
 
+extern void tk_pattern_copied(uint32_t, uint32_t, uint32_t) __attribute__((weak));
+extern void tk_pattern_cleared(uint32_t, uint32_t) __attribute__((weak));
+
 /* memcpy of at least one Sound's length, before and after the stock copy. */
 void ip_sa_copy_before(uint32_t destination, uint32_t source, uint32_t length)
 {
@@ -137,6 +182,8 @@ void ip_sa_copy_before(uint32_t destination, uint32_t source, uint32_t length)
 }
 void ip_sa_copy_after(uint32_t destination, uint32_t source, uint32_t length)
 {
+    if (tk_pattern_copied && (length == 0x1db8cu || length == 0x6a5u))
+        tk_pattern_copied(destination, source, length);
     if (!ip_sa_ready)
         return;
     uint32_t sr = dkrt_irq_mask();
@@ -147,6 +194,8 @@ void ip_sa_copy_after(uint32_t destination, uint32_t source, uint32_t length)
 /* memset or bzero of at least one Sound's length, after the stock fill. */
 void ip_sa_cleared(uint32_t destination, uint32_t length)
 {
+    if (tk_pattern_cleared && length == 0x1db8cu)
+        tk_pattern_cleared(destination, length);
     if (!ip_sa_ready)
         return;
     uint32_t sr = dkrt_irq_mask();

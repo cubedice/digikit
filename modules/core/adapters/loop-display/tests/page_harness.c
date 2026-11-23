@@ -4,6 +4,13 @@
 #include "../src/model.h"
 /* The home: the values as the page sets them, and the engine's status as the home last had it. */
 static uint32_t xfad, arms, drops, st_words[LS_WORDS], st_fresh;
+static uint16_t wave_override[LS_WAVE_COLUMNS];
+static uint32_t write_column = LS_WAVE_COLUMNS;
+uint32_t dkrt_loop_wave_peaks(uint16_t out[LS_WAVE_COLUMNS])
+{
+    memcpy(out, wave_override, sizeof(wave_override));
+    return write_column;
+}
 uint32_t dkrt_loop_status(uint32_t *out)
 {
     memcpy(out, st_words, sizeof(st_words));
@@ -284,6 +291,7 @@ static void texts(void)
 /* A canvas that checks what the page draws: inside the screen, every text inside its place. */
 typedef struct {
     uint32_t boxes, texts, inverted;
+    uint8_t dots[64][128];
     /* the texts drawn, their centres and tops */
     char text[16][28];
     int x[16], y[16];
@@ -305,6 +313,8 @@ static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
     /* below the header, x 124 to 127 are the FX view's page indicator: nothing is drawn or cleared there */
     assert(y + h <= 10 || x + w <= 124);
     assert(ink == 0 || ink == 1);
+    for (int j = y; j < y + h; ++j)
+        memset(&d->dots[j][x], ink, w);
     ++d->boxes;
 }
 static void drawn_text(void *ctx, int x, int y, const char *s, int ink)
@@ -356,7 +366,35 @@ static void rendering(void)
     status(w, LS_TRACK | LS_ARMED, 0, 0, 96000, 16, 4, 0, 0.0f);
     ld_page(w, 1, 64, &p);
     memset(&d, 0, sizeof(d));
+    wave_override[10] = 0xffff;
+    wave_override[11] = 0xff00;
+    wave_override[12] = 0x00ff;
+    wave_override[13] = 0xa0d0;
     ld_render(&p, &c);
+    /* Adjacent pixels carry different peaks. Silence leaves just one centre pixel. */
+    for (int y = 12; y <= 41; ++y) {
+        assert(d.dots[y][12]);
+        assert(d.dots[y][13] == (y <= 27));
+        assert(d.dots[y][14] == (y >= 27));
+        assert(d.dots[y][15] == (y >= 17 && y <= 39));
+        assert(d.dots[y][16] == (y == 27));
+    }
+    memset(wave_override, 0, sizeof(wave_override));
+    wave_override[10] = 0x2000;
+    wave_override[11] = 0x1000;
+    wave_override[12] = 0x0101;
+    memset(&d, 0, sizeof(d));
+    ld_render(&p, &c);
+    for (int y = 12; y <= 41; ++y) {
+        assert(d.dots[y][12] == (y <= 27));
+        assert(d.dots[y][13] == (y >= 19 && y <= 27));
+        assert(d.dots[y][14] == (y >= 26 && y <= 28));
+    }
+    wave_override[10] = wave_override[11] = 0;
+    memset(&d, 0, sizeof(d));
+    ld_render(&p, &c);
+    /* The display gain cap keeps a single quiet LSB from filling the plot. */
+    assert(!d.dots[25][14] && d.dots[26][14] && d.dots[28][14] && !d.dots[29][14]);
     int y_label = 0, y_value = 0;
     assert(where(&d, "ARM", &y_label) == LD_CELL_E && where(&d, "ON", &y_value) == LD_CELL_E &&
            y_value > y_label);
@@ -369,12 +407,52 @@ static void rendering(void)
     ld_page(w, 0, 0, &p);
     ld_render(&p, &c);
 }
+
+static void waveform_cursor(void)
+{
+    uint32_t w[LS_WORDS];
+    LoopPage p;
+    Drawn without = {0}, with = {0};
+    LoopCanvas clean = {&without, drawn_box, drawn_text}, cursor = {&with, drawn_box, drawn_text};
+    static const uint32_t columns[] = {0, 54, LS_WAVE_COLUMNS - 1};
+    memset(wave_override, 0, sizeof(wave_override));
+    wave_override[10] = 0x2010;
+    status(w, LS_TRACK | LS_ARMED, 0, 0, 96000, 16, 4, 0, 0.0f);
+    ld_page(w, 1, 64, &p);
+    ld_render(&p, &clean);
+    for (uint32_t i = 0; i < sizeof(columns) / sizeof(*columns); ++i) {
+        write_column = columns[i];
+        memset(&with, 0, sizeof(with));
+        ld_render(&p, &cursor);
+        for (int y = 0; y < 64; ++y)
+            for (int x = 0; x < 128; ++x) {
+                int dash = x == 2 + (int)write_column && y >= 12 && y <= 41 && (y - 12) % 4 < 2;
+                assert(with.dots[y][x] == (without.dots[y][x] || dash));
+            }
+    }
+
+    /* Even a supplied write column does not replace the retained loop's phase ticks. */
+    status(w, LS_LOOP, 96000, 16, 0, 0, 0, 48000, 0.5f);
+    ld_page(w, 1, 64, &p);
+    write_column = LS_WAVE_COLUMNS;
+    memset(&without, 0, sizeof(without));
+    ld_render(&p, &clean);
+    assert(without.dots[12][60] && without.dots[12][62] && without.dots[14][61]);
+    assert(!without.dots[20][61] && without.dots[40][61]);
+    write_column = columns[1];
+    memset(&with, 0, sizeof(with));
+    ld_render(&p, &cursor);
+    assert(!memcmp(with.dots, without.dots, sizeof(with.dots)));
+    write_column = LS_WAVE_COLUMNS;
+}
+
 int main(void)
 {
     controls();
     arm_on_e();
     texts();
     rendering();
+    waveform_cursor();
     puts("loop page: ok");
     return 0;
 }

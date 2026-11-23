@@ -56,12 +56,18 @@ static void loop_cells(const PhraseUi *s, PhrasePage *page)
 {
     char text[16], time[16];
     const uint32_t *st = s->loop_status;
-    uint32_t state = s->loop_fresh ? st[LS_STATE] : 0, loop = pu_has_loop(s),
-             armed = (state & LS_ARMED) != 0, inpt = dkrt_phrase_get(PH_P_INPT);
+    /* Retain the last held loop through the same heartbeat grace as the input route. */
+    uint32_t state = s->loop && (s->loop_fresh || s->loop_had) ? st[LS_STATE] : 0,
+             loop = state & LS_LOOP, armed = (state & LS_ARMED) != 0,
+             inpt = dkrt_phrase_get(PH_P_INPT), selecting = pu_selecting(s);
+    page->tracks = pu_tracks();
+    page->loop_input = inpt && !selecting;
+    page->loop_ready = loop;
+    page->armed = armed;
     /* INPT and under it the tracks it hears at LIVE, or SILENT at LOOP while there is no loop to hear; while G is held the
      * tracks, and TRIGS inverted: the TRIG keys choose them */
     tracks_text(text);
-    if (pu_selecting(s))
+    if (selecting)
         cell(&page->cells[6], "INPT", text, "TRIGS", 1);
     else
         cell(&page->cells[6], "INPT", inpt ? "LOOP" : "LIVE", inpt && !loop ? "SILENT" : text, 0);
@@ -91,8 +97,7 @@ static void loop_cells(const PhraseUi *s, PhrasePage *page)
     else
         pu_format(text, PH_P_MIX, xfad);
     cell(&page->cells[7], "XFAD", text, armed ? "ARMD" : "", armed);
-    if (!armed)
-        page->cells[7].fader = 1 + heard(st[LS_GAIN]);
+    page->cells[7].fader = 1 + heard(st[LS_GAIN]);
     if (inpt) {
         /* PRISM hears the loop: the header names it, its steps and its time */
         char *o = copy(page->line, "LOOP ");
@@ -107,17 +112,25 @@ void pu_page(const PhraseUi *s, PhrasePage *page)
     char text[16], time[16];
     uint32_t zone = dkrt_phrase_get(PH_P_ZONE), sync = dkrt_phrase_get(PH_P_SYNC),
              flip = dkrt_phrase_get(PH_P_FLIP), hold = dkrt_phrase_get(PH_P_HOLD),
-             colour = dkrt_phrase_get(PH_P_COLR), frames = pu_frames(s);
+             repeats = dkrt_phrase_get(PH_P_RPTS), colour = dkrt_phrase_get(PH_P_COLR),
+             halo = dkrt_phrase_get(PH_P_HALO), skew = dkrt_phrase_get(PH_P_SKEW),
+             ping_pong = dkrt_phrase_get(PH_P_PING_PONG), frames = pu_frames(s);
     put(page->title, s->title ? s->title : "PHRASE");
     put(page->zone, pu_zone_name(zone));
     /* The time the engine plays now: it glides after a free RATE move. Without a status there is none to show. */
+    page->link_error = !frames && (!s->fresh || s->status[PH_S_ERROR / 4]);
     if (frames)
         pu_time(time, frames);
     else
-        put(time, s->fresh && !s->status[PH_S_ERROR / 4] ? "--" : "NO LINK");
+        put(time, page->link_error ? "NO LINK" : "--");
     put(page->time, time);
     page->mix = dkrt_phrase_get(PH_P_MIX);
     page->zone_index = zone;
+    page->sync = sync;
+    page->repeats = hold ? PH_RPTS_UNITY : repeats;
+    page->colour = colour;
+    page->halo = halo;
+    page->skew = skew;
     cell(&page->cells[0], "ZONE", pu_zone_name(zone), flip ? "FLIP" : "", flip);
     if (sync) {
         /* the ratio of the zone's 1/1; the header has the time it gives */
@@ -125,14 +138,14 @@ void pu_page(const PhraseUi *s, PhrasePage *page)
         cell(&page->cells[1], "RATE", text, "SYNC", 0);
     } else
         cell(&page->cells[1], "RATE", frames ? time : "--", "FREE", 0);
-    pu_format(text, PH_P_RPTS, dkrt_phrase_get(PH_P_RPTS));
+    pu_format(text, PH_P_RPTS, repeats);
     cell(&page->cells[2], "RPTS", hold ? "INF" : text, hold ? "HOLD" : "", hold);
     pu_format(text, PH_P_COLR, colour);
     cell(&page->cells[3], "COLR", text, colour < 64 ? "DARK" : colour > 64 ? "BRIT" : "", 0);
-    pu_format(text, PH_P_HALO, dkrt_phrase_get(PH_P_HALO));
+    pu_format(text, PH_P_HALO, halo);
     cell(&page->cells[4], "HALO", text, "", 0);
-    pu_format(text, PH_P_SKEW, dkrt_phrase_get(PH_P_SKEW));
-    cell(&page->cells[5], "SKEW", text, "", 0);
+    pu_format(text, PH_P_SKEW, skew);
+    cell(&page->cells[5], "SKEW", text, ping_pong ? (skew == 64 ? "PONG" : "SWAP") : "", ping_pong);
     /* The input switch and Overloop's crossfader. */
     loop_cells(s, page);
 }
@@ -153,13 +166,6 @@ static void box(const PhraseCanvas *c, int x, int y, int w, int h, int ink)
     if (w > 0 && h > 0)
         c->box(c->context, x, y, w, h, ink);
 }
-static void rect(const PhraseCanvas *c, int x, int y, int w, int h)
-{
-    box(c, x, y, w, 1, 1);
-    box(c, x, y + h - 1, w, 1, 1);
-    box(c, x, y, 1, h, 1);
-    box(c, x + w - 1, y, 1, h, 1);
-}
 static void text(const PhraseCanvas *c, int x, int y, const char *s, int ink)
 {
     if (*s)
@@ -171,51 +177,170 @@ static void number(char out[8], uint32_t n)
     pu_format(t, PH_P_MIX, n);
     put(out, t);
 }
-void pu_render_header(const PhrasePage *p, const PhraseCanvas *c)
+
+/* Seven rows with the low bit at the left edge. */
+static void glyph(const PhraseCanvas *c, int x, int y, const uint16_t rows[7])
+{
+    for (int row = 0; row < 7; ++row)
+        for (int bits = rows[row], px = x; bits; bits >>= 1, ++px)
+            if (bits & 1)
+                box(c, px, y + row, 1, 1, 1);
+}
+
+/* Fifteen scanlines for the graphic, with the caption below. */
+static void icon(const PhrasePage *p, const PhraseCanvas *c, int i, int x, int y)
+{
+    switch (i) {
+    case 0: /* Zone window: eight progressively longer ranges. */
+        for (int z = 0; z < PH_ZONES; ++z) {
+            int active = (uint32_t)z == p->zone_index;
+            int height = 4 + z + 3 * active;
+            box(c, x - 11 + 3 * z, y + 15 - height, 1 + active, height, 1);
+        }
+        break;
+    case 1: /* Live delay time or the selected tempo ratio. */
+        text(c, x, y + 5, p->cells[1].value, 1);
+        break;
+    case 2: { /* Stepped echoes lead to the infinity glyph at nominal unity. */
+        static const uint16_t infinity[] = {0x306, 0x489, 0x451, 0x421, 0x451, 0x489, 0x306};
+        if (p->repeats >= PH_RPTS_UNITY) {
+            glyph(c, x - 5, y + 4, infinity);
+        } else {
+            int dashes = p->repeats * 5 / PH_RPTS_UNITY;
+            int left = x - dashes * 5 / 2 - 1;
+            for (int j = 0; j <= dashes; ++j)
+                box(c, left + 5 * j, y + 6, 3, 2, 1);
+        }
+        break;
+    }
+    case 3: { /* Filled on the dark side, outlined from the centre towards bright. */
+        int radius = 1 + (p->colour * 6 + 63) / 127, size = 2 * radius + 1;
+        int left = x - radius, top = y + 7 - radius;
+        box(c, left, top, size, size, 1);
+        if (p->colour >= 64)
+            box(c, left + 1, top + 1, size - 2, size - 2, 0);
+        break;
+    }
+    case 4: { /* Each pair moves out from the same center as HALO increases. */
+        static const uint16_t ring[] = {0x1c, 0x22, 0x41, 0x41, 0x41, 0x22, 0x1c};
+        int left = x - 3, top = y + 4;
+        int dy = (p->halo * 2 + 63) / 127;
+        glyph(c, left, top, ring);
+        for (int spread = 4; spread <= 8; spread += 4) {
+            int dx = (p->halo * spread + 63) / 127;
+            if (dx) {
+                glyph(c, left - dx, top - dy, ring);
+                glyph(c, left + dx, top + dy, ring);
+            }
+            dy = -dy;
+        }
+        break;
+    }
+    case 5: { /* Left and right delay lengths diverge about the centre. */
+        int spread = (p->skew * 16 + 63) / 127 - 8;
+        box(c, x - 10, y + 3, 11 - spread, 3, 1);
+        box(c, x - 10, y + 9, 11 + spread, 3, 1);
+        break;
+    }
+    case 6:
+        if (p->loop_input) {
+            /* Loop route: a closed path when it has material, open otherwise. */
+            box(c, x - 6, y + 2, 13, 1, 1);
+            box(c, x + 6, y + 2, 1, 11, 1);
+            box(c, x - 6, y + 12, 13, 1, 1);
+            if (p->loop_ready)
+                box(c, x - 6, y + 2, 1, 11, 1);
+            box(c, x - 3, y + 3, 1, 1, 1);
+        } else {
+            /* TRIG 1–8 above 9–16, filled cells are routed. */
+            for (int t = 0; t < 16; ++t) {
+                int selected = (p->tracks >> t) & 1;
+                box(c, x - 11 + 3 * (t % 8), y + 3 + 6 * (t / 8), 1 + selected, 1 + 2 * selected,
+                    1);
+            }
+        }
+        break;
+    case 7: { /* The slider follows the applied crossfade during a transition. */
+        uint32_t fader = p->cells[7].fader;
+        box(c, x - 11, y + 7, 23, 1, 1);
+        box(c, x - 11, y + 3, 1, 9, 1);
+        box(c, x + 11, y + 3, 1, 9, 1);
+        if (fader)
+            box(c, x - 11 + (int)(fader - 1) * 20 / 127, y + 1, 3, 13, 1);
+        break;
+    }
+    }
+}
+
+void pu_render_header(const PhrasePage *p, const PhraseCanvas *c, int show_values)
 {
     box(c, 0, 0, 128, 10, 0);
     text(c, 15, 2, p->title, 1);
-    if (p->line[0])
-        text(c, 82, 2, p->line, 1);
+    text(c, 42, 2, p->cells[1].state, 1);
+    const PhraseCell *input = &p->cells[6];
+    if (show_values && p->line[0] && !input->lit)
+        text(c, 90, 2, p->line, 1);
     else {
-        text(c, 78, 2, p->zone, 1);
-        text(c, 110, 2, p->time, 1);
+        const char *route = input->state;
+        if (!input->lit) {
+            if (p->link_error)
+                route = "NO LINK";
+            else if (show_values && p->sync)
+                route = p->time;
+            else if (p->loop_input ? p->loop_ready : p->tracks)
+                route = input->value;
+        }
+        text(c, 76, 2, route, !input->lit);
+        if (!p->loop_ready && !p->armed)
+            text(c, 111, 2, "NO LOOP", 1);
     }
     box(c, 0, 9, 128, 1, 1);
 }
 /* Below the header the page leaves x 123 to 127 to the FX view, which draws its page indicator there (x 125 to 127). */
-void pu_render(const PhrasePage *p, const PhraseCanvas *c)
+void pu_render(const PhrasePage *p, const PhraseCanvas *c, int show_values)
 {
     char mix[8];
     box(c, 0, 0, 124, 64, 0);
-    pu_render_header(p, c);
-    /* LEVEL: MIX, a column that fills from the bottom. */
-    text(c, 10, 12, "MIX", 1);
-    rect(c, 6, 19, 9, 36);
-    int fill = (int)(p->mix > 127 ? 127 : p->mix) * 32 / 127;
-    box(c, 8, 21 + 32 - fill, 5, fill, 1);
-    number(mix, p->mix);
-    text(c, 10, 57, mix, 1);
-    box(c, 20, 37, 103, 1, 1);
+    pu_render_header(p, c, show_values);
+    if (p->cells[0].lit)
+        text(c, 9, 14, "FLIP", 0);
+    if (p->cells[2].lit)
+        text(c, 9, 22, "HOLD", 0);
+    if (p->armed)
+        text(c, 9, 30, "ARMD", 0);
+    /* The compact send FX level strip has its caption on the bottom row. */
+    box(c, 4, 40, 7, 1, 1);
+    box(c, 4, 56, 7, 1, 1);
+    box(c, 3, 41, 1, 15, 1);
+    box(c, 11, 41, 1, 15, 1);
+    for (int y = 42; y <= 54; y += 2) {
+        box(c, 5, y, 1, 1, 1);
+        box(c, 9, y, 1, 1, 1);
+    }
+    uint32_t level = p->mix > 127 ? 127 : p->mix;
+    int fill = level ? 1 + (int)((level - 1) * 12 / 126) : 0;
+    box(c, 5, 55 - fill, 5, fill, 1);
+    if (show_values)
+        number(mix, p->mix);
+    text(c, 7, 59, show_values ? mix : "MIX", 1);
     for (uint32_t i = 0; i < 8; ++i) {
         const PhraseCell *k = &p->cells[i];
-        int x = 32 + 26 * (int)(i % 4), y = i < 4 ? 11 : 38; /* the last column ends at x 124 */
-        text(c, x, y + 1, k->label, 1);
-        text(c, x, y + 9, k->value, 1);
-        if (i == 0)
-            /* ZONE: eight marks under the zone's name, the chosen one tall. */
-            for (int z = 0; z < PH_ZONES; ++z) {
-                int on = (uint32_t)z == p->zone_index;
-                box(c, x - 12 + 3 * z, y + (on ? 15 : 16), 2, on ? 2 : 1, 1);
+        int x = 32 + 26 * (int)(i % 4), y = i < 4 ? 13 : 40;
+        icon(p, c, (int)i, x, y + 1);
+        const char *caption = k->label;
+        char tone[8];
+        if (show_values && i != 1) {
+            caption = k->value;
+            if (i == 3 && p->colour != 64) {
+                tone[0] = p->colour < 64 ? '-' : '+';
+                copy(tone + 1, k->value);
+                caption = tone;
+            } else if (i == 7 && p->armed && !p->loop_ready) {
+                caption = k->state;
             }
-        if (k->fader) {
-            /* the crossfader as it sounds: a line from LIVE (left) to LOOP (right) and its place on it */
-            box(c, x - 11, y + 22, 23, 1, 1);
-            box(c, x - 11 + (int)(k->fader - 1) * 20 / 127, y + 20, 3, 5, 1);
-        } else
-            /* INPT's state (the tracks, TRIGS, SILENT) sits 7 pixels left of the cell's centre: H's state beside it (NO LOOP)
-             * is the widest text of the page, and in the firmware's font six characters at 4 pixels left touched it (the
-             * emulator's screen); F's state line beside it on the left is always empty. */
-            text(c, i == 6 ? x - 7 : x, y + 19, k->state, k->lit ? 0 : 1);
+        }
+        if (i == 5 && k->lit && !show_values)
+            caption = k->state;
+        text(c, x, y + 19, caption, 1);
     }
 }

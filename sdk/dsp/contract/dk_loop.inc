@@ -16,12 +16,17 @@
 #define LP_SEEN 3
 #define LP_COUNT 4
 #define LP_MAX 127
-// Status: the engine publishes 16 words in _loop_ui_status after every block. core/dsp-link returns words 1 to 13 to the
-// ColdFire (words 7, 14 and 15 travel as seven bits each and are 0 here).
+// Status: the engine publishes 16 OVL1 words in _loop_ui_status after every block. Words 7, 14 and 15 are reserved zero.
 #define LS_MAGIC_VALUE 0x4f564c31
 #define LS_WORDS 16
 #define LS_MAGIC 0
 #define LS_HEARTBEAT 1
+// The OVL3 reply carries the engine's words 1..6 and 8..13 at the same indices. Seed the check with its magic, then
+// rotate it left by LS_WIRE_ROT and XOR each payload word in index order. The receiver restores the OVL1 layout.
+#define LS_WIRE_MAGIC 0x4f564c33
+#define LS_WIRE_WORDS 14
+#define LS_WIRE_CHECK 7
+#define LS_WIRE_ROT 5
 // LS_STATE: the bits below, and the count of loops taken from bit 8 up. An engine that starts (a load, a reset of its state, a
 // lease that moved) goes on counting from the count the mailbox shows, so a loop taken after a restart has a count no reader
 // has seen before.
@@ -35,6 +40,8 @@
 // LS_STOPPED: a loop is held and the transport has stopped or paused: the loop side fades out and is silent until the
 // transport runs again (the input plays as at LIVE; the crossfader and the loop are kept).
 #define LS_STOPPED 64
+// PEAK uses two bytes per interval (negative then positive magnitude) when this flag is set.
+#define LS_WAVE_PRECISE 128
 #define LS_COUNT_SHIFT 8
 // The loop's frames (0: none), the frames an armed change would keep now (0: not known), the loop's phase in frames, the
 // crossfader as applied (float).
@@ -46,6 +53,16 @@
 // (from bit 16); the last two are 0 while no pattern is followed.
 #define LS_STEPS 9
 #define LS_CAPACITY 10
+// Display overview of the rolling record (zero from older engines). T is the number of recorded frames, modulo 2^32.
+// Every 512 frames the low half of PEAK gets a completed interval. Its upper half is the unfinished interval at
+// capture; EDGE is T at capture. LS_WAVE_PRECISE: round the largest negative and positive magnitudes on either
+// channel outward to bytes (0..255). Engines without the flag sent L negative/positive then R negative/positive,
+// one nibble each from the low end.
+#define LS_WAVE_T 8
+#define LS_WAVE_PEAK 11
+#define LS_WAVE_EDGE 12
+#define LS_WAVE_SILENT 13
+#define LS_WAVE_COLUMNS 120
 // The tap: the loop times the crossfader as applied, one block, at the level of the mix before the master stage: divided by the
 // master stage's gain after its sum at the end of the block (its +10 dB and the volume ramp; at most 1024 times). The engine
 // writes it after every block; a reader in the next block uses it while the engine runs (LW_TAKEN moved since its last block)

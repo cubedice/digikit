@@ -12,7 +12,7 @@
 //   controls   the parameter words: the crossfader, and the counters of ARM and DROP (core/loop-control holds them)
 //   position   the record of core/pattern-position: a step boundary begins with this block or not; a boundary of
 //              another pattern is a change, a boundary of another generation is a START. A record that comes again is
-//              no news, and a few frames that did not arrive end nothing (OL_SKIP). While the transport is stopped or
+//              no news, and gaps between valid consecutive boundaries keep the run. While the transport is stopped or
 //              paused the loop side is silent: it fades out at STOP and in again at the first boundary after the
 //              transport runs, from its first frame after a STOP and from where it stood after a pause
 //   mix        output = input + (loop - input) * crossfader * the transport's weight; LIVE passes the input as it is
@@ -133,6 +133,11 @@ _ol_moved_clear: DM(I4,M6) = R0;
     DM(OL_N,I5) = R9;
     DM(OL_BUF0,I5) = R2;
     DM(OL_BUF1,I5) = R6;
+    // A replacement buffer has no old samples or preceding display interval.
+    R0 = 0; DM(OL_T,I5) = R0;
+    DM(OL_WAVE_MIN_L,I5) = R0; DM(OL_WAVE_MAX_L,I5) = R0;
+    DM(OL_WAVE_MIN_R,I5) = R0; DM(OL_WAVE_MAX_R,I5) = R0;
+    DM(OL_WAVE_LAST,I5) = R0;
     CALL _ol_count_on;
 
     // ---- The controls. The counters come as floats 0 .. 127; a change of ARM arms or disarms, a change of DROP drops.
@@ -226,13 +231,13 @@ _ol_running:
     R1 = 1;
     R0 = PASS R0;
     IF EQ JUMP _ol_first;
-    // the same record again (a frame that came twice or late): nothing new in this block; OL_SKIP of them in a row end
-    // the run
+    // The position receiver holds its last good record across rejected frames. The audio recording advances even when
+    // the report is repeated. Only expire this record after the receiver's grace period.
     R6 = R2 - R4;
     IF NE JUMP _ol_news;
     R7 = R7 + 1;
     DM(OL_SAME,I5) = R7;
-    R0 = OL_SKIP;
+    R0 = OL_POSITION_GRACE;
     COMP(R7,R0);
     IF LT JUMP _ol_target;
     JUMP _ol_unrun;
@@ -249,15 +254,9 @@ _ol_news:
     DM(OL_BSEQ,I5) = R3;
     R0 = 0;
     DM(OL_SAME,I5) = R0;
-    // a send count that went back, or a gap of more than OL_SKIP frames or blocks since the last new record: no edge can
-    // be placed
+    // The send count orders reports. A forward gap does not lose a musical boundary if its own count is continuous.
     R6 = PASS R6;
     IF LT JUMP _ol_unrun;
-    R0 = OL_SKIP;
-    COMP(R6,R0);
-    IF GT JUMP _ol_unrun;
-    COMP(R7,R0);
-    IF GE JUMP _ol_unrun;
     // stopped, or the timing is not valid
     R0 = DM(5,I4);
     R6 = 3;
@@ -779,9 +778,13 @@ _ol_record:
     R1 = LSHIFT R0 BY 2;
     R3 = R3 + R1;
     I4 = R3;
+    R9 = DM(OL_WAVE_MIN_L,I5); R10 = DM(OL_WAVE_MAX_L,I5);
+    R11 = DM(OL_WAVE_MIN_R,I5); R12 = DM(OL_WAVE_MAX_R,I5);
     LCNTR = DK_BLOCK, DO _ol_record_end UNTIL LCE;
         R4 = DM(I2,M6);
         R8 = DM(I3,M6);
+        F9 = MIN(F9,F4); F10 = MAX(F10,F4);
+        F11 = MIN(F11,F8); F12 = MAX(F12,F8);
         DM(M2,I4) = R8;
 _ol_record_end: DM(I4,M6) = R4;
     R1 = DK_BLOCK;
@@ -797,6 +800,17 @@ _ol_record_end: DM(I4,M6) = R4;
     R0 = DM(OL_T,I5);
     R0 = R0 + R1;
     DM(OL_T,I5) = R0;
+    DM(OL_WAVE_MIN_L,I5) = R9; DM(OL_WAVE_MAX_L,I5) = R10;
+    DM(OL_WAVE_MIN_R,I5) = R11; DM(OL_WAVE_MAX_R,I5) = R12;
+    R2 = 511; R2 = R0 AND R2;
+    IF NE JUMP _ol_wave_ready;
+    CALL _ol_wave_pack;
+    DM(OL_WAVE_LAST,I5) = R0;
+    R9 = 0;
+    DM(OL_WAVE_MIN_L,I5) = R9; DM(OL_WAVE_MAX_L,I5) = R9;
+    DM(OL_WAVE_MIN_R,I5) = R9; DM(OL_WAVE_MAX_R,I5) = R9;
+_ol_wave_ready:
+    R1 = DK_BLOCK;
 
     // ---- The frames before the record's start. After a capture the record begins empty in this buffer, and what was
     // heard before lies in the other one, the loop's, which nothing writes. A block of it is copied each block, the newest
@@ -916,17 +930,20 @@ _ol_publish:
     R0 = DM(OL_COUNT,I5);
     R0 = LSHIFT R0 BY LS_COUNT_SHIFT;
     R1 = R1 OR R0;
+    R0 = LS_WAVE_PRECISE; R1 = R1 OR R0;
     DM(LS_STATE,I4) = R1;
     DM(LS_NEXT_FRAMES,I4) = R2;
     DM(LS_CAPACITY,I4) = R4;
     R0 = 0;
     DM(7,I4) = R0;
-    DM(8,I4) = R0;
-    DM(11,I4) = R0;
-    DM(12,I4) = R0;
-    DM(13,I4) = R0;
     DM(14,I4) = R0;
     DM(15,I4) = R0;
+    R0 = DM(OL_T,I5); DM(LS_WAVE_T,I4) = R0;
+    R0 = DM(OL_WAVE_PART,I5); R0 = LSHIFT R0 BY 16;
+    R2 = DM(OL_WAVE_LAST,I5); R0 = R0 OR R2; DM(LS_WAVE_PEAK,I4) = R0;
+    R0 = DM(OL_WAVE_EDGE,I5); DM(LS_WAVE_EDGE,I4) = R0;
+    R0 = DM(OL_SILENT,I5); DM(LS_WAVE_SILENT,I4) = R0;
+    R0 = 0;
     R2 = 0;
     R3 = DM(OL_LOOP,I5);
     R3 = PASS R3;
@@ -1155,6 +1172,9 @@ _ol_next_set:
 // crossfader stands at LOOP from this block on, the arm is used up, and the record goes on in the other buffer.
 // Uses R0 to R6 and R9.
 _ol_capture:
+    R0 = DM(OL_T,I5); DM(OL_WAVE_EDGE,I5) = R0;
+    CALL _ol_wave_pack;
+    DM(OL_WAVE_PART,I5) = R0;
     R0 = DM(OL_NEXT,I5);
     R9 = DM(OL_N,I5);
     R1 = OL_SEAM + DK_BLOCK;
@@ -1237,6 +1257,20 @@ _ol_capture_base:
     R1 = 1;
     R0 = R0 XOR R1;
     DM(OL_ROLL,I5) = R0;
+    RTS;
+
+// Each polarity uses the outer stereo extreme. Zero stays zero; round nonzero peaks outward.
+_ol_wave_pack:
+    R6 = 0x437f0000; // 255
+    R2 = 0x3f800000; // 1
+    R0 = DM(OL_WAVE_MAX_L,I5); R1 = DM(OL_WAVE_MAX_R,I5); F0 = MAX(F0,F1);
+    CALL _ol_wave_q; R3 = LSHIFT R0 BY 8;
+    R0 = DM(OL_WAVE_MIN_L,I5); R1 = DM(OL_WAVE_MIN_R,I5); F0 = MIN(F0,F1); F0 = ABS F0;
+    CALL _ol_wave_q; R0 = R3 OR R0;
+    RTS;
+_ol_wave_q:
+    F0 = MIN(F0,F2); F0 = F0 * F6; R1 = TRUNC F0; F4 = FLOAT R1;
+    COMP(F0,F4); IF GT R1 = R1 + 1; R0 = PASS R1;
     RTS;
 
 .SECTION/DM seg_dmda;

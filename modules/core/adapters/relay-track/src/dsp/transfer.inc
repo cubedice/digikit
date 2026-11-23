@@ -54,7 +54,8 @@ _rt_peak_batch:
     R0 = 10; COMP(R12,R0); IF GT JUMP _re_xfail;
     R12 = PASS R12; IF LE JUMP _re_xfail;
     DM(_rt_peak_count) = R12;
-    R0 = 0; DM(_rt_peak_index) = R0; DM(_rt_peak_max) = R0;
+    R0 = 0; DM(_rt_peak_index) = R0;
+    R0 = RT_WAVE_EMPTY; DM(_rt_peak_envelope) = R0;
     R0 = DM(_re_pin_length); DM(_rt_peak_pos) = R8;
     R1 = I4; R2 = 20; R1 = R1 + R2; I1 = R1; I2 = _rt_peak_ends;
     R3 = R12;
@@ -69,14 +70,14 @@ _rt_peak_slice:
     I0 = R0; R2 = DM(_rt_peak_index); R2 = LSHIFT R2 BY 2; R3 = _rt_peak_ends; R2 = R2 + R3; I2 = R2;
     R2 = DM(0,I2); R12 = DM(_rt_peak_pos); R2 = R2 - R12;
     R2 = MIN(R1,R2); R3 = RX_PEAK_FRAMES; R2 = MIN(R2,R3);
-    R3 = DM(_rt_peak_max); CALL _rt_max_stereo;
+    R3 = DM(_rt_peak_envelope); CALL _rt_pcm_envelope;
     R12 = R12 + R2; DM(_rt_peak_pos) = R12;
     R0 = DM(0,I2); COMP(R12,R0); IF EQ JUMP _rt_peak_finish_bin;
-    DM(_rt_peak_max) = R3; RTS;
+    DM(_rt_peak_envelope) = R3; RTS;
 _rt_peak_finish_bin:
     R0 = DM(_rt_peak_index); R1 = LSHIFT R0 BY 2; R2 = _rt_peak_result; R1 = R1 + R2; I1 = R1;
     DM(0,I1) = R3; R0 = R0 + 1; DM(_rt_peak_index) = R0;
-    R0 = 0; DM(_rt_peak_max) = R0;
+    R0 = RT_WAVE_EMPTY; DM(_rt_peak_envelope) = R0;
     R1 = DM(_rt_peak_bins); R1 = R1 - 1; DM(_rt_peak_bins) = R1; IF NE RTS;
     I0 = _rt_peak_result; I1 = _relay_response; R2 = I1; R3 = 12; R2 = R2 + R3; I1 = R2;
     R0 = DM(_rt_peak_count); LCNTR = R0, DO _rt_peak_publish UNTIL LCE;
@@ -92,20 +93,25 @@ _rt_xpeak:
     DM(_re_xcount) = R12;
     R12 = R8; R8 = RLY_PINNED; R4 = RLY_READ_SPAN; CALL _relay_pool;
     R2 = -1; COMP(R0,R2); IF EQ JUMP _re_xfail;
-    I0 = R0; R2 = DM(_re_xcount); R2 = MIN(R1,R2); R3 = 0;
-    CALL _rt_max_stereo;
+    I0 = R0; R2 = DM(_re_xcount); R2 = MIN(R1,R2); R3 = RT_WAVE_EMPTY;
+    CALL _rt_pcm_envelope;
     I3 = _relay_response; DM(3,I3) = R3; R0 = R2; JUMP _re_xreply;
-_rt_max_stereo:
+// R3 carries the previous quantized extrema, min low and max high.
+// Compare the signed PCM at full precision, then quantize once per span.
+// Decoding an earlier extremum to its bin boundary preserves its encoded value.
+_rt_pcm_envelope:
+    R1 = 128;
+    R4 = FEXT R3 BY 0:8; R4 = R4 - R1; R4 = LSHIFT R4 BY 8;
+    R5 = FEXT R3 BY 8:8; R5 = R5 - R1; R5 = LSHIFT R5 BY 8;
     LCNTR = R2, DO _rt_xpeak_word UNTIL LCE;
         R0 = DM(I0,M6);
         R1 = ASHIFT R0 BY -16;
         R0 = LSHIFT R0 BY 16;
         R0 = ASHIFT R0 BY -16;
-        R1 = ABS R1;
-        R0 = ABS R0;
-        R3 = MAX(R3,R1);
-_rt_xpeak_word: R3 = MAX(R3,R0);
-    RTS;
+        R4 = MIN(R4,R1); R5 = MAX(R5,R1);
+        R4 = MIN(R4,R0);
+_rt_xpeak_word: R5 = MAX(R5,R0);
+    JUMP _rt_wave_pair;
 _re_xread:
     R0 = DM(_rt_pin);
     R0 = PASS R0;
@@ -238,7 +244,7 @@ _rt_xcheck: R1 = R2 + R3;
 .VAR _rt_peak_count;
 .VAR _rt_peak_index;
 .VAR _rt_peak_pos;
-.VAR _rt_peak_max;
+.VAR _rt_peak_envelope;
 .VAR _rt_peak_ends[10];
 .VAR _rt_peak_result[10];
 .VAR _re_xseq;

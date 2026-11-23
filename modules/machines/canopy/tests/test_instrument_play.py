@@ -291,8 +291,7 @@ def playback(playback_object):
 
 def test_locked_event_sideband_is_checked_before_slot_commit(playback):
     call, put, get, _, _, _, symbols = playback
-    packet = wire_packet([(1, 1, 60, 100, 0, 0)], generation=1, revision=1, track=0)
-    packet[1] |= 0x1000
+    packet = wire_packet([(1, 1, 60, 100, 0, 0)], locked=True)
     side = [
         0x434C4B31,
         packet[2],
@@ -394,6 +393,75 @@ def test_wave_lock_carries_the_remembered_fm_bank_without_changing_base(playback
     assert effective[1] == 3 and effective[2] == source[0]
     assert [word >> 16 for word in effective[16:32]] == source[1:]
     assert get("_test_values", 32) == base
+
+
+def test_sound_lock_overlay_uses_pool_bank_before_step_locks_and_retires_it(playback):
+    call, put, get, _, _, _, symbols = playback
+    base = wavetable_fm_controls()
+    base[0] |= 0x4000 << 16
+    base[1] = 2
+    put("_test_values", base)
+    packet = wire_packet([(1, 1, 60, 100, 0, 0)], generation=1, revision=1, track=0)
+    packet[1] |= 0x1000
+
+    def stage(source, wave, tune, pairs=(), *, reserved=0):
+        controls = wave | (91 << 3) | (19 << 10) | (102 << 17) | (125 << 24)
+        side = [
+            0x434C4B31,
+            packet[2],
+            packet[3],
+            packet[9],
+            0x30030 | (len(pairs) << 8),
+        ]
+        padded = [*pairs, *([0] * (6 - len(pairs)))]
+        side += [padded[i] | (padded[i + 1] << 16) for i in range(0, 6, 2)]
+        side[7] |= (controls & 0xFFFF) << 16
+        side.append(source[0] | (tune << 7) | (source[1] << 22))
+        for i in range(2, 17, 2):
+            side.append(source[i] | ((source[i + 1] if i + 1 < 17 else 0) << 16))
+        side[16] |= (controls & 0xFFFF0000) | reserved
+        a, b = 0x6C6F636B, 0x74726967
+        for value in side:
+            a = (a + value) & 0xFFFFFFFF
+            b = (b + a) & 0xFFFFFFFF
+        put("_test_packet_block", side + [a ^ b] + packet)
+        return call(9, R4=symbols["_test_packet"])
+
+    fm = fm_controls()
+    source = [fm[2]] + [word >> 16 for word in fm[16:32]]
+    assert stage(source, 7, 0x7C00) == 1
+    call(10)
+    assert call(12, R4=symbols["_test_values"]) == symbols["_iv_lock_controls"]
+    effective = get("_iv_lock_controls", 32)
+    assert effective[0] >> 16 == 0x7C00
+    assert effective[1:7] == [3, source[0], 91, 19, 102, 125]
+    assert [word >> 16 for word in effective[16:32]] == source[1:]
+    assert [effective[i] & 65535 for i in (18, 19, 21, 30, 31)] == [
+        source[0],
+        91,
+        125,
+        19,
+        102,
+    ]
+
+    pairs = [(34 << 10) | 7, (3 << 10) | 12, (40 << 10) | 98]
+    assert stage(source, 6, 0x400, pairs) == 0
+    assert stage(source, 7, 0x3FF, pairs) == 0
+    assert stage(source, 7, 0x400, pairs, reserved=1 << 31) == 0
+    call(10)
+    assert call(12, R4=symbols["_test_values"]) == symbols["_iv_lock_controls"]
+    assert get("_iv_lock_controls", 32) == effective
+    assert stage(source, 7, 0x400, pairs) == 1
+    call(10)
+    call(12, R4=symbols["_test_values"])
+    overridden = get("_iv_lock_controls", 32)
+    assert overridden[0] >> 16 == 0x400
+    assert overridden[2:4] == [98, 12]
+    assert [overridden[i] & 65535 for i in (18, 19)] == [98, 12]
+    assert get("_test_values", 32) == base
+
+    call(11)
+    assert call(12, R4=symbols["_test_values"]) == symbols["_test_values"]
 
 
 def test_opted_in_output_is_borrowed_per_block_and_revoked_with_session(playback):
@@ -827,6 +895,109 @@ def test_local_arp_configuration_reaches_the_process_callback(playback):
     assert configure(values=values[:7] + (301, 4, 50), revision=2) == 0
     assert get("_test_state", 200) == before
     assert get("_iv_revision") == [1]
+
+
+def test_shared_keyboard_runs_resolved_notes_without_local_arp_or_strum(playback):
+    call, _, get, reset, configure, events, _ = playback
+    assert reset() == 1
+    call(0)
+    values = wavetable_fm_bank(family=0)
+    values[0] |= 0x4000
+    values[6] = 127
+    values[15] = 450
+    values[20] = (values[20] & 0xFFFF0000) | 300
+    values[21] = (values[21] & 0xFFFF0000) | 127
+    assert configure(values=values) == 1
+    call(0)
+    assert events([(10, 1, 60, 100, 2, 0), (11, 1, 64, 100, 2, 0)]) == 1
+    call(0)
+    state = get("_test_state", 144)
+    assert {10, 11} <= {state[i] for i in range(0, 32, 8)}
+    assert state[136] == 0
+    assert any(get("_iv_output", 32))
+    assert get("_iv_controls", 32) == values
+    active = get("_iv_shared_controls", 32)
+    assert active[0] == (values[0] & ~0x4000)
+    assert active[6] == active[15] == 0
+    assert active[20] == (values[20] & 0xFFFF0000)
+    assert active[21] == (values[21] & 0xFFFF0000)
+    assert events([(10, 2, 60, 0, 2, 0)]) == 1
+    call(0)
+    after_release = get("_test_state", 32)
+    owner = next(i for i in range(0, 32, 8) if after_release[i] == 11)
+    assert after_release[owner + 1] == 1
+
+
+@pytest.mark.parametrize("family", [0, 2, 3])
+def test_track_keyboard_has_independent_pad_and_timed_voices(playback, family):
+    call, _, get, reset, configure, events, _ = playback
+    assert reset() == 1
+    call(0)
+    values = wavetable_fm_bank(family=family)
+    values[0] |= 0x7800  # Shared scheduler, both lanes.
+    values[6] = 60
+    values[21] = (values[21] & 0xFFFF0000) | 60
+    assert configure(values=values) == 1
+    call(0)
+    timed = 0x40000005
+    pad = [(i, 1, 50 + i * 3, 100, 2, 0) for i in range(1, 5)]
+    assert events([*pad, (timed, 1, 79, 92, 2, 0)]) == 1
+    call(0)
+    state = get("_test_state", 144)
+    assert {state[i] for i in range(0, 32, 8)} == {1, 2, 3, 4}
+    assert state[136] == timed
+    assert any(get("_iv_output", 32))
+    assert get("_iv_shared_controls", 32)[6] == 60
+    assert events([(timed, 2, 79, 0, 2, 0)]) == 1
+    call(0)
+    state = get("_test_state", 144)
+    assert {state[i] for i in range(0, 32, 8)} == {1, 2, 3, 4}
+    assert all(state[i + 1] == 1 for i in range(0, 32, 8))
+    assert state[137] == 0
+
+
+@pytest.mark.parametrize("family", [0, 2, 3])
+def test_shared_phrase_applies_locked_blend_then_restores_live_lane(playback, family):
+    call, put, get, reset, configure, events, symbols = playback
+    assert reset() == 1
+    call(0)
+    values = wavetable_fm_bank(family=family)
+    values[0] = (values[0] & ~0x3800) | 0x6800  # Base requests pad lane only.
+    values[6] = 60
+    values[21] = (values[21] & 0xFFFF0000) | 60
+    assert configure(values=values) == 1
+    call(0)
+
+    def locked(events, lanes, pair=0):
+        packet = wire_packet(events, locked=True)
+        side = [
+            0x434C4B31,
+            packet[2],
+            packet[3],
+            packet[9],
+            (bool(pair) << 8) | (lanes << 4),
+            pair,
+        ] + [0] * 12
+        a, b = 0x6C6F636B, 0x74726967
+        for word in side[:17]:
+            a = (a + word) & 0xFFFFFFFF
+            b = (b + a) & 0xFFFFFFFF
+        side[17] = a ^ b
+        put("_test_packet_block", side + packet)
+        assert call(3, R4=symbols["_test_packet"]) == 1
+        call(0)
+
+    pad, arp = 1, 0x40000002
+    locked([(pad, 1, 60, 100, 2, 0), (arp, 1, 60, 100, 2, 0)], 3, (5 << 10) | 89)
+    assert get("_iv_shared_controls", 32)[6] == 89
+    assert get("_iv_controls", 32) == values
+    assert get("_test_state", 144)[136] == arp
+    assert events([(arp, 2, 60, 0, 2, 0), (pad, 2, 60, 0, 2, 0)]) == 1
+    call(0)
+    locked([(3, 1, 60, 100, 2, 0)], 0)
+    assert get("_iv_lock_slots")[0] == 0
+    assert get("_iv_shared_controls", 32)[6] == 0
+    assert get("_iv_controls", 32) == values
 
 
 def test_extended_movement_configuration_is_applied_atomically(playback):

@@ -25,22 +25,6 @@ devices = ["dt2"]
 # image without the loop effect (the patch set phrase): the page then has no loop.
 optional = ["dkrt_loop_get", "dkrt_loop_xfad", "dkrt_loop_arm", "dkrt_loop_drop", "dkrt_loop_status"]
 
-# The TRIG keys and their LEDs while G holds the selection of the tracks: the firmware's key dispatcher and LED setter, each
-# with a hook before it (devices/fw/phrase-ui.toml). They are the input overlay's hooks from before step 2 of the redesign.
-[object.externs]
-
-phrase_stock_led = "hook.cf.page.site.phrase_led_set.tail"
-
-
-
-[[op]]
-op = "hook"
-hook = "cf.page.hook.phrase_led_set"
-to = "phrase_led_set"
-
-[[claim]]
-resource = "cf.page.site.phrase_led_set"
-
 # The function the fx service file (`fx.dks`) calls: it has no link to the image and finds it by name in the info table.
 [[info]]
 name = "phrase_ui_tick"

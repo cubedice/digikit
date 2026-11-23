@@ -975,6 +975,36 @@ pub mod text {
     }
 }
 
+pub mod track_keys {
+    // cf.track_keys.fn.audio_dispatch: no sig yet
+
+    // cf.track_keys.fn.audio_queue_head: no sig yet
+
+    // cf.track_keys.fn.midi_channel: no sig yet
+
+    // cf.track_keys.fn.midi_dispatch: no sig yet
+
+    // cf.track_keys.fn.midi_mode: no sig yet
+
+    // cf.track_keys.fn.note_off: no sig yet
+
+    // cf.track_keys.fn.note_on: no sig yet
+}
+
+pub mod track_steps {
+    // cf.track_steps.fn.clip_get: no sig yet
+
+    // cf.track_steps.fn.clip_set: no sig yet
+
+    // cf.track_steps.fn.clipboard: no sig yet
+
+    // cf.track_steps.fn.length: no sig yet
+
+    // cf.track_steps.fn.ref_copy: no sig yet
+
+    // cf.track_steps.fn.ref_drop: no sig yet
+}
+
 pub mod usb {
     unsafe extern "C" {
         /// Cancel and free every transfer descriptor queued on endpoint queue `index` (`FUN_400059aa`, 0x400059aa); each one's cancel callback (+0x28) is called.

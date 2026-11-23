@@ -18,8 +18,7 @@ static u32 beat_frame, beat, beating;
 static u32 assembling[PH_STATUS_WORDS];
 static char key[48], sends_key[48];
 static char title[24];
-/* The format of the saved settings: the version of the control words. Settings of another format are not read. A record
- * of format 3 has every value up to PH_P_TRKS, or (written before the tracks were a value) every value before it. */
+/* Format 3 stores all raw values or an older prefix ending before tracks or ping-pong were added. */
 enum { SAVE_FORMAT = 3 };
 
 static u32 bits(float v)
@@ -39,7 +38,7 @@ static u32 limit(u32 p)
         return PH_RATE_MAX;
     if (p == PH_P_RATIO)
         return PH_SYNC_RATIOS - 1;
-    if (p == PH_P_SYNC || p == PH_P_FLIP || p == PH_P_HOLD || p == PH_P_INPT)
+    if (p == PH_P_SYNC || p == PH_P_FLIP || p == PH_P_HOLD || p == PH_P_INPT || p == PH_P_PING_PONG)
         return 1;
     if (p == PH_P_TRKS)
         return PH_TRACKS_ALL;
@@ -101,7 +100,7 @@ static void load(void)
     int n = dkrt_settings_get(key, value, sizeof(value));
     u32 count = 0;
     if (n >= 4 && value[0] == 'P' && value[1] == 'H' && value[2] == SAVE_FORMAT &&
-        (value[3] == PH_PARAM_COUNT || value[3] == PH_P_TRKS) && n == 4 + 4 * (int)value[3])
+        value[3] >= PH_P_TRKS && value[3] <= PH_PARAM_COUNT && n == 4 + 4 * (int)value[3])
         count = value[3];
     for (u32 i = 0; i < count; ++i) {
         u32 v = 0;
@@ -112,7 +111,7 @@ static void load(void)
     raw[PH_P_HOLD] = raw[PH_P_INPT] = raw[PH_P_XFAD] = 0;
     /* No tracks of its own (a record from before, another format or none): the ones the send amounts gave. They are saved
      * with the next change of any value. */
-    if (count < PH_PARAM_COUNT)
+    if (count <= PH_P_TRKS)
         raw[PH_P_TRKS] = carried_tracks();
 }
 /* SYNC (dk_phrase.inc): the beat is the 1/1 of the zone Z0 it fits best, the zone doubles or halves it by its distance from
@@ -180,7 +179,8 @@ static void publish(void)
     W(PH_C_ZONE, raw[PH_P_ZONE] + 1);
     W(PH_C_RATE, bits((float)raw[PH_P_RATE] / (float)PH_RATE_MAX));
     W(PH_C_FLAGS, (raw[PH_P_SYNC] ? PH_F_SYNC : 0) | (raw[PH_P_FLIP] ? PH_F_FLIP : 0) |
-                      (raw[PH_P_HOLD] ? PH_F_HOLD : 0));
+                      (raw[PH_P_HOLD] ? PH_F_HOLD : 0) |
+                      (raw[PH_P_PING_PONG] ? PH_F_PING_PONG : 0));
     /* SYNC_TIME is filled in per block from the tempo (sync_frames). */
     W(PH_C_RPTS, bits(repeats(raw[PH_P_RPTS])));
     W(PH_C_COLR, bits(centred(raw[PH_P_COLR])));

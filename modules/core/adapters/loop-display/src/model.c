@@ -240,30 +240,49 @@ void ld_render_header(const LoopPage *p, const LoopCanvas *c)
     text(c, 104, 2, p->state, 1);
     box(c, 0, 9, 128, 1, 1);
 }
-/* Below the header the page leaves x 124 to 127 to the FX view, which draws its page indicator there (x 125 to 127). The
- * bottom row is laid out as PRISM's cells (label, value, then a third line), each above its encoder: ARM above E, XFAD above
- * H. */
+/* Recorder-style plot of the stereo peaks. Leave x124..127 to the native FX page dots. */
 void ld_render(const LoopPage *p, const LoopCanvas *c)
 {
     box(c, 0, 0, 124, 64, 0);
     ld_render_header(p, c);
-    text(c, 64, 12, p->line1, 1);
-    text(c, 64, 20, p->line2, 1);
-    /* the timeline: a cycle from end to end, with quarter marks and the mark of where it stands */
-    box(c, 3, 30, 117, 1, 1);
-    for (int i = 0; i <= 4; ++i)
-        box(c, 3 + i * 116 / 4, 27, 1, 7, 1);
-    if (p->mark != LD_NO_MARK) {
-        int x = 3 + (int)(p->mark * 116 / 1000);
-        box(c, x - 1, 26, 3, 9, 1);
+    uint16_t wave[LS_WAVE_COLUMNS];
+    uint32_t write_column = dkrt_loop_wave_peaks(wave);
+    box(c, 2, 11, 120, 1, 1);
+    box(c, 1, 12, 1, 30, 1);
+    box(c, 122, 12, 1, 30, 1);
+    box(c, 2, 42, 120, 1, 1);
+    unsigned reference = 32; /* limit the visual gain for very quiet material */
+    for (int x = 0; x < LS_WAVE_COLUMNS; ++x) {
+        unsigned down = wave[x] & 255, up = wave[x] >> 8;
+        if (down > reference)
+            reference = down;
+        if (up > reference)
+            reference = up;
     }
-    box(c, 0, 37, 124, 1, 1);
-    /* E: ARM, its state inverted while it is on */
-    text(c, LD_CELL_E, 39, "ARM", 1);
-    text(c, LD_CELL_E, 47, p->arm, p->armed ? 0 : 1);
-    /* H: XFAD as the home holds it, and under it the crossfader as it sounds, from LIVE (left) to LOOP (right) */
-    text(c, LD_CELL_H, 39, "XFAD", 1);
-    text(c, LD_CELL_H, 47, p->xfad, 1);
-    box(c, LD_CELL_H - 11, 60, 23, 1, 1);
-    box(c, LD_CELL_H - 11 + (int)(p->fader * 20 / 127), 58, 3, 5, 1);
+    unsigned gain = (15u << 8) / reference;
+    for (int x = 0; x < LS_WAVE_COLUMNS; ++x) {
+        int down = ((wave[x] & 255u) * gain + 255) >> 8;
+        int up = ((wave[x] >> 8) * gain + 255) >> 8;
+        /* The interior spans y12..41: 15 pixels above zero, 14 below. */
+        down -= down >= 8;
+        box(c, 2 + x, 27 - up, 1, 1 + up + down, 1);
+    }
+    /* The retained loop has edge ticks; the live write cursor is dashed through the plot. */
+    if (p->loop && p->mark != LD_NO_MARK) {
+        int x = 3 + (int)(p->mark * 117 / 1000);
+        box(c, x - 1, 12, 3, 1, 1);
+        box(c, x, 13, 1, 2, 1);
+        box(c, x, 40, 1, 2, 1);
+    } else if (!p->loop && write_column < LS_WAVE_COLUMNS) {
+        int x = 2 + (int)write_column;
+        for (int y = 12; y <= 40; y += 4)
+            box(c, x, y, 1, 2, 1);
+    }
+    text(c, 62, 44, *p->line2 ? p->line2 : p->line1, 1);
+    text(c, LD_CELL_E, 51, "ARM", 1);
+    text(c, LD_CELL_E, 58, p->arm, p->armed ? 0 : 1);
+    text(c, LD_CELL_H, 51, "XFAD", 1);
+    text(c, LD_CELL_H, 58, p->xfad, 1);
+    box(c, 58, 59, 24, 1, 1);
+    box(c, 58 + (int)(p->fader * 21 / 127), 57, 3, 5, 1);
 }

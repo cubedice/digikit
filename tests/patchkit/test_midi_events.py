@@ -855,6 +855,8 @@ def test_dsp_loader_enforces_each_optional_tail_boundary(
         "_relay_status": mailbox if relay else 0,
         "_relay_request": mailbox if relay else 0,
         "_relay_response": mailbox if relay else 0,
+        "_tk_pool_receive": 0,
+        "_tk_pool_quiet_reply": 0,
         **syms,
     }
     linked = pk_sharc.link(obj, 0xB90000, externs)
@@ -1362,6 +1364,8 @@ def test_v2_registration_window_is_bounded(
         "_relay_status": 0,
         "_relay_request": 0,
         "_relay_response": 0,
+        "_tk_pool_receive": 0,
+        "_tk_pool_quiet_reply": 0,
         **syms,
     }
     linked = pk_sharc.link(obj, 0xB90000, externs)

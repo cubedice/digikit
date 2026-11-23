@@ -30,6 +30,8 @@ _ca_copy_pad_start:
 _ca_process:
     DM(_ca_state) = R4;
     DM(_ca_input) = R8;
+    DM(_ca_external_events) = R12;
+    DM(_ca_external_count) = R9;
     // Tempo is a setting, not a transport edge. Keep the latest authenticated
     // BPM even with MIX=0 or no held keys, so the next phrase can start during
     // a missing position frame. Word173 is BPM*120 (3600..36000), or the legacy
@@ -131,6 +133,10 @@ _ca_configured:
     R1 = DM(_ca_voice);
     I2 = R1;
     DM(9, I2) = F0;
+    R0 = DM(0, I1);
+    R0 = FEXT R0 BY 13:1;
+    R0 = PASS R0;
+    IF NE JUMP _ca_external;
     R0 = DM(6, I1);
     R0 = PASS R0;
     IF EQ JUMP _ca_disable_clock;
@@ -254,6 +260,52 @@ _ca_schedule:
     R0 = 2;
     DM(1, I2) = R0;
     JUMP _ca_render;
+// Shared note-on/off events own the same independent arp group and declick
+// tails as the local clock. No local candidate generation runs in this mode.
+_ca_external:
+    R0 = DM(_ca_external_count);
+    R0 = PASS R0;
+    IF EQ JUMP _ca_render;
+    R0 = DM(_ca_external_events);
+    I1 = R0;
+    R8 = DM(I1, M6);
+    R9 = DM(I1, M6);
+    R0 = I1;
+    DM(_ca_external_events) = R0;
+    R0 = FEXT R9 BY 0:4;
+    R1 = 1;
+    COMP(R0, R1);
+    IF EQ JUMP _ca_external_on;
+    R0 = DM(14, I2);
+    COMP(R8, R0);
+    IF NE JUMP _ca_external_off;
+    R0 = 0;
+    DM(14, I2) = R0;
+_ca_external_off:
+    R0 = DM(0, I2);
+    COMP(R0, R8);
+    IF NE JUMP _ca_external_next;
+    R0 = 0;
+    DM(1, I2) = R0;
+    JUMP _ca_external_next;
+_ca_external_on:
+    DM(14, I2) = R8;
+    R0 = FEXT R9 BY 14:7;
+    DM(15, I2) = R0;
+    R0 = FEXT R9 BY 21:7;
+    DM(16, I2) = R0;
+    R0 = 0;
+    DM(17, I2) = R0;
+    DM(18, I2) = R0;
+    DM(20, I2) = R0;
+    CALL _ca_save_tail;
+    R0 = 2;
+    DM(1, I2) = R0;
+_ca_external_next:
+    R0 = DM(_ca_external_count);
+    R0 = R0 - 1;
+    DM(_ca_external_count) = R0;
+    JUMP _ca_external;
 _ca_disable:
     R0 = DM(_ca_voice);
     I2 = R0;
@@ -1243,6 +1295,8 @@ _ca_tail_next:
 .PKBSS _ca_octaves, 4;
 .PKBSS _ca_octave_step, 4;
 .PKBSS _ca_swing, 4;
+.PKBSS _ca_external_events, 4;
+.PKBSS _ca_external_count, 4;
 .PKBSS _ca_base_count, 4;
 .PKBSS _ca_phase, 4;
 

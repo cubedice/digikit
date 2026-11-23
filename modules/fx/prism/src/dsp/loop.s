@@ -247,6 +247,7 @@ _lp_gain:
     R1 = 2;
     COMP(R0,R1);
     IF EQ RTS;
+    CALL _lp_ping_route;
     R10 = DM(PS_WPOS,I5);
     R0 = LSHIFT R10 BY 2;
     R1 = DM(PS_BANK,I5);
@@ -333,6 +334,132 @@ _lp_stand:
     DM(PS_POST,I5) = R2;
     R2 = 2;
     DM(PS_HOLD,I5) = R2;
+    RTS;
+
+// Centered SKEW sums the input to mono at the left head. Away from center
+// the stereo input stays as sent. Both modes cross the limited feedback.
+// A smoothstep over 256 frames avoids a tape discontinuity.
+_lp_ping_route:
+    R0 = DM(PC_FLAGS,I5);
+    R1 = PH_F_PING_PONG;
+    R0 = R0 AND R1;
+    R6 = 0;
+    R7 = 0;
+    R0 = PASS R0;
+    IF EQ JUMP _lp_ping_feedback;
+    R6 = 0x3f800000;
+    F0 = DM(PC_SKEW,I5);
+    COMP(F0,F7);
+    IF EQ R7 = PASS R6;
+_lp_ping_feedback:
+    R0 = R6;
+    F1 = DM(PS_PING_FB,I5);
+    CALL _lp_ping_ramp;
+    DM(PS_PING_FB,I5) = R0;
+    R3 = R1 OR R2;
+    R3 = PASS R3;
+    IF EQ JUMP _lp_ping_mono;
+    R3 = I5;
+    R4 = PS_FB * 4;
+    R3 = R3 + R4;
+    I0 = R3;
+    R4 = 128;
+    R3 = R3 + R4;
+    I1 = R3;
+    R2 = PASS R2;
+    IF EQ JUMP _lp_ping_swap;
+    R8 = 0x40400000;
+    LCNTR = 32, DO _lp_ping_fb_last UNTIL LCE;
+        F1 = F1 + F2;
+        F3 = F1 + F1;
+        F3 = F8 - F3;
+        F4 = F1 * F1;
+        F4 = F4 * F3;
+        F3 = DM(I0,M5);
+        F5 = DM(I1,M5);
+        F0 = F5 - F3;
+        F0 = F0 * F4;
+        F3 = F3 + F0;
+        F5 = F5 - F0;
+        DM(I0,M6) = R3;
+_lp_ping_fb_last: DM(I1,M6) = R5;
+    JUMP _lp_ping_mono;
+_lp_ping_swap:
+    LCNTR = 32, DO _lp_ping_swap_last UNTIL LCE;
+        R0 = DM(I0,M5);
+        R3 = DM(I1,M5);
+        DM(I0,M6) = R3;
+_lp_ping_swap_last: DM(I1,M6) = R0;
+
+_lp_ping_mono:
+    R0 = R7;
+    F1 = DM(PS_PING_MONO,I5);
+    CALL _lp_ping_ramp;
+    DM(PS_PING_MONO,I5) = R0;
+    R3 = R1 OR R2;
+    R3 = PASS R3;
+    IF EQ RTS;
+    // The source can be PS_IN already after the INPT crossfade. Read both
+    // channels of each frame before writing that frame's two outputs.
+    I0 = DM(PS_INPUT,I5);
+    R0 = I0;
+    R3 = 128;
+    R0 = R0 + R3;
+    I1 = R0;
+    R0 = I5;
+    R4 = PS_IN * 4;
+    R0 = R0 + R4;
+    DM(PS_INPUT,I5) = R0;
+    I2 = R0;
+    R0 = R0 + R3;
+    I3 = R0;
+    R9 = 0x3f000000;
+    R2 = PASS R2;
+    IF EQ JUMP _lp_ping_left;
+    R8 = 0x40400000;
+    R6 = 0x3f800000;
+    LCNTR = 32, DO _lp_ping_mono_last UNTIL LCE;
+        F1 = F1 + F2;
+        F3 = F1 + F1;
+        F3 = F8 - F3;
+        F4 = F1 * F1;
+        F4 = F4 * F3;
+        F3 = DM(I0,M6);
+        F5 = DM(I1,M6);
+        F0 = F5 - F3;
+        F0 = F0 * F9;
+        F0 = F0 * F4;
+        F3 = F3 + F0;
+        F0 = F6 - F4;
+        F5 = F5 * F0;
+        DM(I2,M6) = R3;
+_lp_ping_mono_last: DM(I3,M6) = R5;
+    RTS;
+_lp_ping_left:
+    R4 = 0;
+    LCNTR = 32, DO _lp_ping_left_last UNTIL LCE;
+        F0 = DM(I0,M6);
+        F3 = DM(I1,M6);
+        F0 = F0 + F3;
+        F0 = F0 * F9;
+        DM(I2,M6) = R0;
+_lp_ping_left_last: DM(I3,M6) = R4;
+    RTS;
+
+// F0 target and F1 prior blend. Return F0 end, F1 start and F2 per-sample
+// step. Both controls move in exact dyadic steps and reach their endpoints.
+_lp_ping_ramp:
+    R2 = 0;
+    R3 = DM(PS_FIRST,I5);
+    R3 = PASS R3;
+    IF NE R1 = PASS R0;
+    COMP(F0,F1);
+    IF EQ RTS;
+    R2 = 0x3b800000; // 1 / 256
+    IF LT F2 = -F2;
+    R3 = 0x42000000; // 32 samples
+    F3 = F2 * F3;
+    F0 = F1 + F3;
     RTS;
 
 // One side: I0 the wet signal, I1 the feedback, I2 the output (all advanced by 32). PS_TEMP and PS_TEMP1 the gain and MIX

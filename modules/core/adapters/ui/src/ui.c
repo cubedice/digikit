@@ -731,6 +731,36 @@ static int ui_is_open(const dk_ui_menu *m)
     return read_u32(v + offsetof(View, mgr)) != 0 && v[0x30] == 0;
 }
 
+int32_t dk_ui_core_menu_front(const dk_ui_menu *m)
+{
+    if (!ui_is_open(m))
+        return 0;
+    const uint8_t *target = m->obj + VIEW_AT;
+    const uint8_t *manager = (const uint8_t *)(uintptr_t)read_u32(target + offsetof(View, mgr));
+    const uint8_t *sentinel = manager + 0x14;
+    const uint8_t *node = (const uint8_t *)(uintptr_t)read_u32(sentinel + 4);
+    /* Match the stock ViewController's reverse selection of a view. */
+    for (unsigned n = 0; n < 32 && node && node != sentinel; ++n) {
+        const uint8_t *view = (const uint8_t *)(uintptr_t)read_u32(node + 8);
+        if (view && !view[0x30])
+            return view == target;
+        node = (const uint8_t *)(uintptr_t)read_u32(node + 4);
+    }
+    return 0;
+}
+
+void dk_ui_core_list_title(dk_ui_menu *m, const char *text)
+{
+    if (!m || m->kind != K_LIST || !m->obj)
+        return;
+    uint32_t title;
+    uint8_t alloc = 0;
+    dk_fw_string_std_string_ctor(&title, text, &alloc);
+    dk_fw_menu_set_title(m->obj, &title);
+    dk_fw_string_std_string_dtor(&title);
+    invalidate(m);
+}
+
 static int ui_open(dk_ui_menu *m)
 {
     if (!m || !m->obj || !m->d || m->kind == K_PANEL)

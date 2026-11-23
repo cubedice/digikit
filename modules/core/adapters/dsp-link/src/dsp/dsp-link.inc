@@ -302,7 +302,13 @@ _dl_range:
 _dl_ack:
     R3 = DM(_dl_xid);
     R3 = PASS R3;
+#ifdef DL_QUIET_REPLY
+    IF NE JUMP _dl_have_ack;
+    DL_QUIET_REPLY
+_dl_have_ack:
+#else
     IF EQ JUMP _dl_out;
+#endif
     R4 = I4;                              // the record pointer
     R5 = DL_ACK_OFF;
     R4 = R5 + R4;

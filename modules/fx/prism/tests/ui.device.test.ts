@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { button, encoder } from '@digi/test-support';
 import { expect, test } from 'vitest';
 import { bounded, dspWords, rows, word } from '@digi/regression/runtime/fx-live.ts';
@@ -57,7 +59,7 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     requireAudible: false,
   });
 
-  test('one page: six encoders and LEVEL set the controls, three presses switch, FUNC + RATE is fine, SYNC is a ratio of the zone, G turns INPT also without a loop, H does nothing without one, G held gives the TRIG keys and LEDs to the tracks', async () => {
+  test('one page: six encoders and LEVEL set the controls, four presses switch, FUNC + RATE is fine, SYNC is a ratio of the zone, G turns INPT also without a loop, H does nothing without one, G held gives the TRIG keys and LEDs to the tracks', async () => {
     const { fixture, plan, artifacts } = context;
     const runtime = fixture.runtime;
     const state = await inspectFxBoot(runtime, plan, ['digikit/prism'], artifacts, 'boot');
@@ -110,6 +112,38 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     // under INPT the tracks PRISM hears: nothing is stored on this card, so none
     expect(first.cells.map((cell) => cell.state)).toEqual(['', 'FREE', '', '', '', '', 'NO TRK', 'NO LOOP']);
     expect(await value(PH.PH_P_TRKS!), 'nothing stored: no track').toBe(0);
+
+    // Observe the actual caption. Ignore the header and native FX markers, which may redraw independently.
+    const zoneCaption = (tag: string) => {
+      const oled = readFileSync(path.join(artifacts, `${tag}.oled`));
+      // OLED columns store eight bytes, bottom page first. The ZONE caption occupies y=32..36.
+      return Array.from({ length: 25 }, (_, i) => oled[8 * (20 + i) + 3]! & 0x1f);
+    };
+    const labels = zoneCaption('default');
+    expect(labels.some((column) => column !== 0)).toBe(true);
+    await bounded(() => session.client.inputButton(button('FUNC'), true));
+    try {
+      await advance(session, 80);
+      await shot(session, artifacts, 'func-only');
+      expect(zoneCaption('func-only'), 'FUNC alone keeps the labels').toEqual(labels);
+      await bounded(() => session.client.inputButton(button('FX'), true));
+      try {
+        await advance(session, 700);
+        await shot(session, artifacts, 'held-func-fx');
+        expect(zoneCaption('held-func-fx'), 'the stock hold gesture reveals the value').not.toEqual(labels);
+        expect(await active(), 'holding FUNC + FX stays on PRISM').toBe(1);
+      } finally {
+        await bounded(() => session.client.inputButton(button('FX'), false));
+        await advance(session, 100);
+      }
+      await shot(session, artifacts, 'released-fx');
+      expect(zoneCaption('released-fx'), 'releasing FX restores labels with FUNC still held').toEqual(labels);
+      expect(await active()).toBe(1);
+      expect(await word(session, debug + 28), 'releasing a held chord does not advance').toBe(nativePage);
+    } finally {
+      await bounded(() => session.client.inputButton(button('FUNC'), false));
+      await advance(session, 20);
+    }
 
     // The presses, at the default values. B: SYNC. The cell shows the ratio of the zone's 1/1 (the 1/1 by default), the provider
     // sends its frames at the tempo (the beat is the 1/1 of the zone it fits best; each zone is an octave), and the engine takes it.
@@ -230,6 +264,21 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     ]);
     expect(turned.mix).toBe(90);
 
+    // F toggles the saved stereo routing. A skewed delay swaps both feedback paths.
+    await tap(session, 'PUSH F', 500);
+    expect(await value(PH.PH_P_PING_PONG!)).toBe(1);
+    expect((await control())('PH_C_FLAGS') & PH.PH_F_PING_PONG!).toBe(PH.PH_F_PING_PONG);
+    expect((await page()).cells[5]).toMatchObject({ value: 'R 3', state: 'SWAP', lit: true });
+    // Centering SKEW gives ping-pong and keeps the same routing switch enabled.
+    await turn('ENC F', -3);
+    expect((await page()).cells[5]).toMatchObject({ value: '0', state: 'PONG', lit: true });
+    await turn('ENC F', 3);
+    await tap(session, 'PUSH F', 120);
+    expect(await value(PH.PH_P_SKEW!)).toBe(67);
+    expect(await value(PH.PH_P_PING_PONG!)).toBe(0);
+    expect((await control())('PH_C_FLAGS') & PH.PH_F_PING_PONG!).toBe(0);
+    expect((await page()).cells[5]).toMatchObject({ value: 'R 3', state: '', lit: false });
+
     // G is INPT's switch also without a loop: to the right LOOP, which stays (PRISM hears silence and the page says so), to the left
     // LIVE. Its press switches nothing.
     await turn('ENC G', 1);
@@ -249,13 +298,13 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     expect((await page()).cells[6]).toMatchObject({ value: 'LIVE', state: 'NO TRK' });
     await shot(session, artifacts, 'inpt-live');
 
-    // H, the presses of D to H and FUNC + NO: nothing changes, and the page stays.
+    // H, the presses of D, E, G, H and FUNC + NO: nothing changes, and the page stays.
     const before = await allValues();
     const cellsBefore = (await page()).cells.slice(6);
     const wordsBefore = await control();
     await turn('ENC H', 3);
     await turn('ENC H', -5);
-    for (const key of ['PUSH D', 'PUSH E', 'PUSH F', 'PUSH G', 'PUSH H']) await tap(session, key, 80);
+    for (const key of ['PUSH D', 'PUSH E', 'PUSH G', 'PUSH H']) await tap(session, key, 80);
     await tap(session, 'NO', 120, 'FUNC');
     expect(await active(), 'FUNC + NO is taken by the page').not.toBe(0);
     expect(await allValues()).toEqual(before);

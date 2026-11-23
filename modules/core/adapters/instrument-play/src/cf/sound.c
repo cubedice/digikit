@@ -171,9 +171,14 @@ uint32_t instrument_sound_tune(uint32_t instance)
     uint32_t type = dkrt_instrument_type();
     if (!source || !type || *(const uint8_t *)(uintptr_t)(source + 0xa2) != type)
         return 0x4000;
-    /* DT2 1.17 parameter 0xca: native Sound slot25, signed 8.8 semitones
-     * biased by 0x4000. Read this instance's Sound, never the selected UI track. */
-    uint32_t raw = *(const uint16_t *)(uintptr_t)(source + 0x14 + 25 * 2);
+    return instrument_sound_raw_tune(source);
+}
+
+uint32_t instrument_sound_raw_tune(uintptr_t sound)
+{
+    /* DT2 1.17 parameter 0xca: Sound slot25, signed 8.8 semitones biased by 0x4000.
+     * This also accepts the two-byte-aligned entries of the stock Sound pool. */
+    uint32_t raw = *(const uint16_t *)(sound + 0x14 + 25 * 2);
     return raw >= 0x400 && raw <= 0x7c00 ? raw : 0x4000;
 }
 

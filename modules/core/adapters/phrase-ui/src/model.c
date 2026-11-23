@@ -104,6 +104,7 @@ void pu_loop(PhraseUi *s)
         }
         input(s, 0);
         s->loop_known = s->loop_had = s->loop_stale = 0;
+        ++s->revision;
         return;
     }
     s->loop_stale = 0;
@@ -115,6 +116,8 @@ void pu_loop(PhraseUi *s)
     else if (loop && s->loop_known && count != s->loop_seen)
         /* an armed pattern change took a new loop: PRISM hears it (the engine counts loops across its restarts) */
         input(s, 1);
+    if (loop != s->loop_had)
+        ++s->revision;
     s->loop_had = loop;
     s->loop_seen = count;
     s->loop_known = 1;
@@ -181,6 +184,9 @@ uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
         if (!s->select)
             return PU_PASS;
         dkrt_phrase_set(PH_P_TRKS, pu_tracks() ^ (1u << (key - PU_TRIG)));
+        /* A track edit gives an empty LOOP input something to hear. Keep a captured loop through edit and link grace. */
+        if (!s->loop_had && !pu_has_loop(s))
+            input(s, 0);
         ++s->revision;
         mark(s->owned, key, 1);
         return PU_OWN;
@@ -195,13 +201,14 @@ uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
         return PU_OWN;
     }
     if (key >= PU_PUSH && key < PU_PUSH + 8) {
-        /* A is FLIP, B is SYNC, C is HOLD; G holds the selection of the tracks; H is ARM while the loop effect reports.
-         * D, E and F are taken and do nothing. */
+        /* A is FLIP, B is SYNC, C is HOLD, and F is ping-pong. G holds the track selection. H arms the loop. */
         static const uint8_t switches[3] = {PH_P_FLIP, PH_P_SYNC, PH_P_HOLD};
         if (key < PU_PUSH + 3)
             toggle(s, switches[key - PU_PUSH]);
         if (key == PU_PUSH + 1)
             s->detent[1] = 0;
+        if (key == PU_PUSH + 5)
+            toggle(s, PH_P_PING_PONG);
         if (key == PU_PUSH + PU_SELECT) {
             s->select = 1;
             ++s->revision;

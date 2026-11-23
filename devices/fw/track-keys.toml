@@ -1,0 +1,288 @@
+[[fn]]
+name = "cf.track_keys.fn.note_on"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 6, sha256 = "83ebc453b9bd8374b1b2dd8be71f5dd7eba6c441b55bc144315477ea6f57f04b" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Stock note start below KeyboardView. The source 0x40 is the stock audition route."
+
+[[fn]]
+name = "cf.track_keys.fn.note_off"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 6, sha256 = "586bedf1327167fe7f95e6fc806fc8003689f8a474dca1520f89ff6c046c32dd" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Stock release on the original track, pitch and source."
+
+[[fn]]
+name = "cf.track_keys.fn.midi_mode"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 6, sha256 = "361fe837b2396c461a9d27ab769b6274faf8d3027bb8830deebb614647534a49" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Tests the active playback kit MIDI-mode bit for a track."
+
+[[fn]]
+name = "cf.track_keys.fn.midi_channel"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 6, sha256 = "6edaccade546e593ec95830bbd0bbd9476ae233a88f6690e056b5923c66afe74" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Reads the active MIDI-track output channel, or -1 when disabled."
+
+[[site]]
+name = "cf.track_keys.site.note_mail_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 12, len = 4, sha256 = "36a40efa7bfd3e05f415835993340215bcd1f2d8e65e5bc4dbcde826a1c627c1" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Native note-announcement mailbox pointer operand. A 16-entry ring backs its queued messages."
+
+[[site]]
+name = "cf.track_keys.site.midi_free_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 20, offset = 8, len = 4, sha256 = "d65fbc623e672a90b1af0025473d2c9625ee757204e30fcf59ae843e2bfc0b8d" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Native MIDI event free-list head pointer operand. Allocator pops and follows the link at +0x5c."
+
+[[site]]
+name = "cf.track_keys.site.midi_mail_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 10, len = 4, sha256 = "f52227d13096d101768d66f40ebff9a1063079bebd9d08ec0fad04776cf8716f" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Native MIDI event task mailbox address operand. A 64-entry ring backs audition notes."
+
+[[site]]
+name = "cf.track_keys.site.midi_hold_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 10, len = 4, sha256 = "7b3099fd5c1e0ad1e02c1c641babb2c45977c09f49092eb6547ac31362b467c9" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Native MIDI held-note free-list head pointer operand. The MIDI task allocates on note-on and follows the link at +0x14."
+
+[[fn]]
+name = "cf.track_keys.fn.midi_dispatch"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 6, sha256 = "2c3b2208997880e725ffea495e795550ff457912c54053516b44423303ccfb01" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Pass a 64-byte note record to the native MIDI track task without selecting the task from the current machine type."
+
+[[fn]]
+name = "cf.track_keys.fn.audio_dispatch"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 6, sha256 = "55e8feb077368a4f4f1670fc90841d0ad3cc6891c962cfaae9d6413effc4fb97" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Pass a 64-byte note record to the native audio voice task, including after a track has changed machine type."
+
+[[fn]]
+name = "cf.track_keys.fn.audio_queue_head"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 8, sha256 = "c392e8fd6754990d40156a745831bb031741203e24c48242f8dd9f52cdbb709b" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Read the pending audio-event list before admitting a reserved voice."
+
+[[site]]
+name = "cf.track_keys.site.audio_dispatch_entry"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 8, sha256 = "55e8feb077368a4f4f1670fc90841d0ad3cc6891c962cfaae9d6413effc4fb97" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Audio note dispatch entry. The eight-byte prologue allocates its frame and saves callee registers."
+
+[[hook]]
+name = "cf.track_keys.hook.audio_dispatch_entry"
+site = "cf.track_keys.site.audio_dispatch_entry"
+cpu = "cf"
+mode = "replace"
+regs = { in = [], clobbers = ["d0", "d1", "a0", "a1", "ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Quarantine ordinary auditions on physical tracks reserved by a helper group."
+
+[[site]]
+name = "cf.track_keys.site.midi_selected_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 6, len = 4, sha256 = "11fa7691434bcc3697a196c57320ff8229f2de7bda5b64d8347bd84a2e589d19" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "MIDI note router operand for the selected track used by Auto Channel."
+
+[[site]]
+name = "cf.track_keys.site.midi_routes_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 14, len = 4, sha256 = "11fa7691434bcc3697a196c57320ff8229f2de7bda5b64d8347bd84a2e589d19" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "MIDI note router operand for its signed per-track input channel table."
+
+[[site]]
+name = "cf.track_keys.site.midi_rx_notes_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 14, len = 4, sha256 = "afe9f20e67b04da4ed307eb7979c337e7eaaddd7f46429cf15c34717e1ad22c6" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Stock MIDI Receive Notes flag used at the entry of the MIDI note-on parser."
+
+[[site]]
+name = "cf.track_keys.site.midi_ports_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 12, len = 4, sha256 = "63e397027bfe366553da8661df48013408cd8310d9317a902e308ccc157f47d9" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "MIDI gatherer receive port mask operand. Bit 0 enables DIN and bit 1 enables USB."
+
+[[site]]
+name = "cf.track_keys.site.midi_target_on"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 8, len = 6, sha256 = "3f2498d3fbb12add31ef218bacc0ea660640c2709cc948b238262e11ff91a886" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Per-destination native MIDI note-on call, with seven arguments already pushed."
+
+[[hook]]
+name = "cf.track_keys.hook.midi_target_on"
+site = "cf.track_keys.site.midi_target_on"
+cpu = "cf"
+mode = "before"
+regs = { in = ["d1", "d2", "d3", "a3"], clobbers = ["ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Keep native fan-out for stock destinations after shared keyboard admits a subset."
+
+[[site]]
+name = "cf.track_keys.site.midi_target_off"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 8, len = 6, sha256 = "164abbc732a18cebc9e831f6e500ff5ae369acf3c31220d71c46f53186aae241" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Per-destination native MIDI note-off call, with the source already pushed."
+
+[[hook]]
+name = "cf.track_keys.hook.midi_target_off"
+site = "cf.track_keys.site.midi_target_off"
+cpu = "cf"
+mode = "before"
+regs = { in = ["d2", "d4", "a2"], clobbers = ["ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Leave stock release dispatch only on native destinations of mixed routes."
+
+[[site]]
+name = "cf.track_keys.site.wire_ports_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 4, sha256 = "02022f3ad3a26c2a6251bbd7669ede3c0f5fb0789c900d33ac255fe087ca014d" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Native output mask operand. Bit 0 routes to DIN and bit 1 routes to USB."
+
+[[site]]
+name = "cf.track_keys.site.wire_message_lit"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 4, sha256 = "841c1330bf94f9f68afd7f2b5c7416fc8250274a52017b8e6a9c796f9795f1bb" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Worker note buffer count used before sending one explicitly routed message."
+
+[[site]]
+name = "cf.track_keys.site.wire_append"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 6, sha256 = "4c9592542e5ccc034aed687ecf2840c9019e1cb5700c124e0846a11b6db60234" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Append one MIDI message to the native worker buffer."
+
+[[site]]
+name = "cf.track_keys.site.wire_flush"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 6, sha256 = "ad6b50634e908475d64f6137bdda6de2ab3e34ccf3dded06cf0c7d8f73a27d57" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Send the native MIDI worker buffer through the configured output mask."
+
+[[site]]
+name = "cf.track_keys.site.wire_on"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 6, sha256 = "4a4a93ba131f8ebe003b8f7cdfdb1fcbba98b22d12e5d71126b6379a2d3465c9" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Append the new note after the native same-pitch release and retain the worker owner."
+
+[[site]]
+name = "cf.track_keys.site.wire_off"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 8, sha256 = "b8246b778c0095186d09647bd6b5f1b63c8d40b51cde6a805ff592917105fa90" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Append a note-off on the saved channel, then clear the matching native owner."
+
+[[site]]
+name = "cf.track_keys.site.wire_on_resume"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 4, sha256 = "87f36a7a85c51a28a0514b646ce3ee42bd56e63c822ea8fff3b05be2209f17ae" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Resume the native onset after the routed append."
+
+[[site]]
+name = "cf.track_keys.site.wire_off_resume"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 4, sha256 = "9109ffc9c869b6356f9d29659f36f0c054dfbce56eb8279bbb7e95b264a4b969" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Resume the native release after clearing the note owner."
+
+[[hook]]
+name = "cf.track_keys.hook.wire_on"
+site = "cf.track_keys.site.wire_on"
+cpu = "cf"
+mode = "replace"
+regs = { in = ["a2"], clobbers = ["ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Preserve native note ownership and use the captured port mask for a generated note."
+
+[[hook]]
+name = "cf.track_keys.hook.wire_off"
+site = "cf.track_keys.site.wire_off"
+cpu = "cf"
+mode = "replace"
+regs = { in = ["a2"], clobbers = ["ccr"] }
+devices = ["dt2"]
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Preserve native note ownership and use the captured port mask for a generated note."

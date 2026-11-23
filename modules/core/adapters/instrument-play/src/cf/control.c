@@ -16,6 +16,7 @@
 #include "src-clock.h"
 #include "src-mod.h"
 #include "instances.h"
+#include "shared-notes.h"
 #include "work-copy.h"
 #if defined(__m68k__)
 #include "sound-persist.h"
@@ -48,6 +49,7 @@ const uint32_t *instrument_runtime_policy(void)
  * without its own channel (track_channel 0). */
 static int32_t enabled, usb = 1, din = 1, channel = 1, selector_octave = 1, selector_channel;
 static uint8_t track_channel[MI_TRACKS];
+static uint8_t track_keyboard_src[MI_TRACKS];
 static uint32_t healthy, fault_generation;
 int instrument_play_faulted(uint32_t generation)
 {
@@ -79,6 +81,9 @@ typedef struct {
 CsState src_state[IP_INSTANCES];
 IsStatus src_status[IP_INSTANCES];
 static IpInst inst[IP_INSTANCES];
+static uint8_t track_keyboard_claim[MI_TRACKS];
+static uint8_t track_keyboard_lanes[MI_TRACKS];
+static IsnQueue shared_notes[IP_INSTANCES];
 static IpInst *cur = &inst[0];
 #ifdef DK_CANOPY_SOUND_PROOF
 /* An emulator-only, separately linked fixture may request a post-admission
@@ -213,9 +218,22 @@ int instrument_midi_ready(uint32_t track, uint32_t epoch, uint32_t generation)
            epoch == mi_ledger.epoch && generation == mi_ledger.generations[track] &&
            mi_transport.applied[track] != 0 && !mi_ledger.reset_mask && !mi_transport.faults;
 }
-uint32_t instrument_src_pages(void)
+void instrument_src_track_keyboard(uint32_t track, int active)
 {
-    return 4;
+    if (track >= MI_TRACKS)
+        return;
+    track_keyboard_src[track] = (uint8_t)!!active;
+    IpInst *in = for_track(track);
+    if (in)
+        cs_track_keyboard(SRC(in), active);
+}
+uint32_t instrument_src_pages(uint32_t track)
+{
+    return instrument_src_shared_keyboard(track) ? CS_SHARED_PAGES : 4;
+}
+int instrument_src_shared_keyboard(uint32_t track)
+{
+    return track < MI_TRACKS && track_keyboard_src[track];
 }
 uint32_t instrument_src_tune_page(uint32_t page)
 {
@@ -289,6 +307,87 @@ void instrument_sound_suspend(uint32_t instance)
     in->prepared = 0;
     in->phase = 1;
 }
+
+/* The owner has already stopped its old dispatch before handing over. Enter
+ * through the regular reset/configuration handshake so a local voice or a
+ * queued message cannot cross into the new mapper's token namespace. */
+int instrument_track_keyboard_claim(uint32_t track, int active)
+{
+    if (track >= MI_TRACKS)
+        return 0;
+    uint32_t sr = dkrt_irq_mask();
+    IpInst *in = for_track(track);
+    if (active && (!in || !keyboard_initialized || in->keyboard.mode == KB_LEARN)) {
+        dkrt_irq_restore(sr);
+        return 0;
+    }
+    if (track_keyboard_claim[track] != !!active) {
+        track_keyboard_claim[track] = (uint8_t)!!active;
+        if (in)
+            instrument_sound_suspend(IDX(in));
+    }
+    int ready =
+        !active || (in && in->phase == 3 &&
+                    instrument_midi_ready(track, mi_ledger.epoch, mi_ledger.generations[track]));
+    dkrt_irq_restore(sr);
+    return ready;
+}
+
+int instrument_track_keyboard_routed(uint32_t track)
+{
+    return track < MI_TRACKS && track_keyboard_claim[track] && track_keyboard_lanes[track];
+}
+
+int instrument_track_keyboard_lanes(uint32_t track, uint32_t lanes)
+{
+    if (track >= MI_TRACKS || lanes > 3)
+        return 0;
+    uint32_t sr = dkrt_irq_mask();
+    uint8_t previous = track_keyboard_lanes[track];
+    track_keyboard_lanes[track] = (uint8_t)lanes;
+    int ready = instrument_track_keyboard_claim(track, lanes != 0);
+    if (previous && lanes && previous != lanes) {
+        /* An active claim stays in the same generation. Republish its new
+         * lane mask with the next control revision so the DSP updates MIX. */
+        IpInst *in = for_track(track);
+        if (in)
+            cs_touch(SRC(in));
+    }
+    dkrt_irq_restore(sr);
+    return ready;
+}
+
+int instrument_track_keyboard_locked_note(uint32_t track, uint32_t token, uint32_t pitch,
+                                          uint32_t velocity, uint32_t on, uint32_t lane,
+                                          const IsnSnapshot *snapshot)
+{
+    if (track >= MI_TRACKS || lane > 1 || on > 1 ||
+        (snapshot && (snapshot->count > MI_LOCKS || snapshot->lanes > 3)))
+        return 0;
+    uint32_t sr = dkrt_irq_mask();
+    IpInst *in = for_track(track);
+    int result = 0;
+    /* A reset on another track or a pending config may pause delivery. An
+     * accepted note keeps its release reservation across that pause. A reset
+     * of this track destroys the old DSP ownership and its queued releases. */
+    if (track_keyboard_claim[track] && in &&
+        (!on || (in->phase == 3 &&
+                 instrument_midi_ready(track, mi_ledger.epoch, mi_ledger.generations[track])))) {
+        IsnQueue *q = &shared_notes[IDX(in)];
+        isn_sync(q, track, mi_ledger.epoch, mi_ledger.generations[track]);
+        result = track_keyboard_lanes[track]
+                     ? isn_submit_locked(q, token, pitch, velocity, on != 0, (int)lane, snapshot)
+                     : isn_submit(q, token, pitch, velocity, on != 0);
+    }
+    dkrt_irq_restore(sr);
+    return result;
+}
+
+int instrument_track_keyboard_note(uint32_t track, uint32_t token, uint32_t pitch,
+                                   uint32_t velocity, uint32_t on, uint32_t lane)
+{
+    return instrument_track_keyboard_locked_note(track, token, pitch, velocity, on, lane, 0);
+}
 static void suspend_all(void)
 {
     for (uint32_t i = 0; i < IP_INSTANCES; ++i)
@@ -329,6 +428,25 @@ static int keyboard_events_raw(uint32_t track, uint32_t epoch, uint32_t generati
 int instrument_keyboard_events(uint32_t track, uint32_t epoch, uint32_t generation,
                                const MiEvent *input, uint32_t count, MiEvent *output)
 {
+    if (track < MI_TRACKS && track_keyboard_claim[track]) {
+        /* The shared owner delivers resolved pitches. Consume any local
+         * ledger traffic left after handoff without running the old chord
+         * mapper or routing its channel controllers into shared notes. */
+        if (count) {
+            if (track_keyboard_lanes[track] && count == 1 && input[0].kind == MI_CC &&
+                input[0].note == 1) {
+                mi_event_copy(output, input);
+                return 1;
+            }
+            return 0;
+        }
+        IpInst *in = for_track(track);
+        if (!in)
+            return 0;
+        IsnQueue *q = &shared_notes[IDX(in)];
+        isn_sync(q, track, epoch, generation);
+        return (int)isn_take(q, output);
+    }
 #ifdef DK_CANOPY_SOUND_PROOF
     return proof_live_keyboard(track, epoch, generation, input, count, output);
 #else
@@ -337,7 +455,7 @@ int instrument_keyboard_events(uint32_t track, uint32_t epoch, uint32_t generati
 }
 /* Capture the requested source's remembered bank with the trig, before any
  * later UI edit or packet retry. Caller already holds the MIDI IRQ lock. */
-int instrument_lock_source(uint32_t track, uint32_t wave, uint16_t out[MI_SOURCE_VALUES])
+int instrument_lock_source(uint32_t track, uint32_t wave, uint16_t *out)
 {
     IpInst *in = for_track(track);
     if (!in || !out || wave > 7)
@@ -670,6 +788,19 @@ static void preset_snapshot(const IpInst *in, CpPreset *p)
         p->shape.intervals[i] = shape->intervals[i];
     dkrt_irq_restore(sr);
 }
+int instrument_track_keyboard_legacy(uint32_t track, CpPreset *out)
+{
+    if (track >= MI_TRACKS || !out)
+        return 0;
+    uint32_t sr = dkrt_irq_mask();
+    const IpInst *in = for_track(track);
+    int ready = in && initialized && keyboard_initialized && in->keyboard.mode != KB_LEARN;
+    if (ready)
+        preset_snapshot(in, out);
+    dkrt_irq_restore(sr);
+    return ready;
+}
+
 static void src_requested(IpInst *in, CpPreset *current)
 {
     ip_init();
@@ -687,6 +818,8 @@ uint32_t instrument_src_context(uint32_t track, uint32_t page, int visible)
         in = cur;
     CpPreset current;
     src_requested(in, &current);
+    if (for_track(track) == in)
+        cs_track_keyboard(SRC(in), track_keyboard_src[track]);
     uint32_t generation = track < MI_TRACKS ? mi_ledger.generations[track] : 0;
     uint32_t token = cs_context(
         SRC(in), track, generation,
@@ -949,7 +1082,8 @@ void instrument_src_display_locked(CvDisplay *out, uint32_t now, const char *tun
 }
 void instrument_src_preview_step(CvDisplay *out, const IlpSnapshot *snapshot, int32_t note)
 {
-    if (!snapshot || note < 0 || note > 127 || out->page || snapshot->count > MI_LOCKS)
+    if (!snapshot || note < 0 || note > 127 || out->page || out->shared_keyboard ||
+        snapshot->count > MI_LOCKS)
         return;
     /* Private UI scratch keeps held-step rendering out of live ownership. */
     static KbState scratch;
@@ -2278,6 +2412,13 @@ static void tick_instance(uint32_t i, const IpInst *ui)
     /* Adapter-owned flag: this instance's status reaches the link. */
     if (i == focus)
         values[0] |= 0x8000u;
+    /* The effective bank suppresses the local arp and strum after MOD and
+     * locks. The carrier strips this flag before the machine callback. */
+    if (in->track < MI_TRACKS && track_keyboard_claim[in->track]) {
+        values[0] |= 0x4000u;
+        if (track_keyboard_lanes[in->track])
+            values[0] |= 0x2000u | (uint32_t)track_keyboard_lanes[in->track] << 11;
+    }
     if (in->track >= MI_TRACKS) {
         /* Freed: release the old track; keep the sound for the next track. */
         if (in->phase) {
@@ -2341,6 +2482,9 @@ void instrument_play_tick(void)
     ip_init();
 #if defined(__m68k__)
     extern void instrument_src_tick(void), ip_panel_tick(void);
+    extern void tk_runtime_init(void) __attribute__((weak));
+    if (tk_runtime_init)
+        tk_runtime_init();
     instrument_src_tick();
     ip_panel_tick(); /* recorded chords: steps committed after the key event */
     if (status_menu && dk_ui_menu_is_open(status_menu)) {

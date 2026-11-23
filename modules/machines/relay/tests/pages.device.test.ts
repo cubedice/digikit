@@ -1,7 +1,6 @@
-import { RpcFiles } from '@digi/dk-session/rpcfiles';
 import { expect, test } from 'vitest';
 import { describeOn } from '@digi/regression/runtime/devices.ts';
-import { inspectFxBoot, shot, withPausedFxProtocol, withPreparedFxSession } from '@digi/regression/runtime/fx-session.ts';
+import { inspectFxBoot, shot, withPreparedFxSession } from '@digi/regression/runtime/fx-session.ts';
 import { dspWords, pickSine, REDRAW, word } from '@digi/regression/runtime/fx-live.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
@@ -26,11 +25,19 @@ describeOn('dt2','RELAY track SRC pages',()=>{
     const tap=(key:string,ms=200)=>rt.ui.tap(key,{until:{ms,why:REDRAW}});
     return {plan,artifacts,runtime,session,rt,tap,want};
   }
-  test('selects the track machine, records on LIVE and captures an alternate on TAKE',async()=>{
+  test('records on the first SRC page and shares controls with the larger waveform',async()=>{
     const {plan,artifacts,runtime,session,rt,tap}=await selectRelay();
     const status=()=>dspWords(session,planSymbol(plan,'_relay_status'),14);
     await tap('AMP');
     await tap('SRC');
+    const fileState=()=>word(session,planSymbol(plan,'relay_files'));
+    const initialFileState=await fileState();
+    await tap('PUSH F',320);
+    const empty=await status();
+    expect(empty[5],'play on blank tape leaves it empty').toBe(0);
+    expect(empty[7]! & 1,'play on blank tape does not start a voice').toBe(0);
+    expect(empty[13]! & 255,'play on blank tape does not report a recorder error').toBe(0);
+    expect(await fileState(),'play on blank tape does not start saving').toBe(initialFileState);
     await rt.ui.tap('TRIG 1',{held:'PUSH A',until:{ms:200,why:REDRAW}});
     // A four-step master on the disposable emulator pattern exercises the same
     // recording boundary as a long master while keeping the sample transfer short.
@@ -53,13 +60,14 @@ describeOn('dt2','RELAY track SRC pages',()=>{
     expect(recorded[4]! & 255).toBe(12);
     expect(recorded[11]! >>> 8).toBe(4);
     expect(recorded[5],JSON.stringify(recorded)).toBeGreaterThan(0);
-    const fileState=()=>word(session,planSymbol(plan,'relay_files'));
     for(let i=0;i<24 && await fileState()!==5;++i) await rt.ui.wait({ms:150,why:REDRAW});
     if (await fileState()!==5) await shot(session,artifacts,'waveform-pending');
     expect(await fileState(),'LIVE waveform finished: '+JSON.stringify(await status())).toBe(5);
     const peakBase=planSymbol(plan,'relay_files')+(7+67)*4;
     const pairs=await Promise.all(Array.from({length:60},(_,i)=>word(session,peakBase+4*i)));
-    expect(pairs.some(x=>x!==0),'waveform contains the recorded reference, status '+JSON.stringify(recorded)).toBe(true);
+    const audible=(envelope:number)=>envelope!==0x8080 && envelope!==0x00ff;
+    expect(pairs.some(x=>audible(x>>>16) || audible(x&0xffff)),
+      'waveform contains the recorded reference, status '+JSON.stringify(recorded)).toBe(true);
     const changeTrack=(n:number)=>rt.ui.tap('TRIG '+n,{held:'TRK',until:{ms:100,why:REDRAW}});
     const roundTrip=async()=>{await changeTrack(1);await changeTrack(13);};
     await tap('PUSH F',320);
@@ -129,24 +137,29 @@ describeOn('dt2','RELAY track SRC pages',()=>{
     expect((await status())[7]! & 1).toBe(0);
     await shot(session,artifacts,'live');
     await tap('SRC');
-    await tap('PUSH E');
-    for(let i=0;i<85 && !((await status())[8]! & 1);++i)
-      await rt.ui.wait({ms:200,why:'wait for a full alternate pass'});
-    const take=await status();
-    expect(take[8]! & 1,JSON.stringify(take)).toBe(1);
-    await tap('PUSH F');
-    await roundTrip();
-    expect((await status())[8]! & 4,'selecting a track preserves the active audition').toBe(4);
-    await tap('NO');
-    expect((await status())[8]! & 4).toBe(0);
-    await shot(session,artifacts,'take');
-    await tap('PUSH G');
-    await tap('YES');
-    const path='/RELAY/T13-0001/FULL';
-    for(let n=0;n<90 && await fileState()===1;++n) await rt.ui.wait({ms:350,why:REDRAW});
-    const saved=await withPausedFxProtocol(runtime,dk=>new RpcFiles(dk).info(path));
-    expect(saved.found,'FULL exists in the stock sample browser').toBe(true);
-    expect(saved.size).toBe(64+4*recorded[5]!);
+    const tape=planSymbol(plan,'_rtm_tapes')+12*512;
+    await turn('ENC G',-4);
+    expect((await dspWords(session,tape+31*4,1))[0], 'length on page 2 trims a four-step take to two').toBe(32768);
+    expect((await status())[5], 'length does not change the original take').toBe(recorded[5]);
+    const beforeDetailSeek=(await status())[6];
+    await turn('ENC E',2);
+    expect((await status())[6], 'WRITE still moves the paused head on the waveform page').not.toBe(beforeDetailSeek);
+    await tap('PUSH F',320);
+    expect((await status())[7]! & 1, 'PLAY still launches on the waveform page').toBe(1);
+    for(let i=0;i<3;++i) {
+      await rt.ui.wait({ms:110,why:'check the active length while the tape plays'});
+      expect((await status())[6]).toBeLessThan(Math.floor(recorded[5]!/2));
+    }
+    await tap('PUSH F',320);
+    expect((await status())[7]! & 1, 'PLAY still pauses on the waveform page').toBe(0);
+    const sourceIndex=async()=> (await dspWords(session,planSymbol(plan,'_rtm_tracks')+12*64+14*4,1))[0];
+    // A native encoder event is limited to 31 detents and input moves one slot per two.
+    for(let i=0;i<3 && await sourceIndex()!==19;++i) await turn('ENC A',16);
+    expect(await sourceIndex(), 'MAIN is selectable on the waveform page').toBe(19);
+    await shot(session,artifacts,'detail');
+    await tap('SRC');
+    await turn('ENC G',4);
+    expect((await dspWords(session,tape+31*4,1))[0], 'length on page 1 restores the full take').toBe(0);
   },240000);
   test('routes the stock MOD picker to the RELAY tape',async()=>{
     const {plan,artifacts,session,rt,tap,want}=await selectRelay();

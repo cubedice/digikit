@@ -15,7 +15,12 @@ ip_memcpy_entry:
     cmpi.l #0x450,%d0
     bcs.s 1f
     tst.l ip_sa_ready
-    beq.s 1f
+    bne.s 3f
+    cmpi.l #0x1db8c,%d0
+    beq.s 3f
+    cmpi.l #0x6a5,%d0
+    bne.s 1f
+3:
     lea -12(%sp),%sp
     movem.l %d2-%d4,(%sp)
     move.l 16(%sp),%d2
@@ -52,7 +57,10 @@ ip_memset_entry:
     cmpi.l #0x450,%d0
     bcs.s 1f
     tst.l ip_sa_ready
-    beq.s 1f
+    bne.s 3f
+    cmpi.l #0x1db8c,%d0
+    bne.s 1f
+3:
     lea -12(%sp),%sp
     movem.l %d2-%d4,(%sp)
     move.l 16(%sp),%d2
@@ -83,7 +91,10 @@ ip_bzero_entry:
     cmpi.l #0x450,%d0
     bcs.s 1f
     tst.l ip_sa_ready
-    beq.s 1f
+    bne.s 3f
+    cmpi.l #0x1db8c,%d0
+    bne.s 1f
+3:
     lea -8(%sp),%sp
     movem.l %d2-%d3,(%sp)
     move.l 12(%sp),%d2

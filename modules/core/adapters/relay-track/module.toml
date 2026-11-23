@@ -7,7 +7,7 @@ role = "adapter"
 type = "framework"
 author = "digikit"
 status = "experimental"
-summary = "Track-owned stereo takes and the LIVE and TAKE SRC views."
+summary = "Track-owned stereo tapes with compact and expanded waveform views."
 ports = ["dt2-1.17"]
 requires = ["core/relay-input", "core/relay-storage", "core/instrument-play", "core/loop-control", "core/fxview", "core/plusdrive-write"]
 conflicts = []
@@ -21,6 +21,8 @@ sources = ["src/control.c", "src/files.c"]
 place = "cf.expansion"
 devices = ["dt2"]
 [object.externs]
+ip_src_focus_active = "cf.page.site.instrument_focus_active"
+ip_src_focus_touch = "cf.page.site.instrument_focus_touch"
 rtm_mod_rate = "params.rtm_mod_rate.index"
 rtm_mod_spacing = "params.rtm_mod_spacing.index"
 rtm_mod_feedback = "params.rtm_mod_feedback.index"
@@ -35,6 +37,7 @@ path = "build/track-dsp.dko.json"
 sources = ["src/dsp/engine.s", "src/dsp/bridge.s", "src/dsp/capture.s", "src/dsp/audio.s"]
 place = "dsp.l2"
 devices = ["dt2"]
+optional = ["_tk_pool_head_owner"]
 [object.externs]
 _rtm_bus = "dsp.fx.value.send.track_bus"
 _rtm_mod_frame = "dsp.voice.value.frame_base"

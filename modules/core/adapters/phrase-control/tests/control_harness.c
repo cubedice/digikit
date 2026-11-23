@@ -107,11 +107,13 @@ static void controls(void)
     assert(dkrt_phrase_set(PH_P_HALO, 127) == 0 && f(word(PH_C_HALO)) == 1.0f);
     assert(dkrt_phrase_set(PH_P_MIX, 0) == 0 && f(word(PH_C_MIX)) == 0.0f);
     assert(dkrt_phrase_set(PH_P_MIX, 127) == 0 && f(word(PH_C_MIX)) == 1.0f);
-    /* the three switches are the three flag bits */
+    /* Pressable controls publish independent flag bits. */
     assert(dkrt_phrase_set(PH_P_SYNC, 1) == 0 && word(PH_C_FLAGS) == PH_F_SYNC);
     assert(dkrt_phrase_set(PH_P_FLIP, 1) == 0 && word(PH_C_FLAGS) == (PH_F_SYNC | PH_F_FLIP));
     assert(dkrt_phrase_set(PH_P_HOLD, 7) == 0 &&
            word(PH_C_FLAGS) == (PH_F_SYNC | PH_F_FLIP | PH_F_HOLD));
+    assert(dkrt_phrase_set(PH_P_PING_PONG, 7) == 0 && dkrt_phrase_get(PH_P_PING_PONG) == 1 &&
+           word(PH_C_FLAGS) == (PH_F_SYNC | PH_F_FLIP | PH_F_HOLD | PH_F_PING_PONG));
     /* INPT is a switch, published as it is and not saved (a restart has no loop); XFAD is the loop effect's and cannot be
      * set here, and the words of the crossfader and of ARM stay 0 */
     u32 before = writes;
@@ -394,7 +396,13 @@ static void tracks(void)
     saved_bytes = 0;
     restart(15);
     assert(dkrt_phrase_get(PH_P_RATIO) == PH_SYNC_UNITY);
-    /* A record of 14 values with the tracks out of range: clamped to the 16 tracks. */
+    /* Old PRISM records keep their explicit track choices and default to straight feedback. */
+    store(PH_P_PING_PONG, 0x0801);
+    sends(owner_amounts, 16);
+    restart(16);
+    assert(dkrt_phrase_get(PH_P_TRKS) == 0x0801 && dkrt_phrase_get(PH_P_PING_PONG) == 0);
+    assert(!(word(PH_C_FLAGS) & PH_F_PING_PONG));
+    /* A record with the tracks out of range: clamped to the 16 tracks. */
     store(PH_PARAM_COUNT, 0x12345);
     restart(12);
     assert(dkrt_phrase_get(PH_P_TRKS) == PH_TRACKS_ALL);
@@ -433,7 +441,8 @@ int main(void)
     assert(dkrt_phrase_active() == 0x21 && generation == seen + 2);
     for (u32 i = 0; i < PH_PARAM_COUNT; ++i)
         assert(dkrt_phrase_get(i) == (i == PH_P_HOLD ? 0 : before[i]));
-    assert(word(PH_C_FLAGS) == (PH_F_SYNC | PH_F_FLIP) && word(PH_C_OWNER_ROW) == 2);
+    assert(word(PH_C_FLAGS) == (PH_F_SYNC | PH_F_FLIP | PH_F_PING_PONG) &&
+           word(PH_C_OWNER_ROW) == 2);
     /* a HOLD press alone writes no settings */
     unsigned n = writes;
     assert(dkrt_phrase_set(PH_P_HOLD, 1) == 0 && writes == n);

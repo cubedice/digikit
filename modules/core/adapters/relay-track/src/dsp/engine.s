@@ -1,8 +1,10 @@
 #include "dk_relay.inc"
 #include "dk_relay_track.inc"
+#define RT_WAVE_EMPTY 0x00ff
 .SECTION/PM seg_pmco;
 .EXTERN _relay_pool;
 .EXTERN _relay_external;
+.EXTERN _relay_main;
 .EXTERN _relay_pack_span;
 .EXTERN _relay_status;
 .EXTERN _relay_timing;
@@ -10,6 +12,47 @@
 .EXTERN _rtm_bus;
 .EXTERN _rtm_mod_frame;
 .EXTERN _pattern_position_info;
+.EXTERN _tk_pool_head_owner;
+.EXTERN _mi_envelope_records;
+.GLOBAL _rtm_read_head_owner;
+_rtm_read_head_owner:
+    R0 = _tk_pool_head_owner;
+    R0 = PASS R0;
+    IF NE JUMP _tk_pool_head_owner;
+    R0 = -1;
+    RTS;
+
+// R1: physical DTII track. Read the even voice's last complete native AMP
+// record. A finite release is monotone, so the head can retire at the same
+// -140 dB envelope floor used by CANOPY. The downstream filter still runs.
+.GLOBAL _rtm_group_amp_done;
+_rtm_group_amp_done:
+    R0 = DM(_mi_envelope_records);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R2 = 88;
+    R1 = R1 * R2 (SSI);
+    R0 = R0 + R1;
+    I2 = R0;
+    R0 = DM(7,I2); // envelope phase
+    R2 = 4;
+    COMP(R0,R2);
+    IF NE JUMP _rtm_group_amp_active;
+    R0 = DM(4,I2); // release index (native AHD uses its decay index here)
+    R2 = 127;
+    COMP(R0,R2);
+    IF GE JUMP _rtm_group_amp_active;
+    R0 = DM(10,I2); // negative amplitude, before the next stock AMP pass
+    R0 = FEXT R0 BY 0:31;
+    R2 = 0x33d6bf95; // float32(1e-7)
+    COMP(R0,R2);
+    R0 = 0;
+    IF LT R0 = R0 + 1;
+    RTS;
+_rtm_group_amp_active:
+    R0 = 0;
+    RTS;
+
 .GLOBAL _rtm_block;
 // The input tap runs once per 32 stereo frames even when no voice is active.
 // RT_TRIG protects writer alignment against retriggers. All published roots
@@ -27,6 +70,8 @@ _rtm_block:
     DM(_rt_load) = R0;
     DM(_rt_pin) = R0;
 _rt_clock:
+    // The link clears the mailbox header after copying a control reply.
+    I0 = _relay_status; R0 = DM(0,I0); R0 = PASS R0; IF EQ CALL _rt_wave_reset;
     I0 = _pattern_position_info;
     R0 = DM(0,I0); R1 = 0x50504f53; COMP(R0,R1); IF NE JUMP _rt_clock_gap;
     R0 = DM(5,I0);
@@ -268,9 +313,12 @@ _rt_row:
     R2 = LSHIFT R8 BY 6; R3 = _rtm_tracks; R2 = R2 + R3; I4 = R2;
     RTS;
 _rt_inputs:
+    R1 = RT_INPUT_MAIN; COMP(R0,R1); IF EQ JUMP _rt_main_input;
     R1 = 3; COMP(R0,R1); IF LT JUMP _rt_ext;
     R0 = R0 - R1; R0 = LSHIFT R0 BY 8; R1 = _rtm_bus; R4 = R1 + R0;
     R1 = 128; R8 = R4 + R1; RTS;
+_rt_main_input:
+    R4 = _relay_main; R1 = 128; R8 = R4 + R1; RTS;
 _rt_ext:
     R4 = _relay_external; R1 = 128; R8 = R4 + R1;
     R1 = 1; COMP(R0,R1); IF EQ R8 = R4;
@@ -289,7 +337,8 @@ _rt_cmd_alt:
 _rt_arm:
     R0 = DM(_rt_load); R0 = PASS R0; IF GE JUMP _rt_busy;
     R0 = DM(_rt_mode); R0 = PASS R0; IF NE JUMP _rt_busy;
-    R1 = DM(4,I0); R2 = 18; COMP(R1,R2); IF GT JUMP _rt_invalid;
+    R1 = DM(4,I0); R2 = RT_INPUT_MAIN; COMP(R1,R2); IF GT JUMP _rt_invalid;
+    R1 = PASS R1; IF LT JUMP _rt_invalid;
     R2 = 3; R2 = R2 + R8; COMP(R1,R2); IF EQ JUMP _rt_invalid;
     DM(_rt_source) = R1; DM(_rt_writer) = R8;
     R1 = DM(5,I0); DM(_rt_len) = R1;
@@ -321,6 +370,7 @@ _rt_reserve:
     R0 = DM(_rt_goal); R0 = PASS R0; IF NE JUMP _rt_ready;
     R4 = RLY_AVAILABLE; CALL _relay_pool; DM(_rt_goal) = R0;
 _rt_ready:
+    CALL _rt_wave_reset;
     R0 = DM(_rt_wanted); DM(_rt_mode) = R0;
     R0 = 1; DM(_rt_armed) = R0; R0 = 0; DM(_rt_finish) = R0; DM(_rt_written) = R0;
     JUMP _rt_schedule;
@@ -342,7 +392,7 @@ _rt_cancel:
     CALL _rt_abort; JUMP _rt_schedule;
 _rt_cmd_play:
     CALL _tape_row; R0 = DM(T_ACTIVE,I5); R0 = PASS R0; IF NE JUMP _tape_play;
-    R0 = DM(RT_LENGTH,I4); R0 = PASS R0; IF EQ JUMP _rt_empty;
+    R0 = DM(RT_LENGTH,I4); R0 = PASS R0; IF EQ JUMP _rt_schedule;
     R0 = DM(RT_ARM_PLAY,I4); R1 = 1; R0 = R0 XOR R1; DM(RT_ARM_PLAY,I4) = R0;
     JUMP _rt_schedule;
 _rt_busy_local:
@@ -465,6 +515,7 @@ _rt_abort_pool:
     R4 = RLY_ABORT; CALL _relay_pool;
     R8 = DM(_rt_writer); CALL _rt_row;
 _rt_idle:
+    CALL _rt_wave_reset;
     R0 = RLY_TRACK_MAIN; R0 = R0 + R8; DM(RT_SLOT,I4) = R0;
     R0 = 0; DM(_rt_repeat) = R0; DM(RT_TRIG,I4) = R0; DM(_rt_mode) = R0; DM(_rt_armed) = R0; DM(_rt_finish) = R0; RTS;
 _rt_start_tracks:
@@ -474,6 +525,7 @@ _rt_start_one:
     R0 = DM(T_ACTIVE,I5); R0 = PASS R0; IF EQ JUMP _rt_start_next;
     R0 = DM(RT_LENGTH,I4); R0 = PASS R0; IF EQ JUMP _rt_start_next;
     CALL _tape_transition;
+    R0 = DM(_rt_writer); COMP(R0,R8); IF EQ CALL _rt_wave_reset;
     R0 = 0; DM(RT_POS,I4) = R0; DM(T_FRAC,I5) = R0; DM(T_SLIP,I5) = R0; DM(T_STOPPED,I5) = R0;
     DM(RT_PREVIEW_END,I4) = R0;
     R0 = 1; DM(RT_PLAYING,I4) = R0; DM(RT_LAUNCH,I4) = R0;
@@ -535,17 +587,14 @@ _rt_report_row: CALL _rt_row;
     CALL _tape_row; R1 = DM(T_GRID,I5); R1 = LSHIFT R1 BY 8;
     R0 = DM(RT_UNDOABLE,I4); R0 = R0 OR R1; DM(11,I3) = R0;
     R0 = DM(_rt_written); DM(12,I3) = R0;
-    R0 = DM(RT_SOURCE,I4); CALL _rt_inputs; I0 = R4; I1 = R8;
-    R2 = 0; R3 = 0;
-    LCNTR = 32, DO _rt_peak UNTIL LCE;
-        F0 = DM(I0,M6); F1 = DM(I1,M6);
-        F0 = ABS F0; F1 = ABS F1;
-        F2 = MAX(F2,F0);
-_rt_peak: F3 = MAX(F3,F1);
-    R4 = 0x3f800000; F2 = MIN(F2,F4); F3 = MIN(F3,F4);
-    R4 = 0x42fe0000; F2 = F2 * F4; F3 = F3 * F4;
-    R2 = FIX F2; R3 = FIX F3; R2 = LSHIFT R2 BY 8; R3 = LSHIFT R3 BY 16;
-    R0 = DM(_rt_error); R0 = R0 OR R2; R0 = R0 OR R3; DM(13,I3) = R0;
+    R2 = RT_WAVE_EMPTY;
+    R0 = DM(_rt_writer); COMP(R0,R8); IF NE JUMP _rt_report_wave;
+    R0 = DM(_rt_wave_start); R0 = PASS R0; IF LT JUMP _rt_report_wave;
+    DM(12,I3) = R0;
+    CALL _rt_wave_pack;
+    R2 = R3;
+_rt_report_wave:
+    R2 = LSHIFT R2 BY 8; R0 = DM(_rt_error); R0 = R0 OR R2; DM(13,I3) = R0;
     R4 = RLY_AVAILABLE; CALL _relay_pool; I3 = _relay_status; DM(3,I3) = R0;
     // Feedback rows are shared by multiple modules. Sign the complete snapshot.
     I0 = _relay_status; R1 = DM(I0,M6); R0 = 0;
@@ -558,6 +607,7 @@ _rt_hash_word: R0 = R1 + R2;
 
 #include "tape.inc"
 #include "transfer.inc"
+#include "wave.inc"
 .SECTION/DM seg_dmda;
 .GLOBAL _rtm_tracks;
 .VAR _rtm_tracks[256];

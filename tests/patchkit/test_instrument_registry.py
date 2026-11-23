@@ -351,6 +351,8 @@ uint32_t session_boundary(const uint32_t *words, uint32_t step) {
             "dl_rec_lit": 0,
             "pp_write_frame": 0,
             "loop_reply_frame": 0,
+            "tk_pool_link_write": 0,
+            "tk_pool_link_reply": 0,
         },
         [mod / "src/cf", REPO_ROOT / "modules/core/adapters/dsp-link/build/gen"],
     )

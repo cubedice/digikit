@@ -37,7 +37,8 @@ uint32_t mi_test_session_keys(void)
     CHECK(message(&m, 0, 0x90, 60, 100));
     fresh = take(&m);
     CHECK(fresh.token != old.token && fresh.epoch == 2);
-    CHECK(message(&m, 0, 0x80, 60, 0));
+    CHECK(!mi_release_known(&m, 0, 0, 61, 0));
+    CHECK(mi_release_known(&m, 0, 0, 60, 0));
     CHECK(!mi_peek(&m, &off));
     CHECK(message(&m, 0, 0x80, 60, 0));
     off = take(&m);

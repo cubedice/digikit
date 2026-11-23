@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include "../../../modules/core/adapters/instrument-play/src/cf/shared-notes.h"
 #include "../../../modules/core/adapters/instrument-play/src/cf/src-native.c"
 static CsState state;
 static uint32_t test_held, test_marked, seq_object[0xa0];
@@ -111,13 +112,19 @@ uint32_t mf_native_page_count(uint32_t type, uint32_t ordinary)
     (void)type;
     return ordinary;
 }
-uint32_t instrument_src_pages(void)
+uint32_t instrument_src_pages(uint32_t track)
 {
+    (void)track;
     return cs_pages(&state);
+}
+int instrument_src_shared_keyboard(uint32_t track)
+{
+    (void)track;
+    return cs_shared_keyboard(&state);
 }
 uint32_t instrument_src_tune_page(uint32_t page)
 {
-    return page == 0;
+    return page == (cs_shared_keyboard(&state) ? CS_DETAIL : 0);
 }
 static uint32_t selected, alternate, now = 100, type_id = 9, generation = 1, stock_turns,
                                      stock_keys, invalidations, polls;
@@ -127,6 +134,8 @@ static char label_text[8][32];
 static char body_text[8][32];
 static char arp_caption[32];
 static uint32_t real_display, graph_mask, graph_value[8];
+static uint32_t amp_draws, env_caption, detail_caption;
+static int32_t amp_args[6];
 const uint32_t ip_src_label_font = 123;
 void ip_src_focus_touch(uint8_t *tracker, uint32_t index)
 {
@@ -253,6 +262,14 @@ void ip_src_level_format(int32_t raw, char *out)
     assert(raw == 0x7f00);
     strcpy(out, "127");
 }
+void ip_src_amp_adsr(const uint8_t *view, uint8_t *canvas, int32_t column, int32_t row,
+                     int32_t attack, int32_t decay, int32_t sustain, int32_t release)
+{
+    assert(view && canvas);
+    ++amp_draws;
+    const int32_t args[] = {column, row, attack, decay, sustain, release};
+    memcpy(amp_args, args, sizeof amp_args);
+}
 void ip_src_stock_attach(uint8_t *v, uint8_t *m)
 {
     (void)m;
@@ -344,6 +361,9 @@ int32_t dk_fw_text_draw_box(uint8_t *p, uint8_t *font, int32_t x, int32_t y, int
     va_list ap;
     va_start(ap, fmt);
     const char *s = va_arg(ap, const char *);
+    assert(x != 34 || y != 47 || strcmp(s, "VOICE"));
+    env_caption += !strcmp(s, "FM ENV") || !strcmp(s, "POS FM");
+    detail_caption += !strcmp(s, "DETAIL");
     if (x == 98 && y == 0)
         strcpy(arp_caption, s);
     if (x >= 33 && x <= 111 && (x - 33) % 26 == 0) {
@@ -374,6 +394,41 @@ static void clear_paint(uint8_t *canvas)
     memset(body_text, 0, sizeof(body_text));
     memset(graph_value, 0, sizeof(graph_value));
     graph_mask = 0;
+    amp_draws = env_caption = detail_caption = 0;
+}
+static void expect_amp(int32_t attack, int32_t decay, int32_t sustain, int32_t release,
+                       uint32_t dial_mask)
+{
+    const int32_t expected[] = {0, 0, attack, decay, sustain, release};
+    assert(amp_draws == 1 && !memcmp(amp_args, expected, sizeof expected));
+    assert(graph_mask == dial_mask && !env_caption);
+}
+static void compact_envelope_pixels(void)
+{
+    static uint32_t plane[256];
+    uint32_t before[256];
+    uint32_t bitmap[] = {0, 128, 64, 2, (uint32_t)(uintptr_t)plane, 0};
+    /* The real framebuffer stores pixels from bottom to top, MSB first. */
+    for (unsigned x = 0; x < 128; ++x) {
+        plane[2 * x] = 0xa0000000 | x;
+        plane[2 * x + 1] = x | (1u << (11 + x % 21));
+    }
+    memcpy(before, plane, sizeof(before));
+    compact_wt_envelope((uint8_t *)bitmap);
+    for (unsigned x = 0; x < 128; ++x) {
+        assert(plane[2 * x] == before[2 * x]);
+        if (x < 23 || x >= 124) {
+            assert(plane[2 * x + 1] == before[2 * x + 1]);
+            continue;
+        }
+        uint32_t expected = before[2 * x + 1] & 0x7ffu;
+        if (x < 97) {
+            unsigned first = 23 + (x - 23) * 101 / 74, end = 23 + (x - 22) * 101 / 74;
+            for (unsigned source = first; source < end; ++source)
+                expected |= before[2 * source + 1] & 0xfffff800u;
+        }
+        assert(plane[2 * x + 1] == expected);
+    }
 }
 static void protected_pixels(const uint8_t *canvas, int native_tune)
 {
@@ -395,7 +450,194 @@ int main(int argc, char **argv)
     cs_init(&state);
     memset(canvas, 0xaa, sizeof(canvas));
     ip_src_draw((uint8_t *)v, canvas);
-    if (!strcmp(argv[1], "live-lock")) {
+    if (!strcmp(argv[1], "shared-keyboard-queue")) {
+        IsnQueue q = {0};
+        MiEvent batch[8] = {0};
+        isn_sync(&q, 5, 7, 23);
+        for (uint32_t token = 1; token <= 6; ++token) {
+            assert(isn_submit(&q, token, 59 + token, 100, 1));
+            assert(isn_submit(&q, token, 59 + token, 0, 0));
+        }
+        assert(isn_submit(&q, 7, 66, 100, 1));
+        assert(isn_submit(&q, 8, 67, 100, 1));
+        assert(!isn_submit(&q, 9, 68, 100, 1));
+        assert(!isn_submit(&q, 7, 67, 0, 0));
+        assert(isn_submit(&q, 7, 66, 0, 0));
+        assert(isn_submit(&q, 8, 67, 0, 0));
+        assert(isn_take(&q, batch) == 8);
+        assert(batch[0].port == MI_PANEL && batch[0].track == 5 && batch[0].epoch == 7 &&
+               batch[0].generation == 23 && batch[0].sequence == 0);
+        assert(batch[0].kind == MI_NOTE_ON && batch[0].token == 1 && batch[0].note == 60);
+        assert(batch[1].kind == MI_NOTE_OFF && batch[1].token == 1 && batch[1].note == 60);
+        assert(isn_take(&q, batch) == 8);
+        assert(batch[7].kind == MI_NOTE_OFF && batch[7].token == 8 && batch[7].note == 67);
+        assert(!isn_submit(&q, 6, 68, 100, 1));
+        assert(isn_submit(&q, 9, 68, 100, 1));
+        isn_sync(&q, 5, 7, 24);
+        assert(!isn_take(&q, batch));
+        assert(!isn_submit(&q, 9, 68, 0, 0));
+        assert(isn_submit(&q, 9, 68, 100, 1));
+        isn_sync(&q, 6, 7, 24);
+        assert(!isn_take(&q, batch));
+        IsnSnapshot locked = {.valid = 1, .count = 1, .lanes = 3, .locks = {(2 << 10) | 84}};
+        const IsnSnapshot live = {.valid = 1, .lanes = 1};
+        assert(isn_submit_locked(&q, 10, 60, 100, 1, 0, &locked));
+        assert(isn_submit_locked(&q, 11, 64, 100, 1, 1, &locked));
+        assert(isn_submit_voice(&q, 10, 60, 0, 0, 0));
+        assert(isn_submit_locked(&q, 12, 67, 100, 1, 0, &live));
+        locked.locks[0] = 0;
+        assert(isn_take(&q, batch) == 2);
+        assert(batch[0].lock_valid && batch[0].lock_count == 1 && batch[0].shared_lanes == 3 &&
+               batch[0].locks[0] == ((2 << 10) | 84));
+        assert(batch[1].kind == MI_NOTE_ON && !batch[1].lock_valid &&
+               (batch[1].token & ISN_ARP_TOKEN));
+        assert(isn_take(&q, batch) == 1 && batch[0].kind == MI_NOTE_OFF && !batch[0].lock_valid);
+        assert(isn_take(&q, batch) == 1 && batch[0].lock_valid && !batch[0].lock_count &&
+               batch[0].shared_lanes == 1);
+    } else if (!strcmp(argv[1], "shared-keyboard")) {
+        static const char *const labels[3][3][8] = {
+            {{"WAVE", "COLR", "", "", "", "", "", "DRFT"},
+             {"", "", "", "", "", "", "", ""},
+             {"", "", "", "", "", "", "MIX", ""}},
+            {{"WAVE", "POS", "DEP", "HZ", "SHAP", "CLK", "RST", "DRFT"},
+             {"ATK", "REL", "", "PENV", "FM", "RAT", "VEL", "FENV"},
+             {"", "", "", "", "", "", "MIX", ""}},
+            {{"WAVE", "ALG", "BAL", "RTA", "RTB", "FDBK", "", "DRFT"},
+             {"ATK", "DEC", "SUS", "REL", "DEP", "ENV", "VEL", ""},
+             {"", "", "", "", "", "", "MIX", ""}}};
+        compact_envelope_pixels();
+        real_display = 1;
+        cs_track_keyboard(&state, 1);
+        v[0x90 / 4] = 2;
+        clear_paint(canvas);
+        ip_src_draw((uint8_t *)v, canvas);
+        assert(v[0x90 / 4] == 0 && mf_src_page_count(type_id) == 3);
+        for (uint32_t source = 0; source < 4; ++source) {
+            cs_metadata(&state, source << 4);
+            if (source == 2) {
+                state.value[CP_WT_CLOCK] = 0;
+                state.value[CP_WT_POS] = 233;
+                state.value[CP_WT_DEPTH] = 45;
+                state.value[CP_WT_RATE] = 132;
+                state.value[CP_WT_ATTACK] = 12;
+                state.value[CP_WT_RELEASE] = 26;
+                state.value[CP_WT_ENV] = 140;
+                state.value[CP_WTFM_ENV] = 0;
+                state.value[CP_WTFM_RATIO] = 15;
+            } else if (source == 3) {
+                state.value[CP_FM_ALG] = 3;
+                state.value[CP_FM_ATTACK] = 127;
+                state.value[CP_FM_DECAY] = 127;
+                state.value[CP_FM_SUSTAIN] = 67;
+                state.value[CP_FM_RELEASE] = 127;
+                state.value[CP_FM_BAL] = 100;
+                state.value[CP_COLOR] = 32;
+            }
+            for (uint32_t page = 0; page < 3; ++page) {
+                v[0x90 / 4] = page;
+                v[0x190 / 4] = 0;
+                focus_mask = 0;
+                clear_paint(canvas);
+                ip_src_draw((uint8_t *)v, canvas);
+                assert(v[0x90 / 4] == page && mf_src_page_count(type_id) == 3);
+                for (unsigned i = 0; i < 8; ++i)
+                    assert(!strcmp(label_text[i], labels[source < 2 ? 0 : source - 1][page][i]));
+                assert(ip_src_parameter((uint8_t *)v, 0) == (page == CS_DETAIL ? 0xca : 0));
+                assert(ip_src_parameter((uint8_t *)v, 7) == (page == CS_DETAIL ? 0xd1 : 0));
+                assert(ip_src_parameter((uint8_t *)v, 8) == 10);
+                if (source == 2 && page == CS_VOICE) {
+                    /* The waveform, frame rail, and scan shape use the WT widget bodies. */
+                    unsigned waveform = 0;
+                    for (unsigned y = 14; y <= 26; ++y)
+                        waveform |= canvas[y * 128 + 50];
+                    assert(waveform == 1 && canvas[48 * 128 + 25] == 1);
+                    for (unsigned x = 49; x <= 121; ++x)
+                        assert(canvas[29 * 128 + x] == 1);
+                    assert(canvas[13 * 128 + 73] == 1);
+                    assert(!(graph_mask & 0x1e));
+                }
+                if (source == 2 && page == CS_FM_ENV) {
+                    expect_amp(0x0c00, 0, 0x7f00, 0x1a00, 0xd8);
+                    assert(graph_value[3] == 88 && graph_value[7] == 0);
+                } else if (source == 3 && page == CS_FM_ENV)
+                    expect_amp(0x7f00, 0x7eff, 21783, 0x7eff, 0x70);
+                else
+                    assert(!amp_draws);
+                assert(!detail_caption);
+                protected_pixels(canvas, page == CS_DETAIL);
+
+                v[0x190 / 4] = 0x01010101;
+                clear_paint(canvas);
+                ip_src_draw((uint8_t *)v, canvas);
+                if (source == 2 && page == CS_VOICE) {
+                    assert(!strcmp(label_text[1], "3.33") && !strcmp(label_text[2], "45%") &&
+                           !strcmp(label_text[3], "1.32") && !strcmp(label_text[4], "SINE"));
+                    assert(canvas[29 * 128 + 121] == 1 && canvas[13 * 128 + 73] == 1);
+                    v[0x190 / 4] = 0;
+                    event((uint8_t *)e, 2, 100, 0, 0);
+                    assert(ip_src_turn((uint8_t *)v, (uint8_t *)e) == 1);
+                    assert(state.value[CP_WT_POS] == 333);
+                    clear_paint(canvas);
+                    ip_src_draw((uint8_t *)v, canvas);
+                    assert(!strcmp(label_text[1], "4.33"));
+                    assert(canvas[13 * 128 + 73] == 0 && canvas[13 * 128 + 83] == 1);
+                }
+                if (source == 2 && page == CS_FM_ENV) {
+                    assert(!strcmp(label_text[3], "+40%") && !strcmp(label_text[5], "8.00") &&
+                           !strcmp(label_text[7], "-100%"));
+                    expect_amp(0x0c00, 0, 0x7f00, 0x1a00, 0xd8);
+                    /* Stored lock IDs still reach their controls in their new cells. */
+                    const IlpSnapshot locks = {2, {{CP_WT_ENV, 96}, {CP_WTFM_ENV, 30}}};
+                    assert(cv_lock_mask(&state, &locks) == 0x88);
+                    event((uint8_t *)e, 4, 1, 0, 0);
+                    assert(ip_src_turn((uint8_t *)v, (uint8_t *)e) == 1);
+                    event((uint8_t *)e, 8, 7, 0, 0);
+                    assert(ip_src_turn((uint8_t *)v, (uint8_t *)e) == 1);
+                    assert(state.value[CP_WT_ENV] == 141 && state.value[CP_WTFM_ENV] == 7);
+                    event((uint8_t *)e, 1, 10, 0, 0);
+                    assert(ip_src_turn((uint8_t *)v, (uint8_t *)e) == 1);
+                    event((uint8_t *)e, 2, 5, 0, 0);
+                    assert(ip_src_turn((uint8_t *)v, (uint8_t *)e) == 1);
+                    clear_paint(canvas);
+                    ip_src_draw((uint8_t *)v, canvas);
+                    expect_amp(0x1600, 0, 0x7f00, 0x1f00, 0xd8);
+                }
+                if (source == 3 && page == CS_FM_ENV) {
+                    assert(!strcmp(label_text[0], "127") && !strcmp(label_text[4], "32"));
+                    expect_amp(0x7f00, 0x7eff, 21783, 0x7eff, 0x70);
+                    event((uint8_t *)e, 1, -109, 0, 0);
+                    assert(ip_src_turn((uint8_t *)v, (uint8_t *)e) == 1);
+                    clear_paint(canvas);
+                    ip_src_draw((uint8_t *)v, canvas);
+                    assert(!strcmp(label_text[0], "18"));
+                    expect_amp(0x1200, 0x7eff, 21783, 0x7eff, 0x70);
+                }
+                assert(!detail_caption);
+                if (source == 3 && page == CS_VOICE)
+                    assert(!strcmp(label_text[1], "CHAIN") && !strcmp(label_text[2], "100%"));
+                protected_pixels(canvas, page == CS_DETAIL);
+                if (source == 2 && page == CS_VOICE) {
+                    v[0x190 / 4] = 0;
+                    state.value[CP_WT_CLOCK] = 1;
+                    state.value[CP_WT_RATE] = 3;
+                    clear_paint(canvas);
+                    ip_src_draw((uint8_t *)v, canvas);
+                    assert(!strcmp(label_text[3], "RATE"));
+                    protected_pixels(canvas, 0);
+                }
+            }
+        }
+        cs_track_keyboard(&state, 0);
+        v[0x190 / 4] = 0;
+        clear_paint(canvas);
+        ip_src_draw((uint8_t *)v, canvas);
+        assert(v[0x90 / 4] == 0 && mf_src_page_count(type_id) == 4);
+        assert(!strcmp(label_text[1], "CHRD"));
+        v[0x90 / 4] = 3; /* Standalone FM ENV retains its four-page renderer. */
+        clear_paint(canvas);
+        ip_src_draw((uint8_t *)v, canvas);
+        assert(!amp_draws);
+    } else if (!strcmp(argv[1], "live-lock")) {
         for (unsigned step = 0; step < 128; ++step)
             for (unsigned lane = 0; lane < ILP_LANES; ++lane)
                 test_locks[step][lane] = -1;

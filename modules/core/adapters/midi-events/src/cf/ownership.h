@@ -21,6 +21,9 @@
 /* Lock IDs from here are consumed by the CF mapper and stay off the DSP wire. */
 #define MI_LOCK_MAPPER_FIRST 53u
 #define MI_SOURCE_VALUES 17u
+/* Sound presets carry the effective wave followed by DRIFT, ATK, REL and MIX
+ * (3 + 4 x 7 bits). The top bit distinguishes a Sound from a WAVE-only bank. */
+#define MI_SOUND_VALID UINT32_C(0x80000000)
 
 typedef struct {
     uint32_t epoch, sequence, token, generation;
@@ -29,8 +32,10 @@ typedef struct {
      * Other events always have lock_valid=0. Pairs are id:6/value:10. */
     uint8_t lock_valid, lock_count;
     uint16_t locks[MI_LOCKS];
-    uint8_t source_valid;
+    uint8_t source_valid, shared_lanes;
     uint16_t source[MI_SOURCE_VALUES];
+    uint16_t sound_tune;
+    uint32_t sound_controls;
 } MiEvent;
 typedef struct {
     uint32_t token, generation, identity;
@@ -83,6 +88,8 @@ int mi_session_begin(MiLedger *m);
 /* Fully normalized channel messages only. 1 consumed, 0 stock fallthrough.
  * Unsupported controllers, system messages and malformed messages fall through. */
 int mi_message(MiLedger *m, uint32_t port, const uint8_t *msg, uint32_t len);
+/* Claim a matching prior note only, including a tombstone after a route handoff. */
+int mi_release_known(MiLedger *m, uint8_t port, uint8_t channel, uint8_t note, uint8_t velocity);
 /* Resolved local keys have an identity independent of pitch. Key-up releases
  * exactly the pitches captured at key-down, including across scale changes. */
 int mi_panel_down(MiLedger *m, uint32_t key, uint32_t note, uint32_t velocity, uint32_t track);

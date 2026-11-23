@@ -13,11 +13,24 @@ void     dkrt_loop_xfad(uint32_t value);  /* the crossfader: 0 LIVE .. 127 LOOP 
 void     dkrt_loop_arm(void);             /* one press of ARM: arms, or takes the arm back */
 void     dkrt_loop_drop(void);            /* drop the loop */
 uint32_t dkrt_loop_status(uint32_t *out); /* the engine's status (LS_* words); 1 while it is fresh */
+uint32_t dkrt_loop_wave_peaks(uint16_t out[LS_WAVE_COLUMNS]); /* 120 peak columns, returns live write cursor or LS_WAVE_COLUMNS */
 uint32_t dkrt_loop_page(void);            /* the native FX page of the loop effect, 0 while none is loaded */
 ```
 
 The indices and the status words are in `sdk/dsp/contract/dk_loop.inc`, the one file the home, the page and the engine
 share.
+
+The DSP measures the deepest negative sample and the highest positive sample across both recorded channels before
+adding the downstream wet return. Every 512 frames it closes one 16-bit group with the negative magnitude in the low
+byte and the positive in the high byte. It rounds each nonzero magnitude up on a 0–255 scale. The carrier repeats the
+completed group until its replacement. The `LS_WAVE_PRECISE` state flag identifies this format. With an older engine
+the home combines its four 4-bit channel peaks and expands each polarity to the byte scale.
+
+The ColdFire keeps six 128-bin histories covering 512, 1024, 2048, 4096, 8192 and 16384 frames per bin. Missed reports
+leave empty cells where peaks are unavailable and keep the older history. The live view keeps its last known width
+while the timing estimate is unavailable. At capture, it freezes the finest history that covers the cycle, includes the
+unfinished group and limits the visible interval to the recorded audio. The UI reads one bounded snapshot, then
+finds the outer peaks for each of the 120 pixel intervals after restoring interrupts.
 
 ## How the values reach the engine
 
@@ -39,12 +52,10 @@ two blocks or repeated.
 
 ## How the status comes back
 
-The engine publishes sixteen words in `_loop_ui_status` at the end of a block (this module owns the mailbox on the DSP
-side). `core/dsp-link` returns them in fourteen spare words of the reply (the `OVL2` carrier, finding 340). PRISM's reply
-(`core/phrase-control`) has the same cells in three blocks of four, so a status read once a UI pass came only when the pass
-met the fourth block, at irregular times. `core/dsp-link` therefore calls `loop_reply_frame(rec)` once a block, in the block
-interrupt, with the reply copy, as it calls `phrase_write_frame`: it reads the fourteen cells and keeps the newest `OVL2`
-carrier (its magic, and its packed word 7 zero). It only reads; what the other adapters get is unchanged.
+The engine publishes sixteen words in `_loop_ui_status` at the end of a block. `core/dsp-link` sends the status in fourteen
+spare reply cells. PRISM uses the same cells in three blocks of four, so the DSP link calls `loop_reply_frame(rec)` in the
+block interrupt on each normal DTII reply. The `OVL3` marker identifies the status and word 7 checks all twelve payload
+words. The interrupt validates the checksum, loop flag and length before it updates the newest status or waveform.
 `loop_ui_tick`, once a UI pass, copies the newest carrier with the interrupt masked for that bounded copy and takes it
 when the block interrupt found a new one ([finding 363](../../../../docs/findings/363-loop-link-jitter.md)). A status without
 a new heartbeat for 60 passes is not fresh.

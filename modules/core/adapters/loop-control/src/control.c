@@ -12,9 +12,6 @@ typedef uint16_t u16;
 extern u32 dkrt_irq_mask(void);
 extern void dkrt_irq_restore(u32);
 
-#define WIRE_MAGIC 0x4f564c32u
-/* the carrier's words in the reply */
-#define WIRE_WORDS 14u
 /* register::effect_id of the loop effect: the module id of Overloop and its effect id "loop" */
 #define LOOP_EFFECT 0xca1bu
 /* UI passes without a new heartbeat after which the status is not fresh */
@@ -24,13 +21,15 @@ extern void dkrt_irq_restore(u32);
 u32 loop_control_raw[LP_COUNT];
 #define raw loop_control_raw
 static u32 status[LS_WORDS];
-static u32 age = 2 * STALE, last_seq;
+static volatile u32 age = 2 * STALE;
+static u32 last_seq;
 /* The newest carrier the block interrupt found in a reply, and how many it found (it writes both; the UI task copies them
  * with the interrupt masked). The count the UI task took last. */
-static volatile u32 newest[WIRE_WORDS], newest_count;
-static u32 taken_count;
+static volatile u32 newest[LS_WIRE_WORDS], newest_count;
+static volatile u32 taken_count;
 /* The native FX page of the loop effect, as the fx service last said, and the UI passes since it said so. */
 static u32 page, asked = 2 * STALE;
+#include "wave.inc"
 /* Diagnostics for the device test: status updates taken, and loops the home has seen. */
 u32 loop_control_updates, loop_control_seen;
 
@@ -92,9 +91,10 @@ int fx_held_values(u32 id, u32 native_page, u16 *out)
 
 /* A status the DSP returned (LS_WORDS words; words 7, 14 and 15 are 0). A new loop sets the crossfader to LOOP, where the
  * engine holds it until it reads this count back in LP_SEEN. */
-void loop_control_status(const u32 *words)
+static void loop_control_status(const u32 *words)
 {
-    if (words[LS_HEARTBEAT] == last_seq)
+    int32_t advance = (int32_t)(words[LS_HEARTBEAT] - last_seq);
+    if (!advance || (advance < 0 && age < STALE))
         return;
     last_seq = words[LS_HEARTBEAT];
     age = 0;
@@ -116,20 +116,34 @@ void loop_control_status(const u32 *words)
  * DSP and the ColdFire have different byte order). Short: fourteen words, no allocation. */
 void loop_reply_frame(const volatile u16 *p)
 {
-    u32 w[WIRE_WORDS];
+    u32 w[LS_WIRE_WORDS];
     if (!p)
         return;
-    for (u32 j = 0; j < WIRE_WORDS; ++j) {
+    /* Check the envelope before interpreting either the state or the heartbeat. The same frame cells also carry PRISM
+     * and RELAY replies, and a mixed copy can have plausible state and length under the loop marker. */
+    u32 check = LS_WIRE_MAGIC;
+    for (u32 j = 0; j < LS_WIRE_WORDS; ++j) {
         /* The carrier's cells: +0x44 and +0x48 of rows 17 to 20 and 29 to 31. FX diagnostics own rows 1 to 16,
          * instruments 21 to 28. */
         u32 row = j < 8 ? 17 + j / 2 : 29 + (j - 8) / 2;
         u32 off = (0x1c + 0x54 * row + 0x44 + (j & 1) * 4) / 2;
         w[j] = p[off] | ((u32)p[off + 1] << 16);
+        if (!j && w[j] != LS_WIRE_MAGIC)
+            return;
+        if (j && j != LS_WIRE_CHECK)
+            check = ((check << LS_WIRE_ROT) | (check >> (32 - LS_WIRE_ROT))) ^ w[j];
     }
-    /* The carrier packs words 7, 14 and 15 into its word 7: this engine leaves them 0. */
-    if (w[0] != WIRE_MAGIC || w[7])
+    if (w[LS_WIRE_CHECK] != check || ((w[LS_STATE] & LS_LOOP) != (w[LS_LOOP_FRAMES] != 0)))
         return;
-    for (u32 j = 0; j < WIRE_WORDS; ++j)
+    /* The checksum occupies a reserved carrier word, not part of the engine's logical status. */
+    w[LS_WIRE_CHECK] = 0;
+    /* Order against the last packet admitted by the interrupt, including any packet still waiting for the UI.
+     * A genuinely restarted stream can begin at a lower heartbeat after the old stream expires. */
+    int32_t advance = (int32_t)(w[LS_HEARTBEAT] - newest[LS_HEARTBEAT]);
+    if (!advance || (advance < 0 && (age < STALE || newest_count != taken_count)))
+        return;
+    wave_accept(w);
+    for (u32 j = 0; j < LS_WIRE_WORDS; ++j)
         newest[j] = w[j];
     ++newest_count;
 }
@@ -142,13 +156,13 @@ void loop_ui_tick(void)
     loop_control_pass();
     u32 sr = dkrt_irq_mask();
     u32 count = newest_count;
-    for (u32 j = 0; j < WIRE_WORDS; ++j)
+    for (u32 j = 0; j < LS_WIRE_WORDS; ++j)
         words[j] = newest[j];
     dkrt_irq_restore(sr);
     if (count == taken_count)
         return;
-    taken_count = count;
     words[LS_MAGIC] = LS_MAGIC_VALUE;
     words[14] = words[15] = 0;
     loop_control_status(words);
+    taken_count = count;
 }

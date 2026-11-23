@@ -180,7 +180,9 @@ static int emit(MiLedger *m, uint32_t token, uint32_t gen, uint8_t track, uint8_
     e->lock_count = 0;
     for (uint32_t j = 0; j < MI_LOCKS; ++j)
         e->locks[j] = 0;
-    e->source_valid = 0;
+    e->source_valid = e->shared_lanes = 0;
+    e->sound_tune = 0;
+    e->sound_controls = 0;
     for (uint32_t j = 0; j < MI_SOURCE_VALUES; ++j)
         e->source[j] = 0;
     ++m->count; /* publish last, while caller holds its critical section */
@@ -198,6 +200,18 @@ static MiKey *oldest(MiLedger *m, uint8_t port, uint8_t channel, uint8_t note)
             found = k;
     }
     return found; /* tokens never wrap within an ownership epoch */
+}
+
+int mi_release_known(MiLedger *m, uint8_t port, uint8_t channel, uint8_t note, uint8_t velocity)
+{
+    MiKey *key = oldest(m, port, channel, note);
+    if (!key)
+        return 0;
+    if (!key->tombstone)
+        emit(m, key->token, key->generation, key->track, MI_NOTE_OFF, port, channel, note,
+             velocity);
+    key->used = 0;
+    return 1;
 }
 
 int mi_message(MiLedger *m, uint32_t port, const uint8_t *msg, uint32_t len)
@@ -220,17 +234,8 @@ int mi_message(MiLedger *m, uint32_t port, const uint8_t *msg, uint32_t len)
         return 0;
     if (kind == 11 && note != 1 && note != 64 && note != 120 && note != 121 && note != 123)
         return 0;
-    if (kind == 8) {
-        k = oldest(m, (uint8_t)port, channel, note);
-        if (k) {
-            if (!k->tombstone)
-                emit(m, k->token, k->generation, k->track, MI_NOTE_OFF, (uint8_t)port, channel,
-                     note, value);
-            k->used = 0;
-            return 1;
-        }
-        return r->track != MI_NONE;
-    }
+    if (kind == 8)
+        return mi_release_known(m, (uint8_t)port, channel, note, value) || r->track != MI_NONE;
     if (r->quarantined)
         return 1;
     if (r->track == MI_NONE)
@@ -458,6 +463,9 @@ int mi_peek(MiLedger *m, MiEvent *out)
         for (uint32_t i = 0; i < MI_LOCKS; ++i)
             out->locks[i] = e->locks[i];
         out->source_valid = e->source_valid;
+        out->shared_lanes = e->shared_lanes;
+        out->sound_tune = e->sound_tune;
+        out->sound_controls = e->sound_controls;
         for (uint32_t i = 0; i < MI_SOURCE_VALUES; ++i)
             out->source[i] = e->source[i];
     }

@@ -168,7 +168,7 @@ export function prepareRuntimePlanListedOffline(
   directory: string,
   artifacts: string,
   symbols: string[],
-  selection: { modules: string[] },
+  selection: { modules: string[]; timeoutMs?: number },
 ): Promise<PreparedRuntimePlan> {
   return prepareOfflineWith(copyListed(options.device), options, directory, artifacts, symbols, selection);
 }
@@ -180,7 +180,7 @@ export async function prepareOfflineWith(
   directory: string,
   artifacts: string,
   symbols: string[],
-  selection?: { modules: string[] },
+  selection?: { modules: string[]; timeoutMs?: number },
 ): Promise<PreparedRuntimePlan> {
   const { device, firmware } = options;
   if (selection && (selection.modules.length === 0 || selection.modules.some((id) => !id || id.includes(',')))) {
@@ -204,7 +204,7 @@ export async function prepareOfflineWith(
       '--addrmap',
       planFile.replace(/\.plan\.json$/, '.addrmap.json'),
     ],
-    { timeout: 30_000 },
+    { timeout: selection?.timeoutMs ?? 30_000 },
   );
   fs.writeFileSync(path.join(artifacts, 'patch.log'), `${patch.stdout}\n${patch.stderr}`);
   const plan: RuntimePlan = JSON.parse(fs.readFileSync(planFile, 'utf8'));

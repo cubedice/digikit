@@ -32,6 +32,7 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
     ],
     externs: {
       _relay_external: ext,
+      _relay_main: ext + 10240,
       _rtm_command: cmd,
       _relay_status: status,
       _relay_request: status + 256,
@@ -40,6 +41,9 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
       _pattern_position_info: status + 1024,
       _rtm_bus: ext + 4096,
       _rtm_mod_frame: ext + 12288,
+      _tk_pool_head_owner: 0,
+      _mi_envelope_records: 0,
+      _dv_exp2: 0,
     },
     returnSw: ret,
   });
@@ -97,6 +101,7 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
   }
   const controls = (speed: number, head: number, feedback = 50, mix = 100) =>
     block(11, (100 << 5) | (feedback << 12) | (mix << 19), speed, head);
+  const wave = (words: (number | null)[]) => (words[13]! >>> 8) & 0xffff;
   async function reset() {
     const state = ext + 2048,
       abi = ext + 2304;
@@ -112,15 +117,22 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
     input(true);
     let b = await block(1, 0, 0, 512, 16);
     expect(b.status[5]).toBe(512);
+    expect(b.status[12]).toBe(0);
+    expect(wave(b.status)).toBe(0xc060); // −0.25 from the right and +0.5 from the left.
     input();
-    for (const amp of [0.5, 0.25, 0.125]) {
+    for (const [i, amp] of [0.5, 0.25, 0.125].entries()) {
+      if (i === 1) rig.poke(status / 4, 0); // The link handed the previous window to ColdFire.
       b = await block();
       expect(b.audio[0]).toBeCloseTo(amp, 5);
       expect(b.audio[32]).toBeCloseTo(-amp / 2, 5);
+      expect(b.status[12]).toBe(i === 0 ? 0 : 64);
+      // The stored echo has 50% feedback applied after the read head outputs it.
+      expect(wave(b.status)).toBe(i === 0 ? 0xc060 : 0x9078);
     }
     for (let i = 4; i < 16; ++i) b = await block();
     expect(b.status[2]! & 15).toBe(0);
     expect(b.status[11]! >>> 8).toBe(16);
+    expect(wave(b.status)).toBe(0x00ff);
     // A panel launch binds the voice first. A played note is an independent reset.
     await reset();
     await controls(65536, 65536, 0);
@@ -216,12 +228,18 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
     b = await block(1);
     expect(b.audio[0]).toBeCloseTo(0.5, 5);
     expect(b.audio[32]).toBeCloseTo(-0.25, 5);
-    // Stop a live punch after a sustained stereo note. The final wet block fades to zero.
+    // PLAY leaves an open punch alone. Once WRITE closes it, pausing a
+    // sustained stereo take still fades the final wet block to zero.
     for (let i = 0; i < 32; ++i) {
       rig.poke(ext / 4 + i, f2w(0.5));
       rig.poke(ext / 4 + 32 + i, f2w(-0.25));
     }
-    await block();
+    b = await block(3);
+    expect(b.status[2]! & 15).toBe(2);
+    expect(b.status[7]! & 1).toBe(1);
+    for (let i = 0; i < 16; ++i) await block();
+    b = await block(15);
+    expect(b.status[2]! & 15).toBe(0);
     input();
     b = await block(3);
     expect(b.status[7]! & 1).toBe(0);
@@ -243,6 +261,10 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
     expect(b.status[6]).toBe(32);
     b = await block(15);
     expect(b.status[2]! & 15).toBe(2);
+    const punchPosition = b.status[6]!;
+    expect(punchPosition).toBeGreaterThan(0);
+    await reset();
+    expect(await rig.peek(row + 1, 1)).toEqual([punchPosition]);
     rig.poke(clock, 0);
     rig.poke(clock + 5, 0);
     b = await block(13);
@@ -290,6 +312,95 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
     setLanes(Array(6).fill(0x4000));
     await block();
     expect(await effective()).toEqual(neutral);
+
+    // A half-speed first pass keeps its exact duration, downsampling each
+    // pair of arrivals instead of overwriting the first with the second.
+    rig.poke(clock + 5, 0);
+    await block(14);
+    await block(9);
+    rig.poke(timing / 4 + 1, 65); // The first pass latches the current pattern length at its boundary.
+    await controls(32768, 0, 0);
+    for (let i = 0; i < 32; ++i) {
+      rig.poke(ext / 4 + i, f2w(i % 2 === 0 ? 0.5 : 0));
+      rig.poke(ext / 4 + 32 + i, f2w(i % 2 === 0 ? 0 : -0.25));
+    }
+    b = await block(1, 0, 0, 65, 16);
+    expect(b.status[5]).toBe(65);
+    expect(b.audio.slice(0, 2)).toEqual([0.5, 0]);
+    expect(b.audio.slice(32, 34)).toEqual([0, -0.25]);
+    await block();
+    b = await block();
+    expect(b.status[2]! & 15).toBe(0);
+    expect(b.status[5]).toBe(65);
+    expect(await sample(0)).toBe(0x2000f000);
+    expect(await sample(31)).toBe(0x2000f000);
+    expect(await sample(32), 'final partial cell').toBe(0x40000000);
+    expect(await sample(33), 'untouched part of the tape').toBe(0);
+
+    // At FULL, fractional monitoring must not recirculate the neighboring
+    // cell into an otherwise silent unity-feedback punch in either direction.
+    input();
+    const checkCells = [0, 31, 32, 33, 64];
+    const beforePunch = [0x2000f000, 0x2000f000, 0x40000000, 0, 0];
+    for (const rate of [32768, -32768]) {
+      await controls(rate, 65536, 100);
+      await reset();
+      await block(1);
+      for (let i = 0; i < 4; ++i) await block();
+      b = await block(2);
+      expect(b.status[2]! & 15).toBe(0);
+      for (const [i, cell] of checkCells.entries())
+        expect(await sample(cell), `FULL punch at Q16 rate ${rate}, frame ${cell}`).toBe(beforePunch[i]);
+    }
+
+    // Closing a slow punch before the current cell boundary still prints the
+    // arrivals from that last partial cell and leaves later cells untouched.
+    await controls(24248, 0, 0); // about +0.37x
+    await reset();
+    for (let i = 0; i < 32; ++i) {
+      rig.poke(ext / 4 + i, f2w(0.125));
+      rig.poke(ext / 4 + 32 + i, f2w(-0.25));
+    }
+    b = await block(1);
+    expect(b.status[6]).toBe(11);
+    input();
+    await block(2);
+    expect(await sample(11)).toBe(0x1000e000);
+    expect(await sample(12)).toBe(0x2000f000);
+
+    // MAIN captures the final stereo tap. It is never passed back through dry monitoring.
+    await block(14);
+    await block(9);
+    input(true);
+    for (let i = 0; i < 32; ++i) {
+      rig.poke((ext + 10240) / 4 + i, f2w(0.125));
+      rig.poke((ext + 10240) / 4 + 32 + i, f2w(-0.25));
+    }
+    const main = 19 | (100 << 5);
+    b = await block(11, main, 65536, 65536);
+    expect(b.audio.every((sample) => sample === 0)).toBe(true);
+    expect((await block(3, 19)).status[5]).toBe(0); // PLAY with no take is a no-op.
+    b = await block(15, 19, 0, 65, 16);
+    expect(b.status[2]! & 15).toBe(1);
+    b = await block(3, 19);
+    expect(b.status[2]! & 15).toBe(1); // PLAY cannot close the first pass.
+    expect(b.audio.every((sample) => sample === 0)).toBe(true);
+    b = await block();
+    expect(b.status[2]! & 15).toBe(0);
+    expect(b.status[5]).toBe(65);
+    expect(await sample(0)).toBe(0x1000e000);
+    expect(await sample(64)).toBe(0x1000e000);
+
+    // A shortened loop wraps at the selected prefix. The complete take stays in the pool.
+    b = await block(11, main | (100 << 19), 65536, 65536, (32768 << 16) | 16);
+    expect(b.status[5]).toBe(65);
+    const quarter = (await block()).status[6]!;
+    expect(quarter).toBeLessThan(32);
+    expect((await block()).status[6]).toBe(quarter);
+    expect(await sample(64)).toBe(0x1000e000);
+    b = await block(11, main | (100 << 19), 65536, 65536, 16);
+    expect((await block()).status[6]).not.toBe(b.status[6]);
+    expect(await sample(64)).toBe(0x1000e000);
   } finally {
     await rig.close();
   }

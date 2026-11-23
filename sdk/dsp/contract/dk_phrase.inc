@@ -33,7 +33,7 @@
 // The engine's controls. A value out of range is clamped; a float that is not finite is a link fault.
 //   ZONE      int 1..8    the time range. A change crossfades.
 //   RATE      float 0..1  the position inside the zone: time = low * (high / low) ^ RATE. A change glides.
-//   FLAGS     bits        PH_F_SYNC, PH_F_FLIP, PH_F_HOLD.
+//   FLAGS     bits        PH_F_SYNC, PH_F_FLIP, PH_F_HOLD, PH_F_PING_PONG.
 //   SYNC_TIME int frames  with SYNC: the time, a ratio of the zone's 1/1 at the tempo (the provider's, below). A change
 //                         crossfades.
 //   RPTS      float 0..1  repeats: 0 one echo, 0.75 unity, 1 a gain of 1.1.
@@ -67,6 +67,8 @@
 #define PH_F_SYNC 1
 #define PH_F_FLIP 2
 #define PH_F_HOLD 4
+// Mono ping-pong at SKEW centre, stereo feedback swap off centre.
+#define PH_F_PING_PONG 8
 #define PH_ZONES 8
 
 // ---- the status mailbox, 32 words, written by the engine once a block and carried back to the provider.
@@ -99,6 +101,7 @@
 
 // ---- the raw values the page turns and the provider keeps (dkrt_phrase_get / dkrt_phrase_set).
 //   ZONE 0..7; RATE 0..PH_RATE_MAX in fine steps (an encoder detent is PH_RATE_COARSE of them); SYNC, FLIP, HOLD 0 or 1;
+//   PING_PONG 0 or 1, saved.
 //   RATIO 0..PH_SYNC_RATIOS - 1, the ratio of the zone's 1/1 used with SYNC (below); RPTS 0..127 with PH_RPTS_UNITY as
 //   unity; COLR and SKEW 0..127 with 64 as the centre; HALO, MIX 0..127; INPT 0 or 1, not saved: the page's G turns it at
 //   any time, and it goes to LOOP by itself at a new loop and to LIVE when the loop is dropped or the loop effect stops
@@ -120,7 +123,8 @@
 #define PH_P_INPT 11
 #define PH_P_XFAD 12
 #define PH_P_TRKS 13
-#define PH_PARAM_COUNT 14
+#define PH_P_PING_PONG 14
+#define PH_PARAM_COUNT 15
 #define PH_TRACKS 16
 #define PH_TRACKS_ALL 0xffff
 #define PH_SEND_FULL 127

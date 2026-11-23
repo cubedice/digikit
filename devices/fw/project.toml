@@ -79,3 +79,83 @@ rule = { kind = "cf_window_hash", search_len = 16, offset = 2, sha256 = "2882d82
 mark = "D"
 users = ["core/instrument-play"]
 doc = "DT2 1.17 literal of `addi.l #pool,d0` after `muls.l #0x450` with the index bounded to 127: the 128-entry Sound pool."
+
+[[site]]
+name = "cf.project.site.pattern_save"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_func", hash = "6df46a46c46e4c89c1008492e277ba48", offset = 0, len = 8 }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Pattern v4 serializer (out record, live pattern, mode)."
+
+[[hook]]
+name = "cf.project.hook.pattern_save"
+site = "cf.project.site.pattern_save"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Replay the displaced prologue and synchronize the track keyboard data after the stock operation."
+
+[[site]]
+name = "cf.project.site.pattern_load"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_func", hash = "c584dc2f2874e3f5f8453de024b1c124", offset = 0, len = 8 }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Pattern v4 loader (live pattern, input record, index)."
+
+[[hook]]
+name = "cf.project.hook.pattern_load"
+site = "cf.project.site.pattern_load"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Replay the displaced prologue and synchronize the track keyboard data after the stock operation."
+
+[[site]]
+name = "cf.project.site.pattern_reset"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_func", hash = "b764a2b281b14cb4db905b3a522acdfc", offset = 0, len = 8 }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Whole-pattern initializer (pattern, index)."
+
+[[hook]]
+name = "cf.project.hook.pattern_reset"
+site = "cf.project.site.pattern_reset"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Replay the displaced prologue and synchronize the track keyboard data after the stock operation."
+
+[[site]]
+name = "cf.project.site.track_clear"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 8, sha256 = "c31cf4eb13457c2e1e531ac68bc31e4423f02b917ac59ef4fd2b343090829f58" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Stock track clear (track ID, track data, lock list, note list)."
+
+[[hook]]
+name = "cf.project.hook.track_clear"
+site = "cf.project.site.track_clear"
+cpu = "cf"
+devices = ["dt2"]
+mode = "before"
+regs = { in = [], clobbers = ["ccr"] }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Clear the attachment for the same native track and let the stock clear continue."

@@ -22,6 +22,9 @@ typedef struct {
     IlpPair pair[ILP_LANES];
 } IlpSnapshot;
 
+/* Decodes only entries on the five reserved runtime parameter indices. */
+int ilp_event_pair(uint16_t parameter, int16_t packed, uint32_t *id, uint32_t *value);
+
 /* For an owned event, atomically extract tagged CANOPY entries from the five
  * selected carrier indices, keeping stock entries in order. Returns 1 for a
  * valid event (including zero locks), 0 for an unowned event, or a negative

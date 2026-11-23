@@ -217,6 +217,8 @@ def built():
         "loop_reply_frame": 0,
         "relay_reply_frame": 0,
         "relay_write_frame": 0,
+        "tk_pool_link_write": 0,
+        "tk_pool_link_reply": 0,
     }
     return front_end.cf_link(
         [MOD / "src/cf/dsp-link.c"], BASE, syms, [MOD / "build/gen"]
@@ -255,6 +257,8 @@ pp_write_frame:
         "loop_reply_frame": 0,
         "relay_reply_frame": 0,
         "relay_write_frame": 0,
+        "tk_pool_link_write": 0,
+        "tk_pool_link_reply": 0,
     }
     return front_end.cf_link(
         [MOD / "src/cf/dsp-link.c", stub], BASE, syms, [MOD / "build/gen"]
@@ -291,6 +295,8 @@ void instrument_write_frame(uint32_t tx, uint32_t entry, const volatile uint16_t
         "loop_reply_frame": 0,
         "relay_reply_frame": 0,
         "relay_write_frame": 0,
+        "tk_pool_link_write": 0,
+        "tk_pool_link_reply": 0,
     }
     if not locks:
         syms["instrument_write_lock_frame"] = 0

@@ -40,6 +40,7 @@
 #define RT_SEEK_READ 16
 #define RT_SEEK_WRITE 17
 #define RT_HOME_READ 18
+#define RT_INPUT_MAIN 19
 #define T_STRIDE_SHIFT 9
 #define T_ACTIVE 0
 #define T_RATE 1
@@ -66,6 +67,8 @@
 #define T_EFF_GAIN 23
 #define T_EFF_POSITION 24
 #define T_READ_OFFSET 25
+// Optional Q16 fraction of the recorded take, 0 means full length.
+#define T_LOOP_Q16 31
 #define T_LEFT 32
 #define T_RIGHT 64
 

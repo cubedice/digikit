@@ -3,6 +3,7 @@
 #endif
 #include <stdint.h>
 #include <dk/fxview.h>
+#include <dk/platform/ui.h>
 #include "../../instrument-play/src/cf/sound-persist.h"
 #include "dk_fw_view.h"
 #include "dk_fw_input.h"
@@ -16,10 +17,14 @@ extern const u32 machines_info[];
 extern u32 rtm_type(u8 *), rtm_track(u32), pp_record_frames(u32), pp_record_steps(void);
 extern u32 dkrt_irq_mask(void);
 extern void dkrt_irq_restore(u32);
+extern void ip_src_draw_rotary(u8 *view, u8 *canvas, u32 cell, u32 value);
+extern void ip_src_focus_touch(u8 *, u32);
+extern u8 ip_src_focus_active(u8 *, u32);
 struct Settings {
-    unsigned input, lane, hits, sensitivity, mark;
+    unsigned input, hits, sensitivity;
     int rate;
     unsigned gain, feedback, mix, spacing; // 65536 is one complete lap.
+    unsigned loop_q16;
 };
 static struct Settings settings[16];
 static unsigned relay_type, mod_ready;
@@ -28,32 +33,33 @@ struct Command {
     u32 sequence, operation, track, source, length, arg, end;
 };
 static struct Command queue[8];
-static unsigned head, count, sequence, track = 16, page, audition, confirm, held;
+static unsigned head, count, sequence, track = 16, page, confirm, held;
 static int travel[8];
-static unsigned edit_gain, source_shortcut, pending_settings;
-static u8 live_peaks[106];
-static unsigned live_track = 16;
+static unsigned edit_gain, source_shortcut, pending_settings, focus, paint_values;
+enum { WAVE_COLUMNS = 106 };
+static uint16_t live_peaks[RELAY_WAVE_BINS];
+static unsigned live_track = 16, live_frames, live_revision, live_mode;
 static volatile u32 latest[14], received;
 static u32 status[14], seen, read_offset;
 static volatile u32 latest_read_offset;
 static unsigned play_click_track = 16;
 static u32 play_click_at;
 extern u32 instrument_src_now(void);
-static unsigned scan_slot = 48, scan_revision, scan_hits, scan_sens;
+static unsigned scan_slot = 48, scan_revision;
 static void num(char *s, unsigned n);
 static void refresh_waveform(void);
 static void refresh_launch(void);
+static void preview_waveform(void);
 static const char *notice;
-static unsigned notice_time, redraw = 1;
+static unsigned redraw = 1;
+extern dk_ui *dk_ui_core_handle(void);
 static const char *const inputs[] = {"EXT LR", "EXT L", "EXT R", "T01", "T02", "T03", "T04",
                                      "T05",    "T06",   "T07",   "T08", "T09", "T10", "T11",
-                                     "T12",    "T13",   "T14",   "T15", "T16"};
-static const char *const lanes[] = {"MAIN", "T1", "T2"};
+                                     "T12",    "T13",   "T14",   "T15", "T16", "MAIN"};
 static void say(const char *s)
 {
     redraw = 1;
     notice = s;
-    notice_time = 60;
 }
 static int send_to(unsigned track, unsigned op, unsigned arg, unsigned end)
 {
@@ -70,6 +76,7 @@ static int send_to(unsigned track, unsigned op, unsigned arg, unsigned end)
             command.source |= relay_type << 26;
         command.length = (u32)(s->rate * 65536 / 100);
         command.arg = s->spacing;
+        command.end = (end & 65535) | s->loop_q16 << 16;
     }
     // Combine adjacent detents without changing the command already in flight.
     if (count > 1 && (op == RT_SEEK_READ || op == RT_SEEK_WRITE) && end) {
@@ -83,7 +90,7 @@ static int send_to(unsigned track, unsigned op, unsigned arg, unsigned end)
     }
     if (count > 1 && op == RT_SETTINGS && !end) {
         struct Command *tail = &queue[(head + count - 1) & 7];
-        if (tail->operation == op && tail->track == track && !tail->end) {
+        if (tail->operation == op && tail->track == track && !(tail->end & 65535)) {
             *tail = command;
             dkrt_irq_restore(sr);
             return 1;
@@ -126,12 +133,34 @@ static void finish_play_click(void)
         play_click_track = 16;
     }
 }
+static unsigned loop_frames(unsigned length, unsigned loop_q16)
+{
+    if (!loop_q16 || length < 4)
+        return length;
+    unsigned span = (length >> 16) * loop_q16 + ((length & 65535) * loop_q16 >> 16);
+    return span < 4 ? 4 : span;
+}
+static unsigned loop_steps(unsigned steps, unsigned loop_q16)
+{
+    if (!loop_q16)
+        return steps;
+    unsigned shown = (steps * loop_q16 + 32768) >> 16;
+    return shown ? shown : 1;
+}
+static int first_pass(void)
+{
+    return (status[2] & 15) == 1 && (status[2] >> 8) == track;
+}
+static unsigned current_loop_q16(void)
+{
+    return first_pass() ? 0 : settings[track].loop_q16;
+}
 static void play_click(u32 now)
 {
     if (play_click_track == track && now - play_click_at < 240) {
         play_click_track = 16;
         if (status[4] == track && status[5])
-            send(RT_HOME_READ, 0, status[5]);
+            send(RT_HOME_READ, 0, loop_frames(status[5], settings[track].loop_q16));
         return;
     }
     finish_play_click();
@@ -189,31 +218,39 @@ static void publish_sound(unsigned t);
 static unsigned recall_choice(unsigned key);
 void relay_ui_pass(void)
 {
-    static unsigned last_file_state;
+    static unsigned last_file_state, last_scan_progress;
     if (play_click_track < 16 && instrument_src_now() - play_click_at >= 240)
         finish_play_click();
     relay_files_tick();
     tape_sound_tick();
+    unsigned progress = relay_files.action == RF_SCAN && relay_files.slot == scan_slot &&
+                                track < 16 && scan_slot % 16 == track
+                            ? relay_files.progress
+                            : 0;
+    if (progress != last_scan_progress) {
+        last_scan_progress = progress;
+        redraw = 1;
+    }
     if (last_file_state != relay_files.state) {
         last_file_state = relay_files.state;
         redraw = 1;
-        if (last_file_state == RF_SAVED)
-            say(tape_saved() ? "SAVE SOUND AGAIN" : "SAVED");
+        if (last_file_state == RF_SAVED && tape_saved())
+            say("SAVE SOUND AGAIN");
         if (last_file_state == RF_LOADED)
             tape_loaded();
         if (last_file_state == RF_FAILED)
             tape_file_failed();
-        if (last_file_state == RF_FAILED &&
-            (relay_files.action != RF_SCAN || scan_slot % 16 == track))
-            say(relay_files.action == RF_SCAN ? "NO WAVE"
-                : relay_files.error           ? relay_files.error
-                                              : "FILE FAILED");
+        if (last_file_state == RF_FAILED && relay_files.action != RF_SCAN)
+            say(relay_files.error ? relay_files.error : "FILE FAILED");
         if (!relay_files.overview.frames && relay_files.action != RF_SCAN &&
             (last_file_state == RF_SAVED || last_file_state == RF_FAILED))
             scan_slot = 48;
     }
-    if (notice_time && !--notice_time)
-        redraw = 1;
+    if (notice) {
+        if (track < 16)
+            dk_ui_toast(dk_ui_core_handle(), notice);
+        notice = 0;
+    }
     if (seen == received)
         return;
     u32 sr = dkrt_irq_mask();
@@ -233,14 +270,13 @@ void relay_ui_pass(void)
     }
     seen = received;
     int ack = count && queue[head].sequence == latest[1];
+    unsigned ack_track = ack ? queue[head].track : 16;
     if (ack) {
         if (queue[head].operation == RT_SHARE)
             share_result(queue[head].track, latest[13] & 255);
         head = (head + 1) & 7;
         --count;
     }
-    if (focused && !count)
-        audition = (status[8] >> 2) & 1;
     dkrt_irq_restore(sr);
     if (ack && pending_settings) {
         for (unsigned t = 0; t < 16; ++t) {
@@ -251,10 +287,10 @@ void relay_ui_pass(void)
         }
     }
     static const char *const errors[] = {
-        "",      "RAM FULL",    "LANES FULL", "RECORD MAIN FIRST", "RECORDER BUSY",
+        "",      "RAM FULL",    "LANES FULL", "NO TAKE", "RECORDER BUSY",
         "LIMIT", "SET PAT LEN", "SAME TRACK"};
     unsigned error = status[13] & 255;
-    if (focused && ack && error && error < 8) {
+    if (focused && ack_track == track && error && error < 8) {
         static char detail[24];
         if (error == 1) {
             const char *prefix = "RAM FULL ";
@@ -284,21 +320,11 @@ void relay_ui_pass(void)
         view_pending = 0;
     refresh_launch();
     if (focused) {
-        if ((status[2] & 31) == 1 && (status[2] >> 8) == track && status[5]) {
-            if (live_track != track || status[12] <= 32)
-                for (unsigned i = 0; i < 106; ++i)
-                    live_peaks[i] = 0;
-            live_track = track;
-            unsigned bin = (status[6] % status[5]) * 106 / status[5];
-            unsigned l = (status[13] >> 8) & 127, r = (status[13] >> 16) & 127;
-            live_peaks[bin] = l > r ? l : r;
-        } else {
-            live_track = 16;
-            refresh_waveform();
-        }
+        preview_waveform();
+        refresh_waveform();
     }
 }
-static int owns(unsigned type)
+int rtm_is_type(unsigned type)
 {
     unsigned first = machines_info[3];
     if (type < first || type - first >= machines_info[4])
@@ -313,7 +339,7 @@ u32 rtm_mod_param(u32 type, u32 mirror)
 {
     static const u8 *const descriptors[] = {&rtm_mod_rate, &rtm_mod_spacing, &rtm_mod_feedback,
                                             &rtm_mod_mix,  &rtm_mod_gain,    &rtm_mod_position};
-    if (!owns(type))
+    if (!rtm_is_type(type))
         return UINT32_MAX;
     for (unsigned i = 0; i < 6; ++i)
         if (mirror == mod_mirrors[i])
@@ -322,7 +348,7 @@ u32 rtm_mod_param(u32 type, u32 mirror)
 }
 int rtm_mod_carrier(u32 type)
 {
-    return type == relay_type && owns(type);
+    return type == relay_type && rtm_is_type(type);
 }
 static u32 sent_launch;
 static volatile u32 need_sound;
@@ -376,53 +402,81 @@ const uint16_t *rtm_gate_frame(const uint16_t *src)
     // stays at full velocity on subsequent note edges until the motor stops.
     continuous &= latest[4] >> 16;
     if (!src || src[0x15] || !(rising | (continuous & (src[0x11] | src[0x12]))) || !relay_type ||
-        !owns(relay_type))
+        !rtm_is_type(relay_type))
         return src;
     return project_gate(src, rising);
 }
 static void leave(void)
 {
     finish_play_click();
-    notice_time = 0;
-    audition = held = confirm = edit_gain = source_shortcut = 0;
+    notice = 0;
+    held = confirm = edit_gain = source_shortcut = focus = 0;
     for (unsigned i = 0; i < 8; ++i)
         travel[i] = 0;
 }
-static const struct RelayOverview *current_wave(unsigned markers)
+static const struct RelayOverview *current_wave(void)
 {
     if (track >= 16 || status[4] != track)
         return 0;
-    struct Settings *s = settings + track;
-    unsigned lane = page ? s->lane : 0;
-    return rtm_wave(track + 16 * lane, status[9], status[5], markers, s->sensitivity + 1);
+    return rtm_wave(track, status[9], status[5], 0, 1);
+}
+static void preview_waveform(void)
+{
+    unsigned mode = status[2] & 31, length = status[5], revision = status[9];
+    if ((status[2] >> 8) != track || (mode != 1 && mode != 2) || !length) {
+        if (live_track == track && revision == live_revision)
+            live_track = 16;
+        return;
+    }
+    if (live_track != track || live_frames != length || live_revision != revision ||
+        live_mode != mode) {
+        for (unsigned i = 0; i < RELAY_WAVE_BINS; ++i)
+            ((volatile uint16_t *)live_peaks)[i] = RELAY_WAVE_EMPTY;
+        live_track = track;
+        live_frames = length;
+        live_revision = revision;
+        live_mode = mode;
+    }
+    uint16_t wave = (uint16_t)(status[13] >> 8);
+    if (wave == RELAY_WAVE_EMPTY)
+        return;
+    unsigned span = mode == 1 ? length : loop_frames(length, settings[track].loop_q16);
+    unsigned first = status[12] % span, last = status[6] % span;
+    if ((last + span - first) % span > span / 2) {
+        unsigned swap = first;
+        first = last;
+        last = swap;
+    }
+    first = first * RELAY_WAVE_BINS / length;
+    last = last * RELAY_WAVE_BINS / length;
+    unsigned end = (span - 1) * RELAY_WAVE_BINS / length;
+    for (unsigned bin = first;; bin = bin == end ? 0 : bin + 1) {
+        uint16_t peak = relay_wave_join(live_peaks[bin], wave);
+        if (peak != live_peaks[bin]) {
+            live_peaks[bin] = peak;
+            redraw = 1;
+        }
+        if (bin == last)
+            break;
+    }
 }
 static void refresh_waveform(void)
 {
-    if (track >= 16 || !seen || status[4] != track)
+    if (track >= 16 || !seen || status[4] != track || !status[5])
         return;
     if ((status[2] & 15) && (status[2] >> 8) == track)
         return;
-    struct Settings *s = settings + track;
-    if (s->lane && !(status[8] & (1u << (s->lane - 1))))
-        s->lane = 0;
-    unsigned lane = page ? s->lane : 0;
-    unsigned slot = track + 16 * lane, hits = page && !lane && s->hits;
-    unsigned sens = hits ? s->sensitivity + 1 : 1;
-    if (current_wave(hits) || !status[5])
+    if (current_wave())
         return;
-    if (slot == scan_slot && scan_revision == status[9] && hits == scan_hits && sens == scan_sens &&
-        relay_files.action == RF_SCAN &&
+    if (track == scan_slot && scan_revision == status[9] && relay_files.action == RF_SCAN &&
         (relay_files.state == RF_WORK || relay_files.state == RF_FAILED))
         return;
     if (relay_files.state == RF_WORK && relay_files.action != RF_SCAN)
         return;
-    s->mark = 0;
-    if (status[5] && !relay_file_start(RF_SCAN, slot, track, 1, hits, sens))
+    if (!relay_file_start(RF_SCAN, track, track, 1, 0, 1))
         return;
-    scan_slot = slot;
+    scan_slot = track;
     scan_revision = status[9];
-    scan_hits = hits;
-    scan_sens = sens;
 }
 static unsigned clamp(int x, unsigned hi)
 {
@@ -445,139 +499,74 @@ static void turn(unsigned enc, int delta)
     *t -= delta * 2;
     if (!delta)
         return;
-    if (!page) {
-        if (enc == 1 && !edit_gain) {
-            int v = clamp((int)s->input + delta, 18);
-            if (v == (int)track + 3) {
-                v += delta < 0 ? -1 : 1;
-                if (v > 18)
-                    v = 17;
-            }
-            if (!route_ok(clamp(v, 18)))
-                return;
-            s->input = clamp(v, 18);
-        } else if (enc == 1)
-            s->gain = clamp((int)s->gain + delta, 100);
-        else if (enc == 2) {
-            int rate = (int)clamp(s->rate + 200 + delta, 400) - 200;
-            static const int stops[] = {-100, -50, 0, 50, 100};
-            for (unsigned i = 0; i < 5; ++i) {
-                int stop = stops[delta > 0 ? i : 4 - i];
-                if ((delta > 0 && s->rate < stop && rate > stop) ||
-                    (delta < 0 && s->rate > stop && rate < stop)) {
-                    rate = stop;
-                    break;
-                }
-            }
-            s->rate = rate;
-        } else if (enc == 3) {
-            unsigned n = grid();
-            unsigned step = clamp((int)((s->spacing * n + 32768) >> 16) + delta, n);
-            s->spacing = (step * 65536 + n / 2) / n;
-        } else if (enc == 4)
-            s->feedback = clamp((int)s->feedback + delta, 100);
-        else if (enc == 5 || enc == 6) {
-            if (status[4] == track && status[5]) {
-                unsigned steps = grid(), length = status[5];
-                int ticks = delta % (int)steps;
-                unsigned n = ticks < 0 ? -ticks : ticks;
-                int frames = (length / steps) * n + ((length % steps) * n + steps / 2) / steps;
-                if (frames)
-                    send(enc == 5 ? RT_SEEK_WRITE : RT_SEEK_READ, ticks < 0 ? -frames : frames,
-                         length);
-            }
+    if (enc == 1 && !edit_gain) {
+        int input = clamp((int)s->input + delta, RT_INPUT_MAIN);
+        if (input == (int)track + 3)
+            input += delta < 0 ? -1 : 1;
+        if (!route_ok(input))
             return;
-        } else if (enc == 8)
-            s->mix = clamp((int)s->mix + delta, 100);
-        else
-            return;
-        send(RT_SETTINGS, 0, 0);
-        publish_sound(track);
-    } else if (enc == 1) {
-        int l = s->lane, step = delta < 0 ? -1 : 1;
-        do {
-            l += step;
-            if (l < 0 || l > 2)
-                return;
-        } while (l && !(status[8] & (1u << (l - 1))));
-        s->lane = l;
-        if (audition)
-            send(RT_AUD, l, 0);
-        refresh_waveform();
-    } else if (enc == 2) {
-        s->hits = clamp((int)s->hits + delta, 1);
-        publish_sound(track);
-        refresh_waveform();
-    } else if (enc == 3 && s->hits) {
-        s->sensitivity = clamp((int)s->sensitivity + delta, 8);
-        publish_sound(track);
-        refresh_waveform();
-    } else if (enc == 4 && !s->lane && s->hits) {
-        const struct RelayOverview *o = current_wave(1);
-        if (o && o->count)
-            s->mark = clamp((int)s->mark + delta, o->count - 1);
-    }
+        s->input = input;
+    } else if (enc == 1)
+        s->gain = clamp((int)s->gain + delta, 100);
+    else if (enc == 2) {
+        int rate = (int)clamp(s->rate + 200 + delta, 400) - 200;
+        static const int stops[] = {-100, -50, 0, 50, 100};
+        for (unsigned i = 0; i < 5; ++i) {
+            int stop = stops[delta > 0 ? i : 4 - i];
+            if ((delta > 0 && s->rate < stop && rate > stop) ||
+                (delta < 0 && s->rate > stop && rate < stop)) {
+                rate = stop;
+                break;
+            }
+        }
+        s->rate = rate;
+    } else if (enc == 4)
+        s->feedback = clamp((int)s->feedback + delta, 100);
+    else if (enc == 5 || enc == 6) {
+        if (status[4] == track && status[5]) {
+            unsigned fraction = current_loop_q16();
+            unsigned steps = loop_steps(grid(), fraction);
+            unsigned length = loop_frames(status[5], fraction);
+            int ticks = delta % (int)steps;
+            unsigned n = ticks < 0 ? -ticks : ticks;
+            int frames = (length / steps) * n + ((length % steps) * n + steps / 2) / steps;
+            if (frames)
+                send(enc == 5 ? RT_SEEK_WRITE : RT_SEEK_READ, ticks < 0 ? -frames : frames, length);
+        }
+        return;
+    } else if (enc == 7 && status[4] == track && status[5] && !first_pass()) {
+        unsigned steps = grid();
+        unsigned step = clamp((int)loop_steps(steps, s->loop_q16) + delta, steps);
+        if (!step)
+            step = 1;
+        s->loop_q16 = step == steps ? 0 : (step * 65536 + steps / 2) / steps;
+    } else if (enc == 8)
+        s->mix = clamp((int)s->mix + delta, 100);
+    else
+        return;
+    send(RT_SETTINGS, 0, 0);
+    publish_sound(track);
 }
 static void press(unsigned key)
 {
     struct Settings *s = settings + track;
-    if (key != 46 || page)
+    if (key != 46)
         finish_play_click();
-    if (confirm >= 3) {
+    if (confirm) {
         recall_choice(key);
         return;
     }
-    if (confirm) {
-        if (key == 10 && confirm == 1)
-            send(RT_CLEAR, s->lane, 0);
-        if (key == 10 && confirm == 2 && !save_tape(track, s->hits, s->sensitivity + 1))
-            say("FILE BUSY");
-        if (key == 10 || key == 12)
-            confirm = 0;
-        return;
-    }
-    if (audition) {
-        if (key == 10 || key == 12 || key == 46) {
-            send(key == 10 ? RT_KEEP : RT_EXIT, 0, 0);
-            audition = 0;
-            s->lane = 0;
-        }
-        return;
-    }
-    int writer = status[2] & 15, own = writer && (status[2] >> 8) == track;
-    if (!page) {
-        if (key == 42 || key == 43) {
-            if (key == 42)
-                s->rate = 100;
-            else
-                s->spacing = 65536;
-            send(RT_SETTINGS, 0, 0);
-            publish_sound(track);
-        }
-        if (key == 45)
-            send(RT_WRITE, pp_record_frames(0), pp_record_steps());
-        if (key == 46)
-            play_click(instrument_src_now());
-        if (key == 47)
-            send(RT_UNDO, 0, 0);
-    } else {
-        const struct RelayOverview *o = current_wave(1);
-        if (key == 44 && !s->lane && s->hits && o && o->slot == track && s->mark < o->count)
-            send(RT_PREVIEW, o->starts[s->mark],
-                 s->mark + 1 < o->count ? o->starts[s->mark + 1] : o->frames);
-        if (key == 45)
-            send(own ? RT_FINISH : RT_ALT, 0, 0);
-        if (key == 46 && status[5])
-            audition = send(RT_AUD, s->lane, 0);
-        if (key == 47 && !s->lane && status[5]) {
-            if (own)
-                say("CLOSE WRITE");
-            else
-                confirm = 2;
-        }
-        if (key == 48 && status[5])
-            confirm = 1;
-    }
+    if (key == 42) {
+        s->rate = 100;
+        send(RT_SETTINGS, 0, 0);
+        publish_sound(track);
+    } else if (key == 45)
+        send(RT_WRITE, pp_record_frames(0), pp_record_steps());
+    else if (key == 46 && status[4] == track && status[5] &&
+             (!(status[2] & 15) || status[2] >> 8 != track))
+        play_click(instrument_src_now());
+    else if (key == 47)
+        send(RT_UNDO, 0, 0);
 }
 extern u32 ip_current_machine_sound(u32 track, u32 type);
 static int route_ok(unsigned input)
@@ -608,28 +597,129 @@ static void num(char *s, unsigned n)
         *s++ = rev[--i];
     *s = 0;
 }
-static void draw(u8 *b)
+static int wave_height(unsigned level, unsigned gain)
 {
-    struct Settings *s = settings + track;
-    static const char *const top[2][4] = {{"INPT", "RATE", "HEAD", "FDBK"},
-                                          {"LANE", "SLCE", "SENS", "MARK"}};
-    static const char *const bottom[2][4] = {{"WRITE", "PLAY", "BACK", "MIX"},
-                                             {"ALT", "AUD", "EXPORT", "CLEAR"}};
-    char time[12], sens[12], mark[12];
-    unsigned writing = (status[2] & 15) && (status[2] >> 8) == track;
-    unsigned frames = writing && (status[2] & 15) == 1 ? status[12] : status[6];
+    int sample = (int)level - 128;
+    unsigned amplitude = (unsigned)(sample < 0 ? -sample : sample);
+    int height = (int)((amplitude * gain + 128) >> 8);
+    return sample < 0 ? height : -height;
+}
+static void draw_waveform(u8 *b, const struct RelayOverview *overview, unsigned live,
+                          unsigned writing, unsigned span, unsigned write, unsigned read)
+{
+    enum { LEFT = 17 };
+    int top = page ? 26 : 35, bottom = page ? 47 : 41;
+    int middle = (top + bottom) / 2;
+    if (page) {
+        fxv_box(b, LEFT - 1, top + 1, 1, bottom - top - 1, 1);
+        fxv_box(b, LEFT + WAVE_COLUMNS, top + 1, 1, bottom - top - 1, 1);
+        fxv_box(b, LEFT, top, WAVE_COLUMNS, 1, 1);
+        fxv_box(b, LEFT, bottom, WAVE_COLUMNS, 1, 1);
+    }
+    uint16_t columns[WAVE_COLUMNS];
+    /* Enlarge quiet tape by up to 32x, then scale to the strongest visible peak. */
+    unsigned reference = 4;
+    for (unsigned col = 0; col < WAVE_COLUMNS; ++col) {
+        unsigned bin = col * RELAY_WAVE_BINS / WAVE_COLUMNS;
+        uint16_t wave = RELAY_WAVE_EMPTY;
+        for (; bin < (col + 1) * RELAY_WAVE_BINS / WAVE_COLUMNS; ++bin) {
+            uint16_t peak = live ? live_peaks[bin] : RELAY_WAVE_EMPTY;
+            if (peak == RELAY_WAVE_EMPTY && overview)
+                peak = overview->peaks[bin];
+            wave = relay_wave_join(wave, peak);
+        }
+        if (wave == RELAY_WAVE_EMPTY)
+            wave = RELAY_WAVE_SILENT;
+        columns[col] = wave;
+        int down = 128 - (int)(wave & 255), up = (int)(wave >> 8) - 128;
+        int peak = down > up ? down : up;
+        if (peak > (int)reference)
+            reference = (unsigned)peak;
+    }
+    unsigned gain = (((middle - top - 1) << 8) + reference / 2) / reference;
+    for (unsigned col = 0; col < WAVE_COLUMNS; ++col) {
+        int high = wave_height(columns[col] >> 8, gain);
+        int low = wave_height(columns[col] & 255, gain);
+        if (low >= bottom - middle)
+            low = bottom - middle - 1;
+        fxv_box(b, LEFT + col, middle + high, 1, low - high + 1, 1);
+    }
+    if (!span)
+        return;
+    unsigned total = status[5];
+    if (span < total) {
+        unsigned end = LEFT + span * WAVE_COLUMNS / total;
+        for (int y = top; y <= bottom; y += 2)
+            fxv_box(b, end, y, 1, 1, -1);
+    }
+    unsigned head = LEFT + write * WAVE_COLUMNS / total;
+    unsigned playback = LEFT + read * WAVE_COLUMNS / total;
+    if (writing)
+        fxv_box(b, head - 1, top, 3, 2, -1);
+    fxv_box(b, playback - 1, bottom - 1, 3, 2, -1);
+}
+static void time_text(char *text, unsigned frames)
+{
     unsigned tenths = frames / 4800;
-    num(time, tenths / 10);
-    unsigned end = 0;
-    while (time[end])
-        ++end;
-    time[end++] = '.';
-    time[end++] = '0' + tenths % 10;
-    time[end++] = 's';
-    time[end] = 0;
-    num(sens, s->sensitivity + 1);
-    num(mark, s->mark + 1);
-    char rate[8], spacing[14], feedback[8], mix[8], gain[8];
+    num(text, tenths / 10);
+    while (*text)
+        ++text;
+    *text++ = '.';
+    *text++ = '0' + tenths % 10;
+    *text = 0;
+}
+static void transport_mark(u8 *b, unsigned writing)
+{
+    int y = page ? 10 : 12;
+    if (writing) {
+        int fill = !(status[2] & 16);
+        fxv_box(b, 17, y, 2, 5, 1);
+        fxv_box(b, 16, y + 1, 4, 3, 1);
+        if (!fill)
+            fxv_box(b, 17, y + 1, 2, 3, 0);
+    } else if (status[7] & 1) {
+        fxv_box(b, 16, y, 1, 5, 1);
+        fxv_box(b, 17, y + 1, 1, 3, 1);
+        fxv_box(b, 18, y + 2, 1, 1, 1);
+    } else {
+        fxv_box(b, 16, y, 1, 5, 1);
+        fxv_box(b, 19, y, 1, 5, 1);
+    }
+}
+static void detail_dial(u8 *b, int x, int y, unsigned value)
+{
+    /* Detail fits the same controls around the waveform with smaller dials. */
+    static const int8_t needle[7][2] = {{-2, 2}, {-2, 0}, {-2, -2}, {0, -2},
+                                        {2, -2}, {2, 0},  {2, 2}};
+    fxv_box(b, x - 2, y, 5, 1, 1);
+    fxv_box(b, x - 2, y + 6, 5, 1, 1);
+    fxv_box(b, x - 3, y + 1, 1, 5, 1);
+    fxv_box(b, x + 3, y + 1, 1, 5, 1);
+    unsigned step = (value * 6 + 63) / 127;
+    int dx = needle[step][0], dy = needle[step][1];
+    fxv_box(b, x + dx, y + 3 + dy, 1, 1, 1);
+    fxv_box(b, x + dx / 2, y + 3 + dy / 2, 1, 1, 1);
+    fxv_box(b, x, y + 3, 1, 1, 1);
+}
+static void draw(u8 *view, u8 *b, unsigned values)
+{
+    const struct Settings *s = settings + track;
+    static const char *const labels[8] = {"INPT",  "RATE", "",    "FDBK",
+                                          "WRITE", "PLAY", "LEN", "MIX"};
+    unsigned writing = (status[2] & 15) && (status[2] >> 8) == track;
+    unsigned fraction = current_loop_q16();
+    unsigned total = status[5], span = loop_frames(total, fraction);
+    unsigned write = span ? status[6] % span : 0, read = span ? (write + read_offset) % span : 0;
+    unsigned steps = grid(), length = loop_steps(steps, fraction);
+    unsigned knobs[8] = {s->gain * 127 / 100,
+                         (s->rate + 200) * 127 / 400,
+                         0,
+                         s->feedback * 127 / 100,
+                         span ? write * 127 / span : 0,
+                         span ? read * 127 / span : 0,
+                         length * 127 / steps,
+                         s->mix * 127 / 100};
+    char rate[6], feedback[4], mix[4], gain[4], len[8], write_at[8], read_at[8];
     unsigned speed = s->rate < 0 ? -s->rate : s->rate;
     rate[0] = s->rate < 0 ? '-' : '+';
     rate[1] = '0' + speed / 100;
@@ -637,134 +727,48 @@ static void draw(u8 *b)
     rate[3] = '0' + speed / 10 % 10;
     rate[4] = '0' + speed % 10;
     rate[5] = 0;
-    unsigned n = grid();
-    num(spacing, (s->spacing * n + 32768) >> 16);
-    unsigned k = 0;
-    while (spacing[k])
-        ++k;
-    spacing[k++] = '/';
-    num(spacing + k, n);
     num(feedback, s->feedback);
     num(mix, s->mix);
     num(gain, s->gain);
-    const char *values[4] = {edit_gain ? gain : inputs[s->input], rate,
-                             s->spacing == 65536 ? "FULL" : spacing, feedback};
-    int busy = writing;
-    const char *actions[4] = {busy ? ((status[2] & 16) || (status[2] & 15) == 1 ? "CNCL" : "CLOSE")
-                              : status[5] ? "OPEN"
-                                          : "REC",
-                              status[5] ? ((status[7] & 1) ? "STOP" : "PLAY") : "-",
-                              (status[11] & 1) ? ((status[10] & 1) ? "REDO" : "UNDO") : "-", mix};
-    if (audition)
-        actions[1] = "EXIT";
-    if (page) {
-        values[0] = lanes[s->lane];
-        values[1] = s->hits ? "HITS" : "OFF";
-        values[2] = s->hits ? sens : "-";
-        values[3] = s->hits && !s->lane ? mark : "-";
-        actions[0] = status[5] ? "REC" : "-";
-        actions[1] = audition ? "EXIT" : "PLAY";
-        actions[2] = s->lane ? "-" : "SAVE";
-        actions[3] = "DEL";
-    }
-    fxv_box(b, 16, 10, 112, 54, 0);
-    for (unsigned i = 0; i < 4; ++i) {
-        int x = 30 + i * 28;
-        fxv_text(b, x, 11, !page && i == 0 && edit_gain ? "GAIN" : top[page][i], 1);
-        fxv_text(b, x, 18, values[i], 1);
-        fxv_text(b, x, 48, bottom[page][i], 1);
-        fxv_text(b, x, 56, actions[i], 1);
-    }
+    num(len, length);
+    time_text(write_at, write);
+    time_text(read_at, read);
+    const char *input = inputs[s->input];
+    const char *const shown[8] = {
+        edit_gain ? gain : input, rate, "", feedback, span ? write_at : "-",
+        span ? read_at : "-",     len,  mix};
 
-    const struct RelayOverview *o = current_wave(0);
-    fxv_box(b, 18, 39, 107, 1, 1);
-    int ready = o != 0;
-    unsigned audible = 0;
-    if (ready) {
-        for (unsigned x = 0; x < 106; ++x) {
-            unsigned peak = 0;
-            for (unsigned bin = x * 120 / 106; bin < (x + 1) * 120 / 106; ++bin)
-                if (o->peaks[bin] > peak)
-                    peak = o->peaks[bin];
-            audible |= peak;
-            int h = peak ? 1 + (int)((peak - 1) >> 13) : 0;
-            fxv_box(b, 19 + x, 39 - h, 1, 1 + 2 * h, 1);
+    /* Keep the native header, track column and page indicators. */
+    fxv_box(b, 16, 10, 108, 54, 0);
+    transport_mark(b, writing);
+    for (unsigned i = 0; i < 8; ++i) {
+        if (i == 2)
+            continue;
+        int x = 33 + (i % 4) * 26;
+        if (!i && !edit_gain) {
+            if (!(values & 1))
+                fxv_text(b, x, page ? 15 : 21, input, 1);
+        } else if (page) {
+            detail_dial(b, x, i < 4 ? 11 : 49, knobs[i]);
+        } else {
+            ip_src_draw_rotary(view, b, i, knobs[i]);
         }
-        if (page && s->hits && !s->lane && current_wave(1)) {
-            for (unsigned i = 0; i < o->count; ++i)
-                fxv_box(b, 18 + o->starts[i] * 106 / o->frames, 33, 1, 3, 1);
-            if (s->mark < o->count) {
-                unsigned lo = o->starts[s->mark] * 106 / o->frames;
-                unsigned hi =
-                    s->mark + 1 < o->count ? o->starts[s->mark + 1] * 106 / o->frames : 106;
-                fxv_box(b, 18 + lo, 46, hi - lo + 1, 1, 1);
-            }
-        }
+        const char *label = !i && edit_gain ? "GAIN" : labels[i];
+        fxv_text(b, x, i >= 4 ? 58 : page ? 20 : 30, values & (1u << i) ? shown[i] : label, 1);
     }
-    if (status[5] && status[6] < status[5]) {
-        unsigned phase = status[6] * 106 / status[5];
-        unsigned length = status[5];
-        unsigned pos = (status[6] + read_offset) % length;
-        unsigned read = pos * 106 / length;
-        fxv_box(b, 18 + read, 46, 3, 1, 1);
-        fxv_box(b, 19 + read, 45, 1, 1, 1);
-        if (!page) {
-            fxv_box(b, 17 + phase, 33, 5, 1, 1);
-            fxv_box(b, 18 + phase, 34, 3, 1, 1);
-            if (!writing || (status[2] & 16))
-                fxv_box(b, 19 + phase, 34, 1, 1, 0);
-            fxv_box(b, 19 + phase, 35, 1, 1, 1);
-        }
-    }
-    char duration[24];
-    if (!page) {
-        if (live_track == track)
-            for (unsigned i = 0; i < 106; ++i) {
-                unsigned h = live_peaks[i] >> 5;
-                if (h)
-                    fxv_box(b, 19 + i, 39 - h, 1, 1 + 2 * h, 1);
-            }
-        char total[12];
-        unsigned tenths_total = status[5] / 4800;
-        num(total, tenths_total / 10);
-        unsigned j = 0;
-        while (total[j])
-            ++j;
-        total[j++] = '.';
-        total[j++] = '0' + tenths_total % 10;
-        total[j] = 0;
-        j = 0;
-        while (time[j] && time[j] != 's') {
-            duration[j] = time[j];
-            ++j;
-        }
-        duration[j++] = '/';
-        for (unsigned i = 0; (duration[j++] = total[i]); ++i) {
-        }
-    }
-    const char *msg = confirm >= 3   ? (confirm == 3   ? "CANCEL? YES"
-                                        : confirm == 4 ? "SAVE? YES"
-                                                       : "DISCARD? YES")
-                      : confirm == 1 ? "CLEAR? YES/NO"
-                      : confirm == 2 ? (s->hits ? "FULL+HITS?" : "EXPORT FULL?")
-                      : notice_time  ? notice
-                      : relay_files.state == RF_WORK && relay_files.action == RF_SAVE ? "SAVING"
-                      : audition                                                      ? "AUDITION"
-                      : !page && busy              ? (status[2] & 16          ? "WAIT 1"
-                                                      : (status[2] & 15) == 1 ? "FIRST"
-                                                                              : "WRITE")
-                      : !page && !s->rate          ? "PARK"
-                      : !busy && ready && !audible ? "SILENT TAKE"
-                      : !ready && scan_slot % 16 == track && relay_files.state == RF_WORK &&
-                              relay_files.action == RF_SCAN
-                          ? "READING"
-                      : !status[5] ? (busy ? "RECORDING" : "EMPTY")
-                                   : 0;
-    if (msg && (page || confirm || notice_time || !busy))
-        fxv_text(b, 72, 26, msg, 0);
-    else if (!page) {
-        fxv_text(b, 37, 26, msg ? msg : status[7] & 1 ? "PLAY" : "STOP", msg ? 0 : 1);
-        fxv_text(b, 95, 26, duration, 1);
+    const struct RelayOverview *o = current_wave();
+    unsigned live =
+        live_track == track && live_frames == total &&
+        ((writing && live_revision == status[9]) || (!o && live_revision + 1 == status[9]));
+    if (!o && live && live_mode == 2)
+        o = rtm_wave(track, live_revision, live_frames, 0, 1);
+    if (!o && !live)
+        o = rtm_wave_pending(track, status[9], total);
+    draw_waveform(b, o, live, writing, span, write, read);
+
+    if (confirm >= 3) {
+        static const char *const choices[] = {"CANCEL? YES", "SAVE? YES", "DISCARD? YES"};
+        fxv_text(b, 70, page ? 33 : 35, choices[confirm - 3], 0);
     }
 }
 static void initialize_settings(void)
@@ -783,7 +787,7 @@ int rtm_src(u8 *view, unsigned action, u8 *data)
 {
     initialize_settings();
     unsigned type = rtm_type(view), t = rtm_track(*(u32 *)(view + 0x74));
-    if (!owns(type) || t >= 16 || action == 4) {
+    if (!rtm_is_type(type) || t >= 16 || action == 4) {
         if (track < 16) {
             leave();
             track = 16;
@@ -814,25 +818,30 @@ int rtm_src(u8 *view, unsigned action, u8 *data)
         mf_src_register(type, &cap);
         return 1;
     }
-    if (action == 1) {
-        draw(data);
+    if (action == 1 || action == 5) {
+        unsigned values = view[0x190]                                            ? 255
+                          : focus && ip_src_focus_active(view + 0x94, focus - 1) ? 1u << (focus - 1)
+                                                                                 : 0;
+        if (action == 5)
+            return redraw || values != paint_values ? 2 : 1;
+        draw(view, data, values);
+        paint_values = values;
         redraw = 0;
         return 1;
     }
-    if (action == 5)
-        return redraw ? 2 : 1;
     unsigned key = *(u32 *)(data + 12), v = *(u32 *)(data + 16);
     if (action == 3) {
         if (!key || key > 8)
             return 0;
         turn(key, (int)v);
+        focus = key;
+        ip_src_focus_touch(view + 0x94, key - 1);
     } else {
         if (!((key >= 41 && key <= 48) ||
-              ((confirm || audition) &&
-               (key == 10 || key == 12 || (confirm >= 3 && (key == 14 || key == 15))))))
+              (confirm && (key == 10 || key == 12 || key == 14 || key == 15))))
             return 0;
         unsigned flags = fxv_key_flags(v);
-        if (key == 41 && !page) {
+        if (key == 41 && !confirm) {
             if (flags & FXV_PRESS) {
                 held = 1;
                 source_shortcut = 0;
@@ -843,8 +852,7 @@ int rtm_src(u8 *view, unsigned action, u8 *data)
                 held = 0;
             }
         }
-        if ((flags & FXV_PRESS) &&
-            ((seen && status[4] == track) || (!page && (key == 45 || key == 46))))
+        if ((flags & FXV_PRESS) && ((seen && status[4] == track) || key == 45 || key == 46))
             press(key);
     }
     dk_fw_view_invalidate(view);

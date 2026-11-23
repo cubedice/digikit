@@ -15,13 +15,10 @@
 // function, offset 0x1ad) before its clip and the volume ramp. A send effect's output that the engine adds (the wet mailbox)
 // gets this and the ramp; the tap is divided by both.
 #define OL_MASTER_BOOST 0x404a6320
-// The position record (core/pattern-position) may come again or late on the device: its receiver keeps the last good one
-// when a frame is refused. The engine follows its run through a record that comes again (the send count did not move: nothing
-// new in this block) and through a send count that moved by at most OL_SKIP since the last new record, at most OL_SKIP
-// blocks after it. A boundary in a record after such a gap of d frames begins with this block: up to d - 1 blocks after the
-// block of its frame on the ColdFire. A larger gap, a send count that went back, or more than one boundary in one record
-// ends the run.
-#define OL_SKIP 4
+// The position receiver keeps its last usable record for half a second. Keep recording a known run across the same
+// grace period. Only the boundary count says whether a gap lost a musical step. A single new boundary takes effect in
+// the block that delivers it.
+#define OL_POSITION_GRACE 750
 // The tap is divided by at most 1024 (a master gain below 1/1024 counts as 1/1024).
 #define OL_INV_FLOOR 0x3a800000
 // A sample of the output with the send effect's output added stays within +-7.9 (the framework's bound is 8).
@@ -129,5 +126,12 @@
 // one that was heard when it paused). 0: nothing pending.
 #define OL_SYNC 68
 #define OL_SYNC_PH 69
-#define OL_STATE_WORDS 72
-#define OL_STATE_BYTES 288
+#define OL_WAVE_MIN_L 70
+#define OL_WAVE_MAX_L 71
+#define OL_WAVE_MIN_R 72
+#define OL_WAVE_MAX_R 73
+#define OL_WAVE_LAST 74
+#define OL_WAVE_EDGE 75
+#define OL_WAVE_PART 76
+#define OL_STATE_WORDS 77
+#define OL_STATE_BYTES 308

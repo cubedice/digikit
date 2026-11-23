@@ -35,3 +35,6 @@
 #define RLY_TIDY 20
 // Share a completed MAIN between two track roots; the next punch copies on write.
 #define RLY_SHARE 21
+// Read a committed span without materializing a copy-on-write group.
+// R0 == 0 represents an implicit zero-filled span of R1 frames.
+#define RLY_PEEK_SPAN 22

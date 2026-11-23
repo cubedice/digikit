@@ -44,31 +44,21 @@ framework, its controls from the control mailbox it imports, its tape from the s
 
 ## The page
 
-FUNC + FX opens the FX pages; PRISM's is one of them (send effects come first). The real screen:
+FUNC + FX opens the FX pages. PRISM has eight encoder cells with captions below their graphics. RATE shows the delay
+time or sync ratio directly. Hold FUNC + FX to see the other formatted values, including MIX. Release FX to return to
+the labels. The MIX meter sits at the lower left like the stock FX level strip.
 
-```
- PRISM                              ECHO    387 MS
-─────────────────────────────────────────────────
- MIX   ZONE       RATE       RPTS       COLR
- ┌─┐   ECHO       387 MS     48         0
- │ │   ····▮···
- │█│              FREE
- │█│  ───────────────────────────────────────────
- │█│   HALO       SKEW       INPT       XFAD
- └─┘   0          0          LIVE       --
- 100                         2 TRK      NO LOOP
-```
+RPTS adds horizontal dashes and shows ∞ at unity, above unity, or in HOLD. COLR grows from a solid square to an
+outline at the neutral point. HALO starts with one visible ring. The other rings move away from the center as you turn it
+up and converge when you turn it down.
 
-With SYNC on, RATE shows the ratio of the zone's 1/1 (`1/1`, `X1.5`, `/1.33`) over `SYNC`; the header keeps the time the
-engine plays. With INPT at LOOP and no loop the INPT cell says `SILENT` (PRISM hears nothing until a loop exists).
+The header shows FREE or SYNC, input status, and NO LOOP before a capture. FLIP, HOLD, and ARMD appear above the MIX
+meter. Choosing LOOP before a capture shows SILENT in the header. Changing a track selection from this state returns
+INPT to LIVE and shows the selected tracks.
 
-With G held the INPT cell shows the tracks and that the TRIG keys choose them (`TRIGS` inverted):
-
-```
- │█│   HALO       SKEW       INPT       XFAD
- └─┘   0          0          2 TRK      --
- 100                         [TRIGS]    NO LOOP
-```
+The LIVE input graphic shows tracks 1–8 on top and 9–16 below. Selected tracks are larger dots. With G held, inverted
+`TRIGS` in the header indicates that the TRIG keys are editing this routing. Hold FUNC + FX to see the count. The LOOP
+input graphic closes once captured audio is available.
 
 | Control | Does |
 | --- | --- |
@@ -76,21 +66,21 @@ With G held the INPT cell shows the tracks and that the TRIG keys choose them (`
 | A | ZONE, four ticks a zone. With SYNC each zone is an octave of the synced time (below). Press: FLIP (`FLIP` under the zone name, inverted) |
 | B | RATE. Free: the time in milliseconds, a coarse step a tick; with FUNC held a fine step (1016 of them across the zone). Press: SYNC on or off (`SYNC` or `FREE`); with SYNC the encoder steps through thirteen ratios of the zone's 1/1, four ticks each, from `/2` (shortest) to `X2` (longest), `1/1` in the middle |
 | C | RPTS, 0 to 127; 96 holds a repeat at its level. Press: HOLD (`INF` and `HOLD`, inverted) |
-| D | COLR, 64 is the centre: the cell shows the distance and `DARK` or `BRIT` |
-| E | HALO, 0 to 127 |
-| F | SKEW, 64 is the centre: `L 12` means the left side is the longer one by 12 steps, `R 12` the right |
-| G | INPT, a two-position switch turned by the knob: right is LOOP (PRISM hears Overloop's loop), left is LIVE (PRISM hears the tracks it is given), at any time; without a loop LOOP is silence until one exists (`SILENT` under it). The switch crossfades over 5 ms. The press switches nothing. Hold: the TRIG keys choose the tracks PRISM hears, their LEDs show them. Under INPT: the number of tracks PRISM hears at LIVE. INPT goes to LOOP by itself at an armed change that takes a loop, and to LIVE when the loop is dropped or Overloop stops reporting for a while; it does not go back to LIVE only because there is no loop |
-| H | XFAD, Overloop's crossfader: the same value as on Overloop's page (`LIVE`, a number, `LOOP`; below it the crossfader as it sounds). Turns only while there is a loop. Press: ARM (`ARMD`, and below it the steps the next change keeps); a second press takes it back |
+| D | COLR. The centre is 0 on screen. Negative values darken the repeats and positive values brighten them |
+| E | HALO, 0 to 127. Spreads the repeats in stereo and adds a darker reverb tail. The upper half adds slow movement to the tail |
+| F | SKEW, 64 is the centre. Hold FUNC + FX to show the offset. Press F to enable `PONG` at centre and `SWAP` away from centre. Press again for straight feedback. |
+| G | INPT, a two-position switch turned by the knob: right is LOOP (PRISM hears Overloop's loop), left is LIVE (PRISM hears the tracks it is given). The switch crossfades over 5 ms. Hold G and use TRIG keys to choose tracks. Changing the selection switches silent LOOP to LIVE when there is no capture. INPT goes to LOOP at an armed change that takes a loop, and to LIVE when the loop is dropped or Overloop stops reporting for a while. |
+| H | XFAD, Overloop's crossfader. The slider shows the applied position. Turns only while there is a loop. Press to arm or disarm. With FUNC + FX held, the caption shows `LIVE`, a number, or `LOOP`. Before the first loop, it reveals how many steps the next change keeps |
 | FUNC + NO | Drop the loop |
 
-The header shows the zone and the time the engine plays now (it glides after a free RATE move). The values are kept in
-digikit's settings (`phrase/digikit/prism`), the same for every kit and project; HOLD is not kept. UP, DOWN and FUNC + FX
-move between the FX pages as on any of them.
+With SYNC on, holding FUNC + FX adds the actual playback time to the ratio already shown in RATE. The values are kept in
+digikit's settings (`phrase/digikit/prism`), the same for every kit and project; HOLD is not kept. Use UP, DOWN or tap
+FUNC + FX to move between effects.
 
 MIX is this page's and only this page's: the effect row's own MIX of the framework stays at unity, and a kit holds no
 PRISM value. INPT, XFAD and ARM are not kept anywhere: after a restart there is no loop, INPT is LIVE and the crossfader at
-LIVE; a pattern change does not move them. While PRISM hears the loop the header says `LOOP 16 ST 2.00 S` (its steps and
-seconds) in place of the zone and the time.
+LIVE; a pattern change does not move them. While PRISM hears the loop, holding FUNC + FX shows its step count and duration
+in the header, for example `LOOP 16 ST 2.00 S`.
 
 ## Performing a transition
 
@@ -147,8 +137,9 @@ tuned); `core/phrase-control` fills them from the page's values.
 | SYNC | on, off | On: the time is the frames the control provider gives (a ratio of the zone's 1/1 at the tempo, below); ZONE and RATE are then not read. Each change crossfades; the pitch does not bend. |
 | RPTS | 0..1 | Repeats. 0 is one echo; 0.75 holds a repeat at its level for ever; above it the level grows by up to 1.1 a repeat until the limiter holds it. |
 | COLR | -1..1 | Colour of the repeats. Centre: flat. Toward dark every repeat loses highs (down to a low pass at 800 Hz), saturates a little and drifts slowly in pitch. Toward bright every repeat loses lows (up to a high pass at 1 kHz). |
-| HALO | 0..1 | Smears every repeat a little more than the last. 0 is an exact bypass. It never changes the level of the repeats. |
-| SKEW | -1..1 | Above 0 the left side is shorter and the right longer by the same ratio (up to 1.5); below 0 the reverse. A change glides. |
+| HALO | 0..1 | Spreads each repeat and brings up a damped stereo reverb, audible with RPTS at 0. Above halfway, two slow motions vary the diffusion. 0 is an exact bypass |
+| SKEW | -1..1 | Above 0 the left side is shorter and the right longer by the same ratio (up to 1.5). Below 0 the reverse applies. A change glides. |
+| PONG/SWAP | on, off | Press SKEW to toggle. At centre the input is summed to mono and echoes alternate left and right. Off centre the two stereo feedback paths cross and retain the unequal delay times. The mode is saved. [Mimeophon manual](https://www.makenoisemusic.com/wp-content/uploads/2024/03/mimeophon-manual.pdf#page=11) |
 | FLIP | on, off | The repeats play backwards: each stretch of the time is read from its end to its start. |
 | HOLD | on, off | The input is closed and what is on the tape repeats without loss. ZONE, RATE and FLIP then pick a part of the held sound and leave the tape as it is. Releasing records again. |
 | MIX | 0..1 | Level of the wet signal. The engine writes the wet signal only. |
@@ -161,7 +152,7 @@ is a crossfade of 20 ms between two read heads with equal power.
 ```
  input (the tracks it hears, at full send) ──────────┐
                                                      ▼
- tape ──► two heads a side ──► DC blocker ──► COLR ──► HALO ──┬──► x MIX ──► FX return
+ tape ──► two heads a side ──► DC blocker ──► COLR ──► HALO ──┬──► + HALO reverb ──► x MIX ──► FX return
   ▲                                                           │
   └──────────── + ◄──── limiter ◄──── x gain of RPTS ◄────────┘
 ```
@@ -170,12 +161,12 @@ is a crossfade of 20 ms between two read heads with equal power.
   side's head program), the status.
 - `src/dsp/heads.s`: the read heads: glide, crossfade, reverse segments, the held loop.
 - `src/dsp/loop.s`: the DC blocker and the colour filter; the output, the limiter and the write to the tape.
-- `src/dsp/halo.s`: the four delay lines as all-pass filters.
+- `src/dsp/halo.s` spreads the repeats through four lattice all-pass lines of 97, 137, 191, and 251 frames. Two damped,
+  cross-coupled lines at half rate add a longer stereo reverb to the wet return. The same HALO knob controls both stages.
 
 The tape is the first bank of the storage lease, 1,032,192 stereo float frames on the device (21.5 s); the longest time
-is half of it. COLR and HALO sit between the heads and the tape, so each pass through the loop adds to them. While HOLD
-stands the tape is not written, so the held sound cannot degrade; COLR and HALO then work on the output only. Details and
-the reasons for each choice: finding 358.
+is half of it. Each pass through the tape adds COLR and the early HALO diffusion. The late reverb feeds the wet return.
+HOLD freezes the tape, and COLR and HALO continue to shape the output. See finding 358 for the tape design.
 
 ## Verification
 

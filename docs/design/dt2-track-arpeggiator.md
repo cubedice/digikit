@@ -1,165 +1,136 @@
-# DTII track arpeggiator proposal
+# DTII track keyboard, polyphony and arpeggiator proposal
 
-Status: design for review, 2026-11-13. Implementation target: DTII OS 1.17.
-This document specifies proposed behavior, not an implemented feature.
+Design for review · 21 November 2026 · Digitakt II OS 1.17 · checkout `7a30eda41`
 
-Add an arpeggiator to every track, before its selected audio machine or MIDI
-output. Put its controls beside retrigs in the TRIG page family. Keyboard
-playing, learned chords and sequenced notes all feed the same note generator.
-Changing machines does not require learning another arp UI.
+Give each audio and MIDI track **Arpeggiator on TRIG 3** and **Keyboard on TRIG 4**. KEYS plays notes together and ARP plays the same notes in sequence. CANOPY’s SRC pages become synthesis controls. A player can hold a chord on the Digitakt keyboard or an external keyboard, change its order and octave spread, then record it as an editable trig. The selected track determines which sample, instrument or MIDI destination plays the notes.
 
-The main payoff is one playable arp for samples, CANOPY and external synths.
-Confidence is high in the note-order and interaction design; confidence in
-integration is moderate until the audio/MIDI event dispatch and pattern-storage
-boundaries are proven on 1.17. CANOPY's working arp establishes musical behavior,
-not a ready-made universal event scheduler.
+## Finding ARP on the panel
 
-## Play it
+| Track | TRIG 1 | TRIG 2 | TRIG 3 | TRIG 4 |
+| --- | --- | --- | --- | --- |
+| Audio | Note, length, velocity and trig conditions | Retrig and portamento | Arpeggiator | Keyboard |
+| MIDI | Root, note offsets 2–4 and trig settings | FILL and COND | Arpeggiator | Keyboard |
 
-1. Select any track and open its **TRIG > ARP** page. Turn ARP on.
-2. Hold notes on the DTII keyboard or a USB/DIN keyboard. The selected track
-   arpeggiates those notes, including when transport is stopped.
-3. Set RATE, ORDR and OCTS. In AS PLAYED, pressing E, C, G gives E, C, G;
-   UP gives C, E, G. OCTS +1 repeats the sequence one octave above.
-4. Press **H, NOTES** to select a chord shape or learn a custom ordered set.
-   A saved USER shape can then be transposed by playing a single root key.
-5. Record the input notes, or place a root/chord trig. Its native note length
-   determines how long the sequenced arp phrase runs.
+From TRIG 2, tap **[TRIG PARAMETERS]** once. The next tap opens Keyboard, and one more returns to TRIG 1. UP/DOWN follows the user’s U/D KEY MODE setting, including octave changes while KEYBOARD is active. Hold **[TRIG PARAMETERS]** to see values. The sixteen numbered **[TRIG]** keys keep their keyboard, recording and performance roles. **[FUNC] + [TRIG PARAMETERS]** still opens Quantize. These gestures and the two stock page families are documented in the [OS 1.17 manual, §§6, 10.5–10.6, 11.1–11.3, 14.7.4 and A.2.7](https://www.elektron.se/wp-content/uploads/2026/10/Digitakt-2-User-Manual_ENG_OS1.17_260930.pdf).
 
-No DigiKit settings visit is needed for these actions. There is no latch or
-local-tempo control. A saved shape does not sound without held input or an
-active sequencer phrase.
+On the ARP page, enable **ARP**, choose **PLAY** with **H CHRD**, and press E, C and G. **AS PLAYED** repeats E–C–G. **UP** repeats C–E–G. Set **OCTS +1** to include the next octave. A single held key gives a pitched roll, including on MIDI. Keyboard playing follows the selected tempo with the sequencer stopped.
 
-## Relationship to retrigs
+## ARP parameter page
 
-Keep the stock retrig/portamento page intact and add ARP immediately after it
-in the TRIG page cycle. On audio tracks this is TRIG page 3. On MIDI tracks,
-append ARP to their existing TRIG pages without inserting irrelevant audio
-retrig controls. The page header names ARP, so access does not depend on
-memorizing the page number.
+![TRIG keyboard and arp, NOTES editor, and the three proposed CANOPY wavetable SRC pages](assets/dt2-track-arpeggiator.svg)
 
-This integrates the controls into the familiar repetition workflow without
-displacing portamento. Turning ARP off restores normal stock behavior. Turning
-it on makes the arp own repetition for each eligible input event: saved RTRG
-settings remain intact, but are visibly inactive for that event (`ARP ACTIVE`
-on the retrig page). Arp output
-must never enter the retrig generator or the arp input again. A one-note arp
-also provides MIDI note repetition.
+Proposed screens at a logical 128 × 64. The drawings use original graphics for review. The product uses the stock parameter and menu renderers.
 
-The native RETRIGS performance gesture explicitly bypasses ARP and uses stock
-retrigs. While held it temporarily takes over that track's audition, marked
-`RETRIG`, without changing saved ARP settings. On release, resume a still-valid
-arp phrase. Use KEYBOARD mode to play arp notes and the ARP page to change its
-rate; do not silently turn the existing retrig-rate TRIG layout into a note
-keyboard. This bypass is for the manual gesture, not sequencer seed events.
+The panel uses the stock TRIG parameter view. At page entry, ask the native title routine to show **Arpeggiator (3/4)** in the same temporary field as **Trig parameters (2/2)**. At rest the pattern name, mode and tempo return, with the third page mark lit at the right. On audio tracks the left column carries **SMP**, the track number and the **LEV** fader. On MIDI it carries **MID** and the track number, with empty space below as on MIDI TRIG 2. Native controls occupy all eight cells. Live notes and the current generated pitch appear in the NOTES editor. [Audio TRIG reference, p. 54](https://www.elektron.se/wp-content/uploads/2026/10/Digitakt-2-User-Manual_ENG_OS1.17_260930.pdf#page=54) · [MIDI TRIG reference, p. 102](https://www.elektron.se/wp-content/uploads/2026/10/Digitakt-2-User-Manual_ENG_OS1.17_260930.pdf#page=102)
 
-The public [DTII OS 1.15A manual, sections 10.5 and 11.3](https://www.elektron.se/wp-content/uploads/2025/07/Digitakt-2-User-Manual_ENG_OS1.15A_250708.pdf)
-documents audio-only retrigs and the shared retrig/portamento page. This is an
-interaction reference; all new hooks must be resolved on OS 1.17.
+| Encoder | Caption | Turn | Default |
+| --- | --- | --- | --- |
+| A | ARP | Enable arpeggiation for this track or held trig, in the same position as RTRG. | OFF |
+| B | ORDR | Press order, ascending, descending, up/down or random. | AS PLAYED |
+| C | GATE | Sound each note for 1–100% of its interval. C is also the duration position on the adjacent retrig page. | 50% |
+| D | RATE | Choose a division of the selected tempo with the same encoder used for retrig RATE. | 1/16 |
+| E | OCTS | Add one to three octaves above or below the played register. | 0 |
+| F | SWNG | Swing alternate arp intervals, 50–75%. | 50% |
+| G | RST | Restart the order on a new phrase (TRIG), on a pattern boundary (PAT), or continue (CONT). | TRIG |
+| H | CHRD | Choose PLAY, a named chord or USER. Click to edit the note set. | PLAY |
 
-## Main ARP page
+ARP uses the switch graphic used for RTRG. RATE uses the retrig division display and formatter with its value supplied by the arp. GATE and SWNG use native continuous controls. OCTS uses signed integer formatting. ORDR, RST and CHRD use compact choices with full descriptions on focus. Use CANOPY’s four raw ticks per choice for ordinary turns on short lists, and announce each choice through native focus. Let native press-and-turn handle coarse adjustment where the parameter supports it. An ordinary H click opens **NOTES** on release. Turning, using a modifier or clearing a lock consumes that press.
 
-Use the native track header, parameter cells, font, focus behavior and
-show-values presentation. Dedicated LEVEL/DATA retains its normal track-level
-function. There is no duplicate volume or tuning control here.
+**Normal and held views.** Match the neighboring TRIG screen at 128 × 64. Keep each graphic visible while the parameter key is held and let the firmware switch the captions to their formatted values and render the track column for that track type. Release returns to labels. There is one physical LEVEL/DATA control and it follows the stock view for the selected track. The firmware owns the right edge even when a value reaches four characters. CANOPY measured native cell origins at x = 24 + 26 × column on SRC. Use that as a starting point and measure the TRIG view itself before assigning any drawing rectangles. [Native drawing and show-values evidence](../findings/339-canopy-native-ui.md)
 
-| Encoder | Label | Behavior |
+**Step locks.** In GRID recording, hold one or more populated steps and turn A–H to lock their values. Use stock inversion on the locked control and show the effective step value. Press the corresponding encoder while holding the step to clear that lock, including H. Holding a step and turning LEVEL/DATA retains native preset selection where the track supports it. On an eligible seed the ARP enable lock decides who repeats it. When ARP owns an audio seed, keep its RTRG setting saved and explain the override in RTRG’s temporary focus text. Manual RETRIGS performance retains priority for the duration of the gesture. Generated notes go directly to the selected instrument or MIDI channel.
+
+## TRIG 4 · Keyboard
+
+For a pitched sample, choose the track, tap [TRIG PARAMETERS] to **Keyboard (4/4)**, turn **A POLY** on and choose **B CHRD = PLAY**. Hold C–E–G on the panel keyboard or via USB/DIN. AUTO borrows two eligible audio tracks when available. Press H to inspect the group. The three pitches have independent starts and releases. Lift E and the other two continue. Turn B to MIN and one root plays a minor triad. Turn ARP on at TRIG 3 to hear the same chord one note at a time. On a MIDI track the same example uses its configured output channel. CANOPY uses its own foreground voices.
+
+| Encoder | Caption | Action |
 | --- | --- | --- |
-| A | ARP | OFF / ON; can be locked per trig. |
-| B | RATE | Pattern-tempo note division, using the familiar retrig divisions. |
-| C | ORDR | AS PLAYED / UP / DOWN / UPDN / RANDOM. |
-| D | OCTS | -3 through +3 additional octave layers; 0 = played register only. |
-| E | GATE | 1–100% of the interval to the next arp onset. |
-| F | SWNG | 50–75%; 50 is straight, applied to alternating arp intervals. |
-| G | RST | PHRASE / PATTERN / CONTINUE. |
-| H | NOTES | Press to open note/chord editor; value shows PLAY, chord name or USER. Turning does nothing. |
+| A | POLY | OFF / ON. Enables simultaneous track-keyboard playback. ARP can operate with POLY off. |
+| B | CHRD | Same pattern value, lock and NOTES editor as ARP H. PLAY, named shapes and USER use the same ordered pitch set on both pages. |
+| C | VOIC | CLOSE, OPEN, INV1, INV2 for named shapes. PLAY preserves the played register and USER preserves learned intervals. |
+| D | STRM | OFF or 1–500 ms across the complete generated chord. PLAY keeps key timing. ARP keeps its RATE grid. Releasing the root cancels pending strum notes. |
+| E/F | Keyboard display | A small keyboard marks sounding and sustained notes. When a played note exceeds the voice limit the display distinguishes held input from sounding pitches. No parameter under these two cells. |
+| G | VCES | Maximum simultaneous notes, bounded by the backend and group. Focus shows the effective limit, e.g. **3 voices · T01 + T09 + T10**. |
+| H | POOL | Press for voice allocation and capacity. On MIDI it shows channel, port and transmit limit. On CANOPY it shows its internal allocation. |
 
-Layout schematic, not a pixel-accurate firmware render:
+Use the same stock header, track column, native widgets, page marks and momentary show-values gesture as TRIG 3. Held-step turn/press sets or clears musical locks on A–D. G and H are track setup. Pool membership is a pattern-level assignment and cannot change under a held trig. The keyboard display is read-only. A naked B click opens NOTES and a held-step B click clears CHRD, exactly as for ARP H.
 
-```text
- T01                      ARP 3/3
-   ARP     RATE     ORDR     OCTS
-    ON     1/16      UP       +1
+**Root plus a selector key.** Under NOTES → RIGHT → SELECTOR choose OFF (default), a selector octave, or a dedicated external selector channel. Use CANOPY’s mapping: the white keys C through B select MAJ, SUS2, MIN, SUS4, DOM7, MIN7 and MAJ7. The five black keys in ascending order select MAJ6, MIN6, ADD9, DIM and USER. A held root immediately adopts the selected shape, keeping common pitches sounding. Selector notes are silent and recorded as a chord choice. In PLAY all keys are pitches. Keep the source and channel scoped to the addressed track. [CANOPY keyboard mapping](../../modules/core/adapters/instrument-play/README.md)
 
-     C3  E3  G3  C4  E4  G4
-             ^
+**Interaction between POLY and ARP.** With both off, the track plays its ordinary machine behavior. With POLY on alone, the held or recorded chord sounds together. With ARP on alone, the arp traverses the full input set at RATE, even on a one-voice track. With both on, the chord set feeds the arp. CANOPY additionally supports its pad/arp blend below. Switching modes releases the departing output ownership and reconciles still-held input once at the next applicable onset. The physical KEYBOARD key retains its normal scale and octave functions. External MIDI and recorded trigs can play a chord with the panel keyboard closed.
 
-  GATE     SWNG      RST     NOTES
-   60%      50     PHRASE    PLAY>
-```
+## Where simultaneous voices come from
 
-The central strip previews traversal, with a cursor at the generated note;
-it is not a second editable step sequencer. Long sequences scroll around the
-cursor. With no active phrase it shows the saved shape or `HOLD NOTES`.
-Show-values mode uses the same native numeric presentation as other TRIG
-pages; the illustration is secondary to legible controls.
+| Destination | Proposed allocation | First proof |
+| --- | --- | --- |
+| MIDI machine | One note-on/off pair per pitch on the configured port/channel. Default four sounding notes, optionally up to the 16-note input limit, subject to bandwidth and the receiving synth. | Sustain C and G while E releases, including repeated notes and shared-channel ownership. |
+| CANOPY | One admitted instrument instance supplies four foreground voices and its two short release tails. It accepts resolved notes with individual tokens. | Play four overlapping notes from one track and compare release and steal behavior with CANOPY PLAY today. |
+| Stock sample and single-voice DigiKit machines | A **voice group** uses the source track and borrows an eligible audio track for each additional voice, up to four total. | ONESHOT on T01 with T09 and T10 reserved. Capture distinct pitches and independent AMP releases in stereo with the other tracks playing. |
+| RELAY 0.5.1 | The owner and one borrowed audio track provide two independent readers of the same committed tape. Record, overdub and undo stay single-owner. | Play two pitches during an open punch and verify that each reader keeps its own position and that both leave the writer intact. |
+| Other stateful machines | The shared pages and arpeggiator use the machine’s supported note path. Helper tracks require a machine-specific playback and quiet contract. | The group uses only its owner until a helper backend is qualified. |
 
-Enumerated choices use CANOPY's deliberate travel (four raw encoder ticks per
-choice, no acceleration). RATE shows musical fractions, OCTS signed integers,
-and the focused ORDR value can show its full name. Encoder turns while holding
-a sequencer step edit its locks; pressing NOTES while holding a step opens that
-step's note recipe. An action press must never create a parameter lock.
+DTII stock voice groups use native contexts for pitch, playback position, velocity, filter and AMP release. They carry the seed’s sample, slice, start settings and machine-specific pitch behavior. The coupled emulator qualified ONESHOT, WERP, STRETCH, REPITCH, SLICE and GRID individually, including timing-derived pitch and slice selection. CANOPY uses independent voices in its own renderer. The same keyboard shows the effective sounding-voice limit for each track. [Stock machine qualification](../findings/369-track-keyboard-native-output.md) · [CANOPY voice bank](../../modules/machines/canopy/README.md) · [RELAY track contract](../../sdk/dsp/contract/dk_relay_track.inc)
 
-Defaults: OFF, 1/16, AS PLAYED, 0 octaves, 50% gate, straight swing, PHRASE reset,
-PLAY input.
+**Automatic groups.** POLY enables borrowing on eligible audio machines.
+Each additional pitch uses an empty, quiet sample track while it sounds and
+through its native release tail. The allocator checks the current pattern,
+the selected pattern and already queued destinations. The focused track and
+tracks that already have notes, stored sequence data or another claim are
+excluded from new automatic loans. H POOL reports the owner and its current
+loans against the voice limit. The overlay follows the owner’s Sound and
+resolved locks and feeds the owner’s mixer, sends and mute once. Owner
+LEVEL/DATA adjusts the whole chord.
 
-## NOTES: play, learn and edit
+**Pinned groups.** With transport stopped, POOL can still pin a set of
+empty audio tracks to the pattern. Numbered TRIGs choose helpers, YES applies,
+and NO cancels. Saved groups keep their choices. Apply an empty selection
+to return the group to AUTO.
 
-The editor clearly separates the **input set** from the currently **generated
-note**. It opens on the current choice, using native list/editor styling.
+**Allocation and cleanup.** Give each pressed key an ownership token. Prefer a free voice, then a releasing voice, then the oldest sounding voice. A stale note-off for a stolen token cannot stop the replacement. Keep held notes in the input ledger for arp traversal even if their direct voices were stolen. Preserve normal per-key velocity and pedal ownership. When a generated chord exceeds capacity, admit the first pitch and as many additional pitches as are available, up to VCES. A note waiting for routing has a bounded wait and its release can cancel the start. The complete recipe remains editable. Release reservations and pending notes on disable, reassignment or project change. At a playing-pattern switch, validate the destination group before admitting any notes. Pattern/track copies retain the requested configuration but may claim only eligible helpers. Conflicts show the effective capacity for the destination.
 
-```text
- T01                NOTES DRAFT
- CHRD  PLAY          LIVE 3/16
+**Recording.** A chord trig holds a pattern-owned recipe. For a named shape, store root, shape, voicing and strum once. For PLAY, store the ordered notes, velocities and individual onset/release offsets when the player rolls a chord or lifts one finger early. Preserve the stock recorder’s placement and quantize policy. Notes placed on different steps keep their own step identity. Pair note-offs across step boundaries, including repeated pitches, and apply TRIG LEN as the phrase limit for an explicitly length-edited seed. Held-step NOTES edits an isolated draft. Save/load, copy, undo and ARP on/off must reproduce the same input performance. A four-note MIDI root/offset seed is the interoperable subset. Extra pitches and independent gates require the versioned pattern extension.
 
-  1:E3   2:C3   3:G3
-        OUT E4       OCT +1
+## CANOPY SRC after moving keyboard controls
 
- A CHRD  B LEARN  C ITEM  D NOTE
- E VEL   F REF    G --   H --
-```
+With the Track Keyboard adapter, **SRC** cycles **VOICE → FM ENV → DETAIL** for every CANOPY sound. Turn VOICE A to select Velvet, Reed, a wavetable or FM. VOICE includes the oscillator controls and DRFT. LEVEL/DATA controls track level and stock AMP controls amplitude. A held WAVE lock supplies the step’s effective sound family for drawing and editing.
 
-This is a hierarchy/controls schematic; the finished editor must fit these
-elements to the display using native widgets rather than shrinking the font.
-In PLAY, ITEM/NOTE/VEL are read-only views of held inputs with absolute pitch
-names. In USER, rows and NOTE show signed semitone offsets, for example
-`1:+0  2:+4  3:+7`; the separate OUT readout shows the actual generated pitch.
-Generated chord choices show their resulting intervals.
+| SRC page and family | A | B | C | D | E | F | G | H |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| VOICE · Velvet / Reed | WAVE | COLR | — | — | waveform | waveform | waveform | DRFT |
+| VOICE · wavetable | WAVE | POS | DEP | RATE / HZ | SHAP | CLK | RST | DRFT |
+| VOICE · FM | WAVE | ALG | BAL | RTA | RTB | FDBK | operator chart | DRFT |
+| FM ENV · Velvet / Reed | — | — | — | — | — | — | — | — |
+| FM ENV · wavetable | ATK | REL | PENV | FENV | FM depth | RAT | VEL | envelope guide |
+| FM ENV · FM | ATK | DEC | SUS | REL | FM depth | ENV | VEL | envelope guide |
+| DETAIL · all families | TUNE | — | — | — | — | — | MIX | LEV |
 
-- **CHRD PLAY:** use the exact held or sequenced pitches, including their
-  inversions. A chord-name readout may describe them, but recognition must not
-  reorder or substitute them.
-- **CHRD types:** major, minor, sus2, sus4, diminished, augmented, dominant 7,
-  major 7 and minor 7 expand a root. With several root keys held, the most
-  recently pressed key is the root; releasing it returns to the previous one.
-- **CHRD USER:** transpose a stored ordered interval set from the root key.
-  USER and the standard shapes are immediately selectable; no hidden PLAY
-  mode may trap the CHRD control.
-- **LEARN:** start an explicit capture draft. Play a chord together or enter
-  notes successively. Key releases stop audition but do not erase draft
-  entries. Order and velocities are captured; up to 16 entries are retained.
-- **Review:** ITEM selects an entry, NOTE edits its semitone offset, VEL its
-  velocity. REF changes the captured reference pitch while preserving captured
-  pitches by rebasing their offsets. Initially this is the first captured
-  note. REF is the stored learning anchor, not a second live root control:
-  during USER playback the played root key replaces this reference.
-  RIGHT opens native extra actions: insert, remove, reorder and clear.
-- **Save:** YES saves the editor's choice/set and returns to ARP. A learned or
-  manually edited set becomes USER. NO backs out and discards the draft,
-  preserving the original choice/set. No extra confirmation.
+For Velvet and Reed, FM ENV points to AMP. The wavetable attack and release shape both position and FM depth, with PENV and FENV setting their signed amounts. VEL uses strike velocity to offset wavetable position or FM depth, depending on the engine. The FM envelope uses ADSR for modulation depth. Both curves use the stock AMP graph renderer and update as you turn the timing knobs. DETAIL keeps native TUNE and source LEV around the pad/arp blend. ARP rate and reset live on TRIG 3. Show-values, focus and held-step lock inversion use the native interaction. Stored presets, step-lock IDs, wheel setup and the six modulation destinations per sound family retain their existing meanings. [CANOPY parameter definitions](canopy-ui-review.md)
 
-The main ARP page's encoder edits are immediate, as on native parameter
-pages. The NOTES editor always works on a draft, for track defaults and for
-held steps alike. Edits can be auditioned immediately, but NO restores the
-previous saved data. YES commits and closes the whole flow. Mark the editor
-`DRAFT`, with `LIVE`, `LEARN` or `USER` as its source/status. A learned set is
-ordered interval data, not an automatic hold. The learn screen does not need
-a sustain pedal.
+**Keyboard and blend.** TRIG 4 holds CHRD, VOIC, STRM and the keyboard display. TRIG 3 holds the arp controls. NOTES is the front-panel home for learn and selector keys. **MIX** on DETAIL G always shows the editable blend. On trigs with both POLY and ARP enabled, it blends the pad and arp, including when a trig lock enables ARP. An active path plays at its normal level when enabled alone. Hold a trig and turn G to lock its own blend. The shared scheduler delivers separate direct and timed notes to CANOPY’s existing voice renderer. Firmware without the Track Keyboard adapter uses the fallback KEYS → ARP → SOUND → ENV cycle.
 
-USER data is local to the pattern/track, with optional per-trig overrides.
-Pattern/track copy and paste must include it. A new trig uses track defaults
-unless it has its own recipe. Editing the track's USER set must not mutate
-independently saved per-trig recipes.
+**Existing projects and presets.** An unmodified CANOPY Sound supplies its legacy performance settings to the two TRIG pages until a track override is saved. Initialize its effective switches and blend from the original pad/arp behavior, including pure pad, intermediate mix and pure arp. Merely opening the pages writes nothing. For an inherited sound use its legacy engine where needed for exact recall. The first performance edit materializes pattern defaults. Migrate timing as rational divisions, including CANOPY’s 7/Q even though stock retrig lacks that division. Keep order, octave traversal, swing and reset semantics for recalled legacy phrases. Decode existing packed step locks and MOD by **parameter identity**, including CHRD, strum, ARP MIX, gate and swing. Existing timbre locks still reach the same synthesis control after its encoder moves. Apply a pattern override ahead of an inherited base, then the eligible step lock and native modulation. Never rewrite shared Sound data while copying or editing the pattern. Compare rendered notes, release timing and the blended sound before and after migration for each source family. [Existing controls and lock behavior](../../modules/machines/canopy/README.md)
+
+## NOTES editor
+
+Turn H on the main page for immediate choice of **PLAY**, a chord shape or **USER**. Press H with the step keys released for detailed editing. This follows the turn-to-select, click-to-browse behavior already used for sample slots. [DigiKit chooser and UI conventions](ui-rules.md)
+
+- **PLAY** takes the input pitches, press order, inversions and velocities as played. On a MIDI trig the native root and enabled NOT2–NOT4 supply its chord. The editor shows absolute note names.
+- **Chord shapes** include major, minor, sus2, sus4, diminished, augmented, dominant 7, major 7 and minor 7. The newest held key is the root. Releasing it returns to the previous held root.
+- **USER** stores an ordered set of up to 16 intervals and velocities. The first learned note is its reference. Learning E3, C3, G3 yields 0, −4, +3. Playing D3 recalls D3, B♭2, F3 in AS PLAYED. Releasing the root stops the phrase unless another input owns it.
+
+Open a native scrolling list with a short title at left and an inverse selection row at right. In USER, each row shows ordinal, signed semitone offset and velocity. Use the left column for track or step scope and the current output pitch while auditioning. Scrolling follows the player's selection. A sounding note can change while the selected row stays put.
+
+| Gesture in NOTES | Result |
+| --- | --- |
+| UP/DOWN or LEVEL/DATA | Select an entry. The list opens on the current entry. |
+| RIGHT | Open the action panel for LEARN, edit pitch/velocity, change reference, insert, remove, move or clear. LEFT or NO closes that panel. |
+| LEARN, then play keys | Start a fresh draft. Enter notes together or one at a time. Key releases end audition and keep the entries. Show the entry count. A seventeenth note gives FULL without displacing a saved note. |
+| RIGHT → EDIT STEP in Grid Recording | Tap an existing step to target its recipe. Scope shows track and absolute step. Release the step and use both hands to learn. The selection tap cannot add, remove or audition a trig. Cancel or finish a changed draft before retargeting. |
+| YES at the draft list | Commit all edits to the displayed scope and return to ARP. A learned set selects USER for that scope. On a step this writes its CHRD override and its ordered recipe together. |
+| NO at the draft list | Return to ARP and restore the choice and recipe present when the draft opened. |
+
+Editing an entry uses a small native numeric editor. Changing the reference rebases offsets while keeping learned pitches. A change to a shared recipe creates a private copy for the edited scope. LEARN accepts resolved panel pitches and routed USB/DIN notes. While the editor owns a keyboard gesture it consumes its matching release, including if the user closes the editor first. Restore the original keyboard/grid mode, LEDs and page focus when the editor closes. A track, pattern or project change cancels the pending edit. This uses the input ownership lesson from [PRISM’s track selector](../findings/362-prism-track-select.md).
 
 ## Exact musical behavior
 
@@ -192,35 +163,35 @@ releases correctly. Do not evict a held note silently.
 
 ### Clock, length and reset
 
-RATE follows the selected pattern's BPM. There is no local BPM or clock-source
+RATE follows the selected pattern's BPM. Include a labeled 7/Q entry for CANOPY compatibility. There is no local BPM or clock-source
 selector. The initial division list follows the native retrig choices:
 1/1, 1/2, 1/3, 1/4, 1/5, 1/6, 1/8, 1/10, 1/12, 1/16, 1/20, 1/24,
 1/32, 1/40, 1/48, 1/64 and 1/80. A rate of 1/4 means one note per quarter note.
 
-While stopped, keyboard phrases run at the selected pattern tempo. Starting
-transport synchronizes to the committed pattern clock boundary. Missing
-external clock while transport is running must not masquerade as a stopped
-transport and silently free-run. Stop scheduling new onsets and release owned
-notes safely if a running clock becomes invalid.
+Use the selected stock BPM for both running and stopped performance. Acquire a valid tempo before the first timed onset. Advance by elapsed musical time and retain the most recent valid BPM through duplicate records, gaps and external-phase expiry. Apply a newly validated tempo to subsequent intervals without restarting the cursor or playing catch-up notes. A sequenced phrase still requires a real eligible trig. External phase loss conveys no new pattern boundary. This follows the revised CANOPY scheduler, which the repo tested at 120 and 180 BPM across PLAY and STOP. [Current clock behavior and evidence](../findings/348-canopy-pattern-arp.md)
+
+Use the **playing pattern** for a destination change, at the boundary where its first step becomes audible. The scheduled pointer can change on the outgoing pattern’s last step. Keep that step’s locks and recipe through its lifetime. Use the committed position record for master boundaries, and the track’s resolved event time for swing, scale and microtiming. Repeated records represent one boundary. A short gap preserves tempo and pending note-offs. [Position receiver](../../modules/core/adapters/pattern-position/README.md) · [Playing versus scheduled pattern](../findings/365-loop-transport-and-playing-pattern.md)
 
 RST controls the traversal cursor:
 
-- **PHRASE:** restart at the first candidate when an empty input becomes
+- **TRIG** (new phrase) — restart at the first candidate when an empty input becomes
   active, or a new sequencer seed starts. Adding a held key does not reset it.
-- **PATTERN:** reset on each committed pattern-cycle boundary. For a new seed,
+- **PATTERN** — reset on each committed pattern-cycle boundary. For a new seed,
   derive its candidate index from the number of nominal RATE intervals since
   that boundary, modulo the current traversal length. While stopped, with
-  no committed pattern cycle, use PHRASE behavior.
-- **CONTINUE:** preserve cursor across phrases and pattern changes, wrapping
+  no committed pattern cycle, use TRIG behavior.
+- **CONTINUE** — preserve cursor across phrases and pattern changes, wrapping
   against the new candidate count. It does not preserve notes or latch input.
 
-RST controls the note index, not the seed's actual onset time. A new phrase's
-first note is due at the eligible seed/key event, including a microtimed trig;
-its subsequent intervals start there and follow RATE/SWNG. Do not catch up
-missed notes with a burst. CONTINUE remembers the next index while input is
+RST controls the note index. A new phrase's
+first note is due at the eligible seed/key event, including a microtimed trig.
+Its subsequent intervals start there and follow RATE/SWNG. A delayed poll
+skips elapsed slots and keeps the forward timing and swing phase. A late
+onset whose gate has already elapsed gets a gate bounded by the next slot.
+CONTINUE remembers the next index while input is
 empty; it does not advance it silently. PATTERN instead derives the index
 from the running pattern grid on re-entry. For an E/C/G press-order set, a
-fresh phrase starts E under PHRASE; CONTINUE resumes C if E was the last note;
+fresh phrase starts E under TRIG; CONTINUE resumes C if E was the last note;
 PATTERN starts G if two nominal RATE intervals have elapsed since the cycle
 boundary. A boundary reset during an active phrase sets the next index to
 zero without creating an additional onset.
@@ -266,19 +237,16 @@ the seed's sound and resolved locks for that phrase; it does not reroll the
 condition or resend program changes. Later lock-only events can update
 supported parameters. On phrase end or replacement, retire the old context
 without leaking its locks into unrelated events. ARP enable and its musical
-controls are per-trig lock targets; NOTES is an action, not a lock value.
+controls, including CHRD, are per-trig lock targets. Opening NOTES is an action.
 
-The arp emits one note event at a time. Existing machine behavior determines
-voice stealing, sample tails, portamento and amplitude envelopes. This does
-not add polyphony to stock sample machines. MIDI uses the track's configured
-channel/output ports and its existing controller behavior. Per-key velocity
+ARP emits one timed pitch per onset. Direct POLY playback uses the allocated voices described above. MIDI uses the track's configured
+channel/output ports and its existing controller behavior. MIDI SRC CHAN set to OFF suppresses output. Pair note-offs against the original port, channel and pitch even if routing changes. Per-key velocity
 is retained; panel keys use their native trig velocity. Generated chord notes
 inherit root velocity unless a USER entry supplies an explicit one.
 
 Default recording records **input notes/chord recipes**, not every generated
 note. Live recording, step recording and held-trig editing must all preserve
-order and support playback without the keyboard attached. Turning ARP off
-plays the ordinary native seed fields: an audio track's root note or a MIDI
+order and support playback without the keyboard attached. With both track performance switches off, ordinary tracks play the native seed fields: an audio track's root note or a MIDI
 track's native chord (up to four notes). The extended ordered recipe remains
 saved but inactive; this does not create a 16-voice stock chord. The editor
 must distinguish that native seed from the extended recipe.
@@ -296,22 +264,14 @@ future `RENDER TO TRIGS` action can do that, with preview and capacity checks.
 
 ## CANOPY and track lifecycle
 
-Universal ARP must become the single note-generation owner when enabled on
-CANOPY. Feed its resulting pitches into a direct single-note performance
-path; bypass CANOPY's own chord expansion, strum and internal arp for those
-events. This path must sound independently of CANOPY's saved PAD/ARP MIX;
-otherwise a sound set fully to its internal arp could become silent.
-Preserve the saved CANOPY sound settings and restore their ordinary behavior
-when universal ARP is disabled. Show `TRACK ARP` on the internal CANOPY arp
-view while it is overridden; never leave two apparently effective arps.
+CANOPY accepts the shared keyboard’s resolved pitches and the arp’s timed events on distinct lanes. MIX on DETAIL sets their levels. The local legacy generator yields ownership when the shared engine takes over.
 
-On ARP disable, source/route/channel/machine change, project load or reset,
-release the notes owned by the old configuration before adopting the new one.
+On changes to POLY or ARP, retire output that loses ownership and retain still-valid voices in the other lane. On route, machine or project changes, release all old output ownership before adopting the new configuration.
 Transport stop ends sequencer-owned phrases; keys still held can continue in
 stopped keyboard mode. Ordinary track mute follows the native distinction
 between sequencer muting and keyboard audition. A native panic/stop-all action
 flushes both kinds of ownership and requires fresh input to restart them.
-Pattern switches use destination arp settings; physically held keyboard notes
+At the playing-pattern boundary, adopt destination arp settings. Physically held keyboard notes
 remain input, subject to the selected RST mode. Never carry old sequencer
 notes into a new pattern accidentally.
 
@@ -322,30 +282,21 @@ panel keyboard   USB/DIN keyboard   sequencer note/chord + locks
        \              |                       /
           ownership and per-track input arbitration
                            |
-                  shared track arp scheduler
-                    /                    \
-        native audio note dispatch    native MIDI event queue
-                  |                         |
-           selected machine          track channel / ports
+                  ordered track note set
+                   /                  \
+        direct chords / strum     timed arp notes
+                   \                  /
+                  track voice assignment
+                 /            |           \
+       machine voices     audio group     MIDI queue
+                         owner mixer     channel / ports
 ```
 
-1. **Ingress and ownership:** adapt the resolved keyboard note path, input
-   ledger and sequencer events. Preserve native scale/octave mapping. Shared
-   ownership must compose with CANOPY, not compete for the same messages.
-2. **Clock and generator:** a bounded per-track state machine owns traversal,
-   octave expansion, swung timing and paired note-offs. Reuse CANOPY's clock
-   semantics rather than its synth-specific DSP voice generation.
-3. **Dispatch:** establish current-image audio and MIDI event/task boundaries.
-   Use native note scheduling and a bounded MIDI queue. Never call USB MIDI
-   transmission from an audio interrupt: its low-level sender can block.
-4. **Persistence and locks:** define versioned pattern/track/step data and a
-   bounded table of ordered recipes. Prove save/load, copy/paste, clear,
-   reload, undo and pattern-chain transitions. Allocate lock identifiers
-   without collisions with CANOPY or stock parameters. Do not assume unused
-   pattern bytes or the existing CANOPY chord packing can hold this feature.
-5. **UI and CANOPY integration:** implement the one-page controls, editor and
-   explicit single-generator ownership. Existing CANOPY USER learning sorts
-   intervals, so its schema cannot preserve AS PLAYED without an extension.
+1. **Keyboard and recording.** Extend resolved panel input and the MIDI note-ownership ledger to all admitted tracks. Pair input by source and key. CANOPY's four-note chord support has separate live and step-recording paths. Step recording pairs the firmware's completed writer event to a bounded queue in press order. Live recording observes committed notes after input. Keep these paths distinct, expire stale work when the target changes and exclude generated notes from recording. [Recording evidence](../findings/349-canopy-recording.md)
+2. **Clock and dispatch.** Implement one scheduler per track using the selected-BPM and playing-pattern rules above. Establish an eligible seed and a child note-on/off dispatch on both a stock audio machine and a MIDI machine. A DSP input frame proves an audio path only. Place routed MIDI events in a bounded non-blocking queue and drain it from the MIDI task. Retain same-pitch release priority, including when tracks share a port and channel.
+3. **Pattern storage.** Place defaults, step locks and ordered recipes in versioned pattern-owned data. Follow a recipe through duplicate, clear, undo, save, reload and project transfer. A native MIDI trig can represent a root and three additional notes. CANOPY's packed chord IDs 53–55 and five carrier-specific SRC lanes already serve that machine. Claiming those slots on another machine can alter real source parameters. CANOPY's 40-byte Sound extension and per-track working copy solve Sound persistence. They have different ownership from a pattern's TRIG settings. Prove pattern identity and copy-on-edit before selecting physical storage for the 16-note extension. [Packed lock layout](../findings/347-canopy-trig-locks.md) · [Working-copy scope](../findings/356-canopy-working-copy.md)
+4. **TRIG view integration.** Identify the 1.17 audio and MIDI TRIG view's page list, draw, resolver, action and held-step paths. Append both ARP and KEYS to the native page cycle and keep the original entries and normal dispatch available if registration fails. Current service registration for extra **SRC** pages and PRISM’s **FX** page provide examples of ownership and bounds. Neither registers a universal TRIG page. Bind to the actual TRIG view before claiming pixel parity. [SRC registration](../findings/337-canopy-src-pages.md) · [FX page integration](../findings/359-prism-send-effect-and-page.md)
+5. **CANOPY.** Route generated pitches to the direct performance path described above. Keep distinct direct and timed note lanes so existing pad/arp blends can be recalled. Use an order-preserving schema for learned shapes. Include same-pitch retriggers, chord replacement at an off-grid trig, and short gates at zero attack. CANOPY now eases its reset/steal ramp while retaining onset timing. Test that renderer on CANOPY and native AMP behavior on stock machines independently. [Trig-click measurement](../findings/366-canopy-trig-click.md)
 
 DIN MIDI has a shared bandwidth ceiling. Sixteen tracks at 1/64 and 120 BPM
 would use roughly 3,072 bytes/s for three-byte note-on/off pairs before clock
@@ -355,16 +306,17 @@ reject excess new onsets with a visible `MIDI BUSY` indication rather than
 building an ever-growing queue. Do not advertise unrestricted maximum-rate
 arps on all MIDI tracks at once. USB and DIN routes need independent budgets.
 
-CANOPY's onset ramp is an instrument fix, not a universal audio de-click
-solution. Test stock AMP retrigger behavior at zero attack and short gates;
-any additional ramp must be designed for that path without changing every
-machine's attack sound. External synth envelope behavior is outside DTII.
+The output budget and release guarantees require measurement under simultaneous audio and MIDI load. Receiver envelopes determine how external synths respond to note-off.
 
 ## Delivery and acceptance
 
-First prove one audio track and one MIDI track using the same generator and
+**Visual acceptance on OS 1.17.** Capture unmodified audio TRIG 2 and MIDI TRIG 2 as separate references. With matching track, level, pattern, tempo and transport, compare normal, held parameter key, release, encoder focus and a held locked step. Compare protected chrome at logical 128 × 64 with zero pixel tolerance. Allow only the intentional four-page marker change and temporary page/parameter text to differ. For the reused switch and RATE widget, compare to stock RTRG and RATE at matching values. For every cell check caption baseline, lock inversion, sign, longest value and right-edge clipping. Compare editor selection and scrolling to the native list. Verify release-without-turn, press-and-turn, lock-clear, multi-step editing, [FUNC] + [TRIG PARAMETERS] and returning from a covering view. Keep actual captured firmware frames with local test output.
+
+**Playback acceptance.** First prove simultaneous direct playback on one three-voice stock audio group and one MIDI track, then serial traversal on both using the same generator and
 keyboard pool. This is the decision gate for the universal design; building
 the editor first would not establish the hardest integration boundaries.
+
+For each audio backend, measure one- versus four-note levels, pan and stereo placement, release continuity and CPU headroom under a busy pattern. Keep per-note gain stable as notes enter or leave. Check pre/post-fader sends and isolated track capture see the owner’s complete chord exactly once. Exercise helper conflicts, changing page with keys held, rejecting a stale release after stealing and stopping a strum before its final note. Compare old CANOPY projects with pure pad, pure arp and intermediate MIX, including a 7/Q lock and a preset lock on a different sound family.
 
 Then deliver persistence/recording, full UI, CANOPY coexistence and multi-track
 scheduling. Release acceptance includes:
@@ -372,18 +324,209 @@ scheduling. Release acceptance includes:
 - Audio-machine and MIDI-track arp from panel, USB and DIN; no raw-note double
   audition; exact order/octave examples above, including duplicate ownership.
 - Stopped play, transport start/stop, internal/external clock, clock loss,
-  pattern switches and all reset modes; one onset at coincident boundaries.
+  pattern switches and all reset modes. Cover queued and direct changes, unequal pattern lengths, pause/continue, last-valid BPM and a single onset at coincident boundaries.
 - Short/long gate, repeated same pitch, release tails, conditions,
   microtiming, swing, portamento, sound locks and lock-only events.
 - Learn/save/cancel, changing PLAY/USER/chord types in both directions, and
   deliberate encoder travel with stock show-values/focus behavior.
 - Live and step recording, held-trig edits, more than four notes, pattern
   save/reload/copy/undo, recipe capacity exhaustion and no corrupt partial edit.
-- CANOPY internal arp restored after universal ARP is disabled; no recursive
+- Existing CANOPY Sounds recall their pad/arp blend, legacy divisions and step locks through the SRC refactor. Verify TUNE/LEV parity and three source families in normal, held and lock views. No recursive
   note generation; route/channel/machine/project changes leave no stuck notes.
 - Busy multi-track MIDI plus clock/controllers with bounded latency and
   guaranteed release capacity. Compare audio timing and CPU overhead against
   the feature disabled before making a performance claim.
+
+## Implementation status
+
+The experimental adapter implements the shared scheduler, native TRIG pages,
+pattern-owned recipes, and stock sample voice groups. The [adapter guide](../../modules/core/adapters/track-keyboard/README.md)
+describes the available controls and the held-trig edit gestures. The
+[native output findings](../findings/369-track-keyboard-native-output.md)
+record the six-machine stereo comparison, independent release, and the
+ordinary mute test. [Pattern storage findings](../findings/371-track-keyboard-pattern-storage.md)
+cover the bounded record and individual-trig clipboard tests.
+
+On the DTII 1.17 emulator, a 16-step pattern switched to an 8-step
+destination and produced one generated hit on the first trig through both
+queued and direct-start routes. The host tests also cover a negative-timed
+destination note arriving ahead of the nominal boundary. Early MIDI and
+CANOPY scheduling requires a shared kit. The CANOPY route also requires
+shared performance in both patterns. Voice groups wait for destination
+helper validation.
+
+The original audio and MIDI TRIG 1 and TRIG 2 body captures match stock
+at OLED resolution. The page markers and page-count header reflect four
+pages. On the hardware OLED, ARP's OFF and ON switch and 1/32 RATE widget
+match the original audio retrig graphics at their exact coordinates. The
+MIDI ARP widgets also match, and the MIDI ARP and KEYS pages retain the
+stock track column. Holding TRIG shows the control values, encoder focus
+briefly shows RATE's value, and both interactions restore the idle captions.
+A held MIDI step showed inverted RATE graphics after turning the encoder.
+Pressing the encoder without turning restored the track RATE for the step.
+The packed CANOPY COLOR lock and a native filter cutoff lock both
+reached the same generated phrase in the coupled emulator. An unlocked trig
+restored both values. Separate SHARC tests cover locked and unlocked blends
+across the three source families.
+
+The final coupled OLED test captured audio and MIDI TRIG pages in their idle,
+held and released states. It verified all 24 lockable ARP and KEYS cells
+across the two track types, including exact inversion and clearing. The
+test also covered grouped RATE locks, the longest values at the right edge,
+and returning from the native Quantize dialog. In ten full-frame stock
+comparisons, only the intentional page-count digit and markers differed.
+
+Physical USB tests measured stopped sample-track arpeggiation and the MIDI
+sequence C–E–G at 120 BPM. The hardware image loaded CANOPY, Overloop,
+PRISM, RELAY and remote together. On the physical unit, switching from
+shared polyphony to ARP-only initially stayed
+silent until a Sound edit. The playback adapter now publishes the updated
+lane mix when that routing changes. The rebuilt firmware measured RMS
+0.044 in POLY-only and 0.030 in ARP-only without a sound edit. Both modes
+were tested on the same CANOPY track with the same panel chord.
+
+Shared CANOPY phrases can use a supported native Sound from the project
+pool. The phrase receives its source, TUNE and common performance controls
+before explicit parameter locks and native modulation. The next unlocked
+phrase restores the track Sound. The host test verifies the queued payload
+and the SHARC rig verifies consumption and retirement, including bad
+payload rejection. On the physical DTII, two panel-path starts and one
+USB-clock start played an isolated CANOPY track in the first step. Each
+take played Velvet at about 232 Hz on step 1, FM at about 468 Hz on the
+locked step 9, and Velvet on the next cycle. START copies a native cached
+event into the due queue. The adapter carries the step identity to that
+copy and accepts the cache event type only when it can verify this origin.
+The source and TUNE apply to the instrument instance, including any
+overlapping release tail.
+
+A DIN keyboard played a repeating three-note phrase on the sample track
+at 1/16 with the transport stopped. The USB audio capture returned to
+silence after the keys were released. A separate 12-second run played one
+audio track and six MIDI tracks at 1/80 while receiving 750 USB controller
+messages and 791 external clock ticks. Playback continued through a
+one-second clock gap and resumed following the clock. Across six USB MIDI
+channels, all 3,339 note-ons had matching releases, with no duplicate starts,
+orphan releases or unreleased notes after USB MIDI Stop. In a separate
+remote-panel run, the native MIDI Stop message came about 1.10 seconds after
+the remote command acknowledgement. All 890 notes on that run had matching
+releases, and the last onset preceded the native Stop by 15 ms. Input and
+gate timing were then measured separately with the sequencer stopped. At
+120 BPM and 1/16, remote-panel input took 3.0–5.1 ms to produce the first
+USB MIDI note. USB keyboard input took 37.8–69.5 ms. The median gates were
+65.0 and 66.1 ms respectively at 50% GATE. All 70 notes had matching
+releases. These figures include the host MIDI transport.
+
+With the same pattern playing one sample track and six MIDI tracks, the
+Health page showed 58% estimated DSP usage with ARP disabled and with all
+seven arps set to 1/80. Reported DSP peaks were 61% and 61–62%, respectively.
+The relative ColdFire indicator rose from 46% to 100%. That indicator uses
+the quietest window since boot as its reference. The later physical test
+timed the idle loop against the hardware clock. With ARP off, the playing
+test pattern retained about 21% estimated idle time. Three arps at 1/16
+retained 13–16%. With three or nine arps at 1/80 and 275 BPM, the counter
+recorded zero idle iterations during steady playback. Across those runs
+the USB audio capture reported zero stream errors, and every transmitted
+note had a matching release.
+
+A four-note stock chord appeared on the owner's isolated USB output, and
+the isolated helper output was silent. Individual-to-chord comparison
+measured each pitch within 1.4% of its standalone amplitude. The owner's
+level at zero silenced the POST output, while PRE retained the chord.
+Changing only the owner’s compressor routing changed the complete chord’s
+level. The coupled emulator also measured the owner’s pan, filter,
+overdrive, send and mute behavior. With the sample group, MIDI arp, RELAY,
+PRISM LIVE, and USB audio running together on the device, DSP time was 68%
+on average and peaked at 72% over four measured windows.
+[Routing and DSP measurements](../findings/369-track-keyboard-native-output.md)
+
+The POOL menu stages helper selection in checked track rows. APPLY GROUP
+validates and writes the complete group. NO discards the draft. Recording
+reports NOTES FULL when it hits the capture limit and keeps the first
+sixteen notes. NOTES → RIGHT → EDIT STEP lists existing note trigs by
+absolute step. Selecting a row retargets the editor without writing or
+auditioning a trig. Apply or cancel an edited draft before retargeting.
+On hardware the picker showed the two populated steps, and opening step 9
+showed its track and step in the Apply row. A staged helper was discarded
+with NO. Applying it in a new draft increased the track display to two voices.
+
+POOL also accepts numbered TRIG presses and shows staged, unavailable, and
+owner tracks on the LEDs. NOTES uses numbered TRIG presses and PAGE to
+choose an existing step across 16-step banks. Each picker consumes its
+own press and release. PLAY shows absolute pitches from a recorded recipe,
+the native trig, or held keys. USER still displays intervals and velocities.
+The coupled POOL test exercised a direct TRIG selection and its indicator.
+On the physical unit, PAGE moved across the 16-step banks. Pressing TRIG 9
+in bank 1 targeted track 1, step 9 and showed its absolute pitch, C4.
+NOTES shows the editor scope and the playing arp pitch in its title while
+keeping the selected row. KEYS voice-count focus names the effective voice
+group. POOL on a MIDI track lists its configured channel, output routes and
+each selected port's note-pair budget.
+
+RATE, OCTS and ORDR edits update the next live or sequenced arp onset
+without shortening the gate already in progress. A sequenced phrase keeps
+values explicitly locked by its seed, including migrated CANOPY locks.
+While an audio track runs stock manual RETRIGS, its shared arp clock
+keeps advancing. The track stops sending shared arp notes until the
+gesture ends. The next scheduled onset resumes from the current traversal
+position. Other tracks continue playing.
+
+DIN and USB use independent transmit budgets. An onset pays for both messages
+on each selected port. The native worker pairs the release on its original
+channel, and the captured output mask keeps it on its original ports. The
+coupled test switched each port while a note was held and observed the
+release only on the original output. The host sequence test fills the recipe
+pool and verifies that a refused write leaves the prior notes and locks intact.
+
+The physical DIN loopback returned all 15,180 note bytes in the same order
+as USB during a nine-arp playback test. In a separate burst test, USB alone
+played and released all 96 requested notes. With DIN and USB selected, the
+device admitted 80 notes, and every release appeared on both outputs.
+The DIN driver drained the whole queue in each run. [Measurements](../findings/369-track-keyboard-native-output.md)
+
+RELAY 0.5.1 supports the shared keyboard. When an eligible empty track is
+available, POLY can borrow it for a second pitched playback head. Both read
+the owner’s committed tape, apply track AMP independently, and mix their
+wet signals into the owner’s route. A commit or undo invalidates the readers
+for the old take. A released head waits for its finite native AMP envelope
+before freeing the cursor. The pool keeps routing the downstream tail
+through its original owner until the bus is quiet. The RELAY recorder retains ownership of the writer and the
+tape’s history. A SHARC test played two pitches while opening a punch,
+checked that both heads read the committed take, and verified that the
+reads left both the writer and its copy-on-write metadata intact. Earlier
+RELAY packages retain their native playback and recording controls.
+The full image booted on the DTII with all five modules loaded. In a
+disposable project, RELAY recorded a two-second take from a sample track.
+Assigning T9 from POOL raised the effective voice count to two. Both
+individual pitches were identifiable in the recorded two-note USB audio.
+With the updated machine service, three helper swaps during held RELAY
+chords released the old lease and restored two effective voices. The
+DTII also switched from a RELAY pattern to a pattern whose sample track
+requested the same helper. The old route held through its tail and
+the destination track acquired it after STOP.
+
+
+### Building the full experimental image
+
+Use a separate checkout to build the full experimental image with the
+436 KiB module arena. This profile leaves 2,856 bytes in ColdFire expansion
+and retains the 151,552-byte DTII staging buffer. Set `[limits] arena_bytes`
+to `446464` in the Digitakt II, Digitone II and Syntakt device profiles and
+set `ARENA_BYTES` to the same value in the runtime ABI. Regenerate its C and
+Rust ABI files and rebuild `core/runtime` and the Track Keyboard dependencies
+in that checkout. The device profiles and the runtime must agree on the arena
+size. Use the normal 512 KiB defaults for other builds.
+
+Pair this firmware with RELAY 0.5.1 and the matching DTII-bound
+`services/machines.dks` from the same build. The firmware supplies the
+native AMP state. The machine service frees the two completed cursors
+before POOL reuses the helper.
+
+```bash
+patchkit apply --firmware firmware/Digitakt_II_OS1.17.syx \
+  --modules core/track-keyboard,core/digikit-menu,core/health,core/input,core/loop-storage,core/loop-display,core/phrase-ui,core/relay-track \
+  -o out/patch/track-keyboard-dt2.syx
+patchkit preflight out/patch/track-keyboard-dt2.syx
+```
 
 ## References and reusable evidence
 

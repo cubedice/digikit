@@ -106,6 +106,80 @@ fresh status with a loop, then one without: a drop, or a loop lost with a moved 
 stops reporting for 60 passes after the home's own 60 (once, so that G can set LOOP again); it goes to LOOP by itself at an
 armed change that takes a loop, as before.
 
+## Follow-up: PRISM shows a zero-length loop
+
+**[D]** A read-only OLED capture on the physical Digitakt II, image `c6d6d9a726981b45`, sampled 190 frames in
+13 seconds. Of those, 147 showed LIVE and NO LOOP, 42 showed `LOOP 0 ST 0 MS` with INPT and XFAD at LOOP,
+and one showed LIVE with a retained fader graphic. The completed Overloop status publisher sets the loop flag and
+nonzero frame count together. The OLED capture establishes the invalid state that reached PRISM. The hardware
+link's internal diagnostics were unavailable.
+
+The status receiver now discards a carrier when the loop flag and length disagree. It also checks the heartbeat
+against the newest accepted packet before updating the pending packet or waveform. The published state can accept
+a restarting sequence after the usual link timeout, and natural 32-bit wrap advances normally. PRISM shows the last
+held loop through its existing input-route grace period. A newer valid drop clears it promptly.
+
+The host regressions reproduce late pre-capture replies and disappearing loop presentation on the prior source.
+They check the zero-length report, a true drop, restart and wrap, and confirm that rejected replies leave the
+crossfader and waveform alone.
+
+### PRISM shows a loop while Overloop is idle
+
+**[D]** On the physical DTII with image `39b9b01851c49e79`, 351 of 360 OLED samples showed LOOP and an outlined
+INPT icon. Nine showed LIVE and NO LOOP at about 14.5–15.1 seconds. Overloop was neither armed nor holding a
+capture. The OLED evidence establishes a false loop indication. The individual DSP reply words were unavailable.
+
+Overloop, PRISM and RELAY share the same reply cells. The previous loop receiver could accept mixed data
+when the loop flag and length happened to agree. The DSP now uses the reserved carrier word for a checksum
+over the complete status payload. The receiver checks it before accepting the heartbeat, waveform or loop state.
+The host regression mixes plausible newer captures and drops into intact carrier headers and verifies that
+the loop state, crossfader and waveform do not move.
+
+The assembled SHARC writer and production ColdFire reader passed a direct reply exchange. The reader kept
+the held loop through a modified drop with a misleading newer heartbeat and cleared it on the genuine drop.
+The writer kept unrelated reply cells intact and took 89 instructions per status.
+
+**[D]** After installing image `3fcaaa45a84e9852`, all 658 OLED samples over 40 seconds showed NO LOOP
+on the idle DTII. Pressing H displayed ARMD, and pressing it again cleared ARMD and returned to NO LOOP.
+A second idle check at HALO 126, the setting during the first capture, showed NO LOOP in all 450 samples
+over 28 seconds.
+
+### Overloop loses readiness while armed
+
+**[D]** On DTII image `0e644e7610b0bfa7` with Overloop 0.5.0, a passive screen capture showed
+`NOTHING YET` in 317 of 400 armed samples. A second trace read the ColdFire position record and the DSP's published
+Overloop status. The ColdFire reported valid running position throughout 775 samples with 96 consecutive
+master-step boundaries and one start generation. Overloop stayed armed with its readiness flag clear.
+
+Overloop had its own four-block continuity cutoff even though the position receiver kept its last valid record for
+750 blocks. Overloop 0.5.1 keeps a run across repeated or skipped transport reports until the receiver's grace period
+expires, using the musical boundary count to detect a skipped step. Genuine invalid position and discontinuous
+boundaries still end the run.
+
+All 48 SHARC rig cases passed. Two bursts between steps left the exact stereo capture intact. A delivered
+late boundary, expiry at 750 repeats, and invalid timing were checked separately. The maximum measured
+effect cost was 5,505 instructions per block.
+
+**[D]** After installing 0.5.1 on the same DTII, the armed screen stayed ready for all 97 samples over 6.5 seconds.
+Switching from A02 to A01 captured a 32-step, 5.00-second loop, cleared ARM and moved XFAD to LOOP.
+The test ended on the original pattern and the DigiKit settings matched the pre-update record byte for byte.
+
+### Overloop waveform collapses to the right
+
+**[D]** With Overloop 0.5.1, a DTII capture reported a held 32-step, 5.00-second loop. In all 250 sampled
+screen frames, the waveform occupied only the last 34 of 120 columns. The playhead continued across the display.
+
+The display history had reset its entire visible interval whenever a 512-frame peak report went missing.
+A late capture report could also erase the earlier history when its most recent complete group was after the
+capture edge. The receiver now preserves known history, clears the skipped cells in each circular buffer,
+and fills unreported cells up to the capture edge before freezing the view. The rolling view keeps its last
+nonzero length estimate through a timing dropout. A restarted sample counter still clears the history.
+
+**[D]** On the DTII running image `34aab3ec4587e462`, the live preview reached all 120 columns. A fresh armed
+switch from A02 to A01 captured another 32-step, 5.00-second loop. Its waveform occupied all 120 columns
+and held the same shape through 12 observations as the playhead moved. The original pattern and DigiKit
+settings were restored after the check.
+
 ## Proofs
 
 Lowest layer first, at the branch head in the WSL checkout; device tests on the Digitakt II 1.17 image on the emulator with
@@ -138,3 +212,11 @@ come one a block.
 - **[O]** Hardware: nothing of this ran on the device. Whether the frames on the device come as the rig's jitter models
   them (a repeat, then a gap of two; bursts) is not measured.
 - **[O]** The 750-block settle of the page's ARM and the `OL_SKIP` of 4 are first values.
+
+
+### Overloop live waveform cursor
+
+**[D]** The live view projects peaks into a fixed span with a dashed write cursor. On wrap, the latest pass overwrites the
+previous pass from the left. The held view still uses the actual capture boundaries, with its own playback marker.
+Small changes in the estimated cycle length leave the span in place. The host checks cover stationary columns through a
+full sweep and wrap, missing peak intervals, and the live and held cursor pixels.

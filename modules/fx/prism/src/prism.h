@@ -33,8 +33,21 @@
 #define PRISM_LIMIT_KNEE 0x3e800000
 #define PRISM_LIMIT_SLOPE 0x402aaaab
 #define PRISM_LIMIT_SPAN 0x3ec00000
-/* HALO at 1: tan of half the all-pass angle (60 degrees, coefficient 0.5). */
+/* HALO's base half-angle tangent, 60 degrees at 1. Above halfway the two
+ * slow triangles add 0.12 +/- 0.10, scaled by HALO * (HALO - 0.5). */
 #define PRISM_HALO_MAX 0x3f13cd3a
+#define PRISM_HALO_OPEN 0x3df5c28f
+#define PRISM_HALO_DRIFT 0x384ccccd /* 0.10 / 2048 */
+/* HALO's late return runs at 24 kHz. A normalized Hadamard feedback matrix
+ * with gain 0.75 lets the late tail last longer without raising the tape feedback. */
+#define PRISM_LATE_DELAY_L 701
+#define PRISM_LATE_DELAY_R 953
+#define PRISM_LATE_RING 1024
+#define PRISM_LATE_START 256
+#define PRISM_LATE_FEEDBACK 0x3f07c3b6 /* 0.75 / sqrt(2) */
+#define PRISM_LATE_DAMP 0x3eb33333     /* one-pole coefficient: 0.35 */
+#define PRISM_LATE_BASE 0x3ea147ae     /* HALO * (0.315 + HALO * 0.585) */
+#define PRISM_LATE_SLOPE 0x3f15c28f
 /* The DC blocker in front of the colour filter (2 Hz): y = g (x - x1) + r y1, r = 1 - 2 pi 2 / 48000, g = (1 + r) / 2. */
 #define PRISM_DC_COEFF 0x3f7feed8
 #define PRISM_DC_GAIN 0x3f7ff76c
@@ -130,6 +143,9 @@
 #define PS_LOOP_SEEN 57
 #define PS_AUTO 58
 #define PS_INPUT_ON 59
+/* Current tape-routing blend. Exact 0 and 1 once the short mode crossfade settles. */
+#define PS_PING_FB 60
+#define PS_PING_MONO 61
 #define PS_CONTROL 64
 /* The snapshot of the control mailbox (PH_CONTROL_WORDS words) and the words the engine reads in it. */
 #define PC_ZONE (PS_CONTROL + PH_C_ZONE / 4)
@@ -202,7 +218,19 @@
 #define PS_LINE3 1152
 /* The block's input when the loop is part of it (INPT): 32 left then 32 right. */
 #define PS_IN 1408
-#define PRISM_STATE_BYTES 5888
+/* The output-only HALO network. Resetting its valid count makes the old ring
+ * contents unreachable until each delayed sample has been written again. */
+#define PS_LATE 1472
+#define PL_INDEX 0
+#define PL_VALID 1
+#define PL_DAMP_L 2
+#define PL_DAMP_R 3
+#define PL_GAIN 4
+#define PL_PRIOR_L 5
+#define PL_PRIOR_R 6
+#define PS_LATE_LINE_L (PS_LATE + 8)
+#define PS_LATE_LINE_R (PS_LATE_LINE_L + PRISM_LATE_RING)
+#define PRISM_STATE_BYTES ((PS_LATE_LINE_R + PRISM_LATE_RING) * 4)
 #define PRISM_CALL_DEPTH 4
 
 /* Modes (PS_MODE, CH_MODE). */

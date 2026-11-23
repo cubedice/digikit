@@ -3,6 +3,44 @@
 #include <string.h>
 const u32 machines_info[8];
 struct RelayFiles relay_files;
+static unsigned rotary_cells, text_count, rotary_value[8];
+static struct {
+    int x, y;
+    char text[24];
+} labels[16];
+void ip_src_draw_rotary(u8 *view, u8 *canvas, u32 cell, u32 value)
+{
+    (void)view;
+    (void)canvas;
+    assert(cell < 8 && value <= 127);
+    rotary_cells |= 1u << cell;
+    rotary_value[cell] = value;
+}
+void fxv_text(void *bitmap, int x, int y, const char *text, int ink)
+{
+    (void)bitmap;
+    (void)ink;
+    assert(text_count < sizeof(labels) / sizeof(labels[0]) &&
+           strlen(text) < sizeof(labels[0].text));
+    labels[text_count].x = x;
+    labels[text_count].y = y;
+    strcpy(labels[text_count++].text, text);
+}
+static int has_text(int x, int y, const char *text)
+{
+    for (unsigned i = 0; i < text_count; ++i)
+        if (x == labels[i].x && y == labels[i].y && !strcmp(labels[i].text, text))
+            return 1;
+    return 0;
+}
+void fxv_box(void *bitmap, int x, int y, int width, int height, int ink)
+{
+    uint8_t (*pixels)[128] = bitmap;
+    assert(x >= 0 && y >= 0 && x + width <= 128 && y + height <= 64);
+    for (int row = y; row < y + height; ++row)
+        for (int col = x; col < x + width; ++col)
+            pixels[row][col] = ink < 0 ? !pixels[row][col] : ink;
+}
 const struct RelayOverview *rtm_wave(unsigned slot, unsigned revision, unsigned length,
                                      unsigned hits, unsigned sens)
 {
@@ -13,9 +51,26 @@ const struct RelayOverview *rtm_wave(unsigned slot, unsigned revision, unsigned 
     (void)sens;
     return 0;
 }
+const struct RelayOverview *rtm_wave_pending(unsigned slot, unsigned revision, unsigned length)
+{
+    (void)slot;
+    (void)revision;
+    (void)length;
+    return 0;
+}
 void relay_files_reply(const volatile uint16_t *frame)
 {
     (void)frame;
+}
+dk_ui *dk_ui_core_handle(void)
+{
+    return 0;
+}
+int32_t dk_ui_toast(dk_ui *ui, const char *message)
+{
+    (void)ui;
+    assert(message && *message);
+    return 0;
 }
 static SaStore store;
 static u8 sound[0x450], record[SR_BYTES];
@@ -96,9 +151,12 @@ int main(void)
     settings[0].rate = -73;
     settings[0].spacing = 12288;
     settings[0].mix = 29;
+    settings[0].input = RT_INPUT_MAIN;
+    settings[0].loop_q16 = 32768;
     publish_sound(0);
     struct TapeRecord value;
-    assert(decode_tape(record, &value) && value.rate == -73 && value.take == 0);
+    assert(decode_tape(record, &value) && value.rate == -73 && value.take == 0 &&
+           value.input == RT_INPUT_MAIN && value.loop_q16 == 32768);
     latest[8] = latest[10] = 1u << 16;
     assert(!rtm_can_save(binding[0].sound));
     tick();
@@ -123,7 +181,8 @@ int main(void)
     tape_loaded();
     tick();
     assert(settings[0].rate == -73 && settings[0].mix == 29 && settings[0].spacing == 12288 &&
-           binding[0].grid == 32);
+           binding[0].grid == 32 && settings[0].loop_q16 == 32768 &&
+           settings[0].input == RT_INPUT_MAIN);
     // A run of encoder events keeps the in-flight value stable and replaces the waiting value.
     count = head = 0;
     for (unsigned i = 1; i <= 100; ++i) {
@@ -135,7 +194,7 @@ int main(void)
     // A queued recall carries the recorded grid even if the performer adjusts a knob immediately.
     assert(send_to(0, RT_SETTINGS, 0, 32));
     assert(send(RT_SETTINGS, 0, 0));
-    assert(count == 4 && queue[2].end == 32 && !queue[3].end);
+    assert(count == 4 && queue[2].end == ((32768u << 16) | 32) && queue[3].end == (32768u << 16));
     // Commands keep their order when a full queue delays the latest encoder value.
     while (count < 8)
         assert(send(RT_FOCUS, 0, 0));
@@ -166,6 +225,7 @@ int main(void)
     status[4] = track;
     status[5] = 512;
     status[11] = 16u << 8;
+    settings[0].loop_q16 = 0;
     turn(5, -2);
     turn(6, 2);
     turn(6, 4);
@@ -177,6 +237,14 @@ int main(void)
     play_click(300);
     finish_play_click();
     assert(count == 4 && queue[3].operation == RT_PLAY);
+    count = head = 0;
+    page = 1;
+    turn(7, -16);
+    assert(settings[0].loop_q16 == 32768 && loop_frames(512, settings[0].loop_q16) == 256);
+    assert(count == 1 && queue[0].operation == RT_SETTINGS && queue[0].end == (32768u << 16));
+    turn(6, 2);
+    assert(count == 2 && queue[1].operation == RT_SEEK_READ && queue[1].end == 256 &&
+           queue[1].arg == 32);
     // Accept an intact wire snapshot, then drop a reused row with its old tag.
     uint16_t packet[0x600] = {0}, native[0x401] = {0};
     u32 words[14] = {0x524c5932, 4, 0, 1000, 1u << 16, 512, 96, 1u << 16};
@@ -209,5 +277,102 @@ int main(void)
     assert(project_gate(native, 0)[0x12] == 0);
     native[0x4a] = 3;
     assert(project_gate(native, 0) == native);
+
+    // The overview enlarges the waveform without changing its horizontal scale.
+    uint8_t pixels[64][128] = {0};
+    struct RelayOverview wave = {.frames = RELAY_WAVE_BINS};
+    for (unsigned i = 0; i < RELAY_WAVE_BINS; ++i)
+        wave.peaks[i] = RELAY_WAVE_SILENT;
+    wave.peaks[0] = 0xff00;
+    status[5] = 0;
+    page = 1;
+    draw_waveform(pixels[0], &wave, 0, 0, 0, 0, 0);
+    for (unsigned y = 27; y <= 46; ++y) {
+        assert(pixels[y][17] == (y <= 45));
+        assert(pixels[y][18] == (y == 36));
+    }
+    // Quiet transients expand while keeping their relative heights.
+    memset(pixels, 0, sizeof(pixels));
+    wave.peaks[0] = 0x837d;
+    wave.peaks[1] = 0x827e;
+    draw_waveform(pixels[0], &wave, 0, 0, 0, 0, 0);
+    for (unsigned y = 27; y <= 46; ++y) {
+        assert(pixels[y][17] == (y >= 29 && y <= 43));
+        assert(pixels[y][18] == (y >= 31 && y <= 41));
+    }
+    memset(pixels, 0, sizeof(pixels));
+    status[5] = 1200;
+    draw_waveform(pixels[0], &wave, 0, 1, 600, 120, 300);
+    assert(!pixels[26][27] && pixels[26][29]);                    // write head
+    assert(!pixels[47][43] && pixels[47][45]);                    // play head
+    assert(!pixels[26][70] && pixels[28][70] && !pixels[28][71]); // trim boundary
+    page = 0;
+    memset(pixels, 0, sizeof(pixels));
+    wave.peaks[0] = 0xff00;
+    draw_waveform(pixels[0], &wave, 0, 0, 0, 0, 0);
+    for (unsigned y = 0; y < 64; ++y)
+        assert(pixels[y][17] == (y >= 36 && y <= 40));
+    assert(!pixels[38][124]);
+
+    // Capture one telemetry window across the loop boundary without losing its
+    // previously measured column or coloring the unwritten middle of the tape.
+    status[2] = 1;
+    status[6] = 22;
+    status[12] = 1190;
+    status[13] = (u32)wave.peaks[0] << 8;
+    preview_waveform();
+    assert(live_track == track && live_peaks[0] == wave.peaks[0] &&
+           live_peaks[2] == wave.peaks[0] && live_peaks[119] == wave.peaks[0] &&
+           live_peaks[30] == RELAY_WAVE_EMPTY);
+    status[2] = 0;
+    preview_waveform();
+    assert(live_track == 16); // A canceled recording never becomes the fallback waveform.
+    status[2] = 2;
+    status[12] = 590;
+    settings[track].loop_q16 = 32768;
+    preview_waveform();
+    assert(live_peaks[0] == wave.peaks[0] && live_peaks[2] == wave.peaks[0] &&
+           live_peaks[59] == wave.peaks[0] && live_peaks[60] == RELAY_WAVE_EMPTY &&
+           live_peaks[119] == RELAY_WAVE_EMPTY);
+
+    // Both views preserve the same controls and show the two actual head positions.
+    settings[track].rate = -50;
+    settings[track].mix = 37;
+    settings[track].input = RT_INPUT_MAIN;
+    status[2] = 0;
+    status[6] = 120;
+    status[7] = 0;
+    read_offset = 180;
+    relay_files.state = RF_IDLE;
+    memset(pixels, 0, sizeof(pixels));
+    draw(0, pixels[0], 0);
+    assert(rotary_cells == 0xfa && rotary_value[4] == 25 && rotary_value[5] == 63);
+    assert(has_text(33, 21, "MAIN") && has_text(33, 30, "INPT"));
+    assert(has_text(59, 30, "RATE") && has_text(111, 30, "FDBK"));
+    assert(has_text(33, 58, "WRITE") && has_text(59, 58, "PLAY"));
+    assert(has_text(85, 58, "LEN") && has_text(111, 58, "MIX") && text_count == 8);
+    assert(pixels[38][64] && !pixels[35][64] && !pixels[18][64]);
+    assert(pixels[14][16] && !pixels[14][17] && !pixels[14][18] && pixels[14][19]); // paused
+    text_count = 0;
+    status[7] = 1;
+    draw(0, pixels[0], 255);
+    assert(has_text(33, 30, "MAIN") && has_text(59, 30, "-0.50") && has_text(111, 58, "37"));
+    assert(has_text(85, 58, "8") && text_count == 7);
+    assert(pixels[14][16] && pixels[14][17] && pixels[14][18] && !pixels[14][19]); // playing
+
+    text_count = rotary_cells = 0;
+    page = 1;
+    status[2] = 2;
+    draw(0, pixels[0], 0);
+    assert(!rotary_cells && has_text(33, 20, "INPT") && has_text(59, 20, "RATE"));
+    assert(has_text(111, 20, "FDBK") && has_text(33, 58, "WRITE") && has_text(59, 58, "PLAY"));
+    assert(has_text(85, 58, "LEN") && has_text(111, 58, "MIX") && text_count == 8);
+    assert(pixels[49][31] && pixels[49][57] && pixels[26][17]); // mini dials and larger overview
+    assert(pixels[12][16] && pixels[12][17] && pixels[12][18] && pixels[12][19]); // recording
+    text_count = 0;
+    status[2] |= 16;
+    draw(0, pixels[0], 255);
+    assert(has_text(33, 20, "MAIN") && !has_text(33, 20, "INPT") && pixels[26][17]);
+    assert(pixels[12][16] && !pixels[12][17] && !pixels[12][18] && pixels[12][19]); // armed
     return 0;
 }

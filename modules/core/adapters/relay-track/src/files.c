@@ -215,12 +215,19 @@ static unsigned magnitude(short v)
 {
     return v < 0 ? (unsigned)-(int)v : (unsigned)v;
 }
+static unsigned wave_point(short v)
+{
+    unsigned steps = (magnitude(v) + 255) >> 8;
+    return v < 0 ? 128 - steps : steps < 128 ? 128 + steps : 255;
+}
 static void analyze(u32 sample)
 {
-    u32 l = magnitude((short)(sample >> 16)), r = magnitude((short)sample), e = l > r ? l : r;
-    u32 f = analysis_pos++, bin = f * 120 / frames;
-    if (e > analysis.peaks[bin])
-        analysis.peaks[bin] = (u16)e;
+    short left = (short)(sample >> 16), right = (short)sample;
+    u32 l = magnitude(left), r = magnitude(right), e = l > r ? l : r;
+    u32 f = analysis_pos++, bin = f * RELAY_WAVE_BINS / frames;
+    unsigned low = wave_point(left < right ? left : right);
+    unsigned high = wave_point(left > right ? left : right);
+    analysis.peaks[bin] = relay_wave_join(analysis.peaks[bin], (u16)(high << 8 | low));
     // Look for an attack above a decaying peak. Keep stereo cuts coincident.
     // At most 63 hits plus the compulsory frame zero.
     unsigned floor = (10 - sensitivity) * 220;
@@ -248,12 +255,20 @@ static void scan_begin(void)
     analysis.count = 1;
     analysis.starts[0] = 0;
     analysis.slot = relay_files.slot;
-    for (unsigned i = 0; i < 120; ++i)
-        ((volatile u16 *)analysis.peaks)[i] = 0;
+    for (unsigned i = 0; i < RELAY_WAVE_BINS; ++i)
+        ((volatile u16 *)analysis.peaks)[i] = RELAY_WAVE_EMPTY;
     envelope = last_cut = analysis_pos = cursor = 0;
     end = frames;
     for (unsigned i = 0; i < 64; ++i)
         ((volatile u32 *)quiet)[i] = 0;
+}
+static int scan_more(unsigned pos)
+{
+    cursor = pos;
+    relay_files.progress = pos;
+    if (stop_scan || pos == end)
+        stage = RELEASE;
+    return MORE;
 }
 static int cancel(void)
 {
@@ -297,51 +312,47 @@ __attribute__((optimize("no-jump-tables"))) static int step(void *arg)
         pinned = 1;
         scan_begin();
         stage = relay_files.action == RF_SCAN ? SCAN : OPEN_FILE;
+        if (stage == SCAN)
+            relay_files.total = frames;
         return MORE;
     case SCAN:
         if (!hits) {
             // Measure every frame of the bin on the DSP, including quiet, narrow attacks.
-            // The DSP returns the span consumed, stopping at a physical pool page boundary.
-            unsigned bin = cursor * 120 / frames;
-            if (frames >= 120) {
-                // Each endpoint is an exclusive frame offset. Ten exact stereo maxima per reply.
+            unsigned bin = cursor * RELAY_WAVE_BINS / frames;
+            if (frames >= RELAY_WAVE_BINS) {
+                // Each endpoint is an exclusive frame offset. Ten envelopes per reply.
                 // Bound the batch on long tapes so the DSP job fits the link timeout.
                 unsigned bins = frames > 4000000 ? 4 : 10;
-                if (bins > 120 - bin)
-                    bins = 120 - bin;
+                if (bins > RELAY_WAVE_BINS - bin)
+                    bins = RELAY_WAVE_BINS - bin;
                 u8 ends[40];
                 for (unsigned i = 0; i < bins; ++i)
-                    be32(ends + 4 * i, ((bin + i + 1) * frames + 119) / 120);
+                    be32(ends + 4 * i,
+                         ((bin + i + 1) * frames + RELAY_WAVE_BINS - 1) / RELAY_WAVE_BINS);
                 x = exchange(RX_PEAKS, cursor, bins, ends);
                 if (!x)
                     return WAIT;
                 if (x < 0 || inbound[2] != bins)
                     return cancel();
                 for (unsigned i = 0; i < bins; ++i) {
-                    if (inbound[3 + i] > 32768)
+                    if (inbound[3 + i] > 65535)
                         return cancel();
                     analysis.peaks[bin + i] = (u16)inbound[3 + i];
                 }
-                cursor = word(ends + 4 * (bins - 1));
-                if (stop_scan || cursor == end)
-                    stage = RELEASE;
-                return MORE;
+                return scan_more(word(ends + 4 * (bins - 1)));
             }
-            unsigned limit = ((bin + 1) * frames + 119) / 120;
+            unsigned limit = ((bin + 1) * frames + RELAY_WAVE_BINS - 1) / RELAY_WAVE_BINS;
             n = limit - cursor;
             if (n > RX_PEAK_FRAMES)
                 n = RX_PEAK_FRAMES;
             x = exchange(RX_PEAK, cursor, n, 0);
             if (!x)
                 return WAIT;
-            if (x < 0 || !inbound[2] || inbound[2] > n || inbound[3] > 32768)
+            if (x < 0 || !inbound[2] || inbound[2] > n || inbound[3] > 65535)
                 return cancel();
-            if (inbound[3] > analysis.peaks[bin])
-                analysis.peaks[bin] = (u16)inbound[3];
-            cursor += inbound[2];
-            if (stop_scan || cursor == end)
-                stage = RELEASE;
-            return MORE;
+            // With fewer frames than bins, each occupied bin contains one frame.
+            analysis.peaks[bin] = (u16)inbound[3];
+            return scan_more(cursor + inbound[2]);
         }
         n = end - cursor > 10 ? 10 : end - cursor;
         x = exchange(RX_READ, cursor, n, 0);
@@ -351,19 +362,7 @@ __attribute__((optimize("no-jump-tables"))) static int step(void *arg)
             return cancel();
         for (unsigned i = 0; i < n; ++i)
             analyze(inbound[3 + i]);
-        cursor += n;
-        if (stop_scan) {
-            stage = RELEASE;
-            return MORE;
-        }
-        if (cursor == end) {
-            if (relay_files.action == RF_SCAN) {
-                stage = RELEASE;
-                return MORE;
-            }
-            stage = OPEN_FILE;
-        }
-        return MORE;
+        return scan_more(cursor + n);
     case OPEN_FILE:
         if (!slice) {
             name(1);
@@ -567,6 +566,14 @@ const struct RelayOverview *rtm_wave(unsigned slot, unsigned revision, unsigned 
                ? &c->overview
                : 0;
 }
+const struct RelayOverview *rtm_wave_pending(unsigned slot, unsigned revision, unsigned length)
+{
+    return relay_files.action == RF_SCAN && relay_files.state == RF_WORK && !stop_scan &&
+                   relay_files.progress && relay_files.revision == revision &&
+                   analysis.slot == slot && analysis.frames == length
+               ? &analysis
+               : 0;
+}
 static void cache_wave(void)
 {
     struct WaveCache *c = wave_cache + analysis.slot;
@@ -575,7 +582,7 @@ static void cache_wave(void)
     c->overview.count = analysis.count;
     for (unsigned i = 0; i < analysis.count; ++i)
         c->overview.starts[i] = analysis.starts[i];
-    for (unsigned i = 0; i < 120; ++i)
+    for (unsigned i = 0; i < RELAY_WAVE_BINS; ++i)
         c->overview.peaks[i] = analysis.peaks[i];
     c->revision = relay_files.revision;
     c->sensitivity = hits ? sensitivity : 0;
@@ -599,7 +606,7 @@ static void done(void *arg, int status)
             o->slot = analysis.slot;
             for (unsigned i = 0; i < analysis.count; ++i)
                 o->starts[i] = analysis.starts[i];
-            for (unsigned i = 0; i < 120; ++i)
+            for (unsigned i = 0; i < RELAY_WAVE_BINS; ++i)
                 o->peaks[i] = analysis.peaks[i];
         }
         relay_files.state = relay_files.action == RF_SCAN ? RF_SCANNED : RF_SAVED;

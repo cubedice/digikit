@@ -64,7 +64,80 @@ int main(int argc, char **argv)
     uint32_t token = cs_context(&ui, 0, 12, 1, 0, KB_ROOT, 0, 0, 0), id = 255;
     ui.pending = 0;
     ui.native_tune_pending = 0; /* Fixture starts after an applied initial bank. */
-    if (!strcmp(scenario, "lock-indicators")) {
+    if (!strcmp(scenario, "shared-keyboard-layout")) {
+        static const uint8_t maps[3][3][8] = {
+            {{CS_WAVE, CP_COLOR, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CP_DRIFT},
+             {CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE},
+             {CS_TUNE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL}},
+            {{CS_WAVE, CP_WT_POS, CP_WT_DEPTH, CP_WT_RATE, CP_WT_SHAPE, CP_WT_CLOCK, CP_WT_RESET,
+              CP_DRIFT},
+             {CP_WT_ATTACK, CP_WT_RELEASE, CS_NONE, CP_WT_ENV, CP_WTFM_DEPTH, CP_WTFM_RATIO,
+              CP_WT_VELOCITY, CP_WTFM_ENV},
+             {CS_TUNE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL}},
+            {{CS_WAVE, CP_FM_ALG, CP_FM_BAL, CP_FM_RTA, CP_FM_RTB, CP_FM_FB, CS_NONE, CP_DRIFT},
+             {CP_FM_ATTACK, CP_FM_DECAY, CP_FM_SUSTAIN, CP_FM_RELEASE, CP_COLOR, CP_FM_ENV,
+              CP_FM_VELOCITY, CS_NONE},
+             {CS_TUNE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL}}};
+        uint32_t old = token;
+        uint32_t revision = ui.revision;
+        cs_track_keyboard(&ui, 1);
+        assert(cs_pages(&ui) == 3 && ui.revision == revision && ui.value[CP_CHORD] == 0);
+        assert(cs_edit(&ui, old, 1, 4, 0, &id) == CS_STALE);
+        for (unsigned family = 0; family < 4; ++family) {
+            unsigned map = family < 2 ? 0 : family - 1;
+            cs_metadata(&ui, family << 4);
+            assert(cs_pages(&ui) == 3);
+            for (unsigned page = 0; page < 3; ++page) {
+                token = cs_context(&ui, 0, 12, 1, page, KB_ROOT, 0, 0, 0);
+                assert(token);
+                for (unsigned encoder = 0; encoder < 8; ++encoder)
+                    assert(cs_mapped_control(&ui, encoder) == maps[map][page][encoder]);
+            }
+        }
+        cs_metadata(&ui, 0);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_ROOT, 0, 0, 0);
+        assert(cs_edit(&ui, token, 5, 4, 0, &id) == CS_READONLY && id == CS_NONE);
+        assert(cs_edit(&ui, token, 0, 8, 0, &id) == CS_EDIT && id == CS_WAVE);
+        assert(cs_pages(&ui) == 3 && ui.page[0] == CS_VOICE);
+        IlpSnapshot locks = {.count = 3, .pair = {{ILP_POSITION, 350}, {28, 40}, {ILP_RATE, 11}}};
+        assert(cv_lock_mask(&ui, &locks) == 0x0a); /* POS and RATE on VOICE B and D. */
+        assert(cs_edit(&ui, ui.token, 3, 1, 0, &id) == CS_EDIT && id == CP_WT_RATE);
+        assert(ui.value[CP_WT_RATE] == 11);
+        cs_context(&ui, 0, 12, 1, CS_FM_ENV, KB_ROOT, 0, 0, 0);
+        assert(cv_lock_mask(&ui, &locks) == 0x10); /* WT FM depth on FM ENV E. */
+        token = cs_context(&ui, 0, 12, 1, CS_DETAIL, KB_ROOT, 0, 0, 0);
+        assert(cv_lock_mask(&ui, &locks) == 0);
+        assert(cs_edit(&ui, token, 0, 1, 0, &id) == CS_NATIVE && id == CS_TUNE);
+        assert(cs_edit(&ui, token, 7, 1, 0, &id) == CS_NATIVE && id == CS_LEVEL);
+        assert(cs_edit(&ui, token, 6, 64, 0, &id) == CS_EDIT && id == CP_ARP_MIX);
+        assert(ui.value[CP_ARP_MIX] == 64);
+        CvDisplay mix;
+        cv_build(&mix, &ui, &status, 0, "", "", 0);
+        assert(mix.raw[CP_ARP_MIX] == 64 && !strcmp(mix.value[6], "50%"));
+        uint32_t mix_lock = 0;
+        assert(cs_lock_step(&ui, token, 6, 25, 0, 64, &id, &mix_lock) == CS_EDIT);
+        assert(id == CP_ARP_MIX && mix_lock == 89 && ui.value[id] == 64);
+        /* Held WAVE changes the effective bank, not the page count. */
+        CsState locked = ui;
+        locked.metadata &= ~0x30u;
+        assert(cs_pages(&locked) == 3 && locked.page[0] == CS_DETAIL);
+        assert(cs_mapped_control(&locked, 0) == CS_TUNE);
+        assert(cs_mapped_control(&locked, 6) == CP_ARP_MIX);
+        cs_metadata(&ui, 3u << 4);
+        locks = (IlpSnapshot){.count = 4,
+                              .pair = {{ILP_FM_FIRST, 1},
+                                       {ILP_FM_FIRST + 5, 20},
+                                       {ILP_FM_FIRST + 1, 25},
+                                       {ILP_FM_DEPTH, 32}}};
+        assert(cv_lock_mask(&ui, &locks) == 0);
+        cs_context(&ui, 0, 12, 1, CS_FM_ENV, KB_ROOT, 0, 0, 0);
+        assert(cv_lock_mask(&ui, &locks) == 0x11); /* ATK and DEP on FM ENV A and E. */
+        cs_context(&ui, 0, 12, 1, CS_VOICE, KB_ROOT, 0, 0, 0);
+        assert(cv_lock_mask(&ui, &locks) == 0x06); /* ALG and BAL on VOICE B and C. */
+        cs_track_keyboard(&ui, 0);
+        assert(cs_pages(&ui) == 4 && cs_mapped_control(&ui, 1) == CP_CHORD);
+        assert(ui.wavetable[CP_WT_RATE - 16] == 11);
+    } else if (!strcmp(scenario, "lock-indicators")) {
         IlpSnapshot locks = {0};
         locks.count = 3;
         locks.pair[0].id = 2;

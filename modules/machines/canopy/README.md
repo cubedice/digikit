@@ -6,10 +6,9 @@ reset/process callbacks and an assigned machine type. It requires the optional
 DTII 1.17 `core/instrument-play` adapter; ordinary firmware cannot admit it.
 The engine supports Velvet/Reed, factory wavetable and four-operator FM families,
 drift, wavetable FM and independent note envelopes controlled by the stock AMP page.
-SRC has four pages for all sources: KEYS, ARP, SOUND and ENV. ENV shapes timbre;
-the stock AMP page shapes loudness.
-This four-page revision is a local firmware candidate and has not yet been
-installed on the physical DTII.
+With the Track Keyboard adapter, SRC cycles **VOICE → FM ENV → DETAIL** for all
+sources. FM ENV shapes timbre. The stock AMP page shapes loudness. Firmware
+without the Track Keyboard adapter uses **KEYS → ARP → SOUND → ENV**.
 The current source requires matching CPSB firmware and package builds. The
 2026-11-10 compact controls and native MOD revision is installed on the physical
 DTII (image ID `481b2b9a4fcddf5e`, finding 344 and its handover); the
@@ -75,28 +74,37 @@ MIDI port/channel.
 
 ## Playing and selecting sounds
 
-**KEYS B / CHRD** selects PLAY or a generated chord, including USER. PLAY sounds
-exactly the notes you press; choosing a chord switches to root-note playing.
+With the Track Keyboard adapter, find the arpeggiator on **TRIG 3** and
+POLY, CHRD, VOIC and STRM on **TRIG 4**. Without it, use SRC ARP and SRC KEYS.
+**KEYS B / CHRD** selects PLAY or a generated chord, including USER. PLAY
+sounds the notes you press. A generated chord uses the played note as its root.
 Turn CHRD fully left to return to PLAY.
 Changing between PLAY and root mode releases the previous phrase; press new
 keys to start. Changing chord type within root mode updates the held root.
 USER plays the learned or preset-embedded shape. VOIC and STRM are unavailable
 in PLAY, and USER keeps its learned voicing. The old read-only AUTO label is gone.
 
-CHRD, VOIC, ARP lists and TONE lists use four raw knob ticks per choice, with no
+CHRD, VOIC, ARP lists and sound lists use four raw knob ticks per choice, with no
 speed-based acceleration. Small turns accumulate, reversing clears partial
 movement, and lists stop at their ends. Continuous controls and native tuning,
 source LEV and track LEVEL retain their existing scales.
 
-**WAVE chooses the sound; CHRD chooses how your keys play it.** Both are edited
-on SRC. Presets still store the original mode, chord, family and table fields;
-existing sounds need no conversion beyond the existing preset migration.
+Turn **VOICE A / WAVE** to choose the sound. VOICE also holds wavetable
+position and scanning, or the FM operators, with **DRFT** on H. **FM ENV**
+uses the AMP graph to show the timbre envelope as you adjust it. Both
+engines put FM depth on E and velocity modulation on G. Wavetable uses a compact
+ATK/REL graph, with PENV on D and FENV on H in the rightmost column. Its FM ratio
+is on F. For Velvet and Reed, FM ENV points to AMP.
+**DETAIL** has native TUNE on A and source LEV on H, with pad/arp **MIX**
+on G. LEVEL/DATA sets track level. The page changes preserve stored
+presets and lock IDs. The later tables show the fallback SRC layout.
+[Full encoder map](../../../docs/design/dt2-track-arpeggiator.md#canopy-src-after-moving-keyboard-controls)
 
 SETTINGS > DIGIKIT > CANOPY contains four groups: INPUT for connections and
-selector keys; CHORD LEARN for custom shapes; MODULATION for wheel amounts and
-scan settings; and PRESETS for save/load. The arp follows the current pattern
-tempo, including while the sequencer is stopped. ARP G/H show a read-only
-note/order preview; adjust tempo
+selector keys, CHORD LEARN for custom shapes, MODULATION for wheel amounts and
+scan settings, and PRESETS for save/load. With Track Keyboard, open NOTES to
+learn shapes and configure selector keys from the track. The arp follows the
+current pattern tempo, including while the sequencer is stopped. Adjust tempo
 with the DTII's normal TEMPO control.
 Arpeggiated notes have a minimum 64-sample onset ramp (about 1.33 ms) to prevent
 clicks when AMP ATT is zero. Slower AMP attacks, release times and the pad's

@@ -280,6 +280,39 @@ uint32_t mi_test_dispatch(void)
     publish_reply(queue, record, r, 0);
     CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS);
     CHECK(snapshot[3] == 300393 && !mi_transport.faults);
+    /* A02 on DTII: PLAY 855466, PLAY 855475, then STATUS 855474.
+     * The late STATUS was one block behind, even though the accepted gap was nine. */
+    {
+        uint32_t ui[12], age = 0, play[MT_REPLY_WORDS];
+        CHECK(mi_status_reply(ui, 12, &age) == 12);
+        CHECK(mi_status_reply(ui, 12, &age) == 0);
+        r[1] = mi_ledger.epoch;
+        r[2] = 0;
+        r[3] = 855466;
+        publish_reply(queue, record, r, 0);
+        r[3] = 855475;
+        publish_reply(queue, record, r, 0);
+        CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS);
+        CHECK(snapshot[3] == 855475);
+        uint32_t last_block = mi_transport.heartbeat_block;
+        for (i = 0; i < MT_REPLY_WORDS; ++i) {
+            play[i] = r[i];
+            r[i] = 0;
+        }
+        r[0] = MT_STATUS_REPLY_MAGIC;
+        r[1] = 0xdeadbeefu;
+        r[2] = 855474;
+        publish_reply(queue, record, r, 0);
+        CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == 0 && !mi_transport.faults);
+        CHECK(mi_status_reply(ui, 12, &age) == 0);
+        CHECK(mi_transport.heartbeat == 855475 && mi_transport.heartbeat_block == last_block);
+        for (i = 0; i < MT_REPLY_WORDS; ++i)
+            r[i] = play[i];
+        r[3] = 855476;
+        publish_reply(queue, record, r, 0);
+        CHECK(mi_registry_reply(snapshot, MT_REPLY_WORDS) == MT_REPLY_WORDS);
+        CHECK(snapshot[3] == 855476 && !mi_transport.faults);
+    }
     /* A backwards, otherwise valid heartbeat invalidates registry trust even
      * when its MIDI epoch is not admitted. The caller buffer stays unchanged. */
     r[3] = 1;
@@ -289,7 +322,7 @@ uint32_t mi_test_dispatch(void)
         uint32_t age = 0;
         CHECK(mi_status_reply(snapshot, 16, &age) == -2 && !age);
     }
-    CHECK(snapshot[3] == 300393);
+    CHECK(snapshot[3] == 855476);
     CHECK(mi_keyboard_recover() == -1);
     CHECK(mi_transport.faults && mi_route_enable(0, 0, 0, 0) == -2);
     for (i = 0; i < MT_WORDS; ++i) {

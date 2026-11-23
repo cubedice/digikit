@@ -7,6 +7,12 @@
 /* The UI handle for core modules, which have no dk_module_ctx to open it with: the same handle dk_ui_open gives a content module. */
 dk_ui *dk_ui_core_handle(void);
 
+/* The menu owns input ahead of any lower views. */
+int32_t dk_ui_core_menu_front(const dk_ui_menu *menu);
+
+/* Change a native list title without replacing its rows or moving the cursor. */
+void dk_ui_core_list_title(dk_ui_menu *menu, const char *text);
+
 /* A row among the rows of a stock firmware menu (SETTINGS), with the menu's icon. fn(arg, 0) runs on YES.
    Call it from a hook that rebuilds the stock menu; stock_menu is the menu object the hook gets. */
 void dk_ui_stock_row(uint8_t *stock_menu, const char *text, dk_ui_action_fn *fn, void *arg);

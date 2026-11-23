@@ -108,6 +108,8 @@ _canopy_process:
     DM(_cp_amp_input) = R8;
     R0 = 0;
     DM(_cp_amp_mode) = R0;
+    DM(_cv_shared) = R0;
+    DM(_cv_shared_arp_count) = R0;
     DM(_cp_post_output) = R0;
     I2 = R8;
     R0 = DM(0, I2);
@@ -366,7 +368,10 @@ _cv_check_eight:
     IF GT JUMP _cv_bad;
     JUMP _cv_effective_controls;
 _cv_seven_controls:
+    R1 = FEXT R0 BY 13:1;
+    DM(_cv_shared) = R1;
     R1 = FEXT R0 BY 10:6;
+    R1 = BCLR R1 BY 3;
     R1 = PASS R1;
     IF NE JUMP _cv_bad;
     R1 = LSHIFT R0 BY -16;
@@ -650,6 +655,9 @@ _cv_convert:
     COMP(R0, R1);
     IF EQ JUMP _cv_phrase_only;
     I1 = _cv_events_buffer;
+    I3 = _cv_shared_arp_events;
+    R4 = 0;
+    R11 = 0;
 _cv_event:
     R3 = DM(0, I0);
     R5 = DM(1, I0);
@@ -734,20 +742,34 @@ _cv_pack:
     R0 = R10 OR R3;
     R0 = R0 OR R7;
     R0 = R0 OR R9;
+    R1 = DM(_cv_shared);
+    R1 = PASS R1;
+    IF EQ JUMP _cv_pack_pad;
+    R1 = FEXT R6 BY 30:1;
+    R1 = PASS R1;
+    IF NE JUMP _cv_pack_shared_arp;
+_cv_pack_pad:
     DM(I1, M6) = R6;
     R1 = 0;
     DM(I1, M6) = R1;
     DM(I1, M6) = R0;
+    R4 = R4 + 1;
+    JUMP _cv_pack_next;
+_cv_pack_shared_arp:
+    DM(I3, M6) = R6;
+    DM(I3, M6) = R0;
+    R11 = R11 + 1;
+_cv_pack_next:
     MODIFY(I0, 6) (NW);
     R2 = R2 - 1;
     IF NE JUMP _cv_event;
+    DM(_cv_shared_arp_count) = R11;
+    R9 = PASS R4;
+    IF EQ JUMP _cv_render;
     R4 = DM(_cv_state);
     R0 = 256;
     R8 = R4 + R0;
     R12 = _cv_events_buffer;
-    R0 = DM(_cv_input);
-    I0 = R0;
-    R9 = DM(8, I0);
     CALL _cp_apply_packed;
     R1 = 1;
     COMP(R0, R1);
@@ -860,6 +882,8 @@ _cv_seeded:
     CALL _cs_restore;
     R4 = DM(_cv_state);
     R8 = DM(_cv_input);
+    R12 = _cv_shared_arp_events;
+    R9 = DM(_cv_shared_arp_count);
     CALL _ca_process;
     R0 = PASS R0;
     IF LT JUMP _cv_audio_bad;
@@ -1045,6 +1069,9 @@ _cv_bad:
 .PKBSS _cv_state, 4;
 .PKBSS _cv_input, 4;
 .PKBSS _cv_events_buffer, 96;
+.PKBSS _cv_shared, 4;
+.PKBSS _cv_shared_arp_count, 4;
+.PKBSS _cv_shared_arp_events, 64;
 .SECTION/DM seg_dmda;
 .GLOBAL _canopy_descriptor;
 // Conservative provisional limits; instruction tests must measure before packing.
