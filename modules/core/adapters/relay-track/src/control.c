@@ -646,16 +646,9 @@ static void num(char *s, unsigned n)
         *s++ = rev[--i];
     *s = 0;
 }
-/* The recorder draws separate signed stereo silhouettes. Keep the read and
- * write pointers on the frame so even small peaks stay visible. */
 static int wave_height(unsigned level)
 {
-    return level < 8 ? (int)(9 - level) / 2 : -(int)(level - 7) / 2;
-}
-static void wave_channel(u8 *b, int x, int center, unsigned wave, int ink)
-{
-    int top = wave_height((wave >> 4) & 15), bottom = wave_height(wave & 15);
-    fxv_box(b, x, center + top, 1, bottom - top + 1, ink);
+    return level < 8 ? (int)((10 * (8 - level) + 4) / 8) : -(int)((10 * (level - 8) + 3) / 7);
 }
 static unsigned draw_waveform(u8 *b, const struct RelayOverview *overview,
                               const struct RelayOverview *hits, unsigned mark, int live,
@@ -673,7 +666,6 @@ static unsigned draw_waveform(u8 *b, const struct RelayOverview *overview,
     fxv_box(b, LEFT - 1, TOP + 1, 1, BOTTOM - TOP - 1, 1);
     fxv_box(b, LEFT + WAVE_COLUMNS, TOP + 1, 1, BOTTOM - TOP - 1, 1);
     fxv_box(b, LEFT, TOP, WAVE_COLUMNS, 1, 1);
-    fxv_box(b, LEFT, MID, WAVE_COLUMNS, 1, 1);
     fxv_box(b, LEFT, BOTTOM, WAVE_COLUMNS, 1, 1);
     for (unsigned col = 0; col < WAVE_COLUMNS; ++col) {
         unsigned bin = col * RELAY_WAVE_BINS / WAVE_COLUMNS;
@@ -691,8 +683,12 @@ static unsigned draw_waveform(u8 *b, const struct RelayOverview *overview,
             audible = 1;
         else
             wave = RELAY_WAVE_SILENT;
-        wave_channel(b, LEFT + col, 33, wave, !selected);
-        wave_channel(b, LEFT + col, 44, wave >> 8, !selected);
+        /* Use the outer extrema of both channels to preserve out-of-phase peaks. */
+        unsigned lo_l = wave & 15, lo_r = (wave >> 8) & 15;
+        unsigned hi_l = (wave >> 4) & 15, hi_r = wave >> 12;
+        int top = wave_height(hi_l > hi_r ? hi_l : hi_r);
+        int bottom = wave_height(lo_l < lo_r ? lo_l : lo_r);
+        fxv_box(b, LEFT + col, MID + top, 1, bottom - top + 1, !selected);
     }
     if (hits)
         for (unsigned i = 0; i < hits->count; ++i)

@@ -218,7 +218,7 @@ int main(void)
     native[0x4a] = 3;
     assert(project_gate(native, 0) == native);
 
-    // Distinct positive left and negative right excursions and a silent neighbor.
+    // Opposite channel excursions span one taller envelope and keep silence centered.
     uint8_t pixels[64][128] = {0};
     struct RelayOverview wave = {.frames = RELAY_WAVE_BINS};
     for (unsigned i = 0; i < RELAY_WAVE_BINS; ++i)
@@ -226,9 +226,10 @@ int main(void)
     wave.peaks[0] = 0x60f9;
     status[5] = 0;
     assert(draw_waveform(pixels[0], &wave, 0, 0, 0, 0));
-    assert(pixels[29][17] && pixels[32][17] && !pixels[33][17] && !pixels[35][17]);
-    assert(!pixels[44][17] && pixels[45][17] && pixels[48][17]);
-    assert(pixels[33][18] && pixels[44][18] && !pixels[29][18]);
+    for (unsigned y = 29; y <= 49; ++y) {
+        assert(pixels[y][17]);
+        assert(pixels[y][18] == (y == 39));
+    }
 
     // Capture one telemetry window across the loop boundary without losing its
     // previously measured column or coloring the unwritten middle of the tape.

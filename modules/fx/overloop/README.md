@@ -22,8 +22,9 @@ FUNC + FX opens the FX pages; Overloop's is one of them.
 | H: press | ARM as well, as on PRISM's page |
 | FUNC + NO | Drop the loop |
 
-The page shows the state (`IDLE`, `ARMED`, `LOOP`, `LOOP+ARM`) above a framed stereo waveform. The upper lane is left
-and the lower lane is right. During recording the right edge is the newest audio. The view covers the expected cycle
+The page shows the state (`IDLE`, `ARMED`, `LOOP`, `LOOP+ARM`) above one framed waveform. The highest positive peak
+and deepest negative peak from either stereo channel share the same centre line. During recording the right edge is
+the newest audio. The view covers the expected cycle
 (two seconds until its length is known). An armed change freezes that cycle's picture with its audio. The mark on the
 frame follows the loop playhead. STOP keeps the frozen picture and DROP returns to the rolling view. The line below
 shows the cycle length or capture limit. On the bottom row, E is `ARM` and H is `XFAD`; the bar between them shows the

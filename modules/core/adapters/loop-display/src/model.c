@@ -240,7 +240,7 @@ void ld_render_header(const LoopPage *p, const LoopCanvas *c)
     text(c, 104, 2, p->state, 1);
     box(c, 0, 9, 128, 1, 1);
 }
-/* Recorder-style stereo plot. Leave x124..127 to the native FX page dots. */
+/* Recorder-style plot of the stereo peaks. Leave x124..127 to the native FX page dots. */
 void ld_render(const LoopPage *p, const LoopCanvas *c)
 {
     box(c, 0, 0, 124, 64, 0);
@@ -253,17 +253,15 @@ void ld_render(const LoopPage *p, const LoopCanvas *c)
     box(c, 2, 42, 120, 1, 1);
     for (int x = 0; x < LS_WAVE_COLUMNS; ++x) {
         unsigned peaks = wave[x];
-        for (int mid = 19; mid <= 34; mid += 15) {
-            unsigned down = ((peaks & 15) + 1) >> 1;
-            unsigned up = (((peaks >> 4) & 15) + 1) >> 1;
-            /* Seven pixels per polarity within each lane. */
-            if (down > 7)
-                down = 7;
-            if (up > 7)
-                up = 7;
-            box(c, 2 + x * 2, mid - (int)up, 2, 1 + up + down, 1);
-            peaks >>= 8;
-        }
+        int down = peaks & 15, up = (peaks >> 4) & 15;
+        int right_down = (peaks >> 8) & 15, right_up = (peaks >> 12) & 15;
+        if (right_down > down)
+            down = right_down;
+        if (right_up > up)
+            up = right_up;
+        /* The interior spans y12..41: 15 pixels above zero, 14 below. */
+        down -= down >= 8;
+        box(c, 2 + x * 2, 27 - up, 2, 1 + up + down, 1);
     }
     /* The rolling view ends at now. A retained loop has an absolute playhead. */
     if (p->loop && p->mark != LD_NO_MARK) {

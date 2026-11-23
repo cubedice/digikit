@@ -8,6 +8,9 @@ void dkrt_loop_wave(uint16_t out[LS_WAVE_COLUMNS])
 {
     memset(out, 0, LS_WAVE_COLUMNS * sizeof(*out));
     out[5] = 0x0ff0; /* left positive only, right negative only */
+    out[6] = 0xf000; /* right positive only */
+    out[7] = 0x000f; /* left negative only */
+    out[8] = 0xa25d; /* right carries the highest peak, left the deepest trough */
 }
 uint32_t dkrt_loop_status(uint32_t *out)
 {
@@ -365,9 +368,15 @@ static void rendering(void)
     ld_page(w, 1, 64, &p);
     memset(&d, 0, sizeof(d));
     ld_render(&p, &c);
-    assert(d.dots[12][12] && d.dots[19][12] && !d.dots[20][12]);
-    assert(!d.dots[33][12] && d.dots[34][12] && d.dots[41][12]);
-    assert(!d.dots[12][20] && d.dots[19][20] && d.dots[34][20] && !d.dots[41][20]);
+    /* Every pair of columns spans the independent outer peaks. Silence leaves one centre line. */
+    for (int y = 12; y <= 41; ++y)
+        for (int col = 0; col < 2; ++col) {
+            assert(d.dots[y][12 + col]);
+            assert(d.dots[y][14 + col] == (y <= 27));
+            assert(d.dots[y][16 + col] == (y >= 27));
+            assert(d.dots[y][18 + col] == (y >= 17 && y <= 39));
+            assert(d.dots[y][20 + col] == (y == 27));
+        }
     int y_label = 0, y_value = 0;
     assert(where(&d, "ARM", &y_label) == LD_CELL_E && where(&d, "ON", &y_value) == LD_CELL_E &&
            y_value > y_label);
