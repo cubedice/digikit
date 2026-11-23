@@ -63,6 +63,11 @@ static uint32_t word(const uint8_t *p, uint32_t off)
 {
     return *(const uint32_t *)(p + off);
 }
+static int values_visible(const uint8_t *view)
+{
+    /* FxPageView inherits ParameterPageView's momentary values flag. The stock FX key handler owns tap and hold. */
+    return view[0x190] != 0;
+}
 static int context(uint8_t *view)
 {
     uint32_t owner = dkrt_phrase_active(), status[PH_STATUS_WORDS];
@@ -102,7 +107,7 @@ int phrase_fxv_draw(uint8_t *view, uint8_t *bitmap, int header_only)
         return 0;
     PhraseCanvas c = {bitmap, fxv_box, fxv_text};
     pu_page(&ui, &phrase_ui_page);
-    int show_values = dk_fw_input_key_down(PU_FUNC) != 0;
+    int show_values = values_visible(view);
     if (header_only) {
         pu_render_header(&phrase_ui_page, &c, show_values);
         return 1;
@@ -205,10 +210,9 @@ void phrase_ui_tick(void)
     uint8_t *view = fxv_visible_view();
     if (view) {
         if (context(view)) {
-            /* Read FUNC from the panel so both edges repaint even if stock dispatch takes the key. */
             uint32_t seq = ui.status[PH_S_HEARTBEAT / 4];
             if (ui.revision != paint_revision || seq - painted >= 60 || ui.fresh != paint_fresh ||
-                paint_values != (dk_fw_input_key_down(PU_FUNC) != 0))
+                paint_values != values_visible(view))
                 dk_fw_view_invalidate(view);
         }
         phrase_ui_debug[8] = pu_selecting(&ui);

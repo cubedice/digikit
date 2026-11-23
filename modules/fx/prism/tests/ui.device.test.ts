@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { button, encoder } from '@digi/test-support';
 import { expect, test } from 'vitest';
 import { bounded, dspWords, rows, word } from '@digi/regression/runtime/fx-live.ts';
@@ -110,6 +112,38 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     // under INPT the tracks PRISM hears: nothing is stored on this card, so none
     expect(first.cells.map((cell) => cell.state)).toEqual(['', 'FREE', '', '', '', '', 'NO TRK', 'NO LOOP']);
     expect(await value(PH.PH_P_TRKS!), 'nothing stored: no track').toBe(0);
+
+    // Observe the actual caption. Ignore the header and native FX markers, which may redraw independently.
+    const zoneCaption = (tag: string) => {
+      const oled = readFileSync(path.join(artifacts, `${tag}.oled`));
+      // OLED columns store eight bytes, bottom page first. The ZONE caption occupies y=32..36.
+      return Array.from({ length: 25 }, (_, i) => oled[8 * (20 + i) + 3]! & 0x1f);
+    };
+    const labels = zoneCaption('default');
+    expect(labels.some((column) => column !== 0)).toBe(true);
+    await bounded(() => session.client.inputButton(button('FUNC'), true));
+    try {
+      await advance(session, 80);
+      await shot(session, artifacts, 'func-only');
+      expect(zoneCaption('func-only'), 'FUNC alone keeps the labels').toEqual(labels);
+      await bounded(() => session.client.inputButton(button('FX'), true));
+      try {
+        await advance(session, 700);
+        await shot(session, artifacts, 'held-func-fx');
+        expect(zoneCaption('held-func-fx'), 'the stock hold gesture reveals the value').not.toEqual(labels);
+        expect(await active(), 'holding FUNC + FX stays on PRISM').toBe(1);
+      } finally {
+        await bounded(() => session.client.inputButton(button('FX'), false));
+        await advance(session, 100);
+      }
+      await shot(session, artifacts, 'released-fx');
+      expect(zoneCaption('released-fx'), 'releasing FX restores labels with FUNC still held').toEqual(labels);
+      expect(await active()).toBe(1);
+      expect(await word(session, debug + 28), 'releasing a held chord does not advance').toBe(nativePage);
+    } finally {
+      await bounded(() => session.client.inputButton(button('FUNC'), false));
+      await advance(session, 20);
+    }
 
     // The presses, at the default values. B: SYNC. The cell shows the ratio of the zone's 1/1 (the 1/1 by default), the provider
     // sends its frames at the tempo (the beat is the 1/1 of the zone it fits best; each zone is an octave), and the engine takes it.

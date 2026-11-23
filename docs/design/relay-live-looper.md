@@ -48,9 +48,11 @@ WRITE opens the record head. As each piece of tape passes, the head **replaces**
 | H · MIX | Linear crossfade. 0% is dry input, 50% gives half gain to each path, 100% is tape only. Default 100%, useful when the source track is already in the main mix. | — |
 | LEVEL/DATA | Stock track level for the mixed output. | Stock behavior. |
 
-The 128 × 64 SRC screen keeps the stock header, track/level strip, show-values gesture and two page indicators. The upper row shows source, rate, head spacing and feedback. The framed waveform shows one tall envelope across the whole tape, using the outer signed peaks from both channels. The writer and reader mark the upper and lower edges. On TAKE, the selected hit inverts the waveform within its range. The lower row shows the next WRITE, PLAY and BACK actions and the current MIX. While first capture is armed, show WAIT 1. At RATE 0 show PARK. Turning either head works on a running or stopped tape. Changing HEAD spacing, a reset trig or a transport start restores the configured head relationship. Status messages have their own row above the waveform.
+Tap SRC to cycle between LIVE and TAKE. Hold SRC on either page to replace captions with values, using the same gesture as the stock SRC pages. Both RELAY pages keep the native header, track and level strip, and page indicators. [Digitakt II OS 1.17 manual, Appendix A](https://www.elektron.se/media/2026/10/Digitakt-2-User-Manual_ENG_OS1.17_260930.pdf)
 
-First capture and punch show a preview from the stereo samples as they are written. The preview stays visible while the completed overview is measured. On recall, measured columns appear as they arrive. LIVE and TAKE use the same completed overview for the main tape. Show READING while measuring a revision, NO WAVE if the overview fails, and SILENT TAKE after both channels measure zero.
+On LIVE, the upper row shows the input source and rotary controls for RATE, HEAD and FDBK. A thin waveform strip shows the whole loop and the moving writer and reader. The lower row shows WRITE, PLAY, BACK and MIX. The status row shows the loop position and duration or messages such as WAIT 1 and PARK. When values are visible, WRITE and PLAY show their head positions in seconds. Turning either head works on a running or stopped tape. Changing HEAD spacing, a reset trig or a transport start restores the configured head relationship.
+
+First capture and punch show a preview from the stereo samples as they are written. The preview stays visible while the completed overview is measured. On recall, measured columns appear as they arrive. LIVE and TAKE use the same completed overview for the main tape. READING appears while measuring a revision, NO WAVE if the overview fails, and SILENT TAKE after both channels measure zero.
 
 Each overview column keeps 8-bit minimum and maximum peaks. The display scales all columns together against the strongest visible peak for clearer quiet material. The scaling adds up to 30 dB to the drawing.
 
@@ -89,6 +91,8 @@ Capture the isolated stereo output of another audio track or the external input.
 
 ![TAKE auditioning the second alternate on T03](assets/relay-take.svg)
 
+TAKE uses the center of the display for a taller waveform. LANE, SLCE, SENS and MARK sit above it. The selected hit inverts the waveform within its range. The status and take actions sit below the waveform.
+
 | Encoder | Action |
 |---|---|
 | A · LANE | Choose MAIN or a completed local alternate, T1 or T2. Browsing leaves MAIN playing until AUD is engaged. |
@@ -97,7 +101,7 @@ Capture the isolated stereo output of another audio track or the external input.
 | D · MARK | Turn to select a slice. Press to preview that interval once. |
 | E · ALT | Arm one independent input pass of MAIN’s recorded duration onto a blank alternate. Press again while armed to cancel. |
 | F · AUD | Audition one lane at a time. Turn A to compare at matching tape phase. YES swaps the audible alternate with MAIN. NO or F returns. |
-| G · EXPORT | Show FULL or FULL+HITS and the unique destination. YES writes the sample. |
+| G · EXPT | Export FULL or FULL+HITS to the displayed destination. YES writes the sample. |
 | H · CLEAR | Ask before clearing MAIN and its local lanes or deleting one alternate. |
 
 ALT captures the gained source at +1× for one complete forward pass. It temporarily takes the recorder and leaves MAIN intact. During ALT capture, reset trigs can reposition MAIN playback while the alternate writer finishes its uninterrupted pass. Audition runs through MAIN’s RATE, HEAD and output path with WRITE closed. A trig resets the common audition phase. Switching lanes at that phase lets the player compare the same moment. Leaving audition restores the prior playback state. Only one lane sounds. Keeping an alternate retains the old MAIN in that lane and clears outdated undo history.
@@ -114,7 +118,7 @@ A punch can span many laps. BACK restores the entire tape to its state immediate
 | Export | Write the stored stereo tape at native speed to a unique folder, for example `RELAY/VOCAL-BED-0007/FULL`. Printed feedback is part of that audio. Live dry monitoring, current speed and output effects are playback settings. FULL+HITS adds numbered slices. Export and preset save are separate actions. |
 | Leave the session | MAIN and track assignments persist on save. T1, T2 and undo are session revisions. Identify unsaved alternatives before discarding them. Keep an alternate as MAIN and save another preset to retain it. |
 
-**Saving a freshly recorded MAIN on DTII.** Close WRITE first. If you use the stock Save command while the tape has unsaved audio, RELAY starts writing the stereo sample. Wait for **SAVE SOUND AGAIN**, then repeat the original Sound or project save to store its reference. If you prefer to save in one visit to the stock menu, use TAKE → EXPORT → YES first and wait for **SAVED**. Changing only RATE, HEAD, MIX or another panel setting reuses the existing sample.
+**Saving a freshly recorded MAIN on DTII.** Close WRITE first. If you use the stock Save command while the tape has unsaved audio, RELAY starts writing the stereo sample. Wait for **SAVE SOUND AGAIN**, then repeat the original Sound or project save to store its reference. If you prefer to save in one visit to the stock menu, use TAKE → EXPT → YES first and wait for **SAVED**. Changing only RATE, HEAD, MIX or another panel setting reuses the existing sample.
 
 The shared 32 MiB pool provides 8,372,224 stereo PCM16 frames at 48 kHz, about 174.42 seconds total. Blank tracks reserve no audio. The first release supports multiple independent motors and one active recorder. If another track owns it, show REC ON Txx. Reserve sufficient space before a first pass, alternate or punch. Recheck at the first recording boundary. Pin the pre-punch revision for undo and create a private writable tape for the whole gesture. A reader must hear newly written positions on this tape during the punch for short feedback echoes to work. Other tracks referencing the saved revision keep hearing their own audio. Repeated passes reuse the same workspace. Release pages only after their last reader exits. [Pool layout](../../modules/core/adapters/relay-storage/README.md)
 

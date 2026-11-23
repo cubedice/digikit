@@ -3,6 +3,35 @@
 #include <string.h>
 const u32 machines_info[8];
 struct RelayFiles relay_files;
+static unsigned rotary_cells, text_count;
+static struct {
+    int x, y;
+    char text[24];
+} labels[16];
+void ip_src_draw_rotary(u8 *view, u8 *canvas, u32 cell, u32 value)
+{
+    (void)view;
+    (void)canvas;
+    assert(cell < 8 && value <= 127);
+    rotary_cells |= 1u << cell;
+}
+void fxv_text(void *bitmap, int x, int y, const char *text, int ink)
+{
+    (void)bitmap;
+    (void)ink;
+    assert(text_count < sizeof(labels) / sizeof(labels[0]) &&
+           strlen(text) < sizeof(labels[0].text));
+    labels[text_count].x = x;
+    labels[text_count].y = y;
+    strcpy(labels[text_count++].text, text);
+}
+static int has_text(int x, int y, const char *text)
+{
+    for (unsigned i = 0; i < text_count; ++i)
+        if (x == labels[i].x && y == labels[i].y && !strcmp(labels[i].text, text))
+            return 1;
+    return 0;
+}
 void fxv_box(void *bitmap, int x, int y, int width, int height, int ink)
 {
     uint8_t (*pixels)[128] = bitmap;
@@ -19,6 +48,13 @@ const struct RelayOverview *rtm_wave(unsigned slot, unsigned revision, unsigned 
     (void)length;
     (void)hits;
     (void)sens;
+    return 0;
+}
+const struct RelayOverview *rtm_wave_pending(unsigned slot, unsigned revision, unsigned length)
+{
+    (void)slot;
+    (void)revision;
+    (void)length;
     return 0;
 }
 void relay_files_reply(const volatile uint16_t *frame)
@@ -225,20 +261,28 @@ int main(void)
         wave.peaks[i] = RELAY_WAVE_SILENT;
     wave.peaks[0] = 0xff00;
     status[5] = 0;
+    page = 1;
     assert(draw_waveform(pixels[0], &wave, 0, 0, 0, 0));
-    for (unsigned y = 29; y <= 50; ++y) {
+    for (unsigned y = 19; y <= 49; ++y) {
         assert(pixels[y][17]);
-        assert(pixels[y][18] == (y == 40));
+        assert(pixels[y][18] == (y == 34));
     }
     // Quiet transients expand while keeping their relative heights.
     memset(pixels, 0, sizeof(pixels));
     wave.peaks[0] = 0x837d;
     wave.peaks[1] = 0x827e;
     assert(draw_waveform(pixels[0], &wave, 0, 0, 0, 0));
-    for (unsigned y = 29; y <= 50; ++y) {
-        assert(pixels[y][17] == (y >= 32 && y <= 48));
-        assert(pixels[y][18] == (y >= 34 && y <= 46));
+    for (unsigned y = 19; y <= 49; ++y) {
+        assert(pixels[y][17] == (y >= 23 && y <= 45));
+        assert(pixels[y][18] == (y >= 26 && y <= 42));
     }
+    page = 0;
+    memset(pixels, 0, sizeof(pixels));
+    wave.peaks[0] = 0xff00;
+    assert(draw_waveform(pixels[0], &wave, 0, 0, 0, 0));
+    for (unsigned y = 0; y < 64; ++y)
+        assert(pixels[y][17] == (y >= 36 && y <= 40));
+    assert(!pixels[38][124]);
 
     // Capture one telemetry window across the loop boundary without losing its
     // previously measured column or coloring the unwritten middle of the tape.
@@ -254,5 +298,25 @@ int main(void)
     status[2] = 0;
     preview_waveform();
     assert(live_track == 16); // A canceled recording never becomes the fallback waveform.
+
+    // The compact control page and larger take page keep their geometry when values are shown.
+    settings[track].rate = -50;
+    settings[track].mix = 37;
+    settings[track].lane = 0;
+    relay_files.state = RF_IDLE;
+    memset(pixels, 0, sizeof(pixels));
+    draw(0, pixels[0], 0);
+    assert(rotary_cells == 0x8e && has_text(59, 30, "RATE") && has_text(111, 58, "MIX"));
+    assert(pixels[38][64] && !pixels[35][64] && !pixels[18][64]);
+    text_count = 0;
+    draw(0, pixels[0], 255);
+    assert(has_text(59, 30, "-0.50") && has_text(111, 58, "37") && !has_text(59, 30, "RATE"));
+    text_count = rotary_cells = 0;
+    page = 1;
+    draw(0, pixels[0], 0);
+    assert(!rotary_cells && has_text(33, 11, "LANE") && has_text(85, 58, "EXPT") && pixels[18][17]);
+    text_count = 0;
+    draw(0, pixels[0], 255);
+    assert(has_text(33, 11, "MAIN") && !has_text(33, 11, "LANE") && pixels[18][17]);
     return 0;
 }

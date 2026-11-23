@@ -7,10 +7,11 @@ owner's and holds every value.
 ## The page
 
 The 128 × 64 view has a ten-pixel header, a MIX meter at the lower left, and eight cells in two rows. Each cell has a graphic
-above its label. RATE shows its value directly. Hold FUNC to see formatted values for the other controls and actual
-playback time while synced. The header carries rate mode, input and loop status. FLIP, HOLD and ARMD are above the MIX meter.
+above its label. RATE shows its value directly. Hold FUNC + FX to see formatted values for the other controls and actual
+playback time while synced. Release FX to return to the labels. Tap FUNC + FX to advance to the next effect. The header
+carries rate mode, input and loop status. FLIP, HOLD and ARMD are above the MIX meter.
 
-| | Turn | Press | Cell with FUNC held |
+| | Turn | Press | Cell with FUNC + FX held |
 | --- | --- | --- | --- |
 | LEVEL | MIX | | the column and its number |
 | A | ZONE, four ticks a zone | FLIP | the zone's name below the eight zone marks, `FLIP` inverted |
@@ -42,10 +43,10 @@ page is not shown, puts INPT at LOOP when the loop count in Overloop's status mo
 loop goes away (a status with a loop, then one without: a drop, or a loop lost with its lease) or when Overloop, having
 reported, stops reporting (no status for 60 more passes; once, so that G may put INPT at LOOP again). While INPT is LOOP
 and there is a loop the header says `LOOP 16 ST 2.00 S` in place of the
-zone and the time while FUNC is held. The presses of D to F are taken and do nothing. UP, DOWN, FX and every other key go to the stock FX
+zone and the time while FUNC + FX is held. The presses of D to F are taken and do nothing. UP, DOWN, FX and every other key go to the stock FX
 view: the page is one entry among the FX pages.
 
-The time in RATE when free, or in the header when synced with FUNC held, is the engine's (`PH_S_TIME_L`,
+The time in RATE when free, or in the header when synced with FUNC + FX held, is the engine's (`PH_S_TIME_L`,
 `PH_S_TIME_R`). It is the geometric mean of the two sides, since SKEW makes one shorter and one longer by the same
 ratio. Without a status the header says `NO LINK`.
 

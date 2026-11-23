@@ -21,6 +21,8 @@ sources = ["src/control.c", "src/files.c"]
 place = "cf.expansion"
 devices = ["dt2"]
 [object.externs]
+ip_src_focus_active = "cf.page.site.instrument_focus_active"
+ip_src_focus_touch = "cf.page.site.instrument_focus_touch"
 rtm_mod_rate = "params.rtm_mod_rate.index"
 rtm_mod_spacing = "params.rtm_mod_spacing.index"
 rtm_mod_feedback = "params.rtm_mod_feedback.index"

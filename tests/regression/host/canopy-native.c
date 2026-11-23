@@ -361,6 +361,7 @@ int32_t dk_fw_text_draw_box(uint8_t *p, uint8_t *font, int32_t x, int32_t y, int
     va_list ap;
     va_start(ap, fmt);
     const char *s = va_arg(ap, const char *);
+    assert(x != 34 || y != 47 || strcmp(s, "VOICE"));
     if (x == 98 && y == 0)
         strcpy(arp_caption, s);
     if (x >= 33 && x <= 111 && (x - 33) % 26 == 0) {

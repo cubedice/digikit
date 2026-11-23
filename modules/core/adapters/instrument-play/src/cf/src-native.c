@@ -688,7 +688,6 @@ static uint32_t diagram_mask(uint32_t page, const CvDisplay *d)
 static void shared_diagram(const uint8_t *view, uint8_t *b, const CvDisplay *d)
 {
     if (d->page == CS_VOICE) {
-        diagram_text(b, 34, 12, "VOICE");
         if (d->family == 3)
             compact_fm(b, d);
         else if (d->family == 2)
@@ -736,6 +735,18 @@ static void diagram_draw(const uint8_t *view, uint8_t *b, const CvDisplay *d)
         diagram_text(b, 73, 43, "VOLUME ENVELOPE");
         diagram_text(b, 73, 52, "ON AMP");
     }
+}
+void ip_src_draw_rotary(uint8_t *view, uint8_t *canvas, uint32_t cell, uint32_t value)
+{
+    /* Paint a native encoder glyph with a supplied value and the cell's native focus state. */
+    uint32_t *vt = (uint32_t *)pointer(view, 0);
+    uint8_t *(*access)(uint8_t *, uint32_t, int32_t) = (void *)(uintptr_t)vt[0xc4 / 4];
+    uint8_t *a = access(view, 0xcc, -1);
+    uint32_t *av = (uint32_t *)pointer(a, 0);
+    void (*draw)(uint8_t *, uint32_t, int32_t, uint32_t, uint8_t *, uint8_t *, int32_t, int32_t) =
+        (void *)(uintptr_t)av[0x60 / 4];
+    draw(a, 0xcc, (int32_t)value << 8, 0, view + 0xb4 + 20 * cell, canvas,
+         24 + 26 * (int32_t)(cell % 4), cell < 4 ? 34 : 7);
 }
 void ip_src_draw(uint8_t *view, uint8_t *canvas)
 {
@@ -788,16 +799,7 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
         if (mask & (1u << i)) {
             /* The shared diagram is painted after all parameter labels. */
         } else if (display.rotary & (1u << i)) {
-            /* Reuse the device's native encoder template (CFADE) with a
-             * supplied value, without reading/writing its Sound slot.
-             * Accessor and state are borrowed only for this paint call. */
-            uint32_t *vt = (uint32_t *)pointer(view, 0);
-            uint8_t *(*access)(uint8_t *, uint32_t, int32_t) = (void *)(uintptr_t)vt[0xc4 / 4];
-            uint8_t *a = access(view, 0xcc, -1);
-            uint32_t *av = (uint32_t *)pointer(a, 0);
-            void (*draw)(uint8_t *, uint32_t, int32_t, uint32_t, uint8_t *, uint8_t *, int32_t,
-                         int32_t) = (void *)(uintptr_t)av[0x60 / 4];
-            draw(a, 0xcc, (int32_t)display.knob[i] << 8, 0, view + 0xb4 + 20 * i, canvas, x, y + 7);
+            ip_src_draw_rotary(view, canvas, i, display.knob[i]);
         } else {
             dk_fw_text_draw_box(canvas, (uint8_t *)(uintptr_t)ip_src_label_font, x + 9, y + 14, 1,
                                 0, 0, "%s", display.value[i]);
