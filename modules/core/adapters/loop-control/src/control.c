@@ -31,6 +31,7 @@ static volatile u32 newest[WIRE_WORDS], newest_count;
 static u32 taken_count;
 /* The native FX page of the loop effect, as the fx service last said, and the UI passes since it said so. */
 static u32 page, asked = 2 * STALE;
+#include "wave.inc"
 /* Diagnostics for the device test: status updates taken, and loops the home has seen. */
 u32 loop_control_updates, loop_control_seen;
 
@@ -129,6 +130,7 @@ void loop_reply_frame(const volatile u16 *p)
     /* The carrier packs words 7, 14 and 15 into its word 7: this engine leaves them 0. */
     if (w[0] != WIRE_MAGIC || w[7])
         return;
+    wave_accept(w);
     for (u32 j = 0; j < WIRE_WORDS; ++j)
         newest[j] = w[j];
     ++newest_count;

@@ -886,7 +886,7 @@ void instrument_src_tick(void)
                 ip_src_refresh[6] = last_draw;
                 int relay = rtm_src ? rtm_src(view, 5, 0) : 0;
                 if (relay) {
-                    if (relay == 2 && now - last_draw >= 40) {
+                    if (relay == 2 && now - last_draw >= 24) {
                         last_draw = now;
                         dk_fw_view_invalidate(view);
                     }

@@ -3,6 +3,14 @@
 #include <string.h>
 const u32 machines_info[8];
 struct RelayFiles relay_files;
+void fxv_box(void *bitmap, int x, int y, int width, int height, int ink)
+{
+    uint8_t (*pixels)[128] = bitmap;
+    assert(x >= 0 && y >= 0 && x + width <= 128 && y + height <= 64);
+    for (int row = y; row < y + height; ++row)
+        for (int col = x; col < x + width; ++col)
+            pixels[row][col] = ink < 0 ? !pixels[row][col] : ink;
+}
 const struct RelayOverview *rtm_wave(unsigned slot, unsigned revision, unsigned length,
                                      unsigned hits, unsigned sens)
 {
@@ -209,5 +217,31 @@ int main(void)
     assert(project_gate(native, 0)[0x12] == 0);
     native[0x4a] = 3;
     assert(project_gate(native, 0) == native);
+
+    // Distinct positive left and negative right excursions and a silent neighbor.
+    uint8_t pixels[64][128] = {0};
+    struct RelayOverview wave = {.frames = RELAY_WAVE_BINS};
+    for (unsigned i = 0; i < RELAY_WAVE_BINS; ++i)
+        wave.peaks[i] = RELAY_WAVE_SILENT;
+    wave.peaks[0] = 0x60f9;
+    status[5] = 0;
+    assert(draw_waveform(pixels[0], &wave, 0, 0, 0, 0));
+    assert(pixels[29][17] && pixels[32][17] && !pixels[33][17] && !pixels[35][17]);
+    assert(!pixels[44][17] && pixels[45][17] && pixels[48][17]);
+    assert(pixels[33][18] && pixels[44][18] && !pixels[29][18]);
+
+    // Capture one telemetry window across the loop boundary without losing its
+    // previously measured column or coloring the unwritten middle of the tape.
+    status[2] = 1;
+    status[5] = 1200;
+    status[6] = 22;
+    status[12] = 1190;
+    status[13] = (u32)wave.peaks[0] << 8;
+    preview_waveform();
+    assert(live_track == track && live_peaks[0] == 0x60f9 && live_peaks[2] == 0x60f9 &&
+           live_peaks[119] == 0x60f9 && live_peaks[30] == RELAY_WAVE_EMPTY);
+    status[2] = 0;
+    preview_waveform();
+    assert(live_track == 16); // A canceled recording never becomes the fallback waveform.
     return 0;
 }

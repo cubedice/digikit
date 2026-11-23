@@ -129,5 +129,12 @@
 // one that was heard when it paused). 0: nothing pending.
 #define OL_SYNC 68
 #define OL_SYNC_PH 69
-#define OL_STATE_WORDS 72
-#define OL_STATE_BYTES 288
+#define OL_WAVE_MIN_L 70
+#define OL_WAVE_MAX_L 71
+#define OL_WAVE_MIN_R 72
+#define OL_WAVE_MAX_R 73
+#define OL_WAVE_LAST 74
+#define OL_WAVE_EDGE 75
+#define OL_WAVE_PART 76
+#define OL_STATE_WORDS 77
+#define OL_STATE_BYTES 308

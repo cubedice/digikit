@@ -133,6 +133,11 @@ _ol_moved_clear: DM(I4,M6) = R0;
     DM(OL_N,I5) = R9;
     DM(OL_BUF0,I5) = R2;
     DM(OL_BUF1,I5) = R6;
+    // A replacement buffer has no old samples or preceding display interval.
+    R0 = 0; DM(OL_T,I5) = R0;
+    DM(OL_WAVE_MIN_L,I5) = R0; DM(OL_WAVE_MAX_L,I5) = R0;
+    DM(OL_WAVE_MIN_R,I5) = R0; DM(OL_WAVE_MAX_R,I5) = R0;
+    DM(OL_WAVE_LAST,I5) = R0;
     CALL _ol_count_on;
 
     // ---- The controls. The counters come as floats 0 .. 127; a change of ARM arms or disarms, a change of DROP drops.
@@ -779,9 +784,13 @@ _ol_record:
     R1 = LSHIFT R0 BY 2;
     R3 = R3 + R1;
     I4 = R3;
+    R9 = DM(OL_WAVE_MIN_L,I5); R10 = DM(OL_WAVE_MAX_L,I5);
+    R11 = DM(OL_WAVE_MIN_R,I5); R12 = DM(OL_WAVE_MAX_R,I5);
     LCNTR = DK_BLOCK, DO _ol_record_end UNTIL LCE;
         R4 = DM(I2,M6);
         R8 = DM(I3,M6);
+        F9 = MIN(F9,F4); F10 = MAX(F10,F4);
+        F11 = MIN(F11,F8); F12 = MAX(F12,F8);
         DM(M2,I4) = R8;
 _ol_record_end: DM(I4,M6) = R4;
     R1 = DK_BLOCK;
@@ -797,6 +806,17 @@ _ol_record_end: DM(I4,M6) = R4;
     R0 = DM(OL_T,I5);
     R0 = R0 + R1;
     DM(OL_T,I5) = R0;
+    DM(OL_WAVE_MIN_L,I5) = R9; DM(OL_WAVE_MAX_L,I5) = R10;
+    DM(OL_WAVE_MIN_R,I5) = R11; DM(OL_WAVE_MAX_R,I5) = R12;
+    R2 = 511; R2 = R0 AND R2;
+    IF NE JUMP _ol_wave_ready;
+    CALL _ol_wave_pack;
+    DM(OL_WAVE_LAST,I5) = R0;
+    R9 = 0;
+    DM(OL_WAVE_MIN_L,I5) = R9; DM(OL_WAVE_MAX_L,I5) = R9;
+    DM(OL_WAVE_MIN_R,I5) = R9; DM(OL_WAVE_MAX_R,I5) = R9;
+_ol_wave_ready:
+    R1 = DK_BLOCK;
 
     // ---- The frames before the record's start. After a capture the record begins empty in this buffer, and what was
     // heard before lies in the other one, the loop's, which nothing writes. A block of it is copied each block, the newest
@@ -921,12 +941,14 @@ _ol_publish:
     DM(LS_CAPACITY,I4) = R4;
     R0 = 0;
     DM(7,I4) = R0;
-    DM(8,I4) = R0;
-    DM(11,I4) = R0;
-    DM(12,I4) = R0;
-    DM(13,I4) = R0;
     DM(14,I4) = R0;
     DM(15,I4) = R0;
+    R0 = DM(OL_T,I5); DM(LS_WAVE_T,I4) = R0;
+    R0 = DM(OL_WAVE_PART,I5); R0 = LSHIFT R0 BY 16;
+    R2 = DM(OL_WAVE_LAST,I5); R0 = R0 OR R2; DM(LS_WAVE_PEAK,I4) = R0;
+    R0 = DM(OL_WAVE_EDGE,I5); DM(LS_WAVE_EDGE,I4) = R0;
+    R0 = DM(OL_SILENT,I5); DM(LS_WAVE_SILENT,I4) = R0;
+    R0 = 0;
     R2 = 0;
     R3 = DM(OL_LOOP,I5);
     R3 = PASS R3;
@@ -1155,6 +1177,9 @@ _ol_next_set:
 // crossfader stands at LOOP from this block on, the arm is used up, and the record goes on in the other buffer.
 // Uses R0 to R6 and R9.
 _ol_capture:
+    R0 = DM(OL_T,I5); DM(OL_WAVE_EDGE,I5) = R0;
+    CALL _ol_wave_pack;
+    DM(OL_WAVE_PART,I5) = R0;
     R0 = DM(OL_NEXT,I5);
     R9 = DM(OL_N,I5);
     R1 = OL_SEAM + DK_BLOCK;
@@ -1237,6 +1262,21 @@ _ol_capture_base:
     R1 = 1;
     R0 = R0 XOR R1;
     DM(OL_ROLL,I5) = R0;
+    RTS;
+
+// Floor at zero is already included in each accumulated extremum. Round visible nonzero
+// signals outwards. Clamp before conversion so a loud master cannot spill into the next lane.
+_ol_wave_pack:
+    R6 = 0x41600000; // 14
+    R2 = 0x3f800000; // 1
+    R0 = DM(OL_WAVE_MAX_R,I5); CALL _ol_wave_q; R3 = R0;
+    R0 = DM(OL_WAVE_MIN_R,I5); CALL _ol_wave_q; R3 = LSHIFT R3 BY 4; R3 = R3 OR R0;
+    R0 = DM(OL_WAVE_MAX_L,I5); CALL _ol_wave_q; R3 = LSHIFT R3 BY 4; R3 = R3 OR R0;
+    R0 = DM(OL_WAVE_MIN_L,I5); CALL _ol_wave_q; R3 = LSHIFT R3 BY 4; R0 = R3 OR R0;
+    RTS;
+_ol_wave_q:
+    F0 = ABS F0; IF EQ RTS;
+    F0 = MIN(F0,F2); F0 = F0 * F6; F0 = F0 + F2; R0 = TRUNC F0;
     RTS;
 
 .SECTION/DM seg_dmda;

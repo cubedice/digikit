@@ -10,24 +10,24 @@ holds no value of its own. The engine is `digikit/overloop`; the behaviour is de
 ```
  OVERLOOP                      ARMED      title, state: IDLE, ARMED, LOOP, LOOP+ARM, NO LINK
  ──────────────────────────────────
-         NEXT CHANGE KEEPS                line 1
-           16 ST 2.00 S                   line 2
- |-------|---▮---|-------|-------|        the timeline: one cycle, quarter marks, where it stands
- ──────────────────────────────────
+ ╭────────────────────────────────╮
+ │──╼╾──╼╾──────╼╾──╼╾────────────│        left channel
+ │────╼╾────╼╾──────╼╾────╼╾──────│        right channel
+ ╰────────────────────────────────╯
+           16 ST 2.00 S                   length or capture limit
     ARM                         XFAD      the bottom row as PRISM's cells: each label above its encoder (E, H)
-    ON                          LIVE      ARM's state (inverted while on), XFAD's value
-                              ▮─────      the crossfader as it sounds, LIVE left, LOOP right
+    ON        ▮─────            LIVE      ARM's state, effective crossfade and XFAD's value
 ```
 
-| State | Line 1 | Line 2 |
+| State | Waveform | Caption |
 | --- | --- | --- |
-| no loop, nothing armed | `NO LOOP` | `CYCLE 16 ST 2.00 S` once a step has been heard; empty while stopped |
-| armed | `NEXT CHANGE KEEPS` | `16 ST 2.00 S`; `LAST 21.5 S ONLY` when the cycle is longer than the buffers; `NOTHING YET` while a change would take nothing (stopped) |
-| a loop | `LOOP 16 ST 2.00 S` | `CUT TO ITS LAST PART` for a cut loop, else empty |
-| a loop, armed | as armed | as armed |
+| IDLE | rolling stereo record, newest at right | `CYCLE 16 ST 2.00 S` once the cycle is known, otherwise `NO LOOP` |
+| ARMED | rolling record | expected cycle, `LAST 21.5 S ONLY` at capacity, or `NOTHING YET` |
+| LOOP | held audio and playhead | retained cycle or `CUT TO ITS LAST PART` |
+| LOOP+ARM | currently held audio and playhead | the cycle to be captured on the next change |
 
-The mark on the timeline is the step of the pattern that plays, or the loop's place once there is a loop. The crossfader
-drawing under `XFAD` follows the level the engine applies (it moves by at most 1/256 a frame, and stands at LOOP right after
+The marker on the frame follows the held loop's phase. The crossfader
+between the controls follows the level the engine applies (it moves by at most 1/256 a frame, and stands at LOOP right after
 a capture); the text above it is the value of the control. `ON` is drawn inverted. The cells are 26 pixels wide, E's
 centred at x 32 and H's at x 110, as on PRISM's page; x 124 to 127 below the header are left to the FX view's page
 indicator. Times have two places below ten seconds and one from there; below a second they are in milliseconds.
@@ -54,7 +54,7 @@ Everything else (the page keys, PLAY, STOP, the track keys, FUNC + FX to the nex
   type; tested on the host.
 - `src/native.c`: the adapter functions `loop_fxv_draw`, `loop_fxv_key`, `loop_fxv_turn` that `core/fxview` calls, and
   `loop_view_update` in the view's update slot (`cf.fx.site.fx_update`), which asks for a repaint when the status has
-  moved on by 60 blocks (25 times a second at most), at once after an edit, and when the link comes or goes.
+  moved on by 48 blocks (about 31 times a second at most), at once after an edit, and when the link comes or goes.
 - The page is the loop effect's when the view's page code is the one the home reports (`dkrt_loop_page`, which the fx
   service tells the home with the effect's values). Without a loop effect loaded no page is taken.
 - Diagnostics a device test reads: `loop_ui_debug` (0 paints, 3 keys taken, 4 turns taken, 6 the page is on top, 7 the

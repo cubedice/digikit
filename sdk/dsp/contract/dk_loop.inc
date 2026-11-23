@@ -46,6 +46,14 @@
 // (from bit 16); the last two are 0 while no pattern is followed.
 #define LS_STEPS 9
 #define LS_CAPACITY 10
+// Display overview of the rolling record (zero from older engines). T is the number of recorded frames, modulo 2^32.
+// Every 512 frames PEAK gets four unsigned magnitudes, L negative/positive and R negative/positive, one nibble each
+// starting at the low end. Its upper half is the unfinished interval before the last capture. EDGE is T at capture.
+#define LS_WAVE_T 8
+#define LS_WAVE_PEAK 11
+#define LS_WAVE_EDGE 12
+#define LS_WAVE_SILENT 13
+#define LS_WAVE_COLUMNS 60
 // The tap: the loop times the crossfader as applied, one block, at the level of the mix before the master stage: divided by the
 // master stage's gain after its sum at the end of the block (its +10 dB and the volume ramp; at most 1024 times). The engine
 // writes it after every block; a reader in the next block uses it while the engine runs (LW_TAKEN moved since its last block)

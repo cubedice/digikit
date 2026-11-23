@@ -13,11 +13,19 @@ void     dkrt_loop_xfad(uint32_t value);  /* the crossfader: 0 LIVE .. 127 LOOP 
 void     dkrt_loop_arm(void);             /* one press of ARM: arms, or takes the arm back */
 void     dkrt_loop_drop(void);            /* drop the loop */
 uint32_t dkrt_loop_status(uint32_t *out); /* the engine's status (LS_* words); 1 while it is fresh */
+void     dkrt_loop_wave(uint16_t out[LS_WAVE_COLUMNS]); /* rolling or held stereo waveform, 60 ordered columns */
 uint32_t dkrt_loop_page(void);            /* the native FX page of the loop effect, 0 while none is loaded */
 ```
 
 The indices and the status words are in `sdk/dsp/contract/dk_loop.inc`, the one file the home, the page and the engine
 share.
+
+The DSP measures both polarities of each recorded stereo channel, before adding the downstream wet return. Every
+512 frames it closes one 16-bit peak group. The existing status carrier repeats the completed group until its
+replacement. The ColdFire keeps four 64-bin histories with successively coarser resolution. The capture edge
+freezes the matching history including the unfinished group, clipping its valid interval to the actual recorded
+audio. The UI reads one bounded snapshot and scales it to the plot after restoring interrupts. Silence and loss
+of status clear the corresponding display data.
 
 ## How the values reach the engine
 

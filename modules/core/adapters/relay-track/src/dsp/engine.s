@@ -68,6 +68,8 @@ _rtm_block:
     DM(_rt_load) = R0;
     DM(_rt_pin) = R0;
 _rt_clock:
+    // The link clears the mailbox header after copying a control reply.
+    I0 = _relay_status; R0 = DM(0,I0); R0 = PASS R0; IF EQ CALL _rt_wave_reset;
     I0 = _pattern_position_info;
     R0 = DM(0,I0); R1 = 0x50504f53; COMP(R0,R1); IF NE JUMP _rt_clock_gap;
     R0 = DM(5,I0);
@@ -362,6 +364,7 @@ _rt_reserve:
     R0 = DM(_rt_goal); R0 = PASS R0; IF NE JUMP _rt_ready;
     R4 = RLY_AVAILABLE; CALL _relay_pool; DM(_rt_goal) = R0;
 _rt_ready:
+    CALL _rt_wave_reset;
     R0 = DM(_rt_wanted); DM(_rt_mode) = R0;
     R0 = 1; DM(_rt_armed) = R0; R0 = 0; DM(_rt_finish) = R0; DM(_rt_written) = R0;
     JUMP _rt_schedule;
@@ -506,6 +509,7 @@ _rt_abort_pool:
     R4 = RLY_ABORT; CALL _relay_pool;
     R8 = DM(_rt_writer); CALL _rt_row;
 _rt_idle:
+    CALL _rt_wave_reset;
     R0 = RLY_TRACK_MAIN; R0 = R0 + R8; DM(RT_SLOT,I4) = R0;
     R0 = 0; DM(_rt_repeat) = R0; DM(RT_TRIG,I4) = R0; DM(_rt_mode) = R0; DM(_rt_armed) = R0; DM(_rt_finish) = R0; RTS;
 _rt_start_tracks:
@@ -515,6 +519,7 @@ _rt_start_one:
     R0 = DM(T_ACTIVE,I5); R0 = PASS R0; IF EQ JUMP _rt_start_next;
     R0 = DM(RT_LENGTH,I4); R0 = PASS R0; IF EQ JUMP _rt_start_next;
     CALL _tape_transition;
+    R0 = DM(_rt_writer); COMP(R0,R8); IF EQ CALL _rt_wave_reset;
     R0 = 0; DM(RT_POS,I4) = R0; DM(T_FRAC,I5) = R0; DM(T_SLIP,I5) = R0; DM(T_STOPPED,I5) = R0;
     DM(RT_PREVIEW_END,I4) = R0;
     R0 = 1; DM(RT_PLAYING,I4) = R0; DM(RT_LAUNCH,I4) = R0;
@@ -576,17 +581,14 @@ _rt_report_row: CALL _rt_row;
     CALL _tape_row; R1 = DM(T_GRID,I5); R1 = LSHIFT R1 BY 8;
     R0 = DM(RT_UNDOABLE,I4); R0 = R0 OR R1; DM(11,I3) = R0;
     R0 = DM(_rt_written); DM(12,I3) = R0;
-    R0 = DM(RT_SOURCE,I4); CALL _rt_inputs; I0 = R4; I1 = R8;
-    R2 = 0; R3 = 0;
-    LCNTR = 32, DO _rt_peak UNTIL LCE;
-        F0 = DM(I0,M6); F1 = DM(I1,M6);
-        F0 = ABS F0; F1 = ABS F1;
-        F2 = MAX(F2,F0);
-_rt_peak: F3 = MAX(F3,F1);
-    R4 = 0x3f800000; F2 = MIN(F2,F4); F3 = MIN(F3,F4);
-    R4 = 0x42fe0000; F2 = F2 * F4; F3 = F3 * F4;
-    R2 = FIX F2; R3 = FIX F3; R2 = LSHIFT R2 BY 8; R3 = LSHIFT R3 BY 16;
-    R0 = DM(_rt_error); R0 = R0 OR R2; R0 = R0 OR R3; DM(13,I3) = R0;
+    R2 = 0x0f0f;
+    R0 = DM(_rt_writer); COMP(R0,R8); IF NE JUMP _rt_report_wave;
+    R0 = DM(_rt_wave_start); R0 = PASS R0; IF LT JUMP _rt_report_wave;
+    DM(12,I3) = R0;
+    CALL _rt_wave_pack;
+    R2 = R0;
+_rt_report_wave:
+    R2 = LSHIFT R2 BY 8; R0 = DM(_rt_error); R0 = R0 OR R2; DM(13,I3) = R0;
     R4 = RLY_AVAILABLE; CALL _relay_pool; I3 = _relay_status; DM(3,I3) = R0;
     // Feedback rows are shared by multiple modules. Sign the complete snapshot.
     I0 = _relay_status; R1 = DM(I0,M6); R0 = 0;
@@ -599,6 +601,7 @@ _rt_hash_word: R0 = R1 + R2;
 
 #include "tape.inc"
 #include "transfer.inc"
+#include "wave.inc"
 .SECTION/DM seg_dmda;
 .GLOBAL _rtm_tracks;
 .VAR _rtm_tracks[256];

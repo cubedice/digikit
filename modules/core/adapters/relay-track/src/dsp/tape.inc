@@ -92,6 +92,7 @@ _tape_seek:
     R4 = DM(6,I0); R1 = ABS R4; COMP(R1,R3); IF GT JUMP _rt_schedule;
     R1 = RT_SEEK_WRITE; COMP(R6,R1); IF NE JUMP _tape_move_read;
     R2 = DM(RT_POS,I4); R2 = R2 + R4; CALL _tape_fold; DM(RT_POS,I4) = R2;
+    R0 = DM(_rt_writer); COMP(R0,R8); IF EQ CALL _rt_wave_reset;
     R4 = -R4;
 _tape_move_read:
     R2 = DM(T_SLIP,I5); R2 = R2 + R4; CALL _tape_fold; JUMP _tape_store_slip;
@@ -210,7 +211,11 @@ _tape_monitor_ready:
     R1 = DM(_rt_armed); R1 = PASS R1; IF NE JUMP _tape_write_gate;
     R0 = DM(_rt_mode); R1 = 3; COMP(R0,R1); IF EQ R0 = R0 XOR R0;
 _tape_write_gate:
-    DM(_t_gate) = R0; R5 = 0;
+    DM(_t_gate) = R0;
+    // Only the four saved mixer scratch registers untouched by pool lookup.
+    R9 = 32767; R11 = -32768; R13 = R9; R14 = R11;
+    R0 = DM(RT_POS,I4); DM(_t_wave_start) = R0;
+    R5 = 0;
 _tape_sample:
     R0 = LSHIFT R5 BY 2; R1 = DM(_t_left); R1 = R1 + R0; I0 = R1;
     R1 = DM(_t_right); R1 = R1 + R0; I1 = R1; F1 = DM(0,I0); F2 = DM(0,I1);
@@ -243,6 +248,7 @@ _tape_print:
     DM(_t_wet_l) = R0; DM(_t_wet_r) = R1;
 _tape_pack:
     R2 = 0x47000000; F0 = F0 * F2; F1 = F1 * F2; R0 = FIX F0; R1 = FIX F1;
+    R9 = MIN(R9,R0); R11 = MAX(R11,R0); R13 = MIN(R13,R1); R14 = MAX(R14,R1);
     R2 = 65535; R1 = R1 AND R2; R0 = LSHIFT R0 BY 16; R0 = R0 OR R1; DM(_t_word) = R0;
     R12 = DM(RT_POS,I4); CALL _tape_address; R0 = DM(_t_word); DM(0,I0) = R0;
     R2 = DM(_t_delta); R1 = ABS R2; R3 = 2; COMP(R1,R3); IF LT JUMP _tape_advance;
@@ -279,6 +285,7 @@ _tape_mix:
     R0 = 0; DM(_t_gate) = R0;
 _tape_next_sample:
     R5 = R5 + 1; R0 = 32; COMP(R5,R0); IF LT JUMP _tape_sample;
+    COMP(R9,R11); IF LE CALL _rt_wave_merge;
     R8 = DM(_t_track); R0 = DM(_rt_writer); COMP(R8,R0); IF NE JUMP _rt_step_next;
     R0 = DM(_rt_mode); R1 = 1; COMP(R0,R1); IF NE JUMP _rt_step_next;
     R0 = DM(_rt_written); R1 = DM(_rt_goal); COMP(R0,R1); IF LT JUMP _rt_step_next;
@@ -290,6 +297,7 @@ _tape_next_sample:
 .VAR _t_alt_l[32];
 .VAR _t_alt_r[32];
 .VAR _t_arm_grid;
+.VAR _t_wave_start;
 .VAR _t_track;
 .VAR _t_slot;
 .VAR _t_share_length;

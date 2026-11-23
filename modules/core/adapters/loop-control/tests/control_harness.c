@@ -46,6 +46,68 @@ static void block(void)
 {
     loop_reply_frame(reply_copy);
 }
+static void wave_history(void)
+{
+    u16 shape[LS_WAVE_COLUMNS], frozen[LS_WAVE_COLUMNS];
+    u32 seq = 1000, length = 32 * 512;
+    for (u32 bin = 1; bin <= 32; ++bin) {
+        carrier(++seq, LS_TRACK, 0);
+        cell(LS_WAVE_T, bin * 512);
+        cell(LS_NEXT_FRAMES, length);
+        cell(LS_WAVE_PEAK, bin <= 16 ? 0xe000 : 0xf0);
+        block();
+    }
+    loop_ui_tick();
+    dkrt_loop_wave(shape);
+    assert(shape[0] == 0xe000 && shape[29] == 0xe000 && shape[30] == 0xf0 && shape[59] == 0xf0);
+    /* An off-window capture; the leading half was not present after a rapid
+     * replacement. A negative-left transient in the last partial bin is kept. */
+    carrier(++seq, LS_LOOP | (5u << LS_COUNT_SHIFT), length);
+    cell(LS_WAVE_T, length + 96);
+    cell(LS_WAVE_EDGE, length + 64);
+    cell(LS_WAVE_PEAK, (15u << 16) | 0xf0);
+    cell(LS_WAVE_SILENT, length / 2);
+    block();
+    loop_ui_tick();
+    dkrt_loop_wave(frozen);
+    assert(frozen[0] == 0 && frozen[29] == 0 && frozen[31] == 0xf0 && frozen[59] == 0xff);
+    for (u32 bin = 33; bin < 132; ++bin) {
+        carrier(++seq, LS_LOOP | LS_STOPPED | (5u << LS_COUNT_SHIFT), length);
+        cell(LS_WAVE_T, bin * 512);
+        block();
+    }
+    loop_ui_tick();
+    dkrt_loop_wave(shape);
+    assert(!memcmp(shape, frozen, sizeof(shape)));
+    carrier(++seq, LS_TRACK, 0);
+    cell(LS_NEXT_FRAMES, length);
+    cell(LS_WAVE_T, 132 * 512);
+    block();
+    loop_ui_tick();
+    dkrt_loop_wave(shape);
+    for (unsigned x = 0; x < LS_WAVE_COLUMNS; ++x)
+        assert(shape[x] == 0);
+
+    /* A long loop crosses the 32-bit frame counter. Transients on each end
+     * survive the coarser histories while the middle and silent side stay flat. */
+    length = 1031680;
+    const u32 start = 0u - length / 2;
+    for (u32 at = 512; at <= length; at += 512) {
+        carrier(++seq, LS_TRACK, 0);
+        cell(LS_WAVE_T, start + at);
+        cell(LS_NEXT_FRAMES, length);
+        cell(LS_WAVE_PEAK, at == 1024 ? 0x0d00 : at == length - 512 ? 0x000e : 0);
+        block();
+    }
+    loop_ui_tick();
+    dkrt_loop_wave(shape);
+    assert(shape[0] == 0x0d00 && shape[30] == 0 && shape[59] == 0x000e);
+    for (u32 i = 0; i < STALE; ++i)
+        loop_ui_tick();
+    dkrt_loop_wave(shape);
+    for (unsigned x = 0; x < LS_WAVE_COLUMNS; ++x)
+        assert(shape[x] == 0);
+}
 static void reply_hook(void)
 {
     u32 out[LS_WORDS];
@@ -206,6 +268,7 @@ int main(void)
     report(8, LS_LOOP | LS_HELD, 1);
     assert(dkrt_loop_get(LP_XFAD) == LP_MAX && dkrt_loop_get(LP_SEEN) == 1);
     reply_hook();
+    wave_history();
     puts("loop control: ok");
     return 0;
 }

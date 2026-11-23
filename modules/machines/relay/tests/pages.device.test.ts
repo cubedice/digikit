@@ -59,7 +59,9 @@ describeOn('dt2','RELAY track SRC pages',()=>{
     expect(await fileState(),'LIVE waveform finished: '+JSON.stringify(await status())).toBe(5);
     const peakBase=planSymbol(plan,'relay_files')+(7+67)*4;
     const pairs=await Promise.all(Array.from({length:60},(_,i)=>word(session,peakBase+4*i)));
-    expect(pairs.some(x=>x!==0),'waveform contains the recorded reference, status '+JSON.stringify(recorded)).toBe(true);
+    const audible=(envelope:number)=>envelope!==0x8888 && envelope!==0x0f0f;
+    expect(pairs.some(x=>audible(x>>>16) || audible(x&0xffff)),
+      'waveform contains the recorded reference, status '+JSON.stringify(recorded)).toBe(true);
     const changeTrack=(n:number)=>rt.ui.tap('TRIG '+n,{held:'TRK',until:{ms:100,why:REDRAW}});
     const roundTrip=async()=>{await changeTrack(1);await changeTrack(13);};
     await tap('PUSH F',320);

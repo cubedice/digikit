@@ -25,16 +25,18 @@ it('records track 16, overdubs, undoes, and keeps an independent take with track
     const row=r.reads[0]!;
     expect(row[1]).toBe(seq);
     expect(row[13]! & 255).toBe(0);
-    expect((row[13]! >>> 16) & 127).toBeGreaterThan((row[13]! >>> 8) & 127);
     return row;
   }
   try {
     for(let i=0;i<480;++i) rig.poke(base/4+i,0);
     for(let i=0;i<64;++i)rig.poke(base/4+i,f2w(i<32?0.25:-0.5));
+    // The same input block feeds both halves of the tape.
+    rig.poke(base/4+1,f2w(-1/32768));
+    rig.poke(base/4+33,f2w(1/32768));
     await block(1,15);
     await block(0,2);
     expect((await block(2,15))[5]).toBe(64);
-    // Pin and scan the real recorded stereo data, including its louder right channel.
+    // Pin and scan signed extrema from both channels, including one-count samples.
     async function transfer(id:number, op:number, arg:number, length:number) {
       [0x524c5831,id,op,arg,length].forEach((v,i)=>rig.poke((status+256)/4+i,v));
       const r=await rig.call('_rtm_block',{M6:1,M5:0},{reads:[[(status+512)/4,14]]});
@@ -46,7 +48,7 @@ it('records track 16, overdubs, undoes, and keeps an independent take with track
       return reply.slice(0,4);
     }
     expect((await transfer(1,1,15,0))[2]).toBe(64);
-    expect((await transfer(2,9,0,64)).slice(2)).toEqual([64,16384]);
+    expect((await transfer(2,9,0,64)).slice(2)).toEqual([64,0x94a7]);
     expect((await transfer(3,2,0,1)).slice(2)).toEqual([1,0x2000c000]);
     // The peak reader works in bounded spans across audio blocks and only publishes a full batch.
     const request=(status+256)/4, response=(status+512)/4;
@@ -55,7 +57,7 @@ it('records track 16, overdubs, undoes, and keeps an independent take with track
       const r=await rig.call('_rtm_block',{M6:1,M5:0},{reads:[[response,6]]});
       expect(r.halt).toBe('breakpoint');
       if(i<2) expect(r.reads[0]![1]).toBe(3);
-      else expect(r.reads[0]!.slice(1)).toEqual([100,3,16384,16384,16384]);
+      else expect(r.reads[0]!.slice(1)).toEqual([100,3,0x44aa,0x94a7,0x94a7]);
     }
     rig.poke(request+5,65);
     expect((await transfer(101,10,0,1))[2]).toBe(0xffffffff);
@@ -77,7 +79,7 @@ it('records track 16, overdubs, undoes, and keeps an independent take with track
     await block(1,12,0,14);
     await block(2,12,0,14);
     expect((await transfer(5,1,12,0))[2]).toBe(32);
-    expect((await transfer(6,9,0,32)).slice(2)).toEqual([32,24576]);
+    expect((await transfer(6,9,0,32)).slice(2)).toEqual([32,0xee77]);
     expect((await transfer(7,2,0,1)).slice(2)).toEqual([1,0xf0006000]);
     expect((await transfer(8,3,0,0))[2]).toBe(0);
   } finally {await rig.close();}

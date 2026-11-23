@@ -4,6 +4,11 @@
 #include "../src/model.h"
 /* The home: the values as the page sets them, and the engine's status as the home last had it. */
 static uint32_t xfad, arms, drops, st_words[LS_WORDS], st_fresh;
+void dkrt_loop_wave(uint16_t out[LS_WAVE_COLUMNS])
+{
+    memset(out, 0, LS_WAVE_COLUMNS * sizeof(*out));
+    out[5] = 0x0ff0; /* left positive only, right negative only */
+}
 uint32_t dkrt_loop_status(uint32_t *out)
 {
     memcpy(out, st_words, sizeof(st_words));
@@ -284,6 +289,7 @@ static void texts(void)
 /* A canvas that checks what the page draws: inside the screen, every text inside its place. */
 typedef struct {
     uint32_t boxes, texts, inverted;
+    uint8_t dots[64][128];
     /* the texts drawn, their centres and tops */
     char text[16][28];
     int x[16], y[16];
@@ -305,6 +311,8 @@ static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
     /* below the header, x 124 to 127 are the FX view's page indicator: nothing is drawn or cleared there */
     assert(y + h <= 10 || x + w <= 124);
     assert(ink == 0 || ink == 1);
+    for (int j = y; j < y + h; ++j)
+        memset(&d->dots[j][x], ink, w);
     ++d->boxes;
 }
 static void drawn_text(void *ctx, int x, int y, const char *s, int ink)
@@ -357,6 +365,9 @@ static void rendering(void)
     ld_page(w, 1, 64, &p);
     memset(&d, 0, sizeof(d));
     ld_render(&p, &c);
+    assert(d.dots[12][12] && d.dots[19][12] && !d.dots[20][12]);
+    assert(!d.dots[33][12] && d.dots[34][12] && d.dots[41][12]);
+    assert(!d.dots[12][20] && d.dots[19][20] && d.dots[34][20] && !d.dots[41][20]);
     int y_label = 0, y_value = 0;
     assert(where(&d, "ARM", &y_label) == LD_CELL_E && where(&d, "ON", &y_value) == LD_CELL_E &&
            y_value > y_label);

@@ -7,7 +7,7 @@ role = "adapter"
 type = "framework"
 author = "digikit"
 status = "experimental"
-summary = "The loop effect's own page: the timeline, the crossfader on H and LEVEL, ARM on the press of H, FUNC + NO drops the loop."
+summary = "Rolling and captured stereo waveform, ARM on E, crossfade on H and LEVEL, FUNC + NO drops the loop."
 # core/fxview owns the FX view's table slots and calls this page's loop_fxv_ functions; core/loop-control holds the values.
 requires = ["core/fxview", "core/loop-control"]
 conflicts = []

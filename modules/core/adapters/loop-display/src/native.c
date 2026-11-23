@@ -97,10 +97,10 @@ void loop_view_update(uint8_t *view)
             uint32_t now[LS_WORDS];
             int fresh = (int)dkrt_loop_status(now);
             ld_observe(&ui, now, (uint32_t)fresh);
-            /* Audio runs at 1500 blocks a second: 60 blocks is a 25 Hz ceiling on animation requests. An edit and
+            /* Audio runs at 1500 blocks a second: 48 blocks is a 31 Hz ceiling on animation requests. An edit and
              * a link that came or went repaint at once. */
             if (fresh != drawn_fresh || ui.revision != drawn_revision ||
-                (fresh && (uint32_t)(now[LS_HEARTBEAT] - drawn_seq) >= 60))
+                (fresh && (uint32_t)(now[LS_HEARTBEAT] - drawn_seq) >= 48))
                 dk_fw_view_invalidate(view);
             return;
         }

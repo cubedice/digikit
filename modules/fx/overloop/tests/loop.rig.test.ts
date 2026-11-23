@@ -111,6 +111,17 @@ async function armedChange(rig: LoopRig, cycles: number, turns: number, armAfter
 }
 
 describe('Overloop engine: an armed change at the pattern end', () => {
+  test('the rolling display interval retains isolated peaks of opposite polarities on separate channels and expires to silence', async () => {
+    await withRig({}, async (rig) => {
+      await rig.run(16, (frame) => [frame === 13 ? 1 : 0, frame === 400 ? -0.5 : 0]);
+      const w = await rig.statusWords();
+      expect(w[LP.LS_WAVE_T!]).toBe(512);
+      expect(w[LP.LS_WAVE_PEAK!]! & 0xffff).toBe(0x08f0);
+      await rig.run(16, () => 0);
+      expect((await rig.statusWords())[LP.LS_WAVE_PEAK!]! & 0xffff).toBe(0);
+    });
+  });
+
   test('the loop is the cycle that just ended, exactly, and what is heard goes on as one cycle earlier', async () => {
     await withRig({ tap: true }, async (rig) => {
       const { take, change } = await armedChange(rig, 4, 5);
@@ -523,6 +534,9 @@ describe('Overloop engine: the boundary cases', () => {
 
   test('START while the crossfader moves, and the seam while it stands between: the heaviest blocks', async () => {
     await withRig({ tap: true }, async (rig) => {
+      // This START is block 322 of the performance. Place it at the end of
+      // a 16-block display interval so packing its extrema also runs here.
+      await rig.run(13);
       const { take, change } = await armedChange(rig, 3, 1);
       // STOP, and START again two blocks later, while the loop side still fades out: the restart's declick, the loop
       // side's fade in, the crossfader on its way and the mix, all in the same blocks
@@ -530,6 +544,7 @@ describe('Overloop engine: the boundary cases', () => {
       await rig.run(2, SOUND_B);
       rig.setXfad(30);
       rig.start(B);
+      expect((rig.clock / BLOCK + 1) % 16).toBe(0);
       const moving = await rig.run(blocks(STEP), SOUND_B);
       // then the seam with the crossfader between LIVE and LOOP
       const turn = await rig.run(blocks(CYCLE), SOUND_B);

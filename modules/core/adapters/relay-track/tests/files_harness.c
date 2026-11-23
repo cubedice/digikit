@@ -151,12 +151,42 @@ static void reply(unsigned i, u32 v)
     rx[k] = v;
     rx[k + 1] = v >> 16;
 }
-static unsigned peak_batches;
+static unsigned peak_batches, partial_scans, pcm_frames = N;
+static unsigned quantize(int v)
+{
+    if (v < 0)
+        return 8 - (-v + 4095) / 4096;
+    return v > 28672 ? 15 : 8 + (v + 4095) / 4096;
+}
+static unsigned stereo_envelope(unsigned a, unsigned end)
+{
+    int lo[2] = {32767, 32767}, hi[2] = {-32768, -32768};
+    for (; a < end; ++a) {
+        int ch[2] = {(int16_t)(pcm[a] >> 16), (int16_t)pcm[a]};
+        for (unsigned c = 0; c < 2; ++c) {
+            if (ch[c] < lo[c])
+                lo[c] = ch[c];
+            if (ch[c] > hi[c])
+                hi[c] = ch[c];
+        }
+    }
+    return quantize(lo[0]) | quantize(hi[0]) << 4 | quantize(lo[1]) << 8 | quantize(hi[1]) << 12;
+}
 static void run(void)
 {
     for (unsigned tick = 0; tick < 40000; tick++) {
         awoken = 0;
         int s = work(0);
+        if (relay_files.action == RF_SCAN && relay_files.progress &&
+            2 * relay_files.progress < relay_files.total) {
+            unsigned slot = relay_files.slot, revision = relay_files.revision;
+            const struct RelayOverview *partial = rtm_wave_pending(slot, revision, pcm_frames);
+            assert(partial && partial->peaks[0] != RELAY_WAVE_EMPTY &&
+                   partial->peaks[RELAY_WAVE_BINS - 1] == RELAY_WAVE_EMPTY);
+            assert(!rtm_wave_pending(slot ^ 1, revision, pcm_frames) &&
+                   !rtm_wave_pending(slot, revision + 1, pcm_frames));
+            ++partial_scans;
+        }
         if (s <= 0) {
             finish(0, s);
             return;
@@ -179,9 +209,9 @@ static void run(void)
         if (op == RX_PIN) {
             reply(3, a + 1);
             reply(4, 16);
-            result = N;
+            result = pcm_frames;
         } else if (op == RX_READ) {
-            assert(a + b <= N && b <= 10);
+            assert(a + b <= pcm_frames && b <= 10);
             for (unsigned i = 0; i < b; i++)
                 reply(3 + i, pcm[a + i]);
             result = b;
@@ -190,31 +220,15 @@ static void run(void)
             assert(b && b <= 10);
             ++peak_batches;
             for (unsigned i = 0; i < b; ++i) {
-                unsigned limit = wire(5 + i), peak = 0;
-                assert(a < limit && limit <= N);
-                while (a < limit) {
-                    unsigned v = pcm[a++];
-                    unsigned l = abs((short)(v >> 16)), r = abs((short)v);
-                    if (l > peak)
-                        peak = l;
-                    if (r > peak)
-                        peak = r;
-                }
-                reply(3 + i, peak);
+                unsigned limit = wire(5 + i);
+                assert(a < limit && limit <= pcm_frames);
+                reply(3 + i, stereo_envelope(a, limit));
+                a = limit;
             }
             result = b;
         } else if (op == RX_PEAK) {
-            assert(a + b <= N && b && b <= RX_PEAK_FRAMES);
-            unsigned peak = 0;
-            for (unsigned i = 0; i < b; ++i) {
-                int left = (int16_t)(pcm[a + i] >> 16), right = (int16_t)pcm[a + i];
-                unsigned l = left < 0 ? -left : left, r = right < 0 ? -right : right;
-                if (l > peak)
-                    peak = l;
-                if (r > peak)
-                    peak = r;
-            }
-            reply(3, peak);
+            assert(a + b <= pcm_frames && b && b <= RX_PEAK_FRAMES);
+            reply(3, stereo_envelope(a, a + b));
             result = b;
         } else if (op == RX_UNPIN) {
             if (b)
@@ -252,24 +266,48 @@ static void run(void)
 int main(void)
 {
     for (int i = 0; i < N; i++) {
-        short l = (i == 2200 || i == 4200) ? 12000 : (short)(i % 9 - 4);
+        short l = (short)(i % 9 - 4);
         short r = (short)-l;
+        if (i == 1)
+            l = r = 0;
+        if (i == 2) {
+            l = 32767;
+            r = -32768;
+        }
+        if (i == 2200) {
+            l = 12000;
+            r = -21000;
+        }
+        if (i == 4200) {
+            l = -32768;
+            r = 18000;
+        }
         pcm[i] = ((u32)(uint16_t)l << 16) | (uint16_t)r;
     }
     assert(relay_file_start(RF_SCAN, 12, 12, 1, 0, 1));
     run();
     assert(relay_files.state == RF_SCANNED && relay_files.overview.slot == 12);
-    assert(relay_files.overview.peaks[55] == 12000 && relay_files.overview.peaks[105] == 12000);
-    assert(peak_batches == 12 && read_count == 0 && nf == 0);
+    assert(relay_files.overview.peaks[55] == 0x92b7 && relay_files.overview.peaks[105] == 0xd790);
+    assert(peak_batches == 12 && partial_scans && read_count == 0 && nf == 0);
+    assert(!rtm_wave_pending(12, relay_files.revision, N));
     unsigned main_revision = relay_files.revision;
     const struct RelayOverview *cached = rtm_wave(12, main_revision, N, 0, 1);
-    assert(cached && cached->peaks[55] == 12000 &&
+    assert(cached && cached->peaks[55] == 0x92b7 &&
            !rtm_wave(12, relay_files.revision + 1, N, 0, 1));
     assert(relay_file_start(RF_SCAN, 6, 6, 1, 1, 5));
     run();
-    assert(rtm_wave(6, relay_files.revision, N, 1, 5) &&
-           !rtm_wave(6, relay_files.revision, N, 1, 3));
+    const struct RelayOverview *with_hits = rtm_wave(6, relay_files.revision, N, 1, 5);
+    assert(with_hits && !rtm_wave(6, relay_files.revision, N, 1, 3));
+    assert(!memcmp(cached->peaks, with_hits->peaks, sizeof(cached->peaks)));
     assert(rtm_wave(12, main_revision, N, 0, 1) == cached);
+    pcm_frames = 3;
+    assert(relay_file_start(RF_SCAN, 14, 14, 1, 0, 5));
+    run();
+    const struct RelayOverview *short_take = rtm_wave(14, relay_files.revision, 3, 0, 5);
+    assert(short_take && short_take->peaks[0] == 0x9977 &&
+           short_take->peaks[1] == RELAY_WAVE_EMPTY && short_take->peaks[40] == RELAY_WAVE_SILENT &&
+           short_take->peaks[80] == 0x00ff && short_take->peaks[119] == RELAY_WAVE_EMPTY);
+    pcm_frames = N;
 
     const char *full = "RELAY/T02-0001/FULL";
     busy_write = 2;
