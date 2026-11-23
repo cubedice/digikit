@@ -123,6 +123,27 @@ The host regressions reproduce late pre-capture replies and disappearing loop pr
 They check the zero-length report, a true drop, restart and wrap, and confirm that rejected replies leave the
 crossfader and waveform alone.
 
+### PRISM shows a loop while Overloop is idle
+
+**[D]** On the physical DTII with image `39b9b01851c49e79`, 351 of 360 OLED samples showed LOOP and an outlined
+INPT icon. Nine showed LIVE and NO LOOP at about 14.5–15.1 seconds. Overloop was neither armed nor holding a
+capture. The OLED evidence establishes a false loop indication. The individual DSP reply words were unavailable.
+
+Overloop, PRISM and RELAY share the same reply cells. The previous loop receiver could accept mixed data
+when the loop flag and length happened to agree. The DSP now uses the reserved carrier word for a checksum
+over the complete status payload. The receiver checks it before accepting the heartbeat, waveform or loop state.
+The host regression mixes plausible newer captures and drops into intact carrier headers and verifies that
+the loop state, crossfader and waveform do not move.
+
+The assembled SHARC writer and production ColdFire reader passed a direct reply exchange. The reader kept
+the held loop through a modified drop with a misleading newer heartbeat and cleared it on the genuine drop.
+The writer kept unrelated reply cells intact and took 89 instructions per status.
+
+**[D]** After installing image `3fcaaa45a84e9852`, all 658 OLED samples over 40 seconds showed NO LOOP
+on the idle DTII. Pressing H displayed ARMD, and pressing it again cleared ARMD and returned to NO LOOP.
+A second idle check at HALO 126, the setting during the first capture, showed NO LOOP in all 450 samples
+over 28 seconds.
+
 ## Proofs
 
 Lowest layer first, at the branch head in the WSL checkout; device tests on the Digitakt II 1.17 image on the emulator with

@@ -16,12 +16,17 @@
 #define LP_SEEN 3
 #define LP_COUNT 4
 #define LP_MAX 127
-// Status: the engine publishes 16 words in _loop_ui_status after every block. core/dsp-link returns words 1 to 13 to the
-// ColdFire (words 7, 14 and 15 travel as seven bits each and are 0 here).
+// Status: the engine publishes 16 OVL1 words in _loop_ui_status after every block. Words 7, 14 and 15 are reserved zero.
 #define LS_MAGIC_VALUE 0x4f564c31
 #define LS_WORDS 16
 #define LS_MAGIC 0
 #define LS_HEARTBEAT 1
+// The OVL3 reply carries the engine's words 1..6 and 8..13 at the same indices. Seed the check with its magic, then
+// rotate it left by LS_WIRE_ROT and XOR each payload word in index order. The receiver restores the OVL1 layout.
+#define LS_WIRE_MAGIC 0x4f564c33
+#define LS_WIRE_WORDS 14
+#define LS_WIRE_CHECK 7
+#define LS_WIRE_ROT 5
 // LS_STATE: the bits below, and the count of loops taken from bit 8 up. An engine that starts (a load, a reset of its state, a
 // lease that moved) goes on counting from the count the mailbox shows, so a loop taken after a restart has a count no reader
 // has seen before.

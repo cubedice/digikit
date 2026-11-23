@@ -284,119 +284,35 @@
   },
   {
    "addend": 0,
-   "offset": 168,
+   "offset": 216,
    "section": ".text.loop_reply_frame",
    "symbol": ".sec..data.age",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 184,
+   "offset": 232,
    "section": ".text.loop_reply_frame",
    "symbol": ".sec..bss.newest_count",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 218,
+   "offset": 268,
    "section": ".text.loop_reply_frame",
    "symbol": ".sec..bss.wave_count",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 254,
+   "offset": 304,
    "section": ".text.loop_reply_frame",
    "symbol": ".sec..bss.wave_end",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 260,
-   "section": ".text.loop_reply_frame",
-   "symbol": ".sec..bss.wave_valid",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 370,
-   "section": ".text.loop_reply_frame",
-   "symbol": ".sec..bss.wave_end",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 520,
-   "section": ".text.loop_reply_frame",
-   "symbol": ".sec..bss.wave_end",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 558,
-   "section": ".text.loop_reply_frame",
-   "symbol": ".sec..bss.wave_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 570,
-   "section": ".text.loop_reply_frame",
-   "symbol": ".sec..bss.wave_length",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 594,
-   "section": ".text.loop_reply_frame",
-   "symbol": ".sec..bss.newest_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 4,
-   "offset": 154,
-   "section": ".text.loop_reply_frame",
-   "symbol": ".sec..bss.newest",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 178,
-   "section": ".text.loop_reply_frame",
-   "symbol": ".sec..bss.taken_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 226,
-   "section": ".text.loop_reply_frame",
-   "symbol": ".sec..bss.wave_length",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 238,
-   "section": ".text.loop_reply_frame",
-   "symbol": ".sec..bss.wave_end",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 316,
-   "section": ".text.loop_reply_frame",
-   "symbol": ".sec..text.wave_decode",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 330,
-   "section": ".text.loop_reply_frame",
-   "symbol": ".sec..text.wave_add",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 378,
+   "offset": 310,
    "section": ".text.loop_reply_frame",
    "symbol": ".sec..bss.wave_valid",
    "type": "cf.32"
@@ -405,61 +321,145 @@
    "addend": 0,
    "offset": 408,
    "section": ".text.loop_reply_frame",
-   "symbol": ".sec..bss.wave_loop",
+   "symbol": ".sec..bss.wave_end",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 414,
+   "offset": 558,
    "section": ".text.loop_reply_frame",
-   "symbol": ".sec..text.wave_snapshot",
-   "type": "cf.32"
-  },
-  {
-   "addend": 12,
-   "offset": 432,
-   "section": ".text.loop_reply_frame",
-   "symbol": ".sec..bss.wave_loop",
+   "symbol": ".sec..bss.wave_end",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 440,
+   "offset": 596,
    "section": ".text.loop_reply_frame",
-   "symbol": ".sec..bss.wave_loop",
+   "symbol": ".sec..bss.wave_count",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 464,
+   "offset": 610,
+   "section": ".text.loop_reply_frame",
+   "symbol": ".sec..bss.wave_length",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 636,
+   "section": ".text.loop_reply_frame",
+   "symbol": ".sec..bss.newest_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 202,
+   "section": ".text.loop_reply_frame",
+   "symbol": ".sec..bss.newest",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 226,
+   "section": ".text.loop_reply_frame",
+   "symbol": ".sec..bss.taken_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 276,
+   "section": ".text.loop_reply_frame",
+   "symbol": ".sec..bss.wave_length",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 288,
+   "section": ".text.loop_reply_frame",
+   "symbol": ".sec..bss.wave_end",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 356,
    "section": ".text.loop_reply_frame",
    "symbol": ".sec..text.wave_decode",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 508,
-   "section": ".text.loop_reply_frame",
-   "symbol": ".sec..text.wave_merge",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 536,
-   "section": ".text.loop_reply_frame",
-   "symbol": ".sec..text.wave_decode",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 550,
+   "offset": 370,
    "section": ".text.loop_reply_frame",
    "symbol": ".sec..text.wave_add",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 576,
+   "offset": 416,
+   "section": ".text.loop_reply_frame",
+   "symbol": ".sec..bss.wave_valid",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 446,
+   "section": ".text.loop_reply_frame",
+   "symbol": ".sec..bss.wave_loop",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 452,
+   "section": ".text.loop_reply_frame",
+   "symbol": ".sec..text.wave_snapshot",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 470,
+   "section": ".text.loop_reply_frame",
+   "symbol": ".sec..bss.wave_loop",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 482,
+   "section": ".text.loop_reply_frame",
+   "symbol": ".sec..bss.wave_loop",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 502,
+   "section": ".text.loop_reply_frame",
+   "symbol": ".sec..text.wave_decode",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 546,
+   "section": ".text.loop_reply_frame",
+   "symbol": ".sec..text.wave_merge",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 574,
+   "section": ".text.loop_reply_frame",
+   "symbol": ".sec..text.wave_decode",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 588,
+   "section": ".text.loop_reply_frame",
+   "symbol": ".sec..text.wave_add",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 618,
    "section": ".text.loop_reply_frame",
    "symbol": ".sec..bss.newest",
    "type": "cf.32"
@@ -678,10 +678,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefff90226f007448d77cfc4a896700024645ef00384281264a20017407e288b481650000ec0680000000117401c481c0fc00155281284241f4081871c8e58830710800548002800001fffe3431080071c8484242428480700e26c2b08166ba223c4f564c32b2af0038660001ea2a2f00544a85660001e0242f00407001262f0044c08226404a8356c044807180b08b660001c4202f003c90b900000000670001b66a1c723bb2b900000000640001a8287900000000b9f90000000066000198202f005828002e02e08f0284fffffe002c6f00684a8b6742beb900000000663e4ab90000000057c67d06448622390000000090810c8000200000632623c40000000042b9000000004a866700012060460680000000196000ff14428660ce7c0160cab28467e24a8667082004908e4a806e242f0271ef006a2f004eb900000000508f3f0042672f044eb900000000508f4a86670000b22c0e200e0286000001ff0280fffffe00222f006c2a462f400034b0b9000000006606dbf900000000b283640000de20039081220db08d640222002f012f032f0e4879000000004eb9000000004fef00104a86675c200e5380223900000000e2a849f9000000002f41002c727fc2802f0271ef00682f002c414eb900000000508f508ebbc66326222f002c7cffe3ae22064681c2af00344a8167123f00426771f4ea002f004eb900000000508f3980ea00b8b900000000671e2f0271ef006a2f004eb900000000508f3f0042672f044eb900000000508f23c7000000004a8b6602428323c30000000041f900000000219a5c00740e5285b48566f452b9000000004cd77cfc4fef00704e7542806000ff24",
+   "hex": "4fefff94226f007048d77cfc4a896700027045ef00344280264a243c4f564c3322007607e289b680654a0681000000117801c880c2fc0015204441f0181873c8e58936311800548102810001fffe77c33231180048414241828326c14a80661c0c814f564c33660002187001428160ba7204700806810000001960b47e07be8067ee2602781beb8ae8ab52807e0ed483b382be80668ab4af0050660001e4262f003c7201282f0040c2834a8456c02f41002c7201c28344807180b081660001c2202f003842af005090b900000000670001b06a1c743bb4b900000000640001a22e3900000000beb90000000066000192202f00542a002c03e08e0285fffffe002c6f00644aaf002c6738bcb90000000066344ab90000000057c27502448222390000000090810c8000200000631c23c50000000042b9000000004a8267000114603c428260d8740160d4b28567ec4a8267082005908e4a806e242f0371ef00662f004eb900000000508f3f0042672f054eb900000000508f4a82670000b0240e200e0282000001ff0280fffffe00222f00682a422840b0b9000000006606dbf900000000b284640000e220049081220db08d640222002f012f042f0e4879000000004eb9000000004fef00104a82675c200e5380223900000000e2a87e7f2f0347f900000000ce8071ef00642f002f4100382c474eb900000000508f508e222f0030bbc2632274ffe3aa2202240c4681c2824a8167123f00426771f3ea002f004eb900000000508f3780ea00bab900000000671e2f0371ef00662f004eb900000000508f3f0042672f054eb900000000508f23c6000000004aaf002c6602428423c400000000428041f900000000760e219a0c005280b68066f452b9000000004cd77cfc4fef006c4e7542806000ff20",
    "kind": "text",
    "name": ".text.loop_reply_frame",
-   "size": 614
+   "size": 656
   },
   {
    "align": 2,
@@ -810,7 +810,7 @@
    "size": 16
   }
  ],
- "source_sha256": "43fd0d6a275d9c4fea2bb372535e886e8eb5a356a7788875f34cfab321a1e8aa",
+ "source_sha256": "9cfb66c5d59d884e2850d23b192797ef35b2a9e109f8124c767d6210592a4638",
  "symbols": [
   {
    "global": false,
@@ -1159,8 +1159,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "634",
-  "isa_check": "f4b065197bc2eab1497d1d98d9d358b7c80caeb52d600e4425c173e63e24a2fe",
+  "instructions_redecoded": "654",
+  "isa_check": "4351535abdd087d5a4430b7eaa11371c46e7dacdf3cf37dea9fb6b01f72f4377",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

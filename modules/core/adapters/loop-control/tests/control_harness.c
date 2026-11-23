@@ -16,20 +16,38 @@ void dkrt_irq_restore(u32 sr)
 
 /* The copy of a DSP reply (0xabc bytes) as the block interrupt hands it on, and the carrier's fourteen cells in it. */
 static u16 reply_copy[0xabc / 2];
-static void cell(u32 j, u32 value)
+static u32 cell_offset(u32 j)
 {
     u32 row = j < 8 ? 17 + j / 2 : 29 + (j - 8) / 2;
-    u32 off = (0x1c + 0x54 * row + 0x44 + (j & 1) * 4) / 2;
+    return (0x1c + 0x54 * row + 0x44 + (j & 1) * 4) / 2;
+}
+static void cell(u32 j, u32 value)
+{
+    u32 off = cell_offset(j);
     reply_copy[off] = (u16)value;
     reply_copy[off + 1] = (u16)(value >> 16);
 }
-/* A reply that carries the loop effect's status (OVL2): heartbeat, state bits, the loop's frames. */
+static u32 read_cell(u32 j)
+{
+    u32 off = cell_offset(j);
+    return reply_copy[off] | ((u32)reply_copy[off + 1] << 16);
+}
+static void seal_carrier(void)
+{
+    u32 check = LS_WIRE_MAGIC;
+    for (u32 j = 1; j < LS_WIRE_WORDS; ++j) {
+        if (j != LS_WIRE_CHECK)
+            check = ((check << LS_WIRE_ROT) | (check >> (32 - LS_WIRE_ROT))) ^ read_cell(j);
+    }
+    cell(LS_WIRE_CHECK, check);
+}
+/* A reply that carries the loop effect's status: heartbeat, state bits, the loop's frames. */
 static void carrier(u32 heartbeat, u32 state, u32 frames)
 {
     memset(reply_copy, 0xa5, sizeof(reply_copy));
-    for (u32 j = 0; j < 14; ++j)
+    for (u32 j = 0; j < LS_WIRE_WORDS; ++j)
         cell(j, 0);
-    cell(0, WIRE_MAGIC);
+    cell(0, LS_WIRE_MAGIC);
     cell(LS_HEARTBEAT, heartbeat);
     cell(LS_STATE, state);
     cell(LS_LOOP_FRAMES, frames);
@@ -44,6 +62,8 @@ static void phrase_reply(u32 serial)
 /* The block interrupt, as core/dsp-link calls the hook. */
 static void block(void)
 {
+    if (read_cell(0) == LS_WIRE_MAGIC)
+        seal_carrier();
     loop_reply_frame(reply_copy);
 }
 static void wave_history(void)
@@ -174,12 +194,13 @@ static void reply_hook(void)
     /* A UI pass without a new reply takes nothing again. */
     loop_ui_tick();
     assert(loop_control_updates == updates + 2);
-    /* A carrier with packed bits in its word 7, or without the magic, is not the loop effect's status. */
+    /* A carrier with a damaged checksum or the old magic is refused. */
     carrier(112, LS_TRACK, 0);
-    cell(7, 1);
-    block();
+    seal_carrier();
+    cell(LS_WIRE_CHECK, read_cell(LS_WIRE_CHECK) ^ 1u);
+    loop_reply_frame(reply_copy);
     carrier(116, LS_TRACK, 0);
-    cell(0, LS_MAGIC_VALUE);
+    cell(0, 0x4f564c32);
     block();
     loop_ui_tick();
     assert(loop_control_updates == updates + 2 && dkrt_loop_status(out) == 1 &&
@@ -237,6 +258,18 @@ static void reply_order(void)
     dkrt_loop_wave_peaks(shape);
     assert(!memcmp(shape, frozen, sizeof(shape)));
 
+    /* A torn reply can look like a newer drop even when length and state agree. */
+    carrier(capture + 1, held_state, length);
+    seal_carrier();
+    cell(LS_STATE, LS_TRACK | (8u << LS_COUNT_SHIFT));
+    cell(LS_LOOP_FRAMES, 0);
+    loop_reply_frame(reply_copy);
+    loop_ui_tick();
+    assert(dkrt_loop_status(out) == 1 && out[LS_HEARTBEAT] == capture &&
+           out[LS_STATE] == held_state && loop_control_updates == updates);
+    dkrt_loop_wave_peaks(shape);
+    assert(!memcmp(shape, frozen, sizeof(shape)));
+
     /* A real newer drop is visible, even when the previous held reply arrives last. */
     carrier(drop, LS_TRACK | (8u << LS_COUNT_SHIFT), 0);
     block();
@@ -246,9 +279,24 @@ static void reply_order(void)
     assert(dkrt_loop_status(out) == 1 && out[LS_HEARTBEAT] == drop && !(out[LS_STATE] & LS_LOOP));
     assert(dkrt_loop_get(LP_SEEN) == 8 && dkrt_loop_get(LP_XFAD) == 41 &&
            loop_control_updates == updates + 1);
-    /* A malformed newer carrier with the LOOP bit but no frames is not a capture or a heartbeat. */
+
+    /* A new forward heartbeat, armed flag and nonzero length can all be plausible in a mixed reply. */
     const u32 fake_loop = LS_LOOP | LS_HELD | (9u << LS_COUNT_SHIFT);
-    for (u32 i = 0; i < STALE; ++i) {
+    carrier(drop + 1, LS_TRACK | (8u << LS_COUNT_SHIFT), 0);
+    seal_carrier();
+    cell(LS_HEARTBEAT, drop + 4000);
+    cell(LS_STATE, fake_loop | LS_ARMED);
+    cell(LS_LOOP_FRAMES, length);
+    loop_reply_frame(reply_copy);
+    loop_ui_tick();
+    assert(dkrt_loop_status(out) == 1 && out[LS_HEARTBEAT] == drop &&
+           !(out[LS_STATE] & (LS_LOOP | LS_ARMED)));
+    assert(dkrt_loop_get(LP_SEEN) == 8 && dkrt_loop_get(LP_XFAD) == 41 &&
+           loop_control_updates == updates + 1);
+
+    /* A malformed newer carrier with the LOOP bit but no frames is not a capture or a heartbeat.
+     * The mixed carrier above already used the first pass after the drop. */
+    for (u32 i = 1; i < STALE; ++i) {
         carrier(drop, LS_TRACK | (8u << LS_COUNT_SHIFT), 0);
         block();
         carrier(pre_capture, old_state, 0);

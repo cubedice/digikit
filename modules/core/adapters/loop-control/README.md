@@ -51,12 +51,10 @@ two blocks or repeated.
 
 ## How the status comes back
 
-The engine publishes sixteen words in `_loop_ui_status` at the end of a block (this module owns the mailbox on the DSP
-side). `core/dsp-link` returns them in fourteen spare words of the reply (the `OVL2` carrier, finding 340). PRISM's reply
-(`core/phrase-control`) has the same cells in three blocks of four, so a status read once a UI pass came only when the pass
-met the fourth block, at irregular times. `core/dsp-link` therefore calls `loop_reply_frame(rec)` once a block, in the block
-interrupt, with the reply copy, as it calls `phrase_write_frame`: it reads the fourteen cells and keeps the newest `OVL2`
-carrier (its magic, and its packed word 7 zero). It only reads; what the other adapters get is unchanged.
+The engine publishes sixteen words in `_loop_ui_status` at the end of a block. `core/dsp-link` sends the status in fourteen
+spare reply cells. PRISM uses the same cells in three blocks of four, so the DSP link calls `loop_reply_frame(rec)` in the
+block interrupt on each normal DTII reply. The `OVL3` marker identifies the status and word 7 checks all twelve payload
+words. The interrupt validates the checksum, loop flag and length before it updates the newest status or waveform.
 `loop_ui_tick`, once a UI pass, copies the newest carrier with the interrupt masked for that bounded copy and takes it
 when the block interrupt found a new one ([finding 363](../../../../docs/findings/363-loop-link-jitter.md)). A status without
 a new heartbeat for 60 passes is not fresh.

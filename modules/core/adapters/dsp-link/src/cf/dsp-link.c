@@ -453,15 +453,16 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
     DlLink *l = &dl_link;
     u32 st = l->state;
     u32 tx, e0, total, words;
+    int dt2_reply = len == 0x802 && reclen == 0xabc;
     void (*cb)(const volatile u16 *) = dl_tick_cb;
     (void)src;
     if (cb)
         cb(rec);
-    if (loop_reply_frame)
+    if (loop_reply_frame && dt2_reply)
         loop_reply_frame(rec);
     if (relay_reply_frame)
         relay_reply_frame(rec);
-    if (tk_pool_link_reply && len == 0x802 && reclen == 0xabc)
+    if (tk_pool_link_reply && dt2_reply)
         tk_pool_link_reply(rec);
     if (!pp_write_frame && !instrument_write_frame && st != DL_START && st != DL_BUSY &&
         !l->ending && !l->dirty)
