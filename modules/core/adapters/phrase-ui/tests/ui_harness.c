@@ -372,8 +372,8 @@ static void drawn_text(void *ctx, int x, int y, const char *s, int ink)
            x + half <= 128 && y >= 0 && y + 5 <= 64);
     /* below the header, x 124 to 127 are the FX view's page indicator */
     assert(y < 10 || x + half <= 124);
-    /* Text in the control grid is confined to its two caption baselines. */
-    assert(y < 10 || x + half + !ink <= 19 || y == 32 || y == 59);
+    /* The RATE readout is the only text inside an icon band. */
+    assert(y < 10 || x + half + !ink <= 19 || y == 32 || y == 59 || (x == 58 && y == 19));
     assert(d->texts < 64);
     d->centres[d->texts] = x;
     d->tops[d->texts] = y;
@@ -412,12 +412,12 @@ static void rendering(void)
     draw_page(&p, &values, 1);
     static const char *const labels[] = {"ZONE", "RATE", "RPTS", "COLR",
                                          "HALO", "SKEW", "INPT", "XFAD"};
-    static const char *const formatted[] = {"ECHO", "375 MS", "48", "0", "0", "0", "LIVE", "--"};
+    static const char *const formatted[] = {"ECHO", "RATE", "48", "0", "0", "0", "LIVE", "--"};
     for (int i = 0; i < 8; ++i) {
         int x = 32 + 26 * (i % 4), y = i < 4 ? 32 : 59;
-        int value_x = x + (i == 1) - (i == 0);
-        assert(saw_at(&d, x, y, labels[i]) && !saw_at(&values, value_x, y, labels[i]));
-        assert(saw_at(&values, value_x, y, formatted[i]) && !saw_at(&d, x, y, formatted[i]));
+        assert(saw_at(&d, x, y, labels[i]) && saw_at(&values, x, y, formatted[i]));
+        if (i != 1)
+            assert(!saw_at(&d, x, y, formatted[i]) && !saw_at(&values, x, y, labels[i]));
     }
     /* Holding FUNC swaps the captions while the underlying icon pixels stay the same. */
     for (int row = 14; row <= 28; ++row) {
@@ -426,9 +426,10 @@ static void rendering(void)
     }
     assert(saw_at(&d, 7, 59, "MIX") && !saw(&d, "100"));
     assert(saw_at(&values, 7, 59, "100") && !saw(&values, "MIX"));
-    assert(saw_at(&d, 15, 2, "PRISM") && !saw(&d, "ECHO") && !saw(&d, "375 MS"));
+    assert(saw_at(&d, 15, 2, "PRISM") && !saw(&d, "ECHO"));
     assert(saw_at(&d, 42, 2, "FREE") && saw_at(&values, 42, 2, "FREE"));
-    assert(saw_at(&d, 76, 2, "NO TRK") && saw_at(&values, 76, 2, "375 MS"));
+    assert(saw_at(&d, 76, 2, "NO TRK") && saw_at(&values, 76, 2, "NO TRK"));
+    assert(saw_at(&d, 58, 19, "375 MS") && saw_at(&values, 58, 19, "375 MS"));
     assert(saw_at(&d, 111, 2, "NO LOOP") && saw_at(&values, 111, 2, "NO LOOP"));
     assert(!d.inverted && !values.inverted);
     /* Every value at both ends of its range, with every switch on, stays on the screen. */
@@ -465,6 +466,31 @@ static void rendering(void)
     pu_page(&s, &p);
     draw_page(&p, &d, 1);
     assert(saw_at(&d, 110, 32, "-64"));
+}
+static void rate_readout(void)
+{
+    PhraseUi s;
+    PhrasePage p;
+    Drawn d;
+    init(&s);
+    static const struct {
+        uint32_t sync, ratio, frames;
+        const char *readout;
+    } cases[] = {{0, PH_SYNC_UNITY, 18000, "375 MS"},
+                 {0, PH_SYNC_UNITY, 12000, "250 MS"},
+                 {1, PH_SYNC_UNITY, 12000, "1/1"},
+                 {1, PH_SYNC_UNITY + 3, 18000, "X1.5"}};
+    for (uint32_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+        raw[PH_P_SYNC] = cases[i].sync;
+        raw[PH_P_RATIO] = cases[i].ratio;
+        status(&s, cases[i].frames, cases[i].frames);
+        pu_page(&s, &p);
+        for (int mode = 0; mode <= 1; ++mode) {
+            draw_page(&p, &d, mode);
+            assert(saw_at(&d, 58, 32, "RATE") && saw_at(&d, 58, 19, cases[i].readout));
+            assert(saw_at(&d, 76, 2, mode && cases[i].sync ? p.time : "NO TRK"));
+        }
+    }
 }
 static void mix_meter(void)
 {
@@ -784,7 +810,7 @@ static void tracks(void)
     draw_page(&p, &d, 0);
     assert(saw_at(&d, 84, 59, "INPT") && saw_at(&d, 76, 2, "LIVE") && !saw(&d, "2 TRK"));
     draw_page(&p, &d, 1);
-    assert(saw_at(&d, 84, 59, "LIVE") && saw_at(&d, 76, 2, p.time));
+    assert(saw_at(&d, 84, 59, "LIVE") && saw_at(&d, 76, 2, "LIVE"));
     /* A TRIG key still down when G is released: its release stays the page's, its next press is the firmware's. */
     hold_g(&s);
     assert(pu_key(&s, trig(5), PU_PRESS) == PU_OWN);
@@ -879,21 +905,9 @@ static void dynamic_icons(void)
     icon_changes(&s, &previous, 0);
     raw[PH_P_ZONE] = PH_ZONES - 1;
     icon_changes(&s, &previous, 0);
-    raw[PH_P_RATE] = 0;
-    status(&s, 12000, 12000);
-    icon_changes(&s, &previous, 1);
-    raw[PH_P_RATE] = PH_RATE_MAX;
-    status(&s, 90000, 90000);
-    icon_changes(&s, &previous, 1);
-    raw[PH_P_SYNC] = 1;
-    icon_changes(&s, &previous, 1);
-    raw[PH_P_RATIO] = 0;
-    icon_changes(&s, &previous, 1);
-    raw[PH_P_RATIO] = PH_SYNC_RATIOS - 1;
-    icon_changes(&s, &previous, 1);
     raw[PH_P_RPTS] = 0;
     icon_changes(&s, &previous, 2);
-    raw[PH_P_RPTS] = 127;
+    raw[PH_P_RPTS] = PH_RPTS_UNITY - 1;
     icon_changes(&s, &previous, 2);
     raw[PH_P_HOLD] = 1;
     icon_changes(&s, &previous, 2);
@@ -937,6 +951,90 @@ static void dynamic_icons(void)
     pu_loop_status(&s);
     icon_changes(&s, &previous, 7);
 }
+static void repeat_icon(void)
+{
+    PhraseUi s;
+    Drawn d;
+    init(&s);
+    static const uint32_t levels[] = {0, PH_RPTS_UNITY - 1};
+    for (int i = 0; i < 2; ++i) {
+        raw[PH_P_RPTS] = levels[i];
+        icon_frame(&s, &d);
+        int first = -1, last = 0, dashes = 0, width = 0;
+        for (int x = 71; x <= 97; ++x) {
+            int ink = x < 97 && d.pixels[20][x];
+            if (ink) {
+                if (first < 0)
+                    first = x;
+                last = x;
+                ++width;
+            } else if (width) {
+                assert(width == 3);
+                width = 0;
+                ++dashes;
+            }
+            if (x < 97)
+                for (int y = 14; y <= 28; ++y)
+                    assert(d.pixels[y][x] == (ink && (y == 20 || y == 21)));
+        }
+        assert(first + last == 168 && dashes == (i ? 5 : 1));
+    }
+    static const uint16_t infinity[] = {0x306, 0x489, 0x451, 0x421, 0x451, 0x489, 0x306};
+    static const uint32_t sustained[] = {PH_RPTS_UNITY, 127, 0};
+    for (int i = 0; i < 3; ++i) {
+        raw[PH_P_RPTS] = sustained[i];
+        raw[PH_P_HOLD] = i == 2;
+        icon_frame(&s, &d);
+        for (int y = 14; y <= 28; ++y)
+            for (int x = 71; x <= 96; ++x) {
+                int on = x >= 79 && x <= 89 && y >= 18 && y <= 24 &&
+                         (infinity[y - 18] & (1u << (x - 79)));
+                assert(d.pixels[y][x] == on);
+            }
+    }
+}
+static void colour_icon(void)
+{
+    PhraseUi s;
+    Drawn d;
+    init(&s);
+    static const uint32_t levels[] = {0, 63, 64, 127};
+    static const int radii[] = {1, 4, 4, 7};
+    for (int i = 0; i < 4; ++i) {
+        raw[PH_P_COLR] = levels[i];
+        icon_frame(&s, &d);
+        int radius = radii[i];
+        for (int y = 14; y <= 28; ++y)
+            for (int x = 97; x <= 122; ++x) {
+                int dx = x > 110 ? x - 110 : 110 - x, dy = y > 21 ? y - 21 : 21 - y;
+                int on = dx <= radius && dy <= radius &&
+                         (levels[i] < 64 || dx == radius || dy == radius);
+                assert(d.pixels[y][x] == on);
+            }
+    }
+}
+static void halo_icon(void)
+{
+    PhraseUi s;
+    Drawn d;
+    init(&s);
+    static const uint8_t ring[] = {0x1c, 0x22, 0x41, 0x41, 0x41, 0x22, 0x1c};
+    static const int offsets[][2] = {{0, 0}, {-4, -2}, {4, 2}, {-8, 2}, {8, -2}};
+    for (int full = 0; full <= 1; ++full) {
+        raw[PH_P_HALO] = full ? 127 : 0;
+        icon_frame(&s, &d);
+        for (int y = 41; y <= 55; ++y)
+            for (int x = 19; x <= 44; ++x) {
+                int on = 0;
+                for (int i = 0; i < (full ? 5 : 1); ++i) {
+                    int dx = x - 29 - offsets[i][0], dy = y - 45 - offsets[i][1];
+                    if (dx >= 0 && dx < 7 && dy >= 0 && dy < 7)
+                        on |= (ring[dy] >> dx) & 1;
+                }
+                assert(d.pixels[y][x] == on);
+            }
+    }
+}
 int main(void)
 {
     encoders();
@@ -945,10 +1043,14 @@ int main(void)
     formats();
     page_cells();
     rendering();
+    rate_readout();
     mix_meter();
     loop_page();
     tracks();
     dynamic_icons();
+    repeat_icon();
+    colour_icon();
+    halo_icon();
     puts("phrase ui: ok");
     return 0;
 }

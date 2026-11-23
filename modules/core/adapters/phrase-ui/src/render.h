@@ -15,7 +15,7 @@ typedef struct {
     uint32_t mix, zone_index;
     PhraseCell cells[8]; /* A to H */
     /* Icon inputs follow the existing page fields read by device diagnostics. */
-    uint8_t rate, repeats, colour, halo, skew, loop_input, loop_ready, armed, link_error;
+    uint8_t sync, repeats, colour, halo, skew, loop_input, loop_ready, armed, link_error;
     uint16_t tracks;
 } PhrasePage;
 typedef struct {

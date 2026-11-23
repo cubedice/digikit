@@ -125,6 +125,7 @@ void pu_page(const PhraseUi *s, PhrasePage *page)
     put(page->time, time);
     page->mix = dkrt_phrase_get(PH_P_MIX);
     page->zone_index = zone;
+    page->sync = sync;
     page->repeats = hold ? PH_RPTS_UNITY : repeats;
     page->colour = colour;
     page->halo = halo;
@@ -132,14 +133,10 @@ void pu_page(const PhraseUi *s, PhrasePage *page)
     cell(&page->cells[0], "ZONE", pu_zone_name(zone), flip ? "FLIP" : "", flip);
     if (sync) {
         /* the ratio of the zone's 1/1; the header has the time it gives */
-        uint32_t ratio = dkrt_phrase_get(PH_P_RATIO);
-        page->rate = ratio * 127 / (PH_SYNC_RATIOS - 1);
-        pu_format(text, PH_P_RATIO, ratio);
+        pu_format(text, PH_P_RATIO, dkrt_phrase_get(PH_P_RATIO));
         cell(&page->cells[1], "RATE", text, "SYNC", 0);
-    } else {
-        page->rate = dkrt_phrase_get(PH_P_RATE) / PH_RATE_COARSE;
+    } else
         cell(&page->cells[1], "RATE", frames ? time : "--", "FREE", 0);
-    }
     pu_format(text, PH_P_RPTS, repeats);
     cell(&page->cells[2], "RPTS", hold ? "INF" : text, hold ? "HOLD" : "", hold);
     pu_format(text, PH_P_COLR, colour);
@@ -180,6 +177,15 @@ static void number(char out[8], uint32_t n)
     put(out, t);
 }
 
+/* Seven rows with the low bit at the left edge. */
+static void glyph(const PhraseCanvas *c, int x, int y, const uint16_t rows[7])
+{
+    for (int row = 0; row < 7; ++row)
+        for (int bits = rows[row], px = x; bits; bits >>= 1, ++px)
+            if (bits & 1)
+                box(c, px, y + row, 1, 1, 1);
+}
+
 /* Fifteen scanlines for the graphic, with the caption below. */
 static void icon(const PhrasePage *p, const PhraseCanvas *c, int i, int x, int y)
 {
@@ -191,41 +197,35 @@ static void icon(const PhrasePage *p, const PhraseCanvas *c, int i, int x, int y
             box(c, x - 11 + 3 * z, y + 15 - height, 1 + active, height, 1);
         }
         break;
-    case 1: { /* Longer times space the pulses farther apart. */
-        int gap = 3 + (p->rate * 7 + 63) / 127;
-        box(c, x - 10, y + 12, 22, 1, 1);
-        for (int j = 0; j < 3; ++j)
-            box(c, x - 10 + gap * j, y + 2, 2, 10, 1);
+    case 1: /* Live delay time or the selected tempo ratio. */
+        text(c, x, y + 5, p->cells[1].value, 1);
         break;
-    }
-    case 2: { /* Echoes decay, sustain at unity or HOLD, and grow above unity. */
-        int level = 11 * 16;
-        for (int j = 0; j < 5; ++j) {
-            int height = (level + 8) / 16;
-            if (height > 15)
-                height = 15;
-            box(c, x - 11 + 5 * j, y + 15 - height, 2, height, 1);
-            level = level * p->repeats / PH_RPTS_UNITY;
+    case 2: { /* Stepped echoes lead to the infinity glyph at nominal unity. */
+        static const uint16_t infinity[] = {0x306, 0x489, 0x451, 0x421, 0x451, 0x489, 0x306};
+        if (p->repeats >= PH_RPTS_UNITY) {
+            glyph(c, x - 5, y + 4, infinity);
+        } else {
+            int dashes = p->repeats * 5 / PH_RPTS_UNITY;
+            int left = x - dashes * 5 / 2 - 1;
+            for (int j = 0; j <= dashes; ++j)
+                box(c, left + 5 * j, y + 6, 3, 2, 1);
         }
         break;
     }
-    case 3: { /* Feedback spectrum tilts from dark to bright. */
-        int tilt = (p->colour * 6 + 63) / 127 - 3;
-        for (int j = 0; j < 5; ++j) {
-            int height = 8 + tilt * (j - 2);
-            box(c, x - 11 + 5 * j, y + 15 - height, 3, height, 1);
-        }
+    case 3: { /* Filled on the dark side, outlined from the centre towards bright. */
+        int radius = 1 + (p->colour * 6 + 63) / 127, size = 2 * radius + 1;
+        int left = x - radius, top = y + 7 - radius;
+        box(c, left, top, size, size, 1);
+        if (p->colour >= 64)
+            box(c, left + 1, top + 1, size - 2, size - 2, 0);
         break;
     }
-    case 4: { /* Halo spreads out from the original pulse. */
-        int spread = (p->halo * 9 + 63) / 127;
-        box(c, x - 1, y + 5, 3, 5, 1);
-        if (spread) {
-            box(c, x - 2 - spread, y + 3, 1, 9, 1);
-            box(c, x + 2 + spread, y + 3, 1, 9, 1);
-            box(c, x - 1 - spread, y + 2, 2, 1, 1);
-            box(c, x + spread, y + 12, 2, 1, 1);
-        }
+    case 4: { /* Overlapping rings spread out in the order they appear. */
+        static const uint16_t ring[] = {0x1c, 0x22, 0x41, 0x41, 0x41, 0x22, 0x1c};
+        static const int8_t offsets[][2] = {{0, 0}, {-4, -2}, {4, 2}, {-8, 2}, {8, -2}};
+        int extra = (p->halo * 4 + 63) / 127;
+        for (int j = 0; j <= extra; ++j)
+            glyph(c, x - 3 + offsets[j][0], y + 4 + offsets[j][1], ring);
         break;
     }
     case 5: { /* Left and right delay lengths diverge about the centre. */
@@ -277,7 +277,7 @@ void pu_render_header(const PhrasePage *p, const PhraseCanvas *c, int show_value
         if (!input->lit) {
             if (p->link_error)
                 route = "NO LINK";
-            else if (show_values)
+            else if (show_values && p->sync)
                 route = p->time;
             else if (p->loop_input ? p->loop_ready : p->tracks)
                 route = input->value;
@@ -319,11 +319,9 @@ void pu_render(const PhrasePage *p, const PhraseCanvas *c, int show_values)
         const PhraseCell *k = &p->cells[i];
         int x = 32 + 26 * (int)(i % 4), y = i < 4 ? 13 : 40;
         icon(p, c, (int)i, x, y + 1);
-        /* Leave a gap between the zone name and a wide rate value. */
-        int caption_x = show_values ? x + (i == 1) - (i == 0) : x;
         const char *caption = k->label;
         char tone[8];
-        if (show_values) {
+        if (show_values && i != 1) {
             caption = k->value;
             if (i == 3 && p->colour != 64) {
                 tone[0] = p->colour < 64 ? '-' : '+';
@@ -333,6 +331,6 @@ void pu_render(const PhrasePage *p, const PhraseCanvas *c, int show_values)
                 caption = k->state;
             }
         }
-        text(c, caption_x, y + 19, caption, 1);
+        text(c, x, y + 19, caption, 1);
     }
 }

@@ -7,15 +7,15 @@ owner's and holds every value.
 ## The page
 
 The 128 × 64 view has a ten-pixel header, a MIX meter at the lower left, and eight cells in two rows. Each cell has a graphic
-above its label. Hold FUNC to see formatted values in place of the labels and playback time in the header. The header
-also carries rate mode, input and loop status. FLIP, HOLD and ARMD are above the MIX meter.
+above its label. RATE shows its value directly. Hold FUNC to see formatted values for the other controls and actual
+playback time while synced. The header carries rate mode, input and loop status. FLIP, HOLD and ARMD are above the MIX meter.
 
 | | Turn | Press | Cell with FUNC held |
 | --- | --- | --- | --- |
 | LEVEL | MIX | | the column and its number |
 | A | ZONE, four ticks a zone | FLIP | the zone's name below the eight zone marks, `FLIP` inverted |
 | B | RATE: a coarse step a tick, a fine step with FUNC held; with SYNC a ratio of the zone's 1/1, four ticks each, `/2` to `X2` | SYNC | the time (`387 MS`, `1.25 S`) or the ratio (`1/1`, `X1.5`, `/1.33`), `FREE` or `SYNC` |
-| C | RPTS | HOLD | the number, or `INF` with `HOLD` inverted |
+| C | RPTS, dashes to ∞ | HOLD | the number, or `INF` with `HOLD` inverted |
 | D | COLR | | Signed distance from the centre. Negative darkens and positive brightens |
 | E | HALO | | the number |
 | F | SKEW | | `L 12` or `R 12`: the side with the longer time and the distance from the centre |
@@ -45,8 +45,9 @@ does INPT move by itself: without a loop it stays where G put it. While INPT is 
 zone and the time while FUNC is held. The presses of D to F are taken and do nothing. UP, DOWN, FX and every other key go to the stock FX
 view: the page is one entry among the FX pages.
 
-The time in the header and in the RATE cell is the engine's (`PH_S_TIME_L`, `PH_S_TIME_R`): the geometric mean of the
-two sides, since SKEW makes one shorter and one longer by the same ratio. Without a status the header says `NO LINK`.
+The time in RATE when free, or in the header when synced with FUNC held, is the engine's (`PH_S_TIME_L`,
+`PH_S_TIME_R`). It is the geometric mean of the two sides, since SKEW makes one shorter and one longer by the same
+ratio. Without a status the header says `NO LINK`.
 
 ## How it is bound
 
