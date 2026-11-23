@@ -909,6 +909,68 @@ describe('PRISM repeater engine: HALO', () => {
     note(`HALO, share of a repeat's energy outside the burst's 2 ms, repeats 1 to 6: ${rows.join('; ')}`);
   });
 
+  test('full HALO gives one echo a wider, moving diffusion tail without losing energy', async () => {
+    await withRig({ frames: 65536 }, async (rig) => {
+      const delay = 4800;
+      const width = 2400;
+      const amplitude = 0.125;
+      const inputEnergy = 2 * amplitude ** 2;
+      rig.set({ sync: true, syncTime: delay, rpts: 0, halo: 1 });
+      await rig.run(600);
+
+      const at = [320, 320 + 48000];
+      const echoes = at.map((frame) => frame + delay);
+      const take = await rig.run(
+        Math.ceil((echoes[1]! + width) / 32),
+        sum(...at.map((frame) => impulse(rig.clock + frame, amplitude))),
+      );
+      const responses = echoes.map((start) => {
+        const left = take.left.subarray(start, start + width);
+        const right = take.right.subarray(start, start + width);
+        let energyLeft = 0;
+        let energyRight = 0;
+        let product = 0;
+        for (let i = 0; i < width; i++) {
+          energyLeft += left[i]! ** 2;
+          energyRight += right[i]! ** 2;
+          product += left[i]! * right[i]!;
+        }
+        const energy = energyLeft + energyRight;
+        let accumulated = 0;
+        let tail95 = 0;
+        while (tail95 < width && accumulated < 0.95 * energy) {
+          accumulated += left[tail95]! ** 2 + right[tail95]! ** 2;
+          tail95++;
+        }
+        return { left, right, energy, tail95, correlation: product / Math.sqrt(energyLeft * energyRight) };
+      });
+
+      const first = responses[0]!;
+      const second = responses[1]!;
+      const firstGain = Math.sqrt(first.energy);
+      const secondGain = Math.sqrt(second.energy);
+      let distanceSquared = 0;
+      for (let i = 0; i < width; i++) {
+        distanceSquared +=
+          (first.left[i]! / firstGain - second.left[i]! / secondGain) ** 2 +
+          (first.right[i]! / firstGain - second.right[i]! / secondGain) ** 2;
+      }
+      const distance = Math.sqrt(distanceSquared);
+      note(
+        `full HALO, two echoes 1 s apart: 95% energy in ${fixed(responses.map((r) => r.tail95), 0)} frames, ` +
+          `stereo correlation ${fixed(responses.map((r) => r.correlation), 3)}, ` +
+          `energy vs input ${fixed(responses.map((r) => r.energy / inputEnergy), 3)}, normalised difference ${distance.toFixed(3)}`,
+      );
+      // A static full-HALO lattice reaches 95% in about 524 frames, correlates at 0.25 and repeats the same shape.
+      for (const response of responses) {
+        expect(response.tail95).toBeGreaterThan(575);
+        expect(Math.abs(response.correlation)).toBeLessThan(0.245);
+        expect(Math.abs(response.energy / inputEnergy - 1)).toBeLessThan(0.025);
+      }
+      expect(distance).toBeGreaterThan(0.05);
+    });
+  });
+
   test('turned back to 0, HALO leaves the path and its lines are empty when it is turned up again', async () => {
     await withRig({ frames: 65536 }, async (rig) => {
       rig.set({ sync: true, syncTime: 2400, rpts: 0, halo: 1 });

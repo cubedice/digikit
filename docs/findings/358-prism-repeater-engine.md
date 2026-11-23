@@ -218,3 +218,18 @@ the adapter plays dry. Not run, and expected to fail on this branch:
 
 The adapters' own host tests (`core/phrase-control`, `core/phrase-route`, `core/phrase-ui`) do not load the engine and are
 not affected. `digikit/prism:test-host` no longer exists: the module's tests are `digikit/prism:test-rig`.
+
+## HALO spread and motion follow-up
+
+**[D]** The four taps now use 97, 137, 191, and 251 frames in the existing 256-frame rings. Above half HALO, two slow
+triangle phases vary the lattice rotation. The coefficient calculation keeps the rotation normalized, and the existing
+per-block ramp interpolates the coefficients between endpoints.
+
+On the native SHARC rig, two mono impulses one second apart at full HALO and zero feedback reached 95% of their stereo
+energy after 525 frames each in the previous version. The updated engine took 600 and 640 frames. Left/right correlation
+fell from 0.250 in both echoes to 0.180 and 0.218. Both versions retained 1.000 of input energy to three decimal places.
+The distance between energy-normalized echoes rose from 0.000 to 0.095, showing the motion in the tail.
+
+Eleven focused rig checks passed, including exact bypass at HALO 0, repeat energy, control changes, held tape, and three
+PRISM/Overloop transitions. The highest observed block cost in those cases was 19,068 instructions within the declared
+19,292 limit.

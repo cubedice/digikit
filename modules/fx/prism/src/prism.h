@@ -33,8 +33,11 @@
 #define PRISM_LIMIT_KNEE 0x3e800000
 #define PRISM_LIMIT_SLOPE 0x402aaaab
 #define PRISM_LIMIT_SPAN 0x3ec00000
-/* HALO at 1: tan of half the all-pass angle (60 degrees, coefficient 0.5). */
+/* HALO's base half-angle tangent, 60 degrees at 1. Above halfway the two
+ * slow triangles add 0.12 +/- 0.10, scaled by HALO * (HALO - 0.5). */
 #define PRISM_HALO_MAX 0x3f13cd3a
+#define PRISM_HALO_OPEN 0x3df5c28f
+#define PRISM_HALO_DRIFT 0x384ccccd /* 0.10 / 2048 */
 /* The DC blocker in front of the colour filter (2 Hz): y = g (x - x1) + r y1, r = 1 - 2 pi 2 / 48000, g = (1 + r) / 2. */
 #define PRISM_DC_COEFF 0x3f7feed8
 #define PRISM_DC_GAIN 0x3f7ff76c

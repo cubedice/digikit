@@ -1,12 +1,12 @@
-// PRISM HALO: the four delay lines of 71, 113, 151 and 211 samples as all-pass filters inside the repeat path, on PS_Y in
+// PRISM HALO: the four delay lines of 97, 137, 191 and 251 samples as all-pass filters inside the repeat path, on PS_Y in
 // place. A line is a lattice all-pass
 //
 //   y = c x + s d,   line input = s x - c d,   d the line's output,   c = cos(theta), s = sin(theta)
 //
 // which is (c + z^-N) / (1 + c z^-N): the direct sound with gain c, then a tail. The sum and the difference of the two
-// sides pass lines 0 and 1, then the sides themselves pass lines 2 and 3. Every step keeps the energy at every frequency,
-// so HALO smears a repeat a little more each time it passes and never changes the loop's gain. HALO sets theta: 0 at 0
-// (c = 1, s = 0: the signal itself) up to 60 degrees (c = 0.5). At HALO 0 the routine does not touch the signal.
+// sides pass lines 0 and 1, then the sides themselves pass lines 2 and 3. Their rotation preserves energy between the
+// output and delay state. The stronger settings introduce slow motion in that rotation without moving the read heads.
+// At HALO 0 the routine does not touch the signal.
 #include "dk_phrase.inc"
 #include "prism.h"
 
@@ -49,18 +49,48 @@ _prism_halo:
 _hl_clear: DM(I2,M6) = R0;
     RTS;
 _hl_on:
-    // t = tan(theta / 2) = HALO * PRISM_HALO_MAX; c = (1 - t^2) / (1 + t^2), s = 2 t / (1 + t^2). HALO 0 is c = 1 and
-    // s = 0 exactly.
+    // t = tan(theta / 2); c = (1 - t^2) / (1 + t^2), s = 2 t / (1 + t^2).
+    // HALO 0 is c = 1 and s = 0 exactly.
     R3 = 0x3f800000;
     R4 = 0;
     COMP(F0,F4);
     IF LE JUMP _hl_move;
     R1 = PRISM_HALO_MAX;
-    F0 = F0 * F1;
-    F2 = F0 * F0;
+    F5 = F0 * F1;
+    R1 = 0x3f000000;
+    F6 = F0 - F1;
+    IF LE JUMP _hl_coefficients;
+    // Two triangular block phases at about 0.37 and 0.27 Hz at 48 kHz.
+    // Only the upper half of HALO opens up the rotation and makes it wander.
+    F6 = F0 * F6;
+    R0 = DM(PS_BLOCK,I5);
+    R2 = FEXT R0 BY 0:12;
+    R1 = 2048;
+    R2 = R2 - R1;
+    R2 = ABS R2;
+    R3 = LSHIFT R0 BY 1;
+    R0 = R0 + R3;
+    R3 = 3079;
+    R0 = R0 + R3;
+    R0 = FEXT R0 BY 0:14;
+    R3 = 8192;
+    R0 = R0 - R3;
+    R0 = ABS R0;
+    R0 = LSHIFT R0 BY -2;
+    R0 = R0 + R2;
+    R0 = R0 - R1;
+    F2 = FLOAT R0;
+    R1 = PRISM_HALO_DRIFT;
+    F2 = F2 * F1;
+    R1 = PRISM_HALO_OPEN;
+    F2 = F2 + F1;
+    F2 = F2 * F6;
+    F5 = F5 + F2;
+_hl_coefficients:
+    F2 = F5 * F5;
     R1 = 0x3f800000;
     F3 = F1 - F2;
-    F4 = F0 + F0;
+    F4 = F5 + F5;
     F0 = F1 + F2;
     CALL _pr_recip;
     F3 = F3 * F0;
@@ -108,24 +138,24 @@ _hl_sample:
     F0 = F0 * F15;
     F7 = F6 - F7;
     F7 = F7 * F15;
-    R4 = 71;
+    R4 = 97;
     R5 = DM(PS_TEMP,I5);
     CALL _hl_line;
     R6 = R0;
     R0 = R7;
-    R4 = 113;
+    R4 = 137;
     R5 = DM(PS_TEMP1,I5);
     CALL _hl_line;
     F7 = F6 - F0;
     F7 = F7 * F15;
     F0 = F6 + F0;
     F0 = F0 * F15;
-    R4 = 151;
+    R4 = 191;
     R5 = DM(PS_TEMP2,I5);
     CALL _hl_line;
     DM(I0,M6) = R0;
     R0 = R7;
-    R4 = 211;
+    R4 = 251;
     R5 = DM(PS_TEMP3,I5);
     CALL _hl_line;
     DM(I1,M6) = R0;
