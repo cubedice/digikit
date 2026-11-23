@@ -1,6 +1,13 @@
 // A track's tape motor runs in the input tap even when its stock AMP is closed.
 // The voice consumes the resulting stereo block. Only pool address-cache misses
 // traverse the directory. Caches are discarded before a revision can change.
+#define T_WRITE_COUNT 26
+#define T_WRITE_POSITION 27
+#define T_WRITE_DIRECTION 28
+#define T_WRITE_SUM_L 29
+#define T_WRITE_SUM_R 30
+#define T_WRITE_FEEDBACK_L 96
+#define T_WRITE_FEEDBACK_R 97
 _tape_row:
     R2 = LSHIFT R8 BY T_STRIDE_SHIFT; R3 = _rtm_tapes; R2 = R2 + R3; I5 = R2; RTS;
 _tape_settings:
@@ -23,6 +30,7 @@ _tape_spacing_ready:
     R0 = DM(7,I0); R0 = PASS R0; IF GT DM(T_GRID,I5) = R0;
     JUMP _rt_schedule;
 _tape_transition:
+    R1 = 0; DM(T_WRITE_COUNT,I5) = R1;
     R1 = 16; DM(T_RESET,I5) = R1;
     R1 = DM(T_LAST_L,I5); DM(12,I5) = R1; R1 = DM(T_LAST_R,I5); DM(13,I5) = R1; RTS;
 _tape_open:
@@ -38,7 +46,7 @@ _tape_clone:
 _tape_prepare:
     R4 = RLY_TAPE; CALL _relay_pool; R0 = PASS R0; IF LT JUMP _rt_full_abort;
     R8 = DM(_rt_writer); CALL _rt_row;
-    CALL _tape_row; R0 = 0; DM(T_STOPPED,I5) = R0;
+    CALL _tape_row; R0 = 0; DM(T_STOPPED,I5) = R0; DM(T_WRITE_COUNT,I5) = R0;
     R0 = DM(_rt_goal); DM(RT_LENGTH,I4) = R0;
     R0 = RLY_WRITER; DM(RT_SLOT,I4) = R0;
     R0 = 0; DM(_rt_armed) = R0; DM(RT_PREVIEW_END,I4) = R0;
@@ -47,7 +55,8 @@ _tape_prepare:
     JUMP _rt_advance;
 _tape_close:
     // Publish the complete private tape even for a punch lasting one frame.
-    R8 = DM(_rt_writer); CALL _rt_row;
+    R8 = DM(_rt_writer); CALL _rt_row; CALL _tape_row;
+    CALL _tape_slow_close;
     R0 = DM(RT_POS,I4); DM(_t_resume_pos) = R0;
     R0 = DM(_rt_goal); DM(_rt_written) = R0; CALL _rt_commit;
     R8 = DM(_rt_writer); CALL _rt_row;
@@ -114,12 +123,14 @@ _tape_motor:
     R0 = 1; R1 = R1 XOR R0; DM(RT_PLAYING,I4) = R1; DM(RT_LAUNCH,I4) = R1;
     JUMP _rt_schedule;
 
-// Resolve one 256-frame window, shared by both heads. R12 is an in-range
-// frame. The second cache prevents alternating read and write heads thrashing.
+// Resolve one 256-frame window, shared by both heads. R12 is in range.
+// Four playback taps can span three windows at the join of a short tail.
 _tape_address:
     R1 = LSHIFT R12 BY -8;
     R0 = DM(_t_key0); COMP(R0,R1); IF EQ JUMP _t_hit0;
     R0 = DM(_t_key1); COMP(R0,R1); IF EQ JUMP _t_hit1;
+    R0 = DM(_t_key2); COMP(R0,R1); IF EQ JUMP _t_hit2;
+    R0 = DM(_t_key1); DM(_t_key2) = R0; R0 = DM(_t_ptr1); DM(_t_ptr2) = R0;
     R0 = DM(_t_key0); DM(_t_key1) = R0; R0 = DM(_t_ptr0); DM(_t_ptr1) = R0;
     DM(_t_key0) = R1;
     R8 = DM(_t_slot); R4 = RLY_READ_SPAN; CALL _relay_pool;
@@ -127,12 +138,15 @@ _tape_address:
     R1 = 255; R1 = R12 AND R1; R1 = LSHIFT R1 BY 2; R0 = R0 - R1; DM(_t_ptr0) = R0;
     R8 = DM(_t_track); CALL _rt_row; CALL _tape_row;
 _t_hit0: R0 = DM(_t_ptr0); JUMP _t_address_offset;
-_t_hit1: R0 = DM(_t_ptr1);
+_t_hit1: R0 = DM(_t_ptr1); JUMP _t_address_offset;
+_t_hit2: R0 = DM(_t_ptr2);
 _t_address_offset:
     R1 = 255; R1 = R12 AND R1; R1 = LSHIFT R1 BY 2; R0 = R0 + R1; I0 = R0; RTS;
 _tape_pcm:
     CALL _tape_address;
-    R0 = DM(0,I0); R1 = LSHIFT R0 BY 16; R1 = ASHIFT R1 BY -16; R0 = ASHIFT R0 BY -16;
+    R0 = DM(0,I0);
+_tape_unpack_pcm:
+    R1 = LSHIFT R0 BY 16; R1 = ASHIFT R1 BY -16; R0 = ASHIFT R0 BY -16;
     F0 = FLOAT R0; F1 = FLOAT R1; R2 = 0x38000000; F0 = F0 * F2; F1 = F1 * F2; RTS;
 _tape_alt_gain:
     // Preserve the pool span contract while scaling an independent alternate.
@@ -206,12 +220,26 @@ _tape_monitor_ready:
     R0 = PASS R0; IF EQ JUMP _rt_step_next;
     R0 = DM(RT_SOURCE,I4); CALL _rt_inputs; DM(_t_left) = R4; DM(_t_right) = R8;
     R0 = DM(RT_SLOT,I4); DM(_t_slot) = R0;
-    R0 = -1; DM(_t_key0) = R0; DM(_t_key1) = R0;
+    R0 = -1; DM(_t_key0) = R0; DM(_t_key1) = R0; DM(_t_key2) = R0;
     R1 = DM(_rt_writer); R0 = DM(_t_track); COMP(R0,R1); R0 = 0; IF NE JUMP _tape_write_gate;
     R1 = DM(_rt_armed); R1 = PASS R1; IF NE JUMP _tape_write_gate;
     R0 = DM(_rt_mode); R1 = 3; COMP(R0,R1); IF EQ R0 = R0 XOR R0;
 _tape_write_gate:
     DM(_t_gate) = R0;
+    // Use cubic reconstruction at reduced speeds with WRITE closed. Keep
+    // the existing linear feedback path while a write is in progress.
+    R2 = 0; R0 = PASS R0; IF NE JUMP _tape_read_quality;
+    R1 = DM(RT_LENGTH,I4); R3 = 4; COMP(R1,R3); IF LT JUMP _tape_read_quality;
+    R1 = DM(_t_rate); R1 = ABS R1; R3 = 65536; COMP(R1,R3); IF LT R2 = R2 + 1;
+_tape_read_quality:
+    DM(_t_cubic) = R2;
+    R1 = DM(_t_rate); R1 = ABS R1; R2 = 65536; COMP(R1,R2);
+    IF GE JUMP _tape_discard_average;
+    R1 = PASS R1; IF EQ JUMP _tape_discard_average;
+    R0 = PASS R0; IF NE JUMP _tape_write_ready;
+_tape_discard_average:
+    R1 = 0; DM(T_WRITE_COUNT,I5) = R1;
+_tape_write_ready:
     // The pool lookup preserves these mixer scratch registers.
     R9 = 32767; R11 = -32768;
     R0 = DM(RT_POS,I4); DM(_t_wave_start) = R0;
@@ -225,18 +253,66 @@ _tape_sample:
     R3 = DM(RT_LENGTH,I4); R3 = PASS R3; IF LE JUMP _tape_park;
     R12 = DM(RT_POS,I4); R1 = DM(_t_offset); R12 = R12 + R1;
     COMP(R12,R3); IF GE R12 = R12 - R3; R12 = PASS R12; IF LT R12 = R12 + R3;
-    DM(_t_read) = R12; CALL _tape_pcm;
-    R2 = DM(T_FRAC,I5); R2 = PASS R2; IF EQ JUMP _tape_heard;
+    DM(_t_read) = R12;
+    R2 = DM(T_FRAC,I5); R2 = PASS R2; IF EQ JUMP _tape_exact;
+    R2 = DM(_t_cubic); R2 = PASS R2; IF NE JUMP _tape_cubic;
+    CALL _tape_pcm;
     DM(_t_interp_l) = R0; DM(_t_interp_r) = R1;
     R12 = DM(_t_read); R12 = R12 + 1; R3 = DM(RT_LENGTH,I4); COMP(R12,R3); IF GE R12 = R12 - R3;
-    CALL _tape_pcm; R2 = DM(T_FRAC,I5); F2 = FLOAT R2; R3 = 0x37800000; F2 = F2 * F3;
+    CALL _tape_pcm;
+    R2 = DM(T_FRAC,I5); F2 = FLOAT R2; R3 = 0x37800000; F2 = F2 * F3;
     F3 = DM(_t_interp_l); F0 = F0 - F3; F0 = F0 * F2; F0 = F0 + F3;
     F3 = DM(_t_interp_r); F1 = F1 - F3; F1 = F1 * F2; F1 = F1 + F3;
+    JUMP _tape_heard;
+_tape_exact:
+    CALL _tape_pcm; JUMP _tape_heard;
+_tape_cubic:
+    // Catmull-Rom through four consecutive cells (a, b, c, d), with phase
+    // t between b and c. Resolve just one span when all four are contiguous.
+    R1 = R12 + 1; R1 = R1 + 1; COMP(R1,R3); IF GE JUMP _tape_cubic_wrap;
+    R12 = PASS R12; IF EQ JUMP _tape_cubic_wrap;
+    R1 = 255; R1 = R12 AND R1; IF EQ JUMP _tape_cubic_wrap;
+    R2 = 253; COMP(R1,R2); IF GT JUMP _tape_cubic_wrap;
+    CALL _tape_address;
+    R0 = DM(0,I0); CALL _tape_unpack_pcm; DM(_t_interp_l) = R0; DM(_t_interp_r) = R1;
+    R0 = DM(1,I0); CALL _tape_unpack_pcm; DM(_t_next_l) = R0; DM(_t_next_r) = R1;
+    R0 = DM(2,I0); CALL _tape_unpack_pcm; DM(_t_outer_l) = R0; DM(_t_outer_r) = R1;
+    R0 = DM(-1,I0); CALL _tape_unpack_pcm; JUMP _tape_cubic_mix;
+_tape_cubic_wrap:
+    CALL _tape_pcm; DM(_t_interp_l) = R0; DM(_t_interp_r) = R1;
+    R12 = R12 + 1; R3 = DM(RT_LENGTH,I4); COMP(R12,R3); IF GE R12 = R12 - R3;
+    CALL _tape_pcm;
+    DM(_t_next_l) = R0; DM(_t_next_r) = R1;
+    R12 = R12 + 1; R3 = DM(RT_LENGTH,I4); COMP(R12,R3); IF GE R12 = R12 - R3;
+    CALL _tape_pcm; DM(_t_outer_l) = R0; DM(_t_outer_r) = R1;
+    R12 = DM(_t_read); R12 = R12 - 1; R3 = DM(RT_LENGTH,I4);
+    R12 = PASS R12; IF LT R12 = R12 + R3;
+    CALL _tape_pcm;
+_tape_cubic_mix:
+    // u = 1 - t, h = t*u/2. The weights sum to one at every phase.
+    R2 = DM(T_FRAC,I5); F2 = FLOAT R2; R3 = 0x37800000; F2 = F2 * F3;
+    R3 = 0x3f800000; F3 = F3 - F2;
+    R4 = 0x3f000000; F4 = F4 * F2; F4 = F4 * F3;
+    F6 = F4 * F3; F7 = F4 * F2; // Magnitudes of the two outside weights.
+    F8 = F6 + F6; F8 = F8 - F7; F8 = F8 + F3; // b weight
+    F10 = F7 + F7; F10 = F10 - F6; F10 = F10 + F2; // c weight
+    F0 = F0 * F6; F1 = F1 * F6;
+    F2 = DM(_t_outer_l); F3 = DM(_t_outer_r);
+    F2 = F2 * F7; F3 = F3 * F7; F0 = F0 + F2; F1 = F1 + F3;
+    F2 = DM(_t_interp_l); F3 = DM(_t_interp_r);
+    F2 = F2 * F8; F3 = F3 * F8; F0 = F2 - F0; F1 = F3 - F1;
+    F2 = DM(_t_next_l); F3 = DM(_t_next_r);
+    F2 = F2 * F10; F3 = F3 * F10; F0 = F0 + F2; F1 = F1 + F3;
+    // Limit overshoot to the signed PCM range.
+    R2 = 0xbf800000; F0 = MAX(F0,F2); F1 = MAX(F1,F2);
+    R2 = 0x3f7ffe00; F0 = MIN(F0,F2); F1 = MIN(F1,F2);
 _tape_heard:
     DM(_t_wet_l) = R0; DM(_t_wet_r) = R1;
     R2 = DM(T_FRAC,I5); R3 = DM(_t_rate); R2 = R2 + R3;
     R3 = 65535; R3 = R2 AND R3; DM(T_FRAC,I5) = R3; R2 = ASHIFT R2 BY -16; DM(_t_delta) = R2;
     R2 = DM(_t_gate); R2 = PASS R2; IF EQ JUMP _tape_advance;
+    R2 = DM(_t_rate); R2 = ABS R2; R3 = 65536; COMP(R2,R3);
+    IF LT JUMP _tape_slow_write;
     R2 = DM(_t_separation); R2 = PASS R2; IF NE JUMP _tape_print;
     F0 = DM(T_LAST_L,I5); F1 = DM(T_LAST_R,I5);
 _tape_print:
@@ -291,6 +367,8 @@ _tape_next_sample:
     R0 = DM(_rt_written); R1 = DM(_rt_goal); COMP(R0,R1); IF LT JUMP _rt_step_next;
     CALL _tape_close; JUMP _rt_step_next;
 
+#include "slow-write.inc"
+
 .SECTION/DM seg_dmda;
 .GLOBAL _rtm_tapes;
 .VAR _rtm_tapes[2048];
@@ -303,8 +381,10 @@ _tape_next_sample:
 .VAR _t_share_length;
 .VAR _t_key0;
 .VAR _t_key1;
+.VAR _t_key2;
 .VAR _t_ptr0;
 .VAR _t_ptr1;
+.VAR _t_ptr2;
 .VAR _t_rate;
 .VAR _t_delta;
 .VAR _t_offset;
@@ -318,6 +398,11 @@ _tape_next_sample:
 .VAR _t_wet_r;
 .VAR _t_interp_l;
 .VAR _t_interp_r;
+.VAR _t_next_l;
+.VAR _t_next_r;
+.VAR _t_outer_l;
+.VAR _t_outer_r;
+.VAR _t_cubic;
 .VAR _t_word;
 .VAR _t_read;
 .VAR _t_resume_pos;

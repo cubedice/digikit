@@ -57,6 +57,11 @@ _relay_test_backing:
     R0 = DM(5,I3);
     R1 = DM(6,I3);
     RTS;
+.GLOBAL _relay_test_pcm;
+_relay_test_pcm:
+    I3 = R4;
+    R0 = DM(0,I3);
+    RTS;
 ${exp2}
 ${ampDone}`,
         base: 0xb9a000,
@@ -72,10 +77,11 @@ ${ampDone}`,
   const length = 64;
   const ownerSlot = 9 + owner;
 
-  async function pool(R4: number, R8 = 0) {
-    const result = await rig.call('_relay_pool', { R4, R8, R12: 0 }, { readRegs: ['R0'] });
+  async function pool(R4: number, R8 = 0, R12 = 0) {
+    const result = await rig.call('_relay_pool', { R4, R8, R12, M6: 1 }, { readRegs: ['R0'] });
     expect(result.halt).toBe('breakpoint');
     expect(result.regs.R0! >>> 0).not.toBe(0xffffffff);
+    return result.regs.R0! >>> 0;
   }
   // Read metadata through DSP byte-addressed loads, using the pool's
   // slot table and PARENT/UNSEEDED layout.
@@ -237,6 +243,61 @@ ${ampDone}`,
     expect(await rig.peek(row + 11, 1)).toEqual([1]);
     await note(lead, owner, 60);
     expect(await rig.peek(row + 11, 1)).toEqual([0]);
+
+    // 256 is a storage-group split, and the seam at 263 is separate from it.
+    const frames = 263;
+    const pack = (l: number, r: number) => ((l << 16) | (r & 0xffff)) >>> 0;
+    const leftPcm = (i: number) => 13 * i - 1200;
+    const rightPcm = (i: number) => 1700 - 7 * i;
+    const wave = (from: number, stride: number, sample: (i: number) => number) =>
+      Array.from({ length: 32 }, (_, i) => {
+        const phase = (from + stride * i + frames) % frames;
+        const lo = Math.floor(phase);
+        const frac = phase - lo;
+        return sample(lo) + frac * (sample((lo + 1) % frames) - sample(lo));
+      });
+    await pool(2, frames);
+    for (let i = 0; i < frames; ++i) {
+      expect(await pool(3, pack(leftPcm(i), rightPcm(i)))).toBe(i + 1);
+    }
+    await pool(5, ownerSlot);
+    rig.poke(row, frames);
+    rig.poke(row + 8, 3);
+
+    const address = await pool(22, ownerSlot, 250);
+    expect(address).not.toBe(0);
+    const stored = await rig.call('_relay_test_pcm', { R4: address }, { readRegs: ['R0'] });
+    expect(stored.halt).toBe('breakpoint');
+    expect(stored.regs.R0! >>> 0).toBe(pack(leftPcm(250), rightPcm(250)));
+    for (const [pitch, stride] of [[60, 1], [48, 0.5]] as const) {
+      await note(lead, owner, pitch);
+      rig.poke(lead / 4 + 1, 250);
+      expect(await render(lead)).toEqual([wave(250, stride, leftPcm), wave(250, stride, rightPcm)]);
+    }
+
+    const tape = tapes / 4 + owner * 128;
+    rig.poke(tape, 1);
+    rig.poke(tape + 19, (-32768) >>> 0); // T_EFF_RATE, −½.
+    rig.poke(tape + 22, f2w(1)); // T_EFF_MIX.
+    await note(lead, owner, 60);
+    rig.poke(lead / 4 + 1, 4);
+    expect(await render(lead)).toEqual([wave(4, -0.5, leftPcm), wave(4, -0.5, rightPcm)]);
+    rig.poke(tape, 0);
+
+    await pool(2, frames);
+    await pool(19, 0xffffffff);
+    await pool(12, pack(16384, -8192), 255); // Seed one group, leaving its neighbor implicit.
+    await pool(5, ownerSlot);
+    rig.poke(row + 8, 4);
+    const partialRoot = await committedRoot();
+    expect(await backing(partialRoot)).toEqual([0, 1]);
+    await note(lead, owner, 48);
+    rig.poke(lead / 4 + 1, 255);
+    expect(await render(lead)).toEqual([
+      wave(255, 0.5, (i) => (i === 255 ? 16384 : 0)),
+      wave(255, 0.5, (i) => (i === 255 ? -8192 : 0)),
+    ]);
+    expect(await backing(partialRoot)).toEqual([0, 1]);
   } finally {
     await rig.close();
   }

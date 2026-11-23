@@ -268,38 +268,23 @@ _rv_head_scalars:
     F1 = F1 * F2;
     DM(RV_GAIN,I1) = R1;
     R9 = 32;
-    R13 = -1; // Resolve read-only pointers afresh every block.
+    R13 = -1; R14 = -1; // Resolve read-only pointers afresh every block.
 _rv_head_sample:
-    I1 = R5;
     R12 = DM(1,I1);
-    R0 = LSHIFT R12 BY -8;
-    COMP(R0,R13);
-    IF EQ JUMP _rv_head_read;
-    R13 = R0;
-    R12 = LSHIFT R13 BY 8;
-    R8 = DM(0,I1);
-    R4 = RLY_PEEK_SPAN;
-    CALL _relay_pool;
-    R2 = -1;
-    COMP(R0,R2);
-    IF EQ JUMP _rv_silence_tail;
-    R11 = R0;
-    I1 = R5;
-    R12 = DM(1,I1);
-_rv_head_read:
-    R0 = PASS R11;
-    IF EQ JUMP _rv_head_pcm;
-    R0 = FEXT R12 BY 0:8;
-    R0 = LSHIFT R0 BY 2;
-    R0 = R11 + R0;
-    I0 = R0;
-    R0 = DM(0,I0);
-_rv_head_pcm:
-    R1 = ASHIFT R0 BY -16;
-    R0 = LSHIFT R0 BY 16;
-    R0 = ASHIFT R0 BY -16;
-    F1 = FLOAT R1;
-    F0 = FLOAT R0;
+    CALL _rv_head_pcm;
+    R2 = PASS R2; IF LT JUMP _rv_silence_tail;
+    R2 = DM(RV_FRACTION,I1); R2 = PASS R2; IF EQ JUMP _rv_head_gain;
+    M2 = R0; M3 = R1;
+    // The phase is floor(frame) + fraction in either direction.
+    R12 = R12 + 1;
+    R1 = DM(4,I1); COMP(R12,R1); IF GE R12 = R12 XOR R12;
+    CALL _rv_head_pcm;
+    R2 = PASS R2; IF LT JUMP _rv_silence_tail;
+    R2 = DM(RV_FRACTION,I1); F4 = FLOAT R2; R3 = 0x37800000; F4 = F4 * F3;
+    R2 = M2; R3 = M3;
+    F0 = F0 - F2; F0 = F0 * F4; F0 = F0 + F2;
+    F1 = F1 - F3; F1 = F1 * F4; F1 = F1 + F3;
+_rv_head_gain:
     F4 = DM(RV_GAIN,I1);
     F1 = F1 * F4;
     F0 = F0 * F4;
@@ -317,6 +302,7 @@ _rv_head_pcm:
     R1 = FEXT R0 BY 0:16;
     DM(RV_FRACTION,I1) = R1;
     R0 = ASHIFT R0 BY -16;
+    R12 = DM(1,I1);
     R12 = R12 + R0;
     R0 = DM(4,I1);
     R12 = PASS R12;
@@ -328,6 +314,35 @@ _rv_head_pcm:
     IF NE JUMP _rv_head_sample;
     R0 = DK_STEREO;
     JUMP (M13,I13);
+
+// R12 is an already bounded frame. Return raw-scale left/right in F1/F0,
+// or a negative R2 on failure. A zero pointer is a valid silent COW group.
+// Two entries keep an interpolation pair at a group split or wrap resident.
+_rv_head_pcm:
+    R0 = LSHIFT R12 BY -8;
+    COMP(R0,R13); IF EQ JUMP _rv_head_read;
+    COMP(R0,R14); IF EQ JUMP _rv_head_read_second;
+    R14 = R13; I12 = R11; R13 = R0;
+    M1 = R12;
+    R12 = LSHIFT R13 BY 8;
+    R8 = DM(0,I1); R4 = RLY_PEEK_SPAN; CALL _relay_pool;
+    R12 = M1; I1 = R5;
+    R2 = -1; COMP(R0,R2); IF EQ RTS;
+    R11 = R0;
+_rv_head_read:
+    R0 = R11; JUMP _rv_head_read_cached;
+_rv_head_read_second:
+    R0 = I12;
+_rv_head_read_cached:
+    R0 = PASS R0; IF EQ JUMP _rv_head_decode;
+    R1 = FEXT R12 BY 0:8; R1 = LSHIFT R1 BY 2;
+    R0 = R0 + R1; I0 = R0; R0 = DM(0,I0);
+_rv_head_decode:
+    R1 = ASHIFT R0 BY -16;
+    R0 = LSHIFT R0 BY 16; R0 = ASHIFT R0 BY -16;
+    F1 = FLOAT R1; F0 = FLOAT R0;
+    R2 = 0;
+    RTS;
 
 _rv_tape:
     // The motor can stop inside this block. Deliver its last samples and fade.

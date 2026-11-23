@@ -305,6 +305,61 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
     setLanes(Array(6).fill(0x4000));
     await block();
     expect(await effective()).toEqual(neutral);
+
+    // A half-speed first pass keeps its exact duration, downsampling each
+    // pair of arrivals instead of overwriting the first with the second.
+    rig.poke(clock + 5, 0);
+    await block(14);
+    await block(9);
+    rig.poke(timing / 4 + 1, 65); // The first pass latches the current pattern length at its boundary.
+    await controls(32768, 0, 0);
+    for (let i = 0; i < 32; ++i) {
+      rig.poke(ext / 4 + i, f2w(i % 2 === 0 ? 0.5 : 0));
+      rig.poke(ext / 4 + 32 + i, f2w(i % 2 === 0 ? 0 : -0.25));
+    }
+    b = await block(1, 0, 0, 65, 16);
+    expect(b.status[5]).toBe(65);
+    expect(b.audio.slice(0, 2)).toEqual([0.5, 0]);
+    expect(b.audio.slice(32, 34)).toEqual([0, -0.25]);
+    await block();
+    b = await block();
+    expect(b.status[2]! & 15).toBe(0);
+    expect(b.status[5]).toBe(65);
+    expect(await sample(0)).toBe(0x2000f000);
+    expect(await sample(31)).toBe(0x2000f000);
+    expect(await sample(32), 'final partial cell').toBe(0x40000000);
+    expect(await sample(33), 'untouched part of the tape').toBe(0);
+
+    // At FULL, fractional monitoring must not recirculate the neighboring
+    // cell into an otherwise silent unity-feedback punch in either direction.
+    input();
+    const checkCells = [0, 31, 32, 33, 64];
+    const beforePunch = [0x2000f000, 0x2000f000, 0x40000000, 0, 0];
+    for (const rate of [32768, -32768]) {
+      await controls(rate, 65536, 100);
+      await reset();
+      await block(1);
+      for (let i = 0; i < 4; ++i) await block();
+      b = await block(2);
+      expect(b.status[2]! & 15).toBe(0);
+      for (const [i, cell] of checkCells.entries())
+        expect(await sample(cell), `FULL punch at Q16 rate ${rate}, frame ${cell}`).toBe(beforePunch[i]);
+    }
+
+    // Closing a slow punch before the current cell boundary still prints the
+    // arrivals from that last partial cell and leaves later cells untouched.
+    await controls(24248, 0, 0); // about +0.37x
+    await reset();
+    for (let i = 0; i < 32; ++i) {
+      rig.poke(ext / 4 + i, f2w(0.125));
+      rig.poke(ext / 4 + 32 + i, f2w(-0.25));
+    }
+    b = await block(1);
+    expect(b.status[6]).toBe(11);
+    input();
+    await block(2);
+    expect(await sample(11)).toBe(0x1000e000);
+    expect(await sample(12)).toBe(0x2000f000);
   } finally {
     await rig.close();
   }
