@@ -7578,6 +7578,20 @@
   },
   {
    "addend": 0,
+   "offset": 18,
+   "section": ".text.tk_panel_native_record_on",
+   "symbol": ".sec..bss.kind",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 40,
+   "section": ".text.tk_panel_native_record_on",
+   "symbol": ".sec..text.tk_panel_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 8,
    "section": ".text.tk_trig_open_notes",
    "symbol": ".sec..bss.notes_menu",
@@ -16132,14 +16146,28 @@
   },
   {
    "addend": 0,
+   "offset": 22,
+   "section": ".text.tk_panel_record_audition",
+   "symbol": ".sec..bss.panel_record_audition",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 26,
+   "section": ".text.tk_pool_fw_block_note",
+   "symbol": ".sec..bss.panel_record_audition",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 84,
    "section": ".text.tk_pool_fw_block_note",
    "symbol": ".sec..bss.reserved",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 46,
+   "offset": 104,
    "section": ".text.tk_pool_fw_block_note",
    "symbol": ".sec..bss.preparing",
    "type": "cf.32"
@@ -18091,6 +18119,13 @@
    "kind": "text",
    "name": ".text.tk_panel_on",
    "size": 406
+  },
+  {
+   "align": 2,
+   "hex": "2f02740f202f000c222f0008b480651c43f9000000004a31080066102f40000c2f410008241f4ef900000000241f42804e75",
+   "kind": "text",
+   "name": ".text.tk_panel_native_record_on",
+   "size": 50
   },
   {
    "align": 2,
@@ -20439,10 +20474,17 @@
   },
   {
    "align": 2,
-   "hex": "206f00044a88660442804e752210700fb08165f47001e3a8323900000000c2804a41661a7201b2a8000c66dc323900000000c0814a4056c07100448060cc700160c8",
+   "hex": "2f02740f202f0008222f000cb480640c4280241f23c0000000004e75747fb48165ee5280e188808160e8",
+   "kind": "text",
+   "name": ".text.tk_panel_record_audition",
+   "size": 42
+  },
+  {
+   "align": 2,
+   "hex": "2f02206f00084a8866064280241f4e752210700fb08165f22279000000004a89672c2028000c5380e28866227040b0a80020661a24280004707fb082651020015280e1888082b3c06604700160be7001e3a8323900000000c2804a4166ec7201b2a8000c66a4323900000000c0814a4056c0710044806094",
    "kind": "text",
    "name": ".text.tk_pool_fw_block_note",
-   "size": 66
+   "size": 120
   },
   {
    "align": 2,
@@ -20457,6 +20499,13 @@
    "kind": "data",
    "name": ".rodata.module_id.0",
    "size": 22
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.panel_record_audition",
+   "size": 4
   },
   {
    "align": 2,
@@ -20599,7 +20648,7 @@
    "size": 70
   }
  ],
- "source_sha256": "521d271b41bd04fa73fc44a9b38c406c2a2c773abe519ce184da46dc5bb3038a",
+ "source_sha256": "ebcffee2daf0fdfcc94a945540b3de5d75e76e6507e7fb7e71a53e44e4a8c5c1",
  "symbols": [
   {
    "global": false,
@@ -20989,6 +21038,12 @@
    "global": false,
    "name": ".sec..bss.panel_claims",
    "section": ".bss.panel_claims",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.panel_record_audition",
+   "section": ".bss.panel_record_audition",
    "value": 0
   },
   {
@@ -22541,6 +22596,12 @@
   },
   {
    "global": false,
+   "name": ".sec..text.tk_panel_on",
+   "section": ".text.tk_panel_on",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..text.tk_pattern_attach_batch",
    "section": ".text.tk_pattern_attach_batch",
    "value": 0
@@ -23981,6 +24042,12 @@
   },
   {
    "global": false,
+   "name": "panel_record_audition",
+   "section": ".bss.panel_record_audition",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "panel_track",
    "section": ".bss.panel_track",
    "value": 0
@@ -25331,6 +25398,12 @@
   },
   {
    "global": true,
+   "name": "tk_panel_native_record_on",
+   "section": ".text.tk_panel_native_record_on",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "tk_panel_off",
    "section": ".text.tk_panel_off",
    "value": 0
@@ -25339,6 +25412,12 @@
    "global": true,
    "name": "tk_panel_on",
    "section": ".text.tk_panel_on",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_panel_record_audition",
+   "section": ".text.tk_panel_record_audition",
    "value": 0
   },
   {
@@ -26888,8 +26967,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "22277",
-  "isa_check": "9be2d706f9da29680c1f4b86da95493a481ca235aa5779591091311c9bdd07e2",
+  "instructions_redecoded": "22332",
+  "isa_check": "6d7f90577621c9d191bfae0131b698bab2019f863bf4fd4526af0db1bcbaa9fd",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

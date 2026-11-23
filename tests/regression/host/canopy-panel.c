@@ -7,6 +7,9 @@ static uint32_t machine = 9, selected, downs, ups, cancels, original_on, origina
 static uint8_t active = 1, live, held, step_record, keyboard_held, shared_route;
 static uint32_t shared_downs, shared_ups, shared_track, shared_notes, shared_canceled, capture_step;
 static uint32_t seq_object[0x100];
+static uint16_t expected_native_record[16];
+static uint32_t guarded_track = 16, guarded_pitch;
+static uint32_t filtered_on, filtered_off, native_record_route, native_record_downs;
 #define SEQ ((uint32_t)(uintptr_t)seq_object)
 uint8_t ip_panel_live_record(uint32_t seq)
 {
@@ -168,11 +171,23 @@ void ip_panel_original_on(uint8_t *v, uint32_t key, uint32_t track, uint32_t pit
     assert(v == view && key < 16 && (track <= 1 || track == 10) && velocity == 88 && a == 5 &&
            b == 6 && c == 7);
     assert(key != 3 || pitch == 65);
+    if (expected_native_record[key]) {
+        assert(guarded_track == track && guarded_pitch == pitch);
+        ++filtered_on;
+    } else
+        assert(guarded_track == 16);
     ++original_on;
 }
 void ip_panel_original_off(uint8_t *v, uint32_t key)
 {
     assert(v == view && key < 16);
+    uint16_t record = expected_native_record[key];
+    if (record) {
+        assert(guarded_track == (record >> 8) - 1u && guarded_pitch == (record & 0xffu));
+        expected_native_record[key] = 0;
+        ++filtered_off;
+    } else
+        assert(guarded_track == 16);
     ++original_off;
 }
 /* Step recording: the stock key handler writes the entry itself. */
@@ -253,8 +268,26 @@ int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
     }
     return 1;
 }
+int tk_panel_native_record_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
+{
+    assert(guarded_track == 16); /* Shared dispatch precedes the stock audition guard. */
+    if (!native_record_route)
+        return 0;
+    assert(live && key < 16 && track < 16 && pitch < 128 && velocity == 88 && !capture_step);
+    expected_native_record[key] = (uint16_t)(((track + 1u) << 8) | pitch);
+    shared_notes |= 1u << key;
+    ++native_record_downs;
+    return 1;
+}
+void tk_panel_record_audition(uint32_t track, uint32_t pitch)
+{
+    assert((guarded_track == 16) != (track == 16));
+    guarded_track = track;
+    guarded_pitch = pitch;
+}
 int tk_panel_off(uint32_t key)
 {
+    assert(guarded_track == 16); /* Shared releases precede the stock guard too. */
     uint32_t bit = 1u << key;
     int owned = !!(bit & (shared_notes | shared_canceled));
     if (shared_notes & bit)
@@ -705,6 +738,24 @@ int main(void)
     unsigned before = original_on, recorded = ip_panel_recorded;
     ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
     assert(original_on == before + 1 && ip_panel_recorded == recorded);
+
+    /* Live-recorded stock voices keep the original track and pitch for
+     * release, even after recording stops or the selected track changes. */
+    native_record_route = 1;
+    unsigned up = shared_ups, stock_off = original_off;
+    ip_panel_on(view, 8, 0, 60, 88, 5, 6, 7);
+    ip_panel_on(view, 10, 1, 64, 88, 5, 6, 7);
+    ip_panel_on(view, 8, 0, 60, 88, 5, 6, 7); /* Held repetition. */
+    assert(native_record_downs == 2 && filtered_on == 2 && guarded_track == 16);
+    assert(original_on == before + 3 && ip_panel_recorded == recorded + 2);
+    live = 0;
+    selected = 1;
+    ip_panel_off(view, 8);
+    assert(filtered_off == 1 && shared_ups == up + 1 && guarded_track == 16);
+    uint32_t native_release[8] = {[3] = 0x19 + 10, [4] = 0x10};
+    assert(ip_panel_key_event(view, (uint8_t *)native_release) == 17);
+    assert(filtered_off == 2 && original_off == stock_off + 2 && shared_ups == up + 2);
+    assert(!shared_notes && !shared_live_record[8] && !shared_live_record[10] && guarded_track == 16);
     puts("ok");
     return 0;
 }

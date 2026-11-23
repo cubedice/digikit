@@ -30,6 +30,7 @@ static uint16_t eligible, owners, empty_tracks;
 static uint8_t machine[TK_TRACKS];
 static bool relay_head_package;
 static volatile uint16_t preparing, reserved;
+static volatile uint32_t panel_record_audition;
 
 static bool relay_head_module(void)
 {
@@ -196,10 +197,23 @@ void tk_pool_fw_note_edge(uint8_t track)
     }
 }
 
+void tk_panel_record_audition(uint32_t track, uint32_t pitch)
+{
+    panel_record_audition = track < TK_TRACKS && pitch < 128 ? ((track + 1u) << 8) | pitch : 0;
+}
+
 int tk_pool_fw_block_note(const int32_t *event)
 {
     if (!event || (uint32_t)event[0] >= TK_TRACKS)
         return 0;
+    /* The KeyboardView's stock note action still owns the recorder and its
+     * held keys. Suppress only its synchronous audition while the shared
+     * keyboard owns this exact pitch. Generated dispatch runs outside it. */
+    uint32_t audition = panel_record_audition;
+    if (audition && (event[3] == 1 || event[3] == 2) && event[8] == 0x40 &&
+        (uint32_t)event[1] < 128 &&
+        audition == (((uint32_t)event[0] + 1u) << 8 | (uint32_t)event[1]))
+        return 1;
     uint16_t bit = (uint16_t)(1u << event[0]);
     return (reserved & bit) || (event[3] == 1 && (preparing & bit));
 }

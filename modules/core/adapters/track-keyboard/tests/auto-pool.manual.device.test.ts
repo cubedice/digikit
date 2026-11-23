@@ -26,7 +26,7 @@ describeOn('dt2', 'automatic stock audio helper pool', () => {
     const { session } = handle;
     const image = await prepareRuntimePlanModulesOffline(
       session.options, session.runDir, session.runDir,
-      ['DKRT_BOOT', 'tk_native_audio_active', 'pp_position', 'tk_capture_committed'],
+      ['DKRT_BOOT', 'tk_native_audio_active', 'pp_position', 'tk_capture_committed', 'tk_panel_claim_hits'],
       { modules: ['core/track-keyboard', 'core/instrument-play', 'core/digikit-menu', 'core/health'] },
     );
     const word = async (symbol: string, offset = 0) => (await session.client.memPeek(planSymbol(image.plan, symbol) + offset)) ?? 0;
@@ -160,30 +160,41 @@ describeOn('dt2', 'automatic stock audio helper pool', () => {
     await writeSetting(0x429368ca, 3); // Native receive port mask permits USB.
     await writeSetting(0x42936872, 0); // Auto Channel 1 addresses the selected track.
     await writeSetting(0x429368ee, 1); // Receive Notes.
-    const captureBefore = await word('tk_capture_committed');
-    await edge('RECORD', true);
-    try {
-      await tap('PLAY');
-    } finally {
-      await edge('RECORD', false);
-    }
-    try {
-      await pollEmulated(session, () => word('pp_position', 20), (flags) => !!(flags & 2), {
-        emulatedMs: 2000, message: 'transport started live recording',
-      });
-      await waitClock(freeClock(session), 200);
-      const usbChord = async (down: boolean) => {
-        await session.client.call('midi.usb.in', { bytes: [down ? 0x90 : 0x80, 60, down ? 100 : 0] });
-      };
-      await playAndRelease('Live recording', usbChord, async () => {
-        await pollEmulated(session, () => word('tk_capture_committed'), (count) => count > captureBefore, {
-          emulatedMs: 1200, intervalMs: 10, message: 'native live recording committed the auditioned triad seed',
+    const checkLiveRecording = async (label: string, key: typeof panelChord, openingMs: number) => {
+      const captureBefore = await word('tk_capture_committed');
+      await edge('RECORD', true);
+      try {
+        await tap('PLAY');
+      } finally {
+        await edge('RECORD', false);
+      }
+      try {
+        await pollEmulated(session, () => word('pp_position', 20), (flags) => !!(flags & 2), {
+          emulatedMs: 2000, message: label + ' started the transport',
         });
+        await waitClock(freeClock(session), openingMs);
+        await pollEmulated(session, state,
+          ({ assigned, draining, reserved, active }) => !(assigned | draining | reserved | active), {
+            emulatedMs: 2500, intervalMs: 10, message: label + ' starts with the previous notes released',
+          });
+        await playAndRelease(label, key, async () => {
+          await pollEmulated(session, () => word('tk_capture_committed'), (count) => count > captureBefore, {
+            emulatedMs: 1200, intervalMs: 10, message: label + ' committed the auditioned triad seed',
+          });
+          await tap('STOP');
+        });
+      } finally {
         await tap('STOP');
-      });
-    } finally {
-      await tap('STOP');
-    }
+      }
+    };
+    const usbChord = (down: boolean) =>
+      session.client.call('midi.usb.in', { bytes: [down ? 0x90 : 0x80, 60, down ? 100 : 0] });
+    await checkLiveRecording('USB live recording', usbChord, 200);
+
+    // The stock Live Rec banner intercepts the first panel presses, unlike USB.
+    const panelClaimBefore = await word('tk_panel_claim_hits');
+    await checkLiveRecording('Panel live recording', panelChord, 1700);
+    expect(await word('tk_panel_claim_hits'), 'the panel key entered the shared audition').toBe(panelClaimBefore + 1);
     await session.expectNoFault('AUTO stock voice borrowing while playing a chord');
   });
 });

@@ -375,6 +375,12 @@ int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
     return 1;
 }
 
+int tk_panel_native_record_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
+{
+    return track < TK_TRACKS && kind[track] == TK_NATIVE_AUDIO &&
+           tk_panel_on(key, track, pitch, velocity);
+}
+
 static void notes_apply(void *unused, int32_t value)
 {
     (void)unused;

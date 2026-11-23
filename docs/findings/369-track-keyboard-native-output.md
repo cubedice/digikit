@@ -458,3 +458,13 @@ incoming MIDI audition a chord while stock recording retains its placement.
 **[D]** On the coupled emulator running image `6fd330661efae5b0`, AUTO used two eligible helpers in each of
 three cases: stopped panel input, running panel input and MIDI input during live recording. The populated
 track stayed independent and the live recorder committed a trig before the helpers returned to the pool.
+
+The DTII panel keyboard's live recorder and audible audition travel through separate calls within the stock note
+action. The panel adapter retains the original key-down and key-up code for recording. During those calls, it
+filters only the audition that matches the claimed track, pitch and panel source. The shared note engine delivers
+the audible chord and releases before the matched stock callbacks run. Host tests cover note-up after changing
+recording mode or moving to a different track.
+
+**[D]** The coupled emulator on image `821ef4c23c807b81` confirmed three actual voices and a recorder commit
+during panel live recording. Stopped and running panel play and USB live recording also passed. The populated
+track remained independent, and the helpers drained after release in all four cases.

@@ -36,6 +36,9 @@ static uint8_t *panel_view;
 static uint32_t panel_track = IP_NONE;
 /* Shared step auditions also have a native note-off to run. */
 static uint32_t shared_step_keys;
+/* Native live recording keeps its physical key-up wrapper. The upper byte
+ * stores the original track plus one, and the lower byte stores its pitch. */
+static uint16_t shared_live_record[16];
 volatile uint32_t ip_panel_debug[8];
 /* Key presses handed to the stock path for recording (proof counter). */
 volatile uint32_t ip_panel_recorded;
@@ -233,6 +236,9 @@ static int group_has(uint32_t pitch)
 extern int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
     __attribute__((weak));
 extern int tk_panel_off(uint32_t key) __attribute__((weak));
+extern int tk_panel_native_record_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
+    __attribute__((weak));
+extern void tk_panel_record_audition(uint32_t track, uint32_t pitch) __attribute__((weak));
 extern int tk_panel_retrig(uint32_t key, uint32_t track) __attribute__((weak));
 extern void tk_panel_cancel(void) __attribute__((weak));
 extern void tk_panel_focus(uint32_t track) __attribute__((weak));
@@ -280,8 +286,20 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
     int recording = live || held || step;
     int shared_step =
         canopy && step && !live && tk_panel_on && instrument_track_keyboard_routed(track);
+    if (key < 16 && shared_live_record[key])
+        return;
     if (tk_capture_panel_press && recording)
         tk_capture_panel_press(key, track, pitch, velocity, !live && (step || held));
+    if (keyboard && live && !held && !step && !canopy && key < 16 &&
+        tk_panel_record_audition && tk_panel_native_record_on &&
+        tk_panel_native_record_on(key, track, pitch, velocity)) {
+        ++ip_panel_recorded;
+        shared_live_record[key] = (uint16_t)(((track + 1u) << 8) | pitch);
+        tk_panel_record_audition(track, pitch);
+        ip_panel_original_on(view, key, track, pitch, velocity, a, b, c);
+        tk_panel_record_audition(16, 0);
+        return;
+    }
     if (keyboard) {
         if (recording) {
             if (tk_panel_cancel && !shared_step)
@@ -330,15 +348,16 @@ void ip_panel_off(uint8_t *view, uint32_t key)
     if (tk_capture_panel_release)
         tk_capture_panel_release(key);
     uint32_t mask = key < 16 ? 1u << key : 0;
+    uint16_t recorded_live = mask ? shared_live_record[key] : 0;
     int shared =
         !(tk_panel_retrig && tk_panel_retrig(key, IP_NONE)) && tk_panel_off && tk_panel_off(key);
-    if (shared && !(shared_step_keys & mask))
+    if (shared && !recorded_live && !(shared_step_keys & mask))
         return;
     shared_step_keys &= ~mask;
     /* Consume tombstones even after track/machine/mode changes. Stock owns
      * its own vector and still receives releases for non-CANOPY auditions. */
     if (key < 16) {
-        if (!shared)
+        if (!shared && !recorded_live)
             (void)mi_panel_key(key, 0, 0, 0, panel_track);
         ++ip_panel_debug[1];
     }
@@ -351,7 +370,13 @@ void ip_panel_off(uint8_t *view, uint32_t key)
         if (track != commit_track)
             watch_until = instrument_src_now() + WATCH_MS;
     }
+    if (recorded_live) {
+        shared_live_record[key] = 0;
+        tk_panel_record_audition((recorded_live >> 8) - 1u, recorded_live & 0xffu);
+    }
     ip_panel_original_off(view, key);
+    if (recorded_live)
+        tk_panel_record_audition(16, 0);
 }
 static void step_commits(void);
 /* UI task (instrument_play_tick). */
@@ -661,7 +686,9 @@ uint32_t ip_panel_key_event(uint8_t *view, uint8_t *event)
     if (release) {
         /* Some native paths finish the key event without a note-off callback. */
         uint32_t mask = 1u << key;
-        if (shared_step_keys & mask) {
+        if (shared_live_record[key]) {
+            ip_panel_off(view, key);
+        } else if (shared_step_keys & mask) {
             shared_step_keys &= ~mask;
             if (tk_panel_off)
                 tk_panel_off(key);
