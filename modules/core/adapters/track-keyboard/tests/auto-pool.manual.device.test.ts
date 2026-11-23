@@ -26,7 +26,7 @@ describeOn('dt2', 'automatic stock audio helper pool', () => {
     const { session } = handle;
     const image = await prepareRuntimePlanModulesOffline(
       session.options, session.runDir, session.runDir,
-      ['DKRT_BOOT', 'tk_native_audio_active', 'pp_position'],
+      ['DKRT_BOOT', 'tk_native_audio_active', 'pp_position', 'tk_capture_committed'],
       { modules: ['core/track-keyboard', 'core/instrument-play', 'core/digikit-menu', 'core/health'] },
     );
     const word = async (symbol: string, offset = 0) => (await session.client.memPeek(planSymbol(image.plan, symbol) + offset)) ?? 0;
@@ -81,12 +81,17 @@ describeOn('dt2', 'automatic stock audio helper pool', () => {
       empty: await mask('empty_tracks'),
       wanted: await mask('wanted'),
     });
-    const playAndRelease = async (label: string) => {
+    const panelChord = (down: boolean) => session.client.inputButton(TRIG_9, down);
+    const playAndRelease = async (
+      label: string,
+      key = panelChord,
+      afterRelease?: () => Promise<void>,
+    ) => {
       const idle = await state();
       expect(idle.assigned | idle.draining | idle.reserved | idle.active, label + ' has no idle leases').toBe(0);
       const states: string[] = [];
       let helpers = 0;
-      await session.client.inputButton(TRIG_9, true);
+      await key(true);
       try {
         const sounding = await pollEmulated(session, async () => {
           const current = await state();
@@ -114,8 +119,9 @@ describeOn('dt2', 'automatic stock audio helper pool', () => {
         expect(sounding.reserved, label + ' only reserves the helpers required by the triad').toBe(helpers);
         expect((sounding.reserved | sounding.active) & protectedMask, label + ' leaves the populated track independent').toBe(0);
       } finally {
-        await session.client.inputButton(TRIG_9, false);
+        await key(false);
       }
+      await afterRelease?.();
       const released = await pollEmulated(session, state, (current) => {
         expect((current.assigned | current.draining | current.reserved) & protectedMask).toBe(0);
         return (current.assigned | current.draining | current.reserved | current.active) === 0
@@ -140,6 +146,41 @@ describeOn('dt2', 'automatic stock audio helper pool', () => {
       });
       await waitClock(freeClock(session), 200); // Let native transport and FX finish their initial kit update.
       await playAndRelease('Running transport');
+    } finally {
+      await tap('STOP');
+    }
+
+    // With both stopped and running audition confirmed, exercise the same
+    // generated triad while the native recorder writes the USB performance.
+    const writeSetting = async (addr: number, value: number) => {
+      const bytes = Buffer.alloc(4);
+      bytes.writeUInt32BE(value);
+      await session.client.call('mem.cf.write', { addr, hex: bytes.toString('hex') });
+    };
+    await writeSetting(0x429368ca, 3); // Native receive port mask permits USB.
+    await writeSetting(0x42936872, 0); // Auto Channel 1 addresses the selected track.
+    await writeSetting(0x429368ee, 1); // Receive Notes.
+    const captureBefore = await word('tk_capture_committed');
+    await edge('RECORD', true);
+    try {
+      await tap('PLAY');
+    } finally {
+      await edge('RECORD', false);
+    }
+    try {
+      await pollEmulated(session, () => word('pp_position', 20), (flags) => !!(flags & 2), {
+        emulatedMs: 2000, message: 'transport started live recording',
+      });
+      await waitClock(freeClock(session), 200);
+      const usbChord = async (down: boolean) => {
+        await session.client.call('midi.usb.in', { bytes: [down ? 0x90 : 0x80, 60, down ? 100 : 0] });
+      };
+      await playAndRelease('Live recording', usbChord, async () => {
+        await pollEmulated(session, () => word('tk_capture_committed'), (count) => count > captureBefore, {
+          emulatedMs: 1200, intervalMs: 10, message: 'native live recording committed the auditioned triad seed',
+        });
+        await tap('STOP');
+      });
     } finally {
       await tap('STOP');
     }

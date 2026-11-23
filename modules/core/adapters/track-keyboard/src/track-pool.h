@@ -67,6 +67,7 @@ void tk_pool_fw_update(uint32_t pattern, uint32_t selected, const TkTrackConfig 
 bool tk_pool_fw_relay_ready(void);
 bool tk_pool_fw_automatic(uint8_t owner);
 bool tk_pool_fw_start_ready(uint8_t owner, uint8_t destination);
+bool tk_pool_fw_waiting_helpers(uint8_t owner);
 uint16_t tk_pool_fw_eligible(uint8_t owner);
 int tk_pool_fw_owner(uint8_t track);
 uint8_t tk_pool_fw_voices(uint8_t owner);

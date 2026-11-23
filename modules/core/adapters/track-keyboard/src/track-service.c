@@ -535,7 +535,12 @@ void tk_service_tick(uint32_t elapsed_us, uint16_t bpm)
         if (!t->backend.output)
             continue;
         tk_tick(&t->live, elapsed_us, tempo);
-        tk_tick(&t->sequence, elapsed_us, tempo);
+        /* Direct notes can be queued before a physical helper is ready. Let
+         * their seed gates run from the first dispatch opportunity. ARP and
+         * the live clock keep their time on the native transport. */
+        bool waiting = t->sequence.params.poly && !t->sequence.params.arp &&
+                       t->backend.seed_waiting && t->backend.seed_waiting((uint8_t)i);
+        tk_tick(&t->sequence, waiting ? 0 : elapsed_us, tempo);
     }
 }
 

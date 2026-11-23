@@ -21,6 +21,7 @@ typedef struct {
     TkTrackInherit inherit;
     TkTrackAvailable available;
     TkTrackPrepare prepare_seed;
+    bool (*seed_waiting)(uint8_t track); /* A direct sequenced onset is waiting for a helper. */
 } TkTrackBackend;
 
 /* The pattern adapter owns this storage and supplies a stable pointer for the

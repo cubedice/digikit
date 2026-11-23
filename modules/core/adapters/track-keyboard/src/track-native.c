@@ -10,7 +10,7 @@ enum { UNITS_PER_BYTE = 1500, AUTO_WAIT_BLOCKS = 120 };
 typedef struct {
     uint32_t token, order;
     uint8_t pitch, velocity, state, channel, destination, ports, kind;
-    bool midi, native_seed;
+    bool midi, native_seed, seed_direct;
     uint16_t queued_at;
 } NativeNote;
 
@@ -131,6 +131,7 @@ bool tk_native_event(void *context, uint8_t track, const TkNoteEvent *event)
     if (tk_pool_fw_reserved(track) || !empty || active >= limit || !event->velocity ||
         event->velocity > 127)
         return false;
+    bool native_seed = !midi && (event->token & 0x80000000u) && tk_sequence_audio(track);
     *empty = (NativeNote){.token = event->token,
                           .order = ++serial,
                           .pitch = event->pitch,
@@ -139,8 +140,8 @@ bool tk_native_event(void *context, uint8_t track, const TkNoteEvent *event)
                           .destination = track,
                           .kind = kind,
                           .midi = midi,
-                          .native_seed =
-                              !midi && (event->token & 0x80000000u) && tk_sequence_audio(track),
+                          .native_seed = native_seed,
+                          .seed_direct = native_seed && event->lane == TK_DIRECT,
                           .queued_at = midi ? 0 : (uint16_t)dkrt_blocks()};
     if (!midi) {
         ++audio_pending[track];
@@ -150,12 +151,27 @@ bool tk_native_event(void *context, uint8_t track, const TkNoteEvent *event)
     return true;
 }
 
+static bool seed_waiting(uint8_t track)
+{
+    if (!tk_pool_fw_waiting_helpers(track))
+        return false;
+    uint16_t now = (uint16_t)dkrt_blocks();
+    for (unsigned i = 0; i <= TK_NOTES; ++i) {
+        const NativeNote *entry = &notes[track][i];
+        if (entry->state == NOTE_PENDING && entry->seed_direct && entry->kind == TK_NATIVE_AUDIO &&
+            (uint16_t)(now - entry->queued_at) < AUTO_WAIT_BLOCKS)
+            return true;
+    }
+    return false;
+}
+
 void tk_native_backend(bool midi, TkTrackBackend *out)
 {
     *out = (TkTrackBackend){
         .output = tk_native_event,
         .context = (void *)(midi ? &midi_binding : &audio_binding),
         .voices = midi ? TK_NOTES : 1,
+        .seed_waiting = midi ? NULL : seed_waiting,
     };
 }
 

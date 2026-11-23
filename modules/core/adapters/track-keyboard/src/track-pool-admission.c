@@ -164,6 +164,12 @@ bool tk_pool_fw_start_ready(uint8_t owner, uint8_t destination)
     return !(relay_owners & bit) || ((pool.relay_heads & bit) && tk_pool_link_ready());
 }
 
+bool tk_pool_fw_waiting_helpers(uint8_t owner)
+{
+    return tk_pool_fw_automatic(owner) &&
+           ((wanted[owner] | pool.assigned[owner]) & ~tk_native_audio_active);
+}
+
 uint16_t tk_pool_fw_helpers(uint8_t owner)
 {
     return owner < TK_TRACKS ? pool.assigned[owner] : 0;
@@ -291,8 +297,8 @@ void tk_pool_fw_update(uint32_t pattern, uint32_t selected, const TkTrackConfig 
     uint16_t active = (uint16_t)tk_native_audio_active;
     uint16_t dsp_quiet = tk_pool_link_quiet(&observed, &now) & ~active;
     owners = eligible = relay_owners = automatic_owners = 0;
-    bool idle_record = tk_capture_midi_mode() == TK_CAPTURE_OFF;
-    bool may_save_group = stopped && idle_record;
+    uint32_t capture = tk_capture_midi_mode();
+    bool may_save_group = stopped && capture == TK_CAPTURE_OFF;
     if (pattern && kit) {
         scan_empty(pattern, selected, !stopped && (waiting || reserved), context_changed, now);
         uint16_t sample_tracks = 0;
@@ -340,7 +346,13 @@ void tk_pool_fw_update(uint32_t pattern, uint32_t selected, const TkTrackConfig 
         unavailable |= (uint16_t)(1u << focused);
     /* Stock queue traffic can delay assignment and retirement. Keep quiet
      * preparations and leases stable while their onsets wait for the map. */
-    uint16_t candidates = idle_record ? eligible & dsp_quiet & ~unavailable : 0;
+    uint16_t candidates = eligible & ~unavailable;
+    if (capture == TK_CAPTURE_LIVE)
+        candidates &= quiet; /* Leave tracks with stock record traffic available to the recorder. */
+    else if (capture == TK_CAPTURE_OFF)
+        candidates &= dsp_quiet;
+    else
+        candidates = 0;
     requested |= plan_automatic(waiting, candidates, dsp_quiet);
 
     uint16_t changed = requested & ~preparing;

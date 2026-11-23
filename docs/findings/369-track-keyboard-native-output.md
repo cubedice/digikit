@@ -438,3 +438,23 @@ Owner pan, filter, overdrive, mute and sends were measured in the
 coupled emulator. The physical unit covered isolated PRE/POST USB
 output, compressor routing, RELAY helper reassignment, and a queued
 pattern change that requested the same retiring helper.
+
+## Short recorded chords and live recording
+
+**[D]** In the host run using the production native dispatcher and pool allocator, a recorded PLAY seed stored
+60, 64 and 67. The first pitch started immediately. The other pitches were scheduled 14 ms later with gates ending
+25 ms after the seed. Preparing quiet helper tracks takes at least 24 blocks (16 ms). The scheduled note-offs
+cancelled both pending pitches before their helpers were ready. A longer version of the same roll reached all three
+voice destinations, confirming that recording had stored the additional notes.
+
+The direct-poly sequence clock now waits while a recorded audio onset has an available helper in preparation.
+The wait ends when the candidate is lost, the onset is dispatched, or its existing 120-block deadline expires.
+Stop still cancels pending notes. Host checks cover the short roll, no eligible helper, transport stop and ARP timing.
+
+The AUTO pool can now borrow empty, quiet tracks during live recording. Candidate filtering excludes tracks with
+pending stock note traffic and preserves the selected, active, musically configured and reserved tracks. This lets
+incoming MIDI audition a chord while stock recording retains its placement.
+
+**[D]** On the coupled emulator running image `6fd330661efae5b0`, AUTO used two eligible helpers in each of
+three cases: stopped panel input, running panel input and MIDI input during live recording. The populated
+track stayed independent and the live recorder committed a trig before the helpers returned to the pool.

@@ -3,6 +3,8 @@
 
 #include <assert.h>
 
+extern volatile uint32_t tk_native_audio_active;
+
 typedef struct {
     uint8_t track, pitch, velocity;
     bool midi;
@@ -40,6 +42,11 @@ bool tk_pool_fw_start_ready(uint8_t owner, uint8_t track)
 {
     assert(owner == 0);
     return (route_ready & (1u << track)) != 0;
+}
+
+bool tk_pool_fw_waiting_helpers(uint8_t track)
+{
+    return tk_pool_fw_automatic(track) && (helper_mask & ~tk_native_audio_active);
 }
 
 uint16_t tk_pool_fw_helpers(uint8_t track)

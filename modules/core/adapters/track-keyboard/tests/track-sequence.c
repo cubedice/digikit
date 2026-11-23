@@ -361,6 +361,56 @@ static void full_recording_pool(void)
     assert(saved->notes[0].pitch == 67);
 }
 
+static bool pending_helper;
+
+static bool awaiting_helper(uint8_t track)
+{
+    assert(track == 0);
+    return pending_helper;
+}
+
+static void short_native_gate(void)
+{
+    tk_service_stop();
+    tk_pattern_init(&bank_b);
+    tk_service_edit_pattern(&bank_b);
+    bank_b.tracks[0].params.poly = true;
+    bank_b.tracks[0].params.chord = TK_CHORD_PLAY;
+    const TkTrackBackend backend = {.output = output, .voices = 4, .seed_waiting = awaiting_helper};
+    assert(tk_service_set_backend(0, &backend));
+
+    /* A held root with two rolled 11 ms gates at 120 BPM. Their gate time
+     * must survive the 16 ms witness when the backend is borrowing helpers. */
+    const TkSeed chord = {
+        .count = 3,
+        .notes = {{60, 100, 0, 8640000}, {64, 100, 14000, 1080000}, {67, 100, 14000, 1080000}},
+    };
+    count = 0;
+    assert(tk_service_seed(0, 3, &chord));
+    tk_service_tick(14000, 14400);
+    assert(count == 3 && events[1].pitch == 64 && events[2].pitch == 67);
+    pending_helper = true;
+    tk_service_tick(16000, 14400);
+    assert(count == 3);
+    pending_helper = false;
+    tk_service_tick(11000, 14400);
+    assert(count == 5 && !events[3].on && !events[4].on);
+    pending_helper = true;
+    tk_service_stop();
+    assert(count == 6 && !events[5].on && events[5].pitch == 60);
+    tk_service_tick(50000, 14400);
+    assert(count == 6);
+
+    /* ARP follows transport time even if the backend reports a wait. */
+    bank_b.tracks[0].params.arp = true;
+    assert(tk_service_seed(0, 3, &chord));
+    unsigned on = count;
+    tk_service_tick(70000, 14400);
+    assert(count > on && !events[on].on);
+    tk_service_stop();
+    pending_helper = false;
+}
+
 int main(void)
 {
     assert(tk_service_init());
@@ -376,5 +426,6 @@ int main(void)
     recorded_notes();
     recorded_held_chord();
     full_recording_pool();
+    short_native_gate();
     return 0;
 }
