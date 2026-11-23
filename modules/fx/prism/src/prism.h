@@ -39,14 +39,15 @@
 #define PRISM_HALO_OPEN 0x3df5c28f
 #define PRISM_HALO_DRIFT 0x384ccccd /* 0.10 / 2048 */
 /* HALO's late return runs at 24 kHz. A normalized Hadamard feedback matrix
- * with gain 0.68 gives about 0.62 s of low-band decay at these delays. */
+ * with gain 0.75 lets the late tail last longer without raising the tape feedback. */
 #define PRISM_LATE_DELAY_L 701
 #define PRISM_LATE_DELAY_R 953
 #define PRISM_LATE_RING 1024
 #define PRISM_LATE_START 256
-#define PRISM_LATE_FEEDBACK 0x3ef62fb1 /* 0.68 / sqrt(2) */
+#define PRISM_LATE_FEEDBACK 0x3f07c3b6 /* 0.75 / sqrt(2) */
 #define PRISM_LATE_DAMP 0x3eb33333     /* one-pole coefficient: 0.35 */
-#define PRISM_LATE_AMOUNT 0x3ed70a3d   /* 0.42 times HALO squared */
+#define PRISM_LATE_BASE 0x3ea147ae     /* HALO * (0.315 + HALO * 0.585) */
+#define PRISM_LATE_SLOPE 0x3f15c28f
 /* The DC blocker in front of the colour filter (2 Hz): y = g (x - x1) + r y1, r = 1 - 2 pi 2 / 48000, g = (1 + r) / 2. */
 #define PRISM_DC_COEFF 0x3f7feed8
 #define PRISM_DC_GAIN 0x3f7ff76c
@@ -142,6 +143,9 @@
 #define PS_LOOP_SEEN 57
 #define PS_AUTO 58
 #define PS_INPUT_ON 59
+/* Current tape-routing blend. Exact 0 and 1 once the short mode crossfade settles. */
+#define PS_PING_FB 60
+#define PS_PING_MONO 61
 #define PS_CONTROL 64
 /* The snapshot of the control mailbox (PH_CONTROL_WORDS words) and the words the engine reads in it. */
 #define PC_ZONE (PS_CONTROL + PH_C_ZONE / 4)
@@ -222,6 +226,8 @@
 #define PL_DAMP_L 2
 #define PL_DAMP_R 3
 #define PL_GAIN 4
+#define PL_PRIOR_L 5
+#define PL_PRIOR_R 6
 #define PS_LATE_LINE_L (PS_LATE + 8)
 #define PS_LATE_LINE_R (PS_LATE_LINE_L + PRISM_LATE_RING)
 #define PRISM_STATE_BYTES ((PS_LATE_LINE_R + PRISM_LATE_RING) * 4)

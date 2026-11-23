@@ -245,3 +245,16 @@ On the native SHARC rig at full HALO and RPTS 0, the return after 50 ms containe
 energy, with an estimated 0.560 s RT60 and 0.077 left/right correlation. The first echo kept its timing.
 The worst control sweep measured 1.55 times the steady-tone click measure, below the existing 2 times limit.
 The heaviest measured block was 20,631 instructions. The rig still checks exact audio bypass at HALO 0.
+
+## Stronger HALO and SKEW feedback routing
+
+**[D]** Full HALO at RPTS 0 raised the late return after 50 ms by 7.9 dB relative to the previous reverb.
+Estimated RT60 rose from 0.560 s to 0.735 s. The direct echo timing, tape feedback, HOLD and exact HALO 0
+bypass pass the existing rig checks. The late output now interpolates the half-rate returns with a quadratic
+midpoint and ramps gain at each output sample.
+
+Pressing SKEW enables mono input and alternating stereo repeats at the center. With SKEW offset, it keeps
+the two input channels and crosses their feedback, preserving the two delay times. The feedback and input
+routing move through a 256-frame ramp. Tests measure alternating impulses at center and independent
+1778/3240-frame times with crossed feedback when offset. The full engine and transition run passed 59 cases.
+The heaviest block took 22,183 instructions.

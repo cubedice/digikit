@@ -114,7 +114,7 @@ void pu_page(const PhraseUi *s, PhrasePage *page)
              flip = dkrt_phrase_get(PH_P_FLIP), hold = dkrt_phrase_get(PH_P_HOLD),
              repeats = dkrt_phrase_get(PH_P_RPTS), colour = dkrt_phrase_get(PH_P_COLR),
              halo = dkrt_phrase_get(PH_P_HALO), skew = dkrt_phrase_get(PH_P_SKEW),
-             frames = pu_frames(s);
+             ping_pong = dkrt_phrase_get(PH_P_PING_PONG), frames = pu_frames(s);
     put(page->title, s->title ? s->title : "PHRASE");
     put(page->zone, pu_zone_name(zone));
     /* The time the engine plays now: it glides after a free RATE move. Without a status there is none to show. */
@@ -145,7 +145,7 @@ void pu_page(const PhraseUi *s, PhrasePage *page)
     pu_format(text, PH_P_HALO, halo);
     cell(&page->cells[4], "HALO", text, "", 0);
     pu_format(text, PH_P_SKEW, skew);
-    cell(&page->cells[5], "SKEW", text, "", 0);
+    cell(&page->cells[5], "SKEW", text, ping_pong ? (skew == 64 ? "PONG" : "SWAP") : "", ping_pong);
     /* The input switch and Overloop's crossfader. */
     loop_cells(s, page);
 }
@@ -339,6 +339,8 @@ void pu_render(const PhrasePage *p, const PhraseCanvas *c, int show_values)
                 caption = k->state;
             }
         }
+        if (i == 5 && k->lit && !show_values)
+            caption = k->state;
         text(c, x, y + 19, caption, 1);
     }
 }

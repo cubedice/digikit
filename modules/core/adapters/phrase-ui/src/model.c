@@ -201,13 +201,14 @@ uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
         return PU_OWN;
     }
     if (key >= PU_PUSH && key < PU_PUSH + 8) {
-        /* A is FLIP, B is SYNC, C is HOLD; G holds the selection of the tracks; H is ARM while the loop effect reports.
-         * D, E and F are taken and do nothing. */
+        /* A is FLIP, B is SYNC, C is HOLD, and F is ping-pong. G holds the track selection. H arms the loop. */
         static const uint8_t switches[3] = {PH_P_FLIP, PH_P_SYNC, PH_P_HOLD};
         if (key < PU_PUSH + 3)
             toggle(s, switches[key - PU_PUSH]);
         if (key == PU_PUSH + 1)
             s->detent[1] = 0;
+        if (key == PU_PUSH + 5)
+            toggle(s, PH_P_PING_PONG);
         if (key == PU_PUSH + PU_SELECT) {
             s->select = 1;
             ++s->revision;

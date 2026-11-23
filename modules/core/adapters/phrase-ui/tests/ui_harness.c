@@ -129,10 +129,22 @@ static void presses(void)
         tap(&s, PU_PUSH + i);
         assert(raw[switches[i]] == 0);
     }
-    /* D to H: taken, so that the stock page does nothing with them; nothing is written. */
+    /* F switches stereo routing. Turning F keeps the mode and changes only the skew. */
     uint32_t before = writes;
-    for (uint32_t i = 3; i < 8; ++i)
-        tap(&s, PU_PUSH + i);
+    press(&s, PU_PUSH + 5);
+    assert(raw[PH_P_PING_PONG] == 1 && raw[PH_P_SKEW] == 64 && writes == before + 1);
+    assert(pu_key(&s, PU_PUSH + 5, PU_REPEAT) == PU_OWN);
+    release(&s, PU_PUSH + 5);
+    assert(raw[PH_P_PING_PONG] == 1 && writes == before + 1);
+    assert(pu_turn(&s, 5, 4, 0) == PU_OWN && raw[PH_P_PING_PONG] == 1 && raw[PH_P_SKEW] == 68);
+    tap(&s, PU_PUSH + 5);
+    assert(raw[PH_P_PING_PONG] == 0 && raw[PH_P_SKEW] == 68);
+    /* D, E, G and H consume their press and release without writing. */
+    before = writes;
+    tap(&s, PU_PUSH + 3);
+    tap(&s, PU_PUSH + 4);
+    tap(&s, PU_PUSH + 6);
+    tap(&s, PU_PUSH + 7);
     assert(writes == before);
     /* FUNC + NO: taken and nothing happens. FUNC itself, NO alone and the other keys are the stock page's. */
     assert(pu_key(&s, PU_FUNC, PU_PRESS) == PU_PASS);
@@ -432,6 +444,15 @@ static void rendering(void)
     assert(saw_at(&d, 58, 19, "375 MS") && saw_at(&values, 58, 19, "375 MS"));
     assert(saw_at(&d, 111, 2, "NO LOOP") && saw_at(&values, 111, 2, "NO LOOP"));
     assert(!d.inverted && !values.inverted);
+    tap(&s, PU_PUSH + 5);
+    pu_page(&s, &p);
+    draw_page(&p, &d, 0);
+    assert(p.cells[5].lit && saw_at(&d, 58, 59, "PONG"));
+    pu_turn(&s, 5, 12, 0);
+    pu_page(&s, &p);
+    draw_page(&p, &d, 0);
+    draw_page(&p, &values, 1);
+    assert(p.cells[5].lit && saw_at(&d, 58, 59, "SWAP") && saw_at(&values, 58, 59, "R 12"));
     /* Every value at both ends of its range, with every switch on, stays on the screen. */
     for (uint32_t pass = 0; pass < 2; ++pass) {
         for (uint32_t i = 0; i < PH_PARAM_COUNT; ++i)

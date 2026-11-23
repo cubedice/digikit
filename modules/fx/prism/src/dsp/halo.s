@@ -213,11 +213,15 @@ _prism_halo_late:
     DM(PL_DAMP_L,I4) = R1;
     DM(PL_DAMP_R,I4) = R1;
     DM(PL_GAIN,I4) = R1;
+    DM(PL_PRIOR_L,I4) = R1;
+    DM(PL_PRIOR_R,I4) = R1;
     RTS;
 
 _hl_late_on:
-    F0 = F0 * F0;
-    R1 = PRISM_LATE_AMOUNT;
+    R1 = PRISM_LATE_SLOPE;
+    F1 = F0 * F1;
+    R2 = PRISM_LATE_BASE;
+    F1 = F1 + F2;
     F0 = F0 * F1;
     F1 = DM(PS_MIX,I5);
     F0 = F0 * F1;
@@ -226,6 +230,9 @@ _hl_late_on:
     F0 = F0 - F6;
     R1 = 0x3d800000; // one sixteenth of the gain difference per pair
     F7 = F0 * F1;
+    R1 = 0x3f000000;
+    F0 = F7 * F1;
+    DM(PS_TEMP4,I5) = R0;
     F4 = DM(PL_DAMP_L,I4);
     F5 = DM(PL_DAMP_R,I4);
     R11 = DM(PL_INDEX,I4);
@@ -284,11 +291,23 @@ _hl_late_on:
         F0 = F0 * F8;
         F5 = F5 + F0;
 
-        // Reconstruct the two output samples with a linear half-step.
+        // The output's half-step uses quadratic interpolation through the
+        // last three samples. The gain ramps at both output samples.
         F6 = F6 + F7;
+        F0 = F2 + F2;
+        F0 = F0 - F4;
+        F1 = DM(PS_LATE + PL_PRIOR_L,I5);
+        F0 = F0 - F1;
+        DM(PS_LATE + PL_PRIOR_L,I5) = R2;
+        R1 = 0x3e000000; // 1/8
+        F0 = F0 * F1;
         F2 = F2 + F4;
         F2 = F2 * F10;
-        F2 = F2 * F6;
+        F2 = F2 + F0;
+        F0 = DM(PS_TEMP4,I5);
+        F0 = F6 - F0;
+        DM(PS_TEMP5,I5) = R0;
+        F2 = F2 * F0;
         F0 = DM(I2,M5);
         F0 = F0 + F2;
         F0 = MIN(F0,F14);
@@ -300,9 +319,18 @@ _hl_late_on:
         F0 = MIN(F0,F14);
         F0 = MAX(F0,F15);
         DM(I2,M6) = R0;
+        F0 = F3 + F3;
+        F0 = F0 - F5;
+        F1 = DM(PS_LATE + PL_PRIOR_R,I5);
+        F0 = F0 - F1;
+        DM(PS_LATE + PL_PRIOR_R,I5) = R3;
+        R1 = 0x3e000000;
+        F0 = F0 * F1;
         F3 = F3 + F5;
         F3 = F3 * F10;
-        F3 = F3 * F6;
+        F3 = F3 + F0;
+        F0 = DM(PS_TEMP5,I5);
+        F3 = F3 * F0;
         F0 = DM(I3,M5);
         F0 = F0 + F3;
         F0 = MIN(F0,F14);

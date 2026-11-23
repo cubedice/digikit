@@ -72,6 +72,7 @@ export interface Controls {
   sync: boolean;
   flip: boolean;
   hold: boolean;
+  pingPong: boolean;
   /** with `sync`: the time in frames */
   syncTime: number;
   /** 0..1: 0.75 is unity */
@@ -108,6 +109,7 @@ export const DEFAULTS: Controls = {
   sync: false,
   flip: false,
   hold: false,
+  pingPong: false,
   syncTime: 12000,
   rpts: 0.5,
   colr: 0,
@@ -273,7 +275,11 @@ export class PrismRig {
       4: 1,
       8: c.zone,
       9: f2w(c.rate),
-      10: (c.sync ? 1 : 0) | (c.flip ? 2 : 0) | (c.hold ? 4 : 0),
+      10:
+        (c.sync ? PH.PH_F_SYNC! : 0) |
+        (c.flip ? PH.PH_F_FLIP! : 0) |
+        (c.hold ? PH.PH_F_HOLD! : 0) |
+        (c.pingPong ? PH.PH_F_PING_PONG! : 0),
       11: c.syncTime,
       12: f2w(c.rpts),
       13: f2w(c.colr),

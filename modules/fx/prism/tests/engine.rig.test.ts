@@ -455,6 +455,68 @@ describe('PRISM repeater engine: SYNC after the Mimeophon', () => {
   });
 });
 
+describe('PRISM repeater engine: ping pong', () => {
+  test('a centered SKEW click sends mono into the left echo, then alternates right and left', async () => {
+    await withRig({ frames: 16384 }, async (rig) => {
+      const delay = 2400;
+      rig.set({ sync: true, syncTime: delay, rpts: 0.75, pingPong: true });
+      await rig.run(320);
+      const start = rig.clock + 32;
+      const take = await rig.run(260, (frame) => (frame === start ? [0.125, 0.225] : [0, 0]));
+      for (let echo = 1; echo <= 3; echo++) {
+        const sounding = echo % 2 ? take.left : take.right;
+        const other = echo % 2 ? take.right : take.left;
+        expect(sounding[32 + delay * echo]).toBeCloseTo(0.175, 2);
+        expect(Math.abs(other[32 + delay * echo]!)).toBeLessThan(0.005);
+      }
+      note('PING PONG at center: the first mono echo is left, then it alternates right and left');
+    });
+  });
+
+  test('away from center the first echoes stay stereo and their feedback swaps sides', async () => {
+    await withRig({ frames: 16384 }, async (rig) => {
+      rig.set({ sync: true, syncTime: 2400, rpts: 0.75, skew: 0.7, pingPong: true });
+      await rig.run(320);
+      const [leftTime, rightTime] = await rig.state(PS.TIME_L, 2);
+      expect(leftTime).toBeLessThan(rightTime!);
+      const start = rig.clock + 32;
+      const take = await rig.run(300, (frame) => (frame === start ? [0.125, -0.225] : [0, 0]));
+      expect(take.left[32 + leftTime!]).toBeCloseTo(0.125, 2);
+      expect(take.right[32 + rightTime!]).toBeCloseTo(-0.225, 2);
+      const swap = 32 + leftTime! + rightTime!;
+      expect(take.left[swap]).toBeCloseTo(-0.225, 2);
+      expect(take.right[swap]).toBeCloseTo(0.125, 2);
+      note(`SWAP retains the ${leftTime}/${rightTime}-frame stereo delays and exchanges their feedback`);
+    });
+  });
+
+  test('a switch eases in over 256 frames and toggling off restores exact stereo tape inputs', async () => {
+    await withRig({ frames: 4096 }, async (rig) => {
+      const left = 0.25;
+      const right = 0.75;
+      const input: Signal = () => [left, right];
+      rig.set({ sync: true, syncTime: 1200, rpts: 0 });
+      await rig.run(16, input);
+      const [onAt] = await rig.state(PS.WPOS);
+      rig.set({ pingPong: true });
+      await rig.run(9, input);
+      const [offAt] = await rig.state(PS.WPOS);
+      rig.set({ pingPong: false });
+      await rig.run(9, input);
+      const words = await rig.tape();
+      for (const [at, enabling] of [[onAt!, true], [offAt!, false]] as const) {
+        for (let frame = 0; frame < 288; frame++) {
+          const step = Math.min((frame + 1) / 256, 1);
+          const phase = enabling ? step : 1 - step;
+          const amount = phase ** 2 * (3 - 2 * phase);
+          expect(w2f(words[at + frame]!)).toBeCloseTo(left + (right - left) * 0.5 * amount, 6);
+          expect(w2f(words[rig.frames + at + frame]!)).toBeCloseTo(right * (1 - amount), 6);
+        }
+      }
+    });
+  });
+});
+
 describe('PRISM repeater engine: no clicks', () => {
   // A crossfade adds two heads' tones with their phases: the level can rise to sqrt(2), and the measure with it.
   const LIMIT = 2;
@@ -983,9 +1045,9 @@ describe('PRISM repeater engine: HALO', () => {
       }
       expect(distance).toBeGreaterThan(0.05);
 
-      // Start the decay measurement after the diffuser. Integrate backwards from 600 ms, before the second hit.
+      // Start after the diffuser. Integrate backwards from 850 ms, before the second hit.
       const lateStart = echoes[0]! + 2400;
-      const lateEnd = echoes[0]! + 28800;
+      const lateEnd = echoes[0]! + 40800;
       const remaining = new Float64Array(lateEnd - lateStart);
       let energyLeft = 0;
       let energyRight = 0;
@@ -1007,11 +1069,11 @@ describe('PRISM repeater engine: HALO', () => {
         `full HALO at RPTS 0, after 50 ms: ${db(Math.sqrt(lateShare)).toFixed(1)} dB of the input impulse, ` +
           `estimated RT60 ${decay.toFixed(3)} s, stereo correlation ${correlation.toFixed(3)}, L/R balance ${balance.toFixed(1)} dB`,
       );
-      expect(lateShare, 'a late tail remains after early diffusion with no tape feedback').toBeGreaterThan(0.005);
+      expect(lateShare, 'HALO has a clearly stronger tail at RPTS 0').toBeGreaterThan(0.035);
       expect(at5).toBeGreaterThan(0);
       expect(at25).toBeGreaterThan(at5);
-      expect(decay).toBeGreaterThan(0.25);
-      expect(decay).toBeLessThan(0.9);
+      expect(decay).toBeGreaterThan(0.55);
+      expect(decay).toBeLessThan(1.1);
       expect(Math.abs(correlation), 'the late tail decorrelates mono input').toBeLessThan(0.45);
       expect(Math.abs(balance), 'the late tail carries energy on both sides').toBeLessThan(4);
     });
@@ -1396,7 +1458,7 @@ describe('PRISM repeater engine: cost', () => {
         rig.set({ hold: true });
         await rig.run(17 + k, input);
         rig.loop = { alive: true, tap: input };
-        rig.set({ hold: false, rate: 0.9 - 0.01 * k, input: k % 2 });
+        rig.set({ hold: false, rate: 0.9 - 0.01 * k, input: k % 2, skew: 0, pingPong: k % 2 === 0 });
         await rig.run(40, input);
       }
     });
