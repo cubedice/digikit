@@ -264,19 +264,22 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     ]);
     expect(turned.mix).toBe(90);
 
-    // F toggles the saved stereo routing. A skewed delay swaps both feedback paths.
+    // F walks through the three routes from any SKEW position.
+    const routeFlags = PH.PH_F_PING_PONG! | PH.PH_F_SWAP!;
     await tap(session, 'PUSH F', 500);
-    expect(await value(PH.PH_P_PING_PONG!)).toBe(1);
-    expect((await control())('PH_C_FLAGS') & PH.PH_F_PING_PONG!).toBe(PH.PH_F_PING_PONG);
-    expect((await page()).cells[5]).toMatchObject({ value: 'R 3', state: 'SWAP', lit: true });
-    // Centering SKEW gives ping-pong and keeps the same routing switch enabled.
-    await turn('ENC F', -3);
+    expect(await value(PH.PH_P_ROUTE!)).toBe(PH.PH_ROUTE_PONG);
+    expect((await control())('PH_C_FLAGS') & routeFlags).toBe(PH.PH_F_PING_PONG);
+    expect(float((await control())('PH_C_SKEW'))).toBe(0);
     expect((await page()).cells[5]).toMatchObject({ value: '0', state: 'PONG', lit: true });
-    await turn('ENC F', 3);
-    await tap(session, 'PUSH F', 120);
+    await turn('ENC F', -3);
     expect(await value(PH.PH_P_SKEW!)).toBe(67);
-    expect(await value(PH.PH_P_PING_PONG!)).toBe(0);
-    expect((await control())('PH_C_FLAGS') & PH.PH_F_PING_PONG!).toBe(0);
+    await tap(session, 'PUSH F', 120);
+    expect(await value(PH.PH_P_ROUTE!)).toBe(PH.PH_ROUTE_SWAP);
+    expect((await control())('PH_C_FLAGS') & routeFlags).toBe(routeFlags);
+    expect((await page()).cells[5]).toMatchObject({ value: 'R 3', state: 'SWAP', lit: true });
+    await tap(session, 'PUSH F', 120);
+    expect(await value(PH.PH_P_ROUTE!)).toBe(PH.PH_ROUTE_SKEW);
+    expect((await control())('PH_C_FLAGS') & routeFlags).toBe(0);
     expect((await page()).cells[5]).toMatchObject({ value: 'R 3', state: '', lit: false });
 
     // G is INPT's switch also without a loop: to the right LOOP, which stays (PRISM hears silence and the page says so), to the left

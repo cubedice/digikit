@@ -19,7 +19,7 @@ carries rate mode, input and loop status. FLIP, HOLD and ARMD are above the MIX 
 | C | RPTS, dashes to ∞ | HOLD | the number, or `INF` with `HOLD` inverted |
 | D | COLR | | Signed distance from the centre. Negative darkens and positive brightens |
 | E | HALO | | the number |
-| F | SKEW | | `L 12` or `R 12`: the side with the longer time and the distance from the centre |
+| F | SKEW | Cycle SKEW, PONG, SWAP | `L 12` or `R 12` for the longer side and distance from centre, `0` in PONG |
 | G | INPT, a two-position switch: a tick to the right LOOP, to the left LIVE, at any time (also without a loop) | nothing. Held: the TRIG keys turn tracks on and off, their LEDs show them | `INPT`, `LIVE` or `LOOP`, and under it the tracks the effect hears (`5 TRK`, `NO TRK`), or `SILENT` at LOOP while there is no loop; while G is held the tracks and `TRIGS` inverted |
 | H | XFAD, Overloop's crossfader, a step a tick, only while there is a loop | ARM, while Overloop reports | The applied crossfader above `LIVE`, a number, or `LOOP`. Before a loop exists, `NO LOOP` or `ARMD` with `16 ST`, `CUT`, or `WAIT` |
 | FUNC + NO | | drop the loop | |

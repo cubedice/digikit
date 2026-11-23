@@ -112,8 +112,12 @@ static void controls(void)
     assert(dkrt_phrase_set(PH_P_FLIP, 1) == 0 && word(PH_C_FLAGS) == (PH_F_SYNC | PH_F_FLIP));
     assert(dkrt_phrase_set(PH_P_HOLD, 7) == 0 &&
            word(PH_C_FLAGS) == (PH_F_SYNC | PH_F_FLIP | PH_F_HOLD));
-    assert(dkrt_phrase_set(PH_P_PING_PONG, 7) == 0 && dkrt_phrase_get(PH_P_PING_PONG) == 1 &&
+    assert(dkrt_phrase_set(PH_P_ROUTE, PH_ROUTE_PONG) == 0 && word(PH_C_SKEW) == 0 &&
+           dkrt_phrase_get(PH_P_SKEW) == 127 &&
            word(PH_C_FLAGS) == (PH_F_SYNC | PH_F_FLIP | PH_F_HOLD | PH_F_PING_PONG));
+    assert(dkrt_phrase_set(PH_P_ROUTE, 7) == 0 && dkrt_phrase_get(PH_P_ROUTE) == PH_ROUTE_SWAP &&
+           f(word(PH_C_SKEW)) == 1.0f &&
+           word(PH_C_FLAGS) == (PH_F_SYNC | PH_F_FLIP | PH_F_HOLD | PH_F_PING_PONG | PH_F_SWAP));
     /* INPT is a switch, published as it is and not saved (a restart has no loop); XFAD is the loop effect's and cannot be
      * set here, and the words of the crossfader and of ARM stay 0 */
     u32 before = writes;
@@ -397,11 +401,20 @@ static void tracks(void)
     restart(15);
     assert(dkrt_phrase_get(PH_P_RATIO) == PH_SYNC_UNITY);
     /* Old PRISM records keep their explicit track choices and default to straight feedback. */
-    store(PH_P_PING_PONG, 0x0801);
+    store(PH_P_ROUTE, 0x0801);
     sends(owner_amounts, 16);
     restart(16);
-    assert(dkrt_phrase_get(PH_P_TRKS) == 0x0801 && dkrt_phrase_get(PH_P_PING_PONG) == 0);
+    assert(dkrt_phrase_get(PH_P_TRKS) == 0x0801 && dkrt_phrase_get(PH_P_ROUTE) == PH_ROUTE_SKEW);
     assert(!(word(PH_C_FLAGS) & PH_F_PING_PONG));
+    /* The old switch restores the route that was audible with the saved skew. */
+    store(PH_PARAM_COUNT, 0x0801);
+    saved[4 + 4 * PH_P_ROUTE + 3] = 1;
+    restart(17);
+    assert(dkrt_phrase_get(PH_P_ROUTE) == PH_ROUTE_SWAP && (word(PH_C_FLAGS) & PH_F_SWAP));
+    saved[4 + 4 * PH_P_SKEW + 3] = 64;
+    restart(18);
+    assert(dkrt_phrase_get(PH_P_ROUTE) == PH_ROUTE_PONG && word(PH_C_SKEW) == 0);
+    assert((word(PH_C_FLAGS) & (PH_F_PING_PONG | PH_F_SWAP)) == PH_F_PING_PONG);
     /* A record with the tracks out of range: clamped to the 16 tracks. */
     store(PH_PARAM_COUNT, 0x12345);
     restart(12);
@@ -429,7 +442,7 @@ int main(void)
     sync_times();
     status_assembly();
     /* The settings are global and survive the owner: every value but HOLD. */
-    assert(writes && saved_bytes == 4 + PH_PARAM_COUNT * 4 && saved[2] == 3);
+    assert(writes && saved_bytes == 4 + PH_PARAM_COUNT * 4 && saved[2] == 4);
     u32 before[PH_PARAM_COUNT];
     for (u32 i = 0; i < PH_PARAM_COUNT; ++i)
         before[i] = dkrt_phrase_get(i);
@@ -441,7 +454,7 @@ int main(void)
     assert(dkrt_phrase_active() == 0x21 && generation == seen + 2);
     for (u32 i = 0; i < PH_PARAM_COUNT; ++i)
         assert(dkrt_phrase_get(i) == (i == PH_P_HOLD ? 0 : before[i]));
-    assert(word(PH_C_FLAGS) == (PH_F_SYNC | PH_F_FLIP | PH_F_PING_PONG) &&
+    assert(word(PH_C_FLAGS) == (PH_F_SYNC | PH_F_FLIP | PH_F_PING_PONG | PH_F_SWAP) &&
            word(PH_C_OWNER_ROW) == 2);
     /* a HOLD press alone writes no settings */
     unsigned n = writes;

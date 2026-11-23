@@ -129,16 +129,20 @@ static void presses(void)
         tap(&s, PU_PUSH + i);
         assert(raw[switches[i]] == 0);
     }
-    /* F switches stereo routing. Turning F keeps the mode and changes only the skew. */
+    /* Each press of F selects a route. PONG holds the audible skew at centre. */
     uint32_t before = writes;
     press(&s, PU_PUSH + 5);
-    assert(raw[PH_P_PING_PONG] == 1 && raw[PH_P_SKEW] == 64 && writes == before + 1);
+    assert(raw[PH_P_ROUTE] == PH_ROUTE_PONG && raw[PH_P_SKEW] == 64 && writes == before + 1);
     assert(pu_key(&s, PU_PUSH + 5, PU_REPEAT) == PU_OWN);
     release(&s, PU_PUSH + 5);
-    assert(raw[PH_P_PING_PONG] == 1 && writes == before + 1);
-    assert(pu_turn(&s, 5, 4, 0) == PU_OWN && raw[PH_P_PING_PONG] == 1 && raw[PH_P_SKEW] == 68);
+    assert(raw[PH_P_ROUTE] == PH_ROUTE_PONG && writes == before + 1);
+    assert(pu_turn(&s, 5, 4, 0) == PU_OWN && raw[PH_P_SKEW] == 64 && writes == before + 1);
     tap(&s, PU_PUSH + 5);
-    assert(raw[PH_P_PING_PONG] == 0 && raw[PH_P_SKEW] == 68);
+    assert(raw[PH_P_ROUTE] == PH_ROUTE_SWAP && raw[PH_P_SKEW] == 64);
+    assert(pu_turn(&s, 5, 4, 0) == PU_OWN && raw[PH_P_ROUTE] == PH_ROUTE_SWAP &&
+           raw[PH_P_SKEW] == 68);
+    tap(&s, PU_PUSH + 5);
+    assert(raw[PH_P_ROUTE] == PH_ROUTE_SKEW && raw[PH_P_SKEW] == 68);
     /* D, E, G and H consume their press and release without writing. */
     before = writes;
     tap(&s, PU_PUSH + 3);
@@ -448,6 +452,7 @@ static void rendering(void)
     pu_page(&s, &p);
     draw_page(&p, &d, 0);
     assert(p.cells[5].lit && saw_at(&d, 58, 59, "PONG"));
+    tap(&s, PU_PUSH + 5);
     pu_turn(&s, 5, 12, 0);
     pu_page(&s, &p);
     draw_page(&p, &d, 0);

@@ -87,6 +87,7 @@ any more: the kit loads as any kit does and changes nothing in Overloop.
   run, the loop's phase is kept (for a CONTINUE) and the loop side fades out; at the first boundary after the transport
   runs again it begins (at its first frame, or after a pause where it stood) and fades in. The fade is
   `OL_TFADE_FRAMES` (256), the weight a·a·(3 - 2a) applied to the crossfader. The status shows `LS_STOPPED` meanwhile.
+  If the position stream expires, the loop side also fades out and the recorded loop stays available.
 - **A record that comes again or late** (on the device a frame of the link comes twice or late when the ColdFire's block
   interrupt is held off; the position receiver then keeps the last good record, [finding 363](../../../docs/findings/363-loop-link-jitter.md)):
   the recording runs through gaps in the send sequence while the musical boundaries remain consecutive. A single new

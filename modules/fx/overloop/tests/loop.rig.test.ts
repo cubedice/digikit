@@ -645,6 +645,38 @@ describe('Overloop engine: the transport (docs/findings/365)', () => {
     });
   });
 
+  test.each([
+    ['is cleared by the receiver', false],
+    ['stays unchanged until its grace period expires', true],
+  ])('STOP silences the held loop when the position record %s', async (reason, repeated) => {
+    const grace = OL.OL_POSITION_GRACE!;
+    let stopBlock = Infinity;
+    const delivery = jitter((b) => repeated && b >= stopBlock && b < stopBlock + grace + blocks(FADE));
+    await withRig({ delivery, tap: true }, async (rig) => {
+      const { take, change } = await armedChange(rig, 3, 1);
+      rig.arm();
+      stopBlock = blocks(rig.clock);
+      rig.stop();
+      if (repeated) {
+        await rig.run(grace - 1, SOUND_B);
+        expect(await rig.status(), 'the loop keeps playing during the grace period').toMatchObject({ loop: true, stopped: false });
+      } else {
+        rig.patchPosition(0, 0);
+      }
+      await rig.run(1, SOUND_B);
+      expect(await rig.status(), reason).toMatchObject({ loop: true, armed: true, stopped: true, count: 1, gain: 1 });
+      const stopped = await rig.run(blocks(FADE), SOUND_B);
+      expect(sameBits(stopped.left, stopped.dryLeft, FADE - BLOCK)).toBe(0);
+      expect(sameBits(stopped.right, stopped.dryRight, FADE - BLOCK)).toBe(0);
+      expect((await rig.tapHead())[3]! & LP.LT_AUDIBLE!).toBe(0);
+      await rig.run(1, SOUND_B); // Receive a fresh, stopped record before START.
+      rig.start(B);
+      const started = await rig.run(blocks(CYCLE), SOUND_B);
+      expect(await rig.status()).toMatchObject({ loop: true, armed: true, stopped: false, count: 1, gain: 1 });
+      expect(maxDifference(started.left, FADE, take.left, change - CYCLE + FADE, CYCLE - FADE)).toBe(0);
+    });
+  });
+
   test('START: the loop begins at its first frame with the pattern and fades in, to where XFAD stands', async () => {
     await withRig({}, async (rig) => {
       const { take, change } = await armedChange(rig, 3, 1);

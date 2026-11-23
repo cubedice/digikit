@@ -201,14 +201,17 @@ uint32_t pu_key(PhraseUi *s, uint32_t key, uint32_t flags)
         return PU_OWN;
     }
     if (key >= PU_PUSH && key < PU_PUSH + 8) {
-        /* A is FLIP, B is SYNC, C is HOLD, and F is ping-pong. G holds the track selection. H arms the loop. */
+        /* A is FLIP, B is SYNC, C is HOLD, and F cycles feedback routes. G selects tracks. H arms the loop. */
         static const uint8_t switches[3] = {PH_P_FLIP, PH_P_SYNC, PH_P_HOLD};
         if (key < PU_PUSH + 3)
             toggle(s, switches[key - PU_PUSH]);
         if (key == PU_PUSH + 1)
             s->detent[1] = 0;
-        if (key == PU_PUSH + 5)
-            toggle(s, PH_P_PING_PONG);
+        if (key == PU_PUSH + 5) {
+            uint32_t route = dkrt_phrase_get(PH_P_ROUTE);
+            dkrt_phrase_set(PH_P_ROUTE, route < PH_ROUTE_SWAP ? route + 1 : PH_ROUTE_SKEW);
+            ++s->revision;
+        }
         if (key == PU_PUSH + PU_SELECT) {
             s->select = 1;
             ++s->revision;
@@ -248,6 +251,8 @@ uint32_t pu_turn(PhraseUi *s, uint32_t encoder, int32_t delta, uint32_t fine)
     if (!s->active || encoder > PU_LEVEL)
         return PU_PASS;
     uint32_t p = pu_parameter(encoder);
+    if (p == PH_P_SKEW && dkrt_phrase_get(PH_P_ROUTE) == PH_ROUTE_PONG)
+        return PU_OWN;
     /* G and H: taken, so that the stock page does not turn a value under them. G is INPT's switch at any time (a tick to
      * the right is LOOP, to the left LIVE); H, while there is a loop, the loop effect's crossfader, a step a tick. */
     if (p >= PH_PARAM_COUNT) {

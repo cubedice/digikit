@@ -41,7 +41,7 @@ WRITE opens the record head. As each piece of tape passes, the head **replaces**
 
 Tap SRC to change waveform size. Both pages keep the same encoder assignments, track header and page indicators. Hold SRC on either page to see values. WRITE and PLAY show their positions in seconds, and LEN shows the active step count. [Digitakt II OS 1.17 manual, Appendix A](https://www.elektron.se/media/2026/10/Digitakt-2-User-Manual_ENG_OS1.17_260930.pdf)
 
-The symbol at the upper left shows paused, playing, armed or recording. The waveform shows the entire take with a dashed mark at a shortened loop's end. A preview follows new writes until the completed overview becomes available. Recorder and file errors appear as brief messages. Confirmations for recalling over a changed tape remain visible until answered.
+The transport symbol occupies cell C on both pages and shows paused, playing, armed or recording. The large waveform page shows parameter labels until SRC is held and keeps the selected input visible. The waveform shows the entire take with a dashed mark at a shortened loop's end. A preview follows new writes until the completed overview becomes available. Recorder and file errors appear as brief messages. Confirmations for recalling over a changed tape remain visible until answered.
 
 Each overview column keeps 8-bit minimum and maximum peaks. The display scales all columns together against the strongest visible peak for clearer quiet material. The scaling adds up to 30 dB to the drawing.
 

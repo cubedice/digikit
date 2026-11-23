@@ -287,25 +287,25 @@ int main(void)
     status[5] = 0;
     page = 1;
     draw_waveform(pixels[0], &wave, 0, 0, 0, 0, 0);
-    for (unsigned y = 27; y <= 46; ++y) {
-        assert(pixels[y][17] == (y <= 45));
-        assert(pixels[y][18] == (y == 36));
+    for (unsigned y = 23; y <= 53; ++y) {
+        assert(pixels[y][17]);
+        assert(pixels[y][18] == (y == 38));
     }
     // Quiet transients expand while keeping their relative heights.
     memset(pixels, 0, sizeof(pixels));
     wave.peaks[0] = 0x837d;
     wave.peaks[1] = 0x827e;
     draw_waveform(pixels[0], &wave, 0, 0, 0, 0, 0);
-    for (unsigned y = 27; y <= 46; ++y) {
-        assert(pixels[y][17] == (y >= 29 && y <= 43));
-        assert(pixels[y][18] == (y >= 31 && y <= 41));
+    for (unsigned y = 23; y <= 53; ++y) {
+        assert(pixels[y][17] == (y >= 27 && y <= 49));
+        assert(pixels[y][18] == (y >= 30 && y <= 46));
     }
     memset(pixels, 0, sizeof(pixels));
     status[5] = 1200;
     draw_waveform(pixels[0], &wave, 0, 1, 600, 120, 300);
-    assert(!pixels[26][27] && pixels[26][29]);                    // write head
-    assert(!pixels[47][43] && pixels[47][45]);                    // play head
-    assert(!pixels[26][70] && pixels[28][70] && !pixels[28][71]); // trim boundary
+    assert(!pixels[22][27] && pixels[22][29]);                    // write head
+    assert(!pixels[54][43] && pixels[54][45]);                    // play head
+    assert(!pixels[22][70] && pixels[24][70] && !pixels[24][71]); // trim boundary
     page = 0;
     memset(pixels, 0, sizeof(pixels));
     wave.peaks[0] = 0xff00;
@@ -335,8 +335,10 @@ int main(void)
            live_peaks[59] == wave.peaks[0] && live_peaks[60] == RELAY_WAVE_EMPTY &&
            live_peaks[119] == RELAY_WAVE_EMPTY);
 
-    // Both views preserve the same controls and show the two actual head positions.
+    // The controls page keeps the native dials and their actual head positions.
     settings[track].rate = -50;
+    settings[track].gain = 64;
+    settings[track].feedback = 42;
     settings[track].mix = 37;
     settings[track].input = RT_INPUT_MAIN;
     status[2] = 0;
@@ -352,27 +354,43 @@ int main(void)
     assert(has_text(33, 58, "WRITE") && has_text(59, 58, "PLAY"));
     assert(has_text(85, 58, "LEN") && has_text(111, 58, "MIX") && text_count == 8);
     assert(pixels[38][64] && !pixels[35][64] && !pixels[18][64]);
-    assert(pixels[14][16] && !pixels[14][17] && !pixels[14][18] && pixels[14][19]); // paused
+    assert(pixels[20][83] && !pixels[20][85] && pixels[20][87]); // paused in C
+    assert(!pixels[14][16]);
     text_count = 0;
     status[7] = 1;
     draw(0, pixels[0], 255);
     assert(has_text(33, 30, "MAIN") && has_text(59, 30, "-0.50") && has_text(111, 58, "37"));
     assert(has_text(85, 58, "8") && text_count == 7);
-    assert(pixels[14][16] && pixels[14][17] && pixels[14][18] && !pixels[14][19]); // playing
+    assert(pixels[20][83] && pixels[20][86] && !pixels[20][87]); // playing in C
 
+    // The waveform page keeps the encoder assignments and leaves room for taller peaks.
     text_count = rotary_cells = 0;
     page = 1;
     status[2] = 2;
     draw(0, pixels[0], 0);
-    assert(!rotary_cells && has_text(33, 20, "INPT") && has_text(59, 20, "RATE"));
-    assert(has_text(111, 20, "FDBK") && has_text(33, 58, "WRITE") && has_text(59, 58, "PLAY"));
-    assert(has_text(85, 58, "LEN") && has_text(111, 58, "MIX") && text_count == 8);
-    assert(pixels[49][31] && pixels[49][57] && pixels[26][17]); // mini dials and larger overview
-    assert(pixels[12][16] && pixels[12][17] && pixels[12][18] && pixels[12][19]); // recording
+    assert(!rotary_cells && has_text(33, 13, "MAIN") && has_text(59, 13, "RATE"));
+    assert(has_text(111, 13, "FDBK") && has_text(33, 58, "WRITE") && has_text(59, 58, "PLAY"));
+    assert(has_text(85, 58, "LEN") && has_text(111, 58, "MIX") && text_count == 7);
+    assert(pixels[22][17] && pixels[54][17]);
+    assert(!pixels[11][57] && !pixels[55][31] && !pixels[55][57]); // no mini dials
+    assert(pixels[15][83] && pixels[15][85] && pixels[15][87]);    // recording in C
+    assert(!pixels[12][16]);
+
+    // Held SRC reveals values without hiding the source or transport state.
     text_count = 0;
     status[2] |= 16;
     draw(0, pixels[0], 255);
-    assert(has_text(33, 20, "MAIN") && !has_text(33, 20, "INPT") && pixels[26][17]);
-    assert(pixels[12][16] && !pixels[12][17] && !pixels[12][18] && pixels[12][19]); // armed
+    assert(!rotary_cells && has_text(33, 13, "MAIN") && has_text(59, 13, "-0.50"));
+    assert(has_text(111, 13, "42") && has_text(33, 58, "0.0") && has_text(59, 58, "0.0"));
+    assert(has_text(85, 58, "8") && has_text(111, 58, "37") && text_count == 7);
+    assert(pixels[22][17] && pixels[54][17]);
+    assert(pixels[15][83] && !pixels[15][85] && pixels[15][87]); // armed in C
+    edit_gain = 1;
+    text_count = 0;
+    draw(0, pixels[0], 0);
+    assert(has_text(33, 13, "GAIN"));
+    text_count = 0;
+    draw(0, pixels[0], 255);
+    assert(has_text(33, 13, "64"));
     return 0;
 }
