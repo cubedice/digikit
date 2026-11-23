@@ -18,8 +18,8 @@ static u32 beat_frame, beat, beating;
 static u32 assembling[PH_STATUS_WORDS];
 static char key[48], sends_key[48];
 static char title[24];
-/* Format 3 stores all raw values or an older prefix ending before tracks or ping-pong were added. */
-enum { SAVE_FORMAT = 3 };
+/* Format 4 stores an explicit route. Format 3 stored a switch, or an older prefix without tracks or routing. */
+enum { LEGACY_FORMAT = 3, SAVE_FORMAT = 4 };
 
 static u32 bits(float v)
 {
@@ -38,8 +38,10 @@ static u32 limit(u32 p)
         return PH_RATE_MAX;
     if (p == PH_P_RATIO)
         return PH_SYNC_RATIOS - 1;
-    if (p == PH_P_SYNC || p == PH_P_FLIP || p == PH_P_HOLD || p == PH_P_INPT || p == PH_P_PING_PONG)
+    if (p == PH_P_SYNC || p == PH_P_FLIP || p == PH_P_HOLD || p == PH_P_INPT)
         return 1;
+    if (p == PH_P_ROUTE)
+        return PH_ROUTE_SWAP;
     if (p == PH_P_TRKS)
         return PH_TRACKS_ALL;
     return 127;
@@ -99,8 +101,9 @@ static void load(void)
     defaults();
     int n = dkrt_settings_get(key, value, sizeof(value));
     u32 count = 0;
-    if (n >= 4 && value[0] == 'P' && value[1] == 'H' && value[2] == SAVE_FORMAT &&
-        value[3] >= PH_P_TRKS && value[3] <= PH_PARAM_COUNT && n == 4 + 4 * (int)value[3])
+    if (n >= 4 && value[0] == 'P' && value[1] == 'H' &&
+        (value[2] == SAVE_FORMAT || value[2] == LEGACY_FORMAT) && value[3] >= PH_P_TRKS &&
+        value[3] <= PH_PARAM_COUNT && n == 4 + 4 * (int)value[3])
         count = value[3];
     for (u32 i = 0; i < count; ++i) {
         u32 v = 0;
@@ -108,6 +111,8 @@ static void load(void)
             v = (v << 8) | value[4 + 4 * i + j];
         raw[i] = v > limit(i) ? limit(i) : v;
     }
+    if (count > PH_P_ROUTE && value[2] == LEGACY_FORMAT && raw[PH_P_ROUTE])
+        raw[PH_P_ROUTE] = raw[PH_P_SKEW] == 64 ? PH_ROUTE_PONG : PH_ROUTE_SWAP;
     raw[PH_P_HOLD] = raw[PH_P_INPT] = raw[PH_P_XFAD] = 0;
     /* No tracks of its own (a record from before, another format or none): the ones the send amounts gave. They are saved
      * with the next change of any value. */
@@ -178,14 +183,15 @@ static void publish(void)
     W(PH_C_ENABLED, owner != 0);
     W(PH_C_ZONE, raw[PH_P_ZONE] + 1);
     W(PH_C_RATE, bits((float)raw[PH_P_RATE] / (float)PH_RATE_MAX));
+    u32 route = raw[PH_P_ROUTE];
     W(PH_C_FLAGS, (raw[PH_P_SYNC] ? PH_F_SYNC : 0) | (raw[PH_P_FLIP] ? PH_F_FLIP : 0) |
-                      (raw[PH_P_HOLD] ? PH_F_HOLD : 0) |
-                      (raw[PH_P_PING_PONG] ? PH_F_PING_PONG : 0));
+                      (raw[PH_P_HOLD] ? PH_F_HOLD : 0) | (route ? PH_F_PING_PONG : 0) |
+                      (route == PH_ROUTE_SWAP ? PH_F_SWAP : 0));
     /* SYNC_TIME is filled in per block from the tempo (sync_frames). */
     W(PH_C_RPTS, bits(repeats(raw[PH_P_RPTS])));
     W(PH_C_COLR, bits(centred(raw[PH_P_COLR])));
     W(PH_C_HALO, bits((float)raw[PH_P_HALO] / 127.0f));
-    W(PH_C_SKEW, bits(centred(raw[PH_P_SKEW])));
+    W(PH_C_SKEW, route == PH_ROUTE_PONG ? 0 : bits(centred(raw[PH_P_SKEW])));
     W(PH_C_MIX, bits((float)raw[PH_P_MIX] / 127.0f));
     W(PH_C_INPUT, raw[PH_P_INPT]);
     /* PH_C_XFADE and PH_C_ARM_SEQ stay 0: the crossfader and ARM are the loop effect's (core/loop-control). */

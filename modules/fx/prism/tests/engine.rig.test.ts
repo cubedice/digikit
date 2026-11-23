@@ -490,6 +490,24 @@ describe('PRISM repeater engine: ping pong', () => {
     });
   });
 
+  test('explicit SWAP at center keeps the stereo input and crosses its feedback', async () => {
+    await withRig({ frames: 16384 }, async (rig) => {
+      const delay = 2400;
+      rig.set({ sync: true, syncTime: delay, rpts: 0.75, pingPong: true, swap: true });
+      await rig.run(320);
+      const start = rig.clock + 32;
+      const take = await rig.run(260, (frame) => (frame === start ? [0.125, -0.225] : [0, 0]));
+      const [leftTime, rightTime] = await rig.state(PS.TIME_L, 2);
+      expect([leftTime, rightTime]).toEqual([delay, delay]);
+      for (let echo = 1; echo <= 3; echo++) {
+        const frame = 32 + delay * echo;
+        expect(take.left[frame]).toBeCloseTo(echo % 2 ? 0.125 : -0.225, 2);
+        expect(take.right[frame]).toBeCloseTo(echo % 2 ? -0.225 : 0.125, 2);
+      }
+      note('Explicit SWAP at center: both inputs are heard and their echo paths alternate on each side');
+    });
+  });
+
   test('a switch eases in over 256 frames and toggling off restores exact stereo tape inputs', async () => {
     await withRig({ frames: 4096 }, async (rig) => {
       const left = 0.25;

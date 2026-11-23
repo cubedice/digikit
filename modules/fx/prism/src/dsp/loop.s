@@ -336,18 +336,21 @@ _lp_stand:
     DM(PS_HOLD,I5) = R2;
     RTS;
 
-// Centered SKEW sums the input to mono at the left head. Away from center
-// the stereo input stays as sent. Both modes cross the limited feedback.
-// A smoothstep over 256 frames avoids a tape discontinuity.
+// PONG sums the input to mono at the left head. Explicit SWAP preserves
+// stereo input at any skew. A legacy PONG flag with a nonzero skew also
+// preserves stereo. Both modes cross feedback over a 256-frame smoothstep.
 _lp_ping_route:
     R0 = DM(PC_FLAGS,I5);
-    R1 = PH_F_PING_PONG;
+    R1 = PH_F_PING_PONG + PH_F_SWAP;
     R0 = R0 AND R1;
     R6 = 0;
     R7 = 0;
     R0 = PASS R0;
     IF EQ JUMP _lp_ping_feedback;
     R6 = 0x3f800000;
+    R1 = PH_F_PING_PONG;
+    COMP(R0,R1);
+    IF NE JUMP _lp_ping_feedback;
     F0 = DM(PC_SKEW,I5);
     COMP(F0,F7);
     IF EQ R7 = PASS R6;

@@ -68,7 +68,7 @@ input graphic closes once captured audio is available.
 | C | RPTS, 0 to 127; 96 holds a repeat at its level. Press: HOLD (`INF` and `HOLD`, inverted) |
 | D | COLR. The centre is 0 on screen. Negative values darken the repeats and positive values brighten them |
 | E | HALO, 0 to 127. Spreads the repeats in stereo and adds a darker reverb tail. The upper half adds slow movement to the tail |
-| F | SKEW, 64 is the centre. Hold FUNC + FX to show the offset. Press F to enable `PONG` at centre and `SWAP` away from centre. Press again for straight feedback. |
+| F | Press to cycle through `SKEW`, `PONG` and `SWAP`. Turn to change the offset in SKEW or SWAP. Hold FUNC + FX to show the offset. |
 | G | INPT, a two-position switch turned by the knob: right is LOOP (PRISM hears Overloop's loop), left is LIVE (PRISM hears the tracks it is given). The switch crossfades over 5 ms. Hold G and use TRIG keys to choose tracks. Changing the selection switches silent LOOP to LIVE when there is no capture. INPT goes to LOOP at an armed change that takes a loop, and to LIVE when the loop is dropped or Overloop stops reporting for a while. |
 | H | XFAD, Overloop's crossfader. The slider shows the applied position. Turns only while there is a loop. Press to arm or disarm. With FUNC + FX held, the caption shows `LIVE`, a number, or `LOOP`. Before the first loop, it reveals how many steps the next change keeps |
 | FUNC + NO | Drop the loop |
@@ -139,7 +139,7 @@ tuned); `core/phrase-control` fills them from the page's values.
 | COLR | -1..1 | Colour of the repeats. Centre: flat. Toward dark every repeat loses highs (down to a low pass at 800 Hz), saturates a little and drifts slowly in pitch. Toward bright every repeat loses lows (up to a high pass at 1 kHz). |
 | HALO | 0..1 | Spreads each repeat and brings up a damped stereo reverb, audible with RPTS at 0. Above halfway, two slow motions vary the diffusion. 0 is an exact bypass |
 | SKEW | -1..1 | Above 0 the left side is shorter and the right longer by the same ratio (up to 1.5). Below 0 the reverse applies. A change glides. |
-| PONG/SWAP | on, off | Press SKEW to toggle. At centre the input is summed to mono and echoes alternate left and right. Off centre the two stereo feedback paths cross and retain the unequal delay times. The mode is saved. [Mimeophon manual](https://www.makenoisemusic.com/wp-content/uploads/2024/03/mimeophon-manual.pdf#page=11) |
+| Feedback route | SKEW, PONG, SWAP | In SKEW, feedback stays on its side. PONG sums the input to mono and sends equal-time echoes alternating left and right. SWAP crosses the stereo feedback paths and uses the stored skew offset. Both the route and the skew offset are saved. |
 | FLIP | on, off | The repeats play backwards: each stretch of the time is read from its end to its start. |
 | HOLD | on, off | The input is closed and what is on the tape repeats without loss. ZONE, RATE and FLIP then pick a part of the held sound and leave the tape as it is. Releasing records again. |
 | MIX | 0..1 | Level of the wet signal. The engine writes the wet signal only. |

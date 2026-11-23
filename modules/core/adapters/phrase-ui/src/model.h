@@ -9,7 +9,7 @@
  *   LEVEL  MIX            A  ZONE  press: FLIP        B  RATE  press: SYNC on/off, FUNC + turn: fine
  *                                                        with SYNC: the ratio of the zone's 1/1, /2 .. 1/1 .. X2
  *                         C  RPTS  press: HOLD        D  COLR
- *                         E  HALO                     F  SKEW  press: PONG/SWAP
+ *                         E  HALO                     F  SKEW  press: step through SKEW, PONG, SWAP
  *                         G  INPT  turn: right LOOP, left LIVE, at any time (without a loop PRISM hears silence)
  *                                  hold: the TRIG keys choose the tracks the effect hears, their LEDs show them
  *                         H  XFAD  Overloop's crossfader (while there is a loop)   press: ARM   FUNC + NO: drop the loop
