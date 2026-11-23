@@ -254,7 +254,8 @@ static void scan_empty(uint32_t pattern, uint32_t selected, bool watch_targets, 
     rescanned = now;
 }
 
-static uint16_t plan_automatic(uint16_t waiting, uint16_t candidates, uint16_t quiet)
+static uint16_t plan_automatic(uint16_t waiting, uint16_t candidates, uint16_t quiet,
+                               uint16_t reusable_helpers)
 {
     const uint16_t active = (uint16_t)tk_native_audio_active;
     uint16_t requested = 0;
@@ -271,6 +272,18 @@ static uint16_t plan_automatic(uint16_t waiting, uint16_t candidates, uint16_t q
             planned_chords |= bit;
         if (need && !(active & bit))
             --need; /* The first pending note uses the owner. */
+        if (!(relay_owners & bit) && pool.epoch == generation) {
+            /* A native sample lane can retrigger through its own tail. The
+             * mix route is already on the DSP, so no quiet admission is due. */
+            uint16_t warm = (assigned & ~active) | (pool.draining[owner] & pool.reusable_tails);
+            warm &= reusable_helpers & ~quiet;
+            while (warm && need) {
+                uint16_t first = warm & (uint16_t)-warm;
+                keep |= first;
+                warm ^= first;
+                --need;
+            }
+        }
         unsigned room = relay_owners & bit ? 1 : 3;
         for (uint16_t occupied = (assigned & ~quiet) | pool.draining[owner]; occupied && room;
              occupied &= occupied - 1u)
@@ -355,9 +368,8 @@ void tk_pool_fw_update(uint32_t pattern, uint32_t selected, const TkTrackConfig 
     if (waiting || reserved || requested)
         quiet &= (uint16_t)~queued_tracks();
     uint8_t focused = tk_midi_selected_track();
-    uint16_t unavailable = requested | reserved | waiting | musical;
-    if (focused < TK_TRACKS)
-        unavailable |= (uint16_t)(1u << focused);
+    uint16_t focus_mask = focused < TK_TRACKS ? (uint16_t)(1u << focused) : 0;
+    uint16_t unavailable = requested | reserved | waiting | musical | focus_mask;
     /* Stock queue traffic can delay assignment and retirement. Keep quiet
      * preparations and leases stable while their onsets wait for the map. */
     uint16_t candidates = eligible & ~unavailable;
@@ -367,7 +379,9 @@ void tk_pool_fw_update(uint32_t pattern, uint32_t selected, const TkTrackConfig 
         candidates &= dsp_quiet;
     else
         candidates = 0;
-    requested |= plan_automatic(waiting, candidates, dsp_quiet);
+    uint16_t reusable_helpers =
+        capture == TK_CAPTURE_OFF || capture == TK_CAPTURE_LIVE ? eligible & ~focus_mask : 0;
+    requested |= plan_automatic(waiting, candidates, dsp_quiet, reusable_helpers);
 
     uint16_t changed = requested & ~preparing;
     preparing = requested | reserved;
@@ -385,6 +399,7 @@ void tk_pool_fw_update(uint32_t pattern, uint32_t selected, const TkTrackConfig 
                                    automatic_owners & relay_owners & (musical | waiting | active),
                                .eligible_helpers = eligible,
                                .quiescent_helpers = quiet,
+                               .reusable_helpers = reusable_helpers,
                                .automatic_helpers = wanted,
                                .keep_saved_only = !may_save_group};
     tk_pool_update(&pool, &snapshot, config);

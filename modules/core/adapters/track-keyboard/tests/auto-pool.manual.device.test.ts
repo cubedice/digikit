@@ -82,10 +82,22 @@ describeOn('dt2', 'automatic stock audio helper pool', () => {
       wanted: await mask('wanted'),
     });
     const panelChord = (down: boolean) => session.client.inputButton(TRIG_9, down);
+    const soundingState = async () => {
+      const current = await state();
+      const destinations = OWNER | current.assigned;
+      let dspActive = 0;
+      for (const track of trackBits(current.active & destinations)) {
+        // Each DTII audio track has two alternating sample voice records.
+        const [primary] = await dspWords(session, STOCK_VOICE_FLAGS + track * STOCK_TRACK_STRIDE, 1);
+        const [alternate] = await dspWords(session, STOCK_VOICE_FLAGS + track * STOCK_TRACK_STRIDE + 0x1d8, 1);
+        if (((primary ?? 0) | (alternate ?? 0)) & 1) dspActive |= 1 << track;
+      }
+      return { ...current, dspActive };
+    };
     const playAndRelease = async (
       label: string,
       key = panelChord,
-      afterRelease?: () => Promise<void>,
+      afterRelease?: (helpers: number) => Promise<void>,
     ) => {
       const idle = await state();
       expect(idle.assigned | idle.draining | idle.reserved | idle.active, label + ' has no idle leases').toBe(0);
@@ -94,20 +106,10 @@ describeOn('dt2', 'automatic stock audio helper pool', () => {
       await key(true);
       try {
         const sounding = await pollEmulated(session, async () => {
-          const current = await state();
-          const destinations = OWNER | current.assigned;
-          let dspActive = 0;
-          if (current.active & destinations) {
-            for (const track of trackBits(current.active & destinations)) {
-              // Each DTII audio track has two alternating sample voice records.
-              const [primary] = await dspWords(session, STOCK_VOICE_FLAGS + track * STOCK_TRACK_STRIDE, 1);
-              const [alternate] = await dspWords(session, STOCK_VOICE_FLAGS + track * STOCK_TRACK_STRIDE + 0x1d8, 1);
-              if (((primary ?? 0) | (alternate ?? 0)) & 1) dspActive |= 1 << track;
-            }
-          }
-          const summary = Object.entries({ ...current, dspActive }).map(([key, value]) => key + '=' + value.toString(16)).join(' ');
+          const current = await soundingState();
+          const summary = Object.entries(current).map(([key, value]) => key + '=' + value.toString(16)).join(' ');
           if (states.at(-1) !== summary) states.push(summary);
-          return { ...current, dspActive };
+          return current;
         }, (value) => trackBits(value.assigned).length === 2 && value.dspActive === (OWNER | value.assigned), {
           emulatedMs: 1800,
           intervalMs: 5,
@@ -121,13 +123,13 @@ describeOn('dt2', 'automatic stock audio helper pool', () => {
       } finally {
         await key(false);
       }
-      await afterRelease?.();
+      await afterRelease?.(helpers);
       const released = await pollEmulated(session, state, (current) => {
         expect((current.assigned | current.draining | current.reserved) & protectedMask).toBe(0);
         return (current.assigned | current.draining | current.reserved | current.active) === 0
           && (current.quiet & helpers) === helpers;
       }, {
-        emulatedMs: 6000, intervalMs: 10, message: label + ' returns all helpers after the DSP reports them quiet',
+        emulatedMs: 7000, intervalMs: 10, message: label + ' returns all helpers after the DSP reports them quiet',
       });
       console.info(label + ' AUTO pool', {
         eligible: idle.eligible.toString(16),
@@ -138,7 +140,24 @@ describeOn('dt2', 'automatic stock audio helper pool', () => {
       });
     };
 
-    await playAndRelease('Stopped transport');
+    await playAndRelease('Stopped transport', panelChord, async (helpers) => {
+      const destinations = OWNER | helpers;
+      await pollEmulated(session, () => word('tk_native_audio_active'), (active) => !(active & destinations), {
+        emulatedMs: 300, intervalMs: 2, message: 'first chord released its generated notes',
+      });
+      expect((await word('.sec..bss.reply_word')) & helpers, 'the helper sample tails are still audible').toBe(0);
+
+      const nextRoot = TRIG_9 + 1;
+      await session.client.inputButton(nextRoot, true);
+      try {
+        await pollEmulated(session, soundingState,
+          (current) => current.assigned === helpers && current.dspActive === destinations, {
+            emulatedMs: 450, intervalMs: 4, message: 'second root sounds a full triad on the same helper lanes',
+          });
+      } finally {
+        await session.client.inputButton(nextRoot, false);
+      }
+    });
     await tap('PLAY');
     try {
       await pollEmulated(session, () => word('pp_position', 20), (flags) => !!(flags & 2), {

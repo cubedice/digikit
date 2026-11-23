@@ -11,6 +11,8 @@ typedef struct {
     uint16_t draining[TK_TRACKS];
     uint32_t epoch;
     uint16_t relay_heads;
+    /* Same-owner sample tails retired in the current context. */
+    uint16_t reusable_tails;
 } TkPool;
 
 typedef struct {
@@ -23,15 +25,16 @@ typedef struct {
     uint16_t eligible_helpers;
     /* Includes the worker queue, sample cursor and envelope release. */
     uint16_t quiescent_helpers;
+    uint16_t reusable_helpers;
     bool keep_saved_only;
     /* Transient requests planned by the platform. A stored mask takes precedence. */
     const uint16_t *automatic_helpers;
 } TkPoolSnapshot;
 
-/* A retired route stays in the mixer map until the platform confirms its
- * tail has drained. It is unavailable for starts and to competing owners.
- * Stored masks are admitted as a group. Automatic requests can change one
- * voice at a time. The pool never writes either request back into the pattern.
+/* A retired route stays in the mixer map until its tail has drained.
+ * An automatic sample owner can reuse an eligible tail from the current
+ * context. Competing owners wait for quiet. Stored masks admit as a group.
+ * The pool never writes either request back into the pattern.
  */
 void tk_pool_update(TkPool *pool, const TkPoolSnapshot *snapshot,
                     const TkTrackConfig config[TK_TRACKS]);
