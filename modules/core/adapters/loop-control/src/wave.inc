@@ -11,7 +11,6 @@ typedef struct {
 static u16 wave_ring[WAVE_LEVELS][WAVE_BINS];
 static WaveView wave_loop;
 static u32 wave_end, wave_valid, wave_count, wave_length;
-static u32 wave_beat;
 
 static u16 wave_merge(u16 a, u16 b)
 {
@@ -61,11 +60,6 @@ static void wave_snapshot(WaveView *v, u32 end, u32 length, u32 valid)
 
 static void wave_accept(const u32 *w)
 {
-    /* The reply ring can return an earlier block again. In particular a
-     * pre-capture duplicate must not replace the frozen picture. */
-    if ((int32_t)(w[LS_HEARTBEAT] - wave_beat) <= 0 && age < STALE)
-        return;
-    wave_beat = w[LS_HEARTBEAT];
     u32 t = w[LS_WAVE_T], end = t & ~511u;
     u32 edge = w[LS_WAVE_EDGE], count = w[LS_STATE] >> LS_COUNT_SHIFT;
     int capture = (w[LS_STATE] & LS_LOOP) && (count != wave_count || !wave_length);

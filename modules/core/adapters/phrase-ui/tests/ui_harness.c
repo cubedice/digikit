@@ -690,14 +690,21 @@ static void loop_page(void)
     report(LS_LOOP | LS_HELD | LS_TRACK, 4, 16, 16, 96000, 1.0f);
     pu_loop(&late);
     assert(raw[PH_P_INPT] == 1);
-    /* The loop effect stops reporting: the cells say there is no loop, and after PU_LOOP_GONE passes INPT is LIVE. */
+    /* A gap keeps the existing loop and its displayed length until the same expiry as the input route. */
     home_fresh = 0;
-    for (uint32_t i = 0; i < PU_LOOP_GONE; ++i)
+    for (uint32_t i = 0; i < PU_LOOP_GONE; ++i) {
         pu_loop(&late);
+        pu_loop_status(&late); /* The draw callback also reads the home. */
+        pu_page(&late, &p);
+        assert(p.loop_ready && p.cells[7].fader == 128);
+        same(p.line, "LOOP 16 ST 2.00 S");
+    }
     assert(raw[PH_P_INPT] == 1);
     pu_loop(&late);
     assert(raw[PH_P_INPT] == 0);
+    pu_loop_status(&late);
     pu_page(&late, &p);
+    assert(!p.loop_ready && !p.line[0]);
     same(p.cells[7].value, "--");
     same(p.cells[7].state, "NO LOOP");
     /* once: G at LOOP again stays while the loop effect still does not report */

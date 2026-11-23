@@ -106,6 +106,23 @@ fresh status with a loop, then one without: a drop, or a loop lost with a moved 
 stops reporting for 60 passes after the home's own 60 (once, so that G can set LOOP again); it goes to LOOP by itself at an
 armed change that takes a loop, as before.
 
+## Follow-up: PRISM shows a zero-length loop
+
+**[D]** A read-only OLED capture on the physical Digitakt II, image `c6d6d9a726981b45`, sampled 190 frames in
+13 seconds. Of those, 147 showed LIVE and NO LOOP, 42 showed `LOOP 0 ST 0 MS` with INPT and XFAD at LOOP,
+and one showed LIVE with a retained fader graphic. The completed Overloop status publisher sets the loop flag and
+nonzero frame count together. The OLED capture establishes the invalid state that reached PRISM. The hardware
+link's internal diagnostics were unavailable.
+
+The status receiver now discards a carrier when the loop flag and length disagree. It also checks the heartbeat
+against the newest accepted packet before updating the pending packet or waveform. The published state can accept
+a restarting sequence after the usual link timeout, and natural 32-bit wrap advances normally. PRISM shows the last
+held loop through its existing input-route grace period. A newer valid drop clears it promptly.
+
+The host regressions reproduce late pre-capture replies and disappearing loop presentation on the prior source.
+They check the zero-length report, a true drop, restart and wrap, and confirm that rejected replies leave the
+crossfader and waveform alone.
+
 ## Proofs
 
 Lowest layer first, at the branch head in the WSL checkout; device tests on the Digitakt II 1.17 image on the emulator with

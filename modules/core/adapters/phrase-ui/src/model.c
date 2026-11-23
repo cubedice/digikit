@@ -104,6 +104,7 @@ void pu_loop(PhraseUi *s)
         }
         input(s, 0);
         s->loop_known = s->loop_had = s->loop_stale = 0;
+        ++s->revision;
         return;
     }
     s->loop_stale = 0;
@@ -115,6 +116,8 @@ void pu_loop(PhraseUi *s)
     else if (loop && s->loop_known && count != s->loop_seen)
         /* an armed pattern change took a new loop: PRISM hears it (the engine counts loops across its restarts) */
         input(s, 1);
+    if (loop != s->loop_had)
+        ++s->revision;
     s->loop_had = loop;
     s->loop_seen = count;
     s->loop_known = 1;

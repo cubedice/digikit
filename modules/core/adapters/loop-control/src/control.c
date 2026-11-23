@@ -24,11 +24,12 @@ extern void dkrt_irq_restore(u32);
 u32 loop_control_raw[LP_COUNT];
 #define raw loop_control_raw
 static u32 status[LS_WORDS];
-static u32 age = 2 * STALE, last_seq;
+static volatile u32 age = 2 * STALE;
+static u32 last_seq;
 /* The newest carrier the block interrupt found in a reply, and how many it found (it writes both; the UI task copies them
  * with the interrupt masked). The count the UI task took last. */
 static volatile u32 newest[WIRE_WORDS], newest_count;
-static u32 taken_count;
+static volatile u32 taken_count;
 /* The native FX page of the loop effect, as the fx service last said, and the UI passes since it said so. */
 static u32 page, asked = 2 * STALE;
 #include "wave.inc"
@@ -93,9 +94,10 @@ int fx_held_values(u32 id, u32 native_page, u16 *out)
 
 /* A status the DSP returned (LS_WORDS words; words 7, 14 and 15 are 0). A new loop sets the crossfader to LOOP, where the
  * engine holds it until it reads this count back in LP_SEEN. */
-void loop_control_status(const u32 *words)
+static void loop_control_status(const u32 *words)
 {
-    if (words[LS_HEARTBEAT] == last_seq)
+    int32_t advance = (int32_t)(words[LS_HEARTBEAT] - last_seq);
+    if (!advance || (advance < 0 && age < STALE))
         return;
     last_seq = words[LS_HEARTBEAT];
     age = 0;
@@ -127,8 +129,14 @@ void loop_reply_frame(const volatile u16 *p)
         u32 off = (0x1c + 0x54 * row + 0x44 + (j & 1) * 4) / 2;
         w[j] = p[off] | ((u32)p[off + 1] << 16);
     }
-    /* The carrier packs words 7, 14 and 15 into its word 7: this engine leaves them 0. */
-    if (w[0] != WIRE_MAGIC || w[7])
+    /* The carrier packs words 7, 14 and 15 into its word 7: this engine leaves them 0.
+     * LOOP and its nonzero frame count are published together. A mixed reply can retain the marker out of context. */
+    if (w[0] != WIRE_MAGIC || w[7] || ((w[LS_STATE] & LS_LOOP) != (w[LS_LOOP_FRAMES] != 0)))
+        return;
+    /* Order against the last packet admitted by the interrupt, including any packet still waiting for the UI.
+     * A genuinely restarted stream can begin at a lower heartbeat after the old stream expires. */
+    int32_t advance = (int32_t)(w[LS_HEARTBEAT] - newest[LS_HEARTBEAT]);
+    if (!advance || (advance < 0 && (age < STALE || newest_count != taken_count)))
         return;
     wave_accept(w);
     for (u32 j = 0; j < WIRE_WORDS; ++j)
@@ -149,8 +157,8 @@ void loop_ui_tick(void)
     dkrt_irq_restore(sr);
     if (count == taken_count)
         return;
-    taken_count = count;
     words[LS_MAGIC] = LS_MAGIC_VALUE;
     words[14] = words[15] = 0;
     loop_control_status(words);
+    taken_count = count;
 }

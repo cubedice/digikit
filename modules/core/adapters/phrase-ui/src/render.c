@@ -56,9 +56,10 @@ static void loop_cells(const PhraseUi *s, PhrasePage *page)
 {
     char text[16], time[16];
     const uint32_t *st = s->loop_status;
-    uint32_t state = s->loop_fresh ? st[LS_STATE] : 0, loop = pu_has_loop(s),
-             armed = (state & LS_ARMED) != 0, inpt = dkrt_phrase_get(PH_P_INPT),
-             selecting = pu_selecting(s);
+    /* Retain the last held loop through the same heartbeat grace as the input route. */
+    uint32_t state = s->loop && (s->loop_fresh || s->loop_had) ? st[LS_STATE] : 0,
+             loop = state & LS_LOOP, armed = (state & LS_ARMED) != 0,
+             inpt = dkrt_phrase_get(PH_P_INPT), selecting = pu_selecting(s);
     page->tracks = pu_tracks();
     page->loop_input = inpt && !selecting;
     page->loop_ready = loop;

@@ -194,6 +194,105 @@ static void reply_hook(void)
     assert(dkrt_loop_status(out) == 1 && out[LS_HEARTBEAT] == 120);
 }
 
+static void reply_order(void)
+{
+    u32 out[LS_WORDS];
+    u16 shape[LS_WAVE_COLUMNS], frozen[LS_WAVE_COLUMNS];
+    const u32 length = 1024;
+    const u32 old_state = LS_TRACK | LS_WAVE_PRECISE | (7u << LS_COUNT_SHIFT);
+    const u32 held_state = LS_LOOP | LS_HELD | LS_WAVE_PRECISE | (8u << LS_COUNT_SHIFT);
+    const u32 pre_capture = 10002, capture = 10004, drop = 10008;
+    for (u32 bin = 0; bin <= 2; ++bin) {
+        carrier(10000 + bin, old_state, 0);
+        cell(LS_WAVE_T, bin * 512);
+        cell(LS_WAVE_PEAK, bin == 1 ? 0x4411 : 0x3366);
+        block();
+    }
+    loop_ui_tick();
+
+    /* A pre-capture reply may reappear before the UI takes the capture. */
+    carrier(capture, held_state, length);
+    cell(LS_WAVE_T, length);
+    cell(LS_WAVE_EDGE, length);
+    block();
+    carrier(pre_capture, old_state, 0);
+    block();
+    loop_ui_tick();
+    assert(dkrt_loop_status(out) == 1 && out[LS_HEARTBEAT] == capture &&
+           out[LS_STATE] == held_state && out[LS_LOOP_FRAMES] == length);
+    assert(dkrt_loop_get(LP_SEEN) == 8 && dkrt_loop_get(LP_XFAD) == LP_MAX);
+    dkrt_loop_wave_peaks(frozen);
+    assert(frozen[0] == 0x4411 && frozen[LS_WAVE_COLUMNS - 1] == 0x3366);
+
+    /* A late reply also cannot replace a published capture or reset the performer's crossfade. */
+    dkrt_loop_xfad(41);
+    u32 updates = loop_control_updates;
+    carrier(pre_capture, old_state, 0);
+    block();
+    loop_ui_tick();
+    assert(dkrt_loop_status(out) == 1 && out[LS_HEARTBEAT] == capture &&
+           out[LS_STATE] == held_state);
+    assert(dkrt_loop_get(LP_SEEN) == 8 && dkrt_loop_get(LP_XFAD) == 41 &&
+           loop_control_updates == updates);
+    dkrt_loop_wave_peaks(shape);
+    assert(!memcmp(shape, frozen, sizeof(shape)));
+
+    /* A real newer drop is visible, even when the previous held reply arrives last. */
+    carrier(drop, LS_TRACK | (8u << LS_COUNT_SHIFT), 0);
+    block();
+    carrier(capture, held_state, length);
+    block();
+    loop_ui_tick();
+    assert(dkrt_loop_status(out) == 1 && out[LS_HEARTBEAT] == drop && !(out[LS_STATE] & LS_LOOP));
+    assert(dkrt_loop_get(LP_SEEN) == 8 && dkrt_loop_get(LP_XFAD) == 41 &&
+           loop_control_updates == updates + 1);
+    /* A malformed newer carrier with the LOOP bit but no frames is not a capture or a heartbeat. */
+    const u32 fake_loop = LS_LOOP | LS_HELD | (9u << LS_COUNT_SHIFT);
+    for (u32 i = 0; i < STALE; ++i) {
+        carrier(drop, LS_TRACK | (8u << LS_COUNT_SHIFT), 0);
+        block();
+        carrier(pre_capture, old_state, 0);
+        block();
+        carrier(drop + 1 + i, fake_loop, 0);
+        block();
+        loop_ui_tick();
+        assert((dkrt_loop_status(out) != 0) == (i + 1 < STALE));
+        assert(out[LS_HEARTBEAT] == drop && !(out[LS_STATE] & LS_LOOP));
+        assert(dkrt_loop_get(LP_SEEN) == 8 && dkrt_loop_get(LP_XFAD) == 41);
+    }
+    assert(dkrt_loop_status(out) == 0 && out[LS_HEARTBEAT] == drop &&
+           loop_control_updates == updates + 1);
+
+    /* A stale link can restart low. Once the next status is pending, keep it over an earlier restart reply. */
+    const u32 restarted = LS_LOOP | (9u << LS_COUNT_SHIFT);
+    carrier(5, LS_TRACK, 0);
+    block();
+    carrier(8, restarted, length);
+    block();
+    carrier(6, LS_TRACK, 0);
+    block();
+    loop_ui_tick();
+    assert(dkrt_loop_status(out) == 1 && out[LS_HEARTBEAT] == 8 && out[LS_STATE] == restarted);
+    assert(dkrt_loop_get(LP_SEEN) == 9 && dkrt_loop_get(LP_XFAD) == LP_MAX);
+
+    /* Move near the serial wrap after another link loss, then cross it while live. */
+    for (u32 i = 0; i < STALE; ++i)
+        loop_ui_tick();
+    carrier(UINT32_MAX - 2, restarted, length);
+    block();
+    loop_ui_tick();
+    assert(dkrt_loop_status(out) == 1 && out[LS_HEARTBEAT] == UINT32_MAX - 2);
+    carrier(UINT32_MAX, restarted, length);
+    block();
+    carrier(0, restarted, length);
+    block();
+    carrier(UINT32_MAX - 1, LS_TRACK, 0);
+    block();
+    loop_ui_tick();
+    assert(dkrt_loop_status(out) == 1 && out[LS_HEARTBEAT] == 0 && out[LS_STATE] == restarted);
+    assert(!masked);
+}
+
 /* A status as the engine publishes it: heartbeat, state bits, the count of loops. */
 static void report(u32 heartbeat, u32 bits, u32 count)
 {
@@ -201,7 +300,7 @@ static void report(u32 heartbeat, u32 bits, u32 count)
     words[LS_MAGIC] = LS_MAGIC_VALUE;
     words[LS_HEARTBEAT] = heartbeat;
     words[LS_STATE] = bits | (count << LS_COUNT_SHIFT);
-    words[LS_LOOP_FRAMES] = 96000;
+    words[LS_LOOP_FRAMES] = bits & LS_LOOP ? 96000 : 0;
     loop_control_status(words);
 }
 int main(void)
@@ -299,6 +398,7 @@ int main(void)
     assert(dkrt_loop_get(LP_XFAD) == LP_MAX && dkrt_loop_get(LP_SEEN) == 1);
     reply_hook();
     wave_history();
+    reply_order();
     puts("loop control: ok");
     return 0;
 }
