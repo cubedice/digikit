@@ -13,7 +13,7 @@ it('records track 16, overdubs, undoes, and keeps an independent take with track
   const rig = await RawRig.open({objects: files.map((f,i) => ({
     text: readFileSync(path.join(root,f),'utf8').replaceAll('\r\n','\n'),
     includes: [headers,path.join(root,source)], base: 0xb90000+i*0x2000
-  })), externs: {_relay_external:base, _rtm_command:command, _relay_status:status, _relay_request:status+256,
+  })), externs: {_relay_external:base, _relay_main:base+10240, _rtm_command:command, _relay_status:status, _relay_request:status+256,
     _relay_response:status+512, _relay_timing:status+768, _pattern_position_info:status+1024, _rtm_bus:base+4096, _rtm_mod_frame:base+12288,
     _tk_pool_head_owner:0, _mi_envelope_records:0},
   returnSw:0xb9f100});

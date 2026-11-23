@@ -20,6 +20,7 @@ it('reconstructs a recorded stereo take at reduced rates through storage and loo
     })),
     externs: {
       _relay_external: external,
+      _relay_main: external + 10240,
       _rtm_command: command,
       _relay_status: status,
       _relay_request: status + 256,

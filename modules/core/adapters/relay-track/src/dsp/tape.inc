@@ -12,7 +12,8 @@ _tape_row:
     R2 = LSHIFT R8 BY T_STRIDE_SHIFT; R3 = _rtm_tapes; R2 = R2 + R3; I5 = R2; RTS;
 _tape_settings:
     CALL _tape_row;
-    R0 = DM(4,I0); R1 = 31; R1 = R0 AND R1; DM(RT_SOURCE,I4) = R1;
+    R0 = DM(4,I0); R1 = 31; R1 = R0 AND R1;
+    R2 = RT_INPUT_MAIN; COMP(R1,R2); R2 = 0; IF GT R1 = PASS R2; DM(RT_SOURCE,I4) = R1;
     R2 = LSHIFT R0 BY -26; R1 = DM(T_MOD_TYPE,I5); COMP(R1,R2); R1 = 0;
     IF NE DM(T_MOD_PRIMED,I5) = R1; DM(T_MOD_TYPE,I5) = R2;
     R3 = DM(5,I0); R1 = DM(T_RATE,I5); COMP(R1,R3); IF NE CALL _tape_transition;
@@ -27,7 +28,11 @@ _tape_spacing_ready:
     R2 = LSHIFT R0 BY -19; R2 = R2 AND R1;
     F2 = FLOAT R2; F2 = F2 * F3; DM(T_MIX,I5) = R2;
     R0 = 1; DM(T_ACTIVE,I5) = R0;
-    R0 = DM(7,I0); R0 = PASS R0; IF GT DM(T_GRID,I5) = R0;
+    R0 = DM(7,I0); R1 = FEXT R0 BY 0:16; R1 = PASS R1; IF GT DM(T_GRID,I5) = R1;
+    R0 = LSHIFT R0 BY -16; R1 = DM(T_LOOP_Q16,I5); COMP(R0,R1); IF EQ JUMP _rt_schedule;
+    DM(T_LOOP_Q16,I5) = R0;
+    CALL _tape_transition;
+    R0 = 0; DM(T_SLIP,I5) = R0;
     JUMP _rt_schedule;
 _tape_transition:
     R1 = 0; DM(T_WRITE_COUNT,I5) = R1;
@@ -93,8 +98,20 @@ _tape_rate_offset:
     R2 = 0x37800000; F1 = F1 * F2; F2 = FLOAT R3; F2 = F2 * F1; R2 = FIX F2;
     R0 = PASS R0; IF GE R2 = -R2;
     JUMP _tape_fold;
+// R3 returns the active prefix length without changing its underlying stored tape.
+_tape_active_length:
+    R0 = DM(_rt_mode); R1 = 1; COMP(R0,R1); IF NE JUMP _tape_length;
+    R0 = DM(_rt_writer); COMP(R0,R8); IF NE JUMP _tape_length;
+    R3 = DM(RT_LENGTH,I4); RTS;
+_tape_length:
+    R3 = DM(RT_LENGTH,I4); R0 = 4; COMP(R3,R0); IF LE RTS;
+    R1 = DM(T_LOOP_Q16,I5); R1 = PASS R1; IF EQ RTS;
+    R2 = FEXT R3 BY 0:16; R2 = R2 * R1 (SSI); R2 = LSHIFT R2 BY -16;
+    R3 = LSHIFT R3 BY -16; R3 = R3 * R1 (SSI); R3 = R3 + R2;
+    R3 = MAX(R3,R0); RTS;
 _tape_seek:
-    CALL _tape_row; R3 = DM(RT_LENGTH,I4); R3 = PASS R3; IF LE JUMP _rt_schedule;
+    CALL _tape_row; CALL _tape_active_length;
+    R3 = PASS R3; IF LE JUMP _rt_schedule;
     R1 = DM(7,I0); COMP(R1,R3); IF NE JUMP _rt_schedule;
     R1 = DM(RT_PREVIEW_END,I4); R1 = PASS R1; IF NE JUMP _rt_schedule;
     R1 = RT_HOME_READ; COMP(R6,R1); IF EQ JUMP _tape_home;
@@ -111,14 +128,10 @@ _tape_home:
 _tape_store_slip:
     DM(T_SLIP,I5) = R2; CALL _tape_transition; JUMP _rt_schedule;
 _tape_play:
-    R0 = DM(_rt_mode); R1 = DM(_rt_writer); COMP(R1,R8); IF NE JUMP _tape_motor;
-    R0 = PASS R0; IF EQ JUMP _tape_motor;
-    R1 = DM(_rt_armed); R1 = PASS R1; IF NE JUMP _rt_cancel;
-    R1 = 2; COMP(R0,R1); IF NE JUMP _rt_cancel;
-    CALL _tape_close;
-_tape_motor:
-    R0 = DM(RT_LENGTH,I4); R0 = PASS R0; IF EQ JUMP _rt_empty;
-    R8 = DM(_rt_focus); CALL _tape_row; CALL _tape_transition;
+    // WRITE is the only recorder toggle. An armed or open writer keeps rolling.
+    CALL _rt_busy_local; R0 = PASS R0; IF NE JUMP _rt_schedule;
+    R0 = DM(RT_LENGTH,I4); R0 = PASS R0; IF EQ JUMP _rt_schedule;
+    CALL _tape_transition;
     R1 = DM(RT_PLAYING,I4); DM(T_STOPPED,I5) = R1;
     R0 = 1; R1 = R1 XOR R0; DM(RT_PLAYING,I4) = R1; DM(RT_LAUNCH,I4) = R1;
     JUMP _rt_schedule;
@@ -201,16 +214,27 @@ _tape_track:
     CALL _tape_modulate;
     R0 = DM(T_EFF_RATE,I5); DM(_t_rate) = R0;
     R0 = DM(RT_PREVIEW_END,I4); R0 = PASS R0; IF NE JUMP _tape_slice_offset;
-    R3 = DM(RT_LENGTH,I4); R0 = DM(_t_rate); R1 = DM(T_EFF_SPACING,I5); CALL _tape_rate_offset;
+    CALL _tape_active_length;
+    DM(_t_span) = R3;
+    R1 = DM(RT_POS,I4); COMP(R1,R3); IF LT JUMP _tape_trim_pos;
+    R0 = 0; DM(RT_POS,I4) = R0; DM(T_FRAC,I5) = R0;
+_tape_trim_pos:
+    R0 = DM(_t_rate); R1 = DM(T_EFF_SPACING,I5); CALL _tape_rate_offset;
     R1 = DM(T_SLIP,I5); R2 = R2 + R1; CALL _tape_fold;
     F0 = DM(T_EFF_POSITION,I5); F1 = FLOAT R3; F0 = F0 * F1; R0 = FIX F0;
     R2 = R2 + R0; CALL _tape_fold;
     R1 = DM(T_SLIP,I5); R0 = R0 OR R1; R1 = DM(T_EFF_SPACING,I5); R0 = R0 OR R1; JUMP _tape_offset_ready;
 _tape_slice_offset:
+    R0 = DM(RT_LENGTH,I4); DM(_t_span) = R0;
     R0 = 65536; DM(_t_rate) = R0; R2 = 0;
 _tape_offset_ready:
     DM(_t_separation) = R0; DM(_t_offset) = R2; DM(T_READ_OFFSET,I5) = R2;
-    F2 = DM(T_EFF_MIX,I5); R0 = 0x3f800000; COMP(F2,F0); R0 = 0; IF LT R0 = R0 + 1;
+    F2 = DM(T_EFF_MIX,I5); R3 = 0x3f800000; F3 = F3 - F2;
+    // MAIN is capture-only: monitoring it would feed the final mix back into itself.
+    R0 = DM(RT_SOURCE,I4); R1 = RT_INPUT_MAIN; COMP(R0,R1);
+    IF EQ R3 = R3 XOR R3;
+    DM(_t_dry_mix) = R3;
+    R3 = PASS R3; R0 = 0; IF GT R0 = R0 + 1;
     R1 = DM(T_MONITOR,I5); DM(T_MONITOR,I5) = R0;
     COMP(R0,R1); IF LE JUMP _tape_monitor_ready;
     R1 = DM(RT_PLAYING,I4); R1 = PASS R1; IF EQ DM(RT_LAUNCH,I4) = R0;
@@ -229,7 +253,7 @@ _tape_write_gate:
     // Use cubic reconstruction at reduced speeds with WRITE closed. Keep
     // the existing linear feedback path while a write is in progress.
     R2 = 0; R0 = PASS R0; IF NE JUMP _tape_read_quality;
-    R1 = DM(RT_LENGTH,I4); R3 = 4; COMP(R1,R3); IF LT JUMP _tape_read_quality;
+    R1 = DM(_t_span); R3 = 4; COMP(R1,R3); IF LT JUMP _tape_read_quality;
     R1 = DM(_t_rate); R1 = ABS R1; R3 = 65536; COMP(R1,R3); IF LT R2 = R2 + 1;
 _tape_read_quality:
     DM(_t_cubic) = R2;
@@ -250,7 +274,7 @@ _tape_sample:
     F3 = DM(T_EFF_GAIN,I5); F1 = F1 * F3; F2 = F2 * F3; DM(_t_dry_l) = R1; DM(_t_dry_r) = R2;
     R0 = DM(RT_PLAYING,I4); R1 = DM(_t_rate); R0 = PASS R0;
     IF EQ JUMP _tape_park; R1 = PASS R1; IF EQ JUMP _tape_park;
-    R3 = DM(RT_LENGTH,I4); R3 = PASS R3; IF LE JUMP _tape_park;
+    R3 = DM(_t_span); R3 = PASS R3; IF LE JUMP _tape_park;
     R12 = DM(RT_POS,I4); R1 = DM(_t_offset); R12 = R12 + R1;
     COMP(R12,R3); IF GE R12 = R12 - R3; R12 = PASS R12; IF LT R12 = R12 + R3;
     DM(_t_read) = R12;
@@ -258,7 +282,7 @@ _tape_sample:
     R2 = DM(_t_cubic); R2 = PASS R2; IF NE JUMP _tape_cubic;
     CALL _tape_pcm;
     DM(_t_interp_l) = R0; DM(_t_interp_r) = R1;
-    R12 = DM(_t_read); R12 = R12 + 1; R3 = DM(RT_LENGTH,I4); COMP(R12,R3); IF GE R12 = R12 - R3;
+    R12 = DM(_t_read); R12 = R12 + 1; R3 = DM(_t_span); COMP(R12,R3); IF GE R12 = R12 - R3;
     CALL _tape_pcm;
     R2 = DM(T_FRAC,I5); F2 = FLOAT R2; R3 = 0x37800000; F2 = F2 * F3;
     F3 = DM(_t_interp_l); F0 = F0 - F3; F0 = F0 * F2; F0 = F0 + F3;
@@ -280,12 +304,12 @@ _tape_cubic:
     R0 = DM(-1,I0); CALL _tape_unpack_pcm; JUMP _tape_cubic_mix;
 _tape_cubic_wrap:
     CALL _tape_pcm; DM(_t_interp_l) = R0; DM(_t_interp_r) = R1;
-    R12 = R12 + 1; R3 = DM(RT_LENGTH,I4); COMP(R12,R3); IF GE R12 = R12 - R3;
+    R12 = R12 + 1; R3 = DM(_t_span); COMP(R12,R3); IF GE R12 = R12 - R3;
     CALL _tape_pcm;
     DM(_t_next_l) = R0; DM(_t_next_r) = R1;
-    R12 = R12 + 1; R3 = DM(RT_LENGTH,I4); COMP(R12,R3); IF GE R12 = R12 - R3;
+    R12 = R12 + 1; R3 = DM(_t_span); COMP(R12,R3); IF GE R12 = R12 - R3;
     CALL _tape_pcm; DM(_t_outer_l) = R0; DM(_t_outer_r) = R1;
-    R12 = DM(_t_read); R12 = R12 - 1; R3 = DM(RT_LENGTH,I4);
+    R12 = DM(_t_read); R12 = R12 - 1; R3 = DM(_t_span);
     R12 = PASS R12; IF LT R12 = R12 + R3;
     CALL _tape_pcm;
 _tape_cubic_mix:
@@ -329,11 +353,11 @@ _tape_pack:
     R12 = DM(RT_POS,I4); CALL _tape_address; R0 = DM(_t_word); DM(0,I0) = R0;
     R2 = DM(_t_delta); R1 = ABS R2; R3 = 2; COMP(R1,R3); IF LT JUMP _tape_advance;
     R2 = PASS R2; IF GT R12 = R12 + 1; IF LT R12 = R12 - 1;
-    R3 = DM(RT_LENGTH,I4); COMP(R12,R3); IF GE R12 = R12 - R3; R12 = PASS R12; IF LT R12 = R12 + R3;
+    R3 = DM(_t_span); COMP(R12,R3); IF GE R12 = R12 - R3; R12 = PASS R12; IF LT R12 = R12 + R3;
     CALL _tape_address; R0 = DM(_t_word); DM(0,I0) = R0;
 _tape_advance:
     R0 = DM(RT_POS,I4); R2 = DM(_t_delta); R0 = R0 + R2;
-    R3 = DM(RT_LENGTH,I4);
+    R3 = DM(_t_span);
 _tape_wrap: COMP(R0,R3); IF LT JUMP _tape_wrap_low; R0 = R0 - R3; JUMP _tape_wrap;
 _tape_wrap_low: R0 = PASS R0; IF GE JUMP _tape_position; R0 = R0 + R3; JUMP _tape_wrap_low;
 _tape_position:
@@ -351,7 +375,7 @@ _tape_output:
     F2 = DM(13,I5); F2 = F2 - F1; F2 = F2 * F3; F1 = F1 + F2;
 _tape_mix:
     R2 = LSHIFT R5 BY 2; R3 = I5; R2 = R2 + R3; I0 = R2;
-    F2 = DM(T_EFF_MIX,I5); R3 = 0x3f800000; F3 = F3 - F2;
+    F2 = DM(T_EFF_MIX,I5); F3 = DM(_t_dry_mix);
     F0 = F0 * F2; F1 = F1 * F2;
     F2 = DM(_t_dry_l); F2 = F2 * F3; F0 = F0 + F2; DM(T_LEFT,I0) = R0;
     F2 = DM(_t_dry_r); F2 = F2 * F3; F1 = F1 + F2; DM(T_RIGHT,I0) = R1;
@@ -376,6 +400,8 @@ _tape_next_sample:
 .VAR _t_alt_r[32];
 .VAR _t_arm_grid;
 .VAR _t_wave_start;
+.VAR _t_span;
+.VAR _t_dry_mix;
 .VAR _t_track;
 .VAR _t_slot;
 .VAR _t_share_length;

@@ -4,6 +4,7 @@
 .SECTION/PM seg_pmco;
 .EXTERN _relay_pool;
 .EXTERN _relay_external;
+.EXTERN _relay_main;
 .EXTERN _relay_pack_span;
 .EXTERN _relay_status;
 .EXTERN _relay_timing;
@@ -312,9 +313,12 @@ _rt_row:
     R2 = LSHIFT R8 BY 6; R3 = _rtm_tracks; R2 = R2 + R3; I4 = R2;
     RTS;
 _rt_inputs:
+    R1 = RT_INPUT_MAIN; COMP(R0,R1); IF EQ JUMP _rt_main_input;
     R1 = 3; COMP(R0,R1); IF LT JUMP _rt_ext;
     R0 = R0 - R1; R0 = LSHIFT R0 BY 8; R1 = _rtm_bus; R4 = R1 + R0;
     R1 = 128; R8 = R4 + R1; RTS;
+_rt_main_input:
+    R4 = _relay_main; R1 = 128; R8 = R4 + R1; RTS;
 _rt_ext:
     R4 = _relay_external; R1 = 128; R8 = R4 + R1;
     R1 = 1; COMP(R0,R1); IF EQ R8 = R4;
@@ -333,7 +337,8 @@ _rt_cmd_alt:
 _rt_arm:
     R0 = DM(_rt_load); R0 = PASS R0; IF GE JUMP _rt_busy;
     R0 = DM(_rt_mode); R0 = PASS R0; IF NE JUMP _rt_busy;
-    R1 = DM(4,I0); R2 = 18; COMP(R1,R2); IF GT JUMP _rt_invalid;
+    R1 = DM(4,I0); R2 = RT_INPUT_MAIN; COMP(R1,R2); IF GT JUMP _rt_invalid;
+    R1 = PASS R1; IF LT JUMP _rt_invalid;
     R2 = 3; R2 = R2 + R8; COMP(R1,R2); IF EQ JUMP _rt_invalid;
     DM(_rt_source) = R1; DM(_rt_writer) = R8;
     R1 = DM(5,I0); DM(_rt_len) = R1;
@@ -387,7 +392,7 @@ _rt_cancel:
     CALL _rt_abort; JUMP _rt_schedule;
 _rt_cmd_play:
     CALL _tape_row; R0 = DM(T_ACTIVE,I5); R0 = PASS R0; IF NE JUMP _tape_play;
-    R0 = DM(RT_LENGTH,I4); R0 = PASS R0; IF EQ JUMP _rt_empty;
+    R0 = DM(RT_LENGTH,I4); R0 = PASS R0; IF EQ JUMP _rt_schedule;
     R0 = DM(RT_ARM_PLAY,I4); R1 = 1; R0 = R0 XOR R1; DM(RT_ARM_PLAY,I4) = R0;
     JUMP _rt_schedule;
 _rt_busy_local:

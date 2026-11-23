@@ -32,6 +32,7 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
     ],
     externs: {
       _relay_external: ext,
+      _relay_main: ext + 10240,
       _rtm_command: cmd,
       _relay_status: status,
       _relay_request: status + 256,
@@ -227,12 +228,18 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
     b = await block(1);
     expect(b.audio[0]).toBeCloseTo(0.5, 5);
     expect(b.audio[32]).toBeCloseTo(-0.25, 5);
-    // Stop a live punch after a sustained stereo note. The final wet block fades to zero.
+    // PLAY leaves an open punch alone. Once WRITE closes it, pausing a
+    // sustained stereo take still fades the final wet block to zero.
     for (let i = 0; i < 32; ++i) {
       rig.poke(ext / 4 + i, f2w(0.5));
       rig.poke(ext / 4 + 32 + i, f2w(-0.25));
     }
-    await block();
+    b = await block(3);
+    expect(b.status[2]! & 15).toBe(2);
+    expect(b.status[7]! & 1).toBe(1);
+    for (let i = 0; i < 16; ++i) await block();
+    b = await block(15);
+    expect(b.status[2]! & 15).toBe(0);
     input();
     b = await block(3);
     expect(b.status[7]! & 1).toBe(0);
@@ -360,6 +367,40 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
     await block(2);
     expect(await sample(11)).toBe(0x1000e000);
     expect(await sample(12)).toBe(0x2000f000);
+
+    // MAIN captures the final stereo tap. It is never passed back through dry monitoring.
+    await block(14);
+    await block(9);
+    input(true);
+    for (let i = 0; i < 32; ++i) {
+      rig.poke((ext + 10240) / 4 + i, f2w(0.125));
+      rig.poke((ext + 10240) / 4 + 32 + i, f2w(-0.25));
+    }
+    const main = 19 | (100 << 5);
+    b = await block(11, main, 65536, 65536);
+    expect(b.audio.every((sample) => sample === 0)).toBe(true);
+    expect((await block(3, 19)).status[5]).toBe(0); // PLAY with no take is a no-op.
+    b = await block(15, 19, 0, 65, 16);
+    expect(b.status[2]! & 15).toBe(1);
+    b = await block(3, 19);
+    expect(b.status[2]! & 15).toBe(1); // PLAY cannot close the first pass.
+    expect(b.audio.every((sample) => sample === 0)).toBe(true);
+    b = await block();
+    expect(b.status[2]! & 15).toBe(0);
+    expect(b.status[5]).toBe(65);
+    expect(await sample(0)).toBe(0x1000e000);
+    expect(await sample(64)).toBe(0x1000e000);
+
+    // A shortened loop wraps at the selected prefix. The complete take stays in the pool.
+    b = await block(11, main | (100 << 19), 65536, 65536, (32768 << 16) | 16);
+    expect(b.status[5]).toBe(65);
+    const quarter = (await block()).status[6]!;
+    expect(quarter).toBeLessThan(32);
+    expect((await block()).status[6]).toBe(quarter);
+    expect(await sample(64)).toBe(0x1000e000);
+    b = await block(11, main | (100 << 19), 65536, 65536, 16);
+    expect((await block()).status[6]).not.toBe(b.status[6]);
+    expect(await sample(64)).toBe(0x1000e000);
   } finally {
     await rig.close();
   }
