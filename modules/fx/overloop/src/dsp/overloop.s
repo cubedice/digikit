@@ -212,15 +212,7 @@ _ol_track:
     R3 = 1;
     COMP(R0,R1);
     IF EQ R2 = PASS R3;
-    DM(OL_PAUSED,I5) = R2;
-    R0 = DM(OL_TRUN,I5);
-    R0 = PASS R0;
-    IF EQ JUMP _ol_running;
-    R0 = DM(OL_PHASE,I5);
-    DM(OL_HALT,I5) = R0;
-    R0 = 0;
-    DM(OL_TRUN,I5) = R0;
-    DM(OL_SYNC,I5) = R0;
+    CALL _ol_suspend;
 _ol_running:
     R2 = DM(2,I4);
     R3 = DM(3,I4);
@@ -240,7 +232,7 @@ _ol_running:
     R0 = OL_POSITION_GRACE;
     COMP(R7,R0);
     IF LT JUMP _ol_target;
-    JUMP _ol_unrun;
+    JUMP _ol_position_expired;
 _ol_first:
     // the first record: no edge can be placed
     DM(OL_TX,I5) = R2;
@@ -465,6 +457,14 @@ _ol_new_run:
 _ol_lost:
     R0 = 0;
     DM(OL_HAVE,I5) = R0;
+_ol_position_expired:
+    // A held loop cannot keep playing on the last known RUNNING flag once the position stream expires.
+    // Keep an already observed pause so a later CONTINUE can still use its saved phase.
+    R0 = DM(OL_TRUN,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _ol_unrun;
+    R2 = 0;
+    CALL _ol_suspend;
 _ol_unrun:
     R0 = 0;
     DM(OL_RUN,I5) = R0;
@@ -1010,6 +1010,19 @@ _ol_mark_at:
     DM(OL_BGEN,I5) = R13;
     R0 = DM(OL_PHASE,I5);
     DM(OL_BPH,I5) = R0;
+    RTS;
+
+// Fade out playback and keep the held loop, fader and arm. R2 is 1 for pause. Uses R0.
+_ol_suspend:
+    DM(OL_PAUSED,I5) = R2;
+    R0 = DM(OL_TRUN,I5);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R0 = DM(OL_PHASE,I5);
+    DM(OL_HALT,I5) = R0;
+    R0 = 0;
+    DM(OL_TRUN,I5) = R0;
+    DM(OL_SYNC,I5) = R0;
     RTS;
 
 // A dropped loop is gone. Uses R0.
