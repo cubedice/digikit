@@ -226,18 +226,18 @@ int main(void)
     wave.peaks[0] = 0xff00;
     status[5] = 0;
     assert(draw_waveform(pixels[0], &wave, 0, 0, 0, 0));
-    for (unsigned y = 29; y <= 49; ++y) {
+    for (unsigned y = 29; y <= 50; ++y) {
         assert(pixels[y][17]);
-        assert(pixels[y][18] == (y == 39));
+        assert(pixels[y][18] == (y == 40));
     }
     // Quiet transients expand while keeping their relative heights.
     memset(pixels, 0, sizeof(pixels));
-    wave.peaks[0] = 0x8878;
-    wave.peaks[1] = 0x857b;
+    wave.peaks[0] = 0x837d;
+    wave.peaks[1] = 0x827e;
     assert(draw_waveform(pixels[0], &wave, 0, 0, 0, 0));
-    for (unsigned y = 29; y <= 49; ++y) {
-        assert(pixels[y][17] == (y >= 34 && y <= 44));
-        assert(pixels[y][18] == (y >= 36 && y <= 42));
+    for (unsigned y = 29; y <= 50; ++y) {
+        assert(pixels[y][17] == (y >= 32 && y <= 48));
+        assert(pixels[y][18] == (y >= 34 && y <= 46));
     }
 
     // Capture one telemetry window across the loop boundary without losing its

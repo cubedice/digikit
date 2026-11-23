@@ -657,7 +657,7 @@ static unsigned draw_waveform(u8 *b, const struct RelayOverview *overview,
                               const struct RelayOverview *hits, unsigned mark, int live,
                               unsigned writing)
 {
-    enum { LEFT = 17, TOP = 28, BOTTOM = 50, MID = 39 };
+    enum { LEFT = 17, TOP = 28, BOTTOM = 51, MID = 40 };
     unsigned lo = WAVE_COLUMNS, hi = WAVE_COLUMNS, audible = 0;
     if (hits && mark < hits->count) {
         lo = hits->starts[mark] * WAVE_COLUMNS / hits->frames;
@@ -671,8 +671,8 @@ static unsigned draw_waveform(u8 *b, const struct RelayOverview *overview,
     fxv_box(b, LEFT, TOP, WAVE_COLUMNS, 1, 1);
     fxv_box(b, LEFT, BOTTOM, WAVE_COLUMNS, 1, 1);
     uint16_t columns[WAVE_COLUMNS];
-    /* Fit the loudest peak in the view, with a -18 dB reference floor. */
-    unsigned reference = 16;
+    /* Enlarge quiet tape by up to 32×, then scale to the strongest visible peak. */
+    unsigned reference = 4;
     for (unsigned col = 0; col < WAVE_COLUMNS; ++col) {
         unsigned bin = col * RELAY_WAVE_BINS / WAVE_COLUMNS;
         uint16_t wave = RELAY_WAVE_EMPTY;
@@ -692,13 +692,15 @@ static unsigned draw_waveform(u8 *b, const struct RelayOverview *overview,
         if (peak > (int)reference)
             reference = (unsigned)peak;
     }
-    unsigned gain = ((10u << 8) + reference / 2) / reference;
+    unsigned gain = (((MID - TOP - 1) << 8) + reference / 2) / reference;
     for (unsigned col = 0; col < WAVE_COLUMNS; ++col) {
         int selected = col >= lo && col < hi;
         if (selected)
             fxv_box(b, LEFT + col, TOP + 1, 1, BOTTOM - TOP - 1, 1);
         int top = wave_height(columns[col] >> 8, gain);
         int bottom = wave_height(columns[col] & 255, gain);
+        if (bottom >= BOTTOM - MID)
+            bottom = BOTTOM - MID - 1;
         fxv_box(b, LEFT + col, MID + top, 1, bottom - top + 1, !selected);
     }
     if (hits)
@@ -780,8 +782,8 @@ static void draw(u8 *b)
         int x = 30 + i * 28;
         fxv_text(b, x, 10, !page && i == 0 && edit_gain ? "GAIN" : top[page][i], 1);
         fxv_text(b, x, 16, values[i], 1);
-        fxv_text(b, x, 52, bottom[page][i], 1);
-        fxv_text(b, x, 58, actions[i], 1);
+        fxv_text(b, x, 53, bottom[page][i], 1);
+        fxv_text(b, x, 59, actions[i], 1);
     }
 
     const struct RelayOverview *o = current_wave(0);
