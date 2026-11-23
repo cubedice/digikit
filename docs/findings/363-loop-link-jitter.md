@@ -164,6 +164,22 @@ effect cost was 5,505 instructions per block.
 Switching from A02 to A01 captured a 32-step, 5.00-second loop, cleared ARM and moved XFAD to LOOP.
 The test ended on the original pattern and the DigiKit settings matched the pre-update record byte for byte.
 
+### Overloop waveform collapses to the right
+
+**[D]** With Overloop 0.5.1, a DTII capture reported a held 32-step, 5.00-second loop. In all 250 sampled
+screen frames, the waveform occupied only the last 34 of 120 columns. The playhead continued across the display.
+
+The display history had reset its entire visible interval whenever a 512-frame peak report went missing.
+A late capture report could also erase the earlier history when its most recent complete group was after the
+capture edge. The receiver now preserves known history, clears the skipped cells in each circular buffer,
+and fills unreported cells up to the capture edge before freezing the view. The rolling view keeps its last
+nonzero length estimate through a timing dropout. A restarted sample counter still clears the history.
+
+**[D]** On the DTII running image `34aab3ec4587e462`, the live preview reached all 120 columns. A fresh armed
+switch from A02 to A01 captured another 32-step, 5.00-second loop. Its waveform occupied all 120 columns
+and held the same shape through 12 observations as the playhead moved. The original pattern and DigiKit
+settings were restored after the check.
+
 ## Proofs
 
 Lowest layer first, at the branch head in the WSL checkout; device tests on the Digitakt II 1.17 image on the emulator with

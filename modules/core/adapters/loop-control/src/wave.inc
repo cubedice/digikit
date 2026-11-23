@@ -1,16 +1,22 @@
 /* Six 128-bin circular histories of the sound recorded, with 512 through 16384
  * frames per bin, doubling each level. A cell stores negative and positive peaks.
- * The block interrupt adds at most one completed interval per reply. A capture
- * copies just the selected 256-byte history, before any post-edge audio enters it.
+ * Each reply carries one completed interval. Missing intervals leave empty cells
+ * without cutting off older peaks. A capture copies just the selected history.
  * The UI takes a bounded snapshot, restores interrupts and projects it to the LCD. */
-enum { WAVE_BINS = 128, WAVE_LEVELS = 6, WAVE_FIRST_SHIFT = 9 };
+enum {
+    WAVE_BINS = 128,
+    WAVE_LEVELS = 6,
+    WAVE_FIRST_SHIFT = 9,
+    WAVE_BIN_FRAMES = 1 << WAVE_FIRST_SHIFT,
+    WAVE_MAX_FRAMES = WAVE_BINS << (WAVE_FIRST_SHIFT + WAVE_LEVELS - 1)
+};
 typedef struct {
     u32 end, frames, valid, shift;
     u16 bins[WAVE_BINS];
 } WaveView;
 static u16 wave_ring[WAVE_LEVELS][WAVE_BINS];
 static WaveView wave_loop;
-static u32 wave_end, wave_valid, wave_count, wave_length;
+static u32 wave_end, wave_valid, wave_count, wave_length, wave_span;
 
 static u16 wave_merge(u16 a, u16 b)
 {
@@ -33,15 +39,31 @@ static u16 wave_decode(u16 peaks, u32 state)
 
 static void wave_add(u32 end, u16 peak)
 {
-    int contiguous = end - wave_end == 512 && wave_valid;
-    wave_valid = contiguous ? wave_valid + (wave_valid < (1u << 21) ? 512 : 0) : 512;
-    wave_end = end;
+    u32 elapsed = end - wave_end;
     for (u32 i = 0, shift = WAVE_FIRST_SHIFT; i < WAVE_LEVELS; ++i, ++shift) {
-        u16 *cell = &wave_ring[i][((end - 1) >> shift) & (WAVE_BINS - 1)];
-        if (contiguous && ((end - 512) & ((1u << shift) - 1)))
-            peak = wave_merge(peak, *cell);
+        u32 at = (end - 1) >> shift;
+        u16 *ring = wave_ring[i], *cell = &ring[at & (WAVE_BINS - 1)];
+        if (!wave_valid) {
+            *cell = peak;
+            continue;
+        }
+        /* Count crossed cells using the elapsed frames so counter wrap is ordinary.
+         * Keep peaks from an already started coarse cell and clear only skipped ones. */
+        u32 crossed = (((wave_end - 1) & ((1u << shift) - 1)) + elapsed) >> shift;
+        if (!crossed) {
+            *cell = wave_merge(*cell, peak);
+            continue;
+        }
+        u32 skipped = crossed < WAVE_BINS ? crossed - 1 : WAVE_BINS - 1;
+        while (skipped) {
+            ring[(at - skipped) & (WAVE_BINS - 1)] = 0;
+            --skipped;
+        }
         *cell = peak;
     }
+    u32 covered = wave_valid ? wave_valid + elapsed : WAVE_BIN_FRAMES;
+    wave_valid = covered < WAVE_MAX_FRAMES ? covered : WAVE_MAX_FRAMES;
+    wave_end = end;
 }
 
 static void wave_snapshot(WaveView *v, u32 end, u32 length, u32 valid)
@@ -60,21 +82,28 @@ static void wave_snapshot(WaveView *v, u32 end, u32 length, u32 valid)
 
 static void wave_accept(const u32 *w)
 {
-    u32 t = w[LS_WAVE_T], end = t & ~511u;
+    u32 t = w[LS_WAVE_T], end = t & ~(WAVE_BIN_FRAMES - 1u);
     u32 edge = w[LS_WAVE_EDGE], count = w[LS_STATE] >> LS_COUNT_SHIFT;
     int capture = (w[LS_STATE] & LS_LOOP) && (count != wave_count || !wave_length);
     /* A lease change or module restart begins a new rolling history. Natural
      * 32-bit wrapping advances by a small unsigned delta and keeps continuity. */
-    if (t - wave_end > (1u << 21)) {
+    if (t - wave_end > WAVE_MAX_FRAMES) {
         wave_end = end;
         wave_valid = 0;
+        wave_span = 0;
     }
+    if (w[LS_NEXT_FRAMES])
+        wave_span = w[LS_NEXT_FRAMES];
     if (end != wave_end && (!capture || (int32_t)(end - edge) <= 0))
         wave_add(end, wave_decode((u16)w[LS_WAVE_PEAK], w[LS_STATE]));
     if (capture) {
         u32 span = w[LS_LOOP_FRAMES], silent = w[LS_WAVE_SILENT];
-        u32 partial = edge & 511;
-        u32 valid = edge - partial == wave_end ? wave_valid + partial : partial;
+        u32 partial = edge & (WAVE_BIN_FRAMES - 1u), completed = edge - partial;
+        /* The first capture reply can already carry a post-edge interval. Keep the
+         * older recorded peaks and leave any unreported interval at the edge empty. */
+        if ((int32_t)(completed - wave_end) > 0)
+            wave_add(completed, 0);
+        u32 valid = completed == wave_end ? wave_valid + partial : partial;
         u32 recorded = span > silent ? span - silent : 0;
         wave_snapshot(&wave_loop, edge, span, valid < recorded ? valid : recorded);
         if (partial) {
@@ -102,7 +131,7 @@ void dkrt_loop_wave_peaks(u16 out[LS_WAVE_COLUMNS])
         for (u32 j = 0; j < WAVE_BINS; ++j)
             v.bins[j] = wave_loop.bins[j];
     } else {
-        u32 frames = status[LS_NEXT_FRAMES];
+        u32 frames = wave_span;
         if (!frames)
             frames = 96000; /* two seconds of rolling record before tempo/length is known */
         if (frames > status[LS_CAPACITY] && status[LS_CAPACITY])

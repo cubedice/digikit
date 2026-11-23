@@ -158,6 +158,78 @@ static void wave_history(void)
     dkrt_loop_wave_peaks(frozen);
     assert(frozen[119] == 0x9378);
 }
+
+static void wave_history_gaps(void)
+{
+    u32 seq = 100, origin = 1u << 24;
+    const u32 fine_span = LS_WAVE_COLUMNS * 512;
+    const u32 precise = LS_TRACK | LS_WAVE_PRECISE;
+    u16 shape[LS_WAVE_COLUMNS], same_span[LS_WAVE_COLUMNS];
+
+    /* Cross the 128-slot ring and miss bin 129, whose slot still holds the peak of bin 1. */
+    for (u32 bin = 0; bin <= 130; ++bin) {
+        if (bin == 129)
+            continue;
+        carrier(++seq, precise, 0);
+        cell(LS_WAVE_T, origin + bin * 512);
+        cell(LS_NEXT_FRAMES, fine_span);
+        cell(LS_WAVE_PEAK, bin == 130 ? 0x6688 : 0x4411);
+        block();
+    }
+    loop_ui_tick();
+    dkrt_loop_wave_peaks(shape);
+    for (u32 x = 0; x < LS_WAVE_COLUMNS - 2; ++x)
+        assert(shape[x] == 0x4411);
+    assert(shape[118] == 0 && shape[119] == 0x6688);
+
+    /* No new viewport estimate while the transport re-establishes its position. Keep the previous width. */
+    carrier(++seq, LS_WAVE_PRECISE, 0);
+    cell(LS_WAVE_T, origin + 130 * 512);
+    block();
+    loop_ui_tick();
+    dkrt_loop_wave_peaks(same_span);
+    assert(!memcmp(shape, same_span, sizeof(shape)));
+
+    /* At about five seconds per view, each column covers four fine bins. An older part of the recording remains
+     * through a telemetry outage. A smaller hole within the last coarse bin does not erase either known peak. */
+    origin = 1u << 25;
+    const u32 wide_span = LS_WAVE_COLUMNS * 2048;
+    for (u32 bin = 0; bin <= LS_WAVE_COLUMNS * 4; ++bin) {
+        if ((bin >= 341 && bin <= 384) || bin == 478)
+            continue;
+        carrier(++seq, precise, 0);
+        cell(LS_WAVE_T, origin + bin * 512);
+        cell(LS_NEXT_FRAMES, wide_span);
+        u32 peak = bin < 477 ? 0x2233 : bin == 477 ? 0x9000 : bin == 479 ? 0x0075 : 0;
+        cell(LS_WAVE_PEAK, peak);
+        block();
+    }
+    loop_ui_tick();
+    dkrt_loop_wave_peaks(shape);
+    for (u32 x = 0; x < LS_WAVE_COLUMNS - 1; ++x)
+        assert(shape[x] == (x >= 85 && x < 96 ? 0 : 0x2233));
+    assert(shape[119] == 0x9075);
+
+    /* The last two pre-capture bins never arrived. The capture reply has a newer rolling bin and the partial at
+     * the edge. Keep the preceding recording and the partial without adding the newer rolling peak to the loop. */
+    origin = 1u << 26;
+    for (u32 bin = 0; bin <= 118; ++bin) {
+        carrier(++seq, precise, 0);
+        cell(LS_WAVE_T, origin + bin * 512);
+        cell(LS_NEXT_FRAMES, fine_span);
+        cell(LS_WAVE_PEAK, 0x2255);
+        block();
+    }
+    carrier(++seq, LS_LOOP | LS_WAVE_PRECISE | (10u << LS_COUNT_SHIFT), fine_span);
+    cell(LS_WAVE_T, origin + fine_span + 512);
+    cell(LS_WAVE_EDGE, origin + fine_span + 64);
+    cell(LS_WAVE_PEAK, (0x7f09u << 16) | 0xffff);
+    block();
+    loop_ui_tick();
+    dkrt_loop_wave_peaks(shape);
+    assert(shape[0] == 0x2255 && shape[117] == 0x2255 && shape[118] == 0 && shape[119] == 0x7f09);
+}
+
 static void reply_hook(void)
 {
     u32 out[LS_WORDS];
@@ -447,6 +519,7 @@ int main(void)
     reply_hook();
     wave_history();
     reply_order();
+    wave_history_gaps();
     puts("loop control: ok");
     return 0;
 }

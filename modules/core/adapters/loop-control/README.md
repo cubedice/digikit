@@ -26,10 +26,11 @@ byte and the positive in the high byte. It rounds each nonzero magnitude up on a
 completed group until its replacement. The `LS_WAVE_PRECISE` state flag identifies this format. With an older engine
 the home combines its four 4-bit channel peaks and expands each polarity to the byte scale.
 
-The ColdFire keeps six 128-bin histories covering 512, 1024, 2048, 4096, 8192 and 16384 frames per bin. At capture,
-it freezes the finest history that covers the cycle, includes the unfinished group and clips the valid interval to
-the audio actually recorded. The UI reads one bounded snapshot, then finds the outer peaks for each of the 120
-pixel intervals after restoring interrupts. Silence and loss of status clear the corresponding display data.
+The ColdFire keeps six 128-bin histories covering 512, 1024, 2048, 4096, 8192 and 16384 frames per bin. Missed reports
+leave empty cells where peaks are unavailable and keep the older history. The live view keeps its last known width
+while the timing estimate is unavailable. At capture, it freezes the finest history that covers the cycle, includes the
+unfinished group and limits the visible interval to the recorded audio. The UI reads one bounded snapshot, then
+finds the outer peaks for each of the 120 pixel intervals after restoring interrupts.
 
 ## How the values reach the engine
 
