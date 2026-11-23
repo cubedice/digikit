@@ -818,12 +818,8 @@ uint32_t instrument_src_context(uint32_t track, uint32_t page, int visible)
         in = cur;
     CpPreset current;
     src_requested(in, &current);
-    if (for_track(track) == in) {
-        CsState *s = SRC(in);
-        cs_track_keyboard(s, track_keyboard_src[track]);
-        s->layout =
-            (uint8_t)((s->layout & ~CS_LAYOUT_LANES) | (uint32_t)track_keyboard_lanes[track] << 3);
-    }
+    if (for_track(track) == in)
+        cs_track_keyboard(SRC(in), track_keyboard_src[track]);
     uint32_t generation = track < MI_TRACKS ? mi_ledger.generations[track] : 0;
     uint32_t token = cs_context(
         SRC(in), track, generation,

@@ -109,6 +109,14 @@ int main(int argc, char **argv)
         assert(cv_lock_mask(&ui, &locks) == 0);
         assert(cs_edit(&ui, token, 0, 1, 0, &id) == CS_NATIVE && id == CS_TUNE);
         assert(cs_edit(&ui, token, 7, 1, 0, &id) == CS_NATIVE && id == CS_LEVEL);
+        assert(cs_edit(&ui, token, 6, 64, 0, &id) == CS_EDIT && id == CP_ARP_MIX);
+        assert(ui.value[CP_ARP_MIX] == 64);
+        CvDisplay mix;
+        cv_build(&mix, &ui, &status, 0, "", "", 0);
+        assert(mix.raw[CP_ARP_MIX] == 64 && !strcmp(mix.value[6], "50%"));
+        uint32_t mix_lock = 0;
+        assert(cs_lock_step(&ui, token, 6, 25, 0, 64, &id, &mix_lock) == CS_EDIT);
+        assert(id == CP_ARP_MIX && mix_lock == 89 && ui.value[id] == 64);
         /* Held WAVE changes the effective bank, not the page count. */
         CsState locked = ui;
         locked.metadata &= ~0x30u;

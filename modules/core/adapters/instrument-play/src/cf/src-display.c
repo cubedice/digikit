@@ -254,8 +254,6 @@ static void value(char out[8], const CsState *s, uint32_t id, const char *tune, 
         text(out, 8, n ? "SYNC" : "FREE");
         return;
     }
-    if (id == CP_ARP_MIX)
-        n = cs_mix_display(s);
     if (id == CP_CHORD)
         v = s->mode == KB_PLAY ? "PLAY" : n < 12 ? chord[n] : "--";
     else if (id == CP_VOICING)
@@ -445,7 +443,6 @@ void cv_build_owner(CvDisplay *d, const CsState *s, const IsStatus *status, uint
     d->focus_id = cs_focused(s, now) ? s->focus_id : CS_NONE;
     for (uint32_t i = 0; i < CP_CONTROLS; ++i)
         d->raw[i] = s->value[i];
-    d->raw[CP_ARP_MIX] = (uint16_t)cs_mix_display(s);
     for (uint32_t i = 0; i < 8; ++i) {
         uint32_t id = cs_mapped_control(s, i);
         if (id > CS_WAVE)

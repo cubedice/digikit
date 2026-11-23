@@ -13,7 +13,6 @@ enum {
     CS_NONE = 255,
     CS_SHARED_KEYBOARD = 4,
     CS_LAYOUT_FAMILY = 3,
-    CS_LAYOUT_LANES = 24,
     CS_FOCUS_MS = 750,
     CS_LIST_TICKS = 4
 };
@@ -46,17 +45,6 @@ static inline int cs_shared_keyboard(const CsState *s)
 {
     return !!(s->layout & CS_SHARED_KEYBOARD);
 }
-static inline uint32_t cs_shared_lanes(const CsState *s)
-{
-    return (s->layout & CS_LAYOUT_LANES) >> 3;
-}
-
-static inline uint32_t cs_mix_display(const CsState *s)
-{
-    uint32_t lanes = cs_shared_lanes(s);
-    return lanes == 1 ? 0 : lanes == 2 ? 127 : s->value[CP_ARP_MIX];
-}
-
 uint32_t cs_context(CsState *, uint32_t track, uint32_t generation, int visible, uint32_t page,
                     uint32_t mode, uint32_t clock, int learned, int modal);
 uint32_t cs_control(uint32_t page, uint32_t encoder);
